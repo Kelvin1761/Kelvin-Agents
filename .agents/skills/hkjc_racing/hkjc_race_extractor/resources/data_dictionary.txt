@@ -1,0 +1,11 @@
+Data Dictionary for HKJC Extractions:
+
+Racecard Fields:
+- 烙號 (Brand Number): Unique alphanumeric identifier (e.g., E114).
+- 負磅 (Carried Weight): Weight carried by the horse in pounds.
+- 評分 (Rating): Official HKJC rating.
+# ... other fields ...
+
+Form Guide Fields:
+- Energy Value: A speed/class rating from the Speedpro section.
+# ... other fields ...

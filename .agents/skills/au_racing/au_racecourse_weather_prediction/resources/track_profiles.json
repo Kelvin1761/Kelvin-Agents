@@ -1,0 +1,87 @@
+{
+  "Victoria (VIC)": {
+    "weather_notes": "墨爾本天氣多變 (一天四季)，極度受風向與風速影響。",
+    "courses": {
+      "Flemington": {
+        "tier": "Top Tier",
+        "profile": "深層純沙底 (Deep Sand Profile)。",
+        "drainage": "全澳排水之王。即使週五是 Heavy 8，只要週六有強烈的北風或西北風，純沙底層會迅速濾水，下午就能乾成 Good 4。極難長時間維持爛地。"
+      },
+      "Moonee Valley": {
+        "tier": "Top Tier",
+        "profile": "StrathAyr 沙網混合系統 (Sand over Mesh)。專利高科技草底。",
+        "drainage": "排水極佳，極限大雨也頂多 Soft 7，幾乎不可能出現 Heavy 10。雨停後水分會迅速穿透網層流失。"
+      },
+      "Caulfield": {
+        "tier": "Moderate",
+        "profile": "改良沙底 (Sand Profile)。",
+        "drainage": "排水良好，但極度依賴表面風速。如果是大太陽但無風，風乾很慢；如果是陰天但颳大風，風乾極快。"
+      },
+      "Sandown": {
+        "tier": "Moderate-Slow",
+        "profile": "黏土基底 (Clay Profile/Base)。",
+        "drainage": "排水屬中等偏慢。黏土特性能牢牢鎖住水分，冬天如果連續陰雨，底層會變得非常濕軟且難以揮發，容易長時間維持在 Soft 7。"
+      },
+      "Mornington": {
+        "tier": "Bottom Tier",
+        "profile": "保水土壤。",
+        "drainage": "維州著名的爛地馬場。排水極差，只要有一場大雨必定變 Heavy，需要好幾天的大太陽才能將水分從土中逼出。"
+      }
+    }
+  },
+  "New South Wales (NSW)": {
+    "weather_notes": "雪梨秋冬雨水多，濕度高，爛地賽事極頻繁。",
+    "courses": {
+      "Randwick": {
+        "tier": "Top Tier",
+        "profile": "Kikuyu 草種 + 純沙底層。",
+        "drainage": "雪梨排水第一名。沙底濾水極快，只要出太陽配合海風，風乾速度全雪梨最佳。(提示：正在風乾的 Randwick 內欄積水通常最後才退，容易形成沼澤)。"
+      },
+      "Rosehill": {
+        "tier": "Moderate",
+        "profile": "沙壤土混合 (Sand/Loam Profile)。",
+        "drainage": "排水中等，土壤含有較多有機質。「濕氣蒸發慢」是其致命傷。陰冷冬日下，只要底層壤土吸飽早前的雨水，就能死死維持在 Heavy 8 不退。"
+      },
+      "Warwick Farm": {
+        "tier": "Bottom Tier",
+        "profile": "黏壤土/黏土 (Clay/Loam Profile)。",
+        "drainage": "傳說中的「水泥爛地」。地勢低窪加高黏性泥土，水分幾乎無法自然往下滲透。只要賽前 48 小時內有 >10mm 降雨，無條件直接預測 Heavy 9 或 Heavy 10，上半天絕不會風乾。"
+      },
+      "Canterbury": {
+        "tier": "Moderate",
+        "profile": "淺層沙底 (Sand Base)。",
+        "drainage": "晚間賽事重鎮。排水尚可，但場地窄且急彎多，一旦軟地表面極容易被馬蹄踏爛，令外疊馬佔盡優勢。"
+      },
+      "Kembla Grange": {
+        "tier": "Bottom Tier",
+        "profile": "保水土壤",
+        "drainage": "沿海省級馬場，土壤保水且冬季海風帶來水氣，只要下雨就極難風乾，長時間保持 Soft 7 或更低。"
+      },
+      "Newcastle": {
+        "tier": "Bottom Tier",
+        "profile": "保水土壤",
+        "drainage": "沿海省級馬場，土壤保水且冬季海風帶來水氣，只要下雨就極難風乾，長時間保持 Soft 7 或更低。"
+      }
+    }
+  },
+  "Queensland (QLD)": {
+    "weather_notes": "亞熱帶氣候，夏天常有午後狂風暴雨 (Storms)。",
+    "courses": {
+      "Eagle Farm": {
+        "tier": "Top Tier+",
+        "profile": "幾近純沙的極端濾水結構 (Aggressive Sand Base)。",
+        "drainage": "重建後排水過於霸道，就算前一天被暴雨轟炸，隔天水分也能瞬間漏光變回 Firm 3/Good 3，場地經常發跡發硬。"
+      },
+      "Doomben": {
+        "tier": "Bottom Tier",
+        "profile": "壤土/黏土基底 (Moderate Loam/Clay Profile)。",
+        "drainage": "極度保水。一陣大雷雨就能讓表面變爛地，且內欄凹陷處容易產生積水。"
+      },
+      "Gold Coast": {
+        "tier": "Moderate-Fast",
+        "profile": "全新人造純沙底層 (All-Weather Sand Profile)。",
+        "drainage": "夏天午後雷陣雨降雨量往往暴增，初期需保守估算。排水已達一線水準。"
+      }
+    }
+  }
+}

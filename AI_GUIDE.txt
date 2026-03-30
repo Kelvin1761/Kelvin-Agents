@@ -1,0 +1,117 @@
+# 🚀 Antigravity Kit：AI 協作指南 (User Guide)
+
+歡迎使用 **Antigravity Kit**！呢套工具將你嘅 AI 由一個單一嘅聊天助手，徹底升級做一個擁有 20 個專項領域專家嘅**技術團隊**。
+
+為咗令我（AI）可以完美融入你嘅專案並同你現有嘅 Agents 無縫合作，呢份指南整理咗你需要知道嘅最佳實踐。
+
+---
+
+## 1. 點樣喚醒唔同嘅專屬 Agents？
+
+你**完全唔需要**做任何繁複嘅安裝或啟動，只要將 `.agent` 資料夾放喺工作區，我就會自動變成你嘅專家團隊。你有兩種方式可以指揮我哋：
+
+### 🅰️ 自動智能分發 (Auto-Pilot / 推薦)
+你只需自然咁講出任務，我背後嘅 Request Classifier 就會自動分析，並派出最合適嘅專家。
+
+* **你講：** 「幫我將首頁個 Login 掣改做圓角，同埋轉深色主題。」
+* **我會：** 自動加載 `@frontend-specialist` 身份，並引用 `tailwind-patterns` 技能嚟幫你修改。
+
+### 🅱️ 直接點名召喚 (Manual Override)
+如果你已經有特定嘅專家想用，或者你睇到 `.agent/agents/` 入面有你自訂嘅新 Agent，你可以直接用 `@` 點名。
+
+* **你講：** 「@security-auditor，幫我行一次呢個人事系統邏輯，睇下有冇潛在風險。」
+* **我會：** 強制切換成保安審查員模式，並啟動最嚴格的安全代碼審查標準答你。
+
+---
+
+## 2. 工具箱全覽：20 位專屬領域專家 (The 20 Agents)
+
+Antigravity Kit 內置咗 20 個經過特定 Persona 同技能訓練嘅 Agent，涵蓋由產品構思去到最終上線部署嘅每一個階段。呢 20 個特工隨時 Ready 當你嘅隊員，以下係佢哋嘅專長同埋應用場景：
+
+### 💡 規劃與管理團隊 (Planning & Product)
+* **`@product-owner` (產品負責人):** 幫你梳理產品願景，確認需求，確保開發方向同業務目標一致。
+* **`@product-manager` (產品經理):** 負責寫 User Story，拆解功能細節，幫你排好功能開發嘅先後次序。
+* **`@project-planner` (專案策劃師):** 當你指令 `/plan`，佢會幫你將大諗法拆解成 Step-by-Step 嘅實作清單，仲會畫埋架構圖。
+* **`@orchestrator` (總指揮 / 協調員):** 面對橫跨多個領域嘅超大型任務，佢會負責調度唔同嘅 Agents 一齊做嘢，確保大家步調一致。
+
+### 🖥️ 前端與用戶體驗專家 (Frontend & UX)
+* **`@frontend-specialist` (前端開發專家):** 精通 React, Vue, Tailwind 等，幫你打造靚爆鏡嘅 UI，仲會處理埋複雜嘅 State 管理同畫面動畫效能。
+* **`@mobile-developer` (流動裝置開發者):** 專注於 iOS/Android App 開發（例如 React Native/Flutter），處理手機設備特有嘅佈局同效能問題。
+* **`@game-developer` (遊戲開發者):** 無論係 Web Game 還是小遊戲機制（好似旺財街機），佢會幫你處理 Game Loop 同碰撞演算等複雜邏輯。
+* **`@seo-specialist` (SEO 專家):** 幫你優化網站 Metadata、HTML 語義同埋載入速度，令你個網站喺 Google 排名推到最高。
+
+### ⚙️ 後端與數據庫專家 (Backend & Data)
+* **`@backend-specialist` (後端開發專家):** 幫你寫健壯嘅 API 系統、處理複雜嘅商業邏輯，熟悉 Node.js, Python 等後端技術。
+* **`@database-architect` (數據庫架構師):** 負責設計高效嘅 Schema（不論 SQL 還是 NoSQL），優化 Query 效能同埋確保資料絕對一致。
+
+### 🛡️ 安全與營運團隊 (Security & DevOps)
+* **`@security-auditor` (安全審查員):** 嚴格檢查你嘅 Code 有無潛在漏洞（例如 SQL Injection、XSS 等），為系統安全嚴格把關。
+* **`@penetration-tester` (滲透測試員):** 模擬黑客攻擊你嘅系統，主動幫你搵出深層嘅保安盲點同防禦弱點。
+* **`@devops-engineer` (DevOps 工程師):** 幫你搞 CI/CD Pipelines、Docker 容器化同埋伺服器部署，令你順利將心血推上雲端。
+
+### 🧪 測試與品質保證 (QA & Testing)
+* **`@test-engineer` (測試工程師):** 幫你寫 Unit Test 同 Integration Test，確保每一行 Code 都達到預期效果。
+* **`@qa-automation-engineer` (自動化測試工程師):** 幫你建立 End-to-End (E2E) 嘅自動化測試流程（如 Cypress/Playwright），等系統唔會一改就崩潰。
+
+### 🔧 優化與維護專家 (Optimization & Maintenance)
+* **`@debugger` (除錯大師):** 當系統爆 Error 又無從入手，佢會用四階段系統性除錯法，幫你抽絲剝繭還原案發現場，找出 Root Cause。
+* **`@performance-optimizer` (效能優化專家):** 專治網站 Load 得慢、Memory Leak 等問題，幫你將系統效能跑到極致。
+* **`@code-archaeologist` (代碼考古學家):** 接手舊 Project 恩物！佢幫你分析年代久遠、缺乏 Document 嘅 Legacy Code，理清前人留落嚟嘅邏輯脈絡。（又稱「執屎專家」😂）
+* **`@explorer-agent` (探索員):** 當需要研究新技術或未知領域，佢會幫你掃描文件、做實驗，最後俾個最好嘅整合建議你。
+* **`@documentation-writer` (文件撰寫員):** 替你包辦所有 Markdown、API Docs 同 README 撰寫工作，確保專案嘅規格文件清晰易讀。
+
+---
+
+## 3. 三大核心協同機制
+
+為咗令 AI（我）同你原本嘅代碼同埋 Agents 更夾，我哋依賴以下三個核心機制：
+
+### 🛑 蘇格拉底之門 (Socratic Gate)
+* **係咩嚟？** 作為高級團隊，當接手重大或模糊任務時，我哋**絕對禁止立刻寫 Code**。
+* **點運作？** 如果你要求「幫我寫個購物車」，我會先「拒絕寫出垃圾」，反問你關於性能（例如 State 管理、資料庫同步）嘅關鍵問題。當你回應確認後，先會真正動工。
+* **點解要咁？** 咁樣可以完全避免 AI 生成一堆唔符合你專案架構嘅爛 Code。
+
+### 🎯 模組化技能載入 (Skills Protocol)
+* 每個 Agent 都掛載咗對應嘅 `.md` 技能檔。所以，當我扮演 `@backend-specialist` 寫 API 時，我已經即時讀取咗 `api-patterns.md` 同 `clean-code.md` 嘅要求。寫出嚟嘅代碼天生就符合高品質要求。
+
+### 🛠️ 內建審查腳本 (Verification Scripts)
+你隨時可以叫我行 Python 腳本嚟做項目體檢：
+* 「幫我跑一次 `checklist.py`」：我會自動執行代碼質量、語法格式同基礎安全測試。
+* 咁做可以確保你人工加落去嘅舊系統，同 AI 寫嘅新功能，符合同一個現代標準。
+
+---
+
+## 4. 工作流斜線指令 (Slash Commands)
+
+如果你唔知從何入手，或者個任務牽涉好廣泛，你可以直接喺對話框使用呢啲斜線指令：
+
+| 指令 | 幾時用？ | AI 會點做？ |
+|---|---|---|
+| `/brainstorm` | 啱啱有條新橋、新 feature | 我會化身思考夥伴，同你做多角度分析探討，唔寫任何 Code。 |
+| `/create` | 決定好要寫一個新系統或大改 | 我會調動 **App Builder** 技能，帶領你選擇最佳技術棧。 |
+| `/plan` | 面對複雜問題，需要拆解 | 我會變成 `@project-planner`，幫你畫架構圖並建立 Step-by-Step 任務清單。 |
+| `/orchestrate` | 牽涉多個範疇（例如前後端+安全） | 我會一炮過呼叫幾個 Agents，針對唔同層面各自為你提供報告。 |
+| `/debug` | 程式爆 Error，無從入手 | 進入除錯模式，以「四階段系統性除錯」去還原案發現場，直至搵出 Root Cause。 |
+
+---
+
+## 5. 點樣擴充你專屬嘅 Agent？ (Advanced)
+
+Antigravity Kit 最強嘅地方就係 **100% 可塑**。如果想個 Ai 更融入你公司嘅特有業務：
+
+1. **建立你嘅 Agent：** 喺 `.agent/agents/` 開一個新嘅 `your-custom-agent.md`。
+2. **定義 Persona：** 喺入面寫出佢嘅性格、職責（例如：你係一個精通區塊鏈與香港稅法嘅會計開發者）。
+3. **加載特有技能：** 喺 `.agent/skills/` 寫一份專門處理你專案特有技術嘅 `SKILL.md`，然後喺 Agent 裡面 Link 埋去。
+4. **即時生效：** 我下一次同你傾偈，就會即刻識別呢位新專家，並準備隨時為你提供服務。
+
+---
+
+## 💡 最佳對話示範 (Prompting Best Practices)
+
+### ❌ 唔好咁做 (傳統 AI 玩法)
+> *"幫我寫個登入版面，用 React。"*
+*(結果：AI 會吐出一截平凡無奇、無擴充性、只有預設顏色嘅代碼)*
+
+### ✅ 應該咁做 (團隊指令式玩法)
+> *"/plan 我想建立一個包含 Oauth Google 同 Email 驗證的登入系統，需要符合我哋專案而家嘅 Security 原則，用 tailwind-patterns。"*
+*(結果：我會先同你確認業務邏輯，然後啟動 `@frontend-specialist` 搭 `@security-auditor`，自動規劃任務並寫出嚴格符合高質標準嘅系統！)*

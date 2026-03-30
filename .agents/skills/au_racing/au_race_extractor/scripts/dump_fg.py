@@ -1,0 +1,11 @@
+from bs4 import BeautifulSoup
+
+with open('/Users/imac/Desktop/Drive/Antigravity/.agents/skills/au_race_extractor/scripts/racenet_print_curl.html', 'r') as f:
+    text = f.read()
+
+soup = BeautifulSoup(text, 'html.parser')
+
+print("Look for the first full-form details:")
+details = soup.find('div', class_='racing-full-form-details')
+if details:
+    print(details.prettify()[:2000]) # output first 2000 chars of HTML

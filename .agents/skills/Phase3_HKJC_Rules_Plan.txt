@@ -1,0 +1,121 @@
+# Phase 3: HKJC 分析規則增強
+
+## Context
+用戶提出 3 項 HKJC 分析規則需要加入/強化，經審查現有代碼庫後制定以下方案。
+
+---
+
+## P3-1: 三歲 133 頂磅危險（ENHANCE existing rule）
+
+**現況：** 系統已有 `頂磅斷尾`（≥133lb 降一級）但 `3YO質新爆發 Rising Star` 反而會取消此懲罰。3 歲馬體能未成熟，133lb 風險比成馬更大。
+
+**方案：** 在 `06_rating_aggregation.md` Step 14.3 強制覆蓋規則中新增：
+```
+- **三歲頂磅封頂 (3YO Top Weight Cap)：** 若 3 歲馬負重 ≥ 133lb，
+  評級最高封頂 B+（不可給予 A 級或以上）。
+  此封頂覆蓋「3YO質新爆發 (Rising Star)」的頂磅斷尾降格豁免。
+  記錄為風險標記 `[3YO頂磅致命 (3YO Top Weight Fatal)]`。
+```
+
+**檔案：** `hkjc_horse_analyst/resources/06_rating_aggregation.md` — Line 178 後
+
+---
+
+## P3-2: 體重跌幅健康風險（NEW rule）
+
+**現況：** 系統無任何馬匹實際體重（kg）變化的健康監測。Step 7 只有 `喘鳴|外閃|老馬|大步|慢閘`。
+
+**方案：** 在 `04_engine_corrections.md` Step 7 風險標記中新增：
+```
+### Step 7: 風險標記
+偵測並標記：`喘鳴` | `外閃` | `老馬` | `大步` | `慢閘` | `體重急降`
+
+**體重健康風險標記 (Body Weight Health Flag)：**
+若馬匹近 3 仗體重下跌 ≥ 15kg（或連續 2 仗各跌 ≥ 8kg），
+標記為 `⚠️ [體重急降 (Rapid Weight Loss)]`。
+此為獨立風險因素，計入 Step 14.3 複合風險升級的風險標記總數。
+注意：排位表上的「聲明體重」需與往績表的過去賽事體重對比。
+```
+
+**檔案：** `hkjc_horse_analyst/resources/04_engine_corrections.md` — Line 95-96
+
+---
+
+## P3-3: 沙田轉跑馬地優勢（GENERALIZE existing rule）
+
+**現況：** 降班優勢已有良好覆蓋（Step 8.1 `超級降班馬`）。但 ST→HV 轉場優勢只存在於方嘉柏一個練馬師的特定訊號，無通用規則。
+
+**方案：** 在 `06_rating_aggregation.md` Step 14.2B 升級微調因素表中新增：
+```
+| 沙田轉跑馬地適性 | Step 8 + 場地 | 馬匹近仗在沙田表現平庸（非三甲）但歷史上在跑馬地有 ≥2 次入三甲紀錄（同程更佳），且今仗轉戰跑馬地。**互斥：與「超級降班馬」不可同時觸發升級微調——只取較強者。** |
+```
+
+**檔案：** `hkjc_horse_analyst/resources/06_rating_aggregation.md` — Step 14.2B 表格（Line 117 後）
+
+---
+
+## P3-4: 縮程賺級數（NEW positive factor）
+
+**現況：** `04_engine_corrections.md` Line 66 只有風險面：`-200m 至 -400m | 中 | 檢查馬匹能否縮步幅，純均速型縮程 = 高風險`。完全無「縮程帶來級數優勢」的正面概念。
+
+**用戶標準：** 縮程 200m = 賺級數（因為馬匹在較長路程累積的評分，縮短後面對的同評分對手相對較弱），除非該馬在短路程已跑 ≥3 次都無好表現。
+
+**方案 A — 雙向修正（在現有距離轉換矩陣中擴展）：**
+在 `04_engine_corrections.md` 距離轉換風險矩陣下方新增正面因素：
+```
+**縮程級數紅利 (Distance Shortening Class Bonus)：**
+若馬匹今仗縮程 ≥ 200m（如 1400m → 1200m、1600m → 1400m），
+且該馬在較長路程的評分/班次 ≥ 今仗班次水平：
+- 標記為 `✅ [縮程賺級數 (Distance Drop Advantage)]`
+- 此為升級微調正面因素（見 Step 14.2B）
+
+**失效條件：** 若該馬在目標短路程（±100m）已有 ≥3 次出賽紀錄
+且全部未能入三甲 → 紅利失效，改為 ➖ Neutral。
+此時表明該馬雖有長路程評分優勢，但無法在短途發揮。
+```
+
+**同時在 Step 14.2B 升級微調因素表中加入：**
+```
+| 縮程賺級數 | Step 6 | 今仗縮程 ≥200m + 長路程評分/班次優勢。**失效：目標短程 ≥3 次無入三甲。** 互斥：與「負重/班次協同優勢」中的升班輕磅不可同時觸發——只取較強者。 |
+```
+
+**檔案：**
+- `hkjc_horse_analyst/resources/04_engine_corrections.md` — Line 66 後
+- `hkjc_horse_analyst/resources/06_rating_aggregation.md` — Step 14.2B 表格
+
+---
+
+## 驗證清單更新
+
+**檔案：** `hkjc_horse_analyst/resources/09_verification.md`
+**動作：** 在核心清單中新增 3 項：
+- `- [ ] 三歲頂磅封頂已檢查（3YO + ≥133lb → B+ max）？`
+- `- [ ] 體重急降風險已檢查（近 3 仗跌 ≥15kg 或連續 2 仗各跌 ≥8kg）？`
+- `- [ ] 沙田轉跑馬地適性已檢查（ST 近仗非三甲 + HV ≥2 次入三甲）？`
+- `- [ ] 縮程賺級數已檢查（縮程 ≥200m + 長路程班次優勢；失效：短程 ≥3 次無入三甲）？`
+
+---
+
+## 涉及檔案
+
+| 檔案 | 修改類型 |
+|------|---------|
+| `hkjc_horse_analyst/resources/06_rating_aggregation.md` | 新增 P3-1 封頂 + P3-3 微調 + P3-4 微調 |
+| `hkjc_horse_analyst/resources/04_engine_corrections.md` | 新增 P3-2 體重風險 + P3-4 縮程紅利 |
+| `hkjc_horse_analyst/resources/09_verification.md` | 新增 4 項核心檢查 |
+
+## 實施順序
+
+1. **P3-1**（5 min）— `06_rating_aggregation.md` 加 3YO 頂磅封頂
+2. **P3-2**（5 min）— `04_engine_corrections.md` 加體重急降風險標記
+3. **P3-3**（5 min）— `06_rating_aggregation.md` 加沙田轉谷草微調
+4. **P3-4**（5 min）— `04_engine_corrections.md` + `06_rating_aggregation.md` 加縮程賺級數
+5. **驗證清單**（5 min）— `09_verification.md` 加 4 條新核心檢查項
+
+## 驗證
+
+1. P3-1 封頂在 Step 14.3 覆蓋優先級鏈位置正確（風險封頂 > 3YO 頂磅封頂 > 溢價封頂 > 保底）
+2. P3-2 體重急降計入複合風險升級的風險標記總數
+3. P3-3 互斥邏輯：與超級降班馬不可同時觸發升級微調
+4. P3-4 失效條件：短程 ≥3 次無入三甲時紅利失效
+5. 09_verification.md 新增 4 項無重複
