@@ -89,6 +89,18 @@ description: Wong Choi Engine P19v2 賽事分析強制標準流程 (Race Analysi
 
 ## 第二階段：Self-Validation (強制自我校驗)
 當完成所有 Batches 的馬匹分析填寫以及 The Verdict 編輯後，在回答 User「分析完成」之前，AI 必須執行以下校驗：
+
+> [!CAUTION]
+> **驗證時機（P31 更新）：** 呢個校驗唔淨係「回答用戶之前」才做——而係「最後一個 batch tool call 完成後、做任何嘢之前」就必須做。若你嘅引擎唔支持 tool call 自動連鎖（例如 Gemini），你更加要喺每個 batch 完成後主動檢查自己嘅進度。
+
+## 引擎適配提醒（Gemini / 其他非 Opus 引擎）
+若你使用嘅引擎唔支持 tool call 自動連鎖（即完成一個 batch 後傾向停機等用戶），你必須：
+1. 喺每個 batch 完成後立刻自覺推進下一個 batch
+2. 唔好輸出任何中間報告或等待用戶確認
+3. VERDICT BATCH 係最後一個必須完成嘅 tool call，寫完先可以停
+4. 喺寫完 VERDICT 後立刻執行以下校驗（唔好等用戶叫你做）
+
+**校驗步驟：**
 1. **執行 `grep_search`** 或使用 `view_file` 讀取該檔案的末端重點部分。
 2. **驗證強制標籤**：確認檔案內包含以下完整且未被修改的標籤字眼：
    - `🏆 Top 4 位置精選`

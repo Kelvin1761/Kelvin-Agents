@@ -5,7 +5,17 @@
 
 <!-- Newest entries at top. Keep last 5 updates only. Archive older entries to 00_sip_index.md. -->
 
-<!-- Newest entries at top. Keep last 5 updates only. Archive older entries to 00_sip_index.md. -->
+### 2026-03-31 — SIP-RH01~RH06: Rosehill 2026-03-28 Reflector 覆盤批量 SIP（6 項）
+- **Changed:** 新增 6 項 SIP，源自 Rosehill 全日 Soft 場覆盤（R1/R9/R10 省賽升班馬三場贏馬被踢出、SIP-R14-5 門檻過窄、JMcD×Waller 大熱 0/2、🐴⚡ 偵測到但未執行、NZ 馬光環失控、上仗贏單因子信任過高）：
+  - **SIP-RH01** 省賽升班市場錨定保護（場地專家+輕磅+好檔+升騎 ≥3/4 → Class Jump Penalty 取消。SP≤$5 → 禁止評級低於 B+）→ `02` Step 3
+  - **SIP-RH02** Soft 場超輕磅爆發器（SIP-R14-5 擴闊：Soft 5+ ≤56kg+≤8 檔 → +0.5 級；場地專家同時成立 → +1.0 級）→ `02` Step 3
+  - **SIP-RH03** JMcD×Waller Brand Trap（SIP-RR05 修訂：T1×T1+SP≤$3+後追+≥10匹 → 品牌溢價歸零+BRAND TRAP 標記）→ `02` Step 11
+  - **SIP-RH04** 🐴⚡ 冷門馬強制升位協議（SIP-RR16 強化：🐴⚡+≥3 正面條件 → 強制升位 B+ + 替換 Top 4 末位）→ `02` Step 14.F
+  - **SIP-RH05** NZ 遠征馬光環折扣（SIP-RR06 修訂：NZ G1 加分封頂 +0.5 級。首次 AU → +0.25。AU ≥2場+入位 → 取消折扣）→ `02` Step 13
+  - **SIP-RH06** 上仗勝出單因子修正（「上仗贏」需同場/同距/同場地 ≥2/3 項。不滿足 → ➖。G2+ 低班勝出 → +0.25 折扣）→ `02` Step 12
+- **Target Files:** `02_algorithmic_engine.md` (Step 3, 11, 12, 13, 14.F), `00_sip_index.md`
+- **Impact:** 解決 Rosehill 覆盤六大系統性缺陷。核心發現：引擎偵察力一流但執行力不足（「識咗但唔信」），修正後應將偵察成果轉化為實際命中。
+- **Regression Check:** 若省賽升班+場地專家+輕磅+好檔馬匹仍因 Class Jump 降級至 B/B- = 回歸。若 Soft 5+ 場地 55.5kg+2 檔馬匹未觸發 SIP-RH02 = 回歸。若 T1×T1+SP≤$3+後追+≥10匹仍獲騎練 ✅ = 回歸。若 🐴⚡+≥3 正面條件馬匹仍僅作備註 = 回歸。
 
 ### 2026-03-31 — SIP-FL01~FL06: Flemington 2026-03-28 覆盤批量 SIP（6 項）
 - **Changed:** 新增 6 項 SIP，源自 Flemington 全日覆盤（10 場中 S- 勝率僅 14%、排序倒掛率 83%、2YO 框架失效、練馬師主打猜測干擾、Heavy 前領過度懲罰）：

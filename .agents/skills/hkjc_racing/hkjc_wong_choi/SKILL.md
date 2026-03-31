@@ -21,6 +21,38 @@ ag_kit_skills:
 - **唔好過度 summarise**：賽間報告保持精簡但唔好省略關鍵數字
 - **Tool call 逐步執行**：唔好嘗試 batch 多個獨立操作到一個 tool call
 
+# 🤖 ENGINE ADAPTATION（P31 — 2026-03-31 新增 — Priority 0）
+
+> **歷史教訓：** 2026-03 月下旬起主要使用 Gemini 3.1 Pro 跑分析，發現 Batch 1 完成後 LLM 停機等用戶、Verdict 被遺漏。根本原因：Gemini 唔會好似 Opus 咁自動連鎖多個 tool calls。
+>
+> **適配規定（Priority 0 — 適用所有引擎）：**
+>
+> 1. **LOOP_CONTINUATION_MARKER（每個 batch 寫完後強制輸出）：**
+>    喺每個 batch 嘅 tool call 完成後，你必須喺你嘅內部思考中明確寫：
+>    `CONTINUE_LOOP: Batch [N] done, [M] batches + VERDICT remaining. Proceeding to Batch [N+1].`
+>    若 M = 0（所有馬匹 batch 完成），寫：
+>    `CONTINUE_LOOP: All horse batches done. VERDICT BATCH remaining. Proceeding to write VERDICT.`
+>    **呢個標記嘅目的**係提醒你自己仲有嘢做，唔好停機。
+>
+> 2. **PREMATURE_STOP_GUARD（回覆用戶前攔截器）：**
+>    若你準備向用戶輸出文字回覆（非 tool call），必須先問自己：
+>    「Analysis.md 入面有冇 🏆 Top 4 位置精選？」
+>    → 若冇 → ⛔ 你仲未寫完！返回 batch 循環繼續！
+>    → 若有 → 繼續正常流程
+>
+> 3. **Tool Call Chaining 指引：**
+>    - 每完成一個 batch 嘅寫入 + QA → 立刻進入下一個 batch
+>    - 唔好等用戶回覆、唔好輸出中間報告
+>    - 唯一允許停機嘅情況：(a) 全場完成含 Verdict、(b) 錯誤需要用戶介入
+>
+> 4. **GEMINI ANTI-LAZINESS REINFORCEMENT（防止 Gemini 跳過邏輯）：**
+>    Gemini 引擎傾向喺 token 壓力下壓縮或跳過分析步驟。以下措施強制對抗：
+>    - **Emoji 計數自檢：** 每匹馬寫完後，喺內部思考中數 emoji 標題：📌⏱️🔬⚡📋🔗📊💡⭐ = 9 個。少於 9 個 = 你壓縮咗 → 立即補全。
+>    - **字數門檻硬執行：** 每匹馬完成後估算字數。S/A ≥500 | B ≥350 | C/D ≥300。若明顯不足 → 你偷懶咗 → 擴展分析。
+>    - **禁止「因為評級低所以簡寫」：** D 級馬同 S 級馬用同一個骨架模板。D 級需要用數據解釋「點解差」，唔係寫一句「近績差唔推薦」就算。
+>    - **骨架 [FILL] 零容忍：** 若寫完嘅分析仍然包含 `[FILL]` 文字 → 你跳過咗填充 → 立即補回。
+>    - **引擎距離必填：** 每匹馬必須有「引擎距離：Type [X]...」一行。缺失 = 骨架未完全填充 = 需要補回。
+
 # 🚨 OUTPUT_TOKEN_SAFETY（P28 — 2026-03-29 新增 — Priority 0）
 
 > **歷史教訓（根本原因確認）：** 2026-03-29 Heison 嘅分析質量崩潰，140/140 匹馬全部 FAILED。根本原因：**output token limit exceeded**。模型喺 Batch 寫入時超出最大 output token 上限，被截斷。
@@ -305,24 +337,29 @@ Wong Choi 調度嘅子 Agent 必須嚴格遵守各自嘅職責邊界：
 > ```
 > TOTAL_HORSES = [從排位表數出嘅出賽馬匹數（已扣除退出）]
 > NUM_BATCHES = ceil(TOTAL_HORSES / BATCH_SIZE)
-> BATCH_PLAN:
+>   BATCH_PLAN:
 >   Batch 1: Horse #1, #2, #3
 >   Batch 2: Horse #4, #5, #6
 >   ...
->   Batch N/LAST: Horse #X, #Y [+ Top Verdict + 盲區 + CSV]
+>   Batch N: Horse #X, #Y（最後一批馬匹）
+>   VERDICT BATCH（獨立）: Top 4 + 盲區 + CSV
 > ```
 >
 > **Step A2 — 批次計劃寫入 task.md（P27 — 2026-03-27 新增）：**
 > 計算完 BATCH_PLAN 後，必須將批次分解寫入 task.md。嚴禁只寫「分析 Race N」一行 — 必須逐批列出：
 > ```
-> - [ ] Race N 分析（M 匹馬 × K 批次）
+>   - [ ] Race N 分析（M 匹馬 × K 批次 + VERDICT）
 >   - [ ] Batch 1: #1, #2, #3
 >   - [ ] Batch 2: #4, #5, #6
 >   - [ ] ...
->   - [ ] Batch K/LAST: #X, #Y + Verdict + 盲區 + CSV
+>   - [ ] Batch K: #X, #Y（最後一批馬匹）
+>   - [ ] VERDICT BATCH: Top 4 + 盲區 + CSV（獨立 tool call）
 >   - [ ] Compliance Check
 > ```
 > 此做法令 LLM 在執行時有明確嘅 checklist 逐項打 ✅，減少跳批或合併批次嘅機會。
+>
+> **Step A3 — Gemini Engine Adaptation (P31 — 2026-03-30 新增)：**
+> 若使用 Gemini 引擎，必須在每個 Batch 寫入前，先執行 `thought` 檢查當前 context 剩餘空間。若空間不足，強制觸發 `CONTEXT_WINDOW_RELIEF` 並將當前 Batch 拆分為更小單位。
 >
 > **Step B — 逐批執行以下循環（不可跳過任何步驟）：**
 > ```
@@ -336,6 +373,16 @@ Wong Choi 調度嘅子 Agent 必須嚴格遵守各自嘅職責邊界：
 >   6. ☑️ TASK — 在 task.md 中將該批次標記為 [x]
 >   7. ➡️ NEXT — 自動進入下一個 batch，不需停機等待用戶確認。
 > END FOR
+> ```
+>
+> **⛔ COMPLETION_GATE（強制 — 回覆用戶前必須通過 — P31）：**
+> 喺 batch 循環結束後、通知用戶之前，你必須執行以下檢查：
+> 1. `view_file` Analysis.md 最後 30 行
+> 2. 搜索「🏆 Top 4 位置精選」— 若不存在 → 你已遺漏 Verdict → 立即寫入 VERDICT BATCH
+> 3. 搜索 🥇🥈🥉🏅 — 四個標籤必須齊全
+> 4. 搜索 ` ```csv ` — CSV 區塊必須存在
+> 5. 所有檢查通過後方可繼續到合規檢查
+> **違規偵測：** 若你準備向用戶報告「分析完成」但 COMPLETION_GATE 未通過 → 你已違規 → 立即回退補寫。
 > ```
 > 
 > 🔄 **[DEFAULT AUTONOMOUS COMMAND (預設全自動執行模式)]**

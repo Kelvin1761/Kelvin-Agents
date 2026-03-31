@@ -42,7 +42,7 @@ def generate_reports(target_dir):
 
     for file_path in files:
         race_num = get_race_num(file_path)
-        print(f"Processing {os.path.basename(file_path)} for Top 3 Summary...")
+        print(f"Processing {os.path.basename(file_path)} for Top 4 Summary...")
 
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -51,7 +51,7 @@ def generate_reports(target_dir):
             print(f"Warning: Encoding error reading {os.path.basename(file_path)}: {e}. Skipping.")
             continue
 
-        # Intentionally use the LAST ```csv block -- the Top 3 CSV is always at the end of the analysis
+        # Intentionally use the LAST ```csv block -- the Top 4 CSV is always at the end of the analysis
         if "```csv" in content and "```" in content.split("```csv")[-1]:
             parts = content.split("```csv")
             csv_block_section = parts[-1].split("```")[0].strip()
@@ -77,17 +77,17 @@ def generate_reports(target_dir):
         csv_data = header + "\n" + "\n".join(all_csv_lines)
         try:
             df = pd.read_csv(io.StringIO(csv_data), skipinitialspace=True)
-            excel_path = os.path.join(target_dir, "Top3_Summary.xlsx")
+            excel_path = os.path.join(target_dir, "Top4_Summary.xlsx")
             df.to_excel(excel_path, index=False)
             print(f"Successfully created {excel_path}")
         except Exception as e:
             print(f"Warning: Error parsing CSV to Excel ({type(e).__name__}): {e}")
-            fallback_path = os.path.join(target_dir, "Top3_Summary_Raw.csv")
+            fallback_path = os.path.join(target_dir, "Top4_Summary_Raw.csv")
             with open(fallback_path, "w", encoding='utf-8') as f:
                 f.write(csv_data)
             print(f"Saved raw CSV fallback to {fallback_path}")
     else:
-        print("Warning: No CSV Top 3 blocks found in any analysis files. Excel not generated.")
+        print("Warning: No CSV Top 4 blocks found in any analysis files. Excel not generated.")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

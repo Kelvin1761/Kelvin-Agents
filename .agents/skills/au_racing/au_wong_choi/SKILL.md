@@ -21,6 +21,38 @@ ag_kit_skills:
 - **唔好過度 summarise**：賽間報告保持精簡但唔好省略關鍵數字
 - **Tool call 逐步執行**：唔好嘗試 batch 多個獨立操作到一個 tool call
 
+# 🤖 ENGINE ADAPTATION（P31 — 2026-03-31 新增 — Priority 0）
+
+> **歷史教訓：** 2026-03 月下旬起主要使用 Gemini 3.1 Pro 跑分析，發現 Batch 1 完成後 LLM 停機等用戶、Verdict 被遺漏。根本原因：Gemini 唔會好似 Opus 咁自動連鎖多個 tool calls。
+>
+> **適配規定（Priority 0 — 適用所有引擎）：**
+>
+> 1. **LOOP_CONTINUATION_MARKER（每個 batch 寫完後強制輸出）：**
+>    喺每個 batch 嘅 tool call 完成後，你必須喺你嘅內部思考中明確寫：
+>    `CONTINUE_LOOP: Batch [N] done, [M] batches + VERDICT remaining. Proceeding to Batch [N+1].`
+>    若 M = 0（所有馬匹 batch 完成），寫：
+>    `CONTINUE_LOOP: All horse batches done. VERDICT BATCH remaining. Proceeding to write VERDICT.`
+>    **呢個標記嘅目的**係提醒你自己仲有嘢做，唔好停機。
+>
+> 2. **PREMATURE_STOP_GUARD（回覆用戶前攔截器）：**
+>    若你準備向用戶輸出文字回覆（非 tool call），必須先問自己：
+>    「Analysis.md 入面有冇 🏆 Top 4 位置精選？」
+>    → 若冇 → ⛔ 你仲未寫完！返回 batch 循環繼續！
+>    → 若有 → 繼續正常流程
+>
+> 3. **Tool Call Chaining 指引：**
+>    - 每完成一個 batch 嘅寫入 + QA → 立刻進入下一個 batch
+>    - 唔好等用戶回覆、唔好輸出中間報告
+>    - 唯一允許停機嘅情況：(a) 全場完成含 Verdict、(b) 錯誤需要用戶介入
+>
+> 4. **GEMINI ANTI-LAZINESS REINFORCEMENT（防止 Gemini 跳過邏輯）：**
+>    Gemini 引擎傾向喺 token 壓力下壓縮或跳過分析步驟。以下措施強制對抗：
+>    - **Emoji 計數自檢：** 每匹馬寫完後，喺內部思考中數 emoji 標題：⏱️🐴🔬⚡📋🔗🧭⚠️📊💡⭐ = 11 個。少於 11 個 = 你壓縮咗 → 立即補全。
+>    - **字數門檻硬執行：** 每匹馬完成後估算字數。S/A ≥500 | B ≥350 | C/D ≥300。若明顯不足 → 你偷懶咗 → 擴展分析。
+>    - **禁止「因為評級低所以簡寫」：** D 級馬同 S 級馬用同一個骨架模板。D 級需要用數據解釋「點解差」，唔係寫一句「近績差唔推薦」就算。
+>    - **骨架 [FILL] 零容忍：** 若寫完嘅分析仍然包含 `[FILL]` 文字 → 你跳過咗填充 → 立即補回。
+>    - **🐴 馬匹剖析 5 項必填：** 班次負重 + 引擎距離 + 步態場地 + 配備意圖 + 人馬組合。缺任何一項 = 骨架未完全填充。
+
 # 🚨 OUTPUT_TOKEN_SAFETY（P28 — 2026-03-29 新增 — Priority 0）
 
 > **歷史教訓：** 2026-03-29 HKJC Heison 140/140 匹馬 FAILED。根本原因：**output token limit exceeded**。
@@ -293,21 +325,23 @@ Wong Choi 調度嘅子 Agent 必須嚴格遵守各自嘅職責邊界：
 > ```
 > TOTAL_HORSES = [從 Racecard 數出嘅出賽馬匹數（已扣除退出）]
 > NUM_BATCHES = ceil(TOTAL_HORSES / BATCH_SIZE)
-> BATCH_PLAN:
+>   BATCH_PLAN:
 >   Batch 1: Horse #1, #2, #3
 >   Batch 2: Horse #4, #5, #6
 >   ...
->   Batch N/LAST: Horse #X, #Y [+ Top Verdict + 盲區 + CSV]
+>   Batch N: Horse #X, #Y（最後一批馬匹）
+>   VERDICT BATCH（獨立）: Top 4 + 盲區 + CSV
 > ```
 >
 > **Step A2 — 批次計劃寫入 task.md（P27 — 2026-03-27 新增）：**
 > 計算完 BATCH_PLAN 後，必須將批次分解寫入 task.md。嚴禁只寫「分析 Race N」一行 — 必須逐批列出：
 > ```
-> - [ ] Race N 分析（M 匹馬 × K 批次）
+> - [ ] Race N 分析（M 匹馬 × K 批次 + VERDICT）
 >   - [ ] Batch 1: #1, #2, #3
 >   - [ ] Batch 2: #4, #5, #6
 >   - [ ] ...
->   - [ ] Batch K/LAST: #X, #Y + Verdict + 盲區 + CSV
+>   - [ ] Batch K: #X, #Y（最後一批馬匹）
+>   - [ ] VERDICT BATCH: Top 4 + 盲區 + CSV（獨立 tool call）
 >   - [ ] Compliance Check
 > ```
 > 此做法令 LLM 在執行時有明確嘅 checklist 逐項打 ✅，減少跳批或合併批次嘅機會。
@@ -324,6 +358,16 @@ Wong Choi 調度嘅子 Agent 必須嚴格遵守各自嘅職責邊界：
 >   7. ➡️ NEXT — 只有完成以上 6 步後，才開始下一個 batch
 > END FOR
 > ```
+>
+> **⛔ COMPLETION_GATE（強制 — 回覆用戶前必須通過 — P31）：**
+> 喺 batch 循環結束後、通知用戶之前，你必須執行以下檢查：
+> 1. `view_file` Analysis.md 最後 30 行
+> 2. 搜索「🏆 Top 4 位置精選」— 若不存在 → 你已遺漏 Verdict → 立即寫入 VERDICT BATCH
+> 3. 搜索 🥇🥈🥉🏅 — 四個標籤必須齊全
+> 4. 搜索 ` ```csv ` — CSV 區塊必須存在
+> 5. 搜索 🐴⚡ — 冷門馬總計必須存在
+> 6. 所有檢查通過後方可繼續到合規檢查
+> **違規偵測：** 若你準備向用戶報告「分析完成」但 COMPLETION_GATE 未通過 → 你已違規 → 立即回退補寫。
 >
 > **⛔ 硬性攔截器：** 若你發現自己正在一個 tool call 中寫入超過 BATCH_SIZE 匹馬 → **立即停止生成**，刪除多餘內容，拆分為獨立 tool calls。
 > **⛔ 反模式偵測：** 若你嘅 tool call 中同時出現 `Batch 1` 和 `Batch 2` 嘅馬匹 → 你已違反此規則 → 立即停止。
@@ -442,7 +486,7 @@ Verdict 必須獨立 tool call 寫入
 
 **第 5 層 — 強制 Session 分割：** Race 4 完成後硬性停止
 
-**第 6 層 — 跨場數據最小化：** 只保留 Top 3 摘要 + 品質基線 + `_session_state.md` 路徑
+**第 6 層 — 跨場數據最小化：** 只保留 Top 4 摘要 + 品質基線 + `_session_state.md` 路徑
 
 **🗂️ Session State Persistence（_session_state.md — P16）：**
 Race 1 完成後建立 `{TARGET_DIR}/_session_state.md`：
@@ -513,7 +557,7 @@ BATCH_SIZE 由 Pre-Flight Environment Scan 決定（標準=3 / fallback=2）。
 > 4. **禁用詞語：** `efficiently`/`quickly`/`精簡`/`壓縮`。評級係結果，唔係減少分析嘅原因。
 > 5. **Race 2+ 必須傳遞基線字數提醒。**
 
-**📊 CSV_BLOCK_MANDATORY：** VERDICT BATCH 必須包含 CSV Top 3 數據區塊。自檢：搜索 ` ```csv `，缺 → 補上。
+**📊 CSV_BLOCK_MANDATORY：** VERDICT BATCH 必須包含 CSV Top 4 數據區塊。自檢：搜索 ` ```csv `，缺 → 補上。
 
 ---
 
@@ -603,12 +647,13 @@ python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/validate_analysis.py "[
 ---
 
 > [!CAUTION]
-> **🚨 TOP3_FORMAT_ENFORCEMENT（P25）：**
-> 1. **Top 3 必須用 `🥇🥈🥉` + bullet list 格式。**
-> 2. **每個選項必填欄位：** 馬號馬名 / 評級✅數 / 核心理據（LLM 自由發揮）/ 最大風險
-> 3. **排名 = Absolute Ranking Mandate。** 評級高排前，同級比 ✅ 數。
+> **🚨 TOP4_FORMAT_ENFORCEMENT（P25 — P31 更新 Top 3→4）：**
+> 1. **Top 4 必須用 `🥇🥈🥉🏅` + bullet list 格式。** 嚴禁 Markdown 表格。
+> 2. **每個選項 4 必填欄位：** 馬號馬名 / 評級✅數 / 核心理據（LLM 自由發揮）/ 最大風險
+> 3. **完整結構：** Part 3 Verdict（含 Top 4 + 信心度 + 步速逆轉 + 緊急煞車 + Exotic Box）→ Part 4 盲區（含冷門馬總計）→ CSV
+> 4. **排名 = Absolute Ranking Mandate。** 評級高排前，同級比 ✅ 數。
 
-**CSV 覆蓋權**：Wong Choi 擁有最終 Top 3 排序權。
+**CSV 覆蓋權**：Wong Choi 擁有最終 Top 4 排序權。
 **存檔**：`{TARGET_DIR}/[Date]_[Racecourse]_Race_[N]_Analysis.md`
 ## Step 4.5: 自檢總結 (Self-Improvement Review)
 
@@ -631,23 +676,23 @@ python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/validate_analysis.py "[
 → 「全部場次分析完成，未發現需要改善嘅問題。」直接進入 Step 5。
 
 ## Step 5: 產製 Excel 總結表 (Report Generation)
-當所有指定場次分析完畢（或用戶決定停止），你必須透過 Python 腳本生成一份 Excel 總結表，匯總所有已完成場次嘅 Top 3 精選。
+當所有指定場次分析完畢（或用戶決定停止），你必須透過 Python 腳本生成一份 Excel 總結表，匯總所有已完成場次嘅 Top 4 精選。
 
 ```bash
 python .agents/skills/au_racing/au_wong_choi/scripts/generate_reports.py "[TARGET_DIR 絕對路徑]"
 ```
 
-此腳本會讀取所有 Analysis.md 中嘅 `csv` Top 3 數據，寫入 `Top3_Summary.xlsx`。
+此腳本會讀取所有 Analysis.md 中嘅 `csv` Top 4 數據，寫入 `Top4_Summary.xlsx`。
 
 > ⚠️ **失敗處理**：見底部「統一失敗處理協議」。觸發條件：腳本執行失敗。
 
 ## Step 6: 最終匯報 (Final Briefing)
-向用戶匯報所有場次的 Top 3 精選總覽（簡表形式），並提供所有輸出檔案的絕對路徑。
+向用戶匯報所有場次的 Top 4 精選總覽（簡表形式），並提供所有輸出檔案的絕對路徑。
 
 **輸出檔案清單**（只有以下 3 類）：
 1. 📄 Racecard + Formguide .md 檔案（由 AU Race Extractor 提取）
 2. 📝 每場獨立嘅 Analysis.md
-3. 📊 `Top3_Summary.xlsx`（所有場次 Top 3 匯總）
+3. 📊 `Top4_Summary.xlsx`（所有場次 Top 4 匯總）
 
 ## Step 7: 任務完成 (Task Completion)
 將 `_session_issues.md` 嘅 Status 更新為 `COMPLETED`。
