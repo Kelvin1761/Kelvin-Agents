@@ -79,6 +79,17 @@
 | SIP-RF01 | Soft 入位率雙軌篩選 | `02` Step 4 | Soft WR<20% 但 PR≥60%（樣本≥3）→ Tier 2.5 + 場地適性≥➖ + SIP-RR09 折扣豁免 |
 | SIP-RF02 | 濕地未知風險封頂 | `02` Step 14.E | Soft 5+ 場地，Tier 4 (未知) 封頂 A-，Tier 5 (風險) 封頂 B+，賦予場地維度強制否決權 |
 
+## Flemington 2026-03-28 覆盤衍生 SIP（SIP-FL 系列）
+
+| SIP ID | 名稱 | 定義位置 | 摘要 |
+|:---|:---|:---|:---|
+| SIP-FL01 | 內檔輕磅半核心乘數 | `02` Step 3 | Barrier 1-3 + ≥3kg 輕磅差 → EEM +半級 + 微調升半級。T1 騎師可升一級 |
+| SIP-FL02 | S- 超配組合稅 | `02` Step 14.E | T1 練馬師 + T1 騎師 + 大熱門三重疊加 → 步速圖審查，陷入 Traffic 則封頂 A- |
+| SIP-FL03 | Exotic 組合投注池建議 | `06` Part 3 | Top 4 評級密集（≤1 級差）→ Box Trifecta/First 4 組合投注建議 |
+| SIP-FL04 | 2YO/初出馬配備懲罰軟化 | `02` Step 0.5 | 初出/2YO 馬嘅 Hoof Filler/Lugging Bit/Nose Roll 懲罰減半，精英馬房完全取消 |
+| SIP-FL05 | 禁止練馬師主打猜測 | `02` Step 12 | 嚴禁推測同門馬「主打/副打」，每匹馬獨立評級 |
+| SIP-FL06 | 濕地專家前領崩潰懲罰軟化 | `02` Step 10 | 有 Soft/Heavy 勝績≥1 場嘅前領馬：Heavy 崩潰懲罰減半；≥3 場+WR≥33%：完全取消 |
+
 ---
 
 > **維護規則：** 每次 Reflector 覆盤產出新 SIP 時，必須同步更新此索引。

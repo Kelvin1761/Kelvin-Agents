@@ -7,6 +7,18 @@
 
 <!-- Newest entries at top. Keep last 5 updates only. Archive older entries to 00_sip_index.md. -->
 
+### 2026-03-31 — SIP-FL01~FL06: Flemington 2026-03-28 覆盤批量 SIP（6 項）
+- **Changed:** 新增 6 項 SIP，源自 Flemington 全日覆盤（10 場中 S- 勝率僅 14%、排序倒掛率 83%、2YO 框架失效、練馬師主打猜測干擾、Heavy 前領過度懲罰）：
+  - **SIP-FL01** 內檔輕磅半核心乘數（Barrier 1-3 + ≥3kg 輕磅差 → EEM +半級 + 微調升半級，T1 騎師可升一級）→ `02` Step 3
+  - **SIP-FL02** S- 超配組合稅（T1 練馬師 + T1 騎師 + 大熱門三重疊加 → 步速圖審查，陷入 Traffic 封頂 A-）→ `02` Step 14.E
+  - **SIP-FL03** Exotic 組合投注池建議（Top 4 評級密集無明確 S- 統治者 → Box Trifecta/First 4 組合建議）→ `06` Part 3
+  - **SIP-FL04** 2YO/初出馬配備懲罰軟化（Hoof Filler/Lugging Bit/Nose Roll 懲罰減半，精英馬房完全取消）→ `02` Step 0.5
+  - **SIP-FL05** 禁止練馬師主打猜測（嚴禁推測同門馬「主打/副打」，每匹馬獨立評級）→ `02` Step 12
+  - **SIP-FL06** 濕地專家前領崩潰懲罰軟化（Soft/Heavy 勝績≥1 場：懲罰減半；≥3 場+WR≥33%：完全取消）→ `02` Step 10
+- **Target Files:** `02_algorithmic_engine.md`, `06_output_templates.md`
+- **Impact:** 解決 Flemington 全日覆盤識別嘅五大系統性缺陷：(1) 內檔+輕磅被降為備註而非算分乘數導致 83% 排序倒掛；(2) S- 精英組合過度膨脹導致 14% 勝率投注陷阱；(3) 候選池準確但排序失敗導致獨贏投注價值低；(4) 2YO 初出馬配備懲罰過重導致 D 級馬贏出；(5) 練馬師主打猜測干擾客觀評級。
+- **Regression Check:** 若讓磅賽中 Barrier 1-3 + ≥3kg 輕磅差馬匹仍僅在備註中標記而 EEM 未受影響 = 回歸。若 T1+T1+大熱門三重疊加且步速圖顯示 Traffic 嘅馬匹仍獲 S- = 回歸。若 2YO 初出馬因單一 Hoof Filler 即判裝備 ❌ = 回歸。若引擎輸出中出現「Maher 主打可能係 X」等推測性描述 = 回歸。若有 Soft/Heavy 勝績嘅前領馬仍因「Heavy 前領崩潰」被 EEM 判 ❌ = 回歸。
+
 ### 2026-03-29 — SIP-RF01~RF02: Soft 雙軌篩選與濕地封頂 (Soft Place Rate & Wet Track Cap)
 - **Changed:** 新增 2 項 SIP，修改 SIP-RR08 Tier 定義 + SIP-RR09 協同條件，並新增覆蓋規則。源自 Rosehill 2026-03-28 全日 Soft 場覆盤（10 場中多場無 Soft 經驗馬被引擎高估，而穩定入位馬被低估，主因為「未體驗」➖不扣分漏洞與單一 WR% 指標）：
   - **SIP-RF01** Soft 入位率雙軌篩選（Soft WR<20% 但 PR≥60%+樣本≥3 → Tier 2.5 + 場地❌保護 + SIP-RR09 豁免 + 冷門馬訊號）→ `02` Step 4
