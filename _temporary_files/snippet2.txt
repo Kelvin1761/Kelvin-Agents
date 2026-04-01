@@ -1,0 +1,401 @@
+// Betting panel — consolidated list below all race tiles
+      html += renderDashboardBettingPanel(selectedMeeting, merged, isDualAnalyst);
+    }
+  }
+  return html;
+}
+
+function renderBetCard(c, m, raceNum) {
+  const s = getBetState(m.date, m.venue, raceNum, c.horse_number);
+  const A = `'${m.date}','${m.venue}',${raceNum},${c.horse_number}`;
+  const cls = s.scratched ? 'bh bh--scratch' : s.confirmed ? 'bh bh--bet' : s.skipped ? 'bh bh--skip' : 'bh';
+  let h = `<div class="${cls}">`;
+
+  // Top row: horse info + grades + profit
+  h += `<div class="bh-top"><div class="bh-info">`;
+  h += `<div class="bh-num">${c.horse_number}</div><div>`;
+  h += `<div class="bh-name">${esc(c.horse_name)}</div>`;
+  h += `<div class="bh-meta">${[c.jockey ? '🏇 '+esc(c.jockey) : '', c.trainer ? '🏠 '+esc(c.trainer) : ''].filter(Boolean).join(' · ')}</div>`;
+  h += `</div></div>`;
+  h += `<div class="bh-grades">${ratingBadge(String(c.kelvin_grade||c.grade||''))}${c.heison_grade?' '+ratingBadge(String(c.heison_grade)):''}`;
+  h += `<button class="bh-analysis" onclick="showRace(${raceNum})">查看分析→</button>`;
+  // Profit display
+  const profit = calcProfit(s);
+  if (profit !== null) {
+    h += `<span class="bh-profit ${profit >= 0 ? 'bh-profit--win' : 'bh-profit--loss'}">${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}</span>`;
+  }
+  h += `</div></div>`;
+
+  // === SCRATCHED STATE ===
+  if (s.scratched) {
+    h += `<div class="bh-step"><div class="bh-step-row">`;
+    h += `<span style="font-size:0.75rem;color:#64748B">🚫 已退出 (Scratched)</span>`;
+    h += `<button class="bb bb-restore" onclick="unscratchHorse(${A})">↩️ 復原</button>`;
+    h += `</div></div>`;
+  }
+  // === SKIPPED STATE ===
+  else if (s.skipped) {
+    h += `<div class="bh-step"><div class="bh-step-row">`;
+    h += `<span style="font-size:0.75rem;color:#64748B">⏭️ 已放棄此馬${s.odds ? ' · 賠率 @'+s.odds : ''}</span>`;
+    h += `<button class="bb bb-reopen" onclick="reopenBet(${A})">🔄 重新考慮</button>`;
+    h += `</div></div>`;
+  }
+  // === BET CONFIRMED ===
+  else if (s.confirmed) {
+    h += `<div class="bh-step">`;
+    h += `<div class="bh-step-label">💰 已投注 · 賠率 @${s.odds}</div>`;
+    h += `<div class="bh-step-row">`;
+    h += `<span style="font-size:0.72rem;color:#94A3B8;margin-right:4px">名次:</span>`;
+    h += `<div class="br-group">`;
+    ;[1,2,3].forEach(p => {
+      h += `<button class="br${s.result===p?' br--on':''}" onclick="setResult(${A},${p})">${p}</button>`;
+    });
+    h += `<button class="br br--x${s.result===0?' br--x-on':''}" onclick="setResult(${A},0)">X</button>`;
+    h += `</div>`;
+    h += `<button class="bb bb-scratch" onclick="scratchHorse(${A})" style="margin-left:8px">🚫 已退出</button>`;
+    h += `<button class="bb bb-edit" onclick="unlockOdds(${A})" style="margin-left:4px">✏️ 改賠率</button>`;
+    h += `</div></div>`;
+  }
+  // === ODDS CONFIRMED → BET OR SKIP ===
+  else if (s.oddsConfirmed) {
+    h += `<div class="bh-step">`;
+    h += `<div class="bh-step-label">賠率已確認 @${s.odds} — 是否投注？</div>`;
+    h += `<div class="bh-step-row">`;
+    h += `<button class="bb bb-bet" onclick="placeBet(${A})">💰 投注</button>`;
+    h += `<button class="bb bb-skip" onclick="skipBet(${A})">⏭️ 唔投</button>`;
+    h += `<button class="bb bb-edit" onclick="unlockOdds(${A})" style="margin-left:4px">✏️ 改賠率</button>`;
+    h += `</div></div>`;
+  }
+  // === INITIAL: ENTER ODDS ===
+  else {
+    h += `<div class="bh-step">`;
+    h += `<div class="bh-step-label">① 輸入賠率</div>`;
+    h += `<div class="bh-step-row">`;
+    h += `<input class="bh-odds-input" type="number" step="0.1" min="1" placeholder="賠率" value="${s.odds||''}" onchange="setOddsValue(${A},this.value)" oninput="setOddsValue(${A},this.value)">`;
+    h += `<button class="bb bb-lock" onclick="lockOdds(${A})">🔒 確認賠率</button>`;
+    h += `</div></div>`;
+  }
+
+  h += '</div>';
+  return h;
+}
+
+function renderDashboardBettingPanel(meeting, races, isDualAnalyst) {
+  const m = meeting;
+  const allRC = [];
+  races.forEach(race => {
+    allRC.push({ rn: race.race_number, cands: getRaceBettingCandidates(m, race.race_number, isDualAnalyst), race });
+  });
+
+  let totalBets = 0, totalProfit = 0;
+  allRC.forEach(({rn, cands}) => cands.forEach(c => {
+    const s = getBetState(m.date, m.venue, rn, c.horse_number);
+    if (s.confirmed && !s.scratched) { totalBets++; const p = calcProfit(s); if (p !== null) totalProfit += p; }
+  }));
+
+  let html = `<div class="bp">
+    <div class="bp-hdr"><div class="bp-title">🎯 投注面板</div>
+    <span class="bp-sub">${isDualAnalyst ? 'Top 2 共識馬' : 'Top 2 精選'} · $1 平注制</span></div>`;
+
+  allRC.forEach(({rn, cands, race}) => {
+    let rBets=0, rProfit=0;
+    cands.forEach(c => {
+      const s = getBetState(m.date, m.venue, rn, c.horse_number);
+      if (s.confirmed && !s.scratched) { rBets++; const p=calcProfit(s); if(p!==null) rProfit+=p; }
+    });
+
+    const isExp = expandedBetRaces.has(rn);
+    const profitStr = rBets > 0 ? `${rProfit >= 0 ? '+' : ''}$${rProfit.toFixed(2)}` : '';
+    const profitCls = rProfit >= 0 ? 'bh-profit--win' : 'bh-profit--loss';
+
+    html += `<div class="bp-race"><div class="bp-race-hdr" onclick="toggleBetRace(${rn})">`;
+    html += `<div><span class="bp-race-lbl">R${rn}</span><span class="bp-race-meta">${esc(race.distance||'')} ${esc(race.race_class||'')}</span>`;
+    html += ` <span class="bp-race-stat">${cands.length} 候選</span></div>`;
+    html += `<div style="display:flex;align-items:center;gap:8px">`;
+    if (rBets>0) html += `<span style="font-size:0.75rem;color:#94A3B8">${rBets}注</span>`;
+    if (profitStr) html += `<span class="bh-profit ${profitCls}" style="font-size:0.78rem">${profitStr}</span>`;
+    html += `<span style="font-size:0.6rem;color:#475569">${isExp?'▲':'▼'}</span></div></div>`;
+
+    if (isExp) {
+      html += `<div class="bp-race-body">`;
+      if (cands.length === 0) {
+        html += `<div style="text-align:center;padding:16px;color:#475569;font-size:0.8rem">本場沒有候選馬</div>`;
+      } else {
+        cands.forEach(c => { html += renderBetCard(c, m, rn); });
+      }
+      if (rBets > 0) {
+        html += `<div class="bp-race-sum"><span class="bp-race-sum-lbl">場次小結 · ${rBets}注</span>`;
+        html += `<span class="bh-profit ${profitCls}">${profitStr}</span></div>`;
+      }
+      html += `</div>`;
+    }
+    html += `</div>`;
+  });
+
+  // Bottom bar
+  html += `<div class="bp-bar">`;
+  html += `<div class="bp-bar-info">總計 ${totalBets} 注${totalBets > 0 ? ` · 淨利 <span class="bh-profit ${totalProfit >= 0 ? 'bh-profit--win' : 'bh-profit--loss'}">${totalProfit >= 0 ? '+' : ''}$${totalProfit.toFixed(2)}</span>` : ''}</div>`;
+  html += `<button class="bp-bar-btn" onclick="exportBetsJSON()" ${totalBets===0?'disabled':''}>💾 匯出投注記錄</button>`;
+  html += `</div>`;
+
+  // === ROI Summary Table ===
+  const allConfirmed = [];
+  const allSkipped = [];
+  allRC.forEach(({rn, cands}) => {
+    cands.forEach(c => {
+      const s = getBetState(m.date, m.venue, rn, c.horse_number);
+      if (s.confirmed && !s.scratched) {
+        const p = calcProfit(s);
+        allConfirmed.push({race:rn, num:c.horse_number, name:c.horse_name, jockey:c.jockey, trainer:c.trainer, odds:s.odds, result:s.result, profit:p, grade:c.kelvin_grade||c.grade, heison:c.heison_grade});
+      } else if (s.skipped) {
+        allSkipped.push({race:rn, num:c.horse_number, name:c.horse_name, jockey:c.jockey, trainer:c.trainer, odds:s.odds, grade:c.kelvin_grade||c.grade, heison:c.heison_grade});
+      }
+    });
+  });
+  if (allConfirmed.length > 0) {
+    const totalStake = allConfirmed.length;
+    const totalPnl = allConfirmed.reduce((a,b) => a + (b.profit||0), 0);
+    const wins = allConfirmed.filter(b => b.profit !== null && b.profit > 0).length;
+    const roi = totalStake > 0 ? (totalPnl / totalStake * 100) : 0;
+    html += `<div class="roi-sum">`;
+    html += `<div class="roi-sum-hdr"><span>📊 投注記錄 · ${m.venue} ${m.date}</span><span style="font-size:0.72rem;color:#6B7280;font-weight:500">${wins}W/${allConfirmed.length-wins}L · ROI ${roi>=0?'+':''}${roi.toFixed(1)}%</span></div>`;
+    html += `<table><thead><tr><th>場次</th><th>馬號</th><th>馬匹</th><th>騎師</th><th>練馬師</th><th>評級</th><th>賠率</th><th>名次</th><th>淨利</th></tr></thead><tbody>`;
+    allConfirmed.forEach(b => {
+      const rStr = b.result === null ? '—' : b.result === 0 ? 'X' : b.result;
+      const pStr = b.profit !== null ? `<span style="color:${b.profit>=0?'#059669':'#DC2626'};font-weight:700">${b.profit>=0?'+':''}$${b.profit.toFixed(2)}</span>` : '<span style="color:#9CA3AF">—</span>';
+      const gStr = ratingBadge(String(b.grade||'')) + (b.heison ? ' '+ratingBadge(String(b.heison)) : '');
+      html += `<tr><td>R${b.race}</td><td>#${b.num}</td><td>${esc(b.name)}</td><td style="font-size:0.68rem;color:#6B7280">${esc(b.jockey||'')}</td><td style="font-size:0.68rem;color:#6B7280">${esc(b.trainer||'')}</td><td>${gStr}</td><td>@${b.odds}</td><td style="font-weight:700">${rStr}</td><td>${pStr}</td></tr>`;
+    });
+    html += `<tr class="roi-sum-total"><td colspan="6" style="text-align:right">總計 ${totalStake}注</td><td></td><td>${wins}/${allConfirmed.length}</td><td><span style="color:${totalPnl>=0?'#059669':'#DC2626'}">${totalPnl>=0?'+':''}$${totalPnl.toFixed(2)}</span></td></tr>`;
+    html += `</tbody></table></div>`;
+  }
+  // === Skipped horses section ===
+  if (allSkipped.length > 0) {
+    html += `<div class="roi-sum" style="margin-top:10px;opacity:0.7">`;
+    html += `<div class="roi-sum-hdr" style="background:linear-gradient(135deg,#F9FAFB,#F3F4F6)"><span style="color:#6B7280">❌ 放棄馬 · ${allSkipped.length} 匹</span></div>`;
+    html += `<table><thead><tr><th>場次</th><th>馬號</th><th>馬匹</th><th>騎師</th><th>練馬師</th><th>評級</th><th>賠率</th></tr></thead><tbody>`;
+    allSkipped.forEach(b => {
+      const gStr = ratingBadge(String(b.grade||'')) + (b.heison ? ' '+ratingBadge(String(b.heison)) : '');
+      html += `<tr style="color:#9CA3AF"><td>R${b.race}</td><td>#${b.num}</td><td>${esc(b.name)}</td><td style="font-size:0.68rem">${esc(b.jockey||'')}</td><td style="font-size:0.68rem">${esc(b.trainer||'')}</td><td>${gStr}</td><td>@${b.odds||'—'}</td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+function getRaceBettingCandidates(meeting, raceNum, isDualAnalyst) {
+  const candidates = [];
+  if (isDualAnalyst) {
+    // HKJC: Top 2 consensus horses
+    const consensus = getConsensus(meeting, raceNum);
+    if (consensus) {
+      const consensusHorses = consensus.consensus?.consensus_horses || [];
+      consensusHorses.filter(h => h.is_top2_consensus).forEach(h => {
+        let jockey = h.jockey || null;
+        let trainer = h.trainer || null;
+        // Fetch explicit jockey/trainer from Kelvin's analysis to ensure it is filled
+        const racesData = getRacesData(meeting);
+        if (racesData && racesData.races_by_analyst && racesData.races_by_analyst['Kelvin']) {
+           const kRace = racesData.races_by_analyst['Kelvin'].find(r => r.race_number === raceNum);
+           if (kRace && kRace.horses) {
+               const kHorse = kRace.horses.find(kh => kh.horse_number === h.horse_number);
+               if (kHorse) {
+                   jockey = kHorse.jockey || jockey;
+                   trainer = kHorse.trainer || trainer;
+               }
+           }
+        }
+        
+        candidates.push({
+          horse_number: h.horse_number,
+          horse_name: h.horse_name,
+          jockey: jockey,
+          trainer: trainer,
+          kelvin_grade: h.kelvin_grade,
+          heison_grade: h.heison_grade,
+          grade: h.kelvin_grade || h.heison_grade,
+          consensus_type: 'Top 2 共識',
+        });
+      });
+    }
+  } else {
+    // AU: top 2 picks from analyst
+    const racesData = getRacesData(meeting);
+    if (racesData) {
+      const analysts = Object.keys(racesData.races_by_analyst);
+      const race = racesData.races_by_analyst[analysts[0]]?.find(r => r.race_number === raceNum);
+      if (race?.top_picks) {
+        race.top_picks.slice(0, 2).forEach(p => {
+          // Find full horse data for jockey/trainer
+          const horseData = race.horses?.find(h => h.horse_number === p.horse_number);
+          candidates.push({
+            horse_number: p.horse_number,
+            horse_name: p.horse_name,
+            jockey: horseData?.jockey || null,
+            trainer: horseData?.trainer || null,
+            grade: p.grade,
+            kelvin_grade: p.grade,
+            heison_grade: null,
+            consensus_type: 'Top 2 精選',
+          });
+        });
+      }
+    }
+  }
+  return candidates;
+}
+
+function selectMeeting(index) {
+  selectedMeeting = DASHBOARD_DATA.meetings[index];
+  loadBettingState();
+  // Auto-expand all races
+  expandedBetRaces.clear();
+  const racesData = getRacesData(selectedMeeting);
+  if (racesData) {
+    getMergedRaces(racesData).forEach(r => expandedBetRaces.add(r.race_number));
+  }
+  render();
+}
+
+// ═══════════════════════════════════════════════
+// Race Detail View
+// ═══════════════════════════════════════════════
+function showRace(raceNumber) {
+  currentView = 'race';
+  currentRace = raceNumber;
+  // Determine default analyst mode
+  const racesData = getRacesData(selectedMeeting);
+  if (racesData) {
+    const analysts = Object.keys(racesData.races_by_analyst);
+    activeAnalyst = analysts.length > 1 ? null : analysts[0];
+  }
+  render();
+  window.scrollTo(0, 0);
+}
+
+function renderRaceDetail() {
+  const m = selectedMeeting;
+  const raceNum = currentRace;
+  const racesData = getRacesData(m);
+  if (!racesData) return '<div class="empty-state"><div class="empty-state__icon">🏇</div><div class="empty-state__text">No data</div></div>';
+
+  const analysts = Object.keys(racesData.races_by_analyst);
+  const analyses = {};
+  const allMeetingRaces = [];
+  const raceNums = new Set();
+  
+  for (const [aName, races] of Object.entries(racesData.races_by_analyst)) {
+    const race = races.find(r => r.race_number === raceNum);
+    if (race) analyses[aName] = race;
+    races.forEach(r => { if (!raceNums.has(r.race_number)) { raceNums.add(r.race_number); allMeetingRaces.push(r); }});
+  }
+  allMeetingRaces.sort((a,b) => a.race_number - b.race_number);
+
+  // Analysts who actually have data for THIS specific race
+  const raceAnalysts = Object.keys(analyses);
+  const displayAnalyst = activeAnalyst && analyses[activeAnalyst] ? activeAnalyst : raceAnalysts[0];
+  const analysis = analyses[displayAnalyst];
+  if (!analysis) return '<div class="empty-state"><div class="empty-state__icon">🏇</div><div class="empty-state__text">此場暫無分析數據</div></div>';
+
+  // Only get consensus if both analysts have data for this race
+  const consensus = raceAnalysts.length > 1 ? getConsensus(m, raceNum) : null;
+
+  let html = `<div style="font-size:0.8rem;color:#64748B;margin-bottom:12px"><a href="#" onclick="showDashboard();return false">🏠 Dashboard</a> → ${esc(m.venue)} ${esc(m.date)} → Race ${raceNum}</div>`;
+
+  // Race pills
+  if (allMeetingRaces.length > 1) {
+    html += '<div class="race-pills">';
+    allMeetingRaces.forEach(r => {
+      const isActive = r.race_number === raceNum;
+      html += `<button class="race-pill ${isActive ? 'race-pill--active' : ''}" onclick="showRace(${r.race_number})">
+        <span>R${r.race_number}</span>
+        ${r.race_name ? `<span class="race-pill__name">${esc(r.race_name)}</span>` : ''}
+        ${r.distance ? `<span class="race-pill__distance">${esc(r.distance)}</span>` : ''}
+      </button>`;
+    });
+    html += '</div>';
+  }
+
+  // Race header
+  html += `<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div>
+      <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:4px">🏇 Race ${raceNum}${analysis.race_name ? `<span style="font-size:1rem;font-weight:600;color:#475569;margin-left:12px">${esc(analysis.race_name)}</span>` : ''}</h1>
+      <div style="font-size:0.8rem;color:#64748B;line-height:1.6">${[analysis.distance, analysis.race_class, analysis.track || analysis.venue, analysis.going].filter(Boolean).map(esc).join(' · ')}</div>
+    </div>`;
+
+  // View mode tabs — only show if both analysts have data for THIS race
+  if (raceAnalysts.length > 1) {
+    html += `<div style="display:flex;gap:4px;background:#F1F5F9;border-radius:8px;padding:3px">
+      <button class="${activeAnalyst === null ? 'btn btn--primary btn--sm' : 'btn btn--ghost btn--sm'}" onclick="setAnalyst(null)">📊 並排對比</button>`;
+    raceAnalysts.forEach(a => {
+      html += `<button class="${activeAnalyst === a ? 'btn btn--primary btn--sm' : 'btn btn--ghost btn--sm'}" onclick="setAnalyst('${a}')">${esc(a)}</button>`;
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+
+  // Consensus panel
+  if (consensus) {
+    const top2 = (consensus.consensus?.consensus_horses || []).filter(h => h.is_top2_consensus);
+    html += `<div class="consensus-panel"><div class="consensus-panel__title">🤝 共識馬匹 — Kelvin × Heison</div>`;
+    if (!top2.length) {
+      html += '<div style="padding:12px 16px;text-align:center;color:#94A3B8;font-size:0.85rem">本場沒有 Top 2 共識馬匹</div>';
+    } else {
+      top2.forEach(h => {
+        html += `<div class="consensus-horse">
+          <span style="background:#059669;color:#fff;width:28px;height:28px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:0.8rem;flex-shrink:0">${h.horse_number}</span>
+          <span class="consensus-horse__name">${esc(h.horse_name)}</span>
+          <div style="display:flex;gap:6px;align-items:center;font-size:0.75rem">
+            <span style="color:#1D4ED8">K#${h.kelvin_rank}</span>${ratingBadge(h.kelvin_grade)}
+            <span style="color:#64748B">·</span>
+            <span style="color:#DC2626">H#${h.heison_rank}</span>${ratingBadge(h.heison_grade)}
+          </div>
+          <span class="badge badge--consensus">Top 2 共識</span>
+        </div>`;
+      });
+    }
+    html += '</div>';
+  }
+
+  // Pace prediction
+  if (analysis.pace_prediction) {
+    html += `<div class="card" style="margin-bottom:16px;padding:12px 16px"><span style="font-size:0.75rem;font-weight:700;color:#64748B">🏃 步速預測</span><div style="font-size:0.85rem;margin-top:4px;white-space:pre-wrap">${esc(analysis.pace_prediction)}</div></div>`;
+  }
+
+  // View modes — use raceAnalysts (analysts who have data for this race)
+  if (activeAnalyst === null && raceAnalysts.length > 1) {
+    html += renderComparisonView(analyses, raceAnalysts);
+  } else {
+    html += renderSingleAnalystView(analyses[displayAnalyst], displayAnalyst);
+  }
+
+  // Blind spots
+  if (analysis.blind_spots) {
+    html += `<div class="card" style="margin-top:24px"><h3 style="font-size:1rem;font-weight:700;margin-bottom:8px">🔮 盲區分析</h3><div style="font-size:0.85rem;color:#475569;line-height:1.7;white-space:pre-wrap">${formatAnalysis(analysis.blind_spots.slice(0, 1000))}</div></div>`;
+  }
+
+  // Betting panel
+  // Export as static JSON file
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(betsToExport, null, 2));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                const datePrefix = new Date().toISOString().slice(0, 10);
+                downloadAnchorNode.setAttribute("download", `betting_records_${datePrefix}.json`);
+                document.body.appendChild(downloadAnchorNode); // required for firefox
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+                alert(`\u2705 成功匯出 ${betsToExport.length} 筆投注記錄`);</pre>
+    </div>`;
+    console.error('BettingPanel error:', e);
+  }
+
+  return html;
+}
+
+function renderBettingPanel(meeting, raceNum, isDualAnalyst, consensus) {
+  const candidates = getRaceBettingCandidates(meeting, raceNum, isDualAnalyst);
+  const m = meeting;
+
+  let html = `<div class

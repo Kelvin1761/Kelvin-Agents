@@ -1,0 +1,35 @@
+nalysts who have data for this race)
+  if (activeAnalyst === null && raceAnalysts.length > 1) {
+    html += renderComparisonView(analyses, raceAnalysts);
+  } else {
+    html += renderSingleAnalystView(analyses[displayAnalyst], displayAnalyst);
+  }
+
+  // Blind spots
+  if (analysis.blind_spots) {
+    html += `<div class="card" style="margin-top:24px"><h3 style="font-size:1rem;font-weight:700;margin-bottom:8px">🔮 盲區分析</h3><div style="font-size:0.85rem;color:#475569;line-height:1.7;white-space:pre-wrap">${formatAnalysis(analysis.blind_spots.slice(0, 1000))}</div></div>`;
+  }
+
+  // Betting panel
+  // Export as static JSON file
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(betsToExport, null, 2));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                const datePrefix = new Date().toISOString().slice(0, 10);
+                downloadAnchorNode.setAttribute("download", `betting_records_${datePrefix}.json`);
+                document.body.appendChild(downloadAnchorNode); // required for firefox
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+                alert(`\u2705 成功匯出 ${betsToExport.length} 筆投注記錄`);</pre>
+    </div>`;
+    console.error('BettingPanel error:', e);
+  }
+
+  return html;
+}
+
+function renderBettingPanel(meeting, raceNum, isDualAnalyst, consensus) {
+  const candidates = getRaceBettingCandidates(meeting, raceNum, isDualAnalyst);
+  const m = meeting;
+
+  let html = `<div class="bp

@@ -55,8 +55,9 @@ ag_kit_skills:
 
 # Interaction Logic (Step-by-Step)
 1. **讀取核心規則（一次性）**：讀取「必讀」+ 按路由標籤讀取「條件讀取」資源。
-2. **讀取與預備**：讀取賽事排位表與 Formguide。
-3. **情報補全**：使用 Wong Choi Intelligence Package（若有），或獨立搜尋動態情報。
+2. **賽前環境掃描 (Pre-flight Data Extraction) [CRITICAL]**：首次啟動必須優先讀取 `_Race_Day_Briefing.md` 以取得各場次的**精確路程 (Distance) 及級別 (Class/Level)**。若檔案內無提供，**強制使用搜索工具**到 Racenet (racenet.com.au) 爬取當日該馬場最新排位表，並必須精確提取賽事的「**官方路程 (例如 1200m)**」及「**班次級別 (例如 BM72, 3YO Maiden)**」。嚴禁盲猜路程與班次。
+3. **讀取與預備**：確定路程無誤後，讀取賽事排位表與 Formguide 進入備戰。
+4. **情報補全**：使用 Wong Choi Intelligence Package（若有），或獨立搜尋動態情報。
 3.5. **[SIP-1] 場地預測容錯機制**：若預測場地為 Heavy 或天氣不穩定，執行雙軌敏感度分析（定義見 `02_algorithmic_engine.md` Step 4）。
 4. **賽事與步速定調**：判定 `[STRAIGHT SPRINT]` 或 `[STANDARD RACE]`，產生 `<第一部分>` + Speed Map。
 5. **批次解析**：每批固定 3 匹馬（BATCH_SIZE: 3），按馬號順序。**全自動推進**，嚴禁批次間詢問用戶。**批次隔離規則：每個 Batch 必須作為獨立嘅 file write 操作輸出，嚴禁將多個 Batch 合併到同一次 tool call。** Batch 1 = `write_to_file` 新建；Batch 2+ = 獨立 `replace_file_content` 追加。若發現正在寫入 4+ 匹馬 → 立即停止拆分。

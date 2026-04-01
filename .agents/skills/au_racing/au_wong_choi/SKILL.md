@@ -143,14 +143,9 @@ AU Race Extractor 建立嘅資料夾格式為 `[YYYY-MM-DD] [Venue Name] Race [S
 ```
 此檔案將用於記錄整個分析 session 中發現嘅所有問題。
 
-**⏸ 提取完成 Checkpoint（強制停頓）：**
-全日所有場次嘅 Racecard 同 Formguide 提取完成後，你**必須暫停**並向用戶匯報：
-```
-✅ 全日 Race 1-{TOTAL_RACES} 嘅 Racecard 同 Formguide 已成功提取並存檔到 {TARGET_DIR}。
-📂 檔案清單：[列出所有已提取檔案]
-是否繼續進行天氣預測同情報搜集？（若你想用另一個 session 進行分析，可以喺此停止。）
-```
-**嚴禁跳過此 checkpoint 直接進入 Step 1.5。** 用戶可能使用不同嘅 AI 引擎分別處理提取同分析。
+**⏸ 提取完成 Checkpoint（自動推進）：**
+全日所有場次嘅 Racecard 同 Formguide 提取完成後，喺聊天中簡短匯報提取結果（1-2 行），然後**自動推進到 Step 1.5**。
+**唔好問用戶「是否繼續」。** 用戶叫你分析某個場地 = 意圖係全套流程到底。
 
 ## Step 1.5: Race Day Briefing（賽日總覽 — P30）
 
@@ -192,10 +187,6 @@ BATCH_SIZE: {BATCH_SIZE}（由環境掃描決定）
 - 🟣 Synthetic Surface：[list races if any]
 - 🟠 Weather/Track：[pending Step 2]
 
-🎯 請確認分析範圍：
-A) 全日分析（Race 1-{TOTAL_RACES}）
-B) 指定場次（例如 R1, R3, R5）
-C) 先做前半日（Race 1-{TOTAL_RACES/2}）
 ```
 
 **C. 計算邏輯：**
@@ -208,7 +199,7 @@ C) 先做前半日（Race 1-{TOTAL_RACES/2}）
 **D. 寫入持久化檔案：**
 將以上 Briefing 寫入 `{TARGET_DIR}/_Race_Day_Briefing.md`。後續 Session Recovery 時可直接讀取此檔案，無需重新解析排位表。
 
-**E. 等待用戶確認分析範圍後，進入 Step 2。**
+**E. 自動推進到 Step 2。** 唔好問用戶確認分析範圍。Default = 全日分析由 Race 1 開始。若用戶想指定場次，佢哋會自己講。
 
 > [!TIP]
 > **Session Recovery 時嘅行為：** 若 `_Race_Day_Briefing.md` 已存在，直接讀取並顯示（標記已完成場次），無需重新解析。
@@ -537,8 +528,8 @@ BATCH_SIZE 由 Pre-Flight Environment Scan 決定（標準=3 / fallback=2）。
 >
 > **A. 批次結構規則：**
 > 1. **分批寫入強制性。** 按 BATCH_SIZE 分批，超出 = 違規。
-> 2. **每個 Batch = 獨立 file write。** B1 用 `write_to_file` 新建，B2+ 用 `replace_file_content` 追加。嚴禁合併 2+ batch 到同一個 tool call。
-> 3. **VERDICT BATCH 獨立。** Part 3 + Part 4 + CSV 必須為獨立 tool call，唔可同馬匹分析合併。
+> 2. **每個 Batch = 獨立 file write (Artifact-First Protocol)。** 由於 Google Drive 同步限制，嚴禁直接寫入目標目錄。必須將檔案寫入 `~/.gemini/antigravity/brain/{session_id}/artifacts/`，完成後必須使用 `run_command` (`cp`) 將檔案同步至 Google Drive 目標目錄。B1 用 `write_to_file`，B2+ 用 `replace_file_content` 追加，每次更新後皆須重複執行 `cp`。
+> 3. **VERDICT BATCH 獨立且必須極度嚴格遵循模板。** Part 3 + Part 4 + CSV 必須為獨立 tool call。**絕對不允許**使用簡化自創格式。必須包含 `06_output_templates.md` 規定之：`Speed Map 回顧`、`Top 4 位置精選 (強制包含 🥇第一選 清單結構及評級>✅數鐵律)`、`Top 2 入三甲信心度`、`🎰 Exotic 組合投注建議`、以及第四部分的 `分析陷阱`。任何遺漏視同嚴重違規！*(執行 Verdict 前必須在內心清單覆誦檢查這 5 大欄位)*。
 > 4. **截斷恢復：** 若被 output token limit 截斷 → BATCH_SIZE 降為 2，重做該 batch。
 >
 > 批次示例（BS=3）：7匹 → B1(3)+B2(3)+B3(1)+VERDICT | （BS=2）：7匹 → B1(2)+B2(2)+B3(2)+B4(1)+VERDICT
@@ -570,7 +561,7 @@ BATCH_SIZE 由 Pre-Flight Environment Scan 決定（標準=3 / fallback=2）。
 
 ```
 FOR EACH batch:
-  1. 📝 WRITE — 獨立 tool call 寫入（≤ BATCH_SIZE 匹馬）
+  1. 📝 WRITE (Artifact-First) — 獨立 tool call 寫入至 Artifact 暫存，緊接 CP 複製至目標目錄（≤ BATCH_SIZE 匹馬）
   2. 🔍 SCAN — view_file 驗證 7 headers（🔬⚡📋🔗📊💡⭐）
   3. 🐍 VALIDATE — 執行 Python 驗證：
      python scripts/validate_analysis.py "[ANALYSIS_PATH]"

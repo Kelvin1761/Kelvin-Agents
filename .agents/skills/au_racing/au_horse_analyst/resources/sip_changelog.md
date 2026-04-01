@@ -3,6 +3,15 @@
 
 ## Latest Updates
 
+### 2026-04-01 — SIP-WF01~WF03: Warwick Farm 2026-04-01 Race 5 痛點衍生批量 SIP（3 項）
+- **Changed:** 新增 3 項 SIP，源自 Warwick Farm 1000m 分析中的系統幻覺及排版偏離：
+  - **SIP-WF01** 嚴格讀寫隔離 (Anti-Hallucination Protocol)：禁止在無 Formguide 證據下捏造 Career/Distance/Trk&Dist 數據及勝率。若缺乏數據，必須終止分析或向用戶發出警報，絕不可盲猜。→ `01` System Context
+  - **SIP-WF02** 賽道幾何獨立定義機制 (Track Geometry Enforcement)：獨立新建 Warwick Farm 特徵庫。徹底切割「極速直路賽」的錯誤語境，確立 WF 為狹長且不利外檔的「急彎極速賽」(Tight-turning race)。→ 新增 `04b_track_warwick_farm.md`
+  - **SIP-WF03** 模版及邏輯錨定鎖死 (Template Anchoring)：強制鎖死 [第三部分] 的 🥇/🥈/🥉/🏅 List 格式輸出，嚴禁改用普通文字。增加 CSV 的 `P19_Rank = 1` 必須對齊 `🥇 第一選` 的強制邏輯。→ `06_output_templates.md`
+- **Target Files:** `01_system_context.md`, `06_output_templates.md`, `04b_track_warwick_farm.md`, `00_sip_index.md`
+- **Impact:** 徹底解決語境牽引帶來的「數據幻覺」，以及排版偏離現象。封死 Agent 自由發揮格式的空間。
+- **Regression Check:** 若再出現馬匹勝出紀錄無 Formguide 證據支持 = 回歸。若 WF 1000m 被描述為「直路賽」或未套用外檔懲罰 = 回歸。若 [第三部分] 漏用獎牌圖標清單 = 回歸。
+
 <!-- Newest entries at top. Keep last 5 updates only. Archive older entries to 00_sip_index.md. -->
 
 ### 2026-03-31 — SIP-RH01~RH06: Rosehill 2026-03-28 Reflector 覆盤批量 SIP（6 項）

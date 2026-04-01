@@ -1,0 +1,7 @@
+R1 parsed: True 12 horses
+R1 Top4:
+  Rank: 1, Num: 3, Name: 銳一, Grade: A+
+  Rank: 2, Num: 6, Name: 銀亮濠俠, Grade: A
+  Rank: 3, Num: 9, Name: 東方寶寶, Grade: A-
+  Rank: 4, Num: 12, Name: 爆熱, Grade: B+
+R2 parsed: True 14 horses
