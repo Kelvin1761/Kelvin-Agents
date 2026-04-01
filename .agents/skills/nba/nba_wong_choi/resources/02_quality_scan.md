@@ -39,6 +39,14 @@
 > CRITICAL 問題不會阻止當前場次推進，但會累積到賽間報告。
 
 ## C. 品質檢查（全日匯總組合完成後）
+
+**Python 驗證（強制）：**
+全日報告生成前，強制調用以下腳本驗證 Analyst 的數學運算（CoV/Edge）與命中率底線：
+```bash
+python .agents/skills/nba/nba_wong_choi/scripts/verify_nba_math.py "[REPORT_PATH]"
+```
+`❌ FAILED` → 指示 Analyst 自動修正然後重試。`✅ PASSED` → 繼續。
+
 1. **SGP 防撞擊**：驗證所有組合無互相蠶食/天花板衝突/劇本矛盾
 2. **Bet365 合規**：驗證所有盤口數字絕對符合 **Bet365 嚴格選項規則 (Strict Built-in Matrix)**，例如得分只允許 14.5、19.5 等 Milestone 線，嚴禁 22.5 這種不存在嘅自創跳階
 3. **新聞情境整合**：驗證重要新聞已被納入分析考量

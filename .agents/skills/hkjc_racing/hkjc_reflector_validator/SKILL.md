@@ -126,6 +126,11 @@ version: 1.0.0
 
 ### 2c. 記錄 Analyst 輸出
 - 記錄 Top 4 精選、**每匹馬嘅完整評級矩陣**、**觸發咗邊啲 SIP 規則（包括非目標 SIP 嘅意外觸發）**
+- **Python 評級驗證（強制）：** 盲測分析完成後，即刻行 `verify_math.py` 確保盲測結果無 Grading Drift：
+  ```bash
+  python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/verify_math.py "[BLIND_TEST_OUTPUT_PATH]"
+  ```
+  若 `❌ FAILED` → 修正 Grading Drift 後再進入 Step 3。
 - 若 TARGET_DIR 內有舊分析報告：**逐匹馬對比新舊評級矩陣**，標記所有維度變化及觸發嘅 SIP 規則
 - 記錄新舊 Top 4 差異及原因
 

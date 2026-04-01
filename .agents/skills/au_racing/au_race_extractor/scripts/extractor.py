@@ -41,43 +41,40 @@ def fetch_nuxt_data(url):
         os.remove(temp_html)
     return nuxt_data
 
-def extract_event_metadata(nuxt_data):
+def extract_event_metadata(nuxt_data, event_id):
     """Extract distance, weather, track condition from Event-level Apollo data."""
-    apollo = nuxt_data.get('apollo', {}).get('horseClient', {})
+    apollo = nuxt_data.get('apollo', {}).get('defaultClient', nuxt_data.get('apollo', {}).get('horseClient', {}))
     meta = {'distance': '?', 'distance_unit': 'm', 'event_class': '', 'prize': 0,
             'weather': 'Unknown', 'track_condition': 'Unknown', 'track_rating': ''}
     
-    # Event-level data (distance, class, prize)
-    for k, v in apollo.items():
-        if k.startswith('Event:') and isinstance(v, dict):
-            meta['distance'] = v.get('distance', '?')
-            meta['distance_unit'] = v.get('distanceUnit', 'metres')
-            meta['event_class'] = v.get('eventClass', '')
-            meta['prize'] = v.get('racePrizeMoney', 0) or 0
-            break
-    
-    # Weather from $Event:ID.weather
-    for k, v in apollo.items():
-        if k.startswith('$Event:') and k.endswith('.weather') and isinstance(v, dict):
-            condition = v.get('condition', '')
-            temp = v.get('temperature', '')
-            wind = v.get('wind', '')
-            if condition:
-                meta['weather'] = condition.title()
-                if temp:
-                    meta['weather'] += f" {temp}°C"
-            break
-    
-    # Track condition from $Event:ID.trackCondition
-    for k, v in apollo.items():
-        if k.startswith('$Event:') and k.endswith('.trackCondition') and isinstance(v, dict):
-            overall = v.get('overall', '')
-            rating = v.get('rating', '')
-            if overall:
-                meta['track_condition'] = f"{overall} {rating}".strip()
-                meta['track_rating'] = rating
-            break
-    
+    if not event_id:
+        return meta
+        
+    v = apollo.get(f"Event:{event_id}", {})
+    if v:
+        meta['distance'] = v.get('distance', '?')
+        meta['distance_unit'] = v.get('distanceUnit', 'metres')
+        meta['event_class'] = v.get('eventClass', '')
+        meta['prize'] = v.get('racePrizeMoney', 0) or 0
+        
+    v_weather = apollo.get(f"$Event:{event_id}.weather", {})
+    if v_weather:
+        condition = v_weather.get('condition', '')
+        temp = v_weather.get('temperature', '')
+        wind = v_weather.get('wind', '')
+        if condition:
+            meta['weather'] = condition.title()
+            if temp:
+                meta['weather'] += f" {temp}°C"
+
+    v_track = apollo.get(f"$Event:{event_id}.trackCondition", {})
+    if v_track:
+        overall = v_track.get('overall', '')
+        rating = v_track.get('rating', '')
+        if overall:
+            meta['track_condition'] = f"{overall} {rating}".strip()
+            meta['track_rating'] = rating
+            
     return meta
 
 def process_race(nuxt_data, f_rc, f_fg):
@@ -91,8 +88,13 @@ def process_race(nuxt_data, f_rc, f_fg):
     if not selections:
          return None
     
+    event_id = ''
+    match = re.search(r'\d+', form_key)
+    if match:
+        event_id = match.group(0)
+    
     # Extract event metadata
-    meta = extract_event_metadata(nuxt_data)
+    meta = extract_event_metadata(nuxt_data, event_id)
          
     for sel in selections:
         num = sel.get('competitorNumber', '?')
@@ -101,7 +103,7 @@ def process_race(nuxt_data, f_rc, f_fg):
         c_id = sel.get('competitor', {}).get('id') if isinstance(sel.get('competitor'), dict) else sel.get('competitor', {}).get('__ref', '').replace('Competitor:', '')
         
         # The selections object has a lot of data but name might be in apollo
-        apollo = nuxt_data.get('apollo', {}).get('horseClient', {})
+        apollo = nuxt_data.get('apollo', {}).get('defaultClient', nuxt_data.get('apollo', {}).get('horseClient', {}))
         comp = apollo.get(f"Competitor:{c_id}", {})
         name = comp.get('name', 'Unknown')
         
@@ -257,7 +259,7 @@ def process_meeting(overview_url, date_str, location):
     # 1. Fetch overview page to get meeting events
     print("Extracting Meeting Overview...")
     nuxt_overview = fetch_nuxt_data(overview_url)
-    apollo = nuxt_overview.get('apollo', {}).get('horseClient', {})
+    apollo = nuxt_overview.get('apollo', {}).get('defaultClient', nuxt_overview.get('apollo', {}).get('horseClient', {}))
     
     match = re.search(r'form-guide/horse-racing/([^/]+)', overview_url)
     if not match:
@@ -327,7 +329,15 @@ def process_meeting(overview_url, date_str, location):
               race_nuxt = fetch_nuxt_data(print_url)
               
               # Extract per-race metadata FIRST (distance, weather, track condition)
-              meta = extract_event_metadata(race_nuxt)
+              form_data = race_nuxt.get('fetch', {})
+              form_key = next((k for k in form_data.keys() if k.startswith('FormGuidePrint')), None)
+              event_id = ''
+              if form_key:
+                  match = re.search(r'\d+', form_key)
+                  if match:
+                      event_id = match.group(0)
+                      
+              meta = extract_event_metadata(race_nuxt, event_id)
               if first_meta is None:
                   first_meta = meta
               

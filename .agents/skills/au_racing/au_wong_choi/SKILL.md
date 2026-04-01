@@ -586,6 +586,7 @@ END FOR
 **Python 驗證（強制）：**
 ```bash
 python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/validate_analysis.py "[ANALYSIS_PATH]"
+python .agents/skills/au_racing/au_wong_choi/scripts/verify_math.py "[ANALYSIS_PATH]"
 ```
 
 **合規硬性指標（任一不合格 = FAILED）：**

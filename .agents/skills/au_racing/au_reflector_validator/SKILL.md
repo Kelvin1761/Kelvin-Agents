@@ -96,6 +96,11 @@ version: 2.0.0
    - 傳遞排位表 + 賽績 + 場地條件 + 天氣
    - **🔴 全量 SIP 測試（Holistic SIP Testing — 強制）：** 重新分析每場賽事時，必須套用**所有**現行 SIP 規則（包括本次新增嘅 + 歷史已有嘅），而非只測試特定場次嘅目標 SIP。原因：新 SIP 之間可能產生交互效應（例如 SIP-RR12 衰減 + SIP-RR13 後追降級雙重觸發 → 過度懲罰），必須透過全量測試發現並調整平衡。
    - 分析完成後記錄：**Top 3 精選**、**每匹馬嘅完整評級矩陣**、**觸發咗邊啲 SIP 規則（包括非目標 SIP 嘅意外觸發）**
+   - **Python 評級驗證（強制）：** 盲測分析完成後，即刻行 `verify_math.py` 確保盲測結果無 Grading Drift：
+     ```bash
+     python .agents/skills/au_racing/au_wong_choi/scripts/verify_math.py "[BLIND_TEST_OUTPUT_PATH]"
+     ```
+     若 `❌ FAILED` → 修正 Grading Drift 後再進入 Step 3。
 
 3. **記錄原始預測備份**（若 TARGET_DIR 內有舊分析報告）：
    - 載入舊分析報告嘅 Top 3

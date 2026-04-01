@@ -642,6 +642,7 @@ END FOR
 **Python 驗證（強制）：**
 ```bash
 python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/validate_analysis.py "[ANALYSIS_PATH]"
+python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/verify_math.py "[ANALYSIS_PATH]"
 ```
 `❌ FAILED` → 修正再驗證。`✅ PASSED` → 合規通過。
 

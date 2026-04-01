@@ -83,6 +83,14 @@ python .agents/skills/au_racing/au_horse_race_reflector/scripts/extract_race_res
 對每一場賽事，在內部思考區塊中執行以下比對：
 
 ### 4a. 命中率統計
+
+**Python 自動化統計（強制）：**
+覆盤分析前，先行以下腳本自動計算所有命中率指標，取代人手計算：
+```bash
+python .agents/skills/au_racing/au_horse_race_reflector/scripts/reflector_auto_stats.py "[TARGET_DIR]" "[RESULTS_FILE]"
+```
+此腳本會自動提取 Top 3 精選、比對實際賽果、計算所有 KPI（黃金標準、良好結果、最低門檻、排名順序偏差、False Positive/Negative）。你只需引用腳本輸出嘅數據，**嚴禁自行手動數。**
+
 > [!IMPORTANT]
 > **位置命中率 (Place Hit Rate) 是最重要的 KPI**，優先於冠軍命中率。
 > 以下為三級判定標準（由高到低）：
