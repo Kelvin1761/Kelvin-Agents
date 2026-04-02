@@ -11,6 +11,32 @@
 - **Impact:** [What should change in Analyst output]
 - **Regression Check:** [What to look for if Analyst reverts to old behavior]
 -->
+### 2026-04-01 — SIP-ST33: AWT 排序風險加強修正 (AWT Ranking Risk Enhancement)
+- **Changed:** SIP-RR20 排名風險折扣新增 4 項 AWT 專用修正因子：後追外檔(-0.5)、連勝加磅(-0.5)、見習首配(-0.5)、醫療風險(-0.25)
+- **Target File:** `10c_track_awt.md`
+- **Impact:** AWT 賽事 Pick 1/2 排序更準確，減少 Pick 3/4 超越率
+- **Regression Check:** 若 AWT 後追型+非1-3檔馬仍穩居 Pick 1 → SIP 未生效
+
+### 2026-04-01 — SIP-ST32: AWT 老馬輕磅回師冷門升級 (AWT Veteran Light Weight Return)
+- **Changed:** Step 14.5 冷門冠軍安全網新增 AWT 老馬輕磅觸發因子: ≥6歲+AWT紀錄+最輕磅+久休≥35日→升B/B+
+- **Target File:** `10c_track_awt.md`
+- **Impact:** AWT 老馬+輕磅+經驗組合被正確識別為冷門潛力馬
+- **Data Points:** R1 #12 爆熱 (B-, 7歲, 118lb最輕, AWT經驗→1st)
+- **Regression Check:** 若 AWT ≥6歲+最輕磅+AWT入前四紀錄仍維持 D/C 級 → SIP 未生效
+
+### 2026-04-01 — SIP-ST31: AWT S-/A+ 品質閘門加強 (AWT Elite Rating Quality Gate)
+- **Changed:** SIP-HV15 S-品質閘門新增 AWT 專用第 4 項閘門: 需≥1 AWT勝或≥3 AWT入前四才可維持S-/A+
+- **Target File:** `10c_track_awt.md`
+- **Impact:** AWT 賽事 S-/A+ 評級更可靠，防止僅有 1-2 次 AWT 入位即獲最高評級
+- **Data Points:** R1 #3 銳一 (S-, 僅1次AWT亞軍→不入前四)
+- **Regression Check:** 若 AWT 僅1-2次入位馬仍獲 S- → SIP 未生效
+
+### 2026-04-01 — SIP-ST30: AWT 呼吸道風險升級 (AWT Respiratory Risk Escalation)
+- **Changed:** Step 7 風險標記新增 AWT 呼吸道修正: 喘鳴近4仗≥1次→計2個風險標記; ≥2次→封頂B+
+- **Target File:** `10c_track_awt.md`
+- **Impact:** 有喘鳴/氣管有血歷史的馬匹在 AWT 被正確限制評級
+- **Data Points:** R1 #5 魅力星 (A+, 近2仗喘鳴, AWT→僅3rd)
+- **Regression Check:** 若有喘鳴紀錄馬匹在 AWT 仍獲 A+ → SIP 未生效
 
 ### 2026-03-29 — SIP-RR22: 5-6歲突然贏馬回落 (Mid-Age Surprise Win Fallback)
 - **Changed:** Step 14.2B 新增降級因素 — 5-6歲 + 上仗勝出 + 近10仗入三甲≤2次(含勝出) → Top 4 排序降半級

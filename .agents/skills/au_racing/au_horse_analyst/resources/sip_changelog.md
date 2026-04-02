@@ -3,6 +3,13 @@
 
 ## Latest Updates
 
+### 2026-04-02 — SIP-GF02: Gosford 2026-04-02 覆盤衍生 SIP（1 項）
+- **Changed:** 新增 1 項 SIP，源自 Gosford 覆盤中對泥地馬在好地被過度懲罰的修正：
+  - **SIP-GF02** Good 地泥地馬降班/騎師護體：若今場為 Good 地但馬匹因勝率 ≤15% 觸發降級，且具備「降班 ≥1 級」或「配 Tier 1-2 騎師」，場地勝率門檻降級效果減半（降 0.25 級）。若微調後評級跌至 D，自動保底提升至 C-。安全閥：樣本≥10且 PR≤20% 失效。
+- **Target Files:** `02_algorithmic_engine.md`, `00_sip_index.md`
+- **Impact:** 修正引擎忽視降班/騎師優勢對場地不適補償的盲點，避免錯殺如 Speedy Henry 等潛力後追馬。
+- **Regression Check:** 若 Good 地勝率 ≤15% 但具備明確降班優勢及好檔位/騎師的馬匹仍被評為 D 級 = 回歸。
+
 ### 2026-04-01 — SIP-WF01~WF03: Warwick Farm 2026-04-01 Race 5 痛點衍生批量 SIP（3 項）
 - **Changed:** 新增 3 項 SIP，源自 Warwick Farm 1000m 分析中的系統幻覺及排版偏離：
   - **SIP-WF01** 嚴格讀寫隔離 (Anti-Hallucination Protocol)：禁止在無 Formguide 證據下捏造 Career/Distance/Trk&Dist 數據及勝率。若缺乏數據，必須終止分析或向用戶發出警報，絕不可盲猜。→ `01` System Context

@@ -73,11 +73,20 @@
 | SIP-RR21 | 轉倉因素 | `07b_trainer_signals.md` 8.2f | 轉倉首戰+0.5輔助✅；Tier升級額外+0.25；輔助維度 |
 | SIP-RR22 | 5-6歲突然贏馬回落 | `06_rating_aggregation.md` 14.2B | 5-6歲+上仗勝出+近10仗入三甲≤2次 → 降半級。豁免：近10仗入三甲≥4次（長期上名） |
 
+## 覆盤衍生 SIP（SIP-ST30 系列，源自 2026-04-01 Sha Tin AWT 覆盤）
+
+| SIP ID | 名稱 | 定義位置 | 摘要 |
+|:---|:---|:---|:---|
+| SIP-ST30 | AWT 呼吸道風險升級 | `10c_track_awt.md` + Step 7 | AWT+喘鳴近4仗≥1次→風險標記×2；≥2次→封頂B+ |
+| SIP-ST31 | AWT S-/A+ 品質閘門加強 | `10c_track_awt.md` + SIP-HV15 擴展 | AWT需≥1勝或≥3入前四才可維持S-/A+；後追型S-需L400前20% |
+| SIP-ST32 | AWT 老馬輕磅回師冷門升級 | `10c_track_awt.md` + Step 14.5 | ≥6歲+AWT紀錄+最輕磅+久休≥35日→升至B/B+ |
+| SIP-ST33 | AWT 排序風險加強修正 | `10c_track_awt.md` + SIP-RR20 擴展 | 後追外檔/加磅/見習/醫療風險=AWT排序額外折扣，共用-1.5上限 |
+
 ## 資源模組
 
 | 資源 | 位置 | 與 SIP 互動 |
 |:---|:---|:---|
-| AWT 跑道模組 | `10c_track_awt.md` | SIP-ST2 |
+| AWT 跑道模組 | `10c_track_awt.md` | SIP-ST2, **SIP-ST30, SIP-ST31, SIP-ST32, SIP-ST33** |
 | 沙田草地模組 | `10a_track_sha_tin_turf.md` | 場地偏差參考 |
 | 跑馬地模組 | `10b_track_happy_valley.md` | SIP-HV16 場地偏差, SIP-HV22 內欄超級加權, SIP-HV23 長途後追豁免, SIP-HV24 頂磅補償 |
 | 騎師戰術特徵 | `07c_jockey_profiles.md` | SIP-5、SIP-ST4 |
@@ -87,4 +96,4 @@
 ---
 
 > **維護規則：** 每次 Reflector 覆盤產出新 SIP 時，必須同步更新此索引。
-> **最後更新：** 2026-03-29 (SIP-RR22 新增，5-6歲突然贏馬回落)
+> **最後更新：** 2026-04-01 (SIP-ST30~ST33 新增，AWT 覆盤衍生)
