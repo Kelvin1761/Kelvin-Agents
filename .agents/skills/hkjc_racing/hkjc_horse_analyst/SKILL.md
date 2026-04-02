@@ -29,24 +29,33 @@ ag_kit_skills:
 - **防幻覺**：無數據則填 `N/A (數據不足)`，嚴禁猜測。
 - **防無限 Loop**：Web Search 連續失敗 3 次即停止，標記 `N/A`。
 
-## 2. 資源讀取協議 (Read-Once Protocol) [極重要]
-你必須在**每場賽事分析開始前**，一次性讀取以下所有資源文件，整場所有批次中**保留在記憶中**：
+## 2. 資源讀取協議 (Tiered Loading Protocol) [改進 #6 — 極重要]
+每場賽事分析分三層載入資源，降低初始 context 壓力：
+
+**Tier 1: 核心必讀（分析開始前 — 一次性載入，全程保留）：**
 - `resources/01_system_context.md` — 系統設定與不變規則
-- `resources/02_data_retrieval.md` — 外部數據搜索協議與步驟依賴地圖
 - `resources/03_engine_pace_context.md` — Steps 0-3 步速瀑布與情境引擎
 - `resources/04_engine_corrections.md` — Steps 4-9 校正與隱藏變數引擎
 - `resources/05_forensic_eem.md` — Steps 10-12 段速法醫與 EEM
 - `resources/06_rating_aggregation.md` — Steps 13-14 賽績線驗證與評級聚合
-- `resources/07a_signals_framework.md` + `07b_trainer_signals.md` + `07c_jockey_profiles.md` — 練馬師與騎師出擊訊號矩陣
-- `resources/08_output_templates.md` — 輸出格式範本
-- `resources/09_verification.md` — 自檢與審核清單
 - 場地邏輯模組（**條件式讀取** — 只讀取 Wong Choi 指定嘅模組）：
   - 若 `[TRACK_MODULE: SHA_TIN_TURF]` → `resources/10a_track_sha_tin_turf.md`
   - 若 `[TRACK_MODULE: HAPPY_VALLEY]` → `resources/10b_track_happy_valley.md`
   - 若 `[TRACK_MODULE: AWT]` → `resources/10c_track_awt.md`
   - 若無指定 → 根據賽事資料自行判斷場地
 
+**Tier 2: 延遲載入（首個 Batch 開始前載入，載入後全程保留）：**
+- `resources/02_data_retrieval.md` — 外部數據搜索協議與步驟依賴地圖
+- `resources/07a_signals_framework.md` + `07b_trainer_signals.md` + `07c_jockey_profiles.md` — 練馬師與騎師出擊訊號矩陣
+
+**Tier 3: 按需載入（觸發時才讀，用完可釋放）：**
+- `resources/08_output_templates.md` — **寫 Verdict ([BATCH: LAST]) 前必須重讀**
+- `resources/09_verification.md` — 自檢前讀取
+
 **嚴禁在每匹馬或每批次重新讀取資源文件。** 只有在「會話中斷後重啟」或「切換至新場次」時才需重新讀取。
+
+> [!IMPORTANT]
+> **Verdict 前重讀 Template**：寫 `[第三部分]` Top 4 Verdict 前，**必須 `view_file` 重讀 `08_output_templates.md` 中 [第三部分] 段落**。呢個係防止模板漂移嘅關鍵步驟。
 
 ## 3. 外部數據搜索
 按照 `resources/02_data_retrieval.md` 執行所有外部數據搜索。
@@ -81,6 +90,31 @@ ag_kit_skills:
 3. 根因標記：`⚠️ QG-DEBUG: [根因] | FIX: [對策] | BATCH: [N]`
 4. 重寫受影響 Batch → 再次 QG-CHECK
 5. 若仍然失敗 → **硬性熔斷** → 標記 `⚠️ QG-CIRCUIT-BREAK` → 通知 Wong Choi 處理
+
+**🔬 Logic Execution Proof [改進 #11]（每匹馬 `<thought>` 中強制）：**
+完成每匹馬分析後，喺 `<thought>` 中強制填完以下清單。**每個 ✅ 必須附帶 ≥1 個具體數據點（錨點），唔可以空白。** 若有 ≥2 個 Step 嘅錨點為空或只寫「一般」→ **該馬分析無效，強制重做。**
+
+| Step | 執行？ | 證據錨點（引用具體數據） |
+|------|--------|------------------------|
+| Step 0 步速瀑布 | ✅/❌ | 錨點: [e.g. "PACE_TYPE: Genuine, LEADER_COUNT: 2"] |
+| Step 1 狀態週期 | ✅/❌ | 錨點: [e.g. "間距 21 日，Second-up"] |
+| Step 2 引擎距離 | ✅/❌ | 錨點: [e.g. "同程 3-1-2, Type A"] |
+| Step 3 班次負重 | ✅/❌ | 錨點: [e.g. "Rating 68→62, 降班 -6"] |
+| Step 4-9 校正引擎 | ✅/❌ | 錨點: [e.g. "場地 Soft → WR 2/5=40%"] |
+| Step 10-12 段速/EEM | ✅/❌ | 錨點: [e.g. "L600 22.8 vs par 23.2 → 優於標準, EEM: 2-2位 ✅"] |
+| Step 13 賽績線 | ✅/❌ | 錨點: [e.g. "上仗頭馬 下仗贏 G1 → 強組"] |
+| Step 14 評級聚合 | ✅/❌ | 錨點: [e.g. "核心✅=2, 半核心✅=1, 輔助✅=3 → 查表 A-"] |
+
+- 若某 Step 合理地 N/A（例如首出馬 Step 13）→ 標記 `N/A [原因]`
+- 此清單唔出現喺最終輸出，只留喺 `<thought>` 中
+
+**🔗 Step Dependency Verification [改進 #8]（每匹馬 `<thought>` 中強制）：**
+每匹馬分析完成後，喺 `<thought>` 中快速確認以下數據流注入點：
+1. ✅ Step 10-12 EEM 有冇引用 Step 0 嘅 `PACE_TYPE`？
+2. ✅ Step 10-12 段速有冇引用 class par 基準？
+3. ✅ Step 4-9 寬恕結論有冇回傳 Step 1 狀態週期？
+4. ✅ Step 14 評級聚合有冇正確引用所有前序維度？
+任何一項 ❌ = 該馬分析無效，強制重做。
 7. **全場最終決策**：全場完畢後，按 `08_output_templates.md` 生成 `<第三部分>` + `<第四部分>`，Top 4 按評級排序。
 
 **CRITICAL EXCEL EXTRACTION FORMAT**:

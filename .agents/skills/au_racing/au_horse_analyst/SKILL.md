@@ -25,30 +25,36 @@ ag_kit_skills:
 按照 `resources/06a_data_retrieval_and_deps.md` 執行所有外部數據搜索。
 **Wong Choi Intelligence 強制感知**：當 Wong Choi 已提供 **Meeting Intelligence Package**，**嚴禁重複搜索**已提供嘅公共數據。僅按需搜索特定馬匹嘅騎練組合數據。
 
-## 3. 資源讀取協議 (Read-Once Protocol)
-每場賽事分析開始前，一次性讀取以下資源文件，整場所有批次中**保留在記憶中**：
+## 3. 資源讀取協議 (Tiered Loading Protocol) [改進 #6]
+每場賽事分析分三層載入資源，降低初始 context 壓力：
 
-**必讀（每場都載入）：**
+**Tier 1: 核心必讀（分析開始前 — 一次性載入，全程保留）：**
 - `resources/01_system_context.md` — 核心設定、語言規則、反惰性協議
 - `resources/02_algorithmic_engine.md` — Steps 0-14 完整演算法引擎
-- `resources/03a_sire_index.md` — 血統分析框架 + 未列種馬處理規則
 - `resources/03e_class_standards.md` — 班次標準時間 + 段速基準
 - `resources/04a_track_core.md` — 場地分析通用原則
-- `resources/05_verification.md` — 自我驗證清單
-- `resources/06a_data_retrieval_and_deps.md` — 外部數據搜索協議 + 步驟依賴地圖
-- `resources/06_output_templates.md` — 輸出格式範本
-- `resources/07b_trainer_signals.md` — 練馬師分級、場地偏好、出擊訊號矩陣
-
-**條件讀取（按 Wong Choi 路由標籤，或獨立運行時自行判斷）：**
 - `[TRACK_MODULE]` → 對應嘅 `resources/04b_track_[venue].md`
+
+**Tier 2: 延遲載入（首個 Batch 開始前載入，載入後全程保留）：**
+- `resources/06a_data_retrieval_and_deps.md` — 外部數據搜索協議 + 步驟依賴地圖
+- `resources/07b_trainer_signals.md` — 練馬師分級、場地偏好、出擊訊號矩陣
+- `resources/03a_sire_index.md` — 血統分析框架
+- 距離對應嘅 Sire reference（只讀 1 個）：
+  - `[DISTANCE_CATEGORY: SPRINT]` → `resources/03b_sire_sprint.md`
+  - `[DISTANCE_CATEGORY: MIDDLE]` → `resources/03c_sire_middle.md`
+  - `[DISTANCE_CATEGORY: STAYING]` → `resources/03d_sire_staying.md`
+
+**Tier 3: 按需載入（觸發時才讀，用完可釋放）：**
+- `resources/06_output_templates.md` — **寫 Verdict ([BATCH: LAST]) 前必須重讀**
+- `resources/05_verification.md` — 自檢前讀取
 - `[RACE_TYPE: STRAIGHT_SPRINT]` → `resources/02b_straight_sprint_engine.md` + `resources/04c_straight_sprint.md`
 - `[SURFACE: SYNTHETIC]` → `resources/04e_synthetic.md`
 - `[GOING: SOFT_5+]` → `resources/04d_wet_track.md`
-- `[DISTANCE_CATEGORY: SPRINT]` → `resources/03b_sire_sprint.md`
-- `[DISTANCE_CATEGORY: MIDDLE]` → `resources/03c_sire_middle.md`
-- `[DISTANCE_CATEGORY: STAYING]` → `resources/03d_sire_staying.md`
 
 **嚴禁在每匹馬或每批次重新讀取資源文件。** 只有在「會話中斷後重啟」或「切換至新場次」時才需重新讀取。
+
+> [!IMPORTANT]
+> **Verdict 前重讀 Template**：寫 `[第三部分]` Top 4 Verdict 前，**必須 `view_file` 重讀 `06_output_templates.md` 中 [第三部分] 段落**（約 Line 113-260）。呢個係防止模板漂移嘅關鍵步驟。
 
 ## 4. Internal Tracking
 所有內部計算（Step 0 到 Step 14）與推導過程**絕不可出現在最終輸出中**。推導放進 `<thought>` 標籤，對用戶只呈現最終判定結果。
@@ -84,6 +90,34 @@ ag_kit_skills:
 3. 根因標記：`⚠️ QG-DEBUG: [根因] | FIX: [對策] | BATCH: [N]`
 4. 重寫受影響 Batch → 再次 QG-CHECK
 5. 若仍然失敗 → **硬性熔斷** → 標記 `⚠️ QG-CIRCUIT-BREAK` → 通知 Wong Choi 處理
+
+**🔬 Logic Execution Proof [改進 #11]（每匹馬 `<thought>` 中強制）：**
+完成每匹馬分析後，喺 `<thought>` 中強制填完以下清單。**每個 ✅ 必須附帶 ≥1 個具體數據點（錨點），唔可以空白。** 若有 ≥2 個 Step 嘅錨點為空或只寫「一般」→ **該馬分析無效，強制重做。**
+
+| Step | 執行？ | 證據錨點（引用具體數據） |
+|------|--------|------------------------|
+| Step 1 狀態週期 | ✅/❌ | 錨點: [e.g. "間距 28 日，Third-up"] |
+| Step 2 引擎距離 | ✅/❌ | 錨點: [e.g. "Sire AWD 1400m, Type B"] |
+| Step 3 班次負重 | ✅/❌ | 錨點: [e.g. "Rating 78→72, 降班 -6"] |
+| Step 4 場地適性 | ✅/❌ | 錨點: [e.g. "Soft WR 3/8=37.5%"] |
+| Step 5 裝備解碼 | ✅/❌ | 錨點: [e.g. "首次上舌帶"] |
+| Step 6 寬恕檔案 | ✅/❌ | 錨點: [e.g. "上仗「走勢受阻」→ 可寬恕"] |
+| Step 7 EEM | ✅/❌ | 錨點: [e.g. "3-wide no cover, PACE: Genuine → ❌"] |
+| Step 8 段速法醫 | ✅/❌ | 錨點: [e.g. "L600 34.2 vs BM72 par 35.1 → 優於標準"] |
+| Step 9 賽績線 | ✅/❌ | 錨點: [e.g. "上仗頭馬下仗贏 → 強組"] |
+| Step 10 步速 | ✅/❌ | 錨點: [e.g. "PACE_TYPE: Genuine, LEADER_COUNT: 3"] |
+
+- 若某 Step 合理地 N/A（例如首出馬 Step 9）→ 標記 `N/A [原因]`
+- 此清單唔出現喺最終輸出，只留喺 `<thought>` 中
+
+**🔗 Step Dependency Verification [改進 #8]（每匹馬 `<thought>` 中強制）：**
+每匹馬分析完成後，喺 `<thought>` 中快速確認以下數據流注入點：
+1. ✅ Step 7 EEM 有冇引用 Step 10 嘅 `PACE_TYPE`？
+2. ✅ Step 8 段速有冇引用 `class_par` 基準？
+3. ✅ Step 6 寬恕結論有冇回傳 Step 1？
+4. ✅ 若 `STRAIGHT SPRINT` → Step 7 有冇啟用風向模型？
+5. ✅ Step 0.5 情境標籤有冇注入綜合合成框架？
+任何一項 ❌ = 該馬分析無效，強制重做。
 
 **CRITICAL EXCEL EXTRACTION FORMAT**:
 在輸出最尾端，額外輸出 CSV 數據塊（Top 4 精選），放在 `csv` 代碼區塊內：

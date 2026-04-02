@@ -75,6 +75,17 @@ version: 2.0.0
 **跨批次字數趨勢（次要）：**
 - 若後期批次平均字數持續低於前期批次 70%+ → `[MINOR] MODEL-003-TREND`
 
+## Step 2d: 模板漂移偵測 (Template Drift Detection) [改進 #10c]
+
+> [!CAUTION]
+> **LLM 後段場次/Batch 嘅經典故障模式：** 分析到第 5-7 場時，LLM 開始「遺忘」原始 template，自創標題或重組結構。此步驟為第三層防護（Analyst 自檢 → Batch QA → Compliance）。
+
+逐場掃描 `[第三部分]` Top 4 Verdict 是否出現以下模板漂移特徵：
+- ❌ **自創標題偵測**：搜索「👑 核心首選」「投資策略」「戰術拖腳」「決策總結」「最終評級榜」「建議排名」等非原版字眼。若出現 → `[CRITICAL] TEMPLATE-001`
+- ❌ **格式變形偵測**：Top 4 應該用 `🥇/🥈/🥉/🏅` 清單格式，唔係 Markdown Table 或連續文字。若格式唔符 → `[CRITICAL] TEMPLATE-002`
+- ❌ **CSV 缺失偵測**：`[第五部分]` CSV 代碼區塊是否存在且格式正確。若缺失 → `[CRITICAL] TEMPLATE-003`
+- ❌ **跨場次漂移比較**：若有 Race 1 + Race 2+ 嘅報告，比較各場 `[第三部分]` 格式是否一致。後段場次格式偏離前段 → `[MINOR] TEMPLATE-004-DRIFT`
+
 ## Step 3: SIP 合規驗證
 
 ### 3a. 主動套用檢查

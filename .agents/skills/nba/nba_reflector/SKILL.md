@@ -89,6 +89,13 @@ ag_kit_skills:
 3. 將新 SIP 追加到 changelog，狀態設為「待審批」
 4. 交叉檢查歷史 SIP：若過去覆盤已提出類似建議但未被採納 → 標記為「重複出現」，提升優先級
 
+
+> **P32 — Knowledge Graph 整合：** 生成覆盤報告後，使用 Memory MCP 將以下關鍵發現寫入 Knowledge Graph：
+> - 傷兵狀態更新（Entity: `{PLAYER}_{DATE}_injury`，Observations: 傷兵影響上場時間/表現）
+> - 防守大閘效果驗證（Entity: `defender_{PLAYER}_vs_{OPPONENT}`，記錄預測 vs 實際影響）
+> - Props 命中/未命中模式（Entity: `prop_pattern_{PLAYER}_{PROP_TYPE}`）
+> - 這樣下次分析時，NBA Analyst 可以先查詢 `read_graph` 發現過往傷兵狀態和防守對位效果。
+
 ## Step 6: 等待用戶審批
 向用戶提交覆盤報告路徑同摘要，並**強制停止所有行動**。
 
@@ -106,6 +113,10 @@ ag_kit_skills:
 
 # Recommended Tools & Assets
 - **Tools**: `search_web`、`view_file`、`write_to_file`、`replace_file_content`
+- **MCP Tools (P32 新增)**:
+  - `read_graph` / `search_nodes` — Knowledge Graph 查詢（檢查過往傷兵狀態、防守大閘觀察、球員 Props 命中規律）
+  - `read_query` / `list_tables` — SQLite 歷史數據查詢（查等過往 Parlay 命中率、球員 Props 歷史表現）
+  - `create_entities` / `create_relations` — 將覆盤發現寫入 Knowledge Graph（傷兵更新、防守效果、SIP 觸發模式）
 - **Resources**:
   - `resources/01_report_template.md` — 覆盤報告格式 + SIP Changelog
   - `resources/02_search_protocol.md` — 數據搜索協議 + 比對框架

@@ -341,6 +341,14 @@ python .agents/skills/au_racing/au_horse_race_reflector/scripts/reflector_auto_s
 | 4d-6 輸出品質 | [✅/⚠️/🔧] | [1-2句判定理由] |
 ```
 
+
+> **P32 — Knowledge Graph 整合：** 生成覆盤報告後，使用 Memory MCP 將以下關鍵發現寫入 Knowledge Graph：
+> - 場地偏差觀察（Entity: `{VENUE}_{DATE}_bias`，Observations: Rail Position / 內外欄偏差 / 跨道特性）
+> - 天氣預測準確度（Entity: `weather_accuracy_{DATE}`，記錄預測掛牌 vs 實際掛牌）
+> - False Positive/Negative 模式（Entity: `FP_pattern_{SIP_ID}` 或 `FN_pattern_{SIP_ID}`）
+> - 引擎健康掃描結果（Entity: `engine_health_{DATE}`）
+> - 這樣下次覆盤同一場地時，Reflector 可以先查詢 `read_graph` 發現過往場地偏差歷史。
+
 ## Step 6: 等待用戶審批 + SIP 套用 + 驗證提醒
 
 ### 6a. 等待審批
@@ -433,6 +441,11 @@ REFLECTOR_REPORT: {覆盤報告檔案路徑}
   - `search_web`：若需要補充搜索實際賽日情報（如當日實際偏差報告、Stewards Report）。
   - `write_to_file`：保存覆盤報告。
 - **Assets**:
+
+- **MCP Tools (P32 新增)**:
+  - `read_graph` / `search_nodes` — Knowledge Graph 查詢（檢查過往場地偏差觀察、騎練組合紀錄）
+  - `read_query` / `list_tables` — SQLite 歷史數據查詢（查等評級歷史、命中率追蹤）
+  - `create_entities` / `create_relations` — 將覆盤發現寫入 Knowledge Graph（SIP 觸發模式、引擎健康掃描結果）
   - `scripts/extract_race_result.py`：專門用於解析 Racenet 賽果的腳本。
 
 # Test Case

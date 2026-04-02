@@ -26,6 +26,81 @@ ag_kit_skills:
 
 讀取一次後保留在記憶中，嚴禁每場賽事重複讀取。
 
+# 🤖 ENGINE ADAPTATION（P31 — 2026-04 新增 — Priority 0）
+
+> **歷史教訓：** Gemini 引擎傾向在 Batch 1 完成後停機等用戶，或將所有賽事數據合併到一個 tool call。
+>
+> **適配規定（Priority 0）：**
+>
+> 1. **LOOP_CONTINUATION_MARKER：**
+>    喺每場賽事完成後，你必須喺內部思考中寫：
+>    `CONTINUE_LOOP: Game [N] done, [M] games + PARLAY remaining. Proceeding to Game [N+1].`
+>    **呢個標記嘅目的**係提醒你自己仲有嘢做，唔好停機。
+>
+> 2. **PREMATURE_STOP_GUARD：**
+>    若你準備向用戶輸出文字回覆，必須先問自己：
+>    「NBA_Analysis_Report 入面有冇 Parlay 組合？」
+>    → 若冇 → ⛔ 你仲未寫完！返回循環繼續！
+>
+> 3. **GEMINI ANTI-LAZINESS REINFORCEMENT：**
+>    - **禁止「因為該場無優質 Leg 所以簡寫」：** 每場賽事必須完整分析所有生小 props。
+>    - **字數門檻：** 每場賽事分析 ≥400 字。
+>    - **骨架 [FILL] 零容忍：** 若寫完嘅分析仍然包含 `[FILL]` → 立即補回。
+
+# 🚨 OUTPUT_TOKEN_SAFETY（P28 — 2026-04 新增 — Priority 0）
+
+> 1. **DEFAULT: 每次處理 ≤3 場賽事**（標準）。環境掃描通過後可以使用 3。
+> 2. **環境掃描失敗 → 每次 2 場**（安全 fallback）。
+> 3. **Parlay 組合必須為獨立 tool call**。
+> 4. **Token 壓力自測**：若壓縮內容 → 立即停止拆到下一個 batch。
+
+## Pre-Flight Environment Scan（強制 — Step 1 之前執行）
+
+**Step E1 — Output Token Capacity Test：**
+嘗試生成 ~500 字測試輸出。成功且未截斷 → `ENV_TOKEN_CAPACITY: HIGH`。
+截斷或錯誤 → `ENV_TOKEN_CAPACITY: LOW`。
+
+**Step E2 — Resource Load Verification：**
+讀取 4 個必讀文件，確認每個都成功載入：
+1. `nba_wong_choi/SKILL.md`
+2. `resources/01_data_validation.md`
+3. `resources/02_quality_scan.md`
+4. `resources/03_output_format.md`
+
+**Step E3 — Report to User：**
+```
+🔍 環境掃描結果：
+- Token Capacity: [HIGH / LOW]
+- Resources Loaded: [4/4 / X/4]
+- Games Per Batch: [3 / 2]
+✅ 環境就緒，開始分析。
+```
+
+**Step E4 — MCP Server Availability Check (P32 新增)：**
+檢查以下 MCP Servers 是否已安裝並可用：
+1. **Playwright MCP** — `@playwright/mcp@latest` (網頁即時數據抓取後備)
+2. **SQLite MCP** — `mcp-server-sqlite` (歷史數據庫查詢)
+3. **Memory MCP** — `@modelcontextprotocol/server-memory` (Knowledge Graph 記憶)
+
+檢查方法：嘗試呼叫 `list_tables`（SQLite）或 `read_graph`（Memory）。若失敗：
+```
+⚠️ MCP 狀態：
+- Playwright: [✅ 已連接 / ❌ 未安裝]
+- SQLite: [✅ 已連接 / ❌ 未安裝]
+- Memory: [✅ 已連接 / ❌ 未安裝]
+
+若未安裝，請將以下配置加入 mcp_config.json：
+{
+  "mcpServers": {
+    "playwright": { "command": "cmd.exe", "args": ["/c", "npx", "-y", "@playwright/mcp@latest"] },
+    "sqlite": { "command": "cmd.exe", "args": ["/c", "npx", "-y", "mcp-server-sqlite", "C:/Users/Alleg/.gemini/antigravity/databases/wong_choi.db"] },
+    "memory": { "command": "cmd.exe", "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-memory"] }
+  }
+}
+然後重新啟動 Antigravity。
+```
+Step 5.5 數據庫歸檔功能需要 MCP Servers 運作，但即使未安裝也不影響 Step 1-5 核心分析流程。
+
 # Scope & Operating Instructions
 
 ## Step 1: 接收用戶輸入 + 賽事確認
@@ -35,7 +110,9 @@ ag_kit_skills:
    - 所有輸出檔名、路徑同內容日期統一使用澳洲日期。
 2. **確認賽事範圍**：搜尋該日 NBA 賽事，或只分析用戶指定場次。
 3. **建立工作資料夾**：`{YYYY-MM-DD} NBA Analysis/`
-   - 路徑：`/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/{YYYY-MM-DD} NBA Analysis/`
+   路徑會自動偵測平台：
+   - macOS: `/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/{YYYY-MM-DD} NBA Analysis/`
+   - Windows: `g:\我的雲端硬碟\Antigravity Shared\Antigravity\{YYYY-MM-DD} NBA Analysis/`
 4. **記錄關鍵變量**：`TARGET_DIR`、`ANALYSIS_DATE`、`GAMES_LIST`
 
 **Session Recovery 檢查**：檢查 `TARGET_DIR` 內已存在嘅檔案：
@@ -84,6 +161,25 @@ ag_kit_skills:
 - ≤3 場 → 逐場自檢後直接完成，進入 Step 4。
 
 **Context Window 提醒**：若 context window 接近上限，主動建議用戶開啟新 session。Session Recovery 會偵測已完成場次。
+
+**📖 Smart Slice Protocol（Per-Game Data Loading）：**
+分析每場賽事時，**只傳遞當場嘅數據卡給 Analyst**：
+```
+分析 Game N 前：
+  1. 只提取本場 Meeting Intelligence + Player-Level 數據卡
+  2. 唔好包含上一場/下一場嘅數據
+  3. 每場完成後，該場數據應從 context 中自然淡出
+
+⛔ 嚴禁：一次過將所有賽事嘅數據 dump 畢 Analyst
+✅ 逐場獨立執行「提取 → 驗證 → 分析 → 自檢 → 存檔」
+```
+
+**🔒 COMPLETION_GATE（分析完成門）：**
+每場賽事完成後，必須檢查：
+1. `Game_*_Full_Analysis.txt` 已寫入且內容完整
+2. Parlay Leg 候選已記錄
+3. 品質掃描已通過
+只有三項都通過才可以推進到下一場。
 
 ### Sub-Step 2A: 呼叫 NBA Data Extractor（本場）
 指示 Extractor 只提取當前一場賽事嘅數據，等待輸出結構化數據包。
@@ -140,12 +236,36 @@ ag_kit_skills:
    - 每個方案含：具體修改 + ✅ Pros + ❌ Cons + 📊 Effort
 3. 等用戶選擇後才執行修改
 
+## Step 5.5: 數據庫歸檔 (Database Archival — P32 新增)
+
+完成最終匯報前，使用 MCP 工具將本次分析結果持久化（此步驟為可選但強烈建議）：
+
+**5.5a. SQLite 歸檔（Parlay 結果追蹤）：**
+使用 SQLite MCP 嘅 `write_query` tool 將 Parlay 組合與建議寫入資料庫：
+```sql
+INSERT INTO nba_props (date, game, player_name, prop_type, prop_line, recommendation, parlay_group)
+VALUES ('{DATE}', '{GAME}', '{PLAYER}', '{PROP_TYPE}', {LINE}, '{REC}', '{GROUP}');
+```
+每個合格 Leg 各寫一行。同時將 Parlay 組合寫入 `verdicts` table。
+
+**5.5b. Knowledge Graph 記憶（傷兵狀態、防守大閘）：**
+使用 Memory MCP 嘅 `create_entities` + `create_relations` 將以下關鍵發現寫入長期記憶：
+- 傷兵狀態更新（例：「LeBron James — 2026-04 背傷限制上場時間」）
+- 防守大閘對位效果（例：「Jrue Holiday vs Luka — L5 PTS 下降 22%」）
+- 球員 Props 命中規律（例：「Nikola Jokic AST O9.5 — L10 命中 8/10」）
+
+> ⚠️ **失敗處理**：若 MCP 工具不可用，跳過此步驟不影響分析結果。記錄到 `_session_issues.md`。
+
+
 ## Step 5: 最終匯報
 按照 `resources/03_output_format.md` Section 5 向用戶匯報。
 將 `_session_issues.md` Status 更新為 `COMPLETED`。
 
 # Recommended Tools & Assets
 - **Tools**: `search_web`, `write_to_file`, `replace_file_content`, `multi_replace_file_content`, `view_file`
+- **MCP Tools (P32 新增)**:
+  - `read_graph` / `create_entities` / `create_relations` — Knowledge Graph 記憶（傷兵狀態、防守大閘、跨 session 球員筆記）
+  - `read_query` / `write_query` / `list_tables` — SQLite 數據庫查詢（Parlay 命中率、球員 Props 歷史追蹤）
 - **Resources**:
   - `resources/01_data_validation.md` — 數據品質驗證規則
   - `resources/02_quality_scan.md` — 品質掃描與覆蓋權

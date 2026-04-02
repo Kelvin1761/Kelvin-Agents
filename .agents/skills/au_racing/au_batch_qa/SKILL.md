@@ -119,6 +119,32 @@ AU Wong Choi 每完成一個 Batch 嘅分析後調用你。你必須快速掃描
   - B+/B/B- 級馬：≥350 字
   - C+/C/D 級馬：≥300 字
 
+## Step 4b: Verdict 格式驗證 (Verdict Format Gate) — 僅 [BATCH: LAST] 時執行
+
+> [!CAUTION]
+> **[改進 #10b] 模板漂移防護：** 當 Batch 標記為 `[BATCH: LAST]` 時，強制執行以下 exact string matching。LLM 後段 Batch 常見「自創格式」取代正式 template，此步驟專門攔截。
+
+對 `[第三部分]` Top 4 Verdict 執行以下 exact string matching：
+1. ✅ 包含 exact string `🥇 **第一選**` ?
+2. ✅ 包含 exact string `🥈 **第二選**` ?
+3. ✅ 包含 exact string `🥉 **第三選**` ?
+4. ✅ 包含 exact string `🏅 **第四選**` ?
+5. ✅ 每個選項都有以下 4 行（exact label matching）？
+   - `**馬號及馬名：**`
+   - `**評級與✅數量：**`
+   - `**核心理據：**`
+   - `**最大風險：**`
+6. ✅ 包含 `🎯 Top 2 入三甲信心度` ?
+7. ✅ 排名順序符合評級高低？(第一選評級 ≥ 第二選 ≥ 第三選 ≥ 第四選)
+8. ✅ 包含 CSV `[第五部分]` 代碼區塊？
+
+**漂移特徵偵測 — 以下任何一項出現即 FAILED：**
+- 自創標題（「👑 核心首選」「投資策略」「戰術拖腳」「決策總結」等唔係原版嘅字眼）
+- Top 4 用 Markdown Table 格式（應該用清單）
+- Top 4 用連續文字格式（應該逐項列出）
+
+→ 任何一項 ❌ = `[CRITICAL] TEMPLATE-DRIFT-001: Verdict 格式漂移 — {具體問題描述}`
+
 ## Step 5: 輸出裁定
 
 ### ✅ 通過 (PASS)

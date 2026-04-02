@@ -46,9 +46,11 @@ ag_kit_skills:
 
 ## Step 2: 擷取賽果
 執行賽果擷取腳本（使用 concurrent 模式）：
-```bash
-/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/skills/hkjc_racing/hkjc_race_extractor/venv/bin/python /Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/skills/hkjc_racing/hkjc_race_extractor/scripts/batch_extract_results.py --base_url "<URL>" --races "1-10" --output_dir "[TARGET_DIR]"
-```
+**跨平台路徑選擇：**
+- **Windows:** `python "g:\我的雲端硬碟\Antigravity Shared\Antigravity\.agents\skills\hkjc_racing\hkjc_race_extractor\scripts\batch_extract_results.py" --base_url "<URL>" --races "1-10" --output_dir "[TARGET_DIR]"`
+- **macOS:** `python "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/skills/hkjc_racing/hkjc_race_extractor/scripts/batch_extract_results.py" --base_url "<URL>" --races "1-10" --output_dir "[TARGET_DIR]"`
+
+> **平台偵測：** 檢查 `os.name` 或當前路徑前綴。若路徑以 `g:\` 開頭 = Windows，以 `/Users/` 開頭 = macOS。
 將賽果文件保存在 `TARGET_DIR` 中。
 
 > ⚠️ **失敗處理**：若腳本執行失敗，檢查錯誤訊息。若依賴套件缺失（如 `playwright`），先執行安裝後重試。連續失敗 3 次則停止並通知用戶。
@@ -374,6 +376,13 @@ python .agents/skills/hkjc_racing/hkjc_reflector/scripts/reflector_auto_stats.py
 | 4d-6 輸出品質 | [✅/⚠️/🔧] | [1-2句判定理由] |
 ```
 
+
+> **P32 — Knowledge Graph 整合：** 生成覆盤報告後，使用 Memory MCP 將以下關鍵發現寫入 Knowledge Graph：
+> - 場地偏差觀察（Entity: `{VENUE}_{DATE}_bias`，Observations: 內欄/外欄/前速偏差等）
+> - False Positive/Negative 模式（Entity: `FP_pattern_{SIP_ID}` 或 `FN_pattern_{SIP_ID}`）
+> - 引擎健康掃描結果（Entity: `engine_health_{DATE}`，記錄 6 個維度判定）
+> - 這樣下次覆盤同一場地時，Reflector 可以先查詢 `read_graph` 發現過往場地偏差歷史。
+
 ## Step 6: 等待用戶審批 + SIP 套用 + 驗證提醒
 
 ### 6a. 等待審批
@@ -466,7 +475,14 @@ REFLECTOR_REPORT: {覆盤報告檔案路徑}
   - `search_web`：若需要補充搜索實際賽日情報（如當日實際偏差報告）。
   - `write_to_file`：保存覆盤報告。
 - **Assets**:
-  - `batch_extract_results.py`：專門用於併發解析 HKJC 賽果的腳本。絕對路徑：`/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/skills/hkjc_racing/hkjc_race_extractor/scripts/batch_extract_results.py`
+  - `batch_extract_results.py`：專門用於併發解析 HKJC 賽果的腳本。
+    - **Windows:** `g:\我的雲端硬碟\Antigravity Shared\Antigravity\.agents\skills\hkjc_racing\hkjc_race_extractor\scripts\batch_extract_results.py`
+
+- **MCP Tools (P32 新增)**:
+  - `read_graph` / `search_nodes` — Knowledge Graph 查詢（檢查過往場地偏差觀察、騎練組合紀錄）
+  - `read_query` / `list_tables` — SQLite 歷史數據查詢（查等評級歷史、命中率追蹤）
+  - `create_entities` / `create_relations` — 將覆盤發現寫入 Knowledge Graph（SIP 觸發模式、引擎健康掃描結果）
+    - **macOS:** `/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/skills/hkjc_racing/hkjc_race_extractor/scripts/batch_extract_results.py`
 
 # Test Case
 **User Input:** `「幫我覆盤今日賽事：https://racing.hkjc.com/zh-hk/local/information/localresults?racedate=2026/03/04&Racecourse=HV&RaceNo=1」`

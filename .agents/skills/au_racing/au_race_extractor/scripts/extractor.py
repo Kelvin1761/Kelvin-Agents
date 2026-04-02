@@ -4,6 +4,14 @@ import json
 import re
 from curl_cffi import requests
 from playwright.sync_api import sync_playwright
+import platform
+
+def get_base_path():
+    """Cross-platform base path for Antigravity workspace."""
+    if platform.system() == 'Windows':
+        return r"g:\我的雲端硬碟\Antigravity Shared\Antigravity"
+    else:
+        return "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity"
 
 def generate_print_url(url):
     # E.g. https://www.racenet.com.au/form-guide/horse-racing/caulfield-heath-20260304/briga-fliedner-2026-lady-of-racing-finalist-race-1/overview
@@ -309,64 +317,108 @@ def process_meeting(overview_url, date_str, location):
         except ValueError:
              pass
              
-    output_dir = f"/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/{date_str} {location} Race {start_race}-{end_race}"
+    base = get_base_path()
+    output_dir = os.path.join(base, f"{date_str} {location} Race {start_race}-{end_race}")
     os.makedirs(output_dir, exist_ok=True)
     
     rail = apollo[meeting_key].get('railPosition', 'Unknown')
-    
     mm_dd = date_str[5:]
-    rc_file = os.path.join(output_dir, f"{mm_dd} Race {start_race}-{end_race} Racecard.md")
-    fg_file = os.path.join(output_dir, f"{mm_dd} Race {start_race}-{end_race} Formguide.md")
     
-    # Track first race's metadata for Meeting Summary (written after extraction)
+    # Track metadata for index generation
+    race_index = []
     first_meta = None
     
-    with open(rc_file, 'w', encoding='utf-8') as f_rc, open(fg_file, 'w', encoding='utf-8') as f_fg:
-          for race_num, slug in race_slugs:
-              print(f"\nProcessing Race {race_num}...")
-              
-              print_url = f"https://www.racenet.com.au/form-guide/horse-racing/print?meetingSlug={meeting_slug}&eventSlug={slug}&printSlug=print-form"
-              race_nuxt = fetch_nuxt_data(print_url)
-              
-              # Extract per-race metadata FIRST (distance, weather, track condition)
-              form_data = race_nuxt.get('fetch', {})
-              form_key = next((k for k in form_data.keys() if k.startswith('FormGuidePrint')), None)
-              event_id = ''
-              if form_key:
-                  match = re.search(r'\d+', form_key)
-                  if match:
-                      event_id = match.group(0)
-                      
-              meta = extract_event_metadata(race_nuxt, event_id)
-              if first_meta is None:
-                  first_meta = meta
-              
-              dist_str = f"{meta['distance']}m" if meta['distance'] != '?' else ''
-              track_cond = meta.get('track_condition', 'Unknown')
-              weather = meta.get('weather', 'Unknown')
-              event_class = meta.get('event_class', '')
-              prize = meta.get('prize', 0)
-              
-              # Write race headers WITH per-race metadata
-              header_line = f"RACE {race_num}"
-              if dist_str:
-                  header_line += f" — {dist_str}"
-              if event_class:
-                  header_line += f" | {event_class}"
-              if prize:
-                  header_line += f" | ${prize:,}"
-              
-              f_rc.write(f"{header_line}\n")
-              f_rc.write(f"Track: {track_cond} | Weather: {weather} | Rail: {rail}\n{'='*20}\n")
-              f_rc.flush()
-              
-              f_fg.write(f"{header_line}\n")
-              f_fg.write(f"Track: {track_cond} | Weather: {weather} | Rail: {rail}\n{'='*20}\n")
-              
-              # THEN write horse data
-              process_race(race_nuxt, f_rc, f_fg)
+    for race_num, slug in race_slugs:
+        print(f"\nProcessing Race {race_num}...")
+        
+        print_url = f"https://www.racenet.com.au/form-guide/horse-racing/print?meetingSlug={meeting_slug}&eventSlug={slug}&printSlug=print-form"
+        race_nuxt = fetch_nuxt_data(print_url)
+        
+        # Extract per-race metadata
+        form_data = race_nuxt.get('fetch', {})
+        form_key = next((k for k in form_data.keys() if k.startswith('FormGuidePrint')), None)
+        event_id = ''
+        if form_key:
+            match_ev = re.search(r'\d+', form_key)
+            if match_ev:
+                event_id = match_ev.group(0)
+        
+        meta = extract_event_metadata(race_nuxt, event_id)
+        if first_meta is None:
+            first_meta = meta
+        
+        dist_str = f"{meta['distance']}m" if meta['distance'] != '?' else ''
+        track_cond = meta.get('track_condition', 'Unknown')
+        weather = meta.get('weather', 'Unknown')
+        event_class = meta.get('event_class', '')
+        prize = meta.get('prize', 0)
+        
+        header_line = f"RACE {race_num}"
+        if dist_str:
+            header_line += f" — {dist_str}"
+        if event_class:
+            header_line += f" | {event_class}"
+        if prize:
+            header_line += f" | ${prize:,}"
+        
+        # Collect horse names for index
+        selections = form_data.get(form_key, {}).get('selections', []) if form_key else []
+        horse_list = []
+        for sel in selections:
+            num = sel.get('competitorNumber', '?')
+            c_id = sel.get('competitor', {}).get('id') if isinstance(sel.get('competitor'), dict) else ''
+            apollo_race = race_nuxt.get('apollo', {}).get('defaultClient', race_nuxt.get('apollo', {}).get('horseClient', {}))
+            comp = apollo_race.get(f"Competitor:{c_id}", {})
+            h_name = comp.get('name', sel.get('name', 'Unknown'))
+            scratched = sel.get('statusAbv') in ['S', 'Scratched'] or sel.get('status') in ['S', 'Scratched', 'SCRATCHED']
+            horse_list.append((num, h_name, scratched))
+        
+        active_count = sum(1 for _, _, s in horse_list if not s)
+        
+        # Write per-race files (split output)
+        rc_file = os.path.join(output_dir, f"{mm_dd} Race {race_num} Racecard.md")
+        fg_file = os.path.join(output_dir, f"{mm_dd} Race {race_num} Formguide.md")
+        
+        with open(rc_file, 'w', encoding='utf-8') as f_rc, \
+             open(fg_file, 'w', encoding='utf-8') as f_fg:
+            f_rc.write(f"{header_line}\n")
+            f_rc.write(f"Track: {track_cond} | Weather: {weather} | Rail: {rail}\n{'='*20}\n")
+            f_rc.flush()
+            
+            f_fg.write(f"{header_line}\n")
+            f_fg.write(f"Track: {track_cond} | Weather: {weather} | Rail: {rail}\n{'='*20}\n")
+            
+            process_race(race_nuxt, f_rc, f_fg)
+        
+        race_index.append({
+            'race_num': race_num,
+            'distance': dist_str,
+            'class': event_class,
+            'horses': active_count,
+            'total': len(horse_list),
+            'horse_list': horse_list,
+            'fg_file': f"{mm_dd} Race {race_num} Formguide.md",
+            'rc_file': f"{mm_dd} Race {race_num} Racecard.md",
+        })
     
-    # Write Meeting Summary with actual extracted metadata
+    # Generate Formguide Index (lightweight file for Smart Slice Protocol)
+    index_file = os.path.join(output_dir, f"{mm_dd} Formguide_Index.md")
+    with open(index_file, 'w', encoding='utf-8') as f_idx:
+        f_idx.write(f"# {date_str} {location} — Formguide Index\n\n")
+        f_idx.write("| Race | Distance | Class | Runners | Formguide | Racecard |\n")
+        f_idx.write("|------|----------|-------|---------|-----------|----------|\n")
+        for ri in race_index:
+            f_idx.write(f"| R{ri['race_num']} | {ri['distance']} | {ri['class']} | {ri['horses']}/{ri['total']} | {ri['fg_file']} | {ri['rc_file']} |\n")
+        
+        f_idx.write("\n## Horse Quick Reference\n\n")
+        for ri in race_index:
+            f_idx.write(f"### Race {ri['race_num']} ({ri['distance']})\n")
+            for num, name, scratched in ri['horse_list']:
+                status = " ❌SCR" if scratched else ""
+                f_idx.write(f"- [{num}] {name}{status}\n")
+            f_idx.write("\n")
+    
+    # Write Meeting Summary
     summary_file = os.path.join(output_dir, "Meeting_Summary.md")
     if first_meta:
         with open(summary_file, 'w', encoding='utf-8') as f_sum:
@@ -374,8 +426,11 @@ def process_meeting(overview_url, date_str, location):
             f_sum.write(f"Track Condition: {first_meta.get('track_condition', 'Unknown')}\n")
             f_sum.write(f"Weather: {first_meta.get('weather', 'Unknown')}\n")
             f_sum.write(f"Rails: {rail}\n")
-              
-    print(f"Generated {rc_file} and {fg_file}")
+    
+    print(f"\nGenerated per-race files in: {output_dir}")
+    for ri in race_index:
+        print(f"  R{ri['race_num']}: {ri['fg_file']} ({ri['horses']} runners)")
+    print(f"  Index: {mm_dd} Formguide_Index.md")
     print(f"OUTPUT DIRECTORY: {output_dir}")
 
 target_race = "all"
