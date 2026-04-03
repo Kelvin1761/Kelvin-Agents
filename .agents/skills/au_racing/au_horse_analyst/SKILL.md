@@ -66,7 +66,7 @@ ag_kit_skills:
 4. **情報補全**:使用 Wong Choi Intelligence Package(若有),或獨立搜尋動態情報。
 3.5. **[SIP-1] 場地預測容錯機制**:若預測場地為 Heavy 或天氣不穩定,執行雙軌敏感度分析(定義見 `02_algorithmic_engine.md` Step 4)。
 4. **賽事與步速定調**:判定 `[STRAIGHT SPRINT]` 或 `[STANDARD RACE]`,產生 `<第一部分>` + Speed Map。
-5. **批次解析**:每批固定 3 匹馬(BATCH_SIZE: 3),按馬號順序。**全自動推進**,嚴禁批次間詢問用戶。**批次隔離規則:每個 Batch 必須作為獨立嘅 file write 操作輸出,嚴禁將多個 Batch 合併到同一次 tool call。** Batch 1 = Chat-Stream 對話框輸出;Batch 2+ = 獨立 Chat-Stream 對話框追加輸出。若發現正在寫入 4+ 匹馬 → 立即停止拆分。
+5. **批次解析**:每批固定 3 匹馬(BATCH_SIZE: 3),按馬號順序。**全自動推進**,嚴禁批次間詢問用戶。**批次隔離規則:每個 Batch 必須作為獨立嘅 file write 操作輸出,嚴禁將多個 Batch 合併到同一次 tool call。** Batch 1 = Native-Writer 使用 write_to_file 工具建檔;Batch 2+ = 獨立 Native-Writer 使用 multi_replace_file_content 工具追加寫入。若發現正在寫入 4+ 匹馬 → 立即停止拆分。
 6. **全場最終決策**:全場完畢後,按 `06_output_templates.md` 生成 `<第三部分>` + `<第四部分>`,Top 4 按評級排序。
 
 **🚨 Anti-Laziness 錨定 + 品質守門員檢查 [SIP-ST8](每批次強制自檢):**

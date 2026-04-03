@@ -57,7 +57,7 @@ Wong Choi 偵測到 context 壓力時會主動通知:
 | 賽績數據錯 | 確認用最新版 SKILL.md + 開新 session |
 | 合規一直 FAILED | 熔斷機制會喺重試 1 次後停低。可以選擇跳過 |
 | Dashboard 搵唔到分析 | 確認檔案係 `.md` 格式,放喺正確資料夾 |
-| 寫入大檔案時 IDE 鎖死 | 確認 Agent 有使用 Chat-Stream Protocol (P19v3) 腳本(Chat-Stream 對話框即時串流)。見 P19v3 防串流鎖死協議 |
+| 寫入大檔案時 IDE 鎖死 | 確認 Agent 有使用 Native-Writer Protocol (P19v4) 腳本(Native-Writer 直接使用原生 replace_file_content 工具寫入檔案)。見 P19v3 防串流鎖死協議 |
 | `chat_stream_protocol.py` 回傳錯誤 | 檢查目標路徑是否正確、Python 3 是否可用(`python3 --version`) |
 | Agent 無視 P19v3 協議 | 開新 session。P19v3 指令喺每個 SKILL.md 底部,新 session 會重新載入 |
 

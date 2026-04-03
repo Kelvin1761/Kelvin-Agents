@@ -901,14 +901,14 @@ VALUES ('{DATE}', '{VENUE}', {RACE_NUM}, {HORSE_NUM}, '{HORSE_NAME}', '{GRADE}',
 - **統一失敗處理協議** — 所有失敗場景嘅處置方式
 - **🚨 File Writing Protocol** — 嚴禁 heredoc,所有寫入必須用 `write_to_file` / `replace_file_content`
 
-# 🚨 終極防死機 / Chat-Stream Protocol (P19v3)
+# 🚨 終極防死機 / Native-Writer Protocol (P19v4)
 
 > **歷史教訓(跨引擎反覆出現):** IDE 工具框架自動將 JSON keys 按字母排序(`CodeContent` → `TargetFile`)。當分析報告超過 200 行時,`TargetFile` 排在最後串流,IDE 客戶端無法及時知道目標檔案,導致 buffer 堆積 → Timeout → 鎖死。
 >
 > **強制規定(Priority 0 — 適用所有引擎):**
 >
 > 1. **閾值規則:** 寫入內容 < 200 行 → 正常使用 `write_to_file` / `replace_file_content`。寫入內容 ≥ 200 行 → **必須**直接在對話框 (Chat) 中即時串流輸出。
-> 2. **Safe Writer 用法:** 透過 `run_command` 執行 Python Here-Doc,將內容 Base64 編碼後傳給 `Chat-Stream (對話框即時串流)`。
+> 2. **Safe Writer 用法:** 透過 `run_command` 執行 Python Here-Doc,將內容 Base64 編碼後傳給 `Native-Writer (直接使用原生 replace_file_content 工具寫入檔案)`。
 > 3. **B2+ 追加模式:** 用 `--mode append` 取代 `replace_file_content` 的追加操作。
 > 4. **驗證:** 寫入後用 `command_status` 確認 JSON 回傳 `"success": true`。
 > 5. **嚴禁違反:** 使用 `write_to_file` 寫入 ≥ 200 行內容 = 觸發 IDE 鎖死風險 = 違規。

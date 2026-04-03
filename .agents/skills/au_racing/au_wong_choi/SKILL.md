@@ -645,7 +645,7 @@ BATCH_SIZE 由 Pre-Flight Environment Scan 決定(標準=3 / fallback=2)。
 >
 > **A. 批次結構規則:**
 > 1. **分批寫入強制性。** 按 BATCH_SIZE 分批,超出 = 違規。
-> 2. **每個 Batch = 獨立 file write (Chat-Stream Protocol (P19v3))。** 由於 Google Drive 同步限制,嚴禁直接寫入目標目錄。必須將檔案寫入 `~/.gemini/antigravity/brain/{session_id}/artifacts/`,完成後必須使用 `run_command` (`cp`) 將檔案同步至 Google Drive 目標目錄。B1 用 `write_to_file`,B2+ 用 `replace_file_content` 追加,每次更新後皆須重複執行 `cp`。
+> 2. **每個 Batch = 獨立 file write (Native-Writer Protocol (P19v4))。** 由於 Google Drive 同步限制,嚴禁直接寫入目標目錄。必須將檔案寫入 `~/.gemini/antigravity/brain/{session_id}/artifacts/`,完成後必須使用 `run_command` (`cp`) 將檔案同步至 Google Drive 目標目錄。B1 用 `write_to_file`,B2+ 用 `replace_file_content` 追加,每次更新後皆須重複執行 `cp`。
 > 3. **VERDICT BATCH 獨立且必須極度嚴格遵循模板。** Part 3 + Part 4 + CSV 必須為獨立 tool call。**絕對不允許**使用簡化自創格式。必須包含 `06_output_templates.md` 規定之:`Speed Map 回顧`、`Top 4 位置精選 (強制包含 🥇第一選 清單結構及評級>✅數鐵律)`、`Top 2 入三甲信心度`、`🎰 Exotic 組合投注建議`、以及第四部分的 `分析陷阱`。任何遺漏視同嚴重違規!*(執行 Verdict 前必須在內心清單覆誦檢查這 5 大欄位)*。
 > 4. **截斷恢復:** 若被 output token limit 截斷 → BATCH_SIZE 降為 2,重做該 batch。
 >
@@ -678,7 +678,7 @@ BATCH_SIZE 由 Pre-Flight Environment Scan 決定(標準=3 / fallback=2)。
 
 ```
 FOR EACH batch:
-  1. 📝 WRITE (Chat-Stream) — 獨立 tool call 寫入至 Artifact 暫存,緊接 CP 複製至目標目錄(≤ BATCH_SIZE 匹馬)
+  1. 📝 WRITE (Native-Writer) — 獨立 tool call 寫入至 Artifact 暫存,緊接 CP 複製至目標目錄(≤ BATCH_SIZE 匹馬)
   2. 🔍 SCAN — view_file 驗證 7 headers(🔬⚡📋🔗📊💡⭐)
   3. 🐍 VALIDATE — 執行 Python 驗證:
      python scripts/validate_analysis.py "[ANALYSIS_PATH]"
@@ -846,13 +846,13 @@ VALUES ('{DATE}', '{VENUE}', {RACE_NUM}, {HORSE_NUM}, '{HORSE_NAME}', '{GRADE}',
 - **統一失敗處理協議** — 所有失敗場景嘅處置方式
 - **🚨 File Writing Protocol** — 嚴禁 heredoc,所有寫入必須用 `write_to_file` / `replace_file_content`
 
-# 🚨 終極防死機 / Chat-Stream Protocol (P19v3)
+# 🚨 終極防死機 / Native-Writer Protocol (P19v4)
 
-> **歷史教訓:** 無論是 `write_to_file` 還是 `Chat-Stream (對話框即時串流)`,當夾帶超過 100 行文字的 JSON payload 時都會導致 UI 失去進度條(假死機),且 Google Drive 目標檔案經常因同步而被 OS 鎖死(真死機)。
+> **歷史教訓:** 無論是 `write_to_file` 還是 `Native-Writer (直接使用原生 replace_file_content 工具寫入檔案)`,當夾帶超過 100 行文字的 JSON payload 時都會導致 UI 失去進度條(假死機),且 Google Drive 目標檔案經常因同步而被 OS 鎖死(真死機)。
 >
 > **強制規定(Priority 0):**
 >
 > 1. **全面禁用大型檔案寫入工具:** 任何大段落生成(如整匹馬的分析、Verdict 綜合定奪),**絕對禁止**使用 `write_to_file` 或 `replace_file_content` 等 Tool,也禁止呼叫 Python 寫入(會遇到 GD Lock)。
-> 2. **對話框即時串流 (Chat-Stream):** 所有文字必須直接在「對話框 (Chat)」中輸出。向用戶展示打字進度,以證明沒有死機。
+> 2. **直接使用原生 replace_file_content 工具寫入檔案 (Native-Writer):** 所有文字必須直接在「對話框 (Chat)」中輸出。向用戶展示打字進度,以證明沒有死機。
 > 3. **用戶代勞:** 分析結果輸出後,由用戶自行 Copy & Paste 到 Google Drive 檔案。
 > 4. **只寫小型 Log:** 你只能用 `replace_file_content` 寫入如 `_session_state.md` 或 `task.md` 這些微型檔案。

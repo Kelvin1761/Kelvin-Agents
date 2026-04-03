@@ -270,20 +270,20 @@ Step 5.5 數據庫歸檔功能需要 MCP Servers 運作,但即使未安裝也不
 按照 `resources/03_output_format.md` Section 5 向用戶匯報。
 將 `_session_issues.md` Status 更新為 `COMPLETED`。
 
-# 🚨 防串流鎖死協議 (P19v3 — Chat-Stream Protocol)
+# 🚨 防串流鎖死協議 (P19v3 — Native-Writer Protocol)
 
 > **歷史教訓(跨引擎反覆出現):** IDE 工具框架自動將 JSON keys 按字母排序(`CodeContent` → `TargetFile`)。當分析報告超過 200 行時,`TargetFile` 排在最後串流,IDE 客戶端無法及時知道目標檔案,導致 buffer 堆積 → Timeout → 鎖死。
 >
 > **強制規定(Priority 0 — 適用所有引擎):**
 >
-> 1. **閾值規則:** 寫入內容 < 200 行 → 正常使用 `write_to_file` / `replace_file_content`。寫入內容 ≥ 200 行 → **必須**使用 Chat-Stream Protocol (P19v3) 腳本。
-> 2. **Safe Writer 用法:** 透過 `run_command` 執行 Python Here-Doc,將內容 Base64 編碼後傳給 `Chat-Stream (對話框即時串流)`:
+> 1. **閾值規則:** 寫入內容 < 200 行 → 正常使用 `write_to_file` / `replace_file_content`。寫入內容 ≥ 200 行 → **必須**使用 Native-Writer Protocol (P19v4) 腳本。
+> 2. **Safe Writer 用法:** 透過 `run_command` 執行 Python Here-Doc,將內容 Base64 編碼後傳給 `Native-Writer (直接使用原生 replace_file_content 工具寫入檔案)`:
 >    ```
 >    run_command: python3 << 'SAFE_WRITE'
 >    import base64, subprocess, sys
 >    content = """...你的分析內容..."""
 >    b64 = base64.b64encode(content.encode("utf-8")).decode("ascii")
->    subprocess.run([sys.executable, "Antigravity/.agents/scripts/Chat-Stream (對話框即時串流)",
+>    subprocess.run([sys.executable, "Antigravity/.agents/scripts/Native-Writer (直接使用原生 replace_file_content 工具寫入檔案)",
 >        "--target", "TARGET_PATH", "--mode", "overwrite", "--content", b64])
 >    SAFE_WRITE
 >    ```
@@ -292,7 +292,7 @@ Step 5.5 數據庫歸檔功能需要 MCP Servers 運作,但即使未安裝也不
 > 5. **嚴禁違反:** 使用 `write_to_file` 寫入 ≥ 200 行內容 = 觸發 IDE 鎖死風險 = 違規。
 
 # Recommended Tools & Assets
-- **Tools**: `search_web`, `write_to_file`, `replace_file_content`, `multi_replace_file_content`, `view_file`, `run_command` (Chat-Stream Protocol (P19v3))
+- **Tools**: `search_web`, `write_to_file`, `replace_file_content`, `multi_replace_file_content`, `view_file`, `run_command` (Native-Writer Protocol (P19v4))
 - **MCP Tools (P32 新增)**:
   - `read_graph` / `create_entities` / `create_relations` — Knowledge Graph 記憶(傷兵狀態、防守大閘、跨 session 球員筆記)
   - `read_query` / `write_query` / `list_tables` — SQLite 數據庫查詢(Parlay 命中率、球員 Props 歷史追蹤)
