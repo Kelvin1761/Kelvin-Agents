@@ -1,5 +1,5 @@
 # SIP Changelog (HKJC)
-> 合規 Agent 每次掃描時讀取此文件，特別檢查最近 2 次更新嘅 SIP 是否被正確套用。
+> 合規 Agent 每次掃描時讀取此文件,特別檢查最近 2 次更新嘅 SIP 是否被正確套用。
 
 ## Latest Updates
 
@@ -12,9 +12,9 @@
 - **Regression Check:** [What to look for if Analyst reverts to old behavior]
 -->
 ### 2026-04-01 — SIP-ST33: AWT 排序風險加強修正 (AWT Ranking Risk Enhancement)
-- **Changed:** SIP-RR20 排名風險折扣新增 4 項 AWT 專用修正因子：後追外檔(-0.5)、連勝加磅(-0.5)、見習首配(-0.5)、醫療風險(-0.25)
+- **Changed:** SIP-RR20 排名風險折扣新增 4 項 AWT 專用修正因子:後追外檔(-0.5)、連勝加磅(-0.5)、見習首配(-0.5)、醫療風險(-0.25)
 - **Target File:** `10c_track_awt.md`
-- **Impact:** AWT 賽事 Pick 1/2 排序更準確，減少 Pick 3/4 超越率
+- **Impact:** AWT 賽事 Pick 1/2 排序更準確,減少 Pick 3/4 超越率
 - **Regression Check:** 若 AWT 後追型+非1-3檔馬仍穩居 Pick 1 → SIP 未生效
 
 ### 2026-04-01 — SIP-ST32: AWT 老馬輕磅回師冷門升級 (AWT Veteran Light Weight Return)
@@ -27,7 +27,7 @@
 ### 2026-04-01 — SIP-ST31: AWT S-/A+ 品質閘門加強 (AWT Elite Rating Quality Gate)
 - **Changed:** SIP-HV15 S-品質閘門新增 AWT 專用第 4 項閘門: 需≥1 AWT勝或≥3 AWT入前四才可維持S-/A+
 - **Target File:** `10c_track_awt.md`
-- **Impact:** AWT 賽事 S-/A+ 評級更可靠，防止僅有 1-2 次 AWT 入位即獲最高評級
+- **Impact:** AWT 賽事 S-/A+ 評級更可靠,防止僅有 1-2 次 AWT 入位即獲最高評級
 - **Data Points:** R1 #3 銳一 (S-, 僅1次AWT亞軍→不入前四)
 - **Regression Check:** 若 AWT 僅1-2次入位馬仍獲 S- → SIP 未生效
 
@@ -41,14 +41,14 @@
 ### 2026-03-29 — SIP-RR22: 5-6歲突然贏馬回落 (Mid-Age Surprise Win Fallback)
 - **Changed:** Step 14.2B 新增降級因素 — 5-6歲 + 上仗勝出 + 近10仗入三甲≤2次(含勝出) → Top 4 排序降半級
 - **Target File:** `06_rating_aggregation.md`
-- **Impact:** 5-6歲 inconsistent 馬匹突然贏馬後下仗被正確壓低；長期上名(≥4次入三甲)豁免
+- **Impact:** 5-6歲 inconsistent 馬匹突然贏馬後下仗被正確壓低;長期上名(≥4次入三甲)豁免
 - **Regression Check:** 若5歲馬近10仗僅1次入三甲(含該勝)但下仗仍維持原評級 → SIP 未生效
-- **Design:** 與「贏馬回落風險」(≥7歲)互補。≤4歲受 Rising Star 保護，5-6歲用此規則，≥7歲用現有規則
+- **Design:** 與「贏馬回落風險」(≥7歲)互補。≤4歲受 Rising Star 保護,5-6歲用此規則,≥7歲用現有規則
 
 ### 2026-03-22 — OBS-004: B-級冷門掃描 (B-Grade Longshot Scan) [🟡觀察中]
 - **Changed:** Step 14.2D 新增 — B-評級+最輕磅+好檔(≤4)+Top騎師+≥1400m → 標記🏂B-冷門觀察
 - **Target File:** `06_rating_aggregation.md`
-- **Impact:** B-冷門馬在冷門馬訊號中被列出（暫不自動升級）
+- **Impact:** B-冷門馬在冷門馬訊號中被列出(暫不自動升級)
 - **Data Points:** R8 #13 紫荊拼搏 (B-, 班德禮+檔2+116lb最輕→1st 15x)
 - **Status:** 🟡 觀察中 — 需 ≥3 案例確認
 
@@ -65,7 +65,7 @@
 - **Regression Check:** 若 ≥2項配備變動+一線騎師仍未觸發練馬師訊號 → SIP 未生效
 
 ### 2026-03-19 — SIP-HV3: 臨門一腳缺失 (Closing Kick Deficit) [強化版]
-- **Changed:** Step 14.2B 分兩級：(A) 全前5有三甲但0勝→降半級 (B) 全前5但0三甲→穩定性強制➖+降半級
+- **Changed:** Step 14.2B 分兩級:(A) 全前5有三甲但0勝→降半級 (B) 全前5但0三甲→穩定性強制➖+降半級
 - **Target File:** `06_rating_aggregation.md`
 - **Impact:** 「穩定地平庸(4th/5th常客)」唔再獲穩定性✅
 - **Regression Check:** 若近4仗全4th/5th嘅馬匹仍獲穩定性✅ → SIP 未生效
@@ -85,7 +85,7 @@
 ### 2026-03-19 — SIP-HV6: 醫療事故自動作廢 (Medical Incident Auto-Void)
 - **Changed:** Step 12 新增醫療事故(流鼻血/跛行)單一因素自動觸發「上仗不可作準」+ 穩定性排除
 - **Target File:** `05_forensic_eem.md`
-- **Impact:** 流鼻血/跛行場次結果從穩定性計算中完全排除，避免虛假❌
+- **Impact:** 流鼻血/跛行場次結果從穩定性計算中完全排除,避免虛假❌
 - **Regression Check:** 若有流鼻血紀錄的馬匹穩定性仍將該仗計入 → SIP 未生效
 
 ### 2026-03-19 — SIP-HV7: HV 1650m 外疊風險擴展 (HV 1650m Outer Draw Risk Extension)
@@ -113,19 +113,19 @@
 - **Regression Check:** 若 HV 1800m 檔11 馬匹仍被致命死檔降級 → SIP 未生效
 
 ### 2026-03-19 — SIP-HV11: 入位常客降級 (Bracket Runner Downgrade)
-- **Changed:** Step 14.2B 新增降級因素：近4仗≥3仗前6但0三甲 → 穩定性⚠️➖+排序降半級
+- **Changed:** Step 14.2B 新增降級因素:近4仗≥3仗前6但0三甲 → 穩定性⚠️➖+排序降半級
 - **Target File:** `06_rating_aggregation.md`
 - **Impact:** 「永遠差少少」型馬匹被正確壓低評級
 - **Regression Check:** 若近4仗4/5/4/6但0三甲嘅馬匹仍獲穩定性✅ → SIP 未生效
 
 ### 2026-03-19 — SIP-HV12: 下行軌跡懲罰 (Downward Trajectory Penalty)
-- **Changed:** Step 14.2B 新增降級因素：近≥3仗連續下滑 → 穩定性降一級
+- **Changed:** Step 14.2B 新增降級因素:近≥3仗連續下滑 → 穩定性降一級
 - **Target File:** `06_rating_aggregation.md`
 - **Impact:** 狀態正在惡化嘅馬匹被正確壓低評級
 - **Regression Check:** 若近績3→4→5→10下行軌跡嘅馬匹穩定性維持不變 → SIP 未生效
 
 ### 2026-03-19 — SIP-HV13: 全場最輕磅中長途冷門 (Lightest Weight Mid-Long Distance Longshot)
-- **Changed:** Step 14.2C 冷門掃描新增觸發訊號：≥1650m + 全場最輕磅(或差≤2lb) + 近績差
+- **Changed:** Step 14.2C 冷門掃描新增觸發訊號:≥1650m + 全場最輕磅(或差≤2lb) + 近績差
 - **Target File:** `06_rating_aggregation.md`
 - **Impact:** 中長途賽全場最輕磅馬匹即使近績差亦會被冷門掃描捕捉
 - **Data Points:** R9 爆得美麗(117lb→1st 7.1x) + R6 竣誠駒(116lb→2nd 15x)

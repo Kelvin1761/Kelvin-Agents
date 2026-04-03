@@ -10,9 +10,9 @@ version: 1.1.0
 **CRITICAL**: You must communicate with the user and generate all tool logic/output in English, structured cleanly.
 
 # Failure Protocol
-- 若 Python 爬蟲腳本執行失敗 → 檢查錯誤訊息，嘗試修正並重試（最多 3 次）
-- 若 Racenet 返回 Cloudflare 攔截 → 通知用戶，建議稍後重試
-- 若某場賽事數據提取不完整 → 標記為 `[提取失敗 — 需人手補充]`，繼續提取其他場次
+- 若 Python 爬蟲腳本執行失敗 → 檢查錯誤訊息,嘗試修正並重試(最多 3 次)
+- 若 Racenet 返回 Cloudflare 攔截 → 通知用戶,建議稍後重試
+- 若某場賽事數據提取不完整 → 標記為 `[提取失敗 — 需人手補充]`,繼續提取其他場次
 - 若連續 3 場提取失敗 → 停止並通知用戶
 
 ### 🎯 Objective

@@ -1,4 +1,4 @@
-<!-- 此檔案為 session-specific 工作數據，每次分析會話開始時由 AU Race Extractor 覆寫。非永久資源文件，不應手動編輯。 -->
+<!-- 此檔案為 session-specific 工作數據,每次分析會話開始時由 AU Race Extractor 覆寫。非永久資源文件,不應手動編輯。 -->
 # BATCH DATA
 
 [5] Ole Royale (9)

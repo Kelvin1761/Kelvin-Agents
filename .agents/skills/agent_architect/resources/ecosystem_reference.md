@@ -182,22 +182,22 @@ The Antigravity Kit (`.agent/`) and custom agents (`.agents/`) coexist in the wo
 | **HKJC Reflector** | brainstorming | 覆盤分析生成 SIP 時 | 🤖 自動 |
 | **AU Reflector** | brainstorming | 覆盤分析生成 SIP 時 | 🤖 自動 |
 | **NBA Reflector** | brainstorming | 覆盤分析生成 SIP 時 | 🤖 自動 |
-| **HKJC Wong Choi** | systematic-debugging | 合規 FAILED 2 次 → 3-Phase 閉環（診斷 → 修正 → 重做 Batch） | 🤖 自動 |
-| **AU Wong Choi** | systematic-debugging | 合規 FAILED 2 次 → 3-Phase 閉環（診斷 → 修正 → 重做 Batch） | 🤖 自動 |
+| **HKJC Wong Choi** | systematic-debugging | 合規 FAILED 2 次 → 3-Phase 閉環(診斷 → 修正 → 重做 Batch) | 🤖 自動 |
+| **AU Wong Choi** | systematic-debugging | 合規 FAILED 2 次 → 3-Phase 閉環(診斷 → 修正 → 重做 Batch) | 🤖 自動 |
 | **NBA Wong Choi** | systematic-debugging, brainstorming | 品質掃描 FAILED / 自檢總結 | 🤖 自動 |
 | **HKJC Horse Analyst** | systematic-debugging | QG-CHECK 連續失敗 2 次 → 根因分析 → 針對性修正 | 🤖 自動 |
 | **AU Horse Analyst** | systematic-debugging | QG-CHECK 連續失敗 2 次 → 根因分析 → 針對性修正 | 🤖 自動 |
 | **Game Producer** | brainstorming, plan-writing, systematic-debugging | 新功能 / 設計輸出 / QA 失敗 | 🤖 自動 |
 
 **All Wong Choi engines** also reference AG Kit orchestrator patterns: Agent Boundary Enforcement + Conflict Resolution + Status Board.
-**All Wong Choi + Analyst debugging** includes **硬性熔斷 (Circuit Breaker)** — 自動修復最多執行 1 次，防止無限 loop。
+**All Wong Choi + Analyst debugging** includes **硬性熔斷 (Circuit Breaker)** — 自動修復最多執行 1 次,防止無限 loop。
 
 ### Loading Principle
 ```
-Agent 需要 AG Kit skill 時：
+Agent 需要 AG Kit skill 時:
 1. view_file `.agent/skills/[skill]/SKILL.md`
-2. 按需載入原則（lazy-load）— 唔會預先讀取
-3. 只讀取，唔複製內容到自己嘅 SKILL.md
+2. 按需載入原則(lazy-load)— 唔會預先讀取
+3. 只讀取,唔複製內容到自己嘅 SKILL.md
 ```
 
 ### Key Paths

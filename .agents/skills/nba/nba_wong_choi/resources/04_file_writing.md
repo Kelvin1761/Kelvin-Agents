@@ -17,6 +17,6 @@
 1. **每場分析完成後** — 使用 `write_to_file` 建立 `Game_[X]_[Teams]_Full_Analysis.txt`
 2. **最終報告** — 使用 `write_to_file` 建立 `NBA_Analysis_Report.txt` + `NBA_Banker_Report.txt`
 3. **若需要驗證寫入成功** — 使用 `view_file` 讀取最後 20 行確認
-4. **`run_command` 只用於**：執行 Python/shell 腳本、搜尋 grep、讀取檔案清單等輕量指令
+4. **`run_command` 只用於**:執行 Python/shell 腳本、搜尋 grep、讀取檔案清單等輕量指令
 
-> ✅ 遵守此協議可確保所有寫入操作立即完成，不會有任何掛起風險。
+> ✅ 遵守此協議可確保所有寫入操作立即完成,不會有任何掛起風險。

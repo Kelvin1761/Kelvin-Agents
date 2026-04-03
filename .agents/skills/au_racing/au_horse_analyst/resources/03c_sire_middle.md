@@ -4,8 +4,8 @@
 | 種馬 | AWD | 場地 | 特徵 |
 |:---|:---|:---|:---|
 | Zoustar | 1200-1400m | Good-Soft | 變速力強。多 Type B (Turn-of-Foot)。偏短途端 |
-| Written Tycoon | 1200-1600m | 全天候 | 多功能，短途到中距離均可。子嗣質量參差 |
-| Shalaa | 1200-1600m | Good 為主 | 歐洲血統。需時成熟，3 歲秋季後進步 |
+| Written Tycoon | 1200-1600m | 全天候 | 多功能,短途到中距離均可。子嗣質量參差 |
+| Shalaa | 1200-1600m | Good 為主 | 歐洲血統。需時成熟,3 歲秋季後進步 |
 | Not A Single Doubt | 1200-1600m | Good-Soft 5 | 穩定中距離產馬。2YO-3YO 表現佳。偶有 Heavy 贏績 |
 | Exceed And Excel | 1100-1400m | Good-Soft | 速度型但最佳介乎 Sprint-Mile。高級別賽事表現佳 |
 | More Than Ready | 1200-1600m | Good-Soft | 多功能美國血。2YO 早熟但亦有中距離子嗣 |

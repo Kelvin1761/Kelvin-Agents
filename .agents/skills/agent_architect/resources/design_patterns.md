@@ -94,8 +94,8 @@ This creates a persistent data pipeline across the subagent boundary.
 **Problem**: When multiple batches of analysis are combined into a single file write operation, the LLM's attention budget is spread thin. Later batches/items get compressed to 50% or less of the depth of earlier ones. This was observed repeatedly in Race 5-6 analysis sessions.
 
 **Solution**: Enforce strict 1-batch-per-write-operation rule:
-- Batch 1 = `write_to_file` (create new file)
-- Batch 2+ = individual `replace_file_content` (append to file)
+- Batch 1 = Chat-Stream 對話框輸出 (streaming in chat)
+- Batch 2+ = Chat-Stream 對話框追加輸出 (append streaming in chat)
 - Self-check: If about to write 4+ items in one tool call → STOP and split
 
 **Anti-pattern**: ❌ "Write all 12 horses to the analysis file"
@@ -165,8 +165,8 @@ Benefit: Cross-session reuse, orchestrator context window relief, single source 
 **Problem**: Using `cat << EOF` or heredoc syntax via `run_command` to write large text blocks causes terminal processes to hang indefinitely. Known production incident: 9+ hour hang.
 
 **Solution**: NEVER use heredoc for writing analysis/report content. Use dedicated file writing tools:
-- `write_to_file` for new files
-- `replace_file_content` for appending/editing
+- Chat-Stream 對話框輸出 for new content
+- Chat-Stream 對話框追加 for appending
 - `run_command` ONLY for executing scripts (Python, shell)
 
 Include this as an explicit ⚠️ CRITICAL warning in any agent that writes files.

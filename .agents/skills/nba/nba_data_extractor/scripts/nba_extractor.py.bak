@@ -383,7 +383,6 @@ def fetch_player_gamelog(player_id, player_name, n=10):
 # ==========================================
 def fetch_player_h2h(player_id, player_name, opp_abbr):
     """提取球員對住特定球隊的歷史對戰數據 (當季 + 上季)"""
-    return None
     if not NBA_API_AVAILABLE:
         return None
     try:
@@ -480,7 +479,6 @@ def fetch_all_player_advanced_stats():
 # ==========================================
 def fetch_player_splits(player_id, player_name):
     """提取球員 Home/Away 及 Rest Day Splits"""
-    return None
     if not NBA_API_AVAILABLE:
         return None
     try:
@@ -1014,21 +1012,10 @@ def generate_overview_md(games, team_stats, odds_data):
         home = g['home']
         a_stats = team_stats.get(away['abbreviation'], {})
         h_stats = team_stats.get(home['abbreviation'], {})
-        
-        # Get team spread
-        game_odds = odds_data.get(g['tag']) if odds_data else None
-        spread = game_odds.get('spread') if game_odds else None
-        blowout_warn = ""
-        if spread is not None:
-            if abs(spread) >= 8.5:
-                blowout_warn = f"\n- ⚠️ **[BLOWOUT RISK 大炒高危]**: 讓分為 {spread}，極度危險！請封殺當家球星的 1B 正盤 (PTS Over)！改買苦工/籃板/助攻或放於 1A 保本。"
-            else:
-                blowout_warn = f"\n- ⚖️ [膠著分差預警]: 讓分為 {spread}，適合全陣突擊 1B 正盤。"
-
         lines.append(f"### {g['name']} ({g['tag']})")
         lines.append(f"- 開賽時間: {g['date']}")
         lines.append(f"- {away['abbreviation']} DEF: 第{a_stats.get('DEF_RANK','?')} | PACE: {a_stats.get('PACE','?')}")
-        lines.append(f"- {home['abbreviation']} DEF: 第{h_stats.get('DEF_RANK','?')} | PACE: {h_stats.get('PACE','?')}{blowout_warn}")
+        lines.append(f"- {home['abbreviation']} DEF: 第{h_stats.get('DEF_RANK','?')} | PACE: {h_stats.get('PACE','?')}")
         lines.append("")
 
     return "\n".join(lines)

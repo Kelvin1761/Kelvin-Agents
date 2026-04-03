@@ -60,14 +60,14 @@ SIP-2: [建議標題]
 ...
 
 ⚠️ 單場特殊因素 (Non-Systemic, 僅供記錄)
-- [不建議修改模型的個別事件，如球員受傷離場、被驅逐、Blowout 垃圾時間等]
+- [不建議修改模型的個別事件,如球員受傷離場、被驅逐、Blowout 垃圾時間等]
 ```
 
 ---
 
 ## SIP Changelog 更新格式
 
-每次覆盤後，若有新 SIP 提出，必須更新 `{TARGET_DIR}/_sip_changelog.md`：
+每次覆盤後,若有新 SIP 提出,必須更新 `{TARGET_DIR}/_sip_changelog.md`:
 
 ```
 ## SIP-[YYYY-MM-DD]-[序號]: [標題]
@@ -80,7 +80,7 @@ SIP-2: [建議標題]
 - **驗證結果**: [若已驗證 — 效果如何]
 ```
 
-若 `_sip_changelog.md` 不存在，以以下格式建立：
+若 `_sip_changelog.md` 不存在,以以下格式建立:
 ```
 # NBA SIP Changelog
 > 追蹤所有 Systemic Improvement Proposals 嘅提出、審批同驗證。

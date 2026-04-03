@@ -35,7 +35,7 @@ To execute this skill effectively, you must utilize the provided scripts, exampl
     *   `[MM-DD] 全日出賽馬匹資料 (PDF).md` (e.g., `03-04 全日出賽馬匹資料 (PDF).md` - **Extract this ONLY ONCE per race meeting**)
 
 6.  **🚀 高速訪問協議 (Turbo Access Protocol)**:
-    一旦分場數據被存檔，後續任何針對單一場次的讀取請求，直接 `view_file` 讀取對應場次嘅獨立檔案即可，嚴禁重複執行 Web 爬取或 Playwright 流程。
+    一旦分場數據被存檔,後續任何針對單一場次的讀取請求,直接 `view_file` 讀取對應場次嘅獨立檔案即可,嚴禁重複執行 Web 爬取或 Playwright 流程。
 
 ---
 
@@ -72,12 +72,12 @@ Append this raw output directly into `[MM-DD] 全日出賽馬匹資料 (PDF).md`
 ### 2. Racecard Extraction (排位表)
 When extracting from the Racecard, ensure the output format strictly matches `examples/racecard_output_example.txt`.
 
-#### 第一部分：賽事資料 (Race Info)
+#### 第一部分:賽事資料 (Race Info)
 [場次] - [賽事名稱] [日期], [星期], [地點], [時間]
 [場地], [賽道], [路程]
 獎金: [獎金金額], 評分: [評分範圍], [班次]
 
-#### 第二部分：馬匹資料 (Horse Info)
+#### 第二部分:馬匹資料 (Horse Info)
 For every horse, you MUST output the data as explicit key-value pairs. Reference `examples/racecard_output_example.txt` for the exact string format.
 
 #### Extraction Method: Python Script

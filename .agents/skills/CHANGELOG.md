@@ -2,6 +2,26 @@
 
 ---
 
+## P33 — Anti-Streaming-Lock Protocol（防串流鎖死協議）
+
+**日期：** 2026-04-03
+**影響版本：** HKJC Wong Choi v2.1.0 + AU Wong Choi v2.1.0 + NBA Wong Choi v2.1.0
+
+| 變更 | 說明 |
+|:---|:---|
+| **Bug Fix** | IDE 工具框架自動將 JSON keys 按字母排序（`CodeContent` → `TargetFile`），大型分析報告（≥200 行）導致 buffer 堆積 → Timeout → 鎖死 |
+| **根本原因** | `TargetFile`（T 字頭）永遠排在 `CodeContent`（C 字頭）之後串流，IDE 客戶端無法及時知道目標檔案 |
+| **新增** | `safe_file_writer.py` 核心腳本（Base64 解碼 → 寫入磁碟，透過 `run_command` 執行） |
+| **新增** | `safe_write.md` workflow（完整操作指引） |
+| **修改** | 3 個 Wong Choi SKILL.md 底部注入 P33 協議段落 |
+| **修改** | `race_analysis_workflow.md` 加入 P33 CAUTION |
+| **修改** | `OPERATOR_GUIDE.md` 加入 3 行 troubleshooting |
+| **修改** | `.antigravityrules` + `.cursorrules` 加入全域規則 |
+| **閾值** | < 200 行 → 原生工具；≥ 200 行 → Safe Writer 腳本 |
+| **測試** | 15 項單元測試全部通過（含 2000+ 行壓力測試、中文 Emoji、特殊字元） |
+
+---
+
 ## P31 — MUST_INVOKE_VALIDATOR（強制 Validator 調用）
 
 **日期：** 2026-03-29
