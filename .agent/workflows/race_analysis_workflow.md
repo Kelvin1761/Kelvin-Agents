@@ -6,6 +6,14 @@ description: Wong Choi Engine P19v2 賽事分析強制標準流程 (Race Analysi
 當執行或被請求進行任何香港或澳洲賽馬的賽事分析 (Race Analysis)，以及編寫 `Race X Analysis.md` 的時候，AI 必須嚴格執行以下流程，以 100% 確保符合 Wong Choi Engine 輸出的 P19v2 格式解析標準。
 
 > [!CAUTION]
+> **防串流鎖死協議 (P19v5)：** 
+> 1. **`write_to_file` 完全禁用** — 即使目標為 `/tmp` 也會卡死（已實測確認）。
+> 2. **`shutil.move` 禁用** — 跨裝置搬移觸發 FileProvider 死鎖。
+> 3. **所有檔案寫入必須使用：** `run_command` + heredoc → `python3 /tmp/safe_file_writer.py` (cp-based)。
+> 4. 詳見 `.agent/workflows/safe_write.md`。
+> 5. 每個 session 開始前必須先執行 Step 0 建立 `/tmp/safe_file_writer.py`。
+
+> [!CAUTION]
 > **澳洲賽馬 (AU Racing) 專屬抽取限制：** 處理 Racenet 等賽事時，嚴禁使用 `browser_subagent` 逐場手動複製。AI 必須遵守 `au-wong-choi` 嘅 Lightpanda Fast Batch Protocol，先執行批量抽取腳本 (例如 `_temporary_files/xxx_extractor.py`) 取得全賽日 Markdown 檔案後，才能開始分析。
 
 ## 第一階段：Template Injection (強制打底)

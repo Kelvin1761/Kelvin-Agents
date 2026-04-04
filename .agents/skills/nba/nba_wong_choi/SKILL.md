@@ -48,13 +48,23 @@ ag_kit_skills:
 >    - **字數門檻:** 每場賽事分析 ≥400 字。
 >    - **骨架 [FILL] 零容忍:** 若寫完嘅分析仍然包含 `[FILL]` → 立即補回。
 
+# 🚨 INJURY_GUARD_PROTOCOL (新增 — Priority 0)
+
+> **歷史教訓:** 抓取資料有時會包含長賽季報銷的球星(如 Ja Morant)，如果只盲目看 L10 場均高就選他，會發生嚴重的常識錯誤(Hallucination)。
+>
+> **強制規定(Priority 0):**
+> 1. **STATUS CHECK:** 必須手動或用腳本檢查 API `status` 欄位（即使其回傳 `None` 或沒有明確寫明）。
+> 2. **常識與知識庫 (World Knowledge Override):** 若遇上頂級球星，分析前絕對要套用常識判斷他是否已受傷報銷，嚴禁盲目把傷兵放進分析報告！
+
 # 🚨 DATA_VISIBILITY_PROTOCOL(P19v3 — 新增 — Priority 0)
 
-> **歷史教訓:** LLM 可能為咗慳 Token,將「L10 逐場」原始數組隱藏,或者只係喺第一個 Combo 寫出深度分析,後續組合(Combo 2 onwards)經常被求其帶過。
+> **歷史教訓:** LLM 可能為咗慳 Token,將「L10 逐場」原始數組隱藏,或者只係喺第一個 Combo 寫出深度分析,後續組合(Combo 2 onwards)經常被求其帶過，甚至把兩支 Leg 合併在一個表格內，或者以 Python string f-template 自動灌水。
 >
 > **強制規定(Priority 0):**
 > 1. **EXPLICIT L10 ARRAY:** 每一個 Leg(不論是 Combo 1 還是 Combo 2, 3)必須明確印出 `L10 逐場:[數組]`,絕對不允許用「均值」替代或者隱藏。
 > 2. **DEEP ANALYSIS FOR ALL COMBO LEGS:** 所有後續 Combo(Combo 2 onwards)嘅 Leg 分析,必須與 Combo 1 具備同等深度,強制作者包含:「核心邏輯」、「⚠️ 最大不達標風險」與「💪 克服風險信心度」。嚴禁輕輕帶過!
+> 3. **FULLY SEPARATED COMBO BLOCKS (反腳本與反合併):** SGM 2-Leg 以上組合，必須為每一支 Leg 開設**獨立的板塊與獨立的 `| 🔢 數理引擎 | 🧠 邏輯引擎 |` 表格**，例如：`### 🧩 Leg 1: ...` + 它的表，接著 `### 🧩 Leg 2: ...` + 它的表。嚴防兩者塞進同一個表格內。
+> 4. **ANTI-SCRIPTING NATIVE LOGIC:** 絕不允許使用 Python `{placeholder}` 字串模板來自動產出分析！必須針對每場球員對位原生生成香港語境下的深度文字。
 
 # 🚨 OUTPUT_TOKEN_SAFETY(P28 — 2026-04 新增 — Priority 0)
 

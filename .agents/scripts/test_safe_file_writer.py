@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test suite for safe_file_writer.py
+Test suite for safe_file_writer.py (WLTM Edition)
 Run: python3 test_safe_file_writer.py
 """
 
@@ -20,13 +20,18 @@ SAFE_WRITER = SCRIPT_DIR / "safe_file_writer.py"
 
 
 def run_writer(target: str, content: str, mode: str = "overwrite",
-               dry_run: bool = False, use_stdin: bool = False) -> dict:
+               dry_run: bool = False, use_stdin: bool = False,
+               no_wltm: bool = False, timeout: int = None) -> dict:
     """Helper to invoke safe_file_writer.py and return parsed JSON result."""
     b64 = base64.b64encode(content.encode("utf-8")).decode("ascii")
 
     cmd = [sys.executable, str(SAFE_WRITER), "--target", target, "--mode", mode]
     if dry_run:
         cmd.append("--dry-run")
+    if no_wltm:
+        cmd.append("--no-wltm")
+    if timeout is not None:
+        cmd.extend(["--timeout", str(timeout)])
 
     if use_stdin:
         cmd.append("--stdin")
@@ -42,8 +47,88 @@ def run_writer(target: str, content: str, mode: str = "overwrite",
                 "returncode": result.returncode}
 
 
-class TestSafeFileWriter(unittest.TestCase):
-    """Core functionality tests."""
+class TestSafeFileWriterWLTM(unittest.TestCase):
+    """WLTM (Write-Local-Then-Move) mode tests."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix="safe_writer_test_")
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    # ─── WLTM Basic ────────────────────────────────────────────────
+
+    def test_01_wltm_basic_write(self):
+        """WLTM mode writes and moves file correctly."""
+        target = os.path.join(self.tmpdir, "wltm_test.md")
+        content = "# WLTM Test\n\nThis was written via WLTM.\n"
+        result = run_writer(target, content)
+        self.assertTrue(result["success"])
+        self.assertEqual(result["method"], "wltm")
+        self.assertEqual(Path(target).read_text(encoding="utf-8"), content)
+
+    def test_02_wltm_overwrite_existing(self):
+        """WLTM mode overwrites existing files."""
+        target = os.path.join(self.tmpdir, "wltm_overwrite.md")
+        Path(target).write_text("old content", encoding="utf-8")
+        new_content = "new content via WLTM\n"
+        result = run_writer(target, new_content, mode="overwrite")
+        self.assertTrue(result["success"])
+        self.assertEqual(result["method"], "wltm")
+        self.assertEqual(Path(target).read_text(encoding="utf-8"), new_content)
+
+    def test_03_wltm_append(self):
+        """WLTM mode appends content correctly."""
+        target = os.path.join(self.tmpdir, "wltm_append.md")
+        Path(target).write_text("line1\n", encoding="utf-8")
+        result = run_writer(target, "line2\n", mode="append")
+        self.assertTrue(result["success"])
+        self.assertEqual(result["method"], "wltm")
+        self.assertEqual(Path(target).read_text(encoding="utf-8"), "line1\nline2\n")
+
+    def test_04_wltm_creates_parent_dirs(self):
+        """WLTM mode creates parent directories."""
+        target = os.path.join(self.tmpdir, "deep", "nested", "wltm.md")
+        result = run_writer(target, "nested content\n")
+        self.assertTrue(result["success"])
+        self.assertEqual(result["method"], "wltm")
+        self.assertTrue(Path(target).exists())
+
+    def test_05_staging_dir_cleanup(self):
+        """WLTM staging file is cleaned up after successful move."""
+        target = os.path.join(self.tmpdir, "cleanup_test.md")
+        result = run_writer(target, "test content\n")
+        self.assertTrue(result["success"])
+        # Check no leftover staging files
+        staging_dir = Path("/tmp/antigravity_staging")
+        if staging_dir.exists():
+            remaining = list(staging_dir.glob("*cleanup_test*"))
+            self.assertEqual(len(remaining), 0, "Staging file was not cleaned up")
+
+    # ─── Direct/Legacy Mode ────────────────────────────────────────
+
+    def test_06_no_wltm_flag(self):
+        """--no-wltm flag forces direct write."""
+        target = os.path.join(self.tmpdir, "direct_test.md")
+        content = "direct write content\n"
+        result = run_writer(target, content, no_wltm=True)
+        self.assertTrue(result["success"])
+        self.assertEqual(result["method"], "direct")
+        self.assertEqual(Path(target).read_text(encoding="utf-8"), content)
+
+    # ─── Method field in result ────────────────────────────────────
+
+    def test_07_method_field_present(self):
+        """Result always contains method field."""
+        target = os.path.join(self.tmpdir, "method_test.md")
+        result = run_writer(target, "test\n")
+        self.assertIn("method", result)
+        self.assertIn(result["method"], ["wltm", "direct", "direct-fallback"])
+
+
+class TestSafeFileWriterCore(unittest.TestCase):
+    """Core functionality tests (work in both WLTM and direct modes)."""
 
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp(prefix="safe_writer_test_")
@@ -239,6 +324,73 @@ class TestSafeFileWriterErrors(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
         else:
             self.assertFalse(parsed.get("success", True))
+
+
+class TestSafeFileWriterPythonFile(unittest.TestCase):
+    """Test writing .py files — the most common deadlock trigger."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix="safe_writer_py_test_")
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_write_python_file(self):
+        """Writing a .py file via WLTM works correctly."""
+        target = os.path.join(self.tmpdir, "test_script.py")
+        content = textwrap.dedent('''\
+            #!/usr/bin/env python3
+            """Test script generated by safe_file_writer."""
+
+            import json
+            import sys
+
+            def main():
+                data = {"hello": "world", "chinese": "你好世界"}
+                print(json.dumps(data, ensure_ascii=False, indent=2))
+                return 0
+
+            if __name__ == "__main__":
+                sys.exit(main())
+        ''')
+        result = run_writer(target, content)
+        self.assertTrue(result["success"])
+        self.assertEqual(result["method"], "wltm")
+        written = Path(target).read_text(encoding="utf-8")
+        self.assertIn("def main():", written)
+        self.assertIn("你好世界", written)
+
+    def test_write_large_python_file(self):
+        """Writing a large .py file (extractor script) via WLTM."""
+        lines = [
+            '#!/usr/bin/env python3',
+            '"""Auto-generated extractor script."""',
+            '',
+            'import json',
+            'import sys',
+            'from pathlib import Path',
+            '',
+        ]
+        # Generate a realistic extractor-style script
+        for i in range(50):
+            lines.append(f'def extract_race_{i+1}(html_content: str) -> dict:')
+            lines.append(f'    """Extract data for race {i+1}."""')
+            lines.append(f'    result = {{"race": {i+1}, "horses": []}}')
+            lines.append(f'    for j in range(14):')
+            lines.append(f'        result["horses"].append({{"number": j+1, "name": f"Horse_{{j+1}}"}})')
+            lines.append(f'    return result')
+            lines.append('')
+
+        lines.append('if __name__ == "__main__":')
+        lines.append('    print("Extractor ready")')
+
+        content = "\n".join(lines)
+        target = os.path.join(self.tmpdir, "extractor.py")
+        result = run_writer(target, content)
+        self.assertTrue(result["success"])
+        self.assertEqual(result["method"], "wltm")
+        self.assertGreater(result["lines"], 300)
 
 
 if __name__ == "__main__":

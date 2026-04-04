@@ -35,7 +35,7 @@ ag_kit_skills:
 
 # Engine Awareness (P20 — Opus 優化)
 - **Extended Thinking**:所有內部推導放入 `<thinking>` 區塊,嚴禁輸出到分析檔案或聊天
-- **Write-Verify 習慣**:每次 `write_to_file` 或 `replace_file_content` 後,`view_file` 最後 5 行確認內容正確
+- **Write-Verify 習慣**:每次 `run_command` heredoc 寫檔後,`view_file` 或 `tail` 最後 5 行確認內容正確（⚠️ P19v6: 嚴禁使用 `write_to_file`/`replace_file_content`）
 - **唔好過度 summarise**:賽間報告保持精簡但唔好省略關鍵數字
 - **Tool call 逐步執行**:唔好嘗試 batch 多個獨立操作到一個 tool call
 
@@ -272,14 +272,42 @@ BATCH_SIZE: {BATCH_SIZE}(由環境掃描決定)
 > **Session Recovery 時嘅行為:** 若 `_Race_Day_Briefing.md` 已存在,直接讀取並顯示(標記已完成場次),無需重新解析。
 
 ## Step 2: 預測場地 (Track Condition Prediction)
-取得賽事日期與馬場名稱後,你必須呼叫 `AU Racecourse Weather Prediction` 技能,請它針對該馬場與日期進行預測。
-指示它依照預設邏輯運作,並嚴格獲取它在結尾輸出的 `[PREDICTED_TRACK_CONDITION]` 標籤。這將是我們進行分析的**主要場地掛牌標準**。
-
-**[新增] 陣雨/不穩定天氣容錯機制 (SIP-1 預先啟動準備):**
-若天氣預報中出現「陣雨 (Showers)」、「降雨 (Rain)」、「雷暴 (Storms)」或明顯的不穩定天氣,你必須強制在情報包中標記 `[WEATHER_UNSTABLE: TRUE]`。這將在 Step 4 觸發 Analyst 的雙軌預測機制。
-
-## Step 3: 全場情報搜集 (Meeting Intelligence Pass) [一次性]
-在開始任何 Analyst 分析之前,你必須**一次性完成**以下 meeting-level 情報搜集工作:
+取得賽事> **[JIT Template Protocol — HARD ENFORCEMENT]** 在所有馬匹分析 Batch 完成,並準備寫入「Verdict Batch / 第三部分」前,你必須強制作出一次 `view_file` tool call 重新讀取 `au_horse_analyst/resources/06_output_templates.md` 的第三部分。
+> ‼️ **為防止格式漂移,你必須 100% 複製以下骨架寫入 Verdict,嚴禁使用 bullet list 代替:**
+> ```markdown
+> ## [第三部分] 🏆 全場最終決策
+> **Speed Map 回顧:** [預期步速] | 領放群: [Names] | 受牽制: [Names]
+>
+> **Top 4 位置精選**
+> 🥇 **第一選**
+> - **馬號及馬名:** [號碼] [名字]
+> - **評級與✅數量:** `[評級]` | ✅ [數量]
+> - **核心理據:** [理由]
+> - **最大風險:** [風險]
+> (同理輸出 第二選 🥈, 第三選 🥉, 第四選 🏅)
+> ---
+> **🎯 Top 2 入三甲信心度 (Top 2 Place Confidence)**...
+> ---
+> **[SIP-FL03] 🎰 Exotic 組合投注池建議**...
+> ---
+> **[SIP-RR01] 📗📙 雙軌場地 Top 4 (僅在 SIP-1 觸發時)**...
+> ---
+> ## [第四部分] 分析陷阱...
+> ```
+> 
+> **⛔ COMPLETION_GATE(強制 — 回覆用戶前必須通過 — P31):**
+> 喺 batch 循環結束後、通知用戶之前,你必須執行以下檢查:
+> 1. `view_file` Analysis.md 最後 60 行
+> 2. 搜索「🏆 全場最終決策」同「Top 4 位置精選」
+> 3. 搜索 🥇🥈🥉🏅 — 必須是獨立標題,且每個必須包含「評級與✅數量:」
+> 4. 搜索「🎯 Top 2 入三甲信心度」和「🎰 Exotic 組合投注池建議」— 必須存在
+> 5. 搜索 ` ```csv ` — CSV 區塊必須存在
+> 6. 搜索 🐴⚡ — 冷門馬總計必須存在
+> 7. 所有檢查通過後方可繼續到合規檢查
+> **違規偵測:** 若你準備向用戶報告「分析完成」但 COMPLETION_GATE 未通過(例如漏咗信心度或用錯格式) → 你已違規 → 立即回退補寫。
+>
+> **⛔ 硬性攔截器:** 若你發現自己正在一個 tool call 中寫入超過 BATCH_SIZE 匹馬 → **立即停止生成**,刪除多餘內容,拆分為獨立 tool calls。
+> **⛔ 反模式偵測:** 若你嘅 tool call 中同時出現 `Batch 1` 和 `Batch 2` 嘅馬匹 → 你已違反此規則 → 立即停止。�**一次性完成**以下 meeting-level 情報搜集工作:
 
 使用 `search_web` 工具,一次性搜索以下當日賽事公共數據:
 - 今日官方場地狀態 / 跑道偏差 (Track Bias)
@@ -427,7 +455,7 @@ Wong Choi 調度嘅子 Agent 必須嚴格遵守各自嘅職責邊界:
 > 
 > ```
 > FOR EACH batch IN BATCH_PLAN:
->   1. 📠 WRITE — ç"¨ç ¨ç«‹å˜… write_to_file/replace_file_content 寫入該 batch(最多 3 匹馬)
+>   1. 📠 WRITE — 用獨立嘅 `run_command` heredoc → /tmp → safe_file_writer.py (P19v6) 寫入該 batch(最多 3 匹馬)
 >   2. 🔠 SCAN — view_file 驗證 10 section headers 存在
 >   3. ✅ QA — 執行 Batch QA Agent
 >   4. 🔒 TOKEN — 寫入 BATCH_QA_RECEIPT 到 Analysis.md
@@ -645,7 +673,7 @@ BATCH_SIZE 由 Pre-Flight Environment Scan 決定(標準=3 / fallback=2)。
 >
 > **A. 批次結構規則:**
 > 1. **分批寫入強制性。** 按 BATCH_SIZE 分批,超出 = 違規。
-> 2. **每個 Batch = 獨立 file write (Native-Writer Protocol (P19v4))。** 由於 Google Drive 同步限制,嚴禁直接寫入目標目錄。必須將檔案寫入 `~/.gemini/antigravity/brain/{session_id}/artifacts/`,完成後必須使用 `run_command` (`cp`) 將檔案同步至 Google Drive 目標目錄。B1 用 `write_to_file`,B2+ 用 `replace_file_content` 追加,每次更新後皆須重複執行 `cp`。
+> 2. **每個 Batch = 獨立 file write (Safe-Writer Protocol (P19v6))。** 由於 IDE 工具存在系統性 deadlock，**完全禁止**使用 `write_to_file` / `replace_file_content` / `multi_replace_file_content`。必須使用 **heredoc → /tmp → base64 → safe_file_writer.py (WLTM)** 三步管道。B1 用 `--mode overwrite`，B2+ 用 `--mode append`。詳見底部 P19v6 完整說明。
 > 3. **VERDICT BATCH 獨立且必須極度嚴格遵循模板。** Part 3 + Part 4 + CSV 必須為獨立 tool call。**絕對不允許**使用簡化自創格式。必須包含 `06_output_templates.md` 規定之:`Speed Map 回顧`、`Top 4 位置精選 (強制包含 🥇第一選 清單結構及評級>✅數鐵律)`、`Top 2 入三甲信心度`、`🎰 Exotic 組合投注建議`、以及第四部分的 `分析陷阱`。任何遺漏視同嚴重違規!*(執行 Verdict 前必須在內心清單覆誦檢查這 5 大欄位)*。
 > 4. **截斷恢復:** 若被 output token limit 截斷 → BATCH_SIZE 降為 2,重做該 batch。
 >
@@ -670,7 +698,34 @@ BATCH_SIZE 由 Pre-Flight Environment Scan 決定(標準=3 / fallback=2)。
 ---
 
 **🔍 骨架模板注入(每 Batch 必須):**
-每個 Batch 開始前,Wong Choi 注入馬匹分析骨架模板到 Analyst prompt。LLM 嘅任務從「生成分析」變為「填充骨架」。**核心邏輯/結論部分為 LLM 自由發揮區域。**
+每個 Batch 開始前,Wong Choi 注入馬匹分析骨架模板到 Analyst prompt。LLM 嘅任務從「生成分析」變為「填充骨架」。**核心邏輯/結論部分為 LLM 自由發揮區域,但必須嚴格遵守以下品質標準。**
+
+> [!CAUTION]
+> **🎯 核心邏輯品質標準 (P33 — 2026-04-04 新增 — Priority 0)**
+>
+> **歷史教訓:** Race 2/3 的核心邏輯品質極高(生動廣東話 + 數據驅動推理),但 Race 4 嚴重退化為平淡書面語,分析深度大幅下降。根因:「自由發揮」被解讀為「可以偷懶」。
+>
+> **強制規定:**
+>
+> **1. 語言風格 — 必須用香港廣東話口吻:**
+> - ✅ 正確:「呢匹馬係卡士最高嘅頂王」「完全係湊人數格局」「擺明車馬要強攻」
+> - ❌ 錯誤:「今季復出以來狀態反覆」「形勢將非常被動，難以看好」「長期無表現，陪跑分子」
+> - 每句核心邏輯必須有「賽馬佬」嘅語氣,好似一個資深馬評人喺同朋友傾偈咁分析
+>
+> **2. 分析深度 — 必須包含具體數據點:**
+> - ✅ 正確:「上仗 1600m 明顯路程偏短都只係緊緊飲恨,今場重返首本 2000m 路程」(引用具體路程 + 賽果邏輯鏈)
+> - ✅ 正確:「今季 7 戰未嘗一勝,上仗甚至包尾大敗,近績劣過地底泥」(引用勝率 + 近績序列)
+> - ❌ 錯誤:「近況極為低落,接連在次等賽事未能上名」(無具體數據)
+> - ❌ 錯誤:「長期無表現，陪跑分子。」(一句帶過,毫無分析可言)
+> - 最少引用 2-3 個具體數據點(勝率、段速、場地紀錄、排位效應等)
+>
+> **3. 篇幅門檻:**
+> - S/A 級馬:核心邏輯 ≥ 80 字
+> - B 級馬:核心邏輯 ≥ 60 字
+> - C 級馬:核心邏輯 ≥ 50 字
+> - D 級馬:核心邏輯 ≥ 40 字(必須用數據解釋點解差)
+>
+> **4. 自檢觸發器:** 若你寫完核心邏輯後發現少於 40 字或者用咗書面語 → 你已違規 → 立即重寫。
 
 ---
 
@@ -678,7 +733,7 @@ BATCH_SIZE 由 Pre-Flight Environment Scan 決定(標準=3 / fallback=2)。
 
 ```
 FOR EACH batch:
-  1. 📝 WRITE (Native-Writer) — 獨立 tool call 寫入至 Artifact 暫存,緊接 CP 複製至目標目錄(≤ BATCH_SIZE 匹馬)
+  1. 📝 WRITE (Safe-Writer P19v5) — heredoc 寫 /tmp → base64 pipe 到 safe_file_writer.py --mode append(≤ BATCH_SIZE 匹馬)
   2. 🔍 SCAN — view_file 驗證 7 headers(🔬⚡📋🔗📊💡⭐)
   3. 🐍 VALIDATE — 執行 Python 驗證:
      python scripts/validate_analysis.py "[ANALYSIS_PATH]"
@@ -832,7 +887,7 @@ VALUES ('{DATE}', '{VENUE}', {RACE_NUM}, {HORSE_NUM}, '{HORSE_NAME}', '{GRADE}',
 > ⚠️ **失敗處理**:若 MCP 工具不可用,跳過此步驟不影響分析結果。記錄到 `_session_issues.md`。
 
 # Recommended Tools & Assets
-- **Tools**: `search_web`, `run_command`, `write_to_file`, `replace_file_content`, `multi_replace_file_content`, `view_file`
+- **Tools**: `search_web`, `run_command`, `view_file`, `grep_search` (⚠️ `write_to_file`/`replace_file_content`/`multi_replace_file_content` 已被 P19v6 完全封殺 — 只用 `run_command` + heredoc pipeline)
 - **MCP Tools (P32 新增)**:
   - `playwright_navigate` / `playwright_screenshot` — 網頁即時數據抓取(Python 腳本失敗時嘅後備)
   - `read_graph` / `create_entities` / `create_relations` — Knowledge Graph 記憶(場地偏差、跨 session 筆記)
@@ -844,15 +899,97 @@ VALUES ('{DATE}', '{VENUE}', {RACE_NUM}, {HORSE_NUM}, '{HORSE_NAME}', '{GRADE}',
 # 操作協議(Read-Once — 啟動時載入)
 你必須喺 session 開始時讀取 `resources/01_protocols.md`,內含:
 - **統一失敗處理協議** — 所有失敗場景嘅處置方式
-- **🚨 File Writing Protocol** — 嚴禁 heredoc,所有寫入必須用 `write_to_file` / `replace_file_content`
+- **🚨 File Writing Protocol** — 使用 Safe-Writer P19v6 三步管道（heredoc → /tmp → safe_file_writer.py）— `write_to_file` 等工具已完全封殺
 
-# 🚨 終極防死機 / Native-Writer Protocol (P19v4)
+# 🚨 終極防死機 / Safe-Writer Protocol (P19v6 — 2026-04-04 更新)
 
-> **歷史教訓:** 無論是 `write_to_file` 還是 `Native-Writer (直接使用原生 replace_file_content 工具寫入檔案)`,當夾帶超過 100 行文字的 JSON payload 時都會導致 UI 失去進度條(假死機),且 Google Drive 目標檔案經常因同步而被 OS 鎖死(真死機)。
+> [!CAUTION]
+> **🚫🚫🚫 TOTAL BAN — `write_to_file` / `replace_file_content` / `multi_replace_file_content` 完全封殺 🚫🚫🚫**
 >
-> **強制規定(Priority 0):**
+> **歷史教訓 (P19v1→v5 全部失敗):**
+> - P19v1-v3: `write_to_file` / `replace_file_content` 超過 100 行 → IDE 假死機 (`+0 -0`)
+> - P19v4: `write_to_file` 寫 `/tmp/*.py` → 仍然經過 IDE JSON 管道，一樣卡死
+> - **P19v5 (2026-04-03): 允許 `write_to_file` 寫小檔(<20行)同 `/tmp` → 2026-04-04 實測證明仍然卡死！**
+> - **具體記錄:** `write_to_file` 寫 `/tmp/r5_b2.md` (非 Google Drive！) 兩次都卡在 `+0 -0` 超過 60 秒
 >
-> 1. **全面禁用大型檔案寫入工具:** 任何大段落生成(如整匹馬的分析、Verdict 綜合定奪),**絕對禁止**使用 `write_to_file` 或 `replace_file_content` 等 Tool,也禁止呼叫 Python 寫入(會遇到 GD Lock)。
-> 2. **直接使用原生 replace_file_content 工具寫入檔案 (Native-Writer):** 所有文字必須直接在「對話框 (Chat)」中輸出。向用戶展示打字進度,以證明沒有死機。
-> 3. **用戶代勞:** 分析結果輸出後,由用戶自行 Copy & Paste 到 Google Drive 檔案。
-> 4. **只寫小型 Log:** 你只能用 `replace_file_content` 寫入如 `_session_state.md` 或 `task.md` 這些微型檔案。
+> **根因最終確認:** IDE 嘅 `write_to_file`、`replace_file_content`、`multi_replace_file_content` Tool 本身嘅 JSON serialization pipeline 存在系統性 deadlock，與目標路徑無關。無論寫去 `/tmp`、Google Drive、或任何位置，當 session context 足夠大時（通常喺分析第 3-4 場之後），工具本身就會假死。
+>
+> **⛔ 強制規定 (Priority 0 — 零例外):**
+>
+> **以下工具在 Wong Choi 分析 pipeline 中完全禁止使用:**
+> 1. ❌ `write_to_file` — 任何大小、任何路徑
+> 2. ❌ `replace_file_content` — 任何大小、任何路徑
+> 3. ❌ `multi_replace_file_content` — 任何大小、任何路徑
+> 4. ❌ `python3 -c '...'` inline script — shell 引號衝突
+>
+> **唯一允許嘅檔案寫入方法:**
+> `run_command` + Heredoc → /tmp → Base64 → safe_file_writer.py (WLTM)
+>
+> **自檢觸發器:** 若你正在準備使用 `write_to_file` → ⛔ STOP → 你已違規 → 改用下方管道。
+
+**✅ 已驗證可行方案 (2026-04-04 實戰多次測試通過):**
+
+**三步管道 — Heredoc → /tmp → Base64 → safe_file_writer.py (WLTM)**
+
+**Step 1: 用 `run_command` + heredoc 寫入 /tmp 暫存檔**
+```bash
+cat > /tmp/batch_N.md << 'ENDOFCONTENT'
+[你的分析內容，可以包含任何特殊字符]
+ENDOFCONTENT
+echo "HEREDOC_OK: $(wc -l < /tmp/batch_N.md) lines"
+```
+- heredoc 使用 `'ENDOFCONTENT'`（帶引號）防止 shell 變量展開
+- 內容寫入本地 /tmp，零延遲，不受 Google Drive 影響
+- 每次內容控制在 **50-80 行以內**，避免 run_command payload 過大
+
+**Step 2: Base64 編碼 + pipe 到 safe_file_writer.py**
+```bash
+base64 < /tmp/batch_N.md | python3 .agents/scripts/safe_file_writer.py \
+  --target "{TARGET_DIR}/{ANALYSIS_FILE}" \
+  --mode append \
+  --stdin
+```
+- safe_file_writer.py 使用 WLTM（Write-Local-Then-Move）策略
+- 先寫入 /tmp/antigravity_staging/，再 atomic move 到目標
+- 內建 15 秒 timeout 保護，若 Google Drive 鎖死會自動中斷
+- 返回 JSON 確認（success/lines/bytes/method）
+
+**Step 3: 驗證（每個 Batch 必做）**
+```bash
+tail -3 "{TARGET_DIR}/{ANALYSIS_FILE}"
+echo "---LINE_COUNT---"
+wc -l "{TARGET_DIR}/{ANALYSIS_FILE}"
+```
+
+**📋 模式選擇:**
+- **第一個 Batch (B1):** `--mode overwrite`（建立新檔）
+- **後續 Batch (B2+):** `--mode append`（追加內容）
+- safe_file_writer.py 路徑: `.agents/scripts/safe_file_writer.py`
+
+**📋 Heredoc 注意事項:**
+- heredoc 邊界使用 `'ENDOFCONTENT'`（帶單引號）防止 `$` 展開
+- 若內容包含 `ENDOFCONTENT` 字串（極罕見）→ 改用 `'BATCHEND'` 作邊界
+- 每個 Batch 建議拆為 2-3 匹馬一組，避免單次 heredoc 過長
+- 大檔案拆分：若馬匹分析超過 80 行 → 拆成兩段 heredoc + 兩次 append
+
+**📋 Python fallback（heredoc 出問題時嘅後備）:**
+```bash
+python3 << 'PYEOF'
+import base64, subprocess
+content = """[你的分析內容]"""
+with open('/tmp/batch_N.md', 'w', encoding='utf-8') as f:
+    f.write(content)
+print(f"Written {len(content)} chars")
+PYEOF
+# 然後照常 base64 pipe
+base64 < /tmp/batch_N.md | python3 .agents/scripts/safe_file_writer.py \
+  --target "{TARGET_DIR}/{ANALYSIS_FILE}" --mode append --stdin
+```
+
+**📋 快速 cp 捷徑（safe_file_writer 出問題時嘅後備）:**
+```bash
+# Step 1: heredoc 寫 /tmp（同上）
+# Step 2: 直接 cp（繞過 safe_file_writer）
+cp /tmp/batch_N.md "{TARGET_DIR}/{ANALYSIS_FILE}"  # overwrite
+cat /tmp/batch_N.md >> "{TARGET_DIR}/{ANALYSIS_FILE}"  # append
+```

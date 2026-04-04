@@ -331,6 +331,28 @@ def fetch_team_roster(team_nickname):
         return []
 
 
+def fetch_team_injuries(team_abbr):
+    """從 ESPN API 獲取球隊傷病名單"""
+    print(f"  🏥 [Module 1b] 嘗試獲取 {team_abbr} 傷病名單 (ESPN)...")
+    try:
+        url = f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/{team_abbr}/roster"
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200:
+            athletes = r.json().get('athletes', [])
+            injury_map = {}
+            for a in athletes:
+                name = a.get('fullName', '')
+                injuries = a.get('injuries', [])
+                if injuries and len(injuries) > 0:
+                    status = injuries[0].get('status', 'Active')
+                    injury_map[name] = status
+            return injury_map
+        return {}
+    except Exception as e:
+        print(f"  ⚠️ 獲取傷病名單失敗: {e}")
+        return {}
+
+
 def fetch_player_gamelog(player_id, player_name, n=10):
     """為單一球員提取 L10 完整 Box Score"""
     if not NBA_API_AVAILABLE:
@@ -914,6 +936,9 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
 
         print(f"  👥 陣容人數: {len(roster)}")
 
+        # 抓取真實傷病名單
+        injury_map = fetch_team_injuries(abbr)
+
         # 篩選核心球員 (有進階數據 = 有上場紀錄)
         core_players = []
         for p in roster:
@@ -931,7 +956,12 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
         for p in core_players:
             pid = p['player_id']
             pname = p['name']
-            print(f"  📊 提取 {pname}...")
+            p_status = injury_map.get(pname, 'Active')
+            p['status'] = p_status
+            
+            # 若為 Out 或明顯傷兵，標註並在某些場合可以略過，但這裡仍然提取以備不時之需（使用率重新分配）
+            status_tag = f"[{p_status}]" if p_status != 'Active' else ""
+            print(f"  📊 提取 {pname} {status_tag}...")
 
             # L10 Game Log
             gamelog = fetch_player_gamelog(pid, pname)

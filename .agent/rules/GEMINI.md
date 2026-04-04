@@ -95,6 +95,36 @@ When auto-applying an agent, inform the user:
 
 ## TIER 0: UNIVERSAL RULES (Always Active)
 
+### 🚨 Google Drive 寫入死鎖防護 (P33-WLTM) — 最高優先級
+
+> 🔴 **MANDATORY:** 本 workspace 位於 Google Drive 同步目錄。`write_to_file` 工具會觸發 macOS FileProvider 死鎖（症狀：`+0-0` 卡死）。
+
+| 操作 | 工具 | 規則 |
+|------|------|------|
+| **創建新檔案 / 覆蓋** | ~~`write_to_file`~~ | ❌ **嚴禁** — 用 `run_command` + `safe_file_writer.py` |
+| **小型編輯 (<50 行)** | `replace_file_content` / `multi_replace_file_content` | ✅ 允許 |
+| **讀取** | `view_file` / `grep_search` | ✅ 不受影響 |
+
+**Safe Writer 路徑：** `Antigravity/.agents/scripts/safe_file_writer.py`
+**完整文檔：** `Antigravity/.agent/workflows/safe_write.md`
+
+```bash
+# 快速範本：
+python3 << 'SAFE_WRITE'
+import base64, subprocess, sys
+content = """YOUR_CONTENT"""
+b64 = base64.b64encode(content.encode("utf-8")).decode("ascii")
+result = subprocess.run([sys.executable, "Antigravity/.agents/scripts/safe_file_writer.py",
+    "--target", "TARGET_PATH", "--mode", "overwrite", "--content", b64],
+    capture_output=True, text=True)
+print(result.stdout)
+SAFE_WRITE
+```
+
+> 🔴 **Self-Check:** 每次準備寫入檔案前，問自己：「我是否即將使用 `write_to_file`？」如果是 → **停止，改用 safe_file_writer。**
+
+---
+
 ### 🌐 Language Handling
 
 When user's prompt is NOT in English:

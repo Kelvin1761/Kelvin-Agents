@@ -54,7 +54,7 @@ ag_kit_skills:
 **嚴禁在每匹馬或每批次重新讀取資源文件。** 只有在「會話中斷後重啟」或「切換至新場次」時才需重新讀取。
 
 > [!IMPORTANT]
-> **Verdict 前重讀 Template**:寫 `[第三部分]` Top 4 Verdict 前,**必須 `view_file` 重讀 `06_output_templates.md` 中 [第三部分] 段落**(約 Line 113-260)。呢個係防止模板漂移嘅關鍵步驟。
+> **Verdict 前強制重讀 Template**:寫 `[第三部分]` Top 4 Verdict 及 `[第五部分]` CSV 前,**強制規定必須使用 `view_file` 工具重讀 `resoures/06_output_templates.md`**。絕對不能依靠過期記憶！若未見此 `view_file` 操作即直接輸出 Verdict，代表你已違反最嚴格協議，會導致 Dashboard 讀取崩潰！
 
 ## 4. Internal Tracking
 所有內部計算(Step 0 到 Step 14)與推導過程**絕不可出現在最終輸出中**。推導放進 `<thought>` 標籤,對用戶只呈現最終判定結果。
@@ -67,7 +67,7 @@ ag_kit_skills:
 3.5. **[SIP-1] 場地預測容錯機制**:若預測場地為 Heavy 或天氣不穩定,執行雙軌敏感度分析(定義見 `02_algorithmic_engine.md` Step 4)。
 4. **賽事與步速定調**:判定 `[STRAIGHT SPRINT]` 或 `[STANDARD RACE]`,產生 `<第一部分>` + Speed Map。
 5. **批次解析**:每批固定 3 匹馬(BATCH_SIZE: 3),按馬號順序。**全自動推進**,嚴禁批次間詢問用戶。**批次隔離規則:每個 Batch 必須作為獨立嘅 file write 操作輸出,嚴禁將多個 Batch 合併到同一次 tool call。** Batch 1 = Native-Writer 使用 write_to_file 工具建檔;Batch 2+ = 獨立 Native-Writer 使用 multi_replace_file_content 工具追加寫入。若發現正在寫入 4+ 匹馬 → 立即停止拆分。
-6. **全場最終決策**:全場完畢後,按 `06_output_templates.md` 生成 `<第三部分>` + `<第四部分>`,Top 4 按評級排序。
+6. **全場最終決策**:全場所有馬匹均完成 Batch 分析後，**[致命規定] 必須先調用 `view_file` 閱讀 `06_output_templates.md`**，然後嚴格遵照模板生成 `<第三部分>` (Top 4 必須用條列式/Bullet points、嚴禁單行句) + `<第四部分>` + `<第五部分>` (CSV 代碼必須被代碼區塊括起)，Top 4 必須按評級排序。
 
 **🚨 Anti-Laziness 錨定 + 品質守門員檢查 [SIP-ST8](每批次強制自檢):**
 每完成一批次(≥6 匹馬累計)後,強制執行以下自我檢查:

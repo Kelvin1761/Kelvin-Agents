@@ -16,25 +16,27 @@
 
 ---
 
-# 🚨 CRITICAL: File Writing Protocol (強制執行)
+# 🚨 CRITICAL: File Writing Protocol — Safe-Writer P19v5 (2026-04-03 更新)
 
-> **NEVER use `cat << EOF` or any heredoc syntax via `run_command` to write analysis reports.**
-> This causes terminal processes to hang indefinitely (known incident: 9+ hour hang in production session).
+> **所有大型分析內容必須使用 Safe-Writer P19v5 三步管道寫入。**
+> `write_to_file` 同 `replace_file_content` 超過 ~100 行會導致 IDE JSON 死機。
+> 直接 Python `open()` 寫入 Google Drive 路徑會觸發 FileProvider Lock。
 
 ## Mandatory File Writing Rules
 
 | Scenario | Correct Tool | Forbidden |
 |---|---|---|
-| 建立全新分析報告 (.txt) | `write_to_file` (with `Overwrite: false`) | `cat << EOF >` |
-| 覆寫完整報告 | `write_to_file` (with `Overwrite: true`) | `cat << EOF >` |
-| 追加最終裁決/Verdict到現有報告 | `replace_file_content` (target the last line) | `cat << EOF >>` |
-| 修改報告中多個不連續段落 | `multi_replace_file_content` | `cat << EOF >>` |
+| 寫入分析 Batch (大型內容) | `run_command` heredoc → /tmp → base64 pipe → safe_file_writer.py | `write_to_file`, `replace_file_content`, `python3 -c` |
+| 新建分析報告 (第一個 Batch) | safe_file_writer.py `--mode overwrite` | `write_to_file` |
+| 追加後續 Batch / Verdict | safe_file_writer.py `--mode append` | `replace_file_content` |
+| 微型檔案 (< 20 行: task.md, session_state) | `replace_file_content` ✅ (允許) | N/A |
 | 執行 Python 腳本 (generate_reports.py) | `run_command` ✅ (允許) | N/A |
 
-## 執行規則
-1. **每個 Batch** — 必須使用 `write_to_file` 建立或用 `replace_file_content` 追加,嚴禁用 `run_command` 寫入大量文字。
-2. **Final Verdict** — 使用 `replace_file_content` 定位最後一個 `✅ 批次完成` 行,在其後追加 Part 3 + Part 4。
-3. **若需要驗證寫入成功** — 使用 `view_file` 讀取最後 20 行確認。
-4. **`run_command` 只用於**:執行 Python/shell 腳本、搜尋 grep、讀取檔案清單等輕量指令。
+## 執行規則 (P19v5 三步管道)
+1. **Step 1:** `cat > /tmp/batch_N.md << 'ENDOFCONTENT'` — heredoc 寫入本地 /tmp（零延遲）
+2. **Step 2:** `base64 < /tmp/batch_N.md | python3 .agents/scripts/safe_file_writer.py --target "..." --mode append --stdin`
+3. **Step 3 (可選):** `tail -5 "{TARGET_DIR}/{FILE}"` — 驗證寫入成功
+4. 每次 heredoc 內容控制在 **50-80 行**，避免 run_command payload 過大
+5. safe_file_writer.py 路徑: `.agents/scripts/safe_file_writer.py`
 
-> ✅ 遵守此協議可確保所有寫入操作立即完成,不會有任何掛起風險。
+> ✅ 此管道已於 2026-04-03 實戰驗證通過。所有寫入均在 1-2 秒內完成。
