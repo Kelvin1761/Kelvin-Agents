@@ -45,14 +45,25 @@ ag_kit_skills:
 - `VENUE` — 馬場名稱
 - `TARGET_DIR` — 賽前分析資料夾路徑(與 AU Wong Choi 建立嘅資料夾一致)
 
-## Step 2: 擷取賽果
-執行賽果擷取腳本:
+## Step 2: 擷取賽果 (三級故障轉移)
+
+**優先級 1 — `read_url_content` (最快,推薦):**
+使用 `read_url_content` 工具直接讀取 Racenet 賽果 URL。Racenet 係 server-side rendered,HTML 源碼已包含所有賽果數據,無需 JavaScript 渲染。
+```
+read_url_content(url="<Racenet URL>")
+```
+從返回嘅 markdown 內容中提取每場賽事嘅前四名、賠率、負重、騎師等數據。整理成結構化格式保存至 `TARGET_DIR`。
+
+**優先級 2 — Python 腳本 (若 read_url_content 失敗或內容不完整):**
 ```bash
 python .agents/skills/au_racing/au_horse_race_reflector/scripts/extract_race_result.py "<URL>" --output_dir "[TARGET_DIR]"
 ```
 將賽果文件保存在 `TARGET_DIR` 中。
 
-> ⚠️ **失敗處理**:若腳本執行失敗,檢查錯誤訊息。若依賴套件缺失(如 `playwright`、`curl_cffi`),先執行安裝後重試。連續失敗 3 次則停止並通知用戶。
+**優先級 3 — `browser_subagent` (最後手段):**
+僅在以上兩種方法均失敗時使用。若需使用 `browser_subagent`,**必須使用 Lightpanda 無頭瀏覽器**(嚴禁 Chromium/Playwright)。Lightpanda 實例必須保持持久化 — 啟動一次後持續使用,**嚴禁反覆開關瀏覽器**。
+
+> ⚠️ **失敗處理**:每層方法若失敗,自動嘗試下一層。連續 3 層均失敗則停止並通知用戶。
 
 ## Step 3: 尋找賽前預測
 喺 `TARGET_DIR` 中搵出該日所有賽前分析報告:

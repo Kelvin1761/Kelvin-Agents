@@ -44,7 +44,16 @@ ag_kit_skills:
 - `VENUE` — 馬場名稱(ShaTin / HappyValley)
 - `TARGET_DIR` — 賽前分析資料夾路徑(與 HKJC Wong Choi 建立嘅資料夾一致)
 
-## Step 2: 擷取賽果
+## Step 2: 擷取賽果 (三級故障轉移)
+
+**優先級 1 — `read_url_content` (最快,推薦):**
+使用 `read_url_content` 工具直接讀取 HKJC 賽果 URL。HKJC 賽果頁面有部分係 server-side rendered,可嘗試直接提取。
+```
+read_url_content(url="<HKJC Results URL>")
+```
+從返回嘅 markdown 內容中提取每場賽事嘅完整賽果(名次、馬名、賠率、負重、騎師、分段時間、沿途走位等)。若內容不完整(如缺少分段時間或沿途走位),降級至優先級 2。
+
+**優先級 2 — Python 腳本 (若 read_url_content 失敗或內容不完整):**
 執行賽果擷取腳本(使用 concurrent 模式):
 **跨平台路徑選擇:**
 - **Windows:** `python "g:\我的雲端硬碟\Antigravity Shared\Antigravity\.agents\skills\hkjc_racing\hkjc_race_extractor\scripts\batch_extract_results.py" --base_url "<URL>" --races "1-10" --output_dir "[TARGET_DIR]"`
@@ -53,7 +62,10 @@ ag_kit_skills:
 > **平台偵測:** 檢查 `os.name` 或當前路徑前綴。若路徑以 `g:\` 開頭 = Windows,以 `/Users/` 開頭 = macOS。
 將賽果文件保存在 `TARGET_DIR` 中。
 
-> ⚠️ **失敗處理**:若腳本執行失敗,檢查錯誤訊息。若依賴套件缺失(如 `playwright`),先執行安裝後重試。連續失敗 3 次則停止並通知用戶。
+**優先級 3 — `browser_subagent` (最後手段):**
+僅在以上兩種方法均失敗時使用。若需使用 `browser_subagent`,**必須使用 Lightpanda 無頭瀏覽器**(嚴禁 Chromium/Playwright)。Lightpanda 實例必須保持持久化 — 啟動一次後持續使用,**嚴禁反覆開關瀏覽器**。
+
+> ⚠️ **失敗處理**:每層方法若失敗,自動嘗試下一層。連續 3 層均失敗則停止並通知用戶。
 
 ## Step 3: 尋找賽前預測
 喺 `TARGET_DIR` 中搵出該日所有賽前分析報告:
