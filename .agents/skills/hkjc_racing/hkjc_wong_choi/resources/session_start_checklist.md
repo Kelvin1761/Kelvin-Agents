@@ -74,6 +74,47 @@ python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/validate_analysis.py "[
 
 ---
 
+## 🗺️ 戰場全景骨架模板 (Panorama Skeleton — Batch 1 Only)
+
+Wong Choi 喺寫入 **Batch 1** 時,**必須先寫入以下戰場全景**,然後才寫馬匹分析。LLM 只需填充 `[FILL]` 位置:
+
+```markdown
+# {DATE} {VENUE} Race {N} 分析
+
+---
+
+## [第一部分] 🗺️ 戰場全景
+
+| 項目 | 內容 |
+|:---|:---|
+| 賽事格局 | [FILL: 班次 / 路程 / 場地] |
+| **賽事類型** | **`[草地]`** |
+| 跑道偏差 | [FILL: 賽道特性描述 — C / C+3 / B+2 等] |
+| 步速預測 | [FILL: Suicidal / Fast / Genuine-to-Fast / Normal-to-Fast / Slow-to-Normal / Crawl] |
+| 戰術節點 | [FILL: 描述哪些馬匹會爭奪前列、步速結構對後上馬的影響] |
+
+**📍 Speed Map (速度地圖):**
+- 領放群: [FILL: #X 馬名(檔位)]
+- 前中段: [FILL]
+- 中後段: [FILL]
+- 後上群: [FILL]
+
+**🏃 步速瀑布推演 (Step 0 結論):**
+- 領放馬: [FILL: #X 馬名] | 搶位數量: [FILL]
+- 預計步速: [FILL] | 崩潰點: [FILL: Xm / 唔會崩潰]
+- 偏差方向: [FILL]
+- 受惠: [FILL] | 受損: [FILL]
+
+---
+
+## [第二部分] 馬匹深度剖析 (Horse-by-Horse Forensic)
+
+```
+
+> **⚠️ 嚴禁跳過 Part 1 直接寫馬匹分析！** Batch 1 必須包含完整嘅戰場全景。
+
+---
+
 ## 🏆 Top 4 Verdict 骨架模板
 
 Wong Choi 喺每場 VERDICT BATCH 開始前,必須注入以下骨架。LLM 只需填充 `[FILL]` 位置:

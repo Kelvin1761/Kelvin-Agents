@@ -483,14 +483,19 @@ Wong Choi 調度嘅子 Agent 必須嚴格遵守各自嘅職責邊界:
 >
 > **Step B — 逐批執行以下循環(不可跳過任何步驟):**
 >
-> **[Per-Batch Skeletal JIT Injection] (強制防呆機制)**
-> 在每次執行獨立 tool call 寫入 Batch 的分析前,你**必須強制**使用 iew_file 重新讀取(或在內部記憶中完整展開)hkjc_horse_analyst/resources/08_output_templates.md 裡面的 <Horse_Microscope_Skeleton> (第二部分: 深度顯微鏡)。
-> 嚴禁憑記憶默寫結構。你必須將該骨架原封不動地複製並向下填充,確保所有 11 個欄位一個不漏!
+> **[Per-Batch Skeletal JIT Injection] (強制防呆機制 — 學自 AU Wong Choi P36)**
+> 在每次執行獨立 tool call 寫入 Batch 的分析前,你**必須強制**使用 `view_file` 讀取 `hkjc_wong_choi/resources/horse_analysis_skeleton.md`。
+> 嚴禁憑記憶默寫結構。你必須將該骨架原封不動地複製並向下填充,確保所有欄位一個不漏!
 >
-> `
+> ```
 > FOR EACH batch IN BATCH_PLAN:
->   1. 📝 WRITE — 必須使用 Safe-Writer Protocol (P19v6) heredoc → /tmp → base64 → safe_file_writer.py 管道寫入該 batch。Batch 1 用 `--mode overwrite`，Batch 2+ 用 `--mode append`。若為最後一批,必須嚴格依照範本強制輸出 The Verdict (Top 4 列表及分析盲區),絕不允許省略任何項目!**嚴禁使用 Python 或 Bash 腳本來自動編寫或合併 Markdown。**
->      ⚠️ **CONTINUOUS BATCH APPEND SAFETY:** 當連續寫入多個 Batch 時,使用 `multi_replace_file_content` 進行 append **必須極度謹慎**!嚴禁使用可能重複出現的通用字串(例如舊的 "✅ 批次完成:X/Y")作為替換錨點,這會導致新 Batch 慘遭「插隊」寫入檔案中段。您必須:確保 TargetContent 是檔案當前唯一的絕對最後一行。
+>   0. 🗺️ PART 1 (僅 Batch 1) — 若為本場第一個 batch,**必須先寫入 [第一部分] 🗺️ 戰場全景:**
+>      - `view_file` 讀取 `resources/session_start_checklist.md` 嘅戰場全景骨架
+>      - 填充賽事格局表 + Speed Map + 步速瀑布推演
+>      - **⚠️ 嚴禁跳過 Part 1 直接寫馬匹分析！**
+>   1. 📝 WRITE — 用 Safe-Writer P19v6 Python Heredoc One-Step Pattern:
+>      cat PYEOF > /tmp/batch_N.py → python3 /tmp/batch_N.py → safe_file_writer.py
+>      B1 用 `--mode overwrite`，B2+ 用 `--mode append`（最多 BATCH_SIZE 匹馬）
 >   2. 🔍 SCAN — view_file 驗證 section headers 存在
 >   3. ✅ QA — 執行 Batch QA Agent
 >   4. 🔒 TOKEN — 寫入 BATCH_QA_RECEIPT 到 Analysis.md
@@ -512,7 +517,7 @@ Wong Choi 調度嘅子 Agent 必須嚴格遵守各自嘅職責邊界:
 > 
 > 🔄 **[AUTONOMOUS LOOP OVERRIDE (無間斷連續執行指令)]**
 > 若用戶明確下達「proceed batch by batch until you finish」或類似連續執行指令,你**絕對禁止在每個 Batch 寫完後停下來回覆用戶並等待確認**!
-> 你必須在同一個回合內,連續且不間斷地發出多個 `multi_replace_file_content` 工具呼叫(或一完成寫入就立刻再度呼叫),自行將整場賽事(所有 Batches + The Verdict)一氣呵成地寫完!只要還沒寫到 The Verdict,就絕對不能輸出回應文本給用戶造成停機等待。**必須一口氣自動完成全場賽事分析後,才一次過向用戶報告全量完成!**
+> 你必須在同一個回合內,連續且不間斷地發出多個 `run_command` heredoc tool calls,自行將整場賽事(所有 Batches + The Verdict)一氣呵成地寫完!只要還沒寫到 The Verdict,就絕對不能輸出回應文本給用戶造成停機等待。**必須一口氣自動完成全場賽事分析後,才一次過向用戶報告全量完成!**
 > 
 > **⛔ 硬性攔截器:** 若你發現自己正在一個 tool call 中寫入超過 BATCH_SIZE 匹馬 → **立即停止生成**,刪除多餘內容,拆分為獨立 tool calls。
 > **⛔ 反模式偵測:** 若你嘅 tool call 中同時出現 `Batch 1` 和 `Batch 2` 嘅馬匹 → 你已違反此規則 → 立即停止。
@@ -762,9 +767,23 @@ BATCH_SIZE 由 Pre-Flight Environment Scan 決定(標準=3 / fallback=2)。
 
 ---
 
-**🔍 骨架模板注入(Option A — 每 Batch 必須):**
-每個 Batch 開始前,Wong Choi 必須從 `resources/horse_analysis_skeleton.md` 讀取馬匹分析骨架模板,將骨架 × BATCH_SIZE 注入到 Analyst prompt 中。LLM 嘅任務從「生成分析」變為「填充骨架」,保證 100% 結構完整性。**核心邏輯/結論部分為 LLM 自由發揮區域。**
+**🔍 骨架模板注入(每 Batch 必須 — 學自 AU Wong Choi):**
+每個 Batch 開始前,Wong Choi 必須使用 `view_file` 讀取 `resources/horse_analysis_skeleton.md`，將骨架 × BATCH_SIZE 注入到 Analyst prompt 中。LLM 嘅任務從「生成分析」變為「填充骨架」,保證 100% 結構完整性。**核心邏輯/結論部分為 LLM 自由發揮區域。**
+
+> **🗺️ Batch 1 特別規則:** Batch 1 **必須先寫入 [第一部分] 🗺️ 戰場全景**（從 `resources/session_start_checklist.md` 讀取戰場全景骨架模板）。⚠️ 嚴禁跳過 Part 1 直接寫馬匹分析！
 >
+> **🏆 VERDICT BATCH 特別規則:** 所有馬匹 Batch 完成後，準備寫入 Verdict 前，**必須** `view_file` 重新讀取 `resources/session_start_checklist.md` 嘅 `🏆 Top 4 Verdict 骨架模板`。在未重讀該模板前,嚴禁直接吐出任何 Top 4 結果。
+
+> [!CAUTION]
+> **⛔ P36 — ZERO-TOLERANCE ANTI-DRIFT PROTOCOL（學自 AU Wong Choi — Priority 0）**
+>
+> **歷史教訓:** 喺長時間連續運作時，LLM 會因為 Context Window 衰退而偷懶跳過讀取，憑模糊記憶生成結構不全、字數極度不足嘅 Bullet points。
+>
+> **強制對策 (三連擊):**
+> 1. **JIT 零容忍宣讀 (Zero-Tolerance Template Refresh):** 每次準備生成 Batch 寫檔腳本之前，**無論自認記憶多麼清晰，都必須強制 `view_file` 讀取 `resources/horse_analysis_skeleton.md`。** 無宣讀 = 違規。
+> 2. **強制落實「預建骨幹法」 (Skeleton Copy-Paste Enforcement):** 生成 Python Markdown 變量時，**不准逐行寫**。必須先由 Template 完美 Copy 出整個馬匹的骨幹（全套 emoji 標題），死板地貼齊後，才開始將分析內容填入相應位置，保證結構 100% 不丟失。
+> 3. **落實 Session 切割 (Hard Session Splits for Context Relief):** 到達 Race 4 結束必須強制截斷並輸出交接指令 (Handoff Prompt)，嚴格執行「換 Chat 重新連線」，避免記憶體超載而出現妥協式偷懶。
+
 > **🐴 馬匹剖析格式嚴規 (P35 — 2026-04-06 新增 — Priority 0):**
 > - 馬匹剖析（或同等欄位如「馬匹分析」）**僅為簡潔分類標籤**，每項以 `[標籤]` 格式撰寫，禁止寫成段落或散文。
 > - ✅ 正確示範: `- **步態場地:** [未有 Soft 地數據，但血統顯示應能應付]`
