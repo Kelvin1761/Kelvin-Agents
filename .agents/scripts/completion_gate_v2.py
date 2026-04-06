@@ -3,19 +3,24 @@ import argparse
 import re
 from pathlib import Path
 
-def check_au_hkjc_format(text: str) -> list[str]:
+def check_au_hkjc_format(text: str, domain: str) -> list[str]:
     errors = []
-    required_tags = ['⏱️', '🐴', '🔬', '⚡', '📋', '🔗', '🧭', '⚠️', '📊', '💡', '⭐']
+    if domain == 'au':
+        required_tags = ['⏱️', '🐴', '⚡', '🧭', '⚠️', '📊', '💡', '⭐']
+    else:
+        required_tags = ['🔬', '🐴', '⚡', '📋', '🔗', '⚠️', '📊', '💡', '⭐']
+    
     for tag in required_tags:
+
         if tag not in text:
             errors.append(f"Missing required tag: {tag}")
             
     if '⭐' in text:
-        grades = re.findall(r'⭐\s*(?:最終評級[：:])?\s*`?\[?([A-DS][+\-]?)\]?`?', text)
+        grades = re.findall(r'\*?\*?⭐\s*\*?\*?最終評級[：:]\*?\*?\s*`?\[?([A-DS][+\-]?)\]?`?', text)
         if not grades:
-            grades_fallback = re.findall(r'⭐\s*\*+最終評級[：:]\*+\s*`?\[?([A-DS][+\-]?)\]?`?', text)
+            grades_fallback = re.findall(r'⭐\s*(?:最終評級[：:])?\s*`?\[?([A-DS][+\-]?)\]?`?', text)
             if not grades_fallback:
-                errors.append("Missing valid grade format (e.g., ⭐ 最終評級：`[A-]`)")
+                errors.append("Missing valid grade format (e.g., **⭐ 最終評級:** `[A-]`)")
                 
     has_verdict = False
     if '第一選' not in text and 'Top 4' not in text and '🏆' not in text:
@@ -66,22 +71,26 @@ def check_au_hkjc_format(text: str) -> list[str]:
 
     return errors
 
-def check_au_hkjc_words(text: str) -> list[str]:
+def check_au_hkjc_words(text: str, domain: str) -> list[str]:
     errors = []
     
     # Split by horse analysis block using the standard markers
     blocks = re.split(r'(?=(?:### 【No\.\d+】|\[#\d+\] \w+))', text)
     
-    required_tags = ['⏱️', '🐴', '🔬', '⚡', '📋', '🔗', '🧭', '⚠️', '📊', '💡', '⭐']
+    if domain == 'au':
+        required_tags = ['⏱️', '🐴', '⚡', '🧭', '⚠️', '📊', '💡', '⭐']
+    else:
+        required_tags = ['🔬', '🐴', '⚡', '📋', '🔗', '📊', '💡', '⭐']
+
     
     for block in blocks[1:]: # Skip the first block which is the intro
         # Identify the horse name/number for better error messages
         header_match = re.search(r'(### 【No\.\d+】.*|\[#\d+\] \w+.*)', block)
         horse_id = header_match.group(1).split()[1] if header_match else "Unknown Horse"
         
-        grade_match = re.search(r'⭐\s*(?:最終評級[：:])?\s*`?\[?([A-DS][+\-]?)\]?`?', block)
+        grade_match = re.search(r'\*?\*?⭐\s*\*?\*?最終評級[：:]\*?\*?\s*`?\[?([A-DS][+\-]?)\]?`?', block)
         if not grade_match:
-            grade_match = re.search(r'⭐\s*\*+最終評級[：:]\*+\s*`?\[?([A-DS][+\-]?)\]?`?', block)
+            grade_match = re.search(r'⭐\s*(?:最終評級[：:])?\s*`?\[?([A-DS][+\-]?)\]?`?', block)
             
         # If no grade is found, it could be scratched or malformed, but skip if strictly no grade found.
         # Although if it doesn't have a grade, it might be a valid scratched horse block, so we check if it is explicitly skipped.
@@ -158,8 +167,9 @@ def main():
 
     errors = []
     if args.domain in ['au', 'hkjc']:
-        errors.extend(check_au_hkjc_format(text))
-        errors.extend(check_au_hkjc_words(text))
+        errors.extend(check_au_hkjc_format(text, args.domain))
+        errors.extend(check_au_hkjc_words(text, args.domain))
+
         
         # P37: Execute verify_form_accuracy.py if --racecard is provided
         if args.racecard and args.domain == 'au':

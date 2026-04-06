@@ -1,0 +1,7 @@
+- [ ] Race 1 分析 (12匹馬 × 4 批次 + VERDICT)
+- [ ] Batch 1: #1, #2, #3
+- [ ] Batch 2: #4, #5, #6
+- [ ] Batch 3: #7, #8, #9
+- [ ] Batch 4: #10, #11, #12
+- [ ] VERDICT BATCH: Top 4 + 盲區 + CSV
+- [ ] Compliance Check
