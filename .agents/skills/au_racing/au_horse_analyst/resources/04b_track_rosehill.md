@@ -15,7 +15,7 @@
 - 濕地偏差常見 — Soft 6+ 時前領利好更明顯
 - 乾地利 powerful gallopers,但急彎仍限制大步幅
 
-> **交叉引用:** Rosehill 1200m 塞車連鎖效應 — 見 `02_algorithmic_engine.md` 覆蓋規則「Rosehill 1200m Traffic Chain Reaction」
+> **交叉引用:** Rosehill 1200m 塞車連鎖效應 — 見 `02a-02g (split engine files)` 覆蓋規則「Rosehill 1200m Traffic Chain Reaction」
 
 ## 場地偏差傾向
 

@@ -24,7 +24,7 @@ ag_kit_skills:
 
 | 意圖關鍵詞 | 路由目標 | 執行方式 |
 |-----------|---------|---------|
-| 「覆盤/review/反思/賽果/post-mortem/檢討」 | **HKJC Reflector** | 讀取 `hkjc_reflector/SKILL.md` 並按其流程執行 |
+| 「覆盤/review/反思/賽果/post-mortem/檢討/result/結果/檢查結果」 | **HKJC Reflector** | 讀取 `hkjc_reflector/SKILL.md` 並按其流程執行 |
 | 「驗證/validate/盲測/blind test/SIP 測試」 | **HKJC Reflector Validator** | 讀取 `hkjc_reflector_validator/SKILL.md` 並按其流程執行 |
 | 「分析/analyse/pipeline/跑/run」或無特定關鍵詞 | **正常分析流程** | 繼續執行下方 Step 1-7 |
 
@@ -32,10 +32,11 @@ ag_kit_skills:
 1. 路由判斷在收到用戶第一條訊息時立即執行,嚴禁詢問「你想分析定覆盤?」
 2. 若意圖不明確,默認為「正常分析流程」
 3. 路由到 Reflector/Validator 後,Wong Choi 的角色轉為純粹的 dispatcher — 讀取目標 SKILL.md 並完全按其指示執行,不混合自身的分析流程
+4. **衝突解決:** 若用戶訊息同時出現「分析/analyse」+「覆盤/result」關鍵詞（例如「analyse randwick result」），**覆盤優先**（因為提到 result = 賽事已完成 = 覆盤場景）
 
 # Engine Awareness (P20 — Opus 優化)
 - **Extended Thinking**:所有內部推導放入 `<thinking>` 區塊,嚴禁輸出到分析檔案或聊天
-- **Write-Verify 習慣**:每次 `write_to_file` 或 `replace_file_content` 後,`view_file` 最後 5 行確認內容正確
+- **Safe-Writer Protocol (P19v6):** ⚠️ `write_to_file` / `replace_file_content` / `multi_replace_file_content` 已完全封殺（Google Drive 同步死鎖風險）。所有檔案寫入必須使用 heredoc → /tmp → base64 → safe_file_writer.py 管道。Batch 1 用 `--mode overwrite` 建檔，Batch 2+ 用 `--mode append` 追加。寫入後 `view_file` 最後 5 行確認內容正確
 - **唔好過度 summarise**:賽間報告保持精簡但唔好省略關鍵數字
 - **Tool call 逐步執行**:唔好嘗試 batch 多個獨立操作到一個 tool call
 
@@ -131,6 +132,20 @@ ELSE:
 - Memory: [✅ 已連接 / ❌ 未安裝]
 
 若未安裝,請將以下配置加入 mcp_config.json:
+
+**macOS 配置:**
+```json
+{
+  "mcpServers": {
+    "playwright": { "command": "npx", "args": ["-y", "@playwright/mcp@latest"] },
+    "sqlite": { "command": "npx", "args": ["-y", "mcp-server-sqlite", "/Users/imac/.gemini/antigravity/databases/wong_choi.db"] },
+    "memory": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-memory"] }
+  }
+}
+```
+
+**Windows 配置:**
+```json
 {
   "mcpServers": {
     "playwright": { "command": "cmd.exe", "args": ["/c", "npx", "-y", "@playwright/mcp@latest"] },
@@ -138,6 +153,7 @@ ELSE:
     "memory": { "command": "cmd.exe", "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-memory"] }
   }
 }
+```
 然後重新啟動 Antigravity。
 ```
 Step 8 數據庫歸檔功能需要 MCP Servers 運作,但即使未安裝也不影響 Step 1-7 核心分析流程。
@@ -345,6 +361,31 @@ C) 先做前半日(Race 1-{TOTAL_RACES/2})
 ```
 此文件可供後續 session 直接讀取,無需重新搜索。若任何數據搜索失敗 3 次,標記為 `[搜索失敗 — 需人手補充]`。
 
+## Step 3.5: 歷史交叉驗證 (Intelligence-First Tier 2 — P35 新增)
+
+> **設計理念:** 受 ECC `search-first` 啟發。在即時情報搜集後，加入歷史數據交叉驗證。
+> 完整 checklist 見 `shared_instincts/intelligence_checklist.md`。
+> **此步驟依賴 MCP。若 MCP 不可用 → 自動跳過，唔影響分析。**
+
+**若 MCP Servers 可用（Step E5 檢查通過），執行以下 Tier 2 驗證：**
+
+1. **場地偏差歷史：** `read_graph` 查詢 `{VENUE}_*_bias` entities
+2. **同 Going 命中率：** `read_query` 查詢 `SELECT * FROM hkjc_ratings WHERE venue='{VENUE}' AND track_condition LIKE '%{GOING}%'`
+3. **練馬師歷史：** `search_nodes` 查詢 `trainer_{NAME}_{VENUE}`
+4. **AWT 特殊檢查（若為全天候跑道）：** `read_query` 查詢 AWT 歷史數據
+
+**將結果加入 `_Meeting_Intelligence_Package.md` 嘅新 section：**
+```markdown
+## 歷史場地 Pattern（Tier 2 — MCP 交叉驗證）
+- 過往 3 次場地偏差: [{VENUE} - 偏差記錄]
+- 同 Going 命中率: [{GOING} 歷史 X%]
+- 練馬師 Spotlight: [{TRAINER} 喺 {VENUE} 近期勝率 Y%]
+- AWT 檢查: [適用 / 不適用]
+- **Intelligence Confidence: [🟢 HIGH / 🟡 MEDIUM / 🔴 LOW]**
+```
+
+**MCP 不可用時：** 跳過 Tier 2，Intelligence Confidence 設為 🟡 MEDIUM。分析流程完全唔受影響。
+
 ## 問題嚴重程度定義 (Issue Severity)
 
 | 級別 | 代碼 | 定義 | 處理方式 |
@@ -448,7 +489,7 @@ Wong Choi 調度嘅子 Agent 必須嚴格遵守各自嘅職責邊界:
 >
 > `
 > FOR EACH batch IN BATCH_PLAN:
->   1. 📝 WRITE — 必須使用獨立的對話回合與 `write_to_file` 或 `multi_replace_file_content` 工具寫入該 batch。若為最後一批,必須嚴格依照範本強制輸出 The Verdict (Top 4 列表及分析盲區),絕不允許省略任何項目!**嚴禁使用 Python 或 Bash 腳本來自動編寫或合併 Markdown。**
+>   1. 📝 WRITE — 必須使用 Safe-Writer Protocol (P19v6) heredoc → /tmp → base64 → safe_file_writer.py 管道寫入該 batch。Batch 1 用 `--mode overwrite`，Batch 2+ 用 `--mode append`。若為最後一批,必須嚴格依照範本強制輸出 The Verdict (Top 4 列表及分析盲區),絕不允許省略任何項目!**嚴禁使用 Python 或 Bash 腳本來自動編寫或合併 Markdown。**
 >      ⚠️ **CONTINUOUS BATCH APPEND SAFETY:** 當連續寫入多個 Batch 時,使用 `multi_replace_file_content` 進行 append **必須極度謹慎**!嚴禁使用可能重複出現的通用字串(例如舊的 "✅ 批次完成:X/Y")作為替換錨點,這會導致新 Batch 慘遭「插隊」寫入檔案中段。您必須:確保 TargetContent 是檔案當前唯一的絕對最後一行。
 >   2. 🔍 SCAN — view_file 驗證 section headers 存在
 >   3. ✅ QA — 執行 Batch QA Agent
@@ -460,13 +501,9 @@ Wong Choi 調度嘅子 Agent 必須嚴格遵守各自嘅職責邊界:
 > ```
 >
 > **⛔ COMPLETION_GATE(強制 — 回覆用戶前必須通過 — P31):**
-> 喺 batch 循環結束後、通知用戶之前,你必須執行以下檢查:
-> 1. `view_file` Analysis.md 最後 30 行
-> 2. 搜索「🏆 Top 4 位置精選」— 若不存在 → 你已遺漏 Verdict → 立即寫入 VERDICT BATCH
-> 3. 搜索 🥇🥈🥉🏅 — 四個標籤必須齊全
-> 4. 搜索 ` ```csv ` — CSV 區塊必須存在
-> 5. 所有檢查通過後方可繼續到合規檢查
-> **違規偵測:** 若你準備向用戶報告「分析完成」但 COMPLETION_GATE 未通過 → 你已違規 → 立即回退補寫。
+> 喺 batch 循環結束後、通知用戶之前,你必須強制執行以下 Python 驗證:
+> 🚨 **你完成分析後，必須強制自己 run `python3 .agents/scripts/completion_gate_v2.py <你正在分析的檔案路徑> --domain hkjc` 進行檢驗。不過關不准完成任務！**
+> 如果檢驗失敗 (出現 `❌ [FAILED]`)，你已違規 → 立即根據報告內容，自行修正錯誤的段落 (例如補回標籤、擴充字數或補回漏寫章節) 並重新執行 validator 直到 `✅ [PASSED]` 為止！
 > ```
 > 
 > 🔄 **[DEFAULT AUTONOMOUS COMMAND (預設全自動執行模式)]**
@@ -680,8 +717,8 @@ BATCH_SIZE 由 Pre-Flight Environment Scan 決定(標準=3 / fallback=2)。
 >
 > **A. 批次結構規則:**
 > 1. **分批寫入強制性。** 按 BATCH_SIZE 分批,超出 = 違規。
-> 2. **每個 Batch = 獨立 file write。** B1 用 `write_to_file` 新建,B2+ 用 `replace_file_content` 追加。嚴禁合併 2+ batch 到同一個 tool call。
-> 3. **VERDICT BATCH 獨立。** Part 3 + Part 4 + CSV 必須為獨立 tool call,唔可同馬匹分析合併。
+> 2. **每個 Batch = 獨立 file write (P19v6)。** 必須使用 `run_command` + heredoc → safe_file_writer.py 管道。B1 用 `--mode overwrite`，B2+ 用 `--mode append`。**🚫 嚴禁使用 `write_to_file` / `replace_file_content` / `multi_replace_file_content`。** 嚴禁合併 2+ batch 到同一個 tool call。
+> 3. **VERDICT BATCH 獨立。** Part 3 + Part 4 + CSV 必須為獨立 tool call,唔可同馬匹分析合併。**寫入 VERDICT 前必須執行 P33 JIT Template Checkpoint(見下方)。**
 > 4. **截斷恢復:** 若被 output token limit 截斷 → BATCH_SIZE 降為 2,重做該 batch。
 >
 > 批次示例(BS=3):7匹 → B1(3)+B2(3)+B3(1)+VERDICT | (BS=2):7匹 → B1(2)+B2(2)+B3(2)+B4(1)+VERDICT
@@ -702,10 +739,40 @@ BATCH_SIZE 由 Pre-Flight Environment Scan 決定(標準=3 / fallback=2)。
 
 **📊 CSV_BLOCK_MANDATORY:** VERDICT BATCH 必須包含 CSV Top 4 數據區塊。自檢:搜索 ` ```csv `,缺 → 補上。
 
+> [!CAUTION]
+> **🛡️ P33 — VERDICT JIT TEMPLATE CHECKPOINT(2026-04-04 新增 — Priority 0)**
+>
+> **歷史教訓(根本原因確認):** 2026-04-04 Sha Tin Race 1 Verdict 出現嚴重格式漂移 — 使用咗 numbered list (`1. [首選]`) 取代強制 `🥇🥈🥉🏅` 格式,遺漏 9 個必要組件(跑道形勢/信心指數、Top 2 信心度、步速逆轉保險、緊急煞車、整個第四部分分析盲區、冷門馬總計)。根因:VERDICT BATCH 寫入時冇重讀 template,導致 LLM 從記憶中生成咗錯誤嘅壓縮格式。
+>
+> **強制規定:**
+>
+> 1. **寫入 VERDICT BATCH 之前,必須 `view_file` 讀取 `08_output_templates.md` 嘅 lines 136-221。** 冇讀 = 禁止寫入 VERDICT。
+> 2. **VERDICT BATCH 結構自檢清單(寫入後逐項驗證,缺一 = 重做):**
+>    - [ ] `#### [第三部分] 最終預測 (The Verdict)` — 正確標題
+>    - [ ] 跑道形勢 / 信心指數 / 關鍵變數 — 3 項 header
+>    - [ ] `🏆 Top 4 位置精選` — 使用 `🥇🥈🥉🏅` 清單格式(非 numbered list / 非 table)
+>    - [ ] 每個選項有 4 個 sub-bullets: 馬號及馬名 / 評級與✅數量 / 核心理據 / 最大風險
+>    - [ ] `🎯 Top 2 入三甲信心度` — 含 🟢/🟡/🔴 信心標記
+>    - [ ] `🔄 步速逆轉保險` — 含快/慢兩個情境
+>    - [ ] `🚨 緊急煞車檢查` — 含 3 個條件判斷
+>    - [ ] `#### [第四部分] 分析盲區` — 6 個 sub-sections
+>    - [ ] `🐴⚡ 冷門馬總計` — 觸發或「無冷門馬訊號」
+>    - [ ] CSV Block — ` ```csv ` 存在
+> 3. **呢個 checkpoint 適用於所有場次、所有引擎、即使係 Session Recovery。**
+
 ---
 
 **🔍 骨架模板注入(Option A — 每 Batch 必須):**
 每個 Batch 開始前,Wong Choi 必須從 `resources/horse_analysis_skeleton.md` 讀取馬匹分析骨架模板,將骨架 × BATCH_SIZE 注入到 Analyst prompt 中。LLM 嘅任務從「生成分析」變為「填充骨架」,保證 100% 結構完整性。**核心邏輯/結論部分為 LLM 自由發揮區域。**
+>
+> **🐴 馬匹剖析格式嚴規 (P35 — 2026-04-06 新增 — Priority 0):**
+> - 馬匹剖析（或同等欄位如「馬匹分析」）**僅為簡潔分類標籤**，每項以 `[標籤]` 格式撰寫，禁止寫成段落或散文。
+> - ✅ 正確示範: `- **步態場地:** [未有 Soft 地數據，但血統顯示應能應付]`
+> - ✅ 正確示範: `- **引擎距離:** [Type A 短途爆發]`
+> - ❌ 錯誤示範: `- **步態場地:** [無]` （禁止用「無」一字帶過）
+> - ❌ 錯誤示範: 在馬匹剖析/馬匹分析下寫整段 200+ 字分析文章
+> - **深度法醫分析（戰術推演、歷史比較、風險評估、綜合判定）必須全部歸入 `💡 結論 > 核心邏輯` 區域。**
+> - **自檢觸發器:** 若你嘅馬匹剖析任何一項超過 30 字 → 你已違規 → 將多餘內容搬去核心邏輯。
 
 ---
 
@@ -716,7 +783,7 @@ FOR EACH batch:
   1. 📝 WRITE — 獨立 tool call 寫入(≤ BATCH_SIZE 匹馬)
   2. 🔍 SCAN — view_file 驗證 7 headers(🔬⚡📋🔗📊💡⭐)
   3. 🐍 VALIDATE — 執行 Python 驗證:
-     python scripts/validate_analysis.py "[ANALYSIS_PATH]"
+     python3 .agents/scripts/completion_gate_v2.py "[ANALYSIS_PATH]" --domain hkjc
      ❌ FAILED → 重做該 batch | ✅ PASSED → 繼續
   4. ✅ QA — 調用 HKJC Batch QA Agent
   5. 🔒 TOKEN — 寫入 BATCH_QA_RECEIPT
@@ -752,7 +819,7 @@ END FOR
 
 **Python 驗證(強制):**
 ```bash
-python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/validate_analysis.py "[ANALYSIS_PATH]"
+python3 .agents/scripts/completion_gate_v2.py "[ANALYSIS_PATH]" --domain hkjc
 python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/verify_math.py "[ANALYSIS_PATH]"
 ```
 `❌ FAILED` → 修正再驗證。`✅ PASSED` → 合規通過。
@@ -862,6 +929,16 @@ python ".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/generate_hkjc_reports.
 將 `_session_issues.md` 嘅 Status 更新為 `COMPLETED`。
 通知用戶一切已準備就緒。
 
+## Step 7b: Session Cost Report（可選 — P35 新增）
+
+> **設計理念:** 受 ECC `cost-aware-llm-pipeline` 啟發。追蹤每次分析 session 嘅 token 消耗同成本估算。
+
+完成 Step 7 後，執行 session 成本追蹤：
+```bash
+python3 .agents/scripts/session_cost_tracker.py "{TARGET_DIR}" --domain hkjc --batch-size {BATCH_SIZE}
+```
+喺聊天中簡要匯報成本摘要（3 行以內）。此步驟失敗唔影響任何結果。
+
 ## Step 8: 數據庫歸檔 (Database Archival — P32 新增)
 
 完成 Step 7 後,使用 MCP 工具將本次分析結果持久化(此步驟為可選但強烈建議):
@@ -886,7 +963,7 @@ VALUES ('{DATE}', '{VENUE}', {RACE_NUM}, {HORSE_NUM}, '{HORSE_NAME}', '{GRADE}',
 > ⚠️ **失敗處理**:若 MCP 工具不可用(例如首次使用未安裝),跳過此步驟不影響分析結果。記錄到 `_session_issues.md`。
 
 # Recommended Tools & Assets
-- **Tools**: `search_web`, `run_command`, `write_to_file`, `view_file`
+- **Tools**: `search_web`, `run_command`, `view_file`, `grep_search` (⚠️ `write_to_file`/`replace_file_content`/`multi_replace_file_content` 已被 P19v6 完全封殺 — 只用 `run_command` + heredoc pipeline)
 - **MCP Tools (P32 新增)**:
   - `playwright_navigate` / `playwright_screenshot` — 網頁即時數據抓取(Python 腳本失敗時嘅後備)
   - `read_graph` / `create_entities` / `create_relations` — Knowledge Graph 記憶(場地偏差、跨 session 筆記)
@@ -899,17 +976,88 @@ VALUES ('{DATE}', '{VENUE}', {RACE_NUM}, {HORSE_NUM}, '{HORSE_NAME}', '{GRADE}',
 # 操作協議(Read-Once — 啟動時載入)
 你必須喺 session 開始時讀取 `resources/01_protocols.md`,內含:
 - **統一失敗處理協議** — 所有失敗場景嘅處置方式
-- **🚨 File Writing Protocol** — 嚴禁 heredoc,所有寫入必須用 `write_to_file` / `replace_file_content`
+- **🚨 File Writing Protocol (P19v6)** — 所有分析寫入必須用 `run_command` + heredoc → safe_file_writer.py 管道。`write_to_file` / `replace_file_content` / `multi_replace_file_content` 已完全封殺。
 
-# 🚨 終極防死機 / Native-Writer Protocol (P19v4)
+# 🚨 終極防死機 / Safe-Writer Protocol (P19v6 — 2026-04-05 強化)
 
-> **歷史教訓(跨引擎反覆出現):** IDE 工具框架自動將 JSON keys 按字母排序(`CodeContent` → `TargetFile`)。當分析報告超過 200 行時,`TargetFile` 排在最後串流,IDE 客戶端無法及時知道目標檔案,導致 buffer 堆積 → Timeout → 鎖死。
+> **🚫🚫🚫 TOTAL BAN — `write_to_file` / `replace_file_content` / `multi_replace_file_content` 完全封殺 🚫🚫🚫**
 >
-> **強制規定(Priority 0 — 適用所有引擎):**
+> **歷史教訓(P19v1→v6 演進):**
+> - P19v1-v3: `write_to_file` / `replace_file_content` 超過 100 行 → IDE 假死機 (`+0 -0`)
+> - P19v4: `write_to_file` 寫 `/tmp/*.py` → 仍然經過 IDE JSON 管道，一樣卡死
+> - P19v5: 允許 `write_to_file` 寫小檔(<20行)同 `/tmp` → 實測證明仍然卡死！
+> - **P19v6 (2026-04-05): 完全封殺。任何大小、任何路徑均禁止。**
 >
-> 1. **閾值規則:** 寫入內容 < 200 行 → 正常使用 `write_to_file` / `replace_file_content`。寫入內容 ≥ 200 行 → **必須**直接在對話框 (Chat) 中即時串流輸出。
-> 2. **Safe Writer 用法:** 透過 `run_command` 執行 Python Here-Doc,將內容 Base64 編碼後傳給 `Native-Writer (直接使用原生 replace_file_content 工具寫入檔案)`。
-> 3. **B2+ 追加模式:** 用 `--mode append` 取代 `replace_file_content` 的追加操作。
-> 4. **驗證:** 寫入後用 `command_status` 確認 JSON 回傳 `"success": true`。
-> 5. **嚴禁違反:** 使用 `write_to_file` 寫入 ≥ 200 行內容 = 觸發 IDE 鎖死風險 = 違規。
-> 6. **詳細用法:** 參見 `.agent/workflows/safe_write.md`。
+> **唯一合法寫入方法:**
+> `run_command` + Heredoc → /tmp → Base64 → safe_file_writer.py (WLTM)
+>
+> **⛔ 自檢觸發器:** 若你正在準備使用 `write_to_file` → ⛔ STOP → 你已違規 → 改用下方管道。
+>
+> **🚨 FALLBACK 硬性規定（2026-04-05 新增 — 歷史教訓: Gemini 用錯路徑後 fallback 到 write_to_file 再次死鎖）:**
+> - 若 `safe_file_writer.py` 路徑搵唔到 → **絕對唔可以 fallback 到 `write_to_file`**
+> - 正確嘅 fallback 係: `cp /tmp/batch_N.md "{TARGET}"` (overwrite) 或 `cat /tmp/batch_N.md >> "{TARGET}"` (append)
+> - **任何情況下 `write_to_file` / `replace_file_content` / `multi_replace_file_content` 都係死路一條 — 唔好用！**
+
+**🔧 SAFE_WRITER 路徑常量（所有引擎必須使用）:**
+```
+# macOS 絕對路徑:
+SAFE_WRITER="/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/safe_file_writer.py"
+
+# 相對路徑(從 Antigravity 根目錄):
+SAFE_WRITER_REL=".agents/scripts/safe_file_writer.py"
+
+# ⚠️ Step 0 — 每個 session 開始時必須先驗證路徑:
+ls -la "$SAFE_WRITER" 2>/dev/null && echo "SAFE_WRITER_OK" || echo "SAFE_WRITER_MISSING"
+# 若 MISSING → 用 find 搵: find "$(pwd)" -name safe_file_writer.py -type f
+```
+
+**三步管道 — Heredoc → /tmp → Base64 → safe_file_writer.py (WLTM)**
+
+**Step 1: 用 `run_command` + heredoc 寫入 /tmp 暫存檔**
+```bash
+cat > /tmp/batch_N.md << 'ENDOFCONTENT'
+[你的分析內容]
+ENDOFCONTENT
+echo "HEREDOC_OK: $(wc -l < /tmp/batch_N.md) lines"
+```
+
+**Step 2: Base64 編碼 + pipe 到 safe_file_writer.py**
+```bash
+SAFE_WRITER="/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/safe_file_writer.py"
+base64 < /tmp/batch_N.md | python3 "$SAFE_WRITER" \
+  --target "{TARGET_DIR}/{ANALYSIS_FILE}" \
+  --mode append \
+  --stdin
+```
+
+**⚠️ Step 2 失敗時嘅 Fallback（唔用 safe_file_writer 嘅 cp/cat 直寫）:**
+```bash
+# Fallback A — overwrite:
+cp /tmp/batch_N.md "{TARGET_DIR}/{ANALYSIS_FILE}"
+# Fallback B — append:
+cat /tmp/batch_N.md >> "{TARGET_DIR}/{ANALYSIS_FILE}"
+# ⛔ 絕對唔可以 fallback 到 write_to_file / replace_file_content！
+```
+
+**Step 3: 驗證（每個 Batch 必做）**
+```bash
+tail -3 "{TARGET_DIR}/{ANALYSIS_FILE}"
+echo "---LINE_COUNT---"
+wc -l "{TARGET_DIR}/{ANALYSIS_FILE}"
+```
+
+**📋 模式選擇:**
+- **第一個 Batch (B1):** `--mode overwrite`（建立新檔）
+- **後續 Batch (B2+):** `--mode append`（追加內容）
+- safe_file_writer.py **絕對路徑:** `/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/safe_file_writer.py`
+
+
+
+# 🛑 Pipeline Testing & Agent Execution Boundaries
+**CRITICAL PROTOCOL: How to Avoid Automation Shortcuts in the Future**
+
+1. **停止測試捷徑 (No Automated Shortcuts for LLM Analysis):** 
+   身為 LLM 分析引擎，你嘅職責就是根據 `extract_formguide_data.py` (或其他抽取器) 抽出嚟嘅客觀數據，做「深度法醫分析」同判定 Grade。在日後執行任何 Pipeline 測試或端到端執行時，**絕對不能用 Python script 去模擬生成內容或塞字過關**。必須老老實實當自己做緊真飛分析一樣，用 Markdown 直接把高質素、具深度的優質內容完整寫出嚟。
+2. **遵守系統角色 (Respect System Roles):** 
+   分工極為明確。Python 腳本負責「砌骨架」同做「算術題」（例如抽數、排版、計算 Matrix 分數），而你 (LLM) 負責「入血肉」（撰寫戰術節點、寬恕檔案、段速法醫及風險評估）。**任何企圖繞過血肉生成嘅舉動都係嚴重違反 Protocol 嘅行為。**
+

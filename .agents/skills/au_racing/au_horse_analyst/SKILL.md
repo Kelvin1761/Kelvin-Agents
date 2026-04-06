@@ -8,7 +8,7 @@ ag_kit_skills:
 
 # Role & Objective
 澳洲職業馬房首席策略官。核心角色、語言規則、術語映射及反惰性協議定義於 `resources/01_system_context.md`(每場必讀)。
-核心任務:穿透表面賽績數字,自動讀取並分析 `AU Race Extractor` 提取出來的賽馬數據,按預設演算法及輸出模板分析全場馬匹,最後給出「全場最終決策 (Top 4 精選)」。
+核心任務:穿透表面賽績數字,自動讀取並分析 `AU Race Extractor` 提取出來的賽馬數據,按預設演算法**填充 Wong Choi 注入嘅骨架模板**分析全場馬匹,最後給出「全場最終決策 (Top 4 精選)」。結構已固定（見骨架模板），核心邏輯/結論部分為你嘅自由發揮區域。
 
 # Scope & Strict Constraints
 
@@ -17,9 +17,15 @@ ag_kit_skills:
 > 完整反惰性協議、批次協議、數據真實性規則、Token 預算指引均定義於 `resources/01_system_context.md`(每場必讀)。以下為摘要。
 
 - **真實數據**:基於 Formguide 實際數據,每匹馬引用 ≥3 個獨特數據點。
-- **批次**:每批固定 3 匹馬(BATCH_SIZE: 3),按馬號順序,全自動推進,嚴禁批次間詢問用戶。嚴禁將批次改為 4-6 匹以避免品質下降。
+- **批次**:每批按 Wong Choi 傳入嘅 BATCH_SIZE 分批（預設 3，環境掃描 fallback 為 2），按馬號順序，全自動推進，嚴禁批次間詢問用戶。嚴禁將批次改為 4-6 匹以避免品質下降。
 - **完整性**:每匹馬完整 5 區塊 x 13 子欄位輸出,D 級馬 ≥300 字。
 - **防幻覺**:無數據填 `N/A (數據不足)`。**防無限 Loop**:搜索連續失敗 3 次即停止。
+- **防往績幻覺 (P37 — 2026-04-06 新增)**:
+  - 每匹馬嘅「上仗名次」**必須**同骨架中預填嘅 `📌 Racecard 事實錨點` 一致,嚴禁修改錨點數據
+  - `Last 10` 讀法：左→右 = 最新→最舊，數字 1-9 = 名次，`0` = **第10名**，`x` = trial/scratched（跳過）
+  - Formguide result line `1-XXX, 2-YYY` 列嘅係「該場嘅贏家/亞軍」，**唔係分析對象嘅名次**
+  - 分析對象嘅名次必須從 Racecard `Last 10` string 確認，若 Formguide narrative 矛盾 → 以 Last 10 為準
+  - 每個 Batch 完成後自動執行 `verify_form_accuracy.py` 核對，不匹配 = 必須修正
 
 ## 2. 外部數據搜索
 按照 `resources/06a_data_retrieval_and_deps.md` 執行所有外部數據搜索。
@@ -30,12 +36,15 @@ ag_kit_skills:
 
 **Tier 1: 核心必讀(分析開始前 — 一次性載入,全程保留):**
 - `resources/01_system_context.md` — 核心設定、語言規則、反惰性協議
-- `resources/02_algorithmic_engine.md` — Steps 0-14 完整演算法引擎
+- `resources/02a_pre_analysis.md` — Steps 0-0.5 賽事分類與情境標籤
+- `resources/02b_form_analysis.md` — Steps 1-3 狀態/引擎/班次
 - `resources/03e_class_standards.md` — 班次標準時間 + 段速基準
 - `resources/04a_track_core.md` — 場地分析通用原則
 - `[TRACK_MODULE]` → 對應嘅 `resources/04b_track_[venue].md`
 
 **Tier 2: 延遲載入(首個 Batch 開始前載入,載入後全程保留):**
+- `resources/02c_track_and_gear.md` — Steps 4-6 場地/裝備/寬恕
+- `resources/02d_eem_pace.md` — Steps 7, 10 EEM + 步速
 - `resources/06a_data_retrieval_and_deps.md` — 外部數據搜索協議 + 步驟依賴地圖
 - `resources/07b_trainer_signals.md` — 練馬師分級、場地偏好、出擊訊號矩陣
 - `resources/03a_sire_index.md` — 血統分析框架
@@ -45,6 +54,9 @@ ag_kit_skills:
   - `[DISTANCE_CATEGORY: STAYING]` → `resources/03d_sire_staying.md`
 
 **Tier 3: 按需載入(觸發時才讀,用完可釋放):**
+- `resources/02e_jockey_trainer.md` — Steps 11-13（首個 Batch 前或需要時）
+- `resources/02f_synthesis.md` — Step 14 **寫 Verdict 前必須重讀**
+- `resources/02g_override_chain.md` — 覆蓋規則 **寫 Verdict 前必須重讀**
 - `resources/06_output_templates.md` — **寫 Verdict ([BATCH: LAST]) 前必須重讀**
 - `resources/05_verification.md` — 自檢前讀取
 - `[RACE_TYPE: STRAIGHT_SPRINT]` → `resources/02b_straight_sprint_engine.md` + `resources/04c_straight_sprint.md`
@@ -64,9 +76,9 @@ ag_kit_skills:
 2. **賽前環境掃描 (Pre-flight Data Extraction) [CRITICAL]**:首次啟動必須優先讀取 `_Race_Day_Briefing.md` 以取得各場次的**精確路程 (Distance) 及級別 (Class/Level)**。若檔案內無提供,**強制使用搜索工具**到 Racenet (racenet.com.au) 爬取當日該馬場最新排位表,並必須精確提取賽事的「**官方路程 (例如 1200m)**」及「**班次級別 (例如 BM72, 3YO Maiden)**」。嚴禁盲猜路程與班次。
 3. **讀取與預備**:確定路程無誤後,讀取賽事排位表與 Formguide 進入備戰。
 4. **情報補全**:使用 Wong Choi Intelligence Package(若有),或獨立搜尋動態情報。
-3.5. **[SIP-1] 場地預測容錯機制**:若預測場地為 Heavy 或天氣不穩定,執行雙軌敏感度分析(定義見 `02_algorithmic_engine.md` Step 4)。
+3.5. **[SIP-1] 場地預測容錯機制**:若預測場地為 Heavy 或天氣不穩定,執行雙軌敏感度分析(定義見 `02c_track_and_gear.md` Step 4)。
 4. **賽事與步速定調**:判定 `[STRAIGHT SPRINT]` 或 `[STANDARD RACE]`,產生 `<第一部分>` + Speed Map。
-5. **批次解析**:每批固定 3 匹馬(BATCH_SIZE: 3),按馬號順序。**全自動推進**,嚴禁批次間詢問用戶。**批次隔離規則:每個 Batch 必須作為獨立嘅 file write 操作輸出,嚴禁將多個 Batch 合併到同一次 tool call。** Batch 1 = Native-Writer 使用 write_to_file 工具建檔;Batch 2+ = 獨立 Native-Writer 使用 multi_replace_file_content 工具追加寫入。若發現正在寫入 4+ 匹馬 → 立即停止拆分。
+5. **批次解析**:每批按 Wong Choi 傳入嘅 BATCH_SIZE（預設 3，環境掃描 fallback 為 2），按馬號順序。**全自動推進**，嚴禁批次間詢問用戶。**批次隔離規則:每個 Batch 必須作為獨立嘅 file write 操作輸出，嚴禁將多個 Batch 合併到同一次 tool call。** Batch 1 = Safe-Writer Protocol (P19v6) 使用 heredoc → /tmp → base64 → safe_file_writer.py --mode overwrite 建檔；Batch 2+ = 同一管道 --mode append 追加寫入。⚠️ write_to_file / replace_file_content / multi_replace_file_content 已完全封殺（見 Wong Choi P19v6）。若發現正在寫入 4+ 匹馬 → 立即停止拆分。
 6. **全場最終決策**:全場所有馬匹均完成 Batch 分析後，**[致命規定] 必須先調用 `view_file` 閱讀 `06_output_templates.md`**，然後嚴格遵照模板生成 `<第三部分>` (Top 4 必須用條列式/Bullet points、嚴禁單行句) + `<第四部分>` + `<第五部分>` (CSV 代碼必須被代碼區塊括起)，Top 4 必須按評級排序。
 
 **🚨 Anti-Laziness 錨定 + 品質守門員檢查 [SIP-ST8](每批次強制自檢):**
@@ -96,16 +108,22 @@ ag_kit_skills:
 
 | Step | 執行? | 證據錨點(引用具體數據) |
 |------|--------|------------------------|
+| Step 0 賽事分類 | ✅/❌ | 錨點: [e.g. "RACE_TYPE: STANDARD, BM72, 1400m"] |
+| Step 0.5 情境標籤 | ✅/❌ | 錨點: [e.g. "情境A-升級, 降班+輕磅+出擊訊號"] |
 | Step 1 狀態週期 | ✅/❌ | 錨點: [e.g. "間距 28 日,Third-up"] |
 | Step 2 引擎距離 | ✅/❌ | 錨點: [e.g. "Sire AWD 1400m, Type B"] |
 | Step 3 班次負重 | ✅/❌ | 錨點: [e.g. "Rating 78→72, 降班 -6"] |
 | Step 4 場地適性 | ✅/❌ | 錨點: [e.g. "Soft WR 3/8=37.5%"] |
 | Step 5 裝備解碼 | ✅/❌ | 錨點: [e.g. "首次上舌帶"] |
-| Step 6 寬恕檔案 | ✅/❌ | 錨點: [e.g. "上仗「走勢受阻」→ 可寬恕"] |
+| Step 6 寬恕檔案 | ✅/❌ | 錨點: [e.g. "上仗走勢受阻 → 可寬恕"] |
 | Step 7 EEM | ✅/❌ | 錨點: [e.g. "3-wide no cover, PACE: Genuine → ❌"] |
 | Step 8 段速法醫 | ✅/❌ | 錨點: [e.g. "L600 34.2 vs BM72 par 35.1 → 優於標準"] |
 | Step 9 賽績線 | ✅/❌ | 錨點: [e.g. "上仗頭馬下仗贏 → 強組"] |
 | Step 10 步速 | ✅/❌ | 錨點: [e.g. "PACE_TYPE: Genuine, LEADER_COUNT: 3"] |
+| Step 11 騎師 | ✅/❌ | 錨點: [e.g. "Rachel King, 季 WR 22%, 同程 WR 30%"] |
+| Step 12 練馬師 | ✅/❌ | 錨點: [e.g. "C Waller, Tier 1, 出擊訊號: ✅"] |
+| Step 13 初出/進口 | ✅/❌ | 錨點: [e.g. "初出馬 — 試閘表現/N/A"] |
+| Step 14 評級聚合 | ✅/❌ | 錨點: [e.g. "核心✅=2, 半核心✅=1, 輔助✅=3 → 查表 A-"] |
 
 - 若某 Step 合理地 N/A(例如首出馬 Step 9)→ 標記 `N/A [原因]`
 - 此清單唔出現喺最終輸出,只留喺 `<thought>` 中
@@ -135,27 +153,27 @@ ag_kit_skills:
 
 | SIP Tag | File | Summary |
 |:---|:---|:---|
-| **SIP-1** | `02_algorithmic_engine.md` (Step 4) | 場地預測容錯機制 — Heavy/不穩定天氣時執行雙軌敏感度分析 |
-| **SIP-2** | `02_algorithmic_engine.md` (Step 7) | 場地調節係數 — EEM 外疊懲罰按場地等級乘以係數 (×0.6 至 ×1.6) |
-| **SIP-3** | `02_algorithmic_engine.md` (Step 7) | 後追馬場地懲罰調節 — Soft 5 或更佳場地不自動判 ❌ |
-| **SIP-4** | `02_algorithmic_engine.md` (Step 4) | 場地敏感度標籤 + Swamp Beast 觸發門檻(Heavy 7+ 才觸發) |
-| **SIP-5** | `02_algorithmic_engine.md` (Step 12) | 動力因素 — 連勝動力獨立評估 (3連勝可升一級) |
-| **SIP-6** | `02_algorithmic_engine.md` (Step 3) | 降班馬有效期限制 — 90/180 日時效遞減 |
-| **SIP-7** | `02_algorithmic_engine.md` (Step 3), `07_jockey_profiles.md` | 見習騎師減磅優化 — 減磅 ≥3kg 自動 ✅ Strong + 負重極端優勢 |
-| **SIP-8** | `02_algorithmic_engine.md` (Step 7) | 頂級後追豁免 — 全場最快末段 + ≥1200m + 非 Crawl 步速 |
-| **SIP-9** | `02_algorithmic_engine.md` (Step 14.E) | S/S- 級純度必備條件 — 必須有段速或級數硬性支持 |
-| **SIP-10** | `02_algorithmic_engine.md` (Step 13) | 頂級馬房進口馬寬容機制 — 大倉+一線騎師解除初出封頂 |
-| **SIP-R14-2** | `02_algorithmic_engine.md` (Step 7/14.E), `07_jockey_profiles.md` | 頂級騎師檔位豁免 — Tier 1 騎師 + 評分≥85 外檔降半級 |
-| **SIP-R14-3** | `02_algorithmic_engine.md` (Step 7) | 內檔被困擁堵風險 — 1-2 檔+非領放+≥10 匹 → -0.5 級 |
-| **SIP-R14-4** | `02_algorithmic_engine.md` (Step 10) | Good 場地 Group 級別前領偏差下調 — 下調 50% |
-| **SIP-R14-5** | `02_algorithmic_engine.md` (Step 3) | 中高班輕磅優勢加成 — BM72+ ≤54kg ≤5 檔 → +0.5 級 |
-| **SIP-R14-6** | `02_algorithmic_engine.md` (Step 2) | 超班馬距離容忍度 — Rating ≥105 容許 ±200m 偏差 |
+| **SIP-1** | `02c_track_and_gear.md` (Step 4) | 場地預測容錯機制 — Heavy/不穩定天氣時執行雙軌敏感度分析 |
+| **SIP-2** | `02d_eem_pace.md` (Step 7) | 場地調節係數 — EEM 外疊懲罰按場地等級乘以係數 (×0.6 至 ×1.6) |
+| **SIP-3** | `02d_eem_pace.md` (Step 7) | 後追馬場地懲罰調節 — Soft 5 或更佳場地不自動判 ❌ |
+| **SIP-4** | `02c_track_and_gear.md` (Step 4) | 場地敏感度標籤 + Swamp Beast 觸發門檻(Heavy 7+ 才觸發) |
+| **SIP-5** | `02e_jockey_trainer.md` (Step 12) | 動力因素 — 連勝動力獨立評估 (3連勝可升一級) |
+| **SIP-6** | `02b_form_analysis.md` (Step 3) | 降班馬有效期限制 — 90/180 日時效遞減 |
+| **SIP-7** | `02b_form_analysis.md` (Step 3), `07_jockey_profiles.md` | 見習騎師減磅優化 — 減磅 ≥3kg 自動 ✅ Strong + 負重極端優勢 |
+| **SIP-8** | `02d_eem_pace.md` (Step 7) | 頂級後追豁免 — 全場最快末段 + ≥1200m + 非 Crawl 步速 |
+| **SIP-9** | `02f_synthesis.md` (Step 14.E) | S/S- 級純度必備條件 — 必須有段速或級數硬性支持 |
+| **SIP-10** | `02e_jockey_trainer.md` (Step 13) | 頂級馬房進口馬寬容機制 — 大倉+一線騎師解除初出封頂 |
+| **SIP-R14-2** | `02d_eem_pace.md` (Step 7) + `02f_synthesis.md` (Step 14.E), `07_jockey_profiles.md` | 頂級騎師檔位豁免 — Tier 1 騎師 + 評分≥85 外檔降半級 |
+| **SIP-R14-3** | `02d_eem_pace.md` (Step 7) | 內檔被困擁堵風險 — 1-2 檔+非領放+≥10 匹 → -0.5 級 |
+| **SIP-R14-4** | `02d_eem_pace.md` (Step 10) | Good 場地 Group 級別前領偏差下調 — 下調 50% |
+| **SIP-R14-5** | `02b_form_analysis.md` (Step 3) | 中高班輕磅優勢加成 — BM72+ ≤54kg ≤5 檔 → +0.5 級 |
+| **SIP-R14-6** | `02b_form_analysis.md` (Step 2) | 超班馬距離容忍度 — Rating ≥105 容許 ±200m 偏差 |
 | **SIP-R14-7** | `05_verification.md` | 數據完整性驗證 — Top 5 + 頂級馬房/騎師座騎不可跳過 |
-| **SIP-C14-1** | `02_algorithmic_engine.md` (Step 7) | C 欄出馬匹數分級懲罰 — 按場次大小調整外檔/後追懲罰 |
-| **SIP-C14-2** | `02_algorithmic_engine.md` (Step 14.E) | 卡士碾壓豁免 — Rating 差≥12 + Rating≥90 保底 B+ |
-| **SIP-C14-3** | `02_algorithmic_engine.md` (Step 0.5/14.E) | 2YO 賽事警戒 — 外檔懲罰減半 + 封頂 A- + 異常偵測 |
-| **SIP-C14-4** | `02_algorithmic_engine.md` (Step 2), `05_verification.md` | 距離強制核實 — 雙源交叉比對距離數據 |
-| **SIP-C14-5** | `02_algorithmic_engine.md` (Step 11) | 見習騎師當日熱手加分 — 同場≥2 場入位 → +0.5/+1 升級 |
-| **SIP-C14-6** | `02_algorithmic_engine.md` (Step 10) | 步速互燒警報 — C 欄+≥12 匹+≥3 前置引擎 → 步速上調 |
-| **SIP-RF01** | `02_algorithmic_engine.md` (Step 4) | Soft 入位率雙軌篩選 — Soft WR<20% 但 PR≥60%+樣本≥3 → Tier 2.5 + 場地❌保護 + SIP-RR09 豁免 |
-| **SIP-RF02** | `02_algorithmic_engine.md` (Step 14.E) | 濕地未知風險封頂 — Soft 5+ 場地下 Tier 4 封頂 A-,Tier 5 封頂 B+,賦予場地強制否決權 |
+| **SIP-C14-1** | `02d_eem_pace.md` (Step 7) | C 欄出馬匹數分級懲罰 — 按場次大小調整外檔/後追懲罰 |
+| **SIP-C14-2** | `02f_synthesis.md` (Step 14.E) | 卡士碾壓豁免 — Rating 差≥12 + Rating≥90 保底 B+ |
+| **SIP-C14-3** | `02a_pre_analysis.md` (Step 0.5/14.E) | 2YO 賽事警戒 — 外檔懲罰減半 + 封頂 A- + 異常偵測 |
+| **SIP-C14-4** | `02b_form_analysis.md` (Step 2), `05_verification.md` | 距離強制核實 — 雙源交叉比對距離數據 |
+| **SIP-C14-5** | `02e_jockey_trainer.md` (Step 11) | 見習騎師當日熱手加分 — 同場≥2 場入位 → +0.5/+1 升級 |
+| **SIP-C14-6** | `02d_eem_pace.md` (Step 10) | 步速互燒警報 — C 欄+≥12 匹+≥3 前置引擎 → 步速上調 |
+| **SIP-RF01** | `02c_track_and_gear.md` (Step 4) | Soft 入位率雙軌篩選 — Soft WR<20% 但 PR≥60%+樣本≥3 → Tier 2.5 + 場地❌保護 + SIP-RR09 豁免 |
+| **SIP-RF02** | `02f_synthesis.md` (Step 14.E) | 濕地未知風險封頂 — Soft 5+ 場地下 Tier 4 封頂 A-,Tier 5 封頂 B+,賦予場地強制否決權 |

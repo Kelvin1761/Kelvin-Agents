@@ -220,15 +220,22 @@ batch2_text = """
 text = text.rstrip()
 text += '\n\n' + batch2_text.strip() + '\n'
 
-with open(file_path, 'w', encoding='utf-8') as f:
-    f.write(text)
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "Horse Racing Dashboard"))
+from backend.utils.safe_writer import safe_write
+
+target_file_mac = file_path.replace(r"g:\我的雲端硬碟", "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟").replace("\\", "/")
+safe_write(target_file_mac if sys.platform != 'win32' else file_path, text, mode="w")
 
 with open(r'C:\Users\Alleg\.gemini\antigravity\brain\a1466cd5-c6c6-4285-8980-5fc1181723e6\task.md', 'r', encoding='utf-8') as f:
     task_text = f.read()
 
 task_text = task_text.replace('- [/] Batch 2: #4, #5, #6', '- [x] Batch 2: #4, #5, #6\n  - [/] Batch 3: #7, #8, #9')
 
-with open(r'C:\Users\Alleg\.gemini\antigravity\brain\a1466cd5-c6c6-4285-8980-5fc1181723e6\task.md', 'w', encoding='utf-8') as f:
-    f.write(task_text)
+task_file = r'C:\Users\Alleg\.gemini\antigravity\brain\a1466cd5-c6c6-4285-8980-5fc1181723e6\task.md'
+task_file_mac = task_file.replace(r"C:\Users\Alleg", "/Users/imac").replace("\\", "/")
+
+safe_write(task_file_mac if sys.platform != 'win32' else task_file, task_text, mode="w")
 
 print('Appended Batch 2 successfully.')

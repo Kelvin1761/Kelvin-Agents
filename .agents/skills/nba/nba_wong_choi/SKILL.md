@@ -111,9 +111,9 @@ ag_kit_skills:
 若未安裝,請將以下配置加入 mcp_config.json:
 {
   "mcpServers": {
-    "playwright": { "command": "cmd.exe", "args": ["/c", "npx", "-y", "@playwright/mcp@latest"] },
-    "sqlite": { "command": "cmd.exe", "args": ["/c", "npx", "-y", "mcp-server-sqlite", "C:/Users/Alleg/.gemini/antigravity/databases/wong_choi.db"] },
-    "memory": { "command": "cmd.exe", "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-memory"] }
+    "playwright": { "command": "npx", "args": ["-y", "@playwright/mcp@latest"] },
+    "sqlite": { "command": "npx", "args": ["-y", "mcp-server-sqlite", "~/.gemini/antigravity/databases/wong_choi.db"] },
+    "memory": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-memory"] }
   }
 }
 然後重新啟動 Antigravity。
@@ -197,14 +197,33 @@ Step 5.5 數據庫歸檔功能需要 MCP Servers 運作,但即使未安裝也不
 ```
 
 **🔒 COMPLETION_GATE(分析完成門與驗證攔截閘):**
-每場賽事完成(Agent 返回結果)後,存檔前必須檢查:
-1. 內容是否包含 `CoV:` (變異數係數) 及完整的 6 項數據結構。若發現「數據略」或未滿 6 項,直接 Reject 並強制重寫。
-2. `Game_*_Full_Analysis.txt` 已寫入且內容完整。
-3. Parlay Leg 候選已記錄。
-4. 品質掃描已通過。
-只有四項都通過才可以推進到下一場。
+每場賽事完成(Agent 返回結果)後,存檔前必須強制執行以下 Python 驗證:
+🚨 **你必須強制自己 run `python3 .agents/scripts/completion_gate_v2.py <你的檔案> --domain nba` 進行檢驗。不過關不准推進到下一場！**
+如果檢驗失敗 (出現 `❌ [FAILED]`)，你已違規 → 立即根據報告內容自行修正，並重新執行 validator 直到 `✅ [PASSED]` 為止！只有通過測試才可以推進到下一場。
 
-### Sub-Step 2A: 呼叫 NBA Data Extractor(本場)
+### Sub-Step 2A-Pre: 歷史交叉驗證（本場 — P35 新增）
+
+> **設計理念:** 受 ECC `search-first` 啟發。每場賽事提取前，先查詢歷史對位數據。
+> 完整 checklist 見 `shared_instincts/intelligence_checklist.md`。
+> **此步驟依賴 MCP。若 MCP 不可用 → 自動跳過。**
+
+**若 MCP Servers 可用，對本場球員執行 Tier 2 歷史驗證：**
+1. `read_query`: 球員 vs 對手歷史 Props 命中率
+2. `read_graph`: 球員傷病 Timeline + 復出 usage 變化
+3. `read_query`: B2B 歷史達標率（若為 B2B 場次）
+4. `search_nodes`: 防守大閘效應
+
+**將結果加入本場數據包頭部：**
+```markdown
+## 歷史對位 Pattern（Tier 2 — MCP）
+- {PLAYER_1} vs {OPPONENT}: [Props 命中率 X%]
+- {PLAYER_2} B2B: [達標率 X%]
+- 防守大閘: [{DEFENDER} 限制 -X% usage]
+- **Intelligence Confidence: [🟢/🟡/🔴]**
+```
+MCP 不可用 → 跳過，標記 `Intelligence Confidence: 🟡 MEDIUM`。
+
+### Sub-Step 2A: 呼叫 NBA Data Extractor（本場）
 指示 Extractor 只提取當前一場賽事嘅數據,等待輸出結構化數據包。
 
 ### Sub-Step 2B: 數據品質驗證(本場)
@@ -215,7 +234,12 @@ Step 5.5 數據庫歸檔功能需要 MCP Servers 運作,但即使未安裝也不
 1. 只傳遞本場 Meeting Intelligence + Player-Level 數據卡
 2. 指示依照自身 SKILL.md 執行 Step 2-6(波動率 → 盤口 → 安全檢查 → 組合 → 輸出)
 3. **強制指示**:絕對優先使用數據包內嘅數據,嚴禁自行上網搜尋
-4. 輸出:合格 Leg 候選清單 + 本場 3 組 Banker SGM 組合
+4. 輸出:合格 Leg 候選清單 + 本場 4 組 Banker SGM 組合（組合 1A/1B/2/3）
+5. **數學前置計算**：在傳遞數據包給 Analyst 前，先用 Python 數學引擎計算確定性數學：
+   ```bash
+   python3 .agents/skills/nba/nba_wong_choi/scripts/nba_math_engine.py --batch "{data_json}"
+   ```
+   將結果附加在數據包內，令 Analyst 可以直接引用 Python 計算結果而非自行計算。
 
 ### Sub-Step 3B: 合併輸出與歸一化
 按照 `resources/03_output_format.md` 合併數據包與分析結果,存檔至 `TARGET_DIR`。
@@ -237,36 +261,64 @@ Step 5.5 數據庫歸檔功能需要 MCP Servers 運作,但即使未安裝也不
 
 ### 循環完成後
 1. 從所有 `Game_*_Full_Analysis.txt` 讀取候選 Legs,匯總為**全日候選池**
-2. 指示 Analyst 構建**跨場次 3 組 Parlay 組合**(穩膽/價值/高賠)
+2. 執行 **[NBA-DA01] Parlay 多角度審計協議**:
+   **Step A — Statistical Selection:** 列出最穩嘅 2-3 隻 Legs (低 CoV + 高 L10 命中率)
+   **Step B — Injury & Matchup Challenge:** 對位球員、傷缺、B2B?
+   **Step C — Props Line Audit:** 剔除 outlier 後仲 pass 嗎？更低 CoV 嘅替代 Line?
+   **Step D — Final Parlay:** 指示 Analyst 構建跨場次 4 組 Parlay 組合 (組合 1A/1B/2/3) + 並列出被踢走嘅 Legs 同原因
 3. 執行 SGP 防撞擊檢查
 
 > ⚠️ **失敗處理**:若某場失敗,記錄錯誤並跳過,繼續下一場。
 
-## Step 4: 品質檢查 + 覆蓋權
+## Step 4: 品質檢查 + 合規審計
 按照 `resources/02_quality_scan.md` Section C + D 執行最終品質檢查。
+
+### Step 4a: 呼叫 NBA Compliance Agent（強制）
+將最終報告傳遞給 `nba_compliance` Agent 執行合規審計：
+- `✅ COMPLIANCE CHECK PASSED` → 繼續 Step 4b
+- `⚠️ CONDITIONAL PASS` → 指示 Analyst 修正 MINOR 問題後重新提交
+- `❌ FAILED` → 指示 Analyst 重做受影響組合/Leg，最多重試 1 次
+
+### Step 4b: 呼叫 NBA Batch QA（多場時強制）
+若本次 session 包含 ≥2 場賽事，將全部輸出傳遞給 `nba_batch_qa` Agent 執行跨場品質掃描。
+單場分析時可跳過此步驟。
+
 按照 `resources/03_output_format.md` 存檔最終報告。
 
 ## Step 4.5: 自檢總結 (Self-Improvement Review)
-讀取 `_session_issues.md` 全部內容,向用戶呈現累積問題:
+讀取 `_session_issues.md` 全部內容，向用戶呈現累積問題：
 - A) 逐一處理
 - B) 記錄到 `_improvement_log.md`
-- C) 略過,生成最終匯報
+- C) 略過，生成最終匯報
 
-**🧠 改善方案探索(AG Kit Brainstorming — 自動觸發):**
-若 `_session_issues.md` 中有任何 CRITICAL 或 ≥2 個 MINOR 問題:
+**🧠 改善方案探索（AG Kit Brainstorming — 自動觸發）：**
+若 `_session_issues.md` 中有任何 CRITICAL 或 ≥2 個 MINOR 問題：
 1. 讀取 `.agent/skills/brainstorming/SKILL.md`
-2. 對累積問題自動生成 ≥2 個結構化改善方案:
-   - 每個方案含:具體修改 + ✅ Pros + ❌ Cons + 📊 Effort
+2. 對累積問題自動生成 ≥2 個結構化改善方案
 3. 等用戶選擇後才執行修改
 
-## Step 5.5: SQLite 數據庫歸檔 (Database Archival — V3 新增)
+## Step 5: 最終匯報
+按照 `resources/03_output_format.md` Section 5 向用戶匯報。
+將 `_session_issues.md` Status 更新為 `COMPLETED`。
 
-完成最終匯報後,你必須立刻使用原生 Python 腳本將分析結果持久化:
+## Step 5.5: SQLite 數據庫歸檔 (Database Archival)
+
+完成最終匯報後，你必須立刻使用原生 Python 腳本將分析結果持久化：
 
 **5.5a. 賽前預測寫入庫 (Prediction Logging):**
-呼叫 logger 腳本自動解析你剛才產出的 Markdown 報告:
+呼叫 logger 腳本自動解析你剛才產出的 Markdown 報告：
 `python3 .agents/skills/nba/nba_data_extractor/scripts/nba_db_logger.py --parse "{TARGET_DIR}/{REPORT_NAME}.txt"`
 這會自動提取並保存被評為穩膽或價值的 Leg 入 `predictions` 表。
+
+## Step 5b: Session Cost Report（可選 — P35 新增）
+
+> **設計理念:** 受 ECC `cost-aware-llm-pipeline` 啟發。追蹤每次分析 session 嘅 token 消耗同成本估算。
+
+最終匯報後，執行 session 成本追蹤：
+```bash
+python3 .agents/scripts/session_cost_tracker.py "{TARGET_DIR}" --domain nba
+```
+喺聊天中簡要匯報成本摘要（3 行以內）。此步驟失敗唔影響任何結果。
 
 ## Step 6: 🚨 Day 2 覆盤階段 (Embedded Backtester)
 
@@ -276,36 +328,98 @@ Step 5.5 數據庫歸檔功能需要 MCP Servers 運作,但即使未安裝也不
 3. 根據大腦吸收的成績簡報,向用戶匯報:
    - 「尋日推薦共 X 注,命中 Y 注。」
    - 分析哪種類型的 Prop 最穩,哪種失敗,作為自我修正的反思。
-## Step 5: 最終匯報
-按照 `resources/03_output_format.md` Section 5 向用戶匯報。
-將 `_session_issues.md` Status 更新為 `COMPLETED`。
 
-# 🚨 防串流鎖死協議 (P19v3 — Native-Writer Protocol)
+### Step 6b: Instinct Evolution（P35 新增）
+回測完成後,執行 instinct 評估：
+```bash
+python3 .agents/scripts/instinct_evaluator.py "{TARGET_DIR}" \
+  --registry ".agents/skills/shared_instincts/instinct_registry.md" \
+  --domain nba \
+  --backtest-report "{TARGET_DIR}/{BACKTEST_REPORT}"
+```
+將評估結果加入回測匯報嘅新 section。此步驟失敗唔影響回測結果。
 
-> **歷史教訓(跨引擎反覆出現):** IDE 工具框架自動將 JSON keys 按字母排序(`CodeContent` → `TargetFile`)。當分析報告超過 200 行時,`TargetFile` 排在最後串流,IDE 客戶端無法及時知道目標檔案,導致 buffer 堆積 → Timeout → 鎖死。
+# 🚨 防串流鎖死協議 (P19v6 — Safe-Writer Protocol — 2026-04-05 強化)
+
+> **🚫🚫🚫 TOTAL BAN — `write_to_file` / `replace_file_content` / `multi_replace_file_content` 完全封殺 🚫🚫🚫**
 >
-> **強制規定(Priority 0 — 適用所有引擎):**
+> **歷史教訓(P19v1→v6 演進):**
+> - P19v1-v3: `write_to_file` / `replace_file_content` 超過 100 行 → IDE 假死機
+> - P19v4: `write_to_file` 寫 `/tmp/*.py` → 仍然經過 IDE JSON 管道，一樣卡死
+> - P19v5: 允許 `write_to_file` 寫小檔(<20行)同 `/tmp` → 實測證明仍然卡死！
+> - **P19v6 (2026-04-05): 完全封殺。任何大小、任何路徑均禁止。**
 >
-> 1. **閾值規則:** 寫入內容 < 200 行 → 正常使用 `write_to_file` / `replace_file_content`。寫入內容 ≥ 200 行 → **必須**使用 Native-Writer Protocol (P19v4) 腳本。
-> 2. **Safe Writer 用法:** 透過 `run_command` 執行 Python Here-Doc,將內容 Base64 編碼後傳給 `Native-Writer (直接使用原生 replace_file_content 工具寫入檔案)`:
->    ```
->    run_command: python3 << 'SAFE_WRITE'
->    import base64, subprocess, sys
->    content = """...你的分析內容..."""
->    b64 = base64.b64encode(content.encode("utf-8")).decode("ascii")
->    subprocess.run([sys.executable, "Antigravity/.agents/scripts/Native-Writer (直接使用原生 replace_file_content 工具寫入檔案)",
->        "--target", "TARGET_PATH", "--mode", "overwrite", "--content", b64])
->    SAFE_WRITE
->    ```
-> 3. **B2+ 追加模式:** 用 `--mode append` 取代 `replace_file_content` 的追加操作。
-> 4. **驗證:** 寫入後用 `command_status` 確認 JSON 回傳 `"success": true`。
-> 5. **嚴禁違反:** 使用 `write_to_file` 寫入 ≥ 200 行內容 = 觸發 IDE 鎖死風險 = 違規。
+> **唯一合法寫入方法:**
+> `run_command` + Heredoc → /tmp → Base64 → safe_file_writer.py (WLTM)
+>
+> **⛔ 自檢觸發器:** 若你正在準備使用 `write_to_file` → ⛔ STOP → 你已違規 → 改用下方管道。
+>
+> **🚨 FALLBACK 硬性規定（2026-04-05 新增 — 歷史教訓: Gemini 用錯路徑後 fallback 到 write_to_file 再次死鎖）:**
+> - 若 `safe_file_writer.py` 路徑搵唔到 → **絕對唔可以 fallback 到 `write_to_file`**
+> - 正確嘅 fallback 係: `cp /tmp/batch_N.md "{TARGET}"` (overwrite) 或 `cat /tmp/batch_N.md >> "{TARGET}"` (append)
+> - **任何情況下 `write_to_file` / `replace_file_content` / `multi_replace_file_content` 都係死路一條 — 唔好用！**
+
+**🔧 SAFE_WRITER 路徑常量（所有引擎必須使用）:**
+```
+# macOS 絕對路徑:
+SAFE_WRITER="/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/safe_file_writer.py"
+
+# 相對路徑(從 Antigravity 根目錄):
+SAFE_WRITER_REL=".agents/scripts/safe_file_writer.py"
+
+# ⚠️ Step 0 — 每個 session 開始時必須先驗證路徑:
+ls -la "$SAFE_WRITER" 2>/dev/null && echo "SAFE_WRITER_OK" || echo "SAFE_WRITER_MISSING"
+# 若 MISSING → 用 find 搵: find "$(pwd)" -name safe_file_writer.py -type f
+```
+
+**三步管道 — Heredoc → /tmp → Base64 → safe_file_writer.py (WLTM)**
+
+**Step 1: 用 `run_command` + heredoc 寫入 /tmp 暫存檔**
+```bash
+cat > /tmp/batch_N.md << 'ENDOFCONTENT'
+[你的分析內容]
+ENDOFCONTENT
+echo "HEREDOC_OK: $(wc -l < /tmp/batch_N.md) lines"
+```
+
+**Step 2: Base64 編碼 + pipe 到 safe_file_writer.py**
+```bash
+SAFE_WRITER="/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/safe_file_writer.py"
+base64 < /tmp/batch_N.md | python3 "$SAFE_WRITER" \
+  --target "{TARGET_DIR}/{ANALYSIS_FILE}" \
+  --mode append \
+  --stdin
+```
+
+**⚠️ Step 2 失敗時嘅 Fallback（唔用 safe_file_writer 嘅 cp/cat 直寫）:**
+```bash
+# Fallback A — overwrite:
+cp /tmp/batch_N.md "{TARGET_DIR}/{ANALYSIS_FILE}"
+# Fallback B — append:
+cat /tmp/batch_N.md >> "{TARGET_DIR}/{ANALYSIS_FILE}"
+# ⛔ 絕對唔可以 fallback 到 write_to_file / replace_file_content！
+```
+
+**Step 3: 驗證（每個 Batch 必做）**
+```bash
+tail -3 "{TARGET_DIR}/{ANALYSIS_FILE}"
+echo "---LINE_COUNT---"
+wc -l "{TARGET_DIR}/{ANALYSIS_FILE}"
+```
+
+**📋 模式選擇:**
+- **第一個 Batch (B1):** `--mode overwrite`（建立新檔）
+- **後續 Batch (B2+):** `--mode append`（追加內容）
+- safe_file_writer.py **絕對路徑:** `/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/safe_file_writer.py`
 
 # Recommended Tools & Assets
-- **Tools**: `search_web`, `write_to_file`, `replace_file_content`, `multi_replace_file_content`, `view_file`, `run_command` (Native-Writer Protocol (P19v4))
+- **Tools**: `search_web`, `run_command`, `view_file`, `grep_search` (⚠️ `write_to_file`/`replace_file_content`/`multi_replace_file_content` 已被 P19v6 完全封殺 — 只用 `run_command` + heredoc pipeline)
 - **MCP Tools (P32 新增)**:
-  - `read_graph` / `create_entities` / `create_relations` — Knowledge Graph 記憶(傷兵狀態、防守大閘、跨 session 球員筆記)
-  - `read_query` / `write_query` / `list_tables` — SQLite 數據庫查詢(Parlay 命中率、球員 Props 歷史追蹤)
+  - `read_graph` / `create_entities` / `create_relations` — Knowledge Graph 記憶
+  - `read_query` / `write_query` / `list_tables` — SQLite 數據庫查詢
+- **Scripts**:
+  - `scripts/nba_math_engine.py` — 前置確定性數學計算
+  - `scripts/verify_nba_math.py` — 事後數學驗證
 - **Resources**:
   - `resources/01_data_validation.md` — 數據品質驗證規則
   - `resources/02_quality_scan.md` — 品質掃描與覆蓋權
@@ -314,3 +428,17 @@ Step 5.5 數據庫歸檔功能需要 MCP Servers 運作,但即使未安裝也不
 - **Downstream Agents**:
   - `NBA Data Extractor` — 數據提取
   - `NBA Analyst` — 策略分析
+  - `NBA Compliance` — 合規審計（每場強制）
+  - `NBA Batch QA` — 跨場品質掃描（≥ 2 場時強制）
+  - `NBA Reflector` — 賽後覆盤
+  - `NBA Reflector Validator` — 邏輯更新盲測驗證
+
+
+# 🛑 Pipeline Testing & Agent Execution Boundaries
+**CRITICAL PROTOCOL: How to Avoid Automation Shortcuts in the Future**
+
+1. **停止測試捷徑 (No Automated Shortcuts for LLM Analysis):** 
+   身為 LLM 分析引擎，你嘅職責就是根據 `extract_formguide_data.py` (或其他抽取器) 抽出嚟嘅客觀數據，做「深度法醫分析」同判定 Grade。在日後執行任何 Pipeline 測試或端到端執行時，**絕對不能用 Python script 去模擬生成內容或塞字過關**。必須老老實實當自己做緊真飛分析一樣，用 Markdown 直接把高質素、具深度的優質內容完整寫出嚟。
+2. **遵守系統角色 (Respect System Roles):** 
+   分工極為明確。Python 腳本負責「砌骨架」同做「算術題」（例如抽數、排版、計算 Matrix 分數），而你 (LLM) 負責「入血肉」（撰寫戰術節點、寬恕檔案、段速法醫及風險評估）。**任何企圖繞過血肉生成嘅舉動都係嚴重違反 Protocol 嘅行為。**
+

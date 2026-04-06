@@ -70,8 +70,8 @@ version: 2.0.0
 ## 逐場分析模式 (Per-Game Analysis Mode)
 > Wong Choi 會逐場賽事傳入數據包。你必須配合以下兩種模式:
 
-- **單場模式**:Wong Choi 傳入單場數據包 → 完成該場所有候選球員嘅 Step 2-4(波動率 + 盤口 + 安全檢查),輸出「合格 Leg 候選清單 + 本場 3 組 Banker SGM」。按照 `resources/05_output_template.md` 嘅**單場模式格式**輸出。
-- **匯總模式**:Wong Choi 傳入「全日候選池」 → 執行 Step 5(組合構建),生成跨場次 3 組 Parlay。按照 `resources/05_output_template.md` 嘅**完整報告格式**輸出。
+- **單場模式**:Wong Choi 傳入單場數據包 → 完成該場所有候選球員嘅 Step 2-4（波動率 + 盤口 + 安全檢查），輸出「合格 Leg 候選清單 + 本場 4 組 Banker SGM（組合 1A/1B/2/3）」。按照 `resources/05_output_template.md` 嘅 `[FILL]` 骨架模板逐個欄位填寫。
+- **匯總模式**:Wong Choi 傳入「全日候選池」 → 執行 Step 5（組合構建），生成跨場次 4 組 Parlay。按照 `resources/05_output_template.md` 嘅完整報告格式輸出。
 
 # Interaction Logic (Step-by-Step)
 
@@ -107,17 +107,27 @@ version: 2.0.0
 - **新增:防守者壓制檢查**:若對位防守者 PCT_PLUSMINUS < -0.04,自動標記為「🔒 精英防守對位」
 
 ## Step 5: 過關組合引擎
-按照 `resources/04_parlay_engine.md`:
-- 構建 🛡️ 穩膽 / 💎 價值 / 🔥 高賠 三組
+按照 `resources/04_parlay_engine.md`：
+- 構建 🛡️ 1A / 🔥 1B / 🔥 2 / 💎 3 四組
 - SGP 劇本語境防撞擊檢查
 
 ## Step 6: 生成最終輸出
-讀取 `resources/05_output_template.md`,按模式選擇格式。
-讀取 `resources/06_verification.md`,執行自檢清單。
+讀取 `resources/05_output_template.md`，按模式選擇格式。
+**逐個欄位填寫 `[FILL]` 佔位符** — 輸出完成後確認 `[FILL]` 殘留數 = 0。
+讀取 `resources/06_verification.md`，執行自檢清單。
+
+## Step 7: 自我驗證 (Pre-Submission Gate)
+在交稿給 Wong Choi 之前，自我檢查以下規則（對應 `completion_gate_v2.py --domain nba` 嘅檢查項）：
+- [ ] **4 個組合完整輸出**（組合 1A + 1B + 2 + 3）
+- [ ] **每個 Leg 有完整分析**（數理引擎 + 邏輯引擎 + EV + 數據卡 + 防守對位 + 場景分裂）
+- [ ] **無省略語**（無 `...`、`[同上]`、`[參見組合X]`）
+- [ ] **`[FILL]` 殘留數 = 0**
+- [ ] **L10 數組長度 = 10**（每個輸出嘅數組都有 10 個數字）
+- [ ] **所有盤口符合 Bet365 嚴格選項規則**
 
 # Output Contract
-- **單場模式**:合格 Leg 候選清單 + 本場 3 組 Banker SGM
-- **匯總模式**:完整報告(賽程總覽 + 傷病 + 防守 + 3 組 Parlay + 總結)
+- **單場模式**：合格 Leg 候選清單 + 本場 4 組 Banker SGM（組合 1A/1B/2/3）
+- **匯總模式**：完整報告（賽程總覽 + 傷病 + 防守 + 4 組 Parlay + 總結）
 
 # Recommended Tools & Assets
 - **Tools**: `write_to_file`

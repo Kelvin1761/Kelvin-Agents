@@ -24,7 +24,7 @@ ag_kit_skills:
 > 完整反惰性協議、批次規則、輸出完整性要求詳見 `resources/01_system_context.md`。以下為摘要:
 
 - **真實數據分析**:每匹馬必須引用 ≥3 個來自 Form Guide 嘅獨特數據點,嚴禁捏造或複製。
-- **批次**:每批固定 3 匹馬(BATCH_SIZE: 3),按馬號順序,全自動推進,嚴禁批次間詢問用戶。嚴禁將批次改為 4-6 匹以避免品質下降。
+- **批次**:每批按 Wong Choi 傳入嘅 BATCH_SIZE 分批（預設 3，環境掃描 fallback 為 2），按馬號順序,全自動推進,嚴禁批次間詢問用戶。嚴禁將批次改為 4-6 匹以避免品質下降。
 - **完整性**:全部 11 個必填欄位(見 `08_output_templates.md`),D 級馬最少 300 字。
 - **防幻覺**:無數據則填 `N/A (數據不足)`,嚴禁猜測。
 - **防無限 Loop**:Web Search 連續失敗 3 次即停止,標記 `N/A`。
@@ -69,7 +69,7 @@ ag_kit_skills:
 2. **讀取與預備**:讀取賽事排位表與 Form Guide。
 3. **情報補全**:使用 Wong Choi Intelligence Package(若有),或獨立搜尋動態情報。
 4. **賽事與步速定調**:判定 `PACE_TYPE`,產生 `<第一部分> 戰場全景` + Speed Map。
-5. **批次解析**:每批固定 3 匹馬(BATCH_SIZE: 3),按馬號順序。**全自動推進**,嚴禁批次間詢問用戶。**批次隔離規則:每個 Batch 必須作為獨立嘅 file write 操作輸出,嚴禁將多個 Batch 合併到同一次 tool call。** Batch 1 = `write_to_file` 新建;Batch 2+ = 獨立 `replace_file_content` 追加。若發現正在寫入 4+ 匹馬 → 立即停止拆分。
+5. **批次解析**:每批固定 3 匹馬(BATCH_SIZE: 3),按馬號順序。**全自動推進**,嚴禁批次間詢問用戶。**批次隔離規則:每個 Batch 必須作為獨立嘅 file write 操作輸出,嚴禁將多個 Batch 合併到同一次 tool call。** Batch 1 = Safe-Writer Protocol (P19v6) heredoc → /tmp → base64 → safe_file_writer.py --mode overwrite 建檔；Batch 2+ = 同管道 --mode append 追加寫入。⚠️ write_to_file / replace_file_content / multi_replace_file_content 已完全封殺（Google Drive 同步死鎖風險）。若發現正在寫入 4+ 匹馬 → 立即停止拆分。
 6. **品質守門員檢查 [SIP-ST8]**:每完成一批次(≥6 匹馬累計)後,強制執行以下自我檢查:
    - **Anti-Laziness 錨定**:比較當前批次與 Batch 1 嘅每匹馬平均分析字數。若當前批次比 Batch 1 短 >30%,立即自我打回並以相同深度重寫。此規則亦適用於跨場次(Race 2+ 必須維持 Race 1 嘅分析深度)。
    - **重複數據偵測**:對本批次所有馬匹的 L600/L400 段速值、EEM 走位代碼、穩定性判定、組合上名率進行去重統計。**若任一欄位中 ≥50% 馬匹出現完全相同數值 → 品質警報 🚨**,必須暫停並逐匹重新以獨立數據填充。

@@ -26,7 +26,7 @@
 
 ## Pre-flight Self-Check
 讀完以上文件後,你必須回覆以下 checklist(全部 ✅ 才可開始):
-- [ ] SKILL.md 已讀取(確認 P28 OUTPUT_TOKEN_SAFETY + P31 ENGINE ADAPTATION 規則存在)
+- [ ] SKILL.md 已讀取(確認 SIP-DA01 多角度裁決協議及 P28/P31 規則存在)
 - [ ] 01_system_context.md 已讀取(確認 Anti-Laziness 規則存在)
 - [ ] 06_output_templates.md 已讀取(確認 Top 4 骨架格式存在)
 - [ ] 場地模組已讀取

@@ -102,8 +102,11 @@
 
 ⭐ **最終評級:** `[S 至 D 的最終 +/- 評級]`
 
-*(⚠️ **SIP-1 雙軌連帶規則 (Dual-Track Mandatory Flag):** 一旦當前賽事觸發了雙軌場地情況,則 **同一場內的所有馬匹(無一例外)** 都必須在各自的馬匹分析結尾輸出 `📗📙 場地雙軌評級 (Dual-Track Grade)` 區塊。即使遇到場地變化對該馬毫無影響的情況,也必須強制寫出 `變化:[→ 不變]`,🚫 絕對禁止跳過任何一匹馬。)*
-📗📙 **場地雙軌評級 (Dual-Track Grade):**
+*(⚠️ **SIP-1 雙軌觸發閘門 (Dual-Track Gate):** 以下 `📗📙 場地雙軌評級` 區塊的輸出取決於天氣穩定性:*
+*— **若 `_Meeting_Intelligence_Package.md` 中天氣穩定性 = `STABLE`** → 🚫 **整個 📗📙 區塊必須完全省略,不得輸出。** 僅保留上方 ⭐ 最終評級（即預期場地評級）。*
+*— **若天氣穩定性 = `UNSTABLE`、預測場地為 Heavy、或降雨預報 ≥ 30%** → ✅ **強制輸出以下區塊。同一場內所有馬匹（無一例外）都必須輸出,即使變化為 `[→ 不變]` 亦不可省略。***)*
+
+📗📙 **場地雙軌評級 (Dual-Track Grade):** *(僅 UNSTABLE 時輸出)*
 - **📗 預期場地:** `[Good 4]` → 評級:`[A-]`
 - **📙 備選場地:** `[Soft 5]` → 評級:`[B+]` | 變化:`[↓ 降一級]`
 - **場地影響理據:** [具體描述為何此馬在備選場地會變好/變差。必須引用以下數據:]
@@ -111,7 +114,7 @@
   - 段速法醫:`[Good par X.Xs vs Soft par Y.Ys → L600 差異 Z.Zs]`
   - EEM 消耗:`[乾地正常消耗 vs 濕地高消耗 → 影響方向]`
 
-**📗📙 Dual-Track Grade 規則(精確性至上):**
+**📗📙 Dual-Track Grade 規則（僅 UNSTABLE 時適用,精確性至上）:**
 1. **📗 Primary Grade = 預期場地** — 必須同上方 ⭐ 最終評級完全一致
 2. **📙 Alternate Grade 計算方法:** 基於已有 8 維矩陣,重新評估以下 3 個維度:
    - **場地適性** — 根據 Soft/Heavy WR 重新判定 ✅/➖/❌
@@ -203,9 +206,10 @@
 
 ---
 
-**[SIP-RR01] 📗📙 雙軌場地 Top 4(僅在 SIP-1 雙軌觸發時輸出)**
+**[SIP-RR01] 📗📙 雙軌場地 Top 4（僅在 SIP-1 雙軌觸發時輸出）**
 
-*觸發條件:場地預報處於交界(Good 4 / Soft 5 或 Soft 6 / Heavy 8)、或降雨預報 ≥ 30%、或場地標記為 UNSTABLE 時。*
+*觸發條件:場地預報處於交界（Good 4 / Soft 5 或 Soft 6 / Heavy 8）、或降雨預報 ≥ 30%、或場地標記為 UNSTABLE 時。*
+*🚫 **若天氣穩定性 = `STABLE`，此整段（包括 📗 Top 4 及 📙 Top 4）必須完全省略，不得輸出。***
 
 > **數據來源:** 使用每匹馬嘅 📗📙 場地雙軌評級(已在 Part 2 各馬分析中計算完成)。**嚴禁重新計算** — 直接引用已有嘅 Primary Grade 同 Alternate Grade。
 
@@ -298,7 +302,7 @@
 [Race Number], [Level of Race (e.g. Group 1, BM72)], [Distance], [Jockey], [Trainer], [Horse Number], [Horse Name], [Grade]
 ```
 
-**雙軌模式(SIP-1 觸發時 — 每行加 3 columns):**
+**雙軌模式（SIP-1 觸發時 — 每行加 3 columns;🚫 天氣 STABLE 時使用標準模式）:**
 ```csv
 [Race Number], [Level], [Distance], [Jockey], [Trainer], [Horse Number], [Horse Name], [Grade], [Alt Condition], [Alt Grade], [Grade Shift Reason]
 ```

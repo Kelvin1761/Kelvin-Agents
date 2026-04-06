@@ -135,5 +135,10 @@ content = """
 ```
 """
 
-with open(r"g:\我的雲端硬碟\Antigravity Shared\Antigravity\2026-04-02 Gosford Race 1-7\2026-04-02_Gosford_Race_7_Analysis.md", "a", encoding="utf-8") as f:
-    f.write(content)
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "Horse Racing Dashboard"))
+from backend.utils.safe_writer import safe_write
+
+target_file = r"g:\我的雲端硬碟\Antigravity Shared\Antigravity\2026-04-02 Gosford Race 1-7\2026-04-02_Gosford_Race_7_Analysis.md"
+target_file_mac = target_file.replace(r"g:\我的雲端硬碟", "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟").replace("\\", "/")
+safe_write(target_file_mac if sys.platform != 'win32' else target_file, content, mode="a")

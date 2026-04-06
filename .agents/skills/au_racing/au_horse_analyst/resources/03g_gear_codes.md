@@ -37,4 +37,4 @@
 | **閹後首出 (GG first)** | 🟢 正面 | 性格改變,常見反彈。特別是年輕遲熟馬 |
 | **≥2 項同時首戴** | 🟡⚠️ | 大量變動=馬房全力出擊 OR 無計可施。需配合練馬師訊號判斷 |
 
-> **精英馬房裝備升權規則(見 `02_algorithmic_engine.md` Step 5):** Waller / Snowden / Freedman / Hawkes / Maher / Neasham 的首戴裝備成功率顯著高於平均。
+> **精英馬房裝備升權規則(見 `02c_track_and_gear.md` Step 5):** Waller / Snowden / Freedman / Hawkes / Maher / Neasham 的首戴裝備成功率顯著高於平均。

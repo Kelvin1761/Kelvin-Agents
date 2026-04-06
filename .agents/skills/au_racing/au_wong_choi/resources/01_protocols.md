@@ -16,27 +16,78 @@
 
 ---
 
-# 🚨 CRITICAL: File Writing Protocol — Safe-Writer P19v5 (2026-04-03 更新)
+# 🚨 CRITICAL: File Writing Protocol — Safe-Writer P19v6 (2026-04-05 更新)
 
-> **所有大型分析內容必須使用 Safe-Writer P19v5 三步管道寫入。**
-> `write_to_file` 同 `replace_file_content` 超過 ~100 行會導致 IDE JSON 死機。
-> 直接 Python `open()` 寫入 Google Drive 路徑會觸發 FileProvider Lock。
+> **⛔ TOTAL BAN — 零例外:**
+>
+> 以下工具在 Wong Choi pipeline 中 **完全禁止**,無論檔案大小、路徑、或目的:
+> 1. ❌ `write_to_file` — 任何大小、任何路徑（包括 /tmp）
+> 2. ❌ `replace_file_content` — 任何大小、任何路徑
+> 3. ❌ `multi_replace_file_content` — 任何大小、任何路徑
+> 4. ❌ `python3 -c '...'` inline script — shell 引號衝突
+>
+> **歷史教訓:** P19v1-v5 全部失敗。`write_to_file` 即使寫 /tmp 小檔案,
+> 喺 session context 夠大時一樣卡死在 `+0 -0`。根因係 IDE JSON serialization
+> pipeline 嘅系統性 deadlock,與目標路徑無關。
 
 ## Mandatory File Writing Rules
 
-| Scenario | Correct Tool | Forbidden |
+| Scenario | Correct Method | Forbidden |
 |---|---|---|
-| 寫入分析 Batch (大型內容) | `run_command` heredoc → /tmp → base64 pipe → safe_file_writer.py | `write_to_file`, `replace_file_content`, `python3 -c` |
+| 寫入分析 Batch (任何大小) | `run_command` Python heredoc → safe_file_writer.py | `write_to_file`, `replace_file_content` |
 | 新建分析報告 (第一個 Batch) | safe_file_writer.py `--mode overwrite` | `write_to_file` |
 | 追加後續 Batch / Verdict | safe_file_writer.py `--mode append` | `replace_file_content` |
-| 微型檔案 (< 20 行: task.md, session_state) | `replace_file_content` ✅ (允許) | N/A |
+| 微型檔案 (task.md, session_state) | `run_command` + heredoc 或 safe_file_writer | `write_to_file`, `replace_file_content` |
 | 執行 Python 腳本 (generate_reports.py) | `run_command` ✅ (允許) | N/A |
 
-## 執行規則 (P19v5 三步管道)
-1. **Step 1:** `cat > /tmp/batch_N.md << 'ENDOFCONTENT'` — heredoc 寫入本地 /tmp（零延遲）
-2. **Step 2:** `base64 < /tmp/batch_N.md | python3 .agents/scripts/safe_file_writer.py --target "..." --mode append --stdin`
-3. **Step 3 (可選):** `tail -5 "{TARGET_DIR}/{FILE}"` — 驗證寫入成功
-4. 每次 heredoc 內容控制在 **50-80 行**，避免 run_command payload 過大
-5. safe_file_writer.py 路徑: `.agents/scripts/safe_file_writer.py`
+## ✅ 推薦方法: Python Heredoc One-Step Pattern (已驗證 2026-04-05)
 
-> ✅ 此管道已於 2026-04-03 實戰驗證通過。所有寫入均在 1-2 秒內完成。
+> **此方法已於 2026-04-05 實戰驗證,連續 10+ 次成功,零失敗。**
+> **所有引擎 (Gemini / Opus / Sonnet) 都應使用此方法。**
+
+```bash
+# 用 run_command 執行以下 Python heredoc:
+cat << 'PYEOF' > /tmp/batch_N_generate.py
+import subprocess, base64
+
+content = """
+[你的分析內容 — 可包含任何 Unicode/特殊字符]
+"""
+
+encoded = base64.b64encode(content.encode('utf-8')).decode('utf-8')
+subprocess.run([
+    'python3',
+    '/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/safe_file_writer.py',
+    '--target', '{TARGET_DIR}/{ANALYSIS_FILE}',
+    '--mode', 'append',    # Batch 1 用 'overwrite', Batch 2+ 用 'append'
+    '--content', encoded
+], check=True)
+PYEOF
+
+python3 /tmp/batch_N_generate.py
+```
+
+**優點:**
+1. 一步完成 — heredoc 寫 Python → 執行 → safe_file_writer 寫入
+2. Python triple-quoted string 處理所有特殊字符,無需 shell escaping
+3. base64 編碼由 Python 完成,而非 shell,100% 可靠
+4. safe_file_writer 使用 WLTM (Write-Local-Then-Move),繞過 Google Drive lock
+
+**模式選擇:**
+- **第一個 Batch (B1):** `--mode overwrite`（建立新檔）
+- **後續 Batch (B2+):** `--mode append`（追加內容）
+
+## ⚠️ Fallback (safe_file_writer 不可用時)
+
+```bash
+# Fallback A — overwrite:
+cp /tmp/batch_N.md "{TARGET_DIR}/{ANALYSIS_FILE}"
+# Fallback B — append:
+cat /tmp/batch_N.md >> "{TARGET_DIR}/{ANALYSIS_FILE}"
+# ⛔ 絕對唔可以 fallback 到 write_to_file / replace_file_content！
+```
+
+## 自檢觸發器
+
+若你正在準備使用 `write_to_file` / `replace_file_content` / `multi_replace_file_content`:
+→ ⛔ STOP → 你已違規 → 改用上方 Python heredoc pattern。

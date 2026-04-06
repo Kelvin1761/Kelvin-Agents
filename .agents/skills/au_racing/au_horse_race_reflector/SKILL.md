@@ -78,7 +78,7 @@ python .agents/skills/au_racing/au_horse_race_reflector/scripts/extract_race_res
 
 **必讀:**
 - `au_horse_analyst/SKILL.md` — Analyst 架構與約束
-- `au_horse_analyst/resources/02_algorithmic_engine.md` — Steps 0-14 完整演算法引擎
+- `au_horse_analyst/resources/02a-02g (split engine files)` — Steps 0-14 完整演算法引擎
 - `au_horse_analyst/resources/06_output_templates.md` — 評級矩陣與輸出格式
 - `au_horse_analyst/resources/05_verification.md` — 自我驗證清單
 
@@ -89,6 +89,13 @@ python .agents/skills/au_racing/au_horse_race_reflector/scripts/extract_race_res
 - 當日賽場對應嘅 `au_horse_analyst/resources/04b_track_[venue].md`
 
 **目的:** 確保 SIP 建議能精確引用「哪個 resource 檔案、哪個 Step、哪條規則」需要修改,而非模糊地說「調整 EEM」。
+
+
+## [REF-DA01] 深度覆盤 + Protocol 自我審計 (5 角度)
+
+> 完整協議見 `au_racing/shared_resources/ref_da01_protocol.md`（強制閱讀）。
+> 任何修改必須在共享檔案中進行，以避免 Reflector 與 Validator 之間的 Protocol 漂移。
+
 
 ## Step 4: 深度比對(在 `<thought>` 中進行)
 對每一場賽事,在內部思考區塊中執行以下比對:
@@ -255,7 +262,42 @@ python .agents/skills/au_racing/au_horse_race_reflector/scripts/reflector_auto_s
 
 > **嚴格要求**:每個裁定必須附帶 ≥2 個證據點支持(走位數據 + Stewards' Report / 步速分析 / 引擎規則比對)。嚴禁無證據裁定。
 
+### 4d. Python 自動化輔助（強制前置）
+
+> [!IMPORTANT]
+> **以下 Python 腳本必須在 LLM 開始 Step 4d-5 之前執行。**
+> 目的：將機械性數據抽取工作交畀 Python，LLM 只需聚焦高層次法醫判斷。
+
+**4d-pre-1. 引擎健康掃描（自動化部分）:**
+```bash
+python .agents/scripts/engine_health_scanner.py --domain au --resources-dir ".agents/skills/au_racing/au_horse_analyst/resources"
+```
+此腳本自動檢查 4d-1（過時邏輯）、4d-2（斷裂邏輯）、4d-4（數據新鮮度）。LLM 只需處理 4d-3、4d-5、4d-6。
+
+**4d-pre-2. 敘事覆盤數據抽取:**
+```bash
+python .agents/scripts/narrative_postmortem_extractor.py "[RESULTS_FILE]" "[TARGET_DIR]" --all --domain au
+```
+自動抽取失敗精選馬嘅走位、Stewards' Report 關鍵字分類。LLM 只需做 4e-4 裁定。
+
 ## Step 5: 輸出覆盤報告
+
+### Step 5-pre: 生成報告骨架（Python 強制）
+```bash
+python .agents/scripts/reflector_report_skeleton.py "[TARGET_DIR]" "[RESULTS_FILE]" --domain au --output "[TARGET_DIR]/[Date]_[Venue]_覆盤報告.md"
+```
+> 此腳本自動生成完整報告框架，預填所有命中率表格、逐場比對、FP/FN 名單。
+> LLM 只需填入 `{{LLM_FILL}}` 標記嘅定性分析欄位。
+> **嚴禁 LLM 手動砌報告框架** — 必須使用腳本生成嘅骨架。
+
+### Step 5-post: 報告驗證（Python 強制）
+報告撰寫完成後，執行裁定驗證器：
+```bash
+python .agents/scripts/reflector_verdict_validator.py "[TARGET_DIR]/[Date]_[Venue]_覆盤報告.md" --domain au --resources-dir ".agents/skills/au_racing/au_horse_analyst/resources"
+```
+> 自動驗證每個裁定有 ≥2 證據點、SIP 引用存在、所有必要 section 齊全。
+> 未通過驗證嘅報告**嚴禁**提交畀用戶。
+
 按照以下格式生成報告,保存為 `[Date]_[Venue]_覆盤報告.md` 於 `TARGET_DIR` 內:
 
 ```markdown
@@ -306,10 +348,10 @@ python .agents/skills/au_racing/au_horse_race_reflector/scripts/reflector_auto_s
 
 ## 🧠 系統性改善建議 (Systemic Improvement Proposals)
 
-### SIP-1: [建議標題]
+### SIP-[DATE]-01: [建議標題]
 - **問題:** [描述反覆出現的判斷偏差]
 - **證據:** [列舉支持此結論的多場實例]
-- **目標檔案:** [指明需要修改嘅具體 resource 檔案,例如 `02_algorithmic_engine.md` Step 7]
+- **目標檔案:** [指明需要修改嘅具體 resource 檔案，例如 `02d_eem_pace.md` Step 7 EEM 能量]
 
 **🧠 修正方案探索(AG Kit Brainstorming — 自動觸發):**
 > 讀取 `.agent/skills/brainstorming/SKILL.md`,對每個 SIP 自動生成 ≥2 個結構化修正方案:
@@ -359,6 +401,33 @@ python .agents/skills/au_racing/au_horse_race_reflector/scripts/reflector_auto_s
 > - False Positive/Negative 模式(Entity: `FP_pattern_{SIP_ID}` 或 `FN_pattern_{SIP_ID}`)
 > - 引擎健康掃描結果(Entity: `engine_health_{DATE}`)
 > - 這樣下次覆盤同一場地時,Reflector 可以先查詢 `read_graph` 發現過往場地偏差歷史。
+
+## Step 5.5: Instinct Evolution（P35 新增）
+
+> **設計理念:** 受 ECC `continuous-learning-v2` 嘅 Instinct 模型啟發。
+> 將一次性嘅 SIP 修改升級為帶 confidence score 嘅長期學習機制。
+
+覆盤報告生成後，執行 instinct 評估：
+```bash
+python3 .agents/scripts/instinct_evaluator.py "{TARGET_DIR}" \
+  --registry ".agents/skills/shared_instincts/instinct_registry.md" \
+  --domain au \
+  --reflector-report "{TARGET_DIR}/{DATE}_{VENUE}_覆盤報告.md"
+```
+
+將評估結果加入覆盤報告嘅新 section：
+```markdown
+## 🧬 Instinct Evolution Report
+[腳本輸出]
+
+### 趨勢分析
+- 上升中 (confidence ↑): [列表]
+- 下跌中 (confidence ↓): [列表]
+- 建議 Deprecate: [列表]
+- 建議升級為 Core Rule: [列表]
+```
+
+> 此步驟失敗唔影響覆盤報告。首次使用時 registry 為空，腳本會提示需要先完成一次覆盤以初始化。
 
 ## Step 6: 等待用戶審批 + SIP 套用 + 驗證提醒
 
@@ -450,7 +519,7 @@ REFLECTOR_REPORT: {覆盤報告檔案路徑}
   - `run_command`:用於執行 `extract_race_result.py`。
   - `view_file`:讀取過往賽前預測報告與剛抓取的賽果檔。
   - `search_web`:若需要補充搜索實際賽日情報(如當日實際偏差報告、Stewards Report)。
-  - `write_to_file`:保存覆盤報告。
+  - Safe-Writer Protocol (P19v6)：heredoc → /tmp → base64 → safe_file_writer.py 保存覆盤報告。⚠️ write_to_file 已封殺。
 - **Assets**:
 
 - **MCP Tools (P32 新增)**:

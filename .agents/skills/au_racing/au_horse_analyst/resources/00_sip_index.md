@@ -3,9 +3,38 @@
 > **用途:** 集中追蹤所有 SIP 的定義位置、觸發條件摘要、及跨檔案引用。
 > 避免 SIP 分散導致遺漏或重複定義。Reflector 覆盤時應參考此索引。
 
+## SIP Quick Reference (Cross-Agent Alias Table)
+
+> All sub-agents (Reflector, Validator, Compliance) reference SIPs by tag.
+> If a SIP is renamed/merged/deprecated, update this table AND grep all files below:
+> - `au_horse_race_reflector/SKILL.md`
+> - `au_reflector_validator/SKILL.md`
+> - `au_reflector_validator/resources/observation_log.md`
+> - `au_compliance/SKILL.md`
+
+| Current Tag | Status | Canonical Location | Notes |
+|:--|:--|:--|:--|
+| SIP-DA01 | 🟢 ACTIVE | Reflector + Validator (inline protocol) | 5-角度深度覆盤 |
+| SIP-1 | 🟢 ACTIVE | `02c_track_and_gear.md` | 場地容錯 |
+| SIP-2 | 🟢 ACTIVE | `02d_eem_pace.md` | EEM 場地係數 |
+| SIP-3 | 🟢 ACTIVE | `02d_eem_pace.md` | 後追馬場地調節 |
+| SIP-4 | 🟢 ACTIVE | `02c_track_and_gear.md` | Swamp Beast |
+| SIP-5 | 🟢 ACTIVE | `02e_jockey_trainer.md` | 連勝動力 |
+| SIP-6 | 🟢 ACTIVE | `02b_form_analysis.md` | 降班馬時效 |
+| SIP-7 | 🟢 ACTIVE | `02b_form_analysis.md` | 見習騎師減磅 |
+| SIP-8 | 🟢 ACTIVE | `02d_eem_pace.md` | 頂級後追豁免 |
+| SIP-9 | 🟢 ACTIVE | `02f_synthesis.md` | S 級純度 |
+| SIP-10 | 🟢 ACTIVE | `02e_jockey_trainer.md` | 進口馬寬容 |
+| SIP-RR04 | 🔴 DEPRECATED | `04d_wet_track.md` | 由 SIP-RH02 取代 |
+| SIP-AU09 | 🟡 OBSERVATION | Validator `observation_log.md` | 觀察中 |
+| SIP-ST8 | 🟢 ACTIVE | Analyst `SKILL.md` | Anti-Laziness 錨定 |
+
 ---
 
-## 引擎核心 SIP(定義於 `02_algorithmic_engine.md`)
+
+---
+
+## 引擎核心 SIP(定義於 `見上方 Alias Table 對應檔案`)
 
 | SIP ID | 名稱 | Step | 摘要 | 定義位置 |
 |:---|:---|:---|:---|:---|
@@ -20,7 +49,7 @@
 | SIP-9 | S級純度必備 | Step 14.E | S/S- 必須有段速或級數硬性✅ | `02` Step 14.E |
 | SIP-10 | 進口馬寬容機制 | Step 13 | 頂級馬房進口馬首/次戰豁免封頂 | `02` Step 13 |
 
-## 覆盤衍生 SIP(定義於 `02_algorithmic_engine.md` 的 SIP-R/C 系列)
+## 覆盤衍生 SIP(定義於 `見上方 Alias Table 對應檔案` 的 SIP-R/C 系列)
 
 | SIP ID | 名稱 | Step | 摘要 | 定義位置 |
 |:---|:---|:---|:---|:---|

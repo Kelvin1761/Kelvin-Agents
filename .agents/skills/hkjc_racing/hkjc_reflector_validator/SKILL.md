@@ -44,6 +44,13 @@ version: 1.0.0
 
 ## Step 1.5: 驗證範圍分析 (Validation Scope Analysis)
 
+**Python 自動化前置（強制）:**
+```bash
+python .agents/scripts/validator_scope_analyzer.py "[TARGET_DIR]" --sip-changelog "[SIP_CHANGELOG_FILE]"
+```
+> 此腳本自動匹配 SIP 範圍標籤同賽事條件，輸出分類結果。
+> LLM 只需審閱腳本輸出並呈現畀用戶確認，**嚴禁自行手動匹配**。
+
 根據 `SIP_CHANGELOG` 分析 SIP 更新嘅影響範圍,將賽事分為兩類:
 
 ### 全盲測 (Full Blind Test) — 完整 Step 2-5 流程
@@ -137,6 +144,13 @@ version: 1.0.0
 ## Step 3: 比對賽果
 **此時才載入賽果數據。**
 
+**Python 自動化比對（強制）:**
+```bash
+python .agents/scripts/validator_result_comparator.py "[BLIND_TEST_FILE]" "[RESULTS_FILE]" --race [N] --domain hkjc
+```
+> 自動計算三級判定標準（黃金/良好/最低）及豁免條件。
+> LLM 引用腳本輸出嘅 PASS/FAIL 結果，**嚴禁手動算**。
+
 讀取 Race [N] 嘅實際賽果,提取前三名。
 
 ### 3a. 評估三級判定標準
@@ -158,6 +172,81 @@ version: 1.0.0
 - 🏇 **嚴重干擾**:被判犯規或受嚴重碰撞
 - 🎰 **極冷門**:勝出/上名馬賠率 >50 倍
 - 若觸發豁免 → 標記為「例外通過」並記錄原因
+
+
+## [REF-DA01] 深度覆盤 + Protocol 自我審計 (5 角度)
+
+覆盤時必須完成以下 5 個角度嘅審視，嚴禁跳過任何一個：
+
+---
+
+### 角度 1 — 結果偏差 (Outcome Delta)
+- 我嘅 Top 4 / 精選 同實際派彩結果差幾遠？命中幾多？
+- 邊匹/邊隻 走樣最嚴重？佢嘅分析有咩做漏咗？
+- 以數據表格呈現: | 預測排名 | 實際排名 | 偏差 | 原因 |
+
+---
+
+### 角度 2 — 過程偏差 (Process Delta)
+- Speed Map / 盤口邊緣預測準唔準？實際情況同預測差幾多？
+- 場地判斷/傷缺 啱唔啱？有冇影響？
+- 騎師戰術/教練調度 有冇出乎意料？
+- 模型判斷有冇過度樂觀/悲觀？
+
+---
+
+### 角度 3 — SIP-DA01 Protocol 自我審計 ⚠️ (最關鍵)
+
+> **呢步係審視「多角度裁決協議」本身有冇真正幫到分析。**
+
+**3a. 有效性評估:**
+- SIP-DA01 嘅辯論/審計 有冇改變最終決策？
+  - 如果有 → 改變係正確嘅嗎？(即修訂版比原始版更接近實際結果？)
+  - 如果冇 → 係因為原始決策已經夠準，定係辯論流於形式？
+- 統計: SIP-DA01 改動咗嘅場次中，命中率係提高咗定降低咗？
+
+**3b. 同現有邏輯嘅衝突檢測:**
+- SIP-DA01 嘅審計有冇同現有嘅邏輯(如 SIP-RR / 基礎模型)衝突？
+  - 例如: 基礎邏輯俾咗 A Grade，SIP-DA01 竟然建議替換 → 邊個啱？
+  - 如果經常衝突 → 係基礎邏輯需要調整，定係 SIP-DA01 太保守/激進？
+- 有冇同其他指標判斷重複勞動？
+
+**3c. 改善建議:**
+- 如果 SIP-DA01 有效 → 有冇需要微調 (e.g. 門檻太低/太高)？
+- 如果 SIP-DA01 無效 → 應該修改、簡化、定完全移除邊個 Step？
+- 現有邏輯需唔需要因為 SIP-DA01 嘅加入而調整？
+
+---
+
+### 角度 4 — 泛化性審計 (Generalizability Audit)
+
+> **確保覆盤洞見唔會太單一，要對未來分析有用。**
+
+- 呢場暴露出嘅問題係**普遍性**嘅（會喺其他重覆出現）定**一次性**嘅（極端意外）？
+- 分類:
+  - 🔵 **系統性問題** (影響所有未來): e.g. 「長期高估某類型情況」
+  - 🟡 **條件性問題** (特定條件下出現): e.g. 「特定場地時預測偏誤」
+  - ⚪ **孤立事件** (唔需要改 Protocol): e.g. 「意外事件」
+- 只有 🔵 同 🟡 嘅洞見先值得升級為 Design Pattern / SIP 修訂
+
+---
+
+### 角度 5 — Design Pattern Proposal (向 Agent Architect 提交)
+
+基於以上 4 個角度嘅分析，向 Agent Architect 提交以下格式嘅改善建議:
+
+```
+## Design Pattern Proposal
+- **Issue ID:** REF-[日期]-[編號]
+- **分類:** 🔵系統性 / 🟡條件性
+- **問題描述:** [一句話總結]
+- **受影響嘅 Protocol:** 基礎邏輯 / SIP-DA01 / 其他
+- **建議修改:** [具體改動]
+- **預期效果:** [預計命中率/盲點改善幅度]
+- **SIP-DA01 評價:** 有效/部分有效/無效 — [原因]
+```
+→ Agent Architect 審閱後決定是否納入 `design_patterns.md`
+
 
 ## Step 4: 結果判定
 
@@ -252,6 +341,20 @@ version: 1.0.0
 > 每場驗證完畢後**強制執行**。目的係集中記錄所有觀察中嘅模式,確保跨場次追蹤,避免重複登記。
 
 **觀察項文件:** `resources/observation_log.md`(持久記錄)
+
+**Python 自動化管理（強制）:**
+```bash
+# 新增觀察項
+python .agents/scripts/observation_log_manager.py "resources/observation_log.md" --action add --pattern "[模式描述]" --case "[日期|場次|馬匹|結果|賠率]"
+
+# 新增案例到現有觀察項
+python .agents/scripts/observation_log_manager.py "resources/observation_log.md" --action add-case --id OBS-001 --case "[日期|場次|馬匹|結果|賠率]"
+
+# 檢查畢業候選
+python .agents/scripts/observation_log_manager.py "resources/observation_log.md" --action check-graduation
+```
+> 自動處理去重（≥70% 重疊）、畢業門檻（≥3 案例）、狀態轉換。
+> LLM 只需提供觀察項內容，**嚴禁手動編輯 observation_log.md**。
 
 **流程:**
 1. **讀取現有觀察項**:分析前先讀取 `resources/observation_log.md`,了解已登記嘅觀察項

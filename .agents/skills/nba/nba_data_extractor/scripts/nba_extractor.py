@@ -61,6 +61,15 @@ CFFI_HEADERS = {
     "Accept": "application/json, text/plain, */*",
 }
 
+TEAM_ABBR_ESPN_MAP = {
+    "GSW": "GS",
+    "NOP": "NO",
+    "NYK": "NY",
+    "SAS": "SA",
+    "UTA": "UTAH",
+    "WAS": "WSH"
+}
+
 # The Odds API (免費 500 次/月)
 # 註冊: https://the-odds-api.com → 免費帳號 → 複製 API Key
 # 設定方式: export THE_ODDS_API_KEY="你的key"
@@ -185,8 +194,27 @@ def compute_prop_analytics(gamelog, opp_team_stats, player_splits, is_home):
             miss_margins = [line - x for x in arr if x <= line]
             avg_miss = round(sum(miss_margins) / len(miss_margins), 1) if miss_margins else 0
             
-            # +EV 計算 (假設 Bet365 基準賠率 1.90)
-            implied_prob = round(1 / 1.90 * 100, 1)  # 52.6%
+            # +EV 計算 — 動態賠率估算模型
+            # 根據盤口相對球員均值的位置估算市場賠率
+            # ratio = line / avg: <0.5 = very easy (低賠), ~1.0 = coin flip (~1.85), >1.2 = hard (高賠)
+            if avg > 0:
+                ratio = line / avg
+                if ratio <= 0.3:
+                    est_odds = 1.08  # 極低線，幾乎必達
+                elif ratio <= 0.5:
+                    est_odds = round(1.10 + (ratio - 0.3) * 2.0, 2)  # 1.10-1.50
+                elif ratio <= 0.75:
+                    est_odds = round(1.50 + (ratio - 0.5) * 1.6, 2)  # 1.50-1.90
+                elif ratio <= 1.0:
+                    est_odds = round(1.90 + (ratio - 0.75) * 2.8, 2)  # 1.90-2.60
+                elif ratio <= 1.3:
+                    est_odds = round(2.60 + (ratio - 1.0) * 6.0, 2)  # 2.60-4.40
+                else:
+                    est_odds = round(4.40 + (ratio - 1.3) * 8.0, 2)  # 4.40+
+            else:
+                est_odds = 1.90
+            
+            implied_prob = round(1 / est_odds * 100, 1)
             estimated_prob = hit_rate_l10  # 用 L10 命中率作為預估勝率
             edge = round(estimated_prob - implied_prob, 1)
             
@@ -204,6 +232,7 @@ def compute_prop_analytics(gamelog, opp_team_stats, player_splits, is_home):
                 "hits": f"{hits_l10}/{len(arr)}",
                 "AMC": amc,
                 "avg_miss": avg_miss,
+                "est_odds": est_odds,
                 "implied_prob": implied_prob,
                 "estimated_prob": estimated_prob,
                 "edge": edge,
@@ -215,6 +244,9 @@ def compute_prop_analytics(gamelog, opp_team_stats, player_splits, is_home):
                 under_hits = len(arr) - hits_l10
                 under_rate = round(under_hits / len(arr) * 100, 0)
                 if under_rate >= 70:
+                    # Under odds is inverse of Over: if Over is easy (low odds), Under is hard (high odds)
+                    under_odds = round(est_odds / (est_odds - 1), 2) if est_odds > 1.05 else 10.0
+                    under_implied = round(1 / under_odds * 100, 1)
                     line_analytics.append({
                         "line": line,
                         "direction": "Under",
@@ -223,9 +255,10 @@ def compute_prop_analytics(gamelog, opp_team_stats, player_splits, is_home):
                         "hit_rate_L3": round((len(l3) - hits_l3) / len(l3) * 100, 0) if l3 else 0,
                         "hits": f"{under_hits}/{len(arr)}",
                         "AMC": avg_miss,  # Under 的 AMC = Over 的 avg_miss
-                        "implied_prob": implied_prob,
+                        "est_odds": under_odds,
+                        "implied_prob": under_implied,
                         "estimated_prob": under_rate,
-                        "edge": round(under_rate - implied_prob, 1),
+                        "edge": round(under_rate - under_implied, 1),
                         "tier": "🛡️ 穩膽 Under" if under_rate >= 80 else "💎 價值 Under",
                     })
         
@@ -299,6 +332,28 @@ def parse_espn_events(events):
     return games
 
 
+def fetch_nba_news(team_abbr, limit=5):
+    """從 ESPN API 獲取特定球隊的最新的 NBA 新聞"""
+    espn_abbr = TEAM_ABBR_ESPN_MAP.get(team_abbr, team_abbr)
+    print(f"📰 [Module 1c] 嘗試獲取 {team_abbr} (ESPN:{espn_abbr}) 即日新聞...")
+    try:
+        url = f"http://site.api.espn.com/apis/site/v2/sports/basketball/nba/news?team={espn_abbr}"
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200:
+            articles = r.json().get('articles', [])
+            news_list = []
+            for a in articles[:limit]:
+                news_list.append({
+                    "headline": a.get("headline", ""),
+                    "description": a.get("description", "")
+                })
+            return news_list
+        return []
+    except Exception as e:
+        print(f"  ⚠️ 獲取新聞失敗: {e}")
+        return []
+
+
 # ==========================================
 # 模塊 2：nba_api — 全員 L10 完整 Box Score
 # ==========================================
@@ -333,9 +388,10 @@ def fetch_team_roster(team_nickname):
 
 def fetch_team_injuries(team_abbr):
     """從 ESPN API 獲取球隊傷病名單"""
-    print(f"  🏥 [Module 1b] 嘗試獲取 {team_abbr} 傷病名單 (ESPN)...")
+    espn_abbr = TEAM_ABBR_ESPN_MAP.get(team_abbr, team_abbr)
+    print(f"  🏥 [Module 1b] 嘗試獲取 {team_abbr} (ESPN:{espn_abbr}) 傷病名單 (ESPN)...")
     try:
-        url = f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/{team_abbr}/roster"
+        url = f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/{espn_abbr}/roster"
         r = requests.get(url, timeout=10)
         if r.status_code == 200:
             athletes = r.json().get('athletes', [])
@@ -502,7 +558,6 @@ def fetch_all_player_advanced_stats():
 # ==========================================
 def fetch_player_splits(player_id, player_name):
     """提取球員 Home/Away 及 Rest Day Splits"""
-    return None
     if not NBA_API_AVAILABLE:
         return None
     try:
@@ -918,13 +973,37 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             home_abbr: team_dvp.get(home_abbr, {}),
         },
         "odds": {},
+        "news": {away_abbr: [], home_abbr: []},
         "players": {away_abbr: [], home_abbr: []},
         "key_defenders": {away_abbr: [], home_abbr: []},
+        "injuries": {away_abbr: {}, home_abbr: {}},
     }
 
-    # 賠率
-    game_key = f"{away_abbr}_{home_abbr}"
-    package["odds"] = odds_data.get(game_key, {})
+    # 賠率 — 嘗試多種 key 組合以匹配 Action Network 格式
+    # Action Network 用 home_away 順序 + 標準縮寫 (WAS, UTA, GSW, NOP)
+    # ESPN 用 away_home 順序 + ESPN 縮寫 (WSH, UTAH, GS, NO)
+    ESPN_TO_STANDARD = {v: k for k, v in TEAM_ABBR_ESPN_MAP.items()}  # reverse map
+    away_std = ESPN_TO_STANDARD.get(away_abbr, away_abbr)
+    home_std = ESPN_TO_STANDARD.get(home_abbr, home_abbr)
+    odds_candidates = [
+        f"{away_abbr}_{home_abbr}",     # ESPN away_home
+        f"{home_abbr}_{away_abbr}",     # ESPN home_away
+        f"{away_std}_{home_std}",       # Standard away_home
+        f"{home_std}_{away_std}",       # Standard home_away (AN format)
+        f"{away_std}_{home_abbr}",      # Mixed
+        f"{away_abbr}_{home_std}",      # Mixed
+        f"{home_std}_{away_abbr}",      # Mixed
+        f"{home_abbr}_{away_std}",      # Mixed
+    ]
+    matched_odds = {}
+    for candidate in odds_candidates:
+        if candidate in odds_data:
+            matched_odds = odds_data[candidate]
+            print(f"  💰 賠率匹配成功: {candidate}")
+            break
+    if not matched_odds:
+        print(f"  ⚠️ 賠率匹配失敗 — 嘗試過: {odds_candidates[:4]}")
+    package["odds"] = matched_odds
 
     # 提取雙方陣容與數據
     for side, abbr, full_name in [("away", away_abbr, away_name), ("home", home_abbr, home_name)]:
@@ -936,8 +1015,13 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
 
         print(f"  👥 陣容人數: {len(roster)}")
 
-        # 抓取真實傷病名單
+        # 抓取真實傷病名單並存儲到 metadata
         injury_map = fetch_team_injuries(abbr)
+        package["injuries"][abbr] = injury_map
+        
+        # 抓取球隊新聞
+        team_news = fetch_nba_news(abbr, limit=5)
+        package["news"][abbr] = team_news
 
         # 篩選核心球員 (有進階數據 = 有上場紀錄)
         core_players = []
@@ -1137,6 +1221,7 @@ def main():
         print("\n🏀 正在為每場比賽生成深度數據包...")
         for g in games:
             package = extract_single_game(g, adv_stats, defender_data, team_dvp, team_stats, odds_data)
+            
             json_path = f"/tmp/nba_game_data_{g['tag']}.json"
             with open(json_path, "w", encoding="utf-8") as f:
                 json.dump(package, f, ensure_ascii=False, indent=2)

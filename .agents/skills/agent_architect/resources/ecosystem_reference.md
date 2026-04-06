@@ -28,11 +28,15 @@ This document defines the structure, conventions, and existing agents of the Ant
     │   ├── au_compliance/
     │   ├── au_horse_race_reflector/
     │   └── au_reflector_validator/
-    └── nba/                 # NBA agents
-        ├── nba_wong_choi/
-        ├── nba_data_extractor/
-        ├── nba_analyst/
-        └── nba_reflector/
+    ├── nba/                 # NBA agents
+    │   ├── nba_wong_choi/
+    │   ├── nba_data_extractor/
+    │   ├── nba_analyst/
+    │   └── nba_reflector/
+    └── scripts/             # Native Python Tools (Zero-Cost Architecture)
+        ├── completion_gate_v2.py
+        ├── safe_writer.py
+        └── ...
 ```
 
 ### Agent Folder Structure
@@ -101,6 +105,12 @@ resources/06_output_templates.md
 - If data is missing, output `N/A (數據不足)` — never guess.
 - Internal reasoning goes in `<thought>` tags, never in final output.
 
+### Zero-Cost Multi-Perspective Analysis
+Instead of using expensive and brittle multi-agent setups (CrewAI/AutoGen):
+- **[SIP-DA01]**: Embedded 5-step debate protocol inside Wong Choi Verdict (Form -> Track -> Place Prob -> Value -> Final) for rigorous self-auditing.
+- **[NBA-DA01]**: 4-step embedded parlay auditing protocol.
+- **[REF-DA01]**: 5-angle post-mortem reflection protocol applied in all Reflector agents (Outcome -> Process -> SIP Audit -> Generalizability -> Design Pattern Proposal).
+
 ### CSV Data Contract
 Agents that chain to downstream agents output structured CSV blocks:
 ```csv
@@ -116,6 +126,7 @@ Agents that chain to downstream agents output structured CSV blocks:
 | **Wong Choi** (HKJC/AU) | Meeting-level commander. Sets pace context, weather, track bias. Orchestrates per-race analysis. Writes intelligence package to file. | User input / race URL | Race Extractor → Horse Analyst → Batch QA → Compliance |
 | **Race Extractor** (HKJC/AU) | Raw data extraction from race cards and form guides. | URL / PDF | Horse Analyst |
 | **Horse Analyst** (HKJC/AU) | Deep per-horse analysis with algorithmic engine, forensic evaluation, EEM. Outputs Top 3-4 selections. | Extractor data + Wong Choi context + Intelligence Package | Batch QA → Compliance Agent |
+| **Native Validation Engine** | Zero-Cost python gating utility (`completion_gate_v2.py`) deployed across Wong Choi variants to strictly enforce templates. | Analyst report | Wong Choi |
 | **Batch QA** (HKJC/AU) | Per-batch quality gate. Structural scan, semantic scan, anti-laziness. Called after each batch. | Analyst batch output | Wong Choi (pass/fail) |
 | **Compliance Agent** (HKJC/AU) | Quality police. Cross-batch trend analysis, SIP verification, anti-laziness audit, self-improvement hub. Tiered remediation (CRITICAL→full redo, structural MINOR→batch redo). | Analyst report + SIP index + SIP changelog | Wong Choi (pass/fail verdict) |
 | **Reflector** (HKJC/AU) | Post-race review with narrative post-mortem. Distinguishes bad logic from bad luck. Maintains SIP changelog. Proposes design patterns. | Race results + Analyst predictions | Reflector Validator / User / Agent Architect |

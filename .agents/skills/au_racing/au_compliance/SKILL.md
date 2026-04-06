@@ -28,7 +28,7 @@ version: 2.0.0
 - `au_horse_analyst/resources/sip_changelog.md` — 最近 SIP 更新清單(用於回歸偵測)
 
 **條件讀取:**
-- `au_horse_analyst/resources/02_algorithmic_engine.md` — 若需驗證覆蓋規則
+- `au_horse_analyst/resources/02a-02g (split engine files)` — 若需驗證覆蓋規則
 
 # Interaction Logic (Step-by-Step)
 

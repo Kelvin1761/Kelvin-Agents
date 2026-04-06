@@ -1,7 +1,7 @@
 # 騎師戰術特徵與評級 (AU Jockey Tactical Profiles)
 
 > **條件式讀取:** Wong Choi 會在數據包提供 `[ACTIVE_JOCKEYS]`。只需關注當場出賽的騎師 profile。其餘騎師使用底部的 Fallback 規則。
-> **與 Step 11 / Step 14.E 互動:** 頂級騎師檔位豁免 (SIP-R14-2) 適用於 Tier 1 騎師。見習騎師規則見 `02_algorithmic_engine.md` Step 11。
+> **與 Step 11 / Step 14.E 互動:** 頂級騎師檔位豁免 (SIP-R14-2) 適用於 Tier 1 騎師。見習騎師規則見 `02e_jockey_trainer.md` Step 11。
 
 ---
 

@@ -24,7 +24,7 @@ ag_kit_skills:
 
 | 意圖關鍵詞 | 路由目標 | 執行方式 |
 |-----------|---------|---------|
-| 「覆盤/review/反思/賽果/post-mortem/檢討」 | **AU Horse Race Reflector** | 讀取 `au_horse_race_reflector/SKILL.md` 並按其流程執行 |
+| 「覆盤/review/反思/賽果/result/結果/post-mortem/檢討/檢查結果」 | **AU Horse Race Reflector** | 讀取 `au_horse_race_reflector/SKILL.md` 並按其流程執行 |
 | 「驗證/validate/盲測/blind test/SIP 測試」 | **AU Reflector Validator** | 讀取 `au_reflector_validator/SKILL.md` 並按其流程執行 |
 | 「分析/analyse/pipeline/跑/run」或無特定關鍵詞 | **正常分析流程** | 繼續執行下方 Step 1-7 |
 
@@ -32,6 +32,7 @@ ag_kit_skills:
 1. 路由判斷在收到用戶第一條訊息時立即執行,嚴禁詢問「你想分析定覆盤?」
 2. 若意圖不明確,默認為「正常分析流程」
 3. 路由到 Reflector/Validator 後,Wong Choi 的角色轉為純粹的 dispatcher — 讀取目標 SKILL.md 並完全按其指示執行,不混合自身的分析流程
+4. **衝突解決:** 若用戶訊息同時包含分析關鍵詞 + 覆盤關鍵詞（如「analyse result」），**覆盤關鍵詞優先**。理由：用戶提到「result/賽果」= 賽事已完成，不可能是賽前分析。
 
 # Engine Awareness (P20 — Opus 優化)
 - **Extended Thinking**:所有內部推導放入 `<thinking>` 區塊,嚴禁輸出到分析檔案或聊天
@@ -70,6 +71,15 @@ ag_kit_skills:
 >    - **禁止「因為評級低所以簡寫」:** D 級馬同 S 級馬用同一個骨架模板。D 級需要用數據解釋「點解差」,唔係寫一句「近績差唔推薦」就算。
 >    - **骨架 [FILL] 零容忍:** 若寫完嘅分析仍然包含 `[FILL]` 文字 → 你跳過咗填充 → 立即補回。
 >    - **🐴 馬匹剖析 5 項必填:** 班次負重 + 引擎距離 + 步態場地 + 配備意圖 + 人馬組合。缺任何一項 = 骨架未完全填充。
+>    - **🐴 馬匹剖析格式嚴規 (P35 — 2026-04-06 新增 — Priority 0):**
+>      - 馬匹剖析**僅為簡潔分類標籤**，每項以 `[標籤]` 格式撰寫，禁止寫成段落或散文。
+>      - ✅ 正確示範: `- **步態場地:** [未有 Soft 地數據，但血統顯示應能應付]`
+>      - ✅ 正確示範: `- **引擎距離:** [Type A 短途爆發]`
+>      - ✅ 正確示範: `- **人馬組合:** [Rachel King 騎法硬朗，適合此駒]`
+>      - ❌ 錯誤示範: `- **步態場地:** [無]` （禁止用「無」一字帶過）
+>      - ❌ 錯誤示範: 在馬匹剖析下寫整段 200+ 字分析文章（這些內容屬於 💡結論 > 核心邏輯）
+>      - **深度法醫分析（戰術推演、歷史比較、風險評估、綜合判定）必須全部歸入 `💡 結論 > 核心邏輯` 區域。**
+>      - **自檢觸發器:** 若你嘅馬匹剖析任何一項超過 30 字 → 你已違規 → 將多餘內容搬去核心邏輯。
 
 # 🚨 OUTPUT_TOKEN_SAFETY(P28 — 2026-03-29 新增 — Priority 0)
 
@@ -130,6 +140,20 @@ IF ENV_TOKEN_CAPACITY == HIGH:
 - Memory: [✅ 已連接 / ❌ 未安裝]
 
 若未安裝,請將以下配置加入 mcp_config.json:
+
+**macOS 配置:**
+```json
+{
+  "mcpServers": {
+    "playwright": { "command": "npx", "args": ["-y", "@playwright/mcp@latest"] },
+    "sqlite": { "command": "npx", "args": ["-y", "mcp-server-sqlite", "~/.gemini/antigravity/databases/wong_choi.db"] },
+    "memory": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-memory"] }
+  }
+}
+```
+
+**Windows 配置:**
+```json
 {
   "mcpServers": {
     "playwright": { "command": "cmd.exe", "args": ["/c", "npx", "-y", "@playwright/mcp@latest"] },
@@ -137,6 +161,8 @@ IF ENV_TOKEN_CAPACITY == HIGH:
     "memory": { "command": "cmd.exe", "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-memory"] }
   }
 }
+```
+⚠️ 請根據你的操作系統選擇對應配置。DB 路徑需按實際安裝位置調整。
 然後重新啟動 Antigravity。
 ```
 Step 8 數據庫歸檔功能需要 MCP Servers 運作,但即使未安裝也不影響 Step 1-7 核心分析流程。
@@ -195,6 +221,14 @@ AU Race Extractor 建立嘅資料夾格式為 `[YYYY-MM-DD] [Venue Name] Race [S
 **⏸ 提取完成 Checkpoint(自動推進):**
 全日所有場次嘅 Racecard 同 Formguide 提取完成後,喺聊天中簡短匯報提取結果(1-2 行),然後**自動推進到 Step 1.5**。
 **唔好問用戶「是否繼續」。** 用戶叫你分析某個場地 = 意圖係全套流程到底。
+
+**⏸ 提取完成 Checkpoint（強制停頓）:**
+提取完成後，你**必須暫停**並執行以下驗證：
+1. **檔案命名檢查：** 確認日期前綴正確
+2. **內容抽查：** 隨機 `view_file` 一個排位表前 5 行，確認有實際數據
+3. **匯報用戶：** 列出已提取檔案，等用戶確認再繼續
+**嚴禁跳過此 checkpoint 直接進入情報搜集。**
+
 
 **📂 Extractor 輸出結構(v2 — Per-Race Split):**
 Extractor 會為每場賽事生成獨立檔案:
@@ -271,43 +305,8 @@ BATCH_SIZE: {BATCH_SIZE}(由環境掃描決定)
 > [!TIP]
 > **Session Recovery 時嘅行為:** 若 `_Race_Day_Briefing.md` 已存在,直接讀取並顯示(標記已完成場次),無需重新解析。
 
-## Step 2: 預測場地 (Track Condition Prediction)
-取得賽事> **[JIT Template Protocol — HARD ENFORCEMENT]** 在所有馬匹分析 Batch 完成,並準備寫入「Verdict Batch / 第三部分」前,你必須強制作出一次 `view_file` tool call 重新讀取 `au_horse_analyst/resources/06_output_templates.md` 的第三部分。
-> ‼️ **為防止格式漂移,你必須 100% 複製以下骨架寫入 Verdict,嚴禁使用 bullet list 代替:**
-> ```markdown
-> ## [第三部分] 🏆 全場最終決策
-> **Speed Map 回顧:** [預期步速] | 領放群: [Names] | 受牽制: [Names]
->
-> **Top 4 位置精選**
-> 🥇 **第一選**
-> - **馬號及馬名:** [號碼] [名字]
-> - **評級與✅數量:** `[評級]` | ✅ [數量]
-> - **核心理據:** [理由]
-> - **最大風險:** [風險]
-> (同理輸出 第二選 🥈, 第三選 🥉, 第四選 🏅)
-> ---
-> **🎯 Top 2 入三甲信心度 (Top 2 Place Confidence)**...
-> ---
-> **[SIP-FL03] 🎰 Exotic 組合投注池建議**...
-> ---
-> **[SIP-RR01] 📗📙 雙軌場地 Top 4 (僅在 SIP-1 觸發時)**...
-> ---
-> ## [第四部分] 分析陷阱...
-> ```
-> 
-> **⛔ COMPLETION_GATE(強制 — 回覆用戶前必須通過 — P31):**
-> 喺 batch 循環結束後、通知用戶之前,你必須執行以下檢查:
-> 1. `view_file` Analysis.md 最後 60 行
-> 2. 搜索「🏆 全場最終決策」同「Top 4 位置精選」
-> 3. 搜索 🥇🥈🥉🏅 — 必須是獨立標題,且每個必須包含「評級與✅數量:」
-> 4. 搜索「🎯 Top 2 入三甲信心度」和「🎰 Exotic 組合投注池建議」— 必須存在
-> 5. 搜索 ` ```csv ` — CSV 區塊必須存在
-> 6. 搜索 🐴⚡ — 冷門馬總計必須存在
-> 7. 所有檢查通過後方可繼續到合規檢查
-> **違規偵測:** 若你準備向用戶報告「分析完成」但 COMPLETION_GATE 未通過(例如漏咗信心度或用錯格式) → 你已違規 → 立即回退補寫。
->
-> **⛔ 硬性攔截器:** 若你發現自己正在一個 tool call 中寫入超過 BATCH_SIZE 匹馬 → **立即停止生成**,刪除多餘內容,拆分為獨立 tool calls。
-> **⛔ 反模式偵測:** 若你嘅 tool call 中同時出現 `Batch 1` 和 `Batch 2` 嘅馬匹 → 你已違反此規則 → 立即停止。�**一次性完成**以下 meeting-level 情報搜集工作:
+## Step 2: 預測場地與情報搜集 (Track Condition & Intelligence)
+
 
 使用 `search_web` 工具,一次性搜索以下當日賽事公共數據:
 - 今日官方場地狀態 / 跑道偏差 (Track Bias)
@@ -363,6 +362,43 @@ BATCH_SIZE: {BATCH_SIZE}(由環境掃描決定)
 ```
 此文件可供後續 session 直接讀取,無需重新搜索。若任何數據搜索失敗 3 次,標記為 `[搜索失敗 — 需人手補充]`。
 
+## Step 3.5: 歷史交叉驗證 (Intelligence-First Tier 2 — P35 新增)
+
+> **設計理念:** 受 ECC `search-first` 啟發。在即時情報搜集後，加入歷史數據交叉驗證，提升情報包可靠度。
+> 完整 checklist 見 `shared_instincts/intelligence_checklist.md`。
+> **此步驟依賴 MCP。若 MCP 不可用 → 自動跳過，唔影響分析。**
+
+**若 MCP Servers 可用（Step E5 檢查通過），執行以下 Tier 2 驗證：**
+
+1. **場地偏差歷史：** `read_graph` 查詢 `{VENUE}_*_bias` entities，獲取同場地過往 3 次 track bias 觀察
+2. **命中率歷史：** `read_query` 查詢 `SELECT * FROM au_ratings WHERE venue='{VENUE}' ORDER BY date DESC LIMIT 30`
+3. **天氣 Pattern：** `search_nodes` 查詢 `weather_accuracy_*`，比對同類天氣條件下嘅掛牌偏差
+4. **SIP 記錄：** `read_graph` 查詢 `FP_pattern_*` / `FN_pattern_*`，檢索過往同場地嘅 SIP 修正
+
+**將結果加入 `_Meeting_Intelligence_Package.md` 嘅新 section：**
+```markdown
+## 歷史場地 Pattern（Tier 2 — MCP 交叉驗證）
+- 過往 3 次場地偏差: [內欄優勢 × 2 / 中立 × 1]
+- 過往 3 次命中率: [🏆 X% / ✅ Y% / ⚠️ Z%]
+- 天氣轉換 Pattern: [預測偏軟 → 實際偏硬 × N/M 次]
+- 活躍 SIP: [SIP-RR17 (濕地膨脹), SIP-RF01 (寬恕校準)]
+- **Intelligence Confidence: [🟢 HIGH / 🟡 MEDIUM / 🔴 LOW]**
+```
+
+**MCP 不可用時：**
+- 跳過 Tier 2，加入 `⚠️ Tier 2 歷史驗證已跳過（MCP 不可用）`
+- Intelligence Confidence 設為 🟡 MEDIUM
+- **分析流程完全唔受影響**
+
+
+## 問題嚴重程度定義 (Issue Severity)
+
+| 級別 | 定義 | 處理方式 |
+|------|------|----------|
+| **CRITICAL** | 影響分析正確性嘅重大問題（邏輯錯誤、數據錯配） | 累積到賽間報告,建議修正 |
+| **MINOR** | 品質瑕疵但不影響核心結論（格式微偏、字數略低） | 記錄到 issue log,全場後處理 |
+| **DISCOVERY** | 框架未涵蓋嘅新模式或異常 | 記錄供覆盤參考 |
+
 ## Step 4: 戰略分析 (Strategy Analysis)
 
 ### 🤖 Orchestrator 協調增強(引用 AG Kit orchestrator 模式)
@@ -397,7 +433,15 @@ Wong Choi 調度嘅子 Agent 必須嚴格遵守各自嘅職責邊界:
 ---
 
 **逐場分析協議**:
-- 每次只分析 **1 場賽事**。
+- 每次只分析 **1 場賽事**
+
+> **[Per-Batch Skeletal JIT Injection] (強制防呆機制 — 學自 HKJC P33)**
+> 在每次執行獨立 tool call 寫入 Batch 的分析前,你**必須強制**使用 `view_file` 讀取 `au_wong_choi/resources/horse_analysis_skeleton.md`。
+> 將骨架 × BATCH_SIZE 注入到 Analyst prompt 中。LLM 嘅任務從「生成分析」變為「填充骨架」,保證 100% 結構完整性。
+> **核心邏輯/結論部分為 LLM 自由發揮區域。**
+> 嚴禁憑記憶默寫結構。你必須將該骨架原封不動地複製並向下填充,確保所有 13 個欄位一個不漏!
+
+。
 - **批次自動推進但獨立寫入:** 分析期間嚴禁向用戶詢問「是否繼續下一批」。但「自動推進」≠「合併寫入」——每個 Batch 必須為獨立嘅 tool call。
 
 **📖 Smart Slice Protocol(Per-Race Data Loading — 2026-04 新增):**
@@ -455,7 +499,11 @@ Wong Choi 調度嘅子 Agent 必須嚴格遵守各自嘅職責邊界:
 > 
 > ```
 > FOR EACH batch IN BATCH_PLAN:
->   1. 📠 WRITE — 用獨立嘅 `run_command` heredoc → /tmp → safe_file_writer.py (P19v6) 寫入該 batch(最多 3 匹馬)
+>   0. 🗺️ PART 1 (僅 Batch 1) — 若為本場第一個 batch,**必須先寫入 [第一部分] 🗺️ 戰場全景:**
+>      - 賽事格局表（班次/條件/路程/馬場/場地/步速預測）
+>      - Speed Map（領放群/前中段/中後段/後上群）
+>      - **⚠️ 嚴禁跳過 Part 1 直接寫馬匹分析！**
+>   1. 📠 WRITE — 用 `run_command` Python Heredoc One-Step Pattern (P19v6): cat PYEOF > /tmp/batch_N.py → python3 /tmp/batch_N.py → safe_file_writer.py 寫入該 batch（最多 BATCH_SIZE 匹馬）
 >   2. 🔠 SCAN — view_file 驗證 10 section headers 存在
 >   3. ✅ QA — 執行 Batch QA Agent
 >   4. 🔒 TOKEN — 寫入 BATCH_QA_RECEIPT 到 Analysis.md
@@ -465,22 +513,152 @@ Wong Choi 調度嘅子 Agent 必須嚴格遵守各自嘅職責邊界:
 > END FOR
 > ```
 >
+> **[SIP-DA01] 多角度裁決協議 (Multi-Perspective Verdict Protocol)**
+> 
+> **寫 Verdict 之前必須完成以下 5 步自我辯論，嚴禁跳過。**
+> 
+> **Step A — Form Selection (表面實力選馬):**
+> 基於全場分析，列出實力最高嘅 Top 3。
+> 只考慮: 近6場、班際、騎練配搭、季績。
+> 
+> **Step B — Track/Pace Challenge (步速場地挑戰):**
+> 針對每匹 Top 3 馬:
+> - Speed Map 有利定不利？
+> - 步速若同預測唔同，受惠定受損？
+> - Track Bias 影響？
+> 
+> **Step C — Place Probability Audit (位置概率審計):**
+> ⚠️ 最關鍵！針對每匹 Top 3 馬:
+> 1. 真係跑得入前3名嗎？
+> 2. 有冇「死穴」？(大外檔+慢步速 / EEM耗盡 / 場地唔啱)
+> 3. 有冇其他馬 Place Probability 更高？→ 必須提名替代馬
+> 
+> **Step D — Value Check (值博率檢查):**
+> - 邊匹被過度追捧 (Underlay)?
+> - 邊匹賠率相對高但實力唔差 (Overlay)?
+> 
+> **Step E — Final Verdict (最終裁決):**
+> 綜合 A-D，產出修訂版 Top 4。
+> 必須標註:「原始 Top 3: [A, B, C] → 修訂後: [A, D, B]（C 被替換因為 [理由]）」
+> 
 > **[JIT Template Protocol]** 在所有馬匹分析 Batch 完成,並準備寫入「Verdict Batch / 第三部分」前,你必須強制作出一次 `view_file` tool call,重新讀取 `resources/session_start_checklist.md` 裡面的 `<Top4_Verdict_Skeleton>`。 在未重讀該模板前,嚴禁直接吐出任何 Top 4 結果。
 
 >
 > **⛔ COMPLETION_GATE(強制 — 回覆用戶前必須通過 — P31):**
-> 喺 batch 循環結束後、通知用戶之前,你必須執行以下檢查:
-> 1. `view_file` Analysis.md 最後 30 行
-> 2. 搜索「🏆 Top 4 位置精選」— 若不存在 → 你已遺漏 Verdict → 立即寫入 VERDICT BATCH
-> 3. 搜索 🥇🥈🥉🏅 — 四個標籤必須齊全
-> 4. 搜索 ` ```csv ` — CSV 區塊必須存在
-> 5. 搜索 🐴⚡ — 冷門馬總計必須存在
-> 6. 所有檢查通過後方可繼續到合規檢查
-> **違規偵測:** 若你準備向用戶報告「分析完成」但 COMPLETION_GATE 未通過 → 你已違規 → 立即回退補寫。
+> 喺 batch 循環結束後、通知用戶之前,你必須強制執行以下 Python 驗證:
+> 🚨 **你完成分析後，必須強制自己 run `python3 .agents/scripts/completion_gate_v2.py <你正在分析的檔案路徑> --domain au` 進行檢驗。不過關不准完成任務！**
+> 如果檢驗失敗 (出現 `❌ [FAILED]`)，你已違規 → 立即根據報告內容，自行修正錯誤的段落 (例如補回標籤、擴充字數或補回漏寫章節) 並重新執行 validator 直到 `✅ [PASSED]` 為止！
 >
 > **⛔ 硬性攔截器:** 若你發現自己正在一個 tool call 中寫入超過 BATCH_SIZE 匹馬 → **立即停止生成**,刪除多餘內容,拆分為獨立 tool calls。
 > **⛔ 反模式偵測:** 若你嘅 tool call 中同時出現 `Batch 1` 和 `Batch 2` 嘅馬匹 → 你已違反此規則 → 立即停止。
 - **每場分析完畢並儲存後,必須先執行合規檢查,然後才執行「賽間推進協議」。**
+
+> [!CAUTION]
+> **⛔ P33 — VERDICT JIT TEMPLATE CHECKPOINT（學自 HKJC — Priority 0）**
+>
+> **強制規定:**
+>
+> 1. **寫入 VERDICT BATCH 之前,必須 `view_file` 讀取 `06_output_templates.md` L132-288。** 冇讀 = 禁止寫入 VERDICT。
+> 2. **VERDICT BATCH 結構自檢清單(寫入後逐項驗證,缺一 = 重做):**
+>    - [ ] `## [第三部分] 🏆 全場最終決策` — 正確標題
+>    - [ ] Speed Map 回顧
+>    - [ ] `Top 4 位置精選` — 使用 🥇🥈🥉🏅 清單格式(非 numbered list / 非 table)
+>    - [ ] 每個選項有 4 sub-bullets: 馬號馬名 / 評級✅數 / 核心理據 / 最大風險
+>    - [ ] 🎯 Top 2 入三甲信心度(🟢/🟡/🔴)
+>    - [ ] [SIP-FL03] 🎰 Exotic 建議
+>    - [ ] [SIP-RR01] 📗📙 雙軌 Top 4(若 SIP-1 觸發)
+>    - [ ] [第四部分] 分析陷阱 — 含步速逆轉保險 + 緊急煞車
+>    - [ ] 🐴⚡ 冷門馬總計
+>    - [ ] [第五部分] CSV Block — ` ```csv ` 存在
+>    - [ ] CSV 中 Rank 1 嘅馬 = 🥇 第一選
+> 3. **呢個 checkpoint 適用於所有場次、所有引擎、即使係 Session Recovery。**
+
+> [!CAUTION]
+> **⛔ P34 — VERDICT FORMAT ANTI-DRIFT HARDENER（學自 Race 6 2026-04-06 — Priority 0）**
+>
+> **歷史教訓:** 2026-04-06 Race 6 Verdict 嚴重格式漂移 — Top 4 使用了壓縮式單行 bullet（`🥇 首選 (1st): [5] Wrathful (A+) — 理由...`）而非模板規定的多行結構清單。同時遺漏了 Speed Map 回顧、Top 2 信心度、Exotic 建議、第四部分分析陷阱、及第五部分 CSV。根本原因：LLM 跳過了 P33 JIT 讀取步驟，憑記憶生成自創格式。
+>
+> **強制規定:**
+>
+> 1. **TOP 4 格式鐵律（零容忍）：** 每個選項 **必須** 使用以下精確結構，禁止壓縮成單行：
+>    ```
+>    🥇 **第一選**
+>    - **馬號及馬名:** [號碼] [名字]
+>    - **評級與✅數量:** `[評級]` | ✅ [數量]
+>    - **核心理據:** [理由]
+>    - **最大風險:** [風險]
+>    ```
+>    **違規模式黑名單（嚴禁使用以下任何格式）：**
+>    - ❌ `🥇 首選 (1st): [X] Name (Grade) — 理由`（壓縮式單行）
+>    - ❌ `| 排名 | 馬名 | 評級 |`（表格式）
+>    - ❌ `1. Wrathful (A+)`（數字清單式）
+>    - ❌ 任何自創標題如「📊 Top 4 排名」「🎯 行動指令」「💡 投注策略建議」
+>
+> 2. **Verdict 五大區段完整性門檻（缺一 = FAILED）：**
+>    - `[第三部分]`: Speed Map 回顧 + Top 4 位置精選 + Top 2 信心度 + Exotic 建議
+>    - `[第四部分]`: 市場預期警告 + 步速逆轉保險 + 緊急煞車 + 冷門馬總計
+>    - `[第五部分]`: CSV Block
+>
+> 3. **POST-WRITE 格式驗證（寫入後立即執行）：**
+>    寫完 Verdict 後，在內部思考中執行以下 3 秒快檢：
+>    - 搜索 `🥇 **第一選**` — 存在？✅/❌
+>    - 搜索 `- **馬號及馬名:**` — 存在 ≥4 次？✅/❌
+>    - 搜索 `Top 2 入三甲信心度` — 存在？✅/❌
+>    - 搜索 `步速逆轉保險` — 存在？✅/❌
+>    - 搜索 ` ```csv ` — 存在？✅/❌
+>    **任何一項 ❌ → 立即重寫 Verdict，不得繼續。**
+
+
+> [!CAUTION]
+> **⛔ P36 — ZERO-TOLERANCE ANTI-DRIFT PROTOCOL（學自 2026-04-06 Race 8 — Priority 0）**
+>
+> **歷史教訓:** 雖然已有 P33 同 P34 規定 JIT 讀取，但喺長時間連續運作 (長達 Race 8) 時，LLM 仍然會因為 Context Window 衰退而偷懶跳過讀取，憑模糊記憶生成結構不全、字數極度不足的 Bullet points。
+>
+> **強制對策 (三連擊):**
+> 1. **JIT 零容忍宣讀 (Zero-Tolerance Template Refresh):** 每次準備生成 Batch 寫檔腳本之前，**無論自認記憶多麼清晰，都必須強制 view_file 讀取 06_output_templates.md 的 Horse_Microscope_Skeleton。** 無宣讀 = 違規。
+> 2. **強制落實「預建骨幹法」 (Skeleton Copy-Paste Enforcement):** 生成 Python Markdown 變量時，**不准逐行寫**。必須先由 Template 完美 Copy 出整個馬匹的骨幹（全套 11 個 Emoji 標題），死板地貼齊後，才開始將分析內容填入相應位置，保證結構 100% 不丟失。
+> 3. **落實 Session 切割 (Hard Session Splits for Context Relief):** 到達 Race 4 結束必須強制截斷並輸出交接指令 (Handoff Prompt)，嚴格執行「換 Chat 重新連線」，避免記憶體超載而出現妥協式偷懶。
+
+> [!CAUTION]
+> **⛔ P37 — FORMGUIDE FACT VERIFICATION PROTOCOL（學自 2026-04-06 Rosehill — Priority 0）**
+>
+> **歷史教訓:** 2026-04-06 Rosehill Gardens 分析中，多匹馬嘅往績數據被 LLM 幻覺扭曲。
+> Colourful Emperor 實際上仗跑第4，但分析寫佢「一放到底贏馬」（將 Formguide result line 嘅贏家誤認為分析對象）。
+> Point And Shoot 實際跑第9，但分析寫名次13（以中途位置 `13th@800m` 當最終名次）。
+> Hellabella 實際跑第10，但分析寫名次11（`0` = 10th 解讀錯誤）。
+>
+> **強制對策（四重防線）：**
+>
+> 1. **Racecard Fact Anchor 自動注入（骨架預填）：**
+>    Wong Choi 喺生成每匹馬嘅骨架時，**必須**執行 `inject_fact_anchors.py` 腳本從 Racecard.md 自動提取並注入以下數據到骨架：
+>    - `Last 10` string（原文照搬）
+>    - `Last:` field（上仗最終名次/參賽馬數/場地/距離）
+>    - `Career:` stats
+>    Analyst 嘅任務係「擴展解釋」呢啲已確認嘅事實，唔係自行從 Formguide 重新提取。
+>    **⛔ Analyst 嚴禁修改 `📌 Racecard 事實錨點` 區域嘅任何數據。**
+>
+> 2. **Last 10 → 近績序列 交叉驗證規則：**
+>    Analyst 寫入 `近績序列` 時，必須：
+>    a. 先讀骨架中已預填嘅 `Last 10` string（如 `11214x87x4`）
+>    b. 從左到右解讀：數字 = 最終名次（`0` = 10th），`x` = trial/scratched
+>    c. 只提取真實比賽名次（跳過 x），最新 → 最舊排列
+>    d. 對比寫入嘅 `近績序列` 係咪同 Last 10 一致
+>    ⚠️ 若不一致 → 以 Racecard 為準，嚴禁以 Formguide narrative 覆蓋
+>
+> 3. **Formguide Result Line 讀取規則（最關鍵防呆）：**
+>    讀取 Formguide 每場比賽記錄時：
+>    - `1-XXX (Ykg), 2-YYY (Zkg)` 呢一行列嘅係**該場比賽嘅所有馬匹名次**
+>    - **分析對象嘅名次 ≠ 第一行列出嘅數字 1**
+>    - 分析對象嘅最終名次必須從 Racecard `Last 10` string 確認
+>    - **若 Formguide 嘅 narrative 同 Racecard 嘅 Last 10 矛盾 → 以 Last 10 為準**
+>
+> 4. **Per-Batch 自動驗證（每個 Batch 完成後強制執行）：**
+>    每個 Batch 寫入並 QA 完成後，必須執行：
+>    ```
+>    python3 .agents/scripts/verify_form_accuracy.py "<Analysis.md>" "<Racecard.md>"
+>    ```
+>    此腳本自動核對分析中嘅上仗名次同 Racecard `Last 10` 是否一致。
+>    ❌ 若有不匹配 → 必須修正後再繼續下一個 Batch。
 
 > [!CAUTION]
 > **強制執行順序(不可變更):** 全場馬匹分析完畢 → 合規檢查 → 合規通過 → 賽間推進協議。**嚴禁跳過合規檢查。**
@@ -511,6 +689,8 @@ Wong Choi 調度嘅子 Agent 必須嚴格遵守各自嘅職責邊界:
 ```
 📋 請複製以下完整指令到新 chat:
 ---
+🚨 STOP — 你必須先完整讀取 @au wong choi 所有 protocol 才可開始分析！嚴禁憑記憶生成任何內容！
+
 @au wong choi, 繼續分析 {VENUE} {DATE} Race 5+ for {ANALYST_NAME}
 
 Race 1-4 已完成,分析檔案在:
@@ -518,12 +698,26 @@ Race 1-4 已完成,分析檔案在:
 
 Racecard: {RACECARD_PATH}
 Formguide: {FORMGUIDE_PATH}
+Meeting Intelligence: _Meeting_Intelligence_Package.md
 
-場地:{TRACK_CONDITION}, {WEATHER}
-BATCH_SIZE: {BATCH_SIZE}(由環境掃描決定)
-P19v2 逐場手動推進協議 — 每場完成後等確認
-每匹馬完整 5-block × 13-subfield 分析
-Verdict 必須獨立 tool call 寫入
+場地: {TRACK_CONDITION}, {WEATHER}
+天氣穩定性: {WEATHER_STABILITY}
+
+⚠️ 強制資源載入（在分析任何馬匹之前必須完成）:
+你必須先用 view_file 逐一讀取以下文件,讀完後回覆 checklist 確認。未完成不准開始分析:
+1. au_wong_choi/SKILL.md（完整讀取 — 確認 P19v6 寫入協議）
+2. au_wong_choi/resources/horse_analysis_skeleton.md（確認雙軌閘門規則）
+3. au_horse_analyst/resources/06_output_templates.md（確認 Part 1 戰場全景 + Verdict 格式）
+4. 場地模組（按今場選 1 個）
+
+⚠️ 強制執行規則:
+- BATCH_SIZE: {BATCH_SIZE}
+- Batch 1 必須先寫 [第一部分] 戰場全景（Speed Map + 賽事格局表）
+- 天氣 {WEATHER_STABILITY}: STABLE 則省略📗📙 / UNSTABLE 則強制輸出
+- 所有寫入用 P19v6 Python Heredoc One-Step Pattern（嚴禁 write_to_file）
+- 每匹馬完整 5-block × 13-subfield 分析
+- Verdict 必須獨立 tool call 寫入
+- 完成後必須跑 completion_gate_v2.py
 ---
 ```
 → 變數填充規則:
@@ -536,6 +730,7 @@ Verdict 必須獨立 tool call 寫入
   - `{TRACK_CONDITION}` = 場地狀態(如 Heavy 8 / Good 4)
   - `{WEATHER}` = 天氣(如 晴天 24°C)
   - `{BATCH_SIZE}` = 當前 session 使用嘅 BATCH_SIZE(2 或 3)
+  - `{WEATHER_STABILITY}` = 天氣穩定性(STABLE 或 UNSTABLE)
 → 若用戶堅持繼續 → 允許但喺 Analysis.md 加入 `⚠️ CONTEXT_PRESSURE_WARNING` 標記
 
 > [!CAUTION]
@@ -558,19 +753,35 @@ Verdict 必須獨立 tool call 寫入
 
 📋 請複製以下指令到新 chat:
 ---
+🚨 STOP — 你必須先完整讀取 @au wong choi 所有 protocol 才可開始分析！嚴禁憑記憶生成任何內容！
+
 @au wong choi, 繼續分析 {VENUE} {DATE} Race {NEXT_RACE}+ for {ANALYST_NAME}
 
-已完成場次:Race 1-{LAST_COMPLETED_RACE}
-分析檔案在:{ANALYSIS_FOLDER_PATH}
+已完成場次: Race 1-{LAST_COMPLETED_RACE}
+分析檔案在: {ANALYSIS_FOLDER_PATH}
 
 Racecard: {RACECARD_PATH}
 Formguide: {FORMGUIDE_PATH}
+Meeting Intelligence: _Meeting_Intelligence_Package.md
 
-場地:{TRACK_CONDITION}, {WEATHER}
-BATCH_SIZE: {BATCH_SIZE}
-P19v2 逐場手動推進協議 — 每場完成後等確認
-每匹馬完整 5-block × 13-subfield 分析
-Verdict 必須獨立 tool call 寫入
+場地: {TRACK_CONDITION}, {WEATHER}
+天氣穩定性: {WEATHER_STABILITY}
+
+⚠️ 強制資源載入（在分析任何馬匹之前必須完成）:
+你必須先用 view_file 逐一讀取以下文件,讀完後回覆 checklist 確認。未完成不准開始分析:
+1. au_wong_choi/SKILL.md
+2. au_wong_choi/resources/horse_analysis_skeleton.md
+3. au_horse_analyst/resources/06_output_templates.md
+4. 場地模組
+
+⚠️ 強制執行規則:
+- BATCH_SIZE: {BATCH_SIZE}
+- Batch 1 必須先寫 [第一部分] 戰場全景
+- 天氣 {WEATHER_STABILITY}: STABLE 則省略📗📙 / UNSTABLE 則強制輸出
+- 所有寫入用 P19v6 Python Heredoc One-Step Pattern
+- 每匹馬完整 5-block × 13-subfield 分析
+- Verdict 必須獨立 tool call 寫入
+- 完成後必須跑 completion_gate_v2.py
 ---
 ```
 
@@ -733,7 +944,7 @@ BATCH_SIZE 由 Pre-Flight Environment Scan 決定(標準=3 / fallback=2)。
 
 ```
 FOR EACH batch:
-  1. 📝 WRITE (Safe-Writer P19v5) — heredoc 寫 /tmp → base64 pipe 到 safe_file_writer.py --mode append(≤ BATCH_SIZE 匹馬)
+  1. 📝 WRITE (Safe-Writer P19v6) — Python Heredoc One-Step: cat PYEOF > /tmp/batch_N.py → python3 /tmp/batch_N.py → safe_file_writer.py --mode append（≤ BATCH_SIZE 匹馬）
   2. 🔍 SCAN — view_file 驗證 7 headers(🔬⚡📋🔗📊💡⭐)
   3. 🐍 VALIDATE — 執行 Python 驗證:
      python scripts/validate_analysis.py "[ANALYSIS_PATH]"
@@ -757,8 +968,8 @@ END FOR
 
 **Python 驗證(強制):**
 ```bash
-python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/validate_analysis.py "[ANALYSIS_PATH]"
-python .agents/skills/au_racing/au_wong_choi/scripts/verify_math.py "[ANALYSIS_PATH]"
+python3 .agents/scripts/completion_gate_v2.py "[ANALYSIS_PATH]" --domain au
+python3 .agents/skills/au_racing/au_wong_choi/scripts/verify_math.py "[ANALYSIS_PATH]"
 ```
 
 **合規硬性指標(任一不合格 = FAILED):**
@@ -862,6 +1073,16 @@ python .agents/skills/au_racing/au_wong_choi/scripts/generate_reports.py "[TARGE
 將 `_session_issues.md` 嘅 Status 更新為 `COMPLETED`。
 通知用戶一切已準備就緒。
 
+## Step 7b: Session Cost Report（可選 — P35 新增）
+
+> **設計理念:** 受 ECC `cost-aware-llm-pipeline` 啟發。追蹤每次分析 session 嘅 token 消耗同成本估算。
+
+完成 Step 7 後，執行 session 成本追蹤：
+```bash
+python3 .agents/scripts/session_cost_tracker.py "{TARGET_DIR}" --domain au --batch-size {BATCH_SIZE}
+```
+喺聊天中簡要匯報成本摘要（3 行以內）。此步驟失敗唔影響任何結果。
+
 ## Step 8: 數據庫歸檔 (Database Archival — P32 新增)
 
 完成 Step 7 後,使用 MCP 工具將本次分析結果持久化(此步驟為可選但強烈建議):
@@ -899,7 +1120,7 @@ VALUES ('{DATE}', '{VENUE}', {RACE_NUM}, {HORSE_NUM}, '{HORSE_NAME}', '{GRADE}',
 # 操作協議(Read-Once — 啟動時載入)
 你必須喺 session 開始時讀取 `resources/01_protocols.md`,內含:
 - **統一失敗處理協議** — 所有失敗場景嘅處置方式
-- **🚨 File Writing Protocol** — 使用 Safe-Writer P19v6 三步管道（heredoc → /tmp → safe_file_writer.py）— `write_to_file` 等工具已完全封殺
+- **🚨 File Writing Protocol** — 使用 Safe-Writer P19v6 Python Heredoc One-Step Pattern — `write_to_file` / `replace_file_content` / `multi_replace_file_content` 等工具已完全封殺
 
 # 🚨 終極防死機 / Safe-Writer Protocol (P19v6 — 2026-04-04 更新)
 
@@ -926,70 +1147,80 @@ VALUES ('{DATE}', '{VENUE}', {RACE_NUM}, {HORSE_NUM}, '{HORSE_NAME}', '{GRADE}',
 > `run_command` + Heredoc → /tmp → Base64 → safe_file_writer.py (WLTM)
 >
 > **自檢觸發器:** 若你正在準備使用 `write_to_file` → ⛔ STOP → 你已違規 → 改用下方管道。
+>
+> **🚨 FALLBACK 硬性規定（2026-04-05 新增 — 歷史教訓: Gemini 用錯路徑後 fallback 到 write_to_file 再次死鎖）:**
+> - 若 `safe_file_writer.py` 路徑搵唔到 → **絕對唔可以 fallback 到 `write_to_file`**
+> - 正確嘅 fallback 係: `cp /tmp/batch_N.md "{TARGET}"` (overwrite) 或 `cat /tmp/batch_N.md >> "{TARGET}"` (append)
+> - **任何情況下 `write_to_file` / `replace_file_content` / `multi_replace_file_content` 都係死路一條 — 唔好用！**
 
-**✅ 已驗證可行方案 (2026-04-04 實戰多次測試通過):**
+**✅ 已驗證可行方案 — Python Heredoc One-Step Pattern (2026-04-05 P19v6 更新):**
 
-**三步管道 — Heredoc → /tmp → Base64 → safe_file_writer.py (WLTM)**
+> **⚠️ 呢個係唯一推薦嘅寫入方法。所有引擎 (Gemini / Opus / Sonnet) 都必須使用。**
+> **2026-04-05 實戰驗證:連續 10+ 次成功,零失敗。**
 
-**Step 1: 用 `run_command` + heredoc 寫入 /tmp 暫存檔**
-```bash
-cat > /tmp/batch_N.md << 'ENDOFCONTENT'
-[你的分析內容，可以包含任何特殊字符]
-ENDOFCONTENT
-echo "HEREDOC_OK: $(wc -l < /tmp/batch_N.md) lines"
+**🔧 SAFE_WRITER 路徑常量（所有引擎必須使用）:**
 ```
-- heredoc 使用 `'ENDOFCONTENT'`（帶引號）防止 shell 變量展開
-- 內容寫入本地 /tmp，零延遲，不受 Google Drive 影響
-- 每次內容控制在 **50-80 行以內**，避免 run_command payload 過大
+# macOS 絕對路徑:
+SAFE_WRITER="/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/safe_file_writer.py"
 
-**Step 2: Base64 編碼 + pipe 到 safe_file_writer.py**
-```bash
-base64 < /tmp/batch_N.md | python3 .agents/scripts/safe_file_writer.py \
-  --target "{TARGET_DIR}/{ANALYSIS_FILE}" \
-  --mode append \
-  --stdin
-```
-- safe_file_writer.py 使用 WLTM（Write-Local-Then-Move）策略
-- 先寫入 /tmp/antigravity_staging/，再 atomic move 到目標
-- 內建 15 秒 timeout 保護，若 Google Drive 鎖死會自動中斷
-- 返回 JSON 確認（success/lines/bytes/method）
-
-**Step 3: 驗證（每個 Batch 必做）**
-```bash
-tail -3 "{TARGET_DIR}/{ANALYSIS_FILE}"
-echo "---LINE_COUNT---"
-wc -l "{TARGET_DIR}/{ANALYSIS_FILE}"
+# ⚠️ Step 0 — 每個 session 開始時必須先驗證路徑:
+ls -la "$SAFE_WRITER" 2>/dev/null && echo "SAFE_WRITER_OK" || echo "SAFE_WRITER_MISSING"
+# 若 MISSING → 用 find 搵: find "$(pwd)" -name safe_file_writer.py -type f
 ```
 
-**📋 模式選擇:**
-- **第一個 Batch (B1):** `--mode overwrite`（建立新檔）
-- **後續 Batch (B2+):** `--mode append`（追加內容）
-- safe_file_writer.py 路徑: `.agents/scripts/safe_file_writer.py`
+## ✅ PRIMARY METHOD: Python Heredoc One-Step Pattern
 
-**📋 Heredoc 注意事項:**
-- heredoc 邊界使用 `'ENDOFCONTENT'`（帶單引號）防止 `$` 展開
-- 若內容包含 `ENDOFCONTENT` 字串（極罕見）→ 改用 `'BATCHEND'` 作邊界
-- 每個 Batch 建議拆為 2-3 匹馬一組，避免單次 heredoc 過長
-- 大檔案拆分：若馬匹分析超過 80 行 → 拆成兩段 heredoc + 兩次 append
+> **原理:** 用 `run_command` 創建一個 Python 腳本到 /tmp,然後執行。
+> Python 嘅 triple-quoted string 處理所有 Unicode/特殊字符,無需 shell escaping。
+> base64 編碼由 Python 完成,100% 可靠。safe_file_writer 使用 WLTM 繞過 Google Drive lock。
 
-**📋 Python fallback（heredoc 出問題時嘅後備）:**
+**完整模板 — 直接複製修改即可:**
 ```bash
-python3 << 'PYEOF'
-import base64, subprocess
-content = """[你的分析內容]"""
-with open('/tmp/batch_N.md', 'w', encoding='utf-8') as f:
-    f.write(content)
-print(f"Written {len(content)} chars")
+# 用 run_command 執行以下命令:
+cat << 'PYEOF' > /tmp/batch_N_generate.py
+import subprocess, base64
+
+content = """
+[你的分析內容 — 可包含任何 Unicode、markdown、emoji]
+"""
+
+encoded = base64.b64encode(content.encode('utf-8')).decode('utf-8')
+subprocess.run([
+    'python3',
+    '/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/safe_file_writer.py',
+    '--target', '{TARGET_DIR}/{ANALYSIS_FILE}',
+    '--mode', 'append',    # ← Batch 1 用 'overwrite', Batch 2+ 用 'append'
+    '--content', encoded
+], check=True)
 PYEOF
-# 然後照常 base64 pipe
-base64 < /tmp/batch_N.md | python3 .agents/scripts/safe_file_writer.py \
-  --target "{TARGET_DIR}/{ANALYSIS_FILE}" --mode append --stdin
+
+python3 /tmp/batch_N_generate.py
 ```
 
-**📋 快速 cp 捷徑（safe_file_writer 出問題時嘅後備）:**
+**📋 關鍵要點:**
+- **Batch 1:** `--mode overwrite`（建立新檔）
+- **Batch 2+:** `--mode append`（追加內容）
+- **VERDICT BATCH:** `--mode append`（獨立 tool call 追加）
+- 每個 Batch 建議 2-3 匹馬,避免單次 Python 腳本過長
+- safe_file_writer 返回 JSON 確認（success/lines/bytes/method）
+- `content` 變數中可包含任何字符（emoji、中文、markdown tables 等）
+- heredoc 邊界 `'PYEOF'` 帶單引號防止 shell 變量展開
+
+**⚠️ Fallback（safe_file_writer 出問題時）:**
 ```bash
-# Step 1: heredoc 寫 /tmp（同上）
-# Step 2: 直接 cp（繞過 safe_file_writer）
+# 先用同樣嘅 Python heredoc 寫內容到 /tmp/batch_N.md
+# 然後直接 cp/cat:
 cp /tmp/batch_N.md "{TARGET_DIR}/{ANALYSIS_FILE}"  # overwrite
 cat /tmp/batch_N.md >> "{TARGET_DIR}/{ANALYSIS_FILE}"  # append
+# ⛔ 絕對唔可以 fallback 到 write_to_file / replace_file_content！
 ```
+
+
+# 🛑 Pipeline Testing & Agent Execution Boundaries
+**CRITICAL PROTOCOL: How to Avoid Automation Shortcuts in the Future**
+
+1. **停止測試捷徑 (No Automated Shortcuts for LLM Analysis):** 
+   身為 LLM 分析引擎，你嘅職責就是根據 `extract_formguide_data.py` (或其他抽取器) 抽出嚟嘅客觀數據，做「深度法醫分析」同判定 Grade。在日後執行任何 Pipeline 測試或端到端執行時，**絕對不能用 Python script 去模擬生成內容或塞字過關**。必須老老實實當自己做緊真飛分析一樣，用 Markdown 直接把高質素、具深度的優質內容完整寫出嚟。
+2. **遵守系統角色 (Respect System Roles):** 
+   分工極為明確。Python 腳本負責「砌骨架」同做「算術題」（例如抽數、排版、計算 Matrix 分數），而你 (LLM) 負責「入血肉」（撰寫戰術節點、寬恕檔案、段速法醫及風險評估）。**任何企圖繞過血肉生成嘅舉動都係嚴重違反 Protocol 嘅行為。**
+

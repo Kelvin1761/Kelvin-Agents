@@ -3,12 +3,32 @@
 
 ## Latest Updates
 
+### 2026-04-05 — P19v6: 全引擎防串流鎖死封殺令 (Cross-Engine write_to_file Total Ban)
+- **Changed:** 統一 AU / HKJC / NBA 三大引擎嘅 File Writing Protocol 至 P19v6。之前三大引擎嘅 SKILL.md 內部存在嚴重矛盾：AU 已封殺 `write_to_file`，但 HKJC 行 720/957/970 仍列為合法工具，NBA 仍允許 <200 行使用。Agent Architect `design_patterns.md` 嘅 Pattern 8/14/17 亦仍推薦 `write_to_file`。呢啲矛盾訊息係導致 LLM 反覆違規嘅根本原因。
+  - **AU Wong Choi SKILL.md** — 已封殺（確認無矛盾）
+  - **HKJC Wong Choi SKILL.md** — 修正 4 處矛盾引用（Line 720, 957, 970, 972-984）
+  - **NBA Wong Choi SKILL.md** — 升級 P19v3 → P19v6（Line 342-362, 364）
+  - **race_analysis_workflow.md** — P19v5 CAUTION 升級為 P19v6 表格式封殺令
+  - **design_patterns.md** — Pattern 8/14/17 移除 `write_to_file` 引用
+- **Target Files:** 5 個檔案（見上）
+- **Impact:** 所有引擎嘅 SKILL.md 現在 100% 一致：`write_to_file` / `replace_file_content` / `multi_replace_file_content` 完全封殺。唯一合法寫入方法為 `run_command` + heredoc → `/tmp` → `cp` → target。
+- **Regression Check:** 若任何引擎嘅 SKILL.md 仍包含 `write_to_file` 作為合法工具 = 回歸。若 `design_patterns.md` 仍推薦 `write_to_file` = 回歸。
+
+### 2026-04-05 — SIP-RR01 修正: 雙軌觸發閘門 (Dual-Track Gate Fix)
+- **Changed:** 修正 `06_output_templates.md` 中 `📗📙 場地雙軌評級` 區塊的觸發邏輯。原規則僅聲明「觸發時」強制輸出,但缺乏明確「STABLE 時禁止輸出」的閘門,導致天氣穩定時仍然誤輸出每匹馬的雙軌評級（純粹重複顯示同一評級兩次,增添噪音）。
+  - **SIP-RR01 修正-A** 新增 **per-horse 雙軌閘門**: 若 `_Meeting_Intelligence_Package.md` 天氣穩定性 = `STABLE` → 🚫 整個 📗📙 區塊必須完全省略。僅保留 ⭐ 最終評級。
+  - **SIP-RR01 修正-B** 強化 **verdict-level 雙軌 Top 4 閘門**: 新增明確 `🚫 STABLE 時完全省略` 指令。
+  - **SIP-RR01 修正-C** 強化 **CSV 雙軌模式閘門**: CSV 輸出新增 `🚫 天氣 STABLE 時使用標準模式` 標註。
+- **Target Files:** `06_output_templates.md` (3 處修改)
+- **Impact:** 天氣穩定日（如今日 Rosehill Soft 5 全日不變）不再輸出冗餘的雙軌區塊,減少每匹馬 3 行 × N 馬的噪音。天氣不穩定日仍如舊強制全員輸出。
+- **Regression Check:** 若天氣 STABLE 但分析仍含 📗📙 區塊 = 回歸。若天氣 UNSTABLE 但省略 📗📙 區塊 = 回歸。
+
 ### 2026-04-04 — SIP-RR17: Randwick 2026-04-04 覆盤衍生 SIP (1 項, 3 子修改)
 - **Changed:** 新增 1 項 SIP (含 3 子修改),源自 Randwick 全日 Soft 7 場覆盤(10 場中 S/S+ 勝率僅 14.3%、排序倒掛 + 輕磅連勝馬全面碾壓重磅大熱):
   - **SIP-RR17-A** ≥59kg 在 Soft 7+/Heavy 場地處罰從 -1.0 加重至 -1.5 級(Soft 專家豁免後仍 -1.0;卡士碾壓豁免最多減至 -0.5,不可完全取消)。**【Validator 修正: 新增長途/特佳豁免】** 若路程 ≥2400m 且馬匹為 Soft 專家，重磅處罰可恢復為全免 (-0 級) → `04d` Rule 4
   - **SIP-RR17-B** 連勝動力馬 (SIP-5 正面/強勢動力) 在 Soft 7+/Heavy 場地最低保底 B+(與超級鐵腳同級)→ `02` 覆蓋規則
   - **SIP-RR17-C** S/S+ 級馬若負磅全場最重 (≥59kg) 且場地 Soft 7+/Heavy,強制剝奪 S/S+ 封頂 A+(SIP-9 延伸)→ `02` 評級矩陣
-- **Target Files:** `02_algorithmic_engine.md` (Step 14.E 評級矩陣 + 覆蓋規則), `04d_wet_track.md` (Rule 4/7/8), `00_sip_index.md`
+- **Target Files:** `02f_synthesis.md` (Step 14.E 評級矩陣 + 覆蓋規則), `04d_wet_track.md` (Rule 4/7/8), `00_sip_index.md`
 - **Impact:** 修正 Randwick Soft 7 場地下引擎過度信任歷史班數、忽略物理重磅阻力的系統性缺陷。核心發現:重地環境下「動力 + 輕磅 > 級數 + 重磅」。
 - **衝突解決:** SIP-C14-2 卡士碾壓豁免在 Soft 7+ 不再完全免除重磅處罰(最多減至 -0.5);SIP-9 S 級純度增加場地延伸否決條件。
 - **Regression Check:** 若 Soft 7+ 場地下 ≥59kg 馬匹仍獲 S/S+ 評級 = 回歸。若 Soft 7+ 場地下具備 SIP-5 連勝動力嘅馬匹評級低於 B+ = 回歸。若 Soft 7+ 場地下 ≥59kg 馬匹未受 -1.5 級(或 Soft 專家 -1.0 級)處罰 = 回歸。
@@ -16,7 +36,7 @@
 ### 2026-04-02 — SIP-GF02: Gosford 2026-04-02 覆盤衍生 SIP(1 項)
 - **Changed:** 新增 1 項 SIP,源自 Gosford 覆盤中對泥地馬在好地被過度懲罰的修正:
   - **SIP-GF02** Good 地泥地馬降班/騎師護體:若今場為 Good 地但馬匹因勝率 ≤15% 觸發降級,且具備「降班 ≥1 級」或「配 Tier 1-2 騎師」,場地勝率門檻降級效果減半(降 0.25 級)。若微調後評級跌至 D,自動保底提升至 C-。安全閥:樣本≥10且 PR≤20% 失效。
-- **Target Files:** `02_algorithmic_engine.md`, `00_sip_index.md`
+- **Target Files:** `02b_form_analysis.md`, `00_sip_index.md`
 - **Impact:** 修正引擎忽視降班/騎師優勢對場地不適補償的盲點,避免錯殺如 Speedy Henry 等潛力後追馬。
 - **Regression Check:** 若 Good 地勝率 ≤15% 但具備明確降班優勢及好檔位/騎師的馬匹仍被評為 D 級 = 回歸。
 
@@ -39,7 +59,7 @@
   - **SIP-RH04** 🐴⚡ 冷門馬強制升位協議(SIP-RR16 強化:🐴⚡+≥3 正面條件 → 強制升位 B+ + 替換 Top 4 末位)→ `02` Step 14.F
   - **SIP-RH05** NZ 遠征馬光環折扣(SIP-RR06 修訂:NZ G1 加分封頂 +0.5 級。首次 AU → +0.25。AU ≥2場+入位 → 取消折扣)→ `02` Step 13
   - **SIP-RH06** 上仗勝出單因子修正(「上仗贏」需同場/同距/同場地 ≥2/3 項。不滿足 → ➖。G2+ 低班勝出 → +0.25 折扣)→ `02` Step 12
-- **Target Files:** `02_algorithmic_engine.md` (Step 3, 11, 12, 13, 14.F), `00_sip_index.md`
+- **Target Files:** `02b_form_analysis.md` (Step 3, 11, 12, 13, 14.F), `00_sip_index.md`
 - **Impact:** 解決 Rosehill 覆盤六大系統性缺陷。核心發現:引擎偵察力一流但執行力不足(「識咗但唔信」),修正後應將偵察成果轉化為實際命中。
 - **Regression Check:** 若省賽升班+場地專家+輕磅+好檔馬匹仍因 Class Jump 降級至 B/B- = 回歸。若 Soft 5+ 場地 55.5kg+2 檔馬匹未觸發 SIP-RH02 = 回歸。若 T1×T1+SP≤$3+後追+≥10匹仍獲騎練 ✅ = 回歸。若 🐴⚡+≥3 正面條件馬匹仍僅作備註 = 回歸。
 
@@ -51,7 +71,7 @@
   - **SIP-FL04** 2YO/初出馬配備懲罰軟化(Hoof Filler/Lugging Bit/Nose Roll 懲罰減半,精英馬房完全取消)→ `02` Step 0.5
   - **SIP-FL05** 禁止練馬師主打猜測(嚴禁推測同門馬「主打/副打」,每匹馬獨立評級)→ `02` Step 12
   - **SIP-FL06** 濕地專家前領崩潰懲罰軟化(Soft/Heavy 勝績≥1 場:懲罰減半;≥3 場+WR≥33%:完全取消)→ `02` Step 10
-- **Target Files:** `02_algorithmic_engine.md`, `06_output_templates.md`
+- **Target Files:** `02c_track_and_gear.md`, `06_output_templates.md`
 - **Impact:** 解決 Flemington 全日覆盤識別嘅五大系統性缺陷:(1) 內檔+輕磅被降為備註而非算分乘數導致 83% 排序倒掛;(2) S- 精英組合過度膨脹導致 14% 勝率投注陷阱;(3) 候選池準確但排序失敗導致獨贏投注價值低;(4) 2YO 初出馬配備懲罰過重導致 D 級馬贏出;(5) 練馬師主打猜測干擾客觀評級。
 - **Regression Check:** 若讓磅賽中 Barrier 1-3 + ≥3kg 輕磅差馬匹仍僅在備註中標記而 EEM 未受影響 = 回歸。若 T1+T1+大熱門三重疊加且步速圖顯示 Traffic 嘅馬匹仍獲 S- = 回歸。若 2YO 初出馬因單一 Hoof Filler 即判裝備 ❌ = 回歸。若引擎輸出中出現「Maher 主打可能係 X」等推測性描述 = 回歸。若有 Soft/Heavy 勝績嘅前領馬仍因「Heavy 前領崩潰」被 EEM 判 ❌ = 回歸。
 
@@ -61,7 +81,7 @@
   - **SIP-RF02** 濕地未知風險封頂(Soft 5+ 場地下:Tier 4 封頂 A-,Tier 5 封頂 B+。賦予場地維度強制否決權)→ `02` Step 14.E
   - **SIP-RR08 修正** 新增 Tier 2.5(Soft 入位穩定)+ Tier 5 收緊門檻(需 PR<50%)
   - **SIP-RR09 修正** 新增 SIP-RF01 協同豁免條件(Soft PR≥60% 馬匹不觸發 Place Rate 折扣)
-- **Target File:** `02_algorithmic_engine.md` Step 4 & Step 14.E
+- **Target File:** `02c_track_and_gear.md` Step 4 & Step 14.E
 - **Impact:** Soft 場地分析大幅精準化。「穩定入位但未能轉勝」嘅馬不再被錯判為場地風險,獲提升至配腳地位。同時徹底堵塞「無場地經驗馬」因 ➖ 不扣分而斬獲 A/A+ 評級嘅系統漏洞。
 - **Regression Check:** 若 Soft 5+ 場地下 Soft PR≥60%+樣本≥3 嘅馬匹仍被歸入 Tier 4/5 或場地適性判❌,即為回歸。若 Soft 5+ 場地下 Tier 4(未知)馬匹仍獲 A/A+ 評級,或 Tier 5(風險)馬匹仍獲 A-/A 評級,即為回歸。
 
@@ -69,7 +89,7 @@
 - **Changed:**
   - **SIP-RR13** 新增第 4 項豁免條件:**雙頂級騎練組合**(騎師 LY WR ≥19% + 練馬師 LY WR ≥19% 同時成立)→ 降級效果減半
   - 源自 R5 驗證:Meridius (Zahra 19.4% + Kennewell 20.1%) 雖為後追但以實力克服 Caulfield 偏差贏馬 → 原 SIP-RR13 過度懲罰高 class 後追馬
-- **Target File:** `02_algorithmic_engine.md` Step 7 SIP-RR13
+- **Target File:** `02d_eem_pace.md` Step 7 SIP-RR13
 - **Impact:** 防止雙頂級騎練組合嘅高 class 後追馬被過度降級
 - **Regression Check:** 若 Caulfield Good Rail-True 下極後追馬 + 非頂級騎練仍獲豁免 = 回歸
 
@@ -80,7 +100,7 @@
   - **SIP-RR14** Good 地勝率封頂(Good 3-4+樣本≥8場+勝率≤15% → 硬性封頂 B)→ `02` Step 14.E
   - **SIP-RR15** 距離全勝專精(特定距離100%W+≥3場 → 裝備與距離✅ + 升半級)→ `02` Step 2
   - **SIP-RR16** 冷門馬偏差自動升位(前領偏差冷門馬+Good+Rail True → 替換Top4第4選)→ `02` Step 14.F
-- **Target File:** `02_algorithmic_engine.md`
+- **Target File:** `02d_eem_pace.md`
 - **Impact:** 後追馬在 Caulfield Good Rail-True 日嘅過度評級被系統性修正;First-up 超高歷史率馬匹獲合理衰減;Good 地勝率極低馬匹獲硬性封頂;距離全勝紀錄獲獨立識別;冷門馬訊號可轉化為 Top 4 行動
 - **Regression Check:** 若 Caulfield Good Rail-True 下極後追馬仍獲 S/A+ 且 EEM 非❌ = 回歸。若 Place Rate≥85% First-up≥90天馬匹穩定指數仍自動✅ = 回歸。若 Good 勝率≤15%+樣本≥8場馬匹仍獲 A-/A = 回歸
 
@@ -88,7 +108,7 @@
 - **Changed:**
   - **SIP-RR11** 急彎短途大場外檔處罰(後追型+檔≥10+≤1200m+≥14匹→EEM❌)→ `02` Step 7
   - **SIP-RR06 修正** 增加差距門檻 ≤2L + 條件匹配 ≥1 項,防止 G1 季軍盲目保底
-- **Target File:** `02_algorithmic_engine.md`
+- **Target File:** `02c_track_and_gear.md`
 - **Impact:** 修正後追型外檔在急彎短途大場被高估的問題;防止 G1 Pipeline 過度推廣不匹配的馬匹
 
 ### 2026-03-22 — SIP-RR08~RR10: Rosehill R3 盲測衍生批量 SIP(3 項)
@@ -96,7 +116,7 @@
   - **SIP-RR08** Soft 場地分級排序(Specialist>Immune>Risk 強制排序)→ `02` Step 4
   - **SIP-RR09** Place Rate Soft 場折扣(Soft 0% + Place≥80% → 保底降至 B)→ `02` Step 4
   - **SIP-RR10** 精英練馬師跨州突襲訊號(T1 遠征意圖+前領型重磅豁免)→ `02` Step 13
-- **Target File:** `02_algorithmic_engine.md`
+- **Target File:** `02c_track_and_gear.md`
 - **Impact:** 修正「Soft 免疫 ≠ Soft 受惠」排序錯誤;限制高 Place Rate 在 Soft 場的保底上限;識別精英練馬師遠征意圖訊號
 - **Regression Check:** 若 Soft 確認場地下 Tier 3 免疫馬排在 Tier 1/2 前 = 回歸。若 Soft 0% + 92% Place 仍保底 B+ = 回歸
 
@@ -109,25 +129,25 @@
   - **SIP-RR05** 頂級騎練聲望溢價交叉檢查(JMcD/Waller Soft WR<30%→加成減半)→ `02` Step 11
   - **SIP-RR06** G1 亞季軍自動保底(G1 Top 3 + Place≥75% → 最低 A-)→ `02` Step 13
   - **SIP-RR07** 爆冷潛力賽事預警(爆冷指數≥6→降信心+擴大掃描)→ `06` Part 4
-- **Target Files:** `02_algorithmic_engine.md`, `04d_wet_track.md`, `06_output_templates.md`
+- **Target Files:** `02a_pre_analysis.md`, `04d_wet_track.md`, `06_output_templates.md`
 - **Impact:** Soft 場地分析精確度大幅提升;場地不穩定時用戶可自選 Good/Soft Top 4;輕磅+Soft 專家獲合理加成;大規模退出有自動重排機制
 - **Regression Check:** 若 Soft 場地下 Soft WR≥40% 的馬匹仍獲 B 或以下評級且無保底觸發,即為回歸。若場地 UNSTABLE 但僅輸出一組 Top 4,即為回歸
 
 ### 2026-03-18 — SIP-CH18-4: 1000m 標準彎道短途模組 (1000m Standard Bend Sprint Module)
 - **Changed:** 新增 Step 0.2 — 1000m 彎道賽專用覆蓋規則。4 條規則:(A) Slow starter/closer 強制降級、(B) On-pace 加成、(C) 負重放大效應、(D) 見習騎師 1000m 風險。
-- **Target File:** `02_algorithmic_engine.md` Step 0.2
+- **Target File:** `02a_pre_analysis.md` Step 0.2
 - **Impact:** 所有 1000m 標準彎道賽(非直線衝刺)嘅 closer/slow starter 將被額外降級,on-pace 馬匹獲加成。見習騎師+closer+外檔觸發騎練❌。
 - **Regression Check:** 若 1000m 彎道賽中 closer/slow beginner 馬匹仍獲 A 級評級且 EEM 維度非❌,即為回歸
 
 ### 2026-03-18 — SIP-CH18-1: 負重交叉核實協議 (Weight Cross-Verification Protocol)
 - **Changed:** 新增見習騎師 claim 雙源核實規則。基礎負重 vs 實際負重差距 ≥2kg 觸發紅旗警告。
-- **Target File:** `02_algorithmic_engine.md` Step 3
+- **Target File:** `02b_form_analysis.md` Step 3
 - **Impact:** 所有含見習騎師嘅賽事分析必須獨立確認 claim 是否適用,避免負重數據錯誤導致評級失準
 - **Regression Check:** 若分析中見習騎師馬匹嘅負重直接以 "Base - Claim" 計算而無核實,即為回歸
 
 ### 2026-03-18 — SIP-CH18-2: 場地勝率門檻降級 (Track Condition Win Rate Threshold)
 - **Changed:** 新增場地勝率 ≤15% (≥5場樣本) 強制 ❌ + 微調降半級規則。前領型加重至可降一級。
-- **Target File:** `02_algorithmic_engine.md` Step 4
+- **Target File:** `02c_track_and_gear.md` Step 4
 - **Impact:** 場地適性弱嘅馬匹評級將更精確反映實際風險,避免「已識別❌但評級未受影響」嘅問題
 - **Regression Check:** 若場地勝率極低(≤15%)嘅馬匹仍獲 A-/A 評級且無微調降級,即為回歸
 

@@ -93,6 +93,81 @@ read_url_content(url="<HKJC Results URL>")
 
 **目的:** 確保 SIP 建議能精確引用「哪個 resource 檔案、哪個 Step、哪條規則」需要修改,而非模糊地說「調整 EEM」。
 
+
+## [REF-DA01] 深度覆盤 + Protocol 自我審計 (5 角度)
+
+覆盤時必須完成以下 5 個角度嘅審視，嚴禁跳過任何一個：
+
+---
+
+### 角度 1 — 結果偏差 (Outcome Delta)
+- 我嘅 Top 4 / 精選 同實際派彩結果差幾遠？命中幾多？
+- 邊匹/邊隻 走樣最嚴重？佢嘅分析有咩做漏咗？
+- 以數據表格呈現: | 預測排名 | 實際排名 | 偏差 | 原因 |
+
+---
+
+### 角度 2 — 過程偏差 (Process Delta)
+- Speed Map / 盤口邊緣預測準唔準？實際情況同預測差幾多？
+- 場地判斷/傷缺 啱唔啱？有冇影響？
+- 騎師戰術/教練調度 有冇出乎意料？
+- 模型判斷有冇過度樂觀/悲觀？
+
+---
+
+### 角度 3 — SIP-DA01 Protocol 自我審計 ⚠️ (最關鍵)
+
+> **呢步係審視「多角度裁決協議」本身有冇真正幫到分析。**
+
+**3a. 有效性評估:**
+- SIP-DA01 嘅辯論/審計 有冇改變最終決策？
+  - 如果有 → 改變係正確嘅嗎？(即修訂版比原始版更接近實際結果？)
+  - 如果冇 → 係因為原始決策已經夠準，定係辯論流於形式？
+- 統計: SIP-DA01 改動咗嘅場次中，命中率係提高咗定降低咗？
+
+**3b. 同現有邏輯嘅衝突檢測:**
+- SIP-DA01 嘅審計有冇同現有嘅邏輯(如 SIP-RR / 基礎模型)衝突？
+  - 例如: 基礎邏輯俾咗 A Grade，SIP-DA01 竟然建議替換 → 邊個啱？
+  - 如果經常衝突 → 係基礎邏輯需要調整，定係 SIP-DA01 太保守/激進？
+- 有冇同其他指標判斷重複勞動？
+
+**3c. 改善建議:**
+- 如果 SIP-DA01 有效 → 有冇需要微調 (e.g. 門檻太低/太高)？
+- 如果 SIP-DA01 無效 → 應該修改、簡化、定完全移除邊個 Step？
+- 現有邏輯需唔需要因為 SIP-DA01 嘅加入而調整？
+
+---
+
+### 角度 4 — 泛化性審計 (Generalizability Audit)
+
+> **確保覆盤洞見唔會太單一，要對未來分析有用。**
+
+- 呢場暴露出嘅問題係**普遍性**嘅（會喺其他重覆出現）定**一次性**嘅（極端意外）？
+- 分類:
+  - 🔵 **系統性問題** (影響所有未來): e.g. 「長期高估某類型情況」
+  - 🟡 **條件性問題** (特定條件下出現): e.g. 「特定場地時預測偏誤」
+  - ⚪ **孤立事件** (唔需要改 Protocol): e.g. 「意外事件」
+- 只有 🔵 同 🟡 嘅洞見先值得升級為 Design Pattern / SIP 修訂
+
+---
+
+### 角度 5 — Design Pattern Proposal (向 Agent Architect 提交)
+
+基於以上 4 個角度嘅分析，向 Agent Architect 提交以下格式嘅改善建議:
+
+```
+## Design Pattern Proposal
+- **Issue ID:** REF-[日期]-[編號]
+- **分類:** 🔵系統性 / 🟡條件性
+- **問題描述:** [一句話總結]
+- **受影響嘅 Protocol:** 基礎邏輯 / SIP-DA01 / 其他
+- **建議修改:** [具體改動]
+- **預期效果:** [預計命中率/盲點改善幅度]
+- **SIP-DA01 評價:** 有效/部分有效/無效 — [原因]
+```
+→ Agent Architect 審閱後決定是否納入 `design_patterns.md`
+
+
 ## Step 4: 深度比對(在 `<thought>` 中進行)
 對每一場賽事,在內部思考區塊中執行以下比對:
 
@@ -300,7 +375,42 @@ python .agents/skills/hkjc_racing/hkjc_reflector/scripts/reflector_auto_stats.py
 
 > **嚴格要求**:每個裁定必須附帶 ≥2 個證據點支持,且必須來自至少 2 個不同數據源(沿途走位 + 競賽事件報告 / 分段時間 / 引擎規則比對)。嚴禁無證據裁定或僅憑單一來源裁定。
 
+### 4d. Python 自動化輔助（強制前置）
+
+> [!IMPORTANT]
+> **以下 Python 腳本必須在 LLM 開始 Step 4d-5 之前執行。**
+> 目的：將機械性數據抽取工作交畀 Python，LLM 只需聚焦高層次法醫判斷。
+
+**4d-pre-1. 引擎健康掃描（自動化部分）:**
+```bash
+python .agents/scripts/engine_health_scanner.py --domain hkjc --resources-dir ".agents/skills/hkjc_racing/hkjc_horse_analyst/resources"
+```
+此腳本自動檢查 4d-1（過時邏輯）、4d-2（斷裂邏輯）、4d-4（數據新鮮度）。LLM 只需處理 4d-3、4d-5、4d-6。
+
+**4d-pre-2. 敘事覆盤數據抽取:**
+```bash
+python .agents/scripts/narrative_postmortem_extractor.py "[RESULTS_FILE]" "[TARGET_DIR]" --all --domain hkjc
+```
+自動抽取失敗精選馬嘅走位、分段時間、競賽事件報告關鍵字分類。LLM 只需做 4e-4 裁定。
+
 ## Step 5: 輸出覆盤報告
+
+### Step 5-pre: 生成報告骨架（Python 強制）
+```bash
+python .agents/scripts/reflector_report_skeleton.py "[TARGET_DIR]" "[RESULTS_FILE]" --domain hkjc --output "[TARGET_DIR]/[Date]_[Racecourse]_覆盤報告.md"
+```
+> 此腳本自動生成完整報告框架，預填所有命中率表格、逐場比對、FP/FN 名單。
+> LLM 只需填入 `{{LLM_FILL}}` 標記嘅定性分析欄位。
+> **嚴禁 LLM 手動砌報告框架** — 必須使用腳本生成嘅骨架。
+
+### Step 5-post: 報告驗證（Python 強制）
+報告撰寫完成後，執行裁定驗證器：
+```bash
+python .agents/scripts/reflector_verdict_validator.py "[TARGET_DIR]/[Date]_[Racecourse]_覆盤報告.md" --domain hkjc --resources-dir ".agents/skills/hkjc_racing/hkjc_horse_analyst/resources"
+```
+> 自動驗證每個裁定有 ≥2 證據點、SIP 引用存在、所有必要 section 齊全。
+> 未通過驗證嘅報告**嚴禁**提交畀用戶。
+
 按照以下格式生成報告,保存為 `[Date]_[Racecourse]_覆盤報告.md` 於 `TARGET_DIR` 內:
 
 ```markdown
@@ -394,6 +504,33 @@ python .agents/skills/hkjc_racing/hkjc_reflector/scripts/reflector_auto_stats.py
 > - False Positive/Negative 模式(Entity: `FP_pattern_{SIP_ID}` 或 `FN_pattern_{SIP_ID}`)
 > - 引擎健康掃描結果(Entity: `engine_health_{DATE}`,記錄 6 個維度判定)
 > - 這樣下次覆盤同一場地時,Reflector 可以先查詢 `read_graph` 發現過往場地偏差歷史。
+
+## Step 5.5: Instinct Evolution（P35 新增）
+
+> **設計理念:** 受 ECC `continuous-learning-v2` 嘅 Instinct 模型啟發。
+> 將一次性嘅 SIP 修改升級為帶 confidence score 嘅長期學習機制。
+
+覆盤報告生成後，執行 instinct 評估：
+```bash
+python3 .agents/scripts/instinct_evaluator.py "{TARGET_DIR}" \
+  --registry ".agents/skills/shared_instincts/instinct_registry.md" \
+  --domain hkjc \
+  --reflector-report "{TARGET_DIR}/{DATE}_{VENUE}_覆盤報告.md"
+```
+
+將評估結果加入覆盤報告嘅新 section：
+```markdown
+## 🧬 Instinct Evolution Report
+[腳本輸出]
+
+### 趨勢分析
+- 上升中 (confidence ↑): [列表]
+- 下跌中 (confidence ↓): [列表]
+- 建議 Deprecate: [列表]
+- 建議升級為 Core Rule: [列表]
+```
+
+> 此步驟失敗唔影響覆盤報告。首次使用時 registry 為空，腳本會提示需要先完成一次覆盤以初始化。
 
 ## Step 6: 等待用戶審批 + SIP 套用 + 驗證提醒
 

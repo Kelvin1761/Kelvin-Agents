@@ -135,6 +135,12 @@
 
 #### [第三部分] 最終預測 (The Verdict)(僅最後一批輸出)
 
+> [!CAUTION]
+> **🛡️ P33 VERDICT FORMAT LOCK — 以下格式為強制性,禁止壓縮或替換。**
+> LLM 嚴禁用 numbered list、Markdown table 或任何其他格式取代下方嘅 `🥇🥈🥉🏅` 清單結構。
+> VERDICT BATCH 寫入前必須 `view_file` 重讀本檔案嘅 lines 136-221。違反 = 整個 Verdict 重做。
+> （歷史教訓：2026-04-04 Race 1 使用 numbered list 導致 9 個組件遺漏。）
+
 > [!CAUTION] 
 > **🏆 最終預測反遺漏強制指令 (ANTI-OMISSION DIRECTIVE) 🏆**
 > 任何一場賽事的分析,不論馬匹實力多麼懸殊,在最後一批分析完成後,**絕對不允許跳過**「[第三部分] 最終預測」及「[第四部分] 分析盲區」。

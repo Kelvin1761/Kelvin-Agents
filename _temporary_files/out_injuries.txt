@@ -1,0 +1,32 @@
+[ATL] (ESPN: ATL) -> OK. Players injured: 1
+[BOS] (ESPN: BOS) -> OK. Players injured: 1
+[BKN] (ESPN: BKN) -> OK. Players injured: 4
+[CHA] (ESPN: CHA) -> OK. Players injured: 3
+[CHI] (ESPN: CHI) -> OK. Players injured: 5
+[CLE] (ESPN: CLE) -> OK. Players injured: 2
+[DAL] (ESPN: DAL) -> OK. Players injured: 5
+[DEN] (ESPN: DEN) -> OK. Players injured: 4
+[DET] (ESPN: DET) -> OK. Players injured: 4
+[GSW] (ESPN: GS) -> OK. Players injured: 6
+[HOU] (ESPN: HOU) -> OK. Players injured: 3
+[IND] (ESPN: IND) -> OK. Players injured: 8
+[LAC] (ESPN: LAC) -> OK. Players injured: 3
+[LAL] (ESPN: LAL) -> OK. Players injured: 2
+[MEM] (ESPN: MEM) -> OK. Players injured: 13
+[MIA] (ESPN: MIA) -> OK. Players injured: 3
+[MIL] (ESPN: MIL) -> OK. Players injured: 5
+[MIN] (ESPN: MIN) -> OK. Players injured: 1
+[NOP] (ESPN: NO) -> OK. Players injured: 3
+[NYK] (ESPN: NY) -> OK. Players injured: 1
+[OKC] (ESPN: OKC) -> OK. Players injured: 3
+[ORL] (ESPN: ORL) -> OK. Players injured: 2
+[PHI] (ESPN: PHI) -> OK. Players injured: 3
+[PHX] (ESPN: PHX) -> OK. Players injured: 3
+[POR] (ESPN: POR) -> OK. Players injured: 4
+[SAC] (ESPN: SAC) -> OK. Players injured: 8
+[SAS] (ESPN: SA) -> OK. Players injured: 2
+[TOR] (ESPN: TOR) -> OK. Players injured: 2
+[UTA] (ESPN: UTAH) -> OK. Players injured: 7
+[WAS] (ESPN: WSH) -> OK. Players injured: 10
+
+Results: 30/30 teams successful.

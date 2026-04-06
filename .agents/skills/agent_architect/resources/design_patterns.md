@@ -94,9 +94,12 @@ This creates a persistent data pipeline across the subagent boundary.
 **Problem**: When multiple batches of analysis are combined into a single file write operation, the LLM's attention budget is spread thin. Later batches/items get compressed to 50% or less of the depth of earlier ones. This was observed repeatedly in Race 5-6 analysis sessions.
 
 **Solution**: Enforce strict 1-batch-per-write-operation rule:
-- Batch 1 = Native-Writer 使用 write_to_file 工具建檔 (streaming in chat)
-- Batch 2+ = Native-Writer 使用 multi_replace_file_content 工具追加寫入 (append streaming in chat)
+- Batch 1 = `run_command` + heredoc → safe_file_writer.py `--mode overwrite` 建檔
+- Batch 2+ = `run_command` + heredoc → safe_file_writer.py `--mode append` 追加
 - Self-check: If about to write 4+ items in one tool call → STOP and split
+- ⚠️ P19v6: `write_to_file` / `replace_file_content` / `multi_replace_file_content` 已完全封殺
+- **safe_file_writer.py 絕對路徑:** `/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/safe_file_writer.py`
+- **🚨 若 safe_file_writer.py 搵唔到 → Fallback 用 `cp`/`cat` 直寫，絕對唔可以 fallback 到 `write_to_file`！**
 
 **Anti-pattern**: ❌ "Write all 12 horses to the analysis file"
 **Correct pattern**: ✅ "Write Batch 1 (horses 1-3), then separately append Batch 2 (horses 4-6)..."
@@ -164,9 +167,8 @@ Benefit: Cross-session reuse, orchestrator context window relief, single source 
 ## Pattern 14: Heredoc / Terminal Hang Prevention
 **Problem**: Using `cat << EOF` or heredoc syntax via `run_command` to write large text blocks causes terminal processes to hang indefinitely. Known production incident: 9+ hour hang.
 
-**Solution**: NEVER use heredoc for writing analysis/report content. Use dedicated file writing tools:
-- Native-Writer 使用 write_to_file 工具建檔 for new content
-- Native-Writer 對話框追加 for appending
+**Solution**: All analysis/report file writing MUST use `run_command` + heredoc → `/tmp` → `cp` → target (P19v6 Safe-Writer Protocol). ⚠️ `write_to_file` / `replace_file_content` / `multi_replace_file_content` 已完全封殺。
+- `run_command` heredoc for writing content to `/tmp` then `cp` to target
 - `run_command` ONLY for executing scripts (Python, shell)
 
 Include this as an explicit ⚠️ CRITICAL warning in any agent that writes files.
@@ -201,3 +203,25 @@ This creates a continuous improvement loop: Deploy → Fail → Learn → Preven
 At session start, check for this file and resume from saved state rather than recomputing.
 
 **Combines with**: Pattern 10 (Session Recovery) — Pattern 10 detects completed FILES; Pattern 16 preserves in-flight STATE.
+
+---
+
+## Pattern 17: Advanced Agentic Toolchain Selection
+**Problem**: As the `.agents` ecosystem grows, relying entirely on simple Python scripts and single-shot Prompt Engineering leads to brittle execution (File I/O hangs, formatting drift, and poor multi-dimensional judgments). 
+
+**Solution**: The Agent Architect MUST prescribe specialized frameworks based on the exact problem domain, keeping in mind the **Zero-Cost Principle**:
+1. **P19v6 Safe-Writer Protocol (Stability)**: Prescribe for ALL agents that perform Google Drive File I/O. Uses `run_command` + heredoc → `/tmp` → `cp` → target to eliminate macOS FileProvider UI freezing and ensure atomic writes. `write_to_file` / `replace_file_content` / `multi_replace_file_content` 已完全封殺。
+2. **Native Python Validation Engine (Compliance)**: Prescribe when an agent needs a **Linear Pipeline** with strict Output Formatting (e.g., Data Prep → Analysis → QA Edit). Use Python assertions and string matching (e.g., `completion_gate_v2.py`) to ensure the output format is 100% compliant with templates, completely avoiding expensive framework overhead like CrewAI.
+3. **Embedded Protocol Checkpoints (Debate/Consensus)**: Prescribe for **Debate and Consensus** scenarios (e.g., NBA Wong Choi or AU Wong Choi). Instead of dispatching multiple LLM agents (like Microsoft AutoGen), embed a Multi-Perspective Protocol directly into the single agent's prompt, forcing it to debate itself step-by-step before culminating in a verdict.
+4. **curl_cffi/Playwright (Extraction)**: Native web execution protocols that are adequate for 99% of stealth web scraping, completely replacing the need for paid/heavy third party extractors.
+
+---
+
+## Pattern 18: Zero-Cost Multi-Perspective Analysis Protocol (SIP-DA01)
+**Problem**: Advanced AI frameworks (like AutoGen, CrewAI, LangChain) impose high API costs, complex system dependencies, and Docker-bound execution environments. Multi-agent debate is expensive. Relying on them destroys portability across standard macOS/Windows host environments.
+
+**Solution**: Simulate multi-agent dialogue and debate within a **single API call** by embedding structured multi-perspective analytical protocols (e.g. `[SIP-DA01]`) directly into the orchestration prompts. By forcing the Agent to conduct a sequential mock-debate (e.g., "Step A: Form Selection -> Step B: Track/Pace Challenge -> Step C: Place Probability Audit") before finalization, we achieve the same analytical depth and critical rigor of Multi-Agent Systems with **ZERO added dependency and ZERO overhead cost**.
+
+**Rule**: Always design Multi-Perspective protocols natively in markdown instructions rather than introducing heavy third-party framework dependencies.
+
+---

@@ -1,3 +1,8 @@
+<!-- ⛔ DEPRECATED — This file should NOT be in the skill directory.
+     Session-specific batch data should be written directly into TARGET_DIR.
+     This file has been moved from au_horse_analyst/05_batch_data.md on 2026-04-05.
+     It is kept here ONLY as a reference of the format. Delete after confirming new workflow works. -->
+
 <!-- 此檔案為 session-specific 工作數據,每次分析會話開始時由 AU Race Extractor 覆寫。非永久資源文件,不應手動編輯。 -->
 # BATCH DATA
 
