@@ -110,7 +110,7 @@ def parse_picks_from_analysis(text: str) -> list:
     
     if not picks:
         # Try P19 format
-        for match in re.finditer(r'([🥇🥈🥉🏅])\s*\*\*第[一二三四]選\*\*\s*\n-\s*\*\*馬號及馬名：\*\*\s*\[?(\d+)\]?\s+(.+)', text):
+        for match in re.finditer(r'([🥇🥈🥉🏅])\s*\*\*第[一二三四]選\*\*\s*\n-\s*\*\*馬號及馬名[：:]\*\*\s*\[?(\d+)\]?\s+(.+)', text):
             emoji = match.group(1)
             rank = emoji_map.get(emoji, len(picks) + 1)
             num = int(match.group(2))

@@ -28,6 +28,16 @@
 | SIP-RR04 | 🔴 DEPRECATED | `04d_wet_track.md` | 由 SIP-RH02 取代 |
 | SIP-AU09 | 🟡 OBSERVATION | Validator `observation_log.md` | 觀察中 |
 | SIP-ST8 | 🟢 ACTIVE | Analyst `SKILL.md` | Anti-Laziness 錨定 |
+| SIP-SL01 | 🟢 ACTIVE | `02f_synthesis.md` | S/A+ 實戰驗證門檻 |
+| SIP-SL02 | 🟢 ACTIVE | `02d_eem_pace.md` | Good 地前領馬生存率校準 |
+| SIP-SL03 | 🟢 ACTIVE | `05_verification.md` | 退出馬強制驗證 |
+| SIP-SL04 | 🟢 ACTIVE | `06_output_templates.md` | 市場-引擎偏差重新審視 |
+| SIP-SL05 | 🟢 ACTIVE | `02f_synthesis.md` | 初出馬評估通道升級 |
+| SIP-RH07 | 🟢 ACTIVE | `04d_wet_track.md` | Soft 5-6 前領馬消耗懲罰 |
+| SIP-RH08 | 🟢 ACTIVE | `04d_wet_track.md` | Soft 5-6 S 級未驗證封頂 |
+| SIP-RH09 | 🟢 ACTIVE | `02g_override_chain.md` | Soft 場地信心度降級 |
+| SIP-RH10 | 🟢 ACTIVE | `04d_wet_track.md` | Soft 5-6 頂磅懲罰稀釋 |
+| OBS-004 | 🟡 OBSERVATION | `observation_log.md` | Maiden 冷門馬盲點 |
 
 ---
 
@@ -150,6 +160,26 @@
 |:---|:---|:---|:---|
 | SIP-RR17 | Soft 7+ 爛地負磅與動能重新校準 | `02` Step 14.E + `04d` Rule 4/7/8 | 三項子修改:(1) ≥59kg 在 Soft 7+/Heavy 處罰從 -1.0 加重至 -1.5(Soft 專家豁免後仍 -1.0,卡士碾壓最多減至 -0.5);(2) 連勝動力馬在 Soft 7+/Heavy 最低保底 B+;(3) S/S+ 級馬若為全場最重(≥59kg)且 Soft 7+/Heavy,強制封頂 A+ |
 
+## Sandown Lakeside 2026-04-06 覆盤衍生 SIP(SIP-SL 系列)
+
+| SIP ID | 名稱 | 定義位置 | 摘要 |
+|:---|:---|:---|:---|
+| SIP-SL01 | S/A+ 級實戰驗證門檻 | `02f` Step 14.E | S/S-/A+ 必須近 3 仗有勝出或入位,否則封頂。A+ 嘅 Third-up 需有入位紀錄否則降為 A |
+| SIP-SL02 | Good 場地前領馬生存率校準 | `02d` Step 7/10 | Good 3-4 + ≤1400m:前領馬 EEM 消耗 -15%;獨領放 → EEM ✅;輕磅前領進一步下調至 60% |
+| SIP-SL03 | 退出馬強制驗證 | `05` 驗證清單 | 分析前+Verdict 前雙重核實退出馬,SCR 馬匹入選 Top 4 視為無效 |
+| SIP-SL04 | 市場-引擎偏差重新審視 | `06` Part 4 | 評級≤C+ 但 SP≤$5 / 評級≥A 但 SP≥$15 → 觸發第二次審視(不注入賠率) |
+| SIP-SL05 | 初出馬評估通道升級 | `02f` Step 14.E | 精英馬房試閘勝出馬:狀態+段速核心✅可用試閘數據達標,打破初出馬自動低評級僵局 |
+
+## Rosehill Gardens 2026-04-06 覆盤衍生 SIP（SIP-RH07~RH10 系列）
+
+| SIP ID | 名稱 | 定義位置 | 摘要 |
+|:---|:---|:---|:---|
+| SIP-RH07 | Soft 5-6 前領馬消耗懲罰 | `04d` Rule 5 | Soft 5-6 + 前領型 + ≤1400m → EEM 消耗 +20% + 微調 -0.5 級。Soft 贏馬記錄 ≥1 次豁免 |
+| SIP-RH08 | Soft 5-6 S 級未驗證封頂 | `04d` Rule 8 | Soft 5-6 + S/S+ + 無 Soft 贏馬/入位 → 硬性封頂 A-。填補 SIP-RR17 只覆蓋 Soft 7+ 嘅漏洞 |
+| SIP-RH09 | Soft 場地信心度降級 | `02g` Step 14.F | Soft 5+ + 🟢極高信心度 → 需有 Soft 贏馬+場地✅+非前領方可維持,否則降至 🟡中 |
+| SIP-RH10 | Soft 5-6 頂磅懲罰稀釋 | `04d` Rule 4 | Soft 5-6 + ≥59kg + 頂磅斷尾 → 降級效果減半(0.5 級而非 1 級)。Soft 7+ 不適用 |
+
 ---
 
 > **維護規則:** 每次 Reflector 覆盤產出新 SIP 時,必須同步更新此索引。
+

@@ -82,12 +82,22 @@
 | SIP-ST32 | AWT 老馬輕磅回師冷門升級 | `10c_track_awt.md` + Step 14.5 | ≥6歲+AWT紀錄+最輕磅+久休≥35日→升至B/B+ |
 | SIP-ST33 | AWT 排序風險加強修正 | `10c_track_awt.md` + SIP-RR20 擴展 | 後追外檔/加磅/見習/醫療風險=AWT排序額外折扣,共用-1.5上限 |
 
+## 覆盤衍生 SIP(SIP-ST40 系列,源自 2026-04-06 Sha Tin 草地覆盤)
+
+| SIP ID | 名稱 | 定義位置 | 摘要 |
+|:---|:---|:---|:---|
+| SIP-ST40 | 直路賽放頭壟斷覆蓋 | `10a_track_sha_tin_turf.md` | 1000m直路+唯一放頭馬+初出馬>40%→評級下限B-+壟斷情境✅ |
+| SIP-ST41 | 大熱崩潰壓力測試 | `06_rating_aggregation.md` Step 14.2F | 首選≥A+賠率≤5.0+風險因素→強制崩潰情境分析+Pick2≥B+ |
+| SIP-ST42 | 二班以上後追馬加分 | `06_rating_aggregation.md` Step 14.2G | ≤二班+1400m+後追成功≥2次+賽道利後追→情境輔助✅ |
+| SIP-ST43 | 跨場減分馬偵測 | `04_engine_corrections.md` Step 6 | 近3仗全谷草+轉沙田+降分≥10+底磅→跨場標記+情境升級 |
+| SIP-ST44 | 冷門馬訊號標準化 | `08_output_templates.md` | 統一冷門馬訊號觸發標準(7項條件≥2項→強制觸發) |
+
 ## 資源模組
 
 | 資源 | 位置 | 與 SIP 互動 |
 |:---|:---|:---|
 | AWT 跑道模組 | `10c_track_awt.md` | SIP-ST2, **SIP-ST30, SIP-ST31, SIP-ST32, SIP-ST33** |
-| 沙田草地模組 | `10a_track_sha_tin_turf.md` | 場地偏差參考 |
+| 沙田草地模組 | `10a_track_sha_tin_turf.md` | 場地偏差參考, **SIP-ST40 直路賽放頭壟斷** |
 | 跑馬地模組 | `10b_track_happy_valley.md` | SIP-HV16 場地偏差, SIP-HV22 內欄超級加權, SIP-HV23 長途後追豁免, SIP-HV24 頂磅補償 |
 | 騎師戰術特徵 | `07c_jockey_profiles.md` | SIP-5、SIP-ST4 |
 | 練馬師訊號框架 | `07a_signals_framework.md` | SIP-ST4 |
@@ -96,4 +106,4 @@
 ---
 
 > **維護規則:** 每次 Reflector 覆盤產出新 SIP 時,必須同步更新此索引。
-> **最後更新:** 2026-04-01 (SIP-ST30~ST33 新增,AWT 覆盤衍生)
+> **最後更新:** 2026-04-06 (SIP-ST40~ST44 新增,Sha Tin 草地覆盤衍生)

@@ -3,6 +3,29 @@
 
 ## Latest Updates
 
+
+### 2026-04-06 — SIP-RH07~RH10 + OBS-004: Rosehill Gardens 2026-04-06 覆盤批量 SIP（4 項 + 1 觀察項）
+- **Changed:** 新增 4 項 SIP + 1 觀察項，源自 Rosehill 全日 Soft 6 場覆盤（8 場中 S+ 首選 0/3 全部崩盤、排名逆轉率 62.5%、前領馬系統性崩潰、Soft 地磅位稀釋效應被忽略）：
+  - **SIP-RH07** Soft 5-6 前領馬消耗懲罰 (Front-Runner Decay Penalty)：Soft 5-6 + 前領型 + ≤1400m → EEM 消耗 +20% + 微調 -0.5 級。Soft 贏馬記錄 ≥1 次豁免。填補 Heavy 8+ 才觸發前領陷阱嘅漏洞。→ `04d` Rule 5
+  - **SIP-RH08** Soft 5-6 S 級未驗證封頂 (Unverified S-Grade Cap)：Soft 5-6 + S/S+ 評級 + 無 Soft 贏馬/入位記錄 → 硬性封頂 A-。填補 SIP-RR17 只覆蓋 Soft 7+ 嘅漏洞。→ `04d` Rule 8
+  - **SIP-RH09** Soft 場地信心度降級 (Confidence Downgrade)：Soft 5+ + 🟢極高信心度 → 需有 Soft 贏馬+場地✅+非前領方可維持，否則降至 🟡中。→ `02g` Step 14.F
+  - **SIP-RH10** Soft 5-6 頂磅懲罰稀釋 (Weight Penalty Dilution)：Soft 5-6 + ≥59kg + 頂磅斷尾 → 降級效果減半（0.5 級而非 1 級）。Soft 7+ 不適用。→ `04d` Rule 4
+  - **OBS-004** Maiden 賽事冷門馬盲點（觀察項）：Maiden/Plate 賽事中低評級大冷門頻繁跑入前三（4 案例同日）。待跨日數據畢業。→ `observation_log.md`
+- **Target Files:** `04d_wet_track.md` (SIP-RH07/08/10), `02g_override_chain.md` (SIP-RH09), `04b_track_rosehill.md` (場地偏差表更新), `observation_log.md` (OBS-004)
+- **Impact:** 修正 Rosehill Soft 6 覆盤識別嘅三大系統性缺陷：(1) 前領馬在 Soft 5-6 嘅衰退率被嚴重低估（3 場首選崩盤）；(2) S+ 評級馬匹無 Soft 實績仍獲最高級別（2 場大熱倒灶）；(3) 重磅馬在 Soft 場嘅懲罰過度（磅位效應被場地平均化稀釋）。
+- **Regression Check:** 若 Soft 5-6 下前領型馬匹（無 Soft 贏績）仍獲 S/S+ 評級 = 回歸。若 Soft 5-6 前領型馬匹未觸發 SIP-RH07 消耗懲罰 = 回歸。若 Soft 5+ 場地下無 Soft 贏績嘅馬匹信心度仍標記 🟢極高 = 回歸。若 Soft 5-6 下 ≥59kg 頂磅斷尾未觸發稀釋 = 回歸。
+
+### 2026-04-06 — SIP-SL01~SL05: Sandown Lakeside 2026-04-06 覆盤批量 SIP(5 項)
+- **Changed:** 新增 5 項 SIP,源自 Sandown Lakeside 8 場覆盤(S 級 100% 失敗率、A+ 級 80% 大敗、2 匹退出馬入選精選、前領馬 Good 地生存率被低估、初出馬評級自動封低、市場-引擎嚴重脫節):
+  - **SIP-SL01** S/A+ 級實戰驗證門檻 (Recency & Hardness Guard):S/S- 級馬匹必須近 3 仗有勝出或入位前三,否則封頂 A+。A+ 嘅 Third-up 需有入位紀錄否則降為 A。**不依賴賠率** — 純粹以實戰紀錄作為門檻。→ `02f` Step 14.E
+  - **SIP-SL02** Good 場地前領馬生存率校準 (Leader Survival Recalibration):Good 3-4 + ≤1400m 前領馬 EEM 消耗係數 -15%;獨領放 → EEM ✅;輕磅前領 (≤55kg) 進一步下調至 60%。安全閥:快步速互燒或 C 欄大場時不生效。→ `02d` Step 7/10
+  - **SIP-SL03** 退出馬強制驗證 (Scratching Verification):分析前+Verdict 前雙重核實退出馬。SCR 馬匹入選 Top 4 視為無效,自動觸發重排。→ `05` 驗證清單
+  - **SIP-SL04** 市場-引擎偏差重新審視 (Market-Engine Divergence Re-Analysis):評級≤C+ 但 SP≤$5 / 評級≥A 但 SP≥$15 → 觸發第二次審視(5 步檢查清單)。**嚴禁將賠率注入評級矩陣** — 僅作為遺漏因素嘅安全網。→ `06` Part 4
+  - **SIP-SL05** 初出馬評估通道升級 (Debut Runner Evaluation Upgrade):精英馬房 (季內 WR≥15%) 試閘勝出馬可獲「狀態與穩定性」核心✅及「段速與引擎」核心✅,打破初出馬因缺乏正賽數據而自動落入 C 級嘅僵局。→ `02f` Step 14.E
+- **Target Files:** `02f_synthesis.md` (SIP-SL01, SIP-SL05), `02d_eem_pace.md` (SIP-SL02), `05_verification.md` (SIP-SL03), `06_output_templates.md` (SIP-SL04), `00_sip_index.md`
+- **Impact:** 針對 Sandown 覆盤六大系統性缺陷嘅全面修正。核心發現:引擎嘅頂級評級 (S/A+) 存在嚴重通脹,100% S 級+80% A+ 級大敗;退出馬數據流斷裂;Good 地前領馬生存率被低估;初出馬評級管道封死。
+- **Regression Check:** 若近 3 仗全無入位但引擎仍評 S/S-  = 回歸。若 Good 場地前領馬仍因「前領型=高消耗」自動 EEM ❌ = 回歸。若退出馬仍可入選 Top 4 = 回歸。若市場大熱 ($3-5) 但引擎評 C/D 且未觸發第二次審視 = 回歸。若精英馬房試閘勝出嘅初出馬仍只獲 C 級 = 回歸。
+
 ### 2026-04-05 — P19v6: 全引擎防串流鎖死封殺令 (Cross-Engine write_to_file Total Ban)
 - **Changed:** 統一 AU / HKJC / NBA 三大引擎嘅 File Writing Protocol 至 P19v6。之前三大引擎嘅 SKILL.md 內部存在嚴重矛盾：AU 已封殺 `write_to_file`，但 HKJC 行 720/957/970 仍列為合法工具，NBA 仍允許 <200 行使用。Agent Architect `design_patterns.md` 嘅 Pattern 8/14/17 亦仍推薦 `write_to_file`。呢啲矛盾訊息係導致 LLM 反覆違規嘅根本原因。
   - **AU Wong Choi SKILL.md** — 已封殺（確認無矛盾）

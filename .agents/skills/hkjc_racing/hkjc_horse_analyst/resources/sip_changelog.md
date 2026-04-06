@@ -11,6 +11,40 @@
 - **Impact:** [What should change in Analyst output]
 - **Regression Check:** [What to look for if Analyst reverts to old behavior]
 -->
+### 2026-04-06 — SIP-ST44: 冷門馬訊號標準化 (Underhorse Signal Standardized Triggers)
+- **Changed:** 冷門馬訊號新增 7 項標準化觸發條件(≥2 項觸發即強制輸出），統一 Kelvin/Heison 引擎標準
+- **Target File:** `08_output_templates.md`
+- **Impact:** 所有 B+ 或以下馬匹均需按標準條件掃描冷門訊號
+- **Regression Check:** 若全場唯一放頭馬+底磅+配備變動仍無冷門訊號觸發 → SIP 未生效
+
+### 2026-04-06 — SIP-ST43: 跨場減分馬偵測 (Cross-Venue Class Dropper Detection)
+- **Changed:** Step 6 新增跨場標記 — 近3仗全谷草+轉沙田+降分≥10+底磅 → 情境升級
+- **Target File:** `04_engine_corrections.md`
+- **Impact:** 谷草轉沙田底磅馬不再被系統性忽略
+- **Data Points:** R2 紅旺繽紛(@6.6, 谷草→沙田底磅, 兩引擎均未入T4→冠軍)
+- **Regression Check:** 若近3仗全谷草+底磅馬轉沙田仍被忽略 → SIP 未生效
+
+### 2026-04-06 — SIP-ST42: 二班以上後追馬加分 (Class 2+ Deep Closer Bonus)
+- **Changed:** Step 14.2G 新增 — ≤二班+1400m+後追成功≥2次+賽道利後追 → 情境輔助✅
+- **Target File:** `06_rating_aggregation.md`
+- **Impact:** 高班 1400m 後追馬獲得結構性加分
+- **Data Points:** R10 綠族無限(@44, 走位10→10→8→1, 未入T4→冠軍)
+- **Regression Check:** 若二班1400m+後追成功紀錄馬仍無情境✅ → SIP 未生效
+
+### 2026-04-06 — SIP-ST41: 大熱崩潰壓力測試 (Favourite Collapse Stress Test)
+- **Changed:** Step 14.2F 新增 — 首選≥A+賠率≤5.0+風險因素 → 強制崩潰情境分析+Pick2≥B+
+- **Target File:** `06_rating_aggregation.md`
+- **Impact:** 短賠大熱門不再被盲目追捧，強制考慮崩潰可能
+- **Data Points:** R4 威武年代(S→6th @4.7)、R5 堅先生(A+→6th @3.0)
+- **Regression Check:** 若首選A級+賠率≤3.0+頂磅仍無崩潰壓力測試 → SIP 未生效
+
+### 2026-04-06 — SIP-ST40: 直路賽放頭壟斷覆蓋 (Straight Course Front-Runner Monopoly Override)
+- **Changed:** `10a_track_sha_tin_turf.md` 新增 — 1000m直路+唯一放頭馬+初出馬>40% → 評級下限B-
+- **Target File:** `10a_track_sha_tin_turf.md`
+- **Impact:** 直路賽壟斷放頭馬不再被 L400 歷史段速壓至 D 級
+- **Data Points:** R1 飛來霸(D級→23倍冠軍, 全場唯一放頭馬, 7匹初出)
+- **Regression Check:** 若1000m直路唯一放頭馬+初出馬>40%仍被評D級 → SIP 未生效
+
 ### 2026-04-01 — SIP-ST33: AWT 排序風險加強修正 (AWT Ranking Risk Enhancement)
 - **Changed:** SIP-RR20 排名風險折扣新增 4 項 AWT 專用修正因子:後追外檔(-0.5)、連勝加磅(-0.5)、見習首配(-0.5)、醫療風險(-0.25)
 - **Target File:** `10c_track_awt.md`

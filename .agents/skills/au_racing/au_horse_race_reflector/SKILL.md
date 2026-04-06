@@ -274,6 +274,24 @@ python .agents/scripts/engine_health_scanner.py --domain au --resources-dir ".ag
 ```
 此腳本自動檢查 4d-1（過時邏輯）、4d-2（斷裂邏輯）、4d-4（數據新鮮度）。LLM 只需處理 4d-3、4d-5、4d-6。
 
+**4d-pre-1b. SIP 衝突掃描:**
+```bash
+python .agents/scripts/sip_conflict_scanner.py --domain au --resources-dir ".agents/skills/au_racing/au_horse_analyst/resources"
+```
+自動構建 SIP 規則關係圖，偵測方向衝突、重複計算、交叉引用、過時引用。LLM 只需判斷衝突係有意制衡定真衝突。
+
+**4d-pre-1c. 規則觸發率統計:**
+```bash
+python .agents/scripts/rule_trigger_tracker.py --domain au --resources-dir ".agents/skills/au_racing/au_horse_analyst/resources" --analysis-dir "[TARGET_DIR]"
+```
+統計每條 SIP 嘅實際觸發次數，識別死規則（從未觸發）同過度觸發（>80%），LLM 只需判斷是否需修改門檻。
+
+**4d-pre-1d. 引擎覆蓋率矩陣:**
+```bash
+python .agents/scripts/engine_coverage_matrix.py --domain au --resources-dir ".agents/skills/au_racing/au_horse_analyst/resources" --analysis-dir "[TARGET_DIR]"
+```
+計算引擎規則覆蓋率（類似 code coverage），識別未被使用嘅死代碼規則。
+
 **4d-pre-2. 敘事覆盤數據抽取:**
 ```bash
 python .agents/scripts/narrative_postmortem_extractor.py "[RESULTS_FILE]" "[TARGET_DIR]" --all --domain au

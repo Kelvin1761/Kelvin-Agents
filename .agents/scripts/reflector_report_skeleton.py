@@ -27,7 +27,7 @@ if sys.stdout.encoding != 'utf-8':
 # ──────────────────────────────────────────────
 
 PICK_RE = re.compile(
-    r'([🥇🥈🥉🏅])\s*\*?\*?\s*(?:\*\*)?(?:第[一二三四]選\*\*\s*\n-\s*\*\*馬號及馬名[：:]\*\*\s*)?#?(\d+)\s+(.+?)(?:\*\*|\s*[—\-|])',
+    r'([🥇🥈🥉🏅])\s*\*?\*?\s*(?:\*\*)?(?:第[一二三四]選\*\*\s*\n-\s*\*\*馬號及馬名[：:]\*\*\s*)?#?\[?(\d+)\]?\s+(.+?)(?:\*\*|\s*[—\-|]|$)',
     re.UNICODE
 )
 PICK_ALT_RE = re.compile(
@@ -131,7 +131,9 @@ def split_results_by_race(text):
     else:
         cur = None
         for s in sections:
-            if s and s.strip().isdigit():
+            if s is None:
+                continue
+            if s.strip().isdigit():
                 cur = int(s.strip())
             elif cur is not None:
                 r = parse_results(s)

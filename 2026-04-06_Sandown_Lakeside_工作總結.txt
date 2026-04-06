@@ -1,0 +1,96 @@
+# Sandown Lakeside 2026-04-06 覆盤工作總結
+
+## 完成項目
+
+### 1. 數據提取與分析
+- 從 Racenet 擷取全部 8 場賽事結果
+- 將引擎預測精選 (Top 3/4) 與實際結果進行交叉比對
+- 修復流程管道錯誤：reflector_report_skeleton.py 中嘅 TypeError、退出馬號碼正規表達式解析問題
+
+### 2. 賽後覆盤報告
+- 以香港繁體中文撰寫完整報告：2026-04-06_Sandown_Lakeside_Review.md
+- 核心發現：黃金標準率 0%、單入位率 50%、S 級馬匹 100% 失敗率
+- 報告包含：整體命中率統計、逐場覆盤摘要、False Positives/Negatives 清單、敘事覆盤表、引擎健康掃描
+
+### 3. 系統性改善建議實施 (5 項 SIP — SIP-SL 系列)
+
+全部 5 項 SIP 經用戶審批後已寫入引擎檔案：
+
+| SIP 編號 | 修改檔案 | 摘要 |
+|:---|:---|:---|
+| SIP-SL01 | 02f_synthesis.md | S/A+ 級實戰驗證門檻 — 近 3 仗必須有勝出或入位。完全不依賴賠率（用戶要求） |
+| SIP-SL02 | 02d_eem_pace.md | Good 場地前領馬生存率重新校準 — Good 3-4 且 ≤1400m 時，前領馬 EEM 消耗係數下調 15% |
+| SIP-SL03 | 05_verification.md | 退出馬強制驗證 — 分析前 + Verdict 前雙重檢查點 |
+| SIP-SL04 | 06_output_templates.md | 市場-引擎偏差重新審視觸發器 — 當 SP 與評級嚴重脫節時觸發第二次審視。嚴禁將賠率注入評級矩陣 |
+| SIP-SL05 | 02f_synthesis.md | 初出馬評估通道升級 — 精英馬房試閘勝出馬可獲核心 ✅ |
+
+### 4. 索引及變更日誌更新
+- 00_sip_index.md — 新增 SIP-SL 章節 + 別名表條目
+- sip_changelog.md — 新增批次變更日誌條目（含回歸測試檢查）
+
+---
+
+## 關鍵數據摘要
+
+### 命中率統計
+| 指標 | 數值 | 目標 | 結果 |
+|:---|:---|:---|:---|
+| 黃金標準率 (Top3 全入前三) | 0/8 (0.0%) | ≥30% | ❌ |
+| 良好結果率 (Top1+2 入前三) | 0/8 (0.0%) | ≥40% | ❌ |
+| 最低門檻率 (Top3 中≥2入前三) | 1/8 (12.5%) | ≥60% | ❌ |
+| 單入位率 (Top3 中≥1入前三) | 4/8 (50.0%) | ≥80% | ❌ |
+
+### 評級表現倒掛
+- A 級以上平均名次：6.2（極差 — 應為 ≤3）
+- B 級以下平均名次：2.5（反常 — 低評級馬匹反而跑得更好）
+- S 級失敗率：100%（3/3 全滅）
+- A+ 級大敗率：80%（4/5）
+
+### 系統性缺陷分類
+| 缺陷類別 | 涉及場次 | 對應 SIP |
+|:---|:---|:---|
+| S/A+ 級評級通脹 | R1, R3, R4, R5, R7, R8 | SIP-SL01 |
+| Good 地前領馬生存率低估 | R1, R2, R3, R5 | SIP-SL02 |
+| 退出馬數據流斷裂 | R2, R3 | SIP-SL03 |
+| 市場-引擎嚴重脫節 | R3, R4 | SIP-SL04 |
+| 初出馬評級自動封低 | R1 | SIP-SL05 |
+
+---
+
+## 引擎健康掃描判定
+
+| 檢查維度 | 判定 | 處理 |
+|:---|:---|:---|
+| 4d-1 過時邏輯 | ⚠️ 觀察中 | Emily Pozman / Cory Parish 騎師 Tier 待更新 |
+| 4d-2 斷裂邏輯 | 🔧 已修改 | 退出馬驗證流程已由 SIP-SL03 修復 |
+| 4d-3 缺失規則 | 🔧 已修改 | 初出馬通道 (SIP-SL05)、市場偏差警報 (SIP-SL04)、場地分層 EEM (SIP-SL02) 已補齊 |
+| 4d-4 數據更新 | ⚠️ 觀察中 | Cerchi / Nolen 練馬師數據待入庫 |
+| 4d-5 規則校準 | 🔧 已修改 | S/A+ 門檻已由 SIP-SL01 收緊；前領馬 EEM 已由 SIP-SL02 校準 |
+| 4d-6 輸出品質 | ⚠️ 觀察中 | 排序倒掛問題預期透過 SIP-SL01 間接改善 |
+
+---
+
+## 修改檔案清單
+
+| 檔案 | 修改類型 | SIP 編號 |
+|:---|:---|:---|
+| au_horse_analyst/resources/02f_synthesis.md | 評級矩陣門檻收緊 + 初出馬核心✅通道 | SIP-SL01, SIP-SL05 |
+| au_horse_analyst/resources/02d_eem_pace.md | Good 地前領馬 EEM 消耗校準 | SIP-SL02 |
+| au_horse_analyst/resources/05_verification.md | 退出馬雙重驗證流程 | SIP-SL03 |
+| au_horse_analyst/resources/06_output_templates.md | 市場-引擎偏差重新審視機制 | SIP-SL04 |
+| au_horse_analyst/resources/00_sip_index.md | SIP 索引 + 別名表更新 | 全部 |
+| au_horse_analyst/resources/sip_changelog.md | 變更日誌批次條目 | 全部 |
+
+---
+
+## 待辦事項
+
+1. Validator 盲測 — 使用今日 Sandown 數據對修改後嘅規則進行盲測驗證
+2. 數據收集 — 收集最近 50 場 Good 場地賽事嘅前領馬完成率數據，用於 SIP-SL02 嘅精細校準
+3. 觀察項 — Emily Pozman / Cory Parish 騎師 Tier 更新；Michael & Luke Cerchi / Vincent Nolen 練馬師數據入庫
+
+---
+
+報告生成日期：2026-04-06
+引擎版本：AU Wong Choi Protocol V2.2.0
+SIP 系列：SIP-SL01 至 SIP-SL05 (Sandown Lakeside 系列)
