@@ -30,7 +30,7 @@ if sys.stdout.encoding != 'utf-8':
 # Checks return True if the horse meets that grade's requirements
 # We check top-down; first match wins.
 
-GRADE_ORDER = ['S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D']
+GRADE_ORDER = ['S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D']
 
 DIMENSION_CATEGORIES = {
     # AU Wong Choi dimension names
@@ -66,6 +66,11 @@ MATRIX_LINE_RE = re.compile(
     r'[：:]\s*[`\s\[]*([✅➖❌]|不計入)',
     re.UNICODE
 )
+
+# Override detection patterns
+PSI_RE = re.compile(r'穩定指數[：:]\s*[`\s]*([\d.]+)', re.UNICODE)
+AGE_RE = re.compile(r'(2yo|2歲|two.?year|2YO)', re.IGNORECASE)
+RATING_RE = re.compile(r'評分[：:]\s*[`\s]*(\d+)', re.UNICODE)
 
 # Also match the "🔢 矩陣算術" summary line
 MATRIX_ARITHMETIC_RE = re.compile(
@@ -110,6 +115,13 @@ class DimensionResult:
 
 
 @dataclass
+class OverrideAlert:
+    rule: str
+    triggered: bool
+    detail: str = ''
+
+
+@dataclass
 class HorseVerification:
     number: int
     name: str
@@ -133,6 +145,8 @@ class HorseVerification:
     count_match: bool = True
     grade_match: bool = True
     issues: list = field(default_factory=list)
+    # Override alerts
+    overrides: list = field(default_factory=list)
 
 
 def categorize_dimension(name: str) -> str:
@@ -254,8 +268,12 @@ def lookup_base_grade(core_t: int, semi_t: int, aux_t: int,
     if total_x == 4:
         return 'C-'
 
-    # D: ❌ ≥ 5 or zero ✅ total
+    # D+: ❌ ≥ 5 but still has at least 1 ✅
     total_ticks = core_t + semi_t + aux_t
+    if total_x >= 5 and total_ticks >= 1:
+        return 'D+'
+
+    # D: ❌ ≥ 5 or zero ✅ total
     if total_x >= 5 or total_ticks == 0:
         return 'D'
 
@@ -272,8 +290,8 @@ def lookup_base_grade(core_t: int, semi_t: int, aux_t: int,
 def grade_to_numeric(grade: str) -> float:
     """Convert grade to numeric for comparison."""
     mapping = {
-        'S': 12, 'S-': 11, 'A+': 10, 'A': 9, 'A-': 8,
-        'B+': 7, 'B': 6, 'B-': 5, 'C+': 4, 'C': 3, 'C-': 2, 'D': 1
+        'S': 13, 'S-': 12, 'A+': 11, 'A': 10, 'A-': 9,
+        'B+': 8, 'B': 7, 'B-': 6, 'C+': 5, 'C': 4, 'C-': 3, 'D+': 2, 'D': 1
     }
     return mapping.get(grade, 0)
 
@@ -410,7 +428,60 @@ def verify_horse(horse: dict) -> HorseVerification:
                 f'{result.llm_final_grade} (封頂 B+)'
             )
 
+    # 9. Override rule checks
+    result.overrides = check_overrides(block, result)
+    for ov in result.overrides:
+        if ov.triggered:
+            result.issues.append(f'OVERRIDE_{ov.rule}: {ov.detail}')
+
     return result
+
+
+def check_overrides(block: str, result: 'HorseVerification') -> list:
+    """Check mechanical override rules against the analysis block."""
+    alerts = []
+
+    # Override 1: Core cap (already checked above, record for report)
+    alerts.append(OverrideAlert(
+        rule='CORE_CAP',
+        triggered=result.has_core_cross and bool(result.llm_final_grade) and
+                  grade_to_numeric(result.llm_final_grade) > grade_to_numeric('B+'),
+        detail=f'核心❌ 封頂 B+ (LLM={result.llm_final_grade})' if result.has_core_cross else ''
+    ))
+
+    # Override 2: 2YO cap → max A-
+    is_2yo = bool(AGE_RE.search(block))
+    two_yo_violated = False
+    if is_2yo and result.llm_final_grade:
+        if grade_to_numeric(result.llm_final_grade) > grade_to_numeric('A-'):
+            two_yo_violated = True
+    alerts.append(OverrideAlert(
+        rule='2YO_CAP',
+        triggered=two_yo_violated,
+        detail=f'2YO 封頂 A- (LLM={result.llm_final_grade})' if two_yo_violated else ''
+    ))
+
+    # Override 3: Iron-leg floor (PSI > 0.7 → min B)
+    psi_match = PSI_RE.search(block)
+    iron_leg_violated = False
+    if psi_match:
+        psi = float(psi_match.group(1))
+        if psi > 0.7 and result.llm_final_grade:
+            if grade_to_numeric(result.llm_final_grade) < grade_to_numeric('B'):
+                iron_leg_violated = True
+                alerts.append(OverrideAlert(
+                    rule='IRON_LEG_FLOOR',
+                    triggered=True,
+                    detail=f'PSI={psi} > 0.7 → 保底 B (LLM={result.llm_final_grade})'
+                ))
+    if not iron_leg_violated:
+        alerts.append(OverrideAlert(rule='IRON_LEG_FLOOR', triggered=False))
+
+    return alerts
+
+
+# Regex for detecting unfilled template markers
+FILL_MARKER_RE = re.compile(r'\[FILL[:\s].*?\]|\{\{LLM_FILL\}\}|\[FILL\]', re.UNICODE)
 
 
 def verify_file(filepath: str) -> dict:
@@ -425,17 +496,24 @@ def verify_file(filepath: str) -> dict:
             'passed': False,
             'horses': [],
             'summary': {'total': 0, 'passed': 0, 'failed': 0,
-                        'count_errors': 0, 'grade_errors': 0},
+                        'count_errors': 0, 'grade_errors': 0,
+                        'override_alerts': 0, 'fill_residuals': 0},
             'issues': ['NO_HORSES_FOUND'],
         }
 
     results = [verify_horse(h) for h in horses]
 
+    # Check for unfilled [FILL] / {{LLM_FILL}} markers
+    fill_markers = FILL_MARKER_RE.findall(text)
+    fill_residuals = len(fill_markers)
+
     count_errors = sum(1 for r in results if not r.count_match)
     grade_errors = sum(1 for r in results if not r.grade_match)
+    override_alerts = sum(1 for r in results
+                         for ov in r.overrides if ov.triggered)
     passed_count = sum(1 for r in results if r.count_match and r.grade_match and not r.issues)
     failed_count = len(results) - passed_count
-    all_passed = failed_count == 0
+    all_passed = failed_count == 0 and fill_residuals == 0
 
     return {
         'file': str(filepath),
@@ -447,8 +525,136 @@ def verify_file(filepath: str) -> dict:
             'failed': failed_count,
             'count_errors': count_errors,
             'grade_errors': grade_errors,
+            'override_alerts': override_alerts,
+            'fill_residuals': fill_residuals,
         },
     }
+
+
+def fix_file(filepath: str, report: dict) -> int:
+    """Auto-fix grade mismatches in the analysis file. Returns count of fixes."""
+    with open(filepath, 'r', encoding='utf-8') as f:
+        text = f.read()
+
+    fixes = 0
+    for h in report['horses']:
+        if not h['issues']:
+            continue
+
+        computed = h['computed_base_grade']
+        llm_base = h['llm_base_grade']
+        llm_final = h['llm_final_grade']
+
+        # Fix 1: Base grade mismatch
+        if llm_base and computed and llm_base != computed:
+            for issue in h['issues']:
+                if 'BASE_GRADE_MISMATCH' in issue:
+                    old_pattern = f'基礎評級' + r'[：:]' + r'.*?' + re.escape(f'[{llm_base}]')
+                    # Simple string replacement for base grade
+                    old_str = f'`[{llm_base}]`'
+                    new_str = f'`[{computed}]`'
+                    # Find base grade line and replace
+                    base_re = re.compile(
+                        r'(基礎評級[：:].*?)`\[' + re.escape(llm_base) + r'\]`',
+                        re.UNICODE
+                    )
+                    new_text = base_re.sub(
+                        lambda m: m.group(1) + f'`[{computed}]`', text, count=1
+                    )
+                    if new_text != text:
+                        text = new_text
+                        fixes += 1
+                        print(f'   🔧 #{h["number"]} 基礎評級: [{llm_base}] → [{computed}]')
+
+        # Fix 2: Final grade drift (>1 level from computed base)
+        if llm_final and computed:
+            diff = grade_diff(llm_final, computed)
+            if diff > 1:
+                # Clamp final grade to ±1 from computed base
+                computed_num = grade_to_numeric(computed)
+                final_num = grade_to_numeric(llm_final)
+                if final_num > computed_num:
+                    target = GRADE_ORDER[max(0, GRADE_ORDER.index(computed) - 1)]
+                else:
+                    target = GRADE_ORDER[min(len(GRADE_ORDER)-1, GRADE_ORDER.index(computed) + 1)]
+
+                final_re = re.compile(
+                    r'(⭐\s*\*?\*?最終評級[：:]\*?\*?\s*)`\[?' + re.escape(llm_final) + r'\]?`',
+                    re.UNICODE
+                )
+                new_text = final_re.sub(
+                    lambda m: m.group(1) + f'`[{target}]`', text, count=1
+                )
+                if new_text != text:
+                    text = new_text
+                    fixes += 1
+                    print(f'   🔧 #{h["number"]} 最終評級: [{llm_final}] → [{target}]')
+
+        # Fix 3: Arithmetic line count mismatch
+        for issue in h['issues']:
+            if 'COUNT_MISMATCH' in issue:
+                arith_re = re.compile(
+                    r'(🔢\s*矩陣算術[：:]?\s*)'
+                    r'核心✅\s*=\s*\[?\d+\]?\s*[|｜]\s*'
+                    r'半核心✅\s*=\s*\[?\d+\]?\s*[|｜]\s*'
+                    r'輔助✅\s*=\s*\[?\d+\]?\s*[|｜]\s*'
+                    r'總❌\s*=\s*\[?\d+\]?',
+                    re.UNICODE
+                )
+                ct = h['core_ticks']
+                st = h['semi_core_ticks']
+                at = h['aux_ticks']
+                tx = h['total_crosses']
+                replacement = (
+                    f'🔢 矩陣算術: '
+                    f'核心✅=[{ct}] | 半核心✅=[{st}] | '
+                    f'輔助✅=[{at}] | 總❌=[{tx}]'
+                )
+                new_text = arith_re.sub(replacement, text, count=1)
+                if new_text != text:
+                    text = new_text
+                    fixes += 1
+                    print(f'   🔧 #{h["number"]} 矩陣算術行已修正')
+                break  # Only fix arithmetic once per horse
+
+    # Fix 4: CSV grade alignment
+    csv_block_re = re.compile(r'```csv\n(.+?)```', re.DOTALL)
+    csv_match = csv_block_re.search(text)
+    if csv_match:
+        csv_text = csv_match.group(1)
+        csv_fixed = csv_text
+        for h in report['horses']:
+            if h['llm_final_grade'] and h['computed_base_grade']:
+                # If final grade was fixed, update CSV too
+                computed = h['computed_base_grade']
+                llm_final = h['llm_final_grade']
+                if grade_diff(llm_final, computed) > 1:
+                    computed_num = grade_to_numeric(computed)
+                    final_num = grade_to_numeric(llm_final)
+                    if final_num > computed_num:
+                        target = GRADE_ORDER[max(0, GRADE_ORDER.index(computed) - 1)]
+                    else:
+                        target = GRADE_ORDER[min(len(GRADE_ORDER)-1, GRADE_ORDER.index(computed) + 1)]
+                    # Replace in CSV — grade is typically last field
+                    horse_name = h['name'].split('（')[0].split('(')[0].strip()
+                    if horse_name and llm_final in csv_fixed:
+                        csv_fixed = csv_fixed.replace(
+                            f', {llm_final}\n', f', {target}\n', 1
+                        )
+                        csv_fixed = csv_fixed.replace(
+                            f', {llm_final},', f', {target},', 1
+                        )
+        if csv_fixed != csv_text:
+            text = text.replace(csv_text, csv_fixed)
+            fixes += 1
+            print(f'   🔧 CSV 評級已同步修正')
+
+    if fixes > 0:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(text)
+        print(f'   💾 已寫入 {fixes} 項修正到 {os.path.basename(filepath)}')
+
+    return fixes
 
 
 def print_report(report: dict):
@@ -462,6 +668,9 @@ def print_report(report: dict):
     print(f"   Status: {status}")
     print(f"   Horses: {s['total']} total, {s['passed']} ✅, {s['failed']} ❌")
     print(f"   Count errors: {s['count_errors']}  |  Grade errors: {s['grade_errors']}")
+    print(f"   Override alerts: {s.get('override_alerts', 0)}")
+    if s.get('fill_residuals', 0) > 0:
+        print(f"   ⚠️ FILL 殘留: {s['fill_residuals']} 個未填充標記")
 
     for h in report['horses']:
         num = h['number']
@@ -489,6 +698,12 @@ def print_report(report: dict):
         if h['issues']:
             for issue in h['issues']:
                 print(f"      → {issue}")
+
+        # Print override check summary
+        for ov in h.get('overrides', []):
+            status = '⚠️ TRIGGERED' if ov['triggered'] else '✅ OK'
+            detail = f" — {ov['detail']}" if ov['detail'] else ''
+            print(f"      🔍 {ov['rule']}: {status}{detail}")
 
     print(f"\n{'=' * 65}")
 
@@ -529,6 +744,27 @@ def main():
         all_reports.append(report)
         if not report['passed']:
             any_failed = True
+
+    # Auto-fix mode
+    if args.fix:
+        total_fixes = 0
+        for i, f in enumerate(files):
+            report = all_reports[i]
+            if not report['passed']:
+                print(f"\n🔧 Auto-fixing {os.path.basename(str(f))}...")
+                fixes = fix_file(str(f), report)
+                total_fixes += fixes
+        if total_fixes > 0:
+            print(f"\n🔧 Total fixes applied: {total_fixes}")
+            print(f"🔄 Re-verifying...")
+            # Re-verify after fixes
+            all_reports = []
+            any_failed = False
+            for f in files:
+                report = verify_file(str(f))
+                all_reports.append(report)
+                if not report['passed']:
+                    any_failed = True
 
     if args.json:
         # Simplify output — remove full dimension details for brevity

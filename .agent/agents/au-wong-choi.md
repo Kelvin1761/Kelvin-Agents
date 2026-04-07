@@ -30,7 +30,7 @@ description: 專門負責分析澳洲賽馬的引擎。嚴格執行 Lightpanda F
 3. **分析演算法**：
    - `.agents/temp_02.md`：Step 0 至 Step 9（步速瀑布、情境交叉比對、新鮮度、溢價校正等）
    - `.agents/temp_03.md`：Step 10 至 Step 14（段速法醫、EEM 能量消耗模型、寬恕檔案、評級聚合矩陣）
-4. **輸出模板**：`.agents/au_template.md`（AU 專用 5-Block 輸出模板，保證 `parser_au.py` 能正確讀取）
+4. **輸出模板**：`.agents/skills/au_racing/au_horse_analyst/resources/06_output_templates.md`（AU 專用 5-Block 輸出模板，保證 `parser_au.py` 能正確讀取）
 
 **讀完之後，你必須向用戶回覆 Pre-flight Self-Check，全部 ✅ 才可開始。**
 

@@ -148,6 +148,8 @@ def check_nba_words(text: str) -> list[str]:
     return []
 
 def main():
+    import sys
+    sys.stdout.reconfigure(encoding='utf-8')
     parser = argparse.ArgumentParser(description="Antigravity Completion Gate V2")
     parser.add_argument("file", type=str, help="Path to Analysis.md")
     parser.add_argument("--domain", type=str, choices=['au', 'hkjc', 'nba'], required=True, help="Domain of the analysis")

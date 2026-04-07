@@ -1,7 +1,17 @@
 # AU Horse Analyst — SIP 索引 (Systemic Improvement Proposals Index)
 
-> **用途:** 集中追蹤所有 SIP 的定義位置、觸發條件摘要、及跨檔案引用。
-> 避免 SIP 分散導致遺漏或重複定義。Reflector 覆盤時應參考此索引。
+> **本檔案嘅角色定位：**
+> - ✅ **交叉引用 Lookup Table** — 記錄每個 SIP 嘅 tag、狀態、同核心檔案位置
+> - ✅ **觀察項 Watchlist** — 追蹤尚未畢業嘅 OBS 項目
+> - ❌ **唔係任何規則邏輯嘅 primary source** — 所有 ACTIVE SIP 嘅完整邏輯已經 BAKE 入對應嘅 resource 檔案（02a-02g, 04d, 06 等）
+>
+> **SIP 生命週期：**
+> 1. Reflector 覆盤發現問題 → 提議新 SIP
+> 2. 用戶審批 → SIP 邏輯 BAKE 入核心 resource 檔案
+> 3. 本索引更新 Status = 🟢 ACTIVE + 記錄 Canonical Location
+> 4. **Changelog 只保留最近 5 條**，舊嘅由本索引永久記錄
+>
+> **觀察項畢業路徑：** OBS → 累計 ≥3 案例（不同日期）→ 用戶審批 → 升級為 SIP → BAKE 入核心
 
 ## SIP Quick Reference (Cross-Agent Alias Table)
 
@@ -37,7 +47,7 @@
 | SIP-RH08 | 🟢 ACTIVE | `04d_wet_track.md` | Soft 5-6 S 級未驗證封頂 |
 | SIP-RH09 | 🟢 ACTIVE | `02g_override_chain.md` | Soft 場地信心度降級 |
 | SIP-RH10 | 🟢 ACTIVE | `04d_wet_track.md` | Soft 5-6 頂磅懲罰稀釋 |
-| OBS-004 | 🟡 OBSERVATION | `observation_log.md` | Maiden 冷門馬盲點 |
+| SIP-OBS04 | 🟢 ACTIVE | `02f_synthesis.md` (覆蓋規則區) | Maiden 冷門馬場地倍增器 (由 OBS-004 畢業) |
 
 ---
 

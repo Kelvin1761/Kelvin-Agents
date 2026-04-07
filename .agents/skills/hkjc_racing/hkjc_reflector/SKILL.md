@@ -93,6 +93,13 @@ read_url_content(url="<HKJC Results URL>")
 
 **目的:** 確保 SIP 建議能精確引用「哪個 resource 檔案、哪個 Step、哪條規則」需要修改,而非模糊地說「調整 EEM」。
 
+> [!IMPORTANT]
+> **BAKED SIP 感知（2026-04-07 新增）:**
+> 大部分歷史 SIP 已批量 BAKE 入核心 resource 檔案。
+> Reflector 在提議新 SIP 時必須：
+> 1. 先查閱對應嘅 SIP Index 確認該邏輯是否已存在
+> 2. 若問題源於現有 BAKED 規則嘅校准不足,應提議「修改現有規則」而非建立新 SIP
+> 3. 只有確認引擎完全冇對應規則嘅情境，才應提議新 SIP
 
 ## [REF-DA01] 深度覆盤 + Protocol 自我審計 (5 角度)
 
@@ -640,7 +647,7 @@ REFLECTOR_REPORT: {覆盤報告檔案路徑}
   - `run_command`:用於執行 `extract_race_results.py`。
   - `view_file`:讀取過往賽前預測報告與剛抓取的賽果檔。
   - `search_web`:若需要補充搜索實際賽日情報(如當日實際偏差報告)。
-  - `write_to_file`:保存覆盤報告。
+  - `run_command`:用於執行 Python 腳本及 P19v6 安全寫入（`run_command` + heredoc → `/tmp` → `cp`）。嚴禁使用 `write_to_file`。
 - **Assets**:
   - `batch_extract_results.py`:專門用於併發解析 HKJC 賽果的腳本。
     - **Windows:** `g:\我的雲端硬碟\Antigravity Shared\Antigravity\.agents\skills\hkjc_racing\hkjc_race_extractor\scripts\batch_extract_results.py`

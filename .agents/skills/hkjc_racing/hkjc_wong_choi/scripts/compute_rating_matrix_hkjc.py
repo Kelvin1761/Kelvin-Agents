@@ -465,8 +465,15 @@ def rank_horses(results: list) -> list:
 
 
 def generate_verdict(ranked: list) -> str:
+    """Generate complete Part 3 + Part 4 skeleton with Python-prefilled data."""
     labels = ['🥇 **第一選**', '🥈 **第二選**', '🥉 **第三選**', '🏅 **第四選**']
-    lines = ["**🏆 Top 4 位置精選**\n"]
+    lines = [
+        "#### [第三部分] 最終預測 (The Verdict)\n",
+        "- **跑道形勢:** {{LLM_FILL}}",
+        "- **信心指數:** `{{LLM_FILL}}`",
+        "- **關鍵變數:** {{LLM_FILL}}\n",
+        "**🏆 Top 4 位置精選**\n",
+    ]
     for i, r in enumerate(ranked[:4]):
         lines.append(labels[i])
         lines.append(f"- **馬號及馬名:** {r['num']} {r['name']}")
@@ -474,6 +481,53 @@ def generate_verdict(ranked: list) -> str:
         lines.append(f"- **核心理據:** {{{{LLM_FILL}}}}")
         lines.append(f"- **最大風險:** {{{{LLM_FILL}}}}")
         lines.append("")
+
+    # Top 2 Place Confidence
+    if len(ranked) >= 2:
+        lines.append("**🎯 Top 2 入三甲信心度 (Top 2 Place Confidence)**")
+        lines.append(f"🥇 {ranked[0]['name']}:`{{{{LLM_FILL}}}}` — 最大威脅:{{{{LLM_FILL}}}}")
+        lines.append(f"🥈 {ranked[1]['name']}:`{{{{LLM_FILL}}}}` — 最大威脅:{{{{LLM_FILL}}}}")
+        lines.append("")
+
+    # Pace Flip Insurance
+    lines.append("**🔄 步速逆轉保險 (Pace Flip Insurance):**")
+    lines.append("- 若步速比預測更快 → 最受惠:{{LLM_FILL}} | 最受損:{{LLM_FILL}}")
+    lines.append("- 若步速比預測更慢 → 最受惠:{{LLM_FILL}} | 最受損:{{LLM_FILL}}")
+    lines.append("")
+
+    # Emergency Brake Protocol (auto-check)
+    lines.append("**🚨 緊急煞車檢查 (Emergency Brake Protocol):**")
+    top4 = ranked[:4]
+    top4_grades = [r['final_grade'] for r in top4]
+    a_minus_or_above = any(grade_idx(g) <= grade_idx('A-') for g in top4_grades)
+    if not a_minus_or_above:
+        lines.append("- ⚠️ 低信心賽事 (LOW CONFIDENCE RACE) — 建議保守部署")
+    diff = 0
+    if len(top4) >= 2:
+        diff = abs(grade_idx(top4[0]['final_grade']) - grade_idx(top4[1]['final_grade']))
+        if diff >= 2:
+            lines.append("- ⚠️ 獨贏局 (ONE-HORSE RACE)")
+    c_or_below = sum(1 for r in ranked if grade_idx(r['final_grade']) >= grade_idx('C'))
+    if len(ranked) > 0 and c_or_below / len(ranked) > 0.5:
+        lines.append("- ⚠️ 混戰 (DIFFICULT RACE) — 建議輕注")
+    if a_minus_or_above and diff < 2 and (len(ranked) == 0 or c_or_below / len(ranked) <= 0.5):
+        lines.append("- ✅ 無觸發")
+    lines.append("")
+
+    # Part 4: Blind Spots
+    lines.append("---\n")
+    lines.append("#### [第四部分] 分析盲區\n")
+    lines.append("**1. 段速含金量:** {{LLM_FILL}}")
+    lines.append("**2. 風險管理:** {{LLM_FILL}}")
+    lines.append("**3. 試閘與預期假象:** {{LLM_FILL}}")
+    lines.append("**4. 特定與場地風險:** {{LLM_FILL}}")
+    lines.append("**5. 步速情境分支:**")
+    lines.append("- 快步速:最利 → {{LLM_FILL}};最不利 → {{LLM_FILL}}")
+    lines.append("- 慢步速:最利 → {{LLM_FILL}};最不利 → {{LLM_FILL}}")
+    lines.append("**6. 🎯 步速崩潰冷門 (Pace Collapse Dark Horse):** {{LLM_FILL}}")
+    lines.append("**🐴⚡ 冷門馬總計 (Underhorse Signal Summary):** {{LLM_FILL}}")
+    lines.append("")
+
     return '\n'.join(lines)
 
 

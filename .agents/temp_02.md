@@ -91,6 +91,10 @@
 
 ### Step 4: 溢價校正 (Premium Jockey Correction)
 
+> [!WARNING]
+> **[HKJC ENGINE ONLY]** 本 Step 4 嘅騎師溢價校正（潘頓、莫雷拉、跑馬地規則等）僅適用於 HKJC 引擎。
+> **AU 引擎嘅騎練訊號見 `au_horse_analyst/resources/02e_jockey_trainer.md`。**
+
 > [!IMPORTANT]
 > **邏輯前提：** Z. Purton 潘頓是香港頂級騎師，其座騎通常被 AI 過度追捧，導致分析偏離實際勝出機率。AI 必須主動抑制對潘頓的盲目崇拜，避免產出過度樂觀的評級。
 > **適用範圍 (Market Darling Tag)：** 除潘頓外，以下騎師回港客串或策騎受注目馬時，**自動觸發相同校正流程**：莫雷拉 (J. Moreira)、麥道朗 (J. McDonald)、或任何當季 Top-3 冠軍騎師排名的騎師。觸發條件與潘頓完全一致。

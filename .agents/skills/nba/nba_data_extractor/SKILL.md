@@ -1,7 +1,7 @@
 ---
 name: NBA Data Extractor
 description: This skill should be used when the user wants to "extract NBA data", "NBA 數據提取", "NBA Data Extractor", or when NBA Wong Choi orchestrates real-time player and match data extraction for parlay analysis.
-version: 1.1.0
+version: 1.2.0
 ---
 
 # Role
@@ -15,9 +15,11 @@ version: 1.1.0
 - **語言限制**:使用香港繁體中文(廣東話語氣)與用戶溝通。球員名、球隊名保留英文原名。
 - **嚴格限制**:你只負責執行 Python 腳本同傳遞數據,**嚴禁任何分析、評級、推薦或判斷**。所有主觀評估由下游 NBA Analyst 負責。
 - **數據提取層級**（從高到低優先）：
-  1. 🐍 **主要方法**：Python 腳本確定性拓取（`nba_extractor.py` + `nba_injury_scanner.py`）
-  2. 🔍 **後備方法**：`search_web` 僅用於補充個別球員缺失數據（如特定球員的 L10、特定對位資料）
-  3. 🚫 **禁止行為**：用 `search_web` 做全套數據提取（逐個球員搜索）
+  1. 🎯 **Bet365 盤口**：MCP Playwright 直接由 bet365.com.au 提取即時 Player Props + Game Lines（見 `resources/04_bet365_extraction.md`）
+  2. 🐍 **球員數據**：Python 腳本確定性拓取（`nba_extractor.py` + `nba_injury_scanner.py`）
+  3. 🔍 **後備方法**：`search_web` 僅用於補充個別球員缺失數據（如特定球員的 L10、特定對位資料）
+  4. 🚫 **禁止行為**：用 `search_web` 做全套數據提取（逐個球員搜索）
+  5. 🚫 **禁止行為**：用 Python standalone Playwright/Selenium 抓取 Bet365（100% 會被攔截）
 
 # Scope & Strict Constraints
 
@@ -61,6 +63,7 @@ version: 1.1.0
 - `resources/01_data_protocols.md` — 搜尋規則、防錯機制、來源優先級 [必讀]
 - `resources/02_data_card_template.md` — 14 項數據卡格式定義 [必讀]
 - `resources/03_defensive_profiles.md` — 防守大閘分類標準與知名球員清單 [必讀]
+- `resources/04_bet365_extraction.md` — Bet365 MCP Playwright 盤口提取協議 [必讀]
 
 讀取一次後保留在記憶中,嚴禁每批次重複讀取。
 
@@ -73,8 +76,28 @@ python .agents/skills/nba/nba_data_extractor/scripts/nba_extractor.py --date {YY
 ```
 (如果不指定 `--date`,腳本默認抓取今日賽事。)
 
+## Step 1.5: 🎯 Bet365 即時盤口提取 (MCP Playwright)
+> [!IMPORTANT]
+> 此步驟為 **最高優先級** 盤口來源。必須在 Step 2 之前執行。
+> 完整流程參見 `resources/04_bet365_extraction.md`。
+
+**執行流程摘要：**
+1. `mcp_playwright_browser_navigate` → `https://www.bet365.com.au/#/AS/B18/`
+2. 等待 5-8 秒 → `mcp_playwright_browser_evaluate` 驗證 NBA 賽事已載入
+3. 從 index 頁面提取所有 Game Lines (Line / Total / Moneyline)
+4. 逐場賽事 `mcp_playwright_browser_run_code` click 入去 → 等 5 秒
+5. `mcp_playwright_browser_snapshot` 捕獲完整 Player Props DOM
+6. 解析 snapshot → 輸出結構化 JSON (Points / Threes / Rebounds / Assists)
+7. 存檔至 `{TARGET_DIR}/Bet365_Odds_{GAME_TAG}.json`
+8. 回到 index 頁面 → 重複 Step 4-7 直到所有賽事完成
+
+**⚠️ Bet365 提取失敗時：**
+- Market 關閉 / SPA 渲染失敗 → **不影響後續流程**
+- 使用 `nba_extractor.py` 嘅估算盤口作為 fallback
+- 標記為 `odds_source: ESTIMATED (non-Bet365)`
+
 ## Step 2: 檢查腳本輸出
-讀取生成的 Markdown 數據包,它包含了來自 ESPN 的傷缺更新、Action Network 的預測與 Bet365 賠率。若腳本執行失敗或提示 `缺少依賴庫`:
+讀取生成的 Markdown 數據包。若 Step 1.5 成功,將 Bet365 JSON 嘅盤口覆蓋 nba_extractor.py 嘅估算盤口。若腳本執行失敗或提示 `缺少依賴庫`:
 - 請告知用戶並嘗試通過 `pip install curl-cffi requests` 安裝。
 - 若再次失敗,則必須手動後退至使用 `search_web` 搜尋。
 
@@ -110,6 +133,7 @@ python .agents/skills/nba/nba_data_extractor/scripts/nba_extractor.py --date {YY
 
 # Recommended Tools & Assets
 - **Tools**:
+  - `mcp_playwright_browser_*`：**主要工具** — 用於 Bet365 即時盤口提取（navigate / evaluate / snapshot / run_code）
   - `run_command`：核心工具，用於執行 Python 數據提取腳本
   - `search_web`：後備工具，僅用於補充個別球員缺失數據（禁止用於全套提取）
   - `write_to_file`：將數據包存檔至 TARGET_DIR

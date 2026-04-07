@@ -21,7 +21,7 @@
 開始前你必須讀取以下文件(缺一不可):
 1. hkjc_wong_choi/SKILL.md(完整讀取)
 2. hkjc_horse_analyst/resources/01_system_context.md
-3. hkjc_horse_analyst/resources/08_output_templates.md
+3. hkjc_horse_analyst/resources/08_templates_core.md（每批 batch reload）
 4. 場地模組(按今場選 1 個):
    - Sha Tin 草地 → 10a_track_sha_tin_turf.md
    - Happy Valley → 10b_track_happy_valley.md
@@ -31,7 +31,7 @@
 讀完以上文件後,你必須回覆以下 checklist(全部 ✅ 才可開始):
 - [ ] SKILL.md 已讀取(確認 P28 OUTPUT_TOKEN_SAFETY 規則存在)
 - [ ] 01_system_context.md 已讀取(確認 Anti-Laziness 規則存在)
-- [ ] 08_output_templates.md 已讀取(確認 Top 4 骨架格式存在)
+- [ ] 08_templates_core.md 已讀取（確認 11-field 骨架格式存在）
 - [ ] 場地模組已讀取
 - [ ] BATCH_SIZE 由環境掃描決定已確認
 - [ ] 環境掃描結果已回報用戶
@@ -117,7 +117,10 @@ Wong Choi 喺寫入 **Batch 1** 時,**必須先寫入以下戰場全景**,然後
 
 ## 🏆 Top 4 Verdict 骨架模板
 
-Wong Choi 喺每場 VERDICT BATCH 開始前,必須注入以下骨架。LLM 只需填充 `[FILL]` 位置:
+Wong Choi 喺每場 VERDICT BATCH 開始前,必須注入以下骨架。
+
+> **首選方案：** 使用 `compute_rating_matrix_hkjc.py` 嘅 `generate_verdict()` 自動生成（包含 Python 預填嘅馬號/馬名/評級 + Emergency Brake 自動檢查）。LLM 只需填充 `{{LLM_FILL}}` 標記。
+> **備用方案：** 若未使用 Python 計算，則手動填充以下 `[FILL]` 標記。LLM 只需填充 `[FILL]` 位置:
 
 ```markdown
 #### [第三部分] 最終預測 (The Verdict)

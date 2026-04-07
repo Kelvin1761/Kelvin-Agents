@@ -1,393 +1,135 @@
-# NBA Analyst 最終輸出模板 (V7.2 — 骨架注入 God Mode Format)
+# NBA Analyst 最終輸出模板 (V8.0 — 緊湊表格 + Python 預填 Format)
 
 > [!CAUTION]
 > 🚨 **骨架注入零容忍協議 (Skeleton Injection Zero-Tolerance Protocol)**
-> 本模板中所有 `[FILL]` 佔位符都**必須**被替換為真實數據或分析文字。
-> - 輸出中若存在任何殘留 `[FILL]` → 視為未完成 → 強制補回。
-> - 每一個組合（包含組合 1B、2、3）嘅每一支 Leg 都係獨立推薦，必須獲得 100% 完整嘅分析待遇。
-> - **嚴格禁止使用**：`...`、`[數據略]`、`[同上]`、`[邏輯同前]`、`[參見組合X]` 等任何省略語。
+> - 本模板中所有 `[FILL]` 佔位符都**必須**被替換為真實分析文字
+> - Python 預填嘅數學數據（賠率、命中率、Edge、組合結算）**嚴禁修改**
+> - **嚴格禁止使用**：`...`、`[數據略]`、`[同上]`、`[邏輯同前]`、`[參見組合X]`
 
 ---
 
-## 📝 單場分析檔案格式 (`Game_X_[Teams]_Full_Analysis.txt`)
+## 📝 單場分析檔案格式 (`Game_{GAME_TAG}_Skeleton.md`)
+
+> 由 `generate_nba_reports.py V2` 自動生成。
+> 所有數學欄位由 Python 精確計算。LLM 只需填寫 `[FILL]` 邏輯欄位。
 
 ---
 
-🎫 職業大戶 God Mode 單場分析 — [FILL: 隊A] vs [FILL: 隊B]
-
-📅 數據鎖定:[FILL: YYYY-MM-DD] | NBA 賽季:[FILL: CURRENT_SEASON]
+# 🏀 NBA Wong Choi — [Python 預填: 隊A] @ [Python 預填: 隊B]
+**日期**: [Python 預填] | **Bet365 提取時間**: [Python 預填]
+**odds_source**: BET365_LIVE ✅
 
 ---
 
 ### 🏀 賽事背景
-- 讓分:[FILL: X] | 總分盤:[FILL: O/U X] | 節奏:[FILL: 高/中/低] | B2B:[FILL: 標記邊隊]
-- 盤口走勢:[FILL: 開盤→現盤變動摘要]
+| 項目 | 數據 |
+|------|------|
+| **讓分盤** | [Python 預填] |
+| **總分盤** | [Python 預填] |
+| **獨贏** | [Python 預填] |
+| **節奏** | [FILL: 高/中/低] |
+| **B2B** | [FILL] |
 
-### 📋 傷病與隱蔽缺陣剔除/變動名單
-- [FILL: 球員名]([FILL: 球隊])— [FILL: Out/Questionable/GTD] — [FILL: 傷病描述]
-- [FILL: 逐位列出所有傷缺]
-
-### ✅ 雙方預計上陣陣容
-- [FILL: 隊A]: [FILL: 預計先發 5 人 + 主要輪換]
-- [FILL: 隊B]: [FILL: 預計先發 5 人 + 主要輪換]
-
-### 🛡️ 關鍵防禦大閘狀態（位置分組）
-- [FILL: 球隊] 外線鎖死型: [FILL: 防守者名字] — [FILL: 今日狀態 Active/Out/GTD]
-- [FILL: 球隊] 側翼封鎖型: [FILL: 防守者名字] — [FILL: 今日狀態]
-- [FILL: 球隊] 禁區守護者: [FILL: 防守者名字] — [FILL: 今日狀態]
-- ⚠️ 特殊標記: [FILL: 🔒🔒 鐵桶陣 / 🎯 禁區真空 / 無]
-
-### 📰 新聞情境摘要 (NEWS_DIGEST)
-- [FILL: 過去 72 小時重要新聞，逐條列出，附 [正面/負面/中性] 標籤]
+### 📋 傷病報告
+- [Python 預填: 逐條列出]
 
 ---
 
-## 🏆 推薦單場 SGM 組合
+## 🎯 全部球員 Bet365 盤口分析
+
+> Python 會為每位有 Bet365 盤口嘅球員生成以下結構：
+
+#### [Python 預填: 球員名] (#[球衣], [球隊]) — [PTS/3PM/REB/AST]
+
+| 🔢 數理引擎 | 🧠 邏輯引擎 |
+|:---|:---|
+| **L5**: `[Python 預填]` | **角色**: [FILL] |
+| **L10 均值**: [預填] \| **中位**: [預填] | **USG%**: [預填] |
+| **SD**: [預填] \| **CoV**: [預填] [分級] | **趨勢**: [預填] |
+
+**🎯 Bet365 盤口對照表:**
+| Line | Odds | 隱含勝率 | L10 命中 | L5 命中 | Edge | 判定 |
+|------|------|----------|----------|---------|------|------|
+| [預填: 10+] | [預填: @X.XX] | [預填]% | [預填]% (X/Y) | [預填]% (X/Y) | [預填]% [評級] | [預填] |
+| ... | ... | ... | ... | ... | ... | ... |
+
+> **Bet365 線格式**: `10+` = 10 分或以上 (≥10)。命中判定: `value >= 10`。
+
+---
+
+## 🎰 SGM Parlay 組合 (Python Auto-Selection)
 
 > [!IMPORTANT]
-> **4 組強制輸出**：以下 4 個組合**全部都必須完整輸出**，每個 Leg 都必須獨立填寫所有欄位。
-> 組合 1B、2、3 嘅分析深度必須同組合 1A **完全一致**。
+> 以下組合由 Python 自動從球員數據篩選並計算。
+> - Python 預填：Legs 表格、賠率、命中率、Edge、組合結算
+> - LLM 填寫：獨立關卡剖析 (`[FILL]`)、組合核心邏輯 (`[FILL]`)
+> - **球員分散規則**：每位球員只會出現喺一個組合中（1B 可共用 1A 核心 Leg）
+
+### 🛡️ 組合 1A: 穩膽 SGM (Low Risk) — SGM @[Python 預填]
+> 篩選條件: L10 命中 ≥80% + CoV ≤0.35 + odds ≥1.3 (ideally >1.8)
+
+| Leg | 選項 | 賠率 | L10 命中 | L5 命中 | Edge | CoV |
+|-----|------|------|----------|---------|------|-----|
+| 🧩 1 | [Python 預填] | @[預填] | [預填]% | [預填]% | [預填]% | [預填] |
+| 🧩 2 | [Python 預填] | @[預填] | [預填]% | [預填]% | [預填]% | [預填] |
+
+**🎯 獨立關卡剖析:**
+
+**Leg 1 — [Python 預填選項] @[預填賠率]:**
+📊 數據: [Python 預填: L10 數組 + AVG + MED + SD]
+[Python 預填: 隱含/預估/Edge]
+[FILL: Analyst 深度論述 — 對手防守匹配、球權分配、上場時間預測、B2B/場速影響、為何呢關有優勢]
+
+**Leg 2 — [Python 預填選項] @[預填賠率]:**
+📊 數據: [Python 預填]
+[Python 預填: 隱含/預估/Edge]
+[FILL: Analyst 深度論述]
+
+**📊 組合結算:**
+- **賠率相乘**: [預填] = **[預填]**
+- **SGM 折扣 (×0.65)**: **@[預填]**
+- **$100 回報**: **$[預填]**
+- **組合命中率**: [預填] = **[預填]%**
+- **🛡️ 組合核心邏輯**: [FILL: 分析兩關串埋一齊嘅協同效應]
+- **⚠️ 主要風險**: [FILL]
+- **建議注碼**: [FILL: 💰 標準注 / 半注 / 試探注]
 
 ---
 
-### 組合 1A：🛡️ 穩膽組合（極限防斷保本路線）— 組合賠率：~@[FILL: X.XX]
-
-#### 🧩 Leg 1: [FILL: 球員] ([FILL: 球隊]) — [FILL: 指標 PTS/REB/AST] Over [FILL: 盤口]+
-
-| 🔢 數理引擎 | 🧠 邏輯引擎 |
-|:---|:---|
-| 賠率：~[FILL: X.XX] | 核心邏輯：[FILL: ≥3 句深度論述，必須引用具體數據點] |
-| 命中率：L10=[FILL]% L5=[FILL]% L3=[FILL]% | ⚠️ 最大不達標風險：[FILL: 最具威脅性嘅失敗原因] |
-| 信心分：[FILL: X]/10 | 💪 克服風險信心度：[FILL: 如何克服 + 量化信心] |
-
-**+EV 篩選：**
-- 隱含勝率=[FILL: X]% | 預估勝率=[FILL: X]% | Edge=[FILL: X]%
-- Edge 評級：[FILL: 💎核心高價值 / ✅有價值 / ➖邊緣 / ❌不推薦]
-
-**📊 數據卡：**
-- L10 逐場：[FILL: 10 個數字嘅完整數組，由最新到最舊，例如 [28, 25, 31, 18, 22, 30, 27, 24, 29, 26]]
-- 未達標場次剖析：[FILL: 分析每一場未過線嘅原因 — 對手強弱？上場時間異常？犯規麻煩？]
-- L10 均值：[FILL] | 中位數：[FILL] | SD：[FILL] | CoV：[FILL] → 分級：[FILL: 🛡️極度穩定/✅穩定/➖一般/🎲神經刀]
-- Weighted AVG：[FILL] | 趨勢：[FILL: ↑近期上升 / ↓近期下滑 / — 穩定]
-
-**📊 進階數據：**
-- USG%：[FILL] | TS%：[FILL]
-- Pace-Adjusted Projection：[FILL: 調整後預期值]
-
-**🛡️ 防守對位：**
-- 對位防守者：[FILL: 名字] | D_FG%：[FILL] | PCT_PLUSMINUS：[FILL]
-- 壓制評估：[FILL: 對位影響描述]
-- 得分類型：[FILL: 切入型(≥40%禁區) / 投射型 / 混合型]
-
-**📍 場景分裂：**
-- 今日：[FILL: 主場/客場] | Home PPG：[FILL] | Road PPG：[FILL]
-- 休息日數：[FILL: X天] | Rest Split：[FILL: 對應場均]
-- H2H 歷史：[FILL: 近 2 季 vs 對手逐場數據 + H2H 均值 + H2H 命中率，或 N/A（附搜索記錄）]
-- H2H 趨勢：[FILL: 📈 H2H 加成(+1) / 📉 H2H 減持(-1) / 中性]
-
-**🧮 情境調整值：**
-- [FILL: 逐項列出所有適用嘅加減分，例如：對手防守弱 +1.5 / B2B -2.5 / CoV穩定 +1.0]
-- 總調整值：[FILL: +X.X / -X.X]
-- 調整後預期值：[FILL: AVG + 總調整值]
+### 🔥 組合 1B: 高水位正盤 (Mid Risk)
+> 1A 核心 Leg + 高賠率 (>2.0) +EV Leg
+> *(格式同上)*
 
 ---
 
-#### 🧩 Leg 2: [FILL: 球員] ([FILL: 球隊]) — [FILL: 指標] Over [FILL: 盤口]+
-
-| 🔢 數理引擎 | 🧠 邏輯引擎 |
-|:---|:---|
-| 賠率：~[FILL: X.XX] | 核心邏輯：[FILL: ≥3 句深度論述] |
-| 命中率：L10=[FILL]% L5=[FILL]% L3=[FILL]% | ⚠️ 最大不達標風險：[FILL] |
-| 信心分：[FILL: X]/10 | 💪 克服風險信心度：[FILL] |
-
-**+EV 篩選：**
-- 隱含勝率=[FILL]% | 預估勝率=[FILL]% | Edge=[FILL]%
-- Edge 評級：[FILL]
-
-**📊 數據卡：**
-- L10 逐場：[FILL: 完整 10 個數字數組]
-- 未達標場次剖析：[FILL]
-- L10 均值：[FILL] | 中位數：[FILL] | SD：[FILL] | CoV：[FILL] → 分級：[FILL]
-- Weighted AVG：[FILL] | 趨勢：[FILL]
-
-**📊 進階數據：**
-- USG%：[FILL] | TS%：[FILL]
-- Pace-Adjusted Projection：[FILL]
-
-**🛡️ 防守對位：**
-- 對位防守者：[FILL] | D_FG%：[FILL] | PCT_PLUSMINUS：[FILL]
-- 壓制評估：[FILL]
-- 得分類型：[FILL]
-
-**📍 場景分裂：**
-- 今日：[FILL] | Home PPG：[FILL] | Road PPG：[FILL]
-- 休息日數：[FILL] | Rest Split：[FILL]
-- H2H 歷史：[FILL]
-- H2H 趨勢：[FILL]
-
-**🧮 情境調整值：**
-- [FILL: 逐項列出]
-- 總調整值：[FILL] | 調整後預期值：[FILL]
+### 🔥 組合 2: 均衡 +EV 價值膽
+> 跨隊 / 不同球員混搭 + Edge ≥5%
+> *(格式同上)*
 
 ---
 
-#### 📊 組合 1A 分析
-**各 Leg 賠率：**
-  - Leg 1 ([FILL: 球員名] [FILL: 指標] O[FILL: 盤口]): @[FILL: X.XX]
-  - Leg 2 ([FILL: 球員名] [FILL: 指標] O[FILL: 盤口]): @[FILL: X.XX]
-- 原始組合賠率：[FILL: X.XX] × [FILL: X.XX] = [FILL: X.XX]
-- SGM 折扣後賠率：[FILL: X.XX] × [FILL: 0.65] = **@[FILL: X.XX]**
-- 💵 $100 投注回報：**$[FILL: XXX]**
-- 組合命中率：[FILL: X% × X% = X%]
-- 組合信心分：[FILL: X]/10
-- +EV 評估：組合 Edge=[FILL]%
-- 建議注碼：[FILL: 💰 標準注 (2-3 units) / 💰 半注 (1-2 units) / 💰 試探注 (0.5-1 unit)]
-- ⚠️ 主要風險：[FILL]
+### 💎 組合 3: 高倍率進取型
+> 3 Legs 高倍率組合
+> *(格式同上，SGM 折扣 ×0.60)*
 
 ---
 
-### 組合 1B：🔥 高水位正盤膽（+EV 獲利路線，基於 1A 延伸）— 組合賠率：~@[FILL: X.XX]
-
-> 組合 1B 係組合 1A 嘅升級版：保留 1A 嘅核心穩膽 Leg，但將部分盤口提升到價值線，追求更高賠率同 +EV。
-
-#### 🧩 Leg 1: [FILL: 球員] ([FILL: 球隊]) — [FILL: 指標] Over [FILL: 盤口]+
-
-| 🔢 數理引擎 | 🧠 邏輯引擎 |
-|:---|:---|
-| 賠率：~[FILL] | 核心邏輯：[FILL: ≥3 句深度論述] |
-| 命中率：L10=[FILL]% L5=[FILL]% L3=[FILL]% | ⚠️ 最大不達標風險：[FILL] |
-| 信心分：[FILL]/10 | 💪 克服風險信心度：[FILL] |
-
-**+EV 篩選：**
-- 隱含勝率=[FILL]% | 預估勝率=[FILL]% | Edge=[FILL]%
-- Edge 評級：[FILL]
-
-**📊 數據卡：**
-- L10 逐場：[FILL: 完整 10 個數字數組]
-- 未達標場次剖析：[FILL]
-- L10 均值：[FILL] | 中位數：[FILL] | SD：[FILL] | CoV：[FILL] → 分級：[FILL]
-- Weighted AVG：[FILL] | 趨勢：[FILL]
-
-**📊 進階數據：** USG%：[FILL] | TS%：[FILL] | Pace-Adj：[FILL]
-
-**🛡️ 防守對位：** 對位：[FILL] | D_FG%：[FILL] | 得分類型：[FILL]
-
-**📍 場景分裂：** [FILL: 主/客] | H/R PPG：[FILL]/[FILL] | Rest：[FILL] | H2H：[FILL]
-
-**🧮 情境調整值：** [FILL: 逐項] | 總調整：[FILL] | 調整後預期：[FILL]
+### 💣 組合 X: Value Bomb (莊家低估) — *條件觸發*
+> 只有當 Python 偵測到 Edge ≥10%+ 嘅顯著低估時先會出現
+> *(格式同上)*
 
 ---
 
-#### 🧩 Leg 2: [FILL: 球員] ([FILL: 球隊]) — [FILL: 指標] Over [FILL: 盤口]+
-
-*(完整複製以上所有欄位，獨立填寫)*
-
-| 🔢 數理引擎 | 🧠 邏輯引擎 |
-|:---|:---|
-| 賠率：~[FILL] | 核心邏輯：[FILL] |
-| 命中率：L10=[FILL]% L5=[FILL]% L3=[FILL]% | ⚠️ 最大不達標風險：[FILL] |
-| 信心分：[FILL]/10 | 💪 克服風險信心度：[FILL] |
-
-**+EV 篩選：** 隱含=[FILL]% | 預估=[FILL]% | Edge=[FILL]%
-
-**📊 數據卡：** L10 逐場：[FILL] | 未達標：[FILL] | 均值/中位/SD/CoV：[FILL] | Weighted：[FILL]
-
-**📊 進階數據：** USG%：[FILL] | TS%：[FILL] | Pace-Adj：[FILL]
-
-**🛡️ 防守對位：** 對位：[FILL] | D_FG%：[FILL] | 得分類型：[FILL]
-
-**📍 場景分裂：** [FILL] | H2H：[FILL]
-
-**🧮 情境調整值：** [FILL] | 總調整：[FILL] | 調整後預期：[FILL]
+## 🧠 總結與賽前必做
+- 最強關: [FILL]
+- 最弱關: [FILL]
+- 賽前 60 分鐘必查: [FILL: 傷病 / 陣容 / 盤口變動]
 
 ---
 
-#### 📊 組合 1B 分析
-**各 Leg 賠率：**
-  - Leg 1 ([FILL: 球員名] [FILL: 指標] O[FILL: 盤口]): @[FILL: X.XX]
-  - Leg 2 ([FILL: 球員名] [FILL: 指標] O[FILL: 盤口]): @[FILL: X.XX]
-- 原始組合賠率：[FILL: X.XX] × [FILL: X.XX] = [FILL: X.XX]
-- SGM 折扣後賠率：[FILL: X.XX] × [FILL: 0.65] = **@[FILL: X.XX]**
-- 💵 $100 投注回報：**$[FILL: XXX]**
-- 組合命中率：[FILL: X% × X% = X%]
-- 組合信心分：[FILL: X]/10
-- +EV 評估：組合 Edge=[FILL]%
-- 建議注碼：[FILL: 💰 標準注 / 💰 半注 / 💰 試探注]
-- ⚠️ 主要風險：[FILL]
-- vs 1A 對比：[FILL: 賠率提升幅度 + 風險變化]
+## ✅ 盤口數據來源驗證
+> **Bet365 MCP Playwright** 即時提取
+> Bet365 線格式: "10+" = 10 分或以上 (≥10)
 
----
-
-### 組合 2：🔥 均衡 +EV 價值膽（主力正盤與對位弱點針對）— 組合賠率：~@[FILL: X.XX]
-
-#### 🧩 Leg 1: [FILL: 球員] ([FILL: 球隊]) — [FILL: 指標] Over [FILL: 盤口]+
-
-| 🔢 數理引擎 | 🧠 邏輯引擎 |
-|:---|:---|
-| 賠率：~[FILL] | 核心邏輯：[FILL: ≥3 句深度論述] |
-| 命中率：L10=[FILL]% L5=[FILL]% L3=[FILL]% | ⚠️ 最大不達標風險：[FILL] |
-| 信心分：[FILL]/10 | 💪 克服風險信心度：[FILL] |
-
-**+EV 篩選：** 隱含=[FILL]% | 預估=[FILL]% | Edge=[FILL]%
-
-**📊 數據卡：**
-- L10 逐場：[FILL: 完整 10 個數字數組]
-- 未達標場次剖析：[FILL]
-- L10 均值：[FILL] | 中位數：[FILL] | SD：[FILL] | CoV：[FILL] → 分級：[FILL]
-- Weighted AVG：[FILL] | 趨勢：[FILL]
-
-**📊 進階數據：** USG%：[FILL] | TS%：[FILL] | Pace-Adj：[FILL]
-
-**🛡️ 防守對位：** 對位：[FILL] | D_FG%：[FILL] | 壓制評估：[FILL] | 得分類型：[FILL]
-
-**📍 場景分裂：** [FILL: 主/客] | H/R PPG：[FILL]/[FILL] | Rest：[FILL] | H2H：[FILL] | H2H 趨勢：[FILL]
-
-**🧮 情境調整值：** [FILL: 逐項] | 總調整：[FILL] | 調整後預期：[FILL]
-
----
-
-#### 🧩 Leg 2: [FILL: 球員] ([FILL: 球隊]) — [FILL: 指標] Over [FILL: 盤口]+
-
-*(完整複製以上所有欄位)*
-
-| 🔢 數理引擎 | 🧠 邏輯引擎 |
-|:---|:---|
-| 賠率：~[FILL] | 核心邏輯：[FILL] |
-| 命中率：L10=[FILL]% L5=[FILL]% L3=[FILL]% | ⚠️ 最大不達標風險：[FILL] |
-| 信心分：[FILL]/10 | 💪 克服風險信心度：[FILL] |
-
-**+EV 篩選：** 隱含=[FILL]% | 預估=[FILL]% | Edge=[FILL]%
-
-**📊 數據卡：** L10 逐場：[FILL] | 未達標：[FILL] | 均值/中位/SD/CoV：[FILL] | Weighted：[FILL]
-
-**📊 進階數據：** USG%：[FILL] | TS%：[FILL] | Pace-Adj：[FILL]
-
-**🛡️ 防守對位：** 對位：[FILL] | D_FG%：[FILL] | 得分類型：[FILL]
-
-**📍 場景分裂：** [FILL] | H2H：[FILL]
-
-**🧮 情境調整值：** [FILL] | 總調整：[FILL] | 調整後預期：[FILL]
-
----
-
-#### 📊 組合 2 分析
-**各 Leg 賠率：**
-  - Leg 1 ([FILL: 球員名] [FILL: 指標] O[FILL: 盤口]): @[FILL: X.XX]
-  - Leg 2 ([FILL: 球員名] [FILL: 指標] O[FILL: 盤口]): @[FILL: X.XX]
-- 原始組合賠率：[FILL: X.XX] × [FILL: X.XX] = [FILL: X.XX]
-- SGM 折扣後賠率：[FILL: X.XX] × [FILL: 0.65] = **@[FILL: X.XX]**
-- 💵 $100 投注回報：**$[FILL: XXX]**
-- 組合命中率：[FILL: X% × X% = X%]
-- 組合信心分：[FILL: X]/10
-- +EV 評估：組合 Edge=[FILL]%
-- 建議注碼：[FILL: 💰 標準注 / 💰 半注 / 💰 試探注]
-- ⚠️ 主要風險：[FILL]
-
----
-
-### 組合 3：💎 價值型小博大（高倍率進取型）— 組合賠率：~@[FILL: X.XX]
-
-> [!WARNING]
-> 🚨 **組合 3 係 LLM 最容易偷懶嘅部分。** 必須為組合 3 提供同等深度嘅完整分析。
-> 此組合嘅每支 Leg 嘅所有欄位都必須 100% 填寫，嚴禁壓縮或省略。
-
-#### 🧩 Leg 1: [FILL: 球員] ([FILL: 球隊]) — [FILL: 指標] Over [FILL: 盤口]+
-
-| 🔢 數理引擎 | 🧠 邏輯引擎 |
-|:---|:---|
-| 賠率：~[FILL] | 核心邏輯：[FILL: ≥3 句深度論述] |
-| 命中率：L10=[FILL]% L5=[FILL]% L3=[FILL]% | ⚠️ 最大不達標風險：[FILL] |
-| 信心分：[FILL]/10 | 💪 克服風險信心度：[FILL] |
-
-**+EV 篩選：** 隱含=[FILL]% | 預估=[FILL]% | Edge=[FILL]%
-
-**📊 數據卡：**
-- L10 逐場：[FILL: 完整 10 個數字數組]
-- 未達標場次剖析：[FILL]
-- L10 均值：[FILL] | 中位數：[FILL] | SD：[FILL] | CoV：[FILL] → 分級：[FILL]
-- Weighted AVG：[FILL] | 趨勢：[FILL]
-
-**📊 進階數據：** USG%：[FILL] | TS%：[FILL] | Pace-Adj：[FILL]
-
-**🛡️ 防守對位：** 對位：[FILL] | D_FG%：[FILL] | 壓制評估：[FILL] | 得分類型：[FILL]
-
-**📍 場景分裂：** [FILL: 主/客] | H/R PPG：[FILL]/[FILL] | Rest：[FILL] | H2H：[FILL] | H2H 趨勢：[FILL]
-
-**🧮 情境調整值：** [FILL: 逐項] | 總調整：[FILL] | 調整後預期：[FILL]
-
----
-
-#### 🧩 Leg 2: [FILL: 球員] ([FILL: 球隊]) — [FILL: 指標] Over [FILL: 盤口]+
-
-*(完整複製以上所有欄位)*
-
-| 🔢 數理引擎 | 🧠 邏輯引擎 |
-|:---|:---|
-| 賠率：~[FILL] | 核心邏輯：[FILL] |
-| 命中率：L10=[FILL]% L5=[FILL]% L3=[FILL]% | ⚠️ 最大不達標風險：[FILL] |
-| 信心分：[FILL]/10 | 💪 克服風險信心度：[FILL] |
-
-**+EV 篩選：** 隱含=[FILL]% | 預估=[FILL]% | Edge=[FILL]%
-
-**📊 數據卡：** L10 逐場：[FILL] | 未達標：[FILL] | 均值/中位/SD/CoV：[FILL] | Weighted：[FILL]
-
-**📊 進階數據：** USG%：[FILL] | TS%：[FILL] | Pace-Adj：[FILL]
-
-**🛡️ 防守對位：** 對位：[FILL] | D_FG%：[FILL] | 得分類型：[FILL]
-
-**📍 場景分裂：** [FILL] | H2H：[FILL]
-
-**🧮 情境調整值：** [FILL] | 總調整：[FILL] | 調整後預期：[FILL]
-
----
-
-#### 🧩 Leg 3: [FILL: 球員] ([FILL: 球隊]) — [FILL: 指標] Over [FILL: 盤口]+
-
-*(組合 3 可能有 3 支或以上 Legs — 每支 Leg 都必須完整填寫以上所有欄位)*
-
-| 🔢 數理引擎 | 🧠 邏輯引擎 |
-|:---|:---|
-| 賠率：~[FILL] | 核心邏輯：[FILL] |
-| 命中率：L10=[FILL]% L5=[FILL]% L3=[FILL]% | ⚠️ 最大不達標風險：[FILL] |
-| 信心分：[FILL]/10 | 💪 克服風險信心度：[FILL] |
-
-**+EV 篩選：** 隱含=[FILL]% | 預估=[FILL]% | Edge=[FILL]%
-
-**📊 數據卡：** L10 逐場：[FILL] | 未達標：[FILL] | 均值/中位/SD/CoV：[FILL] | Weighted：[FILL]
-
-**📊 進階數據：** USG%：[FILL] | TS%：[FILL] | Pace-Adj：[FILL]
-
-**🛡️ 防守對位：** 對位：[FILL] | D_FG%：[FILL] | 得分類型：[FILL]
-
-**📍 場景分裂：** [FILL] | H2H：[FILL]
-
-**🧮 情境調整值：** [FILL] | 總調整：[FILL] | 調整後預期：[FILL]
-
----
-
-#### 📊 組合 3 分析
-**各 Leg 賠率：**
-  - Leg 1 ([FILL: 球員名] [FILL: 指標] O[FILL: 盤口]): @[FILL: X.XX]
-  - Leg 2 ([FILL: 球員名] [FILL: 指標] O[FILL: 盤口]): @[FILL: X.XX]
-  - Leg 3 ([FILL: 球員名] [FILL: 指標] O[FILL: 盤口]): @[FILL: X.XX]
-- 原始組合賠率：[FILL: X.XX] × [FILL: X.XX] × [FILL: X.XX] = [FILL: X.XX]
-- SGM 折扣後賠率：[FILL: X.XX] × [FILL: 0.60] = **@[FILL: X.XX]**
-- 💵 $100 投注回報：**$[FILL: XXX]**
-- 組合命中率：[FILL: X% × X% × X% = X%]
-- 組合信心分：[FILL: X]/10
-- +EV 評估：組合 Edge=[FILL]%
-- 建議注碼：[FILL: 💰 標準注 / 💰 半注 / 💰 試探注]
-- ⚠️ 主要風險：[FILL]
-
----
-
-### 🧠 總結與賽前必做
-- 最強關：Leg [FILL: X]（[FILL: 球員名]） — 理由：[FILL]
-- 最弱關：Leg [FILL: X]（[FILL: 球員名]） — 理由：[FILL]
-- 賽前 60 分鐘必查：[FILL: 需確認嘅傷病/陣容/盤口變動]
-
----
-
-## 📋 批次完成自檢（每場結束時必須輸出）
-
-✅ 單場完成：4 組組合 (1A/1B/2/3) | 每支 Leg 含 數理引擎+邏輯引擎+EV篩選+數據卡+進階數據+防守對位+場景分裂+情境調整 全 8 大區塊 | [FILL] 殘留數 = 0 ✔️
+## 📋 批次完成自檢
+✅ Python 預填完成 | 組合數: [1A/1B/2/3/X] | [FILL] 殘留數 = 0 ✔️

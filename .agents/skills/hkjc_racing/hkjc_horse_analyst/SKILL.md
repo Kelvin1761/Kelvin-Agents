@@ -25,7 +25,7 @@ ag_kit_skills:
 
 - **真實數據分析**:每匹馬必須引用 ≥3 個來自 Form Guide 嘅獨特數據點,嚴禁捏造或複製。
 - **批次**:每批按 Wong Choi 傳入嘅 BATCH_SIZE 分批（預設 3，環境掃描 fallback 為 2），按馬號順序,全自動推進,嚴禁批次間詢問用戶。嚴禁將批次改為 4-6 匹以避免品質下降。
-- **完整性**:全部 11 個必填欄位(見 `08_output_templates.md`),D 級馬最少 300 字。
+- **完整性**:全部 11 個必填欄位(見 `08_templates_core.md`),D 級馬最少 300 字。
 - **防幻覺**:無數據則填 `N/A (數據不足)`,嚴禁猜測。
 - **防無限 Loop**:Web Search 連續失敗 3 次即停止,標記 `N/A`。
 
@@ -49,13 +49,14 @@ ag_kit_skills:
 - `resources/07a_signals_framework.md` + `07b_trainer_signals.md` + `07c_jockey_profiles.md` — 練馬師與騎師出擊訊號矩陣
 
 **Tier 3: 按需載入(觸發時才讀,用完可釋放):**
-- `resources/08_output_templates.md` — **寫 Verdict ([BATCH: LAST]) 前必須重讀**
+- `resources/08_templates_core.md` — 每批 batch JIT reload
+- `resources/08_templates_rules.md` — **寫 Verdict ([BATCH: LAST]) 前必須重讀**
 - `resources/09_verification.md` — 自檢前讀取
 
 **嚴禁在每匹馬或每批次重新讀取資源文件。** 只有在「會話中斷後重啟」或「切換至新場次」時才需重新讀取。
 
 > [!IMPORTANT]
-> **Verdict 前重讀 Template**:寫 `[第三部分]` Top 4 Verdict 前,**必須 `view_file` 重讀 `08_output_templates.md` 中 [第三部分] 段落**。呢個係防止模板漂移嘅關鍵步驟。
+> **Verdict 前重讀 Template**:寫 `[第三部分]` Top 4 Verdict 前,**必須 `view_file` 重讀 `08_templates_rules.md`**。呢個係防止模板漂移嘅關鍵步驟。（注意：Python `compute_rating_matrix_hkjc.py` 嘅 `generate_verdict()` 已預填 Part 3+4 骨架，但規則以 `08_templates_rules.md` 為準。）
 
 ## 3. 外部數據搜索
 按照 `resources/02_data_retrieval.md` 執行所有外部數據搜索。
@@ -115,7 +116,7 @@ ag_kit_skills:
 3. ✅ Step 4-9 寬恕結論有冇回傳 Step 1 狀態週期?
 4. ✅ Step 14 評級聚合有冇正確引用所有前序維度?
 任何一項 ❌ = 該馬分析無效,強制重做。
-7. **全場最終決策**:全場完畢後,按 `08_output_templates.md` 生成 `<第三部分>` + `<第四部分>`,Top 4 按評級排序。
+7. **全場最終決策**:全場完畢後,按 `08_templates_rules.md` 生成 `<第三部分>` + `<第四部分>`,Top 4 按評級排序。（可配合 Python `compute_rating_matrix_hkjc.py` 預填骨架）
 
 **CRITICAL EXCEL EXTRACTION FORMAT**:
 在輸出最尾端,額外輸出 CSV 數據塊(Top 4 精選),放在 `csv` 代碼區塊內:

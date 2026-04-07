@@ -1,48 +1,53 @@
 📋 NBA Meeting Intelligence Package (Claw Code V3)
-- 數據更新時間: 2026-04-03 17:46:15
+- 數據更新時間: 2026-04-07 14:50:41
 
 🏀 今日賽程：
-### Indiana Pacers at Charlotte Hornets (IND_CHA)
-- 開賽時間: 2026-04-03T23:00Z
-- IND DEF: 第27 | PACE: 101.73
-- CHA DEF: 第12 | PACE: 97.75
+### Chicago Bulls at Washington Wizards (CHI_WSH)
+- 開賽時間: 2026-04-07T23:00Z
+- CHI DEF: 第23 | PACE: 102.94
+- WSH DEF: 第? | PACE: ?
 
-### Minnesota Timberwolves at Philadelphia 76ers (MIN_PHI)
-- 開賽時間: 2026-04-03T23:00Z
-- MIN DEF: 第5 | PACE: 101.47
-- PHI DEF: 第18 | PACE: 100.39
+### Minnesota Timberwolves at Indiana Pacers (MIN_IND)
+- 開賽時間: 2026-04-07T23:00Z
+- MIN DEF: 第5 | PACE: 101.43
+- IND DEF: 第27 | PACE: 101.66
 
-### Atlanta Hawks at Brooklyn Nets (ATL_BKN)
-- 開賽時間: 2026-04-03T23:30Z
-- ATL DEF: 第9 | PACE: 102.51
-- BKN DEF: 第26 | PACE: 97.46
+### Milwaukee Bucks at Brooklyn Nets (MIL_BKN)
+- 開賽時間: 2026-04-07T23:30Z
+- MIL DEF: 第26 | PACE: 98.42
+- BKN DEF: 第25 | PACE: 97.57
 
-### Chicago Bulls at New York Knicks (CHI_NY)
-- 開賽時間: 2026-04-03T23:30Z
-- CHI DEF: 第23 | PACE: 102.98
-- NY DEF: 第? | PACE: ?
+### Miami Heat at Toronto Raptors (MIA_TOR)
+- 開賽時間: 2026-04-07T23:30Z
+- MIA DEF: 第11 | PACE: 104.4
+- TOR DEF: 第7 | PACE: 99.32
 
-### Utah Jazz at Houston Rockets (UTAH_HOU)
-- 開賽時間: 2026-04-04T00:00Z
-- UTAH DEF: 第? | PACE: ?
-- HOU DEF: 第6 | PACE: 96.77
-
-### Toronto Raptors at Memphis Grizzlies (TOR_MEM)
-- 開賽時間: 2026-04-04T00:00Z
-- TOR DEF: 第8 | PACE: 99.3
-- MEM DEF: 第22 | PACE: 101.42
-
-### Boston Celtics at Milwaukee Bucks (BOS_MIL)
-- 開賽時間: 2026-04-04T00:00Z
+### Charlotte Hornets at Boston Celtics (CHA_BOS)
+- 開賽時間: 2026-04-08T00:00Z
+- CHA DEF: 第12 | PACE: 97.76
 - BOS DEF: 第4 | PACE: 95.49
-- MIL DEF: 第25 | PACE: 98.45
 
-### Orlando Magic at Dallas Mavericks (ORL_DAL)
-- 開賽時間: 2026-04-04T00:30Z
-- ORL DEF: 第16 | PACE: 100.2
-- DAL DEF: 第17 | PACE: 102.52
-
-### New Orleans Pelicans at Sacramento Kings (NO_SAC)
-- 開賽時間: 2026-04-04T02:00Z
+### Utah Jazz at New Orleans Pelicans (UTAH_NO)
+- 開賽時間: 2026-04-08T00:00Z
+- UTAH DEF: 第? | PACE: ?
 - NO DEF: 第? | PACE: ?
-- SAC DEF: 第28 | PACE: 100.17
+
+### Sacramento Kings at Golden State Warriors (SAC_GS)
+- 開賽時間: 2026-04-08T02:00Z
+- SAC DEF: 第28 | PACE: 100.18
+- GS DEF: 第? | PACE: ?
+
+### Oklahoma City Thunder at Los Angeles Lakers (OKC_LAL)
+- 開賽時間: 2026-04-08T02:30Z
+- OKC DEF: 第1 | PACE: 100.44
+- LAL DEF: 第20 | PACE: 99.38
+
+### Dallas Mavericks at LA Clippers (DAL_LAC)
+- 開賽時間: 2026-04-08T02:30Z
+- DAL DEF: 第18 | PACE: 102.61
+- LAC DEF: 第19 | PACE: 97.22
+
+### Houston Rockets at Phoenix Suns (HOU_PHX)
+- 開賽時間: 2026-04-08T03:00Z
+- HOU DEF: 第6 | PACE: 96.8
+- PHX DEF: 第10 | PACE: 98.3

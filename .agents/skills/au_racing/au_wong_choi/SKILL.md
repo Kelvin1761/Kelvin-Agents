@@ -103,7 +103,8 @@ ag_kit_skills:
 讀取 4 個必讀文件,確認每個都成功載入:
 1. `au_wong_choi/SKILL.md`(確認 P28 存在)
 2. `au_horse_analyst/resources/01_system_context.md`
-3. `au_horse_analyst/resources/06_output_templates.md`
+3. `au_horse_analyst/resources/06_templates_core.md`（結構骨架）
+4. `au_horse_analyst/resources/06_templates_rules.md`（Verdict 觸發規則）
 4. 場地模組(按場地選 1 個)
 
 **Step E3 — BATCH_SIZE Decision:**
@@ -200,9 +201,9 @@ AU Race Extractor 建立嘅資料夾格式為 `[YYYY-MM-DD] [Venue Name] Race [S
 1. 列出已完成嘅場次(例如 Race 1-5 已有 Analysis.md)
 2. 讀取 `_session_state.md`(如存在)恢復品質基線同進度狀態
 3. **🚨 強制重讀 Output Templates(P26 — Session Recovery Resource Reload):**
-   - 無論係恢復邊一場,**必須**重讀 `au_horse_analyst/resources/06_output_templates.md`
+   - 無論係恢復邊一場,**必須**重讀 `au_horse_analyst/resources/06_templates_core.md`
    - 此步驟防止 LLM 喺新 session 中因記憶漂移而違反格式規範(歷史教訓:HKJC 2026-03-27 Session Recovery 時跳過 template 讀取,導致格式違規)
-   - 若正在恢復某場賽事嘅中途批次,亦需重讀 `06_output_templates.md` 確認最後一批嘅 Part 3/4 結構
+   - 若正在恢復某場賽事嘅中途批次,亦需重讀 `06_templates_core.md` 確認最後一批嘅 Part 3/4 結構
 4. 通知用戶:「偵測到已完成 Race X-Y 嘅分析,是否從 Race Z 繼續?」
 5. 若用戶確認,直接跳到未完成嘅場次,避免重複分析。
 6. 自動計算剩餘場次,通知用戶:「剩餘 X 場未分析。」
@@ -491,10 +492,17 @@ Wong Choi 調度嘅子 Agent 必須嚴格遵守各自嘅職責邊界:
 > ```
 > æ­¤å šæ³•ä»¤ LLM 在執行時有明確嘅 checklist é€ é …æ‰" ✅,減å°'è·³æ‰¹æˆ–å ˆä½µæ‰¹æ¬¡å˜…æ©Ÿæœƒã€'
 >
+> **Step A3 — Speed Map 初稿生成（Python 輔助）:**
+> 若 Racecard 檔案可用，執行 Speed Map 初稿生成器：
+> `
+> python .agents/scripts/au_speed_map_generator.py <Racecard.md> --distance <Distance>
+> `
+> 輸出包含 PACE_TYPE_SUGGESTION + LEADER_COUNT，LLM 必須 Review & Adjust（唔係盲信），可大幅減少 Speed Map 幻覺風險。
+>
 > **Step B — é€ æ‰¹åŸ·è¡Œä»¥ä¸‹å¾ªç'°ï¼ˆä¸ å ¯è·³é Žä»»ä½•æ­¥é©Ÿï¼‰ï¼š**
 > 
 > **[Per-Batch Skeletal JIT Injection] (強制防呆機制)**
-> 在每次執行獨立 tool call 寫入 Batch 的分析前,你**必須強制**使用 `view_file` 重新讀取(或在內部記憶中完整展開)`au_horse_analyst/resources/06_output_templates.md` 裡的 `<Horse_Microscope_Skeleton>` (第二部分)。
+> 在每次執行獨立 tool call 寫入 Batch 的分析前,你**必須強制**使用 `view_file` 重新讀取 `au_horse_analyst/resources/06_templates_core.md` 裡的 `<Horse_Microscope_Skeleton>` (第二部分)。
 > 嚴禁憑記憶默寫結構。你必須將該骨架原封不動地複製並向下填充,確保 10大欄位(段速法醫、EEM能量、賽績線、風險儀表板、評級矩陣等)一個不漏!
 > 
 > ```
@@ -542,12 +550,35 @@ Wong Choi 調度嘅子 Agent 必須嚴格遵守各自嘅職責邊界:
 > 必須標註:「原始 Top 3: [A, B, C] → 修訂後: [A, D, B]（C 被替換因為 [理由]）」
 > 
 > **[JIT Template Protocol]** 在所有馬匹分析 Batch 完成,並準備寫入「Verdict Batch / 第三部分」前,你必須強制作出一次 `view_file` tool call,重新讀取 `resources/session_start_checklist.md` 裡面的 `<Top4_Verdict_Skeleton>`。 在未重讀該模板前,嚴禁直接吐出任何 Top 4 結果。
+>
+> **[Python Verdict Skeleton 自動生成 — P38 新增]**
+> 若 LLM 已完成全場馬匹分析，可執行以下 Python 工具自動生成 Part 3+4+5 骨架：
+> ```
+> python .agents/skills/au_racing/au_wong_choi/scripts/compute_rating_matrix_au.py --input <dimensions.json> --output <verdict_skeleton.md>
+> ```
+> Python 會自動：預填 Top 4 馬號馬名、評級✅數、Emergency Brake 判斷、Exotic Box 觸發條件、Upset Potential 計算。
+> LLM 只需補充 `{{LLM_FILL}}` 標記嘅自由文字區（核心理據、風險、Speed Map 回顧等）。
+> **使用條件：** 需要先準備 `dimensions.json`（從分析中提取每匹馬嘅 8 維度評級）。若唔方便製備 JSON → 照舊用 JIT 手動骨架。
 
 >
 > **⛔ COMPLETION_GATE(強制 — 回覆用戶前必須通過 — P31):**
 > 喺 batch 循環結束後、通知用戶之前,你必須強制執行以下 Python 驗證:
 > 🚨 **你完成分析後，必須強制自己 run `python3 .agents/scripts/completion_gate_v2.py <你正在分析的檔案路徑> --domain au` 進行檢驗。不過關不准完成任務！**
 > 如果檢驗失敗 (出現 `❌ [FAILED]`)，你已違規 → 立即根據報告內容，自行修正錯誤的段落 (例如補回標籤、擴充字數或補回漏寫章節) 並重新執行 validator 直到 `✅ [PASSED]` 為止！
+>
+> **🔢 COMPLETION_GATE 通過後 — 強制數學驗證 (學自 HKJC — Priority 0):**
+> COMPLETION_GATE 通過後，**必須**再執行以下 Python 驗證：
+> ```
+> python .agents/skills/au_racing/au_wong_choi/scripts/verify_math.py "<分析檔案路徑>" --fix
+> ```
+> 此工具自動修正：
+> - Base grade 同 matrix 查表結果唔一致
+> - Final grade 漂移超過 1 級
+> - 矩陣算術 ✅/❌ 計數錯誤
+> - CSV grade 同正文 grade 唔同步
+> - `[FILL]` / `{{LLM_FILL}}` 殘留偵測（代表 LLM 跳過咗填充）
+>
+> ⚠️ 若 `--fix` 修正咗任何內容 → 自動 re-verify。若仍有 FILL 殘留 → 停低通知用戶。
 >
 > **⛔ 硬性攔截器:** 若你發現自己正在一個 tool call 中寫入超過 BATCH_SIZE 匹馬 → **立即停止生成**,刪除多餘內容,拆分為獨立 tool calls。
 > **⛔ 反模式偵測:** 若你嘅 tool call 中同時出現 `Batch 1` 和 `Batch 2` 嘅馬匹 → 你已違反此規則 → 立即停止。
@@ -558,7 +589,7 @@ Wong Choi 調度嘅子 Agent 必須嚴格遵守各自嘅職責邊界:
 >
 > **強制規定:**
 >
-> 1. **寫入 VERDICT BATCH 之前,必須 `view_file` 讀取 `06_output_templates.md` L132-288。** 冇讀 = 禁止寫入 VERDICT。
+> 1. **寫入 VERDICT BATCH 之前,必須 `view_file` 讀取 `06_templates_core.md`（Part 3 格式）同 `06_templates_rules.md`（觸發規則）。** 冇讀 = 禁止寫入 VERDICT。
 > 2. **VERDICT BATCH 結構自檢清單(寫入後逐項驗證,缺一 = 重做):**
 >    - [ ] `## [第三部分] 🏆 全場最終決策` — 正確標題
 >    - [ ] Speed Map 回顧
@@ -615,9 +646,42 @@ Wong Choi 調度嘅子 Agent 必須嚴格遵守各自嘅職責邊界:
 > **歷史教訓:** 雖然已有 P33 同 P34 規定 JIT 讀取，但喺長時間連續運作 (長達 Race 8) 時，LLM 仍然會因為 Context Window 衰退而偷懶跳過讀取，憑模糊記憶生成結構不全、字數極度不足的 Bullet points。
 >
 > **強制對策 (三連擊):**
-> 1. **JIT 零容忍宣讀 (Zero-Tolerance Template Refresh):** 每次準備生成 Batch 寫檔腳本之前，**無論自認記憶多麼清晰，都必須強制 view_file 讀取 06_output_templates.md 的 Horse_Microscope_Skeleton。** 無宣讀 = 違規。
+> 1. **JIT 零容忍宣讀 (Zero-Tolerance Template Refresh):** 每次準備生成 Batch 寫檔腳本之前，**無論自認記憶多麼清晰，都必須強制 view_file 讀取 `06_templates_core.md` 的 Horse_Microscope_Skeleton。** 無宣讀 = 違規。
 > 2. **強制落實「預建骨幹法」 (Skeleton Copy-Paste Enforcement):** 生成 Python Markdown 變量時，**不准逐行寫**。必須先由 Template 完美 Copy 出整個馬匹的骨幹（全套 11 個 Emoji 標題），死板地貼齊後，才開始將分析內容填入相應位置，保證結構 100% 不丟失。
 > 3. **落實 Session 切割 (Hard Session Splits for Context Relief):** 到達 Race 4 結束必須強制截斷並輸出交接指令 (Handoff Prompt)，嚴格執行「換 Chat 重新連線」，避免記憶體超載而出現妥協式偷懶。
+
+> [!CAUTION]
+> **🧠 P38 — CONTEXT WINDOW 4 層管理協議（學自 HKJC — Priority 0）**
+>
+> **歷史教訓:** AU 引擎分析到 Race 4+ 時品質衰退明顯（段速簡化、核心邏輯變短、矩陣壓縮）。根因：Context Window 壓力無明確管理策略，前幾場分析嘅 token 開銷佔據可用空間。
+>
+> **4 層防禦機制:**
+>
+> **Layer 1 — 禁止回讀（Per-Race Context Isolation）:**
+> 每場分析完成後，嚴禁回讀前場嘅分析內容（除非做跨場對手分析）。
+> - ⛔ 嚴禁「參考 Race 1 嘅格式去寫 Race 4」
+> - ⛔ 嚴禁 `view_file` 讀取已完成場次嘅 Analysis.md
+> - ✅ 只允許讀取 `_session_state.md` 恢復品質基線數字
+>
+> **Layer 2 — 資源懶加載（Race 2+ Lazy Reload）:**
+> Race 2+ 開始前，只需重讀以下 3 個核心資源（唔好重讀所有 Tier 1）：
+> 1. `06_templates_core.md`（骨架 JIT reload）
+> 2. 當場 Racecard + Formguide
+> 3. `_Meeting_Intelligence_Package.md`（若場地有變化）
+> 其餘 Tier 1 資源（01_system_context, 02a-02d 等）應已在記憶中保留。
+>
+> **Layer 3 — 動態 Batch Size 降級:**
+> 若偵測到以下蒸發訊號 → 自動將 BATCH_SIZE 從 3 降至 2：
+> - 當前場次為 Race 4+（Session 內第 4 場或以上）
+> - 連續 2 批 QG-CHECK 需要打回重寫
+> - 任何 batch 出現截斷或結構不完整
+>
+> **Layer 4 — 蒸發標記偵測:**
+> 每個 Batch 完成後，在內部思考中快速自檢：
+> - 📏 當前批次平均字數 vs Batch 1 平均字數 → 若 < 70% → 蒸發警報
+> - 📊 矩陣理據是否變成「一般」「正常」等空泛詞 → 若 ≥2 個維度為空泛 → 蒸發警報
+> - 🧭 陣型預判是否被省略 → 若缺失 → 蒸發警報
+> 任何蒸發警報 → 標記 `⚠️ CONTEXT_EVAPORATION_DETECTED` → 降級 BATCH_SIZE + 強制 JIT reload
 
 > [!CAUTION]
 > **⛔ P37 — FORMGUIDE FACT VERIFICATION PROTOCOL（學自 2026-04-06 Rosehill — Priority 0）**
@@ -707,7 +771,8 @@ Meeting Intelligence: _Meeting_Intelligence_Package.md
 你必須先用 view_file 逐一讀取以下文件,讀完後回覆 checklist 確認。未完成不准開始分析:
 1. au_wong_choi/SKILL.md（完整讀取 — 確認 P19v6 寫入協議）
 2. au_wong_choi/resources/horse_analysis_skeleton.md（確認雙軌閘門規則）
-3. au_horse_analyst/resources/06_output_templates.md（確認 Part 1 戰場全景 + Verdict 格式）
+3. au_horse_analyst/resources/06_templates_core.md（確認 Part 1 戰場全景 + 骨架格式）
+4. au_horse_analyst/resources/06_templates_rules.md（Verdict 觸發規則）
 4. 場地模組（按今場選 1 個）
 
 ⚠️ 強制執行規則:
@@ -771,7 +836,8 @@ Meeting Intelligence: _Meeting_Intelligence_Package.md
 你必須先用 view_file 逐一讀取以下文件,讀完後回覆 checklist 確認。未完成不准開始分析:
 1. au_wong_choi/SKILL.md
 2. au_wong_choi/resources/horse_analysis_skeleton.md
-3. au_horse_analyst/resources/06_output_templates.md
+3. au_horse_analyst/resources/06_templates_core.md
+4. au_horse_analyst/resources/06_templates_rules.md
 4. 場地模組
 
 ⚠️ 強制執行規則:
@@ -794,11 +860,11 @@ Meeting Intelligence: _Meeting_Intelligence_Package.md
 **第 1 層 — 禁止回讀:**
 1. **每完成一個 Batch 後不再回讀前面輸出。** 後續 Batch 只需 `view_file` 最後 5 行,**嚴禁**回讀前面 Batch。
 2. **完成一場後不再回讀前場輸出。** 嚴禁再次 `view_file` 該場嘅 Analysis.md。
-3. **嚴禁「參考前批/前場分析格式」。** 格式標準來自 SKILL.md 和 `06_output_templates.md`。
+3. **嚴禁「參考前批/前場分析格式」。** 格式標準來自 SKILL.md 和 `06_templates_core.md`。
 
 **第 2 層 — Resource 懶加載(Race 2+ 節省 ~25K tokens):**
 - **Race 1:** Analyst 正常讀取全部 resources
-- **Race 2+:** Wong Choi 指示 Analyst **只重讀** `01_system_context.md` + `06_output_templates.md` + 相關場地檔
+- **Race 2+:** Wong Choi 指示 Analyst **只重讀** `01_system_context.md` + `06_templates_core.md` + 相關場地檔
 
 **第 3 層 — 動態 Batch Size(P28 更新):** ENV_TOKEN_CAPACITY=HIGH: `BATCH_SIZE: 3`,LOW: `BATCH_SIZE: 2`
 
@@ -885,7 +951,7 @@ BATCH_SIZE 由 Pre-Flight Environment Scan 決定(標準=3 / fallback=2)。
 > **A. 批次結構規則:**
 > 1. **分批寫入強制性。** 按 BATCH_SIZE 分批,超出 = 違規。
 > 2. **每個 Batch = 獨立 file write (Safe-Writer Protocol (P19v6))。** 由於 IDE 工具存在系統性 deadlock，**完全禁止**使用 `write_to_file` / `replace_file_content` / `multi_replace_file_content`。必須使用 **heredoc → /tmp → base64 → safe_file_writer.py (WLTM)** 三步管道。B1 用 `--mode overwrite`，B2+ 用 `--mode append`。詳見底部 P19v6 完整說明。
-> 3. **VERDICT BATCH 獨立且必須極度嚴格遵循模板。** Part 3 + Part 4 + CSV 必須為獨立 tool call。**絕對不允許**使用簡化自創格式。必須包含 `06_output_templates.md` 規定之:`Speed Map 回顧`、`Top 4 位置精選 (強制包含 🥇第一選 清單結構及評級>✅數鐵律)`、`Top 2 入三甲信心度`、`🎰 Exotic 組合投注建議`、以及第四部分的 `分析陷阱`。任何遺漏視同嚴重違規!*(執行 Verdict 前必須在內心清單覆誦檢查這 5 大欄位)*。
+> 3. **VERDICT BATCH 獨立且必須極度嚴格遵循模板。** Part 3 + Part 4 + CSV 必須為獨立 tool call。**絕對不允許**使用簡化自創格式。必須包含 `06_templates_core.md` + `06_templates_rules.md` 規定之:`Speed Map 回顧`、`Top 4 位置精選 (強制包含 🥇第一選 清單結構及評級>✅數鐵律)`、`Top 2 入三甲信心度`、`🎰 Exotic 組合投注建議`、以及第四部分的 `分析陷阱`。任何遺漏視同嚴重違規!*(執行 Verdict 前必須在內心清單覆誦檢查這 5 大欄位)*。
 > 4. **截斷恢復:** 若被 output token limit 截斷 → BATCH_SIZE 降為 2,重做該 batch。
 >
 > 批次示例(BS=3):7匹 → B1(3)+B2(3)+B3(1)+VERDICT | (BS=2):7匹 → B1(2)+B2(2)+B3(2)+B4(1)+VERDICT
@@ -969,7 +1035,7 @@ END FOR
 **Python 驗證(強制):**
 ```bash
 python3 .agents/scripts/completion_gate_v2.py "[ANALYSIS_PATH]" --domain au
-python3 .agents/skills/au_racing/au_wong_choi/scripts/verify_math.py "[ANALYSIS_PATH]"
+python3 .agents/skills/au_racing/au_wong_choi/scripts/verify_math.py "[ANALYSIS_PATH]" --fix
 ```
 
 **合規硬性指標(任一不合格 = FAILED):**

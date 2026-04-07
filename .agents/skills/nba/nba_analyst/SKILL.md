@@ -1,7 +1,7 @@
 ---
 name: NBA Analyst
 description: This skill should be used when the user wants to "analyse NBA parlay", "NBA 過關分析", "NBA Analyst", or when NBA Wong Choi orchestrates player props volatility analysis and parlay combination building.
-version: 2.0.0
+version: 2.1.0
 ---
 
 # Role
@@ -28,6 +28,7 @@ version: 2.0.0
 按照 `resources/01_system_context.md` 嚴格遵守以下核心規則:
 - **反惰性協議 (No-Skip 輸出骨架鎖)**:強制預留並填充完整的 14 項數據卡及 CoV 模板,嚴格禁止出現「數據略」或省略語。逐球員計算、逐 Leg 完整分析。若傳入數據包無 L10 數據,必須退回並顯示 `[ERROR: 需返回 Extractor 獲取 14 項數據]`,拒絕自行猜測。
 - **純計算模式**:唯一輸入來源係 Extractor 數據包,嚴禁自行搜尋。
+- **Bet365 即時盤口優先協議**：若數據包包含 `Bet365_Odds_*.json`，必須使用其中嘅 `lines` 作為盤口分析基礎，取代自行估算。JSON 內嘅 `last5` 數據可直接用於 L5 命中率計算。
 - **新聞情境納入**:NEWS_DIGEST 必須被納入分析考量。
 - **防幻覺協議**:缺乏數據 → `N/A`,所有結論至少 2 個數據點支持。
 - **輸入數據快速驗證**:開始 CoV 計算前執行防呆檢查。
@@ -100,6 +101,13 @@ version: 2.0.0
 ## Step 3: 盤口雙線生成
 按照 `resources/02_volatility_engine.md` Step 3-4:
 - 穩膽線 + 價值線 + AMC 評估 + +EV 篩選 + Under 偵測
+
+**🎯 Bet365 即時盤口整合 (v2.2 — Bet365 ONLY)：**
+> **Bet365 係唯一盤口來源，嚴禁自行估算盤口。**
+> 1. **直接使用** `generate_nba_reports.py` 產生嘅 pre-filled skeleton
+> 2. Skeleton 入面所有 Bet365 盤口對照表已由 Python 預計算
+> 3. **禁止自行估算盤口** — Bet365 提供嘅就是實際可下注嘅盤口
+> 4. 若無 Bet365 JSON → 報告 `odds_not_found` → 暫停分析等待用戶解決
 
 ## Step 4: 安全檢查
 按照 `resources/03_safety_gate.md`:

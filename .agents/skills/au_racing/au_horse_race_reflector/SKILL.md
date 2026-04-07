@@ -90,6 +90,15 @@ python .agents/skills/au_racing/au_horse_race_reflector/scripts/extract_race_res
 
 **目的:** 確保 SIP 建議能精確引用「哪個 resource 檔案、哪個 Step、哪條規則」需要修改,而非模糊地說「調整 EEM」。
 
+> [!IMPORTANT]
+> **BAKED SIP 感知（2026-04-07 新增）:**
+> 大部分歷史 SIP（共 38 個）已於 2026-04-07 批量 BAKE 入核心 resource 檔案（02a-02g、04d 等）。
+> Reflector 在提議新 SIP 時必須：
+> 1. 先查閱 `au_horse_analyst/resources/00_sip_index.md` 確認該邏輯是否已存在（Status = 🟢 ACTIVE）
+> 2. 若問題源於現有 BAKED 規則嘅校准不足（如閾值太鬆/太緊），應提議「修改現有規則」而非建立新 SIP
+> 3. 只有確認引擎完全冇對應規則嘅情境，才應提議新 SIP
+> 4. **觀察項畢業路徑：** OBS → 累計 ≥3 案例（不同日期）→ 用戶審批 → 升級為 SIP 並 BAKE 入對應 resource 檔案
+
 
 ## [REF-DA01] 深度覆盤 + Protocol 自我審計 (5 角度)
 

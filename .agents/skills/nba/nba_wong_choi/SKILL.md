@@ -1,7 +1,7 @@
 ---
 name: NBA Wong Choi
 description: This skill should be used when the user wants to "analyse NBA", "NBA 過關分析", "NBA Wong Choi", "分析今晚 NBA", "幫我睇 NBA", or needs to orchestrate the full NBA player props parlay analysis pipeline from data extraction through to final parlay report generation.
-version: 2.1.0
+version: 2.2.0
 ag_kit_skills:
   - systematic-debugging   # 品質掃描 FAILED 時自動觸發
   - brainstorming           # Step 4.5 自檢總結時自動觸發
@@ -97,7 +97,7 @@ ag_kit_skills:
 
 **Step E4 — MCP Server Availability Check (P32 新增):**
 檢查以下 MCP Servers 是否已安裝並可用:
-1. **Playwright MCP** — `@playwright/mcp@latest` (網頁即時數據抓取後備)
+1. **Playwright MCP** — `@playwright/mcp@latest` (**Bet365 即時盤口提取 — 最高優先級**)
 2. **SQLite MCP** — `mcp-server-sqlite` (歷史數據庫查詢)
 3. **Memory MCP** — `@modelcontextprotocol/server-memory` (Knowledge Graph 記憶)
 
@@ -119,6 +119,7 @@ ag_kit_skills:
 然後重新啟動 Antigravity。
 ```
 Step 5.5 數據庫歸檔功能需要 MCP Servers 運作,但即使未安裝也不影響 Step 1-5 核心分析流程。
+**Playwright MCP 未安裝時**: Bet365 提取無法執行 → **必須安裝 Playwright MCP 先可以運行 NBA 分析**。嚴禁使用估算盤口。
 
 # Scope & Operating Instructions
 
@@ -226,8 +227,28 @@ MCP 不可用 → 跳過，標記 `Intelligence Confidence: 🟡 MEDIUM`。
 ### Sub-Step 2A: 呼叫 NBA Data Extractor（本場）
 指示 Extractor 只提取當前一場賽事嘅數據,等待輸出結構化數據包。
 
+**🎯 Bet365 盤口整合（Sub-Step 2A 強制附加 — Bet365 ONLY）：**
+> Extractor 會執行 `Step 1.5 Bet365 MCP Playwright 提取`（見 `nba_data_extractor/resources/04_bet365_extraction.md`）。
+> 若提取成功,Bet365 JSON 會被保存至 `{TARGET_DIR}/Bet365_Odds_{GAME_TAG}.json`。
+> **若提取失敗** → 報告 `odds_not_found` → 通知用戶協助解決，**不得繼續分析**。
+> 嚴禁使用估算盤口作為 fallback。
+
 ### Sub-Step 2B: 數據品質驗證(本場)
 按照 `resources/01_data_validation.md` 執行所有驗證。將本場數據追加至 `TARGET_DIR/NBA_Data_Package.txt`。
+
+### Sub-Step 2C: Python 預填骨架生成 (v2.2 新增)
+執行 `generate_nba_reports.py` 合併 Bet365 JSON + Extractor JSON，產生 pre-filled skeleton：
+```
+python3 scripts/generate_nba_reports.py \
+  --bet365 {TARGET_DIR}/Bet365_Odds_{GAME_TAG}.json \
+  --extractor /tmp/nba_game_data_{GAME_TAG}.json \
+  --output {TARGET_DIR}/Game_{GAME_TAG}_Skeleton.md
+```
+此 skeleton 包含：
+- 所有球員 × 所有 Bet365 盤口的 **完整數學預計算**（L10/CoV/命中率/EV）
+- Meeting Intelligence、傷病、新聞預填
+- 4 組 Combo 骨架（`[FILL]` 等待 Analyst 填寫邏輯判斷）
+**將此 skeleton 傳入 NBA Analyst 進行填寫。**
 
 ### Sub-Step 3A: 呼叫 NBA Analyst(本場)
 將本場數據包傳遞畀 Analyst:
