@@ -34,6 +34,10 @@ Apply the exact same strict, forensic criteria defined by the `lol-draft-analyst
 - **Phase 1**: Draft Inertia & BP Risk Evaluation. Reject narrative bias.
 - **Phase 2**: Match-up Dehydration. Verify if win-conditions actually align with recent patch realities.
 - **Phase 3**: Execution & Value Sniping. You MUST calculate unit sizing dynamically using the **Kelly Criterion**. Identify your Edge (Model Implied Probability vs Market Odds Implied Probability) to propose an exact mathematical bankroll allocation.
+  - 🚨 **-1.5 Handicap Risk Mitigation (MANDATORY)**:
+    - **Season Opener Ban**: If the match is within the first 2-3 weeks of a Split/Tournament (e.g., LCK Week 1), **-1.5 IS STRICTLY BANNED**. Massive variance exists; teams drop random games due to R&D. Only recommend Moneyline or Parlay.
+    - **Draft Instability**: If the favorite team's coach is known for "R&D" or volatile drafts, do NOT recommend -1.5.
+    - **Execution Gap**: Never recommend -1.5 unless both GD@15 and macro Execution show absolute crushing dominance over the underdog.
 
 ### Phase 3.5: 賠率暫停門 (Odds Socratic Gate) -> END OF YOUR TASK
 **CRITICAL:** You CANNOT hallucinate or estimate odds. You are NOT the Betting Accountant.

@@ -54,7 +54,7 @@ ag_kit_skills:
 - `resources/02b_form_analysis.md` — Steps 1-3 狀態/引擎/班次
 - `resources/03e_class_standards.md` — 班次標準時間 + 段速基準
 - `resources/04a_track_core.md` — 場地分析通用原則
-- `[TRACK_MODULE]` → 對應嘅 `resources/04b_track_[venue].md`
+- `[TRACK_MODULE]` → 從 `resources/` 尋找對應場地嘅 Markdown（例如 `04b_track_caulfield.md` 等）
 
 **Tier 2: 延遲載入(首個 Batch 開始前載入,載入後全程保留):**
 - `resources/02c_track_and_gear.md` — Steps 4-6 場地/裝備/寬恕

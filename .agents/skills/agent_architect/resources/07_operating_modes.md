@@ -1,3 +1,10 @@
+
+# 🛡️ 絕對防禦機制 (Anti-Hubris Protocol - P29)
+**CRITICAL RULE FOR ALL MODES:** Agent Architect 嚴禁依賴「記憶」或「直覺」進行任何修改。
+1. **強制工具掃描：** 進入 Mode B (優化) 或 Mode C (審計) 時，第一步 **必須** 執行 `run_command python3 .agents/scripts/agent_health_scanner.py --target [目標檔]`。若未見此結果，後方任何診斷均視為無效。
+2. **強制全面已讀 (Deep Reading Requirement)：** 當收到「優化」、「Review」等指令時，除了讀取主檔 `SKILL.md`，你 **必須** 使用 `list_dir` 遍歷對象的 `resources/` 目錄，然後逐一使用 `view_file` 讀取並分析裡面的核心文件。嚴禁「只睇表面改表面」。
+3. **全局交叉比對 (Global Cross-Reference)：** 修改前必須主動將目標 Agent 的內容與你大腦內的 `design_patterns.md` 及 `04_blueprint_integration_guide.md` 進行映射檢查。
+
 # Agent Architect Operating Modes
 
 # Operating Instructions

@@ -125,38 +125,47 @@ Agents that chain to downstream agents output structured CSV blocks:
 
 ---
 
-## Existing Agents
+## Existing Agents (Auto-Synced)
 
-| Agent | Role | Upstream | Downstream |
-|-------|------|----------|------------|
-| **Wong Choi** (HKJC/AU) | Meeting-level commander. Sets pace context, weather, track bias. Orchestrates per-race analysis. Writes intelligence package to file. | User input / race URL | Race Extractor → Horse Analyst → Batch QA → Compliance |
-| **Race Extractor** (HKJC/AU) | Raw data extraction from race cards and form guides. | URL / PDF | Horse Analyst |
-| **Horse Analyst** (HKJC/AU) | Deep per-horse analysis with algorithmic engine, forensic evaluation, EEM. Outputs Top 3-4 selections. | Extractor data + Wong Choi context + Intelligence Package | Batch QA → Compliance Agent |
-| **Native Validation Engine** | Zero-Cost python gating utility (`completion_gate_v2.py`) deployed across Wong Choi variants to strictly enforce templates. | Analyst report | Wong Choi |
-| **Batch QA** (HKJC/AU) | Per-batch quality gate. Structural scan, semantic scan, anti-laziness. Called after each batch. | Analyst batch output | Wong Choi (pass/fail) |
-| **Compliance Agent** (HKJC/AU) | Quality police. Cross-batch trend analysis, SIP verification, anti-laziness audit, self-improvement hub. Tiered remediation (CRITICAL→full redo, structural MINOR→batch redo). | Analyst report + SIP index + SIP changelog | Wong Choi (pass/fail verdict) |
-| **Reflector** (HKJC/AU) | Post-race review with narrative post-mortem. Distinguishes bad logic from bad luck. Maintains SIP changelog. Proposes design patterns. | Race results + Analyst predictions | Reflector Validator / User / Agent Architect |
-| **Reflector Validator** (HKJC/AU) | Blind re-analysis gatekeeper. Validates SIP updates via selective race-by-race testing with user checkpoints. | Race folder + SIP changelog | User (validation report) |
-| **Agent Architect** | Meta-agent. Designs, optimises, and audits agents (3 modes: Build/Optimise/Audit). Agent Health Check. | User requirements | New/updated SKILL.md |
-| **Racecourse Weather Prediction** (AU) | Weather and track condition forecasting. | Race date + venue | Wong Choi / Analyst |
-| **NBA Wong Choi** | NBA Parlay analysis commander. Orchestrates data extraction and parlay strategy analysis. Defaults to all games on specified date. | User input (date / specific games) | NBA Data Extractor → NBA Analyst → NBA Compliance → NBA Batch QA |
-| **NBA Data Extractor** | Real-time NBA data extraction: rosters, injuries, defensive profiles, player stats (L10), match context, and player/team news. Outputs structured data package. | NBA Wong Choi / User | NBA Analyst |
-| **NBA Analyst** | Quantitative parlay analysis: CoV volatility engine, contextual adjustments (incl. news), safety gate, 3-tier parlay builder (Banker/Value/High Odds). Bet365 compliant. | NBA Data Extractor data package | NBA Wong Choi / User |
-| **NBA Batch QA** | Per-batch structural QA gate. Format drift detection, anti-laziness scan, cross-game consistency check. | Analyst batch output | Wong Choi (pass/fail) |
-| **NBA Compliance** | Per-game compliance audit. Template adherence, [FILL] residual scan, math verification, Bet365 format check. Tiered remediation. | Analyst report | Wong Choi (pass/fail verdict) |
-| **NBA Reflector** | Post-game review. Compares NBA parlay predictions vs actual box scores, identifies systematic blind spots in volatility engine/safety gate/parlay engine, proposes SIPs. 6-angle REF-DA01 framework. | Game results (web search) + Analyst predictions | Reflector Validator / User / Agent Architect |
-| **NBA Reflector Validator** | Blind re-analysis gatekeeper. Validates analytic logic updates via selective game-by-game testing with user checkpoints. | Analysis folder + SIP changelog | User (validation report) |
-| **Agent Architect** | Meta-agent. Designs, optimises, and audits agents (3 modes: Build/Optimise/Audit). Health Check with Confidence Scoring. Cross-platform enforcement. | User requirements / Reflector proposals | New/updated SKILL.md + audit_history.md |
-| **Game Producer** | 賽馬遊戲開發的總指揮。負責專案的敏捷管理，跨職能協調，將高層次需求拆解為具體任務並推動執行。 | User (Game requirements) | Whole Game Dev Team |
-| **Lead Designer** | 遊戲架構師。負責遊戲核心機制、經濟循環與整體體驗設計。 | Game Producer | Content Designer / UX |
-| **Content Designer** | 遊戲內容設計師。專注於任務腳本、世界觀與遊戲劇情文字編寫。 | Lead Designer | Game Producer |
-| **Pixel Artist** | 遊戲美術開發 (Game Art)。主要產出復古像素風格視覺資產。 | Game Producer / Lead Designer | Game Producer |
-| **Sound Designer** | 遊戲音效設計師。負責 BGM 音樂與遊戲音效資產設計。 | Game Producer / Lead Designer | Game Producer |
-| **Frontend Engineer**| 遊戲前端開發。主要負責網頁畫面的 UI 構建與動畫呈現。 | Game Producer | Game QA |
-| **Backend Engineer** | 遊戲後端開發。負責伺服器架構、API 連接、資料庫等核心邏輯。 | Game Producer | Game QA |
-| **Mobile Engineer** | 跨平台手機遊戲開發。負責原生或混合 Mobile App 開發與體驗優化。 | Game Producer | Game QA |
-| **Game QA** | 遊戲品質保證工程師 (QA)。負責自動化測試 (Playwright)、邊界條件檢查並發掘潛在 Bug。 | Game Producer / Engineers | Game Producer |
-| **Game Ops** | 遊戲營運與客服專家。分析用戶反饋並制定營運策略。 | Game Producer / Analytics Data | Game Producer |
+| Agent | Role | Upstream / Note |
+|-------|------|-----------------|
+| **HKJC Horse Analyst** | This skill should be used when the user wants to "analyse HKJC horse", "HKJC ... | Auto-Detected |
+| **HKJC Batch QA** | This skill should be used when the user wants to "check HKJC batch quality", ... | Auto-Detected |
+| **HKJC Reflector** | This skill should be used when the user wants to "覆盤 HKJC", "review HKJC resu... | Auto-Detected |
+| **HKJC Compliance Agent** | This skill should be used when the user wants to "check HKJC analysis quality... | Auto-Detected |
+| **HKJC Race Extractor** | This skill should be used when the user wants to "extract HKJC race data", "H... | Auto-Detected |
+| **HKJC Reflector Validator** | This skill should be used when the user wants to "validate HKJC SIP changes",... | Auto-Detected |
+| **HKJC Wong Choi** | This skill should be used when the user wants to "analyse HKJC races", "run H... | Auto-Detected |
+| **NBA Reflector Validator** | This skill should be used when the user wants to "validate NBA analysis chang... | Auto-Detected |
+| **NBA Wong Choi** | This skill should be used when the user wants to "analyse NBA", "NBA 過關分析", "... | Auto-Detected |
+| **NBA Compliance Agent** | This skill should be used when the user wants to "check NBA analysis quality"... | Auto-Detected |
+| **NBA Batch QA** | This skill should be used when the user wants to "check NBA output quality", ... | Auto-Detected |
+| **NBA Analyst** | This skill should be used when the user wants to "analyse NBA parlay", "NBA 過... | Auto-Detected |
+| **NBA Reflector** | This skill should be used when the user wants to "覆盤 NBA", "review NBA result... | Auto-Detected |
+| **NBA Data Extractor** | This skill should be used when the user wants to "extract NBA data", "NBA 數據提... | Auto-Detected |
+| **lol_reflector** | This skill should be used when the user wants to "覆盤", "post match review", "... | Auto-Detected |
+| **betting_accountant** | The rigorous Risk Manager agent for Esports prediction. Applies Fractional Ke... | Auto-Detected |
+| **運維及文檔同步 (Game Ops & Doc Sync)** | 呢個 skill 用嚟「更新遊戲」「整返好個bug」「加新馬」「文檔同步」「game maintenance」「update game」「CHANGELO... | Auto-Detected |
+| **主遊戲策劃 (Lead Game Designer)** | 呢個 skill 用嚟「核心機制」「遊戲總攬」「GDD打磨」「主策劃」「game design review」「遊戲定義」「成就設計」「多人規則」。旺財街... | Auto-Detected |
+| **系統及數值策劃 (Systems & Balance Designer)** | 呢個 skill 用嚟「數值平衡」「賠率算法」「投注系統」「系統設計」「game balance」「經濟模型」「破產機制」「三疊四疊」「泥地賽」。旺財街機... | Auto-Detected |
+| **測試工程師 (QA Tester)** | 呢個 skill 用嚟「測試遊戲」「行測試」「QA檢查」「bug報告」「test game」「品質檢查」。旺財街機嘅品質守門員，兩層質檢制度。 | Auto-Detected |
+| **內容及情報策劃 (Story & Content Designer)** | 呢個 skill 用嚟「馬匹資料庫」「情報模板」「旺財晨報內容」「內容策劃」「horse database」「game content」「彩衣配色」「評述... | Auto-Detected |
+| **前端工程師 (Frontend Engineer)** | 呢個 skill 用嚟「整遊戲UI」「遊戲前端」「投注面板」「街機頁面」「frontend UI」「React組件」「即時排名」「評述UI」。旺財街機嘅 ... | Auto-Detected |
+| **像素美術師 (Pixel Artist)** | 呢個 skill 用嚟「像素美術」「遊戲素材」「馬匹精靈圖」「pixel art」「sprites」「UI素材」「彩衣圖標」。旺財街機嘅視覺資產創作者。 | Auto-Detected |
+| **移動平台工程師 (Mobile Platform Engineer)** | 呢個 skill 用嚟「iOS」「Android」「手機版」「移動端」「mobile app」「上架 App Store」「Capacitor」。旺財街機... | Auto-Detected |
+| **音效設計師 (Sound Designer)** | 呢個 skill 用嚟「遊戲音效」「音樂」「sound effects」「BGM」「街機音效」「馬蹄聲」。旺財街機嘅街機聲音靈魂。 | Auto-Detected |
+| **遊戲監製 (Game Producer)** | 呢個 skill 用嚟「策劃遊戲」「設計遊戲」「下一步做咩」「遊戲藍圖」「game roadmap」「開始做遊戲」。旺財街機項目嘅總指揮，負責任務路由、分... | Auto-Detected |
+| **遊戲引擎開發員 (Game Engine Developer)** | 呢個 skill 用嚟「遊戲引擎」「比賽引擎」「Canvas渲染」「馬匹物理」「game physics」「race simulation」「三疊四疊」「... | Auto-Detected |
+| **AU Compliance Agent** | This skill should be used when the user wants to "check AU analysis quality",... | Auto-Detected |
+| **AU Horse Race Reflector** | This skill should be used when the user wants to "覆盤 AU races", "review AU re... | Auto-Detected |
+| **AU Wong Choi** | This skill should be used when the user wants to "analyse AU races", "run AU ... | Auto-Detected |
+| **AU Race Extractor** | This skill should be used when the user wants to "extract AU race data", "AU ... | Auto-Detected |
+| **AU Batch QA** | This skill should be used when the user wants to "check AU batch quality", "A... | Auto-Detected |
+| **AU Horse Analyst** | This skill should be used when the user wants to "analyse AU horse", "澳洲馬匹分析"... | Auto-Detected |
+| **AU Racecourse Weather Prediction** | This skill should be used when the user wants to "predict AU track condition"... | Auto-Detected |
+| **AU Reflector Validator** | This skill should be used when the user wants to "validate AU SIP changes", "... | Auto-Detected |
+| **Lead Agent Architect** | This skill should be used when the user wants to "build a new agent", "design... | Auto-Detected |
+| **lol_wong_choi** | This skill should be used when the user wants to "分析[日期] [賽區]", "analyse espo... | Auto-Detected |
 
 ### Agent Chaining Flow — Horse Racing (HKJC/AU)
 ```
@@ -183,81 +192,3 @@ User → Wong Choi (meeting setup + intelligence gathering)
        Reflector Validator (selective blind re-analysis with user checkpoints)
 ```
 
-### Agent Chaining Flow — NBA Parlay
-```
-User → NBA Wong Choi (date + game selection)
-         ↓
-       NBA Data Extractor (web search: rosters, injuries, stats, news)
-         ↓
-       NBA Analyst (volatility → safety gate → 3-tier parlay builder)
-         ↓ per batch
-       NBA Batch QA 🚨 (structural + format drift + anti-laziness)
-         ↓ PASS ✔️          ↓ FAIL ❌
-       next batch        Analyst (redo batch)
-         ↓ all batches done
-       NBA Compliance (per-game template adherence + math verification)
-         ↓ PASS ✔️          ↓ FAIL ❌
-       NBA Wong Choi      CRITICAL: full redo / MINOR: batch redo
-         ↓
-       User (final parlay report + auto-save)
-         ↓ (post-game)
-       NBA Reflector (review & improvement proposals)
-         ↓ (SIP approved & applied)
-       NBA Reflector Validator (selective blind re-analysis)
-```
-
----
-
-## Cross-System Integration (.agent ↔ .agents)
-
-The Antigravity Kit (`.agent/`) and custom agents (`.agents/`) coexist in the workspace. Custom agents can **reference** AG Kit skills at runtime via `view_file` — content is **never duplicated**.
-
-### Integration Map
-
-| .agents Agent | 引用嘅 .agent Skills | 觸發條件 | 觸發方式 |
-|---------------|---------------------|----------|---------|
-| **Agent Architect** | brainstorming, plan-writing, systematic-debugging, architecture | Mode A/B/C 偵測 | 🤖 自動 |
-| **HKJC Reflector** | brainstorming | 覆盤分析生成 SIP 時 | 🤖 自動 |
-| **AU Reflector** | brainstorming | 覆盤分析生成 SIP 時 | 🤖 自動 |
-| **NBA Reflector** | brainstorming | 覆盤分析生成 SIP 時 | 🤖 自動 |
-| **HKJC Wong Choi** | systematic-debugging | 合規 FAILED 2 次 → 3-Phase 閉環(診斷 → 修正 → 重做 Batch) | 🤖 自動 |
-| **AU Wong Choi** | systematic-debugging | 合規 FAILED 2 次 → 3-Phase 閉環(診斷 → 修正 → 重做 Batch) | 🤖 自動 |
-| **NBA Wong Choi** | systematic-debugging, brainstorming | 品質掃描 FAILED / 自檢總結 | 🤖 自動 |
-| **HKJC Horse Analyst** | systematic-debugging | QG-CHECK 連續失敗 2 次 → 根因分析 → 針對性修正 | 🤖 自動 |
-| **AU Horse Analyst** | systematic-debugging | QG-CHECK 連續失敗 2 次 → 根因分析 → 針對性修正 | 🤖 自動 |
-| **Game Producer** | brainstorming, plan-writing, systematic-debugging | 新功能 / 設計輸出 / QA 失敗 | 🤖 自動 |
-
-**All Wong Choi engines** also reference AG Kit orchestrator patterns: Agent Boundary Enforcement + Conflict Resolution + Status Board.
-**All Wong Choi + Analyst debugging** includes **硬性熔斷 (Circuit Breaker)** — 自動修復最多執行 1 次,防止無限 loop。
-
-### Loading Principle
-```
-Agent 需要 AG Kit skill 時:
-1. view_file `.agent/skills/[skill]/SKILL.md`
-2. 按需載入原則(lazy-load)— 唔會預先讀取
-3. 只讀取,唔複製內容到自己嘅 SKILL.md
-```
-
-### Key Paths
-| AG Kit Skill | Path |
-|---|---|
-| brainstorming | `.agent/skills/brainstorming/SKILL.md` |
-| plan-writing | `.agent/skills/plan-writing/SKILL.md` |
-| systematic-debugging | `.agent/skills/systematic-debugging/SKILL.md` |
-| architecture | `.agent/skills/architecture/SKILL.md` |
-
----
-
-## Design Checklist for New Agents
-
-When creating a new agent, verify:
-- [ ] SKILL.md has correct YAML frontmatter (name, description with triggers, version)
-- [ ] Description uses third-person with specific trigger phrases
-- [ ] Resource Read-Once Protocol included (if resources exist)
-- [ ] Anti-Laziness protocol included (if processing bulk data)
-- [ ] Anti-Hallucination protocol included
-- [ ] Language requirement specified (HK Traditional Chinese)
-- [ ] Agent chaining interface defined (upstream/downstream data contracts)
-- [ ] Resource files use numbered prefixes if order matters
-- [ ] SKILL.md body stays lean (<150 lines) — heavy content in resources/
-- [ ] Consulted `resources/design_patterns.md` for robustness checks

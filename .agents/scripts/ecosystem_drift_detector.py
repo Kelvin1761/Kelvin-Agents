@@ -47,6 +47,8 @@ def scan_actual_dirs(scan_dir, depth=2):
         return actual_dirs
     for item in base.iterdir():
         if item.is_dir() and not item.name.startswith('.') and item.name != '__pycache__':
+            if item.name == "antigravity-awesome-skills":
+                continue
             actual_dirs.add(item.name)
             if depth > 1:
                 for sub in item.iterdir():
@@ -115,7 +117,9 @@ def main():
     actual_agent_count = 0
     for sd in scan_dirs:
         if sd.is_dir():
-            actual_agent_count += len(list(sd.rglob('SKILL.md')))
+            for fpath in sd.rglob('SKILL.md'):
+                if 'antigravity-awesome-skills' not in str(fpath.parent):
+                    actual_agent_count += 1
 
     print(f"\n{'═' * 60}")
     print(f"🔍 Ecosystem Drift Report")
