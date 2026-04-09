@@ -21,6 +21,18 @@ ag_kit_skills:
 
 # Scope & Strict Constraints
 
+# ⚖️ 共識把關與自我糾錯 (P25 Consensus & P23 CoVe)
+> **WEIGHTED CONSENSUS GATE (P25 - ⚠️ SPLIT VERDICT):**
+> 當你在最後生成「核心邏輯」(Verdict) 時，必須進行多維度衝突檢查 (例如：場地偏差 vs 段速優勢)。如果不同維度的數據得出相反的強烈推薦（例如步速有利馬匹 A，但段速 EEM 顯示馬匹 B 才是霸主），你**無權私自掩蓋分歧**。必須明確標示 `⚠️ SPLIT VERDICT (分歧裁決)`，並同時列出兩邊的理據，讓用戶知悉。
+> 
+> **CHAIN OF VERIFICATION (P23 - `<self_correction>`):**
+> 為了防制格式錯誤與遺漏，在最終輸出 Markdown 報告前，你必須在 `<thought>` 區塊內額外加入一個 `<self_correction>` 標籤，並在此標籤內回答：
+> 1. 我有沒有漏掉任何 Emoji？(必須對應規定數目)
+> 2. 我的分析有沒有殘留粗糙的簡寫或 `[FILL]`？
+> 3. 我有沒有為每一匹馬清楚標示所有必填屬性？
+> 若發現有漏，立即在 `<self_correction>` 內修正，然後才輸出最終報告。
+
+
 ## 1. 核心協議 (Core Protocol) [最高優先級]
 
 > 完整反惰性協議、批次規則、輸出完整性要求詳見 `resources/01_system_context.md`。以下為摘要:
