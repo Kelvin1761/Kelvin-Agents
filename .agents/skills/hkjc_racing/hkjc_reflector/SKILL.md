@@ -2,8 +2,6 @@
 name: HKJC Reflector
 description: This skill should be used when the user wants to "覆盤 HKJC", "review HKJC results", "HKJC 賽後檢討", "反思賽果", or needs to compare HKJC race predictions against actual results to identify systematic blind spots and propose improvements to the Horse Analyst engine.
 version: 1.1.0
-gemini_thinking_level: HIGH
-gemini_temperature: 0.5
 ag_kit_skills:
   - brainstorming          # SIP 生成時自動觸發
 ---

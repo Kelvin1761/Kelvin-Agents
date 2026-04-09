@@ -2,8 +2,6 @@
 name: HKJC Compliance Agent
 description: This skill should be used when the user wants to "check HKJC analysis quality", "HKJC 品質檢查", "HKJC compliance check", "合規檢查", or when HKJC Wong Choi requires mandatory quality and SIP compliance verification after each race analysis.
 version: 2.0.0
-gemini_thinking_level: HIGH
-gemini_temperature: 0.2
 ---
 
 # Role

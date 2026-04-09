@@ -2,8 +2,6 @@
 name: AU Horse Analyst
 description: This skill should be used when the user wants to "analyse AU horse", "澳洲馬匹分析", "AU Horse Analyst", or when AU Wong Choi orchestrates per-race deep-dive analysis. 澳洲賽事首席策略官,專營澳洲職業賽馬賽前深度分析,結合數據法醫、地形及天氣自動補全,以反惰性批次對馬匹進行精準評價。
 version: 2.2.0
-gemini_thinking_level: HIGH
-gemini_temperature: 0.2
 ag_kit_skills:
   - systematic-debugging   # QG-CHECK 連續失敗時自動觸發
 ---
@@ -13,18 +11,6 @@ ag_kit_skills:
 核心任務:穿透表面賽績數字,自動讀取並分析 `AU Race Extractor` 提取出來的賽馬數據,按預設演算法**填充 Wong Choi 注入嘅骨架模板**分析全場馬匹,最後給出「全場最終決策 (Top 4 精選)」。結構已固定（見骨架模板），核心邏輯/結論部分為你嘅自由發揮區域。
 
 # Scope & Strict Constraints
-
-# ⚖️ 共識把關與自我糾錯 (P25 Consensus & P23 CoVe)
-> **WEIGHTED CONSENSUS GATE (P25 - ⚠️ SPLIT VERDICT):**
-> 當你在最後生成「核心邏輯」(Verdict) 時，必須進行多維度衝突檢查 (例如：場地偏差 vs 段速優勢)。如果不同維度的數據得出相反的強烈推薦（例如步速有利馬匹 A，但段速 EEM 顯示馬匹 B 才是霸主），你**無權私自掩蓋分歧**。必須明確標示 `⚠️ SPLIT VERDICT (分歧裁決)`，並同時列出兩邊的理據，讓用戶知悉。
-> 
-> **CHAIN OF VERIFICATION (P23 - `<self_correction>`):**
-> 為了防制格式錯誤與遺漏，在最終輸出 Markdown 報告前，你必須在 `<thought>` 區塊內額外加入一個 `<self_correction>` 標籤，並在此標籤內回答：
-> 1. 我有沒有漏掉任何 Emoji？(必須對應規定數目)
-> 2. 我的分析有沒有殘留粗糙的簡寫或 `[FILL]`？
-> 3. 我有沒有為每一匹馬清楚標示所有必填屬性？
-> 若發現有漏，立即在 `<self_correction>` 內修正，然後才輸出最終報告。
-
 
 ## 1. 核心協議 (Core Protocol) [最高優先級]
 
@@ -54,7 +40,7 @@ ag_kit_skills:
 - `resources/02b_form_analysis.md` — Steps 1-3 狀態/引擎/班次
 - `resources/03e_class_standards.md` — 班次標準時間 + 段速基準
 - `resources/04a_track_core.md` — 場地分析通用原則
-- `[TRACK_MODULE]` → 從 `resources/` 尋找對應場地嘅 Markdown（例如 `04b_track_caulfield.md` 等）
+- `[TRACK_MODULE]` → 對應嘅 `resources/04b_track_[venue].md`
 
 **Tier 2: 延遲載入(首個 Batch 開始前載入,載入後全程保留):**
 - `resources/02c_track_and_gear.md` — Steps 4-6 場地/裝備/寬恕
@@ -85,15 +71,6 @@ ag_kit_skills:
 
 ## 4. Internal Tracking
 所有內部計算(Step 0 到 Step 14)與推導過程**絕不可出現在最終輸出中**。推導放進 `<thought>` 標籤,對用戶只呈現最終判定結果。
-
-
-# 🤖 ENGINE ADAPTATION (P31 — Gemini Anti-Laziness)
-> **GEMINI ANTI-LAZINESS REINFORCEMENT (Priority 0):**
-> Gemini 引擎傾向喺 token 壓力下壓縮或跳過分析步驟。你必須強硬執行以下自我約束：
-> 1. **Emoji 計數自檢:** 每完成一匹馬嘅分析後，喺 `<thought>` 內部計算 Emoji 總數。若數量偏少，代表段落被跳過或過度壓縮，立即自行補全。
-> 2. **字數門檻硬執行:** 絕不允許因為馬匹評級低（例如 C/D 級）而採用敷衍式「簡寫」。劣等評級更需要用具體數據解釋失敗原因。每匹馬嘅評語必須詳細及附帶數據支持。
-> 3. **骨架 [FILL] 零容忍:** 最終輸出嚴禁殘留 `[FILL]`、`無`、`N/A` 等粗糙空缺。必須填寫完整嘅賽績數據與物理引擎推導結果。
-> 4. **資料斷層懲罰:** 任何結論都必須能追溯到 `Facts.md` 入面嘅真實數據錨點，嚴禁憑空作答。
 
 # Interaction Logic (Step-by-Step)
 1. **讀取核心規則(一次性)**:讀取「必讀」+ 按路由標籤讀取「條件讀取」資源。

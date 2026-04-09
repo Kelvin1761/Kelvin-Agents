@@ -2,8 +2,6 @@
 name: NBA Analyst
 description: This skill should be used when the user wants to "analyse NBA parlay", "NBA 過關分析", "NBA Analyst", or when NBA Wong Choi orchestrates player props volatility analysis and parlay combination building.
 version: 2.1.0
-gemini_thinking_level: HIGH
-gemini_temperature: 0.2
 ag_kit_skills:
   - systematic-debugging   # CoV/模板驗證連續失敗時自動觸發
 ---
@@ -27,11 +25,6 @@ ag_kit_skills:
 - `resources/06_verification.md` — 自檢清單 [輸出前讀取]
 
 讀取一次後保留在記憶中,嚴禁每批次重複讀取。
-
-# 🤖 ENGINE ADAPTATION (P31 — 針對 Gemini 之自我優化)
-> 1. **Emoji 計數自檢 (P31最強防線):** 每支 Leg 分析寫完後，喺內部思考中清點 Markdown 骨架嘅 Emoji 數量 (例如 🧩、🔢、🧠、⚠️、💪 等)。若少於模板規定，代表你跳過咗必要區塊 → 立即返回補全。
-> 2. **骨架 [FILL] 零容忍:** 若寫完嘅分析仍然包含 `[FILL]` → 立即補回。
-> 3. **PREMATURE_STOP_GUARD:** 未寫足 3 個組合 (🛡️1, 🔥2, 💎3) 之前，嚴禁向用戶或 Wong Choi 輸出完成信號。
 
 # Scope & Strict Constraints
 按照 `resources/01_system_context.md` 嚴格遵守以下核心規則:
@@ -93,24 +86,64 @@ ag_kit_skills:
 
 # Interaction Logic (Step-by-Step)
 
-## Step 1: 讀取資源與 Python 預填報告
-1. 讀取 `01_system_context.md` 至 `04_parlay_engine.md`。
-2. 讀取 Extractor/Wong Choi 傳來嘅 `Game_{TAG}_Skeleton.md`。
-3. **認知解除**: 所有 CoV 波動率、命中率、Edge 計數、以及組合篩選，已經由 Python 完美代勞！你無需再行計算，無需擔心數學出錯。
+## Step 1: 讀取資源 + 數據包
+1. 讀取 `resources/01` 至 `resources/04`。
+2. 讀取 Extractor 提供嘅數據包(Meeting-Level + Player-Level 數據卡)。
+3. 確認所有候選球員名單。
+4. 按照 `resources/01_system_context.md` 嘅「輸入數據防呆」執行快速驗證。
 
-## Step 2: 審閱與法醫級分析 (Analyst Logic Injection)
-對 Skeleton 入面嘅每一個空白區（即需要填寫 `[必須填寫不少於20字的具體數據引證...]` 的位置）：
-1. **對手防守匹配**: 分析 `key_defenders` 嘅 D_FG% 壓制力。
-2. **球權分配**: 透過 USG% 及 TS% 判斷傷病紅利同出手權變化。
-3. **歷史對戰與情境**: 主客場 Split 及 H2H 歷史壓制。
-4. **協同效應**: 該 Parlay 組合內部的關聯性支援 (e.g. 順逆風局)。
+## Step 2: 波動率計算
+針對每位候選球員,按照 `resources/02_volatility_engine.md` Step 1-2:
+- 計算 AVG、MED、SD、CoV → 分級
+- 套用情境調整加減分
 
-## Step 3: 補完與自檢 (Pre-Submission Gate)
-在交稿給 Wong Choi 之前，自我檢查以下規則：
+## Step 2.5: 進階維度分析 (V3 新增)
+針對每位候選球員,從 Extractor JSON 讀取以下進階數據:
+- **USG%** (球權使用率):判斷球權分配及傷缺紅利
+- **TS%** (真實命中率):衡量得分效率
+- **DEF_RATING / OFF_RATING / NET_RATING**:球員級別攻防效率
+- **Home/Away PPG Split**:今日主客場嘅場均差異
+- **Rest Day Split**:休息日數嘅場均差異
+- **對位防守者 D_FG% & PCT_PLUSMINUS**:量化防守壓制
+- **Pace-Adjusted Projection**:根據雙方 PACE 差異調整預期值
+  - 公式:`調整值 = (對手PACE - 聯盟平均PACE) / 聯盟平均PACE * 球員AVG`
+
+## Step 3: 盤口雙線生成
+按照 `resources/02_volatility_engine.md` Step 3-4:
+- 穩膽線 + 價值線 + AMC 評估 + +EV 篩選 + Under 偵測
+
+**🎯 Bet365 即時盤口整合 (v2.2 — Bet365 ONLY)：**
+> **Bet365 係唯一盤口來源，嚴禁自行估算盤口。**
+> 1. **直接使用** `generate_nba_reports.py` 產生嘅 pre-filled skeleton
+> 2. Skeleton 入面所有 Bet365 盤口對照表已由 Python 預計算
+> 3. **禁止自行估算盤口** — Bet365 提供嘅就是實際可下注嘅盤口
+> 4. 若無 Bet365 JSON → 報告 `odds_not_found` → 暫停分析等待用戶解決
+
+## Step 4: 安全檢查
+按照 `resources/03_safety_gate.md`:
+- 致命缺陷排除 → 命中率底線 → 綜合安全評分
+- **新增:防守者壓制檢查**:若對位防守者 PCT_PLUSMINUS < -0.04,自動標記為「🔒 精英防守對位」
+
+## Step 5: 過關組合引擎
+按照 `resources/04_parlay_engine.md`：
+- 構建 🛡️ 1 / 🔥 2 / 💎 3 / 💣 X 四組
+- SGP 劇本語境防撞擊檢查
+- 賠率來源: Bet365 直接提取，組合賠率以 Bet365 SGM 顯示為準
+
+## Step 6: 生成最終輸出
+讀取 `resources/05_output_template.md`，按模式選擇格式。
+**逐個欄位填寫 `[FILL]` 佔位符** — 輸出完成後確認 `[FILL]` 殘留數 = 0。
+讀取 `resources/06_verification.md`，執行自檢清單。
+
+## Step 7: 自我驗證 (Pre-Submission Gate)
+在交稿給 Wong Choi 之前，自我檢查以下規則（對應 `completion_gate_v2.py --domain nba` 嘅檢查項）：
+- [ ] **3 個組合完整輸出**（組合 1 + 2 + 3），組合 X 條件觸發
+- [ ] **每個 Leg 有完整分析**（數理引擎 + 邏輯引擎 + EV + 數據卡 + 防守對位 + 場景分裂）
 - [ ] **Python 推理已閱讀並補充 Analyst 深度分析**
-- [ ] **無省略語**（無 `...`、`[同上]`）
-- [ ] **佔位符殘留數 = 0**
-- [ ] **所有填寫區滿 20 字法醫級剖析**
+- [ ] **無省略語**（無 `...`、`[同上]`、`[參見組合X]`）
+- [ ] **`[FILL]` 殘留數 = 0**
+- [ ] **L10 數組長度 = 10**（每個輸出嘅數組都有 10 個數字）
+- [ ] **所有盤口符合 Bet365 嚴格選項規則**
 
 # Output Contract
 - **單場模式**：合格 Leg 候選清單 + 本場 SGM 組合（≥2 組：🛡️ 1 + 🔥 2，可選 💎 3）+ Value Bomb（條件觸發）
@@ -119,4 +152,4 @@ ag_kit_skills:
 # Recommended Tools & Assets
 - **Tools**: `run_command`（透過 Wong Choi 嘅 Safe-Writer Pipeline 寫檔）、`view_file`、`grep_search`
 - ⚠️ **P33-WLTM**: 遵循 GEMINI.md 之中規定的 `safe_file_writer.py` 進行操作。嚴禁使用 `write_to_file`。
-- **Assets**: `01_system_context.md` 至 `06_verification.md`
+- **Assets**: `resources/01` 至 `resources/06`

@@ -2,8 +2,6 @@
 name: AU Racecourse Weather Prediction
 description: This skill should be used when the user wants to "predict AU track condition", "AU 場地預測", "AU weather prediction", "預測澳洲賽馬場地掛牌", "AU racecourse weather", or needs to predict Australian racecourse track conditions based on weather data and track drainage profiles.
 version: 1.1.0
-gemini_thinking_level: HIGH
-gemini_temperature: 0.2
 ---
 
 # Role

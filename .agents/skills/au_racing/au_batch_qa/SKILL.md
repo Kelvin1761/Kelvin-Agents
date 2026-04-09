@@ -2,8 +2,6 @@
 name: AU Batch QA
 description: This skill should be used when the user wants to "check AU batch quality", "AU 批次品質檢查", "AU batch QA", or when AU Wong Choi requires per-batch structural and semantic quality verification during race analysis.
 version: 1.0.0
-gemini_thinking_level: HIGH
-gemini_temperature: 0.2
 ---
 
 # Role
