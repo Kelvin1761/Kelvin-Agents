@@ -2,8 +2,6 @@
 name: AU Wong Choi
 description: This skill should be used when the user wants to "analyse AU races", "run AU pipeline", "澳洲賽馬分析", "AU Wong Choi", or needs to orchestrate the full Australian horse racing analysis pipeline from data extraction through to final report generation.
 version: 2.2.0
-gemini_thinking_level: HIGH
-gemini_temperature: 0.2
 ag_kit_skills:
   - systematic-debugging   # 合規連續 FAILED 時自動觸發
 ---

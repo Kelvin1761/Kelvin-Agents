@@ -35,9 +35,15 @@ Apply the exact same strict, forensic criteria defined by the `lol-draft-analyst
 - **Phase 2**: Match-up Dehydration. Verify if win-conditions actually align with recent patch realities.
 - **Phase 3**: Execution & Value Sniping. You MUST calculate unit sizing dynamically using the **Kelly Criterion**. Identify your Edge (Model Implied Probability vs Market Odds Implied Probability) to propose an exact mathematical bankroll allocation.
 
+### Phase 3.5: 賠率暫停門 (Odds Socratic Gate)
+**CRITICAL:** You CANNOT hallucinate or estimate odds. After finishing Phase 0-3 with your final Model Implied Probability (`p`), you MUST STOP. 
+Present your `p` to the user and explicitly ask:
+> "Please provide the current Decimal Odds from Coincasino (or your bookie) for [Team A vs Team B]."
+You MUST WAIT for the user to type the odds.
+
 ### Phase 4: 交接給「會計師 (Betting Accountant)」
-Provide your full Phase 0-2 findings and your final Model Implied Probability (`p`) to the `betting_accountant` persona/guidelines.
-You must NOT propose a final Unit size yourself. You must invoke the strict mathematical Ledger from the Betting Accountant to calculate the exact AUD amount based on Fractional Kelly and the $50 AUD Hard Cap limit.
+Once the user provides the real Odds, pass your (`p`) and the (`Odds`) to the `betting_accountant` persona guidelines.
+You must invoke the strict mathematical Ledger from the Betting Accountant to calculate the exact AUD amount based on Fractional Kelly and the $50 AUD Hard Cap limit.
 
 Your final markdown report MUST end with the Accountant Ledger:
 - 📊 **Forensic Data Overview**

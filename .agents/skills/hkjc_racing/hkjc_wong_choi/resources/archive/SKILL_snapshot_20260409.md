@@ -2,8 +2,6 @@
 name: HKJC Wong Choi
 description: This skill should be used when the user wants to "analyse HKJC races", "run HKJC pipeline", "香港賽馬分析", "HKJC Wong Choi", or needs to orchestrate the full Hong Kong horse racing analysis pipeline from data extraction through to final Excel report generation.
 version: 2.2.0
-gemini_thinking_level: HIGH
-gemini_temperature: 0.2
 ag_kit_skills:
   - systematic-debugging   # 合規連續 FAILED 時自動觸發
 ---
