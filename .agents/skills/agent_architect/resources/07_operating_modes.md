@@ -4,6 +4,7 @@
 1. **強制工具掃描：** 進入 Mode B (優化) 或 Mode C (審計) 時，第一步 **必須** 執行 `run_command python3 .agents/scripts/agent_health_scanner.py --target [目標檔]`。若未見此結果，後方任何診斷均視為無效。
 2. **強制全面已讀 (Deep Reading Requirement)：** 當收到「優化」、「Review」等指令時，除了讀取主檔 `SKILL.md`，你 **必須** 使用 `list_dir` 遍歷對象的 `resources/` 目錄，然後逐一使用 `view_file` 讀取並分析裡面的核心文件。嚴禁「只睇表面改表面」。
 3. **全局交叉比對 (Global Cross-Reference)：** 修改前必須主動將目標 Agent 的內容與你大腦內的 `design_patterns.md` 及 `04_blueprint_integration_guide.md` 進行映射檢查。
+4. **Architect Memory Graph (MCP)：** 在所有任務開始時，必須使用 `read_graph` 提取用戶的全局及 Agent 專屬偏好記憶；在設計或優化完成後，必須使用 `add_observations` 記錄任何新發現的設計哲學或用戶紅線。
 
 # Agent Architect Operating Modes
 
@@ -47,7 +48,8 @@
 9. 🆕 Snapshot 當前版本到 `resources/archive/`（P27 版本控制）
 10. 生成更新後嘅 SKILL.md（標注修改位置）
 11. 🆕 跑 DeepEval 驗證新版本分數 ≥ 舊版本（如分數跌 >10% → 自動 Rollback）
-12. 更新 `resources/audit_history.md`
+12. 將關鍵 Debug 發現透過 Memory MCP 寫入 Graph
+13. 更新 `resources/audit_history.md`
 
 ### Mode D: Agent 問題診斷 (Debug Agent) 🆕
 觸發:用戶報告「個 agent 炒車」、「agent 出錯」、「debug agent」、「agent 唔 work」
@@ -158,6 +160,9 @@ Present the drafted configuration to the user. Explicitly ask for feedback:
 - *「呢個設計有冇準確捕捉到你需要嘅行為?」*
 - *「有冇任何 edge case 或約束需要收緊?」*
 Continually refine the instructions based on their feedback until they approve the final design.
+
+## Step 5: Final Memory Commit (MANDATORY)
+Once the design is approved and generated, use Memory MCP to persist the core architectural choices (e.g. constraints discovered, API limitations) to the agent's memory graph. Ensure future debugs or updates recall these critical design choices.
 
 ---
 

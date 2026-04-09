@@ -2,8 +2,6 @@
 name: NBA Reflector
 description: This skill should be used when the user wants to "覆盤 NBA", "review NBA results", "NBA 賽後檢討", "反思 NBA 賽果", "NBA reflector", or needs to compare NBA parlay predictions against actual game results to identify systematic blind spots and propose improvements to the NBA Analyst engine.
 version: 2.2.0
-gemini_thinking_level: MEDIUM
-gemini_temperature: 0.2
 ag_kit_skills:
   - brainstorming          # SIP 生成時自動觸發
 ---

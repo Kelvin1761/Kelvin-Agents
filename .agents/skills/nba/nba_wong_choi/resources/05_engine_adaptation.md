@@ -37,7 +37,7 @@
 > **強制規定(Priority 0):**
 > 1. **EXPLICIT L10 ARRAY:** 每一個 Leg(不論是 Combo 1 還是 Combo 2, 3)必須明確印出 `L10 逐場:[數組]`,絕對不允許用「均值」替代或者隱藏。
 > 2. **DEEP ANALYSIS FOR ALL COMBO LEGS:** 所有後續 Combo(Combo 2 onwards)嘅 Leg 分析,必須與 Combo 1 具備同等深度,強制作者包含:「核心邏輯」、「⚠️ 最大不達標風險」與「💪 克服風險信心度」。嚴禁輕輕帶過!
-> 3. **FULLY SEPARATED COMBO BLOCKS (反腳本與反合併):** SGM 2-Leg 以上組合，必須為每一支 Leg 開設**獨立的板塊與獨立的 `| 🔢 數理引擎 | 🧠 邏輯引擎 |` 表格**，例如：`### 🧩 Leg 1: ...` + 它的表，接著 `### 🧩 Leg 2: ...` + 它的表。嚴防兩者塞進同一個表格內。
+> 3. **FULLY SEPARATED COMBO BLOCKS (反腳本與反合併):** 所有 SGM 2-Leg 以上組合，必須為每一支 Leg 開設**獨立的板塊 (以 List 形式，禁止使用 Markdown 表格以免衍生 `<br>` 顯示問題)**，例如：`### 🧩 Leg 1: ...` 下方分開列出 `**🔢 數理引擎**` 與 `**🧠 邏輯引擎**`。
 > 4. **ANTI-SCRIPTING NATIVE LOGIC:** 絕不允許使用 Python `{placeholder}` 字串模板來自動產出分析！必須針對每場球員對位原生生成香港語境下的深度文字。
 
 # 🚨 OUTPUT_TOKEN_SAFETY(P28 — 2026-04 新增 — Priority 0)
@@ -52,8 +52,8 @@
 > **歷史教訓:** 隨住 batch 處理場次增多，LLM 對模板結構嘅記憶會逐漸偏移（Template Drift），導致後期場次嘅輸出結構同前期唔一致。
 >
 > **強制規定:**
-> 1. **每場分析前強制 `view_file`**: 在開始每場賽事嘅 Analyst 分析前，必須重新讀取 `../nba_analyst/resources/05_output_template.md`（至少前 50 行）。
-> 2. **模板結構核對**: 確認當場輸出結構同模板一致 — 3 個組合（🛡️ 1 + 🔥 2 + 💎 3）、每 Leg 8 大區塊、Python 推理 + Analyst [FILL]。
+> 1. **每場分析前強制 `view_file`**: 在開始每場賽事嘅 Analyst 分析前，必須重新讀取 `resources/03_output_format.md`（至少前 80 行）。
+> 2. **模板結構核對**: 確認當場輸出結構同要求絕對一致 — 即係包括「L10 逐場數組」、8-Factor 明細、至少 2 個組合（🛡️ 穩膽 + 🔥 價值，不允許省略）。
 > 3. **若發現偏移**: 立即停止並修正，唔好等到 Compliance 先發現。
 
 # 🚨 GAME_4_HARD_SPLIT（P34 — 移植自 HKJC — Priority 0）
@@ -130,6 +130,15 @@
 > 2. **`.5` = 去錯 Tab 警報**: 若提取後嘅 JSON 出現任何帶 `.5` 嘅盤口 key（如 `"12.5"`），`bet365_parser.py` 必須打印 `⚠️ WRONG_TAB_DETECTED: 發現 .5 盤口，極可能去錯咗 Points O/U tab`，並要求 USER 重新 click 正確嘅 `Points` tab。
 > 3. **顯示格式**: SGM 分析報告中嘅 `line_display` 只准出現整數格式（`10+`, `15+`, `20+`）。出現 `12.5+` = 違規。
 > 4. **提示指引**: 當 `claw_bet365_odds.py` 提示 USER 手動 click tab 時，必須同時顯示 `⚠️ 請確認係 "Points" tab，唔係 "Points O/U" tab！`。
+
+# 🎯 SPORTSBET_MILESTONES_ONLY_BAN_UNDERS（P42 — 新增 — Priority 0）
+
+> **歷史教訓:** LLM 喺生成 SGM 時，經常會貪得意走去推介 `Under 0.5` 之類嘅盤口（例如 `FG3M Under 0.5` 或 `BLK Under 0.5`）。但事實上，用戶目前使用嘅 Sportsbet 平台，其主力市場係「Milestones (階梯盤)」，例如 `10+`, `15+`, `3+` 等等。既然係 `X+`，就代表**只有 Over (大於等於) 盤口，絕對冇 Under 買！**
+>
+> **強制規定:**
+> 1. **全面封殺所有 Under 盤口推介**: NBA Wong Choi 喺挑選及生成所有 Parlay / SGM Leg 嘅時候，**絕對禁止推介任何 `Under` 嘅選項**。
+> 2. **只准推介 `X+` (Over)**: 必須確保你揀選出嚟嘅盤口係 Sportsbet Milestone 買得到嘅選項，例如 `10+ PTS` (等同於 PTS Over 9.5), `4+ AST`, `2+ FG3M` (Threes)。
+> 3. **FG3M (Threes) 盤口修正**: 必須留意 Threes 的選項只有 `1+`, `2+`, `3+` 等等。冇 `0+` 亦冇 `Under 0.5`。
 
 # 🔧 PIPELINE_QUALITY_IMPROVEMENTS（P41 — 2026-04-08 新增 — Priority 1）
 

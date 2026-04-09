@@ -53,3 +53,118 @@
 > 4. **Token 壓力自測**:若壓縮內容 → 立即停止拆到下一個 batch。
 > 5. **若任何 batch 被截斷 → 自動降級為 BATCH_SIZE=2 並重做。**
 
+
+
+## Pre-Flight Environment Scan(強制 — Step 1 之前執行)
+
+**Step E1 — Output Token Capacity Test:**
+嘗試生成 ~500 字測試輸出。成功且未截斷 → `ENV_TOKEN_CAPACITY: HIGH`。
+截斷或錯誤 → `ENV_TOKEN_CAPACITY: LOW`。
+
+**Step E2 — Resource Load Verification:**
+讀取 4 個必讀文件,確認每個都成功載入:
+1. `../au_wong_choi/SKILL.md`(確認 P28 存在)
+2. `au_horse_analyst/01_system_context.md` (位於 resources 目錄下)
+3. `au_horse_analyst/06_templates_core.md` (位於 resources 目錄下，結構骨架)
+4. `au_horse_analyst/06_templates_rules.md` (位於 resources 目錄下，Verdict 觸發規則)
+4. 場地模組(按場地選 1 個)
+
+**Step E3 — BATCH_SIZE Decision:**
+```
+IF ENV_TOKEN_CAPACITY == HIGH:
+  BATCH_SIZE = 3  ← 標準
+ ELSE:
+  BATCH_SIZE = 2  ← 安全 fallback
+```
+
+**Step E4 — Report to User:**
+```
+🔍 環境掃描結果:
+- Token Capacity: [HIGH / LOW]
+- Resources Loaded: [4/4 / X/4]
+- BATCH_SIZE: [3 / 2]
+- Verdict: [獨立 tool call]
+✅ 環境就緒,開始分析。
+```
+
+若 Resources 未完全載入 → 停低通知用戶。
+
+**Step E5 — MCP Server Availability Check (P32 新增):**
+檢查以下 MCP Servers 是否已安裝並可用:
+1. **Playwright MCP** — `@playwright/mcp@latest` (網頁即時數據抓取後備)
+2. **SQLite MCP** — `mcp-server-sqlite` (歷史數據庫查詢)
+3. **Memory MCP** — `@modelcontextprotocol/server-memory` (Knowledge Graph 記憶)
+
+檢查方法:嘗試呼叫 `list_tables`(SQLite)或 `read_graph`(Memory)。若失敗:
+```
+⚠️ MCP 狀態:
+- Playwright: [✅ 已連接 / ❌ 未安裝]
+- SQLite: [✅ 已連接 / ❌ 未安裝]
+- Memory: [✅ 已連接 / ❌ 未安裝]
+
+若未安裝,請將以下配置加入 mcp_config.json:
+
+**macOS 配置:**
+```json
+{
+  "mcpServers": {
+    "playwright": { "command": "npx", "args": ["-y", "@playwright/mcp@latest"] },
+    "sqlite": { "command": "npx", "args": ["-y", "mcp-server-sqlite", "~/.gemini/antigravity/databases/wong_choi.db"] },
+    "memory": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-memory"] }
+  }
+}
+```
+
+**Windows 配置:**
+```json
+{
+  "mcpServers": {
+    "playwright": { "command": "cmd.exe", "args": ["/c", "npx", "-y", "@playwright/mcp@latest"] },
+    "sqlite": { "command": "cmd.exe", "args": ["/c", "npx", "-y", "mcp-server-sqlite", "%USERPROFILE%\\.gemini\\antigravity\\databases\\wong_choi.db"] },
+    "memory": { "command": "cmd.exe", "args": ["/c", "npx", "-y", "@modelcontextprotocol/server-memory"] }
+  }
+}
+```
+⚠️ 請根據你的操作系統選擇對應配置。DB 路徑需按實際安裝位置調整。
+然後重新啟動 Antigravity。
+```
+Step 8 數據庫歸檔功能需要 MCP Servers 運作,但即使未安裝也不影響 Step 1-7 核心分析流程。
+
+**Step E6 — MCP Memory Integration (P35 — Racing Memory Graph):**
+若 Memory MCP 已連接，在分析前必須執行查詢以提取該賽事/馬匹/馬房的跨季與跨場記憶。
+指令: `read_graph({ entities: ["馬名/練馬師名/馬場偏差"] })`
+若發現重要記憶（例如「此馬曾在沙田爛地爆冷」或「此檔位容易有死亡偏差」），將強制納入分析上下文。
+
+# 🛡️ B17 Racing Ralph Loop (80+ 信心分數系統)
+> **自審機制 (Ralph Loop):** 
+> 每次完成馬匹分析，提交前必須自評 `Confidence Score` (1-100)。
+> 評分標準：
+> - 數據是否完整無缺 (PI, L400, EEM)？
+> - 邏輯鏈是否自洽（例如步速預測與最終結果是否吻合）？
+> - 若 Score < 80，你必須 **自動拒絕提交** 並進入修正迴圈 (Correction Loop)，補充遺漏邏輯或數據，直至 Score ≥ 80 才能進入下一隻馬或生成 Verdict。
+
+# 🔀 狀態機與執行日誌 (P24 & P26 雙重把關)
+> **STATE MACHINE CHECKPOINTS (P24):** 
+> Wong Choi 必須將每一個 Step 視為一個獨立嘅 State。喺執行每一個 Step 之前，必須確認【Entry Condition】；喺進入下一個 Step 之前，必須確認【Exit Condition】。嚴禁喺未有真實檔案產出嘅情況下，自行「發夢」推進下一個 Step。
+> 
+> **EXECUTION JOURNAL (P26):**
+> 每完成一個主要 Step (例如：環境掃描、資料擷取完成、某個 Batch 分析完成)，你必須強制 append 一行 Log 到目標資料夾的 `_execution_log.md` 中。
+> - 工具：使用 `safe_file_writer.py --mode append` 寫入。
+> - 格式：`> 📝 LOG: Step [Name] | Tool: [Tool] | Status: [Success/Fail] | Notes: [Brief]`
+> - 目的：即使中斷，用戶亦可睇 Log 追查進度。嚴禁覆蓋舊 Log。
+
+
+> 🚫 **BROWSER POLICY(P32 — MCP Integration 更新):** `MCP Playwright (mcp_playwright_browser_*)` 同 `read_browser_page` 仍然**嚴禁使用**。但系統已掛載 **Playwright MCP Server**,提供輕量 `playwright_navigate`、`playwright_screenshot`、`playwright_click`、`playwright_fill` 等工具。允許喺以下場景使用 Playwright MCP:
+> - (a) Python 腳本提取失敗嘅 fallback(例如 JS-rendered 頁面)
+> - (b) 即時 Scratchings / 馬匹更替確認
+> - (c) Live Odds 走勢抓取
+> - **使用原則:優先用 Python scripts + `read_url_content`,Playwright MCP 係後備方案。**
+
+
+# 🐍 Python 自動化卸載指引 (Python-First Offloading)
+> **編譯最終報表 (compile_final_report.py):**
+> 喺全日賽事分析完結之後，你**嚴禁**自己手寫 Markdown 或 CSV 表格（避免 Context 爆滿導致排版錯誤）。你必須呼叫 `run_command python3 .agents/scripts/compile_final_report.py --target_dir [目標資料夾]`，腳本會自動將所有 `Analysis.md` 內嘅 CSV 區塊結合成一個 `Final_Report.csv` 檔案俾用戶。
+>
+> **狀態機守護神 (session_state_manager.py):**
+> 為了防範中斷，每完成一場賽事，請呼叫 `run_command python3 .agents/scripts/session_state_manager.py --target_dir [目標資料夾] --action update --key "completed" --value "Race 1, Race 2"` 來備份進度。重新啟動時用 `--action read` 讀取，避免重新掃描目錄。
+

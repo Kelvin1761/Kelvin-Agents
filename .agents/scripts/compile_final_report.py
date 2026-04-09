@@ -65,6 +65,15 @@ def compile_reports(target_dir):
         f.write('\n'.join(all_csv_lines) + '\n')
 
     print(f"✅ Successfully compiled {len(all_csv_lines)-1} rows into {out_file}")
+    
+    # [NEW V3.0] Trigger Monte Carlo Simulation Engine in Shadow Mode
+    monte_carlo_script = os.path.join(os.path.dirname(__file__), 'run_monte_carlo.py')
+    if os.path.exists(monte_carlo_script):
+        print("🎲 Triggering Monte Carlo Dynamic Simulation Engine (Shadow Mode)...")
+        os.system(f'python3 "{monte_carlo_script}" --target_dir "{target_dir}"')
+    else:
+        print("⚠️ run_monte_carlo.py not found. Skipping shadow simulation.")
+
     return True
 
 if __name__ == '__main__':
