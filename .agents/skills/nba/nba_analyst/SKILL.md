@@ -94,7 +94,7 @@ ag_kit_skills:
 # Interaction Logic (Step-by-Step)
 
 ## Step 1: 讀取資源 + 數據包
-1. 讀取 `resources/01` 至 `resources/04`。
+1. 讀取 `01_system_context.md` 至 `04_parlay_engine.md`。
 2. 讀取 Extractor 提供嘅數據包(Meeting-Level + Player-Level 數據卡)。
 3. 確認所有候選球員名單。
 4. 按照 `resources/01_system_context.md` 嘅「輸入數據防呆」執行快速驗證。
@@ -159,4 +159,4 @@ ag_kit_skills:
 # Recommended Tools & Assets
 - **Tools**: `run_command`（透過 Wong Choi 嘅 Safe-Writer Pipeline 寫檔）、`view_file`、`grep_search`
 - ⚠️ **P33-WLTM**: 遵循 GEMINI.md 之中規定的 `safe_file_writer.py` 進行操作。嚴禁使用 `write_to_file`。
-- **Assets**: `resources/01` 至 `resources/06`
+- **Assets**: `01_system_context.md` 至 `06_verification.md`
