@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 
-with open('/Users/imac/Desktop/Drive/Antigravity/racenet_curl.html', 'r') as f:
+with open('./racenet_curl.html', 'r') as f:
     soup = BeautifulSoup(f.read(), 'html.parser')
     
 for i, script in enumerate(soup.find_all('script')):

@@ -1,22 +1,28 @@
 #!/usr/bin/env python3
 """
-verify_form_accuracy.py — P37 Per-Batch Form Accuracy Verifier
-Cross-references analysis claims against Racecard ground truth to
-detect LLM hallucination of horse past results.
+verify_form_accuracy.py — P39 Form Accuracy Verifier (V2)
+
+Cross-references analysis claims against Racecard+Formguide ground truth.
+    
+Checks:
+    1. 近績序列 vs Last 10 string
+    2. 上仗名次 vs Racecard Last: (with Trial awareness)
+    3. Settled Position confusion detection (Xth@Settled ≠ finishing position)
+    4. Last 10 '0' = 10th enforcement
 
 Usage:
-    python3 verify_form_accuracy.py <Analysis.md> <Racecard.md>
-
-Checks:
-    1. 近績序列 in analysis matches Last 10 from Racecard
-    2. 上仗名次 claims match Racecard Last: field
-    3. Flags any mismatches as errors
+    python3 verify_form_accuracy.py <Analysis.md> <Racecard.md> [<Formguide.md>]
 
 Exit code: 0 = all match, 1 = mismatches found
 """
 import re
 import sys
 from pathlib import Path
+
+
+# Trial venue heuristics
+TRIAL_VENUE_KEYWORDS = ['southside', 'picklebet', 'balnarring']
+TRIAL_DISTANCES = {600, 650, 700, 750, 800, 900, 950}
 
 
 def parse_last10(last10_str: str) -> list[int]:
@@ -29,11 +35,27 @@ def parse_last10(last10_str: str) -> list[int]:
             positions.append(10)
         elif ch.isdigit():
             positions.append(int(ch))
+    positions.reverse()
     return positions
 
 
+def is_trial_venue(venue: str, distance_str: str = '') -> bool:
+    """Heuristic: detect if a venue/distance combo is likely a trial."""
+    venue_lower = venue.lower()
+    for kw in TRIAL_VENUE_KEYWORDS:
+        if kw in venue_lower:
+            return True
+    try:
+        dist_m = int(re.search(r'(\d+)', distance_str).group(1))
+        if dist_m in TRIAL_DISTANCES:
+            return True
+    except (AttributeError, ValueError):
+        pass
+    return False
+
+
 def parse_racecard_horses(text: str) -> dict:
-    """Parse Racecard to get {horse_num: {last10, last_finish, name}}."""
+    """Parse Racecard to get {horse_num: {...}}."""
     horses = {}
     horse_pattern = re.compile(
         r'^(\d+)\.\s+(.+?)\s*\((\d+)\)', re.MULTILINE
@@ -54,28 +76,56 @@ def parse_racecard_horses(text: str) -> dict:
         last10_match = re.search(r'Last 10:\s*(\S+)', block)
         last10_raw = last10_match.group(1) if last10_match else None
 
-        last_match = re.search(
-            r'Last:\s*(\d+)/(\d+)', block
-        )
+        last_match = re.search(r'Last:\s*(\d+)/(\d+)\s+(\S+)\s+(.+?)$', block, re.MULTILINE)
         last_finish = int(last_match.group(1)) if last_match else None
+        last_dist = last_match.group(3).strip() if last_match else ''
+        last_venue = last_match.group(4).strip() if last_match else ''
 
-        decoded = parse_last10(last10_raw) if last10_raw and last10_raw != 'None' else []
+        # Detect if Last: is a trial
+        last_is_trial = is_trial_venue(last_venue, last_dist) if last_venue else False
+
+        decoded = parse_last10(last10_raw) if last10_raw and last10_raw not in ('None', '-') else []
 
         horses[horse_num] = {
             'name': horse_name,
             'last10_raw': last10_raw,
             'last_finish': last_finish,
+            'last_is_trial': last_is_trial,
+            'last_venue': last_venue,
+            'last_dist': last_dist,
             'decoded': decoded,
         }
 
     return horses
 
 
+def extract_settled_positions(fg_text: str, horse_num: int, horse_name: str) -> list[int]:
+    """Extract Settled positions from the most recent races for a specific horse.
+    Returns the settled positions (Xth@Settled or Xth@800m) from most recent 3 races.
+    Used to detect if the LLM confused Settled with Final position.
+    """
+    pattern = re.compile(rf'^\[{horse_num}\]\s+', re.MULTILINE)
+    match = pattern.search(fg_text)
+    if not match:
+        return []
+    
+    next_horse = re.search(r'^\[\d+\]\s+', fg_text[match.end():], re.MULTILINE)
+    section_end = match.end() + next_horse.start() if next_horse else len(fg_text)
+    section = fg_text[match.start():section_end]
+
+    positions = []
+    for m in re.finditer(r'(\d+)\w+@Settled', section):
+        positions.append(int(m.group(1)))
+    for m in re.finditer(r'(\d+)\w+@800m', section):
+        positions.append(int(m.group(1)))
+    
+    return positions[:6]  # Return up to 6 positions
+
+
 def parse_analysis_horses(text: str) -> dict:
     """Parse Analysis.md to get {horse_num: {form_sequence, last_finish_claim}}."""
     horses = {}
 
-    # Match horse headers: 【No.X】Name
     horse_pattern = re.compile(
         r'【No\.(\d+)】\s*(.+?)(?:（|\()', re.MULTILINE
     )
@@ -98,7 +148,6 @@ def parse_analysis_horses(text: str) -> dict:
             r'上仗[：:)]\s*名次\s*(\d+)', block
         )
         if not last_finish_match:
-            # Try alternative format
             last_finish_match = re.search(
                 r'\[?上仗\]?[：:]\s*名次\s*(\d+)', block
             )
@@ -113,43 +162,70 @@ def parse_analysis_horses(text: str) -> dict:
     return horses
 
 
-def verify(racecard_horses: dict, analysis_horses: dict) -> list[str]:
+def verify(racecard_horses: dict, analysis_horses: dict, fg_text: str = None) -> list[str]:
     """Cross-reference and return list of mismatches."""
     errors = []
+    warnings = []
 
     for horse_num, analysis in analysis_horses.items():
         if horse_num not in racecard_horses:
-            continue  # Horse might be scratched or new
+            continue
 
         rc = racecard_horses[horse_num]
         name = analysis['name']
 
-        # Check 1: 上仗名次 vs Racecard Last finish
-        if analysis['last_finish_claim'] is not None and rc['last_finish'] is not None:
-            if analysis['last_finish_claim'] != rc['last_finish']:
-                errors.append(
-                    f"❌ [{horse_num}] {name}: 上仗名次 — "
-                    f"Analysis claims {analysis['last_finish_claim']}, "
-                    f"Racecard says {rc['last_finish']} "
-                    f"(Last 10: `{rc['last10_raw']}`)"
-                )
+        # --- CHECK 1: 上仗名次 vs Last 10 decoded first position (PRIMARY check) ---
+        if analysis['last_finish_claim'] is not None and rc['decoded']:
+            expected = rc['decoded'][0]
+            claimed = analysis['last_finish_claim']
+            
+            if rc['last_is_trial']:
+                # Racecard Last: is a trial — Last 10 first real position is the truth
+                if claimed != expected:
+                    errors.append(
+                        f"❌ [{horse_num}] {name}: 上仗名次 — "
+                        f"Analysis claims {claimed}, but Last 10 decodes to {expected} "
+                        f"(string: `{rc['last10_raw']}`). "
+                        f"⚠️ Racecard Last: {rc['last_finish']}/{rc['last_venue']} is a TRIAL."
+                    )
+            else:
+                # Normal case: check both Racecard Last and Last 10
+                if claimed != rc['last_finish'] and claimed != expected:
+                    errors.append(
+                        f"❌ [{horse_num}] {name}: 上仗名次 — "
+                        f"Analysis claims {claimed}, "
+                        f"Racecard says {rc['last_finish']}, "
+                        f"Last 10 decodes to {expected} "
+                        f"(string: `{rc['last10_raw']}`)"
+                    )
+                elif claimed != expected and claimed == rc['last_finish']:
+                    # Matched Racecard but not Last10 — could be OK if Last: isn't trial
+                    pass  # Acceptable
+                elif claimed != rc['last_finish'] and claimed == expected:
+                    # Matched Last10 but not Racecard — could be trial confusion
+                    warnings.append(
+                        f"⚠️ [{horse_num}] {name}: 上仗名次 matches Last 10 ({expected}) "
+                        f"but differs from Racecard Last ({rc['last_finish']}) — "
+                        f"verify Racecard Last is not a Trial"
+                    )
 
-        # Check 2: 上仗名次 vs decoded Last 10 first position
-        if (analysis['last_finish_claim'] is not None
-                and rc['decoded']
-                and analysis['last_finish_claim'] != rc['decoded'][0]):
-            # Don't double-report if already caught above
-            if rc['last_finish'] is None or rc['last_finish'] == rc['decoded'][0]:
-                errors.append(
-                    f"❌ [{horse_num}] {name}: 上仗名次 — "
-                    f"Analysis claims {analysis['last_finish_claim']}, "
-                    f"Last 10 decodes to {rc['decoded'][0]} "
-                    f"(string: `{rc['last10_raw']}`)"
-                )
+        # --- CHECK 2: Settled Position confusion detection ---
+        if fg_text and analysis['last_finish_claim'] is not None:
+            settled_positions = extract_settled_positions(fg_text, horse_num, name)
+            claimed = analysis['last_finish_claim']
+            if rc['decoded'] and settled_positions:
+                expected_finish = rc['decoded'][0]
+                # If claimed matches a settled position but NOT the actual finish
+                if claimed != expected_finish and claimed in settled_positions:
+                    errors.append(
+                        f"🔄 [{horse_num}] {name}: SETTLED CONFUSION — "
+                        f"Analysis claims 上仗={claimed} which matches a Settled/800m position, "
+                        f"but Last 10 says finish was {expected_finish}. "
+                        f"⛔ Xth@Settled ≠ final position!"
+                    )
 
-        # Check 3: 近績序列 consistency with Last 10
+        # --- CHECK 3: 近績序列 consistency with Last 10 ---
         if analysis['form_sequence'] and rc['decoded']:
-            # Extract numbers from form sequence
             form_nums = re.findall(r'\d+', analysis['form_sequence'])
             if form_nums:
                 try:
@@ -164,16 +240,29 @@ def verify(racecard_horses: dict, analysis_horses: dict) -> list[str]:
                 except (ValueError, IndexError):
                     pass
 
-    return errors
+        # --- CHECK 4: Last 10 '0' = 10th enforcement ---
+        if rc['last10_raw'] and '0' in (rc['last10_raw'] or ''):
+            # Verify the analysis doesn't skip or misinterpret '0'
+            if analysis['form_sequence'] and rc['decoded']:
+                if 10 in rc['decoded']:
+                    if '10' not in (analysis['form_sequence'] or ''):
+                        warnings.append(
+                            f"⚠️ [{horse_num}] {name}: Last 10 contains '0'=10th "
+                            f"but 近績序列 may not show '10' — "
+                            f"(string: `{rc['last10_raw']}`, decoded: {rc['decoded']})"
+                        )
+
+    return errors + warnings
 
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: python3 verify_form_accuracy.py <Analysis.md> <Racecard.md>")
+        print("Usage: python3 verify_form_accuracy.py <Analysis.md> <Racecard.md> [<Formguide.md>]")
         sys.exit(1)
 
     analysis_path = sys.argv[1]
     racecard_path = sys.argv[2]
+    formguide_path = sys.argv[3] if len(sys.argv) >= 4 else None
 
     for path in [analysis_path, racecard_path]:
         if not Path(path).exists():
@@ -182,6 +271,9 @@ def main():
 
     racecard_text = Path(racecard_path).read_text(encoding='utf-8')
     analysis_text = Path(analysis_path).read_text(encoding='utf-8')
+    fg_text = None
+    if formguide_path and Path(formguide_path).exists():
+        fg_text = Path(formguide_path).read_text(encoding='utf-8')
 
     racecard_horses = parse_racecard_horses(racecard_text)
     analysis_horses = parse_analysis_horses(analysis_text)
@@ -194,19 +286,40 @@ def main():
         print("❌ No horses found in Analysis")
         sys.exit(1)
 
-    print(f"\n🔍 P37 Form Accuracy Verification")
+    mode = "Racecard+Formguide" if fg_text else "Racecard-only"
+    print(f"\n🔍 P39 Form Accuracy Verification [{mode}]")
     print(f"   Analysis: {len(analysis_horses)} horses")
     print(f"   Racecard: {len(racecard_horses)} horses")
+
+    # Report trial detection
+    trial_count = sum(1 for h in racecard_horses.values() if h.get('last_is_trial'))
+    if trial_count:
+        print(f"   ⚠️ Trial Detection: {trial_count} horse(s) have Racecard Last: → Trial")
+
     print(f"   {'=' * 50}")
 
-    errors = verify(racecard_horses, analysis_horses)
+    errors = verify(racecard_horses, analysis_horses, fg_text)
 
     if errors:
-        print(f"\n❌ [FAILED] {len(errors)} form accuracy error(s) found:\n")
-        for err in errors:
-            print(f"  {err}")
-        print(f"\n⚠️ ACTION REQUIRED: Fix the above errors before proceeding.")
-        sys.exit(1)
+        real_errors = [e for e in errors if e.startswith('❌') or e.startswith('🔄')]
+        soft_warnings = [e for e in errors if e.startswith('⚠️')]
+
+        if real_errors:
+            print(f"\n❌ [FAILED] {len(real_errors)} form accuracy error(s) found:\n")
+            for err in real_errors:
+                print(f"  {err}")
+        
+        if soft_warnings:
+            print(f"\n⚠️ {len(soft_warnings)} warning(s):\n")
+            for w in soft_warnings:
+                print(f"  {w}")
+        
+        if real_errors:
+            print(f"\n⚠️ ACTION REQUIRED: Fix the above errors before proceeding.")
+            sys.exit(1)
+        else:
+            print(f"\n✅ [PASSED with warnings] No critical errors, {len(soft_warnings)} warning(s).")
+            sys.exit(0)
     else:
         verified_count = sum(
             1 for h in analysis_horses

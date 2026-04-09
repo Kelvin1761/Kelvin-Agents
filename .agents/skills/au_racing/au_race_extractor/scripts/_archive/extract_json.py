@@ -1,7 +1,7 @@
 import json
 from bs4 import BeautifulSoup
 
-with open('/Users/imac/Desktop/Drive/Antigravity/.agents/skills/au_race_extractor/scripts/racenet_print_curl.html', 'r') as f:
+with open('./.agents/skills/au_race_extractor/scripts/racenet_print_curl.html', 'r') as f:
     text = f.read()
 
 soup = BeautifulSoup(text, 'html.parser')
@@ -20,7 +20,7 @@ for i, script in enumerate(scripts):
             data = json.loads(json_str)
             print(f"Successfully parsed JSON. Keys: {data.keys()}")
             
-            with open('/Users/imac/Desktop/Drive/Antigravity/.agents/skills/au_race_extractor/scripts/preloaded_state.json', 'w') as out:
+            with open('./.agents/skills/au_race_extractor/scripts/preloaded_state.json', 'w') as out:
                 json.dump(data, out, indent=2)
             print("Saved exactly to preloaded_state.json")
             break

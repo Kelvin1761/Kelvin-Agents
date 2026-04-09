@@ -1,6 +1,6 @@
 import re
 
-with open('/Users/imac/Desktop/Drive/Antigravity/.agents/skills/au_race_extractor/scripts/racenet_print_curl.html', 'r') as f:
+with open('./.agents/skills/au_race_extractor/scripts/racenet_print_curl.html', 'r') as f:
     text = f.read()
 
 # Let's find Nuxt script

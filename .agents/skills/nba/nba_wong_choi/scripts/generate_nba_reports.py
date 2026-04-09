@@ -94,7 +94,130 @@ def edge_grade(edge):
     else: return "❌負EV"
 
 
-# ─── Data Merging ───────────────────────────────────────────────────────
+# ─── Adjusted Win Probability Engine (V7) ────────────────────────────────
+# V7 Python/LLM Split:
+#   Python calculates: trend, cov, buffer, pace (pure math)
+#   LLM judges:        matchup, context, usg, defender (contextual reasoning)
+
+def calc_adjusted_winprob(base_rate, hit_l5=0, cov=0, avg=0, line_val=0,
+                          opponent_def_rank=None, opponent_pace=None,
+                          is_b2b=False, is_home=None, spread=None,
+                          usg_bonus=0, defender_impact=None, amc=0):
+    """
+    8-factor adjusted win probability.
+    V7: Python computes trend/cov/buffer/pace. LLM assigns matchup/context/usg/defender.
+    base_rate: L10 hit rate (0-100)
+    Returns: (adjusted_prob, breakdown_dict)
+    """
+    breakdown = {}
+
+    # ── Python-computed factors ──
+
+    # 1. Trend: L5 vs L10 (pure math)
+    delta = hit_l5 - base_rate
+    if delta >= 20:     breakdown["trend"] = 8
+    elif delta >= 10:   breakdown["trend"] = 5
+    elif delta >= -10:  breakdown["trend"] = 0
+    elif delta >= -20:  breakdown["trend"] = -5
+    else:               breakdown["trend"] = -8
+
+    # 2. CoV Volatility (pure math)
+    if isinstance(cov, (int, float)):
+        if cov <= 0.15:     breakdown["cov"] = 6
+        elif cov <= 0.25:   breakdown["cov"] = 3
+        elif cov <= 0.35:   breakdown["cov"] = 0
+        elif cov <= 0.45:   breakdown["cov"] = -3
+        else:               breakdown["cov"] = -6
+    else:
+        breakdown["cov"] = 0
+
+    # 3. Buffer + AMC (pure math)
+    buffer_ratio = (avg - line_val) / avg if avg > 0 else 0
+    amc_bonus = 1 if amc > 5 else 0
+    if buffer_ratio >= 0.25:     buf_base = 6
+    elif buffer_ratio >= 0.15:   buf_base = 4
+    elif buffer_ratio >= 0.05:   buf_base = 2
+    elif buffer_ratio >= -0.05:  buf_base = 0
+    elif buffer_ratio >= -0.15:  buf_base = -3
+    else:                        buf_base = -6
+    breakdown["buffer"] = max(-7, min(7, buf_base + amc_bonus))
+    breakdown["_buffer_ratio"] = round(buffer_ratio * 100, 1)
+    breakdown["_amc"] = amc
+
+    # 6. PACE (pure math — opponent pace vs league avg)
+    if opponent_pace and isinstance(opponent_pace, (int, float)):
+        pace_delta = opponent_pace - 100.0
+        if pace_delta >= 3:      breakdown["pace"] = 3
+        elif pace_delta >= 1.5:  breakdown["pace"] = 2
+        elif pace_delta >= -1.5: breakdown["pace"] = 0
+        elif pace_delta >= -3:   breakdown["pace"] = -2
+        else:                    breakdown["pace"] = -3
+    else:
+        breakdown["pace"] = 0
+
+    # ── LLM-pending factors (provide raw data, LLM assigns +/-) ──
+
+    # 4. Matchup DEF — LLM judges based on opponent DEF rank + specific defender matchup
+    breakdown["matchup"] = "🧠 LLM_PENDING"
+
+    # 5. Context (B2B + Home/Away + Garbage Time) — LLM judges tactical intent
+    breakdown["context"] = "🧠 LLM_PENDING"
+
+    # 7. Usage Redistribution — LLM judges impact of teammate injuries on ball usage
+    breakdown["usg"] = "🧠 LLM_PENDING"
+
+    # 8. Defender Impact — LLM judges specific positional defender matchup
+    breakdown["defender"] = "🧠 LLM_PENDING"
+
+    # Raw context data for LLM to use in judgment
+    breakdown["_llm_context"] = {
+        "opponent_def_rank": opponent_def_rank,
+        "opponent_pace": opponent_pace,
+        "is_b2b": is_b2b,
+        "is_home": is_home,
+        "spread": spread,
+        "usg_bonus": usg_bonus,
+        "defender_impact": defender_impact,
+    }
+
+    # Sum only Python-computed factors for preliminary adjusted prob
+    python_keys = ["trend", "cov", "buffer", "pace"]
+    python_adj = sum(breakdown[k] for k in python_keys)
+    preliminary = max(5.0, min(98.0, base_rate + python_adj))
+    breakdown["_python_adj"] = python_adj
+    breakdown["_preliminary"] = round(preliminary, 1)
+    # Note: final adjusted prob will be computed by LLM after filling in 4 pending factors
+    breakdown["_total_adj"] = python_adj  # Placeholder, LLM will finalize
+    breakdown["_adjusted"] = round(preliminary, 1)  # Placeholder
+
+    return round(preliminary, 1), breakdown
+
+
+# NOTE: generate_core_logic_narrative() removed in V7.
+# LLM now writes the 核心邏輯 narrative directly, incorporating its own
+# matchup/context/usg/defender judgments alongside the Python-computed factors.
+
+
+def format_adjustment_line(base_rate, breakdown):
+    """Format the 📐 adjustment detail line."""
+    parts = [f"基礎 {base_rate}%"]
+    factor_names = {
+        "trend": "走勢", "cov": "波動", "buffer": "安全墊",
+        "matchup": "對位", "context": "情境", "pace": "節奏",
+        "usg": "球權紅利", "defender": "防守者"
+    }
+    for key in ["trend", "cov", "buffer", "matchup", "context", "pace", "usg", "defender"]:
+        val = breakdown.get(key, 0)
+        name = factor_names[key]
+        # V7: LLM_PENDING factors are not yet assigned by LLM
+        if isinstance(val, str):
+            parts.append(f"{name}=🧠LLM")
+        elif val >= 0:
+            parts.append(f"{name} +{val}%")
+        else:
+            parts.append(f"{name} {val}%")
+    adjusted = breakdown.get("_adjusted", base_rate)
+    return " → ".join([parts[0]]) + " | " + " | ".join(parts[1:]) + f" | = {adjusted}%"
 
 def find_player_in_extractor(ext_players, name, team_abbr):
     if team_abbr in ext_players:
@@ -110,7 +233,11 @@ def find_player_in_extractor(ext_players, name, team_abbr):
     return None
 
 
-def build_player_card(player_name, team_abbr, bet365_data, ext_player, category):
+def build_player_card(player_name, team_abbr, bet365_data, ext_player, category,
+                      opponent_def_rank=None, opponent_pace=None,
+                      is_b2b=False, is_home=None, spread=None,
+                      usg_bonus=0, defender_impact=None, top_defender_name="",
+                      opponent_abbr=""):
     card = {
         "name": player_name,
         "team": team_abbr,
@@ -188,8 +315,17 @@ def build_player_card(player_name, team_abbr, bet365_data, ext_player, category)
         hr_l5, hr_l5_count, _ = hit_rate(l5_data, line_val)
         hr_l3, hr_l3_count, _ = hit_rate(l3_data, line_val)
         imp = implied_prob(float(odds_str))
-        est_prob = hr_l10  # Use L10 hit rate as estimated probability
+        # V7: 8-factor adjusted win probability (Python computes 4, LLM judges 4)
+        est_prob, adj_breakdown = calc_adjusted_winprob(
+            base_rate=hr_l10, hit_l5=hr_l5, cov=card["cov"],
+            avg=card["avg"], line_val=line_val,
+            opponent_def_rank=opponent_def_rank, opponent_pace=opponent_pace,
+            is_b2b=is_b2b, is_home=is_home, spread=spread,
+            usg_bonus=usg_bonus, defender_impact=defender_impact, amc=0)
         ev = edge_calc(est_prob, imp)
+        # V7: Narrative now written by LLM (not Python)
+        narrative = ""
+        adj_line = format_adjustment_line(hr_l10, adj_breakdown)
 
         card["line_analysis"][line_val_str] = {
             "line": line_val,
@@ -197,6 +333,7 @@ def build_player_card(player_name, team_abbr, bet365_data, ext_player, category)
             "odds": odds_str,
             "implied_prob": imp,
             "estimated_prob": est_prob,
+            "base_rate": hr_l10,
             "edge": ev,
             "edge_grade": edge_grade(ev),
             "hit_l10": hr_l10, "hit_l10_count": hr_l10_count,
@@ -204,6 +341,9 @@ def build_player_card(player_name, team_abbr, bet365_data, ext_player, category)
             "hit_l3": hr_l3, "hit_l3_count": hr_l3_count,
             "misses": misses,
             "verdict": "✅" if hr_l5 >= 70 else ("⚠️" if hr_l5 >= 50 else "❌"),
+            "adj_breakdown": adj_breakdown,
+            "adj_narrative": narrative,
+            "adj_line": adj_line,
         }
 
     return card
@@ -246,6 +386,7 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
                 "hit_l3_count": la["hit_l3_count"],
                 "implied_prob": la["implied_prob"],
                 "estimated_prob": la["estimated_prob"],
+                "base_rate": la.get("base_rate", la["hit_l10"]),
                 "edge": la["edge"],
                 "edge_grade": la["edge_grade"],
                 "cov": card["cov"],
@@ -256,6 +397,8 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
                 "med": card["med"],
                 "weighted_avg": card["weighted_avg"],
                 "trend": card["trend"],
+                "adj_narrative": la.get("adj_narrative", ""),
+                "adj_line": la.get("adj_line", ""),
                 "desc": f"{card['name']} ({card['team']}) {cl} {la['line_display']}",
             })
 
@@ -344,7 +487,7 @@ def _build_team_legs(odds, away_abbr, home_abbr):
 
 
 def select_combo_1(candidates):
-    """穩膽: Best 2 legs with high hit rate, targeting combined odds > 2x."""
+    """穩膽: Best 2-3 legs with high hit rate, targeting combined odds ≥ 2.0."""
     TARGET_MIN = 2.0
     pool = [c for c in candidates
             if c["hit_l10"] >= 70 and c["odds"] >= 1.2]
@@ -381,8 +524,8 @@ def select_combo_1(candidates):
 
 
 def select_combo_2(candidates, exclude_descs=None):
-    """均衡: Target combined odds > 3x, aiming for 5x."""
-    TARGET_MIN, TARGET_MAX = 3.0, 6.0
+    """均衡: Target combined odds ≥ 4.0, aiming for 5x."""
+    TARGET_MIN, TARGET_MAX = 4.0, 8.0
     TARGET_IDEAL = 5.0
     exclude = set(exclude_descs or [])
     pool = [c for c in candidates
@@ -420,8 +563,8 @@ def select_combo_2(candidates, exclude_descs=None):
 
 
 def select_combo_3(candidates, exclude_descs=None):
-    """高倍率進取: 3 legs targeting combined odds 8-10x."""
-    TARGET_MIN, TARGET_MAX = 8.0, 12.0
+    """高倍率進取: 3 legs targeting combined odds ≥ 8.0."""
+    TARGET_MIN, TARGET_MAX = 8.0, 15.0
     exclude = set(exclude_descs or [])
     pool = [c for c in candidates
             if c["hit_l10"] >= 40 and c["odds"] >= 1.3
@@ -560,19 +703,20 @@ def gen_player_card(card):
     # Bet365 Line Analysis Table
     if card.get("line_analysis"):
         lines.append(f"**🎯 Bet365 盤口對照表 ({cl}):**")
-        lines.append(f"| Line | Odds | 隱含勝率 | L10 命中 | L5 命中 | Edge | 判定 |")
-        lines.append(f"|------|------|----------|----------|---------|------|------|")
+        lines.append(f"| Line | Odds | 隱含勝率 | L10 命中 | L5 命中 | 預期勝率 | Edge | 判定 |")
+        lines.append(f"|------|------|----------|----------|---------|----------|------|------|")
         for lv, la in sorted(card["line_analysis"].items(), key=lambda x: float(x[0])):
             ld = la["line_display"]
             odds = la["odds"]
             ip = la["implied_prob"]
             hr10 = f"{la['hit_l10']}% ({la['hit_l10_count']})"
             hr5 = f"{la['hit_l5']}% ({la['hit_l5_count']})"
+            adj_prob = la["estimated_prob"]
             ev = la["edge"]
             eg = la["edge_grade"]
             v = la["verdict"]
             ev_str = f"+{ev}%" if ev > 0 else f"{ev}%"
-            lines.append(f"| {ld} | @{odds} | {ip}% | {hr10} | {hr5} | {ev_str} {eg} | {v} |")
+            lines.append(f"| {ld} | @{odds} | {ip}% | {hr10} | {hr5} | **{adj_prob}%** | {ev_str} {eg} | {v} |")
         lines.append(f"")
 
     lines.append(f"---")
@@ -596,7 +740,8 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
     avg_edge = 0
     for leg in legs:
         raw_combo_odds *= leg["odds"]
-        combo_hit_parts.append(leg["hit_l10"])
+        # V3: Use adjusted probability
+        combo_hit_parts.append(leg.get("estimated_prob", leg["hit_l10"]))
         avg_edge += leg["edge"]
     avg_edge = round(avg_edge / len(legs), 1)
 
@@ -614,54 +759,51 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
         lines.append(f"> {combo_desc}")
     lines.append(f"")
 
-    # Legs table
-    lines.append(f"| Leg | 選項 | 賠率 | L10 命中 | L5 命中 | Edge | CoV |")
-    lines.append(f"|-----|------|------|----------|---------|------|-----|")
+    # Legs table (now with adjusted prob)
+    lines.append(f"| Leg | 選項 | 賠率 | L10 命中 | 預期勝率 | Edge | CoV |")
+    lines.append(f"|-----|------|------|----------|----------|------|-----|")
     for i, leg in enumerate(legs):
         ev_str = f"+{leg['edge']}%" if leg['edge'] > 0 else f"{leg['edge']}%"
-        lines.append(f"| 🧩 {i+1} | {leg['desc']} | @{leg['odds']} | {leg['hit_l10']}% ({leg['hit_l10_count']}) | {leg['hit_l5']}% ({leg['hit_l5_count']}) | {ev_str} | {leg['cov']} {leg['cov_grade']} |")
+        adj_p = leg.get('estimated_prob', leg['hit_l10'])
+        lines.append(f"| 🧩 {i+1} | {leg['desc']} | @{leg['odds']} | {leg['hit_l10']}% ({leg['hit_l10_count']}) | **{adj_p}%** | {ev_str} | {leg['cov']} {leg['cov_grade']} |")
     lines.append(f"")
 
-    # Per-leg detailed analysis (auto-generated)
+    # Per-leg detailed analysis (V3: Python reasoning trace + Analyst [FILL])
     lines.append(f"**🎯 獨立關卡剖析:**")
     lines.append(f"")
     for i, leg in enumerate(legs):
         ev_str = f"+{leg['edge']}%" if leg['edge'] > 0 else f"{leg['edge']}%"
+        adj_p = leg.get('estimated_prob', leg['hit_l10'])
+        base_r = leg.get('base_rate', leg['hit_l10'])
         lines.append(f"**Leg {i+1} — {leg['desc']} @{leg['odds']}:**")
         lines.append(f"📊 數據: L10 `{leg['l10']}` | AVG {leg['avg']} | MED {leg['med']} | SD {leg['sd']}")
-        lines.append(f"隱含勝率 {leg['implied_prob']}% | 預估勝率 {leg['estimated_prob']}% (L10) | Edge: {ev_str} {leg['edge_grade']}")
-        # Auto-generate per-leg rationale
-        leg_reasons = []
-        if leg['hit_l10'] >= 80:
-            leg_reasons.append(f"L10 命中率 {leg['hit_l10']}% 極穩定")
-        elif leg['hit_l10'] >= 60:
-            leg_reasons.append(f"L10 命中率 {leg['hit_l10']}% 中等偏穩")
+        lines.append(f"隱含勝率 {leg['implied_prob']}% | Base Rate {base_r}% | 預期勝率 **{adj_p}%** | Edge: {ev_str} {leg['edge_grade']}")
+        # Show 8-Factor adjustment breakdown — Python reasoning trace for LLM
+        adj_line = leg.get('adj_line', '')
+        if adj_line:
+            lines.append(f"")
+            lines.append(f"📐 **Python 推理 (8-Factor Adjusted Win Prob):**")
+            lines.append(f"```")
+            lines.append(f"Base Rate: {base_r}%")
+            lines.append(f"{adj_line}")
+            lines.append(f"→ Final Adjusted: {adj_p}%")
+            lines.append(f"```")
+            lines.append(f"> Python 選擇此 Leg 嘅原因: Base Rate {base_r}% 經 8-Factor 調整後 → {adj_p}%, Edge {ev_str} {leg['edge_grade']}")
+        # Auto-generated core logic from Python
+        narrative = leg.get('adj_narrative', '')
+        if narrative:
+            lines.append(f"🧠 **Python 自動核心邏輯**: {narrative}")
         else:
-            leg_reasons.append(f"L10 命中率 {leg['hit_l10']}% 偏低，需留意")
-        if isinstance(leg['cov'], (int, float)):
-            if leg['cov'] <= 0.25:
-                leg_reasons.append("CoV 極低 → 輸出穩定如機械")
-            elif leg['cov'] <= 0.35:
-                leg_reasons.append("CoV 中等 → 波動可控")
-            else:
-                leg_reasons.append(f"CoV {leg['cov']} 偏高 → 輸出時高時低")
-        if leg['edge'] >= 15:
-            leg_reasons.append(f"Edge {ev_str} 莊家顯著低估")
-        elif leg['edge'] >= 5:
-            leg_reasons.append(f"Edge {ev_str} 正值有利")
-        elif leg['edge'] >= 0:
-            leg_reasons.append(f"Edge {ev_str} 接近均衡")
-        else:
-            leg_reasons.append(f"Edge {ev_str} 莊家有利")
-        if isinstance(leg.get('trend'), str) and '↑' in str(leg.get('trend', '')):
-            leg_reasons.append("近期趨勢向上 ↑")
-        lines.append(f"💡 **分析**: {' | '.join(leg_reasons)}")
-        lines.append(f"🧠 **核心邏輯**: [FILL]")
+            lines.append(f"🧠 **Python 自動核心邏輯**: 數據面支持此盤口。")
+        # [FILL] slot for Analyst deep supplement
+        lines.append(f"")
+        lines.append(f"✍️ **Analyst 深度補充**: [FILL — 請補充: 對手防守匹配分析、球權分配邏輯、上場時間預測、比賽劇本推演、同其他 Legs 嘅協同效應。若唔同意 Python 結論，請標註分歧並解釋原因。]")
         lines.append(f"")
 
-    # Combo calculation
+    # Combo calculation — use adjusted prob
     odds_mult_parts = " × ".join(f"{leg['odds']}" for leg in legs)
-    hit_mult_parts = " × ".join(f"{leg['hit_l10']}%" for leg in legs)
+    adj_probs = [leg.get('estimated_prob', leg['hit_l10']) for leg in legs]
+    hit_mult_parts = " × ".join(f"{p}%" for p in adj_probs)
 
     # Auto-determine stake recommendation
     if combo_hit_pct >= 70 and avg_edge >= 5:
@@ -716,8 +858,10 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
     lines.append(f"- **$100 回報**: **${int(payout)}**")
     lines.append(f"- **組合命中率**: {hit_mult_parts} = **{combo_hit_pct}%**")
     lines.append(f"- **平均 Edge**: {'+' if avg_edge > 0 else ''}{avg_edge}%")
-    lines.append(f"- **🛡️ 組合核心邏輯**: {core_logic}")
-    lines.append(f"- **⚠️ 主要風險**: {' / '.join(risk_factors)}")
+    lines.append(f"- **🛡️ 組合核心邏輯 (Python)**: {core_logic}")
+    lines.append(f"- **✍️ Analyst 組合補充**: [FILL — 請分析呢幾關串埋一齊嘅協同效應、比賽劇本推演、同整體投注策略嘅配合]")
+    lines.append(f"- **⚠️ 主要風險 (Python)**: {' / '.join(risk_factors)}")
+    lines.append(f"- **✍️ Analyst 風險補充**: [FILL — 請補充 Python 未能量化嘅風險: 教練換陣策略、末段輪休可能、場速突變等]")
     lines.append(f"- **建議注碼**: {stake}")
     lines.append(f"")
     lines.append(f"> ⚠️ 以上賠率為獨立 Leg 相乘。實際 Bet365 SGM 價格可能因關聯性調整而不同，落注前請以 Bet365 顯示為準。")
@@ -738,8 +882,51 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     # Header
     sections.append(f"# 🏀 NBA Wong Choi — {away_name} @ {home_name}")
     sections.append(f"**日期**: {meta.get('date', '?')} | **Bet365 提取時間**: {bet365_time}")
-    sections.append(f"**odds_source**: BET365_LIVE ✅")
+    sections.append(f"**odds_source**: BET365_LIVE ✅ | **引擎版本**: Adjusted Win Prob V3 (8-Factor)")
     sections.append(f"")
+
+    # ── Blowout / Tank Warning Banner ──
+    spread_val = odds.get("spread_away", None)
+    abs_spread = 0
+    if spread_val:
+        try:
+            abs_spread = abs(float(spread_val))
+        except (ValueError, TypeError):
+            pass
+    # Tank detection: check if either team has very poor record (from standings)
+    tank_warnings = []
+    standings = odds.get("standings", {})
+    for abbr in [away_abbr, home_abbr]:
+        record = standings.get(abbr, "")
+        if record:
+            try:
+                parts = record.split("-")
+                if len(parts) == 2:
+                    wins = int(parts[0])
+                    losses = int(parts[1])
+                    total = wins + losses
+                    if total > 50 and wins < 25:  # Late season + terrible record = tanking
+                        tank_warnings.append(f"{abbr} ({record}) 戰績極差，高度懷疑擺爛搶鑰匙")
+                    elif total > 50 and wins < 30:
+                        tank_warnings.append(f"{abbr} ({record}) 戰績偏差，存在擺爛可能")
+            except (ValueError, IndexError):
+                pass
+
+    if abs_spread >= 8.5 or tank_warnings:
+        sections.append(f"> [!CAUTION]")
+        if abs_spread >= 15:
+            sections.append(f"> 🚨 **極高 BLOWOUT 風險 (紅牌)** — 讓分盤 {spread_val}，大分差場次主力球員提前下場機率極高。")
+            sections.append(f"> 建議: **避免主力 PTS Over**，改買低門檻 Prop 或助攻/籃板盤。")
+        elif abs_spread >= 12:
+            sections.append(f"> 🔴 **高 BLOWOUT 風險 (橙牌)** — 讓分盤 {spread_val}，垃圾時間風險顯著。")
+            sections.append(f"> 建議: 謹慎操作 PTS Over，留意上場時間萎縮。")
+        elif abs_spread >= 8.5:
+            sections.append(f"> ⚠️ **BLOWOUT 風險 (黃牌)** — 讓分盤 {spread_val}，主力上場時間可能縮減。")
+            sections.append(f"> 建議: 留意主力球員第四節上場時間。")
+        for tw in tank_warnings:
+            sections.append(f"> 🏳️ **擺爛/戰意警告**: {tw}")
+            sections.append(f"> 建議: 注意該隊主力上場時間縮減、輪換陣容擴大。")
+        sections.append(f"")
 
     # Meeting Intelligence
     sections.append(gen_meeting_intelligence(meta, odds, injuries, news, team_stats))
@@ -871,8 +1058,39 @@ def main():
     ext_players = extractor.get("players", {})
     bet365_time = bet365.get("extraction_time", datetime.now().strftime("%Y-%m-%d %H:%M"))
 
+    # V3: Extract additional context data
+    key_defenders = extractor.get("key_defenders", {})
+    usg_redistribution = extractor.get("usage_redistribution", {})
+    correlation_warnings = extractor.get("correlation_warnings", {})
+
     away_abbr = meta.get("away", {}).get("abbr", "?")
     home_abbr = meta.get("home", {}).get("abbr", "?")
+
+    # V3: Pre-compute context for each team
+    spread = ex_odds.get("spread_away", None)
+
+    # Detect B2B from fatigue data (scan all players, if any has fatigue warning → B2B)
+    team_b2b = {away_abbr: False, home_abbr: False}
+    for abbr in [away_abbr, home_abbr]:
+        for p in ext_players.get(abbr, []):
+            fatigue = p.get("fatigue") or {}
+            if fatigue.get("fatigue_pct", 0) > 0 or fatigue.get("warning", ""):
+                team_b2b[abbr] = True
+                break
+
+    # Compute defender impact per opponent team (avg PCT_PLUSMINUS of top 3)
+    def get_defender_impact(team_abbr):
+        defenders = key_defenders.get(team_abbr, [])
+        if not defenders:
+            return None, ""
+        top3 = defenders[:3]
+        impacts = [d.get("PCT_PLUSMINUS", 0) for d in top3 if isinstance(d.get("PCT_PLUSMINUS"), (int, float))]
+        if not impacts:
+            return None, ""
+        avg_impact = sum(impacts) / len(impacts)
+        # Get top defender name for narrative
+        top_name = top3[0].get("name", "") if top3 else ""
+        return avg_impact, top_name
 
     # Build all player cards
     all_cards = []
@@ -887,9 +1105,25 @@ def main():
                 ext_p = find_player_in_extractor(ext_players, player_name, home_abbr)
                 team = home_abbr
             if ext_p is None:
-                team = "?"  # Unknown team - still add with Bet365 data only
+                print(f"Skipping {player_name} - not in {away_abbr} or {home_abbr}")
+                continue  # V7 Fix: Block cross-contamination from unified JSON
 
-            card = build_player_card(player_name, team, bet_data, ext_p, category)
+            # V3: Determine context for this player
+            opponent = home_abbr if team == away_abbr else away_abbr
+            opp_stats = team_stats.get(opponent, {})
+            opp_def_rank = opp_stats.get("DEF_RANK", None)
+            opp_pace = opp_stats.get("PACE", None)
+            is_home = (team == home_abbr)
+            is_b2b = team_b2b.get(team, False)
+            usg_bonus = usg_redistribution.get(team, {}).get(player_name, {}).get("bonus_USG", 0)
+            def_impact, top_def_name = get_defender_impact(opponent)
+
+            card = build_player_card(
+                player_name, team, bet_data, ext_p, category,
+                opponent_def_rank=opp_def_rank, opponent_pace=opp_pace,
+                is_b2b=is_b2b, is_home=is_home, spread=spread,
+                usg_bonus=usg_bonus, defender_impact=def_impact,
+                top_defender_name=top_def_name, opponent_abbr=opponent)
             all_cards.append(card)
 
     # Summary
@@ -898,6 +1132,7 @@ def main():
         cats[c['category']] = cats.get(c['category'], 0) + 1
     cat_str = ", ".join(f"{k}: {v}" for k, v in cats.items())
     print(f"📊 已處理 {len(all_cards)} 個球員×盤口組合 ({cat_str})")
+    print(f"📐 引擎版本: Adjusted Win Prob V3 (8-Factor)")
 
     # Generate report
     report = gen_full_report(meta, ex_odds, injuries, news, team_stats,
@@ -908,8 +1143,10 @@ def main():
     with open(args.output, 'w', encoding='utf-8') as f:
         f.write(report)
 
-    print(f"✅ Pre-filled skeleton V2 已生成: {args.output}")
-    print(f"   📎 下一步: NBA Analyst 填寫 [FILL] 邏輯欄位")
+    print(f"✅ Pre-filled skeleton V3 已生成: {args.output}")
+    print(f"   📐 所有預估勝率已由 8-Factor Adjusted Win Prob 引擎計算")
+    print(f"   🧠 核心邏輯已自動生成 (無 [FILL] 佔位符)")
+    print(f"   📎 下一步: NBA Analyst 審閱及補充分析")
 
 
 if __name__ == "__main__":

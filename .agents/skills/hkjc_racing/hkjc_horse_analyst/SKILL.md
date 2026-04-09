@@ -67,7 +67,21 @@ ag_kit_skills:
 
 # Interaction Logic (Step-by-Step)
 1. **讀取核心規則(一次性)**:讀取全部資源文件(01 至 09 + 場地模組)。
-2. **讀取與預備**:讀取賽事排位表與 Form Guide。
+2. **讀取與預備**:讀取賽事排位表與 Facts.md（完整賽績檔案）。
+   **⚠️ V2 Python 預提取（必須在分析前確認 Facts.md 已生成）：**
+   ```
+   python3 .agents/scripts/inject_hkjc_fact_anchors.py "<Formguide.txt>" \
+       --horse-ids "HK_2024_K416,HK_2024_K035,..." \
+       --output "Facts.md"
+   ```
+   此腳本自動生成 **完整賽績檔案**，包含：
+   - (a) 賽績總結（近六場/休後/統計）
+   - (b) **Markdown Table**（合併 Formguide + 馬匹頁面：頭馬距離/體重/配備/走位/完成時間）
+   - (c) L400/能量趨勢
+   - (d) 引擎距離分類
+   - (e) 🆕 頭馬距離趨勢 / 體重趨勢 / 配備變動 / 評分變動 / 走位 PI
+   **Analyst 嚴禁自行計算呢啲已預提取嘅數值 — 直接引用 Facts.md。**
+   **⛔ 嚴禁直接讀取 Formguide 重建賽績表格 — 必須引用 Facts.md。**
 3. **情報補全**:使用 Wong Choi Intelligence Package(若有),或獨立搜尋動態情報。
 4. **賽事與步速定調**:判定 `PACE_TYPE`,產生 `<第一部分> 戰場全景` + Speed Map。
 5. **批次解析**:每批固定 3 匹馬(BATCH_SIZE: 3),按馬號順序。**全自動推進**,嚴禁批次間詢問用戶。**批次隔離規則:每個 Batch 必須作為獨立嘅 file write 操作輸出,嚴禁將多個 Batch 合併到同一次 tool call。** Batch 1 = Safe-Writer Protocol (P19v6) heredoc → /tmp → base64 → safe_file_writer.py --mode overwrite 建檔；Batch 2+ = 同管道 --mode append 追加寫入。⚠️ write_to_file / replace_file_content / multi_replace_file_content 已完全封殺（Google Drive 同步死鎖風險）。若發現正在寫入 4+ 匹馬 → 立即停止拆分。

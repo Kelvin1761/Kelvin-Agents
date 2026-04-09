@@ -36,9 +36,11 @@
 
 ### Step 2: 引擎與距離 (Engine & Distance)
 - **[SIP-C14-4] 距離強制核實 (Distance Mandatory Verification):** Step 2 啟動前,必須從用戶提供的原始數據或 racecard 中提取**兩個獨立距離數據源**進行交叉比對:(1) 賽事名稱/Event Name 中隱含的距離線索;(2) 明確標示的「Distance」欄位。若兩者不一致,以 racecard 的數值欄位為準,並在分析開頭標注 `⚠️ 距離覆核:使用 [Xm] 而非 [Ym]`。
-- Type A (Grinder): 末600m與末200m差 <1.5s → 需快步速
-- Type B (Turn-of-Foot): 末200m ≤ 11.0s → 需遮擋
-- Type C (Sustained Sprint): 末800m每200m遞減 <0.3s → 需中等步速
+- **[Sectional Engine Classification (基於 PuntingForm ERP/L600 實證數據)]:**
+  > **⚠️ 注意:** PuntingForm 段速數據中，**負數 = 快過標準 (極佳)**，**正數 = 慢過標準 (差)**。
+  - **Type A (前領均速型 Grinder):** 歷史紀錄中 `早段步速(ERP)` 多處於 `Fast / Moderate / V.Fast`，而 `L600` 多為正數或微負 (未有顯著爆發力)。靠均速消耗對手，**需中等至快步速**。
+  - **Type B (真後上爆發型 Turn-of-Foot):** 歷史紀錄中喺 `ERP = V.Slow / Slow` 嘅不利慢步速下，仍然能交出極端負數嘅 `L600` (如 -1.00 以下)。證明擁有無視慢節奏嘅真後勁，**需快步速/遮擋**。
+  - **Type C (全天候高速巡航型 Sustained Sprint):** 無論 `ERP` 快或慢，`L600` 皆穩定交出負數或達標數字。適應力強，**對步速依賴度低**。
 - 距離彈性:`(最佳 - 最差) / 最佳距離` >0.25 = 高。增程線索:上仗 "Hit the line hard" + Sire AWD(→ `<sire_reference>`)
 - **[距離轉換風險矩陣 (Distance Transition Risk)]:**
 
@@ -67,6 +69,10 @@
 - **[2400m+ 距離牆規則 (Distance Wall)]:** 對於**首次**嘗試 2400m 或以上嘅馬匹,若 Sire AWD < 2200m **且**近仗段速衰退率不穩(忽高忽低或 >15%),**嚴禁給予 S 評級**,最高封頂 **A-**。2400m 係生理硬上限(距離牆),位置/步速等戰術優勢無法克服氣量不足嘅物理極限。即使馬匹喺 2000m 表現優異,首次跨入 2400m 仍須見到 Sire AWD 支持方可信任。
 
 ### Step 3: 評分與班次協同 (Ratings, Class & Weight Synergy)
+- **[RT Rating Baselining (絕對實力基準線)]:**
+  - `RT Rating` 提供跨班次嘅絕對速度水準。若同場對手近仗 RT 普遍介乎 `0.0 ~ 1.0`，而某駒持續交出 `RT > 2.0`。
+  - **判定機制:** 該駒擁有物理級數優勢，即使今仗升班或排外檔，其「級數與負重」維度強制給予 **✅ Strong** (超班標記)。
+  - **虛火過濾:** 若馬匹上仗贏馬但在低班賽中 `RT Rating` 屬平庸正數 (慢過基準)，則其「贏馬級數」不可靠，降格為「弱組/虛火」。
 - Rating Trajectory:`(最近評分 - 3仗前) / 3`,正 = 上升,負 = 衰退
 - 飽和:連續 5 場同 Rating → "Found its mark"
 - 級數壓縮:`Effective_Rating = Rating + (Weight_Drop x 1.5)`(基於澳洲 Benchmark 讓賽的經驗比率:1kg 約等於 1.5 個評分點),降班 ≥2 級 = 超班⭐

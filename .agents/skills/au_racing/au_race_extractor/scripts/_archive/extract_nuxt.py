@@ -1,7 +1,7 @@
 import re
 import json
 
-with open('/Users/imac/Desktop/Drive/Antigravity/.agents/skills/au_race_extractor/scripts/racenet_print_curl.html', 'r') as f:
+with open('./.agents/skills/au_race_extractor/scripts/racenet_print_curl.html', 'r') as f:
     text = f.read()
 
 # Look for window.__NUXT__=(function(...){...}(...));
@@ -15,6 +15,6 @@ if nuxt_start != -1:
     script_end = text.find('</script>', nuxt_start)
     script_content = text[nuxt_start:script_end]
     
-    with open('/Users/imac/Desktop/Drive/Antigravity/.agents/skills/au_race_extractor/scripts/nuxt.js', 'w') as out:
+    with open('./.agents/skills/au_race_extractor/scripts/nuxt.js', 'w') as out:
         out.write(script_content)
     print("Saved nuxt payload to nuxt.js, length:", len(script_content))

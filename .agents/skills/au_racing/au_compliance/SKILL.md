@@ -22,13 +22,13 @@ version: 2.0.0
 
 # Resource Read-Once Protocol
 每次被調用時,讀取以下資源:
-- `au_horse_analyst/resources/00_sip_index.md` — SIP 規則索引
-- `au_horse_analyst/resources/06_output_templates.md` — 官方輸出模板
-- `au_compliance/resources/01_compliance_rules.md` — 完整合規清單
-- `au_horse_analyst/resources/sip_changelog.md` — 最近 SIP 更新清單(用於回歸偵測)
+- `../au_horse_analyst/resources/00_sip_index.md` — SIP 規則索引
+- `../au_horse_analyst/resources/06_templates_core.md` — 官方輸出模板
+- `../au_compliance/resources/01_compliance_rules.md` — 完整合規清單
+- `../au_horse_analyst/resources/sip_changelog.md` — 最近 SIP 更新清單(用於回歸偵測)
 
 **條件讀取:**
-- `au_horse_analyst/resources/02a-02g (split engine files)` — 若需驗證覆蓋規則
+- `../au_horse_analyst/resources/02a-02g (split engine files)` — 若需驗證覆蓋規則
 
 # Interaction Logic (Step-by-Step)
 

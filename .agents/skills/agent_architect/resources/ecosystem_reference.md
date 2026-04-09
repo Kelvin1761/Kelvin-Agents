@@ -10,13 +10,17 @@ This document defines the structure, conventions, and existing agents of the Ant
 .agents/
 ├── .claude-plugin/
 │   └── plugin.json          # Plugin metadata
+├── scripts/               # Native Python Tools (Zero-Cost Architecture)
+│   ├── safe_file_writer.py
+│   ├── completion_gate_v2.py
+│   └── ...
 └── skills/
     ├── agent_architect/     # Meta-agent (no category prefix)
     ├── hkjc_racing/         # Hong Kong racing agents
     │   ├── hkjc_wong_choi/
     │   ├── hkjc_race_extractor/
     │   ├── hkjc_horse_analyst/
-    │   ├── hkjc_batch_qa/       # NEW — per-batch quality gate
+    │   ├── hkjc_batch_qa/
     │   ├── hkjc_compliance/
     │   ├── hkjc_reflector/
     │   └── hkjc_reflector_validator/
@@ -24,7 +28,7 @@ This document defines the structure, conventions, and existing agents of the Ant
     │   ├── au_wong_choi/
     │   ├── au_race_extractor/
     │   ├── au_horse_analyst/
-    │   ├── au_batch_qa/         # NEW — per-batch quality gate
+    │   ├── au_batch_qa/
     │   ├── au_compliance/
     │   ├── au_horse_race_reflector/
     │   └── au_reflector_validator/
@@ -32,11 +36,13 @@ This document defines the structure, conventions, and existing agents of the Ant
     │   ├── nba_wong_choi/
     │   ├── nba_data_extractor/
     │   ├── nba_analyst/
-    │   └── nba_reflector/
-    └── scripts/             # Native Python Tools (Zero-Cost Architecture)
-        ├── completion_gate_v2.py
-        ├── safe_writer.py
-        └── ...
+    │   ├── nba_batch_qa/
+    │   ├── nba_compliance/
+    │   ├── nba_reflector/
+    │   └── nba_reflector_validator/
+    ├── horserace_game_developers/  # 賽馬遊戲開發 agents
+    ├── shared_instincts/          # 跨引擎共享本能模組
+    └── antigravity-awesome-skills/ # 精選技能集
 ```
 
 ### Agent Folder Structure
@@ -133,11 +139,24 @@ Agents that chain to downstream agents output structured CSV blocks:
 | **Reflector Validator** (HKJC/AU) | Blind re-analysis gatekeeper. Validates SIP updates via selective race-by-race testing with user checkpoints. | Race folder + SIP changelog | User (validation report) |
 | **Agent Architect** | Meta-agent. Designs, optimises, and audits agents (3 modes: Build/Optimise/Audit). Agent Health Check. | User requirements | New/updated SKILL.md |
 | **Racecourse Weather Prediction** (AU) | Weather and track condition forecasting. | Race date + venue | Wong Choi / Analyst |
-| **NBA Wong Choi** | NBA Parlay analysis commander. Orchestrates data extraction and parlay strategy analysis. Defaults to all games on specified date. | User input (date / specific games) | NBA Data Extractor → NBA Analyst |
+| **NBA Wong Choi** | NBA Parlay analysis commander. Orchestrates data extraction and parlay strategy analysis. Defaults to all games on specified date. | User input (date / specific games) | NBA Data Extractor → NBA Analyst → NBA Compliance → NBA Batch QA |
 | **NBA Data Extractor** | Real-time NBA data extraction: rosters, injuries, defensive profiles, player stats (L10), match context, and player/team news. Outputs structured data package. | NBA Wong Choi / User | NBA Analyst |
 | **NBA Analyst** | Quantitative parlay analysis: CoV volatility engine, contextual adjustments (incl. news), safety gate, 3-tier parlay builder (Banker/Value/High Odds). Bet365 compliant. | NBA Data Extractor data package | NBA Wong Choi / User |
-| **NBA Reflector** | Post-game review. Compares NBA parlay predictions vs actual box scores, identifies systematic blind spots in volatility engine/safety gate/parlay engine, proposes SIPs. | Game results (web search) + Analyst predictions | Analyst (improvement proposals) |
-
+| **NBA Batch QA** | Per-batch structural QA gate. Format drift detection, anti-laziness scan, cross-game consistency check. | Analyst batch output | Wong Choi (pass/fail) |
+| **NBA Compliance** | Per-game compliance audit. Template adherence, [FILL] residual scan, math verification, Bet365 format check. Tiered remediation. | Analyst report | Wong Choi (pass/fail verdict) |
+| **NBA Reflector** | Post-game review. Compares NBA parlay predictions vs actual box scores, identifies systematic blind spots in volatility engine/safety gate/parlay engine, proposes SIPs. 6-angle REF-DA01 framework. | Game results (web search) + Analyst predictions | Reflector Validator / User / Agent Architect |
+| **NBA Reflector Validator** | Blind re-analysis gatekeeper. Validates analytic logic updates via selective game-by-game testing with user checkpoints. | Analysis folder + SIP changelog | User (validation report) |
+| **Agent Architect** | Meta-agent. Designs, optimises, and audits agents (3 modes: Build/Optimise/Audit). Health Check with Confidence Scoring. Cross-platform enforcement. | User requirements / Reflector proposals | New/updated SKILL.md + audit_history.md |
+| **Game Producer** | 賽馬遊戲開發的總指揮。負責專案的敏捷管理，跨職能協調，將高層次需求拆解為具體任務並推動執行。 | User (Game requirements) | Whole Game Dev Team |
+| **Lead Designer** | 遊戲架構師。負責遊戲核心機制、經濟循環與整體體驗設計。 | Game Producer | Content Designer / UX |
+| **Content Designer** | 遊戲內容設計師。專注於任務腳本、世界觀與遊戲劇情文字編寫。 | Lead Designer | Game Producer |
+| **Pixel Artist** | 遊戲美術開發 (Game Art)。主要產出復古像素風格視覺資產。 | Game Producer / Lead Designer | Game Producer |
+| **Sound Designer** | 遊戲音效設計師。負責 BGM 音樂與遊戲音效資產設計。 | Game Producer / Lead Designer | Game Producer |
+| **Frontend Engineer**| 遊戲前端開發。主要負責網頁畫面的 UI 構建與動畫呈現。 | Game Producer | Game QA |
+| **Backend Engineer** | 遊戲後端開發。負責伺服器架構、API 連接、資料庫等核心邏輯。 | Game Producer | Game QA |
+| **Mobile Engineer** | 跨平台手機遊戲開發。負責原生或混合 Mobile App 開發與體驗優化。 | Game Producer | Game QA |
+| **Game QA** | 遊戲品質保證工程師 (QA)。負責自動化測試 (Playwright)、邊界條件檢查並發掘潛在 Bug。 | Game Producer / Engineers | Game Producer |
+| **Game Ops** | 遊戲營運與客服專家。分析用戶反饋並制定營運策略。 | Game Producer / Analytics Data | Game Producer |
 
 ### Agent Chaining Flow — Horse Racing (HKJC/AU)
 ```
@@ -171,12 +190,20 @@ User → NBA Wong Choi (date + game selection)
        NBA Data Extractor (web search: rosters, injuries, stats, news)
          ↓
        NBA Analyst (volatility → safety gate → 3-tier parlay builder)
-         ↓
-       NBA Wong Choi (quality check + override + self-debug)
+         ↓ per batch
+       NBA Batch QA 🚨 (structural + format drift + anti-laziness)
+         ↓ PASS ✔️          ↓ FAIL ❌
+       next batch        Analyst (redo batch)
+         ↓ all batches done
+       NBA Compliance (per-game template adherence + math verification)
+         ↓ PASS ✔️          ↓ FAIL ❌
+       NBA Wong Choi      CRITICAL: full redo / MINOR: batch redo
          ↓
        User (final parlay report + auto-save)
          ↓ (post-game)
        NBA Reflector (review & improvement proposals)
+         ↓ (SIP approved & applied)
+       NBA Reflector Validator (selective blind re-analysis)
 ```
 
 ---

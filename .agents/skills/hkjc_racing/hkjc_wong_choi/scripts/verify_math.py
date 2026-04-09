@@ -1,5 +1,5 @@
 """
-verify_math.py — Wong Choi AU 自動化 Step 14.2A 數學驗證
+verify_math.py — Wong Choi HKJC 自動化 Step 14.2A 數學驗證
 
 用 Python regex 精確數 ✅/➖/❌ 符號，查表得出正確評級，
 同 LLM 寫嘅 ⭐ 最終評級做交叉校驗。

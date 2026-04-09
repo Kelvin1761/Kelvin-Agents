@@ -1,6 +1,6 @@
 import json
 
-with open('/Users/imac/Desktop/Drive/Antigravity/.agents/skills/au_race_extractor/scripts/nuxt.json', 'r') as f:
+with open('./.agents/skills/au_race_extractor/scripts/nuxt.json', 'r') as f:
     nuxt = json.load(f)
 
 def recursive_find_competitors(d, depth=0):

@@ -15,11 +15,12 @@ import time
 import argparse
 from curl_cffi import requests
 from playwright.sync_api import sync_playwright
+from bs4 import BeautifulSoup
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
-BASE_DIR = r"/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity"
+BASE_DIR = r"."
 
 def process_selections(nuxt_data, f_rc, f_fg):
     form_data = nuxt_data.get('fetch', {})
@@ -60,6 +61,19 @@ def process_selections(nuxt_data, f_rc, f_fg):
             meta['track_condition'] = f"{overall} {rating}".strip()
             meta['track_rating'] = str(rating)
             
+    # Pre-parse HTML to extract PuntingForm advanced metrics
+    try:
+        with open(".agents.agents.agents/tmp/temp.html", "r", encoding="utf-8") as f:
+            html_text = f.read()
+        soup = BeautifulSoup(html_text, 'lxml')
+        details_blocks = soup.find_all('div', class_='racing-full-form-details')
+        print(f"    [PF DEBUG] Found {len(details_blocks)} full form details blocks")
+    except Exception as e:
+        print(f"    [PF DEBUG] Error parsing HTML: {e}")
+        details_blocks = []
+        
+    active_idx = -1
+
     for sel in selections:
         num = sel.get('competitorNumber', '?')
         comp = sel.get('competitor', {}) or {}
@@ -67,10 +81,17 @@ def process_selections(nuxt_data, f_rc, f_fg):
         
         status = sel.get('status')
         status_abv = sel.get('statusAbv')
-        if status_abv in ['S', 'Scratched'] or status in ['S', 'Scratched', 'SCRATCHED']:
+        is_scratched = (status_abv in ['S', 'Scratched'] or status in ['S', 'Scratched', 'SCRATCHED'])
+        
+        if is_scratched:
             f_rc.write(f"{num}. {name} - status:Scratched\n")
             f_fg.write(f"{num}. {name} - status:Scratched\n\n")
             continue
+            
+        active_idx += 1
+        html_block = details_blocks[active_idx] if active_idx < len(details_blocks) else None
+        html_runs = html_block.find_all('div', class_='horse-racing-previous-runs-row') if html_block else []
+
         
         barrier = sel.get('barrierNumber', '?')
         trainer_obj = sel.get('trainer') or {}
@@ -153,7 +174,7 @@ def process_selections(nuxt_data, f_rc, f_fg):
         f_fg.write(f"{'1st Up:':<10} {fmt_stat('firstUp'):<15} {'2nd Up:':<10} {fmt_stat('secondUp'):<15} {'3rd Up:':<10} {fmt_stat('thirdUp'):<15}\n")
         f_fg.write(f"{'Season:':<10} {fmt_stat('currentSeason'):<15} {'12 Month:':<10} {fmt_stat('lastYear'):<15} {'Fav:':<10} {fmt_stat('fav'):<15}\n\n")
         
-        for pr in runs:
+        for r_idx, pr in enumerate(runs):
             track = pr.get('meetingName', '')
             date = pr.get('meetingDate', '')
             dist = pr.get('eventDistance', '')
@@ -181,8 +202,32 @@ def process_selections(nuxt_data, f_rc, f_fg):
             
             trial_str = " **(TRIAL)**" if pr.get('isTrial') else ""
             
-            f_fg.write(f"{track}{trial_str} R{race_num_run} {date} {dist}m cond:{cond} ${money:,} {p_jock} ({bar}) {wt}kg {run_flucs} {win_time} {positions.strip()}.\n")
+            run_margin = pr.get('margin')
+            run_margin_str = f" margin:{run_margin}L" if run_margin is not None else ""
+            
+            hc = pr.get('handicapRating')
+            hc_str = f" HC:{hc}" if hc is not None else ""
+            
+            # Extract PF metrics if available
+            pf_str = ""
+            if r_idx < len(html_runs):
+                row_text = html_runs[r_idx].get_text(separator=' ', strip=True)
+                pf_match = re.search(r'Last600:\s*([-\d.]+)[^R]*(Runner Time:\s*[-\d.]+)[^R]*(Race Time:\s*[-\d.]+)[^E]*(Early Runner Pace:\s*[^.]+\.)[^E]*(Early Race Pace:\s*[^.]+\.)[^R]*(RT Rating:\s*[-\d.]+)', row_text, re.IGNORECASE)
+                if pf_match:
+                    pf_str = f" PF[{pf_match.group(0).strip()}]"
+                else:
+                    # Fallback loose match
+                    loose_pf = re.search(r'Last600:.*?(?=Full Results|$)', row_text, re.IGNORECASE)
+                    if loose_pf:
+                        clean_pf = loose_pf.group(0).replace(' .', ',').strip()
+                        pf_str = f" PF[{clean_pf}]"
+            
+            f_fg.write(f"{track}{trial_str} R{race_num_run} {date} {dist}m cond:{cond} ${money:,} {p_jock} ({bar}) {wt}kg {run_flucs} {win_time} {positions.strip()}.{run_margin_str}{hc_str}{pf_str}\n")
             f_fg.write(f"{win_str}, {sec_str}, {thi_str}\n")
+            if r_idx == 0 and pf_str:
+                print(f"    [PF DEBUG] Extracted PF for Run 0: {pf_str}")
+            elif r_idx == 0:
+                print(f"    [PF DEBUG] No PF match for HTML Run 0")
             f_fg.write(f"Video: {pr.get('videoComment', '')}\n")
             f_fg.write(f"Note: {pr.get('videoNote', '')}\n")
             f_fg.write(f"Stewards: {pr.get('stewardsReport', '')}\n\n")
@@ -200,10 +245,10 @@ def extract_race(meeting_slug, race_num, date_str, location, page, slug_override
             print(f"  Race {race_num}: HTTP Error {resp.status_code}")
             return None
             
-        with open("/tmp/temp.html", "w", encoding="utf-8") as f:
+        with open(".agents.agents.agents/tmp/temp.html", "w", encoding="utf-8") as f:
             f.write(resp.text)
             
-        page.goto(f"file:///tmp/temp.html")
+        page.goto(f"file://.agents.agents.agents/tmp/temp.html")
         nuxt_data = page.evaluate("() => window.__NUXT__")
         
         if not nuxt_data:

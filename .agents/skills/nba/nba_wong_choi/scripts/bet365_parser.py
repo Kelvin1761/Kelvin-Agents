@@ -25,11 +25,23 @@ Version: 1.0.0
 import json, re, sys, os, argparse
 
 # Known Bet365 line markers for player props
-VALID_LINE_MARKERS = {5, 10, 15, 20, 25, 30, 35, 40, 45, 50}
+# BUG FIX: Must include ALL possible line values across all categories:
+#   Points:  5, 10, 15, 20, 25, 30, 35, 40, 45, 50
+#   Rebounds: 1, 2, 3, 5, 7, 10, 13, 15, 17, 20
+#   Assists:  1, 2, 3, 5, 7, 10, 13, 15
+#   3PM:     1, 2, 3, 5, 7, 10
+ALL_LINE_MARKERS = {1, 2, 3, 5, 7, 10, 13, 15, 17, 20, 25, 30, 35, 40, 45, 50}
+# Points-only markers (used during player section parsing to avoid
+# confusing low markers like 1,2,3 with jersey numbers)
+POINTS_LINE_MARKERS = {5, 10, 15, 20, 25, 30, 35, 40, 45, 50}
+# For non-points categories, the first odds grid marker is typically 1 or 3
+VALID_LINE_MARKERS = ALL_LINE_MARKERS  # Keep backward compat
 
 
-def is_line_marker(value_str):
+def is_line_marker(value_str, marker_set=None):
     """Check if a raw text line is a line marker (integer, no decimal)."""
+    if marker_set is None:
+        marker_set = ALL_LINE_MARKERS
     value_str = value_str.strip()
     if not value_str:
         return False
@@ -39,7 +51,7 @@ def is_line_marker(value_str):
         return False
     try:
         val = int(value_str)
-        return val in VALID_LINE_MARKERS
+        return val in marker_set
     except ValueError:
         return False
 
@@ -254,12 +266,15 @@ def map_odds_to_players(players, odds_grid):
             for idx, player in enumerate(players):
                 result[player['name']]['lines'][str(line_val)] = str(odds_list[idx])
         elif n_odds < num_players:
-            # Offset: high scorers (first in list) don't have this low line
+            # Bet365 orders players from highest to lowest output in each category.
+            # When a low line (e.g. PTS 5+, REB 3+) has fewer odds than players,
+            # it means the TOP players (first in list) don't have that line opened
+            # because it's a near-certainty for them. The odds map to the LAST N players.
             offset = num_players - n_odds
             for idx, odds in enumerate(odds_list):
                 player_idx = idx + offset
                 if player_idx < num_players:
-                    result[players[player_idx]['name']]['lines'][str(line_val)] = str(odds)
+                    result[players[player_idx]['name']]['lines'][str(line_val)] = str(odds_list[idx])
         # If n_odds > num_players, something went wrong — skip
     
     return result

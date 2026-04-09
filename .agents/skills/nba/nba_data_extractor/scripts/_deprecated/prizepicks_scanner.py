@@ -81,7 +81,7 @@ if __name__ == "__main__":
             print(f"👤 {p['player']} | 📊 {p['stat']}: {p['line']}")
         
         # 儲存到本地供 Wong Choi 使用
-        output_path = "/tmp/nba_prizepicks_baseline.json"
+        output_path = ".agents.agents/tmp/nba_prizepicks_baseline.json"
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump({"updated_at": datetime.now().isoformat(), "props": props}, f, ensure_ascii=False, indent=2)
         print(f"\n✅ 完整數據已備份至: {output_path}")

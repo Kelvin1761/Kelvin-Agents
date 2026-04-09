@@ -7,14 +7,14 @@ def get_nuxt_data():
         page = browser.new_page()
         
         # Load the local HTML file we fetched via curl_cffi
-        page.goto('file:///Users/imac/Desktop/Drive/Antigravity/.agents/skills/au_race_extractor/scripts/racenet_print_curl.html')
+        page.goto('file://./.agents/skills/au_race_extractor/scripts/racenet_print_curl.html')
         
         # Extract the global window.__NUXT__ object
         nuxt_data = page.evaluate('() => window.__NUXT__')
         
         print("Success! Keys in Nuxt data:", nuxt_data.keys() if nuxt_data else "None")
         
-        with open('/Users/imac/Desktop/Drive/Antigravity/.agents/skills/au_race_extractor/scripts/nuxt.json', 'w') as f:
+        with open('./.agents/skills/au_race_extractor/scripts/nuxt.json', 'w') as f:
             json.dump(nuxt_data, f, indent=2)
             
         print("Saved to nuxt.json")

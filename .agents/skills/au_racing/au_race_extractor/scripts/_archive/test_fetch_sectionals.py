@@ -1,6 +1,6 @@
 import json
 
-with open('/Users/imac/Desktop/Drive/Antigravity/.agents/skills/au_race_extractor/scripts/sectionals_nuxt.json', 'r') as f:
+with open('./.agents/skills/au_race_extractor/scripts/sectionals_nuxt.json', 'r') as f:
     nuxt = json.load(f)
 
 fetch_data = nuxt.get('fetch', {})

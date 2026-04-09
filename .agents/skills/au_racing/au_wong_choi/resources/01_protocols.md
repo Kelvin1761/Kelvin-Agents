@@ -16,7 +16,7 @@
 
 ---
 
-# 🚨 CRITICAL: File Writing Protocol — Safe-Writer P19v6 (2026-04-05 更新)
+# 🚨 CRITICAL: File Writing Protocol — Safe-Writer P33-WLTM (2026-04-05 更新)
 
 > **⛔ TOTAL BAN — 零例外:**
 >
@@ -26,7 +26,7 @@
 > 3. ❌ `multi_replace_file_content` — 任何大小、任何路徑
 > 4. ❌ `python3 -c '...'` inline script — shell 引號衝突
 >
-> **歷史教訓:** P19v1-v5 全部失敗。`write_to_file` 即使寫 /tmp 小檔案,
+> **歷史教訓:** P33-WLTM-v5 全部失敗。`write_to_file` 即使寫 /tmp 小檔案,
 > 喺 session context 夠大時一樣卡死在 `+0 -0`。根因係 IDE JSON serialization
 > pipeline 嘅系統性 deadlock,與目標路徑無關。
 
@@ -47,7 +47,7 @@
 
 ```bash
 # 用 run_command 執行以下 Python heredoc:
-cat << 'PYEOF' > /tmp/batch_N_generate.py
+cat << 'PYEOF' > .agents.agents/tmp/batch_N_generate.py
 import subprocess, base64
 
 content = """
@@ -57,14 +57,14 @@ content = """
 encoded = base64.b64encode(content.encode('utf-8')).decode('utf-8')
 subprocess.run([
     'python3',
-    '/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/safe_file_writer.py',
+    './.agents/scripts/safe_file_writer.py',
     '--target', '{TARGET_DIR}/{ANALYSIS_FILE}',
     '--mode', 'append',    # Batch 1 用 'overwrite', Batch 2+ 用 'append'
     '--content', encoded
 ], check=True)
 PYEOF
 
-python3 /tmp/batch_N_generate.py
+python3 .agents.agents/tmp/batch_N_generate.py
 ```
 
 **優點:**
@@ -81,9 +81,9 @@ python3 /tmp/batch_N_generate.py
 
 ```bash
 # Fallback A — overwrite:
-cp /tmp/batch_N.md "{TARGET_DIR}/{ANALYSIS_FILE}"
+cp .agents.agents/tmp/batch_N.md "{TARGET_DIR}/{ANALYSIS_FILE}"
 # Fallback B — append:
-cat /tmp/batch_N.md >> "{TARGET_DIR}/{ANALYSIS_FILE}"
+cat .agents.agents/tmp/batch_N.md >> "{TARGET_DIR}/{ANALYSIS_FILE}"
 # ⛔ 絕對唔可以 fallback 到 write_to_file / replace_file_content！
 ```
 
@@ -91,3 +91,30 @@ cat /tmp/batch_N.md >> "{TARGET_DIR}/{ANALYSIS_FILE}"
 
 若你正在準備使用 `write_to_file` / `replace_file_content` / `multi_replace_file_content`:
 → ⛔ STOP → 你已違規 → 改用上方 Python heredoc pattern。
+
+# 🛡️ P40: Template Instantiation Protocol (防錯位及漏填機制)
+
+> **⛔ BAN: 盲目順序替換 (Blind Sequential Replacement)**
+> 絕對禁止以迴圈 (loop) 配合 `text.replace("[FILL]", val, 1)` 或 `text.replace("{{LLM_FILL}}", val, 1)` 等純文字按順序替換大量變數的方法。Markdown 表格分隔符號 (`----`) 或其他意料外的文本結構極易導致 Regex 擷取中斷，從而造成錯位填充及災難性漏填。
+
+## ✅ 唯一允許寫法: 錨點精準替換 (Anchored Key-Value Replacement)
+
+當透過 Python 腳本更新 Analysis 骨架（例如 `04-08 Race X Analysis.md`）時，每次呼叫 `.replace()` 或 `re.sub()` **必須包含該欄位的標籤 (Label) 或完整上下文作為錨點 (Anchor)**。
+
+**正確示範:**
+```python
+# 1. 針對單一欄位的替換 (嚴格連同標題配對)
+text = text.replace(
+    "- **班次負重:** [FILL]", 
+    f"- **班次負重:** {weight}"
+)
+
+# 2. 針對大區塊的核心邏輯替換 (使用前後文錨點)
+text = text.replace(
+    "> - **核心邏輯:** [FILL — S/A ≥150字 | B ≥100字 | C/D ≥80字]",
+    f"> - **核心邏輯:** {core_logic}"
+)
+```
+
+**必經安全檢查 (Micro-Batch Validation):**
+每次執行腳本替換後，必須主動驗證 `[FILL]` 佔位符的數量是否如預期般減少。若執行後出現異常大量的剩餘 `[FILL]`，或者為 `0` 但內容有誤，必須 **先呼叫 `view_file` 檢查檔案內容**，嚴禁「盲目修補 (Blind Patching)」。

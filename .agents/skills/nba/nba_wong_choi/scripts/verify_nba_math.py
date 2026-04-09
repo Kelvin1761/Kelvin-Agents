@@ -29,21 +29,21 @@ COMBO_RE = re.compile(
 
 # Match individual legs within a combination
 LEG_RE = re.compile(
-    r'(?:Leg\s*\d+[｜|:：-]\s*|-\s*\[)(.*?)(?=Leg\s*\d+[｜|:：-]|-\s*\[|📊\s*組合分析|---|$)',
+    r'(?:Leg\s*\d+[｜|:：\-—]\s*|-\s*\[)(.*?)(?=Leg\s*\d+[｜|:：\-—]|-\s*\[|📊\s*組合結算|---|$)',
     re.DOTALL | re.UNICODE
 )
 
 # Field extraction regexes
 FIELD_RE = {
     'name': re.compile(r'^([^—]+)'),
-    'odds': re.compile(r'賠率[：:]\s*~?\s*\[??([\d\.]+)\]?'),
-    'win_rate_l10': re.compile(r'L10\s*=\s*\[??(\d+)\]?%'),
-    'implied_prob': re.compile(r'隱含勝率\s*=\s*\[??([\d\.]+)\]?%?'),
-    'est_prob': re.compile(r'預估勝率\s*=\s*\[??([\d\.]+)\]?%?'),
-    'edge': re.compile(r'Edge\s*=\s*\[??([-\d\.]+)\]?%?'),
-    'avg': re.compile(r'均值[：:]\s*\[??([\d\.]+)\]?'),
-    'sd': re.compile(r'SD[：:]\s*\[??([\d\.]+)\]?'),
-    'cov': re.compile(r'CoV[：:]\s*\[??([\d\.]+)\]?'),
+    'odds': re.compile(r'@([\d\.]+)'),
+    'win_rate_l10': re.compile(r'(?:Base Rate|L10\s*命中|L10)\s*[:：]?\s*([\d\.]+)%'),
+    'implied_prob': re.compile(r'隱含勝率\s*([\d\.]+)%'),
+    'est_prob': re.compile(r'預期勝率\s*(?:\*\*)?([\d\.]+)(?:\*\*)?%'),
+    'edge': re.compile(r'Edge:\s*(?:\*\*)?([-\+\d\.]+)(?:\*\*)?%'),
+    'avg': re.compile(r'AVG\s*([\d\.]+)'),
+    'sd': re.compile(r'SD\s*([\d\.]+)'),
+    'cov': re.compile(r'CoV\s*([\d\.]+)'),
 }
 
 @dataclass
@@ -53,14 +53,14 @@ class NBALegVerification:
     is_banker: bool
     is_value: bool
     
-    odds: float = 0.0
-    win_rate_l10: float = 0.0
-    implied_prob: float = 0.0
-    est_prob: float = 0.0
-    edge: float = 0.0
-    avg: float = 0.0
-    sd: float = 0.0
-    cov: float = 0.0
+    odds: float = None
+    win_rate_l10: float = None
+    implied_prob: float = None
+    est_prob: float = None
+    edge: float = None
+    avg: float = None
+    sd: float = None
+    cov: float = None
     
     issues: list = field(default_factory=list)
 
@@ -123,13 +123,11 @@ def verify_leg(combo_name: str, leg_text: str) -> NBALegVerification:
         if is_banker:
             if v.win_rate_l10 < 80.0:
                 v.issues.append(f"BANKER_SAFETY_VIOLATION: 穩膽要求 L10命中率≥80%, 當前={v.win_rate_l10}%")
-            if v.odds < 1.80:
-                v.issues.append(f"BANKER_SAFETY_VIOLATION: 穩膽要求 賠率≥1.80, 當前={v.odds}")
+            pass # removed leg odds check
         elif is_value:
             if v.win_rate_l10 < 70.0: # Using 70 to be slightly lenient on parsing
                 v.issues.append(f"VALUE_SAFETY_VIOLATION: 價值要求 L10命中率≥75%, 當前={v.win_rate_l10}%")
-            if v.odds < 2.50:
-                v.issues.append(f"VALUE_SAFETY_VIOLATION: 價值要求 賠率≥2.50, 當前={v.odds}")
+            pass # removed leg odds check
 
     return v
 

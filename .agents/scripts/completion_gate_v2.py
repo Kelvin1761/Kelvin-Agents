@@ -6,7 +6,7 @@ from pathlib import Path
 def check_au_hkjc_format(text: str, domain: str) -> list[str]:
     errors = []
     if domain == 'au':
-        required_tags = ['⏱️', '🐴', '⚡', '🧭', '⚠️', '📊', '💡', '⭐']
+        required_tags = ['⏱️', '🐴', '📋', '🧭', '⚠️', '📊', '💡', '⭐']
     else:
         required_tags = ['🔬', '🐴', '⚡', '📋', '🔗', '⚠️', '📊', '💡', '⭐']
     
@@ -78,7 +78,7 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
     blocks = re.split(r'(?=(?:### 【No\.\d+】|\[#\d+\] \w+))', text)
     
     if domain == 'au':
-        required_tags = ['⏱️', '🐴', '⚡', '🧭', '⚠️', '📊', '💡', '⭐']
+        required_tags = ['⏱️', '🐴', '📋', '🧭', '⚠️', '📊', '💡', '⭐']
     else:
         required_tags = ['🔬', '🐴', '⚡', '📋', '🔗', '📊', '💡', '⭐']
 
@@ -131,21 +131,94 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
     return errors
 
 def check_nba_format(text: str) -> list[str]:
+    """Strengthened NBA format check — aligned with HKJC/AU rigor."""
     errors = []
-    if 'Game Header' not in text and '【' not in text:
-        errors.append("Missing Game Header")
-    if 'Player Stats' not in text and '球員' not in text and '數據' not in text:
-        errors.append("Missing Player Stats section")
-    if 'Parlay' not in text and '過關' not in text and '組合' not in text:
-        errors.append("Missing Parlay/Combination section")
+
+    # 1. Game Header
+    has_header = any(marker in text for marker in ['NBA Wong Choi', '🏀', 'Wong Choi —'])
+    if not has_header:
+        errors.append("Missing Game Header (expected '🏀 NBA Wong Choi — ...')")
+
+    # 2. 3-Combo Structure (🛡️ 1, 🔥 2, 💎 3)
+    combo_markers = {
+        "🛡️": "組合 1 (穩膽)",
+        "🔥": "組合 2 (價值)",
+        "💎": "組合 3 (高倍率)",
+    }
+    found_combos = 0
+    for emoji, label in combo_markers.items():
+        if emoji in text:
+            found_combos += 1
+        else:
+            errors.append(f"[CRITICAL] STRUCT-COMBO: Missing {label} ({emoji} not found)")
+    if found_combos < 3:
+        errors.append(f"[CRITICAL] STRUCT-COMBO: Only {found_combos}/3 required combos found")
+
+    # 3. [FILL] Residual Scan
+    fill_count = text.count('[FILL]')
+    if fill_count > 0:
+        errors.append(f"🚨 [CRITICAL] FILL-001: {fill_count} unfilled '[FILL]' placeholders detected")
+
+    # 4. Anti-Laziness Scan
+    lazy_patterns = [
+        ('[同上]', 'LAZY-001'),
+        ('[略]', 'LAZY-001'),
+        ('[參見組合', 'LAZY-001'),
+        ('[完整數據見組合', 'LAZY-001'),
+        ('[見上方]', 'LAZY-001'),
+        ('[邏輯同前]', 'LAZY-001'),
+        ('[數據略]', 'LAZY-001'),
+    ]
+    for pattern, code in lazy_patterns:
+        if pattern in text:
+            errors.append(f"[CRITICAL] {code}: Lazy shortcut detected: '{pattern}'")
+
+    # 5. L10 Array Validation
+    l10_arrays = re.findall(r'L10.*?`\[([^\]]+)\]`', text)
+    for arr_str in l10_arrays:
+        nums = [x.strip() for x in arr_str.split(',') if x.strip()]
+        if len(nums) != 10 and len(nums) > 0:
+            errors.append(f"[CRITICAL] DATA-003: L10 array has {len(nums)} values (expected 10): [{arr_str[:40]}...]")
+
+    # 6. Template Standard Fields Presence
+    required_fields = [
+        ('數理引擎', 'STRUCT-TABLE'),
+        ('邏輯引擎', 'STRUCT-TABLE'),
+        ('盤口對照', 'STRUCT-LINES'),
+        ('組合結算', 'STRUCT-SETTLEMENT'),
+    ]
+    for field, code in required_fields:
+        if field not in text:
+            errors.append(f"[CRITICAL] {code}: Missing required field/section: '{field}'")
+
+    # 7. Odds Source Verification
+    if 'BET365' not in text.upper() and 'bet365' not in text.lower():
+        errors.append("[MINOR] ODDS-001: No Bet365 source reference found")
+
+    # 8. Per-Combo Word Count Check
+    combo_sections = re.split(r'(?=###\s*[🛡️🔥💎💣])', text)
+    for section in combo_sections[1:]:  # Skip header
+        header_match = re.search(r'###\s*([🛡️🔥💎💣])\s*(.*?)(?:\n|$)', section)
+        if not header_match:
+            continue
+        combo_label = header_match.group(0).strip()[:30]
+        eng_words = len(re.findall(r'[a-zA-Z0-9_]+', section))
+        chi_chars = len(re.findall(r'[\u4e00-\u9fff]', section))
+        words = eng_words + chi_chars
+        if words < 300:
+            errors.append(f"[MINOR] MODEL-003: {combo_label} has insufficient depth ({words} < 300 words)")
+
     return errors
 
 def check_nba_words(text: str) -> list[str]:
-    # NBA check for entire game analysis
-    words = len(re.findall(r'[\w\u4e00-\u9fff]', text))
-    if words < 400:
-        return [f"NBA Game Analysis has insufficient words ({words} < 400)"]
-    return []
+    """NBA overall word count check — minimum 1500 for a complete game analysis."""
+    errors = []
+    eng_words = len(re.findall(r'[a-zA-Z0-9_]+', text))
+    chi_chars = len(re.findall(r'[\u4e00-\u9fff]', text))
+    words = eng_words + chi_chars
+    if words < 1500:
+        errors.append(f"NBA Game Analysis has insufficient words ({words} < 1500)")
+    return errors
 
 def main():
     import sys
@@ -173,24 +246,43 @@ def main():
         errors.extend(check_au_hkjc_words(text, args.domain))
 
         
-        # P37: Execute verify_form_accuracy.py if --racecard is provided
-        if args.racecard and args.domain == 'au':
+        # P39: Execute verify_form_accuracy.py — AUTO-DETECT Racecard + Formguide
+        if args.domain == 'au':
             import subprocess
             verify_script = Path(__file__).parent / "verify_form_accuracy.py"
-            if verify_script.exists():
+            
+            # Auto-detect Racecard if not explicitly provided
+            racecard_path = args.racecard
+            formguide_path = None
+            if not racecard_path:
+                analysis_dir = Path(args.file).parent
+                race_num_match = re.search(r'Race (\d+)', args.file)
+                if race_num_match:
+                    race_num = race_num_match.group(1)
+                    # Find Racecard
+                    rc_candidates = list(analysis_dir.glob(f"*Race {race_num} Racecard*"))
+                    if rc_candidates:
+                        racecard_path = str(rc_candidates[0])
+                    # Find Formguide
+                    fg_candidates = list(analysis_dir.glob(f"*Race {race_num} Formguide*"))
+                    if fg_candidates:
+                        formguide_path = str(fg_candidates[0])
+            
+            if racecard_path and verify_script.exists():
                 try:
-                    result = subprocess.run(
-                        [sys.executable, str(verify_script), args.file, args.racecard],
-                        capture_output=True, text=True
-                    )
+                    cmd = [sys.executable, str(verify_script), args.file, racecard_path]
+                    if formguide_path:
+                        cmd.append(formguide_path)
+                    result = subprocess.run(cmd, capture_output=True, text=True)
                     if result.returncode != 0:
-                        # Extract the error lines from the script output (ignoring successful prefix)
                         for line in result.stdout.splitlines():
-                            if line.strip().startswith("❌") or line.strip().startswith("⚠️"):
+                            if line.strip().startswith(("❌", "🔄", "⚠️")):
                                 errors.append(line.strip())
                 except Exception as e:
                     errors.append(f"Failed to run form accuracy verification: {e}")
-            else:
+            elif not racecard_path:
+                errors.append("⚠️ P39: Could not auto-detect Racecard.md — supply --racecard manually")
+            elif not verify_script.exists():
                 errors.append("⚠️ verify_form_accuracy.py script not found.")
                 
     elif args.domain == 'nba':

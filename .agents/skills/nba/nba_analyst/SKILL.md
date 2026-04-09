@@ -2,6 +2,8 @@
 name: NBA Analyst
 description: This skill should be used when the user wants to "analyse NBA parlay", "NBA 過關分析", "NBA Analyst", or when NBA Wong Choi orchestrates player props volatility analysis and parlay combination building.
 version: 2.1.0
+ag_kit_skills:
+  - systematic-debugging   # CoV/模板驗證連續失敗時自動觸發
 ---
 
 # Role
@@ -32,6 +34,13 @@ version: 2.1.0
 - **新聞情境納入**:NEWS_DIGEST 必須被納入分析考量。
 - **防幻覺協議**:缺乏數據 → `N/A`,所有結論至少 2 個數據點支持。
 - **輸入數據快速驗證**:開始 CoV 計算前執行防呆檢查。
+
+## Session Recovery Protocol (Pattern 10)
+> 若 session 中途斷開或重新連接,**嚴禁從頭重做已完成嘅工作**。
+1. **偵測已完成嘅分析**: 掃描 `TARGET_DIR` 內嘅 `Game_*_Full_Analysis.txt` 檔案
+2. **跳過已完成**: 列出所有已存在嘅分析檔案,跳過對應嘅賽事
+3. **恢復點報告**: 向用戶/Wong Choi 報告:「偵測到 N/M 場已完成,從 Game X 繼續」
+4. **唔好重新讀取 resources**: 若 resources 已在記憶中,唔需要重讀
 
 ## 🚨 禁止交叉引用協議 (No-Cross-Reference Protocol)
 > 當同一位球員出現在多個組合時,**每一個 Leg 必須獨立展示完整分析**。
@@ -71,8 +80,9 @@ version: 2.1.0
 ## 逐場分析模式 (Per-Game Analysis Mode)
 > Wong Choi 會逐場賽事傳入數據包。你必須配合以下兩種模式:
 
-- **單場模式**:Wong Choi 傳入單場數據包 → 完成該場所有候選球員嘅 Step 2-4（波動率 + 盤口 + 安全檢查），輸出「合格 Leg 候選清單 + 本場 4 組 Banker SGM（組合 1A/1B/2/3）」。按照 `resources/05_output_template.md` 嘅 `[FILL]` 骨架模板逐個欄位填寫。
-- **匯總模式**:Wong Choi 傳入「全日候選池」 → 執行 Step 5（組合構建），生成跨場次 4 組 Parlay。按照 `resources/05_output_template.md` 嘅完整報告格式輸出。
+- **單場模式**:Wong Choi 傳入單場數據包 → 完成該場所有候選球員嘅 Step 2-4（波動率 + 盤口 + 安全檢查），輸出「合格 Leg 候選清單 + 本場 SGM 組合（≥2 組：🛡️ 1 + 🔥 2，可選 💎 3）+ Value Bomb（條件觸發）」。按照 `resources/05_output_template.md` 嘅 `[FILL]` 骨架模板逐個欄位填寫。
+  - **重要**: Python Generator 會預填數學數據同自動核心邏輯。你嘅職責係閱讀 Python 推理、理解 8-Factor 調整依據、然後補充 Analyst 深度分析（對手防守匹配、球權分配、比賽劇本推演、協同效應）。
+- **匯總模式**:Wong Choi 傳入「全日候選池」 → 執行 Step 5（組合構建），生成跨場次 Parlay。按照 `resources/05_output_template.md` 嘅完整報告格式輸出。
 
 # Interaction Logic (Step-by-Step)
 
@@ -116,8 +126,9 @@ version: 2.1.0
 
 ## Step 5: 過關組合引擎
 按照 `resources/04_parlay_engine.md`：
-- 構建 🛡️ 1A / 🔥 1B / 🔥 2 / 💎 3 四組
+- 構建 🛡️ 1 / 🔥 2 / 💎 3 / 💣 X 四組
 - SGP 劇本語境防撞擊檢查
+- 賠率來源: Bet365 直接提取，組合賠率以 Bet365 SGM 顯示為準
 
 ## Step 6: 生成最終輸出
 讀取 `resources/05_output_template.md`，按模式選擇格式。
@@ -126,17 +137,19 @@ version: 2.1.0
 
 ## Step 7: 自我驗證 (Pre-Submission Gate)
 在交稿給 Wong Choi 之前，自我檢查以下規則（對應 `completion_gate_v2.py --domain nba` 嘅檢查項）：
-- [ ] **4 個組合完整輸出**（組合 1A + 1B + 2 + 3）
+- [ ] **3 個組合完整輸出**（組合 1 + 2 + 3），組合 X 條件觸發
 - [ ] **每個 Leg 有完整分析**（數理引擎 + 邏輯引擎 + EV + 數據卡 + 防守對位 + 場景分裂）
+- [ ] **Python 推理已閱讀並補充 Analyst 深度分析**
 - [ ] **無省略語**（無 `...`、`[同上]`、`[參見組合X]`）
 - [ ] **`[FILL]` 殘留數 = 0**
 - [ ] **L10 數組長度 = 10**（每個輸出嘅數組都有 10 個數字）
 - [ ] **所有盤口符合 Bet365 嚴格選項規則**
 
 # Output Contract
-- **單場模式**：合格 Leg 候選清單 + 本場 4 組 Banker SGM（組合 1A/1B/2/3）
-- **匯總模式**：完整報告（賽程總覽 + 傷病 + 防守 + 4 組 Parlay + 總結）
+- **單場模式**：合格 Leg 候選清單 + 本場 SGM 組合（≥2 組：🛡️ 1 + 🔥 2，可選 💎 3）+ Value Bomb（條件觸發）
+- **匯總模式**：完整報告（賽程總覽 + 傷病 + 防守 + SGM Parlay 組合 + 總結）
 
 # Recommended Tools & Assets
-- **Tools**: `write_to_file`
+- **Tools**: `run_command`（透過 Wong Choi 嘅 Safe-Writer Pipeline 寫檔）、`view_file`、`grep_search`
+- ⚠️ **P33-WLTM**: 遵循 GEMINI.md 之中規定的 `safe_file_writer.py` 進行操作。嚴禁使用 `write_to_file`。
 - **Assets**: `resources/01` 至 `resources/06`

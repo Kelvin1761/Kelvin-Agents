@@ -31,7 +31,9 @@ BET365_LINES = {
     "FG3M": [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5],
 }
 CORE_STATS = ["PTS", "REB", "AST", "FG3M"]
-SGM_DISCOUNT = {2: 0.65, 3: 0.60, 4: 0.55, 5: 0.50}
+# Note: SGM discount removed. Bet365 SGM odds are now used directly.
+# This constant is kept for backward compat but should not be used for new reports.
+SGM_DISCOUNT_LEGACY = {2: 0.65, 3: 0.60, 4: 0.55, 5: 0.50}
 STAT_LABEL = {"PTS": "得分", "REB": "籃板", "AST": "助攻", "FG3M": "三分球", "STL": "偷球", "BLK": "蓋帽"}
 
 
@@ -530,8 +532,10 @@ def build_combo_analysis(legs, combo_label):
         odds_list.append(o)
     
     raw_mult = round(math.prod(odds_list), 2)
-    disc = SGM_DISCOUNT.get(n, 0.60)
-    final = round(raw_mult * disc, 2)
+    # NOTE: In new pipeline, Bet365 SGM odds are used directly.
+    # This legacy discount is kept for backward compatibility.
+    disc = 1.0  # No discount — use Bet365 raw SGM odds
+    final = raw_mult  # Direct passthrough
     hits = [l["best_bet365"].get("hit_rate_L10", 0) for l in legs]
     combo_hit = round(math.prod(h/100 for h in hits) * 100, 1)
     
@@ -561,7 +565,7 @@ def build_combo_analysis(legs, combo_label):
 **各 Leg 賠率：**
 {leg_breakdown}
 - 原始組合賠率：{odds_calc}
-- SGM 折扣後賠率：{raw_mult} × {disc} = **@{final}**
+- 組合賠率：**@{final}** (Bet365 SGM)
 - 💵 $100 投注回報：**${round(final * 100)}**
 - 組合命中率：{hit_calc}
 - 組合信心分：{conf}/10
@@ -723,10 +727,9 @@ def generate_report(data, top_n=8):
     L.append(f"### 📰 新聞情境摘要 (NEWS_DIGEST)\n{news_text}\n")
     L.append(f"---\n\n## 🏆 推薦單場 SGM 組合\n")
     
-    combos = [("1A", "🛡️ 穩膽組合（極限防斷保本路線）", c1a),
-              ("1B", "🔥 高水位正盤膽（+EV 獲利路線，基於 1A 延伸）", c1b),
-              ("2", "🔥 均衡 +EV 價值膽（主力正盤與對位弱點針對）", c2),
-              ("3", "💎 價值型小博大（高倍率進取型）", c3)]
+    combos = [("1", "🛡️ 穩膽 SGM（Low Risk）", c1a),
+              ("2", "🔥 均衡 +EV 價值膽（Mid Risk）", c2),
+              ("3", "💎 價值型小博大（High Risk）", c3)]
     
     for label, title, legs in combos:
         if not legs: continue
@@ -738,16 +741,15 @@ def generate_report(data, top_n=8):
             o = bl.get("est_odds", round(100 / bl.get("implied_prob", 52.6), 2) if bl.get("implied_prob", 0) > 0 else 1.90)
             odds_list.append(o)
         raw_mult = round(math.prod(odds_list), 2)
-        disc = SGM_DISCOUNT.get(len(legs), 0.60)
-        final_odds = round(raw_mult * disc, 2)
+        disc = 1.0  # Bet365 SGM direct
+        final_odds = raw_mult
         
         L.append(f"---\n\n### 組合 {label}：{title}— 組合賠率：~@{final_odds}\n")
         for i, leg in enumerate(legs, 1):
             L.append(format_leg_block(leg, i, data))
             L.append(f"---\n")
         L.append(build_combo_analysis(legs, label))
-        if label == "1B":
-            L.append(f"- vs 1A 對比：1B 將部分盤口提升至價值線，賠率更高但命中率略降\n")
+
     
     # Summary
     L.append(f"---\n\n### 🧠 總結與賽前必做")
@@ -763,7 +765,7 @@ def generate_report(data, top_n=8):
     total_legs = sum(len(legs) for _, _, legs in combos if legs)
     report_text = "\n".join(L)
     fill_count = report_text.count("[FILL_LLM")
-    L.append(f"✅ 單場完成：{combo_count} 組組合 (1A/1B/2/3) | {total_legs} 支 Legs")
+    L.append(f"✅ 單場完成：{combo_count} 組組合 (1/2/3) | {total_legs} 支 Legs")
     L.append(f"每支 Leg 含 數理引擎+邏輯引擎+EV篩選+數據卡+進階數據+防守對位+場景分裂+情境調整 全 8 大區塊")
     L.append(f"[FILL_LLM] 殘留數 = {fill_count}\n")
     

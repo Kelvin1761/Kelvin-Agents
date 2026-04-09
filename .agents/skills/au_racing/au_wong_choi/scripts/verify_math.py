@@ -74,7 +74,7 @@ RATING_RE = re.compile(r'評分[：:]\s*[`\s]*(\d+)', re.UNICODE)
 
 # Also match the "🔢 矩陣算術" summary line
 MATRIX_ARITHMETIC_RE = re.compile(
-    r'🔢\s*矩陣算術[：:]?\s*'
+    r'🔢\s*矩陣算術\s*\*?\*?[：:]?\s*\*?\*?\s*'
     r'核心✅\s*=\s*\[?(\d+)\]?\s*[|｜]\s*'
     r'半核心✅\s*=\s*\[?(\d+)\]?\s*[|｜]\s*'
     r'輔助✅\s*=\s*\[?(\d+)\]?\s*[|｜]\s*'

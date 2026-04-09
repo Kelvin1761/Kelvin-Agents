@@ -1,7 +1,9 @@
 ---
 name: NBA Reflector
 description: This skill should be used when the user wants to "覆盤 NBA", "review NBA results", "NBA 賽後檢討", "反思 NBA 賽果", "NBA reflector", or needs to compare NBA parlay predictions against actual game results to identify systematic blind spots and propose improvements to the NBA Analyst engine.
-version: 2.1.0
+version: 2.2.0
+gemini_thinking_level: MEDIUM
+gemini_temperature: 0.2
 ag_kit_skills:
   - brainstorming          # SIP 生成時自動觸發
 ---
@@ -25,7 +27,7 @@ ag_kit_skills:
 # Resource Read-Once Protocol
 在開始任何覆盤工作前,你必須首先讀取以下資源檔案:
 - `resources/01_report_template.md` — 覆盤報告格式 + SIP Changelog 格式 [必讀]
-- `resources/02_search_protocol.md` — 數據搜索規則 + 深度比對框架 [必讀]
+- `resources/02_search_protocol.md` — 數據搜索規則 + 深度比對框架（API 失敗時嘅 Fallback）[必讀]
 
 讀取一次後保留在記憶中,嚴禁每場賽事重複讀取。
 
@@ -38,7 +40,7 @@ ag_kit_skills:
 2. **系統性聚焦**:覆盤時**不要過度聚焦單場特例**,而要提煉出能改善未來所有比賽的通用規則。
 3. **強制人工審核**:生成覆盤報告後必須向用戶提交並暫停,**嚴禁**直接修改任何 Agent 檔案。
 
-> ⚠️ **File Writing Protocol**: 嚴禁使用 `cat << EOF` 或任何 heredoc 語法寫入報告。只使用 `write_to_file` / `replace_file_content`。
+> ⚠️ **P33-WLTM**: 遵循 GEMINI.md 之中規定的 `safe_file_writer.py` 進行操作。嚴禁使用 `write_to_file`。
 
 # Interaction Logic (Step-by-Step)
 
@@ -46,25 +48,93 @@ ag_kit_skills:
 接收用戶提供嘅日期後,記錄關鍵變量:
 - `ANALYSIS_DATE` — 賽事日期(YYYY-MM-DD,澳洲時間)
 - `US_DATE` — 對應美國日期
-- `TARGET_DIR` — `/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/{YYYY-MM-DD} NBA Analysis/`
-- `GAMES_LIST` — 從 `TARGET_DIR` 內嘅 `Game_*_Full_Analysis.txt` 識別已分析賽事
+- `TARGET_DIR` — 路徑會自動偵測平台:
+  - macOS: `./{YYYY-MM-DD} NBA Analysis/`
+  - Windows: `g:\我的雲端硬碟\Antigravity Shared\Antigravity\{YYYY-MM-DD} NBA Analysis/`
+- `GAMES_LIST` — 從 `TARGET_DIR` 內識別已分析賽事,支援兩種檔名格式（向下兼容）:
+  - **V5+ 新格式（優先）**: `{MM-DD}_NBA_*_Analysis.md`（例如 `04-09_NBA_ATL_CLE_Analysis.md`）
+  - **V4 舊格式（兼容）**: `Game_*_Full_Analysis.md` 或 `Game_*_Full_Analysis.txt`
 
 **Session Recovery 檢查**:
-- 若 `{TARGET_DIR}/{ANALYSIS_DATE}_NBA_覆盤報告.txt` 已存在 → 通知用戶報告已完成,詢問是否重做
+- 若 `{TARGET_DIR}/{ANALYSIS_DATE}_NBA_覆盤報告.md` 已存在 → 通知用戶報告已完成,詢問是否重做
 - 若 `{TARGET_DIR}/_reflector_progress.md` 存在 → 讀取已完成場次,從上次中斷位置繼續
 - 每完成一場覆盤,更新 `_reflector_progress.md`:`COMPLETED_GAMES: [Game 1, Game 2, ...]`
 
 > ⚠️ **失敗處理**:若 `TARGET_DIR` 不存在或搵唔到任何分析檔案,通知用戶並詢問替代路徑。
 
-## Step 2: 擷取實際賽果
-按照 `resources/02_search_protocol.md` 嘅搜索規則,針對 `GAMES_LIST` 每場賽事搜索 Box Score。
+## Step 2: 擷取實際賽果 (API-First Protocol — P22 Python-First)
+
+> [!IMPORTANT]
+> **API-First 原則 (v2.2.0 新增):** Box Score 擷取必須優先用 Python API script。
+> `search_web` 只係 API 失敗時嘅 Fallback。
+
+### Step 2a: Python API 擷取（主引擎 — 強制）
+執行 `fetch_nba_results.py` 一鍵擷取所有場次嘅 Box Score:
+```bash
+python3 .agents/skills/nba/nba_reflector/scripts/fetch_nba_results.py \
+  --date {US_DATE} \
+  --dir "{TARGET_DIR}"
+```
+成功後會生成 `{TARGET_DIR}/Results_Brief_{US_DATE}.json`,包含每場賽事嘅:
+- 最終比分 + 每節比分
+- 每位球員嘅完整 Box Score (PTS/REB/AST/3PM/STL/BLK/MIN/+/-)
+- Blowout 標記（分差 ≥ 20）
+- 低上場時間警報（先發球員 < 20 MIN）
+
+### Step 2b: Play-by-Play 擷取（深度覆盤 — 條件觸發）
+**觸發條件**（滿足任一即執行）:
+- 任何場次分差 ≥ 20（Blowout）
+- 任何 Leg 球員上場時間 < 25 分鐘
+- 預測中有 `[!CAUTION]` Blowout 風險標記
+- 任何穩膽 Leg 意外大幅未中（margin ≤ -5）
+
+```bash
+python3 .agents/skills/nba/nba_reflector/scripts/fetch_nba_pbp.py \
+  --date {US_DATE} \
+  --dir "{TARGET_DIR}"
+```
+生成 `{TARGET_DIR}/PBP_Brief_{US_DATE}.json`,包含:
+- 每節得分分布（Q1/Q2/Q3/Q4）
+- 球員逐節得分分布
+- Blowout 時間點（margin ≥ 20 首次出現嘅 clock）
+- 換人模式
+
+### Step 2c: Props 命中自動比對（強制 — 每次覆盤必執行）
+```bash
+python3 .agents/skills/nba/nba_reflector/scripts/verify_props_hits.py \
+  --results "{TARGET_DIR}/Results_Brief_{US_DATE}.json" \
+  --predictions "{TARGET_DIR}" \
+  --output "{TARGET_DIR}/Props_Verification_{US_DATE}.json"
+```
+此 JSON 會自動為每個 Leg 標記:
+- ✅ HIT / ❌ MISS / ⚠️ 無法驗證
+- Margin（過線幾多 / 差幾多未過）
+- 按組合 (🛡️/🔥/💎) 分別計算命中率
+- 按盤口類型 (PTS/REB/AST/3PM) 分別計算命中率
+
+> 覆盤時 **必須先讀取** `Props_Verification_{US_DATE}.json` 嘅 `summary` 區塊,
+> 以此作為 REF-DA01 6 角度分析嘅 **事實基礎**。嚴禁 LLM 自行用肉眼覈對盤口。
+
+### Step 2d: Fallback（API 失敗時）
+若 `fetch_nba_results.py` 失敗（API 維護/日期太舊/nba_api 未安裝）:
+→ 退回 `resources/02_search_protocol.md` 嘅 search_web 手動搜索
+→ 標記 `DATA_SOURCE: SEARCH_WEB (FALLBACK)`
+→ Props 命中判定需 LLM 手動進行（⚠️ 較慢且有幻覺風險）
 
 ## Step 3: 讀取賽前預測
-喺 `TARGET_DIR` 中讀取每場 `Game_[X]_[Teams]_Full_Analysis.txt`:
-- 所有 4 組 Parlay 組合（組合 1A/1B/2/3）
-- 每個 Leg 嘅球員名、盤口線、命中率預測、信心分、+EV 數據
-- L10 原始數據、CoV 分級、情境調整
+喺 `TARGET_DIR` 中讀取每場賽事分析檔案（自動偵測新舊格式）:
+- **V5+ 新格式**: `{MM-DD}_NBA_{AWAY}_{HOME}_Analysis.md`
+- **V4 舊格式 (兼容)**: `Game_{AWAY}_{HOME}_Full_Analysis.md`
+
+提取以下內容:
+- **Header 驗證**: 確認 `odds_source`（BET365_LIVE / ESPN / 其他）同 `引擎版本`（V3 8-Factor 等）
+- **風險標記**: 檢查有冇 `[!CAUTION]` Blowout 風險 / 擺爛警告
+- **所有 SGM 組合**（彈性 2-3 組 + Value Bomb X，如有）— 唔再假設固定 3 組
+- 每個 Leg 嘅球員名、盤口線、**賠率 (@X.XX)**、命中率預測、Adjusted Win Prob、Edge
+- L10 原始數據（`📊 數據:` inline 格式或 `🔢 數理引擎` 舊格式表格）
+- CoV 分級、情境調整
 - 傷病預判與防守對位判斷
+- **Python vs Analyst 分工標記**: 組合結算中嘅 `🛡️ 組合核心邏輯 (Python)` 同 `✍️ Analyst 組合補充` 是否同時存在
 
 
 ## [REF-DA01] 深度覆盤 + Protocol 自我審計 (6 角度)
@@ -110,116 +180,4 @@ ag_kit_skills:
 - 現有邏輯需唔需要因為 SIP-DA01 嘅加入而調整？
 
 ---
-
-### 角度 4 — 泛化性審計 (Generalizability Audit)
-
-> **確保覆盤洞見唔會太單一，要對未來分析有用。**
-
-- 呢場暴露出嘅問題係**普遍性**嘅（會喺其他重覆出現）定**一次性**嘅（極端意外）？
-- 分類:
-  - 🔵 **系統性問題** (影響所有未來): e.g. 「長期高估某類型情況」
-  - 🟡 **條件性問題** (特定條件下出現): e.g. 「特定場地時預測偏誤」
-  - ⚪ **孤立事件** (唔需要改 Protocol): e.g. 「意外事件」
-- 只有 🔵 同 🟡 嘅洞見先值得升級為 Design Pattern / SIP 修訂
-
----
-
-### 角度 5 — Design Pattern Proposal (向 Agent Architect 提交)
-
-基於以上 4 個角度嘅分析，向 Agent Architect 提交以下格式嘅改善建議：
-
----
-
-### 角度 6 — 結構性事後審計 (Structural Retroactive Audit)
-
-> **檢查原始分析有冇違反結構規則（Batch QA 會涵蓋嘅嘢）。**
-
-- 原始分析有冇完整輸出 4 個組合（1A/1B/2/3）？
-- 組合 1B/2/3 嘅分析深度有冇同 1A 一致？
-- 有冇發現任何殘留 `[FILL]` 佔位符？
-- 有冇使用省略語（`[同上]`、`[參見組合X]`、`...`）？
-- L10 逐場數組長度係咪全部 = 10？
-- 防守大閘名單有冇過期球員？若有 → 標記 `[STALE_DEFENDER: 球員名 — 原因]`
-- 呢啲結構性問題有冇影響分析品質同預測準確度？
-
-
-```
-## Design Pattern Proposal
-- **Issue ID:** REF-[日期]-[編號]
-- **分類:** 🔵系統性 / 🟡條件性
-- **問題描述:** [一句話總結]
-- **受影響嘅 Protocol:** 基礎邏輯 / SIP-DA01 / 其他
-- **建議修改:** [具體改動]
-- **預期效果:** [預計命中率/盲點改善幅度]
-- **SIP-DA01 評價:** 有效/部分有效/無效 — [原因]
-```
-→ Agent Architect 審閱後決定是否納入 `design_patterns.md`
-
-
-## Step 4: 深度比對(在 `<thought>` 中進行)
-按照 `resources/02_search_protocol.md` §4 嘅深度比對框架執行 4a/4b/4c 分析。
-
-## Step 5: 輸出覆盤報告
-按照 `resources/01_report_template.md` 嘅格式生成報告。
-
-**🧠 SIP 修正方案探索(AG Kit Brainstorming — 自動觸發):**
-生成 SIP 時自動讀取 `.agent/skills/brainstorming/SKILL.md`,對每個 SIP 生成 ≥2 個結構化修正方案:
-
-| 方案 | 修改內容 | ✅ Pros | ❌ Cons | 📊 Effort |
-|:---|:---|:---|:---|:---|
-| A | [具體修改] | [好處] | [風險] | Low/Med/High |
-| B | [替代修改] | [好處] | [風險] | Low/Med/High |
-
-**💡 Recommendation:** [推薦方案 + 理據]
-
-## Step 5.5: 更新 SIP Changelog
-若本次覆盤提出咗 SIP 建議:
-1. 檢查 `{TARGET_DIR}/_sip_changelog.md` 是否存在
-2. 若不存在 → 按照 `resources/01_report_template.md` 嘅格式建立
-3. 將新 SIP 追加到 changelog,狀態設為「待審批」
-4. 交叉檢查歷史 SIP:若過去覆盤已提出類似建議但未被採納 → 標記為「重複出現」,提升優先級
-
-
-> **P32 — Knowledge Graph 整合:** 生成覆盤報告後,使用 Memory MCP 將以下關鍵發現寫入 Knowledge Graph:
-> - 傷兵狀態更新(Entity: `{PLAYER}_{DATE}_injury`,Observations: 傷兵影響上場時間/表現)
-> - 防守大閘效果驗證(Entity: `defender_{PLAYER}_vs_{OPPONENT}`,記錄預測 vs 實際影響)
-> - Props 命中/未命中模式(Entity: `prop_pattern_{PLAYER}_{PROP_TYPE}`)
-> - 這樣下次分析時,NBA Analyst 可以先查詢 `read_graph` 發現過往傷兵狀態和防守對位效果。
-
-## Step 6: 等待用戶審批
-向用戶提交覆盤報告路徑同摘要,並**強制停止所有行動**。
-
-若用戶批准 SIP 建議:
-1. 讀取目標 resource 檔案
-2. 按照 SIP 建議進行精確修改
-3. 每個 SIP 修改後,向用戶確認
-4. 更新 `_sip_changelog.md` 狀態為「已採納」
-
-## Step 7: Reflector → Architect 回饋(Pattern 15)
-若本次覆盤發現咗**新嘅設計模式或反模式**(而非僅僅係參數調整):
-1. 將發現整理為標準 Design Pattern 格式:Problem / Solution / Anti-pattern
-2. 通知用戶:「本次覆盤發現咗一個潛在嘅新 Design Pattern,建議提交畀 Agent Architect 入庫。」
-3. 若用戶同意 → 輸出 Pattern 草稿,供 Agent Architect 審核並 append 到 `design_patterns.md`
-
-# Recommended Tools & Assets
-- **Tools**: `search_web`、`view_file`、`write_to_file`、`replace_file_content`
-- **MCP Tools (P32 新增)**:
-  - `read_graph` / `search_nodes` — Knowledge Graph 查詢(檢查過往傷兵狀態、防守大閘觀察、球員 Props 命中規律)
-  - `read_query` / `list_tables` — SQLite 歷史數據查詢(查等過往 Parlay 命中率、球員 Props 歷史表現)
-  - `create_entities` / `create_relations` — 將覆盤發現寫入 Knowledge Graph(傷兵更新、防守效果、SIP 觸發模式)
-- **Resources**:
-  - `resources/01_report_template.md` — 覆盤報告格式 + SIP Changelog
-  - `resources/02_search_protocol.md` — 數據搜索協議 + 比對框架
-- **Upstream Data**:
-  - `NBA Wong Choi` 輸出嘅 `Game_*_Full_Analysis.txt`
-  - `NBA Analyst` 嘅 `resources/` 引擎定義檔
-
-# Test Case
-**User Input:** `「幫我覆盤今日 NBA:2026-03-16」`
-**Expected Agent Action:**
-1. 讀取 `resources/01_report_template.md` + `resources/02_search_protocol.md`。
-2. 記錄 `ANALYSIS_DATE` = 2026-03-16,`US_DATE` = 2026-03-15。
-3. Session Recovery 檢查:掃描 TARGET_DIR 是否已有覆盤報告。
-4. 搜尋每場賽事 Box Score,逐 Leg 比對。
-5. 生成覆盤報告 + 更新 SIP Changelog。
-6. 向用戶提交報告摘要,等待審批。
+**\u26a0\ufe0f PROGRESSIVE DISCLOSURE PROTOCOL: This SKILL.md has been truncated to <200 lines. The extended protocols, templates, and procedures are located in the resources/ directory.**

@@ -5,7 +5,7 @@ import re
 from curl_cffi import requests
 from playwright.sync_api import sync_playwright
 
-def fetch_nuxt_data(url, temp_html_path="/tmp/racenet_sectionals.html"):
+def fetch_nuxt_data(url, temp_html_path=".agents.agents/tmp/racenet_sectionals.html"):
     print(f"Fetching {url}... ")
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -28,7 +28,7 @@ def fetch_nuxt_data(url, temp_html_path="/tmp/racenet_sectionals.html"):
 url = "https://www.racenet.com.au/form-guide/horse-racing/caulfield-heath-20260304/briga-fliedner-2026-lady-of-racing-finalist-race-1/sectionals"
 nuxt = fetch_nuxt_data(url)
 
-with open("/Users/imac/Desktop/Drive/Antigravity/.agents/skills/au_race_extractor/scripts/sectionals_nuxt.json", "w") as f:
+with open("./.agents/skills/au_race_extractor/scripts/sectionals_nuxt.json", "w") as f:
     json.dump(nuxt, f, indent=2)
 
 print("Saved sectionals payload to sectionals_nuxt.json")

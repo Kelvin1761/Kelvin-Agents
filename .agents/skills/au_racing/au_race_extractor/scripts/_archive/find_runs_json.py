@@ -13,7 +13,7 @@ def search(d, path=""):
             if search(v, f"{path}[{i}]"): return True
     return False
 
-with open('/Users/imac/Desktop/Drive/Antigravity/.agents/skills/au_race_extractor/scripts/nuxt.json', 'r') as f:
+with open('./.agents/skills/au_race_extractor/scripts/nuxt.json', 'r') as f:
     nuxt = json.load(f)
 
 search(nuxt)

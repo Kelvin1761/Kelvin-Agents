@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 import re
 
-with open('/Users/imac/Desktop/Drive/Antigravity/racenet_curl.html', 'r') as f:
+with open('./racenet_curl.html', 'r') as f:
     soup = BeautifulSoup(f.read(), 'html.parser')
 
 celerity = soup.find(string=re.compile("Celerity"))

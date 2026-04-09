@@ -1,7 +1,9 @@
 ---
 name: NBA Reflector Validator
 description: This skill should be used when the user wants to "validate NBA analysis changes", "NBA 驗證分析改進", "blind test NBA logic", "NBA 盲測", or needs to verify that analytical logic updates actually improve prediction accuracy through blind re-analysis.
-version: 1.0.0
+version: 1.1.0
+ag_kit_skills:
+  - systematic-debugging   # 盲測連續失敗時自動觸發
 ---
 
 # Role
@@ -19,6 +21,7 @@ version: 1.0.0
 2. **順序鎖定**：Game 1 未達標前嚴禁進入 Game 2。
 3. **防無限 Loop**：同一場連續失敗 3 次 → 停止通知用戶。
 4. **只讀不寫**：嚴禁修改 Analyst resource 檔案。你係驗證者，唔係修改者。
+5. **File Writing Protocol**：遵循 GEMINI.md 之中規定的 `safe_file_writer.py` 進行操作。嚴禁使用 `write_to_file`。
 
 # Interaction Logic
 
@@ -32,6 +35,13 @@ version: 1.0.0
 - 數據包 (`NBA_Data_Package.txt`)
 - 原始分析報告 (`Game_*_Full_Analysis.txt`)
 - 實際賽果（覆盤報告或回測報告）
+
+### Session Recovery (Pattern 10)
+> 盲測流程可能非常漫長。若 session 中途斷開:
+1. **偵測進度**: 掃描 `TARGET_DIR` 內是否存在 `_validator_progress.md`
+2. **若存在** → 讀取進度檔案,確認已盲測+已通過嘅場次
+3. **恢復**: 從第一個未完成/未通過嘅場次繼續,**唔好重做已通過嘅場次**
+4. **進度寫入**: 每完成一場盲測,立即更新 `_validator_progress.md`（用 `run_command` 寫入）
 
 ## Step 1.5: 驗證範圍分析
 根據 `LOGIC_CHANGELOG` 分析更新嘅影響範圍，將賽事分為：
@@ -73,15 +83,15 @@ version: 1.0.0
 
 2. **完整分析（Full Analysis）— 嚴禁簡化**：
    > [!CAUTION]
-   > **絕對禁止使用「快速模式」。** 每場盲測必須以完整 NBA Analyst 引擎從零開始分析，產出完整 4 組 Parlay 組合，包括：
+   > **絕對禁止使用「快速模式」。** 每場盲測必須以完整 NBA Analyst 引擎從零開始分析，產出完整 3 組 SGM 組合，包括：
    > - 每位候選球員嘅完整波動率分析
    > - 穩膽線 + 價值線雙線生成
    > - 安全檢查
-   > - 4 組 Parlay 組合（1A/1B/2/3）
-   > - 按照 `05_output_template.md` 骨架填寫
+   > - ≥2 組 SGM 組合（🛡️ 1 + 🔥 2，可選 💎 3）
+   > - 按照 `nba_analyst/resources/05_output_template.md` 骨架填寫
 
 3. **記錄原始預測備份**（載入舊分析報告）：
-   - 載入舊分析報告嘅 4 組 Parlay
+   - 載入舊分析報告嘅 3 組 SGM
    - 逐 Leg 對比新舊差異，標記所有變化及原因
    - 記錄新舊組合差異
 
@@ -91,9 +101,9 @@ version: 1.0.0
 ### 成功門檻
 | 指標 | 標準 |
 |:---|:---|
-| 🏆 黃金標準 | 4 組 Parlay 中 ≥3 組命中率提升（新預測更準） |
-| ✅ 良好結果 | 4 組 Parlay 中 ≥2 組命中率提升 |
-| ⚠️ 最低門檻 | 4 組 Parlay 整體命中率 ≥ 舊預測（不退步） |
+| 🏆 黃金標準 | 3 組 SGM 中 ≥2 組命中率提升（新預測更準） |
+| ✅ 良好結果 | 3 組 SGM 中 ≥1 組命中率提升 |
+| ⚠️ 最低門檻 | 3 組 SGM 整體命中率 ≥ 舊預測（不退步） |
 
 ### 豁免條件
 - 🩸 球員傷退影響比賽（非賽前已知傷病）
@@ -137,7 +147,7 @@ version: 1.0.0
 對每場盲測嘅 Parlay 結果，快速驗證：
 1. **CoV 分級一致性**：重新計算 CoV 是否與報告一致
 2. **Edge 方向一致性**：所有 +EV Leg 嘅 Edge 是否合理
-3. **組合結構一致性**：4 組組合是否符合遞進關係（1A 最穩 → 3 最進取）
+3. **組合結構一致性**：3 組組合是否符合遞進關係（1 最穩 → 3 最進取）
 
 ## Step 6: 逐場用戶確認
 Game [N] 通過後，向用戶顯示結果：
@@ -146,7 +156,7 @@ Game [N] 通過後，向用戶顯示結果：
 - 黃金標準: [✅/❌]
 - 最低門檻: [✅/❌]
 - Leg 命中變化: [舊 X/Y → 新 X/Y]
-- 組合變化: [舊 4 組 → 新 4 組 差異摘要]
+- 組合變化: [舊 3 組 → 新 3 組 差異摘要]
 - 📈 持續改善掃描: [結果摘要]
 
 是否繼續進行 Game [N+1] 嘅盲測驗證？(Y/N)

@@ -8,7 +8,7 @@ from datetime import datetime
 # ==========================================
 # 工作區根目錄設定
 # ==========================================
-WORKSPACE_DIR = "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity"
+WORKSPACE_DIR = "."
 DB_PATH = os.path.join(WORKSPACE_DIR, "nba_backtest.db")
 
 def init_db():

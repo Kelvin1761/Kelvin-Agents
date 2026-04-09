@@ -1,106 +1,236 @@
-import asyncio
+#!/usr/bin/env python3
+"""
+claw_bet365_odds.py — Bet365 NBA Zero-Navigation Extractor V8
+
+ARCHITECTURE: CDP Pure-Read + USER Manual Tab Click
+- CDP `page.evaluate()` for reading ONLY — ZERO navigation
+- USER manually clicks between tabs in Comet browser
+- Script detects tab change and reads data automatically
+
+CRITICAL RULES (Opus 2026-04-08 verified):
+- ❌ NEVER use page.goto()
+- ❌ NEVER use window.location.href/hash via evaluate
+- ❌ NEVER use el.click() via evaluate
+- ❌ NEVER use page.mouse.click()
+- ✅ ONLY use page.evaluate() for pure DOM reading
+
+TAB SELECTION (P40 — Milestones Source-First):
+- ✅ "Points" = Milestones (10+, 15+, 20+)
+- ❌ "Points O/U" = Main O/U with .5 lines — NEVER USE THIS
+
+Version: 8.0.0
+"""
+import sys
 import json
-import os
-from pathlib import Path
+import asyncio
+import argparse
 from playwright.async_api import async_playwright
 
-# Path Setup
-SCRIPT_DIR = Path(__file__).parent
-STATE_FILE = SCRIPT_DIR / "bet365_state.json"
-OUTPUT_FILE = SCRIPT_DIR / "bet365_extracted_raw.json"
+CDP_PORT = 9222
 
-import subprocess
 
-async def extract_bet365_odds():
+async def verify_page_health(page):
+    """Check if the page is alive (not a Cloudflare shell)."""
+    body_len = await page.evaluate("() => document.body.innerText.length")
+    if body_len < 2500:
+        print(f"❌ 頁面只有 {body_len} chars — 可能係空殼或 Cloudflare 攔截。")
+        print("   請 USER 重新喺 Comet 手動打開 Bet365 NBA 頁面。")
+        return False
+    print(f"✅ 頁面健康 ({body_len} chars)")
+    return True
+
+
+async def read_current_tab_data(page):
+    """Pure read of current DOM content — ZERO navigation."""
+    text = await page.evaluate("() => document.body.innerText || ''")
+    lines = [l.strip() for l in text.split('\n') if l.strip()]
+
+    # Extract game data section
+    start = next((i for i, l in enumerate(lines)
+                  if 'EARLY PAYOUT' in l or 'MULTI BET OFFER' in l), 0)
+    if start > 0:
+        start += 1
+    end = next((i for i, l in enumerate(lines)
+                if 'Receive live updates' in l or 'Information and transmission' in l),
+               len(lines))
+
+    return lines[start:end]
+
+
+async def detect_selected_tab(page):
+    """Detect which tab is currently selected — pure read."""
+    return await page.evaluate("""() => {
+        let active = '';
+        // Bet365 uses class containing 'selected', 'Active', or similar
+        document.querySelectorAll('[class*="Selection"], [class*="NavTab"], [class*="Tab"]').forEach(el => {
+            const cls = el.className || '';
+            if (cls.includes('selected') || cls.includes('Active') || cls.includes('gl-Market__selected')) {
+                const txt = el.innerText ? el.innerText.trim() : '';
+                if (txt) active = txt;
+            }
+        });
+        return active;
+    }""")
+
+
+def check_for_decimal_lines(data, tab_name):
+    """
+    Detect .5 lines in extracted data — means wrong tab was selected.
+    Returns True if .5 contamination detected.
+    """
+    text_blob = '\n'.join(data)
+    import re
+    # Look for patterns like "12.5" or "15.5" that are line markers (not odds)
+    # Odds always have format like "1.83", "2.50" — small numbers with decimals
+    # Line markers are larger: 10.5, 12.5, 15.5, 20.5, 25.5 etc.
+    decimal_lines = re.findall(r'\b(\d{2,}\.5)\b', text_blob)
+    if decimal_lines and tab_name == "Points":
+        print(f"\n⚠️  WRONG_TAB_DETECTED!")
+        print(f"   發現 .5 盤口: {decimal_lines[:5]}")
+        print(f"   你極可能 click 咗 'Points O/U' 而唔係 'Points'！")
+        print(f"   'Points' 喺 'Game' 右邊嗰個，'Points O/U' 喺更右邊。")
+        print(f"   請重新 click 正確嘅 'Points' tab！\n")
+        return True
+    return False
+
+
+async def wait_for_tab(page, tab_name, timeout=90):
+    """Wait for USER to click the specified tab, then read data."""
+    print(f"\n{'='*55}")
+    print(f"📢  請喺 Comet 手動 click  >>>  {tab_name}  <<<  tab")
+    if tab_name == "Points":
+        print(f"")
+        print(f"⚠️  注意！請確認係 'Points' tab，唔係 'Points O/U' tab！")
+        print(f"    'Points' 喺 'Game' 右邊（第 2 個 tab）")
+        print(f"    'Points O/U' 喺 'Points' 右邊（第 3 個 tab）— 唔好撳呢個！")
+    print(f"{'='*55}")
+
+    for elapsed in range(timeout):
+        selected = await detect_selected_tab(page)
+
+        if tab_name in selected:
+            print(f"✅ 偵測到 '{tab_name}' 已啟動！等待 3 秒渲染完畢...")
+            await asyncio.sleep(3)
+
+            # Verify page still healthy after tab switch
+            if not await verify_page_health(page):
+                return None
+
+            data = await read_current_tab_data(page)
+
+            # .5 contamination check for Points tab
+            if tab_name == "Points" and check_for_decimal_lines(data, tab_name):
+                # Give USER another chance
+                print(f"⏳ 等待 USER 重新 click 正確嘅 'Points' tab...")
+                continue
+
+            print(f"✅ {tab_name}: 成功提取 {len(data)} 行數據")
+            return data
+
+        # Progress indicator
+        remaining = timeout - elapsed
+        if remaining % 15 == 0 and remaining > 0:
+            print(f"   ⏳ 等待中... ({remaining}s 剩餘)")
+
+        await asyncio.sleep(1)
+
+    print(f"⚠️ 超時 ({timeout}s)！未能檢測到 '{tab_name}' tab")
+    return []
+
+
+async def main():
+    parser = argparse.ArgumentParser(description='Bet365 NBA Zero-Navigation Extractor V8')
+    parser.add_argument('--output', default='.agents.agents/tmp/bet365_all_raw_data.json',
+                        help='Output JSON file path (use absolute path!)')
+    parser.add_argument('--port', type=int, default=9222,
+                        help='Comet CDP port (default: 9222)')
+    args = parser.parse_args()
+
+    global CDP_PORT
+    CDP_PORT = args.port
+
+    print("=" * 55)
+    print("  🏀 NBA Wong Choi — Bet365 Extractor V8")
+    print("  📋 Zero-Navigation Architecture")
+    print("  🎯 Milestones Source-First (P40)")
+    print("=" * 55)
+
     async with async_playwright() as p:
-        
-        print("[Claw] Launching Comet Natively with Remote Debugging...")
-        comet_cmd = [
-            "/Applications/Comet.app/Contents/MacOS/Comet",
-            "--remote-debugging-port=9222",
-            "--no-first-run",
-            "--no-default-browser-check",
-            "--user-data-dir=/tmp/comet_bet365_profile"
-        ]
-        
-        # Launch Comet outside of Playwright to avoid Playwright's launch fingerprints
-        proc = subprocess.Popen(comet_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        await asyncio.sleep(5)
-        
-        print("[Claw] Connecting Playwright to Comet via CDP...")
-        browser = await p.chromium.connect_over_cdp("http://localhost:9222")
-        context = browser.contexts[0]
-        page = context.pages[0] if context.pages else await context.new_page()
-        
-        all_data = {
-            "source": "Bet365_Claw",
-            "games_raw": [],
-            "props_raw": {}
-        }
-        
+        print(f"\n🔌 連接 Comet CDP (port {CDP_PORT})...")
         try:
-            print("[Claw] Initializing SPA on Homepage...")
-            await page.goto("https://www.bet365.com.au/", wait_until="domcontentloaded")
-            
-            print("\n" + "="*60)
-            print("[!] COMET CDP RUN DETECTED!")
-            print("[!] Please click 'Accept All Cookies' and navigate any Captchas IN COMET.")
-            print("[!] You have 45 seconds to get past the loading screen.")
-            print("="*60 + "\n")
-            await page.wait_for_timeout(45000)
-                
-            print("[Claw] Navigating to Basketball Index...")
-            await page.goto("https://www.bet365.com.au/#/AS/B18/", wait_until="domcontentloaded")
-            await page.wait_for_timeout(6000)
-                
-            print("[Claw] Clicking into NBA...")
-            await page.locator("text=NBA").first.click()
-            await page.wait_for_timeout(8000)
-            
-            # Dump debug screenshot just in case
-            await page.screenshot(path="/tmp/bet365_nba_debug.png", full_page=True)
-            
-            print("[Claw] Extracting Game Lines...")
-            game_data = await page.evaluate("() => { const c = document.querySelector('.gl-MarketGroupContainer') || document.querySelector('.gl-MarketGroup'); return c ? c.innerText : null; }")
-            all_data["games_raw"] = game_data.split('\\n') if game_data else []
-            print(f"       -> Extracted {len(all_data['games_raw'])} lines of Game Data.")
-            
-            # Helper for Tabs
-            async def grab_prop(prop_name):
-                print(f"[Claw] Navigating to {prop_name}...")
-                try:
-                    await page.locator(f"text={prop_name}").first.click(timeout=5000)
-                    await page.wait_for_timeout(4000)
-                    data = await page.evaluate("() => { const c = document.querySelector('.gl-MarketGroupContainer') || document.querySelector('.gl-MarketGroup'); return c ? c.innerText : null; }")
-                    lines = data.split('\\n') if data else []
-                    print(f"       -> Extracted {len(lines)} lines of {prop_name} Data.")
-                    return lines
-                except Exception as e:
-                    print(f"       -> Failed to click {prop_name}: {e}")
-                    return []
-            
-            all_data["props_raw"]["Points"] = await grab_prop("Points O/U")
-            all_data["props_raw"]["Assists"] = await grab_prop("Assists")
-            all_data["props_raw"]["Rebounds"] = await grab_prop("Rebounds")
-            all_data["props_raw"]["Threes"] = await grab_prop("Threes Made")
-                
+            browser = await p.chromium.connect_over_cdp(f"http://localhost:{CDP_PORT}")
         except Exception as e:
-            print(f"[Claw] Error occurred: {e}")
-        finally:
-            print("[Claw] Closing browser.")
-            await browser.close()
-            
-        return all_data
+            print(f"❌ 無法連接 Comet！錯誤: {e}")
+            print("   請確保 Comet 已用 --remote-debugging-port=9222 啟動")
+            return
 
-def run():
-    print("====================================")
-    print("   NBA WONG CHOI - BET365 CLAW")
-    print("====================================")
-    data = asyncio.run(extract_bet365_odds())
-    
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    print(f"[Claw] Raw extraction saved to {OUTPUT_FILE}")
+        context = browser.contexts[0]
+
+        # Find Bet365 tab — iterate all pages
+        page = next(
+            (pg for pg in context.pages if "bet365.com.au" in pg.url),
+            None
+        )
+
+        if not page:
+            print("❌ 搵唔到 Bet365 tab！")
+            print("   請先喺 Comet 打開 bet365.com.au → NBA 賽事列表")
+            await browser.close()
+            return
+
+        print(f"✅ 搵到 Bet365 tab: {page.url[:60]}...")
+
+        # Verify page health
+        if not await verify_page_health(page):
+            await browser.close()
+            return
+
+        all_data = {}
+
+        # ═══ Phase A: Game Lines (全自動 — 默認 tab) ═══
+        print(f"\n{'─'*55}")
+        print(f"📊 Phase A: 讀取 Game Lines（全自動）")
+        print(f"{'─'*55}")
+
+        game_data = await read_current_tab_data(page)
+        all_data["Game Lines"] = game_data
+        print(f"✅ Game Lines: {len(game_data)} 行")
+
+        # ═══ Phase B: Player Props (需要 USER 手動 click) ═══
+        print(f"\n{'─'*55}")
+        print(f"🎯 Phase B: 讀取 Player Props（USER 手動 Click）")
+        print(f"{'─'*55}")
+
+        # P40: 正確 Tab 名 — "Points" (Milestones), 唔係 "Points O/U"！
+        prop_tabs = ["Points", "Rebounds", "Assists", "Threes Made"]
+
+        for tab_name in prop_tabs:
+            data = await wait_for_tab(page, tab_name)
+            if data is None:
+                print(f"⚠️ {tab_name} 提取失敗或頁面死亡")
+                all_data[tab_name] = []
+            else:
+                all_data[tab_name] = data
+
+        # ═══ Phase C: Save ═══
+        print(f"\n{'─'*55}")
+        print(f"💾 Phase C: 儲存數據")
+        print(f"{'─'*55}")
+
+        with open(args.output, 'w', encoding='utf-8') as f:
+            json.dump(all_data, f, indent=2, ensure_ascii=False)
+
+        # Summary
+        print(f"\n{'='*55}")
+        print(f"🏆 提取完成！")
+        print(f"{'='*55}")
+        for key, val in all_data.items():
+            status = "✅" if len(val) >= 10 else ("⚠️" if len(val) > 0 else "❌")
+            print(f"  {status} {key}: {len(val)} 行")
+        print(f"\n💾 已儲存至: {args.output}")
+
+        await browser.close()
+
 
 if __name__ == "__main__":
-    run()
+    asyncio.run(main())

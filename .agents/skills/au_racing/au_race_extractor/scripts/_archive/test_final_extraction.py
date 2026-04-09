@@ -1,6 +1,6 @@
 import json
 
-with open('/Users/imac/Desktop/Drive/Antigravity/.agents/skills/au_race_extractor/scripts/nuxt.json', 'r') as f:
+with open('./.agents/skills/au_race_extractor/scripts/nuxt.json', 'r') as f:
     nuxt = json.load(f)
 
 print("Let's look at FormGuidePrint:0")

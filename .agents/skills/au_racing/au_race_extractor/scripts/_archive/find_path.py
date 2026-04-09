@@ -10,7 +10,7 @@ def find_paths(d, target_key, current_path=""):
         for i, item in enumerate(d):
             find_paths(item, target_key, f"{current_path}[{i}]")
 
-with open('/Users/imac/Desktop/Drive/Antigravity/.agents/skills/au_race_extractor/scripts/nuxt.json', 'r') as f:
+with open('./.agents/skills/au_race_extractor/scripts/nuxt.json', 'r') as f:
     nuxt = json.load(f)
 
 find_paths(nuxt, "Competitor:943628")

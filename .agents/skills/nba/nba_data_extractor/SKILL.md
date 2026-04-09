@@ -2,6 +2,8 @@
 name: NBA Data Extractor
 description: This skill should be used when the user wants to "extract NBA data", "NBA 數據提取", "NBA Data Extractor", or when NBA Wong Choi orchestrates real-time player and match data extraction for parlay analysis.
 version: 1.2.0
+ag_kit_skills:
+  - systematic-debugging   # 數據提取連續失敗時自動觸發
 ---
 
 # Role
@@ -55,8 +57,15 @@ version: 1.2.0
 - 對數據做任何主觀解讀
 
 ## 5. File Writing Protocol
-> ⚠️ **NEVER** use `cat << EOF` or any heredoc syntax via `run_command` to write data packages.
-> This causes terminal processes to hang indefinitely. Only use `write_to_file` / `replace_file_content`.
+> ⚠️ **P33-WLTM 封殺令**: `write_to_file` / `replace_file_content` / `multi_replace_file_content` **完全禁止** — 會導致 IDE 死鎖。
+> 數據包寫入必須透過 `run_command` + heredoc → `/tmp` → `cp` 管道，或由上游 Wong Choi 嘅 Safe-Writer Pipeline 統一處理。
+
+## 6. Session Recovery Protocol (Pattern 10)
+> 若 session 中途斷開或重新連接,**嚴禁重新提取已完成嘅數據**。
+1. **偵測已完成嘅數據包**: 掃描 `TARGET_DIR` 內嘅 `NBA_Data_Package.txt`、`Data_Brief_*.json`、`Bet365_Odds_*.json`
+2. **跳過已完成嘅賽事**: 若某場賽事嘅完整數據包已存在,跳過該場
+3. **恢復點報告**: 向 Wong Choi 報告:「偵測到 N/M 場數據已提取,從 Game X 繼續」
+4. **Bet365 提取特別注意**: Bet365 盤口提取受速率限制,重複提取會觸發風控 — Session Recovery 極為重要
 
 # Resource Read-Once Protocol
 在開始任何數據提取前,你必須首先讀取以下資源檔案,並在整個 session 中保留記憶:
@@ -76,25 +85,73 @@ python .agents/skills/nba/nba_data_extractor/scripts/nba_extractor.py --date {YY
 ```
 (如果不指定 `--date`,腳本默認抓取今日賽事。)
 
-## Step 1.5: 🎯 Bet365 即時盤口提取 (MCP Playwright)
+## Step 1.5: 🎯 Bet365 即時盤口提取 (Claw V8 — Zero-Navigation Architecture)
+
 > [!IMPORTANT]
 > 此步驟為 **最高優先級** 盤口來源。必須在 Step 2 之前執行。
 > 完整流程參見 `resources/04_bet365_extraction.md`。
 
-**執行流程摘要：**
-1. `mcp_playwright_browser_navigate` → `https://www.bet365.com.au/#/AS/B18/`
-2. 等待 5-8 秒 → `mcp_playwright_browser_evaluate` 驗證 NBA 賽事已載入
-3. 從 index 頁面提取所有 Game Lines (Line / Total / Moneyline)
-4. 逐場賽事 `mcp_playwright_browser_run_code` click 入去 → 等 5 秒
-5. `mcp_playwright_browser_snapshot` 捕獲完整 Player Props DOM
-6. 解析 snapshot → 輸出結構化 JSON (Points / Threes / Rebounds / Assists)
-7. 存檔至 `{TARGET_DIR}/Bet365_Odds_{GAME_TAG}.json`
-8. 回到 index 頁面 → 重複 Step 4-7 直到所有賽事完成
+> [!CAUTION]
+> ## 🚨 ZERO-NAVIGATION 黃金法則
+> **Cloudflare CDP Fingerprinting 會 block 任何由 CDP 觸發嘅 navigation/click 事件。**
+>
+> **以下操作全部 100% 會被攔截（Opus 2026-04-08 實測驗證）：**
+> - ❌ `page.goto()` — BLOCKED
+> - ❌ `window.location.href = url` via evaluate — BLOCKED
+> - ❌ `el.click()` via evaluate — BLOCKED
+> - ❌ `page.mouse.click()` — BLOCKED
+> - ❌ `context.new_page()` — 注入自動化指紋
+>
+> **唯一允許嘅操作：**
+> - ✅ `page.evaluate(() => document.body.innerText)` — 純讀取 DOM
+> - ✅ USER 手動 click tab → CDP 讀取結果
+>
+> **如果你正在考慮「自行發明」新方法 → ⛔ STOP → 按照以下步驟執行。**
+
+**正確嘅執行流程（V8 — 逐步跟隨）：**
+
+**Step 1.5a：確認 USER 已準備好**
+```
+向 USER 發出提示：
+「請喺 Comet 瀏覽器打開 bet365.com.au，入去 NBA 賽事列表 (Index Page)。
+確保畫面有球隊名同賠率出現（唔係空白頁）。
+準備好請覆 'Ready'。」
+```
+
+**Step 1.5b：執行 Claw V8**
+```bash
+python3 "./.agents/skills/nba/nba_data_extractor/scripts/claw_bet365_odds.py" \
+  --output "{TARGET_DIR}/bet365_all_raw_data.json"
+```
+
+腳本會自動：
+1. 連接 Comet CDP (port 9222)
+2. 讀取 Game Lines（全自動 — Game tab 係默認選中）
+3. 逐個提示 USER 手動 click 以下 4 個 Tab：
+
+> [!WARNING]
+> **🎯 正確 Tab 名稱（P40 — Milestones Source-First）：**
+>
+> | # | ✅ 正確 Tab | ❌ 唔好撳 | 原因 |
+> |---|------------|----------|------|
+> | 1 | **`Points`** | `Points O/U` | Points O/U 產出 .5 盤口 |
+> | 2 | **`Rebounds`** | — | |
+> | 3 | **`Assists`** | — | |
+> | 4 | **`Threes Made`** | — | |
+
+4. 每個 Tab click 後自動讀取 + `.5` 污染偵測
+5. 全部完成後儲存 Raw JSON
+
+**⚠️ 關鍵規則：**
+1. `--output` 必須使用 **絕對路徑**（以 `/Users/` 開頭），禁止相對路徑
+2. **嚴禁加 `--url` 參數** — V8 唔再支援 URL 導航（Zero-Navigation）
+3. Comet 必須已經打開 Bet365 NBA 頁面
+4. 腳本只做讀取，所有 Tab 切換由 USER 手動完成
 
 **⚠️ Bet365 提取失敗時：**
-- Market 關閉 / SPA 渲染失敗 → **不影響後續流程**
-- 使用 `nba_extractor.py` 嘅估算盤口作為 fallback
-- 標記為 `odds_source: ESTIMATED (non-Bet365)`
+- **暫停並通知用戶**，不得繼續分析
+- 嚴禁使用估算盤口或 Extractor Only Mode 作為 fallback
+- 用戶可能需要先在 Comet 手動訪問一次 Bet365 解除首次 Captcha
 
 ## Step 2: 檢查腳本輸出
 讀取生成的 Markdown 數據包。若 Step 1.5 成功,將 Bet365 JSON 嘅盤口覆蓋 nba_extractor.py 嘅估算盤口。若腳本執行失敗或提示 `缺少依賴庫`:
@@ -121,36 +178,6 @@ python .agents/skills/nba/nba_data_extractor/scripts/nba_extractor.py --date {YY
 - 防守大閘狀態: [全部賽事防守大閘清單]
 ```
 
-### Part B: Player-Level 數據卡
-每位候選球員嘅完整 14 項數據卡(格式見 `resources/02_data_card_template.md`)。
 
-# Output Contract
-你嘅輸出將由 NBA Analyst 直接消費。數據包必須:
-1. 包含所有 Meeting-Level 同 Player-Level 數據
-2. 每位球員嘅數據卡必須完整填寫所有 14 項
-3. 所有數據必須標明來源網站
-4. 缺失數據標記為 `N/A (數據不足)`
-
-# Recommended Tools & Assets
-- **Tools**:
-  - `mcp_playwright_browser_*`：**主要工具** — 用於 Bet365 即時盤口提取（navigate / evaluate / snapshot / run_code）
-  - `run_command`：核心工具，用於執行 Python 數據提取腳本
-  - `search_web`：後備工具，僅用於補充個別球員缺失數據（禁止用於全套提取）
-  - `write_to_file`：將數據包存檔至 TARGET_DIR
-- **Assets**:
-  - `resources/01_data_protocols.md`:搜尋規則與防錯機制
-  - `resources/02_data_card_template.md`:14 項數據卡格式
-  - `resources/03_defensive_profiles.md`:防守大閘分類清單
-
-# Test Case
-**User Input:**
-「幫我提取今晚 Lakers vs Celtics 嘅數據」
-
-**Expected Agent Action:**
-1. 讀取 `resources/01_data_protocols.md`、`02_data_card_template.md`、`03_defensive_profiles.md`。
-2. 確認今日日期與賽程。
-3. 搜尋 Lakers vs Celtics 先發陣容 + 傷病報告。
-4. 根據防守大閘清單掃描雙方防守者狀態。
-5. 提取賽事情境(讓分盤、總分盤、B2B、節奏)。
-6. 逐位球員提取 14 項數據卡。
-7. 輸出完整結構化數據包。
+---
+**\u26a0\ufe0f PROGRESSIVE DISCLOSURE PROTOCOL: This SKILL.md has been truncated to <200 lines. The extended protocols, templates, and procedures are located in the resources/ directory.**

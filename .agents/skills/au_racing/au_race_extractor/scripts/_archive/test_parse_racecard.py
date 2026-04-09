@@ -73,4 +73,4 @@ def parse_html(filepath):
                  print(f"Next sibling class is: {ns.get('class') if ns else 'None'}")
                  
 if __name__ == "__main__":
-    parse_html('/Users/imac/Desktop/Drive/Antigravity/.agents/skills/au_race_extractor/scripts/racenet_print_curl.html')
+    parse_html('./.agents/skills/au_race_extractor/scripts/racenet_print_curl.html')

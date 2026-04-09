@@ -14,7 +14,7 @@
   - **檔案合併:** `06a` 兩個版本合併為一
   - **SIP Index 重新定位:** AU + HKJC 明確為 Lookup Table + Watchlist
   - **Reflector 更新:** AU + HKJC Reflector 加入 BAKED SIP 感知指引
-  - **P19v6 修復:** HKJC Reflector `write_to_file` → `run_command`
+  - **P33-WLTM 修復:** HKJC Reflector `write_to_file` → `run_command`
 - **Target Files:** SKILL.md, 02a, 02f, 06a, 00_sip_index.md (AU+HKJC), observation_log.md, au-wong-choi.md, temp_02/03.md, Reflector SKILL.md (AU+HKJC)
 - **Regression Check:** 若 AU 引擎仍引用 Purton/Moreira = 回歸。若 Logic Proof 仍為 15 步 = 回歸。
 
@@ -28,8 +28,8 @@
 - **Target Files:** `02f_synthesis.md`, `02d_eem_pace.md`, `05_verification.md`, `06_output_templates.md`
 - **Regression Check:** 若近 3 仗全無入位但引擎仍評 S/S- = 回歸
 
-### 2026-04-05 — P19v6: 全引擎防串流鎖死封殺令
-- **Changed:** 統一 AU / HKJC / NBA 三大引擎嘅 File Writing Protocol 至 P19v6
+### 2026-04-05 — P33-WLTM: 全引擎防串流鎖死封殺令
+- **Changed:** 統一 AU / HKJC / NBA 三大引擎嘅 File Writing Protocol 至 P33-WLTM
 - **Target Files:** AU/HKJC/NBA Wong Choi SKILL.md, race_analysis_workflow.md, design_patterns.md
 - **Regression Check:** 若任何引擎仍包含 `write_to_file` 作為合法工具 = 回歸
 

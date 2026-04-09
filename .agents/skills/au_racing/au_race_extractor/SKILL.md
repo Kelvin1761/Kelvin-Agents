@@ -24,14 +24,14 @@ When the user provides a Racenet URL (e.g. `caulfield-heath-20260304`) and speci
 
 ### 🧰 Tools & Execution Flow
 Racenet uses heavy Cloudflare protection and hydration via Nuxt.js. 
-🚫 **`browser_subagent` is GLOBALLY DISABLED across the Antigravity ecosystem.** It is unreliable (frequent 503/capacity errors), extremely slow, and causes infinite loops and token limit crashes. **DO NOT use `browser_subagent` or `read_browser_page` for ANY data extraction.**
+🚫 **`MCP Playwright (mcp_playwright_browser_*)` is GLOBALLY DISABLED across the Antigravity ecosystem.** It is unreliable (frequent 503/capacity errors), extremely slow, and causes infinite loops and token limit crashes. **DO NOT use `MCP Playwright (mcp_playwright_browser_*)` or `read_browser_page` for ANY data extraction.**
 Instead, you must write a Python extraction script using `curl_cffi` + `Playwright` headless!
 
 #### Step 1: Create Output Folder
 First, ensure your Python script dynamically creates the targeted output directory directly in the main `Antigravity` folder (NOT inside `.agents`), and outputs a `Meeting_Summary.md` file containing the Track Condition, Weather, Rails, and Date.
 
 Format of folder: `[YYYY-MM-DD] [Venue Name] Race [Start]-[End]`.
-Example: `/Users/imac/Desktop/Drive/Antigravity/2026-03-04 Caulfield Heath Race 1-8/`
+Example: `./2026-03-04 Caulfield Heath Race 1-8/`
 
 #### 2. Form Guide Logic
 Extract the `forms` list for each selection, plus the deep data linked via `stats`, `sire`, `dam`, `flucOdds`, and `trainer`/`jockey` objects.

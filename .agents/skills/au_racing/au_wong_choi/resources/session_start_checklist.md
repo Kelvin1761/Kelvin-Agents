@@ -19,16 +19,18 @@
 
 ## 強制資源載入
 開始前你必須讀取以下文件(缺一不可):
-1. au_wong_choi/SKILL.md(完整讀取)
-2. au_horse_analyst/resources/01_system_context.md
-3. au_horse_analyst/resources/06_output_templates.md
-4. 場地模組(按今場選 1 個)
+1. ../../au_wong_choi/SKILL.md(完整讀取)
+2. ../au_horse_analyst/resources/01_system_context.md
+3. ../au_horse_analyst/resources/06_templates_core.md（結構骨架）
+4. ../au_horse_analyst/resources/06_templates_rules.md（Verdict 觸發規則）
+5. 場地模組(按今場選 1 個)
 
 ## Pre-flight Self-Check
 讀完以上文件後,你必須回覆以下 checklist(全部 ✅ 才可開始):
 - [ ] SKILL.md 已讀取(確認 SIP-DA01 多角度裁決協議及 P28/P31 規則存在)
 - [ ] 01_system_context.md 已讀取(確認 Anti-Laziness 規則存在)
-- [ ] 06_output_templates.md 已讀取(確認 Top 4 骨架格式存在)
+- [ ] 06_templates_core.md 已讀取(確認骨架格式存在)
+- [ ] 06_templates_rules.md 已讀取(確認 Verdict 觸發規則存在)
 - [ ] 場地模組已讀取
 - [ ] BATCH_SIZE 由環境掃描決定已確認
 - [ ] 環境掃描結果已回報用戶
@@ -38,7 +40,7 @@ Racecard: [RACECARD_PATH]
 Formguide: [FORMGUIDE_PATH]
 
 ## 分析模式
-P19v2 逐場手動推進協議 — 每場完成後等確認
+P33-WLTM 逐場手動推進協議 — 每場完成後等確認
 每匹馬完整 5-block × 13-subfield 分析
 Verdict 必須獨立 tool call 寫入
 ```
@@ -67,7 +69,8 @@ Verdict 必須獨立 tool call 寫入
 ### Post-Race Validation(每場必須)
 每場分析完成後,Wong Choi 必須執行:
 ```bash
-python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/validate_analysis.py "[ANALYSIS_FILE_PATH]"
+python3 .agents/scripts/completion_gate_v2.py "[ANALYSIS_FILE_PATH]" --domain au
+python3 .agents/skills/au_racing/../au_wong_choi/scripts/verify_math.py "[ANALYSIS_FILE_PATH]" --fix
 ```
 輸出 `❌ FAILED` → 必須修正再重新驗證。
 輸出 `✅ PASSED` → 可以推進下一場。

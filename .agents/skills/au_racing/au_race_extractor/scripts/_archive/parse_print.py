@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 import json
 import re
 
-with open('/Users/imac/Desktop/Drive/Antigravity/racenet_print_curl.html', 'r') as f:
+with open('./racenet_print_curl.html', 'r') as f:
     text = f.read()
 
 print(f"File length: {len(text)}")

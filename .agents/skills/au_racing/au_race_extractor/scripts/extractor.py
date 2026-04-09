@@ -11,7 +11,7 @@ def get_base_path():
     if platform.system() == 'Windows':
         return r"g:\我的雲端硬碟\Antigravity Shared\Antigravity"
     else:
-        return "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity"
+        return "."
 
 def generate_print_url(url):
     # E.g. https://www.racenet.com.au/form-guide/horse-racing/caulfield-heath-20260304/briga-fliedner-2026-lady-of-racing-finalist-race-1/overview

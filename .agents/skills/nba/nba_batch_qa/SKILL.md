@@ -1,7 +1,9 @@
 ---
 name: NBA Batch QA
-description: This skill should be used when the user wants to "check NBA output quality", "validate NBA analysis", "QA NBA batch", "驗證 NBA 分析品質", "NBA 品質掃描". It acts as a structural QA gate between the NBA Analyst and the Wong Choi orchestrator, ensuring zero format drift across multiple games.
-version: 1.0.0
+description: This skill should be used when the user wants to "check NBA output quality", "validate NBA analysis", "QA NBA batch", "驗證 NBA 分析品質", "NBA 品質掌描". It acts as a structural QA gate between the NBA Analyst and the Wong Choi orchestrator, ensuring zero format drift across multiple games.
+version: 1.1.0
+ag_kit_skills:
+  - systematic-debugging   # QA 掃描連續 FAILED 時自動觸發
 ---
 
 # Role
@@ -28,11 +30,20 @@ version: 1.0.0
 ## Step 1: 接收批次輸出
 從 Wong Choi 接收 Analyst 嘅完整輸出（可以係單場或多場）。
 
+### Session Recovery (Pattern 10)
+> 若 session 中途斷開,偵測已完成嘅 QA 工作:
+1. 掃描 `TARGET_DIR` 內是否存在 `_batch_qa_report.md`
+2. 若存在 → 讀取報告,確認已 QA 過嘅場次清單
+3. 向 Wong Choi 報告:「偵測到 N/M 場已 QA,從 Game X 繼續」
+
+### Circuit Breaker
+> 若 QA 掃描連續 3 次無法讀取某場分析報告（檔案損壞/缺失）→ 標記為 `PARTIAL_SCAN`,繼續下一場。唔好卡死。
+
 ## Step 2: 逐場結構掃描
 針對每場賽事嘅分析，執行以下檢查：
 
 ### 2.1 組合完整性
-- [ ] 輸出包含完整 4 個組合（1A / 1B / 2 / 3）?
+- [ ] 輸出包含完整 ≥2 個組合（🛡️ 1 + 🔥 2，可選 💎 3）? 組合 X 條件觸發（可選）?
 - [ ] 每個組合嘅 Leg 數量 ≥ 2?
 
 ### 2.2 Leg 欄位完整性（逐 Leg 檢查）
@@ -50,7 +61,7 @@ version: 1.0.0
 - [ ] 搜尋以下省略語 → 發現任何一個即標記 FAIL：
   - `...`, `[同上]`, `[略]`, `[參見組合X]`, `[完整數據見組合X]`, `[FILL]`
 - [ ] L10 數組長度 = 10（每個數組有 10 個數字）?
-- [ ] 組合 1B/2/3 嘅 Leg 分析深度 ≥ 組合 1A 嘅 80%（以字數為基準）?
+- [ ] 組合 2/3 嘅 Leg 分析深度 ≥ 組合 1 嘅 80%（以字數為基準）?
 
 ### 2.4 數學一致性（快速校驗）
 - [ ] 隱含勝率 ≈ 1/賠率（容差 ≤ 1.5%）?
@@ -76,8 +87,8 @@ version: 1.0.0
 ### 逐場結果
 | 場次 | 組合數 | Leg 數 | 欄位完整度 | 省略語 | 數學校驗 | 結果 |
 |------|--------|--------|-----------|--------|---------|------|
-| Game 1 | 4/4 ✅ | 8 | 100% | 0 | ✅ | PASS |
-| Game 2 | 3/4 ❌ | 6 | 85% | 2 | ✅ | FAIL |
+| Game 1 | 3/3 ✅ | 8 | 100% | 0 | ✅ | PASS |
+| Game 2 | 2/3 ❌ | 6 | 85% | 2 | ✅ | FAIL |
 
 ### 跨場一致性
 - 品質梯度：[✅ 穩定 / ❌ 退化 X%]
@@ -89,7 +100,7 @@ version: 1.0.0
 3. [MINOR] MODEL-003: Game 3 平均字數比 Game 1 短 45%
 
 ### 建議
-- Game 2：要求 Analyst 補充組合 1B + 補填 [FILL]
+- Game 2：要求 Analyst 補填 [FILL] 深度補充
 - Game 3：要求 Analyst 為組合 2/3 補充深度分析
 
 ### 結論

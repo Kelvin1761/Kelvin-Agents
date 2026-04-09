@@ -16,7 +16,7 @@ nba_extractor.py — NBA Wong Choi Claw Code V3 (究極版)
   python nba_extractor.py --date 20260402
 
   # 針對單場比賽深度提取 (推薦用法，配合 Game-by-Game 分析)
-  python nba_extractor.py --date 20260402 --game PHX_CHA --output /tmp/nba_game_data_PHX_CHA.json
+  python nba_extractor.py --date 20260402 --game PHX_CHA --output .agents.agents/tmp/nba_game_data_PHX_CHA.json
 
 安裝依賴：
   pip install nba_api requests curl-cffi
@@ -461,7 +461,7 @@ def fetch_player_gamelog(player_id, player_name, n=10):
 # ==========================================
 def fetch_player_h2h(player_id, player_name, opp_abbr):
     """提取球員對住特定球隊的歷史對戰數據 (當季 + 上季)"""
-    return None
+    # V3: Re-enabled (was previously disabled)
     if not NBA_API_AVAILABLE:
         return None
     try:
@@ -1135,9 +1135,9 @@ def generate_overview_md(games, team_stats, odds_data):
         blowout_warn = ""
         if spread is not None:
             if abs(spread) >= 8.5:
-                blowout_warn = f"\n- ⚠️ **[BLOWOUT RISK 大炒高危]**: 讓分為 {spread}，極度危險！請封殺當家球星的 1B 正盤 (PTS Over)！改買苦工/籃板/助攻或放於 1A 保本。"
+                blowout_warn = f"\n- ⚠️ **[BLOWOUT RISK 大炒高危]**: 讓分為 {spread}，主力球員上場時間可能縮減！謹慎操作 PTS Over，改買苦工/籃板/助攻。"
             else:
-                blowout_warn = f"\n- ⚖️ [膠著分差預警]: 讓分為 {spread}，適合全陣突擊 1B 正盤。"
+                blowout_warn = f"\n- ⚖️ [膠著分差]: 讓分為 {spread}，正常操作所有盤口。"
 
         lines.append(f"### {g['name']} ({g['tag']})")
         lines.append(f"- 開賽時間: {g['date']}")
@@ -1204,7 +1204,7 @@ def main():
         # 儲存為 JSON
         output_path = args.output
         if output_path.endswith('.md'):
-            output_path = f"/tmp/nba_game_data_{target_game['tag']}.json"
+            output_path = f".agents.agents/tmp/nba_game_data_{target_game['tag']}.json"
 
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(package, f, ensure_ascii=False, indent=2)
@@ -1222,7 +1222,7 @@ def main():
         for g in games:
             package = extract_single_game(g, adv_stats, defender_data, team_dvp, team_stats, odds_data)
             
-            json_path = f"/tmp/nba_game_data_{g['tag']}.json"
+            json_path = f".agents.agents/tmp/nba_game_data_{g['tag']}.json"
             with open(json_path, "w", encoding="utf-8") as f:
                 json.dump(package, f, ensure_ascii=False, indent=2)
             print(f"  ✅ {g['tag']} → {json_path}")

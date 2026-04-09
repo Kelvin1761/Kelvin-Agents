@@ -8,7 +8,7 @@
 
 # Part 1: Agent Health Check 清單
 
-對目標 agent 逐項檢查,每項評為 ✅ / ⚠️ / ❌:
+對目標 agent 逐項檢查,每項評為 ✅ / ⚠️ / ❌，並附帶 **信心分數 (0-100)**（見 `design_patterns.md` Pattern 20）：:
 
 ## A. 結構合規 (Structural Compliance)
 - [ ] Frontmatter 完整?(name + description + version)
@@ -52,8 +52,9 @@
 - [ ] 若 agent 有迭代改善循環 → 有冇參考 B17 Ralph Loop 嘅 completion promise 機制?
 
 ### Health Check 評分
-每個 ❌ 必須附帶具體修正建議。每個 ⚠️ 附帶風險說明。
-最終評級:總 ✅ 數 / 總檢查項數 × 100 = 分數
+每個 ❌ 必須附帶具體修正建議 + 信心分數。每個 ⚠️ 附帶風險說明 + 信心分數。
+只展示信心分數 ≥30 嘅 findings（0-29 歸入附錄）。
+最終評級：總 ✅ 數 / 總檢查項數 × 100 = 分數
 - **A (90-100)**: 生產就緒
 - **B (70-89)**: 可用但有改善空間
 - **C (50-69)**: 需要修正先可以用
