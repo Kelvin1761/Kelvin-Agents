@@ -1,0 +1,32 @@
+{
+  "BOS": {
+    "team_name": "Boston Celtics",
+    "primary_coverage": "Switching",
+    "key_weakness": "Isolation scoring against bigs",
+    "vulnerable_to_positions": ["Elite ISO Wings"]
+  },
+  "MIL": {
+    "team_name": "Milwaukee Bucks",
+    "primary_coverage": "Deep Drop",
+    "key_weakness": "Give up high volume of open mid-range jumpers & pull-up 3s",
+    "vulnerable_to_positions": ["PG/SG Pull-up shooters", "Mid-range wings (e.g. DeRozan)"]
+  },
+  "DEN": {
+    "team_name": "Denver Nuggets",
+    "primary_coverage": "Hedge and Recover / Show",
+    "key_weakness": "Roll-man finishing and corner 3s on rotation",
+    "vulnerable_to_positions": ["Pick & Roll Bigs", "Corner shooters"]
+  },
+  "MIA": {
+    "team_name": "Miami Heat",
+    "primary_coverage": "Zone / Aggressive Trapping",
+    "key_weakness": "High-post playmaking, offensive rebounding",
+    "vulnerable_to_positions": ["Passing Bigs (e.g. Sabonis, Jokic)", "Elite Rebounders"]
+  },
+  "MIN": {
+    "team_name": "Minnesota Timberwolves",
+    "primary_coverage": "High Drop / Switch",
+    "key_weakness": "Pace and space, stretch 5s pulling Gobert out",
+    "vulnerable_to_positions": ["Stretch 5", "Speed guards"]
+  }
+}
