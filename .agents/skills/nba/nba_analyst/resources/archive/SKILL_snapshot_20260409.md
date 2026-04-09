@@ -2,8 +2,6 @@
 name: NBA Analyst
 description: This skill should be used when the user wants to "analyse NBA parlay", "NBA 過關分析", "NBA Analyst", or when NBA Wong Choi orchestrates player props volatility analysis and parlay combination building.
 version: 2.1.0
-gemini_thinking_level: HIGH
-gemini_temperature: 0.2
 ag_kit_skills:
   - systematic-debugging   # CoV/模板驗證連續失敗時自動觸發
 ---
@@ -27,11 +25,6 @@ ag_kit_skills:
 - `resources/06_verification.md` — 自檢清單 [輸出前讀取]
 
 讀取一次後保留在記憶中,嚴禁每批次重複讀取。
-
-# 🤖 ENGINE ADAPTATION (P31 — 針對 Gemini 之自我優化)
-> 1. **Emoji 計數自檢 (P31最強防線):** 每支 Leg 分析寫完後，喺內部思考中清點 Markdown 骨架嘅 Emoji 數量 (例如 🧩、🔢、🧠、⚠️、💪 等)。若少於模板規定，代表你跳過咗必要區塊 → 立即返回補全。
-> 2. **骨架 [FILL] 零容忍:** 若寫完嘅分析仍然包含 `[FILL]` → 立即補回。
-> 3. **PREMATURE_STOP_GUARD:** 未寫足 3 個組合 (🛡️1, 🔥2, 💎3) 之前，嚴禁向用戶或 Wong Choi 輸出完成信號。
 
 # Scope & Strict Constraints
 按照 `resources/01_system_context.md` 嚴格遵守以下核心規則:

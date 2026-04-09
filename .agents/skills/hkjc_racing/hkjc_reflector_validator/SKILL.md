@@ -2,6 +2,8 @@
 name: HKJC Reflector Validator
 description: This skill should be used when the user wants to "validate HKJC SIP changes", "HKJC 驗證 SIP", "blind test HKJC logic", "HKJC 盲測", or needs to verify that SIP logic updates actually improve prediction accuracy through blind re-analysis.
 version: 1.0.0
+gemini_thinking_level: HIGH
+gemini_temperature: 0.5
 ---
 
 # Role

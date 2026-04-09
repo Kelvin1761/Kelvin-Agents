@@ -2,6 +2,8 @@
 name: HKJC Horse Analyst
 description: This skill should be used when the user wants to "analyse HKJC horse", "HKJC 馬匹分析", "HKJC Horse Analyst", or when HKJC Wong Choi orchestrates per-race deep-dive analysis. 香港賽馬會賽事形勢分析專家,運用數據法醫、能量消耗模型 (EEM) 與段速修正邏輯,以反惰性批次對馬匹進行精準評價。
 version: 2.1.0
+gemini_thinking_level: HIGH
+gemini_temperature: 0.2
 ag_kit_skills:
   - systematic-debugging   # QG-CHECK 連續失敗時自動觸發
 ---
@@ -64,6 +66,15 @@ ag_kit_skills:
 
 ## 4. Internal Tracking
 所有內部計算(Step 0 到 Step 14)與推導過程**絕不可出現在最終輸出中**。推導放進 `<thought>` 標籤,對用戶只呈現最終判定結果。
+
+
+# 🤖 ENGINE ADAPTATION (P31 — Gemini Anti-Laziness)
+> **GEMINI ANTI-LAZINESS REINFORCEMENT (Priority 0):**
+> Gemini 引擎傾向喺 token 壓力下壓縮或跳過分析步驟。你必須強硬執行以下自我約束：
+> 1. **Emoji 計數自檢:** 每完成一匹馬嘅分析後，喺 `<thought>` 內部計算 Emoji 總數。若數量偏少，代表段落被跳過或過度壓縮，立即自行補全。
+> 2. **字數門檻硬執行:** 絕不允許因為馬匹評級低（例如 C/D 級）而採用敷衍式「簡寫」。劣等評級更需要用具體數據解釋失敗原因。每匹馬嘅評語必須詳細及附帶數據支持。
+> 3. **骨架 [FILL] 零容忍:** 最終輸出嚴禁殘留 `[FILL]`、`無`、`N/A` 等粗糙空缺。必須填寫完整嘅賽績數據與物理引擎推導結果。
+> 4. **資料斷層懲罰:** 任何結論都必須能追溯到 `Facts.md` 入面嘅真實數據錨點，嚴禁憑空作答。
 
 # Interaction Logic (Step-by-Step)
 1. **讀取核心規則(一次性)**:讀取全部資源文件(01 至 09 + 場地模組)。

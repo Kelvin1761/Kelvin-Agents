@@ -2,6 +2,8 @@
 name: AU Compliance Agent
 description: This skill should be used when the user wants to "check AU analysis quality", "AU 品質檢查", "AU compliance check", "AU 合規檢查", or when AU Wong Choi requires mandatory quality and SIP compliance verification after each race analysis.
 version: 2.0.0
+gemini_thinking_level: HIGH
+gemini_temperature: 0.2
 ---
 
 # Role

@@ -2,8 +2,6 @@
 name: NBA Wong Choi
 description: This skill should be used when the user wants to "analyse NBA", "NBA 過關分析", "NBA Wong Choi", "分析今晚 NBA", "幫我睇 NBA", or needs to orchestrate the full NBA player props parlay analysis pipeline from data extraction through to final parlay report generation.
 version: 2.2.0
-gemini_thinking_level: HIGH
-gemini_temperature: 0.2
 ag_kit_skills:
   - systematic-debugging   # 品質掃描 FAILED 時自動觸發
   - brainstorming           # Step 4.5 自檢總結時自動觸發
@@ -49,7 +47,6 @@ ag_kit_skills:
 >    - **禁止「因為該場無優質 Leg 所以簡寫」:** 每場賽事必須完整分析所有生小 props。
 >    - **字數門檻:** 每場賽事分析 ≥1500 字（含中英文混合計數）。
 >    - **骨架 [FILL] 零容忍:** 若寫完嘅分析仍然包含 `[FILL]` → 立即補回。
->    - **Emoji 計數自檢 (P31最強防線):** 每支 Leg 分析寫完後，喺內部思考中清點 Markdown 骨架嘅 Emoji 數量 (例如 🧩、🔢、🧠、⚠️、💪 等)。若少於模板規定，代表你跳過咗必要區塊 → 立即返回補全。
 
 # 🚨 INJURY_GUARD_PROTOCOL (新增 — Priority 0)
 

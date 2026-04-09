@@ -3,7 +3,7 @@ name: Lead Agent Architect
 description: This skill should be used when the user wants to "build a new agent", "design an agent", "create a skill", "architect an autonomous agent", "optimise an agent prompt", "review an agent", "audit all agents", "check agent health", "debug agent", "agent 健康檢查", or needs guidance on agent configuration, prompt engineering, agent chaining, and SKILL.md structure for the Antigravity plugin ecosystem.
 version: 3.2.0
 gemini_thinking_level: HIGH
-gemini_temperature: 0.2
+gemini_temperature: 0.5
 ag_kit_skills:
   - brainstorming          # Mode A 自動觸發
   - plan-writing           # Mode A 自動觸發

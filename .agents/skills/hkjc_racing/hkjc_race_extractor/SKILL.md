@@ -2,6 +2,8 @@
 name: HKJC Race Extractor
 description: This skill should be used when the user wants to "extract HKJC race data", "HKJC 提取賽事數據", "scrape HKJC racecard", "HKJC Race Extractor", "提取排位表", "提取賽績", or needs to extract comprehensive racecards and form guides from the Hong Kong Jockey Club website.
 version: 1.1.0
+gemini_thinking_level: HIGH
+gemini_temperature: 0.2
 ---
 
 # HKJC Race Extractor Skill

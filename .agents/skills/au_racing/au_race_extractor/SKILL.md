@@ -2,6 +2,8 @@
 name: AU Race Extractor
 description: This skill should be used when the user wants to "extract AU race data", "AU 提取賽事數據", "scrape Racenet", "AU Race Extractor", "提取澳洲排位表", or needs to extract detailed race cards and form guides from Racenet Australia concurrently using Python, curl_cffi, and Playwright.
 version: 1.1.0
+gemini_thinking_level: HIGH
+gemini_temperature: 0.2
 ---
 
 # AU Race Extractor Skill
