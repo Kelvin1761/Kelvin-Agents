@@ -31,7 +31,7 @@ from typing import Optional
 # Formguide Parser
 # ──────────────────────────────────────────────
 
-def parse_formguide(filepath: str) -> list[dict]:
+def parse_formguide(filepath: str, source: str = "punters") -> list[dict]:
     """Parse Formguide.md and extract structured data per horse."""
     text = Path(filepath).read_text(encoding='utf-8')
 
@@ -104,12 +104,32 @@ def parse_formguide(filepath: str) -> list[dict]:
             'fav': r'Fav:\s*([\d:]+[\d\-]+)',
             'class_stat': r'Class:\s*([\d:]+[\d\-]+)',
         }
+        
+        if source == 'racenet':
+            stat_patterns = {
+                'career': r'Career\s*([\d:]+[\d\-]+)',
+                'win_pct': r'Win %:\s*(\d+)',
+                'place_pct': r'Place %:\s*(\d+)',
+                'roi': r'ROI\s*(-?\d+)',
+                'track': r'Track\s*([\d:]+[\d\-]+)',
+                'distance': r'Distance\s*([\d:]+[\d\-]+)',
+                'trk_dist': r'Track/Dist\s*([\d:]+[\d\-]+)',
+                'good': r'Good\s*([\d:]+[\d\-]+)',
+                'soft': r'Soft\s*([\d:]+[\d\-]+)',
+                'heavy': r'Heavy\s*([\d:]+[\d\-]+)',
+                'firm': r'Firm\s*([\d:]+[\d\-]+)',
+                'first_up': r'1st Up\s*([\d:]+[\d\-]+)',
+                'second_up': r'2nd Up\s*([\d:]+[\d\-]+)',
+                'third_up': r'3rd Up\s*([\d:]+[\d\-]+)',
+                'class_stat': r'Class\s*([\d:]+[\d\-]+)'
+            }
+
         for key, pattern in stat_patterns.items():
             m = re.search(pattern, block)
             stats[key] = m.group(1) if m else 'N/A'
 
         # Extract race entries (non-trial)
-        race_entries = extract_race_entries(block)
+        race_entries = extract_race_entries(block, source)
 
         # Extract ALL dates (including trials) for fitness arc calculation
         all_dates = extract_all_dates(block)
@@ -144,7 +164,7 @@ def parse_formguide(filepath: str) -> list[dict]:
     return horses
 
 
-def extract_race_entries(block: str) -> list[dict]:
+def extract_race_entries(block: str, source: str = "punters") -> list[dict]:
     """Extract individual race entries from a horse block, skipping trials."""
     entries = []
 
@@ -164,6 +184,35 @@ def extract_race_entries(block: str) -> list[dict]:
     )
 
     # Trial detection
+    
+    if source == 'racenet':
+        # Custom logic to parse Racenet markdown
+        # Format:
+        # **Venue R1**
+        # 12/03/2026 1200m
+        # **Good4**
+        # Race Name
+        # (cond...) Out 3m $45K Jockey (4) 59.5kg Flucs:$... 01:11.510 (600/35.1) 3@800
+        
+        matches = re.finditer(r'\*\*(.*? R\d+)\*\*\s+(\d{2}/\d{2}/\d{4})\s+(\d+)m\s+\*\*(.*?)\*\*\s+(.*?)\s+\((.*?)\).*?\$([\dK]+).*?([a-zA-Z\s]+)\s+\((\d+)\)\s+([\d.]+)kg.*?Flucs:(.*?)(\d{2}:\d{2}\.\d{3})', block, re.DOTALL)
+        for idx, m in enumerate(matches):
+            entries.append({
+                'venue': m.group(1).split()[0].strip(),
+                'race_no': int(re.search(r'R(\d+)', m.group(1)).group(1)),
+                'date': '-'.join(m.group(2).split('/')[::-1]), # reformat DD/MM/YYYY to YYYY-MM-DD
+                'distance': int(m.group(3)),
+                'condition': 4 if 'Good' in m.group(4) else 5,
+                'prize': m.group(7).replace('K', '000'),
+                'jockey': m.group(8).strip(),
+                'jockey_barrier': int(m.group(9)),
+                'weight': float(m.group(10)),
+                'flucs': [e for e in m.group(11).split() if '$' in e],
+                'track_time': m.group(12),
+                'l600_time': "0:35.000", # placeholder as racenet format is tricky here
+                'position_settling': m.group(12) # placeholder
+            })
+        return entries
+
     trial_marker = '**(TRIAL)**'
 
     # Split block into lines for processing
@@ -685,10 +734,9 @@ def main():
     parser.add_argument("formguide", type=str, help="Path to Formguide.md")
     parser.add_argument("--racecard", type=str, default=None,
                         help="Path to Racecard.md (for weight differential calculation)")
-    parser.add_argument("--format", type=str, choices=['json', 'markdown'],
-                        default='markdown', help="Output format (default: markdown)")
-    parser.add_argument("--output", type=str, default=None,
-                        help="Output file path (default: stdout)")
+    parser.add_argument("--format", type=str, choices=['json', 'markdown'], default='json', help="Output format (json or markdown)")
+    parser.add_argument("--output", type=str, default=None, help="Output file path (default: stdout)")
+    parser.add_argument("--source", type=str, default="punters", help="Source format: punters or racenet")
     args = parser.parse_args()
 
     if not Path(args.formguide).exists():

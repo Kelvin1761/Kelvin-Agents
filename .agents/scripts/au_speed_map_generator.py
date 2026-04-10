@@ -48,9 +48,11 @@ class HorseProfile:
 # Racecard Parsing
 # ──────────────────────────────────────────────
 
-# Horse entry header: "### 1. Horse Name" or "### [1] Horse Name" or "| 1 | Horse Name |"
+# Horse entry header: "### 1. Horse Name" or "### [1] Horse Name" or "| 1 | Horse Name |" or "1. Horse Name"
 HORSE_ENTRY_RE = re.compile(
-    r'(?:###?\s*(?:\[?\s*(\d+)\s*\]?\.?\s+(.+?))\s*$'   # ### 1. Name or ### [1] Name
+    r'(?:^###?\s*(?:\[?\s*(\d+)\s*\]?\.?\s+(.+?))\s*$'   # ### 1. Name or ### [1] Name
+    r'|'
+    r'^(\d+)\.\s+([^(]+?)(?:\s*\(\d+\))?\s*$'             # 1. Name (3)
     r'|'
     r'^\|\s*(\d+)\s*\|\s*(.+?)\s*\|)',                    # | 1 | Name |
     re.MULTILINE

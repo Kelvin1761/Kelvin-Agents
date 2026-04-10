@@ -1,22 +1,32 @@
-# NBA Wong Choi — File Writing Protocol (強制執行)
+# NBA Wong Choi — File Writing Protocol (P19V6 強制執行)
 
-> **NEVER use `cat << EOF` or any heredoc syntax via `run_command` to write analysis reports.**
-> This causes terminal processes to hang indefinitely (known incident: 9+ hour hang in production session).
+> **🚫🚫🚫 TOTAL BAN — `write_to_file` / `replace_file_content` / `multi_replace_file_content` 完全封殺 🚫🚫🚫**
+>
+> 任何直接修改檔案內容的行為已被禁止，防止 Google Drive 雲端同步死鎖風險。
 
-## Mandatory File Writing Rules
+## Mandatory File Writing Rules (Safe-Writer Protocol)
 
-| Scenario | Correct Tool | Forbidden |
-|---|---|---|
-| 建立全新分析報告 (.txt) | `write_to_file` (with `Overwrite: false`) | `cat << EOF >` |
-| 覆寫完整報告 | `write_to_file` (with `Overwrite: true`) | `cat << EOF >` |
-| 追加內容到現有報告 | `replace_file_content` (target the last line) | `cat << EOF >>` |
-| 修改報告中多個不連續段落 | `multi_replace_file_content` | `cat << EOF >>` |
-| 執行 Python 腳本 | `run_command` ✅ (允許) | N/A |
+唯一合法寫檔方式：Heredoc 生成 markdown 暫存檔至 `/tmp`，再透過 base64 傳入 `safe_file_writer.py` 進行操作。
 
-## 執行規則
-1. **每場分析完成後** — 使用 `write_to_file` 建立 `Game_[X]_[Teams]_Full_Analysis.txt`
-2. **最終報告** — 使用 `write_to_file` 建立 `NBA_Analysis_Report.txt` + `NBA_Banker_Report.txt`
-3. **若需要驗證寫入成功** — 使用 `view_file` 讀取最後 20 行確認
-4. **`run_command` 只用於**:執行 Python/shell 腳本、搜尋 grep、讀取檔案清單等輕量指令
+### 標準三步管道：
 
-> ✅ 遵守此協議可確保所有寫入操作立即完成,不會有任何掛起風險。
+**Step 1: 用 `run_command` + heredoc 寫入 /tmp 暫存檔**
+```bash
+cat > /tmp/batch_NBA.md << 'ENDOFCONTENT'
+[你的分析報告或檔案文字內容]
+ENDOFCONTENT
+```
+
+**Step 2: Base64 編碼 + pipe 到 safe_file_writer.py**
+```bash
+SAFE_WRITER="/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/safe_file_writer.py"
+
+base64 < /tmp/batch_NBA.md | python3 "$SAFE_WRITER" \
+  --target "{TARGET_DIR}/{FILE_NAME}" \
+  --mode overwrite \
+  --stdin
+```
+*註：若要建立新檔請用 `--mode overwrite`，若要追加請用 `--mode append`。*
+
+**Step 3: 驗證**
+使用 `run_command` 執行 `tail -n 10 "{TARGET_DIR}/{FILE_NAME}"` 確認已成功寫入。

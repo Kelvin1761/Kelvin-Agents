@@ -56,6 +56,7 @@ from generate_nba_reports import (
     select_combo_3,
     select_combo_x_value_bomb,
     build_player_card,
+    gen_full_report,
 )
 
 # Import nba_api for real stats
@@ -71,8 +72,11 @@ except ImportError:
 
 API_SLEEP = 0.7  # Rate limit protection
 
-# ─── Config ──────────────────────────────────────────────────────────────
-BASE_DIR = "2026-04-08 NBA Analysis"
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('--dir', default='.', help='Target directory')
+args, unknown = parser.parse_known_args()
+BASE_DIR = args.dir
 
 TEAM_LOOKUP = {
     "ATL": "Atlanta Hawks", "BOS": "Boston Celtics",
@@ -498,9 +502,9 @@ def fetch_all_team_stats():
     return {}
 
 
-# ─── Bet365 Sanitization ─────────────────────────────────────────────────
+# ─── Sportsbet Sanitization ─────────────────────────────────────────────────
 
-def sanitize_bet365_lines(player_props):
+def sanitize_sportsbet_lines(player_props):
     if not isinstance(player_props, dict):
         return {}
     MAX_LINE_MAP = {"points": 50, "threes_made": 12, "rebounds": 20, "assists": 15}
@@ -585,7 +589,7 @@ def build_ext_player_from_gamelog(player_name, gl, position="?"):
 
 # ─── V5: Build Data Brief JSON ──────────────────────────────────────────
 
-def build_data_brief(meta, odds, injuries, team_stats, all_cards, b2b_info, bet365_time):
+def build_data_brief(meta, odds, injuries, team_stats, all_cards, b2b_info, sportsbet_time):
     """Build a pure JSON data brief for LLM consumption. Zero narrative."""
     away_abbr = meta["away"]["abbr"]
     home_abbr = meta["home"]["abbr"]
@@ -686,29 +690,18 @@ def build_data_brief(meta, odds, injuries, team_stats, all_cards, b2b_info, bet3
 
     brief = {
         "_version": "V7_DATA_BRIEF",
-        "_note": "此 JSON 由 Python 生成，包含純數據 + 數學計算。LLM Analyst 讀取後應獨立分析並自主構建 3+1 SGM 組合。",
-        "_llm_context": {
-            "_instruction": (
-                "V7 8-Factor 分工：Python 已計算 trend/cov/buffer/pace 4 個客觀因子。"
-                "LLM 必須基於下方提供嘅球隊數據和球員數據，為每個 Leg 賦予以下 4 個客觀因子的 +/- 值並提供推理："
-                "(1) matchup: 對位防守影響 [-3 至 +2]"
-                "(2) context: B2B/主客/過去賽程密度/大比分差風險 [-3 至 +1]"
-                "(3) usg: 隨隊友傷缺而引發嘅球權重分配 [0 至 +3]"
-                "(4) defender: 對位防守者的具體壓制力 [-3 至 0]"
-                "L10 數據排列方向：左→右 = 最舊→最新。"
-            ),
-            "combo_targets": {
-                "combo_1_safe": "≥ 2.0",
-                "combo_2_value": "≥ 4.0",
-                "combo_3_aggressive": "≥ 8.0",
-                "combo_x_value_bomb": "Edge ≥15%, 可選",
-            },
+        "_note": "此 JSON 由 Python 生成，包含純數據 + 數學計算。V8 全自動化管線，無需 LLM 介入手動填寫。",
+        "combo_targets": {
+            "combo_1_safe": "≥ 2.0",
+            "combo_2_value": "≥ 4.0",
+            "combo_3_aggressive": "≥ 8.0",
+            "combo_x_value_bomb": "Edge ≥15%, 可選",
         },
         "meta": {
             "away": meta["away"],
             "home": meta["home"],
             "date": meta.get("date", "2026-04-08"),
-            "bet365_time": bet365_time,
+            "sportsbet_time": sportsbet_time,
         },
         "team_stats": {
             away_abbr: team_stats.get(away_abbr, {}),
@@ -724,11 +717,7 @@ def build_data_brief(meta, odds, injuries, team_stats, all_cards, b2b_info, bet3
         "b2b": b2b_info,
         "players": players_data,
         "python_suggestions": {
-            "_must_respond_protocol": (
-                "以下係 Python 基於 8-Factor 數學模型嘅建議。"
-                "LLM Analyst 必須逐一回應 top_legs_by_edge 前 5 名（同意/修改/拒絕+原因）。"
-                "LLM 有權覆蓋任何建議，但必須提供籃球邏輯嘅理由。"
-            ),
+            "_must_respond_protocol": "純 Python 數據驅動的過關建議。",
             "top_legs_by_edge": [leg_to_suggestion(l) for l in top_by_edge],
             "suggested_combo_1_safe": [leg_to_suggestion(l) for l in combo_1] if combo_1 else [],
             "suggested_combo_2_value": [leg_to_suggestion(l) for l in combo_2] if combo_2 else [],
@@ -742,22 +731,22 @@ def build_data_brief(meta, odds, injuries, team_stats, all_cards, b2b_info, bet3
 
 # ─── V5: Run Single Game (returns Data Brief dict) ──────────────────────
 
-def run_single_game(bet365_path, team_stats_global, espn_lines=None, injuries_global=None):
-    """Process one Bet365 JSON → return Data Brief dict."""
+def run_single_game(sportsbet_path, team_stats_global, espn_lines=None, injuries_global=None):
+    """Process one Sportsbet JSON → return Data Brief dict."""
     espn_lines = espn_lines or {}
     injuries_global = injuries_global or {}
 
-    with open(bet365_path, 'r', encoding='utf-8') as f:
-        bet365 = json.load(f)
+    with open(sportsbet_path, 'r', encoding='utf-8') as f:
+        sportsbet = json.load(f)
 
-    bet365_time = bet365.get("extraction_time", "2026-04-08")
-    matchup_raw = bet365.get("matchup", "")
-    away_abbr = bet365.get("away_team", "")
-    home_abbr = bet365.get("home_team", "")
+    sportsbet_time = sportsbet.get("extraction_time", "2026-04-08")
+    matchup_raw = sportsbet.get("matchup", "")
+    away_abbr = sportsbet.get("away_team", "")
+    home_abbr = sportsbet.get("home_team", "")
 
     if not away_abbr or not home_abbr:
-        fname = os.path.basename(bet365_path)
-        parts = fname.replace("Bet365_Odds_", "").replace(".json", "").split("_")
+        fname = os.path.basename(sportsbet_path)
+        parts = fname.replace("Sportsbet_Odds_", "").replace("Sportsbet_Odds_", "").replace(".json", "").split("_")
         if len(parts) >= 2:
             away_abbr, home_abbr = parts[0], parts[1]
 
@@ -775,8 +764,8 @@ def run_single_game(bet365_path, team_stats_global, espn_lines=None, injuries_gl
     home_ts = team_stats_global.get(home_abbr, {})
     team_stats = {away_abbr: away_ts, home_abbr: home_ts}
 
-    # Game-level odds: Bet365 first, ESPN fallback
-    game_lines = bet365.get("game_lines", {})
+    # Game-level odds: Sportsbet first, ESPN fallback
+    game_lines = sportsbet.get("game_lines", {})
     espn_match = espn_lines.get((away_abbr, home_abbr), {})
     odds = {
         "spread_away": game_lines.get("spread_away") or espn_match.get("spread_away", "?"),
@@ -787,13 +776,13 @@ def run_single_game(bet365_path, team_stats_global, espn_lines=None, injuries_gl
     if espn_match.get('provider'):
         odds['_source'] = espn_match['provider']
 
-    # Injuries: Bet365 first, then ESPN/CBS global, merge
+    # Injuries: Sportsbet first, then ESPN/CBS global, merge
     injuries = {away_abbr: {}, home_abbr: {}}
-    # Layer 1: Bet365 JSON injuries
-    bet365_injuries = bet365.get("injuries", {})
-    if bet365_injuries:
+    # Layer 1: Sportsbet JSON injuries
+    sportsbet_injuries = sportsbet.get("injuries", {})
+    if sportsbet_injuries:
         for team_key in [away_abbr, home_abbr]:
-            team_inj = bet365_injuries.get(team_key, {})
+            team_inj = sportsbet_injuries.get(team_key, {})
             if isinstance(team_inj, dict):
                 injuries[team_key].update(team_inj)
             elif isinstance(team_inj, list):
@@ -814,8 +803,8 @@ def run_single_game(bet365_path, team_stats_global, espn_lines=None, injuries_gl
     player_team_map = build_player_team_map(away_abbr, home_abbr)
     print(f"    ✅ Roster 映射: {len(player_team_map)} 位球員")
 
-    # Sanitize Bet365 lines
-    player_props = sanitize_bet365_lines(bet365.get("player_props", {}))
+    # Sanitize Sportsbet lines
+    player_props = sanitize_sportsbet_lines(sportsbet.get("player_props", {}))
 
     # Collect unique player names
     unique_players = set()
@@ -904,7 +893,7 @@ def run_single_game(bet365_path, team_stats_global, espn_lines=None, injuries_gl
             card = build_player_card(
                 player_name=player_name,
                 team_abbr=team,
-                bet365_data=enriched_bet_data,
+                sportsbet_data=enriched_bet_data,
                 ext_player=ext_player,
                 category=category,
                 opponent_def_rank=opp_def_rank,
@@ -929,7 +918,18 @@ def run_single_game(bet365_path, team_stats_global, espn_lines=None, injuries_gl
         team_stats=team_stats,
         all_cards=all_cards,
         b2b_info=team_b2b,
-        bet365_time=bet365_time,
+        sportsbet_time=sportsbet_time,
+    )
+
+    # NEW: Generate Markdown Skeleton
+    markdown_report = gen_full_report(
+        meta=meta,
+        odds=odds,
+        injuries=injuries,
+        news="",
+        team_stats=team_stats_global,
+        all_cards=all_cards,
+        sportsbet_time=sportsbet_time
     )
 
     return {
@@ -937,6 +937,7 @@ def run_single_game(bet365_path, team_stats_global, espn_lines=None, injuries_gl
         "home_abbr": home_abbr,
         "matchup": f"{away_name} @ {home_name}",
         "brief": brief,
+        "skeleton": markdown_report,
         "players_ok": len(all_cards),
         "players_skipped": len(skipped_players),
         "api_errors": api_errors,
@@ -954,8 +955,10 @@ def main():
     # Step 1: Fetch global team stats (PACE/DEF/OFF)
     team_stats_global = fetch_all_team_stats()
 
-    # Step 2: Find all Bet365 JSON files
-    files = sorted(glob.glob(f"{BASE_DIR}/Bet365_Odds_*.json"))
+    # Step 2: Find all Sportsbet JSON files (with fallback to old Sportsbet names if any)
+    files = sorted(glob.glob(f"{BASE_DIR}/Sportsbet_Odds_*.json"))
+    if not files:
+        files = sorted(glob.glob(f"{BASE_DIR}/Sportsbet_Odds_*.json"))
     skip_patterns = ["TEST", "GEMINI", "MIN.json"]
 
     # Step 2.5: Extract all team abbreviations from file names for injury fetch
@@ -964,7 +967,7 @@ def main():
         basename = os.path.basename(fpath)
         if any(p in basename for p in skip_patterns):
             continue
-        parts = basename.replace("Bet365_Odds_", "").replace(".json", "").split("_")
+        parts = basename.replace("Sportsbet_Odds_", "").replace("Sportsbet_Odds_", "").replace(".json", "").split("_")
         if len(parts) >= 2:
             all_team_abbrs.add(parts[0])
             all_team_abbrs.add(parts[1])
@@ -1010,7 +1013,13 @@ def main():
         out_path = f"{BASE_DIR}/Data_Brief_{result['away_abbr']}_{result['home_abbr']}.json"
         with open(out_path, 'w', encoding='utf-8') as f:
             json.dump(result["brief"], f, ensure_ascii=False, indent=2)
-        print(f"  ✅ 已生成: {out_path}")
+        print(f"  ✅ 已生成 JSON: {out_path}")
+        
+        # NEW: Write as Full Analysis Markdown
+        md_out_path = f"{BASE_DIR}/Game_{result['away_abbr']}_{result['home_abbr']}_Full_Analysis.md"
+        with open(md_out_path, 'w', encoding='utf-8') as f:
+            f.write(result["skeleton"])
+        print(f"  ✅ 已生成 Full Analysis: {md_out_path}")
 
         total_api_errors.extend(result.get("api_errors", []))
         generated += 1
@@ -1021,12 +1030,21 @@ def main():
         print(f"⚠️ 總共 {len(total_api_errors)} 個 API 錯誤")
     print(f"{'=' * 60}")
 
+    # Generate Value Bets Overview
+    try:
+        print(f"\n🔍 正在掃描全日 Value Bets (Expected Value X-Ray)...")
+        import find_value_bets
+        bets = find_value_bets.parse_data_briefs(BASE_DIR)
+        find_value_bets.generate_markdown(bets, BASE_DIR)
+    except Exception as e:
+        print(f"⚠️ 生成 Value Bets 綜合報表失敗: {e}")
+
     print(f"\n🏆 全部完成！")
     print(f"📎 下一步:")
-    print(f"  1. 用 Gemini 開啟新 Session")
-    print(f"  2. 觸發 @nba wong choi 逐場分析")
-    print(f"  3. LLM 會讀取每場 Data_Brief JSON → 獨立分析 → 輸出 Full_Analysis.md")
-    print(f"  4. 每場完成後自動驗證，通過先做下一場")
+    print(f"  1. 查看 {BASE_DIR}/Value_Bets_Overview.md 確認全日高價值盤口")
+    print(f"  2. 用 Gemini 開啟新 Session")
+    print(f"  3. 觸發 @nba wong choi 逐場分析")
+    print(f"  4. LLM 會讀取每場 Data_Brief JSON → 獨立分析 → 輸出 Full_Analysis.md")
 
 
 if __name__ == "__main__":

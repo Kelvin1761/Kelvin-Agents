@@ -22,11 +22,47 @@ Usage:
 import sys
 import re
 import json
+import time
+import os
 import argparse
 from typing import Optional
 
 import requests
 from bs4 import BeautifulSoup
+
+# ── Disk Cache Setup ────────────────────────────────────────────────────────
+CACHE_DIR = os.path.join(os.getcwd(), '.hkjc_cache')
+for i, arg in enumerate(sys.argv):
+    if arg == '--output' and i + 1 < len(sys.argv):
+        out_dir = os.path.dirname(os.path.abspath(sys.argv[i+1]))
+        if out_dir: CACHE_DIR = os.path.join(out_dir, '.hkjc_cache')
+        break
+    elif arg.endswith('.txt') or arg.endswith('.md') or arg.endswith('.csv'):
+        if os.path.exists(arg):
+            file_dir = os.path.dirname(os.path.abspath(arg))
+            if file_dir: CACHE_DIR = os.path.join(file_dir, '.hkjc_cache')
+
+os.makedirs(CACHE_DIR, exist_ok=True)
+PROFILE_CACHE_FILE = os.path.join(CACHE_DIR, 'profile_cache.json')
+
+def _load_profile_cache():
+    if os.path.exists(PROFILE_CACHE_FILE):
+        try:
+            with open(PROFILE_CACHE_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def _save_profile_cache(cache):
+    try:
+        with open(PROFILE_CACHE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(cache, f, ensure_ascii=False)
+    except Exception:
+        pass
+
+_profile_cache = _load_profile_cache()
+
 
 
 # ── HKJC Margin Format → Numeric Lengths ────────────────────────────────
@@ -144,7 +180,19 @@ def scrape_horse_profile(horse_id: str, timeout: int = 15) -> dict:
             'error': None
         }
     """
-    url = f"https://racing.hkjc.com/zh-hk/local/information/horse?horseid={horse_id}"
+    global _profile_cache
+    now = time.time()
+    
+    # Check disk cache (48 hours expiry)
+    if horse_id in _profile_cache:
+        cached = _profile_cache[horse_id]
+        if now - cached.get('_ts', 0) < 86400 * 2:
+            return cached['data']
+
+    if '_' in horse_id:
+        url = f"https://racing.hkjc.com/zh-hk/local/information/horse?horseid={horse_id}"
+    else:
+        url = f"https://racing.hkjc.com/zh-hk/local/information/horse?HorseNo={horse_id}"
     
     result = {
         'horse_id': horse_id,
@@ -282,6 +330,10 @@ def scrape_horse_profile(horse_id: str, timeout: int = 15) -> dict:
         except Exception as e:
             # Skip malformed rows
             continue
+            
+    if not result['error']:
+        _profile_cache[horse_id] = {'_ts': now, 'data': result}
+        _save_profile_cache(_profile_cache)
     
     return result
 

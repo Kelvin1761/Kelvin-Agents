@@ -262,6 +262,18 @@ def parse_hkjc_formguide(filepath: str) -> dict:
         ]
     }
     """
+    import os
+    def load_brand_mapping(fp):
+        rc_path = str(fp).replace('賽績.md', '排位表.md').replace('Formguide.txt', '排位表.md')
+        mapping = {}
+        if os.path.exists(rc_path):
+            text = Path(rc_path).read_text(encoding='utf-8')
+            for match in re.finditer(r'馬名:\s*(.*?)\n.*?烙號:\s*([A-Za-z0-9_]+)', text, re.DOTALL):
+                mapping[match.group(1).strip()] = match.group(2).strip()
+        return mapping
+    
+    brand_mapping = load_brand_mapping(filepath)
+
     text = Path(filepath).read_text(encoding='utf-8')
     
     # Parse race overview
@@ -321,6 +333,17 @@ def parse_hkjc_formguide(filepath: str) -> dict:
         jockey = jockey_m.group(1).strip() if jockey_m else ''
         weight = int(weight_m.group(1)) if weight_m else 0
         body_weight = int(bw_m.group(1)) if bw_m else 0
+        
+        brand_m = re.search(r'烙號:\s*([A-Za-z0-9_]+)', block)
+        brand_no = brand_m.group(1).strip() if brand_m else ''
+        if not brand_no:
+            nm = re.search(r'\(([A-Z]\d{3})\)', horse_name)
+            if nm:
+                brand_no = nm.group(1)
+                horse_name = re.sub(r'\([A-Z]\d{3}\)', '', horse_name).strip()
+        if not brand_no:
+            # Fallback to 排位表 matching
+            brand_no = brand_mapping.get(horse_name, '')
         
         # Parse past races
         races = []
@@ -418,6 +441,7 @@ def parse_hkjc_formguide(filepath: str) -> dict:
         horses.append({
             'num': horse_num,
             'name': horse_name,
+            'brand_no': brand_no,
             'barrier': barrier,
             'jockey': jockey,
             'weight': weight,
@@ -749,9 +773,9 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     
     lines.append(f"")
     lines.append(f"📋 **完整賽績檔案 (近 {display_races} 場,嚴禁修改數值):**")
-    lines.append(f"    lines.append(f"")
-    lines.append(f"| # | 日期 | 場地 | 距離 | 班次 | 檔位 | 騎師 | 負磅 | 名次 | 頭馬距離 | 能量 | L400 | 走位(XW) | 消耗 | 沿途位 | 完成時間 | 體重 | 配備 | 賽事短評 |")
-    lines.append(f"|---|------|------|------|------|------|------|------|------|--------|------|------|----------|------|--------|----------|------|------|----------|")
+    lines.append("")
+    lines.append(f"| # | 日期 | 場地 | 距離 | 班次 | 檔位 | 騎師 | 負磅 | 名次 | 頭馬距離 | 能量 | L400 | 走位(XW) | 消耗 | 沿途位 | 完成時間 | 標準差 | 體重 | 配備 | 賽事短評 | 寬恕認定 |")
+    lines.append(f"|---|------|------|------|------|------|------|------|------|--------|------|------|----------|------|--------|----------|--------|------|------|----------|---------|")
     
     for i in range(display_races):
         r = races[i] if i < len(races) else {}
@@ -778,18 +802,30 @@ def generate_horse_block(horse: dict, today_venue: str = '',
         pos_list = p.get('running_positions', [])
         pos_str = '-'.join(str(x) for x in pos_list) if pos_list else '-'
         ftime = p.get('finish_time_raw', '-')
+        
+        std_diff_str = '-'
+        if ftime != '-':
+            try:
+                ftime_sec = time_str_to_seconds(ftime)
+                race_std = get_standard_time(venue, distance, class_g)
+                if ftime_sec and race_std:
+                    diff = ftime_sec - race_std
+                    std_diff_str = f"{diff:+.2f}s"
+            except Exception:
+                pass
+                
         dw = p.get('declared_weight', r.get('body_weight', 0))
         dw_str = str(dw) if dw > 0 else '-'
         gear = p.get('gear', '-')
         comment = r.get('comment', '')
         
-        lines.append(f"| {i+1} | {date} | {venue} | {distance} | {class_g} | {barrier} | {jockey} | {weight} | {finish} | {margin} | {energy_str} | {l400_str} | {wide_str} | {consumption} | {pos_str} | {ftime} | {dw_str} | {gear} | {comment} |")
+        lines.append(f"| {i+1} | {date} | {venue} | {distance} | {class_g} | {barrier} | {jockey} | {weight} | {finish} | {margin} | {energy_str} | {l400_str} | {wide_str} | {consumption} | {pos_str} | {ftime} | {std_diff_str} | {dw_str} | {gear} | {comment} | [需判定] |")
 
     if total_races > display_races:
         lines.append(f"")
         lines.append(f"📋 **較舊歷史賽績 (供參考):**")
-        lines.append(f"| # | 日期 | 場地 | 距離 | 班次 | 檔位 | 騎師 | 負磅 | 名次 | 頭馬距離 | 能量 | L400 | 走位(XW) | 消耗 | 沿途位 | 完成時間 | 體重 | 配備 | 賽事短評 |")
-        lines.append(f"|---|------|------|------|------|------|------|------|------|--------|------|------|----------|------|--------|----------|------|------|----------|")
+        lines.append(f"| # | 日期 | 場地 | 距離 | 班次 | 檔位 | 騎師 | 負磅 | 名次 | 頭馬距離 | 能量 | L400 | 走位(XW) | 消耗 | 沿途位 | 完成時間 | 標準差 | 體重 | 配備 | 賽事短評 | 寬恕認定 |")
+        lines.append(f"|---|------|------|------|------|------|------|------|------|--------|------|------|----------|------|--------|----------|--------|------|------|----------|---------|")
         for i in range(display_races, total_races):
             r = races[i] if i < len(races) else {}
             p = p_entries[i] if i < len(p_entries) else {}
@@ -797,30 +833,42 @@ def generate_horse_block(horse: dict, today_venue: str = '',
             venue = r.get('venue', p.get('venue_track', ''))[:4]
             distance = r.get('distance', p.get('distance', 0))
             class_g = p.get('class_grade', '')
-        if class_g:
-            cmap = {'1': '第一班', '2': '第二班', '3': '第三班', '4': '第四班', '5': '第五班', 'G1': '一級賽', 'G2': '二級賽', 'G3': '三級賽', 'G': '分級賽', '4R': '四歲馬系列', 'GRIFFIN': '新馬賽'}
-            class_g = cmap.get(str(class_g).upper(), f"C{class_g}" if str(class_g).isdigit() else class_g)
-            barrier = r.get('barrier', p.get('barrier', 0))
-            jockey = r.get('jockey', p.get('jockey', ''))
-            weight = r.get('weight', p.get('weight_carried', 0))
-            finish = r.get('finish', p.get('placing', 0))
-            margin = p.get('margin_raw', '-')
-            energy = r.get('energy', 0)
-            energy_str = str(energy) if energy > 0 else '-'
-            sect = r.get('sectionals', {})
-            l400_str = f"{sect['L400']:.2f}" if sect.get('L400') else '-'
-            wide = r.get('wide_info', {})
-            wide_str = f"({wide['pattern']})" if wide.get('pattern') else '-'
-            consumption = wide.get('consumption', '-') if wide.get('pattern') else '-'
-            pos_list = p.get('running_positions', [])
-            pos_str = '-'.join(str(x) for x in pos_list) if pos_list else '-'
-            ftime = p.get('finish_time_raw', '-')
-            dw = p.get('declared_weight', r.get('body_weight', 0))
-            dw_str = str(dw) if dw > 0 else '-'
-            gear = p.get('gear', '-')
-            comment = r.get('comment', '')
-            
-            lines.append(f"| {i+1} | {date} | {venue} | {distance} | {class_g} | {barrier} | {jockey} | {weight} | {finish} | {margin} | {energy_str} | {l400_str} | {wide_str} | {consumption} | {pos_str} | {ftime} | {dw_str} | {gear} | {comment} |")
+            if class_g:
+                cmap = {'1': '第一班', '2': '第二班', '3': '第三班', '4': '第四班', '5': '第五班', 'G1': '一級賽', 'G2': '二級賽', 'G3': '三級賽', 'G': '分級賽', '4R': '四歲馬系列', 'GRIFFIN': '新馬賽'}
+                class_g = cmap.get(str(class_g).upper(), f"C{class_g}" if str(class_g).isdigit() else class_g)
+                barrier = r.get('barrier', p.get('barrier', 0))
+                jockey = r.get('jockey', p.get('jockey', ''))
+                weight = r.get('weight', p.get('weight_carried', 0))
+                finish = r.get('finish', p.get('placing', 0))
+                margin = p.get('margin_raw', '-')
+                energy = r.get('energy', 0)
+                energy_str = str(energy) if energy > 0 else '-'
+                sect = r.get('sectionals', {})
+                l400_str = f"{sect['L400']:.2f}" if sect.get('L400') else '-'
+                wide = r.get('wide_info', {})
+                wide_str = f"({wide['pattern']})" if wide.get('pattern') else '-'
+                consumption = wide.get('consumption', '-') if wide.get('pattern') else '-'
+                pos_list = p.get('running_positions', [])
+                pos_str = '-'.join(str(x) for x in pos_list) if pos_list else '-'
+                ftime = p.get('finish_time_raw', '-')
+                
+                std_diff_str = '-'
+                if ftime != '-':
+                    try:
+                        ftime_sec = time_str_to_seconds(ftime)
+                        race_std = get_standard_time(venue, distance, class_g)
+                        if ftime_sec and race_std:
+                            diff = ftime_sec - race_std
+                            std_diff_str = f"{diff:+.2f}s"
+                    except Exception:
+                        pass
+
+                dw = p.get('declared_weight', r.get('body_weight', 0))
+                dw_str = str(dw) if dw > 0 else '-'
+                gear = p.get('gear', '-')
+                comment = r.get('comment', '')
+                
+                lines.append(f"| {i+1} | {date} | {venue} | {distance} | {class_g} | {barrier} | {jockey} | {weight} | {finish} | {margin} | {energy_str} | {l400_str} | {wide_str} | {consumption} | {pos_str} | {ftime} | {std_diff_str} | {dw_str} | {gear} | {comment} | [需判定] |")
 
     lines.append(f"")
     
@@ -959,7 +1007,7 @@ def main():
     class_override = ''
     horse_ids_str = ''
     output_path = ''
-    enable_form_lines = True  # V2: default ON (auto-enabled when --horse-ids present)
+    enable_form_lines = True  # Re-enabled: User requested to keep Form Lines
     
     args = sys.argv[2:]
     i = 0
@@ -976,15 +1024,16 @@ def main():
             i += 2
         elif args[i] == '--horse-ids' and i + 1 < len(args):
             horse_ids_str = args[i + 1]
+            enable_form_lines = True # Auto-enable if specifically requesting specific horses
             i += 2
         elif args[i] == '--output' and i + 1 < len(args):
             output_path = args[i + 1]
             i += 2
         elif args[i] == '--form-lines':
-            enable_form_lines = True  # Legacy flag, still accepted
+            enable_form_lines = True
             i += 1
         elif args[i] == '--no-form-lines':
-            enable_form_lines = False  # Explicit opt-out
+            enable_form_lines = False
             i += 1
         else:
             i += 1
@@ -1006,6 +1055,9 @@ def main():
     
     # Parse horse IDs for scraper enrichment
     horse_id_list = [h.strip() for h in horse_ids_str.split(',') if h.strip()] if horse_ids_str else []
+    if not horse_id_list:
+        # Re-enabled automatic extraction
+        horse_id_list = [h['brand_no'] for h in data['horses'] if h.get('brand_no')]
     
     print(f"📌 V2 HKJC 完整賽績檔案 — {len(data['horses'])} 匹馬", file=sys.stderr)
     print(f"   場地: {today_venue} | 距離: {today_dist}m | 班次: {race_class}", file=sys.stderr)

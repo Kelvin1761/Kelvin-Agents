@@ -63,7 +63,7 @@ def process_selections(nuxt_data, f_rc, f_fg):
             
     # Pre-parse HTML to extract PuntingForm advanced metrics
     try:
-        with open(".agents.agents.agents/tmp/temp.html", "r", encoding="utf-8") as f:
+        with open("_temporary_files/temp.html", "r", encoding="utf-8") as f:
             html_text = f.read()
         soup = BeautifulSoup(html_text, 'lxml')
         details_blocks = soup.find_all('div', class_='racing-full-form-details')
@@ -245,10 +245,12 @@ def extract_race(meeting_slug, race_num, date_str, location, page, slug_override
             print(f"  Race {race_num}: HTTP Error {resp.status_code}")
             return None
             
-        with open(".agents.agents.agents/tmp/temp.html", "w", encoding="utf-8") as f:
+        os.makedirs("_temporary_files", exist_ok=True)
+        with open("_temporary_files/temp.html", "w", encoding="utf-8") as f:
             f.write(resp.text)
             
-        page.goto(f"file://.agents.agents.agents/tmp/temp.html")
+        abs_path = os.path.abspath("_temporary_files/temp.html")
+        page.goto(f"file://{abs_path}")
         nuxt_data = page.evaluate("() => window.__NUXT__")
         
         if not nuxt_data:
@@ -309,8 +311,32 @@ def main():
                                     event_slugs.append(slug)
                                 
                 if not event_slugs:
-                    print("Fallback: Using generic race-X slugs")
-                    event_slugs = [f"race-{i}" for i in range(1, args.races + 1)]
+                    print("Fetching exact slugs from overview page...")
+                    try:
+                        # Sometimes racenet requires a sample valid overview URL, try race-1 overview structure natively
+                        import re
+                        ov_r = requests.get(f"https://www.racenet.com.au/form-guide/horse-racing/{args.slug}/", impersonate="chrome120")
+                        
+                        # Use broad match if standard fails, we know it's /form-guide/horse-racing/.../slug-race-N
+                        m_slugs = re.findall(rf"/form-guide/horse-racing/{args.slug}/([^/]+?race-\d+)", ov_r.text)
+                        
+                        # Actually racenet overview url is https://www.racenet.com.au/form-guide/horse-racing/cranbourne-20260410/race-1/overview but we can extract it from the payload
+                        # Or it forwards.
+                        if not m_slugs:
+                             # Some overview pages need the race-1/overview suffix
+                             ov_r = requests.get(f"https://www.racenet.com.au/form-guide/horse-racing/{args.slug}/race-1/overview", impersonate="chrome120")
+                             m_slugs = re.findall(rf"/form-guide/horse-racing/{args.slug}/([^/]+?race-\d+)", ov_r.text)
+
+                        found = list(dict.fromkeys(m_slugs))
+                        found.sort(key=lambda s: int(re.search(r'race-(\d+)', s).group(1)) if re.search(r'race-(\d+)', s) else 0)
+                        
+                        if found:
+                            event_slugs = found
+                        else:
+                            raise Exception("No slugs found in html")
+                    except Exception as e:
+                        print(f"Fallback to generic race-X slugs because {e}")
+                        event_slugs = [f"race-{i}" for i in range(1, args.races + 1)]
                 
             for i, genuine_slug in enumerate(event_slugs[:args.races]):
                 race_num = i + 1

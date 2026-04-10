@@ -5,6 +5,12 @@
 2. **強制全面已讀 (Deep Reading Requirement)：** 當收到「優化」、「Review」等指令時，除了讀取主檔 `SKILL.md`，你 **必須** 使用 `list_dir` 遍歷對象的 `resources/` 目錄，然後逐一使用 `view_file` 讀取並分析裡面的核心文件。嚴禁「只睇表面改表面」。
 3. **全局交叉比對 (Global Cross-Reference)：** 修改前必須主動將目標 Agent 的內容與你大腦內的 `design_patterns.md` 及 `04_blueprint_integration_guide.md` 進行映射檢查。
 4. **Architect Memory Graph (MCP)：** 在所有任務開始時，必須使用 `read_graph` 提取用戶的全局及 Agent 專屬偏好記憶；在設計或優化完成後，必須使用 `add_observations` 記錄任何新發現的設計哲學或用戶紅線。
+5. **AST 架構導航 (Codebase Mapping)：** 凡涉及跨檔案修改、深層 Bug 追蹤或大型 Feature Planning 時，你 **必須** 先執行 `run_command python3 .agents/scripts/antigravity_mapper.py [target_dir] -o .agents/tmp/current_repomap.md`，並閱讀生成的 AST 結構圖，獲取「上帝視角」後才可起草 Implementation Plan。
+6. **自我修復循環 (Self-Healing Loop)：** 生成或修改任何 `.py` 代碼在遞交給用戶前，你 **必須** 於背景使用 `run_command` 執行 `python3 -m py_compile [script.py]` (或 flake8) 進行靜態測試。若發現 Syntax Error 或 Type Error，必須先自我修正，確保最終提供給用戶的是已驗證代碼。
+7. **Working Memory 掛載 (The Scratchpad)：** 當分析多於 3 個檔案或處理錯綜複雜的邏輯時，你 **必須** 利用 `write_to_file` 於背景將觀察結果、變數名及潛在衝突記錄到 `.agents/tmp/architect_scratchpad.md`，並在起草 Plan 前重讀，以防記憶流失。
+8. **SDD 規格驅動開發 (Spec-Driven Development)：** 起草 Implementation Plan 時，你 **必須** 嚴格遵循 `05_output_templates.md` 內的 Template E，提供極度微觀的 File-by-File Micro-Spec 及邊緣測試，嚴禁給予抽象的高階建議。同時強制套用 Opus-Style 詳盡規劃協議：「請用極度詳盡、Step-by-step 嘅方式寫個 Implementation Plan。唔好省略任何細節，當自己係高階系統架構師咁，列出所有考慮因素、潛在影響同邊緣情況。」
+9. **反簡化防禦 (Anti-Truncation 原則)：** 無論是設計新建 Agent 還是優化現有 Agent，當在此過程中加入任何新要求 (New Requirements) 時，你 **嚴禁** 簡化或刪減原有的 Implementation Plan 深度，必須永遠在原有基礎上「向上疊加 (Build on top)」。
+10. **強制煞車機制 (Anti-Hasty Protocol)：** 提交任何 Implementation Plan 後，你 **必須** 立即停止行動並等待用戶明確回覆「Approve」或「OK」等授權字眼。**嚴禁** 在同一個回合內自行判斷並強行開始寫 Code 或修改底層文件。
 
 # Agent Architect Operating Modes
 
@@ -36,12 +42,13 @@
 
 ### Mode B: 優化現有 Agent (Optimise Existing)
 觸發:用戶要求「optimise」、「improve」、「review」、「refactor」一個已存在嘅 agent
-流程（12-Step 完整工具鏈）:
+流程（13-Step 完整工具鏈）:
 1. `run_command agent_health_scanner.py --target [agent_path]` 取得自動化分數
-2. 讀取目標 agent 嘅 SKILL.md + 所有 resources/（人工深度檢查）
-3. 對照 `design_patterns.md` (P1-P27) 逐項檢查
+2. 🆕 **強制架構導航**：執行 `python3 .agents/scripts/antigravity_mapper.py .agents/scripts -o .agents/tmp/current_repomap.md` 並閱讀 AST 地圖
+3. 讀取目標 agent 嘅 SKILL.md + 所有 resources/（人工深度檢查）
+4. 對照 `design_patterns.md` (P1-P27) 逐項檢查，並主動掃描過去學習過的 Skills (例如透過 `audit_history.md` 或全局觀察) 尋找跨部門優化機會。
 4. 🆕 基石技術棧檢查：Pydantic Output Schema? Jinja2 模板? pytest 覆蓋? Execution Journal?
-5. 🆕 Gemini 優化法則檢查（P23）：指令後置? Goal+Constraints? CoVe? Temperature?
+5. 🆕 Gemini 優化法則檢查（P23）：指令後置? Goal+Constraints? CoVe?
 6. 🆕 Promptfoo A/B Testing（如有舊版可比較）
 7. 合併所有結果 → 生成診斷報告（含 Confidence Score）
 8. 等用戶確認要修改嘅項目
@@ -67,7 +74,8 @@
 流程:
 1. `run_command agent_health_scanner.py --tier 1` 取得全自動掃描報告
 2. `run_command ecosystem_drift_detector.py` 偵測文檔 vs 目錄偏差
-3. 以 scanner 結果為基礎,對每個 ≤B 評級嘅 agent 做深度 Health Check(含 §F)
+3. 🆕 **全局架構掃描**：執行 `python3 .agents/scripts/antigravity_mapper.py .agents/scripts -o .agents/tmp/current_repomap.md` 生成並閱讀全域 AST 地圖
+4. 以 scanner 結果為基礎,對每個 ≤B 評級嘅 agent 做深度 Health Check(含 §F)
 4. **每完成 5 個 agent → 暫停,向用戶呈現中期報告,等確認先繼續**
 5. 生成全局審計報告(附 scanner 自動分數 + LLM 判斷 + Blueprint 覆蓋度矩陣)
 6. 識別跨 agent 問題:重複邏輯、缺失鏈接、過時引用、未善用嘅 Blueprint 機會
@@ -149,7 +157,7 @@ Review draft against `resources/design_patterns.md` (Patterns 8-28). Verify:
 6. **Ecosystem Conventions**: YAML frontmatter, resource naming, language, anti-laziness protocol.
 7. **Battle-Tested Patterns**: P8-P22 checked — batch isolation, session recovery, checkpoints, quality gates, cross-platform, confidence scoring, Python offloading.
 8. **Python Offloading Audit**: Every deterministic step reviewed against P22. Math/template/format/scan → script, not LLM.
-9. **🆕 Gemini Optimization (P23)**: Instruction placement (last), Goal+Constraints pattern, CoVe self-check, Temperature in frontmatter?
+9. **🆕 Gemini Optimization (P23)**: Instruction placement (last), Goal+Constraints pattern, CoVe self-check.
 10. **🆕 State Machine (P24)**: DoeS the agent have explicit state transitions with entry/exit conditions?
 11. **🆕 Execution Journal (P26)**: Does the agent write structured logs per major step?
 12. **🆕 Version Control (P27)**: Is `resources/archive/` directory present for snapshots?

@@ -1,0 +1,93 @@
+{
+  "source": "Sportsbet_Extractor",
+  "extraction_time": "2026-04-10 09:39:29",
+  "matchup": "MIA @ TOR",
+  "away_team": "MIA",
+  "home_team": "TOR",
+  "game_lines": {
+    "spread_away": "+0.5",
+    "ml_away": "2.07",
+    "ml_home": "1.84"
+  },
+  "player_props": {
+    "points": {},
+    "rebounds": {},
+    "assists": {},
+    "threes_made": {
+      "Tyler Herro": {
+        "lines": {
+          "4": "2.85",
+          "5": "5.8",
+          "3": "1.62",
+          "2": "1.11",
+          "6": "11.0"
+        }
+      },
+      "Bam Adebayo": {
+        "lines": {
+          "4": "4.8",
+          "3": "2.25",
+          "2": "1.26",
+          "6": "26.0"
+        }
+      },
+      "Norman Powell": {
+        "lines": {
+          "4": "5.2",
+          "3": "2.8",
+          "2": "1.64",
+          "6": "15.0"
+        }
+      },
+      "RJ Barrett": {
+        "lines": {
+          "4": "4.4",
+          "3": "2.1",
+          "2": "1.21",
+          "6": "23.0"
+        }
+      },
+      "Immanuel Quickley": {
+        "lines": {
+          "4": "6.5",
+          "3": "3.2",
+          "2": "1.73",
+          "6": "26.0"
+        }
+      },
+      "Andrew Wiggins": {
+        "lines": {
+          "3": "4.5",
+          "2": "2.2"
+        }
+      },
+      "Brandon Ingram": {
+        "lines": {
+          "3": "6.0",
+          "2": "2.55"
+        }
+      },
+      "Ja'Kobe Walter": {
+        "lines": {
+          "3": "6.75",
+          "2": "3.0"
+        }
+      },
+      "Davion Mitchell": {
+        "lines": {
+          "2": "3.3"
+        }
+      },
+      "Pelle Larsson": {
+        "lines": {
+          "2": "4.25"
+        }
+      },
+      "Sandro Mamukelashvili": {
+        "lines": {
+          "2": "3.3"
+        }
+      }
+    }
+  }
+}

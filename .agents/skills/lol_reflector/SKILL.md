@@ -13,11 +13,17 @@ When activated, you MUST autonomously perform a visual and data-driven investiga
 
 ### Phase 1: Browser Navigation 
 1. You MUST use the `browser_subagent` tool.
-2. Instruct the browser subagent to navigate to `https://esports.op.gg/schedules`.
+2. Instruct the browser subagent to navigate to `https://esports.op.gg/schedules` (首選).
+   - **Alternative/Fallback**: If dealing with non-Top 5 leagues or if OP.GG fails, instruct it to navigate to `https://www.esports8.com/zh_tw/lol/result`.
 3. Have the subagent click into the Match Details of the specific game requested by the user.
-4. Have the subagent read the DOM or take screenshots of the Draft, the Gold Timeline graph, and the Objective Timeline.
+4. Have the subagent read the DOM or take screenshots of the Draft, the Gold Timeline graph, and the Objective Timeline, as well as Final Item Builds.
 
 ### Phase 2: Forensic Analysis (法醫鑑定)
+
+> ⚠️ **League Depth Filter (賽區深度過濾)** 🆕
+> - **Top 5 Major Leagues (LPL, LCK, LEC, LCS)**: Perform deep, full-scale forensic analysis using ALL 5 dimensions below.
+> - **Minor/Other Leagues (ERL, PCS, VCS, etc.)**: Keep it simple. Extract only the MVP lessons. Skip the deep Itemization and Comp Execution checks unless extremely obvious. Focus on the core reason they lost in 1-2 sentences.
+
 You must analyze the contextual story of the match without falling into results-based bias.
 
 * **🔍 Draft Intent (B/P 意圖)**: 
@@ -28,6 +34,20 @@ You must analyze the contextual story of the match without falling into results-
   - **The Throw**: 5K+ gold lead suddenly vanished in one team fight. (Sign of Mental Boom / Carelessness).
 * **🐉 Objective Map (資源控制)**:
   - Did they contest early dragons/grubs, or just afk farm and let the enemy take everything? (Sign of 假輸 / Lack of Motivation).
+* **🚩 Itemization Red Flags (裝備紅旗)** 🆕:
+  - **反向防裝**: Tank building MR vs all-AD comp (or armor vs all-AP). (Strongest sign of 放水 / Match-fixing).
+  - **Carry 出防裝**: Primary carry building ≥2 pure defensive items when the comp already lacks damage. (Sign of 「唔想贏」).
+  - **核心未完成**: 30min+ game but carry hasn't completed core 2-item spike (e.g. ADC without IE). (Sign of passive/intentional loss).
+  - IF 2+ Red Flags detected → Strongly upgrade verdict to 🧪 R&D/Sandbagging.
+* **🎯 Comp Execution Audit (陣容執行審計)** 🆕:
+  - Identify comp type: Scaling / Early Aggro / Teamfight / Pick-Split.
+  - Cross-reference Gold Timeline + Objective Timeline against comp win condition:
+    - **Scaling comp but fighting early** (15min gold -4K) → Didn't play their comp. Coaching failure or intentional.
+    - **Early comp but no lead at 15min** (gold < +1K, 0 towers) → Failed to execute. Likely outclassed.
+    - **Teamfight comp but avoiding fights** (gave up ≥2 drakes uncontested) → 放棄 / Mental checked out.
+    - **Pick comp but ARAM'ing mid** (no side lane pressure) → Doesn't understand their comp.
+  - Verdict: `[陣容發揮: 合格]` / `[陣容發揮: 偏差]` / `[陣容發揮: 反向操作]`
+  - [反向操作] + 2+ 🚩 Itemization Red Flags → Near-certain 🧪 Sandbagging.
 
 ### Phase 3: The Verdict (最終判決)
 You MUST produce a markdown report titled **[Match Name] 賽後法醫診斷**. It must conclude with one of the following EXACT diagnostic tags:

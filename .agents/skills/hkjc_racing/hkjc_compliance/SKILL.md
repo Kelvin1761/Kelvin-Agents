@@ -22,13 +22,13 @@ version: 2.0.0
 
 # Resource Read-Once Protocol
 每次被調用時,讀取以下資源(保留在記憶中直到審計完成):
-- `hkjc_horse_analyst/resources/00_sip_index.md` — SIP 規則索引
-- `hkjc_horse_analyst/resources/08_output_templates.md` — 官方輸出模板
-- `hkjc_compliance/resources/01_compliance_rules.md` — 完整合規清單
-- `hkjc_horse_analyst/resources/sip_changelog.md` — 最近 SIP 更新清單(用於回歸偵測)
+- `../hkjc_horse_analyst/resources/00_sip_index.md` — SIP 規則索引
+- `../hkjc_horse_analyst/resources/08_output_templates.md` — 官方輸出模板
+- `resources/01_compliance_rules.md` — 完整合規清單
+- `../hkjc_horse_analyst/resources/sip_changelog.md` — 最近 SIP 更新清單(用於回歸偵測)
 
 **條件讀取(僅當需要深度審計時):**
-- `hkjc_horse_analyst/resources/06_rating_aggregation.md` — 評級聚合規則(若需驗證覆蓋規則是否被正確執行)
+- `../hkjc_horse_analyst/resources/06_rating_aggregation.md` — 評級聚合規則(若需驗證覆蓋規則是否被正確執行)
 
 # Interaction Logic (Step-by-Step)
 

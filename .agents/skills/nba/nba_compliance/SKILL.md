@@ -34,6 +34,7 @@ ag_kit_skills:
 - `nba_analyst/resources/06_verification.md` — 驗證清單
 - `nba_batch_qa/resources/01_qa_checklist.md` — 完整 QA 清單
 - `../nba_wong_choi/resources/02_quality_scan.md` — 品質掃描規則
+- `../nba_wong_choi/resources/engine_directives.md` — 包含機讀 `<xml>` 標籤之 P23 嚴格約束協議
 
 # Interaction Logic (Step-by-Step)
 
@@ -44,6 +45,9 @@ ag_kit_skills:
 - `RESCAN_MODE` — `[FULL / TARGETED]` — TARGETED mode 只掃描被重做嘅組合
 
 ## Step 2: 結構合規掃描 (Structural Compliance Scan)
+
+### 2.0 基礎 Schema/Format 驗證
+- 嚴格檢查所有預期嘅 JSON/Markdown Schema，確保 Analyst / Extractor 輸出百分百符合約束。若有缺失欄位，立即 FAIL。
 
 ### 2a. SGM 組合結構完整性
 - [ ] 輸出包含完整 ≥2 個組合（🛡️ 1 + 🔥 2，可選 💎 3），組合 X (💣) 為條件觸發
@@ -178,6 +182,10 @@ ag_kit_skills:
 
 > ⚠️ **CRITICAL: 強制輸出規則**
 > 無論通過或失敗，此 Agent 嘅輸出**必須**以 `✅ COMPLIANCE CHECK PASSED` 或 `⚠️ COMPLIANCE CHECK CONDITIONAL PASS` 或 `❌ COMPLIANCE CHECK FAILED` 開頭。Wong Choi 將以此標記作為「合規門檻」。
+
+## Step 6: Execution Journal (Pattern 26)
+最後，向 `{TARGET_DIR}/_execution_log.md` 寫入日誌：
+`> 📝 LOG: Step [Compliance] | Action: Checked {GAME_INFO} | Status: [PASS/FAIL] | Agent: NBA_Compliance`
 
 # Recommended Tools & Assets
 - **Tools**: `view_file`, `grep_search`

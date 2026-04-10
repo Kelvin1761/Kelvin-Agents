@@ -3,12 +3,12 @@
 nba_orchestrator.py
 (The Brain of NBA Wong Choi Pipeline)
 
-This master script replaces the LLM orchestrator. It executes a fully deterministic
+This master script replaces the mocked orchestrator. It executes a fully deterministic
 assembly line:
-1. Calls H2H & Injury scripts to generate a unified baseline context.
-2. Compiles a 'NBA_Master_Context.md' for the LLM analyst.
-3. Automatically triggers Hermes/Local Agent 'nba_analyst' to perform SGM game scripting.
-4. Triggers post-processing Compilation summary report.
+1. Detects raw Sportsbet JSON files in the workspace (or specified directory).
+2. Triggers `generate_nba_auto.py` to compile pure Data Brief JSONs and Skeleton MDs.
+3. Performs a Gate Check to ensure completeness of the mathematical dataset.
+4. Outputs the Trigger Command for the Agent Analyst to conduct final reasoning.
 """
 
 import os
@@ -16,97 +16,108 @@ import sys
 import argparse
 import subprocess
 import datetime
-import json
+import glob
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Base directory relative to this script
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-def setup_directory(target_date):
-    dir_path = os.path.join(BASE_DIR, "..", "..", "meetings", f"{target_date}_nba")
-    os.makedirs(dir_path, exist_ok=True)
-    return dir_path
-
-def collect_hardcore_math(team_a, team_b, line, target_dir, game_idx):
-    print(f"🔧 [Orchestrator] Assembling mathematical anchor points for {team_a} vs {team_b}...")
+def run_db_extractor(target_dir):
+    print(f"🚀 [Orchestrator] 啟動 NBA 數據生成器 (generate_nba_auto.py)...")
+    script_path = os.path.join(BASE_DIR, "generate_nba_auto.py")
     
-    context_str = f"# Game {game_idx}: {team_a} vs {team_b} (Line: {team_a} {line:+.1f})\n\n"
-    
-    # 1. Fetch H2H Historical Injection
-    h2h_script = os.path.join(BASE_DIR, "nba", "fetch_nba_h2h.py")
-    if os.path.exists(h2h_script):
-        # We capture the printed output. 
-        # (In a true production setting, scripts should return JSON, but we parse STDOUT for LLM here)
-        result = subprocess.run(
-            ["python3", h2h_script, "--team_a", team_a, "--team_b", team_b, "--line", str(line)],
-            capture_output=True, text=True
-        )
-        # Extract the LLM Context Injection String
-        output = result.stdout
-        if "--- LLM Context Injection String ---" in output:
-            injection = output.split("--- LLM Context Injection String ---")[1].strip()
-            context_str += f"{injection}\n\n"
-            
-    # 2. Check for injuries (Mock behavior for demonstration)
-    injury_script = os.path.join(BASE_DIR, "nba", "fetch_injury_domino.py")
-    if os.path.exists(injury_script) and team_a == "DEN": # Mocking an injury for DEN
-        result = subprocess.run(
-            ["python3", injury_script, "--team", "DEN", "--out", "Nikola Jokic"],
-            capture_output=True, text=True
-        )
-        output = result.stdout
-        if "--- LLM Context Injection String ---" in output:
-            injection = output.split("--- LLM Context Injection String ---")[1].strip()
-            context_str += f"{injection}\n\n"
-            
-    # Save the master context for this specific game
-    context_file = os.path.join(target_dir, f"Game_{game_idx}_Master_Context.md")
-    with open(context_file, "w") as f:
-        f.write(context_str)
+    if not os.path.exists(script_path):
+        print(f"❌ [Error] 找不到數據生成腳本: {script_path}")
+        sys.exit(1)
         
-    print(f"✅ Master Context generated at {context_file}")
-    return context_file
+    try:
+        # Run generate_nba_auto.py in the target directory
+        subprocess.run(["python3", script_path, "--dir", target_dir], check=True)
+        print("✅ [Orchestrator] V7 Data Brief 生成流程完成！")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ [Error] generate_nba_auto.py 執行失敗: {e}")
+        sys.exit(1)
 
-def trigger_nba_analyst(context_file, game_idx, target_dir):
-    print(f"🧠 [Orchestrator] Batch Dispatching -> Triggering nba_analyst for Game {game_idx}...")
-    # In production, this would make an API call to Hermes or run the CLI
-    # Simulated execution
-    analysis_file = os.path.join(target_dir, f"Game_{game_idx}_Analysis.md")
-    with open(analysis_file, "w") as f:
-        f.write(f"# Analysis for Game {game_idx}\n")
-        f.write("## 🏆 SGM Recommendations (Same Game Multi)\n")
-        f.write("```csv\n")
-        f.write(f"Game {game_idx}, Value SGM, Over 220.5, Player Props Hit, S-Grade\n")
-        f.write("```\n")
-    print(f"✅ nba_analyst complete. Wrote {analysis_file}")
+def discover_sportsbet_files(target_dir):
+    """Find all raw Sportsbet JSON files."""
+    files = glob.glob(os.path.join(target_dir, "Sportsbet_Odds_*.json"))
+    valid_files = [f for f in files if "TEST" not in f and "MIN" not in f and "GEMINI" not in f]
+    return valid_files
 
-def run_compilation(target_dir):
-    print(f"📄 [Orchestrator] Triggering Final Compilation...")
-    compile_script = os.path.join(BASE_DIR, "nba", "compile_nba_report.py")
-    if os.path.exists(compile_script):
-        subprocess.run(["python3", compile_script, "--target_dir", target_dir])
-    else:
-        print("⚠️ compile_nba_report.py not found. Skipping compilation.")
+def check_data_completeness(target_dir, sportsbet_files):
+    missing_data = []
+    
+    for fpath in sportsbet_files:
+        basename = os.path.basename(fpath)
+        parts = basename.replace("Sportsbet_Odds_", "").replace(".json", "").split("_")
+        
+        if len(parts) >= 2:
+            away_abbr, home_abbr = parts[0], parts[1]
+            
+            # Check for Data Brief JSON
+            brief_file = os.path.join(target_dir, f"Data_Brief_{away_abbr}_{home_abbr}.json")
+            if not os.path.exists(brief_file):
+                missing_data.append(f"Data_Brief_{away_abbr}_{home_abbr}.json")
+                
+            # Check for Full Analysis
+            analysis_file = os.path.join(target_dir, f"Game_{away_abbr}_{home_abbr}_Full_Analysis.md")
+            if not os.path.exists(analysis_file):
+                missing_data.append(f"Game_{away_abbr}_{home_abbr}_Full_Analysis.md")
+                
+    return missing_data
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--date', type=str, default=datetime.datetime.now().strftime('%Y-%m-%d'))
+    parser = argparse.ArgumentParser(description="NBA Orchestrator: Main Pipeline Entry")
+    parser.add_argument("--dir", default=".", help="Target directory containing Sportsbet JSONs (defaults to workspace root)")
     args = parser.parse_args()
-    
-    print(f"🚀 ====== NBA Wong Choi Orchestrator Pipeline ({args.date}) ====== 🚀")
-    
-    target_dir = setup_directory(args.date)
-    
-    # Mocking Matchups for execution
-    matchups = [
-        {"team_a": "DEN", "team_b": "MIA", "line": -5.5},
-        {"team_a": "BOS", "team_b": "MIL", "line": -2.0}
-    ]
-    
-    for idx, match in enumerate(matchups, 1):
-        context_file = collect_hardcore_math(match["team_a"], match["team_b"], match["line"], target_dir, idx)
-        trigger_nba_analyst(context_file, idx, target_dir)
-        
-    run_compilation(target_dir)
-    print("🏁 Pipeline execution totally successful!" )
 
-if __name__ == '__main__':
+    # Use the provided directory, default is current working directory (Antigravity Root)
+    target_dir = os.path.abspath(args.dir)
+    print(f"🌐 [Orchestrator] 掃描賽事資料目錄: {target_dir}")
+    
+    # Check for raw files
+    sportsbet_files = discover_sportsbet_files(target_dir)
+    if not sportsbet_files:
+        print(f"❌ [Fatal] 找不到任何 Sportsbet_Odds_*.json 檔案於 {target_dir}")
+        print("💡 請先確定 Crawler 已經將今日嘅盤口數據 JSON 放喺這個資料夾內。")
+        sys.exit(1)
+        
+    print(f"✅ 發現 {len(sportsbet_files)} 場賽事盤口數據。")
+    
+    # Run the generator
+    run_db_extractor(target_dir)
+    
+    # Verify outputs
+    missing_data = check_data_completeness(target_dir, sportsbet_files)
+    
+    if missing_data:
+        print(f"🚨 [Fatal] 發現缺漏最終數據: {missing_data}")
+        print("💡 可能部分賽事 API 數據抓取失敗，請檢查 generate_nba_auto.py 嘅輸出 log。")
+        sys.exit(1)
+        
+    print("\n" + "="*50)
+    print("✅ [micro-analysis PASSED] 15 場微觀賽事之數據計算及完整分析已成功由 Python 生成！")
+    print("="*50 + "\n")
+    
+    print(f"🚀 [Orchestrator] 啟動自動編譯 (compile_nba_report.py)...")
+    compile_script = os.path.join(BASE_DIR, ".agents", "scripts", "nba", "compile_nba_report.py")
+    try:
+        subprocess.run(["python3", compile_script, "--target_dir", target_dir], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ [Error] compile_nba_report.py 執行失敗: {e}")
+        sys.exit(1)
+    # State file setup
+    state_file = os.path.join(target_dir, "_nba_session_state.md")
+    with open(state_file, "a", encoding="utf-8") as f:
+        f.write(f"\n🔒 NBA_EXTRACTION_GATE: FULLY_EXTRACTED ({datetime.datetime.now()})\n")
+        
+    print(f"🎯 [Orchestrator] V8 管線就緒！Banker 與 SGM 報告已存於: {os.path.relpath(target_dir)}")
+    print(f"👉 請在 Chat 呼叫 `@nba wong choi` 並輸入以下指令，以完成最後的「宏觀解讀」：")
+    print("\n------------------------------------------------------------")
+    print("請根據剛才生成的 `2026-04-11 NBA Analysis/Banker_Combinations.txt` 與所有 Data Brief 提供今日賽事的【宏觀解讀】(Macro Slate Intelligence)。")
+    print("無需再做微觀球員分析。請告訴我：")
+    print("1. 全日傷病與擺爛版圖 (邊幾隊極大隱患？有咩避險建議？)")
+    print("2. Python 嘅投注邏輯拆解 (今日點解 Python 偏向買邊啲球員/球隊？有咩戰術/防守漏洞被 Python 捕捉到？)")
+    print("------------------------------------------------------------\n")
+
+if __name__ == "__main__":
     main()

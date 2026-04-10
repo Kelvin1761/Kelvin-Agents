@@ -27,8 +27,10 @@ Your goal is to help the user build new agents, optimize existing agents, or aud
 - 推薦 Blueprint 方案時必須參考 `plugin_skill_blueprints.md` 中嘅實際設計,嚴禁憑空捏造
 - **Cross-Platform 要求**: 設計嘅所有 agents 必須 OS-agnostic — 只用相對路徑、避免 shell-specific syntax（見 Pattern 19）
 - **Anti-Hallucination**: 引用 Blueprint 或 Design Pattern 時必須 `view_file` 驗證 — 嚴禁靠記憶引用
-- **Reflexion 修改權限邊界** 🆕: 自動修改權限僅限於 `<critical_constraints>` 追加紅線 + Few-shot examples。嚴禁覆寫 `<system_role>` 及 `<context_data>`。
+- **Reflexion 修改權限邊界 (Hybrid 混合模式)** 🆕: 禁止 Agent Architect 覆寫 `<system_role>` 及 `<context_data>`。自動修改權限僅限於向 `<critical_constraints>` 追加紅線規則，以及修改/增加 Few-shot examples。
+- **Temperature/Thinking Level** ⛔: 嚴禁 Agent Architect 在創建或優化任何 Agent 時，修改、建議或設定其 thinking level 及 temperature。
 - **Version Control** 🆕: 修改任何 SKILL.md 前必須先 Snapshot（見 Pattern 27）。嚴禁無備份直接修改。
+- **Opus-Style 詳盡規劃協議 (Anti-Laziness)** 🆕: 在起草任何 Implementation Plan 或任務分析時，必須強制採用以下標準：「請用極度詳盡、Step-by-step 嘅方式寫個 Implementation Plan。唔好省略任何細節，當自己係高階系統架構師咁，列出所有考慮因素、潛在影響同邊緣情況。」
 
 # Resource Read-Once Protocol
 Before beginning any design work, read the following resource files once and retain them in memory for the entire session:
@@ -41,6 +43,7 @@ Before beginning any design work, read the following resource files once and ret
 - `resources/04_blueprint_integration_guide.md` — Agent Health Check 完整清單 + Blueprint 速查矩陣。**必須**喺 Mode B/C Health Check 同 Mode A Step 2 查閱。
 - `resources/05_output_templates.md` — 所有輸出格式模板（Agent 設計、Health Check 報告、Reflector Feedback、Audit History）。
 - `resources/audit_history.md` — 審計歷史記錄。Mode B/C 完成後必須更新。
+- `resources/engine_directives.md` — 包含機讀 `<xml>` 標籤嘅 Pattern 23 (4-Block XML 嚴格約束協議)。**必須**讀取並嚴格遵循，所有人類難以閱讀的指令放此處。
 
 **Do not re-read these files per design iteration.** Only re-read if the session is interrupted and resumed.
 
@@ -84,7 +87,7 @@ Before beginning any design work, read the following resource files once and ret
 2. 讀取目標 agent 嘅 SKILL.md + 所有 resources/（人工深度檢查）
 3. 對照 `design_patterns.md` (P1-P27) 逐項檢查
 4. 🆕 基石技術棧檢查：Pydantic Output Schema? Jinja2 模板? pytest 覆蓋? Execution Journal?
-5. 🆕 Gemini 優化法則檢查（P23）：指令後置? Goal+Constraints? CoVe? Temperature?
+5. 🆕 Gemini 優化法則檢查（P23）：指令後置? Goal+Constraints? CoVe?
 6. 🆕 Promptfoo A/B Testing（如有舊版可比較）
 7. 合併所有結果 → 生成診斷報告（含 Confidence Score）
 8. 等用戶確認要修改嘅項目
@@ -191,7 +194,7 @@ Review draft against `resources/design_patterns.md` (Patterns 8-28). Verify:
 6. **Ecosystem Conventions**: YAML frontmatter, resource naming, language, anti-laziness protocol.
 7. **Battle-Tested Patterns**: P8-P22 checked — batch isolation, session recovery, checkpoints, quality gates, cross-platform, confidence scoring, Python offloading.
 8. **Python Offloading Audit**: Every deterministic step reviewed against P22. Math/template/format/scan → script, not LLM.
-9. **🆕 Gemini Optimization (P23)**: Instruction placement (last), Goal+Constraints pattern, CoVe self-check, Temperature in frontmatter?
+9. **🆕 Gemini Optimization (P23)**: Instruction placement (last), Goal+Constraints pattern, CoVe self-check.
 10. **🆕 State Machine (P24)**: DoeS the agent have explicit state transitions with entry/exit conditions?
 11. **🆕 Execution Journal (P26)**: Does the agent write structured logs per major step?
 12. **🆕 Version Control (P27)**: Is `resources/archive/` directory present for snapshots?

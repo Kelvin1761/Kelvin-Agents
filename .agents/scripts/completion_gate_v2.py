@@ -99,6 +99,8 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
             
         # Check required tags PER HORSE directly here
         for tag in required_tags:
+            if tag in ['🔬', '⚡', '🔗'] and "無往績記錄" in block:
+                continue
             if tag not in block:
                 errors.append(f"[{horse_id}] Missing required tag/field: {tag}")
             
@@ -127,6 +129,15 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
                 errors.append(f"[{horse_id}] '核心邏輯' is too brief or lacks deep forensic detail ({logic_words} chars). Please expand.")
         else:
             errors.append(f"[{horse_id}] Missing properly formatted '- **核心邏輯:**' section.")
+            
+        # Check Rating Matrix completeness to prevent anti-skipping
+        req_matrix_fields = [
+            '狀態與穩定性', '段速與引擎', 'EEM與形勢', '騎練訊號'
+        ] if domain == 'au' else ['穩定性', '段速質量', 'EEM 潛力', '練馬師訊號']
+        
+        for field in req_matrix_fields:
+            if field not in block:
+                errors.append(f"[{horse_id}] 👮‍♂️ ANTI-SKIP: Missing specific matrix field: {field}")
             
     return errors
 

@@ -20,9 +20,10 @@ ag_kit_skills:
 - `resources/01_system_context.md` — 角色、語言規則、反惰性協議、新聞情境指引、數據防呆 [必讀]
 - `resources/02_volatility_engine.md` — CoV 分級、情境調整加減分表、盤口雙線生成 [必讀]
 - `resources/03_safety_gate.md` — 致命缺陷排除規則、命中率門檻 [必讀]
-- `resources/04_parlay_engine.md` — 3 層級組合構建邏輯、Bet365 規則 [必讀]
+- `resources/04_parlay_engine.md` — 3 層級組合構建邏輯、Sportsbet 規則 [必讀]
 - `resources/05_output_template.md` — 完整輸出格式(含單場/匯總兩種模式)[生成報告時讀取]
 - `resources/06_verification.md` — 自檢清單 [輸出前讀取]
+- `../nba_wong_choi/resources/engine_directives.md` — 包含機讀 `<xml>` 標籤之 P23 嚴格約束協議 [必讀]
 
 讀取一次後保留在記憶中,嚴禁每批次重複讀取。
 
@@ -30,7 +31,7 @@ ag_kit_skills:
 按照 `resources/01_system_context.md` 嚴格遵守以下核心規則:
 - **反惰性協議 (No-Skip 輸出骨架鎖)**:強制預留並填充完整的 14 項數據卡及 CoV 模板,嚴格禁止出現「數據略」或省略語。逐球員計算、逐 Leg 完整分析。若傳入數據包無 L10 數據,必須退回並顯示 `[ERROR: 需返回 Extractor 獲取 14 項數據]`,拒絕自行猜測。
 - **純計算模式**:唯一輸入來源係 Extractor 數據包,嚴禁自行搜尋。
-- **Bet365 即時盤口優先協議**：若數據包包含 `Bet365_Odds_*.json`，必須使用其中嘅 `lines` 作為盤口分析基礎，取代自行估算。JSON 內嘅 `last5` 數據可直接用於 L5 命中率計算。
+- **Sportsbet 即時盤口優先協議**：若數據包包含 `sportsbet_latest.json`，必須使用其中嘅 `lines` 作為盤口分析基礎，取代自行估算。JSON 內嘅 `last5` 數據可直接用於 L5 命中率計算。
 - **新聞情境納入**:NEWS_DIGEST 必須被納入分析考量。
 - **防幻覺協議**:缺乏數據 → `N/A`,所有結論至少 2 個數據點支持。
 - **輸入數據快速驗證**:開始 CoV 計算前執行防呆檢查。
@@ -112,12 +113,12 @@ ag_kit_skills:
 按照 `resources/02_volatility_engine.md` Step 3-4:
 - 穩膽線 + 價值線 + AMC 評估 + +EV 篩選 + Under 偵測
 
-**🎯 Bet365 即時盤口整合 (v2.2 — Bet365 ONLY)：**
-> **Bet365 係唯一盤口來源，嚴禁自行估算盤口。**
+**🎯 Sportsbet 即時盤口整合 (v2.2 — Sportsbet ONLY)：**
+> **Sportsbet 係唯一盤口來源，嚴禁自行估算盤口。**
 > 1. **直接使用** `generate_nba_reports.py` 產生嘅 pre-filled skeleton
-> 2. Skeleton 入面所有 Bet365 盤口對照表已由 Python 預計算
-> 3. **禁止自行估算盤口** — Bet365 提供嘅就是實際可下注嘅盤口
-> 4. 若無 Bet365 JSON → 報告 `odds_not_found` → 暫停分析等待用戶解決
+> 2. Skeleton 入面所有 Sportsbet 盤口對照表已由 Python 預計算
+> 3. **禁止自行估算盤口** — Sportsbet 提供嘅就是實際可下注嘅盤口
+> 4. 若無 Sportsbet JSON → 報告 `odds_not_found` → 暫停分析等待用戶解決
 
 ## Step 4: 安全檢查
 按照 `resources/03_safety_gate.md`:
@@ -128,7 +129,7 @@ ag_kit_skills:
 按照 `resources/04_parlay_engine.md`：
 - 構建 🛡️ 1 / 🔥 2 / 💎 3 / 💣 X 四組
 - SGP 劇本語境防撞擊檢查
-- 賠率來源: Bet365 直接提取，組合賠率以 Bet365 SGM 顯示為準
+- 賠率來源: Sportsbet 直接提取，組合賠率以 Sportsbet SGM 顯示為準
 
 ## Step 6: 生成最終輸出
 讀取 `resources/05_output_template.md`，按模式選擇格式。
@@ -143,7 +144,11 @@ ag_kit_skills:
 - [ ] **無省略語**（無 `...`、`[同上]`、`[參見組合X]`）
 - [ ] **`[FILL]` 殘留數 = 0**
 - [ ] **L10 數組長度 = 10**（每個輸出嘅數組都有 10 個數字）
-- [ ] **所有盤口符合 Bet365 嚴格選項規則**
+- [ ] **所有盤口符合 Sportsbet 嚴格選項規則**
+
+## Step 8: Execution Journal (Pattern 26)
+完成報告輸出後，必須向 `{TARGET_DIR}/_execution_log.md` 寫入日誌：
+`> 📝 LOG: Step [Analyst-S3] | Action: Completed Analysis for {GAME_TAG} | Status: Success | Agent: NBA_Analyst`
 
 # Output Contract
 - **單場模式**：合格 Leg 候選清單 + 本場 SGM 組合（≥2 組：🛡️ 1 + 🔥 2，可選 💎 3）+ Value Bomb（條件觸發）

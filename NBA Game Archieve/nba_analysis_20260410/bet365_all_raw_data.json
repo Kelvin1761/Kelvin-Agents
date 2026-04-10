@@ -1,0 +1,433 @@
+{
+    "extraction_time": "2026-04-10 00:56",
+    "player_props": {
+        "Points": {
+            "To Score 5+ Points": {
+                "lines": {
+                    "5": 9.0
+                }
+            },
+            "Jaime Jaquez Jr.": {
+                "lines": {
+                    "5": 1.04
+                }
+            },
+            "1.04": {
+                "lines": {
+                    "5": 5.0
+                }
+            },
+            "Immanuel Quickley": {
+                "lines": {
+                    "5": 1.02
+                }
+            },
+            "1.02": {
+                "lines": {
+                    "5": 3.0
+                }
+            },
+            "Pelle Larsson": {
+                "lines": {
+                    "5": 1.05
+                }
+            },
+            "1.05": {
+                "lines": {
+                    "5": 77.0
+                }
+            },
+            "Jakob Poeltl": {
+                "lines": {
+                    "5": 1.04
+                }
+            },
+            "Davion Mitchell": {
+                "lines": {
+                    "5": 1.12
+                }
+            },
+            "1.12": {
+                "lines": {
+                    "5": 54.0
+                }
+            },
+            "Sandro Mamukelashvili": {
+                "lines": {
+                    "5": 1.08
+                }
+            },
+            "1.08": {
+                "lines": {
+                    "5": 4.0
+                }
+            },
+            "Ja'Kobe Walter": {
+                "lines": {
+                    "5": 1.17
+                }
+            },
+            "1.17": {
+                "lines": {
+                    "5": 17.0
+                }
+            },
+            "Jamal Shead": {
+                "lines": {
+                    "5": 1.45
+                }
+            },
+            "Quenton Jackson": {
+                "lines": {
+                    "5": 1.05,
+                    "10": 1.42,
+                    "15": 2.4,
+                    "20": 5.0
+                }
+            },
+            "Ben Saraf": {
+                "lines": {
+                    "5": 1.02,
+                    "10": 1.2,
+                    "15": 1.73,
+                    "20": 2.9
+                }
+            },
+            "Jay Huff": {
+                "lines": {
+                    "5": 1.08,
+                    "10": 1.55,
+                    "15": 2.75,
+                    "20": 5.8
+                }
+            },
+            "Drake Powell": {
+                "lines": {
+                    "5": 1.03,
+                    "10": 1.31,
+                    "15": 2.07,
+                    "20": 3.75
+                }
+            },
+            "1.03": {
+                "lines": {
+                    "5": 24.0
+                }
+            },
+            "Kobe Brown": {
+                "lines": {
+                    "5": 1.08,
+                    "10": 1.66,
+                    "15": 3.25,
+                    "20": 7.5
+                }
+            },
+            "To Score 10+ Points": {
+                "lines": {
+                    "10": 5.0
+                }
+            },
+            "Jarace Walker": {
+                "lines": {
+                    "10": 1.15,
+                    "15": 1.61,
+                    "20": 2.55
+                }
+            },
+            "1.15": {
+                "lines": {
+                    "10": 77.0
+                }
+            },
+            "1.20": {
+                "lines": {
+                    "10": 29.0
+                }
+            },
+            "1.42": {
+                "lines": {
+                    "10": 4.0
+                }
+            },
+            "1.31": {
+                "lines": {
+                    "10": 32.0
+                }
+            },
+            "1.55": {
+                "lines": {
+                    "10": 24.0
+                }
+            },
+            "To Score 15+ Points": {
+                "lines": {
+                    "15": 5.0
+                }
+            },
+            "1.61": {
+                "lines": {
+                    "15": 77.0
+                }
+            },
+            "1.73": {
+                "lines": {
+                    "15": 29.0
+                }
+            },
+            "2.40": {
+                "lines": {
+                    "15": 4.0
+                }
+            },
+            "2.07": {
+                "lines": {
+                    "15": 32.0
+                }
+            },
+            "2.75": {
+                "lines": {
+                    "15": 24.0
+                }
+            },
+            "To Score 20+ Points": {
+                "lines": {
+                    "20": 5.0
+                }
+            },
+            "2.55": {
+                "lines": {
+                    "20": 77.0
+                }
+            },
+            "2.90": {
+                "lines": {
+                    "20": 29.0
+                }
+            },
+            "5.00": {
+                "lines": {
+                    "20": 4.0
+                }
+            },
+            "3.75": {
+                "lines": {
+                    "20": 32.0
+                }
+            },
+            "5.80": {
+                "lines": {
+                    "20": 24.0
+                }
+            },
+            "Mikal Bridges": {
+                "lines": {
+                    "5": 1.02
+                }
+            },
+            "Josh Hart": {
+                "lines": {
+                    "5": 1.05
+                }
+            },
+            "Kelly Oubre Jr.": {
+                "lines": {
+                    "5": 1.06
+                }
+            },
+            "1.06": {
+                "lines": {
+                    "5": 15.0
+                }
+            },
+            "Reed Sheppard": {
+                "lines": {
+                    "5": 1.04
+                }
+            },
+            "Quentin Grimes": {
+                "lines": {
+                    "5": 1.17
+                }
+            },
+            "Tari Eason": {
+                "lines": {
+                    "5": 1.11
+                }
+            },
+            "1.11": {
+                "lines": {
+                    "5": 0.0
+                }
+            },
+            "Aaron Holiday": {
+                "lines": {
+                    "5": 1.45
+                }
+            },
+            "Rui Hachimura": {
+                "lines": {
+                    "5": 1.02
+                }
+            },
+            "Gui Santos": {
+                "lines": {
+                    "5": 1.03
+                }
+            },
+            "Luke Kennard": {
+                "lines": {
+                    "5": 1.03
+                }
+            },
+            "Draymond Green": {
+                "lines": {
+                    "5": 1.08
+                }
+            },
+            "Deandre Ayton": {
+                "lines": {
+                    "5": 1.06
+                }
+            },
+            "Pat Spencer": {
+                "lines": {
+                    "5": 1.14
+                }
+            },
+            "Jake Laravia": {
+                "lines": {
+                    "5": 1.06
+                }
+            },
+            "Marcus Smart": {
+                "lines": {
+                    "5": 1.06
+                }
+            }
+        },
+        "Rebounds": {},
+        "Assists": {},
+        "Threes Made": {
+            "Chicago Bulls 1 - 10": {
+                "lines": {
+                    "2": 3.05
+                }
+            },
+            "Washington Wizards 1 - 10": {
+                "lines": {
+                    "2": 4.0
+                }
+            },
+            "Chicago Bulls 11+": {
+                "lines": {
+                    "2": 2.6
+                }
+            },
+            "Washington Wizards 11+": {
+                "lines": {
+                    "2": 6.5
+                }
+            },
+            "Miami Heat 1 - 10": {
+                "lines": {
+                    "2": 3.75
+                }
+            },
+            "Toronto Raptors 1 - 10": {
+                "lines": {
+                    "2": 2.97
+                }
+            },
+            "Miami Heat 11+": {
+                "lines": {
+                    "2": 6.0
+                }
+            },
+            "Toronto Raptors 11+": {
+                "lines": {
+                    "2": 3.02
+                }
+            },
+            "Indiana Pacers 1 - 10": {
+                "lines": {
+                    "2": 3.02
+                }
+            },
+            "Brooklyn Nets 1 - 10": {
+                "lines": {
+                    "2": 3.69
+                }
+            },
+            "Indiana Pacers 11+": {
+                "lines": {
+                    "2": 3.32
+                }
+            },
+            "Brooklyn Nets 11+": {
+                "lines": {
+                    "2": 5.4
+                }
+            },
+            "Boston Celtics 1 - 10": {
+                "lines": {
+                    "2": 3.9
+                }
+            },
+            "New York Knicks 1 - 10": {
+                "lines": {
+                    "2": 2.98
+                }
+            },
+            "Boston Celtics 11+": {
+                "lines": {
+                    "2": 6.0
+                }
+            },
+            "New York Knicks 11+": {
+                "lines": {
+                    "2": 2.9
+                }
+            },
+            "Philadelphia 76ers 1 - 10": {
+                "lines": {
+                    "2": 3.7
+                }
+            },
+            "Houston Rockets 1 - 10": {
+                "lines": {
+                    "2": 2.99
+                }
+            },
+            "Philadelphia 76ers 11+": {
+                "lines": {
+                    "2": 5.9
+                }
+            },
+            "Houston Rockets 11+": {
+                "lines": {
+                    "2": 3.11
+                }
+            },
+            "Los Angeles Lakers 1 - 10": {
+                "lines": {
+                    "2": 3.7
+                }
+            },
+            "Golden State Warriors 1 - 10": {
+                "lines": {
+                    "2": 3.14
+                }
+            },
+            "Los Angeles Lakers 11+": {
+                "lines": {
+                    "2": 6.0
+                }
+            },
+            "Golden State Warriors 11+": {
+                "lines": {
+                    "2": 2.83
+                }
+            }
+        }
+    }
+}

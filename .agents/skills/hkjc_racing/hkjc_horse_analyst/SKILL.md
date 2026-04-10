@@ -83,8 +83,8 @@ ag_kit_skills:
    **Analyst 嚴禁自行計算呢啲已預提取嘅數值 — 直接引用 Facts.md。**
    **⛔ 嚴禁直接讀取 Formguide 重建賽績表格 — 必須引用 Facts.md。**
 3. **情報補全**:使用 Wong Choi Intelligence Package(若有),或獨立搜尋動態情報。
-4. **賽事與步速定調**:判定 `PACE_TYPE`,產生 `<第一部分> 戰場全景` + Speed Map。
-5. **批次解析**:每批固定 3 匹馬(BATCH_SIZE: 3),按馬號順序。**全自動推進**,嚴禁批次間詢問用戶。**批次隔離規則:每個 Batch 必須作為獨立嘅 file write 操作輸出,嚴禁將多個 Batch 合併到同一次 tool call。** Batch 1 = Safe-Writer Protocol (P19v6) heredoc → /tmp → base64 → safe_file_writer.py --mode overwrite 建檔；Batch 2+ = 同管道 --mode append 追加寫入。⚠️ write_to_file / replace_file_content / multi_replace_file_content 已完全封殺（Google Drive 同步死鎖風險）。若發現正在寫入 4+ 匹馬 → 立即停止拆分。
+4. **Batch 0 (戰場全景)**:在分析任何馬匹前,必須先提交獨立的 Batch 0 生成 `<第一部分> 戰場全景` + Speed Map。此舉是為了確保你在分析馬匹前,已對步速、偏差及局勢有完整推演。
+5. **批次解析 (Batch 1~N)**:每批固定 3 匹馬(BATCH_SIZE: 3),按馬號順序。**全自動推進**,嚴禁批次間詢問用戶。**批次隔離規則:每個 Batch 必須作為獨立嘅 file write 操作輸出,嚴禁將多個 Batch 合併到同一次 tool call。** 寫檔模式:第一個啟動寫檔嘅 Batch (通常是 Batch 0 或 Batch 1) 用 `--mode overwrite` 建檔；其後所有 Batch 一律使用 `--mode append` 追加寫入。⚠️ 絕對嚴禁在馬匹批次 (Batch 1~N) 中提前寫出 `<第三部分> 最終預測 (Verdict)` 或提早對未分析馬匹進行排序。若發現正在寫入 4+ 匹馬 → 立即停止拆分。
 6. **品質守門員檢查 [SIP-ST8]**:每完成一批次(≥6 匹馬累計)後,強制執行以下自我檢查:
    - **Anti-Laziness 錨定**:比較當前批次與 Batch 1 嘅每匹馬平均分析字數。若當前批次比 Batch 1 短 >30%,立即自我打回並以相同深度重寫。此規則亦適用於跨場次(Race 2+ 必須維持 Race 1 嘅分析深度)。
    - **重複數據偵測**:對本批次所有馬匹的 L600/L400 段速值、EEM 走位代碼、穩定性判定、組合上名率進行去重統計。**若任一欄位中 ≥50% 馬匹出現完全相同數值 → 品質警報 🚨**,必須暫停並逐匹重新以獨立數據填充。
@@ -130,7 +130,7 @@ ag_kit_skills:
 3. ✅ Step 4-9 寬恕結論有冇回傳 Step 1 狀態週期?
 4. ✅ Step 14 評級聚合有冇正確引用所有前序維度?
 任何一項 ❌ = 該馬分析無效,強制重做。
-7. **全場最終決策**:全場完畢後,按 `08_templates_rules.md` 生成 `<第三部分>` + `<第四部分>`,Top 4 按評級排序。（可配合 Python `compute_rating_matrix_hkjc.py` 預填骨架）
+7. **全場最終決策 (Verdict Batch)**:確保全場所有馬匹均已「完成深度分析」後，才可獨立執行此壓軸 Batch。按 `08_templates_rules.md` 生成 `<第三部分>` + `<第四部分>`,Top 4 根據已分發的最終評級排序。（可配合 Python `compute_rating_matrix_hkjc.py` 預填骨架）。這一步是真正梳理大局、評估各駒威脅，嚴禁未觀看全貌就提前給 Verdict。
 
 **CRITICAL EXCEL EXTRACTION FORMAT**:
 在輸出最尾端,額外輸出 CSV 數據塊(Top 4 精選),放在 `csv` 代碼區塊內:

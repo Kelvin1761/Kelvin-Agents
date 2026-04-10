@@ -22,6 +22,9 @@ ag_kit_skills:
 3. **防無限 Loop**：同一場連續失敗 3 次 → 停止通知用戶。
 4. **只讀不寫**：嚴禁修改 Analyst resource 檔案。你係驗證者，唔係修改者。
 5. **File Writing Protocol**：遵循 GEMINI.md 之中規定的 `safe_file_writer.py` 進行操作。嚴禁使用 `write_to_file`。
+# Resource Read-Once Protocol
+在開始任何工作前,你必須首先讀取以下資源檔案:
+- `../nba_wong_choi/resources/engine_directives.md` — 包含機讀 `<xml>` 標籤之 P23 嚴格約束協議 [必讀]
 
 # Interaction Logic
 
@@ -184,6 +187,10 @@ Game [N] 通過後，向用戶顯示結果：
 ## 總結
 [2-3 句全局評估]
 ```
+
+## Step 8: Execution Journal (Pattern 26)
+驗證流程全部完成後，向 `{TARGET_DIR}/_execution_log.md` 寫入日誌：
+`> 📝 LOG: Step [Validator] | Action: Completed blind test logic validation | Status: Success | Agent: NBA_Reflector_Validator`
 
 # Recommended Tools & Assets
 - **Tools**: `view_file`, `search_web`, `run_command`, `grep_search`

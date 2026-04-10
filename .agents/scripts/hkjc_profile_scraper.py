@@ -19,12 +19,46 @@ import sys
 import re
 import json
 import time
+import os
 import argparse
 from datetime import datetime
 from typing import Optional
 
 import requests
 from bs4 import BeautifulSoup
+
+# ── Disk Cache Setup ────────────────────────────────────────────────────────
+CACHE_DIR = os.path.join(os.getcwd(), '.hkjc_cache')
+for i, arg in enumerate(sys.argv):
+    if arg == '--output' and i + 1 < len(sys.argv):
+        out_dir = os.path.dirname(os.path.abspath(sys.argv[i+1]))
+        if out_dir: CACHE_DIR = os.path.join(out_dir, '.hkjc_cache')
+        break
+    elif arg.endswith('.txt') or arg.endswith('.md') or arg.endswith('.csv'):
+        if os.path.exists(arg):
+            file_dir = os.path.dirname(os.path.abspath(arg))
+            if file_dir: CACHE_DIR = os.path.join(file_dir, '.hkjc_cache')
+
+os.makedirs(CACHE_DIR, exist_ok=True)
+RESULT_CACHE_FILE = os.path.join(CACHE_DIR, 'result_cache.json')
+
+def _load_result_cache():
+    if os.path.exists(RESULT_CACHE_FILE):
+        try:
+            with open(RESULT_CACHE_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def _save_result_cache(cache):
+    try:
+        with open(RESULT_CACHE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(cache, f, ensure_ascii=False)
+    except Exception:
+        pass
+
+_result_cache = _load_result_cache()
 
 # Import the profile scraper for horse data
 try:
@@ -104,6 +138,8 @@ def scrape_race_result(result_url: str, timeout: int = 15) -> list[dict]:
     if result_url.startswith('/'):
         result_url = f"https://racing.hkjc.com{result_url}"
     
+    global _result_cache
+    
     # Check cache
     if result_url in _result_cache:
         return _result_cache[result_url]
@@ -169,7 +205,10 @@ def scrape_race_result(result_url: str, timeout: int = 15) -> list[dict]:
             continue
     
     # Cache the result
-    _result_cache[result_url] = results
+    if results:
+        _result_cache[result_url] = results
+        _save_result_cache(_result_cache)
+        
     return results
 
 

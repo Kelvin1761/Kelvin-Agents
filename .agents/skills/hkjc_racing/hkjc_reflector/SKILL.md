@@ -34,7 +34,7 @@ ag_kit_skills:
    - 「EEM 在 1200m 直路賽的判斷準確度偏低」→ 建議調整 EEM 直路賽豁免規則
    - 「死檔豁免在沙田 1400m 的觸發率過高」→ 建議收緊條件
 4. **強制人工審核**:生成覆盤報告後,必須向用戶提交大綱並暫停,**嚴禁**直接修改任何 Agent SKILL 或 resource 檔案。
-5. **🌐 瀏覽器規範:** 數據擷取優先使用 Python scripts(Lightpanda CDP)或 `read_url_content` / `search_web`。若需使用 `browser_subagent`,**必須使用 Lightpanda 無頭瀏覽器**(嚴禁 Chromium/Playwright)。**重要:** Lightpanda 實例必須保持持久化(persistent)— 啟動一次後持續使用,**嚴禁反覆開關瀏覽器**以避免干擾用戶其他軟件。
+5. **🌐 瀏覽器規範:** 數據擷取優先使用 Python scripts(Lightpanda CDP)或 `read_url_content` / `search_web`。**嚴禁使用 browser_subagent**。
 
 # Interaction Logic (Step-by-Step)
 
@@ -56,16 +56,11 @@ read_url_content(url="<HKJC Results URL>")
 **優先級 2 — Python 腳本 (若 read_url_content 失敗或內容不完整):**
 執行賽果擷取腳本(使用 concurrent 模式):
 **跨平台路徑選擇:**
-- **Windows:** `python "g:\我的雲端硬碟\Antigravity Shared\Antigravity\.agents\skills\hkjc_racing\hkjc_race_extractor\scripts\batch_extract_results.py" --base_url "<URL>" --races "1-10" --output_dir "[TARGET_DIR]"`
-- **macOS:** `python "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/skills/hkjc_racing/hkjc_race_extractor/scripts/batch_extract_results.py" --base_url "<URL>" --races "1-10" --output_dir "[TARGET_DIR]"`
-
-> **平台偵測:** 檢查 `os.name` 或當前路徑前綴。若路徑以 `g:\` 開頭 = Windows,以 `/Users/` 開頭 = macOS。
+可以直接使用相對工作區路徑執行：
+`python .agents/skills/hkjc_racing/hkjc_race_extractor/scripts/batch_extract_results.py --base_url "<URL>" --races "1-10" --output_dir "[TARGET_DIR]"`
 將賽果文件保存在 `TARGET_DIR` 中。
 
-**優先級 3 — `browser_subagent` (最後手段):**
-僅在以上兩種方法均失敗時使用。若需使用 `browser_subagent`,**必須使用 Lightpanda 無頭瀏覽器**(嚴禁 Chromium/Playwright)。Lightpanda 實例必須保持持久化 — 啟動一次後持續使用,**嚴禁反覆開關瀏覽器**。
-
-> ⚠️ **失敗處理**:每層方法若失敗,自動嘗試下一層。連續 3 層均失敗則停止並通知用戶。
+> ⚠️ **失敗處理**:每層方法若失敗,自動嘗試下一層。連續 2 層均失敗則停止並通知用戶。
 
 ## Step 3: 尋找賽前預測
 喺 `TARGET_DIR` 中搵出該日所有賽前分析報告:
@@ -78,18 +73,18 @@ read_url_content(url="<HKJC Results URL>")
 在執行深度比對之前,你必須讀取 `HKJC Horse Analyst` 嘅核心引擎規則,以便在生成 SIP 時能精確指向具體嘅 Step / 規則 / 覆蓋條件:
 
 **必讀:**
-- `hkjc_horse_analyst/SKILL.md` — Analyst 架構與約束
-- `hkjc_horse_analyst/resources/03_engine_pace_context.md` — Steps 0-3 步速瀑布與情境引擎
-- `hkjc_horse_analyst/resources/04_engine_corrections.md` — Steps 4-9 校正與隱藏變數引擎
-- `hkjc_horse_analyst/resources/05_forensic_eem.md` — Steps 10-12 段速法醫與 EEM
-- `hkjc_horse_analyst/resources/06_rating_aggregation.md` — Steps 13-14 評級聚合
-- `hkjc_horse_analyst/resources/08_output_templates.md` — 評級矩陣與輸出格式
-- `hkjc_horse_analyst/resources/09_verification.md` — 自我驗證清單
+- `../hkjc_horse_analyst/SKILL.md` — Analyst 架構與約束
+- `../hkjc_horse_analyst/resources/03_engine_pace_context.md` — Steps 0-3 步速瀑布與情境引擎
+- `../hkjc_horse_analyst/resources/04_engine_corrections.md` — Steps 4-9 校正與隱藏變數引擎
+- `../hkjc_horse_analyst/resources/05_forensic_eem.md` — Steps 10-12 段速法醫與 EEM
+- `../hkjc_horse_analyst/resources/06_rating_aggregation.md` — Steps 13-14 評級聚合
+- `../hkjc_horse_analyst/resources/08_output_templates.md` — 評級矩陣與輸出格式
+- `../hkjc_horse_analyst/resources/09_verification.md` — 自我驗證清單
 
 **條件讀取(根據當日賽事場地):**
-- 沙田草地 → `hkjc_horse_analyst/resources/10a_track_sha_tin_turf.md`
-- 跑馬地 → `hkjc_horse_analyst/resources/10b_track_happy_valley.md`
-- 全天候跑道 → `hkjc_horse_analyst/resources/10c_track_awt.md`
+- 沙田草地 → `../hkjc_horse_analyst/resources/10a_track_sha_tin_turf.md`
+- 跑馬地 → `../hkjc_horse_analyst/resources/10b_track_happy_valley.md`
+- 全天候跑道 → `../hkjc_horse_analyst/resources/10c_track_awt.md`
 
 **目的:** 確保 SIP 建議能精確引用「哪個 resource 檔案、哪個 Step、哪條規則」需要修改,而非模糊地說「調整 EEM」。
 

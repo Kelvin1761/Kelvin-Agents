@@ -57,7 +57,7 @@ ag_kit_skills:
 - 對數據做任何主觀解讀
 
 ## 5. File Writing Protocol
-> ⚠️ **P33-WLTM 封殺令**: `write_to_file` / `replace_file_content` / `multi_replace_file_content` **完全禁止** — 會導致 IDE 死鎖。
+> ⚠️ **P33-WLTM 封殺令**: 直接呼叫寫檔工具(如 `write_to_f...` 等) **完全禁止** — 會導致 IDE 死鎖。
 > 數據包寫入必須透過 `run_command` + heredoc → `/tmp` → `cp` 管道，或由上游 Wong Choi 嘅 Safe-Writer Pipeline 統一處理。
 
 ## 6. Session Recovery Protocol (Pattern 10)
@@ -72,7 +72,8 @@ ag_kit_skills:
 - `resources/01_data_protocols.md` — 搜尋規則、防錯機制、來源優先級 [必讀]
 - `resources/02_data_card_template.md` — 14 項數據卡格式定義 [必讀]
 - `resources/03_defensive_profiles.md` — 防守大閘分類標準與知名球員清單 [必讀]
-- `resources/04_bet365_extraction.md` — Bet365 MCP Playwright 盤口提取協議 [必讀]
+- `resources/04_sportsbet_extraction.md` — Sportsbet MCP Playwright 盤口提取協議 [必讀]
+- `../nba_wong_choi/resources/engine_directives.md` — 包含機讀 `<xml>` 標籤之 P23 嚴格約束協議 [必讀]
 
 讀取一次後保留在記憶中,嚴禁每批次重複讀取。
 
@@ -143,7 +144,7 @@ python3 "./.agents/skills/nba/nba_data_extractor/scripts/claw_bet365_odds.py" \
 5. 全部完成後儲存 Raw JSON
 
 **⚠️ 關鍵規則：**
-1. `--output` 必須使用 **絕對路徑**（以 `/Users/` 開頭），禁止相對路徑
+1. `--output` 必須使用 **絕對路徑**（以工作區根目錄開頭），禁止相對路徑
 2. **嚴禁加 `--url` 參數** — V8 唔再支援 URL 導航（Zero-Navigation）
 3. Comet 必須已經打開 Bet365 NBA 頁面
 4. 腳本只做讀取，所有 Tab 切換由 USER 手動完成
@@ -168,6 +169,10 @@ python3 "./.agents/skills/nba/nba_data_extractor/scripts/claw_bet365_odds.py" \
 
 準備好所有數據後,通知上游 Wong Choi 進行下一步,確保 Analyst 只參考生成的 `NBA_Data_Package_*.md` 檔案內容,嚴禁其重複上網搜尋。
 將所有數據整理為結構化數據包,格式分為兩部分:
+
+## Step 5: Execution Journal (Pattern 26)
+在提取任務大功告成（或失敗）後，向 `{TARGET_DIR}/_execution_log.md` 追加（append）日誌：
+`> 📝 LOG: Step [Extractor-S2] | Action: Extracted data for {US_DATE} | Status: [Success/Fail] | Agent: NBA_Data_Extractor`
 
 ### Part A: Meeting-Level 數據
 ```

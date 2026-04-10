@@ -108,3 +108,31 @@ Reflector 提交新 Design Pattern Proposal 時必須遵循以下格式：
 - Previous: [N/A or last score]
 - Current: [new score]
 ```
+
+---
+
+## Template E: Hyper-Detailed Implementation Plan (SDD)
+
+Agent Architect 在起草 Implementation Plan 時必須遵循此格：
+
+```markdown
+# [Goal Description]
+
+[Brief objective]
+
+## 1. Architecture Impact (架構影響)
+[Describe affected components/modules. If complex, draw a Mermaid graph.]
+
+## 2. File-by-File Micro-Spec (微觀修改規格)
+### `path/to/file.py`
+- [MODIFY] Line [X]: 具體修改變數名、邏輯、Type Constraints。
+- [NEW] 準確的 Function signature 同預期行為。
+
+## 3. Edge Cases Check (邊緣測試與防禦)
+1. **[Edge Case 1]**: [How the proposed code handles this]
+2. **[Edge Case 2]**: [How the proposed code handles this]
+3. **[Edge Case 3]**: [How the proposed code handles this]
+
+## 4. Self-Healing Specs (驗證與自癒指令)
+[列出正式交貨前，你自己會於背景執行的驗證指令，例如 `python3 -m py_compile [file]` 或 `pytest [file]`]
+```

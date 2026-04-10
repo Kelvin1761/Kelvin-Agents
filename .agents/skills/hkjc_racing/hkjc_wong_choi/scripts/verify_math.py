@@ -69,10 +69,10 @@ MATRIX_LINE_RE = re.compile(
 
 # Also match the "🔢 矩陣算術" summary line
 MATRIX_ARITHMETIC_RE = re.compile(
-    r'🔢\s*矩陣算術[：:]?\s*'
+    r'\*?\*?🔢\s*矩陣算術[：:]?\*?\*?\s*'
     r'核心✅\s*=\s*\[?(\d+)\]?\s*[|｜]\s*'
     r'半核心✅\s*=\s*\[?(\d+)\]?\s*[|｜]\s*'
-    r'輔助✅\s*=\s*\[?(\d+)\]?\s*[|｜]\s*'
+    r'輔助✅\s*=\s*\[?(\d+)\]?.*?[|｜]\s*'
     r'總❌\s*=\s*\[?(\d+)\]?',
     re.UNICODE
 )
@@ -97,6 +97,8 @@ HORSE_HEADER_RE = re.compile(
     r'\*\*\[?\s*(\d+)\]?\s+(.+?)\*\*\s*\|'            # **[1] Name** |
     r'|'
     r'###\s+(\d+)\s+(.+?)\s*\|'                        # ### 1 Name |
+    r'|'
+    r'\*\*【No\.?\s*(\d+)】\s*(.+?)\*\*\s*\|'           # **【No.1】 同有運** |
     r')',
     re.MULTILINE
 )
@@ -148,7 +150,7 @@ def parse_matrix(block: str) -> list:
     """Parse the 📊 rating matrix section and extract all dimension verdicts."""
     dims = []
     # Find the rating matrix section
-    matrix_start = block.find('📊')
+    matrix_start = block.find('📊 評級矩陣')
     if matrix_start == -1:
         return dims
 
@@ -292,8 +294,8 @@ def split_horses(text: str) -> list:
     matches = list(HORSE_HEADER_RE.finditer(text))
     horses = []
     for i, m in enumerate(matches):
-        num = m.group(1) or m.group(3) or m.group(5)
-        name = (m.group(2) or m.group(4) or m.group(6) or '').strip()
+        num = m.group(1) or m.group(3) or m.group(5) or m.group(7)
+        name = (m.group(2) or m.group(4) or m.group(6) or m.group(8) or '').strip()
         start = m.start()
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
         block = text[start:end]
@@ -528,10 +530,10 @@ def fix_file(filepath: str, report: dict) -> int:
         for issue in h['issues']:
             if 'COUNT_MISMATCH' in issue:
                 arith_re = re.compile(
-                    r'(🔢\s*矩陣算術[：:]?\s*)'
+                    r'(\*?\*?🔢\s*矩陣算術[：:]?\*?\*?\s*)'
                     r'核心✅\s*=\s*\[?\d+\]?\s*[|｜]\s*'
                     r'半核心✅\s*=\s*\[?\d+\]?\s*[|｜]\s*'
-                    r'輔助✅\s*=\s*\[?\d+\]?\s*[|｜]\s*'
+                    r'輔助✅\s*=\s*\[?\d+\]?.*?[|｜]\s*'
                     r'總❌\s*=\s*\[?\d+\]?',
                     re.UNICODE
                 )

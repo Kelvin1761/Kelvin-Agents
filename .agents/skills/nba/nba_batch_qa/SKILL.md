@@ -24,6 +24,7 @@ ag_kit_skills:
 # Resource Read-Once Protocol
 開始工作前，讀取以下資源（僅讀一次）：
 - `resources/01_qa_checklist.md` — 完整嘅 QA 檢查清單
+- `../nba_wong_choi/resources/engine_directives.md` — 包含機讀 `<xml>` 標籤之 P23 嚴格約束協議 [必讀]
 
 # Interaction Logic
 
@@ -107,6 +108,10 @@ ag_kit_skills:
 - [✅ ALL PASS — 可推進至最終匯報]
 - [❌ X 場 FAIL — 需要 Analyst 補充後重新提交]
 ```
+
+## Step 5: Execution Journal (Pattern 26)
+驗證完成後，向 `{TARGET_DIR}/_execution_log.md` 追加日誌：
+`> 📝 LOG: Step [Batch_QA] | Action: Checked [X] games | Status: [PASS/FAIL] | Agent: NBA_Batch_QA`
 
 # Output Contract
 - **輸入**：Analyst 嘅批次輸出（由 Wong Choi 傳入）

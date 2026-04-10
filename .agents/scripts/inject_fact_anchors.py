@@ -235,7 +235,8 @@ def parse_racecard(filepath: str) -> list[dict]:
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
         block = text[start:end]
 
-        if 'Scratched' in block or 'status:Scratched' in block:
+        horse_block = block.split('---')[0]
+        if 'Scratched' in horse_block or 'status:Scratched' in horse_block:
             continue
 
         career_match = re.search(r'Career:\s*(\S+)', block)
@@ -257,12 +258,19 @@ def parse_racecard(filepath: str) -> list[dict]:
             last_field = None
             last_dist = 'N/A'
             last_venue = 'N/A'
+            
+        jockey_match = re.search(r'Jockey:\s*([^|]+)', block)
+        jockey = jockey_match.group(1).strip() if jockey_match else 'Unknown'
+        
+        trainer_match = re.search(r'Trainer:\s*([^|]+)', block)
+        trainer = trainer_match.group(1).strip() if trainer_match else 'Unknown'
 
         last_is_trial = is_trial_venue(last_venue, last_dist) if last_venue != 'N/A' else False
         decoded = parse_last10(last10_raw) if last10_raw not in ('None', '-') else []
 
         horses.append({
             'num': horse_num, 'name': horse_name, 'barrier': barrier,
+            'jockey': jockey, 'trainer': trainer,
             'career': career, 'last10_raw': last10_raw,
             'last_finish': last_finish, 'last_field': last_field,
             'last_dist': last_dist, 'last_venue': last_venue,
@@ -1362,7 +1370,9 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
     # ═══════════════════════════════════════════════════
     # 📌 Racecard 事實錨點
     # ═══════════════════════════════════════════════════
-    lines.append(f"### 馬匹 #{horse['num']} {horse['name']} (檔位 {horse['barrier']})")
+    jockey_str = horse.get('jockey', 'Unknown')
+    trainer_str = horse.get('trainer', 'Unknown')
+    lines.append(f"### 馬匹 #{horse['num']} {horse['name']} (檔位 {horse['barrier']}) | 騎師: {jockey_str} | 練馬師: {trainer_str}")
     lines.append(f"- **📌 事實錨點 (由 Python 預填，嚴禁修改):**")
     lines.append(f"  - Last 10 字串: `{horse['last10_raw']}`")
 
@@ -1410,10 +1420,9 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
         f"- **📋 完整賽績檔案 (全數列出 {len(display_entries)} 場"
         f"；共 {real_count} 正式 + {trial_count} 試閘，嚴禁修改數值):**"
     )
-    lines.append(f"    lines.append("")
     # Table header
-    lines.append("| # | 類型 | 日期 | 場地 | 路程 | 場地狀況 | 檔位 | 名次 | 班次 | 跑位軌跡 | PI | 段速 | 早段步速 | L600/RT | EEM 跑法 | EEM 消耗 | 備註 |")
-    lines.append("|---|------|------|------|------|---------|------|------|------|---------|-----|------|---------|---------|---------|---------|------|")
+    lines.append("| # | 類型 | 日期 | 場地 | 路程 | 場地狀況 | 檔位 | 名次 | 班次 | 跑位軌跡 | PI | 段速 | 早段步速 | L600/RT | EEM 跑法 | EEM 消耗 | 備註 | 寬恕認定 |")
+    lines.append("|---|------|------|------|------|---------|------|------|------|---------|-----|------|---------|---------|---------|---------|------|----------|")
 
     for idx, entry in enumerate(display_entries):
         if entry['is_trial']:
@@ -1493,7 +1502,7 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
         lines.append(
             f"| {idx+1} | {tag} | {entry['date']} | {venue_short} | "
             f"{entry['distance']} | {cond} | {entry.get('barrier') or '-'} | {finish_str} | {class_ch} | "
-            f"{pos_str} | {pi_str} | {sect_q} | {pf_erp} | {pf_l600_rt_str} | {eem_style} | {consumption} | {notes} |"
+            f"{pos_str} | {pi_str} | {sect_q} | {pf_erp} | {pf_l600_rt_str} | {eem_style} | {consumption} | {notes} | [需判定] |"
         )
 
     # Output is already complete, no omitted string needed here

@@ -1,0 +1,18 @@
+{
+  "source": "Sportsbet_Extractor",
+  "extraction_time": "2026-04-10 09:39:28",
+  "matchup": "CHI @ WSH",
+  "away_team": "CHI",
+  "home_team": "WSH",
+  "game_lines": {
+    "spread_away": "+6.5",
+    "ml_away": "1.93",
+    "ml_home": "2.0"
+  },
+  "player_props": {
+    "points": {},
+    "rebounds": {},
+    "assists": {},
+    "threes_made": {}
+  }
+}

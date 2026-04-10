@@ -1,11 +1,11 @@
-# NBA Analyst 最終輸出模板 (V9.0 — Bet365 直取 + Python 預填 + Analyst 深度審閱)
+# NBA Analyst 最終輸出模板 (V9.0 — Sportsbet 直取 + Python 預填 + Analyst 深度審閱)
 
 > [!CAUTION]
 > 🚨 **骨架注入零容忍協議 (Skeleton Injection Zero-Tolerance Protocol)**
 > - 本模板中所有 `[FILL]` 佔位符都**必須**被替換為真實分析文字
 > - Python 預填嘅數學數據（賠率、命中率、Edge、組合結算）**嚴禁修改**
 > - **嚴格禁止使用**：`...`、`[數據略]`、`[同上]`、`[邏輯同前]`、`[參見組合X]`
-> - 賠率來自 **Bet365 直接提取**，組合賠率以 Bet365 SGM 顯示為準
+> - 賠率來自 **Sportsbet 直接提取**，組合賠率以 Sportsbet SGM 顯示為準
 
 ---
 
@@ -18,7 +18,7 @@
 ---
 
 # 🏀 NBA Wong Choi — [Python 預填: 隊A] @ [Python 預填: 隊B]
-**日期**: [Python 預填] | **Bet365 提取時間**: [Python 預填]
+**日期**: [Python 預填] | **Sportsbet 提取時間**: [Python 預填]
 **odds_source**: BET365_LIVE ✅ | **引擎版本**: Adjusted Win Prob V3 (8-Factor)
 
 ---
@@ -44,9 +44,9 @@
 
 ---
 
-## 🎯 全部球員 Bet365 盤口分析
+## 🎯 全部球員 Sportsbet 盤口分析
 
-> Python 會為每位有 Bet365 盤口嘅球員生成以下結構：
+> Python 會為每位有 Sportsbet 盤口嘅球員生成以下結構：
 
 #### [Python 預填: 球員名] (#[球衣], [球隊]) — [PTS/3PM/REB/AST]
 
@@ -56,12 +56,12 @@
 | **L10 均值**: [預填] \| **中位**: [預填] | **USG%**: [預填] |
 | **SD**: [預填] \| **CoV**: [預填] [分級] | **趨勢**: [預填] |
 
-**🎯 Bet365 盤口對照表:**
+**🎯 Sportsbet 盤口對照表:**
 | Line | Odds | 隱含勝率 | L10 命中 | L5 命中 | 預期勝率 | Edge | 判定 |
 |------|------|----------|----------|---------|----------|------|------|
 | [預填: 10+] | [預填: @X.XX] | [預填]% | [預填]% (X/Y) | [預填]% (X/Y) | **[預填]%** | [預填]% [評級] | [預填] |
 
-> **Bet365 線格式**: `10+` = 10 分或以上 (≥10)。命中判定: `value >= 10`。
+> **Sportsbet 線格式**: `10+` = 10 分或以上 (≥10)。命中判定: `value >= 10`。
 > **預期勝率**: 由 8-Factor Adjusted Win Prob 引擎計算（Base Rate ± PACE/DEF/B2B/USG/Defender/CoV/Matchup/Trend）
 
 ---
@@ -73,7 +73,7 @@
 > - Python 預填：Legs 表格、賠率、命中率、Edge、組合結算、自動核心邏輯
 > - LLM 填寫：獨立關卡剖析 (`[FILL]`)、補充/審閱組合核心邏輯
 > - **球員分散規則**：每位球員只會出現喺一個組合中
-> - **賠率來源**: 所有賠率來自 Bet365 直接提取，組合賠率以 Bet365 SGM 顯示為準
+> - **賠率來源**: 所有賠率來自 Sportsbet 直接提取，組合賠率以 Sportsbet SGM 顯示為準
 
 ### 🛡️ 組合 1: 穩膽 SGM (Low Risk) — 組合賠率 @[Python 預填]
 > 篩選條件: L10 命中 ≥70% + 組合賠率 > 2x
@@ -106,7 +106,7 @@
 - **⚠️ 主要風險**: [Python 自動生成 + FILL: Analyst 補充]
 - **建議注碼**: [Python 自動生成: 💰💰💰 / 💰💰 / 💰 / ⚠️]
 
-> ⚠️ 以上賠率為獨立 Leg 相乘。實際 Bet365 SGM 價格可能因關聯性調整而不同，落注前請以 Bet365 顯示為準。
+> ⚠️ 以上賠率為獨立 Leg 相乘。實際 Sportsbet SGM 價格可能因關聯性調整而不同，落注前請以 Sportsbet 顯示為準。
 
 ---
 
@@ -130,22 +130,22 @@
 
 ## 📊 球員盤口詳細分析 (Appendix)
 
-> Python 為每位球員生成完整 Player Card（含所有 Bet365 線嘅對照表）。
-> 詳見上方「全部球員 Bet365 盤口分析」區塊。
+> Python 為每位球員生成完整 Player Card（含所有 Sportsbet 線嘅對照表）。
+> 詳見上方「全部球員 Sportsbet 盤口分析」區塊。
 
 ---
 
 ## 🧠 總結與賽前必做
 - **最強關**: [Python 預填: 邊個 leg Edge 最高]
 - **最弱關**: [Python 預填: 邊個 leg Edge 最低]
-- **賽前 60 分鐘必查**: 傷病更新 / 首發陣容確認 / Bet365 盤口變動 / B2B 情況
+- **賽前 60 分鐘必查**: 傷病更新 / 首發陣容確認 / Sportsbet 盤口變動 / B2B 情況
 
 ---
 
 ## ✅ 盤口數據來源驗證
-> **Bet365 Claw V6** (Comet CDP) 即時提取 | 提取時間: [Python 預填]
+> **Sportsbet Claw V6** (Comet CDP) 即時提取 | 提取時間: [Python 預填]
 > 所有 Lines/Odds 來自 bet365.com.au DOM Snapshot
-> Bet365 線格式: "10+" = 10 分或以上 (≥10)
+> Sportsbet 線格式: "10+" = 10 分或以上 (≥10)
 
 ## 📋 自檢
 ✅ Python 預填完成 | 組合數: [1/2/3/X] | `[FILL]` 殘留: 0 個 ✔️

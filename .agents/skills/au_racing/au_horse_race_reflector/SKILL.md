@@ -77,16 +77,16 @@ python .agents/skills/au_racing/au_horse_race_reflector/scripts/extract_race_res
 在執行深度比對之前,你必須讀取 `AU Horse Analyst` 嘅核心引擎規則,以便在生成 SIP 時能精確指向具體嘅 Step / 規則 / 覆蓋條件:
 
 **必讀:**
-- `au_horse_analyst/SKILL.md` — Analyst 架構與約束
+- `../au_horse_analyst/SKILL.md` — Analyst 架構與約束
 - `../au_horse_analyst/resources/02a-02g (split engine files)` — Steps 0-14 完整演算法引擎
 - `../au_horse_analyst/resources/06_templates_core.md` — 評級矩陣與輸出格式
-- `au_horse_analyst/resources/05_verification.md` — 自我驗證清單
+- `../au_horse_analyst/resources/05_verification.md` — 自我驗證清單
 
 **條件讀取(根據當日賽事條件):**
-- 若當日有直線衝刺賽 → `au_horse_analyst/resources/02b_straight_sprint_engine.md`
-- 若當日場地為 Soft 5+ → `au_horse_analyst/resources/04d_wet_track.md`
-- 若當日為膠沙地 → `au_horse_analyst/resources/04e_synthetic.md`
-- 當日賽場對應嘅 `au_horse_analyst/resources/04b_track_[venue].md`
+- 若當日有直線衝刺賽 → `../au_horse_analyst/resources/02b_straight_sprint_engine.md`
+- 若當日場地為 Soft 5+ → `../au_horse_analyst/resources/04d_wet_track.md`
+- 若當日為膠沙地 → `../au_horse_analyst/resources/04e_synthetic.md`
+- 當日賽場對應嘅 `../au_horse_analyst/resources/04b_track_[venue].md`
 
 **目的:** 確保 SIP 建議能精確引用「哪個 resource 檔案、哪個 Step、哪條規則」需要修改,而非模糊地說「調整 EEM」。
 

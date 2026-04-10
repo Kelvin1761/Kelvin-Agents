@@ -2,18 +2,18 @@
 """
 generate_nba_reports.py — NBA Wong Choi 預填骨架報告生成器 V2
 
-將 Bet365 即時盤口 JSON + nba_extractor.py 深度 JSON 合併計算，
+將 Sportsbet 即時盤口 JSON + nba_extractor.py 深度 JSON 合併計算，
 自動生成符合新版緊湊格式嘅 pre-filled skeleton report。
 
 Key changes in V2:
-  - Bet365 line format: "10+" (not "O 10.5")
+  - Sportsbet line format: "10+" (not "O 10.5")
   - Hit rate calc: >= (not >)
   - Auto-combo engine with 5 combinations
   - Pre-filled combo tables with per-leg logic slots
 
 Usage:
   python generate_nba_reports.py \
-    --bet365 path/to/Bet365_Odds_CHI_WSH.json \
+    --sportsbet path/to/Sportsbet_Odds_CHI_WSH.json \
     --extractor path/to/nba_game_data_CHI_WSH.json \
     --output path/to/Game_CHI_WSH_Skeleton.md
 
@@ -65,15 +65,15 @@ def trend_label(data):
 
 
 def hit_rate(data, line_val):
-    """Hit rate using >= (Bet365 '10' means '10 or above')."""
+    """Hit rate using strict > (User requested: 3+ means above 3)."""
     if not data: return 0.0, "0/0", []
-    hits = sum(1 for x in data if x >= line_val)
+    hits = sum(1 for x in data if x > line_val)
     pct = round(hits / len(data) * 100, 1)
     count = f"{hits}/{len(data)}"
     misses = []
     for i, x in enumerate(data):
-        if x < line_val:
-            misses.append({"game": i+1, "value": x, "deficit": round(x - line_val, 1)})
+        if x <= line_val:
+            misses.append({"game": i+1, "value": x, "deficit": round(line_val - x + 1, 1)})
     return pct, count, misses
 
 
@@ -155,30 +155,7 @@ def calc_adjusted_winprob(base_rate, hit_l5=0, cov=0, avg=0, line_val=0,
     else:
         breakdown["pace"] = 0
 
-    # ── LLM-pending factors (provide raw data, LLM assigns +/-) ──
-
-    # 4. Matchup DEF — LLM judges based on opponent DEF rank + specific defender matchup
-    breakdown["matchup"] = "🧠 LLM_PENDING"
-
-    # 5. Context (B2B + Home/Away + Garbage Time) — LLM judges tactical intent
-    breakdown["context"] = "🧠 LLM_PENDING"
-
-    # 7. Usage Redistribution — LLM judges impact of teammate injuries on ball usage
-    breakdown["usg"] = "🧠 LLM_PENDING"
-
-    # 8. Defender Impact — LLM judges specific positional defender matchup
-    breakdown["defender"] = "🧠 LLM_PENDING"
-
-    # Raw context data for LLM to use in judgment
-    breakdown["_llm_context"] = {
-        "opponent_def_rank": opponent_def_rank,
-        "opponent_pace": opponent_pace,
-        "is_b2b": is_b2b,
-        "is_home": is_home,
-        "spread": spread,
-        "usg_bonus": usg_bonus,
-        "defender_impact": defender_impact,
-    }
+    # V8: LLM qualitative judgment is removed. Pure Python mathematical factors only.
 
     # Sum only Python-computed factors for preliminary adjusted prob
     python_keys = ["trend", "cov", "buffer", "pace"]
@@ -202,17 +179,12 @@ def format_adjustment_line(base_rate, breakdown):
     """Format the 📐 adjustment detail line."""
     parts = [f"基礎 {base_rate}%"]
     factor_names = {
-        "trend": "走勢", "cov": "波動", "buffer": "安全墊",
-        "matchup": "對位", "context": "情境", "pace": "節奏",
-        "usg": "球權紅利", "defender": "防守者"
+        "trend": "走勢", "cov": "波動", "buffer": "安全墊", "pace": "節奏"
     }
-    for key in ["trend", "cov", "buffer", "matchup", "context", "pace", "usg", "defender"]:
+    for key in ["trend", "cov", "buffer", "pace"]:
         val = breakdown.get(key, 0)
         name = factor_names[key]
-        # V7: LLM_PENDING factors are not yet assigned by LLM
-        if isinstance(val, str):
-            parts.append(f"{name}=🧠LLM")
-        elif val >= 0:
+        if val >= 0:
             parts.append(f"{name} +{val}%")
         else:
             parts.append(f"{name} {val}%")
@@ -233,7 +205,7 @@ def find_player_in_extractor(ext_players, name, team_abbr):
     return None
 
 
-def build_player_card(player_name, team_abbr, bet365_data, ext_player, category,
+def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, category,
                       opponent_def_rank=None, opponent_pace=None,
                       is_b2b=False, is_home=None, spread=None,
                       usg_bonus=0, defender_impact=None, top_defender_name="",
@@ -242,9 +214,9 @@ def build_player_card(player_name, team_abbr, bet365_data, ext_player, category,
         "name": player_name,
         "team": team_abbr,
         "category": category,
-        "jersey": bet365_data.get("jersey", "?"),
-        "last5_bet365": bet365_data.get("last5", []),
-        "lines": bet365_data.get("lines", {}),
+        "jersey": sportsbet_data.get("jersey", "?"),
+        "last5_sportsbet": sportsbet_data.get("last5", []),
+        "lines": sportsbet_data.get("lines", {}),
     }
 
     cat_map = {"points": "PTS", "threes_made": "FG3M", "rebounds": "REB", "assists": "AST"}
@@ -283,8 +255,8 @@ def build_player_card(player_name, team_abbr, bet365_data, ext_player, category,
         card["min_avg"] = round(sum(mins) / len(mins), 1) if mins else 0
         card["fatigue"] = fatigue
     else:
-        # Use Bet365 L5 as fallback
-        l5 = bet365_data.get("last5", [])
+        # Use Sportsbet L5 as fallback
+        l5 = sportsbet_data.get("last5", [])
         card["l10"] = l5  # Only L5 available
         avg, med, sd, cov = compute_stats(l5)
         card["avg"] = avg
@@ -304,11 +276,11 @@ def build_player_card(player_name, team_abbr, bet365_data, ext_player, category,
         card["fatigue"] = {}
         card["position"] = "?"
 
-    # Hit rates for each Bet365 line
+    # Hit rates for each Sportsbet line
     card["line_analysis"] = {}
     data_for_hr = card["l10"]
     for line_val_str, odds_str in card["lines"].items():
-        line_val = float(line_val_str)  # Bet365 "10" = 10+, so threshold is >= 10
+        line_val = float(line_val_str)  # Sportsbet "10" = 10+, so threshold is >= 10
         hr_l10, hr_l10_count, misses = hit_rate(data_for_hr, line_val)
         l5_data = data_for_hr[-5:] if len(data_for_hr) >= 5 else data_for_hr
         l3_data = data_for_hr[-3:] if len(data_for_hr) >= 3 else data_for_hr
@@ -323,6 +295,8 @@ def build_player_card(player_name, team_abbr, bet365_data, ext_player, category,
             is_b2b=is_b2b, is_home=is_home, spread=spread,
             usg_bonus=usg_bonus, defender_impact=defender_impact, amc=0)
         ev = edge_calc(est_prob, imp)
+        grade = edge_grade(ev)
+        
         # V7: Narrative now written by LLM (not Python)
         narrative = ""
         adj_line = format_adjustment_line(hr_l10, adj_breakdown)
@@ -487,14 +461,17 @@ def _build_team_legs(odds, away_abbr, home_abbr):
 
 
 def select_combo_1(candidates):
-    """穩膽: Best 2-3 legs with high hit rate, targeting combined odds ≥ 2.0."""
-    TARGET_MIN = 2.0
+    """穩膽: Best 2-3 legs with high hit rate, targeting combined odds 1.8-2.5, fallback to ≥ 1.5."""
+    # Filter pool: Hit rate >= 60%, Min odds >= 1.15, No 神經刀, Edge >= -10 (accept flat/slight negative EV)
     pool = [c for c in candidates
-            if c["hit_l10"] >= 70 and c["odds"] >= 1.2]
+            if c["hit_l10"] >= 60 and c["odds"] >= 1.15 and "神經刀" not in c.get("cov_grade", "")
+            and c["edge"] >= -10]
     pool.sort(key=lambda x: (-x["hit_l10"], -x["edge"], -x["odds"]))
     
     best_combo = None
     best_score = -999
+    
+    # Pass 1: Target 1.8 to 3.0
     for i in range(len(pool)):
         for j in range(i + 1, len(pool)):
             if pool[i]["player"] == pool[j]["player"]:
@@ -502,30 +479,45 @@ def select_combo_1(candidates):
             combo_odds = pool[i]["odds"] * pool[j]["odds"]
             combo_edge = pool[i]["edge"] + pool[j]["edge"]
             avg_hit = (pool[i]["hit_l10"] + pool[j]["hit_l10"]) / 2
-            if combo_odds >= TARGET_MIN and avg_hit >= 70:
-                # Score: prefer high hit rate + high edge + odds close to 2-3x sweet spot
+            if 1.8 <= combo_odds <= 3.0 and avg_hit >= 70:
                 score = avg_hit * 0.5 + combo_edge * 0.3 + min(combo_odds, 3.0) * 10
                 if score > best_score:
                     best_combo = [pool[i], pool[j]]
                     best_score = score
-    
+                    
+    # Try 3-leg if 2-leg failed in Pass 1
+    if not best_combo:
+        for i in range(min(len(pool), 10)):
+            for j in range(i + 1, min(len(pool), 10)):
+                if pool[i]["player"] == pool[j]["player"]: continue
+                for k in range(j + 1, min(len(pool), 10)):
+                    if pool[k]["player"] in (pool[i]["player"], pool[j]["player"]): continue
+                    combo_odds = pool[i]["odds"] * pool[j]["odds"] * pool[k]["odds"]
+                    avg_hit = (pool[i]["hit_l10"] + pool[j]["hit_l10"] + pool[k]["hit_l10"]) / 3
+                    if 1.8 <= combo_odds <= 3.0 and avg_hit >= 70:
+                        score = avg_hit * 0.5 + (pool[i]["edge"] + pool[j]["edge"] + pool[k]["edge"]) * 0.3
+                        if score > best_score:
+                            best_combo = [pool[i], pool[j], pool[k]]
+                            best_score = score
+
     if best_combo:
         return best_combo
     
-    # Fallback: relax hit rate
+    # Pass 2: Fallback to ≥ 1.5 if nothing found
     for i in range(min(len(pool), 15)):
         for j in range(i + 1, min(len(pool), 15)):
             if pool[i]["player"] == pool[j]["player"]:
                 continue
             combo_odds = pool[i]["odds"] * pool[j]["odds"]
-            if combo_odds >= TARGET_MIN:
+            if combo_odds >= 1.5:
                 return [pool[i], pool[j]]
-    return pool[:2] if len(pool) >= 2 else pool
+                
+    return []  # Return empty if nothing hits the >= 1.5 fallback limit.
 
 
 def select_combo_2(candidates, exclude_descs=None):
-    """均衡: Target combined odds ≥ 4.0, aiming for 5x."""
-    TARGET_MIN, TARGET_MAX = 4.0, 8.0
+    """均衡: Target combined odds > 3x, aiming for 5x."""
+    TARGET_MIN, TARGET_MAX = 3.0, 6.0
     TARGET_IDEAL = 5.0
     exclude = set(exclude_descs or [])
     pool = [c for c in candidates
@@ -563,8 +555,8 @@ def select_combo_2(candidates, exclude_descs=None):
 
 
 def select_combo_3(candidates, exclude_descs=None):
-    """高倍率進取: 3 legs targeting combined odds ≥ 8.0."""
-    TARGET_MIN, TARGET_MAX = 8.0, 15.0
+    """高倍率進取: 3 legs targeting combined odds 8-10x."""
+    TARGET_MIN, TARGET_MAX = 8.0, 12.0
     exclude = set(exclude_descs or [])
     pool = [c for c in candidates
             if c["hit_l10"] >= 40 and c["odds"] >= 1.3
@@ -641,7 +633,7 @@ def gen_meeting_intelligence(meta, odds, injuries, news, team_stats):
     lines.append(f"🎫 職業大戶 God Mode 單場分析 — {away_name} @ {home_name}")
     lines.append(f"")
     lines.append(f"📅 數據鎖定: {meta.get('date', '?')} | NBA 賽季: 2025-26")
-    lines.append(f"🎯 盤口來源: **Bet365 MCP Playwright 實時提取** (odds_source: BET365_LIVE)")
+    lines.append(f"🎯 盤口來源: **Sportsbet MCP Playwright 實時提取** (odds_source: BET365_LIVE)")
     lines.append(f"")
     lines.append(f"---")
     lines.append(f"")
@@ -695,14 +687,14 @@ def gen_player_card(card):
     lines.append(f"#### {card['name']} (#{card['jersey']}, {card['team']}) — {cl}")
     lines.append(f"| 🔢 數理引擎 | 🧠 邏輯引擎 |")
     lines.append(f"|:---|:---|")
-    lines.append(f"| **L5**: `{card.get('last5_bet365', [])}` | **角色**: [FILL] |")
+    lines.append(f"| **L5**: `{card.get('last5_sportsbet', [])}` | **角色**: [FILL] |")
     lines.append(f"| **L10 均值**: {card['avg']} \\| **中位**: {card['med']} | **USG%**: {card.get('usg_pct', 'N/A')} |")
     lines.append(f"| **SD**: {card['sd']} \\| **CoV**: {card['cov']} {card['cov_grade']} | **趨勢**: {card['trend']} |")
     lines.append(f"")
 
-    # Bet365 Line Analysis Table
+    # Sportsbet Line Analysis Table
     if card.get("line_analysis"):
-        lines.append(f"**🎯 Bet365 盤口對照表 ({cl}):**")
+        lines.append(f"**🎯 Sportsbet 盤口對照表 ({cl}):**")
         lines.append(f"| Line | Odds | 隱含勝率 | L10 命中 | L5 命中 | 預期勝率 | Edge | 判定 |")
         lines.append(f"|------|------|----------|----------|---------|----------|------|------|")
         for lv, la in sorted(card["line_analysis"].items(), key=lambda x: float(x[0])):
@@ -795,9 +787,6 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
             lines.append(f"🧠 **Python 自動核心邏輯**: {narrative}")
         else:
             lines.append(f"🧠 **Python 自動核心邏輯**: 數據面支持此盤口。")
-        # [FILL] slot for Analyst deep supplement
-        lines.append(f"")
-        lines.append(f"✍️ **Analyst 深度補充**: [FILL — 請補充: 對手防守匹配分析、球權分配邏輯、上場時間預測、比賽劇本推演、同其他 Legs 嘅協同效應。若唔同意 Python 結論，請標註分歧並解釋原因。]")
         lines.append(f"")
 
     # Combo calculation — use adjusted prob
@@ -858,20 +847,18 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
     lines.append(f"- **$100 回報**: **${int(payout)}**")
     lines.append(f"- **組合命中率**: {hit_mult_parts} = **{combo_hit_pct}%**")
     lines.append(f"- **平均 Edge**: {'+' if avg_edge > 0 else ''}{avg_edge}%")
-    lines.append(f"- **🛡️ 組合核心邏輯 (Python)**: {core_logic}")
-    lines.append(f"- **✍️ Analyst 組合補充**: [FILL — 請分析呢幾關串埋一齊嘅協同效應、比賽劇本推演、同整體投注策略嘅配合]")
-    lines.append(f"- **⚠️ 主要風險 (Python)**: {' / '.join(risk_factors)}")
-    lines.append(f"- **✍️ Analyst 風險補充**: [FILL — 請補充 Python 未能量化嘅風險: 教練換陣策略、末段輪休可能、場速突變等]")
+    lines.append(f"- **🛡️ 組合核心邏輯**: {core_logic}")
+    lines.append(f"- **⚠️ 主要風險**: {' / '.join(risk_factors)}")
     lines.append(f"- **建議注碼**: {stake}")
     lines.append(f"")
-    lines.append(f"> ⚠️ 以上賠率為獨立 Leg 相乘。實際 Bet365 SGM 價格可能因關聯性調整而不同，落注前請以 Bet365 顯示為準。")
+    lines.append(f"> ⚠️ 以上賠率為獨立 Leg 相乘。實際 Sportsbet SGM 價格可能因關聯性調整而不同，落注前請以 Sportsbet 顯示為準。")
     lines.append(f"")
     lines.append(f"---")
     return "\n".join(lines)
 
 
 def gen_full_report(meta, odds, injuries, news, team_stats,
-                    all_cards, bet365_time):
+                    all_cards, sportsbet_time):
     sections = []
 
     away_abbr = meta.get("away", {}).get("abbr", "?")
@@ -881,7 +868,7 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
 
     # Header
     sections.append(f"# 🏀 NBA Wong Choi — {away_name} @ {home_name}")
-    sections.append(f"**日期**: {meta.get('date', '?')} | **Bet365 提取時間**: {bet365_time}")
+    sections.append(f"**日期**: {meta.get('date', '?')} | **Sportsbet 提取時間**: {sportsbet_time}")
     sections.append(f"**odds_source**: BET365_LIVE ✅ | **引擎版本**: Adjusted Win Prob V3 (8-Factor)")
     sections.append(f"")
 
@@ -990,7 +977,7 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     else:
         sections.append(f"- 最強關: 未能篩選")
         sections.append(f"- 最弱關: 未能篩選")
-    sections.append(f"- **賽前 60 分鐘必查**: 傷病更新 / 首發陣容確認 / Bet365 盤口變動 / B2B 情況")
+    sections.append(f"- **賽前 60 分鐘必查**: 傷病更新 / 首發陣容確認 / Sportsbet 盤口變動 / B2B 情況")
     sections.append(f"")
     sections.append(f"---")
     sections.append(f"")
@@ -1012,9 +999,9 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     sections.append(f"---")
     sections.append(f"")
     sections.append(f"## ✅ 盤口數據來源驗證")
-    sections.append(f"> **Bet365 MCP Playwright** 即時提取 | 提取時間: {bet365_time}")
-    sections.append(f"> 所有 Lines/Odds 來自 bet365.com.au DOM Snapshot")
-    sections.append(f"> Bet365 線格式: \"10+\" = 10 分或以上 (≥10)")
+    sections.append(f"> **Sportsbet MCP Playwright** 即時提取 | 提取時間: {sportsbet_time}")
+    sections.append(f"> 所有 Lines/Odds 來自 sportsbet.com.au DOM Snapshot")
+    sections.append(f"> Sportsbet 線格式: \"10+\" = 10 分或以上 (≥10)")
 
     # Count remaining [FILL] slots
     full_text = "\n".join(sections)
@@ -1031,13 +1018,13 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
 
 def main():
     parser = argparse.ArgumentParser(description="NBA Wong Choi V2 — Pre-filled Skeleton Generator")
-    parser.add_argument("--bet365", required=True, help="Bet365 odds JSON (from bet365_parser.py)")
+    parser.add_argument("--sportsbet", required=True, help="Sportsbet odds JSON (from sportsbet_parser.py)")
     parser.add_argument("--extractor", required=True, help="nba_extractor.py output JSON")
     parser.add_argument("--output", required=True, help="Output skeleton .md path")
     args = parser.parse_args()
 
-    if not os.path.exists(args.bet365):
-        print(f"❌ Bet365 JSON 唔存在: {args.bet365}")
+    if not os.path.exists(args.sportsbet):
+        print(f"❌ Sportsbet JSON 唔存在: {args.sportsbet}")
         print(f"⚠️ odds_not_found — 請重新執行 MCP Playwright 提取")
         sys.exit(1)
 
@@ -1045,8 +1032,8 @@ def main():
         print(f"❌ Extractor JSON 唔存在: {args.extractor}")
         sys.exit(1)
 
-    with open(args.bet365, 'r', encoding='utf-8') as f:
-        bet365 = json.load(f)
+    with open(args.sportsbet, 'r', encoding='utf-8') as f:
+        sportsbet = json.load(f)
     with open(args.extractor, 'r', encoding='utf-8') as f:
         extractor = json.load(f)
 
@@ -1056,7 +1043,7 @@ def main():
     news = extractor.get("news", {})
     team_stats = extractor.get("team_stats", {})
     ext_players = extractor.get("players", {})
-    bet365_time = bet365.get("extraction_time", datetime.now().strftime("%Y-%m-%d %H:%M"))
+    sportsbet_time = sportsbet.get("extraction_time", datetime.now().strftime("%Y-%m-%d %H:%M"))
 
     # V3: Extract additional context data
     key_defenders = extractor.get("key_defenders", {})
@@ -1094,7 +1081,7 @@ def main():
 
     # Build all player cards
     all_cards = []
-    player_props = bet365.get("player_props", {})
+    player_props = sportsbet.get("player_props", {})
 
     for category, players in player_props.items():
         for player_name, bet_data in players.items():
@@ -1136,7 +1123,7 @@ def main():
 
     # Generate report
     report = gen_full_report(meta, ex_odds, injuries, news, team_stats,
-                             all_cards, bet365_time)
+                             all_cards, sportsbet_time)
 
     # Write
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)

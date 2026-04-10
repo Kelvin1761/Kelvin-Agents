@@ -1,0 +1,555 @@
+{
+  "Chicago Bulls At Washington Wizards": {
+    "Threes Made": {
+      "5+ Made Threes": {
+        "Carlton Carrington": "6.0"
+      },
+      "6+ Made Threes": {
+        "Collin Sexton": "19.0",
+        "Leonard Miller": "23.0",
+        "Rob Dillingham": "26.0",
+        "Carlton Carrington": "11.0"
+      },
+      "4+ Made Threes": {
+        "Collin Sexton": "5.8",
+        "Leonard Miller": "5.4",
+        "Carlton Carrington": "3.35"
+      },
+      "3+ Made Threes": {
+        "Leonard Miller": "2.6",
+        "Collin Sexton": "3.1",
+        "Rob Dillingham": "3.9",
+        "Carlton Carrington": "1.85",
+        "Justin Champagnie": "5.0"
+      },
+      "2+ Made Threes": {
+        "Collin Sexton": "1.74",
+        "Leonard Miller": "1.36",
+        "Rob Dillingham": "2.05",
+        "Carlton Carrington": "1.19",
+        "Justin Champagnie": "2.45"
+      }
+    },
+    "Game Lines": {
+      "Match Betting": {
+        "Chicago Bulls": "1.97",
+        "Tie": "14.0",
+        "Washington Wizards": "1.95"
+      },
+      "Line": {
+        "Chicago Bulls -1.5/Over 60.5": "1.42",
+        "Chicago Bulls -1.5/Under 60.5": "2.85",
+        "Washington Wizards +1.5/Over 60.5": "29.0"
+      }
+    }
+  },
+  "Miami Heat At Toronto Raptors": {
+    "Threes Made": {
+      "4+ Made Threes": {
+        "Tyler Herro": "2.12",
+        "Bam Adebayo": "4.8",
+        "Norman Powell": "4.0",
+        "Immanuel Quickley": "5.9"
+      },
+      "Davion Mitchell - Made Threes": {
+        "Davion Mitchell Over +0.5": "1.42",
+        "Davion Mitchell Under +0.5": "2.65"
+      },
+      "5+ Made Threes": {
+        "Tyler Herro": "3.75",
+        "Norman Powell": "7.25"
+      },
+      "Norman Powell - Made Threes": {
+        "Norman Powell Over +2.5": "2.3",
+        "Norman Powell Under +2.5": "1.54"
+      },
+      "Tyler Herro - Made Threes": {
+        "Tyler Herro Over +3.5": "2.17",
+        "Tyler Herro Under +3.5": "1.64"
+      },
+      "3+ Made Threes": {
+        "Tyler Herro": "1.34",
+        "Bam Adebayo": "2.25",
+        "Norman Powell": "2.3",
+        "Andrew Wiggins": "4.8",
+        "Immanuel Quickley": "2.95",
+        "Ja'Kobe Walter": "3.5",
+        "Brandon Ingram": "4.8",
+        "RJ Barrett": "4.2",
+        "Sandro Mamukelashvili": "4.5"
+      },
+      "Bam Adebayo - Made Threes": {
+        "Bam Adebayo Over +2.5": "2.28",
+        "Bam Adebayo Under +2.5": "1.58"
+      },
+      "Andrew Wiggins - Made Threes": {
+        "Andrew Wiggins Over +1.5": "2.3",
+        "Andrew Wiggins Under +1.5": "1.56"
+      },
+      "2+ Made Threes": {
+        "Bam Adebayo": "1.25",
+        "Norman Powell": "1.45",
+        "Tyler Herro": "1.04",
+        "Andrew Wiggins": "2.25",
+        "Davion Mitchell": "2.9",
+        "Pelle Larsson": "3.75",
+        "Immanuel Quickley": "1.62",
+        "Ja'Kobe Walter": "1.85",
+        "Brandon Ingram": "2.2",
+        "RJ Barrett": "2.05",
+        "Sandro Mamukelashvili": "2.18"
+      },
+      "6+ Made Threes": {
+        "Tyler Herro": "7.0",
+        "Norman Powell": "12.0",
+        "Bam Adebayo": "26.0",
+        "Immanuel Quickley": "23.0"
+      },
+      "RJ Barrett - Made Threes": {
+        "RJ Barrett Over +1.5": "2.07",
+        "RJ Barrett Under +1.5": "1.68"
+      },
+      "Immanuel Quickley - Made Threes": {
+        "Immanuel Quickley Over +1.5": "1.65",
+        "Immanuel Quickley Under +1.5": "2.12"
+      },
+      "Brandon Ingram - Made Threes": {
+        "Brandon Ingram Over +1.5": "2.2",
+        "Brandon Ingram Under +1.5": "1.59"
+      },
+      "Sandro Mamukelashvili - Made Threes": {
+        "Sandro Mamukelashvili Over +1.5": "2.2",
+        "Sandro Mamukelashvili Under +1.5": "1.6"
+      },
+      "Ja'Kobe Walter - Made Threes": {
+        "Ja'Kobe Walter Over +1.5": "1.86",
+        "Ja'Kobe Walter Under +1.5": "1.85"
+      }
+    },
+    "Game Lines": {
+      "Match Betting": {
+        "Miami Heat": "1.77",
+        "Tie": "10.5",
+        "Toronto Raptors": "2.3"
+      },
+      "Line": {
+        "Miami Heat +0.5/Over 56.5": "3.9",
+        "Miami Heat +0.5/Under 56.5": "3.15",
+        "Toronto Raptors -0.5/Over 56.5": "4.1",
+        "Toronto Raptors -0.5/Under 56.5": "3.4"
+      }
+    }
+  },
+  "Indiana Pacers At Brooklyn Nets": {
+    "Threes Made": {
+      "5+ Made Threes": {
+        "Jarace Walker": "8.75"
+      },
+      "1+ Made Threes": {
+        "Jarace Walker": "1.11",
+        "Jay Huff": "1.21",
+        "Obi Toppin": "1.14",
+        "Drake Powell": "1.16",
+        "Jalen Wilson": "1.16"
+      },
+      "7+ Made Threes": {
+        "Jarace Walker": "36.0"
+      },
+      "2+ Made Threes": {
+        "Jarace Walker": "1.53",
+        "Jay Huff": "1.91",
+        "Obi Toppin": "1.64",
+        "Drake Powell": "1.75",
+        "Jalen Wilson": "1.71"
+      },
+      "3+ Made Threes": {
+        "Jarace Walker": "2.45",
+        "Obi Toppin": "2.7",
+        "Jay Huff": "3.3",
+        "Jalen Wilson": "2.9",
+        "Drake Powell": "3.05"
+      },
+      "6+ Made Threes": {
+        "Jarace Walker": "17.0",
+        "Obi Toppin": "20.0",
+        "Jay Huff": "26.0",
+        "Jalen Wilson": "20.0",
+        "Drake Powell": "23.0"
+      },
+      "4+ Made Threes": {
+        "Jarace Walker": "4.5",
+        "Obi Toppin": "5.0",
+        "Jay Huff": "6.25",
+        "Jalen Wilson": "5.5",
+        "Drake Powell": "6.0"
+      }
+    },
+    "Game Lines": {
+      "Match Betting": {
+        "Indiana Pacers": "1.8",
+        "Tie": "15.0",
+        "Brooklyn Nets": "2.1"
+      },
+      "Line": {
+        "Indiana Pacers -0.5/Over 54.5": "3.32",
+        "Indiana Pacers -0.5/Under 54.5": "3.96",
+        "Brooklyn Nets +0.5/Over 54.5": "3.7",
+        "Brooklyn Nets +0.5/Under 54.5": "4.0"
+      }
+    }
+  },
+  "Boston Celtics At New York Knicks": {
+    "Threes Made": {
+      "3+ Made Threes": {
+        "Derrick White": "1.66",
+        "Jayson Tatum": "1.53",
+        "Payton Pritchard": "1.98",
+        "Sam Hauser": "1.93",
+        "OG Anunoby": "1.82",
+        "Jalen Brunson": "2.0",
+        "Mikal Bridges": "3.25",
+        "Miles McBride": "3.15",
+        "Josh Hart": "4.5",
+        "Karl-Anthony Towns": "4.2"
+      },
+      "7+ Made Threes": {
+        "Jayson Tatum": "10.0",
+        "Derrick White": "12.0",
+        "Sam Hauser": "15.0",
+        "Payton Pritchard": "20.0",
+        "OG Anunoby": "23.0",
+        "Jalen Brunson": "36.0"
+      },
+      "1+ Made Threes": {
+        "Derrick White": "1.03",
+        "Jayson Tatum": "1.03",
+        "Payton Pritchard": "1.07",
+        "Sam Hauser": "1.06",
+        "Jalen Brunson": "1.04",
+        "Josh Hart": "1.22",
+        "Karl-Anthony Towns": "1.19",
+        "Mikal Bridges": "1.14",
+        "Miles McBride": "1.15",
+        "OG Anunoby": "1.04"
+      },
+      "2+ Made Threes": {
+        "Derrick White": "1.21",
+        "Jayson Tatum": "1.17",
+        "Payton Pritchard": "1.34",
+        "Sam Hauser": "1.32",
+        "Jalen Brunson": "1.33",
+        "Karl-Anthony Towns": "1.99",
+        "Mikal Bridges": "1.73",
+        "Miles McBride": "1.76",
+        "OG Anunoby": "1.25",
+        "Josh Hart": "2.12"
+      },
+      "4+ Made Threes": {
+        "Derrick White": "2.45",
+        "Jayson Tatum": "2.2",
+        "Payton Pritchard": "3.15",
+        "Sam Hauser": "3.05",
+        "Jalen Brunson": "3.7",
+        "OG Anunoby": "3.0",
+        "Miles McBride": "6.5"
+      },
+      "5+ Made Threes": {
+        "Jayson Tatum": "3.45",
+        "Derrick White": "4.1",
+        "Payton Pritchard": "5.8",
+        "Sam Hauser": "5.1",
+        "OG Anunoby": "5.8",
+        "Jalen Brunson": "7.25"
+      },
+      "Derrick White - Made Threes": {
+        "Derrick White Over +2.5": "1.64",
+        "Derrick White Under +2.5": "2.15"
+      },
+      "6+ Made Threes": {
+        "Jayson Tatum": "6.0",
+        "Derrick White": "7.0",
+        "Sam Hauser": "9.0",
+        "Payton Pritchard": "11.0",
+        "OG Anunoby": "12.0",
+        "Jalen Brunson": "15.0"
+      },
+      "Jayson Tatum - Made Threes": {
+        "Jayson Tatum Over +3.5": "2.15",
+        "Jayson Tatum Under +3.5": "1.64"
+      },
+      "9+ Made Threes": {
+        "Jayson Tatum": "34.0",
+        "Derrick White": "41.0"
+      },
+      "8+ Made Threes": {
+        "Jayson Tatum": "18.0",
+        "Derrick White": "21.0",
+        "Sam Hauser": "36.0",
+        "Payton Pritchard": "41.0"
+      },
+      "Jalen Brunson - Made Threes": {
+        "Jalen Brunson Over +2.5": "2.0",
+        "Jalen Brunson Under +2.5": "1.78"
+      },
+      "Karl-Anthony Towns - Made Threes": {
+        "Karl-Anthony Towns Over +1.5": "1.96",
+        "Karl-Anthony Towns Under +1.5": "1.8"
+      },
+      "OG Anunoby - Made Threes": {
+        "OG Anunoby Over +2.5": "1.8",
+        "OG Anunoby Under +2.5": "1.96"
+      },
+      "Mikal Bridges - Made Threes": {
+        "Mikal Bridges Over +1.5": "1.72",
+        "Mikal Bridges Under +1.5": "2.08"
+      },
+      "Josh Hart - Made Threes": {
+        "Josh Hart Over +1.5": "2.1",
+        "Josh Hart Under +1.5": "1.68"
+      },
+      "Sam Hauser - Made Threes": {
+        "Sam Hauser Over +2.5": "1.93",
+        "Sam Hauser Under +2.5": "1.83"
+      },
+      "Payton Pritchard - Made Threes": {
+        "Payton Pritchard Over +2.5": "1.96",
+        "Payton Pritchard Under +2.5": "1.8"
+      },
+      "Miles McBride - Made Threes": {
+        "Miles McBride Over +1.5": "1.74",
+        "Miles McBride Under +1.5": "2.05"
+      }
+    },
+    "Game Lines": {
+      "Match Betting": {
+        "Boston Celtics": "2.2",
+        "Tie": "19.0",
+        "New York Knicks": "1.67"
+      },
+      "Line": {
+        "Boston Celtics +1.5/Over 55.5": "4.0",
+        "Boston Celtics +1.5/Under 55.5": "3.14",
+        "New York Knicks -1.5/Over 55.5": "4.25",
+        "New York Knicks -1.5/Under 55.5": "3.45"
+      }
+    }
+  },
+  "Philadelphia 76ers At Houston Rockets": {
+    "Threes Made": {
+      "3+ Made Threes": {
+        "Paul George": "1.7",
+        "Tyrese Maxey": "1.69",
+        "VJ Edgecombe": "2.95",
+        "Kelly Oubre Jr.": "4.3",
+        "Quentin Grimes": "5.2",
+        "Reed Sheppard": "1.91",
+        "Jabari Smith": "2.3",
+        "Kevin Durant": "2.0",
+        "Aaron Holiday": "4.6",
+        "Tari Eason": "4.1"
+      },
+      "VJ Edgecombe - Made Threes": {
+        "VJ Edgecombe Over +1.5": "1.64",
+        "VJ Edgecombe Under +1.5": "2.15"
+      },
+      "7+ Made Threes": {
+        "Paul George": "20.0",
+        "Tyrese Maxey": "21.0",
+        "Reed Sheppard": "18.0",
+        "Kevin Durant": "36.0"
+      },
+      "Tyrese Maxey - Made Threes": {
+        "Tyrese Maxey Over +2.5": "1.68",
+        "Tyrese Maxey Under +2.5": "2.1"
+      },
+      "6+ Made Threes": {
+        "Paul George": "10.0",
+        "Tyrese Maxey": "10.0",
+        "Reed Sheppard": "10.0",
+        "Kevin Durant": "14.0",
+        "Jabari Smith": "20.0"
+      },
+      "2+ Made Threes": {
+        "Paul George": "1.21",
+        "Tyrese Maxey": "1.21",
+        "VJ Edgecombe": "1.63",
+        "Kelly Oubre Jr.": "2.08",
+        "Quentin Grimes": "2.3",
+        "Jabari Smith": "1.44",
+        "Kevin Durant": "1.32",
+        "Reed Sheppard": "1.31",
+        "Aaron Holiday": "2.3",
+        "Tari Eason": "2.1"
+      },
+      "8+ Made Threes": {
+        "Reed Sheppard": "34.0"
+      },
+      "Paul George - Made Threes": {
+        "Paul George Over +2.5": "1.68",
+        "Paul George Under +2.5": "2.1"
+      },
+      "5+ Made Threes": {
+        "Paul George": "5.1",
+        "Tyrese Maxey": "5.1",
+        "Reed Sheppard": "5.4",
+        "Kevin Durant": "7.0"
+      },
+      "Kelly Oubre Jr. - Made Threes": {
+        "Kelly Oubre Jr. Over +1.5": "2.1",
+        "Kelly Oubre Jr. Under +1.5": "1.68"
+      },
+      "1+ Made Threes": {
+        "Kelly Oubre Jr.": "1.24",
+        "Paul George": "1.03",
+        "Quentin Grimes": "1.27",
+        "Tyrese Maxey": "1.03",
+        "VJ Edgecombe": "1.12",
+        "Aaron Holiday": "1.32",
+        "Jabari Smith": "1.07",
+        "Kevin Durant": "1.05",
+        "Reed Sheppard": "1.06",
+        "Tari Eason": "1.25"
+      },
+      "Quentin Grimes - Made Threes": {
+        "Quentin Grimes Over +1.5": "2.25",
+        "Quentin Grimes Under +1.5": "1.58"
+      },
+      "4+ Made Threes": {
+        "Paul George": "2.7",
+        "Tyrese Maxey": "2.75",
+        "VJ Edgecombe": "6.0",
+        "Kevin Durant": "3.5",
+        "Reed Sheppard": "3.1",
+        "Jabari Smith": "4.5"
+      },
+      "Kevin Durant - Made Threes": {
+        "Kevin Durant Over +2.5": "2.0",
+        "Kevin Durant Under +2.5": "1.78"
+      },
+      "Jabari Smith - Made Threes": {
+        "Jabari Smith Over +2.5": "2.25",
+        "Jabari Smith Under +2.5": "1.58"
+      },
+      "Reed Sheppard - Made Threes": {
+        "Reed Sheppard Over +2.5": "1.91",
+        "Reed Sheppard Under +2.5": "1.85"
+      },
+      "Tari Eason - Made Threes": {
+        "Tari Eason Over +1.5": "2.1",
+        "Tari Eason Under +1.5": "1.68"
+      },
+      "Aaron Holiday - Made Threes": {
+        "Aaron Holiday Over +1.5": "2.25",
+        "Aaron Holiday Under +1.5": "1.58"
+      }
+    },
+    "Game Lines": {
+      "Match Betting": {
+        "Philadelphia 76ers": "2.1",
+        "Tie": "15.0",
+        "Houston Rockets": "1.8"
+      },
+      "Line": {
+        "Philadelphia 76ers +0.5/Over 53.5": "3.8",
+        "Philadelphia 76ers +0.5/Under 53.5": "3.6",
+        "Houston Rockets -0.5/Over 53.5": "3.6",
+        "Houston Rockets -0.5/Under 53.5": "3.2"
+      }
+    }
+  },
+  "Los Angeles Lakers At Golden State Warriors": {
+    "Threes Made": {
+      "7+ Made Threes": {
+        "Luke Kennard": "23.0",
+        "Brandin Podziemski": "36.0"
+      },
+      "2+ Made Threes": {
+        "LeBron James": "1.6",
+        "Luke Kennard": "1.4",
+        "Rui Hachimura": "1.67",
+        "Jake Laravia": "2.02",
+        "Brandin Podziemski": "1.34",
+        "De'Anthony Melton": "1.44",
+        "Draymond Green": "1.71",
+        "Pat Spencer": "1.65"
+      },
+      "6+ Made Threes": {
+        "Luke Kennard": "13.0",
+        "Rui Hachimura": "21.0",
+        "LeBron James": "26.0",
+        "Brandin Podziemski": "17.0",
+        "De'Anthony Melton": "20.0",
+        "Pat Spencer": "26.0"
+      },
+      "3+ Made Threes": {
+        "LeBron James": "2.75",
+        "Luke Kennard": "2.12",
+        "Rui Hachimura": "2.85",
+        "Jake Laravia": "3.9",
+        "Brandin Podziemski": "2.07",
+        "De'Anthony Melton": "2.35",
+        "Pat Spencer": "2.9",
+        "Draymond Green": "3.25"
+      },
+      "1+ Made Threes": {
+        "Jake Laravia": "1.23",
+        "LeBron James": "1.1",
+        "Luke Kennard": "1.07",
+        "Rui Hachimura": "1.14",
+        "Brandin Podziemski": "1.05",
+        "De'Anthony Melton": "1.08",
+        "Draymond Green": "1.13",
+        "Pat Spencer": "1.13"
+      },
+      "4+ Made Threes": {
+        "Luke Kennard": "3.6",
+        "LeBron James": "5.8",
+        "Rui Hachimura": "5.3",
+        "Brandin Podziemski": "3.75",
+        "De'Anthony Melton": "4.4",
+        "Pat Spencer": "6.0"
+      },
+      "5+ Made Threes": {
+        "Luke Kennard": "6.75",
+        "Brandin Podziemski": "8.0"
+      },
+      "LeBron James - Made Threes": {
+        "LeBron James Over +1.5": "1.58",
+        "LeBron James Under +1.5": "2.25"
+      },
+      "Rui Hachimura - Made Threes": {
+        "Rui Hachimura Over +1.5": "1.68",
+        "Rui Hachimura Under +1.5": "2.1"
+      },
+      "Jake Laravia - Made Threes": {
+        "Jake Laravia Over +1.5": "2.02",
+        "Jake Laravia Under +1.5": "1.76"
+      },
+      "Luke Kennard - Made Threes": {
+        "Luke Kennard Over +2.5": "2.1",
+        "Luke Kennard Under +2.5": "1.68"
+      }
+    },
+    "Game Lines": {
+      "Match Betting": {
+        "Los Angeles Lakers": "2.08",
+        "Tie": "19.0",
+        "Golden State Warriors": "1.76"
+      },
+      "Line": {
+        "Los Angeles Lakers +0.5/Over 58.5": "4.0",
+        "Los Angeles Lakers +0.5/Under 58.5": "3.27",
+        "Golden State Warriors -0.5/Over 58.5": "4.2",
+        "Golden State Warriors -0.5/Under 58.5": "3.32"
+      }
+    }
+  },
+  "Los Angeles Clippers At Portland Trail Blazers": {
+    "Game Lines": {
+      "Match Betting": {
+        "Los Angeles Clippers": "1.98",
+        "Portland Trail Blazers": "1.86"
+      }
+    }
+  }
+}
