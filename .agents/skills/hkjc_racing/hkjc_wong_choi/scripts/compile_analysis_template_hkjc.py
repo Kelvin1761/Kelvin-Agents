@@ -439,7 +439,7 @@ def build_hkjc_verdict_compiled(json_data, facts_horses):
     for i, label in enumerate(labels):
         if i < len(t4):
             item = t4[i]
-            h_num = item.get('horse_num', '')
+            h_num = item.get('horse_num', item.get('horse_number', ''))
             h_name = horse_names.get(int(h_num), '') if str(h_num).isdigit() else ''
             h_obj = json_data.get('horses', {}).get(str(h_num), {})
             h_rating = h_obj.get('final_rating', h_obj.get('base_rating', h_obj.get('rating', '[未評分]')))
