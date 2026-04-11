@@ -91,7 +91,7 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
     errors = []
     
     # Split by horse analysis block using the standard markers
-    blocks = re.split(r'(?=(?:### 【No\.\d+】|\[#\d+\] \w+))', text)
+    blocks = re.split(r'(?=(?:### 【No\.\d+】|\*\*【No\.\d+】|\[#\d+\] \w+))', text)
     
     if domain == 'au':
         required_tags = ['⏱️', '🐴', '📋', '🧭', '⚠️', '📊', '💡', '⭐']
@@ -100,40 +100,53 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
 
     horse_logics = {}
     
+    # ── Detect Griffin / debut race (全場無往績) ──────────────────────────
+    no_form_count = text.count('無往績記錄')
+    total_horse_blocks = len(blocks) - 1  # minus intro block
+    is_griffin_race = (total_horse_blocks > 0 and
+                       no_form_count >= total_horse_blocks * 0.7)  # ≥70% horses have no form
+    
     for block in blocks[1:]: # Skip the first block which is the intro
         # Identify the horse name/number for better error messages
-        header_match = re.search(r'(### 【No\.\d+】.*|\[#\d+\] \w+.*)', block)
-        horse_id = header_match.group(1).split()[1] if header_match else "Unknown Horse"
+        header_match = re.search(r'((?:###|\*\*)\s*【No\.(\d+)】.*)', block)
+        if header_match:
+            horse_id = f"【No.{header_match.group(2)}】"
+        else:
+            fallback = re.search(r'\[#(\d+)\]', block)
+            horse_id = f"[#{fallback.group(1)}]" if fallback else "Unknown Horse"
+        
+        # ── Is this horse a debut / no-form horse? ──────────────────────
+        is_debut = '無往績記錄' in block or '首出' in block or '首日' in block
         
         grade_match = re.search(r'\*?\*?⭐\s*\*?\*?最終評級[：:]\*?\*?\s*`?\[?([A-DS][+\-]?)\]?`?', block)
         if not grade_match:
             grade_match = re.search(r'⭐\s*(?:最終評級[：:])?\s*`?\[?([A-DS][+\-]?)\]?`?', block)
             
-        # If no grade is found, it could be scratched or malformed, but skip if strictly no grade found.
-        # Although if it doesn't have a grade, it might be a valid scratched horse block, so we check if it is explicitly skipped.
         if not grade_match:
             continue
             
         # Check required tags PER HORSE directly here
         for tag in required_tags:
-            if tag in ['🔬', '⚡', '🔗'] and "無往績記錄" in block:
+            # Griffin/debut exception: relax 🔬段速/⚡EEM/🔗賽績線 requirements
+            if tag in ['🔬', '⚡', '🔗'] and is_debut:
                 continue
             if tag not in block:
                 errors.append(f"[{horse_id}] Missing required tag/field: {tag}")
             
         grade = grade_match.group(1).replace('+', '').replace('-', '')
         
-        # Word counting logic: group English letters into words, count Chinese characters individually
+        # Word counting logic
         eng_words = len(re.findall(r'[a-zA-Z0-9_]+', block))
         chi_chars = len(re.findall(r'[\u4e00-\u9fff]', block))
         words = eng_words + chi_chars
         
-        if grade in ['S', 'A'] and words < 500:
-            errors.append(f"[{horse_id}] Grade {grade} has insufficient words ({words} < 500)")
-        elif grade == 'B' and words < 350:
-            errors.append(f"[{horse_id}] Grade {grade} has insufficient words ({words} < 350)")
-        elif grade in ['C', 'D'] and words < 300:
-            errors.append(f"[{horse_id}] Grade {grade} has insufficient words ({words} < 300)")
+        # Griffin/debut horses have relaxed word requirements
+        min_words = {'S': 500, 'A': 500, 'B': 350, 'C': 300, 'D': 300}
+        if is_debut:
+            min_words = {'S': 300, 'A': 300, 'B': 250, 'C': 200, 'D': 200}
+        threshold = min_words.get(grade, 300)
+        if words < threshold:
+            errors.append(f"[{horse_id}] Grade {grade} has insufficient words ({words} < {threshold}){' [DEBUT HORSE]' if is_debut else ''}")
             
         # Anti-Laziness Scan
         lazy_patterns = [
@@ -147,23 +160,24 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
         core_logic_match = re.search(r'核心邏輯[^\*]*\*\*\s*(.*?)(?=\n\s*>?\s*-\s*\*\*|$)', block, re.DOTALL)
         if core_logic_match:
             logic_text = core_logic_match.group(1).strip()
-            # Remove framing brackets if they exist
             logic_text = re.sub(r'^\[|\]$', '', logic_text).strip()
-            horse_logics[horse_id] = logic_text # Store for LAZY-003 check
+            horse_logics[horse_id] = logic_text
             
             logic_words = len(re.findall(r'[a-zA-Z0-9_]+', logic_text)) + len(re.findall(r'[\u4e00-\u9fff]', logic_text))
-            if logic_words < 100:
-                errors.append(f"[{horse_id}] '核心邏輯' is too brief or lacks deep forensic detail ({logic_words} chars < 100). Please expand to 100-200 words.")
+            # Griffin/debut: relax to 60 chars (pedigree-based analysis is shorter) 
+            min_logic = 60 if is_debut else 100
+            if logic_words < min_logic:
+                errors.append(f"[{horse_id}] '核心邏輯' is too brief ({logic_words} chars < {min_logic}).{' [DEBUT HORSE, pedigree-based OK]' if is_debut else ' Please expand to 100-200 words.'}")
             
-            # Quantitative Evidence Lock (Regex)
-            if not re.search(r'(\d+\.\d+|\d+-\d+)', logic_text):
+            # Quantitative Evidence Lock — SKIP for debut horses (they have no numeric data)
+            if not is_debut and not re.search(r'(\d+\.\d+|\d+-\d+)', logic_text):
                 errors.append(f"[{horse_id}] ⚠️ 核心邏輯缺少定量數據 (Quantitative Lock)! 必須引用實質數據 (如段速 22.14 或走位 1-2-1)。空泛吹捧已被阻截。")
         else:
             errors.append(f"[{horse_id}] Missing properly formatted '- **核心邏輯:**' section.")
             
-        # Formline Quantitative Evidence Lock
+        # Formline Quantitative Evidence Lock — SKIP for debut horses
         formline_match = re.search(r'賽績線(?:\s*\(近.*?\)|\s*)[：:]\s*(.*?)(?=\n\s*>?\s*-\s*\*\*|$)', block, re.DOTALL)
-        if formline_match:
+        if formline_match and not is_debut:
             formline_text = formline_match.group(1).strip()
             if '無往績記錄' not in formline_text and not re.search(r'(\d+\.\d+|\d+-\d+)', formline_text):
                  errors.append(f"[{horse_id}] ⚠️ 賽績線缺乏定量數據 (Quantitative Lock)! 綜合結論需要實質支持。")
@@ -180,15 +194,26 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
                 field_line_match = re.search(rf'{field}[^:]*:\s*(?:`?\[.*?\]`?)(.*?)(?=\n|$)', block)
                 if field_line_match:
                     reasoning_text = field_line_match.group(1).strip()
-                    # Apply quantitative digit lock ONLY for fields that strictly require it (Speed, EEM)
-                    if field in ['段速與引擎', 'EEM與形勢', '段速質量', 'EEM 潛力']:
-                        if '無往績記錄' not in block and len(reasoning_text) > 2 and not re.search(r'\d+', reasoning_text):
-                            errors.append(f"[{horse_id}] ⚠️ 評級矩陣的 `{field}` 理據缺乏量化數據支撐！(必須包含 Facts.md 內的數字如 22.50, 1400m, +5lb 等被 Analyst 抽出之證據)")
+                    # Apply digit lock ONLY for Speed, EEM — and SKIP for debut horses
+                    if not is_debut and field in ['段速與引擎', 'EEM與形勢', '段速質量', 'EEM 潛力']:
+                        if len(reasoning_text) > 2 and not re.search(r'\d+', reasoning_text):
+                            errors.append(f"[{horse_id}] ⚠️ 評級矩陣的 `{field}` 理據缺乏量化數據支撐！")
 
-    # Cross-Horse Similarity Check (LAZY-003)
+    # ── LAZY-003: Cross-Horse Similarity Check ─────────────────────────────
     def get_ngrams(text, n=3):
         chars = re.findall(r'[\w\u4e00-\u9fff]', text)
         return set(''.join(chars[i:i+n]) for i in range(len(chars)-n+1))
+    
+    # ── LAZY-004: IDENTICAL CLONE DETECTOR (catches template-scraped JSONs) ─
+    # If ALL horses share the EXACT SAME core_logic text, it's a scripted clone
+    unique_logics = set(horse_logics.values())
+    if len(horse_logics) >= 3 and len(unique_logics) == 1:
+        errors.append(f"🚨🚨🚨 LAZY-004 [FATAL]: 全場 {len(horse_logics)} 匹馬使用完全相同的核心邏輯！"
+                      f"呢個係模板腳本生成嘅假分析，唔係 LLM Analyst 嘅真實分析。"
+                      f"請刪除 Logic.json 並重新由 Orchestrator 驅動 LLM 進行法醫級分析。")
+    elif len(horse_logics) >= 4 and len(unique_logics) <= 2:
+        errors.append(f"🚨 LAZY-004 [SEVERE]: 全場 {len(horse_logics)} 匹馬只有 {len(unique_logics)} 種核心邏輯！"
+                      f"疑似使用罐頭模板或批量複製。")
         
     horse_ids = list(horse_logics.keys())
     for i in range(len(horse_ids)):
@@ -199,7 +224,7 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
             ng2 = get_ngrams(horse_logics[h2])
             if ng1 and ng2:
                 jaccard = len(ng1.intersection(ng2)) / len(ng1.union(ng2))
-                if jaccard > 0.40:  # 40% similarity threshold on 3-grams is actually very high for natural text
+                if jaccard > 0.40:
                     errors.append(f"[{h1} & {h2}] 🚨 LAZY-003: 核心邏輯發現高度重複性罐頭字眼 (相似度 {jaccard:.0%})，Analyst 介入失敗！嚴禁使用腳本或模版複製貼上。")
 
     return errors
