@@ -392,6 +392,7 @@ def main():
                 core_logic = h_entry.get('core_logic', '')
                 locked_l400 = h_entry.get('sectional_forensic', {}).get('raw_L400', '')
                 locked_pos = h_entry.get('eem_energy', {}).get('last_run_position', '')
+                locked_nonce = h_entry.get('_validation_nonce', '')
                 
                 errors = []
                 if horse_name and horse_name not in core_logic:
@@ -416,6 +417,10 @@ def main():
                     has_pos_ref = locked_pos in core_logic if locked_pos and locked_pos not in ('N/A', '', '-') else True
                     if not has_l400_ref and not has_pos_ref:
                         errors.append(f"WALL-007: core_logic 未引用鎖定數據 (L400={locked_l400} 或走位={locked_pos})，缺乏事實根據")
+                
+                # WALL-008: Nonce 驗證
+                if not locked_nonce:
+                    errors.append(f"WALL-008: 缺失防偽標籤 _validation_nonce (可能使用了不合規的 Batch Script 繞過)")
                     
                 if errors:
                     print(f"\n🚨 馬號 {h}（{horse_name}）阻火牆驗證失敗！")
@@ -473,36 +478,35 @@ def main():
                 horse_name = h_entry.get('horse_name', '?')
                 locked_l400 = h_entry.get('sectional_forensic', {}).get('raw_L400', 'N/A')
                 locked_pos = h_entry.get('eem_energy', {}).get('last_run_position', 'N/A')
+                locked_nonce = h_entry.get('_validation_nonce', 'MISSING')
+                
+                # --- V9.1 JIT Slicing Mechanism ---
+                runtime_dir = os.path.join(target_dir, ".runtime")
+                os.makedirs(runtime_dir, exist_ok=True)
+                runtime_ctx_path = os.path.join(runtime_dir, "Active_Horse_Context.md")
+                
+                with open(runtime_ctx_path, "w", encoding="utf-8") as _ctx_f:
+                    _ctx_f.write(f"🔒 NONCE: {locked_nonce}\n")
+                    _ctx_f.write(horse_facts_block)
                 
                 # Step 3: Print focused single-horse instruction
                 print(f"\n{'='*60}")
                 print(f"🚨🚨🚨【HKJC HORSE ANALYST — Race {r} / 馬號 {target_horse}「{horse_name}」】🚨🚨🚨")
                 print(f"{'='*60}")
                 print(f"")
-                print(f"📋 Python 已預填以下事實數據（嚴禁篡改）：")
-                print(f"   → L400: {locked_l400} | 沿途位: {locked_pos}")
-                print(f"   → 負磅: {h_entry.get('weight', '?')} | 檔位: {h_entry.get('barrier', '?')}")
-                print(f"   → 近六場: {h_entry.get('last_6_finishes', '?')}")
-                print(f"   → 休後: {h_entry.get('days_since_last', '?')} 日")
+                print(f"📋 Python 已預填事實數據。當前已將該馬匹事實寫入：")
+                print(f"   => {runtime_ctx_path}")
+                print(f"   (為確保單駒分析完整性，請「絕對禁止」自行查閱全局 Facts.md)")
                 print(f"")
-                print(f"📖 以下為「{horse_name}」嘅完整事實區塊（請仔細閱讀後分析）：")
-                print(f"{'─'*60}")
-                # Print horse facts block (limit to ~2500 chars to manage context)
-                print(horse_facts_block[:2500])
-                if len(horse_facts_block) > 2500:
-                    print(f"\n... (更多賽績請直接查閱 Facts.md)")
-                print(f"{'─'*60}")
-                print(f"")
-                print(f"👉 請打開 `{os.path.basename(logic_json)}`，找到馬號 \"{target_horse}\" 嘅 JSON 節點。")
+                print(f"👉 請讀取上述暫存檔，打開 `{os.path.basename(logic_json)}`，找到馬號 \"{target_horse}\" 嘅 JSON 節點。")
                 print(f"⚠️ 將所有標記為 [FILL] 的欄位替換為你的分析結果。")
                 print(f"")
                 print(f"🔴 阻火牆規則 (違反即退回)：")
                 print(f"   1. core_logic 必須包含馬名「{horse_name}」(禁止用「此駒」)")
                 print(f"   2. core_logic 不少於 80 字")
-                print(f"   3. 嚴禁修改 raw_L400 ({locked_l400}) 同 last_run_position ({locked_pos})")
+                print(f"   3. 嚴禁修改 raw_L400 ({locked_l400}) 同 last_run_position ({locked_pos})，必須依據 Context 分析")
                 print(f"   4. 嚴禁填寫其他馬號的數據！只做馬號 {target_horse}")
-                print(f"   5. matrix reasoning 必須引用具體數據")
-                print(f"   6. forgiveness 必須逐場判定")
+                print(f"   5. 嚴禁修改 _validation_nonce！")
                 print(f"")
                 print(f"完成後重新執行 Orchestrator！")
                 sys.exit(0)

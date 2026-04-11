@@ -153,15 +153,24 @@ def parse_trends(block):
     return result
 
 
+import hashlib
+import time
+
 def build_skeleton(data):
     """Build JSON skeleton: real data pre-filled, analysis fields as [FILL]."""
     name = data.get('name', '未知')
     raw_l400 = data.get('raw_L400', 'N/A')
     last_pos = data.get('last_run_position', 'N/A')
+    
+    # Generate _validation_nonce
+    timestamp = str(time.time())
+    nonce_input = f"{name}_{timestamp}"
+    nonce = hashlib.md5(nonce_input.encode('utf-8')).hexdigest()
 
     return {
         # ===== LOCKED DATA (Python pre-filled, LLM must NOT modify) =====
         '_locked': True,
+        '_validation_nonce': nonce,
         'horse_name': name,
         'jockey': data.get('jockey', ''),
         'trainer': data.get('trainer', ''),
