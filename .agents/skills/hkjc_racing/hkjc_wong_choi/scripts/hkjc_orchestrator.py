@@ -171,7 +171,8 @@ def main():
     
     # Pre-scan states to build the task dashboard
     for r in range(1, total_races + 1):
-        facts_file = os.path.join(target_dir, sorted([f for f in os.listdir(target_dir) if f"Race {r} Facts.md" in f] + ["None"])[-1]) if any(f"Race {r} Facts.md" in f for f in os.listdir(target_dir)) else None
+        matching_facts = [f for f in os.listdir(target_dir) if f"Race {r} Facts.md" in f]
+        facts_file = os.path.join(target_dir, matching_facts[0]) if matching_facts else None
         if facts_file and os.path.exists(facts_file): 
             facts_done += 1
             
@@ -261,10 +262,7 @@ def main():
                 cmd = ["python3", ".agents/scripts/inject_hkjc_fact_anchors.py", fg, "--output", out_path]
                 subprocess.run(cmd, check=True)
                 
-        print("✅ Facts 全部生成完畢！")
-        print("請立刻重新執行 Orchestrator 以前往 State 3。")
-        sys.exit(0)
-
+        print("✅ Facts 全部生成完畢！自動無縫推進前往 State 3 執行分析...")
     if chk_analysis == "[ ]":
         date_prefix = os.path.basename(target_dir).split(" ")[0][5:]
         strike_file = os.path.join(target_dir, ".qa_strikes.json")
@@ -288,9 +286,26 @@ def main():
             
             # 1. Provide Context for JSON Creation
             if "等待建立" in analysis_status_dict[r]:
-                print(f"🚨 State 3 行動要求 (Race {r} JSON 未建立):")
-                print(f"👉 LLM Agent 請注意：請讀取 `{os.path.basename(facts_path)}` 的地形檔位，")
-                print(f"並在同目錄建立 `{os.path.basename(logic_json)}` 包含 Batch 0 的 `race_analysis.speed_map`。")
+                print(f"\n🚨🚨🚨【HKJC HORSE ANALYST 啟動要求 (Race {r} Batch 0 戰場全景)】🚨🚨🚨")
+                print(f"👉 LLM Agent 請強制切換為 hkjc_horse_analyst 模式！讀取 `{os.path.basename(facts_path)}`。")
+                print("在 <thought> 標籤內執行【Step 0 步速瀑布】推理，引用事實資料判定 Pace Type！")
+                print("")
+                print(f"然後建立 `{os.path.basename(logic_json)}`，Schema 強制要求：")
+                print("  race_analysis: {")
+                print("    race_number, race_class, distance,")
+                print("    speed_map: {")
+                print("      predicted_pace,        ← 'Crawl/Moderate/Fast/Chaotic'")
+                print("      leaders: [],            ← 馬號列表")
+                print("      on_pace: [],            ← 馬號列表")
+                print("      mid_pack: [],           ← 馬號列表")
+                print("      closers: [],            ← 馬號列表")
+                print("      track_bias,             ← 跑道偏差描述 [Step 3 強制]")
+                print("      tactical_nodes,         ← 戰術節點 [Step 3 強制]")
+                print("      collapse_point          ← 步速崩潰點分析 [Step 3 強制]")
+                print("    }")
+                print("  }")
+                print("")
+                print("⚠️ 重要：track_bias、tactical_nodes、collapse_point 三項為強制填寫，不得留空！")
                 print("生成完畢後，請重新執行本 Orchestrator！")
                 sys.exit(0)
                 
@@ -309,10 +324,56 @@ def main():
                     break
                     
             if pending_batch:
-                print(f"🚨 State 3 行動要求 (Race {r} Batch {pending_batch[0]} 未完成):")
-                print(f"👉 LLM Agent 請注意：請讀取這 3 匹馬的 Facts.md，並依據 Batch 0 結果，")
-                print(f"填寫 `{os.path.basename(logic_json)}` 中的 {pending_batch[1]} 馬匹資料。")
-                print("⚠️ 強制規定: 評級矩陣必須包含 `_reasoning` 欄位, 核心邏輯介於 100-200字。")
+                print(f"\n🚨🚨🚨【HKJC HORSE ANALYST 啟動要求 (Race {r} Batch {pending_batch[0]} : 馬匹 {pending_batch[1]})】🚨🚨🚨")
+                print("⚠️ 絕對強制：依照 hkjc_horse_analyst 設計的五步法醫級分析流程逐步執行：")
+                print("Step 1 [情境標籤]: 讀取 Facts.md，判定情境標籤 (FGV/FGX/FGO/FGE/FGI)。")
+                print("Step 2 [段速法醫]: 核查近 3 仗 L400/L600 段速，修正干擾因素並記入 sectional_forensic。")
+                print("Step 3 [8 維度打分]: 針對矩陣 8 個維度各給出 ✅/➖/❌ + reasoning (必須包含具體數字)。")
+                print("Step 4 [寬恕 + EEM]: 逐場判定 Race Forgiveness，評估 EEM 能量消耗，記入 eem_energy 及 forgiveness_archive。")
+                print("Step 5 [核心邏輯]: 撰寫法醫級核心邏輯 ≥120字，提取 advantages + disadvantages。")
+                print("")
+                print(f"請填寫 `{os.path.basename(logic_json)}`，每匹馬的 JSON 節點必須包含以下所有 key：")
+                print("  horses: {")
+                print("    \"<馬號>\": {")
+                print("      scenario_tags,          ← 情境標籤 (e.g. FGV/FGX)")
+                print("      analytical_breakdown: { ← 10項馬匹剖析")
+                print("        trend_analysis, hidden_form, stability_risk, class_assessment,")
+                print("        track_distance_suitability, engine_distance, gear_changes,")
+                print("        trainer_signal, jockey_fit, pace_adaptation")
+                print("      },")
+                print("      sectional_forensic: {   ← 段速法醫 [Step 2]")
+                print("        raw_L400, correction_factor, corrected_assessment, trend")
+                print("      },")
+                print("      eem_energy: {           ← EEM 能量 [Step 4]")
+                print("        last_run_position, cumulative_drain, assessment")
+                print("      },")
+                print("      forgiveness_archive: {  ← 寬恕認定 [Step 4]")
+                print("        factors, conclusion")
+                print("      },")
+                print("      matrix: {               ← 8維度評級矩陣 [Step 3]")
+                print("        stability, speed_mass, eem, trainer_jockey,")
+                print("        scenario, freshness, formline, class_advantage,")
+                print("        forgiveness_bonus  ← 每項含 score + reasoning")
+                print("      },")
+                print("      base_rating,            ← 14.2 基礎評級 (S/A+/A/B+/B/C...)")
+                print("      fine_tune: {            ← 14.2B 微調 [Step 5]")
+                print("        direction, trigger")
+                print("      },")
+                print("      override: {             ← 14.3 覆蓋規則 [Step 5]")
+                print("        rule")
+                print("      },")
+                print("      final_rating,           ← 最終評級 (fine_tune + override 後)")
+                print("      core_logic,             ← 核心邏輯 ≥120字 [Step 5]")
+                print("      advantages,             ← 最大競爭優勢 [Step 5]")
+                print("      disadvantages,          ← 最大失敗風險 [Step 5]")
+                print("      evidence_step_0_14,     ← 法醫級推演錨點 (可選，推薦填寫)")
+                print("      underhorse: { triggered, condition, reason }")
+                print("    }")
+                print("  }")
+                print("")
+                print("⚠️ 你只需填 matrix 8 維度 ✅/➖/❌ + reasoning + core_logic + advantages/disadvantages。")
+                print("   base_rating 請自行按照矩陣規則填寫；fine_tune 和 override 請按 Analyst 指引判斷。")
+                print(f"\n若有違背格式，QA 阻火牆將即刻判定為 LAZY-003 並退回！")
                 print("生成完畢後，請重新執行本 Orchestrator！")
                 sys.exit(0)
                 
@@ -357,8 +418,13 @@ def main():
                 # Loop naturally advances to r+1
 
     # --- STATE 4 & 5: Completion ---
-    print("🏆 State 4: 全日賽事分析合規過關！")
-    # subprocess.run(["python3", ".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/generate_hkjc_reports.py", "--target_dir", target_dir])
+    print("🏆 State 4: 全日賽事分析合規過關！正在產製 Excel 報告...")
+    reports_script = ".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/generate_hkjc_reports.py"
+    if os.path.exists(reports_script):
+        subprocess.run(["python3", reports_script, "--target_dir", target_dir])
+    else:
+        print("⚠️ generate_hkjc_reports.py 未找到，略過報告生成。")
+    subprocess.run(["python3", ".agents/scripts/session_cost_tracker.py", target_dir, "--domain", "hkjc"])
     
     print("\n🎉 [SUCCESS] HKJC Wong Choi Pipeline 任務全數擊破！")
     

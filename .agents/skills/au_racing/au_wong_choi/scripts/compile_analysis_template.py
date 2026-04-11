@@ -169,124 +169,197 @@ def build_panorama(json_data, facts_path, facts_text):
 
 def generate_horse_section(horse_idx, h_fact, h_logic):
     lines = []
-    
-    rating = h_logic.get('rating', '[FILL]')
+
+    rating = h_logic.get('base_rating', h_logic.get('rating', '[FILL]'))
+    final_rating = h_logic.get('final_rating', rating)
     core_logic = h_logic.get('core_logic', '[FILL]')
-    fgv = h_logic.get('forgiveness', '無')
-    risks = h_logic.get('risks', '無')
-    # Header
+    advantages = h_logic.get('advantages', h_logic.get('competitive_advantage', '[缺失優勢]'))
+    disadvantages = h_logic.get('disadvantages', h_logic.get('risks', h_logic.get('risk_level', '[缺失風險]')))
+    fgv = h_logic.get('forgiveness', h_logic.get('scenario_tags', '無'))
     jockey_str = h_fact.get('jockey', 'Unknown')
     trainer_str = h_fact.get('trainer', 'Unknown')
-    lines.append(f"### 【No.{h_fact['num']}】{h_fact['name']} (檔位:{h_fact['barrier']}) | 騎師: {jockey_str} | 練馬師: {trainer_str} | 評級: {rating}")
+
+    # ── 1. 馬匹標題 + 情境標記 ──────────────────────────────────────────
+    lines.append(f"### 【No.{h_fact['num']}】{h_fact['name']} (檔位:{h_fact['barrier']}) | 騎師: {jockey_str} | 練馬師: {trainer_str} | 評級: {final_rating}")
     lines.append(f"**📌 情境標記:** `{fgv}`\n")
-    
-    # QA placeholders
+
+    # ── 2. 近績解構 ──────────────────────────────────────────────────────
     lines.append('#### ⏱️ 近績解構')
     lines.append(f"- **近績序列:** `{h_fact.get('recent_form', '[詳見下方賽績表]')}`")
-    lines.append(f"- **狀態週期:** `{h_logic.get('status_cycle', '平穩')}`")
-    lines.append('')
-    
-    # 📋 完整賽績與寬恕檔案
-    lines.append('#### 📋 完整賽績檔案')
+    lines.append(f"- **狀態週期:** `{h_logic.get('status_cycle', '[FILL]')}`")
+    lines.append(f"- **趨勢總評:** {h_logic.get('trend_summary', '[FILL]')}\n")
+
+    # ── 3. 完整賽績檔案 (Facts，僅一次) ─────────────────────────────────
+    lines.append('#### 📋 完整賽績檔案 (包含 Step 12 寬恕判斷)\n')
     if h_fact.get('table'):
         race_forgiveness = h_logic.get('race_forgiveness', [])
         lines.append(_truncate_table(h_fact['table'], max_rows=5, race_forgiveness_list=race_forgiveness))
     lines.append('')
-    if h_fact.get('trends'): lines.append('- **' + h_fact['trends'].strip() + '\n')
-    if h_fact.get('eem'): lines.append('- **' + h_fact['eem'].strip() + '\n')
-    if h_fact.get('formline'): lines.append('- **' + h_fact['formline'].strip() + '\n')
-    if h_fact.get('engine'): lines.append('- **' + h_fact['engine'].strip() + '\n')
-    
-    # Rest of required QA sections
+    # Inject EEM + Trends from Facts (once, cleanly labelled)
+    if h_fact.get('trends'):
+        lines.append(h_fact['trends'].strip() + '\n')
+    if h_fact.get('eem'):
+        lines.append(h_fact['eem'].strip() + '\n')
+
+    # ── 4. 馬匹剖析 (5 項 AU 標準) ──────────────────────────────────────
+    h_analysis = h_logic.get('analytical_breakdown', {})
     lines.append('#### 🐴 馬匹剖析')
-    lines.append(f"- **核心參數:** {rating} 級實力\n")
-    
+    lines.extend([
+        f"- **班次負重:** {h_analysis.get('class_weight', '[FILL]')}",
+        f"- **引擎距離 (Type A/B/C + Sire):** {h_analysis.get('engine_distance', '[FILL]')}",
+        f"- **步態場地:** {h_analysis.get('track_surface_gait', '[FILL]')}",
+        f"- **配備意圖:** {h_analysis.get('gear_intent', '[FILL]')}",
+        f"- **人馬組合:** {h_analysis.get('jockey_trainer_combination', '[FILL]')}",
+    ])
+    lines.append('')
+
+    # ── 5. 段速法醫 ──────────────────────────────────────────────────────
+    sf = h_logic.get('sectional_forensic', {})
+    lines.append('#### 🔬 段速法醫')
+    lines.append(
+        f"- **原始 L600/L400:** {sf.get('raw_L400', '[FILL]')} | "
+        f"**修正因素:** {sf.get('correction_factor', '[FILL]')} | "
+        f"**修正判斷:** {sf.get('corrected_assessment', '[FILL]')}"
+    )
+    lines.append(f"- **趨勢(近 3 仗):** `{sf.get('trend', '[FILL]')}`\n")
+
+    # ── 6. EEM 能量 ───────────────────────────────────────────────────────
+    eem = h_logic.get('eem_energy', {})
+    lines.append('#### ⚡ EEM 能量')
+    lines.append(f"- **上仗走位:** {eem.get('last_run_position', '[FILL]')}")
+    lines.append(f"- **累積消耗:** `{eem.get('cumulative_drain', '[FILL]')}`")
+    lines.append(f"- **總評:** {eem.get('assessment', '[FILL]')}\n")
+
+    # ── 7. 寬恕認定 ───────────────────────────────────────────────────────
+    forg = h_logic.get('forgiveness_archive', {})
+    lines.append('#### 📋 寬恕認定')
+    lines.append(f"- **因素:** {forg.get('factors', '[FILL]')}")
+    lines.append(f"- **結論:** `{forg.get('conclusion', '[FILL]')}`\n")
+
+    # ── 8. 賽績線 (Facts，僅一次) ────────────────────────────────────────
+    if h_fact.get('formline'):
+        lines.append('#### 🔗 賽績線\n')
+        lines.append(h_fact['formline'].strip() + '\n')
+        lines.append(f"- **綜合結論:** `{h_analysis.get('formline_strength', '[FILL]')}`\n")
+
+    # ── 9. 陣型預判 ───────────────────────────────────────────────────────
+    tactical = h_logic.get('tactical_plan', {})
     lines.append('#### 🧭 陣型預判')
-    lines.append(f"- 形勢: `[視乎起步]`\n")
-    
+    lines.append(f"- **預計守位:** {tactical.get('expected_position', '[FILL]')}")
+    lines.append(f"- **形勢判定:** {tactical.get('race_scenario', '[FILL]')}\n")
+
+    # ── 10. 風險儀表板 ────────────────────────────────────────────────────
     lines.append('#### ⚠️ 風險儀表板')
-    lines.append(f"- 重大風險:`{risks}`\n")
-    
-    # 📊 評級矩陣
-    lines.append('#### 📊 評級矩陣')
-    
+    lines.append(f"- **重大風險:** {disadvantages}")
+    lines.append(f"- **穩定指數:** `{h_logic.get('stability_index', '[FILL]')}/10`\n")
+
+    # ── 11. 評級矩陣 (8 AU 維度) ─────────────────────────────────────────
+    lines.append('#### 📊 評級矩陣 (Step 14)')
     matrix_keys = [
         ("狀態與穩定性", "核心"),
-        ("段速與引擎", "核心"),
-        ("EEM與形勢", "半核心"),
-        ("騎練訊號", "半核心"),
-        ("級數與負重", "輔助"),
-        ("場地適性", "輔助"),
-        ("賽績線", "輔助"),
-        ("裝備與距離", "輔助")
+        ("段速與引擎",   "核心"),
+        ("EEM與形勢",    "半核心"),
+        ("騎練訊號",     "半核心"),
+        ("級數與負重",   "輔助"),
+        ("場地適性",     "輔助"),
+        ("賽績線",       "輔助"),
+        ("裝備與距離",   "輔助"),
     ]
-    
     m_data = h_logic.get('matrix', {})
-    
-    core_check = 0
-    core_fail = 0
-    semi_check = 0
-    aux_check = 0
-    total_fail = 0
-    
+
+    core_check = semi_check = aux_check = total_fail = core_fail = 0
     for key, c_type in matrix_keys:
         item = m_data.get(key, {})
-        score = item.get('score', '[-]').replace('✅','1').replace('❌','0')  # Fallback formatting just in case
-        is_check = "✅" in item.get('score', '')
-        is_fail = "❌" in item.get('score', '')
-        
+        score_display = item.get('score', '[-]')
+        is_check = "✅" in score_display
+        is_fail  = "❌" in score_display
         if is_check:
             if c_type == "核心": core_check += 1
-            if c_type == "半核心": semi_check += 1
-            if c_type == "輔助": aux_check += 1
+            elif c_type == "半核心": semi_check += 1
+            else: aux_check += 1
         if is_fail:
             total_fail += 1
             if c_type == "核心": core_fail += 1
-            
-        reason = item.get('_reasoning', item.get('reason', '無填寫理據'))
-        score_display = item.get('score', '[-]')
+        reason = item.get('reasoning', item.get('_reasoning', item.get('reason', '無填寫理據')))
         lines.append(f"- **{key}** [{c_type}]: `{score_display}` | 理據: {reason}")
 
-    lines.append(f"- **編號矩陣:** 核心✅={core_check} | 半核心✅={semi_check} | 輔助✅={aux_check} | 總❌={total_fail} | 核心❌={core_fail}")
     lines.append('')
-    
+
+    # ── 12. 矩陣算術 ─────────────────────────────────────────────────────
+    lines.append(f"**🔢 矩陣算術:** 核心✅={core_check} | 半核心✅={semi_check} | 輔助✅={aux_check} | 總❌={total_fail} | 核心❌={core_fail}")
+
+    # ── 13. 基礎評級 ─────────────────────────────────────────────────────
+    lines.append(f"**基礎評級:** `{rating}`")
+
+    # ── 14. 微調 (14.2B) ─────────────────────────────────────────────────
+    ft = h_logic.get('fine_tune', {})
+    ft_dir  = ft.get('direction', '無') if isinstance(ft, dict) else str(ft)
+    ft_trig = ft.get('trigger', '無')   if isinstance(ft, dict) else '無'
+    lines.append(f"**微調:** `{ft_dir}` | 觸發: `{ft_trig}`")
+
+    # ── 15. 覆蓋規則 (14.3) ──────────────────────────────────────────────
+    ovr = h_logic.get('override', {})
+    ovr_rule = ovr.get('rule', '無') if isinstance(ovr, dict) else str(ovr)
+    lines.append(f"**覆蓋規則:** `{ovr_rule}`\n")
+
+    # ── 16. 核心邏輯 ─────────────────────────────────────────────────────
     lines.append('#### 💡 核心邏輯與結論')
     lines.append(f"> - **核心邏輯:** {core_logic}")
-    lines.append(f"> - **最大失敗風險:** {risks}\n")
-    
-    lines.append(f"⭐ **最終評級:** `{rating}`\n")
-    
+    lines.append(f"> - **最大競爭優勢:** {advantages}")
+    lines.append(f"> - **最大失敗風險:** {disadvantages}\n")
+
+    # ── 17. 法醫級推演錨點 (摺疊) ────────────────────────────────────────
+    evidence = h_logic.get('evidence_step_0_14', '')
+    if evidence:
+        lines.append('<details><summary>🔬 法醫級推演錨點 (Step 0-14 Evidence Chain)</summary>\n')
+        lines.append(evidence)
+        lines.append('\n</details>\n')
+
+    # ── 17b. 場地雙軌評級 (UNSTABLE 時觸發) ──────────────────────────────
+    dual = h_logic.get('dual_track', {})
+    if dual and dual.get('triggered'):
+        lines.append('#### 📗📙 場地雙軌評級')
+        lines.append(f"- **草地評級:** `{dual.get('turf_rating', '[FILL]')}`")
+        lines.append(f"- **全天候評級:** `{dual.get('awt_rating', '[FILL]')}`")
+        lines.append(f"- **適用條件:** {dual.get('condition', '[FILL]')}\n")
+
+    # ── 18. 最終評級 + 冷門馬 ────────────────────────────────────────────
+    lines.append(f"⭐ **最終評級:** `{final_rating}`\n")
+
     uh = h_logic.get('underhorse', {})
     uh_trig = "觸發" if uh.get('triggered') else "未觸發"
     lines.append(f"🐴⚡ **冷門馬訊號:** `{uh_trig}`")
     if uh_trig == "觸發":
         lines.append(f"- **受惠條件:** {uh.get('condition', '')}")
         lines.append(f"- **理由:** {uh.get('reason', '')}")
-        
+
     return '\n'.join(lines)
 
 def build_verdict(json_data, facts_horses):
     v = json_data.get('race_analysis', {}).get('verdict', {})
-    
     horse_names = {h['num']: h['name'] for h in facts_horses}
-    
+
     lines = []
     lines.append('## [第三部分] 🏆 全場最終決策')
     lines.append(f"**信心指數:** `{v.get('confidence', '[未定]')}`\n")
-    
     lines.append('**Top 4 位置精選**\n')
+
     t4 = v.get('top4', [])
     labels = ['🥇 **第一選**', '🥈 **第二選**', '🥉 **第三選**', '🏅 **第四選**']
+    csv_rows = []
+
     for i, label in enumerate(labels):
         if i < len(t4):
             item = t4[i]
             h_num = item.get('horse_num', '')
             h_name = horse_names.get(int(h_num), '') if str(h_num).isdigit() else ''
             h_obj = json_data.get('horses', {}).get(str(h_num), {})
-            h_rating = h_obj.get('rating', 'X')
+            h_rating = h_obj.get('final_rating', h_obj.get('base_rating', h_obj.get('rating', 'X')))
             m_data = h_obj.get('matrix', {})
-            core_check = sum(1 for m in m_data.values() if "✅" in m.get('score', ''))
-            
+            core_check = sum(1 for m in m_data.values() if isinstance(m, dict) and "✅" in m.get('score', ''))
+            jockey = next((hf['jockey'] for hf in facts_horses if str(hf['num']) == str(h_num)), '')
+            trainer = next((hf['trainer'] for hf in facts_horses if str(hf['num']) == str(h_num)), '')
+
             lines.extend([
                 label,
                 f"- **馬號及馬名:** [{h_num}] {h_name}",
@@ -294,27 +367,36 @@ def build_verdict(json_data, facts_horses):
                 f"- **核心理據:** {item.get('reason', '')}",
                 f"- **最大風險:** {item.get('risk', '')}\n"
             ])
-            
-    lines.append('---')
-    lines.append('**🎯 Top 2 入三甲信心度 (Top 2 Place Confidence)**')
-    lines.append('🥇 [1]:`[🟢高]` — 最大威脅:[2]')
-    lines.append('🥈 [2]:`[🟢高]` — 最大威脅:[1]\n')
-    
-    lines.append('---')
-    lines.append('**🔄 步速逆轉保險 (Pace Flip Insurance):**')
+            csv_rows.append(f"{h_num},{h_name},{jockey},{trainer},{h_rating},{item.get('reason', '')[:40]}")
+
+    top1 = t4[0].get('horse_num', '?') if t4 else '?'
+    top2 = t4[1].get('horse_num', '?') if len(t4) > 1 else '?'
+    lines.extend([
+        '---',
+        '**🎯 Top 2 入三甲信心度 (Top 2 Place Confidence)**',
+        f"🥇 [{top1}]:`[{v.get('top2_confidence_1', '🟢高')}]` — 最大威脅:[{top2}]",
+        f"🥈 [{top2}]:`[{v.get('top2_confidence_2', '🟢高')}]` — 最大威脅:[{top1}]\n",
+        '---',
+        '**🔄 步速逆轉保險 (Pace Flip Insurance):**'
+    ])
+
     fli = v.get('pace_flip_insurance', {})
     faster = fli.get('if_faster', {})
     slower = fli.get('if_slower', {})
-    lines.append(f"- 若步速比預測更快 → 受惠: {faster.get('benefit', '')} | 受損: {faster.get('hurt', '')}")
-    lines.append(f"- 若步速比預測更慢 → 受惠: {slower.get('benefit', '')} | 受損: {slower.get('hurt', '')}\n")
-    
+    lines.append(f"- 若步速比預測更快 → 受惠: {faster.get('benefit', '[FILL]')} | 受損: {faster.get('hurt', '[FILL]')}")
+    lines.append(f"- 若步速比預測更慢 → 受惠: {slower.get('benefit', '[FILL]')} | 受損: {slower.get('hurt', '[FILL]')}\n")
+
+    # ── CSV 匯出 (真實數據) ───────────────────────────────────────────────
     lines.append('---')
     lines.append('## [第五部分] 📊 數據庫匯出 (CSV)\n')
     lines.append('```csv')
-    lines.append('race_id,horse_number,horse_name,win_odds,place_odds,verdict,risk_level')
-    lines.append('[FILL: 由 compute_rating_matrix.py 自動生成]')
+    lines.append('horse_num,horse_name,jockey,trainer,rating,core_reason_summary')
+    if csv_rows:
+        lines.extend(csv_rows)
+    else:
+        lines.append('[No Top 4 data in JSON verdict]')
     lines.append('```\n')
-    return '\n'.join(lines)
+
 
 def main():
     parser = argparse.ArgumentParser()

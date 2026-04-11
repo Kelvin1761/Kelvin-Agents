@@ -26,22 +26,25 @@ ag_kit_skills:
 
 讀取一次後保留在記憶中,嚴禁每場賽事重複讀取。所有 P-Series 的約束條款，皆已寫死於 `engine_directives.md` 的 XML 標籤內，請嚴格遵守。
 
-# 全自動混合執行邏輯 (Hybrid Protocol V4.2)
-🎯 **核心指令 (Core Directive):**
-當收到用戶要求分析某條 Racenet URL 或指示 `AU Wong Choi` 開始任務時，你必須嚴格採用 **混合分工模式**：
+# V8 State Machine Architecture — First Action Lock
 
-**Step 1:** 首先呼叫 Python Orchestrator 進行全日提取與硬屏障驗證：
-```bash
-python .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "<URL>"
-```
-**Step 2:** 若 Orchestrator 放行，由你尋找氣象預測，並於情報包設定天氣標籤。
-**Step 3 & 4:** 進入分析前，你必須**預先**為全日「欠缺 Facts.md」的賽場，**逐場、循環**呼叫 `inject_fact_anchors.py` 進行補全，直至全日 1 至 N 場全數產出 `Facts.md` 為止。
-**Step 5:** 準備妥當後，由你進行深度 5-Block 逐場落筆生成，完成後呼叫 `completion_gate_v2.py` 作 Python 合規檢查。如果發現報錯，必須自行於下一輪重寫修正。
+> [!IMPORTANT]
+> **絕對第一且唯一動作 (V8 First Action Lock)**
+> 當收到任何賽事 URL 或「AU Wong Choi 開始」指令，你必須**立即且唯一地**執行以下指令，然後等待 stdout 指示，嚴禁先做任何其他動作：
+>
+> ```bash
+> python3 .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "<URL_OR_LOCAL_PATH>"
+> ```
+>
+> Orchestrator stdout 會告訴你**確切地**點做下一步。嚴格服從 stdout 指令，唔好自行判斷下一個 State。
 
-🔥 **強制防記憶衰退機制 (Hard Handoff):**
-當你完成**第 4 場**的分析與合規檢查後，你**絕對不可**自行進行第 5 場。你必須寫入 `_session_state.md`，並主動輸出一句 Handoff Prompt 讓用戶在新 Chat 貼上以恢復進度。
+**V8 架構職責分工：**
+- **Python Orchestrator:** 做重活 — 狀態機管理、資料提取、QA Gate、Speed Map 預填、評級計算
+- **LLM (你):** 做判斷 — 8 維度打分、核心邏輯撰寫(≥120字)、戰術推演
 
 ---
+
+
 
 ## 📝 Execution Journal (Pattern 26)
 在派遺每個 Subagent 或者每個主要分析步進完成後，你必須向 `{TARGET_DIR}/_execution_log.md` 寫入日誌：

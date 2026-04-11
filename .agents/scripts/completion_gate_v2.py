@@ -8,7 +8,7 @@ def check_au_hkjc_format(text: str, domain: str) -> list[str]:
     if domain == 'au':
         required_tags = ['⏱️', '🐴', '📋', '🧭', '⚠️', '📊', '💡', '⭐']
     else:
-        required_tags = ['🔬', '🐴', '⚡', '📋', '🔗', '⚠️', '📊', '💡', '⭐']
+        required_tags = ['🔬', '🐴', '⚡', '📋', '🔗', '🚨', '📊', '💡', '⭐']
     
     for tag in required_tags:
 
@@ -69,6 +69,22 @@ def check_au_hkjc_format(text: str, domain: str) -> list[str]:
     if not horses_with_form and '近績序列' in text:
          errors.append("⚠️ P37: '近績序列' field exists but is empty or malformed.")
 
+    # [FILL] Residual Scan — catch unfilled placeholders
+    fill_count = text.count('[FILL]')
+    if fill_count > 0:
+        errors.append(f"🚨 [CRITICAL] FILL-001: {fill_count} unfilled '[FILL]' placeholders detected — LLM failed to populate template fields")
+
+    # 14.2B 微調 existence check (Step 11 addition)
+    if '14.2B' not in text and '微調' not in text:
+        errors.append("⚠️ Missing 14.2B 微調 section — fine-tune field must be present in Analysis.md")
+
+    # Sectional + EEM existence check (required for forensic quality)
+    if domain == 'hkjc':
+        if '段速法醫' not in text:
+            errors.append("⚠️ Missing 段速法醫 section — each horse analysis must include sectional forensics")
+        if 'EEM 能量' not in text:
+            errors.append("⚠️ Missing EEM 能量 section — each horse analysis must include EEM energy assessment")
+
     return errors
 
 def check_au_hkjc_words(text: str, domain: str) -> list[str]:
@@ -82,6 +98,7 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
     else:
         required_tags = ['🔬', '🐴', '⚡', '📋', '🔗', '📊', '💡', '⭐']
 
+    horse_logics = {}
     
     for block in blocks[1:]: # Skip the first block which is the intro
         # Identify the horse name/number for better error messages
@@ -132,6 +149,8 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
             logic_text = core_logic_match.group(1).strip()
             # Remove framing brackets if they exist
             logic_text = re.sub(r'^\[|\]$', '', logic_text).strip()
+            horse_logics[horse_id] = logic_text # Store for LAZY-003 check
+            
             logic_words = len(re.findall(r'[a-zA-Z0-9_]+', logic_text)) + len(re.findall(r'[\u4e00-\u9fff]', logic_text))
             if logic_words < 100:
                 errors.append(f"[{horse_id}] '核心邏輯' is too brief or lacks deep forensic detail ({logic_words} chars < 100). Please expand to 100-200 words.")
@@ -157,7 +176,32 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
         for field in req_matrix_fields:
             if field not in block:
                 errors.append(f"[{horse_id}] 👮‍♂️ ANTI-SKIP: Missing specific matrix field: {field}")
-            
+            else:
+                field_line_match = re.search(rf'{field}[^:]*:\s*(?:`?\[.*?\]`?)(.*?)(?=\n|$)', block)
+                if field_line_match:
+                    reasoning_text = field_line_match.group(1).strip()
+                    # Apply quantitative digit lock ONLY for fields that strictly require it (Speed, EEM)
+                    if field in ['段速與引擎', 'EEM與形勢', '段速質量', 'EEM 潛力']:
+                        if '無往績記錄' not in block and len(reasoning_text) > 2 and not re.search(r'\d+', reasoning_text):
+                            errors.append(f"[{horse_id}] ⚠️ 評級矩陣的 `{field}` 理據缺乏量化數據支撐！(必須包含 Facts.md 內的數字如 22.50, 1400m, +5lb 等被 Analyst 抽出之證據)")
+
+    # Cross-Horse Similarity Check (LAZY-003)
+    def get_ngrams(text, n=3):
+        chars = re.findall(r'[\w\u4e00-\u9fff]', text)
+        return set(''.join(chars[i:i+n]) for i in range(len(chars)-n+1))
+        
+    horse_ids = list(horse_logics.keys())
+    for i in range(len(horse_ids)):
+        for j in range(i+1, len(horse_ids)):
+            h1 = horse_ids[i]
+            h2 = horse_ids[j]
+            ng1 = get_ngrams(horse_logics[h1])
+            ng2 = get_ngrams(horse_logics[h2])
+            if ng1 and ng2:
+                jaccard = len(ng1.intersection(ng2)) / len(ng1.union(ng2))
+                if jaccard > 0.40:  # 40% similarity threshold on 3-grams is actually very high for natural text
+                    errors.append(f"[{h1} & {h2}] 🚨 LAZY-003: 核心邏輯發現高度重複性罐頭字眼 (相似度 {jaccard:.0%})，Analyst 介入失敗！嚴禁使用腳本或模版複製貼上。")
+
     return errors
 
 def check_nba_format(text: str) -> list[str]:

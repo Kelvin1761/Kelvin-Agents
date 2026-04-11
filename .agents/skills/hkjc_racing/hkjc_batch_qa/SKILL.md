@@ -1,3 +1,7 @@
+# ⚠️ [DEPRECATED] This agent has been archived as of 2026-04-11.
+# Its functions are absorbed into the V8 Python Orchestrator state machine.
+# Do NOT invoke this agent. Use hkjc_orchestrator.py / au_orchestrator.py instead.
+
 ---
 name: HKJC Batch QA
 description: This skill should be used when the user wants to "check HKJC batch quality", "HKJC 批次品質檢查", "HKJC batch QA", or when HKJC Wong Choi requires per-batch structural and semantic quality verification during race analysis.

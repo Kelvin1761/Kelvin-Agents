@@ -255,6 +255,43 @@ def main():
         print("請立刻重新執行 Orchestrator 以前往 State 3。")
         sys.exit(0)
 
+    # --- STATE 2.5: Batch 0 Speed Map (race_analysis.speed_map) ---
+    # Check if any race is missing its Batch 0 speed_map with required fields
+    for r in range(1, total_races + 1):
+        json_file_b0 = os.path.join(target_dir, f"Race_{r}_Logic.json")
+        # Only check races that don't have Analysis.md yet
+        an_file_check = os.path.join(target_dir, f"{os.path.basename(target_dir).split(' ')[0][5:]} Race {r} Analysis.md")
+        if os.path.exists(an_file_check):
+            continue
+        if os.path.exists(json_file_b0):
+            try:
+                with open(json_file_b0, 'r', encoding='utf-8') as _f:
+                    _jd = json.load(_f)
+                sm = _jd.get('race_analysis', {}).get('speed_map', {})
+                missing_sm = [k for k in ['track_bias', 'tactical_nodes', 'collapse_point'] if not sm.get(k)]
+                if missing_sm:
+                    facts_file_b0 = os.path.join(target_dir, f"{os.path.basename(target_dir).split(' ')[0]} Race {r} Facts.md")
+                    print(f"\n🚨🚨🚨【AU HORSE ANALYST 啟動要求 (Race {r} Batch 0 戰場全景)】🚨🚨🚨")
+                    print(f"👉 LLM Agent 請強制切換為 au_horse_analyst 模式！讀取 `{os.path.basename(facts_file_b0)}`。")
+                    print("在 <thought> 標籤內執行【Step 0 步速瀑布】推理：")
+                    print(f"然後更新 `Race_{r}_Logic.json` 的 race_analysis.speed_map，必須填寫：")
+                    print("  speed_map: {")
+                    print("    expected_pace,       ← 'Crawl/Moderate/Fast/Chaotic'")
+                    print("    leaders: [],         ← 馬號列表")
+                    print("    on_pace: [],         ← 馬號列表")
+                    print("    mid_pack: [],        ← 馬號列表")
+                    print("    closers: [],         ← 馬號列表")
+                    print("    track_bias,          ← 跑道偏差描述 [強制]")
+                    print("    tactical_nodes,      ← 戰術節點 [強制]")
+                    print("    collapse_point       ← 步速崩潰點分析 [強制]")
+                    print("  }")
+                    print(f"\n缺失欄位: {missing_sm}")
+                    print("生成完畢後，請重新執行本 Orchestrator！")
+                    sys.exit(0)
+            except Exception:
+                pass  # JSON not parseable yet, handled by State 3
+
+
     if chk_analysis == "[ ]":
         date_prefix = os.path.basename(target_dir).split(" ")[0]
         # Match the old prefix style if needed
@@ -284,11 +321,61 @@ def main():
                     break
                     
             if pending_batch:
-                print(f"🚨 State 3 行動要求 (Race {r} / Batch {pending_idx} 未完成):")
-                print(f"👉 LLM Agent 請注意：請讀取 `{os.path.basename(facts_file)}`，")
-                print(f"並在同目錄生成/更新推演檔案 `{os.path.basename(json_file)}`。")
-                print(f"⚠️ 強制任務：這次你只需聚焦分析以下馬匹：{pending_batch}。")
-                print(f"⚠️ 強制規定：每個維度必須包含 `_reasoning`，並且「核心邏輯」必須有 100-200 字以涵蓋定量數據。")
+                print(f"\n🚨🚨🚨【AU HORSE ANALYST 啟動要求 (Race {r} / Batch {pending_idx} : 馬匹 {pending_batch})】🚨🚨🚨")
+                print("⚠️ 絕對強制：依照 au_horse_analyst 設計的五步法醫級分析流程逐步執行：")
+                print("Step 1 [情境標籤]: 讀取 Facts.md，判定情境標籤 (FGV/FGX/FGO/FGE/FGI)。")
+                print("Step 2 [段速法醫]: 核查近 3 仗 L400/L600 段速，修正干擾因素並記入 sectional_forensic。")
+                print("Step 3 [8 維度打分]: 針對矩陣 8 個維度各給出 ✅/➖/❌ + reasoning (必須包含具體數字)。")
+                print("Step 4 [寬恕 + EEM]: 逐場判定 Race Forgiveness，評估 EEM 能量消耗，記入 eem_energy 及 forgiveness_archive。")
+                print("Step 5 [核心邏輯]: 撰寫法醫級核心邏輯 ≥120字，提取 advantages + disadvantages。")
+                print("")
+                print(f"請建立/更新 `{os.path.basename(json_file)}`，結構必須為 dict 格式：")
+                print("禁止用 list 格式！horses 必須為： { \'1\': {...}, \'2\': {...} } 而非 [ {...}, {...} ]")
+                print("")
+                print("每匹馬的 JSON 節點必須包含以下所有 key：")
+                print("  horses: {")
+                print("    \"<馬號>\": {")
+                print("      scenario_tags,             ← 情境標籤")
+                print("      status_cycle,              ← 狀態週期")
+                print("      trend_summary,             ← 趨勢總評")
+                print("      analytical_breakdown: {   ← 5項 AU 馬匹剖析")
+                print("        class_weight, engine_distance, track_surface_gait,")
+                print("        gear_intent, jockey_trainer_combination")
+                print("      },")
+                print("      sectional_forensic: {      ← 段速法醫 [Step 2]")
+                print("        raw_L400, correction_factor, corrected_assessment, trend")
+                print("      },")
+                print("      eem_energy: {              ← EEM 能量 [Step 4]")
+                print("        last_run_position, cumulative_drain, assessment")
+                print("      },")
+                print("      forgiveness_archive: {     ← 寬恕認定 [Step 4]")
+                print("        factors, conclusion")
+                print("      },")
+                print("      matrix: {                  ← 8維度評級矩陣 [Step 3]")
+                print("        '狀態與穩定性', '段速與引擎', 'EEM與形勢', '騎練訊號',")
+                print("        '級數與負重', '場地適性', '賽績線', '裝備與距離'")
+                print("        ← 每項含 score + reasoning")
+                print("      },")
+                print("      base_rating,               ← 14.2 基礎評級")
+                print("      fine_tune: {               ← 微調 [Step 5]")
+                print("        direction, trigger")
+                print("      },")
+                print("      override: {                ← 覆蓋規則 [Step 5]")
+                print("        rule")
+                print("      },")
+                print("      final_rating,              ← 最終評級")
+                print("      core_logic,                ← 核心邏輯 ≥120字")
+                print("      advantages,                ← 最大競爭優勢")
+                print("      disadvantages,             ← 最大失敗風險")
+                print("      stability_index,           ← 穩定指數 (0-10)")
+                print("      tactical_plan: { },        ← 陣型預判")
+                print("      dual_track: { triggered: false },  ← 雙軌 (UNSTABLE 時需填)")
+                print("      underhorse: { triggered: false }")
+                print("    }")
+                print("  }")
+                print("")
+                print("⚠️ dict 格式強制：horse key 必須為馬號字串（\'1\', \'2\'...），禁止用 list。")
+                print(f"\n若有違背，QA 阻火牆將即刻剄除未合規文件！")
                 print("編輯/生成 JSON 完畢後，請重新執行本 Orchestrator！")
                 sys.exit(0)
                 
