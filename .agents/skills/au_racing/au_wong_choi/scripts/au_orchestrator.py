@@ -294,7 +294,6 @@ def main():
 
     if chk_analysis == "[ ]":
         date_prefix = os.path.basename(target_dir).split(" ")[0]
-        # Match the old prefix style if needed
         short_prefix = date_prefix[5:] if len(date_prefix) == 10 else date_prefix
         
         for r in range(1, total_races + 1):
@@ -307,76 +306,105 @@ def main():
                 facts_file = os.path.join(target_dir, f"{short_prefix} Race {r} Facts.md")
             json_file = os.path.join(target_dir, f"Race_{r}_Logic.json")
             
-            bd = batch_details.get(r, {})
-            all_batches = bd.get('batches', [])
-            done_horses = bd.get('done', [])
             
-            # Find the first unfinished batch
-            pending_batch = None
-            pending_idx = 0
-            for idx, b in enumerate(all_batches):
-                if not all(h in done_horses for h in b):
-                    pending_batch = b
-                    pending_idx = idx + 1
+            # ============================================================
+            # V9: 逐匹馬分析模式 (One Horse at a Time)
+            # ============================================================
+            skeleton_script = ".agents/skills/au_racing/au_wong_choi/scripts/create_au_logic_skeleton.py"
+            
+            try:
+                logic_data = json.load(open(json_file, encoding='utf-8'))
+            except Exception:
+                logic_data = {}
+            
+            horses_dict = logic_data.get('horses', {})
+            
+            try:
+                all_horses = get_horse_numbers(facts_file)
+            except:
+                all_horses = []
+            
+            target_horse = None
+            
+            for h in all_horses:
+                hkey = str(h)
+                h_entry = horses_dict.get(hkey, {})
+                h_json_str = json.dumps(h_entry, ensure_ascii=False)
+                
+                if not h_entry:
+                    target_horse = h
                     break
-                    
-            if pending_batch:
-                print(f"\n🚨🚨🚨【AU HORSE ANALYST 啟動要求 (Race {r} / Batch {pending_idx} : 馬匹 {pending_batch})】🚨🚨🚨")
-                print("⚠️ 絕對強制：依照 au_horse_analyst 設計的五步法醫級分析流程逐步執行：")
-                print("Step 1 [情境標籤]: 讀取 Facts.md，判定情境標籤 (FGV/FGX/FGO/FGE/FGI)。")
-                print("Step 2 [段速法醫]: 核查近 3 仗 L400/L600 段速，修正干擾因素並記入 sectional_forensic。")
-                print("Step 3 [8 維度打分]: 針對矩陣 8 個維度各給出 ✅/➖/❌ + reasoning (必須包含具體數字)。")
-                print("Step 4 [寬恕 + EEM]: 逐場判定 Race Forgiveness，評估 EEM 能量消耗，記入 eem_energy 及 forgiveness_archive。")
-                print("Step 5 [核心邏輯]: 撰寫法醫級核心邏輯 ≥120字，提取 advantages + disadvantages。")
-                print("")
-                print(f"請建立/更新 `{os.path.basename(json_file)}`，結構必須為 dict 格式：")
-                print("禁止用 list 格式！horses 必須為： { \'1\': {...}, \'2\': {...} } 而非 [ {...}, {...} ]")
-                print("")
-                print("每匹馬的 JSON 節點必須包含以下所有 key：")
-                print("  horses: {")
-                print("    \"<馬號>\": {")
-                print("      scenario_tags,             ← 情境標籤")
-                print("      status_cycle,              ← 狀態週期")
-                print("      trend_summary,             ← 趨勢總評")
-                print("      analytical_breakdown: {   ← 5項 AU 馬匹剖析")
-                print("        class_weight, engine_distance, track_surface_gait,")
-                print("        gear_intent, jockey_trainer_combination")
-                print("      },")
-                print("      sectional_forensic: {      ← 段速法醫 [Step 2]")
-                print("        raw_L400, correction_factor, corrected_assessment, trend")
-                print("      },")
-                print("      eem_energy: {              ← EEM 能量 [Step 4]")
-                print("        last_run_position, cumulative_drain, assessment")
-                print("      },")
-                print("      forgiveness_archive: {     ← 寬恕認定 [Step 4]")
-                print("        factors, conclusion")
-                print("      },")
-                print("      matrix: {                  ← 8維度評級矩陣 [Step 3]")
-                print("        '狀態與穩定性', '段速與引擎', 'EEM與形勢', '騎練訊號',")
-                print("        '級數與負重', '場地適性', '賽績線', '裝備與距離'")
-                print("        ← 每項含 score + reasoning")
-                print("      },")
-                print("      base_rating,               ← 14.2 基礎評級")
-                print("      fine_tune: {               ← 微調 [Step 5]")
-                print("        direction, trigger")
-                print("      },")
-                print("      override: {                ← 覆蓋規則 [Step 5]")
-                print("        rule")
-                print("      },")
-                print("      final_rating,              ← 最終評級")
-                print("      core_logic,                ← 核心邏輯 ≥120字")
-                print("      advantages,                ← 最大競爭優勢")
-                print("      disadvantages,             ← 最大失敗風險")
-                print("      stability_index,           ← 穩定指數 (0-10)")
-                print("      tactical_plan: { },        ← 陣型預判")
-                print("      dual_track: { triggered: false },  ← 雙軌 (UNSTABLE 時需填)")
-                print("      underhorse: { triggered: false }")
-                print("    }")
-                print("  }")
-                print("")
-                print("⚠️ dict 格式強制：horse key 必須為馬號字串（\'1\', \'2\'...），禁止用 list。")
-                print(f"\n若有違背，QA 阻火牆將即刻剄除未合規文件！")
-                print("編輯/生成 JSON 完畢後，請重新執行本 Orchestrator！")
+                if '[FILL]' in h_json_str:
+                    target_horse = h
+                    break
+                
+                horse_name = h_entry.get('horse_name', '')
+                core_logic = h_entry.get('core_logic', '')
+                errors = []
+                if horse_name and horse_name not in core_logic:
+                    errors.append(f"WALL-004: core_logic missing horse name '{horse_name}'")
+                if len(core_logic) < 120:
+                    errors.append(f"WALL-005: core_logic only {len(core_logic)} chars (need ≥120)")
+                if errors:
+                    print(f"\n🚨 Horse #{h} ({horse_name}) firewall failed!")
+                    for e in errors:
+                        print(f"   ❌ {e}")
+                    horses_dict[hkey]['core_logic'] = f'[FILL] Must include horse name "{horse_name}", ≥120 chars'
+                    logic_data['horses'] = horses_dict
+                    with open(json_file, 'w', encoding='utf-8') as wf:
+                        json.dump(logic_data, wf, ensure_ascii=False, indent=2)
+                    target_horse = h
+                    break
+                else:
+                    print(f"   ✅ Horse #{h} ({horse_name}) validated")
+            
+            if target_horse is not None:
+                hkey = str(target_horse)
+                h_entry = horses_dict.get(hkey, {})
+                if not h_entry or '[FILL]' in json.dumps(h_entry, ensure_ascii=False):
+                    print(f"\n⚙️ Building skeleton for Horse #{target_horse}...")
+                    skel_result = subprocess.run(
+                        ["python3", skeleton_script, facts_file, str(r), str(target_horse)],
+                        capture_output=True, text=True
+                    )
+                    print(skel_result.stdout)
+                    if skel_result.returncode != 0:
+                        print(f"❌ Skeleton failed: {skel_result.stderr}")
+                        sys.exit(1)
+                    logic_data = json.load(open(json_file, encoding='utf-8'))
+                    h_entry = logic_data.get('horses', {}).get(hkey, {})
+                
+                try:
+                    with open(facts_file, 'r', encoding='utf-8') as _f:
+                        facts_content = _f.read()
+                except:
+                    facts_content = ""
+                
+                horse_facts_block = ""
+                for marker_pat in [rf'\[#{target_horse}\]', rf'### 馬號 {target_horse} — ']:
+                    h_match = re.search(marker_pat, facts_content)
+                    if h_match:
+                        h_start = h_match.start()
+                        h_next = re.search(r'(?:\[#\d+\]|### 馬號 \d+ — )', facts_content[h_match.end():])
+                        h_end = h_match.end() + h_next.start() if h_next else len(facts_content)
+                        horse_facts_block = facts_content[h_start:h_end]
+                        break
+                
+                horse_name = h_entry.get('horse_name', '?')
+                locked_l400 = h_entry.get('sectional_forensic', {}).get('raw_L400', 'N/A')
+                locked_pos = h_entry.get('eem_energy', {}).get('last_run_position', 'N/A')
+                
+                print(f"\n{'='*60}")
+                print(f"🚨🚨🚨【AU HORSE ANALYST — Race {r} / Horse #{target_horse} '{horse_name}'】🚨🚨🚨")
+                print(f"{'='*60}")
+                print(f"\n📋 Python pre-filled (DO NOT modify): L400={locked_l400}, Pos={locked_pos}")
+                print(f"\n📖 Facts block for '{horse_name}':")
+                print(f"{'─'*60}")
+                print(horse_facts_block[:2500])
+                print(f"{'─'*60}")
+                print(f"\n👉 Open `{os.path.basename(json_file)}`, fill [FILL] fields for horse \"{target_horse}\" ONLY.")
+                print(f"🔴 Firewall: name in core_logic, ≥120 chars, no data tampering, single horse only.")
+                print(f"\nRe-run Orchestrator when done!")
                 sys.exit(0)
                 
             # If ALL batches are done, compile and QA

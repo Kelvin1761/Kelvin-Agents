@@ -309,72 +309,139 @@ def main():
                 print("生成完畢後，請重新執行本 Orchestrator！")
                 sys.exit(0)
                 
-            # 2. Iterative Batches
+            # ============================================================
+            # V9: 逐匹馬分析模式 (One Horse at a Time)
+            # ============================================================
+            skeleton_script = ".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/create_hkjc_logic_skeleton.py"
+            
             try:
-                logic_data = json.load(open(logic_json))
+                logic_data = json.load(open(logic_json, encoding='utf-8'))
             except Exception:
                 logic_data = {}
-            completed_horses = list(logic_data.get('horses', {}).keys())
             
-            pending_batch = None
-            for idx, batch in enumerate(batches):
-                # check str compatibility too
-                if not all(str(h) in completed_horses for h in batch):
-                    pending_batch = (idx + 1, batch)
+            horses_dict = logic_data.get('horses', {})
+            
+            # Find the NEXT undone horse (one at a time)
+            target_horse = None
+            target_horse_name = None
+            
+            for h in horses:
+                hkey = str(h)
+                h_entry = horses_dict.get(hkey, {})
+                h_json_str = json.dumps(h_entry, ensure_ascii=False)
+                
+                if not h_entry:
+                    # No skeleton yet → create it
+                    target_horse = h
                     break
                     
-            if pending_batch:
-                print(f"\n🚨🚨🚨【HKJC HORSE ANALYST 啟動要求 (Race {r} Batch {pending_batch[0]} : 馬匹 {pending_batch[1]})】🚨🚨🚨")
-                print("⚠️ 絕對強制：依照 hkjc_horse_analyst 設計的五步法醫級分析流程逐步執行：")
-                print("Step 1 [情境標籤]: 讀取 Facts.md，判定情境標籤 (FGV/FGX/FGO/FGE/FGI)。")
-                print("Step 2 [段速法醫]: 核查近 3 仗 L400/L600 段速，修正干擾因素並記入 sectional_forensic。")
-                print("Step 3 [8 維度打分]: 針對矩陣 8 個維度各給出 ✅/➖/❌ + reasoning (必須包含具體數字)。")
-                print("Step 4 [寬恕 + EEM]: 逐場判定 Race Forgiveness，評估 EEM 能量消耗，記入 eem_energy 及 forgiveness_archive。")
-                print("Step 5 [核心邏輯]: 撰寫法醫級核心邏輯 ≥120字，提取 advantages + disadvantages。")
-                print("")
-                print(f"請填寫 `{os.path.basename(logic_json)}`，每匹馬的 JSON 節點必須包含以下所有 key：")
-                print("  horses: {")
-                print("    \"<馬號>\": {")
-                print("      scenario_tags,          ← 情境標籤 (e.g. FGV/FGX)")
-                print("      analytical_breakdown: { ← 10項馬匹剖析")
-                print("        trend_analysis, hidden_form, stability_risk, class_assessment,")
-                print("        track_distance_suitability, engine_distance, gear_changes,")
-                print("        trainer_signal, jockey_fit, pace_adaptation")
-                print("      },")
-                print("      sectional_forensic: {   ← 段速法醫 [Step 2]")
-                print("        raw_L400, correction_factor, corrected_assessment, trend")
-                print("      },")
-                print("      eem_energy: {           ← EEM 能量 [Step 4]")
-                print("        last_run_position, cumulative_drain, assessment")
-                print("      },")
-                print("      forgiveness_archive: {  ← 寬恕認定 [Step 4]")
-                print("        factors, conclusion")
-                print("      },")
-                print("      matrix: {               ← 8維度評級矩陣 [Step 3]")
-                print("        stability, speed_mass, eem, trainer_jockey,")
-                print("        scenario, freshness, formline, class_advantage,")
-                print("        forgiveness_bonus  ← 每項含 score + reasoning")
-                print("      },")
-                print("      base_rating,            ← 14.2 基礎評級 (S/A+/A/B+/B/C...)")
-                print("      fine_tune: {            ← 14.2B 微調 [Step 5]")
-                print("        direction, trigger")
-                print("      },")
-                print("      override: {             ← 14.3 覆蓋規則 [Step 5]")
-                print("        rule")
-                print("      },")
-                print("      final_rating,           ← 最終評級 (fine_tune + override 後)")
-                print("      core_logic,             ← 核心邏輯 ≥120字 [Step 5]")
-                print("      advantages,             ← 最大競爭優勢 [Step 5]")
-                print("      disadvantages,          ← 最大失敗風險 [Step 5]")
-                print("      evidence_step_0_14,     ← 法醫級推演錨點 (可選，推薦填寫)")
-                print("      underhorse: { triggered, condition, reason }")
-                print("    }")
-                print("  }")
-                print("")
-                print("⚠️ 你只需填 matrix 8 維度 ✅/➖/❌ + reasoning + core_logic + advantages/disadvantages。")
-                print("   base_rating 請自行按照矩陣規則填寫；fine_tune 和 override 請按 Analyst 指引判斷。")
-                print(f"\n若有違背格式，QA 阻火牆將即刻判定為 LAZY-003 並退回！")
-                print("生成完畢後，請重新執行本 Orchestrator！")
+                if '[FILL]' in h_json_str:
+                    # Skeleton exists but LLM hasn't filled it yet
+                    target_horse = h
+                    break
+                
+                # Horse filled → validate (firewall)
+                horse_name = h_entry.get('horse_name', '')
+                core_logic = h_entry.get('core_logic', '')
+                locked_l400 = h_entry.get('sectional_forensic', {}).get('raw_L400', '')
+                locked_pos = h_entry.get('eem_energy', {}).get('last_run_position', '')
+                
+                errors = []
+                if horse_name and horse_name not in core_logic:
+                    errors.append(f"WALL-004: core_logic 欠缺馬名「{horse_name}」")
+                if len(core_logic) < 120:
+                    errors.append(f"WALL-005: core_logic 只有 {len(core_logic)} 字 (需≥120字)")
+                if '此駒' in core_logic and horse_name and horse_name not in core_logic:
+                    errors.append(f"WALL-004B: 用了「此駒」代替馬名「{horse_name}」")
+                    
+                if errors:
+                    print(f"\n🚨 馬號 {h}（{horse_name}）阻火牆驗證失敗！")
+                    for e in errors:
+                        print(f"   ❌ {e}")
+                    # Reset core_logic to [FILL] to force redo
+                    horses_dict[hkey]['core_logic'] = f'[FILL] 必須包含馬名「{horse_name}」，≥120字'
+                    logic_data['horses'] = horses_dict
+                    with open(logic_json, 'w', encoding='utf-8') as wf:
+                        json.dump(logic_data, wf, ensure_ascii=False, indent=2)
+                    target_horse = h
+                    break
+                else:
+                    print(f"   ✅ 馬號 {h}（{horse_name}）驗證通過")
+            
+            if target_horse is None:
+                # All horses done! Skip to verdict
+                pass
+            else:
+                hkey = str(target_horse)
+                
+                # Step 1: Call Python skeleton generator to pre-fill factual data
+                h_entry = horses_dict.get(hkey, {})
+                if not h_entry or '[FILL]' in json.dumps(h_entry, ensure_ascii=False):
+                    print(f"\n⚙️ 正在為馬號 {target_horse} 建立/更新 JSON 骨架...")
+                    skel_result = subprocess.run(
+                        ["python3", skeleton_script, facts_path, str(r), str(target_horse)],
+                        capture_output=True, text=True
+                    )
+                    print(skel_result.stdout)
+                    if skel_result.returncode != 0:
+                        print(f"❌ 骨架建立失敗: {skel_result.stderr}")
+                        sys.exit(1)
+                    
+                    # Reload JSON after skeleton creation
+                    logic_data = json.load(open(logic_json, encoding='utf-8'))
+                    h_entry = logic_data.get('horses', {}).get(hkey, {})
+                
+                # Step 2: Extract this horse's Facts block for LLM context
+                try:
+                    with open(facts_path, 'r', encoding='utf-8') as _f:
+                        facts_content = _f.read()
+                except:
+                    facts_content = ""
+                
+                # Extract single horse block
+                h_block_match = re.search(rf'### 馬號 {target_horse} — ', facts_content)
+                horse_facts_block = ""
+                if h_block_match:
+                    h_start = h_block_match.start()
+                    h_next = re.search(r'### 馬號 \d+ — ', facts_content[h_block_match.end():])
+                    h_end = h_block_match.end() + h_next.start() if h_next else len(facts_content)
+                    horse_facts_block = facts_content[h_start:h_end]
+                
+                horse_name = h_entry.get('horse_name', '?')
+                locked_l400 = h_entry.get('sectional_forensic', {}).get('raw_L400', 'N/A')
+                locked_pos = h_entry.get('eem_energy', {}).get('last_run_position', 'N/A')
+                
+                # Step 3: Print focused single-horse instruction
+                print(f"\n{'='*60}")
+                print(f"🚨🚨🚨【HKJC HORSE ANALYST — Race {r} / 馬號 {target_horse}「{horse_name}」】🚨🚨🚨")
+                print(f"{'='*60}")
+                print(f"")
+                print(f"📋 Python 已預填以下事實數據（嚴禁篡改）：")
+                print(f"   → L400: {locked_l400} | 沿途位: {locked_pos}")
+                print(f"   → 負磅: {h_entry.get('weight', '?')} | 檔位: {h_entry.get('barrier', '?')}")
+                print(f"   → 近六場: {h_entry.get('last_6_finishes', '?')}")
+                print(f"   → 休後: {h_entry.get('days_since_last', '?')} 日")
+                print(f"")
+                print(f"📖 以下為「{horse_name}」嘅完整事實區塊（請仔細閱讀後分析）：")
+                print(f"{'─'*60}")
+                # Print horse facts block (limit to ~2500 chars to manage context)
+                print(horse_facts_block[:2500])
+                if len(horse_facts_block) > 2500:
+                    print(f"\n... (更多賽績請直接查閱 Facts.md)")
+                print(f"{'─'*60}")
+                print(f"")
+                print(f"👉 請打開 `{os.path.basename(logic_json)}`，找到馬號 \"{target_horse}\" 嘅 JSON 節點。")
+                print(f"⚠️ 將所有標記為 [FILL] 的欄位替換為你的分析結果。")
+                print(f"")
+                print(f"🔴 阻火牆規則 (違反即退回)：")
+                print(f"   1. core_logic 必須包含馬名「{horse_name}」(禁止用「此駒」)")
+                print(f"   2. core_logic 不少於 120 字")
+                print(f"   3. 嚴禁修改 raw_L400 ({locked_l400}) 同 last_run_position ({locked_pos})")
+                print(f"   4. 嚴禁填寫其他馬號的數據！只做馬號 {target_horse}")
+                print(f"   5. matrix reasoning 必須引用具體數據")
+                print(f"   6. forgiveness 必須逐場判定")
+                print(f"")
+                print(f"完成後重新執行 Orchestrator！")
                 sys.exit(0)
                 
             # 3. Verdict
@@ -385,6 +452,8 @@ def main():
                 print("生成完畢後，請重新執行本 Orchestrator！")
                 sys.exit(0)
                 
+
+
             # 4. Compilation & QA Filter
             print(f"⚙️ Race {r} JSON 填寫完畢，正在進行 Compilation (JSON -> MD)...")
             compile_cmd = ["python3", ".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/compile_analysis_template_hkjc.py", facts_path, logic_json, "--output", an_file]
