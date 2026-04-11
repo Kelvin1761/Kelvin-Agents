@@ -110,7 +110,7 @@ def _extract_between(block: str, start_marker: str, end_marker: str) -> str:
     if line_end <= line_start: return block[line_start:end_idx].strip()
     return block[line_start:line_end].strip()
 
-def _truncate_table(table_str: str, max_rows: int = 5) -> str:
+def _truncate_table(table_str: str, max_rows: int = 6) -> str:
     lines = table_str.strip().split('\n')
     out_lines = []
     data_row_count = 0
@@ -129,29 +129,22 @@ def _truncate_table(table_str: str, max_rows: int = 5) -> str:
             if stripped_line.endswith('|'):
                 stripped_line = stripped_line[:-1]
                 
-            if is_header:
-                modified_line = stripped_line + " 寬恕判定 |"
-            elif is_delimiter:
-                modified_line = stripped_line + "----------|"
-            else:
-                modified_line = stripped_line + " `[FILL: 基準/寬恕/不可饒恕/-]` |"
-                
             if is_header or is_delimiter:
-                out_lines.append(modified_line)
+                out_lines.append(stripped_line)
             else:
                 data_row_count += 1
                 if data_row_count <= max_rows:
-                    out_lines.append(modified_line)
+                    out_lines.append(stripped_line)
                 else:
                     truncated = True
         else:
             if truncated and "> *(...空間所限" not in out_lines[-1]:
-                out_lines.append("> *(...空間所限，只截取最前 5 場；研讀完整紀錄請強烈參考 Facts.md...)*")
+                out_lines.append("> *(...空間所限，只截取最前 6 場；研讀完整紀錄請強烈參考 Facts.md...)*")
                 truncated = False
             out_lines.append(line)
             
     if truncated and "> *(...空間所限" not in out_lines[-1]:
-        out_lines.append("> *(...空間所限，只截取最前 5 場；研讀完整紀錄請強烈參考 Facts.md...)*")
+        out_lines.append("> *(...空間所限，只截取最前 6 場；研讀完整紀錄請強烈參考 Facts.md...)*")
         
     return '\n'.join(out_lines)
 
@@ -178,6 +171,7 @@ def generate_horse_skeleton_hkjc(h: dict) -> str:
     if h['table'] and '(無往績記錄)' not in h['table']:
         lines.append('**📋 完整賽績與寬恕檔案 (包含 Step 12 判斷):**\n')
         lines.append(_truncate_table(h['table']) + '\n')
+        lines.append('- **逐場寬恕判定:** `[JSON Array 格式, 對應上表由最新到最舊每一場, 例如: ["[-]", "受阻", "[-]", "泥沙", "[-]"] (無寬恕必須填 "[-]")]`\n')
     else:
         lines.append('**完整賽績檔案:** (無往績記錄)\n')
 
@@ -230,7 +224,6 @@ def generate_horse_skeleton_hkjc(h: dict) -> str:
 
     lines.append('**💡 結論與評語 (Conclusion & Analyst View):**')
     lines.extend([
-        '> [基於合成判斷的敘事線,可分多行書寫(廣東話):]',
         '> - **核心邏輯:** [呢匹馬今場為什麼會/不會跑好？篇幅約 80-100 字。寫作指引：強烈建議參考「馬性與數據結合」框架 (1)點出最忌諱/擅長條件 (如谷草/田草/泥地、場地偏差適性等) 及 (2)配合量化數據(如L400/EEM/Matrix✅)。⚠️ 自由度授權：若你在分析中發現其他「極具價值的特殊盲點或獨特賽績角度」，你有完全的自由將其作為核心邏輯發表。必須保持 Forensic 級深度，嚴禁空泛馬評。請適當使用點列式 (Bullet points) 分行寫出不同論點以方便閱讀。]',
         '> - **最大競爭優勢:** [明確列出]',
         '> - **最大失敗風險:** [若為A-或以上必須寫,否則明確寫「無」]\n'

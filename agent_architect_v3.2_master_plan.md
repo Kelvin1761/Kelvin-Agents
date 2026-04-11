@@ -22,6 +22,10 @@
 4. **MCP 整合與跨設備存儲方案 (Cross-Device ⚠️)**
    - **Recommendation (嚴禁 SQLite，堅守 Markdown + 安全寫入)**：因應 Google Drive 同步環境，全面放棄 SQLite MCP。堅持使用純文本（Markdown / JSON）作為存儲載體，並強制透過 `safe_file_writer.py` 原子級寫入。
 
+5. **Implementation Plan 產出嚴格規範 (極致工程詳盡版)**
+   - **Recommendation (Surgical Precision Specification)**：Architect 未來所有草擬的 Implementation Plan 必須直接達到「極致工程詳盡版 」。
+   - **強制標準**：絕對禁止「過度簡化」或抽象的步驟描述。必須寫明：(1) 具體的腳路徑及 Python script 檔名；(2) 精確的資料流與 API 調用方式（如 JSON bridging）；(3) LLM 與 Python 的嚴格分工邊界（Python 計算/排版，LLM 專注推理）；(4) Batch Execution 分組邏輯及自動 QA (Self-Correction) 的除錯重試迴圈。
+
 ---
 
 ## 核心模塊（已驗證，準備落地）

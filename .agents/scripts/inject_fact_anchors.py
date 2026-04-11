@@ -1215,6 +1215,30 @@ def compute_distance_aptitude(entries: list[dict], today_dist_m: int = 0) -> dic
     else:
         today_band = '≥2000m'
 
+    # Compute win sequence and tolerance
+    win_list = []
+    close_wins = []
+    close_places = []
+    
+    # Iterate in reverse because entries are newest first, we want oldest first (chronological)
+    for r in reversed([e for e in entries if not e['is_trial']]):
+        d = r.get('dist_m', 0)
+        f = r.get('finish_pos')
+        if d <= 0 or not f:
+            continue
+            
+        if f == 1:
+            win_list.append(f"{d}m")
+            if today_dist_m > 0 and abs(d - today_dist_m) <= 100:
+                close_wins.append(d)
+        elif 2 <= f <= 3:
+            if today_dist_m > 0 and abs(d - today_dist_m) <= 100:
+                close_places.append(d)
+                
+    # Remove duplicates from tolerance matches but keep order
+    close_wins = list(dict.fromkeys(close_wins))
+    close_places = list(dict.fromkeys(close_places))
+
     # Format
     dist_lines = []
     for band in ['≤1100m', '1200m', '1400m', '1600m', '1800m', '≥2000m']:
@@ -1240,6 +1264,9 @@ def compute_distance_aptitude(entries: list[dict], today_dist_m: int = 0) -> dic
         'dist_lines': dist_lines,
         'today_band': today_band,
         'today_record': today_rec,
+        'win_seq': win_list,
+        'close_wins': close_wins,
+        'close_places': close_places
     }
 
 
@@ -1563,12 +1590,23 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
     )
     if dist_apt['dist_lines']:
         lines.append(f"  - 距離分佈: {' | '.join(dist_apt['dist_lines'])}")
+        
+    win_seq_str = " → ".join(dist_apt['win_seq']) if dist_apt['win_seq'] else "未有頭馬紀錄"
+    lines.append(f"  - 頭馬距離序列: {win_seq_str}")
+    
     today_rec = dist_apt['today_record']
     today_total = sum(today_rec)
-    if today_total > 0:
-        lines.append(f"  - 今仗 {dist_apt['today_band']}: {today_total}場 ({today_rec[0]}-{today_rec[1]}-{today_rec[2]})")
-    elif today_dist_m > 0:
-        lines.append(f"  - 今仗 {dist_apt['today_band']}: 未跑過 ⚠️")
+    if today_dist_m > 0:
+        if today_total > 0:
+            lines.append(f"  - 今仗 {today_dist_m}m ({dist_apt['today_band']}): {today_total}場 ({today_rec[0]}-{today_rec[1]}-{today_rec[2]})")
+        elif dist_apt['close_wins']:
+            cw_str = ", ".join([f"{d}m" for d in dist_apt['close_wins']])
+            lines.append(f"  - 今仗 {today_dist_m}m: 未跑過，但有相近贏馬經驗 ({cw_str}) ✅")
+        elif dist_apt['close_places']:
+            cp_str = ", ".join([f"{d}m" for d in dist_apt['close_places']])
+            lines.append(f"  - 今仗 {today_dist_m}m: 未跑過，但有相近上名經驗 ({cp_str})")
+        else:
+            lines.append(f"  - 今仗 {today_dist_m}m: 未跑過且無相近近績 (±100m) ⚠️")
 
     return '\n'.join(lines)
 
@@ -1605,7 +1643,7 @@ def main():
     # Try to extract distance from racecard content if not provided
     if today_dist_m == 0:
         rc_text = Path(racecard_path).read_text(encoding='utf-8')
-        dist_match = re.search(r'(\d{3,4})m\s+\w', rc_text)
+        dist_match = re.search(r'(\d{3,4})m', rc_text)
         if dist_match:
             today_dist_m = int(dist_match.group(1))
 

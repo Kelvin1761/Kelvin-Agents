@@ -123,6 +123,21 @@ Display 格式：
 
 ---
 
+## Step 1.5 — Market Lens Cross-Check (盤口法醫雙重核實) 🆕
+
+當 Edge > 0 時，會計師必須與 `Market Lens` (`resources/01_market_lens.md`) 進行互補檢核：
+> **核心準則**：Model Edge 負責「尋找價值」；Market Lens 負責「避開陷阱」。兩者一致先算真正嘅 **"Worth to bet on"**。
+
+1. 會計師執行 5Q 掃描。
+2. **互補攔截機制 (Symbiotic Override)**：
+   - IF Market Lens 觸發 `[⚠️ Trap Line 疑似]` 或 `[📊⚠️ 嚴重逆莊]`：
+     → **強制攔截**：即使 Model 算出極高 Edge，會計師必須無情將注碼減半 (× 0.5) 或直接宣告 `🚨 誘盤規避 (VOID / REJECT)`。
+   - IF Edge > 18% (Suspicious Tier) 且無合理解釋：
+     → 交由 Market Lens Q4 (莊家邏輯) 尋找背後原因。若找不到合理防守邏輯，一律當作陷阱處理。
+3. 只有當 **Edge > 0 且 Market Lens 無嚴重警告** 時，先可以真正 Approve 呢口飛。
+
+---
+
 ## Edge Confidence Tier (邊際信心分級)
 
 | Edge % (校準後) | Tier | 行動 | Kelly 修正 |

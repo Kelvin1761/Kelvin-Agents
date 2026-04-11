@@ -715,11 +715,35 @@ def compute_distance_aptitude(races: list, today_dist: int = 0) -> dict:
             marker += f' ← 今仗 {emoji}'
         dist_lines.append(f'{d}m: {total}場 ({w}-{p}-{l}){marker}')
     
+    win_list = []
+    close_wins = []
+    close_places = []
+    
+    for r in reversed(races):
+        d = r.get('distance', 0)
+        f = r.get('finish', 0)
+        if d <= 0 or f <= 0:
+            continue
+            
+        if f == 1:
+            win_list.append(f"{d}m")
+            if today_dist > 0 and abs(d - today_dist) <= 100:
+                close_wins.append(d)
+        elif 2 <= f <= 3:
+            if today_dist > 0 and abs(d - today_dist) <= 100:
+                close_places.append(d)
+                
+    close_wins = list(dict.fromkeys(close_wins))
+    close_places = list(dict.fromkeys(close_places))
+
     return {
         'best_dist': best_dist,
         'dist_bands': dist_bands,
         'dist_lines': dist_lines,
         'today_record': dist_bands.get(today_dist, [0, 0, 0]),
+        'win_seq': win_list,
+        'close_wins': close_wins,
+        'close_places': close_places
     }
 
 
@@ -890,15 +914,27 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     
     today_rec = dist_apt['today_record']
     today_total = sum(today_rec)
-    today_rec_str = f"{today_total}場 ({today_rec[0]}-{today_rec[1]}-{today_rec[2]})" if today_total else '未跑過'
     
-    lines.append(f"🔧 **引擎距離:**")
+    lines.append(f"🔧 **引擎與距離:**")
     lines.append(f"  引擎: Type {engine['type']} ({engine['type_cn']}) | "
                  f"信心: {engine['confidence']} | "
                  f"依據: {'; '.join(engine['evidence']) if engine['evidence'] else '數據不足'}")
-    lines.append(f"  最佳距離: {dist_apt['best_dist']}m | 今仗 {today_dist}m = {today_rec_str}")
+                 
     if dist_apt['dist_lines']:
         lines.append(f"  距離分佈: {' | '.join(dist_apt['dist_lines'])}")
+        
+    w_seq_str = " → ".join(dist_apt['win_seq']) if dist_apt.get('win_seq') else "未有頭馬紀錄"
+    lines.append(f"  勝出途程序列: {w_seq_str}")
+    
+    if today_dist > 0:
+        if today_total > 0:
+            lines.append(f"  最佳距離: {dist_apt['best_dist']}m | 今仗 {today_dist}m = {today_total}場 ({today_rec[0]}-{today_rec[1]}-{today_rec[2]})")
+        elif dist_apt.get('close_wins'):
+            lines.append(f"  最佳距離: {dist_apt['best_dist']}m | 今仗 {today_dist}m = 未跑過，但有相近贏馬經驗 ({', '.join([str(x)+'m' for x in dist_apt['close_wins']])}) ✅")
+        elif dist_apt.get('close_places'):
+            lines.append(f"  最佳距離: {dist_apt['best_dist']}m | 今仗 {today_dist}m = 未跑過，但有相近上名經驗 ({', '.join([str(x)+'m' for x in dist_apt['close_places']])})")
+        else:
+            lines.append(f"  最佳距離: {dist_apt['best_dist']}m | 今仗 {today_dist}m = 未跑過且無相近近績 (±100m) ⚠️")
     
     # === NEW: Phase 1D Trend Dimensions (from scraper data) ===
     if p_entries and HAS_SCRAPER:

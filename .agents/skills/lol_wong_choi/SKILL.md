@@ -1,6 +1,10 @@
 ---
 name: lol_wong_choi
 description: This skill should be used when the user wants to "分析[日期] [賽區]", "analyse esports", "LoL Wong Choi", or needs to orchestrate the full LoL esports prediction pipeline (V2) from data retrieval (via Python scripts & Gol.gg search) to final V17/V22 compliant betting reports.
+skills:
+  - lol-prediction
+  - lol-sniper
+  - betting_accountant
 ---
 
 # 👑 LoL Wong Choi (電競旺財)
@@ -26,18 +30,20 @@ When activated, you MUST autonomously execute the following phases. **DO NOT ask
    - Find and extract the **NC% (Non-champion pick rate)**.
    - Find and extract the **Team Resource Distribution (Gold Graph/DNA)**.
    - **MANDATORY QUICK REFLECTION**: You MUST perform a fast post-match review of both teams' last 3 matches. Use `search_web` to check their recent results and drafts. Diagnose if any recent losses were due to 'R&D/Sandbagging' or 'True Decline' before proceeding.
-   - **MINOR LEAGUE FALLBACK PROTOCOL**: If the Python script returns `[DATA MISSING]` for Hard Metrics (e.g. Oracle's Elixir doesn't cover LCK CL or ERLs early season), **DO NOT PANIC and DO NOT ABORT**. 
+   - **MAJOR LEAGUE (LPL/LCK) FALLBACK PROTOCOL**: If Oracle's Elixir returns `None` or `[DATA MISSING]` for LPL (often due to Tencent API restrictions) or LCK, **YOU MUST NOT IGNORE IT!** `GD@15` is a core metric. You MUST use your `search_web` tool, or `browser_subagent` to search `esports8.com` or `Gol.gg` to manually find the early game gold diff or economic stats. DO NOT just transfer weight to Win Rate (WR).
+   - **MINOR LEAGUE (ERL/CL) FALLBACK PROTOCOL**: If Oracle's Elixir doesn't cover LCK CL or ERLs early season, **DO NOT PANIC**. 
      - **Execute Fallback Script**: Run `python scripts/fetch_leaguepedia_recent.py --team "[Team Name]"` for BOTH teams to fetch the last 3 games' kills, gold, and bans directly from the Cargo Database.
-     - Switch to **Qualitative Mode (質化分析)**. Ignore the lack of GD@15. Evaluate the match purely based on the K/D/A and Gold gaps extracted by the fallback script, alongside Roster Quality and BP/Draft tendencies.
-     - Proceed with the analysis as normal. The `betting_accountant` will automatically apply a 50% discount to non-major leagues to manage the missing data risk, so you do not need to artificially force a "NO BET" solely due to missing Oracle data.
-   - You MUST NOT stop and ask the user to provide Gol.gg data. You must find it yourself using `search_web`.
+     - Switch to **Qualitative Mode (質化分析)**. Evaluate the match purely based on the K/D/A and Gold gaps extracted by the fallback script, alongside Roster Quality and BP/Draft tendencies.
+     - The `betting_accountant` will automatically apply a 50% discount to minor leagues to manage the missing data risk, so you do not need to artificially force a "NO BET" solely due to missing Oracle data.
+   - You MUST NOT stop and ask the user to provide Gol.gg or missing LPL data. You must find it yourself using your web tools.
 
-### Phase 3: Phase 0-3 嚴格審計 (V17/V22/V23 Protocols)
-Apply the exact same strict, forensic criteria defined by the `lol-draft-analyst` protocols:
-- **Phase 0**: Data Audit (Merge V2 output + your Gol.gg findings).
-- **Phase 1**: Draft Inertia & BP Risk Evaluation. Reject narrative bias.
-- **Phase 2**: Match-up Dehydration. Verify if win-conditions actually align with recent patch realities.
-- **Phase 3**: Execution & Value Sniping. You MUST calculate unit sizing dynamically using the **Kelly Criterion**. Identify your Edge (Model Implied Probability vs Market Odds Implied Probability) to propose an exact mathematical bankroll allocation.
+### Phase 3: Phase 0-2.5 嚴格審計 (V17/V22/V23 Protocols)
+> ⚠️ **MANDATORY**: You MUST read the `lol-prediction` SKILL.md file to understand the required phases.
+Apply the exact same strict, forensic criteria defined by the `lol-prediction` protocols:
+- **Phase 0**: Data Audit (Merge V2 output + Gol.gg findings + **Recent Match Quality Audit 3c**). YOU MUST COMPLETE CHECKPOINT P0.
+- **Phase 1**: Draft Inertia & BP Risk Evaluation. Evaluate Style Matchups. YOU MUST COMPLETE CHECKPOINT P1.
+- **Phase 2**: Match-up Dehydration & P(Win) Formula.
+- **Phase 2.5**: Logical Gate & Handicap consistency checks. YOU MUST COMPLETE CHECKPOINT P2.5.
   - 🚨 **-1.5 Handicap Risk Mitigation (MANDATORY)**:
     - **Season Opener High-Bar**: If the match is within the first 2-3 weeks of a Split/Tournament (e.g., LCK Week 1), -1.5 carries extreme variance due to R&D and rust. **DO NOT** recommend -1.5 UNLESS the calculated Edge (EV+) is Exceptionally High (>10% Edge) and there is a total macro mismatch.
     - **Draft Instability**: If the favorite team's coach is known for "R&D" or volatile drafts, downgrade or do NOT recommend -1.5 unless EV is massive.
@@ -46,7 +52,7 @@ Apply the exact same strict, forensic criteria defined by the `lol-draft-analyst
 ### Phase 3.5: 賠率暫停門 (Odds Socratic Gate) -> END OF YOUR TASK
 **CRITICAL:** You CANNOT hallucinate or estimate odds. You are NOT the Betting Accountant.
 
-> **MANDATORY Chain-of-Thought (深層邏輯區)**: Before writing the final concise report (as shown in the user's screenshot), you MUST use a `<thinking> ... </thinking>` XML block to write out your detailed breakdown. In this block, explicitly compare the GD@15, FB%, roster tiers, and draft tendencies. Doing this guarantees your math and logic are perfectly sound.
+> **MANDATORY Chain-of-Thought (深層邏輯區)**: Before writing the final concise report, you MUST use a `<thinking> ... </thinking>` XML block to write out your detailed breakdown. **To prevent skipping core steps (e.g., Match Quality Audit, SoS, Handicap Logic), you MUST output a literal checklist inside the `<thinking>` block ticking off EVERY Checkpoint (P0, P1, P2, P2.5) from `lol-prediction` before generating the final verdict.** Doing this guarantees your math and logic are perfectly sound and no steps are forgotten.
 > After your `<thinking>` block, output the clean, concise, "Dehydrated" Final Verdict.
 
 After finishing Phase 0-3 with your final Model Implied Probability (`p`), you MUST STOP your response entirely. 

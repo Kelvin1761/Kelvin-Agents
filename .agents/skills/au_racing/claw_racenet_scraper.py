@@ -359,28 +359,39 @@ def main():
                 form_key = next((k for k in form_data.keys() if k.startswith('FormGuidePrint')), None)
                 event_data = form_data.get(form_key, {}) if form_key else {}
                 
-                dist = event_data.get('distance', '?')
-                event_class = event_data.get('eventClass', event_data.get('class', ''))
-                prize = event_data.get('racePrizeMoney', 0) or 0
+                apollo = nuxt_data.get("apollo", {}).get("defaultClient", {})
+                event_cache = {}
+                event_id = None
                 
-                track_cond = 'Unknown'
-                weather = 'Unknown'
+                for k, v in apollo.items():
+                    if k.startswith("Event:") and isinstance(v, dict) and v.get("__typename") == "Event":
+                        if v.get("eventNumber") == race_num:
+                            st = v.get("startTime", "")
+                            if (args.date in st) or (args.date[:-2] in st):
+                                event_cache = v
+                                event_id = k.split(":")[1]
+                                break
+
+                dist = event_cache.get("distance", "?")
+                event_class = event_cache.get("eventClass") or event_cache.get("class") or ""
+                prize = event_cache.get("racePrizeMoney") or event_cache.get("prizeMoney") or 0
                 
-                tc_obj = event_data.get('trackCondition')
-                if isinstance(tc_obj, dict):
-                    overall = tc_obj.get('overall', '')
-                    rating_val = tc_obj.get('rating', '')
-                    if overall:
-                        track_cond = f"{overall} {rating_val}".strip()
+                track_cond = "Unknown"
+                weather = "Unknown"
                 
-                w_obj = event_data.get('weather')
-                if isinstance(w_obj, dict):
-                    cond = w_obj.get('condition', '')
-                    temp = w_obj.get('temperature', '')
-                    if cond:
-                        weather = cond.title()
-                        if temp:
-                            weather += f" {temp}C"
+                if event_id:
+                    tc_cache = apollo.get(f"$Event:{event_id}.trackCondition", {})
+                    we_cache = apollo.get(f"$Event:{event_id}.weather", {})
+                    
+                    if we_cache:
+                        w_cond = we_cache.get("condition", "").title()
+                        w_temp = we_cache.get("temperature", "")
+                        weather = f"{w_cond} {w_temp}C".strip()
+                        
+                    if tc_cache:
+                        overall = tc_cache.get("overall", "")
+                        rating = tc_cache.get("rating", "")
+                        track_cond = f"{overall} {rating}".strip()
                 
                 if first_meta is None:
                     first_meta = {'track_condition': track_cond, 'weather': weather}

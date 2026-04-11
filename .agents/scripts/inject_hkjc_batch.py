@@ -22,6 +22,9 @@ def inject_horse_data(horse_chunk, data):
         (r'- \*\*競賽事件 / 馬匹特性:\*\* \[FILL\]', f"- **競賽事件 / 馬匹特性:** {data['event']}"),
         (r'- \*\*綜合結論:\*\* `\[FILL\]`', f"- **綜合結論:** `{data['formline_conclusion']}`"),
         
+        # Forgive array
+        (r'- \*\*逐場寬恕判定:\*\* `\[JSON Array.*?\]`', f"- **逐場寬恕判定:** `{data['forgive_list']}`"),
+        
         # Matrix
         (r'- 穩定性 \[核心\]: `\[FILL\]` \| 理據: `\[FILL\]`', f"- 穩定性 [核心]: `{data['matrix']['stability']['value']}` | 理據: `{data['matrix']['stability']['reason']}`"),
         (r'- 段速質量 \[核心\]: `\[FILL\]` \| 理據: `\[FILL\]`', f"- 段速質量 [核心]: `{data['matrix']['sectional']['value']}` | 理據: `{data['matrix']['sectional']['reason']}`"),
@@ -31,7 +34,7 @@ def inject_horse_data(horse_chunk, data):
         (r'- 路程/新鮮度 \[輔助\]: `\[FILL\]` \| 理據: `\[FILL\]`', f"- 路程/新鮮度 [輔助]: `{data['matrix']['freshness']['value']}` | 理據: `{data['matrix']['freshness']['reason']}`"),
         (r'- 賽績線 \[輔助\]: `\[FILL\]` \| 理據: `\[FILL\]`', f"- 賽績線 [輔助]: `{data['matrix']['formline']['value']}` | 理據: `{data['matrix']['formline']['reason']}`"),
         (r'- 級數優勢 \[輔助\]: `\[FILL\]` \| 理據: `\[FILL\]`', f"- 級數優勢 [輔助]: `{data['matrix']['class_adv']['value']}` | 理據: `{data['matrix']['class_adv']['reason']}`"),
-        (r'- 寬恕加分: `\[FILL\]` \| 理據: `\[FILL\]`', f"- 寬恕加分: `{data['matrix']['forgiveness']['value']}` | 理據: `{data['matrix']['forgiveness']['reason']}`"),
+        (r'- 寬恕加分: `\[FILL\].*?` \| 理據: `\[FILL\]`', f"- 寬恕加分: `{data['matrix']['forgiveness']['value']}` | 理據: `{data['matrix']['forgiveness']['reason']}`"),
         
         # Math
         (r'\*\*🔢 矩陣算術:\*\* 核心✅=\[FILL\] \| 半核心✅=\[FILL\] \| 輔助✅=\[FILL\] \(含寬恕加分\) \| 總❌=\[FILL\] \| 核心❌=\[FILL\] → 查表命中行=\[FILL\]', 

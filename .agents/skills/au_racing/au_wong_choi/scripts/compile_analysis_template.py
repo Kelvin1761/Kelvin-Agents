@@ -104,7 +104,7 @@ def parse_facts_md_au(text: str) -> list[dict]:
         })
     return horses
 
-def build_panorama(json_data):
+def build_panorama(json_data, facts_path, facts_text):
     v = json_data.get('race_analysis', {})
     sm = v.get('speed_map', {})
     
@@ -114,14 +114,47 @@ def build_panorama(json_data):
     mid = ", ".join(sm.get('mid_pack', [])) or '[未指定]'
     closers = ", ".join(sm.get('closers', [])) or '[未指定]'
     
-    return f"""## [第一部分] 🗺️ 戰場全景
+    weather_going = "詳見 _Meeting_Intelligence_Package.md"
+    bias = "按 Intelligence 判斷"
+    race_class = "[未輸入]"
+    
+    # Extract Race Number
+    race_num_m = re.search(r'Race\s*(\d+)', Path(facts_path).name, re.IGNORECASE)
+    race_num = race_num_m.group(1) if race_num_m else "?"
+    
+    # Extract Distance
+    dist_m = re.search(r'今仗距離:\s*(\d+m)', facts_text)
+    distance = dist_m.group(1) if dist_m else "Unknown距離"
+    
+    try:
+        meeting_dir = Path(facts_path).parent
+        intel_path = meeting_dir / "_Meeting_Intelligence_Package.md"
+        if intel_path.exists():
+            intel_text = intel_path.read_text(encoding='utf-8')
+            for line in intel_text.splitlines():
+                if '場地' in line or '天氣' in line:
+                    parts = line.split('：') if '：' in line else line.split(':')
+                    if len(parts) > 1: weather_going = parts[-1].strip()
+                elif '偏差' in line:
+                    parts = line.split('：') if '：' in line else line.split(':')
+                    if len(parts) > 1: bias = parts[-1].strip()
+                elif re.search(rf'Race\s*{race_num}\s*(?:Class|Grade)[：:]', line, re.IGNORECASE):
+                    parts = line.split('：') if '：' in line else line.split(':')
+                    if len(parts) > 1: race_class = parts[-1].strip()
+    except Exception:
+        pass
+    
+    return f"""# Race {race_num} - {distance} - Class: {race_class}
+
+## [第一部分] 🗺️ 戰場全景
 
 | 項目 | 內容 |
 |:---|:---|
 | 賽事格局 | 參照上方標題 |
 | **賽事類型** | **`[STANDARD RACE 標準彎道賽]`** |
-| 天氣 / 場地 | 詳見 _Meeting_Intelligence_Package.md |
-| 跑道偏差 | 按 Intelligence 判斷 |
+| 距離與班次 | {distance} | Class: {race_class} |
+| 天氣 / 場地 | {weather_going} |
+| 跑道偏差 | {bias} |
 | 步速預測 | {pace} |
 
 **📍 Speed Map (速度地圖):**
@@ -210,8 +243,8 @@ def generate_horse_section(horse_idx, h_fact, h_logic):
             total_fail += 1
             if c_type == "核心": core_fail += 1
             
-        reason = item.get('reason', '')
-        score_display = item.get('score', '')
+        reason = item.get('_reasoning', item.get('reason', '無填寫理據'))
+        score_display = item.get('score', '[-]')
         lines.append(f"- **{key}** [{c_type}]: `{score_display}` | 理據: {reason}")
 
     lines.append(f"- **編號矩陣:** 核心✅={core_check} | 半核心✅={semi_check} | 輔助✅={aux_check} | 總❌={total_fail} | 核心❌={core_fail}")
@@ -249,10 +282,15 @@ def build_verdict(json_data, facts_horses):
             item = t4[i]
             h_num = item.get('horse_num', '')
             h_name = horse_names.get(int(h_num), '') if str(h_num).isdigit() else ''
+            h_obj = json_data.get('horses', {}).get(str(h_num), {})
+            h_rating = h_obj.get('rating', 'X')
+            m_data = h_obj.get('matrix', {})
+            core_check = sum(1 for m in m_data.values() if "✅" in m.get('score', ''))
+            
             lines.extend([
                 label,
                 f"- **馬號及馬名:** [{h_num}] {h_name}",
-                f"- **評級與✅數量:** `[A-]` | ✅ 5",
+                f"- **評級與✅數量:** `[{h_rating}]` | ✅ {core_check}",
                 f"- **核心理據:** {item.get('reason', '')}",
                 f"- **最大風險:** {item.get('risk', '')}\n"
             ])
@@ -292,14 +330,20 @@ def main():
     facts_horses = parse_facts_md_au(facts_text)
     
     body = []
-    body.append(build_panorama(logic_data))
+    body.append(build_panorama(logic_data, args.facts, facts_text))
     body.append('---\n## [第二部分] 🔬 深度顯微鏡\n\n')
     
-    horses_logic = logic_data.get('horses', {})
+    horses_logic_raw = logic_data.get('horses', [])
+    horses_logic_dict = {}
+    if isinstance(horses_logic_raw, list):
+        for item in horses_logic_raw:
+            if 'id' in item:
+                horses_logic_dict[str(item['id'])] = item
+    else:
+        horses_logic_dict = horses_logic_raw
+
     for h in facts_horses:
-        # Match logic by num (fallback mapping string '1' to int 1)
-        # Check both str and int keys
-        hl = horses_logic.get(str(h['num']), horses_logic.get(h['num'], {}))
+        hl = horses_logic_dict.get(str(h['num']), {})
         if not hl:
             # Fallback if somehow not analyzed
             hl = {"rating": "[未分析]", "core_logic": "[查無JSON節點]", "matrix": {}}

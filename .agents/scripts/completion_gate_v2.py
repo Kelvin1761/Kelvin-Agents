@@ -118,6 +118,14 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
         elif grade in ['C', 'D'] and words < 300:
             errors.append(f"[{horse_id}] Grade {grade} has insufficient words ({words} < 300)")
             
+        # Anti-Laziness Scan
+        lazy_patterns = [
+            ('同上', 'LAZY-001'), ('[略]', 'LAZY-001'), ('見上方', 'LAZY-001'), ('邏輯同前', 'LAZY-001'), ('沒有補充', 'LAZY-001'), ('無需補充', 'LAZY-001')
+        ]
+        for pattern, code in lazy_patterns:
+            if pattern in block:
+                errors.append(f"[{horse_id}] [CRITICAL] {code}: 檢測到偷懶字眼 (Fluff): '{pattern}'")
+
         # Core Logic (核心邏輯) Standard Check
         core_logic_match = re.search(r'核心邏輯[^\*]*\*\*\s*(.*?)(?=\n\s*>?\s*-\s*\*\*|$)', block, re.DOTALL)
         if core_logic_match:
@@ -125,10 +133,21 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
             # Remove framing brackets if they exist
             logic_text = re.sub(r'^\[|\]$', '', logic_text).strip()
             logic_words = len(re.findall(r'[a-zA-Z0-9_]+', logic_text)) + len(re.findall(r'[\u4e00-\u9fff]', logic_text))
-            if logic_words < 30:
-                errors.append(f"[{horse_id}] '核心邏輯' is too brief or lacks deep forensic detail ({logic_words} chars). Please expand.")
+            if logic_words < 100:
+                errors.append(f"[{horse_id}] '核心邏輯' is too brief or lacks deep forensic detail ({logic_words} chars < 100). Please expand to 100-200 words.")
+            
+            # Quantitative Evidence Lock (Regex)
+            if not re.search(r'(\d+\.\d+|\d+-\d+)', logic_text):
+                errors.append(f"[{horse_id}] ⚠️ 核心邏輯缺少定量數據 (Quantitative Lock)! 必須引用實質數據 (如段速 22.14 或走位 1-2-1)。空泛吹捧已被阻截。")
         else:
             errors.append(f"[{horse_id}] Missing properly formatted '- **核心邏輯:**' section.")
+            
+        # Formline Quantitative Evidence Lock
+        formline_match = re.search(r'賽績線(?:\s*\(近.*?\)|\s*)[：:]\s*(.*?)(?=\n\s*>?\s*-\s*\*\*|$)', block, re.DOTALL)
+        if formline_match:
+            formline_text = formline_match.group(1).strip()
+            if '無往績記錄' not in formline_text and not re.search(r'(\d+\.\d+|\d+-\d+)', formline_text):
+                 errors.append(f"[{horse_id}] ⚠️ 賽績線缺乏定量數據 (Quantitative Lock)! 綜合結論需要實質支持。")
             
         # Check Rating Matrix completeness to prevent anti-skipping
         req_matrix_fields = [

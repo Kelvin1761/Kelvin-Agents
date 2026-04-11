@@ -115,12 +115,18 @@ def extract_single_race(race_no, base_url, output_dir, date_prefix):
                 results['errors'].append(f"{label} R{race_no}: Output file suspiciously small ({size} bytes) — likely extraction failure")
                 results[key] = False
             else:
-                # Check for error content in first line
+                # Check for error content explicitly
                 try:
                     with open(filepath, 'r', encoding='utf-8') as f:
-                        first_line = f.readline().strip()
+                        content = f.read()
+                    
+                    first_line = content.strip().split('\n')[0] if content.strip() else ''
+                    
                     if first_line.startswith('Error:'):
                         results['errors'].append(f"{label} R{race_no}: Output contains error message: {first_line[:100]}")
+                        results[key] = False
+                    elif "Could not find racecard table" in content or "沒有賽績紀錄" in content:
+                        results['errors'].append(f"{label} R{race_no}: Empty or invalid HKJC table detected.")
                         results[key] = False
                 except Exception:
                     pass
@@ -196,6 +202,8 @@ def main():
         print(f"   ✅ Starter PDF saved")
     else:
         print(f"   ❌ Starter PDF failed: {pdf_err}")
+        print(f"   🚨 [Fast-Fail] PDF is required for accurate analysis. Aborting batch extraction to conserve resources.")
+        sys.exit(1)
     print()
 
     # Step 2: Extract all races concurrently
