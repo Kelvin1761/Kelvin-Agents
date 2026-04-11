@@ -21,6 +21,180 @@ import re
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'scripts')))
 import generate_skeleton as gs
 
+# ── ABCD 正規字母評級系統 (from compute_rating_matrix_hkjc.py) ──────────
+GRADE_ORDER = ['S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D']
+
+# Map JSON matrix key → compute_rating dimension key
+MATRIX_TO_DIM = {
+    'stability':       'stability',
+    'speed_mass':      'sectional',
+    'eem':             'eem',
+    'trainer_jockey':  'trainer_signal',
+    'scenario':        'scenario',
+    'freshness':       'distance_freshness',
+    'formline':        'form_line',
+    'class_advantage': 'class_advantage',
+}
+
+DIMENSION_TYPES = {
+    'stability':          'core',
+    'sectional':          'core',
+    'eem':                'semi_core',
+    'trainer_signal':     'semi_core',
+    'scenario':           'auxiliary',
+    'distance_freshness': 'auxiliary',
+    'form_line':          'auxiliary',
+    'class_advantage':    'auxiliary',
+}
+
+def _score_to_tick(score):
+    """Convert a numeric score (1-10) to ✅/➖/❌ tick mark."""
+    if isinstance(score, str):
+        if '✅' in score: return '✅'
+        if '❌' in score: return '❌'
+        if '➖' in score or 'N/A' in score: return '➖'
+        try:
+            score = int(score)
+        except ValueError:
+            return '➖'
+    if not isinstance(score, (int, float)):
+        return '➖'
+    if score >= 8:
+        return '✅'
+    elif score <= 3:
+        return '❌'
+    else:
+        return '➖'
+
+def _count_dimensions(dims: dict) -> dict:
+    counts = {
+        'core_strong': 0, 'core_neutral': 0, 'core_weak': 0,
+        'semi_strong': 0, 'semi_neutral': 0, 'semi_weak': 0,
+        'aux_strong': 0, 'aux_neutral': 0, 'aux_weak': 0,
+        'total_strong': 0, 'total_weak': 0,
+        'has_core_weak': False,
+    }
+    for dim_key, value in dims.items():
+        v = value.strip() if isinstance(value, str) else str(value)
+        if v in ('N/A', '不計入'):
+            continue
+        dim_type = DIMENSION_TYPES.get(dim_key, 'auxiliary')
+        if v == '✅':
+            counts['total_strong'] += 1
+            if dim_type == 'core': counts['core_strong'] += 1
+            elif dim_type == 'semi_core': counts['semi_strong'] += 1
+            else: counts['aux_strong'] += 1
+        elif v == '❌':
+            counts['total_weak'] += 1
+            if dim_type == 'core':
+                counts['core_weak'] += 1
+                counts['has_core_weak'] = True
+            elif dim_type == 'semi_core': counts['semi_weak'] += 1
+            else: counts['aux_weak'] += 1
+        else:  # ➖ neutral
+            if dim_type == 'core': counts['core_neutral'] += 1
+            elif dim_type == 'semi_core': counts['semi_neutral'] += 1
+            else: counts['aux_neutral'] += 1
+    return counts
+
+def _lookup_base_grade(c: dict) -> tuple:
+    cs, ss, axs, tw = c['core_strong'], c['semi_strong'], c['aux_strong'], c['total_weak']
+    if cs >= 2 and ss >= 2 and axs >= 2 and tw == 0:
+        return 'S', f'2核心✅ + 2半核心✅ + {axs}輔助✅ + 0❌'
+    if cs >= 2 and ss >= 1 and axs >= 1 and tw == 0:
+        return 'S-', f'2核心✅ + {ss}半核心✅ + {axs}輔助✅ + 0❌'
+    if cs >= 2 and tw == 0:
+        return 'A+', f'2核心✅ + 0❌'
+    if (cs >= 1 and ss >= 1 and tw == 0) or (cs >= 2 and tw <= 1):
+        return 'A', f'{cs}核心✅ + {ss}半核心✅ + {tw}❌'
+    if cs >= 1 and tw <= 1:
+        return 'A-', f'{cs}核心✅ + ❌≤1'
+    if (cs >= 1 and tw == 2) or (ss >= 2 and tw <= 1):
+        return 'B+', f'{cs}核心✅/{ss}半核心✅ + {tw}❌'
+    if ss >= 1 and axs >= 2 and tw <= 2:
+        return 'B', f'{ss}半核心✅ + {axs}輔助✅ + {tw}❌'
+    if cs == 0 and ss == 0 and axs >= 3 and tw <= 2:
+        return 'B-', f'0核心/半核心✅ + {axs}輔助✅'
+    if tw == 3 and (cs >= 1 or ss >= 1):
+        return 'C+', f'{tw}❌ + 有核心/半核心✅挽救'
+    if tw == 3:
+        return 'C', f'{tw}❌ + 無核心/半核心✅'
+    if tw == 4:
+        return 'C-', f'{tw}❌'
+    ts = c['total_strong']
+    if tw >= 5 and (cs >= 1 or ss >= 1 or axs >= 2):
+        return 'D+', f'{tw}❌ + 有✅({ts})'
+    if tw >= 5 or ts == 0:
+        return 'D', f'{tw}❌ / 無✅'
+    return 'C', f'未匹配 (core✅={cs}, semi✅={ss}, aux✅={axs}, ❌={tw})'
+
+def _grade_idx(g: str) -> int:
+    return GRADE_ORDER.index(g) if g in GRADE_ORDER else 99
+
+def _apply_core_constraint(grade: str, counts: dict, dims: dict) -> tuple:
+    if not counts['has_core_weak']:
+        return grade, ''
+    if dims.get('sectional', '').strip() == '✅' and dims.get('eem', '').strip() == '✅':
+        if _grade_idx(grade) < _grade_idx('A-'):
+            return 'A-', '核心❌但段速✅+EEM✅豁免 → 封頂A-'
+        return grade, ''
+    if _grade_idx(grade) < _grade_idx('B+'):
+        return 'B+', '核心防護牆: 核心❌ → 封頂B+'
+    return grade, ''
+
+def _apply_micro(grade: str, direction: str) -> tuple:
+    i = _grade_idx(grade)
+    if direction == 'UP' and i > 0:
+        return GRADE_ORDER[i - 1], '升一級'
+    elif direction == 'DOWN' and i < len(GRADE_ORDER) - 1:
+        return GRADE_ORDER[i + 1], '降一級'
+    return grade, '無變動'
+
+def _compute_letter_grade(m_data: dict, h_logic: dict) -> dict:
+    """Compute the proper ABCD letter grade from matrix numeric scores."""
+    # Step 1: Convert numeric scores to ✅/❌/➖
+    dims = {}
+    for json_key, dim_key in MATRIX_TO_DIM.items():
+        item = m_data.get(json_key, {})
+        score = item.get('score', 5)
+        dims[dim_key] = _score_to_tick(score)
+
+    # Step 2: Count dimensions
+    counts = _count_dimensions(dims)
+
+    # Step 3: Check forgiveness bonus
+    forg_item = m_data.get('forgiveness_bonus', {})
+    forg_score = forg_item.get('score', 0)
+    try:
+        forg_val = int(forg_score) if not isinstance(forg_score, (int, float)) else forg_score
+    except (ValueError, TypeError):
+        forg_val = 0
+    if forg_val >= 7:
+        counts['aux_strong'] += 1
+        counts['total_strong'] += 1
+
+    # Step 4: Lookup base grade
+    base_grade, base_rule = _lookup_base_grade(counts)
+
+    # Step 5: Core constraint
+    constrained_grade, constraint_note = _apply_core_constraint(base_grade, counts, dims)
+
+    # Step 6: Micro adjustment
+    ft = h_logic.get('fine_tune', {})
+    ft_dir = ft.get('direction', '無') if isinstance(ft, dict) else str(ft)
+    adjusted_grade, micro_note = _apply_micro(constrained_grade, ft_dir.upper())
+
+    return {
+        'dims': dims,
+        'counts': counts,
+        'base_grade': base_grade,
+        'base_rule': base_rule,
+        'constraint_note': constraint_note,
+        'adjusted_grade': adjusted_grade,
+        'micro_note': micro_note,
+        'final_grade': adjusted_grade,
+    }
+
 def build_hkjc_panorama_compiled(json_data, facts_text):
     v = json_data.get('race_analysis', {})
     sm = v.get('speed_map', {})
@@ -77,8 +251,9 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
     trainer_str = h_fact['trainer'] if h_fact['trainer'] else 'Unknown'
     weight_str = str(h_fact['weight']) if h_fact['weight'] else 'Unknown'
 
-    rating = h_logic.get('base_rating', h_logic.get('rating', '[未評分]'))
-    final_rating = h_logic.get('final_rating', rating)
+    # rating/final_rating will be computed by ABCD grade system below (Section 9-10)
+    rating = '[待計算]'
+    final_rating = '[待計算]'
     disadvantages = h_logic.get('disadvantages', h_logic.get('risk_level', '[缺失風險]'))
     advantages = h_logic.get('advantages', h_logic.get('competitive_advantage', '[缺失優勢]'))
     fgv = h_logic.get('scenario_tags', '無')
@@ -158,7 +333,7 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
     else:
         lines.append('#### 🔗 賽績線: (無往績記錄)\n')
 
-    # ── 9. 評級矩陣 (8 維度) ─────────────────────────────────────────────
+    # ── 9. 評級矩陣 (8 維度) + 正規 ABCD 字母評級 ──────────────────────
     lines.append('#### 📊 評級矩陣 (Step 14)')
     matrix_keys = [
         ("stability",      "位置穩定性", "核心"),
@@ -172,39 +347,46 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
     ]
     m_data = h_logic.get('matrix', {})
 
-    c_check = s_check = a_check = t_fail = c_fail = 0
+    # Compute proper ABCD letter grade
+    grade_result = _compute_letter_grade(m_data, h_logic)
+    gr_dims = grade_result['dims']
+    gr_counts = grade_result['counts']
+
     for en_key, zh_key, c_type in matrix_keys:
         item = m_data.get(en_key, {})
         score = item.get('score', '[-]')
         reason = item.get('reasoning', item.get('reason', '[無提供]'))
-        if "✅" in str(score):
-            if c_type == "核心": c_check += 1
-            elif c_type == "半核心": s_check += 1
-            else: a_check += 1
-        elif "❌" in str(score):
-            t_fail += 1
-            if c_type == "核心": c_fail += 1
-        lines.append(f"- **{zh_key}** [{c_type}]: `{score}` | 理據: `{reason}`")
+        dim_key = MATRIX_TO_DIM.get(en_key, '')
+        tick = gr_dims.get(dim_key, '➖')
+        lines.append(f"- **{zh_key}** [{c_type}]: `{tick}` ({score}/10) | 理據: `{reason}`")
 
     forgive_item = m_data.get('forgiveness_bonus', {})
     forg_score = forgive_item.get('score', '[-]')
     forg_reason = forgive_item.get('reasoning', forgive_item.get('reason', '[無提供]'))
-    lines.append(f"- 寬恕加分: `{forg_score}` | 理據: `{forg_reason}`\n")
+    forg_tick = _score_to_tick(forg_score)
+    lines.append(f"- 寬恕加分: `{forg_tick}` ({forg_score}/10) | 理據: `{forg_reason}`\n")
 
-    # ── 10. 矩陣算術 + 14.2 基礎評級 ────────────────────────────────────
-    lines.append(f"**🔢 矩陣算術:** 核心✅={c_check} | 半核心✅={s_check} | 輔助✅={a_check} | 總❌={t_fail} | 核心❌={c_fail}")
-    lines.append(f"**14.2 基礎評級:** `{rating}`")
+    # ── 10. 矩陣算術 + 14.2 基礎評級 (ABCD 正規字母制) ────────────────
+    cw = '有' if gr_counts['has_core_weak'] else '無'
+    lines.append(f"**🔢 矩陣算術:** 核心✅={gr_counts['core_strong']} | 半核心✅={gr_counts['semi_strong']} | 輔助✅={gr_counts['aux_strong']} | 總❌={gr_counts['total_weak']} | 核心❌={cw} → 查表命中行={grade_result['base_grade']}")
+    lines.append(f"**14.2 基礎評級:** `{grade_result['base_grade']}` | **規則**: `{grade_result['base_rule']}`")
+    if grade_result['constraint_note']:
+        lines.append(f"**核心防護牆:** `{grade_result['constraint_note']}`")
 
     # ── 11. 14.2B 微調 ────────────────────────────────────────────────────
     ft = h_logic.get('fine_tune', {})
     ft_dir = ft.get('direction', '無') if isinstance(ft, dict) else str(ft)
     ft_trig = ft.get('trigger', '無') if isinstance(ft, dict) else '無'
-    lines.append(f"**14.2B 微調:** `{ft_dir}` | 觸發: `{ft_trig}`")
+    lines.append(f"**14.2B 微調:** `{ft_dir}` ({grade_result['micro_note']}) | 觸發: `{ft_trig}`")
 
     # ── 12. 14.3 覆蓋 ────────────────────────────────────────────────────
     ovr = h_logic.get('override', {})
     ovr_rule = ovr.get('rule', '無') if isinstance(ovr, dict) else str(ovr)
     lines.append(f"**14.3 覆蓋:** `{ovr_rule}`\n")
+
+    # Update rating/final_rating to use the computed ABCD letter grade
+    rating = grade_result['base_grade']
+    final_rating = grade_result['final_grade']
 
     # ── 13. 結論與評語 ───────────────────────────────────────────────────
     lines.append('#### 💡 結論與評語 (Conclusion & Analyst View)')
