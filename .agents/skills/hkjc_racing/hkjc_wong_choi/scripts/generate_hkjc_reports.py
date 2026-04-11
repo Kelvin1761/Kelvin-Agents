@@ -121,7 +121,7 @@ def parse_analysis_file(file_path):
                 if not block.strip():
                     continue
 
-                horse_match = re.search(r'-\s*\*\*馬號及馬名：\*\*\s*(\d+)\s+(.+)', block)
+                horse_match = re.search(r'-\s*\*\*馬號及馬名[：:]\*\*\s*\[?(\d+)\]?\s*(.+)', block)
                 if horse_match:
                     grade = ""
                     grade_match = re.search(r'\*\*評級與.*?\*\*.*?`([^`]+)`', block)

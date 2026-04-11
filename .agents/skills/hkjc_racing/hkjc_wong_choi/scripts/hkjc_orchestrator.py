@@ -353,6 +353,22 @@ def main():
                     errors.append(f"WALL-005: core_logic 只有 {len(core_logic)} 字 (需≥120字)")
                 if '此駒' in core_logic and horse_name and horse_name not in core_logic:
                     errors.append(f"WALL-004B: 用了「此駒」代替馬名「{horse_name}」")
+                
+                # WALL-006: 中文字佔比必須 ≥ 50%（防止英文亂碼注入）
+                import re as _re
+                chi_chars = len(_re.findall(r'[\u4e00-\u9fff]', core_logic))
+                total_chars = len(core_logic.replace(' ', '').replace('\n', ''))
+                chi_ratio = chi_chars / total_chars if total_chars > 0 else 0
+                if chi_ratio < 0.50:
+                    errors.append(f"WALL-006: core_logic 中文字佔比過低 ({chi_ratio:.0%} < 50%)，疑似亂碼或腳本注入")
+                
+                # WALL-007: core_logic 必須引用鎖定數據（L400 或走位）— 初出馬豁免
+                is_debut = not locked_l400 or locked_l400 in ('N/A', '', '-')
+                if not is_debut:
+                    has_l400_ref = locked_l400 in core_logic
+                    has_pos_ref = locked_pos in core_logic if locked_pos and locked_pos not in ('N/A', '', '-') else True
+                    if not has_l400_ref and not has_pos_ref:
+                        errors.append(f"WALL-007: core_logic 未引用鎖定數據 (L400={locked_l400} 或走位={locked_pos})，缺乏事實根據")
                     
                 if errors:
                     print(f"\n🚨 馬號 {h}（{horse_name}）阻火牆驗證失敗！")

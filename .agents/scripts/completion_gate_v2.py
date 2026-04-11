@@ -172,6 +172,16 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
             # Quantitative Evidence Lock — SKIP for debut horses (they have no numeric data)
             if not is_debut and not re.search(r'(\d+\.\d+|\d+-\d+)', logic_text):
                 errors.append(f"[{horse_id}] ⚠️ 核心邏輯缺少定量數據 (Quantitative Lock)! 必須引用實質數據 (如段速 22.14 或走位 1-2-1)。空泛吹捧已被阻截。")
+            
+            # GIBBERISH-001: Anti-gibberish detection (catches script-injected random chars)
+            chi_chars_logic = len(re.findall(r'[\u4e00-\u9fff]', logic_text))
+            total_chars_logic = len(logic_text.replace(' ', '').replace('\n', ''))
+            if total_chars_logic > 0 and (chi_chars_logic / total_chars_logic) < 0.50:
+                errors.append(f"[{horse_id}] 🚨 GIBBERISH-001: 核心邏輯中文佔比過低 ({chi_chars_logic}/{total_chars_logic} = {chi_chars_logic/total_chars_logic:.0%})，疑似腳本注入亂碼！")
+            # Check for long consecutive Latin character runs (> 15 chars, excluding known patterns)
+            long_latin_runs = re.findall(r'[a-zA-Z]{16,}', logic_text)
+            if long_latin_runs:
+                errors.append(f"[{horse_id}] 🚨 GIBBERISH-001: 核心邏輯發現連續英文字母串 ({long_latin_runs[0][:20]}...)，疑似亂碼注入！")
         else:
             errors.append(f"[{horse_id}] Missing properly formatted '- **核心邏輯:**' section.")
             
@@ -216,6 +226,7 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
                       f"疑似使用罐頭模板或批量複製。")
         
     horse_ids = list(horse_logics.keys())
+    lazy003_threshold = 0.90 if is_griffin_race else 0.40  # Griffin races naturally have similar analysis
     for i in range(len(horse_ids)):
         for j in range(i+1, len(horse_ids)):
             h1 = horse_ids[i]
@@ -224,7 +235,7 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
             ng2 = get_ngrams(horse_logics[h2])
             if ng1 and ng2:
                 jaccard = len(ng1.intersection(ng2)) / len(ng1.union(ng2))
-                if jaccard > 0.40:
+                if jaccard > lazy003_threshold:
                     errors.append(f"[{h1} & {h2}] 🚨 LAZY-003: 核心邏輯發現高度重複性罐頭字眼 (相似度 {jaccard:.0%})，Analyst 介入失敗！嚴禁使用腳本或模版複製貼上。")
 
     return errors
