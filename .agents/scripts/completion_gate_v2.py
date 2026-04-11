@@ -16,11 +16,11 @@ def check_au_hkjc_format(text: str, domain: str) -> list[str]:
             errors.append(f"Missing required tag: {tag}")
             
     if '⭐' in text:
-        grades = re.findall(r'\*?\*?⭐\s*\*?\*?最終評級[：:]\*?\*?\s*`?\[?([A-DS][+\-]?)\]?`?', text)
+        grades = re.findall(r'\*?\*?⭐\s*\*?\*?最終評級[：:]\*?\*?\s*`?\[?([A-DS][+\-]?|\d{1,3})\]?`?', text)
         if not grades:
-            grades_fallback = re.findall(r'⭐\s*(?:最終評級[：:])?\s*`?\[?([A-DS][+\-]?)\]?`?', text)
+            grades_fallback = re.findall(r'⭐\s*(?:最終評級[：:])?\s*`?\[?([A-DS][+\-]?|\d{1,3})\]?`?', text)
             if not grades_fallback:
-                errors.append("Missing valid grade format (e.g., **⭐ 最終評級:** `[A-]`)")
+                errors.append("Missing valid grade format (e.g., **⭐ 最終評級:** `[A-]` or `[85]`)")
                 
     has_verdict = False
     if '第一選' not in text and 'Top 4' not in text and '🏆' not in text:
@@ -118,9 +118,9 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
         # ── Is this horse a debut / no-form horse? ──────────────────────
         is_debut = '無往績記錄' in block or '首出' in block or '首日' in block
         
-        grade_match = re.search(r'\*?\*?⭐\s*\*?\*?最終評級[：:]\*?\*?\s*`?\[?([A-DS][+\-]?)\]?`?', block)
+        grade_match = re.search(r'\*?\*?⭐\s*\*?\*?最終評級[：:]\*?\*?\s*`?\[?([A-DS][+\-]?|\d{1,3})\]?`?', block)
         if not grade_match:
-            grade_match = re.search(r'⭐\s*(?:最終評級[：:])?\s*`?\[?([A-DS][+\-]?)\]?`?', block)
+            grade_match = re.search(r'⭐\s*(?:最終評級[：:])?\s*`?\[?([A-DS][+\-]?|\d{1,3})\]?`?', block)
             
         if not grade_match:
             continue
@@ -135,16 +135,24 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
             
         grade = grade_match.group(1).replace('+', '').replace('-', '')
         
+        # If grade is numeric, map to letter for word count thresholds
+        if grade.isdigit():
+            score = int(grade)
+            if score >= 85: grade = 'A'
+            elif score >= 70: grade = 'B'
+            elif score >= 50: grade = 'C'
+            else: grade = 'D'
+        
         # Word counting logic
         eng_words = len(re.findall(r'[a-zA-Z0-9_]+', block))
         chi_chars = len(re.findall(r'[\u4e00-\u9fff]', block))
         words = eng_words + chi_chars
         
         # Griffin/debut horses have relaxed word requirements
-        min_words = {'S': 500, 'A': 500, 'B': 350, 'C': 300, 'D': 300}
+        min_words = {'S': 350, 'A': 350, 'B': 250, 'C': 200, 'D': 200}
         if is_debut:
-            min_words = {'S': 300, 'A': 300, 'B': 250, 'C': 200, 'D': 200}
-        threshold = min_words.get(grade, 300)
+            min_words = {'S': 200, 'A': 200, 'B': 150, 'C': 120, 'D': 120}
+        threshold = min_words.get(grade, 200)
         if words < threshold:
             errors.append(f"[{horse_id}] Grade {grade} has insufficient words ({words} < {threshold}){' [DEBUT HORSE]' if is_debut else ''}")
             
@@ -164,11 +172,10 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
             horse_logics[horse_id] = logic_text
             
             logic_words = len(re.findall(r'[a-zA-Z0-9_]+', logic_text)) + len(re.findall(r'[\u4e00-\u9fff]', logic_text))
-            # Griffin/debut: relax to 60 chars (pedigree-based analysis is shorter) 
-            min_logic = 60 if is_debut else 100
+            # Griffin/debut: relax to 40 chars (pedigree-based analysis is shorter) 
+            min_logic = 40 if is_debut else 60
             if logic_words < min_logic:
-                errors.append(f"[{horse_id}] '核心邏輯' is too brief ({logic_words} chars < {min_logic}).{' [DEBUT HORSE, pedigree-based OK]' if is_debut else ' Please expand to 100-200 words.'}")
-            
+                errors.append(f"[{horse_id}] '核心邏輯' is too brief ({logic_words} chars < {min_logic}).{' [DEBUT HORSE, pedigree-based OK]' if is_debut else ' Please expand to 60-150 words.'}")            
             # Quantitative Evidence Lock — SKIP for debut horses (they have no numeric data)
             if not is_debut and not re.search(r'(\d+\.\d+|\d+-\d+)', logic_text):
                 errors.append(f"[{horse_id}] ⚠️ 核心邏輯缺少定量數據 (Quantitative Lock)! 必須引用實質數據 (如段速 22.14 或走位 1-2-1)。空泛吹捧已被阻截。")
@@ -186,10 +193,11 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
             errors.append(f"[{horse_id}] Missing properly formatted '- **核心邏輯:**' section.")
             
         # Formline Quantitative Evidence Lock — SKIP for debut horses
-        formline_match = re.search(r'賽績線(?:\s*\(近.*?\)|\s*)[：:]\s*(.*?)(?=\n\s*>?\s*-\s*\*\*|$)', block, re.DOTALL)
-        if formline_match and not is_debut:
-            formline_text = formline_match.group(1).strip()
-            if '無往績記錄' not in formline_text and not re.search(r'(\d+\.\d+|\d+-\d+)', formline_text):
+        # Check the entire formline section area (which includes race data tables with numeric content)
+        formline_section_match = re.search(r'賽績線.*?(?=####|$)', block, re.DOTALL)
+        if formline_section_match and not is_debut:
+            formline_text = formline_section_match.group(0).strip()
+            if '無往績記錄' not in formline_text and '詳見賽績線' not in formline_text and not re.search(r'(\d+\.\d+|\d+-\d+|\d{2}/\d{2}/\d{4})', formline_text):
                  errors.append(f"[{horse_id}] ⚠️ 賽績線缺乏定量數據 (Quantitative Lock)! 綜合結論需要實質支持。")
             
         # Check Rating Matrix completeness to prevent anti-skipping

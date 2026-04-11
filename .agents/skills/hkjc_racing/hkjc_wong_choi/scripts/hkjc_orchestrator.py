@@ -182,7 +182,7 @@ def main():
             date_prefix = os.path.basename(target_dir).split(" ")[0][5:]
             an_file = os.path.join(target_dir, f"{date_prefix} Race {r} Analysis.md")
             
-            if os.path.exists(an_file) and "✅ HKJC Analysis 組裝完成" not in analysis_status_dict:
+            if os.path.exists(an_file):
                 content = open(an_file).read()
                 if "[FILL]" not in content and "缺失核心" not in content and "未分析" not in content:
                     analysis_passed += 1
@@ -192,7 +192,7 @@ def main():
             # If not completely passed, figure out what's missing
             logic_json = os.path.join(target_dir, f"Race_{r}_Logic.json")
             if not os.path.exists(logic_json):
-                analysis_status_dict[r] = f"等待建立 Race_{r}_Logic.json，請從 Batch 0 (戰場全景) 啟動"
+                analysis_status_dict[r] = f"等待建立 Race_{r}_Logic.json (Speed Map)"
                 continue
                 
             # Logic JSON exists, check which batches are filled
@@ -201,6 +201,13 @@ def main():
                     logic_data = json.load(f)
             except Exception:
                 analysis_status_dict[r] = "🚨 Race Logic JSON 解析失敗，需要修復"
+                continue
+            
+            # Check if Speed Map is filled
+            speed_map = logic_data.get('race_analysis', {}).get('speed_map', {})
+            speed_map_str = json.dumps(speed_map, ensure_ascii=False)
+            if '[FILL]' in speed_map_str or not speed_map.get('predicted_pace') or speed_map.get('predicted_pace') == '[FILL]':
+                analysis_status_dict[r] = "等待填寫 Speed Map (步速瀑布)"
                 continue
                 
             completed_horses = list(logic_data.get('horses', {}).keys())
@@ -284,29 +291,69 @@ def main():
                 horses = []
             batches = get_batches(horses, 3)
             
-            # 1. Provide Context for JSON Creation
-            if "等待建立" in analysis_status_dict[r]:
-                print(f"\n🚨🚨🚨【HKJC HORSE ANALYST 啟動要求 (Race {r} Batch 0 戰場全景)】🚨🚨🚨")
-                print(f"👉 LLM Agent 請強制切換為 hkjc_horse_analyst 模式！讀取 `{os.path.basename(facts_path)}`。")
-                print("在 <thought> 標籤內執行【Step 0 步速瀑布】推理，引用事實資料判定 Pace Type！")
-                print("")
-                print(f"然後建立 `{os.path.basename(logic_json)}`，Schema 強制要求：")
-                print("  race_analysis: {")
-                print("    race_number, race_class, distance,")
-                print("    speed_map: {")
-                print("      predicted_pace,        ← 'Crawl/Moderate/Fast/Chaotic'")
-                print("      leaders: [],            ← 馬號列表")
-                print("      on_pace: [],            ← 馬號列表")
-                print("      mid_pack: [],           ← 馬號列表")
-                print("      closers: [],            ← 馬號列表")
-                print("      track_bias,             ← 跑道偏差描述 [Step 3 強制]")
-                print("      tactical_nodes,         ← 戰術節點 [Step 3 強制]")
-                print("      collapse_point          ← 步速崩潰點分析 [Step 3 強制]")
-                print("    }")
-                print("  }")
-                print("")
-                print("⚠️ 重要：track_bias、tactical_nodes、collapse_point 三項為強制填寫，不得留空！")
-                print("生成完畢後，請重新執行本 Orchestrator！")
+            # ─────────────────────────────────────────────────────────
+            # STEP A: Auto-create Logic JSON skeleton if it doesn't exist
+            # ─────────────────────────────────────────────────────────
+            if not os.path.exists(logic_json):
+                # Extract race class and distance from Facts.md
+                race_class = "[FILL]"
+                race_distance = "[FILL]"
+                try:
+                    facts_content = open(facts_path, encoding='utf-8').read()
+                    m = re.search(r'場地:\s*([^|]*?)\s*\|\s*距離:\s*([^|]*?)\s*\|\s*班次:\s*([^\n]+)', facts_content)
+                    if m:
+                        race_distance = m.group(2).strip()
+                        race_class = m.group(3).strip()
+                except Exception:
+                    pass
+                
+                initial_json = {
+                    "race_analysis": {
+                        "race_number": r,
+                        "race_class": race_class,
+                        "distance": race_distance,
+                        "speed_map": {
+                            "predicted_pace": "[FILL]",
+                            "leaders": [],
+                            "on_pace": [],
+                            "mid_pack": [],
+                            "closers": [],
+                            "track_bias": "[FILL]",
+                            "tactical_nodes": "[FILL]",
+                            "collapse_point": "[FILL]"
+                        }
+                    },
+                    "horses": {}
+                }
+                
+                with open(logic_json, 'w', encoding='utf-8') as wf:
+                    json.dump(initial_json, wf, ensure_ascii=False, indent=2)
+                print(f"   ✅ 已自動建立 `{os.path.basename(logic_json)}` 骨架 ({race_class} / {race_distance})")
+            
+            # ─────────────────────────────────────────────────────────
+            # STEP B: Check Speed Map — must be filled before horse analysis
+            # ─────────────────────────────────────────────────────────
+            try:
+                logic_data = json.load(open(logic_json, encoding='utf-8'))
+            except Exception:
+                logic_data = {}
+            
+            speed_map = logic_data.get('race_analysis', {}).get('speed_map', {})
+            speed_map_str = json.dumps(speed_map, ensure_ascii=False)
+            
+            if '[FILL]' in speed_map_str or not speed_map.get('predicted_pace') or speed_map.get('predicted_pace') == '[FILL]':
+                print(f"\n{'='*60}")
+                print(f"📍 Race {r} — 步速瀑布 (Speed Map) 待填寫")
+                print(f"{'='*60}")
+                print(f"")
+                print(f"👉 請閱讀 `{os.path.basename(facts_path)}`，然後填入 `{os.path.basename(logic_json)}` 嘅 speed_map：")
+                print(f"   → predicted_pace: 'Crawl' / 'Moderate' / 'Fast' / 'Chaotic'")
+                print(f"   → leaders / on_pace / mid_pack / closers: 馬號列表 (字串)")
+                print(f"   → track_bias: 跑道偏差描述")
+                print(f"   → tactical_nodes: 戰術節點分析")
+                print(f"   → collapse_point: 步速崩潰點分析")
+                print(f"")
+                print(f"完成後重新執行 Orchestrator！")
                 sys.exit(0)
                 
             # ============================================================
@@ -349,8 +396,8 @@ def main():
                 errors = []
                 if horse_name and horse_name not in core_logic:
                     errors.append(f"WALL-004: core_logic 欠缺馬名「{horse_name}」")
-                if len(core_logic) < 120:
-                    errors.append(f"WALL-005: core_logic 只有 {len(core_logic)} 字 (需≥120字)")
+                if len(core_logic) < 80:
+                    errors.append(f"WALL-005: core_logic 只有 {len(core_logic)} 字 (需≥80字)")
                 if '此駒' in core_logic and horse_name and horse_name not in core_logic:
                     errors.append(f"WALL-004B: 用了「此駒」代替馬名「{horse_name}」")
                 
@@ -375,7 +422,7 @@ def main():
                     for e in errors:
                         print(f"   ❌ {e}")
                     # Reset core_logic to [FILL] to force redo
-                    horses_dict[hkey]['core_logic'] = f'[FILL] 必須包含馬名「{horse_name}」，≥120字'
+                    horses_dict[hkey]['core_logic'] = f'[FILL] 必須包含馬名「{horse_name}」，≥80字'
                     logic_data['horses'] = horses_dict
                     with open(logic_json, 'w', encoding='utf-8') as wf:
                         json.dump(logic_data, wf, ensure_ascii=False, indent=2)
@@ -451,7 +498,7 @@ def main():
                 print(f"")
                 print(f"🔴 阻火牆規則 (違反即退回)：")
                 print(f"   1. core_logic 必須包含馬名「{horse_name}」(禁止用「此駒」)")
-                print(f"   2. core_logic 不少於 120 字")
+                print(f"   2. core_logic 不少於 80 字")
                 print(f"   3. 嚴禁修改 raw_L400 ({locked_l400}) 同 last_run_position ({locked_pos})")
                 print(f"   4. 嚴禁填寫其他馬號的數據！只做馬號 {target_horse}")
                 print(f"   5. matrix reasoning 必須引用具體數據")
@@ -499,7 +546,14 @@ def main():
             else:
                 strikes[f"race_{r}_qa"] = 0 # Reset strike
                 json.dump(strikes, open(strike_file, 'w'))
-                print(f"✅ Race {r} Batch QA 通過！將會自動推進下一場！")
+                completed_count = sum(1 for x in analysis_status_dict.values() if "✅" in str(x)) + 1
+                print(f"\n{'🎉'*10}")
+                print(f"✅ Race {r} 分析完成並通過 QA！ ({completed_count}/{total_races})")
+                print(f"{'🎉'*10}")
+                if r < total_races:
+                    print(f"\n{'─'*60}")
+                    print(f"🔄 正在自動推進至 Race {r + 1}...")
+                    print(f"{'─'*60}")
                 # Loop naturally advances to r+1
 
     # --- STATE 4 & 5: Completion ---

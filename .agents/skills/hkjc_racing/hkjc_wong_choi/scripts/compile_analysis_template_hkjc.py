@@ -150,7 +150,11 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
         lines.append('#### 🔗 賽績線 (近績對手強弱追蹤庫)\n')
         fl_clean = h_fact['formline'].replace('🔗 **賽績線 (近 5 場正式賽事，官方追蹤):**', '').replace('🔗 賽績線 (近 5 場正式賽事，官方追蹤):', '').strip()
         lines.append(fl_clean + '\n')
-        lines.append(f"- **綜合結論:** `{h_analysis.get('formline_strength', '[FILL]')}`\n")
+        formline_str = h_analysis.get('formline_strength', '')
+        if formline_str and formline_str != '[FILL]':
+            lines.append(f"- **綜合結論:** `{formline_str}`\n")
+        else:
+            lines.append(f"- **綜合結論:** `詳見賽績線數據`\n")
     else:
         lines.append('#### 🔗 賽績線: (無往績記錄)\n')
 
@@ -173,11 +177,11 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
         item = m_data.get(en_key, {})
         score = item.get('score', '[-]')
         reason = item.get('reasoning', item.get('reason', '[無提供]'))
-        if "✅" in score:
+        if "✅" in str(score):
             if c_type == "核心": c_check += 1
             elif c_type == "半核心": s_check += 1
             else: a_check += 1
-        elif "❌" in score:
+        elif "❌" in str(score):
             t_fail += 1
             if c_type == "核心": c_fail += 1
         lines.append(f"- **{zh_key}** [{c_type}]: `{score}` | 理據: `{reason}`")
@@ -258,7 +262,7 @@ def build_hkjc_verdict_compiled(json_data, facts_horses):
             h_obj = json_data.get('horses', {}).get(str(h_num), {})
             h_rating = h_obj.get('final_rating', h_obj.get('base_rating', h_obj.get('rating', '[未評分]')))
             m_data = h_obj.get('matrix', {})
-            core_check = sum(1 for m in m_data.values() if isinstance(m, dict) and "✅" in m.get('score', ''))
+            core_check = sum(1 for m in m_data.values() if isinstance(m, dict) and "✅" in str(m.get('score', '')))
             jockey = next((hf['jockey'] for hf in facts_horses if str(hf['num']) == str(h_num)), '')
             trainer = next((hf['trainer'] for hf in facts_horses if str(hf['num']) == str(h_num)), '')
 

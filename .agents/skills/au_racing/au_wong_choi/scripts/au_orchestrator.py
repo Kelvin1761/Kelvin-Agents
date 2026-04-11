@@ -345,6 +345,25 @@ def main():
                     errors.append(f"WALL-004: core_logic missing horse name '{horse_name}'")
                 if len(core_logic) < 120:
                     errors.append(f"WALL-005: core_logic only {len(core_logic)} chars (need ≥120)")
+                
+                # WALL-006: Language quality — at least 40% non-ASCII chars (Chinese/CJK)
+                # AU analysis uses English, so we check for excessive random gibberish differently:
+                # consecutive Latin chars > 30 is suspicious
+                import re as _re
+                long_latin_runs = _re.findall(r'[a-zA-Z]{31,}', core_logic)
+                if long_latin_runs:
+                    errors.append(f"WALL-006: core_logic contains suspicious long character run ({long_latin_runs[0][:20]}...), possible script injection")
+                
+                # WALL-007: core_logic must reference locked data (L400 or position) — debut horses exempt
+                locked_l400 = h_entry.get('sectional_forensic', {}).get('raw_L400', '')
+                locked_pos = h_entry.get('eem_energy', {}).get('last_run_position', '')
+                is_debut = not locked_l400 or locked_l400 in ('N/A', '', '-')
+                if not is_debut:
+                    has_l400_ref = locked_l400 in core_logic
+                    has_pos_ref = locked_pos in core_logic if locked_pos and locked_pos not in ('N/A', '', '-') else True
+                    if not has_l400_ref and not has_pos_ref:
+                        errors.append(f"WALL-007: core_logic missing locked data reference (L400={locked_l400} or pos={locked_pos})")
+                
                 if errors:
                     print(f"\n🚨 Horse #{h} ({horse_name}) firewall failed!")
                     for e in errors:
