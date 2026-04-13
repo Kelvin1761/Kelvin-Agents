@@ -175,7 +175,7 @@ def validate_file(filepath):
     
     # Verdict structure checks
     if verdict_section:
-        # Each pick should have: 馬號及馬名 + 評級 + 核心理據 + 最大風險
+        # Each pick should have: 馬號 + 評級 + 核心理據 + 最大風險 (馬名 auto-populated by compile scripts)
         pick_fields_expected = ["馬號", "評級", "核心理據", "最大風險"]
         for field in pick_fields_expected:
             if field not in verdict_section:

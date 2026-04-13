@@ -70,7 +70,7 @@
         <description>防止最後的 Verdict 格式因注意力衰退而漂移。</description>
         <rules>
             1. 在撰寫 VERDICT BATCH 前，必須強制 `view_file` 讀取 `08_templates_rules.md` (或同等格式文件)。
-            2. 確保一定包含 🥇🥈🥉🏅 清單，並具備馬名、評級、理據、風險四大要點。嚴禁使用 Numbered List (1, 2, 3...) 代替名次。
+            2. 確保一定包含 🥇🥈🥉🏅 清單，並具備馬號、評級、理據、風險四大要點。嚴禁使用 Numbered List (1, 2, 3...) 代替名次。（注意：馬名由 compile 腳本自動從 JSON 取出，LLM 只需填寫 horse_num。）
         </rules>
     </directive>
 

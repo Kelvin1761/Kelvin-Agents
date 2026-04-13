@@ -80,7 +80,7 @@
         <description>最後 Verdict 裁決的多角度五步曲。</description>
         <rules>
             1. 寫 Verdict 前必須先在內部經歷 5 步辯論：(A) 表面實力選馬 (B) 步速場地覆核 (C) 位置概率審計 (D) 值博率檢查 (E) 最終裁決（必須說明被替換馬的理由）。
-            2. 禁止將 Verdict 壓縮成單行形式，每一隻 Top 4 精選必須包含「馬號馬名、評級、核心理據、最大風險」之獨立重點。
+            2. 禁止將 Verdict 壓縮成單行形式，每一隻 Top 4 精選必須包含「馬號、評級、核心理據、最大風險」之獨立重點。（注意：馬名由 compile 腳本自動從 JSON 取出，LLM 只需填寫 horse_num。）
         </rules>
     </directive>    
 
