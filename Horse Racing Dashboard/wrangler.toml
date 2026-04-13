@@ -1,0 +1,7 @@
+name = "wongchoi-dashboard"
+compatibility_date = "2024-03-20"
+pages_build_output_dir = ".cloudflare_dist"
+
+[[kv_namespaces]]
+binding = "WC_STATE"
+id = "1438d580c73b4c938a2f43a03fca34c9"

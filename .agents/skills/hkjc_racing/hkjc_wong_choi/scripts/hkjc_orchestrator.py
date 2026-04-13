@@ -549,7 +549,7 @@ def main():
                 if mc_res.returncode == 0:
                     print(f"✅ MC 模擬完成")
                     # Append MC section to Analysis.md
-                    mc_json_path = os.path.join(race_dir, f"Race_{r}_MC.json")
+                    mc_json_path = os.path.join(target_dir, f"Race_{r}_MC.json")
                     if os.path.exists(mc_json_path):
                         try:
                             mc_data = json.load(open(mc_json_path, 'r', encoding='utf-8'))

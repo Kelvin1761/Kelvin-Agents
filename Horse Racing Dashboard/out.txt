@@ -1,0 +1,35 @@
+Race 1:
+  Top Picks: 4
+  Alt Top Picks: 0
+  Scenario Good 4: 4 picks
+  Scenario Soft 5: 4 picks
+Race 2:
+  Top Picks: 4
+  Alt Top Picks: 0
+  Scenario Good 4: 4 picks
+  Scenario Soft 5: 4 picks
+Race 3:
+  Top Picks: 3
+  Alt Top Picks: 0
+  Scenario Good 4: 4 picks
+  Scenario Soft 5: 4 picks
+Race 4:
+  Top Picks: 4
+  Alt Top Picks: 4
+  Scenario Good 4: 4 picks
+  Scenario Soft 5: 4 picks
+Race 5:
+  Top Picks: 4
+  Alt Top Picks: 2
+  Scenario Good 4: 4 picks
+  Scenario Soft 5: 4 picks
+Race 6:
+  Top Picks: 4
+  Alt Top Picks: 4
+  Scenario Good 4: 4 picks
+  Scenario Soft 5: 4 picks
+Race 7:
+  Top Picks: 4
+  Alt Top Picks: 4
+  Scenario Good 4: 4 picks
+  Scenario Soft 5: 4 picks
