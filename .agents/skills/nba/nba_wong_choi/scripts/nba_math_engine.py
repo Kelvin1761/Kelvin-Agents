@@ -145,15 +145,16 @@ def compute_trend(data: List[float]) -> str:
 
 def compute_hit_rate(data: List[float], line: float, is_over: bool = True) -> tuple:
     """Compute hit rate for a given line.
+    Sportsbet 10+ = 10 or more, so we use >= for over.
     Returns (percentage, count_str, miss_details).
     """
     if not data:
         return 0.0, "0/0", []
 
     if is_over:
-        hits = [1 for x in data if x > line]
+        hits = [1 for x in data if x >= line]
     else:
-        hits = [1 for x in data if x < line]
+        hits = [1 for x in data if x <= line]
 
     hit_count = sum(hits)
     total = len(data)
@@ -163,7 +164,7 @@ def compute_hit_rate(data: List[float], line: float, is_over: bool = True) -> tu
     # Miss analysis
     misses = []
     for i, x in enumerate(data):
-        missed = (x <= line) if is_over else (x >= line)
+        missed = (x < line) if is_over else (x > line)
         if missed:
             deficit = round(x - line, 1)
             misses.append({

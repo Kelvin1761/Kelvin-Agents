@@ -1190,8 +1190,15 @@ def main():
     # 4. 如果指定了 --game，只提取該場
     if args.game:
         target_game = None
+        mapped_tag = args.game
+        if '_' in args.game:
+            parts = args.game.split('_')
+            m_away = TEAM_ABBR_ESPN_MAP.get(parts[0], parts[0])
+            m_home = TEAM_ABBR_ESPN_MAP.get(parts[1], parts[1])
+            mapped_tag = f"{m_away}_{m_home}"
+        
         for g in games:
-            if g['tag'] == args.game or args.game in g['tag'] or args.game in g['name']:
+            if g['tag'] == args.game or args.game in g['tag'] or args.game in g['name'] or g['tag'] == mapped_tag:
                 target_game = g
                 break
         if not target_game:

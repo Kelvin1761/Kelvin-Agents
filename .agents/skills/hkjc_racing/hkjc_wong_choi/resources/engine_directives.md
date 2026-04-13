@@ -74,4 +74,24 @@
         </rules>
     </directive>
 
+    <directive name="PYTHON_SCRIPT_ENFORCEMENT" priority="CRITICAL">
+        <description>強制 LLM 必須使用 Python 腳本處理所有數據操作，嚴禁自行跳過。</description>
+        <rules>
+            1. 嚴禁自行建立任何 .py 腳本（只有白名單內嘅腳本可以存在）
+            2. 嚴禁自行計算評級矩陣分數（由 compile_analysis_template_hkjc.py 自動計算）
+            3. 嚴禁自行生成 Analysis.md（由 Orchestrator 調用 compile 腳本自動生成）
+            4. 嚴禁自行解析 Facts.md 全局數據（只讀取 .runtime/Active_Horse_Context.md）
+            5. 嚴禁自行修改 _session_tasks.md（由 Orchestrator 自動管理）
+            6. 每次完成 JSON 填寫後，必須重新執行 Orchestrator（唯一合法嘅下一步動作）
+            7. 前置環境檢查：每次 Orchestrator 啟動自動執行 preflight_environment_check.py
+        </rules>
+        <forbidden_actions>
+            - 自行建立 .py 檔案
+            - 自行計算 ABCD 評級
+            - 自行 compile markdown
+            - 讀取 Active_Horse_Context.md 以外嘅 Facts 數據
+            - 跳過 Orchestrator 直接處理下一匹馬
+        </forbidden_actions>
+    </directive>
+
 </engine_directives>

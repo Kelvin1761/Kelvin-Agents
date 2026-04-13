@@ -354,17 +354,16 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
 
     for en_key, zh_key, c_type in matrix_keys:
         item = m_data.get(en_key, {})
-        score = item.get('score', '[-]')
         reason = item.get('reasoning', item.get('reason', '[無提供]'))
         dim_key = MATRIX_TO_DIM.get(en_key, '')
         tick = gr_dims.get(dim_key, '➖')
-        lines.append(f"- **{zh_key}** [{c_type}]: `{tick}` ({score}/10) | 理據: `{reason}`")
+        lines.append(f"- **{zh_key}** [{c_type}]: `{tick}` | 理據: `{reason}`")
 
     forgive_item = m_data.get('forgiveness_bonus', {})
     forg_score = forgive_item.get('score', '[-]')
     forg_reason = forgive_item.get('reasoning', forgive_item.get('reason', '[無提供]'))
     forg_tick = _score_to_tick(forg_score)
-    lines.append(f"- 寬恕加分: `{forg_tick}` ({forg_score}/10) | 理據: `{forg_reason}`\n")
+    lines.append(f"- 寬恕加分: `{forg_tick}` | 理據: `{forg_reason}`\n")
 
     # ── 10. 矩陣算術 + 14.2 基礎評級 (ABCD 正規字母制) ────────────────
     cw = '有' if gr_counts['has_core_weak'] else '無'

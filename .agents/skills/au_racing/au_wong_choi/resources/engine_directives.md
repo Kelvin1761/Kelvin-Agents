@@ -84,4 +84,24 @@
         </rules>
     </directive>    
 
+    <directive name="PYTHON_SCRIPT_ENFORCEMENT" priority="CRITICAL">
+        <description>Force the LLM to use Python scripts for all data operations, never skip them.</description>
+        <rules>
+            1. NEVER create any .py scripts (only whitelisted scripts may exist)
+            2. NEVER self-calculate the rating matrix (compile_analysis_template.py handles this)
+            3. NEVER self-generate Analysis.md (Orchestrator calls the compile script)
+            4. NEVER parse the full Facts.md (only read .runtime/Active_Horse_Context.md)
+            5. NEVER modify _session_tasks.md (Orchestrator manages this automatically)
+            6. After completing JSON fills, MUST re-run the Orchestrator (the only legal next action)
+            7. Preflight check: preflight_environment_check.py runs automatically on each Orchestrator start
+        </rules>
+        <forbidden_actions>
+            - Creating .py files
+            - Self-calculating ABCD grades
+            - Self-compiling markdown
+            - Reading Facts data outside Active_Horse_Context.md
+            - Skipping the Orchestrator to process the next horse
+        </forbidden_actions>
+    </directive>
+
 </engine_directives>

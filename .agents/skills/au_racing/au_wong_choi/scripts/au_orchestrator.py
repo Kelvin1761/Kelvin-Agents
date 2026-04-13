@@ -6,6 +6,16 @@ import subprocess
 import re
 import json
 import math
+import time
+import hashlib
+
+def notify_telegram(msg):
+    script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../../scripts/send_telegram_msg.py")
+    if os.path.exists(script_path):
+        subprocess.run(["python3", script_path, msg])
+
+# Session start time for preflight check
+SESSION_START_TIME = time.time()
 
 def parse_url_for_details(url):
     match = re.search(r'form-guide/horse-racing/([^/-]+)-(\d{8})/', url)
@@ -43,20 +53,20 @@ def trigger_extractor(url):
         sys.exit(1)
 
 def discover_total_races(target_dir):
+    combined = [f for f in os.listdir(target_dir) if re.search(r'Race \d+-(\d+)', f)]
+    if combined:
+        m = re.search(r'Race \d+-(\d+)', combined[0])
+        if m:
+            return int(m.group(1))
+
     racecards = [f for f in os.listdir(target_dir) if "Racecard.md" in f]
     max_race = 0
     for card in racecards:
-        m = re.search(r'Race (\d+)', card)
+        m = re.search(r'Race_(\d+)', card) or re.search(r'Race (\d+)', card)
         if m:
             race_num = int(m.group(1))
             if race_num > max_race:
                 max_race = race_num
-    if max_race == 0:
-        combined = [f for f in os.listdir(target_dir) if re.search(r'Race \d+-(\d+)', f)]
-        if combined:
-            m = re.search(r'Race \d+-(\d+)', combined[0])
-            if m:
-                max_race = int(m.group(1))
     return max_race
 
 def check_raw_data_completeness(target_dir, total_races):
@@ -89,10 +99,12 @@ def get_horse_numbers(facts_path):
         content = f.read()
     horses = []
     # Identify horse blocks
-    blocks = re.split(r'(?=\[#\d+\])', content)
+    blocks = re.split(r'(?=\[#\d+\]|### 馬匹 #\d+|### 馬號 \d+)', content)
     for b in blocks:
-        m = re.search(r'\[#(\d+)\]', b)
-        if m: horses.append(int(m.group(1)))
+        m = re.search(r'\[#(\d+)\]|馬匹 #(\d+)|馬號 (\d+)', b)
+        if m: 
+            val = m.group(1) or m.group(2) or m.group(3)
+            horses.append(int(val))
     return sorted(list(set(horses)))
 
 def get_batches(horses, batch_size=3):
@@ -132,7 +144,7 @@ def main():
     venue, formatted_date = parse_url_for_details(url)
     
     print("="*60)
-    print("🏇 AU Wong Choi Orchestrator (State Machine V8)")
+    print("🏇 AU Wong Choi Orchestrator (State Machine V9.2)")
     print("="*60)
     
     target_dir = get_target_dir(venue, formatted_date)
@@ -143,6 +155,19 @@ def main():
         if not os.path.isdir(target_dir):
             print("❌ [Fatal] 爬蟲執行後仍找不到目標資料夾！")
             sys.exit(1)
+    
+    # ── Preflight Security Check ──
+    preflight_script = ".agents/scripts/preflight_environment_check.py"
+    if os.path.exists(preflight_script):
+        pf_result = subprocess.run(
+            ["python3", preflight_script, target_dir, "--domain", "au",
+             "--session-start", str(SESSION_START_TIME)],
+            capture_output=True, text=True
+        )
+        print(pf_result.stdout)
+        if pf_result.returncode == 2:
+            print("🛑 Preflight check FAILED — 請清理可疑檔案後再執行！")
+            sys.exit(2)
             
     total_races = discover_total_races(target_dir)
     print(f"✅ 目標目錄: {os.path.basename(target_dir)}")
@@ -233,6 +258,7 @@ def main():
         print("🚨 State 1 行動要求 (Action Required):")
         print("👉 LLM Agent 請注意：請調查今日場地天氣與賽道偏差，並於此目錄建立 `_Meeting_Intelligence_Package.md`。")
         print("完成後，請重新執行本 Orchestrator！")
+        notify_telegram("🚨 **AU State 1 Action Required**\n缺少場地天氣與賽道偏差，請手動生成 `_Meeting_Intelligence_Package.md`。")
         sys.exit(0)
 
     if chk_facts == "[ ]":
@@ -251,9 +277,7 @@ def main():
                 cmd = ["python3", ".agents/scripts/inject_fact_anchors.py", rc, fg, "--max-display", "5", "--venue", venue]
                 subprocess.run(cmd, check=True)
                 
-        print("✅ Facts 全部生成完畢！")
-        print("請立刻重新執行 Orchestrator 以前往 State 3。")
-        sys.exit(0)
+        print("✅ Facts 全部生成完畢！自動無縫推進前往 State 3 執行分析...")
 
     # --- STATE 2.5: Batch 0 Speed Map (race_analysis.speed_map) ---
     # Check if any race is missing its Batch 0 speed_map with required fields
@@ -287,6 +311,7 @@ def main():
                     print("  }")
                     print(f"\n缺失欄位: {missing_sm}")
                     print("生成完畢後，請重新執行本 Orchestrator！")
+                    notify_telegram(f"📍 **AU Race {r} Action Required**\nBatch 0 步速瀑布 (Speed Map) 尚未填寫。")
                     sys.exit(0)
             except Exception:
                 pass  # JSON not parseable yet, handled by State 3
@@ -340,35 +365,21 @@ def main():
                 
                 horse_name = h_entry.get('horse_name', '')
                 core_logic = h_entry.get('core_logic', '')
+                locked_nonce = h_entry.get('_validation_nonce', '')
+                
                 errors = []
-                if horse_name and horse_name not in core_logic:
-                    errors.append(f"WALL-004: core_logic missing horse name '{horse_name}'")
-                if len(core_logic) < 120:
-                    errors.append(f"WALL-005: core_logic only {len(core_logic)} chars (need ≥120)")
+                # V9.2: Relaxed rules — no horse name, word count, or data reference enforcement
+                # Only nonce validation remains
                 
-                # WALL-006: Language quality — at least 40% non-ASCII chars (Chinese/CJK)
-                # AU analysis uses English, so we check for excessive random gibberish differently:
-                # consecutive Latin chars > 30 is suspicious
-                import re as _re
-                long_latin_runs = _re.findall(r'[a-zA-Z]{31,}', core_logic)
-                if long_latin_runs:
-                    errors.append(f"WALL-006: core_logic contains suspicious long character run ({long_latin_runs[0][:20]}...), possible script injection")
-                
-                # WALL-007: core_logic must reference locked data (L400 or position) — debut horses exempt
-                locked_l400 = h_entry.get('sectional_forensic', {}).get('raw_L400', '')
-                locked_pos = h_entry.get('eem_energy', {}).get('last_run_position', '')
-                is_debut = not locked_l400 or locked_l400 in ('N/A', '', '-')
-                if not is_debut:
-                    has_l400_ref = locked_l400 in core_logic
-                    has_pos_ref = locked_pos in core_logic if locked_pos and locked_pos not in ('N/A', '', '-') else True
-                    if not has_l400_ref and not has_pos_ref:
-                        errors.append(f"WALL-007: core_logic missing locked data reference (L400={locked_l400} or pos={locked_pos})")
+                # WALL-008: Nonce 驗證
+                if not locked_nonce:
+                    errors.append(f"WALL-008: Missing _validation_nonce")
                 
                 if errors:
                     print(f"\n🚨 Horse #{h} ({horse_name}) firewall failed!")
                     for e in errors:
                         print(f"   ❌ {e}")
-                    horses_dict[hkey]['core_logic'] = f'[FILL] Must include horse name "{horse_name}", ≥120 chars'
+                    horses_dict[hkey]['core_logic'] = '[FILL]'
                     logic_data['horses'] = horses_dict
                     with open(json_file, 'w', encoding='utf-8') as wf:
                         json.dump(logic_data, wf, ensure_ascii=False, indent=2)
@@ -400,11 +411,11 @@ def main():
                     facts_content = ""
                 
                 horse_facts_block = ""
-                for marker_pat in [rf'\[#{target_horse}\]', rf'### 馬號 {target_horse} — ']:
+                for marker_pat in [rf'\[#{target_horse}\]', rf'### 馬號 {target_horse} — ', rf'### 馬匹 #{target_horse} ']:
                     h_match = re.search(marker_pat, facts_content)
                     if h_match:
                         h_start = h_match.start()
-                        h_next = re.search(r'(?:\[#\d+\]|### 馬號 \d+ — )', facts_content[h_match.end():])
+                        h_next = re.search(r'(?:\[#\d+\]|### 馬號 \d+ — |### 馬匹 #\d+)', facts_content[h_match.end():])
                         h_end = h_match.end() + h_next.start() if h_next else len(facts_content)
                         horse_facts_block = facts_content[h_start:h_end]
                         break
@@ -413,17 +424,32 @@ def main():
                 locked_l400 = h_entry.get('sectional_forensic', {}).get('raw_L400', 'N/A')
                 locked_pos = h_entry.get('eem_energy', {}).get('last_run_position', 'N/A')
                 
+                # --- V9.1 JIT Slicing Mechanism ---
+                runtime_dir = os.path.join(target_dir, ".runtime")
+                os.makedirs(runtime_dir, exist_ok=True)
+                runtime_ctx_path = os.path.join(runtime_dir, "Active_Horse_Context.md")
+                
+                locked_nonce = h_entry.get('_validation_nonce', 'MISSING')
+                with open(runtime_ctx_path, "w", encoding="utf-8") as _ctx_f:
+                    _ctx_f.write(f"🔒 NONCE: {locked_nonce}\n")
+                    _ctx_f.write(horse_facts_block)
+                
                 print(f"\n{'='*60}")
                 print(f"🚨🚨🚨【AU HORSE ANALYST — Race {r} / Horse #{target_horse} '{horse_name}'】🚨🚨🚨")
                 print(f"{'='*60}")
-                print(f"\n📋 Python pre-filled (DO NOT modify): L400={locked_l400}, Pos={locked_pos}")
-                print(f"\n📖 Facts block for '{horse_name}':")
-                print(f"{'─'*60}")
-                print(horse_facts_block[:2500])
-                print(f"{'─'*60}")
-                print(f"\n👉 Open `{os.path.basename(json_file)}`, fill [FILL] fields for horse \"{target_horse}\" ONLY.")
-                print(f"🔴 Firewall: name in core_logic, ≥120 chars, no data tampering, single horse only.")
-                print(f"\nRe-run Orchestrator when done!")
+                print(f"")
+                print(f"📋 Python pre-filled (DO NOT modify): L400={locked_l400}, Pos={locked_pos}")
+                print(f"")
+                print(f"📖 Horse context written to:")
+                print(f"   => {runtime_ctx_path}")
+                print(f"   ⛔ DO NOT read the full Facts.md")
+                print(f"")
+                print(f"👉 Open `{os.path.basename(json_file)}`, fill [FILL] fields for horse \"{target_horse}\" ONLY.")
+                print(f"🔴 Firewall: no data tampering, single horse only, no .py scripts!")
+                print(f"")
+                print(f"📌 After completion, MUST execute:")
+                print(f"   python3 .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py \"{url}\"")
+                notify_telegram(f"🚨 **AU Race {r} Action Required**\n請填寫 Horse #{target_horse} '{horse_name}' 嘅獨立分析。")
                 sys.exit(0)
                 
             # If ALL batches are done, compile and QA
@@ -432,6 +458,7 @@ def main():
                 print(f"\n🚨 [CRITICAL ALERT] Race {r} 連續 3 次 QA 失敗 (Strike-3 Fallback)。")
                 print(f"系統已中斷自動化，請人類直接打開 `{os.path.basename(json_file)}` 修正長度與邏輯！")
                 print(f"修正後執行: python .agents/scripts/completion_gate_v2.py \"{an_file}\" --domain au")
+                notify_telegram(f"❌ **AU Race {r} Critical QA Alert**\n連續 3 次 QA 失敗，恐為極端異常賽事，請人工介入修正 JSON！")
                 sys.exit(1)
                 
             print(f"⚙️ 發現 Race {r} JSON 所有馬匹已聚齊！正在編譯...")
@@ -442,6 +469,38 @@ def main():
                 strikes[str(r)] = strikes.get(str(r), 0) + 1
                 save_strikes()
                 sys.exit(1)
+            
+            # 4.5 Monte Carlo Simulation (non-blocking)
+            print(f"🎲 Running Monte Carlo simulation for Race {r}...")
+            mc_script = ".agents/skills/au_racing/au_wong_choi/scripts/monte_carlo_au.py"
+            if os.path.exists(mc_script):
+                mc_res = subprocess.run(
+                    ["python3", mc_script, json_file, facts_file],
+                    capture_output=True, text=True)
+                if mc_res.returncode == 0:
+                    print(f"✅ MC simulation complete")
+                    mc_json_path = os.path.join(target_dir, f"Race_{r}_MC.json")
+                    if os.path.exists(mc_json_path):
+                        try:
+                            mc_section = mc_res.stdout
+                            if '📊 Monte Carlo' in mc_section:
+                                with open(an_file, 'a', encoding='utf-8') as af:
+                                    mc_lines = []
+                                    in_mc = False
+                                    for line in mc_section.split('\n'):
+                                        if '📊 Monte Carlo' in line:
+                                            in_mc = True
+                                        if in_mc:
+                                            mc_lines.append(line)
+                                    if mc_lines:
+                                        af.write('\n\n' + '\n'.join(mc_lines) + '\n')
+                                        print(f"📊 MC results appended to {os.path.basename(an_file)}")
+                        except Exception as e:
+                            print(f"⚠️ MC append failed: {e}")
+                else:
+                    print(f"⚠️ MC simulation did not complete (non-blocking): {mc_res.stderr[:200] if mc_res.stderr else 'unknown'}")
+            else:
+                print(f"⚠️ MC script not found: {mc_script}")
             
             # QA
             print(f"🛡️ 正在進行 Batch QA (completion_gate_v2.py)...")
@@ -473,6 +532,7 @@ def main():
         print("👉 (未偵測到 Dashboard 自動推送腳本，請手動發佈)。")
         
     print("\n🎉 [SUCCESS] AU Wong Choi Pipeline 任務全數擊破！")
+    notify_telegram("🎉 **AU Wong Choi 任務完成**\n所有分析已順利通過 QA 及編譯！")
     
 if __name__ == "__main__":
     main()

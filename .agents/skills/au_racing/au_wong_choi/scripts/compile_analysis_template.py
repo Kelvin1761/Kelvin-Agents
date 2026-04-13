@@ -109,10 +109,10 @@ def build_panorama(json_data, facts_path, facts_text):
     sm = v.get('speed_map', {})
     
     pace = sm.get('expected_pace', '[FILL]')
-    leaders = ", ".join(sm.get('leaders', [])) or '[未指定]'
-    on_pace = ", ".join(sm.get('on_pace', [])) or '[未指定]'
-    mid = ", ".join(sm.get('mid_pack', [])) or '[未指定]'
-    closers = ", ".join(sm.get('closers', [])) or '[未指定]'
+    leaders = ", ".join(str(x) for x in sm.get('leaders', [])) or '[未指定]'
+    on_pace = ", ".join(str(x) for x in sm.get('on_pace', [])) or '[未指定]'
+    mid = ", ".join(str(x) for x in sm.get('mid_pack', [])) or '[未指定]'
+    closers = ", ".join(str(x) for x in sm.get('closers', [])) or '[未指定]'
     
     weather_going = "詳見 _Meeting_Intelligence_Package.md"
     bias = "按 Intelligence 判斷"
@@ -396,6 +396,8 @@ def build_verdict(json_data, facts_horses):
     else:
         lines.append('[No Top 4 data in JSON verdict]')
     lines.append('```\n')
+    
+    return '\n'.join(lines)
 
 
 def main():

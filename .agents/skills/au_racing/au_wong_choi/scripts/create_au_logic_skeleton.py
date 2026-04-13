@@ -25,6 +25,10 @@ def extract_horse_block(facts_content, horse_num):
         pattern = rf'### 馬號 {horse_num} — '
         match = re.search(pattern, facts_content)
     if not match:
+        # Try V2 format
+        pattern = rf'### 馬匹 #{horse_num}\b'
+        match = re.search(pattern, facts_content, re.IGNORECASE)
+    if not match:
         # Try Runner X format
         pattern = rf'(?:Runner|Horse)\s+{horse_num}\b'
         match = re.search(pattern, facts_content, re.IGNORECASE)
@@ -37,6 +41,7 @@ def extract_horse_block(facts_content, horse_num):
         rf'\[#{horse_num + 1}\]',
         r'\[#\d+\]',
         r'### 馬號 \d+ — ',
+        r'### 馬匹 #\d+',
         r'(?:Runner|Horse)\s+\d+\b',
     ]
     for np in next_patterns:
@@ -59,6 +64,16 @@ def parse_horse_header(block):
         name_line = m.group(2).strip()
         if name_line:
             result['name'] = name_line.split('|')[0].split('—')[0].strip()
+
+    # Try V2 format
+    m3 = re.search(r'### 馬匹 #(\d+)\s+(.+?)\s+\(檔位\s*(\d+)\)\s*\|\s*騎師:\s*(.+?)\s*\|\s*練馬師:\s*(.+?)(?:\n|$)', block)
+    if m3:
+        result['num'] = int(m3.group(1))
+        result['name'] = m3.group(2).strip()
+        result['barrier'] = int(m3.group(3))
+        result['jockey'] = m3.group(4).strip()
+        result['trainer'] = m3.group(5).strip()
+        return result
 
     # Try HKJC-compatible format as fallback
     m2 = re.search(r'### 馬號 (\d+) — (.+?) \| 騎師:\s*(.+?) \| 練馬師:\s*(.+?) \| 負磅:\s*(\d+) \| 檔位:\s*(\d+)', block)
@@ -141,6 +156,7 @@ def parse_trends(block):
 
 def build_skeleton(data):
     """Build JSON skeleton for AU horse analysis."""
+    import secrets
     name = data.get('name', '未知')
     raw_l400 = data.get('raw_L400', 'N/A')
     last_pos = data.get('last_run_position', 'N/A')
@@ -148,6 +164,7 @@ def build_skeleton(data):
     return {
         # ===== LOCKED DATA =====
         '_locked': True,
+        '_validation_nonce': secrets.token_hex(4),
         'horse_name': name,
         'jockey': data.get('jockey', ''),
         'trainer': data.get('trainer', ''),
@@ -200,7 +217,7 @@ def build_skeleton(data):
         'fine_tune': {'direction': '[FILL]', 'trigger': '[FILL]'},
         'override': {'rule': '[FILL]'},
         'final_rating': '[FILL]',
-        'core_logic': f'[FILL] Must include horse name "{name}", ≥120 chars',
+        'core_logic': '[FILL]',
         'advantages': '[FILL]',
         'disadvantages': '[FILL]',
         'stability_index': '[FILL]',

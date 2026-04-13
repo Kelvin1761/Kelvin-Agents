@@ -243,6 +243,54 @@ def parse_pace_from_comment(comment: str) -> str:
     return '未知'
 
 
+def auto_determine_forgiveness(comment: str) -> str:
+    """Auto-determine forgiveness status from race comment keywords.
+    
+    Scans the comment for known forgiveness triggers and returns
+    a specific determination instead of [需判定].
+    
+    Returns:
+        str: Forgiveness determination, e.g. '受阻蝕位', '外疊蝕位', or '[-]'
+    """
+    if not comment:
+        return '[-]'
+    
+    # Priority-ordered triggers (more severe first)
+    triggers = []
+    
+    # Health issues (most forgiving)
+    if any(kw in comment for kw in ['心律不正常', '氣管有血', '喘鳴症', '氣管有痰']):
+        triggers.append('健康問題')
+    
+    # Physical interference
+    if any(kw in comment for kw in ['受阻', '受擠迫', '被碰撞', '發生碰撞', '被夾',
+                                      '受困', '未能望空', '空位不足']):
+        triggers.append('受阻蝕位')
+    
+    # Wide running
+    if any(kw in comment for kw in ['走大外疊', '大外疊', '五疊', '六疊']):
+        triggers.append('外疊蝕位')
+    elif any(kw in comment for kw in ['外閃', '向外斜跑']):
+        triggers.append('外閃蝕位')
+    
+    # Pace disadvantage
+    if any(kw in comment for kw in ['極慢步速', '極快步速']):
+        triggers.append('步速極端')
+    
+    # Gate issues
+    if any(kw in comment for kw in ['出閘緩慢', '起步時向外', '起步時發生', '慢閘']):
+        triggers.append('起步不利')
+    
+    # Competition events (noted by stewards)
+    if '見競賽事件報告' in comment:
+        triggers.append('見競賽事件')
+    
+    if triggers:
+        return ' / '.join(triggers[:2])  # Max 2 triggers for conciseness
+    
+    return '[-]'
+
+
 def parse_date(date_str: str) -> Optional[datetime]:
     """Parse HKJC date format (DD/MM/YYYY)."""
     try:
@@ -843,7 +891,8 @@ def generate_horse_block(horse: dict, today_venue: str = '',
         gear = p.get('gear', '-')
         comment = r.get('comment', '')
         
-        lines.append(f"| {i+1} | {date} | {venue} | {distance} | {class_g} | {barrier} | {jockey} | {weight} | {finish} | {margin} | {energy_str} | {l400_str} | {wide_str} | {consumption} | {pos_str} | {ftime} | {std_diff_str} | {dw_str} | {gear} | {comment} | [需判定] |")
+        forgiveness = auto_determine_forgiveness(comment)
+        lines.append(f"| {i+1} | {date} | {venue} | {distance} | {class_g} | {barrier} | {jockey} | {weight} | {finish} | {margin} | {energy_str} | {l400_str} | {wide_str} | {consumption} | {pos_str} | {ftime} | {std_diff_str} | {dw_str} | {gear} | {comment} | {forgiveness} |")
 
     if total_races > display_races:
         lines.append(f"")
@@ -891,8 +940,8 @@ def generate_horse_block(horse: dict, today_venue: str = '',
                 dw_str = str(dw) if dw > 0 else '-'
                 gear = p.get('gear', '-')
                 comment = r.get('comment', '')
-                
-                lines.append(f"| {i+1} | {date} | {venue} | {distance} | {class_g} | {barrier} | {jockey} | {weight} | {finish} | {margin} | {energy_str} | {l400_str} | {wide_str} | {consumption} | {pos_str} | {ftime} | {std_diff_str} | {dw_str} | {gear} | {comment} | [需判定] |")
+                forgiveness = auto_determine_forgiveness(comment)
+                lines.append(f"| {i+1} | {date} | {venue} | {distance} | {class_g} | {barrier} | {jockey} | {weight} | {finish} | {margin} | {energy_str} | {l400_str} | {wide_str} | {consumption} | {pos_str} | {ftime} | {std_diff_str} | {dw_str} | {gear} | {comment} | {forgiveness} |")
 
     lines.append(f"")
     

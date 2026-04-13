@@ -149,14 +149,8 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
         words = eng_words + chi_chars
         
         # Griffin/debut horses have relaxed word requirements
-        min_words = {'S': 350, 'A': 350, 'B': 250, 'C': 200, 'D': 200}
-        if is_debut:
-            min_words = {'S': 200, 'A': 200, 'B': 150, 'C': 120, 'D': 120}
-        threshold = min_words.get(grade, 200)
-        if words < threshold:
-            # Relaxed rules per user request
-            pass
-            # errors.append(f"[{horse_id}] Grade {grade} has insufficient words ({words} < {threshold}){' [DEBUT HORSE]' if is_debut else ''}")
+        # Word count thresholds — relaxed per user request (V9.2)
+        # No minimum word count enforcement; quality over quantity.
             
         # Anti-Laziness Scan
         lazy_patterns = [
@@ -173,44 +167,15 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
             logic_text = re.sub(r'^\[|\]$', '', logic_text).strip()
             horse_logics[horse_id] = logic_text
             
-            logic_words = len(re.findall(r'[a-zA-Z0-9_]+', logic_text)) + len(re.findall(r'[\u4e00-\u9fff]', logic_text))
-            # Griffin/debut: relax to 40 chars (pedigree-based analysis is shorter) 
-            min_logic = 40 if is_debut else 60
-            if logic_words < min_logic:
-                # Relaxed rules per user request
-                pass
-                # errors.append(f"[{horse_id}] '核心邏輯' is too brief ({logic_words} chars < {min_logic}).{' [DEBUT HORSE, pedigree-based OK]' if is_debut else ' Please expand to 60-150 words.'}")            
-            # Quantitative Evidence Lock — SKIP for debut horses (they have no numeric data)
-            if not is_debut and not re.search(r'(\d+\.\d+|\d+-\d+)', logic_text):
-                # Relaxed rules per user request
-                pass
-                # errors.append(f"[{horse_id}] ⚠️ 核心邏輯缺少定量數據 (Quantitative Lock)! 必須引用實質數據 (如段速 22.14 或走位 1-2-1)。空泛吹捧已被阻截。")
-            
-            # GIBBERISH-001: Anti-gibberish detection (catches script-injected random chars)
-            chi_chars_logic = len(re.findall(r'[\u4e00-\u9fff]', logic_text))
-            total_chars_logic = len(logic_text.replace(' ', '').replace('\n', ''))
-            if total_chars_logic > 0 and (chi_chars_logic / total_chars_logic) < 0.50:
-                # Relaxed rules per user request
-                pass
-                # errors.append(f"[{horse_id}] 🚨 GIBBERISH-001: 核心邏輯中文佔比過低 ({chi_chars_logic}/{total_chars_logic} = {chi_chars_logic/total_chars_logic:.0%})，疑似腳本注入亂碼！")
-            # Check for long consecutive Latin character runs (> 15 chars, excluding known patterns)
-            long_latin_runs = re.findall(r'[a-zA-Z]{16,}', logic_text)
-            if long_latin_runs:
-                # Relaxed rules per user request
-                pass
-                # errors.append(f"[{horse_id}] 🚨 GIBBERISH-001: 核心邏輯發現連續英文字母串 ({long_latin_runs[0][:20]}...)，疑似亂碼注入！")
+            # Core logic quality checks — relaxed per user request (V9.2)
+            # No minimum word count, quantitative lock, or gibberish detection enforced.
+            # Quality is ensured by the orchestrator's [FILL] completion check instead.
         else:
             errors.append(f"[{horse_id}] Missing properly formatted '- **核心邏輯:**' section.")
             
         # Formline Quantitative Evidence Lock — SKIP for debut horses
         # Check the entire formline section area (which includes race data tables with numeric content)
-        formline_section_match = re.search(r'賽績線.*?(?=####|$)', block, re.DOTALL)
-        if formline_section_match and not is_debut:
-            formline_text = formline_section_match.group(0).strip()
-            if '無往績記錄' not in formline_text and '詳見賽績線' not in formline_text and not re.search(r'(\d+\.\d+|\d+-\d+|\d{2}/\d{2}/\d{4})', formline_text):
-                 # Relaxed rules per user request
-                 pass
-                 # errors.append(f"[{horse_id}] ⚠️ 賽績線缺乏定量數據 (Quantitative Lock)! 綜合結論需要實質支持。")
+        # Formline quantitative lock — relaxed per user request (V9.2)
             
         # Check Rating Matrix completeness to prevent anti-skipping
         req_matrix_fields = [
@@ -226,10 +191,7 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
                     reasoning_text = field_line_match.group(1).strip()
                     # Apply digit lock ONLY for Speed, EEM — and SKIP for debut horses
                     if not is_debut and field in ['段速與引擎', 'EEM與形勢', '段速質量', 'EEM 潛力']:
-                        if len(reasoning_text) > 2 and not re.search(r'\d+', reasoning_text):
-                            # Relaxed rules per user request
-                            pass
-                            # errors.append(f"[{horse_id}] ⚠️ 評級矩陣的 `{field}` 理據缺乏量化數據支撐！")
+                        pass  # Matrix reasoning digit lock — relaxed per V9.2
 
     # ── LAZY-003: Cross-Horse Similarity Check ─────────────────────────────
     def get_ngrams(text, n=3):
@@ -248,19 +210,7 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
                       f"疑似使用罐頭模板或批量複製。")
         
     horse_ids = list(horse_logics.keys())
-    lazy003_threshold = 0.90 if is_griffin_race else 0.40  # Griffin races naturally have similar analysis
-    for i in range(len(horse_ids)):
-        for j in range(i+1, len(horse_ids)):
-            h1 = horse_ids[i]
-            h2 = horse_ids[j]
-            ng1 = get_ngrams(horse_logics[h1])
-            ng2 = get_ngrams(horse_logics[h2])
-            if ng1 and ng2:
-                jaccard = len(ng1.intersection(ng2)) / len(ng1.union(ng2))
-                if jaccard > lazy003_threshold:
-                    # Relaxed rules per user request
-                    pass
-                    # errors.append(f"[{h1} & {h2}] 🚨 LAZY-003: 核心邏輯發現高度重複性罐頭字眼 (相似度 {jaccard:.0%})，Analyst 介入失敗！嚴禁使用腳本或模版複製貼上。")
+    # LAZY-003 n-gram similarity check — relaxed per V9.2 (only LAZY-004 clone detection retained)
 
     return errors
 

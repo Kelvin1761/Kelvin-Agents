@@ -25,6 +25,57 @@ from datetime import datetime
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
+
+# ─── Season Phase Detection ──────────────────────────────────────────────
+
+def detect_season_phase(date_str=None):
+    """
+    Detect NBA season phase from date string.
+    Returns: EARLY_SEASON, MID_SEASON, LATE_REGULAR, PLAY_IN, PLAYOFFS
+    """
+    if not date_str:
+        date_str = datetime.now().strftime("%Y-%m-%d")
+    
+    try:
+        # Handle various date formats
+        for fmt in ("%Y-%m-%dT%H:%MZ", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d"):
+            try:
+                d = datetime.strptime(date_str[:19], fmt)
+                break
+            except ValueError:
+                continue
+        else:
+            d = datetime.now()
+    except Exception:
+        d = datetime.now()
+    
+    # 2025-26 NBA season calendar
+    month, day = d.month, d.day
+    
+    # Season start: October
+    if d.year == 2025 and month == 10:
+        return "EARLY_SEASON"
+    if d.year == 2025 and month == 11 and day <= 15:
+        return "EARLY_SEASON"
+    
+    # Late regular season (tanking watch)
+    if d.year == 2026 and month == 3 and day >= 25:
+        return "LATE_REGULAR"
+    if d.year == 2026 and month == 4 and day <= 13:
+        return "LATE_REGULAR"
+    
+    # Play-In tournament
+    if d.year == 2026 and month == 4 and 14 <= day <= 18:
+        return "PLAY_IN"
+    
+    # Playoffs
+    if d.year == 2026 and month == 4 and day >= 19:
+        return "PLAYOFFS"
+    if d.year == 2026 and month in (5, 6):
+        return "PLAYOFFS"
+    
+    return "MID_SEASON"
+
 # ─── Math Engine ─────────────────────────────────────────────────────────
 
 def compute_stats(data):
@@ -65,15 +116,15 @@ def trend_label(data):
 
 
 def hit_rate(data, line_val):
-    """Hit rate using strict > (User requested: 3+ means above 3)."""
+    """Hit rate using >= (Sportsbet 10+ = 10 or more, i.e. >= 10)."""
     if not data: return 0.0, "0/0", []
-    hits = sum(1 for x in data if x > line_val)
+    hits = sum(1 for x in data if x >= line_val)
     pct = round(hits / len(data) * 100, 1)
     count = f"{hits}/{len(data)}"
     misses = []
     for i, x in enumerate(data):
-        if x <= line_val:
-            misses.append({"game": i+1, "value": x, "deficit": round(line_val - x + 1, 1)})
+        if x < line_val:
+            misses.append({"game": i+1, "value": x, "deficit": round(line_val - x, 1)})
     return pct, count, misses
 
 
@@ -94,26 +145,106 @@ def edge_grade(edge):
     else: return "❌負EV"
 
 
-# ─── Adjusted Win Probability Engine (V7) ────────────────────────────────
-# V7 Python/LLM Split:
-#   Python calculates: trend, cov, buffer, pace (pure math)
-#   LLM judges:        matchup, context, usg, defender (contextual reasoning)
+# ─── Adjusted Win Probability Engine (V3 — 10-Factor) ─────────────────────
+# V3: All 10 factors computed by Python. Zero LLM judgment.
+# Factors: trend, cov, buffer, pace, minutes_floor, home_away,
+#          b2b_fatigue, opp_defense, usg_shift, matchup_pace
+
+def _minutes_floor_adj(spread):
+    """Factor 5: Blowout risk → minutes reduction discount."""
+    if not spread: return 0
+    try:
+        s = abs(float(spread))
+    except (ValueError, TypeError):
+        return 0
+    if s >= 15: return -5
+    if s >= 12: return -3
+    if s >= 8.5: return -2
+    return 0
+
+def _home_away_adj(is_home, home_ppg, road_ppg):
+    """Factor 6: Home/Away performance split."""
+    if is_home is None: return 0
+    if not home_ppg or not road_ppg or home_ppg == 'N/A' or road_ppg == 'N/A':
+        return 1 if is_home else 0  # baseline home advantage
+    try:
+        h, r = float(home_ppg), float(road_ppg)
+    except (ValueError, TypeError):
+        return 1 if is_home else 0
+    if r == 0: return 0
+    diff_pct = (h - r) / r * 100
+    if is_home:
+        if diff_pct >= 15: return 4
+        if diff_pct >= 5: return 2
+        return 1
+    else:
+        if diff_pct >= 15: return -3
+        if diff_pct >= 5: return -1
+        return 0
+
+def _b2b_fatigue_adj(is_b2b, is_home):
+    """Factor 7: Back-to-back fatigue discount (2-4% per research)."""
+    if not is_b2b: return 0
+    return -2 if is_home else -4
+
+def _opp_defense_adj(def_rank):
+    """Factor 8: Opponent defensive rating impact."""
+    if not def_rank or not isinstance(def_rank, (int, float)): return 0
+    if def_rank <= 5: return -4
+    if def_rank <= 10: return -2
+    if def_rank <= 20: return 0
+    if def_rank <= 25: return 2
+    return 4
+
+def _usg_shift_adj(bonus_usg):
+    """Factor 9: USG redistribution from injured teammates."""
+    if not bonus_usg or not isinstance(bonus_usg, (int, float)): return 0
+    if bonus_usg > 5: return 5
+    if bonus_usg >= 3: return 3
+    if bonus_usg > 0: return 2
+    return 0
+
+def _matchup_pace_adj(team_pace, opp_pace):
+    """Factor 10: Combined matchup pace vs league average."""
+    if not team_pace or not opp_pace: return 0
+    try:
+        tp, op = float(team_pace), float(opp_pace)
+    except (ValueError, TypeError):
+        return 0
+    avg_pace = (tp + op) / 2
+    delta = avg_pace - 100.0  # 100 = league average baseline
+    if delta >= 2: return 3
+    if delta >= 1: return 1
+    if delta <= -2: return -3
+    if delta <= -1: return -1
+    return 0
+
+def kelly_fraction(est_prob, odds):
+    """Half-Kelly criterion for conservative bankroll management.
+    Returns fraction of bankroll to wager (0 if negative EV).
+    """
+    if not odds or odds <= 1 or est_prob <= 0:
+        return 0.0
+    b = odds - 1  # net payout per unit wagered
+    p = est_prob / 100
+    q = 1 - p
+    f = (b * p - q) / b
+    return round(max(0, f * 0.5), 4)  # Half Kelly
 
 def calc_adjusted_winprob(base_rate, hit_l5=0, cov=0, avg=0, line_val=0,
                           opponent_def_rank=None, opponent_pace=None,
                           is_b2b=False, is_home=None, spread=None,
-                          usg_bonus=0, defender_impact=None, amc=0):
+                          usg_bonus=0, defender_impact=None, amc=0,
+                          home_ppg=None, road_ppg=None, team_pace=None):
     """
-    8-factor adjusted win probability.
-    V7: Python computes trend/cov/buffer/pace. LLM assigns matchup/context/usg/defender.
+    10-Factor Adjusted Win Probability Engine V3.
+    All factors computed by Python — zero LLM judgment.
     base_rate: L10 hit rate (0-100)
     Returns: (adjusted_prob, breakdown_dict)
     """
     breakdown = {}
 
-    # ── Python-computed factors ──
-
-    # 1. Trend: L5 vs L10 (pure math)
+    # ── Factor 1: Trend (L5 vs L10) ──
     delta = hit_l5 - base_rate
     if delta >= 20:     breakdown["trend"] = 8
     elif delta >= 10:   breakdown["trend"] = 5
@@ -121,7 +252,7 @@ def calc_adjusted_winprob(base_rate, hit_l5=0, cov=0, avg=0, line_val=0,
     elif delta >= -20:  breakdown["trend"] = -5
     else:               breakdown["trend"] = -8
 
-    # 2. CoV Volatility (pure math)
+    # ── Factor 2: CoV Volatility ──
     if isinstance(cov, (int, float)):
         if cov <= 0.15:     breakdown["cov"] = 6
         elif cov <= 0.25:   breakdown["cov"] = 3
@@ -131,20 +262,20 @@ def calc_adjusted_winprob(base_rate, hit_l5=0, cov=0, avg=0, line_val=0,
     else:
         breakdown["cov"] = 0
 
-    # 3. Buffer + AMC (pure math)
+    # ── Factor 3: Buffer + AMC ──
     buffer_ratio = (avg - line_val) / avg if avg > 0 else 0
-    amc_bonus = 1 if amc > 5 else 0
+    amc_bonus_val = 1 if amc > 5 else 0
     if buffer_ratio >= 0.25:     buf_base = 6
     elif buffer_ratio >= 0.15:   buf_base = 4
     elif buffer_ratio >= 0.05:   buf_base = 2
     elif buffer_ratio >= -0.05:  buf_base = 0
     elif buffer_ratio >= -0.15:  buf_base = -3
     else:                        buf_base = -6
-    breakdown["buffer"] = max(-7, min(7, buf_base + amc_bonus))
+    breakdown["buffer"] = max(-7, min(7, buf_base + amc_bonus_val))
     breakdown["_buffer_ratio"] = round(buffer_ratio * 100, 1)
     breakdown["_amc"] = amc
 
-    # 6. PACE (pure math — opponent pace vs league avg)
+    # ── Factor 4: Opponent Pace ──
     if opponent_pace and isinstance(opponent_pace, (int, float)):
         pace_delta = opponent_pace - 100.0
         if pace_delta >= 3:      breakdown["pace"] = 3
@@ -155,19 +286,36 @@ def calc_adjusted_winprob(base_rate, hit_l5=0, cov=0, avg=0, line_val=0,
     else:
         breakdown["pace"] = 0
 
-    # V8: LLM qualitative judgment is removed. Pure Python mathematical factors only.
+    # ── Factor 5: Minutes Floor (Blowout Risk) ──
+    breakdown["minutes_floor"] = _minutes_floor_adj(spread)
 
-    # Sum only Python-computed factors for preliminary adjusted prob
-    python_keys = ["trend", "cov", "buffer", "pace"]
-    python_adj = sum(breakdown[k] for k in python_keys)
-    preliminary = max(5.0, min(98.0, base_rate + python_adj))
-    breakdown["_python_adj"] = python_adj
-    breakdown["_preliminary"] = round(preliminary, 1)
-    # Note: final adjusted prob will be computed by LLM after filling in 4 pending factors
-    breakdown["_total_adj"] = python_adj  # Placeholder, LLM will finalize
-    breakdown["_adjusted"] = round(preliminary, 1)  # Placeholder
+    # ── Factor 6: Home/Away Split ──
+    breakdown["home_away"] = _home_away_adj(is_home, home_ppg, road_ppg)
 
-    return round(preliminary, 1), breakdown
+    # ── Factor 7: B2B Fatigue ──
+    breakdown["b2b_fatigue"] = _b2b_fatigue_adj(is_b2b, is_home)
+
+    # ── Factor 8: Opponent Defensive Rating ──
+    breakdown["opp_defense"] = _opp_defense_adj(opponent_def_rank)
+
+    # ── Factor 9: USG Redistribution ──
+    breakdown["usg_shift"] = _usg_shift_adj(usg_bonus)
+
+    # ── Factor 10: Matchup Pace ──
+    breakdown["matchup_pace"] = _matchup_pace_adj(team_pace, opponent_pace)
+
+    # ── Sum all 10 factors ──
+    all_keys = ["trend", "cov", "buffer", "pace", "minutes_floor",
+                "home_away", "b2b_fatigue", "opp_defense", "usg_shift", "matchup_pace"]
+    total_adj = sum(breakdown[k] for k in all_keys)
+    adjusted = max(5.0, min(98.0, base_rate + total_adj))
+    breakdown["_python_adj"] = total_adj
+    breakdown["_preliminary"] = round(adjusted, 1)
+    breakdown["_total_adj"] = total_adj
+    breakdown["_adjusted"] = round(adjusted, 1)
+
+    return round(adjusted, 1), breakdown
+
 
 
 # NOTE: generate_core_logic_narrative() removed in V7.
@@ -176,13 +324,18 @@ def calc_adjusted_winprob(base_rate, hit_l5=0, cov=0, avg=0, line_val=0,
 
 
 def format_adjustment_line(base_rate, breakdown):
-    """Format the 📐 adjustment detail line."""
+    """Format the 📐 adjustment detail line (10-Factor V3)."""
     parts = [f"基礎 {base_rate}%"]
     factor_names = {
-        "trend": "走勢", "cov": "波動", "buffer": "安全墊", "pace": "節奏"
+        "trend": "走勢", "cov": "波動", "buffer": "安全墊", "pace": "節奏",
+        "minutes_floor": "分鐘", "home_away": "主客", "b2b_fatigue": "B2B",
+        "opp_defense": "防守", "usg_shift": "USG", "matchup_pace": "配速"
     }
-    for key in ["trend", "cov", "buffer", "pace"]:
+    for key in ["trend", "cov", "buffer", "pace", "minutes_floor",
+                "home_away", "b2b_fatigue", "opp_defense", "usg_shift", "matchup_pace"]:
         val = breakdown.get(key, 0)
+        if val == 0:
+            continue  # skip zero-impact factors for readability
         name = factor_names[key]
         if val >= 0:
             parts.append(f"{name} +{val}%")
@@ -287,13 +440,15 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
         hr_l5, hr_l5_count, _ = hit_rate(l5_data, line_val)
         hr_l3, hr_l3_count, _ = hit_rate(l3_data, line_val)
         imp = implied_prob(float(odds_str))
-        # V7: 8-factor adjusted win probability (Python computes 4, LLM judges 4)
+        # V3: 10-factor adjusted win probability (all Python-computed)
         est_prob, adj_breakdown = calc_adjusted_winprob(
             base_rate=hr_l10, hit_l5=hr_l5, cov=card["cov"],
             avg=card["avg"], line_val=line_val,
             opponent_def_rank=opponent_def_rank, opponent_pace=opponent_pace,
             is_b2b=is_b2b, is_home=is_home, spread=spread,
-            usg_bonus=usg_bonus, defender_impact=defender_impact, amc=0)
+            usg_bonus=usg_bonus, defender_impact=defender_impact, amc=0,
+            home_ppg=card.get("home_ppg"), road_ppg=card.get("road_ppg"),
+            team_pace=None)  # team_pace set at main() level
         ev = edge_calc(est_prob, imp)
         grade = edge_grade(ev)
         
@@ -787,6 +942,12 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
             lines.append(f"🧠 **Python 自動核心邏輯**: {narrative}")
         else:
             lines.append(f"🧠 **Python 自動核心邏輯**: 數據面支持此盤口。")
+        # MC inline integration (V2): embed MC result for this specific leg
+        mc_lookup = leg.get('_mc_lookup', {})
+        mc_key = f"{leg.get('player','')}|{leg.get('team','')}|{leg.get('category','')}|{leg.get('line_display','')}"
+        mc_r = mc_lookup.get(mc_key)
+        if mc_r:
+            lines.append(f"📊 **MC 模擬 (10,000次)**: 命中率 **{mc_r.get('mc_prob',0)}%** | MC Edge: {'+' if mc_r.get('mc_edge',0) > 0 else ''}{mc_r.get('mc_edge',0)}% {'💎' if mc_r.get('mc_edge',0) >= 15 else ('✅' if mc_r.get('mc_edge',0) >= 5 else '➖')}")
         lines.append(f"")
 
     # Combo calculation — use adjusted prob
@@ -847,6 +1008,11 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
     lines.append(f"- **$100 回報**: **${int(payout)}**")
     lines.append(f"- **組合命中率**: {hit_mult_parts} = **{combo_hit_pct}%**")
     lines.append(f"- **平均 Edge**: {'+' if avg_edge > 0 else ''}{avg_edge}%")
+    # Kelly Criterion (Half-Kelly)
+    combo_odds_for_kelly = raw_combo_odds
+    kelly_f = kelly_fraction(combo_hit_pct, combo_odds_for_kelly)
+    kelly_stake = round(kelly_f * 1000, 0)
+    lines.append(f"- **🎯 Kelly 注碼建議**: {kelly_f*100:.1f}% bankroll (Half-Kelly) → **${int(kelly_stake)}** / $1000")
     lines.append(f"- **🛡️ 組合核心邏輯**: {core_logic}")
     lines.append(f"- **⚠️ 主要風險**: {' / '.join(risk_factors)}")
     lines.append(f"- **建議注碼**: {stake}")
@@ -869,7 +1035,7 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     # Header
     sections.append(f"# 🏀 NBA Wong Choi — {away_name} @ {home_name}")
     sections.append(f"**日期**: {meta.get('date', '?')} | **Sportsbet 提取時間**: {sportsbet_time}")
-    sections.append(f"**odds_source**: BET365_LIVE ✅ | **引擎版本**: Adjusted Win Prob V3 (8-Factor)")
+    sections.append(f"**odds_source**: BET365_LIVE ✅ | **引擎版本**: Adjusted Win Prob V3 (10-Factor)")
     sections.append(f"")
 
     # ── Blowout / Tank Warning Banner ──
@@ -981,6 +1147,24 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     sections.append(f"")
     sections.append(f"---")
     sections.append(f"")
+
+    # ── Monte Carlo Simulation Section ──
+    try:
+        from monte_carlo_nba import run_monte_carlo_for_cards, format_mc_section
+        is_b2b_map = {}
+        for t_abbr in [away_abbr, home_abbr]:
+            fatigue = meta.get("away" if t_abbr == away_abbr else "home", {}).get("fatigue", {})
+            is_b2b_map[t_abbr] = fatigue.get("is_b2b", False) if isinstance(fatigue, dict) else False
+        
+        mc_results = run_monte_carlo_for_cards(
+            all_cards, spread=odds.get("spread_away"),
+            is_b2b_map=is_b2b_map, team_stats=team_stats, meta=meta, n=10000)
+        
+        if mc_results:
+            sections.append(format_mc_section(mc_results))
+            sections.append("")
+    except Exception as e:
+        sections.append(f"\n> ⚠️ Monte Carlo 模擬暫時無法執行: {e}\n")
 
     # Player Cards (appendix — detailed reference)
     sections.append(f"## 📊 球員盤口詳細分析 (Appendix)")
@@ -1119,7 +1303,7 @@ def main():
         cats[c['category']] = cats.get(c['category'], 0) + 1
     cat_str = ", ".join(f"{k}: {v}" for k, v in cats.items())
     print(f"📊 已處理 {len(all_cards)} 個球員×盤口組合 ({cat_str})")
-    print(f"📐 引擎版本: Adjusted Win Prob V3 (8-Factor)")
+    print(f"📐 引擎版本: Adjusted Win Prob V3 (10-Factor)")
 
     # Generate report
     report = gen_full_report(meta, ex_odds, injuries, news, team_stats,

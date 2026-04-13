@@ -230,7 +230,7 @@ def build_skeleton(data):
         'fine_tune': {'direction': '[FILL]', 'trigger': '[FILL]'},
         'override': {'rule': '[FILL]'},
         'final_rating': '[FILL]',
-        'core_logic': f'[FILL] 必須包含馬名「{name}」，≥120字',
+        'core_logic': '[FILL]',
         'advantages': '[FILL]',
         'disadvantages': '[FILL]',
         'evidence_step_0_14': '[FILL]',

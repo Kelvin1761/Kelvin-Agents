@@ -1,17 +1,26 @@
 #!/usr/bin/env python3
 """
-Monte Carlo Racing Simulation Engine (Shadow Mode)
+Monte Carlo Racing Simulation Engine (Shadow Mode) V2
 Usage: python run_monte_carlo.py --target_dir "/path/to/meeting/dir"
 
 This script performs quantitative Monte Carlo simulations (10,000 iterations)
-to derive the True Odds of each horse. It then injects a Markdown table
+to derive the True Odds of each horse. It then injects an enhanced Markdown table
 into the existing `*_Analysis.md` files at the designated tag position,
 ensuring zero interference with the LLM's qualitative reasoning.
+
+V2 Enhancements:
+- MC排名 (MC Ranking by probability)
+- 馬號 (Horse Number) column
+- 預測賠率 (Predicted Odds from MC simulation)
+- 法證排名 (Original Forensic Analysis Ranking)
+- 差異 (Agreement/Divergence indicator)
 """
 
 import os
 import re
 import glob
+import csv
+import io
 import argparse
 import numpy as np
 import pandas as pd
@@ -93,10 +102,53 @@ def parse_margin(margin_str):
     except:
         return 5.0 # fallback
 
+def parse_original_ranking(analysis_path):
+    """
+    Parses the Analysis.md to extract Top 4 forensic analysis ranking.
+    Looks for the CSV block and Top 4 verdict section.
+    Returns dict: {horse_num: rank_position} e.g. {2: 1, 4: 2, 10: 3, 1: 4}
+    """
+    if not os.path.exists(analysis_path):
+        return {}
+
+    with open(analysis_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    rankings = {}
+
+    # Method 1: Parse ```csv block (most reliable)
+    csv_match = re.search(r'```csv\s*\n(.*?)```', content, re.DOTALL)
+    if csv_match:
+        csv_text = csv_match.group(1).strip()
+        try:
+            reader = csv.DictReader(io.StringIO(csv_text))
+            for rank_idx, row in enumerate(reader, 1):
+                h_num = int(row.get('horse_num', 0))
+                if h_num > 0:
+                    rankings[h_num] = rank_idx
+        except Exception:
+            pass
+
+    # Method 2: Fallback — parse Top 4 verdict markers
+    if not rankings:
+        rank_patterns = [
+            (r'🥇.*?\[([\d]+)\]', 1),
+            (r'🥈.*?\[([\d]+)\]', 2),
+            (r'🥉.*?\[([\d]+)\]', 3),
+            (r'🏅.*?\[([\d]+)\]', 4),
+        ]
+        for pattern, rank in rank_patterns:
+            m = re.search(pattern, content)
+            if m:
+                rankings[int(m.group(1))] = rank
+
+    return rankings
+
+
 def run_simulation(horses_data, iterations=10000):
     """
     Runs Monte Carlo simulations.
-    Returns list of dicts: [{'horse_num': 1, 'name': 'A', 'win_prob': 0.25, 'true_odds': 4.0}, ...]
+    Returns list of dicts with mc_rank, horse_num, name, win_prob, true_odds.
     """
     results = []
     horse_nums = list(horses_data.keys())
@@ -154,14 +206,18 @@ def run_simulation(horses_data, iterations=10000):
             'true_odds': true_odds
         })
         
-    # Sort by probability descending
+    # Sort by probability descending and assign MC rank
     results = sorted(results, key=lambda x: x['win_prob'], reverse=True)
+    for mc_rank, res in enumerate(results, 1):
+        res['mc_rank'] = mc_rank
     return results
 
-def inject_markdown_table(analysis_path, simulation_results):
+def inject_markdown_table(analysis_path, simulation_results, original_rankings=None):
     """
     Finds the <!-- MONTE_CARLO_PYTHON_INJECT_HERE --> tag in the analysis markdown
-    and injects the simulation table.
+    and injects the enhanced simulation table with ranking comparison.
+    
+    V2 columns: MC排名 | 馬號 | 馬名 | MC 勝率 | 預測賠率 | 法證排名 | 差異
     """
     if not os.path.exists(analysis_path):
         return False
@@ -172,21 +228,54 @@ def inject_markdown_table(analysis_path, simulation_results):
     tag = "<!-- MONTE_CARLO_PYTHON_INJECT_HERE -->"
     if tag not in content:
         return False
+
+    original_rankings = original_rankings or {}
+    rank_icons = {1: '🥇', 2: '🥈', 3: '🥉', 4: '🏅'}
         
-    # Create the markdown table
+    # Create the enhanced markdown table
     md_table = [
-        "| 馬號 | 馬名 | MC 模擬勝率 | MC 真實賠率 (True Odds) |",
-        "|---|---|---|---|"
+        "| MC排名 | 馬號 | 馬名 | MC 勝率 | 預測賠率 | 法證排名 | 差異 |",
+        "|--------|------|------|---------|---------|---------|------|"
     ]
     
     for res in simulation_results:
+        mc_rank = res.get('mc_rank', '?')
+        mc_rank_icon = rank_icons.get(mc_rank, str(mc_rank))
         prob_str = f"{res['win_prob']*100:.1f}%"
-        odds_str = f"{res['true_odds']:.2f}" if res['true_odds'] < 999 else "999+"
-        # Highlight strong values
-        if res['win_prob'] > 0.30:
+        odds_val = res['true_odds']
+        odds_str = f"${odds_val:.2f}" if odds_val < 999 else "$999+"
+        
+        # Highlight top probability
+        if res['win_prob'] > 0.25:
+            prob_str = f"**{prob_str}** ⭐️"
             odds_str = f"**{odds_str}** ⭐️"
+
+        # Original forensic ranking
+        h_num = res['horse_num']
+        orig_rank = original_rankings.get(h_num)
+        if orig_rank:
+            orig_icon = rank_icons.get(orig_rank, f'#{orig_rank}')
+            orig_str = f"{orig_icon} #{orig_rank}"
+        else:
+            orig_str = "—"
+        
+        # Agreement/divergence indicator
+        if orig_rank and mc_rank:
+            diff = abs(mc_rank - orig_rank)
+            if diff == 0:
+                diff_str = "✅ 一致"
+            elif diff == 1:
+                diff_str = "🔄 ±1"
+            elif diff <= 2:
+                diff_str = "⚠️ ±" + str(diff)
+            else:
+                diff_str = "❌ ±" + str(diff)
+        elif orig_rank is None and mc_rank <= 4:
+            diff_str = "🆕 MC獨有"
+        else:
+            diff_str = "—"
             
-        md_table.append(f"| {res['horse_num']} | {res['name']} | {prob_str} | {odds_str} |")
+        md_table.append(f"| {mc_rank_icon} | {h_num} | {res['name']} | {prob_str} | {odds_str} | {orig_str} | {diff_str} |")
         
     table_str = "\n".join(md_table)
     new_content = content.replace(tag, table_str)
@@ -201,7 +290,7 @@ def export_csv(csv_path, simulation_results):
     df.to_csv(csv_path, index=False, encoding='utf-8-sig')
 
 def process_directory(target_dir):
-    print(f"🎲 Monte Carlo Engine starting for {target_dir}")
+    print(f"🎲 Monte Carlo Engine V2 starting for {target_dir}")
     
     facts_files = glob.glob(os.path.join(target_dir, "*_Facts.md"))
     for facts_path in facts_files:
@@ -219,19 +308,30 @@ def process_directory(target_dir):
         if not horses_data:
             print(f"  [Skipping] No valid horse data found in {basename}")
             continue
+        
+        # Parse original forensic rankings from Analysis.md
+        original_rankings = parse_original_ranking(analysis_path)
+        if original_rankings:
+            print(f"  📋 {race_prefix}: Found forensic rankings: {original_rankings}")
+        else:
+            print(f"  ⚠️ {race_prefix}: No forensic rankings found in Analysis.md")
             
         results = run_simulation(horses_data)
+        
+        # Attach original rankings to results for CSV export
+        for res in results:
+            res['original_rank'] = original_rankings.get(res['horse_num'], None)
         
         # Export shadow CSV
         export_csv(csv_path, results)
         
-        # Inject to Analysis Markdown
-        if inject_markdown_table(analysis_path, results):
-            print(f"  ✅ {race_prefix}: Injected Monte Carlo Table")
+        # Inject to Analysis Markdown with ranking comparison
+        if inject_markdown_table(analysis_path, results, original_rankings):
+            print(f"  ✅ {race_prefix}: Injected Enhanced Monte Carlo Table")
         else:
             print(f"  ⚠️ {race_prefix}: Tag not found in Analysis.md, saved CSV only")
             
-    print("🎲 Monte Carlo Engine processing complete.")
+    print("🎲 Monte Carlo Engine V2 processing complete.")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Monte Carlo Dynamic Simulation Engine")
