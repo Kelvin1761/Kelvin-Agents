@@ -109,6 +109,37 @@
   <rule id="INJURY_GUARD" name="Injury Guard Protocol">
     <action>讀取前必須核對 status。若遇上頂級球星，分析前絕對要有常識判斷其是否已報銷，嚴防 Hallucination。</action>
   </rule>
+
+  <rule id="P50" name="Anti-Padding Zero Tolerance">
+    <action>
+      1. 嚴禁喺同一段落內重複任何句子。每個句子都必須提供新信息。
+      2. 嚴禁使用 "Player A/B/C" 等 placeholder — 必須使用真實球員名。
+      3. L10 數據必須來自 Data Brief JSON 或 Sportsbet odds JSON，嚴禁自創假數據。
+      4. 「這包含了各種盤口對照」、「能夠提供更清楚的賭注建議」等通用填充句一律視為嚴重違規。
+      5. 若被 validate_nba_output.py 偵測到灌水行為，整份報告將被 BLOCK。
+      6. 字數要求應透過增加分析深度（更多球員、更多情境分析）嚟達成，而唔係重複同一句話。
+    </action>
+  </rule>
+
+  <rule id="P51" name="Python-Generated Skeleton Mandatory">
+    <action>
+      所有 Full_Analysis.md 必須基於 generate_nba_reports.py 生成嘅 skeleton report。
+      Skeleton 已包含所有數學數據（賠率/Edge/Kelly/組合選擇/Monte Carlo）。
+      LLM 只負責填寫 [FILL] 欄位（核心邏輯/角色/趨勢解讀/防守對位分析）。
+      嚴禁自行從零建立任何分析報告。
+      若輸出缺少 「Python Auto-Selection」、「8-Factor」 等 Python 簽名標記，
+      即判定為非法跳過 pipeline，報告無效。
+    </action>
+  </rule>
+
+  <rule id="P52" name="Post-Generation Firewall (validate_nba_output.py)">
+    <action>
+      每份 Game_*_Full_Analysis.md 生成後，必須執行:
+      python3 scripts/validate_nba_output.py {FILE_PATH}
+      任何 ❌ BLOCKED 結果 → 必須立即重寫該報告。
+      嚴禁提交未通過防火牆檢查嘅報告。
+    </action>
+  </rule>
 </nba_specific_directives>
 
 </engine_directives>

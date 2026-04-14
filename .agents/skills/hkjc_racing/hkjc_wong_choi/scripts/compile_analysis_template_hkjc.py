@@ -48,42 +48,81 @@ DIMENSION_TYPES = {
 }
 
 def _score_to_tick(score):
-    """Convert a numeric score (1-10) to ✅/➖/❌ tick mark."""
+    """Convert a score to 5-tier tick: ✅✅/✅/➖/❌/❌❌."""
     if isinstance(score, str):
-        if '✅' in score: return '✅'
-        if '❌' in score: return '❌'
-        if '➖' in score or 'N/A' in score: return '➖'
+        s = score.strip()
+        if s == '✅✅': return '✅✅'
+        if '✅' in s: return '✅'
+        if s == '❌❌': return '❌❌'
+        if '❌' in s: return '❌'
+        if '➖' in s or 'N/A' in s: return '➖'
         try:
-            score = int(score)
+            score = int(s)
         except ValueError:
             return '➖'
     if not isinstance(score, (int, float)):
         return '➖'
-    if score >= 8:
+    if score >= 9:
+        return '✅✅'
+    elif score >= 7:
         return '✅'
-    elif score <= 3:
+    elif score >= 4:
+        return '➖'
+    elif score >= 2:
         return '❌'
     else:
-        return '➖'
+        return '❌❌'
 
 def _count_dimensions(dims: dict) -> dict:
+    """Count dimensions with 5-tier support. ✅✅=2✅, ❌❌=2❌."""
     counts = {
         'core_strong': 0, 'core_neutral': 0, 'core_weak': 0,
         'semi_strong': 0, 'semi_neutral': 0, 'semi_weak': 0,
         'aux_strong': 0, 'aux_neutral': 0, 'aux_weak': 0,
         'total_strong': 0, 'total_weak': 0,
-        'has_core_weak': False,
+        'has_core_weak': False, 'has_core_double_weak': False,
+        # Raw counts for display
+        'core_dbl_strong': 0, 'semi_dbl_strong': 0, 'aux_dbl_strong': 0,
+        'total_dbl_strong': 0, 'total_dbl_weak': 0,
+        'core_single_strong': 0, 'semi_single_strong': 0, 'aux_single_strong': 0,
     }
     for dim_key, value in dims.items():
         v = value.strip() if isinstance(value, str) else str(value)
         if v in ('N/A', '不計入'):
             continue
         dim_type = DIMENSION_TYPES.get(dim_key, 'auxiliary')
-        if v == '✅':
+        if v == '✅✅':
+            counts['total_strong'] += 2
+            counts['total_dbl_strong'] += 1
+            if dim_type == 'core':
+                counts['core_strong'] += 2
+                counts['core_dbl_strong'] += 1
+            elif dim_type == 'semi_core':
+                counts['semi_strong'] += 2
+                counts['semi_dbl_strong'] += 1
+            else:
+                counts['aux_strong'] += 2
+                counts['aux_dbl_strong'] += 1
+        elif v == '✅':
             counts['total_strong'] += 1
-            if dim_type == 'core': counts['core_strong'] += 1
-            elif dim_type == 'semi_core': counts['semi_strong'] += 1
-            else: counts['aux_strong'] += 1
+            if dim_type == 'core':
+                counts['core_strong'] += 1
+                counts['core_single_strong'] += 1
+            elif dim_type == 'semi_core':
+                counts['semi_strong'] += 1
+                counts['semi_single_strong'] += 1
+            else:
+                counts['aux_strong'] += 1
+                counts['aux_single_strong'] += 1
+        elif v == '❌❌':
+            counts['total_weak'] += 2
+            counts['total_dbl_weak'] += 1
+            if dim_type == 'core':
+                counts['core_weak'] += 2
+                counts['has_core_weak'] = True
+                counts['has_core_double_weak'] = True
+            elif dim_type == 'semi_core': counts['semi_weak'] += 2
+            else: counts['aux_weak'] += 2
         elif v == '❌':
             counts['total_weak'] += 1
             if dim_type == 'core':
@@ -134,7 +173,12 @@ def _grade_idx(g: str) -> int:
 def _apply_core_constraint(grade: str, counts: dict, dims: dict) -> tuple:
     if not counts['has_core_weak']:
         return grade, ''
-    if dims.get('sectional', '').strip() == '✅' and dims.get('eem', '').strip() == '✅':
+    # ❌❌ in core = strict cap at B+, no exemption
+    if counts.get('has_core_double_weak'):
+        if _grade_idx(grade) < _grade_idx('B+'):
+            return 'B+', '核心防護牆: 核心❌❌ → 封頂B+ (無豁免)'
+        return grade, ''
+    if dims.get('sectional', '').strip() in ('✅', '✅✅') and dims.get('eem', '').strip() in ('✅', '✅✅'):
         if _grade_idx(grade) < _grade_idx('A-'):
             return 'A-', '核心❌但段速✅+EEM✅豁免 → 封頂A-'
         return grade, ''
@@ -162,14 +206,15 @@ def _compute_letter_grade(m_data: dict, h_logic: dict) -> dict:
     # Step 2: Count dimensions
     counts = _count_dimensions(dims)
 
-    # Step 3: Check forgiveness bonus
+    # Step 3: Check forgiveness bonus (5-tier aware)
     forg_item = m_data.get('forgiveness_bonus', {})
-    forg_score = forg_item.get('score', 0)
-    try:
-        forg_val = int(forg_score) if not isinstance(forg_score, (int, float)) else forg_score
-    except (ValueError, TypeError):
-        forg_val = 0
-    if forg_val >= 7:
+    forg_tick = _score_to_tick(forg_item.get('score', 0))
+    if forg_tick == '✅✅':
+        counts['aux_strong'] += 2
+        counts['total_strong'] += 2
+        counts['aux_dbl_strong'] += 1
+        counts['total_dbl_strong'] += 1
+    elif forg_tick == '✅':
         counts['aux_strong'] += 1
         counts['total_strong'] += 1
 
@@ -195,9 +240,22 @@ def _compute_letter_grade(m_data: dict, h_logic: dict) -> dict:
         'final_grade': adjusted_grade,
     }
 
-def build_hkjc_panorama_compiled(json_data, facts_text):
+def build_hkjc_panorama_compiled(json_data, facts_text, facts_horses=None):
     v = json_data.get('race_analysis', {})
     sm = v.get('speed_map', {})
+    
+    # Build num→name lookup
+    num_to_name = {}
+    if facts_horses:
+        num_to_name = {str(h['num']): h['name'] for h in facts_horses}
+    
+    def _map_names(num_list):
+        """Convert ['7','8'] to '[7] 電訊巴打, [8] 穿甲金鷹'."""
+        parts = []
+        for n in num_list:
+            name = num_to_name.get(str(n), '')
+            parts.append(f'[{n}] {name}' if name else str(n))
+        return ', '.join(parts) or '[未指定]'
     
     venue = "[馬場]"
     dist = "[路程]"
@@ -215,14 +273,23 @@ def build_hkjc_panorama_compiled(json_data, facts_text):
     race_type = "`[全天候跑道 (AWT)]`" if "AWT" in venue or "泥地" in facts_text else "`[草地]`"
 
     pace = sm.get('predicted_pace', '[未預測]')
-    leaders = ", ".join(sm.get('leaders', [])) or '[未指定]'
-    on_pace = ", ".join(sm.get('on_pace', [])) or '[未指定]'
-    mid = ", ".join(sm.get('mid_pack', [])) or '[未指定]'
-    closers = ", ".join(sm.get('closers', [])) or '[未指定]'
+    leaders = _map_names(sm.get('leaders', []))
+    on_pace = _map_names(sm.get('on_pace', []))
+    mid = _map_names(sm.get('mid_pack', []))
+    closers = _map_names(sm.get('closers', []))
     
     weather_going = "詳見情報"
     bias = sm.get('track_bias', '[未預測]')
     tactical_nodes = sm.get('tactical_nodes', '[未提供]')
+    collapse = sm.get('collapse_point', '')
+    
+    pace_details = f"- 預計步速: {pace}"
+    if bias and bias != '[未預測]':
+        pace_details += f"\n- **跑道偏差:** {bias}"
+    if tactical_nodes and tactical_nodes != '[未提供]':
+        pace_details += f"\n- **戰術節點:** {tactical_nodes}"
+    if collapse:
+        pace_details += f"\n- **崩潰點:** {collapse}"
     
     return f"""## [第一部分] 🗺️ 戰場全景
 
@@ -233,7 +300,6 @@ def build_hkjc_panorama_compiled(json_data, facts_text):
 | 天氣 / 場地 | {weather_going} |
 | 跑道偏差 | {bias} |
 | 步速預測 | {pace} |
-| 戰術節點 | {tactical_nodes} |
 
 **📍 Speed Map (速度地圖):**
 - 領放群: {leaders}
@@ -242,7 +308,7 @@ def build_hkjc_panorama_compiled(json_data, facts_text):
 - 後上群: {closers}
 
 **🏃 步速瀑布推演 (Step 0 結論):**
-- 預計步速: {pace}
+{pace_details}
 """
 
 def generate_hkjc_horse_compiled(h_fact, h_logic):
@@ -367,7 +433,8 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
 
     # ── 10. 矩陣算術 + 14.2 基礎評級 (ABCD 正規字母制) ────────────────
     cw = '有' if gr_counts['has_core_weak'] else '無'
-    lines.append(f"**🔢 矩陣算術:** 核心✅={gr_counts['core_strong']} | 半核心✅={gr_counts['semi_strong']} | 輔助✅={gr_counts['aux_strong']} | 總❌={gr_counts['total_weak']} | 核心❌={cw} → 查表命中行={grade_result['base_grade']}")
+    cdw = '有' if gr_counts.get('has_core_double_weak') else '無'
+    lines.append(f"**🔢 矩陣算術:** 核心✅✅={gr_counts.get('core_dbl_strong',0)} | 核心✅={gr_counts.get('core_single_strong',0)} | 半核心✅✅={gr_counts.get('semi_dbl_strong',0)} | 半核心✅={gr_counts.get('semi_single_strong',0)} | 輔助✅✅={gr_counts.get('aux_dbl_strong',0)} | 輔助✅={gr_counts.get('aux_single_strong',0)} | 總❌={gr_counts['total_weak']} | 總❌❌={gr_counts.get('total_dbl_weak',0)} | 核心❌={cw} | 核心❌❌={cdw} → 查表命中行={grade_result['base_grade']}")
     lines.append(f"**14.2 基礎評級:** `{grade_result['base_grade']}` | **規則**: `{grade_result['base_rule']}`")
     if grade_result['constraint_note']:
         lines.append(f"**核心防護牆:** `{grade_result['constraint_note']}`")
@@ -395,12 +462,7 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
         f"> - **最大失敗風險:** {disadvantages}\n"
     ])
 
-    # ── 14. 法醫級推演錨點 (摺疊，可選) ─────────────────────────────────
-    evidence = h_logic.get('evidence_step_0_14', '')
-    if evidence:
-        lines.append('<details><summary>🔬 法醫級推演錨點 (Step 0-14 Evidence Chain)</summary>\n')
-        lines.append(evidence)
-        lines.append('\n</details>\n')
+    # ── 14. 法醫級推演錨點 (已移除 — V10) ─────────────────────────────────
 
     # ── 15. 最終評級 ─────────────────────────────────────────────────────
     lines.append(f"**⭐ 最終評級:** `{final_rating}`\n")
@@ -419,6 +481,7 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
 def build_hkjc_verdict_compiled(json_data, facts_horses):
     v = json_data.get('race_analysis', {}).get('verdict', {})
     horse_names = {h['num']: h['name'] for h in facts_horses}
+    horses_logic = json_data.get('horses', {})
 
     lines = []
     lines.append('#### [第三部分] 最終預測 (The Verdict)\n')
@@ -427,7 +490,29 @@ def build_hkjc_verdict_compiled(json_data, facts_horses):
     lines.append(f"- **關鍵變數:** {v.get('key_variables', '[FILL]')}\n")
 
     lines.append('**🏆 Top 4 位置精選**\n')
-    t4 = v.get('top4', [])
+
+    # ── AUTO-COMPUTE Top 4 from ALL horses' grades (ignore LLM's manual picks) ──
+    # Build a lookup of LLM's original reason/risk keyed by horse_num
+    llm_picks = {}
+    for item in v.get('top4', []):
+        h_num = str(item.get('horse_num', item.get('horse_number', '')))
+        llm_picks[h_num] = item
+
+    # Compute grade for every horse
+    all_graded = []
+    for h_num_str, h_obj in horses_logic.items():
+        m_data = h_obj.get('matrix', {})
+        gr_res = _compute_letter_grade(m_data, h_obj)
+        grade = gr_res['final_grade']
+        grade_i = _grade_idx(grade)
+        all_graded.append((h_num_str, grade, grade_i, gr_res))
+
+    # Sort by grade index (lower = better), then horse number as tiebreaker
+    all_graded.sort(key=lambda x: (x[2], int(x[0]) if x[0].isdigit() else 999))
+
+    # Take top 4
+    t4_auto = all_graded[:4]
+
     labels = ['🥇 **第一選**', '🥈 **第二選**', '🥉 **第三選**', '🏅 **第四選**']
     csv_rows = []
     race_info = json_data.get('race_analysis', {})
@@ -435,29 +520,38 @@ def build_hkjc_verdict_compiled(json_data, facts_horses):
     race_class = race_info.get('race_class', '?')
     race_dist = race_info.get('distance', '?')
 
+    top_nums = []  # track for Top 2 confidence section
     for i, label in enumerate(labels):
-        if i < len(t4):
-            item = t4[i]
-            h_num = item.get('horse_num', item.get('horse_number', ''))
-            h_name = horse_names.get(int(h_num), '') if str(h_num).isdigit() else ''
-            h_obj = json_data.get('horses', {}).get(str(h_num), {})
-            h_rating = h_obj.get('final_rating', h_obj.get('base_rating', h_obj.get('rating', '[未評分]')))
+        if i < len(t4_auto):
+            h_num_str, grade, grade_i, gr_res = t4_auto[i]
+            h_num_int = int(h_num_str) if h_num_str.isdigit() else 0
+            h_name = horse_names.get(h_num_int, '')
+            h_obj = horses_logic.get(h_num_str, {})
             m_data = h_obj.get('matrix', {})
             core_check = sum(1 for m in m_data.values() if isinstance(m, dict) and "✅" in str(m.get('score', '')))
-            jockey = next((hf['jockey'] for hf in facts_horses if str(hf['num']) == str(h_num)), '')
-            trainer = next((hf['trainer'] for hf in facts_horses if str(hf['num']) == str(h_num)), '')
+            jockey = next((hf['jockey'] for hf in facts_horses if str(hf['num']) == h_num_str), '')
+            trainer = next((hf['trainer'] for hf in facts_horses if str(hf['num']) == h_num_str), '')
+
+            # Use LLM reason/risk if available, otherwise fallback to core_logic/disadvantages
+            if h_num_str in llm_picks:
+                reason = llm_picks[h_num_str].get('reason', '')
+                risk = llm_picks[h_num_str].get('risk', '')
+            else:
+                reason = h_obj.get('advantages', h_obj.get('competitive_advantage', '[自動選入]'))
+                risk = h_obj.get('disadvantages', h_obj.get('risk_level', '[見分析]'))
 
             lines.extend([
                 label,
-                f"- **馬號及馬名:** [{h_num}] {h_name}",
-                f"- **評級與✅數量:** `[{h_rating}]` | ✅ {core_check}",
-                f"- **核心理據:** {item.get('reason', '')}",
-                f"- **最大風險:** {item.get('risk', '')}\n"
+                f"- **馬號及馬名:** [{h_num_str}] {h_name}",
+                f"- **評級與✅數量:** `[{grade}]` | ✅ {core_check}",
+                f"- **核心理據:** {reason}",
+                f"- **最大風險:** {risk}\n"
             ])
-            csv_rows.append(f"{race_num},{race_class},{race_dist},{jockey},{trainer},{h_num},{h_name},{h_rating}")
+            csv_rows.append(f"{race_num},{race_class},{race_dist},{jockey},{trainer},{h_num_str},{h_name},{grade}")
+            top_nums.append(h_num_str)
 
-    top1_num = t4[0].get('horse_num', '?') if t4 else '?'
-    top2_num = t4[1].get('horse_num', '?') if len(t4) > 1 else '?'
+    top1_num = top_nums[0] if len(top_nums) > 0 else '?'
+    top2_num = top_nums[1] if len(top_nums) > 1 else '?'
     lines.extend([
         '**🎯 Top 2 入三甲信心度 (Top 2 Place Confidence)**',
         f"🥇 [{top1_num}]:`[{v.get('top2_confidence_1', '🟢高')}]` — 最大威脅:[{top2_num}]",
@@ -503,7 +597,7 @@ def main():
     facts_horses = gs.parse_facts_md_hkjc(facts_text)
     
     body = []
-    body.append(build_hkjc_panorama_compiled(logic_data, facts_text))
+    body.append(build_hkjc_panorama_compiled(logic_data, facts_text, facts_horses))
     body.append('---\n#### [第二部分] 全場馬匹深度分析\n')
     
     horses_logic = logic_data.get('horses', {})

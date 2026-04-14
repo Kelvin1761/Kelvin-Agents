@@ -203,14 +203,14 @@ def build_skeleton(data):
         },
 
         'matrix': {
-            '狀態與穩定性': {'score': '[FILL]', 'reasoning': '[FILL]'},
-            '段速與引擎':   {'score': '[FILL]', 'reasoning': '[FILL]'},
-            'EEM與形勢':    {'score': '[FILL]', 'reasoning': '[FILL]'},
-            '騎練訊號':     {'score': '[FILL]', 'reasoning': '[FILL]'},
-            '級數與負重':   {'score': '[FILL]', 'reasoning': '[FILL]'},
-            '場地適性':     {'score': '[FILL]', 'reasoning': '[FILL]'},
-            '賽績線':       {'score': '[FILL]', 'reasoning': '[FILL]'},
-            '裝備與距離':   {'score': '[FILL]', 'reasoning': '[FILL]'},
+            '狀態與穩定性': {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
+            '段速與引擎':   {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
+            'EEM與形勢':    {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
+            '騎練訊號':     {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
+            '級數與負重':   {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
+            '場地適性':     {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
+            '賽績線':       {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
+            '裝備與距離':   {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
         },
 
         'base_rating': '[FILL]',

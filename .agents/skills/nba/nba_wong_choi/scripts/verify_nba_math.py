@@ -151,8 +151,13 @@ def verify_file(filepath: str) -> dict:
             'file': filepath,
             'passed': False,
             'legs': [],
-            'summary': {'total': 0, 'passed': 0, 'failed': 0},
-            'issues': ['NO_PARLAY_LEGS_FOUND']
+            'summary': {'total': 0, 'passed': 0, 'failed': 1},
+            'issues': [
+                'NO_PARLAY_LEGS_FOUND — ❌ CRITICAL: 搵唔到任何可解析嘅 Parlay Leg。'
+                '一份合格嘅 NBA 分析報告必須包含完整嘅 SGM 組合區塊 '
+                '(含 @賠率、Edge、L10 命中率)。如果此檔案係由 LLM 自行生成而非 '
+                'generate_nba_reports.py skeleton，請重新執行 Python pipeline。'
+            ]
         }
         
     failed_count = sum(1 for v in all_legs if v.issues)

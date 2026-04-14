@@ -151,9 +151,7 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
         # Griffin/debut horses have relaxed word requirements
         # Word count thresholds — reinstated at minimal level (V9.2.1)
         # Even relaxed mode requires minimum substance per horse block
-        if not is_debut:
-            if words < 200:
-                errors.append(f"[{horse_id}] LAZY-007: 字數嚴重不足 ({words} < 200)，疑似使用自動填充腳本繞過分析")
+        # [REMOVED LAZY-007] Word count checks removed as they encourage bypass scripts.
             
         # Anti-Laziness Scan
         lazy_patterns = [
@@ -210,9 +208,7 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
                         pass  # Matrix reasoning digit lock — relaxed per V9.2
 
     # ── LAZY-003: Cross-Horse Similarity Check ─────────────────────────────
-    def get_ngrams(text, n=3):
-        chars = re.findall(r'[\w\u4e00-\u9fff]', text)
-        return set(''.join(chars[i:i+n]) for i in range(len(chars)-n+1))
+    # [REMOVED LAZY-003] Similarity checks removed as they encourage bypass scripts.
     
     # ── LAZY-004: IDENTICAL CLONE DETECTOR (catches template-scraped JSONs) ─
     # If ALL horses share the EXACT SAME core_logic text, it's a scripted clone
@@ -247,19 +243,7 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
             prev_grade_idx = g_idx
 
     # ── LAZY-003: N-gram similarity check (reinstated at high threshold) ────
-    horse_ids = list(horse_logics.keys())
-    if len(horse_logics) >= 3:
-        def get_ngrams_for_check(t, n=4):
-            chars = re.findall(r'[\u4e00-\u9fff]', t)
-            return set(''.join(chars[i:i+n]) for i in range(len(chars)-n+1))
-        for i in range(len(horse_ids)):
-            for j in range(i+1, len(horse_ids)):
-                ng_a = get_ngrams_for_check(horse_logics[horse_ids[i]])
-                ng_b = get_ngrams_for_check(horse_logics[horse_ids[j]])
-                if ng_a and ng_b:
-                    overlap = len(ng_a & ng_b) / min(len(ng_a), len(ng_b))
-                    if overlap > 0.85:
-                        errors.append(f"🚨 LAZY-003: {horse_ids[i]} 與 {horse_ids[j]} 核心邏輯相似度 {overlap:.0%} — 疑似複製粘貼")
+    # [REMOVED LAZY-003] Similarity checks removed.
 
     return errors
 

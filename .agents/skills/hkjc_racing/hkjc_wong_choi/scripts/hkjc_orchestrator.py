@@ -310,6 +310,7 @@ def main():
                 continue
                 
             print(f"🐎 正在處理 Race {r} ...")
+            run_preflight_check(target_dir) # Continuous Preflight Check
             facts_path = os.path.join(target_dir, f"{date_prefix} Race {r} Facts.md")
             logic_json = os.path.join(target_dir, f"Race_{r}_Logic.json")
             an_file = os.path.join(target_dir, f"{date_prefix} Race {r} Analysis.md")

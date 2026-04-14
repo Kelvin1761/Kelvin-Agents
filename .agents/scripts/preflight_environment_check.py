@@ -70,12 +70,12 @@ def scan_target_dir(target_dir):
         full_path = os.path.join(target_dir, f)
         if os.path.isfile(full_path):
             _, ext = os.path.splitext(f)
-            if ext == '.py':
+            if ext in ['.py', '.sh', '.bat', '.js']:
                 issues.append({
                     'type': 'DUMMY_SCRIPT',
                     'severity': 'CRITICAL',
                     'file': full_path,
-                    'message': f'可疑 Python 腳本喺分析目錄: {f}'
+                    'message': f'可疑腳本 ({ext}) 喺分析目錄: {f}'
                 })
     return issues
 
