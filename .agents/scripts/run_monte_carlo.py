@@ -129,16 +129,17 @@ def parse_original_ranking(analysis_path):
         except Exception:
             pass
 
-    # Method 2: Fallback — parse Top 4 verdict markers
+    # Method 2: Fallback — parse Top 4 verdict markers from injected format
+    # Format: 🥇 **第一選**\n- **馬號及馬名:** 5 銀亮濠俠
     if not rankings:
         rank_patterns = [
-            (r'🥇.*?\[([\d]+)\]', 1),
-            (r'🥈.*?\[([\d]+)\]', 2),
-            (r'🥉.*?\[([\d]+)\]', 3),
-            (r'🏅.*?\[([\d]+)\]', 4),
+            (r'🥇 \*\*第一選\*\*.*?馬號及馬名:\*\*\s*(\d+)', 1),
+            (r'🥈 \*\*第二選\*\*.*?馬號及馬名:\*\*\s*(\d+)', 2),
+            (r'🥉 \*\*第三選\*\*.*?馬號及馬名:\*\*\s*(\d+)', 3),
+            (r'🏅 \*\*第四選\*\*.*?馬號及馬名:\*\*\s*(\d+)', 4),
         ]
         for pattern, rank in rank_patterns:
-            m = re.search(pattern, content)
+            m = re.search(pattern, content, re.DOTALL)
             if m:
                 rankings[int(m.group(1))] = rank
 

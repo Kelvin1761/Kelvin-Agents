@@ -1,30 +1,10 @@
-import sys
-import json
 import re
 import os
-import argparse
-import base64
-import subprocess
 
-# Convert numeric rating to letter grade
-def num_to_grade(val):
-    """Convert a numeric string rating to a letter grade. Pass-through if already a letter."""
-    try:
-        n = float(val)
-    except (ValueError, TypeError):
-        return val  # Already a letter grade
-    # Mapping: >=90=S, >=85=S-, >=80=A+, >=75=A, >=70=A-, >=65=B+, >=60=B, >=55=B-, >=50=C+, >=45=C, >=40=C-, >=30=D, <30=E
-    thresholds = [
-        (90, 'S'), (85, 'S-'), (80, 'A+'), (75, 'A'), (70, 'A-'),
-        (65, 'B+'), (60, 'B'), (55, 'B-'), (50, 'C+'), (45, 'C'),
-        (40, 'C-'), (30, 'D'),
-    ]
-    for threshold, grade in thresholds:
-        if n >= threshold:
-            return grade
-    return 'E'
+with open('/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/inject_hkjc_batch.py', 'r', encoding='utf-8') as f:
+    text = f.read()
 
-def inject_horse_data(horse_chunk, data):
+new_inject_func = """def inject_horse_data(horse_chunk, data):
     ab = data.get('analytical_breakdown', {})
     
     cores = [data.get('matrix', {}).get('stability', {}).get('score', '➖'), data.get('matrix', {}).get('speed_mass', {}).get('score', '➖')]
@@ -74,7 +54,7 @@ def inject_horse_data(horse_chunk, data):
         (r'\*\*🔢 矩陣算術:\*\* 核心✅=\[FILL\] \| 半核心✅=\[FILL\] \| 輔助✅=\[FILL\] \(含寬恕加分\) \| 總❌=\[FILL\] \| 核心❌=\[FILL\] → 查表命中行=\[FILL\]', 
          f"**🔢 矩陣算術:** 核心✅={core_pass} | 半核心✅={semi_pass} | 輔助✅={aux_pass} (含寬恕加分) | 總❌={total_fail} | 核心❌={core_fail} → 查表命中行=-"),
         
-        (r'\*\*14\.2 基礎評級:\*\* `\[FILL\]` \| `\[FILL\]`', f"**14.2 基礎評級:** `{num_to_grade(data.get('base_rating', '-'))}` | `-`"),
+        (r'\*\*14\.2 基礎評級:\*\* `\[FILL\]` \| `\[FILL\]`', f"**14.2 基礎評級:** `{data.get('base_rating', '-')}` | `-`"),
         (r'\*\*14\.2B 微調:\*\* `\[FILL\]` \| `\[FILL\]`', f"**14.2B 微調:** `{data.get('fine_tune', {}).get('direction', '-')}` | `{data.get('fine_tune', {}).get('trigger', '-')}`"),
         (r'\*\*14\.3 覆蓋:\*\* `\[FILL\]`', f"**14.3 覆蓋:** `{data.get('override', {}).get('rule', '-')}`"),
         
@@ -82,80 +62,24 @@ def inject_horse_data(horse_chunk, data):
         (r'> - \*\*最大競爭優勢:\*\* \[明確列出\]', f"> - **最大競爭優勢:** {data.get('advantages', '')}"),
         (r'> - \*\*最大失敗風險:\*\* \[若為A-或以上必須寫,否則明確寫「無」\]', f"> - **最大失敗風險:** {data.get('disadvantages', '')}"),
         
-        (r'\*\*⭐ 最終評級:\*\* `\[FILL\]`', f"**⭐ 最終評級:** `{num_to_grade(data.get('final_rating', '-'))}`"),
+        (r'\*\*⭐ 最終評級:\*\* `\[FILL\]`', f"**⭐ 最終評級:** `{data.get('final_rating', '-')}`"),
         
-        (r'🐴⚡ \*\*冷門馬訊號 \(Underhorse Signal\):\*\* `\[觸發 / 未觸發\]`\n(?:若觸發,必須列明:\n- \*\*受惠條件:\*\* `\[.*?\]`\n- \*\*理由:\*\* \[.*?\])?', 
-         f"🐴⚡ **冷門馬訊號 (Underhorse Signal):** `{uh_trig}`" + (f"\n若觸發,必須列明:\n- **受惠條件:** `{uh_cond}`\n- **理由:** {uh_reason}" if uh_trig == '觸發' else ""))
+        (r'🐴⚡ \*\*冷門馬訊號 \(Underhorse Signal\):\*\* `\[觸發 / 未觸發\]`\\n(?:若觸發,必須列明:\\n- \*\*受惠條件:\*\* `\[.*?\]`\\n- \*\*理由:\*\* \[.*?\])?', 
+         f"🐴⚡ **冷門馬訊號 (Underhorse Signal):** `{uh_trig}`" + (f"\\n若觸發,必須列明:\\n- **受惠條件:** `{uh_cond}`\\n- **理由:** {uh_reason}" if uh_trig == '觸發' else ""))
     ]
     
     for pattern, repl in replacements:
         # replace any literal backslashes if needed, though raw strings handle some
-        horse_chunk = re.sub(pattern, repl.replace('\\', '\\\\'), horse_chunk, count=1, flags=re.DOTALL)
+        horse_chunk = re.sub(pattern, repl.replace('\\\\', '\\\\\\\\'), horse_chunk, count=1, flags=re.DOTALL)
         
     return horse_chunk
+"""
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--target', required=True)
-    parser.add_argument('--json', required=True)
-    parser.add_argument('--batch0', default=None)
-    parser.add_argument('--safe-writer', required=True)
-    args = parser.parse_args()
-    
-    with open(args.target, 'r', encoding='utf-8') as f:
-        text = f.read()
-        
-    with open(args.json, 'r', encoding='utf-8') as f:
-        payload = json.load(f)
-        
-    # Replace Batch 0 if provided (Base64 string)
-    if args.batch0:
-        b0_text = base64.b64decode(args.batch0).decode('utf-8')
-        # Simple replace block for batch 0
-        text = re.sub(r'## \[第一部分\] 🗺️ 戰場全景.*?\*\*🏃 步速瀑布推演 \(Step 0 結論\):\*\*.*?\n---', b0_text + "\n---", text, flags=re.DOTALL)
-        
-    horses = re.split(r'(\*\*【No\.\d+】.*?\*\*)', text)
-    
-    for str_idx, content in enumerate(horses):
-        m = re.match(r'\*\*【No\.(\d+)】', content)
-        if m:
-            h_id = m.group(1)
-            if h_id in payload:
-                # The actual payload content is in horses[str_idx+1] ideally, but `re.split` with capture group 
-                # returns: [everything_before, capture, everything_between, capture, ...]
-                # Wait, re.split with '(...)' puts the capture group AND the stuff after it as separate items?
-                # Actually, \*\*【No.X】 is in the capture group, so it alternates.
-                pass
-                
-    # Better split logic
-    chunks = text.split('**【No.')
-    new_chunks = [chunks[0]]
-    horse_data = payload.get('horses', payload)
-    for chunk in chunks[1:]:
-        h_id = chunk.split('】')[0]
-        if h_id in horse_data:
-            chunk = inject_horse_data(chunk, horse_data[h_id])
-        new_chunks.append(chunk)
+# Replace the old inject_horse_data in the script using regex cleanly
+# find the def inject_horse_data block and replace it until def main():
+new_text = re.sub(r'def inject_horse_data\(horse_chunk, data\):.*?def main\(\):', new_inject_func + '\ndef main():', text, flags=re.DOTALL)
 
-    final_text = '**【No.'.join(new_chunks)
-    
-    # Check off batch label
-    # E.g. ✅ 批次完成:3/14
-    batch_num_match = re.search(r'✅ 批次完成:(\d+)/', final_text)
-    if batch_num_match:
-        current_num = int(batch_num_match.group(1))
-        # Just prefix with BATCH_QA_RECEIPT if we injected
-        new_label = f"🔒 BATCH_QA_RECEIPT\n✅ 批次完成:{current_num}\n" 
-        # For simplicity, we just leave it unless asked.
-        
-    tmp_path = "/tmp/injected_output.md"
-    with open(tmp_path, 'w', encoding='utf-8') as f:
-        f.write(final_text)
-        
-    # Run safe_file_writer
-    b64_content = base64.b64encode(final_text.encode('utf-8')).decode('utf-8')
-    subprocess.run(["python3", args.safe_writer, "--target", args.target, "--mode", "overwrite", "--content", b64_content], check=True)
-    print("Injection complete!")
+with open('/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/inject_hkjc_batch.py', 'w', encoding='utf-8') as f:
+    f.write(new_text)
 
-if __name__ == '__main__':
-    main()
+print("Patched inject_hkjc_batch.py!")
