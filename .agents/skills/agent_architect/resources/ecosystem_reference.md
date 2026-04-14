@@ -13,26 +13,47 @@ This document defines the structure, conventions, and existing agents of the Ant
 └── skills/
     ├── agent_architect/     # Meta-agent (no category prefix)
     ├── hkjc_racing/         # Hong Kong racing agents
-    │   ├── hkjc_wong_choi/
+    │   ├── hkjc_wong_choi/          # V4 Python-First — orchestrator.py 控制
     │   ├── hkjc_race_extractor/
     │   ├── hkjc_horse_analyst/
-    │   ├── hkjc_batch_qa/       # NEW — per-batch quality gate
-    │   ├── hkjc_compliance/
-    │   ├── hkjc_reflector/
-    │   └── hkjc_reflector_validator/
+    │   ├── hkjc_batch_qa/           # [DEPRECATED → V8 Orchestrator]
+    │   ├── hkjc_compliance/         # [DEPRECATED → V8 Orchestrator]
+    │   ├── hkjc_reflector/          # V2 Python-First (merged Reflector + Validator)
+    │   └── hkjc_reflector_validator/ # [DEPRECATED → hkjc_reflector V2]
     ├── au_racing/           # Australian racing agents
-    │   ├── au_wong_choi/
+    │   ├── au_wong_choi/            # V4 Python-First — orchestrator.py 控制
     │   ├── au_race_extractor/
     │   ├── au_horse_analyst/
-    │   ├── au_batch_qa/         # NEW — per-batch quality gate
-    │   ├── au_compliance/
-    │   ├── au_horse_race_reflector/
-    │   └── au_reflector_validator/
-    └── nba/                 # NBA agents
-        ├── nba_wong_choi/
-        ├── nba_data_extractor/
-        ├── nba_analyst/
-        └── nba_reflector/
+    │   ├── au_batch_qa/             # [DEPRECATED → V8 Orchestrator]
+    │   ├── au_compliance/           # [DEPRECATED → V8 Orchestrator]
+    │   ├── au_reflector/              # V2 Python-First (merged Reflector + Validator)
+    │   ├── au_horse_race_reflector/  # [DEPRECATED → au_reflector V2]
+    │   ├── au_reflector_validator/   # [DEPRECATED → au_reflector V2]
+    │   └── au_racecourse_weather_prediction/
+    ├── nba/                 # NBA agents
+    │   ├── nba_wong_choi/           # V3 Python-First
+    │   ├── nba_data_extractor/
+    │   ├── nba_analyst/
+    │   ├── nba_batch_qa/
+    │   ├── nba_compliance/
+    │   ├── nba_reflector/
+    │   └── nba_reflector_validator/
+    ├── lol_wong_choi/       # LoL esports orchestrator
+    ├── lol_reflector/       # LoL post-match forensic analyst
+    ├── betting_accountant/  # Cross-domain Kelly sizing gatekeeper
+    ├── shared_instincts/    # Cross-domain instinct registry (SIP tracking)
+    └── horserace_game_developers/  # 旺財街機遊戲開發
+        ├── game_producer/
+        ├── lead_designer/
+        ├── systems_designer/
+        ├── content_designer/
+        ├── frontend_engineer/
+        ├── game_engine_dev/
+        ├── pixel_artist/
+        ├── sound_designer/
+        ├── game_qa/
+        ├── game_ops/
+        └── mobile_engineer/
 ```
 
 ### Agent Folder Structure
@@ -113,47 +134,28 @@ Agents that chain to downstream agents output structured CSV blocks:
 
 | Agent | Role | Upstream | Downstream |
 |-------|------|----------|------------|
-| **Wong Choi** (HKJC/AU) | Meeting-level commander. Sets pace context, weather, track bias. Orchestrates per-race analysis. Writes intelligence package to file. | User input / race URL | Race Extractor → Horse Analyst → Batch QA → Compliance |
-| **Race Extractor** (HKJC/AU) | Raw data extraction from race cards and form guides. | URL / PDF | Horse Analyst |
-| **Horse Analyst** (HKJC/AU) | Deep per-horse analysis with algorithmic engine, forensic evaluation, EEM. Outputs Top 3-4 selections. | Extractor data + Wong Choi context + Intelligence Package | Batch QA → Compliance Agent |
-| **Batch QA** (HKJC/AU) | Per-batch quality gate. Structural scan, semantic scan, anti-laziness. Called after each batch. | Analyst batch output | Wong Choi (pass/fail) |
-| **Compliance Agent** (HKJC/AU) | Quality police. Cross-batch trend analysis, SIP verification, anti-laziness audit, self-improvement hub. Tiered remediation (CRITICAL→full redo, structural MINOR→batch redo). | Analyst report + SIP index + SIP changelog | Wong Choi (pass/fail verdict) |
-| **Reflector** (HKJC/AU) | Post-race review with narrative post-mortem. Distinguishes bad logic from bad luck. Maintains SIP changelog. Proposes design patterns. | Race results + Analyst predictions | Reflector Validator / User / Agent Architect |
-| **Reflector Validator** (HKJC/AU) | Blind re-analysis gatekeeper. Validates SIP updates via selective race-by-race testing with user checkpoints. | Race folder + SIP changelog | User (validation report) |
-| **Agent Architect** | Meta-agent. Designs, optimises, and audits agents (3 modes: Build/Optimise/Audit). Agent Health Check. | User requirements | New/updated SKILL.md |
+| **Wong Choi** (HKJC/AU) | V4 Python-First orchestrator. 執行 `orchestrator.py`，LLM 只負責填寫 `[FILL]` 欄位。Python 狀態機控制 extraction → analysis → QA → verdict 全流程。 | User input / race URL | Python Orchestrator → Horse Analyst (LLM fill) |
+| **Race Extractor** (HKJC/AU) | Raw data extraction from race cards and form guides via Python scripts. | URL / PDF | Horse Analyst |
+| **Horse Analyst** (HKJC/AU) | Deep per-horse analysis with algorithmic engine, forensic evaluation, EEM. Outputs Top 3-4 selections. | Extractor data + `.runtime/Active_Horse_Context.md` | Python Orchestrator (QA built-in) |
+| ~~**Batch QA**~~ (HKJC/AU) | **[DEPRECATED]** Functions absorbed into V8 Python Orchestrator state machine. Do NOT invoke. | — | — |
+| ~~**Compliance Agent**~~ (HKJC/AU) | **[DEPRECATED]** Functions absorbed into V8 Python Orchestrator state machine. Do NOT invoke. | — | — |
+| **Reflector V2** (HKJC/AU) | Python-First 10-Step 覆盤引擎。合併原 Reflector + Validator。Python 做統計/Calibration/MC Re-run，LLM 做深度分析/SIP BAKE。含 Market Edge Analysis + Walk-Forward Validation + MC Parameter Check。 | Race results + Analyst predictions + MC logic.json | User (覆盤報告 + SIP proposals) |
+| ~~**Reflector Validator**~~ (HKJC/AU) | **[DEPRECATED]** Functions merged into Reflector V2 (Python-First). Do NOT invoke. | — | — |
 | **Racecourse Weather Prediction** (AU) | Weather and track condition forecasting. | Race date + venue | Wong Choi / Analyst |
-| **NBA Wong Choi** | NBA Parlay analysis commander. Orchestrates data extraction and parlay strategy analysis. Defaults to all games on specified date. | User input (date / specific games) | NBA Data Extractor → NBA Analyst |
+| **Agent Architect** | Meta-agent. Designs, optimises, and audits agents (4 modes: Build/Optimise/Audit/Debug). Agent Health Check. | User requirements | New/updated SKILL.md |
+| **NBA Wong Choi** | V3 Python-First NBA Parlay analysis commander. | User input (date / specific games) | NBA Data Extractor → NBA Analyst |
 | **NBA Data Extractor** | Real-time NBA data extraction: rosters, injuries, defensive profiles, player stats (L10), match context, and player/team news. Outputs structured data package. | NBA Wong Choi / User | NBA Analyst |
-| **NBA Analyst** | Quantitative parlay analysis: CoV volatility engine, contextual adjustments (incl. news), safety gate, 3-tier parlay builder (Banker/Value/High Odds). Bet365 compliant. | NBA Data Extractor data package | NBA Wong Choi / User |
-| **NBA Reflector** | Post-game review. Compares NBA parlay predictions vs actual box scores, identifies systematic blind spots in volatility engine/safety gate/parlay engine, proposes SIPs. | Game results (web search) + Analyst predictions | Analyst (improvement proposals) |
-| **Betting Accountant** (LoL) | Final override gatekeeper for LoL esports pipeline. Stateful Kelly sizing with bankroll awareness (reads betting_record.md), edge confidence tiers, and override authority over Sniper sizing. Future: Market Lens (CLV tracking + trap line detection). | Sniper proposal package (match, market, model_p, odds, grade, sniper_sizing, calibrated_ev, season_opener, league_tier) | User (final sizing) / records/betting_record.md |
-| **LoL Wong Choi** | V1 LoL esports orchestrator. Phase 0-3 pipeline automation from data ingestion to odds gate. | User input (date/league) | lol-prediction → lol-sniper → Betting Accountant |
-| **LoL Reflector** | Post-match forensic analyst. Identifies R&D/sandbagging vs true decline. Future: Odds Forensics (CLV tracking per bet). | Match results + Analyst predictions | User / Betting Accountant (CLV feedback) |
-
-
-### Agent Chaining Flow — Horse Racing (HKJC/AU)
-```
-User → Wong Choi (meeting setup + intelligence gathering)
-         ↓
-       Intelligence Package (written to file — Pattern 13)
-         ↓
-       Extractor (raw data)
-         ↓
-       Horse Analyst (per-race deep analysis, batched)
-         ↓ per batch
-       Batch QA 🚨 (structural + semantic + anti-laziness)
-         ↓ PASS ✔️          ↓ FAIL ❌
-       next batch        Analyst (redo batch)
-         ↓ all batches done
-       Compliance Agent (cross-batch trends + SIP audit)
-         ↓ PASS ✔️          ↓ FAIL ❌
-       Wong Choi           CRITICAL: full redo / MINOR: batch redo
-         ↓
-       User (final selections)
-         ↓ (post-race)
-       Reflector (narrative post-mortem + SIP proposals + changelog update)
-         ↓ (SIP approved & applied)
-       Reflector Validator (selective blind re-analysis with user checkpoints)
+| **NBA Analyst** | Quantitative parlay analysis: CoV volatility engine, contextual adjustments (incl. news), safety gate, 3-tier parlay builder (Banker/Value/High Odds). Sportsbet compliant. | NBA Data Extractor data package | NBA Wong Choi / User |
+| **NBA Batch QA** | Per-output quality gate for NBA analysis. | Analyst output | NBA Wong Choi (pass/fail) |
+| **NBA Compliance** | Cross-game quality inspection for NBA pipeline. | Full analysis set | NBA Wong Choi (pass/fail) |
+| **NBA Reflector** | Post-game review. API-First box score extraction. Compares predictions vs actual, identifies systematic blind spots, proposes SIPs. | Game results (API/web) + Analyst predictions | Analyst (improvement proposals) |
+       Reflector V2 (Python-First 10-Step Pipeline)
+          Steps 1-3: 🐍 賽果擷取 → KPI + Calibration → 問題掃描 + Market Edge
+          Steps 4-6: 🧠 引擎邏輯審視 → SIP 草擬 → 泛化性篩選
+          Step 7:    🐍 MC Re-run → 🧠 Deep Validation
+          Step 7.5:  🐍 MC Parameter Consistency Check
+          Step 8:    📋 報告 + Walk-Forward flags → ⏸ 等用戶審批
+          Step 9:    🧠 LLM BAKE approved SIPs
 ```
 
 ### Agent Chaining Flow — NBA Parlay

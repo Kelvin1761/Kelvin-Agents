@@ -791,14 +791,14 @@ def _parse_au_race_header(text: str) -> dict:
 def _parse_monte_carlo_table(text: str) -> list[dict]:
     """
     Parse Monte Carlo simulation results table from analysis markdown.
-    Supports both V2 format (MC排名|馬號|馬名|MC勝率|預測賠率|法證排名|差異)
+    Supports both V2 9-col format (MC排名|馬號|馬名|MC勝率|預測賠率|Top 3%|Top 4%|法證排名|差異)
     and V1 format (排名|馬名|勝出率|Top 3率|Top 4率|平均名次|同Top4吻合).
     Returns list of dicts.
     """
     results = []
     
-    # V2 format: MC排名 | 馬號 | 馬名 | MC 勝率 | 預測賠率 | 法證排名 | 差異
-    v2_header = re.search(r'\|\s*MC排名\s*\|.*?馬號.*?馬名.*?MC\s*勝率.*?預測賠率.*?法證排名.*?差異\s*\|', text)
+    # V2 format
+    v2_header = re.search(r'\|\s*MC排名\s*\|.*?馬號.*?馬名.*?MC\s*勝率.*?預測賠率.*?Top 3%*?.*?Top 4%*?.*?法證排名.*?差異\s*\|', text)
     if v2_header:
         # Find all table rows after header
         header_end = v2_header.end()
@@ -815,7 +815,7 @@ def _parse_monte_carlo_table(text: str) -> list[dict]:
                 continue
             cols = [c.strip() for c in line.split('|')]
             cols = [c for c in cols if c]  # Remove empty first/last
-            if len(cols) >= 7:
+            if len(cols) >= 9:
                 try:
                     # Parse MC rank (may contain emoji)
                     mc_rank_str = re.sub(r'[^\d]', '', cols[0]) or '0'
@@ -826,9 +826,13 @@ def _parse_monte_carlo_table(text: str) -> list[dict]:
                     win_prob = float(win_prob_str.group(1)) if win_prob_str else 0
                     odds_str = re.search(r'\$?([\d.]+)', cols[4])
                     predicted_odds = float(odds_str.group(1)) if odds_str else 0
-                    orig_rank_str = re.search(r'#(\d+)', cols[5])
+                    top3_str = re.search(r'([\d.]+)%', cols[5])
+                    top3_prob = float(top3_str.group(1)) if top3_str else 0
+                    top4_str = re.search(r'([\d.]+)%', cols[6])
+                    top4_prob = float(top4_str.group(1)) if top4_str else 0
+                    orig_rank_str = re.search(r'#(\d+)', cols[7])
                     original_rank = int(orig_rank_str.group(1)) if orig_rank_str else None
-                    agreement = cols[6].strip()
+                    agreement = cols[8].strip()
                     
                     results.append({
                         'mc_rank': mc_rank,
@@ -836,6 +840,8 @@ def _parse_monte_carlo_table(text: str) -> list[dict]:
                         'name': horse_name,
                         'win_prob': win_prob,
                         'predicted_odds': predicted_odds,
+                        'top3_prob': top3_prob,
+                        'top4_prob': top4_prob,
                         'original_rank': original_rank,
                         'agreement': agreement,
                     })
@@ -1148,6 +1154,35 @@ def parse_au_analysis(filepath: str) -> Optional[RaceAnalysis]:
         ['---', '## [第二部分]', '🐴 馬匹矩陣']
     )
     
+    # ──────────────────────────────────────────────
+    # GRADE ENFORCEMENT: Re-sort Top Picks strictly by final grade
+    # Prevents LLM "tactical override" where a D horse outranks an S/A horse
+    # ──────────────────────────────────────────────
+    _GRADE_ORDER = ['S+', 'S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-']
+
+    def _grade_sort_key(horse):
+        g = horse.final_grade or ''
+        g_idx = _GRADE_ORDER.index(g) if g in _GRADE_ORDER else 99
+        orig_rank = next((p.rank for p in top_picks if p.horse_number == horse.horse_number), 99)
+        return (g_idx, orig_rank)
+
+    _sorted_horses = sorted(horses, key=_grade_sort_key)
+    _new_top_4 = _sorted_horses[:4]
+    _new_picks = []
+    for i, h in enumerate(_new_top_4):
+        orig = next((p for p in top_picks if p.horse_number == h.horse_number), None)
+        if orig:
+            orig.rank = i + 1
+            _new_picks.append(orig)
+        else:
+            _new_picks.append(TopPick(
+                rank=i + 1,
+                horse_number=h.horse_number,
+                horse_name=h.horse_name,
+                grade=h.final_grade,
+            ))
+    top_picks = _new_picks
+
     # Parse Monte Carlo simulation results (V2)
     monte_carlo_results = _parse_monte_carlo_table(text) or None
     

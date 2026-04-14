@@ -1,7 +1,7 @@
 ---
-name: AU Reflector Validator
-description: This skill should be used when the user wants to "validate AU SIP changes", "AU 驗證 SIP", "blind test AU logic", "AU 盲測", or needs to verify that SIP logic updates actually improve prediction accuracy through blind re-analysis.
-version: 2.0.0
+name: "[DEPRECATED] AU Reflector Validator"
+description: "[DEPRECATED] Do NOT use. Functions merged into au_reflector V2 (Python-First). Invoke au_reflector instead."
+version: 2.0.0-deprecated
 ---
 
 # Role

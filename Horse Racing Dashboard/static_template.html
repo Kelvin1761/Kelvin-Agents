@@ -1222,24 +1222,53 @@ function renderHorseCard(horse, topPickRank) {
 
   // Rating matrix
   if (horse.rating_matrix?.dimensions?.length) {
-    html += '<div class="horse-card__section"><div class="horse-card__section-title">📊 評級矩陣</div><div style="display:flex;flex-wrap:wrap;gap:4px">';
-    horse.rating_matrix.dimensions.forEach(dim => {
-      const bg = dim.value==='✅'?'#D1FAE5':dim.value==='❌'?'#FEE2E2':'#F1F5F9';
-      const col = dim.value==='✅'?'#059669':dim.value==='❌'?'#DC2626':'#6B7280';
-      html += `<span title="${esc(dim.name)}: ${esc(dim.rationale)}" style="font-size:0.7rem;padding:2px 6px;border-radius:4px;background:${bg};color:${col}">${esc(dim.value)} ${esc(dim.name)}</span>`;
+    html += '<div class="horse-card__section"><div class="horse-card__section-title">📊 評級矩陣</div>';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:0.75rem;margin-top:6px;border-radius:6px;overflow:hidden;border:1px solid #E2E8F0">';
+    horse.rating_matrix.dimensions.forEach((dim, i) => {
+      const bg = dim.value==='✅'?'#10B981':dim.value==='❌'?'#EF4444':'#94A3B8';
+      let title = dim.name;
+      if (title.includes("L400") || title.includes("末段")) title = "⚡ " + title;
+      else if (title.includes("班底") || title.includes("級數")) title = "🏆 " + title;
+      else if (title.includes("評分") || title.includes("重")) title = "⚖️ " + title;
+      else if (title.includes("血統") || title.includes("泥") || title.includes("草")) title = "🧬 " + title;
+      else title = "📌 " + title;
+      
+      html += `<tr style="${i % 2 === 0 ? 'background:#F8FAFC' : 'background:#fff'};border-bottom:1px solid #F1F5F9">`;
+      html += `<td style="padding:6px 10px;font-weight:700;color:#475569;white-space:nowrap;width:30%">${esc(title)}</td>`;
+      html += `<td style="padding:6px 10px;text-align:center;width:40px"><div style="width:20px;height:20px;border-radius:4px;background:${bg};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.7rem;margin:0 auto">${esc(dim.value)}</div></td>`;
+      html += `<td style="padding:6px 10px;color:#64748B">${esc(dim.rationale)}</td>`;
+      html += `</tr>`;
     });
-    html += '</div></div>';
+    html += '</table></div>';
+  }
+
+  function renderTimeline(text) {
+    const lines = text.split('\\n');
+    let h = '<div style="margin-top:8px;padding-left:12px;border-left:2px solid #E2E8F0;display:flex;flex-direction:column;gap:12px">';
+    lines.forEach(line => {
+      if (!line.trim()) return;
+      let badge = '';
+      if (line.includes('強勢') || line.includes('出色')) badge = '<span style="background:#D1FAE5;color:#059669;padding:1px 6px;border-radius:4px;font-size:0.65rem;font-weight:700;margin-left:8px">🔥 強勢</span>';
+      else if (line.includes('弱勢') || line.includes('失準')) badge = '<span style="background:#FEE2E2;color:#DC2626;padding:1px 6px;border-radius:4px;font-size:0.65rem;font-weight:700;margin-left:8px">⚠️ 弱勢</span>';
+      
+      h += `<div style="position:relative">
+              <div style="position:absolute;left:-17px;top:4px;width:8px;height:8px;border-radius:50%;background:#3B82F6;border:2px solid #fff"></div>
+              <div style="font-size:0.78rem;color:#334155;line-height:1.5">${esc(line.replace(/^[-\\*]\\s*/, ''))}${badge}</div>
+            </div>`;
+    });
+    h += '</div>';
+    return h;
   }
 
   // Expandable section
   html += `<div id="${cardId}-detail" style="display:none;margin-top:12px">`;
   if (horse.raw_text && !horse.conclusion && !horse.speed_forensics && !horse.horse_profile) {
-    html += `<div class="horse-card__section"><div class="horse-card__section-title">📋 完整分析</div><div style="white-space:pre-wrap;font-size:0.78rem;line-height:1.7;color:#334155;padding:12px;background:#F8FAFC;border-radius:8px;max-height:600px;overflow-y:auto">${formatRawAnalysis(horse.raw_text)}</div></div>`;
+    html += `<div class="horse-card__section"><div class="horse-card__section-title">📋 完整分析</div><div style="font-size:0.78rem;line-height:1.7;color:#334155;padding:12px;background:#F8FAFC;border-radius:8px;overflow-y:auto">${parseMdToHtml(horse.raw_text)}</div></div>`;
   } else {
     if (horse.speed_forensics) html += `<div class="horse-card__section"><div class="horse-card__section-title">🔬 段速法醫</div><div class="horse-card__details" style="white-space:pre-wrap">${formatAnalysis(horse.speed_forensics)}</div></div>`;
     if (horse.eem_energy) html += `<div class="horse-card__section"><div class="horse-card__section-title">⚡ EEM 能量</div><div class="horse-card__details" style="white-space:pre-wrap">${formatAnalysis(horse.eem_energy)}</div></div>`;
     if (horse.forgiveness_file) html += `<div class="horse-card__section"><div class="horse-card__section-title">📋 寬恕檔案</div><div class="horse-card__details" style="white-space:pre-wrap">${formatAnalysis(horse.forgiveness_file)}</div></div>`;
-    if (horse.form_line) html += `<div class="horse-card__section"><div class="horse-card__section-title">🔗 賽績線</div><div class="horse-card__details" style="white-space:pre-wrap">${formatAnalysis(horse.form_line)}</div></div>`;
+    if (horse.form_line) html += `<div class="horse-card__section"><div class="horse-card__section-title">🔗 賽績線</div><div>${renderTimeline(horse.form_line)}</div></div>`;
     if (horse.horse_profile) html += `<div class="horse-card__section"><div class="horse-card__section-title">🐴 馬匹剖析</div><div class="horse-card__details" style="white-space:pre-wrap">${formatAnalysis(horse.horse_profile)}</div></div>`;
     if (horse.core_analysis) html += `<div class="horse-card__section"><div class="horse-card__section-title">🧠 核心分析</div><div class="horse-card__details" style="white-space:pre-wrap">${formatAnalysis(horse.core_analysis)}</div></div>`;
     if (horse.conclusion) html += `<div class="horse-card__section"><div class="horse-card__section-title">💡 結論</div><div class="horse-card__details" style="white-space:pre-wrap">${formatAnalysis(horse.conclusion)}</div></div>`;
@@ -1408,6 +1437,94 @@ function renderSingleAnalystView(analysis, analystName) {
     });
     html += '</div></div>';
   } else if (picks.length) {
+    // Standard Single Top Picks ... (existing code, untouched conceptually but skipped in this diff replace since it's above)
+  }
+
+  // Define renderMonteCarloPanel
+  function renderMonteCarloPanel(analysis) {
+    const results = analysis.monte_carlo_results;
+    if (!results || results.length === 0) return '';
+    
+    const maxProb = Math.max(...results.map(r => r.win_prob || 0));
+    
+    function agreementColor(ag) {
+      if (!ag) return "#94A3B8";
+      if (ag.includes("✅")) return "#10B981";
+      if (ag.includes("🔄")) return "#3B82F6";
+      if (ag.includes("⚠️")) return "#F59E0B";
+      if (ag.includes("❌")) return "#EF4444";
+      if (ag.includes("🆕")) return "#8B5CF6";
+      return "#94A3B8";
+    }
+
+    let h = `<div class="mc-panel" style="margin-bottom:24px;background:#fff;border-radius:12px;border:1px solid #E2E8F0;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);overflow:hidden">`;
+    h += `<div class="mc-panel__header" style="background:linear-gradient(135deg, #1E1B4B, #312E81);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;font-weight:700">
+            <span style="font-size:1.1rem">🎲 Monte Carlo 概率模擬</span>
+            <span class="mc-panel__badge" style="background:rgba(255,255,255,0.2);padding:4px 10px;border-radius:20px;font-size:0.75rem">10,000 次模擬</span>
+          </div>`;
+    h += `<div class="mc-panel__body" style="padding:0;overflow-x:auto">`;
+    h += `<table class="mc-panel__table" style="width:100%;border-collapse:collapse;min-width:700px">
+            <thead style="background:#F8FAFC;border-bottom:1px solid #E2E8F0;font-size:0.8rem;color:#64748B;text-align:left">
+              <tr>
+                <th style="padding:12px 16px;font-weight:600">MC排名</th>
+                <th style="padding:12px 16px;font-weight:600">馬號</th>
+                <th style="padding:12px 16px;font-weight:600">馬名</th>
+                <th style="padding:12px 16px;font-weight:600;width:25%">MC 勝率</th>
+                <th style="padding:12px 16px;font-weight:600">預測賠率</th>
+                <th style="padding:12px 16px;font-weight:600">Top 3%</th>
+                <th style="padding:12px 16px;font-weight:600">Top 4%</th>
+                <th style="padding:12px 16px;font-weight:600">法證排名</th>
+                <th style="padding:12px 16px;font-weight:600">差異</th>
+              </tr>
+            </thead>
+            <tbody style="font-size:0.85rem">`;
+            
+    results.forEach((r, i) => {
+      const barWidth = maxProb > 0 ? (r.win_prob / maxProb) * 100 : 0;
+      const rankIcons = ["🥇", "🥈", "🥉", "🏅"];
+      const mcIcon = rankIcons[i] || `#${r.mc_rank || i + 1}`;
+      const origIcon = r.original_rank ? (rankIcons[r.original_rank - 1] || `#${r.original_rank}`) : "—";
+      
+      const gradient = i === 0 ? "linear-gradient(90deg,#D97706,#F59E0B)" :
+                       i === 1 ? "linear-gradient(90deg,#6B7280,#9CA3AF)" :
+                       i === 2 ? "linear-gradient(90deg,#92400E,#B45309)" :
+                       "linear-gradient(90deg,#1D4ED8,#3B82F6)";
+                       
+      const predictedOdds = r.predicted_odds ? `$${r.predicted_odds.toFixed(2)}` : "—";
+      const top3 = r.top3_prob ? `${r.top3_prob.toFixed(1)}%` : "—";
+      const top4 = r.top4_prob ? `${r.top4_prob.toFixed(1)}%` : "—";
+      
+      h += `<tr style="border-bottom:1px solid #F1F5F9;${i<4?'background:#FAFBFD':''}">`;
+      h += `  <td style="padding:12px 16px;font-weight:700;font-size:1rem">${mcIcon}</td>`;
+      h += `  <td style="padding:12px 16px;color:#64748B;font-weight:600">${r.horse_num || "—"}</td>`;
+      h += `  <td style="padding:12px 16px;font-weight:700;color:#1E293B">${esc(r.name)}</td>`;
+      h += `  <td style="padding:12px 16px">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <div style="flex:1;height:8px;background:#E2E8F0;border-radius:4px;overflow:hidden">
+                    <div style="width:${barWidth}%;height:100%;background:${gradient};border-radius:4px"></div>
+                  </div>
+                  <span style="font-weight:700;color:#475569;width:45px;text-align:right">${r.win_prob?.toFixed(1)}%</span>
+                </div>
+              </td>`;
+      h += `  <td style="padding:12px 16px;font-family:monospace;font-weight:700;color:#0F766E">${predictedOdds}</td>`;
+      h += `  <td style="padding:12px 16px;color:#475569">${top3}</td>`;
+      h += `  <td style="padding:12px 16px;color:#475569">${top4}</td>`;
+      h += `  <td style="padding:12px 16px;font-size:1rem">${origIcon}</td>`;
+      h += `  <td style="padding:12px 16px;"><span style="color:${agreementColor(r.agreement)};font-weight:700;font-size:0.75rem">${esc(r.agreement || "—")}</span></td>`;
+      h += `</tr>`;
+    });
+    
+    h += `    </tbody>
+          </table>`;
+    h += `<div style="padding:12px 16px;background:#F8FAFC;border-top:1px solid #E2E8F0;font-size:0.72rem;color:#94A3B8;display:flex;align-items:center;gap:6px">
+            <span>🐍 </span><span>由 Python <code>run_monte_carlo.py</code> 自動計算 · 基於 L400 段速 + EEM 能量</span>
+          </div></div></div>`;
+    return h;
+  }
+
+  if (analysis.monte_carlo_results) {
+    html += renderMonteCarloPanel(analysis);
+  }
     html += `<div style="margin-bottom:24px"><h2 style="font-size:1rem;font-weight:700;margin-bottom:12px">🏆 Top Picks</h2>
       <div class="comparison__column" style="max-width:600px"><div class="comparison__header comparison__header--${isK?'kelvin':'heison'}">${esc(analystName||'Analyst')}</div><div class="comparison__body" style="padding:0">`;
     picks.slice(0, 4).forEach((pick, i) => {

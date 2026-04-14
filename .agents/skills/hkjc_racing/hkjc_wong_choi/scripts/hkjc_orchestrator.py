@@ -539,41 +539,17 @@ def main():
                 print(f"❌ JSON 格式編譯失敗，請檢查 {os.path.basename(logic_json)} 是否為合法 JSON。")
                 sys.exit(1)
             
-            # 4.5 Monte Carlo Simulation (non-blocking)
-            print(f"🎲 正在為 Race {r} 執行 Monte Carlo 模擬...")
-            mc_script = ".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/monte_carlo_hkjc.py"
+            # 4.5 Monte Carlo Simulation V2 (via run_monte_carlo.py)
+            print(f"🎲 正在為 Race {r} 執行 Monte Carlo V2 模擬...")
+            mc_script = ".agents/scripts/run_monte_carlo.py"
             if os.path.exists(mc_script):
-                mc_res = subprocess.run(
-                    ["python3", mc_script, logic_json, facts_path],
-                    capture_output=True, text=True)
+                mc_res = subprocess.run(["python3", mc_script, "--target_dir", target_dir], capture_output=True, text=True)
                 if mc_res.returncode == 0:
-                    print(f"✅ MC 模擬完成")
-                    # Append MC section to Analysis.md
-                    mc_json_path = os.path.join(target_dir, f"Race_{r}_MC.json")
-                    if os.path.exists(mc_json_path):
-                        try:
-                            mc_data = json.load(open(mc_json_path, 'r', encoding='utf-8'))
-                            mc_section = mc_res.stdout
-                            # Find the MC table in stdout and append to Analysis.md
-                            if '📊 Monte Carlo' in mc_section:
-                                with open(an_file, 'a', encoding='utf-8') as af:
-                                    # Extract only the table section
-                                    mc_lines = []
-                                    in_mc = False
-                                    for line in mc_section.split('\n'):
-                                        if '📊 Monte Carlo' in line:
-                                            in_mc = True
-                                        if in_mc:
-                                            mc_lines.append(line)
-                                    if mc_lines:
-                                        af.write('\n\n' + '\n'.join(mc_lines) + '\n')
-                                        print(f"📊 MC 結果已附加到 {os.path.basename(an_file)}")
-                        except Exception as e:
-                            print(f"⚠️ MC 結果附加失敗: {e}")
+                    print(f"✅ MC V2 模擬與注入完成")
                 else:
-                    print(f"⚠️ MC 模擬未能完成（非阻塞）: {mc_res.stderr[:200] if mc_res.stderr else 'unknown'}")
+                    print(f"⚠️ MC V2 模擬失敗 (非阻塞): {mc_res.stderr}")
             else:
-                print(f"⚠️ MC 腳本不存在: {mc_script}")
+                print(f"⚠️ MC V2 腳本不存在: {mc_script}")
                 
             print(f"🛡️ 正在就編譯好的 Race {r} 進行 Batch QA (completion_gate_v2.py)...")
             qa_res = subprocess.run(["python3", ".agents/scripts/completion_gate_v2.py", an_file, "--domain", "hkjc"])

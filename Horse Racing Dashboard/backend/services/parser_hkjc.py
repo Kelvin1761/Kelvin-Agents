@@ -739,13 +739,13 @@ def _parse_race_header(text: str) -> dict:
 def _parse_monte_carlo_table(text: str) -> list[dict]:
     """
     Parse Monte Carlo simulation results table from HKJC analysis markdown.
-    Supports V2 format (MC排名|馬號|馬名|MC勝率|預測賠率|法證排名|差異)
+    Supports V2 9-col format (MC排名|馬號|馬名|MC勝率|預測賠率|Top 3%|Top 4%|法證排名|差異)
     and V1 format (排名|馬名|勝出率|...).
     """
     results = []
     
     # V2 format
-    v2_header = re.search(r'\|\s*MC排名\s*\|.*?馬號.*?馬名.*?MC\s*勝率.*?預測賠率.*?法證排名.*?差異\s*\|', text)
+    v2_header = re.search(r'\|\s*MC排名\s*\|.*?馬號.*?馬名.*?MC\s*勝率.*?預測賠率.*?Top 3%*?.*?Top 4%*?.*?法證排名.*?差異\s*\|', text)
     if v2_header:
         header_end = v2_header.end()
         remaining = text[header_end:]
@@ -760,7 +760,7 @@ def _parse_monte_carlo_table(text: str) -> list[dict]:
                 continue
             cols = [c.strip() for c in line.split('|')]
             cols = [c for c in cols if c]
-            if len(cols) >= 7:
+            if len(cols) >= 9:
                 try:
                     mc_rank_str = re.sub(r'[^\d]', '', cols[0]) or '0'
                     mc_rank = int(mc_rank_str) if mc_rank_str else 0
@@ -770,13 +770,18 @@ def _parse_monte_carlo_table(text: str) -> list[dict]:
                     win_prob = float(win_prob_str.group(1)) if win_prob_str else 0
                     odds_str = re.search(r'\$?([\d.]+)', cols[4])
                     predicted_odds = float(odds_str.group(1)) if odds_str else 0
-                    orig_rank_str = re.search(r'#(\d+)', cols[5])
+                    top3_str = re.search(r'([\d.]+)%', cols[5])
+                    top3_prob = float(top3_str.group(1)) if top3_str else 0
+                    top4_str = re.search(r'([\d.]+)%', cols[6])
+                    top4_prob = float(top4_str.group(1)) if top4_str else 0
+                    orig_rank_str = re.search(r'#(\d+)', cols[7])
                     original_rank = int(orig_rank_str.group(1)) if orig_rank_str else None
-                    agreement = cols[6].strip()
+                    agreement = cols[8].strip()
                     results.append({
                         'mc_rank': mc_rank, 'horse_num': horse_num,
                         'name': horse_name, 'win_prob': win_prob,
                         'predicted_odds': predicted_odds,
+                        'top3_prob': top3_prob, 'top4_prob': top4_prob,
                         'original_rank': original_rank, 'agreement': agreement,
                     })
                 except (ValueError, IndexError):

@@ -3,9 +3,9 @@
 # Do NOT invoke this agent. Use hkjc_orchestrator.py / au_orchestrator.py instead.
 
 ---
-name: HKJC Compliance Agent
-description: This skill should be used when the user wants to "check HKJC analysis quality", "HKJC 品質檢查", "HKJC compliance check", "合規檢查", or when HKJC Wong Choi requires mandatory quality and SIP compliance verification after each race analysis.
-version: 2.0.0
+name: "[DEPRECATED] HKJC 合規審計官"
+description: "[DEPRECATED] Do NOT use. Functions absorbed into V8 hkjc_orchestrator.py. Invoke hkjc_wong_choi instead."
+version: 1.0.0-deprecated
 ---
 
 # Role

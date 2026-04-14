@@ -1229,7 +1229,7 @@ def main():
         for g in games:
             package = extract_single_game(g, adv_stats, defender_data, team_dvp, team_stats, odds_data)
             
-            json_path = f".agents.agents/tmp/nba_game_data_{g['tag']}.json"
+            json_path = f".agents/tmp/nba_game_data_{g['tag']}.json"
             with open(json_path, "w", encoding="utf-8") as f:
                 json.dump(package, f, ensure_ascii=False, indent=2)
             print(f"  ✅ {g['tag']} → {json_path}")

@@ -1,10 +1,13 @@
 ---
 name: lol_wong_choi
 description: This skill should be used when the user wants to "分析[日期] [賽區]", "analyse esports", "LoL Wong Choi", or needs to orchestrate the full LoL esports prediction pipeline (V2) from data retrieval (via Python scripts & Gol.gg search) to final V17/V22 compliant betting reports.
+version: 1.1.0
 skills:
   - lol-prediction
   - lol-sniper
   - betting_accountant
+ag_kit_skills:
+  - systematic-debugging   # Pipeline 失敗時自動觸發
 ---
 
 # 👑 LoL Wong Choi (電競旺財)
@@ -17,20 +20,23 @@ skills:
 When activated, you MUST autonomously execute the following phases. **DO NOT ask the user to run scripts for you.** You have full access to `run_command` to execute Python scripts locally.
 
 ### Phase 1: 啟動 V2 Pipeline (Data Ingestion)
-1. Navigate to: `C:\Users\chan\Desktop\賽前Esport Prediction_v2`
+1. Navigate to the V2 pipeline workspace (auto-detect platform):
+   - **Windows**: `賽前Esport Prediction_v2/` (relative to Desktop or workspace)
+   - **macOS**: `./賽前Esport Prediction_v2/`
+   > ⚠️ 嚴禁硬編碼絕對路徑。若路徑唔存在，用 `search_web` 搜索 workspace 位置或詢問用戶。
 2. Run the pipeline script. If the user provided a date/league, pass those flags. If not, default to today's date.
    - Example Command: `python scripts/run_pipeline.py --date 2026-04-09 --league LCK`
 3. Wait for the Python script to finish executing and generating the `.md` report.
 
 ### Phase 2: 檔案讀取與缺失診斷 (Data Sourcing)
-1. Read the output file: `C:\Users\chan\Desktop\賽前Esport Prediction_v2\data\match_brief_YYYY-MM-DD.md`.
+1. Read the output file: `data/match_brief_YYYY-MM-DD.md` (relative to pipeline workspace).
 2. Extract the Hard Metrics (GD@15, FB%, etc.).
 3. **CRITICAL GAP IDENTIFICATION**: The V2 pipeline does NOT cover Gol.gg exclusive metrics. You MUST autonomously fulfill them:
    - Use `search_web` to search for the team's Gol.gg profile.
    - Find and extract the **NC% (Non-champion pick rate)**.
    - Find and extract the **Team Resource Distribution (Gold Graph/DNA)**.
    - **MANDATORY QUICK REFLECTION**: You MUST perform a fast post-match review of both teams' last 3 matches. Use `search_web` to check their recent results and drafts. Diagnose if any recent losses were due to 'R&D/Sandbagging' or 'True Decline' before proceeding.
-   - **MAJOR LEAGUE (LPL/LCK) FALLBACK PROTOCOL**: If Oracle's Elixir returns `None` or `[DATA MISSING]` for LPL (often due to Tencent API restrictions) or LCK, **YOU MUST NOT IGNORE IT!** `GD@15` is a core metric. You MUST use your `search_web` tool, or `browser_subagent` to search `esports8.com` or `Gol.gg` to manually find the early game gold diff or economic stats. DO NOT just transfer weight to Win Rate (WR).
+   - **MAJOR LEAGUE (LPL/LCK) FALLBACK PROTOCOL**: If Oracle's Elixir returns `None` or `[DATA MISSING]` for LPL (often due to Tencent API restrictions) or LCK, **YOU MUST NOT IGNORE IT!** `GD@15` is a core metric. You MUST use your `search_web` tool or `read_url_content` to search `esports8.com` or `Gol.gg` to manually find the early game gold diff or economic stats. DO NOT just transfer weight to Win Rate (WR). **嚴禁使用 `browser_subagent`。**
    - **MINOR LEAGUE (ERL/CL) FALLBACK PROTOCOL**: If Oracle's Elixir doesn't cover LCK CL or ERLs early season, **DO NOT PANIC**. 
      - **Execute Fallback Script**: Run `python scripts/fetch_leaguepedia_recent.py --team "[Team Name]"` for BOTH teams to fetch the last 3 games' kills, gold, and bans directly from the Cargo Database.
      - Switch to **Qualitative Mode (質化分析)**. Evaluate the match purely based on the K/D/A and Gold gaps extracted by the fallback script, alongside Roster Quality and BP/Draft tendencies.
@@ -65,3 +71,12 @@ Present your `p` to the user and explicitly ask:
 1. **Never complain about API Rate Limits**: If the Python script fails due to Fandom rate limit, try to parse what is available, or use your web tools (`search_web`) to fill the gaps.
 2. **Socratic Gate EXEMPTION for Auto-Runs**: If the user uses `/lol-predict`, you are granted permission to autonomously gather data **before** asking probing questions. However, before finalizing a multi-unit bet, you must still present your findings and confirm edge-cases with the user.
 3. **No Hallucinations**: If Gol.gg is unreachable or data is missing, state `[DATA MISSING]` instead of guessing.
+4. **browser_subagent BANNED**: 嚴禁使用 browser_subagent。所有數據擷取必須用 search_web / read_url_content / Python scripts。
+
+## Failure Protocol
+| 情況 | 動作 |
+|------|------|
+| Pipeline script crash | 報告 error output，嘗試 search_web fallback 補充數據 |
+| search_web 連續失敗 3 次 | 停止，標記 `[DATA MISSING]`，通知用戶 |
+| 所有數據來源失敗 | 停止分析，明確通知用戶「數據不足，無法完成分析」 |
+| Workspace 路徑唔存在 | 詢問用戶提供正確路徑 |

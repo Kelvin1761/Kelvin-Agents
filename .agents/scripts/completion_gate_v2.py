@@ -149,8 +149,11 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
         words = eng_words + chi_chars
         
         # Griffin/debut horses have relaxed word requirements
-        # Word count thresholds — relaxed per user request (V9.2)
-        # No minimum word count enforcement; quality over quantity.
+        # Word count thresholds — reinstated at minimal level (V9.2.1)
+        # Even relaxed mode requires minimum substance per horse block
+        if not is_debut:
+            if words < 200:
+                errors.append(f"[{horse_id}] LAZY-007: 字數嚴重不足 ({words} < 200)，疑似使用自動填充腳本繞過分析")
             
         # Anti-Laziness Scan
         lazy_patterns = [
@@ -159,6 +162,19 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
         for pattern, code in lazy_patterns:
             if pattern in block:
                 errors.append(f"[{horse_id}] [CRITICAL] {code}: 檢測到偷懶字眼 (Fluff): '{pattern}'")
+
+        # LAZY-006: Generic Placeholder Detection
+        # Catches auto_fill scripts that inject dynamically-formatted but content-free text
+        placeholder_patterns = [
+            (r'馬號\s*\d+\s*號的核心邏輯', 'LAZY-006'),
+            (r'馬號\s*\d+\s*號的核心.*?邏輯分析', 'LAZY-006'),
+            ('分析內容', 'LAZY-006'),
+            ('合理推斷', 'LAZY-006'),
+            ('修正評估', 'LAZY-006'),
+        ]
+        for pattern, code in placeholder_patterns:
+            if re.search(pattern, block):
+                errors.append(f"[{horse_id}] [CRITICAL] {code}: 偵測到通用佔位符文字 (Generic Placeholder): '{pattern}'")
 
         # Core Logic (核心邏輯) Standard Check
         core_logic_match = re.search(r'核心邏輯[^\*]*\*\*\s*(.*?)(?=\n\s*>?\s*-\s*\*\*|$)', block, re.DOTALL)
@@ -208,9 +224,42 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
     elif len(horse_logics) >= 4 and len(unique_logics) <= 2:
         errors.append(f"🚨 LAZY-004 [SEVERE]: 全場 {len(horse_logics)} 匹馬只有 {len(unique_logics)} 種核心邏輯！"
                       f"疑似使用罐頭模板或批量複製。")
-        
+
+    # ── LAZY-005: Grade-Verdict Consistency ──────────────────────────────────
+    # Catches when the Verdict ranks a D-grade horse above an A/S-grade horse
+    grade_order_map = {'S+':0,'S':1,'S-':2,'A+':3,'A':4,'A-':5,'B+':6,'B':7,'B-':8,'C+':9,'C':10,'C-':11,'D+':12,'D':13,'D-':14}
+    verdict_picks = re.findall(
+        r'(?:🥇|🥈|🥉|🏅)\s*\*\*第([一二三四])選\*\*.*?評級.*?\[([A-DS][+\-]?)\]',
+        text, re.DOTALL
+    )
+    rank_cn = {'一':1,'二':2,'三':3,'四':4}
+    if len(verdict_picks) >= 2:
+        prev_grade_idx = -1
+        for cn_rank, grade in verdict_picks:
+            r_num = rank_cn.get(cn_rank, 0)
+            g_idx = grade_order_map.get(grade, 99)
+            if prev_grade_idx >= 0 and g_idx < prev_grade_idx:
+                # A higher-graded horse is ranked BELOW a lower-graded horse
+                pass  # This direction is fine (e.g., S at #2 after S+ at #1)
+            if r_num == 1 and g_idx >= 12:  # D+ or worse as #1
+                errors.append(f"🚨 LAZY-005 [SEVERE]: Verdict 第一選的評級為 [{grade}]，"
+                              f"但場中存在更高評級馬匹。疑似 LLM 未按評級排序或使用了 placeholder verdict。")
+            prev_grade_idx = g_idx
+
+    # ── LAZY-003: N-gram similarity check (reinstated at high threshold) ────
     horse_ids = list(horse_logics.keys())
-    # LAZY-003 n-gram similarity check — relaxed per V9.2 (only LAZY-004 clone detection retained)
+    if len(horse_logics) >= 3:
+        def get_ngrams_for_check(t, n=4):
+            chars = re.findall(r'[\u4e00-\u9fff]', t)
+            return set(''.join(chars[i:i+n]) for i in range(len(chars)-n+1))
+        for i in range(len(horse_ids)):
+            for j in range(i+1, len(horse_ids)):
+                ng_a = get_ngrams_for_check(horse_logics[horse_ids[i]])
+                ng_b = get_ngrams_for_check(horse_logics[horse_ids[j]])
+                if ng_a and ng_b:
+                    overlap = len(ng_a & ng_b) / min(len(ng_a), len(ng_b))
+                    if overlap > 0.85:
+                        errors.append(f"🚨 LAZY-003: {horse_ids[i]} 與 {horse_ids[j]} 核心邏輯相似度 {overlap:.0%} — 疑似複製粘貼")
 
     return errors
 

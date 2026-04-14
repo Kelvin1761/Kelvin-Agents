@@ -1,6 +1,9 @@
 ---
 name: lol_reflector
 description: This skill should be used when the user wants to "覆盤", "post match review", "why did they lose", "lol reflector", or needs to analyze OP.GG esports schedules to identify sandbagging, R&D, or true skill decline after a match has concluded.
+version: 1.1.0
+ag_kit_skills:
+  - systematic-debugging   # 覆盤分析失敗時自動觸發
 ---
 
 # 🕵️ LoL Reflector (電競覆盤師)
@@ -9,14 +12,16 @@ description: This skill should be used when the user wants to "覆盤", "post ma
 
 ## 📌 Investigation Protocol
 
-When activated, you MUST autonomously perform a visual and data-driven investigation. OP.GG Esports is a highly dynamic React application, so standard HTTP scraping will not work.
+When activated, you MUST autonomously perform a data-driven investigation.
 
-### Phase 1: Browser Navigation 
-1. You MUST use the `browser_subagent` tool.
-2. Instruct the browser subagent to navigate to `https://esports.op.gg/schedules` (首選).
-   - **Alternative/Fallback**: If dealing with non-Top 5 leagues or if OP.GG fails, instruct it to navigate to `https://www.esports8.com/zh_tw/lol/result`.
-3. Have the subagent click into the Match Details of the specific game requested by the user.
-4. Have the subagent read the DOM or take screenshots of the Draft, the Gold Timeline graph, and the Objective Timeline, as well as Final Item Builds.
+> 🚫 **ABSOLUTE BAN: `browser_subagent` is GLOBALLY DISABLED across the Antigravity ecosystem.** Do NOT use `browser_subagent` for ANY task.
+
+### Phase 1: Data Extraction (search_web + read_url_content)
+1. Use `search_web` to search for the specific match on OP.GG Esports (`site:esports.op.gg [Team A] vs [Team B]`).
+2. Use `read_url_content` to extract match details from the OP.GG match page URL.
+   - **Alternative/Fallback**: If OP.GG fails, use `search_web` to find the match on `esports8.com` and extract via `read_url_content`.
+3. Extract Draft picks/bans, Gold Timeline data, Objective Timeline, and Final Item Builds from the page content.
+4. If `read_url_content` returns incomplete data (React SSR limitation), use `search_web` to find supplementary data from alternate sources (e.g., `gol.gg`, `lolesports.com`).
 
 ### Phase 2: Forensic Analysis (法醫鑑定)
 
@@ -64,4 +69,6 @@ You MUST produce a markdown report titled **[Match Name] 賽後法醫診斷**. I
 
 ## 🛑 Strict Rules
 1. **IGNORE Heatmaps**: Do not attempt to parse heatmaps. Focus 100% on Draft and Timelines.
-2. **Do Not Hallucinate Timelines**: If the browser subagent fails to pull the Gold Graph, state `[TIMELINE DATA MISSING]` and rely purely on the Draft and KDA differentials.
+2. **Do Not Hallucinate Timelines**: If `read_url_content` / `search_web` fails to pull the Gold Graph, state `[TIMELINE DATA MISSING]` and rely purely on the Draft and KDA differentials.
+3. **browser_subagent BANNED**: 嚴禁使用 browser_subagent。所有數據擷取必須用 search_web / read_url_content。
+4. **防無限 Loop**: Web search 連續失敗 3 次 → 停止並通知用戶。

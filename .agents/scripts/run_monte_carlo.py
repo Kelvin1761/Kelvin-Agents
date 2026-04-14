@@ -190,19 +190,27 @@ def run_simulation(horses_data, iterations=10000):
     # Shape: (num_horses, iterations)
     sim_matrix = np.random.normal(loc=mu_array[:, None], scale=sigma_array[:, None], size=(len(horse_nums), iterations))
     
-    # Find the winner of each iteration (argmin since lower time/score is better)
-    winners = np.argmin(sim_matrix, axis=0)
+    # Find rankings for each iteration (argsort since lower time/score is better)
+    ranks = np.argsort(sim_matrix, axis=0)
+    winners = ranks[0, :]
     
     # Calculate Probabilities
     for idx, h_num in enumerate(horse_nums):
         wins = np.sum(winners == idx)
+        top3_count = np.sum(np.any(ranks[:3, :] == idx, axis=0))
+        top4_count = np.sum(np.any(ranks[:4, :] == idx, axis=0))
+        
         win_prob = wins / iterations
+        top3_prob = top3_count / iterations
+        top4_prob = top4_count / iterations
         true_odds = (1 / win_prob) if win_prob > 0 else 999.0
         
         results.append({
             'horse_num': h_num,
             'name': horses_data[h_num]['name'],
             'win_prob': win_prob,
+            'top3_prob': top3_prob,
+            'top4_prob': top4_prob,
             'true_odds': true_odds
         })
         
@@ -214,8 +222,8 @@ def run_simulation(horses_data, iterations=10000):
 
 def inject_markdown_table(analysis_path, simulation_results, original_rankings=None):
     """
-    Finds the <!-- MONTE_CARLO_PYTHON_INJECT_HERE --> tag in the analysis markdown
-    and injects the enhanced simulation table with ranking comparison.
+    Finds the existing Monte Carlo section or <!-- MONTE_CARLO_PYTHON_INJECT_HERE --> tag 
+    in the analysis markdown and injects the enhanced simulation table with ranking comparison.
     
     V2 columns: MC排名 | 馬號 | 馬名 | MC 勝率 | 預測賠率 | 法證排名 | 差異
     """
@@ -225,17 +233,33 @@ def inject_markdown_table(analysis_path, simulation_results, original_rankings=N
     with open(analysis_path, 'r', encoding='utf-8') as f:
         content = f.read()
         
-    tag = "<!-- MONTE_CARLO_PYTHON_INJECT_HERE -->"
-    if tag not in content:
-        return False
+    tag1 = "#### 📊 Monte Carlo 概率模擬 (10,000 次)"
+    tag2 = "<!-- MONTE_CARLO_PYTHON_INJECT_HERE -->"
+    
+    insert_pos = -1
+    if tag1 in content:
+        insert_pos = content.find(tag1)
+    elif tag2 in content:
+        insert_pos = content.find(tag2)
+        
+    if insert_pos == -1:
+        # If neither tag is found, we will just append to the end
+        pass
+    else:
+        # Strip everything from the insertion point downwards to cleanly replace
+        content = content[:insert_pos].strip() + "\n\n"
 
     original_rankings = original_rankings or {}
     rank_icons = {1: '🥇', 2: '🥈', 3: '🥉', 4: '🏅'}
         
     # Create the enhanced markdown table
     md_table = [
-        "| MC排名 | 馬號 | 馬名 | MC 勝率 | 預測賠率 | 法證排名 | 差異 |",
-        "|--------|------|------|---------|---------|---------|------|"
+        "#### 📊 Monte Carlo 概率模擬 (10,000 次)",
+        "",
+        "> 🐍 由 Python `run_monte_carlo.py` 自動計算 | V2 9-Column Enhanced Distribution",
+        "",
+        "| MC排名 | 馬號 | 馬名 | MC 勝率 | 預測賠率 | Top 3% | Top 4% | 法證排名 | 差異 |",
+        "|--------|------|------|---------|---------|--------|--------|---------|------|"
     ]
     
     for res in simulation_results:
@@ -244,6 +268,8 @@ def inject_markdown_table(analysis_path, simulation_results, original_rankings=N
         prob_str = f"{res['win_prob']*100:.1f}%"
         odds_val = res['true_odds']
         odds_str = f"${odds_val:.2f}" if odds_val < 999 else "$999+"
+        top3_str = f"{res['top3_prob']*100:.1f}%"
+        top4_str = f"{res['top4_prob']*100:.1f}%"
         
         # Highlight top probability
         if res['win_prob'] > 0.25:
@@ -275,10 +301,12 @@ def inject_markdown_table(analysis_path, simulation_results, original_rankings=N
         else:
             diff_str = "—"
             
-        md_table.append(f"| {mc_rank_icon} | {h_num} | {res['name']} | {prob_str} | {odds_str} | {orig_str} | {diff_str} |")
+        md_table.append(f"| {mc_rank_icon} | {h_num} | {res['name']} | {prob_str} | {odds_str} | {top3_str} | {top4_str} | {orig_str} | {diff_str} |")
         
     table_str = "\n".join(md_table)
-    new_content = content.replace(tag, table_str)
+    
+    # Check if there is an existing target path and save it
+    new_content = content + "\n\n" + table_str + "\n"
     
     with open(analysis_path, 'w', encoding='utf-8') as f:
         f.write(new_content)
@@ -292,16 +320,20 @@ def export_csv(csv_path, simulation_results):
 def process_directory(target_dir):
     print(f"🎲 Monte Carlo Engine V2 starting for {target_dir}")
     
-    facts_files = glob.glob(os.path.join(target_dir, "*_Facts.md"))
+    facts_files = glob.glob(os.path.join(target_dir, "*Facts.md"))
     for facts_path in facts_files:
         basename = os.path.basename(facts_path)
-        # Assuming naming: Race_1_Facts.md
-        race_match = re.search(r'(Race_\d+)', basename)
+        # Assuming naming: Race 1 Facts.md or Race_1_Facts.md
+        race_match = re.search(r'(Race[ _]\d+)', basename)
         if not race_match:
             continue
             
-        race_prefix = race_match.group(1)
-        analysis_path = os.path.join(target_dir, f"{race_prefix}_Analysis.md")
+        race_prefix = race_match.group(1).replace(" ", "_")
+        # Find the actual date prefix for the Analysis file
+        analysis_prefix = basename.replace(" Facts.md", "").replace("_Facts.md", "")
+        analysis_path = os.path.join(target_dir, f"{analysis_prefix} Analysis.md")
+        if not os.path.exists(analysis_path):
+            analysis_path = os.path.join(target_dir, f"{analysis_prefix}_Analysis.md")
         csv_path = os.path.join(target_dir, f"{race_prefix}_Monte_Carlo.csv")
         
         horses_data = parse_facts_md(facts_path)

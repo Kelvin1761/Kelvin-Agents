@@ -25,3 +25,17 @@ python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <
 - **嚴禁**查閱全局 Facts.md（只讀取 `.runtime/Active_Horse_Context.md`）
 - 語言：香港繁體中文（廣東話口吻），馬名/騎師/練馬師保留英文
 - 分析風格：Opus-Style 極度詳盡，法醫級推理
+
+## Failure Protocol
+| 情況 | 動作 |
+|------|------|
+| `orchestrator.py` crash / Python error | 報告完整 error output，嘗試 `python3 orchestrator.py --resume` 恢復 |
+| 網絡中斷 / 數據擷取失敗 | 讀取 `.runtime/` 已存储狀態，通知用戶並嘗試重新執行 |
+| `[FILL]` 填寫失敗 3 次 | 停止，報告失敗欄位，詢問用戶介入 |
+| `.runtime/` 目錄不存在 | 執行 `mkdir .runtime` 後重試 |
+
+## Session Recovery (Pattern 10)
+啟動時掃描 `.runtime/` 目錄：
+1. 檢查已存在嘅 `*_Analysis.md` 檔案
+2. 讀取 orchestrator 狀態檔 → 從上次中斷位置繼續
+3. 通知用戶：「偵測到 N/M 場已完成，從 Race X 繼續」

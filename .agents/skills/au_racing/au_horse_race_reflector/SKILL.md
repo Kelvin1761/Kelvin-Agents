@@ -1,9 +1,7 @@
 ---
-name: AU Horse Race Reflector
-description: This skill should be used when the user wants to "覆盤 AU races", "review AU results", "澳洲賽後檢討", "反思澳洲賽果", or needs to compare Australian horse racing predictions against actual results to identify systematic blind spots and propose improvements to the AU Horse Analyst engine.
-version: 1.1.0
-ag_kit_skills:
-  - brainstorming          # SIP 生成時自動觸發
+name: "[DEPRECATED] AU Horse Race Reflector"
+description: "[DEPRECATED] Do NOT use. Functions merged into au_reflector V2 (Python-First). Invoke au_reflector instead."
+version: 1.1.0-deprecated
 ---
 
 # Role

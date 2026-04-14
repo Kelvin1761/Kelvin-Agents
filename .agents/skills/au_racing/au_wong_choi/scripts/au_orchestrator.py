@@ -470,37 +470,17 @@ def main():
                 save_strikes()
                 sys.exit(1)
             
-            # 4.5 Monte Carlo Simulation (non-blocking)
-            print(f"🎲 Running Monte Carlo simulation for Race {r}...")
-            mc_script = ".agents/skills/au_racing/au_wong_choi/scripts/monte_carlo_au.py"
+            # 4.5 Monte Carlo Simulation V2 (via run_monte_carlo.py)
+            print(f"🎲 Running Monte Carlo V2 simulation for Race {r}...")
+            mc_script = ".agents/scripts/run_monte_carlo.py"
             if os.path.exists(mc_script):
-                mc_res = subprocess.run(
-                    ["python3", mc_script, json_file, facts_file],
-                    capture_output=True, text=True)
+                mc_res = subprocess.run(["python3", mc_script, "--target_dir", target_dir], capture_output=True, text=True)
                 if mc_res.returncode == 0:
-                    print(f"✅ MC simulation complete")
-                    mc_json_path = os.path.join(target_dir, f"Race_{r}_MC.json")
-                    if os.path.exists(mc_json_path):
-                        try:
-                            mc_section = mc_res.stdout
-                            if '📊 Monte Carlo' in mc_section:
-                                with open(an_file, 'a', encoding='utf-8') as af:
-                                    mc_lines = []
-                                    in_mc = False
-                                    for line in mc_section.split('\n'):
-                                        if '📊 Monte Carlo' in line:
-                                            in_mc = True
-                                        if in_mc:
-                                            mc_lines.append(line)
-                                    if mc_lines:
-                                        af.write('\n\n' + '\n'.join(mc_lines) + '\n')
-                                        print(f"📊 MC results appended to {os.path.basename(an_file)}")
-                        except Exception as e:
-                            print(f"⚠️ MC append failed: {e}")
+                    print(f"✅ MC V2 simulation and injection complete")
                 else:
-                    print(f"⚠️ MC simulation did not complete (non-blocking): {mc_res.stderr[:200] if mc_res.stderr else 'unknown'}")
+                    print(f"⚠️ MC V2 simulation failed (non-blocking): {mc_res.stderr}")
             else:
-                print(f"⚠️ MC script not found: {mc_script}")
+                print(f"⚠️ MC V2 script not found: {mc_script}")
             
             # QA
             print(f"🛡️ 正在進行 Batch QA (completion_gate_v2.py)...")
