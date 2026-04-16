@@ -6,7 +6,7 @@ verify_props_hits.py — NBA Props 命中自動驗證器
 供 NBA Reflector 覆盤消費,取代 LLM 手動逐 Leg 對比。
 
 Usage:
-  python3 verify_props_hits.py \
+  python verify_props_hits.py \
     --results "Results_Brief_2026-04-07.json" \
     --predictions "/path/to/analysis/dir" \
     --output "Props_Verification_2026-04-07.json"

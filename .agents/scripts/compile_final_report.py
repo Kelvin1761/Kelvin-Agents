@@ -70,7 +70,9 @@ def compile_reports(target_dir):
     monte_carlo_script = os.path.join(os.path.dirname(__file__), 'run_monte_carlo.py')
     if os.path.exists(monte_carlo_script):
         print("🎲 Triggering Monte Carlo Dynamic Simulation Engine (Shadow Mode)...")
-        os.system(f'python3 "{monte_carlo_script}" --target_dir "{target_dir}"')
+        import shutil
+        _py = "python3" if shutil.which("python3") else "python"
+        os.system(f'{_py} "{monte_carlo_script}" --target_dir "{target_dir}"')
     else:
         print("⚠️ run_monte_carlo.py not found. Skipping shadow simulation.")
 

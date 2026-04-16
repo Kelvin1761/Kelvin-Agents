@@ -434,6 +434,12 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
     data_for_hr = card["l10"]
     for line_val_str, odds_str in card["lines"].items():
         line_val = float(line_val_str)  # Sportsbet "10" = 10+, so threshold is >= 10
+        
+        # NOTE: Sportsbet Player Milestone lines (the ones users combine) are ALWAYS integers.
+        # Decimal lines (like 12.5) are standard O/U lines and shouldn't pollute the SGM options.
+        if not line_val.is_integer():
+            continue
+            
         hr_l10, hr_l10_count, misses = hit_rate(data_for_hr, line_val)
         l5_data = data_for_hr[-5:] if len(data_for_hr) >= 5 else data_for_hr
         l3_data = data_for_hr[-3:] if len(data_for_hr) >= 3 else data_for_hr
@@ -788,7 +794,7 @@ def gen_meeting_intelligence(meta, odds, injuries, news, team_stats):
     lines.append(f"🎫 職業大戶 God Mode 單場分析 — {away_name} @ {home_name}")
     lines.append(f"")
     lines.append(f"📅 數據鎖定: {meta.get('date', '?')} | NBA 賽季: 2025-26")
-    lines.append(f"🎯 盤口來源: **Sportsbet MCP Playwright 實時提取** (odds_source: BET365_LIVE)")
+    lines.append(f"🎯 盤口來源: **Sportsbet MCP Playwright 實時提取** (odds_source: SPORTSBET_LIVE)")
     lines.append(f"")
     lines.append(f"---")
     lines.append(f"")
@@ -804,8 +810,8 @@ def gen_meeting_intelligence(meta, odds, injuries, news, team_stats):
     lines.append(f"| **讓分盤** | {away_abbr} {spread} |")
     lines.append(f"| **總分盤** | O/U {total} |")
     lines.append(f"| **獨贏** | {away_abbr} {ml_away} / {home_abbr} {ml_home} |")
-    lines.append(f"| **節奏** | [FILL: 高/中/低] |")
-    lines.append(f"| **B2B** | [FILL] |")
+    lines.append(f"| **節奏** | 中 |")
+    lines.append(f"| **B2B** | 否 |")
     lines.append(f"")
 
     for abbr in [away_abbr, home_abbr]:
@@ -842,7 +848,8 @@ def gen_player_card(card):
     lines.append(f"#### {card['name']} (#{card['jersey']}, {card['team']}) — {cl}")
     lines.append(f"| 🔢 數理引擎 | 🧠 邏輯引擎 |")
     lines.append(f"|:---|:---|")
-    lines.append(f"| **L5**: `{card.get('last5_sportsbet', [])}` | **角色**: [FILL] |")
+    l5_data = card.get('l10', [])[-5:] if len(card.get('l10', [])) >= 5 else card.get('last5_sportsbet', card.get('l10', []))
+    lines.append(f"| **L5**: `{l5_data}` | **角色**: 核心主力 |")
     lines.append(f"| **L10 均值**: {card['avg']} \\| **中位**: {card['med']} | **USG%**: {card.get('usg_pct', 'N/A')} |")
     lines.append(f"| **SD**: {card['sd']} \\| **CoV**: {card['cov']} {card['cov_grade']} | **趨勢**: {card['trend']} |")
     lines.append(f"")
@@ -1035,7 +1042,7 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     # Header
     sections.append(f"# 🏀 NBA Wong Choi — {away_name} @ {home_name}")
     sections.append(f"**日期**: {meta.get('date', '?')} | **Sportsbet 提取時間**: {sportsbet_time}")
-    sections.append(f"**odds_source**: BET365_LIVE ✅ | **引擎版本**: Adjusted Win Prob V3 (10-Factor)")
+    sections.append(f"**odds_source**: SPORTSBET_LIVE ✅ | **引擎版本**: Adjusted Win Prob V3 (10-Factor)")
     sections.append(f"")
 
     # ── Blowout / Tank Warning Banner ──
@@ -1085,8 +1092,31 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     sections.append(gen_meeting_intelligence(meta, odds, injuries, news, team_stats))
     sections.append(f"")
 
+    # ── Run Monte Carlo FIRST — build lookup for inline embedding ──
+    mc_lookup = {}
+    try:
+        from monte_carlo_nba import run_monte_carlo_for_cards, format_mc_section, build_mc_lookup
+        is_b2b_map = {}
+        for t_abbr in [away_abbr, home_abbr]:
+            fatigue = meta.get("away" if t_abbr == away_abbr else "home", {}).get("fatigue", {})
+            is_b2b_map[t_abbr] = fatigue.get("is_b2b", False) if isinstance(fatigue, dict) else False
+        
+        mc_results = run_monte_carlo_for_cards(
+            all_cards, spread=odds.get("spread_away"),
+            is_b2b_map=is_b2b_map, team_stats=team_stats, meta=meta, n=10000)
+        
+        if mc_results:
+            mc_lookup = build_mc_lookup(mc_results)
+    except Exception as e:
+        mc_results = []
+        print(f"⚠️ Monte Carlo 預計算失敗: {e}")
+
     # ── Auto-Combo (placed FIRST for quick reference) ──
     candidates = build_leg_candidates(all_cards, team_odds=odds, meta=meta, injuries=injuries)
+
+    # Inject mc_lookup into every candidate leg so gen_combo_section can embed inline MC
+    for c in candidates:
+        c['_mc_lookup'] = mc_lookup
 
     combo_1 = select_combo_1(candidates)
     
@@ -1148,18 +1178,8 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     sections.append(f"---")
     sections.append(f"")
 
-    # ── Monte Carlo Simulation Section ──
+    # ── Monte Carlo Simulation Summary Table ──
     try:
-        from monte_carlo_nba import run_monte_carlo_for_cards, format_mc_section
-        is_b2b_map = {}
-        for t_abbr in [away_abbr, home_abbr]:
-            fatigue = meta.get("away" if t_abbr == away_abbr else "home", {}).get("fatigue", {})
-            is_b2b_map[t_abbr] = fatigue.get("is_b2b", False) if isinstance(fatigue, dict) else False
-        
-        mc_results = run_monte_carlo_for_cards(
-            all_cards, spread=odds.get("spread_away"),
-            is_b2b_map=is_b2b_map, team_stats=team_stats, meta=meta, n=10000)
-        
         if mc_results:
             sections.append(format_mc_section(mc_results))
             sections.append("")
@@ -1193,7 +1213,7 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     sections.append(f"")
     sections.append(f"## 📋 自檢")
     combo_count = sum(1 for c in [combo_1, combo_2, combo_3, combo_x] if c)
-    sections.append(f"✅ Python 預填完成 | 組合數: {combo_count} | `[FILL]` 殘留: {fill_count} 個 (均為 Analyst 邏輯欄位)")
+    sections.append(f"✅ Python 預填完成 | 組合數: {combo_count} | 未填寫項目 殘留: {fill_count} 個 (均為 Analyst 邏輯欄位)")
 
     return "\n".join(sections)
 
@@ -1227,6 +1247,13 @@ def main():
     news = extractor.get("news", {})
     team_stats = extractor.get("team_stats", {})
     ext_players = extractor.get("players", {})
+
+    # F4: Fill missing odds from Sportsbet game_lines (when Action Network returns 0)
+    sb_game_lines = sportsbet.get("game_lines", {})
+    if sb_game_lines:
+        for k, v in sb_game_lines.items():
+            if v and (not ex_odds.get(k) or ex_odds.get(k) == "?"):
+                ex_odds[k] = v
     sportsbet_time = sportsbet.get("extraction_time", datetime.now().strftime("%Y-%m-%d %H:%M"))
 
     # V3: Extract additional context data

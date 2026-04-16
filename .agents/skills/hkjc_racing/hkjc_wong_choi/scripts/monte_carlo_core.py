@@ -9,7 +9,7 @@ Professional-grade 3-layer composite model:
 
 Shared by HKJC and AU Monte Carlo engines.
 
-Version: 1.0.0
+Version: 2.0.0
 """
 import sys, io, json, random, math
 
@@ -17,9 +17,43 @@ if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 
-def _normal_sample(mean, sd):
-    """Sample from normal distribution using Box-Muller."""
-    return random.gauss(mean, sd)
+def _skewed_sample(mean, sd, skew=0.3):
+    """Sample from skew-normal distribution.
+    skew > 0 = positive skew (more likely to underperform).
+    Reflects real racing: horses blow up more often than career bests.
+    """
+    if abs(skew) < 0.01:
+        return random.gauss(mean, sd)
+    delta = skew / math.sqrt(1 + skew**2)
+    u0 = random.gauss(0, 1)
+    v = random.gauss(0, 1)
+    u = delta * abs(u0) + math.sqrt(1 - delta**2) * v
+    return mean + sd * u
+
+
+def weighted_stats(values, days_ago_list=None, half_life=120):
+    """Compute exponentially decay-weighted mean and SD.
+    Industry standard: 120-day half-life for horse form.
+    Args:
+        values: list of float metric values
+        days_ago_list: list of int (days since each value), same order as values
+        half_life: decay half-life in days (default 120)
+    Returns: (weighted_mean, weighted_sd)
+    """
+    if not values:
+        return 0.0, 0.0
+    if len(values) == 1:
+        return values[0], values[0] * 0.03
+    if days_ago_list and len(days_ago_list) == len(values):
+        lam = math.log(2) / half_life
+        weights = [math.exp(-lam * d) for d in days_ago_list]
+    else:
+        weights = [1.0] * len(values)
+    w_sum = sum(weights)
+    w_mean = sum(v * w for v, w in zip(values, weights)) / w_sum
+    w_var = sum(w * (v - w_mean)**2 for v, w in zip(values, weights)) / w_sum
+    w_sd = math.sqrt(w_var) if w_var > 0 else w_mean * 0.03
+    return round(w_mean, 3), round(max(w_sd, 0.05), 3)
 
 
 def compute_stability_index(positions, top_n=6):
@@ -148,7 +182,8 @@ def compute_risk_penalty(risk_markers):
     return 0.0
 
 
-def monte_carlo_race(horses, n=10000, speed_weight=0.35, energy_weight=0.25):
+def monte_carlo_race(horses, n=10000, speed_weight=0.35, energy_weight=0.25,
+                     pace_scenario=None):
     """
     Run Monte Carlo simulation for a single race.
     
@@ -183,20 +218,21 @@ def monte_carlo_race(horses, n=10000, speed_weight=0.35, energy_weight=0.25):
     
     for _ in range(n):
         performances = {}
+        _field_shock = random.gauss(0, 0.015)  # Shared environment noise
         for h in horses:
             # ── Layer 1: Speed Rating Distribution ──
             mean_speed = h.get('mean_speed', 23.0)
             sd_speed = h.get('sd_speed', 0.5)
             if sd_speed <= 0:
                 sd_speed = mean_speed * 0.03  # Fallback 3% CoV
-            speed = _normal_sample(mean_speed, sd_speed)
+            speed = _skewed_sample(mean_speed, sd_speed, skew=0.3)
             
             # ── Layer 2: Energy Efficiency Distribution ──
             mean_energy = h.get('mean_energy', 100.0)
             sd_energy = h.get('sd_energy', 5.0)
             if sd_energy <= 0:
                 sd_energy = mean_energy * 0.05  # Fallback 5% CoV
-            energy = _normal_sample(mean_energy, sd_energy)
+            energy = _skewed_sample(mean_energy, sd_energy, skew=0.2)
             
             # ── Layer 3: Contextual Adjustments ──
             
@@ -214,7 +250,21 @@ def monte_carlo_race(horses, n=10000, speed_weight=0.35, energy_weight=0.25):
             trainer_mult = 1.0 + (trainer_wr - 0.15) * 0.5
             jockey_mult = 1.0 + (jockey_wr - 0.10) * 0.3
             
-            # 3c. Scenario (venue/distance suitability)
+            # 3c. Pace Scenario Interaction
+            pace_adj = 0.0
+            if pace_scenario:
+                style = h.get('running_style', 'mid_pack')
+                _pace_matrix = {
+                    'Fast':     {'leader': -0.06, 'on_pace': -0.03, 'mid_pack': 0.02, 'closer': 0.06},
+                    'Moderate': {'leader': 0.0,   'on_pace': 0.0,   'mid_pack': 0.0,  'closer': 0.0},
+                    'Crawl':    {'leader': 0.04,  'on_pace': 0.02,  'mid_pack': -0.01, 'closer': -0.03},
+                    'Chaotic':  {'leader': -0.03, 'on_pace': -0.01, 'mid_pack': 0.01, 'closer': 0.02},
+                }
+                pace_adj = _pace_matrix.get(pace_scenario, {}).get(style, 0.0)
+                if pace_scenario == 'Chaotic':
+                    pace_adj += random.gauss(0, 0.02)
+            
+            # 3d. Scenario (venue/distance suitability)
             scenario_adj = 0.0
             if h.get('same_venue_dist_wins', 0) >= 3:
                 scenario_adj = 0.02
@@ -248,17 +298,23 @@ def monte_carlo_race(horses, n=10000, speed_weight=0.35, energy_weight=0.25):
             
             # ── Composite Score ──
             # NOTE: For L400, LOWER is FASTER, so we negate speed component
-            # A horse with mean_speed=22.0 is FASTER than 23.5
-            speed_component = (30.0 - speed) * speed_weight  # Invert: lower L400 = higher score
-            energy_component = energy * energy_weight / 100.0  # Normalize energy
+            speed_component = (30.0 - speed) * speed_weight
+            energy_component = energy * energy_weight / 100.0
             
             composite = speed_component + energy_component
             composite *= stability_mult
             composite *= trainer_mult * jockey_mult
             composite *= freshness_mult
-            composite *= (1 + scenario_adj + formline_adj + class_adj
-                         + risk_penalty + weight_adj + barrier_adj
-                         + forgiveness_adj)
+            
+            # Additive adjustments with cap (prevent compound amplification)
+            total_adj = (pace_adj + scenario_adj + formline_adj + class_adj
+                        + risk_penalty + weight_adj + barrier_adj
+                        + forgiveness_adj)
+            total_adj = max(-0.25, min(0.25, total_adj))
+            composite *= (1 + total_adj)
+            
+            # Field-wide environmental shock (runner correlation)
+            composite *= (1 + _field_shock)
             
             performances[h['name']] = composite
         
@@ -272,13 +328,21 @@ def monte_carlo_race(horses, n=10000, speed_weight=0.35, energy_weight=0.25):
             if i < 4:
                 results[name]['top4'] += 1
     
-    # Convert to percentages
+    # Convert to percentages with 95% CI
     for name in results:
+        win_p = results[name]['win'] / n
+        top3_p = results[name]['top3'] / n
+        ci_95 = 1.96 * math.sqrt(win_p * (1 - win_p) / n) * 100
+        win_pct = round(win_p * 100, 1)
+        top3_pct = round(top3_p * 100, 1)
         results[name] = {
-            'win_pct': round(results[name]['win'] / n * 100, 1),
-            'top3_pct': round(results[name]['top3'] / n * 100, 1),
+            'win_pct': win_pct,
+            'top3_pct': top3_pct,
             'top4_pct': round(results[name]['top4'] / n * 100, 1),
             'avg_rank': round(results[name]['rank_sum'] / n, 1),
+            'ci_95': round(ci_95, 1),
+            'predicted_win_odds': round(100 / win_pct, 1) if win_pct > 0 else 999.0,
+            'predicted_place_odds': round(100 / top3_pct, 1) if top3_pct > 0 else 999.0,
         }
     
     return results
@@ -300,8 +364,8 @@ def format_mc_table(mc_results, top4_picks=None):
     lines.append("")
     lines.append("> 🐍 由 Python `monte_carlo_core.py` 自動計算，基於 L400 段速 + EEM 能量 + 8 維度矩陣因素")
     lines.append("")
-    lines.append("| 排名 | 馬名 | 勝出率 | Top 3 率 | Top 4 率 | 平均名次 | 同 Top 4 吻合 |")
-    lines.append("|------|------|--------|---------|---------|---------|-------------|")
+    lines.append("| 排名 | 馬名 | 勝出率 | ±95%CI | MC獨贏 | Top 3 率 | MC位置 | Top 4 率 | 平均名次 | 吻合 |")
+    lines.append("|------|------|--------|--------|--------|---------|--------|---------|---------|------|")
     
     # Sort by win_pct descending
     sorted_names = sorted(mc_results, key=lambda n: mc_results[n]['win_pct'], reverse=True)
@@ -311,8 +375,11 @@ def format_mc_table(mc_results, top4_picks=None):
         r = mc_results[name]
         match = "✅" if name in top4_set else "—"
         rank_icon = ["🥇", "🥈", "🥉", "4️⃣"][i] if i < 4 else f"{i+1}"
-        lines.append(f"| {rank_icon} | {name} | {r['win_pct']}% | {r['top3_pct']}% | "
-                     f"{r['top4_pct']}% | {r['avg_rank']} | {match} |")
+        ci_str = f"±{r.get('ci_95', 0)}%"
+        win_odds = f"${r.get('predicted_win_odds', 0)}"
+        place_odds = f"${r.get('predicted_place_odds', 0)}"
+        lines.append(f"| {rank_icon} | {name} | {r['win_pct']}% | {ci_str} | {win_odds} | {r['top3_pct']}% | "
+                     f"{place_odds} | {r['top4_pct']}% | {r['avg_rank']} | {match} |")
     
     lines.append("")
     

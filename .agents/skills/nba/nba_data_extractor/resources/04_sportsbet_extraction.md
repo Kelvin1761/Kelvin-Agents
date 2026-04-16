@@ -15,7 +15,7 @@ Sportsbet 賠率提取使用 **Claw V2** (`claw_sportsbet_odds.py`)，透過 `cu
 
 **執行指令** (必須使用絕對路徑):
 ```bash
-python3 "./.agents/skills/nba/nba_data_extractor/scripts/claw_sportsbet_odds.py" \
+python "./.agents/skills/nba/nba_data_extractor/scripts/claw_sportsbet_odds.py" \
   --outdir "{TARGET_DIR}"
 ```
 

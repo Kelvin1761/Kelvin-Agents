@@ -116,32 +116,47 @@ def parse_original_ranking(analysis_path):
 
     rankings = {}
 
-    # Method 1: Parse ```csv block (most reliable)
+    # Method 1: Parse ```csv block — skip if contains PLACEHOLDER
     csv_match = re.search(r'```csv\s*\n(.*?)```', content, re.DOTALL)
     if csv_match:
         csv_text = csv_match.group(1).strip()
-        try:
-            reader = csv.DictReader(io.StringIO(csv_text))
-            for rank_idx, row in enumerate(reader, 1):
-                h_num = int(row.get('horse_num', 0))
-                if h_num > 0:
-                    rankings[h_num] = rank_idx
-        except Exception:
-            pass
+        if 'PLACEHOLDER' not in csv_text and csv_text:
+            try:
+                reader = csv.DictReader(io.StringIO(csv_text))
+                for rank_idx, row in enumerate(reader, 1):
+                    h_num_raw = row.get('horse_num', row.get('horse_number', '0'))
+                    h_num = int(str(h_num_raw).strip())
+                    if h_num > 0:
+                        rankings[h_num] = rank_idx
+            except Exception:
+                pass
 
-    # Method 2: Fallback — parse Top 4 verdict markers from injected format
-    # Format: 🥇 **第一選**\n- **馬號及馬名:** 5 銀亮濠俠
+    # Method 2: Parse Top 4 verdict markers from compiled format
+    # Supports: "- **馬號及馬名:** [1] 馬達"  AND  "- **馬號及馬名:** 1 馬達"
     if not rankings:
         rank_patterns = [
-            (r'🥇 \*\*第一選\*\*.*?馬號及馬名:\*\*\s*(\d+)', 1),
-            (r'🥈 \*\*第二選\*\*.*?馬號及馬名:\*\*\s*(\d+)', 2),
-            (r'🥉 \*\*第三選\*\*.*?馬號及馬名:\*\*\s*(\d+)', 3),
-            (r'🏅 \*\*第四選\*\*.*?馬號及馬名:\*\*\s*(\d+)', 4),
+            (r'\U0001f947 \*\*第一選\*\*.*?馬號及馬名:\*\*\s*\[?(\d+)\]?', 1),
+            (r'\U0001f948 \*\*第二選\*\*.*?馬號及馬名:\*\*\s*\[?(\d+)\]?', 2),
+            (r'\U0001f949 \*\*第三選\*\*.*?馬號及馬名:\*\*\s*\[?(\d+)\]?', 3),
+            (r'\U0001f3c5 \*\*第四選\*\*.*?馬號及馬名:\*\*\s*\[?(\d+)\]?', 4),
         ]
         for pattern, rank in rank_patterns:
             m = re.search(pattern, content, re.DOTALL)
             if m:
                 rankings[int(m.group(1))] = rank
+
+    # Method 3: Fallback — derive full ranking from ⭐ 最終評級 grades in analysis
+    if not rankings:
+        grade_order = ['S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'E', 'E-']
+        horse_grades = []
+        for m in re.finditer(r'\*\*【No\.(\d+)】.*?⭐ 最終評級:\s*`([^`]+)`', content, re.DOTALL):
+            h_num = int(m.group(1))
+            grade = m.group(2).strip()
+            grade_idx = grade_order.index(grade) if grade in grade_order else 99
+            horse_grades.append((h_num, grade_idx))
+        horse_grades.sort(key=lambda x: (x[1], x[0]))
+        for rank_idx, (h_num, _) in enumerate(horse_grades, 1):
+            rankings[h_num] = rank_idx
 
     return rankings
 

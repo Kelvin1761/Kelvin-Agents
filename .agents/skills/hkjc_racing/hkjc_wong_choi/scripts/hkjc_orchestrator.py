@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
-import argparse
 import os
+os.environ.setdefault('PYTHONUTF8', '1')
+import argparse
 import sys
 import subprocess
 import re
 import json
 import time
+import shutil
 
 import urllib.request
+
+# Cross-platform Python executable
+PYTHON = "python3" if shutil.which("python3") else "python"
 
 def notify_telegram(msg):
     script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../../scripts/send_telegram_msg.py")
     if os.path.exists(script_path):
-        subprocess.run(["python3", script_path, msg])
+        subprocess.run([PYTHON, script_path, msg])
 
 # Session start time for preflight check
 SESSION_START_TIME = time.time()
@@ -67,7 +72,7 @@ def trigger_extractor(url, target_dir):
         print(f"❌ [Error] 找不到爬蟲腳本: {script_path}")
         sys.exit(1)
     try:
-        subprocess.run(["python3", script_path, "--base_url", url, "--races", "1-11", "--output_dir", target_dir], check=True)
+        subprocess.run([PYTHON, script_path, "--base_url", url, "--races", "1-11", "--output_dir", target_dir], check=True)
     except subprocess.CalledProcessError as e:
         print(f"❌ [Error] 數據提取腳本執行失敗: {e}")
         sys.exit(1)
@@ -105,7 +110,8 @@ def get_rc_fg_paths(target_dir, race_num):
     
 def get_horse_numbers(facts_file):
     # Parse facts file to get list of horse numbers
-    content = open(facts_file).read()
+    with open(facts_file, 'r', encoding='utf-8') as f:
+        content = f.read()
     horse_pattern = re.compile(r'^### 馬號 (\d+) —', re.MULTILINE)
     horses = [int(m.group(1)) for m in horse_pattern.finditer(content)]
     return horses
@@ -142,7 +148,7 @@ def run_preflight_check(target_dir):
     preflight_script = ".agents/scripts/preflight_environment_check.py"
     if os.path.exists(preflight_script):
         result = subprocess.run(
-            ["python3", preflight_script, target_dir, "--domain", "hkjc",
+            [PYTHON, preflight_script, target_dir, "--domain", "hkjc",
              "--session-start", str(SESSION_START_TIME)],
             capture_output=True, text=True
         )
@@ -152,13 +158,24 @@ def run_preflight_check(target_dir):
             sys.exit(2)
 
 
+def _next_cmd(target_dir):
+    """Print machine-readable re-run command for LLM auto-execution."""
+    dir_arg = os.path.basename(target_dir)
+    print(f"\nNEXT_CMD: {PYTHON} .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py \"{dir_arg}\" --auto")
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("url", help="HKJC Race URL or target directory if URL is skipped")
+    parser.add_argument("--auto", action="store_true", help="Auto mode: skip confirmation gate")
     args = parser.parse_args()
 
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
     print("="*60)
-    print("🏇 HKJC Wong Choi Orchestrator (State Machine V9.2)")
+    print("🏇 HKJC Wong Choi Orchestrator (State Machine V9.3)")
     print("="*60)
     
     if args.url.startswith("http"):
@@ -210,7 +227,8 @@ def main():
             an_file = os.path.join(target_dir, f"{date_prefix} Race {r} Analysis.md")
             
             if os.path.exists(an_file):
-                content = open(an_file).read()
+                with open(an_file, 'r', encoding='utf-8') as _af:
+                    content = _af.read()
                 if "[FILL]" not in content and "缺失核心" not in content and "未分析" not in content:
                     analysis_passed += 1
                     analysis_status_dict[r] = "✅ 分析與 QA 完成"
@@ -264,20 +282,58 @@ def main():
     print(f"  {chk_facts} 事實錨點生成 (Facts.md: {facts_done}/{total_races})")
     print(f"  {chk_analysis} JSON 組合與合規 QA (Analysis: {analysis_passed}/{total_races})")
     print(f"  (詳細進度已輸出至: {os.path.basename(tasks_file)})")
-    print("="*60 + "\n")
+
+    # Race-by-race status board
+    print(f"\n📋 逐場進度:")
+    for _r in range(1, total_races + 1):
+        _st = analysis_status_dict.get(_r, "待啟動")
+        _ico = "✅" if "✅" in _st else ("🔄" if any(x in _st for x in ["進行中", "等待"]) else "⏳")
+        print(f"  {_ico} Race {_r}: {_st}")
+    print("=" * 60 + "\n")
+
+    # ── Confirmation Gate (first run only) ──
+    if not args.auto and analysis_passed < total_races:
+        print("🔒 【確認閘門】首次執行 — 請確認上述賽日資訊正確。")
+        print("   確認後請執行以下指令啟動自動分析模式：")
+        _next_cmd(target_dir)
+        sys.exit(0)
 
     # --- EXECUTION STATE MACHINE ---
     if missing_raw:
+        if not args.url.startswith("http"):
+            print("🚨 State 0: 原始數據缺失且無 URL（目錄模式），無法自動提取！")
+            print("👉 請使用 HKJC URL 重新執行。")
+            sys.exit(1)
         print("🚨 State 0: 發現原始數據缺失！自動呼叫 Extractor 進行修補...")
         trigger_extractor(args.url, target_dir)
-        print("✅ 數據修補完畢，請重新執行 Orchestrator。")
+        print("✅ 數據修補完畢！")
+        _next_cmd(target_dir)
         sys.exit(0)
 
     if chk_weather == "[ ]":
+        # Determine venue for track module reference (#9 + #11)
+        _dir_name = os.path.basename(target_dir)
+        _det_venue = _dir_name.split("_", 1)[1] if "_" in _dir_name else "Unknown"
+        _track_hint = {
+            "ShaTin": "10a_track_sha_tin_turf.md (草地) 或 10c_track_awt.md (全天候)",
+            "HappyValley": "10b_track_happy_valley.md"
+        }.get(_det_venue, "請手動選擇對應場地模組")
+        
         print("🚨 State 1 行動要求 (Action Required):")
-        print("👉 LLM Agent 請注意：請調查今日場地天氣與賽道偏差，並於此目錄建立 `_Meeting_Intelligence_Package.md`。")
-        print("完成後，請重新執行本 Orchestrator！")
+        print(f"👉 LLM Agent 請注意：請建立 `_Meeting_Intelligence_Package.md`。")
+        print(f"")
+        print(f"📋 必須包含以下內容：")
+        print(f"   1. 天氣預報（溫度、濕度、降雨概率、風向風速）")
+        print(f"   2. 場地狀態（Going 評級、灌溉、已知偏差）")
+        print(f"   3. 跑道偏差（內/外欄優勢、不同距離影響）")
+        print(f"   4. 重大退出 / 配備變動")
+        print(f"")
+        print(f"📖 參考資源：")
+        print(f"   → 場地模組: .agents/skills/hkjc_racing/hkjc_horse_analyst/resources/{_track_hint}")
+        print(f"   → 情報增強: .agents/skills/shared_instincts/intelligence_checklist.md (Tier 2 歷史場地 Pattern)")
+        print(f"")
         notify_telegram("🚨 **HKJC State 1 Action Required**\n缺少場地天氣與賽道偏差，請手動生成 `_Meeting_Intelligence_Package.md`。")
+        _next_cmd(target_dir)
         sys.exit(0)
 
     if chk_facts == "[ ]":
@@ -294,7 +350,7 @@ def main():
                 rc, fg = get_rc_fg_paths(target_dir, r)
                 date_prefix = os.path.basename(target_dir).split(" ")[0][5:]
                 out_path = os.path.join(target_dir, f"{date_prefix} Race {r} Facts.md")
-                cmd = ["python3", ".agents/scripts/inject_hkjc_fact_anchors.py", fg, "--output", out_path]
+                cmd = [PYTHON, ".agents/scripts/inject_hkjc_fact_anchors.py", fg, "--output", out_path]
                 subprocess.run(cmd, check=True)
                 
         print("✅ Facts 全部生成完畢！自動無縫推進前往 State 3 執行分析...")
@@ -303,7 +359,8 @@ def main():
         strike_file = os.path.join(target_dir, ".qa_strikes.json")
         strikes = {}
         if os.path.exists(strike_file):
-            strikes = json.load(open(strike_file))
+            with open(strike_file, 'r', encoding='utf-8') as _sf:
+                strikes = json.load(_sf)
             
         for r in range(1, total_races + 1):
             if "✅" in analysis_status_dict.get(r, ""):
@@ -328,7 +385,8 @@ def main():
                 race_class = "[FILL]"
                 race_distance = "[FILL]"
                 try:
-                    facts_content = open(facts_path, encoding='utf-8').read()
+                    with open(facts_path, 'r', encoding='utf-8') as _fc:
+                        facts_content = _fc.read()
                     m = re.search(r'場地:\s*([^|]*?)\s*\|\s*距離:\s*([^|]*?)\s*\|\s*班次:\s*([^\n]+)', facts_content)
                     if m:
                         race_distance = m.group(2).strip()
@@ -363,7 +421,8 @@ def main():
             # STEP B: Check Speed Map — must be filled before horse analysis
             # ─────────────────────────────────────────────────────────
             try:
-                logic_data = json.load(open(logic_json, encoding='utf-8'))
+                with open(logic_json, 'r', encoding='utf-8') as _lf:
+                    logic_data = json.load(_lf)
             except Exception:
                 logic_data = {}
             
@@ -382,8 +441,11 @@ def main():
                 print(f"   → tactical_nodes: 戰術節點分析")
                 print(f"   → collapse_point: 步速崩潰點分析")
                 print(f"")
-                print(f"完成後重新執行 Orchestrator！")
+                print(f"📖 參考資源：")
+                print(f"   → 情報增強: .agents/skills/shared_instincts/intelligence_checklist.md (Tier 2 歷史場地 Pattern)")
+                print(f"")
                 notify_telegram(f"📍 **HKJC Race {r} Action Required**\n步速瀑布 (Speed Map) 尚未填寫，請查閱全景資訊。")
+                _next_cmd(target_dir)
                 sys.exit(0)
                 
             # ============================================================
@@ -392,7 +454,8 @@ def main():
             skeleton_script = ".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/create_hkjc_logic_skeleton.py"
             
             try:
-                logic_data = json.load(open(logic_json, encoding='utf-8'))
+                with open(logic_json, 'r', encoding='utf-8') as _lf:
+                    logic_data = json.load(_lf)
             except Exception:
                 logic_data = {}
             
@@ -455,7 +518,7 @@ def main():
                 if not h_entry or '[FILL]' in json.dumps(h_entry, ensure_ascii=False):
                     print(f"\n⚙️ 正在為馬號 {target_horse} 建立/更新 JSON 骨架...")
                     skel_result = subprocess.run(
-                        ["python3", skeleton_script, facts_path, str(r), str(target_horse)],
+                        [PYTHON, skeleton_script, facts_path, str(r), str(target_horse)],
                         capture_output=True, text=True
                     )
                     print(skel_result.stdout)
@@ -464,7 +527,8 @@ def main():
                         sys.exit(1)
                     
                     # Reload JSON after skeleton creation
-                    logic_data = json.load(open(logic_json, encoding='utf-8'))
+                    with open(logic_json, 'r', encoding='utf-8') as _lf:
+                        logic_data = json.load(_lf)
                     h_entry = logic_data.get('horses', {}).get(hkey, {})
                 
                 # Step 2: Extract this horse's Facts block for LLM context
@@ -493,8 +557,24 @@ def main():
                 os.makedirs(runtime_dir, exist_ok=True)
                 runtime_ctx_path = os.path.join(runtime_dir, "Active_Horse_Context.md")
                 
+                # Determine venue-specific track module (#11)
+                _dir_name = os.path.basename(target_dir)
+                _hk_venue = _dir_name.split("_", 1)[1] if "_" in _dir_name else ""
+                _track_map = {"ShaTin": "10a_track_sha_tin_turf.md", "HappyValley": "10b_track_happy_valley.md"}
+                _track_ref = _track_map.get(_hk_venue, "")
+                
+                # Inject speed map conclusion for analyst context
+                _sm_pace = speed_map.get('predicted_pace', 'N/A')
+                _sm_bias = speed_map.get('track_bias', 'N/A')
+                
                 with open(runtime_ctx_path, "w", encoding="utf-8") as _ctx_f:
                     _ctx_f.write(f"🔒 NONCE: {locked_nonce}\n")
+                    _ctx_f.write(f"📖 分析引擎: .agents/skills/hkjc_racing/hkjc_horse_analyst/SKILL.md\n")
+                    _ctx_f.write(f"📖 評級矩陣: .agents/skills/hkjc_racing/hkjc_horse_analyst/resources/06_rating_aggregation.md\n")
+                    if _track_ref:
+                        _ctx_f.write(f"📖 場地模組: .agents/skills/hkjc_racing/hkjc_horse_analyst/resources/{_track_ref}\n")
+                    _ctx_f.write(f"📖 合規參考: .agents/skills/hkjc_racing/hkjc_compliance/SKILL.md\n")
+                    _ctx_f.write(f"📍 步速判定: {_sm_pace} | 跑道偏差: {_sm_bias}\n\n")
                     _ctx_f.write(horse_facts_block)
                 
                 # Step 3: Print focused single-horse instruction
@@ -509,15 +589,22 @@ def main():
                 print(f"👉 請讀取上述暫存檔，打開 `{os.path.basename(logic_json)}`，找到馬號 \"{target_horse}\" 嘅 JSON 節點。")
                 print(f"⚠️ 將所有標記為 [FILL] 的欄位替換為你的分析結果。")
                 print(f"")
+                print(f"📖 分析引擎（已注入 Active_Horse_Context.md）：")
+                print(f"   → 🧠 SKILL.md: .agents/skills/hkjc_racing/hkjc_horse_analyst/SKILL.md")
+                print(f"   → 📊 評級矩陣: .agents/skills/hkjc_racing/hkjc_horse_analyst/resources/06_rating_aggregation.md")
+                if _track_ref:
+                    print(f"   → 🏟️ 場地模組: .agents/skills/hkjc_racing/hkjc_horse_analyst/resources/{_track_ref}")
+                print(f"   → ✅ 合規標準: .agents/skills/hkjc_racing/hkjc_compliance/SKILL.md")
+                print(f"   → 📍 步速: {_sm_pace} | 偏差: {_sm_bias}")
+                print(f"")
                 print(f"🔴 阻火牆規則 (違反即退回)：")
                 print(f"   1. 嚴禁修改 raw_L400 ({locked_l400}) 同 last_run_position ({locked_pos})")
                 print(f"   2. 嚴禁填寫其他馬號的數據！只做馬號 {target_horse}")
                 print(f"   3. 嚴禁修改 _validation_nonce！")
                 print(f"   4. 嚴禁自行建立任何 .py 腳本！")
                 print(f"")
-                print(f"📌 完成後必須執行:")
-                print(f"   python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py {os.path.basename(target_dir)}")
                 notify_telegram(f"🚨 **HKJC Race {r} Action Required**\n請填寫 Horse #{target_horse} '{horse_name}' 嘅獨立分析。")
+                _next_cmd(target_dir)
                 sys.exit(0)
                 
             # 3. Verdict
@@ -525,54 +612,63 @@ def main():
                 print(f"🚨 State 3 行動要求 (Race {r} 最終判定未完成):")
                 print(f"👉 LLM Agent 請注意：所有馬匹已完成！請呼叫數學排序模組或自行比對分數，")
                 print(f"然後在 `{os.path.basename(logic_json)}` 填寫 `verdict` 模塊。")
-                print("生成完畢後，請重新執行本 Orchestrator！")
                 notify_telegram(f"🚨 **HKJC Race {r} Verdict Needed**\n請比對分析分數，填寫最終 verdict 判定。")
+                _next_cmd(target_dir)
                 sys.exit(0)
                 
 
 
             # 4. Compilation & QA Filter
             print(f"⚙️ Race {r} JSON 填寫完畢，正在進行 Compilation (JSON -> MD)...")
-            compile_cmd = ["python3", ".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/compile_analysis_template_hkjc.py", facts_path, logic_json, "--output", an_file]
+            compile_cmd = [PYTHON, ".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/compile_analysis_template_hkjc.py", facts_path, logic_json, "--output", an_file]
             res = subprocess.run(compile_cmd)
             
             if res.returncode != 0:
                 print(f"❌ JSON 格式編譯失敗，請檢查 {os.path.basename(logic_json)} 是否為合法 JSON。")
                 sys.exit(1)
             
-            # 4.5 Monte Carlo Simulation V2 (via run_monte_carlo.py)
+            # 4.5 Monte Carlo Simulation V2 (via monte_carlo_hkjc.py — 3-Layer Composite)
             print(f"🎲 正在為 Race {r} 執行 Monte Carlo V2 模擬...")
-            mc_script = ".agents/scripts/run_monte_carlo.py"
-            if os.path.exists(mc_script):
-                mc_res = subprocess.run(["python3", mc_script, "--target_dir", target_dir], capture_output=True, text=True)
+            mc_hkjc_script = ".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/monte_carlo_hkjc.py"
+            mc_json_out = os.path.join(target_dir, f"Race_{r}_MC.json")
+            if os.path.exists(mc_hkjc_script):
+                mc_res = subprocess.run(
+                    [PYTHON, mc_hkjc_script, logic_json, facts_path,
+                     "--output", mc_json_out, "--analysis", an_file],
+                    capture_output=True, text=True
+                )
                 if mc_res.returncode == 0:
                     print(f"✅ MC V2 模擬與注入完成")
                 else:
-                    print(f"⚠️ MC V2 模擬失敗 (非阻塞): {mc_res.stderr}")
+                    print(f"⚠️ MC V2 模擬失敗 (非阻塞): {mc_res.stderr[:200]}")
             else:
-                print(f"⚠️ MC V2 腳本不存在: {mc_script}")
+                print(f"⚠️ MC V2 腳本不存在: {mc_hkjc_script}")
                 
             print(f"🛡️ 正在就編譯好的 Race {r} 進行 Batch QA (completion_gate_v2.py)...")
-            qa_res = subprocess.run(["python3", ".agents/scripts/completion_gate_v2.py", an_file, "--domain", "hkjc"])
+            qa_res = subprocess.run([PYTHON, ".agents/scripts/completion_gate_v2.py", an_file, "--domain", "hkjc"])
             
             if qa_res.returncode != 0:
                 key = f"race_{r}_qa"
                 strikes[key] = strikes.get(key, 0) + 1
-                json.dump(strikes, open(strike_file, 'w'))
+                with open(strike_file, 'w', encoding='utf-8') as _sf:
+                    json.dump(strikes, _sf)
                 
                 if strikes[key] >= 3:
                      print(f"\n🚨 [CRITICAL ALERT] Race {r} 連續 3 次 QA 失敗，恐為邊緣賽事狀況 (如新馬賽)！請人類介入調查或手動補全 `{os.path.basename(logic_json)}`。")
                      print("你可以手動略過此場的 QA 檢查以繼續。")
                      notify_telegram(f"❌ **HKJC Race {r} Critical QA Alert**\n連續 3 次 QA 失敗，恐為邊緣賽事狀況，請人工介入！")
+                     _next_cmd(target_dir)
                      sys.exit(1)
                      
                 print(f"\n❌ Race {r} 驗證失敗 (Failed with Exit Code 1)！ Strike {strikes[key]}/3")
                 print(f"👉 LLM Agent 請注意：發現字數不足、格式遺失或觸發 Fluff Regex。")
                 print("請檢查對話框的 QA 報錯點，修改 JSON 後再次重跑 Orchestrator。")
+                _next_cmd(target_dir)
                 sys.exit(1)
             else:
                 strikes[f"race_{r}_qa"] = 0 # Reset strike
-                json.dump(strikes, open(strike_file, 'w'))
+                with open(strike_file, 'w', encoding='utf-8') as _sf:
+                    json.dump(strikes, _sf)
                 completed_count = sum(1 for x in analysis_status_dict.values() if "✅" in str(x)) + 1
                 print(f"\n{'🎉'*10}")
                 print(f"✅ Race {r} 分析完成並通過 QA！ ({completed_count}/{total_races})")
@@ -587,10 +683,10 @@ def main():
     print("🏆 State 4: 全日賽事分析合規過關！正在產製 Excel 報告...")
     reports_script = ".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/generate_hkjc_reports.py"
     if os.path.exists(reports_script):
-        subprocess.run(["python3", reports_script, "--target_dir", target_dir])
+        subprocess.run([PYTHON, reports_script, "--target_dir", target_dir])
     else:
         print("⚠️ generate_hkjc_reports.py 未找到，略過報告生成。")
-    subprocess.run(["python3", ".agents/scripts/session_cost_tracker.py", target_dir, "--domain", "hkjc"])
+    subprocess.run([PYTHON, ".agents/scripts/session_cost_tracker.py", target_dir, "--domain", "hkjc"])
     
     print("\n🎉 [SUCCESS] HKJC Wong Choi Pipeline 任務全數擊破！")
     notify_telegram("🎉 **HKJC Wong Choi 任務完成**\n所有分析已順利通過 QA 及編譯！")

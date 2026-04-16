@@ -9,7 +9,7 @@ matchup, and minutes projection factors before sampling.
 Usage:
   # Called automatically by generate_nba_reports.py
   # Or standalone:
-  python3 monte_carlo_nba.py --json '{"avg": 25.3, "sd": 5.2, "line": 24, ...}'
+  python monte_carlo_nba.py --json '{"avg": 25.3, "sd": 5.2, "line": 24, ...}'
 
 Version: 1.0.0
 """
@@ -422,7 +422,7 @@ def main():
         )
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
-        print("Usage: python3 monte_carlo_nba.py --json '{\"avg\": 25, \"sd\": 5, \"line\": 24}'")
+        print("Usage: python monte_carlo_nba.py --json '{\"avg\": 25, \"sd\": 5, \"line\": 24}'")
 
 
 if __name__ == "__main__":

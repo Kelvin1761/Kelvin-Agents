@@ -49,21 +49,97 @@ def fetch_nuxt_data(url):
         os.remove(temp_html)
     return nuxt_data
 
-def extract_event_metadata(nuxt_data, event_id):
-    """Extract distance, weather, track condition from Event-level Apollo data."""
+def extract_meeting_weather(nuxt_data):
+    """Extract weather & track condition from the overview page's Apollo cache.
+    
+    The overview page stores weather/track at $Event:{first_event_id}.weather
+    and $Event:{first_event_id}.trackCondition. This is Meeting-level data
+    that applies to all races but is not available in the print page payload.
+    Returns a dict with weather/track info for use as fallback.
+    """
+    apollo = nuxt_data.get('apollo', {}).get('defaultClient', nuxt_data.get('apollo', {}).get('horseClient', {}))
+    meeting_meta = {
+        'weather': 'Unknown', 'weather_detail': {},
+        'track_condition': 'Unknown', 'track_rating': '', 'track_surface': ''
+    }
+    
+    # Scan for $Event:*.weather and $Event:*.trackCondition in overview Apollo cache
+    for key, val in apollo.items():
+        if key.endswith('.weather') and key.startswith('$Event:') and isinstance(val, dict):
+            condition = val.get('condition', '')
+            temp = val.get('temperature', '')
+            wind = val.get('wind', '')
+            humidity = val.get('humidity', '')
+            if condition:
+                weather_str = condition.title()
+                if temp:
+                    weather_str += f" {temp}°C"
+                meeting_meta['weather'] = weather_str
+                meeting_meta['weather_detail'] = {
+                    'condition': condition,
+                    'temperature': temp,
+                    'feelsLike': val.get('feelsLike', ''),
+                    'wind': wind,
+                    'humidity': humidity,
+                    'icon': val.get('conditionIcon', ''),
+                    'trackConditionRating': val.get('trackConditionRating', ''),
+                    'trackConditionOverall': val.get('trackConditionOverall', ''),
+                }
+                print(f"  🌦️ [Overview] Weather extracted: {weather_str} | Wind: {wind} | Humidity: {humidity}")
+                break  # Use first event's weather (same for all races)
+    
+    for key, val in apollo.items():
+        if key.endswith('.trackCondition') and key.startswith('$Event:') and isinstance(val, dict):
+            overall = val.get('overall', '')
+            rating = val.get('rating', '')
+            surface = val.get('surface', '')
+            if overall:
+                meeting_meta['track_condition'] = f"{overall} {rating}".strip()
+                meeting_meta['track_rating'] = rating
+                meeting_meta['track_surface'] = surface
+                print(f"  🏟️ [Overview] Track condition extracted: {overall} {rating} ({surface})")
+                break  # Use first event's track condition
+    
+    return meeting_meta
+
+def extract_event_metadata(nuxt_data, event_id, race_num=None, meeting_meta=None):
+    """Extract distance, weather, track condition from Event-level Apollo data.
+    
+    Uses Event:{event_id} first, then falls back to scanning all Event:* keys
+    matching by eventNumber. Falls back to meeting_meta for weather/track if
+    the print page doesn't have that data. Raises ValueError if distance not found.
+    """
     apollo = nuxt_data.get('apollo', {}).get('defaultClient', nuxt_data.get('apollo', {}).get('horseClient', {}))
     meta = {'distance': '?', 'distance_unit': 'm', 'event_class': '', 'prize': 0,
             'weather': 'Unknown', 'track_condition': 'Unknown', 'track_rating': ''}
     
-    if not event_id:
-        return meta
-        
-    v = apollo.get(f"Event:{event_id}", {})
+    # Primary lookup: Event:{event_id}
+    v = apollo.get(f"Event:{event_id}", {}) if event_id else {}
+    
+    # Fallback: scan ALL Event:* keys matching race_num
+    if (not v or v.get('distance') is None) and race_num is not None:
+        for k, val in apollo.items():
+            if k.startswith('Event:') and isinstance(val, dict):
+                if val.get('eventNumber') == race_num:
+                    v = val
+                    resolved_id = k.replace('Event:', '')
+                    if not event_id:
+                        event_id = resolved_id
+                    print(f"  🔍 [Fallback] Event:{event_id} 搵唔到，用 {k} (eventNumber={race_num}) 代替")
+                    break
+    
     if v:
         meta['distance'] = v.get('distance', '?')
         meta['distance_unit'] = v.get('distanceUnit', 'metres')
         meta['event_class'] = v.get('eventClass', '')
         meta['prize'] = v.get('racePrizeMoney', 0) or 0
+    
+    # STRICT: if distance is still missing, raise error
+    if meta['distance'] == '?' or meta['distance'] is None:
+        print(f"\n❌ [FATAL] Race {race_num}: 無法從 Apollo cache 提取距離！")
+        print(f"   event_id={event_id}")
+        print(f"   Apollo keys containing 'Event': {[k for k in apollo.keys() if 'Event' in k][:20]}")
+        raise ValueError(f"Race {race_num}: distance extraction failed — Apollo cache 無 Event 距離數據")
         
     v_weather = apollo.get(f"$Event:{event_id}.weather", {})
     if v_weather:
@@ -82,10 +158,20 @@ def extract_event_metadata(nuxt_data, event_id):
         if overall:
             meta['track_condition'] = f"{overall} {rating}".strip()
             meta['track_rating'] = rating
+    
+    # Fallback to meeting-level metadata from overview page
+    if meeting_meta:
+        if meta['weather'] == 'Unknown' and meeting_meta.get('weather', 'Unknown') != 'Unknown':
+            meta['weather'] = meeting_meta['weather']
+            print(f"  🌦️ [Fallback→Overview] Weather: {meta['weather']}")
+        if meta['track_condition'] == 'Unknown' and meeting_meta.get('track_condition', 'Unknown') != 'Unknown':
+            meta['track_condition'] = meeting_meta['track_condition']
+            meta['track_rating'] = meeting_meta.get('track_rating', '')
+            print(f"  🏟️ [Fallback→Overview] Track: {meta['track_condition']}")
             
     return meta
 
-def process_race(nuxt_data, f_rc, f_fg):
+def process_race(nuxt_data, f_rc, f_fg, race_num=None):
     form_data = nuxt_data.get('fetch', {})
     form_key = next((k for k in form_data.keys() if k.startswith('FormGuidePrint')), None)
     if not form_key:
@@ -102,7 +188,7 @@ def process_race(nuxt_data, f_rc, f_fg):
         event_id = match.group(0)
     
     # Extract event metadata
-    meta = extract_event_metadata(nuxt_data, event_id)
+    meta = extract_event_metadata(nuxt_data, event_id, race_num=race_num)
          
     for sel in selections:
         num = sel.get('competitorNumber', '?')
@@ -324,6 +410,10 @@ def process_meeting(overview_url, date_str, location):
     rail = apollo[meeting_key].get('railPosition', 'Unknown')
     mm_dd = date_str[5:]
     
+    # Extract meeting-level weather/track from overview page (the print page often lacks this)
+    meeting_meta = extract_meeting_weather(nuxt_overview)
+    print(f"\n📋 Meeting-level metadata: Weather={meeting_meta['weather']}, Track={meeting_meta['track_condition']}")
+    
     # Track metadata for index generation
     race_index = []
     first_meta = None
@@ -343,7 +433,15 @@ def process_meeting(overview_url, date_str, location):
             if match_ev:
                 event_id = match_ev.group(0)
         
-        meta = extract_event_metadata(race_nuxt, event_id)
+        # Also try extracting event_id from Apollo __ref in fetch data
+        if form_key and not event_id:
+            sel_data = form_data.get(form_key, {})
+            if isinstance(sel_data, dict):
+                ev_ref = sel_data.get('event', {}).get('__ref', '')
+                if ev_ref.startswith('Event:'):
+                    event_id = ev_ref.replace('Event:', '')
+        
+        meta = extract_event_metadata(race_nuxt, event_id, race_num=race_num, meeting_meta=meeting_meta)
         if first_meta is None:
             first_meta = meta
         
@@ -388,7 +486,7 @@ def process_meeting(overview_url, date_str, location):
             f_fg.write(f"{header_line}\n")
             f_fg.write(f"Track: {track_cond} | Weather: {weather} | Rail: {rail}\n{'='*20}\n")
             
-            process_race(race_nuxt, f_rc, f_fg)
+            process_race(race_nuxt, f_rc, f_fg, race_num=race_num)
         
         race_index.append({
             'race_num': race_num,
@@ -418,14 +516,24 @@ def process_meeting(overview_url, date_str, location):
                 f_idx.write(f"- [{num}] {name}{status}\n")
             f_idx.write("\n")
     
-    # Write Meeting Summary
+    # Write Meeting Summary (use meeting_meta which has rich weather detail)
     summary_file = os.path.join(output_dir, "Meeting_Summary.md")
-    if first_meta:
-        with open(summary_file, 'w', encoding='utf-8') as f_sum:
-            f_sum.write(f"Date: {date_str}\n")
-            f_sum.write(f"Track Condition: {first_meta.get('track_condition', 'Unknown')}\n")
-            f_sum.write(f"Weather: {first_meta.get('weather', 'Unknown')}\n")
-            f_sum.write(f"Rails: {rail}\n")
+    final_weather = meeting_meta.get('weather', first_meta.get('weather', 'Unknown') if first_meta else 'Unknown')
+    final_track = meeting_meta.get('track_condition', first_meta.get('track_condition', 'Unknown') if first_meta else 'Unknown')
+    final_surface = meeting_meta.get('track_surface', '')
+    weather_detail = meeting_meta.get('weather_detail', {})
+    
+    with open(summary_file, 'w', encoding='utf-8') as f_sum:
+        f_sum.write(f"Date: {date_str}\n")
+        f_sum.write(f"Track Condition: {final_track}\n")
+        if final_surface:
+            f_sum.write(f"Surface: {final_surface}\n")
+        f_sum.write(f"Weather: {final_weather}\n")
+        if weather_detail:
+            f_sum.write(f"Wind: {weather_detail.get('wind', 'N/A')}\n")
+            f_sum.write(f"Humidity: {weather_detail.get('humidity', 'N/A')}\n")
+            f_sum.write(f"Feels Like: {weather_detail.get('feelsLike', 'N/A')}°C\n")
+        f_sum.write(f"Rails: {rail}\n")
     
     print(f"\nGenerated per-race files in: {output_dir}")
     for ri in race_index:

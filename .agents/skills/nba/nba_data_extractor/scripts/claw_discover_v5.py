@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """
-claw_discover_v5.py — Network Interception Discovery
+claw_discover_v5.py — Network Interception Discovery (DEPRECATED)
+
+⚠️ DEPRECATED: This script was designed for Bet365 and is no longer the primary
+extraction method. Use claw_sportsbet_odds.py instead.
+
 Bypasses Cloudflare's DOM content blocking by intercepting
 the pushnotification API response that contains all Event IDs.
 
-Usage: python3 claw_discover_v5.py [--games MIL_DET,MIN_ORL,...]
+Usage: python claw_discover_v5.py [--games MIL_DET,MIN_ORL,...]
 """
 import asyncio
 import json
@@ -39,9 +43,9 @@ async def main():
         print("[Claw-v5] 🔌 Connecting to Comet via CDP...")
         browser = await p.chromium.connect_over_cdp(f"http://localhost:{CDP_PORT}")
         page = next((pg for pg in browser.contexts[0].pages
-                     if "bet365.com.au" in pg.url), None)
+                     if "sportsbet.com.au" in pg.url), None)
         if not page:
-            print("[Claw-v5] ❌ No Bet365 tab found")
+            print("[Claw-v5] ❌ No Sportsbet tab found")
             await browser.close()
             return
 
@@ -78,7 +82,7 @@ async def main():
 
         results = {}
         for event_id, game_name in matches:
-            url = f"https://www.bet365.com.au/#/AC/B18/C20604387/D19/E{event_id}/F19/"
+            url = f"https://www.sportsbet.com.au/betting/basketball-us/nba/{event_id}"
             
             tag = None
             for team_key, tag_val in TEAM_TO_TAG.items():
@@ -96,7 +100,7 @@ async def main():
             
             results[tag] = url
 
-        with open(".agents.agents/tmp/bet365_game_urls.json", "w") as f:
+        with open(".agents.agents/tmp/sportsbet_game_urls.json", "w") as f:
             json.dump(results, f, indent=2)
 
         print(f"\n{'='*60}")
@@ -104,7 +108,7 @@ async def main():
         for tag, url in results.items():
             print(f"  ✅ {tag}: {url}")
         print(f"{'='*60}")
-        print(f"\n✅ Saved to .agents.agents/tmp/bet365_game_urls.json")
+        print(f"\n✅ Saved to .agents.agents/tmp/sportsbet_game_urls.json")
 
         await browser.close()
 

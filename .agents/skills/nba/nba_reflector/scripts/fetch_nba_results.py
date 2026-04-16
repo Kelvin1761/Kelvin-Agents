@@ -8,7 +8,7 @@ fetch_nba_results.py — NBA Reflector 賽果擷取器
   Results_Brief_{DATE}.json — 包含每場賽事嘅最終比分、每節比分、球員 Box Score
 
 Usage:
-  python3 fetch_nba_results.py --date 2026-04-07 --dir "2026-04-08 NBA Analysis"
+  python fetch_nba_results.py --date 2026-04-07 --dir "2026-04-08 NBA Analysis"
 
   (--date 係美國日期，即澳洲日期 -1)
 

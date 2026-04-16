@@ -67,7 +67,7 @@ ag_kit_skills:
 **嚴禁在每匹馬或每批次重新讀取資源文件。** 只有在「會話中斷後重啟」或「切換至新場次」時才需重新讀取。
 
 > [!IMPORTANT]
-> **Verdict 前強制重讀 Template**:寫 `[第三部分]` Top 4 Verdict 及 `[第五部分]` CSV 前,**強制規定必須使用 `view_file` 工具重讀 `resoures/06_output_templates.md`**。絕對不能依靠過期記憶！若未見此 `view_file` 操作即直接輸出 Verdict，代表你已違反最嚴格協議，會導致 Dashboard 讀取崩潰！
+> **Verdict 前強制重讀 Template**:寫 `[第三部分]` Top 4 Verdict 及 `[第五部分]` CSV 前,**強制規定必須使用 `view_file` 工具重讀 `resources/06_templates_core.md` + `resources/06_templates_rules.md`**。絕對不能依靠過期記憶！若未見此 `view_file` 操作即直接輸出 Verdict，代表你已違反最嚴格協議，會導致 Dashboard 讀取崩潰！
 
 ## 4. Internal Tracking
 所有內部計算(Step 0 到 Step 14)與推導過程**絕不可出現在最終輸出中**。推導放進 `<thought>` 標籤,對用戶只呈現最終判定結果。
@@ -80,7 +80,7 @@ ag_kit_skills:
 3.5. **[SIP-1] 場地預測容錯機制**:若預測場地為 Heavy 或天氣不穩定,執行雙軌敏感度分析(定義見 `02c_track_and_gear.md` Step 4)。
 4. **賽事與步速定調**:判定 `[STRAIGHT SPRINT]` 或 `[STANDARD RACE]`,產生 `<第一部分>` + Speed Map。
 5. **批次解析**:每批按 Wong Choi 傳入嘅 BATCH_SIZE（預設 3，環境掃描 fallback 為 2），按馬號順序。**全自動推進**，嚴禁批次間詢問用戶。**批次隔離規則:每個 Batch 必須作為獨立嘅 file write 操作輸出，嚴禁將多個 Batch 合併到同一次 tool call。** Batch 1 = Safe-Writer Protocol (P33-WLTM) 使用 heredoc → /tmp → base64 → safe_file_writer.py --mode overwrite 建檔；Batch 2+ = 同一管道 --mode append 追加寫入。⚠️ write_to_file 封殺 (可使用 replace_file_content/multi_replace_file_content 或 safe_file_writer.py)（見 Wong Choi P33-WLTM）。若發現正在寫入 4+ 匹馬 → 立即停止拆分。
-6. **全場最終決策**:全場所有馬匹均完成 Batch 分析後，**[致命規定] 必須先調用 `view_file` 閱讀 `06_output_templates.md`**，然後嚴格遵照模板生成 `<第三部分>` (Top 4 必須用條列式/Bullet points、嚴禁單行句) + `<第四部分>` + `<第五部分>` (CSV 代碼必須被代碼區塊括起)，Top 4 必須按評級排序。
+6. **全場最終決策**:全場所有馬匹均完成 Batch 分析後，**[致命規定] 必須先調用 `view_file` 閱讀 `06_templates_core.md` + `06_templates_rules.md`**，然後嚴格遵照模板生成 `<第三部分>` (Top 4 必須用條列式/Bullet points、嚴禁單行句) + `<第四部分>` + `<第五部分>` (CSV 代碼必須被代碼區塊括起)，Top 4 必須按評級排序。
 
 **🚨 Anti-Laziness 錨定 + 品質守門員檢查 [SIP-ST8](每批次強制自檢):**
 每完成一批次(≥6 匹馬累計)後,強制執行以下自我檢查:
@@ -91,7 +91,7 @@ ag_kit_skills:
 
 **🔴 QG-CHECK 連續失敗 2 次 — AG Kit Systematic Debugging:**
 平時 QG-CHECK 失敗 1 次 = 正常自我打回重寫。但若**同一 Batch 連續失敗 2 次**:
-1. 讀取 `.agent/skills/systematic-debugging/SKILL.md`
+1. 讀取 `.agents/skills/systematic-debugging/SKILL.md`
 2. 執行 4-Phase 除錯:
    - **Reproduce:** `view_file` 被打回嘅 Batch 段落
    - **Isolate:** Anti-Laziness 錨定失敗?重複數據?關鍵馬匹默認值?

@@ -1,6 +1,11 @@
 # NBA Wong Choi Pipeline & Execution Protocol
 
-本文件定義 NBA Wong Choi 分析管線的標準執行流程。請嚴格按照以下步驟運行。
+本文件定義 NBA Wong Choi 分析管線的標準執行流程。
+
+> [!IMPORTANT]
+> **V3 Orchestrator 自動化提示**：以下 Step 2-5 嘅大部分步驟已由 `nba_orchestrator.py` 自動串連執行。
+> 手動介入只需要喺 **Phase 2**（LLM 填寫 `[FILL]` 欄位）同少數例外情況。
+> 本文件保留完整流程作為 Reference，但實際操作時以 Orchestrator 輸出為準。
 
 ## Pre-Flight Environment Scan (強制 — Step 1 之前執行)
 
@@ -12,10 +17,9 @@
 
 **Step E3 — MCP Server Availability Check:**
 檢查以下 MCP Servers 是否已安裝並可用:
-1. `Playwright MCP` (Bet365 即時盤口提取 — 最高優先級)
-2. `SQLite MCP` (歷史數據庫查詢)
-3. `Memory MCP` (Knowledge Graph 記憶)
-如果 Playwright MCP 未安裝，必須暫停並要求 USER 配置，因為 Bet365 零跳轉提取高度依賴 MCP 運行。
+1. `SQLite MCP` (歷史數據庫查詢)
+2. `Memory MCP` (Knowledge Graph 記憶)
+Playwright MCP 已非必需 — Sportsbet 盤口由 Python 腳本自動提取。
 
 ---
 
@@ -44,14 +48,13 @@
 ### Sub-Step 2A: 資料提取 (Data Extraction)
 - **呼叫 `@nba data extractor` (NBA Data Extractor)** 負責提取當日盤口。
 - 執行 Sportsbet 提取腳本:
-  `python3 .agents/skills/nba/nba_data_extractor/scripts/claw_sportsbet_odds.py`
-- (以前的 Bet365 零跳轉已被 Sportsbet API 取代)
+  `python .agents/skills/nba/nba_data_extractor/scripts/claw_sportsbet_odds.py`
 
 ### Sub-Step 2B: 數據品質驗證
 按照 `01_data_validation.md` 對 `sportsbet_latest.json` 進行驗證，追加至 `NBA_Data_Package.txt`。
 
 ### Sub-Step 2C: Python 數據包生成 (Data Brief)
-執行 `python3 generate_nba_auto.py` 生成含 8-Factor 調整的 `Data_Brief_{TAG}.json`。
+> ⚠️ 由 Orchestrator 自動調用 `generate_nba_reports.py` 生成含 10-Factor 調整的 Full Analysis skeleton。
 
 ### Sub-Step 3A: LLM Analyst 獨立分析 (逐場)
 - **呼叫 `@nba analyst` (NBA Analyst)** 進行獨立賽事分析。
@@ -61,7 +64,8 @@
 
 ### Sub-Step 3B/C/D: 賽事間自檢與存檔
 - 若品質掃描失敗 2 次，自動啟用 Systematic Debugging。
-- **Completion Gate**: `python3 .agents/scripts/completion_gate_v2.py <你的檔案> --domain nba`。任何 `❌ [FAILED]` 必須即時重寫。
+- **Completion Gate**: `python .agents/scripts/completion_gate_v2.py <你的檔案> --domain nba`。任何 `❌ [FAILED]` 必須即時重寫。
+> ⚠️ 由 Orchestrator 呼叫 `validate_nba_output.py` 自動執行防火牆驗證。
 - 向用戶匯報當場進度。每完成 3 場賽事必須停頓並向用戶確認。
 
 ### 循環完成後: 全日審計
@@ -78,22 +82,22 @@
 
 ## Step 5: 最終匯報與數據歸檔
 
-1. **跨場組合匯出 (由 Python 自動執行 Copy & Paste)**:
-   由於單場分析已生成各項組合，Agent 毋須再 wasting tokens 去重新拼湊組合，只需執行以下指令：
-   `python3 .agents/scripts/nba/compile_nba_report.py --target_dir "{TARGET_DIR}"`
+1. **跨場組合匯出 (由 Orchestrator 自動執行)**:
+   V3 Orchestrator 會自動調用 `generate_nba_sgm_reports.py`。手動執行可用：
+   `python .agents/skills/nba/nba_wong_choi/scripts/generate_nba_sgm_reports.py --dir "{TARGET_DIR}"`
    此腳本會自動將所有 `Full_Analysis.md` 內嘅 Combo 區塊匯總成為：
-   - 📄 `Banker_Combinations.md`
-   - 📄 `Master_SGM.md`
+   - 📄 `NBA_All_SGM_Report.txt`
+   - 📄 `NBA_Banker_Report.txt`
 2. **向用戶發送最終匯總提示與報告連結**。
-   執行 `python3 .agents/skills/nba/nba_data_extractor/scripts/nba_db_logger.py --parse "{TARGET_DIR}/{REPORT_NAME}.txt"`
+   執行 `python .agents/skills/nba/nba_data_extractor/scripts/nba_db_logger.py --parse "{TARGET_DIR}/{REPORT_NAME}.txt"`
 3. **Step 5b (Cost Tracker)**:
-   執行 `python3 .agents/scripts/session_cost_tracker.py "{TARGET_DIR}" --domain nba`
+   執行 `python .agents/scripts/session_cost_tracker.py "{TARGET_DIR}" --domain nba`
 
 ---
 
 ## Step 6: Day 2 覆盤與回測階段 (Embedded Backtester)
 
 當遇到回測或對答案需求:
-1. 啟動腳本: `python3 .agents/skills/nba/nba_data_extractor/scripts/nba_backtester.py --date {YYYY-MM-DD}`
+1. 啟動腳本: `python .agents/skills/nba/nba_data_extractor/scripts/nba_backtester.py --date {YYYY-MM-DD}`
 2. 匯報命中率及反思。
-3. 執行 Instinct 評估 (P35): `python3 .agents/scripts/instinct_evaluator.py "{TARGET_DIR}" --domain nba`
+3. 執行 Instinct 評估 (P35): `python .agents/scripts/instinct_evaluator.py "{TARGET_DIR}" --domain nba`

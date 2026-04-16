@@ -89,20 +89,10 @@
 
   <rule id="P19V6" name="Safe Writer Protocol">
     <action>
-      禁止直接修改檔案內容，防止 Google Drive 雲端死鎖風險。嚴禁調用 write_to_file / replace_file_content。
-      唯一合法寫檔方式：Heredoc 生成 python 腳本寫入至 `/tmp`，再以 `safe_file_writer.py` 進行操作。
-      <![CDATA[
-      SAFE_WRITER="/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/safe_file_writer.py"
-
-      cat > /tmp/batch_NBA.md << 'ENDOFCONTENT'
-      [你的分析內容 / 檔案內容]
-      ENDOFCONTENT
-
-      base64 < /tmp/batch_NBA.md | python3 "$SAFE_WRITER" \
-        --target "{TARGET_DIR}/{FILE_NAME}" \
-        --mode overwrite \
-        --stdin
-      ]]>
+      遵循 GEMINI.md 嘅 Google Drive 寫入防護協議。嚴禁使用 write_to_file。
+      小型編輯 (少於 50 行): 允許使用 replace_file_content / multi_replace_file_content。
+      新建或覆蓋整個檔案: 透過 run_command 使用 safe_file_writer 或 PowerShell/shell 寫入。
+      路徑: .agents/scripts/safe_file_writer.py (相對路徑，跨平台適用)
     </action>
   </rule>
 
@@ -135,7 +125,7 @@
   <rule id="P52" name="Post-Generation Firewall (validate_nba_output.py)">
     <action>
       每份 Game_*_Full_Analysis.md 生成後，必須執行:
-      python3 scripts/validate_nba_output.py {FILE_PATH}
+      python .agents/skills/nba/nba_wong_choi/scripts/validate_nba_output.py {FILE_PATH}
       任何 ❌ BLOCKED 結果 → 必須立即重寫該報告。
       嚴禁提交未通過防火牆檢查嘅報告。
     </action>

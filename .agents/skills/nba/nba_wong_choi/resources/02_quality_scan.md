@@ -54,7 +54,7 @@ python .agents/skills/nba/../nba_wong_choi/scripts/verify_nba_math.py "[REPORT_P
 `❌ FAILED` → 指示 Analyst 自動修正然後重試。`✅ PASSED` → 繼續。
 
 1. **SGP 防撞擊**：驗證所有組合無互相蠶食/天花板衝突/劇本矛盾
-2. **Bet365 合規**：驗證所有盤口數字絕對符合 **Bet365 嚴格選項規則 (Strict Built-in Matrix)**，例如得分只允許 14.5、19.5 等 Milestone 線，嚴禁 22.5 這種不存在嘅自創跳階
+2. **Sportsbet 合規**：驗證所有盤口數字絕對符合 **Sportsbet 真實選項**，禁止使用自創嘅 Milestone 線（如 22.5），必須與 Sportsbet JSON 盤口完全一致
 3. **新聞情境整合**：驗證重要新聞已被納入分析考量
 4. **命中率底線**：組合 1 穩膽 ≥70% / 組合 2 價值 ≥40% / 組合 3 高賠 ≥40%
 5. **跨場 Leg 來源標記**：每個 Leg 必須標明來自哪場賽事（如 `[Game 1: LAL vs BOS]`）

@@ -169,6 +169,8 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
             ('分析內容', 'LAZY-006'),
             ('合理推斷', 'LAZY-006'),
             ('修正評估', 'LAZY-006'),
+            ('戰術與狀態綜合評估', 'LAZY-006'),
+            ('雖有優勢但仍受制於同場步速，需視乎臨場發揮', 'LAZY-006'),
         ]
         for pattern, code in placeholder_patterns:
             if re.search(pattern, block):

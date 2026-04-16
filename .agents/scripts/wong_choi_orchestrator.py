@@ -19,7 +19,10 @@ import sys
 import argparse
 import time
 import subprocess
+import shutil
 import json
+
+_PYTHON = "python3" if shutil.which("python3") else "python"
 
 def get_target_dir(date, venue):
     base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -40,7 +43,7 @@ def run_extraction(mode, url, target_dir):
         print("  -> Injecting Fact Anchors...")
         script = os.path.join(os.path.dirname(__file__), 'inject_hkjc_fact_anchors.py')
         if os.path.exists(script):
-            subprocess.run(["python3", script, os.path.join(target_dir, "Formguide.txt"), "--output", os.path.join(target_dir, "Race_1_Facts.md")])
+            subprocess.run([_PYTHON, script, os.path.join(target_dir, "Formguide.txt"), "--output", os.path.join(target_dir, "Race_1_Facts.md")])
             
     elif mode == 'AU':
         print(f"  -> Scraping PuntingForm data from: {url}")
@@ -69,7 +72,7 @@ def compile_results(target_dir):
     print(f"📄 [Orchestrator] Compiling final results and triggering Monte Carlo...")
     script = os.path.join(os.path.dirname(__file__), 'compile_final_report.py')
     if os.path.exists(script):
-        subprocess.run(["python3", script, "--target_dir", target_dir])
+        subprocess.run([_PYTHON, script, "--target_dir", target_dir])
 
 def main():
     parser = argparse.ArgumentParser(description="Antigravity Wong Choi Pipeline Orchestrator")

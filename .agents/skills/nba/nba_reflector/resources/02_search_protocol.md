@@ -67,7 +67,7 @@
 ### 4b. 逐 Leg 斷層分析
 對每個未命中嘅 Leg,在 `<thought>` 中檢查:
 - **Adj Prob vs 隱含勝率 (Edge) 偏差驗證** — Edge 計算是否準確？實際命中率與 Adj Prob 差距大喺地方？
-- **賠率準確度** — 分析時嘅 @賠率與最終 Bet365 開盤賠率是否一致？
+- **賞率準確度** — 分析時嘅 @賞率與最終 Sportsbet 開盤賞率是否一致？
 - **CoV 波動率判斷是否正確?** — 實際波動是否與預測分級吻合
 - **情境調整是否足夠?** — B2B / 疲勞 / 節奏 / 傷病復出嘅調整是否恰當
 - **防守對位判斷是否正確?** — 預測嘅防守大閘是否真正限制了目標球員
@@ -83,10 +83,10 @@
 - 某類型因素是否被系統性忽略?（例如:B2B 客場嘅 PTS 下跌幅度被低估）
 - 某條規則是否觸發過頻/過少?（例如:Safety Gate 攔截過多實際可中嘅 Leg）
 - CoV 分級嘅某個閾值是否需要調整?
-- Bet365 盤口 Milestone 嘅選擇邏輯是否有系統性偏差?
+- Sportsbet 盤口 Milestone 嘅選擇邏輯是否有系統性偏差?
 - 防守大閘資料庫（`nba_data_extractor/resources/03_defensive_profiles.md`）是否需要更新?
 - **Blowout 風險預判準確度** — 分析中標記了 Blowout 風雛嘅場次，實際有幾多係真的 Blowout？讓分、總分盤口判斷與實際結果之差？
-- **odds_source 影響** — 使用 BET365_LIVE odds 嘅場次 vs ESPN/其他來源嘅場次，命中率有冇顯著差異？
+- **odds_source 影響** — 使用 SPORTSBET_LIVE odds 嘅場次 vs ESPN/其他來源嘅場次，命中率有冗有顯著差異？
 
 ### 4d. V5 Data Brief → LLM 分析品質審計 (P36 Anti-Rubber-Stamp)
 

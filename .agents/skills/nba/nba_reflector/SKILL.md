@@ -70,7 +70,7 @@ ag_kit_skills:
 ### Step 2a: Python API 擷取（主引擎 — 強制）
 執行 `fetch_nba_results.py` 一鍵擷取所有場次嘅 Box Score:
 ```bash
-python3 .agents/skills/nba/nba_reflector/scripts/fetch_nba_results.py \
+python .agents/skills/nba/nba_reflector/scripts/fetch_nba_results.py \
   --date {US_DATE} \
   --dir "{TARGET_DIR}"
 ```
@@ -88,7 +88,7 @@ python3 .agents/skills/nba/nba_reflector/scripts/fetch_nba_results.py \
 - 任何穩膽 Leg 意外大幅未中（margin ≤ -5）
 
 ```bash
-python3 .agents/skills/nba/nba_reflector/scripts/fetch_nba_pbp.py \
+python .agents/skills/nba/nba_reflector/scripts/fetch_nba_pbp.py \
   --date {US_DATE} \
   --dir "{TARGET_DIR}"
 ```
@@ -100,7 +100,7 @@ python3 .agents/skills/nba/nba_reflector/scripts/fetch_nba_pbp.py \
 
 ### Step 2c: Props 命中自動比對（強制 — 每次覆盤必執行）
 ```bash
-python3 .agents/skills/nba/nba_reflector/scripts/verify_props_hits.py \
+python .agents/skills/nba/nba_reflector/scripts/verify_props_hits.py \
   --results "{TARGET_DIR}/Results_Brief_{US_DATE}.json" \
   --predictions "{TARGET_DIR}" \
   --output "{TARGET_DIR}/Props_Verification_{US_DATE}.json"
@@ -126,7 +126,7 @@ python3 .agents/skills/nba/nba_reflector/scripts/verify_props_hits.py \
 - **V4 舊格式 (兼容)**: `Game_{AWAY}_{HOME}_Full_Analysis.md`
 
 提取以下內容:
-- **Header 驗證**: 確認 `odds_source`（BET365_LIVE / ESPN / 其他）同 `引擎版本`（V3 8-Factor 等）
+- **Header 驗證**: 確認 `odds_source`（SPORTSBET_LIVE / ESPN / 其他）同 `引擎版本`（V3 8-Factor 等）
 - **風險標記**: 檢查有冇 `[!CAUTION]` Blowout 風險 / 擺爛警告
 - **所有 SGM 組合**（彈性 2-3 組 + Value Bomb X，如有）— 唔再假設固定 3 組
 - 每個 Leg 嘅球員名、盤口線、**賠率 (@X.XX)**、命中率預測、Adjusted Win Prob、Edge

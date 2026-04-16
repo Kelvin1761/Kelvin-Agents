@@ -21,7 +21,8 @@ if sys.stdout.encoding != 'utf-8':
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from monte_carlo_core import (
     monte_carlo_race, format_mc_table,
-    compute_stability_index, compute_formline_adj
+    compute_stability_index, compute_formline_adj,
+    weighted_stats
 )
 
 
@@ -132,24 +133,18 @@ def extract_horse_mc_data(logic_data, facts_content, horse_key):
     energy_vals = parse_energy_from_facts(facts_content, horse_num)
     finishes = parse_finish_positions(facts_content, horse_num)
     
-    # Compute L400 statistics
+    # Compute L400 statistics (exponential decay weighted)
     if l400_vals:
-        mean_speed = sum(l400_vals) / len(l400_vals)
-        if len(l400_vals) >= 2:
-            sd_speed = math.sqrt(sum((x - mean_speed)**2 for x in l400_vals) / len(l400_vals))
-        else:
-            sd_speed = mean_speed * 0.03
+        days_ago = [i * 21 for i in range(len(l400_vals))]
+        mean_speed, sd_speed = weighted_stats(l400_vals, days_ago)
     else:
-        mean_speed = 23.0  # Default average speed
+        mean_speed = 23.0
         sd_speed = 0.7
     
-    # Compute energy statistics
+    # Compute energy statistics (exponential decay weighted)
     if energy_vals:
-        mean_energy = sum(energy_vals) / len(energy_vals)
-        if len(energy_vals) >= 2:
-            sd_energy = math.sqrt(sum((x - mean_energy)**2 for x in energy_vals) / len(energy_vals))
-        else:
-            sd_energy = mean_energy * 0.05
+        days_ago = [i * 21 for i in range(len(energy_vals))]
+        mean_energy, sd_energy = weighted_stats(energy_vals, days_ago)
     else:
         mean_energy = 100.0
         sd_energy = 5.0
@@ -171,6 +166,15 @@ def extract_horse_mc_data(logic_data, facts_content, horse_key):
         if '寬恕' in str(conclusion) or '受阻' in str(conclusion):
             forgiveness_bonus = True
     
+    # Determine running style from speed_map
+    speed_map = logic_data.get('race_analysis', {}).get('speed_map', {})
+    running_style = 'mid_pack'
+    for style, key in [('leader', 'leaders'), ('on_pace', 'on_pace'),
+                       ('mid_pack', 'mid_pack'), ('closer', 'closers')]:
+        if horse_key in [str(m) for m in speed_map.get(key, [])]:
+            running_style = style
+            break
+    
     return {
         'name': horse.get('horse_name', f'馬號{horse_key}'),
         'mean_speed': round(mean_speed, 3),
@@ -178,19 +182,20 @@ def extract_horse_mc_data(logic_data, facts_content, horse_key):
         'mean_energy': round(mean_energy, 2),
         'sd_energy': round(sd_energy, 2),
         'stability_idx': compute_stability_index(finishes),
-        'trainer_win_rate': 0.15,  # Default; will be enriched by crawler later
-        'jockey_win_rate': 0.10,   # Default; will be enriched by crawler later
+        'trainer_win_rate': horse.get('trainer_win_rate', 0.15),
+        'jockey_win_rate': horse.get('jockey_win_rate', 0.10),
         'days_since_last': horse.get('days_since_last', 28),
         'finishes': finishes,
-        'class_advantage': 0.0,  # Will be derived from Logic.json fine_tune
+        'class_advantage': horse.get('class_advantage', 0.0),
         'weight': horse.get('weight', 120),
         'barrier': horse.get('barrier', 1),
         'field_size': field_size,
         'risk_markers': risk_markers,
-        'track_bias_benefit': False,  # Will be enriched by track_bias_engine later
+        'running_style': running_style,
+        'track_bias_benefit': horse.get('track_bias_benefit', False),
         'forgiveness_bonus': forgiveness_bonus,
-        'weight_gain': 0,
-        'same_venue_dist_wins': 0,
+        'weight_gain': horse.get('weight_gain', 0),
+        'same_venue_dist_wins': horse.get('same_venue_dist_wins', 0),
         'is_hkjc': True,
     }
 
@@ -201,6 +206,7 @@ def main():
     parser.add_argument('facts_md', help='Path to Facts.md')
     parser.add_argument('--output', help='Output MC results JSON path')
     parser.add_argument('--n', type=int, default=10000, help='Simulation count')
+    parser.add_argument('--analysis', help='Path to Analysis.md for MC injection')
     args = parser.parse_args()
     
     # Load data
@@ -231,7 +237,9 @@ def main():
     print(f"🎲 正在為 {len(horses)} 匹馬執行 Monte Carlo 模擬 ({args.n:,} 次)...")
     
     # Run MC
-    mc_results = monte_carlo_race(horses, n=args.n)
+    # Extract pace scenario from speed_map
+    pace_scenario = logic_data.get('race_analysis', {}).get('speed_map', {}).get('predicted_pace')
+    mc_results = monte_carlo_race(horses, n=args.n, pace_scenario=pace_scenario)
     
     # Get Top 4 from matrix for concordance
     top4_picks = []
@@ -268,6 +276,34 @@ def main():
         json.dump(mc_output, f, ensure_ascii=False, indent=2)
     
     print(f"✅ MC 結果已儲存至: {output_path}")
+    
+    # Inject into Analysis.md if path provided
+    if args.analysis and os.path.exists(args.analysis):
+        mc_table = format_mc_table(mc_results, top4_picks)
+        with open(args.analysis, 'r', encoding='utf-8') as f:
+            content = f.read()
+        tag1 = "#### 📊 Monte Carlo 概率模擬"
+        tag2 = "<!-- MONTE_CARLO_PYTHON_INJECT_HERE -->"
+        inject_done = False
+        for tag in [tag1, tag2]:
+            if tag in content:
+                pos = content.find(tag)
+                rest = content[pos:]
+                end_match = re.search(r'\n(## |---)', rest)
+                end_pos = pos + end_match.start() if end_match else len(content)
+                content = content[:pos] + mc_table + "\n" + content[end_pos:]
+                inject_done = True
+                break
+        if not inject_done:
+            csv_tag = "## [第五部分]"
+            if csv_tag in content:
+                pos = content.find(csv_tag)
+                content = content[:pos] + mc_table + "\n\n" + content[pos:]
+            else:
+                content = content.rstrip() + "\n\n" + mc_table + "\n"
+        with open(args.analysis, 'w', encoding='utf-8') as f:
+            f.write(content)
+        print(f"✅ MC 結果已注入: {args.analysis}")
 
 
 if __name__ == '__main__':

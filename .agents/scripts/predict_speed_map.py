@@ -146,6 +146,7 @@ def parse_facts_md_horses(facts_text: str) -> list:
         re.compile(r'^#{2,3}\s+馬匹\s*#(\d+)\s+(.+?)\s+\(檔位\s*(\d+)\)', re.MULTILINE),
         re.compile(r'^#{2,3}\s+(?:No\.)?(\d+)[\.、]\s*(.+?)\s+\|\s*.*?檔位.*?(\d+)', re.MULTILINE | re.IGNORECASE),
         re.compile(r'\*\*【No\.(\d+)】\s*(.+?)\*\*.*?檔位:(\d+)', re.MULTILINE),
+        re.compile(r'^#{2,3}\s+馬號\s*(\d+)\s*—\s*(.+?)\s*\|.*?檔位:\s*(\d+)', re.MULTILINE),
     ]
     
     matches = []
@@ -254,7 +255,7 @@ def main():
         
         # Only inject if speed_map is missing or auto-generated
         existing_sm = logic_data['race_analysis'].get('speed_map', {})
-        if not existing_sm or existing_sm.get('_auto_generated'):
+        if not existing_sm or existing_sm.get('_auto_generated') or existing_sm.get('predicted_pace') == '[FILL]':
             logic_data['race_analysis']['speed_map'] = speed_map
             with open(args.inject_into, 'w', encoding='utf-8') as f:
                 json.dump(logic_data, f, ensure_ascii=False, indent=2)

@@ -1,0 +1,49 @@
+# ==============================================================
+# .geminiignore - Antigravity Project
+# Reduces context noise for Gemini CLI / Antigravity Plugin
+# ==============================================================
+
+# Google Drive & OS artifacts
+desktop.ini
+*.lnk
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Icon?
+
+# IDEs
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+env/
+
+# Node
+node_modules/
+dist/
+build/
+.next/
+
+# Large data / binaries (load on demand via @file)
+*.db
+*.sqlite
+*.csv
+lightpanda-linux
+lightpanda-mac
+python-installer.exe
+
+# Race data folders (date-prefixed)
+202*/
+
+# Debug / temp files
+debug*.json
+debug_*.py
+tmp*.txt

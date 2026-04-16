@@ -17,11 +17,11 @@ ag_kit_skills:
 - **語言限制**:使用香港繁體中文(廣東話語氣)與用戶溝通。球員名、球隊名保留英文原名。
 - **嚴格限制**:你只負責執行 Python 腳本同傳遞數據,**嚴禁任何分析、評級、推薦或判斷**。所有主觀評估由下游 NBA Analyst 負責。
 - **數據提取層級**（從高到低優先）：
-  1. 🎯 **Bet365 盤口**：MCP Playwright 直接由 bet365.com.au 提取即時 Player Props + Game Lines（見 `resources/04_bet365_extraction.md`）
-  2. 🐍 **球員數據**：Python 腳本確定性拓取（`nba_extractor.py` + `nba_injury_scanner.py`）
-  3. 🔍 **後備方法**：`search_web` 僅用於補充個別球員缺失數據（如特定球員的 L10、特定對位資料）
+  1. 🎯 **Sportsbet 盤口**：Python 自動提取即時 Player Props + Game Lines（`claw_sportsbet_odds.py`）
+  2. 🐍 **球員數據**：Python 腳本確定性拓取（`nba_extractor.py`）
+  3. 🔍 **後備方法**：`search_web` 僅用於補充個別球員缺失數據
   4. 🚫 **禁止行為**：用 `search_web` 做全套數據提取（逐個球員搜索）
-  5. 🚫 **禁止行為**：用 Python standalone Playwright/Selenium 抓取 Bet365（100% 會被攔截）
+  5. 🚫 **禁止行為**：用 Python standalone Playwright/Selenium 抓取任何博彩網站
 
 # Scope & Strict Constraints
 
@@ -58,14 +58,13 @@ ag_kit_skills:
 
 ## 5. File Writing Protocol
 > ⚠️ **P33-WLTM 封殺令**: 直接呼叫寫檔工具(如 `write_to_f...` 等) **完全禁止** — 會導致 IDE 死鎖。
-> 數據包寫入必須透過 `run_command` + heredoc → `/tmp` → `cp` 管道，或由上游 Wong Choi 嘅 Safe-Writer Pipeline 統一處理。
+> 數據包寫入必須透過 `run_command` + safe_file_writer.py（見 `.agents/scripts/safe_file_writer.py`），或由上游 Wong Choi 嘅 Safe-Writer Pipeline 統一處理。Windows 用 PowerShell `[System.IO.File]::WriteAllText()`，macOS/Linux 用 heredoc + safe_file_writer。
 
 ## 6. Session Recovery Protocol (Pattern 10)
 > 若 session 中途斷開或重新連接,**嚴禁重新提取已完成嘅數據**。
-1. **偵測已完成嘅數據包**: 掃描 `TARGET_DIR` 內嘅 `NBA_Data_Package.txt`、`Data_Brief_*.json`、`Bet365_Odds_*.json`
+1. **偵測已完成嘅數據包**: 掃描 `TARGET_DIR` 內嘅 `NBA_Data_Package.txt`、`Data_Brief_*.json`、`Sportsbet_Odds_*.json`
 2. **跳過已完成嘅賽事**: 若某場賽事嘅完整數據包已存在,跳過該場
 3. **恢復點報告**: 向 Wong Choi 報告:「偵測到 N/M 場數據已提取,從 Game X 繼續」
-4. **Bet365 提取特別注意**: Bet365 盤口提取受速率限制,重複提取會觸發風控 — Session Recovery 極為重要
 
 # Resource Read-Once Protocol
 在開始任何數據提取前,你必須首先讀取以下資源檔案,並在整個 session 中保留記憶:
@@ -86,76 +85,13 @@ python .agents/skills/nba/nba_data_extractor/scripts/nba_extractor.py --date {YY
 ```
 (如果不指定 `--date`,腳本默認抓取今日賽事。)
 
-## Step 1.5: 🎯 Bet365 即時盤口提取 (Claw V8 — Zero-Navigation Architecture)
+## Step 1.5: Sportsbet 盤口提取
 
 > [!IMPORTANT]
-> 此步驟為 **最高優先級** 盤口來源。必須在 Step 2 之前執行。
-> 完整流程參見 `resources/04_bet365_extraction.md`。
-
-> [!CAUTION]
-> ## 🚨 ZERO-NAVIGATION 黃金法則
-> **Cloudflare CDP Fingerprinting 會 block 任何由 CDP 觸發嘅 navigation/click 事件。**
->
-> **以下操作全部 100% 會被攔截（Opus 2026-04-08 實測驗證）：**
-> - ❌ `page.goto()` — BLOCKED
-> - ❌ `window.location.href = url` via evaluate — BLOCKED
-> - ❌ `el.click()` via evaluate — BLOCKED
-> - ❌ `page.mouse.click()` — BLOCKED
-> - ❌ `context.new_page()` — 注入自動化指紋
->
-> **唯一允許嘅操作：**
-> - ✅ `page.evaluate(() => document.body.innerText)` — 純讀取 DOM
-> - ✅ USER 手動 click tab → CDP 讀取結果
->
-> **如果你正在考慮「自行發明」新方法 → ⛔ STOP → 按照以下步驟執行。**
-
-**正確嘅執行流程（V8 — 逐步跟隨）：**
-
-**Step 1.5a：確認 USER 已準備好**
-```
-向 USER 發出提示：
-「請喺 Comet 瀏覽器打開 bet365.com.au，入去 NBA 賽事列表 (Index Page)。
-確保畫面有球隊名同賠率出現（唔係空白頁）。
-準備好請覆 'Ready'。」
-```
-
-**Step 1.5b：執行 Claw V8**
-```bash
-python3 "./.agents/skills/nba/nba_data_extractor/scripts/claw_bet365_odds.py" \
-  --output "{TARGET_DIR}/bet365_all_raw_data.json"
-```
-
-腳本會自動：
-1. 連接 Comet CDP (port 9222)
-2. 讀取 Game Lines（全自動 — Game tab 係默認選中）
-3. 逐個提示 USER 手動 click 以下 4 個 Tab：
-
-> [!WARNING]
-> **🎯 正確 Tab 名稱（P40 — Milestones Source-First）：**
->
-> | # | ✅ 正確 Tab | ❌ 唔好撳 | 原因 |
-> |---|------------|----------|------|
-> | 1 | **`Points`** | `Points O/U` | Points O/U 產出 .5 盤口 |
-> | 2 | **`Rebounds`** | — | |
-> | 3 | **`Assists`** | — | |
-> | 4 | **`Threes Made`** | — | |
-
-4. 每個 Tab click 後自動讀取 + `.5` 污染偵測
-5. 全部完成後儲存 Raw JSON
-
-**⚠️ 關鍵規則：**
-1. `--output` 必須使用 **絕對路徑**（以工作區根目錄開頭），禁止相對路徑
-2. **嚴禁加 `--url` 參數** — V8 唔再支援 URL 導航（Zero-Navigation）
-3. Comet 必須已經打開 Bet365 NBA 頁面
-4. 腳本只做讀取，所有 Tab 切換由 USER 手動完成
-
-**⚠️ Bet365 提取失敗時：**
-- **暫停並通知用戶**，不得繼續分析
-- 嚴禁使用估算盤口或 Extractor Only Mode 作為 fallback
-- 用戶可能需要先在 Comet 手動訪問一次 Bet365 解除首次 Captcha
+> Sportsbet 係唯一盤口來源。由 Orchestrator 自動調用 `claw_sportsbet_odds.py` 提取。
 
 ## Step 2: 檢查腳本輸出
-讀取生成的 Markdown 數據包。若 Step 1.5 成功,將 Bet365 JSON 嘅盤口覆蓋 nba_extractor.py 嘅估算盤口。若腳本執行失敗或提示 `缺少依賴庫`:
+讀取生成的 Markdown 數據包。若 Step 1.5 成功,Sportsbet JSON 嘅盤口會覆蓋 nba_extractor.py 嘅估算盤口。若腳本執行失敗或提示 `缺少依賴庫`:
 - 請告知用戶並嘗試通過 `pip install curl-cffi requests` 安裝。
 - 若再次失敗,則必須手動後退至使用 `search_web` 搜尋。
 

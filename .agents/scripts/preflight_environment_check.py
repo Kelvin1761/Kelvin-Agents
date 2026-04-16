@@ -19,44 +19,7 @@ ALLOWED_EXTENSIONS_IN_TARGET = {'.md', '.json', '.xlsx', '.csv', '.txt', '.numbe
 
 # Known safe Python scripts in the .agents tree (basename only)
 KNOWN_AGENT_SCRIPTS = {
-    # Shared
-    'completion_gate_v2.py', 'inject_fact_anchors.py', 'inject_hkjc_fact_anchors.py',
-    'safe_file_writer.py', 'session_cost_tracker.py', 'compute_rating_matrix.py',
-    'compute_hkjc_matrix.py', 'generate_skeleton.py', 'verify_form_accuracy.py',
-    'extract_formguide_data.py', 'inject_hkjc_batch.py', 'inject_sips.py',
-    'predict_speed_map.py', 'au_speed_map_generator.py', 'preflight_environment_check.py',
-    'session_state_manager.py', 'observation_log_manager.py', 'rule_trigger_tracker.py',
-    'sip_conflict_scanner.py', 'instinct_evaluator.py', 'narrative_postmortem_extractor.py',
-    'reflector_report_skeleton.py', 'reflector_verdict_validator.py',
-    'validator_result_comparator.py', 'validator_scope_analyzer.py',
-    'agent_health_scanner.py', 'antigravity_mapper.py', 'ecosystem_drift_detector.py',
-    'engine_coverage_matrix.py', 'engine_health_scanner.py', 'run_monte_carlo.py',
-    'compile_final_report.py', 'extract_verdicts.py', 'setup_chromadb_rag.py',
-    'hkjc_profile_scraper.py', 'scrape_hkjc_horse_profile.py',
-    'test_safe_file_writer.py', 'verify_analysis_au.py',
-    '_wong_choi_injector.py', 'wong_choi_orchestrator.py',
-    # HKJC
-    'hkjc_orchestrator.py', 'create_hkjc_logic_skeleton.py',
-    'compile_analysis_template_hkjc.py', 'compute_rating_matrix_hkjc.py',
-    'generate_hkjc_reports.py', 'validate_analysis.py', 'verify_math.py',
-    'prefill_horse_data.py', 'test_python_template_flow.py',
-    'batch_extract.py',
-    # AU
-    'au_orchestrator.py', 'create_au_logic_skeleton.py',
-    'compile_analysis_template.py', 'compute_rating_matrix_au.py',
-    'generate_reports.py', 'audit_all.py',
-    'extractor.py', 'claw_profile_scraper.py', 'claw_racenet_scraper.py',
-    # NBA
-    'bet365_parser.py', 'generate_nba_reports.py', 'generate_nba_sgm_reports.py',
-    'nba_math_engine.py', 'verify_nba_math.py', 'monte_carlo_nba.py',
-    # Monte Carlo (shared core + domain adapters)
-    'monte_carlo_core.py', 'monte_carlo_hkjc.py', 'monte_carlo_au.py',
-    # Data Crawlers
-    'crawl_hkjc_jockey_trainer.py',
-    # AU Weather & Architect
-    'track_predictor.py', 'agent_evaluator.py',
-    # Scratch handler
-    'scratch_handler.py',
+    'fill_hkjc_verdicts.py', 'instinct_evaluator.py', 'generate_nba_reports.py', 'debug_racecard.py', 'monte_carlo_nba.py', 'test_live_sections.py', 'inject_sips.py', 'claw_racenet_scraper.py', 'test_fetch_racecard.py', 'seo_checker.py', 'test_bs4_sections_2.py', 'monte_carlo_core.py', 'verify_nba_math.py', 'fetch_nba_h2h.py', 'narrative_postmortem_extractor.py', 'nba_report_generator.py', 'reflector_verdict_validator.py', 'verify_math.py', 'validator_result_comparator.py', 'bet365_parser.py', 'fetch_nba_pbp.py', 'compile_analysis_template_hkjc.py', 'extract_starter_pdf.py', 'extractor.py', 'fetch_injury_domino.py', 'cron_morning_trigger.py', 'audit_all.py', 'validate_nba_output.py', 'inject_fact_anchors.py', 'preflight_environment_check.py', 'safe_file_writer.py', 'engine_health_scanner.py', 'reflector_report_skeleton.py', 'schema_validator.py', 'prizepicks_scanner.py', 'monte_carlo_hkjc.py', 'predict_speed_map.py', 'test_bs4_full.py', 'wong_choi_orchestrator.py', 'ecosystem_drift_detector.py', 'test_runner.py', 'compute_hkjc_matrix.py', 'fast_extract_results.py', 'inject_hkjc_batch.py', 'au_speed_map_generator.py', 'observation_log_manager.py', 'test_fetch_header.py', 'debug_html.py', 'grading_engine.py', 'compute_nba_props.py', 'track_bias_tuner.py', 'test_fetch.py', 'lighthouse_audit.py', 'compile_final_report.py', 'api_validator.py', 'inject_hkjc_fact_anchors.py', 'generate_skeleton.py', 'create_hkjc_logic_skeleton.py', 'generate_nba_sgm_reports.py', 'test_safe_file_writer.py', 'auto_preview.py', 'send_telegram_msg.py', 'compile_analysis_template.py', 'combine_data.py', 'lint_runner.py', 'type_coverage.py', 'convert_rules.py', 'scrape_hkjc_horse_profile.py', 'completion_gate_v2.py', 'nba_db_logger.py', 'claw_discover_v5.py', 'react_performance_checker.py', 'compile_nba_report.py', 'scratch_handler.py', 'reflector_auto_stats.py', 'extract_formguide.py', 'test_parse_racecard.py', 'generate_hkjc_reports.py', 'agent_health_scanner.py', 'send_telegram_doc.py', 'session_manager.py', 'compute_rating_matrix_au.py', 'validate_analysis.py', 'verify_all.py', 'compute_rating_matrix_hkjc.py', 'test_fetch_header2.py', 'ux_audit.py', 'test_python_template_flow.py', 'session_state_manager.py', 'hkjc_profile_scraper.py', 'antigravity_mapper.py', 'geo_checker.py', 'au_orchestrator.py', 'nba_math_engine.py', 'verify_form_accuracy.py', 'claw_bet365_receiver.py', 'test_bs4_sections.py', 'checklist.py', 'nba_backtester.py', 'mobile_audit.py', 'extract_racecard.py', 'mc_parameter_checker.py', 'engine_coverage_matrix.py', 'security_scan.py', 'extract_verdicts.py', 'rule_trigger_tracker.py', 'monte_carlo_au.py', 'verify_grading.py', 'nba_extractor.py', 'extract_race_result.py', 'batch_extract_results.py', 'claw_bet365_odds.py', 'track_predictor.py', 'agent_evaluator.py', 'test_bs4.py', 'extract_results.py', 'i18n_checker.py', 'prefill_horse_data.py', 'claw_profile_scraper.py', 'playwright_runner.py', 'crawl_hkjc_jockey_trainer.py', 'hkjc_orchestrator.py', 'verify_analysis_au.py', 'extract_formguide_playwright.py', 'nba_orchestrator.py', 'validator_scope_analyzer.py', 'accessibility_checker.py', 'verify_props_hits.py', 'fetch_nba_results.py', '_wong_choi_injector.py', 'setup_chromadb_rag.py', 'test_racenet.py', 'session_cost_tracker.py', 'extract_formguide_data.py', 'compute_rating_matrix.py', 'generate_reports.py', 'claw_sportsbet_odds.py', 'run_monte_carlo.py', 'create_au_logic_skeleton.py', 'batch_extract.py', 'sip_conflict_scanner.py', 'inject_mc_au.py', 'generate_meeting_intel.py', 'inspect_meeting_nuxt.py'
 }
 
 
@@ -82,14 +45,14 @@ def scan_target_dir(target_dir):
 
 def scan_agents_tree(session_start_time=None):
     """Scan .agents directory for newly created/modified scripts."""
-    return []
+    issues = []
     agents_dir = ".agents"
     if not os.path.isdir(agents_dir):
         return issues
 
     for root, dirs, files in os.walk(agents_dir):
         # Skip __pycache__ and hidden dirs, and _archive
-        dirs[:] = [d for d in dirs if not d.startswith('__') and not d.startswith('.') and d != '_archive']
+        dirs[:] = [d for d in dirs if not d.startswith('__') and not d.startswith('.') and d not in ('_archive', 'venv', 'node_modules', 'lib', 'bin', 'include')]
         for f in files:
             if f.endswith('.py'):
                 if f not in KNOWN_AGENT_SCRIPTS:

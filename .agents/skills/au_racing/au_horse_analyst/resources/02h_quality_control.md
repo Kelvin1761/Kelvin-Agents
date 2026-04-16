@@ -62,7 +62,7 @@
 
 完成分析後必須執行：
 ```bash
-python3 .agents/scripts/completion_gate_v2.py "<分析檔案路徑>" --domain au
+python .agents/scripts/completion_gate_v2.py "<分析檔案路徑>" --domain au
 ```
 - ❌ FAILED → 立即修正並重新執行直到 ✅ PASSED
 - 不過關不准完成任務

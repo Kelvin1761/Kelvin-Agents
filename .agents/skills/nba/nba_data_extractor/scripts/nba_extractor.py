@@ -8,7 +8,7 @@ nba_extractor.py — NBA Wong Choi Claw Code V3 (究極版)
   2. nba_api — 全員 L10 Box Score、進階數據、Home/Away Splits、Rest Day Splits
   3. nba_api — 球員級別防守影響力 (DvP)
   4. nba_api — 球隊進階防守/進攻/節奏
-  5. The Odds API — Bet365 精確賠率 (需 API Key)
+  5. The Odds API — Sportsbet 精確賠率 (需 API Key)
   6. Claw Code (curl_cffi) — Action Network 備用賠率
 
 用法：
@@ -105,8 +105,8 @@ def cov_label(cov):
         return "🎲 神經刀"
 
 
-# Bet365 標準盤口階梯 (Player Props)
-BET365_LINES = {
+# Sportsbet 標準盤口階梯 (Player Props)
+SPORTSBET_LINES = {
     "PTS": [4.5, 9.5, 14.5, 19.5, 24.5, 29.5, 34.5, 39.5],
     "REB": [2.5, 4.5, 6.5, 8.5, 10.5, 12.5, 14.5],
     "AST": [1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5],
@@ -123,7 +123,7 @@ def compute_prop_analytics(gamelog, opp_team_stats, player_splits, is_home):
     🧠 Python Math Engine — 所有數學運算由 Python 執行，零 LLM 參與。
     
     計算項目：
-    1. 命中率 (Hit Rate) — 針對每個 Bet365 盤口階梯
+    1. 命中率 (Hit Rate) — 針對每個 Sportsbet 盤口階梯
     2. 穩膽線 (Banker Line) = AVG - 0.5*SD
     3. 價值線 (Value Line) = MED + 正面加成
     4. Pace-Adjusted Projection
@@ -173,8 +173,8 @@ def compute_prop_analytics(gamelog, opp_team_stats, player_splits, is_home):
             if split_key:
                 location_ppg = player_splits.get(split_key, 0)
         
-        # 針對每個 Bet365 盤口階梯計算命中率
-        lines = BET365_LINES.get(stat_key, [])
+        # 針對每個 Sportsbet 盤口階梯計算命中率
+        lines = SPORTSBET_LINES.get(stat_key, [])
         line_analytics = []
         for line in lines:
             # 過線場次
@@ -277,7 +277,7 @@ def compute_prop_analytics(gamelog, opp_team_stats, player_splits, is_home):
             "pace_projected": pace_projected,
             "location": location_key,
             "location_avg": location_ppg,
-            "bet365_lines": line_analytics,
+            "sportsbet_lines": line_analytics,
         }
     
     return analytics
@@ -702,24 +702,24 @@ def fetch_team_advanced_stats():
 
 
 # ==========================================
-# 模塊 7：The Odds API (Bet365 精確賠率)
+# 模塊 7：The Odds API (Sportsbet 精確賠率)
 # ==========================================
 def fetch_odds_api(sport='basketball_nba'):
-    """使用 The Odds API 獲取包含 Bet365 的精確賠率"""
+    """使用 The Odds API 獲取包含 Sportsbet 的精確賠率"""
     if not THE_ODDS_API_KEY:
         print("💰 [Module 7] The Odds API: 未設定 API Key，跳過。")
         print("   📝 設定方式: export THE_ODDS_API_KEY='你的key'")
         print("   📝 註冊免費帳號: https://the-odds-api.com")
         return {}
 
-    print("💰 [Module 7] The Odds API: 正在抓取 Bet365 賠率...")
+    print("💰 [Module 7] The Odds API: 正在抓取 Sportsbet 賠率...")
     url = f"https://api.the-odds-api.com/v4/sports/{sport}/odds/"
     params = {
         "apiKey": THE_ODDS_API_KEY,
-        "regions": "au",  # 澳洲區域 (包含 Bet365)
+        "regions": "au",  # 澳洲區域 (包含 Sportsbet)
         "markets": "spreads,totals,h2h",
         "oddsFormat": "decimal",
-        "bookmakers": "bet365",
+        "bookmakers": "sportsbet",
     }
     try:
         r = requests.get(url, params=params, timeout=10)
@@ -746,7 +746,7 @@ def fetch_odds_api(sport='basketball_nba'):
                                 outcomes[o['name'] + '_point'] = o.get('point', 0)
                         markets[key] = outcomes
                     result[f"{away} vs {home}"] = {
-                        "bookmaker": bk.get('title', 'Bet365'),
+                        "bookmaker": bk.get('title', 'Sportsbet'),
                         "markets": markets
                     }
             return result
@@ -788,7 +788,7 @@ def fetch_action_network_odds(date_str):
                 ml_home = None
                 book_name = "Consensus"
                 
-                # 優先用 book_id=68 (Bet365)，fallback 到任何可用
+                # 優先用 book_id=15 (Sportsbet)，fallback 到任何可用
                 for bid in ['68', '15', '30', '76', '69', '75', '123']:
                     bk = markets.get(bid, {})
                     if not bk:
@@ -802,7 +802,7 @@ def fetch_action_network_odds(date_str):
                         for s in spreads:
                             if s.get('side') == 'away':
                                 spread_val = s.get('value')
-                        book_name = "Bet365" if bid == '68' else f"Book_{bid}"
+                        book_name = "Sportsbet" if bid == '68' else f"Book_{bid}"
                     if totals:
                         for t in totals:
                             if t.get('side') == 'over':
@@ -1149,11 +1149,62 @@ def generate_overview_md(games, team_stats, odds_data):
 
 
 # ==========================================
+# 繞過 ESPN：直接從 game tag 建構 game_info
+# ==========================================
+def build_game_info_from_tag(game_tag):
+    """當 ESPN 搵唔到賽事時，直接從 game tag 建構 game_info。
+    用 nba_api.stats.static.teams 查兩隊嘅 full name 同 team_id。"""
+    parts = game_tag.split("_")
+    if len(parts) < 2:
+        print(f"❌ 無效嘅 game tag: {game_tag}")
+        return None
+    away_abbr, home_abbr = parts[0], parts[1]
+
+    if not NBA_API_AVAILABLE:
+        print("❌ nba_api 未安裝，無法建構 game_info。")
+        return None
+
+    all_t = teams.get_teams()
+    abbr_map = {t['abbreviation']: t for t in all_t}
+
+    away_team = abbr_map.get(away_abbr)
+    home_team = abbr_map.get(home_abbr)
+
+    if not away_team:
+        print(f"⚠️ nba_api 搵唔到球隊: {away_abbr}")
+        return None
+    if not home_team:
+        print(f"⚠️ nba_api 搵唔到球隊: {home_abbr}")
+        return None
+
+    print(f"🔧 [build_game_info_from_tag] 繞過 ESPN，直接建構: {away_team['full_name']} @ {home_team['full_name']}")
+    return {
+        "game_id": f"synthetic_{game_tag}",
+        "name": f"{away_team['full_name']} at {home_team['full_name']}",
+        "date": datetime.now().isoformat(),
+        "short_name": f"{away_abbr} @ {home_abbr}",
+        "away": {
+            "id": away_team["id"],
+            "name": away_team["full_name"],
+            "abbreviation": away_abbr,
+            "home_away": "away",
+        },
+        "home": {
+            "id": home_team["id"],
+            "name": home_team["full_name"],
+            "abbreviation": home_abbr,
+            "home_away": "home",
+        },
+        "tag": game_tag,
+    }
+
+
+# ==========================================
 # 主程式
 # ==========================================
 def main():
     parser = argparse.ArgumentParser(description="NBA Wong Choi Claw Code V3 Extractor")
-    parser.add_argument("--date", type=str, help="YYYYMMDD", default=None)
+    parser.add_argument("--date", type=str, help="YYYYMMDD (AEST)", default=None)
     parser.add_argument("--game", type=str, help="Game tag e.g. PHX_CHA", default=None)
     parser.add_argument("--output", type=str, help="Output path", default="NBA_Data_Package_Auto.md")
     args = parser.parse_args()
@@ -1163,73 +1214,132 @@ def main():
 
     print(f"🚀 ========================================")
     print(f"🚀 NBA Wong Choi Claw Code V3")
-    print(f"🚀 目標日期: {formatted_date}")
+    print(f"🚀 目標日期: {formatted_date} (AEST)")
     print(f"🚀 ========================================\n")
 
-    # Step 1: 賽程
-    events = fetch_espn_scoreboard(target_date)
-    games = parse_espn_events(events)
-    print(f"  ✅ 今日 {len(games)} 場賽事\n")
+    # ── Step 1: AEST → US 時區轉換 + ESPN 賽程發現 ──
+    # AEST 比 US Eastern 快 14 小時
+    # Sportsbet 用 AEST 日期，ESPN 用 US 日期
+    # 所以 AEST 4月16日嘅波 = US 4月15日晚嘅波
+    aest_date = datetime.strptime(target_date, "%Y%m%d")
+    prev_date = (aest_date - timedelta(days=1)).strftime("%Y%m%d")
 
-    if not games:
-        print("❌ 找不到今日賽事。")
-        sys.exit(1)
+    candidate_dates = [prev_date, target_date]  # 先試 date-1 (US date)，再試原始日期
+    print(f"📅 AEST→US 時區轉換: 嘗試 ESPN 日期 {candidate_dates}")
 
-    # Step 2: 全聯盟預載 (只拉一次，供所有比賽共用)
+    games = []
+    seen_tags = set()
+    for cd in candidate_dates:
+        events = fetch_espn_scoreboard(cd)
+        found = parse_espn_events(events)
+        for g in found:
+            if g['tag'] not in seen_tags:
+                games.append(g)
+                seen_tags.add(g['tag'])
+        print(f"  ESPN {cd}: {len(found)} 場")
+
+    print(f"\n✅ ESPN 總計發現 {len(games)} 場賽事")
+    if games:
+        for g in games:
+            print(f"   - {g['tag']}: {g['name']}")
+    print()
+
+    # ── Step 2: 全聯盟預載 (nba_api — 只拉一次) ──
     team_stats = fetch_team_advanced_stats()
     adv_stats = fetch_all_player_advanced_stats()
     defender_data = fetch_defender_impact()
     team_dvp = fetch_team_defense_vs_position()
 
-    # Step 3: 賠率 (Claw Code 主動提取)
+    # ── Step 3: 賠率 (Claw Code 主動提取) ──
     odds_data = fetch_action_network_odds(formatted_date)
-    # Fallback: The Odds API
     if not odds_data and THE_ODDS_API_KEY:
         odds_data = fetch_odds_api()
 
-    # 4. 如果指定了 --game，只提取該場
+    # ── Step 4: 單場模式 (--game) ──
     if args.game:
         target_game = None
-        mapped_tag = args.game
-        if '_' in args.game:
-            parts = args.game.split('_')
+        game_tag_input = args.game.upper().replace(" ", "_").replace("@", "_")
+
+        # 建立 ESPN abbreviation 映射版本
+        mapped_tags = [game_tag_input]
+        if '_' in game_tag_input:
+            parts = game_tag_input.split('_')
             m_away = TEAM_ABBR_ESPN_MAP.get(parts[0], parts[0])
             m_home = TEAM_ABBR_ESPN_MAP.get(parts[1], parts[1])
-            mapped_tag = f"{m_away}_{m_home}"
-        
+            espn_tag = f"{m_away}_{m_home}"
+            if espn_tag != game_tag_input:
+                mapped_tags.append(espn_tag)
+            # 亦嘗試反向映射
+            ESPN_TO_STD = {v: k for k, v in TEAM_ABBR_ESPN_MAP.items()}
+            std_away = ESPN_TO_STD.get(parts[0], parts[0])
+            std_home = ESPN_TO_STD.get(parts[1], parts[1])
+            std_tag = f"{std_away}_{std_home}"
+            if std_tag != game_tag_input:
+                mapped_tags.append(std_tag)
+
+        # 喺 ESPN 搵到嘅 games 度匹配
         for g in games:
-            if g['tag'] == args.game or args.game in g['tag'] or args.game in g['name'] or g['tag'] == mapped_tag:
-                target_game = g
+            for mt in mapped_tags:
+                if g['tag'] == mt or mt in g['tag'] or mt in g['name']:
+                    target_game = g
+                    break
+            if target_game:
                 break
+
+        # 如果 ESPN 搵唔到 → 用 nba_api 直接建構 game_info（繞過 ESPN schedule）
         if not target_game:
-            print(f"❌ 找不到比賽: {args.game}")
-            print(f"   可用: {[g['tag'] for g in games]}")
-            sys.exit(1)
+            print(f"\n⚠️ ESPN 賽程搵唔到: {game_tag_input}")
+            print(f"   ESPN 可用: {[g['tag'] for g in games]}")
+            print(f"   → 嘗試 nba_api 直接建構（繞過 ESPN schedule）...")
+            target_game = build_game_info_from_tag(game_tag_input)
+            if not target_game:
+                print(f"❌ nba_api 亦無法建構 {game_tag_input}，放棄。")
+                sys.exit(1)
+            print(f"✅ 成功建構: {target_game['name']}")
 
         package = extract_single_game(target_game, adv_stats, defender_data, team_dvp, team_stats, odds_data)
+
+        # 驗證數據品質 — 冇真實 gamelog 則 fail
+        has_real_data = False
+        for team_key in [target_game['away']['abbreviation'], target_game['home']['abbreviation']]:
+            for p in package.get('players', {}).get(team_key, []):
+                gl = p.get('gamelog')
+                if gl and gl.get('PTS') and len(gl['PTS']) > 0:
+                    has_real_data = True
+                    break
+            if has_real_data:
+                break
+
+        if not has_real_data:
+            print(f"\n❌ [品質檢查] 所有球員都冇 L10 gamelog 數據！")
+            print(f"   可能原因: nba_api 未安裝 / API 限流 / 球隊 abbreviation 唔啱")
+            sys.exit(1)
 
         # 儲存為 JSON
         output_path = args.output
         if output_path.endswith('.md'):
-            output_path = f".agents.agents/tmp/nba_game_data_{target_game['tag']}.json"
+            output_path = f"nba_game_data_{target_game['tag']}.json"
 
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(package, f, ensure_ascii=False, indent=2)
         print(f"\n✅ 單場深度數據已儲存至: {output_path}")
 
     else:
-        # 概覽模式：生成所有賽事摘要
+        # 概覽模式
+        if not games:
+            print("❌ ESPN 同 nba_api 都搵唔到賽事。")
+            sys.exit(1)
+
         overview = generate_overview_md(games, team_stats, odds_data)
         with open(args.output, "w", encoding="utf-8") as f:
             f.write(overview)
         print(f"\n✅ 賽事概覽已儲存至: {args.output}")
 
-        # 同時為每場比賽生成 JSON
         print("\n🏀 正在為每場比賽生成深度數據包...")
         for g in games:
             package = extract_single_game(g, adv_stats, defender_data, team_dvp, team_stats, odds_data)
-            
-            json_path = f".agents/tmp/nba_game_data_{g['tag']}.json"
+
+            json_path = f"nba_game_data_{g['tag']}.json"
             with open(json_path, "w", encoding="utf-8") as f:
                 json.dump(package, f, ensure_ascii=False, indent=2)
             print(f"  ✅ {g['tag']} → {json_path}")

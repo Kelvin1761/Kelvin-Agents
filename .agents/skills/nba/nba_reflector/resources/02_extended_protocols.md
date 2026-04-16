@@ -25,7 +25,7 @@
 > **檢查原始分析有冇違反結構規則（Batch QA 會涵蓋嘅嘢）。**
 
 **V5+ 新格式檢查:**
-- `odds_source` header 係咪存在且標明 BET365_LIVE ✅？
+- `odds_source` header 係咪存在且標明 SPORTSBET_LIVE ✅？
 - 引擎版本標記係咪存在？
 - 若 Blowout 風險場次 → 有冇相應嘅 `[!CAUTION]` 風險標記？
 - 原始分析有冇完整輸出 ≥2 個 SGM 組合？（V5+ 唔再強制 3 組，但 ≥2 係底線）

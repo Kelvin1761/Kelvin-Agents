@@ -82,7 +82,7 @@ Blowout 分析:
 - `fetch_nba_pbp.py` 觸發場次: [列出] / 未觸發 (原因)
 
 📊 odds_source 可靠性審計
-- odds_source 是否為 BET365_LIVE？若否 → 盤口準確度可能有偏差
+- odds_source 是否為 SPORTSBET_LIVE？若否 → 盤口準確度可能有偏差
 - Blowout 風險標記是否準確？（最終分差 vs 預測分差）
 - Python vs Analyst 分工是否有效？（Analyst 有冇真正提出獨立見解）
 

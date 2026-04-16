@@ -6,6 +6,9 @@ import argparse
 import base64
 import subprocess
 
+# Import shared qualitative rating engine v2 (replaces deprecated grading_engine)
+from rating_engine_v2 import compute_base_grade, compute_weighted_score, apply_fine_tune, parse_matrix_scores
+
 # Convert numeric rating to letter grade
 def num_to_grade(val):
     """Convert a numeric string rating to a letter grade. Pass-through if already a letter."""
@@ -35,11 +38,13 @@ def inject_horse_data(horse_chunk, data):
             data.get('matrix', {}).get('class_advantage', {}).get('score', '➖'), 
             data.get('matrix', {}).get('forgiveness_bonus', {}).get('score', '➖')]
             
-    core_pass = sum(1 for c in cores if '✅' in c)
-    semi_pass = sum(1 for c in semis if '✅' in c)
-    aux_pass = sum(1 for c in auxs if '✅' in c)
-    core_fail = sum(1 for c in cores if '❌' in c)
-    total_fail = core_fail + sum(1 for c in semis if '❌' in c) + sum(1 for c in auxs if '❌' in c)
+    hkjc_schema = {
+        'stability': 'core', 'speed_mass': 'core',
+        'eem': 'semi', 'trainer_jockey': 'semi',
+        'scenario': 'aux', 'freshness': 'aux', 'formline': 'aux',
+        'class_advantage': 'aux', 'forgiveness_bonus': 'aux'
+    }
+    core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(data.get('matrix', {}), hkjc_schema)
 
     uh_trig = "觸發" if data.get('underhorse', {}).get('triggered', False) else "未觸發"
     uh_cond = data.get('underhorse', {}).get('condition', '')
@@ -72,9 +77,9 @@ def inject_horse_data(horse_chunk, data):
         (r'- 寬恕加分: `\[FILL\].*?` \| 理據: `\[FILL\]`', f"- 寬恕加分: `{auxs[4]}` | 理據: `{data.get('matrix', {}).get('forgiveness_bonus', {}).get('reasoning', '')}`"),
         
         (r'\*\*🔢 矩陣算術:\*\* 核心✅=\[FILL\] \| 半核心✅=\[FILL\] \| 輔助✅=\[FILL\] \(含寬恕加分\) \| 總❌=\[FILL\] \| 核心❌=\[FILL\] → 查表命中行=\[FILL\]', 
-         f"**🔢 矩陣算術:** 核心✅={core_pass} | 半核心✅={semi_pass} | 輔助✅={aux_pass} (含寬恕加分) | 總❌={total_fail} | 核心❌={core_fail} → 查表命中行=-"),
+         f"**🔢 矩陣算術:** 核心✅={core_pass} | 半核心✅={semi_pass} | 輔助✅={aux_pass} (含寬恕加分) | 總❌={total_fail} | 核心❌={core_fail} → 查表命中行={compute_weighted_score(core_pass, semi_pass, aux_pass, core_fail, total_fail)}"),
         
-        (r'\*\*14\.2 基礎評級:\*\* `\[FILL\]` \| `\[FILL\]`', f"**14.2 基礎評級:** `{num_to_grade(data.get('base_rating', '-'))}` | `-`"),
+        (r'\*\*14\.2 基礎評級:\*\* `\[FILL\]` \| `\[FILL\]`', f"**14.2 基礎評級:** `{compute_base_grade(core_pass, semi_pass, aux_pass, core_fail, total_fail)}` | `{compute_weighted_score(core_pass, semi_pass, aux_pass, core_fail, total_fail)}`"),
         (r'\*\*14\.2B 微調:\*\* `\[FILL\]` \| `\[FILL\]`', f"**14.2B 微調:** `{data.get('fine_tune', {}).get('direction', '-')}` | `{data.get('fine_tune', {}).get('trigger', '-')}`"),
         (r'\*\*14\.3 覆蓋:\*\* `\[FILL\]`', f"**14.3 覆蓋:** `{data.get('override', {}).get('rule', '-')}`"),
         
@@ -82,7 +87,7 @@ def inject_horse_data(horse_chunk, data):
         (r'> - \*\*最大競爭優勢:\*\* \[明確列出\]', f"> - **最大競爭優勢:** {data.get('advantages', '')}"),
         (r'> - \*\*最大失敗風險:\*\* \[若為A-或以上必須寫,否則明確寫「無」\]', f"> - **最大失敗風險:** {data.get('disadvantages', '')}"),
         
-        (r'\*\*⭐ 最終評級:\*\* `\[FILL\]`', f"**⭐ 最終評級:** `{num_to_grade(data.get('final_rating', '-'))}`"),
+        (r'\*\*⭐ 最終評級:\*\* `\[FILL\]`', f"**⭐ 最終評級:** `{apply_fine_tune(compute_base_grade(core_pass, semi_pass, aux_pass, core_fail, total_fail), data.get('fine_tune', {{}}).get('direction', ''))}`"),
         
         (r'🐴⚡ \*\*冷門馬訊號 \(Underhorse Signal\):\*\* `\[觸發 / 未觸發\]`\n(?:若觸發,必須列明:\n- \*\*受惠條件:\*\* `\[.*?\]`\n- \*\*理由:\*\* \[.*?\])?', 
          f"🐴⚡ **冷門馬訊號 (Underhorse Signal):** `{uh_trig}`" + (f"\n若觸發,必須列明:\n- **受惠條件:** `{uh_cond}`\n- **理由:** {uh_reason}" if uh_trig == '觸發' else ""))

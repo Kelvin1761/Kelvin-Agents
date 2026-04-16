@@ -19,7 +19,7 @@
 
 # 🏀 NBA Wong Choi — [Python 預填: 隊A] @ [Python 預填: 隊B]
 **日期**: [Python 預填] | **Sportsbet 提取時間**: [Python 預填]
-**odds_source**: BET365_LIVE ✅ | **引擎版本**: Adjusted Win Prob V3 (8-Factor)
+**odds_source**: SPORTSBET_LIVE ✅ | **引擎版本**: Adjusted Win Prob V3 (8-Factor)
 
 ---
 
@@ -144,7 +144,7 @@
 
 ## ✅ 盤口數據來源驗證
 > **Sportsbet Claw V6** (Comet CDP) 即時提取 | 提取時間: [Python 預填]
-> 所有 Lines/Odds 來自 bet365.com.au DOM Snapshot
+> 所有 Lines/Odds 來自 Sportsbet JSON 提取
 > Sportsbet 線格式: "10+" = 10 分或以上 (≥10)
 
 ## 📋 自檢

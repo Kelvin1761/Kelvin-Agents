@@ -16,11 +16,11 @@
 ## Step 2: 構建三層級組合 (1 + 2 + 3 + X 條件觸發)
 
 > [!IMPORTANT]
-> 所有賠率來自 **Bet365 直接提取**。組合賠率以 Bet365 SGM 實際顯示為準。
-> Python Generator 會從 Bet365 提取嘅 per-leg odds 相乘計算參考組合賠率，但實際投注時以 Bet365 SGM 頁面顯示嘅組合賠率為準。
+> 所有賞率來自 **Sportsbet 直接提取**。組合賞率以 Sportsbet SGM 實際顯示為準。
+> Python Generator 會從 Sportsbet 提取嘅 per-leg odds 相乘計算參考組合賞率，但實際投注時以 Sportsbet SGM 頁面顯示嘅組合賞率為準。
 
 ### 🛡️ 穩膽型 (Banker Tier — 組合 1)
-- **組合賠率（Bet365 Legs 相乘）≥ 2.0 倍**
+- **組合賞率（Sportsbet Legs 相乘）≥ 2.0 倍**
 - 要求每腿 L10 命中率 **≥70%**
 - 優先選用 CoV < 0.25 嘅極度穩定球員
 - **建議關數: 2-4 Leg（彈性關數策略）**
@@ -29,14 +29,14 @@
   - 3-Leg 穩膽只需每腿賠率 ≥ 1.3+
 
 ### 🔥 均衡 +EV 價值膽 (Value Tier — 組合 2)
-- **組合賠率（Bet365 Legs 相乘）≥ 3.0 倍，目標 5x**
+- **組合賞率（Sportsbet Legs 相乘）≥ 3.0 倍，目標 5x**
 - 要求每腿 L10 命中率 **≥40%** + Edge ≥ -5%
 - 主力正盤與對位弱點針對
 - 可混搭穩膽線 + 價值線 Legs
 - **建議關數: 2-4 Leg（彈性關數策略）**
 
 ### 💎 價值型小博大 (High Odds Tier — 組合 3)
-- **組合賠率（Bet365 Legs 相乘）≥ 8.0 倍**
+- **組合賞率（Sportsbet Legs 相乘）≥ 8.0 倍**
 - 容忍更高風險,但個別腿保持 **≥40% 命中率**
 - 可包含高波動球員嘅爆發盤口
 - 適合使用 Under 偵測篩選出嘅 Under Legs
@@ -82,9 +82,9 @@
 
 ---
 
-## Bet365 嚴格選項規則 (Strict Built-in Matrix)
+## Sportsbet 嚴格選項規則 (Strict Built-in Matrix)
 
-**CRITICAL CONSTRAINT**: 你**只能**推薦以下 Bet365 預先設定好嘅 Milestone 選項(對應 Over N-0.5)。絕對**嚴禁**自己發明任何中間數字(例如 22.5, 6.5 PTS),否則為嚴重違規。
+**CRITICAL CONSTRAINT**: 你**只能**推薦以下 Sportsbet 預先設定好嘅 Milestone 選項(對應 Over N-0.5)。絕對**嚴禁**自己發明任何中間數字(例如 22.5, 6.5 PTS),否則為嚴重違規。
 
 ### 得分 (Points / Scoring)
 - 只能選擇以下目標:5, 10, 15, 20, 25, 30, 35, 40, 45, 50 
@@ -103,28 +103,28 @@
 - 即盤口必須寫為:AST Over 2.5, Over 4.5, Over 6.5, Over 9.5, Over 12.5, Over 14.5
 
 ### 其他數據 (Blocks, Steals, 組合數據)
-- 若選擇其他盤口,必須參考球員常規選項,否則強烈建議僅推薦上述 4 種核心選項,避免造出 Bet365 無法投注嘅虛假盤口。
+- 若選擇其他盤口,必須參考球員常規選項,否則強烈建議僅推薦上述 4 種核心選項,避免造出 Sportsbet 無法投注嘅虛假盤口。
 
 ---
 
 ## 賠率來源規則
 
-### 有 Bet365 即時賠率（標準流程）
-直接使用 Claw V6 / MCP Playwright 提取嘅 Bet365 賠率。
-組合賠率 = Leg 賠率相乘（參考值），實際以 Bet365 SGM 顯示為準。
+### 有 Sportsbet 即時賞率（標準流程）
+直接使用 `claw_sportsbet_odds.py` 提取嘅 Sportsbet 賞率。
+組合賞率 = Leg 賞率相乘（參考值），實際以 Sportsbet SGM 顯示為準。
 
-### 無即時賠率（Fallback）
+### 無即時賞率（Fallback）
 使用美式基準估算:
 - 標準盤口 Over/Under:**1.90**
 - Alt Lines (降低 1 級):約 **1.50-1.65**
 - Alt Lines (升高 1 級):約 **2.20-2.50**
 - Alt Lines (升高 2 級):約 **3.00-3.50**
 
-### 組合賠率計算
+### 組合賞率計算
 ```
-參考組合賠率 = Leg1 賠率 × Leg2 賠率 × ... × LegN 賠率
+參考組合賞率 = Leg1 賞率 × Leg2 賞率 × ... × LegN 賞率
 ```
-> ⚠️ 以上為數學參考值。實際 Bet365 SGM 價格可能因關聯性調整而不同，落注前請以 Bet365 顯示為準。
+> ⚠️ 以上為數學參考值。實際 Sportsbet SGM 價格可能因關聯性調整而不同，落注前請以 Sportsbet 顯示為準。
 
 ---
 

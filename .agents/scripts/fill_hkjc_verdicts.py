@@ -6,7 +6,14 @@ import base64
 import subprocess
 import os
 
-GRADE_ORDER = ['S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D']
+GRADE_ORDER = ['S+', 'S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D']
+
+# Import shared qualitative rating engine v2 (replaces deprecated grading_engine)
+import sys, os
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+if _script_dir not in sys.path:
+    sys.path.insert(0, _script_dir)
+from rating_engine_v2 import compute_weighted_score, grade_sort_index
 
 def parse_md(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -54,14 +61,23 @@ def parse_md(filepath):
         
         total_strong = core_str + semi_str + aux_str
         
+        # Extract core_fail from the matrix arithmetic line for weighted scoring
+        core_fail_match = re.search(r'核心❌=(\d+)', block)
+        core_fail_val = int(core_fail_match.group(1)) if core_fail_match else 0
+        weighted_score = compute_weighted_score(core_str, semi_str, aux_str, core_fail_val, tot_cross)
+        
         horses.append({
-            'num': num, 'name': name, 'grade': grade_str, 'grade_idx': grade_idx,
+            'num': num, 'name': name, 'grade': grade_str, 'grade_idx': grade_sort_index(grade_str),
             'core_str': core_str, 'tot_cross': tot_cross, 'total_strong': total_strong,
+            'weighted_score': weighted_score, 'core_fail': core_fail_val,
             'logic': logic, 'risk': risk
         })
 
     def sort_key(h):
-        return (h['grade_idx'], -h['total_strong'], h['tot_cross'])
+        # Primary: weighted_score (higher = better, so negate for ascending sort)
+        # Secondary: total_strong ✅ count (higher = better)
+        # Tertiary: fewer ❌ is better
+        return (-h['weighted_score'], -h['total_strong'], h['tot_cross'])
     
     ranked = sorted(horses, key=sort_key)
     return ranked, text

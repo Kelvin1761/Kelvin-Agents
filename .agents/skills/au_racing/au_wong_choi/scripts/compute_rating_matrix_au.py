@@ -42,114 +42,48 @@ import json
 import sys
 import argparse
 from pathlib import Path
+import os
 
-
-# ── Grade System ──────────────────────────────────────────────
-
-GRADE_ORDER = [
-    'S+', 'S', 'S-',
-    'A+', 'A', 'A-',
-    'B+', 'B', 'B-',
-    'C+', 'C', 'C-',
-    'D+', 'D',
-]
-
-def grade_idx(g: str) -> int:
-    try:
-        return GRADE_ORDER.index(g)
-    except ValueError:
-        return len(GRADE_ORDER)
-
-
-# ── Dimension Classification ─────────────────────────────────
-
-CORE = ['stability', 'sectional']
-HALF = ['eem', 'jockey_trainer']
-AUX  = ['class_weight', 'track', 'form_line', 'gear_distance']
-
-DIM_LABELS = {
-    'stability': '狀態與穩定性',
-    'sectional': '段速與引擎',
-    'eem': 'EEM與形勢',
-    'jockey_trainer': '騎練訊號',
-    'class_weight': '級數與負重',
-    'track': '場地適性',
-    'form_line': '賽績線',
-    'gear_distance': '裝備與距離',
-}
-
-
-def count_dims(dims: dict) -> dict:
-    counts = {
-        'core_strong': 0, 'core_weak': 0,
-        'half_strong': 0, 'half_weak': 0,
-        'aux_strong': 0, 'aux_weak': 0,
-        'total_strong': 0, 'total_weak': 0,
-    }
-    for d in CORE:
-        v = dims.get(d, '➖')
-        if v == '✅': counts['core_strong'] += 1; counts['total_strong'] += 1
-        elif v == '❌': counts['core_weak'] += 1; counts['total_weak'] += 1
-    for d in HALF:
-        v = dims.get(d, '➖')
-        if v == '✅': counts['half_strong'] += 1; counts['total_strong'] += 1
-        elif v == '❌': counts['half_weak'] += 1; counts['total_weak'] += 1
-    for d in AUX:
-        v = dims.get(d, '➖')
-        if v == '✅': counts['aux_strong'] += 1; counts['total_strong'] += 1
-        elif v == '❌': counts['aux_weak'] += 1; counts['total_weak'] += 1
-    return counts
-
-
-def effective_ticks(counts: dict) -> float:
-    return counts['core_strong'] * 2.0 + counts['half_strong'] * 1.5 + counts['aux_strong'] * 1.0
-
-
-# ── Lookup Table ──────────────────────────────────────────────
-
-def lookup_base_grade(counts: dict) -> str:
-    cs, hs, aw, tw = counts['core_strong'], counts['half_strong'], counts['aux_strong'], counts['total_weak']
-    cw = counts['core_weak']
-    if cw >= 1:
-        if tw >= 3: return 'D'
-        if cs == 0 and hs == 0: return 'D+'
-        return 'C'
-    if cs == 2 and hs >= 1 and tw == 0: return 'S'
-    if cs == 2 and hs >= 1 and tw <= 1: return 'S-'
-    if cs == 2 and tw <= 1: return 'A+'
-    if cs == 2: return 'A'
-    if cs == 1 and hs >= 1 and tw == 0: return 'A-'
-    if cs == 1 and hs >= 1: return 'B+'
-    if cs == 1: return 'B'
-    if hs >= 2 and aw >= 2: return 'B-'
-    if hs >= 1 and aw >= 2: return 'C+'
-    if aw >= 3: return 'C'
-    if tw >= 5 and cs == 0:
-        if aw >= 1: return 'D+'
-        return 'D'
-    return 'C-'
-
-
-def apply_micro(grade: str, ups: list, downs: list) -> str:
-    idx = grade_idx(grade)
-    net = len(ups) - len(downs)
-    new_idx = max(0, min(len(GRADE_ORDER) - 1, idx - net))
-    return GRADE_ORDER[new_idx]
+# Import shared qualitative rating engine v2 (replaces deprecated grading_engine)
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../scripts")))
+from rating_engine_v2 import compute_base_grade, compute_weighted_score, apply_fine_tune, parse_matrix_scores, grade_sort_index, grade_idx, apply_s_grade_guards, GRADE_ORDER, grade_up
 
 
 # ── Single Horse Pipeline ────────────────────────────────────
 
 def compute_one(h: dict) -> dict:
     dims = h['dimensions']
-    counts = count_dims(dims)
-    base = lookup_base_grade(counts)
+    matrix_keys_map = {
+        "stability": "core", "sectional": "core",
+        "eem": "semi", "jockey_trainer": "semi",
+        "class_weight": "aux", "track": "aux", 
+        "form_line": "aux", "gear_distance": "aux",
+    }
+    
+    core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(dims, matrix_keys_map)
+    
     fg = h.get('forgiveness_bonus', False)
     if fg:
-        counts['aux_strong'] += 1
-        counts['total_strong'] += 1
-        base = lookup_base_grade(counts)
-    micro = apply_micro(base, h.get('micro_up', []), h.get('micro_down', []))
-    final = micro
+        aux_pass += 1
+        
+    w_score = compute_weighted_score(core_pass, semi_pass, aux_pass, core_fail, total_fail)
+    base = compute_base_grade(core_pass, semi_pass, aux_pass, core_fail, total_fail)
+    
+    net = len(h.get('micro_up', [])) - len(h.get('micro_down', []))
+    ft_dir = '+' if net > 0 else ('-' if net < 0 else '')
+    after_ft = apply_fine_tune(base, ft_dir)
+    
+    # ── SIP-9 + SIP-SL01 S-Grade Inflation Guards ──
+    counts = {
+        'core_strong': core_pass, 'semi_strong': semi_pass, 'aux_strong': aux_pass,
+        'total_strong': core_pass + semi_pass + aux_pass, 'total_weak': total_fail,
+        'has_core_weak': core_fail > 0,
+    }
+    final, guard_note = apply_s_grade_guards(
+        after_ft, h, counts, dims, {},
+        sectional_key='sectional', class_key='class_weight'
+    )
+    
     return {
         'num': h['num'],
         'name': h['name'],
@@ -158,19 +92,178 @@ def compute_one(h: dict) -> dict:
         'weight_kg': h.get('weight_kg', 0),
         'barrier': h.get('barrier', 0),
         'dimensions': dims,
-        'counts': counts,
-        'effective_ticks': effective_ticks(counts),
+        'counts': {'total_strong': core_pass+semi_pass+aux_pass, 'total_weak': total_fail},
+        'effective_ticks': w_score,
         'base_grade': base,
-        'micro_grade': micro,
+        'micro_grade': after_ft,
         'final_grade': final,
+        'guard_note': guard_note,
         'stability_index': h.get('stability_index', 0),
+        'weighted_score': w_score
     }
+
+
+# ── AU Override Chain (14 rules from 02g_override_chain.md) ─────────
+# Priority: P0 > P1 > P2 > P3 > P4 > P5 > P6 > P7
+# Ceiling always beats floor when conflicting.
+
+def apply_au_overrides(result: dict, horse: dict, ctx: dict) -> dict:
+    """Post-processing override chain for AU racing.
+    Applies caps and floors in priority order to the final_grade."""
+    grade = result['final_grade']
+    dims = result.get('dimensions', {})
+    notes = []
+
+    # Track the strictest ceiling applied (ceiling always beats floor)
+    lowest_ceiling_idx = 0  # S = index 0 (no cap)
+
+    # Helper: cap grade (ceiling)
+    def cap(g, ceiling, note):
+        nonlocal lowest_ceiling_idx
+        ceil_idx = grade_idx(ceiling)
+        if grade_idx(g) < ceil_idx:
+            notes.append(note)
+            if ceil_idx > lowest_ceiling_idx:
+                lowest_ceiling_idx = ceil_idx
+            return ceiling
+        # Even if grade already below ceiling, track it
+        if ceil_idx > lowest_ceiling_idx:
+            lowest_ceiling_idx = ceil_idx
+        return g
+
+    # Helper: floor grade (minimum) — cannot exceed lowest ceiling
+    def floor(g, minimum, note):
+        # Enforce: ceiling always beats floor
+        effective_min = minimum
+        if lowest_ceiling_idx > 0 and grade_idx(minimum) < lowest_ceiling_idx:
+            effective_min = GRADE_ORDER[lowest_ceiling_idx]
+        if grade_idx(g) > grade_idx(effective_min):
+            notes.append(note)
+            return effective_min
+        return g
+
+    si = horse.get('stability_index', result.get('stability_index', 0))
+    risk_markers = horse.get('risk_markers', [])
+    risk_count = len(risk_markers) if isinstance(risk_markers, list) else int(risk_markers or 0)
+
+    # ── P0: Absolute Risk Cap ──
+    if risk_count >= 4:
+        grade = 'D'
+        notes.append(f'P0風險封頂: {risk_count}項風險標記 → 自動D')
+        result['final_grade'] = grade
+        result['override_notes'] = notes
+        return result  # All floors disabled
+
+    # ── P1: Core Engine Wall (already in compute_one via engine) ──
+    # (handled by rating_engine_v2 apply_core_constraint if needed)
+
+    # ── P2: Scenario Caps (High) ──
+    # 2YO cap
+    if horse.get('is_2yo', False):
+        grade = cap(grade, 'A-', 'P2: 2歲馬封頂A-')
+
+    # Distance wall
+    if horse.get('distance_wall', False):
+        grade = cap(grade, 'A-', 'P2: 距離牆封頂A-')
+
+    # Long spell
+    if horse.get('long_spell', False):
+        grade = cap(grade, 'A-', 'P2: 久休封頂A-')
+
+    # ── P3: Scenario Caps (Medium) ──
+    # Trial illusion
+    if horse.get('trial_illusion', False):
+        grade = cap(grade, 'B+', 'P3: 試閘虛火封頂B+')
+
+    # Wet track unknown/risk (SIP-RF02)
+    wet_tier = horse.get('wet_track_tier', 0)
+    is_wet = ctx.get('going', '').lower().startswith(('soft', 'heavy'))
+    if is_wet and wet_tier == 4:
+        grade = cap(grade, 'A-', 'P3 SIP-RF02: 濕地未知封頂A-')
+    elif is_wet and wet_tier == 5:
+        grade = cap(grade, 'B+', 'P3 SIP-RF02: 濕地風險封頂B+')
+
+    # Good track win rate cap (SIP-RR14)
+    good_wr = horse.get('good_track_win_rate', None)
+    good_sample = horse.get('good_track_sample', 0)
+    is_good = 'good' in ctx.get('going', '').lower()
+    if is_good and good_sample >= 8 and good_wr is not None and good_wr <= 0.15:
+        grade = cap(grade, 'B', 'P3 SIP-RR14: Good地勝率≤15%封頂B')
+
+    # Track geometry cap for closers
+    closer_cap_track = horse.get('closer_cap_track', False)
+    if closer_cap_track:
+        field_size = ctx.get('field_size', 0)
+        has_sec_pass = '✅' in str(dims.get('sectional', ''))
+        if field_size >= 13 and has_sec_pass:
+            pass  # Cap removed
+        elif field_size >= 13:
+            grade = cap(grade, 'A-', 'P3: 急彎後追(大場)封頂A-')
+        else:
+            grade = cap(grade, 'B+', 'P3: 急彎後追馬封頂B+')
+
+    # Rosehill 1200m traffic chain
+    if horse.get('rosehill_1200_traffic', False):
+        grade = cap(grade, 'B-', 'P3: 玫瑰崗1200m塞車封頂B-')
+
+    # ── P4: S-Grade Guards (already applied in compute_one) ──
+    # SIP-9/SIP-SL01 handled above
+
+    # ── Compound risk escalation (2-3 items) ──
+    if risk_count == 3:
+        grade = cap(grade, 'C+', 'P2風險升級: 3項風險標記封頂C+')
+    elif risk_count == 2:
+        grade = cap(grade, 'B', 'P2風險升級: 2項風險標記封頂B')
+
+    # ── P5: High-Priority Floors ──
+    # SIP-RR17 Wet track momentum floor
+    momentum = horse.get('momentum_level', '')
+    if is_wet and momentum in ('positive', 'strong'):
+        grade = floor(grade, 'B+', f'P5 SIP-RR17: 濕地動力保底B+ ({momentum})')
+
+    # ── P6: Super Iron Legs Floor ──
+    if si > 0.7:
+        grade = floor(grade, 'B+', f'P6: 超級鐵腳保底B+ (SI={si})')
+    # ── P7: Iron Legs Floor ──
+    elif si > 0.5:
+        grade = floor(grade, 'B', f'P7: 鐵腳保底B (SI={si})')
+
+    # Class override floor
+    has_sec = '✅' in str(dims.get('sectional', ''))
+    has_cls = '✅' in str(dims.get('class_weight', ''))
+    has_eem = '✅' in str(dims.get('eem', ''))
+    if has_sec and (has_cls or has_eem):
+        grade = floor(grade, 'B', 'P7: 級數首選保底B')
+
+    # EEM consecutive high-drain upgrade
+    if horse.get('eem_3_high_drain', False) and horse.get('good_barrier', False):
+        if grade_idx(grade) >= grade_idx('C'):
+            grade = grade_up(grade)
+            notes.append('P7: EEM連續高消耗升級+1')
+
+    # [SIP-C14-3] 2YO rating anomaly check
+    if horse.get('is_2yo', False) and horse.get('rating_top3_field', False):
+        if grade_idx(grade) >= grade_idx('C-'):
+            grade = floor(grade, 'B-', 'P7 SIP-C14-3: 2YO高Rating異常保底B-')
+
+    # Long-distance class override
+    if horse.get('class_advantage_2bm', False) and ctx.get('distance', 0) >= 2000:
+        pace = ctx.get('pace_type', '').lower()
+        if pace in ('moderate', 'crawl'):
+            notes.append('P7: 長途慢步速級數覆寫 — 斷尾微調不觸發')
+
+    # Ceiling always beats Floor — enforce
+    # (Already enforced by processing caps before floors)
+
+    result['final_grade'] = grade
+    result['override_notes'] = notes
+    return result
 
 
 def rank_horses(results: list) -> list:
     def sort_key(r):
-        gi = grade_idx(r['final_grade'])
-        return (gi, -r['effective_ticks'], r['counts']['total_weak'])
+        gi = grade_sort_index(r['final_grade'])
+        return (gi, -r['weighted_score'])
     return sorted(results, key=sort_key)
 
 
@@ -294,8 +387,10 @@ def generate_verdict(ranked: list, ctx: dict) -> str:
 
 
 def main():
-    import sys
-    sys.stdout.reconfigure(encoding='utf-8')
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
     parser = argparse.ArgumentParser(description='AU Rating Matrix Calculator')
     parser.add_argument('--input', required=True, help='Path to dimensions.json')
     parser.add_argument('--output', help='Output file path (optional)')
@@ -306,17 +401,20 @@ def main():
     horses = data.get('horses', [])
 
     results = [compute_one(h) for h in horses]
+    # Apply AU-specific override chain (P0-P7 caps/floors)
+    results = [apply_au_overrides(r, h, ctx) for r, h in zip(results, horses)]
     ranked = rank_horses(results)
 
     # Print ranking table
     print("=" * 70)
     print(f"AU Rating Matrix — {ctx.get('venue', '?')} R{ctx.get('race_number', '?')} {ctx.get('distance', '?')}m {ctx.get('class', '?')}")
     print("=" * 70)
-    print(f"{'#':<4} {'Name':<20} {'Base':<5} {'Final':<5} {'✅':<4} {'❌':<4} {'Eff':<6}")
+    print(f"{'#':<4} {'Name':<20} {'Base':<5} {'Final':<5} {'✅':<4} {'❌':<4} {'Eff':<6} {'Guard'}")
     print("-" * 70)
     for r in ranked:
+        gn = r.get('guard_note', '')
         print(f"{r['num']:<4} {r['name']:<20} {r['base_grade']:<5} {r['final_grade']:<5} "
-              f"{r['counts']['total_strong']:<4} {r['counts']['total_weak']:<4} {r['effective_ticks']:<6.1f}")
+              f"{r['counts']['total_strong']:<4} {r['counts']['total_weak']:<4} {r['effective_ticks']:<6.1f} {gn}")
     print("=" * 70)
 
     # Generate verdict skeleton

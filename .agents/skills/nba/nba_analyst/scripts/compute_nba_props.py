@@ -4,7 +4,7 @@ compute_nba_props.py — NBA Wong Choi Protocol Volatility & Props Calculator
 Mechanically computes CoV, situational adjustments, bet lines, +EV, and Under detection.
 
 Usage:
-    python3 compute_nba_props.py --input <players.json> [--output <results.md>]
+    python compute_nba_props.py --input <players.json> [--output <results.md>]
 
 Input JSON format:
 {
@@ -477,7 +477,7 @@ def main():
     args = parser.parse_args()
 
     if not args.input:
-        print("Usage: python3 compute_nba_props.py --input <players.json>")
+        print("Usage: python compute_nba_props.py --input <players.json>")
         sys.exit(0)
 
     data = json.loads(Path(args.input).read_text(encoding='utf-8'))

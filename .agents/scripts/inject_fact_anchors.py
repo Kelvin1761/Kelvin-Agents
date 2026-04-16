@@ -25,6 +25,7 @@ from typing import Optional
 import re
 import json
 import sys
+import shutil
 from pathlib import Path
 from datetime import datetime
 
@@ -685,7 +686,8 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
             # Fallback to relative path from CWD
             scraper_path = '../.agents/skills/au_racing/claw_profile_scraper.py'
         
-        cmd = ["python3", scraper_path, "--names", ",".join(unique_names)]
+        _python_cmd = "python3" if shutil.which("python3") else "python"
+        cmd = [_python_cmd, scraper_path, "--names", ",".join(unique_names)]
         try:
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
             if res.stdout.strip():
@@ -1640,12 +1642,22 @@ def main():
         print(f"❌ 找不到文件: {racecard_path}")
         sys.exit(1)
 
-    # Try to extract distance from racecard content if not provided
+    # Try to extract distance from racecard HEADER only (not horse content)
     if today_dist_m == 0:
         rc_text = Path(racecard_path).read_text(encoding='utf-8')
-        dist_match = re.search(r'(\d{3,4})m', rc_text)
-        if dist_match:
-            today_dist_m = int(dist_match.group(1))
+        # Only match distance in the RACE header line (e.g. "RACE 1 — 900m | Maiden SW")
+        header_dist = re.search(r'^RACE\s+\d+\s*[—–-]\s*(\d{3,5})m', rc_text, re.MULTILINE)
+        if header_dist:
+            today_dist_m = int(header_dist.group(1))
+        else:
+            print(f"\n❌ [FATAL] 無法從 Racecard header 提取今仗距離！")
+            print(f"   Racecard: {racecard_path}")
+            print(f"   Header 前 3 行:")
+            for line in rc_text.splitlines()[:3]:
+                print(f"     {line}")
+            print(f"\n💡 可能原因: extractor.py 提取距離失敗，Racecard header 無 '— XXXm' 格式")
+            print(f"   請用 --distance XXX 手動指定，或修復 extractor.py")
+            sys.exit(1)
 
     horses = parse_racecard(racecard_path)
     if not horses:

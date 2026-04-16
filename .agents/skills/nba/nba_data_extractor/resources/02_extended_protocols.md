@@ -10,10 +10,10 @@
 
 # Recommended Tools & Assets
 - **Tools**:
-  - `run_command`：核心工具，用於執行 `claw_bet365_odds.py`（Bet365 盤口提取）及 `nba_extractor.py`（球員數據提取），亦用於數據包寫檔（透過 heredoc → `/tmp` → `cp` 管道）
+  - `run_command`：核心工具，用於執行 `claw_sportsbet_odds.py`（Sportsbet 盤口提取）及 `nba_extractor.py`（球員數據提取），亦用於數據包寫檔（透過 safe_file_writer 管道）
   - `search_web`：後備工具，僅用於補充個別球員缺失數據（禁止用於全套提取）
   - ⚠️ `write_to_file`：**P33-WLTM 完全禁止**
-  - ⚠️ `mcp_playwright_browser_*`：**禁止用於 Bet365**（會被反爬蟲攔截）
+  - ⚠️ `mcp_playwright_browser_*`：**禁止用於 Sportsbet**（會被反爬蟲攞截）
 - **Assets**:
   - `resources/01_data_protocols.md`:搜尋規則與防錯機制
   - `resources/02_data_card_template.md`:14 項數據卡格式

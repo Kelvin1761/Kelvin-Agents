@@ -17,6 +17,11 @@ import argparse
 from pathlib import Path
 import re
 
+# Import shared qualitative rating engine v2 (replaces deprecated grading_engine)
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../scripts")))
+from rating_engine_v2 import compute_base_grade, compute_weighted_score, apply_fine_tune, parse_matrix_scores, grade_sort_index
+
 def _truncate_table(table_str: str, max_rows: int = 5, race_forgiveness_list: list = None) -> str:
     lines = table_str.strip().split('\n')
     out_lines = []
@@ -114,8 +119,22 @@ def build_panorama(json_data, facts_path, facts_text, facts_horses=None):
         num_to_name = {str(h['num']): h['name'] for h in facts_horses}
     
     def _map_names(num_list):
+        if isinstance(num_list, str):
+            num_list = [x.strip() for x in num_list.replace('、', ',').split(',')]
+        elif isinstance(num_list, list):
+            flat = []
+            for item in num_list:
+                if isinstance(item, str) and ',' in item:
+                    flat.extend([x.strip() for x in item.split(',')])
+                elif isinstance(item, str) and '、' in item:
+                    flat.extend([x.strip() for x in item.split('、')])
+                else:
+                    flat.append(str(item).strip())
+            num_list = flat
+
         parts = []
         for n in num_list:
+            if not n: continue
             name = num_to_name.get(str(n), '')
             parts.append(f'[{n}] {name}' if name else str(n))
         return ', '.join(parts) or '[未指定]'
@@ -129,16 +148,35 @@ def build_panorama(json_data, facts_path, facts_text, facts_horses=None):
     weather_going = "詳見 _Meeting_Intelligence_Package.md"
     bias = "按 Intelligence 判斷"
     race_class = "[未輸入]"
-    tactical_nodes = sm.get('tactical_nodes', '')
-    collapse = sm.get('collapse_point', '')
+    tactical_nodes = sm.get('tactical_nodes', '[未提供]')
+    if not tactical_nodes: tactical_nodes = '[未提供]'
+    collapse = sm.get('collapse_point', '[未提供]')
+    if not collapse: collapse = '[未提供]'
     
     # Extract Race Number
     race_num_m = re.search(r'Race\s*(\d+)', Path(facts_path).name, re.IGNORECASE)
     race_num = race_num_m.group(1) if race_num_m else "?"
     
-    # Extract Distance
+    # Extract Distance — prefer Facts.md header, fallback to Racecard header
     dist_m = re.search(r'今仗距離:\s*(\d+m)', facts_text)
     distance = dist_m.group(1) if dist_m else "Unknown距離"
+    
+    # Extract Class and Distance from Racecard header (e.g. "RACE 1 — 900m | Maiden SW | $75,000")
+    try:
+        meeting_dir = Path(facts_path).parent
+        rc_candidates = [f for f in meeting_dir.iterdir() if f"Race {race_num}" in f.name and "Racecard" in f.name]
+        if rc_candidates:
+            rc_header = rc_candidates[0].read_text(encoding='utf-8').splitlines()[0]
+            # Extract class from header
+            class_from_rc = re.search(r'\d+m\s*\|\s*([^|$]+?)(?:\s*\||\s*$)', rc_header)
+            if class_from_rc and race_class == "[未輸入]":
+                race_class = class_from_rc.group(1).strip()
+            # Extract distance from header as backup
+            dist_from_rc = re.search(r'[—–-]\s*(\d{3,5})m', rc_header)
+            if dist_from_rc and distance == "Unknown距離":
+                distance = f"{dist_from_rc.group(1)}m"
+    except Exception:
+        pass
     
     try:
         meeting_dir = Path(facts_path).parent
@@ -158,13 +196,12 @@ def build_panorama(json_data, facts_path, facts_text, facts_horses=None):
     except Exception:
         pass
     
-    pace_details = f"- 預計步速: {pace}"
-    if bias and bias != '按 Intelligence 判斷':
-        pace_details += f"\n- **跑道偏差:** {bias}"
-    if tactical_nodes:
-        pace_details += f"\n- **戰術節點:** {tactical_nodes}"
-    if collapse:
-        pace_details += f"\n- **崩潰點:** {collapse}"
+    pace_details = (
+        f"- **預計步速:** {pace}\n"
+        f"- **跑道偏差:** {bias}\n"
+        f"- **戰術節點:** {tactical_nodes}\n"
+        f"- **崩潰點:** {collapse}"
+    )
     
     return f"""# Race {race_num} - {distance} - Class: {race_class}
 
@@ -192,8 +229,23 @@ def build_panorama(json_data, facts_path, facts_text, facts_horses=None):
 def generate_horse_section(horse_idx, h_fact, h_logic):
     lines = []
 
-    rating = h_logic.get('base_rating', h_logic.get('rating', '[FILL]'))
-    final_rating = h_logic.get('final_rating', rating)
+    # ── Calculate with rating_engine_v2 (qualitative) ──
+    matrix_keys_map = {
+        "狀態與穩定性": "core", "段速與引擎": "core",
+        "EEM與形勢": "semi", "騎練訊號": "semi",
+        "級數與負重": "aux", "場地適性": "aux", 
+        "賽績線": "aux", "裝備與距離": "aux",
+    }
+    m_data = h_logic.get('matrix', {})
+    core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(m_data, matrix_keys_map)
+    
+    b_grade = compute_base_grade(core_pass, semi_pass, aux_pass, core_fail, total_fail)
+    w_score = compute_weighted_score(core_pass, semi_pass, aux_pass, core_fail, total_fail)
+    
+    ft = h_logic.get('fine_tune', {})
+    ft_dir  = ft.get('direction', '無') if isinstance(ft, dict) else str(ft)
+    final_rating = apply_fine_tune(b_grade, ft_dir)
+    rating = b_grade # fall back for string formatting below
     core_logic = h_logic.get('core_logic', '[FILL]')
     advantages = h_logic.get('advantages', h_logic.get('competitive_advantage', '[缺失優勢]'))
     disadvantages = h_logic.get('disadvantages', h_logic.get('risks', h_logic.get('risk_level', '[缺失風險]')))
@@ -289,57 +341,20 @@ def generate_horse_section(horse_idx, h_fact, h_logic):
     ]
     m_data = h_logic.get('matrix', {})
 
-    # 5-tier counting: ✅✅=2✅, ❌❌=2❌
-    counts = {
-        'core_dbl_strong': 0, 'core_single_strong': 0,
-        'semi_dbl_strong': 0, 'semi_single_strong': 0,
-        'aux_dbl_strong': 0, 'aux_single_strong': 0,
-        'core_strong': 0, 'semi_strong': 0, 'aux_strong': 0,
-        'total_strong': 0, 'total_weak': 0,
-        'total_dbl_weak': 0,
-        'has_core_weak': False, 'has_core_double_weak': False,
-    }
     for key, c_type in matrix_keys:
         item = m_data.get(key, {})
         score_display = str(item.get('score', '[-]')).strip()
         reason = item.get('reasoning', item.get('_reasoning', item.get('reason', '無填寫理據')))
         lines.append(f"- **{key}** [{c_type}]: `{score_display}` | 理據: {reason}")
 
-        if score_display == '✅✅':
-            counts['total_strong'] += 2
-            counts['total_dbl_strong'] = counts.get('total_dbl_strong', 0) + 1
-            if c_type == '核心':
-                counts['core_strong'] += 2; counts['core_dbl_strong'] += 1
-            elif c_type == '半核心':
-                counts['semi_strong'] += 2; counts['semi_dbl_strong'] += 1
-            else:
-                counts['aux_strong'] += 2; counts['aux_dbl_strong'] += 1
-        elif '✅' in score_display:
-            counts['total_strong'] += 1
-            if c_type == '核心':
-                counts['core_strong'] += 1; counts['core_single_strong'] += 1
-            elif c_type == '半核心':
-                counts['semi_strong'] += 1; counts['semi_single_strong'] += 1
-            else:
-                counts['aux_strong'] += 1; counts['aux_single_strong'] += 1
-        elif score_display == '❌❌':
-            counts['total_weak'] += 2; counts['total_dbl_weak'] += 1
-            if c_type == '核心':
-                counts['has_core_weak'] = True; counts['has_core_double_weak'] = True
-        elif '❌' in score_display:
-            counts['total_weak'] += 1
-            if c_type == '核心': counts['has_core_weak'] = True
-        # ➖ = neutral, no counting
-
     lines.append('')
 
-    # ── 12. 矩陣算術 (V10 5 級新格式) ──────────────────────────────────────
-    cw = '有' if counts['has_core_weak'] else '無'
-    cdw = '有' if counts['has_core_double_weak'] else '無'
-    lines.append(f"**🔢 矩陣算術:** 核心✅✅={counts['core_dbl_strong']} | 核心✅={counts['core_single_strong']} | 半核心✅✅={counts['semi_dbl_strong']} | 半核心✅={counts['semi_single_strong']} | 輔助✅✅={counts['aux_dbl_strong']} | 輔助✅={counts['aux_single_strong']} | 總❌={counts['total_weak']} | 總❌❌={counts['total_dbl_weak']} | 核心❌={cw} | 核心❌❌={cdw}")
+    # ── 12. 矩陣算術 ( rating_engine_v2 查表法 ) ───────────────────────────────
+    cw = '有' if core_fail > 0 else '無'
+    lines.append(f"**🔢 矩陣算術:** 核心✅={core_pass} | 半核心✅={semi_pass} | 輔助✅={aux_pass} | 總❌={total_fail} | 核心❌={cw} → 查表命中行={w_score}")
 
     # ── 13. 基礎評級 ─────────────────────────────────────────────────────
-    lines.append(f"**基礎評級:** `{rating}`")
+    lines.append(f"**14.2 基礎評級:** `{b_grade}` | `{w_score}`")
 
     # ── 14. 微調 (14.2B) ─────────────────────────────────────────────────
     ft = h_logic.get('fine_tune', {})
@@ -388,68 +403,27 @@ def build_verdict(json_data, facts_horses):
     if isinstance(horses_logic, list):
         horses_logic = {str(item.get('id', i)): item for i, item in enumerate(horses_logic)}
 
-    # ── Grade computation for AU matrix format ──
-    AU_GRADE_ORDER = ['S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D']
-    def au_grade_idx(g):
-        return AU_GRADE_ORDER.index(g) if g in AU_GRADE_ORDER else 99
-
-    AU_MATRIX_TYPES = {
-        '狀態與穩定性': 'core', '段速與引擎': 'core',
-        'EEM與形勢': 'semi', '騎練訊號': 'semi',
-        '級數與負重': 'aux', '場地適性': 'aux', '賽績線': 'aux', '裝備與距離': 'aux',
-    }
-
+    # ── Grade computation for AU matrix format (using rating_engine_v2) ──
     def compute_au_grade(h_obj):
-        """V10: 5-tier grade computation. ✅✅=2✅, ❌❌=2❌."""
+        matrix_keys_map = {
+            "狀態與穩定性": "core", "段速與引擎": "core",
+            "EEM與形勢": "semi", "騎練訊號": "semi",
+            "級數與負重": "aux", "場地適性": "aux", 
+            "賽績線": "aux", "裝備與距離": "aux",
+        }
         m_data = h_obj.get('matrix', {})
-        core_s = semi_s = aux_s = total_w = 0
-        has_core_w = False
-        has_core_dbl_w = False
-        for key, ctype in AU_MATRIX_TYPES.items():
-            item = m_data.get(key, {})
-            score = str(item.get('score', '')).strip()
-            if score == '✅✅':
-                if ctype == 'core': core_s += 2
-                elif ctype == 'semi': semi_s += 2
-                else: aux_s += 2
-            elif '✅' in score:
-                if ctype == 'core': core_s += 1
-                elif ctype == 'semi': semi_s += 1
-                else: aux_s += 1
-            elif score == '❌❌':
-                total_w += 2
-                if ctype == 'core': has_core_w = True; has_core_dbl_w = True
-            elif '❌' in score:
-                total_w += 1
-                if ctype == 'core': has_core_w = True
-            # ➖ = neutral, skip
-        # Lookup grade
-        if core_s >= 4 and semi_s >= 2 and aux_s >= 2 and total_w == 0: grade = 'S'
-        elif core_s >= 4 and semi_s >= 1 and aux_s >= 1 and total_w == 0: grade = 'S-'
-        elif core_s >= 4 and total_w == 0: grade = 'A+'
-        elif (core_s >= 2 and semi_s >= 1 and total_w == 0) or (core_s >= 4 and total_w <= 1): grade = 'A'
-        elif core_s >= 2 and total_w <= 1: grade = 'A-'
-        elif (core_s >= 2 and total_w == 2) or (semi_s >= 4 and total_w <= 1): grade = 'B+'
-        elif semi_s >= 1 and aux_s >= 2 and total_w <= 2: grade = 'B'
-        elif core_s == 0 and semi_s == 0 and aux_s >= 3 and total_w <= 2: grade = 'B-'
-        elif total_w == 3 and (core_s >= 1 or semi_s >= 1): grade = 'C+'
-        elif total_w == 3: grade = 'C'
-        elif total_w == 4: grade = 'C-'
-        elif total_w >= 5 and (core_s >= 1 or semi_s >= 1 or aux_s >= 2): grade = 'D+'
-        elif total_w >= 5 or (core_s + semi_s + aux_s) == 0: grade = 'D'
-        else: grade = 'C'
-        # Core constraint: ❌❌ = strict cap B+ (no exemption)
-        if has_core_dbl_w and au_grade_idx(grade) < au_grade_idx('B+'):
-            grade = 'B+'
-        elif has_core_w and au_grade_idx(grade) < au_grade_idx('B+'):
-            grade = 'B+'
-        # Micro adjustment
+        core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(m_data, matrix_keys_map)
+        
+        b_grade = compute_base_grade(core_pass, semi_pass, aux_pass, core_fail, total_fail)
+        w_score = compute_weighted_score(core_pass, semi_pass, aux_pass, core_fail, total_fail)
+        
         ft = h_obj.get('fine_tune', {})
-        ft_dir = ft.get('direction', '無').upper() if isinstance(ft, dict) else str(ft).upper()
-        gi = au_grade_idx(grade)
-        if ft_dir == 'UP' and gi > 0: grade = AU_GRADE_ORDER[gi - 1]
-        elif ft_dir == 'DOWN' and gi < len(AU_GRADE_ORDER) - 1: grade = AU_GRADE_ORDER[gi + 1]
-        return grade
+        ft_dir  = ft.get('direction', '無') if isinstance(ft, dict) else str(ft).upper()
+        if ft_dir == 'UP': ft_dir = '+'
+        elif ft_dir == 'DOWN': ft_dir = '-'
+        
+        f_grade = apply_fine_tune(b_grade, ft_dir)
+        return f_grade, w_score
 
     lines = []
     lines.append('## [第三部分] 🏆 全場最終決策')
@@ -464,11 +438,11 @@ def build_verdict(json_data, facts_horses):
 
     all_graded = []
     for h_num_str, h_obj in horses_logic.items():
-        grade = compute_au_grade(h_obj)
-        grade_i = au_grade_idx(grade)
-        all_graded.append((h_num_str, grade, grade_i))
+        grade, w_score = compute_au_grade(h_obj)
+        grade_i = grade_sort_index(grade)
+        all_graded.append((h_num_str, grade, grade_i, w_score))
 
-    all_graded.sort(key=lambda x: (x[2], int(x[0]) if x[0].isdigit() else 999))
+    all_graded.sort(key=lambda x: (x[2], -x[3], int(x[0]) if x[0].isdigit() else 999))
     t4_auto = all_graded[:4]
 
     labels = ['🥇 **第一選**', '🥈 **第二選**', '🥉 **第三選**', '🏅 **第四選**']
@@ -477,7 +451,7 @@ def build_verdict(json_data, facts_horses):
 
     for i, label in enumerate(labels):
         if i < len(t4_auto):
-            h_num_str, grade, grade_i = t4_auto[i]
+            h_num_str, grade, grade_i, w_score = t4_auto[i]
             h_num_int = int(h_num_str) if h_num_str.isdigit() else 0
             h_name = horse_names.get(h_num_int, '')
             h_obj = horses_logic.get(h_num_str, {})
@@ -548,7 +522,7 @@ def main():
     facts_horses = parse_facts_md_au(facts_text)
     
     body = []
-    body.append(build_panorama(logic_data, args.facts, facts_text))
+    body.append(build_panorama(logic_data, args.facts, facts_text, facts_horses))
     body.append('---\n## [第二部分] 🔬 深度顯微鏡\n\n')
     
     horses_logic_raw = logic_data.get('horses', [])

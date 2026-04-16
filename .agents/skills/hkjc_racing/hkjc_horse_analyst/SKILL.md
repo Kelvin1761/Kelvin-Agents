@@ -70,7 +70,7 @@ ag_kit_skills:
 2. **讀取與預備**:讀取賽事排位表與 Facts.md（完整賽績檔案）。
    **⚠️ V2 Python 預提取（必須在分析前確認 Facts.md 已生成）：**
    ```
-   python3 .agents/scripts/inject_hkjc_fact_anchors.py "<Formguide.txt>" \
+   python .agents/scripts/inject_hkjc_fact_anchors.py "<Formguide.txt>" \
        --horse-ids "HK_2024_K416,HK_2024_K035,..." \
        --output "Facts.md"
    ```
@@ -93,7 +93,7 @@ ag_kit_skills:
 
 **🔴 QG-CHECK 連續失敗 2 次 — AG Kit Systematic Debugging:**
 平時 QG-CHECK 失敗 1 次 = 正常自我打回重寫。但若**同一 Batch 連續失敗 2 次**:
-1. 讀取 `.agent/skills/systematic-debugging/SKILL.md`
+1. 讀取 `.agents/skills/systematic-debugging/SKILL.md`
 2. 執行 4-Phase 除錯:
    - **Reproduce:** `view_file` 被打回嘅 Batch 段落
    - **Isolate:** Anti-Laziness 錨定失敗?重複數據?關鍵馬匹默認值?

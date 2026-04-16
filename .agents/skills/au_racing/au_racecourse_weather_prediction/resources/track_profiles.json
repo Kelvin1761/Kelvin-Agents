@@ -26,6 +26,51 @@
         "tier": "Bottom Tier",
         "profile": "保水土壤。",
         "drainage": "維州著名的爛地馬場。排水極差，只要有一場大雨必定變 Heavy，需要好幾天的大太陽才能將水分從土中逼出。"
+      },
+      "Pakenham": {
+        "tier": "Moderate-Fast",
+        "profile": "纖維加固沙底 (Fibre-Reinforced Sand Profile)。配備完整地下排水系統及 Toro 自動灑水系統。",
+        "drainage": "2020 年重建後的新型草地跑道，排水效率屬中上。纖維沙底能有效濾水，一般 15mm 以下降雨可在數小時內恢復。但持續大雨仍會導致場地變爛，因為沙層有限深度。場地同時設有合成跑道 (Polytrack) 作為全天候備用。"
+      },
+      "Cranbourne": {
+        "tier": "Moderate",
+        "profile": "改良沙底 (Sand/Loam Profile)。",
+        "drainage": "排水中等，底層含有壤土成分。晴天排水尚可，但冬季連續降雨下會逐漸飽和。場地維護較佳。"
+      },
+      "Geelong": {
+        "tier": "Moderate-Slow",
+        "profile": "壤土基底 (Loam Profile)。",
+        "drainage": "省級馬場，排水中等偏慢。底層壤土在連續降雨後容易維持濕軟狀態，需要持續強風配合日照才能風乾。"
+      },
+      "Ballarat": {
+        "tier": "Moderate",
+        "profile": "改良沙底 (Sand Profile)。含合成跑道。",
+        "drainage": "維州內陸馬場，排水中等。冬季較冷且濕度高，場地容易偏軟但不至於極端爛地。"
+      },
+      "Bendigo": {
+        "tier": "Moderate",
+        "profile": "沙底草地 (Sand-based Turf)。",
+        "drainage": "內陸乾燥氣候有利排水。一般降雨後恢復較快，但大雨仍會造成 Soft 5-6 的場地。"
+      },
+      "Sale": {
+        "tier": "Bottom Tier",
+        "profile": "保水壤土 (Water-retentive Loam)。",
+        "drainage": "維州東部省級馬場。土壤保水性強，冬季高降雨量令場地長時間維持在 Soft 6-7 或更低。"
+      },
+      "Kilmore": {
+        "tier": "Moderate-Slow",
+        "profile": "壤土基底 (Loam Profile)。",
+        "drainage": "省級馬場，排水偏慢。冬季容易長時間維持軟地。"
+      },
+      "Seymour": {
+        "tier": "Bottom Tier",
+        "profile": "保水壤土。",
+        "drainage": "低排水效率的省級馬場，只要連續降雨就容易變成 Heavy。"
+      },
+      "Yarra Valley": {
+        "tier": "Moderate-Slow",
+        "profile": "壤土/黏土 (Loam/Clay Profile)。",
+        "drainage": "山區馬場，水分蒸發慢。冬季濕冷容易長時間維持爛地。"
       }
     }
   },

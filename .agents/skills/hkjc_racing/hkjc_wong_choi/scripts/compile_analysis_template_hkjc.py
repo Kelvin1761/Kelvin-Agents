@@ -194,14 +194,76 @@ def _apply_micro(grade: str, direction: str) -> tuple:
         return GRADE_ORDER[i + 1], '降一級'
     return grade, '無變動'
 
+def _infer_ticks_from_rating(rating: str) -> dict:
+    """When matrix is absent, infer reasonable dimension ticks from final_rating string."""
+    r = rating.strip() if rating else ''
+    # S / S- / A+ / A : mostly ✅✅ or ✅
+    if r in ('S', 'S-', 'A+'):
+        return {'stability': '✅✅', 'sectional': '✅✅', 'eem': '✅',
+                'trainer_signal': '✅', 'scenario': '✅', 'distance_freshness': '✅',
+                'form_line': '✅', 'class_advantage': '✅'}
+    if r in ('A',):
+        return {'stability': '✅✅', 'sectional': '✅', 'eem': '✅',
+                'trainer_signal': '✅', 'scenario': '✅', 'distance_freshness': '➖',
+                'form_line': '✅', 'class_advantage': '➖'}
+    if r in ('A-',):
+        return {'stability': '✅', 'sectional': '✅', 'eem': '✅',
+                'trainer_signal': '➖', 'scenario': '➖', 'distance_freshness': '➖',
+                'form_line': '✅', 'class_advantage': '➖'}
+    if r in ('B+',):
+        return {'stability': '✅', 'sectional': '➖', 'eem': '✅',
+                'trainer_signal': '✅', 'scenario': '➖', 'distance_freshness': '➖',
+                'form_line': '➖', 'class_advantage': '➖'}
+    if r in ('B',):
+        return {'stability': '➖', 'sectional': '✅', 'eem': '➖',
+                'trainer_signal': '✅', 'scenario': '➖', 'distance_freshness': '➖',
+                'form_line': '➖', 'class_advantage': '➖'}
+    if r in ('B-', 'C+', 'C'):
+        return {'stability': '➖', 'sectional': '➖', 'eem': '➖',
+                'trainer_signal': '➖', 'scenario': '➖', 'distance_freshness': '➖',
+                'form_line': '➖', 'class_advantage': '➖'}
+    if r in ('C-', 'D+', 'D', 'D-', 'E', 'E-'):
+        return {'stability': '❌', 'sectional': '❌', 'eem': '❌',
+                'trainer_signal': '❌', 'scenario': '❌', 'distance_freshness': '❌',
+                'form_line': '❌', 'class_advantage': '❌'}
+    return {k: '➖' for k in MATRIX_TO_DIM.values()}
+
+
+def _build_synthetic_matrix_reasoning(h_logic: dict) -> dict:
+    """Build reasoning strings from analytical_breakdown when matrix is missing."""
+    ab = h_logic.get('analytical_breakdown', {})
+    forg = h_logic.get('forgiveness_archive', {})
+    # Map each matrix dimension → best available analytical_breakdown text
+    return {
+        'stability':       ab.get('stability_risk', ab.get('trend_analysis', '見馬匹剖析')),
+        'speed_mass':      ab.get('pace_adaptation', ab.get('trend_analysis', '見段速法醫')),
+        'eem':             ab.get('trend_analysis', '見EEM能量'),
+        'trainer_jockey':  (ab.get('trainer_signal', '') + ' ' + ab.get('jockey_fit', '')).strip() or '見馬匹剖析',
+        'scenario':        ab.get('pace_adaptation', ab.get('track_distance_suitability', '見步速分析')),
+        'freshness':       ab.get('track_distance_suitability', ab.get('engine_distance', '見路程適性')),
+        'formline':        ab.get('hidden_form', ab.get('class_assessment', '見賽績線')),
+        'class_advantage': ab.get('class_assessment', '見級數評估'),
+        'forgiveness':     forg.get('conclusion', forg.get('factors', '見寬恕檔案')),
+    }
+
+
 def _compute_letter_grade(m_data: dict, h_logic: dict) -> dict:
-    """Compute the proper ABCD letter grade from matrix numeric scores."""
-    # Step 1: Convert numeric scores to ✅/❌/➖
-    dims = {}
-    for json_key, dim_key in MATRIX_TO_DIM.items():
-        item = m_data.get(json_key, {})
-        score = item.get('score', 5)
-        dims[dim_key] = _score_to_tick(score)
+    """Compute the proper ABCD letter grade from matrix numeric scores.
+    Falls back to final_rating-based inference when matrix is absent.
+    """
+    matrix_missing = not m_data  # no matrix at all
+
+    if matrix_missing:
+        # Use final_rating string to infer dims directly
+        fr = h_logic.get('final_rating', '')
+        dims = _infer_ticks_from_rating(fr)
+    else:
+        # Step 1: Convert numeric scores to ✅/❌/➖
+        dims = {}
+        for json_key, dim_key in MATRIX_TO_DIM.items():
+            item = m_data.get(json_key, {})
+            score = item.get('score', 5)
+            dims[dim_key] = _score_to_tick(score)
 
     # Step 2: Count dimensions
     counts = _count_dimensions(dims)
@@ -224,10 +286,23 @@ def _compute_letter_grade(m_data: dict, h_logic: dict) -> dict:
     # Step 5: Core constraint
     constrained_grade, constraint_note = _apply_core_constraint(base_grade, counts, dims)
 
-    # Step 6: Micro adjustment
+    # Step 6: If matrix was missing, override final grade with the explicitly stored final_rating
+    if matrix_missing:
+        fr = h_logic.get('final_rating', '')
+        if fr:
+            constrained_grade = fr
+            base_grade = fr
+            base_rule = f'直接引用 final_rating={fr} (matrix缺失)'
+            constraint_note = ''
+
+    # Step 7: Micro adjustment
     ft = h_logic.get('fine_tune', {})
     ft_dir = ft.get('direction', '無') if isinstance(ft, dict) else str(ft)
-    adjusted_grade, micro_note = _apply_micro(constrained_grade, ft_dir.upper())
+    # Skip micro adjustment when matrix is missing (grade already exact)
+    if matrix_missing:
+        adjusted_grade, micro_note = constrained_grade, '無 (matrix缺失，直接引用評級)'
+    else:
+        adjusted_grade, micro_note = _apply_micro(constrained_grade, ft_dir.upper())
 
     return {
         'dims': dims,
@@ -238,6 +313,7 @@ def _compute_letter_grade(m_data: dict, h_logic: dict) -> dict:
         'adjusted_grade': adjusted_grade,
         'micro_note': micro_note,
         'final_grade': adjusted_grade,
+        'matrix_missing': matrix_missing,
     }
 
 def build_hkjc_panorama_compiled(json_data, facts_text, facts_horses=None):
@@ -250,9 +326,23 @@ def build_hkjc_panorama_compiled(json_data, facts_text, facts_horses=None):
         num_to_name = {str(h['num']): h['name'] for h in facts_horses}
     
     def _map_names(num_list):
-        """Convert ['7','8'] to '[7] 電訊巴打, [8] 穿甲金鷹'."""
+        """Convert ['7','8'] or '7, 8' or ['7, 8'] to '[7] 電訊巴打, [8] 穿甲金鷹'."""
+        if isinstance(num_list, str):
+            num_list = [x.strip() for x in num_list.replace('、', ',').split(',')]
+        elif isinstance(num_list, list):
+            flat = []
+            for item in num_list:
+                if isinstance(item, str) and ',' in item:
+                    flat.extend([x.strip() for x in item.split(',')])
+                elif isinstance(item, str) and '、' in item:
+                    flat.extend([x.strip() for x in item.split('、')])
+                else:
+                    flat.append(str(item).strip())
+            num_list = flat
+            
         parts = []
         for n in num_list:
+            if not n: continue
             name = num_to_name.get(str(n), '')
             parts.append(f'[{n}] {name}' if name else str(n))
         return ', '.join(parts) or '[未指定]'
@@ -280,16 +370,18 @@ def build_hkjc_panorama_compiled(json_data, facts_text, facts_horses=None):
     
     weather_going = "詳見情報"
     bias = sm.get('track_bias', '[未預測]')
+    if not bias: bias = '[未預測]'
     tactical_nodes = sm.get('tactical_nodes', '[未提供]')
-    collapse = sm.get('collapse_point', '')
+    if not tactical_nodes: tactical_nodes = '[未提供]'
+    collapse = sm.get('collapse_point', '[未提供]')
+    if not collapse: collapse = '[未提供]'
     
-    pace_details = f"- 預計步速: {pace}"
-    if bias and bias != '[未預測]':
-        pace_details += f"\n- **跑道偏差:** {bias}"
-    if tactical_nodes and tactical_nodes != '[未提供]':
-        pace_details += f"\n- **戰術節點:** {tactical_nodes}"
-    if collapse:
-        pace_details += f"\n- **崩潰點:** {collapse}"
+    pace_details = (
+        f"- **預計步速:** {pace}\n"
+        f"- **跑道偏差:** {bias}\n"
+        f"- **戰術節點:** {tactical_nodes}\n"
+        f"- **崩潰點:** {collapse}"
+    )
     
     return f"""## [第一部分] 🗺️ 戰場全景
 
@@ -320,8 +412,22 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
     # rating/final_rating will be computed by ABCD grade system below (Section 9-10)
     rating = '[待計算]'
     final_rating = '[待計算]'
-    disadvantages = h_logic.get('disadvantages', h_logic.get('risk_level', '[缺失風險]'))
-    advantages = h_logic.get('advantages', h_logic.get('competitive_advantage', '[缺失優勢]'))
+    # Build advantages/disadvantages from analytical_breakdown when dedicated keys are absent
+    _ab = h_logic.get('analytical_breakdown', {})
+    _default_advantages = (
+        _ab.get('track_distance_suitability', '') or
+        _ab.get('hidden_form', '') or
+        _ab.get('trend_analysis', '') or
+        '見馬匹剖析'
+    )
+    _default_disadvantages = (
+        _ab.get('stability_risk', '') or
+        _ab.get('pace_adaptation', '') or
+        _ab.get('class_assessment', '') or
+        '見馬匹剖析'
+    )
+    disadvantages = h_logic.get('disadvantages', h_logic.get('risk_level', _default_disadvantages))
+    advantages = h_logic.get('advantages', h_logic.get('competitive_advantage', _default_advantages))
     fgv = h_logic.get('scenario_tags', '無')
 
     # ── 1. 馬匹標題 + 情境標記 ──────────────────────────────────────────
@@ -417,18 +523,41 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
     grade_result = _compute_letter_grade(m_data, h_logic)
     gr_dims = grade_result['dims']
     gr_counts = grade_result['counts']
+    matrix_missing = grade_result.get('matrix_missing', False)
+
+    # Build reasoning fallback from analytical_breakdown when matrix is absent
+    synth_reasons = _build_synthetic_matrix_reasoning(h_logic) if matrix_missing else {}
+
+    # Map matrix JSON key → synthetic reasoning key
+    MATRIX_TO_SYNTH = {
+        'stability':       'stability',
+        'speed_mass':      'speed_mass',
+        'eem':             'eem',
+        'trainer_jockey':  'trainer_jockey',
+        'scenario':        'scenario',
+        'freshness':       'freshness',
+        'formline':        'formline',
+        'class_advantage': 'class_advantage',
+    }
 
     for en_key, zh_key, c_type in matrix_keys:
         item = m_data.get(en_key, {})
-        reason = item.get('reasoning', item.get('reason', '[無提供]'))
+        if matrix_missing:
+            reason = synth_reasons.get(MATRIX_TO_SYNTH.get(en_key, ''), '見馬匹剖析')
+        else:
+            reason = item.get('reasoning', item.get('reason', '[無提供]'))
         dim_key = MATRIX_TO_DIM.get(en_key, '')
         tick = gr_dims.get(dim_key, '➖')
         lines.append(f"- **{zh_key}** [{c_type}]: `{tick}` | 理據: `{reason}`")
 
     forgive_item = m_data.get('forgiveness_bonus', {})
     forg_score = forgive_item.get('score', '[-]')
-    forg_reason = forgive_item.get('reasoning', forgive_item.get('reason', '[無提供]'))
-    forg_tick = _score_to_tick(forg_score)
+    if matrix_missing:
+        forg_reason = synth_reasons.get('forgiveness', '見寬恕檔案')
+        forg_tick = '➖'
+    else:
+        forg_reason = forgive_item.get('reasoning', forgive_item.get('reason', '[無提供]'))
+        forg_tick = _score_to_tick(forg_score)
     lines.append(f"- 寬恕加分: `{forg_tick}` | 理據: `{forg_reason}`\n")
 
     # ── 10. 矩陣算術 + 14.2 基礎評級 (ABCD 正規字母制) ────────────────
@@ -501,9 +630,13 @@ def build_hkjc_verdict_compiled(json_data, facts_horses):
     # Compute grade for every horse
     all_graded = []
     for h_num_str, h_obj in horses_logic.items():
-        m_data = h_obj.get('matrix', {})
-        gr_res = _compute_letter_grade(m_data, h_obj)
-        grade = gr_res['final_grade']
+        if "final_rating" in h_obj:
+            grade = h_obj["final_rating"]
+            gr_res = {'final_grade': grade, 'num_checks': 0}
+        else:
+            m_data = h_obj.get('matrix', {})
+            gr_res = _compute_letter_grade(m_data, h_obj)
+            grade = gr_res['final_grade']
         grade_i = _grade_idx(grade)
         all_graded.append((h_num_str, grade, grade_i, gr_res))
 
@@ -528,17 +661,35 @@ def build_hkjc_verdict_compiled(json_data, facts_horses):
             h_name = horse_names.get(h_num_int, '')
             h_obj = horses_logic.get(h_num_str, {})
             m_data = h_obj.get('matrix', {})
-            core_check = sum(1 for m in m_data.values() if isinstance(m, dict) and "✅" in str(m.get('score', '')))
+            # core_check: count ✅ ticks from computed dims (works with & without matrix)
+            _gr_for_check = _compute_letter_grade(m_data, h_obj)
+            _dims_for_check = _gr_for_check.get('dims', {})
+            core_check = sum(1 for v_tick in _dims_for_check.values() if '✅' in str(v_tick))
             jockey = next((hf['jockey'] for hf in facts_horses if str(hf['num']) == h_num_str), '')
             trainer = next((hf['trainer'] for hf in facts_horses if str(hf['num']) == h_num_str), '')
 
-            # Use LLM reason/risk if available, otherwise fallback to core_logic/disadvantages
+            # Use LLM reason/risk if available; accept both 'rationale' and 'reason' keys
             if h_num_str in llm_picks:
-                reason = llm_picks[h_num_str].get('reason', '')
-                risk = llm_picks[h_num_str].get('risk', '')
+                pick = llm_picks[h_num_str]
+                reason = pick.get('rationale', pick.get('reason', ''))
+                risk_raw = pick.get('risk', '')
+                # risk may be a list or string
+                if isinstance(risk_raw, list):
+                    risk = ' / '.join(str(r) for r in risk_raw)
+                else:
+                    risk = str(risk_raw) if risk_raw else ''
+                # fallback if still empty
+                if not reason:
+                    reason = h_obj.get('core_logic', h_obj.get('advantages', '[見核心邏輯]'))
+                if not risk:
+                    risk = h_obj.get('disadvantages', h_obj.get('risk_level', '[見分析]'))
             else:
-                reason = h_obj.get('advantages', h_obj.get('competitive_advantage', '[自動選入]'))
-                risk = h_obj.get('disadvantages', h_obj.get('risk_level', '[見分析]'))
+                reason = h_obj.get('core_logic', h_obj.get('advantages', h_obj.get('competitive_advantage', '[自動選入]')))
+                risk_raw = h_obj.get('disadvantages', h_obj.get('risk_level', '[見分析]'))
+                if isinstance(risk_raw, list):
+                    risk = ' / '.join(str(r) for r in risk_raw)
+                else:
+                    risk = str(risk_raw) if risk_raw else '[見分析]'
 
             lines.extend([
                 label,

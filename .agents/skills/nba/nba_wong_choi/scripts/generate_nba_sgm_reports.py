@@ -7,7 +7,7 @@ generate_nba_sgm_reports.py — NBA Wong Choi 最終報告生成器
   2. NBA_Banker_Report.txt  — 每場組合 1 (穩膽) 完整分析 + Top Banker 速覽 + 跨場 Parlay
 
 Usage:
-  python3 generate_nba_sgm_reports.py --dir "2026-04-08 NBA Analysis"
+  python generate_nba_sgm_reports.py --dir "2026-04-08 NBA Analysis"
 
 Version: 1.0.0
 """
@@ -26,7 +26,7 @@ if sys.stdout.encoding != 'utf-8':
 def extract_matchup_from_filename(filename):
     """Extract matchup tag (e.g., 'CHA_BOS') from Game_*_Full_Analysis.md filename."""
     base = os.path.basename(filename)
-    match = re.search(r'NBA_(.+?)_Analysis\.md', base)
+    match = re.search(r'Game_(.+?)_Full_Analysis\.md', base)
     if match:
         return match.group(1)
     return base
@@ -53,7 +53,7 @@ def extract_combos(content):
     lines = content.split('\n')
     current_combo = None
     current_lines = []
-    combo_pattern = re.compile(r'^## 🎯 組合 (\d+)')
+    combo_pattern = re.compile(r'^### .*組合 (\d+)')
 
     for line in lines:
         m = combo_pattern.match(line)
@@ -251,11 +251,11 @@ def main():
             analysis_date = 'Unknown'
 
     # Find all game analysis files
-    pattern = os.path.join(target_dir, '*_NBA_*_Analysis.md')
+    pattern = os.path.join(target_dir, 'Game_*_Full_Analysis.md')
     files = sorted(glob.glob(pattern))
 
     if not files:
-        print(f'⚠️ 搵唔到任何 *_NBA_*_Analysis.md 喺 {target_dir}')
+        print(f'⚠️ 搵唔到任何 Game_*_Full_Analysis.md 喺 {target_dir}')
         sys.exit(1)
 
     print(f'📂 掃描目錄: {target_dir}')

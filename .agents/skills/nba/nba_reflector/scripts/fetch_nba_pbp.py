@@ -6,8 +6,8 @@ fetch_nba_pbp.py — NBA Play-by-Play 擷取器
 重點提取:球員上場時間分段、得分分布、Blowout 時間點、關鍵 lineup 變化。
 
 Usage:
-  python3 fetch_nba_pbp.py --date 2026-04-07 --dir "2026-04-08 NBA Analysis"
-  python3 fetch_nba_pbp.py --date 2026-04-07 --dir "..." --games "0022501050,0022501051"
+  python fetch_nba_pbp.py --date 2026-04-07 --dir "2026-04-08 NBA Analysis"
+  python fetch_nba_pbp.py --date 2026-04-07 --dir "..." --games "0022501050,0022501051"
 
 Version: 1.0.0
 """

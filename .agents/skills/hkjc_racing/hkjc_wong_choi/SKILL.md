@@ -9,14 +9,15 @@ version: 4.0.0
 ## 唯一動作
 收到任何賽事 URL 或指令後，你嘅**絕對第一且唯一動作**：
 ```bash
-python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <URL或資料夾>
+python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <URL或資料夾>
 ```
 
 ## 執行循環
-1. 執行 Orchestrator → 讀取 stdout 指示
-2. 遵從指示完成 JSON 填寫（只填寫 `[FILL]` 欄位）
-3. 再次執行 Orchestrator
-4. 重複直到 `🎉 [SUCCESS]`
+1. 第一次執行 Orchestrator（無 `--auto`）→ 印賽日總結 → 等用戶確認
+2. 用戶確認後執行 stdout 顯示嘅 `NEXT_CMD`（包含 `--auto`）→ 進入自動模式
+3. 遵從指示完成 JSON 填寫（只填寫 `[FILL]` 欄位）
+4. 每次 stdout 出現 `NEXT_CMD:` → 完成工作後即刻執行該指令
+5. 重複直到 `🎉 [SUCCESS]`
 
 ## 鐵律
 - **嚴禁**自行建立任何 `.py` 腳本
@@ -29,7 +30,7 @@ python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <
 ## Failure Protocol
 | 情況 | 動作 |
 |------|------|
-| `orchestrator.py` crash / Python error | 報告完整 error output，嘗試 `python3 orchestrator.py --resume` 恢復 |
+| `orchestrator.py` crash / Python error | 報告完整 error output，嘗試 `python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <目錄> --auto` 恢復 |
 | 網絡中斷 / 數據擷取失敗 | 讀取 `.runtime/` 已存储狀態，通知用戶並嘗試重新執行 |
 | `[FILL]` 填寫失敗 3 次 | 停止，報告失敗欄位，詢問用戶介入 |
 | `.runtime/` 目錄不存在 | 執行 `mkdir .runtime` 後重試 |

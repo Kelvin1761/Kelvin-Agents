@@ -224,6 +224,24 @@ def build_skeleton(data):
         'tactical_plan': {},
         'dual_track': {'triggered': False},
         'underhorse': {'triggered': False, 'condition': '', 'reason': ''},
+
+        # ===== OVERRIDE CHAIN INPUTS (V2 engine) =====
+        'risk_markers': [],          # e.g. ['wide_barrier', 'top_weight', 'pace_dependent']
+        'recent_3_top3': '[FILL]',   # bool: has top-3 finish in last 3 starts (SIP-SL01)
+        'is_2yo': False,             # bool: 2-year-old
+        'distance_wall': False,      # bool: attempting distance never tried
+        'long_spell': False,         # bool: >12 weeks between runs
+        'trial_illusion': False,     # bool: only evidence is trial win
+        'wet_track_tier': 0,         # int: 0=N/A, 1-3=positive, 4=unknown, 5=risk
+        'good_track_win_rate': None, # float: e.g. 0.11 = 11%
+        'good_track_sample': 0,      # int: number of Good track runs
+        'closer_cap_track': False,   # bool: Rosehill/MooneeV/Caulfield tight turn
+        'rosehill_1200_traffic': False, # bool: closer + traffic history at Rosehill 1200m
+        'momentum_level': '',        # 'positive'=2-win / 'strong'=3-win (SIP-RR17)
+        'eem_3_high_drain': False,   # bool: 3 consecutive high-drain EEM runs
+        'good_barrier': False,       # bool: barrier ≤6
+        'rating_top3_field': False,  # bool: horse rating is top-3 in field (SIP-C14-3)
+        'class_advantage_2bm': False, # bool: ≥2 BM class above field
     }
 
 

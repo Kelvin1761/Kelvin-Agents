@@ -53,7 +53,7 @@ ag_kit_skills:
 - [ ] 輸出包含完整 ≥2 個組合（🛡️ 1 + 🔥 2，可選 💎 3），組合 X (💣) 為條件觸發
 - [ ] 每個組合有組合賞率標記
 - [ ] 每個組合有 📊 組合結算區塊
-- [ ] 賞率來源標記為 Bet365
+- [ ] 賞率來源標記為 Sportsbet
 - 缺少組合 (<2) = `[CRITICAL] STRUCT-COMBO`
 
 ### 2b. Leg 欄位完整性（逐 Leg 檢查）
@@ -124,11 +124,11 @@ ag_kit_skills:
 
 - 低於底線 = `[CRITICAL] THRESHOLD-001`
 
-### 3c. Bet365 盤口合規 (P40 整數 Milestone 格式)
+### 3c. Sportsbet 盤口合規 (P40 整數 Milestone 格式)
 - Player Props Milestone 盤口必須為整數階梯格式：`10+`, `15+`, `20+`, `25+`, `30+`, `35+` 等
 - 出現 `.5` 盤口（如 `12.5+`, `14.5+`, `19.5+`）= 去錯了 `Points O/U` Tab，說明數據來源污染
-- `.5` 盤口 = `[CRITICAL] BET365-001: WRONG_TAB — 應使用 Points tab 而非 Points O/U`
-- 嚴禁自創線（如 22+），必須對應 Bet365 實際開放的盤口
+- `.5` 盤口 = `[CRITICAL] SPORTSBET-001: WRONG_TAB — 應使用 Points tab 而非 Points O/U`
+- 嚴禁自創線（如 22+），必須對應 Sportsbet 實際開放的盤口
 
 ## Step 4: 自我改善引擎
 - 觀察 Analyst 嘅常見錯誤模式
@@ -144,7 +144,7 @@ ag_kit_skills:
 🔍 [FILL] 殘留: ✅ 0 個
 📏 深度一致性: ✅ 最低字數比: [X]%
 🧮 數學校驗: ✅ 所有公式通過
-🎰 Bet365 合規: ✅ 所有盤口通過
+🎰 Sportsbet 合規: ✅ 所有盤口通過
 ```
 
 ### 有條件通過 (CONDITIONAL PASS) — 只有 MINOR 問題

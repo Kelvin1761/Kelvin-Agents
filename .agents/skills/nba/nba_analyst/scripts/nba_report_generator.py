@@ -23,15 +23,15 @@ from datetime import datetime, timedelta
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-# Bet365 Strict Lines
-BET365_LINES = {
+# Sportsbet Strict Lines
+SPORTSBET_LINES = {
     "PTS": [4.5, 9.5, 14.5, 19.5, 24.5, 29.5, 34.5, 39.5, 44.5, 49.5],
     "REB": [2.5, 4.5, 6.5, 9.5, 12.5, 14.5, 16.5, 19.5],
     "AST": [2.5, 4.5, 6.5, 9.5, 12.5, 14.5],
     "FG3M": [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5],
 }
 CORE_STATS = ["PTS", "REB", "AST", "FG3M"]
-# Note: SGM discount removed. Bet365 SGM odds are now used directly.
+# Note: SGM discount removed. Sportsbet SGM odds are now used directly.
 # This constant is kept for backward compat but should not be used for new reports.
 SGM_DISCOUNT_LEGACY = {2: 0.65, 3: 0.60, 4: 0.55, 5: 0.50}
 STAT_LABEL = {"PTS": "得分", "REB": "籃板", "AST": "助攻", "FG3M": "三分球", "STL": "偷球", "BLK": "蓋帽"}
@@ -193,7 +193,7 @@ def compute_situational_adjustments(leg, is_home, opp_def_rank, opp_pace, own_pa
 
 def generate_core_logic(leg, is_home, ha_splits, rest_str, team_stats):
     """Auto-generate core logic text from data patterns."""
-    bl = leg["best_bet365"]
+    bl = leg["best_sportsbet"]
     raw = leg["raw"]
     stat = leg["stat"]
     line = bl["line"]
@@ -237,7 +237,7 @@ def generate_core_logic(leg, is_home, ha_splits, rest_str, team_stats):
 
 def generate_risk_text(leg, ha_splits, is_home):
     """Auto-generate risk assessment."""
-    bl = leg["best_bet365"]
+    bl = leg["best_sportsbet"]
     raw = leg["raw"]
     stat = leg["stat"]
     cov = leg["cov"]
@@ -281,8 +281,8 @@ def generate_confidence_text(leg, bl):
         return f"中等。命中率 {hit}% 偏低，需要配合情境因素判斷。"
 
 
-def find_best_bet365_line(bet365_lines, direction="Over", min_hit_l10=70):
-    candidates = [bl for bl in bet365_lines if bl["direction"] == direction and bl.get("hit_rate_L10", 0) >= min_hit_l10]
+def find_best_sportsbet_line(sportsbet_lines, direction="Over", min_hit_l10=70):
+    candidates = [bl for bl in sportsbet_lines if bl["direction"] == direction and bl.get("hit_rate_L10", 0) >= min_hit_l10]
     if not candidates: return None
     if direction == "Over":
         candidates.sort(key=lambda x: x["line"], reverse=True)
@@ -312,11 +312,11 @@ def select_candidate_legs(players_data, min_usg=10):
                 if not pa or not isinstance(pa, dict): continue
                 raw = pa.get("raw", [])
                 if len(raw) < 5: continue
-                bet365_lines = pa.get("bet365_lines", [])
-                if not bet365_lines: continue
+                sportsbet_lines = pa.get("sportsbet_lines", pa.get("bet365_lines", []))
+                if not sportsbet_lines: continue
                 
-                banker = find_best_bet365_line(bet365_lines, "Over", 80)
-                value = find_best_bet365_line(bet365_lines, "Over", 70)
+                banker = find_best_sportsbet_line(sportsbet_lines, "Over", 80)
+                value = find_best_sportsbet_line(sportsbet_lines, "Over", 70)
                 if not banker and not value: continue
                 best = banker or value
                 
@@ -336,12 +336,12 @@ def select_candidate_legs(players_data, min_usg=10):
                     "pace_projected": pa.get("pace_projected", 0),
                     "location": pa.get("location", ""), "location_avg": pa.get("location_avg", 0),
                     "usg": usg, "ts": ts, "advanced": adv,
-                    "banker_bet365": banker, "value_bet365": value, "best_bet365": best,
-                    "bet365_lines": bet365_lines, "all_player_data": p, "gamelog": gamelog,
+                    "banker_sportsbet": banker, "value_sportsbet": value, "best_sportsbet": best,
+                    "sportsbet_lines": sportsbet_lines, "all_player_data": p, "gamelog": gamelog,
                 })
     
     for c in candidates:
-        best = c["best_bet365"]
+        best = c["best_sportsbet"]
         score = best.get("hit_rate_L10", 0) * 0.5 + best.get("edge", 0) * 0.3 + c["usg"] * 0.1
         if c["cov"] < 0.25: score += 5
         if c["cov"] > 0.40: score -= 5
@@ -353,7 +353,7 @@ def select_candidate_legs(players_data, min_usg=10):
 
 def format_leg_block(leg, leg_num, game_data):
     """Generate a FULLY filled leg analysis block."""
-    bl = leg["best_bet365"]
+    bl = leg["best_sportsbet"]
     raw = leg["raw"]
     adv = leg.get("advanced", {})
     player_data = leg.get("all_player_data", {})
@@ -527,22 +527,22 @@ def build_combo_analysis(legs, combo_label):
     # Use est_odds from data (dynamic model based on line/avg ratio)
     odds_list = []
     for l in legs:
-        bl = l["best_bet365"]
+        bl = l["best_sportsbet"]
         o = bl.get("est_odds", round(100 / bl.get("implied_prob", 52.6), 2) if bl.get("implied_prob", 0) > 0 else 1.90)
         odds_list.append(o)
     
     raw_mult = round(math.prod(odds_list), 2)
-    # NOTE: In new pipeline, Bet365 SGM odds are used directly.
+    # NOTE: In new pipeline, Sportsbet SGM odds are used directly.
     # This legacy discount is kept for backward compatibility.
-    disc = 1.0  # No discount — use Bet365 raw SGM odds
+    disc = 1.0  # No discount — use Sportsbet raw SGM odds
     final = raw_mult  # Direct passthrough
-    hits = [l["best_bet365"].get("hit_rate_L10", 0) for l in legs]
+    hits = [l["best_sportsbet"].get("hit_rate_L10", 0) for l in legs]
     combo_hit = round(math.prod(h/100 for h in hits) * 100, 1)
     
     # Per-leg odds breakdown
     leg_details = []
     for i, (l, o) in enumerate(zip(legs, odds_list), 1):
-        leg_details.append(f"Leg {i} ({l['name']} {l['stat']} O{l['best_bet365']['line']}): @{o}")
+        leg_details.append(f"Leg {i} ({l['name']} {l['stat']} O{l['best_sportsbet']['line']}): @{o}")
     leg_breakdown = "\n".join(f"  - {d}" for d in leg_details)
     
     odds_calc = " × ".join(str(o) for o in odds_list) + f" = {raw_mult}"
@@ -565,7 +565,7 @@ def build_combo_analysis(legs, combo_label):
 **各 Leg 賠率：**
 {leg_breakdown}
 - 原始組合賠率：{odds_calc}
-- 組合賠率：**@{final}** (Bet365 SGM)
+- 組合賠率：**@{final}** (Sportsbet SGM)
 - 💵 $100 投注回報：**${round(final * 100)}**
 - 組合命中率：{hit_calc}
 - 組合信心分：{conf}/10
@@ -694,22 +694,22 @@ def generate_report(data, top_n=8):
             unique.append(c)
     
     # Build combos
-    c1a_pool = sorted(unique, key=lambda x: (x["best_bet365"]["hit_rate_L10"], -x["cov"]), reverse=True)
+    c1a_pool = sorted(unique, key=lambda x: (x["best_sportsbet"]["hit_rate_L10"], -x["cov"]), reverse=True)
     c1a = pick_legs(c1a_pool, 2)
     
     c1b = []
     for leg in c1a:
-        vbl = find_best_bet365_line(leg["bet365_lines"], "Over", 70)
-        if vbl and vbl["line"] > leg["best_bet365"]["line"]:
-            nl = dict(leg); nl["best_bet365"] = vbl; c1b.append(nl)
+        vbl = find_best_sportsbet_line(leg["sportsbet_lines"], "Over", 70)
+        if vbl and vbl["line"] > leg["best_sportsbet"]["line"]:
+            nl = dict(leg); nl["best_sportsbet"] = vbl; c1b.append(nl)
         else: c1b.append(leg)
     
     used_1a = {f"{l['name']}_{l['stat']}" for l in c1a}
-    c2_pool = sorted(unique, key=lambda x: (x["best_bet365"]["edge"], x["best_bet365"]["hit_rate_L10"]), reverse=True)
+    c2_pool = sorted(unique, key=lambda x: (x["best_sportsbet"]["edge"], x["best_sportsbet"]["hit_rate_L10"]), reverse=True)
     c2 = pick_legs(c2_pool, 2, used_1a)
     if len(c2) < 2: c2 = pick_legs(c2_pool, 2)
     
-    c3_pool = sorted(unique, key=lambda x: x["best_bet365"]["edge"], reverse=True)
+    c3_pool = sorted(unique, key=lambda x: x["best_sportsbet"]["edge"], reverse=True)
     c3 = pick_legs(c3_pool, 3)
     
     # Build report
@@ -737,11 +737,11 @@ def generate_report(data, top_n=8):
         # Calculate final odds for header
         odds_list = []
         for l in legs:
-            bl = l["best_bet365"]
+            bl = l["best_sportsbet"]
             o = bl.get("est_odds", round(100 / bl.get("implied_prob", 52.6), 2) if bl.get("implied_prob", 0) > 0 else 1.90)
             odds_list.append(o)
         raw_mult = round(math.prod(odds_list), 2)
-        disc = 1.0  # Bet365 SGM direct
+        disc = 1.0  # Sportsbet SGM direct
         final_odds = raw_mult
         
         L.append(f"---\n\n### 組合 {label}：{title}— 組合賠率：~@{final_odds}\n")
@@ -754,7 +754,7 @@ def generate_report(data, top_n=8):
     # Summary
     L.append(f"---\n\n### 🧠 總結與賽前必做")
     if c1a:
-        L.append(f"- 最強關：Leg 1（{c1a[0]['name']} {c1a[0]['stat']}）— 命中率 {c1a[0]['best_bet365']['hit_rate_L10']}%，穩定性最高")
+        L.append(f"- 最強關：Leg 1（{c1a[0]['name']} {c1a[0]['stat']}）— 命中率 {c1a[0]['best_sportsbet']['hit_rate_L10']}%，穩定性最高")
         w = c1a[-1] if len(c1a) > 1 else c1a[0]
         L.append(f"- 最弱關：Leg {len(c1a)}（{w['name']} {w['stat']}）— CoV {w['cov']}，波動性最高")
     L.append(f"- 賽前 60 分鐘必查：確認傷病名單更新、盤口走勢變動、先發陣容公佈\n")

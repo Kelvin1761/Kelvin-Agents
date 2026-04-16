@@ -4,7 +4,7 @@ compute_rating_matrix_hkjc.py — HKJC Wong Choi Protocol Rating Matrix Calculat
 Full implementation of Step 14.2 including all override rules.
 
 Usage:
-    python3 compute_rating_matrix_hkjc.py --input <dimensions.json> [--race-id HV_R7]
+    python compute_rating_matrix_hkjc.py --input <dimensions.json> [--race-id HV_R7]
 
 Input JSON format:
 {
@@ -48,9 +48,13 @@ Input JSON format:
     ]
 }
 """
-import json, sys, argparse
+import json, sys, argparse, os
 from pathlib import Path
 from typing import Optional
+
+# Import shared S-grade inflation guards from rating_engine_v2
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../scripts')))
+from rating_engine_v2 import apply_s_grade_guards
 
 GRADE_ORDER = ['S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D']
 
@@ -392,7 +396,13 @@ def compute_grade(horse: dict, ctx: dict) -> dict:
             base_grade = 'A+'
             base_rule += ' | S-品質閘門:首跑此場地→A+'
     
-    constrained_grade, constraint_note = apply_core_constraint(base_grade, counts, dims)
+    # SIP-9 + SIP-SL01: S-grade inflation guards
+    guarded_grade, guard_note = apply_s_grade_guards(
+        base_grade, horse, counts, dims, ctx,
+        sectional_key='sectional', class_key='class_advantage'
+    )
+    
+    constrained_grade, constraint_note = apply_core_constraint(guarded_grade, counts, dims)
     adjusted_grade, micro_note = apply_micro_adjustments(
         constrained_grade, horse.get('micro_up', []), horse.get('micro_down', [])
     )
@@ -414,6 +424,7 @@ def compute_grade(horse: dict, ctx: dict) -> dict:
         'name': horse['name'],
         'counts': counts,
         'base_grade': base_grade, 'base_rule': base_rule,
+        'guard_note': guard_note,
         'constraint_note': constraint_note,
         'micro_note': micro_note,
         'scan_note': scan_note,
@@ -443,6 +454,8 @@ def format_matrix_block(r: dict) -> str:
     lines.append(f"- **🔢 矩陣算術:** 核心✅={c['core_strong']} | 半核心✅={c['semi_strong']} | "
                  f"輔助✅={c['aux_strong']} | 總❌={c['total_weak']} | 核心❌={cw} → 查表命中行={r['base_grade']}")
     lines.append(f"- **基礎評級:** `[{r['base_grade']}]` | **規則**: `[{r['base_rule']}]`")
+    if r.get('guard_note'):
+        lines.append(f"- **S級防線:** `[{r['guard_note']}]`")
     if r['constraint_note']:
         lines.append(f"- **核心防護牆:** `[{r['constraint_note']}]`")
     lines.append(f"- **微調:** `[{r['micro_note']}]`")
@@ -549,7 +562,7 @@ def main():
     args = parser.parse_args()
 
     if not args.input:
-        print("Usage: python3 compute_rating_matrix_hkjc.py --input <dims.json> [--race-id HV_R7]")
+        print("Usage: python compute_rating_matrix_hkjc.py --input <dims.json> [--race-id HV_R7]")
         sys.exit(0)
 
     if not Path(args.input).exists():

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 """
 claw_sportsbet_odds.py — Sportsbet NBA Zero-Navigation Extractor (Claw Code V2)
-Replaces the old manual bet365 navigation.
+Replaces the old manual navigation.
 
 Architecture:
 - HTTP API call to get all NBA matches for today
@@ -134,7 +135,7 @@ class SportsbetNBAExtractor:
                         away_abbr = TEAM_NAMES[away_name]
                         home_abbr = TEAM_NAMES[home_name]
                         
-                        formatted = self._format_as_bet365(game_name, away_abbr, home_abbr, cleaned)
+                        formatted = self._format_as_sportsbet(game_name, away_abbr, home_abbr, cleaned)
                         all_odds_data[f"{away_abbr}_{home_abbr}"] = formatted
                         print(f"   ✅ 成功提取 {len(cleaned)} 種類別，已格式化為 {away_abbr} @ {home_abbr}")
                     else:
@@ -147,20 +148,40 @@ class SportsbetNBAExtractor:
         return all_odds_data
 
     def _parse_normalized_markets(self, sportsbook):
+        """
+        Parse normalized Redux sportsbook entities into structured market data.
+
+        Sportsbet has TWO distinct market formats:
+        ─────────────────────────────────────────────────────────────────
+        TYPE A: Individual Player O/U  (e.g. "LaMelo Ball - Points")
+          → Selections: "Over +22.5" / "Under +22.5"
+          → Line comes from handicap object on the outcome
+          → Market name format: "{Player Name} - {Category}"
+
+        TYPE B: Multi-Player Milestone  (e.g. "To Score 5+ Points",
+                "To Record 4+ Rebounds", "3+ Made Threes")
+          → Selections: Player names (each a separate outcome)
+          → Line comes from the market name itself  (N+)
+          → Market name format: "To Score/Record N+ ..." or "N+ Made Threes"
+        ─────────────────────────────────────────────────────────────────
+        Both must be parsed correctly and mapped to the right prop category
+        WITHOUT cross-contamination.
+        """
         structured = {}
         markets = sportsbook.get("markets", {})
         outcomes_db = sportsbook.get("outcomes", {})
-        
+
         for m_id, m_data in markets.items():
             name = m_data.get("name", "")
-            if not any(x in name for x in ['Point', 'Rebound', 'Assist', 'Match Betting', 'Line', 'Threes']):
+            if not any(x in name for x in ['Point', 'Rebound', 'Assist', 'Match Betting',
+                                            'Line', 'Threes', 'Three']):
                 continue
-            
+
             sels = {}
             for out_id in m_data.get("outcomeIds", []):
                 out_data = outcomes_db.get(str(out_id), {})
                 s_name = out_data.get("name", "")
-                
+
                 price_val = None
                 win_price = out_data.get("winPrice")
                 if isinstance(win_price, dict) and "num" in win_price and "den" in win_price:
@@ -170,43 +191,136 @@ class SportsbetNBAExtractor:
                         price_val = round(1 + (num / den), 2)
                 elif type(win_price) in [int, float]:
                     price_val = win_price
-                
+
                 hc_obj = out_data.get("handicap")
                 if hc_obj and isinstance(hc_obj, dict):
                     hc = hc_obj.get("display") or hc_obj.get("value")
                     s_name = f"{s_name} {hc}"
-                
+
                 if price_val and s_name:
                     sels[s_name.strip()] = str(price_val)
-            
+
             if sels:
                 structured[name] = sels
-                
+
         return structured
 
+    # ── Market Classification Helpers ────────────────────────────────────
+    # These patterns are derived from actual Sportsbet Redux state dumps.
+    #
+    # TYPE A (Individual Player O/U) — "{Player} - Points/Rebounds/..."
+    #   Selections: "Over +22.5", "Under +22.5"
+    #
+    # TYPE B (Multi-Player Milestone)
+    #   Points:   "To Score N+ Points"  (EXCLUDE quarter/half/minute variants)
+    #   Rebounds:  "To Record N+ Rebounds"
+    #   Assists:  "To Record N+ Assists"
+    #   Threes:   "N+ Made Threes"
+    #
+    # POISON markets to EXCLUDE:
+    #   "1st Quarter - To Score N+ Points"  (quarter milestone)
+    #   "Player to Score N+ Points in the First 3 Minutes" (minute milestone)
+    #   "1st Half Total Points", "Away Team Total Points" (team totals)
+    #   "Total Points Odd / Even", "Race to N Points" (game-level)
+    #   "{Player} - 1st Qtr Points" (quarter-level player prop)
+
+    _EXCLUDE_KEYWORDS = frozenset([
+        'Quarter', 'Half', 'Qtr', 'Total', 'Race to', 'Odd', 'Even',
+        'First Team', 'Minute', '3 Minutes', 'Away Team', 'Home Team',
+    ])
+
+    def _is_excluded(self, m_name: str) -> bool:
+        """Return True if a market name contains any exclusion keyword."""
+        return any(kw in m_name for kw in self._EXCLUDE_KEYWORDS)
+
+    def _classify_market(self, m_name: str) -> str | None:
+        """
+        Classify a Sportsbet market name into a canonical category.
+        Returns one of: 'points', 'rebounds', 'assists', 'threes_made',
+                         'match_betting', 'line', or None (skip).
+        """
+        # ── Game-level markets ───────────────────────────────────────
+        if "Match Betting" in m_name:
+            return "match_betting"
+        if "Line" in m_name and not self._is_excluded(m_name):
+            return "line"
+
+        # ── Skip junk / game-level / quarter / half markets ──────────
+        if self._is_excluded(m_name):
+            return None
+
+        # ── Threes MUST be checked BEFORE Points ─────────────────────
+        # Multi-player: "3+ Made Threes", "1+ Made Threes"
+        # Individual:   "LaMelo Ball - Made Threes"
+        if "Threes" in m_name or "Three" in m_name:
+            return "threes_made"
+
+        # ── Points ───────────────────────────────────────────────────
+        # Individual: "LaMelo Ball - Points"
+        # Multi-player: "To Score 5+ Points"
+        if "Point" in m_name:
+            return "points"
+
+        # ── Rebounds ──────────────────────────────────────────────────
+        # Individual: "LaMelo Ball - Rebounds"
+        # Multi-player: "To Record 4+ Rebounds"
+        if "Rebound" in m_name:
+            return "rebounds"
+
+        # ── Assists ──────────────────────────────────────────────────
+        # Individual: "LaMelo Ball - Assists"
+        # Multi-player: "To Record 4+ Assists"
+        if "Assist" in m_name:
+            return "assists"
+
+        return None
+
     def _clean_markets(self, raw_markets):
-        """Map raw sportsbet market names to categorized dictionary."""
-        cleaned = {"Points": {}, "Rebounds": {}, "Assists": {}, "Threes Made": {}, "Game Lines": {}}
-        
+        """
+        Classify raw sportsbet market names into canonical categories.
+        Uses strict ordering (Threes before Points) to prevent cross-contamination.
+        """
+        cleaned = {
+            "Points": {}, "Rebounds": {}, "Assists": {},
+            "Threes Made": {}, "Game Lines": {}
+        }
+        _cat_to_key = {
+            "points": "Points", "rebounds": "Rebounds", "assists": "Assists",
+            "threes_made": "Threes Made", "match_betting": "Game Lines",
+            "line": "Game Lines",
+        }
+
         for m_name, sels in raw_markets.items():
-            if "Match Betting" in m_name:
+            cat = self._classify_market(m_name)
+            if cat is None:
+                continue
+
+            target_key = _cat_to_key[cat]
+            if cat == "match_betting":
                 cleaned["Game Lines"]["Match Betting"] = sels
-            elif "Line" in m_name and "Quarter" not in m_name and "Half" not in m_name and "Qtr" not in m_name:
+            elif cat == "line":
                 cleaned["Game Lines"]["Line"] = sels
-            elif "Point" in m_name and "Total" not in m_name and "Quarter" not in m_name and "Half" not in m_name and "Qtr" not in m_name:
-                cleaned["Points"][m_name] = sels
-            elif "Rebound" in m_name and "Quarter" not in m_name and "Half" not in m_name and "Qtr" not in m_name:
-                cleaned["Rebounds"][m_name] = sels
-            elif "Assist" in m_name and "Quarter" not in m_name and "Half" not in m_name and "Qtr" not in m_name:
-                cleaned["Assists"][m_name] = sels
-            elif ("Threes" in m_name or "3 Point" in m_name) and "Quarter" not in m_name and "Half" not in m_name and "Qtr" not in m_name:
-                cleaned["Threes Made"][m_name] = sels
-                
+            else:
+                cleaned[target_key][m_name] = sels
+
         # Remove empty categories
         return {k: v for k, v in cleaned.items() if v}
 
-    def _format_as_bet365(self, raw_game_name, away_abbr, home_abbr, cleaned_markets):
-        """Converts sportsbet internal dict into the standard Bet365_Odds JSON format expected by Downstream."""
+    def _format_as_sportsbet(self, raw_game_name, away_abbr, home_abbr, cleaned_markets):
+        """
+        Converts sportsbet internal dict into the standard Sportsbet_Odds JSON
+        format expected by downstream (generate_nba_reports.py).
+
+        Handles both market formats:
+        - TYPE A (Individual O/U):  "LaMelo Ball - Points"
+            → selections have handicap (e.g. "Over +22.5")
+            → player name is in the market name before " - "
+        - TYPE B (Multi-Player Milestone):  "To Score 5+ Points"
+            → line value (e.g. 5) is in the market name
+            → selection names ARE the player names
+        """
+        import re
+
         formatted = {
             "source": "Sportsbet_Extractor",
             "extraction_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -216,55 +330,74 @@ class SportsbetNBAExtractor:
             "game_lines": {},
             "player_props": {}
         }
-        
-        # Game lines
+
+        # ── Game lines ───────────────────────────────────────────────
         gl = cleaned_markets.get("Game Lines", {})
         if "Line" in gl:
-            # Usually format is "Away Team -1.5/Over 200.5"
             line_keys = list(gl["Line"].keys())
             if line_keys:
-                import re
                 for k in line_keys:
                     match = re.search(r"([+-]\d+\.5)", k)
                     if match:
                         formatted["game_lines"]["spread_away"] = match.group(1)
                         break
         if "Match Betting" in gl:
-            # Values are dicts with Team Name -> Odds
             for k, v in gl["Match Betting"].items():
                 if away_abbr in TEAM_NAMES.get(k, k):
                     formatted["game_lines"]["ml_away"] = str(v)
                 elif home_abbr in TEAM_NAMES.get(k, k):
                     formatted["game_lines"]["ml_home"] = str(v)
-                    
-        # Player Props
+
+        # ── Player Props ─────────────────────────────────────────────
         pp = {"points": {}, "rebounds": {}, "assists": {}, "threes_made": {}}
-        cat_map = {"Points": "points", "Rebounds": "rebounds", "Assists": "assists", "Threes Made": "threes_made"}
-        
+        cat_map = {
+            "Points": "points", "Rebounds": "rebounds",
+            "Assists": "assists", "Threes Made": "threes_made",
+        }
+
         for sp_cat, mapped_cat in cat_map.items():
             cat_data = cleaned_markets.get(sp_cat, {})
             for market_name, selections in cat_data.items():
-                # Extract line value from market name e.g. '5+ Made Threes' -> 5, or 'Player Over +2.5' -> 2.5
-                line_val = None
-                import re
-                m1 = re.search(r"(\d+)\+", market_name)
-                m2 = re.search(r"([+-]?\d+\.5)", market_name)
-                if m1:
-                    line_val = m1.group(1)
-                elif m2:
-                    # O/U markets, we take Over typically
-                    if "Under" in market_name: continue
-                    line_val = m2.group(1).replace("+","")
-                
-                if line_val:
+
+                # ─── Detect market TYPE ──────────────────────────────
+                # TYPE A: "{Player Name} - {Category}"
+                #   e.g. "LaMelo Ball - Points", "Bam Adebayo - Rebounds"
+                #   Selections: "Over +22.5" @1.85, "Under +22.5" @1.95
+                type_a_match = re.match(r'^(.+?)\s*-\s*(Points|Rebounds|Assists|Made Threes)', market_name)
+
+                # TYPE B: "To Score N+ Points", "To Record N+ Rebounds",
+                #          "N+ Made Threes"
+                #   Selections: player names
+                type_b_match = re.search(r'(\d+)\+', market_name)
+
+                if type_a_match:
+                    # ─── TYPE A: Individual Player O/U ────────────────
+                    player_name = type_a_match.group(1).strip()
+                    for sel_name, odds in selections.items():
+                        # Only take "Over" lines, skip "Under"
+                        if "Under" in sel_name:
+                            continue
+                        # Extract line from selection name: "Over +22.5" → "22.5"
+                        line_match = re.search(r'([+-]?\d+\.5)', sel_name)
+                        if line_match:
+                            line_val = line_match.group(1).replace("+", "")
+                            if player_name not in pp[mapped_cat]:
+                                pp[mapped_cat][player_name] = {"lines": {}}
+                            pp[mapped_cat][player_name]["lines"][str(line_val)] = str(odds)
+
+                elif type_b_match:
+                    # ─── TYPE B: Multi-Player Milestone ───────────────
+                    line_val = type_b_match.group(1)
                     for player_name, odds in selections.items():
-                        # remove trailing handicap strings
-                        clean_player = re.sub(r' [+-]?\d+\.5', '', player_name).strip()
-                        clean_player = clean_player.replace(" Over", "")
+                        # Clean player name (remove any trailing handicap artifacts)
+                        clean_player = re.sub(r'\s*[+-]?\d+\.5\s*$', '', player_name).strip()
+                        clean_player = clean_player.replace(" Over", "").replace(" Under", "")
+                        if not clean_player:
+                            continue
                         if clean_player not in pp[mapped_cat]:
                             pp[mapped_cat][clean_player] = {"lines": {}}
                         pp[mapped_cat][clean_player]["lines"][str(line_val)] = str(odds)
-                        
+
         formatted["player_props"] = pp
         return formatted
 
