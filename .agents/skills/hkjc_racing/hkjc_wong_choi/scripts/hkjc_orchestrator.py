@@ -1250,22 +1250,29 @@ def main():
                 _next_cmd(target_dir)
                 sys.exit(1)
             
-            # ── Step J: Monte Carlo Simulation ──
-            print(f"🎲 正在為 Race {r} 執行 Monte Carlo V2 模擬...")
-            mc_hkjc_script = ".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/monte_carlo_hkjc.py"
-            mc_json_out = os.path.join(target_dir, f"Race_{r}_MC.json")
-            if os.path.exists(mc_hkjc_script):
+            # ── Step J: Monte Carlo Simulation (mc_simulator.py v1.0) ──
+            print(f"🎲 正在為 Race {r} 執行 Monte Carlo 模擬...")
+            mc_simulator_script = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "..", "..", "..", "..", "..", "mc_simulator.py"
+            )
+            mc_json_out = os.path.join(target_dir, f"Race_{r}_MC_Results.json")
+
+            if os.path.exists(mc_simulator_script):
                 mc_res = subprocess.run(
-                    [PYTHON, mc_hkjc_script, logic_json, facts_path,
-                     "--output", mc_json_out, "--analysis", an_file],
+                    [PYTHON, mc_simulator_script, "--input", logic_json, "--platform", "hkjc"],
                     capture_output=True, text=True
                 )
-                if mc_res.returncode == 0:
-                    print(f"✅ MC V2 模擬與注入完成")
+                if mc_res.returncode == 0 and os.path.exists(mc_json_out):
+                    print(f"✅ MC Results 生成完畢 → Race_{r}_MC_Results.json")
+                    # Parse concordance summary from stdout
+                    for line in mc_res.stdout.strip().split('\n'):
+                        if 'Concordance' in line or '⚠️' in line:
+                            print(f"   {line.strip()}")
                 else:
-                    print(f"⚠️ MC V2 模擬失敗 (非阻塞): {mc_res.stderr[:200]}")
+                    print(f"⚠️ MC 模擬失敗 (非阻塞): {mc_res.stderr[:300]}")
             else:
-                print(f"⚠️ MC V2 腳本不存在: {mc_hkjc_script}")
+                print(f"⚠️ mc_simulator.py 未找到: {mc_simulator_script}")
                 
             # ── Step K: QA ──
             print(f"🛡️ 正在就編譯好的 Race {r} 進行 Batch QA (completion_gate_v2.py)...")

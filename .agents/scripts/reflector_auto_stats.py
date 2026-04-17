@@ -61,9 +61,7 @@ HORSE_HEADER_RE = re.compile(
 RESULT_RE = re.compile(
     r'(?:(\d+)(?:st|nd|rd|th)[：:.\s]+#?(\d+)\s+(.+?)(?:\s*[\(（]|$))'
     r'|'
-    r'(?:第(\d+)名[：:.\s]+#?(\d+)\s+(.+?)(?:\s*[\(（]|$))'
-    r'|'
-    r'(?:\[(\d+)\]\s+(\d+)\.\s+(.+?)(?:\s*[\(（]|$))',
+    r'(?:第(\d+)名[：:.\s]+#?(\d+)\s+(.+?)(?:\s*[\(（]|$))',
     re.UNICODE | re.MULTILINE
 )
 
@@ -108,15 +106,6 @@ def parse_picks_from_analysis(text: str) -> list:
         name = match.group(3).strip().rstrip('*').strip()
         picks.append((rank, num, name))
     
-    if not picks:
-        # Try P19 format
-        for match in re.finditer(r'([🥇🥈🥉🏅])\s*\*\*第[一二三四]選\*\*\s*\n-\s*\*\*馬號及馬名[：:]\*\*\s*\[?(\d+)\]?\s+(.+)', text):
-            emoji = match.group(1)
-            rank = emoji_map.get(emoji, len(picks) + 1)
-            num = int(match.group(2))
-            name = match.group(3).strip()
-            picks.append((rank, num, name))
-            
     if not picks:
         # Try alternative format
         for match in PICK_ALT_RE.finditer(text):
@@ -166,9 +155,9 @@ def parse_results(text: str) -> list:
     
     # Try standard format
     for match in RESULT_RE.finditer(text):
-        pos = match.group(1) or match.group(4) or match.group(7)
-        num = match.group(2) or match.group(5) or match.group(8)
-        name = match.group(3) or match.group(6) or match.group(9)
+        pos = match.group(1) or match.group(4)
+        num = match.group(2) or match.group(5)
+        name = match.group(3) or match.group(6)
         if pos and num:
             results.append((int(pos), int(num), name.strip() if name else ''))
     
@@ -279,7 +268,7 @@ def run_stats(analysis_dir: str, results_file: str) -> dict:
     # Split results by race
     race_results = {}
     # Try to split by race headers
-    race_sections = re.split(r'(?:##?\s*(?:Race|第)\s*(\d+)|Race:\s*(\d+))', results_text)
+    race_sections = re.split(r'(?:##?\s*(?:Race|第)\s*(\d+)|---)', results_text)
     
     # If no clear sections, try parsing all results
     if len(race_sections) <= 1:
@@ -289,9 +278,7 @@ def run_stats(analysis_dir: str, results_file: str) -> dict:
     else:
         current_race = None
         for i, section in enumerate(race_sections):
-            if section is None:
-                continue
-            if section.strip().isdigit():
+            if section and section.strip().isdigit():
                 current_race = int(section.strip())
             elif current_race is not None:
                 res = parse_results(section)

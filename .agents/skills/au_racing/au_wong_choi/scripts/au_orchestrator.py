@@ -1512,34 +1512,29 @@ def main():
                 _next_cmd(target_dir)
                 sys.exit(1)
             
-            # ── Step L: Monte Carlo Simulation ──
-            print(f"🎲 Running AU Monte Carlo simulation for Race {r}...")
-            mc_au_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "monte_carlo_au.py")
-            mc_inject_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", "scripts", "inject_mc_au.py")
+            # ── Step L: Monte Carlo Simulation (mc_simulator.py v1.0) ──
+            print(f"🎲 Running Monte Carlo simulation for Race {r}...")
+            mc_simulator_script = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "..", "..", "..", "..", "..", "mc_simulator.py"
+            )
             mc_json_out = os.path.join(target_dir, f"Race_{r}_MC_Results.json")
 
-            if os.path.exists(mc_au_script):
+            if os.path.exists(mc_simulator_script):
                 mc_res = subprocess.run(
-                    [PYTHON, mc_au_script, json_file, facts_file, "--output", mc_json_out],
+                    [PYTHON, mc_simulator_script, "--input", json_file, "--platform", "au"],
                     capture_output=True, text=True
                 )
-                if mc_res.returncode == 0:
-                    print(f"✅ MC JSON generated → Race_{r}_MC_Results.json")
-                    if os.path.exists(mc_inject_script) and os.path.exists(mc_json_out):
-                        inject_res = subprocess.run(
-                            [PYTHON, mc_inject_script, target_dir, "--races", str(r)],
-                            capture_output=True, text=True
-                        )
-                        if inject_res.returncode == 0:
-                            print(f"✅ MC table injected into Race {r} Analysis.md")
-                        else:
-                            print(f"⚠️ MC inject failed (non-blocking): {inject_res.stderr[:200]}")
-                    else:
-                        print(f"⚠️ inject_mc_au.py not found — skipping injection")
+                if mc_res.returncode == 0 and os.path.exists(mc_json_out):
+                    print(f"✅ MC Results generated → Race_{r}_MC_Results.json")
+                    # Parse concordance summary from stdout
+                    for line in mc_res.stdout.strip().split('\n'):
+                        if 'Concordance' in line or '⚠️' in line:
+                            print(f"   {line.strip()}")
                 else:
-                    print(f"⚠️ MC simulation failed (non-blocking): {mc_res.stderr[:200]}")
+                    print(f"⚠️ MC simulation failed (non-blocking): {mc_res.stderr[:300]}")
             else:
-                print(f"⚠️ monte_carlo_au.py not found: {mc_au_script}")
+                print(f"⚠️ mc_simulator.py not found: {mc_simulator_script}")
             
             # ── Step M: QA ──
             print(f"🛡️ 正在進行 Batch QA (completion_gate_v2.py)...")

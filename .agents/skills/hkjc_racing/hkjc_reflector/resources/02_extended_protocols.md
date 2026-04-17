@@ -411,41 +411,37 @@ python3 .agents/scripts/instinct_evaluator.py "{TARGET_DIR}" \
 🔬 SIP 已套用完成。修改清單:
 {SIP_CHANGELOG_SUMMARY}
 
-為確保新邏輯真正改善預測準確度,需要進行盲測驗證:
-→ 調用 HKJC Reflector Validator,以更新後嘅規則重新分析今日 {VENUE} 賽事
-→ 驗證將由 Race 1 開始,逐場進行,每場通過先可進入下一場
-→ 預計需要分析 {TOTAL_RACES} 場(SIP Scope Analysis 會決定實際數量)
+為確保新邏輯真正改善預測準確度,需要進行 LLM 歷史回測驗證:
+→ 揀選 2-3 場與 SIP 相關嘅歷史賽事（優先揀 FP/FN 觸發場次）
+→ 以完整 14-step 引擎重新分析,比對新舊 Top 4
+→ MC Sanity Check 作為輔助（非主驗證）
 
-是否要從 Race 1 開始盲測驗證?(Y/N)
+是否開始回測驗證?(Y/N)
 ```
 
-**Step 6c-2 — 用戶確認後,立即調用 Validator(強制執行):**
+**Step 6c-2 — 用戶確認後,立即執行 Step 7 SIP Validation (強制執行):**
 
-若用戶確認 (Y),你**必須立即**讀取 `HKJC Reflector Validator` 技能 (`hkjc_reflector_validator/SKILL.md`),並以以下完整數據包調用:
+若用戶確認 (Y),你**必須立即**執行 SKILL.md Step 7 (SIP Validation — 3-Tier):
 
-```
-🔬 Validator 調用指令:
-────────────────────
-SKILL: HKJC Reflector Validator
-TARGET_DIR: {TARGET_DIR 絕對路徑}
-VENUE: {VENUE}
-DATE: {DATE}
-TOTAL_RACES: {TOTAL_RACES}
-SIP_CHANGELOG: |
-  {逐條列出本次修改嘅 SIP,格式如下:}
-  - SIP-XX: [標題] → 修改咗 [resource 檔案名] 嘅 [Step/規則]
-  - SIP-YY: [標題] → 修改咗 [resource 檔案名] 嘅 [Step/規則]
-REFLECTOR_REPORT: {覆盤報告檔案路徑}
-────────────────────
-```
+1. **Tier 1 LLM 歷史回測 (Primary):**
+   - 揀選 2-3 場與 SIP 相關嘅歷史賽事
+   - 用更新後嘅 SIP 規則以完整 14-step 引擎重新分析
+   - 比對新舊 Top 4 排名是否更接近實際賽果
 
-> **執行要求:** 你必須喺同一個 session 中開始執行 Validator 嘅 Step 1(初始化),唔可以只輸出調用指令然後停低。Validator 嘅完整流程(Step 1 → Step 1.5 Scope Analysis → 呈現驗證計劃)應喺用戶確認後立即啟動。
+2. **Tier 2 MC Sanity Check (Secondary):**
+   - `python mc_simulator.py --logic "[LOGIC_JSON]" --platform hkjc`
+   - 只檢查不合理偏移 (非驗證閘口)
+
+3. **Tier 3 深度覆審 (條件觸發):**
+   - 只有 Tier 1 同 Tier 2 結論矛盾時觸發
+
+> **執行要求:** 你必須喺同一個 session 中開始執行 Tier 1 回測,唔可以只輸出提示然後停低。
 
 **Step 6c-3 — 用戶拒絕:**
 
 若用戶拒絕 (N):
-- 記錄「用戶選擇跳過 Validator 驗證」到 `_session_issues.md`
-- 輸出:「⚠️ 已記錄跳過驗證。SIP 修改已套用但未經盲測驗證。日後可隨時執行 `@hkjc reflector validator` 進行補測。」
+- 記錄「用戶選擇跳過 SIP 回測驗證」到 `_session_issues.md`
+- 輸出:「已記錄跳過驗證。SIP 修改已套用但未經回測驗證。日後可隨時執行覆盤進行補測。」
 - 結束流程
 
 ### 6d. 設計模式建議 (Design Pattern Proposal)

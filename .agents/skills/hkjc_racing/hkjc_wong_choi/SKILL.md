@@ -9,8 +9,9 @@ version: 4.0.0
 ## 唯一動作
 收到任何賽事 URL 或指令後，你嘅**絕對第一且唯一動作**：
 ```bash
-python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <URL或資料夾>
+python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <URL或資料夾>
 ```
+**(重要提示：執行此指令時，必須使用 `run_command` 工具。)**
 
 ## 執行循環
 1. 第一次執行 Orchestrator（無 `--auto`）→ 印賽日總結 → 等用戶確認

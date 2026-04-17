@@ -115,9 +115,34 @@ def check_sip_references(text, resources_dir=None):
 
 
 def check_unfilled_placeholders(text):
-    """Count remaining {{LLM_FILL}} placeholders."""
-    count = text.count('{{LLM_FILL}}')
-    return count
+    """Check remaining {{LLM_FILL}} placeholders with critical vs optional classification."""
+    total = text.count('{{LLM_FILL}}')
+
+    # Critical fields — unfilled = FAIL
+    CRITICAL_CONTEXTS = [
+        '關鍵偏差',      # Per-race deviation
+        '偏差類型',      # Per-race deviation type
+        '失誤根因',      # False Positive root cause
+        '遺漏因素',      # False Negative missed factor
+        '裁定',          # Narrative verdict (🟢🔴🟡)
+        '證據',          # Narrative evidence
+        '問題',          # SIP issue description
+    ]
+
+    critical_unfilled = 0
+    optional_unfilled = 0
+    lines = text.split('\n')
+    for line in lines:
+        if '{{LLM_FILL}}' not in line:
+            continue
+        is_critical = any(ctx in line for ctx in CRITICAL_CONTEXTS)
+        fill_count = line.count('{{LLM_FILL}}')
+        if is_critical:
+            critical_unfilled += fill_count
+        else:
+            optional_unfilled += fill_count
+
+    return {'total': total, 'critical': critical_unfilled, 'optional': optional_unfilled}
 
 
 def check_hit_rate_tables(text):
@@ -197,11 +222,13 @@ def main():
         all_violations.extend(stats_v)
     print(f"   📈 裁定統計: {'✅' if not stats_v else '❌'} ({len(stats_v)} 項問題)")
 
-    # 6. Unfilled placeholders
-    unfilled = check_unfilled_placeholders(text)
-    print(f"   🔲 未填佔位符: {unfilled} 個 {{{{LLM_FILL}}}}")
-    if unfilled > 0:
-        all_violations.append(f'仍有 {unfilled} 個 {{{{LLM_FILL}}}} 未填寫')
+    # 6. Unfilled placeholders (2-tier: critical vs optional)
+    ph = check_unfilled_placeholders(text)
+    print(f"   🔲 未填佔位符: {ph['total']} 個 (🔴 critical: {ph['critical']}, 🟡 optional: {ph['optional']})")
+    if ph['critical'] > 0:
+        all_violations.append(f"🔴 仍有 {ph['critical']} 個 CRITICAL {{{{LLM_FILL}}}} 未填寫（關鍵偏差/裁定/證據等）")
+    if ph['optional'] > 0:
+        print(f"   ⚠️ WARNING: {ph['optional']} 個 optional 佔位符未填（唔影響 PASS/FAIL）")
 
     # Final verdict
     print(f"\n{'═' * 55}")
