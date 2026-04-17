@@ -64,6 +64,10 @@ def count_dimensions(dims: dict, type_map: dict) -> dict:
         if v in ('N/A', '不計入', ''):
             continue
         dim_type = type_map.get(dim_key, 'auxiliary')
+        # 5-tier display + 3-tier calculation:
+        # ✅✅ and ✅ both count as 1 pass (not 2)
+        # ❌❌ and ❌ both count as 1 fail (not 2)
+        # Double-ticks are for display/tiebreaking only
         if '✅' in v:
             counts['total_strong'] += 1
             if dim_type == 'core':
@@ -233,7 +237,11 @@ def parse_matrix_scores(matrix_data: dict, schema: dict) -> tuple:
     Parse a matrix dictionary using the provided schema.
     schema: {"stability": "core", "eem": "semi", ...}
     Returns: (core_pass, semi_pass, aux_pass, core_fail, total_fail)
-    Supports 5-tier multi-ticks: ✅✅ = +2 pass, ❌❌ = +2 fail.
+
+    5-tier display + 3-tier calculation (V9.5):
+    ✅✅ and ✅ both count as 1 pass (not 2).
+    ❌❌ and ❌ both count as 1 fail (not 2).
+    Double-ticks are preserved for display and tiebreaking only.
     """
     core_pass = semi_pass = aux_pass = 0
     core_fail = total_fail = 0
@@ -244,8 +252,10 @@ def parse_matrix_scores(matrix_data: dict, schema: dict) -> tuple:
         item = matrix_data[key]
         score_str = str(item.get('score', '➖') if isinstance(item, dict) else item)
 
-        passes = 2 if '✅✅' in score_str else (1 if '✅' in score_str else 0)
-        fails = 2 if '❌❌' in score_str else (1 if '❌' in score_str else 0)
+        # V9.5: ✅✅ counts as 1 pass, ❌❌ counts as 1 fail
+        # (Double-ticks are display/tiebreaker only, not double-counted)
+        passes = 1 if '✅' in score_str else 0
+        fails = 1 if '❌' in score_str else 0
 
         if c_type in ('core',):
             core_pass += passes
@@ -259,9 +269,27 @@ def parse_matrix_scores(matrix_data: dict, schema: dict) -> tuple:
     return core_pass, semi_pass, aux_pass, core_fail, total_fail
 
 
+def count_double_ticks(matrix_data: dict, schema: dict = None) -> int:
+    """Count ✅✅ double-ticks for tiebreaking. Higher = stronger conviction."""
+    count = 0
+    data = matrix_data if schema is None else matrix_data
+    for key, item in data.items():
+        score_str = str(item.get('score', '➖') if isinstance(item, dict) else item)
+        if '✅✅' in score_str:
+            count += 1
+    return count
+
+
 def compute_base_grade(core_pass: int, semi_pass: int, aux_pass: int,
-                       core_fail: int, total_fail: int) -> str:
-    """Shim: compute base grade from tick counts (qualitative, not weighted)."""
+                       core_fail: int, total_fail: int,
+                       matrix_dims: dict = None,
+                       sectional_key: str = '段速與引擎',
+                       eem_key: str = 'EEM與形勢') -> str:
+    """Shim: compute base grade from tick counts (qualitative, not weighted).
+    
+    V9.5: When matrix_dims is provided, applies Core Engine Wall
+    (core ❌ → hard cap B+, with sectional✅+EEM✅ exception → A-).
+    """
     counts = {
         'core_strong': core_pass, 'semi_strong': semi_pass, 'aux_strong': aux_pass,
         'total_strong': core_pass + semi_pass + aux_pass, 'total_weak': total_fail,
@@ -270,6 +298,18 @@ def compute_base_grade(core_pass: int, semi_pass: int, aux_pass: int,
         'core_weak': core_fail, 'semi_weak': 0, 'aux_weak': 0,
     }
     grade, _ = lookup_base_grade(counts)
+    
+    # V9.5: Apply Core Engine Wall when matrix dims are available
+    if matrix_dims is not None and counts['has_core_weak']:
+        # Build dims lookup from matrix_dims for apply_core_constraint
+        dims = {}
+        for k, v in matrix_dims.items():
+            score = v.get('score', '➖') if isinstance(v, dict) else str(v)
+            dims[k] = score
+        grade, _ = apply_core_constraint(grade, counts, dims,
+                                         sectional_key=sectional_key,
+                                         eem_key=eem_key)
+    
     return grade
 
 

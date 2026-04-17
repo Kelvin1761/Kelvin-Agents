@@ -752,6 +752,16 @@ def main():
     body.append('---\n#### [第二部分] 全場馬匹深度分析\n')
     
     horses_logic = logic_data.get('horses', {})
+
+    # ── Compute grades and write back to JSON ──
+    json_modified = False
+    for h_key, h_logic in horses_logic.items():
+        m_data = h_logic.get('matrix', {})
+        grade_result = _compute_letter_grade(m_data, h_logic)
+        h_logic['base_rating'] = grade_result['base_grade']
+        h_logic['final_rating'] = grade_result['final_grade']
+        json_modified = True
+
     for h in facts_horses:
         hl = horses_logic.get(str(h['num']), horses_logic.get(h['num'], {}))
         if not hl:
@@ -765,5 +775,12 @@ def main():
     Path(args.output).write_text('\n'.join(body), encoding='utf-8')
     print(f"✅ HKJC Analysis 組裝完成 → {args.output}")
 
+    # ── Write computed grades back to Logic.json ──
+    if json_modified:
+        with open(args.logic_json, 'w', encoding='utf-8') as f:
+            json.dump(logic_data, f, ensure_ascii=False, indent=2)
+        print(f"✅ 已回寫計算評級至 → {Path(args.logic_json).name}")
+
 if __name__ == '__main__':
     main()
+

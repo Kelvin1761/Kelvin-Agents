@@ -182,6 +182,7 @@ def build_skeleton(data):
             'track_surface_gait': '[FILL]',
             'gear_intent': '[FILL]',
             'jockey_trainer_combination': '[FILL]',
+            'formline_strength': '[FILL]',  # Used by compile_analysis_template.py L317
         },
 
         'sectional_forensic': {
@@ -213,15 +214,95 @@ def build_skeleton(data):
             '裝備與距離':   {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
         },
 
-        'base_rating': '[FILL]',
-        'fine_tune': {'direction': '[FILL]', 'trigger': '[FILL]'},
-        'override': {'rule': '[FILL]'},
-        'final_rating': '[FILL]',
-        'core_logic': '[FILL]',
-        'advantages': '[FILL]',
-        'disadvantages': '[FILL]',
+        'base_rating': '[AUTO]',
+
+        # ===== 微調因素 (Fine-Tune) =====
+        # 從以下列表中揀選觸發代碼，唔好自由填寫！
+        # Python 會驗證你嘅選擇係咪合法代碼。
+        #
+        # ⚠️ WALL-012 規則：direction=+/- 時，trigger_code 必須揀一個合法代碼（唔可以係「無」）
+        #                   direction=無 時，trigger_code 必須係「無」
+        #
+        # ⚠️ 反雙重計算規則：微調因素必須係「未納入 8 維度」嘅額外因素！
+        #   如果你嘅理由已經係某個矩陣維度嘅 ✅ 來源，咁你就係雙重計算！
+        #   ❌ 錯誤：「縮程至最佳路程」→ 已反映在「裝備與距離 ✅」
+        #   ❌ 錯誤：「超強組賽績」→ 已反映在「賽績線 ✅」
+        #   ❌ 錯誤：「騎師引擎匹配」→ 已反映在「騎練訊號 ✅」
+        #   ✅ 正確：PACE_FIT — 步速預測未納入 8 維度
+        #   ✅ 正確：TRAINER_TRACK — 場地專精非標準騎練訊號
+        'fine_tune': {
+            'direction': '[FILL: +/-/無]',
+            # 升級觸發（揀一個或填「無」）:
+            #   PACE_FIT      — 步速形勢配合（今場步速強烈配合跑法）[安全：無對應維度]
+            #   JOCKEY_FIT    — 人馬配搭契合（騎師引擎匹配+黃金組合）[⚠️ 檢查騎練訊號是否已✅]
+            #   WEIGHT_SYNERGY — 負重/班次協同（升班輕磅≥4.5kg / 見習減磅）[⚠️ 檢查級數與負重是否已✅]
+            #   GEAR_POSITIVE — 配備正面變動（首戴裝備針對已確認問題）[⚠️ 檢查裝備與距離是否已✅]
+            #   ❌ FORGIVE_BOUNCE 已移除 — 寬恕已納入矩陣(+1輔助✅)，不可再用微調加分
+            #   TRAINER_TRACK — 練馬師場地專精（該場當季WR≥30%）[安全：非標準騎練訊號]
+            #   MOMENTUM_3WIN — 連勝動力（3連勝90日內）[⚠️ 檢查狀態與穩定性是否已✅]
+            #   MOMENTUM_2WIN — 連勝動力（2連勝60日內，需配合其他因素）[⚠️ 同上]
+            #   WEIGHT_EXTREME — 負重極端優勢（全場最輕，差≥5kg）[⚠️ 檢查級數與負重是否已✅]
+            #   MID_CLASS_LIGHT — 中高班輕磅（BM72+，≤54kg+≤5檔）[⚠️ 同上]
+            #   SOFT_LIGHT     — Soft場超輕磅（≤56kg+≤8檔）[安全：跨維度]
+            #   LAST_WIN       — 上仗勝出修正加分（滿足同場/同距/同場地≥2項）[⚠️ 檢查狀態是否已✅]
+            # 降級觸發（揀一個或填「無」）:
+            #   FATAL_DRAW     — 致命死檔（急彎窄場外檔10+）
+            #   INSIDE_TRAP    — 內檔被困（1-2檔+非領放+≥10匹）
+            #   INTERSTATE     — 跨州水土不服（首次跨州+負面變數）
+            #   DISTANCE_JUMP  — 增程斷氣（400m+增程）
+            #   WIN_REGRESSION — 贏馬回落（上仗贏+加磅+≥7歲）
+            #   TOP_WEIGHT     — 頂磅斷尾（≥60kg無克服紀錄）
+            #   PACE_AGAINST   — 引擎-步速逆轉（步速嚴重不利跑法）
+            #   JOCKEY_CLASH   — 人馬配搭不合（騎師風格衝突）
+            #   PACE_BURN      — 步速互燒前領崩潰（C欄+≥12匹+≥3前置）
+            #   CONTRADICTION  — 存在未解決矛盾 → 封頂B
+            'trigger_code': '[FILL: 代碼或「無」]',
+            # trigger_detail 必須解釋呢個因素點解係「額外」嘅，而非重複矩陣已有嘅 ✅
+            'trigger_detail': '[FILL: 一句話解釋點解呢個因素未被矩陣維度覆蓋]',
+        },
+
+        # ===== 覆蓋規則 =====
+        # 參考 02g_override_chain.md 嘅規則代碼
+        # 常見: TRIAL_CAP_B+ / WET_UNKNOWN / IRON_LEGS_FLOOR / RISK_CAP / 無
+        'override': {'rule': '[FILL: 規則代碼或「無」]'},
+
+        'final_rating': '[AUTO]',
+        'core_logic': '[FILL: 深度分析(最少100字)。必須將所有維度之優劣串連成連貫劇本，詳述為何給出這個評級，以及可能發生之局勢]',
+
+        # ===== 🧠 PRE-ANALYSIS CHECKLIST (必須先填，引導思考) =====
+        # LLM 必須逐項回答以下問題，答案會直接影響矩陣評分。
+        # 呢個 checklist 嘅目的係迫使你喺評分前先認清馬匹嘅本質。
+        'pre_analysis_checklist': {
+            # Q1: 呢隻馬有幾多場正式比賽（唔計試閘）？
+            # 0 = 初出馬, 1-2 = 經驗淺, 3+ = 有實戰數據
+            'career_race_starts': '[FILL: 數字]',
+
+            # Q2: 呢隻馬嘅核心競爭力證據來自邊度？
+            # 只可以揀一個: 'race_form' / 'trial_only' / 'bloodline_only' / 'mixed'
+            # ⚠️ 如果答案係 'trial_only'，代表你無任何正式賽事數據支持評級！
+            #    → 自動觸發試閘虛火規則：最高評級 B（+血統+練馬師最高 B+）
+            #    → 必須將下面 trial_illusion 設為 true
+            'primary_evidence_source': '[FILL: race_form / trial_only / bloodline_only / mixed]',
+
+            # Q3: 試閘表現對你嘅分析影響有幾大？（0-100%）
+            # 如果 > 50%，你嘅分析可能過度依賴試閘。
+            # 記住：試閘冇實戰壓力，僅為狀態參考。
+            'trial_influence_pct': '[FILL: 0-100]',
+
+            # Q4: 如果完全移除試閘數據，你仲會俾同一個評級嗎？
+            # 'yes' = 試閘只係錦上添花，評級有其他支撐
+            # 'no' = 試閘係評級嘅主要支柱 → 你需要降低評級
+            # 'no_data' = 移除試閘後完全冇數據可用 → 必須 trial_illusion = true
+            'grade_without_trial': '[FILL: yes / no / no_data]',
+        },
+
+        'advantages': '[FILL: 列舉2-3個主要優勢]',
+        'disadvantages': '[FILL: 列舉2-3個致命風險或劣勢]',
         'stability_index': '[FILL]',
-        'tactical_plan': {},
+        'tactical_plan': {
+            'expected_position': '[FILL]',  # Used by compile_analysis_template.py L322
+            'race_scenario': '[FILL]',      # Used by compile_analysis_template.py L323
+        },
         'dual_track': {'triggered': False},
         'underhorse': {'triggered': False, 'condition': '', 'reason': ''},
 
@@ -231,7 +312,8 @@ def build_skeleton(data):
         'is_2yo': False,             # bool: 2-year-old
         'distance_wall': False,      # bool: attempting distance never tried
         'long_spell': False,         # bool: >12 weeks between runs
-        'trial_illusion': False,     # bool: only evidence is trial win
+        'trial_illusion': False,     # ⚠️ 如果 pre_analysis_checklist.primary_evidence_source = 'trial_only'
+                                     #    或 grade_without_trial = 'no_data'，必須設為 True → 封頂 B+
         'wet_track_tier': 0,         # int: 0=N/A, 1-3=positive, 4=unknown, 5=risk
         'good_track_win_rate': None, # float: e.g. 0.11 = 11%
         'good_track_sample': 0,      # int: number of Good track runs
@@ -291,7 +373,23 @@ def main():
         print(f'✅ Horse #{args.horse_num} ({header.get("name", "")}) already analyzed, skipping.')
         sys.exit(0)
 
-    logic_data['horses'][horse_key] = skeleton
+    # V9.6: MERGE mode — only fill missing/[FILL] fields, preserve existing analysis
+    if existing:
+        def merge_skeleton(base, fresh):
+            """Recursively merge: only replace values that are missing or contain [FILL]."""
+            merged = dict(base)
+            for k, v in fresh.items():
+                if k not in merged:
+                    merged[k] = v
+                elif isinstance(v, dict) and isinstance(merged.get(k), dict):
+                    merged[k] = merge_skeleton(merged[k], v)
+                elif isinstance(merged[k], str) and '[FILL' in merged[k]:
+                    merged[k] = v  # Re-inject [FILL] template (keeps prompt text)
+                # else: keep existing value (already filled by analyst)
+            return merged
+        logic_data['horses'][horse_key] = merge_skeleton(existing, skeleton)
+    else:
+        logic_data['horses'][horse_key] = skeleton
 
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(logic_data, f, ensure_ascii=False, indent=2)

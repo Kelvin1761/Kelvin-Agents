@@ -22,6 +22,51 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../scripts")))
 from rating_engine_v2 import compute_base_grade, compute_weighted_score, apply_fine_tune, parse_matrix_scores, grade_sort_index
 
+
+def _auto_derive_trial_illusion(h_logic: dict) -> bool:
+    """V9.5: Auto-derive trial_illusion from checklist answers.
+    If primary_evidence_source='trial_only' or grade_without_trial='no_data',
+    force trial_illusion=True regardless of what LLM set."""
+    if h_logic.get('trial_illusion', False):
+        return True  # Already set by LLM
+    cl = h_logic.get('pre_analysis_checklist', {})
+    if cl.get('primary_evidence_source') == 'trial_only':
+        return True
+    if cl.get('grade_without_trial') == 'no_data':
+        return True
+    return False
+
+
+def _apply_scenario_caps(grade: str, h_logic: dict) -> str:
+    """V9.5: Apply all scenario-based hard caps to a grade.
+    Priority order (strictest first):
+      P2 High: is_2yo, distance_wall, long_spell → cap A-
+      P3 Medium: trial_illusion → cap B+
+                 wet_track_tier=4 → cap A-, wet_track_tier=5 → cap B+
+    """
+    gi = grade_sort_index  # alias
+    
+    # P2: Scenario Caps (High)
+    if h_logic.get('is_2yo', False) and gi(grade) < gi('A-'):
+        grade = 'A-'
+    if h_logic.get('distance_wall', False) and gi(grade) < gi('A-'):
+        grade = 'A-'
+    if h_logic.get('long_spell', False) and gi(grade) < gi('A-'):
+        grade = 'A-'
+    
+    # P3: Scenario Caps (Medium)
+    trial_illusion = _auto_derive_trial_illusion(h_logic)
+    if trial_illusion and gi(grade) < gi('B+'):
+        grade = 'B+'
+    
+    wet_tier = h_logic.get('wet_track_tier', 0)
+    if wet_tier == 4 and gi(grade) < gi('A-'):
+        grade = 'A-'
+    elif wet_tier == 5 and gi(grade) < gi('B+'):
+        grade = 'B+'
+    
+    return grade
+
 def _truncate_table(table_str: str, max_rows: int = 5, race_forgiveness_list: list = None) -> str:
     lines = table_str.strip().split('\n')
     out_lines = []
@@ -239,12 +284,14 @@ def generate_horse_section(horse_idx, h_fact, h_logic):
     m_data = h_logic.get('matrix', {})
     core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(m_data, matrix_keys_map)
     
-    b_grade = compute_base_grade(core_pass, semi_pass, aux_pass, core_fail, total_fail)
+    b_grade = compute_base_grade(core_pass, semi_pass, aux_pass, core_fail, total_fail, matrix_dims=m_data)
     w_score = compute_weighted_score(core_pass, semi_pass, aux_pass, core_fail, total_fail)
     
     ft = h_logic.get('fine_tune', {})
     ft_dir  = ft.get('direction', '無') if isinstance(ft, dict) else str(ft)
     final_rating = apply_fine_tune(b_grade, ft_dir)
+    # V9.5: Apply all scenario caps (trial_illusion, is_2yo, long_spell, etc.)
+    final_rating = _apply_scenario_caps(final_rating, h_logic)
     rating = b_grade # fall back for string formatting below
     core_logic = h_logic.get('core_logic', '[FILL]')
     advantages = h_logic.get('advantages', h_logic.get('competitive_advantage', '[缺失優勢]'))
@@ -359,7 +406,11 @@ def generate_horse_section(horse_idx, h_fact, h_logic):
     # ── 14. 微調 (14.2B) ─────────────────────────────────────────────────
     ft = h_logic.get('fine_tune', {})
     ft_dir  = ft.get('direction', '無') if isinstance(ft, dict) else str(ft)
-    ft_trig = ft.get('trigger', '無')   if isinstance(ft, dict) else '無'
+    # V9.5: Support new trigger_code + trigger_detail, fallback to legacy 'trigger'
+    ft_code = ft.get('trigger_code', '') if isinstance(ft, dict) else ''
+    ft_detail = ft.get('trigger_detail', '') if isinstance(ft, dict) else ''
+    ft_trig_legacy = ft.get('trigger', '無') if isinstance(ft, dict) else '無'
+    ft_trig = f"{ft_code} — {ft_detail}" if ft_code and ft_code != '無' else (ft_trig_legacy if ft_trig_legacy != '無' else '無')
     lines.append(f"**微調:** `{ft_dir}` | 觸發: `{ft_trig}`")
 
     # ── 15. 覆蓋規則 (14.3) ──────────────────────────────────────────────
@@ -414,7 +465,7 @@ def build_verdict(json_data, facts_horses):
         m_data = h_obj.get('matrix', {})
         core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(m_data, matrix_keys_map)
         
-        b_grade = compute_base_grade(core_pass, semi_pass, aux_pass, core_fail, total_fail)
+        b_grade = compute_base_grade(core_pass, semi_pass, aux_pass, core_fail, total_fail, matrix_dims=m_data)
         w_score = compute_weighted_score(core_pass, semi_pass, aux_pass, core_fail, total_fail)
         
         ft = h_obj.get('fine_tune', {})
@@ -423,6 +474,8 @@ def build_verdict(json_data, facts_horses):
         elif ft_dir == 'DOWN': ft_dir = '-'
         
         f_grade = apply_fine_tune(b_grade, ft_dir)
+        # V9.5: Apply all scenario caps
+        f_grade = _apply_scenario_caps(f_grade, h_obj)
         return f_grade, w_score
 
     lines = []
@@ -534,6 +587,28 @@ def main():
     else:
         horses_logic_dict = horses_logic_raw
 
+    # ── Compute grades and write back to JSON ──
+    matrix_keys_map = {
+        "狀態與穩定性": "core", "段速與引擎": "core",
+        "EEM與形勢": "semi", "騎練訊號": "semi",
+        "級數與負重": "aux", "場地適性": "aux", 
+        "賽績線": "aux", "裝備與距離": "aux",
+    }
+    json_modified = False
+    for h_key, h_logic in horses_logic_dict.items():
+        m_data = h_logic.get('matrix', {})
+        core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(m_data, matrix_keys_map)
+        b_grade = compute_base_grade(core_pass, semi_pass, aux_pass, core_fail, total_fail, matrix_dims=m_data)
+        ft = h_logic.get('fine_tune', {})
+        ft_dir = ft.get('direction', '無') if isinstance(ft, dict) else str(ft)
+        f_grade = apply_fine_tune(b_grade, ft_dir)
+        # V9.5: Apply all scenario caps
+        f_grade = _apply_scenario_caps(f_grade, h_logic)
+        # Write computed grades back to JSON
+        h_logic['base_rating'] = b_grade
+        h_logic['final_rating'] = f_grade
+        json_modified = True
+
     for h in facts_horses:
         hl = horses_logic_dict.get(str(h['num']), {})
         if not hl:
@@ -548,5 +623,12 @@ def main():
     Path(args.output).write_text('\n'.join(body), encoding='utf-8')
     print(f"✅ Analysis 組裝完成 → {args.output}")
 
+    # ── Write computed grades back to Logic.json ──
+    if json_modified:
+        with open(args.logic_json, 'w', encoding='utf-8') as f:
+            json.dump(logic_data, f, ensure_ascii=False, indent=2)
+        print(f"✅ 已回寫計算評級至 → {Path(args.logic_json).name}")
+
 if __name__ == '__main__':
     main()
+

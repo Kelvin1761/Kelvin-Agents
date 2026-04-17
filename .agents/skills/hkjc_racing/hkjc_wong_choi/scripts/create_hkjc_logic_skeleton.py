@@ -226,10 +226,10 @@ def build_skeleton(data):
             'forgiveness_bonus': {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
         },
 
-        'base_rating': '[FILL]',
-        'fine_tune': {'direction': '[FILL]', 'trigger': '[FILL]'},
+        'base_rating': '[AUTO]',
+        'fine_tune': {'direction': '[FILL: +/-/無]', 'trigger': '[FILL]'},
         'override': {'rule': '[FILL]'},
-        'final_rating': '[FILL]',
+        'final_rating': '[AUTO]',
         'core_logic': '[FILL]',
         'advantages': '[FILL]',
         'disadvantages': '[FILL]',

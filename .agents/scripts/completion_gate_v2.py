@@ -2,6 +2,8 @@ import sys
 import argparse
 import re
 from pathlib import Path
+from itertools import combinations
+from difflib import SequenceMatcher
 
 def check_au_hkjc_format(text: str, domain: str) -> list[str]:
     errors = []
@@ -222,6 +224,26 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
     elif len(horse_logics) >= 4 and len(unique_logics) <= 2:
         errors.append(f"🚨 LAZY-004 [SEVERE]: 全場 {len(horse_logics)} 匹馬只有 {len(unique_logics)} 種核心邏輯！"
                       f"疑似使用罐頭模板或批量複製。")
+
+    # ── LAZY-004B: STRUCTURAL SIMILARITY DETECTOR (V2.2) ──────────────────
+    # Catches hash-based template randomization that passes LAZY-004 but
+    # produces structurally identical analysis with superficial text differences.
+    if len(horse_logics) >= 3:
+        high_sim_pairs = 0
+        total_pairs = 0
+        for (id_a, logic_a), (id_b, logic_b) in combinations(horse_logics.items(), 2):
+            total_pairs += 1
+            ratio = SequenceMatcher(None, logic_a, logic_b).ratio()
+            if ratio > 0.65:
+                high_sim_pairs += 1
+        if total_pairs > 0:
+            sim_ratio = high_sim_pairs / total_pairs
+            if sim_ratio > 0.5:  # More than half of all pairs are >65% similar
+                errors.append(
+                    f"🚨 LAZY-004B [SEVERE]: {high_sim_pairs}/{total_pairs} 對馬匹嘅核心邏輯結構相似度 >65%！"
+                    f"疑似使用模板腳本生成（hash-based randomization）。"
+                    f"真正嘅 LLM 分析應該引用每匹馬獨特嘅賽績數據。"
+                )
 
     # ── LAZY-005: Grade-Verdict Consistency ──────────────────────────────────
     # Catches when the Verdict ranks a D-grade horse above an A/S-grade horse
