@@ -24,7 +24,7 @@
 > 1. ❌ `write_to_file` — 任何大小、任何路徑（包括 /tmp）
 > 2. ❌ `replace_file_content` — 任何大小、任何路徑
 > 3. ❌ `multi_replace_file_content` — 任何大小、任何路徑
-> 4. ❌ `python3 -c '...'` inline script — shell 引號衝突
+> 4. ❌ `python -c '...'` inline script — shell 引號衝突
 >
 > **歷史教訓:** P19v1-v5 全部失敗。`write_to_file` 即使寫 /tmp 小檔案,
 > 喺 session context 夠大時一樣卡死在 `+0 -0`。根因係 IDE JSON serialization
@@ -45,9 +45,8 @@
 > **此方法已於 2026-04-05 實戰驗證,連續 10+ 次成功,零失敗。**
 > **所有引擎 (Gemini / Opus / Sonnet) 都應使用此方法。**
 
-```bash
-# 用 run_command 執行以下 Python heredoc:
-cat << 'PYEOF' > /tmp/batch_N_generate.py
+```python
+# 用 run_command 執行以下 Python 指令（跨平台寫法）:
 import subprocess, base64
 
 content = """
@@ -56,15 +55,12 @@ content = """
 
 encoded = base64.b64encode(content.encode('utf-8')).decode('utf-8')
 subprocess.run([
-    'python3',
-    '/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/safe_file_writer.py',
+    'python',
+    '.agents/scripts/safe_file_writer.py',
     '--target', '{TARGET_DIR}/{ANALYSIS_FILE}',
     '--mode', 'append',    # Batch 1 用 'overwrite', Batch 2+ 用 'append'
     '--content', encoded
 ], check=True)
-PYEOF
-
-python3 /tmp/batch_N_generate.py
 ```
 
 **優點:**
@@ -79,11 +75,13 @@ python3 /tmp/batch_N_generate.py
 
 ## ⚠️ Fallback (safe_file_writer 不可用時)
 
-```bash
-# Fallback A — overwrite:
-cp /tmp/batch_N.md "{TARGET_DIR}/{ANALYSIS_FILE}"
-# Fallback B — append:
-cat /tmp/batch_N.md >> "{TARGET_DIR}/{ANALYSIS_FILE}"
+```python
+# Fallback — 用 Python 直接寫入（跨平台）:
+import shutil
+shutil.copy('.scratch/batch_N.md', '{TARGET_DIR}/{ANALYSIS_FILE}')  # overwrite
+# 或 append:
+with open('{TARGET_DIR}/{ANALYSIS_FILE}', 'a', encoding='utf-8') as f:
+    f.write(open('.scratch/batch_N.md', encoding='utf-8').read())
 # ⛔ 絕對唔可以 fallback 到 write_to_file / replace_file_content！
 ```
 

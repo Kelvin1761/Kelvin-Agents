@@ -34,13 +34,13 @@
 ### Step 4: 循序生成事實錨點 (Sequential Facts Generation) 
 - 在進入深度分析 (Step 5) 之前，**必須**先行將全部賽事的事實錨點準備妥當。
 - Agent 需要為「每一場有 Racecard 與 Formguide 但未有 Facts.md 的賽事」，逐場 (Race-by-Race) 呼叫腳本生成 `Facts.md`：
-  `python3 .agents/scripts/inject_fact_anchors.py "<Race_X_Racecard.md>" "<Race_X_Formguide.md>" --max-display 5 --venue {VENUE}`
+  `python .agents/scripts/inject_fact_anchors.py "<Race_X_Racecard.md>" "<Race_X_Formguide.md>" --max-display 5 --venue {VENUE}`
 - 請一場接一場執行，直到全日所有場次皆已產出 `Facts.md` 後，方可進入 Step 5。此舉既保證了數據齊源，又避免了一次性平行運算導致的超時崩潰。
 
 ### Step 5: 逐場深度分析與合規驗證 (Race-by-Race Analysis Loop)
 - **分析模塊**：正式呼叫 `@au horse analyst` / 啟動大腦進行核心的 5-Block 深度寫作。可輔助執行 `au_speed_map_generator.py` 獲取初步 Speed Map。
 - **嚴格驗證把關 (Batch QA)**：當一場賽事分析落筆完成，必須立刻強制由 Python 把關，不可跳過：
-  `python3 .agents/scripts/completion_gate_v2.py "<Analysis.md>" --domain au`
+  `python .agents/scripts/completion_gate_v2.py "<Analysis.md>" --domain au`
 - 如果 Python 攔截並報錯 (FAILED)，Agent 必須於下一回合立即修正該錯誤；如完全無誤 (PASSED) 則向用戶匯報可進入下一場。
 
 ### Step 4.5: 跨場偏差追蹤 (Cross-Race Intelligence / Decision Diary)
@@ -61,7 +61,7 @@
 - **產製 Excel**: 執行 `generate_reports.py`，將所有生成的 `Analysis.md` 中的 CSV Block 整合成一份統一的 Excel 檔案交付用戶：
   `python .agents/skills/au_racing/../au_wong_choi/scripts/generate_reports.py "[TARGET_DIR 絕對路徑]"`
 - **Cost Tracker**: 結算 Tokens 消耗：
-  `python3 .agents/scripts/session_cost_tracker.py "{TARGET_DIR}" --domain au`
+  `python .agents/scripts/session_cost_tracker.py "{TARGET_DIR}" --domain au`
 - 讀取 `_session_issues.md` 並向用戶回報。
 
 ### Step 6: 數據庫歸檔 (Database Archival - SQLite)

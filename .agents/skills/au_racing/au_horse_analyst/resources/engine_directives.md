@@ -12,16 +12,18 @@
         </rules>
         <implementation>
             <![CDATA[
-            SAFE_WRITER="/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/safe_file_writer.py"
+            SAFE_WRITER=".agents/scripts/safe_file_writer.py"
 
-            cat > /tmp/batch_N.md << 'ENDOFCONTENT'
-            [你的分析內容]
-            ENDOFCONTENT
-
-            base64 < /tmp/batch_N.md | python3 "$SAFE_WRITER" \
-              --target "{TARGET_DIR}/{ANALYSIS_FILE}" \
-              --mode append \
-              --stdin
+            # 跨平台寫法 — 用 Python 生成 base64 並調用 safe_file_writer:
+            import subprocess, base64
+            content = "[你的分析內容]"
+            encoded = base64.b64encode(content.encode('utf-8')).decode('utf-8')
+            subprocess.run([
+                'python', SAFE_WRITER,
+                '--target', '{TARGET_DIR}/{ANALYSIS_FILE}',
+                '--mode', 'append',
+                '--content', encoded
+            ], check=True)
             ]]>
         </implementation>
     </directive>

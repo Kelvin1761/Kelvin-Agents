@@ -1,10 +1,13 @@
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 import sys
 import json
 import re
-import os
 import argparse
 import base64
 import subprocess
+import tempfile
+import shutil
 
 # Import shared qualitative rating engine v2 (replaces deprecated grading_engine)
 from rating_engine_v2 import compute_base_grade, compute_weighted_score, apply_fine_tune, parse_matrix_scores
@@ -153,13 +156,14 @@ def main():
         new_label = f"🔒 BATCH_QA_RECEIPT\n✅ 批次完成:{current_num}\n" 
         # For simplicity, we just leave it unless asked.
         
-    tmp_path = "/tmp/injected_output.md"
+    tmp_path = os.path.join(tempfile.gettempdir(), "injected_output.md")
     with open(tmp_path, 'w', encoding='utf-8') as f:
         f.write(final_text)
         
     # Run safe_file_writer
     b64_content = base64.b64encode(final_text.encode('utf-8')).decode('utf-8')
-    subprocess.run(["python3", args.safe_writer, "--target", args.target, "--mode", "overwrite", "--content", b64_content], check=True)
+    python_cmd = "python3" if shutil.which("python3") else "python"
+    subprocess.run([python_cmd, args.safe_writer, "--target", args.target, "--mode", "overwrite", "--content", b64_content], check=True)
     print("Injection complete!")
 
 if __name__ == '__main__':

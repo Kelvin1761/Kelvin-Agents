@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 """
 monte_carlo_hkjc.py — HKJC Monte Carlo Simulation Adapter
 

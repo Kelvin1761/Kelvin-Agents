@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 """
 compute_rating_matrix_hkjc.py — HKJC Wong Choi Protocol Rating Matrix Calculator
 Full implementation of Step 14.2 including all override rules.
@@ -555,6 +557,10 @@ def generate_csv(ranked: list, race_id: str = 'Race_X') -> str:
 
 
 def main():
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
     parser = argparse.ArgumentParser(description="HKJC Wong Choi — Rating Matrix Calculator")
     parser.add_argument("--input", type=str, help="Path to dimensions JSON file")
     parser.add_argument("--race-id", type=str, default="Race_X")

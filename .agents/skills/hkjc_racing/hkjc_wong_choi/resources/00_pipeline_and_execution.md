@@ -18,7 +18,7 @@
 
 ### Step 1: 觸發 Orchestrator (唯一行動)
 不論任何情況，請永遠第一時間執行：
-`python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <用戶提供的 URL 或是本地資料夾路徑>`
+`python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <用戶提供的 URL 或是本地資料夾路徑>`
 
 ### Step 2: 聽從 Stdout 的 State 任務指派
 執行後，Python 會根據資料夾狀態，直接以 `Exit Code 0` 向你印出目前處於哪一個 State，以及你需要填寫什麼。

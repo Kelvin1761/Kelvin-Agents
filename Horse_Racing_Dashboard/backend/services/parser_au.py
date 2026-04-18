@@ -692,6 +692,92 @@ def _parse_monte_carlo_table(text: str) -> list['MonteCarloPick']:
     return picks
 
 
+def parse_mc_results_json(filepath: str) -> list['MonteCarloPick']:
+    """Parse a standalone Race_N_MC_Results.json file produced by mc_simulator.py.
+    
+    The JSON has a 'results' dict keyed by horse name, each with:
+      win_pct, top3_pct, top4_pct, avg_rank, ci_95, predicted_win_odds, predicted_place_odds
+    
+    Also reads 'power_index_breakdown' for forensic rank info and 'concordance' for divergence.
+    """
+    import json as _json
+    path = Path(filepath)
+    if not path.exists():
+        return []
+    
+    try:
+        data = _json.loads(path.read_text(encoding='utf-8'))
+    except Exception:
+        return []
+    
+    results = data.get('results', {})
+    pi_breakdown = data.get('power_index_breakdown', {})
+    concordance = data.get('concordance', {})
+    logic_top4 = concordance.get('logic_top4', [])
+    mc_top4 = concordance.get('mc_top4', [])
+    
+    if not results:
+        return []
+    
+    # Sort by win_pct descending
+    sorted_horses = sorted(results.items(), key=lambda x: x[1].get('win_pct', 0), reverse=True)
+    
+    picks = []
+    for rank, (horse_name, stats) in enumerate(sorted_horses, 1):
+        win_pct = stats.get('win_pct', 0)
+        top3_pct = stats.get('top3_pct', 0)
+        top4_pct = stats.get('top4_pct', 0)
+        avg_rank = stats.get('avg_rank', 0)
+        
+        # Predicted odds — format as "$X.X" for display
+        win_odds = stats.get('predicted_win_odds', 0)
+        place_odds = stats.get('predicted_place_odds', 0)
+        odds_str = f"${win_odds:.1f}" if win_odds and win_odds < 9999 else None
+        place_str = f"${place_odds:.1f}" if place_odds and place_odds < 9999 else None
+        
+        # Forensic rank — derive from logic_top4 position
+        forensic_rank = None
+        if horse_name in logic_top4:
+            f_pos = logic_top4.index(horse_name) + 1
+            icons = {1: '🥇', 2: '🥈', 3: '🥉', 4: '🏅'}
+            forensic_rank = f"{icons.get(f_pos, '')} #{f_pos}"
+        
+        # Divergence — compare MC rank vs forensic rank
+        divergence = None
+        if horse_name in mc_top4 and horse_name in logic_top4:
+            mc_pos = mc_top4.index(horse_name) + 1
+            f_pos = logic_top4.index(horse_name) + 1
+            diff = f_pos - mc_pos
+            if diff == 0:
+                divergence = "✅ 一致"
+            elif diff > 0:
+                divergence = f"❌ ⬆️{diff}"
+            else:
+                divergence = f"❌ ⬇️{abs(diff)}"
+        elif horse_name in mc_top4 and horse_name not in logic_top4:
+            divergence = "❌ MC Only"
+        elif horse_name not in mc_top4 and horse_name in logic_top4:
+            divergence = "❌ Logic Only"
+        
+        # Try to find horse number from pi_breakdown (not always available)
+        horse_number = None
+        
+        picks.append(MonteCarloPick(
+            mc_rank=rank,
+            horse_number=horse_number,
+            horse_name=horse_name,
+            win_pct=win_pct,
+            predicted_odds=odds_str,
+            predicted_place_odds=place_str,
+            top3_pct=top3_pct,
+            top4_pct=top4_pct,
+            forensic_rank=forensic_rank,
+            divergence=divergence,
+        ))
+    
+    return picks
+
+
 # ──────────────────────────────────────────────
 # Full race parse
 # ──────────────────────────────────────────────

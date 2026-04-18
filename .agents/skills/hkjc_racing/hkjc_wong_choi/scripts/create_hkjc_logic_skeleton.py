@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 """
 create_hkjc_logic_skeleton.py — V9 Python-Native Skeleton Generator
 

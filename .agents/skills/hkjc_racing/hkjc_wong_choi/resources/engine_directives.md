@@ -38,7 +38,7 @@
             Step 1: 先計算 BATCH_PLAN（例如 7匹馬 = Batch 0[戰場全景] + Batch 1[3匹] + Batch 2[3匹] + Batch 3[1匹] + Verdict Batch）。
             Step 2: Batch 0 (戰場全景) 必須優先獨立進行，確保在看馬匹前了解局勢。
             Step 3: 每個馬匹 batch 前必須強制 `view_file` 讀取 `horse_analysis_skeleton.md` 作為骨架。
-            Step 4: 使用 Safe-Writer Protocol (cat PYEOF > /tmp/batch_N.py)。第一個寫檔的 Batch 用 overwrite，後續全用 append。
+            Step 4: 使用 Safe-Writer Protocol（Python base64 寫法）。第一個寫檔的 Batch 用 overwrite，後續全用 append。
             Step 5: 絕對嚴禁在 Batch 1~N 中提前寫入或給予 Verdict (最終判決)，Verdict Batch 必須壓軸。
             Step 6: 每個 batch 寫入完成均需留下 `🔒 BATCH_QA_RECEIPT` 標誌。
         </protocol>
@@ -52,16 +52,18 @@
         </rules>
         <implementation>
             <![CDATA[
-            SAFE_WRITER="/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/safe_file_writer.py"
+            SAFE_WRITER=".agents/scripts/safe_file_writer.py"
 
-            cat > /tmp/batch_N.md << 'ENDOFCONTENT'
-            [你的分析內容 / 檔案內容]
-            ENDOFCONTENT
-
-            base64 < /tmp/batch_N.md | python3 "$SAFE_WRITER" \
-              --target "{TARGET_DIR}/{FILE_NAME}" \
-              --mode overwrite \
-              --stdin
+            # 跨平台寫法 — 用 Python 生成 base64 並調用 safe_file_writer:
+            import subprocess, base64
+            content = "[你的分析內容 / 檔案內容]"
+            encoded = base64.b64encode(content.encode('utf-8')).decode('utf-8')
+            subprocess.run([
+                'python', SAFE_WRITER,
+                '--target', '{TARGET_DIR}/{FILE_NAME}',
+                '--mode', 'overwrite',
+                '--content', encoded
+            ], check=True)
             ]]>
         </implementation>
     </directive>

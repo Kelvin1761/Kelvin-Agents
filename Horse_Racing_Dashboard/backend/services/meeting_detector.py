@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional
 from models.race import Meeting, Region, AnalystName, RaceAnalysis
 from services.parser_hkjc import parse_hkjc_analysis
-from services.parser_au import parse_au_analysis
+from services.parser_au import parse_au_analysis, parse_mc_results_json
 import config
 
 
@@ -226,6 +226,25 @@ def load_meeting_races(meeting: Meeting) -> dict[str, list[RaceAnalysis]]:
                 if rn not in seen or len(race.horses) > len(seen[rn].horses):
                     seen[rn] = race
             races = list(seen.values())
+            
+            # Load standalone MC Results JSON files (Race_N_MC_Results.json)
+            # These are produced by mc_simulator.py and contain Monte Carlo simulation data
+            mc_pattern = re.compile(r'^Race_(\d+)_MC_Results\.json$')
+            for mc_file in sorted(folder.glob("Race_*_MC_Results.json")):
+                mc_match = mc_pattern.match(mc_file.name)
+                if mc_match:
+                    mc_race_num = int(mc_match.group(1))
+                    mc_picks = parse_mc_results_json(str(mc_file))
+                    if mc_picks:
+                        # Find matching race and inject MC data
+                        target_race = next((r for r in races if r.race_number == mc_race_num), None)
+                        if target_race and not target_race.monte_carlo_simulation:
+                            target_race.monte_carlo_simulation = mc_picks
+                            # Enrich MC picks with horse numbers from parsed race data
+                            horse_name_map = {h.horse_name.lower(): str(h.horse_number) for h in target_race.horses}
+                            for pick in mc_picks:
+                                if not pick.horse_number and pick.horse_name:
+                                    pick.horse_number = horse_name_map.get(pick.horse_name.lower())
         
         # Sort by race number
         races.sort(key=lambda r: r.race_number)

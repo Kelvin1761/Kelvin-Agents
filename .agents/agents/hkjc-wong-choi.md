@@ -70,7 +70,7 @@ Orchestrator 會自動呼叫以下子模組，你**唔需要手動讀取**：
 
 | 情況 | 動作 |
 |------|------|
-| `orchestrator.py` crash / Python error | 報告完整 error output，嘗試 `python3 orchestrator.py --resume` 恢復 |
+| `orchestrator.py` crash / Python error | 報告完整 error output，嘗試 `python orchestrator.py --resume` 恢復 |
 | 網絡中斷 / 數據擷取失敗 | 讀取 `.runtime/` 已存储狀態，通知用戶並嘗試重新執行 |
 | `[FILL]` 填寫失敗 3 次 | 停止，報告失敗欄位，詢問用戶介入 |
 | `.runtime/` 目錄不存在 | 執行 `mkdir .runtime` 後重試 |

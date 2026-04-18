@@ -38,7 +38,7 @@
             Step 1: 先計算 BATCH_PLAN（例如 7匹馬 = Batch 1[3匹] + Batch 2[3匹] + Batch 3[1匹] + Verdict Batch）。
             Step 1b: 生成 Speed Map 初稿 `python .agents/scripts/au_speed_map_generator.py <Racecard.md> --distance <Distance>`
             Step 2: 每個 batch 前必須強制 `view_file` 讀取 `06_templates_core.md` 作為骨架。
-            Step 3: 使用 Safe-Writer Protocol (cat PYEOF > /tmp/batch_N.py)。
+            Step 3: 使用 Safe-Writer Protocol（Python base64 寫法）。
             Step 4: 每次執行後必須留有 `🔒 BATCH_QA_RECEIPT`。
         </protocol>
     </directive>
@@ -51,16 +51,18 @@
         </rules>
         <implementation>
             <![CDATA[
-            SAFE_WRITER="/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/scripts/safe_file_writer.py"
+            SAFE_WRITER=".agents/scripts/safe_file_writer.py"
 
-            cat > /tmp/batch_N.md << 'ENDOFCONTENT'
-            [你的分析內容 / 檔案內容]
-            ENDOFCONTENT
-
-            base64 < /tmp/batch_N.md | python3 "$SAFE_WRITER" \
-              --target "{TARGET_DIR}/{FILE_NAME}" \
-              --mode overwrite \
-              --stdin
+            # 跨平台寫法 — 用 Python 生成 base64 並調用 safe_file_writer:
+            import subprocess, base64
+            content = "[你的分析內容 / 檔案內容]"
+            encoded = base64.b64encode(content.encode('utf-8')).decode('utf-8')
+            subprocess.run([
+                'python', SAFE_WRITER,
+                '--target', '{TARGET_DIR}/{FILE_NAME}',
+                '--mode', 'overwrite',
+                '--content', encoded
+            ], check=True)
             ]]>
         </implementation>
     </directive>

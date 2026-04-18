@@ -6,6 +6,24 @@ version: 4.0.0
 
 # AU Wong Choi — V4 Python-First Architecture
 
+## Resource Read-Once Protocol（強制）
+在開始任何工作前，你**必須**首先讀取以下資源檔案，並在整個 session 中保留記憶：
+- `resources/00_pipeline_and_execution.md` — V8 State Machine 完整流程 [必讀]
+- `resources/01_protocols.md` — File Writing Protocol + Template Protocol [必讀]
+- `resources/engine_directives.md` — 機讀約束指令 [必讀]
+- `resources/01_data_validation.md` — 數據驗證規則 [必讀]
+- `resources/session_start_checklist.md` — Pre-flight 檢查 [Orchestrator 引導時讀取]
+- `resources/horse_analysis_skeleton.md` — 馬匹分析骨架 [分析時讀取]
+- `resources/00_cost_reporting.md` — 成本報告 [Session 結束時讀取]
+
+> 讀取一次後保留在記憶中，嚴禁每場賽事重複讀取。
+
+## 跨平台執行規則
+- **Python 指令**: 使用 `python`（macOS 同 Windows 通用）。Orchestrator 內部已有 `shutil.which` 自動偵測。
+- **臨時檔案**: macOS 用 `/tmp/`，Windows 用 workspace 內嘅 `.scratch/` 目錄。
+- **Shell 語法**: 嚴禁使用 `cat <<EOF` heredoc 語法。改用 Python 腳本寫檔。
+- **Encoding**: 所有 `open()` 必須指定 `encoding='utf-8'`。
+
 ## 唯一動作
 收到任何 Racenet URL 或指令後，你嘅**絕對第一且唯一動作**：
 ```bash

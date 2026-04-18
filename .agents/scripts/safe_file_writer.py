@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 """
 Safe File Writer — Anti-Streaming-Lock Pipeline (WLTM Edition)
 ==============================================================
@@ -49,7 +51,7 @@ from pathlib import Path
 
 
 # ── Constants ───────────────────────────────────────────────────────
-STAGING_DIR = "/tmp/antigravity_staging"
+STAGING_DIR = os.path.join(tempfile.gettempdir(), "antigravity_staging")
 DEFAULT_TIMEOUT = 15  # seconds for move operation
 
 
@@ -202,6 +204,10 @@ def _write_direct(decoded_text: str, target_path: Path, write_mode: str, encodin
 
 
 def main():
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
     parser = argparse.ArgumentParser(
         description="Safe File Writer — bypass IDE streaming deadlock & Google Drive FileProvider lock."
     )

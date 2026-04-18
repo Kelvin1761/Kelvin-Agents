@@ -1,3 +1,5 @@
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 import sys
 import argparse
 import re

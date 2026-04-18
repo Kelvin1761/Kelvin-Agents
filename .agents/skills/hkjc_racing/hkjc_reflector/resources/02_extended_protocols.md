@@ -357,7 +357,7 @@ python .agents/scripts/reflector_verdict_validator.py "[TARGET_DIR]/[Date]_[Race
 
 覆盤報告生成後，執行 instinct 評估：
 ```bash
-python3 .agents/scripts/instinct_evaluator.py "{TARGET_DIR}" \
+python .agents/scripts/instinct_evaluator.py "{TARGET_DIR}" \
   --registry ".agents/skills/shared_instincts/instinct_registry.md" \
   --domain hkjc \
   --reflector-report "{TARGET_DIR}/{DATE}_{VENUE}_覆盤報告.md"
@@ -463,16 +463,16 @@ python3 .agents/scripts/instinct_evaluator.py "{TARGET_DIR}" \
   - `run_command`:用於執行 `extract_race_results.py`。
   - `view_file`:讀取過往賽前預測報告與剛抓取的賽果檔。
   - `search_web`:若需要補充搜索實際賽日情報(如當日實際偏差報告)。
-  - `run_command`:用於執行 Python 腳本及 P19v6 安全寫入（`run_command` + heredoc → `/tmp` → `cp`）。嚴禁使用 `write_to_file`。
+  - `run_command`:用於執行 Python 腳本及 safe_file_writer 寫入。嚴禁使用 `write_to_file`。
 - **Assets**:
   - `batch_extract_results.py`:專門用於併發解析 HKJC 賽果的腳本。
-    - **Windows:** `g:\我的雲端硬碟\Antigravity Shared\Antigravity\.agents\skills\hkjc_racing\hkjc_race_extractor\scripts\batch_extract_results.py`
+    - **Path:** `.agents/skills/hkjc_racing/hkjc_race_extractor/scripts/batch_extract_results.py`
 
 - **MCP Tools (P32 新增)**:
   - `read_graph` / `search_nodes` — Knowledge Graph 查詢(檢查過往場地偏差觀察、騎練組合紀錄)
   - `read_query` / `list_tables` — SQLite 歷史數據查詢(查等評級歷史、命中率追蹤)
   - `create_entities` / `create_relations` — 將覆盤發現寫入 Knowledge Graph(SIP 觸發模式、引擎健康掃描結果)
-    - **macOS:** `/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/skills/hkjc_racing/hkjc_race_extractor/scripts/batch_extract_results.py`
+    - **跨平台路徑:** `.agents/skills/hkjc_racing/hkjc_race_extractor/scripts/batch_extract_results.py`
 
 # Test Case
 **User Input:** `「幫我覆盤今日賽事:https://racing.hkjc.com/zh-hk/local/information/localresults?racedate=2026/03/04&Racecourse=HV&RaceNo=1」`
