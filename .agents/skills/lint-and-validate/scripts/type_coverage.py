@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 """
 Type Coverage Checker - Measures TypeScript/Python type coverage.
 Identifies untyped functions, any usage, and type safety issues.

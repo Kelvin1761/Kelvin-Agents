@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+os.environ.setdefault('PYTHONUTF8', '1')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 Test suite for safe_file_writer.py (WLTM Edition)
 Run: python3 test_safe_file_writer.py

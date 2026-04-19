@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+os.environ.setdefault('PYTHONUTF8', '1')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 Batch extraction script for HKJC race results.
 Extracts results for multiple races using Lightpanda headless browser.

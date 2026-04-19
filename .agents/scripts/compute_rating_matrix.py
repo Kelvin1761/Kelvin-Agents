@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 compute_rating_matrix.py — AU Wong Choi Protocol Rating Matrix Calculator
 Mechanically computes the final grade from 8-dimension judgments.

@@ -1,3 +1,8 @@
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 verify_math.py — Wong Choi HKJC 自動化 Step 14.2A 數學驗證
 

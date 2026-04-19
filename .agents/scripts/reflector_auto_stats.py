@@ -1,3 +1,8 @@
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 reflector_auto_stats.py — Wong Choi 覆盤自動化命中率統計
 
@@ -35,6 +40,15 @@ PICK_RE = re.compile(
 # Alternative pick format: 1. #4 Name or Pick 1: #4 Name
 PICK_ALT_RE = re.compile(
     r'(?:Top\s*|Pick\s*)(\d+)[：:.\s]+#?(\d+)\s+(.+?)(?:\s*[—\-|（(]|$)',
+    re.UNICODE | re.MULTILINE
+)
+
+# AU block-based pick format:
+# 🥇 **第一選**
+# - **馬號及馬名:** [13] King Nic
+PICK_AU_BLOCK_RE = re.compile(
+    r'([🥇🥈🥉🏅])\s*\*\*第[一二三四]選\*\*'
+    r'[\s\S]*?馬號及馬名[：:]\*?\*?\s*\[?(\d+)\]?\s+(.+?)$',
     re.UNICODE | re.MULTILINE
 )
 
@@ -97,9 +111,9 @@ def parse_picks_from_analysis(text: str) -> list:
     """Extract Top 3/4 picks from analysis verdict section."""
     picks = []
     
-    # Try emoji-based picks first (🥇🥈🥉🏅)
+    # Try AU block-based picks first (🥇 **第一選** ... 馬號及馬名: [13] King Nic)
     emoji_map = {'🥇': 1, '🥈': 2, '🥉': 3, '🏅': 4}
-    for match in PICK_RE.finditer(text):
+    for match in PICK_AU_BLOCK_RE.finditer(text):
         emoji = match.group(1)
         rank = emoji_map.get(emoji, len(picks) + 1)
         num = int(match.group(2))
@@ -107,7 +121,16 @@ def parse_picks_from_analysis(text: str) -> list:
         picks.append((rank, num, name))
     
     if not picks:
-        # Try alternative format
+        # Try inline emoji-based picks (🥇 #4 Don Valiente)
+        for match in PICK_RE.finditer(text):
+            emoji = match.group(1)
+            rank = emoji_map.get(emoji, len(picks) + 1)
+            num = int(match.group(2))
+            name = match.group(3).strip().rstrip('*').strip()
+            picks.append((rank, num, name))
+    
+    if not picks:
+        # Try alternative format (Top 1: #4 Name)
         for match in PICK_ALT_RE.finditer(text):
             rank = int(match.group(1))
             num = int(match.group(2))

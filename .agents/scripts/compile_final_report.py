@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 Compile Final Report
 Usage: python compile_final_report.py --target_dir "/path/to/meeting/dir"
@@ -9,9 +14,11 @@ in that same directory.
 """
 
 import argparse
-import os
-import re
 import glob
+import re
+import shutil
+import subprocess
+import sys
 
 def compile_reports(target_dir):
     print(f"Scanning {target_dir} for analysis files...")
@@ -70,9 +77,8 @@ def compile_reports(target_dir):
     monte_carlo_script = os.path.join(os.path.dirname(__file__), 'run_monte_carlo.py')
     if os.path.exists(monte_carlo_script):
         print("🎲 Triggering Monte Carlo Dynamic Simulation Engine (Shadow Mode)...")
-        import shutil
         _py = "python3" if shutil.which("python3") else "python"
-        os.system(f'{_py} "{monte_carlo_script}" --target_dir "{target_dir}"')
+        subprocess.run([_py, monte_carlo_script, "--target_dir", target_dir], check=False)
     else:
         print("⚠️ run_monte_carlo.py not found. Skipping shadow simulation.")
 

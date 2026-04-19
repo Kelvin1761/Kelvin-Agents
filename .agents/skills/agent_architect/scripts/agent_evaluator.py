@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 """
 Agent Evaluator v1.0 — LLM-as-a-Judge Engine for Agent Architect v3.2.0
 

@@ -1,3 +1,8 @@
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 audit_all.py — Wong Choi 全局歷史回測 Grading Drift Report
 

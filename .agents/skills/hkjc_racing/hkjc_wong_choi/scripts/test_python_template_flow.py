@@ -1,3 +1,7 @@
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 test_python_template_flow.py — End-to-end test for the Python template pipeline.
 

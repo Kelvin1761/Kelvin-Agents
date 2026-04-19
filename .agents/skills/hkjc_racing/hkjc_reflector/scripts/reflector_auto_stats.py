@@ -1,3 +1,8 @@
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 reflector_auto_stats.py — Wong Choi 覆盤自動化命中率統計
 

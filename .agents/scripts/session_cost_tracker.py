@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 Session Cost Tracker for Wong Choi Analysis Pipeline
 Inspired by ECC cost-aware-llm-pipeline concept.

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 """
 compute_rating_matrix_au.py — AU Wong Choi Protocol Rating Matrix Calculator
 Generates Verdict skeleton (Part 3+4+5) with Python-prefilled data.

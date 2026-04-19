@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 """
 Schema Validator - Database schema validation
 Validates Prisma schemas and checks for common issues.

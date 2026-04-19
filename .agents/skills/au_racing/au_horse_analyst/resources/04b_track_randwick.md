@@ -33,3 +33,31 @@
 | 1600m | Chute | ~650m | 中低 | 長直路至首彎。Barrier 1 極佳 |
 | 2000m | 彎道起步 | 即入彎 (~450m) | 🔴 高 | 外檔(12+)蝕位嚴重 |
 | 2400m | 延長起步 | 長 | 中低 | Barrier 1-7 有利,但氣量主導 |
+
+## [SIP-RW01] Good 4 Randwick 前領偏差加成 (Good Track Leader Pace Bias — Randwick Specific)
+
+> **來源:** 2026-04-18 Randwick 覆盤。3/10 場前領馬一放到底致勝 (R2 Ishikari C-→1st, R8 Mazu B+→1st, R9 Beiwacht C-→1st)，全部 Good 4 場地。引擎嚴重低估 Randwick Good 4 嘅前領馬生存率。
+
+### 觸發條件（全部同時成立）：
+1. 馬場 = **Randwick**
+2. 場地 = **Good 3 或 Good 4**
+3. 距離 ≤ **1400m**
+4. 馬匹為前領型 (Compulsory Leader / Likely Leader / Presser)
+
+### 校準效果：
+- **EEM 消耗再降 20%**（疊加 SIP-SL02 嘅 15% 減免，Randwick 前領馬累計減免約 32%）
+- 前領馬**獨領放** + Randwick + Good → 步速判定自動降為 **Moderate**（即使場內有其他速度引擎，但無直接競速者時）
+- 前領馬 EEM 維度判定**禁止**因「前領型=高消耗」自動降至 ❌
+
+### 與 SIP-R14-4 互動：
+- SIP-R14-4 (Good 場 Group 級別前領偏差下調 50%) **仍然適用**
+- 即：Randwick Good 4 + Group 賽事 = SIP-RW01 加成 × SIP-R14-4 折扣 = 淨效果約 +16% 加成（而非 +32%）
+
+### 安全閥（不適用場景）：
+- 步速預測為 **Genuine-to-Suicidal** 且場內有 ≥3 匹前置引擎 → 加成不生效
+- 場地為 Good 但使用 **C 欄/外移欄** + ≥14 匹 → 加成減半
+- Rail Out ≥ **+7m** 且位於 1000m-W/Post 段 → 需額外評估內欄是否仍利前領
+
+### 邏輯基礎：
+Randwick 嘅 410m 長直路 + The Rise 上坡段理論上利後追，但 Good 4 場地嘅低摩擦力 + 慢步速令前領馬嘅體力損耗大幅降低。2026-04-18 全日 Good 4 + light rain，3 場前領馬一放到底，其中 R9 G1 All Aged Stakes 嘅 Beiwacht (C-) 以 01:20.760 快時間全程領放贏咗 $6.50。
+

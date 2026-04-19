@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 create_hkjc_logic_skeleton.py — V9 Python-Native Skeleton Generator
 

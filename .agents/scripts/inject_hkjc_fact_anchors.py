@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 inject_hkjc_fact_anchors.py — V2 HKJC 完整賽績檔案 Auto-Generator
 
@@ -49,6 +54,63 @@ try:
     HAS_FORM_LINES = True
 except ImportError:
     HAS_FORM_LINES = False
+
+# Load HKJC Reference Sectional Times (Claw Code extracted)
+_REF_SECTIONALS = None
+def load_reference_sectionals() -> dict:
+    """Load reference sectional times from JSON (cached)."""
+    global _REF_SECTIONALS
+    if _REF_SECTIONALS is not None:
+        return _REF_SECTIONALS
+    ref_path = Path(__file__).parent / 'hkjc_reference_sectionals.json'
+    if ref_path.exists():
+        try:
+            with open(ref_path, 'r', encoding='utf-8') as f:
+                _REF_SECTIONALS = json.load(f)
+            return _REF_SECTIONALS
+        except Exception:
+            pass
+    _REF_SECTIONALS = {}
+    return _REF_SECTIONALS
+
+def get_reference_sections(venue: str, distance: int, race_class: str) -> dict:
+    """Get reference sectional times for a venue/distance/class.
+    Returns dict with 'sections', 'labels' or empty dict."""
+    ref = load_reference_sectionals()
+    if not ref or 'venues' not in ref:
+        return {}
+    # Map venue
+    if 'AWT' in venue or '全天候' in venue:
+        vkey = 'sha_tin_awt'
+    elif '跑馬地' in venue:
+        vkey = 'happy_valley_turf'
+    elif '沙田' in venue:
+        vkey = 'sha_tin_turf'
+    else:
+        vkey = 'sha_tin_turf'
+    venues = ref.get('venues', {})
+    if vkey not in venues:
+        return {}
+    dists = venues[vkey]
+    dkey = str(distance)
+    if dkey not in dists:
+        return {}
+    classes = dists[dkey]
+    # Map class
+    cmap = {'第一班': 'C1', '第二班': 'C2', '第三班': 'C3', '第四班': 'C4',
+            '第五班': 'C5', '一級賽': 'G', '二級賽': 'G', '三級賽': 'G',
+            '分級賽': 'G', '新馬賽': 'GR', 'C1': 'C1', 'C2': 'C2',
+            'C3': 'C3', 'C4': 'C4', 'C5': 'C5', 'G': 'G', 'GR': 'GR'}
+    ckey = cmap.get(race_class, race_class)
+    if ckey not in classes:
+        # Fallback
+        for fb in ['C4', 'C3', 'C5', 'C2', 'C1', 'G']:
+            if fb in classes:
+                ckey = fb
+                break
+    if ckey not in classes:
+        return {}
+    return classes[ckey]
 
 # ========================================================================
 # HKJC Official Standard Times (seconds) — last updated 2025-08-26
@@ -149,8 +211,9 @@ def get_standard_time(venue: str, distance: int, race_class: str) -> Optional[fl
     return None
 
 
-def compute_sectional_from_splits(splits: list[float], distance: int) -> dict:
-    """Compute L600 and L400 from sectional time splits.
+def compute_sectional_from_splits(splits: list, distance: int,
+                                   venue: str = '', race_class: str = '') -> dict:
+    """Compute full sectional profile from splits.
     
     HKJC splits are typically:
     - 1000m: 3 splits (first ~200m, 2x~400m)
@@ -161,8 +224,7 @@ def compute_sectional_from_splits(splits: list[float], distance: int) -> dict:
     - 2000m: 5 splits (~400m each)
     - 2200m: 6 splits
     
-    L400 = last split
-    L600 = contextual (last 1.5 splits approximately)
+    Returns L400, L800, full section profile, and standard deviation per section.
     """
     if not splits or len(splits) < 2:
         return {}
@@ -179,6 +241,169 @@ def compute_sectional_from_splits(splits: list[float], distance: int) -> dict:
     
     # Total time
     result['total'] = sum(splits)
+    
+    # === Full sectional profile ===
+    result['all_sections'] = splits
+    result['section_count'] = len(splits)
+    
+    # Generate section labels based on distance
+    labels = _compute_section_labels(distance, len(splits))
+    result['section_labels'] = labels
+    
+    # === Standard deviation per section ===
+    if venue and race_class:
+        ref = get_reference_sections(venue, distance, race_class)
+        ref_sections = ref.get('sections', [])
+        if ref_sections and len(ref_sections) == len(splits):
+            diffs = [round(a - r, 2) for a, r in zip(splits, ref_sections)]
+            result['section_diffs'] = diffs
+            result['par_sections'] = ref_sections
+            result['par_labels'] = ref.get('labels', [])
+    
+    # === Pace shape classification ===
+    result['pace_shape'] = _classify_pace_shape(splits)
+    
+    return result
+
+
+def _compute_section_labels(distance: int, n_sections: int) -> list:
+    """Generate section labels like ['0-400m', '400-800m', ...]."""
+    if distance == 1000 and n_sections == 3:
+        return ['0-200m', '200-600m', '600-1000m']
+    elif distance == 1200 and n_sections == 3:
+        return ['0-400m', '400-800m', '800-1200m']
+    elif distance == 1400 and n_sections == 4:
+        return ['0-200m', '200-600m', '600-1000m', '1000-1400m']
+    elif distance == 1600 and n_sections == 4:
+        return ['0-400m', '400-800m', '800-1200m', '1200-1600m']
+    elif distance == 1800 and n_sections == 5:
+        return ['0-200m', '200-600m', '600-1000m', '1000-1400m', '1400-1800m']
+    elif distance == 2000 and n_sections == 5:
+        return ['0-400m', '400-800m', '800-1200m', '1200-1600m', '1600-2000m']
+    elif distance == 2200 and n_sections == 6:
+        return ['0-200m', '200-600m', '600-1000m', '1000-1400m', '1400-1800m', '1800-2200m']
+    elif distance == 2400 and n_sections == 6:
+        return ['0-400m', '400-800m', '800-1200m', '1200-1600m', '1600-2000m', '2000-2400m']
+    else:
+        return [f'S{i+1}' for i in range(n_sections)]
+
+
+def _classify_pace_shape(splits: list) -> str:
+    """Classify pace shape from sectional splits."""
+    if len(splits) < 2:
+        return '未知'
+    # Compare first half vs second half (excluding short first section)
+    main_splits = splits if len(splits) <= 3 else splits[1:]  # skip short first section
+    mid = len(main_splits) // 2
+    first_half_avg = sum(main_splits[:mid]) / max(mid, 1)
+    second_half_avg = sum(main_splits[mid:]) / max(len(main_splits) - mid, 1)
+    diff = second_half_avg - first_half_avg
+    if abs(diff) < 0.3:
+        return '均速型 ✅'
+    elif diff < -0.3:
+        return '漸進加速 ✅'
+    elif diff > 0.5:
+        return '快開慢收 ⚠️'
+    elif diff < -0.5:
+        return '慢開快收 ✅'
+    else:
+        return '波動型 ➖'
+
+
+def compute_eem_pre_assessment(races: list) -> dict:
+    """Pre-compute EEM (Energy Expenditure Model) assessment from race history.
+    
+    Analyzes running position patterns (XW) across recent races to provide:
+    - Last race running position and consumption
+    - Cumulative fatigue from last 3 races
+    - Consumption trend (increasing/stable/decreasing)
+    - EEM trigger conditions (Monster/Rebounder/Hidden Rebound)
+    """
+    result = {
+        'last_wide': '-',
+        'last_consumption': '-',
+        'consumption_history': [],
+        'cumulative_fatigue': '-',
+        'consumption_trend': '-',
+        'triggers': [],
+        'summary': '-'
+    }
+    
+    if not races:
+        return result
+    
+    # Extract wide info from recent races
+    consumption_levels = []  # (pattern, consumption, finish)
+    for r in races[:6]:
+        wide = r.get('wide_info', {})
+        pattern = wide.get('pattern', '')
+        consumption = wide.get('consumption', '未知')
+        finish = r.get('finish', 0)
+        if pattern:
+            consumption_levels.append({
+                'pattern': pattern,
+                'consumption': consumption,
+                'finish': finish,
+                'max_wide': wide.get('max_wide', 0),
+                'avg_wide': wide.get('avg_wide', 0)
+            })
+    
+    if not consumption_levels:
+        result['summary'] = '走位數據不足，基於可用信息推斷為中等消耗'
+        return result
+    
+    # Last race
+    last = consumption_levels[0]
+    result['last_wide'] = f"({last['pattern']})" if last['pattern'] else '-'
+    result['last_consumption'] = last['consumption']
+    
+    # Consumption history string
+    result['consumption_history'] = [c['consumption'] for c in consumption_levels[:3]]
+    
+    # Cumulative fatigue (last 3 races)
+    consumption_map = {'極高消耗': 5, '高消耗': 4, '中等消耗': 3, '中低消耗': 2, '低消耗': 1, '未知': 2}
+    recent_scores = [consumption_map.get(c['consumption'], 2) for c in consumption_levels[:3]]
+    avg_score = sum(recent_scores) / len(recent_scores)
+    if avg_score >= 4:
+        result['cumulative_fatigue'] = '高 ⚠️'
+    elif avg_score >= 3:
+        result['cumulative_fatigue'] = '中等'
+    elif avg_score >= 2:
+        result['cumulative_fatigue'] = '中低'
+    else:
+        result['cumulative_fatigue'] = '低 ✅'
+    
+    # Consumption trend
+    if len(recent_scores) >= 2:
+        if recent_scores[0] > recent_scores[-1] + 0.5:
+            result['consumption_trend'] = '逐仗增加 ⚠️'
+        elif recent_scores[0] < recent_scores[-1] - 0.5:
+            result['consumption_trend'] = '逐仗減少 ✅'
+        else:
+            result['consumption_trend'] = '穩定'
+    
+    # EEM Triggers
+    triggers = []
+    # Monster: high consumption + still finished top 3
+    if consumption_levels[0]['consumption'] in ('極高消耗', '高消耗') and consumption_levels[0]['finish'] <= 3:
+        triggers.append(f"✅ 逆境破格: 上仗{consumption_levels[0]['consumption']}仍跑第{consumption_levels[0]['finish']} → 實力深不見底")
+    
+    # Rebounder: high consumption last time → expect rebound with lower consumption
+    if len(consumption_levels) >= 2:
+        if consumption_levels[0]['consumption'] in ('極高消耗', '高消耗') and consumption_levels[0]['finish'] > 4:
+            triggers.append(f"✅ 超級反彈候選: 上仗{consumption_levels[0]['consumption']}跑第{consumption_levels[0]['finish']}，若今仗減少消耗可大幅反彈")
+    
+    # Engine Depletion: consecutive high consumption
+    if len(consumption_levels) >= 2 and all(
+        c['consumption'] in ('極高消耗', '高消耗') for c in consumption_levels[:2]
+    ):
+        triggers.append(f"⚠️ 實力見底風險: 連續{len([c for c in consumption_levels[:3] if c['consumption'] in ('極高消耗', '高消耗')])}仗高消耗，累積疲勞顯著")
+    
+    result['triggers'] = triggers
+    
+    # Summary
+    trigger_str = ' | '.join(triggers) if triggers else '無特殊觸發'
+    result['summary'] = f"上仗{result['last_consumption']} → 累積{result['cumulative_fatigue']} → {trigger_str}"
     
     return result
 
@@ -458,7 +683,7 @@ def parse_hkjc_formguide(filepath: str) -> dict:
             comment = comment_m.group(1).strip() if comment_m else ''
             
             # Compute derived data
-            sectionals = compute_sectional_from_splits(splits, distance)
+            sectionals = compute_sectional_from_splits(splits, distance, venue=venue)
             wide_info = extract_wide_pattern(comment)
             pace = parse_pace_from_comment(comment)
             
@@ -956,6 +1181,90 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     if trends['energy_values']:
         e_str = '→'.join(str(v) for v in trends['energy_values'])
         lines.append(f"  能量: {e_str} → 趨勢: {trends['energy_trend']}")
+    
+    # === 全段速剖面 (Full Sectional Profile) ===
+    sect_profile_rows = []
+    for i in range(min(len(races), 3)):  # Last 3 races
+        r = races[i]
+        sect = r.get('sectionals', {})
+        all_sects = sect.get('all_sections', [])
+        if all_sects:
+            r_venue = r.get('venue', '')
+            r_dist = r.get('distance', 0)
+            r_class = ''
+            if p_entries and i < len(p_entries):
+                r_class = p_entries[i].get('class_grade', '')
+            # Get reference sections
+            ref = get_reference_sections(r_venue, r_dist, r_class)
+            ref_sects = ref.get('sections', [])
+            labels = sect.get('section_labels', [])
+            
+            row = {
+                'date': r.get('date', ''),
+                'dist': r_dist,
+                'sections': all_sects,
+                'labels': labels,
+                'ref_sections': ref_sects,
+                'shape': sect.get('pace_shape', '-')
+            }
+            sect_profile_rows.append(row)
+    
+    if sect_profile_rows:
+        lines.append(f"")
+        lines.append(f"📊 **全段速剖面 (Full Sectional Profile — 近 {len(sect_profile_rows)} 仗):**")
+        # Dynamic header based on max sections
+        max_sects = max(len(r['sections']) for r in sect_profile_rows)
+        s_headers = ' | '.join(f"S{i+1}" for i in range(max_sects))
+        d_headers = ' | '.join(f"Δ{i+1}" for i in range(max_sects))
+        lines.append(f"| # | 日期 | 距離 | {s_headers} | {d_headers} | 形態 |")
+        sep = ' | '.join('---' for _ in range(max_sects))
+        lines.append(f"|---|------|------|{sep}|{sep}|------|")
+        for idx, row in enumerate(sect_profile_rows):
+            s_vals = ' | '.join(f"{v:.2f}" for v in row['sections'])
+            # Pad if fewer sections
+            pad_count = max_sects - len(row['sections'])
+            if pad_count > 0:
+                s_vals += ' | ' + ' | '.join('-' for _ in range(pad_count))
+            # Diffs
+            if row['ref_sections'] and len(row['ref_sections']) == len(row['sections']):
+                d_vals = ' | '.join(f"{a-r:+.2f}" for a, r in zip(row['sections'], row['ref_sections']))
+            else:
+                d_vals = ' | '.join('-' for _ in range(len(row['sections'])))
+            if pad_count > 0:
+                d_vals += ' | ' + ' | '.join('-' for _ in range(pad_count))
+            lines.append(f"| {idx+1} | {row['date']} | {row['dist']} | {s_vals} | {d_vals} | {row['shape']} |")
+        
+        # Section analysis summary
+        if sect_profile_rows[0]['ref_sections'] and len(sect_profile_rows[0]['ref_sections']) == len(sect_profile_rows[0]['sections']):
+            diffs = [a - r for a, r in zip(sect_profile_rows[0]['sections'], sect_profile_rows[0]['ref_sections'])]
+            alerts = []
+            labels = sect_profile_rows[0].get('labels', [])
+            for j, d in enumerate(diffs):
+                lbl = labels[j] if j < len(labels) else f'S{j+1}'
+                if d < -0.3:
+                    alerts.append(f"⚡ {lbl} 比標準快 {abs(d):.2f}s → 前段消耗偏高" if j < len(diffs)//2 else f"⚡ {lbl} 比標準快 {abs(d):.2f}s → 有餘力")
+                elif d > 0.5:
+                    alerts.append(f"⚠️ {lbl} 比標準慢 {d:.2f}s → {'後段衰退' if j >= len(diffs)//2 else '起步偏慢'}")
+            if alerts:
+                for alert in alerts:
+                    lines.append(f"  {alert}")
+    
+    # === EEM 預評估 (自動計算) ===
+    eem = compute_eem_pre_assessment(races)
+    lines.append(f"")
+    lines.append(f"⚡ **EEM 預評估 (自動計算):**")
+    lines.append(f"  上仗走位: {eem['last_wide']} → {eem['last_consumption']}")
+    if eem['consumption_history']:
+        hist_str = ' → '.join(eem['consumption_history'])
+        lines.append(f"  近 {len(eem['consumption_history'])} 仗消耗: {hist_str} → 累積: {eem['cumulative_fatigue']}")
+    if eem['consumption_trend'] != '-':
+        lines.append(f"  走位消耗趨勢: {eem['consumption_trend']}")
+    if eem['triggers']:
+        lines.append(f"  EEM 觸發:")
+        for trigger in eem['triggers']:
+            lines.append(f"    {trigger}")
+    else:
+        lines.append(f"  EEM 觸發: ➖ 正常消耗，無特殊條件")
     
     # === 引擎距離 ===
     engine = classify_engine_type(races)

@@ -1,0 +1,1377 @@
+{
+  "metadata": {
+    "source": "https://racing.hkjc.com/en-us/local/page/racing-course-time",
+    "extraction_method": "claw_code_rsc_payload",
+    "description": "HKJC Reference Sectional Times - official 400m section benchmarks by venue/distance/class"
+  },
+  "venues": {
+    "sha_tin_turf": {
+      "_name": "Sha Tin  Turf Track",
+      "1000": {
+        "G": {
+          "standard_time": "0.55.90",
+          "sections": [
+            13.05,
+            20.6,
+            22.25
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 13.05,
+            "S_800_400": 20.6,
+            "L400": 22.25
+          },
+          "total_from_sections": 55.9,
+          "class_label": "Group Race",
+          "class_key": "GroupRace"
+        },
+        "C1": {
+          "sections": [],
+          "labels": [],
+          "sections_raw": {},
+          "class_label": "Class 1",
+          "class_key": "Class1"
+        },
+        "C2": {
+          "standard_time": "0.56.05",
+          "sections": [
+            13.1,
+            20.6,
+            22.35
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 13.1,
+            "S_800_400": 20.6,
+            "L400": 22.35
+          },
+          "total_from_sections": 56.05,
+          "class_label": "Class 2",
+          "class_key": "Class2"
+        },
+        "C3": {
+          "standard_time": "0.56.45",
+          "sections": [
+            13.05,
+            20.65,
+            22.75
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 13.05,
+            "S_800_400": 20.65,
+            "L400": 22.75
+          },
+          "total_from_sections": 56.45,
+          "class_label": "Class 3",
+          "class_key": "Class3"
+        },
+        "C4": {
+          "standard_time": "0.56.65",
+          "sections": [
+            13.0,
+            20.75,
+            22.9
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 13.0,
+            "S_800_400": 20.75,
+            "L400": 22.9
+          },
+          "total_from_sections": 56.65,
+          "class_label": "Class 4",
+          "class_key": "Class4"
+        },
+        "C5": {
+          "standard_time": "0.57.00",
+          "sections": [
+            13.15,
+            20.95,
+            22.9
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 13.15,
+            "S_800_400": 20.95,
+            "L400": 22.9
+          },
+          "total_from_sections": 57.0,
+          "class_label": "Class 5",
+          "class_key": "Class5"
+        },
+        "GR": {
+          "standard_time": "0.56.65",
+          "sections": [
+            13.25,
+            20.8,
+            22.6
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 13.25,
+            "S_800_400": 20.8,
+            "L400": 22.6
+          },
+          "total_from_sections": 56.65,
+          "class_label": "Griffin Race",
+          "class_key": "GriffinRace"
+        }
+      },
+      "1200": {
+        "G": {
+          "standard_time": "1.08.15",
+          "sections": [
+            23.55,
+            22.2,
+            22.4
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 23.55,
+            "S_800_400": 22.2,
+            "L400": 22.4
+          },
+          "total_from_sections": 68.15,
+          "class_label": "Group Race",
+          "class_key": "GroupRace"
+        },
+        "C1": {
+          "standard_time": "1.08.45",
+          "sections": [
+            23.6,
+            22.25,
+            22.6
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 23.6,
+            "S_800_400": 22.25,
+            "L400": 22.6
+          },
+          "total_from_sections": 68.45,
+          "class_label": "Class 1",
+          "class_key": "Class1"
+        },
+        "C2": {
+          "standard_time": "1.08.65",
+          "sections": [
+            23.75,
+            22.25,
+            22.65
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 23.75,
+            "S_800_400": 22.25,
+            "L400": 22.65
+          },
+          "total_from_sections": 68.65,
+          "class_label": "Class 2",
+          "class_key": "Class2"
+        },
+        "C3": {
+          "standard_time": "1.09.00",
+          "sections": [
+            23.7,
+            22.35,
+            22.95
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 23.7,
+            "S_800_400": 22.35,
+            "L400": 22.95
+          },
+          "total_from_sections": 69.0,
+          "class_label": "Class 3",
+          "class_key": "Class3"
+        },
+        "C4": {
+          "standard_time": "1.09.35",
+          "sections": [
+            23.75,
+            22.45,
+            23.15
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 23.75,
+            "S_800_400": 22.45,
+            "L400": 23.15
+          },
+          "total_from_sections": 69.35,
+          "class_label": "Class 4",
+          "class_key": "Class4"
+        },
+        "C5": {
+          "standard_time": "1.09.55",
+          "sections": [
+            23.85,
+            22.4,
+            23.3
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 23.85,
+            "S_800_400": 22.4,
+            "L400": 23.3
+          },
+          "total_from_sections": 69.55,
+          "class_label": "Class 5",
+          "class_key": "Class5"
+        },
+        "GR": {
+          "standard_time": "1.09.90",
+          "sections": [
+            23.95,
+            22.95,
+            23.0
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 23.95,
+            "S_800_400": 22.95,
+            "L400": 23.0
+          },
+          "total_from_sections": 69.9,
+          "class_label": "Griffin Race",
+          "class_key": "GriffinRace"
+        }
+      },
+      "1400": {
+        "G": {
+          "standard_time": "1.21.10",
+          "sections": [
+            13.5,
+            22.35,
+            22.85,
+            22.4
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m",
+            "1000-1400m"
+          ],
+          "sections_raw": {
+            "S_1600_1200": 13.5,
+            "S_1200_800": 22.35,
+            "S_800_400": 22.85,
+            "L400": 22.4
+          },
+          "total_from_sections": 81.1,
+          "class_label": "Group Race",
+          "class_key": "GroupRace"
+        },
+        "C1": {
+          "standard_time": "1.21.25",
+          "sections": [
+            13.65,
+            22.0,
+            22.9,
+            22.7
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m",
+            "1000-1400m"
+          ],
+          "sections_raw": {
+            "S_1600_1200": 13.65,
+            "S_1200_800": 22.0,
+            "S_800_400": 22.9,
+            "L400": 22.7
+          },
+          "total_from_sections": 81.25,
+          "class_label": "Class 1",
+          "class_key": "Class1"
+        },
+        "C2": {
+          "standard_time": "1.21.45",
+          "sections": [
+            13.45,
+            21.9,
+            23.1,
+            23.0
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m",
+            "1000-1400m"
+          ],
+          "sections_raw": {
+            "S_1600_1200": 13.45,
+            "S_1200_800": 21.9,
+            "S_800_400": 23.1,
+            "L400": 23.0
+          },
+          "total_from_sections": 81.45,
+          "class_label": "Class 2",
+          "class_key": "Class2"
+        },
+        "C3": {
+          "standard_time": "1.21.65",
+          "sections": [
+            13.45,
+            21.8,
+            23.15,
+            23.25
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m",
+            "1000-1400m"
+          ],
+          "sections_raw": {
+            "S_1600_1200": 13.45,
+            "S_1200_800": 21.8,
+            "S_800_400": 23.15,
+            "L400": 23.25
+          },
+          "total_from_sections": 81.65,
+          "class_label": "Class 3",
+          "class_key": "Class3"
+        },
+        "C4": {
+          "standard_time": "1.22.00",
+          "sections": [
+            13.45,
+            21.75,
+            23.4,
+            23.4
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m",
+            "1000-1400m"
+          ],
+          "sections_raw": {
+            "S_1600_1200": 13.45,
+            "S_1200_800": 21.75,
+            "S_800_400": 23.4,
+            "L400": 23.4
+          },
+          "total_from_sections": 82.0,
+          "class_label": "Class 4",
+          "class_key": "Class4"
+        },
+        "C5": {
+          "standard_time": "1.22.30",
+          "sections": [
+            13.4,
+            21.9,
+            23.35,
+            23.65
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m",
+            "1000-1400m"
+          ],
+          "sections_raw": {
+            "S_1600_1200": 13.4,
+            "S_1200_800": 21.9,
+            "S_800_400": 23.35,
+            "L400": 23.65
+          },
+          "total_from_sections": 82.3,
+          "class_label": "Class 5",
+          "class_key": "Class5"
+        }
+      },
+      "1600": {
+        "G": {
+          "standard_time": "1.33.90",
+          "sections": [
+            24.85,
+            23.05,
+            23.25,
+            22.75
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m",
+            "1200-1600m"
+          ],
+          "sections_raw": {
+            "S_1600_1200": 24.85,
+            "S_1200_800": 23.05,
+            "S_800_400": 23.25,
+            "L400": 22.75
+          },
+          "total_from_sections": 93.9,
+          "class_label": "Group Race",
+          "class_key": "GroupRace"
+        },
+        "C1": {
+          "standard_time": "1.34.05",
+          "sections": [
+            24.75,
+            23.15,
+            23.15,
+            23.0
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m",
+            "1200-1600m"
+          ],
+          "sections_raw": {
+            "S_1600_1200": 24.75,
+            "S_1200_800": 23.15,
+            "S_800_400": 23.15,
+            "L400": 23.0
+          },
+          "total_from_sections": 94.05,
+          "class_label": "Class 1",
+          "class_key": "Class1"
+        },
+        "C2": {
+          "standard_time": "1.34.25",
+          "sections": [
+            24.55,
+            23.15,
+            23.45,
+            23.1
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m",
+            "1200-1600m"
+          ],
+          "sections_raw": {
+            "S_1600_1200": 24.55,
+            "S_1200_800": 23.15,
+            "S_800_400": 23.45,
+            "L400": 23.1
+          },
+          "total_from_sections": 94.25,
+          "class_label": "Class 2",
+          "class_key": "Class2"
+        },
+        "C3": {
+          "standard_time": "1.34.70",
+          "sections": [
+            24.5,
+            22.9,
+            23.8,
+            23.5
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m",
+            "1200-1600m"
+          ],
+          "sections_raw": {
+            "S_1600_1200": 24.5,
+            "S_1200_800": 22.9,
+            "S_800_400": 23.8,
+            "L400": 23.5
+          },
+          "total_from_sections": 94.7,
+          "class_label": "Class 3",
+          "class_key": "Class3"
+        },
+        "C4": {
+          "standard_time": "1.34.90",
+          "sections": [
+            24.5,
+            22.9,
+            23.8,
+            23.7
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m",
+            "1200-1600m"
+          ],
+          "sections_raw": {
+            "S_1600_1200": 24.5,
+            "S_1200_800": 22.9,
+            "S_800_400": 23.8,
+            "L400": 23.7
+          },
+          "total_from_sections": 94.9,
+          "class_label": "Class 4",
+          "class_key": "Class4"
+        },
+        "C5": {
+          "standard_time": "1.35.45",
+          "sections": [
+            24.55,
+            23.15,
+            23.85,
+            23.9
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m",
+            "1200-1600m"
+          ],
+          "sections_raw": {
+            "S_1600_1200": 24.55,
+            "S_1200_800": 23.15,
+            "S_800_400": 23.85,
+            "L400": 23.9
+          },
+          "total_from_sections": 95.45,
+          "class_label": "Class 5",
+          "class_key": "Class5"
+        }
+      },
+      "1800": {
+        "G": {
+          "standard_time": "1.47.10",
+          "sections": [
+            14.05,
+            22.8,
+            24.0,
+            23.5,
+            22.75
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m",
+            "1000-1400m",
+            "1400-1800m"
+          ],
+          "sections_raw": {
+            "S_2000_1600": 14.05,
+            "S_1600_1200": 22.8,
+            "S_1200_800": 24.0,
+            "S_800_400": 23.5,
+            "L400": 22.75
+          },
+          "total_from_sections": 107.1,
+          "class_label": "Group Race",
+          "class_key": "GroupRace"
+        },
+        "C1": {
+          "sections": [],
+          "labels": [],
+          "sections_raw": {},
+          "class_label": "Class 1",
+          "class_key": "Class1"
+        },
+        "C2": {
+          "standard_time": "1.47.30",
+          "sections": [
+            14.0,
+            22.6,
+            23.95,
+            23.35,
+            23.4
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m",
+            "1000-1400m",
+            "1400-1800m"
+          ],
+          "sections_raw": {
+            "S_2000_1600": 14.0,
+            "S_1600_1200": 22.6,
+            "S_1200_800": 23.95,
+            "S_800_400": 23.35,
+            "L400": 23.4
+          },
+          "total_from_sections": 107.3,
+          "class_label": "Class 2",
+          "class_key": "Class2"
+        },
+        "C3": {
+          "standard_time": "1.47.50",
+          "sections": [
+            13.85,
+            22.3,
+            23.8,
+            24.0,
+            23.55
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m",
+            "1000-1400m",
+            "1400-1800m"
+          ],
+          "sections_raw": {
+            "S_2000_1600": 13.85,
+            "S_1600_1200": 22.3,
+            "S_1200_800": 23.8,
+            "S_800_400": 24.0,
+            "L400": 23.55
+          },
+          "total_from_sections": 107.5,
+          "class_label": "Class 3",
+          "class_key": "Class3"
+        },
+        "C4": {
+          "standard_time": "1.47.85",
+          "sections": [
+            13.85,
+            22.2,
+            23.85,
+            24.2,
+            23.75
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m",
+            "1000-1400m",
+            "1400-1800m"
+          ],
+          "sections_raw": {
+            "S_2000_1600": 13.85,
+            "S_1600_1200": 22.2,
+            "S_1200_800": 23.85,
+            "S_800_400": 24.2,
+            "L400": 23.75
+          },
+          "total_from_sections": 107.85,
+          "class_label": "Class 4",
+          "class_key": "Class4"
+        },
+        "C5": {
+          "standard_time": "1.48.45",
+          "sections": [
+            13.95,
+            22.25,
+            23.85,
+            24.2,
+            24.2
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m",
+            "1000-1400m",
+            "1400-1800m"
+          ],
+          "sections_raw": {
+            "S_2000_1600": 13.95,
+            "S_1600_1200": 22.25,
+            "S_1200_800": 23.85,
+            "S_800_400": 24.2,
+            "L400": 24.2
+          },
+          "total_from_sections": 108.45,
+          "class_label": "Class 5",
+          "class_key": "Class5"
+        }
+      },
+      "2000": {
+        "G": {
+          "standard_time": "2.00.50",
+          "sections": [
+            25.95,
+            23.9,
+            23.9,
+            23.55,
+            23.2
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m",
+            "1200-1600m",
+            "1600-2000m"
+          ],
+          "sections_raw": {
+            "S_2000_1600": 25.95,
+            "S_1600_1200": 23.9,
+            "S_1200_800": 23.9,
+            "S_800_400": 23.55,
+            "L400": 23.2
+          },
+          "total_from_sections": 120.5,
+          "class_label": "Group Race",
+          "class_key": "GroupRace"
+        },
+        "C1": {
+          "standard_time": "2.01.20",
+          "sections": [
+            26.1,
+            24.35,
+            23.95,
+            23.6,
+            23.2
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m",
+            "1200-1600m",
+            "1600-2000m"
+          ],
+          "sections_raw": {
+            "S_2000_1600": 26.1,
+            "S_1600_1200": 24.35,
+            "S_1200_800": 23.95,
+            "S_800_400": 23.6,
+            "L400": 23.2
+          },
+          "total_from_sections": 121.2,
+          "class_label": "Class 1",
+          "class_key": "Class1"
+        },
+        "C2": {
+          "standard_time": "2.01.70",
+          "sections": [
+            26.05,
+            24.65,
+            24.2,
+            23.4,
+            23.4
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m",
+            "1200-1600m",
+            "1600-2000m"
+          ],
+          "sections_raw": {
+            "S_2000_1600": 26.05,
+            "S_1600_1200": 24.65,
+            "S_1200_800": 24.2,
+            "S_800_400": 23.4,
+            "L400": 23.4
+          },
+          "total_from_sections": 121.7,
+          "class_label": "Class 2",
+          "class_key": "Class2"
+        },
+        "C3": {
+          "standard_time": "2.01.90",
+          "sections": [
+            26.05,
+            24.7,
+            24.05,
+            23.55,
+            23.55
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m",
+            "1200-1600m",
+            "1600-2000m"
+          ],
+          "sections_raw": {
+            "S_2000_1600": 26.05,
+            "S_1600_1200": 24.7,
+            "S_1200_800": 24.05,
+            "S_800_400": 23.55,
+            "L400": 23.55
+          },
+          "total_from_sections": 121.9,
+          "class_label": "Class 3",
+          "class_key": "Class3"
+        },
+        "C4": {
+          "standard_time": "2.02.35",
+          "sections": [
+            25.85,
+            24.4,
+            24.4,
+            23.95,
+            23.75
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m",
+            "1200-1600m",
+            "1600-2000m"
+          ],
+          "sections_raw": {
+            "S_2000_1600": 25.85,
+            "S_1600_1200": 24.4,
+            "S_1200_800": 24.4,
+            "S_800_400": 23.95,
+            "L400": 23.75
+          },
+          "total_from_sections": 122.35,
+          "class_label": "Class 4",
+          "class_key": "Class4"
+        },
+        "C5": {
+          "standard_time": "2.02.65",
+          "sections": [
+            25.75,
+            24.4,
+            24.35,
+            23.95,
+            24.2
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m",
+            "1200-1600m",
+            "1600-2000m"
+          ],
+          "sections_raw": {
+            "S_2000_1600": 25.75,
+            "S_1600_1200": 24.4,
+            "S_1200_800": 24.35,
+            "S_800_400": 23.95,
+            "L400": 24.2
+          },
+          "total_from_sections": 122.65,
+          "class_label": "Class 5",
+          "class_key": "Class5"
+        }
+      },
+      "2400": {
+        "G": {
+          "standard_time": "2.27.00",
+          "sections": [
+            25.6,
+            24.5,
+            25.35,
+            23.85,
+            23.75,
+            23.95
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m",
+            "1200-1600m",
+            "1600-2000m",
+            "2000-2400m"
+          ],
+          "sections_raw": {
+            "S_2400_2000": 25.6,
+            "S_2000_1600": 24.5,
+            "S_1600_1200": 25.35,
+            "S_1200_800": 23.85,
+            "S_800_400": 23.75,
+            "L400": 23.95
+          },
+          "total_from_sections": 147.0,
+          "class_label": "Group Race",
+          "class_key": "GroupRace"
+        },
+        "C1": {
+          "sections": [],
+          "labels": [],
+          "sections_raw": {},
+          "class_label": "Class 1",
+          "class_key": "Class1"
+        },
+        "C2": {
+          "sections": [],
+          "labels": [],
+          "sections_raw": {},
+          "class_label": "Class 2",
+          "class_key": "Class2"
+        },
+        "C3": {
+          "sections": [],
+          "labels": [],
+          "sections_raw": {},
+          "class_label": "Class 3",
+          "class_key": "Class3"
+        },
+        "C4": {
+          "sections": [],
+          "labels": [],
+          "sections_raw": {},
+          "class_label": "Class 4",
+          "class_key": "Class4"
+        },
+        "C5": {
+          "sections": [],
+          "labels": [],
+          "sections_raw": {},
+          "class_label": "Class 5",
+          "class_key": "Class5"
+        }
+      }
+    },
+    "happy_valley_turf": {
+      "_name": "Happy Valley  Turf Track",
+      "1000": {
+        "C1": {
+          "sections": [],
+          "labels": [],
+          "sections_raw": {},
+          "class_label": "Class 1",
+          "class_key": "Class1"
+        },
+        "C2": {
+          "standard_time": "0.56.40",
+          "sections": [
+            12.45,
+            21.0,
+            22.95
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 12.45,
+            "S_800_400": 21.0,
+            "L400": 22.95
+          },
+          "total_from_sections": 56.4,
+          "class_label": "Class 2",
+          "class_key": "Class2"
+        },
+        "C3": {
+          "standard_time": "0.56.65",
+          "sections": [
+            12.5,
+            21.0,
+            23.15
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 12.5,
+            "S_800_400": 21.0,
+            "L400": 23.15
+          },
+          "total_from_sections": 56.65,
+          "class_label": "Class 3",
+          "class_key": "Class3"
+        },
+        "C4": {
+          "standard_time": "0.57.20",
+          "sections": [
+            12.55,
+            21.3,
+            23.35
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 12.55,
+            "S_800_400": 21.3,
+            "L400": 23.35
+          },
+          "total_from_sections": 57.2,
+          "class_label": "Class 4",
+          "class_key": "Class4"
+        },
+        "C5": {
+          "standard_time": "0.57.35",
+          "sections": [
+            12.6,
+            21.4,
+            23.35
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 12.6,
+            "S_800_400": 21.4,
+            "L400": 23.35
+          },
+          "total_from_sections": 57.35,
+          "class_label": "Class 5",
+          "class_key": "Class5"
+        }
+      },
+      "1200": {
+        "C1": {
+          "sections": [],
+          "labels": [],
+          "sections_raw": {},
+          "class_label": "Class 1",
+          "class_key": "Class1"
+        },
+        "C2": {
+          "standard_time": "1.08.35",
+          "sections": [
+            23.35,
+            21.95,
+            23.05
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 23.35,
+            "S_800_400": 21.95,
+            "L400": 23.05
+          },
+          "total_from_sections": 68.35,
+          "class_label": "Class 2",
+          "class_key": "Class2"
+        },
+        "C3": {
+          "standard_time": "1.08.55",
+          "sections": [
+            23.3,
+            22.05,
+            23.2
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 23.3,
+            "S_800_400": 22.05,
+            "L400": 23.2
+          },
+          "total_from_sections": 68.55,
+          "class_label": "Class 3",
+          "class_key": "Class3"
+        },
+        "C4": {
+          "standard_time": "1.08.95",
+          "sections": [
+            23.3,
+            22.1,
+            23.55
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 23.3,
+            "S_800_400": 22.1,
+            "L400": 23.55
+          },
+          "total_from_sections": 68.95,
+          "class_label": "Class 4",
+          "class_key": "Class4"
+        },
+        "C5": {
+          "standard_time": "1.09.35",
+          "sections": [
+            23.35,
+            22.35,
+            23.65
+          ],
+          "labels": [
+            "0-400m",
+            "400-800m",
+            "800-1200m"
+          ],
+          "sections_raw": {
+            "S_1200_800": 23.35,
+            "S_800_400": 22.35,
+            "L400": 23.65
+          },
+          "total_from_sections": 69.35,
+          "class_label": "Class 5",
+          "class_key": "Class5"
+        }
+      },
+      "1650": {
+        "C1": {
+          "standard_time": "1.37.80",
+          "sections": [],
+          "labels": [],
+          "sections_raw": {
+            "S_1600_1200": 27.8,
+            "S_1200_800": 22.85,
+            "S_800_400": 23.25,
+            "L400": 23.9
+          },
+          "class_label": "Class 1",
+          "class_key": "Class1"
+        },
+        "C2": {
+          "standard_time": "1.38.40",
+          "sections": [],
+          "labels": [],
+          "sections_raw": {
+            "S_1600_1200": 27.9,
+            "S_1200_800": 23.55,
+            "S_800_400": 23.05,
+            "L400": 23.9
+          },
+          "class_label": "Class 2",
+          "class_key": "Class2"
+        },
+        "C3": {
+          "standard_time": "1.38.60",
+          "sections": [],
+          "labels": [],
+          "sections_raw": {
+            "S_1600_1200": 27.9,
+            "S_1200_800": 23.0,
+            "S_800_400": 23.75,
+            "L400": 23.95
+          },
+          "class_label": "Class 3",
+          "class_key": "Class3"
+        },
+        "C4": {
+          "standard_time": "1.39.05",
+          "sections": [],
+          "labels": [],
+          "sections_raw": {
+            "S_1600_1200": 27.95,
+            "S_1200_800": 23.15,
+            "S_800_400": 23.8,
+            "L400": 24.15
+          },
+          "class_label": "Class 4",
+          "class_key": "Class4"
+        },
+        "C5": {
+          "standard_time": "1.39.45",
+          "sections": [],
+          "labels": [],
+          "sections_raw": {
+            "S_1600_1200": 27.95,
+            "S_1200_800": 23.2,
+            "S_800_400": 24.0,
+            "L400": 24.3
+          },
+          "class_label": "Class 5",
+          "class_key": "Class5"
+        }
+      },
+      "1800": {
+        "C1": {
+          "sections": [],
+          "labels": [],
+          "sections_raw": {},
+          "class_label": "Class 1",
+          "class_key": "Class1"
+        },
+        "C2": {
+          "sections": [],
+          "labels": [],
+          "sections_raw": {},
+          "class_label": "Class 2",
+          "class_key": "Class2"
+        },
+        "C3": {
+          "standard_time": "1.48.05",
+          "sections": [
+            13.75,
+            22.8,
+            23.7,
+            23.85,
+            23.95
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m",
+            "1000-1400m",
+            "1400-1800m"
+          ],
+          "sections_raw": {
+            "S_2000_1600": 13.75,
+            "S_1600_1200": 22.8,
+            "S_1200_800": 23.7,
+            "S_800_400": 23.85,
+            "L400": 23.95
+          },
+          "total_from_sections": 108.05,
+          "class_label": "Class 3",
+          "class_key": "Class3"
+        },
+        "C4": {
+          "standard_time": "1.48.55",
+          "sections": [
+            13.6,
+            23.1,
+            24.05,
+            23.65,
+            24.15
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m",
+            "1000-1400m",
+            "1400-1800m"
+          ],
+          "sections_raw": {
+            "S_2000_1600": 13.6,
+            "S_1600_1200": 23.1,
+            "S_1200_800": 24.05,
+            "S_800_400": 23.65,
+            "L400": 24.15
+          },
+          "total_from_sections": 108.55,
+          "class_label": "Class 4",
+          "class_key": "Class4"
+        },
+        "C5": {
+          "standard_time": "1.49.45",
+          "sections": [
+            13.75,
+            23.2,
+            23.95,
+            24.25,
+            24.3
+          ],
+          "labels": [
+            "0-200m",
+            "200-600m",
+            "600-1000m",
+            "1000-1400m",
+            "1400-1800m"
+          ],
+          "sections_raw": {
+            "S_2000_1600": 13.75,
+            "S_1600_1200": 23.2,
+            "S_1200_800": 23.95,
+            "S_800_400": 24.25,
+            "L400": 24.3
+          },
+          "total_from_sections": 109.45,
+          "class_label": "Class 5",
+          "class_key": "Class5"
+        }
+      },
+      "2200": {
+        "C1": {
+          "sections": [],
+          "labels": [],
+          "sections_raw": {},
+          "class_label": "Class 1",
+          "class_key": "Class1"
+        },
+        "C2": {
+          "sections": [],
+          "labels": [],
+          "sections_raw": {},
+          "class_label": "Class 2",
+          "class_key": "Class2"
+        },
+        "C3": {
+          "standard_time": "2.16.60",
+          "sections": [],
+          "labels": [],
+          "sections_raw": {
+            "S_2400_2000": 14.35,
+            "S_2000_1600": 23.7,
+            "S_1600_1200": 24.95,
+            "S_1200_800": 24.85,
+            "S_800_400": 24.45,
+            "L400": 24.3
+          },
+          "class_label": "Class 3",
+          "class_key": "Class3"
+        },
+        "C4": {
+          "standard_time": "2.17.05",
+          "sections": [],
+          "labels": [],
+          "sections_raw": {
+            "S_2400_2000": 14.4,
+            "S_2000_1600": 23.6,
+            "S_1600_1200": 25.25,
+            "S_1200_800": 25.15,
+            "S_800_400": 24.3,
+            "L400": 24.35
+          },
+          "class_label": "Class 4",
+          "class_key": "Class4"
+        },
+        "C5": {
+          "standard_time": "2.17.35",
+          "sections": [],
+          "labels": [],
+          "sections_raw": {
+            "S_2400_2000": 14.35,
+            "S_2000_1600": 23.7,
+            "S_1600_1200": 25.4,
+            "S_1200_800": 25.15,
+            "S_800_400": 24.15,
+            "L400": 24.6
+          },
+          "class_label": "Class 5",
+          "class_key": "Class5"
+        }
+      }
+    }
+  }
+}

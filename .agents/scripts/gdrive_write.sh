@@ -27,4 +27,4 @@ fi
 CONTENT="$(cat)"
 B64="$(echo -n "$CONTENT" | base64)"
 
-python3 "$SAFE_WRITER" --target "$TARGET" --mode "$MODE" --content "$B64"
+python "$SAFE_WRITER" --target "$TARGET" --mode "$MODE" --content "$B64"

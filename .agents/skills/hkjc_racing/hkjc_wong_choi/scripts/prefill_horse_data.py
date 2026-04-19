@@ -1,3 +1,8 @@
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 prefill_horse_data.py — Extract structured statistics from formguide/racecard
 to pre-populate horse analysis skeletons, reducing LLM hallucination risk.

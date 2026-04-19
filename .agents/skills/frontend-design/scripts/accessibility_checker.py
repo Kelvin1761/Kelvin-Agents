@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 """
 Accessibility Checker - WCAG compliance audit
 Checks HTML files for accessibility issues.

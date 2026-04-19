@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 """
 rating_engine_v2.py — Universal Qualitative Rating Engine v2
 ============================================================

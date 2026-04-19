@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 """
 GEO Checker - Generative Engine Optimization Audit
 Checks PUBLIC WEB CONTENT for AI citation readiness.

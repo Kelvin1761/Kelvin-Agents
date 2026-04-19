@@ -34,7 +34,7 @@ import sys, os, subprocess
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: cat content | python3 safe_file_writer.py <target_path>")
+        print("Usage: cat content | python safe_file_writer.py <target_path>")
         sys.exit(1)
     target_path = sys.argv[1]
     tmp_path = f"/tmp/_sfw_{os.path.basename(target_path)}"
@@ -61,7 +61,7 @@ echo "safe_file_writer.py created OK"
 
 // turbo
 ```bash
-cat << 'CONTENTEOF' | python3 /tmp/safe_file_writer.py '/path/to/target.md'
+cat << 'CONTENTEOF' | python /tmp/safe_file_writer.py '/path/to/target.md'
 # 你的分析內容
 ## 第一部分
 ...（任意長度 Markdown）...
@@ -79,8 +79,8 @@ wc -l '/path/to/target.md' && head -5 '/path/to/target.md'
 
 | 操作 | 工具 |
 |------|------|
-| 創建新檔案 | ✅ `heredoc \| python3 /tmp/safe_file_writer.py` (via `run_command`) |
-| 覆蓋整個檔案 | ✅ `heredoc \| python3 /tmp/safe_file_writer.py` (via `run_command`) |
+| 創建新檔案 | ✅ `heredoc \| python /tmp/safe_file_writer.py` (via `run_command`) |
+| 覆蓋整個檔案 | ✅ `heredoc \| python /tmp/safe_file_writer.py` (via `run_command`) |
 | 追加內容到檔案 | ✅ 先 heredoc 到 /tmp 再 `cat >> target` |
 | 修改少量行 (<50 行) | ✅ `replace_file_content` / `multi_replace_file_content` |
 | 創建新檔案 | ❌ ~~`write_to_file`~~ **完全禁用 — 即使 /tmp 也卡死** |

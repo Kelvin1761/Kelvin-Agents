@@ -48,6 +48,11 @@
 | SIP-RH09 | 🟢 ACTIVE | `02g_override_chain.md` | Soft 場地信心度降級 |
 | SIP-RH10 | 🟢 ACTIVE | `04d_wet_track.md` | Soft 5-6 頂磅懲罰稀釋 |
 | SIP-OBS04 | 🟢 ACTIVE | `02f_synthesis.md` (覆蓋規則區) | Maiden 冷門馬場地倍增器 (由 OBS-004 畢業) |
+| SIP-CB01 | 🟢 ACTIVE | `02f_synthesis.md` + `02h_quality_control.md` | 輔助維度 Data Sufficiency Guard + Deep Prep QG 偵測 |
+| SIP-RW01 | 🟢 ACTIVE | `04b_track_randwick.md` | Good 4 Randwick 前領偏差加成 |
+| SIP-RW02 | 🟢 ACTIVE | `02f_synthesis.md` | S/S- 級後追馬步速脆弱性驗證 |
+| OBS-RW03 | 🟡 OBSERVATION | Reflector `observation_log.md` | 練馬師同門效應 |
+| OBS-RW04 | 🟡 OBSERVATION | Reflector `observation_log.md` | Nash Rawiller 步速掌控 |
 
 ---
 
@@ -188,6 +193,28 @@
 | SIP-RH08 | Soft 5-6 S 級未驗證封頂 | `04d` Rule 8 | Soft 5-6 + S/S+ + 無 Soft 贏馬/入位 → 硬性封頂 A-。填補 SIP-RR17 只覆蓋 Soft 7+ 嘅漏洞 |
 | SIP-RH09 | Soft 場地信心度降級 | `02g` Step 14.F | Soft 5+ + 🟢極高信心度 → 需有 Soft 贏馬+場地✅+非前領方可維持,否則降至 🟡中 |
 | SIP-RH10 | Soft 5-6 頂磅懲罰稀釋 | `04d` Rule 4 | Soft 5-6 + ≥59kg + 頂磅斷尾 → 降級效果減半(0.5 級而非 1 級)。Soft 7+ 不適用 |
+
+## Cranbourne 2026-04-17 覆盤衍生 SIP（SIP-CB 系列）
+
+| SIP ID | 名稱 | 定義位置 | 摘要 |
+|:---|:---|:---|:---|
+| SIP-CB01 | 輔助維度數據充分性守門員 (Data Sufficiency Guard) | `02f` Step 14.E + `02h` QG-CHECK | 場地適性：同場地類型 ≥3 場 + WR≥25% 方可判 ✅,≤2 場最高判 ➖。賽績線：強組比例 1/1 最高判 ✅ (非 ✅✅),需 ≥2/N 方可判 ✅。防止微小樣本膨脹輔助 ✅ 數量導致 S 級過度分配。來源：R3 Iftihar (S→第6) + R7 Bluey Merchant (S-→第6)。同時加入 QG-CHECK Deep Prep 合規偵測 |
+
+## Randwick 2026-04-18 覆盤衍生 SIP（SIP-RW 系列）
+
+| SIP ID | 名稱 | 定義位置 | 摘要 |
+|:---|:---|:---|:---|
+| SIP-RW01 | Good 4 Randwick 前領偏差加成 | `04b_track_randwick.md` | Good 3-4 + Randwick + ≤1400m：前領馬 EEM 消耗再降 20% (疊加 SIP-SL02)。獨領放 → 步速自動 Moderate。3 場前領一放到底：R2 Ishikari, R8 Mazu, R9 Beiwacht |
+| SIP-RW02 | S/S- 級後追馬步速脆弱性驗證 | `02f_synthesis.md` Step 14.E | S/S- 級後追馬 + 穩定前領 (DOMINANCE_GAP=Clear) → 信心度降至🟡 + 風險標記 + 無追前紀錄→封頂 A+。來源：Mal Coupe S→6th, Pericles S→7th, Lord Penman S→8th |
+
+### 觀察項 (OBS — 待累積數據後畢業)
+
+| OBS ID | 名稱 | 摘要 | 首次觀察 |
+|:---|:---|:---|:---|
+| OBS-CB02 | Soft 場地 EEM 消耗加權 | Soft 場地乾地 EEM 消耗應 ×1.15 修正,但 Cranbourne 回測中未達閾值,效果有限。需更多 Soft/Heavy 場次驗證 | 2026-04-17 Cranbourne |
+| OBS-CB03 | 排序優勢可靠度分層 | 50% 排名順序偏差率 — 建議區分「無條件優勢」vs「條件式優勢」改善排序。需累積 ≥3 場覆盤數據 | 2026-04-17 Cranbourne |
+| OBS-RW03 | 練馬師同門效應 | R8 Joseph Pride 三馬包辦前三 — 引擎缺乏同門穩定性加成因素。需 ≥3 場覆盤數據 | 2026-04-18 Randwick |
+| OBS-RW04 | Nash Rawiller 步速掌控被低估 | Nash Rawiller 3 場冠軍 (R1, R5, R9)，全部完美掌控步速。需確認 Tier 1 評級 | 2026-04-18 Randwick |
 
 ---
 

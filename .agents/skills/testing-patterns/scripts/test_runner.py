@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 """
 Test Runner - Unified test execution and coverage reporting
 Runs tests and generates coverage report based on project type.

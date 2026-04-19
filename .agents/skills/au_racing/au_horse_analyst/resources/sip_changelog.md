@@ -4,6 +4,15 @@
 
 ## Latest Updates
 
+### 2026-04-17 — SIP-CB01: Cranbourne 覆盤 — 輔助維度 Data Sufficiency Guard + QG Deep Prep 偵測 + Scraper 更新
+- **Changed:** 
+  - **SIP-CB01 BAKED:** `02f_synthesis.md` 場地適性維度加入 ≥3 場門檻 + 賽績線 1/1 封頂 ✅ (非 ✅✅)
+  - **QG-CHECK 強化:** `02h_quality_control.md` 加入 Deep Prep 合規自動偵測 + Data Sufficiency 合規檢查
+  - **Scraper 更新:** `06a_data_retrieval.md` + `au_reflector/SKILL.md` Step 1 加入 `claw_racenet_results.py` (Racenet 賽果專用 Claw Code scraper)
+  - **OBS-CB02/CB03 記入觀察:** Soft EEM 加權 + 排序可靠度分層 — 待累積數據
+- **Target Files:** `02f_synthesis.md`, `02h_quality_control.md`, `00_sip_index.md`, `06a_data_retrieval.md`, `au_reflector/SKILL.md`
+- **Regression Check:** 若場地適性 ≤2 場仍獲 ✅ = 回歸。若賽績線 1/1 仍獲 ✅✅ = 回歸。若 Deep Prep ≥6 仗 + 狀態 ✅ 無品質警報 = 回歸。
+
 ### 2026-04-07 — 全引擎深度審查 + 架構清理 (Engine Forensic Review & Cleanup)
 - **Changed:** 全面審查 AU Horse Analyst 引擎，執行以下改動：
   - **邏輯矛盾修復:** `temp_03.md` Step 14 + `temp_02.md` Step 4 加 `[HKJC ENGINE ONLY]` 標記
@@ -32,10 +41,5 @@
 - **Changed:** 統一 AU / HKJC / NBA 三大引擎嘅 File Writing Protocol 至 P33-WLTM
 - **Target Files:** AU/HKJC/NBA Wong Choi SKILL.md, race_analysis_workflow.md, design_patterns.md
 - **Regression Check:** 若任何引擎仍包含 `write_to_file` 作為合法工具 = 回歸
-
-### 2026-04-04 — SIP-RR17: Randwick 覆盤衍生 SIP
-- **Changed:** Soft 7+ 爛地負磅與動能重新校準（3 子修改）
-- **Target Files:** `02f_synthesis.md`, `04d_wet_track.md`, `00_sip_index.md`
-- **Regression Check:** 若 Soft 7+ 場地下 ≥59kg 馬匹仍獲 S/S+ 評級 = 回歸
 
 <!-- Newest entries at top. Keep last 5 updates only. Archive older entries to 00_sip_index.md. -->

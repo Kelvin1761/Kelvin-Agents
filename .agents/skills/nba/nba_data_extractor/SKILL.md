@@ -58,7 +58,7 @@ ag_kit_skills:
 
 ## 5. File Writing Protocol
 > ⚠️ **P33-WLTM 封殺令**: 直接呼叫寫檔工具(如 `write_to_f...` 等) **完全禁止** — 會導致 IDE 死鎖。
-> 數據包寫入必須透過 `run_command` + safe_file_writer.py（見 `.agents/scripts/safe_file_writer.py`），或由上游 Wong Choi 嘅 Safe-Writer Pipeline 統一處理。Windows 用 PowerShell `[System.IO.File]::WriteAllText()`，macOS/Linux 用 heredoc + safe_file_writer。
+> 數據包寫入必須透過 `run_command` + safe_file_writer.py（見 `.agents/scripts/safe_file_writer.py`），或由上游 Wong Choi 嘅 Safe-Writer Pipeline 統一處理。Windows 用 PowerShell `[System.IO.File]::WriteAllText()`，macOS/Linux 用 safe_file_writer.py。
 
 ## 6. Session Recovery Protocol (Pattern 10)
 > 若 session 中途斷開或重新連接,**嚴禁重新提取已完成嘅數據**。

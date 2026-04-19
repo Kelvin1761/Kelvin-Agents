@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 inject_fact_anchors.py — V2: 完整賽績檔案 (Full Race Dossier) Auto-Generator
 ============================================================================
@@ -266,12 +271,15 @@ def parse_racecard(filepath: str) -> list[dict]:
         trainer_match = re.search(r'Trainer:\s*([^|]+)', block)
         trainer = trainer_match.group(1).strip() if trainer_match else 'Unknown'
 
+        weight_match = re.search(r'Weight:\s*(\d+\.?\d*)\s*(?:kg)?', block)
+        weight_kg = float(weight_match.group(1)) if weight_match else 0
+
         last_is_trial = is_trial_venue(last_venue, last_dist) if last_venue != 'N/A' else False
         decoded = parse_last10(last10_raw) if last10_raw not in ('None', '-') else []
 
         horses.append({
             'num': horse_num, 'name': horse_name, 'barrier': barrier,
-            'jockey': jockey, 'trainer': trainer,
+            'jockey': jockey, 'trainer': trainer, 'weight': weight_kg,
             'career': career, 'last10_raw': last10_raw,
             'last_finish': last_finish, 'last_field': last_field,
             'last_dist': last_dist, 'last_venue': last_venue,
@@ -1401,7 +1409,8 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
     # ═══════════════════════════════════════════════════
     jockey_str = horse.get('jockey', 'Unknown')
     trainer_str = horse.get('trainer', 'Unknown')
-    lines.append(f"### 馬匹 #{horse['num']} {horse['name']} (檔位 {horse['barrier']}) | 騎師: {jockey_str} | 練馬師: {trainer_str}")
+    weight_str = f"{horse.get('weight', 0)}kg" if horse.get('weight', 0) > 0 else '未知'
+    lines.append(f"### 馬匹 #{horse['num']} {horse['name']} (檔位 {horse['barrier']}) | 騎師: {jockey_str} | 練馬師: {trainer_str} | 負重: {weight_str}")
     lines.append(f"- **📌 事實錨點 (由 Python 預填，嚴禁修改):**")
     lines.append(f"  - Last 10 字串: `{horse['last10_raw']}`")
 

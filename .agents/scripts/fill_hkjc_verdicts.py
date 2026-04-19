@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 import re
 import argparse
 import base64
+import shutil
 import subprocess
-import os
 
 GRADE_ORDER = ['S+', 'S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D']
 
@@ -184,7 +188,8 @@ def main():
         print(f"Error injecting global metadata: {e}")
 
     b64_content = base64.b64encode(new_text.encode('utf-8')).decode('utf-8')
-    subprocess.run(["python3", args.safe_writer, "--target", args.target, "--mode", "overwrite", "--content", b64_content], check=True)
+    _py = "python3" if shutil.which("python3") else "python"
+    subprocess.run([_py, args.safe_writer, "--target", args.target, "--mode", "overwrite", "--content", b64_content], check=True)
     print("Verdict Top 4 + Global Metadata Injection complete!")
 
 if __name__ == '__main__':

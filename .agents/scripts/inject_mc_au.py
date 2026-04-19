@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+os.environ.setdefault('PYTHONUTF8', '1')
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 AU Monte Carlo Injection Script
 Reads Race_X_MC_Results.json and injects the MC table into 04-15 Race X Analysis.md

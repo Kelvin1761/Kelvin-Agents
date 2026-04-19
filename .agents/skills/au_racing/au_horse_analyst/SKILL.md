@@ -79,7 +79,7 @@ ag_kit_skills:
 4. **情報補全**:使用 Wong Choi Intelligence Package(若有),或獨立搜尋動態情報。
 3.5. **[SIP-1] 場地預測容錯機制**:若預測場地為 Heavy 或天氣不穩定,執行雙軌敏感度分析(定義見 `02c_track_and_gear.md` Step 4)。
 4. **賽事與步速定調**:判定 `[STRAIGHT SPRINT]` 或 `[STANDARD RACE]`,產生 `<第一部分>` + Speed Map。
-5. **批次解析**:每批按 Wong Choi 傳入嘅 BATCH_SIZE（預設 3，環境掃描 fallback 為 2），按馬號順序。**全自動推進**，嚴禁批次間詢問用戶。**批次隔離規則:每個 Batch 必須作為獨立嘅 file write 操作輸出，嚴禁將多個 Batch 合併到同一次 tool call。** Batch 1 = Safe-Writer Protocol (P33-WLTM) 使用 heredoc → /tmp → base64 → safe_file_writer.py --mode overwrite 建檔；Batch 2+ = 同一管道 --mode append 追加寫入。⚠️ write_to_file 封殺 (可使用 replace_file_content/multi_replace_file_content 或 safe_file_writer.py)（見 Wong Choi P33-WLTM）。若發現正在寫入 4+ 匹馬 → 立即停止拆分。
+5. **批次解析**:每批按 Wong Choi 傳入嘅 BATCH_SIZE（預設 3，環境掃描 fallback 為 2），按馬號順序。**全自動推進**，嚴禁批次間詢問用戶。**批次隔離規則:每個 Batch 必須作為獨立嘅 file write 操作輸出，嚴禁將多個 Batch 合併到同一次 tool call。** Batch 1 = Safe-Writer Protocol (P33-WLTM) 使用 safe_file_writer.py --mode overwrite 建檔；Batch 2+ = 同一管道 --mode append 追加寫入。⚠️ write_to_file 封殺 (可使用 replace_file_content/multi_replace_file_content 或 safe_file_writer.py)（見 Wong Choi P33-WLTM）。若發現正在寫入 4+ 匹馬 → 立即停止拆分。
 6. **全場最終決策**:全場所有馬匹均完成 Batch 分析後，**[致命規定] 必須先調用 `view_file` 閱讀 `06_templates_core.md` + `06_templates_rules.md`**，然後嚴格遵照模板生成 `<第三部分>` (Top 4 必須用條列式/Bullet points、嚴禁單行句) + `<第四部分>` + `<第五部分>` (CSV 代碼必須被代碼區塊括起)，Top 4 必須按評級排序。
 
 **🚨 Anti-Laziness 錨定 + 品質守門員檢查 [SIP-ST8](每批次強制自檢):**

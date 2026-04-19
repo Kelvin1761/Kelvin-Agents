@@ -12,21 +12,19 @@ description: Wong Choi Engine P19v2 賽事分析強制標準流程 (Race Analysi
 > 
 > | 封殺工具 | 原因 |
 > |---|---|
-> | ❌ `write_to_file` | IDE JSON serialization pipeline deadlock — 任何大小、任何路徑（包括 `/tmp`）均會卡死 |
+> | ❌ `write_to_file` | IDE JSON serialization pipeline deadlock — 任何大小、任何路徑均會卡死 |
 > | ❌ `replace_file_content` | 同上（超過 ~50 行即觸發） |
 > | ❌ `multi_replace_file_content` | 同上 |
 > | ❌ `shutil.move` | 跨裝置搬移觸發 Google Drive FileProvider 死鎖 |
 > 
-> **唯一合法寫入方法：**
+> **唯一合法寫入方法（跨平台）：**
 > ```
-> run_command + heredoc → /tmp/file → cp → Google Drive target
+> python .agents/scripts/safe_file_writer.py --target <path> --mode overwrite --content <base64>
 > ```
-> 或使用 `python3 /tmp/safe_file_writer.py`（見 `.agent/workflows/safe_write.md`）。
+> 或使用 `run_command` + `echo ... | python .agents/scripts/safe_file_writer.py`。
 > 
 > **⛔ 自檢觸發器（每次寫入前必讀）：**
-> 若你正在準備呼叫 `write_to_file` / `replace_file_content` / `multi_replace_file_content` → **⛔ 立即停止** → 你已違規 → 改用 `run_command` + heredoc 管道。
-> 
-> **Session 開始前必須執行 Step 0 建立 `/tmp/safe_file_writer.py`。**
+> 若你正在準備呼叫 `write_to_file` / `replace_file_content` / `multi_replace_file_content` → **⛔ 立即停止** → 你已違規 → 改用 `run_command` + `safe_file_writer.py` 管道。
 
 > [!CAUTION]
 > **澳洲賽馬 (AU Racing) 專屬抽取限制：** 處理 Racenet 等賽事時，嚴禁使用 `browser_subagent` 逐場手動複製。AI 必須遵守 `au-wong-choi` 嘅 Lightpanda Fast Batch Protocol，先執行批量抽取腳本 (例如 `_temporary_files/xxx_extractor.py`) 取得全賽日 Markdown 檔案後，才能開始分析。

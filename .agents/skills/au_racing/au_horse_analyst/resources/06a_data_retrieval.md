@@ -7,10 +7,12 @@
 | 優先級 | 方法 | 適用場景 | 速度 |
 |:---|:---|:---|:---|
 | **1 (首選)** | `read_url_content` | 靜態頁面(Racenet 賽果/賽卡、Racing.com 場地狀態等 server-rendered 頁面) | ⚡ 極快 |
+| **1B (Racenet 專用)** | `python .agents/skills/au_racing/claw_racenet_results.py --url "<URL>" --output_dir "<DIR>" --json` | **Racenet 賽果提取** — 繞過 Cloudflare 403,使用 curl_cffi + Playwright Hybrid SSR State Extraction。輸出 Reflector 專用格式 + Full MD + JSON | ⚡ 快 |
+| **1C (Racenet 專用)** | `python .agents/skills/au_racing/claw_racenet_scraper.py "<URL>" --output_dir "<DIR>"` | **Racenet 賽卡/Form Guide 提取** — 同上架構 | ⚡ 快 |
 | **2** | `search_web` | 動態查詢(騎練組合勝率、場地偏差、Stewards Report 等需搜索引擎彙整的數據) | ⚡ 快 |
 | **3 (最後手段)** | `MCP Playwright (mcp_playwright_browser_*)` | 僅當以上兩種方法均失敗**且**目標頁面需要 JavaScript 互動時使用。**必須使用 Lightpanda 無頭瀏覽器**,嚴禁 Chromium/Playwright。Lightpanda 實例必須保持持久化。 | 🐌 慢 |
 
-**故障轉移規則:** 每層方法失敗時,自動嘗試下一層。若 `read_url_content` 返回內容不完整(如關鍵表格缺失),視為失敗並降級至下一層。
+**故障轉移規則:** 每層方法失敗時,自動嘗試下一層。若 `read_url_content` 返回 403 或內容不完整(如關鍵表格缺失),自動降級至 1B/1C Claw Code scraper。
 
 ## 外部數據搜索指引
 

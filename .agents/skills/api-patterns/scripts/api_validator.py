@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 """
 API Validator - Checks API endpoints for best practices.
 Validates OpenAPI specs, response formats, and common issues.

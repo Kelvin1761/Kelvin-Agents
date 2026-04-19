@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 compute_nba_props.py — NBA Wong Choi Protocol Volatility & Props Calculator
 Mechanically computes CoV, situational adjustments, bet lines, +EV, and Under detection.

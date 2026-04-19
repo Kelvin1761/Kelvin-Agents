@@ -1,5 +1,8 @@
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 import sys
 import json
+import re
 import urllib.parse
 from bs4 import BeautifulSoup  # type: ignore
 from playwright.sync_api import sync_playwright  # type: ignore
@@ -90,8 +93,7 @@ def extract_formguide(url):
             if len(tds) >= 8:
                 # 12 發光發亮
                 num_name = tds[0].text.strip()
-                import re
-                match = re.match(r'^(\\d+)\\s*(.+)', num_name)
+                match = re.match(r'^(\d+)\s*(.+)', num_name)
                 if match:
                     current_horse['horseNumber'] = match.group(1)
                     current_horse['horseName'] = match.group(2).strip()

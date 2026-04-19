@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 HKJC Single Race Results Extractor.
 Extracts results for one specific race from the HKJC localresults page.

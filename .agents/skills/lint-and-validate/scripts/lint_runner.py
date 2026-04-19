@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 """
 Lint Runner - Unified linting and type checking
 Runs appropriate linters based on project type.

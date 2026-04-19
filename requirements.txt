@@ -1,0 +1,25 @@
+# Antigravity Agent — Python Dependencies
+# Install: pip install -r requirements.txt
+
+# ── Core Pipeline (HKJC + AU Racing) ─────────────────────────
+beautifulsoup4>=4.12.0       # HTML parsing for racecard/formguide extraction
+playwright>=1.40.0           # Browser automation for HKJC formguide extraction
+lxml>=4.9.0                  # Fast XML/HTML parser (bs4 backend)
+requests>=2.31.0             # HTTP requests for PDF/API downloads
+pdfplumber>=0.10.0           # PDF extraction for HKJC starter lists
+
+# ── Monte Carlo / Data Science ────────────────────────────────
+numpy>=1.24.0                # Numerical computing for Monte Carlo simulations
+pandas>=2.0.0                # Data analysis for report generation
+
+# ── NBA Pipeline ──────────────────────────────────────────────
+nba_api>=1.2.0               # Official NBA stats API client
+
+# ── AU Racing (Optional — install if running AU pipeline) ─────
+curl_cffi>=0.5.0             # Anti-bot bypass for Racenet scraping
+python-dotenv>=1.0.0         # Environment variable management
+
+# ── Post-Install ──────────────────────────────────────────────
+# After pip install, run:
+#   python -m playwright install chromium
+# This downloads the Chromium browser binary needed for Playwright.

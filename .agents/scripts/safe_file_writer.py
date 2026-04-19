@@ -46,6 +46,7 @@ import shutil
 import signal
 import sys
 import tempfile
+import threading
 import uuid
 from pathlib import Path
 
@@ -131,28 +132,47 @@ def _write_via_wltm(decoded_text: str, target_path: Path, write_mode: str,
         target_path.parent.mkdir(parents=True, exist_ok=True)
 
         # ── Step 5: Move to target with timeout protection ──
-        # Set alarm for timeout (Unix only)
-        old_handler = None
+        # Cross-platform timeout: SIGALRM on Unix, threading.Timer on Windows
+        _move_timed_out = False
+
         if hasattr(signal, 'SIGALRM'):
+            # Unix: use SIGALRM (precise, reliable)
             old_handler = signal.signal(signal.SIGALRM, _timeout_handler)
             signal.alarm(timeout)
+            try:
+                shutil.move(str(staging_path), str(target_path))
+            except TimeoutError:
+                _move_timed_out = True
+            finally:
+                signal.alarm(0)
+                if old_handler is not None:
+                    signal.signal(signal.SIGALRM, old_handler)
+        else:
+            # Windows: use threading.Timer fallback
+            _timer_fired = threading.Event()
 
-        try:
-            shutil.move(str(staging_path), str(target_path))
-        except TimeoutError:
-            # Clean up staging file
+            def _timer_abort():
+                _timer_fired.set()
+
+            timer = threading.Timer(timeout, _timer_abort)
+            timer.start()
+            try:
+                shutil.move(str(staging_path), str(target_path))
+            except Exception:
+                pass
+            finally:
+                timer.cancel()
+            if _timer_fired.is_set():
+                _move_timed_out = True
+
+        if _move_timed_out:
             if staging_path.exists():
                 staging_path.unlink()
             return make_result(False,
                                f"WLTM: Move operation timed out after {timeout}s. "
                                "Google Drive FileProvider may be deadlocked. "
-                               "Try pausing Google Drive sync or using /tmp as target.",
+                               "Try pausing Google Drive sync or using a local path as target.",
                                str(target_path), method="wltm-timeout")
-        finally:
-            if hasattr(signal, 'SIGALRM'):
-                signal.alarm(0)  # Cancel the alarm
-                if old_handler is not None:
-                    signal.signal(signal.SIGALRM, old_handler)
 
         # ── Step 6: Verify final file via checksum ──
         try:

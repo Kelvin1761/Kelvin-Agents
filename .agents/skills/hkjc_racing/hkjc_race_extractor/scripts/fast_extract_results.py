@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 HKJC Fast Race Results Extractor — curl_cffi + local Playwright hydration.
 

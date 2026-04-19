@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 """
 nba_orchestrator.py — NBA Wong Choi Pipeline Orchestrator V3
 =============================================================
@@ -270,6 +272,8 @@ def print_status(target_dir: str, game_tags: list):
 # ─── Main ───────────────────────────────────────────────────────────────
 
 def main():
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     parser = argparse.ArgumentParser(
         description="NBA Wong Choi Pipeline Orchestrator V3 — "
                     "Sportsbet Claw → Extractor → Report → Validator → SGM"

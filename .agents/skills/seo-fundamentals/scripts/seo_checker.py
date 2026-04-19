@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 """
 SEO Checker - Search Engine Optimization Audit
 Checks HTML/JSX/TSX pages for SEO best practices.

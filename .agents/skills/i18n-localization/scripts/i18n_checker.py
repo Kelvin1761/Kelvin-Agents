@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
 """
 i18n Checker - Detects hardcoded strings and missing translations.
 Scans for untranslated text in React, Vue, and Python files.

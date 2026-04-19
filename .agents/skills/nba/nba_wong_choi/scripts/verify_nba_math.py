@@ -1,3 +1,7 @@
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 verify_nba_math.py — Wong Choi NBA 自動化數學驗證
 

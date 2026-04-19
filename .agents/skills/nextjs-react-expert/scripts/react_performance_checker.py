@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+os.environ.setdefault('PYTHONUTF8', '1')
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 React Performance Checker
 Automated performance audit for React/Next.js projects

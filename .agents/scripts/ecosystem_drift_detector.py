@@ -1,3 +1,7 @@
+import os
+os.environ.setdefault('PYTHONUTF8', '1')
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 ecosystem_drift_detector.py — Ecosystem 文檔 vs 實際目錄偏差偵測器
 
