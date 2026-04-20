@@ -29,6 +29,18 @@ ag_kit_skills:
 - **防幻覺**:無數據則填 `N/A (數據不足)`,嚴禁猜測。
 - **防無限 Loop**:Web Search 連續失敗 3 次即停止,標記 `N/A`。
 
+> [!CAUTION]
+> **🚨 SIP-009: Mandatory Data Slice Before Batch（強制數據回讀 — 防幻覺核心規則）**
+>
+> **歷史教訓（2026-04-22 Happy Valley Race 1）：** Batch 4（馬匹 10-12）嘅騎師、練馬師、檔位、賽績全部錯誤。根因：LLM 到最後一個 batch 時 context window 已滿，未有重新讀取排位表，直接從記憶中「幻覺」數據。騎練出現串聯錯位 (cascading shift)：10號用咗11號嘅騎師，11號用咗12號嘅。
+>
+> **強制規定（Priority 0 — 不可違反）：**
+> 1. **每個 Batch 開始前，必須 `view_file` 排位表中對應馬匹嘅原始數據行。** 例如分析馬匹 10-12 前，必須先讀取排位表中馬號 10、11、12 嘅完整資料段落。
+> 2. **同時必須 `view_file` 賽績（Form Guide / Facts.md）中對應馬匹嘅往績紀錄。**
+> 3. **嚴禁從記憶中提取騎師/練馬師/負磅/檔位/賽績/配備。** 所有硬性數據必須從 `view_file` 嘅實際輸出中逐字複製。
+> 4. **寫入後驗證：** 每個 Batch 寫入 Analysis.md 後，必須對比排位表原始數據，確認每匹馬嘅 [騎師] [練馬師] [負磅] [檔位] [賽績] 5 個欄位完全吻合。
+> 5. **違規標記：** `WALL-017: DATA_HALLUCINATION` — 任何數據與排位表不符即觸發，整個 Batch 必須重做。
+
 ## 2. 資源讀取協議 (Tiered Loading Protocol) [改進 #6 — 極重要]
 每場賽事分析分三層載入資源,降低初始 context 壓力:
 
