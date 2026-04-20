@@ -67,7 +67,7 @@ def parse_horse_header(block):
 
 
 def parse_summary(block):
-    """Extract last_6, days_since_last, season stats."""
+    """Extract last_6, days_since_last, season stats, wins, starts."""
     result = {}
     m = re.search(r'\*\*近六場:\*\*\s*(.+?)\s*\(', block)
     if not m:
@@ -84,6 +84,34 @@ def parse_summary(block):
     m = re.search(r'\*\*統計:\*\*\s*(.+?)$', block, re.MULTILINE)
     if m:
         result['season_stats'] = m.group(1).strip()
+    
+    # Extract wins/starts from career line: 生涯：N: W-P-S
+    m = re.search(r'生涯：\s*(\d+)\s*[::∶]\s*(\d+)', block)
+    if m:
+        result['starts'] = int(m.group(1))
+        result['wins'] = int(m.group(2))
+    else:
+        # Fallback: try 總場次 / 總勝
+        m = re.search(r'(\d+)\s*戰\s*(\d+)\s*勝', block)
+        if m:
+            result['starts'] = int(m.group(1))
+            result['wins'] = int(m.group(2))
+    
+    # Extract Last 10 recent form
+    m = re.search(r'Last 10.*?[::∶]\s*`?([^`\n]+)`?', block)
+    if m:
+        result['recent_form'] = m.group(1).strip()
+    
+    # Extract track/surface records
+    m = re.search(r'好地[::∶]\s*([^\|\n]+)', block)
+    if m:
+        result['good_record'] = m.group(1).strip()
+    m = re.search(r'軟地[::∶]\s*([^\|\n]+)', block)
+    if m:
+        result['soft_record'] = m.group(1).strip()
+    m = re.search(r'同場[::∶]\s*([^\|\n]+)', block)
+    if m:
+        result['course_record'] = m.group(1).strip()
 
     return result
 
@@ -239,6 +267,17 @@ def build_skeleton(data):
         'disadvantages': '[FILL]',
         'evidence_step_0_14': '[FILL]',
         'underhorse': {'triggered': False, 'condition': '', 'reason': ''},
+        
+        # ===== AUTO-ENRICHMENT (V2: auto-filled from Facts.md) =====
+        'wins': data.get('wins', 0),
+        'starts': data.get('starts', 0),
+        'recent_form': data.get('recent_form', ''),
+        'good_record': data.get('good_record', ''),
+        'soft_record': data.get('soft_record', ''),
+        'course_record': data.get('course_record', ''),
+        'engine_type': data.get('engine', ''),
+        'best_distance': data.get('best_distance', ''),
+        'formline_strength': data.get('formline_strength', ''),
     }
 
 

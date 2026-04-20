@@ -113,7 +113,16 @@
 | 練馬師訊號框架 | `07a_signals_framework.md` | SIP-ST4 |
 | 練馬師出擊訊號 | `07b_trainer_signals.md` | SIP-RR21 轉倉因素 |
 
+## Phase 3/4 數據自動化 SIP
+
+| SIP ID | 名稱 | 定義位置 | 摘要 |
+|:---|:---|:---|:---|
+| SIP-P3a | 標準時間自動同步 | `inject_hkjc_fact_anchors.py` | JSON 標準時間優先讀取,hardcoded fallback |
+| SIP-P3b | 檔位統計注入 | `inject_hkjc_fact_anchors.py` + `11_factor_interaction.md` | 🎯檔位判讀 + SYN-07 黃金檔位 / CON-06 死檔困局 |
+| SIP-P3c | 賽事短評交叉驗證 | `05_forensic_eem.md` Step 10.7.2 | Engine Type 矛盾偵測 + 受阻模式識別 |
+| SIP-P3d | 檔位觸發情境適配 | `06_rating_aggregation.md` Step 14.1 | 檔位紅利 ✅ / 檔位劣勢 ❌ + 反雙重懲罰 |
+
 ---
 
 > **維護規則:** 每次 Reflector 覆盤產出新 SIP 時,必須同步更新此索引。
-> **最後更新:** 2026-04-06 (SIP-ST40~ST44 新增,Sha Tin 草地覆盤衍生)
+> **最後更新:** 2026-04-20 (SIP-P3a~P3d 新增,Phase 3 數據自動化)

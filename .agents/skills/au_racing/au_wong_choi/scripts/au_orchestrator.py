@@ -422,7 +422,7 @@ def generate_work_card(horse_num, facts_content, logic_data, runtime_dir,
     # ── Final synthesis ──
     card.append("---")
     card.append("## 📋 綜合部分（填完 8 個維度後）")
-    card.append("- **core_logic**: 串連所有維度寫成連貫分析（最少 100 字，必須引用具體賽事/數據）")
+    card.append("- **core_logic**: 串連所有維度寫成連貫分析（必須引用具體賽事/數據）")
     card.append("- **advantages**: 2-3 個主要優勢")
     card.append("- **disadvantages**: 2-3 個致命風險")
     card.append("- **fine_tune**: 方向(+/-/無) + trigger_code（從預定義列表揀）")
@@ -574,9 +574,16 @@ def print_analysis_summary(horse_entry, horse_num):
         print(f"   ✨ 分數差異度良好 ({len(unique_scores)} 種不同分數)")
 
 
+# Fluff phrases that indicate lazy/template analysis
+FLUFF_PHRASES_AU = [
+    '配搭無特別異常', '一般而言', '整體尚可', '無特別優劣',
+    '中規中矩', '表現平平', '沒有明顯', '無明顯',
+    '暫時未有特別', '有待觀察', '資料有限',
+]
+
 def validate_au_firewalls(h, h_entry, horses_dict, all_horses, json_file):
     """AU-specific per-horse firewall validation. Returns list of error strings.
-    Extracted from V9.3 inline code — logic is identical.
+    V2: Added WALL-011 fluff detection matching HKJC pipeline.
     """
     errors = []
     horse_name = h_entry.get('horse_name', '')
@@ -711,6 +718,16 @@ def validate_au_firewalls(h, h_entry, horses_dict, all_horses, json_file):
                 f"真正嘅分析應該包含至少一個：具體日期、場地名、PI 數值、或距離/名次數據。"
                 f"當前文本疑似由模板腳本生成。"
             )
+
+    # WALL-011B: Fluff Detection (V2 — matching HKJC pipeline)
+    if core_logic and '[FILL]' not in core_logic:
+        for phrase in FLUFF_PHRASES_AU:
+            if phrase in core_logic:
+                errors.append(
+                    f"WALL-011B: core_logic 含有模板化語句「{phrase}」，"
+                    f"請替換為具體數據分析"
+                )
+                break
 
     return errors
 
@@ -1512,12 +1529,23 @@ def main():
                 _next_cmd(target_dir)
                 sys.exit(1)
             
-            # ── Step L: Monte Carlo Simulation (mc_simulator.py v1.0) ──
+            # ── Step L: Monte Carlo Simulation (mc_simulator.py v2.2) ──
             print(f"🎲 Running Monte Carlo simulation for Race {r}...")
-            mc_simulator_script = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                "..", "..", "..", "..", "..", "mc_simulator.py"
-            )
+            # Robust path discovery: walk up from script dir to find workspace root
+            _script_dir = os.path.dirname(os.path.abspath(__file__))
+            _search_dir = _script_dir
+            mc_simulator_script = None
+            for _ in range(8):  # Max 8 levels up
+                _candidate = os.path.join(_search_dir, "mc_simulator.py")
+                if os.path.exists(_candidate):
+                    mc_simulator_script = _candidate
+                    break
+                _parent = os.path.dirname(_search_dir)
+                if _parent == _search_dir:
+                    break
+                _search_dir = _parent
+            if not mc_simulator_script:
+                mc_simulator_script = os.path.join(_script_dir, "..", "..", "..", "..", "..", "mc_simulator.py")
             mc_json_out = os.path.join(target_dir, f"Race_{r}_MC_Results.json")
 
             if os.path.exists(mc_simulator_script):

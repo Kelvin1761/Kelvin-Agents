@@ -197,6 +197,29 @@ def parse_results(text: str) -> list:
     return results[:4]  # Top 4
 
 
+def parse_results_json(json_path: str) -> dict:
+    """Parse race results from scrape_race_results.py JSON output."""
+    with open(json_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    
+    race_results = {}
+    for race in data.get('races', []):
+        race_num = race.get('race', 0)
+        results = []
+        for h in race.get('horses', []):
+            try:
+                place = h.get('place', '')
+                if place.isdigit():
+                    results.append((int(place), h.get('number', 0), h.get('name', '')))
+            except (ValueError, TypeError):
+                continue
+        results.sort(key=lambda x: x[0])
+        if results:
+            race_results[race_num] = results[:4]
+    
+    return race_results
+
+
 def compute_race_stats(picks: list, results: list, grades: dict) -> RaceStats:
     """Compute all hit rate metrics for a single race."""
     stats = RaceStats(race_num=0)
@@ -284,29 +307,32 @@ def extract_race_num(filename: str) -> int:
 
 def run_stats(analysis_dir: str, results_file: str) -> dict:
     """Run full statistics computation."""
-    # Parse results
-    with open(results_file, 'r', encoding='utf-8') as f:
-        results_text = f.read()
-
-    # Split results by race
+    # Auto-detect JSON vs text results
     race_results = {}
-    # Try to split by race headers
-    race_sections = re.split(r'(?:##?\s*(?:Race|第)\s*(\d+)|---)', results_text)
-    
-    # If no clear sections, try parsing all results
-    if len(race_sections) <= 1:
-        all_results = parse_results(results_text)
-        if all_results:
-            race_results[1] = all_results
+    if results_file.endswith('.json'):
+        # JSON format from scrape_race_results.py
+        race_results = parse_results_json(results_file)
     else:
-        current_race = None
-        for i, section in enumerate(race_sections):
-            if section and section.strip().isdigit():
-                current_race = int(section.strip())
-            elif current_race is not None:
-                res = parse_results(section)
-                if res:
-                    race_results[current_race] = res
+        # Legacy text/markdown format
+        with open(results_file, 'r', encoding='utf-8') as f:
+            results_text = f.read()
+
+        # Split results by race
+        race_sections = re.split(r'(?:##?\s*(?:Race|第)\s*(\d+)|---)', results_text)
+        
+        if len(race_sections) <= 1:
+            all_results = parse_results(results_text)
+            if all_results:
+                race_results[1] = all_results
+        else:
+            current_race = None
+            for i, section in enumerate(race_sections):
+                if section and section.strip().isdigit():
+                    current_race = int(section.strip())
+                elif current_race is not None:
+                    res = parse_results(section)
+                    if res:
+                        race_results[current_race] = res
 
     # Parse each analysis file
     analysis_files = find_analysis_files(analysis_dir)

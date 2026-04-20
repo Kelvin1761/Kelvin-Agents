@@ -53,6 +53,17 @@
 | SIP-RW02 | 🟢 ACTIVE | `02f_synthesis.md` | S/S- 級後追馬步速脆弱性驗證 |
 | OBS-RW03 | 🟡 OBSERVATION | Reflector `observation_log.md` | 練馬師同門效應 |
 | OBS-RW04 | 🟡 OBSERVATION | Reflector `observation_log.md` | Nash Rawiller 步速掌控 |
+| **SIP-AU-P2b** | 🟢 ACTIVE | `02d_eem_pace.md` Step 8.2 | **[Phase 4]** 走位-段速複合分析 |
+| **SIP-AU-P3c** | 🟢 ACTIVE | `02d_eem_pace.md` Step 8.3 | **[Phase 4]** 賽事短評交叉驗證 (Racenet Comments) |
+| **SIP-AU-P2c** | 🟢 ACTIVE | `02d_eem_pace.md` Step 8.4 | **[Phase 4]** 完成時間偏差分析 |
+| **SIP-AU-FIM** | 🟢 ACTIVE | `au_factor_interaction.md` | **[Phase 4]** 因素互動矩陣 (5 SYN + 4 CON) |
+| **BAKED-SIP-RF02** | ✅ BAKED | `02f_synthesis.md` 場地維度 ❌ | **[Phase 4]** 濕地未知封頂 → bake into 場地 ❌ |
+| **BAKED-SIP-RR14** | ✅ BAKED | `02f_synthesis.md` 場地維度 ❌ | **[Phase 4]** Good地勝率封頂 → bake into 場地 ❌ |
+| **BAKED-SIP-RR17保底** | ✅ BAKED | `02f_synthesis.md` 狀態維度 ✅ | **[Phase 4]** 連勝動力保底 → bake into 狀態 ✅ |
+| **BAKED-試閘虛火** | ✅ BAKED | `02f_synthesis.md` 狀態維度 | **[Phase 4]** 試閘虛火封頂 → bake into 狀態 ➖ 上限 |
+| **BAKED-急彎封頂** | ✅ BAKED | `02d_eem_pace.md` EEM ❌ | **[Phase 4]** 急彎後追封頂 → bake into EEM ❌ |
+| **BAKED-Rosehill塞車** | ✅ BAKED | `02d_eem_pace.md` EEM ❌ | **[Phase 4]** Rosehill 1200m 塞車 → bake into EEM ❌ |
+| **AU-9** | ✅ COMPLETE | `02g_override_chain.md` | **[Phase 4]** Override Chain 精簡 P0-P7→P0-P3 |
 
 ---
 

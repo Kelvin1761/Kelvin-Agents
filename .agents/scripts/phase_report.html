@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>HKJC Forensic Pipeline — Phase 1-4 Report</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Inter', -apple-system, sans-serif; color: #1a1a2e; background: #fff; padding: 40px 50px; font-size: 11px; line-height: 1.6; }
+h1 { font-size: 24px; font-weight: 700; color: #0f0f23; margin-bottom: 4px; }
+h2 { font-size: 16px; font-weight: 700; color: #1a1a4e; margin: 24px 0 8px; border-bottom: 2px solid #e8e8f0; padding-bottom: 4px; }
+h3 { font-size: 13px; font-weight: 600; color: #2d2d5e; margin: 16px 0 6px; }
+.subtitle { font-size: 13px; color: #666; margin-bottom: 20px; }
+.badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; color: #fff; margin-right: 4px; }
+.badge-p1 { background: #4361ee; }
+.badge-p2 { background: #7209b7; }
+.badge-p3 { background: #f72585; }
+.badge-p4 { background: #3a0ca3; }
+.badge-new { background: #06d6a0; color: #000; }
+.badge-mod { background: #ffd166; color: #000; }
+table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 10.5px; }
+th { background: #1a1a2e; color: #fff; padding: 6px 8px; text-align: left; font-weight: 600; }
+td { padding: 5px 8px; border-bottom: 1px solid #e8e8f0; }
+tr:nth-child(even) { background: #f8f8fc; }
+.metric { display: inline-block; background: #f0f0ff; border: 1px solid #d0d0e8; border-radius: 6px; padding: 8px 14px; margin: 4px; text-align: center; }
+.metric-val { font-size: 20px; font-weight: 700; color: #4361ee; }
+.metric-label { font-size: 9px; color: #666; }
+.section { page-break-inside: avoid; }
+.flow-box { background: #f8f8ff; border: 1px solid #d8d8f0; border-radius: 8px; padding: 12px 16px; margin: 10px 0; }
+.flow-arrow { color: #4361ee; font-weight: 700; margin: 0 6px; }
+.highlight { background: linear-gradient(135deg, #667eea11, #764ba211); border-left: 3px solid #4361ee; padding: 8px 12px; margin: 8px 0; border-radius: 0 6px 6px 0; }
+.footer { margin-top: 30px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 9px; color: #999; text-align: center; }
+.check { color: #06d6a0; }
+.warn { color: #f72585; }
+@media print { body { padding: 20px 30px; } h2 { page-break-before: auto; } }
+</style>
+</head>
+<body>
+
+<h1>🏇 HKJC 賽馬分析管線升級報告</h1>
+<p class="subtitle">Phase 1–4 完成報告 | Antigravity Agent System | 2026-04-20</p>
+
+<div style="display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;">
+<div class="metric"><div class="metric-val">4</div><div class="metric-label">完成階段</div></div>
+<div class="metric"><div class="metric-val">12</div><div class="metric-label">新增/修改檔案</div></div>
+<div class="metric"><div class="metric-val">4</div><div class="metric-label">新 Python 腳本</div></div>
+<div class="metric"><div class="metric-val">8</div><div class="metric-label">修改資源文件</div></div>
+<div class="metric"><div class="metric-val">4</div><div class="metric-label">SIP 新增</div></div>
+</div>
+
+<!-- PHASE 1 -->
+<div class="section">
+<h2><span class="badge badge-p1">PHASE 1</span> 核心法證引擎 (Core Forensic Engine)</h2>
+<p>建立 Facts.md 自動注入管線嘅基礎架構，引入段速分析、EEM 能量消耗、穩定性指標同利潤趨勢。</p>
+
+<h3>核心交付物</h3>
+<table>
+<tr><th>項目</th><th>類型</th><th>功能</th></tr>
+<tr><td>inject_hkjc_fact_anchors.py</td><td><span class="badge badge-new">NEW</span></td><td>從 Formguide.txt 自動生成結構化 Facts.md（含賽績表、段速、EEM）</td></tr>
+<tr><td>05_forensic_eem.md</td><td><span class="badge badge-mod">MOD</span></td><td>Step 10 段速分析框架 + EEM 能量消耗判定矩陣</td></tr>
+<tr><td>06_rating_aggregation.md</td><td><span class="badge badge-mod">MOD</span></td><td>9 維度定性評級矩陣（核心/半核心/輔助分層）</td></tr>
+<tr><td>08_templates_core.md</td><td><span class="badge badge-mod">MOD</span></td><td>11-field 標準分析模板（強制骨架）</td></tr>
+</table>
+
+<div class="highlight">
+<strong>設計決策：</strong>採用 Python-first 架構，所有數據處理由 Python 腳本完成，LLM 只負責定性分析。確保跨平台可移植性同數據一致性。
+</div>
+</div>
+
+<!-- PHASE 2 -->
+<div class="section">
+<h2><span class="badge badge-p2">PHASE 2</span> 進階法證矩陣 (Advanced Forensic Matrix)</h2>
+<p>引入走位-段速複合分析、完成時間偏差、因素互動矩陣同 Pace-Adjusted L400，提升分析深度。</p>
+
+<h3>核心交付物</h3>
+<table>
+<tr><th>項目</th><th>SIP ID</th><th>功能</th></tr>
+<tr><td>走位-段速複合分析</td><td>SIP-P2b</td><td>Step 10.7：消耗等級 × 段速Δ 交叉判讀（逆境段速/消耗抵消/實力見底）</td></tr>
+<tr><td>完成時間偏差判讀</td><td>SIP-P2c</td><td>Step 10.8：標準時間偏差趨勢分析（由 Python 預計算）</td></tr>
+<tr><td>因素互動矩陣</td><td>SYN/CON</td><td>11_factor_interaction.md：6 個 SYN + 5 個 CON + CONTRA 觸發器</td></tr>
+<tr><td>雙軌微調系統</td><td>—</td><td>Channel A（現有）+ Channel B（互動矩陣），合計 ±2 級上限</td></tr>
+</table>
+
+<div class="highlight">
+<strong>核心防護牆不變：</strong>段速/穩定性 ❌ → B+ 封頂。Phase 2 嘅互動矩陣同微調系統均受此規則約束，不可覆蓋。
+</div>
+</div>
+
+<!-- PHASE 3 -->
+<div class="section">
+<h2><span class="badge badge-p3">PHASE 3</span> 數據採集自動化 (Data Collection Automation)</h2>
+<p>用 Claw Code 架構（curl_cffi + BeautifulSoup）自動抓取 HKJC 官網數據，取代人工輸入。</p>
+
+<h3>核心交付物</h3>
+<table>
+<tr><th>項目</th><th>類型</th><th>數據量</th></tr>
+<tr><td>scrape_standard_times.py</td><td><span class="badge badge-new">NEW</span></td><td>71 entries（場地×距離×班次標準時間）</td></tr>
+<tr><td>scrape_draw_stats.py</td><td><span class="badge badge-new">NEW</span></td><td>9 races × 14 draws（檔位勝率統計）</td></tr>
+<tr><td>inject_hkjc_fact_anchors.py</td><td><span class="badge badge-mod">MOD</span></td><td>+JSON 標準時間讀取 +檔位注入 +--race-num</td></tr>
+<tr><td>08_templates_core.md</td><td><span class="badge badge-mod">MOD</span></td><td>+🎯 檔位判讀欄位</td></tr>
+<tr><td>11_factor_interaction.md</td><td><span class="badge badge-mod">MOD</span></td><td>+SYN-07 黃金檔位 +CON-06 死檔困局</td></tr>
+</table>
+
+<h3>檔位判讀邏輯</h3>
+<table>
+<tr><th>判讀</th><th>條件</th><th>下游影響</th></tr>
+<tr><td>✅ 有利</td><td>勝率 ≥ 1.5× 平均值</td><td>SYN-07 觸發 / 情境適配 ✅</td></tr>
+<tr><td>⚠️ 中性</td><td>勝率介乎 0.5×–1.5× 平均值</td><td>無影響</td></tr>
+<tr><td>❌ 不利</td><td>勝率 < 0.5× 平均值</td><td>CON-06 觸發 / 情境適配 ❌</td></tr>
+</table>
+</div>
+
+<!-- PHASE 4 -->
+<div class="section">
+<h2><span class="badge badge-p4">PHASE 4</span> 端到端管線自動化 (End-to-End Pipeline)</h2>
+<p>將所有散件串聯成一鍵執行嘅自動化管線，加入賽後結果自動抓取同 Reflector 整合。</p>
+
+<h3>核心交付物</h3>
+<table>
+<tr><th>項目</th><th>類型</th><th>功能</th></tr>
+<tr><td>run_prerace_pipeline.py</td><td><span class="badge badge-new">NEW</span></td><td>一鍵賽前管線：std_times → draw_stats → inject Facts.md → summary</td></tr>
+<tr><td>scrape_race_results.py</td><td><span class="badge badge-new">NEW</span></td><td>Claw Code 賽後結果抓取（名次/時間/頭馬距離/賠率）</td></tr>
+<tr><td>reflector_auto_stats.py</td><td><span class="badge badge-mod">MOD</span></td><td>+JSON 賽後結果自動讀取（parse_results_json）</td></tr>
+<tr><td>05_forensic_eem.md</td><td><span class="badge badge-mod">MOD</span></td><td>+Step 10.7.2 賽事短評交叉驗證 (SIP-P3c)</td></tr>
+<tr><td>06_rating_aggregation.md</td><td><span class="badge badge-mod">MOD</span></td><td>+SIP-P3 檔位觸發情境適配（反雙重懲罰）</td></tr>
+<tr><td>session_start_checklist.md</td><td><span class="badge badge-mod">MOD</span></td><td>+3 項 JSON pre-flight 驗證</td></tr>
+<tr><td>00_sip_index.md</td><td><span class="badge badge-mod">MOD</span></td><td>+SIP-P3a~P3d 追蹤</td></tr>
+</table>
+
+<h3>一鍵管線執行流程</h3>
+<div class="flow-box">
+<code>python3 run_prerace_pipeline.py 2026-04-22_HappyValley/</code>
+<br><br>
+<strong>Step 1</strong> scrape_standard_times.py（智能緩存：&lt;30天跳過）
+<span class="flow-arrow">→</span>
+<strong>Step 2</strong> scrape_draw_stats.py（每次必刷）
+<span class="flow-arrow">→</span>
+<strong>Step 3</strong> inject_hkjc_fact_anchors.py --race-num N（逐場注入）
+<span class="flow-arrow">→</span>
+<strong>Output</strong> pipeline_summary.json
+</div>
+
+<h3>賽後自動化流程</h3>
+<div class="flow-box">
+<code>python3 scrape_race_results.py --venue ST --date 2026-04-19</code>
+<span class="flow-arrow">→</span>
+<code>race_results_ST_2026-04-19.json</code>
+<span class="flow-arrow">→</span>
+<code>reflector_auto_stats.py（自動偵測 JSON）</code>
+</div>
+</div>
+
+<!-- SIP INDEX -->
+<div class="section">
+<h2>📋 Phase 3/4 SIP 索引</h2>
+<table>
+<tr><th>SIP ID</th><th>名稱</th><th>定義位置</th></tr>
+<tr><td>SIP-P3a</td><td>標準時間自動同步</td><td>inject_hkjc_fact_anchors.py</td></tr>
+<tr><td>SIP-P3b</td><td>檔位統計注入</td><td>inject + 11_factor_interaction.md</td></tr>
+<tr><td>SIP-P3c</td><td>賽事短評交叉驗證</td><td>05_forensic_eem.md Step 10.7.2</td></tr>
+<tr><td>SIP-P3d</td><td>檔位觸發情境適配</td><td>06_rating_aggregation.md Step 14.1</td></tr>
+</table>
+</div>
+
+<!-- VERIFICATION -->
+<div class="section">
+<h2>✅ 驗證結果</h2>
+<table>
+<tr><th>檢查項目</th><th>狀態</th></tr>
+<tr><td>Step 10.7.2 賽事短評交叉驗證</td><td><span class="check">✅ PASS</span></td></tr>
+<tr><td>SIP-P3 檔位觸發情境適配</td><td><span class="check">✅ PASS</span></td></tr>
+<tr><td>Pre-flight JSON 驗證</td><td><span class="check">✅ PASS</span></td></tr>
+<tr><td>run_prerace_pipeline.py 管線串聯</td><td><span class="check">✅ PASS</span></td></tr>
+<tr><td>scrape_race_results.py 實測（ST R1-3）</td><td><span class="check">✅ PASS</span></td></tr>
+<tr><td>reflector_auto_stats.py JSON 整合</td><td><span class="check">✅ PASS</span></td></tr>
+<tr><td>SIP Index 追蹤更新</td><td><span class="check">✅ PASS</span></td></tr>
+<tr><td>Templates + Interaction Matrix</td><td><span class="check">✅ PASS</span></td></tr>
+</table>
+
+<div class="highlight">
+<strong>核心防護牆完整性：</strong>段速/穩定性 ❌ → B+ 封頂規則貫穿 Phase 1-4 所有變更，未被任何 SIP 或自動化邏輯覆蓋。
+</div>
+</div>
+
+<div class="footer">
+HKJC Forensic Pipeline Report — Generated by Antigravity Agent System — 2026-04-20<br>
+Phase 1-4 Complete | All checks passed | Core firewall intact
+</div>
+
+</body>
+</html>

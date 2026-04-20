@@ -31,10 +31,13 @@
 讀完以上文件後,你必須回覆以下 checklist(全部 ✅ 才可開始):
 - [ ] SKILL.md 已讀取(確認 P28 OUTPUT_TOKEN_SAFETY 規則存在)
 - [ ] 01_system_context.md 已讀取(確認 Anti-Laziness 規則存在)
-- [ ] 08_templates_core.md 已讀取（確認 11-field 骨架格式存在）
+- [ ] 08_templates_core.md 已讀取（確認 11-field 骨架格式 + 🎯檔位判讀欄位存在）
 - [ ] 場地模組已讀取
 - [ ] BATCH_SIZE 由環境掃描決定已確認
 - [ ] 環境掃描結果已回報用戶
+- [ ] hkjc_standard_times.json 存在且 ≥50 entries（⚠️ 若缺失：執行 `python3 .agents/scripts/scrape_standard_times.py`）
+- [ ] hkjc_draw_stats.json 存在且 races ≥1（⚠️ 若缺失：執行 `python3 .agents/scripts/scrape_draw_stats.py`）
+- [ ] Facts.md 含 🎯 檔位優劣判讀 block（⚠️ 若缺失：重新執行 inject 加 --race-num 參數）
 
 ## 數據路徑
 Racecard: [RACECARD_PATH]

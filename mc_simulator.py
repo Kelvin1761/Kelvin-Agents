@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """
-Monte Carlo Race Simulator v1.0
-================================
-A real statistical Monte Carlo engine that replaces LLM-generated pseudo-simulations.
-Reads Logic.json, runs 10,000 frame-by-frame race simulations, outputs MC_Results.json.
+Monte Carlo Race Simulator v2.0 — Dual-Track Architecture
+==========================================================
+A statistical engine combining:
+  Track 1: Softmax (Multinomial Logit) for win/place probabilities
+  Track 2: Frame-by-frame MC simulation for pace dynamics
+
+Methodology: Bolton-Chapman 1986, Bill Benter, Harville 1973.
+Reads Logic.json, outputs MC_Results.json.
 
 Supports both AU Racing and HKJC platforms.
 
@@ -21,26 +25,37 @@ import re
 from pathlib import Path
 
 import numpy as np
-from scipy.stats import skewnorm
+# V2: skewnorm no longer used — using rng.normal() for symmetric noise
 
 # ============================================================
 # Constants
 # ============================================================
 
 N_SIMULATIONS = 10_000
-SKEW_ALPHA = -3       # Negatively skewed: horses more likely to underperform
-BASE_SIGMA = 10.0     # SIP-03: Increased from 8.0 to reduce overconfidence
-SIGMA_MIN = 4.0
-SIGMA_MAX = 16.0
+SKEW_ALPHA = -1.5     # V2: Reduced from -3 for more realistic upset frequency
+BASE_SIGMA = 12.0     # V2: Raised from 8.0 for wider variance
+SIGMA_MIN = 5.0
+SIGMA_MAX = 25.0      # V2: Raised from 16.0
 PI_MIN = 5.0
-PI_MAX = 99.0
-WIN_PCT_CAP = 35.0    # SIP-03: Max win probability cap for squashing
+PI_MAX = 80.0
+RACE_DAY_FORM_SIGMA = 3.5  # V2: Per-horse random form shift per race
 
+# V2: Softmax temperature by platform (calibrated against real favourite win rates)
+# HKJC favourite ~30%, AU favourite ~28%
+SOFTMAX_TEMPERATURE = {
+    'hkjc': 11.0,
+    'au': 10.0,
+}
+
+# V2.2: Market odds blending removed — pure Softmax model
+
+# V2: Compressed PI range (14 points, was 26)
+# Prevents PI gap from overwhelming noise in MC simulation
 RATING_TO_BASE = {
-    'S': 72, 'S-': 70, 'A+': 68, 'A': 66, 'A-': 64,
-    'B+': 62, 'B': 60, 'B-': 58,
-    'C+': 56, 'C': 54, 'C-': 52,
-    'D+': 50, 'D': 48, 'D-': 46,
+    'S': 64, 'S-': 63, 'A+': 62, 'A': 61, 'A-': 60,
+    'B+': 59, 'B': 58, 'B-': 57,
+    'C+': 56, 'C': 55, 'C-': 54,
+    'D+': 53, 'D': 52, 'D-': 50,
 }
 
 SCORE_TO_NUM = {
@@ -58,22 +73,18 @@ STYLE_PROFILES = {
     'A/C': (0.88, 0.85, 0.83, 0.88),  # Versatile front-sustain
 }
 
-# Race phase distances as fraction of total distance
+# V2: 3 phases (was 5) — reduces multiplicative PI compounding
 PHASE_FRACTIONS = {
-    'start':  0.15,  # Gate to settling
-    'early':  0.20,  # Early positioning
-    'mid':    0.30,  # Mid-race cruise
-    'turn':   0.15,  # Turn for home
-    'sprint': 0.20,  # Final sprint
+    'early':  0.35,  # Early positioning + cruise
+    'mid':    0.35,  # Mid-race
+    'sprint': 0.30,  # Final sprint
 }
 
-# SIP-02: Straight course 1000m has no turn, more sprint emphasis
+# SIP-02: Straight course 1000m — longer sprint emphasis
 PHASE_FRACTIONS_STRAIGHT = {
-    'start':  0.20,  # Gate speed more critical
-    'early':  0.25,  # Sprint positioning
-    'mid':    0.25,  # Sustain speed
-    'turn':   0.00,  # No turn!
-    'sprint': 0.30,  # Longer final sprint
+    'early':  0.30,  # Sprint start
+    'mid':    0.30,  # Sustain speed
+    'sprint': 0.40,  # Extended final sprint
 }
 
 
@@ -103,8 +114,8 @@ def calc_power_index(horse: dict, platform: str, speed_map: dict) -> dict:
         matrix_sum += SCORE_TO_NUM.get(score_str, 0.0)
 
     n_dims = max(len(matrix), 1)
-    matrix_mod = (matrix_sum / n_dims) * (8.0 / 2.0)  # Normalize to ±8 range
-    matrix_mod = max(-8.0, min(8.0, matrix_mod))
+    matrix_mod = (matrix_sum / n_dims) * (5.0 / 2.0)  # V2: Normalize to ±5 range (was ±8)
+    matrix_mod = max(-5.0, min(5.0, matrix_mod))
 
     # --- Contextual modifiers (±10) ---
     ctx = 0.0
@@ -171,7 +182,7 @@ def calc_power_index(horse: dict, platform: str, speed_map: dict) -> dict:
             if isinstance(distance_val, (int, float)) and distance_val <= 1200 and reduction > 0:
                 ctx += reduction * 0.03  # Modest sprint boost
 
-    ctx = max(-10.0, min(10.0, ctx))
+    ctx = max(-6.0, min(6.0, ctx))  # V2: ±6 range (was ±10)
 
     # --- Pace modifier (calculated separately) ---
     pace_mod = 0.0  # Will be set by PaceEngine
@@ -192,30 +203,41 @@ def calc_power_index(horse: dict, platform: str, speed_map: dict) -> dict:
 # ============================================================
 
 def calc_sigma(horse: dict) -> float:
-    """Calculate dynamic sigma (performance variance) for a horse."""
+    """V2: Calculate dynamic sigma with more differentiation."""
     sigma = BASE_SIGMA
 
     stability = str(horse.get('stability_index', '')).lower()
     if stability in ('穩定', '穩'):
-        sigma -= 2.0
+        sigma -= 3.0   # V2: was -2.0
     elif stability in ('衰退中', '急劇衰退', '低'):
-        sigma += 2.0
+        sigma += 3.0   # V2: was +2.0
 
     if horse.get('long_spell', False):
         sigma += 3.0
     if horse.get('trial_illusion', False):
         sigma += 2.0
     if horse.get('is_2yo', False):
-        sigma += 2.0
+        sigma += 3.0   # V2: was +2.0, young horses more volatile
     wt = horse.get('wet_track_tier', 2)
     if isinstance(wt, int) and wt >= 4:
-        sigma += 1.5
+        sigma += 2.0   # V2: was +1.5
     if horse.get('eem_3_high_drain', False):
         sigma += 1.5
+
+    # V2: Experience-based variance — fewer starts = more volatile
+    try:
+        starts = int(horse.get('starts', 10))
+        if starts <= 2:
+            sigma += 4.0
+        elif starts <= 5:
+            sigma += 2.0
+    except (ValueError, TypeError):
+        pass
+
     try:
         r3 = int(horse.get('recent_3_top3', 0))
         if r3 >= 2:
-            sigma -= 1.5
+            sigma -= 2.0   # V2: was -1.5, consistent horses more predictable
     except (ValueError, TypeError):
         pass
 
@@ -363,7 +385,8 @@ def simulate_single_race(horses: list, rng: np.random.Generator,
                          distance: int, rail_collapse: bool,
                          is_straight: bool = False) -> list:
     """
-    Simulate one complete race frame-by-frame.
+    V2: Simulate one race with ADDITIVE model.
+    PI is location parameter (not multiplier) — prevents exponential compounding.
     Returns list of (horse_name, total_performance) sorted best-first.
     """
     n = len(horses)
@@ -382,59 +405,58 @@ def simulate_single_race(horses: list, rng: np.random.Generator,
         )
         states.append(s)
 
+    # V2: Race-day form — random shift per horse per race
+    day_forms = {s.name: rng.normal(0, RACE_DAY_FORM_SIGMA) for s in states}
+
     # SIP-02: Use straight course phases if applicable
     phases = PHASE_FRACTIONS_STRAIGHT if is_straight else PHASE_FRACTIONS
-    # Filter out zero-fraction phases
     active_phases = {k: v for k, v in phases.items() if v > 0}
 
     # Run through each phase
     for phase_idx, (phase_name, frac) in enumerate(active_phases.items()):
-        phase_dist = distance * frac
-
         for s in states:
             effort_mult = s.style_profile[min(phase_idx, len(s.style_profile) - 1)]
 
-            # Base speed this phase = power * effort * energy_factor
-            energy_factor = 0.6 + 0.4 * (s.energy / 100.0)
-            base_speed = s.power * effort_mult * energy_factor
+            # V2 ADDITIVE MODEL: PI + effort_bonus + energy_bonus + day_form + noise
+            # (was: PI * effort * energy_factor + noise — multiplicative)
+            effort_bonus = (effort_mult - 0.85) * 12.0  # ±1.8 range
+            energy_bonus = (s.energy - 50) * 0.04        # ±2.0 range
 
-            # Random noise (skew-normal) — scale=1.8*sigma for frame-by-frame realism
-            # With 5 phases cumulating, noise must be large enough to allow upsets
-            noise = skewnorm.rvs(a=SKEW_ALPHA, loc=0, scale=s.sigma * 1.8, random_state=rng)
-            phase_speed = base_speed + noise
+            # Noise: normal distribution (V2: symmetric, was skew-normal)
+            noise = rng.normal(0, s.sigma)
+
+            phase_speed = s.power + day_forms[s.name] + effort_bonus + energy_bonus + noise
 
             # Drafting bonus: mid-pack horses save energy
             if effort_mult < 0.82 and s.energy > 50:
-                phase_speed += 1.0  # Slight aero benefit
-                s.energy += 1.5     # Energy saving from drafting
+                phase_speed += 0.8
+                s.energy += 1.0
 
-            # Rail collapse penalty (phases 3-5)
-            if rail_collapse and phase_idx >= 2 and s.lane <= 2:
+            # Rail collapse penalty (later phases)
+            if rail_collapse and phase_idx >= 1 and s.lane <= 2:
                 phase_speed -= 3.0
                 s.energy -= 3.0
 
-            # Barrier penalty at start phase
-            # SIP-02: Straight courses favour OUTSIDE draws
-            if phase_name == 'start':
+            # Barrier effects at start
+            if phase_name == 'early':
                 if is_straight:
-                    # Straight course: outside draws are GOOD
                     if s.barrier >= 8:
-                        phase_speed += 1.0  # Outside advantage
+                        phase_speed += 1.0
                     elif s.barrier <= 3:
-                        phase_speed -= 0.5  # Inside can get squeezed
+                        phase_speed -= 0.5
                 else:
                     if s.barrier > 10:
-                        phase_speed -= 1.5  # Wide draw loses ground early
+                        phase_speed -= 1.5
 
             # Energy depletion
-            depletion = effort_mult * 6.0  # High effort = more drain
+            depletion = effort_mult * 8.0
             if phase_name == 'sprint':
-                depletion *= 1.5  # Sprint phase drains extra
+                depletion *= 1.5
             s.energy = max(0, s.energy - depletion)
 
-            # Fatigue cliff: if energy < 15, severe penalty
+            # Fatigue cliff
             if s.energy < 15:
-                phase_speed *= 0.85
+                phase_speed -= 3.0
 
             s.cumulative_speed += max(0, phase_speed)
 
@@ -487,34 +509,126 @@ def run_monte_carlo(horses: list, distance: int, rail_collapse: bool,
             'predicted_place_odds': round(n_sims / max(c['top3'], 1), 1),
         }
 
-    # SIP-03: Squash probabilities to prevent overconfidence
-    output = squash_probabilities(output, cap=WIN_PCT_CAP)
-
+    # V2: No squashing — MC results kept raw for pace dynamics
+    # Win probabilities are now computed via Softmax (see calc_win_probabilities)
     return output
 
 
-def squash_probabilities(mc_results: dict, cap: float = 35.0) -> dict:
-    """SIP-03: Cap max win probability and redistribute excess."""
-    total_excess = 0.0
-    n_uncapped = 0
-    capped_names = []
+# ============================================================
+# V2: Softmax Win Probabilities (Bolton-Chapman / Benter)
+# ============================================================
 
-    for name, stats in mc_results.items():
-        if stats['win_pct'] > cap:
-            total_excess += stats['win_pct'] - cap
-            stats['win_pct'] = cap
-            capped_names.append(name)
-        else:
-            n_uncapped += 1
+def calc_win_probabilities(pi_breakdown: dict, platform: str) -> dict:
+    """
+    V2.2: Pure Softmax (Multinomial Logit) win probabilities.
+    Based on Bolton-Chapman 1986 methodology.
+    """
+    T = SOFTMAX_TEMPERATURE.get(platform, 11.0)
+    names = list(pi_breakdown.keys())
+    pis = np.array([pi_breakdown[n]['final_pi'] for n in names])
 
-    # Redistribute excess proportionally to uncapped horses
-    if n_uncapped > 0 and total_excess > 0:
-        redistribution = round(total_excess / n_uncapped, 1)
-        for name, stats in mc_results.items():
-            if name not in capped_names:
-                stats['win_pct'] = round(stats['win_pct'] + redistribution, 1)
+    scaled = pis / T
+    exp_vals = np.exp(scaled - np.max(scaled))  # numerical stability
+    softmax_probs = exp_vals / np.sum(exp_vals) * 100
 
-    return mc_results
+    return {name: round(p, 1) for name, p in zip(names, softmax_probs)}
+
+
+# ============================================================
+# V2: Harville Place Probabilities
+# ============================================================
+
+def calc_place_probabilities(win_probs: dict) -> dict:
+    """
+    Harville formula (1973): derive top-3 (place) probability from win probabilities.
+    P(j finishes 2nd | i wins) = P_j / (1 - P_i)
+    """
+    names = list(win_probs.keys())
+    result = {}
+
+    for target in names:
+        pt = win_probs[target] / 100.0
+        p_top3 = pt  # Win = automatic top3
+
+        # P(target 2nd) = Σ P(j wins) * P(target 2nd | j wins)
+        for j in names:
+            if j == target:
+                continue
+            pj = win_probs[j] / 100.0
+            denom1 = 1.0 - pj
+            if denom1 > 1e-9:
+                p_2nd_given_j = pj * (pt / denom1)
+                p_top3 += p_2nd_given_j
+
+                # P(target 3rd) = Σ Σ P(j wins, k 2nd) * P(target 3rd | j,k)
+                for k in names:
+                    if k in (target, j):
+                        continue
+                    pk = win_probs[k] / 100.0
+                    denom2 = 1.0 - pj - pk
+                    if denom2 > 1e-9:
+                        p_top3 += pj * (pk / denom1) * (pt / denom2)
+
+        result[target] = round(min(p_top3 * 100, 99.9), 1)
+
+    return result
+
+
+# ============================================================
+# V2: Top-4 Probability (extended Harville)
+# ============================================================
+
+def calc_top4_probabilities(win_probs: dict, place_probs: dict) -> dict:
+    """Approximate top-4 probability from win + place probabilities.
+    Uses scaled ratio: top4 ≈ place_pct * (4/3) capped at 99.9%.
+    """
+    result = {}
+    for name in win_probs:
+        place_pct = place_probs.get(name, 0)
+        # Scale up by 4/3 ratio (4 slots vs 3 slots)
+        top4_approx = min(place_pct * (4.0 / 3.0), 99.9)
+        result[name] = round(top4_approx, 1)
+    return result
+
+# ============================================================
+# V2.1: MC Pace Dynamics Feedback
+# ============================================================
+
+def calc_pace_feedback(mc_raw: dict, pi_breakdown: dict) -> dict:
+    """
+    V2.1: Extract pace dynamics from MC sim and feed back as PI adjustments.
+    Compares MC rank (dynamic) vs PI rank (static).
+    If MC sim consistently ranks a horse higher/lower than PI,
+    it indicates pace dynamics favour/disfavour that horse.
+    Returns: dict of {name: pi_adjustment}
+    """
+    if not mc_raw or not pi_breakdown:
+        return {}
+
+    # PI ranking
+    pi_sorted = sorted(pi_breakdown.items(), key=lambda x: x[1]['final_pi'], reverse=True)
+    pi_rank = {name: i + 1 for i, (name, _) in enumerate(pi_sorted)}
+
+    # MC ranking (by win_pct from raw MC sim)
+    mc_sorted = sorted(mc_raw.items(), key=lambda x: x[1].get('win_pct', 0), reverse=True)
+    mc_rank = {name: i + 1 for i, (name, _) in enumerate(mc_sorted)}
+
+    adjustments = {}
+    for name in pi_breakdown:
+        pr = pi_rank.get(name, 99)
+        mr = mc_rank.get(name, 99)
+        rank_diff = pr - mr  # positive = MC ranks higher than PI (pace helps)
+
+        # Only apply meaningful adjustments (>2 rank positions difference)
+        if abs(rank_diff) > 2:
+            # Cap adjustment at ±3 PI points
+            adj = max(-3.0, min(3.0, rank_diff * 0.8))
+            adjustments[name] = round(adj, 1)
+
+    return adjustments
+
+
+# V2.2: Market odds extraction removed — pure model-driven probabilities
 
 
 # ============================================================
@@ -643,6 +757,8 @@ def calc_concordance(mc_results: dict, verdict: dict, horses_raw: list = None) -
         'logic_top4': logic_top4,
         'mc_top4': mc_top4,
         'overlap': overlap,
+        'mc_top6': [name for name, _ in mc_sorted[:6]],  # V2.1
+        'overlap_top6': len(set([name for name, _ in mc_sorted[:6]]) & set(logic_top4)),
         'divergence_alerts': alerts,
         'action_alerts': action_alerts,
         'concordance_level': 'HIGH' if overlap >= 3 else 'LOW',
@@ -760,36 +876,83 @@ def process_race(filepath: str, platform: str) -> dict:
             'barrier': h.get('barrier', 5),
         })
 
-    # Step 5: Run Monte Carlo
-    mc_results = run_monte_carlo(sim_horses, distance, rail_collapse, is_straight=is_straight)
+    # Step 5: Run Monte Carlo (for pace dynamics + avg_rank)
+    mc_raw = run_monte_carlo(sim_horses, distance, rail_collapse, is_straight=is_straight)
 
-    # Step 6: Concordance
-    concordance = calc_concordance(mc_results, verdict, horses_raw)
+    # Step 5b: V2.1 — Pace dynamics feedback into PI
+    pace_fb = calc_pace_feedback(mc_raw, pi_breakdown)
+    if pace_fb:
+        for name, adj in pace_fb.items():
+            if name in pi_breakdown:
+                old_pi = pi_breakdown[name]['final_pi']
+                pi_breakdown[name]['final_pi'] = round(
+                    float(np.clip(old_pi + adj, PI_MIN, PI_MAX)), 1
+                )
+                pi_breakdown[name]['pace_feedback'] = adj
 
-    # Step 7: Build output
-    mc_sorted = sorted(mc_results.items(), key=lambda x: x[1]['win_pct'], reverse=True)
-    top4_matrix = [name for name, _ in mc_sorted[:4]]
+    # Step 6: V2.2 Pure Softmax win probabilities
+    win_probs = calc_win_probabilities(pi_breakdown, platform)
+    place_probs = calc_place_probabilities(win_probs)
+    top4_probs = calc_top4_probabilities(win_probs, place_probs)
+
+    # Step 7: Build backward-compatible 'results' dict
+    # Uses Softmax win%, Harville place%, MC avg_rank
+    results_compat = {}
+    for name in win_probs:
+        mc_data = mc_raw.get(name, {})
+        wp = win_probs[name]
+        pp = place_probs.get(name, 0)
+        t4p = top4_probs.get(name, 0)
+        results_compat[name] = {
+            'win_pct': wp,
+            'top3_pct': pp,
+            'top4_pct': t4p,
+            'avg_rank': mc_data.get('avg_rank', 0),
+            'ci_95': round(1.96 * np.sqrt(wp/100 * (1-wp/100) / N_SIMULATIONS) * 100, 1),
+            'predicted_win_odds': round(100 / max(wp, 0.1), 1),
+            'predicted_place_odds': round(100 / max(pp, 0.1), 1),
+        }
+
+    # Step 8: Concordance (using Softmax-based top4 + top6)
+    concordance = calc_concordance(results_compat, verdict, horses_raw)
+
+    # Step 9: Build output — V2.1 with top6
+    sm_sorted = sorted(win_probs.items(), key=lambda x: x[1], reverse=True)
+    top4_matrix = [name for name, _ in sm_sorted[:4]]
+    top6_matrix = [name for name, _ in sm_sorted[:6]]
 
     return {
         'simulations': N_SIMULATIONS,
-        'engine_version': 'mc_v1.1_sip_enhanced',
+        'engine_version': 'mc_v2.2_pure_softmax',
         'platform': platform,
         'horses_count': len(sim_horses),
         'distance': distance,
         'is_straight_course': is_straight,
         'class_drop_cluster': class_drop_cluster,
+        'methodology': {
+            'win_probability': 'softmax_multinomial_logit',
+            'place_probability': 'harville_formula',
+            'pace_dynamics': 'frame_by_frame_mc_v2_additive',
+            'pace_feedback': bool(pace_fb),
+            'temperature': SOFTMAX_TEMPERATURE.get(platform, 11.0),
+        },
         'parameters': {
             'base_sigma': BASE_SIGMA,
             'skew_alpha': SKEW_ALPHA,
-            'win_pct_cap': WIN_PCT_CAP,
+            'temperature': SOFTMAX_TEMPERATURE.get(platform, 11.0),
             'class_sigma_multiplier': class_sigma_mult,
             'straight_sigma_boost': 1.4 if is_straight else 1.0,
             'n_phases': len(PHASE_FRACTIONS_STRAIGHT if is_straight else PHASE_FRACTIONS),
-            'methodology': 'skew_normal_frame_by_frame_monte_carlo_v1.1',
+            'race_day_form_sigma': RACE_DAY_FORM_SIGMA,
         },
         'power_index_breakdown': pi_breakdown,
-        'results': mc_results,
+        'win_probabilities': win_probs,
+        'place_probabilities': place_probs,
+        'results': results_compat,  # Backward compatible
+        'mc_raw': mc_raw,  # Raw MC sim results for pace analysis
+        'pace_feedback': pace_fb,  # V2.1: pace adjustments applied
         'top4_matrix': top4_matrix,
+        'top6_matrix': top6_matrix,  # V2.1: expanded selection
         'concordance': concordance,
     }
 
@@ -823,10 +986,14 @@ def process_directory(dirpath: str, platform: str):
 
             # Print summary
             conc = result['concordance']
+            pace_fb = result.get('pace_feedback', {})
             print(f"  Horses: {result['horses_count']}")
             print(f"  MC Top4: {result['top4_matrix']}")
+            print(f"  MC Top6: {result.get('top6_matrix', [])}")
             print(f"  Logic Top4: {conc['logic_top4']}")
             print(f"  Concordance: {conc['overlap']}/4")
+            if pace_fb:
+                print(f"  Pace feedback: {pace_fb}")
             if conc['divergence_alerts']:
                 for alert in conc['divergence_alerts']:
                     print(f"  ⚠️  {alert}")
@@ -835,7 +1002,9 @@ def process_directory(dirpath: str, platform: str):
             sorted_r = sorted(result['results'].items(), key=lambda x: x[1]['win_pct'], reverse=True)
             for name, stats in sorted_r[:5]:
                 pi = result['power_index_breakdown'].get(name, {})
-                print(f"  {name:<22} PI={pi.get('final_pi', '?'):<5} Win={stats['win_pct']:>5.1f}%  σ={pi.get('sigma', '?')}")
+                pfb = pace_fb.get(name, '')
+                pfb_str = f' pf={pfb:+.1f}' if pfb else ''
+                print(f"  {name:<22} PI={pi.get('final_pi', '?'):<5} Win={stats['win_pct']:>5.1f}%  σ={pi.get('sigma', '?')}{pfb_str}")
 
             print(f"  ✅ Written: {out_path.name}")
 
@@ -850,7 +1019,7 @@ def process_directory(dirpath: str, platform: str):
 # ============================================================
 
 def main():
-    parser = argparse.ArgumentParser(description='Monte Carlo Race Simulator v1.0')
+    parser = argparse.ArgumentParser(description='Monte Carlo Race Simulator v2.1 (Dual-Track + Enhanced)')
     parser.add_argument('--input', '-i', help='Single Logic.json file')
     parser.add_argument('--dir', '-d', help='Directory containing Logic.json files')
     parser.add_argument('--platform', '-p', choices=['au', 'hkjc'], default='au',

@@ -18,6 +18,13 @@
 
 ## 🚀 核心執行管線 (Step-by-Step Pipeline)
 
+### Step 0.5: 賽前數據管線 (Pre-Race Data Pipeline — 可選)
+- **觸發條件**: 若用戶提供 Racenet URL 或已有 Racecard/Formguide 目錄
+- **執行指令**: `python .agents/scripts/run_au_prerace_pipeline.py "<目錄>"`
+- **功能**: 自動串聯 Formguide 提取 → Facts.md 注入 → MC 模擬 → `pipeline_summary.json`
+- **定位**: 此腳本為 Orchestrator **之前**嘅數據準備層，唔取代 `au_orchestrator.py`
+- **跳過**: 若 Orchestrator 自動完成數據提取（Step 1 & 3），此步驟可省略
+
 ### Step 1 & 3: 全日總場次點算與資料自動提取 (Python Automator)
 - **強制執行**: 開始任何工作前，必須呼叫 Python Orchestrator：
   `python .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "<URL>"`

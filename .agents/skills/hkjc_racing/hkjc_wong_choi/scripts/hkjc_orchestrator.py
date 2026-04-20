@@ -15,6 +15,14 @@ import urllib.request
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'scripts')))
 from rating_engine_v2 import parse_matrix_scores, compute_base_grade, apply_fine_tune, grade_sort_index
 
+# Import SIP engine for automated SIP rule evaluation
+try:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from sip_engine import evaluate_horse_sips, evaluate_race_sips, format_sip_summary
+    SIP_ENGINE_AVAILABLE = True
+except ImportError:
+    SIP_ENGINE_AVAILABLE = False
+
 HKJC_MATRIX_SCHEMA = {
     "stability": "core", "speed_mass": "core",
     "eem": "semi", "trainer_jockey": "semi",
@@ -405,9 +413,52 @@ def generate_hkjc_work_card(horse_num, facts_content, logic_data, runtime_dir,
     card.append("👉 **你嘅判斷:** 路程啱唔啱？裝備有冇變？")
     card.append("")
 
+    # ── SIP Trigger Section (auto-evaluated) ──
+    if SIP_ENGINE_AVAILABLE:
+        _sip_horse_data = {
+            'horse_name': anchors.get('name', ''),
+            'wins': 0 if anchors.get('career_starts', '0') != '0' else None,
+            'starts': int(anchors.get('career_starts', '0')) if anchors.get('career_starts', '0').isdigit() else 0,
+            'weight': int(anchors.get('weight', '126')) if str(anchors.get('weight', '')).isdigit() else 126,
+            'barrier': int(anchors.get('barrier', '5')) if str(anchors.get('barrier', '')).isdigit() else 5,
+            'core_logic': '',
+            'matrix': {},
+        }
+        _sip_race_ctx = {
+            'distance': distance,
+            'track': '草地',
+            'field_size': total_horses,
+        }
+        _horse_sips = evaluate_horse_sips(_sip_horse_data, _sip_race_ctx)
+        _race_sips = evaluate_race_sips(_sip_race_ctx, {})
+        sip_text = format_sip_summary(_horse_sips, _race_sips)
+        card.append(sip_text)
+    
+    # ── Trend Indicators Section ──
+    card.append("## 📈 趨勢指標 [自動]")
+    recent_form = anchors.get('recent_form', '無')
+    card.append(f"- 近績序列: `{recent_form}`")
+    # Parse trend from recent form
+    if recent_form and recent_form != '無':
+        positions = []
+        for ch in recent_form:
+            if ch.isdigit():
+                positions.append(int(ch))
+        if len(positions) >= 3:
+            last3 = positions[-3:]
+            if last3[-1] < last3[-2] < last3[-3]:
+                card.append(f"- 趨勢: ↗ 連續上升中 ({last3[0]}→{last3[1]}→{last3[2]})")
+            elif last3[-1] > last3[-2] > last3[-3]:
+                card.append(f"- 趨勢: ↘ 連續下滑中 ({last3[0]}→{last3[1]}→{last3[2]})")
+            else:
+                card.append(f"- 趨勢: ↔ 波動 ({last3[0]}→{last3[1]}→{last3[2]})")
+    card.append(f"- 同場同距離紀錄: {anchors.get('course_record', '無')}")
+    card.append(f"- 最佳距離: {anchors.get('best_distance', '數據不足')}")
+    card.append("")
+    
     card.append("---")
     card.append("## 📋 綜合部分（填完 8 個維度後）")
-    card.append("- **core_logic**: 串連所有維度寫成連貫分析（最少 100 字，必須引用具體賽事/數據）")
+    card.append("- **core_logic**: 串連所有維度寫成連貫分析（必須引用具體賽事/數據）")
     card.append("- **advantages**: 2-3 個主要優勢")
     card.append("- **disadvantages**: 2-3 個致命風險")
     card.append("")
@@ -538,9 +589,17 @@ def print_hkjc_analysis_summary(horse_entry, horse_num):
 
 
 
+# Fluff phrases that indicate lazy/template analysis
+FLUFF_PHRASES = [
+    '配搭無特別異常', '一般而言', '整體尚可', '無特別優劣',
+    '中規中矩', '表現平平', '沒有明顯', '無明顯',
+    '暫時未有特別', '有待觀察', '資料有限',
+]
+
 def validate_hkjc_firewalls(h, h_entry, horses_dict, all_horses, json_file):
     """HKJC-specific per-horse firewall validation. Returns list of error strings.
-    HKJC has lighter firewalls (primarily WALL-008 nonce).
+    V2: Light quality checks — strict enough to catch garbage, but not so strict
+    that models produce dummy content to bypass.
     """
     errors = []
     locked_nonce = h_entry.get('_validation_nonce', '')
@@ -548,6 +607,36 @@ def validate_hkjc_firewalls(h, h_entry, horses_dict, all_horses, json_file):
     # WALL-008: Nonce validation
     if not locked_nonce:
         errors.append(f"WALL-008: 缺失防偽標籤 _validation_nonce (可能使用了不合規的 Batch Script 繞過)")
+    
+    # WALL-009: Matrix completeness — all 8 dimensions must have valid scores
+    matrix = h_entry.get('matrix', {})
+    valid_scores = {'✅✅', '✅', '➖', '❌', '❌❌'}
+    filled_dims = 0
+    for dim_name, dim_data in matrix.items():
+        if isinstance(dim_data, dict):
+            score = dim_data.get('score', '')
+            if score in valid_scores:
+                filled_dims += 1
+    if filled_dims < 6:  # At least 6 of 8 dimensions (allow 2 missing for edge cases)
+        errors.append(f"WALL-009: 矩陣維度不足 ({filled_dims}/8)，至少需要 6 個有效維度")
+    
+    # WALL-010: Score variety — at least 3 different scores (prevent all-same lazy fill)
+    if filled_dims >= 6:
+        unique_scores = set()
+        for dim_data in matrix.values():
+            if isinstance(dim_data, dict):
+                score = dim_data.get('score', '')
+                if score in valid_scores:
+                    unique_scores.add(score)
+        if len(unique_scores) < 2:
+            errors.append(f"WALL-010: 分數差異度過低 (只有 {len(unique_scores)} 種分數)，可能為批量填充")
+    
+    # WALL-011: Fluff detection — core_logic must not contain template phrases
+    core_logic = str(h_entry.get('core_logic', ''))
+    for phrase in FLUFF_PHRASES:
+        if phrase in core_logic:
+            errors.append(f"WALL-011: core_logic 含有模板化語句「{phrase}」，請替換為具體數據分析")
+            break  # Only report first fluff hit
     
     return errors
 
@@ -1250,12 +1339,23 @@ def main():
                 _next_cmd(target_dir)
                 sys.exit(1)
             
-            # ── Step J: Monte Carlo Simulation (mc_simulator.py v1.0) ──
+            # ── Step J: Monte Carlo Simulation (mc_simulator.py v2.2) ──
             print(f"🎲 正在為 Race {r} 執行 Monte Carlo 模擬...")
-            mc_simulator_script = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                "..", "..", "..", "..", "..", "mc_simulator.py"
-            )
+            # Robust path discovery: walk up from script dir to find workspace root
+            _script_dir = os.path.dirname(os.path.abspath(__file__))
+            _search_dir = _script_dir
+            mc_simulator_script = None
+            for _ in range(8):  # Max 8 levels up
+                _candidate = os.path.join(_search_dir, "mc_simulator.py")
+                if os.path.exists(_candidate):
+                    mc_simulator_script = _candidate
+                    break
+                _parent = os.path.dirname(_search_dir)
+                if _parent == _search_dir:
+                    break
+                _search_dir = _parent
+            if not mc_simulator_script:
+                mc_simulator_script = os.path.join(_script_dir, "..", "..", "..", "..", "..", "mc_simulator.py")
             mc_json_out = os.path.join(target_dir, f"Race_{r}_MC_Results.json")
 
             if os.path.exists(mc_simulator_script):

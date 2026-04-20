@@ -17,11 +17,14 @@
 | | Step 6 競賽報告法醫 | 外部搜索 + Step 1 | 寬恕檔案結論 |
 | | Step 7 EEM 能量消耗 | **Step 10** `PACE_TYPE` + Step 8 段速 | EEM 等級、觸發條件 |
 | | Step 8 段速真偽 | `<class_par_reference>` + `<sectional_benchmarks>` | 段速修正判斷 |
+| | Step 8.2 走位-段速複合 | Step 7 EEM等級 + Step 8 段速Δ | 複合判讀（逆境段速/消耗抵消/實力見底） |
+| | Step 8.3 賽事短評交叉驗證 | Racenet Race Comments + Step 2 引擎 | Engine Type 矛盾標記、受阻模式 |
+| | Step 8.4 完成時間偏差 | `au_class_par_reference.json` + Step 4 場地 | 時間偏差趨勢 |
 | | Step 9 賽績交叉驗證 | 對手後續表現 | 強組/弱組 |
 | | Step 11 騎師情報 | 外部搜索 | 騎師適配度 |
 | | Step 12 風險與練馬師 | Steps 1-11 | 風險標記、訓練師訊號 |
 | | Step 13 首次出賽馬 | 試閘+血統 | 首出評估 |
-| | **綜合合成** | Steps 0.5, 1-13 | **最終 S/A/B/C/D 評級** |
+| | **綜合合成** | Steps 0.5, 1-13 + `au_factor_interaction.md` | **最終 S/A/B/C/D 評級** |
 
 ### 關鍵數據流規則(必須嚴格遵守)
 
@@ -36,4 +39,7 @@
 9. Step 10 若賽前退出導致場地 < 6 匹,必須執行小場覆寫協議。
 10. **若 `RACE_TYPE = STRAIGHT SPRINT`,Step 7 必須啟用風向能量模型,Step 10 必須啟用直線步速模型,綜合合成必須檢查直線專用覆蓋規則。**
 11. 綜合合成框架聚合所有前序步驟輸出,透過定性矩陣法生成最終評級。
-
+12. Step 8.2 的走位-段速複合判讀必須傳入綜合合成的 `EEM與形勢` 半核心維度，作為 SYN-AU1/CON-AU1 觸發依據。
+13. Step 8.3 的賽事短評矛盾標記若偵測到 Engine Type 矛盾,必須回溯 Step 2 重新審視引擎分類。
+14. Step 8.4 的完成時間偏差趨勢若連續 3 場收窄,傳入 Step 1 狀態維度作為上升趨勢證據。
+15. 綜合合成中的因素互動矩陣 (`au_factor_interaction.md`) 作為 Channel B 微調,與現有微調 (Channel A) 合計淨調整 ±2 級。

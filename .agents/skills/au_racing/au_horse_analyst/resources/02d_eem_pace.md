@@ -120,6 +120,52 @@
 - **[長途韌力權重提升 (Stamina Reliability Boost)]:** 喺 2400m 或以上賽事,若馬匹嘅「末 200m 全場前三」伴隨「距離已證明 (≥ 2200m 有好表現)」,其「段速與引擎」維度權重應提升至與核心維度相等。長途賽事中,「真正的長途氣量」與「末段前三的段速穩定性」係最高優先級。
 - **⚠️ 保守修正原則:** 段速修正結論係「實際能力優於/弱於時間所示」,屬**定性方向判斷**,不等於「大幅升級」。特別係「三疊望空」同時出現於段速修正 (Step 8) 同 EEM (Step 7) 時,段速修正應保守處理 — 僅確認「能力不弱於所示」,避免同 EEM 維度雙重膨脹。
 
+**[BAKED-急彎後追封頂] EEM 維度自動 ❌ 條件（原 02g_override_chain.md 急彎封頂規則）:**
+- **急彎起步即入彎** (Rosehill 1200m / Moonee Valley 1200m / Caulfield 1400m) + **純後追馬** (Type B / Settled Runner) → EEM **自動 ❌**
+  - **豁免:** 超班降班 ≥2 級；出馬 ≥13 匹 + 末段前 3（完全取消）；出馬 ≥13 匹（放寬至 ➖）
+- **[BAKED-Rosehill 1200m 塞車] Rosehill 1200m** + 後追型 + 受困往績（近 5 仗 ≥2 次 Stewards 記錄 held up/checked） → EEM **自動 ❌** + **計 2 項風險標記**（從一般 1 項加倍）
+  - **邏輯基礎:** Rosehill 1200m 起步即入彎,後方馬群極易喺彎位擠成一團,物理上幾乎唔容許缺乏前速嘅馬失機第二次。
+
+### Step 8.2: 走位-段速複合分析 (Position-Sectional Composite) [SIP-AU-P2b]
+
+從 Facts.md 提取走位消耗等級（Step 7 EEM 判定），同段速 Δ 尾段偏差值（Step 8）進行交叉分析：
+
+| 走位消耗等級 | 段速 Δ 尾段 | 複合判讀 | 段速質量修正 |
+|:---|:---|:---|:---|
+| 高消耗 (3-wide+) | 末段前 3 | 「逆境段速」→ 可觸發 SYN-AU1 | ✅✅ |
+| 高消耗 (3-wide+) | 末段中等 | 「消耗抵消」→ 實際能力優於字面 | 至少 ➖ |
+| 低消耗 (1-wide) | 末段前 3 | 「舒服快跑」→ 段速打折 | ✅ 但降權 |
+| 低消耗 (1-wide) | 末段差 | 「實力見底」→ 可觸發 CON-AU1 | ❌ |
+
+**走位來源:** Racenet Sectionals + In-Run Position（Facts.md 已預注入）
+**輸出:** 複合判讀結果傳入綜合合成的 `EEM與形勢` 半核心維度，作為 SYN-AU1/CON-AU1 觸發依據。
+
+### Step 8.3: 賽事短評交叉驗證 (Stewards Commentary Cross-Validation) [SIP-AU-P3c]
+
+Analyst 必須引用 Racenet Race Comments / Stewards Reports 進行交叉驗證：
+
+1. **Engine Type 驗證:** 若 Stewards 連續描述「settled last / dropped out」但 Engine = Type A (前領) → 標記 `[引擎矛盾 ⚠️]`，回溯 Step 2 重新審視
+2. **受阻模式識別:** 近 3 場含「held up / checked / steadied / bumped」→ 觸發寬恕加分考量（Step 6）
+3. **走位消耗確認:** Comments 含「three deep / four deep / uncovered / wide throughout」→ 確認高消耗，強化 Step 8.2 判讀
+4. **隱藏表現發掘:** Comments 含「closing late / strong finish / only beaten X lengths / not knocked about」→ 段速質量需重審
+
+**數據來源:** `claw_racenet_scraper.py` Race Comments 欄位
+**限制:** 若 Race Comments 缺失，此步驟標記 `[N/A — Comments 不可用]` 並跳過。
+
+### Step 8.4: 完成時間偏差分析 (Finish Time Deviation) [SIP-AU-P2c]
+
+比較馬匹完成時間與 Class Par（參照 `au_class_par_reference.json` 或 `03e_class_standards.md`）：
+
+| 偏差 | 判讀 | 影響 |
+|:---|:---|:---|
+| 快於 Par ≥0.5s | ✅ 有餘力（需確認場地條件） | 狀態/段速維度加強 |
+| 介乎 Par ±0.5s | ➖ 正常 | 無影響 |
+| 慢於 Par ≥1.0s | ⚠️ 可能體力不足 | 需交叉驗證 EEM/場地 |
+
+**場地修正:** 每升一級場地（Good→Soft→Heavy）約 +1.5-3.0s，必須扣除場地影響後再比較。
+**趨勢分析:** 連續 3 場偏差收窄 = 上升趨勢 ✅，傳入 Step 1 狀態維度作為上升證據。
+**限制:** 若缺乏準確完成時間數據，此步驟標記 `[N/A]` 並跳過。
+
 ### Step 9: 賽績交叉驗證 (Collateral Form)
 - 正向:上仗贏馬隨後高班勝 → +1.5-2分。前五有 ≥3匹隨後入位 = High-Quality Form
 - 反向:贏過的對手隨後慘敗 → -20-30%。深度連鎖追溯兩層

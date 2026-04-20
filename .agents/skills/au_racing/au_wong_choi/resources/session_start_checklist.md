@@ -34,6 +34,9 @@
 - [ ] 場地模組已讀取
 - [ ] BATCH_SIZE 由環境掃描決定已確認
 - [ ] 環境掃描結果已回報用戶
+- [ ] **[Phase 4 新增]** Formguide 已提取（確認 formguide.txt/.md 存在且非空）
+- [ ] **[Phase 4 新增]** Facts.md 已生成（確認 inject 完成，或 pipeline_summary.json 存在）
+- [ ] **[Phase 4 新增]** MC 結果已計算（確認 MC JSON 存在，或標記為可選）
 
 ## 數據路徑
 Racecard: [RACECARD_PATH]

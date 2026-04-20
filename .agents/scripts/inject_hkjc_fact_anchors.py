@@ -111,13 +111,29 @@ def get_reference_sections(venue: str, distance: int, race_class: str) -> dict:
     return classes[ckey]
 
 # ========================================================================
-# HKJC Official Standard Times (seconds) — last updated 2025-08-26
-# Source: https://racing.hkjc.com (Reference Info → Race Course Standard Times)
-# Format: (venue, distance) → {class: seconds}
-# All times are for "Good" going
+# HKJC Official Standard Times — Auto-loaded from scraped JSON
+# Fallback: hardcoded dict if JSON not available
 # ========================================================================
+_SCRAPED_STD_TIMES = None
+def _load_scraped_standard_times() -> dict:
+    """Load standard times from hkjc_standard_times.json (cached)."""
+    global _SCRAPED_STD_TIMES
+    if _SCRAPED_STD_TIMES is not None:
+        return _SCRAPED_STD_TIMES
+    json_path = Path(__file__).parent / 'hkjc_standard_times.json'
+    if json_path.exists():
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            _SCRAPED_STD_TIMES = data.get('standard_times', {})
+            return _SCRAPED_STD_TIMES
+        except Exception:
+            pass
+    _SCRAPED_STD_TIMES = {}
+    return _SCRAPED_STD_TIMES
+
+# Hardcoded fallback (used when JSON unavailable)
 STANDARD_TIMES = {
-    # --- 沙田草地 (Sha Tin Turf) ---
     ('沙田', 1000): {'G': 55.90, 'C2': 56.05, 'C3': 56.45, 'C4': 56.65, 'C5': 57.00, 'GR': 56.65},
     ('沙田', 1200): {'G': 68.15, 'C1': 68.45, 'C2': 68.65, 'C3': 69.00, 'C4': 69.35, 'C5': 69.55, 'GR': 69.90},
     ('沙田', 1400): {'G': 81.10, 'C1': 81.25, 'C2': 81.45, 'C3': 81.65, 'C4': 82.00, 'C5': 82.30},
@@ -125,19 +141,70 @@ STANDARD_TIMES = {
     ('沙田', 1800): {'G': 107.10, 'C2': 107.30, 'C3': 107.50, 'C4': 107.85, 'C5': 108.45},
     ('沙田', 2000): {'G': 120.50, 'C1': 121.20, 'C2': 121.70, 'C3': 121.90, 'C4': 122.35, 'C5': 122.65},
     ('沙田', 2400): {'G': 147.00},
-
-    # --- 跑馬地草地 (Happy Valley Turf) ---
     ('跑馬地', 1000): {'C2': 56.40, 'C3': 56.65, 'C4': 57.20, 'C5': 57.35},
     ('跑馬地', 1200): {'C1': 69.10, 'C2': 69.30, 'C3': 69.60, 'C4': 69.90, 'C5': 70.10},
     ('跑馬地', 1650): {'C1': 99.10, 'C2': 99.30, 'C3': 99.90, 'C4': 100.10, 'C5': 100.30},
     ('跑馬地', 1800): {'G': 108.95, 'C2': 109.15, 'C3': 109.45, 'C4': 109.65, 'C5': 109.95},
     ('跑馬地', 2200): {'C3': 136.60, 'C4': 137.05, 'C5': 137.35},
-
-    # --- 沙田全天候跑道 (Sha Tin AWT) ---
     ('沙田AWT', 1200): {'C2': 68.35, 'C3': 68.55, 'C4': 68.95, 'C5': 69.35},
     ('沙田AWT', 1650): {'C1': 97.80, 'C2': 98.40, 'C3': 98.60, 'C4': 99.05, 'C5': 99.45},
     ('沙田AWT', 1800): {'C3': 108.05, 'C4': 108.55, 'C5': 109.45},
 }
+
+# ========================================================================
+# Draw Stats Loader
+# ========================================================================
+_DRAW_STATS = None
+def load_draw_stats() -> dict:
+    """Load draw stats from hkjc_draw_stats.json (cached)."""
+    global _DRAW_STATS
+    if _DRAW_STATS is not None:
+        return _DRAW_STATS
+    json_path = Path(__file__).parent / 'hkjc_draw_stats.json'
+    if json_path.exists():
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                _DRAW_STATS = json.load(f)
+            return _DRAW_STATS
+        except Exception:
+            pass
+    _DRAW_STATS = {}
+    return _DRAW_STATS
+
+def get_draw_verdict(race_num: int, draw: int) -> str:
+    """Get draw verdict for a specific race/draw. Returns e.g. '✅有利 (15%)' or empty."""
+    ds = load_draw_stats()
+    if not ds or 'races' not in ds:
+        return ''
+    for race in ds['races']:
+        if race.get('race') == race_num:
+            for d in race.get('draws', []):
+                if d.get('draw') == draw:
+                    return f"{d['verdict']} ({d['win_pct']}%)"
+    return ''
+
+def get_draw_summary_block(race_num: int) -> str:
+    """Generate 🎯 檔位優劣判讀 block for Facts.md header."""
+    ds = load_draw_stats()
+    if not ds or 'races' not in ds:
+        return ''
+    for race in ds['races']:
+        if race.get('race') == race_num:
+            lines = [f"### 🎯 檔位優劣判讀 ({race.get('distance','')}m {race.get('surface','')})"]
+            lines.append(f"平均勝率: {race.get('avg_win_pct', 0)}%")
+            favourable = [d for d in race['draws'] if d['verdict'] == '✅有利']
+            unfavourable = [d for d in race['draws'] if d['verdict'] == '❌不利']
+            if favourable:
+                draws_str = ', '.join(f"檔{d['draw']}({d['win_pct']}%)" for d in favourable)
+                lines.append(f"✅ 有利檔位: {draws_str}")
+            if unfavourable:
+                draws_str = ', '.join(f"檔{d['draw']}({d['win_pct']}%)" for d in unfavourable)
+                lines.append(f"❌ 不利檔位: {draws_str}")
+            if not favourable and not unfavourable:
+                lines.append("⚠️ 所有檔位勝率接近平均，無明顯優劣")
+            lines.append(f"(數據來源: HKJC 檔位統計 {ds.get('meta',{}).get('meeting','')})")
+            return '\n'.join(lines)
+    return ''
 
 # Season start month (Sep)
 SEASON_START_MONTH = 9
@@ -183,7 +250,8 @@ def format_seconds(secs: float) -> str:
 
 
 def get_standard_time(venue: str, distance: int, race_class: str) -> Optional[float]:
-    """Look up standard time for venue/distance/class."""
+    """Look up standard time for venue/distance/class.
+    Priority: scraped JSON > hardcoded fallback."""
     # Normalise venue
     v = venue
     if 'AWT' in venue or '全天候' in venue:
@@ -193,16 +261,25 @@ def get_standard_time(venue: str, distance: int, race_class: str) -> Optional[fl
     elif '跑馬地' in venue:
         v = '跑馬地'
     
+    # Try scraped JSON first
+    scraped = _load_scraped_standard_times()
+    if scraped:
+        flat_key = f"{v}_{distance}_{race_class}"
+        if flat_key in scraped:
+            return scraped[flat_key]
+        # Fallback within scraped
+        for fb in ['C4', 'C3', 'C5', 'C2', 'C1', 'G']:
+            fk = f"{v}_{distance}_{fb}"
+            if fk in scraped:
+                return scraped[fk]
+    
+    # Hardcoded fallback
     key = (v, distance)
     if key not in STANDARD_TIMES:
         return None
-    
     class_map = STANDARD_TIMES[key]
-    # Try exact match, then fallback
     if race_class in class_map:
         return class_map[race_class]
-    
-    # Fallback: try closest class
     for fallback in ['C4', 'C3', 'C5', 'C2', 'C1', 'G']:
         if fallback in class_map:
             return class_map[fallback]
@@ -1452,6 +1529,7 @@ def main():
     class_override = ''
     horse_ids_str = ''
     output_path = ''
+    race_num = 0  # For draw stats matching
     enable_form_lines = True  # Re-enabled: User requested to keep Form Lines
     
     args = sys.argv[2:]
@@ -1469,10 +1547,13 @@ def main():
             i += 2
         elif args[i] == '--horse-ids' and i + 1 < len(args):
             horse_ids_str = args[i + 1]
-            enable_form_lines = True # Auto-enable if specifically requesting specific horses
+            enable_form_lines = True
             i += 2
         elif args[i] == '--output' and i + 1 < len(args):
             output_path = args[i + 1]
+            i += 2
+        elif args[i] == '--race-num' and i + 1 < len(args):
+            race_num = int(args[i + 1])
             i += 2
         elif args[i] == '--form-lines':
             enable_form_lines = True
@@ -1559,6 +1640,15 @@ def main():
     if form_lines_map:
         output_lines.append(f"賽績線: {len(form_lines_map)} 匹已查冊")
     output_lines.append(f"")
+    
+    # Inject draw verdict block if race_num provided
+    if race_num > 0:
+        draw_block = get_draw_summary_block(race_num)
+        if draw_block:
+            output_lines.append(draw_block)
+            output_lines.append(f"")
+            print(f"   🎯 檔位判讀: Race {race_num} 已注入", file=sys.stderr)
+    
     output_lines.append(f"{'=' * 70}")
     output_lines.append(f"")
     
