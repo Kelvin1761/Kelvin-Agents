@@ -596,10 +596,16 @@ FLUFF_PHRASES = [
     '暫時未有特別', '有待觀察', '資料有限',
 ]
 
+# Dummy phrases from known auto_fill scripts (auto_fill_loop.py / auto_expert_analyst.py)
+DUMMY_PHRASES = [
+    '自動匹配系統法則', '具備潛力', '狀態待觀', '分析中', '待補充',
+    '有一定競爭力', '表現尚可接受', '基於客觀數據自動判定',
+    '符合各項賽事指標', '根據賽事數據',
+]
+
 def validate_hkjc_firewalls(h, h_entry, horses_dict, all_horses, json_file):
     """HKJC-specific per-horse firewall validation. Returns list of error strings.
-    V2: Light quality checks — strict enough to catch garbage, but not so strict
-    that models produce dummy content to bypass.
+    V3: Added WALL-012~017 to catch auto_fill bypass scripts.
     """
     errors = []
     locked_nonce = h_entry.get('_validation_nonce', '')
@@ -607,6 +613,11 @@ def validate_hkjc_firewalls(h, h_entry, horses_dict, all_horses, json_file):
     # WALL-008: Nonce validation
     if not locked_nonce:
         errors.append(f"WALL-008: 缺失防偽標籤 _validation_nonce (可能使用了不合規的 Batch Script 繞過)")
+    
+    # WALL-019: Nonce prefix validation — only SKEL_ nonces from skeleton scripts are valid
+    if locked_nonce and not locked_nonce.startswith('SKEL_'):
+        errors.append(f"WALL-019: NONCE 格式無效 ('{locked_nonce[:20]}...')。只接受 SKEL_ 開頭嘅 nonce（由 skeleton 腳本生成）。"
+                      f" 如果你見到 AUTO_FILL_ 開頭，代表有 bypass 腳本偽造咗 nonce。")
     
     # WALL-009: Matrix completeness — all 8 dimensions must have valid scores
     matrix = h_entry.get('matrix', {})
@@ -637,6 +648,50 @@ def validate_hkjc_firewalls(h, h_entry, horses_dict, all_horses, json_file):
         if phrase in core_logic:
             errors.append(f"WALL-011: core_logic 含有模板化語句「{phrase}」，請替換為具體數據分析")
             break  # Only report first fluff hit
+    
+    # WALL-012: core_logic minimum substance — at least 50 Chinese characters
+    chi_chars = len(re.findall(r'[\u4e00-\u9fff]', core_logic))
+    if chi_chars < 50:
+        errors.append(f"WALL-012: core_logic 過短 ({chi_chars} 個中文字，至少需要 50 個)。"
+                      f" 請寫出 2-4 句引用具體賽績數據嘅分析。")
+    
+    # WALL-013: matrix reasoning substance — at least 4 dimensions with ≥10 chars reasoning
+    substantial_dims = 0
+    for dim_name, dim_data in matrix.items():
+        if isinstance(dim_data, dict):
+            reasoning = str(dim_data.get('reasoning', ''))
+            reasoning_chi = len(re.findall(r'[\u4e00-\u9fff]', reasoning))
+            if reasoning_chi >= 10:
+                substantial_dims += 1
+    if substantial_dims < 4:
+        errors.append(f"WALL-013: 矩陣 reasoning 實質性不足 (只有 {substantial_dims}/8 個維度有 ≥10 字嘅分析)。"
+                      f" 每個維度嘅 reasoning 必須引用具體數據。")
+    
+    # WALL-014: Factual anchor — core_logic must mention the horse name
+    horse_name = h_entry.get('horse_name', '')
+    if horse_name and len(horse_name) > 1:
+        # Check for horse name in core_logic (allow partial match for Chinese names)
+        name_parts = [horse_name]
+        if len(horse_name) >= 4:
+            name_parts.append(horse_name[:4])  # First 4 chars of name
+        if not any(part in core_logic for part in name_parts):
+            errors.append(f"WALL-014: core_logic 未提及馬名「{horse_name}」。"
+                          f" 分析必須針對呢匹馬，唔係通用模板。")
+    
+    # WALL-017: Dummy phrase detection — catch known auto_fill script outputs
+    for phrase in DUMMY_PHRASES:
+        if phrase in core_logic:
+            errors.append(f"WALL-017: core_logic 含有已知 bypass 腳本特徵碼「{phrase}」。"
+                          f" 請刪除 auto_fill 腳本，用 LLM 做真正分析。")
+            break
+    # Also check matrix reasoning for dummy phrases
+    for dim_name, dim_data in matrix.items():
+        if isinstance(dim_data, dict):
+            reasoning = str(dim_data.get('reasoning', ''))
+            for phrase in DUMMY_PHRASES:
+                if phrase in reasoning:
+                    errors.append(f"WALL-017: matrix.{dim_name}.reasoning 含有 bypass 特徵碼「{phrase}」")
+                    break
     
     return errors
 

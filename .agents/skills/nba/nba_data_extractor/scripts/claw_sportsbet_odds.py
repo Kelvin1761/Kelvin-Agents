@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
 import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-from __future__ import annotations
 """
 claw_sportsbet_odds.py — Sportsbet NBA Zero-Navigation Extractor (Claw Code V2)
 Replaces the old manual navigation.

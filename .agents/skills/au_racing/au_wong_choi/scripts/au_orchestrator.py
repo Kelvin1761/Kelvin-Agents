@@ -581,9 +581,16 @@ FLUFF_PHRASES_AU = [
     '暫時未有特別', '有待觀察', '資料有限',
 ]
 
+# Dummy phrases from known auto_fill bypass scripts
+DUMMY_PHRASES_AU = [
+    '自動匹配系統法則', '具備潛力', '狀態待觀', '分析中', '待補充',
+    '有一定競爭力', '表現尚可接受', '基於客觀數據自動判定',
+    '符合各項賽事指標', '根據賽事數據',
+]
+
 def validate_au_firewalls(h, h_entry, horses_dict, all_horses, json_file):
     """AU-specific per-horse firewall validation. Returns list of error strings.
-    V2: Added WALL-011 fluff detection matching HKJC pipeline.
+    V3: Added WALL-019 nonce prefix, WALL-017B dummy detection.
     """
     errors = []
     horse_name = h_entry.get('horse_name', '')
@@ -593,6 +600,10 @@ def validate_au_firewalls(h, h_entry, horses_dict, all_horses, json_file):
     # WALL-008: Nonce validation
     if not locked_nonce:
         errors.append("WALL-008: Missing _validation_nonce")
+    
+    # WALL-019: Nonce prefix validation — only SKEL_ nonces from skeleton scripts are valid
+    if locked_nonce and not locked_nonce.startswith('SKEL_'):
+        errors.append(f"WALL-019: NONCE 格式無效 ('{locked_nonce[:20]}...')。只接受 SKEL_ 開頭嘅 nonce。")
     
     # WALL-009: base_rating/final_rating are now [AUTO] — computed by Python
     # No LLM validation needed; compile_analysis_template.py handles this
@@ -726,6 +737,16 @@ def validate_au_firewalls(h, h_entry, horses_dict, all_horses, json_file):
                 errors.append(
                     f"WALL-011B: core_logic 含有模板化語句「{phrase}」，"
                     f"請替換為具體數據分析"
+                )
+                break
+    
+    # WALL-017B: Dummy phrase detection — catch known auto_fill script outputs
+    if core_logic and '[FILL]' not in core_logic:
+        for phrase in DUMMY_PHRASES_AU:
+            if phrase in core_logic:
+                errors.append(
+                    f"WALL-017B: core_logic 含有已知 bypass 腳本特徵碼「{phrase}」。"
+                    f" 請刪除 auto_fill 腳本，用 LLM 做真正分析。"
                 )
                 break
 

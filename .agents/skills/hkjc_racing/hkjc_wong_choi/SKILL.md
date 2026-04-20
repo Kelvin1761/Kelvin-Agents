@@ -39,12 +39,25 @@ python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <U
 5. 重複直到 `🎉 [SUCCESS]`
 
 ## 鐵律
-- **嚴禁**自行建立任何 `.py` 腳本
+- **嚴禁**自行建立任何 `.py` 腳本（包括 auto_fill、auto_expert、auto_analyst 等）
 - **嚴禁**跳過 Orchestrator 直接修改 Analysis.md
 - **嚴禁**自行計算評級矩陣（由 Python 自動計算）
 - **嚴禁**查閱全局 Facts.md（只讀取 `.runtime/Active_Horse_Context.md`）
+- **嚴禁**用 `while True` loop 或任何腳本批量填充 `[FILL]` 欄位
+- **嚴禁**用 hashlib/模板池生成「看似不同」嘅罐頭分析
 - 語言：香港繁體中文（廣東話口吻），馬名/騎師/練馬師保留英文
 - 分析風格：Opus-Style 極度詳盡，法醫級推理
+
+## 分析品質標準（Per-Horse）
+每匹馬嘅 `core_logic` 必須：
+- **至少 50 個中文字**（約 2-3 句有實質數據支撐嘅分析）
+- **引用馬匹專屬事實**（例如具體賽績日期、margin、L400 時間）
+- **唔可以用模板句式**（例如「自動匹配系統法則」「具備潛力」「分析中」）
+- **每匹馬嘅分析內容必須唯一**（唔可以套用同一個模板再換馬名）
+
+每個 matrix dimension 嘅 `reasoning` 必須：
+- **引用該維度嘅具體數據**（例如 stability 引用近績序列、speed_mass 引用 L400 時間）
+- **至少 10 個中文字**
 
 ## Failure Protocol
 | 情況 | 動作 |

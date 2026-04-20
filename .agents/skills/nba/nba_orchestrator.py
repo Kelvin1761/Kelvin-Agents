@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
 """
@@ -23,7 +24,6 @@ Usage:
 
 Version: 3.0.0
 """
-from __future__ import annotations
 import argparse
 import datetime
 import glob
@@ -100,7 +100,7 @@ def run_script(script_path: str, args_list: list, label: str = "Script") -> bool
 def discover_sportsbet_jsons(target_dir: str) -> list:
     pattern = os.path.join(target_dir, "Sportsbet_Odds_*.json")
     return sorted(f for f in glob.glob(pattern)
-                  if "TEST" not in f and "MIN" not in f and "GEMINI" not in f)
+                  if "TEST" not in f and "GEMINI" not in f)
 
 
 def extract_game_tag(json_path: str) -> str:

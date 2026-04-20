@@ -168,7 +168,7 @@ def build_skeleton(data):
     return {
         # ===== LOCKED DATA =====
         '_locked': True,
-        '_validation_nonce': secrets.token_hex(4),
+        '_validation_nonce': 'SKEL_' + secrets.token_hex(4),
         'horse_name': name,
         'jockey': data.get('jockey', ''),
         'trainer': data.get('trainer', ''),

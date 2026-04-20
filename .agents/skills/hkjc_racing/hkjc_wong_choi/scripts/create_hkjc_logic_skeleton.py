@@ -194,10 +194,10 @@ def build_skeleton(data):
     raw_l400 = data.get('raw_L400', 'N/A')
     last_pos = data.get('last_run_position', 'N/A')
     
-    # Generate _validation_nonce
+    # Generate _validation_nonce with SKEL_ prefix (WALL-019 requires this prefix)
     timestamp = str(time.time())
     nonce_input = f"{name}_{timestamp}"
-    nonce = hashlib.md5(nonce_input.encode('utf-8')).hexdigest()
+    nonce = 'SKEL_' + hashlib.md5(nonce_input.encode('utf-8')).hexdigest()
 
     return {
         # ===== LOCKED DATA (Python pre-filled, LLM must NOT modify) =====
