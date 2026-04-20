@@ -237,14 +237,14 @@ def _build_synthetic_matrix_reasoning(h_logic: dict) -> dict:
     # Map each matrix dimension → best available analytical_breakdown text
     return {
         'stability':       ab.get('stability_risk', ab.get('trend_analysis', '見馬匹剖析')),
-        'speed_mass':      ab.get('pace_adaptation', ab.get('trend_analysis', '見段速法醫')),
+        'speed_mass':      ab.get('pace_adaptation', ab.get('trend_analysis', '見馬匹剖析')),
         'eem':             ab.get('trend_analysis', '見EEM能量'),
         'trainer_jockey':  (ab.get('trainer_signal', '') + ' ' + ab.get('jockey_fit', '')).strip() or '見馬匹剖析',
         'scenario':        ab.get('pace_adaptation', ab.get('track_distance_suitability', '見步速分析')),
         'freshness':       ab.get('track_distance_suitability', ab.get('engine_distance', '見路程適性')),
         'formline':        ab.get('hidden_form', ab.get('class_assessment', '見賽績線')),
         'class_advantage': ab.get('class_assessment', '見級數評估'),
-        'forgiveness':     forg.get('conclusion', forg.get('factors', '見寬恕檔案')),
+        'forgiveness':     forg.get('conclusion', forg.get('factors', '見完整賽績檔案')),
     }
 
 
@@ -453,45 +453,31 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
     else:
         lines.append('#### 📋 完整賽績檔案: (無往績記錄)\n')
 
-    # ── 4. 馬匹剖析 (10 項全套) ─────────────────────────────────────────
+    # ── 4. 馬匹剖析 (V2 整合結構 — 含段速/EEM/檔位/SIP) ──────────────────
     h_analysis = h_logic.get('analytical_breakdown', {})
+    sf = h_logic.get('sectional_forensic', {})
+    eem = h_logic.get('eem_energy', {})
     lines.append('#### 🐴 馬匹剖析')
     lines.extend([
-        f"- **走勢趨勢 (Step 10.3+):** {h_analysis.get('trend_analysis', '[FILL]')}",
-        f"- **隱藏賽績 (Step 6+12):** {h_analysis.get('hidden_form', '[FILL]')}",
-        f"- **穩定性/贏馬回落 (Step 5):** {h_analysis.get('stability_risk', '[FILL]')}",
-        f"- **級數評估 (Step 8.1):** {h_analysis.get('class_assessment', '[FILL]')}",
-        f"- **路程場地適性 (Step 2):** {h_analysis.get('track_distance_suitability', '[FILL]')}",
-        f"- **引擎距離 (Step 2.6):** {h_analysis.get('engine_distance', '[FILL]')}",
-        f"- **配備變動 (Step 6):** {h_analysis.get('gear_changes', '[FILL]')}",
-        f"- **部署與練馬師訊號 (Step 8.2):** {h_analysis.get('trainer_signal', '[FILL]')}",
-        f"- **人馬配搭 (Step 2.5):** {h_analysis.get('jockey_fit', '[FILL]')}",
-        f"- **步速段速 (Step 0+10):** {h_analysis.get('pace_adaptation', '[FILL]')}",
+        f"- **穩定性/贏馬回落 (Step 5):** {h_analysis.get('stability_risk', '[N/A]')}",
+        f"- **級數評估 (Step 8.1):** {h_analysis.get('class_assessment', '[N/A]')}",
+        f"- **路程場地適性 (Step 2):** {h_analysis.get('track_distance_suitability', '[N/A]')}",
+        f"- **引擎距離 (Step 2.6):** {h_analysis.get('engine_distance', '[N/A]')}",
+        f"- **體重趨勢:** {h_analysis.get('weight_trend', '[N/A]')}",
+        f"- **配備變動 (Step 6):** {h_analysis.get('gear_changes', '[N/A]')}",
+        f"- **🎯 檔位判讀 (Step 14.2B):** {h_analysis.get('draw_verdict', '[N/A]')}",
+        f"- **部署與練馬師訊號 (Step 8.2):** {h_analysis.get('trainer_signal', '[N/A]')}",
+        f"- **人馬配搭 (Step 2.5):** {h_analysis.get('jockey_fit', '[N/A]')}",
+        f"- **步速段速 (Step 0+10):** {h_analysis.get('pace_adaptation', '[N/A]')}",
+        f"- **📊 全段速剖面摘要 (Step 10.4/10.5) [SIP-P1a/P1b/P1c]:** {h_analysis.get('sectional_profile_summary', sf.get('trend', '[N/A]'))}",
+        f"- **📐 頭馬距離趨勢 (Step 10.6) [SIP-P1d]:** {h_analysis.get('margin_trend', '[N/A]')}",
+        f"- **🔄 走位-段速複合 (Step 10.7) [SIP-P2b]:** {h_analysis.get('position_sectional_composite', '[N/A]')}",
+        f"- **📉 完成時間偏差 (Step 10.8) [SIP-P2c]:** {h_analysis.get('finish_time_deviation', '[N/A]')}",
+        f"- **EEM 能量分析 (Step 11):** {eem.get('assessment', h_analysis.get('eem_analysis', '[N/A]'))}",
+        f"- **隱藏賽績 (Step 6+12):** {h_analysis.get('hidden_form', '[N/A]')}",
+        f"- **競賽事件 / 馬匹特性:** {h_analysis.get('competition_events', '[N/A]')}",
     ])
     lines.append('')
-
-    # ── 5. 段速法醫 ──────────────────────────────────────────────────────
-    sf = h_logic.get('sectional_forensic', {})
-    lines.append('#### 🔬 段速法醫 (Step 10)')
-    lines.append(
-        f"- **原始 L600/L400:** {sf.get('raw_L400', '[FILL]')} | "
-        f"**修正因素:** {sf.get('correction_factor', '[FILL]')} | "
-        f"**修正判斷:** {sf.get('corrected_assessment', '[FILL]')}"
-    )
-    lines.append(f"- **所示趨勢(近 3 仗):** `{sf.get('trend', '[FILL]')}`\n")
-
-    # ── 6. EEM 能量 ───────────────────────────────────────────────────────
-    eem = h_logic.get('eem_energy', {})
-    lines.append('#### ⚡ EEM 能量 (Step 11)')
-    lines.append(f"- **上仗走位:** {eem.get('last_run_position', '[FILL]')}")
-    lines.append(f"- **累積消耗:** `{eem.get('cumulative_drain', '[FILL]')}`")
-    lines.append(f"- **總評:** {eem.get('assessment', '[FILL]')}\n")
-
-    # ── 7. 寬恕檔案 ───────────────────────────────────────────────────────
-    forg = h_logic.get('forgiveness_archive', {})
-    lines.append('#### 📋 寬恕檔案 (Step 12)')
-    lines.append(f"- **因素:** {forg.get('factors', '[FILL]')}")
-    lines.append(f"- **結論:** `{forg.get('conclusion', '[FILL]')}`\n")
 
     # ── 8. 賽績線 (Facts 注入，僅一次，無重複) ──────────────────────────
     if h_fact.get('formline') and '(無往績記錄)' not in h_fact.get('formline', ''):
@@ -499,7 +485,7 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
         fl_clean = h_fact['formline'].replace('🔗 **賽績線 (近 5 場正式賽事，官方追蹤):**', '').replace('🔗 賽績線 (近 5 場正式賽事，官方追蹤):', '').strip()
         lines.append(fl_clean + '\n')
         formline_str = h_analysis.get('formline_strength', '')
-        if formline_str and formline_str != '[FILL]':
+        if formline_str and formline_str != '[N/A]':
             lines.append(f"- **綜合結論:** `{formline_str}`\n")
         else:
             lines.append(f"- **綜合結論:** `詳見賽績線數據`\n")
@@ -554,7 +540,7 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
     forgive_item = m_data.get('forgiveness_bonus', {})
     forg_score = forgive_item.get('score', '[-]')
     if matrix_missing:
-        forg_reason = synth_reasons.get('forgiveness', '見寬恕檔案')
+        forg_reason = synth_reasons.get('forgiveness', '見完整賽績檔案')
         forg_tick = '➖'
     else:
         forg_reason = forgive_item.get('reasoning', forgive_item.get('reason', '[無提供]'))
@@ -573,7 +559,16 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
     ft = h_logic.get('fine_tune', {})
     ft_dir = ft.get('direction', '無') if isinstance(ft, dict) else str(ft)
     ft_trig = ft.get('trigger', '無') if isinstance(ft, dict) else '無'
-    lines.append(f"**14.2B 微調:** `{ft_dir}` ({grade_result['micro_note']}) | 觸發: `{ft_trig}`")
+    ft_channel_a = ft.get('channel_a', ft_dir) if isinstance(ft, dict) else ft_dir
+    ft_channel_b = ft.get('channel_b', '無') if isinstance(ft, dict) else '無'
+    lines.append(f"**14.2B 微調:** 通道A: `{ft_channel_a}` | 通道B(SYN/CON): `{ft_channel_b}` | ({grade_result['micro_note']}) | 觸發: `{ft_trig}`")
+
+    # ── 11.5. 🔗 互動矩陣 [SIP-P2a] ──────────────────────────────────────
+    im = h_logic.get('interaction_matrix', {})
+    im_syn = im.get('SYN', im.get('syn', '無')) if isinstance(im, dict) else '無'
+    im_con = im.get('CON', im.get('con', '無')) if isinstance(im, dict) else '無'
+    im_contra = im.get('CONTRA', im.get('contra', '無')) if isinstance(im, dict) else '無'
+    lines.append(f"**🔗 互動矩陣 [SIP-P2a]:** SYN: `{im_syn}` | CON: `{im_con}` | CONTRA: `{im_contra}`")
 
     # ── 12. 14.3 覆蓋 ────────────────────────────────────────────────────
     ovr = h_logic.get('override', {})
@@ -615,9 +610,9 @@ def build_hkjc_verdict_compiled(json_data, facts_horses):
 
     lines = []
     lines.append('#### [第三部分] 最終預測 (The Verdict)\n')
-    lines.append(f"- **跑道形勢:** {v.get('track_scenario', '[FILL]')}")
+    lines.append(f"- **跑道形勢:** {v.get('track_scenario', '[N/A]')}")
     lines.append(f"- **信心指數:** `{v.get('confidence', '[中]')}`")
-    lines.append(f"- **關鍵變數:** {v.get('key_variables', '[FILL]')}\n")
+    lines.append(f"- **關鍵變數:** {v.get('key_variables', '[N/A]')}\n")
 
     lines.append('**🏆 Top 4 位置精選**\n')
 

@@ -189,15 +189,78 @@ import hashlib
 import time
 
 def build_skeleton(data):
-    """Build JSON skeleton: real data pre-filled, analysis fields as [FILL]."""
+    """Build JSON skeleton: real data pre-filled, analysis fields as [FILL].
+    V3: Data-anchored reasoning — injects actual horse data into matrix reasoning
+    placeholders to structurally prevent LLM laziness.
+    """
     name = data.get('name', '未知')
     raw_l400 = data.get('raw_L400', 'N/A')
     last_pos = data.get('last_run_position', 'N/A')
+    last_6 = data.get('last_6', 'N/A')
+    days_since = data.get('days_since_last', 0)
+    season_stats = data.get('season_stats', 'N/A')
+    margin_trend = data.get('margin_trend', 'N/A')
+    weight_trend = data.get('weight_trend', 'N/A')
+    gear = data.get('gear', 'N/A')
+    rating_trend = data.get('rating_trend', 'N/A')
+    l400_trend = data.get('l400_trend', 'N/A')
+    energy_trend = data.get('energy_trend', 'N/A')
+    engine = data.get('engine', 'N/A')
+    best_dist = data.get('best_distance', 'N/A')
+    barrier = data.get('barrier', 'N/A')
+    weight = data.get('weight', 'N/A')
+    jockey = data.get('jockey', 'N/A')
+    trainer = data.get('trainer', 'N/A')
+    last_xw = data.get('last_xw', 'N/A')
+    last_consumption = data.get('last_consumption', 'N/A')
+    last_finish = data.get('last_finish', 'N/A')
+    last_margin_val = data.get('last_margin', 'N/A')
+    good_rec = data.get('good_record', 'N/A')
+    course_rec = data.get('course_record', 'N/A')
+    position_pi = data.get('position_pi', 'N/A')
+    formline_str = data.get('formline_strength', 'N/A')
+    wins = data.get('wins', 0)
+    starts = data.get('starts', 0)
     
     # Generate _validation_nonce with SKEL_ prefix (WALL-019 requires this prefix)
     timestamp = str(time.time())
     nonce_input = f"{name}_{timestamp}"
     nonce = 'SKEL_' + hashlib.md5(nonce_input.encode('utf-8')).hexdigest()
+
+    # ── Build data-anchored reasoning for each matrix dimension ──
+    # This forces the LLM to engage with real data instead of generating fluff.
+    r_stability = (
+        f"[數據: 近6仗={last_6}, 季內={season_stats}, "
+        f"頭馬距離趨勢={margin_trend}] → [判讀: FILL]"
+    )
+    r_speed_mass = (
+        f"[數據: 上仗L400={raw_l400}, L400趨勢={l400_trend}, "
+        f"能量趨勢={energy_trend}] → [判讀: FILL]"
+    )
+    r_eem = (
+        f"[數據: 上仗走位={last_pos}, 上仗XW={last_xw}, "
+        f"上仗消耗={last_consumption}] → [判讀: FILL]"
+    )
+    r_trainer = (
+        f"[數據: 騎師={jockey}, 練馬師={trainer}, "
+        f"配備={gear}] → [判讀: FILL]"
+    )
+    r_scenario = (
+        f"[數據: 檔位={barrier}, 引擎={engine}, "
+        f"走位PI={position_pi}] → [判讀: FILL]"
+    )
+    r_freshness = (
+        f"[數據: 休賽={days_since}日, 最佳距離={best_dist}, "
+        f"同場紀錄={course_rec}, 好地={good_rec}] → [判讀: FILL]"
+    )
+    r_formline = (
+        f"[數據: 賽績線強度={formline_str}, "
+        f"上仗名次={last_finish}, 上仗距離差={last_margin_val}] → [判讀: FILL]"
+    )
+    r_class = (
+        f"[數據: {starts}戰{wins}勝, 評分趨勢={rating_trend}, "
+        f"負磅={weight}] → [判讀: FILL]"
+    )
 
     return {
         # ===== LOCKED DATA (Python pre-filled, LLM must NOT modify) =====
@@ -208,31 +271,40 @@ def build_skeleton(data):
         'trainer': data.get('trainer', ''),
         'weight': data.get('weight', 0),
         'barrier': data.get('barrier', 0),
-        'last_6_finishes': data.get('last_6', ''),
-        'days_since_last': data.get('days_since_last', 0),
-        'season_stats': data.get('season_stats', ''),
+        'last_6_finishes': last_6,
+        'days_since_last': days_since,
+        'season_stats': season_stats,
 
         # ===== ANALYSIS FIELDS (LLM must fill all [FILL]) =====
         'scenario_tags': '[FILL]',
 
         'analytical_breakdown': {
-            'trend_analysis': '[FILL]',
+            'stability_risk': f'[近6仗={last_6}, 頭馬距離={margin_trend}] → FILL',
+            'class_assessment': f'[{starts}戰{wins}勝, 評分={rating_trend}] → FILL',
+            'track_distance_suitability': f'[引擎={engine}, 最佳={best_dist}, 同場={course_rec}] → FILL',
+            'engine_distance': f'[引擎={engine}, 最佳={best_dist}, 走位PI={position_pi}] → FILL',
+            'weight_trend': f'[體重趨勢={weight_trend}, 今仗負磅={weight}] → FILL',
+            'gear_changes': f'[配備={gear}] → FILL',
+            'draw_verdict': f'[檔位={barrier}] → FILL (必須引用 Facts.md 🎯檔位優劣判讀)',
+            'trainer_signal': f'[練馬師={trainer}, 騎師={jockey}] → FILL',
+            'jockey_fit': f'[騎師={jockey}] → FILL',
+            'pace_adaptation': f'[引擎={engine}, L400={raw_l400}] → FILL',
+            'sectional_profile_summary': f'[L400趨勢={l400_trend}, 能量={energy_trend}] → FILL',
+            'margin_trend': f'[頭馬距離={margin_trend}] → FILL',
+            'position_sectional_composite': f'[走位={last_pos}, XW={last_xw}, 消耗={last_consumption}] → FILL',
+            'finish_time_deviation': '[引用 Facts.md 📊完成時間偏差趨勢] → FILL',
+            'eem_analysis': f'[走位={last_pos}, XW={last_xw}, 消耗={last_consumption}] → FILL',
             'hidden_form': '[FILL]',
-            'stability_risk': '[FILL]',
-            'class_assessment': '[FILL]',
-            'track_distance_suitability': '[FILL]',
-            'engine_distance': '[FILL]',
-            'gear_changes': '[FILL]',
-            'trainer_signal': '[FILL]',
-            'jockey_fit': '[FILL]',
-            'pace_adaptation': '[FILL]',
+            'competition_events': '[FILL]',
+            'trend_analysis': f'[近6仗={last_6}] → FILL',
+            'formline_strength': formline_str if formline_str != 'N/A' else '[FILL]',
         },
 
         'sectional_forensic': {
             'raw_L400': raw_l400,  # LOCKED
             'correction_factor': '[FILL]',
             'corrected_assessment': '[FILL]',
-            'trend': data.get('l400_trend', ''),  # LOCKED
+            'trend': l400_trend if l400_trend != 'N/A' else '',  # LOCKED
         },
 
         'eem_energy': {
@@ -241,43 +313,46 @@ def build_skeleton(data):
             'assessment': '[FILL]',
         },
 
-        'forgiveness_archive': {
-            'factors': '[FILL]',
-            'conclusion': '[FILL]',
-        },
+        'race_forgiveness': '[FILL — JSON Array 格式]',
 
         'matrix': {
-            'stability':       {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
-            'speed_mass':      {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
-            'eem':             {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
-            'trainer_jockey':  {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
-            'scenario':        {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
-            'freshness':       {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
-            'formline':        {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
-            'class_advantage': {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
-            'forgiveness_bonus': {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
+            'stability':       {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_stability},
+            'speed_mass':      {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_speed_mass},
+            'eem':             {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_eem},
+            'trainer_jockey':  {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_trainer},
+            'scenario':        {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_scenario},
+            'freshness':       {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_freshness},
+            'formline':        {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_formline},
+            'class_advantage': {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_class},
+            'forgiveness_bonus': {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[數據: 見完整賽績檔案寬恕認定] → [判讀: FILL]'},
+        },
+
+        'interaction_matrix': {
+            'SYN': '[FILL or 無]',
+            'CON': '[FILL or 無]',
+            'CONTRA': '[FILL or 無]',
         },
 
         'base_rating': '[AUTO]',
-        'fine_tune': {'direction': '[FILL: +/-/無]', 'trigger': '[FILL]'},
+        'fine_tune': {'direction': '[FILL: +/-/無]', 'trigger': '[FILL]', 'channel_a': '[FILL]', 'channel_b': '[FILL]'},
         'override': {'rule': '[FILL]'},
         'final_rating': '[AUTO]',
-        'core_logic': '[FILL]',
+        'core_logic': f'[FILL — 必須提及{name}嘅具體數據，80-100字廣東話分析]',
         'advantages': '[FILL]',
         'disadvantages': '[FILL]',
         'evidence_step_0_14': '[FILL]',
         'underhorse': {'triggered': False, 'condition': '', 'reason': ''},
         
-        # ===== AUTO-ENRICHMENT (V2: auto-filled from Facts.md) =====
-        'wins': data.get('wins', 0),
-        'starts': data.get('starts', 0),
+        # ===== AUTO-ENRICHMENT (V3: auto-filled from Facts.md) =====
+        'wins': wins,
+        'starts': starts,
         'recent_form': data.get('recent_form', ''),
-        'good_record': data.get('good_record', ''),
+        'good_record': good_rec,
         'soft_record': data.get('soft_record', ''),
-        'course_record': data.get('course_record', ''),
-        'engine_type': data.get('engine', ''),
-        'best_distance': data.get('best_distance', ''),
-        'formline_strength': data.get('formline_strength', ''),
+        'course_record': course_rec,
+        'engine_type': engine,
+        'best_distance': best_dist,
+        'formline_strength': formline_str,
     }
 
 

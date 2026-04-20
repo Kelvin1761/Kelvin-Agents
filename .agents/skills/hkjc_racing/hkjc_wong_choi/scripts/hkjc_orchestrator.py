@@ -30,6 +30,35 @@ HKJC_MATRIX_SCHEMA = {
     "formline": "aux", "class_advantage": "aux",
 }
 
+# Chinese → English matrix key normalization map
+# Prevents grade computation failure when LLM uses Chinese dimension names
+# Also handles English key variants (e.g. "sectional" → "speed_mass")
+_ZH_EN_MATRIX_MAP = {
+    # Chinese key variants
+    "狀態與穩定性": "stability",
+    "段速與引擎": "speed_mass",
+    "EEM與形勢": "eem",
+    "騎練訊號": "trainer_jockey",
+    "級數與負重": "class_advantage",
+    "場地適性": "scenario",
+    "賽績線": "formline",
+    "裝備與距離": "freshness",
+    # English key variants (alternative names used by some LLM sessions)
+    "sectional": "speed_mass",
+    "trainer": "trainer_jockey",
+    "distance": "freshness",
+    "class": "class_advantage",
+}
+
+def _normalize_matrix(m_data):
+    """Normalize matrix keys from Chinese/variant English to canonical schema keys."""
+    if not m_data:
+        return m_data
+    needs_norm = any(k in _ZH_EN_MATRIX_MAP for k in m_data)
+    if not needs_norm:
+        return m_data
+    return {_ZH_EN_MATRIX_MAP.get(k, k): v for k, v in m_data.items()}
+
 def auto_compute_verdict_hkjc(logic_data, facts_path):
     """Auto-compute verdict Top 4 from matrix grades. Eliminates LLM verdict stop."""
     horses = logic_data.get('horses', {})
@@ -38,7 +67,7 @@ def auto_compute_verdict_hkjc(logic_data, facts_path):
     # Compute grade for each horse
     graded = []
     for h_num, h_obj in horses.items():
-        m_data = h_obj.get('matrix', {})
+        m_data = _normalize_matrix(h_obj.get('matrix', {}))
         core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(m_data, HKJC_MATRIX_SCHEMA)
         b_grade = compute_base_grade(core_pass, semi_pass, aux_pass, core_fail, total_fail)
         ft = h_obj.get('fine_tune', {})
@@ -594,6 +623,11 @@ FLUFF_PHRASES = [
     '配搭無特別異常', '一般而言', '整體尚可', '無特別優劣',
     '中規中矩', '表現平平', '沒有明顯', '無明顯',
     '暫時未有特別', '有待觀察', '資料有限',
+    # V2: LLM lazy-generation patterns (sounds analytical but zero data)
+    '此項指標表現優異', '完全符合預期', '這個維度的表現相當穩定',
+    '展現出強大實力', '無明顯破綻', '分數絕對買至名歸',
+    '綜合各項變數', '深入分析段速與消耗', '結合騎練動態與馬匹狀態',
+    '根據近期賽績數據', '在這方面展現', '表現相當穩定',
 ]
 
 # Dummy phrases from known auto_fill scripts (auto_fill_loop.py / auto_expert_analyst.py)
@@ -666,6 +700,28 @@ def validate_hkjc_firewalls(h, h_entry, horses_dict, all_horses, json_file):
     if substantial_dims < 4:
         errors.append(f"WALL-013: 矩陣 reasoning 實質性不足 (只有 {substantial_dims}/8 個維度有 ≥10 字嘅分析)。"
                       f" 每個維度嘅 reasoning 必須引用具體數據。")
+    
+    # WALL-020: Data anchor check — reasoning must contain concrete references, not just template prose
+    # Check that at least 4 dimensions have a number/date/percentage/L400 reference
+    data_anchor_pattern = re.compile(r'\d+[%％]|\d{1,2}/\d{1,2}|L400|L600|\d+磅|\d+m|\d+秒|\d+\.\d+|\d+日|\d+-\d+-\d+|\d+仗|\d+場')
+    anchored_dims = 0
+    for dim_name, dim_data in matrix.items():
+        if isinstance(dim_data, dict):
+            reasoning = str(dim_data.get('reasoning', ''))
+            if data_anchor_pattern.search(reasoning):
+                anchored_dims += 1
+    if anchored_dims < 4:
+        errors.append(f"WALL-020: 矩陣 reasoning 欠缺具體數據錨點 (只有 {anchored_dims}/8 個維度引用了數字/日期/百分比)。"
+                      f" 每個 reasoning 必須引用至少一個具體數據 (例如: L400 時間、勝率百分比、近績名次)。")
+    
+    # WALL-020B: Fluff detection in matrix reasoning (not just core_logic)
+    for dim_name, dim_data in matrix.items():
+        if isinstance(dim_data, dict):
+            reasoning = str(dim_data.get('reasoning', ''))
+            for phrase in FLUFF_PHRASES:
+                if phrase in reasoning:
+                    errors.append(f"WALL-020B: matrix.{dim_name}.reasoning 含有懶惰模板語句「{phrase}」。請替換為引用具體數據嘅分析。")
+                    break
     
     # WALL-014: Factual anchor — core_logic must mention the horse name
     horse_name = h_entry.get('horse_name', '')
@@ -1046,7 +1102,7 @@ def main():
                 rc, fg = get_rc_fg_paths(target_dir, r)
                 date_prefix = os.path.basename(target_dir).split(" ")[0][5:]
                 out_path = os.path.join(target_dir, f"{date_prefix} Race {r} Facts.md")
-                cmd = [PYTHON, ".agents/scripts/inject_hkjc_fact_anchors.py", fg, "--output", out_path]
+                cmd = [PYTHON, ".agents/scripts/inject_hkjc_fact_anchors.py", fg, "--output", out_path, "--race-num", str(r)]
                 subprocess.run(cmd, check=True)
                 
         print("✅ Facts 全部生成完畢！自動無縫推進前往 State 3 執行分析...")
