@@ -29,7 +29,6 @@ Usage:
 from typing import Optional
 import re
 import json
-import sys
 import shutil
 from pathlib import Path
 from datetime import datetime

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 os.environ.setdefault('PYTHONUTF8', '1')
 import sys
 if hasattr(sys.stdout, 'reconfigure'):
@@ -10,7 +11,6 @@ Injection point: before ## [第五部分] 📊 數據庫匯出 (CSV)
 Usage: python inject_mc_au.py <meeting_dir> [--races 1 2 3 ...]
 """
 
-import os
 import re
 import json
 import argparse

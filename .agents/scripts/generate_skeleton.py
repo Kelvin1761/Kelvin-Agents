@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
@@ -8,7 +9,6 @@ generate_skeleton.py — V4 Strict Fidelity Auto-Generator
 ===========================================================
 """
 import re
-import sys
 from pathlib import Path
 
 def detect_mode(text: str) -> str:

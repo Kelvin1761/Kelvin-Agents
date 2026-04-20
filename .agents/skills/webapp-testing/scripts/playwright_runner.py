@@ -12,7 +12,6 @@ Screenshots: Saved to system temp directory (auto-cleaned by OS)
 """
 import sys
 import json
-import os
 import tempfile
 from datetime import datetime
 

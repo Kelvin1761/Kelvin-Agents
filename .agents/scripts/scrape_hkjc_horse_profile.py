@@ -24,11 +24,9 @@ Usage:
     python3 scrape_hkjc_horse_profile.py --json HK_2024_K416
 """
 
-import sys
 import re
 import json
 import time
-import os
 import argparse
 from typing import Optional
 

@@ -30,8 +30,6 @@ Usage:
         [--output Facts.md]
 """
 import re
-import sys
-import os
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -535,7 +533,6 @@ def parse_hkjc_formguide(filepath: str) -> dict:
         ]
     }
     """
-    import os
     def load_brand_mapping(fp):
         rc_path = str(fp).replace('賽績.md', '排位表.md').replace('Formguide.txt', '排位表.md')
         mapping = {}
@@ -1103,7 +1100,7 @@ def generate_horse_block(horse: dict, today_venue: str = '',
         std_diff_str = '-'
         if ftime != '-':
             try:
-                ftime_sec = time_str_to_seconds(ftime)
+                ftime_sec = parse_time_to_seconds(ftime)
                 race_std = get_standard_time(venue, distance, class_g)
                 if ftime_sec and race_std:
                     diff = ftime_sec - race_std
@@ -1153,7 +1150,7 @@ def generate_horse_block(horse: dict, today_venue: str = '',
                 std_diff_str = '-'
                 if ftime != '-':
                     try:
-                        ftime_sec = time_str_to_seconds(ftime)
+                        ftime_sec = parse_time_to_seconds(ftime)
                         race_std = get_standard_time(venue, distance, class_g)
                         if ftime_sec and race_std:
                             diff = ftime_sec - race_std
@@ -1181,6 +1178,60 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     if trends['energy_values']:
         e_str = '→'.join(str(v) for v in trends['energy_values'])
         lines.append(f"  能量: {e_str} → 趨勢: {trends['energy_trend']}")
+    
+    # === 完成時間偏差趨勢 [SIP-P2c] ===
+    ft_deviations = []
+    for i in range(min(len(races), 6)):
+        r = races[i]
+        p = p_entries[i] if i < len(p_entries) else {}
+        ftime = p.get('finish_time_raw', '-')
+        if ftime and ftime != '-':
+            ftime_sec = parse_time_to_seconds(ftime)
+            r_venue = r.get('venue', '')[:4]
+            r_dist = r.get('distance', 0)
+            r_class = p.get('class_grade', '')
+            if r_class:
+                cmap = {'1': '第一班', '2': '第二班', '3': '第三班', '4': '第四班', '5': '第五班'}
+                r_class = cmap.get(str(r_class), r_class)
+            race_std = get_standard_time(r_venue, r_dist, r_class)
+            if ftime_sec and race_std:
+                ft_deviations.append(round(ftime_sec - race_std, 2))
+    
+    if len(ft_deviations) >= 2:
+        lines.append(f"")
+        lines.append(f"📊 **完成時間偏差趨勢 [SIP-P2c] (vs HKJC 標準):**")
+        dev_str = '→'.join(f"{v:+.2f}s" for v in ft_deviations)
+        # Trend analysis
+        if len(ft_deviations) >= 3:
+            recent_avg = sum(ft_deviations[:len(ft_deviations)//2]) / max(len(ft_deviations)//2, 1)
+            older_avg = sum(ft_deviations[len(ft_deviations)//2:]) / max(len(ft_deviations) - len(ft_deviations)//2, 1)
+            trend_delta = recent_avg - older_avg
+        else:
+            trend_delta = ft_deviations[0] - ft_deviations[-1]
+        if trend_delta < -0.3:
+            ft_trend = '📈改善中 ✅'
+            ft_reading = '近仗越跑越快於標準 — 正面'
+        elif trend_delta > 0.3:
+            ft_trend = '📉退步中 ⚠️'
+            ft_reading = '近仗越跑越慢於標準 — 負面'
+        else:
+            ft_trend = '📊穩定'
+            ft_reading = '完成時間相對標準穩定'
+        # Absolute level
+        avg_dev = sum(ft_deviations[:3]) / min(len(ft_deviations), 3)
+        if avg_dev < -0.5:
+            ft_level = '✅✅ 持續快於標準'
+        elif avg_dev < 0:
+            ft_level = '✅ 略快於標準'
+        elif avg_dev < 0.5:
+            ft_level = '➖ 接近標準水平'
+        elif avg_dev < 1.5:
+            ft_level = '⚠️ 略慢於標準'
+        else:
+            ft_level = '❌ 明顯慢於標準'
+        lines.append(f"  偏差: {dev_str} → 趨勢: {ft_trend}")
+        lines.append(f"  水平: {ft_level} (近 {min(len(ft_deviations), 3)} 仗平均偏差: {avg_dev:+.2f}s)")
+        lines.append(f"  含金量: {ft_reading}")
     
     # === 全段速剖面 (Full Sectional Profile) ===
     sect_profile_rows = []

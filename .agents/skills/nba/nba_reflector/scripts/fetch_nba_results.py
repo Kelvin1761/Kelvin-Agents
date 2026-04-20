@@ -22,8 +22,6 @@ Version: 1.0.0
 
 import argparse
 import json
-import os
-import sys
 import io
 import time
 

@@ -23,9 +23,7 @@ Usage:
 """
 import argparse
 import json
-import os
 import re
-import sys
 import time
 
 # --- Geo coordinates for Open-Meteo ---

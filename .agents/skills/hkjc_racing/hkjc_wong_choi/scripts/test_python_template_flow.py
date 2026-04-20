@@ -1,5 +1,6 @@
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys, io, os, json, re, subprocess, tempfile
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
@@ -15,7 +16,6 @@ Tests the full flow:
 Usage:
   python test_python_template_flow.py
 """
-import sys, io, os, json, re, subprocess, tempfile
 from pathlib import Path
 
 # Fix Windows console encoding

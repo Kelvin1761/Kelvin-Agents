@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 os.environ.setdefault('PYTHONUTF8', '1')
 import sys
 if hasattr(sys.stdout, 'reconfigure'):
@@ -9,7 +10,6 @@ Automated performance audit for React/Next.js projects
 Based on Vercel Engineering best practices
 """
 
-import os
 import re
 import json
 from pathlib import Path
@@ -236,7 +236,6 @@ class PerformanceChecker:
 
 
 def main():
-    import sys
 
     if len(sys.argv) < 2:
         print("Usage: python react_performance_checker.py <project_path>")

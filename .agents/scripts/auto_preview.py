@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
@@ -14,8 +15,6 @@ Usage:
     python .agent/scripts/auto_preview.py status
 """
 
-import os
-import sys
 import time
 import json
 import signal

@@ -7,7 +7,7 @@ import urllib.parse
 from bs4 import BeautifulSoup
 import re
 
-html = open("/Users/imac/Desktop/Drive/Antigravity/.agents/skills/hkjc_race_extractor/scripts/page.html").read()
+html = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "page.html")).read()
 
 soup = BeautifulSoup(html, 'html.parser')
 trs = soup.find_all('tr')

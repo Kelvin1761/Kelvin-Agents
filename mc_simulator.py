@@ -29,11 +29,12 @@ from scipy.stats import skewnorm
 
 N_SIMULATIONS = 10_000
 SKEW_ALPHA = -3       # Negatively skewed: horses more likely to underperform
-BASE_SIGMA = 8.0
+BASE_SIGMA = 10.0     # SIP-03: Increased from 8.0 to reduce overconfidence
 SIGMA_MIN = 4.0
 SIGMA_MAX = 16.0
 PI_MIN = 5.0
 PI_MAX = 99.0
+WIN_PCT_CAP = 35.0    # SIP-03: Max win probability cap for squashing
 
 RATING_TO_BASE = {
     'S': 72, 'S-': 70, 'A+': 68, 'A': 66, 'A-': 64,
@@ -65,6 +66,25 @@ PHASE_FRACTIONS = {
     'turn':   0.15,  # Turn for home
     'sprint': 0.20,  # Final sprint
 }
+
+# SIP-02: Straight course 1000m has no turn, more sprint emphasis
+PHASE_FRACTIONS_STRAIGHT = {
+    'start':  0.20,  # Gate speed more critical
+    'early':  0.25,  # Sprint positioning
+    'mid':    0.25,  # Sustain speed
+    'turn':   0.00,  # No turn!
+    'sprint': 0.30,  # Longer final sprint
+}
+
+
+# SIP-03: Class-based sigma multiplier (lower class = more random)
+def get_class_sigma_multiplier(class_info: str) -> float:
+    """Lower classes have higher variance."""
+    if '第五班' in str(class_info):
+        return 1.2
+    elif '第四班' in str(class_info):
+        return 1.1
+    return 1.0
 
 # ============================================================
 # Power Index Calculator
@@ -137,10 +157,19 @@ def calc_power_index(horse: dict, platform: str, speed_map: dict) -> dict:
         ctx -= 2.0
 
     # HKJC-specific: weight penalty (heavier = worse)
+    # SIP-07: Non-linear weight reduction model
     if platform == 'hkjc':
         weight = horse.get('weight', 126)
         if isinstance(weight, (int, float)) and weight > 0:
-            ctx += (126 - weight) * 0.15  # 126 is median; lighter = bonus
+            reduction = 126 - weight
+            if abs(reduction) >= 7:
+                ctx += reduction * 0.22  # Significant claim: boosted effect
+            else:
+                ctx += reduction * 0.15  # Standard effect
+            # Short distance / AWT extra boost for weight reduction
+            distance_val = horse.get('_race_distance', 1200)
+            if isinstance(distance_val, (int, float)) and distance_val <= 1200 and reduction > 0:
+                ctx += reduction * 0.03  # Modest sprint boost
 
     ctx = max(-10.0, min(10.0, ctx))
 
@@ -331,7 +360,8 @@ class HorseState:
 
 
 def simulate_single_race(horses: list, rng: np.random.Generator,
-                         distance: int, rail_collapse: bool) -> list:
+                         distance: int, rail_collapse: bool,
+                         is_straight: bool = False) -> list:
     """
     Simulate one complete race frame-by-frame.
     Returns list of (horse_name, total_performance) sorted best-first.
@@ -352,8 +382,13 @@ def simulate_single_race(horses: list, rng: np.random.Generator,
         )
         states.append(s)
 
+    # SIP-02: Use straight course phases if applicable
+    phases = PHASE_FRACTIONS_STRAIGHT if is_straight else PHASE_FRACTIONS
+    # Filter out zero-fraction phases
+    active_phases = {k: v for k, v in phases.items() if v > 0}
+
     # Run through each phase
-    for phase_idx, (phase_name, frac) in enumerate(PHASE_FRACTIONS.items()):
+    for phase_idx, (phase_name, frac) in enumerate(active_phases.items()):
         phase_dist = distance * frac
 
         for s in states:
@@ -379,8 +414,17 @@ def simulate_single_race(horses: list, rng: np.random.Generator,
                 s.energy -= 3.0
 
             # Barrier penalty at start phase
-            if phase_name == 'start' and s.barrier > 10:
-                phase_speed -= 1.5  # Wide draw loses ground early
+            # SIP-02: Straight courses favour OUTSIDE draws
+            if phase_name == 'start':
+                if is_straight:
+                    # Straight course: outside draws are GOOD
+                    if s.barrier >= 8:
+                        phase_speed += 1.0  # Outside advantage
+                    elif s.barrier <= 3:
+                        phase_speed -= 0.5  # Inside can get squeezed
+                else:
+                    if s.barrier > 10:
+                        phase_speed -= 1.5  # Wide draw loses ground early
 
             # Energy depletion
             depletion = effort_mult * 6.0  # High effort = more drain
@@ -405,7 +449,8 @@ def simulate_single_race(horses: list, rng: np.random.Generator,
 # ============================================================
 
 def run_monte_carlo(horses: list, distance: int, rail_collapse: bool,
-                    n_sims: int = N_SIMULATIONS, seed: int = 42) -> dict:
+                    n_sims: int = N_SIMULATIONS, seed: int = 42,
+                    is_straight: bool = False) -> dict:
     """
     Run N Monte Carlo simulations and aggregate results.
     horses: list of {name, power_index, sigma, style, barrier}
@@ -417,7 +462,7 @@ def run_monte_carlo(horses: list, distance: int, rail_collapse: bool,
     counters = {h['name']: {'wins': 0, 'top3': 0, 'top4': 0, 'rank_sum': 0} for h in horses}
 
     for _ in range(n_sims):
-        result = simulate_single_race(horses, rng, distance, rail_collapse)
+        result = simulate_single_race(horses, rng, distance, rail_collapse, is_straight)
         for rank, (name, _) in enumerate(result):
             c = counters[name]
             c['rank_sum'] += rank + 1
@@ -442,7 +487,34 @@ def run_monte_carlo(horses: list, distance: int, rail_collapse: bool,
             'predicted_place_odds': round(n_sims / max(c['top3'], 1), 1),
         }
 
+    # SIP-03: Squash probabilities to prevent overconfidence
+    output = squash_probabilities(output, cap=WIN_PCT_CAP)
+
     return output
+
+
+def squash_probabilities(mc_results: dict, cap: float = 35.0) -> dict:
+    """SIP-03: Cap max win probability and redistribute excess."""
+    total_excess = 0.0
+    n_uncapped = 0
+    capped_names = []
+
+    for name, stats in mc_results.items():
+        if stats['win_pct'] > cap:
+            total_excess += stats['win_pct'] - cap
+            stats['win_pct'] = cap
+            capped_names.append(name)
+        else:
+            n_uncapped += 1
+
+    # Redistribute excess proportionally to uncapped horses
+    if n_uncapped > 0 and total_excess > 0:
+        redistribution = round(total_excess / n_uncapped, 1)
+        for name, stats in mc_results.items():
+            if name not in capped_names:
+                stats['win_pct'] = round(stats['win_pct'] + redistribution, 1)
+
+    return mc_results
 
 
 # ============================================================
@@ -541,11 +613,39 @@ def calc_concordance(mc_results: dict, verdict: dict, horses_raw: list = None) -
         if stats['win_pct'] > 15 and name not in logic_top4:
             alerts.append(f"{name} has {stats['win_pct']}% MC win but NOT in Logic top4")
 
+    # SIP-08: Action-required alerts when concordance is low
+    action_alerts = []
+    if overlap <= 2:
+        action_alerts.append(
+            f"⚠️ LOW_CONCORDANCE: Logic-MC overlap = {overlap}/4. Expand to Top6."
+        )
+        # Identify MC-only horses with significant win%
+        mc_only = []
+        for name, stats in mc_results.items():
+            if name not in logic_top4 and stats['win_pct'] > 10:
+                mc_only.append({'name': name, 'win_pct': stats['win_pct']})
+        mc_only.sort(key=lambda x: x['win_pct'], reverse=True)
+        for m in mc_only[:2]:  # Max 2 additions
+            action_alerts.append(
+                f"📋 FORCE_REVIEW: {m['name']} has MC {m['win_pct']}% but NOT in Logic Top4"
+            )
+
+    # SIP-03: Overconfidence alert
+    mc_sorted_check = sorted(mc_results.items(), key=lambda x: x[1]['win_pct'], reverse=True)
+    if len(mc_sorted_check) >= 2:
+        top2_combined = mc_sorted_check[0][1]['win_pct'] + mc_sorted_check[1][1]['win_pct']
+        if top2_combined > 60:
+            action_alerts.append(
+                f"⚠️ OVERCONFIDENCE: Top2 combined = {top2_combined:.1f}%. Consider expanding to Top6."
+            )
+
     return {
         'logic_top4': logic_top4,
         'mc_top4': mc_top4,
         'overlap': overlap,
         'divergence_alerts': alerts,
+        'action_alerts': action_alerts,
+        'concordance_level': 'HIGH' if overlap >= 3 else 'LOW',
     }
 
 
@@ -562,12 +662,52 @@ def process_race(filepath: str, platform: str) -> dict:
     else:
         horses_raw, speed_map, verdict, distance = extract_horses_au(data)
 
+    # Extract race metadata for SIP adjustments
+    ra = data.get('race_analysis', {})
+    class_info = str(ra.get('race_class', ''))
+    track_str = str(ra.get('track', ''))
+
+    # SIP-02: Detect straight course
+    # HKJC: 1000m at Sha Tin is ALWAYS the straight course (no turns)
+    # Logic.json may not have 'track' field, so we detect by distance + platform
+    is_straight = False
+    if platform == 'hkjc' and distance <= 1000:
+        # All 1000m HKJC turf races are straight course at Sha Tin
+        # Only exception would be AWT (全天候), but 1000m AWT doesn't exist at ST
+        is_straight = True
+    elif distance <= 1000 and ('草地' in track_str and '直路' in track_str):
+        is_straight = True
+
+    # SIP-03: Class-based sigma multiplier
+    class_sigma_mult = get_class_sigma_multiplier(class_info)
+
+    # SIP-05: Detect class drop cluster
+    n_s_grades = 0
+    top4_raw = verdict.get('top4', []) if isinstance(verdict, dict) else []
+    for t in top4_raw:
+        if isinstance(t, dict) and str(t.get('grade', '')).startswith('S'):
+            n_s_grades += 1
+    class_drop_cluster = (n_s_grades >= 4)
+
+    # Inject race distance into horse data for SIP-07 weight calc
+    for h in horses_raw:
+        h['_race_distance'] = distance
+
     # Step 1: Calculate Power Index + Sigma for each horse
     pi_breakdown = {}
     for h in horses_raw:
         name = h.get('horse_name', f"Horse_{h.get('_horse_num', '?')}")
         pi_info = calc_power_index(h, platform, speed_map)
         sigma = calc_sigma(h)
+
+        # SIP-03: Apply class sigma multiplier
+        sigma *= class_sigma_mult
+
+        # SIP-02: Straight course sigma boost (+40%)
+        if is_straight:
+            sigma *= 1.4
+
+        sigma = float(np.clip(sigma, SIGMA_MIN, SIGMA_MAX))
         pi_breakdown[name] = {**pi_info, 'sigma': round(sigma, 1)}
 
     # Step 2: Calculate pace modifiers
@@ -581,6 +721,28 @@ def process_race(filepath: str, platform: str) -> dict:
             new_pi = pi_breakdown[name]['base'] + pi_breakdown[name]['matrix'] + \
                      pi_breakdown[name]['contextual'] + pace_mods[name]
             pi_breakdown[name]['final_pi'] = round(float(np.clip(new_pi, PI_MIN, PI_MAX)), 1)
+
+    # SIP-02: Straight course — extra burn penalty for front-runners
+    if is_straight:
+        leaders = speed_map.get('leaders', []) if speed_map else []
+        n_leaders = len(leaders)
+        if n_leaders >= 4:
+            for h in horses_raw:
+                name = h.get('horse_name', '')
+                if h.get('_style') == 'A' and name in pi_breakdown:
+                    pi_breakdown[name]['final_pi'] = max(
+                        PI_MIN, pi_breakdown[name]['final_pi'] - 4.0
+                    )
+
+    # SIP-05: Class drop cluster — dilute class advantage bonus
+    if class_drop_cluster:
+        for name, pi in pi_breakdown.items():
+            # Reduce contextual bonus by 30% for all horses in cluster scenario
+            if pi.get('contextual', 0) > 0:
+                reduced = pi['contextual'] * 0.7
+                diff = pi['contextual'] - reduced
+                pi['contextual'] = round(reduced, 1)
+                pi['final_pi'] = round(pi['final_pi'] - diff, 1)
 
     # Step 4: Build simulation input
     track_bias = str(speed_map.get('track_bias', ''))
@@ -599,7 +761,7 @@ def process_race(filepath: str, platform: str) -> dict:
         })
 
     # Step 5: Run Monte Carlo
-    mc_results = run_monte_carlo(sim_horses, distance, rail_collapse)
+    mc_results = run_monte_carlo(sim_horses, distance, rail_collapse, is_straight=is_straight)
 
     # Step 6: Concordance
     concordance = calc_concordance(mc_results, verdict, horses_raw)
@@ -610,15 +772,20 @@ def process_race(filepath: str, platform: str) -> dict:
 
     return {
         'simulations': N_SIMULATIONS,
-        'engine_version': 'mc_v1.0_frame_sim',
+        'engine_version': 'mc_v1.1_sip_enhanced',
         'platform': platform,
         'horses_count': len(sim_horses),
         'distance': distance,
+        'is_straight_course': is_straight,
+        'class_drop_cluster': class_drop_cluster,
         'parameters': {
             'base_sigma': BASE_SIGMA,
             'skew_alpha': SKEW_ALPHA,
-            'n_phases': len(PHASE_FRACTIONS),
-            'methodology': 'skew_normal_frame_by_frame_monte_carlo',
+            'win_pct_cap': WIN_PCT_CAP,
+            'class_sigma_multiplier': class_sigma_mult,
+            'straight_sigma_boost': 1.4 if is_straight else 1.0,
+            'n_phases': len(PHASE_FRACTIONS_STRAIGHT if is_straight else PHASE_FRACTIONS),
+            'methodology': 'skew_normal_frame_by_frame_monte_carlo_v1.1',
         },
         'power_index_breakdown': pi_breakdown,
         'results': mc_results,

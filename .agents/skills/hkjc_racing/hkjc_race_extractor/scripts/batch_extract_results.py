@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
@@ -9,8 +11,6 @@ Extracts results for multiple races using Lightpanda headless browser.
 Usage:
     python batch_extract_results.py --base_url "URL" --races "1-9" --output_dir "/path/to/output"
 """
-import os
-import sys
 import re
 import argparse
 import subprocess

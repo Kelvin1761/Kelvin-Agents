@@ -14,7 +14,6 @@ trigger the NBA Wong Choi pipeline, fetch data, run injury algorithms, and
 push the finished analysis to the user's Telegram.
 """
 
-import os
 import requests
 import datetime
 import argparse

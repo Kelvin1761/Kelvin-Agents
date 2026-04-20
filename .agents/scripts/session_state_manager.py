@@ -15,7 +15,6 @@ preventing token wastage on re-scanning directories upon session resume.
 """
 
 import argparse
-import os
 import json
 
 def get_state_path(target_dir):

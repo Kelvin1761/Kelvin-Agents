@@ -25,7 +25,6 @@ Priority Order:
     P6: Performance (lighthouse - requires URL)
 """
 
-import sys
 import subprocess
 import argparse
 from pathlib import Path

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys, os
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 Verification script: test grading engine against real Race 7 & 8 analysis files.
 """
-import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from rating_engine_v2 import compute_weighted_score, compute_base_grade, apply_fine_tune, grade_sort_index
@@ -14,7 +14,7 @@ from rating_engine_v2 import compute_weighted_score, compute_base_grade, apply_f
 # Import the parse_md function from fill_hkjc_verdicts
 from fill_hkjc_verdicts import parse_md
 
-RACE_DIR = '/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/2026-04-15_HappyValley'
+RACE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".." , "2026-04-15_HappyValley")
 
 print("=" * 70)
 print("VERIFICATION: Real Race Data End-to-End Test")

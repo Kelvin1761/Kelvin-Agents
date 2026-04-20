@@ -7,7 +7,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 """Extract Top 4 CSV from all analysis files for both Kelvin and Heison."""
 import re, os
 
-BASE = "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity"
+BASE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..")
 
 def extract_csv(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:

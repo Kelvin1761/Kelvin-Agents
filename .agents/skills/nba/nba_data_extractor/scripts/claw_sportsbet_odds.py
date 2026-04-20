@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 from __future__ import annotations
@@ -16,11 +17,9 @@ Architecture:
 
 Runs automatically. No manual user steps.
 """
-import sys
 import json
 import urllib.request
 import re
-import os
 from datetime import datetime
 try:
     from curl_cffi import requests

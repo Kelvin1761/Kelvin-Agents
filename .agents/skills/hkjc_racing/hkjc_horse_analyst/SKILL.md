@@ -47,6 +47,7 @@ ag_kit_skills:
 **Tier 2: 延遲載入(首個 Batch 開始前載入,載入後全程保留):**
 - `resources/02_data_retrieval.md` — 外部數據搜索協議與步驟依賴地圖
 - `resources/07a_signals_framework.md` + `07b_trainer_signals.md` + `07c_jockey_profiles.md` — 練馬師與騎師出擊訊號矩陣
+- `resources/11_factor_interaction.md` — [SIP-P2a] 因素互動矩陣（SYN/CON/CONTRA 觸發規則）
 
 **Tier 3: 按需載入(觸發時才讀,用完可釋放):**
 - `resources/08_templates_core.md` — 每批 batch JIT reload
@@ -89,6 +90,16 @@ ag_kit_skills:
    - **Anti-Laziness 錨定**:比較當前批次與 Batch 1 嘅每匹馬平均分析字數。若當前批次比 Batch 1 短 >30%,立即自我打回並以相同深度重寫。此規則亦適用於跨場次(Race 2+ 必須維持 Race 1 嘅分析深度)。
    - **重複數據偵測**:對本批次所有馬匹的 L600/L400 段速值、EEM 走位代碼、穩定性判定、組合上名率進行去重統計。**若任一欄位中 ≥50% 馬匹出現完全相同數值 → 品質警報 🚨**,必須暫停並逐匹重新以獨立數據填充。
    - **關鍵馬匹交叉驗證**:對全場賠率前 3 名的熱門馬,核實其穩定性/段速/EEM 是否反映真實近績(非默認值)。若發現使用默認值 → 強制重新分析。
+   - **[SIP-P1e] Facts.md 數據覆蓋度驗證 (Minimum Citation Check):**
+      對本批次每匹馬,核實是否引用咗以下 6 項 Facts.md 預計算數據:
+      1. ✅ 全段速剖面 S1/S2/S3 + Δ 偏差（Step 10 段速法醫）
+      2. ✅ 段速形態 + 形態一致性（Step 10.4）
+      3. ✅ EEM 預評估（消耗/疲勞/觸發條件）（Step 11）
+      4. ✅ 頭馬距離趨勢 + 交叉驗證（Step 10.6）
+      5. ✅ 引擎類型 + 距離分佈（Step 2.6）
+      6. ✅ 走位 PI 趨勢（Step 11 EEM）
+      7. ✅ 互動矩陣觸發判定（[SIP-P2a] 是否有 SYN/CON/CONTRA 觸發 + 標記）
+      **若任何一匹馬缺少 ≥2 項 → QG-CHECK 失敗,必須補充後重新提交。**
    - 通過後在批次末標注 `⚠️ QG-CHECK PASSED`。
 
 **🔴 QG-CHECK 連續失敗 2 次 — AG Kit Systematic Debugging:**

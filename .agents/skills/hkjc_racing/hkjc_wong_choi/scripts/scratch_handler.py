@@ -17,8 +17,6 @@ Usage:
 Example:
   python scratch_handler.py 2026-04-12_ShaTin 2 --scratched 5,8
 """
-import os
-import sys
 import json
 import re
 import argparse

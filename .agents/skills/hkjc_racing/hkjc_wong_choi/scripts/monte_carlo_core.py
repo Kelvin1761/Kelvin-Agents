@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys, io, json, random, math
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
@@ -15,7 +16,6 @@ Shared by HKJC and AU Monte Carlo engines.
 
 Version: 2.0.0
 """
-import sys, io, json, random, math
 
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')

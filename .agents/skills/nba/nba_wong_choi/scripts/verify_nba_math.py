@@ -1,5 +1,6 @@
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys, io, re, json, os, pathlib, argparse
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
@@ -15,7 +16,6 @@ Usage:
   python verify_nba_math.py <analysis_file.md>
   python verify_nba_math.py <directory_of_analysis_files>
 """
-import sys, io, re, json, os, pathlib, argparse
 from dataclasses import dataclass, field, asdict
 
 # Fix Windows console encoding

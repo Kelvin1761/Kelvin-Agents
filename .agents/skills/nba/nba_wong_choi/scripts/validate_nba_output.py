@@ -26,9 +26,7 @@ Usage:
 Exit code 0 = all PASS, 1 = any BLOCK/FAIL
 """
 
-import sys
 import io
-import os
 import re
 import json
 import glob

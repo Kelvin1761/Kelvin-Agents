@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
@@ -13,8 +14,6 @@ Note: Requires lighthouse CLI (npm install -g lighthouse)
 """
 import subprocess
 import json
-import sys
-import os
 import tempfile
 
 def run_lighthouse(url: str) -> dict:

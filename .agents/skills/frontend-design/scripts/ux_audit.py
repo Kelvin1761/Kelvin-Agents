@@ -94,8 +94,6 @@ Analyzes code for compliance with:
 Total: 80+ checks across all design principles
 """
 
-import sys
-import os
 import re
 import json
 from pathlib import Path

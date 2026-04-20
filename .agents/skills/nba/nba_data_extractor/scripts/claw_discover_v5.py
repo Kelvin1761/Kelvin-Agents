@@ -18,7 +18,6 @@ Usage: python claw_discover_v5.py [--games MIL_DET,MIN_ORL,...]
 import asyncio
 import json
 import re
-import sys
 from playwright.async_api import async_playwright
 
 CDP_PORT = 9222

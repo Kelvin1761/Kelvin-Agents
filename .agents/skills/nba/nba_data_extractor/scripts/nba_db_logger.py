@@ -1,3 +1,4 @@
+import os
 os.environ.setdefault('PYTHONUTF8', '1')
 import sys
 if hasattr(sys.stdout, 'reconfigure'):
@@ -5,7 +6,6 @@ if hasattr(sys.stdout, 'reconfigure'):
 import sqlite3
 import argparse
 import re
-import os
 import json
 from datetime import datetime
 

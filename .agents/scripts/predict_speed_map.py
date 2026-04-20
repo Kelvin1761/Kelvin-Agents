@@ -22,8 +22,6 @@ INTEGRATION:
   Call BEFORE LLM Batch 0 so LLM gets pre-filled Speed Map suggestion to validate/correct.
 """
 
-import sys
-import os
 import json
 import re
 import argparse

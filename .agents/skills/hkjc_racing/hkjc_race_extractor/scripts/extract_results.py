@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
@@ -11,8 +12,6 @@ Designed to be called by a batch script for concurrent extraction.
 Usage:
     python extract_results.py <results_url>
 """
-import sys
-import os
 import re
 from bs4 import BeautifulSoup  # type: ignore
 from playwright.sync_api import sync_playwright  # type: ignore

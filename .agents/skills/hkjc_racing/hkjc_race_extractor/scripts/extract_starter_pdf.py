@@ -1,12 +1,12 @@
+import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 import requests
 import pdfplumber
-import sys
 import re
 from datetime import datetime
-import os
 
 def download_pdf(date_str):
     url = f"https://racing.hkjc.com/racing/content/PDF/RaceCard/{date_str}_starter_all_chi.pdf"

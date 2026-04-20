@@ -30,10 +30,14 @@ ag_kit_skills:
 
 # 10-Step Pipeline
 
-## Step 1: 擷取賽果 (🐍)
-- `read_url_content` 讀取 HKJC 賽果 URL → 提取每場前三名、賠率、分段時間
-- Fallback: `python .agents/skills/hkjc_racing/hkjc_race_extractor/scripts/batch_extract_results.py --base_url "<URL>" --races "1-10" --output_dir "[TARGET_DIR]"`
-- **Output:** 結構化賽果數據
+## Step 1: 擷取賽果 (🐍 Claw Code)
+- **Primary:** `python .agents/skills/hkjc_racing/hkjc_race_extractor/scripts/fast_extract_results.py --date "YYYY/MM/DD" --venue ST --races "1-11" --output_dir "[TARGET_DIR]"`
+  - Claw Code 架構：curl_cffi (chrome120 TLS impersonation) + BS4 解析 SSR HTML
+  - 自動提取：賽果表（全部名次/馬號/騎師/賠率/走位/時間）+ 競賽事件報告 + 分段時間
+  - 輸出 JSON（供 Step 2 統計）+ Markdown（供人工檢閱）+ 個別賽果檔案
+- **Fallback:** 若 curl_cffi 失敗，script 自動降級至 urllib fallback
+- **Emergency:** 若 script 完全失敗 → `read_url_content` 讀取 HKJC 賽果 URL（注意：可能無法取得完整 JS-rendered 數據）
+- **Output:** `{MM}-{DD}_{venue}_全日賽果.json` + `.md` + 個別 `Race_N_Results.md`
 
 ## Step 2: 比對賽果 vs 賽前預測 (🐍)
 - `python .agents/skills/hkjc_racing/hkjc_reflector/scripts/reflector_auto_stats.py "[TARGET_DIR]" "[RESULTS_FILE]"`

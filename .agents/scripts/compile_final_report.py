@@ -18,7 +18,6 @@ import glob
 import re
 import shutil
 import subprocess
-import sys
 
 def compile_reports(target_dir):
     print(f"Scanning {target_dir} for analysis files...")

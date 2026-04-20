@@ -1,9 +1,9 @@
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-import sys
-sys.path.append("/Users/imac/Desktop/Drive/Antigravity/.agents/skills/hkjc_race_extractor/scripts")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import urllib.parse
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
@@ -19,7 +19,7 @@ with sync_playwright() as p:
     html_content = page.content()
     browser.close()
 
-with open("/Users/imac/Desktop/Drive/Antigravity/.agents/skills/hkjc_race_extractor/scripts/live_page.html", "w") as f:
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "live_page.html"), "w") as f:
     f.write(html_content)
 
 print("Saved live HTML!")

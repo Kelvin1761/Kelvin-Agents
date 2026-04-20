@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
+import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 This module generates an Excel summary report from HKJC Hong Kong racing analysis text files.
 It parses CSV output blocks or fallback Markdown top 4 tables from generated analysis records.
 """
-import os
-import sys
 import re
 import argparse
 import pandas as pd

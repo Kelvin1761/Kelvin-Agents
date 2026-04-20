@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
@@ -14,15 +15,12 @@ Usage:
   python3 compile_analysis_template.py <Facts.md> <Logic.json> --output <Analysis.md>
 """
 
-import sys
-import os
 import json
 import argparse
 from pathlib import Path
 import re
 
 # Import shared qualitative rating engine v2 (replaces deprecated grading_engine)
-import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../scripts")))
 from rating_engine_v2 import compute_base_grade, compute_weighted_score, apply_fine_tune, parse_matrix_scores, grade_sort_index
 

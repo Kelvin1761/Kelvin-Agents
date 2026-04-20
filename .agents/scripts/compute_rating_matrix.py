@@ -38,7 +38,6 @@ Input JSON format (per horse):
 Output: Final grade + formatted matrix block per horse.
 """
 import json
-import sys
 import argparse
 from pathlib import Path
 

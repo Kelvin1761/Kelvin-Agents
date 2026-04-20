@@ -1,12 +1,12 @@
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 import re
-import sys
 
 def inject():
-    path = "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/2026-04-12_ShaTin (Kelvin)/04-12 Race 3 Analysis.md"
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".." , "2026-04-12_ShaTin (Kelvin)", "04-12 Race 3 Analysis.md")
     with open(path, 'r', encoding='utf-8') as f:
         text = f.read()
 

@@ -1,7 +1,7 @@
 ---
-description: 防串流鎖死寫檔協議 (Anti-Streaming-Lock Safe Write Protocol) — P19v5 簡化版
+description: 防串流鎖死寫檔協議 (Anti-Streaming-Lock Safe Write Protocol) — V2 跨平台版
 ---
-# Safe Write Protocol — P19v5 (Simplified Pipe Writer)
+# Safe Write Protocol — V2 (Cross-Platform)
 
 ## 為什麼需要這個協議？
 
@@ -13,64 +13,50 @@ IDE Tool → open(GDrive path) → macOS FileProvider lock → Google Drive sync
 ```
 
 > [!CAUTION]
-> **`write_to_file` 工具完全禁用!** 即使目標為 `/tmp`，`write_to_file` 工具本身也可能卡死（已實測確認 2026-04-03）。所有檔案寫入必須透過 `run_command` 執行。
+> **`write_to_file` 工具完全禁用!** 即使目標為臨時目錄，`write_to_file` 工具本身也可能卡死（已實測確認 2026-04-03）。所有檔案寫入必須透過 `run_command` 執行。
 
 > [!CAUTION]
-> **`shutil.move` 也會死鎖!** Python 的 `shutil.move` 在跨裝置搬移時會觸發 FileProvider 死鎖。必須使用 shell `cp` 命令代替。
+> **`shutil.move` 也會死鎖!** Python 的 `shutil.move` 在跨裝置搬移時會觸發 FileProvider 死鎖。`safe_file_writer.py` 已內建 timeout 保護。
 
-## 解決方案：Heredoc → /tmp → cp → Google Drive
+## 解決方案：使用 safe_file_writer.py（跨平台）
+
+`safe_file_writer.py` 位於 `.agents/scripts/safe_file_writer.py`，**無需 Step 0 建立**——已永久存在於 repo 中。
 
 ```
-Agent Content → heredoc → /tmp/safe_file_writer.py → /tmp/_sfw_{name} → cp → Google Drive target
-     (瞬間)                    (瞬間)                        (瞬間)          (原子, <100ms)
+Agent Content → base64 encode → python safe_file_writer.py → staging dir → atomic move → target
+     (瞬間)                          (瞬間)                    (timeout 保護)
 ```
 
-## Step 0：確保 Safe Writer 存在 (每個 session 首次執行)
+## 寫入方法
 
-// turbo
+### 方法 A：Base64 模式（推薦 — 最穩定）
+
 ```bash
-cat << 'PYEOF' > /tmp/safe_file_writer.py
-import sys, os, subprocess
-
-def main():
-    if len(sys.argv) != 2:
-        print("Usage: cat content | python safe_file_writer.py <target_path>")
-        sys.exit(1)
-    target_path = sys.argv[1]
-    tmp_path = f"/tmp/_sfw_{os.path.basename(target_path)}"
-    content = sys.stdin.read()
-    with open(tmp_path, 'w', encoding='utf-8') as f:
-        f.write(content)
-    # Use cp instead of shutil.move — shutil.move triggers Google Drive FileProvider deadlock
-    result = subprocess.run(['cp', tmp_path, target_path], capture_output=True, text=True)
-    if result.returncode != 0:
-        print(f"FAIL: cp error: {result.stderr}")
-        sys.exit(1)
-    os.remove(tmp_path)
-    print(f"OK: {len(content)} bytes -> {target_path}")
-
-if __name__ == '__main__':
-    main()
-PYEOF
-echo "safe_file_writer.py created OK"
+# 先將內容 base64 encode，然後傳入
+CONTENT=$(echo '你的分析內容...' | base64)
+python .agents/scripts/safe_file_writer.py --target '/path/to/target.md' --mode overwrite --content "$CONTENT"
 ```
 
-## Step 1：寫入檔案 (標準模式)
+### 方法 B：stdin 模式
 
-使用 heredoc 將內容通過管道傳入 safe_file_writer.py：
-
-// turbo
 ```bash
-cat << 'CONTENTEOF' | python /tmp/safe_file_writer.py '/path/to/target.md'
-# 你的分析內容
-## 第一部分
-...（任意長度 Markdown）...
-CONTENTEOF
+echo '你的分析內容...' | python .agents/scripts/safe_file_writer.py --target '/path/to/target.md' --mode overwrite --stdin
 ```
 
-## Step 2：驗證寫入結果
+### 方法 C：Python 腳本內使用
 
-// turbo
+```python
+import subprocess, base64, sys, shutil
+
+_py = "python3" if shutil.which("python3") else "python"
+content = "你的分析內容..."
+b64 = base64.b64encode(content.encode('utf-8')).decode('utf-8')
+subprocess.run([_py, ".agents/scripts/safe_file_writer.py",
+                "--target", target_path, "--mode", "overwrite", "--content", b64], check=True)
+```
+
+## 驗證寫入結果
+
 ```bash
 wc -l '/path/to/target.md' && head -5 '/path/to/target.md'
 ```
@@ -79,20 +65,19 @@ wc -l '/path/to/target.md' && head -5 '/path/to/target.md'
 
 | 操作 | 工具 |
 |------|------|
-| 創建新檔案 | ✅ `heredoc \| python /tmp/safe_file_writer.py` (via `run_command`) |
-| 覆蓋整個檔案 | ✅ `heredoc \| python /tmp/safe_file_writer.py` (via `run_command`) |
-| 追加內容到檔案 | ✅ 先 heredoc 到 /tmp 再 `cat >> target` |
+| 創建新檔案 | ✅ `python .agents/scripts/safe_file_writer.py` (via `run_command`) |
+| 覆蓋整個檔案 | ✅ `python .agents/scripts/safe_file_writer.py --mode overwrite` |
+| 追加內容到檔案 | ✅ `python .agents/scripts/safe_file_writer.py --mode append` |
 | 修改少量行 (<50 行) | ✅ `replace_file_content` / `multi_replace_file_content` |
-| 創建新檔案 | ❌ ~~`write_to_file`~~ **完全禁用 — 即使 /tmp 也卡死** |
+| 創建新檔案 | ❌ ~~`write_to_file`~~ **完全禁用** |
 
 ## 已知死鎖觸發器 (Deadlock Triggers)
 
 | 方法 | 狀態 | 原因 |
 |------|------|------|
 | `write_to_file` (any path) | ❌ 死鎖 | IDE tool 本身 hang |
-| `shutil.move(/tmp → GDrive)` | ❌ 死鎖 | cross-device rename 觸發 FileProvider |
-| `cp /tmp/file GDrive/target` | ✅ 正常 | shell cp 不觸發 FileProvider lock |
-| heredoc → `/tmp/file` | ✅ 正常 | 本地寫入無鎖 |
+| `shutil.move(tmp → GDrive)` | ⚠️ 有 timeout | safe_file_writer.py 已內建 SIGALRM/threading.Timer 保護 |
+| `python .agents/scripts/safe_file_writer.py` | ✅ 安全 | staging → atomic move with timeout |
 
 > [!CAUTION]
 > 違反此協議會導致 IDE 串流鎖死。所有 Wong Choi Engine（HKJC / AU / NBA）的 batch 寫入必須遵守。

@@ -1,15 +1,15 @@
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-import sys
-sys.path.append("/Users/imac/Desktop/Drive/Antigravity/.agents/skills/hkjc_race_extractor/scripts")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import extract_formguide_playwright as ex
 from bs4 import BeautifulSoup
 import re
 import urllib.parse
 
-html = open("/Users/imac/Desktop/Drive/Antigravity/.agents/skills/hkjc_race_extractor/scripts/page.html").read()
+html = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "page.html")).read()
 soup = BeautifulSoup(html, 'html.parser')
 
 output = []

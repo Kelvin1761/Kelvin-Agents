@@ -13,7 +13,6 @@ enabling the Wong Choi agents to perform semantic back-testing:
 "Have we seen a Type A horse with a fast L400 fail from barrier 14 at Happy Valley before?"
 """
 
-import os
 import argparse
 try:
     import chromadb

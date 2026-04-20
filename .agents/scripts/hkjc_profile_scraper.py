@@ -20,11 +20,9 @@ Usage:
     python3 hkjc_profile_scraper.py --horse-id HK_2024_K416 --json
 """
 
-import sys
 import re
 import json
 import time
-import os
 import argparse
 from datetime import datetime
 from typing import Optional

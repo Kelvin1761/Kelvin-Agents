@@ -18,8 +18,6 @@ V2.1 — Added Session Script Detection (Anti-Script Firewall)
 Usage:
   python3 .agents/scripts/preflight_environment_check.py <target_dir> [--domain hkjc|au|nba]
 """
-import os
-import sys
 import json
 import argparse
 import time

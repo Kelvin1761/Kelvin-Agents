@@ -24,7 +24,6 @@ Extracts per horse (last 8 starts, skipping trials):
   - Computed: fitness arc, L600 trend, condition suitability
 """
 import re
-import sys
 import json
 import argparse
 from pathlib import Path

@@ -25,7 +25,6 @@ fields (weight, schema types) and never touches analytical content
 
 import json
 import re
-import sys
 from pathlib import Path
 
 

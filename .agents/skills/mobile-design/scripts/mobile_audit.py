@@ -70,8 +70,6 @@ Analyzes React Native / Flutter code for compliance with:
 Total: 50+ mobile-specific checks
 """
 
-import sys
-import os
 import re
 import json
 from pathlib import Path

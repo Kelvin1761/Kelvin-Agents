@@ -1,5 +1,6 @@
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys, io, re, os, pathlib, argparse
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
@@ -16,7 +17,6 @@ Exit codes:
   0 = Success
   2 = Error
 """
-import sys, io, re, os, pathlib, argparse
 
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')

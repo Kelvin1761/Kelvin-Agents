@@ -19,6 +19,5 @@ def extract_formguide(url):
     pass
 
 if __name__ == "__main__":
-    import sys
     if len(sys.argv) > 1:
         extract_formguide(sys.argv[1])

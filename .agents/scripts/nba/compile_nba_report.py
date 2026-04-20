@@ -13,7 +13,6 @@ the Combination blocks (Bankers & SGM), and synthesizes them into Master_SGM.md
 and Banker_Combinations.md.
 """
 
-import os
 import argparse
 import glob
 

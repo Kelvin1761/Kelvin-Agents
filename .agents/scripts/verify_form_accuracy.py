@@ -21,7 +21,6 @@ Usage:
 Exit code: 0 = all match, 1 = mismatches found
 """
 import re
-import sys
 from pathlib import Path
 
 

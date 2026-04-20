@@ -1,5 +1,6 @@
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
@@ -10,9 +11,7 @@ This crawler perfectly spoofs a browser using `curl_cffi` to quickly grab raw HT
 and evaluates it offline via a completely invisible local Playwright instance.
 Bypasses Cloudflare unconditionally with zero visual popups.
 """
-import sys
 import io
-import os
 import json
 import re
 import time

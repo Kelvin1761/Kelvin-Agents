@@ -15,7 +15,6 @@ Usage:
     python .agent/scripts/session_manager.py info [path]
 """
 
-import os
 import json
 import argparse
 from pathlib import Path

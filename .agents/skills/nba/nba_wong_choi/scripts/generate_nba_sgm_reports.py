@@ -19,9 +19,7 @@ Version: 1.0.0
 
 import argparse
 import glob
-import os
 import re
-import sys
 import io
 
 if sys.stdout.encoding != 'utf-8':

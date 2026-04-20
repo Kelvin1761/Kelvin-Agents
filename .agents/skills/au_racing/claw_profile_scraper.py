@@ -19,9 +19,7 @@ V2 Update (2026-04-08):
   - Adds venue-based class inference (Metro/Provincial)
 """
 
-import sys
 import io
-import os
 import json
 import argparse
 import re

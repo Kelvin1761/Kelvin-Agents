@@ -17,8 +17,6 @@ Arguments:
     --races: Race range (e.g., "1-9" or "1,3,5" or "1")
     --output_dir: Target folder for output files
 """
-import os
-import sys
 import re
 import argparse
 import subprocess

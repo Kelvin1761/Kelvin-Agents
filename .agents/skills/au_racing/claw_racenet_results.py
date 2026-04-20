@@ -19,9 +19,7 @@ Usage:
   python claw_racenet_results.py --url "..." --output_dir "/path/to/meeting_dir"
   python claw_racenet_results.py --url "..." --json   # Output JSON instead of markdown
 """
-import sys
 import io
-import os
 import json
 import re
 import argparse

@@ -27,8 +27,6 @@ nba_extractor.py — NBA Wong Choi Claw Code V3 (究極版)
   pip install nba_api requests curl-cffi
 """
 
-import os
-import sys
 import json
 import math
 import argparse

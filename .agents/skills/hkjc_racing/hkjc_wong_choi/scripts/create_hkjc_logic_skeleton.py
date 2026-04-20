@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
+import sys, re, json, os, argparse, io
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
@@ -12,7 +13,6 @@ pre-fills Logic.json. LLM only needs to fill [FILL] analysis fields.
 Usage:
   python3 create_hkjc_logic_skeleton.py <facts_path> <race_num> <horse_num>
 """
-import sys, re, json, os, argparse, io
 
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
