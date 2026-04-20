@@ -101,7 +101,7 @@ def extract_racenet_weather(url):
         return None
 
     temp_html = os.path.abspath(f"_mip_temp_{int(time.time())}.html")
-    with open(temp_html, 'w') as f:
+    with open(temp_html, 'w', encoding='utf-8') as f:
         f.write(resp.text)
 
     try:

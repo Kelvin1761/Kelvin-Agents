@@ -16,7 +16,7 @@ if details:
     print("Full Form Details HTML Length:", len(html))
     
     # Save it to a file so we can read it easily
-    with open('./.agents/skills/au_race_extractor/scripts/absolute_power_form.html', 'w') as out:
+    with open('./.agents/skills/au_race_extractor/scripts/absolute_power_form.html', 'w', encoding='utf-8') as out:
         out.write(html)
         
     print("Saved to absolute_power_form.html")

@@ -17,7 +17,7 @@ headers = {
 resp = requests.get(url, impersonate="chrome120", headers=headers, timeout=30)
 
 temp_html = ".agents.agents/tmp/overview.html"
-with open(temp_html, 'w') as f:
+with open(temp_html, 'w', encoding='utf-8') as f:
     f.write(resp.text)
     
 print("Parsing locally...")

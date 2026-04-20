@@ -74,7 +74,7 @@ def start_server(port=3000):
     
     print(f"🚀 Starting preview on port {port}...")
     
-    with open(LOG_FILE, "w") as log:
+    with open(LOG_FILE, 'w', encoding='utf-8') as log:
         process = subprocess.Popen(
             cmd,
             cwd=str(root),

@@ -37,7 +37,7 @@ def fetch_nuxt_data(url):
     
     import time
     temp_html = os.path.abspath(f"racenet_temp_{int(time.time())}.html")
-    with open(temp_html, 'w') as f:
+    with open(temp_html, 'w', encoding='utf-8') as f:
         f.write(resp.text)
     
     print("Evaluating Nuxt payload with Playwright locally...")

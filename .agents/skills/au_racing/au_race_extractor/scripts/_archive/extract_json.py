@@ -25,7 +25,7 @@ for i, script in enumerate(scripts):
             data = json.loads(json_str)
             print(f"Successfully parsed JSON. Keys: {data.keys()}")
             
-            with open('./.agents/skills/au_race_extractor/scripts/preloaded_state.json', 'w') as out:
+            with open('./.agents/skills/au_race_extractor/scripts/preloaded_state.json', 'w', encoding='utf-8') as out:
                 json.dump(data, out, indent=2)
             print("Saved exactly to preloaded_state.json")
             break

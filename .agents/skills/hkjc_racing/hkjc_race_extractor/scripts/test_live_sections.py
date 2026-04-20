@@ -19,7 +19,7 @@ with sync_playwright() as p:
     html_content = page.content()
     browser.close()
 
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "live_page.html"), "w") as f:
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "live_page.html"), "w", encoding="utf-8") as f:
     f.write(html_content)
 
 print("Saved live HTML!")

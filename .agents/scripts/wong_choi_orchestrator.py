@@ -40,7 +40,7 @@ def run_extraction(mode, url, target_dir):
         print(f"  -> Scraping HKJC Race Card from: {url}")
         time.sleep(1)
         print(f"  -> Generating Formguide.txt to {target_dir}")
-        with open(os.path.join(target_dir, "Formguide.txt"), "w") as f:
+        with open(os.path.join(target_dir, "Formguide.txt"), "w", encoding="utf-8") as f:
             f.write("Scraped Formguide Data")
             
         print("  -> Injecting Fact Anchors...")
@@ -62,7 +62,7 @@ def trigger_agent_analysis(mode, target_dir, race_number):
     # For now, simulate output write
     time.sleep(1)
     analysis_file = os.path.join(target_dir, f"Race_{race_number}_Analysis.md")
-    with open(analysis_file, 'w') as f:
+    with open(analysis_file, 'w', encoding='utf-8') as f:
         f.write("## [第三部分] 🏆 全場最終決策\n")
         f.write("```csv\n")
         f.write(f"{race_number}, C4, 1200m, Purton, Size, 1, Test Horse, S-\n")

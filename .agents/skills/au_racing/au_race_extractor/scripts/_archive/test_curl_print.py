@@ -15,7 +15,7 @@ print(f"Fetching {url_print}")
 try:
     response = requests.get(url_print, impersonate="chrome120", headers=headers, timeout=30)
     print(f"Status Code: {response.status_code}")
-    with open('./racenet_print_curl.html', 'w') as f:
+    with open('./racenet_print_curl.html', 'w', encoding='utf-8') as f:
         f.write(response.text)
     print("Saved to racenet_print_curl.html")
 except Exception as e:

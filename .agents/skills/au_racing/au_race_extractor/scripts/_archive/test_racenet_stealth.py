@@ -31,7 +31,7 @@ def main():
             print("Contains '10 Results'?", "10 Results" in html)
             print("Contains 'Access Denied'?", "Access Denied" in html or "Cloudflare" in html or "ERROR" in html)
             
-            with open('./racenet_stealth.html', 'w') as f:
+            with open('./racenet_stealth.html', 'w', encoding='utf-8') as f:
                 f.write(html)
     except Exception as e:
         print("Stealth error:", e)

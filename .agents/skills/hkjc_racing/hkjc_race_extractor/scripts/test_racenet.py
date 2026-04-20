@@ -13,7 +13,7 @@ try:
         html = response.read().decode('utf-8')
         print("Overview Length:", len(html))
         print("Contains '10 Results'?", "10 Results" in html)
-        with open('racenet_overview.html', 'w') as f:
+        with open('racenet_overview.html', 'w', encoding='utf-8') as f:
             f.write(html)
 except Exception as e:
     print("Overview Error:", e)
@@ -25,7 +25,7 @@ try:
     with urllib.request.urlopen(req_print) as response:
         html = response.read().decode('utf-8')
         print("Print Form Length:", len(html))
-        with open('racenet_print.html', 'w') as f:
+        with open('racenet_print.html', 'w', encoding='utf-8') as f:
             f.write(html)
 except Exception as e:
     print("Print Form Error:", e)

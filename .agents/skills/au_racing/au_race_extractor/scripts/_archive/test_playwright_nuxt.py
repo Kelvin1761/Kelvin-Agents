@@ -19,7 +19,7 @@ def get_nuxt_data():
         
         print("Success! Keys in Nuxt data:", nuxt_data.keys() if nuxt_data else "None")
         
-        with open('./.agents/skills/au_race_extractor/scripts/nuxt.json', 'w') as f:
+        with open('./.agents/skills/au_race_extractor/scripts/nuxt.json', 'w', encoding='utf-8') as f:
             json.dump(nuxt_data, f, indent=2)
             
         print("Saved to nuxt.json")

@@ -16,7 +16,7 @@ def fetch_nuxt_data(url, temp_html_path=".agents.agents/tmp/racenet_sectionals.h
     resp = requests.get(url, impersonate="chrome120", headers=headers, timeout=30)
     resp.raise_for_status()
     
-    with open(temp_html_path, 'w') as f:
+    with open(temp_html_path, 'w', encoding='utf-8') as f:
         f.write(resp.text)
     
     with sync_playwright() as p:
@@ -31,7 +31,7 @@ def fetch_nuxt_data(url, temp_html_path=".agents.agents/tmp/racenet_sectionals.h
 url = "https://www.racenet.com.au/form-guide/horse-racing/caulfield-heath-20260304/briga-fliedner-2026-lady-of-racing-finalist-race-1/sectionals"
 nuxt = fetch_nuxt_data(url)
 
-with open("./.agents/skills/au_race_extractor/scripts/sectionals_nuxt.json", "w") as f:
+with open("./.agents/skills/au_race_extractor/scripts/sectionals_nuxt.json", 'w', encoding='utf-8') as f:
     json.dump(nuxt, f, indent=2)
 
 print("Saved sectionals payload to sectionals_nuxt.json")

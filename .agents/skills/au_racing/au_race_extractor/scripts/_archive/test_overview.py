@@ -16,7 +16,7 @@ headers = {
 resp = requests.get(url, impersonate="chrome120", headers=headers, timeout=30)
 
 temp_html = ".agents.agents/tmp/overview.html"
-with open(temp_html, 'w') as f:
+with open(temp_html, 'w', encoding='utf-8') as f:
     f.write(resp.text)
     
 with sync_playwright() as p:
@@ -26,7 +26,7 @@ with sync_playwright() as p:
     nuxt_data = page.evaluate("() => window.__NUXT__")
     browser.close()
 
-with open('nuxt_overview.json', 'w') as f:
+with open('nuxt_overview.json', 'w', encoding='utf-8') as f:
      json.dump(nuxt_data, f)
      
 print("Saved nuxt_overview.json")
