@@ -72,6 +72,22 @@ python -m playwright install chromium
 > python -m playwright install --with-deps chromium
 > ```
 
+### 2.4 更新 MCP 配置（如適用）
+
+`.agents/mcp_config.json` 包含 SQLite 資料庫嘅絕對路徑。如果你嘅 home 目錄唔係 `/Users/imac`，需要更新：
+
+```json
+{
+  "mcpServers": {
+    "sqlite": {
+      "args": ["-y", "mcp-server-sqlite", "/YOUR/HOME/.gemini/antigravity/databases/wong_choi.db"]
+    }
+  }
+}
+```
+
+將 `/YOUR/HOME` 替換為你嘅實際 home 目錄路徑。
+
 ---
 
 ## 3. Windows 額外設定

@@ -20,7 +20,7 @@ version: 4.0.0
 
 ## 跨平台執行規則
 - **Python 指令**: 使用 `python`（macOS 同 Windows 通用）。Orchestrator 內部已有 `shutil.which` 自動偵測。
-- **臨時檔案**: macOS 用 `/tmp/`，Windows 用 workspace 內嘅 `.scratch/` 目錄。
+- **臨時檔案**: 統一使用 workspace 內嘅 `.scratch/` 目錄或 `tempfile.gettempdir()`。
 - **Shell 語法**: 嚴禁使用 `cat <<EOF` heredoc 語法。改用 Python 腳本寫檔。
 - **Encoding**: 所有 `open()` 必須指定 `encoding='utf-8'`。
 
