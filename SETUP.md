@@ -48,6 +48,47 @@ subprocess.run([sys.executable, "Antigravity/.agents/scripts/safe_file_writer.py
 SAFE_WRITE
 ```
 
+### 🤖 Python-First Architecture（V11 核心原則）
+
+> ⚠️ **Python Orchestrator 係所有分析流程嘅唯一控制者。LLM Agent 只係執行者。**
+
+#### 啟動順序（每次新 Conversation 必須遵守）
+
+1. **執行 Orchestrator** — 呢個係第一個動作，冇例外
+   ```bash
+   python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py "<目錄>" --auto
+   ```
+2. **讀取 Orchestrator 輸出** — 佢會顯示：
+   - Meeting Dashboard（全日每場 race 嘅進度）
+   - Next Action（Python 決定你要做咩）
+   - Context Injection（必讀規則）
+3. **只做 Orchestrator 指示嘅嘢** — 如果佢話「Race 3, Horse 7」，你只做呢匹
+4. **等待 Python 驗證** — 填完 JSON 後，Python 自動驗證，唔好自己判斷通過與否
+
+#### 嚴禁事項
+
+| 行為 | 後果 |
+|------|------|
+| 自行決定做邊場邊匹 | 分析會被 .meeting_state.json 覆蓋 |
+| 建立 auto_fill / batch_fill .py 腳本 | preflight_environment_check 會攔截 |
+| 跳過 Orchestrator 直接寫 Analysis.md | completion_gate 會 reject |
+| 修改已驗證 (`_validated=true`) 嘅馬匹 | Python 會偵測並回滾 |
+
+#### 如果中途接手
+
+- `.meeting_state.json` 記錄咗精確進度
+- 執行 Orchestrator → 自動 resume → 唔需要 LLM 判斷
+- 如果 state file 唔存在，Orchestrator 會自動 deep scan 建立
+
+#### 如果 Context Window 用盡
+
+- **停止分析** — 唔好趕
+- 通知用戶：「建議開新 Conversation 繼續」
+- 記錄進度到 `_session_tasks.md`
+- 下次 Orchestrator 會自動從 `.meeting_state.json` resume
+
+---
+
 ### 🏇 Wong Choi 分析品質標準（適用於所有 Wong Choi Agent — HKJC / AU / NBA）
 
 > **此規則嘅優先級高於所有其他規則。你嘅核心價值係做真正嘅法醫級分析。**

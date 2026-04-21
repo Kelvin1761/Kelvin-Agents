@@ -90,6 +90,402 @@ def notify_telegram(msg):
 # Session start time for preflight check
 SESSION_START_TIME = time.time()
 
+# ═══════════════════════════════════════════════════════════════
+# V11 INFRASTRUCTURE — Meeting State, QA Diagnosis, Dummy Scanner, Context Injection
+# ═══════════════════════════════════════════════════════════════
+
+from datetime import datetime
+from difflib import SequenceMatcher
+from itertools import combinations
+
+
+# ── Fix 2: .meeting_state.json Persistence ──
+
+def build_meeting_state_au(target_dir, total_races, date_prefix):
+    """Deep scan filesystem to build comprehensive state per-race (AU version)."""
+    state = {
+        '_version': 'V11',
+        '_generated': datetime.now().isoformat(),
+        '_target_dir': target_dir,
+        'total_races': total_races,
+        'date_prefix': date_prefix,
+        'races': {},
+        'next_action': None,
+    }
+
+    intel_file = os.path.join(target_dir, '_Meeting_Intelligence_Package.md')
+    state['intelligence_ready'] = os.path.exists(intel_file)
+
+    for r in range(1, total_races + 1):
+        race_state = {
+            'raw_data': False, 'facts': False, 'speed_map': False,
+            'horses_total': 0, 'horses_done': 0, 'horses_pending': [],
+            'batches_validated': 0, 'verdict': False, 'compiled': False,
+            'mc_done': False, 'qa_passed': False, 'qa_strikes': 0,
+            'stage': 'NOT_STARTED',
+        }
+
+        racecards = [f for f in os.listdir(target_dir) if f'Race {r}' in f and ('Racecard' in f or '排位表' in f)]
+        race_state['raw_data'] = len(racecards) > 0
+
+        facts_files = [f for f in os.listdir(target_dir) if re.search(rf'Race {r} Facts\.md', f)]
+        if facts_files:
+            race_state['facts'] = True
+            try:
+                with open(os.path.join(target_dir, facts_files[0]), 'r', encoding='utf-8') as f:
+                    fc = f.read()
+                horse_nums = re.findall(r'### (?:馬號|Horse) (\d+)', fc)
+                if not horse_nums:
+                    horse_nums = re.findall(r'### (\d+)[  —–-]', fc)
+                race_state['horses_total'] = len(horse_nums)
+            except Exception:
+                pass
+
+        logic_json = os.path.join(target_dir, f'Race_{r}_Logic.json')
+        if os.path.exists(logic_json):
+            try:
+                with open(logic_json, 'r', encoding='utf-8') as f:
+                    ld = json.load(f)
+                sm = ld.get('race_analysis', {}).get('speed_map', {})
+                sm_str = json.dumps(sm, ensure_ascii=False)
+                if sm.get('predicted_pace') and '[FILL]' not in sm_str:
+                    race_state['speed_map'] = True
+                horses_dict = ld.get('horses', {})
+                done_count = 0
+                pending = []
+                for hk, hv in horses_dict.items():
+                    h_str = json.dumps({k: v for k, v in hv.items() if k not in ('base_rating', 'final_rating')}, ensure_ascii=False)
+                    if '[FILL]' not in h_str:
+                        done_count += 1
+                    else:
+                        pending.append(int(hk) if hk.isdigit() else hk)
+                race_state['horses_done'] = done_count
+                race_state['horses_pending'] = pending
+                if ld.get('race_analysis', {}).get('verdict'):
+                    race_state['verdict'] = True
+            except (json.JSONDecodeError, OSError):
+                pass
+
+        an_file = os.path.join(target_dir, f'{date_prefix} Race {r} Analysis.md')
+        if os.path.exists(an_file):
+            try:
+                with open(an_file, 'r', encoding='utf-8') as f:
+                    ac = f.read()
+                if '[FILL]' not in ac and 'FILL:' not in ac:
+                    race_state['compiled'] = True
+            except Exception:
+                pass
+
+        mc_file = os.path.join(target_dir, f'Race_{r}_MC_Results.json')
+        race_state['mc_done'] = os.path.exists(mc_file)
+
+        strike_file = os.path.join(target_dir, '.qa_strikes.json')
+        if os.path.exists(strike_file):
+            try:
+                with open(strike_file, 'r', encoding='utf-8') as f:
+                    strikes_data = json.load(f)
+                race_state['qa_strikes'] = strikes_data.get(str(r), 0)
+            except Exception:
+                pass
+
+        if race_state['compiled'] and race_state['mc_done']:
+            race_state['qa_passed'] = True
+            race_state['stage'] = 'COMPLETE'
+        elif race_state['compiled']:
+            race_state['stage'] = 'AWAITING_MC'
+        elif race_state['verdict']:
+            race_state['stage'] = 'AWAITING_COMPILE'
+        elif race_state['horses_done'] == race_state['horses_total'] and race_state['horses_total'] > 0:
+            race_state['stage'] = 'AWAITING_VERDICT'
+        elif race_state['speed_map']:
+            race_state['stage'] = 'ANALYSING'
+        elif race_state['facts']:
+            race_state['stage'] = 'AWAITING_SPEED_MAP'
+        elif race_state['raw_data']:
+            race_state['stage'] = 'AWAITING_FACTS'
+        else:
+            race_state['stage'] = 'AWAITING_RAW_DATA'
+
+        state['races'][str(r)] = race_state
+
+    state['next_action'] = determine_next_action_au(state)
+    return state
+
+
+def save_meeting_state_au(state_path, state):
+    state['_last_updated'] = datetime.now().isoformat()
+    state['next_action'] = determine_next_action_au(state)
+    tmp_path = state_path + '.tmp'
+    with open(tmp_path, 'w', encoding='utf-8') as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+    os.replace(tmp_path, state_path)
+
+
+def load_meeting_state_au(state_path):
+    if not os.path.exists(state_path):
+        return None
+    try:
+        with open(state_path, 'r', encoding='utf-8') as f:
+            state = json.load(f)
+        if state.get('_version') != 'V11':
+            return None
+        return state
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def determine_next_action_au(state):
+    if not state.get('intelligence_ready'):
+        return {'action': 'CREATE_INTELLIGENCE_PACKAGE', 'race': None}
+    for r_str, rs in state.get('races', {}).items():
+        if rs['stage'] == 'AWAITING_RAW_DATA':
+            return {'action': 'EXTRACT_RAW_DATA', 'race': int(r_str)}
+        if rs['stage'] == 'AWAITING_FACTS':
+            return {'action': 'GENERATE_FACTS', 'race': int(r_str)}
+        if rs['stage'] == 'AWAITING_SPEED_MAP':
+            return {'action': 'FILL_SPEED_MAP', 'race': int(r_str)}
+        if rs['stage'] == 'ANALYSING':
+            return {'action': 'ANALYSE_HORSES', 'race': int(r_str),
+                    'pending': rs.get('horses_pending', []),
+                    'done': rs.get('horses_done', 0), 'total': rs.get('horses_total', 0)}
+        if rs['stage'] == 'AWAITING_VERDICT':
+            return {'action': 'COMPUTE_VERDICT', 'race': int(r_str)}
+        if rs['stage'] == 'AWAITING_COMPILE':
+            return {'action': 'COMPILE', 'race': int(r_str)}
+        if rs['stage'] == 'AWAITING_MC':
+            return {'action': 'RUN_MC', 'race': int(r_str)}
+    return {'action': 'ALL_COMPLETE', 'race': None}
+
+
+def print_meeting_dashboard_au(state):
+    print(f"\n{'═' * 70}")
+    print(f"📊 AU MEETING DASHBOARD — {state.get('total_races', '?')} 場賽事")
+    print(f"{'═' * 70}")
+    stage_icons = {
+        'COMPLETE': '✅', 'AWAITING_MC': '🎲', 'AWAITING_COMPILE': '📝',
+        'AWAITING_VERDICT': '⚖️', 'ANALYSING': '🔬', 'AWAITING_SPEED_MAP': '📍',
+        'AWAITING_FACTS': '📋', 'AWAITING_RAW_DATA': '📥', 'NOT_STARTED': '⬜',
+    }
+    for r_str, rs in state.get('races', {}).items():
+        icon = stage_icons.get(rs['stage'], '❓')
+        horses_info = f"{rs['horses_done']}/{rs['horses_total']}" if rs['horses_total'] else '?'
+        strikes = f" ⚠️x{rs['qa_strikes']}" if rs['qa_strikes'] > 0 else ""
+        print(f"  Race {r_str:>2}: {icon} {rs['stage']:<22} | Horses: {horses_info:>5}{strikes}")
+    na = state.get('next_action', {})
+    print(f"{'─' * 70}")
+    print(f"  📋 Next: {na.get('action', '?')}", end='')
+    if na.get('race'):
+        print(f" → Race {na['race']}", end='')
+    if na.get('pending'):
+        print(f" (pending: {na['pending']})", end='')
+    print()
+    print(f"{'═' * 70}\n")
+
+
+# ── Fix 7: QA Diagnosis (AU) ──
+
+def generate_qa_diagnosis_au(race_num, strike_num, qa_stdout, qa_stderr,
+                              logic_json_path, analysis_path, runtime_dir):
+    """Parse QA errors, classify root causes, generate diagnosis report (AU)."""
+    errors = []
+    for line in (qa_stdout or '').splitlines():
+        stripped = line.strip()
+        if stripped.startswith('- ') or stripped.startswith('❌'):
+            errors.append(stripped.lstrip('- ❌').strip())
+
+    categories = {'FORMAT': [], 'CONTENT': [], 'LAZINESS': [], 'DATA': []}
+    for err in errors:
+        err_up = err.upper()
+        if 'LAZY' in err_up or '相似' in err or '模板' in err:
+            categories['LAZINESS'].append(err)
+        elif 'FILL' in err_up or '字數' in err or 'word' in err_up or '太短' in err:
+            categories['CONTENT'].append(err)
+        elif 'P34' in err_up or 'MISSING' in err_up or 'tag' in err_up or '缺失' in err:
+            categories['FORMAT'].append(err)
+        else:
+            categories['DATA'].append(err)
+
+    affected_horses = []
+    try:
+        with open(logic_json_path, 'r', encoding='utf-8') as f:
+            logic_data = json.load(f)
+        for h_num, h_entry in logic_data.get('horses', {}).items():
+            issues = []
+            cl = h_entry.get('core_logic', '')
+            if len(cl) < 80:
+                issues.append(f'core_logic too short ({len(cl)} chars)')
+            if issues:
+                affected_horses.append((h_num, h_entry.get('horse_name', ''), issues))
+    except Exception:
+        pass
+
+    report = []
+    report.append(f"# 🔍 QA Diagnosis — Race {race_num} (Strike {strike_num}/3)")
+    report.append(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    report.append("")
+    report.append(f"## Errors: {len(errors)}")
+    for cat_name, cat_label in [
+        ('LAZINESS', '🚨 Laziness'), ('CONTENT', '📝 Content'),
+        ('FORMAT', '📋 Format'), ('DATA', '📊 Data')
+    ]:
+        if categories[cat_name]:
+            report.append(f"### {cat_label}")
+            for err in categories[cat_name]:
+                report.append(f"- ❌ {err}")
+            report.append("")
+    if affected_horses:
+        report.append("## Affected Horses")
+        for h_num, h_name, issues in affected_horses:
+            report.append(f"- Horse #{h_num} ({h_name}): {', '.join(issues)}")
+    report.append("")
+    report.append(f"⚠️ **Strike {strike_num}/3. Third failure = full stop.**")
+
+    os.makedirs(runtime_dir, exist_ok=True)
+    diag_path = os.path.join(runtime_dir, f"QA_Diagnosis_Race_{race_num}_Strike_{strike_num}.md")
+    with open(diag_path, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(report))
+    return diag_path
+
+
+# ── Fix 8: Pre-Race Dummy Content Scanner (AU) ──
+
+def scan_race_content_quality_au(logic_json_path):
+    """Pre-race Python-only scan for dummy/template content (AU version)."""
+    result = {'contaminated_horses': [], 'issues': [], 'action': 'CLEAN'}
+    if not os.path.exists(logic_json_path):
+        return result
+    try:
+        with open(logic_json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return result
+    horses = data.get('horses', {})
+    if not horses:
+        return result
+
+    contaminated = []
+    for h_num, h_entry in horses.items():
+        horse_issues = []
+        core_logic = h_entry.get('core_logic', '')
+        for phrase in DUMMY_PHRASES_AU:
+            if phrase in core_logic:
+                horse_issues.append(f'Dummy phrase: 「{phrase}」')
+                break
+        fluff_count = sum(1 for p in FLUFF_PHRASES_AU if p in core_logic)
+        if fluff_count >= 2:
+            horse_issues.append(f'Fluff phrases x{fluff_count}')
+        if core_logic and '[FILL]' not in core_logic and len(core_logic) < 40:
+            horse_issues.append(f'core_logic too short ({len(core_logic)} chars)')
+        if core_logic in ('正常', '分析中', '待分析', ''):
+            horse_issues.append(f'core_logic is placeholder: 「{core_logic}」')
+        if horse_issues:
+            contaminated.append({'horse_num': h_num, 'horse_name': h_entry.get('horse_name', ''), 'issues': horse_issues})
+
+    result['contaminated_horses'] = contaminated
+
+    all_logics = [h.get('core_logic', '') for h in horses.values()
+                  if h.get('core_logic') and '[FILL]' not in h.get('core_logic', '')]
+    if len(all_logics) >= 3:
+        unique_logics = set(all_logics)
+        if len(unique_logics) <= 2:
+            result['issues'].append(f'Only {len(unique_logics)} unique core_logic across {len(all_logics)} horses')
+            result['action'] = 'PURGE_ALL'
+        logic_pairs = list(combinations(enumerate(all_logics), 2))
+        high_sim = sum(1 for (_, a), (_, b) in logic_pairs if SequenceMatcher(None, a, b).ratio() > 0.60)
+        if logic_pairs and high_sim / len(logic_pairs) > 0.5:
+            result['issues'].append(f'{high_sim}/{len(logic_pairs)} pairs similarity >60%')
+            result['action'] = 'PURGE_ALL'
+
+    if contaminated and result['action'] == 'CLEAN':
+        result['action'] = 'PURGE_PARTIAL'
+    return result
+
+
+# ── Fix 10: Context Injection Gateway (AU) ──
+
+def print_context_injection_au():
+    print("=" * 60)
+    print("📋 CONTEXT INJECTION — Mandatory Rules (Python Auto-Injected)")
+    print("=" * 60)
+    print()
+    print("🔴 Rule 1: Python Lead")
+    print("   Orchestrator controls all flow. LLM only fills Logic.json.")
+    print("   DO NOT decide which race/horse to do next.")
+    print()
+    print("🔴 Rule 2: Per-Horse Analysis")
+    print("   Read WorkCard → Analyse → Fill JSON for each horse.")
+    print("   DO NOT create auto_fill / batch_fill .py scripts.")
+    print()
+    print("🔴 Rule 3: core_logic Quality")
+    print("   Must be ≥80 chars, cite specific data (dates/positions/weights).")
+    print("   DO NOT write generic phrases like '表現尚可'.")
+    print()
+    print("🔴 Rule 4: If You Run Out of Context")
+    print("   STOP + notify user to start new Conversation.")
+    print("   NEVER sacrifice quality to speed up progress.")
+    print()
+    print("📖 Full Rules: SETUP.md (L51-111)")
+    print("📖 Engine Directives: engine_directives.md")
+    print("=" * 60)
+
+
+def print_race_context_au(race_num, total_horses, pending_horses):
+    print(f"\n{'─' * 50}")
+    print(f"🏇 Race {race_num} — {total_horses} horses")
+    print(f"📋 Pending: {pending_horses}")
+    print(f"⚠️ Each horse: Read WorkCard → Analyse → Fill JSON")
+    print(f"⚠️ core_logic ≥80 chars + cite specific data")
+    print(f"{'─' * 50}\n")
+
+
+def ensure_context_files_loaded_au(target_dir):
+    files_to_check = [
+        ('.meeting_state.json', '📊 Meeting State', 'CRITICAL'),
+        ('_Meeting_Intelligence_Package.md', '🧠 Intelligence Package', 'HIGH'),
+    ]
+    print("\n📂 Context Files Status:")
+    for filename, label, priority in files_to_check:
+        path = os.path.join(target_dir, filename)
+        if os.path.exists(path):
+            size = os.path.getsize(path)
+            print(f"   ✅ {label}: {filename} ({size:,} bytes)")
+        else:
+            print(f"   ❌ {label}: {filename} missing [{priority}]")
+
+
+# ── Fix 3: Per-Batch Cross-Horse QA (AU) ──
+
+def validate_batch_cross_horse_au(batch_horses, horses_dict, logic_json_path):
+    """Validate a batch of horses for cross-horse quality issues (AU version)."""
+    errors = []
+    batch_entries = []
+    for h in batch_horses:
+        entry = horses_dict.get(str(h), {})
+        if entry:
+            batch_entries.append((str(h), entry))
+    if len(batch_entries) < 2:
+        return errors
+    logics = [(h, e.get('core_logic', '')) for h, e in batch_entries
+              if e.get('core_logic') and '[FILL]' not in e.get('core_logic', '')]
+    if len(logics) >= 2:
+        for (h1, l1), (h2, l2) in combinations(logics, 2):
+            sim = SequenceMatcher(None, l1, l2).ratio()
+            if sim > 0.60:
+                errors.append(f"BATCH-001: Horse {h1} ↔ {h2} core_logic similarity {sim:.0%}")
+    for h, e in batch_entries:
+        e_str = json.dumps({k: v for k, v in e.items() if k not in ('base_rating', 'final_rating')}, ensure_ascii=False)
+        fill_count = e_str.count('[FILL]')
+        if fill_count > 0:
+            errors.append(f"BATCH-002: Horse {h} still has {fill_count} [FILL]")
+    scores = []
+    for h, e in batch_entries:
+        m = e.get('matrix', {})
+        h_scores = [d.get('score', '') for d in m.values() if isinstance(d, dict)]
+        scores.append(tuple(h_scores))
+    if len(scores) >= 2 and len(set(scores)) == 1:
+        errors.append(f"BATCH-003: All {len(scores)} horses have identical matrix scores")
+    return errors
+
 def parse_url_for_details(url):
     match = re.search(r'form-guide/horse-racing/([^/]+)-(\d{8})/', url)
     if not match:
@@ -750,6 +1146,22 @@ def validate_au_firewalls(h, h_entry, horses_dict, all_horses, json_file):
                 )
                 break
 
+    # WALL-015: Cross-horse core_logic similarity (V11)
+    for other_h, other_entry in horses_dict.items():
+        if str(other_h) == str(h):
+            continue
+        other_cl = str(other_entry.get('core_logic', ''))
+        if not other_cl or '[FILL]' in other_cl or len(other_cl) < 40:
+            continue
+        if core_logic and len(core_logic) >= 40 and '[FILL]' not in core_logic:
+            sim = SequenceMatcher(None, core_logic, other_cl).ratio()
+            if sim > 0.60:
+                errors.append(
+                    f"WALL-015: core_logic similarity with Horse {other_h} is {sim:.0%}. "
+                    f"Each horse's analysis must be unique."
+                )
+                break
+
     return errors
 
 
@@ -973,8 +1385,11 @@ def main():
         url = None
 
     print("="*60)
-    print("🏇 AU Wong Choi Orchestrator (State Machine V10)")
+    print("🏇 AU Wong Choi Orchestrator (State Machine V11)")
     print("="*60)
+    
+    # V11: Context Injection Gateway
+    print_context_injection_au()
 
     if not target_dir:
         target_dir = get_target_dir(venue, formatted_date)
@@ -1005,6 +1420,18 @@ def main():
     total_races = discover_total_races(target_dir)
     print(f"✅ 目標目錄: {os.path.basename(target_dir)}")
     print(f"✅ 賽事總數: {total_races} 場\n")
+    
+    # V11: Build/Load Meeting State
+    state_path = os.path.join(target_dir, '.meeting_state.json')
+    meeting_state = load_meeting_state_au(state_path)
+    if meeting_state:
+        print("📊 已載入 .meeting_state.json (V11 Resume)")
+    else:
+        meeting_state = build_meeting_state_au(target_dir, total_races, short_prefix)
+        save_meeting_state_au(state_path, meeting_state)
+        print("📊 已建立 .meeting_state.json (V11 Fresh)")
+    print_meeting_dashboard_au(meeting_state)
+    ensure_context_files_loaded_au(target_dir)
 
     # --- STATE 0: Idempotent Raw Data Check ---
     missing_raw = check_raw_data_completeness(target_dir, total_races)
@@ -1236,6 +1663,38 @@ def main():
             print(f"\n{'─'*60}")
             print(f"🐎 正在處理 Race {r}...")
             print(f"{'─'*60}")
+            
+            # V11: Pre-Race Dummy Content Scanner
+            _scan_json = os.path.join(target_dir, f"Race_{r}_Logic.json")
+            scan_result = scan_race_content_quality_au(_scan_json)
+            if scan_result['action'] == 'PURGE_ALL':
+                print(f"🚨 Race {r} Pre-Race Scan: dummy content detected!")
+                for _si in scan_result['issues']:
+                    print(f"   ❌ {_si}")
+                try:
+                    with open(_scan_json, 'r', encoding='utf-8') as _sf:
+                        _sd = json.load(_sf)
+                    _sd['horses'] = {}
+                    with open(_scan_json, 'w', encoding='utf-8') as _sf:
+                        json.dump(_sd, _sf, ensure_ascii=False, indent=2)
+                except Exception:
+                    pass
+            elif scan_result['action'] == 'PURGE_PARTIAL':
+                print(f"⚠️ Race {r} Pre-Race Scan: partial dummy content")
+                try:
+                    with open(_scan_json, 'r', encoding='utf-8') as _sf:
+                        _sd = json.load(_sf)
+                    for _ch in scan_result['contaminated_horses']:
+                        _hnum = _ch['horse_num']
+                        print(f"   🗑️ Horse #{_hnum} ({_ch['horse_name']}): {_ch['issues']}")
+                        if _hnum in _sd.get('horses', {}):
+                            _sd['horses'][_hnum]['core_logic'] = '[FILL]'
+                    with open(_scan_json, 'w', encoding='utf-8') as _sf:
+                        json.dump(_sd, _sf, ensure_ascii=False, indent=2)
+                except Exception:
+                    pass
+            else:
+                print(f"   ✅ Race {r} Pre-Race Scan: clean")
             
             # ── FLUSH_HINT: Context Window Reset Signal ──
             if r > 1:
@@ -1487,13 +1946,62 @@ def main():
                     
                     if result:
                         completed_in_session += 1
+                        
+                        # V11: Lock validated horse
+                        with open(json_file, 'r', encoding='utf-8') as _lf:
+                            _lock_data = json.load(_lf)
+                        if str(ph) in _lock_data.get('horses', {}):
+                            _lock_data['horses'][str(ph)]['_validated'] = True
+                            _h_matrix = _lock_data['horses'][str(ph)].get('matrix', {})
+                            _tags = []
+                            for _dim, _dv in _h_matrix.items():
+                                if isinstance(_dv, dict):
+                                    _sc = _dv.get('score', '')
+                                    if _sc == '✅✅':
+                                        _tags.append(f'#{_dim}_strong')
+                                    elif _sc == '❌❌':
+                                        _tags.append(f'#{_dim}_weak')
+                            if _tags:
+                                _lock_data['horses'][str(ph)]['scenario_tags'] = ' '.join(_tags)
+                            with open(json_file, 'w', encoding='utf-8') as _wf:
+                                json.dump(_lock_data, _wf, ensure_ascii=False, indent=2)
+                        
                         print(f"\n   ✅ Horse #{ph} ({h_name}) 驗證通過！ [{completed_in_session}/{len(pending_horses)}]")
                         print_analysis_summary(result, ph)
                         print(f"\n   ### FLUSH: Horse #{ph} 分析完畢 — 清除記憶準備下一匹 ###")
+                        
+                        # V11: Per-batch QA (every 3 horses)
+                        if completed_in_session % 3 == 0 and completed_in_session > 0:
+                            _batch_start = completed_in_session - 3
+                            _batch_nums = pending_horses[_batch_start:completed_in_session]
+                            with open(json_file, 'r', encoding='utf-8') as _bf:
+                                _batch_data = json.load(_bf)
+                            _batch_horses_dict = _batch_data.get('horses', {})
+                            _batch_errors = validate_batch_cross_horse_au(_batch_nums, _batch_horses_dict, json_file)
+                            if _batch_errors:
+                                print(f"\n   ⚠️ Batch QA ({_batch_nums}) issues:")
+                                for _be in _batch_errors:
+                                    print(f"      ❌ {_be}")
+                                for _bh in _batch_nums:
+                                    if str(_bh) in _batch_horses_dict:
+                                        _batch_horses_dict[str(_bh)]['core_logic'] = '[FILL]'
+                                        _batch_horses_dict[str(_bh)]['_validated'] = False
+                                _batch_data['horses'] = _batch_horses_dict
+                                with open(json_file, 'w', encoding='utf-8') as _wf:
+                                    json.dump(_batch_data, _wf, ensure_ascii=False, indent=2)
+                                print(f"   🔄 Batch reset — will re-analyse")
+                            else:
+                                print(f"\n   ✅ Batch QA passed ({_batch_nums})")
+                        
+                        # V11: Save meeting state
+                        meeting_state = build_meeting_state_au(target_dir, total_races, short_prefix)
+                        save_meeting_state_au(state_path, meeting_state)
                     else:
                         print(f"\n   ⏰ Horse #{ph} 超時或被中斷。")
                         print(f"   已完成 {completed_in_session}/{len(pending_horses)} 匹馬。")
                         print(f"   重跑 Orchestrator 可從斷點繼續。")
+                        meeting_state = build_meeting_state_au(target_dir, total_races, short_prefix)
+                        save_meeting_state_au(state_path, meeting_state)
                         _next_cmd(target_dir)
                         sys.exit(0)
                 
@@ -1585,17 +2093,44 @@ def main():
             else:
                 print(f"⚠️ mc_simulator.py not found: {mc_simulator_script}")
             
-            # ── Step M: QA ──
+            # ── Step M: QA (V11: capture_output + diagnosis + 3-strike) ──
             print(f"🛡️ 正在進行 Batch QA (completion_gate_v2.py)...")
             qa_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", "scripts", "completion_gate_v2.py")
-            qa_res = subprocess.run([PYTHON, qa_script, an_file, "--domain", "au"])
+            qa_res = subprocess.run(
+                [PYTHON, qa_script, an_file, "--domain", "au"],
+                capture_output=True, text=True
+            )
             if qa_res.returncode != 0:
                 print(f"\n❌ Race {r} QA 驗證失敗！")
-                print(f"請重新修改 `{os.path.basename(json_file)}`，補齊字數。修改後重跑 Orchestrator。")
                 strikes[str(r)] = strikes.get(str(r), 0) + 1
                 save_strikes()
-                _next_cmd(target_dir)
-                sys.exit(1)
+                if qa_res.stdout:
+                    for _ql in qa_res.stdout.strip().split('\n')[-10:]:
+                        print(f"   {_ql}")
+                
+                # V11: Generate QA Diagnosis Report
+                runtime_dir = os.path.join(target_dir, '.runtime')
+                diag_path = generate_qa_diagnosis_au(
+                    race_num=r, strike_num=strikes[str(r)],
+                    qa_stdout=qa_res.stdout, qa_stderr=qa_res.stderr,
+                    logic_json_path=json_file, analysis_path=an_file,
+                    runtime_dir=runtime_dir
+                )
+                print(f"📋 Diagnosis: {os.path.basename(diag_path)}")
+                
+                if strikes[str(r)] >= 3:
+                    print(f"\n🚨 [CRITICAL] Race {r} 3-Strike Stop!")
+                    notify_telegram(f"❌ **AU Race {r} 3-Strike Stop**")
+                    meeting_state = build_meeting_state_au(target_dir, total_races, short_prefix)
+                    save_meeting_state_au(state_path, meeting_state)
+                    _next_cmd(target_dir)
+                    sys.exit(1)
+                else:
+                    print(f"⚠️ Strike {strikes[str(r)]}/3 — fix and re-run Orchestrator")
+                    meeting_state = build_meeting_state_au(target_dir, total_races, short_prefix)
+                    save_meeting_state_au(state_path, meeting_state)
+                    _next_cmd(target_dir)
+                    sys.exit(1)
             else:
                 print(f"\n{'🎉'*10}")
                 print(f"✅ Race {r} Batch QA 通過！")

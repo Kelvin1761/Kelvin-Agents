@@ -188,6 +188,49 @@ def parse_trends(block):
 import hashlib
 import time
 
+
+def _build_core_logic_scaffold(data):
+    """V11: Build data-prompted natural prose scaffold for core_logic.
+    Injects actual horse metrics into a guided prompt that produces
+    ~100 words of flowing analysis WITHOUT visible tags.
+    """
+    name = data.get('name', '未知')
+    last_6 = data.get('last_6', 'N/A')
+    barrier = data.get('barrier', 'N/A')
+    weight = data.get('weight', 'N/A')
+    raw_l400 = data.get('raw_L400', 'N/A')
+    engine = data.get('engine', 'N/A')
+    days_since = data.get('days_since_last', 0)
+    last_xw = data.get('last_xw', 'N/A')
+    last_consumption = data.get('last_consumption', 'N/A')
+    jockey = data.get('jockey', 'N/A')
+    season_stats = data.get('season_stats', 'N/A')
+    margin_trend = data.get('margin_trend', 'N/A')
+    l400_trend = data.get('l400_trend', 'N/A')
+    rating_trend = data.get('rating_trend', 'N/A')
+
+    scaffold = (
+        f"[FILL — 根據以下數據寫約100字流暢廣東話分析，"
+        f"必須涵蓋：近態趨勢、檔位形勢、段速能力、整體前景。"
+        f"唔好用 tag/標籤，直接寫自然段落。]\n"
+        f"數據：{name} "
+        f"近6仗={last_6}, "
+        f"檔位={barrier}, "
+        f"負磅={weight}磅, "
+        f"L400={raw_l400}, "
+        f"L400趨勢={l400_trend}, "
+        f"引擎={engine}, "
+        f"休賽={days_since}日, "
+        f"走位={last_xw}, "
+        f"消耗={last_consumption}, "
+        f"騎師={jockey}, "
+        f"季績={season_stats}, "
+        f"頭馬距離趨勢={margin_trend}, "
+        f"評分趨勢={rating_trend}"
+    )
+    return scaffold
+
+
 def build_skeleton(data):
     """Build JSON skeleton: real data pre-filled, analysis fields as [FILL].
     V3: Data-anchored reasoning — injects actual horse data into matrix reasoning
@@ -337,7 +380,7 @@ def build_skeleton(data):
         'fine_tune': {'direction': '[FILL: +/-/無]', 'trigger': '[FILL]', 'channel_a': '[FILL]', 'channel_b': '[FILL]'},
         'override': {'rule': '[FILL]'},
         'final_rating': '[AUTO]',
-        'core_logic': f'[FILL — 必須提及{name}嘅具體數據，80-100字廣東話分析]',
+        'core_logic': _build_core_logic_scaffold(data),
         'advantages': '[FILL]',
         'disadvantages': '[FILL]',
         'evidence_step_0_14': '[FILL]',
