@@ -2,6 +2,7 @@
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
 import sys, re, json, os, argparse, io
+from pathlib import Path
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
@@ -231,7 +232,26 @@ def _build_core_logic_scaffold(data):
     return scaffold
 
 
-def build_skeleton(data):
+def _get_draw_verdict_str(barrier, race_num=0):
+    """Get draw verdict string for skeleton pre-fill from hkjc_draw_stats.json."""
+    try:
+        json_path = Path(__file__).parent.parent.parent.parent.parent / 'scripts' / 'hkjc_draw_stats.json'
+        json_path = json_path.resolve()
+        if json_path.exists():
+            with open(json_path, 'r', encoding='utf-8') as f:
+                ds = json.load(f)
+            barrier_int = int(barrier) if str(barrier).isdigit() else 0
+            for race in ds.get('races', []):
+                if race.get('race') == race_num:
+                    for d in race.get('draws', []):
+                        if d.get('draw') == barrier_int:
+                            return f"{d['verdict']} (勝{d['win_pct']}%/Q{d.get('quinella_pct','?')}%/位{d.get('place_pct','?')}%)"
+    except Exception:
+        pass
+    return '數據不可用'
+
+
+def build_skeleton(data, race_num=0):
     """Build JSON skeleton: real data pre-filled, analysis fields as [FILL].
     V3: Data-anchored reasoning — injects actual horse data into matrix reasoning
     placeholders to structurally prevent LLM laziness.
@@ -265,6 +285,9 @@ def build_skeleton(data):
     wins = data.get('wins', 0)
     starts = data.get('starts', 0)
     
+    # Get draw verdict for pre-fill
+    draw_verdict_str = _get_draw_verdict_str(barrier, race_num)
+    
     # Generate _validation_nonce with SKEL_ prefix (WALL-019 requires this prefix)
     timestamp = str(time.time())
     nonce_input = f"{name}_{timestamp}"
@@ -289,7 +312,7 @@ def build_skeleton(data):
         f"配備={gear}] → [判讀: FILL]"
     )
     r_scenario = (
-        f"[數據: 檔位={barrier}, 引擎={engine}, "
+        f"[數據: 檔位={barrier} ({draw_verdict_str}), 引擎={engine}, "
         f"走位PI={position_pi}] → [判讀: FILL]"
     )
     r_freshness = (
@@ -328,7 +351,7 @@ def build_skeleton(data):
             'engine_distance': f'[引擎={engine}, 最佳={best_dist}, 走位PI={position_pi}] → FILL',
             'weight_trend': f'[體重趨勢={weight_trend}, 今仗負磅={weight}] → FILL',
             'gear_changes': f'[配備={gear}] → FILL',
-            'draw_verdict': f'[檔位={barrier}] → FILL (必須引用 Facts.md 🎯檔位優劣判讀)',
+            'draw_verdict': f'[檔位={barrier}, 判定={draw_verdict_str}] → FILL',
             'trainer_signal': f'[練馬師={trainer}, 騎師={jockey}] → FILL',
             'jockey_fit': f'[騎師={jockey}] → FILL',
             'pace_adaptation': f'[引擎={engine}, L400={raw_l400}] → FILL',
@@ -425,7 +448,7 @@ def main():
     horse_data = {**header, **summary, **recent, **trends}
 
     # Build skeleton
-    skeleton = build_skeleton(horse_data)
+    skeleton = build_skeleton(horse_data, race_num=args.race_num)
 
     # Determine output path
     json_path = args.output or os.path.join(

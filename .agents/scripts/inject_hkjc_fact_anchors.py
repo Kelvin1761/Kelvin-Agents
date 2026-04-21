@@ -183,6 +183,19 @@ def get_draw_verdict(race_num: int, draw: int) -> str:
                     return f"{d['verdict']} ({d['win_pct']}%)"
     return ''
 
+def get_draw_detail(race_num: int, draw: int) -> dict:
+    """Get full draw stats dict for a specific race/draw.
+    Returns dict with win_pct, quinella_pct, place_pct, verdict, etc."""
+    ds = load_draw_stats()
+    if not ds or 'races' not in ds:
+        return {}
+    for race in ds['races']:
+        if race.get('race') == race_num:
+            for d in race.get('draws', []):
+                if d.get('draw') == draw:
+                    return d
+    return {}
+
 def get_draw_summary_block(race_num: int) -> str:
     """Generate 🎯 檔位優劣判讀 block for Facts.md header."""
     ds = load_draw_stats()
@@ -195,10 +208,10 @@ def get_draw_summary_block(race_num: int) -> str:
             favourable = [d for d in race['draws'] if d['verdict'] == '✅有利']
             unfavourable = [d for d in race['draws'] if d['verdict'] == '❌不利']
             if favourable:
-                draws_str = ', '.join(f"檔{d['draw']}({d['win_pct']}%)" for d in favourable)
+                draws_str = ', '.join(f"檔{d['draw']}(勝{d['win_pct']}%/Q{d.get('quinella_pct','?')}%/位{d.get('place_pct','?')}%)" for d in favourable)
                 lines.append(f"✅ 有利檔位: {draws_str}")
             if unfavourable:
-                draws_str = ', '.join(f"檔{d['draw']}({d['win_pct']}%)" for d in unfavourable)
+                draws_str = ', '.join(f"檔{d['draw']}(勝{d['win_pct']}%/Q{d.get('quinella_pct','?')}%/位{d.get('place_pct','?')}%)" for d in unfavourable)
                 lines.append(f"❌ 不利檔位: {draws_str}")
             if not favourable and not unfavourable:
                 lines.append("⚠️ 所有檔位勝率接近平均，無明顯優劣")
@@ -1097,7 +1110,8 @@ def compute_distance_aptitude(races: list, today_dist: int = 0) -> dict:
 def generate_horse_block(horse: dict, today_venue: str = '',
                           today_dist: int = 0, race_class: str = 'C4',
                           profile_data: dict = None,
-                          form_lines_data: dict = None) -> str:
+                          form_lines_data: dict = None,
+                          race_num: int = 0) -> str:
     """Generate full fact anchor + forensic block for one horse.
     
     Args:
@@ -1120,6 +1134,15 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     header_parts.append(f"負磅: {horse['weight']}")
     header_parts.append(f"檔位: {horse['barrier']}")
     lines.append(' | '.join(header_parts))
+    
+    # Per-horse draw verdict (if draw stats available)
+    if race_num > 0:
+        draw_detail = get_draw_detail(race_num, horse['barrier'])
+        if draw_detail:
+            lines.append(f"📊 **檔位判定:** 檔{horse['barrier']} → {draw_detail.get('verdict', '?')} "
+                         f"(勝率: {draw_detail.get('win_pct', '?')}% | "
+                         f"入Q率: {draw_detail.get('quinella_pct', '?')}% | "
+                         f"上名率: {draw_detail.get('place_pct', '?')}%)")
     
     if not races and not p_entries:
         lines.append("  (無往績記錄)")
@@ -1655,7 +1678,7 @@ def main():
     for horse in data['horses']:
         profile = profiles.get(horse['num'])
         fl_data = form_lines_map.get(horse['num'])
-        block = generate_horse_block(horse, today_venue, today_dist, race_class, profile, fl_data)
+        block = generate_horse_block(horse, today_venue, today_dist, race_class, profile, fl_data, race_num=race_num)
         output_lines.append(block)
         output_lines.append(f"")
         output_lines.append(f"{'─' * 70}")

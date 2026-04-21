@@ -977,8 +977,29 @@ def extract_hkjc_fact_anchors(horse_block):
     return anchors
 
 
+def load_draw_stats_for_workcard(race_num: int, barrier: int) -> dict:
+    """Load per-horse draw stats from hkjc_draw_stats.json."""
+    # hkjc_draw_stats.json lives in .agents/scripts/ (same dir imported by sys.path at top)
+    scripts_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'scripts'))
+    json_path = os.path.join(scripts_dir, 'hkjc_draw_stats.json')
+    if not os.path.exists(json_path):
+        return {}
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            ds = json.load(f)
+        for race in ds.get('races', []):
+            if race.get('race') == race_num:
+                for d in race.get('draws', []):
+                    if d.get('draw') == barrier:
+                        return d
+    except Exception:
+        pass
+    return {}
+
+
 def generate_hkjc_work_card(horse_num, facts_content, logic_data, runtime_dir,
-                            sm_pace, sm_bias, horse_idx=0, total_horses=1):
+                            sm_pace, sm_bias, horse_idx=0, total_horses=1,
+                            race_num=1):
     """Generate a guided analysis work card for a SINGLE HKJC horse."""
     horse_block = extract_hkjc_horse_facts_block(horse_num, facts_content)
     if not horse_block:
@@ -1020,6 +1041,9 @@ def generate_hkjc_work_card(horse_num, facts_content, logic_data, runtime_dir,
     card.append("## 3️⃣ EEM與形勢 [半核心]")
     card.append(f"- 累積消耗: {anchors.get('eem_drain', '無數據')}")
     card.append(f"- 今仗檔位: {anchors.get('barrier', '?')}")
+    draw_data = load_draw_stats_for_workcard(race_num, int(anchors.get('barrier', 0)))
+    if draw_data:
+        card.append(f"- 📊 檔位判定: {draw_data.get('verdict', '?')} (勝率{draw_data.get('win_pct', '?')}% | 入Q率{draw_data.get('quinella_pct', '?')}% | 上名率{draw_data.get('place_pct', '?')}%)")
     card.append(f"- 跑道偏差: {sm_bias}")
     card.append("👉 **你嘅判斷:** 消耗水平 + 檔位形勢？")
     card.append("")
@@ -1100,6 +1124,12 @@ def generate_hkjc_work_card(horse_num, facts_content, logic_data, runtime_dir,
     
     card.append("## 9️⃣ 檔位數據 + 段速差 [V11 新增]")
     card.append(f"- 今仗檔位: {anchors.get('barrier', '?')}")
+    if draw_data:
+        card.append(f"- 📊 檔位判定: {draw_data.get('verdict', '?')}")
+        card.append(f"- 勝率: {draw_data.get('win_pct', '?')}% | 入Q率: {draw_data.get('quinella_pct', '?')}% | 上名率: {draw_data.get('place_pct', '?')}%")
+        card.append(f"- 統計基數: {draw_data.get('starts', '?')}場")
+    else:
+        card.append("- 檔位判定: 數據不可用")
     card.append(f"- 跑道偏差: {sm_bias}")
     card.append(f"- 步速預測: {sm_pace}")
     card.append("- 👉 **檔位判讀**: 結合 Facts.md 🎯檔位優劣判讀 + 跑道偏差 + 引擎類型")
@@ -1132,7 +1162,8 @@ def generate_hkjc_work_card(horse_num, facts_content, logic_data, runtime_dir,
 
 
 def watch_single_horse_hkjc(json_file, horse_num, validate_fn, all_horses,
-                            poll_interval=3, timeout_minutes=10):
+                            poll_interval=3, timeout_minutes=10,
+                            skeleton_snapshot=None):
     """Watch for a SINGLE HKJC horse to be filled and validated."""
     hkey = str(horse_num)
     last_mtime = os.path.getmtime(json_file)
@@ -1202,6 +1233,16 @@ def watch_single_horse_hkjc(json_file, horse_num, validate_fn, all_horses,
             if '[FILL]' in h_check:
                 continue
 
+            # V11.1: Skeleton Preservation Merge — auto-merge LLM input into skeleton
+            if skeleton_snapshot:
+                h_entry = deep_merge_skeleton(skeleton_snapshot, h_entry)
+                horses_dict[hkey] = h_entry
+                logic_data['horses'] = horses_dict
+                with open(json_file, 'w', encoding='utf-8') as wf:
+                    json.dump(logic_data, wf, ensure_ascii=False, indent=2)
+                own_write_mtime = os.path.getmtime(json_file)
+                last_mtime = own_write_mtime
+
             errors = validate_fn(horse_num, h_entry, horses_dict, all_horses, json_file)
             if errors:
                 name = h_entry.get('horse_name', '')
@@ -1246,6 +1287,49 @@ def print_hkjc_analysis_summary(horse_entry, horse_num):
     elif len(unique_scores) >= 4:
         print(f"   ✨ 分數差異度良好 ({len(unique_scores)} 種不同分數)")
 
+
+def deep_merge_skeleton(skeleton, llm_input):
+    """Deep-merge LLM's filled values INTO the original skeleton.
+    
+    Ensures all skeleton fields are preserved even if LLM writes a
+    simplified format. This is a preventive design — not a validation wall.
+    
+    Rules:
+    - skeleton keys are always preserved (even if LLM omits them)
+    - LLM's new keys are accepted (e.g. _validated)
+    - dict values are recursively merged
+    - [FILL]/[AUTO] placeholders are replaced by LLM values
+    - locked data (no [FILL]) keeps LLM's version if changed
+    """
+    merged = dict(skeleton)  # Start from skeleton as base
+    
+    for key, llm_val in llm_input.items():
+        if key not in skeleton:
+            # LLM added a new key (e.g. _validated, scenario_tags) — accept it
+            merged[key] = llm_val
+            continue
+        
+        skel_val = skeleton[key]
+        
+        # Both are dicts → recursive merge
+        if isinstance(skel_val, dict) and isinstance(llm_val, dict):
+            merged[key] = deep_merge_skeleton(skel_val, llm_val)
+            continue
+        
+        # Skeleton value contains [FILL] → LLM is expected to replace it
+        if isinstance(skel_val, str) and '[FILL]' in skel_val:
+            merged[key] = llm_val
+            continue
+        
+        # Skeleton value is [AUTO] → orchestrator computes later
+        if isinstance(skel_val, str) and '[AUTO]' in skel_val:
+            merged[key] = llm_val if (isinstance(llm_val, str) and '[AUTO]' not in llm_val) else skel_val
+            continue
+        
+        # Otherwise keep LLM's version (it may have legitimately updated)
+        merged[key] = llm_val
+    
+    return merged
 
 
 # Fluff phrases that indicate lazy/template analysis
@@ -2067,7 +2151,8 @@ def main():
                     card_path = generate_hkjc_work_card(
                         ph, facts_content, logic_data, runtime_dir,
                         _sm_pace, _sm_bias,
-                        horse_idx=horse_idx, total_horses=len(pending_horses)
+                        horse_idx=horse_idx, total_horses=len(pending_horses),
+                        race_num=race_num
                     )
                     
                     # 4. Also write legacy Context file for backward compat
@@ -2098,12 +2183,17 @@ def main():
                     print(f"\n   ⚠️ 只做呢一匹馬！Python 會自動偵測變動並驗證。")
                     
                     # 6. Watch for THIS SINGLE HORSE to pass validation
+                    # V11.1: Capture skeleton snapshot for merge preservation
+                    _skel_snap = logic_data.get('horses', {}).get(str(ph), {})
+                    _skel_snap_copy = json.loads(json.dumps(_skel_snap))  # deep copy
+                    
                     result = watch_single_horse_hkjc(
                         logic_json, ph,
                         validate_fn=validate_hkjc_firewalls,
                         all_horses=horses,
                         poll_interval=3,
-                        timeout_minutes=10
+                        timeout_minutes=10,
+                        skeleton_snapshot=_skel_snap_copy,
                     )
                     
                     if result:
