@@ -2152,7 +2152,7 @@ def main():
                         ph, facts_content, logic_data, runtime_dir,
                         _sm_pace, _sm_bias,
                         horse_idx=horse_idx, total_horses=len(pending_horses),
-                        race_num=race_num
+                        race_num=r
                     )
                     
                     # 4. Also write legacy Context file for backward compat

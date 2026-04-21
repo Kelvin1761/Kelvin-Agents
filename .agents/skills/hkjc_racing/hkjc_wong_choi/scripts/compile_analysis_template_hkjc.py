@@ -469,11 +469,11 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
         f"- **部署與練馬師訊號 (Step 8.2):** {h_analysis.get('trainer_signal', '[N/A]')}",
         f"- **人馬配搭 (Step 2.5):** {h_analysis.get('jockey_fit', '[N/A]')}",
         f"- **步速段速 (Step 0+10):** {h_analysis.get('pace_adaptation', '[N/A]')}",
-        f"- **📊 全段速剖面摘要 (Step 10.4/10.5) [SIP-P1a/P1b/P1c]:** {h_analysis.get('sectional_profile_summary', sf.get('trend', '[N/A]'))}",
+        f"- **🔬 段速法醫 (Step 10.4/10.5) [SIP-P1a/P1b/P1c]:** {h_analysis.get('sectional_profile_summary', sf.get('trend', '[N/A]'))}",
         f"- **📐 頭馬距離趨勢 (Step 10.6) [SIP-P1d]:** {h_analysis.get('margin_trend', '[N/A]')}",
         f"- **🔄 走位-段速複合 (Step 10.7) [SIP-P2b]:** {h_analysis.get('position_sectional_composite', '[N/A]')}",
         f"- **📉 完成時間偏差 (Step 10.8) [SIP-P2c]:** {h_analysis.get('finish_time_deviation', '[N/A]')}",
-        f"- **EEM 能量分析 (Step 11):** {eem.get('assessment', h_analysis.get('eem_analysis', '[N/A]'))}",
+        f"- **⚡ EEM 能量分析 (Step 11):** {eem.get('assessment', h_analysis.get('eem_analysis', '[N/A]'))}",
         f"- **隱藏賽績 (Step 6+12):** {h_analysis.get('hidden_form', '[N/A]')}",
         f"- **競賽事件 / 馬匹特性:** {h_analysis.get('competition_events', '[N/A]')}",
     ])
