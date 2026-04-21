@@ -739,27 +739,71 @@ def get_target_dir(venue, formatted_date, auto_create=False):
         return new_dir
     return None
 
+def detect_total_races_from_url(url):
+    """Detect actual number of races from HKJC racecard HTML page.
+    Parses RaceNo= references to find the maximum race number.
+    Falls back to 9 (HV default) or 11 (ST default) if detection fails.
+    """
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=15) as response:
+            html = response.read().decode('utf-8')
+        race_nos = set(int(x) for x in re.findall(r'RaceNo=(\d+)', html))
+        if race_nos:
+            max_race = max(race_nos)
+            print(f"✅ [Auto-Detection] 從 HKJC 頁面偵測到 {max_race} 場賽事 (RaceNo: {sorted(race_nos)})")
+            return max_race
+    except Exception as e:
+        print(f"⚠️ [Auto-Detection] 無法偵測場數: {e}")
+
+    # Fallback: guess from venue in URL
+    if 'HV' in url.upper():
+        print(f"⚠️ [Fallback] 跑馬地預設 9 場")
+        return 9
+    else:
+        print(f"⚠️ [Fallback] 沙田預設 11 場")
+        return 11
+
+
 def trigger_extractor(url, target_dir):
     print(f"🚀 [Orchestrator] 啟動 HKJC Race Extractor 提取全日數據...")
     script_path = ".agents/skills/hkjc_racing/hkjc_race_extractor/scripts/batch_extract.py"
     if not os.path.exists(script_path):
         print(f"❌ [Error] 找不到爬蟲腳本: {script_path}")
         sys.exit(1)
+    # Dynamically detect actual race count instead of hardcoding 1-11
+    total = detect_total_races_from_url(url)
+    race_range = f"1-{total}"
+    print(f"📋 [Orchestrator] 提取場次範圍: {race_range}")
     try:
-        subprocess.run([PYTHON, script_path, "--base_url", url, "--races", "1-11", "--output_dir", target_dir], check=True)
+        subprocess.run([PYTHON, script_path, "--base_url", url, "--races", race_range, "--output_dir", target_dir], check=True)
     except subprocess.CalledProcessError as e:
         print(f"❌ [Error] 數據提取腳本執行失敗: {e}")
         sys.exit(1)
 
 def discover_total_races(target_dir):
+    """Discover total races from extracted racecard files.
+    Filters out empty/shell files (<500 bytes) to avoid counting
+    races that don't actually exist on the race day.
+    """
+    MIN_RACECARD_SIZE = 500  # bytes — valid racecards are typically 3-4KB+
     racecards = [f for f in os.listdir(target_dir) if "排位表.md" in f or "Racecard.md" in f or "排位表" in f]
     max_race = 0
+    skipped = []
     for card in racecards:
         m = re.search(r'Race (\d+)', card)
         if m:
             race_num = int(m.group(1))
+            card_path = os.path.join(target_dir, card)
+            card_size = os.path.getsize(card_path) if os.path.exists(card_path) else 0
+            if card_size < MIN_RACECARD_SIZE:
+                skipped.append((race_num, card_size))
+                continue
             if race_num > max_race:
                 max_race = race_num
+    if skipped:
+        skipped_str = ', '.join(f'Race {r} ({s}B)' for r, s in sorted(skipped))
+        print(f"⚠️ [discover_total_races] 過濾空殼排位表: {skipped_str}")
     return max_race
 
 def check_raw_data_completeness(target_dir, total_races):
