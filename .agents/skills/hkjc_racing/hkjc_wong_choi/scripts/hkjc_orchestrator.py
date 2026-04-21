@@ -1148,8 +1148,12 @@ def generate_hkjc_work_card(horse_num, facts_content, logic_data, runtime_dir,
     card.append("---")
     card.append("## 📋 綜合部分（填完 8 個維度後）")
     card.append("- **core_logic**: ~100字自然段落（見上方 🔟 指引）")
-    card.append("- **advantages**: 2-3 個主要優勢")
-    card.append("- **disadvantages**: 2-3 個致命風險")
+    card.append("- **advantages**: 列出 2-3 個主要優勢（每點 ≥10 字，引用具體數據）")
+    card.append("  - ❌ 錯誤示範：`[無]` 或 `暫無明顯優勢`")
+    card.append("  - ✅ 正確示範：`1. 近3仗L400均值22.3秒，段速穩定屬前列水平。2. 潘頓配文家良近季勝出率23%，屬一線組合。`")
+    card.append("- **disadvantages**: 列出 2-3 個致命風險（每點 ≥10 字，引用具體數據）")
+    card.append("  - ❌ 錯誤示範：`[無]` 或 `風險不大`")
+    card.append("  - ✅ 正確示範：`1. 135磅為全場最高負磅，上仗同磅跑第4。2. 9檔在B+2偏外賽道需蝕位搶前。`")
     card.append("")
     card.append("---")
     card.append("## 📄 原始賽績數據（嚴禁修改）")
@@ -1487,6 +1491,19 @@ def validate_hkjc_firewalls(h, h_entry, horses_dict, all_horses, json_file):
             errors.append(
                 f"WALL-016: core_logic 只有 {data_count} 個數據錨點 (至少需要 2 個)。"
                 f" 必須引用具體數字 (如 L400=22.5秒、近6仗=2-1-3-4-2-1)。"
+            )
+
+    # WALL-021: advantages/disadvantages substance check
+    _reject_placeholders = {'[無]', '[FILL]', '無', '暫無', '暫無明顯優勢', '暫無明顯風險',
+                            '風險不大', '優勢不明顯', 'N/A', 'n/a', '-', '—'}
+    for field_name in ('advantages', 'disadvantages'):
+        field_val = str(h_entry.get(field_name, '[FILL]')).strip()
+        field_chi = len(re.findall(r'[\u4e00-\u9fff]', field_val))
+        if field_val in _reject_placeholders or field_chi < 10:
+            label = '最大競爭優勢' if field_name == 'advantages' else '最大失敗風險'
+            errors.append(
+                f"WALL-021: {field_name} ({label}) 過短或為佔位符 ('{field_val[:30]}', {field_chi}字)。"
+                f" 請列出 2-3 個具體要點，每點 ≥10 字並引用數據。"
             )
 
     return errors

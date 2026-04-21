@@ -404,6 +404,7 @@ Orchestrator 內建多層自動驗證防線，確保每匹馬嘅分析品質：
 | WALL-014 | core_logic 必須提及馬名（防通用模板） |
 | WALL-017 | 偵測已知 bypass 腳本特徵碼 |
 | WALL-019 | NONCE 前綴驗證（只接受 `SKEL_` 開頭） |
+| WALL-021 | advantages/disadvantages ≥10 中文字（防 `[無]` 佔位符） |
 
 > ⚠️ **重要**：嚴禁建立任何 auto_fill / auto_expert 腳本去繞過以上防線。
 > 詳見 `.antigravityrules` 嘅「Wong Choi 分析品質標準」。
