@@ -45,13 +45,20 @@ STAT_LABEL = {"PTS": "得分", "REB": "籃板", "AST": "助攻", "FG3M": "三分
 def weighted_avg(arr):
     n = len(arr)
     if n == 0: return 0.0
-    weights = [0.5 + (1.0 * i / max(n - 1, 1)) for i in range(n)]
+    weights = []
+    for i in range(n):
+        if i < 3:
+            weights.append(1.5)
+        elif i < 7:
+            weights.append(1.0)
+        else:
+            weights.append(0.7)
     return round(sum(d * w for d, w in zip(arr, weights)) / sum(weights), 2)
 
 
 def trend_label(arr):
     if len(arr) < 5: return "— 持平"
-    l3 = sum(arr[-3:]) / 3
+    l3 = sum(arr[:3]) / 3
     l10 = sum(arr) / len(arr)
     diff = (l3 - l10) / l10 * 100 if l10 != 0 else 0
     if diff > 5: return "📈 上升"

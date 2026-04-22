@@ -122,8 +122,8 @@ Edge = 預估真實勝率 - 莊家隱含勝率
 | 5-10% | ➖ 邊緣 |
 | < 5% | ❌ 不推薦 |
 
-### Under 偵測系統
-若球員符合以下條件,直接考慮買 Under:
+### Downside Risk 偵測系統（不作 Under 推介）
+NBA v1 採用 Sportsbet milestone `X+` Over-only 策略。以下條件只用於降級或剔除 Over legs，嚴禁輸出 Under 投注推介:
 - 高波動 (CoV > 0.35) **且** 遇上精英防守對位
 - 遇到 Vegas Trap 誘餌(盤口低但 Over 賠率異常高)
 - 球隊客場飛航 B2B
@@ -133,17 +133,17 @@ Edge = 預估真實勝率 - 莊家隱含勝率
 
 ## 無即時賠率處理
 若無法獲取即時賠率,使用以下美式基準估算:
-- 標準盤口 Over/Under:賠率 1.90
+- 標準 milestone Over:賠率 1.90
 - Alt Lines (降維):根據跳階距離調整
 
 ---
 
-## 系統化 Under 分析框架 (Systematic Under Detection)
+## 系統化 Downside Risk 分析框架
 
-除了以上基礎 Under 偵測條件外,執行以下系統評估:
+除了以上基礎 downside 條件外,執行以下系統評估:
 
-### Under 候選評分表
-| 條件 | Under 分數 |
+### Downside 候選評分表
+| 條件 | Downside 分數 |
 |:---|:---|
 | CoV > 0.30 | +1 |
 | 對手 DvP 該指標排名 Top 5 (強防守) | +2 |
@@ -154,9 +154,9 @@ Edge = 預估真實勝率 - 莊家隱含勝率
 | Vegas Trap 誘餌(Over 賠率異常高) | +2 |
 | 賣線過高(盤口 > AVG + 0.5×SD) | +1 |
 
-### Under 建議閾值
-| Under 分數 | 建議 |
+### Downside 建議閾值
+| Downside 分數 | 建議 |
 |:---|:---|
-| ≥5 | 🚨 強烈建議買 Under,納入穩膽/價值組合 |
-| 3-4 | ✅ 可考慮買 Under,納入價值/高賠組合 |
-| ≤2 | ❌ 不建議買 Under |
+| ≥5 | 🚨 強烈降級或剔除該 Over leg |
+| 3-4 | ✅ 只可留作高賠觀察，需額外 Edge/MC 支持 |
+| ≤2 | ❌ 無明顯 downside 風險 |

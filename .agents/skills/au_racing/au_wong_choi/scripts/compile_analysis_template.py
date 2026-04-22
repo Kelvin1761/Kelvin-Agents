@@ -132,8 +132,8 @@ def parse_facts_md_au(text: str) -> list[dict]:
             return block[s_idx:e_idx].strip()
             
         table = _extract('📋 完整賽績檔案', '\n- **📊 段速趨勢')
-        trends = _extract('📊 段速趨勢', '\n- **⚡ EEM 能量摘要')
-        eem = _extract('⚡ EEM 能量摘要', '\n- **🔗 賽績線')
+        trends = _extract('📊 段速趨勢', '\n- **⚡ 形勢與走位摘要')
+        race_shape_data = _extract('⚡ 形勢與走位摘要', '\n- **🔗 賽績線')
         formline = _extract('🔗 賽績線', '\n- **🔧 引擎與距離')
         engine = _extract('🔧 引擎與距離', '\n=')
         
@@ -152,7 +152,7 @@ def parse_facts_md_au(text: str) -> list[dict]:
             'jockey': jockey,
             'trainer': trainer,
             'recent_form': recent_form,
-            'table': table, 'trends': trends, 'eem': eem, 'formline': formline, 'engine': engine
+            'table': table, 'trends': trends, 'race_shape': race_shape_data, 'formline': formline, 'engine': engine
         })
     return horses
 
@@ -279,7 +279,7 @@ def generate_horse_section(horse_idx, h_fact, h_logic):
     # ── Calculate with rating_engine_v2 (qualitative) ──
     matrix_keys_map = {
         "狀態與穩定性": "core", "段速與引擎": "core",
-        "EEM與形勢": "aux", "騎練訊號": "semi",
+        "形勢與走位": "semi", "騎練訊號": "semi",
         "級數與負重": "aux", "場地適性": "aux", 
         "賽績線": "aux", "裝備與距離": "aux",
     }
@@ -288,7 +288,7 @@ def generate_horse_section(horse_idx, h_fact, h_logic):
     
     b_grade = compute_base_grade(
         core_pass, semi_pass, aux_pass, core_fail, total_fail,
-        matrix_dims=m_data, eem_key='__eem_disabled__'
+        matrix_dims=m_data, eem_key="形勢與走位"
     )
     w_score = compute_weighted_score(core_pass, semi_pass, aux_pass, core_fail, total_fail)
     
@@ -321,11 +321,11 @@ def generate_horse_section(horse_idx, h_fact, h_logic):
         race_forgiveness = h_logic.get('race_forgiveness', [])
         lines.append(_truncate_table(h_fact['table'], max_rows=5, race_forgiveness_list=race_forgiveness))
     lines.append('')
-    # Inject EEM + Trends from Facts (once, cleanly labelled)
+    # Inject Race Shape + Trends from Facts (once, cleanly labelled)
     if h_fact.get('trends'):
         lines.append(h_fact['trends'].strip() + '\n')
-    if h_fact.get('eem'):
-        lines.append(h_fact['eem'].strip() + '\n')
+    if h_fact.get("race_shape"):
+        lines.append(h_fact["race_shape"].strip() + '\n')
 
     # ── 4. 馬匹剖析 (5 項 AU 標準) ──────────────────────────────────────
     h_analysis = h_logic.get('analytical_breakdown', {})
@@ -349,12 +349,12 @@ def generate_horse_section(horse_idx, h_fact, h_logic):
     )
     lines.append(f"- **趨勢(近 3 仗):** `{sf.get('trend', '[FILL]')}`\n")
 
-    # ── 6. EEM 能量 ───────────────────────────────────────────────────────
-    eem = h_logic.get('eem_energy', {})
-    lines.append('#### ⚡ EEM 能量')
-    lines.append(f"- **上仗走位:** {eem.get('last_run_position', '[FILL]')}")
-    lines.append(f"- **累積消耗:** `{eem.get('cumulative_drain', '[FILL]')}`")
-    lines.append(f"- **總評:** {eem.get('assessment', '[FILL]')}\n")
+    # ── 6. 形勢與走位 ───────────────────────────────────────────────────────
+    race_shape = h_logic.get('race_shape', {})
+    lines.append('#### ⚡ 形勢與走位')
+    lines.append(f"- **上仗走位:** {race_shape.get('last_run_position', '[FILL]')}")
+    lines.append(f"- **走位形勢:** `{race_shape.get('cumulative_drain', '[FILL]')}`")
+    lines.append(f"- **總評:** {race_shape.get('assessment', '[FILL]')}\n")
 
     # ── 7. 寬恕認定 ───────────────────────────────────────────────────────
     forg = h_logic.get('forgiveness_archive', {})
@@ -384,7 +384,7 @@ def generate_horse_section(horse_idx, h_fact, h_logic):
     matrix_keys = [
         ("狀態與穩定性", "核心"),
         ("段速與引擎",   "核心"),
-        ("EEM與形勢",    "輔助"),
+        ("形勢與走位",    "半核心"),
         ("騎練訊號",     "半核心"),
         ("級數與負重",   "輔助"),
         ("場地適性",     "輔助"),
@@ -463,7 +463,7 @@ def build_verdict(json_data, facts_horses):
     def compute_au_grade(h_obj):
         matrix_keys_map = {
             "狀態與穩定性": "core", "段速與引擎": "core",
-            "EEM與形勢": "aux", "騎練訊號": "semi",
+            "形勢與走位": "semi", "騎練訊號": "semi",
             "級數與負重": "aux", "場地適性": "aux", 
             "賽績線": "aux", "裝備與距離": "aux",
         }
@@ -472,7 +472,7 @@ def build_verdict(json_data, facts_horses):
         
         b_grade = compute_base_grade(
             core_pass, semi_pass, aux_pass, core_fail, total_fail,
-            matrix_dims=m_data, eem_key='__eem_disabled__'
+            matrix_dims=m_data, eem_key="形勢與走位"
         )
         w_score = compute_weighted_score(core_pass, semi_pass, aux_pass, core_fail, total_fail)
         
@@ -613,7 +613,7 @@ def main():
     # ── Compute grades and write back to JSON ──
     matrix_keys_map = {
         "狀態與穩定性": "core", "段速與引擎": "core",
-        "EEM與形勢": "aux", "騎練訊號": "semi",
+        "形勢與走位": "semi", "騎練訊號": "semi",
         "級數與負重": "aux", "場地適性": "aux", 
         "賽績線": "aux", "裝備與距離": "aux",
     }
@@ -623,7 +623,7 @@ def main():
         core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(m_data, matrix_keys_map)
         b_grade = compute_base_grade(
             core_pass, semi_pass, aux_pass, core_fail, total_fail,
-            matrix_dims=m_data, eem_key='__eem_disabled__'
+            matrix_dims=m_data, eem_key="形勢與走位"
         )
         ft = h_logic.get('fine_tune', {})
         ft_dir = ft.get('direction', '無') if isinstance(ft, dict) else str(ft)

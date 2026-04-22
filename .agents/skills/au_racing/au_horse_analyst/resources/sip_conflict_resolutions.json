@@ -1,0 +1,103 @@
+{
+  "version": "2026-04-23",
+  "purpose": "Audited SIP conflict suppressions. These pairs are not ignored; they are resolved by explicit precedence, mutually exclusive scope, or strongest-rule-wins aggregation in the AU Horse Analyst resources.",
+  "resolved_direction_conflicts": [
+    {
+      "pair": ["SIP-SL02", "SIP-RW02"],
+      "resolution": "scope_disjoint",
+      "reason": "SIP-SL02 applies to front-runners/presser survival on Good tracks. SIP-RW02 applies to S/S- closers facing a stable leader. A single horse cannot be both the protected front-runner and the penalised closer."
+    },
+    {
+      "pair": ["SIP-SL02", "SIP-RR14"],
+      "resolution": "precedence_cap_wins",
+      "reason": "Good-track leader EEM support can improve shape, but Good WR failure cap remains a synthesis ceiling unless an explicit override is triggered."
+    },
+    {
+      "pair": ["SIP-SL02", "SIP-RR13"],
+      "resolution": "scope_disjoint",
+      "reason": "SIP-SL02 protects Good-track front-runners. SIP-RR13 penalises Caulfield Good Rail-True closers. Running-style targets are mutually exclusive."
+    },
+    {
+      "pair": ["SIP-RW01", "SIP-RW02"],
+      "resolution": "scope_disjoint",
+      "reason": "Randwick leader bonus targets front-runners; RW02 targets S/S- closers behind stable leaders. Apply per horse role."
+    },
+    {
+      "pair": ["SIP-RW01", "SIP-RR14"],
+      "resolution": "precedence_cap_wins",
+      "reason": "Randwick leader bonus cannot erase a Good WR cap. The EEM bonus is applied first, then synthesis caps are enforced."
+    },
+    {
+      "pair": ["SIP-RW02", "SIP-RR10"],
+      "resolution": "role_specific",
+      "reason": "RR10 protects elite trainer raiders/front-runners; RW02 penalises S/S- closers. If a horse is ambiguous, apply RW02 only when its in-run profile is demonstrably closer/settled."
+    },
+    {
+      "pair": ["SIP-RF02", "SIP-RH02"],
+      "resolution": "precedence_risk_gate_first",
+      "reason": "Soft unknown/risk cap is assessed before Soft featherweight bonus. RH02 can lift only horses with sufficient Soft evidence; it cannot override RF02 Tier 4/5 risk by weight alone."
+    },
+    {
+      "pair": ["SIP-FL01", "SIP-FL02"],
+      "resolution": "precedence_traffic_tax_wins",
+      "reason": "FL01 inner-draw/lightweight bonus is applied to EEM/shape first. FL02 then caps S- if the over-subscribed favourite faces traffic."
+    }
+  ],
+  "resolved_duplicate_counting": [
+    {
+      "sips": ["SIP-2", "SIP-3", "SIP-RR11", "SIP-RR13"],
+      "resolution": "single_eem_geometry_verdict",
+      "reason": "All four are EEM geometry/track penalties. They must collapse into one final EEM verdict using the most specific rule, not stack as multiple downgrades."
+    },
+    {
+      "sips": ["SIP-7", "SIP-R14-5", "SIP-FL01", "SIP-RH02"],
+      "resolution": "single_weight_claim_bonus",
+      "reason": "Apprentice claim, lightweight, inner draw, and Soft featherweight signals share the same physical weight edge. Apply the strongest eligible bonus only."
+    },
+    {
+      "sips": ["SIP-8", "SIP-R14-2"],
+      "resolution": "single_elite_override",
+      "reason": "Elite closer and elite jockey draw overrides both reduce positional penalties. Use the broader valid override once, not twice."
+    },
+    {
+      "sips": ["SIP-10", "SIP-RH05"],
+      "resolution": "import_scope_split",
+      "reason": "SIP-10 handles general imported-horse tolerance; RH05 is the NZ-specific discount. Use RH05 for NZ raiders, otherwise SIP-10."
+    },
+    {
+      "sips": ["SIP-SL01", "SIP-RW02", "SIP-RF02", "SIP-RR14", "SIP-C14-2", "SIP-FL02"],
+      "resolution": "rating_cap_ladder",
+      "reason": "All are synthesis caps/floors. Apply all trigger checks, then enforce the most restrictive final cap and log the winning cap only."
+    },
+    {
+      "sips": ["SIP-R14-3", "SIP-C14-1", "SIP-RR11"],
+      "resolution": "single_draw_geometry_verdict",
+      "reason": "Inner congestion, rail-out field scaling, and tight-turn wide-draw penalties are draw geometry effects. Collapse to one draw/EEM verdict by specificity."
+    },
+    {
+      "sips": ["SIP-R14-5", "SIP-FL01", "SIP-RH02"],
+      "resolution": "single_lightweight_bonus",
+      "reason": "Lightweight bonuses are mutually capped by strongest eligible rule."
+    },
+    {
+      "sips": ["SIP-RR02", "SIP-RR09", "SIP-RF01"],
+      "resolution": "soft_track_hierarchy",
+      "reason": "Soft specialist, Soft place-rate discount, and Soft place-rate rescue form one hierarchy. RR02/RF01 classify first; RR09 applies only if RF01 does not rescue the horse."
+    },
+    {
+      "sips": ["SIP-RR05", "SIP-RH03"],
+      "resolution": "brand_premium_guard",
+      "reason": "Both regulate elite jockey/trainer brand premium. RH03 supersedes RR05 for JMcD/Waller brand-trap conditions."
+    },
+    {
+      "sips": ["SIP-RR08", "SIP-GF02"],
+      "resolution": "track_condition_specificity",
+      "reason": "RR08 is Soft hierarchy; GF02 is Good-track wet-specialist guard. Actual track condition selects the applicable branch."
+    },
+    {
+      "sips": ["SIP-RR11", "SIP-RR13"],
+      "resolution": "most_specific_eem_penalty",
+      "reason": "RR11 is tight-turn sprint wide-draw; RR13 is Caulfield Good closer penalty. If both appear in metadata, the venue/distance-specific rule wins."
+    }
+  ]
+}

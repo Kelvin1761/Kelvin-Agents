@@ -1,11 +1,22 @@
 #!/usr/bin/env python3
 """
-SIP Engine — Systemic Improvement Proposals Auto-Evaluator
-==========================================================
-Evaluates all 8 HKJC SIP rules against horse/race data.
-Returns triggered SIPs with tags, adjustments, and alerts.
+SIP Engine — Systemic Improvement Proposals Auto-Evaluator (V2.0)
+=================================================================
+Streamlined SIP engine after 2026-04-22 audit.
 
-Based on: 2026-04-19 Sha Tin Reflector Audit (SIP V1.0)
+V2.0 Changes:
+  - RETIRED: SIP-01 (no structured health data), SIP-06 (dead code),
+    SIP-07 (duplicate of MC engine)
+  - SIMPLIFIED: SIP-02 → race_context flag (is_straight_1000m)
+  - MOVED: SIP-05 → post-analysis verdict guard
+  - REFACTORED: SIP-04 → reads Facts.md structured data only
+  - KEPT: SIP-08 (MC divergence safety net)
+
+Remaining SIPs:
+  Horse-level: SIP-04 (Zero Win Breakout)
+  Race-level:  SIP-08 (Divergence Force Review)
+  Context:     is_straight_1000m flag (replaces SIP-02)
+  Verdict:     class_drop_cluster guard (replaces SIP-05)
 
 Usage:
     from sip_engine import evaluate_horse_sips, evaluate_race_sips
@@ -13,160 +24,86 @@ Usage:
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
 
-import json
 import re
 
 
 # ============================================================
-# SIP-01: Health Recovery Discount
-# ============================================================
-
-def check_sip01_health_recovery(horse: dict) -> dict:
-    """
-    WHEN: Horse has health record (roaring, EIPH, abnormal breathing)
-      AND last race was normal finish (not DNF, not last 3)
-    THEN: Floor rating at B-, tag HEALTH_RECOVERY
-    """
-    health_issues = horse.get('health_issues', [])
-    if isinstance(health_issues, str):
-        health_issues = [health_issues] if health_issues else []
-    
-    health_keywords = ['喘鳴', '氣管', '出血', 'roaring', 'EIPH', '異常呼吸', 'bleed']
-    has_health = any(
-        any(kw in str(issue) for kw in health_keywords)
-        for issue in health_issues
-    )
-    
-    if not has_health:
-        # Also check core_logic for mentions
-        core_logic = str(horse.get('core_logic', ''))
-        has_health = any(kw in core_logic for kw in health_keywords)
-    
-    if not has_health:
-        return {}
-    
-    # Check last race wasn't a disaster
-    last_dnf = horse.get('last_race_dnf', False)
-    last_position = horse.get('last_position')
-    field_size = horse.get('_field_size', 14)
-    
-    if last_dnf:
-        return {}
-    
-    if last_position and isinstance(last_position, int):
-        if last_position >= field_size - 2:  # Last 3
-            return {}
-    
-    return {
-        'sip': 'SIP-01',
-        'name': 'HEALTH_RECOVERY_DISCOUNT',
-        'severity': '🟡',
-        'tag': '健康復甦折扣啟動',
-        'effect': 'Floor at B-, health as RISK FACTOR only',
-        'max_upgrade': '+1 grade',
-    }
-
-
-# ============================================================
-# SIP-02: Straight Course 1000m Override
-# ============================================================
-
-def check_sip02_straight_course(race_context: dict) -> dict:
-    """
-    WHEN: distance == 1000m AND turf
-    THEN: Multiple adjustments (barrier reversal, burn index, etc.)
-    Note: MC engine already handles sigma boost (+40%) and barrier reversal.
-          This SIP flags for LLM analysis layer adjustments.
-    """
-    distance = race_context.get('distance', 0)
-    if isinstance(distance, str):
-        m = re.search(r'(\d+)', str(distance))
-        distance = int(m.group(1)) if m else 0
-    
-    track = str(race_context.get('track', ''))
-    is_turf = '草' in track or 'turf' in track.lower() or not track
-    
-    if distance > 1000 or not is_turf:
-        return {}
-    
-    return {
-        'sip': 'SIP-02',
-        'name': 'STRAIGHT_COURSE_1000M',
-        'severity': '🔴',
-        'tag': '直路賽特殊模型',
-        'effects': [
-            '高號碼檔(8-14)加分，低號碼檔(1-4)唔自動加分',
-            'Type A ≥4 匹觸發互燒指數',
-            '減磅效應加強 (每磅 PI boost 0.25)',
-            '選馬範圍擴展至 Top6',
-        ],
-        'note': 'MC 引擎已自動處理 sigma +40% 及檔位反轉',
-    }
-
-
-# ============================================================
-# SIP-04: Zero Win Breakout Candidate
+# SIP-04: Zero Win Breakout Candidate (V2 — Facts.md driven)
 # ============================================================
 
 def check_sip04_zero_win_breakout(horse: dict, race_context: dict) -> dict:
     """
     WHEN: wins == 0 AND starts >= 3
-      AND positive indicators (strong formline OR rising PI)
+      AND positive Facts-based indicators:
+        - margin_trend contains 收窄 (closing gap)
+        - OR formline_strength contains 強 (strong formline)
+        - OR recent_form shows improving positions
       AND barrier <= field_size * 0.5
     THEN: Unlock ceiling to B+, tag ZERO_WIN_BREAKOUT_CANDIDATE
+
+    V2: No longer depends on matrix scores or core_logic keywords.
+        Uses pre-filled Facts.md data only (wins, starts, margin_trend,
+        formline_strength, recent_form, barrier).
     """
     wins = horse.get('wins', None)
     if wins is None:
-        # Try to parse from recent_form
-        recent_form = str(horse.get('recent_form', ''))
-        wins = recent_form.count('1') if recent_form else None
-    
-    if wins is None or wins > 0:
         return {}
-    
+
+    if isinstance(wins, str):
+        try:
+            wins = int(wins)
+        except ValueError:
+            return {}
+
+    if wins > 0:
+        return {}
+
     starts = horse.get('starts', 0)
     if isinstance(starts, str):
         try:
             starts = int(starts)
         except ValueError:
             starts = 0
-    
+
     if starts < 3:
         return {}
-    
-    # Check positive indicators
+
+    # V2: Check positive indicators from Facts.md structured data only
     positive_indicators = 0
-    core_logic = str(horse.get('core_logic', ''))
-    matrix = horse.get('matrix', {})
-    
-    # Check formline strength
-    formline = matrix.get('賽績線', matrix.get('formline', {}))
-    if isinstance(formline, dict):
-        score = formline.get('score', '')
-        if score in ('✅✅', '✅'):
-            positive_indicators += 1
-    
-    # Check stability (rising form)
-    stability = matrix.get('狀態與穩定性', matrix.get('stability', {}))
-    if isinstance(stability, dict):
-        score = stability.get('score', '')
-        if score in ('✅✅', '✅'):
-            positive_indicators += 1
-    
-    # Check for positive keywords in core_logic
-    positive_keywords = ['進步', '上升', '漸入佳境', '突破', 'improving', '強組']
-    if any(kw in core_logic for kw in positive_keywords):
+    indicator_details = []
+
+    # 1. Margin trend (from Facts.md 頭馬距離趨勢)
+    margin_trend = str(horse.get('margin_trend', ''))
+    if '收窄' in margin_trend or '📈' in margin_trend:
         positive_indicators += 1
-    
+        indicator_details.append('頭馬距離收窄')
+
+    # 2. Formline strength (from Facts.md 綜合評估)
+    formline = str(horse.get('formline_strength', ''))
+    if '強' in formline or '✅✅' in formline or '✅' in formline:
+        positive_indicators += 1
+        indicator_details.append(f'賽績線={formline[:20]}')
+
+    # 3. Recent form trend (from Facts.md Last 10)
+    recent_form = str(horse.get('recent_form', ''))
+    if recent_form and recent_form != 'N/A':
+        positions = [int(ch) for ch in recent_form if ch.isdigit()]
+        if len(positions) >= 3:
+            last3 = positions[-3:]
+            # Improving = positions getting smaller (closer to 1st)
+            if last3[-1] < last3[-2] < last3[-3]:
+                positive_indicators += 1
+                indicator_details.append(f'近3仗↗({last3[0]}→{last3[1]}→{last3[2]})')
+
     if positive_indicators < 1:
         return {}
-    
-    # Check barrier
+
+    # Check barrier (from Facts.md)
     barrier = horse.get('barrier', 99)
     field_size = race_context.get('field_size', 14)
     if isinstance(barrier, int) and barrier > field_size * 0.5:
         return {}
-    
+
     return {
         'sip': 'SIP-04',
         'name': 'ZERO_WIN_BREAKOUT_CANDIDATE',
@@ -174,125 +111,8 @@ def check_sip04_zero_win_breakout(horse: dict, race_context: dict) -> dict:
         'tag': 'ZERO_WIN_BREAKOUT_CANDIDATE',
         'effect': 'Ceiling unlocked to B+ (max)',
         'positive_indicators': positive_indicators,
+        'indicator_details': indicator_details,
         'note': '每場最多觸發 2 匹',
-    }
-
-
-# ============================================================
-# SIP-05: Class Drop Cluster Alert
-# ============================================================
-
-def check_sip05_class_drop_cluster(race_context: dict, all_horses: dict) -> dict:
-    """
-    WHEN: Top4 verdict has 4 S-Grade horses
-      AND field has ≥4 class-drop horses
-    THEN: Trigger cluster alert, expand to Top6
-    """
-    # Count S-grades in top4
-    verdict = race_context.get('verdict', {})
-    top4 = verdict.get('top4', [])
-    s_count = sum(1 for h in top4 if isinstance(h, dict) and str(h.get('grade', '')).startswith('S'))
-    
-    if s_count < 4:
-        return {}
-    
-    # Count class-drop horses
-    class_drops = 0
-    for h_key, h_data in all_horses.items():
-        if h_data.get('class_advantage_2bm', False):
-            class_drops += 1
-    
-    if class_drops < 4:
-        return {}
-    
-    return {
-        'sip': 'SIP-05',
-        'name': 'CLASS_DROP_CLUSTER',
-        'severity': '🔴',
-        'tag': 'CLASS_DROP_CLUSTER',
-        'effects': [
-            '擴大選馬至 Top6',
-            '降班馬 class_advantage_bonus 打 7 折 (×0.7)',
-            '後上型 (Type B/C) rating +0.3',
-            '初出馬 floor 從 D 提升至 C',
-        ],
-        's_grade_count': s_count,
-        'class_drop_count': class_drops,
-    }
-
-
-# ============================================================
-# SIP-06: Hot Combo Boost
-# ============================================================
-
-def check_sip06_hot_combo(horse: dict) -> dict:
-    """
-    WHEN: jockey_trainer combo this season >= 3 wins
-      AND combo_strike_rate > league average × 1.3
-    THEN: Rating boost +0.3, tag HOT_COMBO
-    """
-    combo_wins = horse.get('jockey_trainer_combo_wins', 0)
-    if isinstance(combo_wins, str):
-        try:
-            combo_wins = int(combo_wins)
-        except ValueError:
-            combo_wins = 0
-    
-    if combo_wins < 3:
-        return {}
-    
-    combo_sr = horse.get('jockey_trainer_combo_sr', 0)
-    league_avg_sr = 0.08  # ~8% average HK strike rate
-    
-    if isinstance(combo_sr, (int, float)) and combo_sr > league_avg_sr * 1.3:
-        return {
-            'sip': 'SIP-06',
-            'name': 'HOT_COMBO_BOOST',
-            'severity': '🟡',
-            'tag': 'HOT_COMBO',
-            'effect': 'Rating +0.3',
-            'combo_wins': combo_wins,
-            'combo_sr': combo_sr,
-            'note': '騎練因子加總最多 +1 級',
-        }
-    
-    # Even without explicit SR data, flag if combo_wins >= 3
-    return {
-        'sip': 'SIP-06',
-        'name': 'HOT_COMBO_BOOST',
-        'severity': '🟡',
-        'tag': 'HOT_COMBO (待驗證 SR)',
-        'effect': 'Rating +0.3 (需驗證 strike rate)',
-        'combo_wins': combo_wins,
-    }
-
-
-# ============================================================
-# SIP-07: Significant Claim Discount
-# ============================================================
-
-def check_sip07_claim_discount(horse: dict) -> dict:
-    """
-    WHEN: Apprentice jockey claim >= 7 lbs
-    THEN: Enhanced weight reduction effect, tag SIGNIFICANT_CLAIM
-    Note: MC engine already handles non-linear model (>=7lbs coeff 0.22)
-    """
-    weight = horse.get('weight', 126)
-    if not isinstance(weight, (int, float)):
-        return {}
-    
-    claim = 126 - weight
-    if claim < 7:
-        return {}
-    
-    return {
-        'sip': 'SIP-07',
-        'name': 'SIGNIFICANT_CLAIM_DISCOUNT',
-        'severity': '🟡',
-        'tag': 'SIGNIFICANT_CLAIM_DISCOUNT',
-        'effect': f'減磅 {claim} 磅，加強效應 (coeff 0.22)',
-        'claim_lbs': claim,
-        'note': 'MC 引擎已自動處理非線性減磅模型',
     }
 
 
@@ -308,14 +128,14 @@ def check_sip08_divergence(mc_results: dict, concordance: dict) -> dict:
     """
     if not concordance:
         return {}
-    
+
     level = concordance.get('concordance_level', 'HIGH')
     alerts = concordance.get('action_alerts', [])
     divergence = concordance.get('divergence_alerts', [])
-    
+
     if level != 'LOW' and not alerts and not divergence:
         return {}
-    
+
     return {
         'sip': 'SIP-08',
         'name': 'DIVERGENCE_FORCE_REVIEW',
@@ -332,86 +152,158 @@ def check_sip08_divergence(mc_results: dict, concordance: dict) -> dict:
 
 
 # ============================================================
+# Race Context Flags (replaces SIP-02)
+# ============================================================
+
+def get_race_context_flags(race_context: dict) -> dict:
+    """
+    Generate race-level context flags for work card annotations.
+    Replaces SIP-02 (straight course override) with a simple flag.
+    MC engine already handles the mechanical adjustments (sigma, barrier reversal).
+    """
+    flags = {}
+
+    # Straight 1000m detection (was SIP-02)
+    distance = race_context.get('distance', 0)
+    if isinstance(distance, str):
+        m = re.search(r'(\d+)', str(distance))
+        distance = int(m.group(1)) if m else 0
+
+    track = str(race_context.get('track', ''))
+    is_turf = '草' in track or 'turf' in track.lower() or not track
+
+    if distance <= 1000 and is_turf and distance > 0:
+        flags['is_straight_1000m'] = True
+        flags['straight_1000m_notes'] = [
+            '⚠️ 直路賽：高號碼檔(8-14)統計上有利',
+            '⚠️ 直路賽：前領馬≥4匹觸發互燒風險',
+            '⚠️ 直路賽：MC 已自動處理 sigma +40% 及檔位反轉',
+        ]
+
+    return flags
+
+
+# ============================================================
+# Verdict Guard: Class Drop Cluster (replaces SIP-05)
+# ============================================================
+
+def check_class_drop_cluster_guard(ranked_results: list, all_horses: dict) -> dict:
+    """
+    Post-analysis verdict guard (was SIP-05).
+    Call this AFTER rating matrix computation, during verdict generation.
+
+    WHEN: Top4 are all S-Grade AND field has ≥4 class-drop horses
+    THEN: Trigger cluster alert, expand to Top6
+
+    Returns guard dict with recommendations, or empty dict if not triggered.
+    """
+    if len(ranked_results) < 4:
+        return {}
+
+    # Count S-grades in top4
+    top4_grades = [r.get('final_grade', '') for r in ranked_results[:4]]
+    s_count = sum(1 for g in top4_grades if str(g).startswith('S'))
+
+    if s_count < 4:
+        return {}
+
+    # Count class-drop horses
+    class_drops = 0
+    for h_key, h_data in all_horses.items():
+        if h_data.get('class_advantage_2bm', False):
+            class_drops += 1
+
+    if class_drops < 4:
+        return {}
+
+    return {
+        'guard': 'CLASS_DROP_CLUSTER',
+        'severity': '🔴',
+        'effects': [
+            '擴大選馬至 Top6',
+            '降班馬 class_advantage_bonus 打 7 折 (×0.7)',
+            '後上型 (Type B/C) rating +0.3',
+        ],
+        's_grade_count': s_count,
+        'class_drop_count': class_drops,
+    }
+
+
+# ============================================================
 # Public API
 # ============================================================
 
 def evaluate_horse_sips(horse: dict, race_context: dict) -> list:
     """
-    Evaluate all per-horse SIP rules.
+    Evaluate per-horse SIP rules.
+    V2: Only SIP-04 remains (Facts.md driven).
     Returns list of triggered SIP dicts.
     """
     triggered = []
-    
-    sip01 = check_sip01_health_recovery(horse)
-    if sip01:
-        triggered.append(sip01)
-    
+
     sip04 = check_sip04_zero_win_breakout(horse, race_context)
     if sip04:
         triggered.append(sip04)
-    
-    sip06 = check_sip06_hot_combo(horse)
-    if sip06:
-        triggered.append(sip06)
-    
-    sip07 = check_sip07_claim_discount(horse)
-    if sip07:
-        triggered.append(sip07)
-    
+
     return triggered
 
 
 def evaluate_race_sips(race_context: dict, all_horses: dict,
                        mc_results: dict = None, concordance: dict = None) -> list:
     """
-    Evaluate all race-level SIP rules.
+    Evaluate race-level SIP rules.
+    V2: Only SIP-08 remains. SIP-02 → context flag, SIP-05 → verdict guard.
     Returns list of triggered SIP dicts.
     """
     triggered = []
-    
-    sip02 = check_sip02_straight_course(race_context)
-    if sip02:
-        triggered.append(sip02)
-    
-    sip05 = check_sip05_class_drop_cluster(race_context, all_horses)
-    if sip05:
-        triggered.append(sip05)
-    
+
     if mc_results and concordance:
         sip08 = check_sip08_divergence(mc_results, concordance)
         if sip08:
             triggered.append(sip08)
-    
+
     return triggered
 
 
-def format_sip_summary(horse_sips: list, race_sips: list = None) -> str:
-    """Format triggered SIPs as a readable work card section."""
+def format_sip_summary(horse_sips: list, race_sips: list = None,
+                       context_flags: dict = None) -> str:
+    """Format triggered SIPs + context flags as a readable work card section."""
     lines = []
     lines.append("## 🛡️ SIP 觸發檢查 [自動]")
-    
+
     all_sips = (race_sips or []) + horse_sips
-    
-    if not all_sips:
+
+    if not all_sips and not context_flags:
         lines.append("- ✅ 無 SIP 規則觸發")
         return '\n'.join(lines)
-    
+
+    # Context flags (e.g. straight 1000m)
+    if context_flags:
+        for note in context_flags.get('straight_1000m_notes', []):
+            lines.append(f"- {note}")
+
     for sip in all_sips:
         severity = sip.get('severity', '🟡')
         name = sip.get('name', '?')
         tag = sip.get('tag', '')
         effect = sip.get('effect', '')
         effects = sip.get('effects', [])
-        
+
         lines.append(f"- {severity} **{sip['sip']}** {name}: `{tag}`")
         if effect:
             lines.append(f"  → {effect}")
         for e in effects:
             lines.append(f"  → {e}")
+
+        # V2: Show indicator details for SIP-04
+        details = sip.get('indicator_details', [])
+        if details:
+            lines.append(f"  📊 指標: {', '.join(details)}")
+
         note = sip.get('note', '')
         if note:
             lines.append(f"  ⚠️ {note}")
-    
+
     lines.append("")
     return '\n'.join(lines)
 
@@ -424,21 +316,21 @@ if __name__ == '__main__':
         'starts': 8,
         'weight': 118,
         'barrier': 3,
-        'matrix': {
-            '賽績線': {'score': '✅'},
-            '狀態與穩定性': {'score': '✅'},
-        },
-        'core_logic': '近績線漸入佳境，PI 持續上升',
+        'margin_trend': '📈收窄中 — 3L → 1.5L → 0.75L',
+        'formline_strength': '✅強組',
+        'recent_form': '8-6-5-4-3',
     }
-    
+
     test_context = {
         'distance': 1000,
         'track': '草地',
         'field_size': 14,
     }
-    
+
     horse_sips = evaluate_horse_sips(test_horse, test_context)
     race_sips = evaluate_race_sips(test_context, {})
-    
-    print(format_sip_summary(horse_sips, race_sips))
+    ctx_flags = get_race_context_flags(test_context)
+
+    print(format_sip_summary(horse_sips, race_sips, ctx_flags))
     print(f"\nTriggered {len(horse_sips)} horse SIPs, {len(race_sips)} race SIPs")
+    print(f"Context flags: {ctx_flags}")

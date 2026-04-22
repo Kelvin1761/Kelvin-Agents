@@ -1,6 +1,6 @@
 ---
 name: AU Batch QA
-description: This skill should be used when the user wants to "check AU batch quality", "AU 批次品質檢查", "AU batch QA", or when AU Wong Choi requires per-batch structural and semantic quality verification during race analysis.
+description: DEPRECATED. Do not use or auto-route to this skill; AU batch quality checks are handled by au_wong_choi/scripts/au_orchestrator.py and completion_gate_v2.py.
 version: 1.0.0
 deprecated: true
 deprecated_since: 2026-04-11

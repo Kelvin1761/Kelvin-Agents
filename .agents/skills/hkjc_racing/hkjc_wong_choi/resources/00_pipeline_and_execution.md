@@ -31,7 +31,7 @@
 - **State 2 (生成 Facts)**：Orchestrator 會自動將所有賽事呼叫 `inject_hkjc_fact_anchors.py` 生成包含精準數學段速的 `Facts.md`。你只需等待完成後，**再次執行 Orchestrator**。
 - **State 3 (JSON 推理生成核心狀態)**：這是你的主戰場。
   - Python 會明確指示現在要你做 `Race X` 的哪一個 `Batch` (戰場全景 / 馬匹 1-3 / Verdict 等)。
-  - 你必須讀取對應的 `Facts.md`，進行法醫級的推理，然後把你的思維以嚴格的 JSON 格式寫入 `Race_X_Logic.json`。
+  - 你必須讀取 Orchestrator 生成的 `.runtime/Active_Horse_Context.md` / Work Card，並只使用該 slice 內的 Facts 錨點進行法醫級推理；只有 stdout 或 Work Card 明確要求補查時，才可讀取對應馬匹的 Facts slice，嚴禁打開全局 Facts.md 代替 Work Card。
   - **重要守則**：你必須遵守 JSON 裡面要求的 `_reasoning` 理據與字數下限 (100-200字核心邏輯)。嚴禁擅自跳過馬匹，或同時填寫多個 Batch。
   - 生成 / 更新 JSON 後，**再次執行 Orchestrator**。
   - Orchestrator 會自動將 JSON 轉成 `.md`，並執行 `completion_gate_v2.py` (QA 阻火牆)。如果失敗，它會彈出 `Exit Code 1`，你必須依照錯誤訊息自行修復 JSON 並重試。

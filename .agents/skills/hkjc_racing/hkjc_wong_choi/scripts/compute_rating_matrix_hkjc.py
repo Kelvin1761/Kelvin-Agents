@@ -24,7 +24,7 @@ Input JSON format:
             "jockey_rank": 2, "jockey_first_ride": false,
             "dimensions": {
                 "stability": "✅", "sectional": "✅",
-                "eem": "➖", "trainer_signal": "✅",
+                "race_shape": "➖", "trainer_signal": "✅",
                 "scenario": "✅", "distance_freshness": "➖",
                 "form_line": "N/A", "class_advantage": "➖"
             },
@@ -63,7 +63,7 @@ GRADE_ORDER = ['S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+
 DIMENSION_TYPES = {
     'stability':          'core',
     'sectional':          'core',
-    'eem':                'auxiliary',
+    'race_shape':                'semi_core',
     'trainer_signal':     'semi_core',
     'scenario':           'auxiliary',
     'distance_freshness': 'auxiliary',
@@ -74,7 +74,7 @@ DIMENSION_TYPES = {
 DIMENSION_LABELS = {
     'stability':          ('位置穩定性', '核心'),
     'sectional':          ('段速質量', '核心'),
-    'eem':                ('形勢與消耗', '輔助'),
+    'race_shape':                ('形勢與走位', '半核心'),
     'trainer_signal':     ('練馬師訊號', '半核心'),
     'scenario':           ('情境適配', '輔助'),
     'distance_freshness': ('路程/新鮮度', '輔助'),
@@ -438,7 +438,7 @@ def format_matrix_block(r: dict) -> str:
     dims = r['dimensions']
     c = r['counts']
     lines = ["#### 📊 評級矩陣 (Step 14)"]
-    for dk in ['stability', 'sectional', 'eem', 'trainer_signal',
+    for dk in ['stability', 'sectional', 'race_shape', 'trainer_signal',
                'scenario', 'distance_freshness', 'form_line', 'class_advantage']:
         label, tier = DIMENSION_LABELS[dk]
         v = dims.get(dk, '➖')

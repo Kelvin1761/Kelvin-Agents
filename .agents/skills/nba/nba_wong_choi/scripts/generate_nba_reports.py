@@ -27,17 +27,35 @@ Version: 2.0.0
 import sys, io, os, json, math, argparse
 from datetime import datetime
 
+L10_ORDER = "newest_first"
+PLAYER_MARKET = "PLAYER_MILESTONE"
+TEAM_MARKET = "TEAM_MARKET"
+
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 
 # ─── Season Phase Detection ──────────────────────────────────────────────
 
-def detect_season_phase(date_str=None):
+def detect_season_phase(date_str=None, metadata=None):
     """
     Detect NBA season phase from date string.
     Returns: EARLY_SEASON, MID_SEASON, LATE_REGULAR, PLAY_IN, PLAYOFFS
     """
+    metadata = metadata or {}
+    meta_text = " ".join(str(metadata.get(k, "")) for k in (
+        "season_phase", "season_type", "game_type", "game_status", "competition_type",
+        "name", "shortName", "series", "event_type"))
+    meta_upper = meta_text.upper()
+    if "PLAYOFF" in meta_upper or "POSTSEASON" in meta_upper:
+        return "PLAYOFFS"
+    if "PLAY-IN" in meta_upper or "PLAY IN" in meta_upper:
+        return "PLAY_IN"
+    if "PRESEASON" in meta_upper:
+        return "EARLY_SEASON"
+    if metadata.get("season_phase") in {"EARLY_SEASON", "MID_SEASON", "LATE_REGULAR", "PLAY_IN", "PLAYOFFS"}:
+        return metadata["season_phase"]
+
     if not date_str:
         date_str = datetime.now().strftime("%Y-%m-%d")
     
@@ -106,13 +124,21 @@ def grade_cov(cov):
 def weighted_avg(data):
     n = len(data)
     if n == 0: return 0.0
-    weights = [0.5 + (1.0 * i / max(n - 1, 1)) for i in range(n)]
+    # L10 is normalized as newest -> oldest. Recent games must carry higher weight.
+    weights = []
+    for i in range(n):
+        if i < 3:
+            weights.append(1.5)
+        elif i < 7:
+            weights.append(1.0)
+        else:
+            weights.append(0.7)
     return round(sum(d * w for d, w in zip(data, weights)) / sum(weights), 2)
 
 
 def trend_label(data):
     if len(data) < 5: return "— 數據不足"
-    l3 = sum(data[-3:]) / 3
+    l3 = sum(data[:3]) / 3
     l10 = sum(data) / len(data)
     diff = (l3 - l10) / l10 * 100 if l10 != 0 else 0
     if diff > 5: return "📈上升"
@@ -372,6 +398,7 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
         "name": player_name,
         "team": team_abbr,
         "category": category,
+        "l10_order": L10_ORDER,
         "jersey": sportsbet_data.get("jersey", "?"),
         "last5_sportsbet": sportsbet_data.get("last5", []),
         "lines": sportsbet_data.get("lines", {}),
@@ -399,8 +426,8 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
         card["weighted_avg"] = weighted_avg(l10)
         card["trend"] = trend_label(l10)
 
-        l5 = l10[-5:] if len(l10) >= 5 else l10
-        l3 = l10[-3:] if len(l10) >= 3 else l10
+        l5 = l10[:5] if len(l10) >= 5 else l10
+        l3 = l10[:3] if len(l10) >= 3 else l10
         card["l5_avg"] = round(sum(l5) / len(l5), 2) if l5 else 0
         card["l3_avg"] = round(sum(l3) / len(l3), 2) if l3 else 0
 
@@ -425,7 +452,7 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
         card["weighted_avg"] = weighted_avg(l5)
         card["trend"] = trend_label(l5)
         card["l5_avg"] = avg
-        card["l3_avg"] = round(sum(l5[-3:]) / len(l5[-3:]), 2) if len(l5) >= 3 else avg
+        card["l3_avg"] = round(sum(l5[:3]) / len(l5[:3]), 2) if len(l5) >= 3 else avg
         card["usg_pct"] = "N/A"
         card["ts_pct"] = "N/A"
         card["home_ppg"] = "N/A"
@@ -446,8 +473,8 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
             continue
             
         hr_l10, hr_l10_count, misses = hit_rate(data_for_hr, line_val)
-        l5_data = data_for_hr[-5:] if len(data_for_hr) >= 5 else data_for_hr
-        l3_data = data_for_hr[-3:] if len(data_for_hr) >= 3 else data_for_hr
+        l5_data = data_for_hr[:5] if len(data_for_hr) >= 5 else data_for_hr
+        l3_data = data_for_hr[:3] if len(data_for_hr) >= 3 else data_for_hr
         hr_l5, hr_l5_count, _ = hit_rate(l5_data, line_val)
         hr_l3, hr_l3_count, _ = hit_rate(l3_data, line_val)
         imp = implied_prob(float(odds_str))
@@ -512,6 +539,7 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
             if odds < 1.01:  # Skip near-certainties
                 continue
             candidates.append({
+                "market_type": PLAYER_MARKET,
                 "player": card["name"],
                 "team": card["team"],
                 "category": cl,
@@ -539,6 +567,8 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
                 "trend": card["trend"],
                 "adj_narrative": la.get("adj_narrative", ""),
                 "adj_line": la.get("adj_line", ""),
+                "correlation_flags": [],
+                "selection_reject_reasons": [],
                 "desc": f"{card['name']} ({card['team']}) {cl} {la['line_display']}",
             })
 
@@ -577,6 +607,7 @@ def _build_team_legs(odds, away_abbr, home_abbr):
         ev = edge_calc(ep, imp)
         
         return {
+            "market_type": TEAM_MARKET,
             "player": f"TEAM_{away_abbr}_{home_abbr}",
             "team": "TEAM",
             "category": "TEAM",
@@ -593,6 +624,8 @@ def _build_team_legs(odds, away_abbr, home_abbr):
             "cov": 0, "cov_grade": "—",
             "avg": 0, "l10": [], "sd": 0, "med": 0,
             "weighted_avg": 0, "trend": "—",
+            "correlation_flags": ["TEAM_MARKET_EXCLUDED_FROM_PLAYER_SGM_POOL"],
+            "selection_reject_reasons": ["Team market is reported separately and not mixed into player milestone SGM auto-selection."],
             "desc": desc,
         }
     
@@ -619,66 +652,109 @@ def _build_team_legs(odds, away_abbr, home_abbr):
         leg = make_team_leg(f"Total O{total}", "1.91")
         if leg:
             legs.append(leg)
-        leg = make_team_leg(f"Total U{total}", "1.91")
-        if leg:
-            legs.append(leg)
     
     return legs
 
 
+def _is_player_milestone(leg):
+    return leg.get("market_type") == PLAYER_MARKET
+
+
+def _combo_odds(legs):
+    odds = 1.0
+    for leg in legs:
+        odds *= leg["odds"]
+    return odds
+
+
+def _has_unique_players(legs):
+    players = [leg.get("player") for leg in legs]
+    return len(players) == len(set(players))
+
+
+def _violates_same_team_scoring_cap(legs):
+    team_pts = {}
+    for leg in legs:
+        if leg.get("category") == "PTS":
+            team = leg.get("team")
+            team_pts[team] = team_pts.get(team, 0) + 1
+    return any(count > 2 for count in team_pts.values())
+
+
+def _has_team_player_script_conflict(legs):
+    return any(leg.get("market_type") == TEAM_MARKET for leg in legs) and any(
+        leg.get("market_type") == PLAYER_MARKET for leg in legs)
+
+
+def _combo_is_allowed(legs):
+    return (
+        _has_unique_players(legs)
+        and not _violates_same_team_scoring_cap(legs)
+        and not _has_team_player_script_conflict(legs)
+    )
+
+
+def _mc_edge(leg):
+    mc_lookup = leg.get("_mc_lookup", {})
+    mc_key = f"{leg.get('player','')}|{leg.get('team','')}|{leg.get('category','')}|{leg.get('line_display','')}"
+    mc_result = mc_lookup.get(mc_key, {})
+    return mc_result.get("mc_edge")
+
+
+def _value_bomb_confirmed(leg):
+    mc_edge = _mc_edge(leg)
+    if isinstance(mc_edge, (int, float)) and mc_edge >= 5:
+        return True
+    hit_l5 = leg.get("hit_l5", 0)
+    hit_l10 = leg.get("hit_l10", 0)
+    return hit_l5 >= max(55, hit_l10 - 10)
+
+
 def select_combo_1(candidates):
-    """穩膽: Best 2-3 legs with high hit rate, targeting combined odds 1.8-2.5, fallback to ≥ 1.5."""
-    # Filter pool: Hit rate >= 60%, Min odds >= 1.15, No 神經刀, Edge >= -10 (accept flat/slight negative EV)
+    """穩膽: positive-EV player milestone legs only, combined odds >= 2.0."""
     pool = [c for c in candidates
-            if c["hit_l10"] >= 60 and c["odds"] >= 1.15 and "神經刀" not in c.get("cov_grade", "")
-            and c["edge"] >= -10]
+            if _is_player_milestone(c)
+            and c["hit_l10"] >= 70
+            and c["edge"] >= 0
+            and c["odds"] >= 1.15
+            and "神經刀" not in c.get("cov_grade", "")]
     pool.sort(key=lambda x: (-x["hit_l10"], -x["edge"], -x["odds"]))
     
     best_combo = None
     best_score = -999
     
-    # Pass 1: Target 1.8 to 3.0
+    # Pass 1: Target 2.0 to 3.0
     for i in range(len(pool)):
         for j in range(i + 1, len(pool)):
-            if pool[i]["player"] == pool[j]["player"]:
+            combo = [pool[i], pool[j]]
+            if not _combo_is_allowed(combo):
                 continue
-            combo_odds = pool[i]["odds"] * pool[j]["odds"]
+            combo_odds = _combo_odds(combo)
             combo_edge = pool[i]["edge"] + pool[j]["edge"]
             avg_hit = (pool[i]["hit_l10"] + pool[j]["hit_l10"]) / 2
-            if 1.8 <= combo_odds <= 3.0 and avg_hit >= 70:
+            if 2.0 <= combo_odds <= 3.0 and avg_hit >= 70:
                 score = avg_hit * 0.5 + combo_edge * 0.3 + min(combo_odds, 3.0) * 10
                 if score > best_score:
-                    best_combo = [pool[i], pool[j]]
+                    best_combo = combo
                     best_score = score
                     
     # Try 3-leg if 2-leg failed in Pass 1
     if not best_combo:
         for i in range(min(len(pool), 10)):
             for j in range(i + 1, min(len(pool), 10)):
-                if pool[i]["player"] == pool[j]["player"]: continue
                 for k in range(j + 1, min(len(pool), 10)):
-                    if pool[k]["player"] in (pool[i]["player"], pool[j]["player"]): continue
-                    combo_odds = pool[i]["odds"] * pool[j]["odds"] * pool[k]["odds"]
+                    combo = [pool[i], pool[j], pool[k]]
+                    if not _combo_is_allowed(combo):
+                        continue
+                    combo_odds = _combo_odds(combo)
                     avg_hit = (pool[i]["hit_l10"] + pool[j]["hit_l10"] + pool[k]["hit_l10"]) / 3
-                    if 1.8 <= combo_odds <= 3.0 and avg_hit >= 70:
+                    if 2.0 <= combo_odds <= 3.0 and avg_hit >= 70:
                         score = avg_hit * 0.5 + (pool[i]["edge"] + pool[j]["edge"] + pool[k]["edge"]) * 0.3
                         if score > best_score:
-                            best_combo = [pool[i], pool[j], pool[k]]
+                            best_combo = combo
                             best_score = score
 
-    if best_combo:
-        return best_combo
-    
-    # Pass 2: Fallback to ≥ 1.5 if nothing found
-    for i in range(min(len(pool), 15)):
-        for j in range(i + 1, min(len(pool), 15)):
-            if pool[i]["player"] == pool[j]["player"]:
-                continue
-            combo_odds = pool[i]["odds"] * pool[j]["odds"]
-            if combo_odds >= 1.5:
-                return [pool[i], pool[j]]
-                
-    return []  # Return empty if nothing hits the >= 1.5 fallback limit.
+    return best_combo or []
 
 
 def select_combo_2(candidates, exclude_descs=None):
@@ -687,36 +763,32 @@ def select_combo_2(candidates, exclude_descs=None):
     TARGET_IDEAL = 5.0
     exclude = set(exclude_descs or [])
     pool = [c for c in candidates
-            if c["edge"] >= -5 and c["hit_l10"] >= 40 and c["desc"] not in exclude]
+            if _is_player_milestone(c)
+            and c["edge"] >= 3
+            and c["hit_l10"] >= 40
+            and c["desc"] not in exclude]
     pool.sort(key=lambda x: (-x["edge"], -x["odds"]))
     
     best_combo = None
     best_score = -999
     for i in range(min(len(pool), 20)):
         for j in range(i + 1, min(len(pool), 20)):
-            if pool[i]["player"] == pool[j]["player"]:
+            combo = [pool[i], pool[j]]
+            if not _combo_is_allowed(combo):
                 continue
-            combo_odds = pool[i]["odds"] * pool[j]["odds"]
+            combo_odds = _combo_odds(combo)
             combo_edge = pool[i]["edge"] + pool[j]["edge"]
             if TARGET_MIN <= combo_odds <= TARGET_MAX:
                 # Score: prefer odds near 5x + high edge
                 closeness = 10 - abs(combo_odds - TARGET_IDEAL) * 2
                 score = combo_edge * 0.4 + closeness * 0.6
                 if score > best_score:
-                    best_combo = [pool[i], pool[j]]
+                    best_combo = combo
                     best_score = score
     
     if best_combo:
         return best_combo
     
-    # Fallback: relax to 2.5-8x, or try 3 legs
-    for i in range(min(len(pool), 15)):
-        for j in range(i + 1, min(len(pool), 15)):
-            if pool[i]["player"] == pool[j]["player"]:
-                continue
-            combo_odds = pool[i]["odds"] * pool[j]["odds"]
-            if 2.5 <= combo_odds <= 8.0:
-                return [pool[i], pool[j]]
     return []
 
 
@@ -725,7 +797,10 @@ def select_combo_3(candidates, exclude_descs=None):
     TARGET_MIN, TARGET_MAX = 8.0, 12.0
     exclude = set(exclude_descs or [])
     pool = [c for c in candidates
-            if c["hit_l10"] >= 40 and c["odds"] >= 1.3
+            if _is_player_milestone(c)
+            and c["hit_l10"] >= 40
+            and c["edge"] >= 0
+            and c["odds"] >= 1.3
             and c["desc"] not in exclude]
     pool.sort(key=lambda x: (-x["edge"], -x["odds"]))
     
@@ -734,32 +809,30 @@ def select_combo_3(candidates, exclude_descs=None):
     best_edge = -999
     for i in range(min(len(pool), 15)):
         for j in range(i + 1, min(len(pool), 15)):
-            if pool[i]["player"] == pool[j]["player"]:
-                continue
             for k in range(j + 1, min(len(pool), 15)):
-                if pool[k]["player"] in (pool[i]["player"], pool[j]["player"]):
+                combo = [pool[i], pool[j], pool[k]]
+                if not _combo_is_allowed(combo):
                     continue
-                combo_odds = pool[i]["odds"] * pool[j]["odds"] * pool[k]["odds"]
+                combo_odds = _combo_odds(combo)
                 combo_edge = pool[i]["edge"] + pool[j]["edge"] + pool[k]["edge"]
                 if TARGET_MIN <= combo_odds <= TARGET_MAX and combo_edge > best_edge:
-                    best_combo = [pool[i], pool[j], pool[k]]
+                    best_combo = combo
                     best_edge = combo_edge
     
     if best_combo:
         return best_combo
     
-    # Fallback: relax to 5-15x range
+    # Fallback: keep >= 8x floor but allow a wider upper range.
     for i in range(min(len(pool), 12)):
         for j in range(i + 1, min(len(pool), 12)):
-            if pool[i]["player"] == pool[j]["player"]:
-                continue
             for k in range(j + 1, min(len(pool), 12)):
-                if pool[k]["player"] in (pool[i]["player"], pool[j]["player"]):
+                combo = [pool[i], pool[j], pool[k]]
+                if not _combo_is_allowed(combo):
                     continue
-                combo_odds = pool[i]["odds"] * pool[j]["odds"] * pool[k]["odds"]
+                combo_odds = _combo_odds(combo)
                 combo_edge = pool[i]["edge"] + pool[j]["edge"] + pool[k]["edge"]
-                if 5.0 <= combo_odds <= 15.0 and combo_edge > best_edge:
-                    best_combo = [pool[i], pool[j], pool[k]]
+                if 8.0 <= combo_odds <= 15.0 and combo_edge > best_edge:
+                    best_combo = combo
                     best_edge = combo_edge
     return best_combo or []
 
@@ -767,12 +840,18 @@ def select_combo_3(candidates, exclude_descs=None):
 def select_combo_x_value_bomb(candidates):
     """Value Bomb: Significant +EV where bookies undervalue (Edge ≥ 15%)"""
     pool = [c for c in candidates
-            if c["edge"] >= 15 and c["hit_l10"] >= 60]
+            if _is_player_milestone(c)
+            and c["edge"] >= 15
+            and c["hit_l10"] >= 60
+            and _value_bomb_confirmed(c)]
     pool.sort(key=lambda x: -x["edge"])
     if not pool:
         # Relax to edge >= 10
         pool = [c for c in candidates
-                if c["edge"] >= 10 and c["hit_l10"] >= 55]
+                if _is_player_milestone(c)
+                and c["edge"] >= 10
+                and c["hit_l10"] >= 55
+                and _value_bomb_confirmed(c)]
         pool.sort(key=lambda x: -x["edge"])
     selected = []
     used_players = set()
@@ -800,6 +879,7 @@ def gen_meeting_intelligence(meta, odds, injuries, news, team_stats, season_phas
     lines.append(f"")
     phase_str = f" ({season_phase})" if season_phase != "MID_SEASON" else ""
     lines.append(f"📅 數據鎖定: {meta.get('date', '?')} | NBA 賽季: 2025-26{phase_str}")
+    lines.append(f"🧭 season_phase: **{season_phase}** | L10_ORDER: **{L10_ORDER}**")
     lines.append(f"🎯 盤口來源: **Sportsbet MCP Playwright 實時提取** (odds_source: SPORTSBET_LIVE)")
     lines.append(f"")
     lines.append(f"---")
@@ -854,7 +934,7 @@ def gen_player_card(card):
     lines.append(f"#### {card['name']} (#{card['jersey']}, {card['team']}) — {cl}")
     lines.append(f"| 🔢 數理引擎 | 🧠 邏輯引擎 |")
     lines.append(f"|:---|:---|")
-    l5_data = card.get('l10', [])[-5:] if len(card.get('l10', [])) >= 5 else card.get('last5_sportsbet', card.get('l10', []))
+    l5_data = card.get('l10', [])[:5] if len(card.get('l10', [])) >= 5 else card.get('last5_sportsbet', card.get('l10', []))
     lines.append(f"| **L5**: `{l5_data}` | **角色**: 核心主力 |")
     lines.append(f"| **L10 均值**: {card['avg']} \\| **中位**: {card['med']} | **USG%**: {card.get('usg_pct', 'N/A')} |")
     lines.append(f"| **SD**: {card['sd']} \\| **CoV**: {card['cov']} {card['cov_grade']} | **趨勢**: {card['trend']} |")
@@ -889,7 +969,7 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
 
     if not legs:
         lines.append(f"### {combo_emoji} {combo_name}")
-        lines.append(f"> ⚠️ 未能根據篩選條件搵到合適嘅 legs。Analyst 可手動選擇。")
+        lines.append(f"> ⚠️ 未能根據穩健 +EV 篩選條件搵到合適嘅 legs。此層級建議觀望，除非重新提取 Sportsbet 盤口後通過同一套 gate。")
         lines.append(f"")
         lines.append(f"---")
         return "\n".join(lines)
@@ -917,6 +997,8 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
     lines.append(f"### {combo_emoji} {combo_name} — 組合賠率 @{raw_combo_odds}")
     if combo_desc:
         lines.append(f"> {combo_desc}")
+    if not _combo_is_allowed(legs):
+        lines.append(f"> ⚠️ correlation_flags: SCRIPT_COLLISION_REVIEW_REQUIRED")
     lines.append(f"")
 
     # Legs table (now with adjusted prob)
@@ -936,6 +1018,8 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
         adj_p = leg.get('estimated_prob', leg['hit_l10'])
         base_r = leg.get('base_rate', leg['hit_l10'])
         lines.append(f"**Leg {i+1} — {leg['desc']} @{leg['odds']}:**")
+        if leg.get("correlation_flags"):
+            lines.append(f"correlation_flags: {', '.join(leg['correlation_flags'])}")
         lines.append(f"📊 數據: L10 `{leg['l10']}` | AVG {leg['avg']} | MED {leg['med']} | SD {leg['sd']}")
         lines.append(f"隱含勝率 {leg['implied_prob']}% | Base Rate {base_r}% | 預期勝率 **{adj_p}%** | Edge: {ev_str} {leg['edge_grade']}")
         # Show 8-Factor adjustment breakdown — Python reasoning trace for LLM
@@ -1049,6 +1133,7 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     sections.append(f"# 🏀 NBA Wong Choi — {away_name} @ {home_name}")
     sections.append(f"**日期**: {meta.get('date', '?')} | **Sportsbet 提取時間**: {sportsbet_time}")
     sections.append(f"**odds_source**: SPORTSBET_LIVE ✅ | **引擎版本**: Adjusted Win Prob V3 (10-Factor)")
+    sections.append(f"**season_phase**: {season_phase} | **L10_ORDER**: {L10_ORDER} | **strategy**: SPORTSBET_MILESTONE_OVER_ONLY")
     sections.append(f"")
 
     # ── Blowout / Tank Warning Banner ──
@@ -1272,7 +1357,9 @@ def main():
     home_abbr = meta.get("home", {}).get("abbr", "?")
     
     date_str = meta.get("date", "?")
-    season_phase = detect_season_phase(date_str)
+    season_phase = detect_season_phase(date_str, meta)
+    meta["season_phase"] = season_phase
+    meta["l10_order"] = L10_ORDER
 
     # V3: Pre-compute context for each team
     spread = ex_odds.get("spread_away", None)

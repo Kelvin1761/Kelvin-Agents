@@ -7,6 +7,9 @@
 - [ ] 組合 3 標記為 💎 價值型小博大
 - [ ] 每個組合有組合賠率標記（Sportsbet 來源）
 - [ ] 每個組合有 📊 組合結算區塊
+- [ ] 報告顯示 `season_phase`（EARLY_SEASON / MID_SEASON / LATE_REGULAR / PLAY_IN / PLAYOFFS）
+- [ ] 報告顯示 `L10_ORDER: newest_first`
+- [ ] 報告顯示 `SPORTSBET_MILESTONE_OVER_ONLY`
 
 ## 2. Leg 欄位完整度（逐 Leg 檢查）
 
@@ -83,6 +86,8 @@
 | 隱含勝率 = (1/賠率) × 100 | ≤ 1.5% |
 | Edge = 預估勝率 - 隱含勝率 | ≤ 0.6% |
 | CoV = SD / 均值 | ≤ 0.02 |
+| L3 = L10 前 3 項（newest_first） | 必須一致 |
+| L5 = L10 前 5 項（newest_first） | 必須一致 |
 
 ## 5. 跨場一致性（≥2 場時適用）
 
@@ -93,5 +98,11 @@
 ## 6. Sportsbet 合規
 
 - [ ] 所有盤口數字符合 Sportsbet 嚴格選項規則（Strict Built-in Matrix）
+- [ ] 只推薦 Sportsbet milestone `X+` Over legs
+- [ ] 無 Under / Total U 推介
+- [ ] Team market（ML / Spread / Total）無混入 player milestone SGM 自動組合
+- [ ] 組合 1 每腿 Edge ≥0%，全組賠率 ≥2.0x
+- [ ] 組合 2 每腿 Edge ≥3%，全組賠率 ≥3.0x
+- [ ] 組合 3 每腿 Edge ≥0%，全組賠率 ≥8.0x
 - [ ] 得分盤口：整數 Milestone 格式 `10+`, `15+`, `20+`, `25+`, `30+`（出現 `.5` = 數據來源污染，見 P40）
 - [ ] 籃板/助攻盤口：整數或 .5 結尾

@@ -11,7 +11,7 @@ import io
 
 def generate_reports(target_dir):
     """
-    Reads all Race_X_Analysis.txt files in the given directory.
+    Reads all Race_X_Analysis files in the meeting directory or Race Analysis subfolder.
     Extracts the CSV blocks from the ends to compile an Excel file.
     Skips DOCX generation as user requested txt is fine.
     """
@@ -19,19 +19,21 @@ def generate_reports(target_dir):
         print(f"Error: Directory {target_dir} does not exist.")
         sys.exit(1)
 
+    search_dirs = [target_dir]
     analysis_dir = os.path.join(target_dir, "Race Analysis")
-    if not os.path.exists(analysis_dir):
-        print(f"Error: Directory {analysis_dir} does not exist. No analysis files to process.")
-        sys.exit(1)
+    if os.path.isdir(analysis_dir):
+        search_dirs.append(analysis_dir)
 
-    files = glob.glob(os.path.join(analysis_dir, "*Race_*_Analysis.txt"))
-    files.extend(glob.glob(os.path.join(analysis_dir, "*Race * Analysis.txt")))
-    files.extend(glob.glob(os.path.join(analysis_dir, "*Race_*_Analysis.md")))
-    files.extend(glob.glob(os.path.join(analysis_dir, "*Race * Analysis.md")))
+    files = []
+    for search_dir in search_dirs:
+        files.extend(glob.glob(os.path.join(search_dir, "*Race_*_Analysis.txt")))
+        files.extend(glob.glob(os.path.join(search_dir, "*Race * Analysis.txt")))
+        files.extend(glob.glob(os.path.join(search_dir, "*Race_*_Analysis.md")))
+        files.extend(glob.glob(os.path.join(search_dir, "*Race * Analysis.md")))
     files = list(dict.fromkeys(files))  # deduplicate preserving order
 
     if not files:
-        print(f"No Race Analysis files found in {analysis_dir}.")
+        print(f"No Race Analysis files found in {target_dir} or {analysis_dir}.")
         sys.exit(1)
 
     def get_race_num(filepath):
@@ -91,6 +93,7 @@ def generate_reports(target_dir):
             print(f"Saved raw CSV fallback to {fallback_path}")
     else:
         print("Warning: No CSV Top 4 blocks found in any analysis files. Excel not generated.")
+        sys.exit(1)
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

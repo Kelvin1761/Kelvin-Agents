@@ -262,6 +262,69 @@ def check_fw08_odds_format(content: str) -> list:
     return issues
 
 
+def check_fw09_strategy_metadata(content: str) -> list:
+    """FW-09: Require current NBA strategy metadata."""
+    issues = []
+    phase_match = re.search(r'season_phase\*\*:\s*(EARLY_SEASON|MID_SEASON|LATE_REGULAR|PLAY_IN|PLAYOFFS)', content)
+    if not phase_match:
+        phase_match = re.search(r'season_phase:\s*\*\*(EARLY_SEASON|MID_SEASON|LATE_REGULAR|PLAY_IN|PLAYOFFS)\*\*', content)
+    if not phase_match:
+        issues.append(
+            "FW-09 ❌ BLOCK: 缺少 season_phase metadata "
+            "(EARLY_SEASON/MID_SEASON/LATE_REGULAR/PLAY_IN/PLAYOFFS)"
+        )
+    if "L10_ORDER" not in content or "newest_first" not in content:
+        issues.append("FW-09 ❌ BLOCK: 缺少 L10_ORDER:newest_first metadata")
+    if "SPORTSBET_MILESTONE_OVER_ONLY" not in content:
+        issues.append("FW-09 ❌ BLOCK: 缺少 SPORTSBET_MILESTONE_OVER_ONLY 策略標記")
+    return issues
+
+
+def check_fw10_over_only(content: str) -> list:
+    """FW-10: Block Under recommendations in the Sportsbet milestone strategy."""
+    issues = []
+    banned_patterns = [
+        r'\bTotal\s+U\d',
+        r'\bUnder\b',
+        r'買\s*Under',
+        r'推介\s*Under',
+    ]
+    for pattern in banned_patterns:
+        if re.search(pattern, content, flags=re.IGNORECASE):
+            issues.append(
+                f"FW-10 ❌ BLOCK: 發現 Under/Total U 推介痕跡 ({pattern}) — "
+                "NBA v1 只允許 Sportsbet milestone Over X+"
+            )
+            break
+    return issues
+
+
+def check_fw11_combo_gates(content: str) -> list:
+    """FW-11: Enforce positive-EV combo gates in generated sections."""
+    issues = []
+    floors = {
+        "組合 1": 2.0,
+        "組合 2": 3.0,
+        "組合 3": 8.0,
+    }
+    for combo_name, floor in floors.items():
+        match = re.search(rf'### .*{combo_name}.*?組合賠率 @(\d+(?:\.\d+)?)', content)
+        if match and float(match.group(1)) < floor:
+            issues.append(
+                f"FW-11 ❌ BLOCK: {combo_name} 組合賠率 @{match.group(1)} < {floor}x 門檻"
+            )
+
+    leg_rows = [line for line in content.splitlines() if line.strip().startswith("| 🧩")]
+    for line in leg_rows:
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) >= 6:
+            edge_cell = cells[5]
+            if re.search(r'(^|[^+])-+\d+(?:\.\d+)?%', edge_cell):
+                issues.append(f"FW-11 ❌ BLOCK: 組合 Leg 含負 EV：{line[:160]}")
+                break
+    return issues
+
+
 # ─── Main Validation Runner ─────────────────────────────────────────────
 
 def validate_file(filepath: str, odds_json_path: str = None) -> dict:
@@ -278,6 +341,9 @@ def validate_file(filepath: str, odds_json_path: str = None) -> dict:
     all_issues.extend(check_fw06_real_players(content, odds_json_path))
     all_issues.extend(check_fw07_file_size(content, filepath))
     all_issues.extend(check_fw08_odds_format(content))
+    all_issues.extend(check_fw09_strategy_metadata(content))
+    all_issues.extend(check_fw10_over_only(content))
+    all_issues.extend(check_fw11_combo_gates(content))
 
     blocks = [i for i in all_issues if "BLOCK" in i]
     warns = [i for i in all_issues if "WARN" in i]

@@ -80,10 +80,20 @@
 
   <rule id="P43" name="SGM Odds &amp; EV Enforcement">
     <action>
-      1. 組合 1 (🛡️ 穩膽 SGM)：L10 命中率必須 ≥70%，且全組賠率必須 ≥ 2.0x。若含有高波幅的「神經刀」球員，必須無條件剔除！
-      2. 組合 2 (🔥 +EV 價值膽)：全組賠率必須 ≥ 3.0x，目標朝向 5x。如有任何 Negative EV 或低於要求之賠率，必須重新選擇。
-      3. 組合 3 (💎 高倍率進取型)：全組賠率必須 ≥ 8.0x，可包含高回報風險項目。
-      4. 組合 X (💣 Value Bomb)：條件觸發。只有當系統掃描到單一盤口 Edge ≥ 10% (被莊家嚴重低估) 時，才獨立抽出展示。
+      1. 組合 1 (🛡️ 穩膽 SGM)：每腿 L10 命中率必須 ≥70%、Edge 必須 ≥0%，且全組賠率必須 ≥ 2.0x。若含有高波幅的「神經刀」球員，必須無條件剔除！
+      2. 組合 2 (🔥 +EV 價值膽)：每腿 Edge 必須 ≥3%，全組賠率必須 ≥ 3.0x，目標朝向 5x。如有任何 Negative EV 或低於要求之賠率，必須重新選擇。
+      3. 組合 3 (💎 高倍率進取型)：每腿 Edge 必須 ≥0%，全組賠率必須 ≥ 8.0x，可包含高回報風險項目。
+      4. 組合 X (💣 Value Bomb)：條件觸發。只有當系統掃描到單一盤口 Edge ≥ 10% 並通過 MC Edge ≥5% 或 L5/L10 一致性檢查時，才獨立抽出展示。
+      5. Team market (ML / Spread / Total) 不可混入 player milestone SGM 自動組合。
+      6. 同隊 PTS Over 最多 2 腿，避免球權天花板衝突。
+    </action>
+  </rule>
+
+  <rule id="P44" name="Season Phase and L10 Order">
+    <action>
+      1. 報告必須明確顯示 `season_phase`，可用值只限 EARLY_SEASON / MID_SEASON / LATE_REGULAR / PLAY_IN / PLAYOFFS。
+      2. 報告必須明確顯示 `L10_ORDER: newest_first`。
+      3. L3 必須使用 L10 前 3 項，L5 必須使用 L10 前 5 項，嚴禁反向讀取近期走勢。
     </action>
   </rule>
 

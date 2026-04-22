@@ -6,7 +6,7 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 compute_nba_props.py — NBA Wong Choi Protocol Volatility & Props Calculator
-Mechanically computes CoV, situational adjustments, bet lines, +EV, and Under detection.
+Mechanically computes CoV, situational adjustments, bet lines, +EV, and Over downside risk.
 
 Usage:
     python compute_nba_props.py --input <players.json> [--output <results.md>]
@@ -339,10 +339,10 @@ def compute_ev(lines: dict, player: dict) -> dict:
     }
 
 
-# ── Under Detection ──────────────
+# ── Downside Risk Detection (Over-only strategy) ──────────────
 
 def compute_under_score(player: dict, vol: dict, ctx: dict) -> dict:
-    """Systematic Under detection scoring."""
+    """Systematic downside risk scoring. This never recommends Under bets."""
     score = 0
     reasons = []
 
@@ -374,11 +374,11 @@ def compute_under_score(player: dict, vol: dict, ctx: dict) -> dict:
         score += 1; reasons.append('賣線過高')
 
     if score >= 5:
-        verdict = '🚨 強烈建議買 Under'
+        verdict = '🚨 強烈降級或剔除 Over'
     elif score >= 3:
-        verdict = '✅ 可考慮買 Under'
+        verdict = '✅ Over 只可高賠觀察'
     else:
-        verdict = '❌ 不建議買 Under'
+        verdict = '❌ 無明顯 downside 風險'
 
     return {
         'score': score,
@@ -452,9 +452,9 @@ def format_player_report(name: str, vol: dict, adj: dict, lines: dict,
     out.append(f"- 預估勝率: {ev['est_true_prob']}% | 隱含勝率: {ev['implied_prob']}%")
     out.append(f"- **Edge: {ev['edge']:+.1f}%** → {ev['ev_grade']}")
 
-    # Under
-    out.append(f"\n**📉 Under 偵測:**")
-    out.append(f"- Under 分數: **{under['score']}** ({', '.join(under['reasons']) if under['reasons'] else '無觸發'})")
+    # Downside risk
+    out.append(f"\n**📉 Over Downside Risk:**")
+    out.append(f"- Downside 分數: **{under['score']}** ({', '.join(under['reasons']) if under['reasons'] else '無觸發'})")
     out.append(f"- {under['verdict']}")
 
     # Safety

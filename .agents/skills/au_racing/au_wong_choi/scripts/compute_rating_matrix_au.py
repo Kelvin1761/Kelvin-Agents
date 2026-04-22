@@ -27,7 +27,7 @@ Input JSON format:
             "weight_kg": 58.5, "barrier": 3,
             "dimensions": {
                 "stability": "✅", "sectional": "✅",
-                "eem": "➖", "jockey_trainer": "✅",
+                "race_shape": "➖", "jockey_trainer": "✅",
                 "class_weight": "✅", "track": "➖",
                 "form_line": "N/A", "gear_distance": "➖"
             },
@@ -56,7 +56,7 @@ def compute_one(h: dict) -> dict:
     dims = h['dimensions']
     matrix_keys_map = {
         "stability": "core", "sectional": "core",
-        "eem": "aux", "jockey_trainer": "semi",
+        "race_shape": "semi", "jockey_trainer": "semi",
         "class_weight": "aux", "track": "aux", 
         "form_line": "aux", "gear_distance": "aux",
     }
@@ -235,9 +235,9 @@ def apply_au_overrides(result: dict, horse: dict, ctx: dict) -> dict:
     if has_sec and has_cls:
         grade = floor(grade, 'B', 'P7: 級數首選保底B')
 
-    # EEM is now shape/consumption context only; do not upgrade grade by itself.
-    if horse.get('eem_3_high_drain', False) and horse.get('good_barrier', False):
-        notes.append('P7: EEM連續高消耗只作風險/形勢註記，不單獨升級')
+    # Race shape is now/consumption context only; do not upgrade grade by itself.
+    if horse.get('shape_3_adverse', False) and horse.get('good_barrier', False):
+        notes.append('P7: 形勢與走位連續蝕位只作風險註記，不單獨升級')
 
     # [SIP-C14-3] 2YO rating anomaly check
     if horse.get('is_2yo', False) and horse.get('rating_top3_field', False):

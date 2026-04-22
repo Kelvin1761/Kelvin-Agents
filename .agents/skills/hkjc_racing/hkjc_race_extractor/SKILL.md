@@ -51,6 +51,13 @@ This script:
 
 ### ⚡ Single-Race Extraction (Manual / Fallback)
 
+Use the same batch script with `--races "N"` for single-race fallback. This keeps output writing inside Python and avoids shell redirection:
+```bash
+python3 .agents/skills/hkjc_racing/hkjc_race_extractor/scripts/batch_extract.py --base_url "RACECARD_URL" --races "N" --output_dir "[TARGET_DIR]"
+```
+
+The lower-level scripts below are debugging helpers. Do not write their output with shell redirection in the workspace; prefer `batch_extract.py` so files are created with UTF-8 Python I/O.
+
 ### 1. Starter PDF Extraction (出賽馬匹全日資料)
 For every new race meeting, you must extract general data spanning all races from the official PDF. Include this file alongside the racecard and formguide data.
 
@@ -58,9 +65,9 @@ For every new race meeting, you must extract general data spanning all races fro
 Execute the specialized Python extraction script to download and parse the PDF. Pass the date in `YYYYMMDD` format:
 ```bash
 # Cross-platform relative path execution:
-python3 .agents/skills/hkjc_racing/hkjc_race_extractor/scripts/extract_starter_pdf.py "YYYYMMDD" > "starter_pdf_data.md"
+python3 .agents/skills/hkjc_racing/hkjc_race_extractor/scripts/extract_starter_pdf.py "YYYYMMDD"
 ```
-Append this raw output directly into `[MM-DD] 全日出賽馬匹資料 (PDF).md`.
+For persistent output, use `batch_extract.py --races "N"` instead of shell redirection.
 
 ---
 
@@ -79,7 +86,7 @@ For every horse, you MUST output the data as explicit key-value pairs. Reference
 Execute the specialized Python extraction script included in this skill's folder:
 ```bash
 # Cross-platform relative path execution:
-python3 .agents/skills/hkjc_racing/hkjc_race_extractor/scripts/extract_racecard.py "YOUR_RACECARD_URL_HERE" > "racecard_data.md"
+python3 .agents/skills/hkjc_racing/hkjc_race_extractor/scripts/extract_racecard.py "YOUR_RACECARD_URL_HERE"
 ```
 This script bypasses rendering and extracts hidden fields automatically.
 
@@ -96,7 +103,7 @@ To handle the massive data density of the Form Guide, we use a programmatic brid
 Execute the specialized Python Playwright extraction script included in this skill's folder using the local virtual environment:
 ```bash
 # Cross-platform relative path execution:
-python3 .agents/skills/hkjc_racing/hkjc_race_extractor/scripts/extract_formguide_playwright.py "YOUR_FORMGUIDE_URL_HERE" > "racedata.md"
+python3 .agents/skills/hkjc_racing/hkjc_race_extractor/scripts/extract_formguide_playwright.py "YOUR_FORMGUIDE_URL_HERE"
 ```
 This script handles the React hydration via headless Chromium and parses the output perfectly via BeautifulSoup without hitting any token limits.
 

@@ -88,7 +88,7 @@ ag_kit_skills:
 - **FAIL 條件：** 任何回測場次出現回歸（原本命中但新規則反而唔命中）
 
 **Tier 2 🐍 MC Sanity Check (Secondary — 非驗證閘口):**
-- `python3 mc_simulator.py --logic "[LOGIC_JSON]" --platform hkjc`
+- `python3 mc_simulator.py --input "[LOGIC_JSON]" --platform hkjc`
 - 只檢查 SIP 修改有冇令 MC 結果出現**不合理偏移**
 - 例如：某馬 win% 從 15% 突然跳到 80% = 🔴 異常信號
 - **角色：Sanity Check，不是 Validation Gate。** MC PASS/FAIL 唔影響 SIP 最終判定

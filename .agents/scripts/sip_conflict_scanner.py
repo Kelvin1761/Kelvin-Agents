@@ -25,6 +25,7 @@ Exit codes:
 """
 import sys, io, re, os, pathlib, argparse, json
 from collections import defaultdict
+from itertools import combinations
 
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -114,13 +115,40 @@ def extract_conditions(text):
     return conditions
 
 
+def classify_status(text):
+    """Classify SIP lifecycle status from index text."""
+    upper = text.upper()
+    if 'DEPRECATED' in upper or '已廢棄' in text or '不得執行' in text:
+        return 'DEPRECATED', True
+    if 'BAKED' in upper or '✅ BAKED' in text:
+        return 'BAKED', True
+    if 'COMPLETE' in upper or '✅ COMPLETE' in text:
+        return 'COMPLETE', True
+    if 'OBSERVATION' in upper or '🟡 OBS' in text or re.search(r'\bOBS[-_]', text):
+        return 'OBSERVATION', True
+    if 'ACTIVE' in upper or '🟢 ACTIVE' in text:
+        return 'ACTIVE', True
+    return 'ACTIVE', False
+
+
+def merge_status(previous, new_status, explicit):
+    """Explicit lifecycle decisions win over inferred ACTIVE table rows."""
+    if previous is None:
+        return new_status
+    if not explicit and previous.get('explicit_status'):
+        return previous['status']
+    if explicit:
+        return new_status
+    return previous['status']
+
+
 def parse_sip_index(path):
     """Parse the SIP index file to extract all SIP definitions."""
     sips = {}
     if not os.path.exists(path):
         return sips
 
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, 'r', encoding='utf-8', errors='replace') as f:
         text = f.read()
 
     # Parse table rows
@@ -140,6 +168,13 @@ def parse_sip_index(path):
         # Combine all columns for description
         desc = ' '.join(cols[1:])
 
+        status, explicit_status = classify_status(desc)
+
+        if sip_id in sips:
+            previous = sips[sip_id]
+            status = merge_status(previous, status, explicit_status)
+            explicit_status = previous.get('explicit_status', False) or explicit_status
+
         sips[sip_id] = {
             'id': sip_id,
             'description': desc,
@@ -147,7 +182,8 @@ def parse_sip_index(path):
             'dimensions': classify_dimensions(desc),
             'step': extract_step(desc),
             'conditions': extract_conditions(desc),
-            'status': 'ACTIVE' if 'ACTIVE' in desc or 'DEPRECATED' not in desc else 'DEPRECATED',
+            'status': status,
+            'explicit_status': explicit_status,
         }
 
     return sips
@@ -159,7 +195,7 @@ def parse_resource_files(resources_dir):
     p = pathlib.Path(resources_dir)
 
     for f in p.glob('*.md'):
-        with open(f, 'r', encoding='utf-8') as fh:
+        with open(f, 'r', encoding='utf-8', errors='replace') as fh:
             text = fh.read()
 
         # Find all SIP references with surrounding context
@@ -177,6 +213,49 @@ def parse_resource_files(resources_dir):
     return sip_contexts
 
 
+def _pair_key(a, b):
+    return tuple(sorted([a, b]))
+
+
+def _expand_resolution_pairs(items):
+    pairs = set()
+    for item in items:
+        if 'pair' in item:
+            pairs.add(_pair_key(*item['pair']))
+        elif 'sips' in item:
+            for a, b in combinations(item['sips'], 2):
+                pairs.add(_pair_key(a, b))
+    return pairs
+
+
+def load_conflict_resolutions(resources_dir):
+    """Load audited conflict suppressions from resources."""
+    path = pathlib.Path(resources_dir) / 'sip_conflict_resolutions.json'
+    empty = {'direction': set(), 'duplicate': set()}
+    if not path.exists():
+        return empty
+
+    with open(path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    return {
+        'direction': _expand_resolution_pairs(data.get('resolved_direction_conflicts', [])),
+        'duplicate': _expand_resolution_pairs(data.get('resolved_duplicate_counting', [])),
+    }
+
+
+def filter_resolved_issues(issues, resolved_pairs):
+    active = []
+    suppressed = []
+    for issue in issues:
+        key = _pair_key(issue['sip_a'], issue['sip_b'])
+        if key in resolved_pairs:
+            suppressed.append(issue)
+        else:
+            active.append(issue)
+    return active, suppressed
+
+
 def detect_direction_conflicts(sips):
     """Detect SIPs that affect the same dimension in opposite directions."""
     conflicts = []
@@ -184,7 +263,7 @@ def detect_direction_conflicts(sips):
 
     for i, a in enumerate(sip_list):
         for b in sip_list[i+1:]:
-            if a.get('status') == 'DEPRECATED' or b.get('status') == 'DEPRECATED':
+            if a.get('status') != 'ACTIVE' or b.get('status') != 'ACTIVE':
                 continue
 
             # Same dimensions?
@@ -230,7 +309,7 @@ def detect_duplicate_counting(sips):
 
     for i, a in enumerate(sip_list):
         for b in sip_list[i+1:]:
-            if a.get('status') == 'DEPRECATED' or b.get('status') == 'DEPRECATED':
+            if a.get('status') != 'ACTIVE' or b.get('status') != 'ACTIVE':
                 continue
 
             # Same step AND same dimension AND same effect direction
@@ -256,11 +335,13 @@ def detect_cross_references(sips, contexts):
     for sip_id, ctxs in contexts.items():
         if sip_id not in sips:
             continue
+        if sips[sip_id].get('status') != 'ACTIVE':
+            continue
         for ctx in ctxs:
             # Find other SIP references in context
             other_sips = SIP_ID_RE.findall(ctx['context'])
             for other in other_sips:
-                if other != sip_id and other in sips:
+                if other != sip_id and other in sips and sips[other].get('status') == 'ACTIVE':
                     # Check if the other SIP also references this one
                     if sip_id in [SIP_ID_RE.search(c['context']).group(1)
                                   for c in contexts.get(other, [])
@@ -292,6 +373,10 @@ def detect_deprecated_references(sips, contexts):
     for sip_id in deprecated:
         if sip_id in contexts:
             for ctx in contexts[sip_id]:
+                if ctx['file'] in {'00_sip_index.md', 'sip_changelog.md'}:
+                    continue
+                if 'DEPRECATED' in ctx['context'] or '已廢棄' in ctx['context']:
+                    continue
                 issues.append({
                     'type': '⚠️ 過時引用 (Deprecated Reference)',
                     'sip': sip_id,
@@ -328,6 +413,7 @@ def main():
     # Parse data
     sips = parse_sip_index(sip_index_path)
     contexts = parse_resource_files(args.resources_dir)
+    resolutions = load_conflict_resolutions(args.resources_dir)
 
     # Also parse changelog for additional SIP metadata
     changelog_path = os.path.join(args.resources_dir, 'sip_changelog.md')
@@ -345,19 +431,30 @@ def main():
                     sips[sid]['conditions'] = sdata['conditions']
 
     print(f"\n   📋 已識別 SIP: {len(sips)} 個")
-    active = sum(1 for s in sips.values() if s.get('status') != 'DEPRECATED')
-    deprecated = len(sips) - active
-    print(f"      🟢 活躍: {active} | 🔴 已廢棄: {deprecated}")
+    status_counts = defaultdict(int)
+    for sip in sips.values():
+        status_counts[sip.get('status', 'ACTIVE')] += 1
+    active = status_counts['ACTIVE']
+    baked = status_counts['BAKED']
+    observation = status_counts['OBSERVATION']
+    complete = status_counts['COMPLETE']
+    deprecated = status_counts['DEPRECATED']
+    print(
+        f"      🟢 活躍: {active} | ✅ 已 Bake: {baked} | "
+        f"🟡 觀察: {observation} | ✅ 完成: {complete} | 🔴 已廢棄: {deprecated}"
+    )
 
     # Run conflict detection
     all_issues = []
 
     # 1. Direction conflicts
-    dir_conflicts = detect_direction_conflicts(sips)
-    all_issues.extend(dir_conflicts)
+    dir_conflicts_raw = detect_direction_conflicts(sips)
+    dir_conflicts, dir_suppressed = filter_resolved_issues(
+        dir_conflicts_raw, resolutions['direction']
+    )
     high = sum(1 for c in dir_conflicts if c['severity'] == 'HIGH')
     med = sum(1 for c in dir_conflicts if c['severity'] == 'MEDIUM')
-    print(f"\n   🔴 方向衝突: {len(dir_conflicts)} 個 (高危 {high}, 中危 {med})")
+    print(f"\n   🔴 方向衝突: {len(dir_conflicts)} 個 (高危 {high}, 中危 {med}, 已解決 {len(dir_suppressed)})")
     for c in dir_conflicts[:5]:
         print(f"      {c['type']}")
         print(f"         {c['sip_a']} ({c['effect_a']}) ⟷ {c['sip_b']} ({c['effect_b']})")
@@ -366,34 +463,38 @@ def main():
             print(f"         重疊條件: {', '.join(c['overlap_conditions'])}")
 
     # 2. Duplicate counting
-    dup_counting = detect_duplicate_counting(sips)
-    all_issues.extend(dup_counting)
-    print(f"\n   🟠 重複計算: {len(dup_counting)} 個")
+    dup_counting_raw = detect_duplicate_counting(sips)
+    dup_counting, dup_suppressed = filter_resolved_issues(
+        dup_counting_raw, resolutions['duplicate']
+    )
+    print(f"\n   🟠 重複計算: {len(dup_counting)} 個 (已解決 {len(dup_suppressed)})")
     for d in dup_counting[:5]:
         print(f"      {d['sip_a']} + {d['sip_b']} 在 Step {d['shared_step']} 同維度 {d['effect']}")
 
     # 3. Cross-references
     cross = detect_cross_references(sips, contexts)
-    all_issues.extend(cross)
     print(f"\n   🔵 交叉引用: {len(cross)} 對")
     for cr in cross[:5]:
         print(f"      {cr['sip_a']} ⟷ {cr['sip_b']}")
 
     # 4. Deprecated references
     dep_refs = detect_deprecated_references(sips, contexts)
-    all_issues.extend(dep_refs)
     print(f"\n   ⚠️ 過時引用: {len(dep_refs)} 個")
     for dr in dep_refs[:5]:
         print(f"      {dr['sip']} 仍被 {dr['file']} 引用")
 
     # Summary
     print(f"\n{'═' * 60}")
-    total = len(all_issues)
-    high_total = sum(1 for i in all_issues if i.get('severity') == 'HIGH')
-    if total == 0:
-        print(f"   ✅ 冇發現衝突 — SIP 系統健康")
+    high_risk_conflicts = [c for c in dir_conflicts if c.get('severity') == 'HIGH']
+    review_signals = [c for c in dir_conflicts if c.get('severity') != 'HIGH'] + cross
+    blocking_issues = high_risk_conflicts + dup_counting + dep_refs
+
+    if not blocking_issues:
+        print(f"   ✅ 冇高危方向衝突 / 重複計算 / 過時引用阻塞項")
+        if review_signals:
+            print(f"   ℹ️ 保留 {len(review_signals)} 項中低危/交叉引用提示，供定期人工審閱")
     else:
-        print(f"   ⚠️ 發現 {total} 項潛在問題 ({high_total} 高危)")
+        print(f"   ⚠️ 發現 {len(blocking_issues)} 項阻塞問題 ({len(high_risk_conflicts)} 高危)")
         print(f"   LLM 需審閱以上衝突並判斷:")
         print(f"      • 方向衝突係有意設計（互相制衡）定係真衝突？")
         print(f"      • 重複計算係刻意疊加定係無意重複？")
@@ -404,11 +505,19 @@ def main():
         print(json.dumps({
             'sip_count': len(sips),
             'active': active,
+            'baked': baked,
+            'observation': observation,
+            'complete': complete,
             'deprecated': deprecated,
-            'issues': all_issues,
+            'blocking_issues': blocking_issues,
+            'review_signals': review_signals,
+            'suppressed': {
+                'direction_conflicts': dir_suppressed,
+                'duplicate_counting': dup_suppressed,
+            },
         }, ensure_ascii=False, indent=2, default=str))
 
-    sys.exit(1 if high_total > 0 else 0)
+    sys.exit(1 if blocking_issues else 0)
 
 
 if __name__ == '__main__':

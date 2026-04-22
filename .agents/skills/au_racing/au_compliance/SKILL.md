@@ -1,6 +1,6 @@
 ---
 name: AU Compliance Agent
-description: This skill should be used when the user wants to "check AU analysis quality", "AU 品質檢查", "AU compliance check", "AU 合規檢查", or when AU Wong Choi requires mandatory quality and SIP compliance verification after each race analysis.
+description: DEPRECATED. Do not use or auto-route to this skill; AU analysis compliance is handled by au_wong_choi/scripts/au_orchestrator.py and completion_gate_v2.py.
 version: 2.0.0
 deprecated: true
 deprecated_since: 2026-04-11

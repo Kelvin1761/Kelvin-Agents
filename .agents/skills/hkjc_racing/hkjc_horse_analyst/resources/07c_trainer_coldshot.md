@@ -1,5 +1,5 @@
 
-## 練馬師冷門訊號名單 (Trainer Coldshot Registry) [SIP-ST29g]
+## 練馬師冷門訊號名單 (Trainer Coldshot Registry)
 
 > [!IMPORTANT]
 > 此名單基於 2026-03-29 沙田覆盤中多場冷門勝出的練馬師模式。

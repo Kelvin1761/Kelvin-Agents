@@ -133,19 +133,30 @@ def calc_power_index(horse: dict, platform: str, speed_map: dict) -> dict:
     if isinstance(wt_tier, int):
         ctx += {0: 0, 1: 3, 2: 0, 3: -1.5, 4: -3}.get(wt_tier, 0)
 
-    # EEM energy
+    # Race shape / positional consumption (replaces legacy EEM numeric model)
     eem = horse.get('eem_energy', {})
-    drain_str = eem.get('cumulative_drain', '2.5/5.0') if isinstance(eem, dict) else '2.5/5.0'
+    drain_str = str(eem.get('cumulative_drain', '') if isinstance(eem, dict) else '')
+    # Try numeric format first (legacy: '2.5/5.0')
+    drain_val = None
     try:
-        drain_val = float(str(drain_str).split('/')[0])
+        drain_val = float(drain_str.split('/')[0])
     except (ValueError, IndexError):
-        drain_val = 2.5
-    if drain_val <= 1.5:
-        ctx += 2.0
-    elif drain_val >= 3.5:
-        ctx -= 3.0
-    elif drain_val >= 2.8:
-        ctx -= 1.0
+        pass
+    if drain_val is not None:
+        if drain_val <= 1.5:
+            ctx += 2.0
+        elif drain_val >= 3.5:
+            ctx -= 3.0
+        elif drain_val >= 2.8:
+            ctx -= 1.0
+    else:
+        # Chinese text format: 高消耗/中等消耗/低消耗
+        if '低消耗' in drain_str:
+            ctx += 2.0
+        elif '高消耗' in drain_str:
+            ctx -= 2.5
+        elif '中等消耗' in drain_str:
+            ctx -= 0.5
 
     # Momentum
     momentum = str(horse.get('momentum_level', ''))
@@ -203,43 +214,97 @@ def calc_power_index(horse: dict, platform: str, speed_map: dict) -> dict:
 # ============================================================
 
 def calc_sigma(horse: dict) -> float:
-    """V2: Calculate dynamic sigma with more differentiation."""
+    """V3: Calculate dynamic sigma using fields available in HKJC Logic.json.
+    Infers stability, experience, and consistency from actual data."""
     sigma = BASE_SIGMA
 
+    # --- Stability: check dedicated field first, then infer from last_6 ---
     stability = str(horse.get('stability_index', '')).lower()
     if stability in ('穩定', '穩'):
-        sigma -= 3.0   # V2: was -2.0
+        sigma -= 3.0
     elif stability in ('衰退中', '急劇衰退', '低'):
-        sigma += 3.0   # V2: was +2.0
+        sigma += 3.0
+    else:
+        # Infer stability from last_6_finishes (e.g. '11-5-7-1-1-9')
+        last_6 = str(horse.get('last_6_finishes', ''))
+        if last_6 and last_6 != 'N/A':
+            try:
+                positions = [int(x) for x in last_6.split('-') if x.strip().isdigit()]
+                if len(positions) >= 3:
+                    # Coefficient of variation: high = volatile, low = stable
+                    mean_pos = sum(positions) / len(positions)
+                    if mean_pos > 0:
+                        std_pos = (sum((p - mean_pos)**2 for p in positions) / len(positions)) ** 0.5
+                        cv = std_pos / mean_pos
+                        if cv < 0.25:  # Very consistent
+                            sigma -= 2.5
+                        elif cv < 0.40:  # Reasonably stable
+                            sigma -= 1.0
+                        elif cv > 0.70:  # Highly volatile
+                            sigma += 2.5
+                        elif cv > 0.55:  # Somewhat volatile
+                            sigma += 1.5
+            except (ValueError, ZeroDivisionError):
+                pass
 
+    # --- Long spell: check field or infer from days_since_last ---
     if horse.get('long_spell', False):
         sigma += 3.0
+    else:
+        days = horse.get('days_since_last', 0)
+        if isinstance(days, (int, float)) and days > 60:
+            sigma += 3.0
+        elif isinstance(days, (int, float)) and days > 35:
+            sigma += 1.5
+
     if horse.get('trial_illusion', False):
         sigma += 2.0
     if horse.get('is_2yo', False):
-        sigma += 3.0   # V2: was +2.0, young horses more volatile
+        sigma += 3.0
     wt = horse.get('wet_track_tier', 2)
     if isinstance(wt, int) and wt >= 4:
-        sigma += 2.0   # V2: was +1.5
-    if horse.get('eem_3_high_drain', False):
+        sigma += 2.0
+
+    # --- Positional consumption (replaces legacy eem_3_high_drain) ---
+    eem = horse.get('eem_energy', {})
+    drain_str = str(eem.get('cumulative_drain', '') if isinstance(eem, dict) else '')
+    if '高消耗' in drain_str:
         sigma += 1.5
 
-    # V2: Experience-based variance — fewer starts = more volatile
+    # --- Experience: fewer starts = more volatile ---
     try:
-        starts = int(horse.get('starts', 10))
-        if starts <= 2:
-            sigma += 4.0
-        elif starts <= 5:
-            sigma += 2.0
+        starts = int(horse.get('starts', 0))
+        if starts > 0:
+            if starts <= 2:
+                sigma += 4.0
+            elif starts <= 5:
+                sigma += 2.0
+            elif starts >= 20:
+                sigma -= 1.0  # Veteran horse, more predictable
     except (ValueError, TypeError):
         pass
 
-    try:
-        r3 = int(horse.get('recent_3_top3', 0))
-        if r3 >= 2:
-            sigma -= 2.0   # V2: was -1.5, consistent horses more predictable
-    except (ValueError, TypeError):
-        pass
+    # --- Consistency: count top-3 finishes in last_6 ---
+    r3 = horse.get('recent_3_top3', None)
+    if r3 is not None:
+        try:
+            if int(r3) >= 2:
+                sigma -= 2.0
+        except (ValueError, TypeError):
+            pass
+    else:
+        # Infer from last_6_finishes
+        last_6 = str(horse.get('last_6_finishes', ''))
+        if last_6 and last_6 != 'N/A':
+            try:
+                positions = [int(x) for x in last_6.split('-') if x.strip().isdigit()]
+                top3_count = sum(1 for p in positions if p <= 3)
+                if top3_count >= 3:
+                    sigma -= 2.5  # Very consistent performer
+                elif top3_count >= 2:
+                    sigma -= 1.5
+            except ValueError:
+                pass
 
     return float(np.clip(sigma, SIGMA_MIN, SIGMA_MAX))
 
@@ -301,6 +366,10 @@ def calc_pace_modifiers(horses_data: list, speed_map: dict) -> dict:
     """
     Calculate pace-related Power Index modifiers for each horse.
     Models the Speed Duel Effect and track bias.
+
+    Reads predicted_pace (5-tier: Very Slow / Slow / Normal / Fast / Very Fast)
+    and pace_volatility (Stable / Volatile / Chaotic) from speed_map.
+
     Returns {horse_name: pace_modifier}.
     """
     mods = {}
@@ -310,8 +379,18 @@ def calc_pace_modifiers(horses_data: list, speed_map: dict) -> dict:
     leaders = speed_map.get('leaders', [])
     n_leaders = len(leaders)
     track_bias = str(speed_map.get('track_bias', ''))
-    expected_pace = str(speed_map.get('expected_pace', 'Moderate')).lower()
-    collapse = str(speed_map.get('collapse_point', ''))
+
+    # Read pace label — support both predicted_pace (new) and expected_pace (legacy)
+    pace_raw = str(speed_map.get('predicted_pace',
+                   speed_map.get('expected_pace', 'Normal'))).lower().strip()
+
+    # Map to numeric index for graduated modifiers
+    pace_map = {
+        'very fast': 2, 'fast': 1, 'normal': 0, 'slow': -1, 'very slow': -2,
+        # Legacy labels (backward compat)
+        'chaotic': 2, 'moderate': 0, 'crawl': -2,
+    }
+    pace_idx = pace_map.get(pace_raw, 0)
 
     # Inner rail collapse detection
     rail_collapse = any(k in track_bias for k in ('崩潰', '爛地', '內欄', 'deteriorat'))
@@ -329,15 +408,34 @@ def calc_pace_modifiers(horses_data: list, speed_map: dict) -> dict:
                 mod -= 4.0   # Significant burn
             elif n_leaders == 1:
                 mod += 3.0   # Lone leader advantage
-            if expected_pace == 'fast':
-                mod -= 1.5
+
+            # Pace pressure on front runners (graduated)
+            if pace_idx >= 2:      # Very Fast
+                mod -= 2.0
+            elif pace_idx >= 1:    # Fast
+                mod -= 1.0
+            elif pace_idx <= -1:   # Slow / Very Slow — leader controls
+                mod += 1.5
+
         elif style == 'B':  # Closer
             if n_leaders >= 3:
                 mod += 3.0   # Benefits from speed collapse
-            elif n_leaders <= 1 and expected_pace in ('slow', 'moderate'):
+            elif n_leaders <= 1 and pace_idx <= 0:
                 mod -= 2.5   # No pace to run into
-            if expected_pace == 'fast':
+
+            # Closers benefit from fast pace (graduated)
+            if pace_idx >= 2:      # Very Fast
+                mod += 3.0
+            elif pace_idx >= 1:    # Fast
                 mod += 2.0
+            elif pace_idx <= -1:   # Slow — closers suffer
+                mod -= 1.0
+
+        elif style in ('A/B', 'A/C'):  # On-pace / versatile
+            if pace_idx >= 2:
+                mod -= 0.5   # Slight penalty in very fast pace
+            elif pace_idx <= -2:
+                mod += 0.5   # Slight benefit in very slow pace
 
         # --- Track bias ---
         if rail_collapse:

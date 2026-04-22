@@ -26,7 +26,7 @@ ag_kit_skills:
 4. **強制人工審核**：Step 8 報告完成後必須暫停等用戶審批
 5. **WALL-R01 Claw Code 強制**：數據擷取必須用 `claw_racenet_results.py`。**嚴禁 `browser_subagent`、MCP Playwright、或任何瀏覽器自動化工具**
 6. **Completion Promise (B17)**：覆盤報告只有所有步驟完成 + 用戶確認後先可輸出 `🏁 REFLECTION COMPLETE`
-7. **BAKED SIP 感知**：提議新 SIP 前必須查閱 `../au_horse_analyst/resources/00_sip_index.md`。觀察項畢業路徑：OBS → 累計 ≥3 案例 → 用戶審批 → 升級為 SIP
+7. **BAKED SIP 感知**：提議新 SIP 前必須查閱 AU Horse Analyst 資源目錄內的 `00_sip_index.md`。觀察項畢業路徑：OBS → 累計 ≥3 案例 → 用戶審批 → 升級為 SIP
 
 ---
 
@@ -168,9 +168,9 @@ python .agents/scripts/reflector_auto_stats.py "<MEETING_DIR>" "<MEETING_DIR>/Ra
 
 ### 4a. 載入引擎
 讀取 AU Horse Analyst 核心 resource 檔案：
-- `../au_horse_analyst/SKILL.md`
-- `../au_horse_analyst/resources/02a-02g` (Steps 0-14 完整引擎)
-- `../au_horse_analyst/resources/06_templates_core.md`
+- AU Horse Analyst `SKILL.md`
+- AU Horse Analyst 資源目錄內的 `02a` 至 `02g` 文件 (Steps 0-14 完整引擎)
+- AU Horse Analyst 資源目錄內的 `06_templates_core.md`
 - 場地/條件專屬 resource（按當日賽事讀取，例如 Randwick → `04b_track_randwick.md`）
 
 ### 4b. 引擎邏輯審視
@@ -300,7 +300,7 @@ python .agents/scripts/reflector_verdict_validator.py "<MEETING_DIR>/<Date>_<Ven
 ---
 
 # [REF-DA01] 深度覆盤 5 角度
-> 完整協議見 `au_racing/shared_resources/ref_da01_protocol.md`（強制閱讀）。
+> 完整協議見 AU racing shared resource 目錄內的 `ref_da01_protocol.md`（強制閱讀）。
 > 任何修改必須在共享檔案中進行，避免 Protocol 漂移。
 
 5 角度：結果偏差 → 過程偏差 → SIP-DA01 Protocol 自我審計 → 泛化性審計 → Design Pattern Proposal

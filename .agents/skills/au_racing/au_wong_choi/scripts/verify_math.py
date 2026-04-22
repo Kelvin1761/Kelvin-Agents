@@ -41,7 +41,7 @@ DIMENSION_CATEGORIES = {
     # AU Wong Choi dimension names
     '狀態與穩定性': 'core',
     '段速與引擎': 'core',
-    'EEM與形勢': 'semi_core',
+    '形勢與走位': 'semi_core',
     '風向形勢': 'semi_core',      # Straight sprint variant
     '騎練訊號': 'semi_core',
     '級數與負重': 'aux',
@@ -51,9 +51,9 @@ DIMENSION_CATEGORIES = {
     # HKJC Wong Choi dimension names
     '穩定性': 'core',
     '段速質量': 'core',
-    'EEM 潛力': 'semi_core',
-    'EEM潛力': 'semi_core',
-    'EEM': 'semi_core',
+    '形勢與走位(潛力)': 'semi_core',
+    '形勢與走位(潛力v2)': 'semi_core',
+    'race_shape': 'semi_core',
     '練馬師訊號': 'semi_core',
     '情境適配': 'aux',
     '路程/新鮮度': 'aux',

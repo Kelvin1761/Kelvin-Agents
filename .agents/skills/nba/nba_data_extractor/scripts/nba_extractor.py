@@ -242,29 +242,6 @@ def compute_prop_analytics(gamelog, opp_team_stats, player_splits, is_home):
                 "tier": tier,
             })
             
-            # Under 側 (如果 Over 命中率低於 40%，自動生成 Under 候選)
-            if hit_rate_l10 <= 40:
-                under_hits = len(arr) - hits_l10
-                under_rate = round(under_hits / len(arr) * 100, 0)
-                if under_rate >= 70:
-                    # Under odds is inverse of Over: if Over is easy (low odds), Under is hard (high odds)
-                    under_odds = round(est_odds / (est_odds - 1), 2) if est_odds > 1.05 else 10.0
-                    under_implied = round(1 / under_odds * 100, 1)
-                    line_analytics.append({
-                        "line": line,
-                        "direction": "Under",
-                        "hit_rate_L10": under_rate,
-                        "hit_rate_L5": round((len(l5) - hits_l5) / len(l5) * 100, 0) if l5 else 0,
-                        "hit_rate_L3": round((len(l3) - hits_l3) / len(l3) * 100, 0) if l3 else 0,
-                        "hits": f"{under_hits}/{len(arr)}",
-                        "AMC": avg_miss,  # Under 的 AMC = Over 的 avg_miss
-                        "est_odds": under_odds,
-                        "implied_prob": under_implied,
-                        "estimated_prob": under_rate,
-                        "edge": round(under_rate - under_implied, 1),
-                        "tier": "🛡️ 穩膽 Under" if under_rate >= 80 else "💎 價值 Under",
-                    })
-        
         analytics[stat_key] = {
             "raw": arr,
             "avg": avg,
@@ -328,11 +305,47 @@ def parse_espn_events(events):
                 "name": evt['name'],
                 "date": evt['date'],
                 "short_name": evt.get('shortName', ''),
+                "season": evt.get('season', {}),
+                "competitions": evt.get('competitions', []),
                 "away": away,
                 "home": home,
                 "tag": f"{away['abbreviation']}_{home['abbreviation']}"
             })
     return games
+
+
+def detect_season_phase(date_str, game_info=None):
+    """Classify NBA context for downstream model prompts and MC variance."""
+    game_info = game_info or {}
+    meta_text = " ".join(str(game_info.get(k, "")) for k in (
+        "season_phase", "season_type", "game_type", "name", "short_name"))
+    meta_text += " " + str(game_info.get("season", ""))
+    meta_upper = meta_text.upper()
+    if "PLAYOFF" in meta_upper or "POSTSEASON" in meta_upper:
+        return "PLAYOFFS"
+    if "PLAY-IN" in meta_upper or "PLAY IN" in meta_upper:
+        return "PLAY_IN"
+    if "PRESEASON" in meta_upper:
+        return "EARLY_SEASON"
+
+    try:
+        d = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+    except Exception:
+        try:
+            d = datetime.strptime(date_str[:10], "%Y-%m-%d")
+        except Exception:
+            return "MID_SEASON"
+
+    month, day = d.month, d.day
+    if d.year == 2025 and (month == 10 or (month == 11 and day <= 15)):
+        return "EARLY_SEASON"
+    if d.year == 2026 and ((month == 3 and day >= 25) or (month == 4 and day <= 13)):
+        return "LATE_REGULAR"
+    if d.year == 2026 and month == 4 and 14 <= day <= 18:
+        return "PLAY_IN"
+    if d.year == 2026 and ((month == 4 and day >= 19) or month in (5, 6)):
+        return "PLAYOFFS"
+    return "MID_SEASON"
 
 
 def fetch_nba_news(team_abbr, limit=5):
@@ -925,7 +938,7 @@ def compute_correlation_warnings(players, team_abbr):
     規則：
     - 🚨 同隊 3 人全買 PTS Over = 球權衝突 (Cannibal Risk)
     - ✅ 控衛 AST Over + 射手 PTS Over = 正相關
-    - 🚨 球員 PTS Over + 同隊 Total Under = 矛盾
+    - 🚨 Team market 不混入 player milestone SGM；總分盤只作背景參考
     """
     warnings = []
     high_usg_players = []
@@ -963,6 +976,8 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
         "meta": {
             "game": game_info['name'],
             "date": game_info['date'],
+            "season_phase": detect_season_phase(game_info['date'], game_info),
+            "l10_order": "newest_first",
             "away": {"name": away_name, "abbr": away_abbr},
             "home": {"name": home_name, "abbr": home_abbr},
             "extracted_at": datetime.now().isoformat(),

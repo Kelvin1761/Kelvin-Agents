@@ -118,13 +118,8 @@
 - 擴大冷門掃描範圍至 $10+(而非 $15+)
 - 建議保守部署
 
-**[SIP-RR03] 🚨 大規模退出應急協議 (Mass Scratching Contingency Protocol):**
-當 Top 4 精選中有 ≥2 匹退出時,觸發「迷你重新分析」:
-- 從已完成的個別馬匹分析中提取剩餘馬匹的評級
-- 根據退出後的場次規模(出馬數變化)重新計算 EEM 維度
-- 標記因競爭對手退出而受益的馬匹(如前領群減少 → 前領型升級)
-- 重新生成 Top 4 排名
-- 輸出:`⚠️ 大規模退出警報: [X]/4 精選已退出。以下為重新計算後的 Top 4:`
+**[SIP-RR03 DEPRECATED] 🚨 大規模退出應急協議 (Mass Scratching Contingency Protocol):**
+此舊式人工 Verdict 補救流程已由 V11 Orchestrator / Racecard Scratching pipeline 接管。若 Top 4 精選中有 ≥2 匹退出,不得由 LLM 手動迷你重排;必須重新跑 orchestrator,以更新後出馬名單、Facts.md、Speed Map 及 `Race_X_Logic.json` 重新編譯 Verdict。
 
 **🚨 緊急煞車檢查 (Emergency Brake Protocol):**
 - 若 Top 4 中無任何馬匹達 A- 或以上 → 輸出 `⚠️ 低信心賽事 (LOW CONFIDENCE RACE) — 建議保守部署`

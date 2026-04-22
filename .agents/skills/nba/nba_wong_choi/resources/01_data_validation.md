@@ -6,6 +6,8 @@
 ## 1. 數據包完整性檢查
 - 確認每位候選球員都有完整 14 項數據卡(見 `nba_data_extractor/resources/02_data_card_template.md`)
 - 若有缺失,要求 Extractor 補充
+- 確認 `meta.season_phase` 存在，且只可為 EARLY_SEASON / MID_SEASON / LATE_REGULAR / PLAY_IN / PLAYOFFS
+- 確認 `meta.l10_order = newest_first`
 
 ## 2. 跨場數據污染掃描 (Cross-Game Contamination Scan)
 | 檢查項目 | 規則 | 處理 |

@@ -38,21 +38,25 @@ MID_PACK_THRESHOLD = 8.0   # avg position ≤ 8.0
 # ── Pace classification heuristics ────────────────────────────────────────
 # Number of natural leaders determines overall pace
 def classify_pace(leader_count: int, on_pace_count: int, field_size: int) -> str:
+    """5-tier pace classification based on leader ratio and front pressure.
+
+    Returns: Very Slow / Slow / Normal / Fast / Very Fast
+    """
     if field_size == 0:
-        return "Unknown"
-    leader_ratio = leader_count / field_size
-    on_pace_ratio = (leader_count + on_pace_count) / field_size
-    
-    if leader_count == 0:
-        return "Crawl"          # No natural leader → pace collapses
-    elif leader_count == 1 and on_pace_count <= 1:
-        return "Moderate"       # Single leader, little pressure
-    elif leader_count >= 3 or on_pace_ratio >= 0.4:
-        return "Fast"           # Multiple leaders contesting
-    elif leader_count == 2:
-        return "Moderate"
+        return "Normal"
+
+    front_ratio = (leader_count + on_pace_count) / field_size
+
+    if leader_count == 0 and on_pace_count <= 1:
+        return "Very Slow"
+    elif leader_count <= 1 and front_ratio < 0.25:
+        return "Slow"
+    elif leader_count <= 2 and front_ratio < 0.35:
+        return "Normal"
+    elif leader_count >= 3 or front_ratio >= 0.45:
+        return "Very Fast"
     else:
-        return "Chaotic"
+        return "Fast"
 
 
 def classify_horse(early_positions: list, barrier: int = None) -> str:
@@ -217,7 +221,7 @@ def build_speed_map(horses: list) -> dict:
         "closers": closers,
         "track_bias": "[待天氣情報補充 — LLM 必須根據 Intelligence 填寫]",
         "tactical_nodes": "[待 Batch 0 分析 — LLM 必須填寫具體戰術節點]",
-        "collapse_point": f"[{'龜速壟斷情景' if pace == 'Crawl' else '步速拉鋸爭崩' if pace == 'Fast' else '中速穩定' if pace == 'Moderate' else '混亂步速'}]",
+        "collapse_point": f"[{'無前領壓力，步速大幅收慢' if pace in ('Very Slow', 'Slow') else '步速拉鋸爭崩' if pace in ('Fast', 'Very Fast') else '中速穩定'}]",
         "_auto_generated": True,
         "_note": "由 predict_speed_map.py 根據往績沿途位數據自動分類。LLM 必須驗證並補充 track_bias、tactical_nodes、collapse_point。"
     }

@@ -1,5 +1,7 @@
 # 過關組合引擎 (Parlay Combination Engine) — Step 5
 
+> **V1 穩健 +EV 策略:** NBA Wong Choi 只推薦 Sportsbet Player Milestone `X+`（Over）選項。Team market（ML / Spread / Total）只可作背景參考，不可混入 Python Auto-Selection 嘅 player milestone SGM 組合。Under / Total U 不作投注推介。
+
 ---
 
 ## Step 1: 判斷成局條件
@@ -22,6 +24,7 @@
 ### 🛡️ 穩膽型 (Banker Tier — 組合 1)
 - **組合賞率（Sportsbet Legs 相乘）≥ 2.0 倍**
 - 要求每腿 L10 命中率 **≥70%**
+- 要求每腿 Edge **≥0%**（禁止負 EV）
 - 優先選用 CoV < 0.25 嘅極度穩定球員
 - **建議關數: 2-4 Leg（彈性關數策略）**
   - 3-4 Leg 穩膽組合允許每腿選用更低風險盤口 (Alt Lines 降級),更符合「穩健收米」嘅宗旨
@@ -30,7 +33,7 @@
 
 ### 🔥 均衡 +EV 價值膽 (Value Tier — 組合 2)
 - **組合賞率（Sportsbet Legs 相乘）≥ 3.0 倍，目標 5x**
-- 要求每腿 L10 命中率 **≥40%** + Edge ≥ -5%
+- 要求每腿 L10 命中率 **≥40%** + Edge **≥3%**
 - 主力正盤與對位弱點針對
 - 可混搭穩膽線 + 價值線 Legs
 - **建議關數: 2-4 Leg（彈性關數策略）**
@@ -38,12 +41,13 @@
 ### 💎 價值型小博大 (High Odds Tier — 組合 3)
 - **組合賞率（Sportsbet Legs 相乘）≥ 8.0 倍**
 - 容忍更高風險,但個別腿保持 **≥40% 命中率**
-- 可包含高波動球員嘅爆發盤口
-- 適合使用 Under 偵測篩選出嘅 Under Legs
+- 每腿 Edge **≥0%**；高波動球員只可喺有正 Edge 及合理 MC 支持時使用
+- 只可使用 Sportsbet milestone `X+` Over legs
 - **建議關數: 3 Leg**
 
 ### 💣 Value Bomb (莊家低估 — 組合 X) — 條件觸發
 - **只有當 Python 偵測到 Edge ≥10%+ 嘅顯著低估時先會出現**
+- 需同時通過 MC Edge ≥5% 或 L5/L10 命中率一致性檢查
 - 每腿 L10 命中率 ≥ 55%
 - 最多 3 Legs
 
@@ -57,7 +61,7 @@
 | 模式 | 說明 |
 |------|------|
 | 🥇 完美跨場互補 | 控衛 Over 助攻 + 另一場頂級單打手 Over 得分 |
-| 🥉 垃圾時間劇本 | 敗方主力 Under 得分 + 雙方替補 Over 得分 (僅限高賠型) |
+| 🥉 垃圾時間劇本 | 避開大熱方主力高門檻得分 Over，僅保留低門檻 milestone 或替補 Over（僅限高賠型） |
 
 ### 🚫 禁止嘅組合模式
 | 模式 | 說明 |
@@ -66,6 +70,8 @@
 | 天花板衝突 | 同隊兩名球員都買高分 Over,總分有天花板限制 |
 | 劇本矛盾 | 嚴禁重注某球員超級大分,卻買該場比賽總分 Under |
 | 防守敗局 | 雙方防守皆 Top 10 且總分盤 ≤ 215 → 全場得分 Over 需警戒 |
+| 同隊得分擠壓 | 同隊 PTS Over 最多 2 腿；嚴禁同隊 3 名得分 Over |
+| Market 污染 | Team market 不可與 player milestone legs 混入同一自動 SGM |
 
 ### 📈 正相關加成組合 (Positive Correlation Matrix)
 以下組合模式有統計正相關性,可以增強 SGM 命中率:
@@ -105,6 +111,11 @@
 ### 其他數據 (Blocks, Steals, 組合數據)
 - 若選擇其他盤口,必須參考球員常規選項,否則強烈建議僅推薦上述 4 種核心選項,避免造出 Sportsbet 無法投注嘅虛假盤口。
 
+### L10 順序規則
+- 全系統 L10 順序固定為 `newest_first`（最新一場 → 最舊一場）。
+- L3 = L10 前 3 項；L5 = L10 前 5 項。
+- 報告必須顯示 `L10_ORDER: newest_first`。
+
 ---
 
 ## 賠率來源規則
@@ -115,7 +126,7 @@
 
 ### 無即時賞率（Fallback）
 使用美式基準估算:
-- 標準盤口 Over/Under:**1.90**
+- 標準 milestone Over:**1.90**
 - Alt Lines (降低 1 級):約 **1.50-1.65**
 - Alt Lines (升高 1 級):約 **2.20-2.50**
 - Alt Lines (升高 2 級):約 **3.00-3.50**

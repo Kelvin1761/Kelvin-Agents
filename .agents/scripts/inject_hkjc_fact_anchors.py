@@ -1118,6 +1118,47 @@ def _recent_running_style(races: list) -> str:
     return 'mid_pack'
 
 
+def _classify_pace_v2(n_leaders: int, n_on_pace: int, field_size: int) -> str:
+    """5-tier pace classification based on leader ratio and front pressure.
+
+    Returns: Very Slow / Slow / Normal / Fast / Very Fast
+    """
+    if field_size == 0:
+        return 'Normal'
+
+    front_ratio = (n_leaders + n_on_pace) / field_size
+
+    if n_leaders == 0 and n_on_pace <= 1:
+        return 'Very Slow'
+    elif n_leaders <= 1 and front_ratio < 0.25:
+        return 'Slow'
+    elif n_leaders <= 2 and front_ratio < 0.35:
+        return 'Normal'
+    elif n_leaders >= 3 or front_ratio >= 0.45:
+        return 'Very Fast'
+    else:
+        return 'Fast'
+
+
+def _classify_pace_volatility(n_leaders: int, n_closers: int, field_size: int) -> str:
+    """Pace volatility: how predictable the pace scenario is.
+
+    Returns: Stable / Volatile / Chaotic
+    Used internally by MC simulator for sigma adjustment — NOT shown to LLM analysts.
+    """
+    if field_size == 0:
+        return 'Stable'
+
+    closer_ratio = n_closers / field_size
+
+    if n_leaders >= 4 and n_closers >= 3:
+        return 'Chaotic'
+    elif n_leaders >= 3 and closer_ratio >= 0.3:
+        return 'Volatile'
+    else:
+        return 'Stable'
+
+
 def build_race_speed_map_block(data: dict, today_venue: str = '', today_dist: int = 0,
                                race_class: str = '') -> tuple[str, dict]:
     """Build the first-class race speed map at Facts generation time."""
@@ -1139,16 +1180,9 @@ def build_race_speed_map_block(data: dict, today_venue: str = '', today_dist: in
         else:
             mid_pack.append(num)
 
-    pressure = len(leaders) * 2 + len(on_pace)
     field_size = len(data.get('horses', []))
-    if len(leaders) >= 4 or pressure >= max(6, field_size // 2 + 3):
-        predicted_pace = 'Chaotic'
-    elif len(leaders) >= 2 or pressure >= 4:
-        predicted_pace = 'Fast'
-    elif len(leaders) == 1 or on_pace:
-        predicted_pace = 'Moderate'
-    else:
-        predicted_pace = 'Crawl'
+    predicted_pace = _classify_pace_v2(len(leaders), len(on_pace), field_size)
+    pace_volatility = _classify_pace_volatility(len(leaders), len(closers), field_size)
 
     track_bias = (
         f"FACTS_SPEED_MODEL: {today_venue or '未知場地'} {today_dist or '?'}m {race_class or ''}; "
@@ -1156,6 +1190,7 @@ def build_race_speed_map_block(data: dict, today_venue: str = '', today_dist: in
     )
     speed_map = {
         'predicted_pace': predicted_pace,
+        'pace_volatility': pace_volatility,
         'leaders': [n for n in leaders if n],
         'on_pace': [n for n in on_pace if n],
         'mid_pack': [n for n in mid_pack if n],

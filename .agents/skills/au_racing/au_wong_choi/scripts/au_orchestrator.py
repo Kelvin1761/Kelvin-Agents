@@ -17,7 +17,7 @@ from rating_engine_v2 import parse_matrix_scores, compute_base_grade, apply_fine
 
 AU_MATRIX_SCHEMA = {
     "狀態與穩定性": "core", "段速與引擎": "core",
-    "EEM與形勢": "aux", "騎練訊號": "semi",
+    "形勢與走位": "semi", "騎練訊號": "semi",
     "級數與負重": "aux", "場地適性": "aux",
     "賽績線": "aux", "裝備與距離": "aux",
 }
@@ -685,47 +685,72 @@ def get_horse_numbers(facts_path):
     return sorted(list(set(horses)))
 
 
-def auto_build_au_speed_map_from_facts(facts_content, target_dir=None):
-    """Build a conservative AU speed map from Facts.md so automation never blocks at Batch 0."""
-    horse_blocks = []
-    markers = list(re.finditer(r'(?:\[#(\d+)\]|### 馬匹 #(\d+)|### 馬號 (\d+))', facts_content))
-    for idx, match in enumerate(markers):
-        num = int(match.group(1) or match.group(2) or match.group(3))
-        start = match.start()
-        end = markers[idx + 1].start() if idx + 1 < len(markers) else len(facts_content)
-        block = facts_content[start:end]
-        barrier_m = re.search(r'(?:檔位|Barrier|barrier)\s*[:：]?\s*(\d+)', block, re.IGNORECASE)
-        if not barrier_m:
-            barrier_m = re.search(r'\(檔位\s*(\d+)\)', block)
-        barrier = int(barrier_m.group(1)) if barrier_m else 99
-        low = block.lower()
-        if any(term in low for term in ('leader', 'led', 'on speed', 'front', '前領', '領放')):
-            style = 'leader'
-        elif any(term in low for term in ('closer', 'settled back', 'backmarker', '後上', '末段爆發')):
-            style = 'closer'
-        elif any(term in low for term in ('on pace', 'box seat', 'handy', '跟前', '前中')):
-            style = 'on_pace'
-        else:
-            style = 'mid_pack'
-        horse_blocks.append({'num': num, 'barrier': barrier, 'style': style})
+def _parse_num_list_from_speed_map_line(value):
+    return [int(x) for x in re.findall(r'\d+', value or '')]
 
-    leaders = sorted([h for h in horse_blocks if h['style'] == 'leader'], key=lambda h: h['barrier'])
-    on_pace = sorted([h for h in horse_blocks if h['style'] == 'on_pace'], key=lambda h: h['barrier'])
-    closers = sorted([h for h in horse_blocks if h['style'] == 'closer'], key=lambda h: h['barrier'])
-    mid_pack = sorted([h for h in horse_blocks if h['style'] == 'mid_pack'], key=lambda h: h['barrier'])
-    pressure = len(leaders) + max(0, len(on_pace) - 1)
-    expected_pace = 'Chaotic' if pressure >= 4 else ('Fast' if pressure >= 3 else ('Moderate' if pressure >= 2 else 'Crawl'))
-    track_bias = 'AUTO_FACTS_HEURISTIC: 未有人工步速圖；以檔位、跑法及 Facts 錨點作保守形勢判斷。'
+
+def parse_au_speed_map_from_facts(facts_content):
+    """Parse the first-class Python-generated speed map block from AU Facts.md."""
+    m = re.search(
+        r'^###\s*🗺️\s*自動步速圖.*?(?=^(?:###\s+馬匹|\[#\d+\]|\n={6,})|\Z)',
+        facts_content,
+        re.MULTILINE | re.DOTALL
+    )
+    if not m:
+        return {}
+    block = m.group(0)
+
+    def _field(name):
+        fm = re.search(rf'-\s*\*\*{re.escape(name)}:\*\*\s*(.+?)$', block, re.MULTILINE)
+        return fm.group(1).strip() if fm else ''
+
+    pace_val = _field('predicted_pace') or _field('expected_pace')
+    speed_map = {
+        'predicted_pace': pace_val,
+        'expected_pace': pace_val,   # backward-compatible alias
+        'leaders': _parse_num_list_from_speed_map_line(_field('leaders')),
+        'on_pace': _parse_num_list_from_speed_map_line(_field('on_pace')),
+        'mid_pack': _parse_num_list_from_speed_map_line(_field('mid_pack')),
+        'closers': _parse_num_list_from_speed_map_line(_field('closers')),
+        'track_bias': _field('track_bias'),
+        'tactical_nodes': _field('tactical_nodes'),
+        'collapse_point': _field('collapse_point'),
+        'source': _field('source') or 'FACTS_SPEED_MODEL',
+    }
+    required = ('predicted_pace', 'track_bias', 'tactical_nodes', 'collapse_point')
+    if not all(speed_map.get(k) for k in required):
+        return {}
+    return speed_map
+
+
+def auto_build_au_speed_map_from_facts(facts_content, target_dir=None):
+    """Parse the Facts Engine speed map from AU Facts.md.
+
+    If the Facts Engine embedded a speed map block (🗺️ 自動步速圖), parse and return it.
+    If no speed map block exists, return [FILL] placeholders so the pipeline stops
+    at Step B for manual intervention.
+
+    NOTE: The previous fallback heuristic (full-text keyword search) was removed because
+    it produced severely inflated leader counts and universal 'Chaotic' pace predictions.
+    """
+    generated = parse_au_speed_map_from_facts(facts_content)
+    if generated:
+        return generated
+
+    # No Facts Engine speed map found — return placeholders instead of guessing
+    print("⚠️ Facts Engine 步速圖缺失！Pipeline 將停喺 Step B 等待人手填寫 speed_map。")
+    print("   → 請確認 Facts.md 包含 '### 🗺️ 自動步速圖' block，或人手填寫 Logic.json speed_map。")
     return {
-        'expected_pace': expected_pace,
-        'leaders': [str(h['num']) for h in leaders[:4]],
-        'on_pace': [str(h['num']) for h in on_pace[:5]],
-        'mid_pack': [str(h['num']) for h in mid_pack[:6]],
-        'closers': [str(h['num']) for h in closers[:6]],
-        'track_bias': track_bias,
-        'tactical_nodes': f"AUTO_FACTS_HEURISTIC: {len(leaders)}匹 leader + {len(on_pace)}匹 on-pace；步速暫定 {expected_pace}，只作自動推進用保守預測。",
-        'collapse_point': 'AUTO_FACTS_HEURISTIC: 若前領壓力偏高，後上/慳位馬受惠；若步速偏慢，前置馬形勢提升。',
-        'source': 'AUTO_FACTS_HEURISTIC',
+        'predicted_pace': '[FILL]',
+        'expected_pace': '[FILL]',
+        'leaders': [],
+        'on_pace': [],
+        'mid_pack': [],
+        'closers': [],
+        'track_bias': '[FILL]',
+        'tactical_nodes': '[FILL]',
+        'collapse_point': '[FILL]',
+        'source': 'MISSING_NEEDS_MANUAL_FILL',
     }
 
 def get_batches(horses, batch_size=3):
@@ -817,12 +842,12 @@ def extract_fact_anchors(horse_block):
     else:
         anchors['fitness_arc'] = f'Deep Prep（{starts}仗）'
 
-    # EEM drain
-    m = re.search(r'加權累積消耗:\s*([^→]+?)→', horse_block)
-    anchors['eem_drain'] = m.group(1).strip() if m else '無數據'
+    # Race shape
+    m = re.search(r'加權走位形勢:\s*([^→]+?)→', horse_block)
+    anchors['''race_shape_assessment'''] = m.group(1).strip() if m else '無數據'
 
     # Last run style
-    m = re.search(r'EEM 跑法.*?\|\s*(.+?)\s*\|', horse_block)
+    m = re.search(r'走位 跑法.*?\|\s*(.+?)\s*\|', horse_block)
     anchors['last_run_style'] = m.group(1).strip() if m else '無數據'
 
     # Formline strength
@@ -922,13 +947,13 @@ def generate_work_card(horse_num, facts_content, logic_data, runtime_dir,
     card.append("👉 **你嘅判斷:** 段速質素如何？引擎同今仗步速配唔配？")
     card.append("")
 
-    # ── Dimension 3: 形勢與消耗 [輔助] ──
-    card.append("## 3️⃣ 形勢與消耗 [輔助]")
-    card.append(f"- 累積消耗: {anchors.get('eem_drain', '無數據')}")
+    # ── Dimension 3: 形勢與走位 [半核心] ──
+    card.append("## 3️⃣ 形勢與走位 [半核心]")
+    card.append(f"- 走位形勢: {anchors.get('''race_shape_assessment''', '無數據')}")
     card.append(f"- 上仗跑法: {anchors.get('last_run_style', '無數據')}")
     card.append(f"- 今仗檔位: {anchors.get('barrier', '?')}")
     card.append(f"- 跑道偏差: {sm_bias}")
-    card.append("👉 **你嘅判斷:** 步速/檔位/跑法形勢是否明確有利？EEM 只作消耗風險參考，不可單獨升級。")
+    card.append("👉 **你嘅判斷:** 步速/檔位/跑法形勢是否明確有利？步速/檔位/走位形勢是否明確有利或不利？。")
     card.append("")
 
     # ── Dimension 4: 騎練訊號 [半核心] ──
@@ -991,15 +1016,22 @@ def watch_single_horse(json_file, horse_num, validate_fn, all_horses,
                        poll_interval=3, timeout_minutes=10):
     """Watch for a SINGLE horse to be filled and validated.
     Returns the horse entry dict on success, None on timeout.
-    
-    Key difference from watch_and_validate: only monitors one horse,
-    shorter timeout, and returns immediately when that horse passes.
+    V12: Added race_analysis tamper protection — Python-computed fields are immutable.
     """
     hkey = str(horse_num)
     last_mtime = os.path.getmtime(json_file)
     own_write_mtime = 0
     start_time = time.time()
     last_heartbeat = time.time()
+
+    # V12: Snapshot race_analysis (Python-computed, immutable to LLM)
+    _race_analysis_snapshot = None
+    try:
+        with open(json_file, 'r', encoding='utf-8') as _snap_f:
+            _snap_data = json.load(_snap_f)
+        _race_analysis_snapshot = json.loads(json.dumps(_snap_data.get('race_analysis', {})))
+    except Exception:
+        pass
 
     # Pre-check: maybe already filled
     try:
@@ -1072,6 +1104,17 @@ def watch_single_horse(json_file, horse_num, validate_fn, all_horses,
             if '[FILL]' in h_check:
                 continue
 
+            # V12: Restore race_analysis from snapshot (prevent LLM tampering)
+            if _race_analysis_snapshot:
+                current_ra = logic_data.get('race_analysis', {})
+                if current_ra != _race_analysis_snapshot:
+                    print(f"   🔒 V12: race_analysis 被修改，自動恢復 Python 快照")
+                    logic_data['race_analysis'] = _race_analysis_snapshot
+                    with open(json_file, 'w', encoding='utf-8') as wf:
+                        json.dump(logic_data, wf, ensure_ascii=False, indent=2)
+                    own_write_mtime = os.path.getmtime(json_file)
+                    last_mtime = own_write_mtime
+
             # Validate
             errors = validate_fn(horse_num, h_entry, horses_dict, all_horses, json_file)
             if errors:
@@ -1098,7 +1141,7 @@ def print_analysis_summary(horse_entry, horse_num):
     """Print a quality summary after a horse passes validation, providing positive feedback."""
     matrix = horse_entry.get('matrix', {})
     scores = []
-    for dim in ['狀態與穩定性', '段速與引擎', 'EEM與形勢', '騎練訊號',
+    for dim in ['狀態與穩定性', '段速與引擎', '形勢與走位', '騎練訊號',
                 '級數與負重', '場地適性', '賽績線', '裝備與距離']:
         data = matrix.get(dim, {})
         score = data.get('score', '?') if isinstance(data, dict) else str(data)
@@ -1338,180 +1381,13 @@ def validate_au_global_firewalls(horses_dict, all_horses, json_file):
     return errors
 
 
-def watch_and_validate(json_file, all_horses, validate_fn, poll_interval=3,
-                       timeout_minutes=30, heartbeat_interval=60, stale_minutes=5):
-    """V10 File-Watch Loop with production hardening:
-    - Timeout: exits after timeout_minutes if not all horses validated
-    - Heartbeat: prints alive status every heartbeat_interval seconds
-    - Stale detection: warns if no file changes for stale_minutes
-    - Debounce: waits 0.5s after mtime change to avoid reading partial writes
-    - JSON retry: retries reads up to 3 times on parse failure
-    - KeyboardInterrupt: clean exit on Ctrl+C
-    Returns final logic_data when all horses pass, or None on timeout/interrupt.
-    """
-    last_mtime = os.path.getmtime(json_file)
-    validated_horses = set()
-    own_write_mtime = 0
-    start_time = time.time()
-    last_change_time = time.time()
-    last_heartbeat = time.time()
-    stale_warned = False
-    
-    # Pre-scan for already validated horses
-    try:
-        with open(json_file, 'r', encoding='utf-8') as f:
-            init_data = json.load(f)
-        init_horses = init_data.get('horses', {})
-        for h in all_horses:
-            hkey = str(h)
-            h_entry = init_horses.get(hkey, {})
-            if not h_entry:
-                continue
-            h_check = json.dumps(
-                {k: v for k, v in h_entry.items() if k not in ('base_rating', 'final_rating')},
-                ensure_ascii=False
-            )
-            if '[FILL]' in h_check:
-                continue
-            errors = validate_fn(h, h_entry, init_horses, all_horses, json_file)
-            if not errors:
-                validated_horses.add(hkey)
-    except Exception:
-        pass
-    
-    if validated_horses:
-        print(f"   ✅ {len(validated_horses)}/{len(all_horses)} 匹馬已預先驗證通過")
-    
-    if len(validated_horses) == len(all_horses):
-        with open(json_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    
-    remaining = len(all_horses) - len(validated_horses)
-    print(f"\n👀 Python 正在監控 {os.path.basename(json_file)}... (每 {poll_interval} 秒 | 超時 {timeout_minutes} 分鐘)")
-    print(f"   等待 LLM 填寫餘下 {remaining} 匹馬")
-    
-    try:
-        while True:
-            time.sleep(poll_interval)
-            
-            elapsed = time.time() - start_time
-            
-            # Timeout check
-            if elapsed > timeout_minutes * 60:
-                print(f"\n⏰ Watch loop 超時 ({timeout_minutes} 分鐘)！")
-                print(f"   已驗證: {len(validated_horses)}/{len(all_horses)}")
-                print(f"   請確認 LLM 是否仍在運作，然後重跑 Orchestrator。")
-                return None
-            
-            # Heartbeat
-            if time.time() - last_heartbeat > heartbeat_interval:
-                mins = int(elapsed / 60)
-                print(f"   💓 [{mins}m] 仍在監控... {len(validated_horses)}/{len(all_horses)} 已完成")
-                last_heartbeat = time.time()
-            
-            # Stale detection
-            if time.time() - last_change_time > stale_minutes * 60 and not stale_warned:
-                print(f"   ⚠️ 已 {stale_minutes} 分鐘無檔案變動。LLM 是否仍在填寫？")
-                stale_warned = True
-            
-            try:
-                current_mtime = os.path.getmtime(json_file)
-            except OSError:
-                continue
-            
-            if current_mtime == last_mtime or current_mtime == own_write_mtime:
-                continue
-            
-            # Debounce: wait for write to complete
-            time.sleep(0.5)
-            last_mtime = current_mtime
-            last_change_time = time.time()
-            stale_warned = False
-            
-            # JSON read with retry (handles partial writes)
-            logic_data = None
-            for attempt in range(3):
-                try:
-                    with open(json_file, 'r', encoding='utf-8') as f:
-                        logic_data = json.load(f)
-                    break
-                except (json.JSONDecodeError, OSError):
-                    if attempt < 2:
-                        time.sleep(0.5)
-                    continue
-            
-            if logic_data is None:
-                print(f"   ⚠️ JSON 解析失敗（可能正在寫入），等待下次輪詢...")
-                continue
-            
-            horses_dict = logic_data.get('horses', {})
-            newly_validated = []
-            
-            for h in all_horses:
-                hkey = str(h)
-                if hkey in validated_horses:
-                    continue
-                
-                h_entry = horses_dict.get(hkey, {})
-                if not h_entry:
-                    continue
-                
-                h_check = json.dumps(
-                    {k: v for k, v in h_entry.items() if k not in ('base_rating', 'final_rating')},
-                    ensure_ascii=False
-                )
-                if '[FILL]' in h_check:
-                    continue
-                
-                # Validate
-                errors = validate_fn(h, h_entry, horses_dict, all_horses, json_file)
-                
-                if errors:
-                    name = h_entry.get('horse_name', '')
-                    print(f"\n🚨 Horse #{h} ({name}) Firewall 失敗!")
-                    for e in errors:
-                        print(f"   ❌ {e}")
-                    print(f"   👉 請修正後儲存，Python 會自動重新驗證。")
-                    # Reset core_logic to force redo
-                    h_entry['core_logic'] = '[FILL]'
-                    with open(json_file, 'w', encoding='utf-8') as wf:
-                        json.dump(logic_data, wf, ensure_ascii=False, indent=2)
-                    own_write_mtime = os.path.getmtime(json_file)
-                    last_mtime = own_write_mtime
-                else:
-                    validated_horses.add(hkey)
-                    name = h_entry.get('horse_name', '')
-                    newly_validated.append(f"#{h} {name}")
-            
-            if newly_validated:
-                for nv in newly_validated:
-                    print(f"   ✅ {nv} 驗證通過")
-                print(f"   📊 進度: {len(validated_horses)}/{len(all_horses)}")
-            
-            if len(validated_horses) == len(all_horses):
-                # Final read with retry
-                for _ in range(3):
-                    try:
-                        with open(json_file, 'r', encoding='utf-8') as f:
-                            final_data = json.load(f)
-                        return final_data
-                    except (json.JSONDecodeError, OSError):
-                        time.sleep(0.5)
-                # Fallback
-                return logic_data
-    
-    except KeyboardInterrupt:
-        print(f"\n\n⚠️ 用戶中斷 (Ctrl+C)！已驗證 {len(validated_horses)}/{len(all_horses)} 匹馬。")
-        print(f"   已完成嘅驗證會保留喺 JSON 中。重跑 Orchestrator 可恢復進度。")
-        return None
-
 
 # ═══════════════════════════════════════════════════════════════
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("url", help="Racenet Event URL or target directory path")
-    parser.add_argument("--auto", action="store_true", help="Auto mode: skip confirmation gate")
+    parser.add_argument("--auto", action="store_true", help="Auto mode for resumed NEXT_CMD execution")
     args = parser.parse_args()
 
     try:
@@ -1719,12 +1595,9 @@ def main():
         with open(qa_tracker_file, 'w', encoding='utf-8') as f:
             json.dump(strikes, f)
 
-    # ── Confirmation Gate (first run only) ──
+    # ── First-run status report ──
     if not args.auto and analysis_passed < total_races:
-        print("🔒 【確認閘門】首次執行 — 請確認上述賽日資訊正確。")
-        print("   確認後請執行以下指令啟動自動分析模式：")
-        _next_cmd(target_dir)
-        sys.exit(0)
+        print("🚀 首次賽日總結完成；無需人工確認，繼續自動推進。")
 
     # --- EXECUTION STATE MACHINE ---
     if missing_raw:
@@ -1909,20 +1782,27 @@ def main():
                         if _cm: _race_class = _cm.group(1).strip()
                     except Exception:
                         pass
+                try:
+                    with open(facts_file, 'r', encoding='utf-8') as _facts_init:
+                        _facts_init_text = _facts_init.read()
+                    _initial_speed_map = auto_build_au_speed_map_from_facts(_facts_init_text, target_dir)
+                except Exception:
+                    _initial_speed_map = {
+                        "expected_pace": "[FILL]", "leaders": [], "on_pace": [],
+                        "mid_pack": [], "closers": [],
+                        "track_bias": "[FILL]", "tactical_nodes": "[FILL]", "collapse_point": "[FILL]"
+                    }
                 _init_json = {
                     "race_analysis": {
                         "race_number": r, "race_class": _race_class, "distance": _race_dist,
-                        "speed_map": {
-                            "expected_pace": "[FILL]", "leaders": [], "on_pace": [],
-                            "mid_pack": [], "closers": [],
-                            "track_bias": "[FILL]", "tactical_nodes": "[FILL]", "collapse_point": "[FILL]"
-                        }
+                        "speed_map": _initial_speed_map
                     },
                     "horses": {}
                 }
                 with open(json_file, 'w', encoding='utf-8') as _wf:
                     json.dump(_init_json, _wf, ensure_ascii=False, indent=2)
-                print(f"   ✅ 已自動建立 `Race_{r}_Logic.json` 骨架 ({_race_class} / {_race_dist})")
+                _sm_source = _init_json["race_analysis"]["speed_map"].get("source", "PENDING")
+                print(f"   ✅ 已自動建立 `Race_{r}_Logic.json` 骨架 ({_race_class} / {_race_dist}) + Speed Map ({_sm_source})")
             
             # ── Step B: Check Speed Map ──
             try:
@@ -2317,8 +2197,13 @@ def main():
 
     # --- STATE 4 & 5: Completion ---
     print("🏆 State 4: 全日賽事分析合規過關！正在產製 Excel 報告...")
-    subprocess.run([PYTHON, ".agents/skills/au_racing/au_wong_choi/scripts/generate_reports.py", target_dir])
-    subprocess.run([PYTHON, ".agents/scripts/session_cost_tracker.py", target_dir, "--domain", "au"])
+    try:
+        subprocess.run([PYTHON, ".agents/skills/au_racing/au_wong_choi/scripts/generate_reports.py", target_dir], check=True)
+        subprocess.run([PYTHON, ".agents/scripts/session_cost_tracker.py", target_dir, "--domain", "au"], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ State 4 failed: {e.cmd} exited with code {e.returncode}")
+        print("🛑 停止 dashboard deploy，請先修復報表 / cost tracker 問題。")
+        sys.exit(e.returncode)
     
     print("☁️ State 5: 準備推送 Dashboard 至 Cloudflare...")
     push_script = "Horse Racing Dashboard/deploy.sh"

@@ -65,7 +65,7 @@ Stewards: [Stewards]
 *(Separate horses with `============================================================`)*
 
 #### Step 2: Python Extraction Script
-Write a Python script (e.g. `extractor.py`) to fetch and parse the data. 
+Use the existing `scripts/extractor.py` to fetch and parse the data. Do not create ad-hoc extractor scripts unless the user explicitly asks for tooling changes.
 
 
 #### Step 3: Formatting Rules

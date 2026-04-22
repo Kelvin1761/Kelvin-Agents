@@ -18,7 +18,7 @@ ag_kit_skills:
 
 - **真實數據**:基於 Formguide 實際數據,每匹馬引用 ≥3 個獨特數據點。
 - **執行單位**:V11 Orchestrator 預設逐匹馬驅動；若明確收到舊式 Batch 任務，才按 Wong Choi 傳入嘅 BATCH_SIZE（預設 3，環境掃描 fallback 為 2）處理。嚴禁自行改為 4-6 匹。
-- **完整性**:每匹馬必須保留模板中 9 個可見 section（⏱️📋🐴🔗🧭⚠️📊💡⭐）及其 11 個語義錨點；原本獨立嘅 🔬 段速與 ⚡ EEM 已整合入 `📋 完整賽績檔案` 與 `💡 核心邏輯`。D 級馬 ≥300 字。
+- **完整性**:每匹馬必須保留模板中 9 個可見 section（⏱️📋🐴🔗🧭⚠️📊💡⭐）及其 11 個語義錨點；原本獨立嘅 🔬 段速與 ⚡ 形勢 已整合入 `📋 完整賽績檔案` 與 `💡 核心邏輯`。D 級馬 ≥300 字。
 - **防幻覺**:無數據填 `N/A (數據不足)`。**防無限 Loop**:搜索連續失敗 3 次即停止。
 - **防往績幻覺 (P37 — 2026-04-06 新增)**:
   - 每匹馬嘅「上仗名次」**必須**同骨架中預填嘅 `📌 Racecard 事實錨點` 一致,嚴禁修改錨點數據
@@ -44,7 +44,7 @@ ag_kit_skills:
 
 **Tier 2: 延遲載入(首個 Batch 開始前載入,載入後全程保留):**
 - `resources/02c_track_and_gear.md` — Steps 4-6 場地/裝備/寬恕
-- `resources/02d_eem_pace.md` — Steps 7, 10 EEM + 步速
+- `resources/02d_eem_pace.md` — Steps 7, 10 形勢 + 步速
 - `resources/06a_data_retrieval.md` — 外部數據搜索協議 + 步驟依賴地圖
 - `resources/07b_trainer_signals.md` — 練馬師分級、場地偏好、出擊訊號矩陣
 - `resources/03a_sire_index.md` — 血統分析框架
@@ -82,27 +82,7 @@ ag_kit_skills:
 7. **逐匹 JSON 填寫**:按 Orchestrator 指示只處理當前馬匹，填寫 `Race_X_Logic.json → horses.{horse_num}` 中嘅 `[FILL]` 欄位。不可直接修改 `Analysis.md`，不可自行生成全場 Markdown，完成後重跑 Orchestrator 讓 Python 驗證與編譯。
 8. **全場最終決策**:由 Python 根據評級矩陣自動排序並編譯。若 Orchestrator 明確要求人工 Verdict，才可按 `06_templates_core.md` + `06_templates_rules.md` 生成 `<第三部分>` / `<第五部分>`。
 
-**🚨 Anti-Laziness 錨定 + 品質守門員檢查 [SIP-ST8](每匹 / 舊式 batch 強制自檢):**
-每完成一匹馬（或舊式 standalone batch）後,強制執行以下自我檢查:
-- **Anti-Laziness 錨定**:比較當前批次與 Batch 1 嘅每匹馬平均分析字數。若當前批次比 Batch 1 短 >30%,立即自我打回並以相同深度重寫。此規則亦適用於跨場次(Race 2+ 必須維持 Race 1 嘅分析深度)。
-- **重複數據偵測**:對本批次所有馬匹的段速值、EEM 走位代碼、穩定性判定、騎練組合上名率進行去重統計。**若任一欄位中 ≥50% 馬匹出現完全相同數值 → 品質警報 🚨**,必須暫停並逐匹重新以獨立數據填充。
-- **關鍵馬匹交叉驗證**:對全場評級前 3 名嘅馬匹,核實其穩定性/段速/EEM 是否反映真實近績(非默認值)。若發現使用默認值 → 強制重新分析。
-- 通過後在批次末標注 `⚠️ QG-CHECK PASSED`。
 
-**🔴 QG-CHECK 連續失敗 2 次 — AG Kit Systematic Debugging:**
-平時 QG-CHECK 失敗 1 次 = 正常自我打回重寫。但若**同一 Batch 連續失敗 2 次**:
-1. 讀取 `.agents/skills/systematic-debugging/SKILL.md`
-2. 執行 4-Phase 除錯:
-   - **Reproduce:** `view_file` 被打回嘅 Batch 段落
-   - **Isolate:** Anti-Laziness 錨定失敗?重複數據?關鍵馬匹默認值?
-   - **Understand:** 5-Whys → 根因(Context 壓力?Formguide 數據不足?前批消耗過多 Token?)
-   - **Fix:** 針對根因修正,例如:
-     - Context 壓力 → 降 BATCH_SIZE 至 2
-     - 數據不足 → 標記 `N/A` 而非虛構
-     - Token 消耗 → 精簡前批 `<thought>` 內容後重寫
-3. 根因標記:`⚠️ QG-DEBUG: [根因] | FIX: [對策] | BATCH: [N]`
-4. 重寫受影響 Batch → 再次 QG-CHECK
-5. 若仍然失敗 → **硬性熔斷** → 標記 `⚠️ QG-CIRCUIT-BREAK` → 通知 Wong Choi 處理
 
 **🔬 Logic Execution Proof [簡化版](每匹馬 `<thought>` 中強制):**
 完成每匹馬分析後,喺 `<thought>` 中強制填完以下 5 個關鍵錨點（取代舊版 15 步 checklist）:
@@ -111,7 +91,7 @@ ag_kit_skills:
 |------|--------|--------|
 | 1️⃣ 情境標籤 | Step 0.5 結論 | `[情境A-升級]` 回師首本 |
 | 2️⃣ 段速質量 | Step 8/10 結論 | `✅` L400 33.8 vs Par 34.5 → 優於標準 |
-| 3️⃣ EEM 形勢 | Step 7/10 結論 | `➖` 中消耗 + 今仗好檔 |
+| 3️⃣ 形勢 形勢 | Step 7/10 結論 | `➖` 中消耗 + 今仗好檔 |
 | 4️⃣ 維度計數 | 8 維度統計 | 核心✅=2 / 半核心✅=1 / 輔助✅=2 / ❌=1 |
 | 5️⃣ 查表結果 | Step 14.E 查表 | 2核心+1半核心+0❌ = A → 微調+0.5 = A+ |
 
@@ -120,7 +100,7 @@ ag_kit_skills:
 
 **🔗 Step Dependency Verification (每匹馬 `<thought>` 中強制):**
 每匹馬分析完成後,喺 `<thought>` 中快速確認以下數據流注入點:
-1. ✅ Step 7 EEM 有冇引用 Step 10 嘅 `PACE_TYPE`?
+1. ✅ Step 7 形勢 有冇引用 Step 10 嘅 `PACE_TYPE`?
 2. ✅ Step 8 段速有冇引用 `class_par` 基準?
 3. ✅ Step 6 寬恕結論有冇回傳 Step 1?
 4. ✅ 若 `STRAIGHT SPRINT` → Step 7 有冇啟用風向模型?

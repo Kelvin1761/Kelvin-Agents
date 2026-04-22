@@ -110,6 +110,7 @@ def monte_carlo_player_prop(avg, sd, line, n=10000,
         "raw_avg": avg,
         "sd": sd,
         "line": line,
+        "season_phase": season_phase,
         "simulations": n,
         "p10": p10,
         "p25": p25,
@@ -378,6 +379,7 @@ def monte_carlo_team_prop(home_off_rtg, home_def_rtg, away_off_rtg, away_def_rtg
         "mc_away_score": mc_away_avg,
         "ml_home_prob": ml_home_prob,
         "ml_away_prob": ml_away_prob,
+        "season_phase": season_phase,
         "simulations": n,
     }
     
@@ -425,6 +427,7 @@ def main():
             matchup_factor=config.get("matchup_factor", 1.0),
             minutes_factor=config.get("minutes_factor", 1.0),
             usg_bonus=config.get("usg_bonus", 0.0),
+            season_phase=config.get("season_phase", "MID_SEASON"),
         )
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:

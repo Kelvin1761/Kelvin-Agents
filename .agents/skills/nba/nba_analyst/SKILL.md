@@ -111,7 +111,7 @@ ag_kit_skills:
 
 ## Step 3: 盤口雙線生成
 按照 `resources/02_volatility_engine.md` Step 3-4:
-- 穩膽線 + 價值線 + AMC 評估 + +EV 篩選 + Under 偵測
+- 穩膽線 + 價值線 + AMC 評估 + +EV 篩選 + downside risk 偵測（只用於降級/剔除 Over，嚴禁 Under 推介）
 
 **🎯 Sportsbet 即時盤口整合 (v2.2 — Sportsbet ONLY)：**
 > **Sportsbet 係唯一盤口來源，嚴禁自行估算盤口。**

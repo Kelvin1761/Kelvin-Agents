@@ -1158,6 +1158,131 @@ def classify_engine_type(entries: list[dict]) -> dict:
     return result
 
 
+def _recent_au_running_style(entries: list[dict]) -> str:
+    for entry in entries[:3]:
+        style = entry.get('eem', {}).get('run_style', '未知')
+        if style in ('前領',):
+            return 'front'
+        if style in ('居中前',):
+            return 'on_pace'
+        if style in ('後追', '慢出', '居中後'):
+            return 'closer'
+    return 'mid_pack'
+
+
+def _classify_pace_v2(n_leaders: int, n_on_pace: int, field_size: int) -> str:
+    """5-tier pace classification based on leader ratio and front pressure.
+
+    Returns: Very Slow / Slow / Normal / Fast / Very Fast
+    """
+    if field_size == 0:
+        return 'Normal'
+
+    front_ratio = (n_leaders + n_on_pace) / field_size
+
+    if n_leaders == 0 and n_on_pace <= 1:
+        return 'Very Slow'
+    elif n_leaders <= 1 and front_ratio < 0.25:
+        return 'Slow'
+    elif n_leaders <= 2 and front_ratio < 0.35:
+        return 'Normal'
+    elif n_leaders >= 3 or front_ratio >= 0.45:
+        return 'Very Fast'
+    else:
+        return 'Fast'
+
+
+def _classify_pace_volatility(n_leaders: int, n_closers: int, field_size: int) -> str:
+    """Pace volatility: how predictable the pace scenario is.
+
+    Returns: Stable / Volatile / Chaotic
+    Used internally by MC simulator for sigma adjustment — NOT shown to LLM analysts.
+    """
+    if field_size == 0:
+        return 'Stable'
+
+    closer_ratio = n_closers / field_size
+
+    if n_leaders >= 4 and n_closers >= 3:
+        return 'Chaotic'
+    elif n_leaders >= 3 and closer_ratio >= 0.3:
+        return 'Volatile'
+    else:
+        return 'Stable'
+
+
+def build_au_speed_map_block(horses: list[dict], today_dist_m: int = 0,
+                             venue: str = '') -> tuple[str, dict]:
+    """Build the first-class AU speed map at Facts generation time."""
+    leaders, on_pace, mid_pack, closers = [], [], [], []
+
+    for horse in horses:
+        entries = horse.get('dossier_entries', [])
+        engine = classify_engine_type(entries)
+        style = _recent_au_running_style(entries)
+        barrier = horse.get('barrier', 99)
+        num = horse.get('num')
+
+        if engine.get('type') == 'A' or style == 'front':
+            leaders.append({'num': num, 'barrier': barrier})
+        elif style == 'on_pace' or engine.get('type') == 'C' or (barrier and barrier <= 3 and style != 'closer'):
+            on_pace.append({'num': num, 'barrier': barrier})
+        elif engine.get('type') == 'B' or style == 'closer':
+            closers.append({'num': num, 'barrier': barrier})
+        else:
+            mid_pack.append({'num': num, 'barrier': barrier})
+
+    for group in (leaders, on_pace, mid_pack, closers):
+        group.sort(key=lambda h: h['barrier'])
+
+    field_size = len(horses)
+    predicted_pace = _classify_pace_v2(len(leaders), len(on_pace), field_size)
+    pace_volatility = _classify_pace_volatility(len(leaders), len(closers), field_size)
+
+    def _nums(group):
+        return [h['num'] for h in group if h.get('num')]
+
+    speed_map = {
+        'predicted_pace': predicted_pace,
+        'expected_pace': predicted_pace,   # backward-compatible alias for AU orchestrator
+        'pace_volatility': pace_volatility,
+        'leaders': _nums(leaders),
+        'on_pace': _nums(on_pace),
+        'mid_pack': _nums(mid_pack),
+        'closers': _nums(closers),
+        'track_bias': (
+            f"FACTS_SPEED_MODEL: {venue or 'Unknown venue'} {today_dist_m or '?'}m; "
+            "using racecard barriers, recent run style and engine classification."
+        ),
+        'tactical_nodes': (
+            f"FACTS_SPEED_MODEL: leaders={len(leaders)}, on_pace={len(on_pace)}, "
+            f"mid={len(mid_pack)}, closers={len(closers)}; predicted pace {predicted_pace}."
+        ),
+        'collapse_point': (
+            "FACTS_SPEED_MODEL: high early pressure upgrades closers/savers; "
+            "controlled tempo upgrades leaders/on-pace runners."
+        ),
+        'source': 'FACTS_SPEED_MODEL',
+    }
+
+    def _fmt(nums):
+        return '[' + ', '.join(str(n) for n in nums if n) + ']'
+
+    lines = [
+        '### 🗺️ 自動步速圖 (Python Facts Model)',
+        f"- **predicted_pace:** {speed_map['predicted_pace']}",
+        f"- **leaders:** {_fmt(speed_map['leaders'])}",
+        f"- **on_pace:** {_fmt(speed_map['on_pace'])}",
+        f"- **mid_pack:** {_fmt(speed_map['mid_pack'])}",
+        f"- **closers:** {_fmt(speed_map['closers'])}",
+        f"- **track_bias:** {speed_map['track_bias']}",
+        f"- **tactical_nodes:** {speed_map['tactical_nodes']}",
+        f"- **collapse_point:** {speed_map['collapse_point']}",
+        f"- **source:** {speed_map['source']}",
+    ]
+    return '\n'.join(lines), speed_map
+
+
 # ── Distance Aptitude ──────────────────────────────────────────────────────
 
 def compute_distance_aptitude(entries: list[dict], today_dist_m: int = 0) -> dict:
@@ -1703,6 +1828,11 @@ def main():
         if tp_summary:
             body_lines.append(tp_summary)
             body_lines.append('')
+
+    speed_map_block, speed_map = build_au_speed_map_block(horses, today_dist_m, args.venue)
+    body_lines.append(speed_map_block)
+    body_lines.append('')
+    print(f"   🗺️ 自動步速圖: {speed_map['expected_pace']} ({speed_map['source']})", file=sys.stderr)
     
     body_lines.append('=' * 70)
     body_lines.append('')

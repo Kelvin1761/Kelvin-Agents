@@ -196,7 +196,7 @@ def build_skeleton(data):
             'trend': data.get('l400_trend', ''),  # LOCKED
         },
 
-        'eem_energy': {
+        'race_shape': {
             'last_run_position': last_pos,  # LOCKED
             'cumulative_drain': '[FILL]',
             'assessment': '[FILL]',
@@ -210,7 +210,7 @@ def build_skeleton(data):
         'matrix': {
             '狀態與穩定性': {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
             '段速與引擎':   {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
-            'EEM與形勢':    {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
+            '形勢與走位':    {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
             '騎練訊號':     {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
             '級數與負重':   {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
             '場地適性':     {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
@@ -324,7 +324,7 @@ def build_skeleton(data):
         'closer_cap_track': False,   # bool: Rosehill/MooneeV/Caulfield tight turn
         'rosehill_1200_traffic': False, # bool: closer + traffic history at Rosehill 1200m
         'momentum_level': '',        # 'positive'=2-win / 'strong'=3-win (SIP-RR17)
-        'eem_3_high_drain': False,   # bool: 3 consecutive high-drain EEM runs
+        'shape_3_adverse': False,   # bool: 3 consecutive adverse race shape
         'good_barrier': False,       # bool: barrier ≤6
         'rating_top3_field': False,  # bool: horse rating is top-3 in field (SIP-C14-3)
         'class_advantage_2bm': False, # bool: ≥2 BM class above field

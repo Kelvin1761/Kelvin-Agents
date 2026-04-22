@@ -213,7 +213,7 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
         # Check Rating Matrix completeness to prevent anti-skipping
         req_matrix_fields = [
             '狀態與穩定性', '段速與引擎', 'EEM與形勢', '騎練訊號'
-        ] if domain == 'au' else ['穩定性', '段速質量', 'EEM 潛力', '練馬師訊號']
+        ] if domain == 'au' else ['穩定性', '段速質量', '形勢與消耗', '練馬師訊號']
         
         for field in req_matrix_fields:
             if field not in block:
@@ -223,7 +223,7 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
                 if field_line_match:
                     reasoning_text = field_line_match.group(1).strip()
                     # Apply digit lock ONLY for Speed, EEM — and SKIP for debut horses
-                    if not is_debut and field in ['段速與引擎', 'EEM與形勢', '段速質量', 'EEM 潛力']:
+                    if not is_debut and field in ['段速與引擎', 'EEM與形勢', '段速質量', '形勢與消耗']:
                         pass  # Matrix reasoning digit lock — relaxed per V9.2
 
     # ── LAZY-003: Cross-Horse Similarity Check ─────────────────────────────

@@ -29,7 +29,7 @@ GRADE_ORDER = ['S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+
 MATRIX_TO_DIM = {
     'stability':       'stability',
     'speed_mass':      'sectional',
-    'eem':             'eem',
+    'race_shape':             'race_shape',
     'trainer_jockey':  'trainer_signal',
     'scenario':        'scenario',
     'freshness':       'distance_freshness',
@@ -40,7 +40,7 @@ MATRIX_TO_DIM = {
 DIMENSION_TYPES = {
     'stability':          'core',
     'sectional':          'core',
-    'eem':                'auxiliary',
+    'race_shape':                'semi_core',
     'trainer_signal':     'semi_core',
     'scenario':           'auxiliary',
     'distance_freshness': 'auxiliary',
@@ -196,31 +196,31 @@ def _infer_ticks_from_rating(rating: str) -> dict:
     r = rating.strip() if rating else ''
     # S / S- / A+ / A : mostly ✅✅ or ✅
     if r in ('S', 'S-', 'A+'):
-        return {'stability': '✅✅', 'sectional': '✅✅', 'eem': '✅',
+        return {'stability': '✅✅', 'sectional': '✅✅', 'race_shape': '✅',
                 'trainer_signal': '✅', 'scenario': '✅', 'distance_freshness': '✅',
                 'form_line': '✅', 'class_advantage': '✅'}
     if r in ('A',):
-        return {'stability': '✅✅', 'sectional': '✅', 'eem': '✅',
+        return {'stability': '✅✅', 'sectional': '✅', 'race_shape': '✅',
                 'trainer_signal': '✅', 'scenario': '✅', 'distance_freshness': '➖',
                 'form_line': '✅', 'class_advantage': '➖'}
     if r in ('A-',):
-        return {'stability': '✅', 'sectional': '✅', 'eem': '✅',
+        return {'stability': '✅', 'sectional': '✅', 'race_shape': '✅',
                 'trainer_signal': '➖', 'scenario': '➖', 'distance_freshness': '➖',
                 'form_line': '✅', 'class_advantage': '➖'}
     if r in ('B+',):
-        return {'stability': '✅', 'sectional': '➖', 'eem': '✅',
+        return {'stability': '✅', 'sectional': '➖', 'race_shape': '✅',
                 'trainer_signal': '✅', 'scenario': '➖', 'distance_freshness': '➖',
                 'form_line': '➖', 'class_advantage': '➖'}
     if r in ('B',):
-        return {'stability': '➖', 'sectional': '✅', 'eem': '➖',
+        return {'stability': '➖', 'sectional': '✅', 'race_shape': '➖',
                 'trainer_signal': '✅', 'scenario': '➖', 'distance_freshness': '➖',
                 'form_line': '➖', 'class_advantage': '➖'}
     if r in ('B-', 'C+', 'C'):
-        return {'stability': '➖', 'sectional': '➖', 'eem': '➖',
+        return {'stability': '➖', 'sectional': '➖', 'race_shape': '➖',
                 'trainer_signal': '➖', 'scenario': '➖', 'distance_freshness': '➖',
                 'form_line': '➖', 'class_advantage': '➖'}
     if r in ('C-', 'D+', 'D', 'D-', 'E', 'E-'):
-        return {'stability': '❌', 'sectional': '❌', 'eem': '❌',
+        return {'stability': '❌', 'sectional': '❌', 'race_shape': '❌',
                 'trainer_signal': '❌', 'scenario': '❌', 'distance_freshness': '❌',
                 'form_line': '❌', 'class_advantage': '❌'}
     return {k: '➖' for k in MATRIX_TO_DIM.values()}
@@ -234,7 +234,7 @@ def _build_synthetic_matrix_reasoning(h_logic: dict) -> dict:
     return {
         'stability':       ab.get('stability_risk', ab.get('trend_analysis', '見馬匹剖析')),
         'speed_mass':      ab.get('pace_adaptation', ab.get('trend_analysis', '見馬匹剖析')),
-        'eem':             ab.get('trend_analysis', '見EEM能量'),
+        'race_shape':             ab.get('trend_analysis', '見形勢走位'),
         'trainer_jockey':  (ab.get('trainer_signal', '') + ' ' + ab.get('jockey_fit', '')).strip() or '見馬匹剖析',
         'scenario':        ab.get('pace_adaptation', ab.get('track_distance_suitability', '見步速分析')),
         'freshness':       ab.get('track_distance_suitability', ab.get('engine_distance', '見路程適性')),
@@ -449,10 +449,10 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
     else:
         lines.append('#### 📋 完整賽績檔案: (無往績記錄)\n')
 
-    # ── 4. 馬匹剖析 (V2 整合結構 — 含段速/EEM/檔位/SIP) ──────────────────
+    # ── 4. 馬匹剖析 (V2 整合結構 — 含段速/形勢/檔位/ANCHOR) ──────────────────
     h_analysis = h_logic.get('analytical_breakdown', {})
     sf = h_logic.get('sectional_forensic', {})
-    eem = h_logic.get('eem_energy', {})
+    race_shape = h_logic.get('race_shape', {})
     lines.append('#### 🐴 馬匹剖析')
     lines.extend([
         f"- **穩定性/贏馬回落 (Step 5):** {h_analysis.get('stability_risk', '[N/A]')}",
@@ -465,11 +465,11 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
         f"- **部署與練馬師訊號 (Step 8.2):** {h_analysis.get('trainer_signal', '[N/A]')}",
         f"- **人馬配搭 (Step 2.5):** {h_analysis.get('jockey_fit', '[N/A]')}",
         f"- **步速段速 (Step 0+10):** {h_analysis.get('pace_adaptation', '[N/A]')}",
-        f"- **🔬 段速法醫 (Step 10.4/10.5) [SIP-P1a/P1b/P1c]:** {h_analysis.get('sectional_profile_summary', sf.get('trend', '[N/A]'))}",
-        f"- **📐 頭馬距離趨勢 (Step 10.6) [SIP-P1d]:** {h_analysis.get('margin_trend', '[N/A]')}",
-        f"- **🔄 走位-段速複合 (Step 10.7) [SIP-P2b]:** {h_analysis.get('position_sectional_composite', '[N/A]')}",
-        f"- **📉 完成時間偏差 (Step 10.8) [SIP-P2c]:** {h_analysis.get('finish_time_deviation', '[N/A]')}",
-        f"- **⚡ EEM 能量分析 (Step 11):** {eem.get('assessment', h_analysis.get('eem_analysis', '[N/A]'))}",
+        f"- **🔬 段速法醫 (Step 10.4/10.5) [ANCHOR-段速]:** {h_analysis.get('sectional_profile_summary', sf.get('trend', '[N/A]'))}",
+        f"- **📐 頭馬距離趨勢 (Step 10.6) [ANCHOR-頭馬距離]:** {h_analysis.get('margin_trend', '[N/A]')}",
+        f"- **🔄 走位-段速複合 (Step 10.7) [ANCHOR-走位段速複合]:** {h_analysis.get('position_sectional_composite', '[N/A]')}",
+        f"- **📉 完成時間偏差 (Step 10.8) [ANCHOR-完成時間偏差]:** {h_analysis.get('finish_time_deviation', '[N/A]')}",
+        f"- **⚡ 形勢與走位 (Step 11):** {race_shape.get('assessment', h_analysis.get('race_shape_analysis', '[N/A]'))}",
         f"- **隱藏賽績 (Step 6+12):** {h_analysis.get('hidden_form', '[N/A]')}",
         f"- **競賽事件 / 馬匹特性:** {h_analysis.get('competition_events', '[N/A]')}",
     ])
@@ -493,7 +493,7 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
     matrix_keys = [
         ("stability",      "位置穩定性", "核心"),
         ("speed_mass",     "段速質量",   "核心"),
-        ("eem",            "形勢與消耗", "輔助"),
+        ("race_shape",            "形勢與走位", "半核心"),
         ("trainer_jockey", "練馬師訊號", "半核心"),
         ("scenario",       "情境適配",   "輔助"),
         ("freshness",      "路程/新鮮度","輔助"),
@@ -515,7 +515,7 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
     MATRIX_TO_SYNTH = {
         'stability':       'stability',
         'speed_mass':      'speed_mass',
-        'eem':             'eem',
+        'race_shape':             'race_shape',
         'trainer_jockey':  'trainer_jockey',
         'scenario':        'scenario',
         'freshness':       'freshness',
@@ -559,12 +559,12 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
     ft_channel_b = ft.get('channel_b', '無') if isinstance(ft, dict) else '無'
     lines.append(f"**14.2B 微調:** 通道A: `{ft_channel_a}` | 通道B(SYN/CON): `{ft_channel_b}` | ({grade_result['micro_note']}) | 觸發: `{ft_trig}`")
 
-    # ── 11.5. 🔗 互動矩陣 [SIP-P2a] ──────────────────────────────────────
+    # ── 11.5. 🔗 互動矩陣 [ANCHOR-互動矩陣] ──────────────────────────────────────
     im = h_logic.get('interaction_matrix', {})
     im_syn = im.get('SYN', im.get('syn', '無')) if isinstance(im, dict) else '無'
     im_con = im.get('CON', im.get('con', '無')) if isinstance(im, dict) else '無'
     im_contra = im.get('CONTRA', im.get('contra', '無')) if isinstance(im, dict) else '無'
-    lines.append(f"**🔗 互動矩陣 [SIP-P2a]:** SYN: `{im_syn}` | CON: `{im_con}` | CONTRA: `{im_contra}`")
+    lines.append(f"**🔗 互動矩陣 [ANCHOR-互動矩陣]:** SYN: `{im_syn}` | CON: `{im_con}` | CONTRA: `{im_contra}`")
 
     # ── 12. 14.3 覆蓋 ────────────────────────────────────────────────────
     ovr = h_logic.get('override', {})

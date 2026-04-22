@@ -97,6 +97,35 @@ def parse_summary(block):
         if m:
             result['starts'] = int(m.group(1))
             result['wins'] = int(m.group(2))
+
+    # Fallback 2: Count race table rows for starts, "| 1 |" finishes for wins
+    if 'starts' not in result:
+        # Count data rows in race tables (lines starting with "| N |" where N is a digit)
+        table_rows = re.findall(r'^\|\s*\d+\s*\|', block, re.MULTILINE)
+        if table_rows:
+            result['starts'] = len(table_rows)
+            # Count wins: finish position column (9th column, index 8 after split)
+            wins = 0
+            for line in block.split('\n'):
+                if line.strip().startswith('|') and '|' in line:
+                    cols = [c.strip() for c in line.split('|')]
+                    # cols: ['', rownum, date, venue, dist, class, barrier, jockey, weight, finish, ...]
+                    if len(cols) >= 10:
+                        try:
+                            if int(cols[1]) >= 1 and cols[9].strip() == '1':
+                                wins += 1
+                        except (ValueError, IndexError):
+                            pass
+            result['wins'] = wins
+
+    # Fallback 3: Parse season_stats "(W-P-S-L)" for season wins
+    if 'starts' not in result:
+        ss = result.get('season_stats', '')
+        m_ss = re.search(r'季內\s*\((\d+)-(\d+)-(\d+)-(\d+)\)', ss)
+        if m_ss:
+            w, p, s, l = int(m_ss.group(1)), int(m_ss.group(2)), int(m_ss.group(3)), int(m_ss.group(4))
+            result['starts'] = w + p + s + l
+            result['wins'] = w
     
     # Extract Last 10 recent form
     m = re.search(r'Last 10.*?[::∶]\s*`?([^`\n]+)`?', block)
@@ -303,7 +332,7 @@ def build_skeleton(data, race_num=0):
         f"[數據: 上仗L400={raw_l400}, L400趨勢={l400_trend}, "
         f"能量趨勢={energy_trend}] → [判讀: FILL]"
     )
-    r_eem = (
+    r_race_shape = (
         f"[數據: 上仗走位={last_pos}, 上仗XW={last_xw}, "
         f"上仗消耗={last_consumption}] → [判讀: FILL]"
     )
@@ -359,7 +388,7 @@ def build_skeleton(data, race_num=0):
             'margin_trend': f'[頭馬距離={margin_trend}] → FILL',
             'position_sectional_composite': f'[走位={last_pos}, XW={last_xw}, 消耗={last_consumption}] → FILL',
             'finish_time_deviation': '[引用 Facts.md 📊完成時間偏差趨勢] → FILL',
-            'eem_analysis': f'[走位={last_pos}, XW={last_xw}, 消耗={last_consumption}] → FILL',
+            'race_shape_analysis': f'[走位={last_pos}, XW={last_xw}, 消耗={last_consumption}] → FILL',
             'hidden_form': '[FILL]',
             'competition_events': '[FILL]',
             'trend_analysis': f'[近6仗={last_6}] → FILL',
@@ -373,7 +402,7 @@ def build_skeleton(data, race_num=0):
             'trend': l400_trend if l400_trend != 'N/A' else '',  # LOCKED
         },
 
-        'eem_energy': {
+        'race_shape': {
             'last_run_position': last_pos,  # LOCKED
             'cumulative_drain': '[FILL]',
             'assessment': '[FILL]',
@@ -384,7 +413,7 @@ def build_skeleton(data, race_num=0):
         'matrix': {
             'stability':       {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_stability},
             'speed_mass':      {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_speed_mass},
-            'eem':             {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_eem},
+            'race_shape':      {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_race_shape},
             'trainer_jockey':  {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_trainer},
             'scenario':        {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_scenario},
             'freshness':       {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_freshness},

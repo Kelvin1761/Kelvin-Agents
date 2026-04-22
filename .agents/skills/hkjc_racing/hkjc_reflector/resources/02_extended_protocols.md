@@ -104,7 +104,7 @@ python .agents/skills/hkjc_racing/hkjc_reflector/scripts/reflector_auto_stats.py
 抽查 2-3 場分析報告的輸出品質:
 - 分析是否出現模板化/重複數據(SIP-ST8 品質守門員檢查)?
 - Top 4 排序的邏輯是否一致(同級別馬匹的排名是否有明確區分理由)?
-- 段速/EEM/穩定性數據是否看起來合理(非默認值填充)?
+- 段速/形勢與走位/穩定性數據是否看起來合理(非默認值填充)?
 
 > **輸出要求:** 即使所有 6 項均為 ✅,仍必須在覆盤報告中列出每項的簡短判定理由(各 1-2 句)。嚴禁簡單寫「無需改善」而不提供具體檢查結果。
 
@@ -129,7 +129,7 @@ python .agents/skills/hkjc_racing/hkjc_reflector/scripts/reflector_auto_stats.py
 | `1-1-1-1` 或末段維持 | 一放到底/前領到底 | 步速利前領,如分析已預測此步速則命中 |
 | `X-X-X-↓` (末段跌位) | 直路後勁不繼 | 可能體力不足、負重過大、或步速過快崩潰 |
 | `X-X-X-↑` (末段追上) | 後段爆發 | 若分析評為後追型卻未入 Top 4 → False Negative 候選 |
-| 全程帶 `W` | 全程走外疊 | 高消耗 → 若分析已給 EEM ❌ 則正確;若給 ✅ 則判斷錯誤 |
+| 全程帶 `W` | 全程走外疊 | 高消耗 → 若分析已給 形勢與走位 ❌ 則正確;若給 ✅ 則判斷錯誤 |
 | 末段 `W` 突然出現 | 直路被逼走外 | 可能被前方馬匹封死後被逼繞路 → 檢查 競賽事件報告 |
 | 位置穩定 (如 `3-3-3-2`) | 全程好位 | 低消耗 → 若仍大敗 = 實力不足 (邏輯錯誤) |
 | 位置穩定但末段跌 (如 `3-3-3-7`) | 好位但跑唔動 | 實力見底信號,若分析給 A 級 → 嚴重 False Positive |
@@ -429,7 +429,7 @@ python .agents/scripts/instinct_evaluator.py "{TARGET_DIR}" \
    - 比對新舊 Top 4 排名是否更接近實際賽果
 
 2. **Tier 2 MC Sanity Check (Secondary):**
-   - `python mc_simulator.py --logic "[LOGIC_JSON]" --platform hkjc`
+   - `python mc_simulator.py --input "[LOGIC_JSON]" --platform hkjc`
    - 只檢查不合理偏移 (非驗證閘口)
 
 3. **Tier 3 深度覆審 (條件觸發):**

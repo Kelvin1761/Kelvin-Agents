@@ -117,14 +117,18 @@ def grade_cov(cov: float) -> str:
 
 
 def compute_weighted_avg(data: List[float]) -> float:
-    """Compute weighted average (recent games weighted higher).
-    Weights: most recent = 1.5, then linearly decreasing to 0.5.
-    """
+    """Compute weighted average. L10 order is newest -> oldest."""
     n = len(data)
     if n == 0:
         return 0.0
-    # data is [oldest, ..., newest] — reverse for weighting
-    weights = [0.5 + (1.0 * i / max(n - 1, 1)) for i in range(n)]
+    weights = []
+    for i in range(n):
+        if i < 3:
+            weights.append(1.5)
+        elif i < 7:
+            weights.append(1.0)
+        else:
+            weights.append(0.7)
     weighted_sum = sum(d * w for d, w in zip(data, weights))
     weight_total = sum(weights)
     return round(weighted_sum / weight_total, 2)
@@ -136,7 +140,7 @@ def compute_trend(data: List[float]) -> str:
     """
     if len(data) < 5:
         return "—"
-    l3_avg = sum(data[-3:]) / 3
+    l3_avg = sum(data[:3]) / 3
     l10_avg = sum(data) / len(data)
     diff_pct = (l3_avg - l10_avg) / l10_avg * 100 if l10_avg != 0 else 0
 
@@ -236,8 +240,8 @@ def process_player(config: dict) -> dict:
     # 3. Hit Rates
     if line > 0:
         result.hit_l10, result.hit_l10_count, result.miss_games = compute_hit_rate(l10, line, is_over)
-        result.hit_l5, result.hit_l5_count, _ = compute_hit_rate(l10[-5:], line, is_over)
-        result.hit_l3, result.hit_l3_count, _ = compute_hit_rate(l10[-3:], line, is_over)
+        result.hit_l5, result.hit_l5_count, _ = compute_hit_rate(l10[:5], line, is_over)
+        result.hit_l3, result.hit_l3_count, _ = compute_hit_rate(l10[:3], line, is_over)
 
     # 4. Implied Probability
     if odds > 0:
@@ -293,7 +297,7 @@ def main():
     parser.add_argument("--est-prob", type=float, default=0.0, help="預估勝率 (%)")
     parser.add_argument("--player", type=str, default="Player", help="球員名")
     parser.add_argument("--market", type=str, default="Props", help="市場類型")
-    parser.add_argument("--under", action="store_true", help="計算 Under 方向")
+    parser.add_argument("--under", action="store_true", help="legacy diagnostic only; NBA recommendations remain Over-only")
     parser.add_argument("--json", type=str, help="JSON 格式輸入（單個球員）")
     parser.add_argument("--batch", type=str, help="批次 JSON 檔案路徑（多個球員）")
     parser.add_argument("--output", choices=["text", "json"], default="text", help="輸出格式")

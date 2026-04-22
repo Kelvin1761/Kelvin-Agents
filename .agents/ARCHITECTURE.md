@@ -56,6 +56,7 @@ Specialist AI personas for different domains.
 | `explorer-agent`         | Codebase analysis          | -                                                        |
 | `hkjc-wong-choi`         | HKJC racing prediction     | hkjc_racing, betting_accountant                          |
 | `au-wong-choi`           | AU racing prediction       | au_racing, betting_accountant                            |
+| `nba-wong-choi`          | NBA player props + SGM     | nba_wong_choi, nba_analyst, nba_data_extractor, betting_accountant |
 
 ---
 
@@ -180,7 +181,10 @@ Modular knowledge domains that agents can load on-demand. based on task context.
 | `betting_accountant`         | Bankroll & Kelly sizing        |
 | `lol_wong_choi`              | LoL esports prediction (V2)   |
 | `lol_reflector`              | LoL post-match analysis        |
-| `nba`                        | NBA prediction analytics       |
+| `nba_wong_choi`              | NBA Python-first props/SGM orchestrator |
+| `nba_analyst`                | NBA leg scoring, volatility, +EV combo rules |
+| `nba_data_extractor`         | NBA odds, L10, injuries, news, season phase extraction |
+| `nba_reflector`              | NBA post-game props verification and SIP feedback |
 | `shared_instincts`           | Cross-domain betting instincts |
 | `horserace_game_developers`  | Racing game development        |
 

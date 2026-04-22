@@ -33,8 +33,8 @@ python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <
 **(重要提示：執行此指令時，必須使用 `run_command` 工具。)**
 
 ## 執行循環
-1. 第一次執行 Orchestrator（無 `--auto`）→ 印賽日總結 → 等用戶確認
-2. 用戶確認後執行 stdout 顯示嘅 `NEXT_CMD`（包含 `--auto`）→ 進入自動模式
+1. 第一次執行 Orchestrator（無 `--auto`）→ 印賽日總結 → 立即執行 stdout 顯示嘅 `NEXT_CMD`
+2. `NEXT_CMD` 包含 `--auto` → 進入自動模式；除非 stdout 顯示錯誤或要求人工提供缺失資料，唔需要等用戶確認
 3. 遵從指示完成 JSON 填寫（只填寫 `[FILL]` 欄位）
 4. 每次 stdout 出現 `NEXT_CMD:` → 完成工作後即刻執行該指令
 5. 重複直到 `🎉 [SUCCESS]`
@@ -48,6 +48,25 @@ python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <
 - **嚴禁**用 hashlib/模板池生成「看似不同」嘅罐頭分析
 - 語言：香港繁體中文（廣東話口吻），馬名/騎師/練馬師保留英文
 - 分析風格：Opus-Style 極度詳盡，法醫級推理
+
+## LLM 角色定義（鐵律）
+
+> **Python 係主人，LLM 係分析員。Python 話做咩就做咩，LLM 唔可以自作主張。**
+
+### LLM 嘅唯一職責
+1. **接收指令**: 讀取 Orchestrator stdout 嘅 `NEXT_CMD` 並執行
+2. **閱讀工作卡**: 讀取 `.runtime/Active_Horse_Context.md`（Python 生成）
+3. **填寫分析**: 只填寫 Logic JSON 中嘅 `[FILL]` 欄位（核心邏輯、矩陣判斷理由）
+4. **服從驗證**: 若 Orchestrator 拒絕，按錯誤提示修正後重交
+
+### LLM 嚴禁行為
+- ❌ 修改 Python 已填好嘅數值（race_class, distance, track, going, speed_map）
+- ❌ 自行建立任何 `.py` 腳本
+- ❌ 跳過 Orchestrator 直接寫 Analysis.md
+- ❌ 自行計算評級（grade 由 `rating_engine_v2.py` 計算）
+- ❌ 覆蓋 Facts.md 檔位判讀數據（🎯檔位判讀由 Python 預計算）
+- ❌ 用 loop/batch 方式批量填充分析
+
 
 ## 分析品質標準（Per-Horse）
 每匹馬嘅 `core_logic` 必須：

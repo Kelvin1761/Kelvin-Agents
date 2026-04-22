@@ -13,8 +13,9 @@ skills: hkjc_racing, betting_accountant
 > **嚴禁多餘停頓。** 當用戶已經講咨「分析 [場地]」或者畚咨 HKJC URL，佢嘅意圖就係「全日分析，由 Race 1 開始」。你**必須**：
 > 1. 靜默執行 Orchestrator，唔好逐步問「係咪係繼續」。
 > 2. 完成 Orchestrator 指示後**直接再次執行**，唔好問「請確認分析範圍 A/B/C」。
-> 3. 唯一允許停頓嘅位置：(a) Orchestrator stdout 明確要求用戶介入；(b) 嚴重錯誤需要用戶介入。
+> 3. 唯一允許停頓嘅位置：(a) Orchestrator stdout 明確要求人工提供缺失資料；(b) 嚴重錯誤需要用戶介入。
 > 4. 每場賽事 batch 之間自動推進，唔好問「係咪係繼續下一批」。
+> 5. 首次賽日總結只係狀態報告；除非 stdout 出現錯誤或明確要求人工資料，否則即刻跟 `NEXT_CMD` 繼續。
 
 ## 第零步：讀取 SKILL.md (Mandatory)
 
@@ -33,8 +34,8 @@ python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <
 
 ## 執行循環
 
-1. 第一次執行 Orchestrator（無 `--auto`）→ 印賽日總結 → 等用戶確認
-2. 用戶確認後執行 stdout 顯示嘅 `NEXT_CMD`（包含 `--auto`）→ 進入自動模式
+1. 第一次執行 Orchestrator（無 `--auto`）→ 印賽日總結 → 立即執行 stdout 顯示嘅 `NEXT_CMD`
+2. `NEXT_CMD` 包含 `--auto` → 進入自動模式；除非出現錯誤或人工資料請求，唔需要等用戶確認
 3. 每次 stdout 出現 `NEXT_CMD:` → 完成工作後即刻執行該指令
 4. 重複直到 `🎉 [SUCCESS]` 出現
 

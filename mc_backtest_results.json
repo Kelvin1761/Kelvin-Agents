@@ -1,0 +1,263 @@
+{
+  "backtest_date": "2026-04-23T00:21:55.833644",
+  "total_races": 11,
+  "meetings": [
+    {
+      "name": "2026-04-19_ShaTin",
+      "total": 11,
+      "winner_in_top4": 5,
+      "winner_in_top2": 1,
+      "avg_overlap": 1.1818181818181819,
+      "gold_standard": 0
+    }
+  ],
+  "grand_metrics": {
+    "MC Top1 = 冠軍": {
+      "count": 1,
+      "rate": 9.1
+    },
+    "MC Top2 含冠軍": {
+      "count": 1,
+      "rate": 9.1
+    },
+    "MC Top4 含冠軍": {
+      "count": 5,
+      "rate": 45.5
+    },
+    "MC Top6 含冠軍": {
+      "count": 7,
+      "rate": 63.6
+    },
+    "金標準(Top4全中)": {
+      "count": 0,
+      "rate": 0.0
+    },
+    "Exacta(1-2全中)": {
+      "count": 0,
+      "rate": 0.0
+    }
+  },
+  "avg_top4_overlap": 1.18,
+  "per_race": [
+    {
+      "meeting": "2026-04-19_ShaTin",
+      "race": 10,
+      "mc_top4": [
+        "新力好",
+        "千杯不醉",
+        "手機錶勁",
+        "官金騏"
+      ],
+      "actual_top4": [
+        "手機錶勁",
+        "手機錶勁",
+        "千杯不醉",
+        "千杯不醉"
+      ],
+      "winner_in_mc_top4": true,
+      "overlap": 2,
+      "winner_mc_prob": 10.9,
+      "winner_odds": 3.9
+    },
+    {
+      "meeting": "2026-04-19_ShaTin",
+      "race": 11,
+      "mc_top4": [
+        "仁心星",
+        "春風萬里",
+        "嘉應傳承",
+        "錶之宇宙"
+      ],
+      "actual_top4": [
+        "海上大軍",
+        "海上大軍",
+        "嘉應傳承",
+        "嘉應傳承"
+      ],
+      "winner_in_mc_top4": false,
+      "overlap": 1,
+      "winner_mc_prob": 0,
+      "winner_odds": 15.0
+    },
+    {
+      "meeting": "2026-04-19_ShaTin",
+      "race": 1,
+      "mc_top4": [
+        "香港精神",
+        "大利好運",
+        "領創動力",
+        "管之友"
+      ],
+      "actual_top4": [
+        "領創動力",
+        "領創動力",
+        "風起雲湧",
+        "風起雲湧"
+      ],
+      "winner_in_mc_top4": true,
+      "overlap": 1,
+      "winner_mc_prob": 8.9,
+      "winner_odds": 5.2
+    },
+    {
+      "meeting": "2026-04-19_ShaTin",
+      "race": 2,
+      "mc_top4": [
+        "爆熱",
+        "謙謙君子",
+        "超風速",
+        "鼓浪高升"
+      ],
+      "actual_top4": [
+        "魅力星",
+        "魅力星",
+        "爆熱",
+        "爆熱"
+      ],
+      "winner_in_mc_top4": false,
+      "overlap": 1,
+      "winner_mc_prob": 7.4,
+      "winner_odds": 14.0
+    },
+    {
+      "meeting": "2026-04-19_ShaTin",
+      "race": 3,
+      "mc_top4": [
+        "精彩勇將",
+        "日出東方",
+        "飛來霸",
+        "一舖掂晒"
+      ],
+      "actual_top4": [
+        "勝萬金",
+        "勝萬金",
+        "支付之父",
+        "支付之父"
+      ],
+      "winner_in_mc_top4": false,
+      "overlap": 0,
+      "winner_mc_prob": 3.2,
+      "winner_odds": 22.0
+    },
+    {
+      "meeting": "2026-04-19_ShaTin",
+      "race": 4,
+      "mc_top4": [
+        "文武全能",
+        "馬上盈",
+        "超智多寶",
+        "洪才"
+      ],
+      "actual_top4": [
+        "洪才",
+        "洪才",
+        "有情有義",
+        "有情有義"
+      ],
+      "winner_in_mc_top4": true,
+      "overlap": 1,
+      "winner_mc_prob": 7.1,
+      "winner_odds": 7.7
+    },
+    {
+      "meeting": "2026-04-19_ShaTin",
+      "race": 5,
+      "mc_top4": [
+        "君達得",
+        "睿智多寶",
+        "超開心",
+        "勤德天下"
+      ],
+      "actual_top4": [
+        "超開心",
+        "超開心",
+        "睿智多寶",
+        "睿智多寶"
+      ],
+      "winner_in_mc_top4": true,
+      "overlap": 2,
+      "winner_mc_prob": 12.6,
+      "winner_odds": 2.3
+    },
+    {
+      "meeting": "2026-04-19_ShaTin",
+      "race": 6,
+      "mc_top4": [
+        "林寶精神",
+        "盛勢威楓",
+        "有派頭",
+        "川河型駒"
+      ],
+      "actual_top4": [
+        "花開",
+        "花開",
+        "林寶精神",
+        "林寶精神"
+      ],
+      "winner_in_mc_top4": false,
+      "overlap": 1,
+      "winner_mc_prob": 7.0,
+      "winner_odds": 22.0
+    },
+    {
+      "meeting": "2026-04-19_ShaTin",
+      "race": 7,
+      "mc_top4": [
+        "穿甲戰鷹",
+        "快搏",
+        "光年程祥",
+        "勇者無敵"
+      ],
+      "actual_top4": [
+        "觀眾之力",
+        "觀眾之力",
+        "穿甲戰鷹",
+        "穿甲戰鷹"
+      ],
+      "winner_in_mc_top4": false,
+      "overlap": 1,
+      "winner_mc_prob": 8.0,
+      "winner_odds": 13.0
+    },
+    {
+      "meeting": "2026-04-19_ShaTin",
+      "race": 8,
+      "mc_top4": [
+        "美麗邂逅",
+        "熾烈神駒",
+        "錶之極光",
+        "天福"
+      ],
+      "actual_top4": [
+        "德心知遇",
+        "德心知遇",
+        "錶之極光",
+        "錶之極光"
+      ],
+      "winner_in_mc_top4": false,
+      "overlap": 1,
+      "winner_mc_prob": 7.4,
+      "winner_odds": 14.0
+    },
+    {
+      "meeting": "2026-04-19_ShaTin",
+      "race": 9,
+      "mc_top4": [
+        "首飾天空",
+        "友瑩亮",
+        "臻至辰",
+        "大眾福星"
+      ],
+      "actual_top4": [
+        "首飾天空",
+        "首飾天空",
+        "大眾福星",
+        "大眾福星"
+      ],
+      "winner_in_mc_top4": true,
+      "overlap": 2,
+      "winner_mc_prob": 17.5,
+      "winner_odds": 4.8
+    }
+  ]
+}

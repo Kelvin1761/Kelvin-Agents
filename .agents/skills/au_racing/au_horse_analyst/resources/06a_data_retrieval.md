@@ -35,18 +35,7 @@
 | 6 | **騎練合作數據** | 騎練組合近 30 天勝出率與上名率。搜索字眼:`"[Jockey] [Trainer] stats [Current Season]"`。若搜索無果 → `N/A`,維度默認 ➖ Neutral |
 | 7 | **風向數據 [直線衝刺專用]** | **僅當 Step 0.1 = `[STRAIGHT SPRINT]` 時強制搜索。** 搜索字眼:`"Flemington wind direction [Today's Date]"` 或 BOM (Bureau of Meteorology) 即時數據。記錄風向(逆風/順風/側風)+ 風速 (km/h)。此數據直接注入 Step 7 風向能量模型及 `<straight_sprint_module>` 的覆蓋規則。 |
 
-### [SIP-CH18-3] 退出馬名單最終核實 (Scratching Verification Protocol)
 
-> [!IMPORTANT]
-> **在開始任何馬匹分析之前,必須核實最終出賽名單。** 若使用非最終版本嘅 Racecard 數據,可能導致退出馬被遺漏分析或出賽馬匹數錯誤,進而影響 Speed Map、步速預測、小場覆寫協議等全局判斷。
-
-**強制執行步驟:**
-1. **出賽名單鎖定:** 從 Racecard 中提取所有馬匹及其退出 (SCR) 狀態。計算最終出賽馬匹數。
-2. **早期數據警告:** 若分析開始時距離開賽 > 2 小時,在分析開頭標注 `⚠️ 退出名單待最終確認 — 出賽馬匹數及 Speed Map 可能因晚期退出而改變`
-3. **出賽數量與 Speed Map 連動:** 若最終出賽馬匹數與分析時嘅假設不符(例如分析假設 6 匹但實際 7 匹),必須重新執行 Step 10 Speed Map 及 Step 7 EEM 評估
-4. **邏輯基礎:** 2026-03-18 Caulfield Heath R8 覆盤中,Excess (#2) 被錯誤標記為退出（「Excess退出。6匹出賽」）,但實際參賽並跑第 3。此錯誤導致整場分析基於錯誤嘅出賽馬匹數(6→7),Speed Map 缺少一匹跟前馬(Excess 2nd@800m)。
-
----
 
 ## 分析步驟執行順序與數據流
 
@@ -64,7 +53,7 @@
 | | Step 4 步態與場地 | 外部搜索 + Step 0 | 場地適性 |
 | | Step 5 裝備解碼 | 用戶原始數據 | 配備變動標記 |
 | | Step 6 競賽報告法醫 | 外部搜索 + Step 1 | 寬恕檔案結論 |
-| | Step 7 EEM 能量消耗 | **Step 10** `PACE_TYPE` + Step 8 段速 | EEM 等級、觸發條件 |
+| | Step 7 形勢與走位 | **Step 10** `PACE_TYPE` + Step 8 段速 | 走位形勢判定 |
 | | Step 8 段速真偽 | `<class_par_reference>` + `<sectional_benchmarks>` | 段速修正判斷 |
 | | Step 9 賽績交叉驗證 | 對手後續表現 | 強組/弱組 |
 | | Step 11 騎師情報 | 外部搜索 | 騎師適配度 |
@@ -77,8 +66,8 @@
 1. Step 0 的 `RACE_DATE` 必須注入 Step 1 作為間距日數計算基準。
 2. **Step 0.1 的 `RACE_TYPE` 必須注入 Step 7、Step 10 及綜合合成框架,控制直線衝刺專用邏輯分支。**
 3. Step 0.5 的情境標籤必須傳入綜合合成框架,影響「無條件/條件式」優勢判定。
-4. Step 10 的 `PACE_TYPE` 必須注入 Step 7 EEM 的步速緩衝判定。
-5. Step 8 的段速修正判斷必須作為 Step 7 EEM 的判斷基準。
+4. Step 10 的 `PACE_TYPE` 必須注入 Step 7 的步速緩衝判定。
+5. Step 8 的段速修正判斷必須作為 Step 7 的判斷基準。
 6. Step 6 結論若為「上仗不可作準 (Forgive Run)」,必須回溯 Step 1 以最近可作準賽事重新錨定。
 7. Step 6 若觸發 V 型反彈,必須強制升級 Step 0.5 情境標籤為 `[情境A-升級]`。
 8. Step 10 若 `LEADER_COUNT = 2`,必須執行領放主導階梯判斷 `DOMINANCE_GAP`。

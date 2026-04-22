@@ -11,7 +11,7 @@ This skill exists so agent frontmatter entry `hkjc_racing` resolves cleanly.
 For live HKJC pre-race analysis, read and follow:
 - `.agents/skills/hkjc_racing/hkjc_wong_choi/SKILL.md`
 
-Runtime remains Python-first. Do not invoke deprecated `hkjc_batch_qa` or `hkjc_compliance` as active agents; their former checks are handled by `hkjc_orchestrator.py` and `.agents/scripts/completion_gate_v2.py`.
+Runtime remains Python-first. Legacy HKJC QA/compliance child skills have been retired; their former checks are handled by `hkjc_orchestrator.py` and `.agents/scripts/completion_gate_v2.py`.
 
 ## Failure Protocol
 

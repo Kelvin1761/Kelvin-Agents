@@ -56,7 +56,7 @@ def create_mock_dimensions() -> dict:
                 "num": 1, "name": "Test Horse A",
                 "dimensions": {
                     "穩定性": "✅", "段速質量": "✅",
-                    "EEM潛力": "✅", "練馬師訊號": "➖",
+                    "形勢與走位": "✅", "練馬師訊號": "➖",
                     "情境適配": "✅", "路程": "✅",
                     "賽績線": "➖", "級數優勢": "✅"
                 }
@@ -65,7 +65,7 @@ def create_mock_dimensions() -> dict:
                 "num": 2, "name": "Test Horse B",
                 "dimensions": {
                     "穩定性": "➖", "段速質量": "❌",
-                    "EEM潛力": "➖", "練馬師訊號": "❌",
+                    "形勢與走位": "➖", "練馬師訊號": "❌",
                     "情境適配": "❌", "路程": "❌",
                     "賽績線": "❌", "級數優勢": "➖"
                 }
@@ -74,7 +74,7 @@ def create_mock_dimensions() -> dict:
                 "num": 3, "name": "Test Horse C",
                 "dimensions": {
                     "穩定性": "✅", "段速質量": "✅",
-                    "EEM潛力": "✅", "練馬師訊號": "✅",
+                    "形勢與走位": "✅", "練馬師訊號": "✅",
                     "情境適配": "✅", "路程": "✅",
                     "賽績線": "✅", "級數優勢": "✅"
                 }
@@ -83,7 +83,7 @@ def create_mock_dimensions() -> dict:
                 "num": 4, "name": "Test Horse D",
                 "dimensions": {
                     "穩定性": "❌", "段速質量": "❌",
-                    "EEM潛力": "❌", "練馬師訊號": "❌",
+                    "形勢與走位": "❌", "練馬師訊號": "❌",
                     "情境適配": "❌", "路程": "✅",
                     "賽績線": "❌", "級數優勢": "❌"
                 }
@@ -132,6 +132,7 @@ def run_orchestrator_guardrail_tests():
     import compile_analysis_template_hkjc as hkjc_compile
     import completion_gate_v2 as gate
     import inject_hkjc_fact_anchors as hkjc_facts_engine
+    import inject_fact_anchors as au_facts_engine
     import scrape_hkjc_horse_profile as hkjc_profile
 
     valid_hkjc_intel = (
@@ -265,6 +266,20 @@ def run_orchestrator_guardrail_tests():
          and au_sm.get('expected_pace') in ('Crawl', 'Moderate', 'Fast', 'Chaotic')
          and '[FILL]' not in json.dumps(au_sm, ensure_ascii=False))
 
+    au_speed_block, _ = au_facts_engine.build_au_speed_map_block(
+        [
+            {'num': 1, 'barrier': 1, 'dossier_entries': [{'is_trial': False, 'eem': {'run_style': '前領'}}]},
+            {'num': 2, 'barrier': 9, 'dossier_entries': [{'is_trial': False, 'eem': {'run_style': '後追'}, 'l400_pi': 2}]},
+        ],
+        1200,
+        'Randwick'
+    )
+    au_parsed_speed_map = au.auto_build_au_speed_map_from_facts(au_speed_block)
+    test('AU Facts-generated speed map is first-class source',
+         au_parsed_speed_map.get('source') == 'FACTS_SPEED_MODEL'
+         and 1 in au_parsed_speed_map.get('leaders', [])
+         and 2 in au_parsed_speed_map.get('closers', []))
+
     def matrix_with_ticks(ticks):
         keys = ['stability', 'speed_mass', 'eem', 'trainer_jockey',
                 'scenario', 'freshness', 'formline', 'class_advantage']
@@ -312,7 +327,7 @@ def run_orchestrator_guardrail_tests():
 
 def simulate_llm_fill(text: str) -> str:
     """Replace all {{LLM_FILL}} markers with plausible dummy content."""
-    filled = text.replace('{{LLM_FILL}}', '（測試填充文字 — 段速表現穩定、EEM 充沛）')
+    filled = text.replace('{{LLM_FILL}}', '（測試填充文字 — 段速表現穩定、形勢有利）')
     filled = filled.replace('[FILL]', '（測試填充）')
     return filled
 
