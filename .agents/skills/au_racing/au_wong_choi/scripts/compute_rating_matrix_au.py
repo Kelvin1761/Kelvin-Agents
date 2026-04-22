@@ -56,7 +56,7 @@ def compute_one(h: dict) -> dict:
     dims = h['dimensions']
     matrix_keys_map = {
         "stability": "core", "sectional": "core",
-        "eem": "semi", "jockey_trainer": "semi",
+        "eem": "aux", "jockey_trainer": "semi",
         "class_weight": "aux", "track": "aux", 
         "form_line": "aux", "gear_distance": "aux",
     }
@@ -232,15 +232,12 @@ def apply_au_overrides(result: dict, horse: dict, ctx: dict) -> dict:
     # Class override floor
     has_sec = '✅' in str(dims.get('sectional', ''))
     has_cls = '✅' in str(dims.get('class_weight', ''))
-    has_eem = '✅' in str(dims.get('eem', ''))
-    if has_sec and (has_cls or has_eem):
+    if has_sec and has_cls:
         grade = floor(grade, 'B', 'P7: 級數首選保底B')
 
-    # EEM consecutive high-drain upgrade
+    # EEM is now shape/consumption context only; do not upgrade grade by itself.
     if horse.get('eem_3_high_drain', False) and horse.get('good_barrier', False):
-        if grade_idx(grade) >= grade_idx('C'):
-            grade = grade_up(grade)
-            notes.append('P7: EEM連續高消耗升級+1')
+        notes.append('P7: EEM連續高消耗只作風險/形勢註記，不單獨升級')
 
     # [SIP-C14-3] 2YO rating anomaly check
     if horse.get('is_2yo', False) and horse.get('rating_top3_field', False):

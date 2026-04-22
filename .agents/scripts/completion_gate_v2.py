@@ -61,6 +61,19 @@ def check_au_hkjc_format(text: str, domain: str) -> list[str]:
             errors.append("⚠️ P34 DRIFT: Missing '步速逆轉保險' section in Part 4")
         if '```csv' not in text:
             errors.append("⚠️ P34 DRIFT: Missing CSV data block (Part 5)")
+
+        verdict_match = re.search(r'(?:第三部分|最終預測|The Verdict|全場最終決策)(.*)', text, re.DOTALL)
+        verdict_text = verdict_match.group(1) if verdict_match else text
+        for marker in ('[AUTO]', '[N/A]', 'PLACEHOLDER', '{{LLM_FILL}}', '[FILL]'):
+            if marker in verdict_text:
+                errors.append(f"🚨 VERDICT-FILL: Unresolved verdict placeholder detected: {marker}")
+        csv_match = re.search(r'```csv\s*(.*?)```', text, re.DOTALL)
+        if csv_match:
+            csv_body = csv_match.group(1).strip()
+            if not csv_body or 'PLACEHOLDER' in csv_body or '[No Top 4 data' in csv_body:
+                errors.append("🚨 CSV-FILL: CSV block is empty or placeholder")
+            elif len([ln for ln in csv_body.splitlines() if ln.strip()]) < 2:
+                errors.append("🚨 CSV-FILL: CSV block has no Top 4 data rows")
     
     # P37: Check Part 1 戰場全景 presence (use Part 1-specific markers, not per-horse markers)
     part1_markers = ['戰場全景', '[第一部分]', '賽事格局', 'Speed Map (速度地圖)', 'Speed Map 回顧']

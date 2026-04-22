@@ -126,8 +126,13 @@ def run_orchestrator_guardrail_tests():
     print('\n🛡️ Test 6: Orchestrator Guardrails')
     sys.path.insert(0, str(SCRIPT_DIR))
     sys.path.insert(0, str(SCRIPT_DIR.parents[2] / 'au_racing' / 'au_wong_choi' / 'scripts'))
+    sys.path.insert(0, str(SCRIPT_DIR.parents[3] / 'scripts'))
     import hkjc_orchestrator as hkjc
     import au_orchestrator as au
+    import compile_analysis_template_hkjc as hkjc_compile
+    import completion_gate_v2 as gate
+    import inject_hkjc_fact_anchors as hkjc_facts_engine
+    import scrape_hkjc_horse_profile as hkjc_profile
 
     valid_hkjc_intel = (
         '天氣 Weather: temperature 24C, humidity 70%, rain 20%, wind east 18km/h.\n'
@@ -179,6 +184,130 @@ def run_orchestrator_guardrail_tests():
         write_text(mip, 'dummy placeholder')
         ok, issues = hkjc.validate_intelligence_package(mip)
         test('Dummy MIP rejected', not ok and bool(issues))
+
+    hkjc_facts = (
+        '### 馬號 1 — 前速王 | 騎師: A | 練馬師: B | 負磅: 120 | 檔位: 1\n'
+        'Type A 前領均速型，近績 1-2-3。\n'
+        '### 馬號 2 — 後上王 | 騎師: C | 練馬師: D | 負磅: 121 | 檔位: 8\n'
+        'Type B 末段爆發後上型，L400 22.5。\n'
+    )
+    sm = hkjc.auto_build_hkjc_speed_map_from_facts(hkjc_facts)
+    test('HKJC missing speed map can be auto injected',
+         sm.get('source') == 'AUTO_FACTS_HEURISTIC'
+         and sm.get('predicted_pace') in ('Crawl', 'Moderate', 'Fast', 'Chaotic')
+         and '[FILL]' not in json.dumps(sm, ensure_ascii=False))
+
+    generated_speed_block, _ = hkjc_facts_engine.build_race_speed_map_block(
+        {
+            'horses': [
+                {'num': 1, 'barrier': 1, 'races': [{'comment': '領放，走勢良佳', 'splits': [24.0, 22.8, 23.1]}]},
+                {'num': 2, 'barrier': 9, 'races': [{'comment': '留居後列，末段追前', 'splits': [24.5, 23.0, 22.4]}]},
+            ]
+        },
+        '跑馬地', 1200, 'C4'
+    )
+    parsed_speed_map = hkjc.auto_build_hkjc_speed_map_from_facts(generated_speed_block)
+    test('HKJC Facts-generated speed map is first-class source',
+         parsed_speed_map.get('source') == 'FACTS_SPEED_MODEL'
+         and 1 in parsed_speed_map.get('leaders', [])
+         and 2 in parsed_speed_map.get('closers', []))
+
+    weight_trend = hkjc_profile.compute_weight_trend(
+        [{'declared_weight': 1240}, {'declared_weight': 1244}, {'declared_weight': 1248}],
+        today_weight=1225
+    )
+    test('HKJC body-weight -15lb is significant not acute',
+         weight_trend['trend'] == '🟠顯著轉輕'
+         and '急劇' not in weight_trend['trend']
+         and '-15lb' in weight_trend['detail'])
+
+    test('HKJC margin head parses as non-zero losing margin',
+         hkjc_profile.parse_margin('頭') and hkjc_profile.parse_margin('頭') > 0)
+
+    margin_trend = hkjc_profile.compute_margin_trend([
+        {'margin_raw': '1/2', 'margin_numeric': 0.5},
+        {'margin_raw': '1', 'margin_numeric': 1.0},
+        {'margin_raw': '1-1/2', 'margin_numeric': 1.5},
+        {'margin_raw': '4', 'margin_numeric': 4.0},
+        {'margin_raw': '5', 'margin_numeric': 5.0},
+        {'margin_raw': '6', 'margin_numeric': 6.0},
+    ])
+    test('HKJC margin trend narrows when recent average is lower',
+         margin_trend['trend'] == '📈收窄中')
+
+    one_twenty = hkjc_facts_engine.parse_time_to_seconds('1.09.35')
+    standard = hkjc_facts_engine.get_standard_time('跑馬地', 1200, 'C4')
+    test('HKJC finish-time deviation sign: negative means faster than standard',
+         round(one_twenty - standard, 2) == -0.55)
+
+    sectional_trend = hkjc_facts_engine.compute_trends([
+        {'sectionals': {'L400': 22.2}, 'energy': 90},
+        {'sectionals': {'L400': 22.3}, 'energy': 91},
+        {'sectionals': {'L400': 22.4}, 'energy': 92},
+        {'sectionals': {'L400': 23.1}, 'energy': 85},
+        {'sectionals': {'L400': 23.0}, 'energy': 84},
+        {'sectionals': {'L400': 23.2}, 'energy': 83},
+    ])
+    test('HKJC L400 trend improves when recent sectionals are faster',
+         sectional_trend['l400_trend'] == '上升軌 ✅')
+
+    test('HKJC medium-fast pace is not downgraded to plain fast',
+         hkjc_facts_engine.parse_pace_from_comment('中等偏快步速;(1W1W)') == '中等偏快'
+         and hkjc_facts_engine.parse_pace_from_comment('中等偏慢步速;(2W2W)') == '中等偏慢')
+
+    au_facts = (
+        '[#1] Leader One\nBarrier: 1\nleader on speed profile.\n'
+        '[#2] Closer Two\nBarrier: 9\ncloser settled back with late speed.\n'
+    )
+    au_sm = au.auto_build_au_speed_map_from_facts(au_facts)
+    test('AU missing speed map can be auto injected',
+         au_sm.get('source') == 'AUTO_FACTS_HEURISTIC'
+         and au_sm.get('expected_pace') in ('Crawl', 'Moderate', 'Fast', 'Chaotic')
+         and '[FILL]' not in json.dumps(au_sm, ensure_ascii=False))
+
+    def matrix_with_ticks(ticks):
+        keys = ['stability', 'speed_mass', 'eem', 'trainer_jockey',
+                'scenario', 'freshness', 'formline', 'class_advantage']
+        return {k: {'score': ticks[i] if i < len(ticks) else '➖'} for i, k in enumerate(keys)}
+
+    verdict_md = hkjc_compile.build_hkjc_verdict_compiled(
+        {
+            'race_analysis': {'race_number': 1, 'race_class': 'Class 3', 'distance': '1200m'},
+            'horses': {
+                '5': {'horse_name': 'Three Tick', 'final_rating': 'A-', 'matrix': matrix_with_ticks(['✅', '✅', '✅'])},
+                '8': {'horse_name': 'Five Tick', 'final_rating': 'A-', 'matrix': matrix_with_ticks(['✅', '✅', '✅', '✅', '✅'])},
+                '6': {'horse_name': 'Four Tick', 'final_rating': 'B+', 'matrix': matrix_with_ticks(['✅', '✅', '✅', '✅'])},
+                '4': {'horse_name': 'One Tick', 'final_rating': 'C', 'matrix': matrix_with_ticks(['✅'])},
+            }
+        },
+        [
+            {'num': 5, 'name': 'Three Tick', 'jockey': 'J1', 'trainer': 'T1'},
+            {'num': 8, 'name': 'Five Tick', 'jockey': 'J2', 'trainer': 'T2'},
+            {'num': 6, 'name': 'Four Tick', 'jockey': 'J3', 'trainer': 'T3'},
+            {'num': 4, 'name': 'One Tick', 'jockey': 'J4', 'trainer': 'T4'},
+        ]
+    )
+    first_pick = re.search(r'🥇 \*\*第一選\*\*.*?- \*\*馬號及馬名:\*\* \[(\d+)\]', verdict_md, re.DOTALL)
+    test('HKJC Top 4 tie-break uses tick count before horse number',
+         first_pick and first_pick.group(1) == '8')
+    test('HKJC verdict CSV contains real Top 4 rows',
+         'PLACEHOLDER' not in verdict_md
+         and 'race_num,race_class,distance' in verdict_md
+         and '1,Class 3,1200m,J2,T2,8,Five Tick,A-' in verdict_md)
+
+    bad_verdict = (
+        '#### [第三部分] 最終預測 (The Verdict)\n'
+        '- **信心指數:** `[AUTO]`\n'
+        '**🏆 Top 4 位置精選**\n'
+        '🥇 **第一選**\n- **馬號及馬名:** [1] A\n- **評級與✅數量:** `[A]` | ✅ 5\n'
+        '- **核心理據:** ok\n- **最大風險:** ok\n'
+        '**🎯 Top 2 入三甲信心度 (Top 2 Place Confidence)**\n'
+        '**🔄 步速逆轉保險 (Pace Flip Insurance):**\n'
+        '```csv\nPLACEHOLDER\n```'
+    )
+    gate_errors = gate.check_au_hkjc_format(bad_verdict, 'hkjc')
+    test('Completion gate rejects unresolved verdict placeholders',
+         any('VERDICT-FILL' in e or 'CSV-FILL' in e for e in gate_errors))
 
 
 def simulate_llm_fill(text: str) -> str:

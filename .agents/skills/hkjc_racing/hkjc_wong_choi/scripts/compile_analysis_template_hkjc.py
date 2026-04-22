@@ -40,7 +40,7 @@ MATRIX_TO_DIM = {
 DIMENSION_TYPES = {
     'stability':          'core',
     'sectional':          'core',
-    'eem':                'semi_core',
+    'eem':                'auxiliary',
     'trainer_signal':     'semi_core',
     'scenario':           'auxiliary',
     'distance_freshness': 'auxiliary',
@@ -178,10 +178,6 @@ def _apply_core_constraint(grade: str, counts: dict, dims: dict) -> tuple:
     if counts.get('has_core_double_weak'):
         if _grade_idx(grade) < _grade_idx('B+'):
             return 'B+', '核心防護牆: 核心❌❌ → 封頂B+ (無豁免)'
-        return grade, ''
-    if dims.get('sectional', '').strip() in ('✅', '✅✅') and dims.get('eem', '').strip() in ('✅', '✅✅'):
-        if _grade_idx(grade) < _grade_idx('A-'):
-            return 'A-', '核心❌但段速✅+EEM✅豁免 → 封頂A-'
         return grade, ''
     if _grade_idx(grade) < _grade_idx('B+'):
         return 'B+', '核心防護牆: 核心❌ → 封頂B+'
@@ -497,7 +493,7 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
     matrix_keys = [
         ("stability",      "位置穩定性", "核心"),
         ("speed_mass",     "段速質量",   "核心"),
-        ("eem",            "EEM 潛力",   "半核心"),
+        ("eem",            "形勢與消耗", "輔助"),
         ("trainer_jockey", "練馬師訊號", "半核心"),
         ("scenario",       "情境適配",   "輔助"),
         ("freshness",      "路程/新鮮度","輔助"),
@@ -607,12 +603,17 @@ def build_hkjc_verdict_compiled(json_data, facts_horses):
     v = json_data.get('race_analysis', {}).get('verdict', {})
     horse_names = {h['num']: h['name'] for h in facts_horses}
     horses_logic = json_data.get('horses', {})
+    race_info = json_data.get('race_analysis', {})
+    speed_map = race_info.get('speed_map', {})
 
     lines = []
     lines.append('#### [第三部分] 最終預測 (The Verdict)\n')
-    lines.append(f"- **跑道形勢:** {v.get('track_scenario', '[N/A]')}")
-    lines.append(f"- **信心指數:** `{v.get('confidence', '[中]')}`")
-    lines.append(f"- **關鍵變數:** {v.get('key_variables', '[N/A]')}\n")
+    track_scenario = v.get('track_scenario') or f"{speed_map.get('predicted_pace', 'Moderate')} pace；{speed_map.get('track_bias', '自動形勢圖保守判斷')}"
+    confidence = v.get('confidence') or '[中]'
+    key_variables = v.get('key_variables') or '步速是否如預期、檔位形勢、熱門馬能否避開早段消耗'
+    lines.append(f"- **跑道形勢:** {track_scenario}")
+    lines.append(f"- **信心指數:** `{confidence}`")
+    lines.append(f"- **關鍵變數:** {key_variables}\n")
 
     lines.append('**🏆 Top 4 位置精選**\n')
 
@@ -626,25 +627,23 @@ def build_hkjc_verdict_compiled(json_data, facts_horses):
     # Compute grade for every horse
     all_graded = []
     for h_num_str, h_obj in horses_logic.items():
-        if "final_rating" in h_obj:
-            grade = h_obj["final_rating"]
-            gr_res = {'final_grade': grade, 'num_checks': 0}
-        else:
-            m_data = h_obj.get('matrix', {})
-            gr_res = _compute_letter_grade(m_data, h_obj)
-            grade = gr_res['final_grade']
+        m_data = h_obj.get('matrix', {})
+        gr_res = _compute_letter_grade(m_data, h_obj)
+        grade = h_obj.get("final_rating") or gr_res['final_grade']
         grade_i = _grade_idx(grade)
-        all_graded.append((h_num_str, grade, grade_i, gr_res))
+        counts = gr_res.get('counts', {})
+        tick_count = counts.get('total_strong', 0)
+        double_ticks = counts.get('total_dbl_strong', 0)
+        all_graded.append((h_num_str, grade, grade_i, tick_count, double_ticks, gr_res))
 
-    # Sort by grade index (lower = better), then horse number as tiebreaker
-    all_graded.sort(key=lambda x: (x[2], int(x[0]) if x[0].isdigit() else 999))
+    # Sort by grade, then ✅ count, then ✅✅ count, then horse number.
+    all_graded.sort(key=lambda x: (x[2], -x[3], -x[4], int(x[0]) if x[0].isdigit() else 999))
 
     # Take top 4
     t4_auto = all_graded[:4]
 
     labels = ['🥇 **第一選**', '🥈 **第二選**', '🥉 **第三選**', '🏅 **第四選**']
     csv_rows = []
-    race_info = json_data.get('race_analysis', {})
     race_num = race_info.get('race_number', '?')
     race_class = race_info.get('race_class', '?')
     race_dist = race_info.get('distance', '?')
@@ -652,7 +651,7 @@ def build_hkjc_verdict_compiled(json_data, facts_horses):
     top_nums = []  # track for Top 2 confidence section
     for i, label in enumerate(labels):
         if i < len(t4_auto):
-            h_num_str, grade, grade_i, gr_res = t4_auto[i]
+            h_num_str, grade, grade_i, tick_count, double_ticks, gr_res = t4_auto[i]
             h_num_int = int(h_num_str) if h_num_str.isdigit() else 0
             h_name = horse_names.get(h_num_int, '')
             h_obj = horses_logic.get(h_num_str, {})
@@ -660,7 +659,7 @@ def build_hkjc_verdict_compiled(json_data, facts_horses):
             # core_check: count ✅ ticks from computed dims (works with & without matrix)
             _gr_for_check = _compute_letter_grade(m_data, h_obj)
             _dims_for_check = _gr_for_check.get('dims', {})
-            core_check = sum(1 for v_tick in _dims_for_check.values() if '✅' in str(v_tick))
+            core_check = tick_count
             jockey = next((hf['jockey'] for hf in facts_horses if str(hf['num']) == h_num_str), '')
             trainer = next((hf['trainer'] for hf in facts_horses if str(hf['num']) == h_num_str), '')
 
@@ -694,7 +693,8 @@ def build_hkjc_verdict_compiled(json_data, facts_horses):
                 f"- **核心理據:** {reason}",
                 f"- **最大風險:** {risk}\n"
             ])
-            csv_rows.append(f"{race_num},{race_class},{race_dist},{jockey},{trainer},{h_num_str},{h_name},{grade}")
+            reason_summary = re.sub(r'[\r\n,]+', ' ', str(reason))[:80]
+            csv_rows.append(f"{race_num},{race_class},{race_dist},{jockey},{trainer},{h_num_str},{h_name},{grade},{core_check},{reason_summary}")
             top_nums.append(h_num_str)
 
     top1_num = top_nums[0] if len(top_nums) > 0 else '?'
@@ -709,8 +709,8 @@ def build_hkjc_verdict_compiled(json_data, facts_horses):
     fli = v.get('pace_flip_insurance', {})
     faster = fli.get('if_faster', {})
     slower = fli.get('if_slower', {})
-    lines.append(f"- 若步速比預測更快 → 最受惠: {faster.get('benefit', '')} | 最受損: {faster.get('hurt', '')}")
-    lines.append(f"- 若步速比預測更慢 → 最受惠: {slower.get('benefit', '')} | 最受損: {slower.get('hurt', '')}\n")
+    lines.append(f"- 若步速比預測更快 → 最受惠: {faster.get('benefit') or top1_num} | 最受損: {faster.get('hurt') or top2_num}")
+    lines.append(f"- 若步速比預測更慢 → 最受惠: {slower.get('benefit') or top1_num} | 最受損: {slower.get('hurt') or top2_num}\n")
     
     lines.extend([
         '**🚨 緊急煞車檢查 (Emergency Brake Protocol):**',
@@ -725,7 +725,10 @@ def build_hkjc_verdict_compiled(json_data, facts_horses):
     
     lines.append('**6. 🎯 步速崩潰冷門 (Pace Collapse Dark Horse) [強制檢查點]:**')
     lines.append(f"{v.get('blind_spots', {}).get('pace_collapse_darkhorse', '無')}\n")
-    lines.append('\n```csv\nPLACEHOLDER\n```\n')
+    lines.append('\n```csv')
+    lines.append('race_num,race_class,distance,jockey,trainer,horse_num,horse_name,grade,tick_count,core_reason_summary')
+    lines.extend(csv_rows)
+    lines.append('```\n')
 
     return '\n'.join(lines)
 

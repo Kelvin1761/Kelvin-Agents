@@ -70,8 +70,9 @@ _profile_cache = _load_profile_cache()
 
 # ── HKJC Margin Format → Numeric Lengths ────────────────────────────────
 MARGIN_MAP = {
-    '---': 0.0, '頭': 0.0,      # Winner
-    '短頭': 0.1, 'SH': 0.1,
+    '---': 0.0, '-': 0.0,       # Winner
+    '鼻': 0.05, '短頭': 0.1, 'SH': 0.1,
+    '頭': 0.2, '一頭': 0.2,
     '頸': 0.25, 'NK': 0.25, 'Nk': 0.25,
     '半': 0.5,
     '3/4': 0.75,
@@ -350,7 +351,8 @@ def compute_weight_trend(entries: list[dict], today_weight: Optional[int] = None
     - ≥3lb/race consistent increase → 📈持續增磅 (positive)
     - ≥3lb/race consistent decrease → 📉持續減磅 (warning)
     - Fluctuation ≤5lb → 📊穩定 (neutral)
-    - Single race diff ≥15lb → 🔴急劇變化 (risk)
+    - Single race diff 11-19lb → 🟠顯著變動 (watch)
+    - Single race diff ≥20lb → 🔴急劇變化 (risk)
     """
     weights = [e['declared_weight'] for e in entries if e.get('declared_weight', 0) > 0]
     if today_weight and today_weight > 0:
@@ -362,12 +364,21 @@ def compute_weight_trend(entries: list[dict], today_weight: Optional[int] = None
     diffs = [weights[i] - weights[i+1] for i in range(min(len(weights)-1, 5))]
     
     # Check for sudden change (today vs last)
-    if abs(diffs[0]) >= 15:
+    if abs(diffs[0]) >= 20:
         return {
             'trend': '🔴急劇變化',
             'signal': '風險',
             'values': weights[:6],
-            'detail': f'今仗 vs 上仗差 {diffs[0]:+d}lb'
+            'detail': f'今仗較上仗{diffs[0]:+d}lb'
+        }
+
+    if abs(diffs[0]) >= 11:
+        direction = '轉重' if diffs[0] > 0 else '轉輕'
+        return {
+            'trend': f'🟠顯著{direction}',
+            'signal': '觀察',
+            'values': weights[:6],
+            'detail': f'今仗較上仗{diffs[0]:+d}lb'
         }
     
     # Check for consistent 3-race increase

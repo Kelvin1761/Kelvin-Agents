@@ -543,14 +543,14 @@ def parse_pace_from_comment(comment: str) -> str:
         return '極快'
     elif '極慢步速' in comment:
         return '極慢'
-    elif '快步速' in comment:
-        return '快'
-    elif '慢步速' in comment:
-        return '慢'
     elif '中等偏快步速' in comment:
         return '中等偏快'
     elif '中等偏慢步速' in comment:
         return '中等偏慢'
+    elif '快步速' in comment:
+        return '快'
+    elif '慢步速' in comment:
+        return '慢'
     elif '中等步速' in comment:
         return '中等'
     return '未知'
@@ -1105,6 +1105,88 @@ def compute_distance_aptitude(races: list, today_dist: int = 0) -> dict:
         'close_wins': close_wins,
         'close_places': close_places
     }
+
+
+def _recent_running_style(races: list) -> str:
+    comments = ' '.join(r.get('comment', '') for r in races[:3])
+    if any(kw in comments for kw in ['領放', '領前', '帶頭', '帶出', '居前列', '前列']):
+        return 'front'
+    if any(kw in comments for kw in ['跟隨領先', '追趕領放馬', '居中間稍前', '第二位', '第三位']):
+        return 'on_pace'
+    if any(kw in comments for kw in ['居包尾', '留居包尾', '後列', '尾列', '墮後', '最後']):
+        return 'closer'
+    return 'mid_pack'
+
+
+def build_race_speed_map_block(data: dict, today_venue: str = '', today_dist: int = 0,
+                               race_class: str = '') -> tuple[str, dict]:
+    """Build the first-class race speed map at Facts generation time."""
+    leaders, on_pace, mid_pack, closers = [], [], [], []
+
+    for horse in data.get('horses', []):
+        races = horse.get('races', [])
+        engine = classify_engine_type(races)
+        style = _recent_running_style(races)
+        barrier = horse.get('barrier', 0)
+        num = horse.get('num')
+
+        if engine.get('type') == 'A' or style == 'front':
+            leaders.append(num)
+        elif style == 'on_pace' or engine.get('type') == 'C' or (barrier and barrier <= 3 and style != 'closer'):
+            on_pace.append(num)
+        elif engine.get('type') == 'B' or style == 'closer':
+            closers.append(num)
+        else:
+            mid_pack.append(num)
+
+    pressure = len(leaders) * 2 + len(on_pace)
+    field_size = len(data.get('horses', []))
+    if len(leaders) >= 4 or pressure >= max(6, field_size // 2 + 3):
+        predicted_pace = 'Chaotic'
+    elif len(leaders) >= 2 or pressure >= 4:
+        predicted_pace = 'Fast'
+    elif len(leaders) == 1 or on_pace:
+        predicted_pace = 'Moderate'
+    else:
+        predicted_pace = 'Crawl'
+
+    track_bias = (
+        f"FACTS_SPEED_MODEL: {today_venue or '未知場地'} {today_dist or '?'}m {race_class or ''}; "
+        f"以前領數、檔位及近3仗跑法自動建模。"
+    )
+    speed_map = {
+        'predicted_pace': predicted_pace,
+        'leaders': [n for n in leaders if n],
+        'on_pace': [n for n in on_pace if n],
+        'mid_pack': [n for n in mid_pack if n],
+        'closers': [n for n in closers if n],
+        'track_bias': track_bias,
+        'tactical_nodes': (
+            f"FACTS_SPEED_MODEL: leaders={len(leaders)}, on_pace={len(on_pace)}, "
+            f"mid={len(mid_pack)}, closers={len(closers)}；步速預測 {predicted_pace}。"
+        ),
+        'collapse_point': (
+            'FACTS_SPEED_MODEL: 前速壓力高時後上/慳位馬受惠；若步速被控慢，前置馬形勢提升。'
+        ),
+        'source': 'FACTS_SPEED_MODEL'
+    }
+
+    def _fmt(nums):
+        return '[' + ', '.join(str(n) for n in nums if n) + ']'
+
+    lines = [
+        '### 🗺️ 自動步速圖 (Python Facts Model)',
+        f"- **predicted_pace:** {speed_map['predicted_pace']}",
+        f"- **leaders:** {_fmt(speed_map['leaders'])}",
+        f"- **on_pace:** {_fmt(speed_map['on_pace'])}",
+        f"- **mid_pack:** {_fmt(speed_map['mid_pack'])}",
+        f"- **closers:** {_fmt(speed_map['closers'])}",
+        f"- **track_bias:** {speed_map['track_bias']}",
+        f"- **tactical_nodes:** {speed_map['tactical_nodes']}",
+        f"- **collapse_point:** {speed_map['collapse_point']}",
+        f"- **source:** {speed_map['source']}",
+    ]
+    return '\n'.join(lines), speed_map
 
 
 def generate_horse_block(horse: dict, today_venue: str = '',
@@ -1671,6 +1753,11 @@ def main():
             output_lines.append(draw_block)
             output_lines.append(f"")
             print(f"   🎯 檔位判讀: Race {race_num} 已注入", file=sys.stderr)
+
+    speed_map_block, _speed_map = build_race_speed_map_block(data, today_venue, today_dist, race_class)
+    output_lines.append(speed_map_block)
+    output_lines.append(f"")
+    print(f"   🗺️ 自動步速圖: { _speed_map['predicted_pace'] } ({_speed_map['source']})", file=sys.stderr)
     
     output_lines.append(f"{'=' * 70}")
     output_lines.append(f"")

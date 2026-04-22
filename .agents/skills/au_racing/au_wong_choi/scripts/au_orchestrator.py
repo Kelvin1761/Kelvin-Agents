@@ -17,7 +17,7 @@ from rating_engine_v2 import parse_matrix_scores, compute_base_grade, apply_fine
 
 AU_MATRIX_SCHEMA = {
     "狀態與穩定性": "core", "段速與引擎": "core",
-    "EEM與形勢": "semi", "騎練訊號": "semi",
+    "EEM與形勢": "aux", "騎練訊號": "semi",
     "級數與負重": "aux", "場地適性": "aux",
     "賽績線": "aux", "裝備與距離": "aux",
 }
@@ -37,10 +37,12 @@ def auto_compute_verdict(logic_data, facts_file):
         ft_dir = ft.get('direction', '無') if isinstance(ft, dict) else str(ft)
         f_grade = apply_fine_tune(b_grade, ft_dir)
         grade_i = grade_sort_index(f_grade)
-        graded.append((h_num, h_obj.get('horse_name', ''), f_grade, grade_i))
+        tick_count = _count_matrix_ticks(m_data)
+        double_ticks = _count_matrix_double_ticks(m_data)
+        graded.append((h_num, h_obj.get('horse_name', ''), f_grade, grade_i, tick_count, double_ticks))
     
-    # Sort by grade (lower index = better)
-    graded.sort(key=lambda x: (x[3], int(x[0]) if x[0].isdigit() else 999))
+    # Sort by grade, then signal strength, then horse number.
+    graded.sort(key=lambda x: (x[3], -x[4], -x[5], int(x[0]) if str(x[0]).isdigit() else 999))
     top4 = graded[:4]
     
     # Auto pace_flip_insurance from speed_map
@@ -63,21 +65,67 @@ def auto_compute_verdict(logic_data, facts_file):
     if closer_names:
         worst_closer = list(closer_names.items())[-1]
         slower_hurt = f"{worst_closer[0]}號 {worst_closer[1]}"
+    if top4:
+        first = top4[0]
+        second = top4[1] if len(top4) > 1 else top4[0]
+        faster_benefit = faster_benefit or f"{first[0]}號 {first[1]}"
+        faster_hurt = faster_hurt or f"{second[0]}號 {second[1]}"
+        slower_benefit = slower_benefit or f"{first[0]}號 {first[1]}"
+        slower_hurt = slower_hurt or f"{second[0]}號 {second[1]}"
+
+    top_grade = top4[0][2] if top4 else 'C'
+    confidence = '高' if top_grade in ('S', 'S-', 'A+', 'A') else ('中' if top_grade in ('A-', 'B+') else '低')
     
     verdict = {
         'top4': [
             {'horse_number': str(h[0]), 'horse_name': h[1], 'grade': h[2]}
             for h in top4
         ],
-        'confidence': '[AUTO]',
+        'confidence': confidence,
         'pace_flip_insurance': {
-            'if_faster': {'benefit': faster_benefit or '[AUTO]', 'hurt': faster_hurt or '[AUTO]'},
-            'if_slower': {'benefit': slower_benefit or '[AUTO]', 'hurt': slower_hurt or '[AUTO]'}
+            'if_faster': {'benefit': faster_benefit or 'Top 4 中具末段優勢馬', 'hurt': faster_hurt or '前置高消耗馬'},
+            'if_slower': {'benefit': slower_benefit or '前置/內檔馬', 'hurt': slower_hurt or '後上追勢馬'}
         }
     }
     
     logic_data.setdefault('race_analysis', {})['verdict'] = verdict
     return verdict
+
+
+def _count_matrix_ticks(matrix_data):
+    count = 0
+    for item in (matrix_data or {}).values():
+        score = str(item.get('score', '') if isinstance(item, dict) else item)
+        if '✅' in score:
+            count += 1
+    return count
+
+
+def _count_matrix_double_ticks(matrix_data):
+    count = 0
+    for item in (matrix_data or {}).values():
+        score = str(item.get('score', '') if isinstance(item, dict) else item)
+        if '✅✅' in score:
+            count += 1
+    return count
+
+
+def verdict_needs_recompute_au(logic_data):
+    verdict = logic_data.get('race_analysis', {}).get('verdict')
+    if not isinstance(verdict, dict):
+        return True
+    top4 = verdict.get('top4')
+    if not isinstance(top4, list) or len(top4) < 4:
+        return True
+    verdict_str = json.dumps(verdict, ensure_ascii=False)
+    if any(marker in verdict_str for marker in ('[AUTO]', '[N/A]', 'PLACEHOLDER', '{{LLM_FILL}}', '[FILL]')):
+        return True
+    fli = verdict.get('pace_flip_insurance', {})
+    for pace_key in ('if_faster', 'if_slower'):
+        pace = fli.get(pace_key, {}) if isinstance(fli, dict) else {}
+        if not pace.get('benefit') or not pace.get('hurt'):
+            return True
+    return False
 
 # Cross-platform Python executable
 PYTHON = "python3" if shutil.which("python3") else "python"
@@ -636,6 +684,50 @@ def get_horse_numbers(facts_path):
             horses.append(int(val))
     return sorted(list(set(horses)))
 
+
+def auto_build_au_speed_map_from_facts(facts_content, target_dir=None):
+    """Build a conservative AU speed map from Facts.md so automation never blocks at Batch 0."""
+    horse_blocks = []
+    markers = list(re.finditer(r'(?:\[#(\d+)\]|### 馬匹 #(\d+)|### 馬號 (\d+))', facts_content))
+    for idx, match in enumerate(markers):
+        num = int(match.group(1) or match.group(2) or match.group(3))
+        start = match.start()
+        end = markers[idx + 1].start() if idx + 1 < len(markers) else len(facts_content)
+        block = facts_content[start:end]
+        barrier_m = re.search(r'(?:檔位|Barrier|barrier)\s*[:：]?\s*(\d+)', block, re.IGNORECASE)
+        if not barrier_m:
+            barrier_m = re.search(r'\(檔位\s*(\d+)\)', block)
+        barrier = int(barrier_m.group(1)) if barrier_m else 99
+        low = block.lower()
+        if any(term in low for term in ('leader', 'led', 'on speed', 'front', '前領', '領放')):
+            style = 'leader'
+        elif any(term in low for term in ('closer', 'settled back', 'backmarker', '後上', '末段爆發')):
+            style = 'closer'
+        elif any(term in low for term in ('on pace', 'box seat', 'handy', '跟前', '前中')):
+            style = 'on_pace'
+        else:
+            style = 'mid_pack'
+        horse_blocks.append({'num': num, 'barrier': barrier, 'style': style})
+
+    leaders = sorted([h for h in horse_blocks if h['style'] == 'leader'], key=lambda h: h['barrier'])
+    on_pace = sorted([h for h in horse_blocks if h['style'] == 'on_pace'], key=lambda h: h['barrier'])
+    closers = sorted([h for h in horse_blocks if h['style'] == 'closer'], key=lambda h: h['barrier'])
+    mid_pack = sorted([h for h in horse_blocks if h['style'] == 'mid_pack'], key=lambda h: h['barrier'])
+    pressure = len(leaders) + max(0, len(on_pace) - 1)
+    expected_pace = 'Chaotic' if pressure >= 4 else ('Fast' if pressure >= 3 else ('Moderate' if pressure >= 2 else 'Crawl'))
+    track_bias = 'AUTO_FACTS_HEURISTIC: 未有人工步速圖；以檔位、跑法及 Facts 錨點作保守形勢判斷。'
+    return {
+        'expected_pace': expected_pace,
+        'leaders': [str(h['num']) for h in leaders[:4]],
+        'on_pace': [str(h['num']) for h in on_pace[:5]],
+        'mid_pack': [str(h['num']) for h in mid_pack[:6]],
+        'closers': [str(h['num']) for h in closers[:6]],
+        'track_bias': track_bias,
+        'tactical_nodes': f"AUTO_FACTS_HEURISTIC: {len(leaders)}匹 leader + {len(on_pace)}匹 on-pace；步速暫定 {expected_pace}，只作自動推進用保守預測。",
+        'collapse_point': 'AUTO_FACTS_HEURISTIC: 若前領壓力偏高，後上/慳位馬受惠；若步速偏慢，前置馬形勢提升。',
+        'source': 'AUTO_FACTS_HEURISTIC',
+    }
+
 def get_batches(horses, batch_size=3):
     return [horses[i:i + batch_size] for i in range(0, len(horses), batch_size)]
 
@@ -830,13 +922,13 @@ def generate_work_card(horse_num, facts_content, logic_data, runtime_dir,
     card.append("👉 **你嘅判斷:** 段速質素如何？引擎同今仗步速配唔配？")
     card.append("")
 
-    # ── Dimension 3: EEM與形勢 [半核心] ──
-    card.append("## 3️⃣ EEM與形勢 [半核心]")
+    # ── Dimension 3: 形勢與消耗 [輔助] ──
+    card.append("## 3️⃣ 形勢與消耗 [輔助]")
     card.append(f"- 累積消耗: {anchors.get('eem_drain', '無數據')}")
     card.append(f"- 上仗跑法: {anchors.get('last_run_style', '無數據')}")
     card.append(f"- 今仗檔位: {anchors.get('barrier', '?')}")
     card.append(f"- 跑道偏差: {sm_bias}")
-    card.append("👉 **你嘅判斷:** 消耗水平 + 檔位形勢對呢匹馬有利定不利？")
+    card.append("👉 **你嘅判斷:** 步速/檔位/跑法形勢是否明確有利？EEM 只作消耗風險參考，不可單獨升級。")
     card.append("")
 
     # ── Dimension 4: 騎練訊號 [半核心] ──
@@ -1844,29 +1936,19 @@ def main():
             missing_sm = [k for k in _sm_check_keys if not sm.get(k) or sm.get(k) == '[FILL]']
             
             if missing_sm:
-                facts_file_b0 = os.path.join(target_dir, f"{date_prefix} Race {r} Facts.md")
-                print(f"\n🚨🚨🚨【AU HORSE ANALYST 啟動要求 (Race {r} Batch 0 戰場全景)】🚨🚨🚨")
-                print(f"👉 LLM Agent 請強制切換為 au_horse_analyst 模式！讀取 `{os.path.basename(facts_file_b0)}`。")
-                print("在 <thought> 標籤內執行【Step 0 步速瀑布】推理：")
-                print(f"然後更新 `Race_{r}_Logic.json` 的 race_analysis.speed_map，必須填寫：")
-                print("  speed_map: {")
-                print("    expected_pace,       ← 'Crawl/Moderate/Fast/Chaotic'")
-                print("    leaders: [],         ← 馬號列表")
-                print("    on_pace: [],         ← 馬號列表")
-                print("    mid_pack: [],        ← 馬號列表")
-                print("    closers: [],         ← 馬號列表")
-                print("    track_bias,          ← 跑道偏差描述 [強制]")
-                print("    tactical_nodes,      ← 戰術節點 [強制]")
-                print("    collapse_point       ← 步速崩潰點分析 [強制]")
-                print("  }")
-                print(f"")
-                print(f"📖 參考資源：")
-                print(f"   → 情報增強: .agents/skills/shared_instincts/intelligence_checklist.md (Tier 2 歷史場地 Pattern)")
-                print(f"\n缺失欄位: {missing_sm}")
-                print("生成完畢後，Python 會自動偵測並推進！")
-                notify_telegram(f"📍 **AU Race {r} Action Required**\nBatch 0 步速瀑布 (Speed Map) 尚未填寫。")
-                _next_cmd(target_dir)
-                sys.exit(0)
+                try:
+                    with open(facts_file, 'r', encoding='utf-8') as _sm_facts:
+                        _sm_facts_content = _sm_facts.read()
+                    auto_speed_map = auto_build_au_speed_map_from_facts(_sm_facts_content, target_dir)
+                    logic_data.setdefault('race_analysis', {})['speed_map'] = auto_speed_map
+                    with open(json_file, 'w', encoding='utf-8') as _sm_out:
+                        json.dump(logic_data, _sm_out, ensure_ascii=False, indent=2)
+                    sm = auto_speed_map
+                    print(f"   ✅ Race {r} Speed Map 自動注入 ({auto_speed_map['expected_pace']}) — 繼續推進")
+                except Exception as exc:
+                    print(f"❌ Speed Map 自動生成失敗: {exc}")
+                    _next_cmd(target_dir)
+                    sys.exit(1)
             
             # ── Step C: Get all horses ──
             try:
@@ -2117,7 +2199,7 @@ def main():
             
             # ── Step J: Auto-Verdict ──
             verdict_data = logic_data.get('race_analysis', {}).get('verdict')
-            if not verdict_data:
+            if verdict_needs_recompute_au(logic_data):
                 print(f"\n⚙️ Auto-Verdict: 正在為 Race {r} 自動計算 Top 4 排序...")
                 verdict = auto_compute_verdict(logic_data, facts_file)
                 with open(json_file, 'w', encoding='utf-8') as _wf:

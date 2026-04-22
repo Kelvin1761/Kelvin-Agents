@@ -63,7 +63,7 @@ GRADE_ORDER = ['S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+
 DIMENSION_TYPES = {
     'stability':          'core',
     'sectional':          'core',
-    'eem':                'semi_core',
+    'eem':                'auxiliary',
     'trainer_signal':     'semi_core',
     'scenario':           'auxiliary',
     'distance_freshness': 'auxiliary',
@@ -74,7 +74,7 @@ DIMENSION_TYPES = {
 DIMENSION_LABELS = {
     'stability':          ('位置穩定性', '核心'),
     'sectional':          ('段速質量', '核心'),
-    'eem':                ('EEM 潛力', '半核心'),
+    'eem':                ('形勢與消耗', '輔助'),
     'trainer_signal':     ('練馬師訊號', '半核心'),
     'scenario':           ('情境適配', '輔助'),
     'distance_freshness': ('路程/新鮮度', '輔助'),
@@ -166,10 +166,6 @@ def lookup_base_grade(c: dict) -> tuple:
 
 def apply_core_constraint(grade: str, counts: dict, dims: dict) -> tuple:
     if not counts['has_core_weak']:
-        return grade, ''
-    if dims.get('sectional', '').strip() == '✅' and dims.get('eem', '').strip() == '✅':
-        if grade_idx(grade) < grade_idx('A-'):
-            return 'A-', '核心❌但段速✅+EEM✅豁免 → 封頂A-'
         return grade, ''
     if grade_idx(grade) < grade_idx('B+'):
         return 'B+', '核心防護牆: 核心❌ → 封頂B+'
@@ -308,11 +304,10 @@ def apply_overrides(grade: str, horse: dict, counts: dict, dims: dict, ctx: dict
     # 6. Class override
     sec = dims.get('sectional', '').strip()
     cls = dims.get('class_advantage', '').strip()
-    eem = dims.get('eem', '').strip()
-    if sec == '✅' and (cls == '✅' or eem == '✅'):
+    if sec == '✅' and cls == '✅':
         if grade_idx(grade) > grade_idx('B'):
             grade = 'B'
-            notes.append('級數首選保底: 段速✅+級數/EEM✅ → 保底B')
+            notes.append('級數首選保底: 段速✅+級數✅ → 保底B')
     
     # 7. Track specialist floor
     if horse.get('same_venue_dist_wins', 0) >= 5:

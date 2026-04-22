@@ -279,14 +279,17 @@ def generate_horse_section(horse_idx, h_fact, h_logic):
     # ── Calculate with rating_engine_v2 (qualitative) ──
     matrix_keys_map = {
         "狀態與穩定性": "core", "段速與引擎": "core",
-        "EEM與形勢": "semi", "騎練訊號": "semi",
+        "EEM與形勢": "aux", "騎練訊號": "semi",
         "級數與負重": "aux", "場地適性": "aux", 
         "賽績線": "aux", "裝備與距離": "aux",
     }
     m_data = h_logic.get('matrix', {})
     core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(m_data, matrix_keys_map)
     
-    b_grade = compute_base_grade(core_pass, semi_pass, aux_pass, core_fail, total_fail, matrix_dims=m_data)
+    b_grade = compute_base_grade(
+        core_pass, semi_pass, aux_pass, core_fail, total_fail,
+        matrix_dims=m_data, eem_key='__eem_disabled__'
+    )
     w_score = compute_weighted_score(core_pass, semi_pass, aux_pass, core_fail, total_fail)
     
     ft = h_logic.get('fine_tune', {})
@@ -381,7 +384,7 @@ def generate_horse_section(horse_idx, h_fact, h_logic):
     matrix_keys = [
         ("狀態與穩定性", "核心"),
         ("段速與引擎",   "核心"),
-        ("EEM與形勢",    "半核心"),
+        ("EEM與形勢",    "輔助"),
         ("騎練訊號",     "半核心"),
         ("級數與負重",   "輔助"),
         ("場地適性",     "輔助"),
@@ -460,14 +463,17 @@ def build_verdict(json_data, facts_horses):
     def compute_au_grade(h_obj):
         matrix_keys_map = {
             "狀態與穩定性": "core", "段速與引擎": "core",
-            "EEM與形勢": "semi", "騎練訊號": "semi",
+            "EEM與形勢": "aux", "騎練訊號": "semi",
             "級數與負重": "aux", "場地適性": "aux", 
             "賽績線": "aux", "裝備與距離": "aux",
         }
         m_data = h_obj.get('matrix', {})
         core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(m_data, matrix_keys_map)
         
-        b_grade = compute_base_grade(core_pass, semi_pass, aux_pass, core_fail, total_fail, matrix_dims=m_data)
+        b_grade = compute_base_grade(
+            core_pass, semi_pass, aux_pass, core_fail, total_fail,
+            matrix_dims=m_data, eem_key='__eem_disabled__'
+        )
         w_score = compute_weighted_score(core_pass, semi_pass, aux_pass, core_fail, total_fail)
         
         ft = h_obj.get('fine_tune', {})
@@ -607,7 +613,7 @@ def main():
     # ── Compute grades and write back to JSON ──
     matrix_keys_map = {
         "狀態與穩定性": "core", "段速與引擎": "core",
-        "EEM與形勢": "semi", "騎練訊號": "semi",
+        "EEM與形勢": "aux", "騎練訊號": "semi",
         "級數與負重": "aux", "場地適性": "aux", 
         "賽績線": "aux", "裝備與距離": "aux",
     }
@@ -615,7 +621,10 @@ def main():
     for h_key, h_logic in horses_logic_dict.items():
         m_data = h_logic.get('matrix', {})
         core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(m_data, matrix_keys_map)
-        b_grade = compute_base_grade(core_pass, semi_pass, aux_pass, core_fail, total_fail, matrix_dims=m_data)
+        b_grade = compute_base_grade(
+            core_pass, semi_pass, aux_pass, core_fail, total_fail,
+            matrix_dims=m_data, eem_key='__eem_disabled__'
+        )
         ft = h_logic.get('fine_tune', {})
         ft_dir = ft.get('direction', '無') if isinstance(ft, dict) else str(ft)
         f_grade = apply_fine_tune(b_grade, ft_dir)
@@ -648,4 +657,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

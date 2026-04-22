@@ -25,7 +25,7 @@ except ImportError:
 
 HKJC_MATRIX_SCHEMA = {
     "stability": "core", "speed_mass": "core",
-    "eem": "semi", "trainer_jockey": "semi",
+    "eem": "aux", "trainer_jockey": "semi",
     "scenario": "aux", "freshness": "aux",
     "formline": "aux", "class_advantage": "aux",
 }
@@ -38,6 +38,7 @@ _ZH_EN_MATRIX_MAP = {
     "狀態與穩定性": "stability",
     "段速與引擎": "speed_mass",
     "EEM與形勢": "eem",
+    "形勢與消耗": "eem",
     "騎練訊號": "trainer_jockey",
     "級數與負重": "class_advantage",
     "場地適性": "scenario",
@@ -74,10 +75,12 @@ def auto_compute_verdict_hkjc(logic_data, facts_path):
         ft_dir = ft.get('direction', '無') if isinstance(ft, dict) else str(ft)
         f_grade = apply_fine_tune(b_grade, ft_dir)
         grade_i = grade_sort_index(f_grade)
-        graded.append((h_num, h_obj.get('horse_name', ''), f_grade, grade_i))
+        tick_count = _count_matrix_ticks(m_data)
+        double_ticks = _count_matrix_double_ticks(m_data)
+        graded.append((h_num, h_obj.get('horse_name', ''), f_grade, grade_i, tick_count, double_ticks))
     
-    # Sort by grade (lower index = better)
-    graded.sort(key=lambda x: (x[3], int(x[0]) if x[0].isdigit() else 999))
+    # Sort by grade, then signal strength, then horse number.
+    graded.sort(key=lambda x: (x[3], -x[4], -x[5], int(x[0]) if str(x[0]).isdigit() else 999))
     top4 = graded[:4]
     
     # Auto pace_flip_insurance from speed_map
@@ -100,21 +103,79 @@ def auto_compute_verdict_hkjc(logic_data, facts_path):
     if closer_names:
         worst_closer = list(closer_names.items())[-1]
         slower_hurt = f"{worst_closer[0]}號 {worst_closer[1]}"
+    if top4:
+        first = top4[0]
+        second = top4[1] if len(top4) > 1 else top4[0]
+        faster_benefit = faster_benefit or f"{first[0]}號 {first[1]}"
+        faster_hurt = faster_hurt or f"{second[0]}號 {second[1]}"
+        slower_benefit = slower_benefit or f"{first[0]}號 {first[1]}"
+        slower_hurt = slower_hurt or f"{second[0]}號 {second[1]}"
+
+    top_grade = top4[0][2] if top4 else 'C'
+    confidence = '高' if top_grade in ('S', 'S-', 'A+', 'A') else ('中' if top_grade in ('A-', 'B+') else '低')
+    pace_label = speed_map.get('predicted_pace') or speed_map.get('expected_pace') or 'Moderate'
+    track_bias = speed_map.get('track_bias') or '以自動形勢圖作保守判斷'
     
     verdict = {
         'top4': [
             {'horse_number': str(h[0]), 'horse_name': h[1], 'grade': h[2]}
             for h in top4
         ],
-        'confidence': '[AUTO]',
+        'confidence': confidence,
+        'track_scenario': f"{pace_label} pace；{track_bias}",
+        'key_variables': '步速是否如預期、內外檔形勢、熱門馬能否避開早段消耗',
         'pace_flip_insurance': {
-            'if_faster': {'benefit': faster_benefit or '[AUTO]', 'hurt': faster_hurt or '[AUTO]'},
-            'if_slower': {'benefit': slower_benefit or '[AUTO]', 'hurt': slower_hurt or '[AUTO]'}
+            'if_faster': {'benefit': faster_benefit or 'Top 4 中具末段優勢馬', 'hurt': faster_hurt or '前置高消耗馬'},
+            'if_slower': {'benefit': slower_benefit or '前置/內檔馬', 'hurt': slower_hurt or '後上追勢馬'}
+        },
+        'emergency_brake': '若臨場退出、場地突然變化或步速圖與預期完全相反，需重跑 Orchestrator 重新編譯。',
+        'blind_spots': {
+            'sectionals': '段速由 Facts 錨點與矩陣綜合，未以單一 L400 直接定勝負。',
+            'risk_management': 'Top 4 已按評級、✅數量與強信號排序，但仍須留意檔位及步速變化。',
+            'trials_illusion': '試閘/短樣本馬不可單靠印象升級。',
+            'age_risk': '老馬、頂磅及外檔馬已視為主要風險來源。',
+            'pace_collapse_darkhorse': faster_benefit or '未有明確步速崩潰冷門'
         }
     }
     
     logic_data.setdefault('race_analysis', {})['verdict'] = verdict
     return verdict
+
+
+def _count_matrix_ticks(matrix_data):
+    count = 0
+    for item in (matrix_data or {}).values():
+        score = str(item.get('score', '') if isinstance(item, dict) else item)
+        if '✅' in score:
+            count += 1
+    return count
+
+
+def _count_matrix_double_ticks(matrix_data):
+    count = 0
+    for item in (matrix_data or {}).values():
+        score = str(item.get('score', '') if isinstance(item, dict) else item)
+        if '✅✅' in score:
+            count += 1
+    return count
+
+
+def verdict_needs_recompute(logic_data):
+    verdict = logic_data.get('race_analysis', {}).get('verdict')
+    if not isinstance(verdict, dict):
+        return True
+    top4 = verdict.get('top4')
+    if not isinstance(top4, list) or len(top4) < 4:
+        return True
+    verdict_str = json.dumps(verdict, ensure_ascii=False)
+    if any(marker in verdict_str for marker in ('[AUTO]', '[N/A]', 'PLACEHOLDER', '{{LLM_FILL}}', '[FILL]')):
+        return True
+    fli = verdict.get('pace_flip_insurance', {})
+    for pace_key in ('if_faster', 'if_slower'):
+        pace = fli.get(pace_key, {}) if isinstance(fli, dict) else {}
+        if not pace.get('benefit') or not pace.get('hurt'):
+            return True
+    return False
 
 # Cross-platform Python executable
 PYTHON = "python3" if shutil.which("python3") else "python"
@@ -942,6 +1003,113 @@ def get_horse_numbers(facts_file):
     horses = [int(m.group(1)) for m in horse_pattern.finditer(content)]
     return horses
 
+
+def _parse_num_list_from_speed_map_line(value):
+    return [int(x) for x in re.findall(r'\d+', value or '')]
+
+
+def parse_hkjc_speed_map_from_facts(facts_content):
+    """Parse the first-class Python-generated speed map block from Facts.md."""
+    m = re.search(
+        r'^###\s*🗺️\s*自動步速圖.*?(?=^###\s+馬號|\n={6,}|\Z)',
+        facts_content,
+        re.MULTILINE | re.DOTALL
+    )
+    if not m:
+        return {}
+    block = m.group(0)
+
+    def _field(name):
+        fm = re.search(rf'-\s*\*\*{re.escape(name)}:\*\*\s*(.+?)$', block, re.MULTILINE)
+        return fm.group(1).strip() if fm else ''
+
+    speed_map = {
+        'predicted_pace': _field('predicted_pace'),
+        'leaders': _parse_num_list_from_speed_map_line(_field('leaders')),
+        'on_pace': _parse_num_list_from_speed_map_line(_field('on_pace')),
+        'mid_pack': _parse_num_list_from_speed_map_line(_field('mid_pack')),
+        'closers': _parse_num_list_from_speed_map_line(_field('closers')),
+        'track_bias': _field('track_bias'),
+        'tactical_nodes': _field('tactical_nodes'),
+        'collapse_point': _field('collapse_point'),
+        'source': _field('source') or 'FACTS_SPEED_MODEL',
+    }
+    required = ('predicted_pace', 'track_bias', 'tactical_nodes', 'collapse_point')
+    if not all(speed_map.get(k) for k in required):
+        return {}
+    return speed_map
+
+
+def auto_build_hkjc_speed_map_from_facts(facts_content, target_dir=None):
+    """Build a conservative HKJC speed map from Facts.md so automation never blocks at Batch 0."""
+    generated = parse_hkjc_speed_map_from_facts(facts_content)
+    if generated:
+        return generated
+
+    horse_blocks = []
+    for match in re.finditer(r'^### 馬號 (\d+) —', facts_content, re.MULTILINE):
+        start = match.start()
+        next_match = re.search(r'^### 馬號 \d+ —', facts_content[match.end():], re.MULTILINE)
+        end = match.end() + next_match.start() if next_match else len(facts_content)
+        block = facts_content[start:end]
+        num = int(match.group(1))
+        barrier_m = re.search(r'檔位:\s*(\d+)', block)
+        barrier = int(barrier_m.group(1)) if barrier_m else 99
+        low = block.lower()
+        if any(term.lower() in low for term in ('type a', '前領', '領放', '放頭', '早段搶前')):
+            style = 'leader'
+        elif any(term.lower() in low for term in ('type b', '後上', '末段爆發', '追', '大後上')):
+            style = 'closer'
+        elif any(term.lower() in low for term in ('跟前', '前中', 'on pace', 'box seat')):
+            style = 'on_pace'
+        else:
+            style = 'mid_pack'
+        horse_blocks.append({'num': num, 'barrier': barrier, 'style': style})
+
+    leaders = sorted([h for h in horse_blocks if h['style'] == 'leader'], key=lambda h: h['barrier'])
+    on_pace = sorted([h for h in horse_blocks if h['style'] == 'on_pace'], key=lambda h: h['barrier'])
+    closers = sorted([h for h in horse_blocks if h['style'] == 'closer'], key=lambda h: h['barrier'])
+    mid_pack = sorted([h for h in horse_blocks if h['style'] == 'mid_pack'], key=lambda h: h['barrier'])
+
+    pressure = len(leaders) + max(0, len(on_pace) - 1)
+    if pressure >= 4:
+        predicted_pace = 'Chaotic'
+    elif pressure >= 3:
+        predicted_pace = 'Fast'
+    elif pressure >= 2:
+        predicted_pace = 'Moderate'
+    else:
+        predicted_pace = 'Crawl'
+
+    track_bias = 'AUTO_FACTS_HEURISTIC: 未有人工步速圖；以檔位、跑法及 Facts 錨點作保守形勢判斷。'
+    if target_dir:
+        mip = os.path.join(target_dir, '_Meeting_Intelligence_Package.md')
+        if os.path.exists(mip):
+            try:
+                mip_text = open(mip, 'r', encoding='utf-8').read()
+                for line in mip_text.splitlines():
+                    if any(term in line for term in ('偏差', 'bias', '欄', 'rail', 'Going', '場地')):
+                        track_bias = f"AUTO_FACTS_HEURISTIC + MIP: {line.strip()[:160]}"
+                        break
+            except OSError:
+                pass
+
+    leader_nums = [str(h['num']) for h in leaders[:4]]
+    on_pace_nums = [str(h['num']) for h in on_pace[:5]]
+    mid_nums = [str(h['num']) for h in mid_pack[:6]]
+    closer_nums = [str(h['num']) for h in closers[:6]]
+    return {
+        'predicted_pace': predicted_pace,
+        'leaders': leader_nums,
+        'on_pace': on_pace_nums,
+        'mid_pack': mid_nums,
+        'closers': closer_nums,
+        'track_bias': track_bias,
+        'tactical_nodes': f"AUTO_FACTS_HEURISTIC: {len(leader_nums)}匹前領 + {len(on_pace_nums)}匹跟前；步速暫定 {predicted_pace}，只作自動推進用保守預測。",
+        'collapse_point': 'AUTO_FACTS_HEURISTIC: 若前領數量≥3或臨場偏快，後上/內檔慳位馬受惠；若步速變慢，前置馬形勢提升。',
+        'source': 'AUTO_FACTS_HEURISTIC',
+    }
+
 def get_batches(horses, size=3):
     return [horses[i:i + size] for i in range(0, len(horses), size)]
 
@@ -1146,14 +1314,14 @@ def generate_hkjc_work_card(horse_num, facts_content, logic_data, runtime_dir,
     card.append("👉 **你嘅判斷:** 段速質素如何？引擎同今仗步速配唔配？")
     card.append("")
 
-    card.append("## 3️⃣ EEM與形勢 [半核心]")
+    card.append("## 3️⃣ 形勢與消耗 [輔助]")
     card.append(f"- 累積消耗: {anchors.get('eem_drain', '無數據')}")
     card.append(f"- 今仗檔位: {anchors.get('barrier', '?')}")
     draw_data = load_draw_stats_for_workcard(race_num, int(anchors.get('barrier', 0)))
     if draw_data:
         card.append(f"- 📊 檔位判定: {draw_data.get('verdict', '?')} (勝率{draw_data.get('win_pct', '?')}% | 入Q率{draw_data.get('quinella_pct', '?')}% | 上名率{draw_data.get('place_pct', '?')}%)")
     card.append(f"- 跑道偏差: {sm_bias}")
-    card.append("👉 **你嘅判斷:** 消耗水平 + 檔位形勢？")
+    card.append("👉 **你嘅判斷:** 步速/檔位/跑法形勢是否明確有利？EEM 只作消耗風險參考，不可單獨升級。")
     card.append("")
 
     card.append("## 4️⃣ 騎練訊號 [半核心]")
@@ -2119,38 +2287,45 @@ def main():
             if not os.path.exists(logic_json):
                 race_class = "[FILL]"
                 race_distance = "[FILL]"
+                facts_content_for_init = ""
                 try:
                     with open(facts_path, 'r', encoding='utf-8') as _fc:
-                        facts_content = _fc.read()
-                    m = re.search(r'場地:\s*([^|]*?)\s*\|\s*距離:\s*([^|]*?)\s*\|\s*班次:\s*([^\n]+)', facts_content)
+                        facts_content_for_init = _fc.read()
+                    m = re.search(r'場地:\s*([^|]*?)\s*\|\s*距離:\s*([^|]*?)\s*\|\s*班次:\s*([^\n]+)', facts_content_for_init)
                     if m:
                         race_distance = m.group(2).strip()
                         race_class = m.group(3).strip()
                 except Exception:
                     pass
+
+                try:
+                    initial_speed_map = auto_build_hkjc_speed_map_from_facts(facts_content_for_init, target_dir)
+                except Exception:
+                    initial_speed_map = {
+                        "predicted_pace": "[FILL]",
+                        "leaders": [],
+                        "on_pace": [],
+                        "mid_pack": [],
+                        "closers": [],
+                        "track_bias": "[FILL]",
+                        "tactical_nodes": "[FILL]",
+                        "collapse_point": "[FILL]"
+                    }
                 
                 initial_json = {
                     "race_analysis": {
                         "race_number": r,
                         "race_class": race_class,
                         "distance": race_distance,
-                        "speed_map": {
-                            "predicted_pace": "[FILL]",
-                            "leaders": [],
-                            "on_pace": [],
-                            "mid_pack": [],
-                            "closers": [],
-                            "track_bias": "[FILL]",
-                            "tactical_nodes": "[FILL]",
-                            "collapse_point": "[FILL]"
-                        }
+                        "speed_map": initial_speed_map
                     },
                     "horses": {}
                 }
                 
                 with open(logic_json, 'w', encoding='utf-8') as wf:
                     json.dump(initial_json, wf, ensure_ascii=False, indent=2)
-                print(f"   ✅ 已自動建立 `{os.path.basename(logic_json)}` 骨架 ({race_class} / {race_distance})")
+                sm_source = initial_json["race_analysis"]["speed_map"].get("source", "PENDING")
+                print(f"   ✅ 已自動建立 `{os.path.basename(logic_json)}` 骨架 ({race_class} / {race_distance}) + Speed Map ({sm_source})")
             
             # ── Step B: Check Speed Map ──
             try:
@@ -2166,45 +2341,19 @@ def main():
             _still_missing_sm = [k for k in _sm_check_keys if not speed_map.get(k) or speed_map.get(k) == '[FILL]']
             
             if _still_missing_sm or '[FILL]' in speed_map_str:
-                print(f"\n{'='*60}")
-                print(f"📍 Race {r} — 步速瀑布 (Speed Map) 待填寫")
-                print(f"{'='*60}")
-                print(f"")
-                print(f"👉 請閱讀 `{os.path.basename(facts_path)}`，然後填入 `{os.path.basename(logic_json)}` 嘅 speed_map：")
-                print(f"   → predicted_pace: 'Crawl' / 'Moderate' / 'Fast' / 'Chaotic'")
-                print(f"   → leaders / on_pace / mid_pack / closers: 馬號列表 (字串)")
-                print(f"   → track_bias: 跑道偏差描述")
-                print(f"   → tactical_nodes: 戰術節點分析")
-                print(f"   → collapse_point: 步速崩潰點分析")
-                print(f"")
-                print(f"📖 參考資源：")
-                print(f"   → 情報增強: .agents/skills/shared_instincts/intelligence_checklist.md (Tier 2 歷史場地 Pattern)")
-                print(f"")
-                notify_telegram(f"📍 **HKJC Race {r} Action Required**\n步速瀑布 (Speed Map) 尚未填寫，請查閱全景資訊。")
-                
-                # ── V11: File-Watch Loop for Speed Map (no more sys.exit!) ──
-                print(f"\n👀 Python 正在監控 Speed Map... (每 3 秒檢查)")
-                _sm_start = time.time()
-                _SM_TIMEOUT = 45 * 60  # 45 minutes
-                while True:
-                    time.sleep(3)
-                    if time.time() - _sm_start > _SM_TIMEOUT:
-                        print(f"⏰ Speed Map 填寫超時！請檢查後重跑。")
-                        _next_cmd(target_dir)
-                        sys.exit(1)
-                    try:
-                        with open(logic_json, 'r', encoding='utf-8') as _smf:
-                            _sm_data_check = json.load(_smf)
-                        _sm_now = _sm_data_check.get('race_analysis', {}).get('speed_map', {})
-                        _sm_now_missing = [k for k in _sm_check_keys if not _sm_now.get(k) or _sm_now.get(k) == '[FILL]']
-                        _sm_now_str = json.dumps(_sm_now, ensure_ascii=False)
-                        if not _sm_now_missing and '[FILL]' not in _sm_now_str:
-                            print(f"   ✅ Speed Map 已填寫完畢！自動推進...")
-                            logic_data = _sm_data_check
-                            speed_map = _sm_now
-                            break
-                    except (json.JSONDecodeError, OSError):
-                        continue
+                try:
+                    with open(facts_path, 'r', encoding='utf-8') as _sm_facts:
+                        _sm_facts_content = _sm_facts.read()
+                    auto_speed_map = auto_build_hkjc_speed_map_from_facts(_sm_facts_content, target_dir)
+                    logic_data.setdefault('race_analysis', {})['speed_map'] = auto_speed_map
+                    with open(logic_json, 'w', encoding='utf-8') as _sm_out:
+                        json.dump(logic_data, _sm_out, ensure_ascii=False, indent=2)
+                    speed_map = auto_speed_map
+                    print(f"   ✅ Race {r} Speed Map 自動注入 ({auto_speed_map['predicted_pace']}) — 繼續推進")
+                except Exception as exc:
+                    print(f"❌ Speed Map 自動生成失敗: {exc}")
+                    _next_cmd(target_dir)
+                    sys.exit(1)
             
             # ── Step C: Read facts content ──
             try:
@@ -2441,7 +2590,7 @@ def main():
                 sys.exit(1)
             
             # ── Step H: Auto-Verdict ──
-            if not logic_data.get('race_analysis', {}).get('verdict'):
+            if verdict_needs_recompute(logic_data):
                 print(f"\n⚙️ Auto-Verdict: 正在為 Race {r} 自動計算 Top 4 排序...")
                 verdict = auto_compute_verdict_hkjc(logic_data, facts_path)
                 with open(logic_json, 'w', encoding='utf-8') as _wf:
