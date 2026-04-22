@@ -6,13 +6,12 @@
 
 | 優先級 | 方法 | 適用場景 | 速度 |
 |:---|:---|:---|:---|
-| **1 (首選)** | `read_url_content` | 靜態頁面(Racenet 賽果/賽卡、Racing.com 場地狀態等 server-rendered 頁面) | ⚡ 極快 |
-| **1B (Racenet 專用)** | `python .agents/skills/au_racing/claw_racenet_results.py --url "<URL>" --output_dir "<DIR>" --json` | **Racenet 賽果提取** — 繞過 Cloudflare 403,使用 curl_cffi + Playwright Hybrid SSR State Extraction。輸出 Reflector 專用格式 + Full MD + JSON | ⚡ 快 |
-| **1C (Racenet 專用)** | `python .agents/skills/au_racing/claw_racenet_scraper.py "<URL>" --output_dir "<DIR>"` | **Racenet 賽卡/Form Guide 提取** — 同上架構 | ⚡ 快 |
-| **2** | `search_web` | 動態查詢(騎練組合勝率、場地偏差、Stewards Report 等需搜索引擎彙整的數據) | ⚡ 快 |
-| **3 (最後手段)** | `MCP Playwright (mcp_playwright_browser_*)` | 僅當以上兩種方法均失敗**且**目標頁面需要 JavaScript 互動時使用。**必須使用 Lightpanda 無頭瀏覽器**,嚴禁 Chromium/Playwright。Lightpanda 實例必須保持持久化。 | 🐌 慢 |
+| **1 (Racenet 專用)** | `python3 .agents/skills/au_racing/claw_racenet_results.py --url "<URL>" --output_dir "<DIR>" --json`（Windows 或已配置環境可用 `python`）/ `au_race_extractor` | **Racenet 賽果、賽卡、Formguide** — 必須由 Python/curl_cffi/本地 Playwright 腳本處理 | ⚡ 快 |
+| **2** | `read_url_content` | 非 Racenet 靜態頁面、公開公告、Racing.com 場地狀態等 server-rendered 頁面 | ⚡ 極快 |
+| **3** | `search_web` | 動態查詢(騎練組合勝率、場地偏差、Stewards Report 等需搜索引擎彙整的數據) | ⚡ 快 |
+| **4 (最後手段)** | 人手提供數據 / 停止並報告缺口 | 若 Python/curl_cffi/Claw Code 仍失敗，停止自動抽取並要求用戶提供數據或稍後重試。**嚴禁使用 `browser_subagent`、MCP Playwright、`read_browser_page` 作為 pipeline 數據來源。** | — |
 
-**故障轉移規則:** 每層方法失敗時,自動嘗試下一層。若 `read_url_content` 返回 403 或內容不完整(如關鍵表格缺失),自動降級至 1B/1C Claw Code scraper。
+**故障轉移規則:** Racenet Racecard/Formguide/Results 一律先用 Python extractor / Claw Code。若失敗,停止自動抽取並通知 Wong Choi 或用戶補資料；不可降級至瀏覽器工具。非 Racenet 輔助資料才可由 `read_url_content` 降級至 `search_web`。
 
 ## 外部數據搜索指引
 

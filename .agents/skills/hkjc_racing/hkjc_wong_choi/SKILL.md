@@ -19,16 +19,17 @@ version: 4.0.0
 > 讀取一次後保留在記憶中，嚴禁每場賽事重複讀取。
 
 ## 跨平台執行規則
-- **Python 指令**: 使用 `python`（macOS 同 Windows 通用）。Orchestrator 內部已有 `shutil.which` 自動偵測。
+- **Python 指令**: macOS/Linux 優先使用 `python3`，若環境沒有 `python3` 則使用 `python`（常見於 Windows）。Orchestrator 內部已有 `shutil.which` 自動偵測後續 `NEXT_CMD`。
 - **臨時檔案**: 統一使用 workspace 內嘅 `.scratch/` 目錄或 `tempfile.gettempdir()`。
-- **Shell 語法**: 嚴禁使用 `cat <<EOF` heredoc 語法。改用 Python 腳本寫檔。
+- **Shell 語法**: 嚴禁使用 shell here-document 寫檔語法。改用既有 Python 腳本或 safe writer。
 - **Encoding**: 所有 `open()` 必須指定 `encoding='utf-8'`。
 
 ## 唯一動作
 收到任何賽事 URL 或指令後，你嘅**絕對第一且唯一動作**：
 ```bash
-python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <URL或資料夾>
+python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <URL或資料夾>
 ```
+> 若環境沒有 `python3`，改用 `python` 執行同一指令。
 **(重要提示：執行此指令時，必須使用 `run_command` 工具。)**
 
 ## 執行循環
@@ -62,7 +63,7 @@ python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <U
 ## Failure Protocol
 | 情況 | 動作 |
 |------|------|
-| `orchestrator.py` crash / Python error | 報告完整 error output，嘗試 `python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <目錄> --auto` 恢復 |
+| `orchestrator.py` crash / Python error | 報告完整 error output，嘗試用 Orchestrator stdout 顯示嘅 `NEXT_CMD` 恢復 |
 | 網絡中斷 / 數據擷取失敗 | 讀取 `.runtime/` 已存储狀態，通知用戶並嘗試重新執行 |
 | `[FILL]` 填寫失敗 3 次 | 停止，報告失敗欄位，詢問用戶介入 |
 | `.runtime/` 目錄不存在 | 執行 `mkdir .runtime` 後重試 |

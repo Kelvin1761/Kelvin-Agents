@@ -3,7 +3,16 @@
 > [!WARNING]
 > **故障轉移:** 搜索不到數據 → `N/A (數據不足)`,**嚴禁猜測**。
 
-### 必須搜索的 6 類輔助數據
+### MIP-first 補查規則
+
+當 HKJC Wong Choi 已提供 `_Meeting_Intelligence_Package.md` 或 Work Card 已包含天氣/場地/跑道偏差,該資料為 meeting-level 權威來源。Analyst **不得重複搜索**天氣、Going、跑道偏差等公共資料,以免浪費 context 或引入過期資訊。
+
+以下 6 類資料只係 **bounded fallback / horse-specific補查清單**：
+- Work Card 或 MIP 缺資料時才查。
+- 每類最多 3 次搜索；失敗即 `N/A (數據不足)`。
+- 優先查馬匹/騎練特定訊號,避免重查已由 Orchestrator 提供嘅公共場地資料。
+
+### 可補查的 6 類輔助數據
 
 > [!WARNING]
 > **賽季鎖定 (Season Lock):** 所有外部搜索必須附帶 `[Current Season]` 或 `[Today's Date]`,以確保回傳的是本季最新數據。嚴禁使用上賽季的跑道偏差或過期傷患報告。

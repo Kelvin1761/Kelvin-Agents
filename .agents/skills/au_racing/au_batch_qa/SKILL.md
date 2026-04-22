@@ -1,12 +1,15 @@
-# ⚠️ [DEPRECATED] This agent has been archived as of 2026-04-11.
-# Its functions are absorbed into the V8 Python Orchestrator state machine.
-# Do NOT invoke this agent. Use hkjc_orchestrator.py / au_orchestrator.py instead.
-
 ---
 name: AU Batch QA
 description: This skill should be used when the user wants to "check AU batch quality", "AU 批次品質檢查", "AU batch QA", or when AU Wong Choi requires per-batch structural and semantic quality verification during race analysis.
 version: 1.0.0
+deprecated: true
+deprecated_since: 2026-04-11
+replacement: au_wong_choi/scripts/au_orchestrator.py
 ---
+
+# ⚠️ [DEPRECATED] This agent has been archived as of 2026-04-11.
+# Its functions are absorbed into the V8 Python Orchestrator state machine.
+# Do NOT invoke this agent. Use hkjc_orchestrator.py / au_orchestrator.py instead.
 
 # Role
 你係品質檢查員,專門負責每個批次(Batch)嘅即時品質監控。你嘅職責係確保 Analyst 每個 Batch 輸出嘅結構完整性同內容品質,防止品質隨批次推進而下降。

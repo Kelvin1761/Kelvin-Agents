@@ -27,8 +27,8 @@
         <description>防止全自動化分析中途停機等待用戶指令。</description>
         <rules>
             1. 在所有 Batch (Batch 1 to N 及 Verdict Batch) 完成前，嚴禁輸出給用戶的普通文本回覆。
-            2. 連鎖寫入：每次 heredoc 寫檔通過後，如果還有剩餘馬匹，立即啟動下一個 tool call 生成下個 Batch，不可詢問「是否繼續」。
-            3. 回覆攔截器：在打算結束回應前自問「Analysis.md 入面有冇 🏆 Top 4 位置精選?」，若沒有則退回繼續執行。
+            2. 連鎖執行：每次完成 Orchestrator 指定 JSON 填寫後，如果還有剩餘馬匹，立即重跑 Orchestrator，不可詢問「是否繼續」。
+            3. 回覆攔截器：在打算結束回應前自問「Orchestrator 是否已輸出 SUCCESS 或 NEXT_CMD?」，若沒有則退回繼續執行。
         </rules>
     </directive>
 
@@ -48,18 +48,19 @@
         <description>禁止直接修改檔案內容，防止 Google Drive 雲端死鎖風險。嚴禁調用 write_to_file / replace_file_content。</description>
         <rules>
             1. ⚠️ 完全禁用：`write_to_file`, `replace_file_content`, `multi_replace_file_content`。
-            2. 唯一合法寫檔方式：Heredoc 生成 python 腳本寫入至 `/tmp`，再以 `safe_file_writer.py` 進行操作。
+            2. 合法寫檔方式：使用既有 Python 腳本或 `safe_file_writer.py` 原子寫入；嚴禁 shell heredoc。
         </rules>
         <implementation>
             <![CDATA[
             SAFE_WRITER=".agents/scripts/safe_file_writer.py"
 
             # 跨平台寫法 — 用 Python 生成 base64 並調用 safe_file_writer:
-            import subprocess, base64
+            import subprocess, base64, shutil
             content = "[你的分析內容 / 檔案內容]"
             encoded = base64.b64encode(content.encode('utf-8')).decode('utf-8')
+            PYTHON = "python3" if shutil.which("python3") else "python"
             subprocess.run([
-                'python', SAFE_WRITER,
+                PYTHON, SAFE_WRITER,
                 '--target', '{TARGET_DIR}/{FILE_NAME}',
                 '--mode', 'overwrite',
                 '--content', encoded

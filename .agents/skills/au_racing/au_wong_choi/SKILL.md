@@ -19,16 +19,17 @@ version: 4.0.0
 > 讀取一次後保留在記憶中，嚴禁每場賽事重複讀取。
 
 ## 跨平台執行規則
-- **Python 指令**: 使用 `python`（macOS 同 Windows 通用）。Orchestrator 內部已有 `shutil.which` 自動偵測。
+- **Python 指令**: 首次啟動必須使用當前系統可用嘅 Python launcher。macOS/Linux 優先用 `python3`；Windows/已配置環境可用 `python`。Orchestrator 啟動後會用 `shutil.which` 偵測並於 `NEXT_CMD` 印出正確 launcher，之後一律照抄 `NEXT_CMD`。
 - **臨時檔案**: 統一使用 workspace 內嘅 `.scratch/` 目錄或 `tempfile.gettempdir()`。
-- **Shell 語法**: 嚴禁使用 `cat <<EOF` heredoc 語法。改用 Python 腳本寫檔。
+- **Shell 語法**: 嚴禁使用 shell 多行重定向寫檔。改用 Python 腳本配合 `safe_file_writer.py`。
 - **Encoding**: 所有 `open()` 必須指定 `encoding='utf-8'`。
 
 ## 唯一動作
 收到任何 Racenet URL 或指令後，你嘅**絕對第一且唯一動作**：
 ```bash
-python .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "<URL或資料夾>"
+python3 .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "<URL或資料夾>"
 ```
+> Windows 或已配置 `python` launcher 嘅環境可將 `python3` 換成 `python`。若首次執行成功，後續必須使用 stdout 印出嘅 `NEXT_CMD`，唔好自行改 launcher。
 
 ## 執行循環
 1. 第一次執行 Orchestrator（無 `--auto`）→ 印賽日總結 → 等用戶確認
@@ -48,7 +49,7 @@ python .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "<URL或
 ## Failure Protocol
 | 情況 | 動作 |
 |------|------|
-| `au_orchestrator.py` crash / Python error | 報告完整 error output，嘗試 `python .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py <目錄> --auto` 恢復 |
+| `au_orchestrator.py` crash / Python error | 報告完整 error output，照 stdout 最後一行 `NEXT_CMD` 重跑；若無 `NEXT_CMD`，用可用 launcher 執行 `python3 .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py <目錄> --auto` |
 | 網絡中斷 / 數據擷取失敗 | 讀取 `.runtime/` 已存储狀態，通知用戶並嘗試重新執行 |
 | `[FILL]` 填寫失敗 3 次 | 停止，報告失敗欄位，詢問用戶介入 |
 | `.runtime/` 目錄不存在 | 執行 `mkdir .runtime` 後重試 |

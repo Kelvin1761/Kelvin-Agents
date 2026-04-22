@@ -27,8 +27,9 @@ skills: au_racing, betting_accountant
 
 收到任何 Racenet URL 或指令後，你嘅**絕對第一且唯一動作**：
 ```bash
-python .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "<URL或資料夾>"
+python3 .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "<URL或資料夾>"
 ```
+> Windows 或已配置 `python` launcher 嘅環境可將 `python3` 換成 `python`。首次成功後，一律照抄 Orchestrator stdout 嘅 `NEXT_CMD`。
 
 ## 執行循環
 
@@ -38,7 +39,7 @@ python .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "<URL或
 4. 重複直到 `🎉 [SUCCESS]` 出現
 
 > [!CAUTION]
-> **NEXT_CMD 協議：** Orchestrator 每次退出時都會印一行 `NEXT_CMD: python ...`。
+> **NEXT_CMD 協議：** Orchestrator 每次退出時都會印一行 `NEXT_CMD: python3 ...` 或 `NEXT_CMD: python ...`。
 > 你**必須**完成當前任務後立即執行該指令，**唔好問用戶**。
 
 ## 鐵律
@@ -56,7 +57,7 @@ python .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "<URL或
 Orchestrator 會自動呼叫以下子模組，你**唔需要手動讀取**：
 - `au_race_extractor` — 數據抽取 (Lightpanda / Playwright Fast Batch)
 - `au_horse_analyst` — 馬匹分析模板(`06_templates_core.md` / `06_templates_rules.md`)
-- `au_batch_qa` / `au_compliance` — QA 與合規
+- `.agents/scripts/completion_gate_v2.py` + Orchestrator 內置 QA — 編譯後合規與批次驗證
 - `au_racecourse_weather_prediction` — 天氣預測
 - `generate_meeting_intel.py` — 場地情報自動生成
 - `session_start_checklist.md` — Pre-flight 檢查（由 Orchestrator stdout 引導）
@@ -72,7 +73,7 @@ Orchestrator 會自動呼叫以下子模組，你**唔需要手動讀取**：
 
 | 情況 | 動作 |
 |------|------|
-| `au_orchestrator.py` crash / Python error | 報告完整 error output，嘗試 `python au_orchestrator.py --resume` 恢復 |
+| `au_orchestrator.py` crash / Python error | 報告完整 error output，照 stdout 最後一行 `NEXT_CMD` 重跑；若無 `NEXT_CMD`，用可用 launcher 執行 `python3 .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py <目錄> --auto` |
 | 網絡中斷 / 數據擷取失敗 | 讀取 `.runtime/` 已存储狀態，通知用戶並嘗試重新執行 |
 | `[FILL]` 填寫失敗 3 次 | 停止，報告失敗欄位，詢問用戶介入 |
 | `.runtime/` 目錄不存在 | 執行 `mkdir .runtime` 後重試 |

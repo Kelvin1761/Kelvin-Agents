@@ -4,26 +4,20 @@
 
 <engine_directives>
 
-    <directive name="P19V6_SAFE_WRITER_PROTOCOL" priority="CRITICAL">
-        <description>文件寫入防撞策略，防禦 Google Drive 鎖定漏洞。嚴禁調用 write_to_file 或 replace_file_content。</description>
+    <directive name="V11_ORCHESTRATOR_JSON_ONLY_PROTOCOL" priority="CRITICAL">
+        <description>HKJC Wong Choi V11 中,Analyst 不擁有最終報告寫入權。所有最終 Analysis.md 必須由 Orchestrator 編譯。</description>
         <rules>
-            1. 絕對禁用：`write_to_file`, `replace_file_content`, `multi_replace_file_content`，一律不准用。
-            2. 唯一合法寫檔方法：透過 `run_command` 利用 heredoc 建立 `/tmp` 檔案，然後 base64 傳入 safe_file_writer.py。
+            1. 絕對禁用：直接建立、覆寫、append 或修補 `Analysis.md`。
+            2. 絕對禁用：`write_to_file`, `replace_file_content`, `multi_replace_file_content`, shell heredoc 寫最終報告。
+            3. Wong Choi 調度時,唯一合法輸出係回填 Orchestrator 指定嘅 `Race_X_Logic.json` 欄位,或按 Work Card 明確要求輸出可合併嘅 JSON 片段。
+            4. 若 standalone 模式確實需要寫檔,必須使用 repo 既有 Python safe writer,並以 `python3` 優先、`python` fallback；不得使用 shell-only 語法。
         </rules>
         <implementation>
             <![CDATA[
-            SAFE_WRITER=".agents/scripts/safe_file_writer.py"
-
-            # 跨平台寫法 — 用 Python 生成 base64 並調用 safe_file_writer:
-            import subprocess, base64
-            content = "[你的分析內容]"
-            encoded = base64.b64encode(content.encode('utf-8')).decode('utf-8')
-            subprocess.run([
-                'python', SAFE_WRITER,
-                '--target', '{TARGET_DIR}/{ANALYSIS_FILE}',
-                '--mode', 'append',
-                '--content', encoded
-            ], check=True)
+            # Wong Choi V11 expected shape:
+            # - Read .runtime/Active_Horse_Context.md or the Work Card.
+            # - Fill only the requested horse fields in Race_X_Logic.json.
+            # - Re-run hkjc_orchestrator.py; Python compiles Analysis.md and runs completion_gate_v2.py.
             ]]>
         </implementation>
     </directive>
@@ -34,7 +28,7 @@
             1. 骨架複製法：嚴禁無中生有寫出馬匹分析，必須原封不動照抄 `08_templates_core.md` 中的 9 大 Emoji 標題。
             2. 自我點算：輸出完畢前，內心盤點是否有 9 個不同的標題，缺一不可。
             3. 字數硬性執行：S/A 級馬必須 ≥ 500字。B級 ≥ 350字。D級劣等馬至少需要數據解釋，不能一句帶過 (≥ 300字)。
-            4. `[FILL]` 零容忍：如果在生成的最終 markdown 裏發現 `[FILL]`、`{{LLM_FILL}}` 等佔位符，視為不及格，必須重寫補回。
+            4. `[FILL]` 零容忍：回填指定 JSON 欄位後,該馬已處理欄位不可殘留 `[FILL]`、`{{LLM_FILL}}` 等佔位符。
         </rules>
     </directive>
     
@@ -70,7 +64,7 @@
     <directive name="P37_BATCH_GENERATION_BAN" priority="CRITICAL">
         <description>禁止使用 Python for-loop 自動生成分析報告，防止 LLM 以泛泛之詞塞字過關。</description>
         <rules>
-            1. 絕對禁止用 Python script 批量生成分析報告：每場 `Analysis.md` 必須由 LLM 原生撰寫，禁止寫腳本 for-loop 自動灌入模板。
+            1. 絕對禁止用 Python script 批量生成分析內容：每匹馬嘅 `core_logic` / reasoning 必須由 LLM 根據該馬真實 Facts 原生撰寫,禁止寫腳本 for-loop 自動灌入模板。
             2. 嚴禁 Generic Filler：「數據正常」、「發揮水準」等沒有針對該場次具體歷史背景的廢話視為違規，必須具備「深度法醫分析」。
             3. 分工明確：Python 只負責抽數、排版與初級數學，所有「戰術推演、賽事法醫、風險定斷」的血肉必須由你原生生成。
         </rules>

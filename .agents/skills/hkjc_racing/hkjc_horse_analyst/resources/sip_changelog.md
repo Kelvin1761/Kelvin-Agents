@@ -13,7 +13,7 @@
 -->
 ### 2026-04-06 — SIP-ST44: 冷門馬訊號標準化 (Underhorse Signal Standardized Triggers)
 - **Changed:** 冷門馬訊號新增 7 項標準化觸發條件(≥2 項觸發即強制輸出），統一 Kelvin/Heison 引擎標準
-- **Target File:** `08_output_templates.md`
+- **Target File:** `08_templates_rules.md`
 - **Impact:** 所有 B+ 或以下馬匹均需按標準條件掃描冷門訊號
 - **Regression Check:** 若全場唯一放頭馬+底磅+配備變動仍無冷門訊號觸發 → SIP 未生效
 
@@ -164,4 +164,3 @@
 - **Impact:** 中長途賽全場最輕磅馬匹即使近績差亦會被冷門掃描捕捉
 - **Data Points:** R9 爆得美麗(117lb→1st 7.1x) + R6 竣誠駒(116lb→2nd 15x)
 - **Regression Check:** 若≥1650m全場最輕磅D/C級馬匹未被冷門掃描標記 → SIP 未生效
-

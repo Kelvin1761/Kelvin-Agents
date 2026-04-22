@@ -1,7 +1,8 @@
 
-## 基本結構自檢(精簡版 — 完整審核由合規 Agent 執行)
+## 基本結構自檢(精簡版 — 完整審核由 Orchestrator 執行)
 
-> **注意:** 完整嘅品質審核、SIP 合規驗證同自我改善機制已搬到 `HKJC Compliance Agent` (`hkjc_compliance/SKILL.md`)。
+> **注意:** 完整嘅品質審核、SIP 合規驗證同自我改善機制已搬到 HKJC Wong Choi V11 runtime:
+> `validate_batch_cross_horse`（Orchestrator 內置）+ `.agents/scripts/completion_gate_v2.py --domain hkjc`。
 > 此文件僅保留最基本嘅結構自檢,作為 Analyst 嘅「安全網」。
 
 ### 每批次結尾必檢(3 項)
@@ -13,4 +14,4 @@
 - [ ] 所有馬號齊全?冇遺漏任何馬匹?
 - [ ] CSV 輸出格式正確?
 
-> ⚠️ **CRITICAL**:呢個只係基本自保。Wong Choi 會喺每場分析完成後**強制調用** `HKJC Compliance Agent` 進行完整審核。Analyst 通過基本自檢 ≠ 通過合規審核。
+> ⚠️ **CRITICAL**:呢個只係基本自保。Wong Choi 會喺每場分析完成後**強制執行** `completion_gate_v2.py` 同 Orchestrator 內置批次交叉檢查。Analyst 通過基本自檢 ≠ 通過 Python 合規閘門。

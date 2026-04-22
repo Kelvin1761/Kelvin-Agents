@@ -5,7 +5,7 @@
 ## 🔀 Intent Router (意圖路由)
 當收到指令時，不論用戶是要開始新賽日、補回舊進度、或是修復報錯，**唯一的分析入口**皆為 `hkjc_orchestrator.py`。
 - 覆盤 / 賽果 / Result → 呼叫並讀取 `hkjc_reflector/SKILL.md`
-- 驗證 / Blind Test → 呼叫並讀取 `hkjc_reflector_validator/SKILL.md`
+- 驗證 / Blind Test → 呼叫並讀取 `hkjc_reflector/SKILL.md`（Reflector V2 已合併 validator 流程）
 - 分析 / Run → 強制進入下方 V8 Python State Machine (Orchestrator Loop)。
 
 ---
@@ -18,7 +18,9 @@
 
 ### Step 1: 觸發 Orchestrator (唯一行動)
 不論任何情況，請永遠第一時間執行：
-`python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <用戶提供的 URL 或是本地資料夾路徑>`
+`python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <用戶提供的 URL 或是本地資料夾路徑>`
+
+若環境沒有 `python3`，改用 `python` 執行同一指令。
 
 ### Step 2: 聽從 Stdout 的 State 任務指派
 執行後，Python 會根據資料夾狀態，直接以 `Exit Code 0` 向你印出目前處於哪一個 State，以及你需要填寫什麼。

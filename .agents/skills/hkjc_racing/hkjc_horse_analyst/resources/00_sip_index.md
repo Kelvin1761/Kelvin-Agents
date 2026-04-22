@@ -55,7 +55,7 @@
 | SIP-HV11 | 入位常客降級 | `06_rating_aggregation.md` Step 14.2B | 近4仗≥3仗前6但0三甲 → 穩定性➖+降半級 |
 | SIP-HV12 | 下行軌跡懲罰 | `06_rating_aggregation.md` Step 14.2B | 近3仗連續下滑 → 穩定性降一級 |
 | SIP-HV13 | 全場最輕磅中長途冷門 | `06_rating_aggregation.md` Step 14.2C | ≥1650m+全場最輕磅+近績差 → 冷門掃描觸發 |
-| SIP-HV14 | D級馬懶分析根因修正 | `08_output_templates.md` + `06_rating_aggregation.md` | 禁止預判D級+D級≥300字+完整8維度矩陣+D+級別引入 |
+| SIP-HV14 | D級馬懶分析根因修正 | `08_templates_core.md` + `06_rating_aggregation.md` | 禁止預判D級+D級≥300字+完整8維度矩陣+D+級別引入 |
 | SIP-HV15 | S-品質閘門 | `06_rating_aggregation.md` Step 14.2 | S-需通過微調零降級+風險≤1+場地經驗三重閘門 |
 | SIP-HV16 | HV B賽道慢步速偏差 | `10b_track_happy_valley.md` | B賽道+慢步速:檔1-5前置→情境✅;檔≥9後追→致命死檔 |
 | SIP-HV17 | 谷草磅差分級化 | `06_rating_aggregation.md` Step 14.3 | 15-17lb降半級/18-20lb封頂A-/≥21lb封頂B+,含距離修正 |
@@ -100,7 +100,7 @@
 | SIP-ST41 | 大熱崩潰壓力測試 | `06_rating_aggregation.md` Step 14.2F | 首選≥A+賠率≤5.0+風險因素→強制崩潰情境分析+Pick2≥B+ |
 | SIP-ST42 | 二班以上後追馬加分 | `06_rating_aggregation.md` Step 14.2G | ≤二班+1400m+後追成功≥2次+賽道利後追→情境輔助✅ |
 | SIP-ST43 | 跨場減分馬偵測 | `04_engine_corrections.md` Step 6 | 近3仗全谷草+轉沙田+降分≥10+底磅→跨場標記+情境升級 |
-| SIP-ST44 | 冷門馬訊號標準化 | `08_output_templates.md` | 統一冷門馬訊號觸發標準(7項條件≥2項→強制觸發) |
+| SIP-ST44 | 冷門馬訊號標準化 | `08_templates_rules.md` | 統一冷門馬訊號觸發標準(7項條件≥2項→強制觸發) |
 
 ## 資源模組
 

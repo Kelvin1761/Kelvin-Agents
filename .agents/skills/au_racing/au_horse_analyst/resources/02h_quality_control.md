@@ -15,7 +15,7 @@
 
 ## 1. 結構完整性 (Structural Integrity)
 
-- 每匹馬完整 5 區塊 x 13 子欄位輸出（⏱️🐴🔬⚡📋🔗🧭⚠️📊💡⭐ = 11 emoji 標題）
+- 每匹馬完整保留 9 個可見 section（⏱️📋🐴🔗🧭⚠️📊💡⭐）及 11 個語義錨點；🔬 段速與 ⚡ EEM 已整合入 📋 / 💡，不可用舊獨立標題要求打回
 - D 級馬零豁免：同 S 級馬使用相同骨架模板
 - 禁止 `[FILL]` 佔位符：若寫完嘅分析仍然包含 `[FILL]` → 立即補回
 - 🐴 馬匹剖析 5 項必填：班次負重 + 引擎距離 + 步態場地 + 配備意圖 + 人馬組合
@@ -57,7 +57,7 @@
 
 - **LOOP_CONTINUATION_MARKER：** 每個 batch 寫完後強制輸出繼續標記
 - **PREMATURE_STOP_GUARD：** 回覆用戶前檢查分析檔案是否有 🏆 Top 4
-- **Emoji 計數自檢：** 每匹馬寫完後數 emoji 標題 = 11 個。少於 11 個 = 壓縮咗
+- **Section 計數自檢：** 每匹馬寫完後確認 9 個可見 section 齊全，且核心邏輯內有段速 + EEM 判斷。少任何一項 = 壓縮咗
 - **字數門檻硬執行：** 每匹馬完成後估算字數
 - **骨架 [FILL] 零容忍**
 
@@ -65,7 +65,8 @@
 
 完成分析後必須執行：
 ```bash
-python .agents/scripts/completion_gate_v2.py "<分析檔案路徑>" --domain au
+python3 .agents/scripts/completion_gate_v2.py "<分析檔案路徑>" --domain au
 ```
+Windows 或已配置 `python` launcher 嘅環境可將 `python3` 換成 `python`；正常 V11 流程由 AU Orchestrator 自動執行呢個 gate。
 - ❌ FAILED → 立即修正並重新執行直到 ✅ PASSED
 - 不過關不准完成任務

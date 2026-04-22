@@ -34,28 +34,29 @@
 
 | Scenario | Correct Method | Forbidden |
 |---|---|---|
-| 寫入分析 Batch (任何大小) | `run_command` Python heredoc → safe_file_writer.py | `write_to_file`, `replace_file_content` |
+| 寫入分析 Batch (任何大小) | 既有 Python 腳本或 `.agents/scripts/safe_file_writer.py` | `write_to_file`, `replace_file_content`, shell heredoc |
 | 新建分析報告 (第一個 Batch) | safe_file_writer.py `--mode overwrite` | `write_to_file` |
 | 追加後續 Batch / Verdict | safe_file_writer.py `--mode append` | `replace_file_content` |
-| 微型檔案 (task.md, session_state) | `run_command` + heredoc 或 safe_file_writer | `write_to_file`, `replace_file_content` |
+| 微型檔案 (task.md, session_state) | 既有 Python 腳本或 safe_file_writer | `write_to_file`, `replace_file_content`, shell heredoc |
 | 執行 Python 腳本 (generate_hkjc_reports.py) | `run_command` ✅ (允許) | N/A |
 
-## ✅ 推薦方法: Python Heredoc One-Step Pattern (已驗證 2026-04-05)
+## ✅ 推薦方法: Python Script / Safe Writer Pattern
 
-> **此方法已於 2026-04-05 實戰驗證,連續 10+ 次成功,零失敗。**
-> **所有引擎 (Gemini / Opus / Sonnet) 都應使用此方法。**
+> **所有引擎 (Gemini / Opus / Sonnet) 都應使用既有 Python script 或 safe_file_writer。**
 
 ```python
-# 用 run_command 執行以下 Python 指令（跨平台寫法）:
+# 由既有 Python 腳本或任務 runner 執行以下邏輯（跨平台寫法）:
 import subprocess, base64
+import shutil
 
 content = """
 [你的分析內容 — 可包含任何 Unicode/特殊字符]
 """
 
 encoded = base64.b64encode(content.encode('utf-8')).decode('utf-8')
+PYTHON = "python3" if shutil.which("python3") else "python"
 subprocess.run([
-    'python',
+    PYTHON,
     '.agents/scripts/safe_file_writer.py',
     '--target', '{TARGET_DIR}/{ANALYSIS_FILE}',
     '--mode', 'append',    # Batch 1 用 'overwrite', Batch 2+ 用 'append'
@@ -64,7 +65,7 @@ subprocess.run([
 ```
 
 **優點:**
-1. 一步完成 — heredoc 寫 Python → 執行 → safe_file_writer 寫入
+1. 一步完成 — 由既有 Python script / task runner 生成內容 → safe_file_writer 寫入
 2. Python triple-quoted string 處理所有特殊字符,無需 shell escaping
 3. base64 編碼由 Python 完成,而非 shell,100% 可靠
 4. safe_file_writer 使用 WLTM (Write-Local-Then-Move),繞過 Google Drive lock
@@ -88,7 +89,7 @@ with open('{TARGET_DIR}/{ANALYSIS_FILE}', 'a', encoding='utf-8') as f:
 ## 自檢觸發器
 
 若你正在準備使用 `write_to_file` / `replace_file_content` / `multi_replace_file_content`:
-→ ⛔ STOP → 你已違規 → 改用上方 Python heredoc pattern。
+→ ⛔ STOP → 你已違規 → 改用 Orchestrator JSON 回填、既有 Python script 或 safe_file_writer。
 
 # 🛡️ P40: Template Instantiation Protocol (防錯位及漏填機制)
 

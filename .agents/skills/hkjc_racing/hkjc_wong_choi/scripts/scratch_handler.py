@@ -12,15 +12,19 @@ Logic.json, marking them in Facts.md, and resetting the race for
 re-analysis by the orchestrator.
 
 Usage:
-  python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/scratch_handler.py <target_dir> <race_num> --scratched <horse_nums>
+  python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/scratch_handler.py <target_dir> <race_num> --scratched <horse_nums>
 
 Example:
-  python scratch_handler.py 2026-04-12_ShaTin 2 --scratched 5,8
+  python3 scratch_handler.py 2026-04-12_ShaTin 2 --scratched 5,8
 """
 import json
 import re
 import argparse
+import shutil
 from pathlib import Path
+
+
+PYTHON = "python3" if shutil.which("python3") else "python"
 
 
 def main():
@@ -143,9 +147,9 @@ def main():
     print(f"✅ Race {race_num} 已準備好重新分析！")
     print(f"   下一步：重新執行 Orchestrator")
     if args.domain == 'hkjc':
-        print(f"   python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py {os.path.basename(target_dir)}")
+        print(f"   {PYTHON} .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py \"{target_dir}\" --auto")
     else:
-        print(f"   python .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py <URL>")
+        print(f"   {PYTHON} .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py \"{target_dir}\" --auto")
     print(f"{'='*60}")
 
 

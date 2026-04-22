@@ -119,8 +119,8 @@ Race Number,Distance,Jockey,Trainer,Horse Number,Horse Name,Grade
 ```
 
 
-# 🛡️ Agentic Orchestration Protocol (P40)
-- **絕對靜默寫入 (Silent File Writing):** 分析內容 (馬匹剖析、矩陣、Verdict) 必須透過系統權限直接寫入 `Analysis.md` 檔案，絕對不允許將數千字分析文貼於外置 Chat 對話框！對話框僅作「狀態報告」。
-- **物理分批寫入 (Context Window Preservation):** 嚴禁一次過將全場 12-14 匹馬堆喺同一個內部緩存度。你必須每次只處理 BATCH_SIZE (3 匹馬)，然後立即調用寫檔工具寫入檔案。
-- **全自動無縫推進 (Autonomous Batch Execution):** 禁止處理完 3 匹馬就停低問「是否繼續」。模型必須自行連續執行所有 Batch。寫完頭 3 匹，自動接力做緊接嘅 3 匹，全程無需用戶介入。
-- **完場通知:** 只有當全場馬匹皆完成寫入，並生成最終 Verdict 及 CSV 後，才可向用戶發出全場完成通知並結束循環。
+# 🛡️ Agentic Orchestration Protocol (P40 / V11)
+- **Orchestrator-owned final output:** Wong Choi V11 流程中,Analyst 嚴禁直接寫入 `Analysis.md`。馬匹剖析、矩陣、Verdict 必須先回填 `Race_X_Logic.json` 指定欄位,再由 `hkjc_orchestrator.py` 編譯成最終 Markdown。
+- **物理分批處理 (Context Window Preservation):** 嚴禁一次過將全場 12-14 匹馬堆喺同一個內部緩存度。你必須每次只處理 Orchestrator 指定馬匹 / BATCH_SIZE,完成後交回 JSON 欄位俾 Orchestrator 驗證。
+- **全自動無縫推進 (Autonomous Batch Execution):** 禁止處理完 3 匹馬就停低問「是否繼續」。完成指定馬匹後重跑 Orchestrator 顯示嘅 `NEXT_CMD`,由 state machine 自動派下一匹/下一批。
+- **完場通知:** 只有當 Orchestrator 輸出成功、完成 Verdict、CSV、Monte Carlo 與 `completion_gate_v2.py` 後,才可向用戶發出全場完成通知。

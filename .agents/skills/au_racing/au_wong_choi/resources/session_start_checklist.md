@@ -72,9 +72,10 @@ Verdict 必須獨立 tool call 寫入
 ### Post-Race Validation(每場必須)
 每場分析完成後,Wong Choi 必須執行:
 ```bash
-python .agents/scripts/completion_gate_v2.py "[ANALYSIS_FILE_PATH]" --domain au
-python .agents/skills/au_racing/../au_wong_choi/scripts/verify_math.py "[ANALYSIS_FILE_PATH]" --fix
+python3 .agents/scripts/completion_gate_v2.py "[ANALYSIS_FILE_PATH]" --domain au
+python3 .agents/skills/au_racing/au_wong_choi/scripts/verify_math.py "[ANALYSIS_FILE_PATH]" --fix
 ```
+Windows 或已配置 `python` launcher 嘅環境可將 `python3` 換成 `python`。正常 V11 流程由 AU Orchestrator 自動執行 gate。
 輸出 `❌ FAILED` → 必須修正再重新驗證。
 輸出 `✅ PASSED` → 可以推進下一場。
 

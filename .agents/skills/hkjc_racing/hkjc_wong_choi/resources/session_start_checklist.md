@@ -70,8 +70,9 @@ P19v2 逐場手動推進協議 — 每場完成後等確認
 ### Post-Race Validation(每場必須)
 每場分析完成後,Wong Choi 必須執行:
 ```bash
-python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/validate_analysis.py "[ANALYSIS_FILE_PATH]"
+python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/validate_analysis.py "[ANALYSIS_FILE_PATH]"
 ```
+Windows 或已配置 `python` launcher 嘅環境可將 `python3` 換成 `python`。
 輸出 `❌ FAILED` → 必須修正再重新驗證。
 輸出 `✅ PASSED` → 可以推進下一場。
 

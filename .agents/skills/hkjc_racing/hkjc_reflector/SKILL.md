@@ -31,7 +31,7 @@ ag_kit_skills:
 # 10-Step Pipeline
 
 ## Step 1: 擷取賽果 (🐍 Claw Code)
-- **Primary:** `python .agents/skills/hkjc_racing/hkjc_race_extractor/scripts/fast_extract_results.py --date "YYYY/MM/DD" --venue ST --races "1-11" --output_dir "[TARGET_DIR]"`
+- **Primary:** run `fast_extract_results.py` from the HKJC Race Extractor script folder with `python3`, date, venue, race range, and output directory arguments.
   - Claw Code 架構：curl_cffi (chrome120 TLS impersonation) + BS4 解析 SSR HTML
   - 自動提取：賽果表（全部名次/馬號/騎師/賠率/走位/時間）+ 競賽事件報告 + 分段時間
   - 輸出 JSON（供 Step 2 統計）+ Markdown（供人工檢閱）+ 個別賽果檔案
@@ -40,7 +40,7 @@ ag_kit_skills:
 - **Output:** `{MM}-{DD}_{venue}_全日賽果.json` + `.md` + 個別 `Race_N_Results.md`
 
 ## Step 2: 比對賽果 vs 賽前預測 (🐍)
-- `python .agents/skills/hkjc_racing/hkjc_reflector/scripts/reflector_auto_stats.py "[TARGET_DIR]" "[RESULTS_FILE]"`
+- `python3 .agents/skills/hkjc_racing/hkjc_reflector/scripts/reflector_auto_stats.py "[TARGET_DIR]" "[RESULTS_FILE]"`
 - 計算：黃金標準率 / 良好結果率 / 最低門檻率 / 排名順序偏差
 - 🆕 **Calibration Check:** MC win_pct vs 市場賠率隱含概率比較
 - **Output:** 命中率 KPI 表格
@@ -55,12 +55,12 @@ ag_kit_skills:
 - 步速 / 場地 / EEM / 騎師 / 練馬師訊號 / 寬恕檔案 逐項審查
 
 ## Step 3.5: 載入 Analyst 引擎規則 (🧠)
-讀取 Horse Analyst 核心 resource 檔案，確保 SIP 能精確引用具體 Step / 規則：
-- `../hkjc_horse_analyst/SKILL.md`
-- `../hkjc_horse_analyst/resources/03_engine_pace_context.md` (Steps 0-3)
-- `../hkjc_horse_analyst/resources/04_engine_corrections.md` (Steps 4-9)
-- `../hkjc_horse_analyst/resources/05_forensic_eem.md` (Steps 10-12)
-- `../hkjc_horse_analyst/resources/06_rating_aggregation.md` (Steps 13-14)
+讀取 Horse Analyst 核心檔案，確保 SIP 能精確引用具體 Step / 規則：
+- Horse Analyst `SKILL.md`
+- `03_engine_pace_context.md` in Horse Analyst resource folder (Steps 0-3)
+- `04_engine_corrections.md` in Horse Analyst resource folder (Steps 4-9)
+- `05_forensic_eem.md` in Horse Analyst resource folder (Steps 10-12)
+- `06_rating_aggregation.md` in Horse Analyst resource folder (Steps 13-14)
 - 場地專屬 resource（按當日賽場條件讀取）
 
 ## Step 4: 審視 Analyst 引擎邏輯 (🧠)
@@ -88,7 +88,7 @@ ag_kit_skills:
 - **FAIL 條件：** 任何回測場次出現回歸（原本命中但新規則反而唔命中）
 
 **Tier 2 🐍 MC Sanity Check (Secondary — 非驗證閘口):**
-- `python mc_simulator.py --logic "[LOGIC_JSON]" --platform hkjc`
+- `python3 mc_simulator.py --logic "[LOGIC_JSON]" --platform hkjc`
 - 只檢查 SIP 修改有冇令 MC 結果出現**不合理偏移**
 - 例如：某馬 win% 從 15% 突然跳到 80% = 🔴 異常信號
 - **角色：Sanity Check，不是 Validation Gate。** MC PASS/FAIL 唔影響 SIP 最終判定
@@ -99,7 +99,7 @@ ag_kit_skills:
 - 覆審結果記入報告，由用戶最終判斷
 
 ## Step 7.5: MC Parameter Consistency Check (🐍)
-- `python .agents/scripts/mc_parameter_checker.py --sip-changelog "SIP_proposals.json" --domain hkjc`
+- Run `mc_parameter_checker.py` from `.agents/scripts` with `python3`, using `--sip-changelog "SIP_proposals.json" --domain hkjc`.
 - 掃描 SIP 有冇觸及 MC 硬編碼參數 (weight/freshness/stability/forgiveness/trainer) → 標記需同步
 - **注意：** 此步驟確保 MC 參數同主引擎保持一致，但 MC 結果本身唔作為 SIP 驗證依據
 

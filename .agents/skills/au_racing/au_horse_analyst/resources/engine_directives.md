@@ -4,26 +4,19 @@
 
 <engine_directives>
 
-    <directive name="P19V6_SAFE_WRITER_PROTOCOL" priority="CRITICAL">
-        <description>文件寫入防撞策略，防禦 Google Drive 鎖定漏洞。嚴禁調用 write_to_file 或 replace_file_content。</description>
+    <directive name="V11_ORCHESTRATOR_JSON_ONLY_PROTOCOL" priority="CRITICAL">
+        <description>AU Wong Choi V11 中,Analyst 不擁有最終報告寫入權。V11 預設只填寫 Race_X_Logic.json；若被明確要求寫檔,嚴禁調用 write_to_file 或 replace_file_content。</description>
         <rules>
             1. 絕對禁用：`write_to_file`, `replace_file_content`, `multi_replace_file_content`，一律不准用。
-            2. 唯一合法寫檔方法：透過 `run_command` 利用 heredoc 建立 `/tmp` 檔案，然後 base64 傳入 safe_file_writer.py。
+            2. V11 正常流程：只更新 Orchestrator 指定 JSON 欄位,由 Python 自動編譯 Analysis.md。
+            3. 只有 standalone/manual Markdown 模式才可寫檔；合法方法為 repo 既有 Python safe writer，並以 `python3` 優先、`python` fallback；不得使用 shell heredoc。
         </rules>
         <implementation>
             <![CDATA[
-            SAFE_WRITER=".agents/scripts/safe_file_writer.py"
-
-            # 跨平台寫法 — 用 Python 生成 base64 並調用 safe_file_writer:
-            import subprocess, base64
-            content = "[你的分析內容]"
-            encoded = base64.b64encode(content.encode('utf-8')).decode('utf-8')
-            subprocess.run([
-                'python', SAFE_WRITER,
-                '--target', '{TARGET_DIR}/{ANALYSIS_FILE}',
-                '--mode', 'append',
-                '--content', encoded
-            ], check=True)
+            # Wong Choi V11 expected shape:
+            # - Read .runtime/Active_Horse_Context.md or Horse_X_WorkCard.md.
+            # - Fill only requested horse fields in Race_X_Logic.json.
+            # - Re-run au_orchestrator.py; Python compiles Analysis.md and runs completion_gate_v2.py.
             ]]>
         </implementation>
     </directive>
@@ -31,11 +24,11 @@
     <directive name="GEMINI_ANTI_LAZINESS_REINFORCEMENT" priority="CRITICAL">
         <description>LLM 字數流失與內容漂移防範。</description>
         <rules>
-            1. 骨架複製法：嚴禁無中生有寫出馬匹分析，必須原封不動照抄 `06_templates_core.md` 中的 11 大 Emoji 標題。
-            2. 自我點算：輸出完畢前，內心盤點是否有 11 個不同的標題，缺一不可。
+            1. 骨架複製法：嚴禁無中生有寫出馬匹分析，必須保留 `06_templates_core.md` 中的 9 個可見 section（⏱️📋🐴🔗🧭⚠️📊💡⭐）與 11 個語義錨點。
+            2. 自我點算：輸出完畢前，內心盤點是否有 9 個可見 section；🔬 段速與 ⚡ EEM 必須融入 📋 / 💡，不可消失。
             3. 馬匹剖析：必須只能寫簡短標籤 `[未有數據]`，禁寫散文。深度推理必須進入 `結論>核心邏輯`。
             4. 字數硬性執行：S/A 級馬必須 ≥ 500字。B級 ≥ 350字。D級劣等馬至少需要數據解釋，不能一句帶過 (≥ 300字)。
-            5. `[FILL]` 零容忍：如果在生成的最終 markdown 裏發現 `[FILL]`、`{{LLM_FILL}}` 等佔位符，視為不及格，必須重寫補回。
+            5. `[FILL]` 零容忍：如果在 JSON 欄位或由 Orchestrator 編譯出的最終 markdown 裏發現 `[FILL]`、`{{LLM_FILL}}` 等佔位符，視為不及格，必須重寫補回 JSON 欄位。
         </rules>
     </directive>
     
@@ -51,7 +44,7 @@
     <directive name="VERDICT_FORMAT_ANTI_DRIFT_HARDENER" priority="CRITICAL">
         <description>防禦 Verdict (Top 4) 格式崩潰及漂移。</description>
         <rules>
-            1. 全場 Top 4 結論必須使用 `🥇🥈🥉🏅` 作為主標籤之清單結構，嚴禁使用表格 (Markdown Table) 或一般數字符號 (1. 2. 3.)。
+            1. 一般 V11 流程不得手寫全場 Top 4；若 Orchestrator 明確要求人工 Verdict，Top 4 結論必須使用 `🥇🥈🥉🏅` 作為主標籤之清單結構，嚴禁使用表格 (Markdown Table) 或一般數字符號 (1. 2. 3.)。
             2. 第二部分「核心理據」及第三部分「風險」絕對不得壓縮為單行。
             3. 強制輸出防呆：完成 Verdict 之後內心自檢 — `🥇 **第一選**` 和 ` ```csv ` 是否同時存在。若缺失任何元素，即判定違規，重寫。
         </rules>
@@ -70,11 +63,12 @@
     </directive>
 
     <directive name="P37_BATCH_GENERATION_BAN" priority="CRITICAL">
-        <description>禁止使用 Python for-loop 自動生成分析報告，防止 LLM 以泛泛之詞塞字過關。</description>
+        <description>禁止用腳本生成「分析內容」本身，防止 LLM 以泛泛之詞塞字過關；允許 Python 編譯已填好嘅 JSON 與模板。</description>
         <rules>
-            1. 絕對禁止用 Python script 批量生成分析報告：每場 `Analysis.md` 必須由 LLM 原生撰寫，禁止寫腳本 for-loop 自動灌入模板。
-            2. 嚴禁 Generic Filler：「數據正常」、「發揮水準」等沒有針對該場次具體歷史背景的廢話視為違規，必須具備「深度法醫分析」。
-            3. 分工明確：Python 只負責抽數、排版與初級數學，所有「戰術推演、賽事法醫、風險定斷」的血肉必須由你原生生成。
+            1. 絕對禁止用 Python script / for-loop 批量生成 `core_logic`、戰術推演、風險判斷等定性內容；每匹馬嘅分析血肉必須由 LLM 原生判斷後填入 JSON。
+            2. Python 允許負責模板編譯、排序、格式轉換、QA、數學及資料驗證；此類 deterministic 工作不算違規。
+            3. 嚴禁 Generic Filler：「數據正常」、「發揮水準」等沒有針對該場次具體歷史背景的廢話視為違規，必須具備「深度法醫分析」。
+            4. 分工明確：Python 負責抽數、排版、排序、驗證與初級數學；所有「戰術推演、賽事法醫、風險定斷」的血肉必須由你原生生成。
         </rules>
     </directive>
 
@@ -90,12 +84,12 @@
 
 
     <directive name="P40_AGENTIC_ORCHESTRATION_PROTOCOL" priority="CRITICAL">
-        <description>Antigravity 原生 Agent 執行協議：全自動批次處理與隱形寫入，嚴禁對話框灌水及爆 Token。</description>
+        <description>Antigravity 原生 Agent 執行協議：V11 逐匹 JSON 填寫與隱形寫入，嚴禁對話框灌水及爆 Token。</description>
         <rules>
-            1. 絕對靜默寫入 (Silent File Writing)：當你扮演 AU Wong Choi 時，所有賽馬分析（馬匹剖析、評級、結論等）必須直接且只准透過系統工具寫入對應的 `Analysis.md` 檔案內。絕對禁止將這數千字的分析內容印在與用戶的對話框 (Chat UI) 中！對話框只用來報告狀態。
-            2. 物理分批寫入 (Context Window Preservation)：為免文章太長導致 Token 爆滿或分析求其，你必須將分析內容斬件（每次 3 匹馬）。每完成一個 Batch 嘅推理，立刻調用寫檔工具（或追加到檔案）將該 3 匹馬嘅分析落實。
-            3. 全自動無縫推進 (Autonomous Batch Execution)：禁止 Agent 做完一個 Batch (3 匹馬) 就停低問「老闆仲做唔做？」。當收到「開始分析 Race X」嘅指令時，你必須喺內部自我循環調用工具 (BATCH: FIRST ➡️ MIDDLE ➡️ LAST)，自動進行下一批馬嘅分析。
-            4. 終極中斷與通知機制：直至全場 8-14 匹馬全部處理完，並且將最後嘅 CSV 與 Top 4 Verdict 寫入檔案後，才獲批准向用戶發出通知：「Race X 已全場完成，請指示是否開啟下一場」。
+            1. 絕對靜默填寫 (Silent JSON Fill)：所有馬匹分析只填入 Orchestrator 指定嘅 `Race_X_Logic.json` 欄位。絕對禁止將長篇分析內容印在 Chat UI。
+            2. 逐匹隔離 (Context Window Preservation)：每次只分析當前 WorkCard 指定嘅一匹馬；完成後等 Orchestrator 驗證，再進下一匹。
+            3. 無縫推進 (Autonomous Advance)：完成當前馬匹 JSON 填寫後，重跑 Orchestrator / 等 file-watch 驗證；不可問用戶「仲做唔做」。
+            4. 終極中斷與通知機制：直至 Orchestrator 完成全場編譯、QA、CSV/Top 4 產出後，才向用戶報告該場完成。
         </rules>
     </directive>
 

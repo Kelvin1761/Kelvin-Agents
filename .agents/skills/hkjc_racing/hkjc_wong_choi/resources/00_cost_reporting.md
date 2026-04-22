@@ -3,7 +3,6 @@
 
 完成 Step 7 後，執行 session 成本追蹤：
 ```bash
-python .agents/scripts/session_cost_tracker.py "{TARGET_DIR}" --domain hkjc --batch-size {BATCH_SIZE}
+python3 .agents/scripts/session_cost_tracker.py "{TARGET_DIR}" --domain hkjc --batch-size {BATCH_SIZE}
 ```
 喺聊天中簡要匯報成本摘要（3 行以內）。此步驟失敗唔影響任何結果。
-

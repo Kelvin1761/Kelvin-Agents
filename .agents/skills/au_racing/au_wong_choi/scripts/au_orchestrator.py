@@ -82,6 +82,61 @@ def auto_compute_verdict(logic_data, facts_file):
 # Cross-platform Python executable
 PYTHON = "python3" if shutil.which("python3") else "python"
 
+
+def load_qa_strikes_au(target_dir):
+    strike_file = os.path.join(target_dir, '.qa_strikes.json')
+    if not os.path.exists(strike_file):
+        return {}
+    try:
+        with open(strike_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def qa_strike_count_au(strikes_data, race_num):
+    return int(strikes_data.get(str(race_num), 0) or 0)
+
+
+def has_open_qa_strike_au(strikes_data, race_num):
+    return qa_strike_count_au(strikes_data, race_num) > 0
+
+
+def validate_intelligence_package_au(path):
+    """Reject placeholder/dummy meeting intelligence so LLM cannot bypass State 1."""
+    if not os.path.exists(path):
+        return False, ['file missing']
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            content = f.read()
+    except OSError as exc:
+        return False, [f'cannot read file: {exc}']
+
+    stripped = content.strip()
+    issues = []
+    if len(stripped) < 500:
+        issues.append('too short for real meeting intelligence')
+
+    banned = ['[FILL]', '[AUTO]', 'TODO', 'dummy', 'stub', 'placeholder', '待補', '暫無資料']
+    lowered = stripped.lower()
+    for phrase in banned:
+        if phrase.lower() in lowered:
+            issues.append(f'contains placeholder marker: {phrase}')
+
+    required_groups = {
+        'weather': ('weather', 'temperature', 'humidity', 'rain', 'wind', '天氣', '溫度', '濕度', '降雨', '風'),
+        'track': ('track', 'going', 'rail', 'surface', '場地', '跑道', '欄位'),
+        'bias': ('bias', 'pattern', 'leader', 'closer', '偏差', '前置', '後上'),
+        'source': ('source', 'bom', 'bureau', 'racing', '來源', '資料來源'),
+    }
+    for label, terms in required_groups.items():
+        if not any(term.lower() in lowered for term in terms):
+            issues.append(f'missing {label} evidence')
+
+    return not issues, issues
+
+
 def notify_telegram(msg):
     script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../../scripts/send_telegram_msg.py")
     if os.path.exists(script_path):
@@ -114,7 +169,11 @@ def build_meeting_state_au(target_dir, total_races, date_prefix):
     }
 
     intel_file = os.path.join(target_dir, '_Meeting_Intelligence_Package.md')
-    state['intelligence_ready'] = os.path.exists(intel_file)
+    intel_ok, intel_issues = validate_intelligence_package_au(intel_file)
+    state['intelligence_ready'] = intel_ok
+    if intel_issues:
+        state['intelligence_issues'] = intel_issues
+    strikes_data = load_qa_strikes_au(target_dir)
 
     for r in range(1, total_races + 1):
         race_state = {
@@ -179,16 +238,13 @@ def build_meeting_state_au(target_dir, total_races, date_prefix):
         mc_file = os.path.join(target_dir, f'Race_{r}_MC_Results.json')
         race_state['mc_done'] = os.path.exists(mc_file)
 
-        strike_file = os.path.join(target_dir, '.qa_strikes.json')
-        if os.path.exists(strike_file):
-            try:
-                with open(strike_file, 'r', encoding='utf-8') as f:
-                    strikes_data = json.load(f)
-                race_state['qa_strikes'] = strikes_data.get(str(r), 0)
-            except Exception:
-                pass
+        race_state['qa_strikes'] = qa_strike_count_au(strikes_data, r)
 
-        if race_state['compiled'] and race_state['mc_done']:
+        if race_state['qa_strikes'] >= 3:
+            race_state['stage'] = 'QA_BLOCKED'
+        elif race_state['qa_strikes'] > 0:
+            race_state['stage'] = 'QA_REPAIR'
+        elif race_state['compiled'] and race_state['mc_done']:
             race_state['qa_passed'] = True
             race_state['stage'] = 'COMPLETE'
         elif race_state['compiled']:
@@ -254,6 +310,10 @@ def determine_next_action_au(state):
             return {'action': 'COMPILE', 'race': int(r_str)}
         if rs['stage'] == 'AWAITING_MC':
             return {'action': 'RUN_MC', 'race': int(r_str)}
+        if rs['stage'] == 'QA_REPAIR':
+            return {'action': 'REPAIR_QA_FAILURE', 'race': int(r_str), 'strikes': rs.get('qa_strikes', 0)}
+        if rs['stage'] == 'QA_BLOCKED':
+            return {'action': 'HUMAN_QA_INTERVENTION', 'race': int(r_str), 'strikes': rs.get('qa_strikes', 0)}
     return {'action': 'ALL_COMPLETE', 'race': None}
 
 
@@ -262,7 +322,7 @@ def print_meeting_dashboard_au(state):
     print(f"📊 AU MEETING DASHBOARD — {state.get('total_races', '?')} 場賽事")
     print(f"{'═' * 70}")
     stage_icons = {
-        'COMPLETE': '✅', 'AWAITING_MC': '🎲', 'AWAITING_COMPILE': '📝',
+        'COMPLETE': '✅', 'AWAITING_MC': '🎲', 'QA_REPAIR': '🛠️', 'QA_BLOCKED': '🛑', 'AWAITING_COMPILE': '📝',
         'AWAITING_VERDICT': '⚖️', 'ANALYSING': '🔬', 'AWAITING_SPEED_MAP': '📍',
         'AWAITING_FACTS': '📋', 'AWAITING_RAW_DATA': '📥', 'NOT_STARTED': '⬜',
     }
@@ -606,7 +666,7 @@ def update_session_tasks(target_dir, total_races, missing_raw, chk_weather, fact
 
 def _next_cmd(target_dir):
     """Print machine-readable re-run command for LLM auto-execution."""
-    dir_arg = os.path.basename(target_dir)
+    dir_arg = os.path.abspath(os.path.normpath(target_dir))
     print(f"\nNEXT_CMD: {PYTHON} .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py \"{dir_arg}\" --auto")
 
 
@@ -1421,6 +1481,9 @@ def main():
     print(f"✅ 目標目錄: {os.path.basename(target_dir)}")
     print(f"✅ 賽事總數: {total_races} 場\n")
     
+    date_prefix = os.path.basename(target_dir).split(" ")[0]
+    short_prefix = date_prefix[5:] if len(date_prefix) == 10 else date_prefix
+
     # V11: Build/Load Meeting State
     state_path = os.path.join(target_dir, '.meeting_state.json')
     meeting_state = load_meeting_state_au(state_path)
@@ -1439,7 +1502,8 @@ def main():
     
     # --- Check higher states ---
     weather_file = os.path.join(target_dir, "_Meeting_Intelligence_Package.md")
-    chk_weather = "[x]" if os.path.exists(weather_file) else "[ ]"
+    intel_ok, intel_issues = validate_intelligence_package_au(weather_file)
+    chk_weather = "[x]" if intel_ok else "[ ]"
     
     facts_done = 0
     skel_done = 0
@@ -1448,9 +1512,7 @@ def main():
     facts_status = {}
     analysis_status = {}
     batch_details = {}
-    
-    date_prefix = os.path.basename(target_dir).split(" ")[0]
-    short_prefix = date_prefix[5:] if len(date_prefix) == 10 else date_prefix
+    strikes_for_status = load_qa_strikes_au(target_dir)
     
     for r in range(1, total_races + 1):
         facts_status[r] = any(re.search(rf'Race {r} Facts\.md', f) for f in os.listdir(target_dir))
@@ -1484,8 +1546,11 @@ def main():
             with open(an_file, 'r', encoding='utf-8') as _af:
                 content = _af.read()
             if "[FILL]" not in content and "FILL:" not in content:
-                analysis_passed += 1
-                analysis_status[r] = True
+                if has_open_qa_strike_au(strikes_for_status, r):
+                    analysis_status[r] = False
+                else:
+                    analysis_passed += 1
+                    analysis_status[r] = True
 
     chk_facts = "[x]" if facts_done == total_races else "[ ]"
     chk_analysis = "[x]" if analysis_passed == total_races else "[ ]"
@@ -1582,6 +1647,14 @@ def main():
         sys.exit(0)
 
     if chk_weather == "[ ]":
+        if os.path.exists(weather_file):
+            print("🚨 State 1 Firewall: `_Meeting_Intelligence_Package.md` failed authenticity checks.")
+            for issue in intel_issues:
+                print(f"   ❌ {issue}")
+            print("👉 Rebuild it from real weather/track/bias sources. Dummy/stub files are blocked.")
+            notify_telegram("🚨 **AU State 1 Firewall**\nMeeting Intelligence Package failed authenticity checks.")
+            _next_cmd(target_dir)
+            sys.exit(1)
         if not url:
             print("⚙️ State 1: 缺少 MIP 且無 URL（目錄模式）。")
             print("👉 請手動建立 _Meeting_Intelligence_Package.md 或使用 URL 重新執行。")
@@ -1653,11 +1726,14 @@ def main():
                     with open(an_file, 'r', encoding='utf-8') as _af:
                         _recheck_content = _af.read()
                     if "[FILL]" not in _recheck_content and "FILL:" not in _recheck_content:
-                        print(f"   ✅ Race {r} 已完成 (跳過)")
-                        continue
+                        if has_open_qa_strike_au(strikes, r):
+                            print(f"   ⚠️ Race {r} has unresolved QA strike; forcing compile/QA rerun")
+                        else:
+                            print(f"   ✅ Race {r} 已完成 (跳過)")
+                            continue
                 except Exception:
                     pass
-            if analysis_status.get(r, False):
+            if analysis_status.get(r, False) and not has_open_qa_strike_au(strikes, r):
                 continue
             
             print(f"\n{'─'*60}")
@@ -1891,6 +1967,16 @@ def main():
                         [PYTHON, skeleton_script, facts_file, str(r), str(ph)],
                         capture_output=True, text=True
                     )
+                    if skel_result.returncode != 0:
+                        print(f"❌ Skeleton generation failed: Race {r} Horse #{ph}")
+                        if skel_result.stdout:
+                            print(skel_result.stdout[-1000:])
+                        if skel_result.stderr:
+                            print(skel_result.stderr[-1000:])
+                        meeting_state = build_meeting_state_au(target_dir, total_races, short_prefix)
+                        save_meeting_state_au(state_path, meeting_state)
+                        _next_cmd(target_dir)
+                        sys.exit(1)
                     if skel_result.stdout.strip():
                         for line in skel_result.stdout.strip().split('\n'):
                             if '✅' in line or '⚙️' in line:
@@ -1919,7 +2005,7 @@ def main():
                         _ctx_f.write(f"📖 覆蓋規則: .agents/skills/au_racing/au_horse_analyst/resources/02g_override_chain.md\n")
                         if _au_track_exists:
                             _ctx_f.write(f"📖 場地模組: {_au_track_path}\n")
-                        _ctx_f.write(f"📖 合規參考: .agents/skills/au_racing/au_compliance/SKILL.md\n")
+                        _ctx_f.write(f"📖 合規參考: .agents/scripts/completion_gate_v2.py + Orchestrator 內置批次 QA\n")
                         _ctx_f.write(f"📍 步速判定: {_sm_pace} | 跑道偏差: {_sm_bias}\n\n")
                         _ctx_f.write(horse_facts_block)
                     

@@ -4,15 +4,15 @@
 
 ## 🔀 Intent Router (意圖路由)
 當收到指令時，首先判斷用戶意圖：
-- 覆盤 / 賽果 / Result → 呼叫並讀取 `au_horse_race_reflector/SKILL.md`
-- 驗證 / Blind Test → 呼叫並讀取 `au_reflector_validator/SKILL.md`
+- 覆盤 / 賽果 / Result → 呼叫並讀取 `au_reflector/SKILL.md`（AU Reflector V3，已合併舊 Reflector + Validator）
+- 驗證 / Blind Test / Validate SIP → 呼叫並讀取 `au_reflector/SKILL.md`（使用其 10-Step 覆盤 → SIP 驗證 → BAKE 流程）
 - 分析 / Run (或無特定關鍵詞) → 進入下方分析管線 (Pipeline)。若提及 `result`，必定優先判為「覆盤」。
 
 ---
 
 ## 預檢與環境防禦 (Pre-Flight Environment Scan - 強制執行)
 **Step E1 — 資源驗證**: 確保已載入 `06_templates_core.md` 及 `01_data_validation.md`。
-**Step E2 — MCP 可用性檢查**: 檢查 Playwright MCP、SQLite MCP 及 Memory MCP 是否順利連接，不成功則強制警告。
+**Step E2 — MCP 可用性檢查**: 檢查 SQLite MCP 及 Memory MCP 是否順利連接，不成功則強制警告。Playwright/MCP Browser 不屬必要條件，嚴禁作為 Racenet 數據抽取手段。
 
 ---
 
@@ -20,14 +20,14 @@
 
 ### Step 0.5: 賽前數據管線 (Pre-Race Data Pipeline — 可選)
 - **觸發條件**: 若用戶提供 Racenet URL 或已有 Racecard/Formguide 目錄
-- **執行指令**: `python .agents/scripts/run_au_prerace_pipeline.py "<目錄>"`
+- **執行指令**: `python3 .agents/scripts/run_au_prerace_pipeline.py "<目錄>"`（Windows 或已配置環境可用 `python`）
 - **功能**: 自動串聯 Formguide 提取 → Facts.md 注入 → MC 模擬 → `pipeline_summary.json`
 - **定位**: 此腳本為 Orchestrator **之前**嘅數據準備層，唔取代 `au_orchestrator.py`
 - **跳過**: 若 Orchestrator 自動完成數據提取（Step 1 & 3），此步驟可省略
 
 ### Step 1 & 3: 全日總場次點算與資料自動提取 (Python Automator)
 - **強制執行**: 開始任何工作前，必須呼叫 Python Orchestrator：
-  `python .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "<URL>"`
+  `python3 .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "<URL>"`（Windows 或已配置 `python` launcher 嘅環境可用 `python`）
 - Script 內部會自動掃描：
   1. 該日共有多少場次
   2. 自動為所有賽事下載滿載的 Racecard 及 Formguide (`AU Race Extractor`)
@@ -41,14 +41,13 @@
 ### Step 4: 循序生成事實錨點 (Sequential Facts Generation) 
 - 在進入深度分析 (Step 5) 之前，**必須**先行將全部賽事的事實錨點準備妥當。
 - Agent 需要為「每一場有 Racecard 與 Formguide 但未有 Facts.md 的賽事」，逐場 (Race-by-Race) 呼叫腳本生成 `Facts.md`：
-  `python .agents/scripts/inject_fact_anchors.py "<Race_X_Racecard.md>" "<Race_X_Formguide.md>" --max-display 5 --venue {VENUE}`
+  `python3 .agents/scripts/inject_fact_anchors.py "<Race_X_Racecard.md>" "<Race_X_Formguide.md>" --max-display 5 --venue {VENUE}`（Windows 或已配置環境可用 `python`）
 - 請一場接一場執行，直到全日所有場次皆已產出 `Facts.md` 後，方可進入 Step 5。此舉既保證了數據齊源，又避免了一次性平行運算導致的超時崩潰。
 
 ### Step 5: 逐場深度分析與合規驗證 (Race-by-Race Analysis Loop)
-- **分析模塊**：正式呼叫 `@au horse analyst` / 啟動大腦進行核心的 5-Block 深度寫作。可輔助執行 `au_speed_map_generator.py` 獲取初步 Speed Map。
-- **嚴格驗證把關 (Batch QA)**：當一場賽事分析落筆完成，必須立刻強制由 Python 把關，不可跳過：
-  `python .agents/scripts/completion_gate_v2.py "<Analysis.md>" --domain au`
-- 如果 Python 攔截並報錯 (FAILED)，Agent 必須於下一回合立即修正該錯誤；如完全無誤 (PASSED) 則向用戶匯報可進入下一場。
+- **分析模塊**：正式呼叫 `@au horse analyst` / 啟動大腦逐匹填寫 Orchestrator 指定 JSON 欄位。可輔助執行 `au_speed_map_generator.py` 獲取初步 Speed Map。
+- **嚴格驗證把關 (Batch QA)**：當一場賽事由 Orchestrator 編譯成 `Analysis.md` 後，Orchestrator 必須自動執行 `.agents/scripts/completion_gate_v2.py --domain au`。Agent 不可手動跳過 gate，亦不可自行建立 dummy `Analysis.md`。
+- 如果 Python 攔截並報錯 (FAILED)，Agent 必須依照 Orchestrator 指示修正 `Race_X_Logic.json` / work card 欄位；如完全無誤 (PASSED) 才可自動進入下一場。
 
 ### Step 4.5: 跨場偏差追蹤 (Cross-Race Intelligence / Decision Diary)
 - **強制執行**：每完成一場賽事，Orchestrator 必須根據該場的賽果/預視情況，將場地偏差（Track Bias）的演變記錄到 `_session_issues.md` 內部的 `Decision Diary` 區塊，幫助之後的賽事預測進行適應。
@@ -66,9 +65,9 @@
 
 ### Step 5: 產製 Excel 總結與成本結算 (Report Generation)
 - **產製 Excel**: 執行 `generate_reports.py`，將所有生成的 `Analysis.md` 中的 CSV Block 整合成一份統一的 Excel 檔案交付用戶：
-  `python .agents/skills/au_racing/../au_wong_choi/scripts/generate_reports.py "[TARGET_DIR 絕對路徑]"`
+  `python3 .agents/skills/au_racing/au_wong_choi/scripts/generate_reports.py "[TARGET_DIR 絕對路徑]"`（Windows 或已配置環境可用 `python`）
 - **Cost Tracker**: 結算 Tokens 消耗：
-  `python .agents/scripts/session_cost_tracker.py "{TARGET_DIR}" --domain au`
+  `python3 .agents/scripts/session_cost_tracker.py "{TARGET_DIR}" --domain au`（Windows 或已配置環境可用 `python`）
 - 讀取 `_session_issues.md` 並向用戶回報。
 
 ### Step 6: 數據庫歸檔 (Database Archival - SQLite)
@@ -78,4 +77,4 @@
 
 > [!IMPORTANT]
 > **Orchestrator 邊界聲明**
-> 你 (AU Wong Choi) 的角色是專案經理。資料提取由 Extractor 負責；深度分析由 Analyst 負責；合規由 Compliance 負責。嚴禁越俎代庖自己去算步速或撰寫預測，所有的任務皆須委派。
+> 你 (AU Wong Choi) 的角色是專案經理。資料提取由 Extractor 負責；深度 JSON 填寫由 Analyst 負責；合規由 Orchestrator 內置 QA + `.agents/scripts/completion_gate_v2.py` 負責。嚴禁越俎代庖自己去算步速、直接寫 `Analysis.md` 或繞過 Python gate。

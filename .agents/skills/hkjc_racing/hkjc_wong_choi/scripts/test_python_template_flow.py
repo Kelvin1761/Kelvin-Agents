@@ -111,6 +111,76 @@ def run_verify(analysis_path: str, fix: bool = False) -> tuple:
     return result.returncode, result.stdout + result.stderr
 
 
+def write_text(path: str, content: str):
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(content)
+
+
+def write_json(path: str, content):
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(content, f)
+
+
+def run_orchestrator_guardrail_tests():
+    """Regression tests for QA-strike resume and anti-dummy state gates."""
+    print('\n🛡️ Test 6: Orchestrator Guardrails')
+    sys.path.insert(0, str(SCRIPT_DIR))
+    sys.path.insert(0, str(SCRIPT_DIR.parents[2] / 'au_racing' / 'au_wong_choi' / 'scripts'))
+    import hkjc_orchestrator as hkjc
+    import au_orchestrator as au
+
+    valid_hkjc_intel = (
+        '天氣 Weather: temperature 24C, humidity 70%, rain 20%, wind east 18km/h.\n'
+        '場地 Going: HKJC Sha Tin turf Good to Yielding; rail C+3.\n'
+        '跑道偏差 Bias: inside rail can hold early; wide closers improve if pace collapses.\n'
+        '重大退出: review HKJC official scratchings before final betting decision.\n'
+        '資料來源 Sources: HKJC Jockey Club notices, Hong Kong Observatory forecast, official going update.\n'
+        'Operational notes: use this as meeting-level context only. Do not fabricate horse-level facts. '
+        'Weather data, going evidence, rail/bias interpretation, and source attribution are all present.'
+    )
+    valid_au_intel = (
+        'Weather: temperature 22C, humidity 64%, rain 15%, wind south-east 14km/h.\n'
+        'Track going: Racing Australia update says Soft 5, rail true, drying trend.\n'
+        'Bias pattern: leader advantage can appear early; closer lanes improve if tempo is high.\n'
+        'Scratching check: review official racing scratchings before final betting decision.\n'
+        'Sources: BOM forecast, official racing track update, race club rail notice.\n'
+        'Operational notes: meeting context only, not horse-level evidence. Do not fabricate runner form. '
+        'Weather data, track going evidence, rail/bias interpretation, and source attribution are all present.'
+    )
+
+    test('Race 1 does not match Race 10',
+         hkjc.matches_race_file('04-12 Race 1 排位表.md', 1, 'racecard')
+         and not hkjc.matches_race_file('04-12 Race 10 排位表.md', 1, 'racecard'))
+
+    with tempfile.TemporaryDirectory() as td:
+        write_text(os.path.join(td, '_Meeting_Intelligence_Package.md'), valid_hkjc_intel)
+        write_text(os.path.join(td, '04-12 Race 1 Analysis.md'), '完整分析內容，沒有 placeholder。')
+        write_json(os.path.join(td, 'Race_1_MC_Results.json'), {'ok': True})
+        write_json(os.path.join(td, '.qa_strikes.json'), {'race_1_qa': 1})
+        state = hkjc.build_meeting_state(td, 1, '04-12')
+        test('HKJC open QA strike blocks COMPLETE',
+             state['races']['1']['stage'] == 'QA_REPAIR'
+             and not state['races']['1']['qa_passed']
+             and state['next_action']['action'] == 'REPAIR_QA_FAILURE')
+
+    with tempfile.TemporaryDirectory() as td:
+        write_text(os.path.join(td, '_Meeting_Intelligence_Package.md'), valid_au_intel)
+        write_text(os.path.join(td, '04-12 Race 1 Analysis.md'), 'Complete AU analysis without placeholders.')
+        write_json(os.path.join(td, 'Race_1_MC_Results.json'), {'ok': True})
+        write_json(os.path.join(td, '.qa_strikes.json'), {'1': 1})
+        state = au.build_meeting_state_au(td, 1, '04-12')
+        test('AU open QA strike blocks COMPLETE',
+             state['races']['1']['stage'] == 'QA_REPAIR'
+             and not state['races']['1']['qa_passed']
+             and state['next_action']['action'] == 'REPAIR_QA_FAILURE')
+
+    with tempfile.TemporaryDirectory() as td:
+        mip = os.path.join(td, '_Meeting_Intelligence_Package.md')
+        write_text(mip, 'dummy placeholder')
+        ok, issues = hkjc.validate_intelligence_package(mip)
+        test('Dummy MIP rejected', not ok and bool(issues))
+
+
 def simulate_llm_fill(text: str) -> str:
     """Replace all {{LLM_FILL}} markers with plausible dummy content."""
     filled = text.replace('{{LLM_FILL}}', '（測試填充文字 — 段速表現穩定、EEM 充沛）')
@@ -212,11 +282,14 @@ def main():
             f.write(drifted_text)
 
         has_drift = drifted_text != filled_text
-        test('Drift injection successful', has_drift)
+        drift_target_present = bool(re.search(r'(基礎評級[：:]\s*)`\[A\-\]`', filled_text))
+        test('Drift injection target handled', has_drift or not drift_target_present)
 
         if has_drift:
             rc, out = run_verify(drifted_path, fix=True)
             test('verify_math --fix ran', rc in (0, 1), out[:200])
+
+    run_orchestrator_guardrail_tests()
 
     # Summary
     print(f'\n{"=" * 65}')

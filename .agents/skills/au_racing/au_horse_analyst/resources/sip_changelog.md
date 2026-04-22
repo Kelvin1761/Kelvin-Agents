@@ -16,7 +16,7 @@
 ### 2026-04-07 — 全引擎深度審查 + 架構清理 (Engine Forensic Review & Cleanup)
 - **Changed:** 全面審查 AU Horse Analyst 引擎，執行以下改動：
   - **邏輯矛盾修復:** `temp_03.md` Step 14 + `temp_02.md` Step 4 加 `[HKJC ENGINE ONLY]` 標記
-  - **模板衝突解決:** 刪除 `au_template.md`，更新模板路徑至引擎自身 `06_output_templates.md`
+  - **模板衝突解決:** 刪除 `au_template.md`，更新模板路徑至引擎自身 `06_templates_core.md` / `06_templates_rules.md`
   - **Logic Proof 簡化:** 15 步 checklist → 5 錨點（情境→段速→EEM→維度計數→查表）
   - **1000m 模組簡化:** 4 規則 → 2 規則（α: 後追降級, β: 前速加成）
   - **OBS-004 畢業:** Maiden 冷門馬盲點 → SIP-OBS04，BAKE 入 `02f_synthesis.md`
@@ -34,7 +34,7 @@
 
 ### 2026-04-06 — SIP-SL01~SL05: Sandown Lakeside 覆盤批量 SIP(5 項)
 - **Changed:** S/A+ 實戰驗證門檻 + Good 場前領校準 + 退出馬驗證 + 市場偏差審視 + 初出馬通道升級
-- **Target Files:** `02f_synthesis.md`, `02d_eem_pace.md`, `05_verification.md`, `06_output_templates.md`
+- **Target Files:** `02f_synthesis.md`, `02d_eem_pace.md`, `05_verification.md`, `06_templates_core.md`, `06_templates_rules.md`
 - **Regression Check:** 若近 3 仗全無入位但引擎仍評 S/S- = 回歸
 
 ### 2026-04-05 — P33-WLTM: 全引擎防串流鎖死封殺令

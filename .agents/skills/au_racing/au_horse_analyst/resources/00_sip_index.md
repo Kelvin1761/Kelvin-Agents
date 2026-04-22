@@ -15,16 +15,15 @@
 
 ## SIP Quick Reference (Cross-Agent Alias Table)
 
-> All sub-agents (Reflector, Validator, Compliance) reference SIPs by tag.
+> Active reflector/compliance tooling references SIPs by tag. Legacy Validator duties are now folded into AU Reflector V3.
 > If a SIP is renamed/merged/deprecated, update this table AND grep all files below:
-> - `au_horse_race_reflector/SKILL.md`
-> - `au_reflector_validator/SKILL.md`
-> - `au_reflector_validator/resources/observation_log.md`
-> - `au_compliance/SKILL.md`
+> - `au_reflector/SKILL.md`
+> - `au_reflector/resources/observation_log.md`
+> - `.agents/scripts/completion_gate_v2.py`
 
 | Current Tag | Status | Canonical Location | Notes |
 |:--|:--|:--|:--|
-| SIP-DA01 | 🟢 ACTIVE | Reflector + Validator (inline protocol) | 5-角度深度覆盤 |
+| SIP-DA01 | 🟢 ACTIVE | AU Reflector V3 (inline protocol) | 5-角度深度覆盤 |
 | SIP-1 | 🟢 ACTIVE | `02c_track_and_gear.md` | 場地容錯 |
 | SIP-2 | 🟢 ACTIVE | `02d_eem_pace.md` | EEM 場地係數 |
 | SIP-3 | 🟢 ACTIVE | `02d_eem_pace.md` | 後追馬場地調節 |
@@ -36,12 +35,12 @@
 | SIP-9 | 🟢 ACTIVE | `02f_synthesis.md` | S 級純度 |
 | SIP-10 | 🟢 ACTIVE | `02e_jockey_trainer.md` | 進口馬寬容 |
 | SIP-RR04 | 🔴 DEPRECATED | `04d_wet_track.md` | 由 SIP-RH02 取代 |
-| SIP-AU09 | 🟡 OBSERVATION | Validator `observation_log.md` | 觀察中 |
+| SIP-AU09 | 🟡 OBSERVATION | AU Reflector V3 `observation_log.md` | 觀察中 |
 | SIP-ST8 | 🟢 ACTIVE | Analyst `SKILL.md` | Anti-Laziness 錨定 |
 | SIP-SL01 | 🟢 ACTIVE | `02f_synthesis.md` | S/A+ 實戰驗證門檻 |
 | SIP-SL02 | 🟢 ACTIVE | `02d_eem_pace.md` | Good 地前領馬生存率校準 |
 | SIP-SL03 | 🟢 ACTIVE | `05_verification.md` | 退出馬強制驗證 |
-| SIP-SL04 | 🟢 ACTIVE | `06_output_templates.md` | 市場-引擎偏差重新審視 |
+| SIP-SL04 | 🟢 ACTIVE | `06_templates_rules.md` | 市場-引擎偏差重新審視 |
 | SIP-SL05 | 🟢 ACTIVE | `02f_synthesis.md` | 初出馬評估通道升級 |
 | SIP-RH07 | 🟢 ACTIVE | `04d_wet_track.md` | Soft 5-6 前領馬消耗懲罰 |
 | SIP-RH08 | 🟢 ACTIVE | `04d_wet_track.md` | Soft 5-6 S 級未驗證封頂 |
@@ -230,4 +229,3 @@
 ---
 
 > **維護規則:** 每次 Reflector 覆盤產出新 SIP 時,必須同步更新此索引。
-

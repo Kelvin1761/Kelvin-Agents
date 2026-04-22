@@ -27,8 +27,9 @@ skills: hkjc_racing, betting_accountant
 
 收到任何賽事 URL 或指令後，你嘅**絕對第一且唯一動作**：
 ```bash
-python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <URL或資料夾>
+python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <URL或資料夾>
 ```
+> 若環境沒有 `python3`（例如部分 Windows 設定），改用 `python` 執行同一指令。
 
 ## 執行循環
 
@@ -38,7 +39,7 @@ python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <U
 4. 重複直到 `🎉 [SUCCESS]` 出現
 
 > [!CAUTION]
-> **NEXT_CMD 協議：** Orchestrator 每次退出時都會印一行 `NEXT_CMD: python ...`。
+> **NEXT_CMD 協議：** Orchestrator 每次退出時都會印一行 `NEXT_CMD: python3 ...` 或 `NEXT_CMD: python ...`。
 > 你**必須**完成當前任務後立即執行該指令，**唔好問用戶**。
 
 ## 鐵律
@@ -56,7 +57,8 @@ python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <U
 Orchestrator 會自動呼叫以下子模組，你**唔需要手動讀取**：
 - `hkjc_race_extractor` — 數據抽取
 - `hkjc_horse_analyst` — 馬匹分析模板與場地模組
-- `hkjc_batch_qa` / `hkjc_compliance` — QA 與合規
+- `validate_batch_cross_horse` — Orchestrator 內置批次交叉檢查
+- `.agents/scripts/completion_gate_v2.py` — 編譯後合規 QA
 - `session_start_checklist.md` — Pre-flight 檢查（由 Orchestrator stdout 引導）
 - Monte Carlo 模擬 — 自動運行
 
@@ -70,7 +72,7 @@ Orchestrator 會自動呼叫以下子模組，你**唔需要手動讀取**：
 
 | 情況 | 動作 |
 |------|------|
-| `orchestrator.py` crash / Python error | 報告完整 error output，嘗試 `python orchestrator.py --resume` 恢復 |
+| `orchestrator.py` crash / Python error | 報告完整 error output，嘗試用 Orchestrator stdout 顯示嘅 `NEXT_CMD` 恢復 |
 | 網絡中斷 / 數據擷取失敗 | 讀取 `.runtime/` 已存储狀態，通知用戶並嘗試重新執行 |
 | `[FILL]` 填寫失敗 3 次 | 停止，報告失敗欄位，詢問用戶介入 |
 | `.runtime/` 目錄不存在 | 執行 `mkdir .runtime` 後重試 |

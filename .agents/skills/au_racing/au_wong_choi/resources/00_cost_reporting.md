@@ -3,7 +3,7 @@
 
 完成 Step 7 後，執行 session 成本追蹤：
 ```bash
-python .agents/scripts/session_cost_tracker.py "{TARGET_DIR}" --domain au --batch-size {BATCH_SIZE}
+python3 .agents/scripts/session_cost_tracker.py "{TARGET_DIR}" --domain au --batch-size {BATCH_SIZE}
 ```
+Windows 或已配置 `python` launcher 嘅環境可將 `python3` 換成 `python`。
 喺聊天中簡要匯報成本摘要（3 行以內）。此步驟失敗唔影響任何結果。
-

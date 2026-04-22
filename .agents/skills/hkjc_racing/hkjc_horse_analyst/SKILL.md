@@ -28,6 +28,7 @@ ag_kit_skills:
 - **完整性**:全部 11 個必填欄位(見 `08_templates_core.md`),D 級馬最少 300 字。
 - **防幻覺**:無數據則填 `N/A (數據不足)`,嚴禁猜測。
 - **防無限 Loop**:Web Search 連續失敗 3 次即停止,標記 `N/A`。
+- **V11 Orchestrator Contract**:當由 HKJC Wong Choi 調度時,Analyst 只可處理 Orchestrator 派發嘅 `.runtime/Active_Horse_Context.md` / Work Card,並只回填 `Race_X_Logic.json` 指定馬匹/欄位。嚴禁直接建立、覆寫、append 或修補 `Analysis.md`;最終 Markdown 必須由 `hkjc_orchestrator.py` 編譯及 `completion_gate_v2.py` 驗證。
 
 > [!CAUTION]
 > **🚨 SIP-009: Mandatory Data Slice Before Batch（強制數據回讀 — 防幻覺核心規則）**
@@ -35,10 +36,10 @@ ag_kit_skills:
 > **歷史教訓（2026-04-22 Happy Valley Race 1）：** Batch 4（馬匹 10-12）嘅騎師、練馬師、檔位、賽績全部錯誤。根因：LLM 到最後一個 batch 時 context window 已滿，未有重新讀取排位表，直接從記憶中「幻覺」數據。騎練出現串聯錯位 (cascading shift)：10號用咗11號嘅騎師，11號用咗12號嘅。
 >
 > **強制規定（Priority 0 — 不可違反）：**
-> 1. **每個 Batch 開始前，必須 `view_file` 排位表中對應馬匹嘅原始數據行。** 例如分析馬匹 10-12 前，必須先讀取排位表中馬號 10、11、12 嘅完整資料段落。
-> 2. **同時必須 `view_file` 賽績（Form Guide / Facts.md）中對應馬匹嘅往績紀錄。**
+> 1. **每匹馬開始前，必須讀取 Orchestrator 生成嘅 `.runtime/Active_Horse_Context.md` 或該馬 Work Card。** 呢份 context 已由 Python 切片,包含該馬排位表硬性資料與 Facts.md 錨點；嚴禁靠記憶補資料。
+> 2. **只有當 Work Card 明確要求補查,或 context 缺硬性欄位時,才可回讀原始 Racecard/Facts 對應馬匹段落。**
 > 3. **嚴禁從記憶中提取騎師/練馬師/負磅/檔位/賽績/配備。** 所有硬性數據必須從 `view_file` 嘅實際輸出中逐字複製。
-> 4. **寫入後驗證：** 每個 Batch 寫入 Analysis.md 後，必須對比排位表原始數據，確認每匹馬嘅 [騎師] [練馬師] [負磅] [檔位] [賽績] 5 個欄位完全吻合。
+> 4. **回填後驗證：** 每次回填 `Race_X_Logic.json` 後,必須對比 Work Card/Active_Horse_Context,確認每匹馬嘅 [騎師] [練馬師] [負磅] [檔位] [賽績] 5 個欄位完全吻合。
 > 5. **違規標記：** `WALL-017: DATA_HALLUCINATION` — 任何數據與排位表不符即觸發，整個 Batch 必須重做。
 
 ## 2. 資源讀取協議 (Tiered Loading Protocol) [改進 #6 — 極重要]
@@ -79,14 +80,15 @@ ag_kit_skills:
 所有內部計算(Step 0 到 Step 14)與推導過程**絕不可出現在最終輸出中**。推導放進 `<thought>` 標籤,對用戶只呈現最終判定結果。
 
 # Interaction Logic (Step-by-Step)
-1. **讀取核心規則(一次性)**:讀取全部資源文件(01 至 09 + 場地模組)。
-2. **讀取與預備**:讀取賽事排位表與 Facts.md（完整賽績檔案）。
-   **⚠️ V2 Python 預提取（必須在分析前確認 Facts.md 已生成）：**
+1. **讀取核心規則(一次性)**:只讀取 Tier 1 核心資源 + Orchestrator 指定嘅場地模組。Tier 2 只喺首匹/首批馬需要騎練或互動矩陣判定前載入；Tier 3 只喺自檢或 Verdict 前 JIT 載入。
+2. **讀取與預備**:由 Orchestrator 提供 `.runtime/Active_Horse_Context.md` / Work Card / Facts.md 切片。若獨立 standalone 使用,先確認 Facts.md 已由 Python 生成。
+   **⚠️ V2 Python 預提取（standalone fallback；Wong Choi 流程由 Orchestrator 自動處理）：**
    ```
-   python .agents/scripts/inject_hkjc_fact_anchors.py "<Formguide.txt>" \
+   python3 .agents/scripts/inject_hkjc_fact_anchors.py "<Formguide.txt>" \
        --horse-ids "HK_2024_K416,HK_2024_K035,..." \
        --output "Facts.md"
    ```
+   > 若環境沒有 `python3`（常見於部分 Windows 設定），改用 `python` 執行同一指令。
    此腳本自動生成 **完整賽績檔案**，包含：
    - (a) 賽績總結（近六場/休後/統計）
    - (b) **Markdown Table**（合併 Formguide + 馬匹頁面：頭馬距離/體重/配備/走位/完成時間）
@@ -97,7 +99,7 @@ ag_kit_skills:
    **⛔ 嚴禁直接讀取 Formguide 重建賽績表格 — 必須引用 Facts.md。**
 3. **情報補全**:使用 Wong Choi Intelligence Package(若有),或獨立搜尋動態情報。
 4. **Batch 0 (戰場全景)**:在分析任何馬匹前,必須先提交獨立的 Batch 0 生成 `<第一部分> 戰場全景` + Speed Map。此舉是為了確保你在分析馬匹前,已對步速、偏差及局勢有完整推演。
-5. **批次解析 (Batch 1~N)**:每批固定 3 匹馬(BATCH_SIZE: 3),按馬號順序。**全自動推進**,嚴禁批次間詢問用戶。**批次隔離規則:每個 Batch 必須作為獨立嘅 file write 操作輸出,嚴禁將多個 Batch 合併到同一次 tool call。** 寫檔模式:第一個啟動寫檔嘅 Batch (通常是 Batch 0 或 Batch 1) 用 `--mode overwrite` 建檔；其後所有 Batch 一律使用 `--mode append` 追加寫入。⚠️ 絕對嚴禁在馬匹批次 (Batch 1~N) 中提前寫出 `<第三部分> 最終預測 (Verdict)` 或提早對未分析馬匹進行排序。若發現正在寫入 4+ 匹馬 → 立即停止拆分。
+5. **批次解析 (Batch 1~N)**:每批固定 3 匹馬(BATCH_SIZE: 3),按馬號順序。**全自動推進**,嚴禁批次間詢問用戶。**V11 批次隔離規則:每次只處理 Orchestrator 指定馬匹,只填 `Race_X_Logic.json` 該馬嘅 `[FILL]` 欄位,嚴禁合併多匹未授權馬、嚴禁直接寫 `Analysis.md`。** ⚠️ 絕對嚴禁在馬匹批次 (Batch 1~N) 中提前寫出 `<第三部分> 最終預測 (Verdict)` 或提早對未分析馬匹進行排序。若發現正在處理 4+ 匹馬 → 立即停止拆分。
 6. **品質守門員檢查 [SIP-ST8]**:每完成一批次(≥6 匹馬累計)後,強制執行以下自我檢查:
    - **Anti-Laziness 錨定**:比較當前批次與 Batch 1 嘅每匹馬平均分析字數。若當前批次比 Batch 1 短 >30%,立即自我打回並以相同深度重寫。此規則亦適用於跨場次(Race 2+ 必須維持 Race 1 嘅分析深度)。
    - **重複數據偵測**:對本批次所有馬匹的 L600/L400 段速值、EEM 走位代碼、穩定性判定、組合上名率進行去重統計。**若任一欄位中 ≥50% 馬匹出現完全相同數值 → 品質警報 🚨**,必須暫停並逐匹重新以獨立數據填充。

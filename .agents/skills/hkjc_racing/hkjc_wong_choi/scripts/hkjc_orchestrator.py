@@ -119,6 +119,102 @@ def auto_compute_verdict_hkjc(logic_data, facts_path):
 # Cross-platform Python executable
 PYTHON = "python3" if shutil.which("python3") else "python"
 
+RACE_FILE_KIND_TERMS = {
+    'racecard': ('排位表', 'Racecard'),
+    'formguide': ('賽績', 'Formguide'),
+    'facts': ('Facts.md',),
+    'analysis': ('Analysis.md',),
+}
+
+
+def race_file_pattern(race_num, kind=None):
+    """Return a regex that matches one race number without matching Race 10 for Race 1."""
+    race_part = rf'(?:^|[\s_-])Race\s*0?{int(race_num)}(?!\d)'
+    if not kind:
+        return re.compile(race_part, re.IGNORECASE)
+    terms = RACE_FILE_KIND_TERMS.get(kind, (kind,))
+    term_part = '|'.join(re.escape(term) for term in terms)
+    return re.compile(rf'{race_part}.*(?:{term_part})', re.IGNORECASE)
+
+
+def matches_race_file(filename, race_num, kind=None):
+    return bool(race_file_pattern(race_num, kind).search(filename))
+
+
+def extract_race_number(filename):
+    match = re.search(r'(?:^|[\s_-])Race\s*0?(\d+)(?!\d)', filename, re.IGNORECASE)
+    return int(match.group(1)) if match else None
+
+
+def extract_date_prefix(target_dir):
+    """Normalize meeting folder names like 2026-04-12_ShaTin or 2026-04-12 ShaTin to MM-DD."""
+    base = os.path.basename(os.path.normpath(target_dir))
+    match = re.match(r'(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})(?:[ _-].*)?$', base)
+    if match:
+        return f"{match.group('month')}-{match.group('day')}"
+    match = re.match(r'(?P<month>\d{2})-(?P<day>\d{2})(?:[ _-].*)?$', base)
+    if match:
+        return f"{match.group('month')}-{match.group('day')}"
+    raise ValueError(
+        f"Cannot derive MM-DD prefix from target directory '{base}'. "
+        "Expected names like 2026-04-12_ShaTin or 2026-04-12 ShaTin."
+    )
+
+
+def load_qa_strikes(target_dir):
+    strike_file = os.path.join(target_dir, '.qa_strikes.json')
+    if not os.path.exists(strike_file):
+        return {}
+    try:
+        with open(strike_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def qa_strike_count(strikes_data, race_num):
+    return int(strikes_data.get(f'race_{race_num}_qa', 0) or 0)
+
+
+def has_open_qa_strike(strikes_data, race_num):
+    return qa_strike_count(strikes_data, race_num) > 0
+
+
+def validate_intelligence_package(path):
+    """Reject placeholder/dummy meeting intelligence so LLM cannot bypass State 1."""
+    if not os.path.exists(path):
+        return False, ['file missing']
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            content = f.read()
+    except OSError as exc:
+        return False, [f'cannot read file: {exc}']
+
+    stripped = content.strip()
+    issues = []
+    if len(stripped) < 500:
+        issues.append('too short for real meeting intelligence')
+
+    banned = ['[FILL]', '[AUTO]', 'TODO', 'dummy', 'stub', 'placeholder', '待補', '暫無資料']
+    lowered = stripped.lower()
+    for phrase in banned:
+        if phrase.lower() in lowered:
+            issues.append(f'contains placeholder marker: {phrase}')
+
+    required_groups = {
+        'weather': ('天氣', 'temperature', '溫度', 'humidity', '濕度', 'rain', '降雨', 'wind', '風'),
+        'going': ('場地', 'going', '地面', '跑道'),
+        'bias': ('偏差', 'bias', '欄', 'rail', '內欄', '外欄'),
+        'source': ('來源', 'source', 'HKJC', 'Observatory', '天文台', 'Jockey Club'),
+    }
+    for label, terms in required_groups.items():
+        if not any(term.lower() in lowered for term in terms):
+            issues.append(f'missing {label} evidence')
+
+    return not issues, issues
+
+
 def notify_telegram(msg):
     script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../../../scripts/send_telegram_msg.py")
     if os.path.exists(script_path):
@@ -163,7 +259,11 @@ def build_meeting_state(target_dir, total_races, date_prefix):
     }
 
     intel_file = os.path.join(target_dir, '_Meeting_Intelligence_Package.md')
-    state['intelligence_ready'] = os.path.exists(intel_file)
+    intel_ok, intel_issues = validate_intelligence_package(intel_file)
+    state['intelligence_ready'] = intel_ok
+    if intel_issues:
+        state['intelligence_issues'] = intel_issues
+    strikes_data = load_qa_strikes(target_dir)
 
     for r in range(1, total_races + 1):
         race_state = {
@@ -183,11 +283,11 @@ def build_meeting_state(target_dir, total_races, date_prefix):
         }
 
         # Check raw data (racecard)
-        racecards = [f for f in os.listdir(target_dir) if f'Race {r}' in f and ('排位表' in f or 'Racecard' in f)]
+        racecards = [f for f in os.listdir(target_dir) if matches_race_file(f, r, 'racecard')]
         race_state['raw_data'] = len(racecards) > 0
 
         # Check facts
-        facts_files = [f for f in os.listdir(target_dir) if f'Race {r} Facts.md' in f]
+        facts_files = [f for f in os.listdir(target_dir) if matches_race_file(f, r, 'facts')]
         if facts_files:
             race_state['facts'] = True
             facts_path = os.path.join(target_dir, facts_files[0])
@@ -244,17 +344,14 @@ def build_meeting_state(target_dir, total_races, date_prefix):
         race_state['mc_done'] = os.path.exists(mc_file)
 
         # QA status (check strikes file)
-        strike_file = os.path.join(target_dir, '.qa_strikes.json')
-        if os.path.exists(strike_file):
-            try:
-                with open(strike_file, 'r', encoding='utf-8') as f:
-                    strikes_data = json.load(f)
-                race_state['qa_strikes'] = strikes_data.get(f'race_{r}_qa', 0)
-            except Exception:
-                pass
+        race_state['qa_strikes'] = qa_strike_count(strikes_data, r)
 
-        # If analysis compiled and no [FILL] issues
-        if race_state['compiled'] and race_state['mc_done']:
+        # Open QA strikes must keep the race out of COMPLETE until the gate passes again.
+        if race_state['qa_strikes'] >= 3:
+            race_state['stage'] = 'QA_BLOCKED'
+        elif race_state['qa_strikes'] > 0:
+            race_state['stage'] = 'QA_REPAIR'
+        elif race_state['compiled'] and race_state['mc_done']:
             race_state['qa_passed'] = True
             race_state['stage'] = 'COMPLETE'
         elif race_state['compiled']:
@@ -328,6 +425,10 @@ def determine_next_action(state):
             return {'action': 'COMPILE', 'race': int(r_str)}
         if rs['stage'] == 'AWAITING_MC':
             return {'action': 'RUN_MC', 'race': int(r_str)}
+        if rs['stage'] == 'QA_REPAIR':
+            return {'action': 'REPAIR_QA_FAILURE', 'race': int(r_str), 'strikes': rs.get('qa_strikes', 0)}
+        if rs['stage'] == 'QA_BLOCKED':
+            return {'action': 'HUMAN_QA_INTERVENTION', 'race': int(r_str), 'strikes': rs.get('qa_strikes', 0)}
 
     return {'action': 'ALL_COMPLETE', 'race': None}
 
@@ -341,6 +442,8 @@ def print_meeting_dashboard(state):
     stage_icons = {
         'COMPLETE': '✅',
         'AWAITING_MC': '🎲',
+        'QA_REPAIR': '🛠️',
+        'QA_BLOCKED': '🛑',
         'AWAITING_COMPILE': '📝',
         'AWAITING_VERDICT': '⚖️',
         'ANALYSING': '🔬',
@@ -787,13 +890,16 @@ def discover_total_races(target_dir):
     races that don't actually exist on the race day.
     """
     MIN_RACECARD_SIZE = 500  # bytes — valid racecards are typically 3-4KB+
-    racecards = [f for f in os.listdir(target_dir) if "排位表.md" in f or "Racecard.md" in f or "排位表" in f]
+    racecards = [
+        f for f in os.listdir(target_dir)
+        if extract_race_number(f) is not None
+        and any(term in f for term in RACE_FILE_KIND_TERMS['racecard'])
+    ]
     max_race = 0
     skipped = []
     for card in racecards:
-        m = re.search(r'Race (\d+)', card)
-        if m:
-            race_num = int(m.group(1))
+        race_num = extract_race_number(card)
+        if race_num is not None:
             card_path = os.path.join(target_dir, card)
             card_size = os.path.getsize(card_path) if os.path.exists(card_path) else 0
             if card_size < MIN_RACECARD_SIZE:
@@ -813,17 +919,19 @@ def check_raw_data_completeness(target_dir, total_races):
         missing_data.append("全日出賽馬匹資料 (PDF).md")
         
     for race_num in range(1, total_races + 1):
-        if not any(re.search(rf'Race {race_num}.*(賽績|Formguide)\.md', f) for f in os.listdir(target_dir)) and not any(f"Race {race_num}" in f and "賽績" in f for f in os.listdir(target_dir)):
+        if not any(matches_race_file(f, race_num, 'formguide') for f in os.listdir(target_dir)):
             missing_data.append(f"Race {race_num} 賽績.md")
-        if not any(re.search(rf'Race {race_num}.*(排位表|Racecard)\.md', f) for f in os.listdir(target_dir)) and not any(f"Race {race_num}" in f and "排位表" in f for f in os.listdir(target_dir)):
+        if not any(matches_race_file(f, race_num, 'racecard') for f in os.listdir(target_dir)):
             missing_data.append(f"Race {race_num} 排位表.md")
     return missing_data
 
 def get_rc_fg_paths(target_dir, race_num):
     rc, fg = None, None
     for f in os.listdir(target_dir):
-        if f"Race {race_num}" in f and ("排位表" in f or "Racecard" in f or "排位表" in f): rc = os.path.join(target_dir, f)
-        if f"Race {race_num}" in f and ("賽績" in f or "Formguide" in f or "賽績" in f): fg = os.path.join(target_dir, f)
+        if matches_race_file(f, race_num, 'racecard'):
+            rc = os.path.join(target_dir, f)
+        if matches_race_file(f, race_num, 'formguide'):
+            fg = os.path.join(target_dir, f)
     return rc, fg
     
 def get_horse_numbers(facts_file):
@@ -878,7 +986,7 @@ def run_preflight_check(target_dir):
 
 def _next_cmd(target_dir):
     """Print machine-readable re-run command for LLM auto-execution."""
-    dir_arg = os.path.basename(target_dir)
+    dir_arg = os.path.abspath(os.path.normpath(target_dir))
     print(f"\nNEXT_CMD: {PYTHON} .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py \"{dir_arg}\" --auto")
 
 
@@ -1710,12 +1818,21 @@ def main():
     # ── Preflight Security Check ──
     run_preflight_check(target_dir)
             
+    try:
+        date_prefix_state = extract_date_prefix(target_dir)
+    except ValueError as exc:
+        print(f"❌ [Fatal] {exc}")
+        sys.exit(1)
+
     total_races = discover_total_races(target_dir)
+    if total_races < 1:
+        print("❌ [Fatal] 無法從排位表偵測任何有效 Race。")
+        print("👉 請確認資料夾內有有效 `Race N 排位表.md`，或使用 HKJC URL 重新抽取。")
+        sys.exit(1)
     print(f"✅ 目標目錄: {os.path.basename(target_dir)}")
     print(f"✅ 賽事總數: {total_races} 場\n")
     
     # V11: Build/Load Meeting State
-    date_prefix_state = os.path.basename(target_dir).split(" ")[0][5:] if " " in os.path.basename(target_dir) else os.path.basename(target_dir).split("_")[0][5:]
     state_path = os.path.join(target_dir, '.meeting_state.json')
     meeting_state = load_meeting_state(state_path)
     if meeting_state:
@@ -1731,31 +1848,37 @@ def main():
     chk_raw = "[ ]" if missing_raw else "[x]"
     
     weather_file = os.path.join(target_dir, "_Meeting_Intelligence_Package.md")
-    chk_weather = "[x]" if os.path.exists(weather_file) else "[ ]"
+    intel_ok, intel_issues = validate_intelligence_package(weather_file)
+    chk_weather = "[x]" if intel_ok else "[ ]"
     
     facts_done = 0
     analysis_status_dict = {}
     analysis_passed = 0
     
+    strikes_for_status = load_qa_strikes(target_dir)
+
     # Pre-scan states to build the task dashboard
     for r in range(1, total_races + 1):
-        matching_facts = [f for f in os.listdir(target_dir) if f"Race {r} Facts.md" in f]
+        matching_facts = [f for f in os.listdir(target_dir) if matches_race_file(f, r, 'facts')]
         facts_file = os.path.join(target_dir, matching_facts[0]) if matching_facts else None
         if facts_file and os.path.exists(facts_file): 
             facts_done += 1
             
             horses = get_horse_numbers(facts_file)
             batches = get_batches(horses, 3)
-            date_prefix = os.path.basename(target_dir).split(" ")[0][5:]
+            date_prefix = date_prefix_state
             an_file = os.path.join(target_dir, f"{date_prefix} Race {r} Analysis.md")
             
             if os.path.exists(an_file):
                 with open(an_file, 'r', encoding='utf-8') as _af:
                     content = _af.read()
                 if "[FILL]" not in content and "缺失核心" not in content and "未分析" not in content:
-                    analysis_passed += 1
-                    analysis_status_dict[r] = "✅ 分析與 QA 完成"
-                    continue
+                    if has_open_qa_strike(strikes_for_status, r):
+                        analysis_status_dict[r] = f"⚠️ QA 失敗待修復 (Strike {qa_strike_count(strikes_for_status, r)}/3)"
+                    else:
+                        analysis_passed += 1
+                        analysis_status_dict[r] = "✅ 分析與 QA 完成"
+                        continue
             
             logic_json = os.path.join(target_dir, f"Race_{r}_Logic.json")
             if not os.path.exists(logic_json):
@@ -1837,6 +1960,14 @@ def main():
         sys.exit(0)
 
     if chk_weather == "[ ]":
+        if os.path.exists(weather_file):
+            print("🚨 State 1 防火牆: `_Meeting_Intelligence_Package.md` 未通過真實性檢查。")
+            for issue in intel_issues:
+                print(f"   ❌ {issue}")
+            print("👉 請用真實天氣/場地/偏差資料重建，不可用 dummy/stub bypass。")
+            notify_telegram("🚨 **HKJC State 1 Firewall**\nMeeting Intelligence Package 未通過真實性檢查，已阻止繼續。")
+            _next_cmd(target_dir)
+            sys.exit(1)
         _dir_name = os.path.basename(target_dir)
         _det_venue = _dir_name.split("_", 1)[1] if "_" in _dir_name else "Unknown"
         _track_hint = {
@@ -1857,7 +1988,7 @@ def main():
         print(f"   → 場地模組: .agents/skills/hkjc_racing/hkjc_horse_analyst/resources/{_track_hint}")
         print(f"   → 情報增強: .agents/skills/shared_instincts/intelligence_checklist.md (Tier 2 歷史場地 Pattern)")
         print(f"")
-        notify_telegram("🚨 **HKJC State 1 Action Required**\n缺少場地天氣與賽道偏差，請手動生成 `_Meeting_Intelligence_Package.md`。")
+        notify_telegram("🚨 **HKJC State 1 Action Required**\n缺少場地天氣與賽道偏差，請用真實資料生成 `_Meeting_Intelligence_Package.md`。")
         _next_cmd(target_dir)
         sys.exit(0)
 
@@ -1866,14 +1997,14 @@ def main():
         for r in range(1, total_races + 1):
             facts_file = None
             for f in os.listdir(target_dir):
-                if f"Race {r} Facts.md" in f:
+                if matches_race_file(f, r, 'facts'):
                     facts_file = os.path.join(target_dir, f)
                     break
             
             if not facts_file:
                 print(f"  -> 生成 Race {r} Facts...")
                 rc, fg = get_rc_fg_paths(target_dir, r)
-                date_prefix = os.path.basename(target_dir).split(" ")[0][5:]
+                date_prefix = date_prefix_state
                 out_path = os.path.join(target_dir, f"{date_prefix} Race {r} Facts.md")
                 cmd = [PYTHON, ".agents/scripts/inject_hkjc_fact_anchors.py", fg, "--output", out_path, "--race-num", str(r)]
                 subprocess.run(cmd, check=True)
@@ -1885,7 +2016,7 @@ def main():
     # Python is the controller. LLM only fills JSON.
     # ═══════════════════════════════════════════════════════════════
     if chk_analysis == "[ ]":
-        date_prefix = os.path.basename(target_dir).split(" ")[0][5:]
+        date_prefix = date_prefix_state
         strike_file = os.path.join(target_dir, ".qa_strikes.json")
         strikes = {}
         if os.path.exists(strike_file):
@@ -1906,11 +2037,14 @@ def main():
                     with open(an_file, 'r', encoding='utf-8') as _af:
                         _recheck_content = _af.read()
                     if "[FILL]" not in _recheck_content and "缺失核心" not in _recheck_content and "未分析" not in _recheck_content:
-                        print(f"   ✅ Race {r} 已完成 (跳過)")
-                        continue
+                        if has_open_qa_strike(strikes, r):
+                            print(f"   ⚠️ Race {r} 有未解決 QA strike，強制重跑編譯/QA")
+                        else:
+                            print(f"   ✅ Race {r} 已完成 (跳過)")
+                            continue
                 except Exception:
                     pass
-            if "✅" in analysis_status_dict.get(r, ""):
+            if "✅" in analysis_status_dict.get(r, "") and not has_open_qa_strike(strikes, r):
                 continue
             
             print(f"\n{'─'*60}")
@@ -2155,6 +2289,16 @@ def main():
                         [PYTHON, skeleton_script, facts_path, str(r), str(ph)],
                         capture_output=True, text=True
                     )
+                    if skel_result.returncode != 0:
+                        print(f"❌ Skeleton 生成失敗：Race {r} 馬號 {ph}")
+                        if skel_result.stdout:
+                            print(skel_result.stdout[-1000:])
+                        if skel_result.stderr:
+                            print(skel_result.stderr[-1000:])
+                        meeting_state = build_meeting_state(target_dir, total_races, date_prefix)
+                        save_meeting_state(state_path, meeting_state)
+                        _next_cmd(target_dir)
+                        sys.exit(1)
                     if skel_result.stdout.strip():
                         for line in skel_result.stdout.strip().split('\n'):
                             if '✅' in line or '⚙️' in line:
@@ -2183,7 +2327,7 @@ def main():
                         _ctx_f.write(f"📖 評級矩陣: .agents/skills/hkjc_racing/hkjc_horse_analyst/resources/06_rating_aggregation.md\n")
                         if _track_ref:
                             _ctx_f.write(f"📖 場地模組: .agents/skills/hkjc_racing/hkjc_horse_analyst/resources/{_track_ref}\n")
-                        _ctx_f.write(f"📖 合規參考: .agents/skills/hkjc_racing/hkjc_compliance/SKILL.md\n")
+                        _ctx_f.write(f"📖 合規參考: .agents/scripts/completion_gate_v2.py + Orchestrator 內置 validate_batch_cross_horse\n")
                         _ctx_f.write(f"📍 步速判定: {_sm_pace} | 跑道偏差: {_sm_bias}\n\n")
                         _ctx_f.write(horse_facts_block)
                     
@@ -2261,6 +2405,10 @@ def main():
                                 with open(logic_json, 'w', encoding='utf-8') as _wf:
                                     json.dump(_batch_data, _wf, ensure_ascii=False, indent=2)
                                 print(f"   🔄 已重置 batch 內馬匹，將重新分析")
+                                meeting_state = build_meeting_state(target_dir, total_races, date_prefix)
+                                save_meeting_state(state_path, meeting_state)
+                                _next_cmd(target_dir)
+                                sys.exit(0)
                             else:
                                 print(f"\n   ✅ Batch QA 通過 ({_batch_nums})")
                         

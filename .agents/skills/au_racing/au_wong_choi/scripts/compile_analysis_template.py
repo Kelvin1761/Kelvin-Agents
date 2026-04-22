@@ -480,11 +480,6 @@ def build_verdict(json_data, facts_horses):
         f_grade = _apply_scenario_caps(f_grade, h_obj)
         return f_grade, w_score
 
-    lines = []
-    lines.append('## [第三部分] 🏆 全場最終決策')
-    lines.append(f"**信心指數:** `{v.get('confidence', '[未定]')}`\n")
-    lines.append('**🏆 Top 4 位置精選**\n')
-
     # ── AUTO-COMPUTE Top 4 from ALL horses' grades ──
     llm_picks = {}
     for item in v.get('top4', []):
@@ -499,6 +494,22 @@ def build_verdict(json_data, facts_horses):
 
     all_graded.sort(key=lambda x: (x[2], -x[3], int(x[0]) if x[0].isdigit() else 999))
     t4_auto = all_graded[:4]
+
+    # Auto-compute confidence if it's [AUTO] or missing
+    confidence = v.get('confidence', '[未定]')
+    if confidence == '[AUTO]' or confidence == '[未定]':
+        top1_grade = t4_auto[0][1] if t4_auto else 'C'
+        if top1_grade in ['A+', 'A']:
+            confidence = '高'
+        elif top1_grade in ['A-', 'B+']:
+            confidence = '中'
+        else:
+            confidence = '低'
+
+    lines = []
+    lines.append('## [第三部分] 🏆 全場最終決策')
+    lines.append(f"**信心指數:** `{confidence}`\n")
+    lines.append('**🏆 Top 4 位置精選**\n')
 
     labels = ['🥇 **第一選**', '🥈 **第二選**', '🥉 **第三選**', '🏅 **第四選**']
     csv_rows = []
@@ -515,11 +526,15 @@ def build_verdict(json_data, facts_horses):
             jockey = next((hf['jockey'] for hf in facts_horses if str(hf['num']) == h_num_str), '')
             trainer = next((hf['trainer'] for hf in facts_horses if str(hf['num']) == h_num_str), '')
 
+            reason = ''
+            risk = ''
             if h_num_str in llm_picks:
                 reason = llm_picks[h_num_str].get('reason', '')
                 risk = llm_picks[h_num_str].get('risk', '')
-            else:
+            
+            if not reason:
                 reason = h_obj.get('advantages', h_obj.get('competitive_advantage', '[自動選入]'))
+            if not risk:
                 risk = h_obj.get('disadvantages', h_obj.get('risk_level', '[見分析]'))
 
             lines.extend([

@@ -27,8 +27,8 @@
     <directive name="PREMATURE_STOP_GUARD" priority="CRITICAL">
         <description>防止全自動化分析中途停機等待用戶指令。</description>
         <rules>
-            1. 每次 heredoc 寫檔通過後，如果還有剩餘馬匹，立即啟動下一個 tool call 生成下個 Batch，不可詢問「是否繼續」。
-            2. 回覆攔截器：在打算結束回應前自問「Analysis.md 入面有冇 🏆 全場最終決策?」，若沒有則退回繼續執行。
+            1. 每次完成 Orchestrator 指定 JSON 填寫後，如果還有剩餘馬匹，立即重跑 Orchestrator，不可詢問「是否繼續」。
+            2. 回覆攔截器：在打算結束回應前自問「Orchestrator 是否已輸出 SUCCESS 或 NEXT_CMD?」，若沒有則退回繼續執行。
         </rules>
     </directive>
 
@@ -36,33 +36,26 @@
         <description>嚴格的多 Tool call 批次執行結構定義。</description>
         <protocol>
             Step 1: 先計算 BATCH_PLAN（例如 7匹馬 = Batch 1[3匹] + Batch 2[3匹] + Batch 3[1匹] + Verdict Batch）。
-            Step 1b: 生成 Speed Map 初稿 `python .agents/scripts/au_speed_map_generator.py <Racecard.md> --distance <Distance>`
+            Step 1b: 生成 Speed Map 初稿 `python3 .agents/scripts/au_speed_map_generator.py <Racecard.md> --distance <Distance>`（Windows 或已配置環境可用 `python`）
             Step 2: 每個 batch 前必須強制 `view_file` 讀取 `06_templates_core.md` 作為骨架。
             Step 3: 使用 Safe-Writer Protocol（Python base64 寫法）。
             Step 4: 每次執行後必須留有 `🔒 BATCH_QA_RECEIPT`。
         </protocol>
     </directive>
 
-    <directive name="P19V6_SAFE_WRITER_PROTOCOL" priority="CRITICAL">
-        <description>禁止直接修改檔案內容，防止 Google Drive 雲端死鎖風險。嚴禁調用 write_to_file / replace_file_content。</description>
+    <directive name="V11_ORCHESTRATOR_JSON_ONLY_PROTOCOL" priority="CRITICAL">
+        <description>AU Wong Choi V11 中,LLM 不擁有最終報告寫入權。嚴禁調用 write_to_file / replace_file_content 或用 dummy Analysis.md 繞過 Python gate。</description>
         <rules>
             1. ⚠️ 完全禁用：`write_to_file`, `replace_file_content`, `multi_replace_file_content`。
-            2. 唯一合法寫檔方式：Heredoc 生成 python 腳本寫入至 `/tmp`，再以 `safe_file_writer.py` 進行操作。
+            2. V11 正常流程：只更新 Orchestrator 指定 JSON 欄位,由 Python 自動編譯 Analysis.md。
+            3. 若 standalone/manual Markdown 模式確實需要寫檔,必須使用 repo 既有 Python safe writer,並以 `python3` 優先、`python` fallback；不得使用 shell heredoc。
         </rules>
         <implementation>
             <![CDATA[
-            SAFE_WRITER=".agents/scripts/safe_file_writer.py"
-
-            # 跨平台寫法 — 用 Python 生成 base64 並調用 safe_file_writer:
-            import subprocess, base64
-            content = "[你的分析內容 / 檔案內容]"
-            encoded = base64.b64encode(content.encode('utf-8')).decode('utf-8')
-            subprocess.run([
-                'python', SAFE_WRITER,
-                '--target', '{TARGET_DIR}/{FILE_NAME}',
-                '--mode', 'overwrite',
-                '--content', encoded
-            ], check=True)
+            # Wong Choi V11 expected shape:
+            # - Read .runtime/Active_Horse_Context.md or Horse_X_WorkCard.md.
+            # - Fill only requested horse fields in Race_X_Logic.json.
+            # - Re-run au_orchestrator.py; Python compiles Analysis.md and runs completion_gate_v2.py.
             ]]>
         </implementation>
     </directive>

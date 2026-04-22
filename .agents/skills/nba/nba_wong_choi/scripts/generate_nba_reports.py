@@ -787,7 +787,7 @@ def select_combo_x_value_bomb(candidates):
 
 # ─── Report Generation ──────────────────────────────────────────────────
 
-def gen_meeting_intelligence(meta, odds, injuries, news, team_stats):
+def gen_meeting_intelligence(meta, odds, injuries, news, team_stats, season_phase="MID_SEASON"):
     lines = []
     away = meta.get("away", {})
     home = meta.get("home", {})
@@ -798,7 +798,8 @@ def gen_meeting_intelligence(meta, odds, injuries, news, team_stats):
 
     lines.append(f"🎫 職業大戶 God Mode 單場分析 — {away_name} @ {home_name}")
     lines.append(f"")
-    lines.append(f"📅 數據鎖定: {meta.get('date', '?')} | NBA 賽季: 2025-26")
+    phase_str = f" ({season_phase})" if season_phase != "MID_SEASON" else ""
+    lines.append(f"📅 數據鎖定: {meta.get('date', '?')} | NBA 賽季: 2025-26{phase_str}")
     lines.append(f"🎯 盤口來源: **Sportsbet MCP Playwright 實時提取** (odds_source: SPORTSBET_LIVE)")
     lines.append(f"")
     lines.append(f"---")
@@ -1036,7 +1037,7 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
 
 
 def gen_full_report(meta, odds, injuries, news, team_stats,
-                    all_cards, sportsbet_time):
+                    all_cards, sportsbet_time, season_phase="MID_SEASON"):
     sections = []
 
     away_abbr = meta.get("away", {}).get("abbr", "?")
@@ -1094,7 +1095,7 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
         sections.append(f"")
 
     # Meeting Intelligence
-    sections.append(gen_meeting_intelligence(meta, odds, injuries, news, team_stats))
+    sections.append(gen_meeting_intelligence(meta, odds, injuries, news, team_stats, season_phase))
     sections.append(f"")
 
     # ── Run Monte Carlo FIRST — build lookup for inline embedding ──
@@ -1108,7 +1109,8 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
         
         mc_results = run_monte_carlo_for_cards(
             all_cards, spread=odds.get("spread_away"),
-            is_b2b_map=is_b2b_map, team_stats=team_stats, meta=meta, n=10000)
+            is_b2b_map=is_b2b_map, team_stats=team_stats, meta=meta, n=10000,
+            season_phase=season_phase)
         
         if mc_results:
             mc_lookup = build_mc_lookup(mc_results)
@@ -1268,6 +1270,9 @@ def main():
 
     away_abbr = meta.get("away", {}).get("abbr", "?")
     home_abbr = meta.get("home", {}).get("abbr", "?")
+    
+    date_str = meta.get("date", "?")
+    season_phase = detect_season_phase(date_str)
 
     # V3: Pre-compute context for each team
     spread = ex_odds.get("spread_away", None)
@@ -1339,7 +1344,7 @@ def main():
 
     # Generate report
     report = gen_full_report(meta, ex_odds, injuries, news, team_stats,
-                             all_cards, sportsbet_time)
+                             all_cards, sportsbet_time, season_phase=season_phase)
 
     # Write
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)

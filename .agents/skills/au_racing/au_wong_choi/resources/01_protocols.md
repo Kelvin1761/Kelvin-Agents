@@ -16,7 +16,7 @@
 
 ---
 
-# 🚨 CRITICAL: File Writing Protocol — Safe-Writer P33-WLTM (2026-04-05 更新)
+# 🚨 CRITICAL: File / JSON Writing Protocol — V11 Orchestrator-Owned Output
 
 > **⛔ TOTAL BAN — 零例外:**
 >
@@ -34,44 +34,26 @@
 
 | Scenario | Correct Method | Forbidden |
 |---|---|---|
-| 寫入分析 Batch (任何大小) | `run_command` Python heredoc → safe_file_writer.py | `write_to_file`, `replace_file_content` |
-| 新建分析報告 (第一個 Batch) | safe_file_writer.py `--mode overwrite` | `write_to_file` |
-| 追加後續 Batch / Verdict | safe_file_writer.py `--mode append` | `replace_file_content` |
-| 微型檔案 (task.md, session_state) | `run_command` + heredoc 或 safe_file_writer | `write_to_file`, `replace_file_content` |
+| 回填馬匹分析 | Orchestrator 指定 `Race_X_Logic.json` 欄位；完成後重跑 `au_orchestrator.py` | 直接寫 `Analysis.md`, dummy markdown, shell heredoc |
+| 新建 / 更新最終報告 | Orchestrator 調用 compile script 生成 `Analysis.md` | Analyst / LLM 手動 overwrite 或 append |
+| 微型檔案 (task.md, session_state) | 既有 Python 腳本或 safe_file_writer | `write_to_file`, `replace_file_content`, shell heredoc |
 | 執行 Python 腳本 (generate_reports.py) | `run_command` ✅ (允許) | N/A |
 
-## ✅ 推薦方法: Python Heredoc One-Step Pattern (已驗證 2026-04-05)
+## ✅ 推薦方法: Orchestrator JSON-First Pattern
 
-> **此方法已於 2026-04-05 實戰驗證,連續 10+ 次成功,零失敗。**
-> **所有引擎 (Gemini / Opus / Sonnet) 都應使用此方法。**
+> **所有引擎 (Gemini / Opus / Sonnet) 都應只填 Orchestrator 指定 JSON 欄位。**
 
 ```python
-# 用 run_command 執行以下 Python 指令（跨平台寫法）:
-import subprocess, base64
-
-content = """
-[你的分析內容 — 可包含任何 Unicode/特殊字符]
-"""
-
-encoded = base64.b64encode(content.encode('utf-8')).decode('utf-8')
-subprocess.run([
-    'python',
-    '.agents/scripts/safe_file_writer.py',
-    '--target', '{TARGET_DIR}/{ANALYSIS_FILE}',
-    '--mode', 'append',    # Batch 1 用 'overwrite', Batch 2+ 用 'append'
-    '--content', encoded
-], check=True)
+# V11 expected shape:
+# 1. Read .runtime/Active_Horse_Context.md or Horse_X_WorkCard.md.
+# 2. Fill only the requested keys in Race_X_Logic.json.
+# 3. Re-run au_orchestrator.py; Python compiles Analysis.md and runs completion_gate_v2.py.
 ```
 
 **優點:**
-1. 一步完成 — heredoc 寫 Python → 執行 → safe_file_writer 寫入
-2. Python triple-quoted string 處理所有特殊字符,無需 shell escaping
-3. base64 編碼由 Python 完成,而非 shell,100% 可靠
-4. safe_file_writer 使用 WLTM (Write-Local-Then-Move),繞過 Google Drive lock
-
-**模式選擇:**
-- **第一個 Batch (B1):** `--mode overwrite`（建立新檔）
-- **後續 Batch (B2+):** `--mode append`（追加內容）
+1. 每次只讀取當前馬匹 context，降低 Race 1 到尾場嘅 context pressure
+2. `Analysis.md` 由 deterministic Python 編譯，避免 LLM 生成 dummy 檔案繞過 firewall
+3. Completion gate、batch QA、MC / report generation 全由 Orchestrator 接管
 
 ## ⚠️ Fallback (safe_file_writer 不可用時)
 
@@ -88,7 +70,7 @@ with open('{TARGET_DIR}/{ANALYSIS_FILE}', 'a', encoding='utf-8') as f:
 ## 自檢觸發器
 
 若你正在準備使用 `write_to_file` / `replace_file_content` / `multi_replace_file_content`:
-→ ⛔ STOP → 你已違規 → 改用上方 Python heredoc pattern。
+→ ⛔ STOP → 你已違規 → 改用 Orchestrator JSON 回填；若確實係 standalone 非 V11 任務，改用既有 Python script / safe writer。
 
 # 🛡️ P40: Template Instantiation Protocol (防錯位及漏填機制)
 

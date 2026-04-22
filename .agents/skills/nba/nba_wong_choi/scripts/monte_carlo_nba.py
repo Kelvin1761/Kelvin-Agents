@@ -205,7 +205,8 @@ def compute_context_factors(card, spread=None, is_b2b=False, is_home=None,
 
 
 def run_monte_carlo_for_cards(all_cards, spread=None, is_b2b_map=None,
-                              team_stats=None, meta=None, n=10000):
+                              team_stats=None, meta=None, n=10000,
+                              season_phase="MID_SEASON"):
     """
     Run Monte Carlo simulation for all player cards.
     
@@ -242,7 +243,7 @@ def run_monte_carlo_for_cards(all_cards, spread=None, is_b2b_map=None,
         for line_key, la in card.get("line_analysis", {}).items():
             mc = monte_carlo_player_prop(
                 avg=card["avg"], sd=card["sd"], line=la["line"], n=n,
-                **ctx)
+                season_phase=season_phase, **ctx)
             
             mc["player"] = card["name"]
             mc["team"] = team
