@@ -1,9 +1,9 @@
 ---
-description: Wong Choi Engine P19v2 賽事分析強制標準流程 (Race Analysis Workflow)
+description: Wong Choi Engine V11 Python-Led 賽事分析強制標準流程 (Race Analysis Workflow)
 ---
-# Race Analysis Workflow (Wong Choi Engine P19v2)
+# Race Analysis Workflow (Wong Choi Engine V11 Python-Led)
 
-當執行或被請求進行任何香港或澳洲賽馬的賽事分析 (Race Analysis)，以及編寫 `Race X Analysis.md` 的時候，AI 必須嚴格執行以下流程，以 100% 確保符合 Wong Choi Engine 輸出的 P19v2 格式解析標準。
+當執行或被請求進行任何香港或澳洲賽馬的賽事分析 (Race Analysis)，以及編寫 `Race X Analysis.md` 的時候，AI 必須嚴格執行以下流程。**Python Orchestrator 係唯一推進控制器 — LLM 嚴禁自行決定停頓或推進。**
 
 > [!CAUTION]
 > ## 🚫🚫🚫 P19v6 防串流鎖死協議 — 全引擎強制 (AU / HKJC / NBA) 🚫🚫🚫
@@ -30,10 +30,10 @@ description: Wong Choi Engine P19v2 賽事分析強制標準流程 (Race Analysi
 > **澳洲賽馬 (AU Racing) 專屬抽取限制：** 處理 Racenet 等賽事時，嚴禁使用 `browser_subagent` 逐場手動複製。AI 必須遵守 `au-wong-choi` 嘅 Lightpanda Fast Batch Protocol，先執行批量抽取腳本 (例如 `_temporary_files/xxx_extractor.py`) 取得全賽日 Markdown 檔案後，才能開始分析。
 
 ## 第一階段：Template Injection (強制打底)
-在開始分析新賽事並寫入檔案 (例如 `04-01 Race 8 Analysis.md`) 前，AI **必須首先**將標準的 P19v2 最終預測 (The Verdict) 範本注入到該檔案的尾部（或暫存於記憶中保證結構不變）。
+在開始分析新賽事並寫入檔案 (例如 `04-01 Race 8 Analysis.md`) 前，AI **必須首先**將標準的最終預測 (The Verdict) 範本注入到該檔案的尾部（或暫存於記憶中保證結構不變）。
 不允許憑空生成 Final Verdict 的格式，必須保留下方模板中確切的標籤字眼 (如 `🏆 Top 4 位置精選`, `🥇 **第一選**`, `🎯 Top 2 入三甲信心度` 等)。
 
-**P19v2 準確範本結構：**
+**V11 準確範本結構：**
 ```
 #### [第三部分] 最終預測 (The Verdict)
 

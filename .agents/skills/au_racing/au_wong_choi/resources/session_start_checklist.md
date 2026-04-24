@@ -43,7 +43,7 @@ Racecard: [RACECARD_PATH]
 Formguide: [FORMGUIDE_PATH]
 
 ## 分析模式
-P33-WLTM 逐場手動推進協議 — 每場完成後等確認
+V11 Python-Led 全自動推進協議 — Python Orchestrator 控制所有賽事推進，LLM 嚴禁自行停頓
 每匹馬完整 5-block × 13-subfield 分析
 Verdict 必須獨立 tool call 寫入
 ```

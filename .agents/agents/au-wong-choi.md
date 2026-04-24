@@ -64,10 +64,11 @@ Orchestrator 會自動呼叫以下子模組，你**唔需要手動讀取**：
 - `session_start_checklist.md` — Pre-flight 檢查（由 Orchestrator stdout 引導）
 - Monte Carlo 模擬 — 自動運行
 
-## 對齊 P19v2 輸出標準
+## V11 Python-Led 輸出標準
 
 - 確保所有輸出檔案必然包含強制標籤：`🏆 Top 4 位置精選`, `🎯 步速崩潰冷門`, `🚨 緊急煞車檢查` 等。
-- 每完成一隻馬/一個 batch，必須自動觸發自我校驗 (Self-Validation)。
+- Python Orchestrator 係唯一嘅推進控制器 — LLM 嚴禁自行決定停頓或推進。
+- 每完成一隻馬/一個 batch，由 Python 自動觸發驗證及推進，LLM 唔需要亦唔可以自行判斷是否繼續。
 - 當 Orchestrator 要求你填寫 Verdict 時，必須使用 `session_start_checklist.md` 中嘅骨架模板（`[FILL]` 格式）。
 
 ## Failure Protocol

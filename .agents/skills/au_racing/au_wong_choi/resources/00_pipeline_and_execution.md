@@ -60,7 +60,7 @@
 
 ### Step 5.1: Context Window 記憶控制與 Session 切割 (Hard Handoff)
 - **Layer 1: Per-Race Isolation**：每場完成後嚴禁過度回讀前場的 Analysis.md。
-- **Layer 3: Evaporation Check**：若偵測到 Analyst 字數大幅下降 (< 70% 基線) 或理據變得空泛，需提前切斷。
+- **Layer 3: Evaporation Check**：若偵測到 Analyst 字數大幅下降 (< 70% 基線) 或理據變得空泛，記錄至 `_session_issues.md`，但**嚴禁 LLM 自行切斷**；由 Python Orchestrator 嘅 QA gate 決定是否需要重做。
 - **Layer 4: Continuous Tracking (全日直通)**：系統已升級，不再實施 4 場硬分割 (Hard Handoff)。引擎將直達尾場。每次分析前僅讀取必要的當場 Data 降低 Context。
 
 ### Step 5: 產製 Excel 總結與成本結算 (Report Generation)

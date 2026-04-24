@@ -605,12 +605,29 @@ def parse_url_for_details(url):
 
 def get_target_dir(venue, formatted_date, auto_create=False):
     base_dir = "."
-    dirs = [d for d in os.listdir(base_dir) if os.path.isdir(d) and d.startswith(f"{formatted_date}_{venue}_Race_")]
-    if not dirs:
-        dirs = [d for d in os.listdir(base_dir) if os.path.isdir(d) and d.startswith(f"{formatted_date} {venue}")]
-    if dirs:
-        return os.path.abspath(os.path.join(base_dir, dirs[0]))
-    
+    # Collect ALL candidate directories matching date + venue
+    all_candidates = []
+    for d in os.listdir(base_dir):
+        if not os.path.isdir(d):
+            continue
+        # Match underscore format: YYYY-MM-DD_Venue_Race_...
+        if d.startswith(f"{formatted_date}_{venue}_Race_"):
+            all_candidates.append(d)
+        # Match space format: YYYY-MM-DD Venue ...
+        elif d.startswith(f"{formatted_date} {venue}"):
+            all_candidates.append(d)
+
+    if all_candidates:
+        # Prioritise directories that contain "Race" (extractor output with actual data)
+        # over bare venue-only directories (empty shells from preflight/auto_create)
+        with_race = [d for d in all_candidates if 'Race' in d]
+        if with_race:
+            with_race.sort()
+            return os.path.abspath(os.path.join(base_dir, with_race[0]))
+        # Fallback to bare directory
+        all_candidates.sort()
+        return os.path.abspath(os.path.join(base_dir, all_candidates[0]))
+
     if auto_create:
         new_dir = os.path.abspath(os.path.join(base_dir, f"{formatted_date} {venue}"))
         os.makedirs(new_dir, exist_ok=True)

@@ -24,11 +24,14 @@
     </directive>
 
     <directive name="PREMATURE_STOP_GUARD" priority="CRITICAL">
-        <description>防止全自動化分析中途停機等待用戶指令。</description>
+        <description>防止全自動化分析中途停機等待用戶指令。Python Orchestrator 係唯一推進控制器。</description>
         <rules>
-            1. 在所有 Batch (Batch 1 to N 及 Verdict Batch) 完成前，嚴禁輸出給用戶的普通文本回覆。
-            2. 連鎖執行：每次完成 Orchestrator 指定 JSON 填寫後，如果還有剩餘馬匹，立即重跑 Orchestrator，不可詢問「是否繼續」。
-            3. 回覆攔截器：在打算結束回應前自問「Orchestrator 是否已輸出 SUCCESS 或 NEXT_CMD?」，若沒有則退回繼續執行。
+            1. **Python 主導原則**：Python Orchestrator 決定何時推進、何時停頓。LLM 嚴禁自行判斷是否繼續或停止。
+            2. 在所有 Batch (Batch 1 to N 及 Verdict Batch) 完成前，嚴禁輸出給用戶的普通文本回覆。
+            3. 連鎖執行：每次完成 Orchestrator 指定 JSON 填寫後，如果還有剩餘馬匹，立即重跑 Orchestrator，不可詢問「是否繼續」。
+            4. 回覆攔截器：在打算結束回應前自問「Orchestrator 是否已輸出 SUCCESS 或 NEXT_CMD?」，若沒有則退回繼續執行。
+            5. **跨場連續執行**：Race N 完成後 Python 會自動推進到 Race N+1。LLM 嚴禁在任何 race 完成後自行停頓等待用戶確認。
+            6. 唯一合法停頓位：Orchestrator stdout 明確要求人工提供缺失資料，或出現 sys.exit(1) 嘅嚴重錯誤。
         </rules>
     </directive>
 
