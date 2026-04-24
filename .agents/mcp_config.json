@@ -14,6 +14,23 @@
         "-y",
         "@modelcontextprotocol/server-memory"
       ]
+    },
+    "git": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@anthropic/mcp-server-git",
+        "--repository",
+        "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity"
+      ]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@anthropic/mcp-server-filesystem",
+        "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity"
+      ]
     }
   }
 }

@@ -1405,7 +1405,25 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("url", help="Racenet Event URL or target directory path")
     parser.add_argument("--auto", action="store_true", help="Auto mode for resumed NEXT_CMD execution")
+    parser.add_argument("--langgraph", action="store_true", help="Use LangGraph StateGraph pipeline (Phase 1)")
     args = parser.parse_args()
+
+    # ── LangGraph dispatch ──
+    if args.langgraph:
+        _lg_scripts = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', '..', 'scripts')
+        sys.path.insert(0, os.path.abspath(_lg_scripts))
+        from racing_graph_core import run_au_langgraph
+        _lg_target = args.url
+        _lg_url = None
+        if _lg_target.startswith('http'):
+            _lg_url = _lg_target
+            _v, _d = parse_url_for_details(_lg_url)
+            _lg_target = get_target_dir(_v, _d)
+            if not _lg_target:
+                print("❌ Cannot find target directory for URL")
+                sys.exit(1)
+        run_au_langgraph(_lg_target, _lg_url)
+        sys.exit(0)
 
     try:
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')

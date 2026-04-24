@@ -95,12 +95,10 @@ def check_au_hkjc_format(text: str, domain: str) -> list[str]:
     if '14.2B' not in text and '微調' not in text:
         errors.append("⚠️ Missing 14.2B 微調 section — fine-tune field must be present in Analysis.md")
 
-    # Sectional + EEM existence check (required for forensic quality)
+    # Sectional existence check (required for forensic quality)
     if domain == 'hkjc':
         if '段速法醫' not in text:
             errors.append("⚠️ Missing 段速法醫 section — each horse analysis must include sectional forensics")
-        if 'EEM 能量' not in text:
-            errors.append("⚠️ Missing EEM 能量 section — each horse analysis must include EEM energy assessment")
 
     return errors
 
@@ -212,8 +210,8 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
             
         # Check Rating Matrix completeness to prevent anti-skipping
         req_matrix_fields = [
-            '狀態與穩定性', '段速與引擎', 'EEM與形勢', '騎練訊號'
-        ] if domain == 'au' else ['穩定性', '段速質量', '形勢與消耗', '練馬師訊號']
+            '狀態與穩定性', '段速與引擎', '形勢與走位', '騎練訊號'
+        ] if domain == 'au' else ['穩定性', '段速質量', '形勢與走位', '練馬師訊號']
         
         for field in req_matrix_fields:
             if field not in block:
@@ -223,7 +221,7 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
                 if field_line_match:
                     reasoning_text = field_line_match.group(1).strip()
                     # Apply digit lock ONLY for Speed, EEM — and SKIP for debut horses
-                    if not is_debut and field in ['段速與引擎', 'EEM與形勢', '段速質量', '形勢與消耗']:
+                    if not is_debut and field in ['段速與引擎', '形勢與走位', '段速質量']:
                         pass  # Matrix reasoning digit lock — relaxed per V9.2
 
     # ── LAZY-003: Cross-Horse Similarity Check ─────────────────────────────
