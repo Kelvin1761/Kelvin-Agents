@@ -19,7 +19,7 @@ Flow:
 """
 
 # Grade hierarchy from best to worst
-GRADE_ORDER = ['S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D']
+GRADE_ORDER = ['S+', 'S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D']
 
 
 # ── Grade Utilities ──────────────────────────────────
@@ -49,7 +49,7 @@ def count_dimensions(dims: dict, type_map: dict) -> dict:
 
     Args:
         dims: {'stability': '✅', 'sectional': '❌', ...}
-        type_map: {'stability': 'core', 'eem': 'semi_core', ...}
+        type_map: {'stability': 'core', 'position': 'semi_core', ...}
 
     Returns dict with core_strong, semi_strong, aux_strong,
     total_strong, total_weak, has_core_weak, etc.
@@ -110,14 +110,13 @@ def lookup_base_grade(c: dict) -> tuple:
     axs = c['aux_strong']
     tw = c['total_weak']
 
+    # V4.2: A+ = full package (was S). S-tier only via ✅✅ promotion.
     if cs >= 2 and ss >= 2 and axs >= 2 and tw == 0:
-        return 'S', f'2核心✅ + 2半核心✅ + {axs}輔助✅ + 0❌'
-    if cs >= 2 and ss >= 1 and axs >= 1 and tw == 0:
-        return 'S-', f'2核心✅ + {ss}半核心✅ + {axs}輔助✅ + 0❌'
+        return 'A+', f'2核心✅ + 2半核心✅ + {axs}輔助✅ + 0❌ (全滿)'
     if cs >= 2 and tw == 0:
-        return 'A+', f'2核心✅ + 0❌'
+        return 'A', f'2核心✅ + 0❌'
     if (cs >= 1 and ss >= 1 and tw == 0) or (cs >= 2 and tw <= 1):
-        return 'A', f'{cs}核心✅ + {ss}半核心✅ + {tw}❌'
+        return 'A-', f'{cs}核心✅ + {ss}半核心✅ + {tw}❌'
     if cs >= 1 and tw <= 1:
         return 'A-', f'{cs}核心✅ + ❌≤1'
     if (cs >= 1 and tw == 2) or (ss >= 2 and tw <= 1):
@@ -144,18 +143,18 @@ def lookup_base_grade(c: dict) -> tuple:
 
 def apply_core_constraint(grade: str, counts: dict, dims: dict,
                           sectional_key: str = 'sectional',
-                          eem_key: str = 'eem') -> tuple:
+                          position_key: str = '形勢與走位') -> tuple:
     """
     Core ❌ → hard cap at B+.
-    Exception: sectional ✅ + EEM ✅ → cap at A-.
+    Exception: sectional ✅ + position ✅ → cap at A-.
     """
     if not counts['has_core_weak']:
         return grade, ''
     sec = str(dims.get(sectional_key, '')).strip()
-    eem = str(dims.get(eem_key, '')).strip()
-    if '✅' in sec and '✅' in eem:
+    pos = str(dims.get(position_key, '')).strip()
+    if '✅' in sec and '✅' in pos:
         if grade_idx(grade) < grade_idx('A-'):
-            return 'A-', '核心❌但段速✅+EEM✅豁免 → 封頂A-'
+            return 'A-', '核心❌但段速✅+形勢✅豁免 → 封頂A-'
         return grade, ''
     if grade_idx(grade) < grade_idx('B+'):
         return 'B+', '核心防護牆: 核心❌ → 封頂B+'
@@ -179,24 +178,43 @@ def apply_micro_adjustments(grade: str, up: list, down: list) -> tuple:
     return grade, '無'
 
 
-# ── S-Grade Inflation Guards (SIP-9 + SIP-SL01) ─────
+# ── S-Grade Inflation Guards (SIP-9 + SIP-SL01 + SIP-AU-020) ─────
 
 def apply_s_grade_guards(grade: str, horse: dict, counts: dict,
                          dims: dict, ctx: dict,
                          sectional_key: str = 'sectional',
-                         class_key: str = 'class_advantage') -> tuple:
+                         class_key: str = 'class_advantage',
+                         double_ticks: int = -1) -> tuple:
     """
     S-grade inflation prevention guards.
     Applies to both HKJC and AU.
 
-    SIP-9:   S/S- must have sectional ✅ or class ✅ (hard proof)
-    SIP-SL01: S/S-/A+ must have recent top-3 finish in last 3 starts
+    SIP-9:     S/S- must have sectional ✅ or class ✅ (hard proof)
+    SIP-SL01:  S/S-/A+ must have recent top-3 finish in last 3 starts
+    SIP-AU-020: V4.2 conviction gate mirrors promotion steps:
+                S- requires ≥1 ✅✅, S requires ≥2 ✅✅, S+ requires ≥3 ✅✅
+
+    Args:
+        double_ticks: Number of ✅✅ dimensions. Pass -1 to skip SIP-AU-020.
     """
     notes = []
 
     # Only applies to S-tier grades
     if grade_idx(grade) > grade_idx('A+'):
         return grade, ''
+
+    # ── SIP-AU-020: Double-Tick Conviction Gate ──
+    # V4.2 S-tier is promotion-only: S-/S/S+ require 1/2/3 promotion evidence.
+    if double_ticks >= 0 and grade in ('S+', 'S', 'S-'):
+        if grade == 'S+' and double_ticks < 3:
+            grade = 'A+'
+            notes.append(f'SIP-AU-020信心度: S+級需≥3個✅✅ (實際{double_ticks}) → 封頂A+')
+        elif grade == 'S' and double_ticks < 2:
+            grade = 'A+'
+            notes.append(f'SIP-AU-020信心度: S級需≥2個✅✅ (實際{double_ticks}) → 封頂A+')
+        elif grade == 'S-' and double_ticks < 1:
+            grade = 'A+'
+            notes.append(f'SIP-AU-020信心度: S-級需≥1個✅✅ (實際{double_ticks}) → 封頂A+')
 
     # ── SIP-9: Purity Guard ──
     # S/S- requires hard proof: sectional OR class must be ✅
@@ -237,7 +255,7 @@ def apply_s_grade_guards(grade: str, horse: dict, counts: dict,
 def parse_matrix_scores(matrix_data: dict, schema: dict) -> tuple:
     """
     Parse a matrix dictionary using the provided schema.
-    schema: {"stability": "core", "eem": "semi", ...}
+    schema: {"stability": "core", "position": "semi", ...}
     Returns: (core_pass, semi_pass, aux_pass, core_fail, total_fail)
 
     5-tier display + 3-tier calculation (V9.5):
@@ -286,11 +304,11 @@ def compute_base_grade(core_pass: int, semi_pass: int, aux_pass: int,
                        core_fail: int, total_fail: int,
                        matrix_dims: dict = None,
                        sectional_key: str = '段速與引擎',
-                       eem_key: str = 'EEM與形勢') -> str:
+                       position_key: str = '形勢與走位') -> str:
     """Shim: compute base grade from tick counts (qualitative, not weighted).
     
     V9.5: When matrix_dims is provided, applies Core Engine Wall
-    (core ❌ → hard cap B+, with sectional✅+EEM✅ exception → A-).
+    (core ❌ → hard cap B+, with sectional✅+position✅ exception → A-).
     """
     counts = {
         'core_strong': core_pass, 'semi_strong': semi_pass, 'aux_strong': aux_pass,
@@ -310,7 +328,7 @@ def compute_base_grade(core_pass: int, semi_pass: int, aux_pass: int,
             dims[k] = score
         grade, _ = apply_core_constraint(grade, counts, dims,
                                          sectional_key=sectional_key,
-                                         eem_key=eem_key)
+                                         position_key=position_key)
     
     return grade
 
@@ -357,12 +375,12 @@ def _self_test():
     print('\n[1] Base Grade Lookup Tests:')
     grade_tests = [
         # (label, core, semi, aux, total_weak, expected)
-        ('S  (full house)',            2, 2, 2, 0, 'S'),
-        ('S  (3 aux)',                 2, 2, 3, 0, 'S'),
-        ('S- (2c+1s+1a)',             2, 1, 1, 0, 'S-'),
-        ('A+ (2c only)',              2, 0, 0, 0, 'A+'),
-        ('A  (1c+1s+0x)',             1, 1, 0, 0, 'A'),
-        ('A  (2c+1x)',                2, 0, 0, 1, 'A'),
+        ('A+ (full house)',            2, 2, 2, 0, 'A+'),
+        ('A+ (3 aux)',                 2, 2, 3, 0, 'A+'),
+        ('A  (2c+1s+1a)',             2, 1, 1, 0, 'A'),
+        ('A  (2c only)',              2, 0, 0, 0, 'A'),
+        ('A- (1c+1s+0x)',             1, 1, 0, 0, 'A-'),
+        ('A- (2c+1x)',                2, 0, 0, 1, 'A-'),
         ('A- (1c+0x)',                1, 0, 0, 0, 'A-'),
         ('A- (1c+1x)',                1, 0, 0, 1, 'A-'),
         ('B+ (1c+2x)',                1, 0, 0, 2, 'B+'),
@@ -393,13 +411,13 @@ def _self_test():
     print('\n[2] Core Constraint Tests:')
     cc_tests = [
         ('A+ + core fail -> B+', 'A+', True, '\u27a1\ufe0f', '\u27a1\ufe0f', 'B+'),
-        ('A+ + core fail + sec+eem pass -> A-', 'A+', True, '\u2705', '\u2705', 'A-'),
+        ('A+ + core fail + sec+pos pass -> A-', 'A+', True, '✅', '✅', 'A-'),
         ('B + core fail -> B (already below)', 'B', True, '\u27a1\ufe0f', '\u27a1\ufe0f', 'B'),
         ('S + no core fail -> S', 'S', False, '\u2705', '\u2705', 'S'),
     ]
-    for label, g, has_cw, sec, eem, expected in cc_tests:
+    for label, g, has_cw, sec, pos, expected in cc_tests:
         counts = {'has_core_weak': has_cw}
-        dims = {'sectional': sec, 'eem': eem}
+        dims = {'sectional': sec, '形勢與走位': pos}
         result, _ = apply_core_constraint(g, counts, dims)
         ok = '\u2705' if result == expected else '\u274c'
         if result != expected:
@@ -412,7 +430,7 @@ def _self_test():
         ('A + up -> A+', 'A', ['pace'], [], 'A+'),
         ('A + down -> A-', 'A', [], ['barrier'], 'A-'),
         ('A + up+down -> A', 'A', ['pace'], ['barrier'], 'A'),
-        ('S + up -> S (cap)', 'S', ['pace'], [], 'S'),
+        ('S + up -> S+ (V4.2)', 'S', ['pace'], [], 'S+'),
         ('D + down -> D (floor)', 'D', [], ['weight'], 'D'),
     ]
     for label, g, up, down, expected in ma_tests:
@@ -422,8 +440,8 @@ def _self_test():
             all_pass = False
         print(f'  {ok} {label}: got={result}')
 
-    # ── Test 4: S-Grade Guards ──
-    print('\n[4] S-Grade Guard Tests:')
+    # ── Test 4: S-Grade Guards (legacy, no double_ticks) ──
+    print('\n[4] S-Grade Guard Tests (SIP-9 + SIP-SL01):')
     sg_tests = [
         ('S + no hard proof -> A+',
          'S', {'sectional': '\u27a1\ufe0f', 'class_advantage': '\u27a1\ufe0f'}, True, 'A+'),
@@ -443,6 +461,34 @@ def _self_test():
         counts = {'core_strong': 2, 'semi_strong': 2, 'aux_strong': 2,
                   'total_strong': 6, 'total_weak': 0}
         result, note = apply_s_grade_guards(g, horse, counts, dims, {})
+        ok = '\u2705' if result == expected else '\u274c'
+        if result != expected:
+            all_pass = False
+        print(f'  {ok} {label}: got={result} {f"({note})" if note else ""}')
+
+    # ── Test 5: SIP-AU-020 Double-Tick Conviction Gate ──
+    print('\n[5] SIP-AU-020 Double-Tick Conviction Gate:')
+    dt_tests = [
+        # (label, grade, double_ticks, expected)
+        ('S+ + 3 dticks -> S+ (pass)',  'S+', 3, 'S+'),
+        ('S+ + 2 dticks -> A+ (fail)',  'S+', 2, 'A+'),
+        ('S + 2 dticks -> S (pass)',    'S',  2, 'S'),
+        ('S + 1 dtick -> A+ (fail)',    'S',  1, 'A+'),
+        ('S- + 1 dtick -> S- (pass)',   'S-', 1, 'S-'),
+        ('S- + 0 dticks -> A+ (fail)',  'S-', 0, 'A+'),
+        ('S + 3 dticks -> S (pass)',    'S',  3, 'S'),
+        ('S + 1 dtick -> A+ (fail)',    'S',  1, 'A+'),
+        ('S- + 3 dticks -> S- (pass)',  'S-', 3, 'S-'),
+        ('A+ + 0 dticks -> A+ (skip)',  'A+', 0, 'A+'),
+        ('S + -1 dticks -> S (skip)',   'S', -1, 'S'),
+    ]
+    for label, g, dt, expected in dt_tests:
+        horse = {'recent_3_top3': True}
+        counts = {'core_strong': 2, 'semi_strong': 2, 'aux_strong': 2,
+                  'total_strong': 6, 'total_weak': 0}
+        dims = {'sectional': '✅', 'class_advantage': '✅'}
+        result, note = apply_s_grade_guards(g, horse, counts, dims, {},
+                                            double_ticks=dt)
         ok = '\u2705' if result == expected else '\u274c'
         if result != expected:
             all_pass = False

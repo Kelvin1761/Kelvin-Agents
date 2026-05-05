@@ -229,7 +229,7 @@
 | SIP-RR12 | 超高歷史衰減 | `02` Step 1 | Place Rate≥85% + First-up≥90天/距離首嘗 → 穩定指數✅降➖ + 保底降一檔 |
 | SIP-RR13 | Caulfield Good 後追馬偏差降級 | `02` Step 7 | Caulfield+Good+Rail True+後追(≥6th) → 形勢❌ + 微調降級 |
 | SIP-RR14 | Good 地勝率封頂 | `02` Step 14.E | Good 3-4+樣本≥8場+勝率≤15% → 硬性封頂 B |
-| SIP-RR15 | 距離全勝專精 | `02` Step 2 | 特定距離100%W+≥3場 → 裝備與距離✅ + 微調升半級 |
+| SIP-RR15 | 距離全勝專精 | `02` Step 2 | 特定距離100%W+≥3場 → 「段速與引擎」距離適性✅；微調只可用於未被矩陣吸收嘅額外證據 |
 | SIP-RR16 | 冷門馬偏差自動升位 | `02` Step 14.F | 前領偏差冷門馬+Good+Rail True+≥B- → 替換Top4第4選 |
 
 ## Rosehill 2026-03-28 覆盤衍生 SIP(SIP-RF 系列)

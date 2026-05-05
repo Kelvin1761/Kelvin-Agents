@@ -139,7 +139,8 @@ def parse_formguide(filepath: str, source: str = "punters") -> list[dict]:
         all_dates = extract_all_dates(block)
 
         # Compute derived fields
-        fitness_arc = compute_fitness_arc(race_entries, all_dates=all_dates)
+        fitness_arc = compute_fitness_arc(race_entries, all_dates=all_dates,
+                                         career_stat=stats.get('career'))
         l600_trend = compute_l600_trend(race_entries)
         condition_profile = compute_condition_profile(stats)
 
@@ -331,7 +332,8 @@ def extract_all_dates(block: str) -> list[str]:
     return re.findall(r'\b(\d{4}-\d{2}-\d{2})\b', block)
 
 
-def compute_fitness_arc(entries: list, all_dates: Optional[list] = None) -> dict:
+def compute_fitness_arc(entries: list, all_dates: Optional[list] = None,
+                        career_stat: Optional[str] = None) -> dict:
     """Compute fitness arc from race entries.
     
     Uses a multi-signal approach to detect spell boundaries:
@@ -339,12 +341,40 @@ def compute_fitness_arc(entries: list, all_dates: Optional[list] = None) -> dict
     2. Gap > 56 days between race entries when no trial fills the gap
     3. Stewards/notes mentioning "spell" or "sent for a spell"
     
+    Career-aware classification (V2.2):
+    - Career = 0 → DEBUT (初出馬)
+    - Career > 0 → ESTABLISHED (normal template)
+    
     Args:
         entries: list of formal race entries (trials excluded)
         all_dates: list of ALL chronological dates (incl. trials) for gap detection
+        career_stat: career stat string from Formguide (e.g. '2:0-1-0')
     """
+    # ─── Career-based classification ───
+    career_starts = 0
+    if career_stat and career_stat != 'N/A':
+        m = re.match(r'(\d+):', career_stat)
+        if m:
+            career_starts = int(m.group(1))
+    
+    if career_starts == 0:
+        career_tag = 'DEBUT'
+    else:
+        career_tag = 'ESTABLISHED'
+    
+    # DEBUT override: never label as First-up/spell
+    if career_tag == 'DEBUT':
+        return {
+            'stage': '初出馬',
+            'career_tag': career_tag,
+            'career_starts': career_starts,
+            'spell_days': 0,
+            'starts_this_prep': 0,
+        }
+    
     if not entries:
-        return {'stage': 'Unknown', 'spell_days': 0, 'starts_this_prep': 0}
+        return {'stage': 'Unknown', 'spell_days': 0, 'starts_this_prep': 0,
+                'career_tag': career_tag, 'career_starts': career_starts}
 
     # Sort by date (newest first)
     sorted_entries = sorted(entries, key=lambda x: x['date'], reverse=True)
@@ -387,6 +417,8 @@ def compute_fitness_arc(entries: list, all_dates: Optional[list] = None) -> dict
                         'stage': 'First-up',
                         'spell_days': spell_days,
                         'starts_this_prep': 0,
+                        'career_tag': career_tag,
+                        'career_starts': career_starts,
                     }
                 # else: trials are close together, could be same prep → fall through
             
@@ -396,6 +428,8 @@ def compute_fitness_arc(entries: list, all_dates: Optional[list] = None) -> dict
                     'stage': 'First-up',
                     'spell_days': spell_days,
                     'starts_this_prep': 0,
+                    'career_tag': career_tag,
+                    'career_starts': career_starts,
                 }
         else:
             # No trial data available → use simple 56-day rule
@@ -403,6 +437,8 @@ def compute_fitness_arc(entries: list, all_dates: Optional[list] = None) -> dict
                 'stage': 'First-up',
                 'spell_days': spell_days,
                 'starts_this_prep': 0,
+                'career_tag': career_tag,
+                'career_starts': career_starts,
             }
 
     # Count starts in current preparation (going backwards)
@@ -471,6 +507,8 @@ def compute_fitness_arc(entries: list, all_dates: Optional[list] = None) -> dict
         'stage': stage,
         'spell_days': spell_days,
         'starts_this_prep': starts_this_prep,
+        'career_tag': career_tag,
+        'career_starts': career_starts,
     }
 
 

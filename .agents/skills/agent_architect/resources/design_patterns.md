@@ -310,7 +310,7 @@ List affected agents → suggest re-audit
 
 ## Pattern 22: Python-First Offloading（減壓原則）
 **Problem**: LLMs waste context window, hallucinate, and burn tokens on deterministic tasks that a Python script can handle perfectly in milliseconds. Observed failure modes:
-- Math errors in odds calculation (EEM, win probability)
+- Math errors in odds calculation (positional scoring, win probability)
 - Template drift from copy-paste (missing fields, format inconsistency)
 - Slow file scanning that could be instant with `grep`/`pathlib`
 - JSON/CSV format errors from manual LLM generation
@@ -340,8 +340,8 @@ List affected agents → suggest re-audit
 - 🧠 **Focus**: LLM context window is freed for what it's actually good at — logic and judgment
 - ⚡ **Speed**: Script execution in ms vs LLM reasoning in seconds
 
-**Anti-pattern**: ❌ Agent prompt says "Calculate the weighted average of these 12 horses' EEM scores"
-**Correct pattern**: ✅ Agent prompt says "Run `scripts/compute_rating_matrix.py` to get EEM scores, then interpret the results"
+**Anti-pattern**: ❌ Agent prompt says "Calculate the weighted average of these 12 horses' positional scores"
+**Correct pattern**: ✅ Agent prompt says "Run `scripts/compute_rating_matrix.py` to get positional scores, then interpret the results"
 
 ---
 
@@ -473,7 +473,7 @@ VERDICT: Synthesize final output
 | Expected Value (EV) | Formula: `EV = (True_Prob × Decimal_Odds) - 1` | Embed in verdict template |
 | Kelly Criterion Staking | `sports-betting` package or pure math | `scripts/kelly_calculator.py` |
 | Time-Series Backtesting | `sklearn.TimeSeriesSplit` (anti look-ahead bias) | `scripts/backtest_engine.py` |
-| Feature Engineering | L400, weight change, pace, EEM + `StandardScaler` | `scripts/feature_pipeline.py` |
+| Feature Engineering | L400, weight change, pace, 形勢與走位 + `StandardScaler` | `scripts/feature_pipeline.py` |
 | Velocity Profile (1D) | Sectional times → speed curve → deceleration point | `scripts/velocity_profiler.py` |
 
 ### 🏀 NBA

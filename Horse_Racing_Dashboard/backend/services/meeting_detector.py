@@ -226,26 +226,55 @@ def load_meeting_races(meeting: Meeting) -> dict[str, list[RaceAnalysis]]:
                 if rn not in seen or len(race.horses) > len(seen[rn].horses):
                     seen[rn] = race
             races = list(seen.values())
-            
-            # Load standalone MC Results JSON files (Race_N_MC_Results.json)
-            # These are produced by mc_simulator.py and contain Monte Carlo simulation data
-            mc_pattern = re.compile(r'^Race_(\d+)_MC_Results\.json$')
-            for mc_file in sorted(folder.glob("Race_*_MC_Results.json")):
-                mc_match = mc_pattern.match(mc_file.name)
-                if mc_match:
-                    mc_race_num = int(mc_match.group(1))
-                    mc_picks = parse_mc_results_json(str(mc_file))
-                    if mc_picks:
-                        # Find matching race and inject MC data
-                        target_race = next((r for r in races if r.race_number == mc_race_num), None)
-                        if target_race and not target_race.monte_carlo_simulation:
-                            target_race.monte_carlo_simulation = mc_picks
-                            # Enrich MC picks with horse numbers from parsed race data
-                            horse_name_map = {h.horse_name.lower(): str(h.horse_number) for h in target_race.horses}
-                            for pick in mc_picks:
-                                if not pick.horse_number and pick.horse_name:
-                                    pick.horse_number = horse_name_map.get(pick.horse_name.lower())
         
+        # ── Load standalone MC Results JSON files (Race_N_MC_Results.json) ──
+        # These are produced by mc_simulator.py and apply to BOTH AU and HKJC meetings
+        mc_pattern = re.compile(r'^Race_(\d+)_MC_Results\.json$')
+        for mc_file in sorted(folder.glob("Race_*_MC_Results.json")):
+            mc_match = mc_pattern.match(mc_file.name)
+            if mc_match:
+                mc_race_num = int(mc_match.group(1))
+                mc_picks = parse_mc_results_json(str(mc_file))
+                if mc_picks:
+                    # Find matching race and inject MC data
+                    target_race = next((r for r in races if r.race_number == mc_race_num), None)
+                    if target_race and not target_race.monte_carlo_simulation:
+                        target_race.monte_carlo_simulation = mc_picks
+                        # Enrich MC picks with horse numbers from parsed race data
+                        horse_name_map = {h.horse_name.lower(): str(h.horse_number) for h in target_race.horses}
+                        for pick in mc_picks:
+                            if not pick.horse_number and pick.horse_name:
+                                pick.horse_number = horse_name_map.get(pick.horse_name.lower())
+
+        # ── HKJC: Override top_picks from Logic.json verdict (authoritative source) ──
+        if meeting.region == Region.HKJC:
+            import json as _json
+            logic_pattern = re.compile(r'^Race_(\d+)_Logic\.json$')
+            for logic_file in sorted(folder.glob("Race_*_Logic.json")):
+                logic_match = logic_pattern.match(logic_file.name)
+                if logic_match:
+                    logic_race_num = int(logic_match.group(1))
+                    try:
+                        logic_data = _json.loads(logic_file.read_text(encoding='utf-8'))
+                        verdict = logic_data.get('race_analysis', {}).get('verdict', {})
+                        top4 = verdict.get('top4', [])
+                        if top4:
+                            target_race = next((r for r in races if r.race_number == logic_race_num), None)
+                            if target_race:
+                                from models.race import TopPick
+                                new_picks = []
+                                for rank, entry in enumerate(top4[:4], 1):
+                                    new_picks.append(TopPick(
+                                        rank=rank,
+                                        horse_number=int(entry.get('horse_number', 0)),
+                                        horse_name=entry.get('horse_name', ''),
+                                        grade=entry.get('grade'),
+                                    ))
+                                if new_picks:
+                                    target_race.top_picks = new_picks
+                    except Exception:
+                        pass
+
         # Sort by race number
         races.sort(key=lambda r: r.race_number)
         results[analyst_name] = races

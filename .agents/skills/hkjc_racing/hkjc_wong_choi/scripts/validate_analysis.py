@@ -101,8 +101,8 @@ def validate_horse(horse):
     if char_count < MIN_CHARS_PER_HORSE:
         issues.append(f"BELOW_MIN_CHARS: {char_count} < {MIN_CHARS_PER_HORSE}")
     
-    # 3. Rating matrix dimensions count
-    matrix_dims = len(re.findall(r'-\s*.+?\[(?:核心|半核心|輔助)\]', block))
+    # 3. Rating matrix dimensions count (supports both flat and ##### sub-heading formats)
+    matrix_dims = len(re.findall(r'(?:-\s*.+?|#{5}\s+.+?)\[(?:核心|半核心|輔助)\]', block))
     if "📊" in block and matrix_dims < 7:
         issues.append(f"MATRIX_INCOMPLETE: {matrix_dims}/8 dimensions")
     

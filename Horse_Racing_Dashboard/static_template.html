@@ -910,8 +910,20 @@ function getRaceBettingCandidates(meeting, raceNum, isDualAnalyst) {
     if (racesData) {
       const analysts = Object.keys(racesData.races_by_analyst);
       const race = racesData.races_by_analyst[analysts[0]]?.find(r => r.race_number === raceNum);
-      // Derive top 2 from horses sorted by final_grade
-      if (race?.horses?.length) {
+      // Use top_picks from parser (authoritative verdict), fallback to grade sort
+      if (race?.top_picks?.length) {
+        const horseMap = {};
+        (race.horses || []).forEach(h => { horseMap[h.horse_number] = h; });
+        race.top_picks.slice(0, 2).forEach(p => {
+          const h = horseMap[p.horse_number] || {};
+          candidates.push({
+            horse_number: p.horse_number, horse_name: p.horse_name || h.horse_name || '?',
+            jockey: h.jockey || null, trainer: h.trainer || null,
+            grade: h.final_grade || p.grade, kelvin_grade: h.final_grade || p.grade, heison_grade: null,
+            consensus_type: 'Top 2 \u7cbe\u9078',
+          });
+        });
+      } else if (race?.horses?.length) {
         const top2 = [...race.horses]
           .filter(h => h.final_grade)
           .sort((a, b) => sortByGrade(a.final_grade, b.final_grade))
@@ -1149,12 +1161,19 @@ function renderComparisonView(analyses, analysts) {
     if (!picks.length && !analyses[analyst]?.horses?.length) {
       html += '<div style="padding:16px;text-align:center;color:#94A3B8;font-size:0.8rem">暫無 Top Picks 數據</div>';
     } else {
-      // Derive true Top 4 from all horses sorted by final_grade
+      // Use top_picks from parser (authoritative verdict), fallback to grade sort
       const horses = analyses[analyst]?.horses || [];
-      const top4 = [...horses]
-        .filter(h => h.final_grade)
-        .sort((a, b) => sortByGrade(a.final_grade, b.final_grade))
-        .slice(0, 4);
+      const horseMap = {};
+      horses.forEach(h => { horseMap[h.horse_number] = h; });
+      let top4;
+      if (picks.length) {
+        top4 = picks.slice(0, 4).map(p => {
+          const h = horseMap[p.horse_number];
+          return h || { horse_number: p.horse_number, horse_name: p.horse_name || '?', final_grade: p.grade, jockey: '' };
+        });
+      } else {
+        top4 = [...horses].filter(h => h.final_grade).sort((a, b) => sortByGrade(a.final_grade, b.final_grade)).slice(0, 4);
+      }
 
       top4.forEach((horse, i) => {
         const bg = i===0?'#FEF3C7':i===1?'#F1F5F9':i===2?'#FFF7ED':'#EFF6FF';
@@ -1200,7 +1219,14 @@ function renderComparisonView(analyses, analysts) {
   const sortedLists = analysts.map(analyst => {
     const horses = analyses[analyst]?.horses || [];
     const picks = analyses[analyst]?.top_picks || [];
-    const sorted = [...horses].sort((a,b) => {
+    const pickRankMap = {};
+    picks.forEach((p, i) => { pickRankMap[p.horse_number] = i; });
+    const sorted = [...horses].sort((a, b) => {
+      const aInPicks = pickRankMap.hasOwnProperty(a.horse_number);
+      const bInPicks = pickRankMap.hasOwnProperty(b.horse_number);
+      if (aInPicks && bInPicks) return pickRankMap[a.horse_number] - pickRankMap[b.horse_number];
+      if (aInPicks) return -1;
+      if (bInPicks) return 1;
       return sortByGrade(a.final_grade, b.final_grade);
     });
     return { sorted, picks };
@@ -1381,17 +1407,32 @@ function renderSingleAnalystView(analysis, analystName) {
   const horses = analysis.horses || [];
   const isK = (analystName||'').toLowerCase() === 'kelvin';
 
-  const sortedHorses = [...horses].sort((a,b) => {
+  // Sort horses: top_picks order first, then remaining by grade
+  const pickRankMap = {};
+  picks.forEach((p, i) => { pickRankMap[p.horse_number] = i; });
+  const sortedHorses = [...horses].sort((a, b) => {
+    const aInPicks = pickRankMap.hasOwnProperty(a.horse_number);
+    const bInPicks = pickRankMap.hasOwnProperty(b.horse_number);
+    if (aInPicks && bInPicks) return pickRankMap[a.horse_number] - pickRankMap[b.horse_number];
+    if (aInPicks) return -1;
+    if (bInPicks) return 1;
     return sortByGrade(a.final_grade, b.final_grade);
   });
 
   let html = '';
   // Top picks
-  // Derive true Top 4 from horses sorted by final_grade
-  const top4 = [...horses]
-    .filter(h => h.final_grade)
-    .sort((a, b) => sortByGrade(a.final_grade, b.final_grade))
-    .slice(0, 4);
+  // Use top_picks from parser (authoritative verdict), fallback to grade sort
+  const horseMap = {};
+  horses.forEach(h => { horseMap[h.horse_number] = h; });
+  let top4;
+  if (picks.length) {
+    top4 = picks.slice(0, 4).map(p => {
+      const h = horseMap[p.horse_number];
+      return h || { horse_number: p.horse_number, horse_name: p.horse_name || '?', final_grade: p.grade, jockey: '' };
+    });
+  } else {
+    top4 = [...horses].filter(h => h.final_grade).sort((a, b) => sortByGrade(a.final_grade, b.final_grade)).slice(0, 4);
+  }
   if (top4.length) {
     html += `<div style="margin-bottom:24px"><h2 style="font-size:1rem;font-weight:700;margin-bottom:12px">🏆 Top Picks</h2>
       <div class="comparison__column" style="max-width:600px"><div class="comparison__header comparison__header--${isK?'kelvin':'heison'}">${esc(analystName||'Analyst')}</div><div class="comparison__body" style="padding:0">`;

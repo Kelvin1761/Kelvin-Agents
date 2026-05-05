@@ -409,11 +409,11 @@ def parse_horse_block(horse_num: int, horse_name: str, block: str) -> HorseAnaly
     # HKJC sections with emoji markers
     speed_forensics = _extract_section(block,
         ['🔬 段速法醫', '**🔬 段速法醫'],
-        ['⚡ EEM', '**⚡ EEM', '📋', '📊', '💡']
+        ['⚡ 形勢與走位', '**⚡ 形勢與走位', '⚡ EEM', '**⚡ EEM', '📋', '📊', '💡']
     )
     
-    eem_energy = _extract_section(block,
-        ['⚡ EEM', '**⚡ EEM'],
+    positional_assessment = _extract_section(block,
+        ['⚡ 形勢與走位', '**⚡ 形勢與走位', '⚡ EEM', '**⚡ EEM'],
         ['📋 寬恕', '**📋 寬恕', '🔗', '📊', '💡']
     )
     
@@ -474,7 +474,7 @@ def parse_horse_block(horse_num: int, horse_name: str, block: str) -> HorseAnaly
         key_runs=key_runs if key_runs else None,
         trend_summary=trend_summary,
         speed_forensics=speed_forensics,
-        eem_energy=eem_energy,
+        eem_energy=positional_assessment,
         forgiveness_file=forgiveness,
         form_line=form_line,
         engine_type=engine_type,

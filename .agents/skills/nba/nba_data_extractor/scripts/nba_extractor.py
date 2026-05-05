@@ -78,7 +78,7 @@ TEAM_ABBR_ESPN_MAP = {
 # 設定方式: export THE_ODDS_API_KEY="你的key"
 THE_ODDS_API_KEY = os.environ.get("THE_ODDS_API_KEY", "")
 
-API_SLEEP = 0.6  # nba_api rate limit 保護
+API_SLEEP = 0.8  # nba_api rate limit 保護 (increased from 0.6 to prevent RS timeout failures)
 
 # ==========================================
 # 工具函數
@@ -426,21 +426,72 @@ def fetch_team_injuries(team_abbr):
 
 
 def fetch_player_gamelog(player_id, player_name, n=10):
-    """為單一球員提取 L10 完整 Box Score"""
+    """為單一球員提取 L10 完整 Box Score（Season-Agnostic: RS + Playoffs 合併）
+    
+    永遠 fetch Regular Season + Playoffs 兩種 season type，合併後按日期排序取最新 N 場。
+    - Regular Season 期間：Playoffs 返空，結果等同舊版
+    - Playoff 期間：自動包含 playoff games
+    - 下季自動生效，零配置
+    """
     if not NBA_API_AVAILABLE:
         return None
     try:
-        log = playergamelog.PlayerGameLog(player_id=player_id)
-        df = log.get_data_frames()[0]
-        time.sleep(API_SLEEP)
+        import pandas as pd
+        all_dfs = []
+        playoff_game_count = 0
 
-        if df.empty:
+        # 1. 永遠先拉 Playoffs（如果有就排前面）
+        try:
+            log_po = playergamelog.PlayerGameLog(
+                player_id=player_id,
+                season_type_all_star='Playoffs'
+            )
+            df_po = log_po.get_data_frames()[0]
+            time.sleep(API_SLEEP)
+            if not df_po.empty:
+                all_dfs.append(df_po)
+                playoff_game_count = len(df_po)
+        except Exception as e:
+            print(f"    ⚠️ Playoff gamelog 失敗 (non-critical): {e}")
+
+        # 2. 再拉 Regular Season（默認）— with retry
+        rs_success = False
+        for attempt in range(2):
+            try:
+                log_rs = playergamelog.PlayerGameLog(player_id=player_id)
+                df_rs = log_rs.get_data_frames()[0]
+                time.sleep(API_SLEEP)
+                if not df_rs.empty:
+                    all_dfs.append(df_rs)
+                    rs_success = True
+                break
+            except Exception as e:
+                if attempt == 0:
+                    print(f"    ⚠️ RS gamelog retry ({player_name}): {e}")
+                    time.sleep(2.0)  # Longer backoff before retry
+                else:
+                    print(f"    ❌ RS gamelog 失敗 ({player_name}): {e}")
+
+        if not all_dfs:
             return None
 
+        # 3. 合併 + 去重（by GAME_DATE + MATCHUP）+ 取 top N
+        #    nba_api 已按日期 newest-first 排序，concat 保持 Playoffs 在前
+        df = pd.concat(all_dfs, ignore_index=True)
+        df = df.drop_duplicates(subset=['GAME_DATE', 'MATCHUP'], keep='first')
+        
+        total_games = len(df)
         df_l10 = df.head(n)
+        
+        # Count how many of the actual L10 are playoff games
+        actual_l10_count = len(df_l10)
+        playoff_in_l10 = min(playoff_game_count, actual_l10_count)
+        rs_in_l10 = actual_l10_count - playoff_in_l10
+
         record = {
             "name": player_name,
-            "games_played": len(df),
+            "games_played": total_games,
+            "playoff_games_in_l10": playoff_in_l10,
             "l10_dates": df_l10['GAME_DATE'].tolist(),
             "l10_matchups": df_l10['MATCHUP'].tolist(),
             "l10_wl": df_l10['WL'].tolist(),
@@ -466,6 +517,9 @@ def fetch_player_gamelog(player_id, player_name, n=10):
             record[f"{stat}_stats"] = s
             record[f"{stat}_label"] = cov_label(s["cov"])
 
+        if playoff_in_l10 > 0:
+            print(f"    📋 L{actual_l10_count}: {playoff_in_l10} playoff + {rs_in_l10} RS games")
+
         return record
     except Exception as e:
         print(f"  ⚠️ {player_name} gamelog 失敗: {e}")
@@ -476,36 +530,41 @@ def fetch_player_gamelog(player_id, player_name, n=10):
 # 模塊 2.5：nba_api — H2H 歷史對戰數據
 # ==========================================
 def fetch_player_h2h(player_id, player_name, opp_abbr):
-    """提取球員對住特定球隊的歷史對戰數據 (當季 + 上季)"""
+    """提取球員對住特定球隊的歷史對戰數據 (當季 + 上季, RS + Playoffs)"""
     # V3: Re-enabled (was previously disabled)
     if not NBA_API_AVAILABLE:
         return None
     try:
         h2h_games = []
         for season in ['2025-26', '2024-25']:
-            try:
-                log = playergamelog.PlayerGameLog(player_id=player_id, season=season)
-                df = log.get_data_frames()[0]
-                time.sleep(API_SLEEP)
-                vs_opp = df[df['MATCHUP'].str.contains(opp_abbr)]
-                for _, row in vs_opp.iterrows():
-                    h2h_games.append({
-                        "date": row['GAME_DATE'],
-                        "matchup": row['MATCHUP'],
-                        "WL": row['WL'],
-                        "PTS": int(row['PTS']),
-                        "REB": int(row['REB']),
-                        "AST": int(row['AST']),
-                        "STL": int(row['STL']),
-                        "BLK": int(row['BLK']),
-                        "MIN": int(row['MIN']),
-                        "FGM": int(row['FGM']),
-                        "FGA": int(row['FGA']),
-                        "FG3M": int(row['FG3M']),
-                        "PLUS_MINUS": int(row['PLUS_MINUS']),
-                    })
-            except Exception:
-                pass
+            # Fetch both Regular Season and Playoffs for each season
+            for season_type in ['Regular Season', 'Playoffs']:
+                try:
+                    log = playergamelog.PlayerGameLog(
+                        player_id=player_id, season=season,
+                        season_type_all_star=season_type
+                    )
+                    df = log.get_data_frames()[0]
+                    time.sleep(API_SLEEP)
+                    vs_opp = df[df['MATCHUP'].str.contains(opp_abbr)]
+                    for _, row in vs_opp.iterrows():
+                        h2h_games.append({
+                            "date": row['GAME_DATE'],
+                            "matchup": row['MATCHUP'],
+                            "WL": row['WL'],
+                            "PTS": int(row['PTS']),
+                            "REB": int(row['REB']),
+                            "AST": int(row['AST']),
+                            "STL": int(row['STL']),
+                            "BLK": int(row['BLK']),
+                            "MIN": int(row['MIN']),
+                            "FGM": int(row['FGM']),
+                            "FGA": int(row['FGA']),
+                            "FG3M": int(row['FG3M']),
+                            "PLUS_MINUS": int(row['PLUS_MINUS']),
+                        })
+                except Exception:
+                    pass
         
         if not h2h_games:
             return None

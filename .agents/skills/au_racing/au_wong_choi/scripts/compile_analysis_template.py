@@ -22,7 +22,130 @@ import re
 
 # Import shared qualitative rating engine v2 (replaces deprecated grading_engine)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../scripts")))
-from rating_engine_v2 import compute_base_grade, compute_weighted_score, apply_fine_tune, parse_matrix_scores, grade_sort_index
+from rating_engine_v2 import compute_base_grade, compute_weighted_score, apply_fine_tune, parse_matrix_scores, grade_sort_index, count_double_ticks, apply_s_grade_guards
+
+AU_MATRIX_SCHEMA = {
+    "stability": "core", "sectional": "core",
+    "race_shape": "semi", "jockey_trainer": "semi",
+    "class_weight": "aux", "track": "aux",
+    "form_line": "aux",
+}
+
+MATRIX_TEMPLATE_HINTS = {
+    "stability": [
+        "Evidence confidence: High/Medium/Low/Unknown",
+        "近績序列、生涯階段、逐場可靠性、受阻/事故場次作廢、margin trend",
+        "初出/早期生涯不可用休出語言誤判穩定性",
+    ],
+    "sectional": [
+        "Evidence confidence: class-par sectionals / PI proxy / trial-only",
+        "L400/L600、引擎類型、PI/段速趨勢、同程/距離轉換、late decay",
+        "V4.2 已將距離適性、Sire 距離投影、增程風險併入此維度",
+    ],
+    "race_shape": [
+        "Pace confidence: Clear/Mixed/Low",
+        "步速圖、前速壓力、跑法、檔位、走位消耗、跑道偏差、track geometry",
+        "直路賽時此維度可按 wind/straight sprint 規則改名但 schema 不變",
+    ],
+    "jockey_trainer": [
+        "Evidence confidence: deployment/rider-fit/gear intent independent anchors",
+        "騎師/練馬師、配備、馬房部署、人馬配搭、換騎效應",
+        "V4.2 已將配備意圖 / Elite Stable Gear Premium 併入此維度",
+    ],
+    "class_weight": [
+        "AU class normalization: Metro/Provincial/Country, BM/Set Weight/WFA",
+        "Rating、班次變動、負重、WFA/claim、同場最高/平均 rating 對比",
+        "負重/班次若已打 ✅，不可再用同一因素微調升級",
+    ],
+    "track": [
+        "Track family: same venue/geometry/direction/surface/going/weather sensitivity",
+        "Good/Soft/Heavy/Synthetic 記錄、樣本數、場地/跑道適配、跨州轉場",
+        "健康事故與復原證據在此維度處理，不應重複扣分",
+    ],
+    "form_line": [
+        "Evidence confidence: >=2/N same-or-higher-class opponent support",
+        "近3場對手後續表現、強組/弱組、賽績線可信度",
+        "初出馬正式賽績線通常 ➖；試閘對手只可低信心參考",
+    ],
+}
+
+
+def _extract_matrix_reason_parts(reasoning_raw: str) -> tuple:
+    """Split V4.2 matrix reasoning into evidence bullets and final judgement."""
+    evidence_parts = []
+    verdict_text = ''
+    for part in str(reasoning_raw or '').split('\n'):
+        part = part.strip()
+        if not part:
+            continue
+        if part.startswith('→ [判讀:') or part.startswith('→ [判讀：'):
+            verdict_text = part.replace('→ [判讀:', '').replace('→ [判讀：', '').rstrip(']').strip()
+            continue
+        if part.startswith('[') and part.endswith(']'):
+            evidence_parts.append(part[1:-1].strip())
+        else:
+            evidence_parts.append(part)
+    if not verdict_text and evidence_parts:
+        verdict_text = evidence_parts[-1]
+        evidence_parts = evidence_parts[:-1]
+    evidence_parts = [p for p in evidence_parts if p and p != verdict_text]
+    return evidence_parts, verdict_text
+
+def _matrix_score_value(matrix_data, key):
+    item = (matrix_data or {}).get(key, {})
+    return str(item.get('score', '') if isinstance(item, dict) else item)
+
+def _race_shape_risk(matrix_data):
+    score = _matrix_score_value(matrix_data, 'race_shape')
+    if '❌' in score:
+        return 2
+    if '➖' in score or not score:
+        return 1
+    return 0
+
+def _top2_sort_tuple(grade_i, core_pass, w_score, double_ticks, total_fail,
+                     core_fail, matrix_data, horse_num):
+    h_num_sort = int(horse_num) if str(horse_num).isdigit() else 999
+    return (
+        grade_i,
+        -core_pass,
+        -double_ticks,
+        total_fail,
+        core_fail,
+        _race_shape_risk(matrix_data),
+        -w_score,
+        h_num_sort,
+    )
+
+
+def _count_core_semi_double_au(m_data: dict) -> tuple:
+    core_dbl = 0
+    semi_dbl = 0
+    for key, item in (m_data or {}).items():
+        score = str(item.get('score', '') if isinstance(item, dict) else item)
+        if '✅✅' not in score:
+            continue
+        dim_type = AU_MATRIX_SCHEMA.get(key, 'aux')
+        if dim_type == 'core':
+            core_dbl += 1
+        elif dim_type == 'semi':
+            semi_dbl += 1
+    return core_dbl, semi_dbl
+
+
+def _apply_v42_s_promotion(grade: str, m_data: dict) -> str:
+    """Promote A+ to S-tier only via V4.2 ✅✅ conviction evidence."""
+    if grade != 'A+':
+        return grade
+    core_dbl, semi_dbl = _count_core_semi_double_au(m_data)
+    promo_steps = min(core_dbl, 2) + (1 if semi_dbl >= 2 else 0)
+    if promo_steps >= 3:
+        return 'S+'
+    if promo_steps == 2:
+        return 'S'
+    if promo_steps == 1:
+        return 'S-'
+    return grade
 
 
 def _auto_derive_trial_illusion(h_logic: dict) -> bool:
@@ -39,9 +162,21 @@ def _auto_derive_trial_illusion(h_logic: dict) -> bool:
     return False
 
 
+def _is_debut_runner(h_logic: dict) -> bool:
+    if h_logic.get('debut_runner', False):
+        return True
+    if str(h_logic.get('career_tag', '')).upper() == 'DEBUT':
+        return True
+    try:
+        return int(h_logic.get('career_race_starts', 999)) == 0
+    except (TypeError, ValueError):
+        return False
+
+
 def _apply_scenario_caps(grade: str, h_logic: dict) -> str:
     """V9.5: Apply all scenario-based hard caps to a grade.
     Priority order (strictest first):
+      P2 High: debut_runner → cap A-
       P2 High: is_2yo, distance_wall, long_spell → cap A-
       P3 Medium: trial_illusion → cap B+
                  wet_track_tier=4 → cap A-, wet_track_tier=5 → cap B+
@@ -49,6 +184,8 @@ def _apply_scenario_caps(grade: str, h_logic: dict) -> str:
     gi = grade_sort_index  # alias
     
     # P2: Scenario Caps (High)
+    if _is_debut_runner(h_logic) and gi(grade) < gi('A-'):
+        grade = 'A-'
     if h_logic.get('is_2yo', False) and gi(grade) < gi('A-'):
         grade = 'A-'
     if h_logic.get('distance_wall', False) and gi(grade) < gi('A-'):
@@ -277,18 +414,12 @@ def generate_horse_section(horse_idx, h_fact, h_logic):
     lines = []
 
     # ── Calculate with rating_engine_v2 (qualitative) ──
-    matrix_keys_map = {
-        "狀態與穩定性": "core", "段速與引擎": "core",
-        "形勢與走位": "semi", "騎練訊號": "semi",
-        "級數與負重": "aux", "場地適性": "aux", 
-        "賽績線": "aux", "裝備與距離": "aux",
-    }
     m_data = h_logic.get('matrix', {})
-    core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(m_data, matrix_keys_map)
+    core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(m_data, AU_MATRIX_SCHEMA)
     
     b_grade = compute_base_grade(
         core_pass, semi_pass, aux_pass, core_fail, total_fail,
-        matrix_dims=m_data, eem_key="形勢與走位"
+        matrix_dims=m_data, position_key="race_shape"
     )
     w_score = compute_weighted_score(core_pass, semi_pass, aux_pass, core_fail, total_fail)
     
@@ -297,6 +428,15 @@ def generate_horse_section(horse_idx, h_fact, h_logic):
     final_rating = apply_fine_tune(b_grade, ft_dir)
     # V9.5: Apply all scenario caps (trial_illusion, is_2yo, long_spell, etc.)
     final_rating = _apply_scenario_caps(final_rating, h_logic)
+    final_rating = _apply_v42_s_promotion(final_rating, m_data)
+    # SIP-AU-020: S-grade double-tick conviction gate
+    dticks = count_double_ticks(m_data)
+    dims_for_guard = {k: v.get('score', '➖') if isinstance(v, dict) else str(v) for k, v in m_data.items()}
+    final_rating, _ = apply_s_grade_guards(
+        final_rating, h_logic, {}, dims_for_guard, {},
+        sectional_key='sectional', class_key='class_weight',
+        double_ticks=dticks
+    )
     rating = b_grade # fall back for string formatting below
     core_logic = h_logic.get('core_logic', '[FILL]')
     advantages = h_logic.get('advantages', h_logic.get('competitive_advantage', '[缺失優勢]'))
@@ -327,83 +467,59 @@ def generate_horse_section(horse_idx, h_fact, h_logic):
     if h_fact.get("race_shape"):
         lines.append(h_fact["race_shape"].strip() + '\n')
 
-    # ── 4. 馬匹剖析 (5 項 AU 標準) ──────────────────────────────────────
-    h_analysis = h_logic.get('analytical_breakdown', {})
-    lines.append('#### 🐴 馬匹剖析')
-    lines.extend([
-        f"- **班次負重:** {h_analysis.get('class_weight', '[FILL]')}",
-        f"- **引擎距離 (Type A/B/C + Sire):** {h_analysis.get('engine_distance', '[FILL]')}",
-        f"- **步態場地:** {h_analysis.get('track_surface_gait', '[FILL]')}",
-        f"- **配備意圖:** {h_analysis.get('gear_intent', '[FILL]')}",
-        f"- **人馬組合:** {h_analysis.get('jockey_trainer_combination', '[FILL]')}",
-    ])
-    lines.append('')
-
-    # ── 5. 段速法醫 ──────────────────────────────────────────────────────
-    sf = h_logic.get('sectional_forensic', {})
-    lines.append('#### 🔬 段速法醫')
-    lines.append(
-        f"- **原始 L600/L400:** {sf.get('raw_L400', '[FILL]')} | "
-        f"**修正因素:** {sf.get('correction_factor', '[FILL]')} | "
-        f"**修正判斷:** {sf.get('corrected_assessment', '[FILL]')}"
-    )
-    lines.append(f"- **趨勢(近 3 仗):** `{sf.get('trend', '[FILL]')}`\n")
-
-    # ── 6. 形勢與走位 ───────────────────────────────────────────────────────
-    race_shape = h_logic.get('race_shape', {})
-    lines.append('#### ⚡ 形勢與走位')
-    lines.append(f"- **上仗走位:** {race_shape.get('last_run_position', '[FILL]')}")
-    lines.append(f"- **走位形勢:** `{race_shape.get('cumulative_drain', '[FILL]')}`")
-    lines.append(f"- **總評:** {race_shape.get('assessment', '[FILL]')}\n")
-
-    # ── 7. 寬恕認定 ───────────────────────────────────────────────────────
-    forg = h_logic.get('forgiveness_archive', {})
-    lines.append('#### 📋 寬恕認定')
-    lines.append(f"- **因素:** {forg.get('factors', '[FILL]')}")
-    lines.append(f"- **結論:** `{forg.get('conclusion', '[FILL]')}`\n")
-
-    # ── 8. 賽績線 (Facts，僅一次) ────────────────────────────────────────
-    if h_fact.get('formline'):
-        lines.append('#### 🔗 賽績線\n')
-        lines.append(h_fact['formline'].strip() + '\n')
-        lines.append(f"- **綜合結論:** `{h_analysis.get('formline_strength', '[FILL]')}`\n")
-
-    # ── 9. 陣型預判 ───────────────────────────────────────────────────────
-    tactical = h_logic.get('tactical_plan', {})
-    lines.append('#### 🧭 陣型預判')
-    lines.append(f"- **預計守位:** {tactical.get('expected_position', '[FILL]')}")
-    lines.append(f"- **形勢判定:** {tactical.get('race_scenario', '[FILL]')}\n")
-
-    # ── 10. 風險儀表板 ────────────────────────────────────────────────────
-    lines.append('#### ⚠️ 風險儀表板')
-    lines.append(f"- **重大風險:** {disadvantages}")
-    lines.append(f"- **穩定指數:** `{h_logic.get('stability_index', '[FILL]')}/10`\n")
-
-    # ── 11. 評級矩陣 (8 AU 維度) + 5 級制 ────────────────────────────────
-    lines.append('#### 📊 評級矩陣 (Step 14)')
-    matrix_keys = [
-        ("狀態與穩定性", "核心"),
-        ("段速與引擎",   "核心"),
-        ("形勢與走位",    "半核心"),
-        ("騎練訊號",     "半核心"),
-        ("級數與負重",   "輔助"),
-        ("場地適性",     "輔助"),
-        ("賽績線",       "輔助"),
-        ("裝備與距離",   "輔助"),
-    ]
+    # ── V4.2: 7-Dimension Integrated Rating Matrix (matrix-only) ────────
     m_data = h_logic.get('matrix', {})
 
-    for key, c_type in matrix_keys:
-        item = m_data.get(key, {})
-        score_display = str(item.get('score', '[-]')).strip()
-        reason = item.get('reasoning', item.get('_reasoning', item.get('reason', '無填寫理據')))
-        lines.append(f"- **{key}** [{c_type}]: `{score_display}` | 理據: {reason}")
+    # V4.2: Sub-items removed — matrix now shows reasoning detail from Logic.json
+    matrix_keys = [
+        ("stability", "狀態與穩定性", "核心"),
+        ("sectional", "段速與引擎", "核心"),
+        ("race_shape", "形勢與走位", "半核心"),
+        ("jockey_trainer", "騎練訊號", "半核心"),
+        ("class_weight", "級數優勢", "輔助"),
+        ("track", "場地適性", "輔助"),
+        ("form_line", "賽績線", "輔助"),
+    ]
 
-    lines.append('')
+    legacy_map = {
+        'stability': '狀態與穩定性', 'sectional': '段速與引擎',
+        'race_shape': '形勢與走位', 'jockey_trainer': '騎練訊號',
+        'class_weight': '級數與負重', 'track': '場地適性', 'form_line': '賽績線'
+    }
+
+    lines.append('#### 📊 評級矩陣 (7-Dimension Matrix)\n')
+
+    for key, label, c_type in matrix_keys:
+        # Fallback for old json keys
+        item = m_data.get(key)
+        if not item:
+            item = m_data.get(legacy_map.get(key, ''), {})
+        if not isinstance(item, dict):
+            item = {}
+
+        score_display = str(item.get('score', '[-]')).strip()
+        reasoning_raw = item.get('reasoning', item.get('_reasoning', item.get('reason', '')))
+
+        lines.append(f'##### {label} [{c_type}]: `{score_display}`')
+
+        hints = MATRIX_TEMPLATE_HINTS.get(key, [])
+        if hints:
+            lines.append(f"  - 🧭 **V4.2檢查點:** {'；'.join(hints)}")
+
+        evidence_parts, verdict_text = _extract_matrix_reason_parts(reasoning_raw)
+        for part in evidence_parts:
+            lines.append(f'  - {part}')
+        if verdict_text:
+            lines.append(f'  - 📊 **判讀:** `{verdict_text}`')
+        elif not reasoning_raw:
+            lines.append(f'  - 📊 **判讀:** `無填寫理據`')
+        lines.append('')
+
+
 
     # ── 12. 矩陣算術 ( rating_engine_v2 查表法 ) ───────────────────────────────
     cw = '有' if core_fail > 0 else '無'
-    lines.append(f"**🔢 矩陣算術:** 核心✅={core_pass} | 半核心✅={semi_pass} | 輔助✅={aux_pass} | 總❌={total_fail} | 核心❌={cw} → 查表命中行={w_score}")
+    lines.append(f"**🔢 矩陣算術:** 核心✅={core_pass} | 半核心✅={semi_pass} | 輔助✅={aux_pass} | 總❌={total_fail} | 核心❌={cw} → 查表命中行={b_grade} | 加權分={w_score}")
 
     # ── 13. 基礎評級 ─────────────────────────────────────────────────────
     lines.append(f"**14.2 基礎評級:** `{b_grade}` | `{w_score}`")
@@ -461,18 +577,12 @@ def build_verdict(json_data, facts_horses):
 
     # ── Grade computation for AU matrix format (using rating_engine_v2) ──
     def compute_au_grade(h_obj):
-        matrix_keys_map = {
-            "狀態與穩定性": "core", "段速與引擎": "core",
-            "形勢與走位": "semi", "騎練訊號": "semi",
-            "級數與負重": "aux", "場地適性": "aux", 
-            "賽績線": "aux", "裝備與距離": "aux",
-        }
         m_data = h_obj.get('matrix', {})
-        core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(m_data, matrix_keys_map)
+        core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(m_data, AU_MATRIX_SCHEMA)
         
         b_grade = compute_base_grade(
             core_pass, semi_pass, aux_pass, core_fail, total_fail,
-            matrix_dims=m_data, eem_key="形勢與走位"
+            matrix_dims=m_data, position_key="race_shape"
         )
         w_score = compute_weighted_score(core_pass, semi_pass, aux_pass, core_fail, total_fail)
         
@@ -484,7 +594,18 @@ def build_verdict(json_data, facts_horses):
         f_grade = apply_fine_tune(b_grade, ft_dir)
         # V9.5: Apply all scenario caps
         f_grade = _apply_scenario_caps(f_grade, h_obj)
-        return f_grade, w_score
+        f_grade = _apply_v42_s_promotion(f_grade, m_data)
+
+        # SIP-AU-020: S-grade double-tick conviction gate
+        dticks = count_double_ticks(m_data)
+        dims_for_guard = {k: v.get('score', '➖') if isinstance(v, dict) else str(v) for k, v in m_data.items()}
+        f_grade, sip020_note = apply_s_grade_guards(
+            f_grade, h_obj, {}, dims_for_guard, {},
+            sectional_key='sectional', class_key='class_weight',
+            double_ticks=dticks
+        )
+
+        return f_grade, w_score, dticks, core_pass, total_fail, core_fail, m_data
 
     # ── AUTO-COMPUTE Top 4 from ALL horses' grades ──
     llm_picks = {}
@@ -494,12 +615,54 @@ def build_verdict(json_data, facts_horses):
 
     all_graded = []
     for h_num_str, h_obj in horses_logic.items():
-        grade, w_score = compute_au_grade(h_obj)
+        grade, w_score, dticks, core_pass, total_fail, core_fail, m_data = compute_au_grade(h_obj)
         grade_i = grade_sort_index(grade)
-        all_graded.append((h_num_str, grade, grade_i, w_score))
+        sort_key = _top2_sort_tuple(
+            grade_i, core_pass, w_score, dticks, total_fail,
+            core_fail, m_data, h_num_str
+        )
+        all_graded.append((h_num_str, grade, sort_key, w_score, dticks))
 
-    all_graded.sort(key=lambda x: (x[2], -x[3], int(x[0]) if x[0].isdigit() else 999))
+    all_graded.sort(key=lambda x: x[2])
     t4_auto = all_graded[:4]
+
+    # ── SIP-AU-019 V2: Three-Layer Re-Rank Audit ──
+    rerank_warnings = []
+    if len(t4_auto) >= 2:
+        # Layer 1: Fatal Flaw Detection — Pick 1/2 has any ❌ dimension
+        for pick_idx in range(min(2, len(t4_auto))):
+            h_num_str = t4_auto[pick_idx][0]
+            h_obj = horses_logic.get(h_num_str, {})
+            m_data = h_obj.get('matrix', {})
+            for dim_key, dim_val in m_data.items():
+                score = dim_val.get('score', '➖') if isinstance(dim_val, dict) else str(dim_val)
+                if '❌' in score:
+                    rerank_warnings.append(f'L1-致命弱點: Pick {pick_idx+1} [{h_num_str}] 嘅 {dim_key}={score}')
+                    break
+
+        # Layer 2: Position Advantage Gap — any horse outside Top4 has 形勢✅✅ while Pick 1/2 ≤ ➖
+        t4_nums = {x[0] for x in t4_auto}
+        for h_num_str, h_obj in horses_logic.items():
+            if h_num_str in t4_nums:
+                continue
+            m_data = h_obj.get('matrix', {})
+            pos_item = m_data.get('形勢與走位', {})
+            pos_score = pos_item.get('score', '➖') if isinstance(pos_item, dict) else '➖'
+            if '✅✅' in pos_score:
+                for pick_idx in range(min(2, len(t4_auto))):
+                    pick_num = t4_auto[pick_idx][0]
+                    pick_obj = horses_logic.get(pick_num, {})
+                    pick_m = pick_obj.get('matrix', {})
+                    pick_pos = pick_m.get('形勢與走位', {})
+                    pick_pos_score = pick_pos.get('score', '➖') if isinstance(pick_pos, dict) else '➖'
+                    if '✅' not in pick_pos_score:  # ➖ or ❌
+                        rerank_warnings.append(f'L2-形勢差異: [{h_num_str}] 形勢=✅✅ 但 Pick {pick_idx+1} [{pick_num}] 形勢={pick_pos_score}')
+                        break
+
+        # Layer 3: Grade Clustering — Top 4 all same final_rating
+        t4_grades = [x[1] for x in t4_auto[:4]]
+        if len(set(t4_grades)) == 1 and len(t4_grades) == 4:
+            rerank_warnings.append(f'L3-同級密集: Top 4 全部 {t4_grades[0]}，需 tiebreak 審視')
 
     # Auto-compute confidence if it's [AUTO] or missing
     confidence = v.get('confidence', '[未定]')
@@ -523,7 +686,7 @@ def build_verdict(json_data, facts_horses):
 
     for i, label in enumerate(labels):
         if i < len(t4_auto):
-            h_num_str, grade, grade_i, w_score = t4_auto[i]
+            h_num_str, grade, sort_key, w_score, dticks = t4_auto[i]
             h_num_int = int(h_num_str) if h_num_str.isdigit() else 0
             h_name = horse_names.get(h_num_int, '')
             h_obj = horses_logic.get(h_num_str, {})
@@ -570,6 +733,14 @@ def build_verdict(json_data, facts_horses):
     lines.append(f"- 若步速比預測更快 → 受惠: {faster.get('benefit', '[FILL]')} | 受損: {faster.get('hurt', '[FILL]')}")
     lines.append(f"- 若步速比預測更慢 → 受惠: {slower.get('benefit', '[FILL]')} | 受損: {slower.get('hurt', '[FILL]')}\n")
 
+    # ── SIP-AU-019 V2: Re-Rank Audit Warnings ──
+    if rerank_warnings:
+        lines.append('---')
+        lines.append('**⚠️ RANK REVIEW TRIGGERED (SIP-AU-019 V2):**\n')
+        for w in rerank_warnings:
+            lines.append(f'- ⚠️ {w}')
+        lines.append('')
+
     # ── CSV 匯出 (真實數據) ───────────────────────────────────────────────
     lines.append('---')
     lines.append('## [第五部分] 📊 數據庫匯出 (CSV)\n')
@@ -611,25 +782,28 @@ def main():
         horses_logic_dict = horses_logic_raw
 
     # ── Compute grades and write back to JSON ──
-    matrix_keys_map = {
-        "狀態與穩定性": "core", "段速與引擎": "core",
-        "形勢與走位": "semi", "騎練訊號": "semi",
-        "級數與負重": "aux", "場地適性": "aux", 
-        "賽績線": "aux", "裝備與距離": "aux",
-    }
     json_modified = False
     for h_key, h_logic in horses_logic_dict.items():
         m_data = h_logic.get('matrix', {})
-        core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(m_data, matrix_keys_map)
+        core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(m_data, AU_MATRIX_SCHEMA)
         b_grade = compute_base_grade(
             core_pass, semi_pass, aux_pass, core_fail, total_fail,
-            matrix_dims=m_data, eem_key="形勢與走位"
+            matrix_dims=m_data, position_key="race_shape"
         )
         ft = h_logic.get('fine_tune', {})
         ft_dir = ft.get('direction', '無') if isinstance(ft, dict) else str(ft)
         f_grade = apply_fine_tune(b_grade, ft_dir)
         # V9.5: Apply all scenario caps
         f_grade = _apply_scenario_caps(f_grade, h_logic)
+        f_grade = _apply_v42_s_promotion(f_grade, m_data)
+        # SIP-AU-020: S-grade double-tick conviction gate
+        dticks = count_double_ticks(m_data)
+        dims_for_guard = {k: v.get('score', '➖') if isinstance(v, dict) else str(v) for k, v in m_data.items()}
+        f_grade, _ = apply_s_grade_guards(
+            f_grade, h_logic, {}, dims_for_guard, {},
+            sectional_key='sectional', class_key='class_weight',
+            double_ticks=dticks
+        )
         # Write computed grades back to JSON
         h_logic['base_rating'] = b_grade
         h_logic['final_rating'] = f_grade

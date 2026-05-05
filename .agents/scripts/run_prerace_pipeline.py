@@ -39,7 +39,7 @@ def run_script(script_name: str, args: list = None, label: str = "") -> dict:
     print(f"🔄 [{label}] {' '.join(cmd)}")
     print(f"{'='*60}")
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
         if result.stdout:
             print(result.stdout)
         if result.stderr:
@@ -51,7 +51,7 @@ def run_script(script_name: str, args: list = None, label: str = "") -> dict:
             "error": result.stderr if result.returncode != 0 else None
         }
     except subprocess.TimeoutExpired:
-        print(f"  ❌ TIMEOUT after 120s")
+        print(f"  ❌ TIMEOUT after 900s")
         return {"script": script_name, "status": "TIMEOUT", "returncode": -1}
     except Exception as e:
         print(f"  ❌ ERROR: {e}")
@@ -95,6 +95,8 @@ def step3_inject_facts(meeting_dir: Path) -> list:
         formguides = sorted(meeting_dir.glob("*formguide*.txt"))
     if not formguides:
         formguides = sorted(meeting_dir.glob("*Race*Formguide*"))
+    if not formguides:
+        formguides = sorted(meeting_dir.glob("*賽績.md"))
 
     if not formguides:
         print(f"\n⚠️ No formguide files found in {meeting_dir}")
@@ -109,7 +111,7 @@ def step3_inject_facts(meeting_dir: Path) -> list:
         race_num = int(race_match.group(1)) if race_match else 0
 
         # Determine output path
-        out_name = fg.name.replace("Formguide", "Facts").replace("formguide", "Facts")
+        out_name = fg.name.replace("Formguide", "Facts").replace("formguide", "Facts").replace("賽績", "Facts")
         if not out_name.endswith(".md"):
             out_name = out_name.rsplit(".", 1)[0] + ".md" if "." in out_name else out_name + ".md"
         out_path = meeting_dir / out_name

@@ -13,7 +13,7 @@ import urllib.request
 
 # Import rating engine for auto-verdict computation
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'scripts')))
-from rating_engine_v2 import parse_matrix_scores, compute_base_grade, apply_fine_tune, grade_sort_index
+from rating_engine_v2 import parse_matrix_scores, compute_base_grade, apply_fine_tune, grade_sort_index, apply_s_grade_guards
 
 # Import SIP engine V2 for automated SIP rule evaluation
 try:
@@ -24,30 +24,59 @@ except ImportError:
     SIP_ENGINE_AVAILABLE = False
 
 HKJC_MATRIX_SCHEMA = {
-    "stability": "core", "speed_mass": "core",
-    "race_shape": "semi", "trainer_jockey": "semi",
-    "scenario": "aux", "freshness": "aux",
-    "formline": "aux", "class_advantage": "aux",
+    "stability": "semi", "sectional": "core",
+    "race_shape": "semi", "trainer_signal": "core",
+    "horse_health": "aux",
+    "form_line": "aux", "class_advantage": "aux",
+}
+HKJC_MATRIX_EXPECTED_KEYS = set(HKJC_MATRIX_SCHEMA)
+HKJC_MATRIX_RESOURCE_REQUIREMENTS = {
+    "stability": ("05_forensic_analysis.md",),
+    "sectional": ("03_engine_pace_context.md", "04_engine_corrections.md"),
+    "race_shape": ("05_forensic_analysis.md",),
+    "trainer_signal": ("07b_trainer_signals.md", "07c_jockey_profiles.md"),
+    "horse_health": ("05_forensic_analysis.md",),
+    "form_line": ("Facts.md",),
+    "class_advantage": ("06_rating_engine.md",),
+}
+HKJC_MATRIX_LEGACY_8D_KEYS = {
+    "裝備與距離", "Gear & Distance", "gear_distance", "gear_dist",
+    "gearDistance", "gear_and_distance",
+    "場地適性", "情境適配", "scenario",
+    "路程/新鮮度", "distance_freshness", "freshness", "distance",
+}
+HKJC_LEGACY_TOP_LEVEL_FIELDS = {
+    "analytical_breakdown", "sectional_forensic", "race_shape",
 }
 
 # Chinese → English matrix key normalization map
 # Prevents grade computation failure when LLM uses Chinese dimension names
-# Also handles English key variants (e.g. "sectional" → "speed_mass")
+# Also handles English key variants (legacy + new canonical)
 _ZH_EN_MATRIX_MAP = {
     # Chinese key variants
     "狀態與穩定性": "stability",
-    "段速與引擎": "speed_mass",
+    "位置穩定性": "stability",
+    "段速與引擎": "sectional",
+    "段速質量": "sectional",
     "形勢與走位": "race_shape",
     "形勢與走位(舊)": "race_shape",
-    "騎練訊號": "trainer_jockey",
+    "騎練訊號": "trainer_signal",
+    "練馬師訊號": "trainer_signal",
     "級數與負重": "class_advantage",
-    "場地適性": "scenario",
-    "賽績線": "formline",
-    "裝備與距離": "freshness",
-    # English key variants (alternative names used by some LLM sessions)
-    "sectional": "speed_mass",
-    "trainer": "trainer_jockey",
-    "distance": "freshness",
+    "級數優勢": "class_advantage",
+    "賽績線": "form_line",
+    "馬匹健康 / 新鮮感": "horse_health",
+    "馬匹健康": "horse_health",
+    "新鮮度/場地": "horse_health",
+    "路程/新鮮度": "horse_health",
+    # Legacy English key variants (pre-V4.2)
+    "speed_mass": "sectional",
+    "trainer_jockey": "trainer_signal",
+    "freshness": "horse_health",
+    "distance_freshness": "horse_health",
+    "formline": "form_line",
+    "trainer": "trainer_signal",
+    "distance": "horse_health",
     "class": "class_advantage",
 }
 
@@ -60,6 +89,134 @@ def _normalize_matrix(m_data):
         return m_data
     return {_ZH_EN_MATRIX_MAP.get(k, k): v for k, v in m_data.items()}
 
+
+def validate_matrix_resource_checks_hkjc(matrix: dict) -> list:
+    """Ensure each HKJC matrix dimension cites the analyst resource it used."""
+    errors = []
+    normalized = _normalize_matrix(matrix) or {}
+    for dim, required_files in HKJC_MATRIX_RESOURCE_REQUIREMENTS.items():
+        dim_data = normalized.get(dim, {})
+        if not isinstance(dim_data, dict):
+            continue
+        reasoning = str(dim_data.get('reasoning', ''))
+        if '[FILL' in reasoning:
+            continue
+        if 'Resource Check:' not in reasoning and '資源檢查' not in reasoning:
+            errors.append(
+                f"WALL-024: matrix.{dim}.reasoning 缺少 [Resource Check: ...]。"
+                "評級矩陣必須明示已讀對應 HKJC analyst resource。"
+            )
+            continue
+        missing = [fname for fname in required_files if fname not in reasoning]
+        if missing:
+            errors.append(
+                f"WALL-024: matrix.{dim}.reasoning Resource Check 缺少 {missing}。"
+                "請按 WorkCard 對應維度必讀資源補回。"
+            )
+    return errors
+
+def validate_v42_matrix_schema_hkjc(h_entry: dict) -> list:
+    """Reject old HKJC 8D matrix/skeleton output before grading or compile."""
+    errors = []
+    matrix = h_entry.get('matrix', {})
+    if not isinstance(matrix, dict):
+        return ["WALL-022: matrix 必須係 dict，請用 V4.2 7 維 skeleton 重新填寫。"]
+
+    raw_keys = set(matrix)
+    legacy_keys = sorted(raw_keys & HKJC_MATRIX_LEGACY_8D_KEYS)
+    if legacy_keys:
+        errors.append(
+            "WALL-022: 偵測到舊 8 維矩陣欄位 "
+            f"{legacy_keys}。HKJC V4.2 只接受 7 維；"
+            "距離證據併入 matrix.sectional，配備/部署併入 matrix.trainer_signal，"
+            "休賽健康/場地新鮮感併入 matrix.horse_health。"
+        )
+
+    normalized = _normalize_matrix(matrix)
+    normalized_keys = set(normalized or {})
+    if len(normalized_keys) != len(raw_keys):
+        errors.append(
+            "WALL-022: matrix 同時包含同義/新舊 key，normalize 後出現重複。"
+            "請只保留 HKJC V4.2 canonical English keys。"
+        )
+
+    missing = sorted(HKJC_MATRIX_EXPECTED_KEYS - normalized_keys)
+    unknown = sorted(normalized_keys - HKJC_MATRIX_EXPECTED_KEYS)
+    if missing:
+        errors.append(f"WALL-022: HKJC V4.2 7 維矩陣缺少 key: {missing}")
+    if unknown:
+        errors.append(f"WALL-022: HKJC V4.2 7 維矩陣出現未知 key: {unknown}")
+
+    top_level_legacy = sorted(k for k in HKJC_LEGACY_TOP_LEVEL_FIELDS if k in h_entry)
+    if top_level_legacy:
+        errors.append(
+            f"WALL-022: 偵測到舊版 top-level 分析欄位 {top_level_legacy}。"
+            "V4.2 已改為 matrix-only reasoning，請用最新 skeleton。"
+        )
+
+    return errors
+
+def _matrix_score_value(matrix_data, key):
+    item = (matrix_data or {}).get(key, {})
+    return str(item.get('score', '') if isinstance(item, dict) else item)
+
+def _race_shape_risk(matrix_data):
+    score = _matrix_score_value(matrix_data, 'race_shape')
+    if '❌' in score:
+        return 2
+    if '➖' in score or not score:
+        return 1
+    return 0
+
+def _rating_sort_tuple(grade_i, core_pass, tick_count, double_ticks, total_fail,
+                       core_fail, matrix_data, horse_num):
+    """Top 2 oriented tiebreak: ability first, then conviction, then risk."""
+    h_num_sort = int(horse_num) if str(horse_num).isdigit() else 999
+    return (
+        grade_i,
+        -core_pass,
+        -double_ticks,
+        total_fail,
+        core_fail,
+        _race_shape_risk(matrix_data),
+        -tick_count,
+        h_num_sort,
+    )
+
+
+def _is_debut_runner_hkjc(h_obj: dict) -> bool:
+    if h_obj.get('debut_runner', False) or h_obj.get('is_debut', False):
+        return True
+    if str(h_obj.get('career_tag', '')).upper() == 'DEBUT':
+        return True
+    try:
+        return int(h_obj.get('career_race_starts', h_obj.get('hk_starts', 999))) == 0
+    except (TypeError, ValueError):
+        return False
+
+
+def _apply_debut_cap_hkjc(grade: str, h_obj: dict) -> str:
+    """Debut runners keep normal matrix arithmetic but cannot exceed A."""
+    if _is_debut_runner_hkjc(h_obj) and grade_sort_index(grade) < grade_sort_index('A'):
+        return 'A'
+    return grade
+
+def _top4_core_ticks(horses, h_num):
+    """Count core+semi ✅ for a horse — used in verdict transparency."""
+    h = horses.get(str(h_num), {})
+    m = _normalize_matrix(h.get('matrix', {}))
+    core_p, semi_p, _, _, _ = parse_matrix_scores(m, HKJC_MATRIX_SCHEMA)
+    return core_p + semi_p
+
+
+def _top4_fail_count(horses, h_num):
+    """Count total ❌ for a horse — used in verdict transparency."""
+    h = horses.get(str(h_num), {})
+    m = _normalize_matrix(h.get('matrix', {}))
+    _, _, _, _, total_f = parse_matrix_scores(m, HKJC_MATRIX_SCHEMA)
+    return total_f
+
+
 def auto_compute_verdict_hkjc(logic_data, facts_path):
     """Auto-compute verdict Top 4 from matrix grades. Eliminates LLM verdict stop."""
     horses = logic_data.get('horses', {})
@@ -70,17 +227,38 @@ def auto_compute_verdict_hkjc(logic_data, facts_path):
     for h_num, h_obj in horses.items():
         m_data = _normalize_matrix(h_obj.get('matrix', {}))
         core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(m_data, HKJC_MATRIX_SCHEMA)
-        b_grade = compute_base_grade(core_pass, semi_pass, aux_pass, core_fail, total_fail)
+        b_grade = compute_base_grade(
+            core_pass, semi_pass, aux_pass, core_fail, total_fail,
+            matrix_dims=m_data, position_key="race_shape"
+        )
         ft = h_obj.get('fine_tune', {})
         ft_dir = ft.get('direction', '無') if isinstance(ft, dict) else str(ft)
         f_grade = apply_fine_tune(b_grade, ft_dir)
+        # V4.2: ✅✅ promotion from A+
+        if f_grade == 'A+':
+            core_dbl, semi_dbl = _count_core_semi_double(m_data)
+            promo_steps = min(core_dbl, 2) + (1 if semi_dbl >= 2 else 0)
+            if promo_steps >= 3: f_grade = 'S+'
+            elif promo_steps == 2: f_grade = 'S'
+            elif promo_steps == 1: f_grade = 'S-'
+        f_grade = _apply_debut_cap_hkjc(f_grade, h_obj)
+        f_grade, _ = apply_s_grade_guards(
+            f_grade, h_obj, {}, {k: v.get('score', '➖') if isinstance(v, dict) else str(v) for k, v in m_data.items()}, {},
+            sectional_key='sectional', class_key='class_advantage',
+            double_ticks=_count_matrix_double_ticks(m_data)
+        )
+        f_grade = _apply_debut_cap_hkjc(f_grade, h_obj)
         grade_i = grade_sort_index(f_grade)
         tick_count = _count_matrix_ticks(m_data)
         double_ticks = _count_matrix_double_ticks(m_data)
-        graded.append((h_num, h_obj.get('horse_name', ''), f_grade, grade_i, tick_count, double_ticks))
+        sort_key = _rating_sort_tuple(
+            grade_i, core_pass, tick_count, double_ticks,
+            total_fail, core_fail, m_data, h_num
+        )
+        graded.append((h_num, h_obj.get('horse_name', ''), f_grade, sort_key, tick_count, double_ticks))
     
-    # Sort by grade, then signal strength, then horse number.
-    graded.sort(key=lambda x: (x[3], -x[4], -x[5], int(x[0]) if str(x[0]).isdigit() else 999))
+    # Sort by grade, then core ability, conviction, risk profile, and horse number.
+    graded.sort(key=lambda x: x[3])
     top4 = graded[:4]
     
     # Auto pace_flip_insurance from speed_map
@@ -118,8 +296,16 @@ def auto_compute_verdict_hkjc(logic_data, facts_path):
     
     verdict = {
         'top4': [
-            {'horse_number': str(h[0]), 'horse_name': h[1], 'grade': h[2]}
+            {'horse_number': str(h[0]), 'horse_name': h[1], 'grade': h[2],
+             'tick_count': h[4], 'core_ticks': _top4_core_ticks(horses, h[0]),
+             'total_fail': _top4_fail_count(horses, h[0]),
+             'core_logic': horses.get(str(h[0]), {}).get('core_logic', '')}
             for h in top4
+        ],
+        'full_ranking': [
+            {'horse_number': str(h[0]), 'horse_name': h[1], 'grade': h[2],
+             'tick_count': h[4]}
+            for h in graded
         ],
         'confidence': confidence,
         'track_scenario': f"{pace_label} pace；{track_bias}",
@@ -131,7 +317,7 @@ def auto_compute_verdict_hkjc(logic_data, facts_path):
         'emergency_brake': '若臨場退出、場地突然變化或步速圖與預期完全相反，需重跑 Orchestrator 重新編譯。',
         'blind_spots': {
             'sectionals': '段速由 Facts 錨點與矩陣綜合，未以單一 L400 直接定勝負。',
-            'risk_management': 'Top 4 已按評級、✅數量與強信號排序，但仍須留意檔位及步速變化。',
+            'risk_management': 'Top 4 已按評級、✅數量與強信號排序。',
             'trials_illusion': '試閘/短樣本馬不可單靠印象升級。',
             'age_risk': '老馬、頂磅及外檔馬已視為主要風險來源。',
             'pace_collapse_darkhorse': faster_benefit or '未有明確步速崩潰冷門'
@@ -158,6 +344,22 @@ def _count_matrix_double_ticks(matrix_data):
         if '✅✅' in score:
             count += 1
     return count
+
+
+def _count_core_semi_double(matrix_data):
+    """Count ✅✅ in core and semi-core dimensions for V4.2 promotion."""
+    core_dbl = 0
+    semi_dbl = 0
+    for key, item in (matrix_data or {}).items():
+        score = str(item.get('score', '') if isinstance(item, dict) else item)
+        if '✅✅' not in score:
+            continue
+        dim_type = HKJC_MATRIX_SCHEMA.get(key, 'aux')
+        if dim_type == 'core':
+            core_dbl += 1
+        elif dim_type == 'semi':
+            semi_dbl += 1
+    return core_dbl, semi_dbl
 
 
 def verdict_needs_recompute(logic_data):
@@ -1025,10 +1227,14 @@ def parse_hkjc_speed_map_from_facts(facts_content):
 
     speed_map = {
         'predicted_pace': _field('predicted_pace'),
+        'pace_confidence': _field('pace_confidence'),
+        'style_confidence': _field('style_confidence'),
         'leaders': _parse_num_list_from_speed_map_line(_field('leaders')),
+        'pressers': _parse_num_list_from_speed_map_line(_field('pressers')),
         'on_pace': _parse_num_list_from_speed_map_line(_field('on_pace')),
         'mid_pack': _parse_num_list_from_speed_map_line(_field('mid_pack')),
         'closers': _parse_num_list_from_speed_map_line(_field('closers')),
+        'style_evidence': _field('style_evidence'),
         'track_bias': _field('track_bias'),
         'tactical_nodes': _field('tactical_nodes'),
         'collapse_point': _field('collapse_point'),
@@ -1060,10 +1266,14 @@ def auto_build_hkjc_speed_map_from_facts(facts_content, target_dir=None):
     print("   → 請確認 Facts.md 包含 '### 🗺️ 自動步速圖' block，或人手填寫 Logic.json speed_map。")
     return {
         'predicted_pace': '[FILL]',
+        'pace_confidence': '[FILL]',
+        'style_confidence': '[FILL]',
         'leaders': [],
+        'pressers': [],
         'on_pace': [],
         'mid_pack': [],
         'closers': [],
+        'style_evidence': '[FILL]',
         'track_bias': '[FILL]',
         'tactical_nodes': '[FILL]',
         'collapse_point': '[FILL]',
@@ -1138,12 +1348,12 @@ def extract_hkjc_fact_anchors(horse_block):
     anchors = {}
 
     # Horse name, jockey, trainer, weight, barrier
-    m = re.search(r'### 馬號 (\d+) — (.+?) \| 騎師:\s*(.+?) \| 練馬師:\s*(.+?) \| 負磅:\s*(\d+) \| 檔位:\s*(\d+)',
+    m = re.search(r'### 馬號 (\d+) — (.+?) \| 騎師:\s*(.+?)(?: \| 練馬師:\s*(.+?))? \| 負磅:\s*(\d+) \| 檔位:\s*(\d+)',
                   horse_block)
     if m:
         anchors['name'] = m.group(2).strip()
         anchors['jockey'] = m.group(3).strip()
-        anchors['trainer'] = m.group(4).strip()
+        anchors['trainer'] = m.group(4).strip() if m.group(4) else '未知'
         anchors['weight'] = m.group(5)
         anchors['barrier'] = m.group(6)
     else:
@@ -1158,11 +1368,14 @@ def extract_hkjc_fact_anchors(horse_block):
     anchors['recent_form'] = m.group(1) if m else '無'
 
     # Career stats
-    m = re.search(r'生涯:\s*(\d+):', horse_block)
+    m = re.search(r'生涯[：:]\s*(\d+)[：:]', horse_block)
     anchors['career_starts'] = m.group(1) if m else '0'
+    hk_starts_m = re.search(r'港賽\s*(\d+)', horse_block)
+    anchors['hk_starts'] = hk_starts_m.group(1) if hk_starts_m else anchors['career_starts']
 
     # Fitness arc
     starts = int(anchors['career_starts'])
+    hk_starts = int(anchors['hk_starts'])
     if starts == 0:
         anchors['fitness_arc'] = '初出馬'
     elif starts == 1:
@@ -1173,6 +1386,24 @@ def extract_hkjc_fact_anchors(horse_block):
         anchors['fitness_arc'] = f'輕度備戰（{starts}仗）'
     else:
         anchors['fitness_arc'] = f'Deep Prep（{starts}仗）'
+
+    # Debut / Import horse detection
+    debut_text_hint = bool(re.search(r'無往績記錄|首出|首次出賽|新馬', horse_block))
+    anchors['is_debut'] = starts == 0 and hk_starts == 0 and debut_text_hint
+    anchors['is_import'] = False
+    if anchors['is_debut']:
+        # Detect imported horse via PPG/ISG tags or overseas form markers
+        if re.search(r'PPG|ISG|自購新馬|進口|Previously trained|Imported', horse_block, re.IGNORECASE):
+            anchors['is_import'] = True
+            anchors['import_origin'] = 'Unknown'
+        elif re.search(r'(?:AUS|EUR|GB|IRE|JPN|NZ|FR|USA)\s*[:：]', horse_block):
+            anchors['is_import'] = True
+            anchors['import_origin'] = 'Detected'
+    elif starts <= 2:
+        # Low-start runners that may also be imports adapting
+        if re.search(r'PPG|ISG|自購新馬|進口|Previously trained|Imported', horse_block, re.IGNORECASE):
+            anchors['is_import'] = True
+            anchors['import_origin'] = 'Adapting'
 
     # Race shape assessment
     m = re.search(r'加權走位形勢:\s*([^→]+?)→', horse_block)
@@ -1228,9 +1459,42 @@ def load_draw_stats_for_workcard(race_num: int, barrier: int) -> dict:
                 for d in race.get('draws', []):
                     if d.get('draw') == barrier:
                         return d
+                # Race found but barrier not in data (e.g. barrier 13-14)
+                max_draw = max(d['draw'] for d in race['draws']) if race['draws'] else 0
+                return {'verdict': f'⚠️超出範圍(最大檔{max_draw})', 'win_pct': 'N/A', 'quinella_pct': 'N/A', 'place_pct': 'N/A'}
     except Exception:
         pass
     return {}
+
+
+def load_full_draw_table_for_workcard(race_num: int) -> str:
+    """Load full draw stats table for a race, formatted as Markdown for WorkCard."""
+    scripts_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'scripts'))
+    json_path = os.path.join(scripts_dir, 'hkjc_draw_stats.json')
+    if not os.path.exists(json_path):
+        return ''
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            ds = json.load(f)
+        for race in ds.get('races', []):
+            if race.get('race') == race_num:
+                draws = race.get('draws', [])
+                if not draws:
+                    return ''
+                lines = [f"📊 **全場檔位統計** (第{race_num}場 {race.get('distance','?')}m {race.get('surface','?')}):",
+                         "| 檔位 | 出賽 | 上名% | 入Q% | 勝率% | 判定 |",
+                         "|:---:|:---:|:---:|:---:|:---:|:---:|"]
+                for d in sorted(draws, key=lambda x: x['draw']):
+                    lines.append(
+                        f"| {d['draw']} | {d.get('starts','?')} | {d.get('place_pct','?')} | "
+                        f"{d.get('quinella_pct','?')} | {d['win_pct']} | {d['verdict']} |")
+                avg_place = race.get('avg_place_pct', '?')
+                avg_win = race.get('avg_win_pct', '?')
+                lines.append(f"*平均上名率: {avg_place}% | 平均勝率: {avg_win}%*")
+                return '\n'.join(lines)
+    except Exception:
+        pass
+    return ''
 
 
 def generate_hkjc_work_card(horse_num, facts_content, logic_data, runtime_dir,
@@ -1244,76 +1508,237 @@ def generate_hkjc_work_card(horse_num, facts_content, logic_data, runtime_dir,
     anchors = extract_hkjc_fact_anchors(horse_block)
     race_class = logic_data.get('race_analysis', {}).get('race_class', '?')
     distance = logic_data.get('race_analysis', {}).get('distance', '?')
+    speed_map = logic_data.get('race_analysis', {}).get('speed_map', {}) or {}
+    pace_confidence = speed_map.get('pace_confidence', 'Unknown')
+    style_confidence = speed_map.get('style_confidence', 'Unknown')
 
     card = []
     card.append(f"# 🐎 分析工作卡 [{horse_idx+1}/{total_horses}] — 馬號 {horse_num} {anchors['name']}")
     card.append(f"**檔位: {anchors['barrier']} | 騎師: {anchors['jockey']} | 練馬師: {anchors['trainer']} | 負磅: {anchors['weight']}**")
-    card.append(f"📍 步速: {sm_pace} | 偏差: {sm_bias} | 班次: {race_class} | 距離: {distance}")
-    card.append(f"📖 評級矩陣: .agents/skills/hkjc_racing/hkjc_horse_analyst/resources/06_rating_aggregation.md")
+    card.append(f"📍 步速: {sm_pace} | Pace信心: {pace_confidence} | 跑法信心: {style_confidence} | 偏差: {sm_bias} | 班次: {race_class} | 距離: {distance}")
+    if anchors.get('is_import'):
+        card.append("> ⚠️ **[CAREER_TAG: IMPORTED_DEBUT]** — 必讀 `05b_debut_guide.md`；用進口馬香港首出模板處理海外轉譯與適應期封頂。")
+    elif anchors.get('is_debut'):
+        card.append("> ⚠️ **[CAREER_TAG: DEBUT]** — 必讀 `05b_debut_guide.md`；使用初出馬專用模板，穩定性/賽績線不得沿用正常賽績格式。")
+    card.append("")
+    card.append("---")
+    card.append("## 📖 必讀資源 (分析前必須讀取)")
+    card.append("**每個維度判斷前，必須讀取對應嘅 analyst 規則檔案。唔可以單純憑數據自由發揮。**")
+    card.append("")
+    card.append("| 維度 | 必讀資源 | 關鍵規則 |")
+    card.append("|:---|:---|:---|")
+    card.append("| 1️⃣ 狀態與穩定性 | `05_forensic_analysis.md` | 逐場可靠性+近6場數據+頭馬距離 / SIP-HK01 |")
+    card.append("| 2️⃣ 段速質量 | `03_engine_pace_context.md` + `04_engine_corrections.md` | 正賽段速；初出馬改用 Sire/試閘/晨操 readiness |")
+    card.append("| 3️⃣ 形勢與走位 | `05_forensic_analysis.md` | 檔位數據+今日預計走位+近3-5仗走位消耗 / SIP-HK02；不以步速評分 |")
+    card.append("| 4️⃣ 騎練訊號 | `07b_trainer_signals.md` + `07c_jockey_profiles.md` | 配備+近6場騎師歷史+人馬配搭 / SIP-HK06 |")
+    card.append("| 5️⃣ 馬匹健康 | `05_forensic_analysis.md` + `10a/10b/10c_track_*.md` | 醫療紀錄+休賽+體重 |")
+    card.append("| 6️⃣ 賽績線 | Facts.md 賽績線表格 | 精簡摘要 (Python 預生成) |")
+    card.append("| 7️⃣ 級數優勢 | `06_rating_engine.md` | 班次變動+負重對比 / SIP-HK04 / SIP-HK07 |")
+    card.append("| 📊 評級矩陣 | `06_rating_engine.md` | 7 維度查表法 + 微調 + 寬恕加分 |")
+    card.append("| 🔗 因子交互 | `11_factor_interaction.md` | 降班群聚互銷 SIP-HK05 / MC-Logic Divergence SIP-HK08 |")
     card.append("")
     card.append("---")
     card.append("## ⚠️ 指引")
-    card.append("- 每個維度必須根據下方列出嘅**具體數據**作出判斷")
+    card.append("- 每個維度必須根據 skeleton reasoning 注入嘅**Python 預計算數據** + 上方對應嘅 **analyst 規則**作出判斷")
     card.append("- 分數只可以係 ✅✅ / ✅ / ➖ / ❌ / ❌❌")
     card.append("- 理據必須引用具體數據（日期、場地、名次、PI 數值等）")
+    card.append("- **V4.2 reasoning 格式:** 第一行必須保留 `[Resource Check: ...]`，中段保留 `[數據/規則]` evidence slots，最後只寫一次 `→ [判讀: ...]`；唔好將判讀原文複製多一次")
     card.append("- 唔可以寫「一般」、「尚可」、「配搭無特別異常」等模板化語句")
     card.append("---")
     card.append("")
 
-    card.append("## 1️⃣ 狀態與穩定性 [核心維度]")
-    card.append(f"- 正式賽事場次: **{anchors['career_starts']}**")
-    card.append(f"- 近績序列: `{anchors['recent_form']}`")
-    card.append(f"- 狀態週期: **{anchors['fitness_arc']}**")
-    card.append(f"- 上仗備註: {anchors['last_run_remark']}")
-    card.append("👉 **你嘅判斷:** ✅✅/✅/➖/❌/❌❌？寫 1-2 句引用上述數據嘅理據。")
+    card.append("## 📐 填寫順序（嚴格執行）")
+    card.append("1. **填寫 7 個矩陣維度** (`matrix.*.score` + `matrix.*.reasoning`) — reasoning 必須保留 evidence slots + 最後一行 `→ [判讀: ...]`")
+    card.append("2. **填寫** `race_forgiveness`、`interaction_matrix`、`forgiveness_bonus`")
+    card.append("3. **最後填** `core_logic`、`advantages`、`disadvantages`")
+    card.append("- ⚠️ V4.2: 唔再有 `analytical_breakdown`、`sectional_forensic`、standalone `race_shape` — 所有分析直接寫入 matrix reasoning")
+    card.append("- ❌ 禁止直接從 Facts 數據跳到矩陣評分，必須經過分析推導")
+    card.append("---")
+    card.append("")
+    card.append("## 🚫 輸出格式禁令 [V4.3 新增]")
+    card.append("**以下獨立 section 全部禁止出現在矩陣外面，所有數據必須消化在 7 維度矩陣內：**")
+    card.append("- ❌ 禁止: 獨立 `#### 🏇 晨操摘要` section → 晨操數據已注入 `狀態與穩定性` + `騎練訊號`")
+    card.append("- ❌ 禁止: 獨立 `#### 🐴 馬匹剖析` section → 所有賽績數據已分佈在矩陣各維度")
+    card.append("- ❌ 禁止: 獨立 `#### 🔗 賽績線` 完整表格 → 賽績線精簡摘要已在矩陣維度 6️⃣")
+    card.append("- ✅ 正確格式: 馬匹 header → 直接進入 `#### 🧮 評級矩陣` → 結論")
+    card.append("---")
     card.append("")
 
-    card.append("## 2️⃣ 段速與引擎 [核心維度]")
-    card.append(f"- 引擎類型: {anchors.get('engine_type', '未知')}")
-    card.append(f"- 今仗步速預測: {sm_pace}")
-    card.append("👉 **你嘅判斷:** 段速質素如何？引擎同今仗步速配唔配？")
+    horse_entry = logic_data.get('horses', {}).get(str(horse_num), {})
+    trackwork = horse_entry.get('trackwork', {}) if isinstance(horse_entry, dict) else {}
+    tw_digest = trackwork.get('stability_digest', {}) if isinstance(trackwork, dict) else {}
+    tw_load = tw_digest.get('workout_load_21d', {}) if isinstance(tw_digest, dict) else {}
+    # ── Build Python-Driven Output Template (V4.3) ──
+    # All data is pre-filled from skeleton reasoning; LLM only fills [FILL] judgment slots
+    matrix = horse_entry.get('matrix', {}) if isinstance(horse_entry, dict) else {}
+
+    # Helper: format skeleton reasoning lines for output template
+    def _fmt_reasoning(dim_key):
+        dim = matrix.get(dim_key, {})
+        reasoning = dim.get('reasoning', '數據不足')
+        # Split multi-line reasoning into bullet points
+        lines = []
+        for part in reasoning.split('\n'):
+            part = part.strip()
+            if part:
+                lines.append(f"  - {part}")
+        return '\n'.join(lines) if lines else '  - 數據不足'
+
+    # Build trackwork summary for stability dimension
+    tw_summary = ''
+    if trackwork:
+        status_zh = {'ok': '已提取', 'partial': '部分提取', 'missing': '缺資料', 'failed': '提取失敗'}.get(str(trackwork.get('status', 'missing')), str(trackwork.get('status', 'missing')))
+        mode_zh = {
+            'status_continuity': '狀態延續', 'pattern_replay': '翻案復刻',
+            'debut_pressure': '初出備戰', 'insufficient_data': '資料不足',
+        }.get(str(tw_digest.get('career_category', 'insufficient_data')), str(tw_digest.get('career_category', 'insufficient_data')))
+        trend_zh = {'improving': '加強中', 'stable': '穩定', 'easing': '放緩', 'interrupted': '中斷', 'unknown': '未明'}.get(str(tw_digest.get('workout_intensity_trend', 'unknown')), str(tw_digest.get('workout_intensity_trend', 'unknown')))
+        positives_zh = '、'.join(tw_digest.get('stability_positive_flags', []) or []) or '無'
+        risks_zh = '、'.join(tw_digest.get('stability_risk_flags', []) or []) or '無'
+        tw_summary = (
+            f"  - 晨操 digest: status={status_zh}, mode={mode_zh}, "
+            f"load=快操{tw_load.get('gallops', 0)}/試閘{tw_load.get('trials', 0)}/"
+            f"踱步{tw_load.get('trotting', 0)}/游水{tw_load.get('swimming', 0)}/"
+            f"空白{tw_load.get('blank_days', 0)}, trend={trend_zh}, "
+            f"maintenance={tw_digest.get('maintenance_score')}, "
+            f"readiness={tw_digest.get('readiness_score')}, "
+            f"pattern_replay={tw_digest.get('pattern_replay_score')}, "
+            f"positives={positives_zh}, risks={risks_zh}, "
+            f"instruction={tw_digest.get('llm_stability_instruction', '無')}\n"
+            f"  - 晨操判讀規則: 正式賽績與晨操 50/50；近績差馬要將晨操視為翻案入口"
+        )
+
+    # ── Python-Driven Output Template ──
+    card.append("## 📄 Python-Driven 輸出模板 [V4.3]")
+    card.append("**以下係你必須使用嘅輸出格式。所有數據行已由 Python 預填，你只需填寫 `[FILL]` 部分。**")
+    card.append("**❌ 禁止喺矩陣外面加任何獨立 section（馬匹剖析/晨操摘要/賽績線表格）**")
+    card.append("**✅ 直接輸出以下模板，保留所有 Python 預填數據行，只填判讀。**")
+    card.append("")
+    card.append("```output_template")
+
+    # ── Dimension 1: Stability ──
+    card.append(f"#### 🧮 評級矩陣 (7-Dimension Matrix)")
+    card.append("")
+    card.append(f"##### 狀態與穩定性 [半核心]: `[FILL: ✅✅/✅/➖/❌/❌❌]`")
+    card.append(f"  - 🧭 **V4.2檢查點:** 近6場/全賽績穩定性、名次波動、頭馬距離趨勢；醫療事故作廢規則")
+    card.append(f"  - Resource Check: 05_forensic_analysis.md / 穩定性+醫療事故作廢規則")
+    card.append(_fmt_reasoning('stability'))
+    if tw_summary:
+        card.append(tw_summary)
+    card.append(f"  - 📂 必須閱讀 Facts.md「📋 完整賽績檔案」全部賽事記錄")
+    card.append(f"  - 📎 必讀: 05_forensic_analysis.md (穩定性計算 + 醫療事故自動作廢規則)")
+    card.append(f"  - 📊 **判讀:** `[FILL: ~50字判讀，引用具體數據]`")
     card.append("")
 
-    card.append("## 3️⃣ 形勢與走位 [半核心]")
-    card.append(f"- 走位形勢: {anchors.get('''race_shape_assessment''', '無數據')}")
-    card.append(f"- 今仗檔位: {anchors.get('barrier', '?')}")
-    draw_data = load_draw_stats_for_workcard(race_num, int(anchors.get('barrier', 0)))
-    if draw_data:
-        card.append(f"- 📊 檔位判定: {draw_data.get('verdict', '?')} (勝率{draw_data.get('win_pct', '?')}% | 入Q率{draw_data.get('quinella_pct', '?')}% | 上名率{draw_data.get('place_pct', '?')}%)")
-    card.append(f"- 跑道偏差: {sm_bias}")
-    card.append("👉 **你嘅判斷:** 步速/檔位/跑法形勢是否明確有利？步速/檔位/走位形勢是否明確有利或不利？。")
+    # ── Dimension 2: Sectional ──
+    card.append(f"##### 🔬 段速質量 (包含段速法醫) [核心]: `[FILL: ✅✅/✅/➖/❌/❌❌]`")
+    card.append(f"  - 🧭 **V4.2檢查點:** 引擎類型、L400/L600、全段速剖面 Δ、完成時間偏差")
+    card.append(f"  - Resource Check: 03_engine_pace_context.md + 04_engine_corrections.md + 05_forensic_analysis.md")
+    card.append(_fmt_reasoning('sectional'))
+    card.append(f"  - 📂 必須閱讀 Facts.md「📋 完整賽績檔案」全部段速數據")
+    card.append(f"  - 📎 必讀: 03_engine_pace_context.md + 04_engine_corrections.md + 05_forensic_analysis.md")
+    card.append(f"  - 📊 **判讀:** `[FILL: ~50字判讀，引用具體數據]`")
     card.append("")
 
-    card.append("## 4️⃣ 騎練訊號 [半核心]")
-    card.append(f"- 騎師: {anchors.get('jockey', '?')}")
-    card.append(f"- 練馬師: {anchors.get('trainer', '?')}")
-    card.append("👉 **你嘅判斷:** 有冇出擊訊號？冇資料就寫 ➖。")
+    # ── Dimension 3: Race Shape ──
+    card.append(f"##### 形勢與走位 [半核心]: `[FILL: ✅✅/✅/➖/❌/❌❌]`")
+    card.append(f"  - 🧭 **V4.2檢查點:** 步速預測、跑法、檔位統計、近仗走位；不以步速評分")
+    card.append(f"  - Resource Check: 05_forensic_analysis.md / 形勢走位")
+    card.append(_fmt_reasoning('race_shape'))
+    card.append(f"  - 📎 必讀: 05_forensic_analysis.md")
+    card.append(f"  - 📊 **判讀:** `[FILL: ~50字判讀，引用具體數據]`")
     card.append("")
 
-    card.append("## 5️⃣ 級數與負重 [輔助]")
-    card.append(f"- 今仗班次: {race_class}")
-    card.append(f"- 負磅: {anchors.get('weight', '?')}磅")
-    card.append("👉 **你嘅判斷:** 班次/負磅有冇優勢？")
+    # ── Dimension 4: Trainer Signal ──
+    card.append(f"##### 練馬師訊號 [核心]: `[FILL: ✅✅/✅/➖/❌/❌❌]`")
+    card.append(f"  - 🧭 **V4.2檢查點:** 練馬師部署、騎師配搭、近6場騎師歷史、換騎效應")
+    card.append(f"  - Resource Check: 07b_trainer_signals.md + 07c_jockey_profiles.md")
+    card.append(_fmt_reasoning('trainer_signal'))
+    card.append(f"  - 📎 必讀: 07b_trainer_signals.md + 07c_jockey_profiles.md")
+    card.append(f"  - 📊 **判讀:** `[FILL: ~50字判讀，引用具體數據]`")
     card.append("")
 
-    card.append("## 6️⃣ 場地適性 [輔助]")
-    card.append(f"- 好地紀錄: {anchors.get('good_record', '無')}")
-    card.append(f"- 軟地紀錄: {anchors.get('soft_record', '無')}")
-    card.append(f"- 同場紀錄: {anchors.get('course_record', '無')}")
-    card.append("👉 **你嘅判斷:** 場地有冇經驗？有冇贏過？")
+    # ── Dimension 5: Horse Health ──
+    card.append(f"##### 馬匹健康 / 新鮮感 [輔助]: `[FILL: ✅/➖/❌]`")
+    card.append(f"  - 🧭 **V4.2檢查點:** 休賽日數、體重趨勢、健康掃描、場地轉換新鮮感")
+    card.append(f"  - Resource Check: 05_forensic_analysis.md + 10a/10b/10c_track_*.md")
+    card.append(_fmt_reasoning('horse_health'))
+    card.append(f"  - 📎 健康評估規則: 有事故+復原證據=已復原(➖/✅); 有事故+未復原=風險(❌); 無事故=正常(✅)")
+    card.append(f"  - 📊 **判讀:** `[FILL: ~50字判讀，引用具體數據]`")
     card.append("")
 
-    card.append("## 7️⃣ 賽績線 [輔助]")
-    card.append(f"- 賽績線強度: {anchors.get('formline_strength', '無資料')}")
-    card.append("👉 **你嘅判斷:** 對手後續表現強唔強？")
+    # ── Dimension 6: Form Line ──
+    fl_score_default = 'N/A' if anchors.get('is_debut') else '[FILL: ✅✅/✅/➖/❌]'
+    card.append(f"##### 賽績線 [輔助]: `{fl_score_default}`")
+    card.append(f"  - 🧭 **V4.2檢查點:** Facts.md 賽績線強度、對手後續表現、強組/弱組判定")
+    card.append(f"  - Resource Check: Facts.md 賽績線表格 + 05_forensic_analysis.md")
+    card.append(_fmt_reasoning('form_line'))
+    card.append(f"  - 📎 必讀: 05_forensic_analysis.md (賽績線)")
+    card.append(f"  - 📊 **判讀:** `[FILL: ~30字判讀]`")
     card.append("")
 
-    card.append("## 8️⃣ 裝備與距離 [輔助]")
-    card.append(f"- 今仗距離: {distance}")
-    card.append(f"- 距離紀錄: {anchors.get('distance_record', '無紀錄')}")
-    card.append(f"- 最佳距離: {anchors.get('best_distance', '數據不足')}")
-    card.append("👉 **你嘅判斷:** 路程啱唔啱？裝備有冇變？")
+    # ── Dimension 7: Class Advantage ──
+    card.append(f"##### 級數優勢 [輔助]: `[FILL: ✅✅/✅/➖/❌]`")
+    card.append(f"  - 🧭 **V4.2檢查點:** 班次升降、評分趨勢、負磅甜蜜點、頂磅壓力")
+    card.append(f"  - Resource Check: 06_rating_engine.md")
+    card.append(_fmt_reasoning('class_advantage'))
+    card.append(f"  - 📎 必讀: 06_rating_engine.md + 場地模組 10a/10b/10c")
+    card.append(f"  - 📊 **判讀:** `[FILL: ~30字判讀]`")
     card.append("")
+
+    # ── Matrix Arithmetic + Conclusion ──
+    card.append("**🔢 矩陣算術:** [AUTO — 根據你填嘅 ✅/❌ 計數]")
+    card.append("**14.2 基礎評級:** `[AUTO]` | **規則**: `[AUTO]`")
+    card.append("**14.2B 微調:** 通道A: `[FILL]` | 通道B(SYN/CON): `[FILL]` | 觸發: `[FILL]`")
+    card.append("**🔗 互動矩陣 [ANCHOR-互動矩陣]:** SYN: `[FILL]` | CON: `[FILL]` | CONTRA: `[FILL]`")
+    card.append("**14.3 覆蓋:** `[FILL or 無]`")
+    card.append("")
+    card.append("#### 💡 結論與評語")
+    card.append("> - **核心邏輯:** [FILL: ~100字自然段落]")
+    card.append("> - **最大競爭優勢:** [FILL: 2-3點，每點≥10字]")
+    card.append("> - **最大失敗風險:** [FILL: 2-3點，每點≥10字]")
+    card.append("")
+    card.append("**⭐ 最終評級:** `[AUTO]`")
+    card.append("```")
+    card.append("")
+    card.append("---")
+
+    # ── Debut Horse Dedicated Analysis Path ──
+    if anchors.get('is_debut'):
+        card.append("## 🆕 初出馬專屬分析路徑")
+        card.append("⚠️ **此馬為首次出賽，以下維度必須使用替代數據源：**")
+        card.append("- **穩定性** → 預設 ➖；可用備戰穩定性升/跌")
+        card.append("- **段速質量** → 用 Sire 早熟/距離適性 + 試閘速度 + 晨操 readiness 替代")
+        card.append("- **賽績線** → **強制 N/A（不計入矩陣）**")
+        card.append("- **評級算術** → final rating 最高 A")
+        card.append("")
+        sire_profile = horse_entry.get('debut_sire_profile', {}) if isinstance(horse_entry, dict) else {}
+        trial_profile = horse_entry.get('debut_trial_profile', {}) if isinstance(horse_entry, dict) else {}
+        readiness_flags = horse_entry.get('debut_readiness_flags', []) if isinstance(horse_entry, dict) else []
+        card.append("### 🧬 Sire / Trial / Readiness Evidence")
+        card.append(f"- Sire profile: `{json.dumps(sire_profile, ensure_ascii=False) if sire_profile else 'missing'}`")
+        card.append(f"- Trial profile: `{json.dumps(trial_profile, ensure_ascii=False) if trial_profile else 'missing'}`")
+        card.append(f"- Readiness flags: `{', '.join(readiness_flags) if readiness_flags else '無'}`")
+        card.append("---")
+        card.append("")
+
+    # ── Import Horse Dedicated Analysis Path ──
+    if anchors.get('is_import'):
+        card.append("## 🌏 進口馬專屬分析路徑")
+        card.append(f"⚠️ **此馬為海外進口馬 (偵測來源: {anchors.get('import_origin', 'Unknown')})**")
+        card.append("")
+        card.append("### 海外賽績轉譯 (必填)")
+        card.append("| 項目 | 判斷 |")
+        card.append("|:---|:---|")
+        card.append("| 原產地 | [FILL: AUS/EUR/JPN/其他] |")
+        card.append("| 海外最高班次 | [FILL] |")
+        card.append("| 對應香港班次 | [FILL: 一班/二班/三班/四班/五班] |")
+        card.append("| 場地轉換風險 | [FILL: 低/中/高] |")
+        card.append("| 在港試閘表現 | [FILL: 出色/普通/失望] |")
+        card.append("")
+        card.append("⚠️ 進口馬適應期封頂：首戰=B+ (港試閘佳→A-) | 第2仗入前5=正常 | 第3仗起=正常")
+        card.append("---")
+        card.append("")
 
     # ── SIP Trigger Section (V2: Facts.md driven) ──
     if SIP_ENGINE_AVAILABLE:
@@ -1323,7 +1748,6 @@ def generate_hkjc_work_card(horse_num, facts_content, logic_data, runtime_dir,
             'starts': int(anchors.get('career_starts', '0')) if anchors.get('career_starts', '0').isdigit() else 0,
             'weight': int(anchors.get('weight', '126')) if str(anchors.get('weight', '')).isdigit() else 126,
             'barrier': int(anchors.get('barrier', '5')) if str(anchors.get('barrier', '')).isdigit() else 5,
-            # V2: Pass Facts.md structured data for SIP-04
             'margin_trend': anchors.get('race_shape_assessment', ''),
             'formline_strength': anchors.get('formline_strength', ''),
             'recent_form': anchors.get('recent_form', ''),
@@ -1338,61 +1762,11 @@ def generate_hkjc_work_card(horse_num, facts_content, logic_data, runtime_dir,
         _ctx_flags = get_race_context_flags(_sip_race_ctx)
         sip_text = format_sip_summary(_horse_sips, _race_sips, _ctx_flags)
         card.append(sip_text)
-    
-    # ── Trend Indicators Section ──
-    card.append("## 📈 趨勢指標 [自動]")
-    recent_form = anchors.get('recent_form', '無')
-    card.append(f"- 近績序列: `{recent_form}`")
-    # Parse trend from recent form
-    if recent_form and recent_form != '無':
-        positions = []
-        for ch in recent_form:
-            if ch.isdigit():
-                positions.append(int(ch))
-        if len(positions) >= 3:
-            last3 = positions[-3:]
-            if last3[-1] < last3[-2] < last3[-3]:
-                card.append(f"- 趨勢: ↗ 連續上升中 ({last3[0]}→{last3[1]}→{last3[2]})")
-            elif last3[-1] > last3[-2] > last3[-3]:
-                card.append(f"- 趨勢: ↘ 連續下滑中 ({last3[0]}→{last3[1]}→{last3[2]})")
-            else:
-                card.append(f"- 趨勢: ↔ 波動 ({last3[0]}→{last3[1]}→{last3[2]})")
-    card.append(f"- 同場同距離紀錄: {anchors.get('course_record', '無')}")
-    card.append(f"- 最佳距離: {anchors.get('best_distance', '數據不足')}")
-    card.append("")
-    
-    card.append("## 9️⃣ 檔位數據 + 段速差 [V11 新增]")
-    card.append(f"- 今仗檔位: {anchors.get('barrier', '?')}")
-    if draw_data:
-        card.append(f"- 📊 檔位判定: {draw_data.get('verdict', '?')}")
-        card.append(f"- 勝率: {draw_data.get('win_pct', '?')}% | 入Q率: {draw_data.get('quinella_pct', '?')}% | 上名率: {draw_data.get('place_pct', '?')}%")
-        card.append(f"- 統計基數: {draw_data.get('starts', '?')}場")
-    else:
-        card.append("- 檔位判定: 數據不可用")
-    card.append(f"- 跑道偏差: {sm_bias}")
-    card.append(f"- 步速預測: {sm_pace}")
-    card.append("- 👉 **檔位判讀**: 結合 Facts.md 🎯檔位優劣判讀 + 跑道偏差 + 引擎類型")
-    card.append("- 👉 **段速差**: 引用 L400 數據同場均比較，判斷末段能力")
-    card.append("")
 
-    card.append("## 🔟 core_logic 寫作指引 [V11 新增]")
+    card.append("## 🔟 core_logic 寫作指引")
     card.append("- **約 100 字**流暢廣東話分析")
-    card.append("- **唔好用** tag/標籤/分類符號（如 [A.狀態]、[B.形勢]）")
     card.append("- **必須涵蓋**: 近態趨勢 → 檔位形勢 → 段速能力 → 整體前景")
     card.append("- **必須引用**: 具體數字（近績名次、L400 時間、負磅、休賽日數）")
-    card.append("- **範例風格**: 「快活同盟近6仗走勢波動，排檔3屬統計有利位置（勝率15%），")
-    card.append("  段速方面L400=22.59秒優於基準0.21秒，但高消耗跑法令可靠度打折扣。」")
-    card.append("")
-
-    card.append("---")
-    card.append("## 📋 綜合部分（填完 8 個維度後）")
-    card.append("- **core_logic**: ~100字自然段落（見上方 🔟 指引）")
-    card.append("- **advantages**: 列出 2-3 個主要優勢（每點 ≥10 字，引用具體數據）")
-    card.append("  - ❌ 錯誤示範：`[無]` 或 `暫無明顯優勢`")
-    card.append("  - ✅ 正確示範：`1. 近3仗L400均值22.3秒，段速穩定屬前列水平。2. 潘頓配文家良近季勝出率23%，屬一線組合。`")
-    card.append("- **disadvantages**: 列出 2-3 個致命風險（每點 ≥10 字，引用具體數據）")
-    card.append("  - ❌ 錯誤示範：`[無]` 或 `風險不大`")
-    card.append("  - ✅ 正確示範：`1. 135磅為全場最高負磅，上仗同磅跑第4。2. 9檔在B+2偏外賽道需蝕位搶前。`")
     card.append("")
     card.append("---")
     card.append("## 📄 原始賽績數據（嚴禁修改）")
@@ -1405,7 +1779,7 @@ def generate_hkjc_work_card(horse_num, facts_content, logic_data, runtime_dir,
 
 
 def watch_single_horse_hkjc(json_file, horse_num, validate_fn, all_horses,
-                            poll_interval=3, timeout_minutes=10,
+                            poll_interval=3, timeout_minutes=60,
                             skeleton_snapshot=None):
     """Watch for a SINGLE HKJC horse to be filled and validated.
     V12: Added race_analysis tamper protection — Python-computed fields are immutable.
@@ -1528,13 +1902,20 @@ def watch_single_horse_hkjc(json_file, horse_num, validate_fn, all_horses,
 
 def print_hkjc_analysis_summary(horse_entry, horse_num):
     """Print quality summary for HKJC horse analysis."""
-    matrix = horse_entry.get('matrix', {})
+    matrix = _normalize_matrix(horse_entry.get('matrix', {}))
     scores = []
-    for dim in ['狀態與穩定性', '段速與引擎', '形勢與走位', '騎練訊號',
-                '級數與負重', '場地適性', '賽績線', '裝備與距離']:
+    display_dims = [
+        ('狀態', 'stability'),
+        ('段速', 'sectional'),
+        ('形勢', 'race_shape'),
+        ('騎練', 'trainer_signal'),
+        ('健康', 'horse_health'),
+        ('賽線', 'form_line'),
+        ('級數', 'class_advantage'),
+    ]
+    for short_dim, dim in display_dims:
         data = matrix.get(dim, {})
         score = data.get('score', '?') if isinstance(data, dict) else str(data)
-        short_dim = dim[:4]
         scores.append(f"{short_dim}:{score}")
     print(f"   📊 矩陣: {' | '.join(scores)}")
 
@@ -1620,6 +2001,8 @@ def validate_hkjc_firewalls(h, h_entry, horses_dict, all_horses, json_file):
     """
     errors = []
     locked_nonce = h_entry.get('_validation_nonce', '')
+    errors.extend(validate_v42_matrix_schema_hkjc(h_entry))
+    errors.extend(validate_matrix_resource_checks_hkjc(h_entry.get('matrix', {})))
     
     # WALL-008: Nonce validation
     if not locked_nonce:
@@ -1630,7 +2013,7 @@ def validate_hkjc_firewalls(h, h_entry, horses_dict, all_horses, json_file):
         errors.append(f"WALL-019: NONCE 格式無效 ('{locked_nonce[:20]}...')。只接受 SKEL_ 開頭嘅 nonce（由 skeleton 腳本生成）。"
                       f" 如果你見到 AUTO_FILL_ 開頭，代表有 bypass 腳本偽造咗 nonce。")
     
-    # WALL-009: Matrix completeness — all 8 dimensions must have valid scores
+    # WALL-009: Matrix completeness — all 7 dimensions must have valid scores
     matrix = h_entry.get('matrix', {})
     valid_scores = {'✅✅', '✅', '➖', '❌', '❌❌'}
     filled_dims = 0
@@ -1639,10 +2022,10 @@ def validate_hkjc_firewalls(h, h_entry, horses_dict, all_horses, json_file):
             score = dim_data.get('score', '')
             if score in valid_scores:
                 filled_dims += 1
-    if filled_dims < 6:  # At least 6 of 8 dimensions (allow 2 missing for edge cases)
-        errors.append(f"WALL-009: 矩陣維度不足 ({filled_dims}/8)，至少需要 6 個有效維度")
+    if filled_dims < 6:  # At least 6 of 7 dimensions
+        errors.append(f"WALL-009: 矩陣維度不足 ({filled_dims}/7)，至少需要 6 個有效維度")
     
-    # WALL-010: Score variety — at least 3 different scores (prevent all-same lazy fill)
+    # WALL-010: Score variety — at least 2 different scores (prevent all-same lazy fill)
     if filled_dims >= 6:
         unique_scores = set()
         for dim_data in matrix.values():
@@ -1675,7 +2058,7 @@ def validate_hkjc_firewalls(h, h_entry, horses_dict, all_horses, json_file):
             if reasoning_chi >= 10:
                 substantial_dims += 1
     if substantial_dims < 4:
-        errors.append(f"WALL-013: 矩陣 reasoning 實質性不足 (只有 {substantial_dims}/8 個維度有 ≥10 字嘅分析)。"
+        errors.append(f"WALL-013: 矩陣 reasoning 實質性不足 (只有 {substantial_dims}/7 個維度有 ≥10 字嘅分析)。"
                       f" 每個維度嘅 reasoning 必須引用具體數據。")
     
     # WALL-020: Data anchor check — reasoning must contain concrete references, not just template prose
@@ -1688,7 +2071,7 @@ def validate_hkjc_firewalls(h, h_entry, horses_dict, all_horses, json_file):
             if data_anchor_pattern.search(reasoning):
                 anchored_dims += 1
     if anchored_dims < 4:
-        errors.append(f"WALL-020: 矩陣 reasoning 欠缺具體數據錨點 (只有 {anchored_dims}/8 個維度引用了數字/日期/百分比)。"
+        errors.append(f"WALL-020: 矩陣 reasoning 欠缺具體數據錨點 (只有 {anchored_dims}/7 個維度引用了數字/日期/百分比)。"
                       f" 每個 reasoning 必須引用至少一個具體數據 (例如: L400 時間、勝率百分比、近績名次)。")
     
     # WALL-020B: Fluff detection in matrix reasoning (not just core_logic)
@@ -1699,6 +2082,134 @@ def validate_hkjc_firewalls(h, h_entry, horses_dict, all_horses, json_file):
                 if phrase in reasoning:
                     errors.append(f"WALL-020B: matrix.{dim_name}.reasoning 含有懶惰模板語句「{phrase}」。請替換為引用具體數據嘅分析。")
                     break
+
+    # WALL-026: Race shape must not be pace-scored. Pace remains race-level/sectional only.
+    normalized_for_shape = _normalize_matrix(matrix)
+    race_shape = normalized_for_shape.get('race_shape', {}) if isinstance(normalized_for_shape, dict) else {}
+    race_shape_reasoning = str(race_shape.get('reasoning', '')) if isinstance(race_shape, dict) else ''
+    verdict_match = re.search(r'→\s*\[判讀[：:]\s*(.+?)\]', race_shape_reasoning)
+    verdict_text = verdict_match.group(1) if verdict_match else ''
+    pace_terms = ('步速', 'PACE_TYPE', '快步速', '慢步速', '龜速', '自殺式', 'predicted_pace')
+    if any(term in verdict_text for term in pace_terms):
+        errors.append(
+            "WALL-026: matrix.race_shape.reasoning 以步速作主要判讀。"
+            "形勢與走位只可用檔位數據、今日預計走位、近仗走位消耗/受阻作評分理由。"
+        )
+
+    # WALL-025: Debut template lock — prevent normal-race scoring from leaking in.
+    is_debut_runner = (
+        h_entry.get('debut_runner', False)
+        or h_entry.get('is_debut', False)
+        or str(h_entry.get('career_tag', '')).upper() == 'DEBUT'
+    )
+    if is_debut_runner:
+        normalized_matrix = _normalize_matrix(matrix)
+        stability = normalized_matrix.get('stability', {}) if isinstance(normalized_matrix, dict) else {}
+        sectional = normalized_matrix.get('sectional', {}) if isinstance(normalized_matrix, dict) else {}
+        trainer_signal = normalized_matrix.get('trainer_signal', {}) if isinstance(normalized_matrix, dict) else {}
+        form_line = normalized_matrix.get('form_line', {}) if isinstance(normalized_matrix, dict) else {}
+        stability_score = stability.get('score', '') if isinstance(stability, dict) else str(stability)
+        sectional_score = sectional.get('score', '') if isinstance(sectional, dict) else str(sectional)
+        trainer_reasoning = str(trainer_signal.get('reasoning', '')) if isinstance(trainer_signal, dict) else ''
+        form_line_score = form_line.get('score', '') if isinstance(form_line, dict) else str(form_line)
+        if not all(k in h_entry for k in ('debut_sire_profile', 'debut_trial_profile', 'debut_readiness_flags')):
+            errors.append(
+                "WALL-025: 初出馬 Logic JSON 缺少 debut_sire_profile / debut_trial_profile / debut_readiness_flags；"
+                "請重新由最新 create_hkjc_logic_skeleton.py 生成 WorkCard/template。"
+            )
+        if '✅' in stability_score or '❌' in stability_score:
+            stability_reasoning = str(stability.get('reasoning', '')) if isinstance(stability, dict) else ''
+            prep_terms = (
+                '備戰', '晨操', '操練', '試閘', 'trial', 'Trial', 'readiness',
+                '體重', '健康', '加壓', '連貫', '中斷', '游水', '水中步行機'
+            )
+            if not any(term in stability_reasoning for term in prep_terms):
+                errors.append(
+                    "WALL-025: 初出馬 matrix.stability 可按備戰穩定性評分，但 ✅/❌ 必須引用 "
+                    "操練連貫、試閘次數、readiness、體重/健康或中斷/反覆等 evidence；"
+                    "不可用正式賽績穩定性模板。"
+                )
+            if '❌' in stability_score and any(term in stability_reasoning for term in ('無正式賽績', '無往績', '0仗', '零仗')):
+                errors.append(
+                    "WALL-025: 初出馬不可因『無正式賽績/無往績』本身將 stability 判 ❌；"
+                    "若判 ❌，必須來自備戰中斷、trial反覆、健康或體重風險。"
+                )
+        if '✅' in form_line_score or '❌' in form_line_score:
+            errors.append(
+                "WALL-025: 初出馬無正式賽績線，matrix.form_line 不可打 ✅；"
+                "亦不可當 ❌；必須為 N/A / 不計入。"
+            )
+        if '✅' in sectional_score:
+            sectional_reasoning = str(sectional.get('reasoning', '')) if isinstance(sectional, dict) else ''
+            has_sire = any(term in sectional_reasoning for term in ('Sire', 'sire', '父', '父系', '血統', 'AWD', '早熟'))
+            has_trial = any(term in sectional_reasoning for term in ('試閘', 'trial', 'Trial', '晨操', 'readiness', '末段', '催策'))
+            if not (has_sire and has_trial):
+                errors.append(
+                    "WALL-025: 初出馬 matrix.sectional 打 ✅/✅✅ 時，必須同時引用 Sire/血統距離證據 "
+                    "及 trial/trackwork readiness 證據；不可沿用正式賽 L400 模板。"
+                )
+        final_rating = str(h_entry.get('final_rating', '')).strip()
+        if final_rating and final_rating not in ('[AUTO]', 'AUTO', '[待計算]'):
+            if grade_sort_index(final_rating) < grade_sort_index('A'):
+                errors.append("WALL-025: 初出馬 final_rating 不可高於 A；A+/S-tier 必須封頂為 A。")
+        readiness_flags = h_entry.get('debut_readiness_flags', []) or []
+        trial_profile = h_entry.get('debut_trial_profile', {}) if isinstance(h_entry.get('debut_trial_profile', {}), dict) else {}
+        try:
+            readiness_score = int(trial_profile.get('readiness_score') or 0)
+        except (TypeError, ValueError):
+            readiness_score = 0
+        strong_debut_work = readiness_score >= 70 or bool(readiness_flags) or int(trial_profile.get('trials_21d') or 0) >= 2
+        if strong_debut_work and '待正式賽績驗證' in trainer_reasoning:
+            errors.append(
+                "WALL-025: 初出馬已有操練加壓/試閘/readiness 強訊號，trainer_signal 不可只寫「待正式賽績驗證」；"
+                "應正面評估騎練部署是否可給 ✅。"
+            )
+        if '[FILL' not in core_logic and not any(term in core_logic for term in ('初出', '首出', '無往績', 'Career=0')):
+            errors.append(
+                "WALL-025: 初出馬 core_logic 必須明確使用初出馬格式，"
+                "交代無正式賽績、試閘/晨操/騎練證據與評級封頂。"
+            )
+
+    # WALL-013B: Anti-double-counting warning (warning only, mirrors AU V4.2)
+    # V4.2 merges gear/distance/health evidence into the 7D matrix. If the same
+    # factor is also used as fine_tune, warn the analyst without blocking.
+    double_count_map = {
+        'GEAR_POSITIVE': 'trainer_signal',
+        'GEAR_RESET': 'trainer_signal',
+        'JOCKEY_FIT': 'trainer_signal',
+        'TRAINER_INTENT': 'trainer_signal',
+        'WEIGHT_SYNERGY': 'class_advantage',
+        'WEIGHT_EXTREME': 'class_advantage',
+        'MID_CLASS_LIGHT': 'class_advantage',
+        'PACE_FIT': 'race_shape',
+        'PACE_AGAINST': 'race_shape',
+        'FATAL_DRAW': 'race_shape',
+        'DISTANCE_JUMP': 'sectional',
+        'DISTANCE_SPECIALIST': 'sectional',
+        'SIRE_DISTANCE': 'sectional',
+        'HEALTH_FRESHNESS': 'horse_health',
+        'TRACK_SWITCH': 'horse_health',
+    }
+    ft = h_entry.get('fine_tune', {})
+    if isinstance(ft, dict):
+        ft_tokens = [
+            str(ft.get('trigger_code', '')),
+            str(ft.get('trigger', '')),
+            str(ft.get('channel_a', '')),
+            str(ft.get('channel_b', '')),
+        ]
+        normalized_matrix = _normalize_matrix(matrix)
+        for ft_code, mapped_dim in double_count_map.items():
+            if not any(ft_code and ft_code in token for token in ft_tokens):
+                continue
+            dim_data = normalized_matrix.get(mapped_dim, {}) if isinstance(normalized_matrix, dict) else {}
+            dim_score = dim_data.get('score', '➖') if isinstance(dim_data, dict) else str(dim_data)
+            if '✅' in dim_score:
+                print(
+                    f"   ⚠️ WALL-013B 雙重計算警告: fine_tune='{ft_code}' "
+                    f"對應嘅矩陣維度「{mapped_dim}」已經係 {dim_score}。"
+                    f"請確認微調理由唔係重複計算已有嘅 ✅。"
+                )
     
     # WALL-014: Factual anchor — core_logic must mention the horse name
     horse_name = h_entry.get('horse_name', '')
@@ -1764,6 +2275,63 @@ def validate_hkjc_firewalls(h, h_entry, horses_dict, all_horses, json_file):
                 f"WALL-021: {field_name} ({label}) 過短或為佔位符 ('{field_val[:30]}', {field_chi}字)。"
                 f" 請列出 2-3 個具體要點，每點 ≥10 字並引用數據。"
             )
+
+    # WALL-022: V4.2 Matrix reasoning substance — each filled dimension must have ≥20 chars reasoning
+    matrix = h_entry.get('matrix', {})
+    shallow_dims = []
+    for dim_key, dim_data in matrix.items():
+        if isinstance(dim_data, dict):
+            score = dim_data.get('score', '')
+            reasoning = str(dim_data.get('reasoning', ''))
+            if score in valid_scores and len(reasoning) < 20:
+                shallow_dims.append(dim_key)
+    if shallow_dims:
+        errors.append(
+            f"WALL-022: 矩陣 reasoning 過淺 ({len(shallow_dims)} 個維度 <20字)。"
+            f" 每個維度必須引用具體數據。淺層: {', '.join(shallow_dims)}"
+        )
+
+    # STAB-TW soft-to-action checks: trackwork should be digested when available.
+    trackwork = h_entry.get('trackwork', {})
+    if isinstance(trackwork, dict):
+        digest = trackwork.get('stability_digest', {})
+        if isinstance(digest, dict) and digest.get('data_status') == 'ok':
+            category = digest.get('career_category')
+            stability = matrix.get('stability', {}) if isinstance(matrix, dict) else {}
+            trainer_signal = matrix.get('trainer_signal', {}) if isinstance(matrix, dict) else {}
+            stability_reasoning = str(stability.get('reasoning', '')) if isinstance(stability, dict) else ''
+            trainer_reasoning = str(trainer_signal.get('reasoning', '')) if isinstance(trainer_signal, dict) else ''
+            combined_text = f"{stability_reasoning}\n{trainer_reasoning}\n{core_logic}"
+            flags = digest.get('stability_positive_flags', []) or []
+            risk_flags = digest.get('stability_risk_flags', []) or []
+            pattern_score = digest.get('pattern_replay_score')
+            readiness = digest.get('readiness_score')
+            try:
+                pattern_score_num = int(pattern_score) if pattern_score is not None else 0
+            except (TypeError, ValueError):
+                pattern_score_num = 0
+            try:
+                readiness_num = int(readiness) if readiness is not None else 0
+            except (TypeError, ValueError):
+                readiness_num = 0
+
+            if category == 'status_continuity':
+                if 'maintenance' not in combined_text and '體能維持' not in combined_text and not any(flag in combined_text for flag in flags):
+                    errors.append("STAB-TW-001: 晨操 status_continuity 已有 digest，但 stability/core_logic 未引用 maintenance_score 或晨操 flags。請用 50/50 方式合併賽績與晨操。")
+            if category == 'pattern_replay' and pattern_score_num >= 70:
+                if '復刻' not in combined_text and 'pattern_replay' not in combined_text:
+                    errors.append("STAB-TW-002: 近績差伏兵型晨操 pattern_replay_score >=70，但 reasoning 未引用晨操翻案訊號。不可單憑近績死扣。")
+            if category == 'debut_pressure':
+                st_score = stability.get('score', '') if isinstance(stability, dict) else ''
+                if ('✅' in st_score or '❌' in st_score) and not any(term in stability_reasoning for term in ('晨操', '操練', '試閘', 'readiness', '備戰', '體重', '健康', '中斷')):
+                    errors.append("STAB-TW-003: 初出馬 stability 若非 ➖，必須引用備戰穩定性 evidence；不可沿用正式賽績穩定性模板。")
+                if readiness_num >= 80 and '賽日騎師有參與操練' in flags:
+                    if '騎師' not in trainer_reasoning and '賽日騎師' not in trainer_reasoning:
+                        errors.append("TRAINER-TW-001: 初出馬 readiness>=80 且有賽日騎師參與，但 trainer_signal.reasoning 未引用騎師親操 / 加壓曲線。")
+            if '操練中斷' in risk_flags:
+                st_score = stability.get('score', '') if isinstance(stability, dict) else ''
+                if '✅' in st_score and '操練中斷' not in stability_reasoning:
+                    errors.append("STAB-TW-004: stability 已判 ✅，但晨操有操練中斷；請解釋負面風險點樣被抵消。")
 
     return errors
 

@@ -35,7 +35,7 @@ python .agents/scripts/reflector_auto_stats.py "[TARGET_DIR]" "[RESULTS_FILE]"
 對每場失誤,檢查:
 - **步速判斷是否正確?**
 - **場地/偏差判斷是否正確?** — 含 Weather Prediction 準確度
-- **EEM 判斷是否過度/不足?**
+- **形勢與走位判斷是否過度/不足?**
 - **騎師因素** — 臨場部署變化
 - **練馬師訊號** — 配備變動、首出訊號
 - **血統適性** — 場地 × 血統交互效應 (AU 專屬)
@@ -91,7 +91,7 @@ python .agents/scripts/reflector_auto_stats.py "[TARGET_DIR]" "[RESULTS_FILE]"
 | `1-1-1-1` | 一放到底 | 步速利前領 |
 | `X-X-X-↓` (末段跌位) | 後勁不繼 | 體力不足/步速崩潰 |
 | `X-X-X-↑` (末段追上) | 後段爆發 | False Negative 候選 |
-| 全程外疊 | 高消耗 | 檢查 EEM 判斷 |
+| 全程外疊 | 高消耗 | 檢查形勢與走位判斷 |
 | 位置穩定但末段跌 | 好位但跑唔動 | 🔴 實力不足 |
 
 #### 4e-2. 可預測性評估 (Predictability Assessment)

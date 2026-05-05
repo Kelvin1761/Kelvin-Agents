@@ -182,15 +182,17 @@ def edge_grade(edge):
 #          b2b_fatigue, opp_defense, usg_shift, matchup_pace
 
 def _minutes_floor_adj(spread):
-    """Factor 5: Blowout risk → minutes reduction discount."""
+    """Factor 5: Blowout risk → minutes reduction discount.
+    V5.3: Halved penalties — original values were too aggressive,
+    causing over-deflation when stacked with playoff_guard."""
     if not spread: return 0
     try:
         s = abs(float(spread))
     except (ValueError, TypeError):
         return 0
-    if s >= 15: return -5
-    if s >= 12: return -3
-    if s >= 8.5: return -2
+    if s >= 15: return -3  # V5.3: was -5
+    if s >= 12: return -2  # V5.3: was -3
+    if s >= 8.5: return -1  # V5.3: was -2
     return 0
 
 def _home_away_adj(is_home, home_ppg, road_ppg):
@@ -266,14 +268,17 @@ def calc_adjusted_winprob(base_rate, hit_l5=0, cov=0, avg=0, line_val=0,
                           opponent_def_rank=None, opponent_pace=None,
                           is_b2b=False, is_home=None, spread=None,
                           usg_bonus=0, defender_impact=None, amc=0,
-                          home_ppg=None, road_ppg=None, team_pace=None):
+                          home_ppg=None, road_ppg=None, team_pace=None,
+                          l10=None, min_avg=0, season_phase="MID_SEASON"):
     """
-    10-Factor Adjusted Win Probability Engine V3.
+    10-Factor Adjusted Win Probability Engine V3.1.
     All factors computed by Python — zero LLM judgment.
     base_rate: L10 hit rate (0-100)
+    V3.1 additions: SIP-N01 bench minutes risk, SIP-N04 trend decline protection
     Returns: (adjusted_prob, breakdown_dict)
     """
     breakdown = {}
+    l10 = l10 or []
 
     # ── Factor 1: Trend (L5 vs L10) ──
     delta = hit_l5 - base_rate
@@ -335,10 +340,62 @@ def calc_adjusted_winprob(base_rate, hit_l5=0, cov=0, avg=0, line_val=0,
     # ── Factor 10: Matchup Pace ──
     breakdown["matchup_pace"] = _matchup_pace_adj(team_pace, opponent_pace)
 
-    # ── Sum all 10 factors ──
+    # ── SIP-N04: Trend Decline Protection ──
+    # If L1 (most recent game) is below the line AND trend is declining,
+    # apply additional penalty to prevent false confidence from stale L10 data.
+    # V5.3: Halved penalties — original -10/-5 caused massive over-deflation in playoffs.
+    sip_n04_adj = 0
+    if l10 and len(l10) >= 3 and line_val > 0:
+        l1_val = l10[0]  # newest game (L10 is newest_first)
+        l3_avg_val = sum(l10[:3]) / 3
+        trend_declining = ("下降" in breakdown.get("_trend_label", "")) or (delta < -5)
+        if l1_val < line_val and trend_declining:
+            sip_n04_adj = -5   # V5.3: was -10
+        elif l1_val < line_val:
+            sip_n04_adj = -3   # V5.3: was -5
+        elif l3_avg_val < line_val:
+            sip_n04_adj = -3   # V5.3: was -5
+    breakdown["sip_n04_trend_protect"] = sip_n04_adj
+
+    # ── SIP-N01: Bench Minutes Risk ──
+    # Playoffs: bench players with low avg minutes get penalized
+    # V5.3: Halved penalties — rotation players (20-25 min) are still viable SGM targets.
+    sip_n01_adj = 0
+    if min_avg > 0 and min_avg < 20:
+        sip_n01_adj = -5   # V5.3: was -10
+    elif min_avg > 0 and min_avg < 25:
+        sip_n01_adj = -3   # V5.3: was -5
+    breakdown["sip_n01_bench_risk"] = sip_n01_adj
+
+    # ── Playoff/Play-In Guard ──
+    # V5.3: Reduced from -6/-3/-3/-3 (max -12) to -3/-2/-2/-2 (max -7).
+    # Original penalties caused 15-20% cumulative over-deflation that wiped out
+    # all positive-EV edges, leaving zero viable SGM candidates in tight games.
+    playoff_adj = 0
+    if season_phase in {"PLAYOFFS", "PLAY_IN"}:
+        if min_avg and min_avg < 28:
+            playoff_adj -= 3  # V5.3: was -6
+        elif min_avg and min_avg < 32:
+            playoff_adj -= 2  # V5.3: was -3
+        if hit_l5 < base_rate:
+            playoff_adj -= 2  # V5.3: was -3
+        if isinstance(cov, (int, float)) and cov > 0.35:
+            playoff_adj -= 2  # V5.3: was -3
+    breakdown["playoff_guard"] = playoff_adj
+
+    # ── Sum all factors (10 original + SIP guards) ──
     all_keys = ["trend", "cov", "buffer", "pace", "minutes_floor",
-                "home_away", "b2b_fatigue", "opp_defense", "usg_shift", "matchup_pace"]
+                "home_away", "b2b_fatigue", "opp_defense", "usg_shift", "matchup_pace",
+                "sip_n04_trend_protect", "sip_n01_bench_risk", "playoff_guard"]
     total_adj = sum(breakdown[k] for k in all_keys)
+
+    # V5.3: Penalty floor — prevent cumulative over-deflation.
+    # Max total penalty capped at -20% to preserve meaningful edge differentiation.
+    # Without this, stacked playoff penalties (-30 to -43%) destroy all positive EV.
+    if total_adj < -20:
+        total_adj = -20
+        breakdown["_penalty_capped"] = True
+
     adjusted = max(5.0, min(98.0, base_rate + total_adj))
     breakdown["_python_adj"] = total_adj
     breakdown["_preliminary"] = round(adjusted, 1)
@@ -360,10 +417,12 @@ def format_adjustment_line(base_rate, breakdown):
     factor_names = {
         "trend": "走勢", "cov": "波動", "buffer": "安全墊", "pace": "節奏",
         "minutes_floor": "分鐘", "home_away": "主客", "b2b_fatigue": "B2B",
-        "opp_defense": "防守", "usg_shift": "USG", "matchup_pace": "配速"
+        "opp_defense": "防守", "usg_shift": "USG", "matchup_pace": "配速",
+        "playoff_guard": "季後賽"
     }
     for key in ["trend", "cov", "buffer", "pace", "minutes_floor",
-                "home_away", "b2b_fatigue", "opp_defense", "usg_shift", "matchup_pace"]:
+                "home_away", "b2b_fatigue", "opp_defense", "usg_shift", "matchup_pace",
+                "playoff_guard"]:
         val = breakdown.get(key, 0)
         if val == 0:
             continue  # skip zero-impact factors for readability
@@ -376,15 +435,10 @@ def format_adjustment_line(base_rate, breakdown):
     return " → ".join([parts[0]]) + " | " + " | ".join(parts[1:]) + f" | = {adjusted}%"
 
 def find_player_in_extractor(ext_players, name, team_abbr):
+    """Exact full name match only. No surname fallback to prevent Jr./Sr. collisions."""
     if team_abbr in ext_players:
         for p in ext_players[team_abbr]:
             if p.get("name", "").lower() == name.lower():
-                return p
-    last_name = name.split()[-1].lower() if name else ""
-    if team_abbr in ext_players:
-        for p in ext_players[team_abbr]:
-            p_last = p.get("name", "").split()[-1].lower()
-            if p_last == last_name:
                 return p
     return None
 
@@ -393,7 +447,7 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
                       opponent_def_rank=None, opponent_pace=None,
                       is_b2b=False, is_home=None, spread=None,
                       usg_bonus=0, defender_impact=None, top_defender_name="",
-                      opponent_abbr=""):
+                      opponent_abbr="", season_phase="MID_SEASON"):
     card = {
         "name": player_name,
         "team": team_abbr,
@@ -486,7 +540,8 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
             is_b2b=is_b2b, is_home=is_home, spread=spread,
             usg_bonus=usg_bonus, defender_impact=defender_impact, amc=0,
             home_ppg=card.get("home_ppg"), road_ppg=card.get("road_ppg"),
-            team_pace=None)  # team_pace set at main() level
+            team_pace=None, l10=data_for_hr, min_avg=card.get("min_avg", 0),
+            season_phase=season_phase)  # team_pace set at main() level
         ev = edge_calc(est_prob, imp)
         grade = edge_grade(ev)
         
@@ -519,10 +574,13 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
 # ─── Auto-Combo Engine ──────────────────────────────────────────────────
 
 def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
-    """Build a flat list of all possible legs from player cards + team odds."""
+    """Build a flat list of all possible legs from player cards + team odds.
+    V3.1: SIP-N01 bench minutes risk flag, SIP-N05 high CoV 3PM filter."""
     candidates = []
     cat_label = {"points": "PTS", "threes_made": "3PM", "rebounds": "REB", "assists": "AST"}
     injuries = injuries or {}
+    meta = meta or {}
+    season_phase = meta.get("season_phase", "MID_SEASON")
 
     for card in all_cards:
         team_abbr = card["team"]
@@ -532,12 +590,31 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
         # ⚠️ Skip players who are strictly OUT or injured so they do not pollute safely generated combos
         if status.lower() == "out":
             continue
+        
+        # Flag Day-To-Day players (excluded from 穩膽 only, allowed in other combos)
+        is_day_to_day = status.lower() in ("day-to-day", "dtd")
             
         cl = cat_label.get(card["category"], card["category"])
+
+        # SIP-N01: Flag bench minutes risk
+        min_avg = card.get("min_avg", 0)
+        bench_minutes_risk = (min_avg > 0 and min_avg < 25)
+
         for line_key, la in card.get("line_analysis", {}).items():
             odds = float(la["odds"])
             if odds < 1.01:  # Skip near-certainties
                 continue
+
+            # SIP-N05: Block high CoV 3PM legs from ALL combo pools
+            # 3PM is inherently high variance; CoV > 0.5 makes it unpredictable
+            if cl == "3PM" and card["cov"] > 0.5:
+                continue
+
+            # SIP-N04: Compute L3 average for trend protection
+            l10_data = card.get("l10", [])
+            l3_avg = round(sum(l10_data[:3]) / 3, 2) if len(l10_data) >= 3 else card["avg"]
+            l1_val = l10_data[0] if l10_data else card["avg"]
+
             candidates.append({
                 "market_type": PLAYER_MARKET,
                 "player": card["name"],
@@ -570,6 +647,13 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
                 "correlation_flags": [],
                 "selection_reject_reasons": [],
                 "desc": f"{card['name']} ({card['team']}) {cl} {la['line_display']}",
+                # SIP fields
+                "bench_minutes_risk": bench_minutes_risk,
+                "min_avg": min_avg,
+                "l3_avg": l3_avg,
+                "l1_val": l1_val,
+                "day_to_day": is_day_to_day,
+                "season_phase": season_phase,
             })
 
     # ── Team-level legs (ML / Spread / O/U) ──
@@ -710,158 +794,370 @@ def _value_bomb_confirmed(leg):
     return hit_l5 >= max(55, hit_l10 - 10)
 
 
+def _is_playoff_leg(leg):
+    return leg.get("season_phase") in {"PLAYOFFS", "PLAY_IN"}
+
+
+def _passes_playoff_gate(leg, tier):
+    """Playoff mode keeps low-minute and stale-form props out of auto-combos.
+    
+    V5.1 Fixes:
+    - min_avg threshold relaxed from 28 to 18 (many rotation players play 20-27 min)
+    - min_avg = 0 (unknown) is treated as "pass" not "block"
+    - l3_avg < line_val relaxed: only block if l3_avg < line_val * 0.8 (20% buffer)
+    - Tier thresholds relaxed to account for 10-Factor adjustment deflation
+    """
+    if not _is_playoff_leg(leg):
+        return True
+
+    min_avg = leg.get("min_avg", 0)
+    est_prob = leg.get("estimated_prob", leg.get("hit_l10", 0))
+    hit_l5 = leg.get("hit_l5", 0)
+    hit_l10 = leg.get("hit_l10", 0)
+    line_val = leg.get("line_val", 0)
+    l3_avg = leg.get("l3_avg", leg.get("avg", 0))
+    mc_edge = _mc_edge(leg)
+
+    # V5.1: Only block if min_avg is KNOWN and very low (<18)
+    # min_avg=0 means unknown (extractor didn't provide) → don't penalize
+    if min_avg > 0 and min_avg < 18:
+        return False
+    # V5.1: Relaxed l3_avg check — only block if L3 is severely below line (>20% gap)
+    if line_val and l3_avg > 0 and l3_avg < line_val * 0.8:
+        return False
+    if leg.get("day_to_day", False):
+        return False
+    if isinstance(mc_edge, (int, float)) and mc_edge < -20:
+        return False
+
+    # V5.1: Use max(est_prob, hit_l10) to avoid 10-Factor over-deflation
+    effective_prob = max(est_prob, hit_l10)
+
+    if tier == "banker":
+        return effective_prob >= 60 and hit_l5 >= 60
+    if tier == "value":
+        return effective_prob >= 50 and hit_l5 >= 50
+    if tier == "high":
+        if leg.get("category") == "3PM":
+            return effective_prob >= 50 and hit_l5 >= 50
+        return effective_prob >= 45 and hit_l5 >= 40
+    if tier == "bomb":
+        if isinstance(mc_edge, (int, float)):
+            return mc_edge >= 3
+        return effective_prob >= 50 and hit_l5 >= 50
+    return True
+
+
 def select_combo_1(candidates):
-    """穩膽: positive-EV player milestone legs only, combined odds >= 2.0."""
+    """🛡️ 穩膽 V5: 2-3 ultra-safe legs targeting 2.0-3.2x.
+    - L10 ≥ 80% AND L5 ≥ 80% (true recent consistency)
+    - avg must exceed line by ≥ 15% (buffer safety)
+    - Playoff gate: starter minutes + recent form required
+    - SIP-N01: bench risk banned
+    - SIP-N04: L3 < Line banned
+    - 神經刀 banned"""
+
+    def _has_buffer(c):
+        """Check if player's avg exceeds line by at least 15%."""
+        line_val = c.get("line_val", 0)
+        avg = c.get("avg", 0)
+        if line_val <= 0 or avg <= 0:
+            return True  # Can't verify, allow through
+        return (avg - line_val) / line_val >= 0.15
+
     pool = [c for c in candidates
             if _is_player_milestone(c)
-            and c["hit_l10"] >= 70
-            and c["edge"] >= 0
-            and c["odds"] >= 1.15
-            and "神經刀" not in c.get("cov_grade", "")]
-    pool.sort(key=lambda x: (-x["hit_l10"], -x["edge"], -x["odds"]))
+            and c["hit_l10"] >= 80
+            and c.get("hit_l5", 0) >= 80
+            and c["edge"] >= 0  # V5.3: FW-11 blocks negative EV legs — must be >= 0
+            and c["odds"] >= 1.20  # V5.2: Remove 'almost free' legs — each leg should carry meaningful odds
+            and c.get("cov", 0) <= 0.65
+            and not c.get("bench_minutes_risk", False)
+            and not c.get("day_to_day", False)
+            and c.get("l3_avg", c["avg"]) >= c.get("line_val", 0)
+            and _has_buffer(c)
+            and _passes_playoff_gate(c, "banker")]
+    # F5: Prioritize L10 100% → 90% → 80% legs first, then by edge
+    pool.sort(key=lambda x: (-x["hit_l10"], -x["hit_l5"], -x["edge"], x["odds"]))
+
+    def score_fn(combo, odds, avg_hit, total_edge):
+        # F5: Bonus for near-perfect hit rate legs
+        perfect_bonus = sum(10 for leg in combo if leg["hit_l10"] >= 100)
+        near_perfect_bonus = sum(5 for leg in combo if 90 <= leg["hit_l10"] < 100)
+        return avg_hit * 0.6 + total_edge * 0.1 + len(combo) * 2 + perfect_bonus + near_perfect_bonus
+
+    result = _greedy_build(pool,
+                           target_min=2.0, target_max=3.5,  # V5.3: FW-11 floor is 2.0x
+                           min_legs=2, max_legs=4,  # V5.3: Allow 4 legs to reach 2.0x target
+                           score_fn=score_fn,
+                           max_same_team_pts=2, max_same_team=3)
+
+    # Fallback: relax to L10 ≥ 70% if strict pool is too small
+    if not result:
+        pool_relaxed = [c for c in candidates
+                        if _is_player_milestone(c)
+                        and c["hit_l10"] >= 70
+                        and c.get("hit_l5", 0) >= 70
+                        and c["edge"] >= 0  # V5.3: FW-11 blocks negative EV legs
+                        and c["odds"] >= 1.15  # V5.2: Slightly relaxed from 1.20 for fallback
+                        and c.get("cov", 0) <= 0.75
+                        and not c.get("bench_minutes_risk", False)
+                        and not c.get("day_to_day", False)
+                        and c.get("l3_avg", c["avg"]) >= c.get("line_val", 0) * 0.85
+                        and _passes_playoff_gate(c, "banker")]
+        pool_relaxed.sort(key=lambda x: (-x["hit_l10"], -x["edge"], x["odds"]))
+        result = _greedy_build(pool_relaxed,
+                               target_min=2.0, target_max=4.0,  # V5.3: FW-11 floor is 2.0x
+                               min_legs=2, max_legs=4,  # V5.3: Allow 4 legs
+                               score_fn=score_fn,
+                               max_same_team_pts=2, max_same_team=3)
+
+    return result
+
+
+# ─── Capped Greedy Builder (V5) ──────────────────────────────────────────
+# Build toward the target odds range, but keep tier-specific max legs tight.
+
+def _greedy_build(pool, target_min, target_max, min_legs, max_legs,
+                  score_fn=None, max_same_team_pts=2, max_same_team=4):
+    """Greedy capped SGM builder V5.
     
+    Improvements over V4:
+    - Validates combos via _combo_is_allowed() (team/player conflict guard)
+    - Swap-out retry: if adding a leg overshoots target_max, tries swapping
+      out the highest-odds existing leg to stay in range
+    - Category dedup: prevents same-player multi-category stacking
+    
+    Returns the best combo found across multiple starting seeds.
+    """
+    if not pool:
+        return []
+
+    def _team_pts_count(combo, team):
+        return sum(1 for leg in combo if leg.get("category") == "PTS" and leg.get("team") == team)
+
+    def _team_count(combo, team):
+        return sum(1 for leg in combo if leg.get("team") == team)
+
+    def _try_build_from(seed_idx):
+        combo = [pool[seed_idx]]
+        used_players = {pool[seed_idx]["player"]}
+
+        for candidate in pool:
+            if len(combo) >= max_legs:
+                break
+            if candidate["player"] in used_players:
+                continue
+            # Same-team PTS cap
+            if candidate.get("category") == "PTS" and _team_pts_count(combo, candidate["team"]) >= max_same_team_pts:
+                continue
+            # Same-team total cap (diversification)
+            if _team_count(combo, candidate["team"]) >= max_same_team:
+                continue
+
+            test_combo = combo + [candidate]
+            test_odds = _combo_odds(test_combo)
+
+            # Validate structural rules (team/player conflicts)
+            if not _combo_is_allowed(test_combo):
+                continue
+
+            # If adding this leg overshoots the max, try swap-out
+            if test_odds > target_max and len(test_combo) >= min_legs:
+                # Try removing the highest-odds leg (excluding seed) and re-check
+                if len(combo) >= 2:
+                    swap_candidates = sorted(range(1, len(combo)),
+                                             key=lambda i: -combo[i]["odds"])
+                    for swap_idx in swap_candidates[:3]:  # Try top 3 swaps
+                        swapped = [l for i, l in enumerate(combo) if i != swap_idx] + [candidate]
+                        if _combo_is_allowed(swapped) and _has_unique_players(swapped):
+                            swapped_odds = _combo_odds(swapped)
+                            if target_min <= swapped_odds <= target_max:
+                                combo = swapped
+                                used_players = {l["player"] for l in combo}
+                                break
+                continue
+
+            combo.append(candidate)
+            used_players.add(candidate["player"])
+
+            # Smart stop: aim for the midpoint of target range, not just minimum
+            # This ensures we build towards optimal odds, not just barely qualifying
+            current_odds = _combo_odds(combo)
+            sweet_spot = (target_min + target_max) / 2
+            if current_odds >= sweet_spot and len(combo) >= min_legs:
+                break  # At or past sweet spot — stop
+            if current_odds >= target_min and len(combo) >= min_legs + 1:
+                break  # Past minimum with extra leg cushion — stop
+
+        final_odds = _combo_odds(combo)
+        if len(combo) >= min_legs and target_min <= final_odds <= target_max:
+            return combo
+        # If we overshot slightly, still accept if within 20% tolerance
+        if len(combo) >= min_legs and final_odds >= target_min and final_odds <= target_max * 1.2:
+            return combo
+        return None
+
+    # Try multiple starting seeds and pick the best result
     best_combo = None
     best_score = -999
-    
-    # Pass 1: Target 2.0 to 3.0
-    for i in range(len(pool)):
-        for j in range(i + 1, len(pool)):
-            combo = [pool[i], pool[j]]
-            if not _combo_is_allowed(combo):
+
+    for seed_idx in range(min(len(pool), 20)):  # Increased from 15 to 20 seeds
+        result = _try_build_from(seed_idx)
+        if result:
+            odds = _combo_odds(result)
+            if odds > target_max * 1.2:  # Hard ceiling
                 continue
-            combo_odds = _combo_odds(combo)
-            combo_edge = pool[i]["edge"] + pool[j]["edge"]
-            avg_hit = (pool[i]["hit_l10"] + pool[j]["hit_l10"]) / 2
-            if 2.0 <= combo_odds <= 3.0 and avg_hit >= 70:
-                score = avg_hit * 0.5 + combo_edge * 0.3 + min(combo_odds, 3.0) * 10
-                if score > best_score:
-                    best_combo = combo
-                    best_score = score
-                    
-    # Try 3-leg if 2-leg failed in Pass 1
-    if not best_combo:
-        for i in range(min(len(pool), 10)):
-            for j in range(i + 1, min(len(pool), 10)):
-                for k in range(j + 1, min(len(pool), 10)):
-                    combo = [pool[i], pool[j], pool[k]]
-                    if not _combo_is_allowed(combo):
-                        continue
-                    combo_odds = _combo_odds(combo)
-                    avg_hit = (pool[i]["hit_l10"] + pool[j]["hit_l10"] + pool[k]["hit_l10"]) / 3
-                    if 2.0 <= combo_odds <= 3.0 and avg_hit >= 70:
-                        score = avg_hit * 0.5 + (pool[i]["edge"] + pool[j]["edge"] + pool[k]["edge"]) * 0.3
-                        if score > best_score:
-                            best_combo = combo
-                            best_score = score
+            avg_hit = sum(leg["hit_l10"] for leg in result) / len(result)
+            avg_hit_l5 = sum(leg.get("hit_l5", leg["hit_l10"]) for leg in result) / len(result)
+            total_edge = sum(leg["edge"] for leg in result)
+            if score_fn:
+                sc = score_fn(result, odds, avg_hit, total_edge)
+            else:
+                # Default: balance hit rate, recent form, edge, and diversification
+                sc = avg_hit * 0.3 + avg_hit_l5 * 0.3 + total_edge * 0.2 + len(result) * 2
+            if sc > best_score:
+                best_combo = result
+                best_score = sc
 
     return best_combo or []
 
 
 def select_combo_2(candidates, exclude_descs=None):
-    """均衡: Target combined odds > 3x, aiming for 5x."""
-    TARGET_MIN, TARGET_MAX = 3.0, 6.0
-    TARGET_IDEAL = 5.0
+    """🔥 價值膽 V5: Mid-risk 2-4 legs targeting 2.8-5.0x.
+    L10 ≥ 60%, L5 ≥ 60%, edge ≥ 0, 神經刀 banned.
+    Playoff gate removes low-minute and stale-form props."""
     exclude = set(exclude_descs or [])
+
     pool = [c for c in candidates
             if _is_player_milestone(c)
-            and c["edge"] >= 3
-            and c["hit_l10"] >= 40
+            and c["edge"] >= 0  # V5.3: FW-11 blocks negative EV legs
+            and c["hit_l10"] >= 60
+            and c.get("hit_l5", 0) >= 60
+            and c["odds"] >= 1.20  # V5.2: Meaningful odds per leg
+            and c.get("cov", 0) <= 0.75
+            and not c.get("bench_minutes_risk", False)
+            and _passes_playoff_gate(c, "value")
             and c["desc"] not in exclude]
-    pool.sort(key=lambda x: (-x["edge"], -x["odds"]))
-    
-    best_combo = None
-    best_score = -999
-    for i in range(min(len(pool), 20)):
-        for j in range(i + 1, min(len(pool), 20)):
-            combo = [pool[i], pool[j]]
-            if not _combo_is_allowed(combo):
-                continue
-            combo_odds = _combo_odds(combo)
-            combo_edge = pool[i]["edge"] + pool[j]["edge"]
-            if TARGET_MIN <= combo_odds <= TARGET_MAX:
-                # Score: prefer odds near 5x + high edge
-                closeness = 10 - abs(combo_odds - TARGET_IDEAL) * 2
-                score = combo_edge * 0.4 + closeness * 0.6
-                if score > best_score:
-                    best_combo = combo
-                    best_score = score
-    
-    if best_combo:
-        return best_combo
-    
-    return []
+    pool.sort(key=lambda x: (-x["hit_l10"], -x.get("hit_l5", 0), -x["edge"], x["odds"]))
+
+    def score_fn(combo, odds, avg_hit, total_edge):
+        closeness = 10 - abs(odds - 4.0) * 1.5
+        avg_l5 = sum(c.get("hit_l5", c["hit_l10"]) for c in combo) / len(combo)
+        return avg_hit * 0.35 + avg_l5 * 0.2 + total_edge * 0.15 + closeness * 0.3
+
+    return _greedy_build(pool,
+                         target_min=3.0, target_max=5.0,  # V5.3: FW-11 floor is 3.0x
+                         min_legs=2, max_legs=4,
+                         score_fn=score_fn,
+                         max_same_team=3)
 
 
 def select_combo_3(candidates, exclude_descs=None):
-    """高倍率進取: 3 legs targeting combined odds 8-10x."""
-    TARGET_MIN, TARGET_MAX = 8.0, 12.0
+    """💎 高倍率 V5.3: 3-5 leg high-return shot targeting 8.0-15.0x.
+    FW-11 enforces minimum 8.0x for combo 3.
+    Relaxed gates: L10 ≥ 50%, L5 ≥ 50%, cross-team diversification.
+    No volume stacking. Positive EV only."""
     exclude = set(exclude_descs or [])
     pool = [c for c in candidates
             if _is_player_milestone(c)
-            and c["hit_l10"] >= 40
-            and c["edge"] >= 0
-            and c["odds"] >= 1.3
+            and c["hit_l10"] >= 50
+            and c.get("hit_l5", 0) >= 50
+            and c["edge"] >= 0  # V5.3: FW-11 blocks negative EV legs
+            and c["odds"] >= 1.15  # V5.2: Meaningful odds per leg
+            and c.get("cov", 0) <= 0.85
+            and not c.get("bench_minutes_risk", False)
+            and _passes_playoff_gate(c, "high")
             and c["desc"] not in exclude]
-    pool.sort(key=lambda x: (-x["edge"], -x["odds"]))
-    
-    # Try 3-leg combinations targeting 8-10x
-    best_combo = None
-    best_edge = -999
-    for i in range(min(len(pool), 15)):
-        for j in range(i + 1, min(len(pool), 15)):
-            for k in range(j + 1, min(len(pool), 15)):
-                combo = [pool[i], pool[j], pool[k]]
-                if not _combo_is_allowed(combo):
-                    continue
-                combo_odds = _combo_odds(combo)
-                combo_edge = pool[i]["edge"] + pool[j]["edge"] + pool[k]["edge"]
-                if TARGET_MIN <= combo_odds <= TARGET_MAX and combo_edge > best_edge:
-                    best_combo = combo
-                    best_edge = combo_edge
-    
-    if best_combo:
-        return best_combo
-    
-    # Fallback: keep >= 8x floor but allow a wider upper range.
-    for i in range(min(len(pool), 12)):
-        for j in range(i + 1, min(len(pool), 12)):
-            for k in range(j + 1, min(len(pool), 12)):
-                combo = [pool[i], pool[j], pool[k]]
-                if not _combo_is_allowed(combo):
-                    continue
-                combo_odds = _combo_odds(combo)
-                combo_edge = pool[i]["edge"] + pool[j]["edge"] + pool[k]["edge"]
-                if 8.0 <= combo_odds <= 15.0 and combo_edge > best_edge:
-                    best_combo = combo
-                    best_edge = combo_edge
-    return best_combo or []
+    pool.sort(key=lambda x: (-x["hit_l10"], -x.get("hit_l5", 0), -x["edge"], x["odds"]))
+
+    def score_fn(combo, odds, avg_hit, total_edge):
+        avg_l5 = sum(c.get("hit_l5", c["hit_l10"]) for c in combo) / len(combo)
+        closeness = 10 - abs(odds - 10.0)  # V5.3: Aim for 10x sweet spot
+        return avg_hit * 0.4 + avg_l5 * 0.25 + total_edge * 0.1 + closeness * 0.25
+
+    return _greedy_build(pool,
+                         target_min=8.0, target_max=15.0,  # V5.3: FW-11 floor is 8.0x
+                         min_legs=3, max_legs=5,  # V5.3: Allow up to 5 legs to reach 8.0x
+                         score_fn=score_fn,
+                         max_same_team=4)
 
 
 def select_combo_x_value_bomb(candidates):
-    """Value Bomb: Significant +EV where bookies undervalue (Edge ≥ 15%)"""
-    pool = [c for c in candidates
-            if _is_player_milestone(c)
-            and c["edge"] >= 15
-            and c["hit_l10"] >= 60
-            and _value_bomb_confirmed(c)]
-    pool.sort(key=lambda x: -x["edge"])
-    if not pool:
-        # Relax to edge >= 10
-        pool = [c for c in candidates
-                if _is_player_milestone(c)
-                and c["edge"] >= 10
-                and c["hit_l10"] >= 55
-                and _value_bomb_confirmed(c)]
-        pool.sort(key=lambda x: -x["edge"])
-    selected = []
+    """💣 Value Bomb V5: 2-3 legs targeting 5-15x.
+    Safe base (L10 ≥ 80%, L5 ≥ 70%) + 1-2 edge spikes (Edge ≥ 10%, L10 ≥ 60%).
+    Entertainment stake only."""
+
+    # Phase 1: Safe foundation — strict quality
+    safe_pool = [c for c in candidates
+                 if _is_player_milestone(c)
+                 and c["hit_l10"] >= 80
+                 and c.get("hit_l5", 0) >= 70
+                 and c["edge"] >= 0
+                 and c["odds"] >= 1.05
+                 and "神經刀" not in c.get("cov_grade", "")
+                 and not c.get("bench_minutes_risk", False)
+                 and _passes_playoff_gate(c, "bomb")]
+    safe_pool.sort(key=lambda x: (-x["hit_l10"], -x.get("hit_l5", 0), x["odds"]))
+
+    # Phase 2: Edge spikes — the 'bomb' component
+    spike_pool = [c for c in candidates
+                  if _is_player_milestone(c)
+                  and c["edge"] >= 10
+                  and c["hit_l10"] >= 60
+                  and c.get("hit_l5", 0) >= 50
+                  and _value_bomb_confirmed(c)
+                  and _passes_playoff_gate(c, "bomb")]
+    spike_pool.sort(key=lambda x: (-x["edge"], -x["hit_l10"]))
+
+    if not spike_pool:
+        return []
+
+    # Phase 3: Build — 1-2 spikes first, fill with safe base
+    combo = []
     used_players = set()
-    for c in pool:
-        if c["player"] not in used_players:
-            selected.append(c)
-            used_players.add(c["player"])
-        if len(selected) >= 3:
+
+    for spike in spike_pool[:2]:
+        if spike["player"] not in used_players:
+            combo.append(spike)
+            used_players.add(spike["player"])
+
+    if not combo:
+        return []
+
+    for leg in safe_pool:
+        if len(combo) >= 3:
             break
-    return selected
+        if leg["player"] in used_players:
+            continue
+        # Same-team PTS cap
+        if leg.get("category") == "PTS":
+            same_team_pts = sum(1 for l in combo if l.get("category") == "PTS" and l.get("team") == leg["team"])
+            if same_team_pts >= 2:
+                continue
+        # Cross-team cap
+        same_team_total = sum(1 for l in combo if l.get("team") == leg["team"])
+        if same_team_total >= 3:
+            continue
+        # Validate structural rules
+        test_combo = combo + [leg]
+        if not _combo_is_allowed(test_combo):
+            continue
+
+        combo.append(leg)
+        used_players.add(leg["player"])
+
+        current_odds = _combo_odds(combo)
+        if current_odds >= 5.0 and len(combo) >= 2:
+            break
+
+    # Final validation
+    if not _combo_is_allowed(combo):
+        return []
+    final_odds = _combo_odds(combo)
+    if 2 <= len(combo) <= 3 and final_odds >= 5.0:
+        return combo
+    return []
 
 
 # ─── Report Generation ──────────────────────────────────────────────────
@@ -1052,15 +1348,19 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
     adj_probs = [leg.get('estimated_prob', leg['hit_l10']) for leg in legs]
     hit_mult_parts = " × ".join(f"{p}%" for p in adj_probs)
 
-    # Auto-determine stake recommendation
-    if combo_hit_pct >= 70 and avg_edge >= 5:
+    # Auto-determine stake recommendation from true combo probability.
+    num_legs = len(legs)
+
+    if combo_hit_pct >= 55 and avg_edge >= 3 and num_legs <= 3:
         stake = "💰💰💰 標準注 (2-3 units) — 高信心穩膽"
-    elif combo_hit_pct >= 50 and avg_edge >= 0:
+    elif combo_hit_pct >= 40 and avg_edge >= 0 and num_legs <= 3:
         stake = "💰💰 半注 (1-2 units) — 中等信心"
-    elif combo_hit_pct >= 30:
-        stake = "💰 試探注 (0.5-1 unit) — 高賠率投機"
+    elif combo_hit_pct >= 25 and avg_edge >= 0 and num_legs <= 4:
+        stake = "💰 試探注 (0.5-1 unit) — 整注命中率偏低"
+    elif combo_hit_pct >= 15:
+        stake = "💰 小額試探 (0.5 unit) — 高賠率投機"
     else:
-        stake = "⚠️ 觀望 / 小額試探 — 命中率偏低"
+        stake = "⚠️ 觀望 / 極小額 — 整注命中率偏低"
 
     # Auto-determine risk
     risk_factors = []
@@ -1206,51 +1506,49 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     # ── Auto-Combo (placed FIRST for quick reference) ──
     candidates = build_leg_candidates(all_cards, team_odds=odds, meta=meta, injuries=injuries)
 
+    _pc = [c for c in candidates if c.get('market_type') == PLAYER_MARKET]
+    print(f"  📊 SGM Pool: {len(all_cards)} cards → {len(candidates)} candidates ({len(_pc)} player)")
+
     # Inject mc_lookup into every candidate leg so gen_combo_section can embed inline MC
     for c in candidates:
         c['_mc_lookup'] = mc_lookup
 
     combo_1 = select_combo_1(candidates)
     
-    used_descs = set(c["desc"] for c in combo_1)
-    
-    remaining = [c for c in candidates if c["desc"] not in used_descs]
-    combo_2 = select_combo_2(remaining)
-    used_descs |= set(c["desc"] for c in combo_2)
-    
-    remaining = [c for c in candidates if c["desc"] not in used_descs]
-    combo_3 = select_combo_3(remaining)
-    
+    # F4: No cascading exclusion — each combo selects independently from full pool.
+    # With multi-leg combos, overlap is acceptable and produces better results.
+    combo_2 = select_combo_2(candidates)
+    combo_3 = select_combo_3(candidates)
     combo_x = select_combo_x_value_bomb(candidates)
 
-    sections.append(f"## 🎰 SGM Parlay 組合 (Python Auto-Selection)")
+    sections.append(f"## 🎰 SGM Parlay 組合 (Python Auto-Selection V5)")
     sections.append(f"")
     sections.append(f"> [!IMPORTANT]")
-    sections.append(f"> 以下組合由 Python 自動從球員數據篩選並計算。所有數學數據不可修改。")
+    sections.append(f"> 以下組合由 Python V5 短腿數 + Playoff Gate 引擎自動篩選。所有數學數據不可修改。")
     sections.append(f"")
 
     sections.append(gen_combo_section(
         "組合 1: 穩膽 SGM (Low Risk)", "🛡️",
-        "高命中率 + 組合賠率 >2x",
+        f"2-3 Legs | L10/L5 ≥80% | 目標 2.0-3.2x",
         combo_1))
     sections.append(f"")
 
     sections.append(gen_combo_section(
-        "組合 2: 均衡 +EV 價值膽 (Mid Risk)", "🔥",
-        "組合賠率 >3x, 目標 5x",
+        "組合 2: 價值膽 Multi-Leg (Mid Risk)", "🔥",
+        f"2-4 Legs | L10/L5 ≥60% | 目標 2.8-5.0x",
         combo_2))
     sections.append(f"")
 
     sections.append(gen_combo_section(
-        "組合 3: 高倍率進取型", "💎",
-        "3 Legs 高倍率組合",
+        "組合 3: 高倍率 (High Return)", "💎",
+        f"3-5 Legs | L10/L5 ≥50% | 目標 8.0-15.0x",
         combo_3))
     sections.append(f"")
 
     if combo_x:
         sections.append(gen_combo_section(
             "組合 X: 💣 Value Bomb (莊家低估)", "💣",
-            "顯著 +EV 機會 — 莊家明顯低估，Edge ≥10%+",
+            f"2-3 Legs | 安全基座 + Edge≥10% 炸彈腿 | 目標 5.0-15.0x",
             combo_x))
         sections.append(f"")
 
@@ -1418,7 +1716,8 @@ def main():
                 opponent_def_rank=opp_def_rank, opponent_pace=opp_pace,
                 is_b2b=is_b2b, is_home=is_home, spread=spread,
                 usg_bonus=usg_bonus, defender_impact=def_impact,
-                top_defender_name=top_def_name, opponent_abbr=opponent)
+                top_defender_name=top_def_name, opponent_abbr=opponent,
+                season_phase=season_phase)
             all_cards.append(card)
 
     # Summary

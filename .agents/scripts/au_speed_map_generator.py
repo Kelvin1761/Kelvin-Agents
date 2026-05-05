@@ -6,8 +6,11 @@ if hasattr(sys.stdout, 'reconfigure'):
 """
 au_speed_map_generator.py — AU Wong Choi Speed Map 初稿生成器
 
-從 Racecard.md 提取 Last 10 + Barrier + Career 數據，
-自動分類走位並生成 Speed Map 初稿。
+從 Racecard.md 提取 Barrier + 基礎資料，生成保守 Speed Map 初稿。
+
+重要：Last 10 係完賽名次，唔係跑法證據。active AU pipeline 已改由
+inject_fact_anchors.py 讀 EEM/video/settled position 生成正式步速圖；
+本腳本只係缺 Facts speed map 時嘅人工 fallback。
 
 Usage:
   python au_speed_map_generator.py <Racecard.md>
@@ -18,8 +21,8 @@ Output:
   Human-readable Speed Map draft for LLM to review & adjust.
   Includes PACE_TYPE_SUGGESTION and LEADER_COUNT.
 
-NOTE: This is a DRAFT generator. LLM MUST review and adjust
-      based on Formguide narrative + track/pace context.
+NOTE: This is a LOW-CONFIDENCE DRAFT generator. LLM MUST review and adjust
+      based on Facts EEM/video, settled position, track geometry and pace context.
 """
 import sys, io, re, json, argparse, pathlib
 from dataclasses import dataclass, field, asdict
@@ -133,61 +136,16 @@ def parse_racecard(filepath: str) -> List[HorseProfile]:
 
 def classify_run_style(horse: HorseProfile) -> None:
     """
-    Classify a horse's run style based on Last 10 string.
-    
-    Logic:
-    - Parse Last 10: digits = finishing position, 'x' = skip
-    - Look at most recent 5 actual race results
-    - Count front-running (pos 1-3) vs backmarker (pos >= 7) tendencies
-    - High front count = Leader/On-Pace
-    - High back count = Closer
-    - Mixed = Mid-Pack
+    Conservative fallback classification.
+
+    Last 10 finishing positions are deliberately not used as running-style
+    evidence. A horse can lead and fade, or settle last and flash home; both
+    would invert a finish-position heuristic. The active pipeline should use
+    EEM/video/settled position from inject_fact_anchors.py instead.
     """
-    if not horse.last_10 or len(horse.last_10) < 3:
-        horse.run_style = 'Mid-Pack'
-        horse.confidence = 'Low'
-        horse.notes = '數據不足 — 需 LLM 審閱'
-        return
-
-    # Parse Last 10: left=newest, 0=10th, x=skip
-    positions = []
-    for ch in horse.last_10:
-        if ch == 'x':
-            continue
-        elif ch == '0':
-            positions.append(10)
-        elif ch.isdigit():
-            positions.append(int(ch))
-
-    if len(positions) < 3:
-        horse.run_style = 'Mid-Pack'
-        horse.confidence = 'Low'
-        horse.notes = f'只有 {len(positions)} 場有效數據 — 需 LLM 審閱'
-        return
-
-    # Use most recent 5 results
-    recent = positions[:5]
-    front_count = sum(1 for p in recent if p <= 3)
-    back_count = sum(1 for p in recent if p >= 7)
-    avg_pos = sum(recent) / len(recent)
-
-    # Classification
-    if front_count >= 3:
-        horse.run_style = 'Leader'
-    elif front_count >= 2 and avg_pos <= 4:
-        horse.run_style = 'On-Pace'
-    elif back_count >= 3:
-        horse.run_style = 'Closer'
-    elif back_count >= 2 and avg_pos >= 6:
-        horse.run_style = 'Closer'
-    elif avg_pos <= 4:
-        horse.run_style = 'On-Pace'
-    elif avg_pos >= 6:
-        horse.run_style = 'Mid-Pack'  # Trending back but not extreme
-    else:
-        horse.run_style = 'Mid-Pack'
-
-    horse.confidence = 'Normal'
+    horse.run_style = 'Mid-Pack'
+    horse.confidence = 'Low'
+    horse.notes = 'Fallback only：Last10完賽名次不可當跑法；請用 Facts EEM/video/settled position 覆核'
 
 
 def suggest_pace_type(horses: List[HorseProfile], distance: int = 0) -> tuple:

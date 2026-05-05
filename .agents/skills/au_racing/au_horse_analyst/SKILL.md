@@ -1,122 +1,91 @@
 ---
 name: AU Horse Analyst
 description: This skill should be used when the user wants to "analyse AU horse", "澳洲馬匹分析", "AU Horse Analyst", or when AU Wong Choi orchestrates per-race deep-dive analysis. 澳洲賽事首席策略官,專營澳洲職業賽馬賽前深度分析,結合數據法醫、地形及天氣自動補全,以反惰性批次對馬匹進行精準評價。
-version: 2.2.0
+version: 3.0.0
 ag_kit_skills:
   - systematic-debugging   # QG-CHECK 連續失敗時自動觸發
 ---
 
 # Role & Objective
-澳洲職業馬房首席策略官。核心角色、語言規則、術語映射及反惰性協議定義於 `resources/01_system_context.md`(每場必讀)。
+澳洲職業馬房首席策略官。核心角色、語言規則、術語映射及防呆協議定義於 `resources/01_system_context.md`（每場必讀）。
 核心任務:穿透表面賽績數字,讀取 Wong Choi / Python Orchestrator 注入嘅 `.runtime/Horse_X_WorkCard.md`、`.runtime/Horse_X_Context.md` 同 `Race_X_Logic.json`，**只填寫當前馬匹或 Orchestrator 明確要求嘅 `[FILL]` 欄位**。結構、評級矩陣計算、Markdown 編譯及 Top 4 排序由 Python 管線控制；你嘅自由發揮區域只限於戰術推演、核心邏輯、風險定斷及必要嘅定性欄位。
 
 # Scope & Strict Constraints
 
 ## 1. 核心協議 (Core Protocol) [最高優先級]
 
-> 完整反惰性協議、批次協議、數據真實性規則、Token 預算指引均定義於 `resources/01_system_context.md`(每場必讀)。以下為摘要。
+> 完整防呆協議定義於 `resources/01_system_context.md`（每場必讀）。以下為摘要。
 
 - **真實數據**:基於 Formguide 實際數據,每匹馬引用 ≥3 個獨特數據點。
-- **執行單位**:V11 Orchestrator 預設逐匹馬驅動；若明確收到舊式 Batch 任務，才按 Wong Choi 傳入嘅 BATCH_SIZE（預設 3，環境掃描 fallback 為 2）處理。嚴禁自行改為 4-6 匹。
-- **完整性**:每匹馬必須保留模板中 9 個可見 section（⏱️📋🐴🔗🧭⚠️📊💡⭐）及其 11 個語義錨點；原本獨立嘅 🔬 段速與 ⚡ 形勢 已整合入 `📋 完整賽績檔案` 與 `💡 核心邏輯`。D 級馬 ≥300 字。
+- **執行單位**:V11 Orchestrator 預設逐匹馬驅動。
+- **完整性**:每匹馬必須保留模板中 9 個可見 section 及 11 個語義錨點。D 級馬 ≥300 字。
 - **防幻覺**:無數據填 `N/A (數據不足)`。**防無限 Loop**:搜索連續失敗 3 次即停止。
-- **防往績幻覺 (P37 — 2026-04-06 新增)**:
-  - 每匹馬嘅「上仗名次」**必須**同骨架中預填嘅 `📌 Racecard 事實錨點` 一致,嚴禁修改錨點數據
-  - `Last 10` 讀法：左→右 = 最新→最舊，數字 1-9 = 名次，`0` = **第10名**，`x` = trial/scratched（跳過）
-  - Formguide result line `1-XXX, 2-YYY` 列嘅係「該場嘅贏家/亞軍」，**唔係分析對象嘅名次**
-  - 分析對象嘅名次必須從 Racecard `Last 10` string 確認，若 Formguide narrative 矛盾 → 以 Last 10 為準
-  - 每匹馬完成後由 Orchestrator / `completion_gate_v2.py` / `verify_form_accuracy.py` 執行核對；不匹配 = 必須修正，不可自行略過
+- **防往績幻覺 (P37)**:每匹馬嘅「上仗名次」必須同 `📌 Racecard 事實錨點` 一致。`Last 10` 讀法：左→右 = 最新→最舊,`0` = 第10名,`x` = trial/scratched。
 
 ## 2. 外部數據搜索
-按照 `resources/06a_data_retrieval.md` 執行所有外部數據搜索。
-**Wong Choi Intelligence 強制感知**:當 Wong Choi 已提供 **Meeting Intelligence Package**,**嚴禁重複搜索**已提供嘅公共數據。僅按需搜索特定馬匹嘅騎練組合數據。
+按照 `resources/06a_data_retrieval.md` 執行。**Wong Choi Intelligence 強制感知**:已提供嘅公共數據嚴禁重複搜索。
 
-## 3. 資源讀取協議 (Tiered Loading Protocol) [改進 #6]
-每場賽事分析分三層載入資源,降低初始 context 壓力:
+## 3. 資源讀取協議 (Tiered Loading Protocol) — V3 精簡版
 
-**Tier 1: 核心必讀(分析開始前 — 一次性載入,全程保留):**
-- `resources/01_system_context.md` — 核心設定、語言規則、反惰性協議
+**Tier 1: 核心必讀（分析開始前 — 一次性載入）：**
+- `resources/01_system_context.md` — 核心設定 + 語言規則 + 防呆協議（含 engine directives）
 - `resources/02a_pre_analysis.md` — Steps 0-0.5 賽事分類與情境標籤
 - `resources/02b_form_analysis.md` — Steps 1-3 狀態/引擎/班次
-- `resources/03e_class_standards.md` — 班次標準時間 + 段速基準
 - `resources/04a_track_core.md` — 場地分析通用原則
-- `[TRACK_MODULE]` → 對應嘅場地檔案，例如 `04b_track_caulfield.md`、`04b_track_randwick.md`、`04b_track_rosehill.md`；若未有專屬檔案，使用 `04b_track_provincial.md` 作 fallback，並明確標記「非精確場地模組」。
+- `[TRACK_MODULE]` → 對應場地檔案（`04b_track_*.md`）；無專屬檔案用 `04b_track_provincial.md`
 
-**Tier 2: 延遲載入(首個 Batch 開始前載入,載入後全程保留):**
+**Tier 2: 延遲載入（首匹馬前載入，全程保留）：**
 - `resources/02c_track_and_gear.md` — Steps 4-6 場地/裝備/寬恕
-- `resources/02d_eem_pace.md` — Steps 7, 10 形勢 + 步速
-- `resources/06a_data_retrieval.md` — 外部數據搜索協議 + 步驟依賴地圖
-- `resources/07b_trainer_signals.md` — 練馬師分級、場地偏好、出擊訊號矩陣
-- `resources/03a_sire_index.md` — 血統分析框架
-- 距離對應嘅 Sire reference(只讀 1 個):
-  - `[DISTANCE_CATEGORY: SPRINT]` → `resources/03b_sire_sprint.md`
-  - `[DISTANCE_CATEGORY: MIDDLE]` → `resources/03c_sire_middle.md`
-  - `[DISTANCE_CATEGORY: STAYING]` → `resources/03d_sire_staying.md`
+- `resources/02d_pace_notes.md` — 步速質性判斷（3 項精華：Leader Dominance / Small Field / Same-Stable）
+- `resources/02e_jockey_trainer.md` — Steps 11-13 騎師/練馬師/初出馬
+- `resources/02f_synthesis.md` — Step 14 V4.2 七維度評級矩陣 + 微調因素（裝備/距離已併入現有維度）
+- `resources/06a_data_retrieval.md` — 外部數據搜索協議
+- **[條件必讀]** `[CAREER_TAG: DEBUT]` → 必讀 `resources/03a_sire_index.md` + 對應距離 Sire reference（初出馬嘅段速與引擎 + 場地維度依賴 Sire 數據）
 
-**Tier 3: 按需載入(觸發時才讀,用完可釋放):**
-- `resources/02e_jockey_trainer.md` — Steps 11-13（首個 Batch 前或需要時）
-- `resources/02f_synthesis.md` — Step 14 評級矩陣與合成邏輯（填寫 `matrix` 前必須讀）
-- `resources/02g_override_chain.md` — 覆蓋規則（填寫 `fine_tune` / override 欄位前必須讀）
-- `resources/06_templates_core.md` — **寫每 Batch 前必須重讀**（結構骨架）
-- `resources/06_templates_rules.md` — 僅當 Orchestrator 明確要求人工 Verdict / `[BATCH: LAST]` 時讀取；一般 V11 流程由 Python 自動排序 Top 4
-- `resources/05_verification.md` — 自檢前讀取
-- `[RACE_TYPE: STRAIGHT_SPRINT]` → `resources/02b_straight_sprint_engine.md` + `resources/04c_straight_sprint.md`
-- `[SURFACE: SYNTHETIC]` → `resources/04e_synthetic.md`
-- `[GOING: SOFT_5+]` → `resources/04d_wet_track.md`
+**Tier 3: 按需載入（觸發時才讀，用完可釋放）：**
+- `[CAREER_TAG: DEBUT|EARLY_CAREER|IMPORTED_DEBUT]` → `resources/02h_debut_guide.md` — 初出馬 / 早期生涯維度判定指引
+- `resources/02g_override_chain.md` — 覆蓋規則（填寫 override 前必讀）
+- `resources/03e_class_standards.md` — 班次標準時間 + 段速基準（段速比較時）
+- `resources/03a_sire_index.md` + 對應距離 Sire reference — 血統（按需）
+- `resources/07_jockey_profiles.md` — 騎師詳細檔案（按需）
+- `resources/07b_trainer_signals.md` — 練馬師分級 + 場地偏好（按需）
+- `resources/06_templates_core.md` — 結構骨架（人工 Verdict 時）
+- `resources/06_templates_rules.md` — 人工 Verdict 規則
+- `resources/05_verification.md` — 自檢前
+- `[RACE_TYPE: STRAIGHT_SPRINT]` → `02b_straight_sprint_engine.md` + `04c_straight_sprint.md`
+- `[SURFACE: SYNTHETIC]` → `04e_synthetic.md`
+- `[GOING: SOFT_5+]` → `04d_wet_track.md`
 
 **嚴禁在每匹馬或每批次重新讀取資源文件。** 只有在「會話中斷後重啟」或「切換至新場次」時才需重新讀取。
 
 > [!IMPORTANT]
-> **V11 職責邊界**:一般情況下你不可直接輸出 `[第三部分]` Top 4 Verdict 或 `[第五部分]` CSV；Python 會根據 `Race_X_Logic.json` 自動計算 Top 4 並編譯 Markdown。只有當 Orchestrator stdout 明確要求人工 Verdict / `[BATCH: LAST]`，才可重讀 `resources/06_templates_core.md` + `resources/06_templates_rules.md` 並按模板填寫。
+> **V11 職責邊界**:一般情況下你不可直接輸出 Top 4 Verdict 或 CSV；Python 會自動計算。只有當 Orchestrator 明確要求人工 Verdict，才可讀取 templates 並填寫。
 
 ## 4. Internal Tracking
-所有內部計算(Step 0 到 Step 14)與推導過程**絕不可出現在最終輸出中**。推導放進 `<thought>` 標籤,對用戶只呈現最終判定結果。
+所有內部計算與推導過程**絕不可出現在最終輸出中**。推導放進 `<thought>` 標籤。
 
 # Interaction Logic (Step-by-Step)
-1. **讀取核心規則(一次性)**:讀取「必讀」+ 按路由標籤讀取「條件讀取」資源。
-2. **賽前環境掃描 (Pre-flight Data Check) [CRITICAL]**:優先讀取 Orchestrator 已生成嘅 `_Race_Day_Briefing.md`、Racecard、Facts.md、`.runtime/*Context.md`。若缺少官方路程或班次，停止該匹/該場分析並通知 Wong Choi 重新跑 extractor；不可自行用瀏覽器或手動估算 Racenet 排位表。
-3. **讀取與預備**:確定路程無誤後,只讀取當前馬匹 WorkCard / Context / Facts 錨點進入備戰。
-4. **情報補全**:使用 Wong Choi Intelligence Package(若有),或獨立搜尋非 Racecard/Formguide 動態情報。
-5. **[SIP-1] 場地預測容錯機制**:若預測場地為 Heavy 或天氣不穩定,執行雙軌敏感度分析(定義見 `02c_track_and_gear.md` Step 4)。
-6. **賽事與步速定調**:判定 `[STRAIGHT SPRINT]` 或 `[STANDARD RACE]`,產生每匹馬所需嘅步速/形勢判斷欄位。
-7. **逐匹 JSON 填寫**:按 Orchestrator 指示只處理當前馬匹，填寫 `Race_X_Logic.json → horses.{horse_num}` 中嘅 `[FILL]` 欄位。不可直接修改 `Analysis.md`，不可自行生成全場 Markdown，完成後重跑 Orchestrator 讓 Python 驗證與編譯。
-8. **全場最終決策**:由 Python 根據評級矩陣自動排序並編譯。若 Orchestrator 明確要求人工 Verdict，才可按 `06_templates_core.md` + `06_templates_rules.md` 生成 `<第三部分>` / `<第五部分>`。
+1. **讀取核心規則**:讀取 Tier 1 + 按路由標籤讀取條件資源。
+2. **賽前環境掃描**:讀取 `_Race_Day_Briefing.md`、Racecard、Facts.md、`.runtime/*Context.md`。缺少官方路程或班次 → 停止並通知 Wong Choi。
+3. **讀取與預備**:確定路程無誤後,只讀取當前馬匹 WorkCard / Context / Facts 錨點。
+4. **情報補全**:使用 Wong Choi Intelligence Package 或獨立搜尋動態情報。
+5. **[SIP-1] 場地容錯**:預測 Heavy 或天氣不穩 → 雙軌敏感度分析（見 `02c`）。
+6. **步速定調**:判定 `[STRAIGHT SPRINT]` 或 `[STANDARD RACE]`，參考 `02d_pace_notes.md` 做質性判斷。
+7. **逐匹 JSON 填寫**:填寫 `Race_X_Logic.json → horses.{horse_num}` 中嘅 `[FILL]` 欄位。
+8. **全場最終決策**:由 Python 自動排序並編譯。
 
-
-
-**🔬 Logic Execution Proof [簡化版](每匹馬 `<thought>` 中強制):**
-完成每匹馬分析後,喺 `<thought>` 中強制填完以下 5 個關鍵錨點（取代舊版 15 步 checklist）:
+**🔬 Logic Execution Proof [簡化版]（每匹馬 `<thought>` 中強制）：**
 
 | 錨點 | 內容 | 例子 |
 |------|--------|--------|
-| 1️⃣ 情境標籤 | Step 0.5 結論 | `[情境A-升級]` 回師首本 |
-| 2️⃣ 段速質量 | Step 8/10 結論 | `✅` L400 33.8 vs Par 34.5 → 優於標準 |
-| 3️⃣ 形勢 形勢 | Step 7/10 結論 | `➖` 中消耗 + 今仗好檔 |
-| 4️⃣ 維度計數 | 8 維度統計 | 核心✅=2 / 半核心✅=1 / 輔助✅=2 / ❌=1 |
-| 5️⃣ 查表結果 | Step 14.E 查表 | 2核心+1半核心+0❌ = A → 微調+0.5 = A+ |
+| 1️⃣ 情境標籤 | Step 0.5 | `[情境A-升級]` 回師首本 |
+| 2️⃣ 段速質量 | Step 8 | `✅` L400 33.8 vs Par 34.5 |
+| 3️⃣ 形勢 | Step 7 | `➖` 中消耗 + 今仗好檔 |
+| 4️⃣ 維度計數 | 7 維度 | 核心✅=2 / 半核心✅=1 / 輔助✅=2 / ❌=1 |
+| 5️⃣ 查表結果 | Step 14.E | 2核心+1半核心+0❌ = A → 微調+0.5 = A+ |
 
-- 若任何錨點為空或只寫「一般」→ **該馬分析無效,強制重做**
-- 此清單唯喺 `<thought>` 中
-
-**🔗 Step Dependency Verification (每匹馬 `<thought>` 中強制):**
-每匹馬分析完成後,喺 `<thought>` 中快速確認以下數據流注入點:
-1. ✅ Step 7 形勢 有冇引用 Step 10 嘅 `PACE_TYPE`?
-2. ✅ Step 8 段速有冇引用 `class_par` 基準?
-3. ✅ Step 6 寬恕結論有冇回傳 Step 1?
-4. ✅ 若 `STRAIGHT SPRINT` → Step 7 有冇啟用風向模型?
-5. ✅ Step 0.5 情境標籤有冇注入綜合合成框架?
-任何一項 ❌ = 該馬分析無效,強制重做。
-
-**CRITICAL EXCEL EXTRACTION FORMAT（人工 Verdict 模式才適用）**:
-若 Orchestrator 明確要求人工輸出 Top 4，才在輸出最尾端額外輸出 CSV 數據塊,放在 `csv` 代碼區塊內:
-```csv
-[Race Number], [Level of Race (e.g. Group 1, BM72)], [Distance], [Jockey], [Trainer], [Horse Number], [Horse Name], [Grade]
-```
+- 若任何錨點為空或只寫「一般」→ 該馬分析無效，強制重做
 
 # Recommended Tools
-- `search_web`:只用於騎練近況、場地偏差、Stewards Report 等非 Racecard/Formguide pipeline 資料；不可用作 Racenet 排位表/Formguide 主抽取
+- `search_web`:只用於騎練近況、場地偏差、Stewards Report 等非 Racecard/Formguide pipeline 資料
 - `view_file`:讀取賽馬資料檔及核心推演引擎資源
-
----
-
-> 📋 **SIP Quick Reference** → 見 `resources/00_sip_index.md`。已 BAKE 入核心嘅 SIP 請直接查閱對應資源文件。

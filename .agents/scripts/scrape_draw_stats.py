@@ -137,22 +137,30 @@ def parse_draw_tables(html: str) -> dict:
                 continue
 
         if draws:
-            # Calculate average win rate for this race's distance/surface
+            # Calculate average place rate (上名率) for verdict — our goal is Top 3
+            avg_place = sum(d.get("place_pct", 0) for d in draws) / len(draws) if draws else 0
             avg_win = sum(d["win_pct"] for d in draws) / len(draws) if draws else 0
 
-            # Classify each draw: ✅有利 / ⚠️中性 / ❌不利
+            # Classify each draw by 上名率: ✅有利 / ⚠️中性 / ❌不利
+            # Minimum 10 starts required for a reliable verdict
+            MIN_STARTS = 10
             for d in draws:
-                if avg_win > 0:
-                    ratio = d["win_pct"] / avg_win
-                    if ratio >= 1.5:
+                starts = d.get("starts", 0)
+                place = d.get("place_pct", 0)
+                if starts < MIN_STARTS:
+                    d["verdict"] = "⚠️樣本不足"
+                elif avg_place > 0:
+                    ratio = place / avg_place
+                    if ratio >= 1.3:
                         d["verdict"] = "✅有利"
-                    elif ratio <= 0.5:
+                    elif ratio <= 0.7:
                         d["verdict"] = "❌不利"
                     else:
                         d["verdict"] = "⚠️中性"
                 else:
                     d["verdict"] = "⚠️中性"
 
+            race_info["avg_place_pct"] = round(avg_place, 1)
             race_info["avg_win_pct"] = round(avg_win, 1)
             race_info["draws"] = draws
             result["races"].append(race_info)

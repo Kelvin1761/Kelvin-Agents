@@ -70,7 +70,7 @@ def parse_horse_header(block):
             result['name'] = name_line.split('|')[0].split('—')[0].strip()
 
     # Try V2 format
-    m3 = re.search(r'### 馬匹 #(\d+)\s+(.+?)\s+\(檔位\s*(\d+)\)\s*\|\s*騎師:\s*(.+?)\s*\|\s*練馬師:\s*(.+?)(?:\n|$)', block)
+    m3 = re.search(r'### 馬匹 #(\d+)\s+(.+?)\s+\(檔位\s*(\d+)\)\s*\|\s*騎師:\s*(.+?)\s*\|\s*練馬師:\s*(.+?)(?:\s*\||\n|$)', block)
     if m3:
         result['num'] = int(m3.group(1))
         result['name'] = m3.group(2).strip()
@@ -126,7 +126,7 @@ def parse_recent_race(block):
                 break
         # Try to find position column (look for patterns like 6-7-5)
         for i, c in enumerate(cols):
-            if re.match(r'\d+-\d+-\d+', c):
+            if re.match(r'^\d{1,2}-\d{1,2}(?:-\d{1,2})?$', c):
                 result['last_run_position'] = c
                 break
 
@@ -158,64 +158,225 @@ def parse_trends(block):
     return result
 
 
+def parse_career_info(block):
+    """Extract official career starts and derive AU career tag."""
+    career_starts = 0
+
+    m = re.search(r'生涯標記:\s*`(DEBUT|EARLY_CAREER|IMPORTED_DEBUT|ESTABLISHED)`', block)
+    explicit_tag = m.group(1) if m else ''
+
+    for pat in [
+        r'生涯:\s*(\d+)\s*:',
+        r'Career[：:]\s*(\d+)\s*:',
+        r'Career\s+(\d+)\s*:',
+    ]:
+        m = re.search(pat, block, re.IGNORECASE)
+        if m:
+            career_starts = int(m.group(1))
+            break
+
+    if explicit_tag:
+        career_tag = explicit_tag
+    elif career_starts == 0:
+        career_tag = 'DEBUT'
+    elif career_starts <= 5:
+        career_tag = 'EARLY_CAREER'
+    else:
+        career_tag = 'ESTABLISHED'
+
+    if career_starts == 0:
+        stage_label = '初出馬'
+    elif career_starts == 1:
+        stage_label = '生涯第2場'
+    elif career_starts <= 5:
+        stage_label = f'生涯第{career_starts + 1}場'
+    else:
+        stage_label = ''
+
+    return {
+        'career_starts': career_starts,
+        'career_tag': career_tag,
+        'career_stage_label': stage_label,
+    }
+
+
 def build_skeleton(data):
-    """Build JSON skeleton for AU horse analysis."""
+    """Build JSON skeleton for AU horse analysis. V4.2 — 7 dimensions."""
     import secrets
     name = data.get('name', '未知')
     raw_l400 = data.get('raw_L400', 'N/A')
     last_pos = data.get('last_run_position', 'N/A')
+    recent_form = data.get('recent_form', 'N/A')
+    l400_trend = data.get('l400_trend', 'N/A')
+    engine = data.get('engine', 'N/A')
+    best_dist = data.get('best_distance', 'N/A')
+    same_dist = data.get('same_distance_record', 'N/A')
+    jockey = data.get('jockey', '')
+    trainer = data.get('trainer', '')
+    gear = data.get('gear', 'N/A')
+    weight = data.get('weight', 0)
+    barrier = data.get('barrier', 0)
+    rating = data.get('rating', 'N/A')
+    class_move = data.get('class_move', 'N/A')
+    good_track = data.get('good_track_record', 'N/A')
+    venue_hist = data.get('venue_history', 'N/A')
+    formline_str = data.get('formline_strength', 'N/A')
+    track_bias = data.get('track_bias', 'N/A')
+    career_starts = data.get('career_starts', 0)
+    career_tag = data.get('career_tag', 'DEBUT' if career_starts == 0 else ('EARLY_CAREER' if career_starts <= 5 else 'ESTABLISHED'))
+    career_stage_label = data.get('career_stage_label', '')
+    is_debut = career_tag == 'DEBUT'
+    is_early_career = career_tag in ('DEBUT', 'EARLY_CAREER') or career_starts <= 5
+    debut_sectional_note = (
+        "[初出馬規則: 無正式段速時，段速與引擎改用 Sire 距離投影 + 試閘速度；必須引用 sire reference。]\n"
+        if is_debut else ""
+    )
+    debut_class_note = (
+        "[初出馬規則: vs 初出馬通常 ➖；vs 有經驗且有勝績對手通常 ❌，除非有明確 elite debut deployment。]\n"
+        if is_debut else ""
+    )
+    debut_track_note = (
+        "[初出馬規則: 場地適性改用 Sire 場地偏好 + 試閘場地參考；資料不足通常 ➖。]\n"
+        if is_debut else ""
+    )
+    debut_formline_note = (
+        "[初出馬規則: 無正式賽績線一律 ➖；如試閘對手已正式出賽可低信心參考，不可當強賽績線。]\n"
+        if is_debut else ""
+    )
+    debut_core_logic = (
+        "[FILL — 初出馬專用格式，約80-120字矩陣總結。必須涵蓋：(1) Career=0，不能用正常近績/first-up模板；"
+        "(2) 試閘/Sire/騎練部署係主要證據；(3) Pace Confidence、檔位及場地 family 對初出適應風險；"
+        "(4) trial-only 最高 B/B+，elite debut deployment 先可 A-。]"
+        if is_debut else
+        "[FILL — 根據上方 7 維度評級矩陣嘅結果寫約80-120字嘅矩陣總結。必須：(1) 核心維度結論（穩定性、段速）；(2) 半核心結論（形勢、騎練）；(3) 輔助維度亮點/弱點；(4) 整體前景判斷。唔好重複 reasoning 原文。]"
+    )
+
+    # ===== Data-Anchored Reasoning (AU V4.3) =====
+    r_stability = (
+        f"[Resource Check: 02b_form_analysis.md Step 1 / 狀態週期+寬恕過濾]\n"
+        f"[Evidence Confidence: FILL High/Medium/Low/Unknown — formal race sample after forgive filter]\n"
+        f"[數據: 近績序列={recent_form}]\n"
+        f"[生涯標記: {career_tag}; 正式賽事場次={career_starts}; "
+        f"{'初出馬需按 02h_debut_guide.md 用試閘質素判斷穩定性，嚴禁寫成休出/First-up。' if is_debut else '早期生涯馬需用「生涯第X場」描述，嚴禁寫成休出/First-up。' if is_early_career else '按標準備戰週期判斷。'}]\n"
+        f"[❗ 數據可靠性: 必須逐場標記近5場(受阻/競賽事件), "
+        f"受阻場次名次不作參考]\n"
+        f"[📂 必須閱讀上方「📋 完整賽績檔案」全部賽事記錄，唔淮得淨督近5場 — 需要綜合全部賽績判斷穩定性趨勢]\n"
+        f"[📎 必讀: 02b_form_analysis.md 狀態評估規則]\n"
+        f"→ [判讀: FILL]"
+    )
+    r_speed_engine = (
+        f"[Resource Check: 02b_form_analysis.md Step 2 + 02f_synthesis.md / 引擎+距離合併規則]\n"
+        f"[Evidence Confidence: FILL High/Medium/Low/Unknown — class-par sectionals / PI proxy / trial-only]\n"
+        f"[數據: 上仗L400={raw_l400}, L400趨勢={l400_trend}, "
+        f"引擎={engine}, 最佳距離={best_dist}, "
+        f"同程紀錄={same_dist}]\n"
+        f"{debut_sectional_note}"
+        f"[V4.2 合併規則: 距離適性、距離轉換風險、Sire 距離投影已併入「段速與引擎」。"
+        f"段速好但今日距離明顯未證或不合,最高通常只可 ✅/➖,不可輕易 ✅✅]\n"
+        f"[❗ 數據可靠性: 必須逐場標記段速可靠性, "
+        f"受阻場次段速不作參考, 判斷時優先用其他有效場次]\n"
+        f"[📂 必須閱讀上方「📋 完整賽績檔案」全部段速/消耗/走位數據，綜合判斷段速趨勢而唔淮淨督近5場]\n"
+        f"[📎 必讀: 02b_form_analysis.md 段速剖面規則 + "
+        f"02b_straight_sprint_engine.md (如適用直路賽)]\n"
+        f"→ [判讀: FILL]"
+    )
+    r_race_shape = (
+        f"[Resource Check: 02d_pace_notes.md + 02a_pre_analysis.md / Pace Confidence + course geometry]\n"
+        f"[Pace Confidence: FILL Clear/Mixed/Low — Clear 先可 ✅✅]\n"
+        f"[數據: 上仗走位={last_pos}, 檔位={barrier}, "
+        f"跑道偏差={track_bias}]\n"
+        f"[步速形勢: 必須分析上方🗺️自動步速圖 — "
+        f"判讀前速壓力、前置馬數量、後上受惠/受害, "
+        f"結合馬匹跑法判斷形勢配合度]\n"
+        f"[Track Geometry: 檢查急彎/長直路/直路賽/首次場地 family 轉換]\n"
+        f"[走位模式: 必須引用完整賽績檔案近5仗嘅走位/消耗/沿途位, "
+        f"做2-3句走位模式短分析, 結合跑道偏差判讀檔位]\n"
+        f"[📎 必讀: 02d_pace_notes.md 步速形勢規則 + "
+        f"04b_track_*.md 對應場地檔位偏差]\n"
+        f"→ [判讀: FILL]"
+    )
+    r_jockey_trainer = (
+        f"[Resource Check: 02e_jockey_trainer.md + 02c_track_and_gear.md / 騎練部署+配備意圖]\n"
+        f"[Evidence Confidence: FILL High/Medium/Low/Unknown — deployment/rider-fit/gear intent anchors]\n"
+        f"[數據: 騎師={jockey}, 練馬師={trainer}, "
+        f"配備={gear}]\n"
+        f"[人馬配搭: {{PYTHON: {jockey}×此馬: X戰Y勝 "
+        f"(勝率%, 位率%, 平均名次) "
+        f"vs 其他騎師: [騎師A: X戰Y勝 (勝率%, 位率%, 平均名次), ...]}}]\n"
+        f"[V4.2 合併規則: 配備意圖、首戴裝備、Elite Stable Gear Premium 已併入「騎練訊號」。"
+        f"配備必須針對已確認問題並有獨立支持先可升 ✅；同一配備事件不可再用 GEAR_POSITIVE 微調]\n"
+        f"[配備意圖: 分析配備變動及目的；冇明確 deployment signal 就保持 ➖]\n"
+        f"[📎 必讀: 02e_jockey_trainer.md 騎練組合規則 + "
+        f"07_jockey_profiles.md 檢查騎師 {jockey} 評級同專長 + "
+        f"07b_trainer_signals.md 檢查練馬師 {trainer} 特殊訊號]\n"
+        f"→ [判讀: FILL (包含配備意圖分析)]"
+    )
+    r_class_weight = (
+        f"[Resource Check: 02b_form_analysis.md Step 3 + 03e_class_standards.md / AU class normalization]\n"
+        f"[AU Class Normalization: FILL Metro/Provincial/Country + BM/Set Weight/WFA context]\n"
+        f"[數據: Rating={rating}, 班次變動={class_move}, "
+        f"負重={weight}kg]\n"
+        f"{debut_class_note}"
+        f"[級數對比: Rating vs 同場最高/平均, "
+        f"負重對比: 負磅 vs 全場最重/平均/差距]\n"
+        f"[📎 必讀: 03e_class_standards.md 班次標準 + "
+        f"03f_wfa_scale.md WFA 減磅表]\n"
+        f"→ [判讀: FILL]"
+    )
+    r_track_surface = (
+        f"[Resource Check: 02c_track_and_gear.md + 04a_track_core.md / Track Family Confidence]\n"
+        f"[Track Family Confidence: FILL High/Medium/Low/Unknown — same venue/geometry/direction/surface/going]\n"
+        f"[數據: 場地紀錄={good_track}, "
+        f"跑道適配={venue_hist}]\n"
+        f"{debut_track_note}"
+        f"[🏥 健康評估規則: 有健康事故(bleeding/vet scratch/illness)+復原證據(後續好表現)=已復原(➖/✅); "
+        f"有事故+未復原=風險(❌); 無事故=正常(✅)]\n"
+        f"[📎 必讀: 04a_track_core.md 場地通則 + "
+        f"04b_track_*.md 對應場地資料 + "
+        f"04d_wet_track.md (如軟/重地)]\n"
+        f"→ [判讀: FILL]"
+    )
+    r_formline = (
+        f"[Resource Check: 02b_form_analysis.md 賽績線規則 + Facts.md 對手後續表]\n"
+        f"[Evidence Confidence: FILL High/Medium/Low/Unknown — >=2/N same-or-higher-class opponent support]\n"
+        f"[數據: 賽績線強度={formline_str}]\n"
+        f"{debut_formline_note}"
+        f"[必須分析近3場對手後續表現]\n"
+        f"[📎 必讀: 02b_form_analysis.md 賽績線評估規則]\n"
+        f"→ [判讀: FILL]"
+    )
 
     return {
         # ===== LOCKED DATA =====
         '_locked': True,
         '_validation_nonce': 'SKEL_' + secrets.token_hex(4),
         'horse_name': name,
-        'jockey': data.get('jockey', ''),
-        'trainer': data.get('trainer', ''),
-        'weight': data.get('weight', 0),
-        'barrier': data.get('barrier', 0),
+        'jockey': jockey,
+        'trainer': trainer,
+        'weight': weight,
+        'barrier': barrier,
+        'career_tag': career_tag,
+        'career_race_starts': career_starts,
+        'career_stage_label': career_stage_label,
 
-        # ===== ANALYSIS FIELDS =====
-        'scenario_tags': '[FILL]',
+        # ===== ANALYSIS FIELDS (V4.2: matrix-only, legacy fields removed) =====
         'status_cycle': '[FILL]',
         'trend_summary': '[FILL]',
-
-        'analytical_breakdown': {
-            'class_weight': '[FILL]',
-            'engine_distance': '[FILL]',
-            'track_surface_gait': '[FILL]',
-            'gear_intent': '[FILL]',
-            'jockey_trainer_combination': '[FILL]',
-            'formline_strength': '[FILL]',  # Used by compile_analysis_template.py L317
-        },
-
-        'sectional_forensic': {
-            'raw_L400': raw_l400,  # LOCKED
-            'correction_factor': '[FILL]',
-            'corrected_assessment': '[FILL]',
-            'trend': data.get('l400_trend', ''),  # LOCKED
-        },
-
-        'race_shape': {
-            'last_run_position': last_pos,  # LOCKED
-            'cumulative_drain': '[FILL]',
-            'assessment': '[FILL]',
-        },
 
         'forgiveness_archive': {
             'factors': '[FILL]',
             'conclusion': '[FILL]',
         },
 
+        # V4.2: 7 dimensions — English canonical keys, ✅✅ only for core+semi
         'matrix': {
-            '狀態與穩定性': {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
-            '段速與引擎':   {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
-            '形勢與走位':    {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
-            '騎練訊號':     {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
-            '級數與負重':   {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
-            '場地適性':     {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
-            '賽績線':       {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
-            '裝備與距離':   {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': '[FILL]'},
+            'stability':      {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_stability},
+            'sectional':      {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_speed_engine},
+            'race_shape':     {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_race_shape},
+            'jockey_trainer': {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_jockey_trainer},
+            'class_weight':   {'score': '[FILL: ✅/➖/❌]', 'reasoning': r_class_weight},
+            'track':          {'score': '[FILL: ✅/➖/❌]', 'reasoning': r_track_surface},
+            'form_line':      {'score': '[FILL: ✅/➖/❌]', 'reasoning': r_formline},
         },
 
         'base_rating': '[AUTO]',
@@ -227,12 +388,12 @@ def build_skeleton(data):
         # ⚠️ WALL-012 規則：direction=+/- 時，trigger_code 必須揀一個合法代碼（唔可以係「無」）
         #                   direction=無 時，trigger_code 必須係「無」
         #
-        # ⚠️ 反雙重計算規則：微調因素必須係「未納入 8 維度」嘅額外因素！
+        # ⚠️ 反雙重計算規則：微調因素必須係「未納入 7 維度」嘅額外因素！
         #   如果你嘅理由已經係某個矩陣維度嘅 ✅ 來源，咁你就係雙重計算！
-        #   ❌ 錯誤：「縮程至最佳路程」→ 已反映在「裝備與距離 ✅」
         #   ❌ 錯誤：「超強組賽績」→ 已反映在「賽績線 ✅」
         #   ❌ 錯誤：「騎師引擎匹配」→ 已反映在「騎練訊號 ✅」
-        #   ✅ 正確：PACE_FIT — 步速預測未納入 8 維度
+        #   ❌ 錯誤：「配備正面」→ 已反映在「騎練訊號 ✅」(V3: 配備已入騎練)
+        #   ✅ 正確：PACE_FIT — 步速預測未納入 7 維度
         #   ✅ 正確：TRAINER_TRACK — 場地專精非標準騎練訊號
         'fine_tune': {
             'direction': '[FILL: +/-/無]',
@@ -240,7 +401,7 @@ def build_skeleton(data):
             #   PACE_FIT      — 步速形勢配合（今場步速強烈配合跑法）[安全：無對應維度]
             #   JOCKEY_FIT    — 人馬配搭契合（騎師引擎匹配+黃金組合）[⚠️ 檢查騎練訊號是否已✅]
             #   WEIGHT_SYNERGY — 負重/班次協同（升班輕磅≥4.5kg / 見習減磅）[⚠️ 檢查級數與負重是否已✅]
-            #   GEAR_POSITIVE — 配備正面變動（首戴裝備針對已確認問題）[⚠️ 檢查裝備與距離是否已✅]
+            #   GEAR_POSITIVE — 配備正面變動（首戴裝備針對已確認問題）[⚠️ 檢查騎練訊號是否已✅ — V3: 配備已入騎練]
             #   ❌ FORGIVE_BOUNCE 已移除 — 寬恕已納入矩陣(+1輔助✅)，不可再用微調加分
             #   TRAINER_TRACK — 練馬師場地專精（該場當季WR≥30%）[安全：非標準騎練訊號]
             #   MOMENTUM_3WIN — 連勝動力（3連勝90日內）[⚠️ 檢查狀態與穩定性是否已✅]
@@ -271,7 +432,7 @@ def build_skeleton(data):
         'override': {'rule': '[FILL: 規則代碼或「無」]'},
 
         'final_rating': '[AUTO]',
-        'core_logic': '[FILL: 深度分析(最少100字)。必須將所有維度之優劣串連成連貫劇本，詳述為何給出這個評級，以及可能發生之局勢]',
+        'core_logic': debut_core_logic,
 
         # ===== 🧠 PRE-ANALYSIS CHECKLIST (必須先填，引導思考) =====
         # LLM 必須逐項回答以下問題，答案會直接影響矩陣評分。
@@ -279,7 +440,7 @@ def build_skeleton(data):
         'pre_analysis_checklist': {
             # Q1: 呢隻馬有幾多場正式比賽（唔計試閘）？
             # 0 = 初出馬, 1-2 = 經驗淺, 3+ = 有實戰數據
-            'career_race_starts': '[FILL: 數字]',
+            'career_race_starts': career_starts,
 
             # Q2: 呢隻馬嘅核心競爭力證據來自邊度？
             # 只可以揀一個: 'race_form' / 'trial_only' / 'bloodline_only' / 'mixed'
@@ -312,7 +473,8 @@ def build_skeleton(data):
 
         # ===== OVERRIDE CHAIN INPUTS (V2 engine) =====
         'risk_markers': [],          # e.g. ['wide_barrier', 'top_weight', 'pace_dependent']
-        'recent_3_top3': '[FILL]',   # bool: has top-3 finish in last 3 starts (SIP-SL01)
+        'recent_3_top3': False if is_debut else '[FILL]',   # bool: has top-3 finish in last 3 starts (SIP-SL01)
+        'debut_runner': is_debut,    # bool: Career=0 official starts; hard cap A-
         'is_2yo': False,             # bool: 2-year-old
         'distance_wall': False,      # bool: attempting distance never tried
         'long_spell': False,         # bool: >12 weeks between runs
@@ -350,7 +512,8 @@ def main():
     header = parse_horse_header(block)
     recent = parse_recent_race(block)
     trends = parse_trends(block)
-    horse_data = {**header, **recent, **trends}
+    career = parse_career_info(block)
+    horse_data = {**header, **recent, **trends, **career}
 
     skeleton = build_skeleton(horse_data)
 

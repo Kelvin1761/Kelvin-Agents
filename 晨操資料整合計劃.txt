@@ -1,0 +1,1394 @@
+# 晨操資料整合計劃 — 完整實施方案
+# Trackwork Data Integration Plan v1.0
+# 日期: 2026-04-30
+
+==========================================================================
+第一部分：目標與範圍
+==========================================================================
+
+目標：
+將 HKJC 晨操資料自動提取並整合入現有 Wong Choi 分析 Pipeline，
+令 LLM 喺分析「狀態與穩定性」(stability) 維度時有更多客觀數據支撐。
+
+範圍：
+1. 建立 Python 提取腳本 (extract_trackwork.py)
+2. 輸出結構化晨操數據至賽日資料夾
+3. 注入 Facts.md 或獨立檔案供 LLM 讀取
+4. 更新 stability 維度嘅分析指引，加入晨操數據參考
+
+用戶明確要求：
+- 試閘名次唔好過度依賴（可能高估或低估）→ 改用試閘分段時間為主
+- 配備變化要納入分析（例如試閘戴裝備表現好但賽日除咗 = 訊號）
+- 練馬師親自操練 = 出擊訊號
+- 輸出可以係獨立檔案或注入 Facts.md
+
+==========================================================================
+第二部分：數據來源與結構
+==========================================================================
+
+來源 A — 賽事總覽頁 (localtrackwork)
+URL: racing.hkjc.com/zh-hk/local/information/localtrackwork?racedate=YYYY/MM/DD&Racecourse=ST&RaceNo=N
+- 一次過攞齊全場馬匹嘅快操/踱步/游泳/試閘摘要
+- 每匹馬有 horseid link → 用嚟攞詳細頁
+
+來源 B — 個別馬匹詳細頁 (trackworkresult) ⭐ 主要來源
+URL: racing.hkjc.com/zh-hk/local/information/trackworkresult?horseid=HK_2024_K323
+- 完整歷史紀錄（日期、類別、場地、詳情、配備）
+- 有出賽紀錄穿插 → 可以睇到訓練週期
+- 有配備代碼（H/XB/CP 等）→ 總覽頁冇
+
+兩個頁面都係 server-rendered HTML，用 Playwright 抓取 DOM。
+
+==========================================================================
+第三部分：提取腳本設計
+==========================================================================
+
+新腳本：.agents/skills/hkjc_racing/hkjc_race_extractor/scripts/extract_trackwork.py
+
+用法：
+  python extract_trackwork.py --racedate 2026/05/03 --racecourse ST --races 1-9 --output_dir <dir>
+  python extract_trackwork.py --horseid HK_2024_K323  (單匹馬模式)
+
+流程：
+  1. 讀取 localtrackwork 頁面 → 攞齊全場馬匹嘅 horseid
+  2. 逐匹馬讀取 trackworkresult 頁面（可並行）
+  3. 解析 DOM → 提取近 21 日嘅紀錄（節省 token）
+  4. 輸出結構化數據
+
+輸出格式（每匹馬 JSON）：
+  horseid: "HK_2024_K323"
+  horse_name: "巴閉佬"
+  trainer: "方嘉柏"
+  entries: [ 每條紀錄有 date/type/track/details/gear ]
+  summary:
+    gallops_21d: 快操次數
+    gallop_times: ["53.6", "53.5", "54.7"]
+    gallop_trend: "穩定鋒利" / "改善中" / "退步中"
+    closing_splits: 尾段時間序列
+    trials_21d: 試閘次數
+    trial_details: 試閘分段時間（唔係名次為主）
+    trotting/swimming/aqua_walker/treadmill_21d: 各類操練次數
+    spell_days: 休歇日數
+    location_pattern: "沙田→從化→沙田"
+    jockey_riding_gallop: true/false（賽日騎師有冇親自操練）
+    trainer_riding_gallop: true/false（練馬師有冇親自操練）
+    gear_in_training: 操練配備
+    gear_in_last_race: 上仗配備
+    gear_change_signal: 配備變化分析
+
+==========================================================================
+第四部分：數據解讀規則（供 LLM 參考）
+==========================================================================
+
+A. 快操分段時間解讀
+
+800米快操基準（全天候跑道）：
+  sub-54s = 非常鋒利，賽事狀態
+  54-56s  = 扎實操練，已準備好比賽
+  56-58s  = 維持性操練
+  58s+    = 輕鬆操練或體能未到位
+
+尾段分析：
+  T2 < T1（尾段比頭段快）= 馬匹體力充沛，收得住
+  T2 >> T1（尾段明顯慢）= 可能體能不足
+
+趨勢：
+  近幾次快操時間逐步加快 = 體能提升中
+  時間穩定維持 = 高峰期維持
+  時間逐步轉慢 = 狀態下滑
+
+B. 試閘結果解讀（修訂版 — 降低名次權重）
+
+重要：試閘名次唔應該過度依賴！原因：
+  - 部分馬匹試閘刻意留後 / 唔催谷
+  - 同組對手水平參差
+  - 有啲馬試閘猛但賽日唔得
+  
+正確做法：
+  重點睇試閘分段時間（同快操對比）
+  睇試閘距離賽日幾近（14日內 = 高峰訊號）
+  睇騎師係咪賽日同一人（= 測試組合）
+  名次只作參考，唔好作為主要判斷依據
+
+C. 配備變化訊號 ⭐ 新增重點
+
+配備代碼：
+  H  = 頭罩（Hood）
+  XB = 交叉鼻箍（Crossover Noseband）
+  CP = 面頰片（Cheekpieces）
+  B  = 眼罩（Blinkers）
+  TT = 繫舌帶（Tongue Tie）
+  SR = 影子轉帶（Shadow Roll）
+  PC = 步速控制器（Pacifier）
+
+配備變化解讀：
+  操練戴裝備 → 賽日除裝備 = 練馬師認為馬匹已唔需要 或 裝備效果唔理想
+  操練冇裝備 → 賽日加裝備 = 練馬師想改善表現，值得留意
+  試閘戴裝備跑好成績 → 賽日除裝備 = 可能被高估
+  試閘冇裝備跑好成績 → 賽日保持 = 真正實力
+  連續多次操練試唔同裝備 = 練馬師喺度搵方法改善
+
+D. 騎手/練馬師參與操練 ⭐ 新增重點
+
+騎師親自操練（唔係助手）：
+  = 練馬師認真準備 / 測試人馬組合
+  如果操練騎師 = 賽日騎師 → 更強烈嘅出擊訊號
+  
+練馬師親自操練：
+  = 練馬師極度重視呢匹馬（最強訊號之一）
+  = 通常只係對有信心嘅馬匹先會親自操練
+
+E. 訓練量與恢復模式
+
+正面訊號：
+  - 快操 + 游泳 + 踱步嘅均衡組合
+  - 每日有規律嘅踱步
+  - 逐步增加訓練強度
+
+注意訊號：
+  - 淨係游水冇快操 = 可能傷後復出
+  - 頻密水中步行機 = 腿部護理
+  - 突然停止操練幾日 = 可能有問題
+
+F. 位置調動
+
+沙田 ↔ 從化：
+  - 從化 = 較清新嘅訓練環境，通常用於賽前調整
+  - 賽前調往從化再返沙田 = 典型高峰期安排
+  - 長期留從化 = 可能係長期調整/休養
+
+==========================================================================
+第五部分：輸出方式
+==========================================================================
+
+方案：獨立晨操檔案（推薦）
+
+每場賽事生成一個獨立檔案：
+  檔名：{date_prefix} Race {N} 晨操.md
+  位置：同 Facts.md 同一個資料夾
+
+檔案格式範例：
+---
+# 晨操資料 — Race {N}
+提取時間: {timestamp}
+數據範圍: 近 21 日
+
+### 馬號 1 — {馬名} | 練馬師: {練馬師}
+快操摘要 (近21日):
+- 快操次數: 3
+- 時間序列: 54.7 → 53.5 → 53.6 (趨勢: 穩定鋒利)
+- 尾段分析: 25.8 → 24.8 → 24.8 (尾段比頭段快 4.0s)
+- 最快時間: 53.5s (13/04, 沙田全天候)
+
+操練騎手:
+- 班德禮 (具名騎師) — 非助手操練
+- 練馬師親自操練: 否
+
+試閘 (近21日):
+- 無近期試閘
+
+配備變化:
+- 操練配備: H
+- 上仗配備: CP/XB
+- 變化訊號: 操練用H，出賽加CP/XB — 賽日額外加裝
+
+訓練量:
+- 踱步: 12次 | 游泳: 8次 | 水中步行機: 4次
+- 跑步機: 0次 | 休歇: 無
+
+位置:
+- 訓練基地模式: 沙田→從化→沙田
+
+晨操狀態評估:
+- 快操強度: 鋒利 (sub-54s)
+- 訓練軌跡: 高峰期維持
+- 配備訊號: 賽日加裝備 (中性偏正面)
+- 整體評估: 體能到位，訓練充足
+---
+
+同時喺 Facts.md 每匹馬嘅區塊加入一行 anchor：
+  晨操數據: 見「{date_prefix} Race {N} 晨操.md」馬號 {X}
+
+==========================================================================
+第六部分：同 Rating Matrix 整合
+==========================================================================
+
+現有 stability 維度嘅定義（compute_rating_matrix_hkjc.py）：
+  DIMENSION_TYPES = {
+    'stability': 'semi_core',  # 狀態與穩定性
+    ...
+  }
+
+整合方式：
+
+1. stability 維度嘅 reasoning 加入晨操數據引用
+
+LLM 喺填寫 stability reasoning 時，除咗引用近6場名次序列外，
+仲要引用晨操數據：
+  - 快操時間趨勢（改善/穩定/退步）
+  - 訓練量是否充足
+  - 配備有冇異常變化
+  - 有冇練馬師/騎師親自操練嘅訊號
+
+示範 reasoning：
+  "近6仗名次2-1-3-4-2-1，穩定性極高。晨操數據顯示近21日交出3次
+  sub-54秒快操（53.6/53.5/54.7），尾段持續比頭段快4秒，體能充沛。
+  操練由班德禮親自策騎（賽日騎師），訓練配備H但賽日改用CP/XB。
+  整體狀態處於高峰期。"
+
+2. trainer_signal 維度亦可參考
+
+如果晨操數據顯示：
+  - 練馬師親自操練 → trainer_signal 加分
+  - 賽日騎師親自操練 → trainer_signal 加分
+  - 配備大幅變動 → trainer_signal 需要討論
+
+3. 唔需要修改 compute_rating_matrix_hkjc.py 嘅算法
+
+晨操數據係提供畀 LLM 做更好嘅判斷，唔係自動計分。
+LLM 根據晨操數據決定 stability 同 trainer_signal 嘅評分。
+
+==========================================================================
+第七部分：Orchestrator 整合
+==========================================================================
+
+修改 hkjc_orchestrator.py 嘅提取流程：
+
+現有流程：
+  batch_extract.py → 排位表.md + 賽績.md + PDF.md
+  →
+  inject_hkjc_fact_anchors.py → Facts.md
+  →
+  LLM 分析
+
+新增步驟（插入喺 batch_extract 之後）：
+  batch_extract.py → 排位表.md + 賽績.md + PDF.md
+  →
+  extract_trackwork.py → 晨操.md  ← 新增
+  →
+  inject_hkjc_fact_anchors.py → Facts.md (加入晨操 anchor)
+  →
+  LLM 分析 (讀取 Facts.md + 晨操.md)
+
+注意：晨操提取失敗唔應該阻塞整個流程（非致命錯誤）。
+
+==========================================================================
+第八部分：提取腳本技術細節
+==========================================================================
+
+extract_trackwork.py 核心邏輯：
+
+1. 用 Playwright 開 localtrackwork 頁面
+2. 解析 table → 攞齊每匹馬嘅 horseid
+3. 逐匹馬開 trackworkresult 頁面（用 ThreadPoolExecutor 並行）
+4. 解析 table rows → 提取近 21 日紀錄
+5. 解析快操分段時間（用 regex 提取 T1 T2 Total）
+6. 解析配備代碼
+7. 偵測騎師名稱（對比「助手」字樣）
+8. 偵測練馬師名稱（對比練馬師姓名）
+9. 計算 summary 統計
+10. 輸出 markdown 檔案
+
+DOM 結構（基於之前嘅分析）：
+  - 主表格: table.table_bd 或 tables[3]
+  - 每行: tbody tr
+  - 每格: td (5格: 日期/類別/場地/詳情/配備)
+  - horseid 喺 link href: horseid=HK_YYYY_XXXX
+
+==========================================================================
+第九部分：實施步驟
+==========================================================================
+
+Phase 1 — 建立提取腳本
+  [ ] 建立 extract_trackwork.py
+  [ ] 實現 localtrackwork 頁面解析
+  [ ] 實現 trackworkresult 頁面解析
+  [ ] 實現快操分段時間解析
+  [ ] 實現配備代碼解析
+  [ ] 實現練馬師/騎師操練偵測
+  [ ] 實現 summary 統計計算
+  [ ] 實現 markdown 輸出
+
+Phase 2 — 整合入 Pipeline
+  [ ] 更新 hkjc_orchestrator.py 加入晨操提取步驟
+  [ ] 更新 inject_hkjc_fact_anchors.py 加入晨操 anchor
+  [ ] 更新 SKILL.md 加入晨操數據嘅分析指引
+
+Phase 3 — 更新分析指引
+  [ ] 更新 stability 維度嘅分析指引
+  [ ] 更新 trainer_signal 維度嘅分析指引
+  [ ] 加入配備變化分析指引
+  [ ] 加入試閘解讀修訂（降低名次權重）
+
+Phase 4 — 測試與驗證
+  [ ] 用實際賽日數據測試提取腳本
+  [ ] 驗證輸出格式
+  [ ] 驗證 Orchestrator 整合
+  [ ] 驗證 LLM 能正確讀取同引用晨操數據
+
+==========================================================================
+第十部分：檔案清單
+==========================================================================
+
+新增檔案：
+  .agents/skills/hkjc_racing/hkjc_race_extractor/scripts/extract_trackwork.py  [NEW]
+
+修改檔案：
+  .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py      [MODIFY]
+  .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/compile_analysis_template_hkjc.py [MODIFY]
+  .agents/skills/hkjc_racing/hkjc_race_extractor/SKILL.md                     [MODIFY]
+
+輸出檔案（每個賽日）：
+  {race_day_folder}/{date_prefix} Race {N} 晨操.md                            [GENERATED]
+
+==========================================================================
+附錄 A：六維度狀態評估框架
+==========================================================================
+
+1. 快操強度
+   - 近 21 日有幾多次快操？
+   - 時間有冇進步、穩定、定係退步？
+   - 騎師定助手操練？練馬師有冇親自操練？
+
+2. 試閘表現（修訂版）
+   - 距離賽日幾近？
+   - 分段時間有冇競爭力？（重點）
+   - 騎師係咪賽日同一人？
+   - 名次只作參考（唔好過度依賴）
+
+3. 訓練量
+   - 每日活動模式（踱步 + 游水 + 快操）
+   - 有冇休息日 / 空白日？
+   - 同練馬師慣常模式比較
+
+4. 恢復指標
+   - 游泳 / 水中步行機頻率
+   - 跑步機使用情況
+   - 位置（從化 = 較清新嘅訓練環境）
+
+5. 訓練軌跡
+   - 提升中？（操練越嚟越長/快）
+   - 高峰期？（鋒利快操 + 近期試閘）
+   - 維持中？（穩定恆常操練）
+   - 放鬆中？（只做輕鬆操練）
+
+6. 裝備配備
+   - 同上場比賽有冇唔同？
+   - 操練時有冇試緊新裝備？
+   - 試閘配備 vs 賽日配備嘅差異
+
+==========================================================================
+附錄 B：值得留意嘅模式（Flag 清單）
+==========================================================================
+
+強正面訊號：
+  - 賽日騎師親自操練快操
+  - 練馬師親自操練
+  - 近7日有鋒利快操 (sub-54s) + 試閘
+  - 快操時間持續改善
+
+需要注意：
+  - 試閘戴裝備跑好 → 賽日除裝備
+  - 淨係游水冇快操（可能傷後復出）
+  - 操練量突然大幅增加或減少
+  - 長時間留從化未返沙田
+
+負面訊號：
+  - 快操時間持續轉差
+  - 尾段明顯慢過頭段
+  - 淨係做踱步/游水冇任何快操
+  - 休歇期過長後突然復出
+
+
+==========================================================================
+第十一部分：Codex Review v2.0 — 修訂後完整實施藍圖
+==========================================================================
+
+狀態：
+  本段為 2026-04-30 codebase review 後嘅修訂版。
+  以下內容優先覆蓋原文第七、九、十部分有關 Orchestrator 接位同檔案清單嘅描述。
+
+核心結論：
+  1. 晨操資料值得整合，尤其對「近績差但過往有表現」同「新馬 / PPG / ISG」最有價值。
+  2. 晨操唔應該變成第 8 個 rating matrix 維度；應該作為 evidence 注入現有 7 維：
+     - matrix.stability
+     - matrix.trainer_signal
+     - matrix.horse_health
+     - 特殊情況下輔助 matrix.sectional（主要係新馬 / 無完整賽績馬）
+  3. 現有 HKJC 主流程已由 hkjc_orchestrator.py 委派去 .agents/scripts/racing_graph_core.py
+     同 .agents/scripts/racing_graph_nodes.py。實作時唔應該只改 hkjc_orchestrator.py。
+  4. 第一版唔應該自動改分；先做結構化數據、WorkCard 注入、Logic.json evidence 欄位、
+     final report 顯示。等累積 backtest 後先考慮正式升降級規則。
+
+--------------------------------------------------------------------------
+11.1 目標輸出
+--------------------------------------------------------------------------
+
+每個賽日資料夾新增兩類輸出：
+
+1. 機讀 JSON（供 Python / validator / backtest）
+   檔名：
+     {date_prefix} Race {N} 晨操.json
+
+2. 人讀 Markdown（供 LLM WorkCard / 人手 review）
+   檔名：
+     {date_prefix} Race {N} 晨操.md
+
+Facts.md 只加入一行 anchor，唔將大段晨操全文塞入 Facts.md，避免 token 膨脹：
+  晨操數據: 見「{date_prefix} Race {N} 晨操.md」馬號 {X}
+
+Logic.json 每匹馬新增 locked auto data：
+
+  "trackwork": {
+    "status": "ok | missing | failed | partial",
+    "mode": "maintenance | pattern_replay | debut_pressure | insufficient_data",
+    "confidence": "high | medium | low",
+    "summary": {
+      "window_days": 21,
+      "gallops_21d": 0,
+      "trials_21d": 0,
+      "trotting_21d": 0,
+      "swimming_21d": 0,
+      "aqua_walker_21d": 0,
+      "treadmill_21d": 0,
+      "gallop_time_trend": "improving | stable | easing | unknown",
+      "workload_trend": "building | maintaining | easing | interrupted | unknown",
+      "location_pattern": "ST | Conghua | ST->Conghua->ST | unknown",
+      "race_jockey_involved": false,
+      "named_rider_count": 0,
+      "trainer_involved": false,
+      "trainer_involved_confidence": "high | medium | low",
+      "gear_training": [],
+      "gear_raceday": [],
+      "gear_signal": "positive | neutral | caution | unknown",
+      "trial_sectional_signal": "strong | neutral | weak | unknown"
+    },
+    "flags": [
+      {
+        "code": "TW_MAINTAIN_STABLE",
+        "level": "positive | neutral | caution | negative",
+        "reason": "近21日維持規律踱步/游水，快操時間穩定。"
+      }
+    ]
+  }
+
+--------------------------------------------------------------------------
+11.2 正確 Pipeline 接位（LangGraph 版）
+--------------------------------------------------------------------------
+
+現有 HKJC pipeline 實際路線：
+  hkjc_orchestrator.py
+    -> .agents/scripts/racing_graph_core.py
+    -> .agents/scripts/racing_graph_nodes.py
+
+修訂後 pipeline：
+
+  check_raw_data
+    -> check_intelligence
+    -> generate_facts
+    -> extract_trackwork        [新增，HKJC only，非致命]
+    -> setup_race
+    -> generate_workcard
+    -> watch_and_validate
+    -> batch_qa / global_qa
+    -> verdict
+    -> compile
+    -> final_qa
+    -> reports
+
+新增 node：
+  node_extract_trackwork(state)
+
+行為：
+  - domain != "hkjc" 時直接略過。
+  - 若晨操 JSON/MD 已存在，直接標記 trackwork_ready=True。
+  - 若缺失，呼叫 extract_trackwork.py 生成全日所有 race 嘅晨操檔案。
+  - 若 HKJC 網站失敗、timeout、DOM 改版，只記錄 warning：
+      trackwork_ready=False
+      trackwork_status="failed"
+    但唔停止主分析。
+
+需要改：
+  .agents/scripts/racing_graph_core.py
+    - import node_extract_trackwork
+    - add_node("extract_trackwork", node_extract_trackwork)
+    - gen_facts 之後 route 去 extract_trackwork
+    - extract_trackwork 之後 route 去 setup_race
+
+  .agents/scripts/racing_graph_nodes.py
+    - 新增 node_extract_trackwork
+    - HKJC domain registry 加 trackwork_script path
+    - setup_race / generate_workcard 時讀取晨操 JSON/MD
+
+  .agents/scripts/racing_graph_state.py
+    - MeetingState 加：
+        trackwork_ready: bool
+        trackwork_status: str
+
+--------------------------------------------------------------------------
+11.3 extract_trackwork.py 實作策略
+--------------------------------------------------------------------------
+
+建議位置：
+  .agents/skills/hkjc_racing/hkjc_race_extractor/scripts/extract_trackwork.py
+
+CLI：
+  python extract_trackwork.py --base_url "<racecard URL>" --races 1-11 --output_dir "<dir>"
+  python extract_trackwork.py --racedate 2026/05/03 --racecourse ST --races 1-11 --output_dir "<dir>"
+  python extract_trackwork.py --horseid HK_2024_K323 --output_dir "<dir>"
+
+爬取策略：
+  第一選擇：requests + BeautifulSoup
+    - HKJC localtrackwork / trackworkresult 係 server-rendered HTML，唔一定需要 Playwright。
+    - 優點：快、少 timeout、容易並行。
+
+  第二選擇：Playwright fallback
+    - 當 requests 抽唔到 table 或被返回空頁先用。
+    - 避免 ThreadPoolExecutor 同多個 browser context 亂開；如用 Playwright，建議 async pages + concurrency limit。
+
+Cache：
+  .runtime/trackwork_cache/{horseid}.html
+  .runtime/trackwork_cache/{horseid}.json
+
+  同一匹馬跨 race / 同日重複出現時唔重抓。
+
+Timeout / retry：
+  - 每頁 timeout 15-20 秒
+  - retry 2 次
+  - race-level 失敗唔阻塞 meeting
+
+解析來源：
+  localtrackwork:
+    - race no
+    - horse no
+    - horse name
+    - horseid link
+    - summary rows
+
+  trackworkresult:
+    - date
+    - work_type
+    - track/location
+    - details
+    - gear
+    - rider / jockey text
+    - trial details
+
+--------------------------------------------------------------------------
+11.4 晨操數據解讀方法修訂
+--------------------------------------------------------------------------
+
+原計劃中「800m sub-54 = 鋒利」方向有參考價值，但唔可以一刀切。
+修訂為：
+
+  1. 先解析 work distance / track / location
+     - 沙田全天候
+     - 從化
+     - 草地
+     - 泥地試閘
+     - 短途快跳 / 長距離快操
+
+  2. 再做 relative interpretation
+     - 同一匹馬近幾次比較
+     - 同一練馬師慣常模式比較（第一版可先不做）
+     - 同一類操練距離比較
+
+  3. 第一版時間規則只作 flag：
+     - gallop_fast_flag
+     - gallop_stable_flag
+     - gallop_easing_flag
+     - trial_sectional_strong_flag
+
+  4. 不直接用單一快操時間升級 rating。
+
+試閘：
+  - 名次降權，只當 context。
+  - 分段、末段、催策程度、距離賽日幾近、賽日騎師是否參與，先係主證據。
+  - 對首出馬 / PPG / ISG 權重高。
+  - 對有完整近期賽績嘅馬，試閘只係補充狀態，不可推翻實戰段速。
+
+練馬師親自操練：
+  - 保留為強訊號，但必須加 confidence。
+  - 官方資料未必穩定標示「練馬師本人」，parser 唔可以硬估。
+  - 若只係具名騎者，應標記 named_rider_count / race_jockey_involved，而唔係 trainer_involved。
+
+配備：
+  - gear_training vs gear_raceday 必須結構化比較。
+  - 操練試裝備 + 賽日沿用 = 正面或中性偏正。
+  - 試閘戴裝備表現好 + 賽日除裝備 = caution。
+  - 賽日初戴裝備 + 近仗有搶口/外閃/走勢散 = trainer_signal evidence。
+
+--------------------------------------------------------------------------
+11.5 三類馬分析框架（採納用戶 feedback）
+--------------------------------------------------------------------------
+
+系統先為每匹馬分類：
+
+  A. status_continuity（近期有賽績馬 / 狀態持續型）
+     條件建議：
+       - 近 6 仗有至少 2 次前 4 或 近 10 仗有穩定入位
+       - 正式賽績資料充足
+
+     晨操權重：
+       - 中至高；正式賽績與晨操 digest 原則上 50/50
+       - 不再假設近期賽績一定係主證據。近期賽績反映「已發生嘅能力表現」，
+         晨操反映「今次賽前狀態與練馬師意圖」，兩者要並排判讀。
+
+     分析重點：
+       - 平衡與穩定
+       - 有冇傷病 / 停操 / 突然改變訓練模式
+
+     判讀：
+       - 體重波幅 ±8lb 內 + 規律踱步/游水/基本操練 = 維持狀態
+       - 少一課快跳唔等於負面，可能係保留體力
+       - 文字有「走勢自然」「步姿整齊」= 狀態未失
+       - 若晨操 flags 由普通突然升至 strong，標記 HOTTER_THAN_FORM；
+         若同時有體重穩、騎師親操、配備意圖或快操趨勢改善，可作為 matrix.stability / trainer_signal 實質正面證據
+
+     Logic.json 影響：
+       - stability reasoning 必須同時引用賽績趨勢與晨操 digest；兩者意見相反時要明確解釋取捨
+       - horse_health reasoning 可引用無停操 / 體重穩
+       - trainer_signal 只有賽日騎師親操 / 配備部署等明確訊號先加
+
+  B. pattern_replay（賽績差但過往有表現 / 尋找伏兵型）
+     條件建議：
+       - 近 3-5 仗差
+       - 但過往有同場/同程/同班或相近條件上名/贏馬
+       - 評分已回落或轉倉 / 配備 / 騎師有變
+
+     晨操權重：
+       - 極高；此類馬晨操可以係主要翻案證據
+       - 近績差唔可以自動壓死 rating matrix。若晨操顯示歷史贏馬模式復刻、配備重試、騎師親操或訓練加壓，
+         LLM 必須將佢視為與近期賽績同等甚至更高嘅狀態訊號。
+
+     分析重點：
+       - 歷史復刻
+       - 今仗前 21 日操練組合 vs 上兩次贏馬前 21 日操練組合
+
+     第一版可行做法：
+       - 先唔做完整歷史深度 pattern mining。
+       - 先抓 trackworkresult 可見歷史，將每次正式出賽前 21 日轉成 training_signature：
+           gallop_count
+           trial_count
+           swimming_count
+           fast_gallop_count
+           gear_set
+           race_jockey_involved
+           location_pattern
+       - 若今仗 signature 同過往贏馬 / 上名前 signature 相似，出 flag：
+           TW_WIN_PATTERN_REPLAY
+
+     冷門訊號：
+       - 近績差 + 歷史首本條件回歸 + 晨操 signature 復刻 = 高價值伏兵
+       - 配備重試 / 轉倉 / 賽日騎師親操 = 加強
+
+     Logic.json 影響：
+       - trainer_signal 可由 ➖ 升至 ✅（若另有部署證據）
+       - stability 不應因近績差直接死判 ❌；若 pattern_replay_score 高，應可由 ❌ 修正至 ➖，甚至由 ➖ 升至 ✅
+       - reasoning 要明確說明「近績差 vs 晨操復刻 / 加壓訊號」邊一邊更可信
+       - underhorse.triggered 可設 true，但唔應自動改 final_rating
+
+  C. debut_pressure（完全無賽績 / 新馬 / PPG / ISG 質素摸底型）
+     條件建議：
+       - career starts = 0
+       - HK starts = 0
+       - 生涯標記 DEBUT / IMPORTED_DEBUT
+
+     晨操權重：
+       - 高
+
+     分析重點：
+       - 加壓曲線
+       - 試閘分段
+       - 賽日騎師參與度
+       - 是否同高班馬拍跳而不失禮
+
+     判讀：
+       - 30 日內操練密度上升 + 快操/試閘逐步接近賽日 = 準備就緒
+       - 短期內兩次試閘 + 分段不差 + 賽日騎師參與 = 強正面
+       - 只靠試閘名次 Top 3 不足以升級，必須睇分段/催策/對手質素
+
+     Logic.json 影響：
+       - stability 按現有規則維持 ➖（未知不等於差）
+       - sectional 可用 trial_sectionals 作替代 evidence
+       - trainer_signal 可引用賽日騎師親操 / 高密度加壓
+       - horse_health 可引用操練量是否充足
+
+--------------------------------------------------------------------------
+11.6 Flag 字典（第一版）
+--------------------------------------------------------------------------
+
+正面：
+  TW_MAINTAIN_STABLE
+    狀態持續型馬維持規律操練，體重穩定，無停操。
+
+  TW_HOTTER_THAN_FORM
+    近期賽績已好，但晨操強度或質量比以往明顯提升。
+
+  TW_WIN_PATTERN_REPLAY
+    今仗前 21 日操練 signature 接近過往贏馬 / 上名前 21 日。
+
+  TW_JOCKEY_COMMITTED
+    賽日騎師賽前親自快操或試閘，尤其出現 2 次或以上。
+
+  TW_DEBUT_PRESSURE_READY
+    新馬 / PPG / ISG 賽前 30 日操練密度提升，試閘分段或快操走勢支持。
+
+  TW_GEAR_INTENT_POSITIVE
+    操練 / 試閘配備與賽日配備形成合理改善意圖。
+
+中性 / 觀察：
+  TW_LIGHT_MAINTENANCE
+    快跳少但有規律踱步/游水，對狀態型馬屬保留體力。
+
+  TW_CONGHUA_REFRESH
+    從化調整後返沙田，視乎馬匹歷史模式判斷。
+
+注意：
+  TW_WORKLOAD_INTERRUPTED
+    賽前突然停止操練或空白日異常增加。
+
+  TW_WATER_ONLY_CAUTION
+    近 21 日主要游水 / 水中步行機，缺乏快操，可能係護理或傷後。
+
+  TW_GEAR_REMOVED_AFTER_TRIAL
+    試閘戴裝備有好表現，但賽日除去，可能高估試閘。
+
+  TW_EASING_TREND
+    快操時間或訓練量連續轉弱。
+
+--------------------------------------------------------------------------
+11.7 WorkCard 注入方式
+--------------------------------------------------------------------------
+
+generate_hkjc_work_card 需要新增「晨操資料」段落，放在 1️⃣ 狀態與穩定性之前：
+
+  ## 🏇 晨操資料 [Python 預計算]
+  - 分類: maintenance / pattern_replay / debut_pressure
+  - 近21日操練: 快操 X、試閘 X、踱步 X、游水 X、水中步行機 X
+  - 快操趨勢: improving/stable/easing
+  - 配備訊號: ...
+  - 騎師參與: 賽日騎師是否親操
+  - Flags: TW_...
+
+每個相關維度提示：
+  - stability：判斷係維持、改善、停滯，唔好用晨操單一時間推翻賽績。
+  - trainer_signal：只將騎師親操、配備意圖、轉倉後加強操練等視為部署證據。
+  - horse_health：游水/水中步行機/停操/體重波幅係健康與恢復 evidence。
+  - sectional：只對新馬或賽績不足馬，用試閘分段作替代 evidence。
+
+--------------------------------------------------------------------------
+11.8 Logic.json / Firewall / Compile
+--------------------------------------------------------------------------
+
+create_hkjc_logic_skeleton.py：
+  - 讀取 Race N 晨操.json。
+  - 將馬匹 trackwork object 寫入 skeleton。
+  - 在 matrix.stability.reasoning 加一行：
+      [晨操: mode=..., flags=..., workload=...]
+  - 在 matrix.trainer_signal.reasoning 加一行：
+      [晨操部署: race_jockey_involved=..., gear_signal=...]
+  - 在 matrix.horse_health.reasoning 加一行：
+      [晨操健康: water_only=..., interrupted=..., body_weight_delta=...]
+
+validate_hkjc_firewalls：
+  - 第一版唔強制每匹馬必須引用晨操，因為 trackwork 可以 missing。
+  - 若 trackwork.status == "ok" 且 mode in pattern_replay/debut_pressure，
+    可加 soft warning：core_logic 或 relevant matrix reasoning 應引用至少一個晨操 flag。
+
+compile_analysis_template_hkjc.py：
+  - 最終報告每匹馬可加一行「晨操摘要」。
+  - 若無晨操資料，顯示「晨操資料未能提取」，唔影響評級。
+
+completion_gate_v2.py：
+  - 第一版唔加 hard gate。
+  - Backtest 後再決定是否要求高權重類別必須引用晨操。
+
+--------------------------------------------------------------------------
+11.9 檔案清單（修訂）
+--------------------------------------------------------------------------
+
+新增：
+  .agents/skills/hkjc_racing/hkjc_race_extractor/scripts/extract_trackwork.py
+  .agents/skills/hkjc_racing/hkjc_race_extractor/scripts/test_extract_trackwork.py
+
+修改：
+  .agents/scripts/racing_graph_core.py
+  .agents/scripts/racing_graph_nodes.py
+  .agents/scripts/racing_graph_state.py
+  .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/create_hkjc_logic_skeleton.py
+  .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py
+    - 只需視乎 helper / context injection 是否要顯示晨操狀態；唔係主要接位。
+  .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/compile_analysis_template_hkjc.py
+  .agents/skills/hkjc_racing/hkjc_race_extractor/SKILL.md
+  .agents/skills/hkjc_racing/hkjc_wong_choi/SKILL.md
+  .agents/skills/hkjc_racing/hkjc_horse_analyst/resources/05_forensic_analysis.md
+  .agents/skills/hkjc_racing/hkjc_horse_analyst/resources/06_rating_engine.md
+  .agents/skills/hkjc_racing/hkjc_horse_analyst/resources/07b_trainer_signals.md
+  .agents/skills/hkjc_racing/hkjc_horse_analyst/resources/05b_debut_guide.md
+
+輸出：
+  {race_day_folder}/{date_prefix} Race {N} 晨操.json
+  {race_day_folder}/{date_prefix} Race {N} 晨操.md
+  {race_day_folder}/.runtime/trackwork_cache/*.html
+  {race_day_folder}/.runtime/trackwork_cache/*.json
+
+--------------------------------------------------------------------------
+11.10 實施階段
+--------------------------------------------------------------------------
+
+Phase 0 — Fixture + DOM 驗證
+  [ ] 用 1 個已知 HKJC localtrackwork URL 保存 HTML fixture
+  [ ] 用 1 個 trackworkresult horseid 保存 HTML fixture
+  [ ] 確認 requests+BeautifulSoup 足夠；唔足夠先開 Playwright fallback
+
+Phase 1 — Extractor
+  [ ] 建立 extract_trackwork.py
+  [ ] parse base_url -> racedate / racecourse
+  [ ] parse races range
+  [ ] parse localtrackwork horse list + horseid
+  [ ] parse trackworkresult detail rows
+  [ ] normalize work_type / date / location / gear / rider / details
+  [ ] 計算 21 日 summary
+  [ ] 輸出 JSON + Markdown
+  [ ] 實作 cache / retry / timeout / fail-soft
+
+Phase 2 — LangGraph 接位
+  [ ] racing_graph_state 加 trackwork fields
+  [ ] racing_graph_nodes 加 node_extract_trackwork
+  [ ] racing_graph_core 加 node + route
+  [ ] 確認 AU pipeline 不受影響
+
+Phase 3 — Logic + WorkCard
+  [ ] create_hkjc_logic_skeleton.py 讀取晨操 JSON
+  [ ] Logic.json 寫入 trackwork locked object
+  [ ] generate_hkjc_work_card 顯示晨操摘要
+  [ ] matrix reasoning skeleton 注入晨操 evidence slots
+
+Phase 4 — Analyst Rules
+  [ ] 更新 stability 規則：狀態型馬維持操練不扣分
+  [ ] 更新 trainer_signal：騎師親操 / 配備意圖 / pattern replay
+  [ ] 更新 horse_health：游水、水中步行機、停操、從化
+  [ ] 更新 debut guide：試閘分段 > 名次，騎師參與度
+
+Phase 5 — Compile / QA
+  [ ] compile_analysis_template_hkjc.py 顯示晨操摘要
+  [ ] completion_gate_v2 soft warning（不 hard fail）
+  [ ] py_compile 所有改動腳本
+  [ ] fixture unit tests
+  [ ] 單 race dry run
+  [ ] 全日 dry run
+
+Phase 6 — Backtest
+  [ ] 選 3-5 個過往賽日
+  [ ] 比較有晨操 vs 無晨操嘅 Top4 / underhorse 命中
+  [ ] 特別統計：
+      - pattern_replay 命中率
+      - debut_pressure 命中率
+      - TW_WORKLOAD_INTERRUPTED 負面準確度
+      - 賽日騎師親操是否提升入位率
+  [ ] 決定哪些 flags 可升級為正式 micro adjustment
+
+--------------------------------------------------------------------------
+11.11 驗收標準
+--------------------------------------------------------------------------
+
+功能驗收：
+  - 有晨操資料時，每場生成 JSON + MD。
+  - 無晨操資料或 HKJC timeout 時，主 pipeline 繼續完成。
+  - Logic.json schema 不破壞現有 7 維 matrix。
+  - WorkCard 能顯示每匹馬晨操摘要。
+  - Final Analysis 可顯示晨操摘要。
+
+分析驗收：
+  - 狀態型馬唔會因少一課快跳而被錯扣。
+  - 近績差馬可標記 TW_WIN_PATTERN_REPLAY。
+  - 新馬可根據加壓曲線 / 試閘分段 / 騎師參與度分析。
+  - 試閘名次唔會單獨造成大幅升級。
+  - 配備變化會被 route 去 trainer_signal，而唔係另開新維度。
+
+工程驗收：
+  - python -m py_compile 通過：
+      extract_trackwork.py
+      racing_graph_core.py
+      racing_graph_nodes.py
+      racing_graph_state.py
+      create_hkjc_logic_skeleton.py
+      compile_analysis_template_hkjc.py
+  - unit tests 通過。
+  - AU racing pipeline 不受影響。
+  - Google Drive workspace 寫檔只使用現有安全寫入方式或原子寫入。
+
+--------------------------------------------------------------------------
+11.12 後續可升級方向
+--------------------------------------------------------------------------
+
+1. Trainer baseline：
+   建立每位練馬師正常操練模式，判斷「異常加壓」是否真係異常。
+
+2. Historical win pattern：
+   將每匹馬過往勝仗前 21 日 training_signature 存入 cache，做相似度比對。
+
+3. Trackwork score：
+   只在 backtest 證明有效後建立 0-100 晨操分，第一版唔建議直接用作評級。
+
+4. Underhorse integration：
+   將 TW_WIN_PATTERN_REPLAY + 首本條件回歸 + 降分足夠，加入正式冷門安全網。
+
+5. Reflector loop：
+   賽後覆盤時記錄晨操 flag 是否命中，逐步淘汰噪音 flag。
+
+
+==========================================================================
+第十二部分：Stability-First 修訂 — 確保 Rating Matrix 真正消化晨操
+==========================================================================
+
+背景：
+  用戶要求重點改善「狀態與穩定性」，並確保 rating matrix 真正 digest 晨操資料，
+  而唔係只喺 WorkCard 放一段文字俾 LLM 自由發揮。
+
+核心判斷：
+  原 v2.0 plan 方向正確，但單靠 Markdown 晨操摘要未必足夠。
+  必須加入「Python 預消化 → Logic.json structured evidence → LLM 判讀 → firewall soft check」
+  呢條鏈，先可以穩定改善 matrix.stability。
+
+--------------------------------------------------------------------------
+12.1 LLM 需要嘅最小充分資料
+--------------------------------------------------------------------------
+
+LLM 做狀態與穩定性評分時，唔需要睇晒每條晨操 raw row。
+最有用係以下 8 組已消化欄位：
+
+  1. career_category
+     - status_continuity
+     - pattern_replay
+     - debut_pressure
+     - insufficient_data
+
+  2. workout_load_21d
+     - gallops_21d
+     - trials_21d
+     - trotting_21d
+     - swimming_21d
+     - aqua_walker_21d
+     - treadmill_21d
+     - active_days_21d
+     - blank_days_21d
+
+  3. workout_intensity_trend
+     - improving
+     - stable
+     - easing
+     - interrupted
+     - unknown
+
+  4. maintenance_score
+     - 0-100，只代表「是否維持正常狀態」，唔代表能力高低。
+     - 適用：status_continuity。
+
+  5. readiness_score
+     - 0-100，代表「是否準備出賽」。
+     - 適用：debut_pressure / PPG / ISG / 久休復出。
+
+  6. pattern_replay_score
+     - 0-100，代表今仗前 21 日操練 signature 同過往贏馬 / 上名前 21 日有幾相似。
+     - 適用：pattern_replay。
+
+  7. stability_risk_flags
+     - TW_WORKLOAD_INTERRUPTED
+     - TW_WATER_ONLY_CAUTION
+     - TW_EASING_TREND
+     - TW_LONG_GAP_NO_TRIAL
+     - TW_BODY_WEIGHT_SWING
+
+  8. stability_positive_flags
+     - TW_MAINTAIN_STABLE
+     - TW_LIGHT_MAINTENANCE
+     - TW_WIN_PATTERN_REPLAY
+     - TW_DEBUT_PRESSURE_READY
+     - TW_JOCKEY_COMMITTED
+
+結論：
+  有以上欄位，LLM 已經足夠做 matrix.stability 判斷。
+  無以上欄位，只俾 raw text，LLM 會容易過度重視快操時間或試閘名次。
+
+--------------------------------------------------------------------------
+12.2 建議 Logic.json stability_digest schema
+--------------------------------------------------------------------------
+
+每匹馬 trackwork object 內新增：
+
+  "stability_digest": {
+    "career_category": "status_continuity | pattern_replay | debut_pressure | insufficient_data",
+    "data_status": "ok | partial | missing",
+    "window_days": 21,
+    "workout_load_21d": {
+      "active_days": 0,
+      "blank_days": 0,
+      "gallops": 0,
+      "trials": 0,
+      "trotting": 0,
+      "swimming": 0,
+      "aqua_walker": 0,
+      "treadmill": 0
+    },
+    "workout_intensity_trend": "improving | stable | easing | interrupted | unknown",
+    "body_weight_delta_lbs": null,
+    "maintenance_score": null,
+    "readiness_score": null,
+    "pattern_replay_score": null,
+    "stability_positive_flags": [],
+    "stability_risk_flags": [],
+    "llm_stability_instruction": "一句短指令，話畀 LLM 知應該點樣用晨操資料。"
+  }
+
+例子 A — 近期績優馬：
+
+  "stability_digest": {
+    "career_category": "status_continuity",
+    "data_status": "ok",
+    "window_days": 21,
+    "workout_load_21d": {
+      "active_days": 17,
+      "blank_days": 4,
+      "gallops": 1,
+      "trials": 0,
+      "trotting": 10,
+      "swimming": 6,
+      "aqua_walker": 2,
+      "treadmill": 0
+    },
+    "workout_intensity_trend": "stable",
+    "body_weight_delta_lbs": 4,
+    "maintenance_score": 78,
+    "readiness_score": null,
+    "pattern_replay_score": null,
+    "stability_positive_flags": ["TW_LIGHT_MAINTENANCE", "TW_MAINTAIN_STABLE"],
+    "stability_risk_flags": [],
+    "llm_stability_instruction": "此馬近期已有賽績證明狀態，晨操屬維持型；少快跳不可直接扣分，應重點確認體重與活動模式是否穩定。"
+  }
+
+例子 B — 近績差伏兵：
+
+  "stability_digest": {
+    "career_category": "pattern_replay",
+    "data_status": "ok",
+    "window_days": 21,
+    "workout_load_21d": {
+      "active_days": 16,
+      "blank_days": 5,
+      "gallops": 3,
+      "trials": 1,
+      "trotting": 8,
+      "swimming": 4,
+      "aqua_walker": 1,
+      "treadmill": 0
+    },
+    "workout_intensity_trend": "improving",
+    "body_weight_delta_lbs": -2,
+    "maintenance_score": null,
+    "readiness_score": null,
+    "pattern_replay_score": 82,
+    "stability_positive_flags": ["TW_WIN_PATTERN_REPLAY"],
+    "stability_risk_flags": [],
+    "llm_stability_instruction": "此馬近績差，但晨操組合重現過往贏馬前模式；stability 不應只按近績死扣，需判斷是否回勇伏兵。"
+  }
+
+例子 C — 初出馬：
+
+  "stability_digest": {
+    "career_category": "debut_pressure",
+    "data_status": "ok",
+    "window_days": 30,
+    "workout_load_21d": {
+      "active_days": 18,
+      "blank_days": 3,
+      "gallops": 3,
+      "trials": 2,
+      "trotting": 9,
+      "swimming": 3,
+      "aqua_walker": 1,
+      "treadmill": 0
+    },
+    "workout_intensity_trend": "improving",
+    "body_weight_delta_lbs": null,
+    "maintenance_score": null,
+    "readiness_score": 84,
+    "pattern_replay_score": null,
+    "stability_positive_flags": ["TW_DEBUT_PRESSURE_READY", "TW_JOCKEY_COMMITTED"],
+    "stability_risk_flags": [],
+    "llm_stability_instruction": "初出馬穩定性仍按規則維持 Neutral；晨操只可支持 readiness 與 trainer_signal，不可把 stability 直接判為 Strong。"
+  }
+
+--------------------------------------------------------------------------
+12.3 matrix.stability 判分規則修訂
+--------------------------------------------------------------------------
+
+晨操資料對 matrix.stability 嘅影響要按馬匹類別分流：
+
+1. status_continuity（近期有賽績馬）
+
+   預設：
+     正式賽績與晨操 digest 採用 50/50 判讀。
+     正式賽績提供已驗證能力線，晨操提供賽前狀態與部署意圖；任何一邊出現強烈反差，都必須在 reasoning 解釋。
+
+   晨操可支持 ✅ / ✅✅：
+     - 近績本身已穩定；
+     - body_weight_delta_lbs 在 ±8lb 內；
+     - maintenance_score >= 70；
+     - 無 stability_risk_flags；
+     - 有 TW_MAINTAIN_STABLE 或 TW_LIGHT_MAINTENANCE。
+     - 若近期賽績穩定但晨操出現 HOTTER_THAN_FORM，且有騎師親操 / 配備意圖 / 快操趨勢改善其中一項，
+       可支持 stability ✅✅ 或 trainer_signal ✅，但 reasoning 必須講清楚「熱上加熱」證據。
+
+   晨操可獨立修正近期賽績嘅限制：
+     - 只係單一快操時間快，仍然不足以升 ✅。
+     - 但若 maintenance_score >= 75 且有多個正面 flags，晨操可同近期賽績平權，支持升級或避免扣死。
+
+   晨操可降級：
+     - TW_WORKLOAD_INTERRUPTED；
+     - TW_EASING_TREND；
+     - 體重大幅波動 >= 20lb；
+     - 主要水中訓練而無快操，且近期有健康/休賽疑點。
+
+2. pattern_replay（近績差但過往有表現）
+
+   預設：
+     晨操權重最高，因為目標係搵「表面近績差、內裡轉勢」。
+     對此類馬，近期賽績只係表面結果；晨操 pattern、配備、騎師參與、評分回落先係主要判斷入口。
+
+   可由 ❌ 修正至 ➖：
+     - 近績差；
+     - 但 pattern_replay_score >= 70；
+     - 無重大健康風險；
+     - 今仗回到首本場地/路程/班次之一。
+
+   可由 ➖ 升至 ✅：
+     - pattern_replay_score >= 80；
+     - 同時有配備 / 騎師 / 轉倉 / 降分 等至少 1 個獨立正面訊號；
+     - 近績差有可寬恕原因或評分已回落。
+     - 若 TW_WIN_PATTERN_REPLAY + 首本場地/路程/班次回歸同時成立，stability 可視為回勇訊號，而唔係單純近績穩定性。
+
+   不應升級：
+     - 只有快操多，但無歷史勝仗 pattern 對照；
+     - pattern_replay_score 低於 60；
+     - 有 TW_WORKLOAD_INTERRUPTED 或健康風險。
+
+3. debut_pressure（初出馬 / PPG / ISG）
+
+   預設：
+     matrix.stability 仍然強制 ➖ Neutral。
+     原因：「未知」唔等於「穩定」，亦唔等於「差」。
+
+   晨操用途：
+     - readiness_score 用於 trainer_signal / sectional 替代證據；
+     - 不直接令 stability 變 ✅。
+
+   唯一例外：
+     - 若系統日後新增「初出馬 readiness sub-score」，應該獨立顯示，唔混入 stability。
+
+--------------------------------------------------------------------------
+12.4 trainer_signal 對初出馬嘅消化規則
+--------------------------------------------------------------------------
+
+初出馬最值得將晨操轉入 trainer_signal，而唔係 stability。
+
+trainer_signal 可判 ✅ 或 ✅✅ 嘅晨操證據：
+  - 賽日騎師 30 日內親自快操 / 試閘 >= 2 次；
+  - readiness_score >= 80；
+  - trials_21d >= 2 且 trial_sectional_signal != weak；
+  - gear_signal positive；
+  - 練馬師本身有初出馬部署 pattern；
+  - 與高班馬拍跳而不落下風（只有文字明確記錄先可用）。
+
+trainer_signal 不應判 ✅：
+  - 只因試閘名次 Top 3；
+  - 只因快操時間快，但無騎師參與 / 無加壓曲線 / 無配備意圖；
+  - 只因名廄或名騎。
+
+WorkCard 應明確提示：
+  「初出馬：stability 保持 Neutral；晨操強訊號優先 route 去 trainer_signal，
+    試閘分段可輔助 sectional。」
+
+--------------------------------------------------------------------------
+12.5 Python 預消化計算建議
+--------------------------------------------------------------------------
+
+maintenance_score（狀態型馬）：
+  基礎分 50
+  + active_days_21d >= 14：+15
+  + body_weight_delta_lbs 在 ±8：+15
+  + 有基本 gallop 或 trial：+10
+  + TW_MAINTAIN_STABLE：+10
+  - TW_WORKLOAD_INTERRUPTED：-25
+  - TW_EASING_TREND：-15
+  - TW_WATER_ONLY_CAUTION：-10
+  cap 0-100
+
+readiness_score（初出 / 久休 / PPG）：
+  基礎分 45
+  + gallops_21d >= 2：+15
+  + trials_21d >= 1：+15
+  + trials_21d >= 2：+10
+  + workout_intensity_trend == improving：+10
+  + race_jockey_involved：+15
+  + trial_sectional_signal == strong：+10
+  - blank_days_21d >= 10：-15
+  - TW_WORKLOAD_INTERRUPTED：-25
+  cap 0-100
+
+pattern_replay_score（伏兵型）：
+  第一版：
+    - 用 training_signature Jaccard / weighted similarity。
+    - 對比目標：過往贏馬前 21 日；無贏馬則用過往上名前 21 日。
+
+  signature 權重：
+    gallop_count_band：20%
+    trial_count_band：20%
+    fast_gallop_presence：15%
+    gear_overlap：15%
+    location_pattern：10%
+    race_jockey_involved：10%
+    swimming/trotting balance：10%
+
+  分數：
+    >=80：強烈復刻
+    70-79：中強復刻
+    60-69：弱復刻，只作觀察
+    <60：不構成 pattern replay
+
+--------------------------------------------------------------------------
+12.6 Firewalls / QA soft checks
+--------------------------------------------------------------------------
+
+新增 soft checks，第一版不 hard fail：
+
+  STAB-TW-001:
+    trackwork.status == ok 且 career_category == status_continuity，
+    matrix.stability.reasoning 應提及 maintenance_score 或 maintenance flags。
+
+  STAB-TW-002:
+    career_category == pattern_replay 且 pattern_replay_score >= 80，
+    matrix.stability.reasoning 或 core_logic 應提及 TW_WIN_PATTERN_REPLAY。
+
+  STAB-TW-003:
+    career_category == debut_pressure，
+    matrix.stability.score 若為 ✅ / ✅✅，提示修正：
+      初出馬 stability 應維持 ➖，晨操強訊號應 route 去 trainer_signal / sectional。
+
+  STAB-TW-004:
+    matrix.stability.score == ✅ 但同時有 TW_WORKLOAD_INTERRUPTED，
+    提示需要解釋點解負面晨操風險被抵消。
+
+  TRAINER-TW-001:
+    初出馬 readiness_score >= 80 + race_jockey_involved == true，
+    matrix.trainer_signal.reasoning 應引用騎師親操 / 加壓曲線。
+
+--------------------------------------------------------------------------
+12.7 回答兩個實作問題
+--------------------------------------------------------------------------
+
+Q1：而家 plan 俾 LLM 嘅資料夠唔夠做 rating？
+
+  只睇 v2.0：基本夠，但唔夠穩。
+  加入第十二部分 stability_digest 後：足夠，而且更可控。
+
+  原因：
+    - LLM 唔需要自行由 raw trackwork rows 推理。
+    - Python 已經先分類、計 load、trend、flags、score。
+    - LLM 只負責將 digest 同正式賽績、體重、健康、近績趨勢合併判讀。
+
+Q2：我哋能唔能夠 extract 到並正確用入 rating matrix？
+
+  能，但第一版要守三條界線：
+    1. Extractor 先做 structured JSON，Markdown 只係副產品。
+    2. Rating matrix 只消化 stability_digest / trainer_signal evidence，不直接讀 raw text。
+    3. 晨操只改 matrix reasoning 同 analyst decision；rating engine 暫時不改。
+
+  最容易成功嘅 MVP：
+    - extract localtrackwork horseid
+    - extract trackworkresult 近 21/30 日 rows
+    - 生成 stability_digest
+    - WorkCard + Logic.json 注入
+    - soft QA 確認 high-signal 晨操有被引用
+
+  最唔應該第一版做：
+    - 直接建立 0-100 晨操分去改 final_rating
+    - 用 sub-54s 一刀切升級
+    - 用試閘名次直接升級初出馬
+    - 要求每匹馬都必須引用晨操，因為資料可能 partial/missing
+
+
+==========================================================================
+第十三部分：MVP 落地狀態（2026-05-01）
+==========================================================================
+
+已實作：
+  1. 新增 fail-soft extractor：
+       .agents/skills/hkjc_racing/hkjc_race_extractor/scripts/extract_trackwork.py
+
+     輸出：
+       {date_prefix} Race {N} 晨操.json
+       {date_prefix} Race {N} 晨操.md
+
+     特點：
+       - requests/urllib 優先，無額外 dependency。
+       - 每匹馬輸出 trackwork.summary + stability_digest。
+       - 抽取失敗不阻塞主 pipeline。
+
+  2. LangGraph 接位：
+       .agents/scripts/racing_graph_core.py
+       .agents/scripts/racing_graph_nodes.py
+       .agents/scripts/racing_graph_state.py
+
+     流程：
+       generate_facts
+         -> extract_trackwork [HKJC only, fail-soft]
+         -> setup_race
+
+  3. Logic.json 注入：
+       .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/create_hkjc_logic_skeleton.py
+
+     每匹馬新增 locked data：
+       trackwork.status
+       trackwork.summary
+       trackwork.stability_digest
+       trackwork.flags
+
+     並注入：
+       matrix.stability.reasoning     [晨操 digest]
+       matrix.trainer_signal.reasoning [晨操部署]
+       matrix.horse_health.reasoning   [晨操健康]
+
+  4. WorkCard 注入：
+       .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py
+
+     新增「晨操資料 [Python 預消化]」段落。
+     明確提示：
+       - stability 要用賽績與晨操 50/50。
+       - 近績差馬不可單憑近績死扣。
+       - 初出馬 stability 維持 Neutral，晨操強訊號 route 去 trainer_signal / sectional。
+
+  5. QA / firewall：
+       STAB-TW-001 status_continuity 應引用 maintenance_score / 晨操 flags。
+       STAB-TW-002 pattern_replay_score >=70 應引用翻案訊號。
+       STAB-TW-003 初出馬 stability 不可因晨操直接升 ✅。
+       STAB-TW-004 stability ✅ 但有 interrupted flag 必須解釋。
+       TRAINER-TW-001 初出馬 readiness + 騎師參與要入 trainer_signal。
+
+  6. Final report：
+       compile_analysis_template_hkjc.py 新增「晨操摘要」段落。
+
+已驗證：
+  - py_compile 通過。
+  - 用現有 HKJC Facts fixture + 人工晨操 JSON 測試，確認 Logic.json 成功注入：
+      trackwork
+      晨操 digest
+      晨操部署
+      晨操健康
+
+下一步：
+  1. 用真實 HKJC localtrackwork / trackworkresult HTML 做 fixture unit tests。
+  2. 校準 horseid / table parser，避免 HKJC DOM 改版時漏馬。
+  3. Backtest 3-5 個賽日，驗證 maintenance_score / readiness_score / pattern_replay_score 是否有預測力。
+  4. 若 pattern_replay 命中率可靠，再將 TW_WIN_PATTERN_REPLAY 接入 underhorse 安全網。

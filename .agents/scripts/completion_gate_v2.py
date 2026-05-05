@@ -10,7 +10,7 @@ from difflib import SequenceMatcher
 def check_au_hkjc_format(text: str, domain: str) -> list[str]:
     errors = []
     if domain == 'au':
-        required_tags = ['⏱️', '🐴', '📋', '🧭', '⚠️', '📊', '💡', '⭐']
+        required_tags = ['⏱️', '🐴', '📋', '📊', '💡', '⭐']
     else:
         required_tags = ['🔬', '🐴', '⚡', '📋', '🔗', '🚨', '📊', '💡', '⭐']
     
@@ -100,6 +100,40 @@ def check_au_hkjc_format(text: str, domain: str) -> list[str]:
         if '段速法醫' not in text:
             errors.append("⚠️ Missing 段速法醫 section — each horse analysis must include sectional forensics")
 
+    # ── WALL-025: Debut Classification Guard ──────────────────────────
+    # Only true zero-start debut horses use debut-specific language.
+    career_tag_matches = re.findall(r'生涯標記:\s*`(DEBUT)`\s*\(生涯\s*(\d+)\s*場\)', text)
+    if career_tag_matches:
+        banned_phrases = ['休出', '休後復出', 'First-up from spell', '休賽後', '長休復出',
+                         '休出後', '復出後']
+        for ctag, cstarts in career_tag_matches:
+            if int(cstarts) <= 5:
+                for phrase in banned_phrases:
+                    # Find if this phrase appears in the analysis text
+                    if phrase in text:
+                        errors.append(
+                            f"🚨 WALL-025: Career={cstarts} 場嘅馬匹唔應該被標記為「{phrase}」。"
+                            f"正確表述：「初出馬」或「生涯第 X 場」。")
+                        break  # one error per tag is enough
+
+    # ── WALL-026: DEBUT Rating Cap (A-) ───────────────────────────────
+    # Ensures DEBUT horses never exceed A- rating
+    debut_found = re.findall(r'生涯標記:\s*`DEBUT`', text)
+    if debut_found:
+        # Find all ratings in the document
+        rating_cap_order = {'S+':0,'S':1,'S-':2,'A+':3,'A':4,'A-':5,
+                           'B+':6,'B':7,'B-':8,'C+':9,'C':10,'C-':11,'D':12}
+        all_final_grades = re.findall(
+            r'⭐\s*\*?最終評級\*?[：:]\s*`?\[?([A-DS][+\-]?)\]?`?', text)
+        # This is a simplified check — matches debut markers to nearest grade
+        # In practice, the orchestrator ensures per-horse mapping
+        for grade in all_final_grades:
+            if rating_cap_order.get(grade, 99) < rating_cap_order.get('A-', 5):
+                # This could be a debut horse exceeding cap
+                errors.append(
+                    f"⚠️ WALL-026: 場中有 DEBUT 馬匹，但存在評級 [{grade}] 超過 A- 封頂。"
+                    f"請檢查 DEBUT 馬嘅最終評級是否符合 A- 封頂規則。")
+
     return errors
 
 def check_au_hkjc_words(text: str, domain: str) -> list[str]:
@@ -109,7 +143,7 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
     blocks = re.split(r'(?=(?:### 【No\.\d+】|\*\*【No\.\d+】|\[#\d+\] \w+))', text)
     
     if domain == 'au':
-        required_tags = ['⏱️', '🐴', '📋', '🧭', '⚠️', '📊', '💡', '⭐']
+        required_tags = ['⏱️', '🐴', '📋', '📊', '💡', '⭐']
     else:
         required_tags = ['🔬', '🐴', '⚡', '📋', '🔗', '📊', '💡', '⭐']
 
@@ -211,7 +245,7 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
         # Check Rating Matrix completeness to prevent anti-skipping
         req_matrix_fields = [
             '狀態與穩定性', '段速與引擎', '形勢與走位', '騎練訊號'
-        ] if domain == 'au' else ['穩定性', '段速質量', '形勢與走位', '練馬師訊號']
+        ] if domain == 'au' else ['穩定性', '段速質量', '形勢與走位', '騎練訊號']
         
         for field in req_matrix_fields:
             if field not in block:
@@ -267,14 +301,15 @@ def check_au_hkjc_words(text: str, domain: str) -> list[str]:
     )
     rank_cn = {'一':1,'二':2,'三':3,'四':4}
     if len(verdict_picks) >= 2:
+        # Check actual best grade in the field
+        all_grades = re.findall(r'⭐\s*\*?最終評級\*?[：:]\s*`?\[?([A-DS][+\-]?)\]?`?', text)
+        best_g_idx = min([grade_order_map.get(g, 99) for g in all_grades]) if all_grades else 99
+        
         prev_grade_idx = -1
         for cn_rank, grade in verdict_picks:
             r_num = rank_cn.get(cn_rank, 0)
             g_idx = grade_order_map.get(grade, 99)
-            if prev_grade_idx >= 0 and g_idx < prev_grade_idx:
-                # A higher-graded horse is ranked BELOW a lower-graded horse
-                pass  # This direction is fine (e.g., S at #2 after S+ at #1)
-            if r_num == 1 and g_idx >= 12:  # D+ or worse as #1
+            if r_num == 1 and g_idx > best_g_idx:
                 errors.append(f"🚨 LAZY-005 [SEVERE]: Verdict 第一選的評級為 [{grade}]，"
                               f"但場中存在更高評級馬匹。疑似 LLM 未按評級排序或使用了 placeholder verdict。")
             prev_grade_idx = g_idx

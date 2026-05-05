@@ -1,0 +1,123 @@
+/Users/imac/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+============================================================
+🛡️ Preflight Environment Check
+============================================================
+✅ 環境檢查通過 — 未發現可疑檔案
+
+============================================================
+🏇 HKJC Wong Choi Orchestrator — LangGraph Mode
+============================================================
+============================================================
+📋 CONTEXT INJECTION — 必讀規則 (Python 自動注入)
+============================================================
+
+🔴 規則 1：Python Lead
+   Orchestrator 控制所有流程。LLM 只負責填 Logic.json。
+   嚴禁自行決定做邊場邊匹。
+
+🔴 規則 2：逐匹分析
+   每匹馬必須讀 WorkCard → 分析 → 填 JSON。
+   嚴禁建立 auto_fill / batch_fill .py 腳本。
+
+🔴 規則 3：core_logic 品質
+   必須 ≥80 字、引用具體數據（日期/名次/L400/負磅）。
+   嚴禁寫「正常」「一般」等模板化語句。
+
+🔴 規則 4：如果做唔完
+   停止 + 通知用戶開新 Conversation。
+   絕對唔好為咗趕進度而降低分析質素。
+
+📖 完整規則: SETUP.md (L51-111)
+📖 機讀指令: engine_directives.md
+============================================================
+✅ Target: 2026-05-03_ShaTin
+✅ Races: 11
+
+✅ Checkpoint DB: langgraph_checkpoints.db
+🔄 Thread: 2026-05-03_shatin (checkpoint-enabled)
+✅ Raw data complete
+✅ Meeting Intelligence Package validated
+✅ All Facts.md already exist
+✅ Trackwork already exists (11/11)
+   ✅ Created Race_1_Logic.json ([FILL] / [FILL])
+   ✅ Speed Map injected (?)
+   ✅ SIP-AU-022: Speed Map 覆蓋率 93%
+
+============================================================
+📋 Race 1: 14 horses pending
+============================================================
+
+👉 LLM: Please analyse Horse #1 (果然僥倖)
+   📋 WorkCard: .runtime/Horse_1_WorkCard.md
+   ✏️ Target: Race_1_Logic.json → horses.1
+   🔴 REMINDER: Read WorkCard → Fill JSON → check_command_status → next horse. DO NOT stop or report progress. Python controls flow.
+
+👀 Python 正在監控 馬號 1... (每 3 秒 | 超時 60 分鐘)
+
+🚨 馬號 1 (果然僥倖) Firewall 失敗!
+   ❌ WALL-025B: 此馬已有正式賽績 (starts=7)，不可使用初出馬/無往績/評級封頂語言；請改用正常 V4.2 近績、段速、形勢、騎練模板。
+   ❌ STAB-TW-001: 晨操 status_continuity 已有 digest，但 stability/core_logic 未引用 maintenance_score 或晨操 flags。請用 50/50 方式合併賽績與晨操。
+   👉 請修正後儲存，Python 會自動重新驗證。
+
+🚨 馬號 1 (果然僥倖) Firewall 失敗!
+   ❌ WALL-025B: 此馬已有正式賽績 (starts=7)，不可使用初出馬/無往績/評級封頂語言；請改用正常 V4.2 近績、段速、形勢、騎練模板。
+   ❌ STAB-TW-001: 晨操 status_continuity 已有 digest，但 stability/core_logic 未引用 maintenance_score 或晨操 flags。請用 50/50 方式合併賽績與晨操。
+   👉 請修正後儲存，Python 會自動重新驗證。
+
+🚨 馬號 1 (果然僥倖) Firewall 失敗!
+   ❌ WALL-025B: 此馬已有正式賽績 (starts=7)，不可使用初出馬/無往績/評級封頂語言；請改用正常 V4.2 近績、段速、形勢、騎練模板。
+   ❌ STAB-TW-001: 晨操 status_continuity 已有 digest，但 stability/core_logic 未引用 maintenance_score 或晨操 flags。請用 50/50 方式合併賽績與晨操。
+   👉 請修正後儲存，Python 會自動重新驗證。
+
+🚨 馬號 1 (果然僥倖) Firewall 失敗!
+   ❌ WALL-025B: 此馬已有正式賽績 (starts=7)，不可使用初出馬/無往績/評級封頂語言；請改用正常 V4.2 近績、段速、形勢、騎練模板。
+   ❌ STAB-TW-001: 晨操 status_continuity 已有 digest，但 stability/core_logic 未引用 maintenance_score 或晨操 flags。請用 50/50 方式合併賽績與晨操。
+   👉 請修正後儲存，Python 會自動重新驗證。
+
+🚨 馬號 1 (果然僥倖) Firewall 失敗!
+   ❌ WALL-025B: 此馬已有正式賽績 (starts=7)，不可使用初出馬/無往績/評級封頂語言；請改用正常 V4.2 近績、段速、形勢、騎練模板。
+   ❌ STAB-TW-001: 晨操 status_continuity 已有 digest，但 stability/core_logic 未引用 maintenance_score 或晨操 flags。請用 50/50 方式合併賽績與晨操。
+   👉 請修正後儲存，Python 會自動重新驗證。
+
+🚨 馬號 1 (果然僥倖) Firewall 失敗!
+   ❌ WALL-025B: 此馬已有正式賽績 (starts=7)，不可使用初出馬/無往績/評級封頂語言；請改用正常 V4.2 近績、段速、形勢、騎練模板。
+   ❌ STAB-TW-001: 晨操 status_continuity 已有 digest，但 stability/core_logic 未引用 maintenance_score 或晨操 flags。請用 50/50 方式合併賽績與晨操。
+   👉 請修正後儲存，Python 會自動重新驗證。
+
+🚨 馬號 1 (果然僥倖) Firewall 失敗!
+   ❌ WALL-025B: 此馬已有正式賽績 (starts=7)，不可使用初出馬/無往績/評級封頂語言；請改用正常 V4.2 近績、段速、形勢、騎練模板。
+   ❌ STAB-TW-001: 晨操 status_continuity 已有 digest，但 stability/core_logic 未引用 maintenance_score 或晨操 flags。請用 50/50 方式合併賽績與晨操。
+   👉 請修正後儲存，Python 會自動重新驗證。
+
+🚨 馬號 1 (果然僥倖) Firewall 失敗!
+   ❌ WALL-025B: 此馬已有正式賽績 (starts=7)，不可使用初出馬/無往績/評級封頂語言；請改用正常 V4.2 近績、段速、形勢、騎練模板。
+   ❌ STAB-TW-001: 晨操 status_continuity 已有 digest，但 stability/core_logic 未引用 maintenance_score 或晨操 flags。請用 50/50 方式合併賽績與晨操。
+   👉 請修正後儲存，Python 會自動重新驗證。
+
+🚨 馬號 1 (果然僥倖) Firewall 失敗!
+   ❌ WALL-025B: 此馬已有正式賽績 (starts=7)，不可使用初出馬/無往績/評級封頂語言；請改用正常 V4.2 近績、段速、形勢、騎練模板。
+   ❌ STAB-TW-001: 晨操 status_continuity 已有 digest，但 stability/core_logic 未引用 maintenance_score 或晨操 flags。請用 50/50 方式合併賽績與晨操。
+   👉 請修正後儲存，Python 會自動重新驗證。
+
+🚨 馬號 1 (果然僥倖) Firewall 失敗!
+   ❌ WALL-025B: 此馬已有正式賽績 (starts=7)，不可使用初出馬/無往績/評級封頂語言；請改用正常 V4.2 近績、段速、形勢、騎練模板。
+   ❌ STAB-TW-001: 晨操 status_continuity 已有 digest，但 stability/core_logic 未引用 maintenance_score 或晨操 flags。請用 50/50 方式合併賽績與晨操。
+   👉 請修正後儲存，Python 會自動重新驗證。
+
+🚨 馬號 1 (果然僥倖) Firewall 失敗!
+   ❌ WALL-025B: 此馬已有正式賽績 (starts=7)，不可使用初出馬/無往績/評級封頂語言；請改用正常 V4.2 近績、段速、形勢、騎練模板。
+   ❌ STAB-TW-001: 晨操 status_continuity 已有 digest，但 stability/core_logic 未引用 maintenance_score 或晨操 flags。請用 50/50 方式合併賽績與晨操。
+   👉 請修正後儲存，Python 會自動重新驗證。
+
+🚨 馬號 1 (果然僥倖) Firewall 失敗!
+   ❌ WALL-025B: 此馬已有正式賽績 (starts=7)，不可使用初出馬/無往績/評級封頂語言；請改用正常 V4.2 近績、段速、形勢、騎練模板。
+   ❌ STAB-TW-001: 晨操 status_continuity 已有 digest，但 stability/core_logic 未引用 maintenance_score 或晨操 flags。請用 50/50 方式合併賽績與晨操。
+   👉 請修正後儲存，Python 會自動重新驗證。
+
+🚨 馬號 1 (果然僥倖) Firewall 失敗!
+   ❌ WALL-025B: 此馬已有正式賽績 (starts=7)，不可使用初出馬/無往績/評級封頂語言；請改用正常 V4.2 近績、段速、形勢、騎練模板。
+   ❌ STAB-TW-001: 晨操 status_continuity 已有 digest，但 stability/core_logic 未引用 maintenance_score 或晨操 flags。請用 50/50 方式合併賽績與晨操。
+   👉 請修正後儲存，Python 會自動重新驗證。
+
+🚨 馬號 1 (果然僥倖) Firewall 失敗!

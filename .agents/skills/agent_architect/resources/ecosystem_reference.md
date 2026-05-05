@@ -133,7 +133,7 @@ Agents that chain to downstream agents output structured CSV blocks:
 |-------|------|----------|------------|
 | **Wong Choi** (HKJC/AU) | V4 Python-First orchestrator. 執行 `orchestrator.py`，LLM 只負責填寫 `[FILL]` 欄位。Python 狀態機控制 extraction → analysis → QA → verdict 全流程。 | User input / race URL | Python Orchestrator → Horse Analyst (LLM fill) |
 | **Race Extractor** (HKJC/AU) | Raw data extraction from race cards and form guides via Python scripts. | URL / PDF | Horse Analyst |
-| **Horse Analyst** (HKJC/AU) | Deep per-horse analysis with algorithmic engine, forensic evaluation, EEM. Outputs Top 3-4 selections. | Extractor data + `.runtime/Active_Horse_Context.md` | Python Orchestrator (QA built-in) |
+| **Horse Analyst** (HKJC/AU) | Deep per-horse analysis with algorithmic engine, forensic evaluation, 形勢與走位. Outputs Top 3-4 selections. | Extractor data + `.runtime/Active_Horse_Context.md` | Python Orchestrator (QA built-in) |
 | **Reflector V2** (HKJC/AU) | Python-First 10-Step 覆盤引擎。合併原 Reflector + Validator。Python 做統計/Calibration/MC Re-run，LLM 做深度分析/SIP BAKE。含 Market Edge Analysis + Walk-Forward Validation + MC Parameter Check。 | Race results + Analyst predictions + MC logic.json | User (覆盤報告 + SIP proposals) |
 | **Racecourse Weather Prediction** (AU) | Weather and track condition forecasting. | Race date + venue | Wong Choi / Analyst |
 | **Agent Architect** | Meta-agent. Designs, optimises, and audits agents (4 modes: Build/Optimise/Audit/Debug). Agent Health Check. | User requirements | New/updated SKILL.md |

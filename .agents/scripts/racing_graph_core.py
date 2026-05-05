@@ -18,6 +18,7 @@ sys.path.insert(0, _SCRIPT_DIR)
 from racing_graph_state import MeetingState
 from racing_graph_nodes import (
     node_check_raw_data, node_check_intelligence, node_generate_facts,
+    node_extract_trackwork,
     node_setup_race, node_generate_workcard, node_watch_and_validate,
     node_batch_qa, node_global_qa, node_compute_verdict,
     node_compile_analysis, node_run_monte_carlo, node_final_qa,
@@ -41,10 +42,14 @@ def route_after_intel_check(state: MeetingState) -> Literal["gen_facts", "__end_
     return "__end__"
 
 
-def route_after_facts(state: MeetingState) -> Literal["setup_race", "__end__"]:
+def route_after_facts(state: MeetingState) -> Literal["extract_trackwork", "__end__"]:
     if state.get("facts_ready"):
-        return "setup_race"
+        return "extract_trackwork"
     return "__end__"
+
+
+def route_after_trackwork(state: MeetingState) -> Literal["setup_race"]:
+    return "setup_race"
 
 
 def route_after_setup(state: MeetingState) -> Literal["gen_workcard", "global_qa"]:
@@ -130,6 +135,7 @@ def build_au_racing_graph(checkpoint_db=None):
     builder.add_node("check_raw", node_check_raw_data)
     builder.add_node("check_intel", node_check_intelligence)
     builder.add_node("gen_facts", node_generate_facts)
+    builder.add_node("extract_trackwork", node_extract_trackwork)
     builder.add_node("setup_race", node_setup_race)
     builder.add_node("gen_workcard", node_generate_workcard)
     builder.add_node("watch_validate", node_watch_and_validate)
@@ -149,6 +155,7 @@ def build_au_racing_graph(checkpoint_db=None):
     builder.add_conditional_edges("check_raw", route_after_raw_check)
     builder.add_conditional_edges("check_intel", route_after_intel_check)
     builder.add_conditional_edges("gen_facts", route_after_facts)
+    builder.add_conditional_edges("extract_trackwork", route_after_trackwork)
     builder.add_conditional_edges("setup_race", route_after_setup)
 
     # workcard → watch
@@ -241,6 +248,8 @@ def run_au_langgraph(target_dir, url=None, checkpoint_db=None):
         "raw_data_ready": False,
         "intelligence_ready": False,
         "facts_ready": False,
+        "trackwork_ready": False,
+        "trackwork_status": "",
         "races": {},
         "current_race": 1,
         "current_horse": None,
@@ -321,6 +330,8 @@ def run_hkjc_langgraph(target_dir, url=None, checkpoint_db=None):
         "raw_data_ready": False,
         "intelligence_ready": False,
         "facts_ready": False,
+        "trackwork_ready": False,
+        "trackwork_status": "",
         "races": {},
         "current_race": 1,
         "current_horse": None,

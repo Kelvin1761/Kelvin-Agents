@@ -52,7 +52,7 @@ ag_kit_skills:
 - 🆕 **Market Edge:** 模型 vs 市場 favourite 分歧 + 分歧命中率
 
 **🧠 LLM 深度分析（只限問題場次）：**
-- 步速 / 場地 / EEM / 騎師 / 練馬師訊號 / 寬恕檔案 逐項審查
+- 步速 / 場地 / 形勢與走位 / 騎師 / 練馬師訊號 / 寬恕檔案 逐項審查
 
 ## Step 3.5: 載入 Analyst 引擎規則 (🧠)
 讀取 Horse Analyst 核心檔案，確保 SIP 能精確引用具體 Step / 規則：

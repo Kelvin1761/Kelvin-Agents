@@ -78,14 +78,14 @@
     <action>全面封殺所有 `Under` 盤口推介。只准推介 `X+` (Over) 階梯盤。</action>
   </rule>
 
-  <rule id="P43" name="SGM Odds &amp; EV Enforcement">
+  <rule id="P43" name="SGM Odds &amp; EV Enforcement (V4 Multi-Leg)">
     <action>
-      1. 組合 1 (🛡️ 穩膽 SGM)：每腿 L10 命中率必須 ≥70%、Edge 必須 ≥0%，且全組賠率必須 ≥ 2.0x。若含有高波幅的「神經刀」球員，必須無條件剔除！
-      2. 組合 2 (🔥 +EV 價值膽)：每腿 Edge 必須 ≥3%，全組賠率必須 ≥ 3.0x，目標朝向 5x。如有任何 Negative EV 或低於要求之賠率，必須重新選擇。
-      3. 組合 3 (💎 高倍率進取型)：每腿 Edge 必須 ≥0%，全組賠率必須 ≥ 8.0x，可包含高回報風險項目。
-      4. 組合 X (💣 Value Bomb)：條件觸發。只有當系統掃描到單一盤口 Edge ≥ 10% 並通過 MC Edge ≥5% 或 L5/L10 一致性檢查時，才獨立抽出展示。
+      1. 組合 1 (🛡️ 穩膽 SGM)：3-5 腿，每腿 L10 ≥80% + L5 ≥80%、Edge ≥0%、均值超線 ≥15%，全組賠率 2.0-3.5x。神經刀/替補風險/L3低於Line 嚴禁。Fallback 容許 L10 ≥70% 但限 2-4 腿。
+      2. 組合 2 (🔥 價值膽 Multi-Leg)：4-8 腿，每腿 L10 ≥70% + L5 ≥70%、Edge ≥0%、均值超線 ≥10%，全組賠率目標 4.0-8.0x。神經刀/替補風險嚴禁。
+      3. 組合 3 (💎 高倍率穩定堆疊)：5-10 腿，每腿 L10 ≥70% + L5 ≥70%、Edge ≥0%，全組賠率目標 8.0-15.0x。神經刀/替補風險嚴禁。同隊最多 4 隻。
+      4. 組合 X (💣 Value Bomb)：4-6 腿。安全基座 L10 ≥80% + L5 ≥70% + 1-2 隻 Edge ≥10% 炸彈腿（L10 ≥60%）。全組賠率 10.0-25.0x。
       5. Team market (ML / Spread / Total) 不可混入 player milestone SGM 自動組合。
-      6. 同隊 PTS Over 最多 2 腿，避免球權天花板衝突。
+      6. 同隊 PTS Over 最多 2 腿，避免球權天花板衝突。同隊總 Leg 上限 4-5 隻（跨隊分散原則）。
     </action>
   </rule>
 
@@ -138,6 +138,39 @@
       python .agents/skills/nba/nba_wong_choi/scripts/validate_nba_output.py {FILE_PATH}
       任何 ❌ BLOCKED 結果 → 必須立即重寫該報告。
       嚴禁提交未通過防火牆檢查嘅報告。
+    </action>
+  </rule>
+
+  <rule id="SIP-N01" name="Bench Minutes Risk Guard (Reflector 04-24)">
+    <action>
+      1. 季後賽替補球員若 L10 平均上場分鐘 < 25，標記為 BENCH_MINUTES_RISK。
+      2. BENCH_MINUTES_RISK 球員嚴禁進入穩膽 (組合 1) tier。
+      3. 若讓分盤 > 10 (BLOWOUT 風險場)，替補分鐘風險球員預期勝率額外 -10%。
+      4. Python generate_nba_reports.py 已自動執行此規則。LLM 喺填寫 [FILL] 時亦須標記風險。
+    </action>
+  </rule>
+
+  <rule id="SIP-N02" name="MC vs 8-Factor Divergence Alert (Reflector 04-24)">
+    <action>
+      1. 當 MC 命中率同 8-Factor 預期勝率分歧 > 30%，觸發 DIVERGENCE_ALERT。
+      2. DIVERGENCE_ALERT Leg 不得進入穩膽 (組合 1)。
+      3. LLM 喺分析時須標記 ⚠️ DIVERGENCE_ALERT 並解釋分歧原因。
+    </action>
+  </rule>
+
+  <rule id="SIP-N04" name="Trend Decline Protection (Reflector 04-24)">
+    <action>
+      1. 若 L1（最近一場）低於 Line 且趨勢標記為 📉下降，預期勝率額外 -10%。
+      2. 若 L3 均值 < Line，不論 L10 命中率，禁止進入穩膽 (組合 1) tier。
+      3. Python calc_adjusted_winprob() 已包含 sip_n04_trend_protect 因子。
+    </action>
+  </rule>
+
+  <rule id="SIP-N05" name="High CoV 3PM Restriction (Reflector 04-24)">
+    <action>
+      1. CoV > 0.5 嘅三分線 (3PM) Leg 禁止進入任何 SGM 自動組合。
+      2. 三分本身已高波動，高 CoV 令預測不可靠。
+      3. Python build_leg_candidates() 已自動過濾。
     </action>
   </rule>
 </nba_specific_directives>

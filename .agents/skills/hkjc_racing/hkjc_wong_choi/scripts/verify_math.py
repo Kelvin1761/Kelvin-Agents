@@ -39,22 +39,24 @@ GRADE_ORDER = ['S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+
 
 DIMENSION_CATEGORIES = {
     # AU Wong Choi dimension names
-    '狀態與穩定性': 'core',
+    '狀態與穩定性': 'semi_core',
     '段速與引擎': 'core',
     '形勢與走位': 'semi_core',
     '風向形勢': 'semi_core',      # Straight sprint variant
-    '騎練訊號': 'semi_core',
+    '騎練訊號': 'core',
     '級數與負重': 'aux',
     '場地適性': 'aux',
     '賽績線': 'aux',
     '裝備與距離': 'aux',
-    # HKJC Wong Choi dimension names
-    '穩定性': 'core',
+    # HKJC Wong Choi dimension names (V3 integrated format)
+    '位置穩定性': 'semi_core',
+    '穩定性': 'semi_core',
     '段速質量': 'core',
     '形勢與走位(潛力)': 'semi_core',
     '形勢與走位(潛力v2)': 'semi_core',
+    '形勢與走位': 'semi_core',
     'race_shape': 'semi_core',
-    '練馬師訊號': 'semi_core',
+    '練馬師訊號': 'core',
     '情境適配': 'aux',
     '路程/新鮮度': 'aux',
     '路程': 'aux',
@@ -63,11 +65,16 @@ DIMENSION_CATEGORIES = {
 }
 
 # Regex patterns for dimension lines in the rating matrix
-# Matches both AU and HKJC formats:
-#   - **狀態與穩定性** [核心]: `[✅]` | ...
-#   - 穩定性 [核心]: `❌` | ...
+# Matches flat format, sub-heading format, and various AU/HKJC styles:
+#   - **狀態與穩定性** [核心]: `[✅]` | ...      (old flat)
+#   - 穩定性 [核心]: `❌` | ...                  (old flat)
+#   ##### 位置穩定性 [核心]: `✅`              (V3 sub-heading)
 MATRIX_LINE_RE = re.compile(
+    r'(?:'
     r'-\s*\*?\*?(.+?)\*?\*?\s*\[(?:核心|半核心|輔助|輔助\(可選\))\]'
+    r'|'
+    r'#{5}\s+(.+?)\s*\[(?:核心|半核心|輔助|輔助\(可選\))\]'
+    r')'
     r'[：:]\s*[`\s\[]*([✅➖❌]|不計入)',
     re.UNICODE
 )
@@ -171,8 +178,9 @@ def parse_matrix(block: str) -> list:
     matrix_text = block[matrix_start:matrix_end]
 
     for match in MATRIX_LINE_RE.finditer(matrix_text):
-        dim_name = match.group(1).strip().rstrip('*').lstrip('*').strip()
-        verdict = match.group(2)
+        # group(1) = flat format name, group(2) = ##### format name, group(3) = verdict
+        dim_name = (match.group(1) or match.group(2) or '').strip().rstrip('*').lstrip('*').strip()
+        verdict = match.group(3)
         category = categorize_dimension(dim_name)
         dims.append(DimensionResult(
             name=dim_name,

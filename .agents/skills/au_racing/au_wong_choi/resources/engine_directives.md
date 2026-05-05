@@ -39,7 +39,7 @@
         <description>嚴格的多 Tool call 批次執行結構定義。</description>
         <protocol>
             Step 1: 先計算 BATCH_PLAN（例如 7匹馬 = Batch 1[3匹] + Batch 2[3匹] + Batch 3[1匹] + Verdict Batch）。
-            Step 1b: 生成 Speed Map 初稿 `python3 .agents/scripts/au_speed_map_generator.py <Racecard.md> --distance <Distance>`（Windows 或已配置環境可用 `python`）
+            Step 1b: Speed Map 以 Facts Engine `inject_fact_anchors.py` 內 EEM/video + settled-position 模型為準；只有 Facts speed_map 缺失時，才可用 `python3 .agents/scripts/au_speed_map_generator.py <Racecard.md> --distance <Distance>` 生成低信心人工 fallback（Windows 或已配置環境可用 `python`）。Fallback 禁止用 Last10 完賽名次當跑法主證據。
             Step 2: 每個 batch 前必須強制 `view_file` 讀取 `06_templates_core.md` 作為骨架。
             Step 3: 使用 Safe-Writer Protocol（Python base64 寫法）。
             Step 4: 每次執行後必須留有 `🔒 BATCH_QA_RECEIPT`。
@@ -70,7 +70,7 @@
             2. 反跑位混淆 (SETTLED ≠ FINISHED)：Formguide 中的 Settled 位置絕對不等於名次，名次必須以 Facts.md 內的 Last 10 數值為準。
             3. 反試閘混淆 (TRIAL_AWARENESS)：若賽績標示為 Trial，該場次不算數，名次必須向上一仗追溯。
             4. 反錨定偏差 (RATING_BLINDNESS)：必須先完成賽績法醫再參考 Rating 及配搭，嚴禁因為騎練名氣盲目提升評級。
-            5. 反賠率偏差 (ODDS_INDEPENDENCE)：在評估完 8 維度矩陣之前，嚴禁參考 Flucs 賠率（賠率只在 Value Check 時使用）。
+            5. 反賠率偏差 (ODDS_INDEPENDENCE)：在評估完 V4.2 7 維度矩陣之前，嚴禁參考 Flucs 賠率（賠率只在 Value Check 時使用）。
         </rules>
     </directive>
     

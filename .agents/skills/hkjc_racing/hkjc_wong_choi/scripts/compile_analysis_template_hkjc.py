@@ -22,30 +22,65 @@ import re
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'scripts')))
 import generate_skeleton as gs
 
-# ── ABCD 正規字母評級系統 (from compute_rating_matrix_hkjc.py) ──────────
-GRADE_ORDER = ['S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D']
+# ── ABCD 正規字母評級系統 (V4.2: S-tier only via ✅✅ promotion) ──────────
+GRADE_ORDER = ['S+', 'S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D']
 
 # Map JSON matrix key → compute_rating dimension key
 MATRIX_TO_DIM = {
     'stability':       'stability',
     'speed_mass':      'sectional',
+    'sectional':       'sectional',
     'race_shape':             'race_shape',
     'trainer_jockey':  'trainer_signal',
-    'scenario':        'scenario',
-    'freshness':       'distance_freshness',
+    'trainer_signal':  'trainer_signal',
+    'freshness':       'horse_health',
+    'distance_freshness': 'horse_health',
+    'horse_health':    'horse_health',
     'formline':        'form_line',
+    'form_line':       'form_line',
     'class_advantage': 'class_advantage',
 }
 
 DIMENSION_TYPES = {
-    'stability':          'core',
+    'stability':          'semi_core',
     'sectional':          'core',
     'race_shape':                'semi_core',
-    'trainer_signal':     'semi_core',
-    'scenario':           'auxiliary',
+    'trainer_signal':     'core',
+    'horse_health':       'auxiliary',
     'distance_freshness': 'auxiliary',
     'form_line':          'auxiliary',
     'class_advantage':    'auxiliary',
+}
+
+MATRIX_TEMPLATE_HINTS = {
+    'stability': [
+        '近6場/全賽績穩定性、名次波動、頭馬距離趨勢',
+        '醫療事故作廢規則：有事故場次要先判斷可否納入',
+    ],
+    'sectional': [
+        '引擎類型、L400/L600、全段速剖面 Δ、完成時間偏差',
+        '距離證據 / Sire AWD / 首試路程風險已併入此維度',
+    ],
+    'race_shape': [
+        '檔位統計、今日預計位置、近仗走位消耗/受阻',
+        '此維度不以步速作主要評分理由；步速只保留於 race-level speed map / sectional / Top4 情境保險',
+    ],
+    'trainer_signal': [
+        '練馬師部署、騎師配搭、近6場騎師歷史、換騎效應',
+        '配備變動 / Gear Reset / 配備意圖已併入此維度',
+    ],
+    'horse_health': [
+        '休賽日數、體重趨勢、健康掃描、場地轉換新鮮感',
+        '健康事故需以復原證據判斷，不能直接當作永久扣分',
+    ],
+    'form_line': [
+        'Facts.md 賽績線強度、對手後續表現、強組/弱組判定',
+        '中組 / N/A 可視為不計入，避免硬塞 ✅/❌',
+    ],
+    'class_advantage': [
+        '班次升降、評分趨勢、負磅甜蜜點、頂磅壓力',
+        '負重/班次若已打 ✅，不可再用同一因素微調升級',
+    ],
 }
 
 def _score_to_tick(score):
@@ -75,7 +110,7 @@ def _score_to_tick(score):
         return '❌❌'
 
 def _count_dimensions(dims: dict) -> dict:
-    """Count dimensions with 5-tier support. ✅✅=2✅, ❌❌=2❌."""
+    """Count dimensions with 5-tier display. ✅✅/❌❌ count as one pass/fail."""
     counts = {
         'core_strong': 0, 'core_neutral': 0, 'core_weak': 0,
         'semi_strong': 0, 'semi_neutral': 0, 'semi_weak': 0,
@@ -93,16 +128,16 @@ def _count_dimensions(dims: dict) -> dict:
             continue
         dim_type = DIMENSION_TYPES.get(dim_key, 'auxiliary')
         if v == '✅✅':
-            counts['total_strong'] += 2
+            counts['total_strong'] += 1
             counts['total_dbl_strong'] += 1
             if dim_type == 'core':
-                counts['core_strong'] += 2
+                counts['core_strong'] += 1
                 counts['core_dbl_strong'] += 1
             elif dim_type == 'semi_core':
-                counts['semi_strong'] += 2
+                counts['semi_strong'] += 1
                 counts['semi_dbl_strong'] += 1
             else:
-                counts['aux_strong'] += 2
+                counts['aux_strong'] += 1
                 counts['aux_dbl_strong'] += 1
         elif v == '✅':
             counts['total_strong'] += 1
@@ -116,14 +151,14 @@ def _count_dimensions(dims: dict) -> dict:
                 counts['aux_strong'] += 1
                 counts['aux_single_strong'] += 1
         elif v == '❌❌':
-            counts['total_weak'] += 2
+            counts['total_weak'] += 1
             counts['total_dbl_weak'] += 1
             if dim_type == 'core':
-                counts['core_weak'] += 2
+                counts['core_weak'] += 1
                 counts['has_core_weak'] = True
                 counts['has_core_double_weak'] = True
-            elif dim_type == 'semi_core': counts['semi_weak'] += 2
-            else: counts['aux_weak'] += 2
+            elif dim_type == 'semi_core': counts['semi_weak'] += 1
+            else: counts['aux_weak'] += 1
         elif v == '❌':
             counts['total_weak'] += 1
             if dim_type == 'core':
@@ -139,14 +174,13 @@ def _count_dimensions(dims: dict) -> dict:
 
 def _lookup_base_grade(c: dict) -> tuple:
     cs, ss, axs, tw = c['core_strong'], c['semi_strong'], c['aux_strong'], c['total_weak']
+    # V4.2: full-house ordinary package is A+. S-tier is promotion-only.
     if cs >= 2 and ss >= 2 and axs >= 2 and tw == 0:
-        return 'S', f'2核心✅ + 2半核心✅ + {axs}輔助✅ + 0❌'
-    if cs >= 2 and ss >= 1 and axs >= 1 and tw == 0:
-        return 'S-', f'2核心✅ + {ss}半核心✅ + {axs}輔助✅ + 0❌'
+        return 'A+', f'2核心✅ + 2半核心✅ + {axs}輔助✅ + 0❌ (全滿)'
     if cs >= 2 and tw == 0:
-        return 'A+', f'2核心✅ + 0❌'
+        return 'A', f'2核心✅ + 0❌'
     if (cs >= 1 and ss >= 1 and tw == 0) or (cs >= 2 and tw <= 1):
-        return 'A', f'{cs}核心✅ + {ss}半核心✅ + {tw}❌'
+        return 'A-', f'{cs}核心✅ + {ss}半核心✅ + {tw}❌'
     if cs >= 1 and tw <= 1:
         return 'A-', f'{cs}核心✅ + ❌≤1'
     if (cs >= 1 and tw == 2) or (ss >= 2 and tw <= 1):
@@ -185,63 +219,156 @@ def _apply_core_constraint(grade: str, counts: dict, dims: dict) -> tuple:
 
 def _apply_micro(grade: str, direction: str) -> tuple:
     i = _grade_idx(grade)
-    if direction == 'UP' and i > 0:
+    if direction in ('UP', '+', '升', '升一級') and i > 0:
         return GRADE_ORDER[i - 1], '升一級'
-    elif direction == 'DOWN' and i < len(GRADE_ORDER) - 1:
+    elif direction in ('DOWN', '-', '降', '降一級') and i < len(GRADE_ORDER) - 1:
         return GRADE_ORDER[i + 1], '降一級'
     return grade, '無變動'
+
+
+def _is_debut_runner_hkjc(h_logic: dict) -> bool:
+    if h_logic.get('debut_runner', False) or h_logic.get('is_debut', False):
+        return True
+    if str(h_logic.get('career_tag', '')).upper() == 'DEBUT':
+        return True
+    try:
+        return int(h_logic.get('career_race_starts', h_logic.get('hk_starts', 999))) == 0
+    except (TypeError, ValueError):
+        return False
+
+
+def _apply_debut_cap_hkjc(grade: str, h_logic: dict) -> tuple:
+    """Debut runners keep normal matrix arithmetic but cannot exceed A."""
+    if not _is_debut_runner_hkjc(h_logic):
+        return grade, ''
+    if _grade_idx(grade) < _grade_idx('A'):
+        return 'A', f'初出馬封頂: 7維矩陣照計，但 final rating 最高A ({grade}→A)'
+    return grade, '初出馬封頂檢查: 未超過A'
+
+def _apply_double_strong_promotion(grade: str, counts: dict) -> tuple:
+    """Promote A+ to S-tier only via core/semi-core ✅✅ conviction evidence."""
+    if grade != 'A+':
+        return grade, ''
+    steps = min(counts.get('core_dbl_strong', 0), 2)
+    if counts.get('semi_dbl_strong', 0) >= 2:
+        steps += 1
+    if steps <= 0:
+        return grade, ''
+    promo_map = {1: 'S-', 2: 'S', 3: 'S+'}
+    final = promo_map.get(min(steps, 3), 'S+')
+    return final, f'✅✅推進+{min(steps, 3)} → {final}'
 
 def _infer_ticks_from_rating(rating: str) -> dict:
     """When matrix is absent, infer reasonable dimension ticks from final_rating string."""
     r = rating.strip() if rating else ''
-    # S / S- / A+ / A : mostly ✅✅ or ✅
-    if r in ('S', 'S-', 'A+'):
+    # S-tier / A+ : mostly ✅✅ or ✅
+    if r in ('S+', 'S', 'S-', 'A+'):
         return {'stability': '✅✅', 'sectional': '✅✅', 'race_shape': '✅',
-                'trainer_signal': '✅', 'scenario': '✅', 'distance_freshness': '✅',
+                'trainer_signal': '✅', 'horse_health': '✅',
                 'form_line': '✅', 'class_advantage': '✅'}
     if r in ('A',):
         return {'stability': '✅✅', 'sectional': '✅', 'race_shape': '✅',
-                'trainer_signal': '✅', 'scenario': '✅', 'distance_freshness': '➖',
+                'trainer_signal': '✅', 'horse_health': '➖',
                 'form_line': '✅', 'class_advantage': '➖'}
     if r in ('A-',):
         return {'stability': '✅', 'sectional': '✅', 'race_shape': '✅',
-                'trainer_signal': '➖', 'scenario': '➖', 'distance_freshness': '➖',
+                'trainer_signal': '➖', 'horse_health': '➖',
                 'form_line': '✅', 'class_advantage': '➖'}
     if r in ('B+',):
         return {'stability': '✅', 'sectional': '➖', 'race_shape': '✅',
-                'trainer_signal': '✅', 'scenario': '➖', 'distance_freshness': '➖',
+                'trainer_signal': '✅', 'horse_health': '➖',
                 'form_line': '➖', 'class_advantage': '➖'}
     if r in ('B',):
         return {'stability': '➖', 'sectional': '✅', 'race_shape': '➖',
-                'trainer_signal': '✅', 'scenario': '➖', 'distance_freshness': '➖',
+                'trainer_signal': '✅', 'horse_health': '➖',
                 'form_line': '➖', 'class_advantage': '➖'}
     if r in ('B-', 'C+', 'C'):
         return {'stability': '➖', 'sectional': '➖', 'race_shape': '➖',
-                'trainer_signal': '➖', 'scenario': '➖', 'distance_freshness': '➖',
+                'trainer_signal': '➖', 'horse_health': '➖',
                 'form_line': '➖', 'class_advantage': '➖'}
     if r in ('C-', 'D+', 'D', 'D-', 'E', 'E-'):
         return {'stability': '❌', 'sectional': '❌', 'race_shape': '❌',
-                'trainer_signal': '❌', 'scenario': '❌', 'distance_freshness': '❌',
+                'trainer_signal': '❌', 'horse_health': '❌',
                 'form_line': '❌', 'class_advantage': '❌'}
     return {k: '➖' for k in MATRIX_TO_DIM.values()}
 
 
 def _build_synthetic_matrix_reasoning(h_logic: dict) -> dict:
-    """Build reasoning strings from analytical_breakdown when matrix is missing."""
-    ab = h_logic.get('analytical_breakdown', {})
-    forg = h_logic.get('forgiveness_archive', {})
-    # Map each matrix dimension → best available analytical_breakdown text
+    """Build reasoning strings from matrix reasoning when available, empty fallback otherwise."""
+    matrix = h_logic.get('matrix', {})
+    result = {}
+    for key in ['stability', 'sectional', 'race_shape', 'trainer_signal', 'horse_health', 'form_line', 'class_advantage']:
+        item = matrix.get(key, {})
+        result[key] = item.get('reasoning', '') if isinstance(item, dict) else ''
+    return result
+
+
+def _extract_matrix_reason_parts(reasoning_raw: str) -> tuple:
+    """Split V4.2 matrix reasoning into evidence bullets and final judgement."""
+    evidence_parts = []
+    verdict_text = ''
+    for part in str(reasoning_raw or '').split('\n'):
+        part = part.strip()
+        if not part:
+            continue
+        if part.startswith('→ [判讀:') or part.startswith('→ [判讀：'):
+            verdict_text = part.replace('→ [判讀:', '').replace('→ [判讀：', '').rstrip(']').strip()
+            continue
+        if part.startswith('[') and part.endswith(']'):
+            evidence_parts.append(part[1:-1].strip())
+        else:
+            evidence_parts.append(part)
+    if not verdict_text and evidence_parts:
+        verdict_text = evidence_parts[-1]
+        evidence_parts = evidence_parts[:-1]
+    evidence_parts = [p for p in evidence_parts if p and p != verdict_text]
+    return evidence_parts, verdict_text
+
+def _zh_trackwork_status(value: str) -> str:
+    return {'ok': '已提取', 'partial': '部分提取', 'missing': '缺資料', 'failed': '提取失敗'}.get(str(value), str(value))
+
+def _zh_trackwork_category(value: str) -> str:
     return {
-        'stability':       ab.get('stability_risk', ab.get('trend_analysis', '見馬匹剖析')),
-        'speed_mass':      ab.get('pace_adaptation', ab.get('trend_analysis', '見馬匹剖析')),
-        'race_shape':             ab.get('trend_analysis', '見形勢走位'),
-        'trainer_jockey':  (ab.get('trainer_signal', '') + ' ' + ab.get('jockey_fit', '')).strip() or '見馬匹剖析',
-        'scenario':        ab.get('pace_adaptation', ab.get('track_distance_suitability', '見步速分析')),
-        'freshness':       ab.get('track_distance_suitability', ab.get('engine_distance', '見路程適性')),
-        'formline':        ab.get('hidden_form', ab.get('class_assessment', '見賽績線')),
-        'class_advantage': ab.get('class_assessment', '見級數評估'),
-        'forgiveness':     forg.get('conclusion', forg.get('factors', '見完整賽績檔案')),
-    }
+        'status_continuity': '狀態延續',
+        'pattern_replay': '翻案復刻',
+        'debut_pressure': '初出備戰',
+        'insufficient_data': '資料不足',
+    }.get(str(value), str(value))
+
+def _zh_trackwork_trend(value: str) -> str:
+    return {'improving': '加強中', 'stable': '穩定', 'easing': '放緩', 'interrupted': '中斷', 'unknown': '未明'}.get(str(value), str(value))
+
+def _first_reason(matrix: dict, key: str) -> str:
+    item = matrix.get(key, {}) if isinstance(matrix, dict) else {}
+    if not isinstance(item, dict):
+        return ''
+    evidence, verdict = _extract_matrix_reason_parts(item.get('reasoning', ''))
+    return verdict or (evidence[-1] if evidence else '')
+
+def _matrix_score_value(matrix_data, key):
+    item = (matrix_data or {}).get(key, {})
+    return str(item.get('score', '') if isinstance(item, dict) else item)
+
+def _race_shape_risk(matrix_data):
+    score = _matrix_score_value(matrix_data, 'race_shape')
+    if '❌' in score:
+        return 2
+    if '➖' in score or not score:
+        return 1
+    return 0
+
+def _top2_sort_tuple(grade_i, counts, matrix_data, horse_num):
+    h_num_sort = int(horse_num) if str(horse_num).isdigit() else 999
+    return (
+        grade_i,
+        -counts.get('core_strong', 0),
+        -counts.get('total_dbl_strong', 0),
+        counts.get('total_weak', 0),
+        counts.get('core_weak', 0),
+        _race_shape_risk(matrix_data),
+        -counts.get('total_strong', 0),
+        h_num_sort,
+    )
 
 
 def _compute_letter_grade(m_data: dict, h_logic: dict) -> dict:
@@ -269,8 +396,8 @@ def _compute_letter_grade(m_data: dict, h_logic: dict) -> dict:
     forg_item = m_data.get('forgiveness_bonus', {})
     forg_tick = _score_to_tick(forg_item.get('score', 0))
     if forg_tick == '✅✅':
-        counts['aux_strong'] += 2
-        counts['total_strong'] += 2
+        counts['aux_strong'] += 1
+        counts['total_strong'] += 1
         counts['aux_dbl_strong'] += 1
         counts['total_dbl_strong'] += 1
     elif forg_tick == '✅':
@@ -300,6 +427,15 @@ def _compute_letter_grade(m_data: dict, h_logic: dict) -> dict:
         adjusted_grade, micro_note = constrained_grade, '無 (matrix缺失，直接引用評級)'
     else:
         adjusted_grade, micro_note = _apply_micro(constrained_grade, ft_dir.upper())
+        promoted_grade, promo_note = _apply_double_strong_promotion(adjusted_grade, counts)
+        if promo_note:
+            adjusted_grade = promoted_grade
+            micro_note = f'{micro_note}; {promo_note}'
+
+    capped_grade, debut_note = _apply_debut_cap_hkjc(adjusted_grade, h_logic)
+    if debut_note:
+        adjusted_grade = capped_grade
+        micro_note = f'{micro_note}; {debut_note}'
 
     return {
         'dims': dims,
@@ -409,22 +545,9 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
     # rating/final_rating will be computed by ABCD grade system below (Section 9-10)
     rating = '[待計算]'
     final_rating = '[待計算]'
-    # Build advantages/disadvantages from analytical_breakdown when dedicated keys are absent
-    _ab = h_logic.get('analytical_breakdown', {})
-    _default_advantages = (
-        _ab.get('track_distance_suitability', '') or
-        _ab.get('hidden_form', '') or
-        _ab.get('trend_analysis', '') or
-        '見馬匹剖析'
-    )
-    _default_disadvantages = (
-        _ab.get('stability_risk', '') or
-        _ab.get('pace_adaptation', '') or
-        _ab.get('class_assessment', '') or
-        '見馬匹剖析'
-    )
-    disadvantages = h_logic.get('disadvantages', h_logic.get('risk_level', _default_disadvantages))
-    advantages = h_logic.get('advantages', h_logic.get('competitive_advantage', _default_advantages))
+    # Build advantages/disadvantages — V4.2: matrix-only, no analytical_breakdown fallback
+    disadvantages = h_logic.get('disadvantages', h_logic.get('risk_level', '見評級矩陣'))
+    advantages = h_logic.get('advantages', h_logic.get('competitive_advantage', '見評級矩陣'))
     fgv = h_logic.get('scenario_tags', '無')
 
     # ── 1. 馬匹標題 + 情境標記 ──────────────────────────────────────────
@@ -449,99 +572,123 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
     else:
         lines.append('#### 📋 完整賽績檔案: (無往績記錄)\n')
 
-    # ── 4. 馬匹剖析 (V2 整合結構 — 含段速/形勢/檔位/ANCHOR) ──────────────────
-    h_analysis = h_logic.get('analytical_breakdown', {})
-    sf = h_logic.get('sectional_forensic', {})
-    race_shape = h_logic.get('race_shape', {})
-    lines.append('#### 🐴 馬匹剖析')
-    lines.extend([
-        f"- **穩定性/贏馬回落 (Step 5):** {h_analysis.get('stability_risk', '[N/A]')}",
-        f"- **級數評估 (Step 8.1):** {h_analysis.get('class_assessment', '[N/A]')}",
-        f"- **路程場地適性 (Step 2):** {h_analysis.get('track_distance_suitability', '[N/A]')}",
-        f"- **引擎距離 (Step 2.6):** {h_analysis.get('engine_distance', '[N/A]')}",
-        f"- **體重趨勢:** {h_analysis.get('weight_trend', '[N/A]')}",
-        f"- **配備變動 (Step 6):** {h_analysis.get('gear_changes', '[N/A]')}",
-        f"- **🎯 檔位判讀 (Step 14.2B):** {h_analysis.get('draw_verdict', '[N/A]')}",
-        f"- **部署與練馬師訊號 (Step 8.2):** {h_analysis.get('trainer_signal', '[N/A]')}",
-        f"- **人馬配搭 (Step 2.5):** {h_analysis.get('jockey_fit', '[N/A]')}",
-        f"- **步速段速 (Step 0+10):** {h_analysis.get('pace_adaptation', '[N/A]')}",
-        f"- **🔬 段速法醫 (Step 10.4/10.5) [ANCHOR-段速]:** {h_analysis.get('sectional_profile_summary', sf.get('trend', '[N/A]'))}",
-        f"- **📐 頭馬距離趨勢 (Step 10.6) [ANCHOR-頭馬距離]:** {h_analysis.get('margin_trend', '[N/A]')}",
-        f"- **🔄 走位-段速複合 (Step 10.7) [ANCHOR-走位段速複合]:** {h_analysis.get('position_sectional_composite', '[N/A]')}",
-        f"- **📉 完成時間偏差 (Step 10.8) [ANCHOR-完成時間偏差]:** {h_analysis.get('finish_time_deviation', '[N/A]')}",
-        f"- **⚡ 形勢與走位 (Step 11):** {race_shape.get('assessment', h_analysis.get('race_shape_analysis', '[N/A]'))}",
-        f"- **隱藏賽績 (Step 6+12):** {h_analysis.get('hidden_form', '[N/A]')}",
-        f"- **競賽事件 / 馬匹特性:** {h_analysis.get('competition_events', '[N/A]')}",
-    ])
-    lines.append('')
+    trackwork = h_logic.get('trackwork', {})
+    if isinstance(trackwork, dict) and trackwork:
+        tw_digest = trackwork.get('stability_digest', {})
+        tw_load = tw_digest.get('workout_load_21d', {}) if isinstance(tw_digest, dict) else {}
+        tw_summary = trackwork.get('summary', {}) if isinstance(trackwork.get('summary', {}), dict) else {}
+        role_counts = tw_summary.get('rider_role_counts', {})
+        role_text = '、'.join(f"{k}{v}次" for k, v in role_counts.items()) if role_counts else '未標明'
+        lines.append('#### 🏇 晨操摘要 (Trackwork Digest)\n')
+        lines.append(
+            f"- **狀態:** `{_zh_trackwork_status(trackwork.get('status', 'missing'))}` | "
+            f"**分類:** `{_zh_trackwork_category(tw_digest.get('career_category', 'insufficient_data'))}` | "
+            f"**趨勢:** `{_zh_trackwork_trend(tw_digest.get('workout_intensity_trend', 'unknown'))}`"
+        )
+        lines.append(
+            f"- **近{tw_digest.get('window_days', 21)}日操練:** "
+            f"快操 {tw_load.get('gallops', 0)} / 試閘 {tw_load.get('trials', 0)} / "
+            f"踱步 {tw_load.get('trotting', 0)} / 游水 {tw_load.get('swimming', 0)} / "
+            f"空白日 {tw_load.get('blank_days', 0)}"
+        )
+        lines.append(
+            f"- **Digest分:** 維持分 `{tw_digest.get('maintenance_score')}` | "
+            f"備戰分 `{tw_digest.get('readiness_score')}` | "
+            f"復刻分 `{tw_digest.get('pattern_replay_score')}`"
+        )
+        lines.append(f"- **操練者身份:** {role_text}")
+        lines.append(f"- **Flags:** 正面 `{', '.join(tw_digest.get('stability_positive_flags', []) or []) or '無'}` | 風險 `{', '.join(tw_digest.get('stability_risk_flags', []) or []) or '無'}`\n")
+        if h_logic.get('is_debut') or h_logic.get('debut_runner'):
+            lines.append("- **初出路由:** 晨操強訊號可導入騎練訊號 / 段速替代證據；穩定性可按備戰連貫度判斷，賽績線不可當正式賽績。\n")
 
-    # ── 8. 賽績線 (Facts 注入，僅一次，無重複) ──────────────────────────
-    if h_fact.get('formline') and '(無往績記錄)' not in h_fact.get('formline', ''):
-        lines.append('#### 🔗 賽績線 (近績對手強弱追蹤庫)\n')
-        fl_clean = h_fact['formline'].replace('🔗 **賽績線 (近 5 場正式賽事，官方追蹤):**', '').replace('🔗 賽績線 (近 5 場正式賽事，官方追蹤):', '').strip()
-        lines.append(fl_clean + '\n')
-        formline_str = h_analysis.get('formline_strength', '')
-        if formline_str and formline_str != '[N/A]':
-            lines.append(f"- **綜合結論:** `{formline_str}`\n")
-        else:
-            lines.append(f"- **綜合結論:** `詳見賽績線數據`\n")
-    else:
-        lines.append('#### 🔗 賽績線: (無往績記錄)\n')
+    # ── 4+8+9. 評級矩陣 (V4.2 — 7維度 matrix-only) ────────────────
 
-    # ── 9. 評級矩陣 (8 維度) + 正規 ABCD 字母評級 ──────────────────────
-    lines.append('#### 📊 評級矩陣 (Step 14)')
-    matrix_keys = [
-        ("stability",      "位置穩定性", "核心"),
-        ("speed_mass",     "段速質量",   "核心"),
-        ("race_shape",            "形勢與走位", "半核心"),
-        ("trainer_jockey", "練馬師訊號", "半核心"),
-        ("scenario",       "情境適配",   "輔助"),
-        ("freshness",      "路程/新鮮度","輔助"),
-        ("formline",       "賽績線",     "輔助"),
-        ("class_advantage","級數優勢",   "輔助"),
-    ]
+    # ── V4.2 Unified 7-Dimension Matrix ──
     m_data = h_logic.get('matrix', {})
 
-    # Compute proper ABCD letter grade
     grade_result = _compute_letter_grade(m_data, h_logic)
     gr_dims = grade_result['dims']
     gr_counts = grade_result['counts']
-    matrix_missing = grade_result.get('matrix_missing', False)
 
-    # Build reasoning fallback from analytical_breakdown when matrix is absent
-    synth_reasons = _build_synthetic_matrix_reasoning(h_logic) if matrix_missing else {}
-
-    # Map matrix JSON key → synthetic reasoning key
-    MATRIX_TO_SYNTH = {
-        'stability':       'stability',
-        'speed_mass':      'speed_mass',
-        'race_shape':             'race_shape',
-        'trainer_jockey':  'trainer_jockey',
-        'scenario':        'scenario',
-        'freshness':       'freshness',
-        'formline':        'formline',
-        'class_advantage': 'class_advantage',
+    m_schema = {
+        'stability': ('狀態與穩定性', '半核心'),
+        'sectional': ('🔬 段速質量 (包含段速法醫)', '核心'),
+        'race_shape': ('形勢與走位', '半核心'),
+        'trainer_signal': ('騎練訊號', '核心'),
+        'horse_health': ('馬匹健康 / 新鮮感', '輔助'),
+        'form_line': ('賽績線', '輔助'),
+        'class_advantage': ('級數優勢', '輔助')
     }
+    legacy_map = {
+        '狀態與穩定性': 'stability', '段速與引擎': 'sectional',
+        'speed_mass': 'sectional', 'trainer_jockey': 'trainer_signal',
+        'freshness': 'horse_health', 'distance_freshness': 'horse_health',
+        'formline': 'form_line', 'class_weight': 'class_advantage'
+    }
+    dim_order = ['stability', 'sectional', 'race_shape', 'trainer_signal',
+                 'horse_health', 'form_line', 'class_advantage']
 
-    for en_key, zh_key, c_type in matrix_keys:
-        item = m_data.get(en_key, {})
-        if matrix_missing:
-            reason = synth_reasons.get(MATRIX_TO_SYNTH.get(en_key, ''), '見馬匹剖析')
-        else:
-            reason = item.get('reasoning', item.get('reason', '[無提供]'))
-        dim_key = MATRIX_TO_DIM.get(en_key, '')
-        tick = gr_dims.get(dim_key, '➖')
-        lines.append(f"- **{zh_key}** [{c_type}]: `{tick}` | 理據: `{reason}`")
+    lines.append('#### 🧮 評級矩陣 (7-Dimension Matrix)')
+    lines.append('')
 
+    rendered_keys = set()
+    for canonical_key in dim_order:
+        v = m_data.get(canonical_key)
+        if not v:
+            for lk, ck in legacy_map.items():
+                if ck == canonical_key and lk in m_data:
+                    v = m_data[lk]
+                    break
+        if not v or not isinstance(v, dict):
+            continue
+        rendered_keys.add(canonical_key)
+        label, tier = m_schema.get(canonical_key, (canonical_key, '?'))
+        score = v.get('score', '?')
+        reasoning_raw = v.get('reasoning', '')
+
+        lines.append(f'##### {label} [{tier}]: `{score}`')
+
+        hints = MATRIX_TEMPLATE_HINTS.get(canonical_key, [])
+        if hints:
+            lines.append(f"  - 🧭 **V4.2檢查點:** {'；'.join(hints)}")
+
+        if canonical_key == 'form_line':
+            if h_fact.get('formline') and '(無往績記錄)' not in h_fact.get('formline', ''):
+                fl_clean = h_fact['formline'].replace('🔗 **賽績線 (近 5 場正式賽事，官方追蹤):**', '').replace('🔗 賽績線 (近 5 場正式賽事，官方追蹤):', '').strip()
+                lines.append(f"  - **Facts賽績線資料:** {fl_clean}")
+            elif h_logic.get('is_debut') or h_logic.get('debut_runner'):
+                lines.append("  - **Facts賽績線資料:** 初出馬無正式賽績線，N/A 不計入矩陣。")
+            else:
+                lines.append("  - **Facts賽績線資料:** 無往績記錄或未能提取。")
+
+        evidence_parts, verdict_text = _extract_matrix_reason_parts(reasoning_raw)
+        for part in evidence_parts:
+            # Keep compiler output readable: template hint already explains the frame;
+            # evidence lines should show the actual data the analyst used.
+            lines.append(f'  - {part}')
+        if verdict_text:
+            lines.append(f'  - 📊 **判讀:** `{verdict_text}`')
+        lines.append('')
+
+    # Render any unrecognized keys
+    for k, v in m_data.items():
+        ck = legacy_map.get(k, k)
+        if ck in rendered_keys or not isinstance(v, dict):
+            continue
+        score = v.get('score', '?')
+        reason = v.get('reasoning', '')
+        lines.append(f'##### {k}: `{score}`')
+        if reason:
+            lines.append(f'  - {reason}')
+        lines.append('')
+
+    # Forgiveness bonus
     forgive_item = m_data.get('forgiveness_bonus', {})
-    forg_score = forgive_item.get('score', '[-]')
-    if matrix_missing:
-        forg_reason = synth_reasons.get('forgiveness', '見完整賽績檔案')
-        forg_tick = '➖'
-    else:
+    if isinstance(forgive_item, dict) and forgive_item:
+        forg_score = forgive_item.get('score', '[-]')
         forg_reason = forgive_item.get('reasoning', forgive_item.get('reason', '[無提供]'))
         forg_tick = _score_to_tick(forg_score)
-    lines.append(f"- 寬恕加分: `{forg_tick}` | 理據: `{forg_reason}`\n")
+        lines.append(f"\n- 寬恕加分: `{forg_tick}` | 理據: `{forg_reason}`\n")
 
     # ── 10. 矩陣算術 + 14.2 基礎評級 (ABCD 正規字母制) ────────────────
     cw = '有' if gr_counts['has_core_weak'] else '無'
@@ -575,7 +722,78 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
     rating = grade_result['base_grade']
     final_rating = grade_result['final_grade']
 
-    # ── 13. 結論與評語 ───────────────────────────────────────────────────
+    # ── (V4.2 Matrix — rendered above in unified section) ──
+    if False:  # Legacy block disabled — single matrix section above
+        lines.append('#### 🧮 評級矩陣 (7-Dimension Matrix)')
+        lines.append('')
+        m_schema = {
+            'stability': ('狀態與穩定性', '半核心'),
+            'sectional': ('段速質量', '核心'),
+            'race_shape': ('形勢與走位', '半核心'),
+            'trainer_signal': ('騎練訊號', '核心'),
+            'distance_freshness': ('休賽與路程', '輔助'),
+            'form_line': ('賽績線', '輔助'),
+            'class_advantage': ('級數優勢', '輔助')
+        }
+        legacy_map = {
+            '狀態與穩定性': 'stability', '段速與引擎': 'sectional',
+            'speed_mass': 'sectional', 'trainer_jockey': 'trainer_signal',
+            'freshness': 'distance_freshness', 'formline': 'form_line',
+            'class_weight': 'class_advantage'
+        }
+        # Enforce canonical order
+        dim_order = ['stability', 'sectional', 'race_shape', 'trainer_signal',
+                     'distance_freshness', 'form_line', 'class_advantage']
+        rendered_keys = set()
+        for canonical_key in dim_order:
+            v = m_data.get(canonical_key)
+            if not v:
+                # Try legacy keys
+                for lk, ck in legacy_map.items():
+                    if ck == canonical_key and lk in m_data:
+                        v = m_data[lk]
+                        break
+            if not v or not isinstance(v, dict):
+                continue
+            rendered_keys.add(canonical_key)
+            label, tier = m_schema.get(canonical_key, (canonical_key, '?'))
+            score = v.get('score', '?')
+            reasoning_raw = v.get('reasoning', '')
+
+            lines.append(f'##### {label} [{tier}]: `{score}`')
+
+            # Parse reasoning into structured blocks
+            if reasoning_raw:
+                # Split by \n (literal newlines in JSON)
+                reason_parts = reasoning_raw.split('\n')
+                for part in reason_parts:
+                    part = part.strip()
+                    if not part:
+                        continue
+                    # Highlight the final judgement line
+                    if part.startswith('→ [判讀:') or part.startswith('→ [判讀：'):
+                        verdict_text = part.replace('→ [判讀:', '').replace('→ [判讀：', '').rstrip(']').strip()
+                        lines.append(f'  - 📊 **判讀:** `{verdict_text}`')
+                    elif part.startswith('[') and part.endswith(']'):
+                        # Structured block [label: content]
+                        inner = part[1:-1]
+                        lines.append(f'  - {inner}')
+                    else:
+                        lines.append(f'  - {part}')
+            lines.append('')
+        # Render any unrecognized keys
+        for k, v in m_data.items():
+            ck = legacy_map.get(k, k)
+            if ck in rendered_keys or not isinstance(v, dict):
+                continue
+            score = v.get('score', '?')
+            reason = v.get('reasoning', '')
+            lines.append(f'##### {k}: `{score}`')
+            if reason:
+                lines.append(f'  - {reason}')
+            lines.append('')
+
+    # ── 14. 結論與評語 ───────────────────────────────────────────────────
     lines.append('#### 💡 結論與評語 (Conclusion & Analyst View)')
     lines.extend([
         f"> - **核心邏輯:** {h_logic.get('core_logic', '[缺失核心邏輯]')}",
@@ -634,10 +852,11 @@ def build_hkjc_verdict_compiled(json_data, facts_horses):
         counts = gr_res.get('counts', {})
         tick_count = counts.get('total_strong', 0)
         double_ticks = counts.get('total_dbl_strong', 0)
-        all_graded.append((h_num_str, grade, grade_i, tick_count, double_ticks, gr_res))
+        sort_key = _top2_sort_tuple(grade_i, counts, m_data, h_num_str)
+        all_graded.append((h_num_str, grade, sort_key, tick_count, double_ticks, gr_res))
 
-    # Sort by grade, then ✅ count, then ✅✅ count, then horse number.
-    all_graded.sort(key=lambda x: (x[2], -x[3], -x[4], int(x[0]) if x[0].isdigit() else 999))
+    # Sort by grade, then core ability, conviction, risk profile, and horse number.
+    all_graded.sort(key=lambda x: x[2])
 
     # Take top 4
     t4_auto = all_graded[:4]
@@ -651,7 +870,7 @@ def build_hkjc_verdict_compiled(json_data, facts_horses):
     top_nums = []  # track for Top 2 confidence section
     for i, label in enumerate(labels):
         if i < len(t4_auto):
-            h_num_str, grade, grade_i, tick_count, double_ticks, gr_res = t4_auto[i]
+            h_num_str, grade, sort_key, tick_count, double_ticks, gr_res = t4_auto[i]
             h_num_int = int(h_num_str) if h_num_str.isdigit() else 0
             h_name = horse_names.get(h_num_int, '')
             h_obj = horses_logic.get(h_num_str, {})
@@ -768,7 +987,7 @@ def main():
     for h in facts_horses:
         hl = horses_logic.get(str(h['num']), horses_logic.get(h['num'], {}))
         if not hl:
-            hl = {"rating": "[未分析]", "core_logic": "[查無JSON節點]", "analytical_breakdown": {}}
+            hl = {"rating": "[未分析]", "core_logic": "[查無JSON節點]", "matrix": {}}
             
         body.append(generate_hkjc_horse_compiled(h, hl))
         body.append('---\n')

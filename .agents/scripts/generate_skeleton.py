@@ -208,10 +208,10 @@ def generate_horse_skeleton_hkjc(h: dict) -> str:
 
     lines.append('**📊 評級矩陣 (Step 14):**')
     lines.extend([
-        '- 穩定性 [核心]: `[FILL]` | 理據: `[FILL]`',
+        '- 穩定性 [半核心]: `[FILL]` | 理據: `[FILL]`',
         '- 段速質量 [核心]: `[FILL]` | 理據: `[FILL]`',
         '- EEM 潛力 [半核心]: `[FILL]` | 理據: `[FILL]`',
-        '- 練馬師訊號 [半核心]: `[FILL]` | 理據: `[FILL]`',
+        '- 練馬師訊號 [核心]: `[FILL]` | 理據: `[FILL]`',
         '- 情境適配 [輔助]: `[FILL]` | 理據: `[FILL]`',
         '- 路程/新鮮度 [輔助]: `[FILL]` | 理據: `[FILL]`',
         '- 賽績線 [輔助]: `[FILL]` | 理據: `[FILL]`',
@@ -341,7 +341,13 @@ def generate_final_verdict_hkjc() -> str:
         '**6. 🎯 步速崩潰冷門 (Pace Collapse Dark Horse) [強制檢查點]:**',
         '[FILL]\n',
         '**🐴⚡ 冷門馬總計 (Underhorse Signal Summary):**',
-        '[FILL]\n'
+        '[FILL]\n',
+        '---\n',
+        '#### [第五部分] 📊 數據庫匯出 (CSV)\n',
+        '```csv',
+        'Race, Distance, Jockey, Trainer, Horse Number, Horse Name, Grade',
+        '[FILL]',
+        '```\n'
     ])
     return '\n'.join(lines)
 

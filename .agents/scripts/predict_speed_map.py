@@ -38,25 +38,26 @@ MID_PACK_THRESHOLD = 8.0   # avg position ≤ 8.0
 # ── Pace classification heuristics ────────────────────────────────────────
 # Number of natural leaders determines overall pace
 def classify_pace(leader_count: int, on_pace_count: int, field_size: int) -> str:
-    """5-tier pace classification based on leader ratio and front pressure.
+    """V3: Multi-factor pace classification.
 
-    Returns: Very Slow / Slow / Normal / Fast / Very Fast
+    Returns Chinese labels: 極慢 / 慢 / 正常 / 快 / 極快
     """
     if field_size == 0:
-        return "Normal"
+        return '正常'
 
-    front_ratio = (leader_count + on_pace_count) / field_size
+    # Base score from pressure
+    base_score = leader_count * 2.0 + on_pace_count * 0.3
 
-    if leader_count == 0 and on_pace_count <= 1:
-        return "Very Slow"
-    elif leader_count <= 1 and front_ratio < 0.25:
-        return "Slow"
-    elif leader_count <= 2 and front_ratio < 0.35:
-        return "Normal"
-    elif leader_count >= 3 or front_ratio >= 0.45:
-        return "Very Fast"
+    if base_score >= 6.0:
+        return '極快'
+    elif base_score >= 4.0:
+        return '快'
+    elif base_score >= 2.5:
+        return '正常'
+    elif base_score >= 1.5:
+        return '慢'
     else:
-        return "Fast"
+        return '極慢'
 
 
 def classify_horse(early_positions: list, barrier: int = None) -> str:
@@ -221,7 +222,7 @@ def build_speed_map(horses: list) -> dict:
         "closers": closers,
         "track_bias": "[待天氣情報補充 — LLM 必須根據 Intelligence 填寫]",
         "tactical_nodes": "[待 Batch 0 分析 — LLM 必須填寫具體戰術節點]",
-        "collapse_point": f"[{'無前領壓力，步速大幅收慢' if pace in ('Very Slow', 'Slow') else '步速拉鋸爭崩' if pace in ('Fast', 'Very Fast') else '中速穩定'}]",
+        "collapse_point": f"[{'無前領壓力，步速大幅收慢' if pace in ('極慢', '慢') else '步速拉鋸爭崩' if pace in ('快', '極快') else '中速穩定'}]",
         "_auto_generated": True,
         "_note": "由 predict_speed_map.py 根據往績沿途位數據自動分類。LLM 必須驗證並補充 track_bias、tactical_nodes、collapse_point。"
     }

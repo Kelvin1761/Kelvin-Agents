@@ -56,9 +56,16 @@ def parse_facts_md(filepath):
             horses[current_horse_num] = {
                 'name': current_horse_name,
                 'l400_list': [],
-                'win_margin_list': []
+                'win_margin_list': [],
+                'career_tag': 'ESTABLISHED',  # default
             }
             continue
+
+        # Detect career tag from Facts.md
+        if current_horse_num:
+            ctag_m = re.search(r'生涯標記:\s*`(DEBUT|IMPORTED_DEBUT|ESTABLISHED)`', line)
+            if ctag_m and current_horse_num in horses:
+                horses[current_horse_num]['career_tag'] = ctag_m.group(1)
 
         # Look for the markdown table rows for the current horse
         if current_horse_num and line.startswith('|') and not line.startswith('| #') and not line.startswith('|-'):
@@ -199,6 +206,12 @@ def run_simulation(horses_data, iterations=10000):
         # Prevent 0 standard deviation collapses
         if base_sigma < 0.1:
             base_sigma = 0.2
+
+        # Career-aware sigma inflation (V2.1)
+        career_tag = data.get('career_tag', 'ESTABLISHED')
+        if career_tag in ('DEBUT', 'IMPORTED_DEBUT'):
+            # No race data → high uncertainty
+            base_sigma = max(base_sigma, 1.2)
             
         mu_list.append(base_mu)
         sigma_list.append(base_sigma)

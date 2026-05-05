@@ -21,7 +21,7 @@ import subprocess
 
 def compile_reports(target_dir):
     print(f"Scanning {target_dir} for analysis files...")
-    search_pattern = os.path.join(target_dir, '*_Analysis.md')
+    search_pattern = os.path.join(target_dir, '*Analysis.md')
     files = glob.glob(search_pattern)
     files.sort()  # Optional sorting, but Race number extraction is more robust for order
 

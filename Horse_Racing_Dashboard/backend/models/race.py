@@ -51,7 +51,7 @@ class HorseAnalysis(BaseModel):
     
     # HKJC-specific sections
     speed_forensics: Optional[str] = None  # 🔬 段速法醫
-    eem_energy: Optional[str] = None  # ⚡ EEM 能量
+    eem_energy: Optional[str] = None  # ⚡ 形勢與走位 (legacy field name kept for compat)
     forgiveness_file: Optional[str] = None  # 📋 寬恕檔案
     form_line: Optional[str] = None  # 🔗 賽績線
     

@@ -139,7 +139,7 @@
 | gateSpeed | 0.5-1.5 | 出閘速度 |
 | trackPreference | good/yielding/soft | 場地偏好 |
 | distanceFit | short/mid/long | 路程適性 |
-| energyLevel | 50-100 | EEM 能量值 (Wong Choi) |
+| energyLevel | 50-100 | 形勢與走位能量值 (Wong Choi) |
 
 ### 進階屬性 (Wong Choi 融合)
 | 屬性 | 說明 |
@@ -200,7 +200,7 @@
 | 🏋 Barrier Trial (試閘報告) | baseSpeed +5-15% 或 -5-10% |
 | 🔥 騎師/練馬師連勝 (Streak) | +10% 或 -5% |
 | 📊 段速法醫報告 (L600) | finalSprint +15% 或 stamina -5% |
-| ⚡ EEM 能量情報 | burstPower +10% 或 stamina -15% |
+| ⚡ 形勢與走位情報 | burstPower +10% 或 stamina -15% |
 | 📋 寬恕情報 (Forgiveness) | 隱藏能力 +8% |
 | 🔍 冷門馬信號 (🟢🟡🔴) | +10%/+20%/+35% 爆發 |
 | 🌦 場地狀態 (Going) | 全場馬匹速度分佈變化 |

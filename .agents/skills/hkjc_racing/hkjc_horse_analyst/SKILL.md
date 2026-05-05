@@ -1,7 +1,7 @@
 ---
 name: HKJC Horse Analyst
 description: This skill should be used when the user wants to "analyse HKJC horse", "HKJC 馬匹分析", "HKJC Horse Analyst", or when HKJC Wong Choi orchestrates per-race deep-dive analysis. 香港賽馬會賽事形勢分析專家,運用數據法醫、能量消耗模型 (形勢) 與段速修正邏輯,以反惰性批次對馬匹進行精準評價。
-version: 2.1.0
+version: 3.0.0
 ag_kit_skills:
   - systematic-debugging   # QG-CHECK 連續失敗時自動觸發
 ---
@@ -45,15 +45,13 @@ ag_kit_skills:
 ## 2. 資源讀取協議 (Tiered Loading Protocol) [改進 #6 — 極重要]
 每場賽事分析分三層載入資源,降低初始 context 壓力:
 
-**Tier 1: 核心必讀(分析開始前 — 一次性載入,全程保留):**
-- `resources/01_system_context.md` — 系統設定與不變規則
+**Tier 1: 核心必讀（分析開始前 — 一次性載入,全程保留）:**
+- `resources/01_system_context.md` — 系統設定 + Engine Directives 防呆協定
 - `resources/03_engine_pace_context.md` — Steps 0-3 步速瀑布與情境引擎
 - `resources/04_engine_corrections.md` — Steps 4-9 校正與隱藏變數引擎
-- `resources/05_forensic_eem.md` — Steps 10-12 段速法醫與 形勢
-- `resources/06a_rating_table.md` — Steps 13-14.2 賽績線驗證、8維度矩陣、評級表
-- `resources/06b_micro_adjustments.md` — Steps 14.2B-14.2G 微調因素與冷門掃描
-- `resources/06c_override_rules.md` — Steps 14.3-14.5 強制覆蓋、壓力測試、冷門安全網
-- 場地邏輯模組(**條件式讀取** — 只讀取 Wong Choi 指定嘅模組):
+- `resources/05_forensic_analysis.md` — Steps 10-12 段速法醫與形勢走位
+- `resources/06_rating_engine.md` — Steps 13-14.5 評級表 + 微調 + 覆蓋 + 壓力測試 + 冷門安全網
+- 場地邏輯模組（**條件式讀取** — 只讀取 Wong Choi 指定嘅模組）:
   - 若 `[TRACK_MODULE: SHA_TIN_TURF]` → `resources/10a_track_sha_tin_turf.md`
   - 若 `[TRACK_MODULE: HAPPY_VALLEY]` → `resources/10b_track_happy_valley.md`
   - 若 `[TRACK_MODULE: AWT]` → `resources/10c_track_awt.md`
@@ -65,6 +63,8 @@ ag_kit_skills:
 - `resources/11_factor_interaction.md` — [ANCHOR-互動矩陣] 因素互動矩陣（SYN/CON/CONTRA 觸發規則）
 
 **Tier 3: 按需載入(觸發時才讀,用完可釋放):**
+- `[CAREER_TAG: DEBUT]` → `resources/05b_debut_guide.md` — 初出馬維度判定指引
+- `[CAREER_TAG: IMPORTED_DEBUT]` → `resources/05b_debut_guide.md` — 進口馬初出指引
 - `resources/08_templates_core.md` — 舊式 Batch / 人工模板 fallback 時才讀
 - `resources/08_templates_rules.md` — 僅當 Orchestrator 明確要求人工 Verdict / `[BATCH: LAST]` 時讀取；一般 V11 流程由 Python 自動排序 Top 4
 - `resources/09_verification.md` — 自檢前讀取

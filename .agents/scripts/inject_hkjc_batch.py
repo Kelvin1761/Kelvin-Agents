@@ -35,8 +35,8 @@ def num_to_grade(val):
 def inject_horse_data(horse_chunk, data):
     ab = data.get('analytical_breakdown', {})
     
-    cores = [data.get('matrix', {}).get('stability', {}).get('score', '➖'), data.get('matrix', {}).get('speed_mass', {}).get('score', '➖')]
-    semis = [data.get('matrix', {}).get('eem', {}).get('score', '➖'), data.get('matrix', {}).get('trainer_jockey', {}).get('score', '➖')]
+    cores = [data.get('matrix', {}).get('speed_mass', {}).get('score', '➖'), data.get('matrix', {}).get('trainer_jockey', {}).get('score', '➖')]
+    semis = [data.get('matrix', {}).get('stability', {}).get('score', '➖'), data.get('matrix', {}).get('eem', {}).get('score', '➖')]
     auxs = [data.get('matrix', {}).get('scenario', {}).get('score', '➖'), 
             data.get('matrix', {}).get('freshness', {}).get('score', '➖'), 
             data.get('matrix', {}).get('formline', {}).get('score', '➖'), 
@@ -44,8 +44,8 @@ def inject_horse_data(horse_chunk, data):
             data.get('matrix', {}).get('forgiveness_bonus', {}).get('score', '➖')]
             
     hkjc_schema = {
-        'stability': 'core', 'speed_mass': 'core',
-        'eem': 'semi', 'trainer_jockey': 'semi',
+        'stability': 'semi', 'speed_mass': 'core',
+        'eem': 'semi', 'trainer_jockey': 'core',
         'scenario': 'aux', 'freshness': 'aux', 'formline': 'aux',
         'class_advantage': 'aux', 'forgiveness_bonus': 'aux'
     }
@@ -71,10 +71,10 @@ def inject_horse_data(horse_chunk, data):
         
         (r'- \*\*逐場寬恕判定:\*\* `\[JSON Array.*?\]`', f"- **逐場寬恕判定:** `['見因素分析']`"),
         
-        (r'- 穩定性 \[核心\]: `\[FILL\]` \| 理據: `\[FILL\]`', f"- 穩定性 [核心]: `{cores[0]}` | 理據: `{data.get('matrix', {}).get('stability', {}).get('reasoning', '')}`"),
-        (r'- 段速質量 \[核心\]: `\[FILL\]` \| 理據: `\[FILL\]`', f"- 段速質量 [核心]: `{cores[1]}` | 理據: `{data.get('matrix', {}).get('speed_mass', {}).get('reasoning', '')}`"),
-        (r'- EEM 潛力 \[半核心\]: `\[FILL\]` \| 理據: `\[FILL\]`', f"- EEM 潛力 [半核心]: `{semis[0]}` | 理據: `{data.get('matrix', {}).get('eem', {}).get('reasoning', '')}`"),
-        (r'- 練馬師訊號 \[半核心\]: `\[FILL\]` \| 理據: `\[FILL\]`', f"- 練馬師訊號 [半核心]: `{semis[1]}` | 理據: `{data.get('matrix', {}).get('trainer_jockey', {}).get('reasoning', '')}`"),
+        (r'- 穩定性 \[(?:核心|半核心)\]: `\[FILL\]` \| 理據: `\[FILL\]`', f"- 穩定性 [半核心]: `{semis[0]}` | 理據: `{data.get('matrix', {}).get('stability', {}).get('reasoning', '')}`"),
+        (r'- 段速質量 \[核心\]: `\[FILL\]` \| 理據: `\[FILL\]`', f"- 段速質量 [核心]: `{cores[0]}` | 理據: `{data.get('matrix', {}).get('speed_mass', {}).get('reasoning', '')}`"),
+        (r'- EEM 潛力 \[半核心\]: `\[FILL\]` \| 理據: `\[FILL\]`', f"- EEM 潛力 [半核心]: `{semis[1]}` | 理據: `{data.get('matrix', {}).get('eem', {}).get('reasoning', '')}`"),
+        (r'- 練馬師訊號 \[(?:核心|半核心)\]: `\[FILL\]` \| 理據: `\[FILL\]`', f"- 練馬師訊號 [核心]: `{cores[1]}` | 理據: `{data.get('matrix', {}).get('trainer_jockey', {}).get('reasoning', '')}`"),
         (r'- 情境適配 \[輔助\]: `\[FILL\]` \| 理據: `\[FILL\]`', f"- 情境適配 [輔助]: `{auxs[0]}` | 理據: `{data.get('matrix', {}).get('scenario', {}).get('reasoning', '')}`"),
         (r'- 路程/新鮮度 \[輔助\]: `\[FILL\]` \| 理據: `\[FILL\]`', f"- 路程/新鮮度 [輔助]: `{auxs[1]}` | 理據: `{data.get('matrix', {}).get('freshness', {}).get('reasoning', '')}`"),
         (r'- 賽績線 \[輔助\]: `\[FILL\]` \| 理據: `\[FILL\]`', f"- 賽績線 [輔助]: `{auxs[2]}` | 理據: `{data.get('matrix', {}).get('formline', {}).get('reasoning', '')}`"),

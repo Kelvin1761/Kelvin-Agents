@@ -19,11 +19,11 @@
   - `06_rating_aggregation.md` 拆分為 06a/06b/06c
   - WALL-017 防幻覺規則（原 SIP-009）
   - Standalone 模式移除
-- **Target Files:** 08_templates_core.md, 06a/b/c, SKILL.md, 05_forensic_eem.md
+- **Target Files:** 08_templates_core.md, 06_rating_engine.md, SKILL.md, 05_forensic_analysis.md
 
 ### 2026-04-22 — EEM → 形勢與走位 重構
 - **Changed:** EEM 能量消耗公式完全移除，維度改名，致命死檔數據化。
-- **Target Files:** 05_forensic_eem.md, 06a_rating_table.md, SKILL.md 等
+- **Target Files:** 05_forensic_analysis.md, 06_rating_engine.md, SKILL.md 等
 
 ### 2026-04-06 — 冷門馬訊號標準化
 - **Changed:** 冷門馬訊號新增 7 項標準化觸發條件

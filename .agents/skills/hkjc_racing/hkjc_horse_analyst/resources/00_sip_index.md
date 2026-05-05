@@ -27,7 +27,7 @@
 <!-- Source: 引擎距離系統 --> 引擎-步速錯配偵測 (Step 6) — Type A/B × 步速交互
 <!-- Source: 2026-03-29 ST --> 四/五班輕磅反彈 (Step 9) — ≤118lb+有走勢
 
-### 06a_rating_table.md (Steps 13-14.2)
+### 06_rating_engine.md (Steps 13-14.2)
 <!-- Source: 核心引擎 --> 評級矩陣量化門檻 — 穩定性/段速/形勢數字門檻
 <!-- Source: 核心引擎 --> S級純度必備 — 需段速或級數硬性支持
 <!-- Source: 核心引擎 --> S級實戰驗證 — 近3仗有入三甲
@@ -76,8 +76,8 @@
 |:---|:---|:---|
 | DATA-標準時間 | 標準時間自動同步 | `inject_hkjc_fact_anchors.py` |
 | DATA-檔位統計 | 檔位統計注入 | `inject_hkjc_fact_anchors.py` |
-| DATA-短評驗證 | 賽事短評交叉驗證 | `05_forensic_eem.md` Step 10.7.2 |
-| DATA-檔位情境 | 檔位觸發情境適配 | `06a_rating_table.md` Step 14.1 |
+| DATA-短評驗證 | 賽事短評交叉驗證 | `05_forensic_analysis.md` Step 10.7.2 |
+| DATA-檔位形勢 | 檔位觸發形勢與走位 | `06_rating_engine.md` Step 14.1 |
 
 ---
 

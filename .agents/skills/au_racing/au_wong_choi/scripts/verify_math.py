@@ -35,7 +35,7 @@ if sys.stdout.encoding != 'utf-8':
 # Checks return True if the horse meets that grade's requirements
 # We check top-down; first match wins.
 
-GRADE_ORDER = ['S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D']
+GRADE_ORDER = ['S+', 'S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D']
 
 DIMENSION_CATEGORIES = {
     # AU Wong Choi dimension names
@@ -47,7 +47,6 @@ DIMENSION_CATEGORIES = {
     '級數與負重': 'aux',
     '場地適性': 'aux',
     '賽績線': 'aux',
-    '裝備與距離': 'aux',
     # HKJC Wong Choi dimension names
     '穩定性': 'core',
     '段速質量': 'core',
@@ -68,7 +67,14 @@ DIMENSION_CATEGORIES = {
 #   - 穩定性 [核心]: `❌` | ...
 MATRIX_LINE_RE = re.compile(
     r'-\s*\*?\*?(.+?)\*?\*?\s*\[(?:核心|半核心|輔助|輔助\(可選\))\]'
-    r'[：:]\s*[`\s\[]*([✅➖❌]|不計入)',
+    r'[：:]\s*[`\s\[]*(✅✅|❌❌|✅|➖|❌|不計入)',
+    re.UNICODE
+)
+
+# V3: Also match ##### sub-heading format: ##### 狀態與穩定性 [核心]: `✅`
+MATRIX_SUBHEADING_RE = re.compile(
+    r'#{5}\s+(.+?)\s*\[(?:核心|半核心|輔助)\]'
+    r'[：:]\s*[`\s\[]*(✅✅|❌❌|✅|➖|❌|不計入)',
     re.UNICODE
 )
 
@@ -116,7 +122,7 @@ HORSE_HEADER_RE = re.compile(
 class DimensionResult:
     name: str
     category: str  # core, semi_core, aux
-    verdict: str   # ✅, ➖, ❌
+    verdict: str   # ✅✅, ✅, ➖, ❌, ❌❌
 
 
 @dataclass
@@ -137,6 +143,8 @@ class HorseVerification:
     aux_ticks: int = 0
     total_crosses: int = 0
     has_core_cross: bool = False
+    core_double_ticks: int = 0
+    semi_core_double_ticks: int = 0
     # Parsed from 🔢 line (LLM's own count)
     llm_core_ticks: Optional[int] = None
     llm_semi_core_ticks: Optional[int] = None
@@ -171,12 +179,13 @@ def parse_matrix(block: str) -> list:
     if matrix_start == -1:
         return dims
 
-    # Only search within the matrix section (up to next section or end)
+    # Only search within the matrix section (up to next major section or end).
+    # Do not stop at "#####" because V4.2 matrix dimensions are emitted as
+    # subheadings.
     matrix_end = len(block)
-    for marker in ['💡', '⭐', '---', '####']:
+    for marker in ['\n#### 💡', '\n⭐', '\n---']:
         pos = block.find(marker, matrix_start + 2)
         if pos != -1 and pos < matrix_end:
-            # Don't use 💡 or ⭐ that are within the matrix section header
             if pos > matrix_start + 10:
                 matrix_end = pos
 
@@ -192,6 +201,18 @@ def parse_matrix(block: str) -> list:
             verdict=verdict
         ))
 
+    # V3: Also try ##### sub-heading format if no results from legacy format
+    if not dims:
+        for match in MATRIX_SUBHEADING_RE.finditer(matrix_text):
+            dim_name = match.group(1).strip()
+            verdict = match.group(2)
+            category = categorize_dimension(dim_name)
+            dims.append(DimensionResult(
+                name=dim_name,
+                category=category,
+                verdict=verdict
+            ))
+
     return dims
 
 
@@ -200,18 +221,23 @@ def count_verdicts(dimensions: list) -> dict:
     counts = {
         'core_ticks': 0, 'semi_core_ticks': 0, 'aux_ticks': 0,
         'total_crosses': 0, 'has_core_cross': False,
+        'core_double_ticks': 0, 'semi_core_double_ticks': 0,
     }
     for dim in dimensions:
         if dim.verdict == '不計入':
             continue  # N/A — excluded from grade calculation
-        if dim.verdict == '✅':
+        if '✅' in dim.verdict:
             if dim.category == 'core':
                 counts['core_ticks'] += 1
+                if dim.verdict == '✅✅':
+                    counts['core_double_ticks'] += 1
             elif dim.category == 'semi_core':
                 counts['semi_core_ticks'] += 1
+                if dim.verdict == '✅✅':
+                    counts['semi_core_double_ticks'] += 1
             else:
                 counts['aux_ticks'] += 1
-        elif dim.verdict == '❌':
+        elif '❌' in dim.verdict:
             counts['total_crosses'] += 1
             if dim.category == 'core':
                 counts['has_core_cross'] = True
@@ -221,30 +247,23 @@ def count_verdicts(dimensions: list) -> dict:
 def lookup_base_grade(core_t: int, semi_t: int, aux_t: int,
                       total_x: int, has_core_x: bool) -> str:
     """
-    Look up the base grade from the grading table.
-    Based on 02_algorithmic_engine.md lines 692-705.
+    Look up the V4.2 base grade from the AU 7-dimension grading table.
 
-    Semi-core ✅ can dual-count: they count towards core conditions AND aux conditions.
-    But semi-core alone cannot replace a core ✅ as the S-level gate.
+    V4.2 base lookup. Full ordinary package is A+.
+    S-tier is only allowed through ✅✅ conviction promotion after base grade.
     """
-    # S: 2 core ✅ + 2 semi-core ✅ + ≥2 aux ✅ + zero ❌
+    # A+: 2 core ✅ + 2 semi-core ✅ + ≥2 aux ✅ + zero ❌
     if core_t >= 2 and semi_t >= 2 and aux_t >= 2 and total_x == 0:
-        return 'S'
-
-    # S-: 2 core ✅ + 1 semi-core ✅ + ≥1 aux ✅ + zero ❌
-    if core_t >= 2 and semi_t >= 1 and aux_t >= 1 and total_x == 0:
-        return 'S-'
-
-    # A+: 2 core ✅ + zero ❌
-    if core_t >= 2 and total_x == 0:
         return 'A+'
 
-    # A: 1 core ✅ + 1 semi-core ✅ + zero ❌  OR  2 core ✅ + ≤1 ❌
-    if (core_t >= 1 and semi_t >= 1 and total_x == 0) or \
-       (core_t >= 2 and total_x <= 1):
+    # A: 2 core ✅ + zero ❌
+    if core_t >= 2 and total_x == 0:
         return 'A'
 
-    # A-: 1 core ✅ + (1 semi-core ✅ or ➖) + ❌ ≤ 1
+    # A-: 1 core ✅ + 1 semi-core ✅ + zero ❌ OR 2 core ✅ + ≤1 ❌ OR 1 core ✅ + ❌≤1
+    if (core_t >= 1 and semi_t >= 1 and total_x == 0) or \
+       (core_t >= 2 and total_x <= 1):
+        return 'A-'
     if core_t >= 1 and total_x <= 1:
         return 'A-'
 
@@ -295,10 +314,24 @@ def lookup_base_grade(core_t: int, semi_t: int, aux_t: int,
 def grade_to_numeric(grade: str) -> float:
     """Convert grade to numeric for comparison."""
     mapping = {
-        'S': 13, 'S-': 12, 'A+': 11, 'A': 10, 'A-': 9,
+        'S+': 14, 'S': 13, 'S-': 12, 'A+': 11, 'A': 10, 'A-': 9,
         'B+': 8, 'B': 7, 'B-': 6, 'C+': 5, 'C': 4, 'C-': 3, 'D+': 2, 'D': 1
     }
     return mapping.get(grade, 0)
+
+
+def v42_promotion_grade(base_grade: str, core_double: int, semi_double: int) -> str:
+    """V4.2 S-tier promotion from A+ using ✅✅ conviction evidence."""
+    if base_grade != 'A+':
+        return base_grade
+    steps = min(core_double, 2) + (1 if semi_double >= 2 else 0)
+    if steps >= 3:
+        return 'S+'
+    if steps == 2:
+        return 'S'
+    if steps == 1:
+        return 'S-'
+    return 'A+'
 
 
 def grade_diff(g1: str, g2: str) -> float:
@@ -347,6 +380,8 @@ def verify_horse(horse: dict) -> HorseVerification:
     result.aux_ticks = counts['aux_ticks']
     result.total_crosses = counts['total_crosses']
     result.has_core_cross = counts['has_core_cross']
+    result.core_double_ticks = counts['core_double_ticks']
+    result.semi_core_double_ticks = counts['semi_core_double_ticks']
 
     # 3. Parse LLM's own 🔢 count
     arith_match = MATRIX_ARITHMETIC_RE.search(block)
@@ -413,15 +448,45 @@ def verify_horse(horse: dict) -> HorseVerification:
             f'LLM 寫 [{result.llm_base_grade}]'
         )
 
-    # Final grade can differ from base by at most 1 level (micro-adjustment)
+    promoted_ceiling = v42_promotion_grade(
+        result.computed_base_grade,
+        result.core_double_ticks,
+        result.semi_core_double_ticks,
+    )
+
+    # Final grade can differ from base by at most 1 level, except V4.2 S-tier
+    # promotion is allowed when ✅✅ conviction evidence supports it.
     if result.llm_final_grade and result.computed_base_grade:
-        diff = grade_diff(result.llm_final_grade, result.computed_base_grade)
-        if diff > 1:
+        if result.llm_final_grade in ('S+', 'S', 'S-'):
+            if grade_to_numeric(result.llm_final_grade) > grade_to_numeric(promoted_ceiling):
+                result.grade_match = False
+                result.issues.append(
+                    f'S_TIER_PROMOTION_MISMATCH: ✅✅只支持最高[{promoted_ceiling}], '
+                    f'LLM 寫 [{result.llm_final_grade}]'
+                )
+        else:
+            diff = grade_diff(result.llm_final_grade, result.computed_base_grade)
+            if diff > 1:
+                result.grade_match = False
+                result.issues.append(
+                    f'FINAL_GRADE_DRIFT: 基礎={result.computed_base_grade}, '
+                    f'最終={result.llm_final_grade}, 差距={diff}級 '
+                    f'(微調最多1級)'
+                )
+
+    # S-tier needs V4.2 promotion support; ordinary A+ full-house is not enough.
+    if result.llm_final_grade in ('S+', 'S', 'S-') and promoted_ceiling == 'A+':
+        result.grade_match = False
+        result.issues.append(
+            'S_TIER_WITHOUT_DOUBLE_TICK: V4.2 滿格只係 A+，S級必須有核心/半核心✅✅推進'
+        )
+
+    # Final grade cannot exceed V4.2 promoted ceiling by more than micro/promotion logic.
+    if result.llm_final_grade and promoted_ceiling != result.computed_base_grade:
+        if grade_to_numeric(result.llm_final_grade) > grade_to_numeric(promoted_ceiling):
             result.grade_match = False
             result.issues.append(
-                f'FINAL_GRADE_DRIFT: 基礎={result.computed_base_grade}, '
-                f'最終={result.llm_final_grade}, 差距={diff}級 '
-                f'(微調最多1級)'
+                f'FINAL_ABOVE_PROMOTION_CEILING: 最高[{promoted_ceiling}], LLM 寫 [{result.llm_final_grade}]'
             )
 
     # 8. Core constraint check: any core ❌ → max B+

@@ -14,5 +14,4 @@
 
 ## 未列種馬處理規則
 
-若馬匹的父系不在對應距離嘅種馬表中,搜索 `"[Sire Name] progeny statistics site:racing.com OR site:breednet.com.au"` 取得 AWD 及場地適性。若搜索無果 → `N/A (血統數據不足)`,裝備與距離維度中的 Sire 投影部分填 ➖。
-
+若馬匹的父系不在對應距離嘅種馬表中,搜索 `"[Sire Name] progeny statistics site:racing.com OR site:breednet.com.au"` 取得 AWD 及場地適性。若搜索無果 → `N/A (血統數據不足)`,「段速與引擎」中嘅距離/Sire 投影部分最高填 ➖。

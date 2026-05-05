@@ -47,6 +47,8 @@ class MeetingState(TypedDict, total=False):
     raw_data_ready: bool
     intelligence_ready: bool
     facts_ready: bool
+    trackwork_ready: bool
+    trackwork_status: str
     
     # ── Per-race states ──
     races: dict[str, RaceState]

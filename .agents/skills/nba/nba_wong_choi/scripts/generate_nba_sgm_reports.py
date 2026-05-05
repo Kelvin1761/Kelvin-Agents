@@ -5,16 +5,18 @@ import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
-generate_nba_sgm_reports.py — NBA Wong Choi 最終報告生成器
+generate_nba_sgm_reports.py — NBA Wong Choi 最終報告生成器 V3
 
 從 Game_*_Full_Analysis.md 提取組合分析區塊，自動合併生成兩份最終報告：
-  1. NBA_All_SGM_Report.txt — 全日所有場次、所有組合嘅完整 Leg 分析
+  1. NBA_All_SGM_Report.txt — 全日所有場次、所有組合嘊完整 Leg 分析
   2. NBA_Banker_Report.txt  — 每場組合 1 (穩膽) 完整分析 + Top Banker 速覽 + 跨場 Parlay
+
+V3: Updated for V5 short-leg SGM format (組合 1-3 + 組合 X)
 
 Usage:
   python generate_nba_sgm_reports.py --dir "2026-04-08 NBA Analysis"
 
-Version: 1.0.0
+Version: 3.0.0
 """
 
 import argparse
@@ -51,12 +53,13 @@ def extract_game_header(content):
 
 
 def extract_combos(content):
-    """Extract all combo sections (## 🎯 組合 N) with their full leg analysis."""
+    """Extract all combo sections (### ... 組合 N or 組合 X) with their full leg analysis."""
     combos = {}
     lines = content.split('\n')
     current_combo = None
     current_lines = []
-    combo_pattern = re.compile(r'^### .*組合 (\d+)')
+    # Match both 組合 1/2/3 and 組合 X (Value Bomb)
+    combo_pattern = re.compile(r'^### .*組合 (\d+|X)')
 
     for line in lines:
         m = combo_pattern.match(line)
@@ -64,11 +67,12 @@ def extract_combos(content):
             # Save previous combo
             if current_combo is not None:
                 combos[current_combo] = '\n'.join(current_lines).rstrip()
-            current_combo = int(m.group(1))
+            raw_key = m.group(1)
+            current_combo = int(raw_key) if raw_key.isdigit() else raw_key
             current_lines = [line]
         elif current_combo is not None:
-            # Check for end markers
-            if line.startswith('## 💣') or line.startswith('## 📝') or line.startswith('## 💡'):
+            # Check for end markers (next section)
+            if (line.startswith('## ') and not line.startswith('## 🎰')) or line.startswith('# '):
                 combos[current_combo] = '\n'.join(current_lines).rstrip()
                 current_combo = None
                 current_lines = []
@@ -83,15 +87,17 @@ def extract_combos(content):
 
 
 def extract_value_bomb(content):
-    """Extract the Value Bomb section if it exists."""
+    """Extract the Value Bomb section if it exists (### or ## level)."""
     lines = content.split('\n')
     bomb_lines = []
     in_bomb = False
     for line in lines:
-        if line.startswith('## 💣') or line.startswith('## 💣'):
+        if '組合 X' in line and ('💣' in line or 'Value Bomb' in line):
             in_bomb = True
         elif in_bomb and (line.startswith('## ') or line.startswith('# ')):
-            break
+            # Don't break on ### (same level sub-headings within the bomb section)
+            if not line.startswith('### '):
+                break
         if in_bomb:
             bomb_lines.append(line)
     return '\n'.join(bomb_lines) if bomb_lines else ''
@@ -123,9 +129,9 @@ def extract_banker_leg(content):
 def generate_all_sgm_report(games_data, analysis_date):
     """Generate the All SGM Report with full leg analysis for every combo."""
     lines = []
-    lines.append(f'# 🏀 NBA Wong Choi 全日 SGM 完整分析報告')
+    lines.append(f'# 🏀 NBA Wong Choi 全日 SGM 完整分析報告 (V5 Short-Leg)')
     lines.append(f'# 📅 日期: {analysis_date} | 總場次: {len(games_data)}')
-    lines.append(f'# 📋 此報告包含每個 Leg 嘅完整數理引擎 + 邏輯引擎分析')
+    lines.append(f'# 📋 此報告包含每個 Leg 嘊完整數理引擎 + 邏輯引擎分析')
     lines.append('')
 
     for game in games_data:
@@ -136,7 +142,7 @@ def generate_all_sgm_report(games_data, analysis_date):
         lines.append('')
 
         # Add all combos with full analysis
-        for combo_num in sorted(game['combos'].keys()):
+        for combo_num in sorted(game['combos'].keys(), key=lambda k: (0, k) if isinstance(k, int) else (1, k)):
             combo_content = game['combos'][combo_num]
             # Remove the leading ## to make it fit under the game section
             lines.append(combo_content)
@@ -171,9 +177,9 @@ def generate_all_sgm_report(games_data, analysis_date):
 def generate_banker_report(games_data, analysis_date):
     """Generate the Banker Report with combo 1 full analysis + top banker table."""
     lines = []
-    lines.append(f'# 🛡️ NBA Wong Choi 全日穩膽 Banker 完整分析報告')
+    lines.append(f'# 🛡️ NBA Wong Choi 全日穩膽 Banker 完整分析報告 (V5 Short-Leg)')
     lines.append(f'# 📅 日期: {analysis_date} | 總場次: {len(games_data)}')
-    lines.append(f'# 策略: 收錄每場組合 1 (穩膽 SGM) 嘅完整 Leg 分析')
+    lines.append(f'# 策略: 收錄每場組合 1 (穩膽 SGM 2-3 Legs) 嘊完整 Leg 分析')
     lines.append('')
 
     # Section 1: Top Banker Legs quick reference

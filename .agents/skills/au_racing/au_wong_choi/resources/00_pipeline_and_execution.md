@@ -45,7 +45,7 @@
 - 請一場接一場執行，直到全日所有場次皆已產出 `Facts.md` 後，方可進入 Step 5。此舉既保證了數據齊源，又避免了一次性平行運算導致的超時崩潰。
 
 ### Step 5: 逐場深度分析與合規驗證 (Race-by-Race Analysis Loop)
-- **分析模塊**：正式呼叫 `@au horse analyst` / 啟動大腦逐匹填寫 Orchestrator 指定 JSON 欄位。可輔助執行 `au_speed_map_generator.py` 獲取初步 Speed Map。
+- **分析模塊**：正式呼叫 `@au horse analyst` / 啟動大腦逐匹填寫 Orchestrator 指定 JSON 欄位。Speed Map 以 `Facts.md` 內由 `inject_fact_anchors.py` 生成嘅 EEM/video + settled-position 模型為準；`au_speed_map_generator.py` 只可作低信心 fallback，不可用 Last10 完賽名次當跑法證據。
 - **嚴格驗證把關 (Batch QA)**：當一場賽事由 Orchestrator 編譯成 `Analysis.md` 後，Orchestrator 必須自動執行 `.agents/scripts/completion_gate_v2.py --domain au`。Agent 不可手動跳過 gate，亦不可自行建立 dummy `Analysis.md`。
 - 如果 Python 攔截並報錯 (FAILED)，Agent 必須依照 Orchestrator 指示修正 `Race_X_Logic.json` / work card 欄位；如完全無誤 (PASSED) 才可自動進入下一場。
 

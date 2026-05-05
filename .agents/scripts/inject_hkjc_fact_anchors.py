@@ -31,6 +31,7 @@ Usage:
 """
 import re
 import json
+from typing import Optional, Tuple
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -172,7 +173,7 @@ def load_draw_stats() -> dict:
     return _DRAW_STATS
 
 def get_draw_verdict(race_num: int, draw: int) -> str:
-    """Get draw verdict for a specific race/draw. Returns e.g. '✅有利 (15%)' or empty."""
+    """Get draw verdict for a specific race/draw. Returns e.g. '✅有利 (上名30%)' or empty."""
     ds = load_draw_stats()
     if not ds or 'races' not in ds:
         return ''
@@ -180,7 +181,9 @@ def get_draw_verdict(race_num: int, draw: int) -> str:
         if race.get('race') == race_num:
             for d in race.get('draws', []):
                 if d.get('draw') == draw:
-                    return f"{d['verdict']} ({d['win_pct']}%)"
+                    starts = d.get('starts', 0)
+                    low_sample = ' ⚠️樣本少' if starts < 10 else ''
+                    return f"{d['verdict']} (上名{d.get('place_pct','?')}%){low_sample}"
     return ''
 
 def get_draw_detail(race_num: int, draw: int) -> dict:
@@ -204,17 +207,18 @@ def get_draw_summary_block(race_num: int) -> str:
     for race in ds['races']:
         if race.get('race') == race_num:
             lines = [f"### 🎯 檔位優劣判讀 ({race.get('distance','')}m {race.get('surface','')})"]
-            lines.append(f"平均勝率: {race.get('avg_win_pct', 0)}%")
+            avg_place = race.get('avg_place_pct', race.get('avg_win_pct', 0))
+            lines.append(f"平均上名率: {avg_place}%")
             favourable = [d for d in race['draws'] if d['verdict'] == '✅有利']
             unfavourable = [d for d in race['draws'] if d['verdict'] == '❌不利']
             if favourable:
-                draws_str = ', '.join(f"檔{d['draw']}(勝{d['win_pct']}%/Q{d.get('quinella_pct','?')}%/位{d.get('place_pct','?')}%)" for d in favourable)
+                draws_str = ', '.join(f"檔{d['draw']}(上名{d.get('place_pct','?')}%/入Q{d.get('quinella_pct','?')}%/勝{d['win_pct']}%{' ⚠️樣本少' if d.get('starts',0)<10 else ''})" for d in favourable)
                 lines.append(f"✅ 有利檔位: {draws_str}")
             if unfavourable:
-                draws_str = ', '.join(f"檔{d['draw']}(勝{d['win_pct']}%/Q{d.get('quinella_pct','?')}%/位{d.get('place_pct','?')}%)" for d in unfavourable)
+                draws_str = ', '.join(f"檔{d['draw']}(上名{d.get('place_pct','?')}%/入Q{d.get('quinella_pct','?')}%/勝{d['win_pct']}%{' ⚠️樣本少' if d.get('starts',0)<10 else ''})" for d in unfavourable)
                 lines.append(f"❌ 不利檔位: {draws_str}")
             if not favourable and not unfavourable:
-                lines.append("⚠️ 所有檔位勝率接近平均，無明顯優劣")
+                lines.append("⚠️ 所有檔位上名率接近平均，無明顯優劣")
             lines.append(f"(數據來源: HKJC 檔位統計 {ds.get('meta',{}).get('meeting','')})")
             return '\n'.join(lines)
     return ''
@@ -398,103 +402,6 @@ def _classify_pace_shape(splits: list) -> str:
         return '波動型 ➖'
 
 
-def compute_eem_pre_assessment(races: list) -> dict:
-    """Pre-compute EEM (Energy Expenditure Model) assessment from race history.
-    
-    Analyzes running position patterns (XW) across recent races to provide:
-    - Last race running position and consumption
-    - Cumulative fatigue from last 3 races
-    - Consumption trend (increasing/stable/decreasing)
-    - EEM trigger conditions (Monster/Rebounder/Hidden Rebound)
-    """
-    result = {
-        'last_wide': '-',
-        'last_consumption': '-',
-        'consumption_history': [],
-        'cumulative_fatigue': '-',
-        'consumption_trend': '-',
-        'triggers': [],
-        'summary': '-'
-    }
-    
-    if not races:
-        return result
-    
-    # Extract wide info from recent races
-    consumption_levels = []  # (pattern, consumption, finish)
-    for r in races[:6]:
-        wide = r.get('wide_info', {})
-        pattern = wide.get('pattern', '')
-        consumption = wide.get('consumption', '未知')
-        finish = r.get('finish', 0)
-        if pattern:
-            consumption_levels.append({
-                'pattern': pattern,
-                'consumption': consumption,
-                'finish': finish,
-                'max_wide': wide.get('max_wide', 0),
-                'avg_wide': wide.get('avg_wide', 0)
-            })
-    
-    if not consumption_levels:
-        result['summary'] = '走位數據不足，基於可用信息推斷為中等消耗'
-        return result
-    
-    # Last race
-    last = consumption_levels[0]
-    result['last_wide'] = f"({last['pattern']})" if last['pattern'] else '-'
-    result['last_consumption'] = last['consumption']
-    
-    # Consumption history string
-    result['consumption_history'] = [c['consumption'] for c in consumption_levels[:3]]
-    
-    # Cumulative fatigue (last 3 races)
-    consumption_map = {'極高消耗': 5, '高消耗': 4, '中等消耗': 3, '中低消耗': 2, '低消耗': 1, '未知': 2}
-    recent_scores = [consumption_map.get(c['consumption'], 2) for c in consumption_levels[:3]]
-    avg_score = sum(recent_scores) / len(recent_scores)
-    if avg_score >= 4:
-        result['cumulative_fatigue'] = '高 ⚠️'
-    elif avg_score >= 3:
-        result['cumulative_fatigue'] = '中等'
-    elif avg_score >= 2:
-        result['cumulative_fatigue'] = '中低'
-    else:
-        result['cumulative_fatigue'] = '低 ✅'
-    
-    # Consumption trend
-    if len(recent_scores) >= 2:
-        if recent_scores[0] > recent_scores[-1] + 0.5:
-            result['consumption_trend'] = '逐仗增加 ⚠️'
-        elif recent_scores[0] < recent_scores[-1] - 0.5:
-            result['consumption_trend'] = '逐仗減少 ✅'
-        else:
-            result['consumption_trend'] = '穩定'
-    
-    # EEM Triggers
-    triggers = []
-    # Monster: high consumption + still finished top 3
-    if consumption_levels[0]['consumption'] in ('極高消耗', '高消耗') and consumption_levels[0]['finish'] <= 3:
-        triggers.append(f"✅ 逆境破格: 上仗{consumption_levels[0]['consumption']}仍跑第{consumption_levels[0]['finish']} → 實力深不見底")
-    
-    # Rebounder: high consumption last time → expect rebound with lower consumption
-    if len(consumption_levels) >= 2:
-        if consumption_levels[0]['consumption'] in ('極高消耗', '高消耗') and consumption_levels[0]['finish'] > 4:
-            triggers.append(f"✅ 超級反彈候選: 上仗{consumption_levels[0]['consumption']}跑第{consumption_levels[0]['finish']}，若今仗減少消耗可大幅反彈")
-    
-    # Engine Depletion: consecutive high consumption
-    if len(consumption_levels) >= 2 and all(
-        c['consumption'] in ('極高消耗', '高消耗') for c in consumption_levels[:2]
-    ):
-        triggers.append(f"⚠️ 實力見底風險: 連續{len([c for c in consumption_levels[:3] if c['consumption'] in ('極高消耗', '高消耗')])}仗高消耗，累積疲勞顯著")
-    
-    result['triggers'] = triggers
-    
-    # Summary
-    trigger_str = ' | '.join(triggers) if triggers else '無特殊觸發'
-    result['summary'] = f"上仗{result['last_consumption']} → 累積{result['cumulative_fatigue']} → {trigger_str}"
-    
-    return result
-
 
 def extract_wide_pattern(comment: str) -> dict:
     """Extract running position pattern (XW) from race comment.
@@ -626,13 +533,24 @@ def parse_hkjc_formguide(filepath: str) -> dict:
     def load_brand_mapping(fp):
         rc_path = str(fp).replace('賽績.md', '排位表.md').replace('Formguide.txt', '排位表.md')
         mapping = {}
+        gear_map = {}
         if os.path.exists(rc_path):
             text = Path(rc_path).read_text(encoding='utf-8')
             for match in re.finditer(r'馬名:\s*(.*?)\n.*?烙號:\s*([A-Za-z0-9_]+)', text, re.DOTALL):
                 mapping[match.group(1).strip()] = match.group(2).strip()
-        return mapping
+            # Extract gear per horse from racecard (配備: B/TT)
+            horse_blocks = re.split(r'\n馬號:', text)
+            for blk in horse_blocks:
+                nm = re.search(r'馬名:\s*(.+?)$', blk, re.MULTILINE)
+                gm = re.search(r'配備:\s*(.*)$', blk, re.MULTILINE)
+                if nm and gm:
+                    gear_val = gm.group(1).strip()
+                    # Guard against empty gear or accidental field bleed
+                    if gear_val and not gear_val.startswith('父系') and not gear_val.startswith('母系'):
+                        gear_map[nm.group(1).strip()] = gear_val
+        return mapping, gear_map
     
-    brand_mapping = load_brand_mapping(filepath)
+    brand_mapping, gear_mapping = load_brand_mapping(filepath)
 
     text = Path(filepath).read_text(encoding='utf-8')
     
@@ -683,16 +601,21 @@ def parse_hkjc_formguide(filepath: str) -> dict:
         
         horse_num = int(horse_num_str) if horse_num_str.isdigit() else idx + 1
         
-        # Extract barrier, jockey, weight, body weight
+        # Extract barrier, jockey, weight, body weight, gear
         barrier_m = re.search(r'檔位:\s*(\d+)', block)
         jockey_m = re.search(r'騎師:\s*(.+?)$', block, re.MULTILINE)
         weight_m = re.search(r'負磅:\s*(\d+)', block)
         bw_m = re.search(r'排位體重:\s*(\d+)', block)
+        gear_m = re.search(r'配備:\s*(.+?)$', block, re.MULTILINE)
         
         barrier = int(barrier_m.group(1)) if barrier_m else 0
         jockey = jockey_m.group(1).strip() if jockey_m else ''
         weight = int(weight_m.group(1)) if weight_m else 0
         body_weight = int(bw_m.group(1)) if bw_m else 0
+        today_gear = gear_m.group(1).strip() if gear_m else ''
+        # Fallback: get gear from racecard (排位表) if not found in formguide
+        if not today_gear:
+            today_gear = gear_mapping.get(horse_name, '')
         
         brand_m = re.search(r'烙號:\s*([A-Za-z0-9_]+)', block)
         brand_no = brand_m.group(1).strip() if brand_m else ''
@@ -806,6 +729,7 @@ def parse_hkjc_formguide(filepath: str) -> dict:
             'jockey': jockey,
             'weight': weight,
             'body_weight': body_weight,
+            'today_gear': today_gear,
             'races': races,  # No limit — keep all for trend computation
         })
     
@@ -917,111 +841,213 @@ def compute_trends(races: list) -> dict:
 
 
 def classify_engine_type(races: list) -> dict:
-    """Classify horse engine type from race history (Step 2.6 automation).
-    
-    Type A (前領均速): Consistently runs in front positions, even splits
-    Type B (末段爆發): Runs from behind, strong L400
-    Type C (持續衝刺): Flexible positioning, consistent splits
-    Type A/B (混合): No clear pattern
+    """V5: Classify horse engine type from sectional profile patterns.
+
+    Uses _classify_pace_shape() on each race's splits to determine the
+    dominant speed distribution pattern. No longer uses running position.
+
+    Types:
+      均速型: Even pace across all segments
+      漸進加速型: Gets faster in later segments
+      快開慢收型: Fast early, fades late
+      混合型: No clear dominant pattern
     """
     result = {
-        'type': 'A/B',
         'type_cn': '混合型',
         'confidence': '低',
         'evidence': [],
     }
-    
-    if len(races) < 2:
-        return result
-    
-    # === Layer 1: Running position pattern (60% weight) ===
-    front_count = 0  # How many races horse ran in front positions
-    back_count = 0   # How many races horse ran in back positions
-    total_valid = 0
-    
-    for r in races[:6]:
-        wide = r.get('wide_info', {})
-        wides = []
-        if wide.get('pattern'):
-            wides = [int(x) for x in re.findall(r'(\d+)W', wide['pattern'])]
-        
-        # Use first W value as indicator of in-running position tier
-        # Also check comment for position keywords
-        comment = r.get('comment', '')
-        is_front = False
-        is_back = False
-        
-        if any(kw in comment for kw in ['領放', '領前', '居前列', '輕鬆放頭', '帶出', '搶口']):
-            is_front = True
-        elif any(kw in comment for kw in ['居包尾', '後列', '最後', '留守尾段']):
-            is_back = True
-        elif '居中間' in comment:
-            pass  # mid-field
-        elif wides and wides[0] <= 2 and len(wides) >= 2 and max(wides[:2]) <= 2:
-            is_front = True  # 1W1W typically = front runners
-        
-        if is_front:
-            front_count += 1
-        elif is_back:
-            back_count += 1
-        total_valid += 1
-    
-    # === Layer 2: L400 quality verification (40% weight) ===
-    l400_fast_count = 0  # Races where L400 was notably fast
-    splits_even_count = 0  # Races where splits were even
-    
+
+    # Collect pace shapes from races with valid splits
+    shape_counts = {'均速型': 0, '漸進加速': 0, '快開慢收': 0, '慢開快收': 0, '波動型': 0}
+    valid_races = 0
+
     for r in races[:6]:
         splits = r.get('splits', [])
         if len(splits) < 3:
             continue
-        l400 = splits[-1]
-        # Compare L400 to average of other splits
-        other_avg = sum(splits[:-1]) / len(splits[:-1])
-        if l400 < other_avg - 0.5:
-            l400_fast_count += 1
-        
-        # Check if splits are even (low variance)
-        if len(splits) >= 3:
-            main_splits = splits[1:]  # Skip first split (often shorter)
-            spread = max(main_splits) - min(main_splits)
-            if spread < 1.0:
-                splits_even_count += 1
-    
-    # === Classification ===
-    if total_valid >= 3:
-        front_pct = front_count / total_valid
-        back_pct = back_count / total_valid
-        
-        if front_pct >= 0.5:
-            result['type'] = 'A'
-            result['type_cn'] = '前領均速型'
-            result['evidence'].append(f'前列走位 {front_count}/{total_valid} 場')
-            result['confidence'] = '高' if front_pct >= 0.7 else '中'
-            # Verify: if L400 is consistently fast, might be A/B
-            if l400_fast_count >= 2:
-                result['evidence'].append(f'但 L400 偏快 {l400_fast_count} 場')
-        elif back_pct >= 0.5 and l400_fast_count >= 2:
-            result['type'] = 'B'
-            result['type_cn'] = '末段爆發型'
-            result['evidence'].append(f'後段走位 {back_count}/{total_valid} 場')
-            result['evidence'].append(f'L400 偏快 {l400_fast_count} 場')
-            result['confidence'] = '高' if back_pct >= 0.7 and l400_fast_count >= 3 else '中'
-        elif back_pct >= 0.5 and l400_fast_count < 2:
-            result['type'] = 'A/B'
-            result['type_cn'] = '混合型'
-            result['evidence'].append(f'後段走位但 L400 唔突出 → 可能只係慢閘')
-            result['confidence'] = '低'
-        elif splits_even_count >= 3:
-            result['type'] = 'C'
-            result['type_cn'] = '持續衝刺型'
-            result['evidence'].append(f'分段均勻 {splits_even_count}/{total_valid} 場')
-            result['confidence'] = '中'
-        else:
-            result['type'] = 'A/B'
-            result['type_cn'] = '混合型'
-            result['evidence'].append(f'前{front_count}/後{back_count}/中{total_valid-front_count-back_count}')
-            result['confidence'] = '低'
-    
+        shape = _classify_pace_shape(splits)
+        valid_races += 1
+        for key in shape_counts:
+            if key in shape:
+                shape_counts[key] += 1
+                break
+
+    if valid_races < 2:
+        result['evidence'].append(f'段速數據不足 ({valid_races} 場有 splits)')
+        return result
+
+    # Find dominant shape
+    # Merge 慢開快收 into 漸進加速 (both = late acceleration)
+    accel_count = shape_counts['漸進加速'] + shape_counts['慢開快收']
+    even_count = shape_counts['均速型']
+    fade_count = shape_counts['快開慢收']
+
+    dominant = max(
+        [('均速型', even_count), ('漸進加速型', accel_count), ('快開慢收型', fade_count)],
+        key=lambda x: x[1]
+    )
+
+    if dominant[1] >= valid_races * 0.5 and dominant[1] >= 2:
+        result['type_cn'] = dominant[0]
+        result['confidence'] = '高' if dominant[1] >= valid_races * 0.7 else '中'
+        result['evidence'].append(f'近{valid_races}場全段速剖面 {dominant[1]}/{valid_races} 場{dominant[0]}')
+    else:
+        result['type_cn'] = '混合型'
+        result['confidence'] = '低'
+        result['evidence'].append(
+            f'均速{even_count}/加速{accel_count}/快開慢收{fade_count} (共{valid_races}場)'
+        )
+
+    if valid_races < 4:
+        result['confidence'] = '低'
+        result['evidence'].append(f'樣本量少 ({valid_races} 場)')
+
+    return result
+
+
+STYLE_WEIGHTS_RECENT = [3.0, 2.0, 1.5, 1.0, 0.75, 0.5]
+
+
+def _confidence_rank(label: str) -> int:
+    return {'高': 2, '中': 1, '低': 0, 'High': 2, 'Medium': 1, 'Low': 0}.get(label, 0)
+
+
+def _aggregate_confidence(labels: list[str]) -> str:
+    if not labels:
+        return 'Low'
+    avg = sum(_confidence_rank(x) for x in labels) / len(labels)
+    if avg >= 1.5:
+        return 'High'
+    if avg >= 0.75:
+        return 'Medium'
+    return 'Low'
+
+
+def _pace_confidence(style_profiles: list[dict], n_leaders: int, n_pressers: int, field_size: int) -> str:
+    if not style_profiles or field_size == 0:
+        return 'Low'
+    low_count = sum(1 for p in style_profiles if p.get('confidence') == '低')
+    high_or_mid = sum(1 for p in style_profiles if p.get('confidence') in ('高', '中'))
+    if low_count / max(field_size, 1) >= 0.4:
+        return 'Low'
+    if high_or_mid / max(field_size, 1) < 0.65:
+        return 'Low'
+    if n_leaders == 0 and n_pressers <= 1:
+        return 'Mixed'
+    return 'Clear'
+
+
+def _hkjc_style_signal(race: dict) -> Tuple[Optional[str], str]:
+    """Return a single-race tactical style signal from comment/positions.
+
+    Uses in-race position evidence only. Finishing position is deliberately ignored
+    because it measures result, not early/mid-race running style.
+    """
+    comment = race.get('comment', '') or ''
+    positions = race.get('positions', []) or []
+    field_size = race.get('field_size', 12) or 12
+
+    is_behind_leader = any(neg in comment for neg in [
+        '落後領放', '追趕領放', '跟隨領放', '與領放馬',
+        '離領放馬', '在領放馬之後',
+    ])
+
+    if not is_behind_leader and any(kw in comment for kw in [
+        '領放,', '領放;', '領放。', '領前', '帶頭', '帶出', '輕鬆放頭', '搶口'
+    ]):
+        return 'front', '評語顯示主動領放'
+
+    if any(kw in comment for kw in [
+        '居前列', '前列', '跟隨領先', '追趕領放馬', '居中間稍前', '第二位', '第三位'
+    ]) or is_behind_leader:
+        return 'presser', '評語顯示跟前/貼放'
+
+    if any(kw in comment for kw in ['居包尾', '留居包尾', '後列', '尾列', '墮後']):
+        return 'closer', '評語顯示留後'
+    if '最後' in comment and '最後四百' not in comment and '最後直路' not in comment:
+        return 'closer', '評語顯示尾段位置'
+
+    if '居中間' in comment:
+        return 'mid_pack', '評語顯示守中'
+
+    if positions:
+        first_pos = positions[0] if isinstance(positions[0], int) else 0
+        if first_pos > 0:
+            mid_cut = max(int(field_size * 0.55), 4)
+            if first_pos == 1:
+                return 'front', f'沿途位首段第{first_pos}'
+            if first_pos <= 4:
+                return 'presser', f'沿途位首段第{first_pos}'
+            if first_pos <= mid_cut:
+                return 'mid_pack', f'沿途位首段第{first_pos}'
+            return 'closer', f'沿途位首段第{first_pos}'
+
+    return None, '無走位證據'
+
+
+def classify_running_style(races: list) -> dict:
+    """V6: Classify running style from weighted recent in-race position evidence.
+
+    Recent races carry more weight. Finishing position is never used as a proxy
+    for running style. Output keeps the legacy 4-way style plus a 3-way tactical
+    label (前置 / 守中 / 後上) for pace-map use.
+    """
+    result = {
+        'style_cn': '靈活',
+        'style_3way': '守中',
+        'confidence': '低',
+        'evidence': [],
+    }
+
+    style_counts = {'front': 0.0, 'presser': 0.0, 'mid_pack': 0.0, 'closer': 0.0}
+    evidence_counts = {'front': 0, 'presser': 0, 'mid_pack': 0, 'closer': 0}
+    evidence_notes = []
+    total_weight = 0.0
+    total_valid = 0
+
+    for i, r in enumerate(races[:6]):
+        style, note = _hkjc_style_signal(r)
+        if not style:
+            continue
+        weight = STYLE_WEIGHTS_RECENT[i] if i < len(STYLE_WEIGHTS_RECENT) else 0.5
+        style_counts[style] += weight
+        evidence_counts[style] += 1
+        total_weight += weight
+        total_valid += 1
+        if len(evidence_notes) < 3:
+            evidence_notes.append(f"近{i+1}仗{note}")
+
+    if total_valid < 2:
+        result['evidence'].append(f'數據不足 ({total_valid} 場)')
+        return result
+
+    # Find dominant style
+    dominant = max(style_counts.items(), key=lambda x: x[1])
+    dominant_pct = dominant[1] / total_weight if total_weight > 0 else 0
+    style_map = {'front': '前領', 'presser': '跟前', 'mid_pack': '中段', 'closer': '後上'}
+    three_way_map = {'front': '前置', 'presser': '前置', 'mid_pack': '守中', 'closer': '後上'}
+
+    if dominant_pct >= 0.45 and evidence_counts[dominant[0]] >= 2:
+        result['style_cn'] = style_map[dominant[0]]
+        result['style_3way'] = three_way_map[dominant[0]]
+        result['confidence'] = '高' if dominant_pct >= 0.65 and evidence_counts[dominant[0]] >= 3 else '中'
+        result['evidence'].append(
+            f"近{total_valid}場加權走位 {style_map[dominant[0]]} 佔{dominant_pct:.0%} "
+            f"({evidence_counts[dominant[0]]}/{total_valid}場)"
+        )
+    else:
+        result['style_cn'] = '靈活'
+        result['style_3way'] = '守中'
+        result['confidence'] = '低'
+        counts_str = '/'.join(
+            f"{style_map[k]}{evidence_counts[k]}" for k in evidence_counts if evidence_counts[k] > 0
+        )
+        result['evidence'].append(f'{counts_str} (共{total_valid}場，無單一路向過半)')
+
+    if evidence_notes:
+        result['evidence'].append('；'.join(evidence_notes))
+
     return result
 
 
@@ -1108,36 +1134,111 @@ def compute_distance_aptitude(races: list, today_dist: int = 0) -> dict:
 
 
 def _recent_running_style(races: list) -> str:
-    comments = ' '.join(r.get('comment', '') for r in races[:3])
-    if any(kw in comments for kw in ['領放', '領前', '帶頭', '帶出', '居前列', '前列']):
-        return 'front'
-    if any(kw in comments for kw in ['跟隨領先', '追趕領放馬', '居中間稍前', '第二位', '第三位']):
-        return 'on_pace'
-    if any(kw in comments for kw in ['居包尾', '留居包尾', '後列', '尾列', '墮後', '最後']):
-        return 'closer'
-    return 'mid_pack'
+    """V3: Context-aware running style detection from HKJC comments.
+
+    Key fix: '落後領放馬' should NOT match as 'front' — the horse was
+    behind the leader, not leading. We check per-comment with negative filters.
+    """
+    front_score = 0
+    presser_score = 0
+    closer_score = 0
+    mid_score = 0
+
+    for r in races[:3]:
+        comment = r.get('comment', '')
+        if not comment:
+            continue
+
+        # --- Negative filters first: these phrases contain '領放' but mean opposite ---
+        is_behind_leader = any(neg in comment for neg in [
+            '落後領放', '追趕領放', '跟隨領放', '與領放馬',
+            '離領放馬', '在領放馬之後',
+        ])
+
+        # --- Front: actual leading patterns ---
+        if not is_behind_leader:
+            # Only match '領放' when it's the horse's own action (usually at start of phrase)
+            if any(kw in comment for kw in ['領放,', '領放;', '領放。']):
+                front_score += 2  # Strong signal: 領放 + punctuation = subject is leading
+            elif '領前' in comment and '取得領先' not in comment:
+                front_score += 2
+            elif any(kw in comment for kw in ['帶頭', '帶出', '輕鬆放頭', '搶口']):
+                front_score += 2
+
+        # '居前列' = front GROUP but not necessarily leading
+        if '居前列' in comment or '前列' in comment:
+            presser_score += 1  # V3: presser, not leader
+
+        # --- Presser: tracking leader ---
+        if any(kw in comment for kw in ['跟隨領先', '追趕領放馬', '居中間稍前', '第二位', '第三位']):
+            presser_score += 1
+        if is_behind_leader and '落後領放馬' in comment:
+            # "落後領放馬X個馬位" = mid-to-presser depending on distance
+            presser_score += 1
+
+        # --- Closer ---
+        if any(kw in comment for kw in ['居包尾', '留居包尾', '後列', '尾列', '墮後']):
+            closer_score += 2
+        if '最後' in comment and '最後四百' not in comment and '最後直路' not in comment:
+            closer_score += 1
+
+        # --- Mid ---
+        if '居中間' in comment and '稍前' not in comment:
+            mid_score += 1
+
+        # '取得領先' = passing leader late, actually a closer/finisher
+        if '取得領先' in comment and front_score == 0:
+            closer_score += 1  # Late surge, not a natural leader
+
+    # Resolve
+    scores = {'front': front_score, 'presser': presser_score, 'closer': closer_score, 'mid_pack': mid_score}
+    best = max(scores, key=scores.get)
+    if scores[best] == 0:
+        return 'mid_pack'
+    return best
 
 
-def _classify_pace_v2(n_leaders: int, n_on_pace: int, field_size: int) -> str:
-    """5-tier pace classification based on leader ratio and front pressure.
+def _classify_pace_v2(n_leaders: int, n_on_pace: int, field_size: int,
+                       distance: int = 1200, going: str = '',
+                       n_pressers: int = 0) -> str:
+    """V3: Multi-factor pace classification for HKJC.
 
-    Returns: Very Slow / Slow / Normal / Fast / Very Fast
+    Returns Chinese labels: 極慢 / 慢 / 正常 / 快 / 極快
     """
     if field_size == 0:
-        return 'Normal'
+        return '正常'
 
-    front_ratio = (n_leaders + n_on_pace) / field_size
+    # Base score from leader/presser pressure
+    # V3: Pressers only contribute when leaders are present
+    presser_weight = 1.0 if n_leaders >= 1 else 0.3
+    base_score = n_leaders * 2.5 + n_pressers * presser_weight + n_on_pace * 0.2
 
-    if n_leaders == 0 and n_on_pace <= 1:
-        return 'Very Slow'
-    elif n_leaders <= 1 and front_ratio < 0.25:
-        return 'Slow'
-    elif n_leaders <= 2 and front_ratio < 0.35:
-        return 'Normal'
-    elif n_leaders >= 3 or front_ratio >= 0.45:
-        return 'Very Fast'
+    # Distance modifier
+    dist_mod = {1000: 1.4, 1200: 1.1, 1400: 0.95, 1600: 0.9,
+                1650: 0.88, 1800: 0.85, 2000: 0.8, 2200: 0.75, 2400: 0.7}
+    d = min(dist_mod.keys(), key=lambda k: abs(k - distance))
+    base_score *= dist_mod[d]
+
+    # Going modifier
+    going_lower = str(going).lower()
+    if any(w in going_lower for w in ['深泵', 'yielding', '爛', 'heavy']):
+        base_score *= 0.8
+    elif any(w in going_lower for w in ['深好至深泵', '好至淵快', 'soft']):
+        base_score *= 0.9
+    elif any(w in going_lower for w in ['快', 'firm']):
+        base_score *= 1.1
+
+    # Map to 5-tier Chinese labels
+    if base_score >= 6.0:
+        return '極快'
+    elif base_score >= 4.0:
+        return '快'
+    elif base_score >= 2.5:
+        return '正常'
+    elif base_score >= 1.5:
+        return '慢'
     else:
-        return 'Fast'
+        return '極慢'
 
 
 def _classify_pace_volatility(n_leaders: int, n_closers: int, field_size: int) -> str:
@@ -1160,62 +1261,91 @@ def _classify_pace_volatility(n_leaders: int, n_closers: int, field_size: int) -
 
 
 def build_race_speed_map_block(data: dict, today_venue: str = '', today_dist: int = 0,
-                               race_class: str = '') -> tuple[str, dict]:
-    """Build the first-class race speed map at Facts generation time."""
-    leaders, on_pace, mid_pack, closers = [], [], [], []
+                               race_class: str = '', going: str = '') -> tuple[str, dict]:
+    """V4: Build the first-class HKJC race speed map at Facts generation time.
+    Includes pressers, weighted run-style confidence and pace confidence.
+    """
+    leaders, pressers, on_pace, mid_pack, closers = [], [], [], [], []
+    style_profiles = []
 
     for horse in data.get('horses', []):
         races = horse.get('races', [])
-        engine = classify_engine_type(races)
-        style = _recent_running_style(races)
+        rs = classify_running_style(races)
         barrier = horse.get('barrier', 0)
         num = horse.get('num')
+        if num:
+            style_profiles.append({'num': num, **rs})
 
-        if engine.get('type') == 'A' or style == 'front':
+        # Use weighted in-race running style only (no finish-position shortcut).
+        style = rs['style_cn']
+        if style == '前領':
             leaders.append(num)
-        elif style == 'on_pace' or engine.get('type') == 'C' or (barrier and barrier <= 3 and style != 'closer'):
-            on_pace.append(num)
-        elif engine.get('type') == 'B' or style == 'closer':
+        elif style == '後上':
             closers.append(num)
-        else:
+        elif style == '跟前':
+            pressers.append(num)
+        elif style == '中段':
             mid_pack.append(num)
+        else:  # 靈活
+            if barrier and barrier <= 4:
+                on_pace.append(num)
+            else:
+                mid_pack.append(num)
 
     field_size = len(data.get('horses', []))
-    predicted_pace = _classify_pace_v2(len(leaders), len(on_pace), field_size)
+    predicted_pace = _classify_pace_v2(len(leaders), len(on_pace), field_size,
+                                       today_dist or 1200, going,
+                                       n_pressers=len(pressers))
     pace_volatility = _classify_pace_volatility(len(leaders), len(closers), field_size)
+    style_confidence = _aggregate_confidence([p.get('confidence', '低') for p in style_profiles])
+    pace_confidence = _pace_confidence(style_profiles, len(leaders), len(pressers), field_size)
 
     track_bias = (
         f"FACTS_SPEED_MODEL: {today_venue or '未知場地'} {today_dist or '?'}m {race_class or ''}; "
-        f"以前領數、檔位及近3仗跑法自動建模。"
+        f"以前領數、檔位及近6仗加權跑法自動建模。"
     )
     speed_map = {
         'predicted_pace': predicted_pace,
+        'pace_confidence': pace_confidence,
+        'style_confidence': style_confidence,
         'pace_volatility': pace_volatility,
         'leaders': [n for n in leaders if n],
+        'pressers': [n for n in pressers if n],  # V3: new
         'on_pace': [n for n in on_pace if n],
         'mid_pack': [n for n in mid_pack if n],
         'closers': [n for n in closers if n],
+        'going': going,  # V3
         'track_bias': track_bias,
         'tactical_nodes': (
-            f"FACTS_SPEED_MODEL: leaders={len(leaders)}, on_pace={len(on_pace)}, "
-            f"mid={len(mid_pack)}, closers={len(closers)}；步速預測 {predicted_pace}。"
+            f"FACTS_SPEED_MODEL: leaders={len(leaders)}, pressers={len(pressers)}, "
+            f"on_pace={len(on_pace)}, mid={len(mid_pack)}, closers={len(closers)}；"
+            f"步速預測 {predicted_pace}；pace_confidence={pace_confidence}。"
         ),
         'collapse_point': (
             'FACTS_SPEED_MODEL: 前速壓力高時後上/慳位馬受惠；若步速被控慢，前置馬形勢提升。'
         ),
-        'source': 'FACTS_SPEED_MODEL'
+        'style_evidence': [
+            f"#{p['num']} {p.get('style_3way', '?')}/{p.get('style_cn', '?')}({p.get('confidence', '低')})"
+            for p in style_profiles
+        ],
+        'source': 'FACTS_SPEED_MODEL_V4'
     }
 
     def _fmt(nums):
         return '[' + ', '.join(str(n) for n in nums if n) + ']'
 
     lines = [
-        '### 🗺️ 自動步速圖 (Python Facts Model)',
+        '### 🗺️ 自動步速圖 (Python Facts Model V4)',
         f"- **predicted_pace:** {speed_map['predicted_pace']}",
+        f"- **pace_confidence:** {speed_map['pace_confidence']}",
+        f"- **style_confidence:** {speed_map['style_confidence']}",
         f"- **leaders:** {_fmt(speed_map['leaders'])}",
+        f"- **pressers:** {_fmt(speed_map['pressers'])}",
         f"- **on_pace:** {_fmt(speed_map['on_pace'])}",
         f"- **mid_pack:** {_fmt(speed_map['mid_pack'])}",
         f"- **closers:** {_fmt(speed_map['closers'])}",
+        f"- **style_evidence:** {'; '.join(speed_map['style_evidence'])}",
+        f"- **going:** {going}",
         f"- **track_bias:** {speed_map['track_bias']}",
         f"- **tactical_nodes:** {speed_map['tactical_nodes']}",
         f"- **collapse_point:** {speed_map['collapse_point']}",
@@ -1276,6 +1406,21 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     lines.append(f"📌 **賽績總結:**")
     lines.append(f"- **近六場:** {recent_str} (左=剛戰 → 右=最舊)")
     lines.append(f"- **休後復出:** {stats['days_since_last']} 日")
+    # Career tag classification (V2.2)
+    # Only horses with zero formal race records use debut templates.
+    # Any horse that has run uses the standard template.
+    total_races = len(races)
+    # Check for imported horse (has profile entries but no/few formguide races)
+    has_overseas = False
+    if profile_data and profile_data.get('origin', '') not in ('', 'HK', '本地'):
+        has_overseas = True
+    if total_races == 0 and not has_overseas:
+        _hk_ctag = 'DEBUT'
+    elif total_races == 0 and has_overseas:
+        _hk_ctag = 'IMPORTED_DEBUT'
+    else:
+        _hk_ctag = 'ESTABLISHED'
+    lines.append(f"- **生涯標記:** `{_hk_ctag}` (香港出賽 {total_races} 場)")
     lines.append(f"- **統計:** 季內 {season_str} | 同程 {dist_str} | 同場同程 {vd_str}")
     
     # === 完整賽績檔案 Markdown Table ===
@@ -1398,6 +1543,8 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     
     # === 完成時間偏差趨勢 [SIP-P2c] ===
     ft_deviations = []
+    adj_deviations = []  # V5.1: Pace-adjusted deviations
+    pace_labels = []     # V5.1: Per-race pace label
     for i in range(min(len(races), 6)):
         r = races[i]
         p = p_entries[i] if i < len(p_entries) else {}
@@ -1412,7 +1559,25 @@ def generate_horse_block(horse: dict, today_venue: str = '',
                 r_class = cmap.get(str(r_class), r_class)
             race_std = get_standard_time(r_venue, r_dist, r_class)
             if ftime_sec and race_std:
-                ft_deviations.append(round(ftime_sec - race_std, 2))
+                raw_dev = round(ftime_sec - race_std, 2)
+                ft_deviations.append(raw_dev)
+                # V5.1: Pace-adjusted deviation using winner time estimation
+                margin_num = p.get('margin_numeric', 0) or 0
+                placing = p.get('placing', 0) or 0
+                margin_secs = round(margin_num * 0.17, 2) if placing != 1 else 0
+                winner_time = ftime_sec - margin_secs
+                pace_factor = round(winner_time - race_std, 2)
+                adj_dev = round(raw_dev - pace_factor, 2)
+                adj_deviations.append(adj_dev)
+                # Pace label for context
+                if pace_factor > 1.5:
+                    pace_labels.append('極慢')
+                elif pace_factor > 0.5:
+                    pace_labels.append('偏慢')
+                elif pace_factor < -0.5:
+                    pace_labels.append('偏快')
+                else:
+                    pace_labels.append('正常')
     
     if len(ft_deviations) >= 2:
         lines.append(f"")
@@ -1449,10 +1614,92 @@ def generate_horse_block(horse: dict, today_venue: str = '',
         lines.append(f"  偏差: {dev_str} → 趨勢: {ft_trend}")
         lines.append(f"  水平: {ft_level} (近 {min(len(ft_deviations), 3)} 仗平均偏差: {avg_dev:+.2f}s)")
         lines.append(f"  含金量: {ft_reading}")
+        # V5.1: Pace-adjusted deviation (subtracts race pace factor)
+        if len(adj_deviations) >= 2:
+            adj_str_parts = []
+            for j, ad in enumerate(adj_deviations):
+                pl = pace_labels[j] if j < len(pace_labels) else ''
+                if pl in ('極慢', '偏慢', '偏快'):
+                    adj_str_parts.append(f"{ad:+.2f}s[{pl}]")
+                else:
+                    adj_str_parts.append(f"{ad:+.2f}s")
+            adj_str = '→'.join(adj_str_parts)
+            avg_adj = sum(adj_deviations[:3]) / min(len(adj_deviations), 3)
+            if avg_adj < 0.3:
+                adj_level = '✅ 步速修正後仍具競爭力'
+            elif avg_adj < 0.8:
+                adj_level = '➖ 步速修正後接近平均'
+            elif avg_adj < 1.3:
+                adj_level = '⚠️ 步速修正後仍偏慢'
+            else:
+                adj_level = '❌ 步速修正後明顯落後'
+            lines.append(f"  🔧 步速修正偏差: {adj_str}")
+            lines.append(f"  🔧 修正水平: {adj_level} (近 {min(len(adj_deviations), 3)} 仗修正平均: {avg_adj:+.2f}s)")
+            lines.append(f"  💡 修正方法: 扣除全場頭馬偏差(步速因子) — [極慢/偏慢]場次嘅原始偏差會被折扣")
+    
+    # === V5.1: 人馬組合統計 (Jockey-Horse Combo Stats) ===
+    current_jockey = horse.get('jockey', '')
+    combo_stats = {}  # {jockey_name: {starts, wins, places, shows, total_placing}}
+    jockey_history = []  # Recent races: [{date, jockey, placing, changed}]
+    
+    all_race_data = list(zip(races, p_entries)) if p_entries else [(r, {}) for r in races]
+    prev_jockey_name = None
+    
+    for i, (r, p) in enumerate(all_race_data):
+        j_name = r.get('jockey', p.get('jockey', ''))
+        finish = r.get('finish', p.get('placing', 0))
+        if isinstance(finish, str):
+            try:
+                finish = int(finish)
+            except (ValueError, TypeError):
+                finish = 0
+        date = r.get('date', p.get('date', ''))
+        
+        if j_name:
+            if j_name not in combo_stats:
+                combo_stats[j_name] = {'starts': 0, 'wins': 0, 'places': 0, 'shows': 0, 'total_placing': 0}
+            combo_stats[j_name]['starts'] += 1
+            if finish > 0:
+                combo_stats[j_name]['total_placing'] += finish
+            if finish == 1:
+                combo_stats[j_name]['wins'] += 1
+            if finish <= 2 and finish > 0:
+                combo_stats[j_name]['places'] += 1
+            if finish <= 3 and finish > 0:
+                combo_stats[j_name]['shows'] += 1
+        
+        if i < 6:
+            changed = '← 換騎' if prev_jockey_name and j_name != prev_jockey_name else ''
+            jockey_history.append({'date': date, 'jockey': j_name, 'placing': finish, 'changed': changed})
+        prev_jockey_name = j_name
+    
+    if combo_stats:
+        lines.append(f"")
+        lines.append(f"🏇 **人馬組合統計 [V5.1]:**")
+        lines.append(f"  今場騎師: {current_jockey}")
+        lines.append(f"  📊 騎師×此馬歷史:")
+        lines.append(f"  | 騎師 | 場次 | 勝 | 入Q | 上名 | 平均名次 | 勝率 | 位率 |")
+        lines.append(f"  |------|------|---|-----|------|----------|------|------|")
+        # Sort: current jockey first, then by starts descending
+        sorted_jockeys = sorted(combo_stats.items(), 
+                                key=lambda x: (x[0] != current_jockey, -x[1]['starts']))
+        for j_name, s in sorted_jockeys:
+            avg_pos = round(s['total_placing'] / max(s['starts'], 1), 1)
+            win_pct = round(s['wins'] / max(s['starts'], 1) * 100, 1)
+            place_pct = round(s['shows'] / max(s['starts'], 1) * 100, 1)
+            marker = ' ← 今場' if j_name == current_jockey else ''
+            lines.append(f"  | {j_name}{marker} | {s['starts']} | {s['wins']} | {s['places']} | {s['shows']} | {avg_pos} | {win_pct}% | {place_pct}% |")
+        
+        if jockey_history:
+            lines.append(f"  近6場騎師歷史:")
+            lines.append(f"  | # | 日期 | 騎師 | 名次 | 備注 |")
+            lines.append(f"  |---|------|------|------|------|")
+            for i, jh in enumerate(jockey_history):
+                lines.append(f"  | {i+1} | {jh['date']} | {jh['jockey']} | {jh['placing']} | {jh['changed']} |")
     
     # === 全段速剖面 (Full Sectional Profile) ===
     sect_profile_rows = []
-    for i in range(min(len(races), 3)):  # Last 3 races
+    for i in range(min(len(races), 6)):  # V5: Last 6 races (aligned with race record)
         r = races[i]
         sect = r.get('sectionals', {})
         all_sects = sect.get('all_sections', [])
@@ -1517,34 +1764,26 @@ def generate_horse_block(horse: dict, today_venue: str = '',
                 for alert in alerts:
                     lines.append(f"  {alert}")
     
-    # === EEM 預評估 (自動計算) ===
-    eem = compute_eem_pre_assessment(races)
-    lines.append(f"")
-    lines.append(f"⚡ **EEM 預評估 (自動計算):**")
-    lines.append(f"  上仗走位: {eem['last_wide']} → {eem['last_consumption']}")
-    if eem['consumption_history']:
-        hist_str = ' → '.join(eem['consumption_history'])
-        lines.append(f"  近 {len(eem['consumption_history'])} 仗消耗: {hist_str} → 累積: {eem['cumulative_fatigue']}")
-    if eem['consumption_trend'] != '-':
-        lines.append(f"  走位消耗趨勢: {eem['consumption_trend']}")
-    if eem['triggers']:
-        lines.append(f"  EEM 觸發:")
-        for trigger in eem['triggers']:
-            lines.append(f"    {trigger}")
-    else:
-        lines.append(f"  EEM 觸發: ➖ 正常消耗，無特殊條件")
+
     
-    # === 引擎距離 ===
+    # === V5: 引擎 (速度分佈) + 跑法 (位置偏好) ===
     engine = classify_engine_type(races)
+    run_style = classify_running_style(races)
     dist_apt = compute_distance_aptitude(races, today_dist)
     
     today_rec = dist_apt['today_record']
     today_total = sum(today_rec)
     
-    lines.append(f"🔧 **引擎與距離:**")
-    lines.append(f"  引擎: Type {engine['type']} ({engine['type_cn']}) | "
+    low_sample_tag = ' [⚠️ 樣本不足 — LLM 可覆判]' if engine['confidence'] == '低' and '樣本' in ' '.join(engine['evidence']) else ''
+    lines.append(f"🔧 **引擎 (速度分佈):**")
+    lines.append(f"  引擎: {engine['type_cn']} | "
                  f"信心: {engine['confidence']} | "
-                 f"依據: {'; '.join(engine['evidence']) if engine['evidence'] else '數據不足'}")
+                 f"依據: {'; '.join(engine['evidence']) if engine['evidence'] else '數據不足'}"
+                 f"{low_sample_tag}")
+    lines.append(f"🏇 **跑法 (位置偏好):**")
+    lines.append(f"  跑法: {run_style['style_cn']} | "
+                 f"信心: {run_style['confidence']} | "
+                 f"依據: {'; '.join(run_style['evidence']) if run_style['evidence'] else '數據不足'}")
                  
     if dist_apt['dist_lines']:
         lines.append(f"  距離分佈: {' | '.join(dist_apt['dist_lines'])}")
@@ -1579,8 +1818,11 @@ def generate_horse_block(horse: dict, today_venue: str = '',
             lines.append(f"📊 **體重趨勢:** {wt_vals} → {wt['trend']} ({wt['detail']})")
         
         # Gear changes
-        gc = detect_gear_changes(p_entries)  # No today_gear in formguide context
-        lines.append(f"🔧 **配備變動:** 上仗 {gc['last']} | {gc['signal']}")
+        gc = detect_gear_changes(p_entries, horse.get('today_gear') or None)
+        if gc.get('today'):
+            lines.append(f"🔧 **配備變動:** 上仗 {gc['last']} → 今仗 {gc['today']} | {gc['signal']}")
+        else:
+            lines.append(f"🔧 **配備變動:** 上仗 {gc['last']} | {gc['signal']}")
         if gc.get('sip_hv2'):
             lines.append(f"   ⚠️ SIP-HV2 觸發：大幅配備變動")
         hist = '→'.join(gc['history'][:5]) if gc.get('history') else 'N/A'

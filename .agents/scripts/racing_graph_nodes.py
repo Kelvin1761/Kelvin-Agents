@@ -51,7 +51,8 @@ def _get_domain_fns(domain):
             "qa_diagnosis": ho.generate_qa_diagnosis,
             "print_summary": ho.print_hkjc_analysis_summary,
             "skeleton_script": ".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/create_hkjc_logic_skeleton.py",
-            "compile_script": os.path.join(os.path.abspath(_HKJC_SCRIPTS), "compile_analysis_template.py"),
+            "trackwork_script": ".agents/skills/hkjc_racing/hkjc_race_extractor/scripts/extract_trackwork.py",
+            "compile_script": os.path.join(os.path.abspath(_HKJC_SCRIPTS), "compile_analysis_template_hkjc.py"),
             "reports_script": ".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/generate_reports.py",
             "context_injection": ho.print_context_injection,
             "discover_races": ho.discover_total_races,
@@ -75,6 +76,7 @@ def _get_domain_fns(domain):
             "qa_diagnosis": ao.generate_qa_diagnosis_au,
             "print_summary": ao.print_analysis_summary,
             "skeleton_script": ".agents/skills/au_racing/au_wong_choi/scripts/create_au_logic_skeleton.py",
+            "trackwork_script": None,
             "compile_script": os.path.join(os.path.abspath(_AU_SCRIPTS), "compile_analysis_template.py"),
             "reports_script": ".agents/skills/au_racing/au_wong_choi/scripts/generate_reports.py",
             "context_injection": ao.print_context_injection_au,
@@ -135,8 +137,14 @@ def node_generate_facts(state):
             _log(f"  -> Generating Race {r} Facts...")
             rc_fg = fns["get_racecard"](target_dir, r)
             rc, fg = rc_fg if isinstance(rc_fg, tuple) else (rc_fg, None)
-            cmd = [PYTHON, ".agents/scripts/inject_fact_anchors.py", rc, fg,
-                   "--max-display", "5", "--venue", venue]
+            if state.get("domain", "au") == "hkjc":
+                script_path = ".agents/scripts/inject_hkjc_fact_anchors.py"
+                out_path = fg.replace("賽績.md", "Facts.md")
+                cmd = [PYTHON, script_path, fg, "--output", out_path, "--venue", venue, "--race-num", str(r)]
+            else:
+                script_path = ".agents/scripts/inject_fact_anchors.py"
+                cmd = [PYTHON, script_path, rc, fg,
+                       "--max-display", "5", "--venue", venue]
             subprocess.run(cmd, check=True)
 
     if all_done:
@@ -144,6 +152,73 @@ def node_generate_facts(state):
     else:
         _log("✅ Facts generation complete")
     return {"facts_ready": True, "log": ["facts_ready=True"]}
+
+
+# ═══════════════════════════════════════════════════════════════
+# NODE: extract_trackwork
+# ═══════════════════════════════════════════════════════════════
+def node_extract_trackwork(state):
+    """Extract HKJC trackwork digest after Facts generation. Non-blocking."""
+    domain = state.get("domain", "au")
+    if domain != "hkjc":
+        return {"trackwork_ready": False, "trackwork_status": "skipped", "log": ["trackwork=skipped"]}
+
+    fns = _get_domain_fns(domain)
+    script = fns.get("trackwork_script")
+    if not script:
+        return {"trackwork_ready": False, "trackwork_status": "missing_script", "log": ["trackwork=missing_script"]}
+
+    target_dir = state["target_dir"]
+    date_prefix = state.get("date_prefix", "")
+    total_races = int(state.get("total_races", 0) or 0)
+    iso_prefix = ""
+    m_dir_date = re.search(r'(\d{4})-(\d{2})-(\d{2})', os.path.basename(target_dir))
+    if m_dir_date:
+        iso_prefix = f"{m_dir_date.group(1)}-{m_dir_date.group(2)}-{m_dir_date.group(3)}"
+    accepted_prefixes = [p for p in (date_prefix, iso_prefix) if p]
+    existing = [
+        f for f in os.listdir(target_dir)
+        if any(re.search(rf'^{re.escape(prefix)} Race \d+ 晨操\.json$', f) for prefix in accepted_prefixes)
+    ]
+    if total_races and len(existing) >= total_races:
+        _log(f"✅ Trackwork already exists ({len(existing)}/{total_races})")
+        return {"trackwork_ready": True, "trackwork_status": "cached", "log": ["trackwork=cached"]}
+
+    url = state.get("url")
+    venue = state.get("venue", "")
+    venue_norm = venue
+    if str(venue).lower().startswith("happy") or "跑馬地" in str(venue):
+        venue_norm = "HV"
+    elif str(venue).lower().startswith("sha") or "沙田" in str(venue):
+        venue_norm = "ST"
+    if iso_prefix:
+        racedate = iso_prefix.replace("-", "/")
+    else:
+        racedate = date_prefix.replace("-", "/") if date_prefix else ""
+    races_arg = f"1-{total_races}" if total_races else "1"
+    cmd = [PYTHON, script, "--output_dir", target_dir, "--races", races_arg, "--fail-soft"]
+    if url:
+        cmd.extend(["--base_url", url])
+    else:
+        cmd.extend(["--racedate", racedate, "--racecourse", venue_norm])
+
+    _log("🏇 Extracting HKJC trackwork digest (fail-soft)...")
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    if res.stdout.strip():
+        for line in res.stdout.strip().splitlines()[-5:]:
+            _log(f"   {line}")
+    if res.returncode != 0:
+        err = (res.stderr or res.stdout or "").strip()[:300]
+        _log(f"   ⚠️ Trackwork extraction failed (non-blocking): {err}")
+        return {"trackwork_ready": False, "trackwork_status": "failed", "log": ["trackwork=failed"]}
+
+    produced = [
+        f for f in os.listdir(target_dir)
+        if any(re.search(rf'^{re.escape(prefix)} Race \d+ 晨操\.json$', f) for prefix in accepted_prefixes)
+    ]
+    status = "ok" if produced else "missing"
+    _log(f"   ✅ Trackwork status: {status} ({len(produced)} files)")
+    return {"trackwork_ready": bool(produced), "trackwork_status": status, "log": [f"trackwork={status}"]}
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -157,9 +232,8 @@ def node_setup_race(state):
     date_prefix = state["date_prefix"]
     short_prefix = state["short_prefix"]
 
-    facts_file = os.path.join(target_dir, f"{date_prefix} Race {r} Facts.md")
-    if not os.path.exists(facts_file):
-        facts_file = os.path.join(target_dir, f"{short_prefix} Race {r} Facts.md")
+    facts_files = [f for f in os.listdir(target_dir) if f.endswith(f"Race {r} Facts.md")]
+    facts_file = os.path.join(target_dir, facts_files[0]) if facts_files else os.path.join(target_dir, f"{date_prefix} Race {r} Facts.md")
     json_file = os.path.join(target_dir, f"Race_{r}_Logic.json")
 
     # Create skeleton if needed
@@ -208,6 +282,23 @@ def node_setup_race(state):
         with open(json_file, 'w', encoding='utf-8') as f:
             json.dump(logic_data, f, ensure_ascii=False, indent=2)
         _log(f"   ✅ Speed Map injected ({auto_sm.get('expected_pace', '?')})")
+
+    # SIP-AU-022: Speed Map Coverage Validation
+    with open(json_file, 'r', encoding='utf-8') as f:
+        logic_data = json.load(f)
+    sm = logic_data.get('race_analysis', {}).get('speed_map', {})
+    sm_all_nums = set()
+    for grp in ('leaders', 'on_pace', 'mid_pack', 'closers'):
+        sm_all_nums.update(sm.get(grp, []))
+    all_horses_check = fns["get_horse_numbers"](facts_file)
+    if all_horses_check:
+        sm_coverage = len(sm_all_nums & set(all_horses_check)) / len(all_horses_check)
+        if sm_coverage < 0.9:
+            _log(f"   ⚠️ SIP-AU-022: Speed Map 覆蓋率 {sm_coverage:.0%} (<90%)")
+            _log(f"      缺失馬匹: {sorted(set(all_horses_check) - sm_all_nums)}")
+            _log(f"      → 請確保所有參賽馬匹喺 speed_map 有位置歸類")
+        else:
+            _log(f"   ✅ SIP-AU-022: Speed Map 覆蓋率 {sm_coverage:.0%}")
 
     # Pre-race dummy scan
     scan = fns["scan_quality"](json_file)
@@ -283,9 +374,8 @@ def node_generate_workcard(state):
     date_prefix = state["date_prefix"]
     short_prefix = state["short_prefix"]
 
-    facts_file = os.path.join(target_dir, f"{date_prefix} Race {r} Facts.md")
-    if not os.path.exists(facts_file):
-        facts_file = os.path.join(target_dir, f"{short_prefix} Race {r} Facts.md")
+    _ffs = [f for f in os.listdir(target_dir) if f.endswith(f"Race {r} Facts.md")]
+    facts_file = os.path.join(target_dir, _ffs[0]) if _ffs else os.path.join(target_dir, f"{date_prefix} Race {r} Facts.md")
     json_file = os.path.join(target_dir, f"Race_{r}_Logic.json")
 
     # Generate skeleton
@@ -310,14 +400,53 @@ def node_generate_workcard(state):
     runtime_dir = os.path.join(target_dir, ".runtime")
     os.makedirs(runtime_dir, exist_ok=True)
 
-    fns["generate_workcard"](h, facts_content, logic_data, runtime_dir,
-                             sm_pace, sm_bias, horse_idx=idx, total_horses=len(pending))
+    if state.get("domain", "au") == "hkjc":
+        fns["generate_workcard"](h, facts_content, logic_data, runtime_dir,
+                                 sm_pace, sm_bias, horse_idx=idx, total_horses=len(pending),
+                                 race_num=r)
+    else:
+        fns["generate_workcard"](h, facts_content, logic_data, runtime_dir,
+                                 sm_pace, sm_bias, horse_idx=idx, total_horses=len(pending))
+
+    # ── Career tag injection into WorkCard (V2.2) ──
+    # Supports AU [#X], AU V2 "### 馬匹 #X", and HKJC "### 馬號 X" blocks.
+    career_tag_m = None
+    block_m = re.search(
+        rf'(?:\[#{h}\]|### 馬匹 #{h}\b|### 馬號 {h}\b).*?'
+        rf'(?=(?:\[#\d+\]|### 馬匹 #\d+\b|### 馬號 \d+\b)|\Z)',
+        facts_content,
+        re.DOTALL,
+    )
+    search_scope = block_m.group(0) if block_m else facts_content
+    career_tag_m = re.search(
+        r'生涯標記:\s*`(DEBUT|IMPORTED_DEBUT|ESTABLISHED)`',
+        search_scope,
+    )
+
+    if career_tag_m:
+        ctag = career_tag_m.group(1)
+        if ctag in ('DEBUT', 'IMPORTED_DEBUT'):
+            wc_path = os.path.join(runtime_dir, f"Horse_{h}_WorkCard.md")
+            if os.path.exists(wc_path):
+                with open(wc_path, 'r', encoding='utf-8') as f:
+                    wc_content = f.read()
+                if f"[CAREER_TAG: {ctag}]" not in wc_content:
+                    tag_header = (
+                        f"\n> ⚠️ **[CAREER_TAG: {ctag}]** — "
+                        f"{'初出馬：請載入 debut_guide 並按初出維度判定。Rating Cap A-。' if ctag == 'DEBUT' else ''}"
+                        f"{'進口馬初出：請載入 debut_guide (Section B)。' if ctag == 'IMPORTED_DEBUT' else ''}"
+                        f"\n\n"
+                    )
+                    with open(wc_path, 'w', encoding='utf-8') as f:
+                        f.write(tag_header + wc_content)
+                    _log(f"   🏷️ Career tag [{ctag}] injected into WorkCard")
 
     h_entry = logic_data.get('horses', {}).get(str(h), {})
     h_name = h_entry.get('horse_name', '?')
     _log(f"\n👉 LLM: Please analyse Horse #{h} ({h_name})")
     _log(f"   📋 WorkCard: .runtime/Horse_{h}_WorkCard.md")
     _log(f"   ✏️ Target: Race_{r}_Logic.json → horses.{h}")
+    _log(f"   🔴 REMINDER: Read WorkCard → Fill JSON → check_command_status → next horse. DO NOT stop or report progress. Python controls flow.")
 
     return {"log": [f"workcard_generated: horse_{h}"]}
 
@@ -331,16 +460,15 @@ def node_watch_and_validate(state):
     r = state["current_race"]
     h = state["current_horse"]
 
-    facts_file = os.path.join(target_dir, f"{state['date_prefix']} Race {r} Facts.md")
-    if not os.path.exists(facts_file):
-        facts_file = os.path.join(target_dir, f"{state['short_prefix']} Race {r} Facts.md")
+    _ffs = [f for f in os.listdir(target_dir) if f.endswith(f"Race {r} Facts.md")]
+    facts_file = os.path.join(target_dir, _ffs[0]) if _ffs else os.path.join(target_dir, f"{state['date_prefix']} Race {r} Facts.md")
     json_file = os.path.join(target_dir, f"Race_{r}_Logic.json")
     all_horses = fns["get_horse_numbers"](facts_file)
 
     result = fns["watch_horse"](json_file, h,
                                 validate_fn=fns["validate_firewalls"],
                                 all_horses=all_horses,
-                                poll_interval=3, timeout_minutes=10)
+                                poll_interval=3, timeout_minutes=60)
 
     races = dict(state.get("races", {}))
     race_state = dict(races.get(str(r), {}))
@@ -449,9 +577,8 @@ def node_global_qa(state):
     target_dir = state["target_dir"]
     r = state["current_race"]
 
-    facts_file = os.path.join(target_dir, f"{state['date_prefix']} Race {r} Facts.md")
-    if not os.path.exists(facts_file):
-        facts_file = os.path.join(target_dir, f"{state['short_prefix']} Race {r} Facts.md")
+    _ffs = [f for f in os.listdir(target_dir) if f.endswith(f"Race {r} Facts.md")]
+    facts_file = os.path.join(target_dir, _ffs[0]) if _ffs else os.path.join(target_dir, f"{state['date_prefix']} Race {r} Facts.md")
     json_file = os.path.join(target_dir, f"Race_{r}_Logic.json")
     all_horses = fns["get_horse_numbers"](facts_file)
 
@@ -479,9 +606,8 @@ def node_compute_verdict(state):
     target_dir = state["target_dir"]
     r = state["current_race"]
 
-    facts_file = os.path.join(target_dir, f"{state['date_prefix']} Race {r} Facts.md")
-    if not os.path.exists(facts_file):
-        facts_file = os.path.join(target_dir, f"{state['short_prefix']} Race {r} Facts.md")
+    _ffs = [f for f in os.listdir(target_dir) if f.endswith(f"Race {r} Facts.md")]
+    facts_file = os.path.join(target_dir, _ffs[0]) if _ffs else os.path.join(target_dir, f"{state['date_prefix']} Race {r} Facts.md")
     json_file = os.path.join(target_dir, f"Race_{r}_Logic.json")
 
     with open(json_file, 'r', encoding='utf-8') as f:
@@ -508,9 +634,8 @@ def node_compile_analysis(state):
     short_prefix = state["short_prefix"]
     date_prefix = state["date_prefix"]
 
-    facts_file = os.path.join(target_dir, f"{date_prefix} Race {r} Facts.md")
-    if not os.path.exists(facts_file):
-        facts_file = os.path.join(target_dir, f"{short_prefix} Race {r} Facts.md")
+    _ffs = [f for f in os.listdir(target_dir) if f.endswith(f"Race {r} Facts.md")]
+    facts_file = os.path.join(target_dir, _ffs[0]) if _ffs else os.path.join(target_dir, f"{date_prefix} Race {r} Facts.md")
     json_file = os.path.join(target_dir, f"Race_{r}_Logic.json")
     an_file = os.path.join(target_dir, f"{short_prefix} Race {r} Analysis.md")
 

@@ -13,7 +13,7 @@ def analyze_file(path):
     sections = {
         'situation': len(re.findall(r'情境標記|📌', text)),
         'sectional': len(re.findall(r'🔬 段速法醫|🔬 段速', text)),
-        'eem': len(re.findall(r'⚡ EEM', text)),
+        'position': len(re.findall(r'⚡ (?:形勢與走位|EEM)', text)),
         'forgiveness': len(re.findall(r'📋 寬恕', text)),
         'form_line': len(re.findall(r'🔗 賽績線', text)),
         'matrix': len(re.findall(r'📊 評級矩陣', text)),
@@ -69,7 +69,7 @@ for race_num in range(1, 12):
     print(f"{'Horses detected':<25} {k['horses']:<35} {h['horses']}")
     print(f"{'📌 Situation tags':<25} {k['sections']['situation']:<35} {h['sections']['situation']}")
     print(f"{'🔬 Sectional':<25} {k['sections']['sectional']:<35} {h['sections']['sectional']}")
-    print(f"{'⚡ EEM':<25} {k['sections']['eem']:<35} {h['sections']['eem']}")
+    print(f"{'⚡ 形勢/EEM':<25} {k['sections']['position']:<35} {h['sections']['position']}")
     print(f"{'📋 Forgiveness':<25} {k['sections']['forgiveness']:<35} {h['sections']['forgiveness']}")
     print(f"{'🔗 Form Line':<25} {k['sections']['form_line']:<35} {h['sections']['form_line']}")
     print(f"{'📊 Matrix':<25} {k['sections']['matrix']:<35} {h['sections']['matrix']}")

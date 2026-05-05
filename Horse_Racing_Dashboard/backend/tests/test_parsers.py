@@ -29,7 +29,7 @@ def test_kelvin_parser():
         print(f"     Jockey: {horse.jockey}, Trainer: {horse.trainer}")
         print(f"     Grade: {horse.final_grade}")
         print(f"     Speed forensics: {'✅' if horse.speed_forensics else '❌'}")
-        print(f"     EEM energy: {'✅' if horse.eem_energy else '❌'}")
+        print(f"     Positional: {'✅' if horse.eem_energy else '❌'}")
         print(f"     Forgiveness: {'✅' if horse.forgiveness_file else '❌'}")
         print(f"     Form line: {'✅' if horse.form_line else '❌'}")
         print(f"     Rating matrix: {'✅' if horse.rating_matrix else '❌'}")
@@ -58,7 +58,7 @@ def test_heison_parser():
         print(f"\n   Horse #{horse.horse_number} {horse.horse_name}:")
         print(f"     Grade: {horse.final_grade}")
         print(f"     Speed forensics: {'✅' if horse.speed_forensics else '❌'}")
-        print(f"     EEM energy: {'✅' if horse.eem_energy else '❌'}")
+        print(f"     Positional: {'✅' if horse.eem_energy else '❌'}")
         print(f"     Conclusion: {'✅' if horse.conclusion else '❌'}")
     
     return True

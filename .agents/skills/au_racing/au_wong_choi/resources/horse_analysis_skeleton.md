@@ -74,14 +74,17 @@
 - 重大風險:`[FILL 或「無」]` | 穩定指數:`[X/10]`
 
 #### 📊 評級矩陣
-- **狀態與穩定性** [核心]: `[✅✅/✅/➖/❌/❌❌]` | 理據: `[FILL]`
-- **段速與引擎** [核心]: `[✅✅/✅/➖/❌/❌❌]` | 理據: `[FILL — 引用 PI 趨勢]`
-- **形勢與走位** [半核心]: `[✅✅/✅/➖/❌/❌❌]` | 理據: `[FILL — 引用步速/檔位/走位形勢判斷]`
-- **騎練訊號** [半核心]: `[✅✅/✅/➖/❌/❌❌]` | 理據: `[FILL]`
-- **級數與負重** [輔助]: `[✅✅/✅/➖/❌/❌❌]` | 理據: `[FILL]`
-- **場地適性** [輔助]: `[✅✅/✅/➖/❌/❌❌]` | 理據: `[FILL — 引用 Python Good/Soft/Heavy stats]`
-- **賽績線** [輔助]: `[✅✅/✅/➖/❌/❌❌]` | 理據: `[FILL]`
-- **裝備與距離** [輔助]: `[✅✅/✅/➖/❌/❌❌]` | 理據: `[FILL — 引用 Python 距離適性]`
+- **狀態與穩定性** [核心]: `[✅✅/✅/➖/❌/❌❌]` | 理據: `[Resource Check: 02b_form_analysis.md] + [FILL — Evidence Confidence + 近績序列 + 生涯階段 + 逐場可靠性 + 受阻/事故場次作廢 + margin trend]`
+- **段速與引擎** [核心]: `[✅✅/✅/➖/❌/❌❌]` | 理據: `[Resource Check: 02b_form_analysis.md + 02f_synthesis.md] + [FILL — Evidence Confidence + L400/L600/class-par或PI proxy + 引擎 + 段速趨勢 + 同程/距離轉換；距離/Sire/增程風險併入此維度]`
+- **形勢與走位** [半核心]: `[✅✅/✅/➖/❌/❌❌]` | 理據: `[Resource Check: 02d_pace_notes.md + 02a_pre_analysis.md] + [FILL — Pace Confidence + 步速圖 + 前速壓力 + 跑法 + 檔位 + 走位消耗 + 跑道偏差 + track geometry]`
+- **騎練訊號** [半核心]: `[✅✅/✅/➖/❌/❌❌]` | 理據: `[Resource Check: 02e_jockey_trainer.md + 02c_track_and_gear.md] + [FILL — Evidence Confidence + 騎師/練馬師 + 配備 + 馬房部署 + 人馬配搭；配備意圖併入此維度，名氣不可單獨升級]`
+- **級數優勢** [輔助]: `[✅/➖/❌]` | 理據: `[Resource Check: 02b_form_analysis.md + 03e_class_standards.md] + [FILL — AU class normalization + Rating + 班次變動 + 負重 + WFA/claim + 同場最高/平均 rating 對比]`
+- **場地適性** [輔助]: `[✅/➖/❌]` | 理據: `[Resource Check: 02c_track_and_gear.md + 04a_track_core.md] + [FILL — Track Family Confidence + same venue/geometry/direction/surface/going + Good/Soft/Heavy/Synthetic 記錄 + 天氣敏感度 + 健康復原]`
+- **賽績線** [輔助]: `[✅/➖/❌]` | 理據: `[Resource Check: 02b_form_analysis.md + Facts.md] + [FILL — Evidence Confidence + 近3場對手後續同級/高級表現 + 強組/弱組 + N/A不硬塞分]`
+- **V4.2 路由規則:** 不再使用獨立 `Gear & Distance`；距離證據併入段速與引擎，配備意圖併入騎練訊號。同一因素若已令矩陣打 ✅，不可再用作微調升級。
+- **AU V4.3 Confidence Gate:** Low/Unknown evidence 不可打 `✅✅`；trial-only / sire-only / first interstate / first track-family 通常最高 `➖`，除非有正式賽事能力證明支持。
+- **Top 2 排序紀律:** Same grade horses are separated by core ticks, ✅✅ conviction, fewer crosses, fewer core crosses, lower race-shape risk, then total tick strength.
+- **V4.2 reasoning 格式:** First line must keep `[Resource Check: ...]`; then keep `[data/rule]` evidence slots and write one final `→ [判讀: ...]` line only. The compiler renders `V4.2檢查點 → evidence → 一次性判讀`; do not duplicate the judgement text in the evidence lines.
 - **🔢 矩陣算術:** 核心✅✅=[X] | 核心✅=[X] | 半核心✅✅=[X] | 半核心✅=[X] | 輔助✅✅=[X] | 輔助✅=[X] | 總❌=[X] | 總❌❌=[X] | 核心❌=[有/無] | 核心❌❌=[有/無] → 查表命中行=[評級名]
 - **基礎評級:** `[S 至 D]` | **規則**: `[必須與🔢查表命中行一致]`
 - **微調:** `[升一級/降一級/無]` | **觸發**: `[FILL 或「無」]`

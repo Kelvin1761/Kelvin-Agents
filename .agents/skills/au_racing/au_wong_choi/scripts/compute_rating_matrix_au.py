@@ -29,7 +29,7 @@ Input JSON format:
                 "stability": "✅", "sectional": "✅",
                 "race_shape": "➖", "jockey_trainer": "✅",
                 "class_weight": "✅", "track": "➖",
-                "form_line": "N/A", "gear_distance": "➖"
+                "form_line": "N/A"
             },
             "forgiveness_bonus": false,
             "micro_up": [],
@@ -45,20 +45,52 @@ import sys
 import argparse
 from pathlib import Path
 
-# Import shared qualitative rating engine v2 (replaces deprecated grading_engine)
+# Import shared qualitative rating engine v2
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../scripts")))
-from rating_engine_v2 import compute_base_grade, compute_weighted_score, apply_fine_tune, parse_matrix_scores, grade_sort_index, grade_idx, apply_s_grade_guards, GRADE_ORDER, grade_up
+from rating_engine_v2 import compute_base_grade, compute_weighted_score, apply_fine_tune, parse_matrix_scores, grade_sort_index, grade_idx, GRADE_ORDER, grade_up
 
 
 # ── Single Horse Pipeline ────────────────────────────────────
+
+def _count_double_strong(dims: dict, matrix_keys_map: dict) -> dict:
+    """Count ✅✅ in core and semi dimensions."""
+    core_double = 0
+    semi_double = 0
+    for key, dtype in matrix_keys_map.items():
+        v = dims.get(key, '').strip()
+        if v == '✅✅':
+            if dtype == 'core': core_double += 1
+            elif dtype == 'semi': semi_double += 1
+    return {'core_double': core_double, 'semi_double': semi_double}
+
+
+def _apply_double_strong_promotion_au(base: str, double_counts: dict) -> tuple:
+    """Promote from A+ using ✅✅ counts. Only fires when base = A+."""
+    if base != 'A+':
+        return base, ''
+    steps = 0
+    reasons = []
+    if double_counts['core_double'] >= 1:
+        for _ in range(min(double_counts['core_double'], 2)):
+            steps += 1
+        reasons.append(f'{double_counts["core_double"]}核心✅✅')
+    if double_counts['semi_double'] >= 2:
+        steps += 1
+        reasons.append('雙半核心✅✅')
+    if steps == 0:
+        return 'A+', ''
+    promo_map = {1: 'S-', 2: 'S', 3: 'S+'}
+    final = promo_map.get(min(steps, 3), 'S+')
+    return final, f'✅✅推進+{steps} ({" + ".join(reasons)}) → {final}'
+
 
 def compute_one(h: dict) -> dict:
     dims = h['dimensions']
     matrix_keys_map = {
         "stability": "core", "sectional": "core",
         "race_shape": "semi", "jockey_trainer": "semi",
-        "class_weight": "aux", "track": "aux", 
-        "form_line": "aux", "gear_distance": "aux",
+        "class_weight": "aux", "track": "aux",
+        "form_line": "aux",
     }
     
     core_pass, semi_pass, aux_pass, core_fail, total_fail = parse_matrix_scores(dims, matrix_keys_map)
@@ -74,16 +106,20 @@ def compute_one(h: dict) -> dict:
     ft_dir = '+' if net > 0 else ('-' if net < 0 else '')
     after_ft = apply_fine_tune(base, ft_dir)
     
-    # ── SIP-9 + SIP-SL01 S-Grade Inflation Guards ──
+    # V4.2: ✅✅ Double Strong Promotion (S-tier only from conviction)
+    double_counts = _count_double_strong(dims, matrix_keys_map)
     counts = {
         'core_strong': core_pass, 'semi_strong': semi_pass, 'aux_strong': aux_pass,
         'total_strong': core_pass + semi_pass + aux_pass, 'total_weak': total_fail,
         'has_core_weak': core_fail > 0,
+        'core_double': double_counts['core_double'],
+        'semi_double': double_counts['semi_double'],
     }
-    final, guard_note = apply_s_grade_guards(
-        after_ft, h, counts, dims, {},
-        sectional_key='sectional', class_key='class_weight'
-    )
+    promoted, promo_note = _apply_double_strong_promotion_au(after_ft, double_counts)
+    
+    # ✅✅ bonus for weighted score
+    double_bonus = (double_counts['core_double'] + double_counts['semi_double']) * 0.5
+    w_score_adj = w_score + double_bonus
     
     return {
         'num': h['num'],
@@ -93,14 +129,14 @@ def compute_one(h: dict) -> dict:
         'weight_kg': h.get('weight_kg', 0),
         'barrier': h.get('barrier', 0),
         'dimensions': dims,
-        'counts': {'total_strong': core_pass+semi_pass+aux_pass, 'total_weak': total_fail},
-        'effective_ticks': w_score,
+        'counts': counts,
+        'effective_ticks': w_score_adj,
         'base_grade': base,
         'micro_grade': after_ft,
-        'final_grade': final,
-        'guard_note': guard_note,
+        'promo_note': promo_note,
+        'final_grade': promoted,
         'stability_index': h.get('stability_index', 0),
-        'weighted_score': w_score
+        'weighted_score': w_score_adj
     }
 
 
@@ -159,6 +195,19 @@ def apply_au_overrides(result: dict, horse: dict, ctx: dict) -> dict:
     # (handled by rating_engine_v2 apply_core_constraint if needed)
 
     # ── P2: Scenario Caps (High) ──
+    # Debut runner cap
+    try:
+        career_starts = int(horse.get('career_race_starts', 999))
+    except (TypeError, ValueError):
+        career_starts = 999
+    is_debut_runner = (
+        horse.get('debut_runner', False)
+        or str(horse.get('career_tag', '')).upper() == 'DEBUT'
+        or career_starts == 0
+    )
+    if is_debut_runner:
+        grade = cap(grade, 'A-', 'P2: 初出馬封頂A-')
+
     # 2YO cap
     if horse.get('is_2yo', False):
         grade = cap(grade, 'A-', 'P2: 2歲馬封頂A-')

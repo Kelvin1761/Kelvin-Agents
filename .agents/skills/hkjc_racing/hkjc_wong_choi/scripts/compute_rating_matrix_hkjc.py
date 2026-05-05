@@ -25,7 +25,7 @@ Input JSON format:
             "dimensions": {
                 "stability": "✅", "sectional": "✅",
                 "race_shape": "➖", "trainer_signal": "✅",
-                "scenario": "✅", "distance_freshness": "➖",
+                "horse_health": "➖",
                 "form_line": "N/A", "class_advantage": "➖"
             },
             "forgiveness_bonus": false,
@@ -56,28 +56,26 @@ from typing import Optional
 
 # Import shared S-grade inflation guards from rating_engine_v2
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../scripts')))
-from rating_engine_v2 import apply_s_grade_guards
+# V4.1: S-grade guards removed — replaced by ✅✅ promotion system
 
-GRADE_ORDER = ['S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D']
+GRADE_ORDER = ['S+', 'S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D']
 
 DIMENSION_TYPES = {
-    'stability':          'core',
+    'stability':          'semi_core',
     'sectional':          'core',
     'race_shape':                'semi_core',
-    'trainer_signal':     'semi_core',
-    'scenario':           'auxiliary',
-    'distance_freshness': 'auxiliary',
+    'trainer_signal':     'core',
+    'horse_health': 'auxiliary',
     'form_line':          'auxiliary',
     'class_advantage':    'auxiliary',
 }
 
 DIMENSION_LABELS = {
-    'stability':          ('位置穩定性', '核心'),
+    'stability':          ('狀態與穩定性', '半核心'),
     'sectional':          ('段速質量', '核心'),
     'race_shape':                ('形勢與走位', '半核心'),
-    'trainer_signal':     ('練馬師訊號', '半核心'),
-    'scenario':           ('情境適配', '輔助'),
-    'distance_freshness': ('路程/新鮮度', '輔助'),
+    'trainer_signal':     ('騎練訊號', '核心'),
+    'horse_health':       ('馬匹健康', '輔助'),
     'form_line':          ('賽績線', '輔助(可選)'),
     'class_advantage':    ('級數優勢', '輔助'),
 }
@@ -94,7 +92,7 @@ def grade_down(g: str, n: int = 1) -> str:
     return GRADE_ORDER[min(len(GRADE_ORDER) - 1, i + n)]
 
 
-# ── Step 14.1: Count dimensions ──────────────
+# ── Step 14.1: Count dimensions (V4.1 ✅✅ support) ──────────────
 
 def count_dimensions(dims: dict) -> dict:
     counts = {
@@ -103,18 +101,29 @@ def count_dimensions(dims: dict) -> dict:
         'aux_strong': 0, 'aux_neutral': 0, 'aux_weak': 0,
         'total_strong': 0, 'total_weak': 0,
         'has_core_weak': False,
+        'core_double': 0, 'semi_double': 0,
     }
     for dim_key, value in dims.items():
         v = value.strip()
         if v in ('N/A', '不計入'):
             continue
         dim_type = DIMENSION_TYPES.get(dim_key, 'auxiliary')
-        if v == '✅':
+        if v == '✅✅':
+            counts['total_strong'] += 1
+            if dim_type == 'core':
+                counts['core_strong'] += 1
+                counts['core_double'] += 1
+            elif dim_type == 'semi_core':
+                counts['semi_strong'] += 1
+                counts['semi_double'] += 1
+            else:
+                counts['aux_strong'] += 1
+        elif v == '✅':
             counts['total_strong'] += 1
             if dim_type == 'core': counts['core_strong'] += 1
             elif dim_type == 'semi_core': counts['semi_strong'] += 1
             else: counts['aux_strong'] += 1
-        elif v == '❌':
+        elif v in ('❌', '❌❌'):
             counts['total_weak'] += 1
             if dim_type == 'core':
                 counts['core_weak'] += 1
@@ -128,18 +137,19 @@ def count_dimensions(dims: dict) -> dict:
     return counts
 
 
-# ── Step 14.2: Base Grade Lookup ──────────────
+# ── Step 14.2: Base Grade Lookup (V4.1 — ceiling A+) ──────────────
 
 def lookup_base_grade(c: dict) -> tuple:
     cs, ss, axs, tw = c['core_strong'], c['semi_strong'], c['aux_strong'], c['total_weak']
+    # A+ = full package (was S)
     if cs >= 2 and ss >= 2 and axs >= 2 and tw == 0:
-        return 'S', f'2核心✅ + 2半核心✅ + {axs}輔助✅ + 0❌'
-    if cs >= 2 and ss >= 1 and axs >= 1 and tw == 0:
-        return 'S-', f'2核心✅ + {ss}半核心✅ + {axs}輔助✅ + 0❌'
+        return 'A+', f'2核心✅ + 2半核心✅ + {axs}輔助✅ + 0❌ (全滿)'
+    # A = 2 core + zero weak (absorbs old A+ and old S-)
     if cs >= 2 and tw == 0:
-        return 'A+', f'2核心✅ + 0❌'
+        return 'A', f'2核心✅ + 0❌'
+    # A- = 1core+1semi+0weak OR 2core+1weak OR 1core+1weak
     if (cs >= 1 and ss >= 1 and tw == 0) or (cs >= 2 and tw <= 1):
-        return 'A', f'{cs}核心✅ + {ss}半核心✅ + {tw}❌'
+        return 'A-', f'{cs}核心✅ + {ss}半核心✅ + {tw}❌'
     if cs >= 1 and tw <= 1:
         return 'A-', f'{cs}核心✅ + ❌≤1'
     if (cs >= 1 and tw == 2) or (ss >= 2 and tw <= 1):
@@ -160,6 +170,32 @@ def lookup_base_grade(c: dict) -> tuple:
     if tw >= 5 or ts == 0:
         return 'D', f'{tw}❌ / 無✅'
     return 'C', f'未匹配 (core✅={cs}, semi✅={ss}, aux✅={axs}, ❌={tw})'
+
+
+# ── Step 14.1B: ✅✅ Double Strong Promotion ──────────────
+
+def apply_double_strong_promotion(grade: str, counts: dict) -> tuple:
+    """Promote from A+ using ✅✅ counts. Only fires when base = A+."""
+    if grade != 'A+':
+        return grade, ''
+    steps = 0
+    reasons = []
+    if counts.get('core_double', 0) >= 1:
+        # Each core ✅✅ = +half grade independently
+        for _ in range(min(counts['core_double'], 2)):
+            steps += 1
+        if counts['core_double'] >= 2:
+            reasons.append('雙核心✅✅')
+        elif counts['core_double'] == 1:
+            reasons.append('1核心✅✅')
+    if counts.get('semi_double', 0) >= 2:
+        steps += 1
+        reasons.append('雙半核心✅✅')
+    if steps == 0:
+        return 'A+', ''
+    promo_map = {1: 'S-', 2: 'S', 3: 'S+'}
+    final = promo_map.get(min(steps, 3), 'S+')
+    return final, f'✅✅推進+{steps}半級 ({" + ".join(reasons)}) → {final}'
 
 
 # ── Core Constraint ──────────────
@@ -257,11 +293,10 @@ def apply_overrides(grade: str, horse: dict, counts: dict, dims: dict, ctx: dict
     # 2. Overvalue correction
     if horse.get('overvalue_flag'):
         sec = dims.get('sectional', '').strip()
-        scn = dims.get('scenario', '').strip()
-        if sec != '✅' and scn != '✅':
+        if sec != '✅':
             if grade_idx(grade) < grade_idx('B'):
                 grade = 'B'
-                notes.append('溢價封頂: 段速/情境非✅ → 封頂B')
+                notes.append('溢價封頂: 段速非✅ → 封頂B')
     
     # 3. 3YO top weight cap
     if horse.get('is_3yo') and horse.get('weight_lbs', 0) >= 133:
@@ -290,7 +325,27 @@ def apply_overrides(grade: str, horse: dict, counts: dict, dims: dict, ctx: dict
             if gap >= (15 + adj):
                 notes.append(f'谷草輕度磅差: {gap}lb → 降半級')
     
-    # 5. Floor rules (lower priority than caps)
+    # 5. Debut horse evaluation cap (Step 13.5) — DISABLED
+    # Initial runners are now rated purely by matrix output.
+    # if horse.get('is_debut'):
+    #     ...cap logic removed...
+    
+    # 6. Import horse adaptation cap (Step 13.6)
+    if horse.get('is_import'):
+        hk_starts = horse.get('hk_starts', 0)
+        import_cap = None
+        if hk_starts == 0:
+            import_cap = 'A-' if horse.get('hk_trial_strong') else 'B+'
+        elif hk_starts == 1:
+            import_cap = None if horse.get('first_start_top5') else 'B+'
+        elif hk_starts == 2:
+            import_cap = None if horse.get('has_top3') else 'B+'
+        # hk_starts >= 3: no cap (adaptation complete)
+        if import_cap and grade_idx(grade) < grade_idx(import_cap):
+            grade = import_cap
+            notes.append(f'進口馬適應期封頂={import_cap} (在港{hk_starts}仗)')
+    
+    # 7. Floor rules (lower priority than caps)
     stab_idx = horse.get('stability_index', 0)
     if stab_idx > 0.7:  # Super iron legs
         if grade_idx(grade) > grade_idx('B+'):
@@ -321,8 +376,9 @@ def apply_overrides(grade: str, horse: dict, counts: dict, dims: dict, ctx: dict
 # ── SIP-RR20: Risk Discount Ranking ──────────────
 
 def compute_effective_ticks(horse: dict, counts: dict, ctx: dict) -> float:
-    """Compute effective ✅ count with risk discounts for tie-breaking."""
-    eff = float(counts['total_strong'])
+    """Compute effective ✅ count with risk discounts for tie-breaking. ✅✅ = 1.5."""
+    double_bonus = (counts.get('core_double', 0) + counts.get('semi_double', 0)) * 0.5
+    eff = float(counts['total_strong']) + double_bonus
     discounts = []
     
     # Top weight
@@ -381,25 +437,10 @@ def compute_grade(horse: dict, ctx: dict) -> dict:
     
     base_grade, base_rule = lookup_base_grade(counts)
     
-    # S- quality gate
-    if base_grade == 'S-':
-        if horse.get('micro_down'):
-            base_grade = 'A+'
-            base_rule += ' | S-品質閘門:有降級因素→A+'
-        elif horse.get('risk_markers', 0) >= 2:
-            base_grade = 'A+'
-            base_rule += ' | S-品質閘門:風險≥2→A+'
-        elif horse.get('same_venue_dist_top3', 0) == 0 and not horse.get('is_debut'):
-            base_grade = 'A+'
-            base_rule += ' | S-品質閘門:首跑此場地→A+'
+    # V4.1: ✅✅ promotion (replaces old S guards/quality gate/purity)
+    promoted_grade, promo_note = apply_double_strong_promotion(base_grade, counts)
     
-    # SIP-9 + SIP-SL01: S-grade inflation guards
-    guarded_grade, guard_note = apply_s_grade_guards(
-        base_grade, horse, counts, dims, ctx,
-        sectional_key='sectional', class_key='class_advantage'
-    )
-    
-    constrained_grade, constraint_note = apply_core_constraint(guarded_grade, counts, dims)
+    constrained_grade, constraint_note = apply_core_constraint(promoted_grade, counts, dims)
     adjusted_grade, micro_note = apply_micro_adjustments(
         constrained_grade, horse.get('micro_up', []), horse.get('micro_down', [])
     )
@@ -413,7 +454,7 @@ def compute_grade(horse: dict, ctx: dict) -> dict:
     # Override rules
     final_grade, override_note = apply_overrides(upgraded_grade, horse, counts, dims, ctx)
     
-    # Effective ticks for ranking
+    # Effective ticks for ranking (✅✅ = 1.5)
     eff_ticks, discounts = compute_effective_ticks(horse, counts, ctx)
     
     return {
@@ -421,7 +462,7 @@ def compute_grade(horse: dict, ctx: dict) -> dict:
         'name': horse['name'],
         'counts': counts,
         'base_grade': base_grade, 'base_rule': base_rule,
-        'guard_note': guard_note,
+        'promo_note': promo_note,
         'constraint_note': constraint_note,
         'micro_note': micro_note,
         'scan_note': scan_note,
@@ -438,17 +479,33 @@ def format_matrix_block(r: dict) -> str:
     dims = r['dimensions']
     c = r['counts']
     lines = ["#### 📊 評級矩陣 (Step 14)"]
+
+    # Dimension keys with their analysis sub-items for LLM to fill
+    dim_analysis_hints = {
+        'stability': ['穩定性/贏馬回落', '頭馬距離趨勢', '趨勢分析', '數據可靠性'],
+        'sectional': ['引擎(速度分佈)', '路程適配', '全段速剖面', '完成時間偏差', '步速修正偏差', '段速法醫', '數據可靠性'],
+        'race_shape': ['近5仗走位短分析', '跑法(位置偏好)', '走位-段速複合', '檔位判讀'],
+        'trainer_signal': ['配備變動', '近6場騎師歷史', '人馬配搭', '部署與練馬師訊號'],
+        'horse_health': ['休賽/新鮮度', '體重趨勢', '健康掃描'],
+        'form_line': ['賽績線數據'],
+        'class_advantage': ['級數評估', '場地轉換', '負重對比'],
+    }
+
     for dk in ['stability', 'sectional', 'race_shape', 'trainer_signal',
-               'scenario', 'distance_freshness', 'form_line', 'class_advantage']:
+               'horse_health', 'form_line', 'class_advantage']:
         label, tier = DIMENSION_LABELS[dk]
         v = dims.get(dk, '➖')
         if v in ('N/A', '不計入'):
-            lines.append(f"- {label} [{tier}]: `[不計入]` | 理據: `[{{{{LLM_FILL}}}}]`")
+            lines.append(f"\n##### {label} [{tier}]: `[不計入]`")
         else:
-            lines.append(f"- {label} [{tier}]: `[{v}]` | 理據: `[{{{{LLM_FILL}}}}]`")
+            lines.append(f"\n##### {label} [{tier}]: `[{v}]`")
+        # Add analysis sub-item placeholders
+        for hint in dim_analysis_hints.get(dk, []):
+            lines.append(f"- **{hint}:** {{{{LLM_FILL}}}}")
+        lines.append(f"- 📊 **判讀:** `[{{{{LLM_FILL}}}}]`")
     
     cw = '有' if c['has_core_weak'] else '無'
-    lines.append(f"- **🔢 矩陣算術:** 核心✅={c['core_strong']} | 半核心✅={c['semi_strong']} | "
+    lines.append(f"\n- **🔢 矩陣算術:** 核心✅={c['core_strong']} | 半核心✅={c['semi_strong']} | "
                  f"輔助✅={c['aux_strong']} | 總❌={c['total_weak']} | 核心❌={cw} → 查表命中行={r['base_grade']}")
     lines.append(f"- **基礎評級:** `[{r['base_grade']}]` | **規則**: `[{r['base_rule']}]`")
     if r.get('guard_note'):

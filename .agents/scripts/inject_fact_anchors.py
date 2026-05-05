@@ -26,7 +26,7 @@ Python computes. LLM interprets. No arithmetic by the LLM.
 Usage:
     python3 inject_fact_anchors.py <Racecard.md> [<Formguide.md>]
 """
-from typing import Optional
+from typing import Optional, Tuple
 import re
 import json
 import shutil
@@ -855,36 +855,69 @@ def extract_eem_from_video(video: str) -> dict:
     v = video.upper()
 
     # ── Running style detection ──
-    if re.search(r'\bLED\b', v):
+    # Check for settled position first, which is the most reliable indicator
+    settled_match = re.search(r'\b(?:SETT|SETTLED)\s+([A-Z0-9/]+(?:-[A-Z0-9/]+)*)\b', v)
+    if settled_match:
+        pos_str = settled_match.group(1)
+        if 'LED' in pos_str or 'LEAD' in pos_str or '1ST' in pos_str:
+            result['run_style'] = '前領'
+            result['run_style_en'] = 'Led'
+        elif '2ND' in pos_str or '3RD' in pos_str:
+            result['run_style'] = '居中前'
+            result['run_style_en'] = 'Handy'
+        elif '4TH' in pos_str or '5TH' in pos_str or '6TH' in pos_str:
+            result['run_style'] = '居中'
+            result['run_style_en'] = 'Mid'
+        elif 'WTMF' in pos_str:
+            result['run_style'] = '中後'
+            result['run_style_en'] = 'WTMF'
+        elif 'MF' in pos_str:
+            result['run_style'] = '居中'
+            result['run_style_en'] = 'MF'
+        elif 'LAST' in pos_str or 'TAIL' in pos_str or 'BACK' in pos_str:
+            result['run_style'] = '後追'
+            result['run_style_en'] = 'Last/Tail'
+        elif re.search(r'(?:7|8|9|1[0-9])(?:TH)\b', pos_str):
+            result['run_style'] = '居中後'
+            result['run_style_en'] = 'Mid-rear'
+            
+    # Also catch "LED SETT"
+    if result['run_style'] == '未知' and re.search(r'\bLED\s+(?:SETT|SETTLED)\b', v):
         result['run_style'] = '前領'
         result['run_style_en'] = 'Led'
-    elif re.search(r'\bS/A\b', v) or re.search(r'\bSLOW\s*(TO\s*)?BEGIN', v):
-        result['run_style'] = '慢出'
-        result['run_style_en'] = 'S/A'
-    elif re.search(r'\bLAST\b', v) or re.search(r'\bTAIL\b', v) or re.search(r'\bBACK\b', v):
-        result['run_style'] = '後追'
-        result['run_style_en'] = 'Last/Tail'
-    elif re.search(r'\bWTMF\b', v):
-        result['run_style'] = '中後'
-        result['run_style_en'] = 'WTMF'
-    elif re.search(r'\bMF\b', v) and re.search(r'HANDY', v):
-        result['run_style'] = '居中前'
-        result['run_style_en'] = 'MF/handy'
-    elif re.search(r'\bMF\b', v):
-        result['run_style'] = '居中'
-        result['run_style_en'] = 'MF'
-    elif re.search(r'\bHANDY\b', v):
-        result['run_style'] = '居中前'
-        result['run_style_en'] = 'Handy'
-    elif re.search(r'[2-3](?:RD|ND|TH)\b', v):
-        result['run_style'] = '居中前'
-        result['run_style_en'] = 'Handy'
-    elif re.search(r'[4-6](?:TH)\b', v):
-        result['run_style'] = '居中'
-        result['run_style_en'] = 'Mid'
-    elif re.search(r'[7-9](?:TH)\b|1[0-9](?:TH)\b', v):
-        result['run_style'] = '居中後'
-        result['run_style_en'] = 'Mid-rear'
+
+    # Fallback to general keyword search if settled position not found or not matched
+    if result['run_style'] == '未知':
+        if re.search(r'\bLED\b', v) and not re.search(r'O/L', v) and not re.search(r'OUTSIDE LEAD', v):
+            result['run_style'] = '前領'
+            result['run_style_en'] = 'Led'
+        elif re.search(r'\bS/A\b', v) or re.search(r'\bSLOW\s*(TO\s*)?BEGIN', v):
+            result['run_style'] = '慢出'
+            result['run_style_en'] = 'S/A'
+        elif re.search(r'\bWTMF\b', v):
+            result['run_style'] = '中後'
+            result['run_style_en'] = 'WTMF'
+        elif re.search(r'\bLAST\b', v) or re.search(r'\bTAIL\b', v) or re.search(r'\bBACK\b', v):
+            result['run_style'] = '後追'
+            result['run_style_en'] = 'Last/Tail'
+        elif re.search(r'\bMF\b', v) and re.search(r'HANDY', v):
+            result['run_style'] = '居中前'
+            result['run_style_en'] = 'MF/handy'
+        elif re.search(r'\bMF\b', v):
+            result['run_style'] = '居中'
+            result['run_style_en'] = 'MF'
+        elif re.search(r'\bHANDY\b', v):
+            result['run_style'] = '居中前'
+            result['run_style_en'] = 'Handy'
+        elif re.search(r'[2-3](?:RD|ND|TH)\b', v):
+            result['run_style'] = '居中前'
+            result['run_style_en'] = 'Handy'
+        elif re.search(r'[4-6](?:TH)\b', v):
+            result['run_style'] = '居中'
+            result['run_style_en'] = 'Mid'
+        elif re.search(r'[7-9](?:TH)\b|1[0-9](?:TH)\b', v):
+            result['run_style'] = '居中後'
+            result['run_style_en'] = 'Mid-rear'
 
     # ── Width extraction ──
     width_matches = re.findall(r'(\d+)W', v)
@@ -1088,7 +1121,8 @@ def classify_engine_type(entries: list[dict]) -> dict:
         result['evidence'].append('數據不足 (少於2場正式賽事)')
         return result
 
-    front_count = 0
+    front_count = 0  # True leaders: 前領 only
+    presser_count = 0  # V3: 居中前 = pressers (tracking leader, NOT leading)
     back_count = 0
     mid_count = 0
     l400_gains = []
@@ -1098,8 +1132,10 @@ def classify_engine_type(entries: list[dict]) -> dict:
         eem = r.get('eem', {})
         style = eem.get('run_style', '未知')
 
-        if style in ('前領', '居中前'):
+        if style == '前領':  # V3: ONLY true leaders
             front_count += 1
+        elif style == '居中前':  # V3: presser, NOT leader
+            presser_count += 1
         elif style in ('後追', '慢出', '居中後'):
             back_count += 1
         else:
@@ -1112,25 +1148,42 @@ def classify_engine_type(entries: list[dict]) -> dict:
     # Also use settled position as secondary signal
     for r in real_races:
         settled = r.get('settled')
-        if settled is not None and settled <= 3 and r.get('eem', {}).get('run_style') == '未知':
-            front_count += 1
-            total_valid += 1  # Avoid double count by incrementing total
+        if settled is not None and settled == 1 and r.get('eem', {}).get('run_style') == '未知':
+            front_count += 1  # V3: only pos=1 is leader
+            total_valid += 1
+        elif settled is not None and settled <= 3 and r.get('eem', {}).get('run_style') == '未知':
+            presser_count += 1  # V3: pos 2-3 = presser
+            total_valid += 1
         elif settled is not None and settled >= 7 and r.get('eem', {}).get('run_style') == '未知':
             back_count += 1
             total_valid += 1
 
     avg_l400_gain = sum(l400_gains) / len(l400_gains) if l400_gains else 0
 
-    # Classification
+    # V3: Classification with presser awareness
+    combined_front = front_count + presser_count  # For evidence display
     if total_valid >= 3:
-        front_pct = front_count / total_valid
+        front_pct = front_count / total_valid  # True leaders only
+        presser_pct = presser_count / total_valid
         back_pct = back_count / total_valid
 
-        if front_pct >= 0.5:
+        if front_pct >= 0.4:  # V3: true front-runners (前領)
             result['type'] = 'A'
             result['type_cn'] = '前領均速型'
-            result['evidence'].append(f'前列跑法 {front_count}/{total_valid} 場')
-            result['confidence'] = '高' if front_pct >= 0.7 else '中'
+            result['evidence'].append(f'前領 {front_count}/{total_valid} 場')
+            result['confidence'] = '高' if front_pct >= 0.6 else '中'
+        elif (front_pct + presser_pct) >= 0.6 and front_pct >= 0.2:
+            # Mix of front + presser = still front-biased
+            result['type'] = 'A'
+            result['type_cn'] = '前領均速型'
+            result['evidence'].append(f'前領 {front_count} + 居中前 {presser_count}/{total_valid} 場')
+            result['confidence'] = '中'
+        elif presser_pct >= 0.5:
+            # V3: Mostly tracking leader = presser type
+            result['type'] = 'A/B'
+            result['type_cn'] = '跟前型'
+            result['evidence'].append(f'居中前 {presser_count}/{total_valid} 場 (非前領)')
+            result['confidence'] = '中'
         elif back_pct >= 0.5 and avg_l400_gain >= 1.5:
             result['type'] = 'B'
             result['type_cn'] = '末段爆發型'
@@ -1145,12 +1198,12 @@ def classify_engine_type(entries: list[dict]) -> dict:
         elif abs(front_pct - back_pct) < 0.2:
             result['type'] = 'C'
             result['type_cn'] = '持續衝刺型'
-            result['evidence'].append(f'跑法多變 前{front_count}/中{mid_count}/後{back_count}')
+            result['evidence'].append(f'跑法多變 前{front_count}/居中前{presser_count}/中{mid_count}/後{back_count}')
             result['confidence'] = '中'
         else:
             result['type'] = 'A/B'
             result['type_cn'] = '混合型'
-            result['evidence'].append(f'前{front_count}/中{mid_count}/後{back_count}')
+            result['evidence'].append(f'前{front_count}/居中前{presser_count}/中{mid_count}/後{back_count}')
             result['confidence'] = '低'
     else:
         result['evidence'].append('場次不足，未能可靠分類')
@@ -1158,38 +1211,176 @@ def classify_engine_type(entries: list[dict]) -> dict:
     return result
 
 
+STYLE_WEIGHTS_RECENT = [3.0, 2.0, 1.5, 1.0, 0.75, 0.5]
+
+
+def _confidence_rank(label: str) -> int:
+    return {'高': 2, '中': 1, '低': 0, 'High': 2, 'Medium': 1, 'Low': 0}.get(label, 0)
+
+
+def _aggregate_confidence(labels: list[str]) -> str:
+    if not labels:
+        return 'Low'
+    avg = sum(_confidence_rank(x) for x in labels) / len(labels)
+    if avg >= 1.5:
+        return 'High'
+    if avg >= 0.75:
+        return 'Medium'
+    return 'Low'
+
+
+def _pace_confidence(style_profiles: list[dict], n_leaders: int, n_pressers: int, field_size: int,
+                     venue: str = '') -> str:
+    if not style_profiles or field_size == 0:
+        return 'Low'
+    low_count = sum(1 for p in style_profiles if p.get('confidence') == '低')
+    high_or_mid = sum(1 for p in style_profiles if p.get('confidence') in ('高', '中'))
+    if low_count / max(field_size, 1) >= 0.45:
+        return 'Low'
+    if high_or_mid / max(field_size, 1) < 0.6:
+        return 'Low'
+    if not venue:
+        return 'Mixed'
+    if n_leaders == 0 and n_pressers <= 1:
+        return 'Mixed'
+    return 'Clear'
+
+
+def _au_style_from_entry(entry: dict) -> Tuple[Optional[str], str]:
+    """Return running-style signal using in-race EEM/settled evidence only.
+
+    Finishing position and Last10 are deliberately excluded: AU data is already
+    sparse, and result position is a poor proxy for early/mid-race map position.
+    """
+    style = entry.get('eem', {}).get('run_style', '未知')
+    if style == '前領':
+        return 'front', 'EEM=Led'
+    if style == '居中前':
+        return 'presser', 'EEM=Handy'
+    if style in ('後追', '慢出', '居中後'):
+        return 'closer', f'EEM={style}'
+    if style in ('居中', '中後'):
+        return 'mid_pack', f'EEM={style}'
+
+    settled = entry.get('settled')
+    if settled is not None:
+        try:
+            settled_i = int(settled)
+        except (TypeError, ValueError):
+            settled_i = 0
+        if settled_i == 1:
+            return 'front', 'settled=1'
+        if 2 <= settled_i <= 3:
+            return 'presser', f'settled={settled_i}'
+        if 4 <= settled_i <= 6:
+            return 'mid_pack', f'settled={settled_i}'
+        if settled_i >= 7:
+            return 'closer', f'settled={settled_i}'
+
+    return None, '無 EEM/settled 走位證據'
+
+
+def weighted_au_running_style(entries: list[dict]) -> dict:
+    """V4: Weighted recent AU running style profile for pace maps."""
+    result = {
+        'style': 'mid_pack',
+        'style_cn': '守中',
+        'style_3way': '守中',
+        'confidence': '低',
+        'evidence': ['走位證據不足，預設守中但步速信心需降級'],
+        'valid_races': 0,
+    }
+    real_entries = [e for e in entries if not e.get('is_trial')][:MAX_REAL_RACES_FOR_COMPUTE]
+    scores = {'front': 0.0, 'presser': 0.0, 'mid_pack': 0.0, 'closer': 0.0}
+    counts = {'front': 0, 'presser': 0, 'mid_pack': 0, 'closer': 0}
+    notes = []
+    total_weight = 0.0
+
+    for i, entry in enumerate(real_entries[:6]):
+        style, note = _au_style_from_entry(entry)
+        if not style:
+            continue
+        weight = STYLE_WEIGHTS_RECENT[i] if i < len(STYLE_WEIGHTS_RECENT) else 0.5
+        scores[style] += weight
+        counts[style] += 1
+        total_weight += weight
+        if len(notes) < 3:
+            notes.append(f"近{i+1}仗{note}")
+
+    if total_weight <= 0:
+        return result
+
+    dominant = max(scores.items(), key=lambda x: x[1])
+    dominant_pct = dominant[1] / total_weight
+    style_map = {'front': '前領', 'presser': '跟前', 'mid_pack': '守中', 'closer': '後上'}
+    three_way_map = {'front': '前置', 'presser': '前置', 'mid_pack': '守中', 'closer': '後上'}
+
+    result['valid_races'] = sum(counts.values())
+    result['style'] = dominant[0] if dominant_pct >= 0.45 and counts[dominant[0]] >= 2 else 'mid_pack'
+    result['style_cn'] = style_map[result['style']]
+    result['style_3way'] = three_way_map[result['style']]
+    if dominant_pct >= 0.65 and counts[dominant[0]] >= 3:
+        result['confidence'] = '高'
+    elif dominant_pct >= 0.45 and counts[dominant[0]] >= 2:
+        result['confidence'] = '中'
+    else:
+        result['confidence'] = '低'
+    result['evidence'] = [
+        f"{style_map[dominant[0]]}加權佔{dominant_pct:.0%} ({counts[dominant[0]]}/{result['valid_races']}場)",
+        '；'.join(notes) if notes else '無具體走位註記',
+    ]
+    return result
+
+
 def _recent_au_running_style(entries: list[dict]) -> str:
-    for entry in entries[:3]:
-        style = entry.get('eem', {}).get('run_style', '未知')
-        if style in ('前領',):
-            return 'front'
-        if style in ('居中前',):
-            return 'on_pace'
-        if style in ('後追', '慢出', '居中後'):
-            return 'closer'
-    return 'mid_pack'
+    """Backward-compatible wrapper for scripts expecting a simple style string."""
+    return weighted_au_running_style(entries)['style']
 
 
-def _classify_pace_v2(n_leaders: int, n_on_pace: int, field_size: int) -> str:
-    """5-tier pace classification based on leader ratio and front pressure.
+def _classify_pace_v2(n_leaders: int, n_on_pace: int, field_size: int,
+                       distance: int = 1200, going: str = '',
+                       n_pressers: int = 0) -> str:
+    """V3: Multi-factor pace classification.
 
-    Returns: Very Slow / Slow / Normal / Fast / Very Fast
+    Returns Chinese labels: 極慢 / 慢 / 正常 / 快 / 極快
+    Factors: leader count, front pressure ratio, distance, going.
     """
     if field_size == 0:
-        return 'Normal'
+        return '正常'
 
-    front_ratio = (n_leaders + n_on_pace) / field_size
+    # Base score from leader/presser pressure
+    # V3: Pressers only contribute pace when leaders are present
+    # Without leaders, pressers settle and tempo drops
+    presser_weight = 1.0 if n_leaders >= 1 else 0.3  # Pressers chase leaders; no leaders = no pressure
+    base_score = n_leaders * 2.5 + n_pressers * presser_weight + n_on_pace * 0.2
 
-    if n_leaders == 0 and n_on_pace <= 1:
-        return 'Very Slow'
-    elif n_leaders <= 1 and front_ratio < 0.25:
-        return 'Slow'
-    elif n_leaders <= 2 and front_ratio < 0.35:
-        return 'Normal'
-    elif n_leaders >= 3 or front_ratio >= 0.45:
-        return 'Very Fast'
+    # Distance modifier: shorter = inherently faster pace
+    dist_mod = {1000: 1.4, 1100: 1.2, 1200: 1.1, 1300: 1.0,
+                1400: 0.95, 1600: 0.9, 1800: 0.85, 2000: 0.8,
+                2200: 0.75, 2400: 0.7}
+    d = min(dist_mod.keys(), key=lambda k: abs(k - distance))
+    base_score *= dist_mod[d]
+
+    # Going modifier
+    going_lower = str(going).lower()
+    if any(w in going_lower for w in ['heavy', 'soft 7', 'soft 8']):
+        base_score *= 0.8   # Heavy drains energy, slows pace
+    elif 'soft' in going_lower:
+        base_score *= 0.9
+    elif any(w in going_lower for w in ['firm', 'good 1', 'good 2']):
+        base_score *= 1.1   # Firm = leaders hold better
+
+    # Map to 5-tier Chinese labels
+    if base_score >= 7.0:
+        return '極快'
+    elif base_score >= 4.5:
+        return '快'
+    elif base_score >= 2.5:
+        return '正常'
+    elif base_score >= 1.5:
+        return '慢'
     else:
-        return 'Fast'
+        return '極慢'
 
 
 def _classify_pace_volatility(n_leaders: int, n_closers: int, field_size: int) -> str:
@@ -1212,69 +1403,102 @@ def _classify_pace_volatility(n_leaders: int, n_closers: int, field_size: int) -
 
 
 def build_au_speed_map_block(horses: list[dict], today_dist_m: int = 0,
-                             venue: str = '') -> tuple[str, dict]:
-    """Build the first-class AU speed map at Facts generation time."""
-    leaders, on_pace, mid_pack, closers = [], [], [], []
+                             venue: str = '', going: str = '') -> tuple[str, dict]:
+    """V4: Build the first-class AU speed map at Facts generation time.
+    Uses EEM/settled weighted run-style evidence, not finishing positions.
+    """
+    leaders, pressers, on_pace, mid_pack, closers = [], [], [], [], []
+    style_profiles = []
 
     for horse in horses:
         entries = horse.get('dossier_entries', [])
         engine = classify_engine_type(entries)
-        style = _recent_au_running_style(entries)
+        style_profile = weighted_au_running_style(entries)
+        style = style_profile['style']
         barrier = horse.get('barrier', 99)
         num = horse.get('num')
+        if num:
+            style_profiles.append({'num': num, **style_profile})
 
-        if engine.get('type') == 'A' or style == 'front':
+        # Style takes priority over engine type. Low-confidence engine-only front
+        # signals route to presser, not leader, to avoid false fast maps in AU.
+        if style == 'front':
             leaders.append({'num': num, 'barrier': barrier})
-        elif style == 'on_pace' or engine.get('type') == 'C' or (barrier and barrier <= 3 and style != 'closer'):
-            on_pace.append({'num': num, 'barrier': barrier})
-        elif engine.get('type') == 'B' or style == 'closer':
+        elif style == 'closer' or engine.get('type') == 'B':
             closers.append({'num': num, 'barrier': barrier})
+        elif style == 'presser':
+            pressers.append({'num': num, 'barrier': barrier})
+        elif engine.get('type') == 'A' and style_profile.get('confidence') == '低':
+            pressers.append({'num': num, 'barrier': barrier})
+        elif engine.get('type') == 'A' and style == 'mid_pack':
+            # Engine says front but recent style says mid — compromise to presser
+            pressers.append({'num': num, 'barrier': barrier})
+        elif engine.get('type') == 'C' and barrier and barrier <= 4:
+            on_pace.append({'num': num, 'barrier': barrier})
         else:
             mid_pack.append({'num': num, 'barrier': barrier})
 
-    for group in (leaders, on_pace, mid_pack, closers):
+    for group in (leaders, pressers, on_pace, mid_pack, closers):
         group.sort(key=lambda h: h['barrier'])
 
     field_size = len(horses)
-    predicted_pace = _classify_pace_v2(len(leaders), len(on_pace), field_size)
+    predicted_pace = _classify_pace_v2(len(leaders), len(on_pace), field_size,
+                                       today_dist_m or 1200, going,
+                                       n_pressers=len(pressers))
     pace_volatility = _classify_pace_volatility(len(leaders), len(closers), field_size)
+    style_confidence = _aggregate_confidence([p.get('confidence', '低') for p in style_profiles])
+    pace_confidence = _pace_confidence(style_profiles, len(leaders), len(pressers), field_size, venue)
 
     def _nums(group):
         return [h['num'] for h in group if h.get('num')]
 
     speed_map = {
         'predicted_pace': predicted_pace,
-        'expected_pace': predicted_pace,   # backward-compatible alias for AU orchestrator
+        'expected_pace': predicted_pace,   # backward-compatible alias
+        'pace_confidence': pace_confidence,
+        'style_confidence': style_confidence,
         'pace_volatility': pace_volatility,
         'leaders': _nums(leaders),
+        'pressers': _nums(pressers),  # V3: new field
         'on_pace': _nums(on_pace),
         'mid_pack': _nums(mid_pack),
         'closers': _nums(closers),
+        'going': going,  # V3: pass going for MC engine
         'track_bias': (
             f"FACTS_SPEED_MODEL: {venue or 'Unknown venue'} {today_dist_m or '?'}m; "
-            "using racecard barriers, recent run style and engine classification."
+            "using barriers, EEM/settled weighted recent run style, and engine cross-check."
         ),
         'tactical_nodes': (
-            f"FACTS_SPEED_MODEL: leaders={len(leaders)}, on_pace={len(on_pace)}, "
-            f"mid={len(mid_pack)}, closers={len(closers)}; predicted pace {predicted_pace}."
+            f"FACTS_SPEED_MODEL: leaders={len(leaders)}, pressers={len(pressers)}, "
+            f"on_pace={len(on_pace)}, mid={len(mid_pack)}, closers={len(closers)}; "
+            f"predicted pace {predicted_pace}; pace_confidence={pace_confidence}."
         ),
         'collapse_point': (
             "FACTS_SPEED_MODEL: high early pressure upgrades closers/savers; "
             "controlled tempo upgrades leaders/on-pace runners."
         ),
-        'source': 'FACTS_SPEED_MODEL',
+        'style_evidence': [
+            f"#{p['num']} {p.get('style_3way', '?')}/{p.get('style_cn', '?')}({p.get('confidence', '低')})"
+            for p in style_profiles
+        ],
+        'source': 'FACTS_SPEED_MODEL_V4',
     }
 
     def _fmt(nums):
         return '[' + ', '.join(str(n) for n in nums if n) + ']'
 
     lines = [
-        '### 🗺️ 自動步速圖 (Python Facts Model)',
+        '### 🗺️ 自動步速圖 (Python Facts Model V4)',
         f"- **predicted_pace:** {speed_map['predicted_pace']}",
+        f"- **pace_confidence:** {speed_map['pace_confidence']}",
+        f"- **style_confidence:** {speed_map['style_confidence']}",
         f"- **leaders:** {_fmt(speed_map['leaders'])}",
+        f"- **pressers:** {_fmt(speed_map['pressers'])}",
         f"- **on_pace:** {_fmt(speed_map['on_pace'])}",
         f"- **mid_pack:** {_fmt(speed_map['mid_pack'])}",
         f"- **closers:** {_fmt(speed_map['closers'])}",
+        f"- **style_evidence:** {'; '.join(speed_map['style_evidence'])}",
+        f"- **going:** {going}",
         f"- **track_bias:** {speed_map['track_bias']}",
         f"- **tactical_nodes:** {speed_map['tactical_nodes']}",
         f"- **collapse_point:** {speed_map['collapse_point']}",
@@ -1548,6 +1772,18 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
         lines.append("  - 上仗結果: N/A (初出馬)")
 
     lines.append(f"  - 生涯: {horse['career']}")
+    # Career tag classification (V2.2): only zero-start horses are debut.
+    career_starts = 0
+    career_raw = horse.get('career', 'N/A')
+    if career_raw and career_raw != 'N/A':
+        _cm = re.match(r'(\d+):', career_raw)
+        if _cm:
+            career_starts = int(_cm.group(1))
+    if career_starts == 0:
+        _ctag = 'DEBUT'
+    else:
+        _ctag = 'ESTABLISHED'
+    lines.append(f"  - 生涯標記: `{_ctag}` (生涯 {career_starts} 場)")
     lines.append(f"  - 同場: {horse['track_stats']} | 同程: {horse['dist_stats']} | 同場同程: {horse['trkdist_stats']}")
     lines.append(f"  - 好地: {horse['good_stats']} | 軟地: {horse['soft_stats']} | 重地: {horse['heavy_stats']}")
     lines.append(f"  - 初出: {horse['first_up']} | 二出: {horse['second_up']}")
@@ -1583,7 +1819,7 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
         f"；共 {real_count} 正式 + {trial_count} 試閘，嚴禁修改數值):**"
     )
     # Table header
-    lines.append("| # | 類型 | 日期 | 場地 | 路程 | 場地狀況 | 檔位 | 名次 | 班次 | 跑位軌跡 | PI | 段速 | 早段步速 | L600/RT | EEM 跑法 | EEM 消耗 | 備註 | 寬恕認定 |")
+    lines.append("| # | 類型 | 日期 | 場地 | 路程 | 場地狀況 | 檔位 | 名次 | 班次 | 跑位軌跡 | PI | 段速 | 早段步速 | L600/RT | 走位跑法 | 走位消耗 | 備註 | 寬恕認定 |")
     lines.append("|---|------|------|------|------|---------|------|------|------|---------|-----|------|---------|---------|---------|---------|------|----------|")
 
     for idx, entry in enumerate(display_entries):
@@ -1686,12 +1922,12 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
             lines.append(f"  - L400 PI (400m→終點): {l400_str} → 趨勢: {trends['l400_pi_trend']}")
 
     # ═══════════════════════════════════════════════════
-    # ⚡ EEM 能量摘要
+    # ⚡ 走位消耗摘要
     # ═══════════════════════════════════════════════════
     cum_eem = compute_cumulative_eem(entries)
     if cum_eem['recent_consumptions']:
         lines.append(f"")
-        lines.append(f"- **⚡ EEM 能量摘要:**")
+        lines.append(f"- **⚡ 走位消耗摘要:**")
         cons_str = ' → '.join(cum_eem['recent_consumptions'])
         lines.append(f"  - 近 {len(cum_eem['recent_consumptions'])} 仗消耗: {cons_str}")
         lines.append(f"  - 加權累積消耗: {cum_eem['weighted_score']}/5.0 → 等級: {cum_eem['cumulative_level']}")
@@ -1714,6 +1950,7 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
     # 🔧 引擎與距離
     # ═══════════════════════════════════════════════════
     engine = classify_engine_type(entries)
+    run_style = weighted_au_running_style(entries)
     dist_apt = compute_distance_aptitude(entries, today_dist_m)
 
     lines.append(f"")
@@ -1722,6 +1959,11 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
         f"  - 引擎: Type {engine['type']} ({engine['type_cn']}) | "
         f"信心: {engine['confidence']} | "
         f"依據: {'; '.join(engine['evidence']) if engine['evidence'] else '數據不足'}"
+    )
+    lines.append(
+        f"  - 跑法: {run_style['style_3way']} / {run_style['style_cn']} | "
+        f"信心: {run_style['confidence']} | "
+        f"依據: {'; '.join(run_style['evidence']) if run_style['evidence'] else '數據不足'}"
     )
     if dist_apt['dist_lines']:
         lines.append(f"  - 距離分佈: {' | '.join(dist_apt['dist_lines'])}")
@@ -1778,10 +2020,13 @@ def main():
     # Try to extract distance from racecard HEADER only (not horse content)
     if today_dist_m == 0:
         rc_text = Path(racecard_path).read_text(encoding='utf-8')
-        # Only match distance in the RACE header line (e.g. "RACE 1 — 900m | Maiden SW")
+        # Only match distance in the RACE header line (e.g. "RACE 1 — 900m | Maiden SW") or HKJC format ("路程: 1200米")
         header_dist = re.search(r'^RACE\s+\d+\s*[—–-]\s*(\d{3,5})m', rc_text, re.MULTILINE)
+        hkjc_dist = re.search(r'^路程:\s*(\d{3,5})米', rc_text, re.MULTILINE)
         if header_dist:
             today_dist_m = int(header_dist.group(1))
+        elif hkjc_dist:
+            today_dist_m = int(hkjc_dist.group(1))
         else:
             print(f"\n❌ [FATAL] 無法從 Racecard header 提取今仗距離！")
             print(f"   Racecard: {racecard_path}")
