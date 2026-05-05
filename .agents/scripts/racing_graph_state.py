@@ -67,5 +67,9 @@ class MeetingState(TypedDict, total=False):
     # ── Domain config reference ──
     domain: str  # 'au' or 'hkjc'
     
+    # ── Autopilot mode ──
+    autopilot: bool  # If True, invoke RACING_AGENT_CMD to fill horse JSON
+    waiting_for_agent: bool  # If True, timeout occurred but is resumable
+    
     # ── Accumulated log messages ──
     log: Annotated[list[str], operator.add]

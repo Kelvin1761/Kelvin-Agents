@@ -69,7 +69,8 @@ def route_after_watch(state: MeetingState) -> Literal["batch_qa", "gen_workcard"
         return "__end__"
 
     result = state.get("current_horse_result", "")
-    if result == "timeout":
+    # Task 5: 'waiting' = resumable timeout, treat as clean stop
+    if result in ("timeout", "waiting"):
         return "__end__"
 
     completed = state.get("completed_in_session", 0)
@@ -120,8 +121,8 @@ def route_after_advance(state: MeetingState) -> Literal["setup_race", "reports"]
 # GRAPH BUILDER
 # ═══════════════════════════════════════════════════════════════
 
-def build_au_racing_graph(checkpoint_db=None):
-    """Build the AU Racing LangGraph StateGraph.
+def build_racing_graph(checkpoint_db=None):
+    """Build the Racing LangGraph StateGraph (domain-agnostic).
     
     Args:
         checkpoint_db: Path to SQLite DB for checkpointing (Phase 2).
@@ -200,6 +201,10 @@ def build_au_racing_graph(checkpoint_db=None):
     return builder.compile(**compile_kwargs)
 
 
+# Task 1: Backwards-compatible alias
+build_au_racing_graph = build_racing_graph
+
+
 # ═══════════════════════════════════════════════════════════════
 # ENTRY POINT — for standalone testing
 # ═══════════════════════════════════════════════════════════════
@@ -259,13 +264,15 @@ def run_au_langgraph(target_dir, url=None, checkpoint_db=None):
         "should_stop": False,
         "stop_reason": "",
         "domain": "au",
+        "autopilot": False,
+        "waiting_for_agent": False,
         "log": [],
     }
 
     # Build and run graph (with optional checkpointing)
-    app = build_au_racing_graph(checkpoint_db=checkpoint_db)
+    app = build_racing_graph(checkpoint_db=checkpoint_db)
     thread_id = dir_name.replace(" ", "_").lower()
-    config = {"recursion_limit": 200}
+    config = {"recursion_limit": 500}
     if checkpoint_db:
         config["configurable"] = {"thread_id": thread_id}
         print(f"🔄 Thread: {thread_id} (checkpoint-enabled)")
@@ -341,12 +348,14 @@ def run_hkjc_langgraph(target_dir, url=None, checkpoint_db=None):
         "should_stop": False,
         "stop_reason": "",
         "domain": "hkjc",  # HKJC domain
+        "autopilot": False,
+        "waiting_for_agent": False,
         "log": [],
     }
 
-    app = build_au_racing_graph(checkpoint_db=checkpoint_db)
+    app = build_racing_graph(checkpoint_db=checkpoint_db)
     thread_id = dir_name.replace(" ", "_").lower()
-    config = {"recursion_limit": 200}
+    config = {"recursion_limit": 500}
     if checkpoint_db:
         config["configurable"] = {"thread_id": thread_id}
         print(f"🔄 Thread: {thread_id} (checkpoint-enabled)")
@@ -374,6 +383,8 @@ if __name__ == "__main__":
     parser.add_argument("--url", help="Source URL (optional)", default=None)
     parser.add_argument("--domain", choices=["au", "hkjc"], default="au",
                         help="Racing domain: au (default) or hkjc")
+    parser.add_argument("--autopilot", action="store_true",
+                        help="Enable autopilot mode (requires RACING_AGENT_CMD env var)")
     args = parser.parse_args()
 
     if not os.path.isdir(args.target_dir):
