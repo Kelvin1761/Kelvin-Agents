@@ -12,6 +12,11 @@ import re
 import argparse
 import pandas as pd
 
+# Import content guard
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'scripts')))
+from racing_content_guard import scan_text_for_dummy, scan_json_for_dummy, quarantine_file
+import json
+
 
 def _make_result_row(race_no="", distance="", jockey="", trainer="",
                      horse_no="", horse_name="", grade="",
@@ -92,6 +97,15 @@ def parse_analysis_file(file_path):
     except UnicodeDecodeError as e:
         print(f"Warning: Encoding error reading {file_path}: {e}. Skipping.")
         return results
+
+    # --- FIREWALL: Assert no dummy text in the report ---
+    dummy_errs = scan_text_for_dummy(content)
+    if dummy_errs:
+        err_msg = f"Report blocked: Contains dummy content/placeholders: {dummy_errs[0]}"
+        print(f"🚨 {err_msg}")
+        quarantine_file(file_path, err_msg)
+        return results
+    # ----------------------------------------------------
 
     try:
         # Try CSV block first (primary method)
@@ -183,10 +197,65 @@ def main():
     course_str = re.sub(r'\s*\(.*?\)\s*$', '', raw_course).strip()
 
     all_rows = []
+    runtime_dir = os.path.join(target_dir, '.runtime')
+    os.makedirs(runtime_dir, exist_ok=True)
+
+    # Load QA strikes
+    qa_strikes_data = {}
+    qa_strikes_file = os.path.join(target_dir, '.qa_strikes.json')
+    if os.path.exists(qa_strikes_file):
+        try:
+            with open(qa_strikes_file, 'r', encoding='utf-8') as f:
+                qa_strikes_data = json.load(f)
+        except Exception:
+            pass
 
     for filename in sorted(os.listdir(target_dir)):
         if (filename.endswith(".txt") or filename.endswith(".md")) and "Analysis" in filename:
             filepath = os.path.join(target_dir, filename)
+
+            # Extract race number for pre-condition checks
+            race_match = re.search(r'Race[_ ](\d+)', filename)
+            race_num = race_match.group(1) if race_match else None
+            block_reasons = []
+
+            if race_num:
+                # Check 1: compile_blocked file must not exist
+                blocked_file = os.path.join(runtime_dir, f'compile_blocked_Race_{race_num}.txt')
+                if os.path.exists(blocked_file):
+                    block_reasons.append(f'compile_blocked_Race_{race_num}.txt exists')
+
+                # Check 2: final_qa_failed file must not exist
+                qa_failed_file = os.path.join(runtime_dir, f'final_qa_failed_Race_{race_num}.txt')
+                if os.path.exists(qa_failed_file):
+                    block_reasons.append(f'final_qa_failed_Race_{race_num}.txt exists')
+
+                # Check 3: QA strikes must be 0
+                strikes = qa_strikes_data.get(f'race_{race_num}_qa', 0)
+                if strikes > 0:
+                    block_reasons.append(f'Open QA strikes: {strikes}')
+
+                # Check 4: Logic.json must pass dummy check
+                logic_json_path = os.path.join(target_dir, f'Race_{race_num}_Logic.json')
+                if os.path.exists(logic_json_path):
+                    try:
+                        with open(logic_json_path, 'r', encoding='utf-8') as f:
+                            logic_data = json.load(f)
+                        json_errs = scan_json_for_dummy(logic_data, allow_pending_fill=False)
+                        if json_errs:
+                            block_reasons.append(f'Logic.json dummy content: {json_errs[0]}')
+                    except Exception as e:
+                        block_reasons.append(f'Logic.json read error: {e}')
+
+            if block_reasons:
+                blocked_path = os.path.join(runtime_dir, f'report_blocked_Race_{race_num}.txt')
+                with open(blocked_path, 'w', encoding='utf-8') as f:
+                    f.write(f'Report generation blocked for Race {race_num}:\n')
+                    for br in block_reasons:
+                        f.write(f'  - {br}\n')
+                print(f"🚨 Report blocked for Race {race_num}: {block_reasons[0]}")
+                continue
+
             picks = parse_analysis_file(filepath)
             all_rows.extend(picks)
 

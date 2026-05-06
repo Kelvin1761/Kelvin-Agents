@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "game": "Boston Celtics at Miami Heat",
+    "date": "2026-05-01T19:00Z",
+    "season_phase": "PLAYOFFS",
+    "l10_order": "newest_first",
+    "away": { "name": "Boston Celtics", "abbr": "BOS" },
+    "home": { "name": "Miami Heat", "abbr": "MIA" },
+    "extracted_at": "2026-04-30T22:00:00"
+  },
+  "team_stats": {
+    "BOS": { "name": "Celtics", "DEF_RATING": 106.2, "DEF_RANK": 2, "OFF_RATING": 118.5, "PACE": 97.2, "NET_RATING": 12.3 },
+    "MIA": { "name": "Heat", "DEF_RATING": 110.8, "DEF_RANK": 10, "OFF_RATING": 112.0, "PACE": 96.5, "NET_RATING": 1.2 }
+  },
+  "team_dvp": {
+    "BOS": { "D_FG_PCT": 0.445, "PCT_PLUSMINUS": -0.025 },
+    "MIA": { "D_FG_PCT": 0.462, "PCT_PLUSMINUS": 0.005 }
+  },
+  "odds": {
+    "spread_home": "+4.5",
+    "spread_away": "-4.5",
+    "total": "210.5",
+    "h2h_home": 2.80,
+    "h2h_away": 1.45
+  },
+  "news": { "BOS": [], "MIA": [] },
+  "players": {
+    "BOS": [
+      {
+        "name": "Jayson Tatum",
+        "player_id": 1628369,
+        "position": "F",
+        "gamelog": {
+          "name": "Jayson Tatum",
+          "games_played": 78,
+          "playoff_games_in_l10": 3,
+          "PTS": [32, 28, 35, 26, 30, 24, 29, 33, 27, 31],
+          "REB": [8, 7, 10, 6, 9, 7, 8, 9, 6, 8],
+          "AST": [5, 7, 4, 6, 5, 8, 4, 6, 5, 7],
+          "STL": [1, 2, 1, 0, 1, 1, 2, 0, 1, 1],
+          "BLK": [1, 0, 2, 1, 0, 1, 0, 1, 1, 0],
+          "FG3M": [4, 3, 5, 2, 4, 3, 3, 5, 2, 4],
+          "MIN": [38, 36, 40, 35, 38, 37, 36, 39, 35, 38],
+          "l10_dates": ["2026-04-30", "2026-04-28", "2026-04-26", "2026-04-13", "2026-04-11", "2026-04-09", "2026-04-07", "2026-04-05", "2026-04-03", "2026-04-01"],
+          "l10_matchups": ["BOS vs. MIA", "BOS @ MIA", "BOS vs. MIA", "BOS vs. PHI", "BOS @ NYK", "BOS vs. MIL", "BOS @ CLE", "BOS vs. TOR", "BOS @ IND", "BOS vs. ATL"],
+          "PTS_stats": { "avg": 29.5, "med": 29.5, "sd": 3.24, "cov": 0.110 },
+          "REB_stats": { "avg": 7.8, "med": 7.5, "sd": 1.33, "cov": 0.170 },
+          "AST_stats": { "avg": 5.7, "med": 5.5, "sd": 1.27, "cov": 0.223 }
+        },
+        "advanced": {
+          "USG_PCT": 30.2,
+          "TS_PCT": 61.5,
+          "OFF_RATING": 120.1,
+          "DEF_RATING": 107.8,
+          "PACE": 97.2
+        },
+        "splits": { "Home_PPG": 30.5, "Road_PPG": 28.2 },
+        "h2h": {
+          "opponent": "MIA",
+          "total_games": 4,
+          "games": [],
+          "PTS_avg": 27.5,
+          "REB_avg": 7.3,
+          "AST_avg": 5.5
+        },
+        "fatigue": null
+      }
+    ],
+    "MIA": [
+      {
+        "name": "Jimmy Butler",
+        "player_id": 202710,
+        "position": "F",
+        "gamelog": {
+          "name": "Jimmy Butler",
+          "games_played": 60,
+          "PTS": [24, 30, 18, 22, 26, 20, 28, 16, 25, 21],
+          "REB": [6, 8, 5, 7, 6, 5, 9, 4, 7, 6],
+          "AST": [6, 5, 7, 4, 6, 5, 8, 3, 5, 6],
+          "STL": [2, 1, 2, 1, 3, 1, 2, 1, 1, 2],
+          "BLK": [0, 1, 0, 0, 1, 0, 1, 0, 0, 0],
+          "FG3M": [1, 2, 0, 1, 2, 1, 3, 0, 1, 1],
+          "MIN": [36, 39, 33, 35, 38, 34, 40, 32, 37, 35],
+          "l10_dates": ["2026-04-30", "2026-04-28", "2026-04-26", "2026-04-13", "2026-04-11", "2026-04-09", "2026-04-07", "2026-04-05", "2026-04-03", "2026-04-01"],
+          "l10_matchups": ["MIA @ BOS", "MIA vs. BOS", "MIA @ BOS", "MIA vs. ORL", "MIA @ ATL", "MIA vs. CHA", "MIA @ PHI", "MIA vs. NYK", "MIA @ BKN", "MIA vs. DET"],
+          "PTS_stats": { "avg": 23.0, "med": 23.0, "sd": 4.32, "cov": 0.188 },
+          "REB_stats": { "avg": 6.3, "med": 6.0, "sd": 1.42, "cov": 0.225 },
+          "AST_stats": { "avg": 5.5, "med": 5.5, "sd": 1.36, "cov": 0.247 }
+        },
+        "advanced": {
+          "USG_PCT": 25.8,
+          "TS_PCT": 56.5,
+          "OFF_RATING": 112.0,
+          "DEF_RATING": 108.5,
+          "PACE": 96.5
+        },
+        "splits": {},
+        "h2h": null,
+        "fatigue": null
+      }
+    ]
+  },
+  "key_defenders": { "BOS": [], "MIA": [] },
+  "injuries": { "BOS": {}, "MIA": {} },
+  "usage_redistribution": {},
+  "correlation_warnings": {}
+}

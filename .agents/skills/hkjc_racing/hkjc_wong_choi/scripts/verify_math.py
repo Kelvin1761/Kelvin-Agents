@@ -38,30 +38,30 @@ if sys.stdout.encoding != 'utf-8':
 GRADE_ORDER = ['S', 'S-', 'A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D']
 
 DIMENSION_CATEGORIES = {
-    # AU Wong Choi dimension names
+    # ── V4.2 HKJC 7D canonical keys (Chinese labels from compiler output) ──
     '狀態與穩定性': 'semi_core',
     '段速與引擎': 'core',
     '形勢與走位': 'semi_core',
-    '風向形勢': 'semi_core',      # Straight sprint variant
     '騎練訊號': 'core',
-    '級數與負重': 'aux',
-    '場地適性': 'aux',
+    '馬匹健康 / 新鮮感': 'aux',
     '賽績線': 'aux',
-    '裝備與距離': 'aux',
-    # HKJC Wong Choi dimension names (V3 integrated format)
+    '級數優勢': 'aux',
+    # ── Chinese label aliases that may appear in older Analysis.md files ──
     '位置穩定性': 'semi_core',
     '穩定性': 'semi_core',
     '段速質量': 'core',
-    '形勢與走位(潛力)': 'semi_core',
-    '形勢與走位(潛力v2)': 'semi_core',
-    '形勢與走位': 'semi_core',
-    'race_shape': 'semi_core',
+    '風向形勢': 'semi_core',      # Straight sprint variant
+    '級數與負重': 'aux',
     '練馬師訊號': 'core',
-    '情境適配': 'aux',
-    '路程/新鮮度': 'aux',
-    '路程': 'aux',
-    '新鮮度': 'aux',
-    '級數優勢': 'aux',
+    '馬匹健康': 'aux',
+    # ── English canonical keys (from V4.2 JSON matrix) ──
+    'stability': 'semi_core',
+    'sectional': 'core',
+    'race_shape': 'semi_core',
+    'trainer_signal': 'core',
+    'horse_health': 'aux',
+    'form_line': 'aux',
+    'class_advantage': 'aux',
 }
 
 # Regex patterns for dimension lines in the rating matrix

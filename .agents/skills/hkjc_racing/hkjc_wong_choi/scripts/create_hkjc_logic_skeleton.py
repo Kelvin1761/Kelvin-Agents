@@ -6,7 +6,7 @@ from pathlib import Path
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
-create_hkjc_logic_skeleton.py — V9 Python-Native Skeleton Generator
+create_hkjc_logic_skeleton.py — V9 Python-Native Skeleton Generator (V4.2 Schema)
 
 Extracts factual data from HKJC Facts.md for a SINGLE horse and
 pre-fills Logic.json. LLM only needs to fill [FILL] analysis fields.
@@ -17,6 +17,10 @@ Usage:
 
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+
+# V4.2: Import schema version constants
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hkjc_schema import HKJC_SCHEMA_VERSION, HKJC_PLATFORM
 
 
 def extract_race_header(facts_content):
@@ -1145,7 +1149,7 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None):
         f"[📎 必讀: 05_forensic_analysis.md (穩定性計算 + 醫療事故自動作廢規則 — 有醫療事故嘅場次需從穩定性計算中排除)]\n"
         f"→ [判讀: FILL]"
     )
-    r_speed_mass = (
+    r_sectional = (
         f"[Resource Check: 03_engine_pace_context.md + 04_engine_corrections.md + 05_forensic_analysis.md / 引擎+段速修正+法醫作廢]\n"
         f"[引擎(速度分佈): {engine} | 最佳{best_dist}]\n"
         f"[上仗L400={raw_l400}, L400趨勢={l400_trend}, 能量趨勢={energy_trend}]\n"
@@ -1216,6 +1220,10 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None):
         f"→ [判讀: FILL]"
     )
 
+    # ── V10: Build trackwork instruction for LLM ──
+    tw_digest = raw_trackwork.get('stability_digest', {}) if isinstance(raw_trackwork, dict) else {}
+    tw_instruction = tw_digest.get('llm_stability_instruction', '')
+
     return {
         # ===== LOCKED DATA (Python pre-filled, LLM must NOT modify) =====
         '_locked': True,
@@ -1236,13 +1244,72 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None):
         'debut_trial_profile': debut_trial_profile,
         'debut_readiness_flags': debut_readiness_flags,
 
-        # ===== ANALYSIS FIELDS (V4.2: matrix-only, legacy fields removed) =====
+        # ===== V10: PYTHON-GUARANTEED DATA (compile template reads these directly) =====
+        # LLM MUST NOT modify _data. Compile template renders ALL data from here.
+        # LLM only needs to read WorkCard, analyze, then fill score + → [判讀: ...] text.
+        '_data': {
+            # ── 狀態與穩定性 (stability) ──
+            'recent_6_detail': r6_str,
+            'season_stats_line': season_stats,
+            'margin_trend': margin_trend,
+            'career_tag': career_tag,
+            'career_stage_label': career_stage_label or '標準馬',
+            'hk_starts': hk_starts,
+            'trackwork_digest': tw_line,
+            'trackwork_instruction': tw_instruction,
+            'medical_flags': med_str,
+
+            # ── 段速質量 (sectional) ──
+            'engine_type': engine,
+            'best_distance': best_dist,
+            'raw_l400': raw_l400,
+            'l400_trend': l400_trend,
+            'energy_trend': energy_trend,
+            'finish_time_block': ft_str,
+            'finish_time_adj': ft_adj_str,
+            'finish_time_adj_level': ft_adj_level,
+
+            # ── 形勢與走位 (race_shape) ──
+            'position_window': position_window_str,
+            'draw_verdict': draw_verdict_str,
+            'running_style': running_style,
+            'position_pi': position_pi,
+            'draw_position_fit': draw_pos_fit,
+            'track_bias': track_bias,
+            'full_draw_table': full_draw_table,
+
+            # ── 騎練訊號 (trainer_signal) ──
+            'jockey_name': jockey,
+            'trainer_name': trainer,
+            'gear_change': gear,
+            'trackwork_trainer': tw_trainer_line,
+            'jockey_combo_block': jc_full,
+
+            # ── 馬匹健康 (horse_health) ──
+            'days_since_last': days_since,
+            'weight_trend': weight_trend,
+            'trackwork_health': tw_health_line,
+
+            # ── 賽績線 (form_line) ──
+            'formline_strength': formline_str,
+            'last_finish': last_finish,
+            'last_margin': last_margin_val,
+
+            # ── 級數優勢 (class_advantage) ──
+            'total_starts': starts,
+            'total_wins': wins,
+            'rating_trend': rating_trend,
+            'weight_carried': weight,
+            'venue_transfer': vt_str,
+        },
+
+        # ===== ANALYSIS FIELDS (V10: LLM only fills score + judgment) =====
 
         'race_forgiveness': '[FILL — JSON Array 格式]',
 
         'matrix': {
             'stability':          {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_stability},
-            'sectional':          {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_speed_mass},
+            'sectional':          {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_sectional},
             'race_shape':         {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_race_shape},
             'trainer_signal':     {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_trainer},
             'horse_health':       {'score': '[FILL: ✅/➖/❌]', 'reasoning': r_health},
@@ -1305,6 +1372,22 @@ def main():
 
     # Parse all data
     header = parse_horse_header(block)
+    if not header:
+        print(f'❌ 無法解析馬號 {args.horse_num} 的標題列 (Header) 資訊', file=sys.stderr)
+        sys.exit(1)
+        
+    name = header.get('name', '').strip()
+    barrier = header.get('barrier', 0)
+    weight = header.get('weight', 0)
+    
+    if not name or name in ("?", "未知", "Unknown", "") or name.isdigit():
+        print(f'❌ 馬號 {args.horse_num} 提取到的馬名無效: "{name}"', file=sys.stderr)
+        sys.exit(1)
+        
+    if barrier <= 0 or weight <= 0:
+        print(f'❌ 馬號 {args.horse_num} 提取到的檔位({barrier})或負磅({weight})無效', file=sys.stderr)
+        sys.exit(1)
+        
     summary = parse_summary(block)
     recent = parse_recent_race(block)
     trends = parse_trends(block)
@@ -1328,6 +1411,8 @@ def main():
         # Extract race header for new JSON
         race_header = extract_race_header(facts_content)
         logic_data = {
+            'schema_version': HKJC_SCHEMA_VERSION,
+            'platform': HKJC_PLATFORM,
             'race_analysis': {
                 'race_number': args.race_num,
                 'race_class': race_header.get('race_class', ''),

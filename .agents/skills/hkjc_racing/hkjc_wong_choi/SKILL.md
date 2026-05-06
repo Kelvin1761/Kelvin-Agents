@@ -76,8 +76,30 @@ python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <
 - **每匹馬嘅分析內容必須唯一**（唔可以套用同一個模板再換馬名）
 
 每個 matrix dimension 嘅 `reasoning` 必須：
-- **引用該維度嘅具體數據**（例如 stability 引用近績序列、speed_mass 引用 L400 時間）
+- **引用該維度嘅具體數據**（例如 stability 引用近績序列、sectional 引用 L400 時間）
 - **至少 10 個中文字**
+
+## HKJC Logic JSON Field Responsibilities (V4.2)
+
+HKJC Logic JSON 使用 **canonical English matrix keys only**。
+唔准建立 Chinese matrix keys。Compiler 會自動顯示中文 labels。
+
+**Schema Version:** `HKJC_LOGIC_V4_2`
+**Matrix Dimensions:** 7D only (`stability`, `sectional`, `race_shape`, `trainer_signal`, `horse_health`, `form_line`, `class_advantage`)
+
+**LLM fills:**
+- `core_logic` — 核心分析邏輯
+- `advantages` — 最大競爭優勢
+- `disadvantages` — 最大失敗風險
+- `matrix.*.score` — 5-tier tick (✅✅/✅/➖/❌/❌❌)
+- `matrix.*.reasoning` — 基於數據嘅維度分析
+
+**LLM must NOT edit:**
+- `locked_data` / `_data` — Python 預填嘅事實數據
+- `computed_rating` — Python 計算嘅評級
+- `schema_version` — 由 skeleton generator 設定
+- `platform` — 由 skeleton generator 設定
+- `audit` — 由 pipeline 自動填充
 
 ## Failure Protocol
 | 情況 | 動作 |
@@ -86,6 +108,7 @@ python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <
 | 網絡中斷 / 數據擷取失敗 | 讀取 `.runtime/` 已存储狀態，通知用戶並嘗試重新執行 |
 | `[FILL]` 填寫失敗 3 次 | 停止，報告失敗欄位，詢問用戶介入 |
 | `.runtime/` 目錄不存在 | 執行 `mkdir .runtime` 後重試 |
+| V4.2 Schema Validation 失敗 | Pipeline 停止，報告具體 SCHEMA-xxx error codes |
 
 ## Session Recovery (Pattern 10)
 啟動時掃描 `.runtime/` 目錄：

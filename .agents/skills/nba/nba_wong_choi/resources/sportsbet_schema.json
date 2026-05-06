@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "sportsbet_odds_v2",
+  "title": "Sportsbet Odds JSON",
+  "description": "Schema for Sportsbet_Odds_*.json — the raw odds data from MCP Playwright extraction",
+  "type": "object",
+  "required": ["player_props"],
+  "properties": {
+    "extraction_time": { "type": "string", "description": "Timestamp of odds extraction" },
+    "game_tag": { "type": "string", "pattern": "^[A-Z]{2,4}_[A-Z]{2,4}$" },
+    "source": { "type": "string" },
+    "game_lines": {
+      "type": "object",
+      "description": "Game-level markets (spread, total, h2h)",
+      "properties": {
+        "spread_home": { "type": ["string", "number", "null"] },
+        "spread_away": { "type": ["string", "number", "null"] },
+        "total": { "type": ["string", "number", "null"] },
+        "h2h_home": { "type": ["number", "null"] },
+        "h2h_away": { "type": ["number", "null"] }
+      }
+    },
+    "player_props": {
+      "type": "object",
+      "description": "Player props keyed by category (PTS, REB, AST, etc.)",
+      "minProperties": 1,
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "description": "Players keyed by name",
+          "minProperties": 1,
+          "patternProperties": {
+            ".*": {
+              "type": "object",
+              "description": "Single player's bet data for a category",
+              "required": ["line", "odds"],
+              "properties": {
+                "line": {
+                  "type": ["string", "number"],
+                  "description": "Sportsbet milestone line e.g. '10+' or 10"
+                },
+                "odds": {
+                  "type": "number",
+                  "exclusiveMinimum": 1.0,
+                  "description": "Decimal odds e.g. 1.72"
+                },
+                "direction": {
+                  "type": "string",
+                  "enum": ["Over", "Under", "over", "under"],
+                  "description": "Bet direction"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

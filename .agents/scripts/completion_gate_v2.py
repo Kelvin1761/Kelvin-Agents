@@ -7,6 +7,11 @@ from pathlib import Path
 from itertools import combinations
 from difflib import SequenceMatcher
 
+# Import dummy prevention guard
+_SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _SCRIPTS_DIR)
+from racing_content_guard import scan_text_for_dummy, quarantine_file
+
 def check_au_hkjc_format(text: str, domain: str) -> list[str]:
     errors = []
     if domain == 'au':
@@ -86,10 +91,10 @@ def check_au_hkjc_format(text: str, domain: str) -> list[str]:
     if not horses_with_form and '近績序列' in text:
          errors.append("⚠️ P37: '近績序列' field exists but is empty or malformed.")
 
-    # [FILL] Residual Scan — catch unfilled placeholders
-    fill_count = text.count('[FILL]')
-    if fill_count > 0:
-        errors.append(f"🚨 [CRITICAL] FILL-001: {fill_count} unfilled '[FILL]' placeholders detected — LLM failed to populate template fields")
+    # [FILL] Residual Scan — full dummy marker check via racing_content_guard
+    dummy_errs = scan_text_for_dummy(text)
+    for de in dummy_errs:
+        errors.append(f"🚨 [CRITICAL] DUMMY-GUARD: {de}")
 
     # 14.2B 微調 existence check (Step 11 addition)
     if '14.2B' not in text and '微調' not in text:
@@ -482,6 +487,25 @@ def main():
         for err in set(errors):
             print(f"  - {err}")
         print("\nACTION REQUIRED: Please fix the errors above before submitting.")
+
+        # Write final_qa_failed diagnostic file
+        race_match = re.search(r'Race[_ ](\d+)', args.file)
+        if race_match:
+            race_num = race_match.group(1)
+            runtime_dir = path.parent / '.runtime'
+            runtime_dir.mkdir(parents=True, exist_ok=True)
+            diag_file = runtime_dir / f'final_qa_failed_Race_{race_num}.txt'
+            with open(diag_file, 'w', encoding='utf-8') as f:
+                f.write(f"Completion Gate V2 FAILED for Race {race_num}\n")
+                f.write(f"File: {args.file}\n\n")
+                for err in errors:
+                    f.write(f"  - {err}\n")
+
+            # Quarantine if dummy markers detected
+            dummy_related = [e for e in errors if 'DUMMY-GUARD' in e or 'FILL' in e]
+            if dummy_related:
+                quarantine_file(str(path), f"Final QA failed with dummy markers:\n" + "\n".join(dummy_related))
+
         sys.exit(1)
     else:
         print(f"✅ [PASSED] Completion Gate V2 ({args.domain.upper()})")

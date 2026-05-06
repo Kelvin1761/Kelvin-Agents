@@ -1,0 +1,184 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "nba_extractor_output_v3",
+  "title": "NBA Extractor Output",
+  "description": "Schema for nba_extractor.py output JSON — the deep data package consumed by generate_nba_reports.py",
+  "type": "object",
+  "required": ["meta", "team_stats", "players"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["game", "date", "season_phase", "l10_order", "away", "home"],
+      "properties": {
+        "game": { "type": "string", "minLength": 3, "description": "Game name e.g. 'Chicago Bulls at Washington Wizards'" },
+        "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}", "description": "ISO date string" },
+        "season_phase": { "type": "string", "enum": ["EARLY_SEASON", "MID_SEASON", "LATE_REGULAR", "PLAY_IN", "PLAYOFFS"] },
+        "l10_order": { "type": "string", "enum": ["newest_first"] },
+        "away": {
+          "type": "object",
+          "required": ["name", "abbr"],
+          "properties": {
+            "name": { "type": "string", "minLength": 3 },
+            "abbr": { "type": "string", "pattern": "^[A-Z]{2,4}$" }
+          }
+        },
+        "home": {
+          "type": "object",
+          "required": ["name", "abbr"],
+          "properties": {
+            "name": { "type": "string", "minLength": 3 },
+            "abbr": { "type": "string", "pattern": "^[A-Z]{2,4}$" }
+          }
+        },
+        "extracted_at": { "type": "string" }
+      }
+    },
+    "team_stats": {
+      "type": "object",
+      "description": "Team advanced stats keyed by abbreviation",
+      "patternProperties": {
+        "^[A-Z]{2,4}$": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "DEF_RATING": { "type": "number" },
+            "DEF_RANK": { "type": "integer", "minimum": 1, "maximum": 30 },
+            "OFF_RATING": { "type": "number" },
+            "PACE": { "type": "number" },
+            "NET_RATING": { "type": "number" }
+          }
+        }
+      }
+    },
+    "team_dvp": {
+      "type": "object",
+      "description": "Team defense vs position data",
+      "patternProperties": {
+        "^[A-Z]{2,4}$": {
+          "type": "object",
+          "properties": {
+            "D_FG_PCT": { "type": "number" },
+            "PCT_PLUSMINUS": { "type": "number" }
+          }
+        }
+      }
+    },
+    "odds": {
+      "type": "object",
+      "description": "Game-level odds (spread, total, moneyline)"
+    },
+    "news": {
+      "type": "object",
+      "description": "Team news keyed by abbreviation",
+      "patternProperties": {
+        "^[A-Z]{2,4}$": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "headline": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "players": {
+      "type": "object",
+      "description": "Player data keyed by team abbreviation",
+      "patternProperties": {
+        "^[A-Z]{2,4}$": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/player_record"
+          }
+        }
+      }
+    },
+    "key_defenders": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Z]{2,4}$": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "PCT_PLUSMINUS": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "injuries": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Z]{2,4}$": { "type": "object" }
+      }
+    },
+    "usage_redistribution": { "type": "object" },
+    "correlation_warnings": { "type": "object" }
+  },
+  "definitions": {
+    "player_record": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 2 },
+        "player_id": { "type": "integer" },
+        "position": { "type": "string" },
+        "gamelog": {
+          "type": ["object", "null"],
+          "description": "L10 game log data — CRITICAL for valid analysis",
+          "required": ["PTS"],
+          "properties": {
+            "name": { "type": "string" },
+            "games_played": { "type": "integer", "minimum": 1 },
+            "PTS": { "$ref": "#/definitions/stat_array" },
+            "REB": { "$ref": "#/definitions/stat_array" },
+            "AST": { "$ref": "#/definitions/stat_array" },
+            "STL": { "$ref": "#/definitions/stat_array" },
+            "BLK": { "$ref": "#/definitions/stat_array" },
+            "FG3M": { "$ref": "#/definitions/stat_array" },
+            "MIN": { "$ref": "#/definitions/stat_array" },
+            "l10_dates": { "type": "array", "items": { "type": "string" } },
+            "l10_matchups": { "type": "array", "items": { "type": "string" } },
+            "PTS_stats": { "$ref": "#/definitions/stat_summary" },
+            "REB_stats": { "$ref": "#/definitions/stat_summary" },
+            "AST_stats": { "$ref": "#/definitions/stat_summary" }
+          }
+        },
+        "advanced": {
+          "type": "object",
+          "properties": {
+            "USG_PCT": { "type": "number" },
+            "TS_PCT": { "type": "number" },
+            "OFF_RATING": { "type": "number" },
+            "DEF_RATING": { "type": "number" },
+            "PACE": { "type": "number" }
+          }
+        },
+        "splits": { "type": "object" },
+        "h2h": { "type": ["object", "null"] },
+        "prop_analytics": { "type": ["object", "null"] },
+        "fatigue": { "type": ["object", "null"] }
+      }
+    },
+    "stat_array": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 1,
+      "maxItems": 20,
+      "description": "Array of recent game stats (newest first)"
+    },
+    "stat_summary": {
+      "type": "object",
+      "properties": {
+        "avg": { "type": "number" },
+        "med": { "type": "number" },
+        "sd": { "type": "number" },
+        "cov": { "type": "number" }
+      }
+    }
+  }
+}

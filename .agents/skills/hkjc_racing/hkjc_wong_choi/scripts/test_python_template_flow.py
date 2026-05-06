@@ -55,37 +55,37 @@ def create_mock_dimensions() -> dict:
             {
                 "num": 1, "name": "Test Horse A",
                 "dimensions": {
-                    "穩定性": "✅", "段速質量": "✅",
-                    "形勢與走位": "✅", "練馬師訊號": "➖",
-                    "情境適配": "✅", "路程": "✅",
-                    "賽績線": "➖", "級數優勢": "✅"
+                    "穩定性": "✅", "段速與引擎": "✅",
+                    "形勢與走位": "✅", "騎練訊號": "➖",
+                    "馬匹健康": "✅", "賽績線": "➖",
+                    "級數優勢": "✅"
                 }
             },
             {
                 "num": 2, "name": "Test Horse B",
                 "dimensions": {
-                    "穩定性": "➖", "段速質量": "❌",
-                    "形勢與走位": "➖", "練馬師訊號": "❌",
-                    "情境適配": "❌", "路程": "❌",
-                    "賽績線": "❌", "級數優勢": "➖"
+                    "穩定性": "➖", "段速與引擎": "❌",
+                    "形勢與走位": "➖", "騎練訊號": "❌",
+                    "馬匹健康": "❌", "賽績線": "❌",
+                    "級數優勢": "➖"
                 }
             },
             {
                 "num": 3, "name": "Test Horse C",
                 "dimensions": {
-                    "穩定性": "✅", "段速質量": "✅",
-                    "形勢與走位": "✅", "練馬師訊號": "✅",
-                    "情境適配": "✅", "路程": "✅",
-                    "賽績線": "✅", "級數優勢": "✅"
+                    "穩定性": "✅", "段速與引擎": "✅",
+                    "形勢與走位": "✅", "騎練訊號": "✅",
+                    "馬匹健康": "✅", "賽績線": "✅",
+                    "級數優勢": "✅"
                 }
             },
             {
                 "num": 4, "name": "Test Horse D",
                 "dimensions": {
-                    "穩定性": "❌", "段速質量": "❌",
-                    "形勢與走位": "❌", "練馬師訊號": "❌",
-                    "情境適配": "❌", "路程": "✅",
-                    "賽績線": "❌", "級數優勢": "❌"
+                    "穩定性": "❌", "段速與引擎": "❌",
+                    "形勢與走位": "❌", "騎練訊號": "❌",
+                    "馬匹健康": "❌", "賽績線": "❌",
+                    "級數優勢": "✅"
                 }
             },
         ]
@@ -281,8 +281,9 @@ def run_orchestrator_guardrail_tests():
          and 2 in au_parsed_speed_map.get('closers', []))
 
     def matrix_with_ticks(ticks):
-        keys = ['stability', 'speed_mass', 'eem', 'trainer_jockey',
-                'scenario', 'freshness', 'formline', 'class_advantage']
+        # V4.2: Use canonical 7D English keys
+        keys = ['stability', 'sectional', 'race_shape', 'trainer_signal',
+                'horse_health', 'form_line', 'class_advantage']
         return {k: {'score': ticks[i] if i < len(ticks) else '➖'} for i, k in enumerate(keys)}
 
     verdict_md = hkjc_compile.build_hkjc_verdict_compiled(

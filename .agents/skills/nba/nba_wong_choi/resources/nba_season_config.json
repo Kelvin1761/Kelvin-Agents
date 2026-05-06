@@ -1,0 +1,14 @@
+{
+  "season": "2025-26",
+  "season_label": "2025-26",
+  "early_season_start": "2025-10-01",
+  "early_season_end": "2025-11-15",
+  "mid_season_start": "2025-11-16",
+  "late_regular_start": "2026-03-25",
+  "late_regular_end": "2026-04-13",
+  "play_in_start": "2026-04-14",
+  "play_in_end": "2026-04-18",
+  "playoffs_start": "2026-04-19",
+  "playoffs_end": "2026-06-30",
+  "_note": "每季只需改呢個 config，唔好散落喺多個 Python 檔案。"
+}

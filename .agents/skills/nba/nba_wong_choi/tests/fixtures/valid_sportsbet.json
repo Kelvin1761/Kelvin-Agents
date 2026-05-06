@@ -1,0 +1,28 @@
+{
+  "extraction_time": "2026-04-15 10:30",
+  "game_tag": "CHI_WAS",
+  "source": "sportsbet.com.au",
+  "game_lines": {
+    "spread_home": "+6.5",
+    "spread_away": "-6.5",
+    "total": "224.5",
+    "h2h_home": 4.20,
+    "h2h_away": 1.25
+  },
+  "player_props": {
+    "PTS": {
+      "Zach LaVine": { "line": "24+", "odds": 1.72 },
+      "Jordan Poole": { "line": "19+", "odds": 1.85 }
+    },
+    "REB": {
+      "Zach LaVine": { "line": "4+", "odds": 1.65 }
+    },
+    "AST": {
+      "Jordan Poole": { "line": "4+", "odds": 1.70 }
+    },
+    "FG3M": {
+      "Zach LaVine": { "line": "2+", "odds": 1.55 },
+      "Jordan Poole": { "line": "2+", "odds": 1.80 }
+    }
+  }
+}

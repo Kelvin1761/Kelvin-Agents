@@ -14,6 +14,7 @@ import urllib.request
 # Import rating engine for auto-verdict computation
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'scripts')))
 from rating_engine_v2 import parse_matrix_scores, compute_base_grade, apply_fine_tune, grade_sort_index, apply_s_grade_guards
+from racing_content_guard import scan_json_for_dummy, scan_text_for_dummy, quarantine_file
 
 # Import SIP engine V2 for automated SIP rule evaluation
 try:
@@ -23,71 +24,19 @@ try:
 except ImportError:
     SIP_ENGINE_AVAILABLE = False
 
-HKJC_MATRIX_SCHEMA = {
-    "stability": "semi", "sectional": "core",
-    "race_shape": "semi", "trainer_signal": "core",
-    "horse_health": "aux",
-    "form_line": "aux", "class_advantage": "aux",
-}
-HKJC_MATRIX_EXPECTED_KEYS = set(HKJC_MATRIX_SCHEMA)
-HKJC_MATRIX_RESOURCE_REQUIREMENTS = {
-    "stability": ("05_forensic_analysis.md",),
-    "sectional": ("03_engine_pace_context.md", "04_engine_corrections.md"),
-    "race_shape": ("05_forensic_analysis.md",),
-    "trainer_signal": ("07b_trainer_signals.md", "07c_jockey_profiles.md"),
-    "horse_health": ("05_forensic_analysis.md",),
-    "form_line": ("Facts.md",),
-    "class_advantage": ("06_rating_engine.md",),
-}
-HKJC_MATRIX_LEGACY_8D_KEYS = {
-    "裝備與距離", "Gear & Distance", "gear_distance", "gear_dist",
-    "gearDistance", "gear_and_distance",
-    "場地適性", "情境適配", "scenario",
-    "路程/新鮮度", "distance_freshness", "freshness", "distance",
-}
-HKJC_LEGACY_TOP_LEVEL_FIELDS = {
-    "analytical_breakdown", "sectional_forensic", "race_shape",
-}
-
-# Chinese → English matrix key normalization map
-# Prevents grade computation failure when LLM uses Chinese dimension names
-# Also handles English key variants (legacy + new canonical)
-_ZH_EN_MATRIX_MAP = {
-    # Chinese key variants
-    "狀態與穩定性": "stability",
-    "位置穩定性": "stability",
-    "段速與引擎": "sectional",
-    "段速質量": "sectional",
-    "形勢與走位": "race_shape",
-    "形勢與走位(舊)": "race_shape",
-    "騎練訊號": "trainer_signal",
-    "練馬師訊號": "trainer_signal",
-    "級數與負重": "class_advantage",
-    "級數優勢": "class_advantage",
-    "賽績線": "form_line",
-    "馬匹健康 / 新鮮感": "horse_health",
-    "馬匹健康": "horse_health",
-    "新鮮度/場地": "horse_health",
-    "路程/新鮮度": "horse_health",
-    # Legacy English key variants (pre-V4.2)
-    "speed_mass": "sectional",
-    "trainer_jockey": "trainer_signal",
-    "freshness": "horse_health",
-    "distance_freshness": "horse_health",
-    "formline": "form_line",
-    "trainer": "trainer_signal",
-    "distance": "horse_health",
-    "class": "class_advantage",
-}
-
-def _normalize_matrix(m_data):
-    """Normalize matrix keys from Chinese/variant English to canonical schema keys."""
-    if not m_data:
-        return m_data
-    needs_norm = any(k in _ZH_EN_MATRIX_MAP for k in m_data)
-    if not needs_norm:
-        return m_data
-    return {_ZH_EN_MATRIX_MAP.get(k, k): v for k, v in m_data.items()}
+# ── V4.2: Import all schema constants from central hkjc_schema.py ──
+from hkjc_schema import (
+    HKJC_SCHEMA_VERSION,
+    HKJC_MATRIX_SCHEMA,
+    HKJC_MATRIX_EXPECTED_KEYS,
+    HKJC_MATRIX_RESOURCE_REQUIREMENTS,
+    HKJC_LEGACY_8D_KEYS as HKJC_MATRIX_LEGACY_8D_KEYS,
+    HKJC_LEGACY_TOP_LEVEL_FIELDS,
+    ZH_EN_MATRIX_MAP as _ZH_EN_MATRIX_MAP,
+    DUMMY_PHRASES,
+    FLUFF_PHRASES,
+    normalize_matrix_keys as _normalize_matrix,
+)
 
 
 def validate_matrix_resource_checks_hkjc(matrix: dict) -> list:
@@ -217,8 +166,67 @@ def _top4_fail_count(horses, h_num):
     return total_f
 
 
+HKJC_REQUIRED_MATRIX_DIMS = {
+    'stability', 'sectional', 'race_shape', 'trainer_signal',
+    'horse_health', 'form_line', 'class_advantage',
+}
+
+
+def validate_hkjc_race_ready_for_verdict(logic_data):
+    """Pre-verdict gate: ensure every horse is fully analysed.
+
+    Checks:
+      1. 'horses' key exists and is non-empty
+      2. Every horse has a complete 7D matrix
+      3. No [FILL] / dummy markers in any horse entry
+      4. No generic fluff phrases
+      5. No final_rating-only horse (matrix must be present)
+      6. core_logic exists and is not empty / generic
+
+    Raises ValueError with structured details on first failure.
+    """
+    horses = logic_data.get('horses', {})
+    if not horses:
+        raise ValueError("Verdict blocked: 'horses' key is empty or missing")
+
+    errors = []
+    for h_num, h_obj in horses.items():
+        prefix = f"Horse {h_num} ({h_obj.get('horse_name', '?')})"
+
+        # Matrix must exist
+        matrix = h_obj.get('matrix', {})
+        if not matrix:
+            errors.append(f"{prefix}: matrix missing (final_rating-only horse not allowed)")
+            continue
+
+        # 7D completeness
+        normalized = _normalize_matrix(matrix)
+        missing_dims = HKJC_REQUIRED_MATRIX_DIMS - set(normalized.keys())
+        if missing_dims:
+            errors.append(f"{prefix}: missing matrix dimensions {sorted(missing_dims)}")
+
+        # Dummy / fluff scan
+        dummy_errs = scan_json_for_dummy(h_obj, allow_pending_fill=False, path=f"horses.{h_num}")
+        for de in dummy_errs:
+            errors.append(f"{prefix}: {de}")
+
+        # core_logic must exist and have substance
+        core_logic = h_obj.get('core_logic', '')
+        if not core_logic or core_logic.strip() in ('[FILL]', '', '待補充'):
+            errors.append(f"{prefix}: core_logic is empty or placeholder")
+
+    if errors:
+        raise ValueError(
+            "Verdict generation blocked — race not ready:\n"
+            + "\n".join(f"  - {e}" for e in errors)
+        )
+
+
 def auto_compute_verdict_hkjc(logic_data, facts_path):
     """Auto-compute verdict Top 4 from matrix grades. Eliminates LLM verdict stop."""
+    # Full pre-verdict validation
+    validate_hkjc_race_ready_for_verdict(logic_data)
+
     horses = logic_data.get('horses', {})
     speed_map = logic_data.get('race_analysis', {}).get('speed_map', {})
     
@@ -494,15 +502,7 @@ from datetime import datetime
 from difflib import SequenceMatcher
 from itertools import combinations
 
-# Known dummy/fluff phrases from historical auto_fill scripts
-DUMMY_PHRASES = [
-    '自動法醫分析', '自動匹配系統法則', '分析中', '待分析',
-    '自動生成', '批量填充', 'auto_fill', 'auto_expert',
-]
-FLUFF_PHRASES = [
-    '具備一定競爭力', '狀態有待觀察', '近期走勢', '值得留意',
-    '有望爭勝', '不容忽視', '實力不俗', '表現平穩',
-]
+# DUMMY_PHRASES and FLUFF_PHRASES now imported from hkjc_schema.py
 
 
 # ── Fix 2: .meeting_state.json Persistence ──
@@ -591,13 +591,22 @@ def build_meeting_state(target_dir, total_races, date_prefix):
             except (json.JSONDecodeError, OSError):
                 pass
 
-        # Check Analysis.md
+        # Check Analysis.md — full dummy scan + quarantine
         an_file = os.path.join(target_dir, f'{date_prefix} Race {r} Analysis.md')
         if os.path.exists(an_file):
             try:
                 with open(an_file, 'r', encoding='utf-8') as f:
                     ac = f.read()
-                if '[FILL]' not in ac and '缺失核心' not in ac and '未分析' not in ac:
+                dummy_errs = scan_text_for_dummy(ac)
+                if dummy_errs:
+                    # Quarantine the dummy Analysis.md
+                    reason = f"build_meeting_state dummy scan (Race {r}):\n" + "\n".join(dummy_errs)
+                    quarantine_file(an_file, reason)
+                    race_state['compiled'] = False
+                    race_state['stage'] = 'REPAIR_NEEDED'
+                elif '缺失核心' in ac or '未分析' in ac:
+                    race_state['compiled'] = False
+                else:
                     race_state['compiled'] = True
             except Exception:
                 pass
@@ -900,6 +909,8 @@ def scan_race_content_quality(logic_json_path):
         for dim, dim_data in matrix.items():
             if isinstance(dim_data, dict):
                 r_txt = dim_data.get('reasoning', '')
+                if isinstance(r_txt, list):
+                    r_txt = '\\n'.join(str(x) for x in r_txt)
                 if r_txt and '[FILL]' not in r_txt and '[判讀' not in r_txt:
                     reasonings.append(r_txt)
         if len(reasonings) >= 4:
@@ -1314,7 +1325,7 @@ def run_preflight_check(target_dir):
         result = subprocess.run(
             [PYTHON, preflight_script, target_dir, "--domain", "hkjc",
              "--session-start", str(SESSION_START_TIME)],
-            capture_output=True, text=True
+            capture_output=True, text=True, encoding='utf-8'
         )
         print(result.stdout)
         if result.returncode == 2:
@@ -2000,6 +2011,13 @@ def validate_hkjc_firewalls(h, h_entry, horses_dict, all_horses, json_file):
     V3: Added WALL-012~017 to catch auto_fill bypass scripts.
     """
     errors = []
+    
+    # Check for [FILL] or fluff using dummy guard
+    dummy_errs = scan_json_for_dummy(h_entry, allow_pending_fill=False)
+    if dummy_errs:
+        for err in dummy_errs:
+            errors.append(f"WALL-DUMMY: {err}")
+            
     locked_nonce = h_entry.get('_validation_nonce', '')
     errors.extend(validate_v42_matrix_schema_hkjc(h_entry))
     errors.extend(validate_matrix_resource_checks_hkjc(h_entry.get('matrix', {})))
@@ -2391,7 +2409,7 @@ def main():
     sys.path.insert(0, os.path.abspath(_lg_scripts))
     from racing_graph_core import run_hkjc_langgraph
 
-    run_hkjc_langgraph(target_dir, url)
+    run_hkjc_langgraph(target_dir, url, autopilot=args.auto)
 
 
 if __name__ == "__main__":

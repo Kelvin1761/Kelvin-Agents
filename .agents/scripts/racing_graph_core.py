@@ -209,7 +209,7 @@ build_au_racing_graph = build_racing_graph
 # ENTRY POINT — for standalone testing
 # ═══════════════════════════════════════════════════════════════
 
-def run_au_langgraph(target_dir, url=None, checkpoint_db=None):
+def run_au_langgraph(target_dir, url=None, checkpoint_db=None, autopilot=False):
     """Run the AU Racing pipeline using LangGraph.
     
     This is the LangGraph equivalent of au_orchestrator.py's main().
@@ -264,7 +264,7 @@ def run_au_langgraph(target_dir, url=None, checkpoint_db=None):
         "should_stop": False,
         "stop_reason": "",
         "domain": "au",
-        "autopilot": False,
+        "autopilot": autopilot,
         "waiting_for_agent": False,
         "log": [],
     }
@@ -294,7 +294,7 @@ def run_au_langgraph(target_dir, url=None, checkpoint_db=None):
     return final_state
 
 
-def run_hkjc_langgraph(target_dir, url=None, checkpoint_db=None):
+def run_hkjc_langgraph(target_dir, url=None, checkpoint_db=None, autopilot=False):
     """Run the HKJC Racing pipeline using LangGraph.
     
     This is the LangGraph equivalent of hkjc_orchestrator.py's main().
@@ -348,7 +348,7 @@ def run_hkjc_langgraph(target_dir, url=None, checkpoint_db=None):
         "should_stop": False,
         "stop_reason": "",
         "domain": "hkjc",  # HKJC domain
-        "autopilot": False,
+        "autopilot": autopilot,
         "waiting_for_agent": False,
         "log": [],
     }
@@ -392,6 +392,6 @@ if __name__ == "__main__":
         sys.exit(1)
 
     if args.domain == "hkjc":
-        run_hkjc_langgraph(args.target_dir, args.url)
+        run_hkjc_langgraph(args.target_dir, args.url, autopilot=args.autopilot)
     else:
-        run_au_langgraph(args.target_dir, args.url)
+        run_au_langgraph(args.target_dir, args.url, autopilot=args.autopilot)

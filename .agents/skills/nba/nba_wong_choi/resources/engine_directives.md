@@ -173,6 +173,34 @@
       3. Python build_leg_candidates() 已自動過濾。
     </action>
   </rule>
+
+  <rule id="SIP-N06" name="EV Quant &amp; Correlation Penalty Engine (V8)">
+    <action>
+      1. **True EV 公式**: 每條 Leg 必須計算 `ev_pct = (estimated_prob/100 × odds - 1) × 100`。
+         此值代表每單位下注嘅預期回報百分比，而非純粹概率邊緣。
+      2. **Confidence-Adjusted EV**: `confidence_adjusted_ev_pct = ev_pct × confidence_multiplier(CoV)`。
+         高 CoV 嘅 Leg 即使 raw EV 好睇，其調整後 EV 亦會被折扣。
+      3. **Correlation Penalty**: 組合層面必須計算關聯性懲罰，包括：
+         - 同球員多腿 (+8%)、同隊 3+ (+6%)、同隊 2 (+2%)
+         - PTS+AST 同隊正向關聯 (-3% bonus)
+         - 同場 3+ Over (+4%)、Blowout 風險 (+5%)
+         最高上限 30%。
+      4. **Combo EV**: `combo_ev_pct = (adjusted_joint_prob × combo_odds - 1) × 100`。
+         呢個係組合選擇嘅主要排名信號。
+      5. **Risk Tier**: BANKER (EV≥10, corr&lt;10%) | VALUE (EV≥5) | MARGINAL (EV≥0) | NEGATIVE (EV&lt;0)。
+      6. **Single Leg 最低要求 (穩膽/價值)**:
+         - estimated_prob ≥ 58%
+         - ev_pct ≥ +3%
+         - L10 樣本 ≥ 10 場
+         - CoV ≤ 0.45 (除非賠率特別強)
+      7. **Monte Carlo V2 要求**:
+         - 所有模擬必須使用 random seed (預設 42) 確保可重現性。
+         - 整數 milestone (10+) 使用 continuity correction (threshold = line - 0.5)。
+         - 3PM 用 Beta-Binomial、STL/BLK 用 Poisson、PTS/REB/AST 用 Truncated Normal。
+         - 有 season_avg 數據時，使用 shrinkage mean 代替純 L10。
+    </action>
+  </rule>
 </nba_specific_directives>
+
 
 </engine_directives>

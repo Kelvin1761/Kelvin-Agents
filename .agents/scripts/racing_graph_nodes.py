@@ -15,7 +15,7 @@ import shutil
 import time
 
 # Cross-platform Python
-PYTHON = "python3" if shutil.which("python3") else "python"
+PYTHON = sys.executable
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _AU_SCRIPTS = os.path.join(_SCRIPT_DIR, '..', 'skills', 'au_racing', 'au_wong_choi', 'scripts')
@@ -50,10 +50,10 @@ def _get_domain_fns(domain):
             "auto_verdict": ho.auto_compute_verdict_hkjc,
             "qa_diagnosis": ho.generate_qa_diagnosis,
             "print_summary": ho.print_hkjc_analysis_summary,
-            "skeleton_script": ".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/create_hkjc_logic_skeleton.py",
-            "trackwork_script": ".agents/skills/hkjc_racing/hkjc_race_extractor/scripts/extract_trackwork.py",
+            "skeleton_script": os.path.join(os.path.abspath(_HKJC_SCRIPTS), "create_hkjc_logic_skeleton.py"),
+            "trackwork_script": os.path.join(os.path.abspath(_SCRIPT_DIR), "..", "skills", "hkjc_racing", "hkjc_race_extractor", "scripts", "extract_trackwork.py"),
             "compile_script": os.path.join(os.path.abspath(_HKJC_SCRIPTS), "compile_analysis_template_hkjc.py"),
-            "reports_script": ".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/generate_reports.py",
+            "reports_script": os.path.join(os.path.abspath(_HKJC_SCRIPTS), "generate_reports.py"),
             "context_injection": ho.print_context_injection,
             "discover_races": ho.discover_total_races,
         }
@@ -75,10 +75,10 @@ def _get_domain_fns(domain):
             "auto_verdict": ao.auto_compute_verdict,
             "qa_diagnosis": ao.generate_qa_diagnosis_au,
             "print_summary": ao.print_analysis_summary,
-            "skeleton_script": ".agents/skills/au_racing/au_wong_choi/scripts/create_au_logic_skeleton.py",
+            "skeleton_script": os.path.join(os.path.abspath(_AU_SCRIPTS), "create_au_logic_skeleton.py"),
             "trackwork_script": None,
             "compile_script": os.path.join(os.path.abspath(_AU_SCRIPTS), "compile_analysis_template.py"),
-            "reports_script": ".agents/skills/au_racing/au_wong_choi/scripts/generate_reports.py",
+            "reports_script": os.path.join(os.path.abspath(_AU_SCRIPTS), "generate_reports.py"),
             "context_injection": ao.print_context_injection_au,
             "discover_races": ao.discover_total_races,
         }
@@ -155,11 +155,11 @@ def node_generate_facts(state):
             rc_fg = fns["get_racecard"](target_dir, r)
             rc, fg = rc_fg if isinstance(rc_fg, tuple) else (rc_fg, None)
             if state.get("domain", "au") == "hkjc":
-                script_path = ".agents/scripts/inject_hkjc_fact_anchors.py"
+                script_path = os.path.join(os.path.abspath(_SCRIPT_DIR), "inject_hkjc_fact_anchors.py")
                 out_path = fg.replace("賽績.md", "Facts.md")
                 cmd = [PYTHON, script_path, fg, "--output", out_path, "--venue", venue, "--race-num", str(r)]
             else:
-                script_path = ".agents/scripts/inject_fact_anchors.py"
+                script_path = os.path.join(os.path.abspath(_SCRIPT_DIR), "inject_fact_anchors.py")
                 cmd = [PYTHON, script_path, rc, fg,
                        "--max-display", "5", "--venue", venue]
             try:
@@ -223,7 +223,7 @@ def node_extract_trackwork(state):
         cmd.extend(["--racedate", racedate, "--racecourse", venue_norm])
 
     _log("🏇 Extracting HKJC trackwork digest (fail-soft)...")
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    res = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8')
     if res.stdout.strip():
         for line in res.stdout.strip().splitlines()[-5:]:
             _log(f"   {line}")
@@ -406,7 +406,7 @@ def node_generate_workcard(state):
     # Generate skeleton — Task 4: capture result and validate
     skeleton_script = fns["skeleton_script"]
     skel_res = subprocess.run([PYTHON, skeleton_script, facts_file, str(r), str(h)],
-                              capture_output=True, text=True)
+                              capture_output=True, text=True, encoding='utf-8')
     if skel_res.returncode != 0:
         err = (skel_res.stderr or skel_res.stdout or "").strip()[:500]
         reason = f"Skeleton generation failed for Race {r} Horse {h}: {err}"
@@ -492,7 +492,7 @@ def node_generate_workcard(state):
         wc_path = os.path.join(runtime_dir, f"Horse_{h}_WorkCard.md")
         agent_args = f'{agent_cmd} --domain {domain} --target-dir "{target_dir}" --race {r} --horse {h} --workcard "{wc_path}" --logic-json "{json_file}"'
         _log(f"   🤖 Autopilot: invoking agent...")
-        agent_res = subprocess.run(agent_args, shell=True, capture_output=True, text=True)
+        agent_res = subprocess.run(agent_args, shell=True, capture_output=True, text=True, encoding='utf-8')
         if agent_res.returncode != 0:
             err = (agent_res.stderr or agent_res.stdout or "").strip()[:300]
             _log(f"   ⚠️ Agent returned non-zero ({agent_res.returncode}): {err}")
@@ -688,13 +688,14 @@ def node_compile_analysis(state):
     r = state["current_race"]
     short_prefix = state["short_prefix"]
     date_prefix = state["date_prefix"]
+    domain = state.get("domain", "au")
 
     _ffs = [f for f in os.listdir(target_dir) if f.endswith(f"Race {r} Facts.md")]
     facts_file = os.path.join(target_dir, _ffs[0]) if _ffs else os.path.join(target_dir, f"{date_prefix} Race {r} Facts.md")
     json_file = os.path.join(target_dir, f"Race_{r}_Logic.json")
     an_file = os.path.join(target_dir, f"{short_prefix} Race {r} Analysis.md")
 
-    fns = _get_domain_fns(state.get("domain", "au"))
+    fns = _get_domain_fns(domain)
     compile_script = fns["compile_script"]
 
     # Task 2: Preflight existence check
@@ -703,6 +704,25 @@ def node_compile_analysis(state):
         _log(f"🚨 {reason}")
         return {"should_stop": True, "stop_reason": reason,
                 "log": [f"compile_race_{r}=MISSING_SCRIPT"]}
+
+    # ── V4.2: Schema validation gate (HKJC only) ──
+    if domain == "hkjc":
+        try:
+            from validate_hkjc_logic_schema import validate_logic_json
+            with open(json_file, 'r', encoding='utf-8') as f:
+                logic_data = json.load(f)
+            result = validate_logic_json(logic_data)
+            if not result['pass']:
+                error_summary = "; ".join(result['errors'][:5])
+                reason = f"V4.2 schema validation failed for Race {r}: {error_summary}"
+                _log(f"🚨 {reason}")
+                for err in result['errors']:
+                    _log(f"   ❌ {err}")
+                return {"should_stop": True, "stop_reason": reason,
+                        "log": [f"compile_race_{r}=SCHEMA_FAIL"]}
+            _log(f"   ✅ V4.2 schema validation passed ({result['stats']['horses_passed']}/{result['stats']['horses_checked']} horses)")
+        except ImportError:
+            _log("   ⚠️ validate_hkjc_logic_schema not importable — skipping schema gate")
 
     _log(f"⚙️ Compiling Race {r}...")
     res = subprocess.run([PYTHON, compile_script, facts_file, json_file, "--output", an_file])
@@ -742,7 +762,7 @@ def node_run_monte_carlo(state):
     if mc_script and os.path.exists(mc_script):
         _log(f"🎲 Running Monte Carlo for Race {r}...")
         res = subprocess.run([PYTHON, mc_script, "--input", json_file, "--platform", platform],
-                             capture_output=True, text=True)
+                             capture_output=True, text=True, encoding='utf-8')
         if res.returncode == 0 and os.path.exists(mc_out):
             _log(f"   ✅ MC Results → Race_{r}_MC_Results.json")
         else:
@@ -769,7 +789,7 @@ def node_final_qa(state):
     domain = state.get("domain", "au")
     _log(f"🛡️ Running QA for Race {r}...")
     res = subprocess.run([PYTHON, qa_script, an_file, "--domain", domain],
-                         capture_output=True, text=True)
+                         capture_output=True, text=True, encoding='utf-8')
 
     races = dict(state.get("races", {}))
     race_state = dict(races.get(str(r), {}))

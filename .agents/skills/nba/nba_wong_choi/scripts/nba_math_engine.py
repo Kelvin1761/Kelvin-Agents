@@ -66,7 +66,8 @@ class MathResult:
 
     # Implied Probability & Edge
     implied_prob: float = 0.0
-    edge: float = 0.0  # requires est_prob input
+    prob_edge_pp: float = 0.0  # probability edge in percentage points
+    ev_pct: float = 0.0  # true EV: (p × odds − 1) × 100
     est_prob: float = 0.0
 
     # Status
@@ -192,9 +193,20 @@ def compute_implied_prob(odds: float) -> float:
     return round(100 / odds, 2)
 
 
-def compute_edge(est_prob: float, implied_prob: float) -> float:
-    """Compute edge = estimated probability - implied probability."""
+def compute_prob_edge(est_prob: float, implied_prob: float) -> float:
+    """Compute probability edge = estimated probability - implied probability (percentage points)."""
     return round(est_prob - implied_prob, 2)
+
+
+def ev_decimal(prob_pct: float, odds: float) -> float:
+    """True EV: expected return per unit staked.
+    EV% = (p × odds − 1) × 100
+    Example: prob=70%, odds=1.60 → EV = 0.70 × 1.60 - 1 = +12%
+    """
+    if odds <= 0 or prob_pct <= 0:
+        return 0.0
+    p = prob_pct / 100
+    return round((p * odds - 1) * 100, 2)
 
 
 def process_player(config: dict) -> dict:
@@ -247,9 +259,10 @@ def process_player(config: dict) -> dict:
     if odds > 0:
         result.implied_prob = compute_implied_prob(odds)
 
-    # 5. Edge (only if est_prob provided)
+    # 5. Probability Edge + True EV (only if est_prob provided)
     if est_prob > 0:
-        result.edge = compute_edge(est_prob, result.implied_prob)
+        result.prob_edge_pp = compute_prob_edge(est_prob, result.implied_prob)
+        result.ev_pct = ev_decimal(est_prob, odds)
 
     return asdict(result)
 
@@ -278,7 +291,8 @@ def format_output(result: dict) -> str:
     lines.append(f"- 賠率: {result['odds']} → 隱含勝率: {result['implied_prob']}%")
     if result['est_prob'] > 0:
         lines.append(f"- 預估勝率: {result['est_prob']}%")
-        lines.append(f"- Edge: {result['edge']}%")
+        lines.append(f"- 概率邊緣 (prob_edge_pp): {result['prob_edge_pp']}%")
+        lines.append(f"- 真正 EV (ev_pct): {result['ev_pct']}%")
     lines.append(f"")
 
     if result['errors']:

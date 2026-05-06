@@ -315,7 +315,9 @@ def parse_espn_events(events):
 
 
 def detect_season_phase(date_str, game_info=None):
-    """Classify NBA context for downstream model prompts and MC variance."""
+    """Classify NBA context for downstream model prompts and MC variance.
+    V3.1: Config-driven — reads nba_season_config.json instead of hardcoded dates.
+    """
     game_info = game_info or {}
     meta_text = " ".join(str(game_info.get(k, "")) for k in (
         "season_phase", "season_type", "game_type", "name", "short_name"))
@@ -336,6 +338,26 @@ def detect_season_phase(date_str, game_info=None):
         except Exception:
             return "MID_SEASON"
 
+    # Config-driven season calendar
+    config = _load_season_config_extractor()
+    if config:
+        try:
+            def _parse(key):
+                return datetime.strptime(config[key], "%Y-%m-%d")
+            
+            if d.replace(tzinfo=None) <= _parse("early_season_end"):
+                return "EARLY_SEASON"
+            if d.replace(tzinfo=None) >= _parse("playoffs_start"):
+                return "PLAYOFFS"
+            if _parse("play_in_start") <= d.replace(tzinfo=None) <= _parse("play_in_end"):
+                return "PLAY_IN"
+            if _parse("late_regular_start") <= d.replace(tzinfo=None) <= _parse("late_regular_end"):
+                return "LATE_REGULAR"
+            return "MID_SEASON"
+        except (KeyError, ValueError):
+            pass  # Fall through to hardcoded fallback
+
+    # Hardcoded fallback (2025-26 season)
     month, day = d.month, d.day
     if d.year == 2025 and (month == 10 or (month == 11 and day <= 15)):
         return "EARLY_SEASON"
@@ -346,6 +368,22 @@ def detect_season_phase(date_str, game_info=None):
     if d.year == 2026 and ((month == 4 and day >= 19) or month in (5, 6)):
         return "PLAYOFFS"
     return "MID_SEASON"
+
+
+def _load_season_config_extractor():
+    """Load NBA season config from nba_season_config.json."""
+    config_paths = [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "nba_wong_choi", "resources", "nba_season_config.json"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "nba_season_config.json"),
+    ]
+    for p in config_paths:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, IOError):
+                pass
+    return None
 
 
 def fetch_nba_news(team_abbr, limit=5):

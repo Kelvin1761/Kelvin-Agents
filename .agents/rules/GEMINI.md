@@ -162,6 +162,13 @@ Before coding, answer: (1) What is the GOAL? (2) What PRINCIPLES apply? (3) How 
 3. **Wait** for user to clear the Gate before writing code or invoking subagents.
 4. **Reference:** Full protocol in `@[skills/brainstorming]`.
 
+> [!NOTE]
+> **Domain Pipeline Override**: When a domain-specific prediction pipeline is activated
+> (NBA `@nba-wong-choi` / HKJC `@hkjc-wong-choi` / AU `@au-wong-choi` / LoL `/lol-predict`),
+> the Socratic Gate applies **only during scope confirmation** (game selection / date confirmation).
+> Once the user confirms the scope, the domain agent's **Anti-Stall Directive takes priority**
+> and the pipeline runs autonomously via `NEXT_CMD` without further Socratic questioning.
+
 ### 🔄 Fallback Protocol
 
 If an agent or skill file cannot be found:

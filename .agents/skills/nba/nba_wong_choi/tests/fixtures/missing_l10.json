@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "game": "Phoenix Suns at Charlotte Hornets",
+    "date": "2026-04-05",
+    "season_phase": "LATE_REGULAR",
+    "l10_order": "newest_first",
+    "away": { "name": "Phoenix Suns", "abbr": "PHX" },
+    "home": { "name": "Charlotte Hornets", "abbr": "CHA" }
+  },
+  "team_stats": {
+    "PHX": { "DEF_RATING": 110.5, "DEF_RANK": 12, "OFF_RATING": 115.0, "PACE": 98.5, "NET_RATING": 4.5 },
+    "CHA": { "DEF_RATING": 117.0, "DEF_RANK": 29, "OFF_RATING": 105.0, "PACE": 100.0, "NET_RATING": -12.0 }
+  },
+  "players": {
+    "PHX": [
+      {
+        "name": "Devin Booker",
+        "player_id": 1626164,
+        "position": "G",
+        "gamelog": null
+      }
+    ],
+    "CHA": []
+  },
+  "odds": {},
+  "injuries": { "PHX": {}, "CHA": {} },
+  "key_defenders": { "PHX": [], "CHA": [] }
+}

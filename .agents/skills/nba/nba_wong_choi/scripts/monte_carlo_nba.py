@@ -5,28 +5,131 @@ import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
-monte_carlo_nba.py — NBA Props Monte Carlo Simulation Engine
+monte_carlo_nba.py — NBA Props Monte Carlo Simulation Engine V2
 
 Multi-factor adjusted distribution (NOT simple Normal(avg, sd)).
 Adjusts the base distribution mean using pace, home/away, B2B,
 matchup, and minutes projection factors before sampling.
 
-Usage:
-  # Called automatically by generate_nba_reports.py
-  # Or standalone:
-  python monte_carlo_nba.py --json '{"avg": 25.3, "sd": 5.2, "line": 24, ...}'
+V2 Upgrades:
+  - Random seed for reproducibility
+  - Continuity correction for integer milestones
+  - Stat-specific distributions (beta-binomial for 3PM, Poisson for STL/BLK)
+  - Shrinkage mean (L10 + season avg blending)
+  - Category-aware simulation routing
 
-Version: 1.0.0
+Usage:
+  python monte_carlo_nba.py --json '{"avg": 25.3, "sd": 5.2, "line": 24, "category": "PTS"}'
+  python monte_carlo_nba.py --json '{...}' --seed 42 --n 20000
+
+Version: 2.0.0
 """
 import sys, io, json, math, argparse, random
 
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
+MC_MODEL_VERSION = "2.0"
+
 # Use built-in random for portability (no numpy dependency)
 def _normal_sample(mean, sd):
     """Sample from normal distribution using Box-Muller transform."""
     return random.gauss(mean, sd)
+
+
+# ─── Stat-Specific Distribution Samplers ──────────────────────────────────────
+
+def _sample_truncated_normal(mean, sd, n):
+    """PTS/REB/AST: truncated normal (floor at 0)."""
+    return [max(0, random.gauss(mean, sd)) for _ in range(n)]
+
+
+def _sample_beta_binomial(mean, sd, n):
+    """3PM: shot attempts × make rate using beta-binomial.
+    Models the inherent uncertainty in both shot attempts and shooting percentage."""
+    est_attempts = max(3, round(mean / 0.36))  # ~36% 3P% league avg
+    est_rate = min(0.95, max(0.05, mean / est_attempts))
+    # Beta parameters from mean and variance
+    var_rate = max(0.001, (sd / max(1, est_attempts)) ** 2)
+    # Clamp to ensure valid beta parameters
+    ratio = est_rate * (1 - est_rate) / var_rate - 1
+    ratio = max(1.0, ratio)
+    alpha = max(0.5, est_rate * ratio)
+    beta_param = max(0.5, (1 - est_rate) * ratio)
+    samples = []
+    for _ in range(n):
+        try:
+            p = random.betavariate(alpha, beta_param)
+        except ValueError:
+            p = est_rate
+        made = sum(1 for _ in range(est_attempts) if random.random() < p)
+        samples.append(made)
+    return samples
+
+
+def _sample_poisson(mean, n):
+    """STL/BLK: low-count events using Poisson via inverse transform."""
+    lam = max(0.1, mean)
+    L = math.exp(-lam)
+    samples = []
+    for _ in range(n):
+        k, p = 0, 1.0
+        while p > L:
+            k += 1
+            p *= random.random()
+        samples.append(k - 1)
+    return samples
+
+
+def _sample_by_category(category, mean, sd, n):
+    """Route to the appropriate distribution for each stat type."""
+    if category == "3PM":
+        return _sample_beta_binomial(mean, sd, n)
+    elif category in ("STL", "BLK"):
+        return _sample_poisson(mean, n)
+    else:  # PTS, REB, AST, and others
+        return _sample_truncated_normal(mean, sd, n)
+
+
+# ─── Shrinkage Mean ────────────────────────────────────────────────
+
+def _shrinkage_mean(l10_avg, season_avg=None, l20_avg=None):
+    """Blend L10 with longer-term data to reduce small-sample noise.
+    L10 alone is noisy (10 games). Shrinking toward season average
+    produces a more stable projection."""
+    if l20_avg and season_avg:
+        return l10_avg * 0.45 + l20_avg * 0.25 + season_avg * 0.20 + l10_avg * 0.10
+    elif season_avg:
+        return l10_avg * 0.65 + season_avg * 0.35
+    else:
+        return l10_avg  # No blending possible, use raw L10
+
+
+# ─── Confidence Multiplier ─────────────────────────────────────────
+
+def confidence_multiplier(cov):
+    """Penalize EV for high-variance legs.
+    High CoV = less confident in our probability estimate."""
+    if not isinstance(cov, (int, float)):
+        return 0.65
+    if cov <= 0.15:
+        return 1.00
+    elif cov <= 0.25:
+        return 0.85
+    elif cov <= 0.35:
+        return 0.65
+    else:
+        return 0.40
+
+
+# ─── True EV Calculator ───────────────────────────────────────────
+
+def ev_pct_calc(prob_pct, odds):
+    """True EV%: (p × odds − 1) × 100"""
+    if odds <= 0 or prob_pct <= 0:
+        return 0.0
+    p = prob_pct / 100
+    return round((p * odds - 1) * 100, 2)
 
 
 def monte_carlo_player_prop(avg, sd, line, n=10000,
@@ -36,43 +139,66 @@ def monte_carlo_player_prop(avg, sd, line, n=10000,
                             matchup_factor=1.0,
                             minutes_factor=1.0,
                             usg_bonus=0.0,
-                            season_phase="MID_SEASON"):
+                            season_phase="MID_SEASON",
+                            category="PTS",
+                            season_avg=None,
+                            l20_avg=None,
+                            cov=None,
+                            odds=None,
+                            seed=None):
     """
-    Multi-factor Monte Carlo simulation for a single player prop.
-    
-    Unlike simple Normal(avg, sd), this adjusts the distribution mean
-    using contextual factors BEFORE sampling.
-    
+    Multi-factor Monte Carlo simulation V2 for a single player prop.
+
+    V2 upgrades:
+    - Stat-specific distributions (beta-binomial, Poisson, truncated normal)
+    - Shrinkage mean (L10 + season avg blending)
+    - Continuity correction for integer milestones
+    - Seed for reproducibility
+    - True EV + confidence-adjusted EV output
+
     Args:
         avg: L10 average for this stat
         sd: L10 standard deviation
         line: Sportsbet line (e.g., 10 for "10+")
         n: Number of simulations
-        pace_factor: Matchup pace multiplier (e.g., 1.05 for fast game)
-        home_away_factor: Home/Away multiplier (e.g., 1.02 for home)
-        fatigue_factor: B2B fatigue multiplier (e.g., 0.97 for B2B away)
-        matchup_factor: Opponent defense multiplier (e.g., 0.96 for elite D)
-        minutes_factor: Minutes projection multiplier (e.g., 0.95 for blowout)
+        pace_factor: Matchup pace multiplier
+        home_away_factor: Home/Away multiplier
+        fatigue_factor: B2B fatigue multiplier
+        matchup_factor: Opponent defense multiplier
+        minutes_factor: Minutes projection multiplier
         usg_bonus: Absolute bonus from injured teammates' USG redistribution
-    
+        season_phase: NBA season phase
+        category: Stat category (PTS, REB, AST, 3PM, STL, BLK)
+        season_avg: Season-long average (for shrinkage)
+        l20_avg: L20 average (for shrinkage)
+        cov: Coefficient of variation (for confidence adjustment)
+        odds: Decimal odds (for EV calculation)
+        seed: Random seed for reproducibility
+
     Returns:
-        dict with mc_prob, mc_avg, mc_sd, distribution quartiles
+        dict with mc_prob, mc_avg, mc_sd, distribution quartiles, EV metrics
     """
+    if seed is not None:
+        random.seed(seed)
+
     if sd <= 0:
         sd = avg * 0.15  # Fallback: assume 15% CoV if no SD
 
     # Season phase SD adjustment
     phase_sd_multiplier = {
-        "EARLY_SEASON": 1.20,   # Higher variance: new rosters, unknown rotations
-        "MID_SEASON": 1.00,     # Default
-        "LATE_REGULAR": 1.10,   # Slight increase: rest/tanking variance
-        "PLAY_IN": 0.92,        # Tighter: high stakes
-        "PLAYOFFS": 0.85,       # Much tighter: stars play full minutes, focused effort
+        "EARLY_SEASON": 1.20,
+        "MID_SEASON": 1.00,
+        "LATE_REGULAR": 1.10,
+        "PLAY_IN": 0.92,
+        "PLAYOFFS": 0.85,
     }
     sd *= phase_sd_multiplier.get(season_phase, 1.0)
 
+    # Shrinkage mean: blend L10 with longer-term data
+    proj_avg = _shrinkage_mean(avg, season_avg=season_avg, l20_avg=l20_avg)
+
     # Adjust distribution mean with contextual factors
-    adj_avg = avg
+    adj_avg = proj_avg
     adj_avg *= pace_factor
     adj_avg *= home_away_factor
     adj_avg *= fatigue_factor
@@ -80,14 +206,15 @@ def monte_carlo_player_prop(avg, sd, line, n=10000,
     adj_avg *= minutes_factor
     adj_avg += usg_bonus
 
-    hits = 0
-    samples = []
-    for _ in range(n):
-        value = _normal_sample(adj_avg, sd)
-        value = max(0, value)  # Floor at 0 (can't have negative stats)
-        samples.append(value)
-        if value >= line:
-            hits += 1
+    # Sample using category-appropriate distribution
+    samples = _sample_by_category(category, adj_avg, sd, n)
+
+    # Continuity correction for integer milestones:
+    # Sportsbet "10+" means >= 10 (integer stat).
+    # For continuous distributions, threshold = line - 0.5 aligns
+    # the continuous approximation with the discrete condition.
+    threshold = line - 0.5
+    hits = sum(1 for v in samples if v >= threshold)
 
     mc_prob = round(hits / n * 100, 1)
 
@@ -95,28 +222,54 @@ def monte_carlo_player_prop(avg, sd, line, n=10000,
     samples.sort()
     mc_avg = round(sum(samples) / n, 2)
     mc_med = round(samples[n // 2], 1)
-    
+
     # Percentiles
     p10 = round(samples[int(n * 0.10)], 1)
     p25 = round(samples[int(n * 0.25)], 1)
     p75 = round(samples[int(n * 0.75)], 1)
     p90 = round(samples[int(n * 0.90)], 1)
 
-    return {
+    # EV calculations
+    prob_edge_pp = None
+    ev_pct_val = None
+    confidence_adjusted_ev_pct = None
+    if odds and odds > 0:
+        implied_p = round(100 / odds, 2)
+        prob_edge_pp = round(mc_prob - implied_p, 1)
+        ev_pct_val = ev_pct_calc(mc_prob, odds)
+        conf_mult = confidence_multiplier(cov) if cov is not None else 0.65
+        confidence_adjusted_ev_pct = round(ev_pct_val * conf_mult, 2)
+
+    result = {
         "mc_prob": mc_prob,
         "mc_avg": mc_avg,
         "mc_med": mc_med,
         "adj_avg": round(adj_avg, 2),
+        "projected_avg": round(proj_avg, 2),
         "raw_avg": avg,
         "sd": sd,
         "line": line,
+        "category": category,
         "season_phase": season_phase,
         "simulations": n,
         "p10": p10,
         "p25": p25,
         "p75": p75,
         "p90": p90,
+        # V2 metadata
+        "mc_seed": seed,
+        "mc_model_version": MC_MODEL_VERSION,
     }
+
+    # V2 EV fields
+    if prob_edge_pp is not None:
+        result["prob_edge_pp"] = prob_edge_pp
+    if ev_pct_val is not None:
+        result["ev_pct"] = ev_pct_val
+    if confidence_adjusted_ev_pct is not None:
+        result["confidence_adjusted_ev_pct"] = confidence_adjusted_ev_pct
+
+    return result
 
 
 def compute_context_factors(card, spread=None, is_b2b=False, is_home=None,
@@ -244,8 +397,12 @@ def run_monte_carlo_for_cards(all_cards, spread=None, is_b2b_map=None,
         for line_key, la in card.get("line_analysis", {}).items():
             mc = monte_carlo_player_prop(
                 avg=card["avg"], sd=card["sd"], line=la["line"], n=n,
-                season_phase=season_phase, **ctx)
-            
+                season_phase=season_phase,
+                category=cl,
+                cov=card.get("cov"),
+                odds=float(la["odds"]),
+                **ctx)
+
             mc["player"] = card["name"]
             mc["team"] = team
             mc["category"] = cl
@@ -254,7 +411,7 @@ def run_monte_carlo_for_cards(all_cards, spread=None, is_b2b_map=None,
             mc["implied_prob"] = la["implied_prob"]
             mc["l10_hit"] = la["hit_l10"]
             mc["ten_factor_adj"] = la["estimated_prob"]
-            mc["mc_edge"] = round(mc["mc_prob"] - la["implied_prob"], 1)
+            mc["mc_edge"] = mc.get("prob_edge_pp", round(mc["mc_prob"] - la["implied_prob"], 1))
             results.append(mc)
 
     return results
@@ -409,9 +566,10 @@ def monte_carlo_team_prop(home_off_rtg, home_def_rtg, away_off_rtg, away_def_rtg
 
 
 def main():
-    parser = argparse.ArgumentParser(description="NBA Monte Carlo Simulation Engine")
+    parser = argparse.ArgumentParser(description="NBA Monte Carlo Simulation Engine V2")
     parser.add_argument("--json", type=str, help="JSON config for single prop MC")
     parser.add_argument("--n", type=int, default=10000, help="Number of simulations")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
     args = parser.parse_args()
 
     if args.json:
@@ -428,10 +586,16 @@ def main():
             minutes_factor=config.get("minutes_factor", 1.0),
             usg_bonus=config.get("usg_bonus", 0.0),
             season_phase=config.get("season_phase", "MID_SEASON"),
+            category=config.get("category", "PTS"),
+            season_avg=config.get("season_avg"),
+            l20_avg=config.get("l20_avg"),
+            cov=config.get("cov"),
+            odds=config.get("odds"),
+            seed=args.seed,
         )
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
-        print("Usage: python monte_carlo_nba.py --json '{\"avg\": 25, \"sd\": 5, \"line\": 24}'")
+        print("Usage: python monte_carlo_nba.py --json '{\"avg\": 25, \"sd\": 5, \"line\": 24, \"category\": \"PTS\"}' --seed 42")
 
 
 if __name__ == "__main__":

@@ -3,8 +3,8 @@ from __future__ import annotations
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
 """
-nba_orchestrator.py — NBA Wong Choi Pipeline Orchestrator V3
-=============================================================
+nba_orchestrator.py — NBA Wong Choi Pipeline Orchestrator V3.1
+================================================================
 Unified orchestrator merging Skills V2 pipeline + Scripts V9 features + AU NEXT_CMD pattern.
 
 Pipeline:
@@ -22,7 +22,7 @@ Usage:
   python nba_orchestrator.py --date 2026-04-16 --compile-only
   python nba_orchestrator.py --date 2026-04-16 --auto
 
-Version: 3.0.0
+Version: 3.1.0
 """
 import argparse
 import datetime
@@ -44,6 +44,7 @@ CLAW_SPORTSBET = os.path.join(SKILLS_DIR, "nba_data_extractor", "scripts", "claw
 NBA_EXTRACTOR = os.path.join(SKILLS_DIR, "nba_data_extractor", "scripts", "nba_extractor.py")
 GENERATE_REPORTS = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "generate_nba_reports.py")
 VALIDATE_OUTPUT = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "validate_nba_output.py")
+VALIDATE_SCHEMA = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "validate_json_schema.py")
 GENERATE_SGM = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "generate_nba_sgm_reports.py")
 
 
@@ -155,7 +156,7 @@ def _count_fill_residuals(target_dir: str) -> int:
 
 def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
                         date_str: str, game_num: int | None = None,
-                        skip_extractor: bool = False) -> bool:
+                        debug_skip_extractor: bool = False) -> bool:
     prefix = f"Game {game_num}" if game_num else game_tag
     print(f"\n{'='*60}")
     print(f"🏀 [{prefix}] {game_tag} — 開始 Pipeline")
@@ -174,8 +175,9 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
 
     if os.path.exists(extractor_json):
         print(f"✅ [{prefix}] Extractor JSON 已存在: {os.path.basename(extractor_json)}")
-    elif skip_extractor:
-        print(f"⚠️ [{prefix}] --skip-extractor: 建立 fallback JSON...")
+    elif debug_skip_extractor:
+        print(f"⚠️ [{prefix}] --debug-skip-extractor: 建立 DEBUG fallback JSON...")
+        print(f"   ❌ 此數據包無 L10 gamelog — 生成嘅報告 **不可用於真實下注**")
         _create_minimal_extractor_json(sportsbet_json, extractor_json, game_tag)
     else:
         print(f"\n📡 [{prefix}] Phase 1A: 執行 nba_extractor.py 提取球員數據...")
@@ -191,8 +193,19 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
             print(f"   ⛔ 跳過此賽事 — 冇真實 L10 gamelog 不進行分析。")
             return False
 
+    # ── Phase 1A.5: JSON Schema Validation (Pre-flight for report gen) ──
+    if os.path.exists(VALIDATE_SCHEMA):
+        print(f"\n📋 [{prefix}] Phase 1A.5: JSON Schema 驗證...")
+        schema_ok = run_script(VALIDATE_SCHEMA, [
+            "--extractor", extractor_json,
+            "--sportsbet", sportsbet_json
+        ], label=f"{prefix} Schema Validator")
+        if not schema_ok:
+            print(f"⚠️ [{prefix}] Schema 驗證未通過。繼續生成報告，但可能有數據品質問題。")
+
     # ── Phase 1B: generate_nba_reports.py (Full Analysis) ──
-    analysis_md = os.path.join(target_dir, f"Game_{game_tag}_Full_Analysis.md")
+    debug_prefix = "[DEBUG]_" if debug_skip_extractor else ""
+    analysis_md = os.path.join(target_dir, f"{debug_prefix}Game_{game_tag}_Full_Analysis.md")
     print(f"\n📊 [{prefix}] Phase 1B: 執行 generate_nba_reports.py 生成分析報告...")
     report_ok = run_script(GENERATE_REPORTS, [
         "--sportsbet", sportsbet_json,
@@ -274,7 +287,7 @@ def main():
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     parser = argparse.ArgumentParser(
-        description="NBA Wong Choi Pipeline Orchestrator V3 — "
+        description="NBA Wong Choi Pipeline Orchestrator V3.1 — "
                     "Sportsbet Claw → Extractor → Report → Validator → SGM"
     )
     parser.add_argument("--date", help="分析日期 (YYYY-MM-DD)。預設為今日。")
@@ -284,20 +297,29 @@ def main():
     parser.add_argument("--compile-only", action="store_true", help="只執行最終 SGM 編譯。")
     parser.add_argument("--auto", action="store_true",
                         help="自動模式 — 跳過確認閘門，用於 NEXT_CMD 循環。")
-    parser.add_argument("--skip-extractor", action="store_true",
-                        help="跳過 nba_extractor.py（用 Sportsbet fallback）。")
+    parser.add_argument("--debug-skip-extractor", action="store_true",
+                        help="⚠️ DEBUG ONLY: 跳過 nba_extractor.py（用 Sportsbet fallback）。"
+                             "生成嘅報告標記為 DEBUG_ONLY_DO_NOT_BET。")
     args = parser.parse_args()
 
     if not args.date:
         args.date = datetime.datetime.now().strftime("%Y-%m-%d")
 
     print("=" * 60)
-    print("🏀 NBA Wong Choi Pipeline Orchestrator V3")
+    print("🏀 NBA Wong Choi Pipeline Orchestrator V3.1")
     print(f"📅 目標日期: {args.date}")
     if args.game:
         print(f"🎯 指定賽事: {args.game}")
     if args.auto:
         print(f"⚡ 自動模式 (NEXT_CMD)")
+    if args.debug_skip_extractor:
+        print(f"")
+        print(f"{'⚠️'*10}")
+        print(f"⚠️ DEBUG MODE: --debug-skip-extractor 啟用")
+        print(f"❌ 此模式產出嘅報告 **不可用於真實下注**")
+        print(f"📋 原因: Sportsbet-only fallback 無 L10 gamelog, 違反數據完整性要求")
+        print(f"{'⚠️'*10}")
+        print(f"")
     print("=" * 60)
 
     # ── Preflight ──
@@ -370,7 +392,7 @@ def main():
         sb_json = game["sportsbet_json"]
         success = process_single_game(
             tag, sb_json, target_dir, args.date,
-            game_num=idx, skip_extractor=args.skip_extractor
+            game_num=idx, debug_skip_extractor=args.debug_skip_extractor
         )
         if success:
             results["passed"].append(tag)
@@ -418,7 +440,7 @@ def main():
         # Pipeline fully complete — no NEXT_CMD
         print(f"\n🎉 Pipeline 完全完成！無需進一步操作。")
 
-    print(f"\n🎯 [Orchestrator V3] Pipeline 完成！")
+    print(f"\n🎯 [Orchestrator V3.1] Pipeline 完成！")
     print(f"所有報告位於: {target_dir}")
     sys.exit(0)
 

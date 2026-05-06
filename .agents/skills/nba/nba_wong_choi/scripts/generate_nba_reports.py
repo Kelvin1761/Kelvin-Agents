@@ -41,6 +41,8 @@ def detect_season_phase(date_str=None, metadata=None):
     """
     Detect NBA season phase from date string.
     Returns: EARLY_SEASON, MID_SEASON, LATE_REGULAR, PLAY_IN, PLAYOFFS
+    
+    V3.1: Config-driven — reads nba_season_config.json instead of hardcoded dates.
     """
     metadata = metadata or {}
     meta_text = " ".join(str(metadata.get(k, "")) for k in (
@@ -72,32 +74,59 @@ def detect_season_phase(date_str=None, metadata=None):
     except Exception:
         d = datetime.now()
     
-    # 2025-26 NBA season calendar
-    month, day = d.month, d.day
+    # Config-driven season calendar
+    config = _load_season_config()
+    if config:
+        try:
+            def _parse(key):
+                return datetime.strptime(config[key], "%Y-%m-%d")
+            
+            if d <= _parse("early_season_end"):
+                return "EARLY_SEASON"
+            if d >= _parse("playoffs_start"):
+                return "PLAYOFFS"
+            if _parse("play_in_start") <= d <= _parse("play_in_end"):
+                return "PLAY_IN"
+            if _parse("late_regular_start") <= d <= _parse("late_regular_end"):
+                return "LATE_REGULAR"
+            return "MID_SEASON"
+        except (KeyError, ValueError):
+            pass  # Fall through to hardcoded fallback
     
-    # Season start: October
+    # Hardcoded fallback (2025-26 season)
+    month, day = d.month, d.day
     if d.year == 2025 and month == 10:
         return "EARLY_SEASON"
     if d.year == 2025 and month == 11 and day <= 15:
         return "EARLY_SEASON"
-    
-    # Late regular season (tanking watch)
     if d.year == 2026 and month == 3 and day >= 25:
         return "LATE_REGULAR"
     if d.year == 2026 and month == 4 and day <= 13:
         return "LATE_REGULAR"
-    
-    # Play-In tournament
     if d.year == 2026 and month == 4 and 14 <= day <= 18:
         return "PLAY_IN"
-    
-    # Playoffs
     if d.year == 2026 and month == 4 and day >= 19:
         return "PLAYOFFS"
     if d.year == 2026 and month in (5, 6):
         return "PLAYOFFS"
     
     return "MID_SEASON"
+
+
+def _load_season_config():
+    """Load NBA season config from nba_season_config.json."""
+    config_paths = [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "resources", "nba_season_config.json"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "nba_season_config.json"),
+    ]
+    for p in config_paths:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, IOError):
+                pass
+    return None
 
 # ─── Math Engine ─────────────────────────────────────────────────────────
 
@@ -165,8 +194,34 @@ def implied_prob(odds):
 
 
 def edge_calc(estimated_prob, implied):
-    """Edge = estimated probability - implied probability."""
+    """Probability edge = estimated probability - implied probability (percentage points).
+    Renamed conceptually to 'prob_edge_pp' in output. Kept function name for backward compat."""
     return round(estimated_prob - implied, 2)
+
+
+def ev_pct_calc(est_prob, odds):
+    """True EV%: (p × odds − 1) × 100.
+    Tells you the actual expected return per unit staked.
+    Example: prob=70%, odds=1.60 → EV = 0.70 × 1.60 - 1 = +12%"""
+    if not odds or float(odds) <= 0 or est_prob <= 0:
+        return 0.0
+    p = est_prob / 100
+    return round((p * float(odds) - 1) * 100, 2)
+
+
+def confidence_multiplier(cov):
+    """CoV-based confidence discount for EV.
+    High CoV = less confident in our probability estimate → penalize EV."""
+    if not isinstance(cov, (int, float)):
+        return 0.65
+    if cov <= 0.15:
+        return 1.00
+    elif cov <= 0.25:
+        return 0.85
+    elif cov <= 0.35:
+        return 0.65
+    else:
+        return 0.40
 
 
 def edge_grade(edge):
@@ -544,7 +599,12 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
             season_phase=season_phase)  # team_pace set at main() level
         ev = edge_calc(est_prob, imp)
         grade = edge_grade(ev)
-        
+
+        # V8: True EV% and confidence-adjusted EV
+        true_ev = ev_pct_calc(est_prob, float(odds_str))
+        conf_mult = confidence_multiplier(card["cov"])
+        conf_adj_ev = round(true_ev * conf_mult, 2)
+
         # V7: Narrative now written by LLM (not Python)
         narrative = ""
         adj_line = format_adjustment_line(hr_l10, adj_breakdown)
@@ -556,7 +616,10 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
             "implied_prob": imp,
             "estimated_prob": est_prob,
             "base_rate": hr_l10,
-            "edge": ev,
+            "edge": ev,  # backward compat alias
+            "prob_edge_pp": ev,  # V8: probability edge in percentage points
+            "ev_pct": true_ev,  # V8: true EV%
+            "confidence_adjusted_ev_pct": conf_adj_ev,  # V8: confidence-discounted EV
             "edge_grade": edge_grade(ev),
             "hit_l10": hr_l10, "hit_l10_count": hr_l10_count,
             "hit_l5": hr_l5, "hit_l5_count": hr_l5_count,
@@ -633,6 +696,9 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
                 "estimated_prob": la["estimated_prob"],
                 "base_rate": la.get("base_rate", la["hit_l10"]),
                 "edge": la["edge"],
+                "prob_edge_pp": la.get("prob_edge_pp", la["edge"]),
+                "ev_pct": la.get("ev_pct", 0.0),
+                "confidence_adjusted_ev_pct": la.get("confidence_adjusted_ev_pct", 0.0),
                 "edge_grade": la["edge_grade"],
                 "cov": card["cov"],
                 "cov_grade": card["cov_grade"],
@@ -776,6 +842,138 @@ def _combo_is_allowed(legs):
         and not _violates_same_team_scoring_cap(legs)
         and not _has_team_player_script_conflict(legs)
     )
+
+
+# ─── Correlation Penalty Engine (V8) ───────────────────────────────────
+# NBA props are heavily correlated within same game/team/player.
+# Naive joint probability (p1 × p2 × p3) overestimates combo hit rate.
+# This penalty adjusts for known correlation patterns.
+
+def _count_max_same_team(combo):
+    """Count the max number of legs from any single team."""
+    team_counts = {}
+    for leg in combo:
+        t = leg.get("team", "")
+        if t and t != "TEAM":
+            team_counts[t] = team_counts.get(t, 0) + 1
+    return max(team_counts.values()) if team_counts else 0
+
+
+def _count_same_player_legs(combo):
+    """Count max legs from same player (should be 0 with unique-player rule)."""
+    player_counts = {}
+    for leg in combo:
+        p = leg.get("player", "")
+        player_counts[p] = player_counts.get(p, 0) + 1
+    return max(player_counts.values()) if player_counts else 0
+
+
+def _has_points_and_assists_synergy(combo):
+    """Detect PTS + AST from same team (positive correlation: playmaker assists → teammate scores)."""
+    team_cats = {}
+    for leg in combo:
+        t = leg.get("team", "")
+        c = leg.get("category", "")
+        if t not in team_cats:
+            team_cats[t] = set()
+        team_cats[t].add(c)
+    return any("PTS" in cats and "AST" in cats for cats in team_cats.values())
+
+
+def _has_multiple_overs_same_game(combo):
+    """Detect 3+ over legs from same matchup (shared blowout/pace risk)."""
+    team_count = {}
+    for leg in combo:
+        t = leg.get("team", "")
+        if t and t != "TEAM":
+            team_count[t] = team_count.get(t, 0) + 1
+    return any(c >= 3 for c in team_count.values())
+
+
+def _has_blowout_risk(combo):
+    """Check if any leg has known blowout risk (spread >= 12)."""
+    for leg in combo:
+        adj = leg.get("adj_breakdown", {}) if isinstance(leg.get("adj_breakdown"), dict) else {}
+        if adj.get("minutes_floor", 0) <= -2:
+            return True
+    return False
+
+
+def correlation_penalty(combo):
+    """Compute correlation penalty for an SGM combo.
+    Returns a float between 0 and ~0.30 representing the probability discount.
+    Higher = more correlated = more optimistic the naive joint prob is."""
+    penalty = 0.0
+
+    same_player_count = _count_same_player_legs(combo)
+    same_team_max = _count_max_same_team(combo)
+
+    # Same player multi-leg: very high correlation
+    if same_player_count >= 2:
+        penalty += 0.08
+
+    # Same team 3+: ball usage ceiling
+    if same_team_max >= 3:
+        penalty += 0.06
+    elif same_team_max >= 2:
+        penalty += 0.02
+
+    # PTS + AST from same team: positive correlation (small bonus)
+    if _has_points_and_assists_synergy(combo):
+        penalty -= 0.03
+
+    # Multiple overs same game: shared pace/blowout risk
+    if _has_multiple_overs_same_game(combo):
+        penalty += 0.04
+
+    # Blowout risk affects multiple legs
+    if _has_blowout_risk(combo):
+        penalty += 0.05
+
+    return max(0.0, min(0.30, penalty))  # Cap at 30%
+
+
+def compute_combo_ev(combo):
+    """Compute combo-level EV with correlation adjustment.
+    Returns dict with joint probability, correlation penalty, combo EV, and risk tier."""
+    if not combo:
+        return {}
+
+    naive_joint_prob = 1.0
+    combo_odds_val = 1.0
+    for leg in combo:
+        naive_joint_prob *= leg.get("estimated_prob", leg.get("hit_l10", 50)) / 100
+        combo_odds_val *= leg["odds"]
+
+    corr_penalty = correlation_penalty(combo)
+    adjusted_joint_prob = naive_joint_prob * (1 - corr_penalty)
+    combo_ev = (adjusted_joint_prob * combo_odds_val - 1) * 100
+
+    # Confidence score: average leg confidence-adjusted EV
+    avg_conf_ev = 0.0
+    conf_evs = [leg.get("confidence_adjusted_ev_pct", 0) for leg in combo]
+    if conf_evs:
+        avg_conf_ev = sum(conf_evs) / len(conf_evs)
+
+    # Risk tier classification
+    if combo_ev >= 10 and corr_penalty < 0.10:
+        risk_tier = "BANKER"
+    elif combo_ev >= 5:
+        risk_tier = "VALUE"
+    elif combo_ev >= 0:
+        risk_tier = "MARGINAL"
+    else:
+        risk_tier = "NEGATIVE"
+
+    return {
+        "naive_joint_prob": round(naive_joint_prob, 4),
+        "correlation_penalty": round(corr_penalty, 3),
+        "adjusted_joint_prob": round(adjusted_joint_prob, 4),
+        "combo_decimal_odds": round(combo_odds_val, 2),
+        "combo_ev_pct": round(combo_ev, 1),
+        "avg_confidence_ev": round(avg_conf_ev, 1),
+        "combo_risk_tier": risk_tier,
+    }
 
 
 def _mc_edge(leg):
@@ -1239,8 +1437,8 @@ def gen_player_card(card):
     # Sportsbet Line Analysis Table
     if card.get("line_analysis"):
         lines.append(f"**🎯 Sportsbet 盤口對照表 ({cl}):**")
-        lines.append(f"| Line | Odds | 隱含勝率 | L10 命中 | L5 命中 | 預期勝率 | Edge | 判定 |")
-        lines.append(f"|------|------|----------|----------|---------|----------|------|------|")
+        lines.append(f"| Line | Odds | 隱含勝率 | L10 命中 | L5 命中 | 預期勝率 | Edge | EV% | 判定 |")
+        lines.append(f"|------|------|----------|----------|---------|----------|------|-----|------|")
         for lv, la in sorted(card["line_analysis"].items(), key=lambda x: float(x[0])):
             ld = la["line_display"]
             odds = la["odds"]
@@ -1252,7 +1450,9 @@ def gen_player_card(card):
             eg = la["edge_grade"]
             v = la["verdict"]
             ev_str = f"+{ev}%" if ev > 0 else f"{ev}%"
-            lines.append(f"| {ld} | @{odds} | {ip}% | {hr10} | {hr5} | **{adj_prob}%** | {ev_str} {eg} | {v} |")
+            true_ev = la.get("ev_pct", 0)
+            true_ev_str = f"+{true_ev}%" if true_ev > 0 else f"{true_ev}%"
+            lines.append(f"| {ld} | @{odds} | {ip}% | {hr10} | {hr5} | **{adj_prob}%** | {ev_str} {eg} | {true_ev_str} | {v} |")
         lines.append(f"")
 
     lines.append(f"---")
@@ -1297,13 +1497,15 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
         lines.append(f"> ⚠️ correlation_flags: SCRIPT_COLLISION_REVIEW_REQUIRED")
     lines.append(f"")
 
-    # Legs table (now with adjusted prob)
-    lines.append(f"| Leg | 選項 | 賠率 | L10 命中 | 預期勝率 | Edge | CoV |")
-    lines.append(f"|-----|------|------|----------|----------|------|-----|")
+    # Legs table (V8: with EV%)
+    lines.append(f"| Leg | 選項 | 賠率 | L10 命中 | 預期勝率 | Edge | EV% | CoV |")
+    lines.append(f"|-----|------|------|----------|----------|------|-----|-----|")
     for i, leg in enumerate(legs):
         ev_str = f"+{leg['edge']}%" if leg['edge'] > 0 else f"{leg['edge']}%"
+        true_ev = leg.get('ev_pct', 0)
+        true_ev_str = f"+{true_ev}%" if true_ev > 0 else f"{true_ev}%"
         adj_p = leg.get('estimated_prob', leg['hit_l10'])
-        lines.append(f"| 🧩 {i+1} | {leg['desc']} | @{leg['odds']} | {leg['hit_l10']}% ({leg['hit_l10_count']}) | **{adj_p}%** | {ev_str} | {leg['cov']} {leg['cov_grade']} |")
+        lines.append(f"| 🧩 {i+1} | {leg['desc']} | @{leg['odds']} | {leg['hit_l10']}% ({leg['hit_l10_count']}) | **{adj_p}%** | {ev_str} | {true_ev_str} | {leg['cov']} {leg['cov_grade']} |")
     lines.append(f"")
 
     # Per-leg detailed analysis (V3: Python reasoning trace + Analyst [FILL])
@@ -1400,14 +1602,28 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
         logic_parts.append("全部 Leg CoV 穩定")
     core_logic = "。".join(logic_parts) + "。" if logic_parts else "數據面支持此組合。"
 
+    # V8: Compute combo-level EV with correlation adjustment
+    combo_ev_data = compute_combo_ev(legs)
+    corr_penalty_val = combo_ev_data.get("correlation_penalty", 0)
+    adj_joint_prob = combo_ev_data.get("adjusted_joint_prob", 0)
+    adj_joint_prob_pct = round(adj_joint_prob * 100, 1)
+    combo_ev_pct = combo_ev_data.get("combo_ev_pct", 0)
+    risk_tier = combo_ev_data.get("combo_risk_tier", "—")
+    risk_tier_emoji = {"BANKER": "🛡️", "VALUE": "🔥", "MARGINAL": "⚠️", "NEGATIVE": "❌"}.get(risk_tier, "—")
+
     lines.append(f"**📊 組合結算:**")
     lines.append(f"- **賠率相乘**: {odds_mult_parts} = **@{raw_combo_odds}**")
     lines.append(f"- **$100 回報**: **${int(payout)}**")
-    lines.append(f"- **組合命中率**: {hit_mult_parts} = **{combo_hit_pct}%**")
+    lines.append(f"- **組合命中率 (naive)**: {hit_mult_parts} = **{combo_hit_pct}%**")
+    if corr_penalty_val > 0:
+        lines.append(f"- **關聯性懲罰**: -{round(corr_penalty_val*100, 1)}% (同隊/同場相關性扣減)")
+        lines.append(f"- **調整後組合命中率**: **{adj_joint_prob_pct}%**")
     lines.append(f"- **平均 Edge**: {'+' if avg_edge > 0 else ''}{avg_edge}%")
-    # Kelly Criterion (Half-Kelly)
+    lines.append(f"- **Combo EV%**: {'+' if combo_ev_pct > 0 else ''}{combo_ev_pct}% {risk_tier_emoji} {risk_tier}")
+    # Kelly Criterion (Half-Kelly) — use adjusted probability
     combo_odds_for_kelly = raw_combo_odds
-    kelly_f = kelly_fraction(combo_hit_pct, combo_odds_for_kelly)
+    kelly_prob = adj_joint_prob_pct if corr_penalty_val > 0 else combo_hit_pct
+    kelly_f = kelly_fraction(kelly_prob, combo_odds_for_kelly)
     kelly_stake = round(kelly_f * 1000, 0)
     lines.append(f"- **🎯 Kelly 注碼建議**: {kelly_f*100:.1f}% bankroll (Half-Kelly) → **${int(kelly_stake)}** / $1000")
     lines.append(f"- **🛡️ 組合核心邏輯**: {core_logic}")
@@ -1432,7 +1648,7 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     # Header
     sections.append(f"# 🏀 NBA Wong Choi — {away_name} @ {home_name}")
     sections.append(f"**日期**: {meta.get('date', '?')} | **Sportsbet 提取時間**: {sportsbet_time}")
-    sections.append(f"**odds_source**: SPORTSBET_LIVE ✅ | **引擎版本**: Adjusted Win Prob V3 (10-Factor)")
+    sections.append(f"**odds_source**: SPORTSBET_LIVE ✅ | **引擎版本**: Adjusted Win Prob V8 (EV Quant + Correlation Penalty)")
     sections.append(f"**season_phase**: {season_phase} | **L10_ORDER**: {L10_ORDER} | **strategy**: SPORTSBET_MILESTONE_OVER_ONLY")
     sections.append(f"")
 
@@ -1556,10 +1772,12 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     # Find strongest/weakest legs across all combos
     all_combo_legs = combo_1 + combo_2 + combo_3 + (combo_x or [])
     if all_combo_legs:
-        best_leg = max(all_combo_legs, key=lambda x: x["edge"])
-        worst_leg = min(all_combo_legs, key=lambda x: x["edge"])
-        sections.append(f"- **最強關**: {best_leg['desc']} @{best_leg['odds']} — Edge {'+' if best_leg['edge'] > 0 else ''}{best_leg['edge']}% {best_leg['edge_grade']}")
-        sections.append(f"- **最弱關**: {worst_leg['desc']} @{worst_leg['odds']} — Edge {'+' if worst_leg['edge'] > 0 else ''}{worst_leg['edge']}% {worst_leg['edge_grade']}")
+        best_leg = max(all_combo_legs, key=lambda x: x.get("ev_pct", x["edge"]))
+        worst_leg = min(all_combo_legs, key=lambda x: x.get("ev_pct", x["edge"]))
+        best_ev = best_leg.get('ev_pct', best_leg['edge'])
+        worst_ev = worst_leg.get('ev_pct', worst_leg['edge'])
+        sections.append(f"- **最強關**: {best_leg['desc']} @{best_leg['odds']} — EV% {'+' if best_ev > 0 else ''}{best_ev}% {best_leg['edge_grade']}")
+        sections.append(f"- **最弱關**: {worst_leg['desc']} @{worst_leg['odds']} — EV% {'+' if worst_ev > 0 else ''}{worst_ev}% {worst_leg['edge_grade']}")
     else:
         sections.append(f"- 最強關: 未能篩選")
         sections.append(f"- 最弱關: 未能篩選")
@@ -1737,8 +1955,8 @@ def main():
     with open(args.output, 'w', encoding='utf-8') as f:
         f.write(report)
 
-    print(f"✅ Pre-filled skeleton V3 已生成: {args.output}")
-    print(f"   📐 所有預估勝率已由 8-Factor Adjusted Win Prob 引擎計算")
+    print(f"✅ Pre-filled skeleton V8 已生成: {args.output}")
+    print(f"   📐 引擎版本: Adjusted Win Prob V8 (EV Quant + Correlation Penalty)")
     print(f"   🧠 核心邏輯已自動生成 (無 [FILL] 佔位符)")
     print(f"   📎 下一步: NBA Analyst 審閱及補充分析")
 

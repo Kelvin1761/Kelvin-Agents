@@ -5,7 +5,7 @@ import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
-validate_nba_output.py — NBA Wong Choi Post-Generation Firewall
+validate_nba_output.py — NBA Wong Choi Post-Generation Firewall V2
 
 This script MUST be executed on every Game_*_Full_Analysis.md BEFORE it is
 accepted as a valid output. It catches the following failure modes:
@@ -16,14 +16,18 @@ accepted as a valid output. It catches the following failure modes:
   FW-04: Repeated sentence padding (same sentence ≥3 times)
   FW-05: Missing SGM/Combo sections
   FW-06: No real player names found (cross-checked with odds JSON)
-  FW-07: File too small (< 5000 bytes → likely truncated or padded)
+  FW-07: File too small (<3000 bytes = BLOCK, <5000 = WARN)
   FW-08: Missing odds format (@X.XX not found ≥3 times)
+  FW-09: Missing strategy metadata (season_phase, L10_ORDER)
+  FW-10: Under recommendations detected
+  FW-11: Combo gates (odds floor, negative EV/Edge legs)
+  FW-12: Missing engine version markers (MC_MODEL_VERSION, 引擎版本)
 
 Usage:
   python validate_nba_output.py <analysis_file.md> [--odds <Sportsbet_Odds_*.json>]
   python validate_nba_output.py <directory>  # validates all Game_*_Full_Analysis.md
 
-Exit code 0 = all PASS, 1 = any BLOCK/FAIL
+Exit code 0 = all PASS, 1 = any BLOCK/FAIL, 2 = warnings only (no blocks)
 """
 
 import io
@@ -239,10 +243,15 @@ def check_fw06_real_players(content: str, odds_json_path: str = None) -> list:
 
 
 def check_fw07_file_size(content: str, filepath: str) -> list:
-    """FW-07: Check minimum file size."""
+    """FW-07: Check minimum file size. <3000 = BLOCK, <5000 = WARN."""
     issues = []
     size = len(content.encode('utf-8'))
-    if size < MIN_FILE_SIZE:
+    if size < 3000:
+        issues.append(
+            f"FW-07 ❌ BLOCK: 檔案大小 {size} bytes < 3000 bytes — "
+            f"嚴重截斷或缺少內容 ({filepath})"
+        )
+    elif size < MIN_FILE_SIZE:
         issues.append(
             f"FW-07 ⚠️ WARN: 檔案大小 {size} bytes < {MIN_FILE_SIZE} bytes — "
             f"疑似截斷或灌水 ({filepath})"
@@ -318,10 +327,36 @@ def check_fw11_combo_gates(content: str) -> list:
     for line in leg_rows:
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
         if len(cells) >= 6:
+            # Check edge column (index 5)
             edge_cell = cells[5]
             if re.search(r'(^|[^+])-+\d+(?:\.\d+)?%', edge_cell):
-                issues.append(f"FW-11 ❌ BLOCK: 組合 Leg 含負 EV：{line[:160]}")
+                issues.append(f"FW-11 ❌ BLOCK: 組合 Leg 含負 Edge：{line[:160]}")
                 break
+        # Also check EV% column (index 6) if present
+        if len(cells) >= 7:
+            ev_cell = cells[6]
+            ev_match = re.search(r'(-\d+(?:\.\d+)?)%', ev_cell)
+            if ev_match:
+                ev_val = float(ev_match.group(1))
+                if ev_val < -10:
+                    issues.append(f"FW-11 ❌ BLOCK: 組合 Leg EV% 極差 ({ev_val}%)：{line[:160]}")
+                    break
+    return issues
+
+
+def check_fw12_engine_markers(content: str) -> list:
+    """FW-12: Require engine version markers from Python pipeline."""
+    issues = []
+    if "引擎版本" not in content:
+        issues.append(
+            "FW-12 ❌ BLOCK: 缺少 '引擎版本' 標記 — 報告可能未經 Python pipeline 生成"
+        )
+    has_mc = "MC_MODEL_VERSION" in content or "mc_model_version" in content
+    has_v_marker = "V8" in content or "V3" in content or "EV Quant" in content
+    if not has_mc and not has_v_marker:
+        issues.append(
+            "FW-12 ⚠️ WARN: 缺少 MC_MODEL_VERSION 或引擎版本標記 — 建議檢查 pipeline 完整性"
+        )
     return issues
 
 
@@ -344,6 +379,7 @@ def validate_file(filepath: str, odds_json_path: str = None) -> dict:
     all_issues.extend(check_fw09_strategy_metadata(content))
     all_issues.extend(check_fw10_over_only(content))
     all_issues.extend(check_fw11_combo_gates(content))
+    all_issues.extend(check_fw12_engine_markers(content))
 
     blocks = [i for i in all_issues if "BLOCK" in i]
     warns = [i for i in all_issues if "WARN" in i]
@@ -440,7 +476,7 @@ def main():
         print("✅ VERDICT: ALL PASS — 所有報告通過防火牆檢查。")
     print(f"{'=' * 65}\n")
 
-    sys.exit(1 if any_blocked else 0)
+    sys.exit(1 if any_blocked else (2 if total_warns > 0 else 0))
 
 
 if __name__ == "__main__":
