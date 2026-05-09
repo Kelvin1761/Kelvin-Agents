@@ -1,0 +1,45 @@
+{
+  "stability": {
+    "STAB_STRONG_01": {"score": "✅✅", "min_confidence": "High", "min_evidence_count": 4, "required_evidence_types": ["recent_form", "forgiveness"], "description": "High-confidence stable profile.", "disallowed_if": ["unforgiven_failure"]},
+    "STAB_POS_01": {"score": "✅", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["recent_form"], "description": "Positive stability.", "disallowed_if": []},
+    "STAB_NEUTRAL_01": {"score": "➖", "min_confidence": "Unknown", "min_evidence_count": 1, "required_evidence_types": [], "description": "Mixed stability.", "disallowed_if": []},
+    "STAB_NEG_01": {"score": "❌", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["recent_form"], "description": "Negative stability.", "disallowed_if": []},
+    "STAB_FATAL_01": {"score": "❌❌", "min_confidence": "High", "min_evidence_count": 3, "required_evidence_types": ["recent_form"], "description": "Fatal stability profile.", "disallowed_if": []}
+  },
+  "sectional": {
+    "SEC_STRONG_01": {"score": "✅✅", "min_confidence": "High", "min_evidence_count": 4, "required_evidence_types": ["formal_race_sectional", "L400", "L600", "distance"], "description": "Formal race sectional clearly above class par at same/similar distance with no contamination.", "disallowed_if": ["trial_only", "interference", "tempo_contamination"]},
+    "SEC_POS_01": {"score": "✅", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["sectional"], "description": "Useful sectional or engine profile.", "disallowed_if": ["distance_unsuitable"]},
+    "SEC_NEUTRAL_01": {"score": "➖", "min_confidence": "Unknown", "min_evidence_count": 1, "required_evidence_types": [], "description": "Trial-only, one-run, different-distance or unclear engine evidence.", "disallowed_if": []},
+    "SEC_NEG_01": {"score": "❌", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["sectional"], "description": "Below class-par sectional, unsuitable distance or late decay.", "disallowed_if": []},
+    "SEC_FATAL_01": {"score": "❌❌", "min_confidence": "High", "min_evidence_count": 3, "required_evidence_types": ["sectional", "distance"], "description": "Repeated below-par sectionals with wrong distance and no setup compensation.", "disallowed_if": []}
+  },
+  "race_shape": {
+    "SHAPE_STRONG_01": {"score": "✅✅", "min_confidence": "High", "min_evidence_count": 4, "required_evidence_types": ["pace", "barrier", "run_position"], "description": "Race shape strongly supports the horse.", "disallowed_if": []},
+    "SHAPE_POS_01": {"score": "✅", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["pace"], "description": "Race shape is positive.", "disallowed_if": []},
+    "SHAPE_NEUTRAL_01": {"score": "➖", "min_confidence": "Unknown", "min_evidence_count": 1, "required_evidence_types": [], "description": "Race shape unclear or mixed.", "disallowed_if": []},
+    "SHAPE_NEG_01": {"score": "❌", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["pace"], "description": "Race shape is adverse.", "disallowed_if": []},
+    "SHAPE_FATAL_01": {"score": "❌❌", "min_confidence": "High", "min_evidence_count": 3, "required_evidence_types": ["pace", "barrier"], "description": "Fatal setup.", "disallowed_if": []}
+  },
+  "jockey_trainer": {
+    "JT_STRONG_01": {"score": "✅✅", "min_confidence": "High", "min_evidence_count": 4, "required_evidence_types": ["jockey", "trainer", "deployment"], "description": "Strong independent jockey/trainer deployment.", "disallowed_if": ["famous_jockey_only"]},
+    "JT_POS_01": {"score": "✅", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["deployment"], "description": "Positive jockey/trainer signal.", "disallowed_if": []},
+    "JT_NEUTRAL_01": {"score": "➖", "min_confidence": "Unknown", "min_evidence_count": 1, "required_evidence_types": [], "description": "Neutral signal.", "disallowed_if": []},
+    "JT_NEG_01": {"score": "❌", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["deployment"], "description": "Negative rider/trainer signal.", "disallowed_if": []},
+    "JT_FATAL_01": {"score": "❌❌", "min_confidence": "High", "min_evidence_count": 3, "required_evidence_types": ["deployment"], "description": "Fatal deployment mismatch.", "disallowed_if": []}
+  },
+  "class_weight": {
+    "CW_POS_01": {"score": "✅", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["class", "weight"], "description": "Positive class/weight setup.", "disallowed_if": []},
+    "CW_NEUTRAL_01": {"score": "➖", "min_confidence": "Unknown", "min_evidence_count": 1, "required_evidence_types": [], "description": "Neutral class/weight setup.", "disallowed_if": []},
+    "CW_NEG_01": {"score": "❌", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["class"], "description": "Negative class/weight setup.", "disallowed_if": []}
+  },
+  "track": {
+    "TRACK_POS_01": {"score": "✅", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["track"], "description": "Positive track/going fit.", "disallowed_if": []},
+    "TRACK_NEUTRAL_01": {"score": "➖", "min_confidence": "Unknown", "min_evidence_count": 1, "required_evidence_types": [], "description": "Neutral track/going fit.", "disallowed_if": []},
+    "TRACK_NEG_01": {"score": "❌", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["track"], "description": "Negative track/going fit.", "disallowed_if": []}
+  },
+  "form_line": {
+    "FL_POS_01": {"score": "✅", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["opponent_follow_up"], "description": "Form line supported by opponents.", "disallowed_if": []},
+    "FL_NEUTRAL_01": {"score": "➖", "min_confidence": "Unknown", "min_evidence_count": 1, "required_evidence_types": [], "description": "Neutral or no formal form line.", "disallowed_if": []},
+    "FL_NEG_01": {"score": "❌", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["opponent_follow_up"], "description": "Weak form line.", "disallowed_if": []}
+  }
+}

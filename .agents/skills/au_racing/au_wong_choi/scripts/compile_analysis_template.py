@@ -23,6 +23,8 @@ import re
 # Import shared qualitative rating engine v2 (replaces deprecated grading_engine)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../scripts")))
 from rating_engine_v2 import compute_base_grade, compute_weighted_score, apply_fine_tune, parse_matrix_scores, grade_sort_index, count_double_ticks, apply_s_grade_guards
+from racing_content_guard import assert_no_dummy_json, assert_no_dummy_text, quarantine_file
+from validate_au_matrix_confidence import validate_au_matrix_confidence
 
 AU_MATRIX_SCHEMA = {
     "stability": "core", "sectional": "core",
@@ -30,6 +32,62 @@ AU_MATRIX_SCHEMA = {
     "class_weight": "aux", "track": "aux",
     "form_line": "aux",
 }
+
+AU_REQUIRED_MATRIX_DIMS = set(AU_MATRIX_SCHEMA)
+
+# AU Chinese/variant → canonical English key normalization (inline copy from au_orchestrator.py)
+_AU_MATRIX_MAP = {
+    "狀態與穩定性": "stability", "位置穩定性": "stability",
+    "段速與引擎": "sectional", "段速質量": "sectional",
+    "形勢與走位": "race_shape",
+    "騎練訊號": "jockey_trainer", "練馬師訊號": "jockey_trainer",
+    "級數與負重": "class_weight", "級數優勢": "class_weight",
+    "場地適性": "track", "新鮮度/場地": "track",
+    "賽績線": "form_line",
+}
+
+def _au_normalize_matrix(m_data):
+    if not m_data:
+        return m_data
+    needs = any(k in _AU_MATRIX_MAP for k in m_data)
+    if not needs:
+        return m_data
+    return {_AU_MATRIX_MAP.get(k, k): v for k, v in m_data.items()}
+
+
+def _write_compile_blocked(output_path: str, message: str) -> None:
+    out = Path(output_path)
+    runtime_dir = out.parent / ".runtime"
+    runtime_dir.mkdir(parents=True, exist_ok=True)
+    names = {f"compile_blocked_{out.stem}.txt"}
+    race_match = re.search(r"Race[_ ](\d+)", out.name)
+    if race_match:
+        names.add(f"compile_blocked_Race_{race_match.group(1)}.txt")
+    for name in names:
+        (runtime_dir / name).write_text(message, encoding="utf-8")
+
+
+def _validate_au_logic_for_compile(logic_data: dict) -> None:
+    assert_no_dummy_json(logic_data, "AU Logic.json before compile", allow_pending_fill=False)
+    horses = logic_data.get("horses", {})
+    if not horses:
+        raise ValueError("AU compile blocked: horses missing")
+    if isinstance(horses, list):
+        iterable = [(str(h.get("id", idx + 1)), h) for idx, h in enumerate(horses)]
+    else:
+        iterable = horses.items()
+    for h_key, h_logic in iterable:
+        matrix = h_logic.get("matrix", {})
+        if not matrix:
+            raise ValueError(f"AU compile blocked: matrix missing for horse {h_key}")
+        missing = AU_REQUIRED_MATRIX_DIMS - set(_au_normalize_matrix(matrix).keys())
+        if missing:
+            raise ValueError(f"AU compile blocked: missing matrix dimensions {sorted(missing)} for horse {h_key}")
+        if not h_logic.get("core_logic"):
+            raise ValueError(f"AU compile blocked: missing core_logic for horse {h_key}")
+        matrix_errors = validate_au_matrix_confidence(h_logic)
+        if matrix_errors:
+            raise ValueError(f"AU compile blocked: matrix confidence failed for horse {h_key}:\n" + "\n".join(matrix_errors))
 
 MATRIX_TEMPLATE_HINTS = {
     "stability": [
@@ -498,9 +556,21 @@ def generate_horse_section(horse_idx, h_fact, h_logic):
             item = {}
 
         score_display = str(item.get('score', '[-]')).strip()
+        confidence = item.get('confidence', 'Unknown')
+        trigger_rule = item.get('trigger_rule', '')
+        trigger_evidence = item.get('trigger_evidence', [])
+        disqualifiers = item.get('disqualifiers', [])
         reasoning_raw = item.get('reasoning', item.get('_reasoning', item.get('reason', '')))
 
-        lines.append(f'##### {label} [{c_type}]: `{score_display}`')
+        lines.append(f'##### {label} [{c_type}]: `{score_display}` | Confidence: `{confidence}` | Rule: `{trigger_rule}`')
+        lines.append('- Trigger evidence:')
+        if isinstance(trigger_evidence, list) and trigger_evidence:
+            for ev in trigger_evidence:
+                lines.append(f'  - {ev}')
+        else:
+            lines.append('  - 無')
+        disq_text = '、'.join(map(str, disqualifiers)) if isinstance(disqualifiers, list) and disqualifiers else '無'
+        lines.append(f'- Disqualifiers: {disq_text}')
 
         hints = MATRIX_TEMPLATE_HINTS.get(key, [])
         if hints:
@@ -765,6 +835,15 @@ def main():
     facts_text = Path(args.facts).read_text(encoding='utf-8')
     with open(args.logic_json, 'r', encoding='utf-8') as f:
         logic_data = json.load(f)
+
+    try:
+        _validate_au_logic_for_compile(logic_data)
+    except ValueError as exc:
+        print(f"🚨 Pre-compile check failed:\n{exc}", file=sys.stderr)
+        _write_compile_blocked(args.output, str(exc))
+        if os.path.exists(args.output):
+            quarantine_file(args.output, f"AU pre-compile failed:\n{exc}")
+        sys.exit(1)
         
     facts_horses = parse_facts_md_au(facts_text)
     
@@ -820,7 +899,24 @@ def main():
         
     body.append(build_verdict(logic_data, facts_horses))
     
-    Path(args.output).write_text('\n'.join(body), encoding='utf-8')
+    final_markdown = '\n'.join(body)
+    try:
+        assert_no_dummy_text(final_markdown, f"{Path(args.output).name} Analysis.md")
+    except ValueError as exc:
+        print(f"🚨 Post-compile check failed:\n{exc}", file=sys.stderr)
+        _write_compile_blocked(args.output, str(exc))
+        if os.path.exists(args.output):
+            quarantine_file(args.output, f"AU post-compile dummy text detected:\n{exc}")
+        sys.exit(1)
+
+    tmp_output = args.output + '.tmp'
+    try:
+        Path(tmp_output).write_text(final_markdown, encoding='utf-8')
+        os.replace(tmp_output, args.output)
+    except Exception:
+        if os.path.exists(tmp_output):
+            os.unlink(tmp_output)
+        raise
     print(f"✅ Analysis 組裝完成 → {args.output}")
 
     # ── Write computed grades back to Logic.json ──

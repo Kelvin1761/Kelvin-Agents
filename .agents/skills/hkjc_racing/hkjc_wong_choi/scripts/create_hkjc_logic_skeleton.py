@@ -71,6 +71,33 @@ def parse_horse_header(block):
     }
 
 
+def _is_invalid_horse_name(name):
+    clean = str(name or '').strip()
+    return not clean or clean in {"?", "未知", "Unknown"} or clean.isdigit()
+
+
+def validate_parsed_horse_header(data: dict, requested_horse_num: int) -> None:
+    errors = []
+    if not data:
+        errors.append("parse_horse_header returned empty data")
+    if data.get("num") != requested_horse_num:
+        errors.append(f"horse number mismatch: requested {requested_horse_num}, parsed {data.get('num')}")
+    if _is_invalid_horse_name(data.get("name")):
+        errors.append(f"invalid horse_name: {data.get('name')!r}")
+    try:
+        if int(data.get("barrier", 0) or 0) <= 0:
+            errors.append(f"invalid barrier: {data.get('barrier')!r}")
+    except (TypeError, ValueError):
+        errors.append(f"invalid barrier: {data.get('barrier')!r}")
+    try:
+        if int(data.get("weight", 0) or 0) <= 0:
+            errors.append(f"invalid weight: {data.get('weight')!r}")
+    except (TypeError, ValueError):
+        errors.append(f"invalid weight: {data.get('weight')!r}")
+    if errors:
+        raise ValueError("; ".join(errors))
+
+
 def parse_summary(block):
     """Extract last_6, days_since_last, season stats, wins, starts."""
     result = {}
@@ -572,6 +599,41 @@ def normalize_trackwork_category(trackwork, data, is_debut):
     return tw
 
 
+def normalize_person_name(value):
+    value = str(value or '').strip()
+    value = re.sub(r'\s+', '', value)
+    return re.sub(r"[\s·・.\-']", "", value).lower()
+
+
+def hydrate_trackwork_jockey_involvement(trackwork, race_jockey):
+    """Repair legacy trackwork payloads where race-day jockey was not passed to digest."""
+    if not isinstance(trackwork, dict):
+        return trackwork
+    jockey_key = normalize_person_name(race_jockey)
+    if not jockey_key:
+        return trackwork
+    tw = json.loads(json.dumps(trackwork, ensure_ascii=False))
+    summary = tw.setdefault("summary", {})
+    if summary.get("race_jockey_involved"):
+        return tw
+    entries = tw.get("entries", []) or []
+    involved = any(
+        jockey_key in normalize_person_name(e.get("rider", ""))
+        or jockey_key in normalize_person_name(e.get("details", ""))
+        for e in entries
+        if isinstance(e, dict)
+    )
+    if not involved:
+        return tw
+    summary["race_jockey_involved"] = True
+    digest = tw.setdefault("stability_digest", {})
+    flags = list(digest.get("stability_positive_flags", []) or [])
+    if "賽日騎師有參與操練" not in flags:
+        flags.append("賽日騎師有參與操練")
+    digest["stability_positive_flags"] = flags
+    return tw
+
+
 def format_trackwork_line(trackwork):
     digest = trackwork.get("stability_digest", {}) if isinstance(trackwork, dict) else {}
     load = digest.get("workout_load_21d", {}) if isinstance(digest, dict) else {}
@@ -626,8 +688,38 @@ def format_trackwork_health_line(trackwork):
     )
 
 
-def parse_debut_sire_profile(block, today_distance=None):
-    """Extract a small debut pedigree profile when Facts.md exposes sire/dam fields."""
+def load_racecard_horse_block(facts_path, race_num, horse_num):
+    """Load the horse-specific block from the racecard (排位表.md) file.
+
+    The racecard contains sire/dam data that is absent from Facts.md for
+    debut horses.  Returns the text block for the requested horse number,
+    or '' if the file is not found.
+    """
+    facts_dir = Path(facts_path).parent
+    candidates = sorted(facts_dir.glob(f"*Race {race_num} 排位表.md"))
+    if not candidates:
+        return ''
+    try:
+        with open(candidates[0], 'r', encoding='utf-8') as f:
+            content = f.read()
+    except Exception:
+        return ''
+    # Split by horse number headers ("馬號: N")
+    blocks = re.split(r'(?=馬號[:：]\s*\d+)', content)
+    horse_str = str(horse_num)
+    for blk in blocks:
+        m = re.match(r'馬號[:：]\s*(\d+)', blk)
+        if m and m.group(1) == horse_str:
+            return blk
+    return ''
+
+
+def parse_debut_sire_profile(block, today_distance=None, racecard_block=''):
+    """Extract a small debut pedigree profile.
+
+    Searches *block* (Facts.md) first, then falls back to *racecard_block*
+    (排位表.md) which always contains 父系/母系 for every horse.
+    """
     profile = {
         "status": "missing",
         "sire": "",
@@ -640,7 +732,9 @@ def parse_debut_sire_profile(block, today_distance=None):
             "不可憑空將 sectional 判為 ✅。"
         ),
     }
-    if not block:
+    # Search both blocks: Facts.md first, then racecard fallback
+    combined_block = (block or '') + '\n' + (racecard_block or '')
+    if not combined_block.strip():
         return profile
     sire_patterns = [
         r'父[:：]\s*([^|\n]+)',
@@ -653,12 +747,12 @@ def parse_debut_sire_profile(block, today_distance=None):
         r'母系[:：]\s*([^|\n]+)',
     ]
     for pat in sire_patterns:
-        m = re.search(pat, block, re.IGNORECASE)
+        m = re.search(pat, combined_block, re.IGNORECASE)
         if m:
             profile["sire"] = m.group(1).strip()
             break
     for pat in dam_patterns:
-        m = re.search(pat, block, re.IGNORECASE)
+        m = re.search(pat, combined_block, re.IGNORECASE)
         if m:
             profile["dam"] = m.group(1).strip()
             break
@@ -736,7 +830,7 @@ def _build_core_logic_scaffold(data):
     scaffold = (
         f"[FILL — 根據以下數據寫約100字流暢廣東話分析，"
         f"必須涵蓋：近態趨勢、檔位形勢、段速能力、整體前景。"
-        f"唔好用 tag/標籤，直接寫自然段落。]\n"
+        f"唔好用 tag/標籤，直接寫自然段落；不得以 race-level speed_map 作核心論點。]\n"
         f"數據：{name} "
         f"近6仗={last_6}, "
         f"檔位={barrier}, "
@@ -1003,7 +1097,7 @@ def compute_track_bias_from_draws(race_num: int) -> str:
             return f"{inner_str} vs {outer_str} {bias}"
     return f'⚠️第{race_num}場無場地偏差數據'
 
-def build_skeleton(data, race_num=0, horse_block='', trackwork=None):
+def build_skeleton(data, race_num=0, horse_block='', trackwork=None, facts_path=''):
     """Build JSON skeleton: real data pre-filled, analysis fields as [FILL].
     V4.2: Data-anchored reasoning with enrichment parsers.
     """
@@ -1099,7 +1193,7 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None):
         if is_debut else ""
     )
     debut_shape_note = (
-        "[初出馬模板: 形勢與走位只用檔位數據、今日預計位置、試閘跑法/出閘反應；不可用步速作此維度主要加減分。]\n"
+        "[初出馬模板: 形勢與走位只用檔位數據、今日預計位置、試閘跑法/出閘反應；不可引入 race-level speed_map 作此維度加減分。]\n"
         if is_debut else ""
     )
     debut_trainer_note = (
@@ -1126,10 +1220,15 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None):
         if is_debut else _build_core_logic_scaffold(data)
     )
     raw_trackwork = normalize_trackwork_category(raw_trackwork, {**data, 'wins': wins, 'starts': starts}, is_debut)
+    raw_trackwork = hydrate_trackwork_jockey_involvement(raw_trackwork, jockey)
     tw_line = format_trackwork_line(raw_trackwork)
     tw_trainer_line = format_trackwork_trainer_line(raw_trackwork)
     tw_health_line = format_trackwork_health_line(raw_trackwork)
-    debut_sire_profile = parse_debut_sire_profile(horse_block, data.get('distance', None)) if is_debut else {}
+    # Load racecard block for sire/dam fallback (排位表.md always has bloodline data)
+    racecard_block = ''
+    if is_debut and facts_path:
+        racecard_block = load_racecard_horse_block(facts_path, race_num, data.get('num', 0))
+    debut_sire_profile = parse_debut_sire_profile(horse_block, data.get('distance', None), racecard_block=racecard_block) if is_debut else {}
     debut_trial_profile = build_debut_trial_profile(raw_trackwork) if is_debut else {}
     debut_readiness_flags = build_debut_readiness_flags(raw_trackwork) if is_debut else []
     debut_sire_line = f"[初出 Sire profile: {json.dumps(debut_sire_profile, ensure_ascii=False)}]\n" if is_debut else ""
@@ -1178,7 +1277,7 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None):
         f"[🏟️ 場地偏差: {track_bias}]\n"
         f"[📊 {full_draw_table}]\n"
         f"{debut_shape_note}"
-        f"[評分限制: matrix.race_shape 不可用步速作主要 ✅/❌ 理由；步速只保留於 race-level speed map / sectional / Top4 情境保險]\n"
+        f"[評分限制: matrix.race_shape 只可用檔位、今日位置、近仗走位消耗/受阻、場地偏差與檔位統計作 ✅/❌ 理由]\n"
         f"[📎 必讀: 05_forensic_analysis.md]\n"
         f"→ [判讀: FILL]"
     )
@@ -1219,6 +1318,19 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None):
         f"[📎 必讀: 06_rating_engine.md + 場地模組 10a/10b/10c]\n"
         f"→ [判讀: FILL]"
     )
+
+    def matrix_dim(score_hint, reasoning, rule_prefix):
+        return {
+            'score': score_hint,
+            'confidence': '[FILL: High/Medium/Low/Unknown]',
+            'trigger_rule': f'[FILL: {rule_prefix}_...]',
+            'trigger_evidence': [
+                '[FILL: concrete evidence 1]',
+                '[FILL: concrete evidence 2]',
+            ],
+            'disqualifiers': [],
+            'reasoning': reasoning,
+        }
 
     # ── V10: Build trackwork instruction for LLM ──
     tw_digest = raw_trackwork.get('stability_digest', {}) if isinstance(raw_trackwork, dict) else {}
@@ -1308,13 +1420,13 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None):
         'race_forgiveness': '[FILL — JSON Array 格式]',
 
         'matrix': {
-            'stability':          {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_stability},
-            'sectional':          {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_sectional},
-            'race_shape':         {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_race_shape},
-            'trainer_signal':     {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_trainer},
-            'horse_health':       {'score': '[FILL: ✅/➖/❌]', 'reasoning': r_health},
-            'form_line':          {'score': 'N/A' if is_debut else '[FILL: ✅/➖/❌]', 'reasoning': r_formline},
-            'class_advantage':    {'score': '[FILL: ✅/➖/❌]', 'reasoning': r_class},
+            'stability':          matrix_dim('[FILL: ✅✅/✅/➖/❌/❌❌]', r_stability, 'STAB'),
+            'sectional':          matrix_dim('[FILL: ✅✅/✅/➖/❌/❌❌]', r_sectional, 'SEC'),
+            'race_shape':         matrix_dim('[FILL: ✅✅/✅/➖/❌/❌❌]', r_race_shape, 'SHAPE'),
+            'trainer_signal':     matrix_dim('[FILL: ✅✅/✅/➖/❌/❌❌]', r_trainer, 'TS'),
+            'horse_health':       matrix_dim('[FILL: ✅/➖/❌]', r_health, 'HEALTH'),
+            'form_line':          matrix_dim('➖' if is_debut else '[FILL: ✅/➖/❌]', r_formline, 'FL'),
+            'class_advantage':    matrix_dim('[FILL: ✅/➖/❌]', r_class, 'CLASS'),
         },
 
         'interaction_matrix': {
@@ -1367,25 +1479,15 @@ def main():
     # Extract horse block
     block = extract_horse_block(facts_content, args.horse_num)
     if not block:
-        print(f'❌ 找不到馬號 {args.horse_num} 的數據')
+        print(f'❌ 找不到馬號 {args.horse_num} 的數據', file=sys.stderr)
         sys.exit(1)
 
     # Parse all data
     header = parse_horse_header(block)
-    if not header:
-        print(f'❌ 無法解析馬號 {args.horse_num} 的標題列 (Header) 資訊', file=sys.stderr)
-        sys.exit(1)
-        
-    name = header.get('name', '').strip()
-    barrier = header.get('barrier', 0)
-    weight = header.get('weight', 0)
-    
-    if not name or name in ("?", "未知", "Unknown", "") or name.isdigit():
-        print(f'❌ 馬號 {args.horse_num} 提取到的馬名無效: "{name}"', file=sys.stderr)
-        sys.exit(1)
-        
-    if barrier <= 0 or weight <= 0:
-        print(f'❌ 馬號 {args.horse_num} 提取到的檔位({barrier})或負磅({weight})無效', file=sys.stderr)
+    try:
+        validate_parsed_horse_header(header, args.horse_num)
+    except ValueError as exc:
+        print(f'❌ 馬號 {args.horse_num} 標題驗證失敗: {exc}', file=sys.stderr)
         sys.exit(1)
         
     summary = parse_summary(block)
@@ -1395,7 +1497,7 @@ def main():
 
     # Build skeleton
     trackwork = load_trackwork_for_horse(args.facts_path, args.race_num, args.horse_num)
-    skeleton = build_skeleton(horse_data, race_num=args.race_num, horse_block=block, trackwork=trackwork)
+    skeleton = build_skeleton(horse_data, race_num=args.race_num, horse_block=block, trackwork=trackwork, facts_path=args.facts_path)
 
     # Determine output path
     json_path = args.output or os.path.join(

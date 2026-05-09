@@ -1,0 +1,45 @@
+{
+  "stability": {
+    "STAB_STRONG_01": {"score": "✅✅", "min_confidence": "High", "min_evidence_count": 4, "required_evidence_types": ["recent_form", "forgiveness", "margin_trend", "trackwork"], "description": "High-confidence stable profile with concrete race and preparation support.", "disallowed_if": ["unforgiven_failure", "medical_unresolved"]},
+    "STAB_POS_01": {"score": "✅", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["recent_form"], "description": "Positive stability with enough formal evidence.", "disallowed_if": ["low_confidence"]},
+    "STAB_NEUTRAL_01": {"score": "➖", "min_confidence": "Unknown", "min_evidence_count": 1, "required_evidence_types": [], "description": "Mixed or limited stability evidence.", "disallowed_if": []},
+    "STAB_NEG_01": {"score": "❌", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["recent_form"], "description": "Negative stability with concrete recent evidence.", "disallowed_if": []},
+    "STAB_FATAL_01": {"score": "❌❌", "min_confidence": "High", "min_evidence_count": 3, "required_evidence_types": ["recent_form", "forgiveness"], "description": "Fatal stability profile with no forgiveness.", "disallowed_if": ["forgiveness_evidence"]}
+  },
+  "sectional": {
+    "SEC_STRONG_01": {"score": "✅✅", "min_confidence": "High", "min_evidence_count": 4, "required_evidence_types": ["L400", "L600", "distance", "class_par"], "description": "Formal race sectionals clearly above class par.", "disallowed_if": ["trial_only", "trackwork_only"]},
+    "SEC_POS_01": {"score": "✅", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["L400"], "description": "Useful sectional or engine profile.", "disallowed_if": ["low_confidence"]},
+    "SEC_NEUTRAL_01": {"score": "➖", "min_confidence": "Unknown", "min_evidence_count": 1, "required_evidence_types": [], "description": "Limited or mixed sectional evidence.", "disallowed_if": []},
+    "SEC_NEG_01": {"score": "❌", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["L400"], "description": "Below-par engine or distance issue.", "disallowed_if": []},
+    "SEC_FATAL_01": {"score": "❌❌", "min_confidence": "High", "min_evidence_count": 3, "required_evidence_types": ["L400", "distance"], "description": "Repeated sectional failure with no compensation.", "disallowed_if": []}
+  },
+  "race_shape": {
+    "SHAPE_STRONG_01": {"score": "✅✅", "min_confidence": "High", "min_evidence_count": 4, "required_evidence_types": ["draw_band", "barrier_history", "run_position", "course_configuration"], "description": "Draw/trip setup strongly supports the horse.", "disallowed_if": ["pace_prediction"]},
+    "SHAPE_POS_01": {"score": "✅", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["draw_band", "run_position"], "description": "Draw/trip setup is positive.", "disallowed_if": ["pace_prediction"]},
+    "SHAPE_NEUTRAL_01": {"score": "➖", "min_confidence": "Unknown", "min_evidence_count": 1, "required_evidence_types": ["draw_band"], "description": "Mixed or unclear draw/trip setup.", "disallowed_if": []},
+    "SHAPE_NEG_01": {"score": "❌", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["traffic_risk"], "description": "Traffic/wide/inside-pocket risk is material.", "disallowed_if": []},
+    "SHAPE_FATAL_01": {"score": "❌❌", "min_confidence": "High", "min_evidence_count": 3, "required_evidence_types": ["wide_risk", "traffic_risk"], "description": "Fatal draw/trip risk.", "disallowed_if": []}
+  },
+  "trainer_signal": {
+    "TS_STRONG_01": {"score": "✅✅", "min_confidence": "High", "min_evidence_count": 4, "required_evidence_types": ["trainer", "jockey", "deployment", "gear"], "description": "Strong independent trainer/jockey deployment.", "disallowed_if": ["famous_jockey_only"]},
+    "TS_POS_01": {"score": "✅", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["deployment"], "description": "Positive rider/trainer or gear signal.", "disallowed_if": []},
+    "TS_NEUTRAL_01": {"score": "➖", "min_confidence": "Unknown", "min_evidence_count": 1, "required_evidence_types": [], "description": "No decisive deployment signal.", "disallowed_if": []},
+    "TS_NEG_01": {"score": "❌", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["deployment"], "description": "Negative deployment/rider fit.", "disallowed_if": []},
+    "TS_FATAL_01": {"score": "❌❌", "min_confidence": "High", "min_evidence_count": 3, "required_evidence_types": ["deployment"], "description": "Fatal deployment mismatch.", "disallowed_if": []}
+  },
+  "horse_health": {
+    "HEALTH_POS_01": {"score": "✅", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["health"], "description": "Healthy profile or resolved issue.", "disallowed_if": ["medical_unresolved"]},
+    "HEALTH_NEUTRAL_01": {"score": "➖", "min_confidence": "Unknown", "min_evidence_count": 1, "required_evidence_types": [], "description": "Health evidence neutral or unclear.", "disallowed_if": []},
+    "HEALTH_NEG_01": {"score": "❌", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["health"], "description": "Unresolved health or preparation risk.", "disallowed_if": []}
+  },
+  "form_line": {
+    "FL_POS_01": {"score": "✅", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["opponent_follow_up"], "description": "Opponent follow-up supports the form line.", "disallowed_if": []},
+    "FL_NEUTRAL_01": {"score": "➖", "min_confidence": "Unknown", "min_evidence_count": 1, "required_evidence_types": [], "description": "Form line mixed or absent.", "disallowed_if": []},
+    "FL_NEG_01": {"score": "❌", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["opponent_follow_up"], "description": "Weak form line.", "disallowed_if": []}
+  },
+  "class_advantage": {
+    "CLASS_POS_01": {"score": "✅", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["class", "weight"], "description": "Class/weight setup is positive.", "disallowed_if": ["fine_tune_reuse"]},
+    "CLASS_NEUTRAL_01": {"score": "➖", "min_confidence": "Unknown", "min_evidence_count": 1, "required_evidence_types": [], "description": "Class/weight neutral.", "disallowed_if": []},
+    "CLASS_NEG_01": {"score": "❌", "min_confidence": "Medium", "min_evidence_count": 2, "required_evidence_types": ["class"], "description": "Class/weight setup is negative.", "disallowed_if": []}
+  }
+}

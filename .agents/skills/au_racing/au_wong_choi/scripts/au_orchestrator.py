@@ -14,6 +14,8 @@ import shutil
 # Import rating engine for auto-verdict computation
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'scripts')))
 from rating_engine_v2 import parse_matrix_scores, compute_base_grade, apply_fine_tune, grade_sort_index, apply_s_grade_guards
+from racing_content_guard import scan_json_for_dummy, scan_text_for_dummy, quarantine_file
+from validate_au_matrix_confidence import validate_au_matrix_confidence
 
 AU_MATRIX_SCHEMA = {
     "stability": "core", "sectional": "core",
@@ -23,6 +25,31 @@ AU_MATRIX_SCHEMA = {
 }
 
 AU_MATRIX_EXPECTED_KEYS = set(AU_MATRIX_SCHEMA)
+
+
+def validate_au_race_ready_for_verdict(logic_data):
+    horses = logic_data.get('horses', {})
+    if not horses:
+        raise ValueError("Verdict blocked: 'horses' key is empty or missing")
+    errors = []
+    for h_num, h_obj in horses.items():
+        prefix = f"Horse {h_num} ({h_obj.get('horse_name', '?')})"
+        matrix = _au_normalize_matrix(h_obj.get('matrix', {}))
+        if not matrix:
+            errors.append(f"{prefix}: matrix missing (final_rating-only horse not allowed)")
+            continue
+        missing = AU_MATRIX_EXPECTED_KEYS - set(matrix.keys())
+        if missing:
+            errors.append(f"{prefix}: missing matrix dimensions {sorted(missing)}")
+        for de in scan_json_for_dummy(h_obj, allow_pending_fill=False, path=f"horses.{h_num}"):
+            errors.append(f"{prefix}: {de}")
+        for ve in validate_au_matrix_confidence(h_obj):
+            errors.append(f"{prefix}: {ve}")
+        core_logic = h_obj.get('core_logic', '')
+        if not core_logic or core_logic.strip() in ('[FILL]', '', '待補充'):
+            errors.append(f"{prefix}: core_logic is empty or placeholder")
+    if errors:
+        raise ValueError("Verdict generation blocked — race not ready:\n" + "\n".join(f"  - {e}" for e in errors))
 AU_MATRIX_RESOURCE_REQUIREMENTS = {
     "stability": ("02b_form_analysis.md",),
     "sectional": ("02b_form_analysis.md", "02f_synthesis.md"),
@@ -215,6 +242,7 @@ def _rating_sort_tuple(grade_i, core_pass, tick_count, double_ticks, total_fail,
 
 def auto_compute_verdict(logic_data, facts_file):
     """Auto-compute verdict Top 4 from matrix grades. Eliminates LLM verdict stop."""
+    validate_au_race_ready_for_verdict(logic_data)
     horses = logic_data.get('horses', {})
     speed_map = logic_data.get('race_analysis', {}).get('speed_map', {})
     
@@ -499,7 +527,12 @@ def build_meeting_state_au(target_dir, total_races, date_prefix):
             try:
                 with open(an_file, 'r', encoding='utf-8') as f:
                     ac = f.read()
-                if '[FILL]' not in ac and 'FILL:' not in ac:
+                dummy_errs = scan_text_for_dummy(ac)
+                if dummy_errs:
+                    quarantine_file(an_file, f"build_meeting_state_au dummy scan (Race {r}):\n" + "\n".join(dummy_errs))
+                    race_state['compiled'] = False
+                    race_state['stage'] = 'REPAIR_NEEDED'
+                elif '[FILL]' not in ac and 'FILL:' not in ac:
                     race_state['compiled'] = True
             except Exception:
                 pass
@@ -1318,7 +1351,7 @@ def generate_work_card(horse_num, facts_content, logic_data, runtime_dir,
 
 
 def watch_single_horse(json_file, horse_num, validate_fn, all_horses,
-                       poll_interval=3, timeout_minutes=60):
+                       poll_interval=0.5, timeout_minutes=60):
     """Watch for a SINGLE horse to be filled and validated.
     Returns the horse entry dict on success, None on timeout.
     V12: Added race_analysis tamper protection — Python-computed fields are immutable.
@@ -1355,12 +1388,12 @@ def watch_single_horse(json_file, horse_num, validate_fn, all_horses,
     except Exception:
         pass
 
-    print(f"\n👀 Python 正在監控 Horse #{horse_num}... (每 {poll_interval} 秒 | 超時 {timeout_minutes} 分鐘)")
+    poll_interval = max(0.1, float(poll_interval))
+    debounce_seconds = min(0.2, poll_interval)
+    print(f"\n👀 Python 正在監控 Horse #{horse_num}... (每 {poll_interval:g} 秒 | 超時 {timeout_minutes} 分鐘)")
 
     try:
         while True:
-            time.sleep(poll_interval)
-
             elapsed = time.time() - start_time
             if elapsed > timeout_minutes * 60:
                 print(f"\n⏰ Horse #{horse_num} 監控超時 ({timeout_minutes} 分鐘)！")
@@ -1375,12 +1408,14 @@ def watch_single_horse(json_file, horse_num, validate_fn, all_horses,
             try:
                 current_mtime = os.path.getmtime(json_file)
             except OSError:
+                time.sleep(poll_interval)
                 continue
 
             if current_mtime == last_mtime or current_mtime == own_write_mtime:
+                time.sleep(poll_interval)
                 continue
 
-            time.sleep(0.5)  # Debounce
+            time.sleep(debounce_seconds)  # Debounce
             last_mtime = current_mtime
 
             # Read JSON with retry
@@ -1500,9 +1535,13 @@ def validate_au_firewalls(h, h_entry, horses_dict, all_horses, json_file):
     core_logic = h_entry.get('core_logic', '')
     locked_nonce = h_entry.get('_validation_nonce', '')
 
+    for err in scan_json_for_dummy(h_entry, allow_pending_fill=False):
+        errors.append(f"WALL-DUMMY: {err}")
+
     # WALL-022: V4.2 matrix schema must be exactly 7 dimensions.
     errors.extend(validate_v42_matrix_schema_au(h_entry))
     errors.extend(validate_matrix_resource_checks_au(h_entry.get('matrix', {})))
+    errors.extend(validate_au_matrix_confidence(h_entry))
     
     # WALL-008: Nonce validation
     if not locked_nonce:
@@ -1813,6 +1852,8 @@ def main():
     parser = argparse.ArgumentParser(description="AU Wong Choi Racing Orchestrator (LangGraph)")
     parser.add_argument("url", help="Racenet Event URL or target directory path")
     parser.add_argument("--auto", action="store_true", help="Auto mode (preserved for compatibility)")
+    parser.add_argument("--autopilot", action="store_true",
+                        help="Enable LangGraph autopilot mode (alias for --auto)")
     args = parser.parse_args()
 
     try:
@@ -1849,7 +1890,7 @@ def main():
     sys.path.insert(0, os.path.abspath(_lg_scripts))
     from racing_graph_core import run_au_langgraph
 
-    run_au_langgraph(target_dir, url)
+    run_au_langgraph(target_dir, url, autopilot=args.auto or args.autopilot)
 
 
 if __name__ == "__main__":

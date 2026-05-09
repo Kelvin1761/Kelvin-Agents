@@ -63,11 +63,16 @@ def parse_horse_header(block):
     m = re.search(r'\[#(\d+)\]\s*(.+?)(?:\n|$)', block)
     if m:
         result['num'] = int(m.group(1))
-        result['name'] = m.group(1).strip()
-        # The name might be on the same line or the next
         name_line = m.group(2).strip()
-        if name_line:
-            result['name'] = name_line.split('|')[0].split('—')[0].strip()
+        candidates = [name_line]
+        if not _usable_horse_name(name_line):
+            after_header = block[m.end():].splitlines()
+            candidates.extend([ln.strip() for ln in after_header[:4] if ln.strip()][:2])
+        for candidate in candidates:
+            name = candidate.split('|')[0].split('—')[0].strip()
+            if _usable_horse_name(name):
+                result['name'] = name
+                break
 
     # Try V2 format
     m3 = re.search(r'### 馬匹 #(\d+)\s+(.+?)\s+\(檔位\s*(\d+)\)\s*\|\s*騎師:\s*(.+?)\s*\|\s*練馬師:\s*(.+?)(?:\s*\||\n|$)', block)
@@ -107,6 +112,33 @@ def parse_horse_header(block):
                     result[field] = m.group(1).strip()
                 break
     return result
+
+
+def _usable_horse_name(name):
+    clean = str(name or '').strip()
+    if not clean or clean in {"?", "未知", "Unknown"} or clean.isdigit():
+        return False
+    if re.match(r'^(?:Jockey|Trainer|Weight|Barrier|Draw|Gate|騎師|練馬師|負磅|檔位)[：:]', clean, re.I):
+        return False
+    return True
+
+
+def validate_parsed_horse_data(data: dict, requested_horse_num: int) -> None:
+    errors = []
+    if not data:
+        errors.append("parse_horse_header returned empty data")
+    if data.get("num") != requested_horse_num:
+        errors.append(f"horse number mismatch: requested {requested_horse_num}, parsed {data.get('num')}")
+    if not _usable_horse_name(data.get("name")):
+        errors.append(f"invalid horse_name: {data.get('name')!r}")
+    if "barrier" in data:
+        try:
+            if int(data.get("barrier", 0) or 0) <= 0:
+                errors.append(f"invalid barrier: {data.get('barrier')!r}")
+        except (TypeError, ValueError):
+            errors.append(f"invalid barrier: {data.get('barrier')!r}")
+    if errors:
+        raise ValueError("; ".join(errors))
 
 
 def parse_recent_race(block):
@@ -346,6 +378,19 @@ def build_skeleton(data):
         f"→ [判讀: FILL]"
     )
 
+    def matrix_dim(score_hint, reasoning, rule_prefix):
+        return {
+            'score': score_hint,
+            'confidence': '[FILL: High/Medium/Low/Unknown]',
+            'trigger_rule': f'[FILL: {rule_prefix}_...]',
+            'trigger_evidence': [
+                '[FILL: concrete evidence 1]',
+                '[FILL: concrete evidence 2]',
+            ],
+            'disqualifiers': [],
+            'reasoning': reasoning,
+        }
+
     return {
         # ===== LOCKED DATA =====
         '_locked': True,
@@ -370,13 +415,13 @@ def build_skeleton(data):
 
         # V4.2: 7 dimensions — English canonical keys, ✅✅ only for core+semi
         'matrix': {
-            'stability':      {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_stability},
-            'sectional':      {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_speed_engine},
-            'race_shape':     {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_race_shape},
-            'jockey_trainer': {'score': '[FILL: ✅✅/✅/➖/❌/❌❌]', 'reasoning': r_jockey_trainer},
-            'class_weight':   {'score': '[FILL: ✅/➖/❌]', 'reasoning': r_class_weight},
-            'track':          {'score': '[FILL: ✅/➖/❌]', 'reasoning': r_track_surface},
-            'form_line':      {'score': '[FILL: ✅/➖/❌]', 'reasoning': r_formline},
+            'stability':      matrix_dim('[FILL: ✅✅/✅/➖/❌/❌❌]', r_stability, 'STAB'),
+            'sectional':      matrix_dim('[FILL: ✅✅/✅/➖/❌/❌❌]', r_speed_engine, 'SEC'),
+            'race_shape':     matrix_dim('[FILL: ✅✅/✅/➖/❌/❌❌]', r_race_shape, 'SHAPE'),
+            'jockey_trainer': matrix_dim('[FILL: ✅✅/✅/➖/❌/❌❌]', r_jockey_trainer, 'JT'),
+            'class_weight':   matrix_dim('[FILL: ✅/➖/❌]', r_class_weight, 'CW'),
+            'track':          matrix_dim('[FILL: ✅/➖/❌]', r_track_surface, 'TRACK'),
+            'form_line':      matrix_dim('[FILL: ✅/➖/❌]', r_formline, 'FL'),
         },
 
         'base_rating': '[AUTO]',
@@ -506,10 +551,16 @@ def main():
 
     block = extract_horse_block(facts_content, args.horse_num)
     if not block:
-        print(f'❌ Cannot find horse #{args.horse_num} in Facts')
+        print(f'❌ Cannot find horse #{args.horse_num} in Facts', file=sys.stderr)
         sys.exit(1)
 
     header = parse_horse_header(block)
+    try:
+        validate_parsed_horse_data(header, args.horse_num)
+    except ValueError as exc:
+        print(f'❌ Horse #{args.horse_num} header validation failed: {exc}', file=sys.stderr)
+        sys.exit(1)
+
     recent = parse_recent_race(block)
     trends = parse_trends(block)
     career = parse_career_info(block)

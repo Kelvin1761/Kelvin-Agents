@@ -24,11 +24,24 @@ from racing_graph_nodes import (
     node_compile_analysis, node_run_monte_carlo, node_final_qa,
     node_advance_race, node_generate_reports,
 )
+from racing_session_manager import (
+    load_session_state,
+    persist_graph_state,
+    print_session_dashboard,
+)
 
 
 # ═══════════════════════════════════════════════════════════════
 # ROUTING FUNCTIONS (replace the giant if/elif chain)
 # ═══════════════════════════════════════════════════════════════
+
+def _batch_qa_interval() -> int:
+    raw = os.environ.get("RACING_BATCH_QA_INTERVAL", "3").strip()
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        return 3
+
 
 def route_after_raw_check(state: MeetingState) -> Literal["check_intel", "__end__"]:
     if state.get("raw_data_ready"):
@@ -48,7 +61,18 @@ def route_after_facts(state: MeetingState) -> Literal["extract_trackwork", "__en
     return "__end__"
 
 
-def route_after_trackwork(state: MeetingState) -> Literal["setup_race"]:
+def route_after_trackwork(state: MeetingState) -> Literal["setup_race", "__end__"]:
+    domain = state.get("domain", "au")
+    required = bool(state.get("trackwork_required", domain == "hkjc"))
+    allow_missing = bool(state.get("allow_missing_trackwork", False))
+    ready = bool(state.get("trackwork_ready", False))
+
+    if domain != "hkjc":
+        return "setup_race"
+    if ready:
+        return "setup_race"
+    if required and not allow_missing:
+        return "__end__"
     return "setup_race"
 
 
@@ -61,6 +85,15 @@ def route_after_setup(state: MeetingState) -> Literal["gen_workcard", "global_qa
     if pending:
         return "gen_workcard"
     return "global_qa"  # All horses already done
+
+
+def route_after_workcard(state: MeetingState) -> Literal["watch_validate", "__end__"]:
+    """After WorkCard/agent dispatch, stop cleanly before file-watch if requested."""
+    if state.get("should_stop"):
+        return "__end__"
+    if state.get("waiting_for_agent") or state.get("current_horse_result") == "waiting":
+        return "__end__"
+    return "watch_validate"
 
 
 def route_after_watch(state: MeetingState) -> Literal["batch_qa", "gen_workcard", "global_qa", "__end__"]:
@@ -79,8 +112,9 @@ def route_after_watch(state: MeetingState) -> Literal["batch_qa", "gen_workcard"
     race_state = races.get(str(r), {})
     pending = race_state.get("horses_pending", [])
 
-    # Batch QA every 3 horses
-    if completed > 0 and completed % 3 == 0:
+    # Batch QA every N horses; set RACING_BATCH_QA_INTERVAL=0 to skip batch QA.
+    batch_interval = _batch_qa_interval()
+    if batch_interval and completed > 0 and completed % batch_interval == 0:
         return "batch_qa"
 
     if pending:
@@ -159,8 +193,8 @@ def build_racing_graph(checkpoint_db=None):
     builder.add_conditional_edges("extract_trackwork", route_after_trackwork)
     builder.add_conditional_edges("setup_race", route_after_setup)
 
-    # workcard → watch
-    builder.add_edge("gen_workcard", "watch_validate")
+    # workcard → watch / END
+    builder.add_conditional_edges("gen_workcard", route_after_workcard)
 
     # watch → batch_qa / gen_workcard / global_qa / END
     builder.add_conditional_edges("watch_validate", route_after_watch)
@@ -209,7 +243,13 @@ build_au_racing_graph = build_racing_graph
 # ENTRY POINT — for standalone testing
 # ═══════════════════════════════════════════════════════════════
 
-def run_au_langgraph(target_dir, url=None, checkpoint_db=None, autopilot=False):
+def run_au_langgraph(
+    target_dir,
+    url=None,
+    checkpoint_db=None,
+    autopilot=False,
+    allow_missing_trackwork=True,
+):
     """Run the AU Racing pipeline using LangGraph.
     
     This is the LangGraph equivalent of au_orchestrator.py's main().
@@ -233,7 +273,9 @@ def run_au_langgraph(target_dir, url=None, checkpoint_db=None, autopilot=False):
     print("=" * 60)
     print_context_injection_au()
     print(f"✅ Target: {dir_name}")
-    print(f"✅ Races: {total_races}\n")
+    print(f"✅ Races: {total_races}")
+    print(f"🤖 Autopilot: {'ON' if autopilot else 'OFF'}")
+    print("🏇 Trackwork required: NO\n")
 
     # Auto-detect checkpoint DB if not provided
     if not checkpoint_db:
@@ -254,7 +296,9 @@ def run_au_langgraph(target_dir, url=None, checkpoint_db=None, autopilot=False):
         "intelligence_ready": False,
         "facts_ready": False,
         "trackwork_ready": False,
-        "trackwork_status": "",
+        "trackwork_status": "not_required",
+        "trackwork_required": False,
+        "allow_missing_trackwork": True,
         "races": {},
         "current_race": 1,
         "current_horse": None,
@@ -264,7 +308,7 @@ def run_au_langgraph(target_dir, url=None, checkpoint_db=None, autopilot=False):
         "should_stop": False,
         "stop_reason": "",
         "domain": "au",
-        "autopilot": autopilot,
+        "autopilot": bool(autopilot),
         "waiting_for_agent": False,
         "log": [],
     }
@@ -277,7 +321,18 @@ def run_au_langgraph(target_dir, url=None, checkpoint_db=None, autopilot=False):
         config["configurable"] = {"thread_id": thread_id}
         print(f"🔄 Thread: {thread_id} (checkpoint-enabled)")
 
+    existing_session = load_session_state(target_dir)
+    if existing_session:
+        print("📂 Existing session state detected")
+        print_session_dashboard(existing_session)
+
     final_state = app.invoke(initial_state, config=config)
+
+    try:
+        session_snapshot = persist_graph_state(target_dir, final_state)
+        print_session_dashboard(session_snapshot)
+    except Exception as exc:
+        print(f"⚠️ Session persist failed: {exc}")
 
     # Summary
     print("\n" + "=" * 60)
@@ -294,7 +349,13 @@ def run_au_langgraph(target_dir, url=None, checkpoint_db=None, autopilot=False):
     return final_state
 
 
-def run_hkjc_langgraph(target_dir, url=None, checkpoint_db=None, autopilot=False):
+def run_hkjc_langgraph(
+    target_dir,
+    url=None,
+    checkpoint_db=None,
+    autopilot=False,
+    allow_missing_trackwork=False,
+):
     """Run the HKJC Racing pipeline using LangGraph.
     
     This is the LangGraph equivalent of hkjc_orchestrator.py's main().
@@ -318,7 +379,10 @@ def run_hkjc_langgraph(target_dir, url=None, checkpoint_db=None, autopilot=False
     print("=" * 60)
     print_context_injection()
     print(f"✅ Target: {dir_name}")
-    print(f"✅ Races: {total_races}\n")
+    print(f"✅ Races: {total_races}")
+    print(f"🤖 Autopilot: {'ON' if autopilot else 'OFF'}")
+    print("🏇 Trackwork required: YES")
+    print(f"🏇 Allow missing trackwork: {'YES' if allow_missing_trackwork else 'NO'}\n")
 
     # Auto-detect checkpoint DB
     if not checkpoint_db:
@@ -339,6 +403,8 @@ def run_hkjc_langgraph(target_dir, url=None, checkpoint_db=None, autopilot=False
         "facts_ready": False,
         "trackwork_ready": False,
         "trackwork_status": "",
+        "trackwork_required": True,
+        "allow_missing_trackwork": bool(allow_missing_trackwork),
         "races": {},
         "current_race": 1,
         "current_horse": None,
@@ -348,7 +414,7 @@ def run_hkjc_langgraph(target_dir, url=None, checkpoint_db=None, autopilot=False
         "should_stop": False,
         "stop_reason": "",
         "domain": "hkjc",  # HKJC domain
-        "autopilot": autopilot,
+        "autopilot": bool(autopilot),
         "waiting_for_agent": False,
         "log": [],
     }
@@ -360,7 +426,18 @@ def run_hkjc_langgraph(target_dir, url=None, checkpoint_db=None, autopilot=False
         config["configurable"] = {"thread_id": thread_id}
         print(f"🔄 Thread: {thread_id} (checkpoint-enabled)")
 
+    existing_session = load_session_state(target_dir)
+    if existing_session:
+        print("📂 Existing session state detected")
+        print_session_dashboard(existing_session)
+
     final_state = app.invoke(initial_state, config=config)
+
+    try:
+        session_snapshot = persist_graph_state(target_dir, final_state)
+        print_session_dashboard(session_snapshot)
+    except Exception as exc:
+        print(f"⚠️ Session persist failed: {exc}")
 
     print("\n" + "=" * 60)
     print("📊 LangGraph Pipeline Summary")
@@ -385,13 +462,34 @@ if __name__ == "__main__":
                         help="Racing domain: au (default) or hkjc")
     parser.add_argument("--autopilot", action="store_true",
                         help="Enable autopilot mode (requires RACING_AGENT_CMD env var)")
+    parser.add_argument("--allow-missing-trackwork", action="store_true",
+                        help="Allow HKJC analysis to continue even if trackwork extraction is missing or failed")
+    parser.add_argument("--status", action="store_true",
+                        help="Print session status and exit")
     args = parser.parse_args()
 
     if not os.path.isdir(args.target_dir):
         print(f"❌ Not a directory: {args.target_dir}")
         sys.exit(1)
 
+    if args.status:
+        session = load_session_state(args.target_dir)
+        if not session:
+            print("No .meeting_state.json found.")
+            sys.exit(0)
+        print_session_dashboard(session)
+        sys.exit(0)
+
     if args.domain == "hkjc":
-        run_hkjc_langgraph(args.target_dir, args.url, autopilot=args.autopilot)
+        run_hkjc_langgraph(
+            args.target_dir,
+            args.url,
+            autopilot=args.autopilot,
+            allow_missing_trackwork=args.allow_missing_trackwork,
+        )
     else:
-        run_au_langgraph(args.target_dir, args.url, autopilot=args.autopilot)
+        run_au_langgraph(
+            args.target_dir,
+            args.url,
+            autopilot=args.autopilot,
+        )

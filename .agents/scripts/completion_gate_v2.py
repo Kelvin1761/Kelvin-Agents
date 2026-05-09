@@ -3,6 +3,7 @@ os.environ.setdefault('PYTHONUTF8', '1')
 import sys
 import argparse
 import re
+import json
 from pathlib import Path
 from itertools import combinations
 from difflib import SequenceMatcher
@@ -11,6 +12,48 @@ from difflib import SequenceMatcher
 _SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _SCRIPTS_DIR)
 from racing_content_guard import scan_text_for_dummy, quarantine_file
+from racing_content_guard import scan_json_for_dummy
+
+
+def check_logic_json_gate(analysis_path: Path, domain: str) -> list[str]:
+    errors = []
+    race_match = re.search(r'Race[_ ](\d+)', analysis_path.name)
+    if not race_match or domain not in {"au", "hkjc"}:
+        return errors
+
+    race_num = race_match.group(1)
+    logic_path = analysis_path.parent / f"Race_{race_num}_Logic.json"
+    if not logic_path.exists():
+        errors.append(f"🚨 LOGIC-GATE: Missing {logic_path.name}")
+        return errors
+
+    try:
+        with open(logic_path, "r", encoding="utf-8") as f:
+            logic_data = json.load(f)
+    except Exception as exc:
+        errors.append(f"🚨 LOGIC-GATE: Could not read {logic_path.name}: {exc}")
+        return errors
+
+    for de in scan_json_for_dummy(logic_data, allow_pending_fill=False, context=logic_path.name):
+        errors.append(f"🚨 LOGIC-DUMMY: {de}")
+
+    horses = logic_data.get("horses", {})
+    try:
+        if domain == "hkjc":
+            from validate_hkjc_matrix_confidence import validate_hkjc_matrix_confidence
+            for h_num, h_obj in horses.items():
+                for err in validate_hkjc_matrix_confidence(h_obj):
+                    errors.append(f"🚨 HKJC-MATRIX: Horse {h_num}: {err}")
+        else:
+            from validate_au_matrix_confidence import validate_au_matrix_confidence
+            iterable = horses.items() if isinstance(horses, dict) else [(str(h.get("id", i + 1)), h) for i, h in enumerate(horses)]
+            for h_num, h_obj in iterable:
+                for err in validate_au_matrix_confidence(h_obj):
+                    errors.append(f"🚨 AU-MATRIX: Horse {h_num}: {err}")
+    except Exception as exc:
+        errors.append(f"🚨 LOGIC-GATE: Matrix validator failed: {exc}")
+
+    return errors
 
 def check_au_hkjc_format(text: str, domain: str) -> list[str]:
     errors = []
@@ -99,6 +142,14 @@ def check_au_hkjc_format(text: str, domain: str) -> list[str]:
     # 14.2B 微調 existence check (Step 11 addition)
     if '14.2B' not in text and '微調' not in text:
         errors.append("⚠️ Missing 14.2B 微調 section — fine-tune field must be present in Analysis.md")
+
+    if domain in {'au', 'hkjc'}:
+        if 'Confidence:' not in text:
+            errors.append("🚨 MATRIX-CONFIDENCE: Analysis.md must contain 'Confidence:' for matrix dimensions")
+        if 'Rule:' not in text:
+            errors.append("🚨 MATRIX-RULE: Analysis.md must contain 'Rule:' for matrix dimensions")
+        if 'Trigger evidence:' not in text:
+            errors.append("🚨 MATRIX-EVIDENCE: Analysis.md must contain 'Trigger evidence:' for matrix dimensions")
 
     # Sectional existence check (required for forensic quality)
     if domain == 'hkjc':
@@ -437,6 +488,7 @@ def main():
     if args.domain in ['au', 'hkjc']:
         errors.extend(check_au_hkjc_format(text, args.domain))
         errors.extend(check_au_hkjc_words(text, args.domain))
+        errors.extend(check_logic_json_gate(path, args.domain))
 
         
         # P39: Execute verify_form_accuracy.py — AUTO-DETECT Racecard + Formguide

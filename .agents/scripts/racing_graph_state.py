@@ -49,6 +49,8 @@ class MeetingState(TypedDict, total=False):
     facts_ready: bool
     trackwork_ready: bool
     trackwork_status: str
+    trackwork_required: bool
+    allow_missing_trackwork: bool
     
     # ── Per-race states ──
     races: dict[str, RaceState]
@@ -56,7 +58,7 @@ class MeetingState(TypedDict, total=False):
     
     # ── Current horse analysis ──
     current_horse: Optional[int]
-    current_horse_result: Optional[str]  # 'pass' / 'fail' / 'timeout'
+    current_horse_result: Optional[str]  # 'pass' / 'fail' / 'timeout' / 'waiting'
     completed_in_session: int
     
     # ── Global flags ──

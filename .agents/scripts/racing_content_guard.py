@@ -1,154 +1,207 @@
+#!/usr/bin/env python3
 """
-racing_content_guard.py — Production-grade dummy/placeholder prevention layer.
-
-Provides scan, assert, and quarantine functions to ensure no synthetic,
-placeholder, or auto-generated content survives into final pipeline outputs.
-
-Allowed:
-  - [FILL] in pending Race_X_Logic.json before a horse is completed
-  - [FILL] in WorkCard instructions
-
-Not allowed in final outputs:
-  - [FILL] in completed horse entry
-  - [FILL] in Analysis.md
-  - [FILL] in verdict
-  - final_rating-only horse (matrix must be present)
-  - matrix inferred from final_rating
-  - generic fluff phrases
+Racing Content Guard
+====================
+Python-first dummy / placeholder prevention for racing outputs.
 """
+from __future__ import annotations
+
+import json
 import os
-import shutil
-from datetime import datetime
+import re
+import time
 from pathlib import Path
+from typing import Any
 
-# ── Markers that indicate placeholder / synthetic content ──
+
 DUMMY_MARKERS = [
-    "[FILL]", "[AUTO]", "TODO", "placeholder", "dummy", "stub",
-    "待補", "暫無資料",
-    "自動生成", "批量填充", "auto_fill", "auto_expert", "自動法醫分析",
-    "自動匹配系統法則", "分析中", "待分析",
+    "[FILL]",
+    "[AUTO]",
+    "TODO",
+    "placeholder",
+    "dummy",
+    "stub",
+    "待補",
+    "暫無資料",
+    "自動生成",
+    "批量填充",
+    "auto_fill",
+    "auto_expert",
+    "自動法醫分析",
+    "自動匹配系統法則",
+    "分析中",
+    "待分析",
 ]
 
-# ── Phrases that indicate generic / empty LLM generation ──
 FLUFF_PHRASES = [
-    "具備一定競爭力", "值得留意", "有望爭勝", "不容忽視",
-    "實力不俗", "表現平穩", "近期走勢", "狀態有待觀察", "可爭一席",
-    "尚算理想", "仍有機會",
+    "具備一定競爭力",
+    "值得留意",
+    "有望爭勝",
+    "不容忽視",
+    "實力不俗",
+    "表現平穩",
+    "近期走勢",
+    "狀態有待觀察",
+    "可爭一席",
+    "尚算理想",
+    "仍有機會",
+    "good profile",
+    "looks suitable",
+    "positive setup",
+    "strong chance",
 ]
+
+AUTO_ALLOWED_SUFFIXES = {
+    "base_rating",
+    "final_rating",
+    "computed_rating",
+    "rating",
+    "rating_score",
+}
+
+
+class RacingContentError(ValueError):
+    """Raised when racing content contains dummy or placeholder material."""
+
+
+def _normalise_marker(marker: str) -> str:
+    return marker.lower() if marker.isascii() else marker
+
+
+def _contains_marker(text: str, marker: str) -> bool:
+    if marker == "[FILL]":
+        return bool(re.search(r"\[FILL(?:[:\]\s])", text, re.IGNORECASE))
+    if marker == "[AUTO]":
+        return bool(re.search(r"\[AUTO(?:[:\]\s])", text, re.IGNORECASE))
+    if marker.isascii():
+        return marker.lower() in text.lower()
+    return marker in text
 
 
 def scan_text_for_dummy(content: str) -> list[str]:
-    """Scan a raw string for dummy markers or fluff phrases.
-    Returns a list of human-readable error strings (empty = clean).
-    """
-    errors = []
-    if not content:
-        return errors
-
+    """Return dummy markers / fluff phrases found in plain text."""
+    text = str(content or "")
+    issues: list[str] = []
     for marker in DUMMY_MARKERS:
-        if marker in content:
-            errors.append(f"Found dummy marker: {marker}")
+        if _contains_marker(text, marker):
+            issues.append(f"text contains {marker}")
+    for phrase in FLUFF_PHRASES:
+        if _contains_marker(text, phrase):
+            issues.append(f"text contains fluff phrase {phrase}")
+    return issues
 
-    for fluff in FLUFF_PHRASES:
-        if fluff in content:
-            errors.append(f"Found generic fluff phrase: {fluff}")
 
-    return errors
+def _path_join(parent: str, key: Any) -> str:
+    key_s = str(key)
+    return key_s if not parent else f"{parent}.{key_s}"
+
+
+def _is_auto_allowed(path: str) -> bool:
+    leaf = path.rsplit(".", 1)[-1]
+    return leaf in AUTO_ALLOWED_SUFFIXES
+
+
+def _scan_scalar(value: Any, path: str, allow_pending_fill: bool) -> list[str]:
+    if not isinstance(value, str):
+        return []
+    issues: list[str] = []
+    for marker in DUMMY_MARKERS:
+        if marker == "[FILL]" and allow_pending_fill:
+            continue
+        if marker == "[AUTO]" and _is_auto_allowed(path):
+            continue
+        if _contains_marker(value, marker):
+            issues.append(f"{path} contains {marker}")
+    for phrase in FLUFF_PHRASES:
+        if _contains_marker(value, phrase):
+            issues.append(f"{path} contains fluff phrase {phrase}")
+    return issues
 
 
 def scan_json_for_dummy(
-    data,
+    data: dict,
     allow_pending_fill: bool = False,
-    path: str = "",
     context: str = "",
+    path: str | None = None,
 ) -> list[str]:
-    """Recursively scan a JSON structure for dummy content.
+    """Recursively scan JSON-like data and return precise field paths."""
+    root = path if path is not None else context
+    issues: list[str] = []
 
-    Args:
-        data: The JSON-like object to scan (dict, list, str, etc.).
-        allow_pending_fill: If True, [FILL] markers are permitted
-            (e.g. in pending skeletons / WorkCards).
-        path: Internal — tracks the current field path for error messages.
-        context: Optional top-level context label (used in first call).
+    def walk(value: Any, current_path: str) -> None:
+        if isinstance(value, dict):
+            for key, child in value.items():
+                walk(child, _path_join(current_path, key))
+            return
+        if isinstance(value, list):
+            for idx, child in enumerate(value):
+                walk(child, _path_join(current_path, idx))
+            return
+        issues.extend(_scan_scalar(value, current_path or "<root>", allow_pending_fill))
 
-    Returns:
-        A list of error strings with precise object paths (empty = clean).
-    """
-    if context and not path:
-        path = context
-
-    errors = []
-
-    if isinstance(data, dict):
-        for k, v in data.items():
-            new_path = f"{path}.{k}" if path else str(k)
-            errors.extend(scan_json_for_dummy(v, allow_pending_fill, new_path))
-    elif isinstance(data, list):
-        for i, item in enumerate(data):
-            new_path = f"{path}[{i}]"
-            errors.extend(scan_json_for_dummy(item, allow_pending_fill, new_path))
-    elif isinstance(data, str):
-        for marker in DUMMY_MARKERS:
-            if marker == "[FILL]" and allow_pending_fill:
-                continue
-            if marker in data:
-                errors.append(f"Field '{path}' contains dummy marker: {marker}")
-
-        for fluff in FLUFF_PHRASES:
-            if fluff in data:
-                errors.append(f"Field '{path}' contains generic fluff phrase: {fluff}")
-
-    return errors
+    walk(data, root)
+    return issues
 
 
 def assert_no_dummy_text(content: str, context: str) -> None:
-    """Raise ValueError if text contains any dummy content."""
-    errors = scan_text_for_dummy(content)
-    if errors:
-        raise ValueError(
-            f"Dummy check failed for {context}:\n"
-            + "\n".join(f"- {e}" for e in errors)
+    issues = scan_text_for_dummy(content)
+    if issues:
+        raise RacingContentError(
+            f"Dummy content detected in {context}:\n"
+            + "\n".join(f"- {issue}" for issue in issues)
         )
 
 
 def assert_no_dummy_json(
-    data: dict, context: str, allow_pending_fill: bool = False
+    data: dict,
+    context: str,
+    allow_pending_fill: bool = False,
 ) -> None:
-    """Raise ValueError if JSON object contains any dummy content."""
-    errors = scan_json_for_dummy(data, allow_pending_fill)
-    if errors:
-        raise ValueError(
-            f"Dummy check failed for {context}:\n"
-            + "\n".join(f"- {e}" for e in errors)
+    issues = scan_json_for_dummy(
+        data,
+        allow_pending_fill=allow_pending_fill,
+        context=context,
+    )
+    if issues:
+        raise RacingContentError(
+            f"Dummy JSON detected in {context}:\n"
+            + "\n".join(f"- {issue}" for issue in issues)
         )
 
 
-def quarantine_file(filepath: str, reason: str) -> str:
-    """Move a bad file to .runtime/quarantine/ and create a .reason.txt.
+def _runtime_dir_for(path: Path) -> Path:
+    for parent in [path.parent, *path.parents]:
+        if parent.name == ".runtime":
+            return parent
+    return path.parent / ".runtime"
 
-    Uses atomic move where possible (shutil.move).
-    Returns the quarantine destination path, or '' if source missing.
-    """
-    if not os.path.exists(filepath):
-        return ""
 
-    src_path = Path(filepath)
-    base_dir = src_path.parent
-    quarantine_dir = base_dir / ".runtime" / "quarantine"
+def quarantine_file(path: str, reason: str) -> str:
+    """Move a bad output into .runtime/quarantine and write a reason file."""
+    src = Path(path)
+    if not src.exists():
+        raise FileNotFoundError(path)
+
+    quarantine_dir = _runtime_dir_for(src) / "quarantine"
     quarantine_dir.mkdir(parents=True, exist_ok=True)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    dest_name = f"{timestamp}_{src_path.name}"
-    dest_path = quarantine_dir / dest_name
+    stamp = time.strftime("%Y%m%d_%H%M%S")
+    dest = quarantine_dir / f"{src.name}.{stamp}.quarantined"
+    counter = 1
+    while dest.exists():
+        dest = quarantine_dir / f"{src.name}.{stamp}.{counter}.quarantined"
+        counter += 1
 
-    # Atomic move
-    shutil.move(str(src_path), str(dest_path))
+    os.replace(src, dest)
 
-    # Write reason file
-    reason_path = quarantine_dir / f"{timestamp}_{src_path.stem}_reason.txt"
-    with open(reason_path, "w", encoding="utf-8") as f:
-        f.write(f"File {src_path.name} quarantined at {timestamp}.\n")
-        f.write(f"Reason:\n{reason}\n")
-
-    print(f"🚨 [QUARANTINE] {src_path.name} moved to {dest_path}")
-    return str(dest_path)
+    reason_path = dest.with_suffix(dest.suffix + ".reason.txt")
+    tmp_reason = reason_path.with_suffix(reason_path.suffix + ".tmp")
+    payload = {
+        "source": str(src),
+        "quarantined_to": str(dest),
+        "reason": reason,
+        "timestamp": stamp,
+    }
+    tmp_reason.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp_reason, reason_path)
+    return str(dest)

@@ -190,6 +190,7 @@ def parse_racecard_horse_list(output_dir: Path, race_no: int) -> list[dict[str, 
         name_m = re.search(r"馬名:\s*(.+)", block)
         brand_m = re.search(r"烙號:\s*([A-Z]\d{3})", block)
         trainer_m = re.search(r"練馬師:\s*(.+)", block)
+        jockey_m = re.search(r"騎師:\s*(.+)", block)
         if not (no_m and name_m and brand_m):
             continue
         horseid = brand_to_horseid(brand_m.group(1))
@@ -200,6 +201,7 @@ def parse_racecard_horse_list(output_dir: Path, race_no: int) -> list[dict[str, 
             "horseid": horseid,
             "horse_name": clean_text(name_m.group(1)),
             "trainer": clean_text(trainer_m.group(1)) if trainer_m else "",
+            "jockey": clean_text(jockey_m.group(1)) if jockey_m else "",
             "source": "racecard",
         })
     return sorted(horses, key=lambda h: h["horse_no"])
@@ -359,6 +361,12 @@ def detect_rider(details: str) -> str:
     return ""
 
 
+def normalize_person_name(value: str) -> str:
+    """Normalize HKJC Chinese/English names for direct rider matching."""
+    value = clean_text(value)
+    return re.sub(r"[\s·・.\-']", "", value).lower()
+
+
 def classify_rider_role(rider: str, details: str, trainer: str = "") -> str:
     """Classify rider into: 助手 / 副練馬師 / 練馬師 / 騎師(named) / 未標明."""
     text = clean_text(f"{details} {rider}")
@@ -466,8 +474,13 @@ def make_digest(horse: dict[str, Any], entries: list[dict[str, Any]],
     trial_times = [t for e in entries if e["type"] == "trial" for t in e.get("times", [])]
     trend = classify_trend(gallop_times, active_days, blank_days)
     race_jockey_involved = False
-    if race_jockey:
-        race_jockey_involved = any(race_jockey in (e.get("rider") or e.get("details", "")) for e in entries)
+    normalized_race_jockey = normalize_person_name(race_jockey)
+    if normalized_race_jockey:
+        race_jockey_involved = any(
+            normalized_race_jockey in normalize_person_name(e.get("rider", ""))
+            or normalized_race_jockey in normalize_person_name(e.get("details", ""))
+            for e in entries
+        )
     gear_training = sorted({e["gear"] for e in entries if e.get("gear")})
     positive_flags: list[str] = []
     risk_flags: list[str] = []
@@ -605,12 +618,13 @@ def extract_one_horse(horse: dict[str, Any], meeting_date: dt.date | None,
                       window_days: int) -> dict[str, Any]:
     detail_html = fetch_url(trackworkresult_url(horse["horseid"]))
     entries = parse_trackwork_rows(detail_html, horse, meeting_date, window_days)
-    digest = make_digest(horse, entries, window_days)
+    digest = make_digest(horse, entries, window_days, horse.get("jockey", ""))
     return {
         "horse_no": horse["horse_no"],
         "horseid": horse["horseid"],
         "horse_name": horse.get("horse_name", ""),
         "trainer": horse.get("trainer", ""),
+        "jockey": horse.get("jockey", ""),
         "status": "ok" if entries else "missing",
         "mode": digest.get("career_category", "status_continuity"),
         "confidence": "中" if entries else "低",
@@ -651,7 +665,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
         named_roles = {k: v for k, v in roles.items() if k != "未標明"}
         role_text = "、".join(f"{k} {v}次" for k, v in named_roles.items()) if named_roles else "未標明"
         lines.extend([
-            f"### 馬號 {h.get('horse_no')} — {h.get('horse_name', '')} | 練馬師: {h.get('trainer', '')}",
+            f"### 馬號 {h.get('horse_no')} — {h.get('horse_name', '')} | 騎師: {h.get('jockey', '') or 'N/A'} | 練馬師: {h.get('trainer', '')}",
             f"- 狀態: {zh_status(h.get('status'))} | 分類: {zh_category(d.get('career_category'))} | 信心: {zh_confidence(h.get('confidence', 'low'))}",
             f"- 近{d.get('window_days', payload['window_days'])}日: 快操 {load.get('gallops', 0)}、試閘 {load.get('trials', 0)}、踱步 {load.get('trotting', 0)}、游水 {load.get('swimming', 0)}、水中步行機 {load.get('aqua_walker', 0)}、空白日 {load.get('blank_days', 0)}",
             f"- 趨勢: {zh_trend(d.get('workout_intensity_trend'))} | 體能維持={d.get('maintenance_score')} | 備戰程度={d.get('readiness_score')} | 復刻信號={d.get('pattern_replay_score')}",
@@ -722,6 +736,7 @@ def run(args: argparse.Namespace) -> int:
                     "horseid": horse["horseid"],
                     "horse_name": horse.get("horse_name", ""),
                     "trainer": horse.get("trainer", ""),
+                    "jockey": horse.get("jockey", ""),
                     "status": "failed",
                     "mode": "insufficient_data",
                     "confidence": "low",

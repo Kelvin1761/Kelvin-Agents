@@ -1,0 +1,256 @@
+from __future__ import annotations
+
+import json
+from datetime import date
+from typing import Any
+
+from tennis_wc.database.db import get_connection
+from tennis_wc.features.big_match import calculate_big_match_stats
+from tennis_wc.features.bo_format import calculate_bo_format_stats, detect_match_format
+from tennis_wc.features.common import datapoint, provenance, utc_now
+from tennis_wc.features.data_quality import validate_data_freshness
+from tennis_wc.features.opponent_elo_buckets import calculate_player_elo_bucket_stats
+from tennis_wc.features.opponent_rank_buckets import calculate_player_rank_bucket_stats
+from tennis_wc.features.round_performance import calculate_round_stats, normalise_round
+from tennis_wc.features.surface_elo import get_surface_elo
+from tennis_wc.features.tournament_level import calculate_tournament_level_stats
+
+
+FEATURE_SET_VERSION = "stage3.v1"
+
+
+def _raw_meta(raw_response_id: int | None) -> dict:
+    if raw_response_id is None:
+        return {
+            "source_provider": "missing",
+            "source_endpoint": "missing",
+            "source_timestamp": utc_now(),
+            "raw_response_id": None,
+            "warnings": ["missing_raw_response_id"],
+        }
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT provider_name, endpoint, fetched_at FROM raw_api_responses WHERE id = ?",
+            (raw_response_id,),
+        ).fetchone()
+    if not row:
+        return {
+            "source_provider": "missing",
+            "source_endpoint": "missing",
+            "source_timestamp": utc_now(),
+            "raw_response_id": raw_response_id,
+            "warnings": ["missing_raw_response"],
+        }
+    return provenance(row["provider_name"], row["endpoint"], row["fetched_at"], raw_response_id)
+
+
+def _latest_history_prov(player_id: int) -> dict:
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT r.provider_name, r.endpoint, r.fetched_at, r.id
+            FROM player_match_history h
+            JOIN raw_api_responses r ON r.id = h.raw_response_id
+            WHERE h.player_id = ?
+            ORDER BY r.fetched_at DESC
+            LIMIT 1
+            """,
+            (player_id,),
+        ).fetchone()
+    if not row:
+        return provenance("missing", "player_match_history", utc_now(), None, ["missing_player_history"])
+    return provenance(row["provider_name"], row["endpoint"], row["fetched_at"], row["id"])
+
+
+def _wrap_numeric_tree(value: Any, prov: dict) -> Any:
+    if isinstance(value, bool) or value is None:
+        return value
+    if isinstance(value, (int, float)):
+        return datapoint(value, prov)
+    if isinstance(value, dict):
+        warnings = value.get("warnings", [])
+        wrapped = {}
+        for key, val in value.items():
+            if key == "warnings":
+                continue
+            next_prov = prov
+            if warnings and key in {"matches", "sample_size"}:
+                next_prov = prov | {"warnings": sorted(set([*prov.get("warnings", []), *warnings]))}
+            wrapped[key] = _wrap_numeric_tree(val, next_prov)
+        return wrapped
+    if isinstance(value, list):
+        return [_wrap_numeric_tree(item, prov) for item in value]
+    return value
+
+
+def _player_payload(player_id: int, match_context: dict, as_of_date: date) -> dict:
+    with get_connection() as conn:
+        player = conn.execute("SELECT * FROM players WHERE id = ?", (player_id,)).fetchone()
+    if player is None:
+        raise ValueError(f"Player not found: {player_id}")
+
+    player_prov = _raw_meta(player["raw_response_id"])
+    history_prov = _latest_history_prov(player_id)
+    surface = match_context["surface"]["value"]
+    level = match_context["level"]["value"]
+    round_name = match_context["round"]["value"]
+    match_format = match_context["format"]["value"]
+
+    rank_buckets = calculate_player_rank_bucket_stats(player_id, surface, as_of_date, "LAST_52_WEEKS")
+    elo_buckets = calculate_player_elo_bucket_stats(player_id, surface, as_of_date, "LAST_52_WEEKS")
+    tournament_level = calculate_tournament_level_stats(player_id, level, surface, as_of_date, "LAST_52_WEEKS")
+    round_stats = calculate_round_stats(player_id, round_name, level, surface, as_of_date, "LAST_52_WEEKS")
+    big_match = calculate_big_match_stats(player_id, surface, as_of_date, "LAST_52_WEEKS")
+    bo_format = calculate_bo_format_stats(player_id, match_format, surface, as_of_date, "LAST_52_WEEKS")
+
+    overall_elo = player["overall_elo"]
+    surface_elo = get_surface_elo(player["surface_elo_json"], surface, overall_elo)
+    return {
+        "id": datapoint(player_id, player_prov),
+        "name": player["name"],
+        "current_rank": datapoint(player["current_rank"], player_prov),
+        "overall_elo": datapoint(overall_elo, player_prov),
+        "surface_elo": datapoint(surface_elo, player_prov),
+        "serve_return": {
+            "note": "Stage 3 placeholder until serve-return provider mapping is confirmed.",
+            "provenance": history_prov,
+        },
+        "recent_form": {
+            "note": "Stage 3 placeholder until form model is implemented.",
+            "provenance": history_prov,
+        },
+        "opponent_rank_buckets": _wrap_numeric_tree(rank_buckets, history_prov),
+        "opponent_elo_buckets": _wrap_numeric_tree(elo_buckets, history_prov),
+        "tournament_level_stats": _wrap_numeric_tree(tournament_level, history_prov),
+        "round_stats": _wrap_numeric_tree(round_stats, history_prov),
+        "big_match_stats": _wrap_numeric_tree(big_match, history_prov),
+        "bo_format_stats": _wrap_numeric_tree(bo_format, history_prov),
+        "fatigue": {"status": "UNKNOWN", "provenance": history_prov},
+        "injury": {"risk": "UNKNOWN", "provenance": history_prov},
+    }
+
+
+def _match_context(match: dict, tournament: dict, tournament_level: dict) -> dict:
+    match_prov = _raw_meta(match["raw_response_id"])
+    tournament_prov = _raw_meta(tournament_level["raw_response_id"])
+    base = {
+        "tournament": datapoint(tournament["name"], tournament_prov),
+        "tour": datapoint(match["tour"], match_prov),
+        "level": datapoint(tournament_level["level"], tournament_prov),
+        "round": datapoint(normalise_round(match["round"]), match_prov),
+        "surface": datapoint(tournament_level["surface"], tournament_prov),
+        "indoor_outdoor": datapoint(tournament_level["indoor_outdoor"], tournament_prov),
+        "match_date": datapoint(match["match_date"], match_prov),
+    }
+    base["format"] = datapoint(detect_match_format({"tour": match["tour"], "level": tournament_level["level"]}), tournament_prov)
+    return base
+
+
+def _market(match_id: int) -> dict:
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT *
+            FROM odds_snapshots
+            WHERE match_id = ?
+            ORDER BY fetched_at DESC
+            LIMIT 1
+            """,
+            (match_id,),
+        ).fetchone()
+    if not row:
+        return {}
+    prov = _raw_meta(row["raw_response_id"])
+    return {
+        "bookmaker": datapoint(row["bookmaker"], prov),
+        "market": datapoint(row["market"], prov),
+        "player_a_odds": datapoint(row["player_a_odds"], prov),
+        "player_b_odds": datapoint(row["player_b_odds"], prov),
+        "player_a_open_odds": datapoint(row["player_a_open_odds"], prov),
+        "player_b_open_odds": datapoint(row["player_b_open_odds"], prov),
+        "timestamp": datapoint(row["fetched_at"], prov),
+    }
+
+
+def build_match_feature_snapshot(match_id: int) -> dict:
+    """
+    Build complete feature set for both players.
+    Store feature snapshots in database and return structured JSON.
+    """
+    with get_connection() as conn:
+        match = conn.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
+        if not match:
+            raise ValueError(f"Match not found: {match_id}")
+        tournament = conn.execute("SELECT * FROM tournaments WHERE id = ?", (match["tournament_id"],)).fetchone()
+        tournament_level = conn.execute(
+            "SELECT * FROM tournament_levels WHERE tournament_id = ? AND tour = ?",
+            (match["tournament_id"], match["tour"]),
+        ).fetchone()
+    if tournament is None or tournament_level is None:
+        raise ValueError(f"Tournament metadata missing for match {match_id}")
+
+    match_dict = dict(match)
+    context = _match_context(match_dict, dict(tournament), dict(tournament_level))
+    as_of_date = date.fromisoformat(match["match_date"])
+    snapshot = {
+        "match_id": datapoint(match_id, _raw_meta(match["raw_response_id"])),
+        "feature_set_version": FEATURE_SET_VERSION,
+        "match_context": context,
+        "player_a": _player_payload(match["player_a_id"], context, as_of_date),
+        "player_b": _player_payload(match["player_b_id"], context, as_of_date),
+        "market": _market(match_id),
+        "entity_mapping_complete": True,
+    }
+    quality = validate_data_freshness(snapshot)
+    snapshot["data_quality"] = quality
+    snapshot["provenance"] = {
+        "match_raw_response_id": match["raw_response_id"],
+        "tournament_raw_response_id": tournament_level["raw_response_id"],
+    }
+
+    now = utc_now()
+    with get_connection() as conn:
+        for player_key in ("player_a", "player_b"):
+            player_payload = snapshot[player_key]
+            player_id = player_payload["id"]["value"]
+            conn.execute(
+                """
+                INSERT INTO feature_snapshots (
+                    match_id, player_id, feature_set_version, features_json,
+                    provenance_json, data_quality_score, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    match_id,
+                    player_id,
+                    FEATURE_SET_VERSION,
+                    json.dumps(player_payload, sort_keys=True),
+                    json.dumps(snapshot["provenance"], sort_keys=True),
+                    quality["score"],
+                    now,
+                ),
+            )
+    return snapshot
+
+
+def build_feature_snapshots_for_date(match_date: str) -> list[dict]:
+    with get_connection() as conn:
+        rows = conn.execute("SELECT id FROM matches WHERE match_date = ?", (match_date,)).fetchall()
+    return [build_match_feature_snapshot(int(row["id"])) for row in rows]
+
+
+def build_sportsbet_feature_snapshots_for_date(match_date: str) -> list[dict]:
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT DISTINCT m.id
+            FROM matches m
+            JOIN odds_snapshots o ON o.match_id = m.id
+            WHERE m.match_date = ?
+              AND o.source_provider = 'sportsbet'
+            ORDER BY m.id
+            """,
+            (match_date,),
+        ).fetchall()
+    return [build_match_feature_snapshot(int(row["id"])) for row in rows]

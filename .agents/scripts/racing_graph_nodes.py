@@ -24,6 +24,9 @@ sys.path.insert(0, os.path.abspath(_AU_SCRIPTS))
 sys.path.insert(0, os.path.abspath(_HKJC_SCRIPTS))
 sys.path.insert(0, os.path.abspath(_SCRIPT_DIR))
 
+from racing_agent_runner import invoke_agent, format_agent_result
+from racing_session_manager import persist_graph_state
+
 # Domain-specific function registry
 _DOMAIN_FN = {}
 
@@ -53,7 +56,7 @@ def _get_domain_fns(domain):
             "skeleton_script": os.path.join(os.path.abspath(_HKJC_SCRIPTS), "create_hkjc_logic_skeleton.py"),
             "trackwork_script": os.path.join(os.path.abspath(_SCRIPT_DIR), "..", "skills", "hkjc_racing", "hkjc_race_extractor", "scripts", "extract_trackwork.py"),
             "compile_script": os.path.join(os.path.abspath(_HKJC_SCRIPTS), "compile_analysis_template_hkjc.py"),
-            "reports_script": os.path.join(os.path.abspath(_HKJC_SCRIPTS), "generate_reports.py"),
+            "reports_script": os.path.join(os.path.abspath(_HKJC_SCRIPTS), "generate_hkjc_reports.py"),
             "context_injection": ho.print_context_injection,
             "discover_races": ho.discover_total_races,
         }
@@ -92,6 +95,32 @@ def _log(msg):
     return msg
 
 
+def _watch_poll_interval() -> float:
+    raw = os.environ.get("RACING_WATCH_POLL_INTERVAL", "0.5").strip()
+    try:
+        return max(0.1, float(raw))
+    except ValueError:
+        return 0.5
+
+
+def _persist_node_state(state, updates):
+    """Persist best-effort node progress without changing LangGraph updates."""
+    target_dir = state.get("target_dir") if isinstance(state, dict) else None
+    if not target_dir:
+        return updates
+
+    merged = dict(state)
+    merged.update(updates)
+    if isinstance(state.get("log"), list) and isinstance(updates.get("log"), list):
+        merged["log"] = state.get("log", []) + updates.get("log", [])
+
+    try:
+        persist_graph_state(target_dir, merged)
+    except Exception as exc:
+        _log(f"⚠️ Session persist failed: {exc}")
+    return updates
+
+
 def _speed_map_ready(sm: dict, domain: str):
     """Check speed map readiness with domain-aware pace key handling.
     Returns (ready: bool, issues: list[str]).
@@ -109,6 +138,33 @@ def _speed_map_ready(sm: dict, domain: str):
     return len(issues) == 0, issues
 
 
+def _find_trackwork_files(target_dir, total_races):
+    """Find per-race HKJC trackwork files without Race 1 / Race 10 collisions."""
+    try:
+        files = os.listdir(target_dir)
+    except OSError:
+        return {}, list(range(1, int(total_races or 0) + 1))
+
+    matched = {}
+    total = int(total_races or 0)
+    for r in range(1, total + 1):
+        patterns = [
+            rf"Race\s*0?{r}(?!\d).*晨操\.json$",
+            rf"Race_0?{r}(?!\d).*晨操\.json$",
+            rf".*Race\s*0?{r}(?!\d).*Trackwork.*\.json$",
+            rf".*Race_0?{r}(?!\d).*Trackwork.*\.json$",
+        ]
+        race_matches = [
+            f for f in files
+            if any(re.search(p, f, re.IGNORECASE) for p in patterns)
+        ]
+        if race_matches:
+            matched[r] = race_matches
+
+    missing_races = sorted(set(range(1, total + 1)) - set(matched.keys()))
+    return matched, missing_races
+
+
 # ═══════════════════════════════════════════════════════════════
 # NODE: check_raw_data
 # ═══════════════════════════════════════════════════════════════
@@ -120,7 +176,8 @@ def node_check_raw_data(state):
         _log(f"🚨 State 0: Raw data missing: {missing}")
     else:
         _log("✅ Raw data complete")
-    return {"raw_data_ready": ready, "log": [f"raw_data_ready={ready}"]}
+    updates = {"raw_data_ready": ready, "log": [f"raw_data_ready={ready}"]}
+    return _persist_node_state(state, updates)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -134,7 +191,8 @@ def node_check_intelligence(state):
         _log(f"🚨 State 1: Intelligence issues: {issues}")
     else:
         _log("✅ Meeting Intelligence Package validated")
-    return {"intelligence_ready": ok, "log": [f"intel_ready={ok}"]}
+    updates = {"intelligence_ready": ok, "log": [f"intel_ready={ok}"]}
+    return _persist_node_state(state, updates)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -171,38 +229,64 @@ def node_generate_facts(state):
         _log("✅ All Facts.md already exist")
     else:
         _log("✅ Facts generation complete")
-    return {"facts_ready": True, "log": ["facts_ready=True"]}
+    updates = {"facts_ready": True, "log": ["facts_ready=True"]}
+    return _persist_node_state(state, updates)
 
 
 # ═══════════════════════════════════════════════════════════════
 # NODE: extract_trackwork
 # ═══════════════════════════════════════════════════════════════
 def node_extract_trackwork(state):
-    """Extract HKJC trackwork digest after Facts generation. Non-blocking."""
+    """Extract and verify HKJC trackwork digest after Facts generation."""
     domain = state.get("domain", "au")
+    required = bool(state.get("trackwork_required", domain == "hkjc"))
+    allow_missing = bool(state.get("allow_missing_trackwork", False))
+
     if domain != "hkjc":
-        return {"trackwork_ready": False, "trackwork_status": "skipped", "log": ["trackwork=skipped"]}
+        updates = {
+            "trackwork_ready": False,
+            "trackwork_status": "not_required",
+            "log": ["trackwork=not_required"],
+        }
+        return _persist_node_state(state, updates)
 
     fns = _get_domain_fns(domain)
     script = fns.get("trackwork_script")
-    if not script:
-        return {"trackwork_ready": False, "trackwork_status": "missing_script", "log": ["trackwork=missing_script"]}
-
     target_dir = state["target_dir"]
-    date_prefix = state.get("date_prefix", "")
     total_races = int(state.get("total_races", 0) or 0)
+
+    if not script or not os.path.exists(script):
+        if required and not allow_missing:
+            updates = {
+                "trackwork_ready": False,
+                "trackwork_status": "missing_script",
+                "should_stop": True,
+                "stop_reason": "HKJC trackwork extraction script is missing. Analysis stopped before setup_race.",
+                "log": ["trackwork=missing_script"],
+            }
+            return _persist_node_state(state, updates)
+        updates = {
+            "trackwork_ready": False,
+            "trackwork_status": "missing_script",
+            "log": ["trackwork=missing_script_allow_continue"],
+        }
+        return _persist_node_state(state, updates)
+
+    matched, missing_races = _find_trackwork_files(target_dir, total_races)
+    if total_races and not missing_races:
+        _log(f"✅ Trackwork already exists ({len(matched)}/{total_races})")
+        updates = {
+            "trackwork_ready": True,
+            "trackwork_status": "cached",
+            "log": ["trackwork=cached"],
+        }
+        return _persist_node_state(state, updates)
+
+    date_prefix = state.get("date_prefix", "")
     iso_prefix = ""
     m_dir_date = re.search(r'(\d{4})-(\d{2})-(\d{2})', os.path.basename(target_dir))
     if m_dir_date:
         iso_prefix = f"{m_dir_date.group(1)}-{m_dir_date.group(2)}-{m_dir_date.group(3)}"
-    accepted_prefixes = [p for p in (date_prefix, iso_prefix) if p]
-    existing = [
-        f for f in os.listdir(target_dir)
-        if any(re.search(rf'^{re.escape(prefix)} Race \d+ 晨操\.json$', f) for prefix in accepted_prefixes)
-    ]
-    if total_races and len(existing) >= total_races:
-        _log(f"✅ Trackwork already exists ({len(existing)}/{total_races})")
-        return {"trackwork_ready": True, "trackwork_status": "cached", "log": ["trackwork=cached"]}
 
     url = state.get("url")
     venue = state.get("venue", "")
@@ -229,16 +313,49 @@ def node_extract_trackwork(state):
             _log(f"   {line}")
     if res.returncode != 0:
         err = (res.stderr or res.stdout or "").strip()[:300]
-        _log(f"   ⚠️ Trackwork extraction failed (non-blocking): {err}")
-        return {"trackwork_ready": False, "trackwork_status": "failed", "log": ["trackwork=failed"]}
+        if required and not allow_missing:
+            reason = f"HKJC trackwork extraction failed before analysis: {err}"
+            _log(f"   🚨 {reason}")
+            updates = {
+                "trackwork_ready": False,
+                "trackwork_status": "failed",
+                "should_stop": True,
+                "stop_reason": reason,
+                "log": ["trackwork=failed"],
+            }
+            return _persist_node_state(state, updates)
+        _log(f"   ⚠️ Trackwork extraction failed, continuing by explicit override: {err}")
+        updates = {
+            "trackwork_ready": False,
+            "trackwork_status": "failed_allowed",
+            "log": ["trackwork=failed_allowed"],
+        }
+        return _persist_node_state(state, updates)
 
-    produced = [
-        f for f in os.listdir(target_dir)
-        if any(re.search(rf'^{re.escape(prefix)} Race \d+ 晨操\.json$', f) for prefix in accepted_prefixes)
-    ]
-    status = "ok" if produced else "missing"
-    _log(f"   ✅ Trackwork status: {status} ({len(produced)} files)")
-    return {"trackwork_ready": bool(produced), "trackwork_status": status, "log": [f"trackwork={status}"]}
+    matched, missing_races = _find_trackwork_files(target_dir, total_races)
+    if missing_races:
+        if required and not allow_missing:
+            reason = f"HKJC trackwork missing for races {missing_races}. Analysis stopped before setup_race."
+            _log(f"   🚨 {reason}")
+            updates = {
+                "trackwork_ready": False,
+                "trackwork_status": "missing",
+                "should_stop": True,
+                "stop_reason": reason,
+                "log": ["trackwork=missing"],
+            }
+            return _persist_node_state(state, updates)
+        _log(f"   ⚠️ Trackwork missing for races {missing_races}, continuing by explicit override")
+        updates = {
+            "trackwork_ready": False,
+            "trackwork_status": "missing_allowed",
+            "log": ["trackwork=missing_allowed"],
+        }
+        return _persist_node_state(state, updates)
+
+    _log(f"   ✅ Trackwork status: ok ({len(matched)} races)")
+    updates = {"trackwork_ready": True, "trackwork_status": "ok", "log": ["trackwork=ok"]}
+    return _persist_node_state(state, updates)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -293,6 +410,11 @@ def node_setup_race(state):
     with open(json_file, 'r', encoding='utf-8') as f:
         logic_data = json.load(f)
     sm = logic_data.get('race_analysis', {}).get('speed_map', {})
+    if domain == "au" and sm.get("predicted_pace") and not sm.get("expected_pace"):
+        sm["expected_pace"] = sm.get("predicted_pace")
+        logic_data.setdefault("race_analysis", {})["speed_map"] = sm
+        with open(json_file, 'w', encoding='utf-8') as f:
+            json.dump(logic_data, f, ensure_ascii=False, indent=2)
     sm_ready, sm_issues = _speed_map_ready(sm, domain)
     if not sm_ready:
         _log(f"   ⚠️ Speed Map incomplete ({sm_issues}), re-injecting...")
@@ -377,7 +499,7 @@ def node_setup_race(state):
     _log(f"📋 Race {r}: {len(pending)} horses pending")
     _log(f"{'='*60}")
 
-    return {
+    updates = {
         "races": races,
         "current_horse": first_horse,
         "completed_in_session": 0,
@@ -386,6 +508,7 @@ def node_setup_race(state):
         "waiting_for_agent": False,
         "log": [f"setup_race_{r}: {len(pending)} pending"],
     }
+    return _persist_node_state(state, updates)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -411,8 +534,9 @@ def node_generate_workcard(state):
         err = (skel_res.stderr or skel_res.stdout or "").strip()[:500]
         reason = f"Skeleton generation failed for Race {r} Horse {h}: {err}"
         _log(f"🚨 {reason}")
-        return {"should_stop": True, "stop_reason": reason,
-                "log": [f"skeleton_fail: race_{r}_horse_{h}"]}
+        updates = {"should_stop": True, "stop_reason": reason,
+                   "log": [f"skeleton_fail: race_{r}_horse_{h}"]}
+        return _persist_node_state(state, updates)
 
     with open(json_file, 'r', encoding='utf-8') as f:
         logic_data = json.load(f)
@@ -423,8 +547,9 @@ def node_generate_workcard(state):
     if not h_entry or h_name in ('?', '未知', ''):
         reason = f"Skeleton produced no valid entry for Race {r} Horse {h} (horse_name='{h_name}')"
         _log(f"🚨 {reason}")
-        return {"should_stop": True, "stop_reason": reason,
-                "log": [f"skeleton_empty: race_{r}_horse_{h}"]}
+        updates = {"should_stop": True, "stop_reason": reason,
+                   "log": [f"skeleton_empty: race_{r}_horse_{h}"]}
+        return _persist_node_state(state, updates)
 
     with open(facts_file, 'r', encoding='utf-8') as f:
         facts_content = f.read()
@@ -484,25 +609,52 @@ def node_generate_workcard(state):
 
     # ── Task 6: Autopilot agent invocation ──
     if state.get("autopilot"):
-        agent_cmd = os.environ.get("RACING_AGENT_CMD")
-        if not agent_cmd:
-            return {"should_stop": True,
-                    "stop_reason": "Autopilot requested but RACING_AGENT_CMD is not set.",
-                    "log": ["autopilot_no_cmd"]}
         wc_path = os.path.join(runtime_dir, f"Horse_{h}_WorkCard.md")
-        agent_args = f'{agent_cmd} --domain {domain} --target-dir "{target_dir}" --race {r} --horse {h} --workcard "{wc_path}" --logic-json "{json_file}"'
-        _log(f"   🤖 Autopilot: invoking agent...")
-        agent_res = subprocess.run(agent_args, shell=True, capture_output=True, text=True, encoding='utf-8')
-        if agent_res.returncode != 0:
-            err = (agent_res.stderr or agent_res.stdout or "").strip()[:300]
-            _log(f"   ⚠️ Agent returned non-zero ({agent_res.returncode}): {err}")
+        agent_result = invoke_agent(
+            domain=domain,
+            target_dir=target_dir,
+            race=r,
+            horse=h,
+            workcard_path=wc_path,
+            logic_json_path=json_file,
+        )
+
+        _log(f"   🤖 Autopilot: {format_agent_result(agent_result)}")
+
+        if agent_result["status"] == "missing_command":
+            updates = {
+                "should_stop": True,
+                "stop_reason": "Autopilot requested but RACING_AGENT_CMD is not set.",
+                "log": ["autopilot_no_cmd"],
+            }
+            return _persist_node_state(state, updates)
+
+        if agent_result["status"] == "timeout":
+            updates = {
+                "should_stop": True,
+                "waiting_for_agent": True,
+                "current_horse_result": "waiting",
+                "stop_reason": f"Waiting for agent to complete Race {r} Horse {h}",
+                "log": [f"autopilot_timeout: race_{r}_horse_{h}"],
+            }
+            return _persist_node_state(state, updates)
+
+        if agent_result["status"] == "failed":
+            detail = agent_result.get("stderr_tail") or agent_result.get("stdout_tail") or "unknown error"
+            updates = {
+                "should_stop": True,
+                "stop_reason": f"Autopilot failed for Race {r} Horse {h}: {detail}",
+                "log": [f"autopilot_failed: race_{r}_horse_{h}"],
+            }
+            return _persist_node_state(state, updates)
 
     _log(f"\n👉 LLM: Please analyse Horse #{h} ({h_name})")
     _log(f"   📋 WorkCard: .runtime/Horse_{h}_WorkCard.md")
     _log(f"   ✏️ Target: Race_{r}_Logic.json → horses.{h}")
     _log(f"   🔴 REMINDER: Read WorkCard → Fill JSON → check_command_status → next horse. DO NOT stop or report progress. Python controls flow.")
 
-    return {"log": [f"workcard_generated: horse_{h}"]}
+    updates = {"log": [f"workcard_generated: horse_{h}"]}
+    return _persist_node_state(state, updates)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -522,7 +674,7 @@ def node_watch_and_validate(state):
     result = fns["watch_horse"](json_file, h,
                                 validate_fn=fns["validate_firewalls"],
                                 all_horses=all_horses,
-                                poll_interval=3, timeout_minutes=60)
+                                poll_interval=_watch_poll_interval(), timeout_minutes=60)
 
     races = dict(state.get("races", {}))
     race_state = dict(races.get(str(r), {}))
@@ -556,15 +708,22 @@ def node_watch_and_validate(state):
     race_state["horses_pending"] = pending
     races[str(r)] = race_state
 
-    next_horse = pending[0] if pending else None
+    next_horse = h if h_result == "waiting" else (pending[0] if pending else None)
 
-    return {
+    updates = {
         "races": races,
         "current_horse": next_horse,
         "current_horse_result": h_result,
         "completed_in_session": completed,
         "log": [f"horse_{h}={h_result}"],
     }
+    if h_result == "waiting":
+        updates.update({
+            "should_stop": True,
+            "waiting_for_agent": True,
+            "stop_reason": f"Waiting for agent to complete Race {r} Horse {h}",
+        })
+    return _persist_node_state(state, updates)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -617,11 +776,12 @@ def node_batch_qa(state):
 
     next_horse = pending[0] if pending else None
 
-    return {
+    updates = {
         "races": races,
         "current_horse": next_horse,
         "log": [f"batch_qa: {'FAIL' if errors else 'PASS'}"],
     }
+    return _persist_node_state(state, updates)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -646,11 +806,13 @@ def node_global_qa(state):
     if errors:
         for e in errors:
             _log(f"🚨 {e}")
-        return {"should_stop": True, "stop_reason": "WALL-015 global check failed",
-                "log": ["global_qa=FAIL"]}
+        updates = {"should_stop": True, "stop_reason": "WALL-015 global check failed",
+                   "log": ["global_qa=FAIL"]}
+        return _persist_node_state(state, updates)
 
     _log(f"   ✅ WALL-015 Global QA passed")
-    return {"log": ["global_qa=PASS"]}
+    updates = {"log": ["global_qa=PASS"]}
+    return _persist_node_state(state, updates)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -677,7 +839,8 @@ def node_compute_verdict(state):
                         for v in verdict['top4']])
         _log(f"   ✅ Top 4: {t4}")
 
-    return {"log": [f"verdict_race_{r}"]}
+    updates = {"log": [f"verdict_race_{r}"]}
+    return _persist_node_state(state, updates)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -702,8 +865,9 @@ def node_compile_analysis(state):
     if not os.path.exists(compile_script):
         reason = f"Compile script not found: {compile_script}"
         _log(f"🚨 {reason}")
-        return {"should_stop": True, "stop_reason": reason,
-                "log": [f"compile_race_{r}=MISSING_SCRIPT"]}
+        updates = {"should_stop": True, "stop_reason": reason,
+                   "log": [f"compile_race_{r}=MISSING_SCRIPT"]}
+        return _persist_node_state(state, updates)
 
     # ── V4.2: Schema validation gate (HKJC only) ──
     if domain == "hkjc":
@@ -718,8 +882,9 @@ def node_compile_analysis(state):
                 _log(f"🚨 {reason}")
                 for err in result['errors']:
                     _log(f"   ❌ {err}")
-                return {"should_stop": True, "stop_reason": reason,
-                        "log": [f"compile_race_{r}=SCHEMA_FAIL"]}
+                updates = {"should_stop": True, "stop_reason": reason,
+                           "log": [f"compile_race_{r}=SCHEMA_FAIL"]}
+                return _persist_node_state(state, updates)
             _log(f"   ✅ V4.2 schema validation passed ({result['stats']['horses_passed']}/{result['stats']['horses_checked']} horses)")
         except ImportError:
             _log("   ⚠️ validate_hkjc_logic_schema not importable — skipping schema gate")
@@ -727,11 +892,13 @@ def node_compile_analysis(state):
     _log(f"⚙️ Compiling Race {r}...")
     res = subprocess.run([PYTHON, compile_script, facts_file, json_file, "--output", an_file])
     if res.returncode != 0:
-        return {"should_stop": True, "stop_reason": f"Compile failed Race {r}",
-                "log": [f"compile_race_{r}=FAIL"]}
+        updates = {"should_stop": True, "stop_reason": f"Compile failed Race {r}",
+                   "log": [f"compile_race_{r}=FAIL"]}
+        return _persist_node_state(state, updates)
 
     _log(f"   ✅ Compiled → {os.path.basename(an_file)}")
-    return {"log": [f"compile_race_{r}=OK"]}
+    updates = {"log": [f"compile_race_{r}=OK"]}
+    return _persist_node_state(state, updates)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -770,7 +937,8 @@ def node_run_monte_carlo(state):
     else:
         _log(f"   ⚠️ mc_simulator.py not found")
 
-    return {"log": [f"mc_race_{r}"]}
+    updates = {"log": [f"mc_race_{r}"]}
+    return _persist_node_state(state, updates)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -803,7 +971,8 @@ def node_final_qa(state):
                 persisted_strikes = json.load(f)
     except Exception:
         pass
-    strikes = persisted_strikes.get(f"race_{r}_qa", race_state.get("qa_strikes", 0))
+    strike_key = f"race_{r}_qa" if domain == "hkjc" else str(r)
+    strikes = persisted_strikes.get(strike_key, race_state.get("qa_strikes", 0))
 
     if res.returncode != 0:
         strikes += 1
@@ -822,19 +991,21 @@ def node_final_qa(state):
         races[str(r)] = race_state
 
         # Task 7: Persist strikes atomically
-        persisted_strikes[f"race_{r}_qa"] = strikes
+        persisted_strikes[strike_key] = strikes
         _tmp = qa_strikes_file + ".tmp"
         with open(_tmp, 'w', encoding='utf-8') as f:
             json.dump(persisted_strikes, f, indent=2)
         os.replace(_tmp, qa_strikes_file)
 
         if strikes >= 3:
-            return {"races": races, "should_stop": True,
-                    "stop_reason": f"Race {r} 3-strike stop",
-                    "log": [f"qa_race_{r}=STRIKE_{strikes}"]}
-        return {"races": races, "should_stop": True,
-                "stop_reason": f"Race {r} QA fail strike {strikes}",
-                "log": [f"qa_race_{r}=STRIKE_{strikes}"]}
+            updates = {"races": races, "should_stop": True,
+                       "stop_reason": f"Race {r} 3-strike stop",
+                       "log": [f"qa_race_{r}=STRIKE_{strikes}"]}
+            return _persist_node_state(state, updates)
+        updates = {"races": races, "should_stop": True,
+                   "stop_reason": f"Race {r} QA fail strike {strikes}",
+                   "log": [f"qa_race_{r}=STRIKE_{strikes}"]}
+        return _persist_node_state(state, updates)
     else:
         _log(f"\n{'🎉'*10}")
         _log(f"✅ Race {r} QA passed!")
@@ -845,13 +1016,14 @@ def node_final_qa(state):
         races[str(r)] = race_state
 
         # Task 7: Reset persisted strikes on pass
-        persisted_strikes[f"race_{r}_qa"] = 0
+        persisted_strikes[strike_key] = 0
         _tmp = qa_strikes_file + ".tmp"
         with open(_tmp, 'w', encoding='utf-8') as f:
             json.dump(persisted_strikes, f, indent=2)
         os.replace(_tmp, qa_strikes_file)
 
-        return {"races": races, "log": [f"qa_race_{r}=PASS"]}
+        updates = {"races": races, "log": [f"qa_race_{r}=PASS"]}
+        return _persist_node_state(state, updates)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -864,17 +1036,21 @@ def node_advance_race(state):
     if r < total:
         next_r = r + 1
         _log(f"\n🔄 Race {r} complete! Advancing to Race {next_r}...")
-        return {
+        updates = {
             "current_race": next_r,
             "current_horse": None,
             "current_horse_result": None,
             "completed_in_session": 0,
+            "should_stop": False,
+            "stop_reason": "",
             "overall_stage": "ANALYSING",
             "log": [f"advance_to_race_{next_r}"],
         }
+        return _persist_node_state(state, updates)
     else:
         _log(f"\n🏆 All {total} races complete!")
-        return {"overall_stage": "COMPLETE", "log": ["all_races_complete"]}
+        updates = {"overall_stage": "COMPLETE", "log": ["all_races_complete"]}
+        return _persist_node_state(state, updates)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -885,8 +1061,12 @@ def node_generate_reports(state):
     target_dir = state["target_dir"]
     _log("🏆 Generating final reports...")
     try:
-        subprocess.run([PYTHON, fns["reports_script"], target_dir], check=True)
+        cmd = [PYTHON, fns["reports_script"], target_dir]
+        if state.get("domain", "au") == "hkjc":
+            cmd = [PYTHON, fns["reports_script"], "--target_dir", target_dir]
+        subprocess.run(cmd, check=True)
         _log("✅ Reports generated")
     except subprocess.CalledProcessError:
         _log("⚠️ Report generation failed (non-blocking)")
-    return {"overall_stage": "COMPLETE", "log": ["reports_done"]}
+    updates = {"overall_stage": "COMPLETE", "log": ["reports_done"]}
+    return _persist_node_state(state, updates)

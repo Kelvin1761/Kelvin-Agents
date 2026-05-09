@@ -434,17 +434,40 @@ def detect_gear_changes(entries: list[dict], today_gear: Optional[str] = None) -
     - ≥2 items changed → 🔧 大幅配備變動 (triggers SIP-HV2)
     - 1 item added → 🔧 初戴 X
     - 1 item removed → 🔧 除去 X
+
+    HKJC gear suffixes need semantic normalization before comparison:
+    - ``B-`` / ``CP-`` means the gear was removed, not worn in that race.
+    - ``V1`` / ``B2`` / ``CP1`` are first/second-time markers for an active gear.
+      They compare as their base gear (``V`` / ``B`` / ``CP``).
     """
     def parse_gear(gear_str: str) -> set:
-        if not gear_str or gear_str.strip() in ('', '-'):
+        if not gear_str or gear_str.strip() in ('', '-', '--', '無'):
             return set()
-        # Split by / or common patterns
+        # Split by / or common patterns.
         parts = re.split(r'[/,]', gear_str.strip())
-        return set(p.strip() for p in parts if p.strip())
+        normalized = set()
+        for part in parts:
+            item = part.strip()
+            if not item or item in ('-', '--', '無'):
+                continue
+            if item.endswith('-'):
+                continue
+            item = re.sub(r'\d+$', '', item)
+            if item:
+                normalized.add(item)
+        return normalized
+
+    def format_gear_set(gear_set: set) -> str:
+        return '/'.join(sorted(gear_set)) if gear_set else '--'
+
+    def format_gear_delta(gear_set: set) -> str:
+        return ','.join(sorted(gear_set)) if gear_set else '無'
     
     last_gear_str = entries[0].get('gear', '') if entries else ''
     today_set = parse_gear(today_gear) if today_gear else set()
     last_set = parse_gear(last_gear_str)
+    today_display = format_gear_set(today_set)
+    last_display = format_gear_set(last_set)
     
     # Build gear history (last 5 races)
     gear_history = [e.get('gear', '') for e in entries[:5]]
@@ -453,7 +476,7 @@ def detect_gear_changes(entries: list[dict], today_gear: Optional[str] = None) -
         return {
             'signal': '無今仗配備數據',
             'today': '',
-            'last': last_gear_str,
+            'last': last_display,
             'history': gear_history,
             'added': set(),
             'removed': set(),
@@ -466,9 +489,9 @@ def detect_gear_changes(entries: list[dict], today_gear: Optional[str] = None) -
     
     if total_changes >= 2:
         return {
-            'signal': f'🔧 大幅配備變動 (+{",".join(added) if added else "無"} / -{",".join(removed) if removed else "無"})',
-            'today': today_gear,
-            'last': last_gear_str,
+            'signal': f'🔧 大幅配備變動 (+{format_gear_delta(added)} / -{format_gear_delta(removed)})',
+            'today': today_display,
+            'last': last_display,
             'history': gear_history,
             'added': added,
             'removed': removed,
@@ -476,9 +499,9 @@ def detect_gear_changes(entries: list[dict], today_gear: Optional[str] = None) -
         }
     elif added:
         return {
-            'signal': f'🔧 初戴 {"+".join(added)}',
-            'today': today_gear,
-            'last': last_gear_str,
+            'signal': f'🔧 初戴 {"+".join(sorted(added))}',
+            'today': today_display,
+            'last': last_display,
             'history': gear_history,
             'added': added,
             'removed': set(),
@@ -486,9 +509,9 @@ def detect_gear_changes(entries: list[dict], today_gear: Optional[str] = None) -
         }
     elif removed:
         return {
-            'signal': f'🔧 除去 {"+".join(removed)}',
-            'today': today_gear,
-            'last': last_gear_str,
+            'signal': f'🔧 除去 {"+".join(sorted(removed))}',
+            'today': today_display,
+            'last': last_display,
             'history': gear_history,
             'added': set(),
             'removed': removed,
@@ -497,8 +520,8 @@ def detect_gear_changes(entries: list[dict], today_gear: Optional[str] = None) -
     else:
         return {
             'signal': '無變動',
-            'today': today_gear,
-            'last': last_gear_str,
+            'today': today_display,
+            'last': last_display,
             'history': gear_history,
             'added': set(),
             'removed': set(),

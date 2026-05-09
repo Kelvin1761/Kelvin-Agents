@@ -125,11 +125,14 @@ def run_orchestrator_guardrail_tests():
     """Regression tests for QA-strike resume and anti-dummy state gates."""
     print('\n🛡️ Test 6: Orchestrator Guardrails')
     sys.path.insert(0, str(SCRIPT_DIR))
+    sys.path.insert(0, str(SCRIPT_DIR.parents[1] / 'hkjc_race_extractor' / 'scripts'))
     sys.path.insert(0, str(SCRIPT_DIR.parents[2] / 'au_racing' / 'au_wong_choi' / 'scripts'))
     sys.path.insert(0, str(SCRIPT_DIR.parents[3] / 'scripts'))
     import hkjc_orchestrator as hkjc
     import au_orchestrator as au
     import compile_analysis_template_hkjc as hkjc_compile
+    import create_hkjc_logic_skeleton as hkjc_skeleton
+    import extract_trackwork
     import completion_gate_v2 as gate
     import inject_hkjc_fact_anchors as hkjc_facts_engine
     import inject_fact_anchors as au_facts_engine
@@ -221,6 +224,55 @@ def run_orchestrator_guardrail_tests():
          weight_trend['trend'] == '🟠顯著轉輕'
          and '急劇' not in weight_trend['trend']
          and '-15lb' in weight_trend['detail'])
+
+    with tempfile.TemporaryDirectory() as td:
+        racecard = Path(td) / '04-12 Race 1 排位表.md'
+        write_text(str(racecard), '馬號: 1\n馬名: 測試馬\n烙號: H123\n騎師: 潘頓\n練馬師: 告東尼\n')
+        parsed_horses = extract_trackwork.parse_racecard_horse_list(Path(td), 1)
+        test('HKJC trackwork extractor carries race-day jockey from racecard',
+             parsed_horses and parsed_horses[0].get('jockey') == '潘頓')
+
+    trackwork_digest = extract_trackwork.make_digest(
+        {'horse_name': '測試馬'},
+        [{
+            'date': '2026-04-12',
+            'type': 'gallop',
+            'times': [50.2, 49.7],
+            'rider': '潘頓',
+            'details': '1200M (潘頓) 50.2 49.7',
+            'gear': '',
+        }],
+        21,
+        '潘頓',
+    )
+    trackwork_summary = extract_trackwork.summarize_trackwork(
+        {'horse_name': '測試馬'},
+        [{
+            'date': '2026-04-12',
+            'type': 'gallop',
+            'times': [50.2],
+            'rider': '潘頓',
+            'rider_role': '潘頓',
+            'details': '1200M (潘頓) 50.2',
+            'gear': '',
+        }],
+        trackwork_digest,
+    )
+    test('HKJC trackwork detects race-day jockey involvement',
+         '賽日騎師有參與操練' in trackwork_digest.get('stability_positive_flags', [])
+         and trackwork_summary.get('race_jockey_involved') is True)
+
+    legacy_trackwork = hkjc_skeleton.hydrate_trackwork_jockey_involvement(
+        {
+            'summary': {'race_jockey_involved': False, 'rider_role_counts': {'潘頓': 1}},
+            'stability_digest': {'stability_positive_flags': []},
+            'entries': [{'rider': '潘頓', 'details': '1200M (潘頓) 50.2'}],
+        },
+        '潘頓',
+    )
+    test('HKJC skeleton repairs legacy race-day jockey trackwork flag',
+         legacy_trackwork.get('summary', {}).get('race_jockey_involved') is True
+         and '賽日騎師有參與操練' in legacy_trackwork.get('stability_digest', {}).get('stability_positive_flags', []))
 
     test('HKJC margin head parses as non-zero losing margin',
          hkjc_profile.parse_margin('頭') and hkjc_profile.parse_margin('頭') > 0)

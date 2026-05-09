@@ -15,6 +15,7 @@ import urllib.request
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'scripts')))
 from rating_engine_v2 import parse_matrix_scores, compute_base_grade, apply_fine_tune, grade_sort_index, apply_s_grade_guards
 from racing_content_guard import scan_json_for_dummy, scan_text_for_dummy, quarantine_file
+from validate_hkjc_matrix_confidence import validate_hkjc_matrix_confidence, apply_hkjc_matrix_caps
 
 # Import SIP engine V2 for automated SIP rule evaluation
 try:
@@ -205,6 +206,9 @@ def validate_hkjc_race_ready_for_verdict(logic_data):
         if missing_dims:
             errors.append(f"{prefix}: missing matrix dimensions {sorted(missing_dims)}")
 
+        for ve in validate_hkjc_matrix_confidence(h_obj):
+            errors.append(f"{prefix}: {ve}")
+
         # Dummy / fluff scan
         dummy_errs = scan_json_for_dummy(h_obj, allow_pending_fill=False, path=f"horses.{h_num}")
         for de in dummy_errs:
@@ -250,12 +254,16 @@ def auto_compute_verdict_hkjc(logic_data, facts_path):
             elif promo_steps == 2: f_grade = 'S'
             elif promo_steps == 1: f_grade = 'S-'
         f_grade = _apply_debut_cap_hkjc(f_grade, h_obj)
+        f_grade, cap_notes = apply_hkjc_matrix_caps(f_grade, h_obj)
         f_grade, _ = apply_s_grade_guards(
             f_grade, h_obj, {}, {k: v.get('score', '➖') if isinstance(v, dict) else str(v) for k, v in m_data.items()}, {},
             sectional_key='sectional', class_key='class_advantage',
             double_ticks=_count_matrix_double_ticks(m_data)
         )
         f_grade = _apply_debut_cap_hkjc(f_grade, h_obj)
+        f_grade, more_cap_notes = apply_hkjc_matrix_caps(f_grade, h_obj)
+        if more_cap_notes:
+            h_obj["rating_cap_notes"] = sorted(set(cap_notes + more_cap_notes))
         grade_i = grade_sort_index(f_grade)
         tick_count = _count_matrix_ticks(m_data)
         double_ticks = _count_matrix_double_ticks(m_data)
@@ -1540,7 +1548,7 @@ def generate_hkjc_work_card(horse_num, facts_content, logic_data, runtime_dir,
     card.append("|:---|:---|:---|")
     card.append("| 1️⃣ 狀態與穩定性 | `05_forensic_analysis.md` | 逐場可靠性+近6場數據+頭馬距離 / SIP-HK01 |")
     card.append("| 2️⃣ 段速質量 | `03_engine_pace_context.md` + `04_engine_corrections.md` | 正賽段速；初出馬改用 Sire/試閘/晨操 readiness |")
-    card.append("| 3️⃣ 形勢與走位 | `05_forensic_analysis.md` | 檔位數據+今日預計走位+近3-5仗走位消耗 / SIP-HK02；不以步速評分 |")
+    card.append("| 3️⃣ 形勢與走位 | `05_forensic_analysis.md` | 檔位數據+今日預計走位+近3-5仗走位消耗 / SIP-HK02；不引用 race-level speed_map 評分 |")
     card.append("| 4️⃣ 騎練訊號 | `07b_trainer_signals.md` + `07c_jockey_profiles.md` | 配備+近6場騎師歷史+人馬配搭 / SIP-HK06 |")
     card.append("| 5️⃣ 馬匹健康 | `05_forensic_analysis.md` + `10a/10b/10c_track_*.md` | 醫療紀錄+休賽+體重 |")
     card.append("| 6️⃣ 賽績線 | Facts.md 賽績線表格 | 精簡摘要 (Python 預生成) |")
@@ -1653,7 +1661,7 @@ def generate_hkjc_work_card(horse_num, facts_content, logic_data, runtime_dir,
 
     # ── Dimension 3: Race Shape ──
     card.append(f"##### 形勢與走位 [半核心]: `[FILL: ✅✅/✅/➖/❌/❌❌]`")
-    card.append(f"  - 🧭 **V4.2檢查點:** 步速預測、跑法、檔位統計、近仗走位；不以步速評分")
+    card.append(f"  - 🧭 **V4.2檢查點:** 今日預計位置、跑法、檔位統計、近仗走位；不引用 race-level speed_map 評分")
     card.append(f"  - Resource Check: 05_forensic_analysis.md / 形勢走位")
     card.append(_fmt_reasoning('race_shape'))
     card.append(f"  - 📎 必讀: 05_forensic_analysis.md")
@@ -1790,7 +1798,7 @@ def generate_hkjc_work_card(horse_num, facts_content, logic_data, runtime_dir,
 
 
 def watch_single_horse_hkjc(json_file, horse_num, validate_fn, all_horses,
-                            poll_interval=3, timeout_minutes=60,
+                            poll_interval=0.5, timeout_minutes=60,
                             skeleton_snapshot=None):
     """Watch for a SINGLE HKJC horse to be filled and validated.
     V12: Added race_analysis tamper protection — Python-computed fields are immutable.
@@ -1827,11 +1835,12 @@ def watch_single_horse_hkjc(json_file, horse_num, validate_fn, all_horses,
     except Exception:
         pass
 
-    print(f"\n👀 Python 正在監控 馬號 {horse_num}... (每 {poll_interval} 秒 | 超時 {timeout_minutes} 分鐘)")
+    poll_interval = max(0.1, float(poll_interval))
+    debounce_seconds = min(0.2, poll_interval)
+    print(f"\n👀 Python 正在監控 馬號 {horse_num}... (每 {poll_interval:g} 秒 | 超時 {timeout_minutes} 分鐘)")
 
     try:
         while True:
-            time.sleep(poll_interval)
             elapsed = time.time() - start_time
             if elapsed > timeout_minutes * 60:
                 print(f"\n⏰ 馬號 {horse_num} 監控超時！")
@@ -1843,10 +1852,12 @@ def watch_single_horse_hkjc(json_file, horse_num, validate_fn, all_horses,
             try:
                 current_mtime = os.path.getmtime(json_file)
             except OSError:
+                time.sleep(poll_interval)
                 continue
             if current_mtime == last_mtime or current_mtime == own_write_mtime:
+                time.sleep(poll_interval)
                 continue
-            time.sleep(0.5)
+            time.sleep(debounce_seconds)
             last_mtime = current_mtime
 
             logic_data = None
@@ -2101,7 +2112,7 @@ def validate_hkjc_firewalls(h, h_entry, horses_dict, all_horses, json_file):
                     errors.append(f"WALL-020B: matrix.{dim_name}.reasoning 含有懶惰模板語句「{phrase}」。請替換為引用具體數據嘅分析。")
                     break
 
-    # WALL-026: Race shape must not be pace-scored. Pace remains race-level/sectional only.
+    # WALL-026: Race shape must stay limited to draw, position, and traffic evidence.
     normalized_for_shape = _normalize_matrix(matrix)
     race_shape = normalized_for_shape.get('race_shape', {}) if isinstance(normalized_for_shape, dict) else {}
     race_shape_reasoning = str(race_shape.get('reasoning', '')) if isinstance(race_shape, dict) else ''
@@ -2110,7 +2121,7 @@ def validate_hkjc_firewalls(h, h_entry, horses_dict, all_horses, json_file):
     pace_terms = ('步速', 'PACE_TYPE', '快步速', '慢步速', '龜速', '自殺式', 'predicted_pace')
     if any(term in verdict_text for term in pace_terms):
         errors.append(
-            "WALL-026: matrix.race_shape.reasoning 以步速作主要判讀。"
+            "WALL-026: matrix.race_shape.reasoning 以 race-level speed_map 作主要判讀。"
             "形勢與走位只可用檔位數據、今日預計走位、近仗走位消耗/受阻作評分理由。"
         )
 
@@ -2199,8 +2210,8 @@ def validate_hkjc_firewalls(h, h_entry, horses_dict, all_horses, json_file):
         'WEIGHT_SYNERGY': 'class_advantage',
         'WEIGHT_EXTREME': 'class_advantage',
         'MID_CLASS_LIGHT': 'class_advantage',
-        'PACE_FIT': 'race_shape',
-        'PACE_AGAINST': 'race_shape',
+        'PACE_FIT': 'sectional',
+        'PACE_AGAINST': 'sectional',
         'FATAL_DRAW': 'race_shape',
         'DISTANCE_JUMP': 'sectional',
         'DISTANCE_SPECIALIST': 'sectional',
@@ -2370,6 +2381,10 @@ def main():
     parser = argparse.ArgumentParser(description="HKJC Wong Choi Racing Orchestrator (LangGraph)")
     parser.add_argument("url", help="HKJC Race URL or target directory path")
     parser.add_argument("--auto", action="store_true", help="Auto mode (preserved for compatibility)")
+    parser.add_argument("--autopilot", action="store_true",
+                        help="Enable LangGraph autopilot mode (alias for --auto)")
+    parser.add_argument("--allow-missing-trackwork", action="store_true",
+                        help="Allow analysis to continue if HKJC trackwork extraction is missing or failed")
     args = parser.parse_args()
 
     try:
@@ -2409,7 +2424,12 @@ def main():
     sys.path.insert(0, os.path.abspath(_lg_scripts))
     from racing_graph_core import run_hkjc_langgraph
 
-    run_hkjc_langgraph(target_dir, url, autopilot=args.auto)
+    run_hkjc_langgraph(
+        target_dir,
+        url,
+        autopilot=args.auto or args.autopilot,
+        allow_missing_trackwork=args.allow_missing_trackwork,
+    )
 
 
 if __name__ == "__main__":

@@ -24,6 +24,7 @@ import generate_skeleton as gs
 
 # Import Dummy Prevention Layer
 from racing_content_guard import assert_no_dummy_json, assert_no_dummy_text, quarantine_file
+from validate_hkjc_matrix_confidence import validate_hkjc_matrix_confidence, apply_hkjc_matrix_caps
 
 # ── V4.2: Import central schema constants ──
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -79,6 +80,18 @@ MATRIX_TEMPLATE_HINTS = {
         '負重/班次若已打 ✅，不可再用同一因素微調升級',
     ],
 }
+
+
+def _write_compile_blocked(output_path: str, message: str) -> None:
+    out = Path(output_path)
+    runtime_dir = out.parent / ".runtime"
+    runtime_dir.mkdir(parents=True, exist_ok=True)
+    names = {f"compile_blocked_{out.stem}.txt"}
+    race_match = re.search(r"Race[_ ](\d+)", out.name)
+    if race_match:
+        names.add(f"compile_blocked_Race_{race_match.group(1)}.txt")
+    for name in names:
+        (runtime_dir / name).write_text(message, encoding="utf-8")
 
 def _score_to_tick(score):
     """Convert a score to 5-tier tick: ✅✅/✅/➖/❌/❌❌."""
@@ -405,6 +418,10 @@ def _compute_letter_grade(m_data: dict, h_logic: dict) -> dict:
     if debut_note:
         adjusted_grade = capped_grade
         micro_note = f'{micro_note}; {debut_note}'
+    capped_grade, cap_notes = apply_hkjc_matrix_caps(adjusted_grade, h_logic)
+    if cap_notes:
+        adjusted_grade = capped_grade
+        micro_note = f"{micro_note}; {'; '.join(cap_notes)}"
 
     return {
         'dims': dims,
@@ -416,6 +433,7 @@ def _compute_letter_grade(m_data: dict, h_logic: dict) -> dict:
         'micro_note': micro_note,
         'final_grade': adjusted_grade,
         'matrix_missing': matrix_missing,
+        'cap_notes': cap_notes if 'cap_notes' in locals() else [],
     }
 
 def build_hkjc_panorama_compiled(json_data, facts_text, facts_horses=None):
@@ -661,6 +679,7 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
     dim_order = [k for k, _, _ in HKJC_MATRIX_RENDER]
 
     lines.append('#### 🧮 評級矩陣 (7-Dimension Matrix)')
+    lines.append('> 形勢與走位：只評檔位 / 今日位置 / 走位成本 / 交通風險。')
     lines.append('')
 
     rendered_keys = set()
@@ -674,9 +693,21 @@ def generate_hkjc_horse_compiled(h_fact, h_logic):
         rendered_keys.add(canonical_key)
         label, tier = m_schema.get(canonical_key, (canonical_key, '?'))
         score = v.get('score', '?')
+        confidence = v.get('confidence', 'Unknown')
+        trigger_rule = v.get('trigger_rule', '')
+        trigger_evidence = v.get('trigger_evidence', [])
+        disqualifiers = v.get('disqualifiers', [])
         reasoning_raw = v.get('reasoning', '')
 
-        lines.append(f'##### {label} [{tier}]: `{score}`')
+        lines.append(f'##### {label} [{tier}]: `{score}` | Confidence: `{confidence}` | Rule: `{trigger_rule}`')
+        lines.append('- Trigger evidence:')
+        if isinstance(trigger_evidence, list) and trigger_evidence:
+            for ev in trigger_evidence:
+                lines.append(f'  - {ev}')
+        else:
+            lines.append('  - 無')
+        disq_text = '、'.join(map(str, disqualifiers)) if isinstance(disqualifiers, list) and disqualifiers else '無'
+        lines.append(f'- Disqualifiers: {disq_text}')
 
         hints = MATRIX_TEMPLATE_HINTS.get(canonical_key, [])
         if hints:
@@ -942,6 +973,7 @@ def main():
             print(f"  ❌ {err}", file=sys.stderr)
         if os.path.exists(args.output):
             quarantine_file(args.output, f"V4.2 schema validation failed:\n" + "\n".join(schema_result['errors']))
+        _write_compile_blocked(args.output, "\n".join(schema_result['errors']))
         sys.exit(1)
     for w in schema_result.get('warnings', []):
         print(f"  ⚠️ {w}")
@@ -955,9 +987,17 @@ def main():
         for h_key, h_logic in logic_data.get('horses', {}).items():
             if not h_logic.get('core_logic'):
                 raise ValueError(f"HKJC compile blocked: missing core_logic for horse {h_key} ({h_logic.get('horse_name','unknown')})")
+            matrix_errors = validate_hkjc_matrix_confidence(h_logic)
+            if matrix_errors:
+                raise ValueError(
+                    f"HKJC compile blocked: matrix confidence failed for horse {h_key} "
+                    f"({h_logic.get('horse_name','unknown')}):\n"
+                    + "\n".join(matrix_errors)
+                )
 
     except ValueError as e:
         print(f"🚨 Pre-compile check failed:\n{e}", file=sys.stderr)
+        _write_compile_blocked(args.output, str(e))
         if os.path.exists(args.output):
             quarantine_file(args.output, f"Pre-compile failed:\n{e}")
         sys.exit(1)
@@ -978,6 +1018,7 @@ def main():
             grade_result = _compute_letter_grade(m_data, h_logic)
         except ValueError as e:
             print(f"🚨 Compile error:\n{e}", file=sys.stderr)
+            _write_compile_blocked(args.output, str(e))
             if os.path.exists(args.output):
                 quarantine_file(args.output, f"Compile error:\n{e}")
             sys.exit(1)
