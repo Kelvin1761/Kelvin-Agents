@@ -20,7 +20,7 @@ Runs automatically. No manual user steps.
 import json
 import urllib.request
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 try:
     from curl_cffi import requests
 except ImportError:
@@ -38,11 +38,20 @@ TEAM_NAMES = {
     "Utah Jazz": "UTA", "Washington Wizards": "WSH"
 }
 
+ESPN_TO_STANDARD = {
+    "GS": "GSW",
+    "NO": "NOP",
+    "NY": "NYK",
+    "SA": "SAS",
+    "UTAH": "UTA",
+}
+
 class SportsbetNBAExtractor:
-    def __init__(self, outdir="."):
+    def __init__(self, outdir=".", target_date=None):
         self.competition_url = "https://www.sportsbet.com.au/apigw/sportsbook-sports/Sportsbook/Sports/Competitions/6927"
         self.base_event_url = "https://www.sportsbet.com.au/betting/basketball-us/nba"
         self.outdir = outdir
+        self.target_date = target_date
         self.session = requests.Session(impersonate="chrome120")
 
     def fetch_daily_matches(self):
@@ -68,6 +77,40 @@ class SportsbetNBAExtractor:
         except Exception as e:
             print(f"❌ 獲取賽事名單失敗: {e}")
             return []
+
+    def _allowed_tags_from_espn(self):
+        if not self.target_date:
+            return set()
+        try:
+            dt = datetime.strptime(self.target_date, "%Y-%m-%d")
+        except Exception:
+            return set()
+        candidates = [(dt.date() - timedelta(days=1)).strftime("%Y%m%d"), dt.strftime("%Y%m%d")]
+        allowed = set()
+        for cd in candidates:
+            try:
+                url = f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates={cd}"
+                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    data = json.loads(response.read().decode('utf-8'))
+                for event in data.get('events', []):
+                    comps = event.get('competitions', [{}])[0]
+                    competitors = comps.get('competitors', [])
+                    away = home = None
+                    for c in competitors:
+                        team = c.get('team', {})
+                        abbr = team.get('abbreviation', '')
+                        if c.get('homeAway') == 'home':
+                            home = abbr
+                        else:
+                            away = abbr
+                    if away and home:
+                        away = ESPN_TO_STANDARD.get(away, away)
+                        home = ESPN_TO_STANDARD.get(home, home)
+                        allowed.add(f"{away}_{home}")
+            except Exception:
+                continue
+        return allowed
 
     def _parse_markets(self, raw_data):
         structured = {}
@@ -409,9 +452,21 @@ class SportsbetNBAExtractor:
         if not matches:
             print("❌ 沒有發現任何 NBA 賽事，程式終止。")
             return
-            
+
+        allowed_tags = self._allowed_tags_from_espn()
+        if allowed_tags:
+            print(f"📅 目標日期白名單: {len(allowed_tags)} 個 ESPN tags — {sorted(allowed_tags)}")
+
         print(f"\n--- 開始逐場萃取 Player Props ---")
         odds_data = self.traverse_and_extract(matches)
+        if allowed_tags:
+            before = len(odds_data)
+            odds_data = {tag: data for tag, data in odds_data.items() if tag in allowed_tags}
+            skipped = before - len(odds_data)
+            print(f"📅 日期過濾完成: 保留 {len(odds_data)} 場，排除 {skipped} 場非目標日期賽事")
+            if not odds_data:
+                print("❌ Sportsbet 有盤但冇任何賽事符合目標日期白名單。")
+                return
         
         try:
             # Write individual files
@@ -432,7 +487,8 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--outdir', default='.', help="Directory to save the Sportsbet_Odds_*.json files")
+    parser.add_argument('--date', default=None, help="Target analysis date in YYYY-MM-DD")
     args = parser.parse_args()
     
-    extractor = SportsbetNBAExtractor(outdir=args.outdir)
+    extractor = SportsbetNBAExtractor(outdir=args.outdir, target_date=args.date)
     extractor.run()

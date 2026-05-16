@@ -18,6 +18,7 @@ import os
 os.environ.setdefault('PYTHONUTF8', '1')
 import sys
 import json
+import tempfile
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -27,8 +28,10 @@ TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 FIXTURES_DIR = os.path.join(TEST_DIR, "fixtures")
 SCRIPTS_DIR = os.path.join(TEST_DIR, "..", "scripts")
 RESOURCES_DIR = os.path.join(TEST_DIR, "..", "resources")
+NBA_DIR = os.path.abspath(os.path.join(TEST_DIR, "..", ".."))
 
 sys.path.insert(0, SCRIPTS_DIR)
+sys.path.insert(0, NBA_DIR)
 
 # ─── Test Framework ─────────────────────────────────────────────────────
 PASS = 0
@@ -103,12 +106,14 @@ def test_schema_validation():
     
     # 1f: Invalid JSON content
     import tempfile
-    bad_json = os.path.join(TEST_DIR, "_test_bad.json")
-    with open(bad_json, 'w') as f:
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as f:
         f.write("{invalid json content")
-    result = load_and_validate(bad_json, "extractor_schema.json")
-    test("malformed JSON fails validation", not result["passed"])
-    os.remove(bad_json)
+        bad_json = f.name
+    try:
+        result = load_and_validate(bad_json, "extractor_schema.json")
+        test("malformed JSON fails validation", not result["passed"])
+    finally:
+        os.remove(bad_json)
 
 
 # ─── Test 2: Season Phase Detection ─────────────────────────────────────
@@ -265,18 +270,44 @@ def test_fixture_integrity():
                 diffs = [pts[i+1] - pts[i] for i in range(len(pts)-1)]
                 is_sequential = all(d == diffs[0] for d in diffs) and diffs[0] != 0
                 test(f"{p['name']} PTS not sequential", not is_sequential)
-    
+
     # Load playoff fixture
     with open(os.path.join(FIXTURES_DIR, "playoff_game.json"), 'r', encoding='utf-8') as f:
         playoff = json.load(f)
-    
+
     test("playoff_game season_phase is PLAYOFFS",
          playoff["meta"]["season_phase"] == "PLAYOFFS")
-    
+
     # Tatum should have playoff games in L10
     tatum = playoff["players"]["BOS"][0]
     test("Tatum has playoff_games_in_l10",
          tatum["gamelog"].get("playoff_games_in_l10", 0) > 0)
+
+
+def test_orchestrator_filters():
+    section("Orchestrator Date Filters")
+
+    from nba_orchestrator import filter_sportsbet_files_by_date
+
+    with tempfile.TemporaryDirectory() as td:
+        paths = [
+            os.path.join(td, "Sportsbet_Odds_LAL_BOS.json"),
+            os.path.join(td, "Sportsbet_Odds_NYK_MIA.json"),
+            os.path.join(td, "Sportsbet_Odds_GSW_OKC.json"),
+        ]
+        for path in paths:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({}, f)
+
+        filtered = filter_sportsbet_files_by_date(paths, {"NYK_MIA"})
+        test("date filter keeps only target ESPN tags",
+             [os.path.basename(p) for p in filtered] == ["Sportsbet_Odds_NYK_MIA.json"],
+             f"got {[os.path.basename(p) for p in filtered]}")
+
+        unfiltered = filter_sportsbet_files_by_date(paths, set())
+        test("empty ESPN whitelist leaves existing files unchanged",
+             unfiltered == paths,
+             f"got {unfiltered}")
 
 
 # ─── Main ───────────────────────────────────────────────────────────────
@@ -291,6 +322,7 @@ def main():
     test_math_engine()
     test_monte_carlo()
     test_fixture_integrity()
+    test_orchestrator_filters()
     
     print(f"\n{'='*60}")
     print(f"📊 RESULTS: {PASS} passed, {FAIL} failed ({PASS+FAIL} total)")

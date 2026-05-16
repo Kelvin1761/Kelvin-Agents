@@ -3,11 +3,19 @@ Generate Static Dashboard — Produces a self-contained HTML file
 that works without any server. Just double-click to open.
 """
 import sys, os, json, io
+import warnings
 from pathlib import Path
 from datetime import datetime
 
 # Fix Windows console encoding
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+
+# Silence known third-party compatibility warning during static generation.
+warnings.filterwarnings(
+    "ignore",
+    message=r"Numbers version .* not tested with this version",
+    category=UserWarning,
+)
 
 # Add backend to path
 BACKEND_DIR = Path(__file__).resolve().parent / "backend"
@@ -39,14 +47,14 @@ def collect_all_data():
         for analyst_name, races in all_races.items():
             races_data["races_by_analyst"][analyst_name] = []
             for race in races:
-                rd = race.dict()
+                rd = race.model_dump()
                 # Convert horses and top_picks
-                rd["horses"] = [h.dict() for h in race.horses]
-                rd["top_picks"] = [p.dict() for p in race.top_picks]
+                rd["horses"] = [h.model_dump() for h in race.horses]
+                rd["top_picks"] = [p.model_dump() for p in race.top_picks]
                 # Serialize dual-scenario picks (SIP-RR01) if present
                 if race.scenario_top_picks:
                     rd["scenario_top_picks"] = {
-                        label: [p.dict() for p in picks]
+                        label: [p.model_dump() for p in picks]
                         for label, picks in race.scenario_top_picks.items()
                     }
                 rd["horses_count"] = len(race.horses)

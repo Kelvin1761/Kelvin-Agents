@@ -1,0 +1,2939 @@
+{
+  "meeting": {
+    "id": "416046",
+    "name": "Warwick Farm",
+    "slug": "warwick-farm-20260304",
+    "rail": "True",
+    "date_utc": "2026-03-04",
+    "date_local": "2026-03-04",
+    "track_comments": "Finalised 4/3 - 7.45am. Lat Rider R6 N3"
+  },
+  "events": {
+    "1": {
+      "id": "3115161",
+      "event_number": 1,
+      "name": "All Too Hard @ Vinery Stud Handicap",
+      "slug": "all-too-hard-vinery-stud-handicap-race-1",
+      "distance": 1100,
+      "event_class": "2-Y-O, Handicap",
+      "prize_money": 60000,
+      "winning_time": "01:04.920",
+      "track_type": "Turf",
+      "track_condition": "Soft 7",
+      "weather": "moderate rain",
+      "starters": 8,
+      "is_resulted": true,
+      "pace": 0.44040625
+    },
+    "2": {
+      "id": "3115273",
+      "event_number": 2,
+      "name": "Racing And Sports Handicap",
+      "slug": "racing-and-sports-handicap-race-2",
+      "distance": 1600,
+      "event_class": "3-Y-O & Up, Maiden, Handicap",
+      "prize_money": 100000,
+      "winning_time": "01:38.720",
+      "track_type": "Turf",
+      "track_condition": "Soft 7",
+      "weather": "moderate rain",
+      "starters": 10,
+      "is_resulted": true,
+      "pace": 0.73334525
+    },
+    "3": {
+      "id": "3115372",
+      "event_number": 3,
+      "name": "Ranvet Handicap",
+      "slug": "ranvet-handicap-race-3",
+      "distance": 1300,
+      "event_class": "3&4-Y-O, BM64, Handicap",
+      "prize_money": 60000,
+      "winning_time": "01:18.270",
+      "track_type": "Turf",
+      "track_condition": "Soft 7",
+      "weather": "moderate rain",
+      "starters": 5,
+      "is_resulted": true,
+      "pace": 0.9278312500000001
+    },
+    "4": {
+      "id": "3115462",
+      "event_number": 4,
+      "name": "Schweppes Handicap",
+      "slug": "schweppes-handicap-race-4",
+      "distance": 1400,
+      "event_class": "4-Y-O & Up, Mares, BM72, Handicap",
+      "prize_money": 60000,
+      "winning_time": "01:24.180",
+      "track_type": "Turf",
+      "track_condition": "Soft 7",
+      "weather": "moderate rain",
+      "starters": 8,
+      "is_resulted": true,
+      "pace": 0.582593
+    },
+    "5": {
+      "id": "3115563",
+      "event_number": 5,
+      "name": "Asahi Super Dry Handicap",
+      "slug": "asahi-super-dry-handicap-race-5",
+      "distance": 1000,
+      "event_class": "3-Y-O & Up, BM72, Handicap",
+      "prize_money": 60000,
+      "winning_time": "00:57.860",
+      "track_type": "Turf",
+      "track_condition": "Soft 7",
+      "weather": "moderate rain",
+      "starters": 7,
+      "is_resulted": true,
+      "pace": 0.7838295
+    },
+    "6": {
+      "id": "3115648",
+      "event_number": 6,
+      "name": "Tab Handicap",
+      "slug": "tab-handicap-race-6",
+      "distance": 2110,
+      "event_class": "3-Y-O & Up, BM72, Handicap",
+      "prize_money": 60000,
+      "winning_time": "02:13.740",
+      "track_type": "Turf",
+      "track_condition": "Soft 7",
+      "weather": "moderate rain",
+      "starters": 10,
+      "is_resulted": true,
+      "pace": 0.71870875
+    },
+    "7": {
+      "id": "3115740",
+      "event_number": 7,
+      "name": "Toyota Forklifts Handicap",
+      "slug": "toyota-forklifts-handicap-race-7",
+      "distance": 1400,
+      "event_class": "3-Y-O & Up, BM78, Handicap",
+      "prize_money": 60000,
+      "winning_time": "01:24.920",
+      "track_type": "Turf",
+      "track_condition": "Soft 7",
+      "weather": "moderate rain",
+      "starters": 9,
+      "is_resulted": true,
+      "pace": 0.772307
+    },
+    "8": {
+      "id": "3115834",
+      "event_number": 8,
+      "name": "The Agency Real Estate Handicap",
+      "slug": "the-agency-real-estate-handicap-race-8",
+      "distance": 1200,
+      "event_class": "5-Y-O & Up, BM72, Handicap",
+      "prize_money": 60000,
+      "winning_time": "01:11.810",
+      "track_type": "Turf",
+      "track_condition": "Soft 7",
+      "weather": "moderate rain",
+      "starters": 7,
+      "is_resulted": true,
+      "pace": 0.7418752500000001
+    }
+  },
+  "results": {
+    "1": [
+      {
+        "competitor_number": 6,
+        "barrier": "8",
+        "horse_name": "She's Extra",
+        "age": 2,
+        "sex": "F",
+        "sire": "Exceedance",
+        "dam": "Moonrush",
+        "jockey": "William Stanley",
+        "trainer": "Kris Lees",
+        "weight": "57.5",
+        "starting_price": 3.1,
+        "finish_position": 1,
+        "margin": 0,
+        "finish_time": "01:04.920",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "4th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "4th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Soft winner racing away from rivals 1L at Scone 2Y-Bt 30thJan2026 over 900m. Never headed once found the lead and shot clear for a dominant win 4.2L at Newcastle 2Y Mdn over 900m. Tactics from the wide gate look crucial."
+      },
+      {
+        "competitor_number": 9,
+        "barrier": "6",
+        "horse_name": "Promenade",
+        "age": 2,
+        "sex": "F",
+        "sire": "Pinatubo",
+        "dam": "Essaouira",
+        "jockey": "Sam Clipperton",
+        "trainer": "Michael Freedman",
+        "weight": "56",
+        "starting_price": 6.5,
+        "finish_position": 2,
+        "margin": 3.15,
+        "finish_time": "01:05.444",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "2nd"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "2nd"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Sire a European dual G1 winning undefeated 2YO that went on to win the G1 Prix Jean Prat at 3. His Northern Hemisphere juveniles have hit the ground running.  . Raced away with a nice soft win 2.2L at Royal Randwick 2Y-Bt 19thFeb2026 over 1050m Soft 5."
+      },
+      {
+        "competitor_number": 7,
+        "barrier": "2",
+        "horse_name": "Coco Affair",
+        "age": 2,
+        "sex": "F",
+        "sire": "Home Affairs",
+        "dam": "Cocoa Doll",
+        "jockey": "Zac Lloyd",
+        "trainer": "John O'Shea & Tom Charlton",
+        "weight": "56",
+        "starting_price": 2.2,
+        "finish_position": 3,
+        "margin": 3.73,
+        "finish_time": "01:05.541",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "3rd"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "3rd"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "$260,000 Magic Millions purchase. Sire the fastest son of I Am Invincible and a dual G1 winner at 3 of the Coolmore Stud/ Lightning Stakes. Easy victory 1.3L at Hawkesbury 2Y-Bt 24/2 800m. Has been a trial star, expect her to roll forward."
+      },
+      {
+        "competitor_number": 10,
+        "barrier": "5",
+        "horse_name": "Stunning Future",
+        "age": 2,
+        "sex": "F",
+        "sire": "Admire Mars",
+        "dam": "Future Reward",
+        "jockey": "Tyler Schiller",
+        "trainer": "Gerald Ryan & Sterling Alexiou",
+        "weight": "56",
+        "starting_price": 21,
+        "finish_position": 4,
+        "margin": 3.93,
+        "finish_time": "01:05.575",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "5th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "6th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "By first season Japanese sire that was undefeated Champion 2 year-old of Japan before going on to be a dual G1 winner over a mile at 3. Fourth 1.5L at Rosehill Gardens 2Yf-Bt 23rdFeb2026 over 900m."
+      },
+      {
+        "competitor_number": 1,
+        "barrier": "1",
+        "horse_name": "Bonfire Star",
+        "age": 2,
+        "sex": "C",
+        "sire": "Gold Standard",
+        "dam": "La Isla Bonita",
+        "jockey": "Andrew Adkins",
+        "trainer": "Peter Snowden",
+        "weight": "58",
+        "starting_price": 26,
+        "finish_position": 5,
+        "margin": 9.08,
+        "finish_time": "01:06.433",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "6th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "5th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "By first season sire that won the Group 2 Stan Fox 1500m. He has already produced Group 1 JJ  Atkins winner Sheeza Belter. Game performance for third despite the margin 2.5L at Royal Randwick 2Y-Bt 19thFeb2026 over 1050m Soft 5."
+      },
+      {
+        "competitor_number": 4,
+        "barrier": "3",
+        "horse_name": "Milele",
+        "age": 2,
+        "sex": "C",
+        "sire": "Yes Yes Yes",
+        "dam": "All Cerise",
+        "jockey": "Jason Collett",
+        "trainer": "Chris Waller",
+        "weight": "58",
+        "starting_price": 20,
+        "finish_position": 6,
+        "margin": 9.12,
+        "finish_time": "01:06.439",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "7th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "7th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Sire won the G2 Todman Stakes at 2 before going on to break the Randwick 1200m track record when winning The Everest. Well beaten seventh 5.1L at Rosehill Gardens 2Yc&G-Bt 23rdFeb2026 over 900m."
+      },
+      {
+        "competitor_number": 11,
+        "barrier": "4",
+        "horse_name": "Handloom",
+        "age": 2,
+        "sex": "F",
+        "sire": "Exceed And Excel",
+        "dam": "Handspun",
+        "jockey": "Reece Jones",
+        "trainer": "Gary Portelli",
+        "weight": "55.5",
+        "starting_price": 12,
+        "finish_position": 7,
+        "margin": 11.46,
+        "finish_time": "01:06.830",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "1st"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "1st"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Wide near tail, widest turn, eased 100m 7.3L Gimcrack Group 3 over 1000m. Brilliant gallop winning 4.5L at Warwick Farm 2Y-Bt 16thFeb2026 over 795m Soft 5."
+      },
+      {
+        "competitor_number": 5,
+        "barrier": "7",
+        "horse_name": "King Campania",
+        "age": 2,
+        "sex": "C",
+        "sire": "Royal Meeting",
+        "dam": "Lady of Sorrento",
+        "jockey": "Adam Hyeronimus",
+        "trainer": "Chris Waller",
+        "weight": "57.5",
+        "starting_price": 31,
+        "finish_position": 8,
+        "margin": 11.73,
+        "finish_time": "01:06.875",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "8th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "8th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Taken to rear, raced greenly, manners costly 6.1L at Royal Randwick Kirkham over 1000m. Held third 1.4L at Rosehill Gardens 2Yc&G-Bt 23rdFeb2026 over 900m."
+      },
+      {
+        "competitor_number": 2,
+        "barrier": "11",
+        "horse_name": "Jourama",
+        "age": 2,
+        "sex": "G",
+        "sire": "Frosted",
+        "dam": "Spring Waterfall",
+        "jockey": "Nash Rawiller",
+        "trainer": "Anthony & Sam Freedman",
+        "weight": "58",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Held off competitors with something in hand 0.3L at Royal Randwick 2Y-Bt 27thJan2026 over 1050m. Enjoyed a nice run in transit to hold second and kicked strongly to hold position 4.2L at Newcastle 2Y Mdn over 900m."
+      },
+      {
+        "competitor_number": 3,
+        "barrier": "1",
+        "horse_name": "Keystrike",
+        "age": 2,
+        "sex": "G",
+        "sire": "Profiteer",
+        "dam": "Typing",
+        "jockey": "Tom Sherry",
+        "trainer": "Peter Snowden",
+        "weight": "58",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "$110,000 Magic Millions purchase. Sire's highlight run was winning the Inglis Millenium Listed by over 5 lengths. Dam a Listed winner. Held off competitors 0.5L Randwick 2Y-Bt 19/2. Trial form reads very well for this."
+      },
+      {
+        "competitor_number": 8,
+        "barrier": "9",
+        "horse_name": "Leonessa",
+        "age": 2,
+        "sex": "F",
+        "sire": "Snitzel",
+        "dam": "Miss Leonidas",
+        "jockey": "Tommy Berry",
+        "trainer": "Chris Waller",
+        "weight": "56",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Sire continues to produce quality gallopers including 2025 VRC Toorak Handicap winner Transatlantic. Second 4.1L at Rosehill Gardens 2Yf-Bt 23rdFeb2026 over 900m."
+      }
+    ],
+    "2": [
+      {
+        "competitor_number": 10,
+        "barrier": "3",
+        "horse_name": "Oso Spirited",
+        "age": 4,
+        "sex": "M",
+        "sire": "Charm Spirit",
+        "dam": "Scattercat",
+        "jockey": "Rachel King",
+        "trainer": "Gai Waterhouse & Adrian Bott",
+        "weight": "55",
+        "starting_price": 6,
+        "finish_position": 1,
+        "margin": 0,
+        "finish_time": "01:38.720",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "2nd"
+          },
+          {
+            "distance": "800m",
+            "position": "1st"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "1st"
+          },
+          {
+            "distance": "Settled",
+            "position": "2nd"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Behind the leader and was right there to be in the finish, tiring into sixth 6.7L at Kensington Super 3Y Mdn-Sw over 1400m Soft 6. Set the pace and loomed as a chance before tiring into fourth 2.8L at Hawkesbury Super Mdn-Sw over 1500m."
+      },
+      {
+        "competitor_number": 9,
+        "barrier": "6",
+        "horse_name": "Think Itz You",
+        "age": 3,
+        "sex": "G",
+        "sire": "So You Think",
+        "dam": "Itz Lily",
+        "jockey": "Tim Clark",
+        "trainer": "Chris Waller",
+        "weight": "56",
+        "starting_price": 13,
+        "finish_position": 2,
+        "margin": 1.69,
+        "finish_time": "01:39.001",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "5th"
+          },
+          {
+            "distance": "800m",
+            "position": "4th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "4th"
+          },
+          {
+            "distance": "Settled",
+            "position": "5th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Got past a few horses late for fifth but never a threat from so far back 5L at Canterbury Park 3Y Mdn-Sw over 1250m. Ran home determinedly over the final stages to gain second 0.5L at Kembla Grange Mdn-Sw over 1300m. Keep safe."
+      },
+      {
+        "competitor_number": 5,
+        "barrier": "1",
+        "horse_name": "Explicit",
+        "age": 3,
+        "sex": "G",
+        "sire": "Snitzel",
+        "dam": "Breakfast in Bed",
+        "jockey": "Chad Schofield",
+        "trainer": "Gerald Ryan & Sterling Alexiou",
+        "weight": "56",
+        "starting_price": 15,
+        "finish_position": 3,
+        "margin": 3.4,
+        "finish_time": "01:39.286",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "8th"
+          },
+          {
+            "distance": "800m",
+            "position": "6th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "7th"
+          },
+          {
+            "distance": "Settled",
+            "position": "8th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Always chasing after settling back and passed a few tired ones late 2.2L at Canterbury Park Mdn over 1550m. Never gave backers any joy after slow start 15.9L at Newcastle Mdn-Sw over 1890m."
+      },
+      {
+        "competitor_number": 2,
+        "barrier": "5",
+        "horse_name": "Iron Legend",
+        "age": 3,
+        "sex": "G",
+        "sire": "Dundeel",
+        "dam": "Baaqyah",
+        "jockey": "Siena Grima",
+        "trainer": "Chris Waller",
+        "weight": "56.5",
+        "starting_price": 7,
+        "finish_position": 4,
+        "margin": 4.02,
+        "finish_time": "01:39.389",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "9th"
+          },
+          {
+            "distance": "800m",
+            "position": "9th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "10th"
+          },
+          {
+            "distance": "Settled",
+            "position": "10th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Too far back to be competitive, struggling into sixth 5.1L at Rosehill Gardens Super 3Y Mdn over 1400m. Made up a stack of ground from worse than midfield for a top third 1.4L at Hawkesbury Super Mdn-Sw over 1500m. Threat."
+      },
+      {
+        "competitor_number": 3,
+        "barrier": "10",
+        "horse_name": "Ratify",
+        "age": 3,
+        "sex": "G",
+        "sire": "Proisir",
+        "dam": "Sororia",
+        "jockey": "Dylan Gibbons",
+        "trainer": "John Sargent",
+        "weight": "56.5",
+        "starting_price": 5.5,
+        "finish_position": 5,
+        "margin": 4.62,
+        "finish_time": "01:39.490",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "1st"
+          },
+          {
+            "distance": "800m",
+            "position": "2nd"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "2nd"
+          },
+          {
+            "distance": "Settled",
+            "position": "1st"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Got back and battled to improve positions when sixth 6.4L Spring Stk Group 3 over 1600m. Challenged for the front and tired late into fourth 1.7L at Warwick Farm Super 3Y Mdn over 1400m. Second-up."
+      },
+      {
+        "competitor_number": 1,
+        "barrier": "8",
+        "horse_name": "Sarapo",
+        "age": 4,
+        "sex": "G",
+        "sire": "Frankel",
+        "dam": "Edith Piaf",
+        "jockey": "Nash Rawiller",
+        "trainer": "Chris Waller",
+        "weight": "59",
+        "starting_price": 4.6,
+        "finish_position": 6,
+        "margin": 5.16,
+        "finish_time": "01:39.580",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "6th"
+          },
+          {
+            "distance": "800m",
+            "position": "7th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "6th"
+          },
+          {
+            "distance": "Settled",
+            "position": "9th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Always well back, not up to task, prefer easier 8.9L Gloaming Group 3 over 1800m. Ran on well and looked a winning chance but was edged out into third spot 1.4L at Warwick Farm Super 3Y Mdn over 1400m. Top pick."
+      },
+      {
+        "competitor_number": 11,
+        "barrier": "7",
+        "horse_name": "Garrix",
+        "age": 3,
+        "sex": "G",
+        "sire": "Frankel",
+        "dam": "Tosen Proud",
+        "jockey": "Zac Lloyd",
+        "trainer": "Chris Waller",
+        "weight": "54",
+        "starting_price": 9,
+        "finish_position": 7,
+        "margin": 6.12,
+        "finish_time": "01:39.740",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "3rd"
+          },
+          {
+            "distance": "800m",
+            "position": "3rd"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "3rd"
+          },
+          {
+            "distance": "Settled",
+            "position": "4th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Tracked into the race just behind the pace and did little when it mattered 6.1L at Newcastle Super Mdn-Sw over 1850m. Held position to the line for second after settling up with the leaders 1.6L at Newcastle Super Mdn over 1600m."
+      },
+      {
+        "competitor_number": 8,
+        "barrier": "2",
+        "horse_name": "Pepe",
+        "age": 3,
+        "sex": "G",
+        "sire": "Pierro",
+        "dam": "Pedicel",
+        "jockey": "Tommy Berry",
+        "trainer": "Chris Waller",
+        "weight": "56",
+        "starting_price": 6,
+        "finish_position": 8,
+        "margin": 6.52,
+        "finish_time": "01:39.806",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "7th"
+          },
+          {
+            "distance": "800m",
+            "position": "8th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "8th"
+          },
+          {
+            "distance": "Settled",
+            "position": "6th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Top effort for fourth after settling too far back in the running to threaten 3.8L at Newcastle Mdn-Sw over 1500m. Made up many lengths to grab third after getting back to midfield 0.9L at Canterbury Park 3Y Mdn over 1550m."
+      },
+      {
+        "competitor_number": 4,
+        "barrier": "4",
+        "horse_name": "Wormington",
+        "age": 3,
+        "sex": "G",
+        "sire": "Hanseatic",
+        "dam": "No Restriction",
+        "jockey": "Tyler Schiller",
+        "trainer": "Ross McConville",
+        "weight": "56.5",
+        "starting_price": 41,
+        "finish_position": 9,
+        "margin": 8.56,
+        "finish_time": "01:40.146",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "10th"
+          },
+          {
+            "distance": "800m",
+            "position": "10th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "9th"
+          },
+          {
+            "distance": "Settled",
+            "position": "7th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "No pace to get back worse than midfield and never came into the race fifth 3.3L at Kembla Grange Mdn-Sw over 1600m Soft 7. Nicely positioned but just edged out late into second 0.3L at Wyong Prov Mdn-Sw over 1600m Soft 5."
+      },
+      {
+        "competitor_number": 6,
+        "barrier": "9",
+        "horse_name": "Fierce Critic",
+        "age": 3,
+        "sex": "F",
+        "sire": "Fierce Impact",
+        "dam": "Latina Beauty",
+        "jockey": "Jason Collett",
+        "trainer": "Matthew Smith",
+        "weight": "56",
+        "starting_price": 20,
+        "finish_position": 10,
+        "margin": 15.28,
+        "finish_time": "01:41.266",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "4th"
+          },
+          {
+            "distance": "800m",
+            "position": "5th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "5th"
+          },
+          {
+            "distance": "Settled",
+            "position": "3rd"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Fought hard over the final stages for third after sitting behind leaders 1L at Canberra Mdn over 1400m. Driven to the lead but was run down late when second 0.7L at Hawkesbury Super Mdn-Sw over 1500m."
+      },
+      {
+        "competitor_number": 7,
+        "barrier": "11",
+        "horse_name": "Nothing Finer",
+        "age": 3,
+        "sex": "G",
+        "sire": "King's Legacy",
+        "dam": "Elisa Carolina",
+        "jockey": "Andrew Adkins",
+        "trainer": "Joseph Pride",
+        "weight": "56",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Tracked into the race nicely from midfield when holding down third 4L at Beaumont Newcastle Mdn over 1200m Soft 6. Gave a great sight out in front but was reeled in easily for third 2.3L at Kembla Grange Mdn-Sw over 1300m."
+      }
+    ],
+    "3": [
+      {
+        "competitor_number": 5,
+        "barrier": "1",
+        "horse_name": "Just Maz",
+        "age": 3,
+        "sex": "F",
+        "sire": "Justify",
+        "dam": "Marianne",
+        "jockey": "Nash Rawiller",
+        "trainer": "Gerald Ryan & Sterling Alexiou",
+        "weight": "58.5",
+        "starting_price": 2.1,
+        "finish_position": 1,
+        "margin": 0,
+        "finish_time": "01:18.270",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "5th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "5th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Easy victory 1.2L at Rosehill Gardens 3Y+ Mdn-Bt 2ndJan2026 over 900m. Edged out rivals to win narrowly 0.1L at Canterbury Park F&M Mdn over 1250m Soft 5. Lightly raced with plenty of upside. Inside draw suits."
+      },
+      {
+        "competitor_number": 12,
+        "barrier": "3",
+        "horse_name": "Kitty Okay",
+        "age": 4,
+        "sex": "M",
+        "sire": "Headwater",
+        "dam": "Purr Itty Kitty",
+        "jockey": "Amy McLucas",
+        "trainer": "Theresa Bateup",
+        "weight": "56",
+        "starting_price": 21,
+        "finish_position": 2,
+        "margin": 0.76,
+        "finish_time": "01:18.396",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "2nd"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "2nd"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Toyed with rivals once found the front in what was a quality winning performance 3L at Kembla Grange Prov 4Y+ Mdn-Sw over 1200m Soft 7. Went forward and looked a winning chance before fading late sixth 1.7L at Kembla Grange F&M Bm64 over 1200m Soft 5."
+      },
+      {
+        "competitor_number": 2,
+        "barrier": "4",
+        "horse_name": "Kakadu Sunset",
+        "age": 3,
+        "sex": "F",
+        "sire": "Extreme Choice",
+        "dam": "Typing",
+        "jockey": "Rachel King",
+        "trainer": "Gai Waterhouse & Adrian Bott",
+        "weight": "59.5",
+        "starting_price": 4.2,
+        "finish_position": 3,
+        "margin": 2.08,
+        "finish_time": "01:18.616",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "4th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "3rd"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Went forward and fought very hard to keep third 2.5L at Kensington 3&4Y Bm64 1250m. Midfield rail, held up turn-100m, must forgive 2.5L Reg Allen Group 3 1400m. Must respect the stakes form last prep. Proven class edge."
+      },
+      {
+        "competitor_number": 3,
+        "barrier": "2",
+        "horse_name": "Scrumptious",
+        "age": 3,
+        "sex": "F",
+        "sire": "Tassort",
+        "dam": "Taste of Money",
+        "jockey": "Tim Clark",
+        "trainer": "Gai Waterhouse & Adrian Bott",
+        "weight": "59.5",
+        "starting_price": 4.2,
+        "finish_position": 4,
+        "margin": 3.22,
+        "finish_time": "01:18.806",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "1st"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "1st"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Gutsy effort to hold off rivals to win when hitting the lead 0.2L at Canterbury Park 3Y Mdn-Sw over 1250m. Gave a great sight out in front but was run down for third 1.1L at Canterbury Park 3Y Bm64 over 1250m."
+      },
+      {
+        "competitor_number": 8,
+        "barrier": "5",
+        "horse_name": "Ahellbenda",
+        "age": 4,
+        "sex": "M",
+        "sire": "Hellbent",
+        "dam": "Grenada",
+        "jockey": "Tyler Schiller",
+        "trainer": "Richard Litt",
+        "weight": "57.5",
+        "starting_price": 6,
+        "finish_position": 5,
+        "margin": 9.84,
+        "finish_time": "01:19.910",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "3rd"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "4th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Nice run to hold second despite winner being too strong late 1.3L at Newcastle Cond Bm68 over 1400m. Couldn't sustain sprint in the straight after settling with the leaders 4.7L at Hawkesbury Provmid Champ over 1400m."
+      },
+      {
+        "competitor_number": 1,
+        "barrier": "6",
+        "horse_name": "Farindira",
+        "age": 3,
+        "sex": "G",
+        "sire": "Farnan",
+        "dam": "Somethingvain",
+        "jockey": "Adam Hyeronimus",
+        "trainer": "Gai Waterhouse & Adrian Bott",
+        "weight": "61",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Gritty effort fifth 2.2L at Canterbury Park 3Y-Bt 6thFeb2026 over 902m. Controlled the race from the front and won easily 2.6L at Canterbury Park Mdn-Sw over 1250m. Full of confidence after easy win last start."
+      },
+      {
+        "competitor_number": 4,
+        "barrier": "3",
+        "horse_name": "Rileycat",
+        "age": 4,
+        "sex": "M",
+        "sire": "Unite And Conquer",
+        "dam": "Mazzy Star",
+        "jockey": "Unknown",
+        "trainer": "Pat Murphy",
+        "weight": "59",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Scooted home into third placing for an eye-catching run after settling back 1.4L at Sapphire Coast Bm66 over 1400m Soft 5. Sat in the box seat and burst to the front winning effortlessly 2.3L at Goulburn Bm66 over 1300m."
+      },
+      {
+        "competitor_number": 6,
+        "barrier": "9",
+        "horse_name": "Manaajem",
+        "age": 4,
+        "sex": "M",
+        "sire": "Tassort",
+        "dam": "Najoom",
+        "jockey": "Chad Schofield",
+        "trainer": "Peter Snowden",
+        "weight": "58",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "One-paced to the line and always well back 4.7L at Rosehill Gardens 3Y Bm72 over 1100m. Sat behind the leaders and fought hard over the final stages for third 3L at Canterbury Park Mares Bm64 over 1250m. Second-up."
+      },
+      {
+        "competitor_number": 7,
+        "barrier": "12",
+        "horse_name": "Show Business",
+        "age": 4,
+        "sex": "M",
+        "sire": "Toronado",
+        "dam": "Another Show",
+        "jockey": "Jason Collett",
+        "trainer": "Matthew Smith",
+        "weight": "58",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Gave rivals a start however ran home well late for fourth 3.2L at Wyong Cond Bm68 over 1200m. Couldn't sustain sprint in the straight after settling with the leaders 5L at Wyong Bm64 over 1100m."
+      },
+      {
+        "competitor_number": 9,
+        "barrier": "8",
+        "horse_name": "Zielle",
+        "age": 4,
+        "sex": "M",
+        "sire": "Denman",
+        "dam": "Evonne's Magic",
+        "jockey": "Molly Bourke",
+        "trainer": "Gary Nickson",
+        "weight": "57.5",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Super job to make up many lengths from back in the field late for fifth 1.7L at Goulburn Cl3 Bm66 over 1100m. Enormous effort to get so close to the winner when third 2.4L at Goulburn Bm66 over 1300m."
+      },
+      {
+        "competitor_number": 10,
+        "barrier": "13",
+        "horse_name": "Eynesbury",
+        "age": 3,
+        "sex": "G",
+        "sire": "Savabeel",
+        "dam": "Miss Opulence",
+        "jockey": "Zac Lloyd",
+        "trainer": "Chris Waller",
+        "weight": "56.5",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Stormed home for a close second after getting back 0.1L at Gosford Mdn-Sw over 1200m. Settled worse than midfield and from that point struggled into sixth 3.8L at Canterbury Park Mdn-Sw over 1250m."
+      },
+      {
+        "competitor_number": 11,
+        "barrier": "5",
+        "horse_name": "Knight Of Rhodes",
+        "age": 3,
+        "sex": "G",
+        "sire": "Fierce Impact",
+        "dam": "Suite Annie",
+        "jockey": "Dylan Gibbons",
+        "trainer": "Matthew Smith",
+        "weight": "56.5",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Got the better of rivals late to win after running on well from fifth 0.5L at Nowra Mdn over 1200m Heavy 8. Seventh 7.3L at Royal Randwick Open-Bt 19thFeb2026 over 1050m Soft 5."
+      },
+      {
+        "competitor_number": 13,
+        "barrier": "2",
+        "horse_name": "Nymphadora",
+        "age": 4,
+        "sex": "M",
+        "sire": "Yes Yes Yes",
+        "dam": "Miss Hufflepuff",
+        "jockey": "Ashley Morgan",
+        "trainer": "Stephen O'Halloran",
+        "weight": "56",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Made up ground from the back for fifth but ultimately settled too far back 3.8L at Gosford Prov Cl1 over 1100m. Enjoyed a nice run in transit and kicked strongly to hold second 3L at Canterbury Park Mares Bm64 over 1250m. Second-up."
+      }
+    ],
+    "4": [
+      {
+        "competitor_number": 3,
+        "barrier": "7",
+        "horse_name": "Autumn Dream",
+        "age": 4,
+        "sex": "M",
+        "sire": "The Autumn Sun",
+        "dam": "Meraki Miss",
+        "jockey": "Siena Grima",
+        "trainer": "Annabel & Rob Archibald",
+        "weight": "58.5",
+        "starting_price": 3.5,
+        "finish_position": 1,
+        "margin": 0,
+        "finish_time": "01:24.180",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "2nd"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "2nd"
+          },
+          {
+            "distance": "Settled",
+            "position": "1st"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Tracked nicely into the race but didn't run on in the straight when sixth at Kensington. Loomed ominously on the lead but outgunned late when runner-up at Warwick Farm. Blinkers back on should sharpen her right up."
+      },
+      {
+        "competitor_number": 1,
+        "barrier": "1",
+        "horse_name": "Spirit Of Camelot",
+        "age": 5,
+        "sex": "M",
+        "sire": "Camelot",
+        "dam": "Tough Spirit",
+        "jockey": "Anna Roper",
+        "trainer": "Peter Snowden",
+        "weight": "61",
+        "starting_price": 2.2,
+        "finish_position": 2,
+        "margin": 0.02,
+        "finish_time": "01:24.183",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "4th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "4th"
+          },
+          {
+            "distance": "Settled",
+            "position": "5th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Settled midfield not far off the leaders but couldn't make ground 3.1L Queen Of South Group 2. Had a big task ahead settling well back in the running 3.2L at Canterbury Park. Expect her to bounce back with authority here."
+      },
+      {
+        "competitor_number": 2,
+        "barrier": "8",
+        "horse_name": "Vienna Vixen",
+        "age": 6,
+        "sex": "M",
+        "sire": "Foxwedge",
+        "dam": "Vienna Waltz",
+        "jockey": "William Stanley",
+        "trainer": "Ciaron Maher",
+        "weight": "60.5",
+        "starting_price": 5.5,
+        "finish_position": 3,
+        "margin": 0.31,
+        "finish_time": "01:24.231",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "6th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "6th"
+          },
+          {
+            "distance": "Settled",
+            "position": "6th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Couldn't quicken when asked for the effort after positioning worse than midfield at Rosehill Gardens. Settled just off the pace and hit the line nicely for second at Warwick Farm. She can atone for her last start performance here."
+      },
+      {
+        "competitor_number": 6,
+        "barrier": "3",
+        "horse_name": "Sweet Treats",
+        "age": 4,
+        "sex": "M",
+        "sire": "Castelvecchio",
+        "dam": "Coconut Dream",
+        "jockey": "Claire Ramsbotham",
+        "trainer": "Danielle Seib",
+        "weight": "54.5",
+        "starting_price": 16,
+        "finish_position": 4,
+        "margin": 2,
+        "finish_time": "01:24.513",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "1st"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "1st"
+          },
+          {
+            "distance": "Settled",
+            "position": "2nd"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Had no pace early but once balanced up ran on well for fifth 2.4L at Newcastle Highway-C3 over 1600m. Failed to improve position from behind the leaders throughout, sixth 2.9L at Kembla Grange Cond Bm68 over 1300m. Second-up."
+      },
+      {
+        "competitor_number": 4,
+        "barrier": "4",
+        "horse_name": "Rileycat",
+        "age": 4,
+        "sex": "M",
+        "sire": "Unite And Conquer",
+        "dam": "Mazzy Star",
+        "jockey": "Zac Wadick",
+        "trainer": "Pat Murphy",
+        "weight": "57",
+        "starting_price": 17,
+        "finish_position": 5,
+        "margin": 3.61,
+        "finish_time": "01:24.781",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "5th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "5th"
+          },
+          {
+            "distance": "Settled",
+            "position": "4th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Really motored home the last part into third 1.4L at Sapphire Coast Bm66 over 1400m Soft 5. Sat in the box seat and burst to the front winning effortlessly 2.3L at Goulburn Bm66 over 1300m."
+      },
+      {
+        "competitor_number": 7,
+        "barrier": "6",
+        "horse_name": "Just Like Tilda",
+        "age": 4,
+        "sex": "M",
+        "sire": "Divine Prophet",
+        "dam": "Matilda Jade",
+        "jockey": "Olivia Chambers",
+        "trainer": "Bruce Cross",
+        "weight": "54",
+        "starting_price": 41,
+        "finish_position": 6,
+        "margin": 6.57,
+        "finish_time": "01:25.275",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "8th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "7th"
+          },
+          {
+            "distance": "Settled",
+            "position": "8th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Found a nice position behind the speed but had nothing to show when sixth 3.9L at Wagga Cl1 over 1300m Soft 7. Under hard riding to make ground from midfield when settled on sixth 6.6L at Kembla Grange Mid Cl1 over 1400m. Second-up."
+      },
+      {
+        "competitor_number": 8,
+        "barrier": "2",
+        "horse_name": "London Star",
+        "age": 5,
+        "sex": "M",
+        "sire": "Star Turn",
+        "dam": "Londinium",
+        "jockey": "Rebecca Bronett Prag",
+        "trainer": "Theresa Bateup",
+        "weight": "54",
+        "starting_price": 51,
+        "finish_position": 7,
+        "margin": 7.89,
+        "finish_time": "01:25.495",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "7th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "8th"
+          },
+          {
+            "distance": "Settled",
+            "position": "7th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Very competitive run finishing fourth after racing just off the pace 2.2L at Sapphire Coast Cl1 over 1400m Soft 5. Sat just behind the leaders and ran on well for the win 0.5L at Queanbeyan Cl1 over 1460m."
+      },
+      {
+        "competitor_number": 5,
+        "barrier": "5",
+        "horse_name": "Zielle",
+        "age": 4,
+        "sex": "M",
+        "sire": "Denman",
+        "dam": "Evonne's Magic",
+        "jockey": "Molly Bourke",
+        "trainer": "Gary Nickson",
+        "weight": "55.5",
+        "starting_price": 10,
+        "finish_position": 8,
+        "margin": 9.45,
+        "finish_time": "01:25.754",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "3rd"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "3rd"
+          },
+          {
+            "distance": "Settled",
+            "position": "3rd"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Super job to make up many lengths from back in the field late for fifth 1.7L at Goulburn Cl3 Bm66 over 1100m. Enormous effort to get so close to the winner when third 2.4L at Goulburn Bm66 over 1300m."
+      }
+    ],
+    "5": [
+      {
+        "competitor_number": 7,
+        "barrier": "1",
+        "horse_name": "Wootton Lass",
+        "age": 3,
+        "sex": "F",
+        "sire": "Wootton Bassett",
+        "dam": "The Natural",
+        "jockey": "Dylan Gibbons",
+        "trainer": "Annabel & Rob Archibald",
+        "weight": "55.5",
+        "starting_price": 6,
+        "finish_position": 1,
+        "margin": 0,
+        "finish_time": "00:57.860",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "3rd"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "4th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "On speed, pressured early, put up white flag 10.4L Furious Group 2 over 1200m. Found a nice spot behind the speed but did little in the run home 3.7L Lghtfinger Group 2 over 1200m. Warrants respect with second-up stats."
+      },
+      {
+        "competitor_number": 4,
+        "barrier": "7",
+        "horse_name": "Manukau",
+        "age": 4,
+        "sex": "M",
+        "sire": "Lonhro",
+        "dam": "Pohutukawa",
+        "jockey": "Tommy Berry",
+        "trainer": "Michael Freedman",
+        "weight": "56.5",
+        "starting_price": 5.5,
+        "finish_position": 2,
+        "margin": 0.26,
+        "finish_time": "00:57.903",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "6th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "6th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Gallant effort to hold on for a win after sitting with the leaders in-running 0.8L at Kembla Grange. Went forward in transit and gained the edge late to win 0.1L at Canterbury Park. The hat trick of wins looks to be well within reach here."
+      },
+      {
+        "competitor_number": 1,
+        "barrier": "2",
+        "horse_name": "Rantan",
+        "age": 4,
+        "sex": "M",
+        "sire": "I Am Invincible",
+        "dam": "Sweet Kiss",
+        "jockey": "Jason Collett",
+        "trainer": "Ron Quinton",
+        "weight": "59.5",
+        "starting_price": 5,
+        "finish_position": 3,
+        "margin": 1.73,
+        "finish_time": "00:58.148",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "2nd"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "2nd"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Great gallop to fly late into second after getting back in the running 2.2L at Warwick Farm 4Y+ Bm72 over 1100m. One-paced to the line and always well back 7.6L at Royal Randwick Midway Bm72 over 1000m. Second-up."
+      },
+      {
+        "competitor_number": 3,
+        "barrier": "6",
+        "horse_name": "Tai Lung",
+        "age": 7,
+        "sex": "G",
+        "sire": "Fighting Sun",
+        "dam": "Bad Kitty",
+        "jockey": "Siena Grima",
+        "trainer": "Terry Robinson",
+        "weight": "57",
+        "starting_price": 16,
+        "finish_position": 4,
+        "margin": 3.79,
+        "finish_time": "00:58.491",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "4th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "5th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Ridden just off the speed and produced best late to finish runner-up 0.3L at Kembla Grange Cg&E Bm64 over 1200m Soft 5. Went forward in transit and gained the edge late to win 0.2L at Nowra Bm74 over 1000m Soft 5. Performs well at this track/distance."
+      },
+      {
+        "competitor_number": 8,
+        "barrier": "5",
+        "horse_name": "No Statement",
+        "age": 7,
+        "sex": "G",
+        "sire": "Press Statement",
+        "dam": "Berning Affair",
+        "jockey": "Molly Bourke",
+        "trainer": "Mike Van Gestel",
+        "weight": "54",
+        "starting_price": 31,
+        "finish_position": 5,
+        "margin": 4.2,
+        "finish_time": "00:58.560",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "1st"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "1st"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Applied pressure to the leader but had nothing left at the finish, fifth 2.6L at Newcastle Bm64 over 900m. Leader with 400m to go however couldn't go on when fourth 3.3L at Warwick Farm Bm72 over 1000m."
+      },
+      {
+        "competitor_number": 6,
+        "barrier": "4",
+        "horse_name": "Taxation",
+        "age": 3,
+        "sex": "F",
+        "sire": "I Am Invincible",
+        "dam": "Amercement",
+        "jockey": "Zac Lloyd",
+        "trainer": "Joseph Pride",
+        "weight": "56",
+        "starting_price": 2.6,
+        "finish_position": 6,
+        "margin": 4.42,
+        "finish_time": "00:58.596",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "5th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "3rd"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Got the bob in on the line to win after running on well from fifth  0.1L at Rosehill Gardens. Beaten for speed and never came into contention 5.6L at Rosehill Gardens. Lightly raced filly with a very bright future ahead."
+      },
+      {
+        "competitor_number": 2,
+        "barrier": "3",
+        "horse_name": "Gambler",
+        "age": 3,
+        "sex": "G",
+        "sire": "Capitalist",
+        "dam": "Flamboyant Lass",
+        "jockey": "Sam Clipperton",
+        "trainer": "Peter Snowden",
+        "weight": "57",
+        "starting_price": 5.5,
+        "finish_position": 7,
+        "margin": 5.01,
+        "finish_time": "00:58.695",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "7th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "7th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Enjoyed a nice run in transit and kicked strongly to hold second 2.5L at Wyong. Challenged for the lead but held rivals at bay to win 0.8L at Hawkesbury. He can make it back-to-back wins with another bold front running ride."
+      },
+      {
+        "competitor_number": 5,
+        "barrier": "3",
+        "horse_name": "Spartus",
+        "age": 4,
+        "sex": "G",
+        "sire": "Capitalist",
+        "dam": "Zouriana",
+        "jockey": "Unknown",
+        "trainer": "Fabio Martino",
+        "weight": "56.5",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Ran on well and looked a winning chance but was edged out for third position 2L at Warwick Farm Bm72 over 1000m. No match for rivals and never progressed into the race from midfield 3.3L at Canterbury Park 3Y+ Bm72 over 1100m."
+      }
+    ],
+    "6": [
+      {
+        "competitor_number": 10,
+        "barrier": "10",
+        "horse_name": "Goofinator",
+        "age": 5,
+        "sex": "G",
+        "sire": "Prized Icon",
+        "dam": "Ellehro",
+        "jockey": "Rachel King",
+        "trainer": "Pat Murphy",
+        "weight": "55",
+        "starting_price": 8,
+        "finish_position": 1,
+        "margin": 0,
+        "finish_time": "02:13.740",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "5th"
+          },
+          {
+            "distance": "800m",
+            "position": "5th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "4th"
+          },
+          {
+            "distance": "Settled",
+            "position": "2nd"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Made up some ground into fourth after settling behind the speed 3.7L at Canterbury Park Bm64 over 1550m. Ran on nicely over the concluding stages to win narrowly 0.1L at Canterbury Park Bm64 over 1900m. Chance."
+      },
+      {
+        "competitor_number": 9,
+        "barrier": "4",
+        "horse_name": "Dolce Dior",
+        "age": 4,
+        "sex": "M",
+        "sire": "Dundeel",
+        "dam": "Campania",
+        "jockey": "Tom Sherry",
+        "trainer": "Peter Snowden",
+        "weight": "55",
+        "starting_price": 6.5,
+        "finish_position": 2,
+        "margin": 0.43,
+        "finish_time": "02:13.811",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "2nd"
+          },
+          {
+            "distance": "800m",
+            "position": "3rd"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "1st"
+          },
+          {
+            "distance": "Settled",
+            "position": "1st"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Settled on the pace and ran down the leaders to win 0.9L at Canberra Bm60 over 1600m. Sat behind the leaders and fought hard over the final stages for third 3.2L at Warwick Farm Bm72 over 2140m. Threat."
+      },
+      {
+        "competitor_number": 12,
+        "barrier": "6",
+        "horse_name": "De Louviere",
+        "age": 5,
+        "sex": "G",
+        "sire": "Sea The Moon",
+        "dam": "Equivocal",
+        "jockey": "Tyler Schiller",
+        "trainer": "Matthew Smith",
+        "weight": "54",
+        "starting_price": 10,
+        "finish_position": 3,
+        "margin": 0.62,
+        "finish_time": "02:13.843",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "3rd"
+          },
+          {
+            "distance": "800m",
+            "position": "2nd"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "3rd"
+          },
+          {
+            "distance": "Settled",
+            "position": "9th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Sat on the pace over the final 400m and gained the bob in on the line to win 0.2L at Gosford Bm64 over 2100m. Stalked the speed, under the whip to make ground struggling into fifth 4.8L at Warwick Farm Bm72 over 2140m."
+      },
+      {
+        "competitor_number": 7,
+        "barrier": "5",
+        "horse_name": "Laspirit Deeler",
+        "age": 5,
+        "sex": "M",
+        "sire": "Dundeel",
+        "dam": "Lasqueti Spirit",
+        "jockey": "Jeff Penza",
+        "trainer": "Lee & Cherie Curtis",
+        "weight": "56",
+        "starting_price": 81,
+        "finish_position": 4,
+        "margin": 1.94,
+        "finish_time": "02:14.063",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "10th"
+          },
+          {
+            "distance": "800m",
+            "position": "7th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "5th"
+          },
+          {
+            "distance": "Settled",
+            "position": "6th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Always doing the chasing after displaying no early speed 15.8L at Warwick Farm Bm72 over 2200m. Never in contention after settling a long way back 6.6L at Canterbury Park F&M Bm72 over 1550m. A winner second-up in the past, must regard."
+      },
+      {
+        "competitor_number": 8,
+        "barrier": "8",
+        "horse_name": "Mr Fabulous",
+        "age": 6,
+        "sex": "G",
+        "sire": "Pierro",
+        "dam": "Doulmera",
+        "jockey": "Brock Ryan",
+        "trainer": "Theresa Bateup",
+        "weight": "56",
+        "starting_price": 61,
+        "finish_position": 5,
+        "margin": 2.44,
+        "finish_time": "02:14.146",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "8th"
+          },
+          {
+            "distance": "800m",
+            "position": "9th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "9th"
+          },
+          {
+            "distance": "Settled",
+            "position": "7th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Applied pressure to the leader but was under the pump to hold position 10.1L at Kembla Grange Bm64 over 2400m Soft 7. Led and kicked clear for nice win 1.3L at Kembla Grange Bm64 over 2400m."
+      },
+      {
+        "competitor_number": 3,
+        "barrier": "1",
+        "horse_name": "Gentileschi",
+        "age": 5,
+        "sex": "M",
+        "sire": "Dundeel",
+        "dam": "Artefiori",
+        "jockey": "Siena Grima",
+        "trainer": "Paul Messara & Leah Gavranich",
+        "weight": "59",
+        "starting_price": 7,
+        "finish_position": 6,
+        "margin": 3.88,
+        "finish_time": "02:14.386",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "7th"
+          },
+          {
+            "distance": "800m",
+            "position": "8th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "8th"
+          },
+          {
+            "distance": "Settled",
+            "position": "5th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Hardly sighted in the race until the final stages grabbing sixth 7L at Newcastle Bm68 over 1250m. Did make up some ground in the straight for fifth but never threatened 2.5L at Canterbury Park F&M Bm72 over 1550m."
+      },
+      {
+        "competitor_number": 2,
+        "barrier": "3",
+        "horse_name": "Suit Of Armour",
+        "age": 6,
+        "sex": "G",
+        "sire": "Camelot",
+        "dam": "Benefaction",
+        "jockey": "Zac Lloyd",
+        "trainer": "John O'Shea & Tom Charlton",
+        "weight": "59.5",
+        "starting_price": 2.5,
+        "finish_position": 7,
+        "margin": 7.74,
+        "finish_time": "02:15.030",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "6th"
+          },
+          {
+            "distance": "800m",
+            "position": "6th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "7th"
+          },
+          {
+            "distance": "Settled",
+            "position": "4th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "No pace to get back worse than midfield and never came into the race fifth 3.4L at Canterbury Park 5Y+ Bm72 over 1550m. Displayed best work once the race was already won, sixth 1.5L at Canterbury Park Bm78 over 1900m. Nicely placed by trainer here."
+      },
+      {
+        "competitor_number": 13,
+        "barrier": "7",
+        "horse_name": "Sacred Mistress",
+        "age": 6,
+        "sex": "M",
+        "sire": "Sacred Falls",
+        "dam": "Dancing Mistress",
+        "jockey": "Anna Roper",
+        "trainer": "Luke Pepper",
+        "weight": "54",
+        "starting_price": 21,
+        "finish_position": 8,
+        "margin": 9.28,
+        "finish_time": "02:15.286",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "1st"
+          },
+          {
+            "distance": "800m",
+            "position": "1st"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "2nd"
+          },
+          {
+            "distance": "Settled",
+            "position": "10th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Sat behind the leaders and didn't go down without a fight when fourth 2.2L at Canterbury Park Bm64 over 1550m Soft 5. Disappointed after finding a nice seat on the pace 4.5L at Royal Randwick Highway-C3 over 1800m."
+      },
+      {
+        "competitor_number": 1,
+        "barrier": "2",
+        "horse_name": "El Jasor",
+        "age": 6,
+        "sex": "G",
+        "sire": "Le Havre",
+        "dam": "Manaha",
+        "jockey": "William Stanley",
+        "trainer": "Kris Lees",
+        "weight": "61.5",
+        "starting_price": 31,
+        "finish_position": 9,
+        "margin": 10.5,
+        "finish_time": "02:15.490",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "4th"
+          },
+          {
+            "distance": "800m",
+            "position": "4th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "6th"
+          },
+          {
+            "distance": "Settled",
+            "position": "3rd"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Weakened into fifth after tracking into the race nicely just off the pace 4.9L at Doomben Bm78 over 2200m Soft 5. Tried hard but it was always an uphill battle from settling position 8.1L at Canterbury Park Bm78 over 1900m. Second-up."
+      },
+      {
+        "competitor_number": 6,
+        "barrier": "9",
+        "horse_name": "Humanity",
+        "age": 6,
+        "sex": "G",
+        "sire": "Roaring Lion",
+        "dam": "Cheriearch",
+        "jockey": "Dylan Gibbons",
+        "trainer": "Nacim Dilmi",
+        "weight": "56",
+        "starting_price": 6,
+        "finish_position": 10,
+        "margin": 41.01,
+        "finish_time": "02:20.574",
+        "position_summaries": [
+          {
+            "distance": "1200m",
+            "position": "9th"
+          },
+          {
+            "distance": "800m",
+            "position": "10th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "10th"
+          },
+          {
+            "distance": "Settled",
+            "position": "8th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Restrained back to midfield always under the pump to run on 6.4L at Canterbury Park 5Y+ Bm72 over 1900m Soft 5. Came from midfield to run on nicely into third 1.5L at Gosford Bm64 over 2100m."
+      },
+      {
+        "competitor_number": 4,
+        "barrier": "10",
+        "horse_name": "Impunity",
+        "age": 5,
+        "sex": "G",
+        "sire": "Dundeel",
+        "dam": "In the Clear",
+        "jockey": "Chad Schofield",
+        "trainer": "John Thompson",
+        "weight": "58.5",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Weakened out of the race after doing a lot of chasing 5.7L at Royal Randwick Midway Bm72(71) over 1600m. Slow to get going and it always had the task ahead hanging on sixth 5.4L at Warwick Farm Bm72 over 2140m."
+      },
+      {
+        "competitor_number": 5,
+        "barrier": "9",
+        "horse_name": "Warrior For Peace",
+        "age": 4,
+        "sex": "G",
+        "sire": "Saxon Warrior",
+        "dam": "Cry for Peace",
+        "jockey": "Jason Collett",
+        "trainer": "Brett & Georgie Cavanough",
+        "weight": "57",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Settled a long way back but sustained a long run to finish off hard 1.9L at Rosehill Gardens H'way-C3sw over 1500m. Huge effort to win when getting back in transit 1.2L at Royal Randwick Highway-C3 over 1800m. The one to beat."
+      },
+      {
+        "competitor_number": 11,
+        "barrier": "12",
+        "horse_name": "Aura",
+        "age": 5,
+        "sex": "M",
+        "sire": "All Too Hard",
+        "dam": "Muscatels",
+        "jockey": "Tyler Schiller",
+        "trainer": "Michael, John & Wayne Hawkes",
+        "weight": "54",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Ran on nicely over the concluding stages to win 0.5L at Goulburn Bm66 over 1600m. Finished the race off well for fourth but didn't threaten 6.3L at Warwick Farm Bm72 over 1600m."
+      }
+    ],
+    "7": [
+      {
+        "competitor_number": 9,
+        "barrier": "2",
+        "horse_name": "Conchiero",
+        "age": 4,
+        "sex": "G",
+        "sire": "Pierata",
+        "dam": "Conchita",
+        "jockey": "Tim Clark",
+        "trainer": "Gai Waterhouse & Adrian Bott",
+        "weight": "56.5",
+        "starting_price": 3.1,
+        "finish_position": 1,
+        "margin": 0,
+        "finish_time": "01:24.920",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "2nd"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "1st"
+          },
+          {
+            "distance": "Settled",
+            "position": "4th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Found the lead early but was run down for second 1L at Caulfield Bm70 over 1400m. Couldn't sustain sprint in the straight after settling with the leaders 2.3L at Southside Cranbourne Bm74 over 1400m."
+      },
+      {
+        "competitor_number": 7,
+        "barrier": "9",
+        "horse_name": "Ruination",
+        "age": 3,
+        "sex": "C",
+        "sire": "Wootton Bassett",
+        "dam": "Daysee Doom",
+        "jockey": "Tommy Berry",
+        "trainer": "Michael Freedman",
+        "weight": "57",
+        "starting_price": 7.5,
+        "finish_position": 2,
+        "margin": 0.36,
+        "finish_time": "01:24.980",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "1st"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "2nd"
+          },
+          {
+            "distance": "Settled",
+            "position": "1st"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Box seated, restricted room, lost momentum, tried 4.7L Call-Pres Group 2 over 1600m. Always doing the chasing after displaying no early speed 10.4L Esk Prince Group 3 over 1200m. Second-up."
+      },
+      {
+        "competitor_number": 3,
+        "barrier": "5",
+        "horse_name": "Wrathful",
+        "age": 7,
+        "sex": "G",
+        "sire": "Ulysses",
+        "dam": "Diyavana",
+        "jockey": "Siena Grima",
+        "trainer": "Chris Waller",
+        "weight": "58.5",
+        "starting_price": 41,
+        "finish_position": 3,
+        "margin": 0.42,
+        "finish_time": "01:24.989",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "8th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "8th"
+          },
+          {
+            "distance": "Settled",
+            "position": "9th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Did pass a few tired horses but ultimately left run too late 6.8L at Royal Randwick Bm78 over 1400m. Weakened out of the race after doing a lot of chasing 9.5L at Royal Randwick Bm78 over 1400m."
+      },
+      {
+        "competitor_number": 4,
+        "barrier": "4",
+        "horse_name": "Miss Spacegirl",
+        "age": 4,
+        "sex": "M",
+        "sire": "Territories",
+        "dam": "Galaxial",
+        "jockey": "Sam Clipperton",
+        "trainer": "Richard & Will Freedman",
+        "weight": "58",
+        "starting_price": 8,
+        "finish_position": 4,
+        "margin": 0.66,
+        "finish_time": "01:25.030",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "3rd"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "3rd"
+          },
+          {
+            "distance": "Settled",
+            "position": "5th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Ran home determinedly over the final stages to gain second 0.9L at Royal Randwick Bm78 over 1400m. Never in the race after getting back but beat a few home late 3.3L at Hawkesbury Provmid Champ over 1400m."
+      },
+      {
+        "competitor_number": 10,
+        "barrier": "7",
+        "horse_name": "Without Peer",
+        "age": 3,
+        "sex": "G",
+        "sire": "Pierata",
+        "dam": "Alderney",
+        "jockey": "Chad Schofield",
+        "trainer": "Ciaron Maher",
+        "weight": "56.5",
+        "starting_price": 5.5,
+        "finish_position": 5,
+        "margin": 2,
+        "finish_time": "01:25.253",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "6th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "5th"
+          },
+          {
+            "distance": "Settled",
+            "position": "7th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Wide, limited cover, hard ridden, very good late 3.2L Ming Dynasty Group 3 1400m Soft 5. Luckless in run, wide on turn, fair late, spell 6.3L Dulcify Listed 1600m. Luckless behind subsequent G1 winner before spelling. The one to beat."
+      },
+      {
+        "competitor_number": 5,
+        "barrier": "3",
+        "horse_name": "Scalextrics",
+        "age": 6,
+        "sex": "G",
+        "sire": "So You Think",
+        "dam": "Slots",
+        "jockey": "Dylan Gibbons",
+        "trainer": "Matthew Smith",
+        "weight": "57.5",
+        "starting_price": 15,
+        "finish_position": 6,
+        "margin": 4.01,
+        "finish_time": "01:25.588",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "9th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "7th"
+          },
+          {
+            "distance": "Settled",
+            "position": "8th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Under extreme pressure to keep pace with the front-runners 9.2L at Royal Randwick Bm78 over 1400m. Pressed to make a move but failed to make any impression on rivals 6.2L at Royal Randwick Bm78 over 1400m."
+      },
+      {
+        "competitor_number": 2,
+        "barrier": "6",
+        "horse_name": "Nana's Wish",
+        "age": 6,
+        "sex": "M",
+        "sire": "Belardo",
+        "dam": "Third Choice",
+        "jockey": "Anna Roper",
+        "trainer": "Ciaron Maher",
+        "weight": "60",
+        "starting_price": 14,
+        "finish_position": 7,
+        "margin": 4.59,
+        "finish_time": "01:25.684",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "5th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "6th"
+          },
+          {
+            "distance": "Settled",
+            "position": "3rd"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Hit the line hard into third and did look like a winning chance but was edged out 3.5L at Royal Randwick F&M Bm78 over 1800m Soft 7. Poised to bounce at the 400m however didn't have a lot left to give 9.4L at Rosehill Gardens Bm78 over 1900m Heavy 8."
+      },
+      {
+        "competitor_number": 8,
+        "barrier": "8",
+        "horse_name": "Zulfiqar",
+        "age": 5,
+        "sex": "G",
+        "sire": "Exceed And Excel",
+        "dam": "Sayf Shamal",
+        "jockey": "Jason Collett",
+        "trainer": "Richard Litt",
+        "weight": "57",
+        "starting_price": 10,
+        "finish_position": 8,
+        "margin": 4.65,
+        "finish_time": "01:25.695",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "7th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "9th"
+          },
+          {
+            "distance": "Settled",
+            "position": "2nd"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "No match for rivals and never progressed into the race from midfield 2.4L at Royal Randwick Bm78 over 1200m. Raced behind the leaders and ran on nicely for the runner-up spot 1.7L at Warwick Farm Cg&E Bm72 over 1400m."
+      },
+      {
+        "competitor_number": 1,
+        "barrier": "1",
+        "horse_name": "Yoshinobu",
+        "age": 4,
+        "sex": "G",
+        "sire": "Written Tycoon",
+        "dam": "Total Attraction",
+        "jockey": "Tom Sherry",
+        "trainer": "Annabel & Rob Archibald",
+        "weight": "61.5",
+        "starting_price": 6,
+        "finish_position": 9,
+        "margin": 5.96,
+        "finish_time": "01:25.913",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "4th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "4th"
+          },
+          {
+            "distance": "Settled",
+            "position": "6th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Encouraging run for fifth 3.6L at Gold Coast 3&4Ycg&E Cl4 1300m. Got back worse than midfield, off heels, held up, untested late 5.3L at Rosehill Gardens Bm78 over 1350m. Forget run last start. Better than that."
+      },
+      {
+        "competitor_number": 6,
+        "barrier": "11",
+        "horse_name": "Amreekiyah",
+        "age": 4,
+        "sex": "M",
+        "sire": "Justify",
+        "dam": "Marianne",
+        "jockey": "Zac Lloyd",
+        "trainer": "Peter Snowden",
+        "weight": "57",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Looked in need of further after getting a long way out of ground, sixth 5.9L at Royal Randwick Bm78 1600m. Sat just behind the leaders and ran on well for the win 0.9L at Royal Randwick Bm78 1400m. Tactics from the wide gate look crucial."
+      },
+      {
+        "competitor_number": 11,
+        "barrier": "2",
+        "horse_name": "Farindira",
+        "age": 3,
+        "sex": "G",
+        "sire": "Farnan",
+        "dam": "Somethingvain",
+        "jockey": "Rachel King",
+        "trainer": "Gai Waterhouse & Adrian Bott",
+        "weight": "54",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Gritty effort fifth 2.2L at Canterbury Park 3Y-Bt 6thFeb2026 over 902m. Dictated the race in the lead and gave nothing else a chance winning 2.6L at Canterbury Park Mdn-Sw over 1250m."
+      }
+    ],
+    "8": [
+      {
+        "competitor_number": 10,
+        "barrier": "5",
+        "horse_name": "Ready To Shine",
+        "age": 5,
+        "sex": "G",
+        "sire": "Better Than Ready",
+        "dam": "Luminescent",
+        "jockey": "Zac Lloyd",
+        "trainer": "Matthew Smith",
+        "weight": "56.5",
+        "starting_price": 2.15,
+        "finish_position": 1,
+        "margin": 0,
+        "finish_time": "01:11.810",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "3rd"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "3rd"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Did make up some ground in the straight for sixth but never threatened 2.4L at Canterbury Park Bm72 over 1100m. Hit the line nicely into third after sitting behind the speed 1.2L at Canterbury Park 5Y+ Bm72 over 1100m."
+      },
+      {
+        "competitor_number": 8,
+        "barrier": "2",
+        "horse_name": "Zale",
+        "age": 5,
+        "sex": "G",
+        "sire": "Denman",
+        "dam": "Lauren's Magic",
+        "jockey": "Molly Bourke",
+        "trainer": "Gary Nickson",
+        "weight": "58",
+        "starting_price": 12,
+        "finish_position": 2,
+        "margin": 0.35,
+        "finish_time": "01:11.868",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "1st"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "1st"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Went forward positioning with the leaders weakening into fifth 7.5L at Canterbury Park Cg&E Bm72 over 1250m. Went forward to contend for the lead and held on well for second 0.8L at Wyong Bm64 over 1100m. Main danger."
+      },
+      {
+        "competitor_number": 3,
+        "barrier": "7",
+        "horse_name": "Xpresso",
+        "age": 7,
+        "sex": "G",
+        "sire": "Xtravagant",
+        "dam": "Sara's Shinko",
+        "jockey": "Adam Hyeronimus",
+        "trainer": "Marc Chevalier",
+        "weight": "59.5",
+        "starting_price": 9.5,
+        "finish_position": 3,
+        "margin": 0.94,
+        "finish_time": "01:11.966",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "6th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "7th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Fought hard over the final stages for third after sitting behind leaders 1.4L at Sunshine Coast Cl6 over 1000m. Top run to finish off strongly into fourth after getting back 1.6L at Canterbury Park 5Y+ Bm72 over 1100m. Right in this."
+      },
+      {
+        "competitor_number": 1,
+        "barrier": "1",
+        "horse_name": "Wallenda",
+        "age": 5,
+        "sex": "G",
+        "sire": "Trapeze Artist",
+        "dam": "Lady Circles",
+        "jockey": "Adam Farragher",
+        "trainer": "Ciaron Maher",
+        "weight": "60",
+        "starting_price": 5,
+        "finish_position": 4,
+        "margin": 1.02,
+        "finish_time": "01:11.979",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "4th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "4th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Super job to make up many lengths from back in the field late for fifth 2L at Royal Randwick Bm78 over 1200m. Was midfield in the running and got past a couple late when sixth 4.3L at Rosehill Gardens Bm78 over 1300m. Like chances back to this level."
+      },
+      {
+        "competitor_number": 2,
+        "barrier": "3",
+        "horse_name": "Who But Roo",
+        "age": 8,
+        "sex": "G",
+        "sire": "Al Aseel",
+        "dam": "Sydney Melody",
+        "jockey": "Teaghan Martin",
+        "trainer": "Geoffrey Crothers",
+        "weight": "60",
+        "starting_price": 12,
+        "finish_position": 5,
+        "margin": 4.31,
+        "finish_time": "01:12.528",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "2nd"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "2nd"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Nicely positioned but just edged out late into second 0.1L at Sapphire Coast Begasprint over 1200m Soft 6. Trailed the leaders midfield however never improved thereon sixth 9.7L Expressway Group 2 over 1200m. Looks well placed."
+      },
+      {
+        "competitor_number": 9,
+        "barrier": "4",
+        "horse_name": "Oakfield Badger",
+        "age": 6,
+        "sex": "G",
+        "sire": "Exceed And Excel",
+        "dam": "Count Your Money",
+        "jockey": "Anna Roper",
+        "trainer": "Damien Lane",
+        "weight": "57.5",
+        "starting_price": 19,
+        "finish_position": 6,
+        "margin": 4.89,
+        "finish_time": "01:12.625",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "5th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "5th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Held position to the line for third after going forward to sit with the leaders 0.9L at Tamworth Bm82 over 1200m. Settled on the speed and tried very hard for third but found a couple better 2.5L at Dubbo Bm82 over 1200m. Nicely placed by trainer here."
+      },
+      {
+        "competitor_number": 11,
+        "barrier": "6",
+        "horse_name": "Close Encounter",
+        "age": 5,
+        "sex": "G",
+        "sire": "Nicconi",
+        "dam": "Splat",
+        "jockey": "Rebecca Bronett Prag",
+        "trainer": "Kerry Parker",
+        "weight": "56",
+        "starting_price": 9,
+        "finish_position": 7,
+        "margin": 6.61,
+        "finish_time": "01:12.911",
+        "position_summaries": [
+          {
+            "distance": "800m",
+            "position": "7th"
+          },
+          {
+            "distance": "600m",
+            "position": null
+          },
+          {
+            "distance": "400m",
+            "position": "6th"
+          }
+        ],
+        "is_scratched": false,
+        "status": "RESULTED",
+        "comments": "Got going late but never looked a serious threat 2.8L at Rosehill Gardens Midway Bm72 over 1350m. Enjoyed a cosy run behind the leaders but only held ground for fifth 7.6L at Newcastle Cond Bm68 over 1250m."
+      },
+      {
+        "competitor_number": 4,
+        "barrier": "2",
+        "horse_name": "So Good So Cool",
+        "age": 7,
+        "sex": "G",
+        "sire": "Capitalist",
+        "dam": "Iggimacool",
+        "jockey": "Alysha Collett",
+        "trainer": "Nacim Dilmi",
+        "weight": "58.5",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Held down sixth position after settling there throughout 7L at Kensington 5Y+ Bm78 over 1250m. Too far back in the running to be a serious threat 4.3L at Royal Randwick Midway Bm72 over 1200m."
+      },
+      {
+        "competitor_number": 5,
+        "barrier": "10",
+        "horse_name": "Life Coach",
+        "age": 5,
+        "sex": "G",
+        "sire": "Supido",
+        "dam": "Orcym",
+        "jockey": "Unknown",
+        "trainer": "Brett Lazzarini",
+        "weight": "58",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Went forward and looked a winning chance before fading late sixth 1.6L at Gosford Cg&E Bm64 over 1200m. Won after sitting on the pace and getting the advantage late 0.8L at Taree Cl4 Prev over 1250m Soft 5."
+      },
+      {
+        "competitor_number": 6,
+        "barrier": "9",
+        "horse_name": "New Pharoah",
+        "age": 5,
+        "sex": "G",
+        "sire": "American Pharoah",
+        "dam": "Talapega",
+        "jockey": "Ashley Morgan",
+        "trainer": "Brett & Georgie Cavanough",
+        "weight": "58",
+        "starting_price": null,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Positioned on the speed and raced clear to win impressively 2.2L at Beaumont Newcastle Ctry Bm66 over 1150m Soft 6. Made up some ground into fourth after settling behind the speed 8.1L at Rosehill Gardens Highway-C3 over 1300m."
+      },
+      {
+        "competitor_number": 7,
+        "barrier": "5",
+        "horse_name": "Oryx",
+        "age": 7,
+        "sex": "G",
+        "sire": "Exceed And Excel",
+        "dam": "Shaumari",
+        "jockey": "Tyler Schiller",
+        "trainer": "Richard Litt",
+        "weight": "58",
+        "starting_price": 10,
+        "finish_position": -1,
+        "margin": null,
+        "finish_time": null,
+        "position_summaries": [],
+        "is_scratched": true,
+        "status": "SCRATCHED",
+        "comments": "Raced worse than midfield and labored to make up enough ground sixth 9.9L at Canterbury Park Cg&E Bm72 over 1250m. Passed a few horses over the concluding stages for fourth 4.1L at Kembla Grange Cond Bm68 over 1400m."
+      }
+    ]
+  }
+}

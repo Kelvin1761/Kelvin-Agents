@@ -286,8 +286,8 @@ def backtest(args: argparse.Namespace) -> None:
 def run_daily(args: argparse.Namespace) -> None:
     provider_healthcheck(args)
     source_errors = []
+    clear_pipeline_source_errors(args.date)
     if args.mvp_snapshot:
-        clear_pipeline_source_errors(args.date)
         os.environ["DATA_MAX_STALENESS_MINUTES_ODDS"] = str(24 * 60)
     else:
         for label, step in (
@@ -303,16 +303,16 @@ def run_daily(args: argparse.Namespace) -> None:
                 step()
             except Exception as exc:
                 source_errors.append({"source": label, "error": str(exc)})
-    if source_errors:
-        store_raw_response(
-            "tennis_wc_pipeline",
-            "/run-daily/source-errors",
-            {"date": args.date},
-            source_errors,
-            207,
-            "run_daily_source_errors",
-            args.date,
-        )
+    
+    store_raw_response(
+        "tennis_wc_pipeline",
+        "/run-daily/source-errors",
+        {"date": args.date},
+        source_errors,
+        207 if source_errors else 200,
+        "run_daily_source_errors",
+        args.date,
+    )
     snapshots = build_sportsbet_feature_snapshots_for_date(args.date)
     valid = [snapshot for snapshot in snapshots if snapshot["data_quality"]["is_valid"]]
     predictions = []

@@ -108,7 +108,7 @@ def extract_racenet_weather(url):
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
-            page.goto(f"file://{temp_html}")
+            page.goto(f"file://{temp_html}", wait_until="domcontentloaded")
             nuxt = page.evaluate("() => window.__NUXT__")
             browser.close()
     except Exception as e:

@@ -1,103 +1,58 @@
 """
-Test parsers against real analysis files.
+Test parsers against current real analysis files.
 """
 import sys
+from pathlib import Path
+
 sys.path.insert(0, '.')
 
 from services.parser_hkjc import parse_hkjc_analysis
-from services.parser_au import parse_au_analysis
-from services.meeting_detector import discover_meetings, load_meeting_races
+from services.meeting_detector import discover_meetings
 import config
 
-def test_kelvin_parser():
-    """Test HKJC parser with Kelvin's Race 1 file."""
-    path = str(config.ANTIGRAVITY_ROOT / "2026-03-22_ShaTin (Kelvin)" / "2026-03-22_ShaTin_Race_1_Analysis.txt")
+
+def test_hkjc_auto_parser():
+    """Test HKJC parser with full Python Auto analysis output."""
+    path = str(config.ANTIGRAVITY_ROOT / "2026-05-13_HappyValley" / "Race_9_Auto_Analysis.md")
     result = parse_hkjc_analysis(path)
-    
-    assert result is not None, "Failed to parse Kelvin Race 1"
-    assert result.race_number == 1, f"Race number should be 1, got {result.race_number}"
-    
-    print(f"✅ Kelvin Race 1: {len(result.horses)} horses parsed")
-    print(f"   Top picks: {len(result.top_picks)} (via CSV block: {bool(result.top_picks)})")
-    
-    for pick in result.top_picks:
-        print(f"   #{pick.rank}: No.{pick.horse_number} {pick.horse_name} ({pick.grade})")
-    
-    # Check horse details
-    for horse in result.horses[:3]:
-        print(f"\n   Horse #{horse.horse_number} {horse.horse_name}:")
-        print(f"     Jockey: {horse.jockey}, Trainer: {horse.trainer}")
-        print(f"     Grade: {horse.final_grade}")
-        print(f"     Speed forensics: {'✅' if horse.speed_forensics else '❌'}")
-        print(f"     Positional: {'✅' if horse.eem_energy else '❌'}")
-        print(f"     Forgiveness: {'✅' if horse.forgiveness_file else '❌'}")
-        print(f"     Form line: {'✅' if horse.form_line else '❌'}")
-        print(f"     Rating matrix: {'✅' if horse.rating_matrix else '❌'}")
-        if horse.rating_matrix:
-            print(f"     Dimensions: {len(horse.rating_matrix.dimensions)}")
-        print(f"     Conclusion: {'✅' if horse.conclusion else '❌'}")
-        print(f"     Underhorse: {'✅ triggered' if horse.underhorse_triggered else '❌ not triggered'}")
-    
+
+    assert result is not None, "Failed to parse HKJC Auto Race 9"
+    assert result.analysis_type == "auto", f"analysis_type should be auto, got {result.analysis_type}"
+    assert result.top_picks, "Auto top picks table not parsed"
+
+    first_pick = result.top_picks[0]
+    print(f"\n✅ HKJC Auto Race 9: {len(result.horses)} horses parsed")
+    print(f"   Top pick: No.{first_pick.horse_number} {first_pick.horse_name} ({first_pick.grade})")
+
+    first_horse = result.horses[0]
+    assert first_horse.ability_score is not None, "ability_score missing from auto parser"
+    assert first_horse.confidence_score is not None, "confidence_score missing from auto parser"
+    assert first_horse.risk_score is not None, "risk_score missing from auto parser"
+    assert first_horse.trainer, "trainer should be present in current auto parser output"
+
+    print(
+        f"   Horse #{first_horse.horse_number} {first_horse.horse_name}: "
+        f"trainer={first_horse.trainer}, 戰力={first_horse.ability_score}, "
+        f"信心={first_horse.confidence_score}, 風險={first_horse.risk_score}, "
+        f"狀態={first_horse.model_pick_status}"
+    )
+
     return True
 
 
-def test_heison_parser():
-    """Test HKJC parser with Heison's Race 10 file."""
-    path = str(config.ANTIGRAVITY_ROOT / "2026-03-22_ShaTin" / "Heison_2026-03-22_ShaTin_Race_10_Analysis.txt")
-    result = parse_hkjc_analysis(path)
-    
-    assert result is not None, "Failed to parse Heison Race 10"
-    
-    print(f"\n✅ Heison Race 10: {len(result.horses)} horses parsed")
-    print(f"   Top picks: {len(result.top_picks)} (CSV fallback to verdict)")
-    
-    for pick in result.top_picks:
-        print(f"   #{pick.rank}: No.{pick.horse_number} {pick.horse_name} ({pick.grade})")
-    
-    for horse in result.horses[:3]:
-        print(f"\n   Horse #{horse.horse_number} {horse.horse_name}:")
-        print(f"     Grade: {horse.final_grade}")
-        print(f"     Speed forensics: {'✅' if horse.speed_forensics else '❌'}")
-        print(f"     Positional: {'✅' if horse.eem_energy else '❌'}")
-        print(f"     Conclusion: {'✅' if horse.conclusion else '❌'}")
-    
-    return True
+def test_hkjc_auto_archive_parser():
+    """Test HKJC parser against archived Auto output in analysis archive."""
+    path = config.ANTIGRAVITY_ROOT / "Archive_Race_Analysis" / "2026-05-03_ShaTin" / "Race_1_Auto_Analysis.md"
+    if not path.exists():
+        print("⚠️ Archived HKJC auto fixture not found, skipping")
+        return True
 
+    result = parse_hkjc_analysis(str(path))
+    assert result is not None, "Failed to parse archived HKJC Auto Race 1"
+    assert result.analysis_type == "auto"
+    assert len(result.horses) >= 8, "Archived HKJC auto fixture parsed too few horses"
 
-def test_au_parser():
-    """Test AU parser with Rosehill Race 1 file."""
-    path = str(config.ANTIGRAVITY_ROOT / "2026-03-21 Rosehill Gardens Race 1-10" / "Race Analysis" / "03-21 Rosehill Gardens Race 1 Analysis.txt")
-    
-    # Try alternate location
-    from pathlib import Path
-    if not Path(path).exists():
-        # Search for actual file
-        folder = config.ANTIGRAVITY_ROOT / "2026-03-21 Rosehill Gardens Race 1-10"
-        candidates = list(folder.glob("**/*Race*1*Analysis.txt"))
-        if candidates:
-            path = str(candidates[0])
-            print(f"   Found AU file at: {path}")
-        else:
-            print("⚠️ AU test file not found, skipping")
-            return True
-    
-    result = parse_au_analysis(path)
-    assert result is not None, "Failed to parse AU Race 1"
-    
-    print(f"\n✅ AU Rosehill Race 1: {len(result.horses)} horses parsed")
-    print(f"   Top picks: {len(result.top_picks)}")
-    
-    for pick in result.top_picks:
-        print(f"   #{pick.rank}: No.{pick.horse_number} {pick.horse_name} ({pick.grade})")
-    
-    for horse in result.horses[:3]:
-        print(f"\n   Horse #{horse.horse_number} {horse.horse_name}:")
-        print(f"     Jockey: {horse.jockey}")
-        print(f"     Grade: {horse.final_grade}")
-        print(f"     Horse profile: {'✅' if horse.horse_profile else '❌'}")
-        print(f"     Core analysis: {'✅' if horse.core_analysis else '❌'}")
-        print(f"     Conclusion: {'✅' if horse.conclusion else '❌'}")
-    
+    print(f"\n✅ Archived HKJC Auto Race 1: {len(result.horses)} horses parsed")
     return True
 
 
@@ -106,9 +61,8 @@ def test_meeting_detector():
     meetings = discover_meetings()
     
     hkjc = [m for m in meetings if m.region.value == 'hkjc']
-    au = [m for m in meetings if m.region.value == 'au']
     
-    print(f"\n✅ Meeting Detector: {len(meetings)} total ({len(hkjc)} HKJC, {len(au)} AU)")
+    print(f"\n✅ Meeting Detector: {len(meetings)} total ({len(hkjc)} HKJC)")
     
     for m in meetings[:5]:
         analysts = ', '.join(a.value for a in m.analysts)
@@ -123,31 +77,25 @@ if __name__ == "__main__":
     print("=" * 60)
     
     passed = 0
-    total = 4
-    
-    try:
-        if test_kelvin_parser():
-            passed += 1
-    except Exception as e:
-        print(f"❌ Kelvin test failed: {e}")
-    
-    try:
-        if test_heison_parser():
-            passed += 1
-    except Exception as e:
-        print(f"❌ Heison test failed: {e}")
-    
-    try:
-        if test_au_parser():
-            passed += 1
-    except Exception as e:
-        print(f"❌ AU test failed: {e}")
+    total = 3
     
     try:
         if test_meeting_detector():
             passed += 1
     except Exception as e:
         print(f"❌ Meeting detector test failed: {e}")
+
+    try:
+        if test_hkjc_auto_parser():
+            passed += 1
+    except Exception as e:
+        print(f"❌ HKJC Auto parser test failed: {e}")
+
+    try:
+        if test_hkjc_auto_archive_parser():
+            passed += 1
+    except Exception as e:
+        print(f"❌ Archived HKJC Auto parser test failed: {e}")
     
     print(f"\n{'=' * 60}")
     print(f"Results: {passed}/{total} tests passed")

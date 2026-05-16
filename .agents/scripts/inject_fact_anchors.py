@@ -14,12 +14,12 @@ blocks for the LLM analyst. ALL computation is done by Python.
 V2 Upgrades (2026-04-08):
   - Includes TRIALS in race dossier (up to 10 entries total)
   - Each entry tagged as 🏁 RACE or 🔰 TRIAL
-  - EEM energy extraction from Video commentary
+  - Run-style and consumption extraction from Video commentary
   - Position Index (PI) trend computation (proxy for sectional quality)
   - Engine Type classification (A/B/C/AB) from running patterns
   - Distance Aptitude statistics (W-P-L by distance band)
   - Restructured output: 📌 Racecard → 📋 Full Dossier → 📊 Sectional →
-    ⚡ EEM → 🔧 Engine/Distance
+    ⚡ 走位消耗 → 🔧 Engine/Distance
 
 Python computes. LLM interprets. No arithmetic by the LLM.
 
@@ -538,7 +538,7 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
             entry['l800_pi'] = None
             entry['sectional_quality'] = 'N/A'
             entry['class_change'] = 'N/A'
-            entry['eem'] = extract_eem_from_video(entry['video'])
+            entry['run_profile'] = extract_run_profile_from_video(entry['video'])
             continue
 
         # Position Index (PI) = Settled - Finish
@@ -562,8 +562,8 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
         # Sectional quality from PI
         entry['sectional_quality'] = compute_sectional_quality(entry['pi'])
 
-        # EEM from video
-        entry['eem'] = extract_eem_from_video(entry['video'])
+        # Run-style / consumption from video
+        entry['run_profile'] = extract_run_profile_from_video(entry['video'])
 
     # Compute class change between consecutive real races
     for i, entry in enumerate(entries):
@@ -830,10 +830,10 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
     }
 
 
-# ── EEM Energy Extraction ─────────────────────────────────────────────────
+# ── Run-Style / Consumption Extraction ───────────────────────────────────
 
-def extract_eem_from_video(video: str) -> dict:
-    """Extract EEM (Energy-Effort Model) data from Video commentary.
+def extract_run_profile_from_video(video: str) -> dict:
+    """Extract run-style / consumption data from Video commentary.
 
     Parses English abbreviations commonly used in AU race videos:
     - Running style: Led, handy, MF, WTMF, tail, last, S/A
@@ -1047,10 +1047,10 @@ def compute_pi_trends(entries: list[dict]) -> dict:
     return result
 
 
-# ── EEM Cumulative Consumption ────────────────────────────────────────────
+# ── Cumulative Consumption ────────────────────────────────────────────────
 
-def compute_cumulative_eem(entries: list[dict]) -> dict:
-    """Compute cumulative EEM consumption from recent 3 real races.
+def compute_cumulative_consumption(entries: list[dict]) -> dict:
+    """Compute cumulative consumption from recent 3 real races.
 
     Weighting: last race 0.5, previous 0.3, before that 0.2
     """
@@ -1073,7 +1073,7 @@ def compute_cumulative_eem(entries: list[dict]) -> dict:
     total_weight = 0
     weighted_sum = 0
     for i, race in enumerate(real_races):
-        c = race.get('eem', {}).get('consumption', '未知')
+        c = race.get('run_profile', {}).get('consumption', '未知')
         result['recent_consumptions'].append(c)
         w = weights[i] if i < len(weights) else 0.1
         weighted_sum += consumption_scores.get(c, 2.5) * w
@@ -1102,7 +1102,7 @@ def compute_cumulative_eem(entries: list[dict]) -> dict:
 def classify_engine_type(entries: list[dict]) -> dict:
     """Classify horse engine type from running style patterns.
 
-    Uses EEM extracted run_style and PI to determine:
+    Uses video-derived run_style and PI to determine:
     - Type A (前領均速): Consistently in front, even positional movement
     - Type B (末段爆發): Runs from behind, strong L400 PI
     - Type C (持續衝刺): Flexible positioning, consistent effort
@@ -1129,8 +1129,8 @@ def classify_engine_type(entries: list[dict]) -> dict:
     total_valid = len(real_races)
 
     for r in real_races:
-        eem = r.get('eem', {})
-        style = eem.get('run_style', '未知')
+        run_profile = r.get('run_profile', {})
+        style = run_profile.get('run_style', '未知')
 
         if style == '前領':  # V3: ONLY true leaders
             front_count += 1
@@ -1148,13 +1148,13 @@ def classify_engine_type(entries: list[dict]) -> dict:
     # Also use settled position as secondary signal
     for r in real_races:
         settled = r.get('settled')
-        if settled is not None and settled == 1 and r.get('eem', {}).get('run_style') == '未知':
+        if settled is not None and settled == 1 and r.get('run_profile', {}).get('run_style') == '未知':
             front_count += 1  # V3: only pos=1 is leader
             total_valid += 1
-        elif settled is not None and settled <= 3 and r.get('eem', {}).get('run_style') == '未知':
+        elif settled is not None and settled <= 3 and r.get('run_profile', {}).get('run_style') == '未知':
             presser_count += 1  # V3: pos 2-3 = presser
             total_valid += 1
-        elif settled is not None and settled >= 7 and r.get('eem', {}).get('run_style') == '未知':
+        elif settled is not None and settled >= 7 and r.get('run_profile', {}).get('run_style') == '未知':
             back_count += 1
             total_valid += 1
 
@@ -1247,20 +1247,20 @@ def _pace_confidence(style_profiles: list[dict], n_leaders: int, n_pressers: int
 
 
 def _au_style_from_entry(entry: dict) -> Tuple[Optional[str], str]:
-    """Return running-style signal using in-race EEM/settled evidence only.
+    """Return running-style signal using in-race video/settled evidence only.
 
     Finishing position and Last10 are deliberately excluded: AU data is already
     sparse, and result position is a poor proxy for early/mid-race map position.
     """
-    style = entry.get('eem', {}).get('run_style', '未知')
+    style = entry.get('run_profile', {}).get('run_style', '未知')
     if style == '前領':
-        return 'front', 'EEM=Led'
+        return 'front', 'video=Led'
     if style == '居中前':
-        return 'presser', 'EEM=Handy'
+        return 'presser', 'video=Handy'
     if style in ('後追', '慢出', '居中後'):
-        return 'closer', f'EEM={style}'
+        return 'closer', f'video={style}'
     if style in ('居中', '中後'):
-        return 'mid_pack', f'EEM={style}'
+        return 'mid_pack', f'video={style}'
 
     settled = entry.get('settled')
     if settled is not None:
@@ -1277,7 +1277,7 @@ def _au_style_from_entry(entry: dict) -> Tuple[Optional[str], str]:
         if settled_i >= 7:
             return 'closer', f'settled={settled_i}'
 
-    return None, '無 EEM/settled 走位證據'
+    return None, '無 video/settled 走位證據'
 
 
 def weighted_au_running_style(entries: list[dict]) -> dict:
@@ -1405,7 +1405,7 @@ def _classify_pace_volatility(n_leaders: int, n_closers: int, field_size: int) -
 def build_au_speed_map_block(horses: list[dict], today_dist_m: int = 0,
                              venue: str = '', going: str = '') -> tuple[str, dict]:
     """V4: Build the first-class AU speed map at Facts generation time.
-    Uses EEM/settled weighted run-style evidence, not finishing positions.
+    Uses video/settled weighted run-style evidence, not finishing positions.
     """
     leaders, pressers, on_pace, mid_pack, closers = [], [], [], [], []
     style_profiles = []
@@ -1466,7 +1466,7 @@ def build_au_speed_map_block(horses: list[dict], today_dist_m: int = 0,
         'going': going,  # V3: pass going for MC engine
         'track_bias': (
             f"FACTS_SPEED_MODEL: {venue or 'Unknown venue'} {today_dist_m or '?'}m; "
-            "using barriers, EEM/settled weighted recent run style, and engine cross-check."
+            "using barriers, video/settled weighted recent run style, and engine cross-check."
         ),
         'tactical_nodes': (
             f"FACTS_SPEED_MODEL: leaders={len(leaders)}, pressers={len(pressers)}, "
@@ -1747,7 +1747,7 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
     Args:
         max_display: Maximum number of race entries to show in the
                      Markdown table (default 5). All entries are still
-                     used for PI/EEM/Engine computations.
+                     used for PI/run-style/engine computations.
     """
     lines = []
     entries = horse.get('dossier_entries', [])
@@ -1864,17 +1864,17 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
         if sect_q == 'N/A':
             sect_q = '-'
 
-        # EEM
-        eem = entry.get('eem', {})
-        run_style = eem.get('run_style', '-')
+        # Run profile
+        run_profile = entry.get('run_profile', {})
+        run_style = run_profile.get('run_style', '-')
         if run_style == '未知':
             run_style = '-'
         width_str = ''
-        if eem.get('width', 0) > 0:
-            nc = '(無遮擋)' if eem.get('no_cover') else ''
-            width_str = f" {eem['width']}疊{nc}"
-        eem_style = f"{run_style}{width_str}"
-        consumption = eem.get('consumption', '-')
+        if run_profile.get('width', 0) > 0:
+            nc = '(無遮擋)' if run_profile.get('no_cover') else ''
+            width_str = f" {run_profile['width']}疊{nc}"
+        run_style_text = f"{run_style}{width_str}"
+        consumption = run_profile.get('consumption', '-')
         if consumption == '未知':
             consumption = '-'
 
@@ -1900,7 +1900,7 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
         lines.append(
             f"| {idx+1} | {tag} | {entry['date']} | {venue_short} | "
             f"{entry['distance']} | {cond} | {entry.get('barrier') or '-'} | {finish_str} | {class_ch} | "
-            f"{pos_str} | {pi_str} | {sect_q} | {pf_erp} | {pf_l600_rt_str} | {eem_style} | {consumption} | {notes} | [需判定] |"
+            f"{pos_str} | {pi_str} | {sect_q} | {pf_erp} | {pf_l600_rt_str} | {run_style_text} | {consumption} | {notes} | [需判定] |"
         )
 
     # Output is already complete, no omitted string needed here
@@ -1924,13 +1924,13 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
     # ═══════════════════════════════════════════════════
     # ⚡ 走位消耗摘要
     # ═══════════════════════════════════════════════════
-    cum_eem = compute_cumulative_eem(entries)
-    if cum_eem['recent_consumptions']:
+    cumulative_consumption = compute_cumulative_consumption(entries)
+    if cumulative_consumption['recent_consumptions']:
         lines.append(f"")
         lines.append(f"- **⚡ 走位消耗摘要:**")
-        cons_str = ' → '.join(cum_eem['recent_consumptions'])
-        lines.append(f"  - 近 {len(cum_eem['recent_consumptions'])} 仗消耗: {cons_str}")
-        lines.append(f"  - 加權累積消耗: {cum_eem['weighted_score']}/5.0 → 等級: {cum_eem['cumulative_level']}")
+        cons_str = ' → '.join(cumulative_consumption['recent_consumptions'])
+        lines.append(f"  - 近 {len(cumulative_consumption['recent_consumptions'])} 仗消耗: {cons_str}")
+        lines.append(f"  - 加權累積消耗: {cumulative_consumption['weighted_score']}/5.0 → 等級: {cumulative_consumption['cumulative_level']}")
 
     # ═══════════════════════════════════════════════════
     # 🔗 賽績線分析 (API Form Profile)

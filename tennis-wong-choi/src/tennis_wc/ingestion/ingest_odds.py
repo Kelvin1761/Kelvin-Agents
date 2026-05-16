@@ -5,7 +5,7 @@ from datetime import date as date_type, timedelta
 from tennis_wc.database.db import get_connection
 from tennis_wc.ingestion.entity_mapping import get_or_create_player, upsert_tournament
 from tennis_wc.ingestion.raw_response_store import store_raw_response, utc_now
-from tennis_wc.ingestion.sportsbet_fixture_mapping import sportsbet_competition_meta, sportsbet_slug
+from tennis_wc.ingestion.sportsbet_fixture_mapping import sportsbet_competition_meta, sportsbet_round_label, sportsbet_slug
 from tennis_wc.providers import get_odds_provider
 
 
@@ -35,6 +35,10 @@ def ingest_odds(date: str) -> int:
                 (row["event_id"],),
             ).fetchone()
             match_id = int(match["id"]) if match else _find_match_id_for_odds(conn, date, row)
+        
+        # Always ensure tournament metadata for sportsbet matches
+        _ensure_provisional_tournament_for_odds(provider.provider_name, date, row, raw_id)
+        
         if match_id is None:
             match_id = _create_provisional_match_for_odds(provider.provider_name, date, row, raw_id)
         with get_connection() as conn:
@@ -124,10 +128,26 @@ def _selection_side(row: dict, selection_name: str) -> str | None:
     return None
 
 
+def _ensure_provisional_tournament_for_odds(provider_name: str, match_date: str, row: dict, raw_id: int) -> int | None:
+    if provider_name != "sportsbet":
+        return None
+    meta = sportsbet_competition_meta(row.get("competition"), match_date)
+    return upsert_tournament(
+        provider_name,
+        f"competition-{sportsbet_slug(row.get('competition') or meta.tournament_name)}",
+        meta.tournament_name,
+        meta.tour,
+        raw_id,
+        meta.level,
+        meta.surface,
+        meta.indoor_outdoor,
+    )
+
+
 def _create_provisional_match_for_odds(provider_name: str, match_date: str, row: dict, raw_id: int) -> int | None:
     if provider_name != "sportsbet":
         return None
-    meta = sportsbet_competition_meta(row.get("competition"))
+    meta = sportsbet_competition_meta(row.get("competition"), match_date)
     if not row.get("player_a_name") or not row.get("player_b_name"):
         return None
 
@@ -146,16 +166,7 @@ def _create_provisional_match_for_odds(provider_name: str, match_date: str, row:
         meta.tour,
         raw_id,
     )
-    tournament_id = upsert_tournament(
-        provider_name,
-        f"competition-{sportsbet_slug(row.get('competition') or meta.tournament_name)}",
-        meta.tournament_name,
-        meta.tour,
-        raw_id,
-        meta.level,
-        meta.surface,
-        meta.indoor_outdoor,
-    )
+    tournament_id = _ensure_provisional_tournament_for_odds(provider_name, match_date, row, raw_id)
     now = utc_now()
     with get_connection() as conn:
         cursor = conn.execute(
@@ -172,6 +183,10 @@ def _create_provisional_match_for_odds(provider_name: str, match_date: str, row:
                 tournament_id = excluded.tournament_id,
                 player_a_id = excluded.player_a_id,
                 player_b_id = excluded.player_b_id,
+                round = CASE
+                    WHEN matches.round IS NULL OR matches.round = 'UNKNOWN' THEN excluded.round
+                    ELSE matches.round
+                END,
                 raw_response_id = excluded.raw_response_id,
                 updated_at = excluded.updated_at
             RETURNING id
@@ -184,7 +199,7 @@ def _create_provisional_match_for_odds(provider_name: str, match_date: str, row:
                 tournament_id,
                 player_a_id,
                 player_b_id,
-                row.get("round") or "UNKNOWN",
+                sportsbet_round_label(row.get("round"), row.get("event_name"), row.get("name"), row.get("event_url"), row.get("competition")),
                 provider_name,
                 raw_id,
                 now,

@@ -1,0 +1,6233 @@
+{
+  "L012": {
+    "horse_id": "L012"
+  },
+  "K015": {
+    "id": "K015",
+    "sire": null
+  },
+  "J191": {
+    "id": "J191",
+    "sire": null
+  },
+  "K555": {
+    "horse_id": "K555"
+  },
+  "G207": {
+    "horse_id": "G207"
+  },
+  "L355": {
+    "horse_id": "L355"
+  },
+  "J202": {
+    "id": "J202",
+    "status": "no_data"
+  },
+  "K230": {
+    "horse_id": "K230"
+  },
+  "L109": {
+    "horse_id": "L109"
+  },
+  "L095": {
+    "horse_id": "L095"
+  },
+  "J500": {
+    "horse_id": "J500"
+  },
+  "J187": {
+    "horse_id": "J187"
+  },
+  "K377": {
+    "horse_id": "K377"
+  },
+  "K155": {
+    "horse_id": "K155"
+  },
+  "L053": {
+    "horse_id": "L053"
+  },
+  "G455": {
+    "horse_id": "G455"
+  },
+  "J222": {
+    "horse_id": "J222"
+  },
+  "K584": {
+    "id": "K584",
+    "sire": null
+  },
+  "J264": {
+    "horse_id": "J264"
+  },
+  "J255": {
+    "id": "J255",
+    "sire": null
+  },
+  "E204": {
+    "horse_id": "E204"
+  },
+  "K175": {
+    "id": "K175",
+    "status": "no_data"
+  },
+  "L024": {
+    "id": "L024",
+    "status": "no_data"
+  },
+  "J390": {
+    "id": "J390",
+    "sire": null
+  },
+  "G437": {
+    "horse_id": "G437"
+  },
+  "H321": {
+    "id": "H321",
+    "sire": null
+  },
+  "K254": {
+    "horse_id": "K254"
+  },
+  "K350": {
+    "id": "K350",
+    "status": "no_data"
+  },
+  "H047": {
+    "horse_id": "H047"
+  },
+  "L062": {
+    "id": "L062",
+    "status": "no_data"
+  },
+  "J118": {
+    "horse_id": "J118"
+  },
+  "J260": {
+    "horse_id": "J260"
+  },
+  "G322": {
+    "horse_id": "G322"
+  },
+  "K204": {
+    "horse_id": "K204"
+  },
+  "H418": {
+    "horse_id": "H418"
+  },
+  "G352": {
+    "id": "G352",
+    "sire": null
+  },
+  "L185": {
+    "horse_id": "L185"
+  },
+  "K486": {
+    "horse_id": "K486"
+  },
+  "D359": {
+    "horse_id": "D359"
+  },
+  "H416": {
+    "id": "H416",
+    "sire": null
+  },
+  "L117": {
+    "horse_id": "L117"
+  },
+  "K414": {
+    "horse_id": "K414"
+  },
+  "K284": {
+    "id": "K284",
+    "status": "no_data"
+  },
+  "L221": {
+    "horse_id": "L221"
+  },
+  "J402": {
+    "id": "J402",
+    "sire": null
+  },
+  "H002": {
+    "horse_id": "H002"
+  },
+  "J042": {
+    "horse_id": "J042"
+  },
+  "J295": {
+    "horse_id": "J295"
+  },
+  "H011": {
+    "id": "H011",
+    "sire": null
+  },
+  "K358": {
+    "id": "K358",
+    "status": "no_data"
+  },
+  "J486": {
+    "id": "J486",
+    "sire": null
+  },
+  "K213": {
+    "horse_id": "K213"
+  },
+  "K289": {
+    "horse_id": "K289"
+  },
+  "H101": {
+    "id": "H101",
+    "sire": null
+  },
+  "J035": {
+    "horse_id": "J035"
+  },
+  "J058": {
+    "id": "J058",
+    "sire": null
+  },
+  "L079": {
+    "id": "L079",
+    "status": "no_data"
+  },
+  "K379": {
+    "horse_id": "K379"
+  },
+  "K548": {
+    "horse_id": "K548"
+  },
+  "K209": {
+    "id": "K209",
+    "status": "no_data"
+  },
+  "L072": {
+    "id": "L072"
+  },
+  "H213": {
+    "id": "H213",
+    "sire": null
+  },
+  "J237": {
+    "horse_id": "J237"
+  },
+  "E459": {
+    "horse_id": "E459"
+  },
+  "K114": {
+    "horse_id": "K114"
+  },
+  "K310": {
+    "id": "K310",
+    "sire": null
+  },
+  "D482": {
+    "horse_id": "D482"
+  },
+  "K411": {
+    "horse_id": "K411"
+  },
+  "J395": {
+    "horse_id": "J395"
+  },
+  "K232": {
+    "horse_id": "K232"
+  },
+  "K116": {
+    "horse_id": "K116"
+  },
+  "L077": {
+    "id": "L077",
+    "sire": null
+  },
+  "L331": {
+    "horse_id": "L331"
+  },
+  "L144": {
+    "id": "L144",
+    "sire": null
+  },
+  "K002": {
+    "horse_id": "K002"
+  },
+  "K515": {
+    "id": "K515",
+    "status": "no_data"
+  },
+  "H259": {
+    "horse_id": "H259"
+  },
+  "K054": {
+    "horse_id": "K054"
+  },
+  "G065": {
+    "horse_id": "G065"
+  },
+  "J539": {
+    "horse_id": "J539"
+  },
+  "L080": {
+    "horse_id": "L080"
+  },
+  "K459": {
+    "id": "K459",
+    "status": "no_data"
+  },
+  "L033": {
+    "horse_id": "L033"
+  },
+  "L158": {
+    "horse_id": "L158"
+  },
+  "K577": {
+    "horse_id": "K577"
+  },
+  "H268": {
+    "horse_id": "H268"
+  },
+  "L069": {
+    "horse_id": "L069"
+  },
+  "K554": {
+    "horse_id": "K554"
+  },
+  "H144": {
+    "horse_id": "H144"
+  },
+  "J360": {
+    "id": "J360",
+    "sire": null
+  },
+  "B456": {
+    "id": "B456",
+    "origin": null,
+    "import_type": null,
+    "sire": null,
+    "dam": null,
+    "dam_sire": null
+  },
+  "J178": {
+    "id": "J178"
+  },
+  "K051": {
+    "id": "K051",
+    "sire": null
+  },
+  "K144": {
+    "horse_id": "K144"
+  },
+  "L151": {
+    "id": "L151",
+    "sire": null
+  },
+  "L216": {
+    "horse_id": "L216"
+  },
+  "H197": {
+    "id": "H197",
+    "sire": null
+  },
+  "J459": {
+    "horse_id": "J459"
+  },
+  "E364": {
+    "horse_id": "E364"
+  },
+  "K003": {
+    "horse_id": "K003"
+  },
+  "K052": {
+    "horse_id": "K052"
+  },
+  "J131": {
+    "id": "J131",
+    "sire": null
+  },
+  "G012": {
+    "id": "G012",
+    "status": "no_data"
+  },
+  "K143": {
+    "id": "K143",
+    "sire": null
+  },
+  "L134": {
+    "id": "L134",
+    "status": "no_data"
+  },
+  "J453": {
+    "horse_id": "J453"
+  },
+  "H453": {
+    "horse_id": "H453"
+  },
+  "H109": {
+    "id": "H109",
+    "sire": null
+  },
+  "H334": {
+    "horse_id": "H334"
+  },
+  "K049": {
+    "horse_id": "K049"
+  },
+  "J137": {
+    "horse_id": "J137"
+  },
+  "H419": {
+    "horse_id": "H419"
+  },
+  "H402": {
+    "id": "H402",
+    "sire": null
+  },
+  "J111": {
+    "horse_id": "J111"
+  },
+  "L145": {
+    "horse_id": "L145"
+  },
+  "L034": {
+    "horse_id": "L034"
+  },
+  "L245": {
+    "horse_id": "L245"
+  },
+  "L161": {
+    "horse_id": "L161"
+  },
+  "J379": {
+    "id": "J379",
+    "sire": null
+  },
+  "H332": {
+    "horse_id": "H332"
+  },
+  "K353": {
+    "id": "K353",
+    "sire": null
+  },
+  "J059": {
+    "horse_id": "J059"
+  },
+  "K090": {
+    "horse_id": "K090"
+  },
+  "K356": {
+    "horse_id": "K356"
+  },
+  "H447": {
+    "horse_id": "H447"
+  },
+  "H432": {
+    "id": "H432",
+    "sire": null
+  },
+  "G025": {
+    "id": "G025",
+    "status": "no_data"
+  },
+  "H459": {
+    "id": "H459",
+    "sire": null
+  },
+  "K238": {
+    "horse_id": "K238"
+  },
+  "J333": {
+    "horse_id": "J333"
+  },
+  "J509": {
+    "horse_id": "J509"
+  },
+  "J442": {
+    "horse_id": "J442"
+  },
+  "L275": {
+    "horse_id": "L275"
+  },
+  "J149": {
+    "id": "J149",
+    "sire": null
+  },
+  "K074": {
+    "horse_id": "K074"
+  },
+  "J814": {
+    "id": "J814",
+    "sire": null
+  },
+  "L316": {
+    "id": "L316",
+    "sire": null
+  },
+  "H294": {
+    "horse_id": "H294"
+  },
+  "K291": {
+    "horse_id": "K291"
+  },
+  "K171": {
+    "id": "K171",
+    "status": "no_data"
+  },
+  "K028": {
+    "horse_id": "K028"
+  },
+  "K094": {
+    "horse_id": "K094"
+  },
+  "H438": {
+    "horse_id": "H438"
+  },
+  "K571": {
+    "horse_id": "K571"
+  },
+  "J082": {
+    "horse_id": "J082"
+  },
+  "K311": {
+    "horse_id": "K311"
+  },
+  "K562": {
+    "horse_id": "K562"
+  },
+  "J139": {
+    "id": "J139",
+    "status": "no_data"
+  },
+  "L088": {
+    "horse_id": "L088"
+  },
+  "K135": {
+    "horse_id": "K135"
+  },
+  "K524": {
+    "horse_id": "K524"
+  },
+  "K096": {
+    "horse_id": "K096"
+  },
+  "J093": {
+    "id": "J093",
+    "sire": null
+  },
+  "K485": {
+    "horse_id": "K485"
+  },
+  "J501": {
+    "horse_id": "J501"
+  },
+  "H192": {
+    "id": "H192",
+    "sire": null
+  },
+  "K201": {
+    "horse_id": "K201"
+  },
+  "H391": {
+    "horse_id": "H391"
+  },
+  "K428": {
+    "horse_id": "K428"
+  },
+  "L298": {
+    "horse_id": "L298"
+  },
+  "L329": {
+    "id": "L329",
+    "sire": null
+  },
+  "J247": {
+    "id": "J247",
+    "status": "no_data"
+  },
+  "E435": {
+    "id": "E435",
+    "sire": null
+  },
+  "J249": {
+    "horse_id": "J249"
+  },
+  "L919": {
+    "horse_id": "L919"
+  },
+  "G457": {
+    "horse_id": "G457"
+  },
+  "K536": {
+    "horse_id": "K536"
+  },
+  "J491": {
+    "id": "J491",
+    "sire": null
+  },
+  "H429": {
+    "horse_id": "H429"
+  },
+  "J436": {
+    "horse_id": "J436"
+  },
+  "J273": {
+    "horse_id": "J273"
+  },
+  "J261": {
+    "id": "J261",
+    "status": "no_data"
+  },
+  "H216": {
+    "horse_id": "H216"
+  },
+  "L188": {
+    "horse_id": "L188"
+  },
+  "L014": {
+    "horse_id": "L014"
+  },
+  "G150": {
+    "id": "G150",
+    "sire": null
+  },
+  "J164": {
+    "horse_id": "J164"
+  },
+  "K581": {
+    "horse_id": "K581"
+  },
+  "H277": {
+    "horse_id": "H277"
+  },
+  "J418": {
+    "id": "J418",
+    "sire": null
+  },
+  "G250": {
+    "id": "G250"
+  },
+  "G448": {
+    "id": "G448",
+    "sire": null
+  },
+  "L006": {
+    "id": "L006",
+    "sire": null
+  },
+  "J218": {
+    "horse_id": "J218"
+  },
+  "H412": {
+    "id": "H412",
+    "sire": null
+  },
+  "K503": {
+    "id": "K503",
+    "status": "no_data"
+  },
+  "H423": {
+    "id": "H423",
+    "status": "no_data"
+  },
+  "H404": {
+    "horse_id": "H404"
+  },
+  "K285": {
+    "id": "K285",
+    "sire": null
+  },
+  "K490": {
+    "horse_id": "K490"
+  },
+  "J078": {
+    "id": "J078",
+    "sire": null
+  },
+  "G404": {
+    "horse_id": "G404"
+  },
+  "K444": {
+    "horse_id": "K444"
+  },
+  "H479": {
+    "horse_id": "H479"
+  },
+  "J180": {
+    "horse_id": "J180"
+  },
+  "H436": {
+    "id": "H436",
+    "sire": null
+  },
+  "K127": {
+    "horse_id": "K127"
+  },
+  "J449": {
+    "id": "J449",
+    "sire": null
+  },
+  "J471": {
+    "id": "J471",
+    "sire": null
+  },
+  "J362": {
+    "horse_id": "J362"
+  },
+  "J325": {
+    "horse_id": "J325"
+  },
+  "K425": {
+    "horse_id": "K425"
+  },
+  "L112": {
+    "id": "L112",
+    "sire": null
+  },
+  "J134": {
+    "id": "J134",
+    "sire": null
+  },
+  "H452": {
+    "horse_id": "H452"
+  },
+  "J482": {
+    "id": "J482",
+    "status": "no_data"
+  },
+  "G288": {
+    "horse_id": "G288"
+  },
+  "L166": {
+    "horse_id": "L166"
+  },
+  "K526": {
+    "id": "K526",
+    "sire": null
+  },
+  "J393": {
+    "horse_id": "J393"
+  },
+  "J421": {
+    "id": "J421",
+    "sire": null
+  },
+  "J133": {
+    "id": "J133",
+    "status": "no_data"
+  },
+  "J143": {
+    "horse_id": "J143"
+  },
+  "J332": {
+    "id": "J332",
+    "status": "no_data"
+  },
+  "G120": {
+    "horse_id": "G120"
+  },
+  "K298": {
+    "horse_id": "K298"
+  },
+  "L110": {
+    "horse_id": "L110"
+  },
+  "K462": {
+    "horse_id": "K462"
+  },
+  "H364": {
+    "horse_id": "H364"
+  },
+  "H394": {
+    "horse_id": "H394"
+  },
+  "H120": {
+    "horse_id": "H120"
+  },
+  "J062": {
+    "id": "J062",
+    "sire": null
+  },
+  "G189": {
+    "horse_id": "G189"
+  },
+  "K162": {
+    "id": "K162",
+    "sire": null
+  },
+  "H178": {
+    "horse_id": "H178"
+  },
+  "G313": {
+    "horse_id": "G313"
+  },
+  "J188": {
+    "id": "J188",
+    "status": "no_data"
+  },
+  "K550": {
+    "id": "K550",
+    "sire": null
+  },
+  "K352": {
+    "id": "K352",
+    "sire": null
+  },
+  "K422": {
+    "horse_id": "K422"
+  },
+  "L035": {
+    "id": "L035",
+    "status": "no_data"
+  },
+  "L903": {
+    "horse_id": "L903"
+  },
+  "L016": {
+    "horse_id": "L016"
+  },
+  "C460": {
+    "horse_id": "C460"
+  },
+  "K040": {
+    "horse_id": "K040"
+  },
+  "K229": {
+    "horse_id": "K229"
+  },
+  "L111": {
+    "horse_id": "L111"
+  },
+  "J326": {
+    "id": "J326",
+    "sire": null
+  },
+  "H143": {
+    "horse_id": "H143"
+  },
+  "K004": {
+    "horse_id": "K004"
+  },
+  "H374": {
+    "horse_id": "H374"
+  },
+  "J428": {
+    "id": "J428",
+    "sire": null
+  },
+  "D287": {
+    "horse_id": "D287"
+  },
+  "K384": {
+    "id": "K384",
+    "sire": null
+  },
+  "L133": {
+    "horse_id": "L133"
+  },
+  "J530": {
+    "id": "J530",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "K218": {
+    "id": "K218",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L099": {
+    "id": "L099",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "H464": {
+    "id": "H464",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "K474": {
+    "id": "K474",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "J323": {
+    "id": "J323",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "J446": {
+    "id": "J446",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L244": {
+    "id": "L244",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "K295": {
+    "id": "K295",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "J087": {
+    "id": "J087",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L209": {
+    "id": "L209",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "J043": {
+    "id": "J043",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L236": {
+    "id": "L236",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "H165": {
+    "id": "H165",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L105": {
+    "id": "L105",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "J279": {
+    "id": "J279",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "J498": {
+    "id": "J498",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L120": {
+    "id": "L120",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "K097": {
+    "id": "K097",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "H092": {
+    "id": "H092",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L339": {
+    "id": "L339",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "K340": {
+    "id": "K340",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L197": {
+    "id": "L197",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "K115": {
+    "id": "K115",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L043": {
+    "id": "L043",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "J396": {
+    "id": "J396",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L235": {
+    "id": "L235",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "K561": {
+    "id": "K561",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "H409": {
+    "id": "H409",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "K330": {
+    "id": "K330",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L290": {
+    "id": "L290",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "K575": {
+    "id": "K575",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L179": {
+    "id": "L179",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L274": {
+    "id": "L274",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "K408": {
+    "id": "K408",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L314": {
+    "id": "L314",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L317": {
+    "id": "L317",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "J299": {
+    "id": "J299",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L119": {
+    "id": "L119",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "H376": {
+    "id": "H376",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "K190": {
+    "id": "K190",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "J195": {
+    "id": "J195",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "K521": {
+    "id": "K521",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "J037": {
+    "id": "J037",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "J170": {
+    "id": "J170",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L136": {
+    "id": "L136",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L233": {
+    "id": "L233",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "K325": {
+    "id": "K325",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "J383": {
+    "id": "J383",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L182": {
+    "id": "L182",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "K469": {
+    "id": "K469",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "J535": {
+    "id": "J535",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "E488": {
+    "id": "E488",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L187": {
+    "id": "L187",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "K323": {
+    "id": "K323",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "J080": {
+    "id": "J080",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L267": {
+    "id": "L267",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L037": {
+    "id": "L037",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "L093": {
+    "id": "L093",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "G368": {
+    "id": "G368",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "J339": {
+    "id": "J339",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "J183": {
+    "id": "J183",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "G268": {
+    "id": "G268",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "G265": {
+    "id": "G265",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "K514": {
+    "id": "K514",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "H349": {
+    "id": "H349",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "G312": {
+    "id": "G312",
+    "sire": "Unknown",
+    "dam": "Unknown",
+    "dam_sire": "Unknown",
+    "origin": "Unknown",
+    "import_type": "Unknown"
+  },
+  "H455": {
+    "id": "H455"
+  },
+  "J404": {
+    "id": "J404",
+    "sire": null
+  },
+  "J284": {
+    "id": "J284"
+  },
+  "H273": {
+    "id": "H273",
+    "status": "no_data"
+  },
+  "J378": {
+    "id": "J378"
+  },
+  "L005": {
+    "id": "L005"
+  },
+  "K535": {
+    "id": "K535",
+    "sire": null
+  },
+  "J069": {
+    "id": "J069"
+  },
+  "K442": {
+    "id": "K442"
+  },
+  "K125": {
+    "id": "K125"
+  },
+  "K280": {
+    "id": "K280",
+    "status": "no_data"
+  },
+  "L066": {
+    "id": "L066"
+  },
+  "K405": {
+    "id": "K405",
+    "sire": null
+  },
+  "J289": {
+    "id": "J289",
+    "sire": null
+  },
+  "L301": {
+    "id": "L301",
+    "sire": null
+  },
+  "G236": {
+    "id": "G236"
+  },
+  "K436": {
+    "id": "K436"
+  },
+  "K172": {
+    "id": "K172"
+  },
+  "L323": {
+    "id": "L323"
+  },
+  "G140": {
+    "id": "G140"
+  },
+  "L011": {
+    "id": "L011"
+  },
+  "L061": {
+    "id": "L061"
+  },
+  "J266": {
+    "id": "J266"
+  },
+  "H044": {
+    "id": "H044",
+    "status": "no_data"
+  },
+  "J443": {
+    "id": "J443",
+    "status": "no_data"
+  },
+  "J115": {
+    "id": "J115",
+    "status": "no_data"
+  },
+  "J227": {
+    "id": "J227"
+  },
+  "J225": {
+    "id": "J225"
+  },
+  "L232": {
+    "id": "L232",
+    "status": "no_data"
+  },
+  "H142": {
+    "id": "H142"
+  },
+  "K250": {
+    "id": "K250",
+    "status": "no_data"
+  },
+  "K332": {
+    "id": "K332"
+  },
+  "K009": {
+    "id": "K009",
+    "sire": null
+  },
+  "K557": {
+    "id": "K557",
+    "status": "no_data"
+  },
+  "J298": {
+    "id": "J298"
+  },
+  "L226": {
+    "id": "L226",
+    "status": "no_data"
+  },
+  "K108": {
+    "id": "K108"
+  },
+  "L295": {
+    "id": "L295"
+  },
+  "D258": {
+    "id": "D258"
+  },
+  "K480": {
+    "id": "K480"
+  },
+  "K579": {
+    "id": "K579"
+  },
+  "K104": {
+    "id": "K104"
+  },
+  "J493": {
+    "id": "J493"
+  },
+  "J409": {
+    "id": "J409",
+    "sire": null
+  },
+  "L223": {
+    "id": "L223",
+    "sire": null
+  },
+  "J371": {
+    "id": "J371"
+  },
+  "E208": {
+    "id": "E208"
+  },
+  "L220": {
+    "id": "L220"
+  },
+  "G408": {
+    "id": "G408"
+  },
+  "H149": {
+    "id": "H149"
+  },
+  "H065": {
+    "id": "H065"
+  },
+  "L912": {
+    "id": "L912"
+  },
+  "H188": {
+    "id": "H188",
+    "sire": null
+  },
+  "L911": {
+    "id": "L911"
+  },
+  "H244": {
+    "id": "H244",
+    "status": "no_data"
+  },
+  "H407": {
+    "id": "H407"
+  },
+  "K111": {
+    "id": "K111"
+  },
+  "J259": {
+    "id": "J259",
+    "sire": null
+  },
+  "J420": {
+    "id": "J420"
+  },
+  "K269": {
+    "id": "K269"
+  },
+  "H068": {
+    "id": "H068",
+    "sire": null
+  },
+  "J358": {
+    "id": "J358"
+  },
+  "K415": {
+    "id": "K415"
+  },
+  "J135": {
+    "id": "J135",
+    "sire": null
+  },
+  "J226": {
+    "id": "J226",
+    "sire": null
+  },
+  "J489": {
+    "id": "J489"
+  },
+  "H089": {
+    "id": "H089",
+    "sire": null
+  },
+  "J518": {
+    "id": "J518"
+  },
+  "A164": {
+    "id": "A164",
+    "origin": null,
+    "import_type": null,
+    "sire": null,
+    "dam": null,
+    "dam_sire": null
+  },
+  "K189": {
+    "id": "K189"
+  },
+  "J480": {
+    "id": "J480"
+  },
+  "K321": {
+    "id": "K321"
+  },
+  "J439": {
+    "id": "J439",
+    "sire": null
+  },
+  "K226": {
+    "id": "K226"
+  },
+  "J320": {
+    "id": "J320"
+  },
+  "L192": {
+    "id": "L192",
+    "sire": null
+  },
+  "H354": {
+    "id": "H354"
+  },
+  "L019": {
+    "id": "L019"
+  },
+  "K569": {
+    "id": "K569",
+    "sire": null
+  },
+  "J369": {
+    "id": "J369"
+  },
+  "C531": {
+    "id": "C531",
+    "status": "no_data"
+  },
+  "L296": {
+    "id": "L296"
+  },
+  "G451": {
+    "id": "G451",
+    "status": "no_data"
+  },
+  "L194": {
+    "id": "L194"
+  },
+  "H337": {
+    "id": "H337"
+  },
+  "H247": {
+    "id": "H247"
+  },
+  "H358": {
+    "id": "H358",
+    "sire": null
+  },
+  "J025": {
+    "id": "J025",
+    "sire": null
+  },
+  "J241": {
+    "id": "J241"
+  },
+  "K157": {
+    "id": "K157",
+    "sire": null
+  },
+  "G427": {
+    "id": "G427",
+    "sire": null
+  },
+  "J338": {
+    "id": "J338"
+  },
+  "K297": {
+    "id": "K297"
+  },
+  "H018": {
+    "id": "H018"
+  },
+  "K472": {
+    "id": "K472"
+  },
+  "L076": {
+    "id": "L076",
+    "sire": null
+  },
+  "L096": {
+    "id": "L096",
+    "status": "no_data"
+  },
+  "K512": {
+    "id": "K512"
+  },
+  "D186": {
+    "id": "D186",
+    "sire": null
+  },
+  "J533": {
+    "id": "J533",
+    "sire": null
+  },
+  "K183": {
+    "id": "K183",
+    "sire": null
+  },
+  "H161": {
+    "id": "H161",
+    "sire": null
+  },
+  "L241": {
+    "id": "L241"
+  },
+  "J141": {
+    "id": "J141"
+  },
+  "J173": {
+    "id": "J173"
+  },
+  "L028": {
+    "id": "L028"
+  },
+  "H440": {
+    "id": "H440"
+  },
+  "L211": {
+    "id": "L211",
+    "sire": null
+  },
+  "L074": {
+    "id": "L074"
+  },
+  "J017": {
+    "id": "J017"
+  },
+  "G221": {
+    "id": "G221"
+  },
+  "J053": {
+    "id": "J053",
+    "status": "no_data"
+  },
+  "H456": {
+    "id": "H456",
+    "sire": null
+  },
+  "K184": {
+    "id": "K184"
+  },
+  "K343": {
+    "id": "K343"
+  },
+  "L118": {
+    "id": "L118",
+    "sire": null
+  },
+  "H420": {
+    "id": "H420"
+  },
+  "L065": {
+    "id": "L065",
+    "sire": null
+  },
+  "K256": {
+    "id": "K256"
+  },
+  "L106": {
+    "id": "L106",
+    "sire": null
+  },
+  "J366": {
+    "id": "J366"
+  },
+  "K069": {
+    "id": "K069"
+  },
+  "J411": {
+    "id": "J411"
+  },
+  "K075": {
+    "id": "K075",
+    "sire": null
+  },
+  "H410": {
+    "id": "H410"
+  },
+  "H471": {
+    "id": "H471",
+    "sire": null
+  },
+  "L281": {
+    "id": "L281"
+  },
+  "H147": {
+    "id": "H147"
+  },
+  "K578": {
+    "id": "K578"
+  },
+  "J006": {
+    "id": "J006"
+  },
+  "E496": {
+    "id": "E496",
+    "sire": null
+  },
+  "J015": {
+    "id": "J015",
+    "sire": null
+  },
+  "J346": {
+    "id": "J346"
+  },
+  "L142": {
+    "id": "L142",
+    "sire": null
+  },
+  "J184": {
+    "id": "J184",
+    "sire": null
+  },
+  "J040": {
+    "id": "J040",
+    "sire": null
+  },
+  "K276": {
+    "id": "K276",
+    "sire": null
+  },
+  "H265": {
+    "id": "H265",
+    "status": "no_data"
+  },
+  "L040": {
+    "id": "L040"
+  },
+  "K362": {
+    "id": "K362",
+    "status": "no_data"
+  },
+  "K113": {
+    "id": "K113",
+    "sire": null
+  },
+  "H311": {
+    "id": "H311",
+    "status": "no_data"
+  },
+  "J301": {
+    "id": "J301"
+  },
+  "K493": {
+    "id": "K493",
+    "sire": null
+  },
+  "J467": {
+    "id": "J467"
+  },
+  "J186": {
+    "id": "J186",
+    "sire": null
+  },
+  "K354": {
+    "id": "K354"
+  },
+  "J182": {
+    "id": "J182",
+    "sire": null
+  },
+  "K322": {
+    "id": "K322"
+  },
+  "K055": {
+    "id": "K055",
+    "sire": null
+  },
+  "E061": {
+    "id": "E061"
+  },
+  "D033": {
+    "id": "D033"
+  },
+  "J452": {
+    "id": "J452"
+  },
+  "H371": {
+    "id": "H371"
+  },
+  "H113": {
+    "id": "H113"
+  },
+  "G420": {
+    "id": "G420"
+  },
+  "K258": {
+    "id": "K258"
+  },
+  "J328": {
+    "id": "J328",
+    "sire": null
+  },
+  "E184": {
+    "id": "E184"
+  },
+  "K070": {
+    "id": "K070"
+  },
+  "J252": {
+    "id": "J252"
+  },
+  "G078": {
+    "id": "G078",
+    "sire": null
+  },
+  "K208": {
+    "id": "K208",
+    "sire": null
+  },
+  "K336": {
+    "id": "K336"
+  },
+  "L204": {
+    "id": "L204",
+    "sire": null
+  },
+  "J060": {
+    "id": "J060"
+  },
+  "K413": {
+    "id": "K413"
+  },
+  "E471": {
+    "id": "E471"
+  },
+  "J165": {
+    "id": "J165",
+    "sire": null
+  },
+  "L086": {
+    "id": "L086"
+  },
+  "K403": {
+    "id": "K403",
+    "sire": null
+  },
+  "J300": {
+    "id": "J300"
+  },
+  "H087": {
+    "id": "H087"
+  },
+  "D241": {
+    "id": "D241"
+  },
+  "K287": {
+    "id": "K287"
+  },
+  "H290": {
+    "id": "H290"
+  },
+  "K324": {
+    "id": "K324",
+    "status": "no_data"
+  },
+  "L901": {
+    "id": "L901"
+  },
+  "G395": {
+    "id": "G395",
+    "sire": null
+  },
+  "K192": {
+    "id": "K192"
+  },
+  "K431": {
+    "id": "K431"
+  },
+  "G477": {
+    "id": "G477"
+  },
+  "K029": {
+    "id": "K029"
+  },
+  "K178": {
+    "id": "K178"
+  },
+  "L101": {
+    "id": "L101",
+    "sire": null
+  },
+  "E058": {
+    "id": "E058",
+    "status": "no_data"
+  },
+  "H399": {
+    "id": "H399"
+  },
+  "G374": {
+    "id": "G374"
+  },
+  "L159": {
+    "id": "L159"
+  },
+  "K211": {
+    "id": "K211"
+  },
+  "J003": {
+    "id": "J003",
+    "sire": null
+  },
+  "L157": {
+    "id": "L157",
+    "sire": null
+  },
+  "J205": {
+    "id": "J205"
+  },
+  "L163": {
+    "id": "L163"
+  },
+  "G372": {
+    "id": "G372",
+    "status": "no_data"
+  },
+  "J503": {
+    "id": "J503"
+  },
+  "K292": {
+    "id": "K292",
+    "sire": null
+  },
+  "G195": {
+    "id": "G195"
+  },
+  "L278": {
+    "id": "L278"
+  },
+  "K119": {
+    "id": "K119"
+  },
+  "J142": {
+    "id": "J142"
+  },
+  "K505": {
+    "id": "K505"
+  },
+  "K510": {
+    "id": "K510",
+    "sire": null
+  },
+  "K237": {
+    "id": "K237"
+  },
+  "J347": {
+    "id": "J347"
+  },
+  "H289": {
+    "id": "H289"
+  },
+  "K243": {
+    "id": "K243"
+  },
+  "K424": {
+    "id": "K424",
+    "sire": null
+  },
+  "L238": {
+    "id": "L238"
+  },
+  "K259": {
+    "id": "K259"
+  },
+  "K506": {
+    "id": "K506"
+  },
+  "H385": {
+    "id": "H385"
+  },
+  "K446": {
+    "id": "K446"
+  },
+  "J309": {
+    "id": "J309"
+  },
+  "J071": {
+    "id": "J071",
+    "status": "no_data"
+  },
+  "G333": {
+    "id": "G333",
+    "sire": null
+  },
+  "J345": {
+    "id": "J345"
+  },
+  "J132": {
+    "id": "J132"
+  },
+  "J312": {
+    "id": "J312",
+    "sire": null
+  },
+  "L167": {
+    "id": "L167",
+    "status": "no_data"
+  },
+  "J233": {
+    "id": "J233"
+  },
+  "J145": {
+    "id": "J145"
+  },
+  "K147": {
+    "id": "K147",
+    "sire": null
+  },
+  "H425": {
+    "id": "H425"
+  },
+  "J271": {
+    "id": "J271"
+  },
+  "H451": {
+    "id": "H451"
+  },
+  "K397": {
+    "id": "K397",
+    "status": "no_data"
+  },
+  "K217": {
+    "id": "K217"
+  },
+  "G201": {
+    "id": "G201"
+  },
+  "G088": {
+    "id": "G088"
+  },
+  "K580": {
+    "id": "K580"
+  },
+  "H033": {
+    "id": "H033",
+    "status": "no_data"
+  },
+  "J403": {
+    "id": "J403"
+  },
+  "J127": {
+    "id": "J127"
+  },
+  "L130": {
+    "id": "L130",
+    "sire": null
+  },
+  "H170": {
+    "id": "H170",
+    "sire": null
+  },
+  "K565": {
+    "id": "K565",
+    "sire": null
+  },
+  "K339": {
+    "id": "K339",
+    "sire": null
+  },
+  "J026": {
+    "id": "J026"
+  },
+  "J285": {
+    "id": "J285",
+    "status": "no_data"
+  },
+  "L170": {
+    "id": "L170",
+    "sire": null
+  },
+  "H212": {
+    "id": "H212",
+    "status": "no_data"
+  },
+  "L199": {
+    "id": "L199"
+  },
+  "K308": {
+    "id": "K308"
+  },
+  "H177": {
+    "id": "H177"
+  },
+  "K107": {
+    "id": "K107",
+    "sire": null
+  },
+  "K476": {
+    "id": "K476"
+  },
+  "J463": {
+    "id": "J463"
+  },
+  "L052": {
+    "id": "L052"
+  },
+  "J308": {
+    "id": "J308"
+  },
+  "H278": {
+    "id": "H278",
+    "status": "no_data"
+  },
+  "H343": {
+    "id": "H343"
+  },
+  "H426": {
+    "id": "H426",
+    "sire": null
+  },
+  "G165": {
+    "id": "G165"
+  },
+  "H483": {
+    "id": "H483"
+  },
+  "G016": {
+    "id": "G016"
+  },
+  "J198": {
+    "id": "J198",
+    "sire": null
+  },
+  "J490": {
+    "id": "J490",
+    "sire": null
+  },
+  "J494": {
+    "id": "J494"
+  },
+  "J465": {
+    "id": "J465",
+    "sire": null
+  },
+  "H108": {
+    "id": "H108",
+    "sire": null
+  },
+  "J317": {
+    "id": "J317"
+  },
+  "L183": {
+    "id": "L183",
+    "status": "no_data"
+  },
+  "K271": {
+    "id": "K271"
+  },
+  "J547": {
+    "id": "J547"
+  },
+  "L097": {
+    "id": "L097"
+  },
+  "H362": {
+    "id": "H362"
+  },
+  "L156": {
+    "id": "L156"
+  },
+  "K409": {
+    "id": "K409"
+  },
+  "J140": {
+    "id": "J140"
+  },
+  "K451": {
+    "id": "K451",
+    "status": "no_data"
+  },
+  "J392": {
+    "id": "J392"
+  },
+  "K420": {
+    "id": "K420",
+    "sire": null
+  },
+  "K375": {
+    "id": "K375",
+    "status": "no_data"
+  },
+  "J263": {
+    "id": "J263",
+    "status": "no_data"
+  },
+  "J394": {
+    "id": "J394"
+  },
+  "G452": {
+    "id": "G452"
+  },
+  "K290": {
+    "id": "K290",
+    "status": "no_data"
+  },
+  "J110": {
+    "id": "J110"
+  },
+  "K318": {
+    "id": "K318"
+  },
+  "L027": {
+    "id": "L027"
+  },
+  "J427": {
+    "id": "J427"
+  },
+  "L059": {
+    "id": "L059"
+  },
+  "J352": {
+    "id": "J352"
+  },
+  "K266": {
+    "id": "K266"
+  },
+  "K043": {
+    "id": "K043",
+    "status": "no_data"
+  },
+  "G400": {
+    "id": "G400",
+    "sire": null
+  },
+  "J426": {
+    "id": "J426"
+  },
+  "K306": {
+    "id": "K306",
+    "sire": null
+  },
+  "H016": {
+    "id": "H016"
+  },
+  "L212": {
+    "id": "L212"
+  },
+  "G258": {
+    "id": "G258",
+    "sire": null
+  },
+  "H046": {
+    "id": "H046",
+    "status": "no_data"
+  },
+  "J546": {
+    "id": "J546",
+    "status": "no_data"
+  },
+  "K347": {
+    "id": "K347"
+  },
+  "L090": {
+    "id": "L090",
+    "sire": null
+  },
+  "K576": {
+    "id": "K576"
+  },
+  "L104": {
+    "id": "L104"
+  },
+  "K160": {
+    "id": "K160"
+  },
+  "G476": {
+    "id": "G476",
+    "sire": null
+  },
+  "K552": {
+    "id": "K552",
+    "sire": null
+  },
+  "J265": {
+    "id": "J265",
+    "sire": null
+  },
+  "L129": {
+    "id": "L129",
+    "sire": null
+  },
+  "J363": {
+    "id": "J363"
+  },
+  "K037": {
+    "id": "K037",
+    "sire": null
+  },
+  "H303": {
+    "id": "H303"
+  },
+  "L171": {
+    "id": "L171",
+    "status": "no_data"
+  },
+  "L067": {
+    "id": "L067"
+  },
+  "H083": {
+    "id": "H083"
+  },
+  "K509": {
+    "id": "K509",
+    "status": "no_data"
+  },
+  "J365": {
+    "id": "J365"
+  },
+  "K439": {
+    "id": "K439"
+  },
+  "G426": {
+    "id": "G426"
+  },
+  "K331": {
+    "id": "K331",
+    "sire": null
+  },
+  "K263": {
+    "id": "K263"
+  },
+  "E478": {
+    "id": "E478"
+  },
+  "H306": {
+    "id": "H306"
+  },
+  "K544": {
+    "id": "K544",
+    "sire": null
+  },
+  "J351": {
+    "id": "J351"
+  },
+  "L920": {
+    "id": "L920"
+  },
+  "J224": {
+    "id": "J224"
+  },
+  "K404": {
+    "id": "K404"
+  },
+  "L396": {
+    "id": "L396"
+  },
+  "J129": {
+    "id": "J129"
+  },
+  "L020": {
+    "id": "L020"
+  },
+  "L915": {
+    "id": "L915",
+    "sire": null
+  },
+  "J540": {
+    "id": "J540",
+    "sire": null
+  },
+  "J311": {
+    "id": "J311"
+  },
+  "H258": {
+    "id": "H258",
+    "sire": null
+  },
+  "G209": {
+    "id": "G209",
+    "sire": null
+  },
+  "J276": {
+    "id": "J276"
+  },
+  "J217": {
+    "id": "J217"
+  },
+  "L248": {
+    "id": "L248",
+    "sire": null
+  },
+  "J294": {
+    "id": "J294"
+  },
+  "K369": {
+    "id": "K369"
+  },
+  "L207": {
+    "id": "L207",
+    "status": "no_data"
+  },
+  "J337": {
+    "id": "J337"
+  },
+  "J504": {
+    "id": "J504"
+  },
+  "J155": {
+    "id": "J155"
+  },
+  "K241": {
+    "id": "K241"
+  },
+  "J499": {
+    "id": "J499",
+    "sire": null
+  },
+  "G045": {
+    "id": "G045"
+  },
+  "G123": {
+    "id": "G123",
+    "sire": null
+  },
+  "G125": {
+    "id": "G125"
+  },
+  "J004": {
+    "id": "J004",
+    "sire": null
+  },
+  "J027": {
+    "id": "J027"
+  },
+  "J099": {
+    "id": "J099",
+    "sire": null
+  },
+  "J231": {
+    "id": "J231"
+  },
+  "J254": {
+    "id": "J254",
+    "status": "no_data"
+  },
+  "J531": {
+    "id": "J531"
+  },
+  "G354": {
+    "id": "G354"
+  },
+  "H324": {
+    "id": "H324",
+    "sire": null
+  },
+  "K435": {
+    "id": "K435",
+    "sire": null
+  },
+  "L905": {
+    "id": "L905",
+    "status": "no_data"
+  },
+  "L277": {
+    "id": "L277",
+    "sire": null
+  },
+  "J550": {
+    "id": "J550"
+  },
+  "G170": {
+    "id": "G170"
+  },
+  "K212": {
+    "id": "K212"
+  },
+  "G166": {
+    "id": "G166",
+    "sire": null
+  },
+  "J405": {
+    "id": "J405"
+  },
+  "K417": {
+    "id": "K417",
+    "sire": null
+  },
+  "K511": {
+    "id": "K511"
+  },
+  "J162": {
+    "id": "J162"
+  },
+  "J138": {
+    "id": "J138"
+  },
+  "J083": {
+    "id": "J083",
+    "sire": null
+  },
+  "J357": {
+    "id": "J357"
+  },
+  "K236": {
+    "id": "K236",
+    "sire": null
+  },
+  "L273": {
+    "id": "L273"
+  },
+  "J253": {
+    "id": "J253"
+  },
+  "G306": {
+    "id": "G306"
+  },
+  "K313": {
+    "id": "K313"
+  },
+  "G231": {
+    "id": "G231",
+    "sire": null
+  },
+  "J545": {
+    "id": "J545",
+    "sire": null
+  },
+  "J102": {
+    "id": "J102"
+  },
+  "K502": {
+    "id": "K502"
+  },
+  "K398": {
+    "id": "K398",
+    "status": "no_data"
+  },
+  "E445": {
+    "id": "E445",
+    "sire": null
+  },
+  "H175": {
+    "id": "H175"
+  },
+  "G435": {
+    "id": "G435"
+  },
+  "K487": {
+    "id": "K487",
+    "status": "no_data"
+  },
+  "J171": {
+    "id": "J171"
+  },
+  "K246": {
+    "id": "K246"
+  },
+  "K098": {
+    "id": "K098",
+    "sire": null
+  },
+  "K342": {
+    "id": "K342",
+    "sire": null
+  },
+  "K283": {
+    "id": "K283",
+    "sire": null
+  },
+  "J314": {
+    "id": "J314",
+    "status": "no_data"
+  },
+  "E336": {
+    "id": "E336",
+    "sire": null
+  },
+  "K545": {
+    "id": "K545",
+    "sire": null
+  },
+  "J542": {
+    "id": "J542"
+  },
+  "J032": {
+    "id": "J032"
+  },
+  "L071": {
+    "id": "L071"
+  },
+  "G204": {
+    "id": "G204",
+    "sire": null
+  },
+  "H361": {
+    "id": "H361",
+    "sire": null
+  },
+  "J368": {
+    "id": "J368"
+  },
+  "K165": {
+    "id": "K165"
+  },
+  "K073": {
+    "id": "K073"
+  },
+  "E379": {
+    "id": "E379"
+  },
+  "K499": {
+    "id": "K499"
+  },
+  "E400": {
+    "id": "E400"
+  },
+  "L017": {
+    "id": "L017",
+    "sire": null
+  },
+  "J073": {
+    "id": "J073"
+  },
+  "K152": {
+    "id": "K152"
+  },
+  "K035": {
+    "id": "K035",
+    "sire": null
+  },
+  "H037": {
+    "id": "H037"
+  },
+  "H241": {
+    "id": "H241"
+  },
+  "K061": {
+    "id": "K061"
+  },
+  "H215": {
+    "id": "H215",
+    "sire": null
+  },
+  "K540": {
+    "id": "K540"
+  },
+  "J445": {
+    "id": "J445",
+    "sire": null
+  },
+  "L003": {
+    "id": "L003"
+  },
+  "H200": {
+    "id": "H200"
+  },
+  "K334": {
+    "id": "K334"
+  },
+  "H323": {
+    "id": "H323"
+  },
+  "J105": {
+    "id": "J105",
+    "sire": null
+  },
+  "J181": {
+    "id": "J181"
+  },
+  "K333": {
+    "id": "K333",
+    "sire": null
+  },
+  "J179": {
+    "id": "J179",
+    "sire": null
+  },
+  "L222": {
+    "id": "L222"
+  },
+  "H475": {
+    "id": "H475",
+    "sire": null
+  },
+  "K146": {
+    "id": "K146"
+  },
+  "J159": {
+    "id": "J159"
+  },
+  "J391": {
+    "id": "J391",
+    "sire": null
+  },
+  "E322": {
+    "id": "E322",
+    "sire": null
+  },
+  "K494": {
+    "id": "K494",
+    "status": "no_data"
+  },
+  "J431": {
+    "id": "J431"
+  },
+  "J076": {
+    "id": "J076"
+  },
+  "K167": {
+    "id": "K167"
+  },
+  "G416": {
+    "id": "G416"
+  },
+  "G365": {
+    "id": "G365"
+  },
+  "G364": {
+    "id": "G364"
+  },
+  "L128": {
+    "id": "L128"
+  },
+  "G266": {
+    "id": "G266"
+  },
+  "L224": {
+    "id": "L224"
+  },
+  "K282": {
+    "id": "K282"
+  },
+  "K337": {
+    "id": "K337"
+  },
+  "K045": {
+    "id": "K045"
+  },
+  "L121": {
+    "id": "L121"
+  },
+  "H443": {
+    "id": "H443"
+  },
+  "K341": {
+    "id": "K341",
+    "sire": null
+  },
+  "K473": {
+    "id": "K473",
+    "status": "no_data"
+  },
+  "H386": {
+    "id": "H386"
+  },
+  "J413": {
+    "id": "J413",
+    "sire": null
+  },
+  "K533": {
+    "id": "K533"
+  },
+  "H234": {
+    "id": "H234",
+    "sire": null
+  },
+  "K027": {
+    "id": "K027"
+  },
+  "H411": {
+    "id": "H411"
+  },
+  "J484": {
+    "id": "J484"
+  },
+  "J514": {
+    "id": "J514"
+  },
+  "K166": {
+    "id": "K166",
+    "sire": null
+  },
+  "J401": {
+    "id": "J401",
+    "sire": null
+  },
+  "K109": {
+    "id": "K109",
+    "sire": null
+  },
+  "H298": {
+    "id": "H298"
+  },
+  "J176": {
+    "id": "J176"
+  },
+  "J488": {
+    "id": "J488"
+  },
+  "K093": {
+    "id": "K093",
+    "sire": null
+  },
+  "K076": {
+    "id": "K076"
+  },
+  "J194": {
+    "id": "J194"
+  },
+  "D474": {
+    "id": "D474"
+  },
+  "K484": {
+    "id": "K484"
+  },
+  "K586": {
+    "id": "K586"
+  },
+  "E486": {
+    "id": "E486"
+  },
+  "K500": {
+    "id": "K500"
+  },
+  "J319": {
+    "id": "J319"
+  },
+  "J341": {
+    "id": "J341",
+    "sire": null
+  },
+  "G060": {
+    "id": "G060"
+  },
+  "J020": {
+    "id": "J020"
+  },
+  "H296": {
+    "id": "H296"
+  },
+  "G071": {
+    "id": "G071"
+  },
+  "K011": {
+    "id": "K011"
+  },
+  "K066": {
+    "id": "K066"
+  },
+  "H434": {
+    "id": "H434",
+    "status": "no_data"
+  },
+  "H481": {
+    "id": "H481"
+  },
+  "E413": {
+    "id": "E413"
+  },
+  "K530": {
+    "id": "K530"
+  },
+  "G130": {
+    "id": "G130"
+  },
+  "J434": {
+    "id": "J434"
+  },
+  "G222": {
+    "id": "G222"
+  },
+  "G277": {
+    "id": "G277"
+  },
+  "L026": {
+    "id": "L026"
+  },
+  "H180": {
+    "id": "H180"
+  },
+  "L070": {
+    "id": "L070"
+  },
+  "E432": {
+    "id": "E432",
+    "sire": null
+  },
+  "K312": {
+    "id": "K312"
+  },
+  "E369": {
+    "id": "E369"
+  },
+  "J538": {
+    "id": "J538",
+    "status": "no_data"
+  },
+  "G171": {
+    "id": "G171"
+  },
+  "G292": {
+    "id": "G292"
+  },
+  "J331": {
+    "id": "J331"
+  },
+  "K495": {
+    "id": "K495",
+    "status": "no_data"
+  },
+  "K252": {
+    "id": "K252",
+    "sire": null
+  },
+  "L102": {
+    "id": "L102",
+    "sire": null
+  },
+  "J430": {
+    "id": "J430",
+    "sire": null
+  },
+  "G057": {
+    "id": "G057"
+  },
+  "H252": {
+    "id": "H252"
+  },
+  "L075": {
+    "id": "L075"
+  },
+  "L008": {
+    "id": "L008"
+  },
+  "J399": {
+    "id": "J399",
+    "sire": null
+  },
+  "H383": {
+    "id": "H383",
+    "status": "no_data"
+  },
+  "J305": {
+    "id": "J305",
+    "sire": null
+  },
+  "L176": {
+    "id": "L176",
+    "sire": null
+  },
+  "L269": {
+    "id": "L269",
+    "sire": null
+  },
+  "J245": {
+    "id": "J245"
+  },
+  "K260": {
+    "id": "K260",
+    "sire": null
+  },
+  "L021": {
+    "id": "L021"
+  },
+  "J121": {
+    "id": "J121",
+    "sire": null
+  },
+  "J336": {
+    "id": "J336"
+  },
+  "K466": {
+    "id": "K466",
+    "sire": null
+  },
+  "J152": {
+    "id": "J152"
+  },
+  "K360": {
+    "id": "K360"
+  },
+  "J275": {
+    "id": "J275"
+  },
+  "L186": {
+    "id": "L186",
+    "sire": null
+  },
+  "K279": {
+    "id": "K279"
+  },
+  "K385": {
+    "id": "K385",
+    "sire": null
+  },
+  "E281": {
+    "id": "E281",
+    "sire": null
+  },
+  "K198": {
+    "id": "K198"
+  },
+  "K122": {
+    "id": "K122",
+    "sire": null
+  },
+  "J532": {
+    "id": "J532"
+  },
+  "H406": {
+    "id": "H406",
+    "sire": null
+  },
+  "J157": {
+    "id": "J157",
+    "sire": null
+  },
+  "G392": {
+    "id": "G392"
+  },
+  "K564": {
+    "id": "K564",
+    "status": "no_data"
+  },
+  "E321": {
+    "id": "E321",
+    "sire": null
+  },
+  "K560": {
+    "id": "K560",
+    "status": "no_data"
+  },
+  "J386": {
+    "id": "J386",
+    "sire": null
+  },
+  "H465": {
+    "id": "H465",
+    "sire": null
+  },
+  "K293": {
+    "id": "K293"
+  },
+  "K319": {
+    "id": "K319"
+  },
+  "E461": {
+    "id": "E461",
+    "status": "no_data"
+  },
+  "L305": {
+    "id": "L305"
+  },
+  "K361": {
+    "id": "K361",
+    "sire": null
+  },
+  "J344": {
+    "id": "J344",
+    "sire": null
+  },
+  "K518": {
+    "id": "K518"
+  },
+  "K456": {
+    "id": "K456",
+    "sire": null
+  },
+  "G470": {
+    "id": "G470"
+  },
+  "K376": {
+    "id": "K376",
+    "sire": null
+  },
+  "J212": {
+    "id": "J212",
+    "sire": null
+  },
+  "K567": {
+    "id": "K567"
+  },
+  "L148": {
+    "id": "L148"
+  },
+  "L032": {
+    "id": "L032",
+    "status": "no_data"
+  },
+  "J524": {
+    "id": "J524",
+    "sire": null
+  },
+  "L293": {
+    "id": "L293",
+    "sire": null
+  },
+  "H159": {
+    "id": "H159",
+    "status": "no_data"
+  },
+  "K110": {
+    "id": "K110",
+    "sire": null
+  },
+  "H301": {
+    "id": "H301"
+  },
+  "G307": {
+    "id": "G307",
+    "sire": null
+  },
+  "J517": {
+    "id": "J517",
+    "sire": null
+  },
+  "K519": {
+    "id": "K519",
+    "sire": null
+  },
+  "H133": {
+    "id": "H133",
+    "sire": null
+  },
+  "K025": {
+    "id": "K025"
+  },
+  "K223": {
+    "id": "K223"
+  },
+  "K053": {
+    "id": "K053"
+  },
+  "J511": {
+    "id": "J511"
+  },
+  "J146": {
+    "id": "J146"
+  },
+  "K479": {
+    "id": "K479"
+  },
+  "J288": {
+    "id": "J288"
+  },
+  "J208": {
+    "id": "J208",
+    "sire": null
+  },
+  "J228": {
+    "id": "J228",
+    "sire": null
+  },
+  "J464": {
+    "id": "J464"
+  },
+  "K507": {
+    "id": "K507",
+    "sire": null
+  },
+  "H326": {
+    "id": "H326",
+    "sire": null
+  },
+  "K059": {
+    "id": "K059"
+  },
+  "H454": {
+    "id": "H454"
+  },
+  "E397": {
+    "id": "E397",
+    "sire": null
+  },
+  "J197": {
+    "id": "J197"
+  },
+  "K007": {
+    "id": "K007"
+  },
+  "K249": {
+    "id": "K249"
+  },
+  "L139": {
+    "id": "L139"
+  },
+  "K177": {
+    "id": "K177"
+  },
+  "J310": {
+    "id": "J310",
+    "sire": null
+  },
+  "K294": {
+    "id": "K294",
+    "status": "no_data"
+  },
+  "K320": {
+    "id": "K320",
+    "sire": null
+  },
+  "K542": {
+    "id": "K542",
+    "sire": null
+  },
+  "H090": {
+    "id": "H090",
+    "sire": null
+  },
+  "L002": {
+    "id": "L002"
+  },
+  "L063": {
+    "id": "L063"
+  },
+  "L022": {
+    "id": "L022",
+    "sire": null
+  },
+  "J163": {
+    "id": "J163"
+  },
+  "G389": {
+    "id": "G389"
+  },
+  "G251": {
+    "id": "G251",
+    "sire": null
+  },
+  "G180": {
+    "id": "G180"
+  },
+  "K156": {
+    "id": "K156",
+    "sire": null
+  },
+  "H353": {
+    "id": "H353"
+  },
+  "G401": {
+    "id": "G401"
+  },
+  "J458": {
+    "id": "J458"
+  },
+  "L247": {
+    "id": "L247"
+  },
+  "L173": {
+    "id": "L173",
+    "sire": null
+  },
+  "H319": {
+    "id": "H319"
+  },
+  "K455": {
+    "id": "K455",
+    "sire": null
+  },
+  "K367": {
+    "id": "K367"
+  },
+  "K176": {
+    "id": "K176"
+  },
+  "K042": {
+    "id": "K042"
+  },
+  "J258": {
+    "id": "J258",
+    "sire": null
+  },
+  "E356": {
+    "id": "E356",
+    "sire": null
+  },
+  "G462": {
+    "id": "G462"
+  },
+  "K105": {
+    "id": "K105",
+    "sire": null
+  },
+  "K101": {
+    "id": "K101",
+    "sire": null
+  },
+  "K180": {
+    "id": "K180"
+  },
+  "J114": {
+    "id": "J114"
+  },
+  "L039": {
+    "id": "L039",
+    "sire": null
+  },
+  "G138": {
+    "id": "G138"
+  },
+  "J373": {
+    "id": "J373",
+    "sire": null
+  },
+  "K910": {
+    "id": "K910",
+    "sire": null
+  },
+  "K187": {
+    "id": "K187"
+  },
+  "H330": {
+    "id": "H330",
+    "sire": null
+  },
+  "G192": {
+    "id": "G192",
+    "status": "no_data"
+  },
+  "K458": {
+    "id": "K458"
+  },
+  "H116": {
+    "id": "H116"
+  },
+  "D435": {
+    "id": "D435",
+    "status": "no_data"
+  },
+  "C461": {
+    "id": "C461",
+    "status": "no_data"
+  },
+  "K529": {
+    "id": "K529"
+  },
+  "H153": {
+    "id": "H153",
+    "sire": null
+  },
+  "J038": {
+    "id": "J038",
+    "sire": null
+  },
+  "E430": {
+    "id": "E430"
+  },
+  "K516": {
+    "id": "K516"
+  },
+  "L189": {
+    "id": "L189"
+  },
+  "L064": {
+    "id": "L064",
+    "sire": null
+  },
+  "L922": {
+    "id": "L922"
+  },
+  "J359": {
+    "id": "J359",
+    "sire": null
+  },
+  "K563": {
+    "id": "K563"
+  },
+  "L078": {
+    "id": "L078",
+    "sire": null
+  },
+  "K207": {
+    "id": "K207"
+  },
+  "H384": {
+    "id": "H384"
+  },
+  "D489": {
+    "id": "D489",
+    "sire": null
+  },
+  "K920": {
+    "id": "K920",
+    "sire": null
+  },
+  "H248": {
+    "id": "H248",
+    "sire": null
+  },
+  "G335": {
+    "id": "G335"
+  },
+  "K374": {
+    "id": "K374"
+  },
+  "K527": {
+    "id": "K527",
+    "status": "no_data"
+  },
+  "K364": {
+    "id": "K364"
+  },
+  "J447": {
+    "id": "J447",
+    "sire": null
+  },
+  "L084": {
+    "id": "L084",
+    "sire": null
+  },
+  "J355": {
+    "id": "J355"
+  },
+  "K366": {
+    "id": "K366"
+  },
+  "D387": {
+    "id": "D387"
+  },
+  "J050": {
+    "id": "J050",
+    "sire": null
+  },
+  "K388": {
+    "id": "K388",
+    "sire": null
+  },
+  "H283": {
+    "id": "H283"
+  },
+  "K501": {
+    "id": "K501"
+  },
+  "K046": {
+    "id": "K046"
+  },
+  "H117": {
+    "id": "H117",
+    "status": "no_data"
+  },
+  "J521": {
+    "id": "J521"
+  },
+  "H009": {
+    "id": "H009"
+  },
+  "K481": {
+    "id": "K481",
+    "status": "no_data"
+  },
+  "K390": {
+    "id": "K390",
+    "sire": null
+  },
+  "L210": {
+    "id": "L210"
+  },
+  "J435": {
+    "id": "J435"
+  },
+  "L208": {
+    "id": "L208",
+    "sire": null
+  },
+  "K132": {
+    "id": "K132"
+  },
+  "K401": {
+    "id": "K401"
+  },
+  "L116": {
+    "id": "L116",
+    "sire": null
+  },
+  "H156": {
+    "id": "H156"
+  },
+  "K188": {
+    "id": "K188"
+  },
+  "L155": {
+    "id": "L155",
+    "sire": null
+  },
+  "K239": {
+    "id": "K239"
+  },
+  "K012": {
+    "id": "K012"
+  },
+  "K106": {
+    "id": "K106"
+  },
+  "J479": {
+    "id": "J479"
+  },
+  "K429": {
+    "id": "K429",
+    "sire": null
+  },
+  "K426": {
+    "id": "K426",
+    "sire": null
+  },
+  "L174": {
+    "id": "L174",
+    "sire": null
+  },
+  "H008": {
+    "id": "H008",
+    "sire": null
+  },
+  "K553": {
+    "id": "K553",
+    "status": "no_data"
+  },
+  "K261": {
+    "id": "K261"
+  },
+  "H115": {
+    "id": "H115"
+  },
+  "G396": {
+    "id": "G396",
+    "sire": null
+  },
+  "K112": {
+    "id": "K112"
+  },
+  "E448": {
+    "id": "E448"
+  },
+  "H403": {
+    "id": "H403"
+  },
+  "H069": {
+    "id": "H069"
+  },
+  "L152": {
+    "id": "L152"
+  },
+  "J534": {
+    "id": "J534"
+  },
+  "K465": {
+    "id": "K465"
+  },
+  "L234": {
+    "id": "L234"
+  },
+  "J374": {
+    "id": "J374"
+  },
+  "J523": {
+    "id": "J523"
+  },
+  "E323": {
+    "id": "E323"
+  },
+  "H028": {
+    "id": "H028"
+  },
+  "H233": {
+    "id": "H233"
+  },
+  "J219": {
+    "id": "J219"
+  },
+  "H196": {
+    "id": "H196",
+    "sire": null
+  },
+  "K244": {
+    "id": "K244",
+    "sire": null
+  },
+  "G465": {
+    "id": "G465"
+  },
+  "L057": {
+    "id": "L057"
+  },
+  "D500": {
+    "id": "D500"
+  },
+  "J303": {
+    "id": "J303",
+    "sire": null
+  },
+  "K392": {
+    "id": "K392",
+    "status": "no_data"
+  },
+  "L270": {
+    "id": "L270"
+  },
+  "K543": {
+    "id": "K543"
+  },
+  "K080": {
+    "id": "K080",
+    "sire": null
+  },
+  "L049": {
+    "id": "L049"
+  },
+  "H228": {
+    "id": "H228"
+  },
+  "K299": {
+    "id": "K299"
+  },
+  "K348": {
+    "id": "K348"
+  },
+  "H381": {
+    "id": "H381"
+  },
+  "L168": {
+    "id": "L168"
+  },
+  "L126": {
+    "id": "L126"
+  },
+  "H151": {
+    "id": "H151",
+    "sire": null
+  },
+  "L048": {
+    "id": "L048"
+  },
+  "L083": {
+    "id": "L083",
+    "origin": null,
+    "import_type": null,
+    "sire": null,
+    "dam": null,
+    "dam_sire": null
+  },
+  "G230": {
+    "id": "G230",
+    "sire": null
+  },
+  "K496": {
+    "id": "K496"
+  },
+  "H375": {
+    "id": "H375"
+  },
+  "L124": {
+    "id": "L124"
+  },
+  "H392": {
+    "id": "H392"
+  },
+  "J541": {
+    "id": "J541",
+    "status": "no_data"
+  },
+  "K539": {
+    "id": "K539"
+  },
+  "J267": {
+    "id": "J267"
+  },
+  "L181": {
+    "id": "L181"
+  },
+  "J321": {
+    "id": "J321",
+    "sire": null
+  },
+  "H111": {
+    "id": "H111"
+  },
+  "J444": {
+    "id": "J444"
+  },
+  "K021": {
+    "id": "K021",
+    "sire": null
+  },
+  "L044": {
+    "id": "L044",
+    "status": "no_data"
+  },
+  "L264": {
+    "id": "L264"
+  },
+  "J229": {
+    "id": "J229"
+  },
+  "L311": {
+    "id": "L311"
+  },
+  "L902": {
+    "id": "L902",
+    "status": "no_data"
+  },
+  "K386": {
+    "id": "K386"
+  },
+  "J169": {
+    "id": "J169"
+  },
+  "L175": {
+    "id": "L175"
+  },
+  "J316": {
+    "id": "J316"
+  },
+  "H169": {
+    "id": "H169"
+  },
+  "J456": {
+    "id": "J456"
+  },
+  "H395": {
+    "id": "H395"
+  },
+  "K227": {
+    "id": "K227"
+  },
+  "K305": {
+    "id": "K305",
+    "sire": null
+  },
+  "J215": {
+    "id": "J215"
+  },
+  "L141": {
+    "id": "L141"
+  },
+  "K199": {
+    "id": "K199"
+  },
+  "H229": {
+    "id": "H229"
+  },
+  "J008": {
+    "id": "J008"
+  },
+  "D075": {
+    "id": "D075",
+    "sire": null
+  },
+  "L214": {
+    "id": "L214",
+    "status": "no_data"
+  },
+  "J039": {
+    "id": "J039",
+    "status": "no_data"
+  },
+  "K457": {
+    "id": "K457"
+  },
+  "K278": {
+    "id": "K278",
+    "sire": null
+  },
+  "H166": {
+    "id": "H166",
+    "sire": null
+  },
+  "L107": {
+    "id": "L107"
+  },
+  "E494": {
+    "id": "E494",
+    "sire": null
+  },
+  "H123": {
+    "id": "H123"
+  },
+  "H439": {
+    "id": "H439",
+    "sire": null
+  },
+  "H202": {
+    "id": "H202"
+  },
+  "K522": {
+    "id": "K522",
+    "sire": null
+  },
+  "H431": {
+    "id": "H431"
+  },
+  "L202": {
+    "id": "L202"
+  },
+  "E282": {
+    "id": "E282"
+  },
+  "H173": {
+    "id": "H173"
+  },
+  "K150": {
+    "id": "K150",
+    "status": "no_data"
+  },
+  "J144": {
+    "id": "J144"
+  },
+  "J112": {
+    "id": "J112",
+    "sire": null
+  },
+  "K057": {
+    "id": "K057"
+  },
+  "J510": {
+    "id": "J510",
+    "sire": null
+  },
+  "H081": {
+    "id": "H081",
+    "sire": null
+  },
+  "K568": {
+    "id": "K568",
+    "status": "no_data"
+  },
+  "H264": {
+    "id": "H264",
+    "sire": null
+  },
+  "K099": {
+    "id": "K099"
+  },
+  "K315": {
+    "id": "K315"
+  },
+  "H039": {
+    "id": "H039"
+  },
+  "L108": {
+    "id": "L108"
+  },
+  "K491": {
+    "id": "K491"
+  },
+  "K084": {
+    "id": "K084"
+  },
+  "L073": {
+    "id": "L073"
+  },
+  "J018": {
+    "id": "J018"
+  },
+  "H470": {
+    "id": "H470",
+    "sire": null
+  },
+  "K302": {
+    "id": "K302"
+  },
+  "K583": {
+    "id": "K583",
+    "status": "no_data"
+  },
+  "E175": {
+    "id": "E175"
+  },
+  "K314": {
+    "id": "K314"
+  },
+  "L046": {
+    "id": "L046"
+  },
+  "K005": {
+    "id": "K005"
+  },
+  "K391": {
+    "id": "K391"
+  },
+  "H346": {
+    "id": "H346"
+  },
+  "H253": {
+    "id": "H253",
+    "sire": null
+  },
+  "K253": {
+    "id": "K253",
+    "sire": null
+  },
+  "H366": {
+    "id": "H366"
+  },
+  "L319": {
+    "id": "L319"
+  },
+  "J513": {
+    "id": "J513"
+  },
+  "K307": {
+    "id": "K307"
+  },
+  "G301": {
+    "id": "G301",
+    "sire": null
+  },
+  "J520": {
+    "id": "J520",
+    "status": "no_data"
+  },
+  "J056": {
+    "id": "J056"
+  },
+  "J477": {
+    "id": "J477"
+  },
+  "K145": {
+    "id": "K145"
+  },
+  "E392": {
+    "id": "E392",
+    "sire": null
+  },
+  "L348": {
+    "id": "L348"
+  },
+  "D090": {
+    "id": "D090",
+    "sire": null
+  },
+  "J158": {
+    "id": "J158"
+  },
+  "K235": {
+    "id": "K235"
+  },
+  "H237": {
+    "id": "H237",
+    "sire": null
+  },
+  "J468": {
+    "id": "J468"
+  },
+  "L122": {
+    "id": "L122",
+    "sire": null
+  },
+  "K534": {
+    "id": "K534",
+    "sire": null
+  },
+  "G463": {
+    "id": "G463"
+  },
+  "J448": {
+    "id": "J448"
+  },
+  "K498": {
+    "id": "K498",
+    "status": "no_data"
+  },
+  "K383": {
+    "id": "K383"
+  },
+  "G063": {
+    "id": "G063",
+    "sire": null
+  },
+  "J101": {
+    "id": "J101",
+    "sire": null
+  },
+  "K022": {
+    "id": "K022"
+  },
+  "J370": {
+    "id": "J370"
+  },
+  "G173": {
+    "id": "G173",
+    "sire": null
+  },
+  "H368": {
+    "id": "H368"
+  },
+  "G026": {
+    "id": "G026"
+  },
+  "H390": {
+    "id": "H390"
+  },
+  "K541": {
+    "id": "K541"
+  },
+  "K477": {
+    "id": "K477",
+    "sire": null
+  },
+  "J400": {
+    "id": "J400"
+  },
+  "H389": {
+    "id": "H389",
+    "sire": null
+  },
+  "J192": {
+    "id": "J192",
+    "sire": null
+  },
+  "K281": {
+    "id": "K281"
+  },
+  "K389": {
+    "id": "K389"
+  },
+  "L054": {
+    "id": "L054"
+  },
+  "K203": {
+    "id": "K203"
+  },
+  "J075": {
+    "id": "J075"
+  },
+  "J161": {
+    "id": "J161",
+    "status": "no_data"
+  },
+  "G126": {
+    "id": "G126",
+    "status": "no_data"
+  },
+  "L082": {
+    "id": "L082",
+    "sire": null
+  },
+  "H292": {
+    "id": "H292",
+    "sire": null
+  },
+  "L042": {
+    "id": "L042"
+  },
+  "G213": {
+    "id": "G213",
+    "status": "no_data"
+  },
+  "G326": {
+    "id": "G326"
+  },
+  "H380": {
+    "id": "H380",
+    "status": "no_data"
+  },
+  "K181": {
+    "id": "K181"
+  },
+  "H246": {
+    "id": "H246"
+  },
+  "K148": {
+    "id": "K148"
+  },
+  "H203": {
+    "id": "H203",
+    "sire": null
+  },
+  "E385": {
+    "id": "E385"
+  },
+  "E472": {
+    "id": "E472",
+    "sire": null
+  },
+  "G315": {
+    "id": "G315"
+  },
+  "L184": {
+    "id": "L184"
+  },
+  "K483": {
+    "id": "K483"
+  },
+  "J239": {
+    "id": "J239",
+    "sire": null
+  },
+  "L123": {
+    "id": "L123"
+  },
+  "K082": {
+    "id": "K082"
+  },
+  "K085": {
+    "id": "K085"
+  },
+  "L092": {
+    "id": "L092"
+  },
+  "H110": {
+    "id": "H110",
+    "sire": null
+  },
+  "H450": {
+    "id": "H450",
+    "status": "no_data"
+  },
+  "L153": {
+    "id": "L153",
+    "sire": null
+  },
+  "H379": {
+    "id": "H379"
+  },
+  "L114": {
+    "id": "L114"
+  },
+  "J406": {
+    "id": "J406"
+  },
+  "K523": {
+    "id": "K523"
+  },
+  "G051": {
+    "id": "G051"
+  },
+  "H219": {
+    "id": "H219"
+  },
+  "K033": {
+    "id": "K033"
+  },
+  "E028": {
+    "id": "E028",
+    "status": "no_data"
+  },
+  "H262": {
+    "id": "H262",
+    "sire": null
+  },
+  "H276": {
+    "id": "H276"
+  },
+  "J214": {
+    "id": "J214"
+  },
+  "J150": {
+    "id": "J150"
+  },
+  "L087": {
+    "id": "L087",
+    "status": "no_data"
+  },
+  "H297": {
+    "id": "H297",
+    "sire": null
+  },
+  "K923": {
+    "id": "K923"
+  },
+  "J280": {
+    "id": "J280"
+  },
+  "J502": {
+    "id": "J502",
+    "status": "no_data"
+  },
+  "J290": {
+    "id": "J290"
+  },
+  "K228": {
+    "id": "K228",
+    "sire": null
+  },
+  "J123": {
+    "id": "J123",
+    "sire": null
+  },
+  "E253": {
+    "id": "E253"
+  },
+  "K275": {
+    "id": "K275",
+    "sire": null
+  },
+  "J104": {
+    "id": "J104"
+  },
+  "E221": {
+    "id": "E221"
+  },
+  "K186": {
+    "id": "K186"
+  },
+  "K193": {
+    "id": "K193"
+  },
+  "G095": {
+    "id": "G095"
+  },
+  "H128": {
+    "id": "H128"
+  },
+  "K513": {
+    "id": "K513",
+    "sire": null
+  },
+  "L068": {
+    "id": "L068",
+    "sire": null
+  },
+  "G072": {
+    "id": "G072",
+    "sire": null
+  },
+  "J397": {
+    "id": "J397",
+    "sire": null
+  },
+  "K907": {
+    "id": "K907",
+    "sire": null
+  },
+  "L909": {
+    "id": "L909",
+    "sire": null
+  },
+  "E194": {
+    "id": "E194",
+    "sire": null
+  },
+  "K179": {
+    "id": "K179",
+    "sire": null
+  },
+  "J343": {
+    "id": "J343"
+  },
+  "L904": {
+    "id": "L904"
+  },
+  "J382": {
+    "id": "J382"
+  },
+  "L165": {
+    "id": "L165"
+  },
+  "H351": {
+    "id": "H351"
+  },
+  "J425": {
+    "id": "J425",
+    "sire": null
+  },
+  "J274": {
+    "id": "J274"
+  },
+  "H137": {
+    "id": "H137"
+  },
+  "K393": {
+    "id": "K393",
+    "sire": null
+  },
+  "K532": {
+    "id": "K532",
+    "sire": null
+  },
+  "K517": {
+    "id": "K517"
+  },
+  "L004": {
+    "id": "L004",
+    "sire": null
+  },
+  "K017": {
+    "id": "K017"
+  },
+  "H256": {
+    "id": "H256"
+  },
+  "H474": {
+    "id": "H474"
+  },
+  "K079": {
+    "id": "K079"
+  },
+  "H344": {
+    "id": "H344",
+    "sire": null
+  },
+  "L287": {
+    "id": "L287",
+    "sire": null
+  },
+  "K423": {
+    "id": "K423",
+    "status": "no_data"
+  },
+  "J519": {
+    "id": "J519"
+  },
+  "J268": {
+    "id": "J268",
+    "status": "no_data"
+  },
+  "J063": {
+    "id": "J063"
+  },
+  "K406": {
+    "id": "K406",
+    "sire": null
+  },
+  "J304": {
+    "id": "J304"
+  },
+  "L060": {
+    "id": "L060",
+    "status": "no_data"
+  },
+  "H317": {
+    "id": "H317"
+  },
+  "K141": {
+    "id": "K141"
+  },
+  "L050": {
+    "id": "L050"
+  },
+  "D267": {
+    "id": "D267"
+  },
+  "L135": {
+    "id": "L135",
+    "status": "no_data"
+  },
+  "H235": {
+    "id": "H235",
+    "sire": null
+  },
+  "K395": {
+    "id": "K395"
+  },
+  "K399": {
+    "id": "K399",
+    "status": "no_data"
+  },
+  "G458": {
+    "id": "G458"
+  },
+  "K234": {
+    "id": "K234"
+  },
+  "K014": {
+    "id": "K014",
+    "sire": null
+  },
+  "H007": {
+    "id": "H007",
+    "sire": null
+  },
+  "K344": {
+    "id": "K344"
+  },
+  "L036": {
+    "id": "L036",
+    "status": "no_data"
+  },
+  "L910": {
+    "id": "L910",
+    "status": "no_data"
+  },
+  "J407": {
+    "id": "J407"
+  },
+  "L140": {
+    "id": "L140"
+  },
+  "L132": {
+    "id": "L132"
+  },
+  "J051": {
+    "id": "J051",
+    "sire": null
+  },
+  "K006": {
+    "id": "K006",
+    "sire": null
+  },
+  "K131": {
+    "id": "K131"
+  },
+  "J423": {
+    "id": "J423",
+    "status": "no_data"
+  },
+  "J232": {
+    "id": "J232",
+    "status": "no_data"
+  },
+  "L203": {
+    "id": "L203"
+  },
+  "K468": {
+    "id": "K468"
+  },
+  "H338": {
+    "id": "H338"
+  },
+  "H347": {
+    "id": "H347"
+  },
+  "E082": {
+    "id": "E082",
+    "sire": null
+  },
+  "E166": {
+    "id": "E166",
+    "sire": null
+  },
+  "G394": {
+    "id": "G394"
+  },
+  "H442": {
+    "id": "H442"
+  },
+  "K277": {
+    "id": "K277"
+  },
+  "J136": {
+    "id": "J136"
+  },
+  "K038": {
+    "id": "K038"
+  },
+  "L263": {
+    "id": "L263"
+  },
+  "K140": {
+    "id": "K140"
+  },
+  "H444": {
+    "id": "H444"
+  },
+  "K169": {
+    "id": "K169"
+  },
+  "G264": {
+    "id": "G264"
+  },
+  "H207": {
+    "id": "H207"
+  },
+  "L094": {
+    "id": "L094"
+  },
+  "K221": {
+    "id": "K221"
+  },
+  "J536": {
+    "id": "J536"
+  },
+  "K031": {
+    "id": "K031"
+  },
+  "H487": {
+    "id": "H487",
+    "sire": null
+  },
+  "H041": {
+    "id": "H041"
+  },
+  "J277": {
+    "id": "J277"
+  },
+  "K437": {
+    "id": "K437"
+  },
+  "K335": {
+    "id": "K335"
+  },
+  "H320": {
+    "id": "H320"
+  },
+  "H155": {
+    "id": "H155"
+  },
+  "J028": {
+    "id": "J028",
+    "sire": null
+  },
+  "H396": {
+    "id": "H396",
+    "sire": null
+  },
+  "J417": {
+    "id": "J417",
+    "sire": null
+  },
+  "J364": {
+    "id": "J364"
+  },
+  "K381": {
+    "id": "K381"
+  },
+  "K301": {
+    "id": "K301",
+    "status": "no_data"
+  },
+  "K200": {
+    "id": "K200",
+    "sire": null
+  },
+  "K170": {
+    "id": "K170",
+    "sire": null
+  },
+  "K520": {
+    "id": "K520"
+  },
+  "H382": {
+    "id": "H382",
+    "sire": null
+  },
+  "J398": {
+    "id": "J398",
+    "sire": null
+  },
+  "K121": {
+    "id": "K121"
+  },
+  "K126": {
+    "id": "K126"
+  },
+  "G115": {
+    "id": "G115"
+  },
+  "K245": {
+    "id": "K245",
+    "sire": null
+  },
+  "H489": {
+    "id": "H489",
+    "sire": null
+  },
+  "K412": {
+    "id": "K412"
+  },
+  "J234": {
+    "id": "J234"
+  },
+  "K460": {
+    "id": "K460"
+  },
+  "J437": {
+    "id": "J437",
+    "status": "no_data"
+  },
+  "L100": {
+    "id": "L100"
+  },
+  "K219": {
+    "id": "K219",
+    "sire": null
+  },
+  "K394": {
+    "id": "K394"
+  },
+  "J092": {
+    "id": "J092"
+  },
+  "L047": {
+    "id": "L047",
+    "sire": null
+  },
+  "H388": {
+    "id": "H388"
+  },
+  "K345": {
+    "id": "K345",
+    "sire": null
+  },
+  "L256": {
+    "id": "L256"
+  },
+  "H476": {
+    "id": "H476"
+  },
+  "K407": {
+    "id": "K407",
+    "sire": null
+  },
+  "H302": {
+    "id": "H302",
+    "sire": null
+  },
+  "K547": {
+    "id": "K547"
+  },
+  "G229": {
+    "id": "G229"
+  },
+  "K327": {
+    "id": "K327"
+  },
+  "K902": {
+    "id": "K902"
+  },
+  "J508": {
+    "id": "J508"
+  },
+  "J250": {
+    "id": "J250"
+  },
+  "K058": {
+    "id": "K058",
+    "status": "no_data"
+  },
+  "L147": {
+    "id": "L147"
+  },
+  "L259": {
+    "id": "L259"
+  },
+  "G249": {
+    "id": "G249"
+  },
+  "K062": {
+    "id": "K062",
+    "sire": null
+  },
+  "J454": {
+    "id": "J454"
+  },
+  "J124": {
+    "id": "J124"
+  },
+  "H121": {
+    "id": "H121",
+    "sire": null
+  },
+  "L266": {
+    "id": "L266",
+    "sire": null
+  },
+  "G380": {
+    "id": "G380",
+    "sire": null
+  },
+  "J002": {
+    "id": "J002",
+    "sire": null
+  },
+  "G371": {
+    "id": "G371"
+  },
+  "E467": {
+    "id": "E467"
+  },
+  "H485": {
+    "id": "H485"
+  },
+  "J808": {
+    "id": "J808"
+  },
+  "H070": {
+    "id": "H070"
+  },
+  "J529": {
+    "id": "J529"
+  },
+  "H405": {
+    "id": "H405",
+    "sire": null
+  },
+  "H134": {
+    "id": "H134"
+  },
+  "H162": {
+    "id": "H162"
+  },
+  "L924": {
+    "id": "L924"
+  },
+  "K154": {
+    "id": "K154"
+  },
+  "K453": {
+    "id": "K453",
+    "sire": null
+  },
+  "K416": {
+    "id": "K416",
+    "status": "no_data"
+  },
+  "L172": {
+    "id": "L172"
+  },
+  "L125": {
+    "id": "L125"
+  },
+  "J079": {
+    "id": "J079"
+  },
+  "H339": {
+    "id": "H339"
+  },
+  "K092": {
+    "id": "K092"
+  },
+  "K464": {
+    "id": "K464"
+  },
+  "G360": {
+    "id": "G360"
+  },
+  "L081": {
+    "id": "L081",
+    "status": "no_data"
+  },
+  "L018": {
+    "id": "L018"
+  },
+  "H257": {
+    "id": "H257"
+  },
+  "K387": {
+    "id": "K387"
+  },
+  "H135": {
+    "id": "H135",
+    "status": "no_data"
+  },
+  "K153": {
+    "id": "K153"
+  },
+  "H430": {
+    "id": "H430"
+  },
+  "L914": {
+    "id": "L914"
+  },
+  "K286": {
+    "id": "K286",
+    "sire": null
+  },
+  "J236": {
+    "id": "J236",
+    "sire": null
+  },
+  "K118": {
+    "id": "K118",
+    "sire": null
+  },
+  "J487": {
+    "id": "J487"
+  },
+  "H369": {
+    "id": "H369"
+  },
+  "J315": {
+    "id": "J315",
+    "sire": null
+  },
+  "K240": {
+    "id": "K240",
+    "sire": null
+  },
+  "K056": {
+    "id": "K056"
+  },
+  "H208": {
+    "id": "H208",
+    "status": "no_data"
+  },
+  "H106": {
+    "id": "H106",
+    "sire": null
+  },
+  "H293": {
+    "id": "H293"
+  },
+  "J496": {
+    "id": "J496"
+  },
+  "J243": {
+    "id": "J243"
+  },
+  "K130": {
+    "id": "K130",
+    "sire": null
+  },
+  "G244": {
+    "id": "G244"
+  },
+  "K081": {
+    "id": "K081"
+  },
+  "L268": {
+    "id": "L268"
+  },
+  "H291": {
+    "id": "H291"
+  },
+  "J451": {
+    "id": "J451"
+  },
+  "K365": {
+    "id": "K365"
+  },
+  "L150": {
+    "id": "L150",
+    "sire": null
+  },
+  "L215": {
+    "id": "L215",
+    "sire": null
+  },
+  "K396": {
+    "id": "K396"
+  },
+  "K044": {
+    "id": "K044"
+  },
+  "L195": {
+    "id": "L195"
+  },
+  "K368": {
+    "id": "K368"
+  },
+  "J330": {
+    "id": "J330"
+  },
+  "K317": {
+    "id": "K317"
+  },
+  "K136": {
+    "id": "K136"
+  },
+  "J091": {
+    "id": "J091",
+    "status": "no_data"
+  },
+  "J516": {
+    "id": "J516",
+    "sire": null
+  },
+  "L913": {
+    "id": "L913"
+  },
+  "L180": {
+    "id": "L180",
+    "sire": null
+  },
+  "K174": {
+    "id": "K174",
+    "sire": null
+  },
+  "J515": {
+    "id": "J515",
+    "status": "no_data"
+  },
+  "K173": {
+    "id": "K173",
+    "sire": null
+  },
+  "K372": {
+    "id": "K372"
+  },
+  "G303": {
+    "id": "G303"
+  },
+  "H122": {
+    "id": "H122"
+  },
+  "H057": {
+    "id": "H057"
+  },
+  "J193": {
+    "id": "J193"
+  },
+  "H168": {
+    "id": "H168"
+  },
+  "J074": {
+    "id": "J074"
+  },
+  "L193": {
+    "id": "L193"
+  },
+  "G272": {
+    "id": "G272",
+    "sire": null
+  },
+  "K202": {
+    "id": "K202"
+  },
+  "J223": {
+    "id": "J223"
+  },
+  "L178": {
+    "id": "L178",
+    "status": "no_data"
+  },
+  "K251": {
+    "id": "K251"
+  },
+  "J200": {
+    "id": "J200"
+  },
+  "J522": {
+    "id": "J522",
+    "sire": null
+  },
+  "K067": {
+    "id": "K067"
+  },
+  "K585": {
+    "id": "K585"
+  },
+  "L031": {
+    "id": "L031"
+  },
+  "G471": {
+    "id": "G471"
+  },
+  "G227": {
+    "id": "G227"
+  },
+  "K316": {
+    "id": "K316"
+  },
+  "H315": {
+    "id": "H315",
+    "sire": null
+  },
+  "H472": {
+    "id": "H472",
+    "sire": null
+  },
+  "K566": {
+    "id": "K566",
+    "sire": null
+  },
+  "K149": {
+    "id": "K149"
+  },
+  "H124": {
+    "id": "H124",
+    "sire": null
+  },
+  "K039": {
+    "id": "K039"
+  },
+  "G093": {
+    "id": "G093",
+    "sire": null
+  },
+  "H181": {
+    "id": "H181"
+  },
+  "J384": {
+    "id": "J384"
+  },
+  "H164": {
+    "id": "H164",
+    "sire": null
+  },
+  "G161": {
+    "id": "G161"
+  },
+  "L055": {
+    "id": "L055",
+    "sire": null
+  },
+  "E436": {
+    "id": "E436"
+  },
+  "L013": {
+    "id": "L013"
+  },
+  "E434": {
+    "id": "E434"
+  },
+  "K265": {
+    "id": "K265"
+  },
+  "G261": {
+    "id": "G261",
+    "sire": null
+  },
+  "G129": {
+    "id": "G129"
+  },
+  "J256": {
+    "id": "J256",
+    "sire": null
+  },
+  "J153": {
+    "id": "J153",
+    "sire": null
+  },
+  "L098": {
+    "id": "L098"
+  },
+  "K363": {
+    "id": "K363"
+  },
+  "E466": {
+    "id": "E466"
+  },
+  "H095": {
+    "id": "H095"
+  },
+  "G298": {
+    "id": "G298",
+    "sire": null
+  },
+  "K359": {
+    "id": "K359"
+  },
+  "J287": {
+    "id": "J287"
+  },
+  "K257": {
+    "id": "K257",
+    "sire": null
+  },
+  "K357": {
+    "id": "K357"
+  },
+  "J291": {
+    "id": "J291"
+  },
+  "J537": {
+    "id": "J537"
+  },
+  "K129": {
+    "id": "K129"
+  },
+  "J248": {
+    "id": "J248"
+  },
+  "H193": {
+    "id": "H193",
+    "sire": null
+  },
+  "K349": {
+    "id": "K349"
+  },
+  "L260": {
+    "id": "L260"
+  },
+  "K268": {
+    "id": "K268",
+    "sire": null
+  },
+  "K086": {
+    "id": "K086"
+  },
+  "J441": {
+    "id": "J441",
+    "sire": null
+  },
+  "H073": {
+    "id": "H073"
+  },
+  "K370": {
+    "id": "K370",
+    "sire": null
+  },
+  "K329": {
+    "id": "K329"
+  },
+  "L328": {
+    "id": "L328"
+  },
+  "K303": {
+    "id": "K303"
+  },
+  "J272": {
+    "id": "J272"
+  },
+  "L196": {
+    "id": "L196"
+  },
+  "K489": {
+    "id": "K489",
+    "sire": null
+  },
+  "L023": {
+    "id": "L023",
+    "sire": null
+  },
+  "L219": {
+    "id": "L219",
+    "sire": null
+  },
+  "E403": {
+    "id": "E403",
+    "sire": null
+  },
+  "L240": {
+    "id": "L240"
+  },
+  "K582": {
+    "id": "K582"
+  },
+  "K558": {
+    "id": "K558"
+  },
+  "L045": {
+    "id": "L045",
+    "sire": null
+  },
+  "J429": {
+    "id": "J429"
+  },
+  "J024": {
+    "id": "J024",
+    "sire": null
+  },
+  "J481": {
+    "id": "J481",
+    "sire": null
+  },
+  "J375": {
+    "id": "J375"
+  },
+  "E301": {
+    "id": "E301",
+    "sire": null
+  },
+  "K300": {
+    "id": "K300"
+  },
+  "L907": {
+    "id": "L907"
+  },
+  "H281": {
+    "id": "H281"
+  },
+  "K434": {
+    "id": "K434",
+    "status": "no_data"
+  },
+  "K120": {
+    "id": "K120"
+  },
+  "L918": {
+    "id": "L918"
+  },
+  "J213": {
+    "id": "J213",
+    "sire": null
+  },
+  "J064": {
+    "id": "J064"
+  },
+  "H185": {
+    "id": "H185",
+    "sire": null
+  },
+  "H034": {
+    "id": "H034",
+    "sire": null
+  },
+  "J016": {
+    "id": "J016",
+    "sire": null
+  },
+  "G119": {
+    "id": "G119"
+  },
+  "K433": {
+    "id": "K433"
+  },
+  "H357": {
+    "id": "H357"
+  },
+  "K443": {
+    "id": "K443"
+  },
+  "K139": {
+    "id": "K139"
+  },
+  "G112": {
+    "id": "G112"
+  },
+  "J065": {
+    "id": "J065"
+  },
+  "J098": {
+    "id": "J098",
+    "status": "no_data"
+  },
+  "J116": {
+    "id": "J116",
+    "sire": null
+  },
+  "L091": {
+    "id": "L091",
+    "sire": null
+  },
+  "J066": {
+    "id": "J066"
+  },
+  "K247": {
+    "id": "K247"
+  },
+  "H061": {
+    "id": "H061"
+  },
+  "L917": {
+    "id": "L917"
+  },
+  "H102": {
+    "id": "H102"
+  },
+  "K478": {
+    "id": "K478",
+    "sire": null
+  },
+  "K402": {
+    "id": "K402"
+  },
+  "K231": {
+    "id": "K231"
+  },
+  "L007": {
+    "id": "L007"
+  },
+  "K574": {
+    "id": "K574",
+    "status": "no_data"
+  },
+  "H441": {
+    "id": "H441",
+    "sire": null
+  },
+  "L225": {
+    "id": "L225",
+    "sire": null
+  },
+  "K441": {
+    "id": "K441",
+    "sire": null
+  },
+  "L149": {
+    "id": "L149"
+  },
+  "K117": {
+    "id": "K117"
+  },
+  "L249": {
+    "id": "L249",
+    "status": "no_data"
+  },
+  "K216": {
+    "id": "K216",
+    "sire": null
+  },
+  "G446": {
+    "id": "G446"
+  },
+  "K168": {
+    "id": "K168"
+  },
+  "H435": {
+    "id": "H435"
+  },
+  "K016": {
+    "id": "K016",
+    "sire": null
+  },
+  "E490": {
+    "id": "E490",
+    "sire": null
+  },
+  "K262": {
+    "id": "K262"
+  },
+  "J185": {
+    "id": "J185"
+  },
+  "D050": {
+    "id": "D050"
+  },
+  "L115": {
+    "id": "L115"
+  },
+  "E234": {
+    "id": "E234"
+  },
+  "H066": {
+    "id": "H066",
+    "sire": null
+  },
+  "K220": {
+    "id": "K220"
+  },
+  "J067": {
+    "id": "J067",
+    "sire": null
+  },
+  "K151": {
+    "id": "K151"
+  },
+  "L265": {
+    "id": "L265"
+  },
+  "J174": {
+    "id": "J174",
+    "sire": null
+  },
+  "H141": {
+    "id": "H141",
+    "sire": null
+  },
+  "K205": {
+    "id": "K205"
+  },
+  "G223": {
+    "id": "G223",
+    "sire": null
+  },
+  "K032": {
+    "id": "K032",
+    "sire": null
+  },
+  "K161": {
+    "id": "K161"
+  },
+  "K264": {
+    "id": "K264",
+    "sire": null
+  },
+  "H027": {
+    "id": "H027",
+    "status": "no_data"
+  },
+  "H460": {
+    "id": "H460"
+  },
+  "L169": {
+    "id": "L169"
+  },
+  "J269": {
+    "id": "J269"
+  },
+  "K008": {
+    "id": "K008",
+    "sire": null
+  },
+  "K400": {
+    "id": "K400"
+  },
+  "H446": {
+    "id": "H446",
+    "sire": null
+  },
+  "H401": {
+    "id": "H401"
+  },
+  "L041": {
+    "id": "L041"
+  },
+  "K482": {
+    "id": "K482",
+    "status": "no_data"
+  },
+  "K296": {
+    "id": "K296",
+    "sire": null
+  },
+  "G282": {
+    "id": "G282"
+  },
+  "G033": {
+    "id": "G033",
+    "sire": null
+  },
+  "K549": {
+    "id": "K549"
+  },
+  "K255": {
+    "id": "K255"
+  },
+  "K020": {
+    "id": "K020",
+    "sire": null
+  },
+  "K272": {
+    "id": "K272"
+  },
+  "H466": {
+    "id": "H466"
+  },
+  "J244": {
+    "id": "J244"
+  },
+  "J551": {
+    "id": "J551",
+    "sire": null
+  },
+  "H417": {
+    "id": "H417"
+  },
+  "H059": {
+    "id": "H059"
+  },
+  "K438": {
+    "id": "K438"
+  },
+  "K026": {
+    "id": "K026",
+    "sire": null
+  },
+  "H328": {
+    "id": "H328"
+  },
+  "L009": {
+    "id": "L009",
+    "sire": null
+  },
+  "G328": {
+    "id": "G328"
+  },
+  "H206": {
+    "id": "H206"
+  },
+  "K573": {
+    "id": "K573"
+  },
+  "K410": {
+    "id": "K410"
+  },
+  "L201": {
+    "id": "L201"
+  },
+  "K421": {
+    "id": "K421"
+  },
+  "K194": {
+    "id": "K194",
+    "status": "no_data"
+  },
+  "L030": {
+    "id": "L030",
+    "status": "no_data"
+  },
+  "J278": {
+    "id": "J278",
+    "sire": null
+  },
+  "K559": {
+    "id": "K559",
+    "sire": null
+  },
+  "H373": {
+    "id": "H373"
+  },
+  "L252": {
+    "id": "L252"
+  },
+  "H408": {
+    "id": "H408",
+    "sire": null
+  },
+  "L138": {
+    "id": "L138"
+  },
+  "K134": {
+    "id": "K134"
+  },
+  "J019": {
+    "id": "J019"
+  },
+  "J209": {
+    "id": "J209"
+  },
+  "H230": {
+    "id": "H230",
+    "sire": null
+  },
+  "K124": {
+    "id": "K124",
+    "sire": null
+  },
+  "C037": {
+    "id": "C037"
+  },
+  "K570": {
+    "id": "K570",
+    "sire": null
+  },
+  "K215": {
+    "id": "K215"
+  },
+  "J377": {
+    "id": "J377",
+    "sire": null
+  },
+  "K159": {
+    "id": "K159",
+    "sire": null
+  },
+  "K010": {
+    "id": "K010",
+    "sire": null
+  },
+  "K064": {
+    "id": "K064"
+  },
+  "K355": {
+    "id": "K355"
+  },
+  "K103": {
+    "id": "K103"
+  },
+  "H461": {
+    "id": "H461"
+  },
+  "J242": {
+    "id": "J242",
+    "sire": null
+  },
+  "J385": {
+    "id": "J385"
+  },
+  "K382": {
+    "id": "K382",
+    "sire": null
+  },
+  "K089": {
+    "id": "K089"
+  },
+  "K024": {
+    "id": "K024",
+    "sire": null
+  },
+  "K138": {
+    "id": "K138"
+  },
+  "H486": {
+    "id": "H486",
+    "status": "no_data"
+  },
+  "K206": {
+    "id": "K206"
+  },
+  "H356": {
+    "id": "H356",
+    "sire": null
+  },
+  "H325": {
+    "id": "H325",
+    "sire": null
+  },
+  "K475": {
+    "id": "K475",
+    "sire": null
+  },
+  "J340": {
+    "id": "J340",
+    "status": "no_data"
+  },
+  "L230": {
+    "id": "L230"
+  },
+  "J207": {
+    "id": "J207"
+  },
+  "K273": {
+    "id": "K273"
+  },
+  "L255": {
+    "id": "L255",
+    "sire": null
+  },
+  "L085": {
+    "id": "L085"
+  },
+  "K224": {
+    "id": "K224"
+  },
+  "E447": {
+    "id": "E447"
+  },
+  "J505": {
+    "id": "J505"
+  },
+  "G461": {
+    "id": "G461",
+    "sire": null
+  },
+  "J167": {
+    "id": "J167"
+  },
+  "G450": {
+    "id": "G450"
+  },
+  "H462": {
+    "id": "H462",
+    "status": "no_data"
+  },
+  "E495": {
+    "id": "E495"
+  },
+  "H365": {
+    "id": "H365",
+    "sire": null
+  },
+  "J120": {
+    "id": "J120"
+  },
+  "L313": {
+    "id": "L313"
+  },
+  "J367": {
+    "id": "J367"
+  },
+  "K430": {
+    "id": "K430"
+  },
+  "J389": {
+    "id": "J389"
+  },
+  "G203": {
+    "id": "G203",
+    "sire": null
+  },
+  "K019": {
+    "id": "K019"
+  },
+  "K467": {
+    "id": "K467"
+  },
+  "K102": {
+    "id": "K102"
+  },
+  "K913": {
+    "id": "K913"
+  },
+  "G241": {
+    "id": "G241"
+  },
+  "J089": {
+    "id": "J089",
+    "sire": null
+  },
+  "E157": {
+    "id": "E157",
+    "sire": null
+  },
+  "J128": {
+    "id": "J128",
+    "sire": null
+  },
+  "J412": {
+    "id": "J412",
+    "sire": null
+  },
+  "J470": {
+    "id": "J470"
+  },
+  "K914": {
+    "id": "K914",
+    "sire": null
+  },
+  "K904": {
+    "id": "K904",
+    "sire": null
+  },
+  "H055": {
+    "id": "H055"
+  },
+  "J204": {
+    "id": "J204"
+  },
+  "J203": {
+    "id": "J203"
+  },
+  "G172": {
+    "id": "G172"
+  },
+  "H484": {
+    "id": "H484"
+  },
+  "J177": {
+    "id": "J177"
+  },
+  "G128": {
+    "id": "G128"
+  },
+  "J438": {
+    "id": "J438",
+    "status": "no_data"
+  },
+  "H413": {
+    "id": "H413",
+    "status": "no_data"
+  },
+  "K928": {
+    "id": "K928",
+    "status": "no_data"
+  },
+  "G429": {
+    "id": "G429",
+    "status": "no_data"
+  },
+  "H266": {
+    "id": "H266",
+    "status": "no_data"
+  },
+  "H127": {
+    "id": "H127",
+    "status": "no_data"
+  },
+  "J196": {
+    "id": "J196",
+    "status": "no_data"
+  },
+  "J096": {
+    "id": "J096",
+    "status": "no_data"
+  },
+  "K916": {
+    "id": "K916",
+    "status": "no_data"
+  },
+  "H195": {
+    "id": "H195",
+    "status": "no_data"
+  },
+  "K903": {
+    "id": "K903",
+    "status": "no_data"
+  },
+  "J126": {
+    "id": "J126",
+    "status": "no_data"
+  },
+  "H820": {
+    "id": "H820",
+    "status": "no_data"
+  },
+  "L303": {
+    "id": "L303",
+    "status": "no_data"
+  },
+  "G286": {
+    "id": "G286",
+    "status": "no_data"
+  },
+  "K182": {
+    "id": "K182",
+    "status": "no_data"
+  },
+  "E306": {
+    "id": "E306",
+    "status": "no_data"
+  },
+  "K068": {
+    "id": "K068",
+    "status": "no_data"
+  },
+  "J201": {
+    "id": "J201",
+    "status": "no_data"
+  },
+  "K492": {
+    "id": "K492",
+    "status": "no_data"
+  },
+  "D087": {
+    "id": "D087",
+    "sire": null
+  },
+  "H295": {
+    "id": "H295",
+    "sire": null
+  },
+  "J210": {
+    "id": "J210",
+    "sire": null
+  },
+  "J348": {
+    "id": "J348",
+    "sire": null
+  },
+  "J148": {
+    "id": "J148",
+    "sire": null
+  },
+  "J329": {
+    "id": "J329",
+    "sire": null
+  },
+  "H186": {
+    "id": "H186",
+    "sire": null
+  },
+  "J512": {
+    "id": "J512",
+    "sire": null
+  },
+  "G237": {
+    "id": "G237",
+    "sire": null
+  },
+  "J029": {
+    "id": "J029",
+    "sire": null
+  },
+  "K921": {
+    "id": "K921",
+    "sire": null
+  },
+  "J507": {
+    "id": "J507",
+    "sire": null
+  },
+  "E314": {
+    "id": "E314",
+    "sire": null
+  },
+  "K917": {
+    "id": "K917",
+    "sire": null
+  },
+  "G346": {
+    "id": "G346",
+    "sire": null
+  },
+  "H271": {
+    "id": "H271",
+    "sire": null
+  },
+  "K083": {
+    "id": "K083",
+    "sire": null
+  },
+  "G030": {
+    "id": "G030",
+    "sire": null
+  },
+  "J036": {
+    "id": "J036",
+    "sire": null
+  },
+  "K497": {
+    "id": "K497",
+    "sire": null
+  },
+  "J432": {
+    "id": "J432",
+    "sire": null
+  },
+  "J419": {
+    "id": "J419",
+    "sire": null
+  },
+  "E144": {
+    "id": "E144",
+    "sire": null
+  },
+  "G475": {
+    "id": "G475",
+    "sire": null
+  },
+  "H024": {
+    "id": "H024",
+    "sire": null
+  },
+  "G081": {
+    "id": "G081",
+    "sire": null
+  },
+  "J100": {
+    "id": "J100",
+    "sire": null
+  },
+  "E120": {
+    "id": "E120",
+    "sire": null
+  },
+  "K351": {
+    "id": "K351",
+    "sire": null
+  },
+  "K023": {
+    "id": "K023",
+    "sire": null
+  },
+  "K901": {
+    "id": "K901",
+    "sire": null
+  },
+  "E269": {
+    "id": "E269",
+    "sire": null
+  },
+  "E114": {
+    "id": "E114",
+    "sire": null
+  },
+  "G110": {
+    "id": "G110",
+    "sire": null
+  },
+  "J380": {
+    "id": "J380",
+    "sire": null
+  },
+  "H063": {
+    "id": "H063",
+    "sire": null
+  },
+  "E249": {
+    "id": "E249",
+    "sire": null
+  },
+  "K013": {
+    "id": "K013",
+    "sire": null
+  },
+  "K930": {
+    "id": "K930",
+    "sire": null
+  },
+  "L345": {
+    "id": "L345",
+    "sire": null
+  },
+  "H397": {
+    "id": "H397",
+    "sire": null
+  },
+  "H329": {
+    "id": "H329",
+    "sire": null
+  },
+  "J160": {
+    "id": "J160",
+    "sire": null
+  },
+  "K906": {
+    "id": "K906",
+    "sire": null
+  },
+  "J495": {
+    "id": "J495",
+    "sire": null
+  },
+  "H053": {
+    "id": "H053",
+    "sire": null
+  },
+  "H093": {
+    "id": "H093",
+    "sire": null
+  },
+  "J189": {
+    "id": "J189",
+    "sire": null
+  },
+  "J257": {
+    "id": "J257",
+    "sire": null
+  },
+  "H304": {
+    "id": "H304",
+    "sire": null
+  },
+  "J492": {
+    "id": "J492",
+    "sire": null
+  },
+  "G061": {
+    "id": "G061",
+    "sire": null
+  },
+  "J283": {
+    "id": "J283",
+    "sire": null
+  },
+  "G414": {
+    "id": "G414",
+    "sire": null
+  },
+  "H322": {
+    "id": "H322",
+    "sire": null
+  },
+  "H341": {
+    "id": "H341",
+    "sire": null
+  },
+  "K047": {
+    "id": "K047",
+    "sire": null
+  },
+  "J313": {
+    "id": "J313",
+    "sire": null
+  },
+  "H287": {
+    "id": "H287",
+    "sire": null
+  },
+  "H445": {
+    "id": "H445",
+    "sire": null
+  },
+  "J108": {
+    "id": "J108",
+    "sire": null
+  },
+  "K912": {
+    "id": "K912",
+    "sire": null
+  },
+  "G109": {
+    "id": "G109",
+    "sire": null
+  },
+  "J372": {
+    "id": "J372",
+    "sire": null
+  },
+  "G029": {
+    "id": "G029",
+    "sire": null
+  },
+  "G467": {
+    "id": "G467",
+    "sire": null
+  },
+  "K309": {
+    "id": "K309",
+    "sire": null
+  },
+  "H154": {
+    "id": "H154",
+    "sire": null
+  },
+  "K908": {
+    "id": "K908",
+    "sire": null
+  },
+  "K919": {
+    "id": "K919",
+    "sire": null
+  },
+  "K935": {
+    "id": "K935",
+    "sire": null
+  },
+  "H251": {
+    "id": "H251",
+    "sire": null
+  },
+  "J022": {
+    "id": "J022",
+    "sire": null
+  },
+  "J440": {
+    "id": "J440",
+    "sire": null
+  },
+  "J216": {
+    "id": "J216",
+    "sire": null
+  },
+  "H088": {
+    "id": "H088",
+    "sire": null
+  },
+  "G103": {
+    "id": "G103",
+    "sire": null
+  },
+  "E360": {
+    "id": "E360",
+    "sire": null
+  },
+  "K001": {
+    "id": "K001",
+    "sire": null
+  },
+  "G434": {
+    "id": "G434",
+    "sire": null
+  },
+  "H477": {
+    "id": "H477",
+    "sire": null
+  },
+  "H428": {
+    "id": "H428",
+    "sire": null
+  },
+  "E414": {
+    "id": "E414",
+    "sire": null
+  },
+  "H097": {
+    "id": "H097",
+    "sire": null
+  },
+  "D433": {
+    "id": "D433",
+    "sire": null
+  },
+  "H463": {
+    "id": "H463",
+    "sire": null
+  },
+  "J199": {
+    "id": "J199",
+    "sire": null
+  },
+  "K072": {
+    "id": "K072",
+    "sire": null
+  },
+  "B370": {
+    "id": "B370",
+    "origin": null,
+    "import_type": null,
+    "sire": null,
+    "dam": null,
+    "dam_sire": null
+  }
+}

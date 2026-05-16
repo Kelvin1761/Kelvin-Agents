@@ -1,0 +1,60 @@
+name,canonical_name,tier,base_score,confidence,source,notes
+Blake Shinn,Blake Shinn,T1,72,analyst_profile,07_jockey_profiles.md,
+Craig Williams,Craig Williams,T1,72,analyst_profile,07_jockey_profiles.md,
+Damian Lane,Damian Lane,T1,72,analyst_profile,07_jockey_profiles.md,
+James McDonald,James McDonald,T1,72,analyst_profile,07_jockey_profiles.md + alias,Alias of James McDonald
+Jamie Kah,Jamie Kah,T1,72,analyst_profile,07_jockey_profiles.md,
+Mark Zahra,Mark Zahra,T1,72,analyst_profile,07_jockey_profiles.md,
+Nash Rawiller,Nash Rawiller,T1,72,analyst_profile,07_jockey_profiles.md,
+Tom Marquand,Tom Marquand,T1,72,analyst_profile,07_jockey_profiles.md,
+Tommy Berry,Tommy Berry,T1,72,analyst_profile,07_jockey_profiles.md,
+Adam Hyeronimus,Adam Hyeronimus,T2,66,provisional,archive supplement,Racing Australia NSW metro active rider
+Alysha Collett,Alysha Collett,T2,65,provisional,archive supplement,Regular metro/provincial rider
+Andrew Adkins,Andrew Adkins,T2,65,provisional,archive supplement,Regular NSW rider
+Ashley Morgan,Ashley Morgan,T2,65,provisional,archive supplement,Regular metro/provincial rider
+Beau Mertens,Beau Mertens,T2,65,provisional,archive supplement,Regular VIC metro rider
+Ben Allen,Ben Allen,T2,65,provisional,archive supplement,Regular VIC metro rider
+Ben Melham,Ben Melham,T2,66,analyst_profile,07_jockey_profiles.md,
+Billy Egan,Billy Egan,T2,65,provisional,archive supplement,Regular VIC metro rider
+Brock Ryan,Brock Ryan,T2,66,analyst_profile,07_jockey_profiles.md,
+Celine Gaudray,Celine Gaudray,T2,66,analyst_profile,07_jockey_profiles.md,
+Chad Schofield,Chad Schofield,T2,65,provisional,archive supplement,Regular NSW metro rider
+Cory Parish,Cory Parish,T2,66,analyst_profile,07_jockey_profiles.md,
+Daniel Stackhouse,Daniel Stackhouse,T2,65,provisional,archive supplement,Regular VIC metro rider
+Declan Bates,Declan Bates,T2,65,provisional,archive supplement,Regular VIC metro rider
+Dylan Gibbons,Dylan Gibbons,T2,66,analyst_profile,07_jockey_profiles.md,
+Emily Pozman,Emily Pozman,T2,66,analyst_profile,07_jockey_profiles.md,
+Ethan Brown,Ethan Brown,T2,66,analyst_profile,07_jockey_profiles.md,
+Harry Coffey,Harry Coffey,T2,65,provisional,archive supplement,Regular VIC metro rider
+Jamie Melham,Jamie Melham,T2,66,provisional,archive supplement,High-frequency VIC metro rider
+Jamie Mott,Jamie Mott,T2,66,analyst_profile,07_jockey_profiles.md,
+Jason Collett,Jason Collett,T2,66,analyst_profile,07_jockey_profiles.md,
+Jay Ford,Jay Ford,T2,65,provisional,archive supplement,Regular NSW rider
+Jean Van Overmeire,Jean Van Overmeire,T2,66,analyst_profile,07_jockey_profiles.md,
+Jeff Penza,Jeff Penza,T2,66,analyst_profile,07_jockey_profiles.md,
+John Allen,John Allen,T2,66,provisional,archive supplement,Nationally active metro rider
+Jordan Childs,Jordan Childs,T2,65,provisional,archive supplement,Regular VIC metro rider
+Josh Parr,Josh Parr,T2,66,analyst_profile,07_jockey_profiles.md,
+Joshua Parr,Josh Parr,T2,66,analyst_profile,07_jockey_profiles.md + alias,Alias of Josh Parr
+Jye McNeil,Jye McNeil,T2,66,analyst_profile,07_jockey_profiles.md,
+Kerrin McEvoy,Kerrin McEvoy,T2,66,analyst_profile,07_jockey_profiles.md,
+Lachlan Neindorf,Lachlan Neindorf,T2,65,provisional,archive supplement,Regular SA metro rider
+Luke Currie,Luke Currie,T2,65,provisional,archive supplement,Regular VIC metro rider
+Michael Dee,Michael Dee,T2,66,analyst_profile,07_jockey_profiles.md,
+Rachel King,Rachel King,T2,66,analyst_profile,07_jockey_profiles.md,
+Regan Bayliss,Regan Bayliss,T2,66,analyst_profile,07_jockey_profiles.md,
+Robbie Dolan,Robbie Dolan,T2,66,analyst_profile,07_jockey_profiles.md,
+Sam Clipperton,Sam Clipperton,T2,66,analyst_profile,07_jockey_profiles.md,
+Tim Clark,Tim Clark,T2,66,analyst_profile,07_jockey_profiles.md,
+Tom Sherry,Tom Sherry,T2,65,provisional,archive supplement,Regular NSW metro rider
+Tyler Schiller,Tyler Schiller,T2,66,analyst_profile,07_jockey_profiles.md,
+William Pike,William Pike,T2,66,analyst_profile,07_jockey_profiles.md,
+Winona Costin,Winona Costin,T2,65,provisional,archive supplement,Regular NSW rider
+Zac Lloyd,Zac Lloyd,T2,66,analyst_profile,07_jockey_profiles.md,
+Anna Roper,Anna Roper,T3,61,provisional,archive supplement,Apprentice / lighter-claim profile
+Braith Nock,Braith Nock,T3,61,provisional,archive supplement,Developing rider
+Logan Bates,Logan Bates,T3,61,provisional,archive supplement,Developing rider
+Luke Cartwright,Luke Cartwright,T3,61,provisional,archive supplement,Developing rider
+Molly Bourke,Molly Bourke,T3,61,provisional,archive supplement,Developing rider
+Reece Jones,Reece Jones,T3,61,provisional,archive supplement,Developing rider
+Siena Grima,Siena Grima,T3,61,provisional,archive supplement,Developing rider

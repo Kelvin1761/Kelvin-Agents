@@ -290,10 +290,16 @@ def compute_race_stats(picks: list, results: list, grades: dict) -> RaceStats:
 def find_analysis_files(analysis_dir: str) -> list:
     """Find all analysis .md files in directory."""
     p = pathlib.Path(analysis_dir)
-    files = sorted(p.glob('*Analysis*.md'))
-    if not files:
-        files = sorted(p.glob('*analysis*.md'))
-    return files
+    grouped = {}
+    for path in sorted(p.glob('*.md')):
+        lower = path.name.lower()
+        if "analysis" not in lower:
+            continue
+        race_num = extract_race_num(path.name)
+        current = grouped.get(race_num)
+        if current is None or _analysis_priority(path) > _analysis_priority(current):
+            grouped[race_num] = path
+    return [grouped[key] for key in sorted(grouped)]
 
 
 def extract_race_num(filename: str) -> int:
@@ -303,6 +309,17 @@ def extract_race_num(filename: str) -> int:
         return int(match.group(1))
     match = re.search(r'(\d+)', filename)
     return int(match.group(1)) if match else 0
+
+
+def _analysis_priority(path: pathlib.Path) -> int:
+    name = path.name.lower()
+    if "_auto_analysis" in name:
+        return 3
+    if "auto_analysis" in name:
+        return 3
+    if "_analysis" in name:
+        return 2
+    return 1
 
 
 def run_stats(analysis_dir: str, results_file: str) -> dict:

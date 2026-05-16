@@ -280,6 +280,7 @@ def _race_summary(race):
         "race_name": race.race_name,
         "track": race.track,
         "venue": race.venue,
+        "analysis_type": race.analysis_type,
         "horses_count": len(race.horses),
         "top_picks_count": len(race.top_picks),
         "top_picks": [
@@ -314,6 +315,7 @@ def _race_detail(race):
         "track": race.track,
         "venue": race.venue,
         "going": race.going,
+        "analysis_type": race.analysis_type,
         "pace_prediction": race.pace_prediction,
         "battlefield_overview": race.battlefield_overview,
         "verdict_text": race.verdict_text,

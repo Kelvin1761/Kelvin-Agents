@@ -28,8 +28,8 @@ def _ensure_player(provider_name: str, provider_player_id: str, raw_id: int, emb
         return player_id
 
     provider = get_tennis_provider()
-    profile = provider.fetch_player_profile(provider_player_id)
-    stats = provider.fetch_player_stats(provider_player_id)
+    profile = provider.fetch_player_profile(provider_player_id) or {}
+    stats = provider.fetch_player_stats(provider_player_id) or {}
     player_raw_id = store_raw_response(
         provider_name,
         "/mock/player-stats",
@@ -42,8 +42,8 @@ def _ensure_player(provider_name: str, provider_player_id: str, raw_id: int, emb
     player_id = get_or_create_player(
         provider_name,
         provider_player_id,
-        profile["name"],
-        profile["tour"],
+        profile.get("name") or "Unknown Player",
+        profile.get("tour") or "ATP",
         player_raw_id,
         current_rank=profile.get("current_rank"),
         overall_elo=stats.get("overall_elo"),

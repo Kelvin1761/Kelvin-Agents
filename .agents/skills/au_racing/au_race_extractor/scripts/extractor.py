@@ -5,9 +5,14 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 import json
 import re
-from curl_cffi import requests
-from playwright.sync_api import sync_playwright
 import platform
+from pathlib import Path
+
+SKILL_ROOT = Path(__file__).resolve().parents[2]
+if str(SKILL_ROOT) not in sys.path:
+    sys.path.insert(0, str(SKILL_ROOT))
+
+from racenet_transport import RacenetBlockedError, fetch_nuxt_data
 
 def get_base_path():
     """Cross-platform base path for Antigravity workspace."""
@@ -26,31 +31,6 @@ def generate_print_url(url):
     meeting_slug = match.group(1)
     event_slug = match.group(2)
     return f"https://www.racenet.com.au/form-guide/horse-racing/print?meetingSlug={meeting_slug}&eventSlug={event_slug}&printSlug=print-form"
-
-def fetch_nuxt_data(url):
-    print(f"Fetching {url} with curl_cffi...")
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    }
-    resp = requests.get(url, impersonate="chrome120", headers=headers, timeout=30)
-    resp.raise_for_status()
-    
-    import time
-    temp_html = os.path.abspath(f"racenet_temp_{int(time.time())}.html")
-    with open(temp_html, 'w', encoding='utf-8') as f:
-        f.write(resp.text)
-    
-    print("Evaluating Nuxt payload with Playwright locally...")
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        page.goto(f"file://{temp_html}")
-        nuxt_data = page.evaluate("() => window.__NUXT__")
-        browser.close()
-        
-    if os.path.exists(temp_html):
-        os.remove(temp_html)
-    return nuxt_data
 
 def extract_meeting_weather(nuxt_data):
     """Extract weather & track condition from the overview page's Apollo cache.
@@ -572,4 +552,8 @@ if __name__ == '__main__':
         date_str = datetime.datetime.now().strftime("%Y-%m-%d")
         location = " ".join(parts).title()
         
-    process_meeting(url, date_str, location)
+    try:
+        process_meeting(url, date_str, location)
+    except RacenetBlockedError as exc:
+        print(f"\n❌ {exc}")
+        sys.exit(2)

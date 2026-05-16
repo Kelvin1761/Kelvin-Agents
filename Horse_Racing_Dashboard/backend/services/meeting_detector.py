@@ -172,15 +172,15 @@ def load_meeting_races(meeting: Meeting) -> dict[str, list[RaceAnalysis]]:
         races = []
         
         if meeting.region == Region.HKJC:
-            # HKJC: look for *_Analysis.md and *_Analysis.txt files (.md preferred)
+            # HKJC: prefer Auto analysis, fallback to classic *_Analysis
             # Check if this is a dedicated Heison folder (has "(Heison)" in path)
             is_dedicated_heison_folder = "(Heison)" in folder.name
             if analyst_name == "Heison" and not is_dedicated_heison_folder:
                 # Heison files mixed in with Kelvin — look for Heison_ prefix
                 patterns = ["Heison_*Analysis.md", "Heison_*Analysis.txt"]
             else:
-                # Kelvin folder, or dedicated Heison folder (files don't have Heison_ prefix)
-                patterns = ["*Analysis.md", "*Analysis.txt"]
+                # Full Python live output first, then classic fallback / legacy
+                patterns = ["*_Auto_Analysis.md", "*_Analysis.md", "*_Analysis.txt"]
             
             seen_paths = set()
             analysis_files = []
@@ -193,8 +193,28 @@ def load_meeting_races(meeting: Meeting) -> dict[str, list[RaceAnalysis]]:
             # Filter out Heison files from Kelvin results
             if analyst_name != "Heison":
                 analysis_files = [f for f in analysis_files if not f.name.startswith("Heison_")]
-            
+
+            # Prefer one file per race: Auto > classic markdown > txt
+            grouped = {}
+            race_key_re = re.compile(r'Race[_\s]+(\d+)')
             for fpath in sorted(analysis_files):
+                match = race_key_re.search(fpath.name)
+                if not match:
+                    continue
+                race_no = int(match.group(1))
+                current = grouped.get(race_no)
+                score = 0
+                if fpath.name.endswith("_Auto_Analysis.md"):
+                    score = 3
+                elif fpath.name.endswith("_Analysis.md"):
+                    score = 2
+                elif fpath.name.endswith("_Analysis.txt"):
+                    score = 1
+                if not current or score > current[0]:
+                    grouped[race_no] = (score, fpath)
+            analysis_files = [item[1] for _race_no, item in sorted(grouped.items())]
+            
+            for fpath in analysis_files:
                 race = parse_hkjc_analysis(str(fpath))
                 if race:
                     races.append(race)
@@ -256,7 +276,9 @@ def load_meeting_races(meeting: Meeting) -> dict[str, list[RaceAnalysis]]:
                     logic_race_num = int(logic_match.group(1))
                     try:
                         logic_data = _json.loads(logic_file.read_text(encoding='utf-8'))
-                        verdict = logic_data.get('race_analysis', {}).get('verdict', {})
+                        verdict = logic_data.get('python_auto_verdict', {})
+                        if not verdict:
+                            verdict = logic_data.get('race_analysis', {}).get('verdict', {})
                         top4 = verdict.get('top4', [])
                         if top4:
                             target_race = next((r for r in races if r.race_number == logic_race_num), None)
@@ -264,11 +286,14 @@ def load_meeting_races(meeting: Meeting) -> dict[str, list[RaceAnalysis]]:
                                 from models.race import TopPick
                                 new_picks = []
                                 for rank, entry in enumerate(top4[:4], 1):
+                                    horse_num = int(entry.get('horse_number', 0))
+                                    horse_logic = logic_data.get('horses', {}).get(str(horse_num), {})
+                                    auto = horse_logic.get('python_auto', {}) if isinstance(horse_logic.get('python_auto'), dict) else {}
                                     new_picks.append(TopPick(
                                         rank=rank,
-                                        horse_number=int(entry.get('horse_number', 0)),
+                                        horse_number=horse_num,
                                         horse_name=entry.get('horse_name', ''),
-                                        grade=entry.get('grade'),
+                                        grade=entry.get('grade') or auto.get('grade'),
                                     ))
                                 if new_picks:
                                     target_race.top_picks = new_picks

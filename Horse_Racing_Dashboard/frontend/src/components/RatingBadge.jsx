@@ -5,7 +5,9 @@ export default function RatingBadge({ grade, size = "md" }) {
   if (!grade) return null;
 
   const classMap = {
+    "S+": "badge--s",
     S: "badge--s",
+    "S-": "badge--s",
     "A+": "badge--a-plus",
     A: "badge--a",
     "A-": "badge--a-minus",
@@ -18,6 +20,7 @@ export default function RatingBadge({ grade, size = "md" }) {
     "D+": "badge--d-plus",
     D: "badge--d",
     "D-": "badge--d-minus",
+    E: "badge--d-minus",
   };
 
   const cls = classMap[grade] || "badge--b";

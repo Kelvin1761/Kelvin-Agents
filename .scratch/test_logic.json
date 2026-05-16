@@ -1,0 +1,807 @@
+{
+  "schema_version": "HKJC_LOGIC_V4_2",
+  "platform": "HKJC",
+  "race_analysis": {
+    "race_number": 1,
+    "race_class": "GR",
+    "distance": "1000m",
+    "venue": "Unknown",
+    "speed_map": {}
+  },
+  "horses": {
+    "1": {
+      "_locked": true,
+      "_validation_nonce": "SKEL_177e513bdf41bb964561a0fa2da49025",
+      "horse_name": "全能勇士",
+      "jockey": "潘頓",
+      "trainer": "",
+      "weight": 126,
+      "barrier": 3,
+      "last_6_finishes": "N/A",
+      "days_since_last": 0,
+      "season_stats": "N/A",
+      "trackwork": {
+        "horse_no": 1,
+        "horseid": "HK_2025_L245",
+        "horse_name": "全能勇士",
+        "trainer": "呂健威",
+        "jockey": "潘頓",
+        "status": "ok",
+        "mode": "debut_pressure",
+        "confidence": "中",
+        "entries": [
+          {
+            "date": "2026-04-18",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-04-18",
+            "type": "trotting",
+            "type_raw": "踱步",
+            "location": "沙田 內圈",
+            "details": "內圈 快踱一圈 (助手)",
+            "gear": "H",
+            "times": [],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-04-19",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-04-20",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-04-20",
+            "type": "trotting",
+            "type_raw": "踱步",
+            "location": "沙田 內圈",
+            "details": "內圈 倒快一圈 (助手)",
+            "gear": "H",
+            "times": [],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-04-21",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-04-21",
+            "type": "gallop",
+            "type_raw": "快操",
+            "location": "沙田 全天候",
+            "details": "29.0 25.4 (54.4) (助手)",
+            "gear": "H/XB",
+            "times": [
+              29.0,
+              25.4,
+              54.4
+            ],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-04-21",
+            "type": "trotting",
+            "type_raw": "踱步",
+            "location": "沙田 飛機場",
+            "details": "飛機場 踱步 (助手)",
+            "gear": "H/XB",
+            "times": [],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-04-22",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-04-22",
+            "type": "trotting",
+            "type_raw": "踱步",
+            "location": "沙田 內圈",
+            "details": "內圈 快踱一圈 (助手)",
+            "gear": "H",
+            "times": [],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-04-23",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-04-23",
+            "type": "trotting",
+            "type_raw": "踱步",
+            "location": "沙田 內圈",
+            "details": "內圈 倒快一圈 (助手)",
+            "gear": "H",
+            "times": [],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-04-24",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-04-24",
+            "type": "gallop",
+            "type_raw": "快操",
+            "location": "沙田 全天候",
+            "details": "30.0 26.1 (56.1) (助手)",
+            "gear": "H",
+            "times": [
+              30.0,
+              26.1,
+              56.1
+            ],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-04-24",
+            "type": "trotting",
+            "type_raw": "踱步",
+            "location": "沙田 飛機場",
+            "details": "飛機場 踱步 (助手)",
+            "gear": "H",
+            "times": [],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-04-25",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-04-25",
+            "type": "trotting",
+            "type_raw": "踱步",
+            "location": "沙田 內圈",
+            "details": "內圈 快踱一圈 (助手)",
+            "gear": "H",
+            "times": [],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-04-26",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-04-27",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-04-27",
+            "type": "gallop",
+            "type_raw": "快操",
+            "location": "沙田 全天候",
+            "details": "28.3 25.1 (53.4) (助手)",
+            "gear": "H",
+            "times": [
+              28.3,
+              25.1,
+              53.4
+            ],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-04-27",
+            "type": "trotting",
+            "type_raw": "踱步",
+            "location": "沙田 飛機場",
+            "details": "飛機場 踱步 (助手)",
+            "gear": "H",
+            "times": [],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-04-28",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-04-28",
+            "type": "trotting",
+            "type_raw": "踱步",
+            "location": "沙田 內圈",
+            "details": "內圈 快踱一圈 (助手)",
+            "gear": "H",
+            "times": [],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-04-29",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-04-29",
+            "type": "trotting",
+            "type_raw": "踱步",
+            "location": "沙田 內圈",
+            "details": "內圈 快踱一圈 (助手)",
+            "gear": "H",
+            "times": [],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-04-30",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-04-30",
+            "type": "gallop",
+            "type_raw": "快操",
+            "location": "沙田 草閘",
+            "details": "25.8 23.9 (49.7) (助手) 百勝威龍",
+            "gear": "H",
+            "times": [
+              25.8,
+              23.9,
+              49.7
+            ],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-05-01",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-05-01",
+            "type": "trotting",
+            "type_raw": "踱步",
+            "location": "沙田 內圈",
+            "details": "內圈 快踱一圈 (助手)",
+            "gear": "H",
+            "times": [],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-05-02",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-05-02",
+            "type": "trotting",
+            "type_raw": "踱步",
+            "location": "沙田 內圈",
+            "details": "內圈 快踱一圈 (助手)",
+            "gear": "H",
+            "times": [],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-05-03",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-05-04",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-05-04",
+            "type": "gallop",
+            "type_raw": "快操",
+            "location": "沙田 全天候",
+            "details": "33.8 29.6 26.6 (1.30.0) (助手)",
+            "gear": "H",
+            "times": [
+              33.8,
+              29.6,
+              26.6,
+              30.0
+            ],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-05-04",
+            "type": "trotting",
+            "type_raw": "踱步",
+            "location": "沙田 飛機場",
+            "details": "飛機場 踱步 (助手)",
+            "gear": "H",
+            "times": [],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-05-05",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-05-05",
+            "type": "trotting",
+            "type_raw": "踱步",
+            "location": "沙田 內圈",
+            "details": "內圈 快踱一圈 (助手)",
+            "gear": "H",
+            "times": [],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-05-06",
+            "type": "swimming",
+            "type_raw": "游水",
+            "location": "沙田",
+            "details": "",
+            "gear": "",
+            "times": [],
+            "rider": "",
+            "rider_role": "未標明"
+          },
+          {
+            "date": "2026-05-06",
+            "type": "trotting",
+            "type_raw": "踱步",
+            "location": "沙田 內圈",
+            "details": "內圈 快踱一圈 (助手)",
+            "gear": "H",
+            "times": [],
+            "rider": "助手",
+            "rider_role": "助手"
+          },
+          {
+            "date": "2026-05-07",
+            "type": "gallop",
+            "type_raw": "快操",
+            "location": "沙田 全天候",
+            "details": "30.0 26.1 (56.1) (潘頓)",
+            "gear": "H/XB",
+            "times": [
+              30.0,
+              26.1,
+              56.1
+            ],
+            "rider": "潘頓",
+            "rider_role": "潘頓"
+          }
+        ],
+        "summary": {
+          "window_days": 21,
+          "gallops_21d": 6,
+          "trials_21d": 0,
+          "trotting_21d": 15,
+          "swimming_21d": 19,
+          "aqua_walker_21d": 0,
+          "treadmill_21d": 0,
+          "gallop_times": [
+            29.0,
+            25.4,
+            54.4,
+            30.0,
+            26.1,
+            56.1,
+            28.3,
+            25.1,
+            53.4,
+            25.8,
+            23.9,
+            49.7,
+            33.8,
+            29.6,
+            26.6,
+            30.0,
+            30.0,
+            26.1,
+            56.1
+          ],
+          "trial_times": [],
+          "gallop_time_trend": "easing",
+          "race_jockey_involved": true,
+          "named_rider_count": 2,
+          "rider_role_counts": {
+            "助手": 20,
+            "未標明": 19,
+            "潘頓": 1
+          },
+          "trainer_self_count": 0,
+          "assistant_count": 20,
+          "rider_samples": [
+            {
+              "date": "2026-04-18",
+              "rider": "未標明",
+              "role": "未標明",
+              "type": "游水"
+            },
+            {
+              "date": "2026-04-18",
+              "rider": "助手",
+              "role": "助手",
+              "type": "踱步"
+            },
+            {
+              "date": "2026-04-19",
+              "rider": "未標明",
+              "role": "未標明",
+              "type": "游水"
+            },
+            {
+              "date": "2026-04-20",
+              "rider": "未標明",
+              "role": "未標明",
+              "type": "游水"
+            },
+            {
+              "date": "2026-04-20",
+              "rider": "助手",
+              "role": "助手",
+              "type": "踱步"
+            }
+          ],
+          "gear_training": [
+            "H",
+            "H/XB"
+          ],
+          "trial_sectional_signal": "unknown"
+        },
+        "stability_digest": {
+          "career_category": "debut_pressure",
+          "data_status": "ok",
+          "window_days": 21,
+          "workout_load_21d": {
+            "active_days": 20,
+            "blank_days": 1,
+            "gallops": 6,
+            "trials": 0,
+            "trotting": 15,
+            "swimming": 19,
+            "aqua_walker": 0,
+            "treadmill": 0
+          },
+          "workout_intensity_trend": "easing",
+          "body_weight_delta_lbs": null,
+          "maintenance_score": 60,
+          "readiness_score": 75,
+          "pattern_replay_score": 69,
+          "stability_positive_flags": [
+            "賽日騎師有參與操練"
+          ],
+          "stability_risk_flags": [
+            "操練放緩"
+          ],
+          "llm_stability_instruction": "初出馬 stability 預設 ➖，但可用備戰穩定性判斷；操練連貫、試閘次數、readiness、體重/健康可支持 ✅，操練中斷、trial反覆、健康風險可支持 ❌。"
+        },
+        "flags": [
+          {
+            "code": "賽日騎師有參與操練",
+            "level": "positive",
+            "reason": "賽日騎師有參與操練"
+          },
+          {
+            "code": "操練放緩",
+            "level": "caution",
+            "reason": "操練放緩"
+          }
+        ]
+      },
+      "career_tag": "DEBUT",
+      "career_race_starts": 0,
+      "career_stage_label": "初出馬",
+      "debut_sire_profile": {
+        "status": "found",
+        "sire": "Saxon Warrior",
+        "dam": "One Last Look",
+        "distance_hint": "unknown",
+        "precocity_hint": "unknown",
+        "llm_instruction": "以 Sire=Saxon Warrior / Dam=One Last Look 評估早熟度與今仗 目標路程 適性；sectional 可用血統距離投射 + 試閘速度/末段姿態 + 晨操 readiness 作替代證據。"
+      },
+      "debut_trial_profile": {
+        "status": "ok",
+        "trials_21d": 0,
+        "trial_times": [],
+        "trial_sectional_signal": "unknown",
+        "readiness_score": 75,
+        "positive_flags": [
+          "賽日騎師有參與操練"
+        ],
+        "llm_instruction": "初出馬 trial/readiness 是 sectional 或 trainer_signal 替代證據；若 trials_21d=0 且無 trial_times，sectional 最高通常 ➖，除非 Sire + trainer evidence 極強。"
+      },
+      "debut_readiness_flags": [
+        "RACE_JOCKEY_WORK_INVOLVED",
+        "賽日騎師有參與操練"
+      ],
+      "_data": {
+        "recent_6_detail": "N/A",
+        "season_stats_line": "N/A",
+        "margin_trend": "N/A",
+        "career_tag": "DEBUT",
+        "career_stage_label": "初出馬",
+        "hk_starts": 0,
+        "trackwork_digest": "晨操資料已提取，分類為「初出備戰」。近21日快操6課、試閘0課、踱步15課、游水19課，空白日1日；操練趨勢放緩。維持分60、備戰分75、復刻分69。正面訊號：賽日騎師有參與操練；風險訊號：操練放緩。判讀指令：初出馬 stability 預設 ➖，但可用備戰穩定性判斷；操練連貫、試閘次數、readiness、體重/健康可支持 ✅，操練中斷、trial反覆、健康風險可支持 ❌。",
+        "trackwork_instruction": "初出馬 stability 預設 ➖，但可用備戰穩定性判斷；操練連貫、試閘次數、readiness、體重/健康可支持 ✅，操練中斷、trial反覆、健康風險可支持 ❌。",
+        "medical_flags": "✅ 無醫療事故記錄",
+        "engine_type": "N/A",
+        "best_distance": "N/A",
+        "raw_l400": "N/A",
+        "l400_trend": "N/A",
+        "energy_trend": "N/A",
+        "finish_time_block": "",
+        "finish_time_adj": "",
+        "finish_time_adj_level": "",
+        "position_window": "上仗走位=N/A, XW=N/A, 消耗=N/A",
+        "draw_verdict": "⚠️中性 (上名17.0%/入Q11.0%/勝9.0%)",
+        "running_style": "N/A",
+        "position_pi": "N/A",
+        "draw_position_fit": "走位數據不足",
+        "track_bias": "內檔(1-4)上名率26.5% vs 外檔(9+)上名率18.2% → 輕微偏內",
+        "full_draw_table": "全場檔位統計 (第1場 1650m 全天候):\n  | 檔位 | 出賽 | 上名% | 入Q% | 勝率% | 判定 |\n  |------|------|-------|------|-------|------|\n  | 1 | 88 | 33.0 | 24.0 | 11.0 | ✅有利 |\n  | 2 | 88 | 30.0 | 24.0 | 8.0 | ✅有利 |\n  | 3 | 87 | 17.0 | 11.0 | 9.0 | ⚠️中性 |\n  | 4 | 88 | 26.0 | 19.0 | 9.0 | ⚠️中性 |\n  | 5 | 88 | 30.0 | 17.0 | 11.0 | ✅有利 |\n  | 6 | 87 | 28.0 | 18.0 | 11.0 | ⚠️中性 |\n  | 7 | 86 | 23.0 | 15.0 | 8.0 | ⚠️中性 |\n  | 8 | 85 | 24.0 | 12.0 | 1.0 | ⚠️中性 |\n  | 9 | 84 | 29.0 | 15.0 | 13.0 | ⚠️中性 |\n  | 10 | 81 | 22.0 | 12.0 | 5.0 | ⚠️中性 |\n  | 11 | 77 | 18.0 | 14.0 | 6.0 | ⚠️中性 |\n  | 12 | 67 | 19.0 | 12.0 | 3.0 | ⚠️中性 |\n  | 13 | 61 | 13.0 | 11.0 | 7.0 | ❌不利 |\n  | 14 | 51 | 8.0 | 8.0 | 2.0 | ❌不利 |\n  平均上名率: 22.9% | 平均勝率: 7.4%",
+        "jockey_name": "潘頓",
+        "trainer_name": "",
+        "gear_change": "N/A",
+        "trackwork_trainer": "賽日騎師有直接參與操練；操練者身份：助手20次、潘頓1次。操練配備：H、H/XB；試閘段速訊號未明；備戰分75。部署正面旗標：賽日騎師有參與操練",
+        "jockey_combo_block": "",
+        "days_since_last": 0,
+        "weight_trend": "N/A",
+        "trackwork_health": "active_days=20, blank_days=1, swimming=19, aqua_walker=0, risk_flags=['操練放緩']",
+        "formline_strength": "N/A",
+        "last_finish": "N/A",
+        "last_margin": "N/A",
+        "total_starts": 0,
+        "total_wins": 0,
+        "rating_trend": "N/A",
+        "weight_carried": 126,
+        "venue_transfer": "未知"
+      },
+      "race_forgiveness": "[FILL — JSON Array 格式]",
+      "matrix": {
+        "stability": {
+          "score": "[FILL: ✅✅/✅/➖/❌/❌❌]",
+          "confidence": "[FILL: High/Medium/Low/Unknown]",
+          "trigger_rule": "[FILL: STAB_...]",
+          "trigger_evidence": [
+            "[FILL: concrete evidence 1]",
+            "[FILL: concrete evidence 2]"
+          ],
+          "disqualifiers": [],
+          "reasoning": "[Resource Check: 05_forensic_analysis.md / 穩定性+醫療事故作廢規則]\n[近6場數據(含班次): N/A]\n[季內=N/A, 頭馬距離趨勢=N/A]\n[生涯標記: DEBUT; 香港正式賽事場次=0; 初出馬]\n[初出馬模板: 必讀 05b_debut_guide.md；stability 預設 ➖，但可按備戰穩定性評分。✅ 必須引用操練連貫、試閘次數、readiness、體重/健康等 evidence；❌ 必須引用操練中斷、trial反覆、健康/體重風險。不可將『無正式賽績』本身當 ❌。]\n[晨操 digest: 晨操資料已提取，分類為「初出備戰」。近21日快操6課、試閘0課、踱步15課、游水19課，空白日1日；操練趨勢放緩。維持分60、備戰分75、復刻分69。正面訊號：賽日騎師有參與操練；風險訊號：操練放緩。判讀指令：初出馬 stability 預設 ➖，但可用備戰穩定性判斷；操練連貫、試閘次數、readiness、體重/健康可支持 ✅，操練中斷、trial反覆、健康風險可支持 ❌。]\n[晨操判讀規則: 正式賽績與晨操 50/50；近績差馬若有 pattern_replay_score/TW_WIN_PATTERN_REPLAY，不可單憑近績死扣]\n[📂 必須閱讀 Facts.md「📋 完整賽績檔案」全部賽事記錄，唔淮得淨督近6場 — 需要綜合全部賽績判斷穩定性趨勢]\n[🏥 健康掃描(作廢用): ✅ 無醫療事故記錄]\n[📎 必讀: 05_forensic_analysis.md (穩定性計算 + 醫療事故自動作廢規則 — 有醫療事故嘅場次需從穩定性計算中排除)]\n→ [判讀: FILL]"
+        },
+        "sectional": {
+          "score": "[FILL: ✅✅/✅/➖/❌/❌❌]",
+          "confidence": "[FILL: High/Medium/Low/Unknown]",
+          "trigger_rule": "[FILL: SEC_...]",
+          "trigger_evidence": [
+            "[FILL: concrete evidence 1]",
+            "[FILL: concrete evidence 2]"
+          ],
+          "disqualifiers": [],
+          "reasoning": "[Resource Check: 03_engine_pace_context.md + 04_engine_corrections.md + 05_forensic_analysis.md / 引擎+段速修正+法醫作廢]\n[引擎(速度分佈): N/A | 最佳N/A]\n[上仗L400=N/A, L400趨勢=N/A, 能量趨勢=N/A]\n[初出馬模板: 必讀 05b_debut_guide.md；無正式 L400/EEM 時，段速質量改用 Sire 早熟度/Sire AWD 距離投射、試閘速度/末段姿態/催策程度、晨操 readiness 作替代證據；缺 Sire 或 trial/trackwork evidence 時不可憑空 ✅。]\n[初出 Sire profile: {\"status\": \"found\", \"sire\": \"Saxon Warrior\", \"dam\": \"One Last Look\", \"distance_hint\": \"unknown\", \"precocity_hint\": \"unknown\", \"llm_instruction\": \"以 Sire=Saxon Warrior / Dam=One Last Look 評估早熟度與今仗 目標路程 適性；sectional 可用血統距離投射 + 試閘速度/末段姿態 + 晨操 readiness 作替代證據。\"}]\n[初出 trial/readiness profile: {\"status\": \"ok\", \"trials_21d\": 0, \"trial_times\": [], \"trial_sectional_signal\": \"unknown\", \"readiness_score\": 75, \"positive_flags\": [\"賽日騎師有參與操練\"], \"llm_instruction\": \"初出馬 trial/readiness 是 sectional 或 trainer_signal 替代證據；若 trials_21d=0 且無 trial_times，sectional 最高通常 ➖，除非 Sire + trainer evidence 極強。\"}]\n[📂 必須閱讀 Facts.md「📋 完整賽績檔案」全部段速/消耗/走位數據，綜合判斷段速趨勢而唔淮淨督近6場]\n[📊 必須閱讀「全段速剖面」(S1-S4/S5) — 分析各分段速度形態(均速型/漸進加速/快開慢收)同趨勢]\n[📉 完成時間偏差: ]\n[🔧 步速修正偏差: N/A | 修正水平: N/A]\n[💡 判讀指引: 原始偏差受步速影響，步速修正偏差更能反映馬匹真實速度水平。如標記[極慢/偏慢]，原始偏差有被誇大嘅可能]\n[🏥 健康掃描(作廢用): ✅ 無醫療事故記錄]\n[📎 必讀: 03_engine_pace_context.md + 04_engine_corrections.md + 05_forensic_analysis.md (段速法醫 + 醫療事故作廢)]\n→ [判讀: FILL]"
+        },
+        "race_shape": {
+          "score": "[FILL: ✅✅/✅/➖/❌/❌❌]",
+          "confidence": "[FILL: High/Medium/Low/Unknown]",
+          "trigger_rule": "[FILL: SHAPE_...]",
+          "trigger_evidence": [
+            "[FILL: concrete evidence 1]",
+            "[FILL: concrete evidence 2]"
+          ],
+          "disqualifiers": [],
+          "reasoning": "[Resource Check: 05_forensic_analysis.md / 檔位數據 + 今日預計走位 + 近3-5仗走位消耗]\n[近3-5仗走位窗口: 上仗走位=N/A, XW=N/A, 消耗=N/A]\n[檔位=3 (⚠️中性 (上名17.0%/入Q11.0%/勝9.0%)), 跑法=N/A, 走位PI=N/A]\n[🔄 檔位-走位匹配度: 走位數據不足]\n[🏟️ 場地偏差: 內檔(1-4)上名率26.5% vs 外檔(9+)上名率18.2% → 輕微偏內]\n[📊 全場檔位統計 (第1場 1650m 全天候):\n  | 檔位 | 出賽 | 上名% | 入Q% | 勝率% | 判定 |\n  |------|------|-------|------|-------|------|\n  | 1 | 88 | 33.0 | 24.0 | 11.0 | ✅有利 |\n  | 2 | 88 | 30.0 | 24.0 | 8.0 | ✅有利 |\n  | 3 | 87 | 17.0 | 11.0 | 9.0 | ⚠️中性 |\n  | 4 | 88 | 26.0 | 19.0 | 9.0 | ⚠️中性 |\n  | 5 | 88 | 30.0 | 17.0 | 11.0 | ✅有利 |\n  | 6 | 87 | 28.0 | 18.0 | 11.0 | ⚠️中性 |\n  | 7 | 86 | 23.0 | 15.0 | 8.0 | ⚠️中性 |\n  | 8 | 85 | 24.0 | 12.0 | 1.0 | ⚠️中性 |\n  | 9 | 84 | 29.0 | 15.0 | 13.0 | ⚠️中性 |\n  | 10 | 81 | 22.0 | 12.0 | 5.0 | ⚠️中性 |\n  | 11 | 77 | 18.0 | 14.0 | 6.0 | ⚠️中性 |\n  | 12 | 67 | 19.0 | 12.0 | 3.0 | ⚠️中性 |\n  | 13 | 61 | 13.0 | 11.0 | 7.0 | ❌不利 |\n  | 14 | 51 | 8.0 | 8.0 | 2.0 | ❌不利 |\n  平均上名率: 22.9% | 平均勝率: 7.4%]\n[初出馬模板: 形勢與走位只用檔位數據、今日預計位置、試閘跑法/出閘反應；不可引入 race-level speed_map 作此維度加減分。]\n[評分限制: matrix.race_shape 只可用檔位、今日位置、近仗走位消耗/受阻、場地偏差與檔位統計作 ✅/❌ 理由]\n[📎 必讀: 05_forensic_analysis.md]\n→ [判讀: FILL]"
+        },
+        "trainer_signal": {
+          "score": "[FILL: ✅✅/✅/➖/❌/❌❌]",
+          "confidence": "[FILL: High/Medium/Low/Unknown]",
+          "trigger_rule": "[FILL: TS_...]",
+          "trigger_evidence": [
+            "[FILL: concrete evidence 1]",
+            "[FILL: concrete evidence 2]"
+          ],
+          "disqualifiers": [],
+          "reasoning": "[Resource Check: 07b_trainer_signals.md + 07c_jockey_profiles.md / 騎練部署+人馬配搭]\n[騎師=潘頓, 練馬師=]\n[配備變動: N/A]\n[初出馬模板: 騎練訊號為核心證據；操練加壓、賽日騎師親操、兩次或以上試閘、配備意圖、練馬師初出 KPI 可支持 ✅；有強訊號時不可只寫『待正式賽績驗證』。]\n[晨操部署: 賽日騎師有直接參與操練；操練者身份：助手20次、潘頓1次。操練配備：H、H/XB；試閘段速訊號未明；備戰分75。部署正面旗標：賽日騎師有參與操練]\n[🏇 人馬組合統計: 未找到]\n[📎 必讀: 07b_trainer_signals.md + 07c_jockey_profiles.md — 比較今場騎師 vs 前任騎師嘅配搭勝率/位率/平均名次，換騎效應是正面定負面？]\n→ [判讀: FILL]"
+        },
+        "horse_health": {
+          "score": "[FILL: ✅/➖/❌]",
+          "confidence": "[FILL: High/Medium/Low/Unknown]",
+          "trigger_rule": "[FILL: HEALTH_...]",
+          "trigger_evidence": [
+            "[FILL: concrete evidence 1]",
+            "[FILL: concrete evidence 2]"
+          ],
+          "disqualifiers": [],
+          "reasoning": "[Resource Check: 05_forensic_analysis.md + 10a/10b/10c_track_*.md / 健康+場地新鮮感]\n[休賽: 0日, 體重趨勢: N/A]\n[晨操健康: active_days=20, blank_days=1, swimming=19, aqua_walker=0, risk_flags=['操練放緩']]\n[初出馬模板: 馬匹健康/新鮮感不因無往績自動 ✅；以晨操連貫性、體重、試閘恢復與場地新鮮感判斷。]\n[🏥 健康掃描: ✅ 無醫療事故記錄]\n[📎 健康評估規則: 有健康事故+復原證据(前3名/段速佳)=已復原(➖/✅); 有事故+未復原=風險(❌); 無事故=正常(✅)]\n→ [判讀: FILL]"
+        },
+        "form_line": {
+          "score": "➖",
+          "confidence": "[FILL: High/Medium/Low/Unknown]",
+          "trigger_rule": "[FILL: FL_...]",
+          "trigger_evidence": [
+            "[FILL: concrete evidence 1]",
+            "[FILL: concrete evidence 2]"
+          ],
+          "disqualifiers": [],
+          "reasoning": "[Resource Check: Facts.md 賽績線表格 + 05_forensic_analysis.md / 對手後續強度]\n[賽績線強度=N/A]\n[上仗名次=N/A, 距離差=N/A]\n[初出馬模板: 賽績線強制 N/A/不計入，不可當 ❌；試閘對手只可低信心背景參考。]\n[📎 必讀: 05_forensic_analysis.md (賽績線)]\n→ [判讀: FILL]"
+        },
+        "class_advantage": {
+          "score": "[FILL: ✅/➖/❌]",
+          "confidence": "[FILL: High/Medium/Low/Unknown]",
+          "trigger_rule": "[FILL: CLASS_...]",
+          "trigger_evidence": [
+            "[FILL: concrete evidence 1]",
+            "[FILL: concrete evidence 2]"
+          ],
+          "disqualifiers": [],
+          "reasoning": "[Resource Check: 06_rating_engine.md / 級數優勢+負重互斥規則]\n[0戰0勝, 評分趨勢=N/A, 負磅=126]\n[場地轉換: 未知]\n[初出馬模板: 面對全新馬可 ➖；面對有經驗且有勝績對手通常 ❌，除非試閘+騎練部署屬極強。]\n[📎 必讀: 06_rating_engine.md + 場地模組 10a/10b/10c]\n→ [判讀: FILL]"
+        }
+      },
+      "interaction_matrix": {
+        "SYN": "[FILL or 無]",
+        "CON": "[FILL or 無]",
+        "CONTRA": "[FILL or 無]"
+      },
+      "base_rating": "[AUTO]",
+      "fine_tune": {
+        "direction": "[FILL: +/-/無]",
+        "trigger": "[FILL]",
+        "channel_a": "[FILL]",
+        "channel_b": "[FILL]"
+      },
+      "override": {
+        "rule": "[FILL]"
+      },
+      "final_rating": "[AUTO]",
+      "core_logic": "[FILL — 初出馬專用格式，約100字流暢廣東話分析。必須涵蓋：(1) 無正式賽績，不可用正常近績模板；(2) Sire 早熟/距離適性、試閘/晨操/騎練部署係主要證據；(3) 檔位與初出適應風險。(4) 評級仍用 7 維矩陣 ✅ counts，但初出馬 final rating 最高 A。]",
+      "advantages": "[FILL]",
+      "disadvantages": "[FILL]",
+      "evidence_step_0_14": "[FILL]",
+      "underhorse": {
+        "triggered": false,
+        "condition": "",
+        "reason": ""
+      },
+      "wins": 0,
+      "starts": 0,
+      "recent_form": "",
+      "good_record": "N/A",
+      "soft_record": "",
+      "course_record": "N/A",
+      "engine_type": "N/A",
+      "running_style": "N/A",
+      "best_distance": "N/A",
+      "formline_strength": "N/A",
+      "is_debut": true,
+      "debut_runner": true,
+      "debut_trial_signal": "[FILL: weak/medium/strong/extreme]",
+      "is_import": false,
+      "hk_starts": 0
+    }
+  }
+}

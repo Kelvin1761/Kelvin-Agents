@@ -23,8 +23,13 @@ import io
 import json
 import re
 import argparse
-from curl_cffi import requests
-from playwright.sync_api import sync_playwright
+from pathlib import Path
+
+SKILL_ROOT = Path(__file__).resolve().parent
+if str(SKILL_ROOT) not in sys.path:
+    sys.path.insert(0, str(SKILL_ROOT))
+
+from racenet_transport import RacenetBlockedError, fetch_nuxt_data
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
@@ -312,34 +317,7 @@ def format_reflector_results(meeting, events, all_results):
 def fetch_and_extract(url):
     """Fetch the results page and extract __NUXT__ data."""
     print(f"🔍 Fetching: {url}", flush=True)
-    resp = requests.get(url, impersonate="chrome120")
-    if resp.status_code != 200:
-        print(f"❌ HTTP {resp.status_code} — trying without /all-races...")
-        # Try stripping /all-races
-        alt_url = url.rstrip('/').rsplit('/', 1)[0] if '/all-races' in url else url + '/race-1'
-        resp = requests.get(alt_url, impersonate="chrome120")
-        if resp.status_code != 200:
-            raise RuntimeError(f"Failed to fetch results page: HTTP {resp.status_code}")
-
-    print(f"✅ HTTP 200 — {len(resp.text)} bytes", flush=True)
-
-    # Save temp HTML
-    os.makedirs("_temporary_files", exist_ok=True)
-    temp_path = os.path.abspath("_temporary_files/temp_results.html")
-    with open(temp_path, "w", encoding="utf-8") as f:
-        f.write(resp.text)
-
-    # Extract __NUXT__ via Playwright
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        page.goto(f"file://{temp_path}")
-        nuxt_data = page.evaluate("() => window.__NUXT__")
-        browser.close()
-
-    if not nuxt_data:
-        raise RuntimeError("__NUXT__ payload not found in page")
-
+    nuxt_data = fetch_nuxt_data(url, context_label="Racenet results")
     print("✅ __NUXT__ extracted successfully", flush=True)
     return nuxt_data
 
@@ -378,7 +356,11 @@ def main():
     args = parser.parse_args()
 
     # Extract
-    nuxt_data = fetch_and_extract(args.url)
+    try:
+        nuxt_data = fetch_and_extract(args.url)
+    except RacenetBlockedError as exc:
+        print(f"❌ {exc}", flush=True)
+        sys.exit(2)
     meeting, events, all_results = process_nuxt(nuxt_data)
 
     if not events:

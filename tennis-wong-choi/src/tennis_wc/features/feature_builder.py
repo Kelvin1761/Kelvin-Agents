@@ -183,7 +183,15 @@ def build_match_feature_snapshot(match_id: int) -> dict:
             raise ValueError(f"Match not found: {match_id}")
         tournament = conn.execute("SELECT * FROM tournaments WHERE id = ?", (match["tournament_id"],)).fetchone()
         tournament_level = conn.execute(
-            "SELECT * FROM tournament_levels WHERE tournament_id = ? AND tour = ?",
+            """
+            SELECT * FROM tournament_levels 
+            WHERE tournament_id = ? AND tour = ?
+            ORDER BY 
+                (level != 'UNKNOWN' AND level != '未確認') DESC, 
+                (surface IS NOT NULL) DESC,
+                id DESC
+            LIMIT 1
+            """,
             (match["tournament_id"], match["tour"]),
         ).fetchone()
     if tournament is None or tournament_level is None:

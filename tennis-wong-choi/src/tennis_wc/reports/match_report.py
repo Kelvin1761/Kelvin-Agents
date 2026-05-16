@@ -9,11 +9,19 @@ def get_latest_match_prediction(match_id: int) -> dict | None:
     with get_connection() as conn:
         row = conn.execute(
             """
+            WITH BestLevels AS (
+                SELECT *,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY tournament_id, tour 
+                           ORDER BY (level != 'UNKNOWN' AND level != '未確認') DESC, (surface IS NOT NULL) DESC, id DESC
+                       ) as rn
+                FROM tournament_levels
+            )
             SELECT p.*, m.match_date, m.round, t.name AS tournament_name, tl.level, tl.surface
             FROM predictions p
             JOIN matches m ON m.id = p.match_id
             JOIN tournaments t ON t.id = m.tournament_id
-            JOIN tournament_levels tl ON tl.tournament_id = m.tournament_id AND tl.tour = m.tour
+            JOIN BestLevels tl ON tl.tournament_id = m.tournament_id AND tl.tour = m.tour AND tl.rn = 1
             WHERE p.match_id = ?
             ORDER BY p.id DESC
             LIMIT 1

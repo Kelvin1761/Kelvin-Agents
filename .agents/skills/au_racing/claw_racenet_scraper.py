@@ -253,7 +253,7 @@ def extract_race(meeting_slug, race_num, date_str, location, page, slug_override
             f.write(resp.text)
             
         abs_path = os.path.abspath("_temporary_files/temp.html")
-        page.goto(f"file://{abs_path}")
+        page.goto(f"file://{abs_path}", wait_until="domcontentloaded")
         nuxt_data = page.evaluate("() => window.__NUXT__")
         
         if not nuxt_data:

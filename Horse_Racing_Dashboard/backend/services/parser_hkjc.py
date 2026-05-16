@@ -115,6 +115,11 @@ ENGINE_LABELS = {
     'A/C': '混合型',
 }
 
+AUTO_SCORELINE_RE = re.compile(
+    r"綜合戰力分\s*`?([0-9]+(?:\.[0-9]+)?)`?.*?信心分\s*`?([0-9]+(?:\.[0-9]+)?)`?.*?風險分\s*`?([0-9]+(?:\.[0-9]+)?)`?",
+    re.S,
+)
+
 
 def _extract_engine_type_hkjc(text: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
     """Extract engine type from HKJC horse analysis block.
@@ -433,6 +438,18 @@ def parse_horse_block(horse_num: int, horse_name: str, block: str) -> HorseAnaly
     # Final grade
     final_grade = _parse_final_grade(block)
     
+    ability_score = None
+    confidence_score = None
+    risk_score = None
+    scoreline_m = AUTO_SCORELINE_RE.search(block)
+    if scoreline_m:
+        try:
+            ability_score = float(scoreline_m.group(1))
+            confidence_score = float(scoreline_m.group(2))
+            risk_score = float(scoreline_m.group(3))
+        except ValueError:
+            pass
+    
     # Conclusion
     conclusion_section = _extract_section(block,
         ['💡 結論', '💡 評語', '**💡 結論', '**💡 評語', '💡 優勢', '**💡 優勢'],
@@ -482,6 +499,9 @@ def parse_horse_block(horse_num: int, horse_name: str, block: str) -> HorseAnaly
         engine_distance_summary=engine_summary,
         rating_matrix=rating_matrix,
         final_grade=final_grade,
+        ability_score=ability_score,
+        confidence_score=confidence_score,
+        risk_score=risk_score,
         conclusion=conclusion_section,
         core_logic=core_logic,
         advantage=advantage,
@@ -656,6 +676,64 @@ def _parse_verdict_top_picks(text: str) -> list[TopPick]:
     return picks
 
 
+def _load_auto_scoring_map(analysis_path: Path) -> dict[int, dict]:
+    csv_path = analysis_path.with_name(analysis_path.name.replace("_Auto_Analysis.md", "_Auto_Scoring.csv"))
+    if not csv_path.exists():
+        return {}
+    mapping = {}
+    try:
+        with csv_path.open(encoding="utf-8-sig", newline="") as handle:
+            reader = csv.DictReader(handle)
+            for row in reader:
+                try:
+                    horse_num = int(row.get("horse_number") or 0)
+                except ValueError:
+                    continue
+                if horse_num <= 0:
+                    continue
+                mapping[horse_num] = row
+    except Exception:
+        return {}
+    return mapping
+
+
+def _parse_auto_top_picks_from_table(text: str) -> list[TopPick]:
+    lines = text.splitlines()
+    picks = []
+    capture = False
+    for line in lines:
+        if "| 排名 | 馬號 | 馬名 | 綜合戰力分 | Grade |" in line:
+            capture = True
+            continue
+        if not capture:
+            continue
+        if not line.startswith("|"):
+            if picks:
+                break
+            continue
+        if "---" in line or "排名" in line:
+            continue
+        cols = [part.strip() for part in line.strip().strip("|").split("|")]
+        if len(cols) < 7:
+            continue
+        try:
+            rank = int(cols[0])
+            horse_number = int(cols[1])
+        except ValueError:
+            continue
+        horse_name = cols[2]
+        grade = cols[4] or None
+        picks.append(
+            TopPick(
+                rank=rank,
+                horse_number=horse_number,
+                horse_name=horse_name,
+                grade=grade,
+            )
+        )
+    return picks[:4]
+
+
 # ──────────────────────────────────────────────
 # Race-level parsing
 # ──────────────────────────────────────────────
@@ -774,9 +852,36 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
     for h_num, h_name, h_block in horse_blocks:
         horse = parse_horse_block(h_num, h_name, h_block)
         horses.append(horse)
+
+    is_auto = path.name.endswith("_Auto_Analysis.md")
+    auto_scoring = _load_auto_scoring_map(path) if is_auto else {}
+    if is_auto:
+        for horse in horses:
+            row = auto_scoring.get(horse.horse_number)
+            if not row:
+                continue
+            try:
+                horse.rank = int(row.get("rank") or 0) or None
+            except ValueError:
+                horse.rank = None
+            try:
+                horse.ability_score = float(row.get("ability_score") or 0) or horse.ability_score
+            except ValueError:
+                pass
+            try:
+                horse.confidence_score = float(row.get("confidence_score") or 0) or horse.confidence_score
+            except ValueError:
+                pass
+            try:
+                horse.risk_score = float(row.get("risk_score") or 0) or horse.risk_score
+            except ValueError:
+                pass
+            horse.model_pick_status = row.get("model_pick_status") or None
+            if row.get("grade"):
+                horse.final_grade = row.get("grade")
     
     # Parse Top picks — try CSV block first, then verdict section, then full text fallback
-    top_picks = _parse_csv_block(text, race_number)
+    top_picks = _parse_auto_top_picks_from_table(text) if is_auto else _parse_csv_block(text, race_number)
     if not top_picks and part3:
         top_picks = _parse_verdict_top_picks(part3)
     if not top_picks:
@@ -827,5 +932,7 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
         battlefield_overview=part1,
         verdict_text=part3,
         blind_spots=part4,
+        analysis_type='auto' if is_auto else 'classic',
+        scoring_file=str(path.with_name(path.name.replace("_Auto_Analysis.md", "_Auto_Scoring.csv"))) if is_auto else None,
         monte_carlo_simulation=monte_carlo if monte_carlo else None,
     )

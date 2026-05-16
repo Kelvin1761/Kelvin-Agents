@@ -39,7 +39,7 @@ Agent activated → Check frontmatter "skills:" → Read SKILL.md (INDEX) → Re
 | **SURVEY/INTEL** | "analyze", "list files", "overview"        | TIER 0 + Explorer              | Session Intel (No File)     |
 | **SIMPLE CODE**  | "fix", "add", "change" (single file)       | TIER 0 + TIER 1 (lite)         | Inline Edit                 |
 | **COMPLEX CODE** | "build", "create", "implement", "refactor" | TIER 0 + TIER 1 (full) + Agent | **{task-slug}.md Required** |
-| **PREDICTION**   | "分析", "預測", "predict", racing, LoL, NBA | TIER 0 + Domain Agent          | Prediction Pipeline         |
+| **PREDICTION**   | "分析", "預測", "predict", racing, LoL, NBA, tennis | TIER 0 + Domain Agent          | Prediction Pipeline         |
 | **DESIGN/UI**    | "design", "UI", "page", "dashboard"        | TIER 0 + TIER 1 + Agent        | **{task-slug}.md Required** |
 | **SLASH CMD**    | /create, /orchestrate, /debug              | Command-specific flow          | Variable                    |
 
@@ -164,10 +164,26 @@ Before coding, answer: (1) What is the GOAL? (2) What PRINCIPLES apply? (3) How 
 
 > [!NOTE]
 > **Domain Pipeline Override**: When a domain-specific prediction pipeline is activated
-> (NBA `@nba-wong-choi` / HKJC `@hkjc-wong-choi` / AU `@au-wong-choi` / LoL `/lol-predict`),
+> (NBA `@nba-wong-choi` / HKJC `@hkjc-wong-choi` / AU `@au-wong-choi` / LoL `/lol-predict` / Tennis `@tennis-wong-choi`),
 > the Socratic Gate applies **only during scope confirmation** (game selection / date confirmation).
 > Once the user confirms the scope, the domain agent's **Anti-Stall Directive takes priority**
 > and the pipeline runs autonomously via `NEXT_CMD` without further Socratic questioning.
+
+> [!IMPORTANT]
+> **HKJC Mainline Override**: `@hkjc-wong-choi` 現時默認係 **full Python mainline**。
+> 必須先執行：
+> `python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <URL或資料夾>`
+> 除非用戶明確要求 `legacy` / 舊版 / 對照，否則**唔可以**改用
+> `.agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator_legacy.py`
+> 或手動補寫 HKJC analysis。
+
+> [!IMPORTANT]
+> **AU Mainline Override**: `@au-wong-choi` 現時默認係 **full Python mainline**。
+> 必須先執行：
+> `python3 .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py <URL或資料夾>`
+> 除非用戶明確要求 `legacy` / 舊版 / 對照，否則**唔可以**改用
+> `.agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator_legacy.py`
+> 或手動補寫 AU analysis。
 
 ### 🔄 Fallback Protocol
 
@@ -191,6 +207,7 @@ If an agent or skill file cannot be found:
 | **AU RACING**                          | `au-wong-choi`        | betting_accountant             |
 | **NBA**                                | `nba-wong-choi`       | nba_wong_choi, nba_analyst, betting_accountant |
 | **LOL ESPORTS**                        | via `/lol-predict`    | lol_wong_choi, lol_reflector, betting_accountant |
+| **TENNIS**                             | `tennis-wong-choi`    | betting_accountant             |
 
 > 🔴 **Mobile + frontend-specialist = WRONG.** Mobile = mobile-developer ONLY.
 
@@ -240,7 +257,7 @@ For multi-file or structural changes → Create `{task-slug}.md` plan first. For
 ### Agents & Skills
 
 - **Masters**: `orchestrator`, `project-planner`, `security-auditor`, `backend-specialist`, `frontend-specialist`, `mobile-developer`, `debugger`, `game-developer`
-- **Domain-Specific**: `hkjc-wong-choi`, `au-wong-choi` (Racing), `nba-wong-choi` (NBA), `lol_wong_choi` (LoL)
+- **Domain-Specific**: `hkjc-wong-choi` (HKJC full Python mainline), `hkjc-wong-choi-legacy` (transition / comparison only), `au-wong-choi` (Racing), `nba-wong-choi` (NBA), `lol_wong_choi` (LoL), `tennis-wong-choi` (Tennis)
 - **Key Skills**: `clean-code`, `brainstorming`, `app-builder`, `frontend-design`, `mobile-design`, `plan-writing`, `behavioral-modes`
 
 ### Key Scripts

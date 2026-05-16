@@ -254,6 +254,34 @@ export default function DashboardPage() {
                 </div>
                 <div
                   style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    gap: "6px",
+                    alignItems: "center",
+                    marginTop: "6px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {race.analysis_type === "auto" && (
+                    <span
+                      style={{
+                        fontSize: "0.65rem",
+                        fontWeight: 700,
+                        color: "#1D4ED8",
+                        background: "#DBEAFE",
+                        padding: "2px 6px",
+                        borderRadius: "6px",
+                      }}
+                    >
+                      Auto
+                    </span>
+                  )}
+                  {race.top_picks?.[0]?.grade && (
+                    <RatingBadge grade={race.top_picks[0].grade} size="md" />
+                  )}
+                </div>
+                <div
+                  style={{
                     fontSize: "0.7rem",
                     color: "#94A3B8",
                     marginTop: "4px",

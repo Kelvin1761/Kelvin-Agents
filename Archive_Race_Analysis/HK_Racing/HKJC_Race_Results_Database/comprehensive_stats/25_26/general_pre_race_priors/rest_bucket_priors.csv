@@ -1,0 +1,6 @@
+﻿RestBucket,Wins,Starts,Places,AvgOdds,WinRate,PlaceRate,Scope
+15-28d,326,3917,975,30.85,8.32,24.89,Overall
+29-56d,142,1686,414,29.95,8.42,24.56,Overall
+57-90d,52,606,147,34.76,8.58,24.26,Overall
+91d+,43,569,130,39.14,7.56,22.85,Overall
+<=14d,88,1286,300,30.95,6.84,23.33,Overall

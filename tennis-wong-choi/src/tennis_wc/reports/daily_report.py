@@ -14,11 +14,30 @@ def latest_predictions_for_date(match_date: str) -> list[dict]:
     with get_connection() as conn:
         rows = conn.execute(
             """
-            SELECT p.*, m.match_date, m.round, t.name AS tournament_name, tl.level, tl.surface
+            WITH BestLevels AS (
+                SELECT *,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY tournament_id, tour 
+                           ORDER BY (level != 'UNKNOWN' AND level != '未確認') DESC, (surface IS NOT NULL) DESC, id DESC
+                       ) as rn
+                FROM tournament_levels
+            )
+            SELECT
+                p.*,
+                m.match_date,
+                m.round,
+                m.tour,
+                t.name AS tournament_name,
+                tl.level,
+                tl.surface,
+                pa.name AS player_a_name,
+                pb.name AS player_b_name
             FROM predictions p
             JOIN matches m ON m.id = p.match_id
             JOIN tournaments t ON t.id = m.tournament_id
-            JOIN tournament_levels tl ON tl.tournament_id = m.tournament_id AND tl.tour = m.tour
+            JOIN BestLevels tl ON tl.tournament_id = m.tournament_id AND tl.tour = m.tour AND tl.rn = 1
+            JOIN players pa ON pa.id = m.player_a_id
+            JOIN players pb ON pb.id = m.player_b_id
             WHERE m.match_date = ?
               AND EXISTS (
                 SELECT 1
@@ -207,9 +226,9 @@ def render_daily_report(match_date: str, rows: list[dict], source_status: dict |
         f"- Sportsbet odds rows：{source_status.get('sportsbet_odds_rows', 0)}",
         f"- 已配對 / 已建 provisional fixture：{source_status.get('sportsbet_linked_rows', 0)}",
         f"- Sportsbet 最新抓取時間：{source_status.get('sportsbet_latest_fetch') or 'N/A'}",
-        "- Bankroll：$500 virtual bankroll；1 unit = $5",
+        "- Bankroll：$500 virtual bankroll；1 unit = $1",
         "- Mode：SNAPSHOT_MODE（使用最近已成功保存嘅 Sportsbet / local history snapshot；唔扮 live odds）",
-        f"- BSD fixture source：{source_status.get('bsd_fixture_status') or 'N/A'}",
+        f"- Tennis fixture source：{source_status.get('bsd_fixture_status') or 'N/A'}",
         f"- Fixture 補齊策略：{source_status.get('fixture_note') or 'N/A'}",
         f"- 歷史數據 / Elo：{source_status.get('history_source') or 'N/A'}",
         f"- 多市場 odds：{source_status.get('market_odds_note') or 'N/A'}",
@@ -243,9 +262,10 @@ def render_daily_report(match_date: str, rows: list[dict], source_status: dict |
         payload = json.loads(row["pricing_json"])
         pricing = payload["pricing"]
         filter_result = payload["filter"]
+        match_label = _match_label(row)
         lines.extend(
             [
-                f"## {row['decision']} {idx}",
+                f"## {row['decision']} {idx} {match_label}",
                 "",
                 f"賽事 ID：{row['match_id']}",
                 f"賽事：{_display_label(row['tournament_name'])}",
@@ -267,12 +287,11 @@ def render_daily_report(match_date: str, rows: list[dict], source_status: dict |
                 f"建議注碼：{_stake_label(row['stake_units'], row['decision'])}",
                 f"決策：{row['decision']}",
                 "",
-                "主要模型原因：",
+                "分析：",
             ]
         )
         components = pricing.get("model", {}).get("components", [])
-        for component in components[:5]:
-            lines.append(f"- {component['name']}：勝率 {_pct(component['probability'])}，權重 {component['weight']}")
+        lines.extend(_model_explanation_lines(row, pricing, components))
         red_flags = _report_red_flags(filter_result)
         lines.extend(["", "紅旗／注意事項："])
         if red_flags:
@@ -405,7 +424,7 @@ def _bet_summary_lines(bets: list[dict]) -> list[str]:
         lines.append(
             "| "
             f"{row['selection_name']} | "
-            f"{row['tournament_name']} | "
+            f"{_match_label(row)} | "
             f"{_fmt(row['current_market_odds'])} | "
             f"{_fmt(row['minimum_acceptable_odds'])} | "
             f"{_pct(row['model_probability'])} | "
@@ -479,7 +498,7 @@ def _source_error_label(error: str) -> str:
 def _stake_label(stake_units: float | None, decision: str | None = None) -> str:
     if decision != "BET" or float(stake_units or 0) <= 0:
         return "不下注"
-    return "1 unit ($5.00)"
+    return "1 unit ($1.00)"
 
 
 def _display_label(value: str | None, fallback: str = "未確認（資料不足）") -> str:
@@ -509,3 +528,93 @@ def _report_red_flags(filter_result: dict) -> list[str]:
     if any("stale" in warning for warning in warnings):
         labels.append("部分資料接近 freshness 上限")
     return labels[:5]
+
+
+def _match_label(row: dict) -> str:
+    player_a = _display_label(row.get("player_a_name"), "Player A")
+    player_b = _display_label(row.get("player_b_name"), "Player B")
+    return f"{player_a} vs {player_b}"
+
+
+def _opponent_name(row: dict) -> str | None:
+    selection = str(row.get("selection_name") or "").strip()
+    player_a = str(row.get("player_a_name") or "").strip()
+    player_b = str(row.get("player_b_name") or "").strip()
+    if _same_name(selection, player_a):
+        return player_b
+    if _same_name(selection, player_b):
+        return player_a
+    return None
+
+
+def _same_name(left: str, right: str) -> bool:
+    return " ".join(left.lower().split()) == " ".join(right.lower().split())
+
+
+def _model_explanation_lines(row: dict, pricing: dict, components: list[dict]) -> list[str]:
+    active_components = [component for component in components if component.get("active", True)]
+    if not active_components:
+        active_components = components
+    selected_probability = float(row["model_probability"] or 0)
+    is_player_a = _same_name(str(row.get("selection_name") or ""), str(row.get("player_a_name") or ""))
+    selection_side = "player_a" if is_player_a else "player_b"
+    selection = _display_label(row.get("selection_name"))
+    market_probability = float(row.get("no_vig_market_probability") or 0)
+    edge = float(row.get("edge") or 0)
+    margin = selected_probability - market_probability
+    supportive = _component_summary(active_components, selection_side, True)
+    cautious = _component_summary(active_components, selection_side, False)
+    lines = [
+        f"- 揀 {selection} 主要因為市場只當佢約有 {_pct(market_probability)} 勝算，但模型評到 {_pct(selected_probability)}，中間多出 {_pct(margin, signed=True)}；即係現時賠率比模型認為嘅公平價偏高。",
+    ]
+    if supportive:
+        lines.append(f"- 支持因素：{supportive}。")
+    if cautious:
+        lines.append(f"- 保留位：{cautious}。")
+    lines.append(f"- 下注門檻：現價 {_fmt(row.get('current_market_odds'))} 要高過最低可接受賠率 {_fmt(row.get('minimum_acceptable_odds'))}；跌穿就唔應追。")
+    if edge < 0.1:
+        lines.append("- 但優勢唔算厚，若賠率稍跌穿門檻就應該放棄。")
+    lines.append("- 模型勝率係將有效因素按權重合併；資料不足嘅項目會被中性化或降低影響。")
+    return lines
+
+
+def _selection_component_probability(component: dict, selection_side: str) -> float:
+    probability = float(component.get("probability") or 0.5)
+    if selection_side == "player_b":
+        return 1 - probability
+    return probability
+
+
+def _component_summary(components: list[dict], selection_side: str, supportive: bool) -> str:
+    ranked: list[tuple[float, dict, float]] = []
+    for component in components:
+        probability = _selection_component_probability(component, selection_side)
+        score = (probability - 0.5) * float(component.get("weight") or 0)
+        ranked.append((score, component, probability))
+    ranked.sort(key=lambda item: item[0], reverse=supportive)
+    picked = []
+    for score, component, probability in ranked:
+        if supportive and score <= 0:
+            continue
+        if not supportive and score >= 0:
+            continue
+        picked.append(f"{_component_label(component['name'])} {_pct(probability)}")
+        if len(picked) == 3:
+            break
+    return "、".join(picked)
+
+
+def _component_label(name: str) -> str:
+    labels = {
+        "surface_elo_edge": "場地 Elo",
+        "overall_elo_edge": "整體 Elo",
+        "serve_return_edge": "發球/接發球數據",
+        "recent_form_edge": "近期對 Top 100 表現",
+        "opponent_rank_bucket_edge": "對相近排名對手表現",
+        "tournament_level_edge": "同級賽事表現",
+        "round_performance_edge": "相同圈數表現",
+        "big_match_edge": "大賽抗壓表現",
+        "fatigue_edge": "體能因素",
+        "injury_penalty": "傷患風險",
+    }
+    return labels.get(name, name)

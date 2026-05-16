@@ -1,0 +1,280 @@
+{
+  "1": {
+    "race_no": 1,
+    "class_info": "第五班",
+    "distance": "1600米",
+    "race_name": "飛鵝山讓賽",
+    "going": "好地至黏地",
+    "track": "草地 - \"A\" 賽道",
+    "win_time": "1:35.08",
+    "sectional_times": "24.65",
+    "cumulative_times": "(1) | (24.65) | (47.27) | (1:11.13) | (1:35.08)",
+    "results": [
+      {
+        "pos": "1",
+        "horse_no": "8",
+        "horse_name": "上市魅力 (H196)",
+        "jockey": "潘頓",
+        "trainer": "蘇偉賢",
+        "actual_weight": "129",
+        "declared_weight": "1092",
+        "draw": "6",
+        "margin": "---",
+        "running_positions": "4 4 4 1",
+        "finish_time": "1:35.08",
+        "win_odds": "2.8"
+      },
+      {
+        "pos": "2",
+        "horse_no": "11",
+        "horse_name": "樂天派 (E166)",
+        "jockey": "田泰安",
+        "trainer": "大衛希斯",
+        "actual_weight": "126",
+        "declared_weight": "1146",
+        "draw": "4",
+        "margin": "1/2",
+        "running_positions": "8 9 8 2",
+        "finish_time": "1:35.15",
+        "win_odds": "29"
+      },
+      {
+        "pos": "3",
+        "horse_no": "2",
+        "horse_name": "富喜來 (H213)",
+        "jockey": "布文",
+        "trainer": "沈集成",
+        "actual_weight": "135",
+        "declared_weight": "1071",
+        "draw": "12",
+        "margin": "1-1/4",
+        "running_positions": "11 10 10 3",
+        "finish_time": "1:35.29",
+        "win_odds": "3.5"
+      },
+      {
+        "pos": "4",
+        "horse_no": "5",
+        "horse_name": "電路九號 (G140)",
+        "jockey": "周俊樂",
+        "trainer": "葉楚航",
+        "actual_weight": "129",
+        "declared_weight": "1120",
+        "draw": "1",
+        "margin": "1-1/2",
+        "running_positions": "7 6 5 4",
+        "finish_time": "1:35.30",
+        "win_odds": "16"
+      },
+      {
+        "pos": "5",
+        "horse_no": "6",
+        "horse_name": "極速之子 (H332)",
+        "jockey": "班德禮",
+        "trainer": "姚本輝",
+        "actual_weight": "130",
+        "declared_weight": "1049",
+        "draw": "11",
+        "margin": "2",
+        "running_positions": "10 11 11 5",
+        "finish_time": "1:35.40",
+        "win_odds": "45"
+      },
+      {
+        "pos": "6",
+        "horse_no": "10",
+        "horse_name": "領航傳祺 (G126)",
+        "jockey": "潘明輝",
+        "trainer": "鄭俊偉",
+        "actual_weight": "124",
+        "declared_weight": "1129",
+        "draw": "5",
+        "margin": "2-3/4",
+        "running_positions": "9 8 6 6",
+        "finish_time": "1:35.50",
+        "win_odds": "9.6"
+      },
+      {
+        "pos": "7",
+        "horse_no": "4",
+        "horse_name": "同寶寶 (H386)",
+        "jockey": "巴度",
+        "trainer": "伍鵬志",
+        "actual_weight": "134",
+        "declared_weight": "1093",
+        "draw": "8",
+        "margin": "3-1/4",
+        "running_positions": "3 3 2 7",
+        "finish_time": "1:35.60",
+        "win_odds": "9.7"
+      },
+      {
+        "pos": "8",
+        "horse_no": "1",
+        "horse_name": "神煞金剛 (H202)",
+        "jockey": "艾兆禮",
+        "trainer": "葉楚航",
+        "actual_weight": "135",
+        "declared_weight": "1121",
+        "draw": "13",
+        "margin": "5",
+        "running_positions": "13 13 12 8",
+        "finish_time": "1:35.89",
+        "win_odds": "52"
+      },
+      {
+        "pos": "9",
+        "horse_no": "7",
+        "horse_name": "竣誠駒 (H486)",
+        "jockey": "艾道拿",
+        "trainer": "告東尼",
+        "actual_weight": "130",
+        "declared_weight": "1158",
+        "draw": "9",
+        "margin": "6",
+        "running_positions": "6 7 9 9",
+        "finish_time": "1:36.02",
+        "win_odds": "17"
+      },
+      {
+        "pos": "10",
+        "horse_no": "13",
+        "horse_name": "開心漢子 (H101)",
+        "jockey": "梁家俊",
+        "trainer": "文家良",
+        "actual_weight": "119",
+        "declared_weight": "1208",
+        "draw": "7",
+        "margin": "7-1/2",
+        "running_positions": "2 2 3 10",
+        "finish_time": "1:36.29",
+        "win_odds": "24"
+      },
+      {
+        "pos": "11",
+        "horse_no": "3",
+        "horse_name": "朗日雪峰 (J187)",
+        "jockey": "黃智弘",
+        "trainer": "方嘉柏",
+        "actual_weight": "128",
+        "declared_weight": "1242",
+        "draw": "2",
+        "margin": "10-1/4",
+        "running_positions": "1 1 1 11",
+        "finish_time": "1:36.73",
+        "win_odds": "30"
+      },
+      {
+        "pos": "12",
+        "horse_no": "12",
+        "horse_name": "皮具大師 (H034)",
+        "jockey": "湯普新",
+        "trainer": "容天鵬",
+        "actual_weight": "122",
+        "declared_weight": "1122",
+        "draw": "3",
+        "margin": "11-1/4",
+        "running_positions": "5 5 7 12",
+        "finish_time": "1:36.86",
+        "win_odds": "11"
+      },
+      {
+        "pos": "13",
+        "horse_no": "9",
+        "horse_name": "神虎金剛 (J064)",
+        "jockey": "楊明綸",
+        "trainer": "葉楚航",
+        "actual_weight": "129",
+        "declared_weight": "1225",
+        "draw": "10",
+        "margin": "20-1/4",
+        "running_positions": "12 12 13 13",
+        "finish_time": "1:38.30",
+        "win_odds": "131"
+      }
+    ],
+    "dividends": [],
+    "incident_report": [
+      {
+        "pos": "1",
+        "horse_no": "8",
+        "horse_name": "上市魅力 (H196)",
+        "comment": "賽後須抽取樣本檢驗。"
+      },
+      {
+        "pos": "2",
+        "horse_no": "11",
+        "horse_name": "樂天派 (E166)",
+        "comment": "賽後須抽取樣本檢驗。"
+      },
+      {
+        "pos": "3",
+        "horse_no": "2",
+        "horse_name": "富喜來 (H213)",
+        "comment": "自外檔出閘後於早段在馬群之後切入。"
+      },
+      {
+        "pos": "4",
+        "horse_no": "5",
+        "horse_name": "電路九號 (G140)",
+        "comment": "出閘僅屬一般。末段內閃，在靠近稍微向外斜跑的「上市魅力」的後蹄處於窘境之際收慢，因而未能被力策至終點。"
+      },
+      {
+        "pos": "5",
+        "horse_no": "6",
+        "horse_name": "極速之子 (H332)",
+        "comment": "中段搶口，接近一千米處時收慢避開「樂天派」。直路上外閃。"
+      },
+      {
+        "pos": "6",
+        "horse_no": "10",
+        "horse_name": "領航傳祺 (G126)",
+        "comment": "出閘笨拙。"
+      },
+      {
+        "pos": "7",
+        "horse_no": "4",
+        "horse_name": "同寶寶 (H386)",
+        "comment": "大部分途程在沒有遮擋下走外疊。賽後被發現流鼻血。「同寶寶」必須試閘及格，並且通過獸醫檢驗後，才可再次出賽。"
+      },
+      {
+        "pos": "8",
+        "horse_no": "1",
+        "horse_name": "神煞金剛 (H202)",
+        "comment": "自大外檔出閘後於早段在馬群之後切入。趨近千一米處時開始搶口，推進至向內斜跑的「極速之子」內側。跑了一段短途程後收慢避開「極速之子」，向內斜跑，與「神虎金剛」互相觸碰。"
+      },
+      {
+        "pos": "9",
+        "horse_no": "7",
+        "horse_name": "竣誠駒 (H486)",
+        "comment": "賽後，艾道拿未能就坐騎令人失望的表現提供任何解釋。賽後立即接受獸醫檢查，並無發現任何明顯異常之處。"
+      },
+      {
+        "pos": "10",
+        "horse_no": "13",
+        "horse_name": "開心漢子 (H101)",
+        "comment": "出閘笨拙。"
+      },
+      {
+        "pos": "11",
+        "horse_no": "3",
+        "horse_name": "朗日雪峰 (J187)",
+        "comment": "無特別報告。"
+      },
+      {
+        "pos": "12",
+        "horse_no": "12",
+        "horse_name": "皮具大師 (H034)",
+        "comment": "賽後，湯普新報告，坐騎在走勢令人滿意之際能夠佔取有利位置。他表示，坐騎在直路上對催策毫無反應，表現令人失望。賽後立即接受獸醫檢查，並無發現任何明顯異常之處。"
+      },
+      {
+        "pos": "13",
+        "horse_no": "9",
+        "horse_name": "神虎金剛 (J064)",
+        "comment": "出閘僅屬一般。接近千一米處時受擠迫。包尾大敗而回，小組認為此駒的表現難以接受。「神虎金剛」必須試閘及格，並且通過獸醫檢驗後，才可再次出賽。"
+      }
+    ],
+    "bloodline": "勝出馬匹血統\n上市魅力\n父系: Charm Spirit\n母系: Guessed",
+    "dividends_raw": "派彩\n彩池\n勝出組合\n派彩 (HK$)\n獨贏\n8\n28.00\n位置\n8\n14.00\n11\n60.50\n2\n17.00\n連贏\n8,11\n330.00\n位置Q\n8,11\n107.00\n2,8\n26.00\n2,11\n176.00\n二重彩\n8,11\n520.00\n三重彩\n8,11,2\n1,931.00\n單T\n2,8,11\n351.00\n四連環\n2,5,8,11\n1,350.00\n四重彩\n8,11,2,5\n25,141.00"
+  }
+}

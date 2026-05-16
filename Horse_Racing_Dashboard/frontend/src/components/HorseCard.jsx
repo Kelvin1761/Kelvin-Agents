@@ -95,6 +95,30 @@ export default function HorseCard({ horse, topPickRank, primaryCondition }) {
               )}
               {horse.barrier && <span> · 檔{horse.barrier}</span>}
             </div>
+            {(horse.ability_score !== null && horse.ability_score !== undefined) && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  flexWrap: "wrap",
+                  marginTop: "6px",
+                  fontSize: "0.72rem",
+                  color: "#475569",
+                  fontWeight: 600,
+                }}
+              >
+                <span>綜合戰力分 {Number(horse.ability_score).toFixed(1)}</span>
+                {horse.confidence_score !== null && horse.confidence_score !== undefined && (
+                  <span>信心分 {Number(horse.confidence_score).toFixed(1)}</span>
+                )}
+                {horse.risk_score !== null && horse.risk_score !== undefined && (
+                  <span>風險分 {Number(horse.risk_score).toFixed(1)}</span>
+                )}
+                {horse.model_pick_status === "MODEL_TOP_PICK" && (
+                  <span style={{ color: "#B45309" }}>模型首選</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -485,10 +509,10 @@ function RatingMatrixTable({ matrix }) {
         </tbody>
       </table>
       {/* Grade summary row */}
-      {(matrix.base_grade || matrix.fine_tune || matrix.override) && (
+      {(matrix.base_rating || matrix.adjustment || matrix.override) && (
         <div className="rating-matrix__summary">
-          {matrix.base_grade && <span>📐 基礎: <strong>{matrix.base_grade}</strong></span>}
-          {matrix.fine_tune && <span>🔧 微調: <strong>{matrix.fine_tune}</strong></span>}
+          {matrix.base_rating && <span>📐 基礎: <strong>{matrix.base_rating}</strong></span>}
+          {matrix.adjustment && <span>🔧 微調: <strong>{matrix.adjustment}</strong></span>}
           {matrix.override && <span>🔄 覆蓋: <strong>{matrix.override}</strong></span>}
         </div>
       )}

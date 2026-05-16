@@ -8,14 +8,14 @@ Usage:
     python3 run_au_prerace_pipeline.py 2026-04-18_Randwick/
 
 Steps:
-    1. claw_racenet_scraper.py → Formguide extraction (if not cached)
-    2. inject_fact_anchors.py  → Facts.md generation per race
-    3. mc_simulator.py --platform au → Monte Carlo simulation
-    4. Output pipeline_summary.json
+    1. 檢查 Racecard / Formguide
+    2. inject_fact_anchors.py 生成 Facts.md
+    3. build_au_logic.py 生成 deterministic Race_X_Logic.json
+    4. au_auto_orchestrator.py 生成 Auto Analysis / Auto Scoring
+    5. Output pipeline_summary.json
 
-Note: This script is the DATA PREP layer that runs BEFORE au_orchestrator.py.
-      It does NOT replace the orchestrator.
-      Standard times and draw stats are skipped (AU data sources unavailable).
+Note: 依家 AU mainline 已切去 full Python。
+      Monte Carlo 唔再屬於主流程，只保留作 side research。
 """
 
 import os
@@ -31,6 +31,7 @@ os.environ["PYTHONUTF8"] = "1"
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 AU_SCRIPTS = Path(__file__).resolve().parent.parent / "skills" / "au_racing" / "au_wong_choi" / "scripts"
+AU_AUTO_SCRIPTS = Path(__file__).resolve().parent.parent / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"
 
 
 def log(msg: str, level: str = "INFO"):
@@ -91,7 +92,7 @@ def main():
     }
 
     log(f"🏇 AU 賽前管線啟動: {meeting_dir.name}")
-    log(f"⚠️ AU 管線跳過: standard_times (無數據源), draw_stats (無數據源)")
+    log("ℹ️ AU mainline: full Python deterministic pipeline")
 
     # Step 1: Check for existing Formguide/Racecard files
     racecard_files = sorted(glob.glob(str(meeting_dir / "*Racecard*")))
@@ -123,14 +124,37 @@ def main():
         log("⏭️ inject_fact_anchors.py 不存在或無數據，跳過 Facts 注入")
         summary["steps"]["facts_injection"] = {"status": "SKIP"}
 
-    # Step 3: Monte Carlo simulation
-    mc_script = SCRIPTS_DIR / "mc_simulator.py"
-    if mc_script.exists():
-        ok = run_step(python, [str(mc_script), str(meeting_dir), "--platform", "au"], "Monte Carlo 模擬")
-        summary["steps"]["monte_carlo"] = {"status": "PASS" if ok else "FAIL"}
+    # Step 3: Build deterministic Logic.json files
+    logic_builder = AU_AUTO_SCRIPTS / "build_au_logic.py"
+    logic_count = 0
+    facts_files = sorted(meeting_dir.glob("*Facts.md"))
+    if logic_builder.exists() and facts_files:
+        for facts_file in facts_files:
+            race_num_match = __import__("re").search(r"Race[ _](\d+)", facts_file.name)
+            if not race_num_match:
+                continue
+            race_num = int(race_num_match.group(1))
+            logic_file = meeting_dir / f"Race_{race_num}_Logic.json"
+            if logic_file.exists():
+                log(f"  ⏭️ Race {race_num} Logic.json 已存在，跳過")
+                logic_count += 1
+                continue
+            ok = run_step(python, [str(logic_builder), str(facts_file), "--output", str(logic_file)], f"Logic.json 生成 Race {race_num}")
+            if ok:
+                logic_count += 1
+        summary["steps"]["logic_build"] = {"status": "PASS" if logic_count > 0 else "FAIL", "count": logic_count}
     else:
-        log("⏭️ mc_simulator.py 不存在，跳過 MC 模擬")
-        summary["steps"]["monte_carlo"] = {"status": "SKIP"}
+        log("⏭️ build_au_logic.py 不存在或無 Facts，跳過 Logic 生成")
+        summary["steps"]["logic_build"] = {"status": "SKIP"}
+
+    # Step 4: Run deterministic auto orchestrator
+    auto_script = AU_AUTO_SCRIPTS / "au_auto_orchestrator.py"
+    if auto_script.exists():
+        ok = run_step(python, [str(auto_script), str(meeting_dir)], "AU Auto 分析輸出")
+        summary["steps"]["auto_pipeline"] = {"status": "PASS" if ok else "FAIL"}
+    else:
+        log("⏭️ au_auto_orchestrator.py 不存在，跳過 Auto 分析")
+        summary["steps"]["auto_pipeline"] = {"status": "SKIP"}
 
     # Output summary
     all_pass = all(s.get("status") in ("PASS", "SKIP") for s in summary["steps"].values())
@@ -142,7 +166,7 @@ def main():
 
     log(f"📄 管線摘要已寫入: {summary_path}")
     log(f"{'✅' if all_pass else '⚠️'} 管線狀態: {summary['status']}")
-    log("💡 下一步: 執行 au_orchestrator.py 進入分析流程")
+    log("💡 下一步: 可直接執行 au_orchestrator.py，或者使用目前已生成嘅 Auto outputs")
 
 
 if __name__ == "__main__":

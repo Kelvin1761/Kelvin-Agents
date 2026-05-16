@@ -1,0 +1,21 @@
+# AU Wong Choi Auto Scoring Contract
+
+- 7D matrix:
+  - `stability`
+  - `sectional`
+  - `race_shape`
+  - `jockey_trainer`
+  - `class_weight`
+  - `track`
+  - `form_line`
+- Output namespace per horse:
+  - `python_auto.ability_score`
+  - `python_auto.grade`
+  - `python_auto.feature_scores`
+  - `python_auto.matrix_scores`
+  - `python_auto.matrix`
+  - `python_auto.matrix_reasoning`
+  - `python_auto.core_logic`
+  - `python_auto.advantages`
+  - `python_auto.disadvantages`
+  - `python_auto.score_provenance`

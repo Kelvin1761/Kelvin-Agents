@@ -39,7 +39,7 @@
         <description>嚴格的多 Tool call 批次執行結構定義。</description>
         <protocol>
             Step 1: 先計算 BATCH_PLAN（例如 7匹馬 = Batch 1[3匹] + Batch 2[3匹] + Batch 3[1匹] + Verdict Batch）。
-            Step 1b: Speed Map 以 Facts Engine `inject_fact_anchors.py` 內 EEM/video + settled-position 模型為準；只有 Facts speed_map 缺失時，才可用 `python3 .agents/scripts/au_speed_map_generator.py <Racecard.md> --distance <Distance>` 生成低信心人工 fallback（Windows 或已配置環境可用 `python`）。Fallback 禁止用 Last10 完賽名次當跑法主證據。
+            Step 1b: Speed Map 以 Facts Engine `inject_fact_anchors.py` 內 video commentary + settled-position 模型為準；只有 Facts speed_map 缺失時，才可用 `python3 .agents/scripts/au_speed_map_generator.py <Racecard.md> --distance <Distance>` 生成低信心人工 fallback（Windows 或已配置環境可用 `python`）。Fallback 禁止用 Last10 完賽名次當跑法主證據。
             Step 2: 每個 batch 前必須強制 `view_file` 讀取 `06_templates_core.md` 作為骨架。
             Step 3: 使用 Safe-Writer Protocol（Python base64 寫法）。
             Step 4: 每次執行後必須留有 `🔒 BATCH_QA_RECEIPT`。

@@ -249,6 +249,43 @@ def parse_trends(block):
     return result
 
 
+def parse_formline_table(block):
+    """Extract opponent performance from the formline table."""
+    results = []
+    # Find the table under 🔗 **賽績線:**
+    m = re.search(r'🔗 \*\*賽績線:\*\*.*?\n(\|[^\n]+\n\|[-| ]+\n)(.*?)(?=\n\n|\n💡|\Z)', block, re.DOTALL)
+    if not m:
+        return results
+    
+    table_content = m.group(2).strip()
+    for line in table_content.split('\n'):
+        if not line.strip().startswith('|'):
+            continue
+        cols = [c.strip() for c in line.split('|')]
+        # cols: ['', '#', '日期', '賽事', '我嘅名次', '對手', '後續比賽Class', '對手後續成績', '強度評估', '']
+        if len(cols) >= 9:
+            try:
+                int(cols[1]) # verify row num
+            except (ValueError, IndexError):
+                continue
+            
+            opponents = cols[5]
+            if "賽果查詢失敗" in opponents:
+                opponents = "未知"
+                
+            results.append({
+                'race_num': cols[1],
+                'date': cols[2],
+                'race_id': cols[3],
+                'my_finish': cols[4],
+                'opponents': opponents,
+                'next_class': cols[6],
+                'next_performance': cols[7],
+                'strength': cols[8]
+            })
+    return results
+
+
 import hashlib
 import time
 import secrets
@@ -1404,6 +1441,7 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None, facts_path=
 
             # ── 賽績線 (form_line) ──
             'formline_strength': formline_str,
+            'formline_table': parse_formline_table(horse_block) if horse_block else [],
             'last_finish': last_finish,
             'last_margin': last_margin_val,
 

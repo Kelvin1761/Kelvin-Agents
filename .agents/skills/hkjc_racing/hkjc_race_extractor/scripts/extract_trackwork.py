@@ -280,14 +280,46 @@ def normalize_work_type(value: str, details: str = "") -> str:
     return "other"
 
 
-def extract_times(details: str) -> list[float]:
-    values: list[float] = []
-    # Avoid obvious distances like 800m/1200m by requiring decimal seconds.
-    for m in re.finditer(r"(?<!\d)(\d{2,3}\.\d)(?!\d)", details):
-        val = float(m.group(1))
-        if 10.0 <= val <= 140.0:
-            values.append(val)
-    return values
+def parse_clock_value(token: str) -> float | None:
+    token = clean_text(token)
+    if re.fullmatch(r"\d{2,3}\.\d", token):
+        value = float(token)
+        return value if 10.0 <= value <= 140.0 else None
+    match = re.fullmatch(r"(\d)\.(\d{2})\.(\d)", token)
+    if match:
+        minutes, seconds, tenth = match.groups()
+        return int(minutes) * 60 + int(seconds) + int(tenth) / 10
+    match = re.fullmatch(r"(\d)\.(\d{2})\.(\d{2})", token)
+    if match:
+        minutes, seconds, hundredths = match.groups()
+        return int(minutes) * 60 + int(seconds) + int(hundredths) / 100
+    return None
+
+
+def parse_work_times(details: str) -> dict[str, Any]:
+    text = str(details or "")
+    parenthesized = re.findall(r"\(([^)]+)\)", text)
+    final_time = None
+    for chunk in parenthesized:
+        parsed = parse_clock_value(chunk)
+        if parsed is not None:
+            final_time = parsed
+            break
+
+    open_text = re.sub(r"\([^)]*\)", " ", text)
+    sectionals: list[float] = []
+    for m in re.finditer(r"(?<!\d)(\d{2,3}\.\d)(?!\d)", open_text):
+        value = float(m.group(1))
+        if 20.0 <= value <= 40.0:
+            sectionals.append(value)
+
+    if not sectionals and final_time is not None and 20.0 <= final_time <= 40.0:
+        sectionals.append(final_time)
+
+    return {
+        "sectionals": sectionals,
+        "final_time": final_time,
+    }
 
 
 def parse_trackwork_rows(page_html: str, horse: dict[str, Any],
@@ -312,6 +344,7 @@ def parse_trackwork_rows(page_html: str, horse: dict[str, Any],
         details = cells[3] if len(cells) > 3 else " ".join(cells[1:])
         gear = cells[4] if len(cells) > 4 else ""
         work_type = normalize_work_type(work_type_raw, details)
+        timing = parse_work_times(details)
         entries.append({
             "date": date.isoformat(),
             "type": work_type,
@@ -319,11 +352,23 @@ def parse_trackwork_rows(page_html: str, horse: dict[str, Any],
             "location": location,
             "details": details,
             "gear": gear,
-            "times": extract_times(details),
+            "times": timing["sectionals"],
+            "sectionals": timing["sectionals"],
+            "final_time": timing["final_time"],
             "rider": detect_rider(details),
             "rider_role": classify_rider_role(detect_rider(details), details, horse.get("trainer", "")),
         })
     return sorted(entries, key=lambda e: e["date"])
+
+
+def entry_trend_time(entry: dict[str, Any]) -> float | None:
+    final_time = entry.get("final_time")
+    if isinstance(final_time, (int, float)) and 20.0 <= float(final_time) <= 140.0:
+        return float(final_time)
+    sectionals = [float(value) for value in entry.get("sectionals", []) if 20.0 <= float(value) <= 40.0]
+    if sectionals:
+        return sectionals[-1]
+    return None
 
 
 def detect_rider(details: str) -> str:
@@ -470,8 +515,8 @@ def make_digest(horse: dict[str, Any], entries: list[dict[str, Any]],
     }
     active_days = len({e["date"] for e in entries})
     blank_days = max(0, window_days - active_days)
-    gallop_times = [t for e in entries if e["type"] == "gallop" for t in e.get("times", [])]
-    trial_times = [t for e in entries if e["type"] == "trial" for t in e.get("times", [])]
+    gallop_times = [t for e in entries if e["type"] == "gallop" for t in [entry_trend_time(e)] if t is not None]
+    trial_times = [t for e in entries if e["type"] == "trial" for t in [entry_trend_time(e)] if t is not None]
     trend = classify_trend(gallop_times, active_days, blank_days)
     race_jockey_involved = False
     normalized_race_jockey = normalize_person_name(race_jockey)
@@ -579,8 +624,10 @@ def build_instruction(category: str, maintenance_score: int | None,
 
 def summarize_trackwork(horse: dict[str, Any], entries: list[dict[str, Any]],
                         digest: dict[str, Any]) -> dict[str, Any]:
-    gallop_times = [t for e in entries if e["type"] == "gallop" for t in e.get("times", [])]
-    trial_times = [t for e in entries if e["type"] == "trial" for t in e.get("times", [])]
+    gallop_times = [t for e in entries if e["type"] == "gallop" for t in [entry_trend_time(e)] if t is not None]
+    trial_times = [t for e in entries if e["type"] == "trial" for t in [entry_trend_time(e)] if t is not None]
+    gallop_sectionals = [e.get("sectionals", []) for e in entries if e["type"] == "gallop" and e.get("sectionals")]
+    trial_sectionals = [e.get("sectionals", []) for e in entries if e["type"] == "trial" and e.get("sectionals")]
     return {
         "window_days": digest.get("window_days"),
         "gallops_21d": digest["workout_load_21d"]["gallops"],
@@ -591,6 +638,10 @@ def summarize_trackwork(horse: dict[str, Any], entries: list[dict[str, Any]],
         "treadmill_21d": digest["workout_load_21d"]["treadmill"],
         "gallop_times": gallop_times,
         "trial_times": trial_times,
+        "gallop_sectionals": gallop_sectionals,
+        "trial_sectionals": trial_sectionals,
+        "gallop_final_times": [e.get("final_time") for e in entries if e["type"] == "gallop" and e.get("final_time") is not None],
+        "trial_final_times": [e.get("final_time") for e in entries if e["type"] == "trial" and e.get("final_time") is not None],
         "gallop_time_trend": digest.get("workout_intensity_trend"),
         "race_jockey_involved": "賽日騎師有參與操練" in digest.get("stability_positive_flags", []),
         "named_rider_count": len({e.get("rider") for e in entries if e.get("rider")}),

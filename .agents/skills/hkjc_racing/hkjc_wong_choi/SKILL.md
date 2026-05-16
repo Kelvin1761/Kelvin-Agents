@@ -1,10 +1,10 @@
 ---
 name: HKJC Wong Choi
-description: This skill should be used when the user wants to "analyse HKJC races", "run HKJC pipeline", "香港賽馬分析", "HKJC Wong Choi", or needs to orchestrate the full Hong Kong horse racing analysis pipeline from data extraction through to final Excel report generation.
+description: This skill should be used when the user wants to "analyse HKJC races", "run HKJC pipeline", "香港賽馬分析", "HKJC Wong Choi", or needs to orchestrate the full Python Hong Kong horse racing pipeline from data extraction through to final Auto analysis generation.
 version: 4.0.0
 ---
 
-# HKJC Wong Choi — V4 Python-First Architecture
+# HKJC Wong Choi — Full Python Architecture
 
 ## Resource Read-Once Protocol（強制）
 在開始任何工作前，你**必須**首先讀取以下資源檔案，並在整個 session 中保留記憶：
@@ -33,19 +33,16 @@ python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <
 **(重要提示：執行此指令時，必須使用 `run_command` 工具。)**
 
 ## 執行循環
-1. 第一次執行 Orchestrator（無 `--auto`）→ 印賽日總結 → 立即執行 stdout 顯示嘅 `NEXT_CMD`
-2. `NEXT_CMD` 包含 `--auto` → 進入自動模式；除非 stdout 顯示錯誤或要求人工提供缺失資料，唔需要等用戶確認
-3. 遵從指示完成 JSON 填寫（只填寫 `[FILL]` 欄位）
-4. 每次 stdout 出現 `NEXT_CMD:` → 完成工作後即刻執行該指令
-5. 重複直到 `🎉 [SUCCESS]`
+1. 若輸入係 HKJC URL，Orchestrator 會先抽取 racecard / formguide / trackwork
+2. 然後生成 Facts.md
+3. 再生成 Race_X_Logic.json
+4. 最後由 `hkjc_wong_choi_auto` 產出 `Race_X_Auto_Analysis.md` / `Race_X_Auto_Scoring.csv`
 
 ## 鐵律
 - **嚴禁**自行建立任何 `.py` 腳本（包括 auto_fill、auto_expert、auto_analyst 等）
 - **嚴禁**跳過 Orchestrator 直接修改 Analysis.md
 - **嚴禁**自行計算評級矩陣（由 Python 自動計算）
-- **嚴禁**查閱全局 Facts.md（只讀取 `.runtime/Active_Horse_Context.md`）
-- **嚴禁**用 `while True` loop 或任何腳本批量填充 `[FILL]` 欄位
-- **嚴禁**用 hashlib/模板池生成「看似不同」嘅罐頭分析
+- **嚴禁**繞過主 orchestrator 直接手動拼接 extraction/facts/logic/output
 - 語言：香港繁體中文（廣東話口吻），馬名/騎師/練馬師保留英文
 - 分析風格：Opus-Style 極度詳盡，法醫級推理
 
@@ -54,18 +51,14 @@ python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <
 > **Python 係主人，LLM 係分析員。Python 話做咩就做咩，LLM 唔可以自作主張。**
 
 ### LLM 嘅唯一職責
-1. **接收指令**: 讀取 Orchestrator stdout 嘅 `NEXT_CMD` 並執行
-2. **閱讀工作卡**: 讀取 `.runtime/Active_Horse_Context.md`（Python 生成）
-3. **填寫分析**: 只填寫 Logic JSON 中嘅 `[FILL]` 欄位（核心邏輯、矩陣判斷理由）
-4. **服從驗證**: 若 Orchestrator 拒絕，按錯誤提示修正後重交
+1. **接收指令**: 執行 Full Python orchestrator
+2. **監察結果**: 報告 extraction / facts / logic / auto scoring 成功與否
+3. **維護 routing**: 需要時切去 legacy 入口，而唔係手動補寫分析
 
 ### LLM 嚴禁行為
-- ❌ 修改 Python 已填好嘅數值（race_class, distance, track, going, speed_map）
-- ❌ 自行建立任何 `.py` 腳本
 - ❌ 跳過 Orchestrator 直接寫 Analysis.md
-- ❌ 自行計算評級（grade 由 `rating_engine_v2.py` 計算）
-- ❌ 覆蓋 Facts.md 檔位判讀數據（🎯檔位判讀由 Python 預計算）
-- ❌ 用 loop/batch 方式批量填充分析
+- ❌ 自行改寫 Python 已產生的 deterministic scoring
+- ❌ 自行計算評級
 
 
 ## 分析品質標準（Per-Horse）

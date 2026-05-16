@@ -31,6 +31,7 @@ import json
 import shutil
 import subprocess
 import sys
+from urllib import request
 
 # ─── Cross-Platform Python ──────────────────────────────────────────────
 PYTHON = "python3" if shutil.which("python3") else "python"
@@ -46,6 +47,14 @@ GENERATE_REPORTS = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "generat
 VALIDATE_OUTPUT = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "validate_nba_output.py")
 VALIDATE_SCHEMA = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "validate_json_schema.py")
 GENERATE_SGM = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "generate_nba_sgm_reports.py")
+
+ESPN_TO_STANDARD = {
+    "GS": "GSW",
+    "NO": "NOP",
+    "NY": "NYK",
+    "SA": "SAS",
+    "UTAH": "UTA",
+}
 
 
 # ─── Preflight ──────────────────────────────────────────────────────────
@@ -107,6 +116,53 @@ def discover_sportsbet_jsons(target_dir: str) -> list:
 def extract_game_tag(json_path: str) -> str:
     filename = os.path.basename(json_path)
     return filename.replace("Sportsbet_Odds_", "").replace(".json", "")
+
+
+def _load_espn_tags(date_str: str) -> set[str]:
+    """Fetch ESPN tags for the target AEST date window."""
+    url = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"
+    target = date_str.replace("-", "")
+    candidates = []
+    try:
+        dt = datetime.datetime.strptime(target, "%Y%m%d")
+        candidates.append((dt - datetime.timedelta(days=1)).strftime("%Y%m%d"))
+        candidates.append(target)
+    except Exception:
+        candidates.append(target)
+
+    tags: set[str] = set()
+    for cd in candidates:
+        try:
+            with request.urlopen(f"{url}?dates={cd}", timeout=10) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+            for evt in payload.get("events", []):
+                comps = evt.get("competitions", [{}])[0]
+                competitors = comps.get("competitors", [])
+                away = home = None
+                for c in competitors:
+                    team = c.get("team", {})
+                    abbr = team.get("abbreviation", "")
+                    if c.get("homeAway") == "home":
+                        home = abbr
+                    else:
+                        away = abbr
+                if away and home:
+                    away = ESPN_TO_STANDARD.get(away, away)
+                    home = ESPN_TO_STANDARD.get(home, home)
+                    tags.add(f"{away}_{home}")
+        except Exception:
+            continue
+    return tags
+
+
+def filter_sportsbet_files_by_date(files: list[str], target_tags: set[str]) -> list[str]:
+    if not target_tags:
+        return files
+    filtered = []
+    for path in files:
+        if extract_game_tag(path) in target_tags:
+            filtered.append(path)
+    return filtered
 
 
 def check_skeleton_exists(target_dir: str, game_tag: str) -> str | None:
@@ -333,13 +389,20 @@ def main():
     json_files = discover_sportsbet_jsons(target_dir)
     if not json_files:
         print("🚨 Phase 0: 缺少 Sportsbet JSON 盤口數據！啟動 Claw 抓取...")
-        claw_ok = run_script(CLAW_SPORTSBET, ["--outdir", target_dir], label="Claw Sportsbet")
+        claw_ok = run_script(CLAW_SPORTSBET, ["--outdir", target_dir, "--date", args.date], label="Claw Sportsbet")
         if not claw_ok:
             print("❌ [Fatal] Claw 執行失敗！可能 Cloudflare 阻擋或當日無賽事。")
             sys.exit(1)
         json_files = discover_sportsbet_jsons(target_dir)
         if not json_files:
             print("❌ [Fatal] 爬蟲執行後仍無 Sportsbet JSON！")
+            sys.exit(1)
+
+    expected_tags = _load_espn_tags(args.date)
+    if expected_tags:
+        json_files = filter_sportsbet_files_by_date(json_files, expected_tags)
+        if not json_files:
+            print("❌ [Fatal] 找到嘅 Sportsbet JSON 全部唔屬於目標日期賽事。")
             sys.exit(1)
 
     # Build game list
@@ -408,7 +471,7 @@ def main():
         print(f"❌ 失敗: {len(results['failed'])} 場 — {results['failed']}")
 
     # ── SGM + Banker Report ──
-    if len(results["passed"]) >= 2 and os.path.exists(GENERATE_SGM):
+    if results["passed"] and os.path.exists(GENERATE_SGM):
         print(f"\n📋 生成 Master SGM + Banker 報告...")
         run_script(GENERATE_SGM, ["--dir", target_dir], label="SGM Master Report")
 
@@ -430,7 +493,7 @@ def main():
         print(f"  🔒 嚴禁修改 Python 預填嘅數學數據")
         print(f"  完成後重新執行 orchestrator:")
         _next_cmd(args.date, "--compile-only")
-    elif len(results["passed"]) >= 2 and not os.path.exists(
+    elif results["passed"] and not os.path.exists(
         os.path.join(target_dir, "NBA_All_SGM_Report.txt")
     ):
         # Phase 3: Compile needed

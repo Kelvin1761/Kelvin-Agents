@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import HorseCard from "../components/HorseCard";
+import RatingBadge from "../components/RatingBadge";
 
 /** Trim long going strings: 'Soft 6 (天氣極不穩定...)' → 'Soft 6' */
 function trimGoing(going) {
@@ -10,7 +11,6 @@ function trimGoing(going) {
   const trimmed = going.replace(/\s*[（(].*$/, '').trim();
   return trimmed || going;
 }
-import RatingBadge from "../components/RatingBadge";
 
 /**
  * RaceDetailPage — Full race analysis with all horses, Top picks,
@@ -189,6 +189,20 @@ export default function RaceDetailPage() {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span>{[analysis?.distance, analysis?.race_class, analysis?.track || analysis?.venue].filter(Boolean).join(' · ')}</span>
+              {analysis?.analysis_type === "auto" && (
+                <span
+                  style={{
+                    background: '#DBEAFE',
+                    color: '#1D4ED8',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontWeight: 700,
+                    fontSize: '0.7rem',
+                  }}
+                >
+                  Python Auto
+                </span>
+              )}
               {analysis?.going && (
                 <span
                   style={{

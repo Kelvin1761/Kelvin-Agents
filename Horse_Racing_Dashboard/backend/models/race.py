@@ -67,6 +67,11 @@ class HorseAnalysis(BaseModel):
     # Rating
     rating_matrix: Optional[RatingMatrix] = None
     final_grade: Optional[str] = None  # A+, A, B+, etc.
+    ability_score: Optional[float] = None
+    confidence_score: Optional[float] = None
+    risk_score: Optional[float] = None
+    model_pick_status: Optional[str] = None
+    rank: Optional[int] = None
     
     # Conclusion
     conclusion: Optional[str] = None  # 💡 結論
@@ -143,6 +148,8 @@ class RaceAnalysis(BaseModel):
     battlefield_overview: Optional[str] = None  # 第一部分
     verdict_text: Optional[str] = None  # 第三部分
     blind_spots: Optional[str] = None  # 第四部分
+    analysis_type: Optional[str] = None  # classic / auto
+    scoring_file: Optional[str] = None
     
     # Monte Carlo simulation results
     monte_carlo_simulation: Optional[list['MonteCarloPick']] = None

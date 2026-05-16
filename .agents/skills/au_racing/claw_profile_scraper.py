@@ -99,7 +99,7 @@ def scrape_profiles(slugs: list[str]) -> dict:
                     f.write(res.text)
                     
                 try:
-                    page.goto(f"file://{temp_html_path}")
+                    page.goto(f"file://{temp_html_path}", wait_until="domcontentloaded")
                     nuxt = page.evaluate("() => window.__NUXT__")
                     if not nuxt:
                         results[slug] = {"error": "No NUXT state found"}

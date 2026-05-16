@@ -1,0 +1,46 @@
+{
+  "legacy": {
+    "label": "Legacy/Mainline",
+    "engine_dir": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/skills/au_racing/au_wong_choi_auto/scripts/racing_engine",
+    "races": 315,
+    "horses": 3468,
+    "champion": 49,
+    "gold_3of3": 10,
+    "pass_2of3": 99,
+    "good_top2": 47,
+    "top3_contains_winner": 132,
+    "top3_places": 358,
+    "zero_hit": 66,
+    "rates": {
+      "champion": 0.15555555555555556,
+      "gold_3of3": 0.031746031746031744,
+      "pass_2of3": 0.3142857142857143,
+      "good_top2": 0.1492063492063492,
+      "top3_contains_winner": 0.41904761904761906,
+      "top3_place_precision": 0.37883597883597886,
+      "zero_hit": 0.20952380952380953
+    }
+  },
+  "trial": {
+    "label": "SIP-AU-V22 / Shadow",
+    "engine_dir": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.scratch/shadow_engine",
+    "races": 315,
+    "horses": 3468,
+    "champion": 45,
+    "gold_3of3": 13,
+    "pass_2of3": 99,
+    "good_top2": 53,
+    "top3_contains_winner": 135,
+    "top3_places": 356,
+    "zero_hit": 71,
+    "rates": {
+      "champion": 0.14285714285714285,
+      "gold_3of3": 0.04126984126984127,
+      "pass_2of3": 0.3142857142857143,
+      "good_top2": 0.16825396825396827,
+      "top3_contains_winner": 0.42857142857142855,
+      "top3_place_precision": 0.37671957671957673,
+      "zero_hit": 0.2253968253968254
+    }
+  }
+}

@@ -20,7 +20,7 @@ Exit codes:
   1 = Below target thresholds
   2 = File not found
 """
-import sys, io, re, json, os, pathlib, argparse
+import sys, io, re, json, os, pathlib, argparse, csv
 from dataclasses import dataclass, field, asdict
 
 if sys.stdout.encoding != 'utf-8':
@@ -43,6 +43,12 @@ PICK_ALT_RE = re.compile(
     re.UNICODE | re.MULTILINE
 )
 
+AUTO_PICK_RE = re.compile(
+    r'\*\*第\s*([1-4])\s*選\*\*.*?'
+    r'\*\*馬號及馬名:\*\*\s*\[(\d+)\]\s*([^\n]+)',
+    re.UNICODE | re.DOTALL
+)
+
 # Final grade line to get horse number → grade mapping
 GRADE_RE = re.compile(
     r'⭐\s*\*?\*?最終評級[：:]?\*?\*?\s*[`\s\[]*([SABCDF][+\-]?)',
@@ -53,6 +59,8 @@ GRADE_RE = re.compile(
 HORSE_HEADER_RE = re.compile(
     r'(?:'
     r'###?\s*【No\.?\s*(\d+)】'
+    r'|'
+    r'\*\*【No\.?\s*(\d+)】'
     r'|'
     r'\*\*\[?\s*(\d+)\]?\s+'
     r'|'
@@ -112,6 +120,16 @@ def parse_picks_from_analysis(text: str) -> list:
         picks.append((rank, num, name))
     
     if not picks:
+        # HKJC Auto report format:
+        # **第1選**
+        # - **馬號及馬名:** [7] 極速神影
+        for match in AUTO_PICK_RE.finditer(text):
+            rank = int(match.group(1))
+            num = int(match.group(2))
+            name = match.group(3).strip()
+            picks.append((rank, num, name))
+
+    if not picks:
         # Try alternative format
         for match in PICK_ALT_RE.finditer(text):
             rank = int(match.group(1))
@@ -137,7 +155,7 @@ def parse_grades(text: str) -> dict:
     horses = list(HORSE_HEADER_RE.finditer(text))
     
     for i, h in enumerate(horses):
-        num = h.group(1) or h.group(2) or h.group(3)
+        num = h.group(1) or h.group(2) or h.group(3) or h.group(4)
         if not num:
             continue
         num = int(num)
@@ -175,8 +193,113 @@ def parse_results(text: str) -> list:
             if pos <= 4:
                 results.append((pos, num, name))
     
-    results.sort(key=lambda x: x[0])
+    deduped = {}
+    for pos, num, name in results:
+        deduped.setdefault(pos, (pos, num, name))
+    results = sorted(deduped.values(), key=lambda x: x[0])
     return results[:4]  # Top 4
+
+
+def parse_results_file(results_file: str) -> dict:
+    """Parse HKJC/AU results from extractor JSON or Markdown/text."""
+    path = pathlib.Path(results_file)
+    if path.suffix.lower() == ".json":
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        race_results = {}
+        for race_key, race_data in data.items():
+            try:
+                race_num = int(race_key)
+            except (TypeError, ValueError):
+                continue
+            rows = []
+            for item in race_data.get("results", []):
+                try:
+                    pos = int(item.get("pos"))
+                    num = int(item.get("horse_no"))
+                except (TypeError, ValueError):
+                    continue
+                rows.append((pos, num, str(item.get("horse_name", "")).strip()))
+            rows.sort(key=lambda x: x[0])
+            if rows:
+                race_results[race_num] = rows[:4]
+        return race_results
+
+    with open(path, 'r', encoding='utf-8') as f:
+        results_text = f.read()
+
+    race_results = {}
+    current_race = None
+    current_lines = []
+    header_re = re.compile(r'^##\s*(?:第\s*)?(\d+)\s*場|^##\s*Race\s*(\d+)', re.UNICODE)
+
+    def flush_section():
+        if current_race is None:
+            return
+        res = parse_results('\n'.join(current_lines))
+        if res:
+            race_results[current_race] = res
+
+    for line in results_text.splitlines():
+        match = header_re.search(line)
+        if match:
+            flush_section()
+            current_race = int(match.group(1) or match.group(2))
+            current_lines = []
+            continue
+        if current_race is not None:
+            current_lines.append(line)
+    flush_section()
+
+    if not race_results:
+        all_results = parse_results(results_text)
+        if all_results:
+            race_results[1] = all_results
+    return race_results
+
+
+def load_auto_scoring_predictions(analysis_dir: str) -> dict:
+    """Read HKJC Auto CSV predictions when available."""
+    csv_path = pathlib.Path(analysis_dir) / "HKJC_Auto_Scoring.csv"
+    if not csv_path.is_file():
+        return {}
+
+    by_race = {}
+    with open(csv_path, 'r', encoding='utf-8-sig', newline='') as f:
+        for row in csv.DictReader(f):
+            try:
+                race_num = int(row.get("race_number", ""))
+                horse_num = int(row.get("horse_number", ""))
+            except ValueError:
+                continue
+            name = row.get("horse_name", "").strip()
+            grade = row.get("grade", "").strip()
+            try:
+                rank = int(float(row.get("rank", "")))
+            except ValueError:
+                rank = 999
+            try:
+                ability = float(row.get("ability_score", 0))
+            except ValueError:
+                ability = 0.0
+            by_race.setdefault(race_num, []).append({
+                "rank": rank,
+                "horse_num": horse_num,
+                "name": name,
+                "grade": grade,
+                "ability": ability,
+            })
+
+    predictions = {}
+    for race_num, rows in by_race.items():
+        rows.sort(key=lambda item: (item["rank"], -item["ability"], item["horse_num"]))
+        picks = [
+            (idx + 1, item["horse_num"], item["name"])
+            for idx, item in enumerate(rows[:4])
+        ]
+        grades = {item["horse_num"]: item["grade"] for item in rows if item["grade"]}
+        predictions[race_num] = {"picks": picks, "grades": grades}
+    return predictions
 
 
 def compute_race_stats(picks: list, results: list, grades: dict) -> RaceStats:
@@ -266,46 +389,32 @@ def extract_race_num(filename: str) -> int:
 
 def run_stats(analysis_dir: str, results_file: str) -> dict:
     """Run full statistics computation."""
-    # Parse results
-    with open(results_file, 'r', encoding='utf-8') as f:
-        results_text = f.read()
-
-    # Split results by race
-    race_results = {}
-    # Try to split by race headers
-    race_sections = re.split(r'(?:##?\s*(?:Race|第)\s*(\d+)|---)', results_text)
-    
-    # If no clear sections, try parsing all results
-    if len(race_sections) <= 1:
-        all_results = parse_results(results_text)
-        if all_results:
-            race_results[1] = all_results
-    else:
-        current_race = None
-        for i, section in enumerate(race_sections):
-            if section and section.strip().isdigit():
-                current_race = int(section.strip())
-            elif current_race is not None:
-                res = parse_results(section)
-                if res:
-                    race_results[current_race] = res
+    race_results = parse_results_file(results_file)
+    csv_predictions = load_auto_scoring_predictions(analysis_dir)
 
     # Parse each analysis file
-    analysis_files = find_analysis_files(analysis_dir)
+    analysis_files = [] if csv_predictions else find_analysis_files(analysis_dir)
     all_stats = []
-    
-    for af in analysis_files:
-        race_num = extract_race_num(af.name)
-        with open(af, 'r', encoding='utf-8') as f:
-            analysis_text = f.read()
-        
-        picks = parse_picks_from_analysis(analysis_text)
-        grades = parse_grades(analysis_text)
+
+    if csv_predictions:
+        prediction_items = sorted(csv_predictions.items())
+    else:
+        prediction_items = []
+        for af in analysis_files:
+            race_num = extract_race_num(af.name)
+            with open(af, 'r', encoding='utf-8') as f:
+                analysis_text = f.read()
+            picks = parse_picks_from_analysis(analysis_text)
+            if picks:
+                prediction_items.append((race_num, {
+                    "picks": picks,
+                    "grades": parse_grades(analysis_text),
+                }))
+
+    for race_num, prediction in prediction_items:
+        picks = prediction["picks"]
+        grades = prediction["grades"]
         results = race_results.get(race_num, [])
-        
-        if not picks:
-            continue
-            
         stats = compute_race_stats(picks, results, grades)
         stats.race_num = race_num
         all_stats.append(stats)

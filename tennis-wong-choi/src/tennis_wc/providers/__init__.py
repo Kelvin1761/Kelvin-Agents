@@ -1,35 +1,71 @@
 from __future__ import annotations
-
 from tennis_wc.config import get_settings
-
 from .bsd_tennis_provider import BsdTennisProvider
+from .espn_provider import EspnTennisProvider
+from .sackmann_ranking_provider import SackmannRankingProvider
 from .mock_provider import MockNewsProvider, MockOddsProvider, MockTennisProvider
 from .news_provider_base import NewsProvider
 from .odds_provider_base import OddsProvider
 from .sportsbet_provider import SportsbetOddsProvider
 from .tennis_provider_base import TennisProvider
 
+class CompositeTennisProvider(TennisProvider):
+    provider_name = 'composite'
+
+    def __init__(self):
+        self.espn = EspnTennisProvider()
+        self.sackmann = SackmannRankingProvider()
+
+    def healthcheck(self) -> bool:
+        return self.espn.healthcheck()
+
+    def fetch_upcoming_matches(self, date_str: str) -> list[dict]:
+        matches = self.espn.fetch_upcoming_matches(date_str)
+        for m in matches:
+            m['provider'] = self.provider_name
+        return matches
+
+    def fetch_historical_matches(self, start_date: str, end_date: str) -> list[dict]:
+        return []
+
+    def fetch_match_stats(self, match_id: str) -> dict:
+        return self.espn.fetch_match_stats(match_id)
+
+    def fetch_player_profile(self, player_id: str) -> dict:
+        return self.espn.fetch_player_profile(player_id)
+
+    def fetch_player_stats(self, player_id: str) -> dict:
+        return self.espn.fetch_player_stats(player_id)
+
+    def fetch_rankings(self, tour: str, date: str | None = None) -> list[dict]:
+        return self.sackmann.fetch_rankings(tour, date)
+
+    def fetch_tournaments(self, start_date: str, end_date: str) -> list[dict]:
+        return self.espn.fetch_tournaments(start_date, end_date)
 
 def get_tennis_provider() -> TennisProvider:
     provider = get_settings().tennis_provider
-    if provider == "mock":
+    if provider == 'mock':
         return MockTennisProvider()
-    if provider == "bsd_tennis":
+    if provider == 'bsd_tennis':
         return BsdTennisProvider()
-    raise ValueError(f"Unsupported tennis provider for MVP: {provider}")
-
+    if provider == 'espn':
+        return EspnTennisProvider()
+    if provider == 'composite':
+        return CompositeTennisProvider()
+    raise ValueError(f'Unsupported tennis provider: {provider}')
 
 def get_odds_provider() -> OddsProvider:
     provider = get_settings().odds_provider
-    if provider == "mock":
+    if provider == 'mock':
         return MockOddsProvider()
-    if provider == "sportsbet":
+    if provider == 'sportsbet':
         return SportsbetOddsProvider()
-    raise ValueError(f"Unsupported odds provider for MVP: {provider}")
-
+    raise ValueError(f'Unsupported odds provider: {provider}')
 
 def get_news_provider() -> NewsProvider:
     provider = get_settings().news_provider
-    if provider == "mock":
+    if provider == 'mock':
         return MockNewsProvider()
-    raise ValueError(f"Unsupported news provider for MVP: {provider}")
+    raise ValueError(f'Unsupported news provider: {provider}')
+
