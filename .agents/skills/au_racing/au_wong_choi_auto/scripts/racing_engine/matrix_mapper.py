@@ -36,6 +36,10 @@ MATRIX_FORMULAS = {
         ("formline_score", 0.72),
         ("form_score", 0.28),
     ),
+    "speed_performance": (
+        ("speed_rating_score", 0.70),
+        ("sectional_score", 0.30),
+    ),
 }
 
 

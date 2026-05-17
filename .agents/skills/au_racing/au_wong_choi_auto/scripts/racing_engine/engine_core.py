@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 import re
+import sys
 from collections import Counter
 from pathlib import Path
 
@@ -28,6 +29,14 @@ from scoring import (
     safe_ratio,
 )
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[5] / "scripts"))  # .agents/scripts/
+try:
+    from formline_analyzer import analyze_formline as _fa_analyze_formline, _parse_margin as _fa_parse_margin, _extract_opponent_name as _fa_extract_name
+    from jockey_trainer_analyzer import analyze_jockey_trainer as _jta_analyze_jockey_trainer
+    _HAS_SHARED_LIBS = True
+except ImportError:
+    _HAS_SHARED_LIBS = False
+
 TRACK_RESOURCE_DIR = Path(__file__).resolve().parents[3] / "au_horse_analyst" / "resources"
 AUTO_RESOURCE_DIR = Path(__file__).resolve().parents[2] / "resources"
 ARCHIVE_AU_DIR = Path(__file__).resolve().parents[6] / "Archive_Race_Analysis" / "AU_Racing"
@@ -39,6 +48,72 @@ JOCKEY_TRAINER_COMBO_CACHE: dict[tuple[str, str, str], dict] | None = None
 TRAINER_TRACK_CACHE: dict[tuple[str, str], dict] | None = None
 JOCKEY_RATINGS_CACHE: dict[str, dict] | None = None
 TRAINER_RATINGS_CACHE: dict[str, dict] | None = None
+
+# Standard 600m times (seconds) per track/distance-bin, computed from archive data
+_STANDARD_600M = {
+    'Randwick': {1000:33.74,1100:34.47,1200:34.44,1300:34.69,1400:35.11,1500:35.52,1600:35.19,1700:34.86,1800:35.47,2000:35.72,2400:35.13,2600:35.87},
+    'Rosehill': {1100:34.13,1200:34.66,1300:34.65,1400:34.89,1500:34.95,1800:35.28,2000:35.19,2400:35.62},
+    'Flemington': {1000:33.64,1100:33.61,1200:34.06,1400:34.51,1500:34.44,1600:34.78,1700:35.41,1800:35.17,2000:35.2,2600:35.96},
+    'Caulfield': {1000:34.15,1100:34.43,1200:34.84,1400:35.27,1500:34.92,1600:35.75,1700:35.9,1800:35.86,2000:35.9,2400:36.78},
+    'Sandown': {1000:33.01,1100:34.08,1200:34.57,1300:34.36,1400:34.8,1500:34.5,1600:34.94,1700:35.96,1800:35.04,2200:35.5,2400:35.44,2600:36.04},
+    'Warwick Farm': {1000:33.45,1100:34.36,1200:34.31,1300:35.33,1400:35.07,1600:35.54,2200:35.73,2400:35.81},
+    'Newcastle': {1000:33.31,1200:35.0,1300:34.7,1400:34.82,1500:34.8,1600:35.32,2000:35.54,2200:36.75,2400:35.11},
+    'Kembla Grange': {1000:33.41,1200:34.28,1300:34.5,1400:34.91,1500:35.12,1600:35.25,2000:35.94,2400:36.25},
+    'Moonee Valley': {1000:34.42,1200:35.44,1500:36.16,1600:36.1,2200:36.22,2600:36.9},
+    'Canterbury': {1100:35.01,1200:35.27,1300:35.46,1600:35.81,2000:36.22},
+    'Hawkesbury': {1000:33.33,1100:33.94,1300:34.28,1400:34.6,1500:34.44,1600:34.78,1800:35.1,2000:34.8,2200:35.73},
+    'Pakenham': {1000:33.68,1100:34.57,1200:34.67,1400:35.53,1600:35.89,2000:35.97,2600:36.69},
+    'Kensington': {1000:33.77,1100:34.37,1200:34.7,1300:35.17,1400:35.13,1600:35.24,1800:35.76,2400:36.02},
+    'Eagle Farm': {1000:33.7,1200:34.4,1300:34.93,1400:35.07,1500:35.85,1600:35.33,1800:36.16,2200:35.98,2400:36.56},
+    'Wyong': {1000:33.69,1100:34.45,1200:34.72,1300:34.92,1400:35.35,1600:35.08,2000:36.62,2200:35.57},
+    'Geelong': {1100:34.6,1200:34.95,1300:35.24,1400:35.39,1500:35.7,1600:36.12,1700:35.92,2000:36.52,2200:36.49,2400:36.74},
+    'Cranbourne': {1000:34.72,1200:35.55,1300:35.98,1400:36.26,1500:36.05,1600:36.68,2000:36.72,2600:37.57},
+    'Bendigo': {1000:34.57,1100:34.88,1300:35.36,1400:35.56,1500:36.28,1600:35.94,2200:36.99,2400:36.02},
+    'Gosford': {1000:34.15,1100:34.9,1200:35.25,1600:35.61,2000:36.17,2200:35.68},
+    'Scone': {1000:34.39,1100:34.4,1200:34.66,1300:34.98,1400:35.24,1600:35.37,1700:35.04,2200:36.08},
+    'Mornington': {1000:34.56,1200:35.32,1500:36.28,1600:36.38,2000:37.2,2400:36.5},
+    'Sale': {1000:34.42,1100:35.26,1200:35.05,1400:35.6,1600:36.03,1700:36.08,2200:36.74},
+    'Ballarat': {1000:33.72,1100:34.62,1200:34.76,1400:34.8,1500:35.36,1600:35.83,2000:36.24,2600:37.8},
+    'Doomben': {1100:34.22,1200:34.52,1400:35.03,1600:35.09,2000:35.98,2200:35.63},
+    'Morphettville': {1100:34.24,1200:34.57,1600:35.54,1800:36.43,2000:37.24,2600:36.51},
+    'Gold Coast': {1000:34.03,1100:33.69,1200:34.75,1300:34.43,1400:35.03,1800:36.68,2200:36.7},
+    'Sunshine Coast': {1000:34.43,1100:33.73,1200:35.11,1300:34.8,1400:35.6,1600:35.65,1800:36.26,2400:37.04},
+    'Ascot': {1000:33.79,1100:34.76,1200:34.59,1400:34.73,1500:34.62,1600:34.63,1800:35.53,2200:35.55,2400:36.27},
+    'Warrnambool': {1000:35.66,1100:35.58,1200:36.32,1400:36.92,1700:36.74,2000:38.06,2400:38.44,2600:40.75},
+    'Muswellbrook': {1000:34.09,1300:35.2,1500:35.42,1800:36.61},
+    'Goulburn': {1000:34.98,1100:35.45,1200:35.63,1300:36.26,1400:36.01,1500:36.77,1600:36.55,2200:36.96},
+    'Tamworth': {1000:34.34,1200:35.16,1400:35.76,1600:36.44,2200:35.86},
+    'Wagga': {1000:34.16,1200:34.44,1300:35.23,1400:35.05,1600:35.13,1800:36.43,2000:35.15,2600:36.8},
+    'Seymour': {1000:34.46,1100:34.67,1200:35.33,1300:35.51,1400:35.9,1600:35.7,2000:36.64},
+    'Kyneton': {1100:34.78,1200:35.7,1500:36.18,2000:36.5},
+    'Taree': {1000:35.19,1300:36.24,1400:37.08,1600:36.75,2000:36.4},
+}
+_DISTANCE_ONLY_L600 = {1000:33.95,1100:34.42,1200:34.76,1300:34.98,1400:35.1,1500:35.23,1600:35.5,1700:35.66,1800:35.55,2000:35.79,2200:36.12,2400:35.84,2600:36.4}
+
+TRACK_NAME_CLEANUP = [
+    (' Gardens', ''), ('Grd ', ''), ('Heath', ''), ('Lakeside', ''), (' Hillside', ''),
+    ('Sportsbet-', ''), ('Sportsbet ', ''), ('Royal ', ''), (' Park', ''), (' Synthetic', ''),
+]
+
+
+def _distance_bin(dist_m: int) -> int:
+    for b in (1000,1100,1200,1300,1400,1500,1600,1700,1800,2000,2200,2400,2600):
+        if dist_m <= b:
+            return b
+    return 2600
+
+
+def _normalize_track_name(name: str) -> str:
+    n = str(name or '').strip()
+    for old, new in TRACK_NAME_CLEANUP:
+        n = n.replace(old, new)
+    return n.strip()
+
+
+def _lookup_standard_l600(track: str, distance_m: int) -> float | None:
+    norm = _normalize_track_name(track)
+    dbin = _distance_bin(distance_m)
+    return _STANDARD_600M.get(norm, {}).get(dbin) or _DISTANCE_ONLY_L600.get(dbin)
 VENUE_TRACK_MAP = {
     "randwick": "04b_track_randwick.md",
     "rosehill": "04b_track_rosehill.md",
@@ -235,6 +310,7 @@ class RacingEngine:
             "consistency_score": self._consistency_score,
             "health_score": self._health_score,
             "confidence_score": self._confidence_score,
+            "speed_rating_score": self._speed_rating_score,
         }.items():
             score, note, source = func()
             feature_scores[name] = clip_score(score)
@@ -1510,15 +1586,16 @@ class RacingEngine:
         return "中性參考"
 
     def _au_grade_computation_transparency(self, matrix_scores, matrix_bands, feature_scores, ability_score, grade):
-        """AU version: Generate computation walkthrough for the 7D matrix."""
+        """AU version: Generate computation walkthrough for the 8D matrix."""
         dims = [
             ("stability", "狀態與穩定性", "半核心", 0.18),
-            ("sectional", "段速與引擎", "核心", 0.22),
-            ("race_shape", "形勢與走位", "半核心", 0.20),
-            ("jockey_trainer", "騎練訊號", "半核心", 0.15),
-            ("class_weight", "級數與負重", "輔助", 0.10),
-            ("track", "場地適性", "輔助", 0.08),
-            ("form_line", "賽績線", "輔助", 0.07),
+            ("sectional", "段速與引擎", "核心", 0.20),
+            ("race_shape", "形勢與走位", "半核心", 0.18),
+            ("jockey_trainer", "騎練訊號", "半核心", 0.14),
+            ("class_weight", "級數與負重", "輔助", 0.08),
+            ("track", "場地適性", "輔助", 0.06),
+            ("form_line", "賽績線", "輔助", 0.06),
+            ("speed_performance", "實速表現", "核心", 0.10),
         ]
         lines = []
         weighted_sum = 0.0
@@ -1531,7 +1608,7 @@ class RacingEngine:
             lines.append(f"  - {label} [{role}]: {raw_score:.1f}分 × {pct} = {contribution:.2f} → {band}")
         lines_text = "\n".join(lines)
         summary = (
-            f"**🧮 7D 加權總分計算 (Python Auto 矩陣引擎):**\n\n"
+            f"**🧮 8D 加權總分計算 (Python Auto 矩陣引擎):**\n\n"
             f"{lines_text}\n\n"
             f"**→ 加權總分 = {weighted_sum:.2f} 分 → Grade = [{grade}]**\n"
         )
@@ -1555,6 +1632,7 @@ class RacingEngine:
             ("class_weight", "級數與負重", "輔助"),
             ("track", "場地適性", "輔助"),
             ("form_line", "賽績線", "輔助"),
+            ("speed_performance", "實速表現", "核心"),
         ]
         score_lines = []
         core_strong = 0
@@ -1578,11 +1656,11 @@ class RacingEngine:
         parts = [
             "**🧮 Python 矩陣計算全記錄:**",
             "",
-            "**7D 維度評分:**",
+            "**8D 維度評分:**",
             scores_text,
             "",
             f"**統計:** 核心正面={core_strong} | 半核心正面={semi_strong} | 輔助正面={aux_strong} | 總負面={total_weak}",
-            f"**7D 加權總分:** {ability_score:.1f}分",
+            f"**8D 加權總分:** {ability_score:.1f}分",
             f"**Grade 查表:** {ability_score:.1f}分 → **[{grade}]**",
         ]
         if self.risk_flags:
@@ -1886,13 +1964,26 @@ class RacingEngine:
         wins = self._current_jockey_formal_wins()
         trial_rides = self._current_jockey_trial_rides()
         trial_top3 = self._current_jockey_trial_top3()
+        jockey = self._clean_identity(self.horse_data.get("jockey")) or "今場騎師"
         if not any((rides, trial_rides)):
             return ""
         parts = []
         if rides:
-            parts.append(f"正式賽 {rides} 騎 {wins} 勝 {places} 上名")
+            if rides == 1:
+                if wins > 0:
+                    parts.append(f"{jockey}曾與此馬合作 1 次，並錄得頭馬")
+                elif places > 0:
+                    parts.append(f"{jockey}曾與此馬合作 1 次，該次有前列名次")
+                else:
+                    parts.append(f"{jockey}曾與此馬合作 1 次，該次未見前列")
+            elif wins > 0:
+                parts.append(f"{jockey}與此馬過往合作 {rides} 次，錄得 {wins} 勝 {places} 入位，配搭有實績支持")
+            elif places > 0:
+                parts.append(f"{jockey}與此馬過往合作 {rides} 次，錄得 {places} 次上名，配搭有一定穩定性")
+            else:
+                parts.append(f"{jockey}與此馬過往合作 {rides} 次，未勝未入位，數據偏弱")
         if trial_rides:
-            parts.append(f"試閘 {trial_rides} 騎 {trial_top3} 次前三")
+            parts.append(f"試閘 {trial_rides} 次，{trial_top3} 次前三")
         return "；".join(parts)
 
     def _current_venue_name(self):
@@ -1953,7 +2044,11 @@ class RacingEngine:
         wins = self._best_formal_jockey_wins()
         if not jockey or not rides:
             return ""
-        return f"{jockey} 曾策正式賽 {rides} 次，{wins} 勝 {places} 上名"
+        if wins > 0:
+            return f"{jockey} 曾策 {rides} 次，錄得 {wins} 勝 {places} 入位，為此馬歷來最有依據的配搭"
+        if places > 0:
+            return f"{jockey} 曾策 {rides} 次，錄得 {places} 次上名，配搭有一定穩定性"
+        return f"{jockey} 曾策 {rides} 次，數據偏弱"
 
     def _current_vs_best_jockey_brief(self):
         direct = str(self.data.get("current_vs_best_jockey_line") or "").strip()
@@ -2668,10 +2763,19 @@ class RacingEngine:
             match = re.search(r"出\s*\d+\s*次:\s*(\d+)\s*勝", result)
             if match and int(match.group(1)) > 0:
                 wins += 1
+        if wins == 0:
+            return "對手後續暫未見明顯贏馬延續"
         counts = self._formline_followup_counts()
-        parts = [f"higher class {counts['higher']} 匹", f"same class {counts['same']} 匹", f"lower class {counts['lower']} 匹"]
-        if wins:
-            parts.append(f"後續勝出 {wins} 匹")
+        parts = []
+        if counts["higher"] > 0:
+            parts.append(f"當中 {counts['higher']} 匹對手其後升班仍能再贏，反映賽績線含金量較高")
+        if counts["same"] > 0:
+            parts.append(f"{counts['same']} 匹對手其後同班再贏，反映賽績線有後續支持")
+        if counts["lower"] > 0:
+            parts.append(f"{counts['lower']} 匹對手其後降班再贏，支持力度較有限")
+        if not parts:
+            parts.append(f"對手後續有 {wins} 匹再贏")
+        parts.append(f"合共 {wins} 匹具後續交代")
         return "；".join(parts)
 
     def _formline_followup_counts(self):
@@ -3300,6 +3404,104 @@ class RacingEngine:
             score -= 1
         return score, f"可用分析錨點 {anchors}/14，並按 style confidence、正式樣本、jockey history、source 同 warnings 校正後，信心分 {clip_score(score):.1f}。", "data_coverage+style_meta+warnings+formline+jockey_history"
 
+    def _speed_rating_score(self):
+        tw_avg = self.data.get("timing_600m_avg_speed")
+        tw_recent = self.data.get("timing_600m_recent_speed")
+        tw_best = self.data.get("timing_600m_best_speed")
+        tw_trend = str(self.data.get("timing_600m_trend") or "")
+        tw_count = self.data.get("timing_l600_entries_count")
+        tw_trial_avg = self.data.get("timing_trial_600m_avg_speed")
+        tw_variance = self.data.get("timing_speed_variance")
+
+        if not tw_avg or not tw_count or tw_count < 2:
+            return 60, "Sixth-Hundred 數據樣本不足，速評以中性 60 分處理。", "timing_data"
+
+        score = 60
+        notes = []
+
+        # 1) Self-referential speed level
+        if tw_avg >= 17.5:
+            score += 10
+            notes.append("平均 Sixth-Hundred 速度快")
+        elif tw_avg >= 17.0:
+            score += 5
+            notes.append("平均 Sixth-Hundred 中上")
+        elif tw_avg <= 16.0:
+            score -= 10
+            notes.append("平均 Sixth-Hundred 偏慢")
+
+        # 2) Peak speed
+        if tw_best and tw_best >= 17.8:
+            score += 5
+            notes.append("最佳 Sixth-Hundred 頂級")
+        elif tw_best and tw_best >= 17.5:
+            score += 3
+            notes.append("最佳 Sixth-Hundred 有競爭力")
+
+        # 3) Speed CONSISTENCY (key for Good metric: both Top2 must place)
+        if tw_variance is not None:
+            if tw_variance < 0.4:
+                score += 8
+                notes.append("Sixth-Hundred 極穩定（低方差）→ Top3 可靠度高")
+            elif tw_variance < 0.8:
+                score += 4
+                notes.append("Sixth-Hundred 穩定")
+            elif tw_variance > 2.5:
+                score -= 8
+                notes.append("Sixth-Hundred 波動大 → 速度輸出唔穩定，Top3 可靠度存疑")
+            elif tw_variance > 1.5:
+                score -= 4
+                notes.append("Sixth-Hundred 略為波動")
+
+        # 4) Recent form
+        if tw_recent and tw_recent >= 17.5:
+            score += 4
+            notes.append("近仗速度高輸出")
+        elif tw_recent and tw_recent <= 16.0:
+            score -= 5
+            notes.append("近仗速度偏弱")
+
+        # 5) Trend
+        if "sharp_improving" in tw_trend:
+            score += 6
+            notes.append("速度趨勢急升 ✅")
+        elif "improving" in tw_trend:
+            score += 3
+            notes.append("速度趨勢向上")
+        elif "sharp_declining" in tw_trend:
+            score -= 6
+            notes.append("速度趨勢急跌 ⚠️")
+        elif "declining" in tw_trend:
+            score -= 3
+            notes.append("速度趨勢放緩")
+
+        # 6) Standard-time calibration
+        race_dist = self._distance_from_text(self.race_context.get("distance", ""))
+        if race_dist and race_dist >= 600:
+            std_l600 = _lookup_standard_l600(self._current_venue_name(), race_dist)
+            if std_l600 and std_l600 > 0:
+                std_speed = 600.0 / std_l600
+                delta_vs_std = tw_avg - std_speed if tw_avg else 0
+                if delta_vs_std > 1.0:
+                    score += 8
+                    notes.append(f"Sixth-Hundred 顯著快過場地標準 (+{delta_vs_std:.1f}m/s)")
+                elif delta_vs_std > 0.4:
+                    score += 4
+                    notes.append("Sixth-Hundred 略快過場地標準")
+                elif delta_vs_std < -1.0:
+                    score -= 7
+                    notes.append(f"Sixth-Hundred 顯著慢過場地標準 ({delta_vs_std:.1f}m/s)")
+                elif delta_vs_std < -0.4:
+                    score -= 3
+                    notes.append("Sixth-Hundred 略慢過場地標準")
+
+        # 7) Trial speed confirmation
+        if tw_trial_avg and tw_trial_avg >= 17.5:
+            score += 3
+            notes.append("試閘 Sixth-Hundred 亦見高速")
+
+        return score, f"{'; '.join(notes)}。速評分 {clip_score(score):.1f}。", "timing_data"
+
     def _micro_rank_bonus(self, matrix_scores, feature_scores):
         bonus = 0.0
         barrier = parse_float(self.horse_data.get("barrier"))
@@ -3607,6 +3809,13 @@ def enrich_logic_from_facts(logic_data: dict, facts_path: Path) -> dict:
         _merge_data_value(data, "track_stats_line", section.get("track_stats_line"))
         _merge_data_value(data, "going_stats_line", section.get("going_stats_line"))
         _merge_data_value(data, "stage_stats_line", section.get("stage_stats_line"))
+        _merge_data_value(data, "timing_600m_avg_speed", formguide.get("timing_600m_avg_speed"))
+        _merge_data_value(data, "timing_600m_recent_speed", formguide.get("timing_600m_recent_speed"))
+        _merge_data_value(data, "timing_600m_trend", formguide.get("timing_600m_trend"))
+        _merge_data_value(data, "timing_600m_best_speed", formguide.get("timing_600m_best_speed"))
+        _merge_data_value(data, "timing_l600_entries_count", formguide.get("timing_l600_entries_count"))
+        _merge_data_value(data, "timing_speed_variance", formguide.get("timing_speed_variance"))
+        _merge_data_value(data, "timing_trial_600m_avg_speed", formguide.get("timing_trial_600m_avg_speed"))
         _merge_data_value(data, "facts_section", facts_section)
         _merge_data_value(data, "last_finish_line", section.get("last_finish_line"))
         _merge_data_value(data, "warning_line", section.get("warning_line"))
@@ -3940,6 +4149,7 @@ def _summarize_formguide_section(section: str, horse_name: str) -> dict:
     trial_entries = [entry for entry in entries if entry["is_trial"]]
     latest_official = official_entries[0] if official_entries else {}
     latest_trial = trial_entries[0] if trial_entries else {}
+    timing_summary = _build_timing_summary(official_entries, trial_entries)
     recent_shape = _summarize_recent_shape(official_entries)
 
     jockey_stats: dict[str, dict] = {}
@@ -4032,7 +4242,72 @@ def _summarize_formguide_section(section: str, horse_name: str) -> dict:
         "recent_shape_wide_no_cover_count": recent_shape["wide_no_cover_count"],
         "recent_shape_early_work_count": recent_shape["early_work_count"],
         "recent_shape_summary_line": recent_shape["summary_line"],
+        "timing_600m_avg_speed": timing_summary["avg_600m_speed"],
+        "timing_600m_recent_speed": timing_summary["recent_600m_speed"],
+        "timing_600m_trend": timing_summary["trend_600m_speed"],
+        "timing_600m_best_speed": timing_summary["best_600m_speed"],
+        "timing_same_dist_600m_speed": timing_summary["same_dist_600m_speed"],
+        "timing_l600_entries_count": timing_summary["l600_entries_count"],
+        "timing_speed_variance": timing_summary.get("speed_variance"),
+        "timing_trial_600m_avg_speed": timing_summary.get("trial_600m_avg_speed"),
     }
+
+
+def _build_timing_summary(official_entries: list[dict], trial_entries: list[dict]) -> dict:
+    l600_speeds = []
+    for entry in official_entries:
+        split = entry.get("l600_split_seconds")
+        if split and 20 < split < 50:
+            l600_speeds.append(600.0 / split)
+    recent_speeds = l600_speeds[:3]
+    recent_avg = sum(recent_speeds) / len(recent_speeds) if recent_speeds else None
+    avg_speed = sum(l600_speeds) / len(l600_speeds) if l600_speeds else None
+    best_speed = max(l600_speeds) if l600_speeds else None
+    trend = ""
+    if len(l600_speeds) >= 3:
+        older = l600_speeds[2:][:2] if len(l600_speeds) >= 4 else [l600_speeds[-1]]
+        newer = l600_speeds[:2]
+        if len(older) >= 2 and len(newer) >= 2:
+            old_avg = sum(older) / len(older)
+            new_avg = sum(newer) / len(newer)
+            delta = new_avg - old_avg
+            if delta > 0.8:
+                trend = "sharp_improving"
+            elif delta > 0.3:
+                trend = "improving"
+            elif delta > -0.3:
+                trend = "stable"
+            elif delta > -0.8:
+                trend = "declining"
+            else:
+                trend = "sharp_declining"
+    trial_l600 = []
+    for entry in trial_entries:
+        split = entry.get("l600_split_seconds")
+        if split and 20 < split < 50:
+            trial_l600.append(600.0 / split)
+    trial_avg = sum(trial_l600) / len(trial_l600) if trial_l600 else None
+    speed_variance = None
+    if len(l600_speeds) >= 3:
+        mean_s = sum(l600_speeds) / len(l600_speeds)
+        speed_variance = round(sum((s - mean_s) ** 2 for s in l600_speeds) / len(l600_speeds), 3)
+    return {
+        "avg_600m_speed": round(avg_speed, 2) if avg_speed else None,
+        "recent_600m_speed": round(recent_avg, 2) if recent_avg else None,
+        "best_600m_speed": round(best_speed, 2) if best_speed else None,
+        "trend_600m_speed": trend,
+        "same_dist_600m_speed": None,
+        "l600_entries_count": len(l600_speeds),
+        "trial_600m_avg_speed": round(trial_avg, 2) if trial_avg else None,
+        "speed_variance": speed_variance,
+    }
+
+
+def _parse_time_to_seconds(text: str) -> float | None:
+    match = re.search(r"(\d{2}):(\d{2})\.(\d{3})", text)
+    if not match:
+        return None
+    return int(match.group(1)) * 60 + int(match.group(2)) + int(match.group(3)) / 1000.0
 
 
 def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
@@ -4055,24 +4330,35 @@ def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
         result_line_match = re.search(r"^(1-.+?)$", block, re.M)
         result_line = result_line_match.group(1).strip() if result_line_match else ""
         finish_pos = None
+        margin = None
         if result_line and hn_clean:
-            for pos_m in re.finditer(r"(\d+)-([^(]+)\s*\(", result_line):
+            for pos_m in re.finditer(r"(\d+)-([^(]+)\s*\(([^)]+)\)(?:\s+(\d+\.?\d*)L)?", result_line):
                 name_in_result = pos_m.group(2).strip().lower()
                 if hn_clean[:6] in name_in_result or name_in_result[:6] in hn_clean:
                     finish_pos = int(pos_m.group(1))
+                    if pos_m.group(4):
+                        margin = float(pos_m.group(4))
                     break
         note = _capture(block, r"^Note:\s*(.+)$")
         stewards = _capture(block, r"^Stewards:\s*(.+)$")
         video = _capture(block, r"^Video:\s*(.+)$")
+        winner_time = _parse_time_to_seconds(header)
+        l600_split = None
+        l600_match = re.search(r"\(?600m\s*/\s*(\d{2}:\d{2}\.\d{3})\)?", header)
+        if l600_match:
+            l600_split = _parse_time_to_seconds(l600_match.group(1))
         entries.append({
             "is_trial": is_trial,
             "jockey": jockey,
             "flucs": flucs,
             "last_flucs": fluc_values[-1] if fluc_values else "",
             "finish_pos": finish_pos,
+            "margin": margin,
             "settled_pos": _parse_running_position(header, "Settled"),
             "pos_400": _parse_running_position(header, "400m"),
             "pos_800": _parse_running_position(header, "800m"),
+            "winner_time_seconds": winner_time,
+            "l600_split_seconds": l600_split,
             "note": note,
             "stewards": stewards,
             "video": video,

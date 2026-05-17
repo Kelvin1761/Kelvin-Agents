@@ -26,6 +26,10 @@ from rating_engine_v2 import compute_base_grade, compute_weighted_score, apply_f
 from racing_content_guard import assert_no_dummy_json, assert_no_dummy_text, quarantine_file
 from validate_au_matrix_confidence import validate_au_matrix_confidence
 
+# ── Import modular analyzers (賽績線 + 騎練訊號) ──
+from formline_analyzer import analyze_formline, classify_margin, analyze_opponent_future
+from jockey_trainer_analyzer import analyze_jockey_trainer
+
 AU_MATRIX_SCHEMA = {
     "stability": "core", "sectional": "core",
     "race_shape": "semi", "jockey_trainer": "semi",
