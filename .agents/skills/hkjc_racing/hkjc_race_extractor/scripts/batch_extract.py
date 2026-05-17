@@ -6,7 +6,7 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 Batch extraction script for HKJC race data.
-Extracts racecard + formguide for multiple races concurrently,
+Extracts racecard + formguide + trackwork (晨操) for multiple races concurrently,
 plus the starter PDF (once per meeting).
 
 Usage:
@@ -37,6 +37,7 @@ else:
 RACECARD_SCRIPT = os.path.join(SKILL_DIR, 'extract_racecard.py')
 FORMGUIDE_SCRIPT = os.path.join(SKILL_DIR, 'extract_formguide_playwright.py')
 STARTER_PDF_SCRIPT = os.path.join(SKILL_DIR, 'extract_starter_pdf.py')
+TRACKWORK_SCRIPT = os.path.join(SKILL_DIR, 'extract_trackwork.py')
 
 # Force UTF-8 for child subprocess output (prevents garbled Chinese on non-macOS systems)
 SUBPROCESS_ENV = {**os.environ, 'PYTHONIOENCODING': 'utf-8'}
@@ -163,6 +164,37 @@ def extract_starter_pdf(date_yyyymmdd, output_dir, date_prefix):
         return False, str(e)
 
 
+def extract_trackwork_meeting(base_url, races, output_dir, date_prefix):
+    """Extract 晨操 (morning trackwork) for all races in one call.
+    Uses --fail-soft so missing data doesn't abort the pipeline."""
+    results = {'ok': False, 'races': {}, 'error': ''}
+    race_list = ','.join(str(r) for r in races)
+    try:
+        result = subprocess.run(
+            [VENV_PYTHON, TRACKWORK_SCRIPT,
+             '--base_url', base_url,
+             '--races', race_list,
+             '--output_dir', output_dir,
+             '--fail-soft'],
+            capture_output=True, text=True, timeout=300,
+            encoding='utf-8', env=SUBPROCESS_ENV
+        )
+        for r in races:
+            json_path = os.path.join(output_dir, f"{date_prefix} Race {r} 晨操.json")
+            md_path = os.path.join(output_dir, f"{date_prefix} Race {r} 晨操.md")
+            results['races'][r] = {
+                'json_ok': os.path.exists(json_path) and os.path.getsize(json_path) > 100,
+                'md_ok': os.path.exists(md_path) and os.path.getsize(md_path) > 50,
+            }
+        total_ok = sum(1 for v in results['races'].values() if v['json_ok'] and v['md_ok'])
+        results['ok'] = total_ok > 0
+        if result.returncode != 0:
+            results['error'] = result.stderr[:200]
+    except Exception as e:
+        results['error'] = str(e)
+    return results
+
+
 def main():
     parser = argparse.ArgumentParser(description="Batch extract HKJC race data")
     parser.add_argument("--base_url", required=True, help="Any racecard URL from the meeting")
@@ -209,7 +241,19 @@ def main():
         sys.exit(1)
     print()
 
-    # Step 2: Extract all races concurrently
+    # Step 2: Extract 晨操 (trackwork) — all races in one shot, fail-soft
+    print(f"🏇 Extracting 晨操 (trackwork) for {len(races)} races...")
+    tw_results = extract_trackwork_meeting(args.base_url, races, output_dir, date_prefix)
+    tw_ok_count = sum(1 for v in tw_results['races'].values() if v['json_ok'] and v['md_ok'])
+    if tw_results['ok']:
+        print(f"   ✅ 晨操: {tw_ok_count}/{len(races)} races")
+    else:
+        print(f"   ⚠️ 晨操: {tw_ok_count}/{len(races)} races (下游將使用 fallback)")
+        if tw_results['error']:
+            print(f"      {tw_results['error']}")
+    print()
+
+    # Step 3: Extract racecard + formguide concurrently
     print(f"🔄 Extracting {len(races)} races (max {args.max_workers} concurrent)...")
     all_results = []
     with ThreadPoolExecutor(max_workers=args.max_workers) as executor:
@@ -235,6 +279,10 @@ def main():
     print(f"📊 Summary: {total_rc}/{len(races)} racecards | {total_fg}/{len(races)} formguides")
     if pdf_ok:
         print(f"   ✅ Starter PDF: OK")
+    if tw_results['ok']:
+        print(f"   ✅ 晨操 Trackwork: {tw_ok_count}/{len(races)} races")
+    else:
+        print(f"   ⚠️ 晨操 Trackwork: {tw_ok_count}/{len(races)} races (fallback)")
     print(f"   📁 All files saved to: {output_dir}")
 
 
