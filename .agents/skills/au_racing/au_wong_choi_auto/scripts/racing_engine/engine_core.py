@@ -530,8 +530,30 @@ class RacingEngine:
             pf_score -= 3
             pf_notes.append("L400 趨勢略放")
         if "穩定" in trends.get("pi_trend", ""):
-            pf_score += 3
+            pf_score += 1
             pf_notes.append("PI 穩定")
+        # PI-speed cross-validation: PI trend misleading when actual speed contradicts
+        pi_trend_val = trends.get("pi_trend", "")
+        tw_recent_spd = self.data.get("timing_600m_recent_speed")
+        tw_avg_spd = self.data.get("timing_600m_avg_speed")
+        horse_spd = tw_recent_spd or tw_avg_spd
+        field_count = int(self._field_summary().get("count") or 0)
+        going = str(self._today_going() or "").lower()
+        is_big_or_wet = field_count >= 13 or "soft" in going or "heavy" in going or "5" in going or "7" in going
+        if is_big_or_wet and horse_spd and horse_spd >= 17.0:
+            if "衰退中" in pi_trend_val:
+                pf_score += 4
+                pf_notes.append("PI 衰退但 Sixth-Hundred 維持 → 大場/濕地 PI 訊號抵銷")
+            elif "微跌" in pi_trend_val:
+                pf_score += 2
+                pf_notes.append("PI 微跌但 Sixth-Hundred 唔差 → 大場/濕地微調補償")
+        elif is_big_or_wet and horse_spd and horse_spd <= 16.0:
+            if "上升" in pi_trend_val:
+                pf_score -= 3
+                pf_notes.append("PI 上升但 Sixth-Hundred 偏慢 → 大場/濕地 PI 不可過信")
+            elif "穩定" in pi_trend_val:
+                pf_score -= 1
+                pf_notes.append("PI 穩定但 Sixth-Hundred 偏慢 → 大場/濕地有保留")
         pf_score = clip_score(pf_score)
 
         forgiveness_score = 60
