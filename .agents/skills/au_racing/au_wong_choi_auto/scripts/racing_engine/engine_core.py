@@ -533,6 +533,35 @@ class RacingEngine:
                 self.reason_codes.append("maiden_fast_trial_speed")
             elif tw_trial and tw_trial >= 17.0:
                 score += 2
+        # Trial video qualitative signals (from trial comments)
+        trial_signals = self.data.get("trial_video_signals") or {}
+        if trial_signals:
+            restrained = trial_signals.get("restrained", 0)
+            competitive = trial_signals.get("competitive", 0)
+            weakened = trial_signals.get("weakened", 0)
+            led = trial_signals.get("led", 0)
+            improving = trial_signals.get("improving", 0)
+            full_test = trial_signals.get("full_test", 0)
+            if restrained >= 1:
+                score += 4 if starts == 0 or is_maiden else 2
+                self.reason_codes.append("trial_restrained_signal")
+            if competitive >= 2:
+                score += 4
+            elif competitive >= 1:
+                score += 2
+            if led >= 2 and competitive >= 1:
+                score += 3
+                self.reason_codes.append("trial_led_competitive")
+            elif led >= 1 and competitive >= 1:
+                score += 1
+            if improving >= 1:
+                score += 2
+            if weakened >= 2:
+                score -= 4
+            elif weakened >= 1:
+                score -= 2
+            if full_test >= 2 and competitive == 0:
+                score -= 3
         return score, f"近試閘前 3 名次 {trial_places[:3]}，有 {good} 次前列，並按最近一課/試閘密度修正，試閘分 {clip_score(score):.1f}。", "trial_table"
 
     def _sectional_breakdown(self):
@@ -3978,6 +4007,7 @@ def enrich_logic_from_facts(logic_data: dict, facts_path: Path) -> dict:
         _merge_data_value(data, "timing_600m_best_speed", formguide.get("timing_600m_best_speed"))
         _merge_data_value(data, "timing_l600_entries_count", formguide.get("timing_l600_entries_count"))
         _merge_data_value(data, "timing_speed_variance", formguide.get("timing_speed_variance"))
+        _merge_data_value(data, "trial_video_signals", formguide.get("trial_video_signals"))
         _merge_data_value(data, "timing_trial_600m_avg_speed", formguide.get("timing_trial_600m_avg_speed"))
         _merge_data_value(data, "facts_section", facts_section)
         _merge_data_value(data, "last_finish_line", section.get("last_finish_line"))
@@ -4302,6 +4332,28 @@ def _extract_race_number_from_text_or_name(text: str, filename: str) -> int:
     return int(header.group(1)) if header else 1
 
 
+def _parse_trial_video_signals(trial_entries: list[dict]) -> dict:
+    signals = {"restrained": 0, "full_test": 0, "competitive": 0, "weakened": 0,
+               "led": 0, "improving": 0}
+    for e in trial_entries:
+        video = str(e.get("video") or "").lower()
+        if not video or video == "none":
+            continue
+        if any(t in video for t in ['held together','not asked','not extended','under restraint','ridden quietly','held together','untested']):
+            signals["restrained"] += 1
+        if any(t in video for t in ['urged along','pushed along','asked for effort','ridden along','hard ridden','ridden out']):
+            signals["full_test"] += 1
+        if any(t in video for t in ['kept chasing','chased hard','made ground','kept closing','fought','prevail','kept going','battled']):
+            signals["competitive"] += 1
+        if any(t in video for t in ['weakened','drifted','tired','faded','gave ground','beaten','wd badly','wd latter','battled']):
+            signals["weakened"] += 1
+        if any(t in video for t in ['led','leader','found lead','narrow lead','tracked leader','sett fence']):
+            signals["led"] += 1
+        if any(t in video for t in ['improved','passed runner','made ground late','kept coming','wound-up']):
+            signals["improving"] += 1
+    return signals
+
+
 def _summarize_formguide_section(section: str, horse_name: str) -> dict:
     current_jockey = _capture(section, r"\|\s*J:\s*([^(\n|]+)")
     sire_line = _capture(section, r"Sire:\s*([^|]+)")
@@ -4313,6 +4365,7 @@ def _summarize_formguide_section(section: str, horse_name: str) -> dict:
     latest_official = official_entries[0] if official_entries else {}
     latest_trial = trial_entries[0] if trial_entries else {}
     timing_summary = _build_timing_summary(official_entries, trial_entries)
+    trial_video_signals = _parse_trial_video_signals(trial_entries)
     recent_shape = _summarize_recent_shape(official_entries)
 
     jockey_stats: dict[str, dict] = {}
@@ -4405,6 +4458,7 @@ def _summarize_formguide_section(section: str, horse_name: str) -> dict:
         "recent_shape_wide_no_cover_count": recent_shape["wide_no_cover_count"],
         "recent_shape_early_work_count": recent_shape["early_work_count"],
         "recent_shape_summary_line": recent_shape["summary_line"],
+        "trial_video_signals": trial_video_signals,
         "timing_600m_avg_speed": timing_summary["avg_600m_speed"],
         "timing_600m_recent_speed": timing_summary["recent_600m_speed"],
         "timing_600m_trend": timing_summary["trend_600m_speed"],
