@@ -776,6 +776,11 @@ class RacingEngine:
             score = 64
             self.reason_codes.append("race_shape_large_field_gate")
             notes.append("大場面而跑法證據偏薄，形勢分數已按大場閘門收回")
+        # Midfield runners in BM races: pace map less predictive, tighten ceiling
+        if current_bucket == "mid" and race_bucket in {"bm58", "bm72"} and score > 62:
+            score = 62
+            self.reason_codes.append("race_shape_midfield_bm_gate")
+            notes.append("BM 賽事對守中馬嘅 pace map 優勢較弱，形勢分已收回")
         if shape_stats["entropy"] >= 3 and style_conf not in {"高", "High"} and score > 65:
             score = 65
             self.reason_codes.append("race_shape_entropy_gate")
@@ -3453,12 +3458,18 @@ class RacingEngine:
                 score -= 4
                 notes.append("Sixth-Hundred 略為波動")
 
-        # 4) Recent form
-        if tw_recent and tw_recent >= 17.5:
+        # 4) Recent vs Average: winners show recent > avg
+        if tw_recent and tw_avg and tw_recent > tw_avg + 0.3:
             score += 4
+            notes.append("近仗速度明顯快過平均 → 狀態上升中")
+        elif tw_recent and tw_avg and tw_recent < tw_avg - 0.3:
+            score -= 3
+            notes.append("近仗速度慢過平均 → 狀態回落")
+        elif tw_recent and tw_recent >= 17.5:
+            score += 3
             notes.append("近仗速度高輸出")
         elif tw_recent and tw_recent <= 16.0:
-            score -= 5
+            score -= 4
             notes.append("近仗速度偏弱")
 
         # 5) Trend
