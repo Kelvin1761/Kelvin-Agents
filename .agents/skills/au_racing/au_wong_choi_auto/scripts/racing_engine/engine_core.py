@@ -431,12 +431,30 @@ class RacingEngine:
         if record:
             place_rate = safe_ratio(record["places"], record["starts"])
             score = 54 + place_rate * 32
+            # Maiden breakthrough: trial top3 as alternative form signal
+            if self._is_maiden_race():
+                trial_count = int(parse_float(self.data.get("trial_count")) or 0)
+                trial_top3 = int(parse_float(self.data.get("trial_top3_count")) or 0)
+                if trial_count >= 4 and trial_top3 >= 3:
+                    score += 5
+                    self.reason_codes.append("maiden_trial_form_proxy")
+                elif trial_count >= 3 and trial_top3 >= 2:
+                    score += 3
             return score, f"生涯正式賽上名率 {place_rate:.0%}，近績分 {clip_score(score):.1f}。", "career_record"
+        # Maiden with no official record: use trial data as form proxy
+        if self._is_maiden_race():
+            trial_count = int(parse_float(self.data.get("trial_count")) or 0)
+            trial_top3 = int(parse_float(self.data.get("trial_top3_count")) or 0)
+            if trial_count >= 3 and trial_top3 >= 2:
+                return 62, f"試閘 {trial_count} 次 {trial_top3} 次前三，Maiden 用試閘作近績替代，近績分 62。", "trial_as_form_proxy"
+            if trial_count >= 1 and trial_top3 >= 1:
+                return 58, f"試閘有前列樣本，Maiden 近績分以試閘保守估算 58 分。", "trial_as_form_proxy"
         return 60, "正式近績樣本有限，近績分中性處理。", "missing_neutral"
 
     def _trial_score(self):
         trial_places = self._trial_places()
         starts = parse_float(self.horse_data.get("career_race_starts"))
+        is_maiden = self._is_maiden_race()
         if not trial_places:
             return 58 if starts == 0 else 60, "試閘訊號有限，試閘分保守處理。", "trial_table"
         good = sum(1 for place in trial_places[:3] if place <= 3)
@@ -445,12 +463,30 @@ class RacingEngine:
         latest_trial = trial_places[0] if trial_places else None
         if starts == 0:
             score += 4
+            if is_maiden:
+                score += 2
+                self.reason_codes.append("maiden_debut_trial_boost")
         if latest_trial == 1:
             score += 4
+            if is_maiden:
+                score += 2
         elif latest_trial is not None and latest_trial <= 3:
             score += 2
+            if is_maiden:
+                score += 1
         if trial_count >= 4 and safe_ratio(good, max(1, min(3, trial_count))) >= 0.66:
             score += 2
+            if is_maiden and trial_count >= 6 and safe_ratio(good, trial_count) >= 0.6:
+                score += 3
+                self.reason_codes.append("maiden_trial_density_boost")
+        # Maiden: trial speed as direct signal
+        if is_maiden:
+            tw_trial = self.data.get("timing_trial_600m_avg_speed")
+            if tw_trial and tw_trial >= 17.5:
+                score += 4
+                self.reason_codes.append("maiden_fast_trial_speed")
+            elif tw_trial and tw_trial >= 17.0:
+                score += 2
         return score, f"近試閘前 3 名次 {trial_places[:3]}，有 {good} 次前列，並按最近一課/試閘密度修正，試閘分 {clip_score(score):.1f}。", "trial_table"
 
     def _sectional_breakdown(self):
@@ -540,6 +576,10 @@ class RacingEngine:
         field_count = int(self._field_summary().get("count") or 0)
         going = str(self._today_going() or "").lower()
         is_big_or_wet = field_count >= 13 or "soft" in going or "heavy" in going or "5" in going or "7" in going
+        is_maiden = self._is_maiden_race()
+        if is_maiden:
+            # Maiden: PI is unreliable with few starts, suppress all PI signals
+            pi_trend_val = ""
         if is_big_or_wet and horse_spd and horse_spd >= 17.0:
             if "衰退中" in pi_trend_val:
                 pf_score += 4
@@ -1119,6 +1159,14 @@ class RacingEngine:
                 "formline_score",
                 "form_score",
             ),
+            "speed_performance": self._reason_bundle(
+                "speed_performance",
+                matrix_scores["speed_performance"],
+                feature_scores,
+                feature_notes,
+                "speed_rating_score",
+                "sectional_score",
+            ),
         }
 
     def _reason_bundle(self, key, score, feature_scores, feature_notes, *component_keys):
@@ -1563,6 +1611,7 @@ class RacingEngine:
             "class_weight": "級數與負重",
             "track": "場地適性",
             "form_line": "賽績線",
+            "speed_performance": "實速表現",
         }.get(key, key)
 
     def _feature_label(self, key):
@@ -1582,6 +1631,7 @@ class RacingEngine:
             "consistency_score": "穩定性分",
             "health_score": "健康分",
             "confidence_score": "信心分",
+            "speed_rating_score": "速評分",
         }.get(key, key)
 
     def _verdict_shape(self, matrix_scores):
@@ -2674,6 +2724,9 @@ class RacingEngine:
             return "maiden"
         return ""
 
+    def _is_maiden_race(self):
+        return self._race_class_bucket() == "maiden"
+
     def _field_summary(self):
         data = self.race_context.get("field_summary")
         return data if isinstance(data, dict) else {}
@@ -3532,6 +3585,37 @@ class RacingEngine:
         if tw_trial_avg and tw_trial_avg >= 17.5:
             score += 3
             notes.append("試閘 Sixth-Hundred 亦見高速")
+
+        # 7) Maiden: trial speed as primary signal + sire distance suitability
+        if self._is_maiden_race():
+            tw_trial = self.data.get("timing_trial_600m_avg_speed")
+            if tw_trial and tw_trial >= 17.5:
+                score += 6
+                notes.append("Maiden 試閘 Sixth-Hundred 高速 → 重要正面訊號")
+            elif tw_trial and tw_trial >= 17.0:
+                score += 3
+                notes.append("Maiden 試閘 Sixth-Hundred 中上")
+            elif tw_trial and tw_trial <= 16.0:
+                score -= 4
+                notes.append("Maiden 試閘 Sixth-Hundred 偏慢")
+            # Sire distance suitability for maidens
+            sire = self._sire_line()
+            target_dist = self._distance_m()
+            if sire and target_dist:
+                # Simple heuristic: known stayers vs sprinters
+                stayer_sires = ["galileo","frankel","sea the stars","montjeu","high chaparral","teofilo",
+                               "camelot","dubawi","shamardal","so you think","tavistock","savabeel",
+                               "redoute","lonhro","o'reilly","zabeel","pentire"]
+                sprinter_sires = ["i am invincible","exceed and excel","snitzel","written tycoon",
+                                 "not a single doubt","nicconi","zoustar","deep field","holy roman",
+                                 "brazen beau","capitalist","russian revolution","shalaa"]
+                sire_lower = sire.lower()
+                if target_dist >= 1600 and any(s in sire_lower for s in stayer_sires):
+                    score += 3
+                    notes.append(f"血統 {sire[:15]} 指向中長途適合")
+                elif target_dist <= 1200 and any(s in sire_lower for s in sprinter_sires):
+                    score += 2
+                    notes.append(f"血統 {sire[:15]} 指向短途適合")
 
         return score, f"{'; '.join(notes)}。速評分 {clip_score(score):.1f}。", "timing_data"
 
