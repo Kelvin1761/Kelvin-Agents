@@ -335,6 +335,52 @@ class RacingEngine:
         if jt_fit >= 72 and cs < 58:
             feature_scores["jockey_horse_fit_score"] = jt_fit - 3
             feature_notes["jockey_horse_fit_score"] = feature_notes.get("jockey_horse_fit_score", "") + "；[環境] 級數偏弱，騎練加成已收回"
+        # ── Class/form interaction: class_move × form_line ──
+        entries = self._official_entries()
+        if entries and len(entries) >= 2:
+            class_moves = [str(e.get("class_move", "")) for e in entries[:4] if e.get("class_move")]
+            if class_moves:
+                drops = sum(1 for c in class_moves if "降班" in c)
+                big_drops = sum(1 for c in class_moves if "大幅降班" in c)
+                rises = sum(1 for c in class_moves if "升班" in c and "降" not in c)
+                fl_score = feature_scores.get("formline_score", 60)
+                fl_strong = fl_score >= 72
+                fl_decent = fl_score >= 65
+                fl_weak = fl_score <= 52
+                if big_drops >= 1:
+                    if fl_strong:
+                        feature_scores["formline_score"] = clip_score(fl_score + 4)
+                        feature_notes["formline_score"] = feature_notes.get("formline_score", "") + "；[級數] 大幅降班 × 強賽績線 → 正面訊號"
+                        self.reason_codes.append("class_drop_strong_formline")
+                    elif fl_decent:
+                        feature_scores["formline_score"] = clip_score(fl_score + 3)
+                        feature_notes["formline_score"] = feature_notes.get("formline_score", "") + "；[級數] 大幅降班 × 中等賽績線 → 中度正面"
+                    elif fl_weak:
+                        feature_scores["formline_score"] = clip_score(fl_score + 1)
+                        feature_notes["formline_score"] = feature_notes.get("formline_score", "") + "；[級數] 大幅降班，賽績線偏弱，保守加分"
+                elif drops >= 1:
+                    if fl_strong:
+                        feature_scores["formline_score"] = clip_score(fl_score + 3)
+                        feature_notes["formline_score"] = feature_notes.get("formline_score", "") + "；[級數] 降班 × 強賽績線 → 正面訊號"
+                        self.reason_codes.append("class_drop_strong_formline")
+                    elif fl_decent:
+                        feature_scores["formline_score"] = clip_score(fl_score + 1)
+                        feature_notes["formline_score"] = feature_notes.get("formline_score", "") + "；[級數] 降班 × 中等賽績線 → 小幅度加分"
+                elif rises >= 2:
+                    if fl_strong:
+                        feature_scores["formline_score"] = clip_score(fl_score + 1)
+                        feature_notes["formline_score"] = feature_notes.get("formline_score", "") + "；[級數] 持續升班 × 強賽績線 → 保守加分"
+                    elif fl_weak:
+                        feature_scores["formline_score"] = clip_score(fl_score - 2)
+                        feature_notes["formline_score"] = feature_notes.get("formline_score", "") + "；[級數] 升班 × 弱賽績線 → 不宜過信"
+                        self.reason_codes.append("class_rise_weak_formline")
+                elif rises >= 1:
+                    if fl_strong:
+                        feature_scores["formline_score"] = clip_score(fl_score + 1)
+                        feature_notes["formline_score"] = feature_notes.get("formline_score", "") + "；[級數] 升班 × 強賽績線 → 可保守加分"
+                    elif fl_weak:
+                        feature_scores["formline_score"] = clip_score(fl_score - 2)
+                        feature_notes["formline_score"] = feature_notes.get("formline_score", "") + "；[級數] 升班 × 弱賽績線 → 有保留"
 
         matrix_scores = map_features_to_matrix_scores(feature_scores)
         matrix = map_features_to_matrix(feature_scores)
