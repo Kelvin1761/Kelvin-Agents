@@ -5,7 +5,7 @@ import re
 
 FEATURE_KEYS = ("form_score","trial_score","sectional_score","pace_map_score","jockey_score","trainer_score","jockey_horse_fit_score","class_score","weight_score","distance_score","track_score","formline_score","consistency_score","health_score","confidence_score","speed_rating_score")
 
-MATRIX_WEIGHTS = {"stability":0.16,"sectional":0.14,"race_shape":0.10,"jockey_trainer":0.15,"class_weight":0.12,"track":0.09,"form_line":0.16,"speed_performance":0.08}
+MATRIX_WEIGHTS = {"stability":0.16,"sectional":0.15,"race_shape":0.10,"jockey_trainer":0.14,"class_weight":0.12,"track":0.10,"form_line":0.15,"speed_performance":0.08}
 _WEIGHT_FLOOR = {"stability":0.10}
 _WEIGHT_CEILING = {"class_weight":0.20,"track":0.17}
 
