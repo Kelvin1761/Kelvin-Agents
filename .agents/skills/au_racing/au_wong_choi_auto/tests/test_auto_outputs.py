@@ -227,9 +227,9 @@ class AuAutoOutputTests(unittest.TestCase):
 
         report = render_race_markdown(logic)
 
-        self.assertIn("#### 💡 核心邏輯與結論", report)
-        self.assertIn("寬恕焦點", report)
-        self.assertIn("最大競爭優勢", report)
+        self.assertIn("#### 🧠 核心分析", report)
+        self.assertIn("#### 主要優勢", report)
+        self.assertIn("#### 主要風險", report)
         self.assertIn("若", report)
 
 

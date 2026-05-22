@@ -1,0 +1,2708 @@
+[
+  {
+    "meeting": "2025-08-02 Flemington Race 1-9",
+    "race_number": 5,
+    "class": "BM78, Handicap",
+    "distance": "2000m",
+    "going": "",
+    "field_size": 12,
+    "top2": [
+      {
+        "horse": "Aztec State",
+        "number": 1,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Catani Gardens",
+        "number": 12,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-08-02 Flemington Race 1-9",
+    "race_number": 7,
+    "class": "Group 3, Handicap, Maidens Ineligible",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 10,
+    "top2": [
+      {
+        "horse": "Bossy Nic",
+        "number": 9,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Splash Back",
+        "number": 11,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-08-02 Flemington Race 1-9",
+    "race_number": 8,
+    "class": "BM84, Handicap",
+    "distance": "1620m",
+    "going": "",
+    "field_size": 15,
+    "top2": [
+      {
+        "horse": "One Long Day",
+        "number": 11,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Black Storm",
+        "number": 10,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-08-02 Flemington Race 1-9",
+    "race_number": 9,
+    "class": "4-Y-O & Up, Mares, BM78, Handicap",
+    "distance": "1410m",
+    "going": "",
+    "field_size": 13,
+    "top2": [
+      {
+        "horse": "Eagle Express",
+        "number": 17,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Capricorn Star",
+        "number": 5,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-08-09 Randwick Race 1-10",
+    "race_number": 1,
+    "class": "3yo+, BM72, Handicap",
+    "distance": "1100m",
+    "going": "",
+    "field_size": 15,
+    "top2": [
+      {
+        "horse": "Stratafy",
+        "number": 13,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Mal Coupe",
+        "number": 3,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-08-09 Randwick Race 1-10",
+    "race_number": 2,
+    "class": "3yo+, Class 3, Handicap",
+    "distance": "1000m",
+    "going": "",
+    "field_size": 16,
+    "top2": [
+      {
+        "horse": "Exit Fee",
+        "number": 3,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Ditterich",
+        "number": 9,
+        "finish": "8",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-08-09 Randwick Race 1-10",
+    "race_number": 3,
+    "class": "3yo+, Fillies & Mares, BM78, Handicap",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 8,
+    "top2": [
+      {
+        "horse": "Dollar Magic",
+        "number": 1,
+        "finish": "8",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Berezka",
+        "number": 5,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-08-09 Randwick Race 1-10",
+    "race_number": 4,
+    "class": "3,4yo, BM72, Handicap",
+    "distance": "1400m",
+    "going": "",
+    "field_size": 8,
+    "top2": [
+      {
+        "horse": "Tuileries",
+        "number": 3,
+        "finish": "8",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Pretty Powerful",
+        "number": 7,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-08-09 Randwick Race 1-10",
+    "race_number": 5,
+    "class": "3yo+, BM88, Handicap",
+    "distance": "1000m",
+    "going": "",
+    "field_size": 11,
+    "top2": [
+      {
+        "horse": "Bundeena",
+        "number": 8,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "World Alliance",
+        "number": 4,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-08-09 Randwick Race 1-10",
+    "race_number": 6,
+    "class": "3yo+, BM78, Handicap",
+    "distance": "2400m",
+    "going": "",
+    "field_size": 15,
+    "top2": [
+      {
+        "horse": "Piggyback",
+        "number": 6,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Fioprospero",
+        "number": 7,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-08-09 Randwick Race 1-10",
+    "race_number": 7,
+    "class": "3yo+, Colts, Horses & Geldings, BM78, Handicap",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 12,
+    "top2": [
+      {
+        "horse": "Kerguelen",
+        "number": 2,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Sessions Road",
+        "number": 7,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-08-09 Randwick Race 1-10",
+    "race_number": 8,
+    "class": "Group 2, 3yo+, open, SW+P",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 10,
+    "top2": [
+      {
+        "horse": "General Salute",
+        "number": 4,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "With Your Blessing",
+        "number": 6,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-08-09 Randwick Race 1-10",
+    "race_number": 9,
+    "class": "3yo+, open, Handicap",
+    "distance": "1800m",
+    "going": "",
+    "field_size": 20,
+    "top2": [
+      {
+        "horse": "Saltcoats",
+        "number": 16,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Glory Daze",
+        "number": 12,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-08-09 Randwick Race 1-10",
+    "race_number": 10,
+    "class": "3yo+, BM78, Handicap",
+    "distance": "1600m",
+    "going": "",
+    "field_size": 17,
+    "top2": [
+      {
+        "horse": "Puntin",
+        "number": 3,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Anythink Goes",
+        "number": 10,
+        "finish": "8",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-09-21 Flemington Race 1-8",
+    "race_number": 1,
+    "class": "3-Y-O & Up, BM70, Handicap",
+    "distance": "2550m",
+    "going": "",
+    "field_size": 10,
+    "top2": [
+      {
+        "horse": "Thurmond",
+        "number": 9,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Navy King",
+        "number": 1,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-09-21 Flemington Race 1-8",
+    "race_number": 5,
+    "class": "3-Y-O & Up, BM66, Handicap",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 10,
+    "top2": [
+      {
+        "horse": "Obvious",
+        "number": 2,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Wetumpka",
+        "number": 6,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-09-21 Flemington Race 1-8",
+    "race_number": 8,
+    "class": "BM74, Handicap",
+    "distance": "1420m",
+    "going": "",
+    "field_size": 11,
+    "top2": [
+      {
+        "horse": "Catoggio",
+        "number": 4,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Silver Magnate",
+        "number": 12,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-10-04 Flemington Race 1-10",
+    "race_number": 7,
+    "class": "Group 3, Handicap",
+    "distance": "2520m",
+    "going": "",
+    "field_size": 16,
+    "top2": [
+      {
+        "horse": "Mormona",
+        "number": 12,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Sayedaty Sadaty",
+        "number": 9,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-10-04 Randwick Race 1-10",
+    "race_number": 1,
+    "class": "3-Y-O & Up, BM72, Handicap",
+    "distance": "1800m",
+    "going": "",
+    "field_size": 12,
+    "top2": [
+      {
+        "horse": "Sunset Park",
+        "number": 6,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Magic Pharoah",
+        "number": 12,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-10-04 Randwick Race 1-10",
+    "race_number": 3,
+    "class": "Group 3, 2-Y-O, Fillies, Set Weights",
+    "distance": "1000m",
+    "going": "",
+    "field_size": 11,
+    "top2": [
+      {
+        "horse": "The Wildling",
+        "number": 11,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Home Invasion",
+        "number": 5,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-10-04 Randwick Race 1-10",
+    "race_number": 4,
+    "class": "LR, 3-Y-O, Set Weights",
+    "distance": "1600m",
+    "going": "",
+    "field_size": 10,
+    "top2": [
+      {
+        "horse": "Cobra Club",
+        "number": 9,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Federalist",
+        "number": 4,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-10-04 Randwick Race 1-10",
+    "race_number": 5,
+    "class": "3-Y-O & Up, BM94, Handicap",
+    "distance": "1600m",
+    "going": "",
+    "field_size": 18,
+    "top2": [
+      {
+        "horse": "Polymnia",
+        "number": 20,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Glad You Think So",
+        "number": 15,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-10-04 Randwick Race 1-10",
+    "race_number": 9,
+    "class": "Group 1, 3-Y-O & Up, Handicap",
+    "distance": "2400m",
+    "going": "",
+    "field_size": 18,
+    "top2": [
+      {
+        "horse": "Travolta",
+        "number": 17,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Piggyback",
+        "number": 11,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-10-04 Randwick Race 1-10",
+    "race_number": 10,
+    "class": "3-Y-O & Up, BM94, Handicap",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 15,
+    "top2": [
+      {
+        "horse": "Les Vampires",
+        "number": 1,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Kerguelen",
+        "number": 10,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-11-01 Flemington Race 1-9",
+    "race_number": 3,
+    "class": "Group 3, Handicap, Maidens Ineligible",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 13,
+    "top2": [
+      {
+        "horse": "Hedged",
+        "number": 10,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Star Patrol",
+        "number": 4,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-11-01 Flemington Race 1-9",
+    "race_number": 9,
+    "class": "Group 3, 4-Y-O & Up, Mares, SW + P",
+    "distance": "1100m",
+    "going": "",
+    "field_size": 12,
+    "top2": [
+      {
+        "horse": "Stretan Angel",
+        "number": 5,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Soft Love",
+        "number": 13,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-11-01 Randwick Race 1-10",
+    "race_number": 2,
+    "class": "3-Y-O & Up, Class 3, Handicap",
+    "distance": "1400m",
+    "going": "",
+    "field_size": 15,
+    "top2": [
+      {
+        "horse": "Concoction",
+        "number": 8,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Lightning Speed",
+        "number": 10,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-11-01 Randwick Race 1-10",
+    "race_number": 7,
+    "class": "3-Y-O & Up, SW + P",
+    "distance": "1300m",
+    "going": "",
+    "field_size": 15,
+    "top2": [
+      {
+        "horse": "Private Eye",
+        "number": 4,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "With Your Blessing",
+        "number": 14,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-11-01 Randwick Race 1-10",
+    "race_number": 9,
+    "class": "Group 3, 3-Y-O & Up, Quality",
+    "distance": "2000m",
+    "going": "",
+    "field_size": 15,
+    "top2": [
+      {
+        "horse": "Maison Louis",
+        "number": 4,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "State Of America",
+        "number": 15,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-11-04 Flemington Race 1-10",
+    "race_number": 2,
+    "class": "BM80, Handicap",
+    "distance": "2000m",
+    "going": "",
+    "field_size": 13,
+    "top2": [
+      {
+        "horse": "Giggenbach",
+        "number": 14,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Brave Miss",
+        "number": 7,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-11-04 Flemington Race 1-10",
+    "race_number": 3,
+    "class": "LR, 3-Y-O, SW + P",
+    "distance": "1800m",
+    "going": "",
+    "field_size": 15,
+    "top2": [
+      {
+        "horse": "Snitz Sonic",
+        "number": 8,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Zentorno",
+        "number": 10,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-11-04 Flemington Race 1-10",
+    "race_number": 6,
+    "class": "LR, Handicap, Maidens Ineligible",
+    "distance": "1800m",
+    "going": "",
+    "field_size": 9,
+    "top2": [
+      {
+        "horse": "Flying Valley",
+        "number": 13,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Unspoken",
+        "number": 1,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-11-04 Flemington Race 1-10",
+    "race_number": 7,
+    "class": "Group 1, 3-Y-O & Up, Handicap",
+    "distance": "3200m",
+    "going": "",
+    "field_size": 24,
+    "top2": [
+      {
+        "horse": "Parchment Party",
+        "number": 18,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Valiant King",
+        "number": 24,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-11-04 Flemington Race 1-10",
+    "race_number": 8,
+    "class": "LR, 3-Y-O, Quality",
+    "distance": "1400m",
+    "going": "",
+    "field_size": 15,
+    "top2": [
+      {
+        "horse": "Hidden Achievement",
+        "number": 1,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Bacash",
+        "number": 4,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-11-04 Flemington Race 1-10",
+    "race_number": 9,
+    "class": "Group 3, 4-Y-O & Up, Mares, SW + P",
+    "distance": "1400m",
+    "going": "",
+    "field_size": 14,
+    "top2": [
+      {
+        "horse": "Electric Impulse",
+        "number": 7,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Perfect Picture",
+        "number": 19,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-11-04 Randwick Race 1-10",
+    "race_number": 1,
+    "class": "3-Y-O & Up, BM72, Handicap",
+    "distance": "1800m",
+    "going": "",
+    "field_size": 8,
+    "top2": [
+      {
+        "horse": "Highborn Harry",
+        "number": 8,
+        "finish": "4",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Philipsburg",
+        "number": 7,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-11-04 Randwick Race 1-10",
+    "race_number": 6,
+    "class": "3-Y-O & Up, Handicap",
+    "distance": "1300m",
+    "going": "",
+    "field_size": 12,
+    "top2": [
+      {
+        "horse": "Mogo Magic",
+        "number": 2,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Chidiac",
+        "number": 10,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-11-04 Randwick Race 1-10",
+    "race_number": 10,
+    "class": "4-Y-O & Up, BM84, Handicap",
+    "distance": "1000m",
+    "going": "",
+    "field_size": 9,
+    "top2": [
+      {
+        "horse": "Bundeena",
+        "number": 4,
+        "finish": "4",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Durova",
+        "number": 8,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-11-06 Flemington Race 1-9",
+    "race_number": 1,
+    "class": "3-Y-O & Up, Fillies & Mares, BM70, Handicap",
+    "distance": "1700m",
+    "going": "",
+    "field_size": 15,
+    "top2": [
+      {
+        "horse": "Dane On Tour",
+        "number": 9,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Nursery Chime",
+        "number": 5,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-11-06 Flemington Race 1-9",
+    "race_number": 2,
+    "class": "BM90, Handicap, Grey horses only",
+    "distance": "1400m",
+    "going": "",
+    "field_size": 12,
+    "top2": [
+      {
+        "horse": "Feeling Dusty",
+        "number": 12,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Raven's Silver",
+        "number": 14,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-11-06 Flemington Race 1-9",
+    "race_number": 7,
+    "class": "Group 3, 3-Y-O, Fillies, SW + P",
+    "distance": "1100m",
+    "going": "",
+    "field_size": 16,
+    "top2": [
+      {
+        "horse": "Cantiamo",
+        "number": 13,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Akaysha",
+        "number": 9,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-12-13 Randwick Race 1-10",
+    "race_number": 5,
+    "class": "2-Y-O, Set Weights",
+    "distance": "1000m",
+    "going": "",
+    "field_size": 9,
+    "top2": [
+      {
+        "horse": "Bohemian Rhapsody",
+        "number": 1,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Elio",
+        "number": 2,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-12-13 Randwick Race 1-10",
+    "race_number": 6,
+    "class": "3-Y-O & Up, BM88, Handicap",
+    "distance": "1800m",
+    "going": "",
+    "field_size": 11,
+    "top2": [
+      {
+        "horse": "Rotagilla",
+        "number": 9,
+        "finish": "4",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Mr Buster",
+        "number": 8,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-12-20 Randwick Race 1-10",
+    "race_number": 2,
+    "class": "3-Y-O & Up, BM72, Handicap",
+    "distance": "1600m",
+    "going": "",
+    "field_size": 13,
+    "top2": [
+      {
+        "horse": "Highborn Harry",
+        "number": 7,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Kingston Charm",
+        "number": 3,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-12-20 Randwick Race 1-10",
+    "race_number": 4,
+    "class": "3-Y-O, BM72, Handicap",
+    "distance": "1300m",
+    "going": "",
+    "field_size": 8,
+    "top2": [
+      {
+        "horse": "Good Hotspur",
+        "number": 2,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Philatelic",
+        "number": 12,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-12-20 Randwick Race 1-10",
+    "race_number": 5,
+    "class": "3&4-Y-O, BM72, Handicap",
+    "distance": "1600m",
+    "going": "",
+    "field_size": 10,
+    "top2": [
+      {
+        "horse": "Tequisoda",
+        "number": 13,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Mortal Halo",
+        "number": 6,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-12-20 Randwick Race 1-10",
+    "race_number": 6,
+    "class": "3-Y-O & Up, BM78, Handicap",
+    "distance": "2400m",
+    "going": "",
+    "field_size": 10,
+    "top2": [
+      {
+        "horse": "Bestower",
+        "number": 4,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Shadashi",
+        "number": 11,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-12-27 Randwick Race 1-10",
+    "race_number": 8,
+    "class": "3-Y-O & Up, C,G&E, BM78, Handicap",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 9,
+    "top2": [
+      {
+        "horse": "Snack Bar",
+        "number": 2,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Signor Tortoni",
+        "number": 4,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-12-27 Randwick Race 1-10",
+    "race_number": 10,
+    "class": "3-Y-O & Up, BM78, Handicap",
+    "distance": "1400m",
+    "going": "",
+    "field_size": 11,
+    "top2": [
+      {
+        "horse": "Frontex",
+        "number": 8,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Duvana",
+        "number": 11,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-12-31 Flemington Race 1-8",
+    "race_number": 1,
+    "class": "No Metro Wins, Handicap",
+    "distance": "1600m",
+    "going": "",
+    "field_size": 11,
+    "top2": [
+      {
+        "horse": "Vivacissimo",
+        "number": 12,
+        "finish": "4",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Thunder Hawk",
+        "number": 13,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2025-12-31 Flemington Race 1-8",
+    "race_number": 7,
+    "class": "3-Y-O & Up, BM66, Handicap",
+    "distance": "1100m",
+    "going": "",
+    "field_size": 15,
+    "top2": [
+      {
+        "horse": "Alero",
+        "number": 6,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Rose De Vellor",
+        "number": 12,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-01-03 Randwick Race 1-10",
+    "race_number": 3,
+    "class": "3-Y-O & Up, BM72, Handicap",
+    "distance": "1100m",
+    "going": "",
+    "field_size": 13,
+    "top2": [
+      {
+        "horse": "Oakfield Badger",
+        "number": 5,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Clancy",
+        "number": 6,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-01-10 Flemington Race 1-10",
+    "race_number": 2,
+    "class": "3-Y-O & Up, BM78, Handicap",
+    "distance": "2000m",
+    "going": "",
+    "field_size": 9,
+    "top2": [
+      {
+        "horse": "Politely Dun",
+        "number": 7,
+        "finish": "4",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Prince Eric",
+        "number": 1,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-01-10 Flemington Race 1-10",
+    "race_number": 3,
+    "class": "3-Y-O, Fillies, Handicap",
+    "distance": "1100m",
+    "going": "",
+    "field_size": 12,
+    "top2": [
+      {
+        "horse": "Breakfast",
+        "number": 7,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Seven Oceans",
+        "number": 11,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-01-10 Flemington Race 1-10",
+    "race_number": 6,
+    "class": "3-Y-O & Up, BM70, Handicap",
+    "distance": "1000m",
+    "going": "",
+    "field_size": 13,
+    "top2": [
+      {
+        "horse": "Chergui",
+        "number": 14,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Cavalry Girl",
+        "number": 13,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-01-10 Flemington Race 1-10",
+    "race_number": 8,
+    "class": "Group 3, Handicap, Maidens Ineligible",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 11,
+    "top2": [
+      {
+        "horse": "Hedged",
+        "number": 5,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Major Share",
+        "number": 9,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-01-10 Flemington Race 1-10",
+    "race_number": 10,
+    "class": "3-Y-O & Up, BM74, Handicap",
+    "distance": "1400m",
+    "going": "",
+    "field_size": 12,
+    "top2": [
+      {
+        "horse": "Legacy Bay",
+        "number": 14,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Hot Digity Boom",
+        "number": 13,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-01-17 Flemington Race 1-10",
+    "race_number": 2,
+    "class": "3-Y-O & Up, BM78, Handicap",
+    "distance": "2520m",
+    "going": "",
+    "field_size": 10,
+    "top2": [
+      {
+        "horse": "Leonchroi",
+        "number": 7,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Hot Too Go",
+        "number": 8,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-01-17 Flemington Race 1-10",
+    "race_number": 3,
+    "class": "3-Y-O, Handicap",
+    "distance": "2000m",
+    "going": "",
+    "field_size": 10,
+    "top2": [
+      {
+        "horse": "Black Frost",
+        "number": 2,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Aggressive",
+        "number": 7,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-01-17 Flemington Race 1-10",
+    "race_number": 10,
+    "class": "3-Y-O, BM70, Handicap",
+    "distance": "1400m",
+    "going": "",
+    "field_size": 10,
+    "top2": [
+      {
+        "horse": "Buccleuch",
+        "number": 1,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Yes Maxi",
+        "number": 7,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-01-24 Randwick Race 1-10",
+    "race_number": 1,
+    "class": "2-Y-O, Handicap",
+    "distance": "1000m",
+    "going": "",
+    "field_size": 9,
+    "top2": [
+      {
+        "horse": "Oh Yes She Did",
+        "number": 4,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Gold Globe",
+        "number": 3,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-01-24 Randwick Race 1-10",
+    "race_number": 3,
+    "class": "3-Y-O & Up, Class 3, Handicap",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 14,
+    "top2": [
+      {
+        "horse": "Joiselle",
+        "number": 5,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Navy Steel",
+        "number": 12,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-01-24 Randwick Race 1-10",
+    "race_number": 4,
+    "class": "3&4-Y-O, BM72, Handicap",
+    "distance": "1400m",
+    "going": "",
+    "field_size": 9,
+    "top2": [
+      {
+        "horse": "Sister Daae",
+        "number": 6,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Bella Corazon",
+        "number": 8,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-01-24 Randwick Race 1-10",
+    "race_number": 5,
+    "class": "3-Y-O & Up, BM88, Handicap",
+    "distance": "2000m",
+    "going": "",
+    "field_size": 7,
+    "top2": [
+      {
+        "horse": "Fay's Angels",
+        "number": 9,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Casino Bear",
+        "number": 7,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-01-24 Randwick Race 1-10",
+    "race_number": 7,
+    "class": "3-Y-O & Up, BM88, Handicap",
+    "distance": "1600m",
+    "going": "",
+    "field_size": 7,
+    "top2": [
+      {
+        "horse": "Rolling Magic",
+        "number": 7,
+        "finish": "4",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Jamberoo",
+        "number": 8,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-02-07 Randwick Race 1-10",
+    "race_number": 2,
+    "class": "3-Y-O & Up, Class 3, Handicap",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 16,
+    "top2": [
+      {
+        "horse": "Blend Of Three",
+        "number": 10,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Nimble Star",
+        "number": 6,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-02-07 Randwick Race 1-10",
+    "race_number": 3,
+    "class": "LR, 2-Y-O, SW + P",
+    "distance": "1000m",
+    "going": "",
+    "field_size": 10,
+    "top2": [
+      {
+        "horse": "Lady Moscato",
+        "number": 6,
+        "finish": "4",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Satin Summer",
+        "number": 7,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-02-07 Randwick Race 1-10",
+    "race_number": 7,
+    "class": "2-Y-O, Set Weights",
+    "distance": "1100m",
+    "going": "",
+    "field_size": 16,
+    "top2": [
+      {
+        "horse": "Where's The Circus",
+        "number": 9,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Lassified",
+        "number": 10,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-02-14 Flemington Race 1-10",
+    "race_number": 6,
+    "class": "Handicap",
+    "distance": "2500m",
+    "going": "",
+    "field_size": 10,
+    "top2": [
+      {
+        "horse": "Newfoundland",
+        "number": 3,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Scary",
+        "number": 4,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-02-14 Flemington Race 1-10",
+    "race_number": 9,
+    "class": "Group 3, 3-Y-O, C&G, SW + P",
+    "distance": "1400m",
+    "going": "",
+    "field_size": 11,
+    "top2": [
+      {
+        "horse": "Wetumpka",
+        "number": 11,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "West Of Swindon",
+        "number": 1,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-02-14 Flemington Race 1-10",
+    "race_number": 10,
+    "class": "Group 3, 3-Y-O & Up, Fillies & Mares, SW + P",
+    "distance": "1400m",
+    "going": "",
+    "field_size": 10,
+    "top2": [
+      {
+        "horse": "Too Darn Discreet",
+        "number": 4,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Grid Girl",
+        "number": 9,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-02-14 Randwick Race 1-10",
+    "race_number": 1,
+    "class": "3-Y-O & Up, Class 3, Handicap",
+    "distance": "1800m",
+    "going": "",
+    "field_size": 13,
+    "top2": [
+      {
+        "horse": "Rocco Lini",
+        "number": 19,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Regal Problem",
+        "number": 10,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-02-14 Randwick Race 1-10",
+    "race_number": 2,
+    "class": "3-Y-O & Up, BM72, Handicap",
+    "distance": "1000m",
+    "going": "",
+    "field_size": 12,
+    "top2": [
+      {
+        "horse": "Apache Breeze",
+        "number": 14,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Sea Admiral",
+        "number": 11,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-02-28 Flemington Race 1-10",
+    "race_number": 6,
+    "class": "3-Y-O, Fillies, Handicap",
+    "distance": "1100m",
+    "going": "",
+    "field_size": 11,
+    "top2": [
+      {
+        "horse": "Befuddle",
+        "number": 7,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Headbanger",
+        "number": 10,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-02-28 Flemington Race 1-10",
+    "race_number": 9,
+    "class": "3-Y-O, SW + P, Inglis horses only",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 15,
+    "top2": [
+      {
+        "horse": "Toronado Queen",
+        "number": 12,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Alpha Sofie",
+        "number": 3,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-02-28 Randwick Race 1-10",
+    "race_number": 1,
+    "class": "3-Y-O & Up, BM72, Handicap",
+    "distance": "1100m",
+    "going": "",
+    "field_size": 13,
+    "top2": [
+      {
+        "horse": "Zoutastic",
+        "number": 3,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Let's Go Again",
+        "number": 6,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-02-28 Randwick Race 1-10",
+    "race_number": 2,
+    "class": "3-Y-O & Up, Class 3, Handicap",
+    "distance": "1000m",
+    "going": "",
+    "field_size": 15,
+    "top2": [
+      {
+        "horse": "Ishikari",
+        "number": 16,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Zampano",
+        "number": 7,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-02-28 Randwick Race 1-10",
+    "race_number": 4,
+    "class": "Group 2, 2-Y-O, Fillies, Set Weights",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 8,
+    "top2": [
+      {
+        "horse": "Lumbini",
+        "number": 3,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Ciaron's Star",
+        "number": 4,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-02-28 Randwick Race 1-10",
+    "race_number": 5,
+    "class": "Group 2, 2-Y-O, C&G, Set Weights",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 10,
+    "top2": [
+      {
+        "horse": "Warwoven",
+        "number": 4,
+        "finish": "4",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Fireball",
+        "number": 1,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-03-07 Flemington Race 1-10",
+    "race_number": 1,
+    "class": "3-Y-O, Quality",
+    "distance": "1100m",
+    "going": "",
+    "field_size": 7,
+    "top2": [
+      {
+        "horse": "Petit Artiste",
+        "number": 8,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Go Left",
+        "number": 5,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-03-07 Flemington Race 1-10",
+    "race_number": 9,
+    "class": "Group 1, Handicap, Maidens Ineligible",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 14,
+    "top2": [
+      {
+        "horse": "Tentyris",
+        "number": 2,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "My Gladiola",
+        "number": 13,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-03-07 Flemington Race 1-10",
+    "race_number": 10,
+    "class": "3-Y-O & Up, SW + P",
+    "distance": "2000m",
+    "going": "",
+    "field_size": 9,
+    "top2": [
+      {
+        "horse": "Whisky On The Hill",
+        "number": 2,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Magnaspin",
+        "number": 3,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-03-07 Randwick Race 1-10",
+    "race_number": 6,
+    "class": "Group 3, 3-Y-O & Up, Fillies & Mares, Quality",
+    "distance": "1600m",
+    "going": "",
+    "field_size": 12,
+    "top2": [
+      {
+        "horse": "Unleeshing",
+        "number": 5,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Quietness",
+        "number": 1,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-03-28 Flemington",
+    "race_number": 1,
+    "class": "4-Y-O & Up, Mares, Handicap",
+    "distance": "1100m",
+    "going": "",
+    "field_size": 8,
+    "top2": [
+      {
+        "horse": "She's An Artist",
+        "number": 5,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Fluent",
+        "number": 7,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-03-28 Flemington",
+    "race_number": 5,
+    "class": "3-Y-O & Up, BM84, Handicap",
+    "distance": "2000m",
+    "going": "",
+    "field_size": 12,
+    "top2": [
+      {
+        "horse": "Pantile Warrior",
+        "number": 15,
+        "finish": "4",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Golden Crusader",
+        "number": 9,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-03-28 Flemington",
+    "race_number": 6,
+    "class": "LR, 3-Y-O, SW + P",
+    "distance": "1100m",
+    "going": "",
+    "field_size": 9,
+    "top2": [
+      {
+        "horse": "Legacy Bound",
+        "number": 2,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Military Tycoon",
+        "number": 6,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-03-28 Flemington",
+    "race_number": 7,
+    "class": "LR, 3-Y-O & Up, SW + P",
+    "distance": "2600m",
+    "going": "",
+    "field_size": 12,
+    "top2": [
+      {
+        "horse": "Point Nepean",
+        "number": 5,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Desert Hero",
+        "number": 6,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-03-28 Flemington",
+    "race_number": 10,
+    "class": "3-Y-O & Up, Handicap",
+    "distance": "1600m",
+    "going": "",
+    "field_size": 13,
+    "top2": [
+      {
+        "horse": "Justadeel",
+        "number": 11,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Statuario",
+        "number": 10,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-01 Warwick Farm Race 1-8",
+    "race_number": 1,
+    "class": "2-Y-O, Maiden, Handicap",
+    "distance": "1300m",
+    "going": "",
+    "field_size": 11,
+    "top2": [
+      {
+        "horse": "Grafology",
+        "number": 11,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Fawlty Affairs",
+        "number": 5,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-06 Sandown Lakeside Race 1-8",
+    "race_number": 3,
+    "class": "4-Y-O & Up, Mares, BM78, Handicap",
+    "distance": "1800m",
+    "going": "",
+    "field_size": 13,
+    "top2": [
+      {
+        "horse": "Chest Of Gold",
+        "number": 14,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Heed The Omens",
+        "number": 15,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-06 Sandown Lakeside Race 1-8",
+    "race_number": 5,
+    "class": "3-Y-O & Up, BM66, Handicap",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 9,
+    "top2": [
+      {
+        "horse": "Alzaro",
+        "number": 11,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Vangogh Bankcheque",
+        "number": 5,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-10 Cranbourne Race 1-8",
+    "race_number": 7,
+    "class": "",
+    "distance": "800m",
+    "going": "",
+    "field_size": 9,
+    "top2": [
+      {
+        "horse": "Bold Response",
+        "number": 3,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Podargoni",
+        "number": 6,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-11 Randwick Race 1-10",
+    "race_number": 3,
+    "class": "Group 2, 2-Y-O, Fillies, SW + P",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 9,
+    "top2": [
+      {
+        "horse": "Lumbini",
+        "number": 3,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Screen Icon",
+        "number": 4,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-11 Randwick Race 1-10",
+    "race_number": 4,
+    "class": "Set Weights",
+    "distance": "1400m",
+    "going": "",
+    "field_size": 15,
+    "top2": [
+      {
+        "horse": "Miss Busslinger",
+        "number": 12,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Buffalo",
+        "number": 6,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-11 Randwick Race 1-10",
+    "race_number": 6,
+    "class": "Group 2, 3-Y-O, Set Weights",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 9,
+    "top2": [
+      {
+        "horse": "Marhoona",
+        "number": 8,
+        "finish": "4",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Skyhook",
+        "number": 4,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-11 Randwick Race 1-10",
+    "race_number": 7,
+    "class": "Group 1, 3-Y-O & Up, Handicap",
+    "distance": "3200m",
+    "going": "",
+    "field_size": 14,
+    "top2": [
+      {
+        "horse": "Juja Kibo",
+        "number": 10,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Newlook",
+        "number": 13,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-14 Hawkesbury Race 1-7",
+    "race_number": 4,
+    "class": "Class 1, Handicap",
+    "distance": "1000m",
+    "going": "",
+    "field_size": 10,
+    "top2": [
+      {
+        "horse": "Charlina",
+        "number": 5,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Hayek",
+        "number": 4,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-14 Hawkesbury Race 1-7",
+    "race_number": 5,
+    "class": "Class 1, Handicap",
+    "distance": "1300m",
+    "going": "",
+    "field_size": 12,
+    "top2": [
+      {
+        "horse": "Aranese",
+        "number": 11,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Dear My Friend",
+        "number": 5,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-16 Pakenham Race 1-8",
+    "race_number": 1,
+    "class": "3-Y-O & Up, Class 1, Handicap",
+    "distance": "1600m",
+    "going": "",
+    "field_size": 7,
+    "top2": [
+      {
+        "horse": "Square Deal",
+        "number": 2,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Surperb Frost",
+        "number": 3,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-16 Pakenham Race 1-8",
+    "race_number": 8,
+    "class": "0 - 66, Handicap",
+    "distance": "1600m",
+    "going": "",
+    "field_size": 10,
+    "top2": [
+      {
+        "horse": "Captain Cat",
+        "number": 3,
+        "finish": "4",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Quello Dorato",
+        "number": 5,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-17 Cranbourne Race 1-8",
+    "race_number": 2,
+    "class": "Maiden, Set Weights",
+    "distance": "1000m",
+    "going": "",
+    "field_size": 8,
+    "top2": [
+      {
+        "horse": "Boa Vista",
+        "number": 8,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Inner Thoughts",
+        "number": 9,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-17 Cranbourne Race 1-8",
+    "race_number": 3,
+    "class": "3-Y-O & Up, Maiden, Set Weights",
+    "distance": "1300m",
+    "going": "",
+    "field_size": 10,
+    "top2": [
+      {
+        "horse": "Iftihar",
+        "number": 10,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Nikephoros",
+        "number": 2,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-17 Cranbourne Race 1-8",
+    "race_number": 5,
+    "class": "C,G&E, BM62, Handicap",
+    "distance": "1000m",
+    "going": "",
+    "field_size": 6,
+    "top2": [
+      {
+        "horse": "Viasain",
+        "number": 3,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Lake Gillear",
+        "number": 6,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-17 Cranbourne Race 1-8",
+    "race_number": 6,
+    "class": "Fillies & Mares, BM62, Handicap",
+    "distance": "1000m",
+    "going": "",
+    "field_size": 9,
+    "top2": [
+      {
+        "horse": "Superliv",
+        "number": 7,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Maya's Ace",
+        "number": 5,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-17 Cranbourne Race 1-8",
+    "race_number": 8,
+    "class": "3-Y-O & Up, Fillies & Mares, BM62, Handicap",
+    "distance": "1400m",
+    "going": "",
+    "field_size": 12,
+    "top2": [
+      {
+        "horse": "Till Queen",
+        "number": 12,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Queen Amanjena",
+        "number": 8,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-18 Randwick",
+    "race_number": 1,
+    "class": "3-Y-O & Up, BM72, Handicap",
+    "distance": "1400m",
+    "going": "",
+    "field_size": 17,
+    "top2": [
+      {
+        "horse": "Cosmeena",
+        "number": 9,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Mailata",
+        "number": 3,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-18 Randwick",
+    "race_number": 2,
+    "class": "3-Y-O & Up, Class 3, Handicap",
+    "distance": "1400m",
+    "going": "",
+    "field_size": 17,
+    "top2": [
+      {
+        "horse": "Breukelen",
+        "number": 21,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Bonnie Murringo",
+        "number": 14,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-18 Randwick",
+    "race_number": 5,
+    "class": "Group 3, 3-Y-O, Set Weights",
+    "distance": "2000m",
+    "going": "",
+    "field_size": 15,
+    "top2": [
+      {
+        "horse": "Mister Martini",
+        "number": 15,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Eureka Rebel",
+        "number": 3,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-18 Randwick",
+    "race_number": 9,
+    "class": "Group 1, Weight for Age",
+    "distance": "1400m",
+    "going": "",
+    "field_size": 13,
+    "top2": [
+      {
+        "horse": "Half Yours",
+        "number": 5,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Fangirl",
+        "number": 11,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-22 Canterbury Race 1-8",
+    "race_number": 1,
+    "class": "3-Y-O & Up, Maiden, Set Weights",
+    "distance": "1900m",
+    "going": "",
+    "field_size": 9,
+    "top2": [
+      {
+        "horse": "Scoop The Pool",
+        "number": 6,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Crusader Voyage",
+        "number": 2,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-24 Cranbourne Race 1-7",
+    "race_number": 7,
+    "class": "BM62, Handicap",
+    "distance": "1600m",
+    "going": "",
+    "field_size": 9,
+    "top2": [
+      {
+        "horse": "Elvis",
+        "number": 6,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Dancing Dolly",
+        "number": 8,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-25 Flemington Race 1-8",
+    "race_number": 2,
+    "class": "3-Y-O, Fillies, BM70, Handicap",
+    "distance": "1400m",
+    "going": "",
+    "field_size": 12,
+    "top2": [
+      {
+        "horse": "Carriedo",
+        "number": 6,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Cafe Au Lait",
+        "number": 4,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-25 Flemington Race 1-8",
+    "race_number": 4,
+    "class": "3-Y-O & Up, BM74, Handicap",
+    "distance": "1800m",
+    "going": "",
+    "field_size": 14,
+    "top2": [
+      {
+        "horse": "Mukhtalif",
+        "number": 2,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "First Chorus",
+        "number": 6,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-25 Flemington Race 1-8",
+    "race_number": 7,
+    "class": "3-Y-O & Up, BM100, Handicap",
+    "distance": "2000m",
+    "going": "",
+    "field_size": 14,
+    "top2": [
+      {
+        "horse": "Zakouma",
+        "number": 15,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Etna Rosso",
+        "number": 3,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-25 Randwick Race 1-8",
+    "race_number": 3,
+    "class": "3-Y-O & Up, Fillies & Mares, BM78, Handicap",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 13,
+    "top2": [
+      {
+        "horse": "Jellicious",
+        "number": 2,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Everyone's A Star",
+        "number": 9,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-25 Randwick Race 1-8",
+    "race_number": 4,
+    "class": "3-Y-O & Up, C,G&E, BM78, Handicap",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 13,
+    "top2": [
+      {
+        "horse": "Hay Street",
+        "number": 13,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Balkans",
+        "number": 8,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-25 Randwick Race 1-8",
+    "race_number": 7,
+    "class": "3-Y-O & Up, BM100, Handicap",
+    "distance": "1500m",
+    "going": "",
+    "field_size": 11,
+    "top2": [
+      {
+        "horse": "Kintyre",
+        "number": 11,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Phearson",
+        "number": 12,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-25 Randwick Race 1-8",
+    "race_number": 8,
+    "class": "3-Y-O & Up, BM78, Handicap",
+    "distance": "1600m",
+    "going": "",
+    "field_size": 17,
+    "top2": [
+      {
+        "horse": "King Pedro",
+        "number": 9,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Black Babylon",
+        "number": 15,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-29 Caulfield Heath Race 1-8",
+    "race_number": 5,
+    "class": "3-Y-O, BM70, Handicap",
+    "distance": "1800m",
+    "going": "",
+    "field_size": 9,
+    "top2": [
+      {
+        "horse": "There Were Roses",
+        "number": 9,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Deliberate Ploy",
+        "number": 5,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-29 Caulfield Heath Race 1-8",
+    "race_number": 6,
+    "class": "3-Y-O & Up, Fillies & Mares, BM74, Handicap",
+    "distance": "1000m",
+    "going": "",
+    "field_size": 11,
+    "top2": [
+      {
+        "horse": "Tuscaloosa Gem",
+        "number": 10,
+        "finish": "4",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Tiz Worthy",
+        "number": 12,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-29 Caulfield Heath Race 1-8",
+    "race_number": 7,
+    "class": "3-Y-O & Up, BM70, Handicap",
+    "distance": "1000m",
+    "going": "",
+    "field_size": 10,
+    "top2": [
+      {
+        "horse": "Just Bolts",
+        "number": 6,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Mainmankash",
+        "number": 9,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-04-29 Caulfield Heath Race 1-8",
+    "race_number": 8,
+    "class": "3-Y-O, BM64, Handicap",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 9,
+    "top2": [
+      {
+        "horse": "Wishful Thinker",
+        "number": 15,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Invincible Woman",
+        "number": 4,
+        "finish": "4",
+        "odds": "N/A"
+      }
+    ]
+  },
+  {
+    "meeting": "2026-05-08 Pakenham Race 1-8",
+    "race_number": 7,
+    "class": "2-Y-O & Up, BM62, Handicap",
+    "distance": "1200m",
+    "going": "",
+    "field_size": 15,
+    "top2": [
+      {
+        "horse": "Bark",
+        "number": 6,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      },
+      {
+        "horse": "Doc's Nipper",
+        "number": 14,
+        "finish": "Unplaced",
+        "odds": "N/A"
+      }
+    ]
+  }
+]

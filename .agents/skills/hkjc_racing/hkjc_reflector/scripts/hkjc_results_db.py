@@ -8,41 +8,68 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[5]
 
 LEGACY_ANALYSIS_DB = ROOT / "Archive_Race_Analysis"
-CANONICAL_RESULTS_DB = LEGACY_ANALYSIS_DB / "HKJC_Race_Results_Database"
+HK_RACING_ANALYSIS_DB = LEGACY_ANALYSIS_DB / "HK_Racing"
+CANONICAL_RESULTS_DB = HK_RACING_ANALYSIS_DB / "HKJC_Race_Results_Database"
+LEGACY_RESULTS_DB = LEGACY_ANALYSIS_DB / "HKJC_Race_Results_Database"
+
+
+def _first_existing_path(candidates: list[Path], default: Path) -> Path:
+    for path in candidates:
+        if path.exists():
+            return path
+    return default
 
 
 def get_results_database_root() -> Path:
-    return CANONICAL_RESULTS_DB
+    return _first_existing_path(
+        [CANONICAL_RESULTS_DB, LEGACY_RESULTS_DB],
+        CANONICAL_RESULTS_DB,
+    )
 
 
 def get_analysis_archive_root() -> Path:
-    return LEGACY_ANALYSIS_DB
+    return _first_existing_path(
+        [HK_RACING_ANALYSIS_DB, LEGACY_ANALYSIS_DB],
+        HK_RACING_ANALYSIS_DB,
+    )
 
 
 def get_season_results_roots() -> list[Path]:
+    root = get_results_database_root()
     return [
-        CANONICAL_RESULTS_DB / "hkjc results 2024 25",
-        CANONICAL_RESULTS_DB / "hkjc results 2025 26",
+        root / "hkjc results 2024 25",
+        root / "hkjc results 2025 26",
     ]
 
 
 def get_comprehensive_stats_root() -> Path:
-    return (CANONICAL_RESULTS_DB / "comprehensive_stats" / "Full" / "race_results_Full.csv").parents[1]
+    root = get_results_database_root()
+    candidates = [
+        root / "comprehensive_stats",
+        root / "comprehensive_stats" / "Full",
+    ]
+    for path in candidates:
+        if path.exists():
+            return path if path.name == "comprehensive_stats" else path.parent
+    return root / "comprehensive_stats"
 
 
 def get_season_csvs() -> list[Path]:
+    root = get_results_database_root()
     return [
-        CANONICAL_RESULTS_DB / "comprehensive_stats" / "24_25" / "race_results_24_25.csv",
-        CANONICAL_RESULTS_DB / "comprehensive_stats" / "25_26" / "race_results_25_26.csv",
+        root / "comprehensive_stats" / "24_25" / "race_results_24_25.csv",
+        root / "comprehensive_stats" / "25_26" / "race_results_25_26.csv",
     ]
 
 
 def get_full_results_csv() -> Path:
-    return CANONICAL_RESULTS_DB / "comprehensive_stats" / "Full" / "race_results_Full.csv"
+    root = get_results_database_root()
+    return root / "comprehensive_stats" / "Full" / "race_results_Full.csv"
 
 
 def get_combo_priors_csv() -> Path:
-    return CANONICAL_RESULTS_DB / "comprehensive_stats" / "Full" / "general_pre_race_priors" / "jockey_trainer_combo_priors.csv"
+    root = get_results_database_root()
+    return root / "comprehensive_stats" / "Full" / "general_pre_race_priors" / "jockey_trainer_combo_priors.csv"
 
 
 def build_results_index(results_roots: list[Path] | None = None) -> dict[str, Path]:
@@ -67,7 +94,7 @@ def find_meeting_results_file(meeting_dir: Path, results_roots: list[Path] | Non
 
 
 def ensure_results_database_dirs() -> dict[str, Path]:
-    root = CANONICAL_RESULTS_DB
+    root = get_results_database_root()
     season_24 = root / "hkjc results 2024 25"
     season_25 = root / "hkjc results 2025 26"
     stats = root / "comprehensive_stats"

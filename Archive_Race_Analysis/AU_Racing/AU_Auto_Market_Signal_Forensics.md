@@ -7,17 +7,17 @@
 
 ## Overall Low-Hit Sample
 
-- `0-hit + 1-hit` races: **191**
-- `0-hit` races: **42**
-- `1-hit` races: **149**
+- `0-hit + 1-hit` races: **22**
+- `0-hit` races: **5**
+- `1-hit` races: **17**
 
 ## Market-Signal Winner Subset
 
-- 市場訊號頭馬樣本: **125 / 191 = 65.4%**
-- 其中 `0-hit`: **26**
-- 其中 `1-hit`: **99**
-- 頭馬仍排 model `4-6`: **40**
-- 頭馬跌出 model `7+`: **29**
+- 市場訊號頭馬樣本: **16 / 22 = 72.7%**
+- 其中 `0-hit`: **4**
+- 其中 `1-hit`: **12**
+- 頭馬仍排 model `4-6`: **5**
+- 頭馬跌出 model `7+`: **5**
 
 Interpretation: `4-6` 比較似 rerank / tightening 問題；`7+` 更似上游 feature depth 未夠。
 
@@ -25,59 +25,59 @@ Interpretation: `4-6` 比較似 rerank / tightening 問題；`7+` 更似上游 f
 
 | Bucket | Races | Share |
 |---|---:|---:|
-| Favourite | 64 | 51.2% |
-| Short SP<=4 | 13 | 10.4% |
-| Market Top3 | 48 | 38.4% |
+| Favourite | 10 | 62.5% |
+| Short SP<=4 | 0 | 0.0% |
+| Market Top3 | 6 | 37.5% |
 
 ## Most Common Missing Signals In Market-Signal Winners
 
 | Section | Count |
 |---|---:|
-| 騎練訊號低估 | 43 |
-| 場地適性低估 | 29 |
-| 級數與負重低估 | 28 |
-| 形勢與走位低估 | 26 |
-| 狀態與穩定性低估 | 24 |
-| 段速與引擎低估 | 17 |
-| 賽績線低估 | 12 |
+| 狀態與穩定性低估 | 8 |
+| 場地適性低估 | 5 |
+| 賽績線低估 | 4 |
+| 級數與負重低估 | 4 |
+| 騎練訊號低估 | 3 |
+| 形勢與走位低估 | 2 |
+| 段速與引擎低估 | 1 |
 
 ## Most Common Overtrusted Signals In Failed Top Picks
 
 | Section | Count |
 |---|---:|
-| 級數與負重可能過信 | 74 |
-| 形勢與走位可能過信 | 65 |
-| 狀態與穩定性可能過信 | 63 |
-| 場地適性可能過信 | 53 |
-| 賽績線可能過信 | 51 |
-| 騎練訊號可能過信 | 42 |
-| 段速與引擎可能過信 | 24 |
+| 級數與負重可能過信 | 9 |
+| 形勢與走位可能過信 | 8 |
+| 騎練訊號可能過信 | 7 |
+| 狀態與穩定性可能過信 | 6 |
+| 場地適性可能過信 | 6 |
+| 賽績線可能過信 | 5 |
+| 段速與引擎可能過信 | 4 |
 
 ## Common Race Buckets For Market-Signal Misses
 
-- Condition: Good/Firm 91, Soft 25, Heavy 9
-- Race class: BM58-70 43, Other 34, Group 2/3 24, Group 1 10, BM72-84 6, Maiden 5, BM88+ 3
-- Field size: Field 9-12 71, Field 13+ 41, Field <=8 13
+- Condition: Good/Firm 9, Soft 4, Heavy 3
+- Race class: BM58-70 7, Other 6, BM72-84 1, Group 2/3 1, Maiden 1
+- Field size: Field 9-12 7, Field 13+ 6, Field <=8 3
 
 ## High-Value Cases To Review First
 
 | Race | Miss | Market | Winner Rank | Winner | Main Missing Signals | Main Overtrust Signals |
 |---|---|---|---:|---|---|---|
-| 2026-02-14 Flemington Race 1-10 R9 | 1-hit | Favourite / $1.60 | 5 | Sixties | 級數與負重 +7.6, 狀態與穩定性 +1.3 | 騎練訊號 -16.3, 形勢與走位 -3.0 |
-| 2026-04-11 Randwick Race 1-10 R6 | 1-hit | Favourite / $1.60 | 1 | Tempted | 狀態與穩定性 +3.2, 賽績線 +2.1 | 級數與負重 -5.8, 形勢與走位 -0.1 |
-| 2025-11-01 Randwick Race 1-10 R8 | 1-hit | Favourite / $1.75 | 2 | Autumn Glow | 狀態與穩定性 +4.5, 騎練訊號 +2.3 | 級數與負重 -6.3 |
-| 2026-03-07 Flemington Race 1-10 R3 | 1-hit | Favourite / $1.80 | 3 | Medicinal | 級數與負重 +4.6, 場地適性 +2.2 | 狀態與穩定性 -4.3, 賽績線 -2.8 |
-| 2026-01-17 Flemington Race 1-10 R10 | 0-hit | Favourite / $2.05 | 4 | Sass Appeal | 場地適性 +3.1, 級數與負重 +2.2 | 狀態與穩定性 -7.0, 賽績線 -3.4 |
-| 2026-04-25 Flemington Race 1-8 R3 | 1-hit | Favourite / $2.15 | 1 | Blind Raise | 騎練訊號 +4.6, 場地適性 +2.2 | 賽績線 -1.6, 形勢與走位 -1.1 |
-| 2025-11-01 Flemington Race 1-9 R2 | 1-hit | Favourite / $2.20 | 1 | Sheza Alibi | 形勢與走位 +5.7, 狀態與穩定性 +5.0 | 騎練訊號 -6.8 |
-| 2026-01-17 Flemington Race 1-10 R3 | 1-hit | Favourite / $2.25 | 3 | Our Chief | 形勢與走位 +3.9 | 騎練訊號 -3.5, 級數與負重 -3.1 |
-| 2026-02-07 Randwick Race 1-10 R6 | 1-hit | Favourite / $2.25 | 1 | Cinsault | 狀態與穩定性 +10.2, 賽績線 +4.4 | 級數與負重 -3.3, 形勢與走位 -2.1 |
-| 2026-03-07 Randwick Race 1-10 R5 | 1-hit | Favourite / $2.30 | 4 | Beadman | 騎練訊號 +5.8, 場地適性 +5.7 | 級數與負重 -8.2, 形勢與走位 -5.1 |
-| 2025-08-02 Flemington Race 1-9 R6 | 1-hit | Favourite / $2.30 | 2 | Zou Sensation | 級數與負重 +2.2, 段速與引擎 +1.7 | 形勢與走位 -3.1, 場地適性 -3.0 |
-| 2025-12-26 Randwick Race 1-8 R1 | 1-hit | Favourite / $2.30 | 1 | Man Of Worth | 狀態與穩定性 +4.1, 形勢與走位 +3.3 | 騎練訊號 -1.0 |
-| 2026-03-07 Flemington Race 1-10 R1 | 1-hit | Favourite / $2.35 | 4 | Legacy Bound | 狀態與穩定性 +7.2, 場地適性 +4.1 | 級數與負重 -9.7, 騎練訊號 -3.2 |
-| 2025-12-27 Randwick Race 1-10 R5 | 1-hit | Favourite / $2.40 | 7 | Ice Kool | 場地適性 +0.3 | 騎練訊號 -11.9, 狀態與穩定性 -8.1 |
-| 2026-01-17 Flemington Race 1-10 R8 | 1-hit | Favourite / $2.40 | 3 | Saint George | 級數與負重 +7.1, 賽績線 +0.7 | 場地適性 -5.5, 形勢與走位 -2.7 |
+| 2025-12-26 Randwick Race 1-8 R1 | 1-hit | Favourite / $2.30 | 1 | Man Of Worth | 狀態與穩定性 +3.7, 形勢與走位 +3.3 | 騎練訊號 -1.0 |
+| 2026-03-07 Flemington Race 1-10 R1 | 1-hit | Favourite / $2.35 | 4 | Legacy Bound | 狀態與穩定性 +7.1, 場地適性 +4.1 | 級數與負重 -9.7, 騎練訊號 -3.2 |
+| 2026-02-14 Randwick Race 1-10 R1 | 1-hit | Favourite / $2.90 | 9 | Warrior For Peace | 騎練訊號 +0.5 | 狀態與穩定性 -18.2, 賽績線 -7.5 |
+| 2026-04-25 Randwick Race 1-8 R8 | 0-hit | Favourite / $3.00 | 8 | Nobler | 賽績線 +5.4, 狀態與穩定性 +1.3 | 級數與負重 -9.1, 騎練訊號 -4.1 |
+| 2025-08-23 Randwick Race 1-10 R1 | 1-hit | Favourite / $3.00 | 1 | Signor Tortoni | 場地適性 +6.9, 騎練訊號 +6.6 | 級數與負重 -8.6, 段速與引擎 -0.8 |
+| 2026-04-18 Randwick R10 | 1-hit | Favourite / $3.30 | 1 | Captain Furai | 場地適性 +7.8, 狀態與穩定性 +5.1 | 騎練訊號 -5.2, 賽績線 -3.5 |
+| 2025-11-01 Randwick Race 1-10 R1 | 1-hit | Favourite / $3.70 | 2 | Rotagilla | 場地適性 +5.3, 級數與負重 +5.1 | 段速與引擎 -3.1, 形勢與走位 -1.6 |
+| 2026-02-28 Randwick Race 1-10 R1 | 0-hit | Favourite / $3.90 | 7 | Bryant | 段速與引擎 +4.5, 狀態與穩定性 +2.5 | 形勢與走位 -5.7, 騎練訊號 -4.2 |
+| 2026-03-28 Flemington R10 | 1-hit | Favourite / $3.90 | 4 | Al Duca | 狀態與穩定性 +2.5, 場地適性 +1.3 | 級數與負重 -8.6, 段速與引擎 -3.4 |
+| 2025-11-04 Randwick Race 1-10 R7 | 1-hit | Favourite / $5.00 | 5 | Osipenko | 場地適性 +2.6 | 級數與負重 -21.1, 狀態與穩定性 -5.0 |
+| 2026-03-07 Randwick Race 1-10 R1 | 1-hit | Market Top3 / $4.20 | 11 | Zenmaster | - | 狀態與穩定性 -8.4, 級數與負重 -7.1 |
+| 2025-12-31 Flemington Race 1-8 R1 | 0-hit | Market Top3 / $4.40 | 9 | Somewhere | 級數與負重 +6.6 | 狀態與穩定性 -10.7, 賽績線 -5.4 |
+| 2025-11-06 Flemington Race 1-9 R1 | 1-hit | Market Top3 / $4.80 | 1 | First Chorus | 騎練訊號 +4.5, 狀態與穩定性 +3.3 | 形勢與走位 -6.2, 場地適性 -3.0 |
+| 2025-11-04 Flemington Race 1-10 R1 | 1-hit | Market Top3 / $5.00 | 2 | Tornado Valley | 賽績線 +5.0, 狀態與穩定性 +2.6 | 級數與負重 -0.9 |
+| 2025-11-08 Flemington Race 1-9 R1 | 1-hit | Market Top3 / $5.50 | 5 | Calamari Ring | 騎練訊號 +0.8 | 賽績線 -15.0, 狀態與穩定性 -10.9 |
 
 ## Working Read
 

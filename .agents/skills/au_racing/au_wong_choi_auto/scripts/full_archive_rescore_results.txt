@@ -1,0 +1,75 @@
+
+======================================================================
+📊 AU ENGINE RE-SCORE — 316 races re-scored
+======================================================================
+
+═══ OVERALL ═══
+  Gold (3/3)                     | Old:   3.2% | New:   2.8% | Δ:  +-0.3pp
+  Good (Top1+2 in Top3)          | Old:  14.9% | New:  11.4% | Δ:  +-3.5pp
+  Pass (≥2 in Top3)              | Old:  32.6% | New:  31.3% | Δ:  +-1.3pp
+  Champion (Top1 wins)           | Old:  16.5% | New:  16.8% | Δ:  ++0.3pp
+  Top3 Contains Winner           | Old:  40.8% | New:  39.9% | Δ:  +-0.9pp
+  Top3 Place Precision           | Old:  38.1% | New:  37.6% | Δ:  +-0.5pp
+
+  Hit Distribution:
+    0-hit:  68 →  68  (+0)
+    1-hit: 145 → 149  (+4)
+    2-hit:  93 →  90  (-3)
+    3-hit:  10 →   9  (-1)
+
+═══ BY CONDITION ═══
+  --- Good/Firm (216 races) ---
+    Gold                         | Old:   3.7% | New:   3.7% | Δ:  ++0.0pp
+    Pass                         | Old:  32.4% | New:  32.4% | Δ:  ++0.0pp
+    0-hit:  42 →  44  (+2)
+    1-hit: 104 → 102  (-2)
+  --- Soft (60 races) ---
+    Gold                         | Old:   1.7% | New:   1.7% | Δ:  ++0.0pp
+    Pass                         | Old:  35.0% | New:  30.0% | Δ:  +-5.0pp
+    0-hit:  12 →  13  (+1)
+    1-hit:  27 →  29  (+2)
+    2-hit:  20 →  17  (-3)
+  --- Heavy (40 races) ---
+    Gold                         | Old:   2.5% | New:   0.0% | Δ:         
+    Pass                         | Old:  30.0% | New:  27.5% | Δ:  +-2.5pp
+    0-hit:  14 →  11  (-3)
+    1-hit:  14 →  18  (+4)
+    3-hit:   1 →   0  (-1)
+
+═══ BY FIELD SIZE ═══
+  --- Field <=8 (52 races) ---
+    Gold                         | Old:   7.7% | New:   7.7% | Δ:  ++0.0pp
+    Pass                         | Old:  53.8% | New:  57.7% | Δ:  ++3.8pp
+    0-hit:   5 →   6  (+1)
+    1-hit:  19 →  16  (-3)
+    2-hit:  24 →  26  (+2)
+  --- Field 9-12 (183 races) ---
+    Gold                         | Old:   2.7% | New:   2.2% | Δ:  +-0.5pp
+    Pass                         | Old:  32.2% | New:  26.8% | Δ:  +-5.5pp
+    0-hit:  31 →  33  (+2)
+    1-hit:  93 → 101  (+8)
+    2-hit:  54 →  45  (-9)
+    3-hit:   5 →   4  (-1)
+  --- Field 13+ (81 races) ---
+    Gold                         | Old:   1.2% | New:   1.2% | Δ:  ++0.0pp
+    Pass                         | Old:  19.8% | New:  24.7% | Δ:  ++4.9pp
+    0-hit:  32 →  29  (-3)
+    1-hit:  33 →  32  (-1)
+    2-hit:  15 →  19  (+4)
+
+═══ BY RACE TYPE ═══
+  --- Maiden (28 races) ---
+    Champion                     | Old:  14.3% | New:  21.4% | Δ:  ++7.1pp
+    Gold                         | Old:   0.0% | New:   0.0% | Δ:         
+    Pass                         | Old:  32.1% | New:  10.7% | Δ: +-21.4pp
+    0-hit:   5 →   2  (-3)
+    1-hit:  14 →  23  (+9)
+    2-hit:   9 →   3  (-6)
+  --- Non-Maiden (288 races) ---
+    Champion                     | Old:  16.7% | New:  16.3% | Δ:  +-0.3pp
+    Gold                         | Old:   3.5% | New:   3.1% | Δ:  +-0.3pp
+    Pass                         | Old:  32.6% | New:  33.3% | Δ:  ++0.7pp
+    0-hit:  63 →  66  (+3)
+    1-hit: 131 → 126  (-5)
+    2-hit:  84 →  87  (+3)
+    3-hit:  10 →   9  (-1)

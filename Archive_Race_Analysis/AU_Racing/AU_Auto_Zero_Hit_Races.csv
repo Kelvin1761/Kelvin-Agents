@@ -1,54 +1,37 @@
 meeting,race_no,condition,race_class,field_size,winner_name,winner_rank,top_delta_1,top_delta_1_value,top_delta_2,top_delta_2_value,top_pick_1,top_pick_1_pos,top_pick_2,top_pick_2_pos,top_pick_3,top_pick_3_pos,tags
+2025-08-02 Flemington Race 1-9,9,Good 4,"4-Y-O & Up, Mares, BM78, Handicap",9,,,場地適性,4.03,段速與引擎,-3.78,Eagle Express,5,Illyivy,10,Capricorn Star,8,場地適性低估 | 形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | BM58-70 失手 | 中型場失手 | 歷史賽果資料缺口
 2025-10-04 Randwick Race 1-10,1,Good 4,"3-Y-O & Up, BM72, Handicap",12,Agita,4,級數與負重,-0.11,段速與引擎,-0.39,Sunset Park,5,Dr Evil,7,Magic Pharoah,4,形勢與走位可能過信 | 騎練訊號可能過信 | 頭馬其實仍在視野內 | BM58-70 失手 | 中型場失手
-2025-12-20 Randwick Race 1-10,6,Good 4,"3-Y-O & Up, BM78, Handicap",10,Brave Call,5,段速與引擎,1.38,騎練訊號,0.48,Bestower,5,Belle Detelle,7,Shadashi,10,形勢與走位可能過信 | 頭馬其實仍在視野內 | BM58-70 失手 | 中型場失手
-2026-01-10 Flemington Race 1-10,10,Good 4,"3-Y-O & Up, BM74, Handicap",12,Porter,7,騎練訊號,0.41,形勢與走位,-1.00,Legacy Bay,5,Hot Digity Boom,4,Narbold,11,頭馬完全跌出視野 | BM58-70 失手 | 中型場失手
-2026-01-17 Flemington Race 1-10,2,Good 4,"3-Y-O & Up, BM78, Handicap",10,Dictionary,9,騎練訊號,-0.52,賽績線,-1.40,Leonchroi,5,Scintillante,7,Hot Too Go,6,形勢與走位可能過信 | 頭馬完全跌出視野 | BM58-70 失手 | 中型場失手
-2026-01-17 Flemington Race 1-10,10,Good 4,"3-Y-O, BM70, Handicap",10,Sass Appeal,4,級數與負重,2.41,場地適性,1.37,Buccleuch,6,Itazura,8,Yes Maxi,9,級數與負重低估 | 頭馬其實仍在視野內 | BM58-70 失手 | 中型場失手
-2026-04-25 Flemington Race 1-8,2,Good 4,"3-Y-O, Fillies, BM70, Handicap",12,Concord Connie,5,級數與負重,6.87,騎練訊號,-1.32,Carriedo,12,Cafe Au Lait,10,Cardamom,4,級數與負重低估 | 形勢與走位可能過信 | 段速與引擎可能過信 | 頭馬其實仍在視野內 | BM58-70 失手 | 中型場失手
-2026-04-25 Randwick Race 1-8,7,Good 4,"3-Y-O & Up, BM100, Handicap",10,Hellsing,4,形勢與走位,0.97,段速與引擎,0.86,Caboche,8,Kintyre,10,El Castello,9,騎練訊號可能過信 | 頭馬其實仍在視野內 | BM58-70 失手 | 中型場失手
-2025-08-02 Flemington Race 1-9,9,Good 4,"4-Y-O & Up, Mares, BM78, Handicap",13,Stylish,6,場地適性,4.19,段速與引擎,-2.05,Eagle Express,5,Illyivy,10,Capricorn Star,8,場地適性低估 | 形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | 頭馬其實仍在視野內 | BM58-70 失手 | 大場面失手
-2025-10-04 Randwick Race 1-10,10,Good 4,"3-Y-O & Up, BM94, Handicap",15,Disneck,8,級數與負重,2.17,段速與引擎,0.37,Les Vampires,14,Kerguelen,5,Shangri La Spring,7,級數與負重低估 | 形勢與走位可能過信 | 騎練訊號可能過信 | 頭馬完全跌出視野 | BM58-70 失手 | 大場面失手
-2025-12-20 Randwick Race 1-10,4,Good 4,"3-Y-O, BM72, Handicap",8,Plaintiff,8,賽績線,-0.57,騎練訊號,-0.65,Good Hotspur,6,Lancelot Du Lac,4,Philatelic,7,形勢與走位可能過信 | 段速與引擎可能過信 | 頭馬完全跌出視野 | BM58-70 失手
-2025-12-31 Flemington Race 1-8,7,Good 4,"3-Y-O & Up, BM66, Handicap",15,Egerton,6,段速與引擎,-0.91,場地適性,-1.36,Alero,6,Rose De Vellor,8,Tan Tat Delight,11,形勢與走位可能過信 | 騎練訊號可能過信 | 頭馬其實仍在視野內 | BM58-70 失手 | 大場面失手
-2026-01-24 Randwick Race 1-10,5,Good 4,"3-Y-O & Up, BM88, Handicap",7,Furious,7,騎練訊號,5.03,場地適性,2.30,Trapalanda,6,Casino Bear,4,Fay's Angels,5,場地適性低估 | 騎練訊號低估 | 頭馬完全跌出視野 | BM58-70 失手
-2026-04-25 Flemington Race 1-8,7,Good 4,"3-Y-O & Up, BM100, Handicap",14,Too Darn Discreet,5,騎練訊號,2.43,段速與引擎,-0.02,Zakouma,7,Bring Forth,11,Etna Rosso,4,騎練訊號低估 | 形勢與走位可能過信 | 頭馬其實仍在視野內 | BM58-70 失手 | 大場面失手
-2025-08-02 Flemington Race 1-9,5,Good 4,"BM78, Handicap",12,Vega Magnifico,8,級數與負重,5.50,騎練訊號,0.08,Aztec State,5,Catani Gardens,7,Paradise Storm,10,級數與負重低估 | 形勢與走位可能過信 | 段速與引擎可能過信 | 頭馬完全跌出視野 | 中型場失手
-2025-11-01 Flemington Race 1-9,9,Good 4,"Group 3, 4-Y-O & Up, Mares, SW + P",12,New York Lustre,6,段速與引擎,-0.78,級數與負重,-1.04,Soft Love,7,She's Bulletproof,11,Stretan Angel,9,形勢與走位可能過信 | 騎練訊號可能過信 | 頭馬其實仍在視野內 | 中型場失手
-2025-12-26 Randwick Race 1-8,2,Good 4,"3-Y-O, Maiden, Set Weights",12,Performance,4,級數與負重,0.48,騎練訊號,-2.35,Snitzel Miss,6,Makhachev,7,Conical Net,11,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | 頭馬其實仍在視野內 | 中型場失手
-2025-12-31 Flemington Race 1-8,1,Good 4,"No Metro Wins, Handicap",11,Somewhere,10,級數與負重,3.95,場地適性,0.24,Vivacissimo,4,Thunder Hawk,9,Leg Drive,10,級數與負重低估 | 形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | 頭馬完全跌出視野 | 中型場失手
-2026-01-10 Flemington Race 1-10,3,Good 4,"3-Y-O, Fillies, Handicap",12,Jenni The Ninja,9,場地適性,0.43,騎練訊號,-0.00,She's My Ex,4,Breakfast,11,Seven Oceans,8,頭馬完全跌出視野 | 中型場失手
-2026-01-10 Flemington Race 1-10,8,Good 4,"Group 3, Handicap, Maidens Ineligible",11,Disneck,7,騎練訊號,-1.61,段速與引擎,-3.46,Aviatress,4,Hedged,10,Major Share,7,形勢與走位可能過信 | 段速與引擎可能過信 | 頭馬完全跌出視野 | 中型場失手
-2026-02-14 Flemington Race 1-10,6,Good 4,Handicap,10,Berkeley Square,8,騎練訊號,1.87,形勢與走位,0.47,Newfoundland,9,Scary,10,Saint George,4,頭馬完全跌出視野 | 中型場失手
-2026-02-28 Flemington Race 1-10,6,Good 4,"3-Y-O, Fillies, Handicap",11,Educated,4,騎練訊號,0.72,場地適性,0.49,Befuddle,11,Headbanger,5,Gwen's Girl,10,頭馬其實仍在視野內 | 中型場失手
-2025-08-02 Flemington Race 1-9,8,Good 4,"BM84, Handicap",15,Too Darn Discreet,8,場地適性,4.14,形勢與走位,-0.07,One Long Day,10,Black Storm,7,Whisky On The Hill,8,場地適性低估 | 段速與引擎可能過信 | 頭馬完全跌出視野 | 大場面失手
-2025-10-04 Flemington Race 1-10,7,Good 4,"Group 3, Handicap",16,Valiant King,11,級數與負重,3.50,騎練訊號,-0.93,Sayedaty Sadaty,12,Mormona,14,Revelare,7,級數與負重低估 | 形勢與走位可能過信 | 段速與引擎可能過信 | 頭馬完全跌出視野 | 大場面失手
-2025-10-04 Randwick Race 1-10,9,Good 4,"Group 1, 3-Y-O & Up, Handicap",18,Royal Supremacy,9,騎練訊號,2.29,段速與引擎,1.92,Travolta,6,Glory Daze,13,Piggyback,8,騎練訊號低估 | 形勢與走位可能過信 | 頭馬完全跌出視野 | 大場面失手
-2025-11-01 Flemington Race 1-9,3,Good 4,"Group 3, Handicap, Maidens Ineligible",13,Caballus,6,賽績線,-0.47,段速與引擎,-0.66,Hedged,6,Star Patrol,11,Ameena,10,形勢與走位可能過信 | 騎練訊號可能過信 | 頭馬其實仍在視野內 | 大場面失手
-2026-01-24 Randwick Race 1-10,3,Good 4,"3-Y-O & Up, Class 3, Handicap",14,Kingdom Undersiege,8,級數與負重,-1.26,形勢與走位,-1.90,Nova Centauri,12,Joiselle,11,Navy Steel,7,段速與引擎可能過信 | 騎練訊號可能過信 | 頭馬完全跌出視野 | 大場面失手
-2026-02-28 Flemington Race 1-10,9,Good 4,"3-Y-O, SW + P, Inglis horses only",15,Getta Good Feeling,9,場地適性,4.47,形勢與走位,-0.20,Toronado Queen,12,Alpha Sofie,13,La Astro Chat,7,場地適性低估 | 騎練訊號可能過信 | 頭馬完全跌出視野 | 大場面失手
-2026-03-07 Flemington Race 1-10,9,Good 4,"Group 1, Handicap, Maidens Ineligible",14,Caballus,8,形勢與走位,3.73,騎練訊號,1.47,Tentyris,5,My Gladiola,10,Pallaton,8,形勢與走位低估 | 段速與引擎可能過信 | 頭馬完全跌出視野 | 大場面失手
-2026-04-18 Randwick,2,Good 4,"3-Y-O & Up, Class 3, Handicap",13,Ishikari,7,騎練訊號,0.77,狀態與穩定性,-0.87,Bonnie Murringo,5,Andale Andale,9,Christa,10,形勢與走位可能過信 | 頭馬完全跌出視野 | 大場面失手
-2026-04-18 Randwick,9,Good 4,"Group 1, Weight for Age",13,Beiwacht,7,騎練訊號,7.48,場地適性,5.68,Half Yours,9,Fangirl,8,Pericles,7,場地適性低估 | 騎練訊號低估 | 頭馬完全跌出視野 | 大場面失手
-2025-08-09 Randwick Race 1-10,5,Heavy 10,"3yo+, BM88, Handicap",11,,,騎練訊號,-64.67,段速與引擎,-65.02,Bundeena,8,Zouperb,8,World Alliance,8,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | Heavy 場失手 | BM58-70 失手 | 中型場失手 | 歷史賽果資料缺口
-2025-08-09 Randwick Race 1-10,7,Heavy 10,"3yo+, Colts, Horses & Geldings, BM78, Handicap",12,,,場地適性,-61.45,級數與負重,-62.43,Kerguelen,8,Theblade,8,Little Beginnings,8,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | Heavy 場失手 | BM58-70 失手 | 中型場失手 | 歷史賽果資料缺口
-2025-12-13 Randwick Race 1-10,6,Soft 5,"3-Y-O & Up, BM88, Handicap",11,Pocketing,7,段速與引擎,-2.72,騎練訊號,-2.83,Rotagilla,4,Mr Buster,7,Sosino,10,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | 頭馬完全跌出視野 | Soft 場失手 | BM58-70 失手 | 中型場失手
+2025-12-20 Randwick Race 1-10,5,Good 4,"3&4-Y-O, BM72, Handicap",5,Willie Oppa,5,騎練訊號,3.28,形勢與走位,-0.87,Tequisoda,9,Dealt,6,Hibiki Harmony,4,騎練訊號低估 | 頭馬其實仍在視野內 | BM58-70 失手 | 歷史賽果資料缺口
+2025-12-31 Flemington Race 1-8,7,Good 4,"3-Y-O & Up, BM66, Handicap",8,,,段速與引擎,1.62,場地適性,0.72,Tan Tat Delight,11,Flat Chat,9,Jakivy,4,形勢與走位可能過信 | BM58-70 失手 | 歷史賽果資料缺口
+2025-12-31 Flemington Race 1-8,8,Good 4,"BM70, Handicap",5,Rue De Royale,5,場地適性,9.76,形勢與走位,7.63,Podargoni,9,Barnage,13,Palm Of Jumeirah,6,場地適性低估 | 形勢與走位低估 | 騎練訊號可能過信 | 頭馬其實仍在視野內 | BM58-70 失手 | 歷史賽果資料缺口
+2026-01-10 Flemington Race 1-10,6,Good 4,"3-Y-O & Up, BM70, Handicap",8,,,形勢與走位,-61.67,場地適性,-62.80,Chergui,8,Cavalry Girl,12,Runlikenencryption,4,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | BM58-70 失手 | 歷史賽果資料缺口
+2026-01-10 Flemington Race 1-10,9,Good 4,"3-Y-O & Up, BM74, Handicap",6,Fission,5,段速與引擎,-0.44,賽績線,-2.49,Tanganyika,12,Behaviour,5,Mercurial Lady,7,形勢與走位可能過信 | 騎練訊號可能過信 | 頭馬其實仍在視野內 | BM58-70 失手 | 歷史賽果資料缺口
+2026-01-10 Flemington Race 1-10,10,Good 4,"3-Y-O & Up, BM74, Handicap",7,,,段速與引擎,-0.27,騎練訊號,-2.88,Legacy Bay,5,Hot Digity Boom,4,Yam,10,形勢與走位可能過信 | 騎練訊號可能過信 | BM58-70 失手 | 歷史賽果資料缺口
+2026-01-24 Randwick Race 1-10,6,Good 4,"3-Y-O & Up, C,G&E, BM78, Handicap",4,,,場地適性,-60.34,狀態與穩定性,-60.36,Shall Be,9,King Of Dragons,6,Unstopabull,7,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | BM58-70 失手 | 歷史賽果資料缺口
+2026-02-14 Randwick Race 1-10,5,Good 4,"3-Y-O & Up, BM88, Handicap",4,Jamberoo,4,段速與引擎,0.69,騎練訊號,-0.39,Casual Connection,8,It's A Knockout,7,Glad You Think So,4,形勢與走位可能過信 | 頭馬其實仍在視野內 | BM58-70 失手 | 歷史賽果資料缺口
+2026-04-25 Randwick Race 1-8,8,Good 4,"3-Y-O & Up, BM78, Handicap",13,Nobler,8,場地適性,2.40,段速與引擎,2.27,Black Babylon,9,Crossbow,5,Luskaire,13,場地適性低估 | 段速與引擎低估 | 騎練訊號可能過信 | 頭馬完全跌出視野 | BM58-70 失手 | 大場面失手
+2025-08-02 Flemington Race 1-9,8,Good 4,"BM84, Handicap",10,Too Darn Discreet,5,場地適性,4.60,騎練訊號,2.47,One Long Day,10,Black Storm,7,Outta Compton,12,場地適性低估 | 騎練訊號低估 | 形勢與走位可能過信 | 段速與引擎可能過信 | 頭馬其實仍在視野內 | 中型場失手 | 歷史賽果資料缺口
+2025-12-31 Flemington Race 1-8,1,Good 4,"No Metro Wins, Handicap",11,Somewhere,9,級數與負重,3.95,場地適性,0.24,Vivacissimo,4,Thunder Hawk,9,Leg Drive,10,級數與負重低估 | 形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | 頭馬完全跌出視野 | 中型場失手
+2025-11-01 Flemington Race 1-9,2,Good 4,"Group 3, 3-Y-O, Fillies, SW + P",5,,,騎練訊號,4.37,段速與引擎,1.43,Miss Revealing,5,Gisella,10,M'lady Rose,8,騎練訊號低估 | 歷史賽果資料缺口
+2025-11-01 Flemington Race 1-9,3,Good 4,"Group 3, Handicap, Maidens Ineligible",5,,,場地適性,-61.09,級數與負重,-61.92,Hedged,6,Disneck,5,Royal Insignia,8,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | 歷史賽果資料缺口
+2026-01-10 Flemington Race 1-10,3,Good 4,"3-Y-O, Fillies, Handicap",6,,,場地適性,-59.43,形勢與走位,-61.30,Breakfast,11,Seven Oceans,8,Rosangela,5,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | 歷史賽果資料缺口
+2026-01-10 Flemington Race 1-10,8,Good 4,"Group 3, Handicap, Maidens Ineligible",5,,,騎練訊號,-0.59,段速與引擎,-2.07,Hedged,10,Major Share,7,Celsius Star,8,形勢與走位可能過信 | 段速與引擎可能過信 | 歷史賽果資料缺口
+2026-01-24 Randwick Race 1-10,3,Good 4,"3-Y-O & Up, Class 3, Handicap",6,,,場地適性,1.57,狀態與穩定性,-1.25,Nova Centauri,12,Navy Steel,7,Micro Mikki,6,段速與引擎可能過信 | 騎練訊號可能過信 | 歷史賽果資料缺口
+2026-02-14 Randwick Race 1-10,4,Good 4,"BM78, Handicap",4,Amreekiyah,4,騎練訊號,1.92,形勢與走位,0.33,Miss Kim Kar,6,Arabian Rose,4,One Step Closer,10,頭馬其實仍在視野內 | 歷史賽果資料缺口
+2026-02-28 Flemington Race 1-10,9,Good 4,"3-Y-O, SW + P, Inglis horses only",7,Getta Good Feeling,4,場地適性,3.66,騎練訊號,2.46,Toronado Queen,12,Layla,14,Rohesia,9,場地適性低估 | 騎練訊號低估 | 形勢與走位低估 | 頭馬其實仍在視野內 | 歷史賽果資料缺口
+2026-04-11 Randwick Race 1-10,4,Good 4,Set Weights,4,,,形勢與走位,-61.30,級數與負重,-62.36,Oakfield Saturn,14,Mogul Monarch,12,Harry's Bar,5,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | 歷史賽果資料缺口
 2025-08-09 Randwick Race 1-10,1,Heavy 10,"3yo+, BM72, Handicap",15,,,場地適性,-59.08,形勢與走位,-59.40,Mal Coupe,8,Desi Emperor,8,Stratafy,8,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | Heavy 場失手 | BM58-70 失手 | 大場面失手 | 歷史賽果資料缺口
-2025-08-09 Randwick Race 1-10,3,Heavy 10,"3yo+, Fillies & Mares, BM78, Handicap",8,,,形勢與走位,-63.47,場地適性,-64.55,Regimental Colours,8,Dollar Magic,8,Berezka,8,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | Heavy 場失手 | BM58-70 失手 | 歷史賽果資料缺口
-2025-08-09 Randwick Race 1-10,4,Heavy 10,"3,4yo, BM72, Handicap",8,,,形勢與走位,-61.70,場地適性,-62.25,Amreekiyah,8,Tuileries,8,Stardeel,8,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | Heavy 場失手 | BM58-70 失手 | 歷史賽果資料缺口
-2025-08-09 Randwick Race 1-10,6,Heavy 10,"3yo+, BM78, Handicap",15,,,形勢與走位,-60.80,場地適性,-62.49,Stylebender,8,Piggyback,8,Fioprospero,8,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | Heavy 場失手 | BM58-70 失手 | 大場面失手 | 歷史賽果資料缺口
-2025-08-09 Randwick Race 1-10,10,Heavy 10,"3yo+, BM78, Handicap",17,,,形勢與走位,-63.97,場地適性,-64.19,Puntin,8,Anythink Goes,8,Pure Alpha,8,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | Heavy 場失手 | BM58-70 失手 | 大場面失手 | 歷史賽果資料缺口
-2026-02-28 Randwick Race 1-10,1,Soft 6,"3-Y-O & Up, BM72, Handicap",13,Bryant,7,段速與引擎,1.31,級數與負重,0.84,Flightcrew,6,Zoutastic,10,Let's Go Again,11,形勢與走位可能過信 | 頭馬完全跌出視野 | Soft 場失手 | BM58-70 失手 | 大場面失手
-2025-08-09 Randwick Race 1-10,8,Heavy 10,"Group 2, 3yo+, open, SW+P",10,,,級數與負重,-63.77,形勢與走位,-64.27,With Your Blessing,8,Romeo's Choice,8,Robusto,8,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | Heavy 場失手 | 中型場失手 | 歷史賽果資料缺口
-2025-11-04 Flemington Race 1-10,6,Soft 6,"LR, Handicap, Maidens Ineligible",9,Kingswood,5,騎練訊號,3.52,形勢與走位,2.23,Flying Valley,9,Garachico,7,Athanatos,6,騎練訊號低估 | 形勢與走位低估 | 段速與引擎可能過信 | 頭馬其實仍在視野內 | Soft 場失手 | 中型場失手
-2025-11-04 Randwick Race 1-10,6,Heavy 8,"3-Y-O & Up, Handicap",12,So You Pence,10,騎練訊號,2.35,段速與引擎,-0.76,Mogo Magic,10,Gallant Star,4,Chidiac,5,騎練訊號低估 | 形勢與走位可能過信 | 頭馬完全跌出視野 | Heavy 場失手 | 中型場失手
-2026-02-28 Randwick Race 1-10,5,Soft 6,"Group 2, 2-Y-O, C&G, Set Weights",10,Campione D'italia,5,段速與引擎,-2.37,騎練訊號,-2.44,Warwoven,4,Fireball,6,Knightsbridge,8,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | 頭馬其實仍在視野內 | Soft 場失手 | 中型場失手
-2026-03-28 Flemington,6,Heavy 8,"LR, 3-Y-O, SW + P",9,Thanks Gorgeous,4,賽績線,0.48,狀態與穩定性,-1.07,Legacy Bound,7,Educated,6,Military Tycoon,5,形勢與走位可能過信 | 騎練訊號可能過信 | 頭馬其實仍在視野內 | Heavy 場失手 | 中型場失手
-2026-03-28 Flemington,7,Heavy 8,"LR, 3-Y-O & Up, SW + P",12,Whisky On The Hill,8,騎練訊號,1.81,場地適性,0.69,Point Nepean,12,Bright Legend,8,Highland Blaze,6,段速與引擎可能過信 | 頭馬完全跌出視野 | Heavy 場失手 | 中型場失手
-2025-08-09 Randwick Race 1-10,2,Heavy 10,"3yo+, Class 3, Handicap",16,,,場地適性,-64.35,形勢與走位,-64.50,Ditterich,8,Exit Fee,8,Nation Changing,8,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | Heavy 場失手 | 大場面失手 | 歷史賽果資料缺口
-2025-08-09 Randwick Race 1-10,9,Heavy 10,"3yo+, open, Handicap",20,,,段速與引擎,-62.13,級數與負重,-64.11,Saltcoats,8,Glory Daze,8,Estadio Mestalla,8,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | Heavy 場失手 | 大場面失手 | 歷史賽果資料缺口
-2025-08-23 Randwick Race 1-10,5,Heavy 10,"Group 3, 3-Y-O & Up, Quality",7,Nellie Leylax,6,段速與引擎,-0.25,場地適性,-0.88,Saltcoats,4,Hasty Honey,7,Tajanis,6,騎練訊號可能過信 | 頭馬其實仍在視野內 | Heavy 場失手
-2025-11-04 Flemington Race 1-10,2,Soft 6,"BM80, Handicap",13,Party Crasher,8,場地適性,1.91,級數與負重,0.67,Giggenbach,8,Makdane,7,Brave Miss,4,形勢與走位可能過信 | 騎練訊號可能過信 | 頭馬完全跌出視野 | Soft 場失手 | 大場面失手
-2025-11-04 Flemington Race 1-10,7,Soft 6,"Group 1, 3-Y-O & Up, Handicap",24,Half Yours,7,級數與負重,4.04,段速與引擎,0.80,Parchment Party,20,Valiant King,16,Buckaroo,24,級數與負重低估 | 形勢與走位可能過信 | 頭馬完全跌出視野 | Soft 場失手 | 大場面失手
-2025-11-04 Flemington Race 1-10,9,Soft 6,"Group 3, 4-Y-O & Up, Mares, SW + P",13,Dance To The Boom,7,騎練訊號,-1.12,段速與引擎,-1.96,Electric Impulse,11,Perfect Picture,9,Fancify,8,形勢與走位可能過信 | 頭馬完全跌出視野 | Soft 場失手 | 大場面失手
-2026-02-28 Randwick Race 1-10,2,Soft 6,"3-Y-O & Up, Class 3, Handicap",15,Brave Xena,12,場地適性,-0.23,段速與引擎,-1.26,Sir Franklin,4,Mrs Goldberg,5,Ishikari,12,形勢與走位可能過信 | 頭馬完全跌出視野 | Soft 場失手 | 大場面失手
+2025-11-08 Flemington Race 1-9,9,Soft 6,"3-Y-O & Up, BM80, Handicap",4,,,形勢與走位,-60.27,場地適性,-63.28,Actuality,8,Latin Lover,10,Riche D'amour,6,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | Soft 場失手 | BM58-70 失手 | 歷史賽果資料缺口
+2025-12-13 Randwick Race 1-10,4,Soft 5,"3-Y-O & Up, BM78, Handicap",6,,,場地適性,-56.51,形勢與走位,-59.60,Miss Kim Kar,8,Smashing Time,7,Laurel Hill,9,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | Soft 場失手 | BM58-70 失手 | 歷史賽果資料缺口
+2026-01-03 Randwick Race 1-10,9,Soft 5,"3-Y-O & Up, BM78, Handicap",4,,,騎練訊號,0.91,賽績線,-3.30,Exit Fee,5,Massira,8,Manwari,9,形勢與走位可能過信 | 段速與引擎可能過信 | Soft 場失手 | BM58-70 失手 | 歷史賽果資料缺口
+2026-02-28 Randwick Race 1-10,1,Soft 6,"3-Y-O & Up, BM72, Handicap",13,Bryant,7,段速與引擎,0.04,場地適性,-0.87,Flightcrew,6,Zoutastic,10,The New Sinatra,12,形勢與走位可能過信 | 騎練訊號可能過信 | 頭馬完全跌出視野 | Soft 場失手 | BM58-70 失手 | 大場面失手
+2025-11-01 Randwick Race 1-10,2,Soft 7,"3-Y-O & Up, Class 3, Handicap",9,,,形勢與走位,-58.07,場地適性,-58.17,Lightning Speed,15,Manwari,13,Fan Harder,7,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | Soft 場失手 | 中型場失手 | 歷史賽果資料缺口
+2025-11-04 Flemington Race 1-10,7,Soft 6,"Group 1, 3-Y-O & Up, Handicap",12,,,狀態與穩定性,3.94,賽績線,2.20,Parchment Party,20,Valiant King,16,Changingoftheguard,9,賽績線低估 | 狀態與穩定性低估 | 形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | Soft 場失手 | 中型場失手 | 歷史賽果資料缺口
+2025-08-09 Randwick Race 1-10,9,Heavy 10,"3yo+, open, Handicap",5,,,形勢與走位,-60.93,段速與引擎,-61.93,Saltcoats,8,Nellie Leylax,8,Age Of Kings,8,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | Heavy 場失手 | 歷史賽果資料缺口
+2025-11-04 Randwick Race 1-10,6,Heavy 8,"3-Y-O & Up, Handicap",7,,,騎練訊號,4.20,段速與引擎,2.54,Mogo Magic,10,Gallant Star,4,Chidiac,5,騎練訊號低估 | 段速與引擎低估 | 形勢與走位可能過信 | Heavy 場失手 | 歷史賽果資料缺口
+2025-11-04 Flemington Race 1-10,9,Soft 6,"Group 3, 4-Y-O & Up, Mares, SW + P",6,,,級數與負重,5.73,形勢與走位,4.13,Perfect Picture,9,Kirribilli,12,Surfin' Bird,5,場地適性低估 | 級數與負重低估 | 形勢與走位低估 | 段速與引擎可能過信 | 騎練訊號可能過信 | Soft 場失手 | 歷史賽果資料缺口
+2025-11-04 Flemington Race 1-10,10,Soft 6,"BM90, Handicap",4,,,級數與負重,-56.62,形勢與走位,-58.80,Nostringsattached,9,Jugiong,6,Boltsaver,7,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | Soft 場失手 | 歷史賽果資料缺口
+2026-02-28 Randwick Race 1-10,2,Soft 6,"3-Y-O & Up, Class 3, Handicap",6,Brave Xena,5,形勢與走位,0.33,賽績線,-1.85,Ishikari,12,Silver Serenade,9,Marine Girl,11,段速與引擎可能過信 | 騎練訊號可能過信 | 頭馬其實仍在視野內 | Soft 場失手 | 歷史賽果資料缺口
 2026-03-28 Flemington,1,Heavy 8,"4-Y-O & Up, Mares, Handicap",8,Pop Award,7,級數與負重,2.67,段速與引擎,-3.49,She's An Artist,6,Fluent,5,Gentle Steel,4,級數與負重低估 | 形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | 頭馬完全跌出視野 | Heavy 場失手
+2026-03-28 Flemington,4,Heavy 8,"BM78, Handicap",6,,,級數與負重,-55.73,場地適性,-61.67,Actuality,7,Tookay Pete,11,Salsa Fellow,6,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | Heavy 場失手 | 歷史賽果資料缺口
+2026-03-28 Flemington,8,Heavy 8,"Group 1, 3-Y-O & Up, Weight for Age, Maidens Ineligible",4,,,級數與負重,-51.00,段速與引擎,-63.86,Basilinna,8,Leica Lucy,6,Damask Rose,10,形勢與走位可能過信 | 段速與引擎可能過信 | 騎練訊號可能過信 | Heavy 場失手 | 歷史賽果資料缺口

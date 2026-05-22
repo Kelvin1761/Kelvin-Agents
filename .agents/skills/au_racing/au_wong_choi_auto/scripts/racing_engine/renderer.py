@@ -27,12 +27,13 @@ FEATURE_LABELS = {
     "consistency_score": "穩定性分",
     "health_score": "健康分",
     "confidence_score": "信心分",
+    "speed_rating_score": "速度分",
 }
 
 MATRIX_LABELS = {
     "stability": "狀態與穩定性",
     "sectional": "段速與引擎",
-    "race_shape": "形勢與走位",
+    "race_shape": "檔位形勢",
     "jockey_trainer": "騎練訊號",
     "class_weight": "級數與負重",
     "track": "場地適性",
@@ -56,7 +57,7 @@ def ensure_verdict(logic_data: dict) -> dict:
             for num, horse in horses.items()
             if isinstance(horse.get("python_auto"), dict)
         ],
-        key=lambda item: (-item["rank_score"], -item["ability_score"], _horse_number_sort_key(item["horse_number"])),
+        key=lambda item: (-item["ability_score"], _horse_number_sort_key(item["horse_number"])),
     )
     for idx, item in enumerate(ranked, start=1):
         auto = horses[item["horse_number"]]["python_auto"]

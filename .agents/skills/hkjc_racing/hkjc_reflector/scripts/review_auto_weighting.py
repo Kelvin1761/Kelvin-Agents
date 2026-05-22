@@ -86,6 +86,42 @@ MODEL_SPECS = {
 }
 
 
+def load_published_mainline_predictions(meeting_dir: Path) -> dict[int, list[int]]:
+    csv_path = meeting_dir / "HKJC_Auto_Scoring.csv"
+    if not csv_path.exists():
+        return {}
+
+    by_race: dict[int, list[dict]] = defaultdict(list)
+    df = pd.read_csv(csv_path, encoding="utf-8-sig")
+    for row in df.to_dict(orient="records"):
+        try:
+            race_num = int(row.get("race_number"))
+            horse_num = int(row.get("horse_number"))
+        except (TypeError, ValueError):
+            continue
+        try:
+            rank = int(float(row.get("rank", 999)))
+        except (TypeError, ValueError):
+            rank = 999
+        try:
+            ability = float(row.get("ability_score", 0.0))
+        except (TypeError, ValueError):
+            ability = 0.0
+        by_race[race_num].append(
+            {
+                "rank": rank,
+                "horse_num": horse_num,
+                "ability": ability,
+            }
+        )
+
+    predictions: dict[int, list[int]] = {}
+    for race_num, rows in by_race.items():
+        rows.sort(key=lambda item: (item["rank"], -item["ability"], item["horse_num"]))
+        predictions[race_num] = [item["horse_num"] for item in rows[:4]]
+    return predictions
+
+
 OUTER_WEIGHT_GRID = {
     "sectional": [0.18, 0.20, 0.22],
     "trainer_signal": [0.16, 0.18, 0.20],
@@ -596,6 +632,27 @@ def draw_context_candidate(horse: dict, features: dict[str, float], _race_contex
     return updated
 
 
+def draw_hkjc_anchor_candidate(horse: dict, features: dict[str, float], _race_context: dict | None = None) -> dict[str, float]:
+    updated = deepcopy(features)
+    score = candidate_draw_hkjc_anchor_score(horse)
+    if score is not None:
+        updated["draw_score"] = score
+    return updated
+
+
+def draw_hkjc_anchor_no_bleed_candidate(horse: dict, features: dict[str, float], race_context: dict | None = None) -> dict[str, float]:
+    updated = draw_hkjc_anchor_candidate(horse, features, race_context)
+    horse_clean = deepcopy(horse)
+    if isinstance(horse_clean.get("_data"), dict):
+        horse_clean["_data"]["draw_verdict"] = ""
+    engine = RacingEngine(horse_clean, race_context or {})
+    track_score, _note, _source = engine._track_going_score(updated)
+    updated["track_going_score"] = clip_score(track_score)
+    confidence_score, _note, _source = engine._confidence_score(updated)
+    updated["confidence_score"] = clip_score(confidence_score)
+    return updated
+
+
 def consistency_context_candidate(horse: dict, features: dict[str, float], _race_context: dict | None = None) -> dict[str, float]:
     updated = deepcopy(features)
     score = candidate_consistency_score(horse, features)
@@ -654,6 +711,34 @@ def candidate_draw_score(horse: dict) -> float | None:
         score -= 1.0
     elif "衰退中" in trend:
         score -= 3.0
+
+    return clip_score(score)
+
+
+def candidate_draw_hkjc_anchor_score(horse: dict) -> float | None:
+    data = horse.get("_data", {}) if isinstance(horse.get("_data"), dict) else {}
+    verdict = str(data.get("draw_verdict") or "")
+    if not verdict:
+        return None
+
+    place_match = re.search(r"上名(\d+(?:\.\d+)?)%", verdict)
+    win_match = re.search(r"勝(\d+(?:\.\d+)?)%", verdict)
+    place_pct = float(place_match.group(1)) if place_match else None
+    win_pct = float(win_match.group(1)) if win_match else None
+
+    if place_pct is None and win_pct is None:
+        return None
+
+    score = 60.0
+    if place_pct is not None:
+        score += (place_pct - 24.0) * 1.0
+    if win_pct is not None:
+        score += (win_pct - 8.0) * 0.75
+
+    if "✅有利" in verdict:
+        score += 1.5
+    elif "❌不利" in verdict:
+        score -= 1.5
 
     return clip_score(score)
 
@@ -1429,6 +1514,36 @@ def evaluate_model(scored: list[dict], actual_pos: dict[int, int], model_key: st
     }
 
 
+def evaluate_pick_order(picks: list[int], actual_pos: dict[int, int]) -> dict:
+    actual_top3 = [horse for horse, _pos in sorted(actual_pos.items(), key=lambda item: item[1])[:3]]
+    actual_top4 = [horse for horse, _pos in sorted(actual_pos.items(), key=lambda item: item[1])[:4]]
+    actual_top3_set = set(actual_top3)
+    winner = actual_top3[0] if actual_top3 else None
+    hits = sum(1 for horse in picks[:3] if horse in actual_top3_set)
+    winner_rank = next((idx for idx, horse in enumerate(picks, start=1) if horse == winner), len(actual_pos) + 1)
+    pick1_finish = actual_pos.get(picks[0], 99) if picks else 99
+    top4_hits = sum(1 for horse in picks[:4] if horse in set(actual_top4))
+    order_issue = False
+    if len(picks) >= 4:
+        order_issue = min(actual_pos.get(picks[2], 99), actual_pos.get(picks[3], 99)) < min(
+            actual_pos.get(picks[0], 99), actual_pos.get(picks[1], 99)
+        )
+    return {
+        "picks": picks[:4],
+        "gold": hits == 3,
+        "good": len(picks) >= 2 and picks[0] in actual_top3_set and picks[1] in actual_top3_set,
+        "min_threshold": hits >= 2,
+        "single": hits >= 1,
+        "champion": bool(picks and picks[0] == winner),
+        "top3_has_champion": bool(winner in set(picks[:3])),
+        "winner_rank": winner_rank,
+        "mrr": 1.0 / winner_rank if winner_rank > 0 else 0.0,
+        "pick1_finish": pick1_finish,
+        "top4_hits": top4_hits,
+        "order_issue": order_issue,
+    }
+
+
 def summarize_model_races(model_races: list[dict]) -> dict:
     total = len(model_races)
     if total == 0:
@@ -1943,11 +2058,30 @@ def run_review(meeting_roots: list[Path], results_roots: list[Path], season_csvs
             "weights": CURRENT_MATRIX_WEIGHTS,
             "feature_transform": draw_context_candidate,
         },
+        "candidate_draw_hkjc_anchor": {
+            "formulas": CURRENT_MATRIX_FORMULAS,
+            "weights": CURRENT_MATRIX_WEIGHTS,
+            "feature_transform": draw_hkjc_anchor_candidate,
+        },
+        "candidate_draw_hkjc_anchor_no_bleed": {
+            "formulas": CURRENT_MATRIX_FORMULAS,
+            "weights": CURRENT_MATRIX_WEIGHTS,
+            "feature_transform": draw_hkjc_anchor_no_bleed_candidate,
+        },
     }
     results_index = build_results_index(results_roots)
     meetings = hk_meeting_dirs(meeting_roots)
     all_races: list[dict] = []
-    coverage = {"meetings": 0, "races": 0, "horses": 0, "debut_horses": 0, "debut_races": 0, "skipped_meetings": []}
+    coverage = {
+        "meetings": 0,
+        "races": 0,
+        "horses": 0,
+        "debut_horses": 0,
+        "debut_races": 0,
+        "published_mainline_meetings": 0,
+        "published_mainline_races": 0,
+        "skipped_meetings": [],
+    }
 
     for meeting_dir in meetings:
         date = meeting_date(meeting_dir)
@@ -1955,8 +2089,10 @@ def run_review(meeting_roots: list[Path], results_roots: list[Path], season_csvs
         if not result_path:
             coverage["skipped_meetings"].append(str(meeting_dir))
             continue
+        published_predictions = load_published_mainline_predictions(meeting_dir)
         actual_results = load_results(result_path)
         meeting_had_race = False
+        meeting_has_published_mainline = False
         for logic_path in sorted(meeting_dir.glob("Race_*_Logic.json"), key=race_num_from_path):
             race_num = race_num_from_path(logic_path)
             actual_pos = actual_results.get(race_num)
@@ -2003,6 +2139,11 @@ def run_review(meeting_roots: list[Path], results_roots: list[Path], season_csvs
                 if model_name == "current_live":
                     scored_rows = apply_live_rank_ordering(horses, race_context, model_name)
                 race_models[model_name] = evaluate_model(scored_rows, actual_pos, model_name)
+            published_picks = published_predictions.get(race_num)
+            if published_picks:
+                race_models["published_mainline"] = evaluate_pick_order(published_picks, actual_pos)
+                coverage["published_mainline_races"] += 1
+                meeting_has_published_mainline = True
             race_models["candidate_draw_tiebreak_ordering"] = evaluate_model(
                 apply_draw_tiebreak(horses, race_context, "current_live"),
                 actual_pos,
@@ -2074,10 +2215,20 @@ def run_review(meeting_roots: list[Path], results_roots: list[Path], season_csvs
             all_races.append(race_entry)
         if meeting_had_race:
             coverage["meetings"] += 1
+        if meeting_has_published_mainline:
+            coverage["published_mainline_meetings"] += 1
 
     model_summary = {
         model_name: summarize_model_races([race["models"][model_name] for race in all_races]) for model_name in model_specs
     }
+    model_roles = {
+        "previous_calibrated": "legacy_reference",
+        "current_live": "production_mainline",
+    }
+    published_races = [race["models"]["published_mainline"] for race in all_races if "published_mainline" in race["models"]]
+    if published_races:
+        model_summary["published_mainline"] = summarize_model_races(published_races)
+        model_roles["published_mainline"] = "historical_gate"
     model_summary["candidate_draw_tiebreak_ordering"] = summarize_model_races(
         [race["models"]["candidate_draw_tiebreak_ordering"] for race in all_races]
     )
@@ -2100,6 +2251,11 @@ def run_review(meeting_roots: list[Path], results_roots: list[Path], season_csvs
         model_name: summarize_model_races([race["models"][model_name] for race in all_races if race["has_debut"]])
         for model_name in model_specs
     }
+    published_debut_races = [
+        race["models"]["published_mainline"] for race in all_races if race["has_debut"] and "published_mainline" in race["models"]
+    ]
+    if published_debut_races:
+        debut_race_summary["published_mainline"] = summarize_model_races(published_debut_races)
     debut_race_summary["candidate_draw_tiebreak_ordering"] = summarize_model_races(
         [race["models"]["candidate_draw_tiebreak_ordering"] for race in all_races if race["has_debut"]]
     )
@@ -2124,9 +2280,13 @@ def run_review(meeting_roots: list[Path], results_roots: list[Path], season_csvs
         model_summary["candidate_outer_weights_retune"] = best_outer_summary
         debut_race_summary["candidate_outer_weights_retune"] = summarize_outer_weight_subset(all_races, best_outer_weights, only_debut=True)
 
+    for model_name in model_summary:
+        model_roles.setdefault(model_name, "experimental")
+
     meeting_summary = summarize_meeting_models(
         all_races,
         list(model_specs.keys()) + [
+            "published_mainline",
             "candidate_draw_tiebreak_ordering",
             "candidate_draw_micro_tiebreak",
             "candidate_draw_micro_tiebreak_hv_mid",
@@ -2139,6 +2299,7 @@ def run_review(meeting_roots: list[Path], results_roots: list[Path], season_csvs
 
     return {
         "coverage": coverage,
+        "model_roles": model_roles,
         "model_summary": model_summary,
         "debut_race_summary": debut_race_summary,
         "meeting_summary": meeting_summary,

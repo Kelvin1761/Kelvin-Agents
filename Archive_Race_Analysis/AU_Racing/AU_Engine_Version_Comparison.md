@@ -1,7 +1,7 @@
 # AU Engine Version Comparison
 
-- Sample races: **315**
-- Sample horses: **3468**
+- Sample races: **136**
+- Sample horses: **986**
 - Legacy engine: **Legacy/Mainline**
 - Trial engine: **SIP-AU-V22 / Shadow**
 
@@ -9,18 +9,18 @@
 
 | 指標 | 原始 (Legacy/Mainline) | 優化後 (SIP-AU-V22 / Shadow) | 改善幅度 |
 |---|---:|---:|---:|
-| 🏆 Gold (3/3) | 3.2% | 4.1% | +1.0pp |
-| ✅ Good (Top1+Top2 入前三) | 14.9% | 16.8% | +1.9pp |
-| ⚠️ Pass (2/3) | 31.4% | 31.4% | +0.0pp |
-| 🥇 Champion | 15.6% | 14.3% | -1.3pp |
+| 🏆 Gold (3/3) | 1.5% | 1.5% | +0.0pp |
+| ✅ Good (Top1+Top2 入前三) | 5.9% | 5.9% | +0.0pp |
+| ⚠️ Pass (2/3) | 21.3% | 19.9% | -1.5pp |
+| 🥇 Champion | 14.7% | 13.2% | -1.5pp |
 
 ## Metric Crosswalk
 
 | 指標 | Legacy/Mainline | SIP-AU-V22 / Shadow | 改善幅度 |
 |---|---:|---:|---:|
-| Top3 Contains Winner | 41.9% | 42.9% | +1.0pp |
-| Top3 Place Precision | 37.9% | 37.7% | -0.2pp |
-| 0-hit | 21.0% | 22.5% | +1.6pp |
+| Top3 Contains Winner | 33.1% | 34.6% | +1.5pp |
+| Top3 Place Precision | 30.1% | 30.6% | +0.5pp |
+| 0-hit | 32.4% | 29.4% | -2.9pp |
 
 ## Notes
 

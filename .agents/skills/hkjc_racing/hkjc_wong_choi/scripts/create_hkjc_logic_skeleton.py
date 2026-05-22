@@ -286,6 +286,39 @@ def parse_formline_table(block):
     return results
 
 
+def parse_overseas_races_table(block):
+    """Extract overseas race data from the PDF section."""
+    results = []
+    # Find the table under 🌍 **海外賽績 (來自 PDF):**
+    m = re.search(r'🌍 \*\*海外賽績 \(來自 PDF\):\*\*.*?\n(\|[^\n]+\n\|[-| ]+\n)(.*?)(?=\n\n|\n💡|\n📊|\Z)', block, re.DOTALL)
+    if not m:
+        return results
+    
+    table_content = m.group(2).strip()
+    for line in table_content.split('\n'):
+        if not line.strip().startswith('|'):
+            continue
+        cols = [c.strip() for c in line.split('|')]
+        # cols: ['', '#', '日期', '場地/路程', '班次', '名次/馬匹數', '騎師', '負磅', '締速', '勝負距離', '']
+        if len(cols) >= 10:
+            try:
+                int(cols[1]) # verify row num
+            except (ValueError, IndexError):
+                continue
+            
+            results.append({
+                'date': cols[2],
+                'track_dist': cols[3],
+                'class_level': cols[4],
+                'rank': cols[5],
+                'jockey': cols[6],
+                'weight': cols[7],
+                'time': cols[8],
+                'margin': cols[9]
+            })
+    return results
+
+
 import hashlib
 import time
 import secrets
@@ -1444,6 +1477,9 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None, facts_path=
             'formline_table': parse_formline_table(horse_block) if horse_block else [],
             'last_finish': last_finish,
             'last_margin': last_margin_val,
+            
+            # ── 海外賽績 (來自 PDF) ──
+            'pdf_overseas_races': parse_overseas_races_table(horse_block) if horse_block else [],
 
             # ── 級數優勢 (class_advantage) ──
             'total_starts': starts,

@@ -1,0 +1,806 @@
+{
+    "global_general": {
+        "field_1_8": {
+            "inside": {
+                "win_rate": 0.128,
+                "place_rate": 0.391,
+                "sample_size": 243
+            },
+            "middle": {
+                "win_rate": 0.141,
+                "place_rate": 0.412,
+                "sample_size": 199
+            },
+            "outside": {
+                "win_rate": 0.0,
+                "place_rate": 0.0,
+                "sample_size": 0
+            },
+            "wide": {
+                "win_rate": 0.0,
+                "place_rate": 0.0,
+                "sample_size": 0
+            }
+        },
+        "field_9_12": {
+            "inside": {
+                "win_rate": 0.096,
+                "place_rate": 0.313,
+                "sample_size": 822
+            },
+            "middle": {
+                "win_rate": 0.096,
+                "place_rate": 0.28,
+                "sample_size": 822
+            },
+            "outside": {
+                "win_rate": 0.089,
+                "place_rate": 0.243,
+                "sample_size": 503
+            },
+            "wide": {
+                "win_rate": 0.0,
+                "place_rate": 0.0,
+                "sample_size": 0
+            }
+        },
+        "field_13_plus": {
+            "inside": {
+                "win_rate": 0.084,
+                "place_rate": 0.205,
+                "sample_size": 395
+            },
+            "middle": {
+                "win_rate": 0.056,
+                "place_rate": 0.194,
+                "sample_size": 396
+            },
+            "outside": {
+                "win_rate": 0.056,
+                "place_rate": 0.202,
+                "sample_size": 396
+            },
+            "wide": {
+                "win_rate": 0.059,
+                "place_rate": 0.152,
+                "sample_size": 289
+            }
+        }
+    },
+    "tracks": {
+        "Flemington": {
+            "track_general": {
+                "inside": {
+                    "win_rate": 0.082,
+                    "place_rate": 0.271,
+                    "sample_size": 597
+                },
+                "middle": {
+                    "win_rate": 0.095,
+                    "place_rate": 0.285,
+                    "sample_size": 578
+                },
+                "outside": {
+                    "win_rate": 0.09,
+                    "place_rate": 0.249,
+                    "sample_size": 378
+                },
+                "wide": {
+                    "win_rate": 0.102,
+                    "place_rate": 0.246,
+                    "sample_size": 118
+                }
+            },
+            "distances": {
+                "1100": {
+                    "inside": {
+                        "win_rate": 0.087,
+                        "place_rate": 0.25,
+                        "sample_size": 80
+                    },
+                    "middle": {
+                        "win_rate": 0.103,
+                        "place_rate": 0.282,
+                        "sample_size": 78
+                    },
+                    "outside": {
+                        "win_rate": 0.068,
+                        "place_rate": 0.273,
+                        "sample_size": 44
+                    },
+                    "wide": {
+                        "win_rate": 0.095,
+                        "place_rate": 0.286,
+                        "sample_size": 21
+                    }
+                },
+                "1400": {
+                    "inside": {
+                        "win_rate": 0.065,
+                        "place_rate": 0.271,
+                        "sample_size": 107
+                    },
+                    "middle": {
+                        "win_rate": 0.105,
+                        "place_rate": 0.333,
+                        "sample_size": 105
+                    },
+                    "outside": {
+                        "win_rate": 0.113,
+                        "place_rate": 0.211,
+                        "sample_size": 71
+                    },
+                    "wide": {
+                        "win_rate": 0.1,
+                        "place_rate": 0.2,
+                        "sample_size": 10
+                    }
+                },
+                "1200": {
+                    "inside": {
+                        "win_rate": 0.069,
+                        "place_rate": 0.25,
+                        "sample_size": 72
+                    },
+                    "middle": {
+                        "win_rate": 0.086,
+                        "place_rate": 0.229,
+                        "sample_size": 70
+                    },
+                    "outside": {
+                        "win_rate": 0.093,
+                        "place_rate": 0.278,
+                        "sample_size": 54
+                    },
+                    "wide": {
+                        "win_rate": 0.1,
+                        "place_rate": 0.25,
+                        "sample_size": 20
+                    }
+                },
+                "2000": {
+                    "inside": {
+                        "win_rate": 0.062,
+                        "place_rate": 0.203,
+                        "sample_size": 64
+                    },
+                    "middle": {
+                        "win_rate": 0.063,
+                        "place_rate": 0.27,
+                        "sample_size": 63
+                    },
+                    "outside": {
+                        "win_rate": 0.14,
+                        "place_rate": 0.34,
+                        "sample_size": 50
+                    },
+                    "wide": {
+                        "win_rate": 0.143,
+                        "place_rate": 0.143,
+                        "sample_size": 7
+                    }
+                },
+                "2600": {
+                    "inside": {
+                        "win_rate": 0.125,
+                        "place_rate": 0.375,
+                        "sample_size": 8
+                    },
+                    "middle": {
+                        "win_rate": 0.143,
+                        "place_rate": 0.143,
+                        "sample_size": 7
+                    },
+                    "outside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.25,
+                        "sample_size": 8
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 0
+                    }
+                },
+                "1000": {
+                    "inside": {
+                        "win_rate": 0.143,
+                        "place_rate": 0.304,
+                        "sample_size": 56
+                    },
+                    "middle": {
+                        "win_rate": 0.091,
+                        "place_rate": 0.345,
+                        "sample_size": 55
+                    },
+                    "outside": {
+                        "win_rate": 0.037,
+                        "place_rate": 0.185,
+                        "sample_size": 27
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 1.0,
+                        "sample_size": 1
+                    }
+                },
+                "1600": {
+                    "inside": {
+                        "win_rate": 0.083,
+                        "place_rate": 0.321,
+                        "sample_size": 84
+                    },
+                    "middle": {
+                        "win_rate": 0.139,
+                        "place_rate": 0.342,
+                        "sample_size": 79
+                    },
+                    "outside": {
+                        "win_rate": 0.083,
+                        "place_rate": 0.194,
+                        "sample_size": 36
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.286,
+                        "sample_size": 7
+                    }
+                },
+                "2500": {
+                    "inside": {
+                        "win_rate": 0.105,
+                        "place_rate": 0.368,
+                        "sample_size": 19
+                    },
+                    "middle": {
+                        "win_rate": 0.05,
+                        "place_rate": 0.15,
+                        "sample_size": 20
+                    },
+                    "outside": {
+                        "win_rate": 0.067,
+                        "place_rate": 0.267,
+                        "sample_size": 15
+                    },
+                    "wide": {
+                        "win_rate": 0.2,
+                        "place_rate": 0.2,
+                        "sample_size": 5
+                    }
+                },
+                "1800": {
+                    "inside": {
+                        "win_rate": 0.114,
+                        "place_rate": 0.341,
+                        "sample_size": 44
+                    },
+                    "middle": {
+                        "win_rate": 0.05,
+                        "place_rate": 0.225,
+                        "sample_size": 40
+                    },
+                    "outside": {
+                        "win_rate": 0.074,
+                        "place_rate": 0.185,
+                        "sample_size": 27
+                    },
+                    "wide": {
+                        "win_rate": 0.222,
+                        "place_rate": 0.444,
+                        "sample_size": 9
+                    }
+                },
+                "2800": {
+                    "inside": {
+                        "win_rate": 0.083,
+                        "place_rate": 0.25,
+                        "sample_size": 12
+                    },
+                    "middle": {
+                        "win_rate": 0.167,
+                        "place_rate": 0.333,
+                        "sample_size": 12
+                    },
+                    "outside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.111,
+                        "sample_size": 9
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.1,
+                        "sample_size": 10
+                    }
+                },
+                "1410": {
+                    "inside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.333,
+                        "sample_size": 12
+                    },
+                    "middle": {
+                        "win_rate": 0.111,
+                        "place_rate": 0.222,
+                        "sample_size": 9
+                    },
+                    "outside": {
+                        "win_rate": 0.333,
+                        "place_rate": 0.333,
+                        "sample_size": 6
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 1.0,
+                        "sample_size": 1
+                    }
+                },
+                "2530": {
+                    "inside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 3
+                    },
+                    "middle": {
+                        "win_rate": 0.25,
+                        "place_rate": 0.75,
+                        "sample_size": 4
+                    },
+                    "outside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 0
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 0
+                    }
+                },
+                "1620": {
+                    "inside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 4
+                    },
+                    "middle": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.5,
+                        "sample_size": 4
+                    },
+                    "outside": {
+                        "win_rate": 0.25,
+                        "place_rate": 0.25,
+                        "sample_size": 4
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 3
+                    }
+                },
+                "1700": {
+                    "inside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.125,
+                        "sample_size": 8
+                    },
+                    "middle": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.125,
+                        "sample_size": 8
+                    },
+                    "outside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.25,
+                        "sample_size": 8
+                    },
+                    "wide": {
+                        "win_rate": 0.286,
+                        "place_rate": 0.286,
+                        "sample_size": 7
+                    }
+                },
+                "2550": {
+                    "inside": {
+                        "win_rate": 0.25,
+                        "place_rate": 0.5,
+                        "sample_size": 4
+                    },
+                    "middle": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 4
+                    },
+                    "outside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.5,
+                        "sample_size": 2
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 0
+                    }
+                },
+                "1630": {
+                    "inside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.25,
+                        "sample_size": 4
+                    },
+                    "middle": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 4
+                    },
+                    "outside": {
+                        "win_rate": 0.25,
+                        "place_rate": 0.5,
+                        "sample_size": 4
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 1
+                    }
+                },
+                "1420": {
+                    "inside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.25,
+                        "sample_size": 4
+                    },
+                    "middle": {
+                        "win_rate": 0.25,
+                        "place_rate": 0.5,
+                        "sample_size": 4
+                    },
+                    "outside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 3
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 0
+                    }
+                },
+                "2520": {
+                    "inside": {
+                        "win_rate": 0.125,
+                        "place_rate": 0.125,
+                        "sample_size": 8
+                    },
+                    "middle": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.125,
+                        "sample_size": 8
+                    },
+                    "outside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.5,
+                        "sample_size": 6
+                    },
+                    "wide": {
+                        "win_rate": 0.25,
+                        "place_rate": 0.25,
+                        "sample_size": 4
+                    }
+                },
+                "3200": {
+                    "inside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 4
+                    },
+                    "middle": {
+                        "win_rate": 0.25,
+                        "place_rate": 0.25,
+                        "sample_size": 4
+                    },
+                    "outside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 4
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.167,
+                        "sample_size": 12
+                    }
+                }
+            }
+        },
+        "Randwick": {
+            "track_general": {
+                "inside": {
+                    "win_rate": 0.109,
+                    "place_rate": 0.314,
+                    "sample_size": 863
+                },
+                "middle": {
+                    "win_rate": 0.088,
+                    "place_rate": 0.267,
+                    "sample_size": 839
+                },
+                "outside": {
+                    "win_rate": 0.063,
+                    "place_rate": 0.207,
+                    "sample_size": 521
+                },
+                "wide": {
+                    "win_rate": 0.029,
+                    "place_rate": 0.088,
+                    "sample_size": 171
+                }
+            },
+            "distances": {
+                "1100": {
+                    "inside": {
+                        "win_rate": 0.083,
+                        "place_rate": 0.319,
+                        "sample_size": 72
+                    },
+                    "middle": {
+                        "win_rate": 0.1,
+                        "place_rate": 0.271,
+                        "sample_size": 70
+                    },
+                    "outside": {
+                        "win_rate": 0.1,
+                        "place_rate": 0.2,
+                        "sample_size": 40
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.083,
+                        "sample_size": 12
+                    }
+                },
+                "2000": {
+                    "inside": {
+                        "win_rate": 0.2,
+                        "place_rate": 0.433,
+                        "sample_size": 60
+                    },
+                    "middle": {
+                        "win_rate": 0.035,
+                        "place_rate": 0.228,
+                        "sample_size": 57
+                    },
+                    "outside": {
+                        "win_rate": 0.026,
+                        "place_rate": 0.128,
+                        "sample_size": 39
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.059,
+                        "sample_size": 17
+                    }
+                },
+                "2600": {
+                    "inside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.25,
+                        "sample_size": 4
+                    },
+                    "middle": {
+                        "win_rate": 0.25,
+                        "place_rate": 0.5,
+                        "sample_size": 4
+                    },
+                    "outside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 3
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 0
+                    }
+                },
+                "1600": {
+                    "inside": {
+                        "win_rate": 0.101,
+                        "place_rate": 0.321,
+                        "sample_size": 168
+                    },
+                    "middle": {
+                        "win_rate": 0.085,
+                        "place_rate": 0.28,
+                        "sample_size": 164
+                    },
+                    "outside": {
+                        "win_rate": 0.07,
+                        "place_rate": 0.157,
+                        "sample_size": 115
+                    },
+                    "wide": {
+                        "win_rate": 0.042,
+                        "place_rate": 0.104,
+                        "sample_size": 48
+                    }
+                },
+                "1400": {
+                    "inside": {
+                        "win_rate": 0.089,
+                        "place_rate": 0.259,
+                        "sample_size": 135
+                    },
+                    "middle": {
+                        "win_rate": 0.096,
+                        "place_rate": 0.257,
+                        "sample_size": 136
+                    },
+                    "outside": {
+                        "win_rate": 0.083,
+                        "place_rate": 0.292,
+                        "sample_size": 96
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.048,
+                        "sample_size": 21
+                    }
+                },
+                "1200": {
+                    "inside": {
+                        "win_rate": 0.094,
+                        "place_rate": 0.271,
+                        "sample_size": 192
+                    },
+                    "middle": {
+                        "win_rate": 0.107,
+                        "place_rate": 0.283,
+                        "sample_size": 187
+                    },
+                    "outside": {
+                        "win_rate": 0.05,
+                        "place_rate": 0.25,
+                        "sample_size": 100
+                    },
+                    "wide": {
+                        "win_rate": 0.083,
+                        "place_rate": 0.208,
+                        "sample_size": 24
+                    }
+                },
+                "2400": {
+                    "inside": {
+                        "win_rate": 0.031,
+                        "place_rate": 0.188,
+                        "sample_size": 32
+                    },
+                    "middle": {
+                        "win_rate": 0.172,
+                        "place_rate": 0.31,
+                        "sample_size": 29
+                    },
+                    "outside": {
+                        "win_rate": 0.042,
+                        "place_rate": 0.208,
+                        "sample_size": 24
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.1,
+                        "sample_size": 10
+                    }
+                },
+                "3200": {
+                    "inside": {
+                        "win_rate": 0.25,
+                        "place_rate": 0.5,
+                        "sample_size": 4
+                    },
+                    "middle": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 4
+                    },
+                    "outside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.25,
+                        "sample_size": 4
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 2
+                    }
+                },
+                "1000": {
+                    "inside": {
+                        "win_rate": 0.17,
+                        "place_rate": 0.375,
+                        "sample_size": 88
+                    },
+                    "middle": {
+                        "win_rate": 0.047,
+                        "place_rate": 0.256,
+                        "sample_size": 86
+                    },
+                    "outside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.098,
+                        "sample_size": 41
+                    },
+                    "wide": {
+                        "win_rate": 0.067,
+                        "place_rate": 0.067,
+                        "sample_size": 15
+                    }
+                },
+                "1800": {
+                    "inside": {
+                        "win_rate": 0.071,
+                        "place_rate": 0.286,
+                        "sample_size": 28
+                    },
+                    "middle": {
+                        "win_rate": 0.077,
+                        "place_rate": 0.231,
+                        "sample_size": 26
+                    },
+                    "outside": {
+                        "win_rate": 0.111,
+                        "place_rate": 0.222,
+                        "sample_size": 18
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 9
+                    }
+                },
+                "1500": {
+                    "inside": {
+                        "win_rate": 0.107,
+                        "place_rate": 0.321,
+                        "sample_size": 28
+                    },
+                    "middle": {
+                        "win_rate": 0.154,
+                        "place_rate": 0.385,
+                        "sample_size": 26
+                    },
+                    "outside": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.133,
+                        "sample_size": 15
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 10
+                    }
+                },
+                "1300": {
+                    "inside": {
+                        "win_rate": 0.135,
+                        "place_rate": 0.423,
+                        "sample_size": 52
+                    },
+                    "middle": {
+                        "win_rate": 0.04,
+                        "place_rate": 0.18,
+                        "sample_size": 50
+                    },
+                    "outside": {
+                        "win_rate": 0.154,
+                        "place_rate": 0.308,
+                        "sample_size": 26
+                    },
+                    "wide": {
+                        "win_rate": 0.0,
+                        "place_rate": 0.0,
+                        "sample_size": 3
+                    }
+                }
+            }
+        }
+    }
+}

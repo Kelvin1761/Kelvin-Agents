@@ -1,19 +1,14 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import json
 import math
 from collections import defaultdict
-from pathlib import Path
 
 from au_archive_calibrator import (
     ARCHIVE_ROOT,
     HISTORICAL_RESULTS_CSV,
-    choose_track_rows,
-    detect_meeting_date,
-    detect_meeting_track,
+    iter_logic_rows,
     load_historical_results,
-    normalize_horse_name,
     parse_int,
 )
 
@@ -94,49 +89,23 @@ def gap_count(target_rate: float, actual_count: int, total: int) -> int:
 
 def iter_ability_races():
     historical_results = load_historical_results(HISTORICAL_RESULTS_CSV)
-    for meeting_dir in sorted(path for path in ARCHIVE_ROOT.iterdir() if path.is_dir()):
-        logic_files = sorted(meeting_dir.glob("Race_*_Logic.json"), key=lambda p: parse_int(p.stem.split("_")[1], 999))
-        if not logic_files:
-            continue
-        sample_logic = json.loads(logic_files[0].read_text(encoding="utf-8"))
-        meeting_date = detect_meeting_date(meeting_dir)
-        meeting_track = detect_meeting_track(meeting_dir, sample_logic)
-        if not meeting_date or not meeting_track:
-            continue
-        for logic_path in logic_files:
-            logic = json.loads(logic_path.read_text(encoding="utf-8"))
-            race_analysis = logic.get("race_analysis", {})
-            race_no = parse_int(race_analysis.get("race_number")) or parse_int(logic_path.stem.split("_")[1])
-            rows_for_race = choose_track_rows(historical_results.get((meeting_date, race_no), []), meeting_track)
-            if not rows_for_race:
-                continue
-            race_lookup = {row["horse_slug"]: row for row in rows_for_race}
-            horses = []
-            for horse_num, horse in logic.get("horses", {}).items():
-                python_auto = horse.get("python_auto") or {}
-                if "ability_score" not in python_auto:
-                    continue
-                result_row = race_lookup.get(normalize_horse_name(horse.get("horse_name")))
-                if not result_row:
-                    continue
-                horses.append(
-                    {
-                        "horse_number": parse_int(horse_num) or 999,
-                        "score": float(python_auto.get("rank_score") or python_auto.get("ability_score") or 0.0),
-                        "actual_pos": int(result_row["pos"]),
-                        "condition_bucket": condition_bucket(result_row.get("condition")),
-                    }
-                )
-            if len(horses) < 4:
-                continue
-            yield {
-                "meeting": meeting_dir.name,
-                "race": race_no,
-                "race_class_bucket": race_class_bucket(race_analysis.get("race_class")),
-                "field_size_bucket": field_size_bucket(len(horses)),
-                "condition_bucket": horses[0]["condition_bucket"],
-                "horses": horses,
-            }
+    for race_rows in iter_logic_rows(ARCHIVE_ROOT, historical_results):
+        yield {
+            "meeting": race_rows[0]["meeting"],
+            "race": race_rows[0]["race"],
+            "race_class_bucket": race_class_bucket(race_rows[0].get("race_class")),
+            "field_size_bucket": field_size_bucket(len(race_rows)),
+            "condition_bucket": condition_bucket(race_rows[0].get("condition")),
+            "horses": [
+                {
+                    "horse_number": row["horse_number"],
+                    "score": float(row["model_score"]),
+                    "actual_pos": int(row["actual_pos"]),
+                    "condition_bucket": condition_bucket(row.get("condition")),
+                }
+                for row in race_rows
+            ],
+        }
 
 
 def collect_metrics():

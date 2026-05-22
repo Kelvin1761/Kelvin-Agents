@@ -73,15 +73,17 @@ def _candidate_sort_key(item: dict) -> tuple[float, ...]:
 
 def _collect_candidate_comparisons(review_payload: dict, meeting_name: str) -> list[dict]:
     model_summary = review_payload.get("model_summary") or {}
+    model_roles = review_payload.get("model_roles") or {}
     meeting_summary = (review_payload.get("meeting_summary") or {}).get(meeting_name) or {}
     meeting_models = meeting_summary.get("models") or {}
-    baseline_global = model_summary.get("current_live") or {}
-    baseline_meeting = meeting_models.get("current_live") or {}
+    baseline_model = "published_mainline" if model_summary.get("published_mainline") and meeting_models.get("published_mainline") else "current_live"
+    baseline_global = model_summary.get(baseline_model) or {}
+    baseline_meeting = meeting_models.get(baseline_model) or {}
     candidates: list[dict] = []
-    excluded = {"current_live", "previous_calibrated"}
+    excluded = {"current_live", "published_mainline", "previous_calibrated"}
 
     for model_name, global_stats in model_summary.items():
-        if model_name in excluded or not global_stats:
+        if model_name in excluded or not global_stats or model_roles.get(model_name) != "experimental":
             continue
         meeting_stats = meeting_models.get(model_name)
         if not meeting_stats:
@@ -117,6 +119,7 @@ def _collect_candidate_comparisons(review_payload: dict, meeting_name: str) -> l
                 "model": model_name,
                 "global": global_stats,
                 "meeting": meeting_stats,
+                "baseline_model": baseline_model,
                 "global_delta": global_delta,
                 "meeting_delta": meeting_delta,
             }
@@ -229,33 +232,56 @@ def _render_report(
 
     meeting_summary = (review_payload.get("meeting_summary") or {}).get(meeting_name) or {}
     meeting_models = meeting_summary.get("models") or {}
-    current_meeting = meeting_models.get("current_live") or {}
-    current_global = (review_payload.get("model_summary") or {}).get("current_live") or {}
+    baseline_model = "published_mainline" if meeting_models.get("published_mainline") else "current_live"
+    current_meeting = meeting_models.get(baseline_model) or {}
+    current_global = (review_payload.get("model_summary") or {}).get(baseline_model) or {}
     candidates = _collect_candidate_comparisons(review_payload, meeting_name)
+    production_global = (review_payload.get("model_summary") or {}).get("current_live") or {}
+    historical_global = (review_payload.get("model_summary") or {}).get("published_mainline") or {}
 
     lines.extend(
         [
             "",
-            "## Current Live 基線",
+            "## 固定 Gate",
+            f"- Production baseline: `current_live`",
+            f"- Historical gate: `{'published_mainline' if historical_global else '未提供'}`",
+            f"- Candidate role: `experimental` only",
+            "",
+            f"## {baseline_model} 基線",
             f"- 今場: Champion {current_meeting.get('champion', 0)} / MinThreshold {current_meeting.get('min_threshold', 0)} / OrderIssue {current_meeting.get('order_issue', 0)} / MRR {current_meeting.get('mrr', 0)}",
             f"- 全庫: Champion {current_global.get('champion', 0)} / Good {current_global.get('good', 0)} / MinThreshold {current_global.get('min_threshold', 0)} / OrderIssue {current_global.get('order_issue', 0)} / MRR {current_global.get('mrr', 0)} / AvgTop4Hits {current_global.get('avg_top4_hits', 0)}",
+        ]
+    )
+
+    if production_global and historical_global:
+        lines.extend(
+            [
+                "",
+                "## Production vs Historical",
+                f"- `current_live`: Gold {production_global.get('gold', 0)} / Good {production_global.get('good', 0)} / MinThreshold {production_global.get('min_threshold', 0)} / Champion {production_global.get('champion', 0)} / OrderIssue {production_global.get('order_issue', 0)} / MRR {production_global.get('mrr', 0)}",
+                f"- `published_mainline`: Gold {historical_global.get('gold', 0)} / Good {historical_global.get('good', 0)} / MinThreshold {historical_global.get('min_threshold', 0)} / Champion {historical_global.get('champion', 0)} / OrderIssue {historical_global.get('order_issue', 0)} / MRR {historical_global.get('mrr', 0)}",
+            ]
+        )
+
+    lines.extend(
+        [
             "",
-            "## 可改進候選",
+            "## 最佳 Experimental",
         ]
     )
 
     if not candidates:
-        lines.append("- 今次 review 未搵到可直接比較嘅候選模型。")
+        lines.append("- 今次 review 未搵到可直接比較嘅 experimental 候選模型。")
     else:
-        for item in candidates[:5]:
-            label, rationale = _recommendation_label(item)
-            lines.append(
-                f"- `{item['model']}`: {label}。"
-                f" 全庫 Champion {_fmt_delta(item['global_delta']['champion'])} / Min {_fmt_delta(item['global_delta']['min_threshold'])} / "
-                f"OrderIssue {_fmt_delta(item['global_delta']['order_issue'])} / MRR {_fmt_delta(item['global_delta']['mrr'], 4)}；"
-                f" 今場 Champion {_fmt_delta(item['meeting_delta']['champion'])} / Min {_fmt_delta(item['meeting_delta']['min_threshold'])} / "
-                f"OrderIssue {_fmt_delta(item['meeting_delta']['order_issue'])} / MRR {_fmt_delta(item['meeting_delta']['mrr'], 4)}。{rationale}"
-            )
+        item = candidates[0]
+        label, rationale = _recommendation_label(item)
+        lines.append(
+            f"- `{item['model']}`: {label}。"
+            f" 全庫 Champion {_fmt_delta(item['global_delta']['champion'])} / Min {_fmt_delta(item['global_delta']['min_threshold'])} / "
+            f"OrderIssue {_fmt_delta(item['global_delta']['order_issue'])} / MRR {_fmt_delta(item['global_delta']['mrr'], 4)}；"
+            f" 今場 Champion {_fmt_delta(item['meeting_delta']['champion'])} / Min {_fmt_delta(item['meeting_delta']['min_threshold'])} / "
+            f"OrderIssue {_fmt_delta(item['meeting_delta']['order_issue'])} / MRR {_fmt_delta(item['meeting_delta']['mrr'], 4)}。{rationale}"
+        )
 
     lines.extend(["", "## 單場改善有冇"])
     if not candidates:

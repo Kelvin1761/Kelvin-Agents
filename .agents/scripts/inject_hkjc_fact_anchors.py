@@ -519,6 +519,111 @@ def parse_date(date_str: str) -> Optional[datetime]:
         return None
 
 
+def get_pdf_path(formguide_path: str) -> Optional[Path]:
+    fp = Path(formguide_path)
+    d_name = fp.parent.name
+    # Extract month and day: "2026-05-24_ShaTin" -> "05-24"
+    import re
+    m = re.search(r'\d{4}-(\d{2}-\d{2})_', d_name)
+    if m:
+        prefix = m.group(1)
+        pdf_path = fp.parent / f"{prefix} 全日出賽馬匹資料 (PDF).md"
+        if pdf_path.exists():
+            return pdf_path
+    return None
+
+
+def parse_pdf_overseas_races(pdf_path: Path, brand_no: str, horse_name: str) -> list:
+    """Parse overseas race records from the full PDF dump."""
+    if not pdf_path or not pdf_path.exists():
+        return []
+        
+    try:
+        with open(pdf_path, 'r', encoding='utf-8') as f:
+            text = f.read()
+    except Exception as e:
+        print(f"Error reading PDF text: {e}")
+        return []
+        
+    lines = text.split('\n')
+    start_idx = -1
+    
+    # 1. Find horse section
+    for i, line in enumerate(lines):
+        # Match standard HKJC horse (e.g. "3 浪漫勇士 E486") or foreign horse (e.g. "2 大怪奇 池江泰壽")
+        # Match format: start with index, then horse name
+        if (brand_no and brand_no != 'UNKNOWN' and brand_no in line) or \
+           re.search(rf'^\s*(?:S?\d+)\s+{re.escape(horse_name)}', line):
+            start_idx = i
+            break
+            
+    if start_idx == -1:
+        return []
+        
+    extracted_races = []
+    
+    # 2. Extract race rows
+    for line in lines[start_idx+1:]:
+        # Break if we hit the next horse header
+        if re.match(r'^\s*(?:S?\d+)\s+([^\x00-\x7F]+)', line) and horse_name not in line:
+            # basic check to ensure it's actually a header (not just a race record)
+            if len(line.split()) >= 3 and not '/' in line.split()[0]:
+                break
+                
+        # Match a race row e.g. "1/8 16/3/25 3歲 ..." or "4/14 559 29/3/26 4 ..."
+        m = re.match(r'^\s*([0-9a-zA-Z]+)/(\d+)\s+(.+)$', line)
+        if m:
+            placing_str = m.group(1)
+            field_size = int(m.group(2))
+            rest = m.group(3)
+            
+            date_m = re.search(r'\b(\d{1,2}/\d{1,2}/\d{2})\b', rest)
+            if not date_m:
+                continue
+            date_str = date_m.group(1)
+            
+            # Format to dd/mm/yyyy
+            parts = date_str.split('/')
+            if len(parts) == 3:
+                # Assuming PDF uses dd/mm/yy
+                year = f"20{parts[2]}" if len(parts[2]) == 2 else parts[2]
+                formatted_date = f"{parts[0].zfill(2)}/{parts[1].zfill(2)}/{year}"
+            else:
+                formatted_date = date_str
+            
+            dist_m = re.search(r'\b([1-4]\d00|1650)\b', rest)
+            distance = int(dist_m.group(1)) if dist_m else 0
+            
+            placing = 0
+            if placing_str.isdigit():
+                placing = int(placing_str)
+            elif placing_str in ['W', 'UR', 'F', 'T', 'PU', 'DISQ']:
+                placing = 99
+                
+            time_m = re.findall(r'\b(\d{1,2}\.\d{2}\.\d{2})\b', rest)
+            finish_time = time_m[-1] if time_m else '-'
+            if finish_time == '-':
+                 short_times = re.findall(r'\b(\d{2}\.\d{2})\b', rest)
+                 finish_time = short_times[-1] if short_times else '-'
+                 
+            # Is this an overseas race? Often missing HKJC numeric index before the date.
+            # E.g. "1/8 16/3/25" vs "10/12 518 15/3/26"
+            # We'll tag it based on distance or context if needed, but for now just extract.
+            
+            extracted_races.append({
+                'Date': formatted_date,
+                'Distance': distance,
+                'Placing': placing,
+                'Field_Size': field_size,
+                'Finish_Time_Raw': finish_time,
+                'Is_PDF_Overseas': True,
+                'Raw_Line': line
+            })
+            
+    return extracted_races
+
+
+
 def parse_hkjc_formguide(filepath: str) -> dict:
     """Parse the HKJC extracted formguide text file.
     
@@ -551,6 +656,7 @@ def parse_hkjc_formguide(filepath: str) -> dict:
         return mapping, gear_map
     
     brand_mapping, gear_mapping = load_brand_mapping(filepath)
+    pdf_path = get_pdf_path(filepath)
 
     text = Path(filepath).read_text(encoding='utf-8')
     
@@ -721,6 +827,11 @@ def parse_hkjc_formguide(filepath: str) -> dict:
                 'pace': pace,
             })
         
+        # Extract PDF Overseas Races
+        pdf_overseas_races = []
+        if pdf_path:
+            pdf_overseas_races = parse_pdf_overseas_races(pdf_path, brand_no, horse_name)
+        
         horses.append({
             'num': horse_num,
             'name': horse_name,
@@ -731,6 +842,7 @@ def parse_hkjc_formguide(filepath: str) -> dict:
             'body_weight': body_weight,
             'today_gear': today_gear,
             'races': races,  # No limit — keep all for trend computation
+            'pdf_overseas_races': pdf_overseas_races,
         })
     
     return {'race_info': race_info, 'horses': horses}
@@ -1528,6 +1640,23 @@ def generate_horse_block(horse: dict, today_venue: str = '',
                 lines.append(f"| {i+1} | {date} | {venue} | {distance} | {class_g} | {barrier} | {jockey} | {weight} | {finish} | {margin} | {energy_str} | {l400_str} | {wide_str} | {consumption} | {pos_str} | {ftime} | {std_diff_str} | {dw_str} | {gear} | {comment} | {forgiveness} |")
 
     lines.append(f"")
+    
+    # === 海外賽績 (來自 PDF) ===
+    if horse.get('pdf_overseas_races'):
+        lines.append(f"🌍 **海外賽績 (來自 PDF):**")
+        lines.append(f"| # | 日期 | 場地/路程 | 班次 | 名次/馬匹數 | 騎師 | 負磅 | 締速 | 勝負距離 |")
+        lines.append(f"|---|------|-----------|------|-------------|------|------|------|----------|")
+        for i, ovr in enumerate(horse['pdf_overseas_races']):
+            ovr_date = ovr.get('date', '-')
+            ovr_track = ovr.get('track_dist', '-')
+            ovr_class = ovr.get('class_level', '-')
+            ovr_rank = ovr.get('rank', '-')
+            ovr_jockey = ovr.get('jockey', '-')
+            ovr_weight = ovr.get('weight', '-')
+            ovr_time = ovr.get('time', '-')
+            ovr_margin = ovr.get('margin', '-')
+            lines.append(f"| {i+1} | {ovr_date} | {ovr_track} | {ovr_class} | {ovr_rank} | {ovr_jockey} | {ovr_weight} | {ovr_time} | {ovr_margin} |")
+        lines.append(f"")
     
     # === 段速/能量趨勢 ===
     trends = compute_trends(races)

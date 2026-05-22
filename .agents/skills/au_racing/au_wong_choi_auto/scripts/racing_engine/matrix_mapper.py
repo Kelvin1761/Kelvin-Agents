@@ -5,10 +5,8 @@ from scoring import clip_score, score_band
 
 MATRIX_FORMULAS = {
     "stability": (
-        ("form_score", 0.28),
-        ("consistency_score", 0.30),
-        ("health_score", 0.18),
-        ("confidence_score", 0.24),
+        ("form_score", 0.60),
+        ("consistency_score", 0.40),
     ),
     "sectional": (
         ("sectional_score", 0.62),
@@ -35,10 +33,6 @@ MATRIX_FORMULAS = {
     "form_line": (
         ("formline_score", 0.78),
         ("form_score", 0.22),
-    ),
-    "speed_performance": (
-        ("speed_rating_score", 0.70),
-        ("sectional_score", 0.30),
     ),
 }
 

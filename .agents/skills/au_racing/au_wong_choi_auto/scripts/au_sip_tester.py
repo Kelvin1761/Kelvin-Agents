@@ -26,17 +26,19 @@ PROJECT_ROOT = SCRIPT_DIR.parents[4]
 # Import shared backtest logic
 sys.path.append(str(SCRIPT_DIR))
 sys.path.append(str(SCRIPT_DIR / "racing_engine"))
-from au_target_gap_report import (
+from au_archive_calibrator import (
     ARCHIVE_ROOT,
     HISTORICAL_RESULTS_CSV,
     choose_track_rows,
-    condition_bucket,
     detect_meeting_date,
     detect_meeting_track,
-    field_size_bucket,
     load_historical_results,
     normalize_horse_name,
     parse_int,
+)
+from au_target_gap_report import (
+    condition_bucket,
+    field_size_bucket,
     race_class_bucket,
 )
 from rank_adjustments import jt_sample_size_rank_cap, narrow_overrated_rank_shield

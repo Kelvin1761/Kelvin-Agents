@@ -16,6 +16,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 sys.path.append(str(SCRIPT_DIR / "racing_engine"))
 
+from matrix_mapper import map_features_to_matrix_scores
 from scoring import MATRIX_WEIGHTS as LIVE_MATRIX_WEIGHTS
 
 ARCHIVE_ROOT = PROJECT_ROOT / "Archive_Race_Analysis" / "AU_Racing"
@@ -37,7 +38,7 @@ MATRIX_KEYS = (
 MATRIX_LABELS = {
     "stability": "狀態與穩定性",
     "sectional": "段速與引擎",
-    "race_shape": "形勢與走位",
+    "race_shape": "檔位形勢",
     "jockey_trainer": "騎練訊號",
     "class_weight": "級數與負重",
     "track": "場地適性",
@@ -45,11 +46,37 @@ MATRIX_LABELS = {
 }
 
 CURRENT_MATRIX_WEIGHTS = dict(LIVE_MATRIX_WEIGHTS)
+FEATURE_SCORE_KEYS = (
+    "form_score",
+    "trial_score",
+    "sectional_score",
+    "pace_map_score",
+    "jockey_score",
+    "trainer_score",
+    "jockey_horse_fit_score",
+    "class_score",
+    "weight_score",
+    "distance_score",
+    "track_score",
+    "formline_score",
+    "consistency_score",
+    "health_score",
+    "confidence_score",
+)
 
 
 def slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", str(text or "").lower())
 
+
+
+def get_true_horse_name(horse: dict) -> str:
+    data = horse.get("_data") or {}
+    facts = data.get("facts_section") or ""
+    match = re.search(r"^\[\d+\]\s+([^(]+?)(?:\s+\(\d+\))?\n", facts)
+    if match:
+        return match.group(1).strip()
+    return str(get_true_horse_name(horse) or "").strip()
 
 def normalize_horse_name(name: str) -> str:
     clean = re.sub(r"\s*\([^)]*\)", "", str(name or ""))
@@ -86,6 +113,72 @@ def parse_int(value, default=None):
 def parse_float(value, default=None):
     match = re.search(r"-?\d+(?:\.\d+)?", str(value or ""))
     return float(match.group(0)) if match else default
+
+
+def scoring_path_for_race(meeting_dir: Path, race_no: int) -> Path | None:
+    path = meeting_dir / f"Race_{race_no}_Auto_Scoring.csv"
+    return path if path.exists() else None
+
+
+def load_scoring_rows(path: Path) -> list[dict]:
+    rows = []
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        for row in reader:
+            horse_number = parse_int(row.get("horse_number"))
+            if horse_number is None:
+                continue
+            feature_scores = {}
+            for key in FEATURE_SCORE_KEYS:
+                value = parse_float(row.get(key), 60.0)
+                feature_scores[key] = value if value is not None else 60.0
+            rows.append(
+                {
+                    "horse_number": horse_number,
+                    "horse_slug": normalize_horse_name(row.get("horse_name") or ""),
+                    "horse_name": str(row.get("horse_name") or "").strip(),
+                    "ability_score": parse_float(row.get("ability_score"), 0.0) or 0.0,
+                    "rank_score": parse_float(row.get("rank_score"), 0.0) or 0.0,
+                    "rank": parse_int(row.get("rank")),
+                    "grade": str(row.get("grade") or "").strip(),
+                    "model_pick_status": str(row.get("model_pick_status") or "").strip(),
+                    "feature_scores": feature_scores,
+                    "matrix_scores": {
+                        key: float(score)
+                        for key, score in map_features_to_matrix_scores(feature_scores).items()
+                        if key in MATRIX_KEYS
+                    },
+                }
+            )
+    return rows
+
+
+def archive_snapshot(
+    horse_num: str,
+    horse: dict,
+    scoring_lookup_by_num: dict[int, dict],
+    scoring_lookup_by_name: dict[str, dict],
+) -> dict | None:
+    python_auto = horse.get("python_auto") or {}
+    matrix_scores = python_auto.get("matrix_scores") or {}
+    if matrix_scores:
+        feature_scores = python_auto.get("feature_scores") or {}
+        return {
+            "ability_score": float(python_auto.get("ability_score") or 0.0),
+            "rank_score": float(python_auto.get("rank_score") or python_auto.get("ability_score") or 0.0),
+            "rank": parse_int(python_auto.get("rank")),
+            "grade": str(python_auto.get("grade") or "").strip(),
+            "model_pick_status": str(python_auto.get("model_pick_status") or "").strip(),
+            "feature_scores": {key: float(feature_scores.get(key) or 60.0) for key in FEATURE_SCORE_KEYS},
+            "matrix_scores": {key: float(matrix_scores.get(key) or 60.0) for key in MATRIX_KEYS},
+            "risk_flags": list(python_auto.get("risk_flags") or []),
+            "reason_codes": list(python_auto.get("reason_codes") or []),
+            "matrix_reasoning": python_auto.get("matrix_reasoning") or {},
+        }
+    num = parse_int(horse_num)
+    if num is not None and num in scoring_lookup_by_num:
+        return scoring_lookup_by_num[num]
+    return scoring_lookup_by_name.get(normalize_horse_name(get_true_horse_name(horse)))
 
 
 def rank_items_desc(items):
@@ -163,14 +256,17 @@ def iter_logic_rows(archive_root: Path, historical_results):
             rows_for_race = choose_track_rows(historical_results.get((meeting_date, race_no), []), meeting_track)
             if not rows_for_race:
                 continue
+            scoring_path = scoring_path_for_race(meeting_dir, race_no)
+            scoring_rows = load_scoring_rows(scoring_path) if scoring_path else []
+            scoring_lookup_by_num = {row["horse_number"]: row for row in scoring_rows}
+            scoring_lookup_by_name = {row["horse_slug"]: row for row in scoring_rows}
             race_lookup = {row["horse_slug"]: row for row in rows_for_race}
             race_rows = []
             for horse_num, horse in logic.get("horses", {}).items():
-                python_auto = horse.get("python_auto") or {}
-                matrix_scores = python_auto.get("matrix_scores") or {}
-                if not matrix_scores:
+                snapshot = archive_snapshot(horse_num, horse, scoring_lookup_by_num, scoring_lookup_by_name)
+                if not snapshot:
                     continue
-                horse_slug = normalize_horse_name(horse.get("horse_name"))
+                horse_slug = normalize_horse_name(get_true_horse_name(horse))
                 result_row = race_lookup.get(horse_slug)
                 if not result_row:
                     continue
@@ -183,13 +279,20 @@ def iter_logic_rows(archive_root: Path, historical_results):
                     "condition": str(result_row.get("condition") or "").strip(),
                     "condition_bucket": normalize_condition_bucket(result_row.get("condition") or ""),
                     "horse_number": parse_int(horse_num) or 999,
-                    "horse_name": str(horse.get("horse_name") or "").strip(),
-                    "ability_score": float(python_auto.get("ability_score") or 0.0),
-                    "rank_score": float(python_auto.get("rank_score") or 0.0),
-                    "model_score": float(python_auto.get("rank_score") or python_auto.get("ability_score") or 0.0),
+                    "horse_name": str(get_true_horse_name(horse) or "").strip(),
+                    "ability_score": float(snapshot.get("ability_score") or 0.0),
+                    "rank_score": float(snapshot.get("rank_score") or snapshot.get("ability_score") or 0.0),
+                    "model_score": float(snapshot.get("rank_score") or snapshot.get("ability_score") or 0.0),
+                    "rank": snapshot.get("rank"),
+                    "grade": snapshot.get("grade", ""),
+                    "model_pick_status": snapshot.get("model_pick_status", ""),
                     "actual_pos": int(result_row["pos"]),
                     "sp": result_row["sp"],
-                    "matrix_scores": {key: float(matrix_scores.get(key) or 60.0) for key in MATRIX_KEYS},
+                    "feature_scores": {key: float(snapshot.get("feature_scores", {}).get(key) or 60.0) for key in FEATURE_SCORE_KEYS},
+                    "matrix_scores": {key: float(snapshot.get("matrix_scores", {}).get(key) or 60.0) for key in MATRIX_KEYS},
+                    "risk_flags": list(snapshot.get("risk_flags") or []),
+                    "reason_codes": list(snapshot.get("reason_codes") or []),
+                    "matrix_reasoning": snapshot.get("matrix_reasoning") or {},
                     "data": horse.get("_data") or {},
                     "horse": horse,
                 })

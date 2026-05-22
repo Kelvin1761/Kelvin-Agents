@@ -2,21 +2,16 @@
 from __future__ import annotations
 
 import csv
-import json
 from collections import Counter, defaultdict
-from pathlib import Path
 
 from au_archive_calibrator import (
     ARCHIVE_ROOT,
     HISTORICAL_RESULTS_CSV,
     MATRIX_KEYS,
     MATRIX_LABELS,
-    choose_track_rows,
-    detect_meeting_date,
-    detect_meeting_track,
+    iter_logic_rows,
     load_historical_results,
     normalize_condition_bucket,
-    normalize_horse_name,
     parse_int,
 )
 
@@ -112,10 +107,10 @@ def collect_failure_tags(deltas: dict[str, float], winner_rank: int | None, race
     if deltas.get("stability", 0.0) >= 2.0:
         tags.append("狀態與穩定性低估")
     if deltas.get("race_shape", 0.0) >= 2.0:
-        tags.append("形勢與走位低估")
+        tags.append("檔位形勢低估")
 
     if deltas.get("race_shape", 0.0) <= -2.0:
-        tags.append("形勢與走位可能過信")
+        tags.append("檔位形勢可能過信")
     if deltas.get("sectional", 0.0) <= -2.0:
         tags.append("段速與引擎可能過信")
     if deltas.get("jockey_trainer", 0.0) <= -2.0:
@@ -143,71 +138,23 @@ def collect_failure_tags(deltas: dict[str, float], winner_rank: int | None, race
 
 def iter_races():
     historical_results = load_historical_results(HISTORICAL_RESULTS_CSV)
-    for meeting_dir in sorted(path for path in ARCHIVE_ROOT.iterdir() if path.is_dir()):
-        logic_files = sorted(meeting_dir.glob("Race_*_Logic.json"), key=lambda p: parse_int(p.stem.split("_")[1], 999))
-        if not logic_files:
-            continue
-        sample_logic = json.loads(logic_files[0].read_text(encoding="utf-8"))
-        meeting_date = detect_meeting_date(meeting_dir)
-        meeting_track = detect_meeting_track(meeting_dir, sample_logic)
-        if not meeting_date or not meeting_track:
-            continue
-
-        for logic_path in logic_files:
-            logic = json.loads(logic_path.read_text(encoding="utf-8"))
-            race_analysis = logic.get("race_analysis", {}) or {}
-            race_no = parse_int(race_analysis.get("race_number")) or parse_int(logic_path.stem.split("_")[1])
-            rows_for_race = choose_track_rows(historical_results.get((meeting_date, race_no), []), meeting_track)
-            if not rows_for_race:
-                continue
-            race_lookup = {row["horse_slug"]: row for row in rows_for_race}
-            horses = []
-            for horse_num, horse in logic.get("horses", {}).items():
-                python_auto = horse.get("python_auto") or {}
-                matrix_scores = python_auto.get("matrix_scores") or {}
-                if "ability_score" not in python_auto or not matrix_scores:
-                    continue
-                result_row = race_lookup.get(normalize_horse_name(horse.get("horse_name")))
-                if not result_row:
-                    continue
-                horses.append(
-                    {
-                        "horse_number": parse_int(horse_num) or 999,
-                        "horse_name": str(horse.get("horse_name") or "").strip(),
-                        "ability_score": float(python_auto.get("ability_score") or 0.0),
-                        "rank_score": float(python_auto.get("rank_score") or 0.0),
-                        "model_score": float(python_auto.get("rank_score") or python_auto.get("ability_score") or 0.0),
-                        "actual_pos": int(result_row["pos"]),
-                        "matrix_scores": {key: float(matrix_scores.get(key) or 60.0) for key in MATRIX_KEYS},
-                        "risk_flags": list(python_auto.get("risk_flags") or []),
-                        "reason_codes": list(python_auto.get("reason_codes") or []),
-                        "barrier": parse_int(horse.get("barrier")),
-                        "jockey": str(horse.get("jockey") or "").strip(),
-                        "trainer": str(horse.get("trainer") or "").strip(),
-                        "data": horse.get("_data") or {},
-                        "matrix_reasoning": python_auto.get("matrix_reasoning") or {},
-                    }
-                )
-            if len(horses) < 4:
-                continue
-
-            ranked = sorted(horses, key=lambda row: (-row["model_score"], row["horse_number"]))
-            for idx, row in enumerate(ranked, start=1):
-                row["model_rank"] = idx
-
-            yield {
-                "meeting": meeting_dir.name,
-                "meeting_date": meeting_date,
-                "track": meeting_track,
-                "race_no": race_no,
-                "race_class": str(race_analysis.get("race_class") or "").strip(),
-                "race_class_bucket": race_class_bucket(race_analysis.get("race_class")),
-                "field_size": len(horses),
-                "field_size_bucket": field_size_bucket(len(horses)),
-                "condition_bucket": normalize_condition_bucket(rows_for_race[0].get("condition") or ""),
-                "condition": str(rows_for_race[0].get("condition") or "").strip(),
-                "horses": ranked,
-            }
+    for race_rows in iter_logic_rows(ARCHIVE_ROOT, historical_results):
+        ranked = sorted(race_rows, key=lambda row: (-row["model_score"], row["horse_number"]))
+        for idx, row in enumerate(ranked, start=1):
+            row["model_rank"] = idx
+        yield {
+            "meeting": ranked[0]["meeting"],
+            "meeting_date": ranked[0]["date"],
+            "track": ranked[0]["track"],
+            "race_no": ranked[0]["race"],
+            "race_class": str(ranked[0].get("race_class") or "").strip(),
+            "race_class_bucket": race_class_bucket(ranked[0].get("race_class")),
+            "field_size": len(ranked),
+            "field_size_bucket": field_size_bucket(len(ranked)),
+            "condition_bucket": normalize_condition_bucket(ranked[0].get("condition") or ""),
+            "condition": str(ranked[0].get("condition") or "").strip(),
+            "horses": ranked,
+        }
 
 
 def collect_zero_hit_races():

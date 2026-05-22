@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 
 def should_use_named_jt_ratings(race_context: dict) -> bool:
     field_summary = race_context.get("field_summary") or {}
@@ -70,3 +72,91 @@ def narrow_overrated_rank_shield(matrix_scores: dict, wet_state: str, field_coun
     if penalty < 0 and jockey_trainer >= 72:
         penalty += 0.3
     return penalty
+
+
+def market_free_rank_adjustment(
+    matrix_scores: dict,
+    field_count: int,
+    going: str,
+    race_class_raw: str,
+) -> float:
+    def centered(v):
+        try:
+            return (float(v) - 60.0) / 10.0
+        except (TypeError, ValueError):
+            return 0.0
+
+    stability = centered(matrix_scores.get("stability", 60.0))
+    race_shape = centered(matrix_scores.get("race_shape", 60.0))
+    jockey_trainer = centered(matrix_scores.get("jockey_trainer", 60.0))
+    class_weight = centered(matrix_scores.get("class_weight", 60.0))
+    track = centered(matrix_scores.get("track", 60.0))
+    form_line = centered(matrix_scores.get("form_line", 60.0))
+    sectional = centered(matrix_scores.get("sectional", 60.0))
+
+    # Field size bucket
+    field = "Field <=8"
+    if field_count >= 13:
+        field = "Field 13+"
+    elif field_count >= 9:
+        field = "Field 9-12"
+
+    # Going bucket
+    going_val = str(going or "").strip().lower()
+    condition = "Other"
+    if going_val.startswith(("good", "firm")):
+        condition = "Good/Firm"
+    elif going_val.startswith("soft"):
+        condition = "Soft"
+    elif going_val.startswith("heavy"):
+        condition = "Heavy"
+
+    # Race Class bucket
+    class_val = str(race_class_raw or "").lower()
+    race_class = "Other"
+    if "group 1" in class_val:
+        race_class = "Group 1"
+    elif "group 2" in class_val or "group 3" in class_val:
+        race_class = "Group 2/3"
+    elif "listed" in class_val:
+        race_class = "Listed"
+    elif "maiden" in class_val:
+        race_class = "Maiden"
+    elif "bm" in class_val:
+        match = re.search(r"-?\d+", class_val)
+        rating = int(match.group(0)) if match else 0
+        if rating >= 88:
+            race_class = "BM88+"
+        elif rating >= 72:
+            race_class = "BM72-84"
+        else:
+            race_class = "BM58-70"
+
+    # Interaction terms
+    field13_race_shape = race_shape if field == "Field 13+" else 0.0
+    field13_sectional = sectional if field == "Field 13+" else 0.0
+    field13_form_line = form_line if field == "Field 13+" else 0.0
+    field912_form_line = form_line if field == "Field 9-12" else 0.0
+    field912_stability = stability if field == "Field 9-12" else 0.0
+    bm_class_weight = class_weight if race_class in {"BM58-70", "BM72-84", "BM88+"} else 0.0
+    wet_track = track if condition in {"Soft", "Heavy"} else 0.0
+
+    # Calculate adjustment delta
+    delta = (
+        -0.19 * stability
+        - 0.31 * race_shape
+        + 0.31 * jockey_trainer
+        - 0.24 * class_weight
+        - 0.33 * track
+        - 0.29 * form_line
+        - 0.20 * field13_race_shape
+        + 0.46 * field13_sectional
+        + 0.53 * field13_form_line
+        + 0.40 * field912_form_line
+        - 0.09 * field912_stability
+        - 0.24 * bm_class_weight
+        - 0.45 * wet_track
+    )
+
+    return max(-3.5, min(3.5, delta))
+

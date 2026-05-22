@@ -302,6 +302,7 @@ def process_race(nuxt_data, f_rc, f_fg, race_num=None):
              
              run_flucs = f"Flucs:${pr.get('openPrice', '-')} ${pr.get('startingWinPriceDecimal', '-')}"
              time = pr.get('winnerTime', '')
+             extra_tokens = _format_past_run_extra_tokens(pr)
              
              # Positions
              positions = ""
@@ -324,13 +325,70 @@ def process_race(nuxt_data, f_rc, f_fg, race_num=None):
              
              trial_str = " **(TRIAL)**" if pr.get('isTrial') else ""
              
-             f_fg.write(f"{track}{trial_str} R{race_num} {date} {dist}m cond:{cond} ${money:,} {p_jock} ({bar}) {wt}kg {run_flucs} {time} {positions.strip()}.\n")
+             f_fg.write(f"{track}{trial_str} R{race_num} {date} {dist}m cond:{cond} ${money:,} {p_jock} ({bar}) {wt}kg {run_flucs} {time}{extra_tokens} {positions.strip()}.\n")
              f_fg.write(f"{win_str}, {sec_str}, {thi_str}\n")
              f_fg.write(f"Video: {pr.get('videoComment', '')}\n")
              f_fg.write(f"Note: {pr.get('videoNote', '')}\n")
              f_fg.write(f"Stewards: {pr.get('stewardsReport', '')}\n\n")
+
         f_fg.write("=" * 60 + "\n\n")
     return meta
+
+
+def _format_past_run_extra_tokens(pr: dict) -> str:
+    """Append machine-readable tokens consumed by inject_fact_anchors.py."""
+    tokens = []
+
+    margin = pr.get('margin')
+    if margin not in (None, ''):
+        tokens.append(f"margin:{margin}")
+
+    handicap = pr.get('handicapRating')
+    if handicap not in (None, ''):
+        tokens.append(f"HC:{handicap}")
+
+    pf_parts = []
+    sectional = pr.get('sectionalTime') or {}
+    if isinstance(sectional, dict):
+        l600 = _sectional_value(sectional.get('l600'), 'time')
+        finish = _sectional_value(sectional.get('finish'), 'time')
+        if l600 is not None:
+            pf_parts.append(f"Last600: {l600}")
+        if finish is not None:
+            pf_parts.append(f"Runner Time: {finish}")
+
+    benchmark = pr.get('competitorFormBenchmark') or {}
+    if isinstance(benchmark, dict):
+        runner_time_diff = benchmark.get('runnerTimeDifference')
+        runner_pace = benchmark.get('runnerTempoLabel')
+        race_pace = benchmark.get('leaderTempoLabel')
+        l600_diff = benchmark.get('runnerTimeDifferenceL600')
+        rt_rating = pr.get('rtRating') or pr.get('rating')
+        if runner_time_diff not in (None, ''):
+            pf_parts.append(f"Race Time: {runner_time_diff}")
+        if runner_pace:
+            pf_parts.append(f"Early Runner Pace: {_pf_label(runner_pace)}.")
+        if race_pace:
+            pf_parts.append(f"Early Race Pace: {_pf_label(race_pace)}.")
+        if l600_diff not in (None, ''):
+            pf_parts.append(f"L600 Delta: {l600_diff}")
+        if rt_rating not in (None, ''):
+            pf_parts.append(f"RT Rating: {rt_rating}")
+
+    if pf_parts:
+        tokens.append(f"PF[{' '.join(pf_parts)}]")
+
+    return f" {' '.join(tokens)}" if tokens else ""
+
+
+def _sectional_value(value, key: str):
+    if isinstance(value, dict):
+        return value.get(key)
+    return value
+
+
+def _pf_label(value) -> str:
+    return str(value).replace(".", "").strip()
 
 def process_meeting(overview_url, date_str, location):
     # 1. Fetch overview page to get meeting events

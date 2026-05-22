@@ -107,6 +107,36 @@ class SpeedScorer(BaseScorer):
                 reasons.append("路程=未跑過")
 
         if signals < 2:
+            pdf_races = data.get("pdf_overseas_races", [])
+            if pdf_races:
+                ovr_score = 60.0
+                ovr_reasons = []
+                for r in pdf_races:
+                    rank_str = str(r.get("rank", ""))
+                    cls_str = str(r.get("class_level", "")).upper()
+                    try:
+                        rank = int(rank_str.split("/")[0]) if "/" in rank_str else int(rank_str)
+                    except ValueError:
+                        continue
+                    
+                    if rank <= 3:
+                        if "G1" in cls_str or "1級" in cls_str:
+                            ovr_score += 6.0
+                            ovr_reasons.append("G1上名")
+                        elif "G2" in cls_str or "2級" in cls_str:
+                            ovr_score += 4.0
+                            ovr_reasons.append("G2上名")
+                        elif "G3" in cls_str or "3級" in cls_str:
+                            ovr_score += 3.0
+                            ovr_reasons.append("G3上名")
+                        else:
+                            ovr_score += 1.0
+                            ovr_reasons.append("海外上名")
+                
+                if ovr_reasons:
+                    final_score = clip_score(ovr_score)
+                    return final_score, f"海外賽績速度替代指標 ({', '.join(set(ovr_reasons))})"
+                    
             return 60.0, "Sectional data incomplete"
 
         final_score = clip_score(score)

@@ -17,17 +17,20 @@ from engine_core import RacingEngine
 
 # Reuse shared helpers
 sys.path.append(str(SCRIPT_DIR))
-from au_target_gap_report import (
+from au_archive_calibrator import (
     ARCHIVE_ROOT,
     HISTORICAL_RESULTS_CSV,
     choose_track_rows,
-    condition_bucket,
     detect_meeting_date,
     detect_meeting_track,
     load_historical_results,
     normalize_horse_name,
+    get_true_horse_name,
     parse_int,
-    race_class_bucket,
+)
+
+from au_target_gap_report import (
+    condition_bucket,
     field_size_bucket,
 )
 
@@ -64,6 +67,9 @@ def main():
     field_new = defaultdict(lambda: {"races": 0, "pass_": 0, "gold": 0, "hits": {0: 0, 1: 0, 2: 0, 3: 0}})
     field_old = defaultdict(lambda: {"races": 0, "pass_": 0, "gold": 0, "hits": {0: 0, 1: 0, 2: 0, 3: 0}})
 
+    type_new = defaultdict(lambda: {"races": 0, "pass_": 0, "gold": 0, "champion": 0, "hits": {0: 0, 1: 0, 2: 0, 3: 0}})
+    type_old = defaultdict(lambda: {"races": 0, "pass_": 0, "gold": 0, "champion": 0, "hits": {0: 0, 1: 0, 2: 0, 3: 0}})
+
     total = 0
     for meeting_dir in sorted(p for p in ARCHIVE_ROOT.iterdir() if p.is_dir()):
         logic_files = sorted(meeting_dir.glob("Race_*_Logic.json"),
@@ -87,11 +93,13 @@ def main():
 
             cond_bucket = condition_bucket(rows[0].get("condition", ""))
             field_bucket = field_size_bucket(len(rows))
+            is_maiden = "maiden" in str(race_analysis.get("race_class", "")).lower() or "maiden" in str(race_analysis.get("race_name", "")).lower()
+            type_bucket = "Maiden" if is_maiden else "Non-Maiden"
 
             old_horses = []
             new_horses = []
             for hnum, horse in logic.get("horses", {}).items():
-                row = lookup.get(normalize_horse_name(horse.get("horse_name")))
+                row = lookup.get(normalize_horse_name(get_true_horse_name(horse)))
                 if not row:
                     continue
                 pya = horse.get("python_auto") or {}
@@ -148,13 +156,17 @@ def main():
 
             # Per-condition
             for cb, ov_d, nv_d in [(cond_bucket, cond_old[cond_bucket], cond_new[cond_bucket]),
-                                     (field_bucket, field_old[field_bucket], field_new[field_bucket])]:
+                                     (field_bucket, field_old[field_bucket], field_new[field_bucket]),
+                                     (type_bucket, type_old[type_bucket], type_new[type_bucket])]:
                 ov_d["races"] += 1; nv_d["races"] += 1
                 ov_d["hits"][old_hits3] += 1; nv_d["hits"][new_hits3] += 1
                 if old_hits3 == 3: ov_d["gold"] += 1
                 if new_hits3 == 3: nv_d["gold"] += 1
                 if old_hits3 >= 2: ov_d["pass_"] += 1
                 if new_hits3 >= 2: nv_d["pass_"] += 1
+                if "champion" in ov_d:
+                    if old_ranked[0]["actual"] == 1: ov_d["champion"] += 1
+                    if new_ranked[0]["actual"] == 1: nv_d["champion"] += 1
 
     # ── Report ──
     def pct(part, whole):
@@ -231,6 +243,24 @@ def main():
             if diff != 0:
                 print(f"    {h}-hit: {od:>3} → {nd:>3}  ({sign}{diff})")
 
-
+    print()
+    print("═══ BY RACE TYPE ═══")
+    for rt in ("Maiden", "Non-Maiden"):
+        o = type_old.get(rt, {})
+        n = type_new.get(rt, {})
+        if not o.get("races"):
+            continue
+        r = o["races"]
+        print(f"  --- {rt} ({r} races) ---")
+        print_row("  Champion", o, n, "champion")
+        print_row("  Gold", o, n, "gold")
+        print_row("  Pass", o, n, "pass_")
+        for h in (0, 1, 2, 3):
+            od = o["hits"].get(h, 0)
+            nd = n["hits"].get(h, 0)
+            diff = nd - od
+            sign = "+" if diff >= 0 else ""
+            if diff != 0:
+                print(f"    {h}-hit: {od:>3} → {nd:>3}  ({sign}{diff})")
 if __name__ == "__main__":
     main()

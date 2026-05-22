@@ -27,7 +27,7 @@ VENUE_TRACK_MAP = {
 
 
 HORSE_HEADER_RE = re.compile(
-    r"^### 馬匹 #(\d+) (.+?) \(檔位 (\d+)\) \| 騎師: ([^|]+) \| 練馬師: (.+?) \| 負重: ([0-9.]+)kg$",
+    r"^### 馬匹 #(\d+) (.+?) \(檔位 (\d+)\)(?:\s*\| 騎師: ([^|]+?))?(?:\s*\| 練馬師: ([^|\n\r]+?))?(?:\s*\| 負重: ([0-9.]+)kg)?$",
     re.M,
 )
 FIELD_TRAILER_RE = re.compile(r"\s*\|\s*負重:\s*[0-9.]+kg\s*$")
@@ -36,7 +36,7 @@ FIELD_TRAILER_RE = re.compile(r"\s*\|\s*負重:\s*[0-9.]+kg\s*$")
 def build_logic_from_facts(facts_path: Path) -> dict:
     text = facts_path.read_text(encoding="utf-8")
     race_number = _extract_race_number(facts_path.name, text)
-    race_class, distance = _extract_race_meta(facts_path, text)
+    race_class, distance, prize = _extract_race_meta(facts_path, text)
     meeting_intelligence = _load_meeting_intelligence(facts_path)
     track_profile = _load_track_profile(
         meeting_intelligence.get("venue", ""),
@@ -50,6 +50,7 @@ def build_logic_from_facts(facts_path: Path) -> dict:
             "race_number": race_number,
             "race_class": race_class,
             "distance": distance,
+            "prize": prize,
             "speed_map": speed_map,
             "meeting_intelligence": meeting_intelligence,
             "track_profile": track_profile,
@@ -69,7 +70,7 @@ def build_logic_from_facts(facts_path: Path) -> dict:
             "barrier": int(match.group(3)),
             "jockey": _clean_identity(match.group(4)),
             "trainer": _clean_identity(match.group(5)),
-            "weight": float(match.group(6)),
+            "weight": float(match.group(6)) if match.group(6) else None,
             "career_race_starts": _extract_career_starts(block),
             "career_tag": _extract_career_tag(block),
             "tactical_plan": _build_tactical_plan(int(match.group(3)), block),
@@ -111,21 +112,25 @@ def _extract_race_number(filename: str, text: str) -> int:
     return int(block.group(1)) if block else 1
 
 
-def _extract_race_meta(facts_path: Path, text: str) -> tuple[str, str]:
+def _extract_race_meta(facts_path: Path, text: str) -> tuple[str, str, int]:
     distance_match = re.search(r"今仗距離:\s*([0-9]+m)", text)
     distance = distance_match.group(1) if distance_match else ""
     racecard_candidates = list(facts_path.parent.glob(f"*Race {_extract_race_number(facts_path.name, text)} Racecard.md"))
     race_class = ""
+    prize = 0
     if racecard_candidates:
         header = racecard_candidates[0].read_text(encoding="utf-8").splitlines()[0]
         class_match = re.search(r"\d+m\s*\|\s*([^|$]+?)(?:\s*\||\s*$)", header)
         if class_match:
             race_class = class_match.group(1).strip()
+        prize_match = re.search(r"\$\s*([0-9,]+)", header)
+        if prize_match:
+            prize = int(prize_match.group(1).replace(",", ""))
         if not distance:
             dist_match = re.search(r"[—–-]\s*(\d{3,5}m)", header)
             if dist_match:
                 distance = dist_match.group(1)
-    return race_class, distance
+    return race_class, distance, prize
 
 
 def _extract_career_starts(block: str) -> int:

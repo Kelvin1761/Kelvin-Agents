@@ -162,13 +162,13 @@ class AutoOutputTests(unittest.TestCase):
         self.assertEqual(
             MATRIX_WEIGHTS,
             {
-                "sectional": 0.20,
-                "trainer_signal": 0.18,
-                "stability": 0.12,
-                "race_shape": 0.28,
-                "class_advantage": 0.08,
+                "sectional": 0.26,
+                "trainer_signal": 0.20,
+                "stability": 0.06,
+                "race_shape": 0.20,
+                "class_advantage": 0.12,
                 "horse_health": 0.09,
-                "form_line": 0.05,
+                "form_line": 0.07,
             },
         )
 
@@ -521,7 +521,7 @@ class AutoOutputTests(unittest.TestCase):
             updated = json.loads(logic_path.read_text(encoding="utf-8"))
             self.assertIn("python_auto_verdict", updated)
             auto = updated["horses"]["1"]["python_auto"]
-            self.assertEqual(auto["version"], "HKJC_AUTO_SCORE_V1")
+            self.assertEqual(auto["version"], "HKJC_AUTO_SCORE_V2")
             self.assertEqual(len(auto["feature_scores"]), 12)
             self.assertIn("matrix_scores", auto)
             self.assertIn("matrix_reasoning", auto)
@@ -696,6 +696,63 @@ class AutoOutputTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
             self.assertIn("Engine validation passed", result.stdout)
+
+    def test_meeting_run_emits_observability_log_and_evaluation_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            logic_path = folder / "Race_1_Logic.json"
+            facts_path = folder / "05-13 Race 1 Facts.md"
+            results_path = folder / "05-13 測試 全日賽果.json"
+            logic_path.write_text(json.dumps(_logic(), ensure_ascii=False), encoding="utf-8")
+            facts_path.write_text(
+                "\n".join(
+                    [
+                        "### 馬號 1 — 測試甲 | 騎師: 潘頓 | 練馬師: 蔡約翰 | 負磅: 126 | 檔位: 2",
+                        "### 馬號 2 — 測試乙 | 騎師: 普通騎師 | 練馬師: 普通練馬師 | 負磅: 133 | 檔位: 12",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            results_path.write_text(
+                json.dumps(
+                    {
+                        "1": {
+                            "results": [
+                                {"pos": 1, "horse_no": 1, "horse_name": "測試甲"},
+                                {"pos": 2, "horse_no": 2, "horse_name": "測試乙"},
+                                {"pos": 3, "horse_no": 3, "horse_name": "後備丙"},
+                            ]
+                        }
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), str(folder), "--scoring-profile", "class_form_combined"],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+            log_path = folder / "racing_run_log.jsonl"
+            self.assertTrue(log_path.exists())
+            records = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines()]
+            event_types = {record["event_type"] for record in records}
+            self.assertIn("run_started", event_types)
+            self.assertIn("horse_scored", event_types)
+            self.assertIn("evaluation_completed", event_types)
+            horse_records = [record for record in records if record["event_type"] == "horse_scored"]
+            self.assertEqual(len(horse_records), 2)
+            evaluation_summary = folder / "evaluation_summary.json"
+            self.assertTrue(evaluation_summary.exists())
+            summary = json.loads(evaluation_summary.read_text(encoding="utf-8"))
+            self.assertEqual(summary["scoring_profile"], "class_form_combined")
+            self.assertIn("gold", summary["kpis"])
 
 
 if __name__ == "__main__":
