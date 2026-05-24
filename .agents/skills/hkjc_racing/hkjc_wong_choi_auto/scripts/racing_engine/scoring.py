@@ -49,6 +49,132 @@ GRADE_THRESHOLDS = (
     (0, "E"),
 )
 
+CLASS_MICRO_WEIGHTS = {
+    "established_bonus": 4.0,
+    "starts_20_bonus": 4.0,
+    "starts_8_pen": -2.0,
+    "season_place_3_bonus": 4.0,
+    "season_place_0_pen": -4.0,
+    "same_dist_place_bonus": 4.0,
+    "same_dist_unplaced_pen": -2.0
+}
+
+DISTANCE_MICRO_WEIGHTS = {
+    "similar_place_base": 62.0,
+    "debut_base": 58.0,
+    "unproven_base": 56.0,
+    "direct_match_place_base": 72.0,
+    "direct_match_small_sample_base": 66.0,
+    "same_dist_unplaced_base": 54.0,
+    "neutral_base": 60.0
+}
+
+TRACK_MICRO_WEIGHTS = {
+    "favorable_base": 66.0,
+    "unfavorable_base": 58.0,
+    "neutral_base": 60.0
+}
+
+WEIGHT_MICRO_WEIGHTS = {
+    "base": 64.0,
+    "light_weight_base": 70.0,
+    "heavy_weight_base": 54.0,
+    "trend_lighter_bonus": 4.0,
+    "trend_heavier_pen": -4.0
+}
+
+CONSISTENCY_MICRO_WEIGHTS = {
+    "debut_base": 58.0,
+    "debut_prep_mult": 0.35,
+    "base": 58.0,
+    "place_mult": 7.0,
+    "poor_mult": 5.0,
+    "good_form_base": 66.0,
+    "neutral_base": 60.0
+}
+
+RISK_MICRO_WEIGHTS = {
+    "base": 68.0,
+    "medical_unknown_pen": -8.0,
+    "trackwork_slowing_pen": -6.0,
+    "debut_pen": -5.0,
+    "draw_pressure_pen": -5.0,
+    "distance_unproven_pen": -4.0
+}
+
+CONFIDENCE_MICRO_WEIGHTS = {
+    "base": 40.0,
+    "present_mult": 6.0,
+    "formline_high_bonus": 8.0,
+    "formline_med_bonus": 4.0,
+    "debut_pen": -10.0,
+    "jockey_first_ride_pen": -4.0,
+    "medical_unknown_pen": -5.0,
+    "trackwork_slowing_pen": -5.0,
+    "consistency_high_bonus": 5.0,
+    "consistency_low_pen": -5.0
+}
+
+DRAW_MICRO_WEIGHTS = {
+    "straight_draw_8_plus": 75.0,
+    "straight_draw_5_7": 65.0,
+    "straight_draw_1_4": 50.0,
+    "turn_draw_1_4": 75.0,
+    "turn_draw_5_8": 65.0,
+    "turn_draw_9_plus": 50.0,
+    "stats_base_add": 35.0
+}
+
+JOCKEY_MICRO_WEIGHTS = {
+    "overseas_g1_base": 85.0,
+    "overseas_base": 70.0
+}
+
+SPEED_MICRO_WEIGHTS = {
+    "base": 60.0,
+    "l400_22_4_bonus": 8.0,
+    "l400_23_0_bonus": 5.0,
+    "l400_23_6_bonus": 2.0,
+    "l400_24_0_pen": -2.0,
+    "l400_24_6_pen": -5.0,
+    "finish_competitive_bonus": 8.0,
+    "finish_faster_bonus": 6.0,
+    "finish_slightly_faster_bonus": 4.0,
+    "finish_avg_bonus": 1.0,
+    "finish_slow_pen": -4.0,
+    "finish_far_behind_pen": -8.0,
+    "energy_up_bonus": 4.0,
+    "energy_steady_bonus": 1.5,
+    "energy_down_pen": -4.0,
+    "l400_trend_up_bonus": 3.0,
+    "l400_trend_steady_bonus": 1.5,
+    "l400_trend_fluctuate_pen": -1.0,
+    "l400_trend_decline_pen": -4.0,
+    "engine_progressive_bonus": 3.0,
+    "engine_steady_bonus": 1.5,
+    "engine_mixed_low_conf_pen": -2.0,
+    "engine_fast_slow_pen": -2.5,
+    "engine_low_conf_pen": -1.0,
+    "dist_match_bonus": 1.5,
+    "dist_unproven_pen": -1.5,
+    "overseas_g1_bonus": 6.0,
+    "overseas_g2_bonus": 4.0,
+    "overseas_g3_bonus": 3.0,
+    "overseas_place_bonus": 1.0
+}
+
+TRAINER_MICRO_WEIGHTS = {
+    "overseas_g1_base": 85.0,
+    "overseas_base": 70.0
+}
+
+FORM_MICRO_WEIGHTS = {
+    "overseas_g1_base": 85.0,
+    "overseas_base": 70.0
+}
+
+
+
 
 class BaseScorer(ABC):
     def __init__(self, horse_data, race_context):

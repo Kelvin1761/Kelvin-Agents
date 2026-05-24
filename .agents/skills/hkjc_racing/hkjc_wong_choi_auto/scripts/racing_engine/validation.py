@@ -91,7 +91,21 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
     if not _in_range(ability):
         errors.append(f"SCORE-003 horse {horse_num} ability outside 0-100: {ability}")
     elif not auto.get("sip_flags"):
-        expected = sum(float(matrix_scores.get(key, 60)) * weight for key, weight in MATRIX_WEIGHTS.items())
+        reason_codes = auto.get("reason_codes", [])
+        is_debut = any("debut" in code for code in reason_codes)
+        
+        if is_debut:
+            debut_weights = {
+                'trainer_signal': 0.30,
+                'horse_health': 0.30,
+                'race_shape': 0.20,
+                'stability': 0.15,
+                'class_advantage': 0.05
+            }
+            expected = sum(float(matrix_scores.get(key, 60)) * weight for key, weight in debut_weights.items())
+        else:
+            expected = sum(float(matrix_scores.get(key, 60)) * weight for key, weight in MATRIX_WEIGHTS.items())
+            
         if abs(float(ability) - expected) > 0.05:
             errors.append(f"SCORE-004 horse {horse_num} ability formula mismatch: {ability} != {expected:.2f}")
     if auto.get("grade") != compute_grade(float(ability)):
