@@ -23,13 +23,13 @@ FEATURE_KEYS = (
 )
 
 MATRIX_WEIGHTS = {
-    "sectional": 0.20,
-    "trainer_signal": 0.18,
-    "stability": 0.12,
-    "race_shape": 0.28,
-    "class_advantage": 0.08,
-    "horse_health": 0.09,
-    "form_line": 0.05,
+    "sectional": 0.2011,
+    "trainer_signal": 0.1744,
+    "stability": 0.0967,
+    "race_shape": 0.3044,
+    "class_advantage": 0.1074,
+    "horse_health": 0.0398,
+    "form_line": 0.0763
 }
 
 GRADE_THRESHOLDS = (
@@ -51,12 +51,12 @@ GRADE_THRESHOLDS = (
 
 CLASS_MICRO_WEIGHTS = {
     "established_bonus": 4.0,
-    "starts_20_bonus": 4.0,
+    "starts_20_bonus": 5.12,
     "starts_8_pen": -2.0,
-    "season_place_3_bonus": 4.0,
+    "season_place_3_bonus": 4.39,
     "season_place_0_pen": -4.0,
     "same_dist_place_bonus": 4.0,
-    "same_dist_unplaced_pen": -2.0
+    "same_dist_unplaced_pen": -1.55
 }
 
 DISTANCE_MICRO_WEIGHTS = {
@@ -95,34 +95,29 @@ CONSISTENCY_MICRO_WEIGHTS = {
 
 RISK_MICRO_WEIGHTS = {
     "base": 68.0,
-    "medical_unknown_pen": -8.0,
-    "trackwork_slowing_pen": -6.0,
+    "medical_unknown_pen": -6.59,
+    "trackwork_slowing_pen": -4.59,
     "debut_pen": -5.0,
     "draw_pressure_pen": -5.0,
-    "distance_unproven_pen": -4.0
+    "distance_unproven_pen": -3.39
 }
 
 CONFIDENCE_MICRO_WEIGHTS = {
-    "base": 40.0,
+    "base": 48.0,
     "present_mult": 6.0,
-    "formline_high_bonus": 8.0,
-    "formline_med_bonus": 4.0,
-    "debut_pen": -10.0,
-    "jockey_first_ride_pen": -4.0,
-    "medical_unknown_pen": -5.0,
-    "trackwork_slowing_pen": -5.0,
-    "consistency_high_bonus": 5.0,
-    "consistency_low_pen": -5.0
+    "jockey_combo_bonus": 5.0,
+    "debut_pen": -2.77,
+    "high_risk_pen": -5.0
 }
 
 DRAW_MICRO_WEIGHTS = {
-    "straight_draw_8_plus": 75.0,
+    "straight_draw_8_plus": 77.45,
     "straight_draw_5_7": 65.0,
     "straight_draw_1_4": 50.0,
     "turn_draw_1_4": 75.0,
     "turn_draw_5_8": 65.0,
-    "turn_draw_9_plus": 50.0,
-    "stats_base_add": 35.0
+    "turn_draw_9_plus": 49.06,
+    "stats_base_add": 40.35
 }
 
 JOCKEY_MICRO_WEIGHTS = {
@@ -132,45 +127,49 @@ JOCKEY_MICRO_WEIGHTS = {
 
 SPEED_MICRO_WEIGHTS = {
     "base": 60.0,
-    "l400_22_4_bonus": 8.0,
-    "l400_23_0_bonus": 5.0,
-    "l400_23_6_bonus": 2.0,
-    "l400_24_0_pen": -2.0,
-    "l400_24_6_pen": -5.0,
-    "finish_competitive_bonus": 8.0,
+    "l400_22_4_bonus": 8.62,
+    "l400_23_0_bonus": 4.55,
+    "l400_23_6_bonus": 3.03,
+    "l400_24_0_pen": -0.73,
+    "l400_24_6_pen": -5.64,
+    "finish_competitive_bonus": 6.52,
     "finish_faster_bonus": 6.0,
     "finish_slightly_faster_bonus": 4.0,
-    "finish_avg_bonus": 1.0,
+    "finish_avg_bonus": 1.42,
     "finish_slow_pen": -4.0,
     "finish_far_behind_pen": -8.0,
-    "energy_up_bonus": 4.0,
-    "energy_steady_bonus": 1.5,
-    "energy_down_pen": -4.0,
+    "energy_up_bonus": 1.96,
+    "energy_steady_bonus": 2.78,
+    "energy_down_pen": -2.74,
     "l400_trend_up_bonus": 3.0,
-    "l400_trend_steady_bonus": 1.5,
+    "l400_trend_steady_bonus": 0.58,
     "l400_trend_fluctuate_pen": -1.0,
     "l400_trend_decline_pen": -4.0,
-    "engine_progressive_bonus": 3.0,
+    "engine_progressive_bonus": 3.03,
     "engine_steady_bonus": 1.5,
     "engine_mixed_low_conf_pen": -2.0,
     "engine_fast_slow_pen": -2.5,
-    "engine_low_conf_pen": -1.0,
+    "engine_low_conf_pen": 0.0,
     "dist_match_bonus": 1.5,
     "dist_unproven_pen": -1.5,
     "overseas_g1_bonus": 6.0,
     "overseas_g2_bonus": 4.0,
-    "overseas_g3_bonus": 3.0,
+    "overseas_g3_bonus": 1.63,
     "overseas_place_bonus": 1.0
 }
 
 TRAINER_MICRO_WEIGHTS = {
     "overseas_g1_base": 85.0,
+    "overseas_g23_base": 75.0,
     "overseas_base": 70.0
 }
 
 FORM_MICRO_WEIGHTS = {
-    "overseas_g1_base": 85.0,
-    "overseas_base": 70.0
+    "rank_1": 100.0,
+    "rank_2": 85.0,
+    "rank_3": 75.0,
+    "rank_4_5": 60.0,
+    "rank_other": 40.0
 }
 
 
@@ -266,3 +265,19 @@ def score_band(score):
     if score >= 40:
         return "❌"
     return "❌❌"
+
+TRACKWORK_MICRO_WEIGHTS = {
+    # 1. LLM 綜合文字指標 (Text-based trend)
+    "rebound_base": 66.0,    # 翻案復刻
+    "improving_base": 70.0,  # 加強
+    "slowing_base": 46.24,   # 放緩 (ML Optimized: Harsher penalty)
+    "neutral_base": 60.0,    # 中性
+    
+    # 2. 真實操練次數指標 (Raw exercise numerical multipliers)
+    "gallop_weight": 0.5,    # 每課快操加分
+    "trial_weight": 1.0,     # 每課大閘加分
+    "trotting_weight": 0.1,  # 每課踱步加分
+    "swimming_weight": 0.05, # 每課游水加分
+    "activity_cap": 8.0,     # 活躍度加分上限 (防操過籠)
+    "activity_floor": -4.0   # 活躍度扣分下限
+}

@@ -11,6 +11,7 @@ from jockey import JockeyScorer
 from speed import SpeedScorer
 from trainer import TrainerScorer
 from matrix_mapper import MATRIX_FORMULAS, map_features_to_matrix, map_features_to_matrix_scores
+import scoring
 from scoring import FEATURE_KEYS, MATRIX_WEIGHTS, clip_score, compute_grade, parse_float, parse_record, score_band
 
 
@@ -109,28 +110,28 @@ class RacingEngine:
         same_distance = self._same_distance_record()
         career_tag = self._clean(self._value("career_tag") or self.horse_data.get("career_tag") or "")
         if career_tag == "ESTABLISHED":
-            score += 4
+            score += scoring.CLASS_MICRO_WEIGHTS.get("established_bonus", 4.0)
             notes.append("屬已建立賽駒")
         if starts is not None:
             if starts >= 20:
-                score += 4
+                score += scoring.CLASS_MICRO_WEIGHTS.get("starts_20_bonus", 4.0)
                 notes.append("正式賽經驗充足")
             elif starts <= 8:
-                score -= 2
+                score += scoring.CLASS_MICRO_WEIGHTS.get("starts_8_pen", -2.0)
                 notes.append("正式賽樣本較薄")
         if season:
             if season["places"] >= 3:
-                score += 4
+                score += scoring.CLASS_MICRO_WEIGHTS.get("season_place_3_bonus", 4.0)
                 notes.append("季內有基本交代")
             elif season["places"] == 0:
-                score -= 4
+                score += scoring.CLASS_MICRO_WEIGHTS.get("season_place_0_pen", -4.0)
                 self.risk_flags.append("class_edge_unproven")
                 notes.append("季內未見上名")
         if same_distance and same_distance["places"] > 0:
-            score += 4
+            score += scoring.CLASS_MICRO_WEIGHTS.get("same_dist_place_bonus", 4.0)
             notes.append("同程有實績")
         elif same_distance and same_distance["starts"] > 0 and same_distance["places"] == 0:
-            score -= 2
+            score += scoring.CLASS_MICRO_WEIGHTS.get("same_dist_unplaced_pen", -2.0)
             notes.append("同程未有實績")
         note = "班次優勢按實戰經驗、季內交代與同程適應評估"
         if notes:
@@ -148,51 +149,51 @@ class RacingEngine:
         direct_match = best_text.startswith(f"{distance_token}m") or best_text.startswith(distance)
         if "未跑過" in best_text:
             if "相近上名經驗" in best_text:
-                return 62, "今場路程未有直接實績，但相近路程有上名旁證，路程分62分。", "best_distance"
+                return scoring.DISTANCE_MICRO_WEIGHTS.get("similar_place_base", 62.0), "今場路程未有直接實績，但相近路程有上名旁證，路程分62分。", "best_distance"
             if self._is_debut():
                 self.reason_codes.append("debut_distance_unproven")
-                return 58, "初出馬未經今仗路程實戰驗證，路程分保守58分。", "career_tag"
+                return scoring.DISTANCE_MICRO_WEIGHTS.get("debut_base", 58.0), "初出馬未經今仗路程實戰驗證，路程分保守58分。", "career_tag"
             self.risk_flags.append("distance_unproven")
-            return 56, "今場路程未有直接實績，路程分56分。", "best_distance"
+            return scoring.DISTANCE_MICRO_WEIGHTS.get("unproven_base", 56.0), "今場路程未有直接實績，路程分56分。", "best_distance"
         if best_distance and distance and direct_match:
             starts = record["starts"] if record else None
             if starts and record["places"] > 0:
-                return 72, f"路程資料見今仗距離及上名紀錄，路程適性評為72分。", "best_distance"
-            return 66, "最佳路程欄與今仗距離吻合，但樣本有限，路程分66分。", "best_distance"
+                return scoring.DISTANCE_MICRO_WEIGHTS.get("direct_match_place_base", 72.0), f"路程資料見今仗距離及上名紀錄，路程適性評為72分。", "best_distance"
+            return scoring.DISTANCE_MICRO_WEIGHTS.get("direct_match_small_sample_base", 66.0), "最佳路程欄與今仗距離吻合，但樣本有限，路程分66分。", "best_distance"
         if self._is_debut():
             self.reason_codes.append("debut_distance_unproven")
-            return 58, "初出馬未經今仗路程實戰驗證，路程分保守58分。", "career_tag"
+            return scoring.DISTANCE_MICRO_WEIGHTS.get("debut_base", 58.0), "初出馬未經今仗路程實戰驗證，路程分保守58分。", "career_tag"
         if "同程" in text and record and record["starts"] > 0 and record["places"] == 0:
             self.risk_flags.append("distance_record_weak")
-            return 54, "同程有樣本但未見上名支持，路程分54分。", "season_stats"
-        return 60, "路程證據不足，按中性60分。", "missing_neutral"
+            return scoring.DISTANCE_MICRO_WEIGHTS.get("same_dist_unplaced_base", 54.0), "同程有樣本但未見上名支持，路程分54分。", "season_stats"
+        return scoring.DISTANCE_MICRO_WEIGHTS.get("neutral_base", 60.0), "路程證據不足，按中性60分。", "missing_neutral"
 
     def _track_going_score(self, _features):
         text = self._text("good_record", "soft_record", "course_record", "track_bias", "draw_verdict")
         if "✅有利" in text or ("同場同程" in text and "(0-0-0-0)" not in text):
-            return 66, "場地/跑道資料有明確支持，場地分66分。", "draw_verdict"
+            return scoring.TRACK_MICRO_WEIGHTS.get("favorable_base", 66.0), "場地/跑道資料有明確支持，場地分66分。", "draw_verdict"
         if any(token in text for token in ("❌不利", "不利", "差", "無資料")):
-            return 58, "場地或場地紀錄支持不足，場地分58分。", "course_record"
-        return 60, "未有明確場地適性證據，場地分60分。", "missing_neutral"
+            return scoring.TRACK_MICRO_WEIGHTS.get("unfavorable_base", 58.0), "場地或場地紀錄支持不足，場地分58分。", "course_record"
+        return scoring.TRACK_MICRO_WEIGHTS.get("neutral_base", 60.0), "未有明確場地適性證據，場地分60分。", "missing_neutral"
 
     def _weight_score(self, _features):
         weight = parse_float(self._value("weight_carried") or self._value("weight"))
         text = self._text("weight_trend")
         if weight is None:
             return 60, "負磅資料不足，負磅分60分。", "missing_neutral"
-        score = 64
+        score = scoring.WEIGHT_MICRO_WEIGHTS.get("base", 64.0)
         note = f"今仗負磅{weight:.0f}磅，屬可處理範圍，負磅分64分。"
         if weight <= 120:
-            score = 70
+            score = scoring.WEIGHT_MICRO_WEIGHTS.get("light_weight_base", 70.0)
             note = f"今仗負磅{weight:.0f}磅較輕，負磅分70分。"
         elif weight >= 132:
-            score = 54
+            score = scoring.WEIGHT_MICRO_WEIGHTS.get("heavy_weight_base", 54.0)
             note = f"今仗負磅{weight:.0f}磅偏重，負磅分54分。"
         if "轉輕" in text:
-            score += 4
+            score += scoring.WEIGHT_MICRO_WEIGHTS.get("trend_lighter_bonus", 4.0)
             note += " 體重趨勢顯示轉輕，略加支持。"
         if "轉重" in text:
-            score -= 4
+            score += scoring.WEIGHT_MICRO_WEIGHTS.get("trend_heavier_pen", -4.0)
             note += " 體重趨勢偏重，略扣。"
         return clip_score(score), note, "weight_carried"
 
@@ -201,44 +202,44 @@ class RacingEngine:
         finishes = [int(item) for item in re.findall(r"\b\d+\b", form)[:6]]
         if self._is_debut():
             prep = self._prep_score()
-            score = 58 + (prep - 60) * 0.35
+            score = scoring.CONSISTENCY_MICRO_WEIGHTS.get("debut_base", 58.0) + (prep - 60) * scoring.CONSISTENCY_MICRO_WEIGHTS.get("debut_prep_mult", 0.35)
             note = f"初出馬以晨操備戰穩定性代替正式近績，備戰分{prep:.0f}，穩定性分{score:.1f}。"
             return score, note, "trackwork_digest"
         if len(finishes) >= 3:
             places = sum(1 for rank in finishes if rank <= 3)
             poor = sum(1 for rank in finishes if rank >= 8)
-            score = 58 + places * 7 - poor * 5
+            score = scoring.CONSISTENCY_MICRO_WEIGHTS.get("base", 58.0) + places * scoring.CONSISTENCY_MICRO_WEIGHTS.get("place_mult", 7.0) - poor * scoring.CONSISTENCY_MICRO_WEIGHTS.get("poor_mult", 5.0)
             note = f"近{len(finishes)}仗有{places}次前三、{poor}次八名或以後，穩定性分{clip_score(score):.1f}。"
             return score, note, "last_6_finishes"
         if features.get("form_score", 60) >= 70:
-            return 66, "近績樣本少但名次訊號正面，穩定性分66分。", "last_6_finishes"
-        return 60, "近績樣本不足，穩定性分60分。", "missing_neutral"
+            return scoring.CONSISTENCY_MICRO_WEIGHTS.get("good_form_base", 66.0), "近績樣本少但名次訊號正面，穩定性分66分。", "last_6_finishes"
+        return scoring.CONSISTENCY_MICRO_WEIGHTS.get("neutral_base", 60.0), "近績樣本不足，穩定性分60分。", "missing_neutral"
 
     def _risk_score(self, features):
-        score = 68
+        score = scoring.RISK_MICRO_WEIGHTS.get("base", 68.0)
         notes = []
         medical = self._text("medical_flags")
         trackwork = self._text("trackwork_health", "trackwork_digest")
         if "無醫療事故" in medical:
             notes.append("醫療欄未見事故")
         else:
-            score -= 8
+            score += scoring.RISK_MICRO_WEIGHTS.get("medical_unknown_pen", -8.0)
             self.risk_flags.append("medical_record_unknown")
             notes.append("醫療欄資料不足")
         if "操練放緩" in trackwork:
-            score -= 6
+            score += scoring.RISK_MICRO_WEIGHTS.get("trackwork_slowing_pen", -6.0)
             self.risk_flags.append("trackwork_slowing")
             notes.append("晨操趨勢放緩")
         if self._is_debut():
-            score -= 5
+            score += scoring.RISK_MICRO_WEIGHTS.get("debut_pen", -5.0)
             self.risk_flags.append("debut_race_experience_unknown")
             notes.append("初出缺正式賽經驗")
         if features.get("draw_score", 60) < 55:
-            score -= 5
+            score += scoring.RISK_MICRO_WEIGHTS.get("draw_pressure_pen", -5.0)
             self.risk_flags.append("draw_pressure")
             notes.append("檔位分偏低")
         if features.get("distance_score", 60) < 58:
-            score -= 4
+            score += scoring.RISK_MICRO_WEIGHTS.get("distance_unproven_pen", -4.0)
             self.risk_flags.append("distance_unproven")
             notes.append("路程證明不足")
         return clip_score(score), "、".join(notes) + f"，風險分{clip_score(score):.1f}。", "medical_flags"
@@ -249,13 +250,13 @@ class RacingEngine:
         for key in important_sources:
             if self._value(key) not in (None, "", "N/A"):
                 present += 1
-        score = 48 + present * 6
+        score = scoring.CONFIDENCE_MICRO_WEIGHTS.get("base", 48.0) + present * scoring.CONFIDENCE_MICRO_WEIGHTS.get("present_mult", 6.0)
         if self._value("jockey_combo_block"):
-            score += 5
+            score += scoring.CONFIDENCE_MICRO_WEIGHTS.get("jockey_combo_bonus", 5.0)
         if self._is_debut():
-            score -= 4
+            score += scoring.CONFIDENCE_MICRO_WEIGHTS.get("debut_pen", -4.0)
         if features.get("risk_score", 60) < 55:
-            score -= 5
+            score += scoring.CONFIDENCE_MICRO_WEIGHTS.get("high_risk_pen", -5.0)
         note = f"可用資料覆蓋{present}/{len(important_sources)}項，信心分{clip_score(score):.1f}。"
         return clip_score(score), note, "data_coverage"
 
@@ -322,13 +323,47 @@ class RacingEngine:
         trackwork = self._trackwork_markers()
         classification = trackwork["classification"]
         trend = trackwork["trend"]
+        
+        # 1. Text-based trend base score
         if classification == "翻案復刻":
-            return 66, "晨操摘要屬翻案復刻，顯示團隊正嘗試用備戰訊號替近績波動補強。", "trackwork_digest"
-        if "加強" in trend:
-            return 70, f"{trend}，備戰力度有推進，對狀態延續屬正面訊號。", "trackwork_digest"
-        if "放緩" in trend:
-            return 52, f"{trend}，狀態維持度要保守少少。", "trackwork_digest"
-        return 60, "操練趨勢未見鮮明方向，按中性60分處理。", "trackwork_digest"
+            base_score = scoring.TRACKWORK_MICRO_WEIGHTS.get("rebound_base", 66.0)
+            note = "晨操摘要屬翻案復刻，顯示團隊正嘗試用備戰訊號替近績波動補強。"
+        elif "加強" in trend:
+            base_score = scoring.TRACKWORK_MICRO_WEIGHTS.get("improving_base", 70.0)
+            note = f"{trend}，備戰力度有推進，對狀態延續屬正面訊號。"
+        elif "放緩" in trend:
+            base_score = scoring.TRACKWORK_MICRO_WEIGHTS.get("slowing_base", 52.0)
+            note = f"{trend}，狀態維持度要保守少少。"
+        else:
+            base_score = scoring.TRACKWORK_MICRO_WEIGHTS.get("neutral_base", 60.0)
+            note = "操練趨勢未見鮮明方向，按中性處理。"
+            
+        # 2. Raw exercise numerical multipliers
+        summary = self.horse_data.get("trackwork", {}).get("summary", {})
+        gallops = int(summary.get("gallops_21d", 0))
+        trials = int(summary.get("trials_21d", 0))
+        trotting = int(summary.get("trotting_21d", 0))
+        swimming = int(summary.get("swimming_21d", 0))
+        
+        gallop_w = scoring.TRACKWORK_MICRO_WEIGHTS.get("gallop_weight", 0.5)
+        trial_w = scoring.TRACKWORK_MICRO_WEIGHTS.get("trial_weight", 1.0)
+        trotting_w = scoring.TRACKWORK_MICRO_WEIGHTS.get("trotting_weight", 0.1)
+        swimming_w = scoring.TRACKWORK_MICRO_WEIGHTS.get("swimming_weight", 0.05)
+        
+        activity_bonus = (gallops * gallop_w) + (trials * trial_w) + (trotting * trotting_w) + (swimming * swimming_w)
+        
+        # Apply cap and floor
+        cap = scoring.TRACKWORK_MICRO_WEIGHTS.get("activity_cap", 8.0)
+        floor = scoring.TRACKWORK_MICRO_WEIGHTS.get("activity_floor", -4.0)
+        activity_bonus = max(floor, min(activity_bonus, cap))
+        
+        final_score = scoring.clip_score(base_score + activity_bonus)
+        if activity_bonus > 2.0:
+            note += f" (數據顯示操練特別積極 +{activity_bonus:.1f})"
+        elif activity_bonus < -1.0:
+            note += f" (數據顯示活躍度偏低 {activity_bonus:.1f})"
+            
+        return final_score, note, "trackwork_digest"
 
     def _ability_score(self, matrix_scores):
         if self._is_debut():
