@@ -23,6 +23,22 @@
 - 點配置 Cloudflare deployment
 - 點 troubleshoot 常見問題
 
+## Language And Reply Style
+
+如果你係用 Antigravity 入面嘅 agents / workflows 同新用戶或團隊成員協作，建議統一以下預設：
+
+- 日常回覆：用香港繁體中文（廣東話口吻）
+- implementation plan / next-step plan：都用香港繁體中文
+- code、file path、CLI command、package name：維持英文原文
+
+簡單講：
+
+- **reply everything in Hong Kong Chinese**
+- **plan everything in Hong Kong Chinese**
+- **code stays in English**
+
+咁可以減少新用戶誤會，同時保持 codebase 同 terminal commands 易讀。
+
 ## 0. Start Here
 
 新用戶建議按以下次序完成：
