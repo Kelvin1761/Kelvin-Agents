@@ -23,8 +23,9 @@ MATRIX_FORMULAS = {
         ("jockey_horse_fit_score", 0.52),
     ),
     "class_weight": (
-        ("class_score", 0.66),
-        ("weight_score", 0.34),
+        ("class_score", 0.40),
+        ("rating_score", 0.25),
+        ("weight_score", 0.35),
     ),
     "track": (
         ("track_score", 0.82),

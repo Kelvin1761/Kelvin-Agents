@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -18,18 +19,32 @@ ROOT = SCRIPT_DIR.parents[4]
 EXTRACTOR_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_race_extractor" / "scripts"
 AUTO_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi_auto" / "scripts"
 SHARED_SCRIPTS = ROOT / ".agents" / "scripts"
+SHARED_HOOK_DIR = ROOT / ".agents" / "skills" / "shared_racing" / "post_success_hooks" / "scripts"
 
 sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(SHARED_SCRIPTS))
+sys.path.insert(0, str(SHARED_HOOK_DIR))
 
-from hkjc_orchestrator_legacy import (  # type: ignore
+from hkjc_orchestrator_helpers import (
     get_target_dir,
     parse_url_for_details,
     trigger_extractor,
 )
+from cloudflare_deploy_hook import run_post_success_cloudflare_deploy
 
 
 PYTHON = sys.executable
+TEMP_ROOT = ROOT / "_temporary_files"
+TEMP_FILE_PATTERNS = (
+    "racenet_temp_*.html",
+    "latest_results.html",
+    "temp_results.html",
+    "test_results*.html",
+    "test_yesterday.html",
+    "daemon.log",
+    "test_pdf.txt",
+    "race",
+)
 
 
 def _run(cmd: list[str], label: str) -> None:
@@ -85,6 +100,27 @@ def _iter_facts_files(target_dir: Path) -> list[tuple[int, Path]]:
     return facts_files
 
 
+def _extract_horse_nums(facts_path: Path) -> list[int]:
+    text = facts_path.read_text(encoding="utf-8")
+    return [int(x) for x in re.findall(r"^### 馬號\s+(\d+)\s+—", text, re.M)]
+
+
+def _logic_needs_refresh(facts_path: Path, logic_path: Path, horse_nums: list[int]) -> bool:
+    if not logic_path.exists():
+        return True
+    if facts_path.stat().st_mtime_ns > logic_path.stat().st_mtime_ns:
+        return True
+    try:
+        logic_data = json.loads(logic_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return True
+    horses = logic_data.get("horses")
+    if not isinstance(horses, dict):
+        return True
+    expected = {str(num) for num in horse_nums}
+    return not expected.issubset(horses.keys())
+
+
 def _generate_logic(target_dir: Path, skip_logic: bool) -> None:
     if skip_logic:
         return
@@ -93,13 +129,13 @@ def _generate_logic(target_dir: Path, skip_logic: bool) -> None:
         raise SystemExit(f"❌ No Facts.md files found in {target_dir}")
 
     for race_num, facts_path in facts_files:
-        text = facts_path.read_text(encoding="utf-8")
-        horse_nums = [int(x) for x in re.findall(r"^### 馬號\s+(\d+)\s+—", text, re.M)]
+        horse_nums = _extract_horse_nums(facts_path)
         if not horse_nums:
-            continue
+            raise SystemExit(f"❌ No horse sections found in {facts_path}")
         logic_path = target_dir / f"Race_{race_num}_Logic.json"
-        if logic_path.exists():
-            logic_path.unlink()
+        if not _logic_needs_refresh(facts_path, logic_path, horse_nums):
+            print(f"⏭️  Logic up-to-date — Race {race_num}")
+            continue
         for horse_num in horse_nums:
             cmd = [
                 PYTHON,
@@ -107,6 +143,8 @@ def _generate_logic(target_dir: Path, skip_logic: bool) -> None:
                 str(facts_path),
                 str(race_num),
                 str(horse_num),
+                "--output",
+                str(logic_path),
             ]
             _run(cmd, f"Build Logic JSON — Race {race_num} Horse {horse_num}")
 
@@ -122,6 +160,28 @@ def _run_auto(target_dir: Path, validate_engine: bool) -> None:
     _run(cmd, "HKJC Wong Choi Full Python Auto")
 
 
+def _cleanup_temp_artifacts(target_dir: Path | None) -> None:
+    removed = 0
+    for path in ROOT.glob("_mip_temp_*.html"):
+        if path.is_file():
+            path.unlink(missing_ok=True)
+            removed += 1
+    if TEMP_ROOT.exists():
+        for pattern in TEMP_FILE_PATTERNS:
+            for path in TEMP_ROOT.glob(pattern):
+                if path.is_file():
+                    path.unlink(missing_ok=True)
+                    removed += 1
+    if target_dir and target_dir.exists():
+        for pattern in ("*.tmp", "*.tmp.*"):
+            for path in target_dir.glob(pattern):
+                if path.is_file():
+                    path.unlink(missing_ok=True)
+                    removed += 1
+    if removed:
+        print(f"🧹 Removed {removed} temporary file(s)")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="HKJC Wong Choi Full Python Orchestrator")
     parser.add_argument("target", help="HKJC racecard URL or meeting folder")
@@ -130,13 +190,26 @@ def main() -> None:
     parser.add_argument("--skip-facts", action="store_true", help="Skip Facts.md generation")
     parser.add_argument("--skip-logic", action="store_true", help="Skip Race_X_Logic.json regeneration")
     parser.add_argument("--validate-engine", action="store_true", help="Run auto engine validation before scoring")
+    parser.add_argument("--keep-temp", action="store_true", help="Keep temporary files after completion")
+    parser.add_argument("--skip-cloudflare-deploy", action="store_true", help="Skip post-success Cloudflare deploy")
     args = parser.parse_args()
 
-    target_dir, url = _resolve_target(args.target)
-    _maybe_extract(url, target_dir, args.skip_extract)
-    _generate_facts(target_dir, args.skip_facts)
-    _generate_logic(target_dir, args.skip_logic)
-    _run_auto(target_dir, args.validate_engine)
+    target_dir: Path | None = None
+    try:
+        target_dir, url = _resolve_target(args.target)
+        _maybe_extract(url, target_dir, args.skip_extract)
+        _generate_facts(target_dir, args.skip_facts)
+        _generate_logic(target_dir, args.skip_logic)
+        _run_auto(target_dir, args.validate_engine)
+        run_post_success_cloudflare_deploy(
+            source="HKJC Wong Choi",
+            target_dir=target_dir,
+            skip=args.skip_cloudflare_deploy,
+            allow_failure=True,
+        )
+    finally:
+        if not args.keep_temp:
+            _cleanup_temp_artifacts(target_dir)
 
 
 if __name__ == "__main__":

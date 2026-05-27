@@ -30,17 +30,17 @@ Total sample: dynamic walk-forward coverage based on all matched meetings curren
 
 ## Decision
 
-Keep the recalibrated Auto weights after the semantic 7D cleanup:
+Latest mainline decision after dedup walk-forward review (`131` unique races / `13` unique meetings):
 
-- `race_shape`: 0.26
-- `trainer_signal`: 0.18
-- `stability`: 0.14
-- `sectional`: 0.20
-- `class_advantage`: 0.10
-- `horse_health`: 0.07
-- `form_line`: 0.05
+- `race_shape`: 0.2560
+- `trainer_signal`: 0.2209
+- `stability`: 0.0919
+- `sectional`: 0.1849
+- `class_advantage`: 0.1335
+- `horse_health`: 0.0378
+- `form_line`: 0.0749
 
-The semantic cleanup removed cross-dimension leakage: `race_shape` now uses draw only, `form_line` uses form-line strength plus margin trend, and `class_advantage` uses class plus weight. A follow-up grid search on the same 91-race mixed-venue sample found the 0.20 / 0.18 / 0.14 / 0.26 / 0.10 / 0.07 / 0.05 set to be the best balanced candidate.
+This replaced the older mixed-sample calibration after the reflector dedup pass removed duplicate race leakage. The updated weights preserved `good` and `min-threshold` while lifting `champion`, reducing `order_issue`, and improving `MRR` on the clean benchmark.
 
 A second component-weight pass checked every matrix section. `sectional` improved with a component change: `speed_score` 75% / `track_going_score` 25% became `speed_score` 65% / `track_going_score` 35%. A later semantic/performance pass also replaced the `stability` support tail from `confidence_score` 10% to derived `trackwork_trend_score` 10%, which kept headline hit metrics flat while slightly improving winner-rank quality.
 

@@ -136,7 +136,7 @@
     </header>
     <main class="app-main" id="app-main"></main>
     <footer style="text-align:center;padding:12px;font-size:0.7rem;color:#94A3B8;border-top:1px solid #E2E8F0">
-      旺財 Racing Dashboard · 離線 Snapshot · Generated __GENERATED_TIME__
+      旺財 Racing Dashboard · Static Snapshot · Generated __GENERATED_TIME__
     </footer>
   </div>
 </div>
@@ -355,21 +355,140 @@ function getMergedRaces(racesData) {
 
 
 // ═══════════════════════════════════════════════
-// Betting State (localStorage-persisted)
+// Betting State (local cache + Cloudflare sync)
 // ═══════════════════════════════════════════════
 function betKey(date, venue, race, horse) { return `bet|${date}|${venue}|${race}|${horse}`; }
 let bettingState = {};
+const BET_SYNC_ENDPOINT = window.location.protocol === 'file:' ? null : '/api/sync';
+const BET_SYNC_POLL_MS = 5000;
+let syncedBettingState = {};
+let syncPollTimer = null;
+let syncPushTimer = null;
+let lastSyncedSerialized = '';
+
+function meetingStorageKey(meeting) {
+  if (!meeting) return null;
+  return `bets_${meeting.date}_${meeting.venue}`;
+}
+
+function meetingBetPrefix(meeting) {
+  if (!meeting) return null;
+  return `bet|${meeting.date}|${meeting.venue}|`;
+}
+
+function cloneBettingState(obj) {
+  return JSON.parse(JSON.stringify(obj || {}));
+}
+
+function extractMeetingState(store, meeting) {
+  if (!meeting || !store || typeof store !== 'object') return {};
+  const nestedKey = meetingStorageKey(meeting);
+  const nestedState = store[nestedKey];
+  if (nestedState && typeof nestedState === 'object' && !Array.isArray(nestedState)) {
+    return cloneBettingState(nestedState);
+  }
+  const prefix = meetingBetPrefix(meeting);
+  const extracted = {};
+  Object.entries(store).forEach(([key, value]) => {
+    if (key.startsWith(prefix) && value && typeof value === 'object') extracted[key] = value;
+  });
+  return cloneBettingState(extracted);
+}
+
+function setMeetingStateInStore(store, meeting, meetingState) {
+  const next = { ...(store || {}) };
+  const nestedKey = meetingStorageKey(meeting);
+  const prefix = meetingBetPrefix(meeting);
+  delete next[nestedKey];
+  Object.keys(next).forEach(key => {
+    if (key.startsWith(prefix)) delete next[key];
+  });
+  next[nestedKey] = cloneBettingState(meetingState);
+  return next;
+}
+
+function primeSyncedBettingStateFromLocal() {
+  const meetings = DASHBOARD_DATA.meetings || [];
+  meetings.forEach(m => {
+    const k = meetingStorageKey(m);
+    if (!k || Object.keys(extractMeetingState(syncedBettingState, m)).length) return;
+    try {
+      const parsed = JSON.parse(localStorage.getItem(k) || '{}');
+      if (parsed && typeof parsed === 'object' && Object.keys(parsed).length) {
+        syncedBettingState = setMeetingStateInStore(syncedBettingState, m, parsed);
+      }
+    } catch(e) {}
+  });
+}
 
 function loadBettingState() {
   if (!selectedMeeting) return;
-  const k = `bets_${selectedMeeting.date}_${selectedMeeting.venue}`;
-  try { bettingState = JSON.parse(localStorage.getItem(k) || '{}'); } catch(e) { bettingState = {}; }
+  const k = meetingStorageKey(selectedMeeting);
+  let localState = {};
+  try { localState = JSON.parse(localStorage.getItem(k) || '{}'); } catch(e) { localState = {}; }
+  const syncedState = extractMeetingState(syncedBettingState, selectedMeeting);
+  bettingState = cloneBettingState(syncedState && Object.keys(syncedState).length ? syncedState : localState);
 }
 
 function saveBettingState() {
   if (!selectedMeeting) return;
-  const k = `bets_${selectedMeeting.date}_${selectedMeeting.venue}`;
+  const k = meetingStorageKey(selectedMeeting);
   try { localStorage.setItem(k, JSON.stringify(bettingState)); } catch(e) {}
+  syncedBettingState = setMeetingStateInStore(syncedBettingState, selectedMeeting, bettingState);
+  scheduleBettingSync();
+}
+
+function scheduleBettingSync(delay = 250) {
+  if (!BET_SYNC_ENDPOINT) return;
+  if (syncPushTimer) clearTimeout(syncPushTimer);
+  syncPushTimer = setTimeout(() => {
+    syncPushTimer = null;
+    pushBettingStateToCloud();
+  }, delay);
+}
+
+async function pushBettingStateToCloud() {
+  if (!BET_SYNC_ENDPOINT) return;
+  const body = JSON.stringify(syncedBettingState);
+  if (body === lastSyncedSerialized) return;
+  try {
+    const res = await fetch(BET_SYNC_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    });
+    if (res.ok) lastSyncedSerialized = body;
+  } catch(e) {}
+}
+
+async function pullBettingStateFromCloud(renderAfterSync = true) {
+  if (!BET_SYNC_ENDPOINT) return;
+  try {
+    const res = await fetch(BET_SYNC_ENDPOINT, { cache: 'no-store' });
+    if (!res.ok) return;
+    const remote = await res.json();
+    if (!remote || typeof remote !== 'object') return;
+    const serialized = JSON.stringify(remote);
+    lastSyncedSerialized = serialized;
+    syncedBettingState = remote;
+    if (!selectedMeeting) return;
+    const k = meetingStorageKey(selectedMeeting);
+    const remoteMeetingState = extractMeetingState(syncedBettingState, selectedMeeting);
+    if (!remoteMeetingState || typeof remoteMeetingState !== 'object') return;
+    const currentSerialized = JSON.stringify(bettingState || {});
+    const remoteSerialized = JSON.stringify(remoteMeetingState);
+    if (currentSerialized === remoteSerialized) return;
+    bettingState = cloneBettingState(remoteMeetingState);
+    try { localStorage.setItem(k, remoteSerialized); } catch(e) {}
+    if (renderAfterSync) render();
+  } catch(e) {}
+}
+
+function startBettingSyncPolling() {
+  if (!BET_SYNC_ENDPOINT || syncPollTimer) return;
+  syncPollTimer = setInterval(() => {
+    pullBettingStateFromCloud(true);
+  }, BET_SYNC_POLL_MS);
 }
 
 function getBetState(date, venue, race, horse) {
@@ -378,7 +497,7 @@ function getBetState(date, venue, race, horse) {
 
 function setBetState(date, venue, race, horse, patch) {
   const k = betKey(date,venue,race,horse);
-  bettingState[k] = { ...getBetState(date,venue,race,horse), ...patch };
+  bettingState[k] = { ...getBetState(date,venue,race,horse), ...patch, updatedAt: Date.now() };
   saveBettingState();
   render();
 }
@@ -416,7 +535,7 @@ function isEmptySection(text) {
 // Betting action functions
 function setOddsValue(date, venue, race, horse, val) {
   const k = betKey(date,venue,race,horse);
-  bettingState[k] = { ...getBetState(date,venue,race,horse), odds: parseFloat(val) || null };
+  bettingState[k] = { ...getBetState(date,venue,race,horse), odds: parseFloat(val) || null, updatedAt: Date.now() };
   saveBettingState();
 }
 
@@ -569,6 +688,7 @@ function renderDashboard() {
 function selectMeeting(index) {
   selectedMeeting = DASHBOARD_DATA.meetings[index];
   loadBettingState();
+  pullBettingStateFromCloud(true);
   expandedBetRaces.clear();
   const racesData = getRacesData(selectedMeeting);
   if (racesData) {
@@ -906,6 +1026,24 @@ function getRaceBettingCandidates(meeting, raceNum, isDualAnalyst) {
       });
     }
   } else {
+    const auConsensus = meeting?.region === 'au' ? getConsensus(meeting, raceNum) : null;
+    const auConsensusHorses = auConsensus?.consensus?.consensus_horses || [];
+    if (auConsensusHorses.length) {
+      auConsensusHorses.forEach(h => {
+        candidates.push({
+          horse_number: h.horse_number,
+          horse_name: h.horse_name,
+          jockey: h.jockey || null,
+          trainer: h.trainer || null,
+          scenario: h.scenario || null,
+          grade: h.kelvin_grade || h.heison_grade || null,
+          kelvin_grade: h.kelvin_grade || null,
+          heison_grade: null,
+          consensus_type: h.consensus_type || 'Top 2 精選',
+        });
+      });
+      return candidates;
+    }
     const racesData = getRacesData(meeting);
     if (racesData) {
       const analysts = Object.keys(racesData.races_by_analyst);
@@ -1830,12 +1968,15 @@ window.addEventListener('scroll', () => {
 
 // Init
 document.addEventListener('DOMContentLoaded', () => {
+  primeSyncedBettingStateFromLocal();
   if (DASHBOARD_DATA.meetings.length) {
     selectedMeeting = DASHBOARD_DATA.meetings[0];
     loadBettingState();
     const rd = getRacesData(selectedMeeting);
     if (rd) getMergedRaces(rd).forEach(r => expandedBetRaces.add(r.race_number));
   }
+  startBettingSyncPolling();
+  pullBettingStateFromCloud(false).finally(() => render());
   showDashboard();
 });
 </script>

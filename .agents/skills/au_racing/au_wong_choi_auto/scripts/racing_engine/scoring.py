@@ -3,11 +3,143 @@
 from __future__ import annotations
 import re
 
-FEATURE_KEYS = ("form_score","trial_score","sectional_score","pace_map_score","jockey_score","trainer_score","jockey_horse_fit_score","class_score","weight_score","distance_score","track_score","formline_score","consistency_score","health_score","confidence_score")
+FEATURE_KEYS = ("form_score","trial_score","sectional_score","pace_map_score","jockey_score","trainer_score","jockey_horse_fit_score","class_score","rating_score","weight_score","distance_score","track_score","formline_score","consistency_score","health_score","confidence_score")
 
-MATRIX_WEIGHTS = {"stability":0.18,"sectional":0.21,"race_shape":0.09,"jockey_trainer":0.16,"class_weight":0.06,"track":0.13,"form_line":0.17}
+MATRIX_WEIGHTS = {"stability":0.330,"sectional":0.105,"race_shape":0.234,"jockey_trainer":0.214,"class_weight":0.050,"track":0.067,"form_line":0.000}
 _WEIGHT_FLOOR = {"stability":0.10}
 _WEIGHT_CEILING = {"class_weight":0.15,"track":0.17}
+
+CLASS_MICRO_WEIGHTS = {
+    "career0_base": 57.7,
+    "career0_2yo_bonus": 0.84,
+    "career5_placed_bonus": 2.31,
+    "career5_unplaced_pen": 0.82,
+    "career15_maiden_pen": -6.79,
+    "career15_unplaced_pen": -1.4,
+    "career15_placed_bonus": 5.42,
+    "class_drop_bonus": 2.1,
+    "class_up_pen": 0.0,
+    "metro_prov_pen": -5.48,
+    "rt_high_bonus": 3.58,
+    "rt_low_pen": -3.26
+}
+
+CONSISTENCY_MICRO_WEIGHTS = {
+    "career0_base": 52.4,
+    "base": 64.6,
+    "recent_place_bonus": 7.86,
+    "recent_poor_pen": -2.7,
+    "forgiveness_bonus": 1.49,
+    "run_style_bonus": 5.2,
+    "pi_stable_bonus": 5.71,
+    "repeat_bonus": 2.7,
+    "no_repeat_pen": -2.0
+}
+
+SECTIONAL_MICRO_WEIGHTS = {
+    "base": 35.8,
+    "trial_extreme_bonus": 0.0,
+    "trial_excellent_bonus": 0.0,
+    "trial_pass_bonus": 3.97,
+    "pi_extreme_bonus": 28.1,
+    "pi_excellent_bonus": 20.0,
+    "pi_pass_bonus": 3.64,
+    "l600_extreme_bonus": 15.07,
+    "l600_excellent_bonus": 3.64,
+    "peak_pi_bonus": 1.1,
+    "trend_up_bonus": 1.93,
+    "trend_down_pen": -5.56,
+    "realization_bonus": 6.64,
+    "forgiveness_bonus": 9.89
+}
+
+TRACK_MICRO_WEIGHTS = {
+    "base": 62.9,
+    "same_track_place_bonus": 5.0,
+    "same_track_win_bonus": 2.4,
+    "same_track_poor_pen1": -8.81,
+    "same_track_poor_pen2": -0.81,
+    "going_place_bonus": 0.8,
+    "going_win_bonus": 3.77,
+    "going_poor_pen1_wet": -4.75,
+    "going_poor_pen1_dry": -3.46,
+    "going_poor_pen2_wet": -4.14,
+    "going_poor_pen2_dry": -7.08,
+    "wet_unverified_pen": -6.4,
+    "heavy_win_bonus": 3.87,
+    "heavy_place_bonus": -2.88,
+    "heavy_poor_pen": -5.94,
+    "wet_bloodline_bonus": 4.18
+}
+
+FORMLINE_MICRO_WEIGHTS = {
+    "elite_base": 82.5,
+    "strong_base": 66.4,
+    "med_strong_base": 61.8,
+    "med_base": 68.3,
+    "med_weak_base": 56.6,
+    "weak_base": 53.6,
+    "neutral_base": 54.9,
+    "unknown_base": 64.8,
+    "future_win_bonus": 5.9,
+    "strong_opp_bonus": 3.3,
+    "followup_higher_bonus": 2.4,
+    "followup_same_bonus": 1.2,
+    "followup_lower_pen": -3.6,
+    "headwinner_bonus": 1.8
+}
+
+PACE_MICRO_WEIGHTS = {
+    "base": 55.7,
+    "modifier_cap_max": 4.05,
+    "modifier_cap_min": -9.43,
+    "modifier_multiplier": 1.1,
+    "fallback_wide_pen": 0.0,
+    "fallback_inside_bonus": 1.93
+}
+JOCKEY_MICRO_WEIGHTS = {
+    "elite_bonus": 9.0,
+    "solid_bonus": 5.77,
+    "apprentice_fresh_bonus": -0.14
+}
+
+TRAINER_MICRO_WEIGHTS = {
+    "elite_bonus": 10.59,
+    "waller_debut_bonus": 5.52,
+    "track_high_vol_high_place_bonus": 10.96,
+    "track_med_vol_high_place_bonus": 4.29,
+    "track_med_vol_med_place_bonus": 1.44,
+    "track_low_place_pen": -0.52
+}
+
+FIT_MICRO_WEIGHTS = {
+    "debut_top_trainer_bonus": 0.0,
+    "young_top_jt_bonus": 0.0,
+    "trial_ok_bonus": 3.38,
+    "trial_ok_top_jt_bonus": 1.0,
+    "current_formal_cap": 4.05,
+    "current_formal_mult": 0.31,
+    "current_basic_fit_bonus": 0.65,
+    "current_high_fit_bonus": 1.47,
+    "current_trial_cap": 2.57,
+    "current_trial_mult": 3.8,
+    "best_formal_cap": 4.23,
+    "best_formal_mult": -0.06,
+    "jockey_upgrade_vs_best_bonus": 1.06,
+    "jockey_downgrade_vs_best_pen": 0.0,
+    "latest_upgrade_bonus": 0.0,
+    "latest_downgrade_pen": -4.11,
+    "leave_proven_jockey_pen": -2.98,
+    "combo_high_vol_high_place_bonus": 7.27,
+    "combo_med_place_bonus": 1.53,
+    "combo_low_place_pen": -1.0,
+    "combo_win_bonus": 0.49,
+    "combo_no_ride_good_place_bonus": 1.97,
+    "trainer_track_top_jockey_bonus": 1.76,
+    "signal_best_jockey_bonus": 3.85,
+    "signal_upgrade_bonus": 9.95,
+    "signal_downgrade_pen": -3.44
+}
 
 def get_dynamic_matrix_weights(race_context):
     weights = dict(MATRIX_WEIGHTS)

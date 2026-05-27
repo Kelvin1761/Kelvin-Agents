@@ -1,0 +1,5 @@
+# Optional workstation extras
+# Install this if you also want local tests or the tennis dashboard.
+
+pytest
+streamlit

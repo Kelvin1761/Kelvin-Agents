@@ -6,13 +6,13 @@ Auto uses the existing 7D Wong Choi matrix as the only official ability source:
 
 | Key | Display | Weight |
 |---|---:|---:|
-| `sectional` | 段速與場地適性 | 0.20 |
-| `trainer_signal` | 騎練訊號 | 0.18 |
-| `stability` | 狀態與穩定性 | 0.14 |
-| `race_shape` | 檔位與走位（不含步速） | 0.26 |
-| `class_advantage` | 級數優勢 | 0.10 |
-| `horse_health` | 馬匹健康 / 新鮮感 | 0.07 |
-| `form_line` | 賽績線 | 0.05 |
+| `sectional` | 段速與場地適性 | 0.1849 |
+| `trainer_signal` | 騎練訊號 | 0.2209 |
+| `stability` | 狀態與穩定性 | 0.0919 |
+| `race_shape` | 檔位與走位（不含步速） | 0.2560 |
+| `class_advantage` | 級數優勢 | 0.1335 |
+| `horse_health` | 馬匹健康 / 新鮮感 | 0.0378 |
+| `form_line` | 賽績線 | 0.0749 |
 
 ## Matrix Mapping Calibration
 

@@ -17,6 +17,15 @@ from rank_adjustments import (
 from scoring import (
     FEATURE_KEYS,
     MATRIX_WEIGHTS,
+    CLASS_MICRO_WEIGHTS,
+    CONSISTENCY_MICRO_WEIGHTS,
+    SECTIONAL_MICRO_WEIGHTS,
+    TRACK_MICRO_WEIGHTS,
+    FORMLINE_MICRO_WEIGHTS,
+    PACE_MICRO_WEIGHTS,
+    JOCKEY_MICRO_WEIGHTS,
+    TRAINER_MICRO_WEIGHTS,
+    FIT_MICRO_WEIGHTS,
     PLACE_TIGHTENING_FEATURE_WEIGHTS,
     PLACE_TIGHTENING_MAX_ABS_BONUS,
     PLACE_TIGHTENING_SCALE,
@@ -264,6 +273,10 @@ HORSE_BLOCK_RE = re.compile(
     r"(?: \| 負重: ([0-9.]+)kg)?$",
     re.M,
 )
+RACECARD_HORSE_RE = re.compile(r"^\d+\.\s+(.+?)\s+\((\d+)\)$")
+RACECARD_META_RE = re.compile(
+    r"^Trainer:\s.*?\|\sJockey:\s.*?\|\sWeight:\s*([0-9.]+)\s*\|\sAge:\s.*?\|\sRating:\s*([0-9.]+)"
+)
 
 
 class RacingEngine:
@@ -318,6 +331,7 @@ class RacingEngine:
             "trainer_score": self._trainer_score,
             "jockey_horse_fit_score": self._jockey_horse_fit_score,
             "class_score": self._class_score,
+            "rating_score": self._rating_score,
             "weight_score": self._weight_score,
             "distance_score": self._distance_score,
             "track_score": self._track_score,
@@ -630,8 +644,9 @@ class RacingEngine:
         recent_top4 = sum(1 for entry in entries[:3] if (parse_float(entry.get("placing")) or 99) <= 4)
         forgiveness_count = self._forgiveness_count()
 
-        total_score = 40.0
-        notes = ["基礎分 40 分"]
+        w = SECTIONAL_MICRO_WEIGHTS
+        total_score = w.get("base", 40.0)
+        notes = [f"基礎分 {total_score} 分"]
 
         # 1. Average PI (Max 25)
         pi_from_entries = []
@@ -645,14 +660,14 @@ class RacingEngine:
             if tw_trial and tw_trial > 0:
                 trial_l600 = 600.0 / tw_trial
                 if trial_l600 <= 33.5:
-                    total_score += 40
-                    notes.append(f"初出/無紀錄馬: 試閘 L600 ({trial_l600:.1f}s) 極速補償 (+40)")
+                    total_score += w.get("trial_extreme_bonus", 40.0)
+                    notes.append(f"初出/無紀錄馬: 試閘 L600 ({trial_l600:.1f}s) 極速補償 (+{w.get('trial_extreme_bonus', 40.0)})")
                 elif trial_l600 <= 34.0:
-                    total_score += 25
-                    notes.append(f"初出/無紀錄馬: 試閘 L600 ({trial_l600:.1f}s) 優秀補償 (+25)")
+                    total_score += w.get("trial_excellent_bonus", 25.0)
+                    notes.append(f"初出/無紀錄馬: 試閘 L600 ({trial_l600:.1f}s) 優秀補償 (+{w.get('trial_excellent_bonus', 25.0)})")
                 elif trial_l600 <= 34.8:
-                    total_score += 10
-                    notes.append(f"初出/無紀錄馬: 試閘 L600 ({trial_l600:.1f}s) 合格補償 (+10)")
+                    total_score += w.get("trial_pass_bonus", 10.0)
+                    notes.append(f"初出/無紀錄馬: 試閘 L600 ({trial_l600:.1f}s) 合格補償 (+{w.get('trial_pass_bonus', 10.0)})")
                 else:
                     notes.append(f"初出/無紀錄馬: 試閘 L600 ({trial_l600:.1f}s) 偏慢 (0)")
             else:
@@ -663,14 +678,14 @@ class RacingEngine:
             max_pi = max(pi_from_entries)
 
             if avg_pi >= 4.0:
-                total_score += 25
-                notes.append("平均 L400 PI 極佳 (+25)")
+                total_score += w.get("pi_extreme_bonus", 25.0)
+                notes.append(f"平均 L400 PI 極佳 (+{w.get('pi_extreme_bonus', 25.0)})")
             elif avg_pi >= 2.0:
-                total_score += 15
-                notes.append("平均 L400 PI 優秀 (+15)")
+                total_score += w.get("pi_excellent_bonus", 15.0)
+                notes.append(f"平均 L400 PI 優秀 (+{w.get('pi_excellent_bonus', 15.0)})")
             elif avg_pi >= 0.0:
-                total_score += 5
-                notes.append("平均 L400 PI 達標 (+5)")
+                total_score += w.get("pi_pass_bonus", 5.0)
+                notes.append(f"平均 L400 PI 達標 (+{w.get('pi_pass_bonus', 5.0)})")
             else:
                 notes.append("平均 L400 PI 為負，缺乏後勁 (0)")
 
@@ -684,32 +699,32 @@ class RacingEngine:
                     if std_l600 and std_l600 > 0:
                         delta = best_l600 - std_l600
                         if delta <= -0.6:
-                            total_score += 15
-                            notes.append(f"最佳 L600 ({best_l600:.2f}s vs 標準 {std_l600:.2f}s) 突破路程極限 (+15)")
+                            total_score += w.get("l600_extreme_bonus", 15.0)
+                            notes.append(f"最佳 L600 ({best_l600:.2f}s vs 標準 {std_l600:.2f}s) 突破路程極限 (+{w.get('l600_extreme_bonus', 15.0)})")
                         elif delta <= -0.3:
-                            total_score += 5
-                            notes.append(f"最佳 L600 ({best_l600:.2f}s) 達該路程優秀級別 (+5)")
+                            total_score += w.get("l600_excellent_bonus", 5.0)
+                            notes.append(f"最佳 L600 ({best_l600:.2f}s) 達該路程優秀級別 (+{w.get('l600_excellent_bonus', 5.0)})")
                         else:
                             notes.append(f"最佳 L600 ({best_l600:.2f}s) 未見路程極速優勢 (0)")
 
             # 3. Trend & Peak PI (Max 10)
             if max_pi >= 6.0:
-                total_score += 5
-                notes.append("生涯曾交出頂峰級別 PI 爆發 (+5)")
+                total_score += w.get("peak_pi_bonus", 5.0)
+                notes.append(f"生涯曾交出頂峰級別 PI 爆發 (+{w.get('peak_pi_bonus', 5.0)})")
             if recent_pi > avg_pi + 2.0:
-                total_score += 5
-                notes.append("近期 PI 呈現強烈上升軌 (+5)")
+                total_score += w.get("trend_up_bonus", 5.0)
+                notes.append(f"近期 PI 呈現強烈上升軌 (+{w.get('trend_up_bonus', 5.0)})")
             elif recent_pi < avg_pi - 3.0:
-                total_score = max(0, total_score - 10)
-                notes.append("近期 PI 嚴重退步 (-10)")
+                total_score = max(0, total_score + w.get("trend_down_pen", -10.0))
+                notes.append(f"近期 PI 嚴重退步 ({w.get('trend_down_pen', -10.0)})")
 
             # 4. Realization & Forgiveness (Max 10)
             if avg_pi > 0 and recent_top4 > 0:
-                total_score += 10
-                notes.append("高 PI 成功兌現為前列成績 (+10)")
+                total_score += w.get("realization_bonus", 10.0)
+                notes.append(f"高 PI 成功兌現為前列成績 (+{w.get('realization_bonus', 10.0)})")
             elif avg_pi > 2.0 and forgiveness_count >= 1:
-                total_score += 5
-                notes.append("高 PI 未兌現但有受阻/寬恕背景 (+5)")
+                total_score += w.get("forgiveness_bonus", 5.0)
+                notes.append(f"高 PI 未兌現但有受阻/寬恕背景 (+{w.get('forgiveness_bonus', 5.0)})")
 
         total_score = min(100.0, max(0.0, total_score))
         
@@ -752,8 +767,9 @@ class RacingEngine:
 
         return score, "；".join(notes) + f"。段速分 {clip_score(score):.1f}。" if notes else "段速實證有限，段速分中性處理。", "engine_line+sectional_trend+record_table+pf_metrics+formguide_notes"
     def _pace_map_score(self):
+        w = PACE_MICRO_WEIGHTS
         barrier = parse_float(self.horse_data.get("barrier"))
-        score = 60
+        score = w.get("base", 60.0)
         notes = []
         if barrier is not None:
             if barrier <= 4:
@@ -803,9 +819,9 @@ class RacingEngine:
 
             if stats and stats.get("sample_size", 0) > 0:
                 win_rate = stats.get("win_rate", expected_wr)
-                modifier = (win_rate - expected_wr) * 100
+                modifier = (win_rate - expected_wr) * 100 * w.get("modifier_multiplier", 1.0)
                 # Dampen the modifier slightly to avoid over-punishing wide draws in tiny samples
-                modifier = max(-6, min(6, modifier))
+                modifier = max(w.get("modifier_cap_min", -6.0), min(w.get("modifier_cap_max", 6.0), modifier))
                 score += modifier
                 notes.append(f"檔位 {int(barrier)} ({bucket}) 據 {source_level} 統計勝率為 {win_rate*100:.1f}% (基準 {expected_wr*100:.1f}%)")
                 if modifier > 2:
@@ -815,10 +831,10 @@ class RacingEngine:
             else:
                 # Absolute fallback if matrix fails completely
                 if barrier >= 12:
-                    score -= 4
+                    score += w.get("fallback_wide_pen", -4.0)
                     notes.append("排位外檔，無統計數據參考")
                 elif barrier <= 4:
-                    score += 2
+                    score += w.get("fallback_inside_bonus", 2.0)
                     notes.append("排位內檔，無統計數據參考")
 
         return score, "；".join(notes) + f"。檔位分 {clip_score(score):.1f}。" if notes else "檔位中性，分數不變。", "barrier+empirical_bias"
@@ -873,13 +889,13 @@ class RacingEngine:
         )
         solid_tokens = ("McEvoy", "Layt", "Bayliss", "Moore", "Roper", "Costin", "Bullock", "Gibbons", "Jones")
         if any(token in jockey for token in elite_tokens):
-            score += 12
+            score += JOCKEY_MICRO_WEIGHTS.get("elite_bonus", 12.0)
             return score, f"{jockey} 屬高階騎師，騎師分 {clip_score(score):.1f}。", "jockey_name_fallback"
         if any(token in jockey for token in solid_tokens):
-            score += 6
+            score += JOCKEY_MICRO_WEIGHTS.get("solid_bonus", 6.0)
             return score, f"{jockey} 屬有基本把握嘅一級半騎師，騎師分 {clip_score(score):.1f}。", "jockey_name_fallback"
         if "(a)" in jockey or "Fitzgerald" in jockey:
-            score += 2
+            score += JOCKEY_MICRO_WEIGHTS.get("apprentice_fresh_bonus", 2.0)
             return score, f"{jockey} 有減磅/新鮮手感因素，騎師分 {clip_score(score):.1f}。", "jockey_name_fallback"
         return score, f"{jockey or '騎師資料'} 屬中性配置，騎師分 {clip_score(score):.1f}。", "jockey_name_fallback"
 
@@ -901,24 +917,24 @@ class RacingEngine:
                 "Hawkes", "O'Shea", "Conners", "Cummings", "Gollan", "Lees", "Neasham", "Moody"
             )
             if any(token in trainer for token in strong_tokens):
-                score += 12
+                score += TRAINER_MICRO_WEIGHTS.get("elite_bonus", 12.0)
                 notes.append("馬房屬全國強勢班底")
         if "Waller" in trainer and self._career_starts() == 0:
-            score += 4
+            score += TRAINER_MICRO_WEIGHTS.get("waller_debut_bonus", 4.0)
             self.reason_codes.append("waller_debut_positive")
             notes.append("初出馬由 Waller 系統部署")
         track_stats = self._trainer_track_stats()
         if track_stats.get("runs", 0) >= 20 and track_stats.get("place_rate", 0.0) >= 0.44:
-            score += 7
+            score += TRAINER_MICRO_WEIGHTS.get("track_high_vol_high_place_bonus", 7.0)
             notes.append("馬房喺今場場館屬高密度高上名輸出")
         elif track_stats.get("runs", 0) >= 12 and track_stats.get("place_rate", 0.0) >= 0.40:
-            score += 5
+            score += TRAINER_MICRO_WEIGHTS.get("track_med_vol_high_place_bonus", 5.0)
             notes.append("馬房喺今場場館有穩定上名輸出")
         elif track_stats.get("runs", 0) >= 8 and track_stats.get("place_rate", 0.0) >= 0.32:
-            score += 3
+            score += TRAINER_MICRO_WEIGHTS.get("track_med_vol_med_place_bonus", 3.0)
             notes.append("馬房喺今場場館有基本對位")
         elif track_stats.get("runs", 0) >= 8 and track_stats.get("place_rate", 0.0) < 0.18:
-            score -= 2
+            score += TRAINER_MICRO_WEIGHTS.get("track_low_place_pen", -2.0)
             notes.append("馬房近場館樣本未見明顯承托")
         note = "；".join(notes) if notes else f"{trainer or '練馬師資料'} 反映馬房部署基礎"
         return score, f"{note}，練馬師分 {clip_score(score):.1f}。", "trainer_name+trainer_track_stats"
@@ -956,80 +972,80 @@ class RacingEngine:
         latest_official_place_rate = safe_ratio(latest_official_places, latest_official_rides)
 
         if self._career_starts() == 0 and top_trainer:
-            score += 8
+            score += FIT_MICRO_WEIGHTS.get("debut_top_trainer_bonus", 8.0)
             notes.append("初出馬由強勢馬房部署")
         if self._career_starts() <= 5 and top_jockey and top_trainer:
-            score += 6
+            score += FIT_MICRO_WEIGHTS.get("young_top_jt_bonus", 6.0)
             notes.append("輕賽齡馬配頂級騎練")
         if trial_count >= 2 and trial_top3 >= 2:
-            score += 4
+            score += FIT_MICRO_WEIGHTS.get("trial_ok_bonus", 4.0)
             notes.append("試閘交代密度足夠")
             if top_jockey or top_trainer:
-                score += 2
+                score += FIT_MICRO_WEIGHTS.get("trial_ok_top_jt_bonus", 2.0)
                 notes.append("備戰同騎練配置方向一致")
         if current_formal_rides > 0:
-            score += min(6, current_formal_places * 2 + current_formal_wins * 2)
+            score += min(FIT_MICRO_WEIGHTS.get("current_formal_cap", 6.0), current_formal_places * FIT_MICRO_WEIGHTS.get("current_formal_mult", 2.0) + current_formal_wins * FIT_MICRO_WEIGHTS.get("current_formal_mult", 2.0))
             notes.append(f"現役騎師曾策騎此駒 {current_formal_rides} 次正式賽")
             if current_formal_places * 2 >= max(1, current_formal_rides):
-                score += 2
+                score += FIT_MICRO_WEIGHTS.get("current_basic_fit_bonus", 2.0)
                 notes.append("現役騎師對此駒有基本交代")
             if current_formal_rides >= 2 and current_place_rate >= 0.66:
-                score += 2
+                score += FIT_MICRO_WEIGHTS.get("current_high_fit_bonus", 2.0)
                 notes.append("現役騎師對此駒配合率偏高")
         elif current_trial_rides > 0 and current_trial_top3 > 0:
-            score += min(4, current_trial_top3 * 2)
+            score += min(FIT_MICRO_WEIGHTS.get("current_trial_cap", 4.0), current_trial_top3 * FIT_MICRO_WEIGHTS.get("current_trial_mult", 2.0))
             notes.append("現役騎師已透過試閘熟習此駒")
         if best_formal_jockey and best_formal_rides > 0:
             if jockey == best_formal_jockey:
-                score += min(6, best_formal_places * 2 + best_formal_wins * 2)
+                score += min(FIT_MICRO_WEIGHTS.get("best_formal_cap", 6.0), best_formal_places * FIT_MICRO_WEIGHTS.get("best_formal_mult", 2.0) + best_formal_wins * FIT_MICRO_WEIGHTS.get("best_formal_mult", 2.0))
                 notes.append("今場沿用歷來最佳正式賽配搭")
             elif current_formal_rides == 0 and best_formal_places > 0:
                 if self._jockey_rank_value(jockey) >= self._jockey_rank_value(best_formal_jockey):
-                    score += 2
+                    score += FIT_MICRO_WEIGHTS.get("jockey_upgrade_vs_best_bonus", 2.0)
                     notes.append("雖未沿用歷來最佳配搭，但換上同級或更強騎師")
                 else:
-                    score -= 4
+                    score += FIT_MICRO_WEIGHTS.get("jockey_downgrade_vs_best_pen", -4.0)
                     notes.append("今場未沿用歷來較合拍騎師")
             elif current_vs_best:
                 notes.append(current_vs_best)
         if latest_official_jockey and latest_official_jockey != jockey and latest_official_rides > 0:
             if current_formal_rides > 0 and current_place_rate > latest_official_place_rate + 0.20:
-                score += 4
+                score += FIT_MICRO_WEIGHTS.get("latest_upgrade_bonus", 4.0)
                 notes.append("今場接手騎師對此駒往績勝過上仗騎師")
             elif current_formal_rides == 0 and latest_official_place_rate >= 0.50:
-                score -= 4
+                score += FIT_MICRO_WEIGHTS.get("leave_proven_jockey_pen", -4.0)
                 notes.append("今場離開上仗已證明配搭")
             elif current_formal_rides > 0 and latest_official_place_rate > current_place_rate + 0.20:
-                score -= 3
+                score += FIT_MICRO_WEIGHTS.get("latest_downgrade_pen", -3.0)
                 notes.append("今場騎師對此駒往績未及上仗騎師")
         if combo_stats.get("runs", 0) >= 5:
             if combo_stats.get("place_rate", 0.0) >= 0.45:
-                score += 6
+                score += FIT_MICRO_WEIGHTS.get("combo_high_vol_high_place_bonus", 6.0)
                 notes.append("今場場館騎練組合已有穩定上名輸出")
             elif combo_stats.get("place_rate", 0.0) >= 0.33:
-                score += 3
+                score += FIT_MICRO_WEIGHTS.get("combo_med_place_bonus", 3.0)
                 notes.append("今場場館騎練組合有基本對位")
             elif combo_stats.get("place_rate", 0.0) < 0.15:
-                score -= 2
+                score += FIT_MICRO_WEIGHTS.get("combo_low_place_pen", -2.0)
                 notes.append("今場場館騎練組合過往交代偏淡")
             if combo_stats.get("win_rate", 0.0) >= 0.18:
-                score += 1
+                score += FIT_MICRO_WEIGHTS.get("combo_win_bonus", 1.0)
                 notes.append("同場騎練組合有直接贏馬紀錄")
             if current_formal_rides == 0 and combo_stats.get("place_rate", 0.0) >= 0.33:
-                score += 2
+                score += FIT_MICRO_WEIGHTS.get("combo_no_ride_good_place_bonus", 2.0)
                 notes.append("雖未曾策此駒，但同場騎練拍檔成熟")
         elif trainer_track_stats.get("runs", 0) >= 10 and top_jockey and trainer_track_stats.get("place_rate", 0.0) >= 0.35:
-            score += 2
+            score += FIT_MICRO_WEIGHTS.get("trainer_track_top_jockey_bonus", 2.0)
             notes.append("馬房場館對位配上強手，部署可信度提高")
         if jockey_change_signal:
             if "沿用歷來最佳配搭" in jockey_change_signal:
-                score += 4
+                score += FIT_MICRO_WEIGHTS.get("signal_best_jockey_bonus", 4.0)
                 notes.append("沿用歷來最佳人馬配搭")
             elif "較強騎師" in jockey_change_signal:
-                score += 5
+                score += FIT_MICRO_WEIGHTS.get("signal_upgrade_bonus", 5.0)
                 notes.append("今場屬升級換騎")
             elif "換下較高級騎師" in jockey_change_signal:
-                score -= 4
+                score += FIT_MICRO_WEIGHTS.get("signal_downgrade_pen", -4.0)
                 notes.append("今場屬降級換騎")
             elif "沿用上仗騎師" in jockey_change_signal:
                 score += 2
@@ -1103,6 +1119,7 @@ class RacingEngine:
                 feature_scores,
                 feature_notes,
                 "class_score",
+                "rating_score",
                 "weight_score",
             ),
             "track": self._reason_bundle(
@@ -1353,6 +1370,8 @@ class RacingEngine:
 
     def _describe_class_weight_matrix(self, score, feature_scores):
         class_move = self._class_move_display()
+        horse_rating = self._horse_rating()
+        rating_brief = self._field_rating_brief()
         weight = parse_float(self.horse_data.get("weight"))
         career = str(self.data.get("career_record_line") or "").strip()
         latest_formal = self._latest_record_summary("正式")
@@ -1366,15 +1385,27 @@ class RacingEngine:
         if class_move and class_move != "平磅":
             parts.append(f"（{class_move}）")
         opener = " ".join(parts) + "。"
+        if horse_rating is not None:
+            opener += f" 官方 rating 為 {horse_rating:.1f}。"
             
-        if feature_scores["class_score"] >= 68 and feature_scores["weight_score"] >= 68:
-            assessment = "班次門檻與負磅壓力均屬舒適範圍，未見明顯阻力，只要交回本身水準已極具競爭力。"
-        elif feature_scores["class_score"] <= 56 or feature_scores["weight_score"] <= 56:
-            assessment = "班次或負磅其中一邊門檻偏高，發揮空間受限，講求自身實力超水準兌現。"
+        if (
+            feature_scores["class_score"] >= 68
+            and feature_scores["rating_score"] >= 66
+            and feature_scores["weight_score"] >= 68
+        ):
+            assessment = "班次門檻、官方 rating 對位同負磅壓力都屬舒適範圍，外在條件整體順手。"
+        elif (
+            feature_scores["class_score"] <= 56
+            or feature_scores["rating_score"] <= 56
+            or feature_scores["weight_score"] <= 56
+        ):
+            assessment = "班次、rating 對位或負磅其中一邊門檻偏高，發揮空間受限，講求自身實力超水準兌現。"
         else:
-            assessment = "班次及負磅條件均屬合理範圍，未見阻力但亦無特別讓磅優勢。"
+            assessment = "班次、rating 對位同負磅條件大致合理，未見明顯阻力，但亦未去到全面甜頭。"
             
         details = []
+        if rating_brief:
+            details.append(f"{rating_brief}。")
         if field_weight:
             details.append(field_weight)
         if latest_rt:
@@ -1387,52 +1418,35 @@ class RacingEngine:
         return " ".join(part for part in (opener, assessment, " ".join(details)) if part)
 
     def _describe_track_matrix(self, score, feature_scores):
-        track_line = str(self.data.get("track_record_line") or "").strip()
-        going_line = str(self.data.get("going_stats_line") or "").strip()
         going = self._today_going() or "掛牌未明"
         track_stats = self._same_track_stats()
         track_context = self._track_context()
         going_bucket = track_context.get("going_bucket", "")
         going_sample = self._going_stats().get(going_bucket, {})
-        family = self._track_family_confidence_brief()
-        meeting_bias = self._meeting_bias_brief()
-        geometry = self._track_geometry_brief()
-        distance_note = self._track_distance_note_brief()
-        fit = self._track_fit_brief()
-        wet_bloodline = self._wet_bloodline_signal()
+        wet_state = self._wet_state()
         
         if feature_scores["track_score"] >= 72:
-            opener = "同場及場地紀錄有堅實數據支持，場地性能絕對唔會成為絆腳石。"
+            opener = "同場及掛牌紀錄有堅實數據支持，場地性能絕對唔會成為絆腳石。"
         elif feature_scores["track_score"] <= 56:
-            opener = "場地性能未算企穩，轉換條件下發揮可能打折扣，需保守看待。"
+            opener = "場地性能未算企穩，發揮可能打折扣，需保守看待。"
         else:
-            opener = "場地適應力具備基礎支持，雖未見壓倒性優勢，但應可應付今日地狀。"
+            opener = "場地適應力具備基礎支持，應可應付今日地狀。"
             
         details = []
         if track_stats["starts"] > 0:
             if track_stats["places"] > 0:
-                details.append("同場/同程已有上名或勝出紀錄。")
+                details.append("同場已有上名或勝出紀錄。")
             elif track_stats["starts"] >= 2:
-                details.append("同場已有經驗，但成績暫未見突破。")
-        elif track_line:
-            details.append("場地紀錄有基礎樣本。")
+                details.append("同場已有多次經驗，但成績暫未見突破。")
             
         if going != "掛牌未明":
             if going_sample.get("starts", 0) > 0 and going_sample.get("places", 0) > 0:
                 details.append(f"今場 {going} 掛牌屬射程範圍。")
-            else:
+            elif going_sample.get("starts", 0) >= 2:
                 details.append(f"今場 {going} 掛牌暫未見突出成績。")
-                
-        if family:
-            details.append(f"Track family：{family}。")
-        if meeting_bias:
-            details.append(f"Meeting bias：{meeting_bias}。")
-        if geometry:
-            details.append(f"賽道幾何：{geometry}。")
-        if fit:
-            details.append(f"個體配套：{fit}。")
-        if wet_bloodline:
-            details.append(wet_bloodline)
+
+        if wet_state in {"soft7plus", "heavy"} and not self._has_verified_wet_place():
+            details.append("缺乏爛地實績證明，場地風險偏高。")
             
         return " ".join(part for part in (opener, " ".join(details)) if part)
 
@@ -1512,6 +1526,8 @@ class RacingEngine:
             return self._anchor_lines(
                 ("今場班次", self._race_class_text()),
                 ("班次變動", self._class_move_display()),
+                ("官方 Rating", self._horse_rating_text()),
+                ("Rating 對位", self._field_rating_brief()),
                 ("負磅", self._weight_text()),
                 ("場內磅差", self._field_weight_brief()),
                 ("最新PF/RT", self._latest_l600_rt_brief()),
@@ -1572,11 +1588,13 @@ class RacingEngine:
             "trainer_score": "練馬師分",
             "jockey_horse_fit_score": "人馬配搭分",
             "class_score": "級數分",
+            "rating_score": "Rating 分",
             "weight_score": "負磅分",
             "distance_score": "路程分",
             "track_score": "場地分",
             "formline_score": "賽績線分",
             "consistency_score": "穩定性分",
+            "health_score": "健康分",
             "confidence_score": "信心分",
         }.get(key, key)
 
@@ -2744,6 +2762,43 @@ class RacingEngine:
             parts.append(f"較場均 {sign}{delta['to_avg']:.1f}kg")
         return "；".join(parts)
 
+    def _horse_rating(self):
+        return parse_float(self.horse_data.get("rating") or self.data.get("horse_rating"))
+
+    def _horse_rating_text(self):
+        rating = self._horse_rating()
+        return f"{rating:.1f}" if rating is not None else ""
+
+    def _field_rating_delta(self):
+        rating = self._horse_rating()
+        field = self._field_summary()
+        if rating is None or not field:
+            return {}
+        avg_rating = parse_float(field.get("avg_rating"))
+        top3_cutoff = parse_float(field.get("top3_rating_cutoff"))
+        rating_stdev = parse_float(field.get("rating_stdev"))
+        return {
+            "to_avg": (rating - avg_rating) if avg_rating is not None else None,
+            "to_top3": (rating - top3_cutoff) if top3_cutoff is not None else None,
+            "stdev": rating_stdev if rating_stdev is not None else None,
+        }
+
+    def _field_rating_brief(self):
+        delta = self._field_rating_delta()
+        rating = self._horse_rating()
+        if rating is None:
+            return ""
+        parts = [f"今場評分 {rating:.1f}"]
+        if delta.get("to_avg") is not None:
+            sign = "+" if delta["to_avg"] > 0 else ""
+            parts.append(f"較場均 {sign}{delta['to_avg']:.1f}")
+        if delta.get("to_top3") is not None:
+            if delta["to_top3"] >= 0:
+                parts.append("已達場內前三 rating 門檻")
+            else:
+                parts.append(f"離前三 rating 門檻差 {abs(delta['to_top3']):.1f}")
+        return "；".join(parts)
+
     def _l400_text(self):
         l400 = parse_float(self.horse_data.get("raw_l400") or self.data.get("raw_l400"))
         if l400 is None:
@@ -2871,120 +2926,123 @@ class RacingEngine:
         career_starts = self._career_starts()
         class_move = str(self.horse_data.get("class_move") or self.data.get("class_move") or "")
         official_entries = self._official_entries()
-        followups = self._formline_followup_counts()
-        headwinner = self._formline_headwinner()
         race_class = self._race_class_text()
         race_bucket = self._race_class_bucket()
         latest_rt = self._latest_l600_rt_metrics().get("rt")
+        latest_place = parse_float((official_entries[0] or {}).get("placing")) if official_entries else None
+        
         current_tier = self._venue_tier(self._meeting_intelligence().get("venue") or self._track_profile().get("venue") or "")
         latest_tier = self._venue_tier((official_entries[0] or {}).get("venue") if official_entries else "")
-        score = 60
+
+        w = CLASS_MICRO_WEIGHTS
+        score = 60.0
         notes = []
+
         if career_starts == 0:
-            score = 56
+            score = w.get("career0_base", 56.0)
             notes.append("初出馬未有正式班際證明")
             if "2-y-o" in race_class.lower() or "2yo" in race_class.lower():
-                score += 3
-                notes.append("2歲馬賽事初出馬常有爆發力，級數分輕微補償")
-        if "降班" in class_move:
-            score += 12
-            notes.append("班次有回落")
-        elif "大幅升班" in class_move:
-            score -= 12
-            notes.append("今場對手層次明顯轉強")
-        elif "升班" in class_move:
-            score -= 8
-            notes.append("今場對手層次轉強")
-        if class_move == "=":
-            notes.append("班次維持不變")
-        if official_entries and official_entries[0].get("placing", "").isdigit():
-            latest_place = int(official_entries[0]["placing"])
-            if race_bucket == "maiden":
-                if latest_place <= 3 and career_starts <= 4:
-                    score += 1
-                    notes.append("maiden 階段仍屬可再進步窗口")
-                elif latest_place >= 6 and career_starts >= 5:
-                    score -= 2
-                    notes.append("多跑仍未突破 maiden，班底爆發位要再等")
-            elif latest_place <= 3:
-                if race_bucket in {"group1", "group23", "listed", "bm88", "bm72"}:
-                    score += 3
-                    notes.append("同級或較高層次最近已經交代")
-                else:
-                    score += 2
-                    notes.append("最近同類班次已有前列交代")
-            elif latest_place >= 6 and race_bucket in {"bm72", "bm88", "listed", "group23", "group1"}:
-                score -= 2
-                notes.append("最近同類層次未見即時接軌")
-            if "升班" in class_move and latest_place <= 4:
-                score += 2
-                notes.append("升班後仍有基本競爭力")
-            elif "升班" in class_move and latest_place >= 6:
-                score -= 2
-                notes.append("上仗仍未證明升班後可即時接軌")
-            if "降班" in class_move and latest_place <= 3:
-                score += 2
-                notes.append("降班後更易對位")
-            elif "降班" in class_move and latest_place >= 6:
-                notes.append("雖然降班，但仍要靠賽事節奏幫手先易反彈")
-            if class_move == "=" and latest_place <= 3 and latest_rt is not None and latest_rt >= 66:
-                score += 2
-                notes.append("同班再戰且 RT 未失速，班底延續性較好")
-        if followups["higher"] > 0:
-            score += min(6, followups["higher"] * 2)
-            notes.append("近仗對手後續升班仍能贏馬，班底厚度有承接")
-        elif followups["same"] >= 2:
-            score += 1
-            notes.append("同組對手後續持續交代，原場次含金量未散")
-        elif followups["lower"] >= 3 and followups["same"] == 0:
-            score -= 2
-            notes.append("對手後續多在較低層次交代，原場次含金量一般")
-        if current_tier == "metro" and latest_tier == "provincial":
-            if latest_rt is not None and latest_rt >= 70 and official_entries and parse_float(official_entries[0].get("placing")) is not None and parse_float(official_entries[0].get("placing")) <= 3:
-                score += 1
-                notes.append("省賽轉都會，但最近表現同 RT 都有承接")
-            elif latest_rt is not None and latest_rt >= 68:
-                notes.append("省賽轉都會，但 RT 尚有承接")
-            else:
-                score -= 3
-                notes.append("省賽轉都會，班次深度要再驗證")
-        if latest_rt is not None:
-            if race_bucket in {"group1", "group23", "listed"}:
-                if latest_rt >= 72:
-                    score += 5
-                    notes.append("最新 RT rating 已達黑體組門檻")
-                elif latest_rt >= 68:
-                    score += 2
-                    notes.append("最新 RT rating 仍保留黑體組承接")
-                elif latest_rt <= 62:
-                    score -= 4
-                    notes.append("最新 RT rating 未見黑體組門檻")
-            elif race_bucket in {"bm72", "bm88"}:
-                if latest_rt >= 69:
-                    score += 4
-                    notes.append("最新 RT rating 顯示有中高班基本質素")
-                elif latest_rt <= 61:
-                    score -= 3
-                    notes.append("最新 RT rating 未見到中高班門檻")
-            elif race_bucket in {"maiden", "bm58"}:
-                if latest_rt >= 68:
-                    score += 2
-                    notes.append("最新 RT rating 已達今組以上基準")
-                elif "升班" in class_move and latest_rt <= 60:
-                    score -= 2
-                    notes.append("RT 仍屬一般，升班後未算有級數護城河")
-                elif latest_rt <= 58 and official_entries and parse_float(official_entries[0].get("placing")) is not None and parse_float(official_entries[0].get("placing")) >= 6:
-                    score -= 2
-                    notes.append("低班 RT 仍未突出，班底保護有限")
-        if headwinner and any(token in headwinner for token in ("頭馬", "亞軍", "季軍")) and official_entries:
-            latest_place = parse_float(official_entries[0].get("placing"))
+                score += w.get("career0_2yo_bonus", 2.0)
+                notes.append("2歲馬初出常有爆發力")
+        elif career_starts <= 5:
             if latest_place is not None and latest_place <= 3:
-                score += 2
-                notes.append("最近上名一役背後對手線未算弱")
-        if race_class and not notes:
-            notes.append(f"今場屬 {race_class}")
+                score += w.get("career5_placed_bonus", 2.0)
+                notes.append("出賽少但已上名，有進步空間")
+            else:
+                score += w.get("career5_unplaced_pen", -2.0)
+                notes.append("經驗較薄且未證明實力")
+        elif career_starts >= 15:
+            if race_bucket == "maiden":
+                score += w.get("career15_maiden_pen", -4.0)
+                notes.append("多跑仍未能於處女馬賽勝出，班底已見底")
+            elif latest_place is not None and latest_place >= 6:
+                score += w.get("career15_unplaced_pen", -2.0)
+                notes.append("多跑但近期未有表現，級數可能見頂")
+            elif latest_place is not None and latest_place <= 3:
+                score += w.get("career15_placed_bonus", 2.0)
+                notes.append("作戰經驗豐富且近況有承接")
+
+        if "降班" in class_move:
+            score += w.get("class_drop_bonus", 6.0)
+            notes.append("班次有回落")
+        elif "大幅升班" in class_move or "升班" in class_move:
+            score += w.get("class_up_pen", -4.0)
+            notes.append("今場對手層次轉強")
+
+
+        if current_tier == "metro" and latest_tier == "provincial":
+            if latest_rt is not None and latest_rt >= 68:
+                notes.append("省賽轉都會，但 RT 證明夠跑都會區")
+            else:
+                score += w.get("metro_prov_pen", -3.0)
+                notes.append("省賽轉都會，鄉鎮賽績含金量成疑")
+
+        if latest_rt is not None:
+            if latest_rt >= 68:
+                score += w.get("rt_high_bonus", 4.0)
+                notes.append("最新 RT rating 顯示具備能力")
+            elif latest_rt <= 58:
+                score += w.get("rt_low_pen", -4.0)
+                notes.append("最新 RT rating 偏低")
+
         note_text = "；".join(notes) if notes else "班次資料未見鮮明傾向"
-        return score, f"{note_text}，級數分 {clip_score(score):.1f}。", "class_move+record_table+formline_followups"
+        return clip_score(score), f"{note_text}，級數分 {clip_score(score):.1f}。", "class_move+record_table+formline_followups"
+
+    def _rating_score(self):
+        rating = self._horse_rating()
+        field = self._field_summary()
+        rated_count = int(field.get("rated_count") or 0)
+        if rating is None or rated_count < 2:
+            return 60, "官方 rating 或同場 rating 樣本不足，Rating 分中性處理。", "missing_neutral"
+
+        avg_rating = parse_float(field.get("avg_rating"))
+        stdev = parse_float(field.get("rating_stdev")) or 0.0
+        top3_cutoff = parse_float(field.get("top3_rating_cutoff"))
+        race_bucket = self._race_class_bucket()
+        notes = [f"今場官方 rating 為 {rating:.1f}"]
+
+        adjustment = 0.0
+        if avg_rating is not None:
+            delta = rating - avg_rating
+            if stdev >= 0.5:
+                z_value = delta / stdev
+                adjustment += max(-12.0, min(12.0, z_value * 6.0))
+                if z_value >= 1.0:
+                    notes.append("高於場均逾一個標準差")
+                elif z_value >= 0.4:
+                    notes.append("高於場均")
+                elif z_value <= -1.0:
+                    notes.append("低於場均逾一個標準差")
+                elif z_value <= -0.4:
+                    notes.append("低於場均")
+                else:
+                    notes.append("與場均接近")
+            else:
+                adjustment += max(-6.0, min(6.0, delta * 1.5))
+                if delta > 0.8:
+                    notes.append("高於場均")
+                elif delta < -0.8:
+                    notes.append("低於場均")
+                else:
+                    notes.append("與場均接近")
+
+        if top3_cutoff is not None:
+            if rating >= top3_cutoff:
+                adjustment += 1.5
+                notes.append("rating 已達場內前三門檻")
+            elif rating + 1.0 < top3_cutoff:
+                adjustment -= 1.0
+                notes.append("rating 未達場內前三門檻")
+
+        if race_bucket in {"bm58", "bm72", "bm88"}:
+            adjustment *= 0.9
+            notes.append("BM handicap rating 訊號已輕量 temper")
+        elif race_bucket == "maiden":
+            adjustment *= 0.8
+            notes.append("處女馬 rating 波動較大，只作保守參考")
+
+        score = clip_score(60.0 + adjustment)
+        return score, f"{'；'.join(notes)}，Rating 分 {score:.1f}。", "racecard_rating+field_relative"
 
     def _is_wfa_or_sw_race(self):
         text = self._race_class_text().lower()
@@ -2994,115 +3052,40 @@ class RacingEngine:
         weight = parse_float(self.horse_data.get("weight"))
         if weight is None:
             return 60, "負磅資料不足，負磅分中性處理。", "missing_neutral"
+        
         score = 62
-        wet_state = self._wet_state()
-        race_bucket = self._race_class_bucket()
-        class_move = self._class_move_display()
-        jockey = self._clean_identity(self.horse_data.get("jockey"))
-        status_cycle = self._status_cycle_text()
-        field_delta = self._field_weight_delta()
-        official_entries = self._official_entries()
-        latest_place = parse_float((official_entries[0] or {}).get("placing")) if official_entries else None
-        latest_rt = self._latest_l600_rt_metrics().get("rt")
-        followups = self._formline_followup_counts()
         notes = []
+        wet_state = self._wet_state()
+        class_move = self._class_move_display()
         is_wfa_or_sw = self._is_wfa_or_sw_race()
-        if weight <= 53.0:
-            score = 68
-            notes.append("極輕磅對末段保留有槓桿")
-        elif weight <= 54.5:
-            score = 66
-            notes.append("輕磅環境有一定腳程優勢")
-        elif weight <= 56.5:
-            score = 63
-            notes.append("負磅仍屬可控範圍")
-        elif is_wfa_or_sw:
-            score = 62
-            notes.append("分齡讓磅/定磅賽事，負磅屬標準定額，不計讓磅劣勢")
-        elif weight >= 60:
-            score = 56
-            self.risk_flags.append("top_weight")
-            notes.append("頂磅環境要自己讓人")
-        elif weight >= 58.5:
-            score = 59
-            notes.append("中高負磅要求發揮更乾淨")
-            
-        career_starts = self._career_starts()
-        if weight <= 54.5 and career_starts <= 10:
-            score += 2
-            notes.append("讓磅且屬年輕/進步期，磅位優勢較明顯")
-        if weight >= 60.5 and career_starts <= 8 and race_bucket not in {"maiden"}:
-            score -= 1
-            notes.append("大幅加磅但仍屬較初期，需考驗進步幅度")
 
-        if field_delta.get("to_top") is not None:
-            if field_delta["to_top"] >= 4.5:
-                score += 1
-                notes.append("比頂磅輕逾 4.5kg，讓磅槓桿存在")
-            elif field_delta["to_top"] >= 3.0:
-                score += 0.5
-                notes.append("比頂磅有一定讓磅空間")
-            elif field_delta["to_bottom"] is not None and field_delta["to_bottom"] >= 4.5:
-                score -= 1.5
-                notes.append("屬場內重磅端，自己要讓對手")
-        if latest_place is not None and latest_place <= 3 and weight >= 58.0:
-            score += 3
-            notes.append("近仗已交代下仍要負磅，屬有實力負擔")
-        if latest_rt is not None and weight >= 58.0:
-            if latest_rt >= 70:
-                score += 3
-                notes.append("RT 已證明有能力負磅作戰")
-            elif latest_rt <= 60 and race_bucket in {"maiden", "bm58"}:
-                score -= 2
-                notes.append("RT 未算高，但負磅仍偏重")
-        if followups["higher"] > 0 and weight >= 58.0:
-            score += 2
-            notes.append("對手線有承接，負磅未必純屬負面")
-        if latest_place is not None and latest_place >= 6 and weight <= 54.5:
-            if latest_rt is None or latest_rt <= 62:
+        if is_wfa_or_sw:
+            notes.append("定磅賽事不計讓磅劣勢")
+        else:
+            if weight <= 54.5:
+                score = 68
+                notes.append("負輕磅有明顯優勢")
+            elif weight >= 60.0:
+                score = 56
+                self.risk_flags.append("top_weight")
+                notes.append("頂磅環境要自己讓人")
+
+            if wet_state in {"soft7plus", "heavy"} and weight >= 59.0:
                 score -= 4
-                notes.append("輕磅但近績與 RT 未見優勢，未可當成甜頭")
-            elif race_bucket in {"maiden", "bm58"}:
-                score -= 2
-                notes.append("輕磅但近績未見即時優勢，未可當成甜頭")
-        if followups["lower"] >= 3 and followups["higher"] == 0 and weight <= 54.5:
-            score -= 2
-            notes.append("輕磅來自較弱對手線，讓磅價值要打折")
-        if race_bucket in {"bm72", "bm88", "listed", "group23", "group1"} and weight <= 54.5:
-            if latest_rt is not None and latest_rt >= 68:
+                notes.append("爛地加重磅消耗顯著")
+
+            if "降班" in class_move and weight <= 56.5:
+                score += 3
+                notes.append("降班配輕磅，外在門檻大幅下降")
+            elif "升班" in class_move and weight >= 58.0:
+                score -= 3
+                notes.append("升班兼高負磅，雙重打擊")
+            elif "升班" in class_move and weight <= 54.0:
                 score += 1
-                notes.append("中高班輕磅仍有少量槓桿")
-            else:
-                notes.append("中高班單靠輕磅未必足夠過關")
-        if race_bucket == "maiden" and weight >= 59.0:
-            score -= 2
-            notes.append("maiden 仍要蝕重磅，讓磅空間唔多")
-        if wet_state in {"soft56", "soft7plus", "heavy"}:
-            if weight <= 54.0:
-                score += 0.5
-                notes.append("濕地下輕磅有少量保留優勢")
-            elif weight <= 56.0 and race_bucket in {"bm72", "bm88", "listed", "group23", "group1"}:
-                score += 1
-                notes.append("濕地下中高班輕磅有放大效應")
-            elif weight >= 59.0:
-                score -= 3 if wet_state == "soft56" else 5
-                notes.append("濕地重磅消耗會被顯著放大")
-            elif weight >= 58.0 and wet_state in {"soft7plus", "heavy"}:
-                score -= 2
-                notes.append("爛地加中高負磅唔易舒服發揮")
-        if "降班" in class_move and weight <= 56.5:
-            score += 2
-            notes.append("降班配輕磅，外在門檻進一步下降")
-        elif "升班" in class_move and weight >= 58.0:
-            score -= 2
-            notes.append("升班兼高負磅，容錯空間更窄")
-        if "(a)" in jockey and weight >= 57.5:
-            score += 2
-            notes.append("減磅騎師可略為中和負擔")
-        if status_cycle == "Deep Prep" and weight >= 58.0:
-            score -= 1
-            notes.append("長期作戰期再加高負磅要防平台位")
-        return score, f"{'；'.join(notes) if notes else f'今場負磅 {weight:.1f}kg'}，負磅分 {clip_score(score):.1f}。", "weight+wet_track+class_move"
+                notes.append("升班配輕磅，有助彌補級數差距")
+
+        note_text = "；".join(notes) if notes else f"今場負磅 {weight:.1f}kg"
+        return clip_score(score), f"{note_text}，負磅分 {clip_score(score):.1f}。", "weight+wet_track+class_move"
 
     def _distance_score(self):
         line = str(self.data.get("engine_line") or "")
@@ -3159,241 +3142,168 @@ class RacingEngine:
         track_stats = self._same_track_stats()
         going_stats = self._going_stats()
         track_context = self._track_context()
-        family = self._track_family_support()
-        style = self._running_style()
-        barrier = parse_float(self.horse_data.get("barrier"))
         wet_state = self._wet_state()
-        wet_kind = self._wet_kind()
-        going_level = self._going_level()
-        rail_degraded = self._wet_rail_degradation_active()
-        score = 60
-        notes = []
-        if track_stats["places"] > 0:
-            score += min(9, track_stats["places"] * 3 + track_stats["wins"] * 2)
-            notes.append("同場/同場同程有實際上名支持")
-        if track_stats["starts"] >= 2 and track_stats["places"] == 0:
-            score -= 3
-            notes.append("同場已有多次樣本但仍未交到成績")
-        elif track_stats["starts"] > 0 and track_stats["places"] == 0:
-            score -= 2
-            notes.append("有同場樣本但仍未交到成績")
-        if family["confidence"] == "High":
-            score += 5
-            notes.append("Track family 屬高信心，場地遷移風險較低")
-        elif family["confidence"] == "Medium":
-            score += 3
-            notes.append("同類場地/方向已有基本承接")
-        elif family["first_tight_turn"]:
-            score -= 4
-            notes.append("首次急彎同類考驗，場地轉換風險較高")
-        elif self._career_starts() > 2 and family["same_venue_starts"] == 0 and family["same_geometry_starts"] == 0:
-            score -= 2
-            notes.append("未有同場或同幾何正式證明")
-        if family["same_venue_places"] >= 2:
-            score += 2
-            notes.append("同場反覆交代，唔止一次偶發")
-        elif family["same_geometry_places"] >= 2:
-            score += 2
-            notes.append("同幾何賽道已有重覆交代")
-        if family["same_direction_places"] >= 3 and family["same_geometry_places"] == 0:
-            score += 1
-            notes.append("同方向場地轉移仍有承接")
         going_bucket = track_context.get("going_bucket", "")
         going_sample = going_stats.get(going_bucket, {})
+        
+        w = TRACK_MICRO_WEIGHTS
+        score = w.get("base", 60.0)
+        notes = []
+
+        if track_stats["places"] > 0:
+            score += min(9, track_stats["places"] * w.get("same_track_place_bonus", 3.0) + track_stats["wins"] * w.get("same_track_win_bonus", 2.0))
+            notes.append("同場有實際上名支持")
+        elif track_stats["starts"] >= 2 and track_stats["places"] == 0:
+            score += w.get("same_track_poor_pen1", -3.0)
+            notes.append("同場已有多次出賽但仍未交到成績")
+        elif track_stats["starts"] > 0 and track_stats["places"] == 0:
+            score += w.get("same_track_poor_pen2", -2.0)
+            notes.append("有同場出賽紀錄但仍未交到成績")
+
         if going_sample.get("starts", 0) > 0 and going_sample.get("places", 0) > 0:
-            score += min(10, going_sample["places"] * 3)
+            score += min(10, going_sample["places"] * w.get("going_place_bonus", 3.0))
             notes.append(f"{going_bucket} 樣本顯示對今場掛牌有基本適應")
             if going_sample.get("wins", 0) > 0 and going_bucket in {"軟地", "重地"}:
-                score += 1
+                score += w.get("going_win_bonus", 2.0)
                 notes.append(f"{going_bucket} 曾贏馬，地狀證明更實淨")
         elif going_sample.get("starts", 0) >= 2 and going_sample.get("places", 0) == 0:
-            score -= 5 if going_bucket in {"軟地", "重地"} else 4
+            score += w.get("going_poor_pen1_wet", -5.0) if going_bucket in {"軟地", "重地"} else w.get("going_poor_pen1_dry", -4.0)
             notes.append(f"{going_bucket} 多次出賽仍未有前列，適應性要保守")
         elif going_sample.get("starts", 0) > 0 and going_sample.get("places", 0) == 0:
-            score -= 4 if going_bucket in {"軟地", "重地"} else 3
+            score += w.get("going_poor_pen2_wet", -4.0) if going_bucket in {"軟地", "重地"} else w.get("going_poor_pen2_dry", -3.0)
             notes.append(f"{going_bucket} 成績未見支持")
-        track_line = str(self.data.get("track_record_line") or "")
-        if "同場同程: 1:" in track_line:
-            score += 10
-            notes.append("同場同程已有直接對位")
-        elif "同場: 1:" in track_line or "同程: 1:" in track_line:
-            score += 5
-            notes.append("同場或同程已有正面交代")
-        elif "同場同程: 0:0-0-0" in track_line and track_stats["starts"] > 0:
-            score -= 2
-            notes.append("同場同程未有直接戰績支持")
-        if track_context.get("front_bias"):
-            if any(token in style for token in ("前", "跟前", "居中前")):
-                score += 3
-                notes.append("場地 intelligence 輕微偏利主動跑法")
-            elif any(token in style for token in ("後", "中後")):
-                score -= 3
-                notes.append("場地 intelligence 對後追馬略有保留")
-                if track_context.get("short_straight"):
-                    score -= 1
-                    notes.append("短直路配後追跑法，追勢更難完全展開")
-        if family["interstate_shift"]:
-            if family["same_going_places"] or family["same_geometry_places"]:
-                notes.append("雖然跨州，但場地類型仍有少量承接")
-            else:
-                score -= 3
-                notes.append("跨州轉場，場地適性要再保守一格")
-        if wet_state in {"soft56", "soft7plus", "heavy"} and not self._has_verified_wet_place():
-            if wet_state == "soft56":
-                score -= 2
-                notes.append("濕地實績仍未完全驗證")
-            else:
-                score -= 5
-                notes.append("爛地實績未驗證，轉場風險較高")
-        if wet_state in {"soft7plus", "heavy"} and self._has_verified_wet_place():
-            score += 2
-            notes.append("濕地往績對今場有直接支持")
-            if wet_state == "heavy" and self._has_verified_wet_win():
-                score += 2
-                notes.append("重地曾贏馬，轉爛地未必係負面")
 
-        # Specific Heavy track verification and penalties
-        if wet_state == "heavy":
-            heavy_stats = going_stats.get("重地", {})
-            if heavy_stats.get("wins", 0) > 0:
-                score += 3
-                notes.append("重地曾奪冠，泥漿戰力極強")
-                self.reason_codes.append("proven_heavy_specialist")
-            elif heavy_stats.get("places", 0) > 0:
-                score += 2
-                notes.append("重地曾入前三，具備重地作戰能力")
-            elif heavy_stats.get("starts", 0) >= 2 and heavy_stats.get("places", 0) == 0:
-                score -= 3
-                notes.append("重地多次出賽全無表現，重地適應力有疑慮")
-                self.risk_flags.append("poor_heavy_performance")
-        if wet_state in {"soft56", "soft7plus", "heavy"} and any(token in style for token in ("前", "跟前")):
-            if wet_state == "soft56" and not self._has_verified_wet_win():
-                score -= 1
-                notes.append("Soft 場前置馬要防額外耗力")
-            elif wet_state in {"soft7plus", "heavy"} and not self._has_verified_wet_win():
-                score -= 3
-                notes.append("爛地下前置消耗會被放大")
-            if wet_kind == "heavy" and going_level >= 8 and not self._has_verified_wet_win():
-                score -= 2
-                notes.append("Heavy 8+ 前置陷阱更明顯")
-        wet_bloodline = self._wet_bloodline_signal()
-        if wet_state in {"soft56", "soft7plus", "heavy"} and wet_bloodline:
-            if "正面" in wet_bloodline:
-                score += 2 if wet_state == "soft56" else 3
-                notes.append("濕地血統輪廓偏向加分")
-            elif "保留" in wet_bloodline:
-                score -= 1 if wet_state == "soft56" else 2
-                notes.append("濕地血統輪廓仍有保留")
-        if track_context.get("short_straight"):
-            if any(token in style for token in ("前", "跟前")):
-                score += 1
-                notes.append("短直路較有利早段已落位馬")
-            elif any(token in style for token in ("後", "中後", "後上")):
-                score -= 2
-                notes.append("短直路令後追路線更講時機")
-        if track_context.get("inside_advantage") and any(token in style for token in ("後", "中後")) and barrier is not None and barrier <= 4:
-            score += 1
-            notes.append("內檔可幫後上型先慳位再等望空")
-        if barrier is not None:
-            if track_context.get("inside_advantage") and barrier <= 4:
-                if rail_degraded and barrier <= 3:
-                    notes.append("Soft 6+/Heavy 後段內欄優勢有機會被磨平")
-                else:
-                    score += 3
-                    notes.append("內檔同場地幾何相對對位")
-            elif track_context.get("outside_penalty") and barrier >= 9:
-                penalty = 4 if track_context.get("distance_band") == "1000-1100m" else 2
-                if rail_degraded:
-                    penalty = 0 if self._has_verified_wet_place() else max(1, penalty // 2)
-                    notes.append("濕地下後段可轉中外疊，外檔死位效應有所收窄")
-                if penalty > 0:
-                    score -= penalty
-                    notes.append("外檔同今日路段幾何仍有白走風險")
-                if any(token in style for token in ("後", "中後", "後上")) and not rail_degraded:
-                    score -= 1
-                    notes.append("外檔配後追，今日路線更講走位節省")
-        if track_context.get("fair_track") and not notes:
-            notes.append("場地整體偏公平，主要靠自身適性分勝負")
-        return score, f"{'；'.join(notes) if notes else '場地資料未見鮮明優劣'}。場地/場館適性分 {clip_score(score):.1f}。", "track_family+going_stats+meeting_intelligence+track_profile+wet_track"
+        if wet_state in {"soft7plus", "heavy"}:
+            if not self._has_verified_wet_place():
+                score += w.get("wet_unverified_pen", -5.0)
+                notes.append("爛地實績未經驗證，轉場風險極高")
+            elif wet_state == "heavy":
+                heavy_stats = going_stats.get("重地", {})
+                if heavy_stats.get("wins", 0) > 0:
+                     score += w.get("heavy_win_bonus", 3.0)
+                     notes.append("重地曾奪冠，泥漿戰力極強")
+                     self.reason_codes.append("proven_heavy_specialist")
+                elif heavy_stats.get("places", 0) > 0:
+                     score += w.get("heavy_place_bonus", 2.0)
+                     notes.append("具備重地作戰能力")
+                elif heavy_stats.get("starts", 0) >= 2 and heavy_stats.get("places", 0) == 0:
+                     score += w.get("heavy_poor_pen", -3.0)
+                     notes.append("重地多次出賽全無表現，適應力有疑慮")
+                     self.risk_flags.append("poor_heavy_performance")
+            
+            wet_bloodline = self._wet_bloodline_signal()
+            if wet_bloodline == "正面" and not self._has_verified_wet_place():
+                score += w.get("wet_bloodline_bonus", 3.0)
+                notes.append("缺乏濕地實績，但血統輪廓顯示適合爛地")
 
-    def _formline_score(self):
-        text = str(self.data.get("formline_line") or "")
+        return clip_score(score), f"{'；'.join(notes) if notes else '場地資料未見鮮明優劣'}。場地分 {clip_score(score):.1f}。", "track_stats+going_stats+wet_track"
+
+    def _formline_future_wins(self):
         rows = self._formline_rows()
-        headwinner = self._formline_headwinner()
-        score = 58
-        if "極強" in text or "超強組" in text:
-            score += 20
-        elif "強" in text:
-            score += 14
-        elif "中強" in text:
-            score += 10
-        elif "中組" in text:
-            score += 6
-        elif "中弱" in text:
-            score -= 2
-        elif "弱" in text:
-            score -= 8
-        if "強組" in text:
-            score = max(score, 68)
-        elif "弱組" in text:
-            score = min(score, 54)
-        if "無資料" in text or "未有出賽" in text:
-            score = min(score, 60)
-        future_win_hits = sum(
-            1
-            for row in rows
+        return sum(
+            1 for row in rows
             if re.search(r"出\s*\d+\s*次:\s*(\d+)\s*勝", row.get("next_result", ""))
             and int(re.search(r"出\s*\d+\s*次:\s*(\d+)\s*勝", row.get("next_result", "")).group(1)) > 0
         )
-        strong_hits = sum(1 for row in rows if any(token in row.get("strength", "") for token in ("強", "極強", "超強")))
+
+    def _formline_strong_opponents(self):
+        return sum(1 for row in self._formline_rows() if any(token in row.get("strength", "") for token in ("強", "極強", "超強")))
+
+    def _formline_signal(self):
+        text = str(self.data.get("formline_line") or "")
+        if "極強" in text or "超強組" in text:
+            return "elite"
+        elif "強" in text:
+            return "strong"
+        elif "中強" in text:
+            return "medium_strong"
+        elif "中組" in text:
+            return "medium"
+        elif "中弱" in text:
+            return "medium_weak"
+        elif "弱" in text:
+            return "weak"
+        elif "無資料" in text or "未有出賽" in text:
+            return "unknown"
+        return "neutral"
+
+    def _formline_score(self):
+        signal = self._formline_signal()
+        w = FORMLINE_MICRO_WEIGHTS
+        mapping = {
+            "elite": w.get("elite_base", 78.0),
+            "strong": w.get("strong_base", 72.0),
+            "medium_strong": w.get("med_strong_base", 68.0),
+            "medium": w.get("med_base", 64.0),
+            "medium_weak": w.get("med_weak_base", 56.0),
+            "weak": w.get("weak_base", 50.0),
+            "neutral": w.get("neutral_base", 58.0),
+            "unknown": w.get("unknown_base", 58.0),
+        }
+        score = mapping.get(signal, w.get("unknown_base", 58.0))
+        
+        future_win_hits = self._formline_future_wins()
+        strong_hits = self._formline_strong_opponents()
         followups = self._formline_followup_counts()
+        headwinner = self._formline_headwinner()
+
         if future_win_hits:
-            score += min(6, future_win_hits * 3)
+            score += min(6, future_win_hits * w.get("future_win_bonus", 3.0))
         if strong_hits:
-            score += min(4, strong_hits * 2)
+            score += min(4, strong_hits * w.get("strong_opp_bonus", 2.0))
         if followups["higher"] > 0:
-            score += min(4, followups["higher"] * 2)
+            score += min(4, followups["higher"] * w.get("followup_higher_bonus", 2.0))
         if followups["same"] >= 2:
-            score += 2
+            score += w.get("followup_same_bonus", 2.0)
         if followups["lower"] >= 3 and followups["higher"] == 0:
-            score -= 2
+            score += w.get("followup_lower_pen", -2.0)
         if headwinner and any(token in headwinner for token in ("頭馬", "亞軍")):
-            score += 2
-        return score, f"賽績線級別與對手後續升降班交叉評為 {clip_score(score):.1f} 分。", "formline+opponent_followups+class_followups+headwinner"
+            score += w.get("headwinner_bonus", 2.0)
+
+        text = str(self.data.get("formline_line") or "")
+        if "強組" in text:
+            score = max(score, w.get("med_strong_base", 68.0))
+        elif "弱組" in text:
+            score = min(score, w.get("med_weak_base", 56.0) - 2.0)
+        if "無資料" in text or "未有出賽" in text:
+            score = min(score, 60.0)
+
+        return clip_score(score), f"賽績線級別與對手後續升降班交叉評為 {clip_score(score):.1f} 分。", "formline+opponent_followups+class_followups+headwinner"
 
     def _consistency_score(self):
+        w = CONSISTENCY_MICRO_WEIGHTS
         starts = self._career_starts()
         if starts == 0:
-            return 58, "初出馬以備戰完整度代替穩定樣本，跑法穩定性 58 分。", "career_tag"
+            return w.get("career0_base", 58.0), "初出馬以備戰完整度代替穩定樣本，跑法穩定性 58 分。", "career_tag"
             
-        score = 58
+        score = w.get("base", 58.0)
         notes = []
         
         recent = parse_recent_finishes(self.data.get("recent_form"))
         if recent:
             places = sum(1 for x in recent[:6] if x <= 3)
             poor = sum(1 for x in recent[:6] if x >= 8)
-            score += (places * 7) - (poor * 5)
+            score += (places * w.get("recent_place_bonus", 7.0)) + (poor * w.get("recent_poor_pen", -5.0))
             notes.append(f"近仗有{places}次前三、{poor}次大敗")
             
             if poor >= 2 and self._forgiveness_count() >= 2:
-                score += 4
+                score += w.get("forgiveness_bonus", 4.0)
                 notes.append("大敗場次多具寬恕理由")
         
         run_styles = [entry.get("run_style", "") for entry in self._official_entries()[:4] if entry.get("run_style") and entry.get("run_style") != "-"]
         if run_styles and len(set(run_styles)) == 1:
-            score += 3
+            score += w.get("run_style_bonus", 3.0)
             notes.append("近期跑法連貫")
             
         if "穩定" in self._sectional_trends().get("pi_trend", ""):
-            score += 2
+            score += w.get("pi_stable_bonus", 2.0)
             
         repeatability = self._repeatability_brief()
         if "重覆前列交代" in repeatability or "直接對位" in repeatability:
-            score += 2
+            score += w.get("repeat_bonus", 2.0)
             notes.append("派彩/對位具重複性")
         elif "未形成穩定交代" in repeatability:
-            score -= 1
+            score += w.get("no_repeat_pen", -1.0)
             
         note_str = "；".join(notes) if notes else "未見特別跑法或表現穩定特徵"
         return score, f"{note_str}。跑法穩定性 {clip_score(score):.1f} 分。", "run_style+sectional_trend+forgiveness+repeatability"
@@ -3722,6 +3632,8 @@ def enrich_logic_from_facts(logic_data: dict, facts_path: Path) -> dict:
     race_analysis = logic_data.setdefault("race_analysis", {})
     speed_map = race_analysis.setdefault("speed_map", {})
     auto_speed_map = _parse_speed_map(text)
+    race_number = _extract_first_int(str(race_analysis.get("race_number") or facts_path.name), r"(\d+)")
+    racecard_profiles = _load_racecard_profiles(facts_path, race_number)
     formguide_digests = _load_formguide_digests(facts_path)
     meeting_intelligence = _load_meeting_intelligence(facts_path)
     track_profile = _load_track_profile(
@@ -3748,6 +3660,9 @@ def enrich_logic_from_facts(logic_data: dict, facts_path: Path) -> dict:
     sections = _parse_horse_sections(text)
     for horse_num, horse in logic_data.get("horses", {}).items():
         section = sections.get(str(horse_num), {})
+        racecard_profile = racecard_profiles.get(
+            _normalize_horse_name(section.get("horse_name") or horse.get("horse_name"))
+        ) or {}
         formguide = formguide_digests.get(str(horse_num), {})
         facts_section = section.get("raw_text", "")
         data = horse.setdefault("_data", {})
@@ -3756,12 +3671,14 @@ def enrich_logic_from_facts(logic_data: dict, facts_path: Path) -> dict:
         _merge_prefer_clean(horse, "horse_name", section.get("horse_name"))
         _merge_prefer_clean(horse, "jockey", section.get("jockey"))
         _merge_prefer_clean(horse, "trainer", section.get("trainer"))
+        _merge_if_missing(horse, "rating", racecard_profile.get("horse_rating"))
         _merge_if_missing(horse, "weight", section.get("weight"))
         _merge_if_missing(horse, "barrier", section.get("barrier"))
         horse["tactical_plan"] = _build_tactical_plan(
             int(section.get("barrier") or horse.get("barrier") or 0),
             facts_section,
         )
+        _merge_data_value(data, "horse_rating", racecard_profile.get("horse_rating"))
         _merge_data_value(data, "last10_raw", section.get("last10_raw"))
         _merge_data_value(data, "recent_form", section.get("recent_form"))
         _merge_data_value(data, "career_record_line", section.get("career_line"))
@@ -4703,3 +4620,36 @@ def _clean_identity(value):
         return ""
     text = FIELD_TRAILER_RE.sub("", text)
     return text.strip(" |")
+
+
+def _slug(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", str(text or "").lower())
+
+
+def _normalize_horse_name(name: str) -> str:
+    return _slug(re.sub(r"\s*\([^)]*\)", "", str(name or "")))
+
+
+def _load_racecard_profiles(facts_path: Path, race_number: int) -> dict[str, dict]:
+    if race_number <= 0:
+        return {}
+    candidates = sorted(facts_path.parent.glob(f"*Race {race_number} Racecard.md"))
+    if not candidates:
+        return {}
+    lines = candidates[0].read_text(encoding="utf-8").splitlines()
+    profiles: dict[str, dict] = {}
+    index = 0
+    while index < len(lines):
+        horse_match = RACECARD_HORSE_RE.match(lines[index].strip())
+        if not horse_match or index + 1 >= len(lines):
+            index += 1
+            continue
+        meta_match = RACECARD_META_RE.match(lines[index + 1].strip())
+        if meta_match:
+            horse_name = _clean_identity(horse_match.group(1))
+            profiles[_normalize_horse_name(horse_name)] = {
+                "horse_rating": float(meta_match.group(2)),
+                "declared_weight": float(meta_match.group(1)),
+            }
+        index += 2
+    return profiles

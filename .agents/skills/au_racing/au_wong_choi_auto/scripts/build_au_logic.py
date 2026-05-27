@@ -31,12 +31,17 @@ HORSE_HEADER_RE = re.compile(
     re.M,
 )
 FIELD_TRAILER_RE = re.compile(r"\s*\|\s*負重:\s*[0-9.]+kg\s*$")
+RACECARD_HORSE_RE = re.compile(r"^\d+\.\s+(.+?)\s+\((\d+)\)$")
+RACECARD_META_RE = re.compile(
+    r"^Trainer:\s.*?\|\sJockey:\s.*?\|\sWeight:\s*([0-9.]+)\s*\|\sAge:\s.*?\|\sRating:\s*([0-9.]+)"
+)
 
 
 def build_logic_from_facts(facts_path: Path) -> dict:
     text = facts_path.read_text(encoding="utf-8")
     race_number = _extract_race_number(facts_path.name, text)
     race_class, distance, prize = _extract_race_meta(facts_path, text)
+    racecard_profiles = _load_racecard_profiles(facts_path, race_number)
     meeting_intelligence = _load_meeting_intelligence(facts_path)
     track_profile = _load_track_profile(
         meeting_intelligence.get("venue", ""),
@@ -65,16 +70,20 @@ def build_logic_from_facts(facts_path: Path) -> dict:
         end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
         block = text[start:end]
         horse_num = match.group(1)
+        horse_name = _clean_identity(match.group(2))
+        racecard_profile = racecard_profiles.get(_slug(horse_name), {})
         logic["horses"][horse_num] = {
-            "horse_name": _clean_identity(match.group(2)),
+            "horse_name": horse_name,
             "barrier": int(match.group(3)),
             "jockey": _clean_identity(match.group(4)),
             "trainer": _clean_identity(match.group(5)),
             "weight": float(match.group(6)) if match.group(6) else None,
+            "rating": racecard_profile.get("horse_rating"),
             "career_race_starts": _extract_career_starts(block),
             "career_tag": _extract_career_tag(block),
             "tactical_plan": _build_tactical_plan(int(match.group(3)), block),
             "_data": {
+                "horse_rating": racecard_profile.get("horse_rating"),
                 "facts_section": block,
                 "last10_raw": _capture(block, r"Last 10 字串:\s*`?([^`\n]+)`?"),
                 "recent_form": _capture(block, r"近績序列解讀: `?([^`\n]+)`?"),
@@ -131,6 +140,37 @@ def _extract_race_meta(facts_path: Path, text: str) -> tuple[str, str, int]:
             if dist_match:
                 distance = dist_match.group(1)
     return race_class, distance, prize
+
+
+def _slug(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", str(text or "").lower())
+
+
+def _normalize_horse_name(name: str) -> str:
+    return _slug(re.sub(r"\s*\([^)]*\)", "", str(name or "")))
+
+
+def _load_racecard_profiles(facts_path: Path, race_number: int) -> dict[str, dict]:
+    candidates = sorted(facts_path.parent.glob(f"*Race {race_number} Racecard.md"))
+    if not candidates:
+        return {}
+    lines = candidates[0].read_text(encoding="utf-8").splitlines()
+    profiles = {}
+    index = 0
+    while index < len(lines):
+        horse_match = RACECARD_HORSE_RE.match(lines[index].strip())
+        if not horse_match or index + 1 >= len(lines):
+            index += 1
+            continue
+        meta_match = RACECARD_META_RE.match(lines[index + 1].strip())
+        if meta_match:
+            horse_name = _clean_identity(horse_match.group(1))
+            profiles[_normalize_horse_name(horse_name)] = {
+                "horse_rating": float(meta_match.group(2)),
+                "declared_weight": float(meta_match.group(1)),
+            }
+        index += 2
+    return profiles
 
 
 def _extract_career_starts(block: str) -> int:

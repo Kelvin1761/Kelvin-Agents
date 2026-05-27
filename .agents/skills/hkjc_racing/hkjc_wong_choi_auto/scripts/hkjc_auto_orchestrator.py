@@ -371,10 +371,14 @@ def _load_formline_opponent_summaries(logic_path, race_context, horses):
     return summaries
 
 class HKJCAutoOrchestrator:
-    def __init__(self, target_path):
+    def __init__(self, target_path, scoring_profile="mainline", shadow_profile=None):
         self.target_path = Path(target_path)
         self.is_meeting = self.target_path.is_dir()
+        self.scoring_profile = scoring_profile
+        self.shadow_profile = shadow_profile
         self.races = []
+        self.log_path = (self.target_path if self.is_meeting else self.target_path.parent) / "racing_run_log.jsonl"
+        self.summary_path = (self.target_path if self.is_meeting else self.target_path.parent) / "evaluation_summary.json"
         
     def run(self):
         print(f"🚀 Starting HKJC Wong Choi Auto scoring on: {self.target_path}")
@@ -392,6 +396,14 @@ class HKJCAutoOrchestrator:
                 print(f"❌ Target {self.target_path} is not a Logic JSON file.")
                 return
             self.races = [self.target_path]
+        self._emit_event(
+            "run_started",
+            target=str(self.target_path),
+            scoring_profile=self.scoring_profile,
+            shadow_profile=self.shadow_profile,
+            race_count=len(self.races),
+            is_meeting=self.is_meeting,
+        )
             
         results = []
         failed = []
@@ -406,6 +418,12 @@ class HKJCAutoOrchestrator:
             meeting_csv = self.target_path / "HKJC_Auto_Scoring.csv"
             meeting_csv.write_text(render_meeting_csv(results), encoding="utf-8")
             print(f"📄 Meeting CSV: {meeting_csv}")
+            summary = self._write_evaluation_summary(results)
+            self._emit_event(
+                "evaluation_completed",
+                summary_path=str(self.summary_path),
+                kpis=summary.get("kpis", {}),
+            )
             
         if failed:
             print("\n❌ HKJC Wong Choi Auto completed with failed races:")
@@ -458,8 +476,22 @@ class HKJCAutoOrchestrator:
             
             engine = RacingEngine(h_obj, race_context)
             result = engine.analyze_horse()
+            shadow = self._build_shadow_profile(engine, result)
+            if shadow:
+                result.setdefault("shadow_profiles", {})[shadow["profile"]] = shadow
             
             h_obj["python_auto"] = result
+            self._emit_event(
+                "horse_scored",
+                race_file=race_file.name,
+                race_number=race_context.get("race_number"),
+                horse_number=str(h_num),
+                horse_name=h_name,
+                ability_score=result.get("ability_score"),
+                grade=result.get("grade"),
+                shadow_profile=shadow["profile"] if shadow else "",
+                shadow_ability_score=shadow.get("ability_score") if shadow else "",
+            )
             # Also update the classic matrix if requested (optional rule)
             # h_obj["matrix"] = result["matrix"]
             
@@ -474,6 +506,7 @@ class HKJCAutoOrchestrator:
             horses[h_num]["python_auto"]["rank"] = i + 1
 
         ensure_verdict(logic_data)
+        self._finalize_shadow_profiles(logic_data)
             
         # Write back to JSON
         try:
@@ -494,12 +527,154 @@ class HKJCAutoOrchestrator:
             print(f"❌ Failed to write outputs for {race_file}: {e}")
             return None
 
+    def _emit_event(self, event_type, **payload):
+        record = {"event_type": event_type, **payload}
+        with self.log_path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+    def _write_evaluation_summary(self, results):
+        actual = self._load_meeting_results()
+        kpis = {"gold": 0, "good": 0, "min_threshold": 0, "champion": 0}
+        shadow_profile_stats = {}
+        for logic_data in results:
+            race_number = str((logic_data.get("race_analysis") or {}).get("race_number") or "")
+            actual_top3 = actual.get(race_number, [])
+            if not actual_top3:
+                continue
+            ranked = sorted(
+                (
+                    (
+                        int(horse_num),
+                        horse_data.get("python_auto", {}).get("rank", 999),
+                        horse_data.get("python_auto", {}).get("ability_score", 0.0),
+                    )
+                    for horse_num, horse_data in (logic_data.get("horses") or {}).items()
+                ),
+                key=lambda item: (item[1], -item[2], item[0]),
+            )
+            picks = [horse_num for horse_num, _rank, _ability in ranked[:3]]
+            actual_top3_set = set(actual_top3)
+            if picks[:3] == actual_top3[:3]:
+                kpis["gold"] += 1
+            if sum(1 for horse_num in picks if horse_num in actual_top3_set) >= 2:
+                kpis["good"] += 1
+            if any(horse_num in actual_top3_set for horse_num in picks):
+                kpis["min_threshold"] += 1
+            if picks and actual_top3 and picks[0] == actual_top3[0]:
+                kpis["champion"] += 1
+            for profile_name, verdict in (logic_data.get("python_auto_shadow_verdicts") or {}).items():
+                shadow_stats = shadow_profile_stats.setdefault(
+                    profile_name,
+                    {"gold": 0, "good": 0, "min_threshold": 0, "champion": 0, "races": 0},
+                )
+                shadow_picks = []
+                for item in verdict.get("top4", []):
+                    try:
+                        shadow_picks.append(int(item.get("horse_number")))
+                    except (TypeError, ValueError):
+                        continue
+                if not shadow_picks:
+                    continue
+                shadow_stats["races"] += 1
+                if shadow_picks[:3] == actual_top3[:3]:
+                    shadow_stats["gold"] += 1
+                if sum(1 for horse_num in shadow_picks[:2] if horse_num in actual_top3_set) == 2:
+                    shadow_stats["good"] += 1
+                if any(horse_num in actual_top3_set for horse_num in shadow_picks[:3]):
+                    shadow_stats["min_threshold"] += 1
+                if actual_top3 and shadow_picks[0] == actual_top3[0]:
+                    shadow_stats["champion"] += 1
+
+        summary = {
+            "scoring_profile": self.scoring_profile,
+            "shadow_profile": self.shadow_profile,
+            "race_count": len(results),
+            "kpis": kpis,
+        }
+        if shadow_profile_stats:
+            summary["shadow_profiles"] = shadow_profile_stats
+        self.summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+        return summary
+
+    def _load_meeting_results(self):
+        if not self.is_meeting:
+            return {}
+        result_files = sorted(self.target_path.glob("*全日賽果.json"))
+        if not result_files:
+            return {}
+        try:
+            payload = json.loads(result_files[0].read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+        results = {}
+        for race_no, race_data in payload.items():
+            rows = []
+            for row in race_data.get("results", []):
+                try:
+                    pos = int(row.get("pos"))
+                    horse_no = int(row.get("horse_no"))
+                except (TypeError, ValueError):
+                    continue
+                if pos <= 3:
+                    rows.append((pos, horse_no))
+            rows.sort()
+            results[str(race_no)] = [horse_no for _pos, horse_no in rows[:3]]
+        return results
+
+    def _build_shadow_profile(self, engine, result):
+        if self.shadow_profile != "consistency_context":
+            return None
+        return engine.build_shadow_profile(self.shadow_profile, base_auto=result)
+
+    def _finalize_shadow_profiles(self, logic_data):
+        if self.shadow_profile != "consistency_context":
+            return
+        horses = logic_data.get("horses", {})
+        ranked = []
+        for horse_num, horse in horses.items():
+            auto = horse.get("python_auto", {})
+            shadow = ((auto.get("shadow_profiles") or {}).get(self.shadow_profile) or {})
+            if not shadow:
+                continue
+            ranked.append(
+                {
+                    "horse_number": str(horse_num),
+                    "horse_name": horse.get("horse_name", ""),
+                    "ability_score": float(shadow.get("ability_score", auto.get("ability_score", 0.0))),
+                    "grade": shadow.get("grade", ""),
+                    "applied": bool(shadow.get("applied")),
+                    "reason": shadow.get("reason", ""),
+                }
+            )
+        ranked.sort(key=lambda item: (-item["ability_score"], int(item["horse_number"]) if item["horse_number"].isdigit() else 999))
+        promoted = []
+        for idx, item in enumerate(ranked, start=1):
+            horse = horses[item["horse_number"]]
+            auto = horse["python_auto"]
+            shadow = auto["shadow_profiles"][self.shadow_profile]
+            base_rank = int(auto.get("rank", 999) or 999)
+            shadow["rank"] = idx
+            shadow["rank_delta"] = base_rank - idx
+            shadow["entered_top4"] = idx <= 4 and base_rank > 4
+            item["rank"] = idx
+            item["rank_delta"] = shadow["rank_delta"]
+            if shadow["entered_top4"] or shadow["rank_delta"] >= 2:
+                promoted.append(item)
+        logic_data.setdefault("python_auto_shadow_verdicts", {})[self.shadow_profile] = {
+            "profile": self.shadow_profile,
+            "ranking": ranked,
+            "top4": ranked[:4],
+            "promoted": promoted,
+        }
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="HKJC Wong Choi Auto Orchestrator")
     parser.add_argument("target", help="Path to Race_X_Logic.json or meeting folder")
     parser.add_argument("--validate-engine", action="store_true", help="Accepted for compatibility; renderer validation runs after writing Markdown")
+    parser.add_argument("--scoring-profile", default="mainline", help="Observability label for this scoring run")
+    parser.add_argument("--shadow-profile", default=None, help="Optional shadow profile to compute without changing mainline ranking")
     args = parser.parse_args()
     
-    orchestrator = HKJCAutoOrchestrator(args.target)
+    orchestrator = HKJCAutoOrchestrator(args.target, scoring_profile=args.scoring_profile, shadow_profile=args.shadow_profile)
     orchestrator._validate_engine_requested = args.validate_engine
     raise SystemExit(orchestrator.run())

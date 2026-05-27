@@ -1,270 +1,51 @@
----
-trigger: always_on
-version: 2.1.0
-last_updated: 2026-04-16
----
+# GEMINI.md
 
-# GEMINI.md - Antigravity Kit
+> Deprecated for onboarding and day-to-day use. Keep only for legacy tool compatibility.
 
-> This file defines how the AI behaves in this workspace.
+## Legacy Compatibility Note
 
----
+呢份文件仲保留喺 repo，主要原因係：
 
-## CRITICAL: AGENT & SKILL PROTOCOL (START HERE)
+- 某啲外部 agent / editor integration 仍然會預設查找 `GEMINI.md`
+- 舊文檔、舊 snapshot、舊操作習慣可能仍然會引用呢個路徑
 
-> **MANDATORY:** You MUST read the appropriate agent file and its skills BEFORE performing any implementation. This is the highest priority rule.
+但對目前 Antigravity 主線而言，請先知道以下事實：
 
-### 1. Modular Skill Loading Protocol
+- `HKJC Wong Choi` 已經係 **full Python pipeline**
+- `AU Wong Choi` 已經係 **full Python pipeline**
+- 運行 HKJC / AU 主流程 **唔需要 Gemini**
+- 運行 HKJC / AU 主流程 **唔需要任何 LLM**
 
-Agent activated → Check frontmatter "skills:" → Read SKILL.md (INDEX) → Read specific sections.
+## Current Source Of Truth
 
-- **Selective Reading:** Read `SKILL.md` first, then only the sections matching the user's request.
-- **Rule Priority:** P0 (GEMINI.md) > P1 (Agent .md) > P2 (SKILL.md). All rules are binding.
+請優先閱讀：
 
-### 2. Enforcement Protocol
+1. [`AGENTS.md`](../../AGENTS.md)
+2. [`SETUP.md`](../../SETUP.md)
+3. [`.agents/ARCHITECTURE.md`](../ARCHITECTURE.md) 只作高層 folder map 參考
 
-1. **When agent is activated:**
-    - ✅ Activate: Read Rules → Check Frontmatter → Load SKILL.md → Apply All.
-2. **Always** read agent rules and skill instructions before proceeding. "Read → Understand → Apply" is mandatory.
+## Minimal Guidance For External Agents
 
----
+如果你係透過舊 integration 讀到呢份檔，請按以下原則理解 repo：
 
-## 📥 REQUEST CLASSIFIER (STEP 1)
+1. 先 inspect 真實 repo structure、scripts 同 active entrypoints，唔好沿用舊 prompt 假設。
+2. HKJC 主入口係 `.agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py`。
+3. AU 主入口係 `.agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py`。
+4. 若已經有 `Race_X_Logic.json`，優先用對應 auto orchestrator 重跑 deterministic engine。
+5. 文檔若同實際 code 不一致，以實際 code 為準，並應先更新文檔。
 
-**Before ANY action, classify the request:**
+## Historical Note
 
-| Request Type     | Trigger Keywords                           | Active Tiers                   | Result                      |
-| ---------------- | ------------------------------------------ | ------------------------------ | --------------------------- |
-| **QUESTION**     | "what is", "how does", "explain"           | TIER 0 only                    | Text Response               |
-| **SURVEY/INTEL** | "analyze", "list files", "overview"        | TIER 0 + Explorer              | Session Intel (No File)     |
-| **SIMPLE CODE**  | "fix", "add", "change" (single file)       | TIER 0 + TIER 1 (lite)         | Inline Edit                 |
-| **COMPLEX CODE** | "build", "create", "implement", "refactor" | TIER 0 + TIER 1 (full) + Agent | **{task-slug}.md Required** |
-| **PREDICTION**   | "分析", "預測", "predict", racing, LoL, NBA, tennis | TIER 0 + Domain Agent          | Prediction Pipeline         |
-| **DESIGN/UI**    | "design", "UI", "page", "dashboard"        | TIER 0 + TIER 1 + Agent        | **{task-slug}.md Required** |
-| **SLASH CMD**    | /create, /orchestrate, /debug              | Command-specific flow          | Variable                    |
+Antigravity 早期確實大量依賴 LLM-oriented skeleton、prompting rules 同 Gemini-style operational guidance。呢段歷史仍然反映喺：
 
----
+- 某啲 archived scripts
+- 某啲 legacy resources
+- 部分未完全移除嘅舊名詞
 
-## 🤖 INTELLIGENT AGENT ROUTING (STEP 2 - AUTO)
+但呢啲已經唔應該令新用戶誤會：
 
-**ALWAYS ACTIVE: Before responding to ANY request, automatically analyze and select the best agent(s).**
+- `HKJC Wong Choi` 需要 Gemini
+- `AU Wong Choi` 需要 Gemini
+- 生成最終分析一定要經 LLM
 
-> 🔴 **MANDATORY:** You MUST follow the protocol defined in `@[skills/intelligent-routing]`.
-
-### Auto-Selection Protocol
-
-1. **Analyze (Silent)**: Detect domains (Frontend, Backend, Security, etc.) from user request.
-2. **Select Agent(s)**: Choose the most appropriate specialist(s).
-3. **Inform User**: Concisely state which expertise is being applied.
-4. **Apply**: Generate response using the selected agent's persona and rules.
-
-### Response Format (MANDATORY)
-
-When auto-applying an agent, inform the user:
-
-```markdown
-🤖 **Applying knowledge of `@[agent-name]`...**
-
-[Continue with specialized response]
-```
-
-**Rules:**
-
-1. **Silent Analysis**: Use concise analysis, skip meta-commentary.
-2. **Respect Overrides**: If user mentions `@agent`, use it.
-3. **Complex Tasks**: For multi-domain requests, use `orchestrator` and ask Socratic questions first.
-
-### ⚠️ Pre-Code Checklist (MANDATORY)
-
-Before ANY code/design response, verify:
-1. ✅ Agent identified for this domain → `.agents/agents/{agent}.md`
-2. ✅ Agent rules read and skills loaded from frontmatter
-3. ✅ Announced `🤖 Applying knowledge of @[agent]...`
-
-> 🔴 Skipping this checklist = Protocol Violation. Always complete before writing code.
-
----
-
-## TIER 0: UNIVERSAL RULES (Always Active — every request)
-
-### 🚨 Google Drive 寫入防護 — 跨平台 (macOS + Windows)
-
-> 🔴 **MANDATORY:** 本 workspace 位於 Google Drive 同步目錄。`write_to_file` 可能觸發同步鎖死（macOS FileProvider 死鎖 / Windows 檔案佔用）。
-
-| 操作 | 工具 | 規則 |
-|------|------|------|
-| **創建新檔案 / 覆蓋** | ~~`write_to_file`~~ | ❌ **嚴禁** — 用 `run_command` + `safe_file_writer.py` |
-| **小型編輯 (<50 行)** | `replace_file_content` / `multi_replace_file_content` | ✅ 允許 |
-| **讀取** | `view_file` / `grep_search` | ✅ 不受影響 |
-
-**Safe Writer**: `.agents/scripts/safe_file_writer.py` · **文檔**: `.agents/workflows/safe_write.md`
-
-> 🔴 **寫入前一律使用 safe_file_writer 代替 `write_to_file`。**
-
----
-
-### 🌐 Language Handling
-
-**DEFAULT LANGUAGE: Hong Kong Chinese (繁體中文 - 香港)**
-
-1. **Internally translate** for better comprehension
-2. **Always respond in Hong Kong Chinese (繁體中文)** unless the user explicitly requests another language for a specific response.
-3. **Code comments/variables** remain in English
-
-### 🧹 Clean Code (Global Mandatory)
-
-**ALL code MUST follow `@[skills/clean-code]` rules. No exceptions.**
-
-- **Code**: Concise, direct, no over-engineering. Self-documenting.
-- **Testing**: Mandatory. Pyramid (Unit > Int > E2E) + AAA Pattern.
-- **Performance**: Measure first. Adhere to 2025 standards (Core Web Vitals).
-- **Infra/Safety**: 5-Phase Deployment. Verify secrets security.
-
-### 📁 File Dependency Awareness
-
-**Before modifying ANY file:**
-
-1. Identify dependent files (check imports, references)
-2. Update ALL affected files together
-
-### 🗺️ System Map Read
-
-> 🔴 **MANDATORY:** Read `ARCHITECTURE.md` at session start to understand Agents, Skills, and Scripts.
-
-**Path Awareness:**
-
-- Agents: `.agents/agents/` (Project)
-- Skills: `.agents/skills/` (Project)
-- Runtime Scripts: `.agents/skills/<skill>/scripts/`
-
-### 🧠 Read → Understand → Apply
-
-Always follow: Read agent/skill → Understand WHY → Apply PRINCIPLES → Code.
-
-Before coding, answer: (1) What is the GOAL? (2) What PRINCIPLES apply? (3) How does this DIFFER from generic output?
-
-### 🛑 Socratic Gate (Global)
-
-**MANDATORY: Complex requests must pass through the Socratic Gate before ANY implementation.**
-
-| Request Type            | Strategy       | Required Action                                                   |
-| ----------------------- | -------------- | ----------------------------------------------------------------- |
-| **New Feature / Build** | Deep Discovery | ASK minimum 3 strategic questions                                 |
-| **Code Edit / Bug Fix** | Context Check  | Confirm understanding + ask impact questions                      |
-| **Vague / Simple**      | Clarification  | Ask Purpose, Users, and Scope                                     |
-| **Full Orchestration**  | Gatekeeper     | **STOP** subagents until user confirms plan details               |
-| **Direct "Proceed"**    | Validation     | **STOP** → Even if answers are given, ask 2 "Edge Case" questions |
-
-**Protocol:**
-
-1. **Always verify** understanding before proceeding. If even 1% is unclear, ASK.
-2. **Spec-heavy Requests:** Ask about **Trade-offs** or **Edge Cases** before starting.
-3. **Wait** for user to clear the Gate before writing code or invoking subagents.
-4. **Reference:** Full protocol in `@[skills/brainstorming]`.
-
-> [!NOTE]
-> **Domain Pipeline Override**: When a domain-specific prediction pipeline is activated
-> (NBA `@nba-wong-choi` / HKJC `@hkjc-wong-choi` / AU `@au-wong-choi` / LoL `/lol-predict` / Tennis `@tennis-wong-choi`),
-> the Socratic Gate applies **only during scope confirmation** (game selection / date confirmation).
-> Once the user confirms the scope, the domain agent's **Anti-Stall Directive takes priority**
-> and the pipeline runs autonomously via `NEXT_CMD` without further Socratic questioning.
-
-> [!IMPORTANT]
-> **HKJC Mainline Override**: `@hkjc-wong-choi` 現時默認係 **full Python mainline**。
-> 必須先執行：
-> `python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <URL或資料夾>`
-> 除非用戶明確要求 `legacy` / 舊版 / 對照，否則**唔可以**改用
-> `.agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator_legacy.py`
-> 或手動補寫 HKJC analysis。
-
-> [!IMPORTANT]
-> **AU Mainline Override**: `@au-wong-choi` 現時默認係 **full Python mainline**。
-> 必須先執行：
-> `python3 .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py <URL或資料夾>`
-> 除非用戶明確要求 `legacy` / 舊版 / 對照，否則**唔可以**改用
-> `.agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator_legacy.py`
-> 或手動補寫 AU analysis。
-
-### 🔄 Fallback Protocol
-
-If an agent or skill file cannot be found:
-1. Inform the user which file is missing
-2. Apply closest available agent's principles
-3. Proceed with `clean-code` defaults
-
----
-
-## TIER 1: CODE RULES (Active when writing or modifying code)
-
-### 📱 Project Type Routing
-
-| Project Type                           | Primary Agent         | Skills                        |
-| -------------------------------------- | --------------------- | ----------------------------- |
-| **MOBILE** (iOS, Android, RN, Flutter) | `mobile-developer`    | mobile-design                 |
-| **WEB** (Next.js, React web)           | `frontend-specialist` | frontend-design               |
-| **BACKEND** (API, server, DB)          | `backend-specialist`  | api-patterns, database-design |
-| **HKJC RACING**                        | `hkjc-wong-choi`      | betting_accountant             |
-| **AU RACING**                          | `au-wong-choi`        | betting_accountant             |
-| **NBA**                                | `nba-wong-choi`       | nba_wong_choi, nba_analyst, betting_accountant |
-| **LOL ESPORTS**                        | via `/lol-predict`    | lol_wong_choi, lol_reflector, betting_accountant |
-| **TENNIS**                             | `tennis-wong-choi`    | betting_accountant             |
-
-> 🔴 **Mobile + frontend-specialist = WRONG.** Mobile = mobile-developer ONLY.
-
-### 🏁 Final Checklist Protocol
-
-**觸發詞:** "最終檢查", "final checks", "跑所有測試", "部署前檢查", or similar.
-
-| Task Stage       | Command                                              | Purpose                        |
-| ---------------- | ---------------------------------------------------- | ------------------------------ |
-| **Manual Audit** | `python .agents/scripts/checklist.py .`              | Priority-based project audit   |
-| **Pre-Deploy**   | `python .agents/scripts/checklist.py . --url <URL>`  | Full Suite + Performance + E2E |
-
-**Priority:** Security → Lint → Schema → Tests → UX → SEO → Lighthouse/E2E
-
-**Rules:** Task NOT finished until `checklist.py` passes. Fix **Critical** blockers first.
-
-> 🔴 **Scripts path:** `python .agents/skills/<skill>/scripts/<script>.py` — See ARCHITECTURE.md for full list.
-
-### 🎭 Complex Task Protocol
-
-For multi-file or structural changes → Create `{task-slug}.md` plan first. For single-file fixes → Proceed directly.
-
-**4-Phase Methodology (for complex tasks):**
-
-1. ANALYSIS → Research, questions
-2. PLANNING → `{task-slug}.md`, task breakdown
-3. SOLUTIONING → Architecture, design (plan only)
-4. IMPLEMENTATION → Code + tests
-
----
-
-## TIER 2: DESIGN RULES (Active when creating UI/UX)
-
-> **Design rules are in the specialist agents, NOT here.**
-
-| Task         | Read                                     |
-| ------------ | ---------------------------------------- |
-| Web UI/UX    | `.agents/agents/frontend-specialist.md`  |
-| Mobile UI/UX | `.agents/agents/mobile-developer.md`     |
-
-> 🔴 **For design work:** Open and READ the agent file. Contains Purple Ban, Template Ban, Anti-cliché rules, Deep Design Thinking.
-
----
-
-## 📁 QUICK REFERENCE
-
-### Agents & Skills
-
-- **Masters**: `orchestrator`, `project-planner`, `security-auditor`, `backend-specialist`, `frontend-specialist`, `mobile-developer`, `debugger`, `game-developer`
-- **Domain-Specific**: `hkjc-wong-choi` (HKJC full Python mainline), `hkjc-wong-choi-legacy` (transition / comparison only), `au-wong-choi` (Racing), `nba-wong-choi` (NBA), `lol_wong_choi` (LoL), `tennis-wong-choi` (Tennis)
-- **Key Skills**: `clean-code`, `brainstorming`, `app-builder`, `frontend-design`, `mobile-design`, `plan-writing`, `behavioral-modes`
-
-### Key Scripts
-
-- **Verify**: `.agents/scripts/verify_all.py`, `.agents/scripts/checklist.py`
-- **Scanners**: `security_scan.py`
-- **Audits**: `ux_audit.py`, `mobile_audit.py`, `lighthouse_audit.py`, `seo_checker.py`
-- **Test**: `playwright_runner.py`, `test_runner.py`
-
----
+以上三點，現況全部都唔正確。

@@ -1,3 +1,4 @@
+import scoring
 from scoring import BaseScorer
 from features.tier_loader import score_tier
 
@@ -11,10 +12,10 @@ class JockeyScorer(BaseScorer):
             if pdf_races:
                 has_g1 = any("G1" in str(r.get("class_level", "")).upper() or "1級" in str(r.get("class_level", "")) for r in pdf_races)
                 if has_g1:
-                    self.score = 85.0
+                    self.score = scoring.JOCKEY_MICRO_WEIGHTS.get("overseas_g1_base", 85.0)
                     self.reason = "Overseas Jockey (G1 Level)"
                 else:
-                    self.score = 70.0
+                    self.score = scoring.JOCKEY_MICRO_WEIGHTS.get("overseas_base", 70.0)
                     self.reason = "Overseas Jockey"
                     
         return self.score, self.reason

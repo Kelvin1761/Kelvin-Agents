@@ -55,6 +55,7 @@ FEATURE_SCORE_KEYS = (
     "trainer_score",
     "jockey_horse_fit_score",
     "class_score",
+    "rating_score",
     "weight_score",
     "distance_score",
     "track_score",

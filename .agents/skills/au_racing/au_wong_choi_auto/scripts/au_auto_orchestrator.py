@@ -81,19 +81,38 @@ def _logic_sort_key(path: Path):
 
 def _build_field_summary(horses):
     weights = []
+    ratings = []
     for horse in horses.values():
         try:
             weight = float(horse.get("weight"))
         except (TypeError, ValueError):
-            continue
-        weights.append(weight)
-    if not weights:
+            weight = None
+        if weight is not None:
+            weights.append(weight)
+        try:
+            rating = float(horse.get("rating"))
+        except (TypeError, ValueError):
+            rating = None
+        if rating is not None:
+            ratings.append(rating)
+    if not horses:
         return {}
+    ratings_sorted = sorted(ratings, reverse=True)
     return {
-        "count": len(weights),
-        "min_weight": min(weights),
-        "max_weight": max(weights),
-        "avg_weight": sum(weights) / len(weights),
+        "count": len(horses),
+        "min_weight": min(weights) if weights else 0.0,
+        "max_weight": max(weights) if weights else 0.0,
+        "avg_weight": (sum(weights) / len(weights)) if weights else 0.0,
+        "rated_count": len(ratings),
+        "min_rating": min(ratings) if ratings else 0.0,
+        "max_rating": max(ratings) if ratings else 0.0,
+        "avg_rating": (sum(ratings) / len(ratings)) if ratings else 0.0,
+        "rating_stdev": (
+            (sum((value - (sum(ratings) / len(ratings))) ** 2 for value in ratings) / len(ratings)) ** 0.5
+            if ratings
+            else 0.0
+        ),
+        "top3_rating_cutoff": ratings_sorted[2] if len(ratings_sorted) >= 3 else (ratings_sorted[-1] if ratings_sorted else 0.0),
     }
 
 

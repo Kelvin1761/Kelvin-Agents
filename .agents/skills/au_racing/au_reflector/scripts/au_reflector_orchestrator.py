@@ -1,80 +1,53 @@
 #!/usr/bin/env python3
-"""
-AU reflector orchestrator for deterministic full-Python outputs.
-"""
-
 from __future__ import annotations
 
 import argparse
 import json
-import pathlib
 import sys
-from datetime import datetime
-
-PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[5]
-sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
-sys.path.append(str(pathlib.Path(__file__).resolve().parent))
-
-from reflector_auto_stats import run_stats
-from au_review_auto_weighting import run_review
+from pathlib import Path
 
 
-def render_report(meeting_dir: pathlib.Path, results_file: pathlib.Path, baseline: dict, stats: dict) -> str:
-    summary = stats.get("summary", {})
-    current = baseline.get("current_live", {})
-    venue = meeting_dir.name
-    lines = [
-        f"# AU Reflector Review Report",
-        "",
-        f"- Meeting: `{venue}`",
-        f"- Generated: `{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`",
-        "",
-        "## 今場問題",
-        f"- 冠軍命中: {summary.get('champion_hit_rates', {}).get('top1_champion', {}).get('count', 0)} / {summary.get('total_races', 0)}",
-        f"- 最低門檻達標: {summary.get('position_hit_rates', {}).get('min_threshold', {}).get('count', 0)} / {summary.get('total_races', 0)}",
-        f"- 排名逆序: {summary.get('ranking_order', {}).get('pick34_beat_12', {}).get('count', 0)}",
-        "",
-        "## 可改進候選",
-        "- outer weights constrained retune",
-        "- intra-matrix feature balance retune",
-        "- tie-break / draw micro review",
-        "",
-        "## 單場改善有冇",
-        "- 以 deterministic current_live baseline 作 same-race replay 比對。",
-        "- 如候選未能改善 champion / MRR / order issue，視為不通過。",
-        "",
-        "## 全庫改善有冇",
-        f"- current_live Champion: {current.get('Champion', 0)}",
-        f"- current_live Gold: {current.get('Gold', 0)}",
-        f"- current_live Good: {current.get('Good', 0)}",
-        f"- current_live MRR: {current.get('MRR', 0.0)}",
-        f"- current_live Order Issue: {current.get('Order Issue', 0)}",
-        f"- current_live Avg Top4 Hits: {current.get('Avg Top4 Hits', 0.0)}",
-        "",
-        "## 建議 embed / 唔 embed",
-        "- 只有當候選於 same-race replay + full AU database replay 都清楚改善，先建議 embed。",
-        "- 否則維持 current_live。",
-        "",
-    ]
-    return "\n".join(lines).strip() + "\n"
+PROJECT_ROOT = Path(__file__).resolve().parents[5]
+SHARED_SCRIPTS = PROJECT_ROOT / ".agents" / "skills" / "shared_racing" / "race_reflector" / "scripts"
+if str(SHARED_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SHARED_SCRIPTS))
+
+from unified_reflector_core import default_report_path, run_unified_reflector
 
 
-def main():
-    parser = argparse.ArgumentParser(description="AU Reflector deterministic orchestrator")
-    parser.add_argument("meeting_dir")
-    parser.add_argument("results_file")
-    parser.add_argument("--base-dir", default=str(PROJECT_ROOT / "Archive_Race_Analysis"))
+def main() -> int:
+    parser = argparse.ArgumentParser(description="AU reflector orchestrator (unified workflow wrapper)")
+    parser.add_argument("meeting_dir", help="AU meeting directory")
+    parser.add_argument("results_file", nargs="?", help="Optional existing results file")
+    parser.add_argument("--results-url", help="Optional AU results URL for extraction")
+    parser.add_argument("--race", dest="races", action="append", type=int, help="Reflect only specific race numbers")
+    parser.add_argument("--report-path", help="Optional output path for markdown report")
+    parser.add_argument("--force-extract", action="store_true", help="Force extraction even if results already exist")
+    parser.add_argument("--skip-backtest", action="store_true", help="Skip archive backtest")
+    parser.add_argument("--json", action="store_true", help="Emit final summary JSON")
     args = parser.parse_args()
 
-    meeting_dir = pathlib.Path(args.meeting_dir).resolve()
-    results_file = pathlib.Path(args.results_file).resolve()
-    stats = run_stats(str(meeting_dir), str(results_file))
-    baseline = run_review(pathlib.Path(args.base_dir))
-    report_text = render_report(meeting_dir, results_file, baseline, stats)
-    out_path = meeting_dir / f"{meeting_dir.name}_Reflector_Report.md"
-    out_path.write_text(report_text, encoding="utf-8")
-    print(f"✅ Reflector report written: {out_path}")
+    meeting_path = Path(args.meeting_dir).resolve()
+    summary = run_unified_reflector(
+        platform="au",
+        meeting_dir=meeting_path,
+        results_file=args.results_file,
+        results_url=args.results_url,
+        target_races=args.races,
+        report_path=args.report_path or str(default_report_path("au", meeting_path)),
+        force_extract=args.force_extract,
+        skip_backtest=args.skip_backtest,
+    )
+
+    if args.json:
+        print(json.dumps(summary, ensure_ascii=False, indent=2))
+    else:
+        print("\n🏁 AU unified reflector complete")
+        print(f"- Meeting: {meeting_path.name}")
+        print(f"- Results: {summary['results_file']}")
+        print(f"- Report: {summary['report_path']}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

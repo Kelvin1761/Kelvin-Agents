@@ -1,0 +1,16 @@
+# Antigravity core runtime dependencies
+# Covers current clone-ready HKJC / AU / NBA / dashboard / reflector workflows.
+
+beautifulsoup4
+curl-cffi
+fastapi
+nba_api
+numbers-parser
+openpyxl
+pandas
+pdfplumber
+playwright
+pydantic
+requests
+uvicorn
+watchdog

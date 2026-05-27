@@ -23,13 +23,13 @@ FEATURE_KEYS = (
 )
 
 MATRIX_WEIGHTS = {
-    "sectional": 0.2011,
-    "trainer_signal": 0.1744,
-    "stability": 0.0967,
-    "race_shape": 0.3044,
-    "class_advantage": 0.1074,
-    "horse_health": 0.0398,
-    "form_line": 0.0763
+    "sectional": 0.1849,
+    "trainer_signal": 0.2209,
+    "stability": 0.0919,
+    "race_shape": 0.2560,
+    "class_advantage": 0.1335,
+    "horse_health": 0.0378,
+    "form_line": 0.0749,
 }
 
 GRADE_THRESHOLDS = (
@@ -170,6 +170,50 @@ FORM_MICRO_WEIGHTS = {
     "rank_3": 75.0,
     "rank_4_5": 60.0,
     "rank_other": 40.0
+}
+
+TRAINER_SIGNAL_CONTEXT_WEIGHTS = {
+    "horse_history_strong": 4.0,
+    "horse_history_supportive": 2.0,
+    "horse_history_zero_place": -4.0,
+    "horse_history_weak": -2.0,
+    "combo_elite": 4.0,
+    "combo_positive": 2.0,
+    "combo_negative": -2.0,
+    "jockey_distance_elite": 3.0,
+    "jockey_distance_positive": 1.5,
+    "jockey_distance_negative": -2.0,
+    "trainer_distance_elite": 2.0,
+    "trainer_distance_positive": 1.0,
+    "trainer_distance_negative": -1.5,
+    "jockey_change_negative": -1.5,
+    "combo_jockey_share": 0.55,
+    "combo_trainer_share": 0.45,
+}
+
+HORSE_HEALTH_CONTEXT_WEIGHTS = {
+    "base": 68.0,
+    "medical_clear_bonus": 2.0,
+    "medical_issue_pen": -12.0,
+    "medical_recovery_bonus": 6.0,
+    "medical_unknown_pen": -5.0,
+    "days_le_7_stable_bonus": 2.0,
+    "days_le_7_unstable_pen": -1.0,
+    "days_le_21_bonus": 2.0,
+    "days_le_45_bonus": 1.0,
+    "days_gt_75_pen": -3.0,
+    "weight_micro_bonus": 1.0,
+    "weight_sharp_change_pen": -5.0,
+    "weight_drop_pen": -3.0,
+    "weight_gain_pen": -2.0,
+    "span_le_12_bonus": 3.0,
+    "span_le_18_bonus": 1.5,
+    "span_le_32_pen": -2.0,
+    "span_gt_32_pen": -4.0,
+    "trackwork_slowing_pen": -1.5,
+    "trackwork_clean_bonus": 0.5,
+    "swimming_zero_quick_return_pen": -1.0,
+    "blank_days_small_pen": -0.5,
 }
 
 

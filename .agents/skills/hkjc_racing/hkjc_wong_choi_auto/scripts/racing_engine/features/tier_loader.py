@@ -5,7 +5,8 @@ from pathlib import Path
 
 @lru_cache(maxsize=1)
 def load_tiers():
-    path = Path(__file__).resolve().parents[3] / "resources" / "05_jockey_trainer_tiers.json"
+    root = Path(".agents/skills/hkjc_racing/hkjc_wong_choi_auto")
+    path = root / "resources" / "05_jockey_trainer_tiers.json"
     return json.loads(path.read_text(encoding="utf-8"))
 
 

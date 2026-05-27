@@ -10,9 +10,12 @@ from form import FormScorer
 from jockey import JockeyScorer
 from speed import SpeedScorer
 from trainer import TrainerScorer
+from live_priors import TrainerSignalPriors
 from matrix_mapper import MATRIX_FORMULAS, map_features_to_matrix, map_features_to_matrix_scores
 import scoring
 from scoring import FEATURE_KEYS, MATRIX_WEIGHTS, clip_score, compute_grade, parse_float, parse_record, score_band
+
+_TRAINER_SIGNAL_PRIORS = None
 
 
 class RacingEngine:
@@ -64,6 +67,10 @@ class RacingEngine:
             feature_scores[name] = clip_score(score)
             feature_notes[name] = note
             self.provenance[name] = source
+
+        feature_scores, context_notes, context_sources = self._apply_mainline_context(feature_scores, feature_notes)
+        feature_notes.update(context_notes)
+        self.provenance.update(context_sources)
 
         for key in FEATURE_KEYS:
             feature_scores[key] = clip_score(feature_scores.get(key, 60))
@@ -378,73 +385,411 @@ class RacingEngine:
         else:
             return sum(matrix_scores[key] * weight for key, weight in MATRIX_WEIGHTS.items())
 
-    def _apply_health_only_v2(self, base_score):
-        score = float(base_score)
-        weight_text = self._clean(self._value("weight_trend") or "")
-        days_raw = self._value("days_since_last") or self.horse_data.get("days_since_last")
-        days = parse_float(days_raw)
-        amplitude_match = re.search(r"波幅(\d+)lb", weight_text)
-        direction_match = re.search(r"(微增|微減|大增|大減|急增|急減)", weight_text)
-        amplitude = float(amplitude_match.group(1)) if amplitude_match else 0.0
-        direction = direction_match.group(1) if direction_match else ""
+    def build_shadow_profile(self, profile_name, base_auto=None):
+        if profile_name != "consistency_context":
+            return None
+        auto = base_auto or self.analyze_horse()
+        base_features = auto.get("feature_scores", {}) if isinstance(auto, dict) else {}
+        if not isinstance(base_features, dict) or not base_features:
+            return None
 
-        if amplitude:
-            if amplitude <= 4:
-                score += 2.0
-            elif amplitude <= 8:
-                score += 1.0
-            elif amplitude <= 20:
-                score += 0.0
-            elif amplitude <= 28:
-                score -= 1.0
-            else:
-                score -= 2.0
+        shadow_features = {key: clip_score(base_features.get(key, 60.0)) for key in base_features}
+        shadow_score = self._candidate_consistency_shadow_score()
+        applied = shadow_score is not None
+        reason = "未觸發 consistency shadow，沿用主線穩定性評分。"
+        if applied:
+            shadow_features["consistency_score"] = clip_score(shadow_score)
+            reason = "影子排序重算 consistency_score，加入輸距權重、近期回暖/回落與 margin trend。"
 
-        if direction in {"微增", "微減"} and amplitude and amplitude <= 8:
-            score += 0.5
-        elif direction in {"大增", "大減", "急增", "急減"} and amplitude >= 20:
-            score -= 1.0
+        matrix_scores = map_features_to_matrix_scores(shadow_features)
+        ability_score = round(self._ability_score(matrix_scores), 2)
+        base_ability = float(auto.get("ability_score", ability_score))
+        return {
+            "profile": profile_name,
+            "applied": applied,
+            "ability_score": ability_score,
+            "ability_delta": round(ability_score - base_ability, 2),
+            "grade": compute_grade(ability_score),
+            "consistency_score": round(float(shadow_features.get("consistency_score", 60.0)), 2),
+            "consistency_delta": round(float(shadow_features.get("consistency_score", 60.0)) - float(base_features.get("consistency_score", 60.0)), 2),
+            "matrix_scores": matrix_scores,
+            "reason": reason,
+        }
 
-        if days is not None:
-            if 15 <= days <= 28:
-                score += 1.0
-            elif days <= 10:
-                score -= 0.5
-            elif days >= 60:
-                score -= 0.5
+    def _apply_mainline_context(self, feature_scores, feature_notes):
+        updated = dict(feature_scores)
+        notes = {}
+        sources = {}
 
-        return round(clip_score(score), 2)
+        updated, trainer_note = self._apply_trainer_signal_context(updated)
+        if trainer_note:
+            notes["jockey_score"] = self._append_note(feature_notes.get("jockey_score"), trainer_note)
+            notes["trainer_score"] = self._append_note(feature_notes.get("trainer_score"), trainer_note)
+            sources["jockey_score"] = "th01_trainer_context"
+            sources["trainer_score"] = "th01_trainer_context"
 
-    def _apply_trainer_signal_v3(self, base_score):
-        score = float(base_score)
-        combo = self._current_jockey_horse_record()
-        if combo:
-            starts = combo.get("starts", 0.0)
-            places = combo.get("places", 0.0)
-            place_rate = combo.get("place_rate", 0.0)
-            win_rate = combo.get("win_rate", 0.0)
-            avg_finish = combo.get("avg_finish", 99.0)
-            if starts >= 3 and places >= 2 and (place_rate >= 50.0 or win_rate >= 20.0 or avg_finish <= 3.5):
-                score += 3.0
-            elif starts >= 2 and place_rate >= 50.0 and avg_finish <= 4.0:
-                score += 1.5
+        health_score, health_note = self._candidate_health_risk_score()
+        if health_score is not None:
+            updated["risk_score"] = clip_score(health_score)
+            notes["risk_score"] = self._append_note(feature_notes.get("risk_score"), health_note)
+            sources["risk_score"] = "th01_health_context"
+
+        consistency_score = self._candidate_consistency_shadow_score()
+        if consistency_score is not None:
+            updated["consistency_score"] = clip_score(consistency_score)
+            notes["consistency_score"] = self._append_note(
+                feature_notes.get("consistency_score"),
+                "已套用 CX01 consistency context，加入輸距權重、近期回暖/回落與 margin trend。",
+            )
+            sources["consistency_score"] = "cx01_consistency_context"
+
+        return updated, notes, sources
+
+    def _apply_trainer_signal_context(self, feature_scores):
+        updated = dict(feature_scores)
+        prior_stack = self._trainer_signal_priors()
+        jockey = self._clean(self.horse_data.get("jockey"))
+        trainer = self._clean(self.horse_data.get("trainer"))
+        distance = str(self.race_context.get("distance") or "").replace("m", "").strip()
+
+        jockey_adj = 0.0
+        trainer_adj = 0.0
+        triggers = []
+
+        horse_history = self._current_jockey_horse_record()
+        if horse_history:
+            history_adj = self._trainer_history_adjustment(horse_history)
+            jockey_adj += history_adj
+            if history_adj:
+                triggers.append("人馬歷史")
 
         prior = self._jockey_trainer_prior()
-        if prior:
-            starts = prior.get("starts", 0.0)
-            place_rate = prior.get("place_rate", 0.0)
-            win_rate = prior.get("win_rate", 0.0)
-            if starts >= 80 and place_rate >= 28.0 and win_rate >= 8.0:
-                score += 2.0
-            elif starts >= 40 and place_rate >= 32.0:
-                score += 1.5
-            elif starts >= 25 and win_rate >= 12.0 and place_rate >= 25.0:
-                score += 1.0
-        trainer_block = str(self._value("trackwork_trainer") or "")
-        if "賽日騎師有直接參與操練" in trainer_block:
-            score += 1.0
+        if prior is None and jockey and trainer:
+            prior = prior_stack.combo.get((jockey, trainer))
+        combo_adj = self._trainer_combo_adjustment(prior)
+        if combo_adj:
+            jockey_adj += combo_adj * scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["combo_jockey_share"]
+            trainer_adj += combo_adj * scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["combo_trainer_share"]
+            triggers.append("騎練組合")
 
-        return round(clip_score(score), 2)
+        if distance and jockey:
+            distance_row = prior_stack.jockey_distance.get((jockey, distance))
+            distance_adj = self._jockey_distance_adjustment(distance_row)
+            jockey_adj += distance_adj
+            if distance_adj:
+                triggers.append("騎師同程")
+
+        if distance and trainer:
+            trainer_row = prior_stack.trainer_distance.get((trainer, distance))
+            trainer_distance_adj = self._trainer_distance_adjustment(trainer_row)
+            trainer_adj += trainer_distance_adj
+            if trainer_distance_adj:
+                triggers.append("練馬師同程")
+
+        if self._is_jockey_changed() is True:
+            change_adj = self._jockey_change_adjustment(prior_stack.jockey_change)
+            jockey_adj += change_adj
+            if change_adj:
+                triggers.append("換騎折讓")
+
+        if jockey_adj:
+            updated["jockey_score"] = clip_score(updated.get("jockey_score", 60.0) + jockey_adj)
+        if trainer_adj:
+            updated["trainer_score"] = clip_score(updated.get("trainer_score", 60.0) + trainer_adj)
+
+        if not triggers:
+            return updated, ""
+        note = "已套用 TH01 騎練先驗，上下文包含" + "、".join(dict.fromkeys(triggers)) + "。"
+        return updated, note
+
+    def _apply_health_only_v2(self, base_score):
+        return round(clip_score(base_score), 2)
+
+    def _apply_trainer_signal_v3(self, base_score):
+        return round(clip_score(base_score), 2)
+
+    def _candidate_health_risk_score(self):
+        score = scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["base"]
+        medical = self._text("medical_flags")
+        weight_trend = self._text("weight_trend")
+        trackwork_health = self._text("trackwork_health")
+        days = parse_float(self._value("days_since_last") or self.horse_data.get("days_since_last"))
+        weight_span = self._weight_trend_span(weight_trend)
+
+        if "✅ 無醫療事故記錄" in medical:
+            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["medical_clear_bonus"]
+        elif medical and medical != "N/A":
+            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["medical_issue_pen"]
+            if self._has_recovery_evidence():
+                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["medical_recovery_bonus"]
+        else:
+            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["medical_unknown_pen"]
+
+        if days is not None:
+            if days <= 7:
+                if weight_span is not None and weight_span <= 14.0:
+                    score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_le_7_stable_bonus"]
+                else:
+                    score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_le_7_unstable_pen"]
+            elif days <= 21:
+                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_le_21_bonus"]
+            elif days <= 45:
+                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_le_45_bonus"]
+            elif days > 75:
+                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["days_gt_75_pen"]
+
+        if any(token in weight_trend for token in ("急劇變化", "急增", "急減")):
+            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["weight_sharp_change_pen"]
+        elif any(token in weight_trend for token in ("顯著轉輕", "大減")):
+            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["weight_drop_pen"]
+        elif any(token in weight_trend for token in ("顯著轉重", "大增")):
+            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["weight_gain_pen"]
+        elif any(token in weight_trend for token in ("微增", "微減")):
+            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["weight_micro_bonus"]
+
+        if weight_span is not None:
+            if weight_span <= 12.0:
+                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["span_le_12_bonus"]
+            elif weight_span <= 18.0:
+                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["span_le_18_bonus"]
+            elif weight_span <= 32.0:
+                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["span_le_32_pen"]
+            else:
+                score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["span_gt_32_pen"]
+
+        if "操練放緩" in trackwork_health:
+            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["trackwork_slowing_pen"]
+        elif "risk_flags=[]" in trackwork_health or "risk_flags: []" in trackwork_health:
+            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["trackwork_clean_bonus"]
+
+        if "swimming=0" in trackwork_health and days is not None and days <= 21:
+            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["swimming_zero_quick_return_pen"]
+        if "blank_days=3" in trackwork_health or "blank_days=4" in trackwork_health:
+            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["blank_days_small_pen"]
+
+        note = "已套用 TH01 健康上下文，綜合醫療、休賽、體重波幅與晨操旗標重算風險分。"
+        return clip_score(score), note
+
+    def _candidate_consistency_shadow_score(self):
+        if self._is_debut():
+            return None
+
+        detail = self._text("recent_6_detail")
+        runs = self._parse_recent_runs(detail)
+        if not runs:
+            return None
+
+        weights = [1.00, 0.85, 0.70, 0.55, 0.45, 0.35]
+        weighted_total = sum(weights[: len(runs)])
+        close_credit = 0.0
+        poor_debit = 0.0
+        severe_debit = 0.0
+
+        for idx, run in enumerate(runs[:6]):
+            weight = weights[idx]
+            rank = run["rank"]
+            margin = run["margin"]
+
+            if rank <= 3:
+                close_credit += weight
+                continue
+            if rank <= 5 and margin is not None and margin <= 3.0:
+                close_credit += weight * 0.75
+            elif rank <= 7 and margin is not None and margin <= 2.5:
+                close_credit += weight * 0.40
+
+            if rank >= 8 and margin is not None and margin >= 5.0:
+                poor_debit += weight
+            elif rank >= 6 and margin is not None and margin >= 7.0:
+                poor_debit += weight * 0.70
+
+            if rank >= 10 and margin is not None and margin >= 8.0:
+                severe_debit += weight
+
+        close_ratio = close_credit / weighted_total if weighted_total else 0.0
+        poor_ratio = poor_debit / weighted_total if weighted_total else 0.0
+        severe_ratio = severe_debit / weighted_total if weighted_total else 0.0
+
+        score = 58.0 + close_ratio * 18.0 - poor_ratio * 14.0 - severe_ratio * 10.0
+        margin_trend = self._text("margin_trend")
+        if "收窄中" in margin_trend:
+            score += 4.0
+        elif "擴大中" in margin_trend:
+            score -= 4.0
+        elif "波動" in margin_trend:
+            score -= 1.0
+
+        finish_positions = [run["rank"] for run in runs[:6]]
+        if len(finish_positions) >= 5:
+            recent_avg = sum(finish_positions[:3]) / 3.0
+            older_avg = sum(finish_positions[3:6]) / 3.0
+            if recent_avg + 1.0 < older_avg:
+                score += 3.0
+            elif recent_avg > older_avg + 1.0:
+                score -= 3.0
+
+        return clip_score(score)
+
+    def _parse_recent_runs(self, detail):
+        runs = []
+        for rank_text, margin_text in re.findall(r":\s*(\d+)名\s+([^|,]+)", str(detail or "")):
+            try:
+                rank = int(rank_text)
+            except ValueError:
+                continue
+            runs.append(
+                {
+                    "rank": rank,
+                    "margin": self._margin_to_float(margin_text.strip()),
+                }
+            )
+        return runs
+
+    def _margin_to_float(self, value):
+        text = str(value or "").strip()
+        if not text or text in {"-", "--", "N/A"}:
+            return None
+        if "平頭馬" in text:
+            return 0.0
+        if "短馬頭位" in text:
+            return 0.05
+        if "頭位" in text:
+            return 0.1
+        if "頸位" in text:
+            return 0.25
+        if "多個馬位" in text:
+            return 8.0
+
+        total = 0.0
+        matched = False
+        for part in text.split("-"):
+            part = part.strip()
+            if not part:
+                continue
+            if "/" in part:
+                numerator, denominator = part.split("/", 1)
+                try:
+                    total += float(numerator) / float(denominator)
+                    matched = True
+                except ValueError:
+                    continue
+                continue
+            try:
+                total += float(part)
+                matched = True
+            except ValueError:
+                continue
+        if matched:
+            return total
+        return None
+
+    def _has_recovery_evidence(self):
+        finishes = [int(item) for item in re.findall(r"\b\d+\b", str(self.horse_data.get("last_6_finishes") or ""))[:3]]
+        if any(rank <= 3 for rank in finishes):
+            return True
+        finish_time_level = self._text("finish_time_adj_level")
+        if "仍具競爭力" in finish_time_level or "持續快於標準" in finish_time_level:
+            return True
+        raw_l400 = parse_float(self._value("raw_l400"))
+        return raw_l400 is not None and raw_l400 <= 23.4
+
+    def _weight_trend_span(self, weight_trend):
+        match = re.search(r"波幅(\d+(?:\.\d+)?)lb", str(weight_trend or ""))
+        if match:
+            return float(match.group(1))
+        return None
+
+    def _trainer_history_adjustment(self, row):
+        if row["starts"] >= 2 and (row["wins"] >= 1 or row["place_rate"] >= 50.0) and row["avg_finish"] <= 5.0:
+            return scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["horse_history_strong"]
+        if row["starts"] >= 3 and row["place_rate"] >= 33.0 and row["avg_finish"] <= 5.5:
+            return scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["horse_history_supportive"]
+        if row["starts"] >= 3 and row["place_rate"] == 0.0 and row["avg_finish"] >= 7.0:
+            return scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["horse_history_zero_place"]
+        if row["starts"] >= 5 and row["place_rate"] <= 20.0 and row["avg_finish"] >= 6.5:
+            return scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["horse_history_weak"]
+        return 0.0
+
+    def _trainer_combo_adjustment(self, row):
+        if not row:
+            return 0.0
+        starts = float(row.get("starts", 0.0) or 0.0)
+        win_rate = float(row.get("win_rate", 0.0) or 0.0)
+        place_rate = float(row.get("place_rate", 0.0) or 0.0)
+        if starts < 80:
+            return 0.0
+        if win_rate >= 14.0 or place_rate >= 36.0:
+            return scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["combo_elite"]
+        if win_rate >= 11.0 or place_rate >= 30.0:
+            return scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["combo_positive"]
+        if win_rate <= 7.0 and place_rate <= 23.0:
+            return scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["combo_negative"]
+        return 0.0
+
+    def _jockey_distance_adjustment(self, row):
+        if not row:
+            return 0.0
+        starts = float(row.get("starts", 0.0) or 0.0)
+        win_rate = float(row.get("win_rate", 0.0) or 0.0)
+        place_rate = float(row.get("place_rate", 0.0) or 0.0)
+        if starts < 80:
+            return 0.0
+        if win_rate >= 15.0 or place_rate >= 40.0:
+            return scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["jockey_distance_elite"]
+        if win_rate >= 10.0 or place_rate >= 30.0:
+            return scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["jockey_distance_positive"]
+        if win_rate <= 6.0 and place_rate <= 22.0:
+            return scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["jockey_distance_negative"]
+        return 0.0
+
+    def _trainer_distance_adjustment(self, row):
+        if not row:
+            return 0.0
+        starts = float(row.get("starts", 0.0) or 0.0)
+        win_rate = float(row.get("win_rate", 0.0) or 0.0)
+        place_rate = float(row.get("place_rate", 0.0) or 0.0)
+        if starts < 80:
+            return 0.0
+        if win_rate >= 12.0 or place_rate >= 34.0:
+            return scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["trainer_distance_elite"]
+        if win_rate >= 9.0 or place_rate >= 28.0:
+            return scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["trainer_distance_positive"]
+        if win_rate <= 5.0 and place_rate <= 20.0:
+            return scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["trainer_distance_negative"]
+        return 0.0
+
+    def _jockey_change_adjustment(self, jockey_change_rows):
+        keep = jockey_change_rows.get(False) if jockey_change_rows else None
+        change = jockey_change_rows.get(True) if jockey_change_rows else None
+        if not keep or not change:
+            return 0.0
+        if keep["win_rate"] >= change["win_rate"] + 1.0 and keep["place_rate"] >= change["place_rate"] + 3.0:
+            return scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["jockey_change_negative"]
+        return 0.0
+
+    def _is_jockey_changed(self):
+        current_jockey = self._clean(self.horse_data.get("jockey", "") or self._current_declared_jockey())
+        rows = self._recent_jockey_history_rows()
+        if not current_jockey or not rows:
+            return None
+        latest = rows[0].get("jockey", "")
+        return bool(latest and latest != current_jockey)
+
+    def _trainer_signal_priors(self):
+        global _TRAINER_SIGNAL_PRIORS
+        if _TRAINER_SIGNAL_PRIORS is None:
+            _TRAINER_SIGNAL_PRIORS = TrainerSignalPriors()
+        return _TRAINER_SIGNAL_PRIORS
+
+    def _append_note(self, base_note, extra_note):
+        base = str(base_note or "").strip()
+        extra = str(extra_note or "").strip()
+        if not base:
+            return extra or "資料不足，中性60分。"
+        if not extra:
+            return base
+        return base + " " + extra
+
 
     def _core_logic(self, features, matrix_scores, matrix_reasoning):
         name = self.horse_data.get("horse_name", "未知馬匹")
@@ -1673,13 +2018,13 @@ class RacingEngine:
         Returns a dict with textual breakdown suitable for markdown rendering.
         """
         dims = [
-            ("stability", "狀態與穩定性", "半核心", 0.12),
-            ("sectional", "段速與場地適性", "核心", 0.20),
-            ("race_shape", "檔位與走位", "半核心", 0.28),
-            ("trainer_signal", "騎練訊號", "核心", 0.18),
-            ("horse_health", "馬匹健康 / 新鮮感", "輔助", 0.09),
-            ("form_line", "賽績線", "輔助", 0.05),
-            ("class_advantage", "級數優勢", "輔助", 0.08),
+            ("stability", "狀態與穩定性", "半核心", 0.0919),
+            ("sectional", "段速與場地適性", "核心", 0.1849),
+            ("race_shape", "檔位與走位", "半核心", 0.2560),
+            ("trainer_signal", "騎練訊號", "核心", 0.2209),
+            ("horse_health", "馬匹健康 / 新鮮感", "輔助", 0.0378),
+            ("form_line", "賽績線", "輔助", 0.0749),
+            ("class_advantage", "級數優勢", "輔助", 0.1335),
         ]
         
         lines = []

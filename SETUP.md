@@ -1,559 +1,586 @@
-# 🚀 Antigravity Agent Setup Guide
+# Antigravity Setup Guide
 
-> 本指南覆蓋所有 Agent Pipeline（HKJC 賽馬、AU 賽馬、NBA 籃球、LoL 電競、Tennis 網球）。
-> 跟住步驟做，確保你嘅環境同主機完全一致。
+呢份文件以目前 repo 內實際存在嘅腳本、依賴同資料夾為準，目標係令新用戶 clone 完之後，可以喺 macOS 或 Windows 完成基本安裝，並成功運行以下主流程或相關工具：
 
----
+- `HKJC Wong Choi`
+- `AU Wong Choi`
+- `NBA Wong Choi`
+- `tennis-wong-choi`
+- `HKJC Reflector`
+- `AU Reflector`
 
-## 📋 目錄
+如果你只想畀新用戶一個入口，**直接叫佢由呢份 `SETUP.md` 開始就可以**。呢份文件會帶佢完成：
 
-1. [Agent 核心規則](#1-agent-核心規則)
-2. [系統需求](#2-系統需求)
-3. [安裝步驟](#3-安裝步驟)
-4. [Windows 額外設定](#4-windows-額外設定)
-5. [首次運行驗證](#5-首次運行驗證)
-6. [使用指南](#6-使用指南)
-7. [架構概覽](#7-架構概覽)
-8. [常見問題 FAQ](#8-常見問題-faq)
-9. [故障排解](#9-故障排解)
+- 要讀邊幾份文檔
+- 要安裝咩
+- 要設咩環境
+- 點驗證 setup
+- 點跑 HKJC Wong Choi
+- 點跑 AU Wong Choi
+- 點跑 NBA Wong Choi
+- 點跑 tennis-wong-choi
+- 點跑 HKJC / AU Reflector
+- 點配置 Cloudflare deployment
+- 點 troubleshoot 常見問題
 
----
+## 0. Start Here
 
-## 1. Agent 核心規則
+新用戶建議按以下次序完成：
 
-> ⚠️ **以下規則嘅優先級高於所有其他指引。所有 Agent 必須嚴格遵守。**
+1. 由上到下讀完整份 `SETUP.md`
+2. 跟住做 clone、venv、dependency install、Playwright install
+3. 跑本文件嘅 verification commands
+4. 根據需要跑 HKJC 或 AU 主流程
+5. 完成第一次 successful run 後，再讀 [AGENTS.md](AGENTS.md) 了解完整 agent / pipeline 架構
 
-所有回覆（包括對話、實作計畫書、任務進度、總結等）都必須使用繁體中文（香港慣用語/港式中文）來撰寫。
+如果只需要高層 folder map，可再讀：
 
-### 🚨 Google Drive 寫入死鎖防護 (P33-WLTM)
+- [README.md](README.md)
+- [AGENTS.md](AGENTS.md)
+- [.agents/ARCHITECTURE.md](.agents/ARCHITECTURE.md)
+- [CLOUDFLARE_DEPLOYMENT.md](CLOUDFLARE_DEPLOYMENT.md)
 
-本 workspace 位於 Google Drive 同步目錄。macOS FileProvider 會攔截寫入操作進行雲端同步，導致 write_to_file 工具卡死（症狀：+0-0）。
+但如果目標係「clone repo 後成功跑到主流程」，**其實只跟住呢份 `SETUP.md` 已經足夠**。
 
-#### 強制規則
+## 0.1 Quick Onboarding Checklist
 
-1. **嚴禁使用 `write_to_file`** 寫入任何 Google Drive 路徑（即本 workspace 內嘅任何檔案）。
-2. **所有新建/覆蓋檔案操作**，一律透過 `run_command` 執行 `Antigravity/.agents/scripts/safe_file_writer.py`（WLTM 模式）。詳見 `Antigravity/.agent/workflows/safe_write.md`。
-3. **小型行替換**（修改少於 50 行嘅現有內容）可使用 `replace_file_content` 或 `multi_replace_file_content`。
-4. 讀取操作（`view_file`、`grep_search`）不受影響。
+新用戶可以直接照住 tick：
 
-#### 快速範本
-```bash
-python3 << 'SAFE_WRITE'
-import base64, subprocess, sys
-content = """YOUR_CONTENT_HERE"""
-b64 = base64.b64encode(content.encode("utf-8")).decode("ascii")
-subprocess.run([sys.executable, "Antigravity/.agents/scripts/safe_file_writer.py",
-    "--target", "TARGET_PATH", "--mode", "overwrite", "--content", b64],
-    capture_output=True, text=True)
-SAFE_WRITE
-```
+- clone repo
+- 安裝 `Python 3.10+`
+- 建立 `.venv`
+- 安裝 Python dependencies
+- 執行 `python -m playwright install chromium`
+- 跑 help / verification commands
+- 跑一次 `HKJC Wong Choi`、`AU Wong Choi`、`NBA Wong Choi`、`tennis-wong-choi` 或 reflector
+- 如需 dashboard，再處理 `Node.js` / `npx` / `deploy.sh`
+- 如需 Cloudflare deploy，再讀 [CLOUDFLARE_DEPLOYMENT.md](CLOUDFLARE_DEPLOYMENT.md)
 
-### 🤖 Python-First Architecture（V12 核心原則）
+## 1. What You Need
 
-> ⚠️ **Python Orchestrator 係所有分析流程嘅唯一控制者。LLM Agent 只係執行者。**
+- `Git`
+- `Python 3.10+`
+- 可連網環境
+- 如果要用 dashboard / Cloudflare deploy：
+  `Node.js` 同 `npx`
 
-#### HKJC Wong Choi 已升級為 Full Python Mainline
+說明：
 
-- `HKJC Wong Choi` 現時主線係 **full Python pipeline**
-- 流程由 extraction → Facts → Logic skeleton → Auto scoring / Markdown / CSV **一次過完成**
-- LLM **唔再負責**手動逐匹填寫 HKJC `Race_X_Logic.json`、tick matrix、verdict prose
-- 舊版 LangGraph / LLM-assisted pipeline 只保留作過渡及對照，入口係：
-  `.agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator_legacy.py`
+- `HKJC Wong Choi` 同 `AU Wong Choi` 現已係 **100% Python-driven**。
+- 運行 HKJC / AU 主流程 **唔需要 Gemini 或其他 LLM**。
+- `NBA Wong Choi` 同 `tennis-wong-choi` 亦有實際可跑入口，但佢哋嘅架構同 HKJC / AU 並唔完全相同。
+- repo 而家已提供 root `requirements.txt`，方便 clone 後直接安裝主線依賴。
+- `.agents/rules/GEMINI.md` 已 deprecated，唔係新用戶 onboarding 入口。
 
-#### 啟動順序（HKJC 主線）
-
-1. **執行主 Orchestrator** — 呢個係第一個動作，冇例外
-   ```bash
-   python3 .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py "<URL或資料夾>"
-   ```
-2. **Python 自動完成**：
-   - HKJC extraction（如輸入係 URL）
-   - `Facts.md` 生成
-   - `Race_X_Logic.json` skeleton 重建
-   - `Race_X_Auto_Analysis.md` / `Race_X_Auto_Scoring.csv`
-   - `HKJC_Auto_Scoring.csv`
-3. **LLM 只負責**：
-   - 啟動 orchestrator
-   - 報告成功 / 失敗
-   - 需要時切去 legacy 入口
-4. **嚴禁**跳過 orchestrator 手動改 HKJC Auto 輸出
-
-#### 嚴禁事項
-
-| 行為 | 後果 |
-|------|------|
-| 自行拼接 HKJC extraction / facts / logic / auto scoring | 破壞 full Python 主線 |
-| 建立 auto_fill / batch_fill .py 腳本 | preflight_environment_check 會攔截 |
-| 跳過 Orchestrator 直接寫 HKJC Auto Analysis.md | 違反 deterministic output 原則 |
-| 手動修改已產生嘅 HKJC Auto 評分 / Grade / Top Pick | 會造成 live / dashboard 不一致 |
-
-#### 如果中途接手
-
-- 直接重跑 HKJC orchestrator
-- 如輸入 meeting folder，可用 `--skip-extract`
-- 如只想保留 extraction、重建之後層，可再用 `--skip-facts` / `--skip-logic`
-- 舊版比對或特別需要先用 legacy 入口，否則一律走主線
-
-#### 如果 Context Window 用盡
-
-- **停止分析** — 唔好趕
-- 通知用戶：「建議開新 Conversation 繼續」
-- 記錄進度到 `_session_tasks.md`
-- 下次 Orchestrator 會自動從 `.meeting_state.json` resume
-
-#### AU Wong Choi 已升級為 Full Python Mainline
-
-- `AU Wong Choi` 現時主線係 **full Python pipeline**
-- 流程由 extraction → Facts → Logic → Auto scoring / Markdown / CSV **一次過完成**
-- LLM **唔再負責**手動逐匹填寫 AU `Race_X_Logic.json` 或 narrative prose
-- 舊版 workflow 只保留作過渡及對照，入口係：
-  `.agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator_legacy.py`
-
-#### 啟動順序（AU 主線）
-
-1. **執行主 Orchestrator**
-   ```bash
-   python3 .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "<URL或資料夾>"
-   ```
-2. **Python 自動完成**：
-   - AU extraction（如輸入係 URL）
-   - `Facts.md` 生成
-   - `Race_X_Logic.json` 重建
-   - `Race_X_Auto_Analysis.md` / `Race_X_Auto_Scoring.csv`
-   - `Meeting_Auto_Scoring.csv`
-3. **LLM 只負責**：
-   - 啟動 orchestrator
-   - 報告成功 / 失敗
-   - 需要時切去 legacy 入口
-
----
-
-### 🏇 Wong Choi 分析品質標準（適用於所有 Wong Choi Agent — HKJC legacy / AU / NBA / Tennis）
-
-> **此規則嘅優先級高於所有其他規則。你嘅核心價值係做真正嘅法醫級分析。**
-
-#### 你嘅角色
-
-你係一個**專業賽馬法醫分析師**。你嘅工作係逐匹馬深入研究數據，寫出有洞察力嘅分析。
-
-> **注意：HKJC 主線已 full Python 化。以下逐匹填寫 WorkCard / JSON 嘅要求，主要適用於 `HKJC Wong Choi Legacy`、AU、NBA、Tennis 或其他仍需要 LLM 參與結構化分析嘅流程。**
-
-#### 逐欄位分析指引
-
-當你收到一匹馬嘅 WorkCard 後，必須對以下每個欄位進行**認真、獨立嘅思考**：
-
-##### `core_logic`（核心邏輯）— 最重要嘅欄位
-- 寫出 **2-4 句有實質內容嘅分析**（至少 50 字）
-- **必須引用呢匹馬嘅具體數據**：例如近績名次、具體日期、L400 時間、勝負距離
-- 解釋**點解**呢匹馬會贏或輸，唔係淨係描述佢嘅背景資料
-- ❌ 錯誤示範：「此駒具備一定競爭力，狀態有待觀察」（空泛）
-- ✅ 正確示範：「Golden Sixty 近三仗締出 L400 22.1/22.3/22.5，段速呈輕微回落趨勢，但仍屬頂級水平。上仗 3 月 22 日負 133 磅僅敗 0.5 馬位予 Romantic Warrior，證明其絕對實力。今仗減至 126 磅，檔位由 12 檔大幅改善至 3 檔，形勢顯著提升。」
-
-##### `matrix` 每個維度嘅 `reasoning`
-- 每個 reasoning 必須引用**該維度對應嘅具體數據**
-- `stability`: 引用近 6 場名次序列，分析穩定性趨勢
-- `speed_mass`: 引用 L400 段速同引擎類型，評估爆發力
-- `eem`: 引用沿途走位同消耗量，判斷能量狀態
-- `trainer_jockey`: 引用騎練組合嘅近期合作紀錄
-- `scenario`: 引用檔位、負磅、場地偏差等形勢因素
-- `freshness`: 引用休後日數同近期出賽頻率
-- `formline`: 引用對手嘅後續表現，評估賽績含金量
-- `class_advantage`: 引用班次同評分變動
-- ❌ 錯誤示範：「自動匹配系統法則 (stability)」（模板）
-- ✅ 正確示範：「近 6 仗名次 2-1-3-4-2-1，極度穩定，標準差僅 1.1，證明此駒狀態正處於顛峰」
-
-##### `analytical_breakdown` 每個子欄位
-- 每個欄位必須有**針對呢匹馬嘅獨特分析**
-- 引用 WorkCard 入面嘅具體數據支持你嘅判斷
-
-##### `fine_tune`（微調）
-- `direction`: 基於你嘅分析判斷應該 `+`（升級）、`-`（降級）或 `無`
-- `trigger`: 解釋微調嘅具體原因（例如「檔位由 14 改善至 2，形勢大幅提升」）
-
-#### 正確工作流程
-
-1. **讀取** `.runtime/Horse_N_WorkCard.md` — 認真讀完所有數據
-2. **思考** — 分析呢匹馬嘅優勢、劣勢、形勢
-3. **撰寫** — 逐個欄位寫出有數據支撐嘅分析
-4. **填寫** `Race_X_Logic.json` → `horses.N` 嘅對應欄位
-5. **等待** Orchestrator 自動驗證 → 通過後進入下一匹
-
-#### 如果工作量太大
-- **停止當前工作**
-- **通知用戶**：「剩餘 X 匹馬未分析，建議開新 Conversation 繼續」
-- **記錄進度**到 `_session_tasks.md`
-- **絕對唔好用腳本代替真正分析** — 寧可做少啲，但做得好
-
-#### 絕對禁止
-1. 建立任何 `auto_fill` / `auto_expert` / `auto_analyst` Python 腳本去批量填充
-2. 用 `while True` loop 或 `hashlib` 模板池生成罐頭分析
-3. 繞過 Orchestrator 嘅 per-horse watch loop
-4. 自動注入 `_validation_nonce`（NONCE 只可由 skeleton 腳本生成）
-
----
-
-## 2. 系統需求
-
-| 項目 | 最低要求 |
-|:---|:---|
-| Python | 3.9 或以上 |
-| Git | 最新版本 |
-| 記憶體 | 4 GB+ |
-| 磁碟空間 | 2 GB+ |
-| 網絡 | 穩定連線（數據提取需要） |
-| AI IDE | Cursor / Gemini CLI（任一） |
-
----
-
-## 3. 安裝步驟
-
-### 3.1 Clone Repository
+## 2. Clone The Repository
 
 ```bash
-# 如果使用 Google Drive 共享
-# 直接透過 Google Drive Desktop 同步即可
-
-# 如果使用 Git
-git clone <REPO_URL>
+git clone <your-repo-url>
 cd Antigravity
 ```
 
-### 3.2 安裝 Python 依賴
+clone 完之後，你理論上只需要繼續跟住本文件做落去。
+
+## 3. Create A Virtual Environment
+
+### macOS
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip setuptools wheel
+```
+
+### Windows PowerShell
+
+```powershell
+py -3.10 -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip setuptools wheel
+```
+
+如果你部機預設唔係 UTF-8，建議喺 Windows 先設：
+
+```powershell
+$env:PYTHONUTF8="1"
+```
+
+## 4. Install Python Dependencies
+
+主流程目前實際會用到以下 Python 套件。建議直接用 root requirements file：
 
 ```bash
 pip install -r requirements.txt
-```
-
-> **注意**：如果你使用虛擬環境 (venv)：
-> ```bash
-> python -m venv .agents/skills/hkjc_racing/hkjc_race_extractor/venv
-> source .agents/skills/hkjc_racing/hkjc_race_extractor/venv/bin/activate  # macOS/Linux
-> # 或
-> .agents\skills\hkjc_racing\hkjc_race_extractor\venv\Scripts\activate     # Windows
-> pip install -r requirements.txt
-> ```
-
-### 3.3 安裝 Playwright 瀏覽器
-
-Playwright 需要下載 Chromium 瀏覽器引擎嚟做 HKJC 網頁數據提取：
-
-```bash
 python -m playwright install chromium
 ```
 
-> ⚠️ **如果呢步失敗**，嘗試：
-> ```bash
-> python -m playwright install --with-deps chromium
-> ```
+套件來源依據目前 repo 內 active scripts，例如：
 
-### 3.4 更新 MCP 配置（如適用）
+- HKJC / AU extractor：`playwright`、`beautifulsoup4`、`requests`、`curl-cffi`
+- Facts / scoring / archive tooling：`pandas`、`openpyxl`
+- HKJC PDF / starter data：`pdfplumber`
+- Dashboard backend：`fastapi`、`uvicorn`、`watchdog`
+- HKJC `.numbers` parsing：`numbers-parser`
+- NBA extractor / NBA reflector：`nba_api`
 
-`.agents/mcp_config.json` 包含 SQLite 資料庫嘅絕對路徑。如果你嘅 home 目錄唔係 `/Users/imac`，需要更新：
+如果你只係想先跑 HKJC / AU 主流程，以上 command 已經係目前最接近「完整主線 runtime 依賴」嘅安裝方式。
 
-```json
-{
-  "mcpServers": {
-    "sqlite": {
-      "args": ["-y", "mcp-server-sqlite", "/YOUR/HOME/.gemini/antigravity/databases/wong_choi.db"]
-    }
-  }
-}
+### tennis-wong-choi 額外說明
+
+`tennis-wong-choi` 係 repo 入面一個獨立 Python package。根據目前 codebase，同 mock provider 跑基本流程時唔需要額外第三方依賴；如需額外工具：
+
+- 跑測試：`pytest`
+- 跑 tennis dashboard：`streamlit`
+
+如果你想補裝 optional workstation extras：
+
+```bash
+pip install -r requirements-optional.txt
 ```
 
-將 `/YOUR/HOME` 替換為你嘅實際 home 目錄路徑。
+## 5. Optional Environment Variables
 
----
+### `PYTHONUTF8=1`
 
-## 4. Windows 額外設定
+Windows 建議開啟，避免中文 meeting / 檔名 / markdown 輸出亂碼。
 
-> [!IMPORTANT]
-> Windows 用戶**必須**執行以下設定，否則中文數據處理會出錯。
+### `ANTIGRAVITY_ROOT`
 
-### 4.1 設定 PYTHONUTF8 環境變數（永久）
+如果你唔係將 repo 放喺原本 Google Drive 路徑，而又要用 dashboard backend，可手動指定：
 
-**方法 A — PowerShell（推薦）：**
+### macOS
+
+```bash
+export ANTIGRAVITY_ROOT="/absolute/path/to/Antigravity"
+```
+
+### Windows PowerShell
+
 ```powershell
-[System.Environment]::SetEnvironmentVariable("PYTHONUTF8", "1", "User")
+$env:ANTIGRAVITY_ROOT="C:\path\to\Antigravity"
 ```
 
-**方法 B — 系統設定：**
-1. 搜索「環境變數」→ 編輯使用者環境變數
-2. 新增：變數名 = `PYTHONUTF8`，值 = `1`
-3. 重啟終端機
+### `WC_DISABLE_POST_SUCCESS_DEPLOY=1`
 
-### 4.2 確認 Python 指令
+如果你只想跑分析、唔想成功後自動嘗試 deploy 去 Cloudflare：
 
-Windows 通常使用 `python`（唔係 `python3`）：
+### macOS
+
 ```bash
-python --version  # 確認顯示 Python 3.9+
+export WC_DISABLE_POST_SUCCESS_DEPLOY=1
 ```
 
-### 4.3 Google Drive Desktop
+### Windows PowerShell
 
-如果使用 Google Drive 同步：
-- 確保 Google Drive Desktop 已安裝並同步中
-- 建議將 Google Drive 設定為「Mirror files」模式（非 Streaming）
+```powershell
+$env:WC_DISABLE_POST_SUCCESS_DEPLOY="1"
+```
 
----
+## 6. Verify The Setup
 
-## 5. 首次運行驗證
-
-完成安裝後，執行以下指令驗證環境：
+完成安裝後，建議至少跑以下幾個檢查：
 
 ```bash
-# 1. 驗證 safe_file_writer.py
+python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py --help
+python .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py --help
+python .agents/skills/nba/nba_orchestrator.py --help
+cd tennis-wong-choi && PYTHONPATH=src python -m tennis_wc.cli --help
+python .agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_reflector_orchestrator.py --help
+python .agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py --help
+python Horse_Racing_Dashboard/generate_static.py --help
 python .agents/scripts/safe_file_writer.py --help
-
-# 2. 驗證 Playwright
-python -c "from playwright.sync_api import sync_playwright; print('✅ Playwright OK')"
-
-# 3. 驗證 BeautifulSoup
-python -c "from bs4 import BeautifulSoup; print('✅ BeautifulSoup OK')"
-
-# 4. 驗證 encoding
-python -c "import sys; print(f'stdout encoding: {sys.stdout.encoding}')"
-# 應該顯示 utf-8
-
-# 5. 驗證 NBA 依賴（如需）
-python -c "from nba_api.stats.static import players; print(f'✅ NBA API OK — {len(players.get_players())} players')"
 ```
 
-如果全部通過，你嘅環境就準備好喇！🎉
+如果以上都正常出 help text，而 `python -m playwright install chromium` 亦完成，基本環境就算 ready。
 
----
+如果你想做一個最短 smoke test，可以用以下判斷：
 
-## 6. 使用指南
+- `hkjc_orchestrator.py --help` 成功
+- `au_orchestrator.py --help` 成功
+- `nba_orchestrator.py --help` 成功
+- `tennis_wc.cli --help` 成功
+- HKJC / AU reflector orchestrator `--help` 成功
+- `generate_static.py --help` 成功
 
-### 6.1 HKJC 賽馬分析
+咁代表主入口、dashboard snapshot generator 同共用 Python 環境都基本可用。
 
-**觸發方式：** 喺 AI IDE 入面 tag `@hkjc-wong-choi`
+## 7. Run HKJC Wong Choi
 
-**Pipeline 流程：**
-1. 畀 AI 一個 HKJC 賽事 URL 或者日期
-2. AI 自動讀取 `AGENTS.md` → `SKILL.md` → 執行 Orchestrator
-3. Orchestrator 自動完成數據提取 → Facts → Logic skeleton → Auto 分析 → 報告
+主入口：
 
-**手動執行 Orchestrator：**
+`.agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py`
+
+### 用 HKJC URL 直接跑
+
 ```bash
-python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <URL或資料夾>
+python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py "https://racing.hkjc.com/zh-hk/local/information/racecard?racedate=2026/05/31&Racecourse=ST&RaceNo=1"
 ```
 
-**Legacy 過渡入口：**
+### 用已存在 meeting folder 重跑
+
 ```bash
-python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator_legacy.py <URL或資料夾>
+python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py "/absolute/path/to/2026-05-31_ShaTin"
 ```
 
-**輸出：**
-- `Race X Facts.md` — 賽事數據
-- `Race_X_Logic.json` — 結構化骨架 + Python Auto 回填
-- `Race_X_Auto_Analysis.md` — Full Python 分析報告
-- `Race_X_Auto_Scoring.csv` — 每場評分表
-- `HKJC_Auto_Scoring.csv` — 全 meeting 匯總
+### HKJC 會做乜
 
-### 6.2 AU 賽馬分析
+- 如有 URL：先跑 HKJC extractor，提取全日 race data
+- 之後跑 `.agents/scripts/run_prerace_pipeline.py` 生成 `* Race * Facts.md`
+- 再建立 / 更新 `Race_X_Logic.json`
+- 最後交畀 `hkjc_wong_choi_auto` 做 deterministic scoring 同 analysis render
 
-**觸發方式：** tag `@au-wong-choi`
+如果你只需要同新用戶講一句，可以直接講：
 
-**Pipeline 流程：**
-1. 畀 AI 一個 Racenet 賽事連結或者馬場名 + 日期
-2. AI 自動讀取 SKILL.md → 執行 AU Orchestrator
-3. Claw Code 自動提取數據 → 分析 → 報告
-
-**手動執行：**
 ```bash
-python .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py <URL或資料夾>
+python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py "<HKJC racecard URL or meeting folder>"
 ```
 
-### 6.3 NBA 分析
+### HKJC 常見輸出
 
-**觸發方式：** tag `@nba-wong-choi`
+- `* Race * Facts.md`
+- `Race_X_Logic.json`
+- `Race_X_Auto_Analysis.md`
+- `Race_X_Auto_Scoring.csv`
+- `HKJC_Auto_Scoring.csv`
 
-**Pipeline 流程：**
-1. 畀 AI 日期（例如 `分析今日 NBA`）
-2. AI 自動讀取 SKILL.md → 執行 NBA Orchestrator
-3. 自動爬 Sportsbet → nba_api 提取 → 生成分析報告
+### HKJC Meeting Folder 命名
 
-**手動執行：**
+目前 orchestrator helper 會用以下前綴建立 / 尋找 meeting folder：
+
+- `YYYY-MM-DD_ShaTin`
+- `YYYY-MM-DD_HappyValley`
+
+## 8. Run AU Wong Choi
+
+主入口：
+
+`.agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py`
+
+### 用 Racenet URL 直接跑
+
 ```bash
-python .agents/skills/nba/nba_orchestrator.py --date YYYY-MM-DD
-python .agents/skills/nba/nba_orchestrator.py --date YYYY-MM-DD --list    # 列出賽事
-python .agents/skills/nba/nba_orchestrator.py --date YYYY-MM-DD --status  # 查看進度
+python .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "https://www.racenet.com.au/form-guide/horse-racing/flemington-20260530/example-race-1/overview"
 ```
 
-**輸出：**
-- `Game_XXX_Full_Analysis.md` — 每場分析
-- `NBA_All_SGM_Report.txt` — SGM 組合
-- `NBA_Banker_Report.txt` — 穩膽推薦
+### 用已存在 meeting folder 重跑
 
-### 6.4 LoL 電競分析
+```bash
+python .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "/absolute/path/to/2026-05-30 Flemington Race 1-9"
+```
 
-**觸發方式：** tag 相應 Agent 或者直接指示 AI
+### 只用現成 Logic 重跑 auto scorer
 
-**目前階段：** 基於 LLM 指令觸發，暫無專用 Orchestrator。
-分析框架同其他引擎類似：數據收集 → 深度分析 → 輸出報告。
+```bash
+python .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "/absolute/path/to/Race_1_Logic.json"
+```
 
-### 6.5 Tennis 網球分析
+### AU Folder 最少要有乜
 
-**觸發方式：** tag `@tennis-wong-choi`
+如果唔係用 URL extraction，而係直接用 meeting folder，至少要有：
 
-**Pipeline 流程：**
-1. 畀 AI 日期（例如 `run @tennis wong choi for tmr's games`）
-2. 系統會執行 `tennis-wong-choi` CLI 工具
-3. 自動進行 API 數據提取、Elo 計算、賠率抓取及 Edge 分析
+- 每場對應 `*Racecard.md`
+- 每場對應 `*Formguide.md`
 
-**手動執行：**
+之後 orchestrator 會：
+
+- 生成 `*Race N Facts.md`
+- 建立 / 更新 `Race_X_Logic.json`
+- 跑 `au_wong_choi_auto` 寫出 deterministic analysis / scoring
+
+如果你只需要同新用戶講一句，可以直接講：
+
+```bash
+python .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "<Racenet URL, meeting folder, or Race_X_Logic.json>"
+```
+
+### AU 常見輸出
+
+- `*Racecard.md`
+- `*Formguide.md`
+- `*Race N Facts.md`
+- `Race_X_Logic.json`
+- `Race_X_Auto_Analysis.md`
+- `Race_X_Auto_Scoring.csv`
+- `Meeting_Auto_Scoring.csv`
+
+### AU Meeting Folder 命名
+
+目前 AU orchestrator 會用 meeting folder 名稱前綴去反查 extraction 輸出，所以建議保留以下格式：
+
+- `YYYY-MM-DD <Venue> ...`
+- 或 `YYYY-MM-DD_<Venue>_Race_...`
+
+## 9. Run NBA Wong Choi
+
+主入口：
+
+`.agents/skills/nba/nba_orchestrator.py`
+
+### 基本跑法
+
+```bash
+python .agents/skills/nba/nba_orchestrator.py --date 2026-05-27
+```
+
+### 常用模式
+
+列出當日賽事：
+
+```bash
+python .agents/skills/nba/nba_orchestrator.py --date 2026-05-27 --list
+```
+
+只跑單場：
+
+```bash
+python .agents/skills/nba/nba_orchestrator.py --date 2026-05-27 --game ATL_NYK
+```
+
+查看 pipeline 狀態：
+
+```bash
+python .agents/skills/nba/nba_orchestrator.py --date 2026-05-27 --status
+```
+
+### NBA 額外現況說明
+
+目前 `NBA Wong Choi` 有實際 orchestrator 同自動腳本鏈，但 repo 內仍然保留咗一啲舊描述，例如檔頭提及 pre-filled skeleton / analyst phase。對新用戶嚟講，最重要係：
+
+- 主入口已存在並可直接運行
+- `nba_api` 係必要依賴之一
+- 分析輸出會寫入 `{YYYY-MM-DD} NBA Analysis/`
+
+## 10. Run HKJC / AU Reflector
+
+### HKJC Reflector
+
+主入口：
+
+`.agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_reflector_orchestrator.py`
+
+基本跑法：
+
+```bash
+python .agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_reflector_orchestrator.py "<meeting_dir>"
+```
+
+常用選項：
+
+```bash
+python .agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_reflector_orchestrator.py "<meeting_dir>" --json
+python .agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_reflector_orchestrator.py "<meeting_dir>" --skip-review
+```
+
+### AU Reflector
+
+主入口：
+
+`.agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py`
+
+基本跑法：
+
+```bash
+python .agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py "<meeting_dir>"
+```
+
+如已有 results file：
+
+```bash
+python .agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py "<meeting_dir>" "<results_file>"
+```
+
+常用選項：
+
+```bash
+python .agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py "<meeting_dir>" --json
+python .agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py "<meeting_dir>" --skip-backtest
+```
+
+### Reflector 現況
+
+HKJC 同 AU reflectors 而家都有 unified orchestrator wrapper，可以直接由單一入口跑。呢兩條 reflector 主線都係 Python-first workflow。
+
+## 11. Run tennis-wong-choi
+
+`tennis-wong-choi` 係獨立 package，建議由佢自己個資料夾運行。
+
+### 已驗證可跑方式
+
 ```bash
 cd tennis-wong-choi
-PYTHONPATH=src python -m tennis_wc.cli run-daily --date YYYY-MM-DD
-PYTHONPATH=src python -m tennis_wc.cli predict-daily --date YYYY-MM-DD
-PYTHONPATH=src python -m tennis_wc.cli run-agents --date YYYY-MM-DD
-PYTHONPATH=src python -m tennis_wc.cli generate-report --date YYYY-MM-DD
+PYTHONPATH=src python -m tennis_wc.cli --help
 ```
 
-**輸出：**
-- `YYYY-MM-DD Tennis Analysis/Tennis_Daily_Report.txt` — 每日分析結果與推薦注單
+### 基本初始化
 
----
-
-## 7. 架構概覽
-
-```
-.agents/
-├── ARCHITECTURE.md          # 完整架構文檔
-├── agents/                  # 22 個 AI Agent 定義
-│   ├── hkjc-wong-choi.md   # HKJC 賽馬 Agent
-│   ├── au-wong-choi.md     # AU 賽馬 Agent
-│   ├── nba-wong-choi.md    # NBA Agent
-│   ├── tennis-wong-choi.md # Tennis Agent
-│   └── ...                 # 其他 19 個通用 Agent
-├── skills/                  # 46 個技能模組
-│   ├── hkjc_racing/        # HKJC 賽馬技能
-│   │   ├── hkjc_wong_choi/
-│   │   ├── hkjc_race_extractor/
-│   │   ├── hkjc_horse_analyst/
-│   │   └── hkjc_reflector/
-│   ├── au_racing/          # AU 賽馬技能
-│   ├── nba/                # NBA 技能
-│   └── ...
-├── workflows/               # 16 個工作流程
-├── rules/                   # 全域規則（GEMINI.md）
-└── scripts/                 # 核心共用腳本
-    ├── safe_file_writer.py  # 防鎖死寫檔工具
-    ├── rating_engine_v2.py  # 評級引擎
-    ├── run_monte_carlo.py   # Monte Carlo 模擬
-    └── ...
-```
-
-### 核心腳本清單
-
-| 腳本 | 功能 |
-|:---|:---|
-| `safe_file_writer.py` | Google Drive 防鎖死安全寫檔 |
-| `rating_engine_v2.py` | 通用評級引擎 (HKJC + AU) |
-| `run_monte_carlo.py` | Monte Carlo 動態模擬 |
-| `completion_gate_v2.py` | 分析品質驗證 |
-| `compile_final_report.py` | 最終報告編譯 |
-| `inject_hkjc_fact_anchors.py` | HKJC 數據注入 |
-| `preflight_environment_check.py` | 環境預檢 |
-
-### 分析品質防線（Firewall）
-
-Orchestrator 內建多層自動驗證防線，確保每匹馬嘅分析品質：
-
-| 防線 | 功能 |
-|:---|:---|
-| WALL-008 | 防偽標籤 (NONCE) 必須存在 |
-| WALL-009 | 評級矩陣至少 6/8 維度有效 |
-| WALL-010 | 分數差異度 ≥ 2 種（防全同填充） |
-| WALL-011 | core_logic 不含模板化語句 |
-| WALL-012 | core_logic ≥ 50 字中文（防空泛） |
-| WALL-013 | 矩陣 reasoning ≥ 4 個維度有實質分析 |
-| WALL-014 | core_logic 必須提及馬名（防通用模板） |
-| WALL-017 | 偵測已知 bypass 腳本特徵碼 |
-| WALL-019 | NONCE 前綴驗證（只接受 `SKEL_` 開頭） |
-| WALL-021 | advantages/disadvantages ≥10 中文字（防 `[無]` 佔位符） |
-
-> ⚠️ **重要**：嚴禁建立任何 auto_fill / auto_expert 腳本去繞過以上防線。
-> 詳見 `.antigravityrules` 嘅「Wong Choi 分析品質標準」。
-
----
-
-## 8. 常見問題 FAQ
-
-### Q: Windows 上中文亂碼點算？
-**A:** 確保已設定 `PYTHONUTF8=1` 環境變數（見 [Section 4.1](#41-設定-pythonutf8-環境變數永久)）。
-
-### Q: `python3` 指令 Windows 搵唔到？
-**A:** Windows 正常用 `python`。所有 Orchestrator 腳本已內建自動偵測：
-```python
-PYTHON = "python3" if shutil.which("python3") else "python"
-```
-
-### Q: Playwright 安裝失敗？
-**A:** 
 ```bash
-pip install playwright
-python -m playwright install --with-deps chromium
+cd tennis-wong-choi
+cp .env.example .env
+PYTHONPATH=src python -m tennis_wc.cli init-db
+PYTHONPATH=src python -m tennis_wc.cli config-check
+PYTHONPATH=src python -m tennis_wc.cli provider-smoke --provider tennis --date 2026-05-08 --tour ATP
+PYTHONPATH=src python -m tennis_wc.cli provider-smoke --provider odds --date 2026-05-08
 ```
-如果企業防火牆阻擋，嘗試設定 proxy：
+
+### Daily flow
+
 ```bash
-set HTTPS_PROXY=http://your-proxy:port
+cd tennis-wong-choi
+PYTHONPATH=src python -m tennis_wc.cli run-daily --date 2026-05-08
+PYTHONPATH=src python -m tennis_wc.cli predict-daily --date 2026-05-08
+PYTHONPATH=src python -m tennis_wc.cli run-agents --date 2026-05-08
+PYTHONPATH=src python -m tennis_wc.cli generate-report --date 2026-05-08
+```
+
+### tennis 現況
+
+- mock provider 係預設，所以新用戶可以唔靠付費 API 先測通 CLI
+- 真實 provider 設定請參考 `tennis-wong-choi/.env.example`
+- `tennis-wong-choi/README.md` 有更完整 tennis domain 說明
+
+## 12. Dashboard And Cloudflare Deploy
+
+repo root 有 wrapper：
+
+```bash
+./deploy.sh
+```
+
+佢實際會轉去：
+
+`Horse_Racing_Dashboard/deploy.sh`
+
+用途：
+
+- 生成最新 dashboard snapshot
+- 打包 HKJC + AU 分析資料
+- 推送到 Cloudflare Pages
+
+如果只想 build snapshot 唔 deploy：
+
+```bash
+./deploy.sh --build-only
+```
+
+注意：
+
+- `deploy.sh` 係 Bash script。
+- macOS 可直接用。
+- Windows 建議用 Git Bash 或 WSL 跑 deploy wrapper。
+- 如果只想喺 Windows 本機生成 snapshot，可直接用 Python：
+
+```bash
+python Horse_Racing_Dashboard/generate_static.py
+```
+
+另外，HKJC / AU 主 orchestrator 成功完成後，依家預設會自動嘗試 Cloudflare deploy。你可以用以下方法停用：
+
+- command flag：`--skip-cloudflare-deploy`
+- env var：`WC_DISABLE_POST_SUCCESS_DEPLOY=1`
+
+如果新用戶只係想先跑分析，呢一節可以之後先睇。
+
+### Cloudflare setup guide
+
+如果要喺另一部機 deploy，請再讀：
+
+- [CLOUDFLARE_DEPLOYMENT.md](CLOUDFLARE_DEPLOYMENT.md)
+
+重點包括：
+
+- `Node.js` / `npx`
+- `wrangler` login 或 token auth
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+- `WC_CLOUDFLARE_PAGES_PROJECT`
+
+## 13. Troubleshooting
+
+### `ModuleNotFoundError`
+
+通常係：
+
+- 未 activate `.venv`
+- 套件裝咗去另一個 Python
+- 遺漏咗 `playwright` / `numbers-parser` / `pdfplumber`
+
+先確認：
+
+```bash
+python -V
+python -m pip list
+```
+
+### `nba_api` not installed
+
+```bash
+pip install nba_api
+```
+
+### Playwright browser not installed
+
+```bash
 python -m playwright install chromium
 ```
 
-### Q: Google Drive 同步鎖死？
-**A:** 所有寫檔操作已透過 `safe_file_writer.py` 處理。如果仍然卡死：
-1. 暫停 Google Drive 同步
-2. 完成操作後恢復同步
+### tennis-wong-choi import error
 
-### Q: 數據提取失敗？
-**A:** 常見原因：
-1. 網絡問題 → 確認可以訪問 racing.hkjc.com
-2. Playwright 未安裝 → `python -m playwright install chromium`
-3. 賽事未開始 → HKJC 通常喺賽前 2 天先有完整數據
+如果見到 `ModuleNotFoundError: No module named 'tennis_wc'`，代表你未用 package context 啟動。請改用：
 
-### Q: `venv` 點設定？
-**A:** HKJC pipeline 可選用 venv：
 ```bash
-cd .agents/skills/hkjc_racing/hkjc_race_extractor
-python -m venv venv
-source venv/bin/activate  # macOS/Linux
-pip install -r ../../../../requirements.txt
-python -m playwright install chromium
+cd tennis-wong-choi
+PYTHONPATH=src python -m tennis_wc.cli --help
 ```
 
----
+### Windows 中文亂碼 / UnicodeEncodeError
 
-## 9. 故障排解
-
-### 數據提取失敗
-```bash
-# 測試 HKJC 連線
-python -c "import requests; r = requests.get('https://racing.hkjc.com'); print(f'Status: {r.status_code}')"
-
-# 測試 Playwright
-python -c "
-from playwright.sync_api import sync_playwright
-with sync_playwright() as p:
-    browser = p.chromium.launch(headless=True)
-    page = browser.new_page()
-    page.goto('https://racing.hkjc.com')
-    print(f'Title: {page.title()}')
-    browser.close()
-"
+```powershell
+$env:PYTHONUTF8="1"
 ```
 
-### Orchestrator 崩潰
+### Dashboard backend 搵唔到 repo root
+
+設返 `ANTIGRAVITY_ROOT` 去你 clone repo 嘅實際位置。
+
+### Cloudflare deploy 失敗
+
+檢查：
+
+- `npx` 係咪可用
+- Cloudflare / Wrangler auth session 係咪已就緒
+
+如果你只想保留本地分析輸出，可以暫時加：
+
 ```bash
-# 重新執行 full Python 主線
-python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <目錄>
+--skip-cloudflare-deploy
 ```
 
-### LLM 分析品質下降
-1. 確認 `AGENTS.md` → `SKILL.md` → `GEMINI.md` 嘅規則鏈完整
-2. 確認 Orchestrator 狀態檔未損壞
-3. 嘗試重新開始新 session
+## 14. Current Reality Check
 
----
+截至目前 repo 狀態：
 
-> 💡 **提示：** 如有任何問題，請聯絡 repository 管理員。
+- `HKJC Wong Choi` 主線：full Python
+- `AU Wong Choi` 主線：full Python
+- `HKJC Reflector` 主線：unified Python orchestrator
+- `AU Reflector` 主線：unified Python orchestrator
+- `NBA Wong Choi`：有實際 orchestrator，但 repo 內仍存在部分舊式 analyst / skeleton 描述
+- `tennis-wong-choi`：獨立 package + CLI，mock provider 可直接測通
+- LLM-era scripts、legacy snapshots、compile templates 仍然存在，但已唔係主運行入口
+- `.agents/archive/wong_choi_legacy_snapshot_20260526/` 只供手動比對，唔應視為主線
+
+## 15. What To Read After Setup
+
+如果新用戶已經完成 setup，同成功跑到一次主流程，下一步建議睇：
+
+1. [AGENTS.md](AGENTS.md)
+   了解目前 HKJC / AU / NBA / tennis / reflector 架構、輸入輸出、命名規則
+2. [README.md](README.md)
+   作 repo 首頁總覽
+3. [.agents/ARCHITECTURE.md](.agents/ARCHITECTURE.md)
+   只用嚟理解高層 folder map
+
+簡單講：
+
+- **要成功安裝同跑起主流程**：睇 `SETUP.md`
+- **要理解現役架構**：睇 `AGENTS.md`
+- **要高層總覽**：睇 `README.md` 同 `ARCHITECTURE.md`

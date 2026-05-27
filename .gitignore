@@ -9,6 +9,12 @@
 # ----------------------------------------------------------------------
 __pycache__/
 *.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
 venv/
 .venv/
 env/
@@ -50,3 +56,24 @@ Thumbs.db
 # ----------------------------------------------------------------------
 desktop.ini
 *.lnk
+
+# ----------------------------------------------------------------------
+# 8. Workspace Temp / Build Outputs
+# ----------------------------------------------------------------------
+.scratch/
+_temporary_files/
+.cloudflare_dist/
+.wrangler/
+.wrangler/tmp/
+Horse_Racing_Dashboard/.wrangler/tmp/
+Horse_Racing_Dashboard/.wrangler/
+Horse_Racing_Dashboard/.cloudflare_dist/
+Horse_Racing_Dashboard/logs/
+Horse_Racing_Dashboard/frontend/dist/
+Horse_Racing_Dashboard/Open Dashboard.html
+Horse_Racing_Dashboard/CURRENT_URL.txt
+Horse_Racing_Dashboard/backend/db/dashboard.db
+tennis-wong-choi/tennis_wc.db
+failed_meetings.log
+temp_profile.html
+.claude/settings.local.json

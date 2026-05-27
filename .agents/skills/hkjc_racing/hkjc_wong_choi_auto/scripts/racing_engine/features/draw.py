@@ -1,6 +1,7 @@
 import re
 import pandas as pd
 from pathlib import Path
+import scoring
 from scoring import BaseScorer
 
 _DRAW_BIAS_CACHE = None
@@ -10,7 +11,7 @@ def _get_draw_bias():
     if _DRAW_BIAS_CACHE is not None:
         return _DRAW_BIAS_CACHE
     
-    root = Path(__file__).resolve().parents[7]
+    root = Path(".")
     stats_root = root / "Archive_Race_Analysis" / "HK_Racing" / "HKJC_Race_Results_Database" / "comprehensive_stats"
     paths = [
         stats_root / "24_25" / "draw_bias_stats.csv",
@@ -69,16 +70,22 @@ class DrawScorer(BaseScorer):
         
         is_straight = distance == 1000 and track_norm == "Turf" and venue_norm == "沙田"
         if is_straight:
-            prior_score = 75.0 if draw_num >= 8 else (65.0 if draw_num >= 5 else 50.0)
+            p_high = scoring.DRAW_MICRO_WEIGHTS.get("straight_draw_8_plus", 75.0)
+            p_mid = scoring.DRAW_MICRO_WEIGHTS.get("straight_draw_5_7", 65.0)
+            p_low = scoring.DRAW_MICRO_WEIGHTS.get("straight_draw_1_4", 50.0)
+            prior_score = p_high if draw_num >= 8 else (p_mid if draw_num >= 5 else p_low)
         else:
-            prior_score = 75.0 if draw_num <= 4 else (65.0 if draw_num <= 8 else 50.0)
+            p_high = scoring.DRAW_MICRO_WEIGHTS.get("turn_draw_1_4", 75.0)
+            p_mid = scoring.DRAW_MICRO_WEIGHTS.get("turn_draw_5_8", 65.0)
+            p_low = scoring.DRAW_MICRO_WEIGHTS.get("turn_draw_9_plus", 50.0)
+            prior_score = p_high if draw_num <= 4 else (p_mid if draw_num <= 8 else p_low)
 
         db = _get_draw_bias()
         db_key = (venue_norm, track_norm, distance, draw_num)
         row = db.get(db_key)
         
         if row and row["starts"] >= 15:
-            score = row["place_rate"] + 35.0
+            score = row["place_rate"] + scoring.DRAW_MICRO_WEIGHTS.get("stats_base_add", 35.0)
             self.score = round(max(50.0, min(75.0, score)), 2)
             self.reason = f"Stats (PR {row['place_rate']:.1f}%)"
         else:

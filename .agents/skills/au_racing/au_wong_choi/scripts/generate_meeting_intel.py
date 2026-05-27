@@ -24,7 +24,7 @@ Usage:
 import argparse
 import json
 import re
-import time
+import tempfile
 
 # --- Geo coordinates for Open-Meteo ---
 COURSE_GEO = {
@@ -100,9 +100,16 @@ def extract_racenet_weather(url):
         print(f"  ❌ Racenet fetch failed: {e}")
         return None
 
-    temp_html = os.path.abspath(f"_mip_temp_{int(time.time())}.html")
-    with open(temp_html, 'w', encoding='utf-8') as f:
-        f.write(resp.text)
+    with tempfile.NamedTemporaryFile(
+        "w",
+        suffix=".html",
+        prefix="_mip_temp_",
+        delete=False,
+        encoding="utf-8",
+        dir=os.getcwd(),
+    ) as handle:
+        handle.write(resp.text)
+        temp_html = handle.name
 
     try:
         with sync_playwright() as p:
@@ -113,12 +120,10 @@ def extract_racenet_weather(url):
             browser.close()
     except Exception as e:
         print(f"  ❌ Playwright hydration failed: {e}")
+        return None
+    finally:
         if os.path.exists(temp_html):
             os.remove(temp_html)
-        return None
-
-    if os.path.exists(temp_html):
-        os.remove(temp_html)
 
     apollo = nuxt.get('apollo', {}).get('defaultClient', nuxt.get('apollo', {}).get('horseClient', {}))
     result = {'weather': 'Unknown', 'track_condition': 'Unknown', 'detail': {}}

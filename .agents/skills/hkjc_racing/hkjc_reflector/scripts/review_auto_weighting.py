@@ -74,6 +74,16 @@ HORSE_HEALTH_RISK_ONLY_FORMULAS = {
     "horse_health": (("risk_score", 1.00),),
 }
 
+ML_7D_WEIGHT_SHADOW = {
+    "sectional": 0.1849,
+    "trainer_signal": 0.2209,
+    "stability": 0.0919,
+    "race_shape": 0.2560,
+    "class_advantage": 0.1335,
+    "horse_health": 0.0378,
+    "form_line": 0.0749,
+}
+
 MODEL_SPECS = {
     "previous_calibrated": {
         "formulas": PREVIOUS_MATRIX_FORMULAS,
@@ -82,6 +92,10 @@ MODEL_SPECS = {
     "current_live": {
         "formulas": CURRENT_MATRIX_FORMULAS,
         "weights": CURRENT_MATRIX_WEIGHTS,
+    },
+    "candidate_ml_7d_weight_shadow": {
+        "formulas": CURRENT_MATRIX_FORMULAS,
+        "weights": ML_7D_WEIGHT_SHADOW,
     },
 }
 
@@ -1399,6 +1413,10 @@ def venue_from_meeting_dir(meeting_dir: Path) -> str:
     return "Unknown"
 
 
+def dedup_race_key(date: str | None, venue: str, race_num: int) -> tuple[str | None, str, int]:
+    return (date, _normalize_venue(venue), race_num)
+
+
 def load_results(path: Path) -> dict[int, dict[int, int]]:
     data = json.loads(path.read_text(encoding="utf-8"))
     results: dict[int, dict[int, int]] = {}
@@ -1461,7 +1479,8 @@ def compute_full_feature_scores(horse: dict, race_context: dict) -> dict[str, fl
     for key in FEATURE_KEYS:
         feature_scores[key] = clip_score(feature_scores.get(key, 60))
 
-    return feature_scores
+    feature_scores, _notes, _sources = engine._apply_mainline_context(feature_scores, {})
+    return {key: clip_score(feature_scores.get(key, 60)) for key in feature_scores}
 
 
 def compute_matrix_scores(features: dict[str, float], formulas: dict[str, tuple[tuple[str, float], ...]]) -> dict[str, float]:
@@ -1963,7 +1982,12 @@ def review_season_trends(csv_paths: list[Path]) -> dict:
     }
 
 
-def run_review(meeting_roots: list[Path], results_roots: list[Path], season_csvs: list[Path]) -> dict:
+def run_review(
+    meeting_roots: list[Path],
+    results_roots: list[Path],
+    season_csvs: list[Path],
+    include_races: bool = False,
+) -> dict:
     debut_priors = DebutPriors()
     trainer_signal_priors = TrainerSignalPriors()
     class_distance_weight_priors = ClassDistanceWeightPriors()
@@ -2078,10 +2102,12 @@ def run_review(meeting_roots: list[Path], results_roots: list[Path], season_csvs
         "horses": 0,
         "debut_horses": 0,
         "debut_races": 0,
+        "duplicate_races_skipped": 0,
         "published_mainline_meetings": 0,
         "published_mainline_races": 0,
         "skipped_meetings": [],
     }
+    seen_race_keys: set[tuple[str | None, str, int]] = set()
 
     for meeting_dir in meetings:
         date = meeting_date(meeting_dir)
@@ -2093,15 +2119,21 @@ def run_review(meeting_roots: list[Path], results_roots: list[Path], season_csvs
         actual_results = load_results(result_path)
         meeting_had_race = False
         meeting_has_published_mainline = False
+        meeting_venue = venue_from_meeting_dir(meeting_dir)
         for logic_path in sorted(meeting_dir.glob("Race_*_Logic.json"), key=race_num_from_path):
             race_num = race_num_from_path(logic_path)
             actual_pos = actual_results.get(race_num)
             if not actual_pos:
                 continue
+            race_key = dedup_race_key(date, meeting_venue, race_num)
+            if race_key in seen_race_keys:
+                coverage["duplicate_races_skipped"] += 1
+                continue
+            seen_race_keys.add(race_key)
             logic = json.loads(logic_path.read_text(encoding="utf-8"))
             race_context = logic.get("race_analysis", {})
             race_context = dict(race_context)
-            race_context.setdefault("venue", venue_from_meeting_dir(meeting_dir))
+            race_context.setdefault("venue", meeting_venue)
             horses = []
             has_debut = False
             for horse_num_text, horse in logic.get("horses", {}).items():
@@ -2135,10 +2167,7 @@ def run_review(meeting_roots: list[Path], results_roots: list[Path], season_csvs
                 coverage["debut_races"] += 1
             race_models = {}
             for model_name in model_specs:
-                scored_rows = horses
-                if model_name == "current_live":
-                    scored_rows = apply_live_rank_ordering(horses, race_context, model_name)
-                race_models[model_name] = evaluate_model(scored_rows, actual_pos, model_name)
+                race_models[model_name] = evaluate_model(horses, actual_pos, model_name)
             published_picks = published_predictions.get(race_num)
             if published_picks:
                 race_models["published_mainline"] = evaluate_pick_order(published_picks, actual_pos)
@@ -2297,12 +2326,43 @@ def run_review(meeting_roots: list[Path], results_roots: list[Path], season_csvs
         best_outer_weights=best_outer_weights,
     )
 
+    race_records = []
+    if include_races:
+        race_records = [
+            {
+                "meeting": race["meeting"],
+                "date": race["date"],
+                "race": race["race"],
+                "has_debut": race["has_debut"],
+                "actual_pos": race["actual_pos"],
+                "models": {
+                    model_name: {
+                        "picks": model_payload.get("picks", []),
+                        "gold": model_payload.get("gold", False),
+                        "good": model_payload.get("good", False),
+                        "min_threshold": model_payload.get("min_threshold", False),
+                        "single": model_payload.get("single", False),
+                        "champion": model_payload.get("champion", False),
+                        "top3_has_champion": model_payload.get("top3_has_champion", False),
+                        "winner_rank": model_payload.get("winner_rank"),
+                        "mrr": model_payload.get("mrr", 0.0),
+                        "pick1_finish": model_payload.get("pick1_finish"),
+                        "top4_hits": model_payload.get("top4_hits", 0),
+                        "order_issue": model_payload.get("order_issue", False),
+                    }
+                    for model_name, model_payload in race["models"].items()
+                },
+            }
+            for race in all_races
+        ]
+
     return {
         "coverage": coverage,
         "model_roles": model_roles,
         "model_summary": model_summary,
         "debut_race_summary": debut_race_summary,
         "meeting_summary": meeting_summary,
+        "race_records": race_records,
         "slice_summary": {
             "hv_middle_distance": summarize_slice(
                 all_races,
@@ -2332,6 +2392,7 @@ def run_review(meeting_roots: list[Path], results_roots: list[Path], season_csvs
         "matrix_diagnostics": matrix_diagnostics(all_races),
         "season_trends": review_season_trends(season_csvs),
         "best_outer_weights": best_outer_weights,
+        "ml_7d_weight_shadow": ML_7D_WEIGHT_SHADOW,
     }
 
 
@@ -2346,23 +2407,28 @@ def render_markdown(review: dict) -> str:
         f"- Horses rescored: {coverage['horses']}",
         f"- Debut races in sample: {coverage['debut_races']}",
         f"- Debut horses in sample: {coverage['debut_horses']}",
+        f"- Duplicate races skipped by dedup: {coverage['duplicate_races_skipped']}",
     ]
     if coverage["skipped_meetings"]:
         lines.append(f"- Skipped meetings without matched results: {len(coverage['skipped_meetings'])}")
 
     lines.extend([
         "",
+        "## Fixed ML Shadow Weights",
+        "",
+        f"- candidate_ml_7d_weight_shadow: `{json.dumps(review['ml_7d_weight_shadow'], ensure_ascii=False, sort_keys=True)}`",
+        "",
         "## Walk-Forward",
         "",
-        "| Model | Races | Gold | Good | Min | Single | Champion | Top3 Champ | Avg Winner Rank | MRR | Avg Pick1 Finish | Avg Top4 Hits |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Model | Races | Gold | Good | Min | Single | Champion | Top3 Champ | Order Issue | Avg Winner Rank | MRR | Avg Pick1 Finish | Avg Top4 Hits |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ])
     for model_name, stats in review["model_summary"].items():
         if not stats:
             continue
         lines.append(
             f"| {model_name} | {stats['races']} | {stats['gold']} | {stats['good']} | {stats['min_threshold']} | "
-            f"{stats['single']} | {stats['champion']} | {stats['top3_has_champion']} | "
+            f"{stats['single']} | {stats['champion']} | {stats['top3_has_champion']} | {stats['order_issue']} | "
             f"{stats['avg_winner_rank']} | {stats['mrr']} | {stats['avg_pick1_finish']} | {stats['avg_top4_hits']} |"
         )
 
@@ -2370,15 +2436,15 @@ def render_markdown(review: dict) -> str:
         "",
         "## Debut-Race Slice",
         "",
-        "| Model | Races | Gold | Good | Min | Single | Champion | Top3 Champ | Avg Winner Rank | MRR | Avg Pick1 Finish | Avg Top4 Hits |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Model | Races | Gold | Good | Min | Single | Champion | Top3 Champ | Order Issue | Avg Winner Rank | MRR | Avg Pick1 Finish | Avg Top4 Hits |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ])
     for model_name, stats in review["debut_race_summary"].items():
         if not stats:
             continue
         lines.append(
             f"| {model_name} | {stats['races']} | {stats['gold']} | {stats['good']} | {stats['min_threshold']} | "
-            f"{stats['single']} | {stats['champion']} | {stats['top3_has_champion']} | "
+            f"{stats['single']} | {stats['champion']} | {stats['top3_has_champion']} | {stats['order_issue']} | "
             f"{stats['avg_winner_rank']} | {stats['mrr']} | {stats['avg_pick1_finish']} | {stats['avg_top4_hits']} |"
         )
 

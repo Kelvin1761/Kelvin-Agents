@@ -1,3 +1,4 @@
+import scoring
 from scoring import BaseScorer
 
 class FormScorer(BaseScorer):
@@ -16,12 +17,11 @@ class FormScorer(BaseScorer):
                         rank = int(p.split("/")[0])
                     else:
                         rank = int(p)
-                    
-                    if rank == 1: scores.append(100)
-                    elif rank == 2: scores.append(85)
-                    elif rank == 3: scores.append(75)
-                    elif rank <= 5: scores.append(60)
-                    else: scores.append(40)
+                    if rank == 1: scores.append(scoring.FORM_MICRO_WEIGHTS.get("rank_1", 100))
+                    elif rank == 2: scores.append(scoring.FORM_MICRO_WEIGHTS.get("rank_2", 85))
+                    elif rank == 3: scores.append(scoring.FORM_MICRO_WEIGHTS.get("rank_3", 75))
+                    elif rank <= 5: scores.append(scoring.FORM_MICRO_WEIGHTS.get("rank_4_5", 60))
+                    else: scores.append(scoring.FORM_MICRO_WEIGHTS.get("rank_other", 40))
                 except ValueError:
                     continue
 
@@ -32,11 +32,11 @@ class FormScorer(BaseScorer):
                 rank_str = str(r.get("rank", ""))
                 try:
                     rank = int(rank_str.split("/")[0]) if "/" in rank_str else int(rank_str)
-                    if rank == 1: scores.append(100)
-                    elif rank == 2: scores.append(85)
-                    elif rank == 3: scores.append(75)
-                    elif rank <= 5: scores.append(60)
-                    else: scores.append(40)
+                    if rank == 1: scores.append(scoring.FORM_MICRO_WEIGHTS.get("rank_1", 100))
+                    elif rank == 2: scores.append(scoring.FORM_MICRO_WEIGHTS.get("rank_2", 85))
+                    elif rank == 3: scores.append(scoring.FORM_MICRO_WEIGHTS.get("rank_3", 75))
+                    elif rank <= 5: scores.append(scoring.FORM_MICRO_WEIGHTS.get("rank_4_5", 60))
+                    else: scores.append(scoring.FORM_MICRO_WEIGHTS.get("rank_other", 40))
                 except ValueError:
                     continue
 

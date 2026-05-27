@@ -20,6 +20,7 @@ FEATURE_LABELS = {
     "trainer_score": "練馬師分",
     "jockey_horse_fit_score": "人馬配搭分",
     "class_score": "級數分",
+    "rating_score": "Rating 分",
     "weight_score": "負磅分",
     "distance_score": "路程分",
     "track_score": "場地分",
@@ -249,7 +250,7 @@ def _render_horse_section(horse_num, horse, auto):
         "#### 主要風險",
         *[f"- {_humanize_text(item)}" for item in auto.get("disadvantages", [])],
         "",
-        "#### 15 項分數",
+        "#### 16 項分數",
         f"- " + " | ".join(f"{FEATURE_LABELS[key]} {clip_score(auto.get('feature_scores', {}).get(key, 60)):.1f}" for key in FEATURE_LABELS),
         "",
     ])

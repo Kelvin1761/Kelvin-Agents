@@ -207,6 +207,28 @@ def parse_results_file(results_file: str) -> dict:
         with open(path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         race_results = {}
+        if isinstance(data.get("results"), dict):
+            for race_key, rows_data in data["results"].items():
+                try:
+                    race_num = int(race_key)
+                except (TypeError, ValueError):
+                    continue
+                rows = []
+                for item in rows_data:
+                    try:
+                        pos = int(item.get("finish_position"))
+                        num = int(item.get("competitor_number"))
+                    except (TypeError, ValueError):
+                        continue
+                    if pos <= 0 or item.get("is_scratched"):
+                        continue
+                    rows.append((pos, num, str(item.get("horse_name", "")).strip()))
+                rows.sort(key=lambda x: x[0])
+                if rows:
+                    race_results[race_num] = rows[:4]
+            if race_results:
+                return race_results
+
         for race_key, race_data in data.items():
             try:
                 race_num = int(race_key)
@@ -258,37 +280,49 @@ def parse_results_file(results_file: str) -> dict:
     return race_results
 
 
+def parse_results_json(results_file: str) -> dict:
+    """Backward-compatible helper for AU review scripts."""
+    return parse_results_file(results_file)
+
+
 def load_auto_scoring_predictions(analysis_dir: str) -> dict:
-    """Read HKJC Auto CSV predictions when available."""
-    csv_path = pathlib.Path(analysis_dir) / "HKJC_Auto_Scoring.csv"
-    if not csv_path.is_file():
+    """Read meeting-level or per-race auto scoring CSV predictions."""
+    root = pathlib.Path(analysis_dir)
+    csv_paths = []
+    for candidate in (root / "HKJC_Auto_Scoring.csv", root / "Meeting_Auto_Scoring.csv"):
+        if candidate.is_file():
+            csv_paths.append(candidate)
+    if not csv_paths:
+        csv_paths = sorted(root.glob("Race_*_Auto_Scoring.csv"))
+    if not csv_paths:
         return {}
 
     by_race = {}
-    with open(csv_path, 'r', encoding='utf-8-sig', newline='') as f:
-        for row in csv.DictReader(f):
-            try:
-                race_num = int(row.get("race_number", ""))
-                horse_num = int(row.get("horse_number", ""))
-            except ValueError:
-                continue
-            name = row.get("horse_name", "").strip()
-            grade = row.get("grade", "").strip()
-            try:
-                rank = int(float(row.get("rank", "")))
-            except ValueError:
-                rank = 999
-            try:
-                ability = float(row.get("ability_score", 0))
-            except ValueError:
-                ability = 0.0
-            by_race.setdefault(race_num, []).append({
-                "rank": rank,
-                "horse_num": horse_num,
-                "name": name,
-                "grade": grade,
-                "ability": ability,
-            })
+    for csv_path in csv_paths:
+        with open(csv_path, 'r', encoding='utf-8-sig', newline='') as f:
+            for row in csv.DictReader(f):
+                try:
+                    race_num = int(float(row.get("race_number", "")))
+                    horse_num = int(float(row.get("horse_number", "")))
+                except ValueError:
+                    continue
+                name = row.get("horse_name", "").strip()
+                grade = row.get("grade", "").strip()
+                try:
+                    rank = int(float(row.get("rank", "")))
+                except ValueError:
+                    rank = 999
+                try:
+                    ability = float(row.get("rank_score", row.get("ability_score", 0)) or 0)
+                except ValueError:
+                    ability = 0.0
+                by_race.setdefault(race_num, []).append({
+                    "rank": rank,
+                    "horse_num": horse_num,
+                    "name": name,
+                    "grade": grade,
+                    "ability": ability,
+                })
 
     predictions = {}
     for race_num, rows in by_race.items():
