@@ -26,6 +26,7 @@ class FormScorer(BaseScorer):
                     continue
 
         # 2. Add overseas form if available
+        local_count = len(scores)
         pdf_races = data.get("pdf_overseas_races", [])
         if pdf_races:
             for r in pdf_races:
@@ -49,7 +50,7 @@ class FormScorer(BaseScorer):
                 total_weight += weight
             self.score = weighted_sum / total_weight
             
-            if len(scores) > len(parts) if 'parts' in locals() else 0:
+            if len(scores) > local_count:
                 self.reason = f"Form Score calculated from {len(scores)} starts (Includes Overseas)"
             else:
                 self.reason = f"Form Score calculated from {len(scores)} starts"

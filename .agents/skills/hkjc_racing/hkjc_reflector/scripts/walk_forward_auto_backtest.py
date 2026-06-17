@@ -41,25 +41,37 @@ OLD_MATRIX_FORMULAS = {
     "class_advantage": (("class_score", 0.70), ("distance_score", 0.30)),
 }
 
-NEW_MATRIX_WEIGHTS = {
-    "sectional": 0.22,
-    "trainer_signal": 0.16,
-    "stability": 0.18,
-    "race_shape": 0.20,
-    "class_advantage": 0.08,
-    "horse_health": 0.09,
-    "form_line": 0.07,
-}
-
-NEW_MATRIX_FORMULAS = {
-    "stability": (("form_score", 0.50), ("consistency_score", 0.40), ("confidence_score", 0.10)),
-    "sectional": (("speed_score", 0.75), ("track_going_score", 0.25)),
-    "race_shape": (("draw_score", 0.70), ("distance_score", 0.15), ("weight_score", 0.15)),
-    "trainer_signal": (("jockey_score", 0.55), ("trainer_score", 0.45)),
-    "horse_health": (("risk_score", 0.55), ("weight_score", 0.35), ("confidence_score", 0.10)),
-    "form_line": (("form_score", 0.70), ("consistency_score", 0.30)),
-    "class_advantage": (("class_score", 0.70), ("distance_score", 0.30)),
-}
+# The "new" model mirrors live PRODUCTION. To prevent the weights drifting out of
+# sync with the engine (the original bug — they were stale and never-deployed),
+# import them straight from the engine's single source of truth. Falls back to a
+# pinned copy only if the engine package can't be located.
+#
+# WARNING: the recompute path below can only use the 12 persisted feature_scores.
+# Production's form_line uses formline_strength_score / margin_trend_score and
+# stability uses trackwork_trend_score — these sub-features are NOT persisted, so
+# the recompute CANNOT reproduce production form_line/stability exactly. For a
+# faithful production backtest, trust the "prod" column, which ranks by the
+# persisted python_auto.ability_score directly.
+_ENGINE = Path(__file__).resolve().parents[2] / "hkjc_wong_choi_auto" / "scripts" / "racing_engine"
+try:
+    sys.path.insert(0, str(_ENGINE))
+    from scoring import MATRIX_WEIGHTS as NEW_MATRIX_WEIGHTS  # type: ignore
+    from matrix_mapper import MATRIX_FORMULAS as NEW_MATRIX_FORMULAS  # type: ignore
+except Exception:  # pragma: no cover - fallback to pinned production snapshot
+    NEW_MATRIX_WEIGHTS = {
+        "sectional": 0.1922, "trainer_signal": 0.2296, "stability": 0.0955,
+        "race_shape": 0.2661, "class_advantage": 0.1387, "horse_health": 0.0,
+        "form_line": 0.0778,
+    }
+    NEW_MATRIX_FORMULAS = {
+        "stability": (("form_score", 0.50), ("consistency_score", 0.40), ("trackwork_trend_score", 0.10)),
+        "sectional": (("speed_score", 0.65), ("track_going_score", 0.35)),
+        "race_shape": (("draw_score", 1.00),),
+        "trainer_signal": (("jockey_score", 0.55), ("trainer_score", 0.45)),
+        "horse_health": (("risk_score", 0.55), ("weight_score", 0.35), ("confidence_score", 0.10)),
+        "form_line": (("formline_strength_score", 0.70), ("margin_trend_score", 0.30)),
+        "class_advantage": (("class_score", 0.75), ("weight_score", 0.25)),
+    }
 
 
 def clip_score(value: object, default: float = 60.0) -> float:
@@ -124,13 +136,16 @@ def score_meeting(meeting_dir: Path) -> dict:
                 horse_num = int(horse_num_text)
             except ValueError:
                 continue
-            features = horse.get("python_auto", {}).get("feature_scores", {})
+            auto = horse.get("python_auto", {})
+            features = auto.get("feature_scores", {})
             if not features:
                 continue
             scored.append({
                 "horse_num": horse_num,
                 "old": compute_ability(features, OLD_MATRIX_FORMULAS, OLD_MATRIX_WEIGHTS),
                 "new": compute_ability(features, NEW_MATRIX_FORMULAS, NEW_MATRIX_WEIGHTS),
+                # faithful production ranking — what the engine actually produced
+                "prod": clip_score(auto.get("ability_score", 60.0)),
             })
         if scored:
             races.append(evaluate_race(race_num, scored, actual[race_num]))
@@ -144,17 +159,20 @@ def score_meeting(meeting_dir: Path) -> dict:
 
 
 def evaluate_race(race_num: int, scored: list[dict], actual_pos: dict[int, int]) -> dict:
-    actual_top3 = [horse for horse, _pos in sorted(actual_pos.items(), key=lambda item: item[1])[:3]]
+    # Dead-heat safe: include every horse finishing in pos <= 3 (not a hard [:3] slice).
+    actual_top3 = [horse for horse, pos in actual_pos.items() if pos <= 3]
     return {
         "race": race_num,
         "actual_top3": actual_top3,
         "old": evaluate_model(scored, actual_pos, actual_top3, "old"),
         "new": evaluate_model(scored, actual_pos, actual_top3, "new"),
+        "prod": evaluate_model(scored, actual_pos, actual_top3, "prod"),
     }
 
 
 def evaluate_model(scored: list[dict], actual_pos: dict[int, int], actual_top3: list[int], key: str) -> dict:
-    picks = [item["horse_num"] for item in sorted(scored, key=lambda item: item[key], reverse=True)[:4]]
+    # Deterministic tie-break: higher score first, then lower horse number.
+    picks = [item["horse_num"] for item in sorted(scored, key=lambda item: (-item[key], item["horse_num"]))[:4]]
     actual_set = set(actual_top3)
     hits = sum(1 for horse in picks[:3] if horse in actual_set)
     winner = actual_top3[0] if actual_top3 else None
@@ -178,7 +196,7 @@ def evaluate_model(scored: list[dict], actual_pos: dict[int, int], actual_top3: 
 
 def summarize(races: list[dict]) -> dict:
     summary = {}
-    for key in ("old", "new"):
+    for key in ("old", "new", "prod"):
         total = len(races)
         summary[key] = {
             "races": total,
@@ -204,7 +222,7 @@ def print_table(meetings: list[dict]) -> None:
     print("meeting,races,model,gold,good,min,single,champion,top3_champ,order_issue")
     for meeting in meetings:
         name = Path(meeting["meeting"]).name
-        for model in ("old", "new"):
+        for model in ("old", "new", "prod"):
             s = meeting["summary"][model]
             print(
                 f"{name},{s['races']},{model},{s['gold']},{s['good']},"
@@ -212,7 +230,7 @@ def print_table(meetings: list[dict]) -> None:
                 f"{s['top3_has_champion']},{s['order_issue']}"
             )
     overall = aggregate(meetings)
-    for model in ("old", "new"):
+    for model in ("old", "new", "prod"):
         s = overall[model]
         print(
             f"OVERALL,{s['races']},{model},{s['gold']},{s['good']},"

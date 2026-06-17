@@ -11,14 +11,19 @@ def _get_draw_bias():
     if _DRAW_BIAS_CACHE is not None:
         return _DRAW_BIAS_CACHE
     
-    root = Path(".")
-    stats_root = root / "Archive_Race_Analysis" / "HK_Racing" / "HKJC_Race_Results_Database" / "comprehensive_stats"
-    paths = [
-        stats_root / "24_25" / "draw_bias_stats.csv",
-        stats_root / "25_26" / "draw_bias_stats.csv"
-    ]
-    
-    frames = [pd.read_csv(p, encoding="utf-8-sig") for p in paths if p.exists()]
+    # The draw-bias CSVs live in the repo's Archive_Race_Analysis tree, outside
+    # this skill. Try the CWD (works when run from repo root) AND the repo root
+    # resolved from this module, so a non-root CWD doesn't silently disable stats.
+    rel = Path("Archive_Race_Analysis") / "HK_Racing" / "HKJC_Race_Results_Database" / "comprehensive_stats"
+    candidates = []
+    for base in (Path("."), *Path(__file__).resolve().parents):
+        stats_root = base / rel
+        if stats_root.exists():
+            candidates = [stats_root / "24_25" / "draw_bias_stats.csv",
+                          stats_root / "25_26" / "draw_bias_stats.csv"]
+            break
+
+    frames = [pd.read_csv(p, encoding="utf-8-sig") for p in candidates if p.exists()]
     if not frames:
         _DRAW_BIAS_CACHE = {}
         return {}
@@ -65,7 +70,9 @@ class DrawScorer(BaseScorer):
         m = re.search(r"(\d+)", dist_str)
         distance = int(m.group(1)) if m else 0
         
-        venue_norm = "沙田" if "沙田" in str(venue) or "ShaTin" in str(venue) or "ST" in str(venue) else "跑馬地"
+        v = str(venue).strip()
+        v_low = v.lower().replace(" ", "")
+        venue_norm = "沙田" if ("沙田" in v or "shatin" in v_low or v.upper() == "ST") else "跑馬地"
         track_norm = "AWT" if "awt" in str(track).lower() or "dirt" in str(track).lower() or "泥" in str(track) else "Turf"
         
         is_straight = distance == 1000 and track_norm == "Turf" and venue_norm == "沙田"

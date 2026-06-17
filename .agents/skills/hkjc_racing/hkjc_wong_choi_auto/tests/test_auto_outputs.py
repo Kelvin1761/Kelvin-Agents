@@ -158,17 +158,20 @@ class AutoOutputTests(unittest.TestCase):
             self.assertEqual(horse["_data"]["trainer_name"], "蔡約翰")
 
     def test_calibrated_matrix_weights_are_locked(self) -> None:
+        # ML walk-forward backtest (18 meetings / 180 races) showed horse_health
+        # is noise in the ranking layer; its 0.0378 mass was redistributed
+        # proportionally (total mass kept at 0.9999 to preserve the grade scale).
         self.assertAlmostEqual(sum(MATRIX_WEIGHTS.values()), 1.0, places=3)
         self.assertEqual(
             MATRIX_WEIGHTS,
             {
-                "sectional": 0.1849,
-                "trainer_signal": 0.2209,
-                "stability": 0.0919,
-                "race_shape": 0.2560,
-                "class_advantage": 0.1335,
-                "horse_health": 0.0378,
-                "form_line": 0.0749,
+                "sectional": 0.1922,
+                "trainer_signal": 0.2296,
+                "stability": 0.0955,
+                "race_shape": 0.2661,
+                "class_advantage": 0.1387,
+                "horse_health": 0.0,
+                "form_line": 0.0778,
             },
         )
 

@@ -622,7 +622,8 @@ class RacingEngine:
         finish_positions = [run["rank"] for run in runs[:6]]
         if len(finish_positions) >= 5:
             recent_avg = sum(finish_positions[:3]) / 3.0
-            older_avg = sum(finish_positions[3:6]) / 3.0
+            older = finish_positions[3:6]
+            older_avg = sum(older) / len(older)  # was /3.0 — undercounted when only 5 runs (2 elems)
             if recent_avg + 1.0 < older_avg:
                 score += 3.0
             elif recent_avg > older_avg + 1.0:
@@ -790,132 +791,6 @@ class RacingEngine:
             return base
         return base + " " + extra
 
-
-    def _core_logic(self, features, matrix_scores, matrix_reasoning):
-        name = self.horse_data.get("horse_name", "未知馬匹")
-        
-        # Filter out dimensions with 0% weight for debut horses to avoid generating text for them
-        ms_for_text = dict(matrix_scores)
-        if self._is_debut():
-            ms_for_text.pop("sectional", None)
-            ms_for_text.pop("form_line", None)
-            
-        top = sorted(ms_for_text.items(), key=lambda item: item[1], reverse=True)[:2]
-        low = sorted(ms_for_text.items(), key=lambda item: item[1])[:2]
-        top_keys = {key for key, _score in top}
-        low_keys = {key for key, _score in low}
-        
-        top_text = " ".join(self._core_support_sentence(key, score, features) for key, score in top)
-        low_text = " ".join(self._core_risk_sentence(key, score, features) for key, score in low)
-        
-        include_trackwork = self._should_include_trackwork_context(top_keys, low_keys)
-        context = self._context_sentence(features, top_keys, low_keys, include_trackwork)
-        risk = self._risk_sentence({"trackwork_slowing"} if include_trackwork else None)
-        overall = self._overall_projection_sentence(top, low, features)
-        competitiveness = self._competitiveness_opening(ms_for_text, features, top, low)
-        
-        # More natural flowing text without robotic prefixes
-        parts = [
-            f"{name}{competitiveness}",
-            top_text,
-            f"不過要留意嘅係{low_text}" if low_text else "",
-            context,
-            overall,
-            risk
-        ]
-        
-        return " ".join(p for p in parts if p.strip())
-
-    def _core_logic_transparency(self, feature_scores, matrix_scores, matrix_bands, ability_score, grade):
-        """Generate a structured transparency block showing exactly what Python computed.
-        
-        This returns a text block that accompanies the natural-language core_logic.
-        """
-        dims = [
-            ("stability", "進度穩定及狀態趨勢", "基礎"),
-            ("sectional", "段速模型潛在爆發力", "核心"),
-            ("race_shape", "步速形勢與檔位", "戰術"),
-            ("trainer_signal", "練馬師出擊及騎練", "訊號"),
-            ("horse_health", "傷患記錄 / 操練強度", "風險"),
-            ("form_line", "賽績水準", "風險"),
-            ("class_advantage", "班底優勢", "風險"),
-        ]
-        
-        score_lines = []
-        core_strong = 0
-        semi_strong = 0
-        aux_strong = 0
-        total_weak = 0
-        
-        for key, label, role in dims:
-            # Skip outputting sectional and form_line transparency for debut horses
-            if self._is_debut() and key in ("sectional", "form_line"):
-                continue
-                
-            raw_score = float(matrix_scores.get(key, 60))
-            band = matrix_bands.get(key, score_band(raw_score))
-            score_lines.append(f"  - {label} [{role}]: {raw_score:.1f}分 -> {band}")
-            
-            if band in ("極強", "強"):
-                if role == "核心": core_strong += 1
-                elif role == "基礎": semi_strong += 1
-                else: aux_strong += 1
-            elif band == "弱" or band == "極弱":
-                total_weak += 1
-                
-        matrix_profile = f"強項分佈: {core_strong} 核心, {semi_strong} 基礎, {aux_strong} 戰術/風險 | 弱點: {total_weak}"
-        
-        return "\n".join([
-            "【Python Engine Matrix Transparency】",
-            *score_lines,
-            f"  > Matrix Profile: {matrix_profile}",
-            f"  > Computed Ability Score: {ability_score:.1f}",
-            f"  > Assigned Grade: {grade}"
-        ])
-
-    def _grade_computation_transparency(self, matrix_scores, ability_score, grade):
-        """Generate a detailed computation walkthrough for the 7D matrix.
-        
-        Returns a dict with textual breakdown suitable for markdown rendering.
-        """
-        is_debut = self._is_debut()
-        
-        debut_weights = {
-            'trainer_signal': 0.30,
-            'horse_health': 0.30,
-            'race_shape': 0.20,
-            'stability': 0.15,
-            'class_advantage': 0.05
-        }
-        
-        active_weights = debut_weights if is_debut else MATRIX_WEIGHTS
-        
-        dims = [
-            ("stability", "進度穩定及狀態趨勢", "基礎"),
-            ("sectional", "段速模型潛在爆發力", "核心"),
-            ("race_shape", "步速形勢與檔位", "戰術"),
-            ("trainer_signal", "練馬師出擊及騎練", "訊號"),
-            ("horse_health", "傷患記錄 / 操練強度", "風險"),
-            ("form_line", "賽績水準", "風險"),
-            ("class_advantage", "班底優勢", "風險"),
-        ]
-        
-        lines = []
-        for key, label, role in dims:
-            if is_debut and key in ("sectional", "form_line"):
-                lines.append(f"  - {label} [{role}]: (初出馬豁免 - 權重 0.00)")
-                continue
-                
-            weight = active_weights.get(key, 0.0)
-            score = matrix_scores.get(key, 60.0)
-            lines.append(f"  - {label} [{role}]: {score:.1f} x {weight:.2f}")
-            
-        lines.append(f"  > **Final Ability Score**: {ability_score:.1f}")
-        
-        return {
-            "title": "7D Matrix Computation Breakdown",
-            "text": "\n".join(lines)
-        }
 
     def _matrix_reasoning(self, matrix_scores, matrix, features, notes):
         specs = {
@@ -2016,28 +1891,46 @@ class RacingEngine:
         """Generate a detailed computation walkthrough for the 7D matrix.
         
         Returns a dict with textual breakdown suitable for markdown rendering.
+        Weights are pulled live from the active weight set (debut vs standard)
+        so the displayed 加權總分 always matches the real ability_score.
         """
+        is_debut = self._is_debut()
+        debut_weights = {
+            "trainer_signal": 0.30,
+            "horse_health": 0.30,
+            "race_shape": 0.20,
+            "stability": 0.15,
+            "class_advantage": 0.05,
+        }
+        active_weights = debut_weights if is_debut else MATRIX_WEIGHTS
+
         dims = [
-            ("stability", "狀態與穩定性", "半核心", 0.0919),
-            ("sectional", "段速與場地適性", "核心", 0.1849),
-            ("race_shape", "檔位與走位", "半核心", 0.2560),
-            ("trainer_signal", "騎練訊號", "核心", 0.2209),
-            ("horse_health", "馬匹健康 / 新鮮感", "輔助", 0.0378),
-            ("form_line", "賽績線", "輔助", 0.0749),
-            ("class_advantage", "級數優勢", "輔助", 0.1335),
+            ("stability", "狀態與穩定性", "半核心"),
+            ("sectional", "段速與場地適性", "核心"),
+            ("race_shape", "檔位與走位", "半核心"),
+            ("trainer_signal", "騎練訊號", "核心"),
+            ("horse_health", "馬匹健康 / 新鮮感", "輔助"),
+            ("form_line", "賽績線", "輔助"),
+            ("class_advantage", "級數優勢", "輔助"),
         ]
-        
+
         lines = []
         weighted_sum = 0.0
-        
-        for key, label, role, weight in dims:
+
+        for key, label, role in dims:
+            weight = active_weights.get(key, 0.0)
             raw_score = float(matrix_scores.get(key, 60))
             band = score_band(raw_score)
             contribution = round(raw_score * weight, 2)
             weighted_sum += contribution
-            
+
+            if weight == 0.0:
+                tag = "初出馬豁免" if is_debut else "0% 權重（僅作風險參考）"
+                lines.append(f"  - {label} [{role}]: {raw_score:.1f}分 ({tag})")
+                continue
+
             # Build human-readable computation line
-            pct = f"{int(weight * 100)}%"
+            pct = f"{weight * 100:.1f}%"
             lines.append(
                 f"  - {label} [{role}]: {raw_score:.1f}分 × {pct} = {contribution:.2f} → {band}"
             )

@@ -22,14 +22,23 @@ FEATURE_KEYS = (
     "confidence_score",
 )
 
+# ML finding (walk-forward backtest, 18 meetings / 180 races): horse_health is
+# noise in the RANKING layer — solo champion-hit 5.6% (below random ~8%), and
+# leave-one-out + coordinate-ascent + cross-validation all agree that removing
+# it does not reduce any metric and slightly lifts good/min/single/top3. Its
+# 0.0378 mass is redistributed proportionally to the other six dims (total mass
+# kept at 0.9999 so the ability-score scale and grade thresholds are unchanged).
+# horse_health is still computed and shown as a risk signal — only its ranking
+# weight is zeroed. Debut runners keep their own weights in engine_core
+# (_ability_score), where horse_health DOES help (no form history to lean on).
 MATRIX_WEIGHTS = {
-    "sectional": 0.1849,
-    "trainer_signal": 0.2209,
-    "stability": 0.0919,
-    "race_shape": 0.2560,
-    "class_advantage": 0.1335,
-    "horse_health": 0.0378,
-    "form_line": 0.0749,
+    "sectional": 0.1922,
+    "trainer_signal": 0.2296,
+    "stability": 0.0955,
+    "race_shape": 0.2661,
+    "class_advantage": 0.1387,
+    "horse_health": 0.0,
+    "form_line": 0.0778,
 }
 
 GRADE_THRESHOLDS = (

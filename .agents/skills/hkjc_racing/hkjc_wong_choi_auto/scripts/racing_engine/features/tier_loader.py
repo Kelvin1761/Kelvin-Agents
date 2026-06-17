@@ -5,8 +5,11 @@ from pathlib import Path
 
 @lru_cache(maxsize=1)
 def load_tiers():
-    root = Path(".agents/skills/hkjc_racing/hkjc_wong_choi_auto")
-    path = root / "resources" / "05_jockey_trainer_tiers.json"
+    # Resolve relative to this module (…/scripts/racing_engine/features/) so the
+    # loader works regardless of the process working directory. Was hardcoded as
+    # a CWD-relative path, which raised FileNotFoundError unless run from repo root.
+    skill_root = Path(__file__).resolve().parents[3]  # hkjc_wong_choi_auto/
+    path = skill_root / "resources" / "05_jockey_trainer_tiers.json"
     return json.loads(path.read_text(encoding="utf-8"))
 
 
