@@ -80,9 +80,11 @@ class RacingEngine:
         matrix_scores = map_features_to_matrix_scores(feature_scores)
         matrix_scores["trainer_signal"] = self._apply_trainer_signal_v3(matrix_scores["trainer_signal"])
         matrix_scores["horse_health"] = self._apply_health_only_v2(matrix_scores["horse_health"])
+        matrix_scores["sectional"] = self._apply_finish_time_trend(matrix_scores["sectional"])
         matrix = map_features_to_matrix(feature_scores)
         matrix["trainer_signal"] = score_band(matrix_scores["trainer_signal"])
         matrix["horse_health"] = score_band(matrix_scores["horse_health"])
+        matrix["sectional"] = score_band(matrix_scores["sectional"])
         ability_score = round(self._ability_score(matrix_scores), 2)
         grade = compute_grade(ability_score)
         matrix_reasoning = self._matrix_reasoning(matrix_scores, matrix, feature_scores, feature_notes)
@@ -515,6 +517,24 @@ class RacingEngine:
 
     def _apply_trainer_signal_v3(self, base_score):
         return round(clip_score(base_score), 2)
+
+    def _apply_finish_time_trend(self, base_score):
+        # ML-validated (walk-forward 18 meetings / 180 races): the finish-time
+        # deviation TREND in `finish_time_block` (improving vs declining vs HKJC
+        # standard) carries ranking signal that SpeedScorer ignores — it only used
+        # the absolute level. Nudging the sectional dim by this trend lifted
+        # min/single/top3 on the held-out split with no metric regressing.
+        block = self._text("finish_time_block")
+        delta = 0.0
+        if "進步" in block:
+            delta = scoring.FINISH_TREND_MICRO_WEIGHTS["improving"]
+        elif "退步" in block:
+            delta = scoring.FINISH_TREND_MICRO_WEIGHTS["declining"]
+        if delta:
+            self.reason_codes.append(
+                "finish_time_trend_up" if delta > 0 else "finish_time_trend_down"
+            )
+        return round(clip_score(base_score + delta), 2)
 
     def _candidate_health_risk_score(self):
         score = scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["base"]
