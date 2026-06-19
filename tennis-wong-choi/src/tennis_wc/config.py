@@ -65,6 +65,7 @@ class Settings:
     kelly_fraction: float
     stake_round_increment: float
     default_bankroll_units: float
+    history_backfill_days: int
 
     @property
     def sqlite_path(self) -> Path:
@@ -107,4 +108,8 @@ def get_settings() -> Settings:
         kelly_fraction=_float_env("KELLY_FRACTION", 0.10),
         stake_round_increment=_float_env("STAKE_ROUND_INCREMENT", 0.5),
         default_bankroll_units=_float_env("DEFAULT_BANKROLL_UNITS", 100.0),
+        # Daily incremental history window. Default wide for a fresh bootstrap;
+        # production .env sets this small (e.g. 21) so daily runs only pull
+        # recently-completed matches instead of re-scanning ~550 days each time.
+        history_backfill_days=_int_env("HISTORY_BACKFILL_DAYS", 550),
     )

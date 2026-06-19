@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
+from tennis_wc.config import get_settings
 from tennis_wc.database.db import get_connection
 from tennis_wc.ingestion.entity_mapping import get_internal_entity_id, get_or_create_player, upsert_tournament
 from tennis_wc.ingestion.raw_response_store import store_raw_response, utc_now
@@ -213,7 +214,14 @@ def ingest_historical_matches(start_date: str, end_date: str) -> int:
     return count
 
 
-def ingest_default_history(as_of_date: str) -> int:
+def ingest_default_history(as_of_date: str, days: int | None = None) -> int:
+    # Daily runs only need to pick up RECENTLY-completed matches — older history
+    # is already in the DB (prior runs + the Sackmann backbone), so re-fetching a
+    # wide window every day is wasted work (many slow API calls). The window is
+    # configurable via HISTORY_BACKFILL_DAYS; the default stays wide so a fresh
+    # bootstrap (and the tests) still pull deep history.
+    if days is None:
+        days = get_settings().history_backfill_days
     end = date.fromisoformat(as_of_date)
-    start = end - timedelta(days=550)
+    start = end - timedelta(days=days)
     return ingest_historical_matches(start.isoformat(), as_of_date)
