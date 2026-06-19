@@ -72,10 +72,35 @@ def race_num_from_path(path: Path):
     return int(m.group(1)) if m else 0
 
 
-def rescore_meeting(md: Path):
+def meeting_is_legacy_schema(md: Path, sample: int = 3):
+    """Detect legacy-pipeline meetings (April–early-May 2026 and earlier) whose
+    Logic JSONs carry a sparse `_data` (~8 keys, no raw_l400/medical) because the
+    data was never extracted. The current engine scores those on mostly neutral
+    fallbacks, so mixing them in silently DILUTES backtest metrics. Heuristic:
+    median `_data` key count < 20 across a few sampled horses.
+    """
+    counts = []
+    for lp in sorted(md.glob("Race_*_Logic.json"), key=race_num_from_path)[:sample]:
+        try:
+            logic = json.loads(lp.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for h in list(logic.get("horses", {}).values())[:8]:
+            d = h.get("_data")
+            counts.append(len(d) if isinstance(d, dict) else 0)
+    if not counts:
+        return False
+    counts.sort()
+    median = counts[len(counts) // 2]
+    return median < 20
+
+
+def rescore_meeting(md: Path, include_legacy: bool = False):
     rp = find_results_json(md)
     if rp is None:
         return [], []
+    if not include_legacy and meeting_is_legacy_schema(md):
+        return [], [f"SKIP {md.name}: legacy sparse-schema meeting (use --include-legacy to force)"]
     actual = load_results(rp)
     races, errors = [], []
     for lp in sorted(md.glob("Race_*_Logic.json"), key=race_num_from_path):
@@ -132,20 +157,25 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="HKJC Auto full-pipeline re-score backtest")
     parser.add_argument("meeting_dirs", nargs="+")
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--include-legacy", action="store_true",
+                        help="Include legacy sparse-schema meetings (default: skip them).")
     args = parser.parse_args()
 
-    all_races, all_errors = [], []
+    all_races, all_errors, skipped = [], [], []
     for d in sorted(args.meeting_dirs):
-        races, errors = rescore_meeting(Path(d))
+        races, errors = rescore_meeting(Path(d), include_legacy=args.include_legacy)
         all_races.extend(races)
-        all_errors.extend(errors)
+        for e in errors:
+            (skipped if e.startswith("SKIP ") else all_errors).append(e)
 
     agg = evaluate(all_races)
     if args.json:
-        print(json.dumps({"summary": agg, "errors": all_errors}, ensure_ascii=False, indent=2))
+        print(json.dumps({"summary": agg, "errors": all_errors, "skipped": skipped}, ensure_ascii=False, indent=2))
     else:
         print("LIVE ENGINE full-pipeline re-score:")
         print("  ", fmt(agg))
+        if skipped:
+            print(f"  skipped {len(skipped)} legacy-schema meeting(s): " + ", ".join(s.split(":")[0][5:] for s in skipped))
         if all_errors:
             print(f"  ({len(all_errors)} horse(s) errored; first: {all_errors[0]})")
     return 0
