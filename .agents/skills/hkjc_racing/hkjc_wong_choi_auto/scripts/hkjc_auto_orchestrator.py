@@ -458,6 +458,13 @@ class HKJCAutoOrchestrator:
 
         race_context = logic_data.get("race_analysis", {})
         horses = logic_data.get("horses", {})
+        # Inject today's runner names so the engine can flag 賽績線 head-to-head
+        # rematches (a past opponent that is also in today's field).
+        if isinstance(race_context, dict):
+            race_context["field_horse_names"] = [
+                h.get("horse_name") for h in horses.values()
+                if isinstance(h, dict) and h.get("horse_name")
+            ]
         header_anchor_map = _load_header_anchor_map(race_file, race_context)
         _enrich_horse_headers(horses, header_anchor_map)
         formline_summaries = _load_formline_opponent_summaries(race_file, race_context, horses)

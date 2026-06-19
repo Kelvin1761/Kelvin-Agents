@@ -918,17 +918,71 @@ class RacingEngine:
         nums = re.findall(r"-?\d+\.?\d*", head)
         return f"{nums[0]}→{nums[-1]}{unit}" if len(nums) >= 2 else ""
 
+    def _rating_direction(self, text):
+        """Derive rating direction from the actual numbers (the source tail label is
+        unreliable — e.g. '82→90 → 降班中' is wrong; rising numbers = 評分上升)."""
+        nums = re.findall(r"\d+", re.split(r"→\s*趨勢|趨勢", str(text or ""))[0])
+        if len(nums) < 2:
+            return ""
+        first, last = int(nums[0]), int(nums[-1])
+        if last - first >= 3:
+            return "評分上升"
+        if first - last >= 3:
+            return "評分回落"
+        return "評分平穩"
+
+    def _formline_summary(self):
+        """Concrete 賽績線: best run vs a named opponent, plus whether those
+        opponents went on to win (form validation) and any rematch today (H2H)."""
+        table = self._value("formline_table")
+        if not isinstance(table, list) or not table:
+            return None
+
+        def fin(row):
+            m = re.match(r"\s*(\d+)", str(row.get("my_finish", "")))
+            return int(m.group(1)) if m else 99
+
+        best = min(table, key=fin)
+        opp = re.sub(r"^\[\d+\]\s*", "", str(best.get("opponents", "")).split("(")[0]).strip()
+        my = str(best.get("my_finish", "")).strip()
+        validated = sum(1 for r in table
+                        if re.search(r"[1-9]\d*\s*勝", str(r.get("next_performance", "")))
+                        and "0 勝" not in str(r.get("next_performance", "")))
+        # head-to-head against today's field (names injected via race_context)
+        field = set(self.race_context.get("field_horse_names") or [])
+        mine = self.horse_data.get("horse_name")
+        h2h = []
+        for r in table:
+            opp_text = str(r.get("opponents", ""))
+            for nm in field:
+                if nm and nm != mine and nm in opp_text:
+                    h2h.append((nm, fin(r)))
+        return {"best_opp": opp, "my_finish": my, "validated": validated,
+                "n": len(table), "h2h": h2h}
+
+    def _jockey_combo_detail(self):
+        """Concrete 騎練 reason: combo record + whether jockey changed this run."""
+        rows = self._jockey_combo_rows()
+        cur = next((r for r in rows if r.get("jockey") and self._current_declared_jockey()
+                    and r["jockey"] in self._current_declared_jockey()), None)
+        if not cur and rows:
+            cur = rows[0]
+        changed = bool(self._value("jockey_combo_block")) and "今場沿用" not in str(self._value("jockey_combo_block"))
+        return {"row": cur, "changed": changed,
+                "jockey": self._clean(self._value("jockey") or ""),
+                "trainer": self._clean(self._value("trainer") or "")}
+
     def _data_readout(self, features, matrix_scores):
-        """Structured, fully-Chinese 數據判讀 rows: each = label/value/trend/band.
+        """Structured, fully-Chinese 數據判讀 rows: each = label/value/trend/band(/reason).
         Feeds both the .md report and the dashboard preview. Skips absent data."""
         rows = []
 
-        def add(label, value, trend, band=None):
+        def add(label, value, trend, band=None, reason=""):
             value = str(value or "").strip()
             trend = str(trend or "").strip()
             if value or trend:
                 rows.append({"label": label, "value": value, "trend": trend,
-                             "band": band or self._readout_band(trend)})
+                             "band": band or self._readout_band(trend), "reason": reason})
 
         def present(v):
             return v is not None and str(v).strip() not in ("", "N/A", "-", "--", "數據不可用")
@@ -945,7 +999,11 @@ class RacingEngine:
             add("完成時間", "對標偏差", tr)
         rt = self._value("rating_trend")
         if present(rt):
-            add("評分走勢", self._seq_endpoints(rt), self._trend_tail(rt))
+            direction = self._rating_direction(rt)
+            ends = self._seq_endpoints(rt)
+            add("評分走勢", ends, direction,
+                band="✅" if direction == "評分上升" else "➖",
+                reason=f"官方評分{ends}、{direction[2:]}" if ends and direction else "")
         pi = self._value("position_pi")
         if present(pi):
             add("走位動量", "", self._trend_tail(pi))
@@ -971,9 +1029,35 @@ class RacingEngine:
             add("檔位", f"{str(draw).strip()}檔", "")
         # 騎練 + 晨操 use matrix bands / digests already computed
         ts = matrix_scores.get("trainer_signal", 60)
-        add("騎練組合", f"{self._clean(self._value('jockey') or '')}／{self._clean(self._value('trainer') or '')}".strip("／"),
-            "強訊號" if ts >= 70 else ("偏弱" if ts < 55 else "中性"),
-            band="✅" if ts >= 70 else ("⚠️" if ts < 55 else "➖"))
+        jc = self._jockey_combo_detail()
+        jt = f"{jc['jockey']}／{jc['trainer']}".strip("／")
+        row = jc.get("row")
+        jscore = features.get("jockey_score", 60)
+        parts_r = []
+        if jc.get("changed"):
+            parts_r.append(f"今仗轉用上格騎師{jc['jockey']}" if jscore >= 75 else f"今仗換上{jc['jockey']}")
+        if row and row.get("starts", 0) >= 1:
+            wins, avg = int(row.get("wins", 0)), row.get("avg_finish", 0)
+            if wins > 0 or avg <= 4.5:
+                parts_r.append(f"與此馬 {int(row['starts'])}仗{wins}勝、平均{avg:.1f}名（合拍）")
+            else:
+                parts_r.append(f"惟與此馬 {int(row['starts'])}仗未勝、平均{avg:.1f}名")
+        elif ts >= 70 and not jc.get("changed"):
+            parts_r.append(f"騎練班底評分高（{jt}）")
+        jreason = "，".join(parts_r)
+        add("騎練組合", jt, "強訊號" if ts >= 70 else ("偏弱" if ts < 55 else "中性"),
+            band="✅" if ts >= 70 else ("⚠️" if ts < 55 else "➖"), reason=jreason)
+        fl = self._formline_summary()
+        if fl:
+            if fl["h2h"]:
+                names = "、".join(sorted({nm for nm, _ in fl["h2h"]}))
+                rsn = f"今場重遇曾交手對手{names}"
+                add("賽績線", f"重遇{names}", "曾交手", band="✅", reason=rsn)
+            else:
+                trend = "對手已驗證" if fl["validated"] >= 1 else "對手未驗證"
+                add("賽績線", f"近{fl['n']}仗", trend,
+                    band="✅" if fl["validated"] >= 1 else "➖",
+                    reason=f"最佳一仗{fl['my_finish']}、對手「{fl['best_opp']}」；其後{fl['validated']}名對手有勝出" if fl["best_opp"] else "")
         tw = self._value("trackwork_digest")
         if present(tw):
             twtrend = "加強中" if "加強" in str(tw) else ("放緩" if "放緩" in str(tw) else "")
@@ -987,39 +1071,37 @@ class RacingEngine:
     }
 
     def _core_logic(self, features, matrix_scores, matrix_reasoning):
-        """Precise, data-grounded 2-3 sentence verdict. Each clause cites an actual
-        readout signal (段速/能量/評分趨勢, 檔位, 騎練…) — no filler padding."""
+        """Reason-giving verdict. Each strong/weak factor is explained with its
+        CONCRETE driver (combo names, jockey change, named opponent, segment
+        numbers, rating direction) — neutral factors are skipped, no filler verdict."""
         name = self.horse_data.get("horse_name", "此駒")
         readout = self._data_readout(features, matrix_scores)
+
+        def describe(r):
+            # prefer the concrete reason; else label + trend/value
+            if r.get("reason"):
+                return r["reason"]
+            detail = r["trend"] or r["value"]
+            return f"{r['label']}{detail}".replace("　", "")
+
         pos = [r for r in readout if r["band"] == "✅"]
         neg = [r for r in readout if r["band"] == "⚠️"]
+
+        # Always-present concrete framing: overall score + strongest/weakest dim.
         ordered = sorted(matrix_scores.items(), key=lambda kv: kv[1], reverse=True)
         top_dim = self.DIM_LABELS.get(ordered[0][0], ordered[0][0])
         low_dim = self.DIM_LABELS.get(ordered[-1][0], ordered[-1][0])
-
-        def clause(rows):
-            bits = []
-            for r in rows[:3]:
-                detail = r["trend"] or r["value"]
-                bits.append(f"{r['label']}{detail}".replace("　", ""))
-            return "、".join(bits)
-
-        sents = []
+        ability = self._ability_score(matrix_scores)
+        sents = [f"{name}今仗七維綜合戰力 {ability:.1f} 分，當中以{top_dim}（{ordered[0][1]:.0f}）為最強一環、"
+                 f"{low_dim}（{ordered[-1][1]:.0f}）相對最弱。"]
         if pos:
-            sents.append(f"{name}數據正路集中喺{clause(pos)}，當中{top_dim}係主要支撐。")
-        else:
-            sents.append(f"{name}數據面未見突出強項，現階段主要靠{top_dim}托住評分。")
+            sents.append("優勢在於" + "；".join(describe(r) for r in pos[:3]) + "。")
         if neg:
-            sents.append(f"要留意嘅係{clause(neg)}，而{low_dim}為七維中最弱一環，臨場須靠形勢補足。")
-        else:
-            sents.append(f"暫未見明顯數據紅旗，{low_dim}屬相對較弱一環，仍要睇臨場節奏配合。")
+            sents.append("要留意" + "；".join(describe(r) for r in neg[:3]) + "。")
+        if not pos and not neg:
+            sents.append("各項數據趨勢偏中性，暫未見鮮明強弱訊號，臨場節奏與形勢將係關鍵。")
         if self._is_debut():
-            sents.append("初出馬無正式賽績，以上以備戰及試閘數據作背景參考，落地與否要臨場驗證。")
-        else:
-            verdict = "整體數據紮實，具爭勝條件" if len(pos) >= 3 and not neg else (
-                "整體偏保留，需形勢及執行力配合先易兌現" if len(neg) >= len(pos) else
-                "整體中性偏好，數據面有支點但未到壓倒性")
-            sents.append(f"{verdict}。")
+            sents.append("初出馬無正式賽績，以上以備戰及試閘數據作背景參考，須臨場驗證。")
         return self._normalize_prose("".join(sents))
 
     def _context_sentence(self, features, top_keys=None, low_keys=None, include_trackwork=True):
