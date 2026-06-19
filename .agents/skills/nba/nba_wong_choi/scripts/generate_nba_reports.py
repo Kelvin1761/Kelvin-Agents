@@ -18,18 +18,26 @@ Key changes in V2:
 
 Usage:
   python generate_nba_reports.py \
+    --engine hybrid \
     --sportsbet path/to/Sportsbet_Odds_CHI_WSH.json \
     --extractor path/to/nba_game_data_CHI_WSH.json \
     --output path/to/Game_CHI_WSH_Skeleton.md
 
 Version: 2.0.0
+Engine: --engine hybrid|ml|legacy (default: hybrid / NBA_WC_ENGINE)
 """
 import sys, io, os, json, math, argparse
 from datetime import datetime
 
+_ML_PREDICTOR = None  # lazy-loaded for hybrid/ml modes
+
 L10_ORDER = "newest_first"
 PLAYER_MARKET = "PLAYER_MILESTONE"
 TEAM_MARKET = "TEAM_MARKET"
+ENGINE_MODES = {"legacy", "ml", "hybrid"}
+DEFAULT_ENGINE_MODE = os.environ.get("NBA_WC_ENGINE", "hybrid").lower()
+if DEFAULT_ENGINE_MODE not in ENGINE_MODES:
+    DEFAULT_ENGINE_MODE = "hybrid"
 
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -229,6 +237,49 @@ def edge_grade(edge):
     elif edge >= 5: return "✅有價值"
     elif edge >= 0: return "➖邊緣"
     else: return "❌負EV"
+
+
+def _safe_float(value, default=0.0):
+    try:
+        if value in (None, "N/A", "?"):
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _usage_guard_penalty(stat_key, line_val, season_phase, card, adv, gl):
+    """Finals/playoff usage guard for non-primary scorer PTS overs."""
+    if stat_key != "PTS" or season_phase not in {"PLAYOFFS", "PLAY_IN"}:
+        return 0.0, []
+
+    reasons = []
+    penalty = 0.0
+    usg_pct = _safe_float(adv.get("USG_PCT"))
+    fga = gl.get("FGA") or []
+    fga_l3 = sum(fga[:3]) / 3 if len(fga) >= 3 else (sum(fga) / len(fga) if fga else 0)
+    l3_avg = card.get("l3_avg", 0)
+
+    if line_val >= 15 and 0 < usg_pct < 20:
+        penalty -= 6
+        reasons.append("FINALS_USAGE_GUARD: non-primary scorer PTS 15+")
+    if line_val >= 15 and fga_l3 and fga_l3 < 10:
+        penalty -= 5
+        reasons.append("FINALS_USAGE_GUARD: recent FGA floor < 10")
+    if line_val >= 15 and l3_avg and l3_avg < line_val:
+        penalty -= 4
+        reasons.append("FINALS_USAGE_GUARD: L3 scoring below line")
+
+    return penalty, reasons
+
+
+def _rebound_direction_bonus(stat_key, season_phase, cov, hit_l5):
+    """Promote rebound props in playoff low-efficiency contexts."""
+    if stat_key != "REB" or season_phase not in {"PLAYOFFS", "PLAY_IN"}:
+        return 0.0
+    if hit_l5 >= 60 and (not isinstance(cov, (int, float)) or cov <= 0.55):
+        return 4.0
+    return 2.0 if hit_l5 >= 50 else 0.0
 
 
 # ─── Adjusted Win Probability Engine (V3 — 10-Factor) ─────────────────────
@@ -502,7 +553,8 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
                       opponent_def_rank=None, opponent_pace=None,
                       is_b2b=False, is_home=None, spread=None,
                       usg_bonus=0, defender_impact=None, top_defender_name="",
-                      opponent_abbr="", season_phase="MID_SEASON"):
+                      opponent_abbr="", season_phase="MID_SEASON",
+                      ml_predictor=None, team_stats=None, engine_mode="hybrid"):
     card = {
         "name": player_name,
         "team": team_abbr,
@@ -547,6 +599,9 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
 
         mins = gl.get("MIN", [])
         card["min_avg"] = round(sum(mins) / len(mins), 1) if mins else 0
+        fga = gl.get("FGA", [])
+        card["fga_avg"] = round(sum(fga) / len(fga), 1) if fga else 0
+        card["fga_l3_avg"] = round(sum(fga[:3]) / 3, 1) if len(fga) >= 3 else card["fga_avg"]
         card["fatigue"] = fatigue
     else:
         # Use Sportsbet L5 as fallback
@@ -567,6 +622,8 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
         card["home_ppg"] = "N/A"
         card["road_ppg"] = "N/A"
         card["min_avg"] = 0
+        card["fga_avg"] = 0
+        card["fga_l3_avg"] = 0
         card["fatigue"] = {}
         card["position"] = "?"
 
@@ -597,30 +654,94 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
             home_ppg=card.get("home_ppg"), road_ppg=card.get("road_ppg"),
             team_pace=None, l10=data_for_hr, min_avg=card.get("min_avg", 0),
             season_phase=season_phase)  # team_pace set at main() level
-        ev = edge_calc(est_prob, imp)
-        grade = edge_grade(ev)
-
-        # V8: True EV% and confidence-adjusted EV
-        true_ev = ev_pct_calc(est_prob, float(odds_str))
-        conf_mult = confidence_multiplier(card["cov"])
-        conf_adj_ev = round(true_ev * conf_mult, 2)
-
         # V7: Narrative now written by LLM (not Python)
         narrative = ""
         adj_line = format_adjustment_line(hr_l10, adj_breakdown)
+
+        # ── ML Engine: Replace 10-factor prob with ML prediction ──
+        ml_prob = None
+        ml_features_used = False
+        if ml_predictor is not None and ext_player is not None:
+            try:
+                opp_stats = team_stats.get(opponent_abbr, {}) if team_stats else {}
+                ml_feats = ml_predictor.build_features(
+                    ext_player, stat_key, line_val,
+                    1 if is_home else 0, opponent_abbr,
+                    opp_def_rating=opp_stats.get("DEF_RATING", 0) or 0,
+                    opp_def_rank=opponent_def_rank or 0,
+                    opp_pace=opponent_pace or 98.0,
+                    defender_pm=defender_impact or 0,
+                    usg_bonus_pct=usg_bonus)
+                ml_prob = ml_predictor.predict(ml_feats)
+                ml_features_used = True
+            except Exception as e:
+                pass
+
+        ml_est_prob = round(ml_prob * 100, 1) if ml_prob is not None else None
+
+        usage_penalty, usage_reasons = _usage_guard_penalty(
+            stat_key, line_val, season_phase, card, adv if ext_player else {}, gl if ext_player else {})
+        rebound_bonus = _rebound_direction_bonus(stat_key, season_phase, card["cov"], hr_l5)
+
+        if engine_mode == "legacy" or ml_est_prob is None:
+            final_prob = est_prob
+            final_engine = "legacy"
+        elif engine_mode == "ml":
+            final_prob = ml_est_prob
+            final_engine = "ml"
+        else:
+            # Hybrid V1: 10-factor remains the calibrated probability used for
+            # EV/Kelly, while ML acts as a ranking/confirmation signal. The
+            # current ML backtest has stronger ROC-AUC but slightly worse Brier,
+            # so averaging probabilities would underprice otherwise viable legs.
+            ml_delta = ml_est_prob - est_prob
+            hybrid_adj = 0.0
+            if stat_key in {"REB", "AST"}:
+                if ml_delta >= 12:
+                    hybrid_adj += 3.0
+                elif ml_delta <= -15:
+                    hybrid_adj -= 5.0
+            elif stat_key in {"PTS", "FG3M"}:
+                if ml_delta <= -10:
+                    hybrid_adj -= 5.0
+                elif ml_delta >= 20 and season_phase not in {"PLAYOFFS", "PLAY_IN"}:
+                    hybrid_adj += 2.0
+            final_prob = round(est_prob + hybrid_adj, 1)
+            final_engine = "hybrid"
+
+        final_prob = round(max(1.0, min(98.0, final_prob + usage_penalty + rebound_bonus)), 1)
+        final_edge = edge_calc(final_prob, imp)
+        final_true_ev = ev_pct_calc(final_prob, float(odds_str))
+        conf_mult = confidence_multiplier(card["cov"])
+        final_conf_adj_ev = round(final_true_ev * conf_mult, 2)
+
+        engine_notes = []
+        if ml_est_prob is not None:
+            engine_notes.append(f"ML {ml_est_prob}%")
+        engine_notes.append(f"10F {est_prob}%")
+        if usage_reasons:
+            engine_notes.extend(usage_reasons)
+        if rebound_bonus:
+            engine_notes.append(f"REB_DIRECTION_BONUS +{rebound_bonus}%")
 
         card["line_analysis"][line_val_str] = {
             "line": line_val,
             "line_display": f"{line_val_str}+",  # "10+" format
             "odds": odds_str,
             "implied_prob": imp,
-            "estimated_prob": est_prob,
+            "estimated_prob": final_prob,
+            "det_prob": est_prob,
+            "hybrid_prob": final_prob if final_engine == "hybrid" else None,
+            "ml_prob": ml_prob,
+            "ml_est_prob": ml_est_prob,
+            "engine": final_engine,
+            "engine_notes": engine_notes,
             "base_rate": hr_l10,
-            "edge": ev,  # backward compat alias
-            "prob_edge_pp": ev,  # V8: probability edge in percentage points
-            "ev_pct": true_ev,  # V8: true EV%
-            "confidence_adjusted_ev_pct": conf_adj_ev,  # V8: confidence-discounted EV
-            "edge_grade": edge_grade(ev),
+            "edge": final_edge,  # backward compat alias
+            "prob_edge_pp": final_edge,  # V8: probability edge in percentage points
+            "ev_pct": final_true_ev,  # V8: true EV%
+            "confidence_adjusted_ev_pct": final_conf_adj_ev,  # V8: confidence-discounted EV
+            "edge_grade": edge_grade(final_edge),
             "hit_l10": hr_l10, "hit_l10_count": hr_l10_count,
             "hit_l5": hr_l5, "hit_l5_count": hr_l5_count,
             "hit_l3": hr_l3, "hit_l3_count": hr_l3_count,
@@ -694,6 +815,12 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
                 "hit_l3_count": la["hit_l3_count"],
                 "implied_prob": la["implied_prob"],
                 "estimated_prob": la["estimated_prob"],
+                "ml_prob": la.get("ml_prob"),
+                "ml_est_prob": la.get("ml_est_prob"),
+                "det_prob": la.get("det_prob"),
+                "hybrid_prob": la.get("hybrid_prob"),
+                "engine": la.get("engine", "10factor"),
+                "engine_notes": la.get("engine_notes", []),
                 "base_rate": la.get("base_rate", la["hit_l10"]),
                 "edge": la["edge"],
                 "prob_edge_pp": la.get("prob_edge_pp", la["edge"]),
@@ -716,6 +843,8 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
                 # SIP fields
                 "bench_minutes_risk": bench_minutes_risk,
                 "min_avg": min_avg,
+                "fga_avg": card.get("fga_avg", 0),
+                "fga_l3_avg": card.get("fga_l3_avg", 0),
                 "l3_avg": l3_avg,
                 "l1_val": l1_val,
                 "day_to_day": is_day_to_day,
@@ -831,6 +960,15 @@ def _violates_same_team_scoring_cap(legs):
     return any(count > 2 for count in team_pts.values())
 
 
+def _violates_same_team_ast_stack(legs):
+    team_ast = {}
+    for leg in legs:
+        if leg.get("category") == "AST":
+            team = leg.get("team")
+            team_ast[team] = team_ast.get(team, 0) + 1
+    return any(count > 1 for count in team_ast.values())
+
+
 def _has_team_player_script_conflict(legs):
     return any(leg.get("market_type") == TEAM_MARKET for leg in legs) and any(
         leg.get("market_type") == PLAYER_MARKET for leg in legs)
@@ -840,6 +978,7 @@ def _combo_is_allowed(legs):
     return (
         _has_unique_players(legs)
         and not _violates_same_team_scoring_cap(legs)
+        and not _violates_same_team_ast_stack(legs)
         and not _has_team_player_script_conflict(legs)
     )
 
@@ -976,11 +1115,65 @@ def compute_combo_ev(combo):
     }
 
 
+def _combo_passes_positive_ev_gate(combo, tier="value"):
+    """Hard block negative combo EV / zero Kelly combos.
+
+    Reflector 2026-06-04 found the pipeline output four formal SGM combos
+    despite all combo EV values being negative and Kelly sizing equal to zero.
+    This gate makes that impossible at selection time.
+    """
+    if not combo:
+        return False
+    data = compute_combo_ev(combo)
+    combo_ev_pct = data.get("combo_ev_pct", -999)
+    adj_joint_prob_pct = round(data.get("adjusted_joint_prob", 0) * 100, 1)
+    kelly_f = kelly_fraction(adj_joint_prob_pct, data.get("combo_decimal_odds", _combo_odds(combo)))
+    if combo_ev_pct <= 0 or kelly_f <= 0:
+        return False
+    if tier == "banker" and data.get("combo_risk_tier") not in {"BANKER", "VALUE", "MARGINAL"}:
+        return False
+    return True
+
+
 def _mc_edge(leg):
     mc_lookup = leg.get("_mc_lookup", {})
     mc_key = f"{leg.get('player','')}|{leg.get('team','')}|{leg.get('category','')}|{leg.get('line_display','')}"
     mc_result = mc_lookup.get(mc_key, {})
     return mc_result.get("mc_edge")
+
+
+def _post_reflector_leg_allowed(leg, tier):
+    """Single-leg guards promoted from the 2026-06-04 reflector."""
+    category = leg.get("category")
+    line_val = leg.get("line_val", 0)
+    med = leg.get("med", 0)
+    mc_edge = _mc_edge(leg)
+    notes = leg.get("engine_notes", []) or []
+
+    # SIP-2026-06-04-2: Median-Line AST Guard.
+    # AST props at/above median need strong MC confirmation, otherwise a tiny
+    # role/game-script change turns a 90% L10 leg into a false positive.
+    if category == "AST" and line_val and med and line_val >= med:
+        if not isinstance(mc_edge, (int, float)) or mc_edge < 3:
+            leg.setdefault("selection_reject_reasons", []).append(
+                "MEDIAN_LINE_AST_GUARD: line >= median without strong MC edge")
+            return False
+
+    if category == "AST" and leg.get("season_phase") in {"PLAYOFFS", "PLAY_IN"}:
+        if leg.get("cov", 0) > 0.45 and leg.get("min_avg", 0) < 30:
+            leg.setdefault("selection_reject_reasons", []).append(
+                "PLAYOFF_AST_ROLE_GUARD: high-CoV AST with sub-30 avg minutes")
+            return False
+
+    # SIP-2026-06-04-3: Finals Usage Reallocation Guard.
+    if category == "PTS" and leg.get("season_phase") in {"PLAYOFFS", "PLAY_IN"} and line_val >= 15:
+        has_usage_flag = any("FINALS_USAGE_GUARD" in str(n) for n in notes)
+        if has_usage_flag:
+            leg.setdefault("selection_reject_reasons", []).append(
+                "FINALS_USAGE_GUARD: non-primary PTS over blocked in playoff auto-combo")
+            return False
+
+    return True
 
 
 def _value_bomb_confirmed(leg):
@@ -1074,7 +1267,8 @@ def select_combo_1(candidates):
             and not c.get("day_to_day", False)
             and c.get("l3_avg", c["avg"]) >= c.get("line_val", 0)
             and _has_buffer(c)
-            and _passes_playoff_gate(c, "banker")]
+            and _passes_playoff_gate(c, "banker")
+            and _post_reflector_leg_allowed(c, "banker")]
     # F5: Prioritize L10 100% → 90% → 80% legs first, then by edge
     pool.sort(key=lambda x: (-x["hit_l10"], -x["hit_l5"], -x["edge"], x["odds"]))
 
@@ -1088,7 +1282,8 @@ def select_combo_1(candidates):
                            target_min=2.0, target_max=3.5,  # V5.3: FW-11 floor is 2.0x
                            min_legs=2, max_legs=4,  # V5.3: Allow 4 legs to reach 2.0x target
                            score_fn=score_fn,
-                           max_same_team_pts=2, max_same_team=3)
+                           max_same_team_pts=2, max_same_team=3,
+                           tier="banker")
 
     # Fallback: relax to L10 ≥ 70% if strict pool is too small
     if not result:
@@ -1102,13 +1297,15 @@ def select_combo_1(candidates):
                         and not c.get("bench_minutes_risk", False)
                         and not c.get("day_to_day", False)
                         and c.get("l3_avg", c["avg"]) >= c.get("line_val", 0) * 0.85
-                        and _passes_playoff_gate(c, "banker")]
+                        and _passes_playoff_gate(c, "banker")
+                        and _post_reflector_leg_allowed(c, "banker")]
         pool_relaxed.sort(key=lambda x: (-x["hit_l10"], -x["edge"], x["odds"]))
         result = _greedy_build(pool_relaxed,
                                target_min=2.0, target_max=4.0,  # V5.3: FW-11 floor is 2.0x
                                min_legs=2, max_legs=4,  # V5.3: Allow 4 legs
                                score_fn=score_fn,
-                               max_same_team_pts=2, max_same_team=3)
+                               max_same_team_pts=2, max_same_team=3,
+                               tier="banker")
 
     return result
 
@@ -1117,7 +1314,8 @@ def select_combo_1(candidates):
 # Build toward the target odds range, but keep tier-specific max legs tight.
 
 def _greedy_build(pool, target_min, target_max, min_legs, max_legs,
-                  score_fn=None, max_same_team_pts=2, max_same_team=4):
+                  score_fn=None, max_same_team_pts=2, max_same_team=4,
+                  tier="value"):
     """Greedy capped SGM builder V5.
     
     Improvements over V4:
@@ -1138,6 +1336,8 @@ def _greedy_build(pool, target_min, target_max, min_legs, max_legs,
         return sum(1 for leg in combo if leg.get("team") == team)
 
     def _try_build_from(seed_idx):
+        if not _post_reflector_leg_allowed(pool[seed_idx], tier):
+            return None
         combo = [pool[seed_idx]]
         used_players = {pool[seed_idx]["player"]}
 
@@ -1145,6 +1345,8 @@ def _greedy_build(pool, target_min, target_max, min_legs, max_legs,
             if len(combo) >= max_legs:
                 break
             if candidate["player"] in used_players:
+                continue
+            if not _post_reflector_leg_allowed(candidate, tier):
                 continue
             # Same-team PTS cap
             if candidate.get("category") == "PTS" and _team_pts_count(combo, candidate["team"]) >= max_same_team_pts:
@@ -1189,10 +1391,10 @@ def _greedy_build(pool, target_min, target_max, min_legs, max_legs,
                 break  # Past minimum with extra leg cushion — stop
 
         final_odds = _combo_odds(combo)
-        if len(combo) >= min_legs and target_min <= final_odds <= target_max:
+        if len(combo) >= min_legs and target_min <= final_odds <= target_max and _combo_passes_positive_ev_gate(combo, tier):
             return combo
         # If we overshot slightly, still accept if within 20% tolerance
-        if len(combo) >= min_legs and final_odds >= target_min and final_odds <= target_max * 1.2:
+        if len(combo) >= min_legs and final_odds >= target_min and final_odds <= target_max * 1.2 and _combo_passes_positive_ev_gate(combo, tier):
             return combo
         return None
 
@@ -1236,6 +1438,7 @@ def select_combo_2(candidates, exclude_descs=None):
             and c.get("cov", 0) <= 0.75
             and not c.get("bench_minutes_risk", False)
             and _passes_playoff_gate(c, "value")
+            and _post_reflector_leg_allowed(c, "value")
             and c["desc"] not in exclude]
     pool.sort(key=lambda x: (-x["hit_l10"], -x.get("hit_l5", 0), -x["edge"], x["odds"]))
 
@@ -1248,7 +1451,8 @@ def select_combo_2(candidates, exclude_descs=None):
                          target_min=3.0, target_max=5.0,  # V5.3: FW-11 floor is 3.0x
                          min_legs=2, max_legs=4,
                          score_fn=score_fn,
-                         max_same_team=3)
+                         max_same_team=3,
+                         tier="value")
 
 
 def select_combo_3(candidates, exclude_descs=None):
@@ -1266,6 +1470,7 @@ def select_combo_3(candidates, exclude_descs=None):
             and c.get("cov", 0) <= 0.85
             and not c.get("bench_minutes_risk", False)
             and _passes_playoff_gate(c, "high")
+            and _post_reflector_leg_allowed(c, "high")
             and c["desc"] not in exclude]
     pool.sort(key=lambda x: (-x["hit_l10"], -x.get("hit_l5", 0), -x["edge"], x["odds"]))
 
@@ -1278,7 +1483,8 @@ def select_combo_3(candidates, exclude_descs=None):
                          target_min=8.0, target_max=15.0,  # V5.3: FW-11 floor is 8.0x
                          min_legs=3, max_legs=5,  # V5.3: Allow up to 5 legs to reach 8.0x
                          score_fn=score_fn,
-                         max_same_team=4)
+                         max_same_team=4,
+                         tier="high")
 
 
 def select_combo_x_value_bomb(candidates):
@@ -1295,7 +1501,8 @@ def select_combo_x_value_bomb(candidates):
                  and c["odds"] >= 1.05
                  and "神經刀" not in c.get("cov_grade", "")
                  and not c.get("bench_minutes_risk", False)
-                 and _passes_playoff_gate(c, "bomb")]
+                 and _passes_playoff_gate(c, "bomb")
+                 and _post_reflector_leg_allowed(c, "bomb")]
     safe_pool.sort(key=lambda x: (-x["hit_l10"], -x.get("hit_l5", 0), x["odds"]))
 
     # Phase 2: Edge spikes — the 'bomb' component
@@ -1305,7 +1512,8 @@ def select_combo_x_value_bomb(candidates):
                   and c["hit_l10"] >= 60
                   and c.get("hit_l5", 0) >= 50
                   and _value_bomb_confirmed(c)
-                  and _passes_playoff_gate(c, "bomb")]
+                  and _passes_playoff_gate(c, "bomb")
+                  and _post_reflector_leg_allowed(c, "bomb")]
     spike_pool.sort(key=lambda x: (-x["edge"], -x["hit_l10"]))
 
     if not spike_pool:
@@ -1353,7 +1561,7 @@ def select_combo_x_value_bomb(candidates):
     if not _combo_is_allowed(combo):
         return []
     final_odds = _combo_odds(combo)
-    if 2 <= len(combo) <= 3 and final_odds >= 5.0:
+    if 2 <= len(combo) <= 3 and final_odds >= 5.0 and _combo_passes_positive_ev_gate(combo, "bomb"):
         return combo
     return []
 
@@ -1637,7 +1845,8 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
 
 
 def gen_full_report(meta, odds, injuries, news, team_stats,
-                    all_cards, sportsbet_time, season_phase="MID_SEASON"):
+                    all_cards, sportsbet_time, season_phase="MID_SEASON",
+                    engine_mode="hybrid"):
     sections = []
 
     away_abbr = meta.get("away", {}).get("abbr", "?")
@@ -1648,7 +1857,12 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     # Header
     sections.append(f"# 🏀 NBA Wong Choi — {away_name} @ {home_name}")
     sections.append(f"**日期**: {meta.get('date', '?')} | **Sportsbet 提取時間**: {sportsbet_time}")
-    sections.append(f"**odds_source**: SPORTSBET_LIVE ✅ | **引擎版本**: Adjusted Win Prob V8 (EV Quant + Correlation Penalty)")
+    engine_label = {
+        "legacy": "10-Factor V8 Legacy",
+        "ml": "ML Main V1 + Safety Gates",
+        "hybrid": "Hybrid V1 (ML shortlist + 10-Factor safety gates)",
+    }.get(engine_mode, "Hybrid V1")
+    sections.append(f"**odds_source**: SPORTSBET_LIVE ✅ | **引擎版本**: {engine_label} (EV Quant + Correlation Penalty)")
     sections.append(f"**season_phase**: {season_phase} | **L10_ORDER**: {L10_ORDER} | **strategy**: SPORTSBET_MILESTONE_OVER_ONLY")
     sections.append(f"")
 
@@ -1740,7 +1954,8 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     sections.append(f"## 🎰 SGM Parlay 組合 (Python Auto-Selection V5)")
     sections.append(f"")
     sections.append(f"> [!IMPORTANT]")
-    sections.append(f"> 以下組合由 Python V5 短腿數 + Playoff Gate 引擎自動篩選。所有數學數據不可修改。")
+    sections.append(f"> 以下組合由 Python V5 短腿數 + Playoff Gate + Post-Reflector EV Gate 自動篩選。所有數學數據不可修改。")
+    sections.append(f"> Engine mode: **{engine_mode.upper()}**；任何 `Combo EV% <= 0` 或 Kelly = 0% 嘅組合會被 hard block。")
     sections.append(f"")
 
     sections.append(gen_combo_section(
@@ -1833,7 +2048,11 @@ def main():
     parser.add_argument("--sportsbet", required=True, help="Sportsbet odds JSON (from sportsbet_parser.py)")
     parser.add_argument("--extractor", required=True, help="nba_extractor.py output JSON")
     parser.add_argument("--output", required=True, help="Output skeleton .md path")
+    parser.add_argument("--engine", choices=sorted(ENGINE_MODES), default=DEFAULT_ENGINE_MODE,
+                        help="Probability engine: hybrid (default), ml, or legacy")
+    parser.add_argument("--legacy", action="store_true", help="Deprecated alias for --engine legacy")
     args = parser.parse_args()
+    engine_mode = "legacy" if args.legacy else args.engine
 
     if not os.path.exists(args.sportsbet):
         print(f"❌ Sportsbet JSON 唔存在: {args.sportsbet}")
@@ -1876,6 +2095,22 @@ def main():
     season_phase = detect_season_phase(date_str, meta)
     meta["season_phase"] = season_phase
     meta["l10_order"] = L10_ORDER
+
+    # ── Engine 初始化：Hybrid/ML use ML predictor; legacy stays deterministic ──
+    ml_predictor = None
+    if engine_mode in {"hybrid", "ml"}:
+        try:
+            _ml_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "scripts", "nba_ml")
+            sys.path.insert(0, _ml_dir)
+            from nba_ml_predictor import MLPropPredictor
+            ml_predictor = MLPropPredictor()
+            global _ML_PREDICTOR
+            _ML_PREDICTOR = ml_predictor
+            print(f"🧠 ML Engine active: {len(ml_predictor.feature_names)} features | mode={engine_mode}")
+        except Exception as e:
+            print(f"⚠️ ML Engine failed to load: {e}")
+            print(f"   Falling back to 10-Factor engine")
+            engine_mode = "legacy"
 
     # V3: Pre-compute context for each team
     spread = ex_odds.get("spread_away", None)
@@ -1935,7 +2170,9 @@ def main():
                 is_b2b=is_b2b, is_home=is_home, spread=spread,
                 usg_bonus=usg_bonus, defender_impact=def_impact,
                 top_defender_name=top_def_name, opponent_abbr=opponent,
-                season_phase=season_phase)
+                season_phase=season_phase,
+                ml_predictor=ml_predictor, team_stats=team_stats,
+                engine_mode=engine_mode)
             all_cards.append(card)
 
     # Summary
@@ -1943,12 +2180,18 @@ def main():
     for c in all_cards:
         cats[c['category']] = cats.get(c['category'], 0) + 1
     cat_str = ", ".join(f"{k}: {v}" for k, v in cats.items())
+    engine_name = {
+        "legacy": "10-Factor V8 Legacy",
+        "ml": "ML Main V1",
+        "hybrid": "Hybrid V1",
+    }.get(engine_mode, "Hybrid V1")
     print(f"📊 已處理 {len(all_cards)} 個球員×盤口組合 ({cat_str})")
-    print(f"📐 引擎版本: Adjusted Win Prob V3 (10-Factor)")
+    print(f"📐 引擎版本: Adjusted Win Prob ({engine_name})")
 
     # Generate report
     report = gen_full_report(meta, ex_odds, injuries, news, team_stats,
-                             all_cards, sportsbet_time, season_phase=season_phase)
+                             all_cards, sportsbet_time, season_phase=season_phase,
+                             engine_mode=engine_mode)
 
     # Write
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
@@ -1956,7 +2199,7 @@ def main():
         f.write(report)
 
     print(f"✅ Pre-filled skeleton V8 已生成: {args.output}")
-    print(f"   📐 引擎版本: Adjusted Win Prob V8 (EV Quant + Correlation Penalty)")
+    print(f"   📐 引擎版本: {engine_name}")
     print(f"   🧠 核心邏輯已自動生成 (無 [FILL] 佔位符)")
     print(f"   📎 下一步: NBA Analyst 審閱及補充分析")
 

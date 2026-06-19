@@ -200,6 +200,48 @@
          - 有 season_avg 數據時，使用 shrinkage mean 代替純 L10。
     </action>
   </rule>
+
+  <rule id="SIP-2026-06-04-HYBRID" name="Hybrid Main Engine Policy">
+    <action>
+      1. 預設 NBA prop engine 必須使用 Hybrid V1，而不是 full ML-only。
+      2. Hybrid V1 使用 deterministic 10-Factor 作為 EV/Kelly calibration 主概率，ML 只作 ranking、confirmation、penalty/bonus signal。
+      3. Full ML-only 只可用於 `--engine ml` 對照測試；除非 walk-forward 同時勝出 ROC-AUC、top-leg hit rate、Brier calibration，否則不得取代 Hybrid 做主線。
+      4. CLI 必須支援 `--engine hybrid|ml|legacy`，環境變數 `NBA_WC_ENGINE` 只可覆蓋至三者之一。
+      5. 報告必須明確顯示 engine mode，避免將 ML ranking 誤當成已校準下注概率。
+    </action>
+  </rule>
+
+  <rule id="SIP-2026-06-04-1" name="Negative Combo EV Hard Block">
+    <action>
+      1. 任何 SGM / parlay 組合若 `Combo EV% &lt;= 0`，必須 hard block，不得輸出為正式下注建議。
+      2. 任何組合 Kelly 注碼等於 0% bankroll，必須 hard block，不得以「保守/觀察」形式混入正式組合。
+      3. Validator 必須掃描報告內 `Combo EV%` 同 `Kelly 注碼建議`，發現負 EV 或 0% Kelly 即 BLOCK。
+    </action>
+  </rule>
+
+  <rule id="SIP-2026-06-04-2" name="Median-Line AST Guard">
+    <action>
+      1. AST milestone 若 line 大於或等於球員 median，且 Monte Carlo edge 缺失或 &lt; +3pp，不得進入任何正式 auto-combo。
+      2. 季後賽/附加賽 AST prop 若 CoV &gt; 0.45 且平均上場時間 &lt; 30 分鐘，不得進入正式 auto-combo。
+      3. 同隊 AST leg 每個組合最多 1 條，避免同隊助攻球權互搶造成假分散。
+    </action>
+  </rule>
+
+  <rule id="SIP-2026-06-04-3" name="Finals Usage Reallocation Guard">
+    <action>
+      1. PLAYOFFS / PLAY_IN 階段，非 primary scorer 或 wing scorer 的 PTS 15+ 必須檢查 USG%、L3 FGA、L3 PTS。
+      2. 若觸發 FINALS_USAGE_GUARD，該 PTS leg 不得進入任何正式 auto-combo。
+      3. 若 L3 FGA &lt; 10 或 L3 PTS 低於 line，PTS 15+ 預期勝率必須額外懲罰，並由 combo selector 二次過濾。
+    </action>
+  </rule>
+
+  <rule id="SIP-2026-06-04-4" name="Rebound Direction Promotion">
+    <action>
+      1. 季後賽/附加賽低效率、半場陣地戰環境中，REB props 可獲得小幅方向 bonus，但仍需通過 EV/Kelly gate。
+      2. 若 REB line 低於或等於球員 median 且 L5 hit rate ≥ 70%，Hybrid 可加入 REBOUND_DIRECTION_BONUS。
+      3. REB promotion 不得覆蓋負 EV hard block；它只可改善候選排序，不可令負 EV 組合出街。
+    </action>
+  </rule>
 </nba_specific_directives>
 
 

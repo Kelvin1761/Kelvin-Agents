@@ -2,12 +2,14 @@
 Test parsers against current real analysis files.
 """
 import sys
+import textwrap
 from pathlib import Path
 
 sys.path.insert(0, '.')
 
+from services.parser_au import parse_au_analysis
 from services.parser_hkjc import parse_hkjc_analysis
-from services.meeting_detector import discover_meetings
+from services.meeting_detector import discover_meetings, load_meeting_races
 import config
 
 
@@ -56,6 +58,106 @@ def test_hkjc_auto_archive_parser():
     return True
 
 
+def test_hkjc_sha_tin_loader_normalizes_meeting_venue():
+    """Dashboard loader should use the meeting folder venue for HKJC races."""
+    meetings = discover_meetings(str(config.ANTIGRAVITY_ROOT))
+    meeting = next(
+        (m for m in meetings if m.region.value == "hkjc" and m.date == "2026-05-31" and m.venue == "ShaTin"),
+        None,
+    )
+
+    assert meeting is not None, "2026-05-31 ShaTin meeting should be discoverable"
+
+    races_by_analyst = load_meeting_races(meeting)
+    kelvin_races = races_by_analyst.get("Kelvin", [])
+
+    assert kelvin_races, "Expected Kelvin races for 2026-05-31 ShaTin"
+    assert all(race.venue == "沙田" for race in kelvin_races), "All loaded races should normalize to 沙田"
+
+    return True
+
+
+def test_au_auto_parser_ballarat():
+    """Test AU parser against current Ballarat auto analysis output."""
+    path = config.ANTIGRAVITY_ROOT / "2026-05-24 Ballarat Race 1-8" / "Race_1_Auto_Analysis.md"
+    result = parse_au_analysis(str(path))
+
+    assert result is not None, "Failed to parse AU Auto Ballarat Race 1"
+    assert len(result.horses) == 11, f"Expected 11 horses, got {len(result.horses)}"
+    assert result.top_picks, "AU top picks should be present"
+
+    first_horse = result.horses[0]
+    assert first_horse.core_analysis, "core_analysis missing from AU auto parser"
+    assert first_horse.final_grade, "final_grade missing from AU auto parser"
+
+    print(f"\n✅ AU Auto Ballarat Race 1: {len(result.horses)} horses parsed")
+    print(
+        f"   Horse #{first_horse.horse_number} {first_horse.horse_name}: "
+        f"grade={first_horse.final_grade}, jockey={first_horse.jockey}, "
+        f"analysis={'yes' if first_horse.core_analysis else 'no'}"
+    )
+
+    return True
+
+
+def test_au_meeting_loader_ballarat():
+    """Test meeting loader returns horse counts for AU meetings used by dashboard."""
+    meetings = discover_meetings(str(config.ANTIGRAVITY_ROOT))
+    meeting = next(
+        (m for m in meetings if m.region.value == "au" and m.date == "2026-05-24" and m.venue == "Ballarat"),
+        None,
+    )
+
+    assert meeting is not None, "Ballarat meeting should be discoverable"
+
+    races_by_analyst = load_meeting_races(meeting)
+    kelvin_races = races_by_analyst.get("Kelvin", [])
+    race_1 = next((race for race in kelvin_races if race.race_number == 1), None)
+
+    assert race_1 is not None, "Ballarat Race 1 should load through meeting loader"
+    assert len(race_1.horses) == 11, f"Dashboard loader expected 11 horses, got {len(race_1.horses)}"
+
+    print(f"   Dashboard loader Ballarat Race 1 horses: {len(race_1.horses)}")
+    return True
+
+
+def test_au_parser_accepts_mixed_case_bracket_headers(tmp_path):
+    """Bracket-style AU files can use mixed-case horse names."""
+    sample = textwrap.dedent(
+        """
+        Race 1 - Example Stakes
+        [#1] Tron Bolt (Barrier 6)
+        Trainer: Chris Waller
+        Jockey: James McDonald
+        Weight: 58kg
+        Block 3: Core Analysis
+        Handles tempo.
+
+        [#2] Silent Impact (Barrier 3)
+        Trainer: Ciaron Maher
+        Jockey: Ethan Brown
+        Weight: 56kg
+        Block 3: Core Analysis
+        Maps well.
+
+        🏆 Top 4
+        1. #1 Tron Bolt
+        2. #2 Silent Impact
+        """
+    ).strip()
+    path = tmp_path / "Race_1_Auto_Analysis.md"
+    path.write_text(sample, encoding="utf-8")
+
+    result = parse_au_analysis(str(path))
+
+    assert result is not None, "Failed to parse mixed-case AU bracket format"
+    assert result.analysis_type == "auto"
+    assert len(result.horses) == 2, f"Expected 2 horses, got {len(result.horses)}"
+    assert result.horses[0].horse_name == "Tron Bolt"
+
+    return True
+
+
 def test_meeting_detector():
     """Test meeting discovery."""
     meetings = discover_meetings()
@@ -77,7 +179,7 @@ if __name__ == "__main__":
     print("=" * 60)
     
     passed = 0
-    total = 3
+    total = 7
     
     try:
         if test_meeting_detector():
@@ -96,6 +198,32 @@ if __name__ == "__main__":
             passed += 1
     except Exception as e:
         print(f"❌ Archived HKJC Auto parser test failed: {e}")
+
+    try:
+        if test_hkjc_sha_tin_loader_normalizes_meeting_venue():
+            passed += 1
+    except Exception as e:
+        print(f"❌ HKJC Sha Tin venue test failed: {e}")
+
+    try:
+        if test_au_auto_parser_ballarat():
+            passed += 1
+    except Exception as e:
+        print(f"❌ AU Auto parser test failed: {e}")
+
+    try:
+        if test_au_meeting_loader_ballarat():
+            passed += 1
+    except Exception as e:
+        print(f"❌ AU meeting loader test failed: {e}")
+
+    try:
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as tmpdir:
+            if test_au_parser_accepts_mixed_case_bracket_headers(Path(tmpdir)):
+                passed += 1
+    except Exception as e:
+        print(f"❌ AU mixed-case bracket parser test failed: {e}")
     
     print(f"\n{'=' * 60}")
     print(f"Results: {passed}/{total} tests passed")

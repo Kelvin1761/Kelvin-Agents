@@ -34,6 +34,23 @@ export const api = {
     fetchJson(
       `/bets/by-race?date=${date}&venue=${venue}&race_number=${raceNum}`,
     ),
+  getBetPanelStatesByMeeting: (date, venue) =>
+    fetchJson(`/bets/panel-state/by-meeting?date=${date}&venue=${venue}`),
+  getBetPanelStatesByRace: (date, venue, raceNum) =>
+    fetchJson(
+      `/bets/panel-state/by-race?date=${date}&venue=${venue}&race_number=${raceNum}`,
+    ),
+  upsertBetPanelState: (state) =>
+    fetch(`${BASE}/bets/panel-state`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(state),
+    }).then((r) => r.json()),
+  deleteBetPanelState: (date, venue, raceNum, horseNum) =>
+    fetch(
+      `${BASE}/bets/panel-state?date=${date}&venue=${venue}&race_number=${raceNum}&horse_number=${horseNum}`,
+      { method: "DELETE" },
+    ).then((r) => r.json()),
   placeBet: (bet) =>
     fetch(`${BASE}/bets`, {
       method: "POST",

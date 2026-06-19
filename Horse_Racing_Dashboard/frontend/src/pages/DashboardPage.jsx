@@ -323,55 +323,133 @@ export default function DashboardPage() {
 function MeetingBettingPanel({ date, venue, region, races }) {
   const [raceData, setRaceData] = useState({}); // raceNum -> { consensus, bets }
   const [oddsInput, setOddsInput] = useState({});
-  const [oddsConfirmed, setOddsConfirmed] = useState({}); // key -> confirmed odds value
-  const [scratchedHorses, setScratchedHorses] = useState({}); // key -> true
-  const [skippedHorses, setSkippedHorses] = useState([]); // { raceNum, horse_number, horse_name, jockey, trainer, grade, odds }
+  const [panelStates, setPanelStates] = useState({}); // key -> shared panel state
   const [collapsedRaces, setCollapsedRaces] = useState({}); // tracks which races are collapsed
   const navigate = useNavigate();
   const tGoing = (s) => (s || '').replace(/\s*[（(].*$/, '').trim() || s;
+  const getStateKey = (raceNum, horseNum) => `${raceNum}-${horseNum}`;
+  const buildPanelStateMap = (states = []) =>
+    Object.fromEntries(
+      states.map((state) => [getStateKey(state.race_number, state.horse_number), state]),
+    );
 
-  // Load consensus + bets for all races
-  useEffect(() => {
+  const refreshRaceBets = useCallback(async () => {
     if (!races?.length) return;
-    const newData = {};
-    Promise.all(
+    const betsResults = await Promise.all(
       races.map((race) =>
-        Promise.all([
-          api.getConsensus(date, venue, race.race_number).catch(() => null),
-          api
-            .getBetsByRace(date, venue, race.race_number)
-            .catch(() => ({ bets: [] })),
-        ]).then(([consensus, betsRes]) => {
-          newData[race.race_number] = {
-            consensus: consensus?.consensus || null,
-            bets: betsRes?.bets || [],
-          };
-        }),
+        api.getBetsByRace(date, venue, race.race_number).catch(() => ({ bets: [] })),
       ),
-    ).then(() => setRaceData({ ...newData }));
+    );
+    setRaceData((prev) => {
+      const next = { ...prev };
+      races.forEach((race, index) => {
+        next[race.race_number] = {
+          ...(prev[race.race_number] || {}),
+          bets: betsResults[index]?.bets || [],
+        };
+      });
+      return next;
+    });
   }, [date, venue, races]);
 
-  // Phase 1: Lock in odds
-  const handleConfirmOdds = (raceNum, horseNum) => {
-    const key = `${raceNum}-${horseNum}`;
+  const refreshPanelStates = useCallback(async () => {
+    if (!races?.length) return;
+    const panelStateRes = await api
+      .getBetPanelStatesByMeeting(date, venue)
+      .catch(() => ({ states: [] }));
+    setPanelStates(buildPanelStateMap(panelStateRes?.states || []));
+  }, [date, venue, races]);
+
+  const loadMeetingData = useCallback(async () => {
+    if (!races?.length) return;
+    const [panelStateRes, ...raceEntries] = await Promise.all([
+      api.getBetPanelStatesByMeeting(date, venue).catch(() => ({ states: [] })),
+      ...races.map(async (race) => {
+        const [consensus, betsRes] = await Promise.all([
+          api.getConsensus(date, venue, race.race_number).catch(() => null),
+          api.getBetsByRace(date, venue, race.race_number).catch(() => ({ bets: [] })),
+        ]);
+        return [
+          race.race_number,
+          {
+            consensus: consensus?.consensus || null,
+            bets: betsRes?.bets || [],
+          },
+        ];
+      }),
+    ]);
+    setRaceData(Object.fromEntries(raceEntries));
+    setPanelStates(buildPanelStateMap(panelStateRes?.states || []));
+  }, [date, venue, races]);
+
+  useEffect(() => {
+    setOddsInput({});
+    loadMeetingData();
+  }, [loadMeetingData]);
+
+  useEffect(() => {
+    if (!races?.length) return;
+    const interval = setInterval(() => {
+      refreshPanelStates();
+      refreshRaceBets();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [races, refreshPanelStates, refreshRaceBets]);
+
+  const upsertPanelState = useCallback(
+    async (race, candidate, stage, odds = null) => {
+      const payload = {
+        date,
+        venue,
+        region,
+        race_number: race.race_number,
+        horse_number: candidate.horse_number,
+        horse_name: candidate.horse_name,
+        jockey: candidate.jockey,
+        trainer: candidate.trainer,
+        odds,
+        stage,
+        consensus_type: candidate.consensus_type,
+        kelvin_grade: candidate.kelvin_grade,
+        heison_grade: candidate.heison_grade,
+      };
+      const response = await api.upsertBetPanelState(payload).catch(() => null);
+      const key = getStateKey(race.race_number, candidate.horse_number);
+      setPanelStates((prev) => ({
+        ...prev,
+        [key]: response?.state || { ...payload, updated_at: new Date().toISOString() },
+      }));
+    },
+    [date, venue, region],
+  );
+
+  const removePanelState = useCallback(async (raceNum, horseNum) => {
+    await api.deleteBetPanelState(date, venue, raceNum, horseNum).catch(() => null);
+    const key = getStateKey(raceNum, horseNum);
+    setPanelStates((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, [date, venue]);
+
+  const handleConfirmOdds = async (race, candidate) => {
+    const key = getStateKey(race.race_number, candidate.horse_number);
     const odds = parseFloat(oddsInput[key]);
     if (!odds || odds <= 0) return alert("請輸入有效賠率");
-    setOddsConfirmed((prev) => ({ ...prev, [key]: odds }));
+    await upsertPanelState(race, candidate, "odds_confirmed", odds);
   };
 
   // Phase 2: Place the bet
   const handlePlaceBet = async (race, candidate) => {
     const raceNum = race.race_number;
-    const key = `${raceNum}-${candidate.horse_number}`;
-    const odds = oddsConfirmed[key];
+    const key = getStateKey(raceNum, candidate.horse_number);
+    const odds = panelStates[key]?.odds;
     if (!odds) return;
 
     // Prevent duplicate: check if bet already exists for this horse in this race
     const existingBets = raceData[raceNum]?.bets || [];
     if (existingBets.some(b => b.horse_number === candidate.horse_number)) return;
-
-    // Clear confirmed odds IMMEDIATELY to prevent dual-track double-click
-    setOddsConfirmed((prev) => { const n = { ...prev }; delete n[key]; return n; });
 
     await api.placeBet({
       date, venue, region,
@@ -386,38 +464,39 @@ function MeetingBettingPanel({ date, venue, region, races }) {
       track_type: race.track, going: race.going,
     });
 
+    await removePanelState(raceNum, candidate.horse_number);
+    setOddsInput((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
     const betsRes = await api.getBetsByRace(date, venue, raceNum).catch(() => ({ bets: [] }));
     setRaceData((prev) => ({ ...prev, [raceNum]: { ...prev[raceNum], bets: betsRes?.bets || [] } }));
   };
 
-  // Skip bet (dismiss confirmed odds + record as 放棄馬)
-  const handleSkipBet = (raceNum, horseNum, candidate) => {
-    const key = `${raceNum}-${horseNum}`;
-    const odds = oddsConfirmed[key];
-    setOddsConfirmed((prev) => { const n = { ...prev }; delete n[key]; return n; });
-    if (candidate) {
-      setSkippedHorses((prev) => {
-        // Avoid duplicates
-        if (prev.some(s => s.raceNum === raceNum && s.horse_number === horseNum)) return prev;
-        return [...prev, {
-          raceNum, horse_number: horseNum, horse_name: candidate.horse_name,
-          jockey: candidate.jockey, trainer: candidate.trainer,
-          grade: candidate.kelvin_grade || candidate.heison_grade, odds: odds || '',
-        }];
-      });
+  const handleSkipBet = async (race, candidate) => {
+    const key = getStateKey(race.race_number, candidate.horse_number);
+    const odds = panelStates[key]?.odds || parseFloat(oddsInput[key]) || null;
+    await upsertPanelState(race, candidate, "skipped", odds);
+  };
+
+  const handleEditOdds = async (raceNum, horseNum) => {
+    const key = getStateKey(raceNum, horseNum);
+    const currentOdds = panelStates[key]?.odds;
+    if (currentOdds) {
+      setOddsInput((prev) => ({ ...prev, [key]: currentOdds }));
     }
+    await removePanelState(raceNum, horseNum);
   };
 
-  // Edit odds (go back to input)
-  const handleEditOdds = (raceNum, horseNum) => {
-    const key = `${raceNum}-${horseNum}`;
-    setOddsConfirmed((prev) => { const n = { ...prev }; delete n[key]; return n; });
-  };
-
-  // Mark horse as scratched
-  const handleScratch = (raceNum, horseNum) => {
-    const key = `${raceNum}-${horseNum}`;
-    setScratchedHorses((prev) => ({ ...prev, [key]: !prev[key] }));
+  const handleScratch = async (race, candidate) => {
+    const key = getStateKey(race.race_number, candidate.horse_number);
+    if (panelStates[key]?.stage === "scratched") {
+      await removePanelState(race.race_number, candidate.horse_number);
+      return;
+    }
+    const odds = panelStates[key]?.odds || parseFloat(oddsInput[key]) || null;
+    await upsertPanelState(race, candidate, "scratched", odds);
   };
 
   const handleResult = async (raceNum, betId, position, odds) => {
@@ -433,9 +512,10 @@ function MeetingBettingPanel({ date, venue, region, races }) {
     }));
   };
 
-  const handleDelete = async (raceNum, betId) => {
+  const handleDelete = async (raceNum, betId, horseNum) => {
     if (!confirm("確認刪除此投注？")) return;
     await api.deleteBet(betId);
+    await removePanelState(raceNum, horseNum);
     const betsRes = await api
       .getBetsByRace(date, venue, raceNum)
       .catch(() => ({ bets: [] }));
@@ -445,9 +525,374 @@ function MeetingBettingPanel({ date, venue, region, races }) {
     }));
   };
 
+  const skippedHorses = Object.values(panelStates)
+    .filter((state) => state.stage === "skipped")
+    .map((state) => ({
+      raceNum: state.race_number,
+      horse_number: state.horse_number,
+      horse_name: state.horse_name,
+      jockey: state.jockey,
+      trainer: state.trainer,
+      grade: state.kelvin_grade || state.heison_grade,
+      odds: state.odds,
+    }))
+    .sort((a, b) => a.raceNum - b.raceNum || a.horse_number - b.horse_number);
+
   // Always show betting panel when we have race data loaded
   const hasRaceData = Object.keys(raceData).length > 0;
   if (!hasRaceData) return null;
+
+  const renderCandidateCard = (race, candidate, bets) => {
+    const bet = bets.find((b) => b.horse_number === candidate.horse_number);
+    const key = getStateKey(race.race_number, candidate.horse_number);
+    const panelState = panelStates[key];
+    const isScratched = panelState?.stage === "scratched";
+    const isSkipped = panelState?.stage === "skipped";
+    const confirmedOdds =
+      panelState?.stage === "odds_confirmed" ? panelState.odds : null;
+
+    return (
+      <div
+        key={candidate.horse_number}
+        style={{
+          background: isScratched ? "#F8FAFC" : "#fff",
+          borderRadius: "10px",
+          padding: "12px 14px",
+          marginBottom: "8px",
+          border: isScratched ? "1px solid #E2E8F0" : "1px solid #DBEAFE",
+          opacity: isScratched ? 0.5 : 1,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "8px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div
+              style={{
+                width: "32px",
+                height: "32px",
+                background: "#059669",
+                color: "#fff",
+                borderRadius: "8px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 800,
+                fontSize: "0.9rem",
+                flexShrink: 0,
+              }}
+            >
+              {candidate.horse_number}
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: "0.95rem" }}>
+                {candidate.horse_name}
+              </div>
+              <div style={{ fontSize: "0.7rem", color: "#94A3B8", marginTop: "2px" }}>
+                {candidate.jockey && <span>🏇 {candidate.jockey}</span>}
+                {candidate.trainer && <span> · 🏠 {candidate.trainer}</span>}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            {candidate.kelvin_grade && <RatingBadge grade={candidate.kelvin_grade} />}
+            <button
+              onClick={() => navigate(`/race/${date}/${venue}/${race.race_number}`)}
+              style={{
+                padding: "3px 8px",
+                background: "#EFF6FF",
+                color: "#1E40AF",
+                border: "1px solid #BFDBFE",
+                borderRadius: "6px",
+                fontSize: "0.65rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              查看分析→
+            </button>
+          </div>
+        </div>
+        {isScratched ? (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "0.8rem", color: "#94A3B8", fontWeight: 600 }}>
+              🚫 已退出
+            </span>
+            <button
+              onClick={() => handleScratch(race, candidate)}
+              style={{
+                padding: "3px 8px",
+                background: "#F1F5F9",
+                color: "#64748B",
+                border: "1px solid #E2E8F0",
+                borderRadius: "6px",
+                fontSize: "0.65rem",
+                cursor: "pointer",
+              }}
+            >
+              撤銷
+            </button>
+          </div>
+        ) : !bet ? (
+          isSkipped ? (
+            <div>
+              <div style={{ fontSize: "0.75rem", color: "#334155", marginBottom: "6px" }}>
+                已標記唔投 {panelState?.odds ? `@${panelState.odds}` : ""}
+              </div>
+              <button
+                onClick={() => handleEditOdds(race.race_number, candidate.horse_number)}
+                style={{
+                  padding: "4px 12px",
+                  background: "#FEF3C7",
+                  color: "#92400E",
+                  border: "1px solid #FDE68A",
+                  borderRadius: "6px",
+                  fontSize: "0.7rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                ✏️ 重新輸入
+              </button>
+            </div>
+          ) : confirmedOdds ? (
+            <div>
+              <div style={{ fontSize: "0.75rem", color: "#334155", marginBottom: "6px" }}>
+                賠率已確認 @{confirmedOdds} — 是否投注？
+              </div>
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                <button
+                  onClick={() => handlePlaceBet(race, candidate)}
+                  style={{
+                    padding: "4px 12px",
+                    background: "#059669",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "0.7rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  💰 投注
+                </button>
+                <button
+                  onClick={() => handleSkipBet(race, candidate)}
+                  style={{
+                    padding: "4px 12px",
+                    background: "#F1F5F9",
+                    color: "#64748B",
+                    border: "1px solid #E2E8F0",
+                    borderRadius: "6px",
+                    fontSize: "0.7rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  📋 唔投
+                </button>
+                <button
+                  onClick={() => handleEditOdds(race.race_number, candidate.horse_number)}
+                  style={{
+                    padding: "4px 12px",
+                    background: "#FEF3C7",
+                    color: "#92400E",
+                    border: "1px solid #FDE68A",
+                    borderRadius: "6px",
+                    fontSize: "0.7rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  ✏️ 改賠率
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div style={{ fontSize: "0.7rem", color: "#94A3B8", marginBottom: "4px" }}>
+                ⊙ 輸入賠率
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="1"
+                  placeholder="賠率"
+                  value={oddsInput[key] || ""}
+                  onChange={(e) =>
+                    setOddsInput((prev) => ({ ...prev, [key]: e.target.value }))
+                  }
+                  style={{
+                    width: "60px",
+                    padding: "4px 6px",
+                    border: "1px solid #E2E8F0",
+                    borderRadius: "6px",
+                    fontSize: "0.75rem",
+                    textAlign: "center",
+                  }}
+                />
+                <button
+                  onClick={() => handleConfirmOdds(race, candidate)}
+                  style={{
+                    padding: "4px 12px",
+                    background: "#1E40AF",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "0.7rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  🔒 確認賠率
+                </button>
+              </div>
+            </div>
+          )
+        ) : bet.status === "pending" ? (
+          <div>
+            <div style={{ fontSize: "0.75rem", color: "#334155", marginBottom: "6px" }}>
+              賠率已確認 @{bet.odds} — 等待結果
+            </div>
+            <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+              {[1, 2, 3].map((p) => (
+                <button
+                  key={p}
+                  onClick={() => handleResult(race.race_number, bet.id, p, bet.odds)}
+                  style={{
+                    padding: "4px 12px",
+                    background: "#EFF6FF",
+                    color: "#1E40AF",
+                    border: "1px solid #BFDBFE",
+                    borderRadius: "6px",
+                    fontSize: "0.7rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  {p}位
+                </button>
+              ))}
+              <button
+                onClick={() => handleResult(race.race_number, bet.id, 0, bet.odds)}
+                style={{
+                  padding: "4px 12px",
+                  background: "#FEF2F2",
+                  color: "#DC2626",
+                  border: "1px solid #FECACA",
+                  borderRadius: "6px",
+                  fontSize: "0.7rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                ✗
+              </button>
+              <button
+                onClick={() => handleScratch(race, candidate)}
+                style={{
+                  padding: "4px 12px",
+                  background: "#FEE2E2",
+                  color: "#DC2626",
+                  border: "1px solid #FECACA",
+                  borderRadius: "6px",
+                  fontSize: "0.7rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                🚫 已退出
+              </button>
+              <button
+                onClick={() => handleDelete(race.race_number, bet.id, candidate.horse_number)}
+                style={{
+                  padding: "4px 12px",
+                  background: "#F8FAFC",
+                  color: "#94A3B8",
+                  border: "1px solid #E2E8F0",
+                  borderRadius: "6px",
+                  fontSize: "0.7rem",
+                  cursor: "pointer",
+                }}
+              >
+                🗑️
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "6px" }}>
+              <span style={{ fontSize: "0.75rem", fontWeight: 600 }}>@{bet.odds}</span>
+              <span
+                style={{
+                  padding: "2px 8px",
+                  borderRadius: "999px",
+                  fontSize: "0.65rem",
+                  fontWeight: 700,
+                  background: bet.status === "won" ? "#D1FAE5" : "#FEE2E2",
+                  color: bet.status === "won" ? "#059669" : "#DC2626",
+                }}
+              >
+                {bet.status === "won" ? `✅ ${bet.result_position}位` : "❌"}
+              </span>
+              <span
+                style={{
+                  fontWeight: 800,
+                  fontSize: "0.8rem",
+                  color: bet.net_profit > 0 ? "#059669" : "#DC2626",
+                }}
+              >
+                {bet.net_profit > 0 ? "+" : ""}${(bet.net_profit || 0).toFixed(2)}
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "0.65rem", color: "#94A3B8" }}>更正:</span>
+              {[1, 2, 3].map((p) => (
+                <button
+                  key={p}
+                  onClick={() => handleResult(race.race_number, bet.id, p, bet.odds)}
+                  style={{
+                    padding: "4px 12px",
+                    background: bet.result_position === p ? "#DBEAFE" : "#EFF6FF",
+                    color: "#1E40AF",
+                    border: "1px solid #BFDBFE",
+                    borderRadius: "6px",
+                    fontSize: "0.7rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  {p}位
+                </button>
+              ))}
+              <button
+                onClick={() => handleResult(race.race_number, bet.id, 0, bet.odds)}
+                style={{
+                  padding: "4px 12px",
+                  background: bet.result_position === 0 ? "#FECACA" : "#FEF2F2",
+                  color: "#DC2626",
+                  border: "1px solid #FECACA",
+                  borderRadius: "6px",
+                  fontSize: "0.7rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                ✗
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div style={{ marginTop: "24px" }}>
@@ -714,142 +1159,6 @@ function MeetingBettingPanel({ date, venue, region, races }) {
                   const primaryLabel = tGoing(race.primary_condition);
                   const altLabel = tGoing(race.alt_condition);
                   
-                  const renderCandidateCard = (c) => {
-                    const bet = bets.find((b) => b.horse_number === c.horse_number);
-                    const key = `${race.race_number}-${c.horse_number}`;
-                    const isScratched = scratchedHorses[key];
-                    const confirmedOdds = oddsConfirmed[key];
-                    return (
-                      <div key={c.horse_number} style={{
-                        background: isScratched ? "#F8FAFC" : "#fff", borderRadius: "10px",
-                        padding: "12px 14px", marginBottom: "8px",
-                        border: isScratched ? "1px solid #E2E8F0" : "1px solid #DBEAFE",
-                        opacity: isScratched ? 0.5 : 1,
-                      }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                            <div style={{ width: "32px", height: "32px", background: "#059669", color: "#fff", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "0.9rem", flexShrink: 0 }}>{c.horse_number}</div>
-                            <div>
-                              <div style={{ fontWeight: 700, fontSize: "0.95rem" }}>{c.horse_name}</div>
-                              <div style={{ fontSize: "0.7rem", color: "#94A3B8", marginTop: "2px" }}>
-                                {c.jockey && <span>🏇 {c.jockey}</span>}
-                                {c.trainer && <span> · 🏠 {c.trainer}</span>}
-                              </div>
-                            </div>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            {c.kelvin_grade && <RatingBadge grade={c.kelvin_grade} />}
-                            <button onClick={() => navigate(`/race/${date}/${venue}/${race.race_number}`)}
-                              style={{ padding: "3px 8px", background: "#EFF6FF", color: "#1E40AF", border: "1px solid #BFDBFE", borderRadius: "6px", fontSize: "0.65rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                              查看分析→
-                            </button>
-                          </div>
-                        </div>
-                        {isScratched ? (
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <span style={{ fontSize: "0.8rem", color: "#94A3B8", fontWeight: 600 }}>🚫 已退出</span>
-                            <button onClick={() => handleScratch(race.race_number, c.horse_number)}
-                              style={{ padding: "3px 8px", background: "#F1F5F9", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: "6px", fontSize: "0.65rem", cursor: "pointer" }}>
-                              撤銷
-                            </button>
-                          </div>
-                        ) : !bet ? (
-                          confirmedOdds ? (
-                            <div>
-                              <div style={{ fontSize: "0.75rem", color: "#334155", marginBottom: "6px" }}>
-                                賠率已確認 @{confirmedOdds} — 是否投注？
-                              </div>
-                              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                                <button onClick={() => handlePlaceBet(race, c)}
-                                  style={{ padding: "4px 12px", background: "#059669", color: "#fff", border: "none", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer" }}>
-                                  💰 投注
-                                </button>
-                                <button onClick={() => handleSkipBet(race.race_number, c.horse_number, c)}
-                                  style={{ padding: "4px 12px", background: "#F1F5F9", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 600, cursor: "pointer" }}>
-                                  📋 唔投
-                                </button>
-                                <button onClick={() => handleEditOdds(race.race_number, c.horse_number)}
-                                  style={{ padding: "4px 12px", background: "#FEF3C7", color: "#92400E", border: "1px solid #FDE68A", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 600, cursor: "pointer" }}>
-                                  ✏️ 改賠率
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div>
-                              <div style={{ fontSize: "0.7rem", color: "#94A3B8", marginBottom: "4px" }}>⊙ 輸入賠率</div>
-                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                <input type="number" step="0.1" min="1" placeholder="賠率"
-                                  value={oddsInput[key] || ""}
-                                  onChange={(e) => setOddsInput((prev) => ({ ...prev, [key]: e.target.value }))}
-                                  style={{ width: "60px", padding: "4px 6px", border: "1px solid #E2E8F0", borderRadius: "6px", fontSize: "0.75rem", textAlign: "center" }}
-                                />
-                                <button onClick={() => handleConfirmOdds(race.race_number, c.horse_number)}
-                                  style={{ padding: "4px 12px", background: "#1E40AF", color: "#fff", border: "none", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer" }}>
-                                  🔒 確認賠率
-                                </button>
-                              </div>
-                            </div>
-                          )
-                        ) : bet.status === "pending" ? (
-                          <div>
-                            <div style={{ fontSize: "0.75rem", color: "#334155", marginBottom: "6px" }}>
-                              賠率已確認 @{bet.odds} — 等待結果
-                            </div>
-                            <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
-                              {[1,2,3].map(p => (
-                                <button key={p} onClick={() => handleResult(race.race_number, bet.id, p, bet.odds)}
-                                  style={{ padding: "4px 12px", background: "#EFF6FF", color: "#1E40AF", border: "1px solid #BFDBFE", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer" }}>
-                                  {p}位
-                                </button>
-                              ))}
-                              <button onClick={() => handleResult(race.race_number, bet.id, 0, bet.odds)}
-                                style={{ padding: "4px 12px", background: "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer" }}>
-                                ✗
-                              </button>
-                              <button onClick={() => handleScratch(race.race_number, c.horse_number)}
-                                style={{ padding: "4px 12px", background: "#FEE2E2", color: "#DC2626", border: "1px solid #FECACA", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 600, cursor: "pointer" }}>
-                                🚫 已退出
-                              </button>
-                              <button onClick={() => handleDelete(race.race_number, bet.id)}
-                                style={{ padding: "4px 12px", background: "#F8FAFC", color: "#94A3B8", border: "1px solid #E2E8F0", borderRadius: "6px", fontSize: "0.7rem", cursor: "pointer" }}>
-                                🗑️
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div>
-                            <div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "6px" }}>
-                              <span style={{ fontSize: "0.75rem", fontWeight: 600 }}>@{bet.odds}</span>
-                              <span style={{
-                                padding: "2px 8px", borderRadius: "999px", fontSize: "0.65rem", fontWeight: 700,
-                                background: bet.status === "won" ? "#D1FAE5" : "#FEE2E2",
-                                color: bet.status === "won" ? "#059669" : "#DC2626",
-                              }}>
-                                {bet.status === "won" ? `✅ ${bet.result_position}位` : "❌"}
-                              </span>
-                              <span style={{ fontWeight: 800, fontSize: "0.8rem", color: bet.net_profit > 0 ? "#059669" : "#DC2626" }}>
-                                {bet.net_profit > 0 ? "+" : ""}${(bet.net_profit || 0).toFixed(2)}
-                              </span>
-                            </div>
-                            <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
-                              <span style={{ fontSize: "0.65rem", color: "#94A3B8" }}>更正:</span>
-                              {[1,2,3].map(p => (
-                                <button key={p} onClick={() => handleResult(race.race_number, bet.id, p, bet.odds)}
-                                  style={{ padding: "4px 12px", background: bet.result_position === p ? "#DBEAFE" : "#EFF6FF", color: "#1E40AF", border: "1px solid #BFDBFE", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer" }}>
-                                  {p}位
-                                </button>
-                              ))}
-                              <button onClick={() => handleResult(race.race_number, bet.id, 0, bet.odds)}
-                                style={{ padding: "4px 12px", background: bet.result_position === 0 ? "#FECACA" : "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer" }}>
-                                ✗
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  };
-                  
                   return (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "8px" }}>
                       <div style={{ border: "1px solid #D1FAE5", borderRadius: "8px", overflow: "hidden" }}>
@@ -860,7 +1169,9 @@ function MeetingBettingPanel({ date, venue, region, races }) {
                           預期場地 ({primaryLabel})
                         </div>
                         <div style={{ padding: "6px 10px" }}>
-                          {primaryCands.map(renderCandidateCard)}
+                          {primaryCands.map((candidate) =>
+                            renderCandidateCard(race, candidate, bets),
+                          )}
                         </div>
                       </div>
                       <div style={{ border: "1px solid #FDE68A", borderRadius: "8px", overflow: "hidden" }}>
@@ -871,148 +1182,18 @@ function MeetingBettingPanel({ date, venue, region, races }) {
                           備選場地 ({altLabel})
                         </div>
                         <div style={{ padding: "6px 10px" }}>
-                          {altCands.map(renderCandidateCard)}
+                          {altCands.map((candidate) =>
+                            renderCandidateCard(race, candidate, bets),
+                          )}
                         </div>
                       </div>
                     </div>
                   );
                 })() : (
                   /* Non dual-track: same production-style cards */
-                  candidates.map((c) => {
-                    const bet = bets.find((b) => b.horse_number === c.horse_number);
-                    const key = `${race.race_number}-${c.horse_number}`;
-                    const isScratched = scratchedHorses[key];
-                    const confirmedOdds = oddsConfirmed[key];
-                    return (
-                      <div key={c.horse_number} style={{
-                        background: isScratched ? "#F8FAFC" : "#fff", borderRadius: "10px",
-                        padding: "12px 14px", marginBottom: "8px",
-                        border: isScratched ? "1px solid #E2E8F0" : "1px solid #DBEAFE",
-                        opacity: isScratched ? 0.5 : 1,
-                      }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                            <div style={{ width: "32px", height: "32px", background: "#059669", color: "#fff", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "0.9rem", flexShrink: 0 }}>{c.horse_number}</div>
-                            <div>
-                              <div style={{ fontWeight: 700, fontSize: "0.95rem" }}>{c.horse_name}</div>
-                              <div style={{ fontSize: "0.7rem", color: "#94A3B8", marginTop: "2px" }}>
-                                {c.jockey && <span>🏇 {c.jockey}</span>}
-                                {c.trainer && <span> · 🏠 {c.trainer}</span>}
-                              </div>
-                            </div>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            {c.kelvin_grade && <RatingBadge grade={c.kelvin_grade} />}
-                            <button onClick={() => navigate(`/race/${date}/${venue}/${race.race_number}`)}
-                              style={{ padding: "3px 8px", background: "#EFF6FF", color: "#1E40AF", border: "1px solid #BFDBFE", borderRadius: "6px", fontSize: "0.65rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                              查看分析→
-                            </button>
-                          </div>
-                        </div>
-                        {isScratched ? (
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <span style={{ fontSize: "0.8rem", color: "#94A3B8", fontWeight: 600 }}>🚫 已退出</span>
-                            <button onClick={() => handleScratch(race.race_number, c.horse_number)}
-                              style={{ padding: "3px 8px", background: "#F1F5F9", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: "6px", fontSize: "0.65rem", cursor: "pointer" }}>
-                              撤銷
-                            </button>
-                          </div>
-                        ) : !bet ? (
-                          confirmedOdds ? (
-                            <div>
-                              <div style={{ fontSize: "0.75rem", color: "#334155", marginBottom: "6px" }}>
-                                賠率已確認 @{confirmedOdds} — 是否投注？
-                              </div>
-                              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                                <button onClick={() => handlePlaceBet(race, c)}
-                                  style={{ padding: "4px 12px", background: "#059669", color: "#fff", border: "none", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer" }}>
-                                  💰 投注
-                                </button>
-                                <button onClick={() => handleSkipBet(race.race_number, c.horse_number, c)}
-                                  style={{ padding: "4px 12px", background: "#F1F5F9", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 600, cursor: "pointer" }}>
-                                  📋 唔投
-                                </button>
-                                <button onClick={() => handleEditOdds(race.race_number, c.horse_number)}
-                                  style={{ padding: "4px 12px", background: "#FEF3C7", color: "#92400E", border: "1px solid #FDE68A", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 600, cursor: "pointer" }}>
-                                  ✏️ 改賠率
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div>
-                              <div style={{ fontSize: "0.7rem", color: "#94A3B8", marginBottom: "4px" }}>⊙ 輸入賠率</div>
-                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                <input type="number" step="0.1" min="1" placeholder="賠率"
-                                  value={oddsInput[key] || ""}
-                                  onChange={(e) => setOddsInput((prev) => ({ ...prev, [key]: e.target.value }))}
-                                  style={{ width: "60px", padding: "4px 6px", border: "1px solid #E2E8F0", borderRadius: "6px", fontSize: "0.75rem", textAlign: "center" }}
-                                />
-                                <button onClick={() => handleConfirmOdds(race.race_number, c.horse_number)}
-                                  style={{ padding: "4px 12px", background: "#1E40AF", color: "#fff", border: "none", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer" }}>
-                                  🔒 確認賠率
-                                </button>
-                              </div>
-                            </div>
-                          )
-                        ) : bet.status === "pending" ? (
-                          <div>
-                            <div style={{ fontSize: "0.75rem", color: "#334155", marginBottom: "6px" }}>
-                              賠率已確認 @{bet.odds} — 等待結果
-                            </div>
-                            <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
-                              {[1,2,3].map(p => (
-                                <button key={p} onClick={() => handleResult(race.race_number, bet.id, p, bet.odds)}
-                                  style={{ padding: "4px 12px", background: "#EFF6FF", color: "#1E40AF", border: "1px solid #BFDBFE", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer" }}>
-                                  {p}位
-                                </button>
-                              ))}
-                              <button onClick={() => handleResult(race.race_number, bet.id, 0, bet.odds)}
-                                style={{ padding: "4px 12px", background: "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer" }}>
-                                ✗
-                              </button>
-                              <button onClick={() => handleScratch(race.race_number, c.horse_number)}
-                                style={{ padding: "4px 12px", background: "#FEE2E2", color: "#DC2626", border: "1px solid #FECACA", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 600, cursor: "pointer" }}>
-                                🚫 已退出
-                              </button>
-                              <button onClick={() => handleDelete(race.race_number, bet.id)}
-                                style={{ padding: "4px 12px", background: "#F8FAFC", color: "#94A3B8", border: "1px solid #E2E8F0", borderRadius: "6px", fontSize: "0.7rem", cursor: "pointer" }}>
-                                🗑️
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div>
-                            <div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "6px" }}>
-                              <span style={{ fontSize: "0.75rem", fontWeight: 600 }}>@{bet.odds}</span>
-                              <span style={{
-                                padding: "2px 8px", borderRadius: "999px", fontSize: "0.65rem", fontWeight: 700,
-                                background: bet.status === "won" ? "#D1FAE5" : "#FEE2E2",
-                                color: bet.status === "won" ? "#059669" : "#DC2626",
-                              }}>
-                                {bet.status === "won" ? `✅ ${bet.result_position}位` : "❌"}
-                              </span>
-                              <span style={{ fontWeight: 800, fontSize: "0.8rem", color: bet.net_profit > 0 ? "#059669" : "#DC2626" }}>
-                                {bet.net_profit > 0 ? "+" : ""}${(bet.net_profit || 0).toFixed(2)}
-                              </span>
-                            </div>
-                            <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
-                              <span style={{ fontSize: "0.65rem", color: "#94A3B8" }}>更正:</span>
-                              {[1,2,3].map(p => (
-                                <button key={p} onClick={() => handleResult(race.race_number, bet.id, p, bet.odds)}
-                                  style={{ padding: "4px 12px", background: bet.result_position === p ? "#DBEAFE" : "#EFF6FF", color: "#1E40AF", border: "1px solid #BFDBFE", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer" }}>
-                                  {p}位
-                                </button>
-                              ))}
-                              <button onClick={() => handleResult(race.race_number, bet.id, 0, bet.odds)}
-                                style={{ padding: "4px 12px", background: bet.result_position === 0 ? "#FECACA" : "#FEF2F2", color: "#DC2626", border: "1px solid #FECACA", borderRadius: "6px", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer" }}>
-                                ✗
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
+                  candidates.map((candidate) =>
+                    renderCandidateCard(race, candidate, bets),
+                  )
                 )}
 
                 {/* Link to full analysis */}

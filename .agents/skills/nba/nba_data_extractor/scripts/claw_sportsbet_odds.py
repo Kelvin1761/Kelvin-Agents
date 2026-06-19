@@ -20,7 +20,8 @@ Runs automatically. No manual user steps.
 import json
 import urllib.request
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 try:
     from curl_cffi import requests
 except ImportError:
@@ -46,6 +47,8 @@ ESPN_TO_STANDARD = {
     "UTAH": "UTA",
 }
 
+AU_TZ = ZoneInfo("Australia/Sydney")
+
 class SportsbetNBAExtractor:
     def __init__(self, outdir=".", target_date=None):
         self.competition_url = "https://www.sportsbet.com.au/apigw/sportsbook-sports/Sportsbook/Sports/Competitions/6927"
@@ -53,6 +56,96 @@ class SportsbetNBAExtractor:
         self.outdir = outdir
         self.target_date = target_date
         self.session = requests.Session(impersonate="chrome120")
+
+    def _parse_matchup_tag(self, raw_name):
+        matchup_str = raw_name.lower().replace(" at ", "|")
+        parts = matchup_str.split("|")
+        if len(parts) != 2:
+            return None
+        away_name = next((k for k in TEAM_NAMES.keys() if k.lower() == parts[0].strip()), None)
+        home_name = next((k for k in TEAM_NAMES.keys() if k.lower() == parts[1].strip()), None)
+        if not away_name or not home_name:
+            return None
+        return f"{TEAM_NAMES[away_name]}_{TEAM_NAMES[home_name]}"
+
+    def _parse_event_datetime(self, raw_value):
+        if raw_value in (None, ""):
+            return None
+
+        if isinstance(raw_value, (int, float)):
+            try:
+                ts = float(raw_value)
+                if ts > 10_000_000_000:
+                    ts /= 1000.0
+                return datetime.fromtimestamp(ts, tz=timezone.utc).astimezone(AU_TZ)
+            except Exception:
+                return None
+
+        if not isinstance(raw_value, str):
+            return None
+
+        text = raw_value.strip()
+        if not text:
+            return None
+
+        candidates = [
+            text,
+            text.replace("Z", "+00:00"),
+            text.replace(" ", "T"),
+        ]
+
+        for candidate in candidates:
+            try:
+                parsed = datetime.fromisoformat(candidate)
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=timezone.utc)
+                return parsed.astimezone(AU_TZ)
+            except ValueError:
+                continue
+
+        for fmt in (
+            "%Y-%m-%dT%H:%M:%S.%fZ",
+            "%Y-%m-%dT%H:%M:%SZ",
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d",
+        ):
+            try:
+                parsed = datetime.strptime(text, fmt)
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=timezone.utc)
+                return parsed.astimezone(AU_TZ)
+            except ValueError:
+                continue
+        return None
+
+    def _extract_event_local_date(self, event):
+        candidate_keys = (
+            "startTime",
+            "startDate",
+            "eventStartTime",
+            "eventStartDate",
+            "advertisedStartTime",
+            "advertisedStartDate",
+            "scheduledStartTime",
+            "openDate",
+            "date",
+            "displayDate",
+        )
+
+        for key in candidate_keys:
+            parsed = self._parse_event_datetime(event.get(key))
+            if parsed:
+                return parsed.strftime("%Y-%m-%d"), parsed.isoformat()
+
+        for key, value in event.items():
+            if not isinstance(value, dict):
+                continue
+            for nested_key in candidate_keys:
+                parsed = self._parse_event_datetime(value.get(nested_key))
+                if parsed:
+                    return parsed.strftime("%Y-%m-%d"), parsed.isoformat()
+
+        return None, None
 
     def fetch_daily_matches(self):
         print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔍 正在探索 Sportsbet 當日 NBA 賽事...")
@@ -63,16 +156,38 @@ class SportsbetNBAExtractor:
                 events = data.get('events', [])
                 
                 urls = []
+                exact_date_hits = 0
+                unresolved_date = 0
                 for event in events:
                     raw_name = event.get('name', '')
                     event_id = event.get('id', '')
                     if not raw_name or not event_id:
                         continue
+                    event_local_date, event_start_time = self._extract_event_local_date(event)
+                    if self.target_date and event_local_date and event_local_date != self.target_date:
+                        continue
+                    if self.target_date and event_local_date == self.target_date:
+                        exact_date_hits += 1
+                    elif self.target_date and not event_local_date:
+                        unresolved_date += 1
                     slug = re.sub(r'[^a-z0-9]+', '-', raw_name.lower()).strip('-')
                     full_url = f"{self.base_event_url}/{slug}-{event_id}"
-                    urls.append((raw_name, full_url))
+                    urls.append({
+                        "game_name": raw_name,
+                        "url": full_url,
+                        "event_id": event_id,
+                        "event_local_date": event_local_date,
+                        "event_start_time": event_start_time,
+                        "tag": self._parse_matchup_tag(raw_name),
+                    })
                 
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ 成功發現 {len(urls)} 場 NBA 賽程！")
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ 成功發現 {len(urls)} 場候選 NBA 賽程！")
+                if self.target_date:
+                    print(
+                        f"[{datetime.now().strftime('%H:%M:%S')}] 📅 日期檢查: "
+                        f"{exact_date_hits} 場明確屬於 {self.target_date}"
+                        + (f" | {unresolved_date} 場缺少開賽時間 metadata" if unresolved_date else "")
+                    )
                 return urls
         except Exception as e:
             print(f"❌ 獲取賽事名單失敗: {e}")
@@ -147,7 +262,9 @@ class SportsbetNBAExtractor:
 
     def traverse_and_extract(self, matches):
         all_odds_data = {}
-        for idx, (game_name, url) in enumerate(matches, 1):
+        for idx, match in enumerate(matches, 1):
+            game_name = match["game_name"]
+            url = match["url"]
             print(f"\n[{idx}/{len(matches)}] 🕵️ 讀取賽事: {game_name}")
             try:
                 resp = self.session.get(url, timeout=15)
@@ -181,7 +298,7 @@ class SportsbetNBAExtractor:
                         away_abbr = TEAM_NAMES[away_name]
                         home_abbr = TEAM_NAMES[home_name]
                         
-                        formatted = self._format_as_sportsbet(game_name, away_abbr, home_abbr, cleaned)
+                        formatted = self._format_as_sportsbet(game_name, away_abbr, home_abbr, cleaned, match)
                         all_odds_data[f"{away_abbr}_{home_abbr}"] = formatted
                         print(f"   ✅ 成功提取 {len(cleaned)} 種類別，已格式化為 {away_abbr} @ {home_abbr}")
                     else:
@@ -352,7 +469,7 @@ class SportsbetNBAExtractor:
         # Remove empty categories
         return {k: v for k, v in cleaned.items() if v}
 
-    def _format_as_sportsbet(self, raw_game_name, away_abbr, home_abbr, cleaned_markets):
+    def _format_as_sportsbet(self, raw_game_name, away_abbr, home_abbr, cleaned_markets, match_meta=None):
         """
         Converts sportsbet internal dict into the standard Sportsbet_Odds JSON
         format expected by downstream (generate_nba_reports.py).
@@ -370,6 +487,10 @@ class SportsbetNBAExtractor:
         formatted = {
             "source": "Sportsbet_Extractor",
             "extraction_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "target_analysis_date": self.target_date,
+            "sportsbet_event_id": match_meta.get("event_id") if match_meta else None,
+            "event_local_date": match_meta.get("event_local_date") if match_meta else None,
+            "event_start_time": match_meta.get("event_start_time") if match_meta else None,
             "matchup": f"{away_abbr} @ {home_abbr}",
             "away_team": away_abbr,
             "home_team": home_abbr,
@@ -456,6 +577,21 @@ class SportsbetNBAExtractor:
         allowed_tags = self._allowed_tags_from_espn()
         if allowed_tags:
             print(f"📅 目標日期白名單: {len(allowed_tags)} 個 ESPN tags — {sorted(allowed_tags)}")
+        if self.target_date:
+            strict_matches = [m for m in matches if m.get("event_local_date") == self.target_date]
+            unresolved_matches = [m for m in matches if not m.get("event_local_date")]
+            if strict_matches:
+                matches = strict_matches
+                print(f"📌 以 Sportsbet 開賽日期嚴格過濾: 保留 {len(matches)} 場 {self.target_date} 賽事")
+            elif allowed_tags:
+                matches = [m for m in matches if m.get("tag") in allowed_tags]
+                print(f"📌 無明確開賽日期 metadata，退回 ESPN tag 白名單: 保留 {len(matches)} 場")
+            else:
+                if unresolved_matches:
+                    print("❌ 找到候選賽事，但 Sportsbet event 缺少可用日期 metadata，且 ESPN 白名單為空。為避免跨日誤抓，已停止。")
+                else:
+                    print(f"❌ Sportsbet 未返回任何屬於 {self.target_date} 嘅 NBA 賽事。")
+                return
 
         print(f"\n--- 開始逐場萃取 Player Props ---")
         odds_data = self.traverse_and_extract(matches)

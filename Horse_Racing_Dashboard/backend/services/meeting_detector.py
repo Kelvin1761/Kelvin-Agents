@@ -26,6 +26,13 @@ AU_FOLDER_RE = re.compile(r'^(\d{4}-\d{2}-\d{2})\s+(.+?)(?:\s+Race\s+(\d+)-(\d+)
 # Keywords that indicate non-racing folders (should be skipped)
 NON_RACING_KEYWORDS = ['NBA', 'NFL', 'Soccer', 'Cricket', 'Tennis', 'Game Archieve']
 
+HKJC_FOLDER_VENUE_MAP = {
+    'ShaTin': '沙田',
+    'HappyValley': '跑馬地',
+    'Sha Tin': '沙田',
+    'Happy Valley': '跑馬地',
+}
+
 
 def discover_meetings(root_dir: Optional[str] = None) -> list[Meeting]:
     """Scan the Antigravity root directory for race meetings.
@@ -217,6 +224,9 @@ def load_meeting_races(meeting: Meeting) -> dict[str, list[RaceAnalysis]]:
             for fpath in analysis_files:
                 race = parse_hkjc_analysis(str(fpath))
                 if race:
+                    canonical_venue = HKJC_FOLDER_VENUE_MAP.get(meeting.venue, meeting.venue)
+                    if race.venue != canonical_venue:
+                        race.venue = canonical_venue
                     races.append(race)
         
         elif meeting.region == Region.AU:

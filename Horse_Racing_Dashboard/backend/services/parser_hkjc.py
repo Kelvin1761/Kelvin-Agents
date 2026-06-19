@@ -741,42 +741,47 @@ def _parse_auto_top_picks_from_table(text: str) -> list[TopPick]:
 def _parse_race_header(text: str) -> dict:
     """Parse race specifications from Part 1."""
     info = {}
+    header_slice = text
+    for marker in ['[第二部分]', '## [第二部分]', '#### [第二部分]']:
+        idx = text.find(marker)
+        if idx > 0:
+            header_slice = text[:idx]
+            break
     
     # Race number
-    race_m = re.search(r'第(\d+)場', text)
+    race_m = re.search(r'第(\d+)場', header_slice)
     if race_m:
         info['race_number'] = int(race_m.group(1))
     
     # Distance  
-    dist_m = re.search(r'(\d{3,4})(?:米|m)', text)
+    dist_m = re.search(r'(\d{3,4})(?:米|m)', header_slice)
     if dist_m:
         info['distance'] = dist_m.group(1) + 'm'
     
     # Class
-    class_m = re.search(r'(第[一二三四五]班|[一二三四五]班)', text)
+    class_m = re.search(r'(第[一二三四五]班|[一二三四五]班)', header_slice)
     if class_m:
         info['race_class'] = class_m.group(1)
     
     # Track
-    track_m = re.search(r'(草地|全天候|泥地)\s*(?:-\s*)?[「"]?([A-C])[」"]?\s*賽道', text)
+    track_m = re.search(r'(草地|全天候|泥地)\s*(?:-\s*)?[「"]?([A-C])[」"]?\s*賽道', header_slice)
     if track_m:
         info['track'] = f"{track_m.group(1)} {track_m.group(2)} 賽道"
     
-    # Venue
-    venue_m = re.search(r'(沙田|跑馬地)', text)
-    if venue_m:
-        info['venue'] = venue_m.group(1)
-    
     # Race name — try explicit 賽事名稱 first
-    name_m = re.search(r'賽事名稱[：:]\s*\*{0,2}(.+?)\*{0,2}\s*(?:\n|$)', text)
+    name_m = re.search(r'賽事名稱[：:]\s*\*{0,2}(.+?)\*{0,2}\s*(?:\n|$)', header_slice)
     if name_m:
         info['race_name'] = name_m.group(1).strip()
     else:
         # Fallback: extract from 賽事規格 line — race name is typically the last segment
         # Format: 第1場 / 第五班 / 2200米 / 草地 B 賽道 / 跑馬地 / 屯門讓賽
-        spec_m = re.search(r'賽事規格[：:]\s*\*{0,2}(.+?)(?:\n|$)', text)
+        spec_m = re.search(r'賽事規格[：:]\s*\*{0,2}(.+?)(?:\n|$)', header_slice)
         if spec_m:
             segments = [s.strip() for s in spec_m.group(1).split('/')]
+            for seg in segments:
+                if seg in ('沙田', '跑馬地'):
+                    info['venue'] = seg
+                    break
             # Race name is after venue (沙田/跑馬地) — take remaining segments
             venue_idx = None
             for i, seg in enumerate(segments):
@@ -787,11 +792,15 @@ def _parse_race_header(text: str) -> dict:
                 race_name = ' '.join(segments[venue_idx + 1:]).strip().strip('*')
                 if race_name and not re.match(r'^第\d+場$', race_name):
                     info['race_name'] = race_name
+    if 'venue' not in info:
+        venue_m = re.search(r'(?:^|[|｜/\s])(沙田|跑馬地)(?:$|[|｜/\s])', header_slice, re.MULTILINE)
+        if venue_m:
+            info['venue'] = venue_m.group(1)
     
     # Pace prediction — try backtick-delimited first, then generic
-    pace_m = re.search(r'步速預測[：:]\s*\*{0,2}\s*`([^`]+)`', text)
+    pace_m = re.search(r'步速預測[：:]\s*\*{0,2}\s*`([^`]+)`', header_slice)
     if not pace_m:
-        pace_m = re.search(r'步速預測[：:]\s*\*{0,2}\s*(.+?)\s*(?:\n|$)', text)
+        pace_m = re.search(r'步速預測[：:]\s*\*{0,2}\s*(.+?)\s*(?:\n|$)', header_slice)
     if pace_m:
         val = pace_m.group(1).strip().strip('*').strip('`').strip()
         if val and val != '*':

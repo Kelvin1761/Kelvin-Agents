@@ -30,7 +30,9 @@ Total sample: dynamic walk-forward coverage based on all matched meetings curren
 
 ## Decision
 
-Latest mainline decision after dedup walk-forward review (`131` unique races / `13` unique meetings):
+### Previous Calibration (current mainline)
+
+Mainline decision after dedup walk-forward review (`140` unique races / `14` unique meetings):
 
 - `race_shape`: 0.2560
 - `trainer_signal`: 0.2209

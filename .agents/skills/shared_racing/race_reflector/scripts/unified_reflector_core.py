@@ -6,6 +6,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -152,16 +153,31 @@ class RacePerformance:
     race_num: int
     label: str
     model_top3: list[dict[str, Any]]
+    model_top5: list[dict[str, Any]]
     actual_top3: list[dict[str, Any]]
     actual_rows: list[dict[str, Any]]
     prediction_rows: list[dict[str, Any]]
+    top5_actual_top3_hits: int
+    top5_actual_top3_covered: list[dict[str, Any]]
+    top5_actual_top3_missed: list[dict[str, Any]]
+    winner_in_model_top5: bool
     missed_actual_top3: list[dict[str, Any]]
     incident_analysis: dict[str, Any]
 
 
 def default_report_path(platform: str, meeting_dir: Path) -> Path:
     pattern = DEFAULT_REPORT_NAMES[platform]
-    return meeting_dir / pattern.format(meeting=meeting_dir.name)
+    report_dir = meeting_dir
+    if platform == "hkjc":
+        archive_root = DOMAIN_ARCHIVES[platform].resolve()
+        resolved_meeting_dir = meeting_dir.resolve()
+        try:
+            resolved_meeting_dir.relative_to(archive_root)
+        except ValueError:
+            report_dir = archive_root / meeting_dir.name
+        else:
+            report_dir = resolved_meeting_dir
+    return report_dir / pattern.format(meeting=meeting_dir.name)
 
 
 def run_logged_command(cmd: list[str], label: str, ok_codes: tuple[int, ...] = (0,)) -> subprocess.CompletedProcess[str]:
@@ -415,7 +431,7 @@ def load_prediction_rows(meeting_dir: Path, platform: str) -> dict[int, list[dic
     }[platform]
     csv_paths = [meeting_csv] if meeting_csv.exists() else sorted(meeting_dir.glob("Race_*_Auto_Scoring.csv"))
     by_race: dict[int, list[dict[str, Any]]] = defaultdict(list)
-    score_key = "rank_score" if platform == "au" else "ability_score"
+    score_key = "ability_score"
 
     for csv_path in csv_paths:
         with csv_path.open(encoding="utf-8-sig", newline="") as handle:
@@ -650,18 +666,50 @@ def build_race_performances(
         actual_top3 = actual_rows[:3]
         prediction_list = prediction_rows.get(race_num, [])
         prediction_map = {row["horse_no"]: row for row in prediction_list}
+        if actual_rows and prediction_list:
+            final_starters = {row["horse_no"] for row in actual_rows}
+            prediction_list = [
+                dict(row)
+                for row in prediction_list
+                if row["horse_no"] in final_starters
+            ]
+            for idx, row in enumerate(prediction_list, start=1):
+                row["derived_rank"] = idx
+            prediction_map = {row["horse_no"]: row for row in prediction_list}
+        model_top5 = [
+            {
+                "rank": row.get("derived_rank") or row.get("rank"),
+                "horse_no": row["horse_no"],
+                "horse_name": row["horse_name"],
+                "grade": row.get("grade", ""),
+                "composite_score": row.get("composite_score"),
+            }
+            for row in prediction_list[:5]
+        ]
         model_top3 = []
-        for rank, horse_no, horse_name in race.get("top_picks", [])[:3]:
-            row = prediction_map.get(horse_no, {})
-            model_top3.append(
+        if prediction_list:
+            model_top3 = [
                 {
-                    "rank": rank,
-                    "horse_no": horse_no,
-                    "horse_name": horse_name,
+                    "rank": row.get("derived_rank") or row.get("rank"),
+                    "horse_no": row["horse_no"],
+                    "horse_name": row["horse_name"],
                     "grade": row.get("grade", ""),
                     "composite_score": row.get("composite_score"),
                 }
-            )
+                for row in prediction_list[:3]
+            ]
+        else:
+            for rank, horse_no, horse_name in race.get("top_picks", [])[:3]:
+                row = prediction_map.get(horse_no, {})
+                model_top3.append(
+                    {
+                        "rank": rank,
+                        "horse_no": horse_no,
+                        "horse_name": horse_name,
+                        "grade": row.get("grade", ""),
+                        "composite_score": row.get("composite_score"),
+                    }
+                )
         actual_top3_view = [
             {
                 "placing": row["placing"],
@@ -671,6 +719,13 @@ def build_race_performances(
                 "odds": row.get("odds"),
             }
             for row in actual_top3
+        ]
+        top5_nums = {row["horse_no"] for row in model_top5}
+        top5_actual_top3_covered = [
+            row for row in actual_top3_view if row["horse_no"] in top5_nums
+        ]
+        top5_actual_top3_missed = [
+            row for row in actual_top3_view if row["horse_no"] not in top5_nums
         ]
 
         label = performance_label_from_rows(model_top3, actual_top3_view)
@@ -686,9 +741,14 @@ def build_race_performances(
                 race_num=race_num,
                 label=label,
                 model_top3=model_top3,
+                model_top5=model_top5,
                 actual_top3=actual_top3_view,
                 actual_rows=actual_rows,
                 prediction_rows=prediction_list,
+                top5_actual_top3_hits=len(top5_actual_top3_covered),
+                top5_actual_top3_covered=top5_actual_top3_covered,
+                top5_actual_top3_missed=top5_actual_top3_missed,
+                winner_in_model_top5=bool(actual_top3_view and actual_top3_view[0]["horse_no"] in top5_nums),
                 missed_actual_top3=missed_horses,
                 incident_analysis=incident_analysis,
             )
@@ -699,6 +759,36 @@ def build_race_performances(
 def summarize_label_distribution(races: list[RacePerformance]) -> dict[str, int]:
     counts = Counter(race.label for race in races)
     return {label: counts.get(label, 0) for label in ("Gold", "Good", "Pass", "1 Hit", "Miss")}
+
+
+def summarize_shortlist_metrics(races: list[RacePerformance]) -> dict[str, Any]:
+    total = len(races)
+    if not total:
+        return {
+            "races": 0,
+            "top5_3plus": 0,
+            "top5_2plus": 0,
+            "winner_in_top5": 0,
+            "avg_actual_top3_in_top5": 0.0,
+            "top5_3plus_rate": 0.0,
+            "top5_2plus_rate": 0.0,
+            "winner_in_top5_rate": 0.0,
+        }
+
+    top5_3plus = sum(1 for race in races if race.top5_actual_top3_hits >= 3)
+    top5_2plus = sum(1 for race in races if race.top5_actual_top3_hits >= 2)
+    winner_in_top5 = sum(1 for race in races if race.winner_in_model_top5)
+    avg_hits = sum(race.top5_actual_top3_hits for race in races) / total
+    return {
+        "races": total,
+        "top5_3plus": top5_3plus,
+        "top5_2plus": top5_2plus,
+        "winner_in_top5": winner_in_top5,
+        "avg_actual_top3_in_top5": round(avg_hits, 3),
+        "top5_3plus_rate": round(top5_3plus / total * 100, 1),
+        "top5_2plus_rate": round(top5_2plus / total * 100, 1),
+        "winner_in_top5_rate": round(winner_in_top5 / total * 100, 1),
+    }
 
 
 def normalize_metrics(raw: dict[str, Any]) -> dict[str, Any]:
@@ -803,19 +893,30 @@ def meaningful_candidates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def run_au_backtests(meeting_dir: Path) -> list[dict[str, Any]]:
     archive_root = DOMAIN_ARCHIVES["au"]
+    overall_started = time.perf_counter()
+    print(f"🔍 AU backtests: scanning archive candidates for {meeting_dir.name}", flush=True)
     baseline_run_review = _import_au_review()
-    baseline = normalize_metrics(baseline_run_review(archive_root, mode="recomputed")["current_live"])
+    baseline_started = time.perf_counter()
+    baseline_report = baseline_run_review(archive_root, mode="recomputed")
+    baseline = normalize_metrics(baseline_report["current_live"])
+    baseline_labels = extract_au_race_labels(baseline_report["details"])
+    print(
+        "✅ AU backtests: recomputed baseline ready "
+        f"({baseline['races']} races, {time.perf_counter() - baseline_started:.2f}s)",
+        flush=True,
+    )
 
     suggestions = []
     class_variants, class_runner = _import_au_class_shadow()
-    class_baseline = class_runner(archive_root, "baseline", class_variants["baseline"])
-    class_baseline_labels = extract_au_race_labels(class_baseline["details"])
     for variant_name in ("class_venue_weight_soft",):
+        stage_started = time.perf_counter()
+        print(f"🔍 AU backtests: running {variant_name}", flush=True)
         result = class_runner(archive_root, variant_name, class_variants[variant_name])
         metrics = normalize_metrics(result["current_live"])
         delta = diff_metrics(metrics, baseline)
         candidate_labels = extract_au_race_labels(result["details"])
-        helped, worsened = compare_label_maps(class_baseline_labels, candidate_labels)
+        helped, worsened = compare_label_maps(baseline_labels, candidate_labels)
+        print(f"✅ AU backtests: {variant_name} finished ({time.perf_counter() - stage_started:.2f}s)", flush=True)
         suggestions.append(
             {
                 "name": result["variant"],
@@ -829,11 +930,14 @@ def run_au_backtests(meeting_dir: Path) -> list[dict[str, Any]]:
         )
 
     bundle_variants, bundle_runner = _import_au_shadow_bundle()
+    stage_started = time.perf_counter()
+    print("🔍 AU backtests: running bundle_recommended", flush=True)
     result = bundle_runner(archive_root, "bundle_recommended", bundle_variants["bundle_recommended"])
     metrics = normalize_metrics(result["current_live"])
     delta = diff_metrics(metrics, baseline)
     candidate_labels = extract_au_race_labels(result["details"])
-    helped, worsened = compare_label_maps(class_baseline_labels, candidate_labels)
+    helped, worsened = compare_label_maps(baseline_labels, candidate_labels)
+    print(f"✅ AU backtests: bundle_recommended finished ({time.perf_counter() - stage_started:.2f}s)", flush=True)
     suggestions.append(
         {
             "name": result["variant"],
@@ -846,6 +950,7 @@ def run_au_backtests(meeting_dir: Path) -> list[dict[str, Any]]:
         }
     )
 
+    print(f"✅ AU backtests complete ({time.perf_counter() - overall_started:.2f}s)", flush=True)
     return pick_best_candidate(meaningful_candidates(suggestions))[:3]
 
 
@@ -902,11 +1007,17 @@ def summarize_meeting_strengths(races: list[RacePerformance]) -> list[str]:
     if not races:
         return ["未有可反映場次。"]
     counts = summarize_label_distribution(races)
+    shortlist = summarize_shortlist_metrics(races)
     strengths = []
     if counts["Gold"] or counts["Good"]:
         strengths.append(f"前列排序有一定命中力，Gold/Good 合共有 {counts['Gold'] + counts['Good']} 場。")
     if counts["Pass"]:
         strengths.append(f"至少 2/3 Top picks 入實際前三的場次有 {counts['Pass']} 場。")
+    if shortlist["top5_2plus"]:
+        strengths.append(
+            f"Top 5 shortlist 有 {shortlist['top5_2plus']}/{shortlist['races']} 場包到至少兩匹實際前三，"
+            f"平均每場包 {shortlist['avg_actual_top3_in_top5']} 匹。"
+        )
     if not strengths:
         strengths.append("今次 meeting 幾乎冇明顯命中優勢，強項主要只剩個別單場細節。")
     return strengths
@@ -933,6 +1044,7 @@ def render_markdown_report(
     backtests: list[dict[str, Any]],
 ) -> str:
     distribution = summarize_label_distribution(race_performances)
+    shortlist = summarize_shortlist_metrics(race_performances)
     reflected_races = ", ".join(str(race.race_num) for race in race_performances) or "N/A"
     lines = [
         f"# Unified {DOMAIN_LABELS[platform]} Race Reflector Report",
@@ -950,6 +1062,10 @@ def render_markdown_report(
         f"- Pass: {distribution['Pass']}",
         f"- 1 Hit: {distribution['1 Hit']}",
         f"- Miss: {distribution['Miss']}",
+        f"- Top 5 包齊實際前三: {shortlist['top5_3plus']}/{shortlist['races']} ({shortlist['top5_3plus_rate']}%)",
+        f"- Top 5 包至少兩匹實際前三: {shortlist['top5_2plus']}/{shortlist['races']} ({shortlist['top5_2plus_rate']}%)",
+        f"- 冠軍在模型 Top 5: {shortlist['winner_in_top5']}/{shortlist['races']} ({shortlist['winner_in_top5_rate']}%)",
+        f"- 平均每場 Top 5 包實際前三匹數: {shortlist['avg_actual_top3_in_top5']}",
         "",
         "## What The Model Did Well",
     ]
@@ -961,6 +1077,9 @@ def render_markdown_report(
         model_top3_text = ", ".join(
             f"#{row['horse_no']} {row['horse_name']}" for row in race.model_top3
         ) or "N/A"
+        model_top5_text = ", ".join(
+            f"#{row['horse_no']} {row['horse_name']}" for row in race.model_top5
+        ) or "N/A"
         actual_top3_text = ", ".join(
             f"{row['placing']}. #{row['horse_no']} {row['horse_name']}" for row in race.actual_top3
         ) or "N/A"
@@ -970,10 +1089,17 @@ def render_markdown_report(
                 f"## Race {race.race_num}",
                 f"- Performance label: **{race.label}**",
                 f"- Model Top 3: {model_top3_text}",
+                f"- Model Top 5 shortlist: {model_top5_text}",
                 f"- Actual Top 3: {actual_top3_text}",
+                f"- Top 5 shortlist coverage: {race.top5_actual_top3_hits}/3 actual Top 3; winner in Top 5: {'Yes' if race.winner_in_model_top5 else 'No'}",
                 f"- Incident / forgiveness: **{race.incident_analysis.get('classification', 'N/A')}** — {race.incident_analysis.get('summary', 'N/A')}",
             ]
         )
+        if race.top5_actual_top3_missed:
+            missed_top5_text = ", ".join(
+                f"#{row['horse_no']} {row['horse_name']}" for row in race.top5_actual_top3_missed
+            )
+            lines.append(f"- Actual Top 3 outside model Top 5: {missed_top5_text}")
         if race.incident_analysis.get("excerpt"):
             for excerpt in race.incident_analysis["excerpt"]:
                 lines.append(f"- Incident excerpt: {excerpt}")
@@ -1054,12 +1180,18 @@ def build_json_summary(
         "results_file": str(results_file),
         "report_path": str(report_path),
         "meeting_summary": summarize_label_distribution(races),
+        "shortlist_summary": summarize_shortlist_metrics(races),
         "races": [
             {
                 "race_num": race.race_num,
                 "label": race.label,
                 "model_top3": race.model_top3,
+                "model_top5": race.model_top5,
                 "actual_top3": race.actual_top3,
+                "top5_actual_top3_hits": race.top5_actual_top3_hits,
+                "top5_actual_top3_covered": race.top5_actual_top3_covered,
+                "top5_actual_top3_missed": race.top5_actual_top3_missed,
+                "winner_in_model_top5": race.winner_in_model_top5,
                 "missed_actual_top3": race.missed_actual_top3,
                 "incident_analysis": race.incident_analysis,
             }
@@ -1112,6 +1244,7 @@ def run_unified_reflector(
     backtests = [] if skip_backtest else (run_au_backtests(resolved_meeting_dir) if platform == "au" else run_hkjc_backtests(resolved_meeting_dir))
 
     final_report_path = Path(report_path).resolve() if report_path else default_report_path(platform, resolved_meeting_dir)
+    final_report_path.parent.mkdir(parents=True, exist_ok=True)
     final_report_path.write_text(
         render_markdown_report(platform, resolved_meeting_dir, resolved_results_file, races, backtests),
         encoding="utf-8",

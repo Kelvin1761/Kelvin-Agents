@@ -138,7 +138,7 @@ def extract_race_results(apollo, event):
         # Skip scratched
         status = sel.get('status', '')
         status_abv = sel.get('statusAbv', '')
-        is_scratched = status_abv in ('S', 'LR') or 'scratch' in status.lower()
+        is_scratched = status_abv in ('S', 'LR') or (status and 'scratch' in status.lower())
 
         # Get result
         result_key = f"$Selection:{sel_id}.result"

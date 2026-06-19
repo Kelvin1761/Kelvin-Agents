@@ -17,15 +17,18 @@ from models.race import (
 # Horse block splitting (AU format)
 # ──────────────────────────────────────────────
 
-# AU format: ### 【No.1】Northern Eyes（檔位：13） or  【No.1】Campaldino（檔位：7）
+# AU format:
+#   ### 【No.1】Northern Eyes（檔位：13）
+#   ### 【No.7】 Angelic Rise | 騎師: Luke Currie | ...
+#   【No.1】Campaldino（檔位：7）
 AU_HORSE_HEADER_RE = re.compile(
-    r'^(?:###\s*)?【No\.(\d+)】\s*(.+?)(?:（|[\(])',
+    r'^(?:###\s*)?【No\.(\d+)】\s*(.+?)(?=\s*(?:\||（|[\(]|$))',
     re.MULTILINE
 )
 
 # AU actual format in files: [#1] NORTHERN EYES (Barrier 13)
 AU_HORSE_BRACKET_RE = re.compile(
-    r'^\[#(\d{1,2})\]\s+([A-Z][A-Z\s\'-]+?)(?:\s*\(Barrier|\s*$)',
+    r'^\[#(\d{1,2})\]\s+([A-Za-z][A-Za-z0-9\s\'\-.&/]+?)(?:\s*\(Barrier|\s*$)',
     re.MULTILINE
 )
 
@@ -47,7 +50,7 @@ def _split_au_horse_blocks(text: str) -> list[tuple[int, str, str]]:
     matches = []
     for pattern in patterns:
         matches = list(pattern.finditer(text))
-        if len(matches) >= 2:
+        if matches:
             break
     if not matches:
         return []
@@ -223,11 +226,11 @@ def _parse_au_rating_matrix(text: str) -> Optional[RatingMatrix]:
 def _parse_au_final_grade(text: str) -> Optional[str]:
     """Extract final grade from AU analysis."""
     patterns = [
-        r'⭐\s*最終評級[：:]\s*\[?`?([A-DS][+\-]?)\]?`?',
-        r'\*\*⭐\s*最終評級[：:]\*\*\s*\[?`?([A-DS][+\-]?)\]?`?',
-        r'最終評級[：:]\s*`?([A-DS][+\-]?)`?',
+        r'⭐\s*最終評級[：:]\s*\*{0,2}\[?`?([A-DS][+\-]?)\]?`?\*{0,2}',
+        r'\*\*⭐\s*最終評級[：:]\*\*\s*\*{0,2}\[?`?([A-DS][+\-]?)\]?`?\*{0,2}',
+        r'最終評級[：:]\s*\*{0,2}`?([A-DS][+\-]?)`?\*{0,2}',
         # AU header format: ### 【No.1】Lafite ... | 評級: A
-        r'評級[：:]\s*`?([A-DS][+\-]?)`?',
+        r'評級[：:]\s*\*{0,2}`?([A-DS][+\-]?)`?\*{0,2}',
     ]
     for pat in patterns:
         m = re.search(pat, text)
@@ -894,5 +897,5 @@ def parse_au_analysis(filepath: str) -> Optional[RaceAnalysis]:
         scenario_top_picks=scenario_top_picks,
         monte_carlo_simulation=monte_carlo if monte_carlo else None,
         battlefield_overview=battlefield,
+        analysis_type='auto' if path.name.endswith("_Auto_Analysis.md") else 'classic',
     )
-

@@ -993,10 +993,11 @@ def compute_usage_redistribution(players, team_abbr):
 # ==========================================
 # 模塊 D2：Rest Day Fatigue Model
 # ==========================================
-def compute_fatigue_adjustment(player_splits, gamelog):
+def compute_fatigue_adjustment(player_splits, gamelog, game_date=None):
     """
     根據休息日數自動調整預期值。
     如果 0 Days Rest (B2B) 的 PPG 顯著低於 1+ Days Rest，生成警告。
+    同時計算當前比賽嘅 rest_days 同 is_b2b。
     """
     if not player_splits:
         return None
@@ -1016,12 +1017,32 @@ def compute_fatigue_adjustment(player_splits, gamelog):
     
     fatigue_drop = round(normal_ppg - b2b_ppg, 1) if normal_ppg > 0 else 0
     fatigue_pct = round(fatigue_drop / normal_ppg * 100, 1) if normal_ppg > 0 else 0
+
+    # Compute rest_days + is_b2b from gamelog dates
+    rest_days = 1
+    is_b2b = False
+    l10_dates = (gamelog or {}).get("l10_dates", [])
+    if l10_dates and game_date:
+        try:
+            from datetime import datetime
+        except ImportError:
+            from datetime import datetime
+        try:
+            cur = datetime.strptime(game_date[:10], "%Y-%m-%d")
+            last_game = datetime.strptime(l10_dates[0], "%b %d, %Y")
+            delta = (cur - last_game).days
+            rest_days = max(0, delta)
+            is_b2b = rest_days <= 1
+        except Exception:
+            pass
     
     return {
         "b2b_ppg": b2b_ppg,
         "normal_ppg": normal_ppg,
         "fatigue_drop": fatigue_drop,
         "fatigue_pct": fatigue_pct,
+        "rest_days": rest_days,
+        "is_b2b": is_b2b,
         "warning": f"⚠️ B2B 疲勞警告: PPG 下降 {fatigue_pct}%" if fatigue_pct > 10 else ""
     }
 
@@ -1198,7 +1219,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
                 player_entry["prop_analytics"] = prop_analytics
             
             # 🧠 Fatigue Model
-            fatigue = compute_fatigue_adjustment(splits, gamelog)
+            fatigue = compute_fatigue_adjustment(splits, gamelog, game_info.get('date'))
             if fatigue:
                 player_entry["fatigue"] = fatigue
             

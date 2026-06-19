@@ -12,7 +12,7 @@ MATRIX_FORMULAS = {
         ("track_going_score", 0.35),
     ),
     "race_shape": (
-        ("draw_score", 1.00),
+        ("race_shape_context_score", 1.00),
     ),
     "trainer_signal": (
         ("jockey_score", 0.55),
@@ -42,6 +42,12 @@ def map_features_to_matrix(features):
 def map_features_to_matrix_scores(features):
     matrix_scores = {}
     for key, components in MATRIX_FORMULAS.items():
-        score = sum(clip_score(features.get(name, 60)) * weight for name, weight in components)
+        score = sum(_component_score(features, name) * weight for name, weight in components)
         matrix_scores[key] = round(clip_score(score), 2)
     return matrix_scores
+
+
+def _component_score(features, name):
+    if name == "race_shape_context_score" and name not in features:
+        return clip_score(features.get("draw_score", 60))
+    return clip_score(features.get(name, 60))

@@ -219,3 +219,127 @@ def delete_bet(bet_id: int) -> bool:
     deleted = cursor.rowcount > 0
     conn.close()
     return deleted
+
+
+def upsert_bet_panel_state(
+    date: str,
+    venue: str,
+    region: str,
+    race_number: int,
+    horse_number: int,
+    stage: str,
+    horse_name: str = None,
+    jockey: str = None,
+    trainer: str = None,
+    odds: Optional[float] = None,
+    consensus_type: str = None,
+    kelvin_grade: str = None,
+    heison_grade: str = None,
+) -> dict:
+    """Create or update a shared betting-panel state for cross-device sync."""
+    conn = get_db()
+    conn.execute(
+        """
+        INSERT INTO bet_panel_states (
+            date, venue, region, race_number, horse_number, horse_name,
+            jockey, trainer, odds, stage, consensus_type, kelvin_grade,
+            heison_grade
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(date, venue, race_number, horse_number)
+        DO UPDATE SET
+            updated_at = CURRENT_TIMESTAMP,
+            region = excluded.region,
+            horse_name = excluded.horse_name,
+            jockey = excluded.jockey,
+            trainer = excluded.trainer,
+            odds = excluded.odds,
+            stage = excluded.stage,
+            consensus_type = excluded.consensus_type,
+            kelvin_grade = excluded.kelvin_grade,
+            heison_grade = excluded.heison_grade
+        """,
+        (
+            date,
+            venue,
+            region,
+            race_number,
+            horse_number,
+            horse_name,
+            jockey,
+            trainer,
+            odds,
+            stage,
+            consensus_type,
+            kelvin_grade,
+            heison_grade,
+        ),
+    )
+    conn.commit()
+    state = dict(
+        conn.execute(
+            """
+            SELECT * FROM bet_panel_states
+            WHERE date = ? AND venue = ? AND race_number = ? AND horse_number = ?
+            """,
+            (date, venue, race_number, horse_number),
+        ).fetchone()
+    )
+    conn.close()
+    return state
+
+
+def get_bet_panel_states_by_meeting(date: str, venue: str) -> list[dict]:
+    """Return shared betting-panel states for an entire meeting."""
+    conn = get_db()
+    states = [
+        dict(row)
+        for row in conn.execute(
+            """
+            SELECT * FROM bet_panel_states
+            WHERE date = ? AND venue = ?
+            ORDER BY race_number ASC, horse_number ASC
+            """,
+            (date, venue),
+        ).fetchall()
+    ]
+    conn.close()
+    return states
+
+
+def get_bet_panel_states_by_race(
+    date: str, venue: str, race_number: int
+) -> list[dict]:
+    """Return shared betting-panel states for one race."""
+    conn = get_db()
+    states = [
+        dict(row)
+        for row in conn.execute(
+            """
+            SELECT * FROM bet_panel_states
+            WHERE date = ? AND venue = ? AND race_number = ?
+            ORDER BY horse_number ASC
+            """,
+            (date, venue, race_number),
+        ).fetchall()
+    ]
+    conn.close()
+    return states
+
+
+def delete_bet_panel_state(
+    date: str, venue: str, race_number: int, horse_number: int
+) -> bool:
+    """Delete a shared betting-panel state."""
+    conn = get_db()
+    cursor = conn.execute(
+        """
+        DELETE FROM bet_panel_states
+        WHERE date = ? AND venue = ? AND race_number = ? AND horse_number = ?
+        """,
+        (date, venue, race_number, horse_number),
+    )
+    conn.commit()
+    deleted = cursor.rowcount > 0
+    conn.close()
+    return deleted

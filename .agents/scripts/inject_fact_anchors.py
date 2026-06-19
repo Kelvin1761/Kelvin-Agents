@@ -804,15 +804,18 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
             f"{my_pos_str} | [{q['opp_pos']}] {q['opp_name']} {q['opp_prefix']} | {class_str} | {perf_str} | {strength_lbl} |"
         )
         
-    # 5-level overall rating
+    # 5-level overall rating. "無資料" is reserved for no opponent-line sample.
+    # If Top-3 opponent rows exist but none has subsequent form yet, keep the
+    # sample visible as pending instead of collapsing it to no-data.
     rating = "無資料"
     stats_str = "N/A"
     if total_valid > 0:
         ratio = strong_score / total_valid
-        stats_str = f"{strong_score:.0f}/{total_valid}"
-        if ratio >= 0.7:
+        score_text = str(int(strong_score)) if float(strong_score).is_integer() else f"{strong_score:.1f}"
+        stats_str = f"{score_text}/{total_valid}"
+        if strong_score >= 2 and ratio >= 0.7:
             rating = "✅✅ 極強"
-        elif ratio >= 0.5:
+        elif strong_score >= 1 and ratio >= 0.5:
             rating = "✅ 強"
         elif ratio >= 0.3:
             rating = "中強"
@@ -822,6 +825,9 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
             rating = "❌ 弱"
     elif not scraper_available:
         rating = "查冊不可用"
+    elif table_lines:
+        rating = "待驗證"
+        stats_str = "0/0"
             
     return {
         'table_lines': table_lines,

@@ -69,6 +69,12 @@ FORMULA_PRESETS = {
     "class_weight_class_only": {
         "class_weight": (("class_score", 1.0),),
     },
+    "class_weight_no_rating": {
+        "class_weight": (("class_score", 0.53), ("weight_score", 0.47)),
+    },
+    "class_weight_heavy_rating": {
+        "class_weight": (("class_score", 0.20), ("rating_score", 0.60), ("weight_score", 0.20)),
+    },
     "track_pure": {
         "track": (("track_score", 1.0),),
     },

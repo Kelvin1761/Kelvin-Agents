@@ -16,11 +16,14 @@ os.environ.setdefault("PYTHONUTF8", "1")
 SCRIPT_DIR = Path(__file__).resolve().parent
 SKILL_DIR = SCRIPT_DIR.parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
+SHARED_SCRIPTS = PROJECT_ROOT / ".agents" / "scripts"
 SHARED_HOOK_DIR = PROJECT_ROOT / ".agents" / "skills" / "shared_racing" / "post_success_hooks" / "scripts"
 
+sys.path.insert(0, str(SHARED_SCRIPTS))
 sys.path.insert(0, str(SHARED_HOOK_DIR))
 
 from cloudflare_deploy_hook import run_post_success_cloudflare_deploy
+from subprocess_pool import bounded_workers, run_labeled_commands
 
 PYTHON = sys.executable
 EXTRACTOR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_race_extractor" / "scripts" / "extractor.py"
@@ -47,6 +50,9 @@ def main():
     parser.add_argument("--autopilot", action="store_true", help="Compatibility flag")
     parser.add_argument("--keep-temp", action="store_true", help="Keep temporary files after completion")
     parser.add_argument("--skip-cloudflare-deploy", action="store_true", help="Skip post-success Cloudflare deploy")
+    parser.add_argument("--batch-cloudflare-deploy", action="store_true", help="Queue dashboard deploy for a later batch flush")
+    parser.add_argument("--flush-cloudflare-deploy", action="store_true", help="Flush any queued dashboard deploy after this run")
+    parser.add_argument("--race-workers", type=int, default=_default_race_workers(), help="Race-level Facts/Logic workers")
     args = parser.parse_args()
 
     target = args.target.strip()
@@ -64,6 +70,8 @@ def main():
                     source="AU Wong Choi",
                     target_dir=meeting_dir.parent,
                     skip=args.skip_cloudflare_deploy,
+                    batch=args.batch_cloudflare_deploy,
+                    flush_batch=args.flush_cloudflare_deploy,
                     allow_failure=True,
                 )
                 return
@@ -76,13 +84,17 @@ def main():
         print("=" * 68)
         print(f"📁 Meeting Dir: {meeting_dir}")
 
-        _ensure_facts(meeting_dir)
-        _ensure_logic(meeting_dir)
+        race_workers = bounded_workers(args.race_workers)
+        print(f"⚙️ Race-level workers: {race_workers}")
+        _ensure_facts(meeting_dir, race_workers)
+        _ensure_logic(meeting_dir, race_workers)
         _run([PYTHON, str(AUTO_ORCH), str(meeting_dir)])
         run_post_success_cloudflare_deploy(
             source="AU Wong Choi",
             target_dir=meeting_dir,
             skip=args.skip_cloudflare_deploy,
+            batch=args.batch_cloudflare_deploy,
+            flush_batch=args.flush_cloudflare_deploy,
             allow_failure=True,
         )
 
@@ -98,6 +110,13 @@ def _looks_like_url(value: str) -> bool:
     return value.startswith("http://") or value.startswith("https://")
 
 
+def _default_race_workers() -> int:
+    try:
+        return int(os.environ.get("WC_RACE_WORKERS", "3"))
+    except ValueError:
+        return 3
+
+
 def _extract_meeting(url: str) -> Path:
     print("🚀 Extracting AU meeting data via Race Extractor...")
     _run([PYTHON, str(EXTRACTOR), url, "all"])
@@ -108,7 +127,7 @@ def _extract_meeting(url: str) -> Path:
 
 
 def _get_target_dir_from_url(url: str) -> Path | None:
-    match = re.search(r"form-guide/horse-racing/([^/]+)-(\d{8})/", url)
+    match = re.search(r"form-guide/horse-racing/([^/]+)-(\d{8})", url)
     if not match:
         return None
     venue = match.group(1).replace("-", " ").title()
@@ -140,11 +159,12 @@ def _meeting_candidate_score(path: Path) -> tuple[int, int, int]:
     return relevant, total, path.stat().st_mtime_ns
 
 
-def _ensure_facts(meeting_dir: Path) -> None:
+def _ensure_facts(meeting_dir: Path, workers: int = 1) -> None:
     racecards = sorted(meeting_dir.glob("*Racecard.md"))
     formguides = sorted(meeting_dir.glob("*Formguide.md"))
     if not racecards or not formguides:
         raise FileNotFoundError(f"Missing Racecard/Formguide files in {meeting_dir}")
+    tasks = []
     for racecard in racecards:
         race_num = _race_num_from_name(racecard.name)
         if race_num is None:
@@ -152,7 +172,7 @@ def _ensure_facts(meeting_dir: Path) -> None:
         formguide = _matching_formguide(formguides, race_num)
         if not formguide:
             raise FileNotFoundError(f"Missing Formguide for Race {race_num} in {meeting_dir}")
-        facts_candidates = sorted(meeting_dir.glob(f"*Race {race_num} Facts.md"))
+        facts_candidates = sorted(meeting_dir.glob(f"*Race_{race_num}_Facts.md"))
         facts_path = facts_candidates[0] if facts_candidates else None
         if facts_path and not _is_output_stale(facts_path, racecard, formguide):
             continue
@@ -162,13 +182,15 @@ def _ensure_facts(meeting_dir: Path) -> None:
         cmd = [PYTHON, str(FACTS_INJECTOR), str(racecard), str(formguide), "--max-display", "5", "--venue", venue]
         if distance:
             cmd.extend(["--distance", str(distance)])
-        _run(cmd)
+        tasks.append({"label": f"Generate Facts — Race {race_num}", "cmd": cmd})
+    run_labeled_commands(tasks, cwd=PROJECT_ROOT, max_workers=workers)
 
 
-def _ensure_logic(meeting_dir: Path) -> None:
+def _ensure_logic(meeting_dir: Path, workers: int = 1) -> None:
     facts_files = sorted(meeting_dir.glob("*Facts.md"), key=lambda p: (_race_num_from_name(p.name) or 999))
     if not facts_files:
         raise FileNotFoundError(f"No Facts.md files found in {meeting_dir}")
+    tasks = []
     for facts in facts_files:
         race_num = _race_num_from_name(facts.name)
         if race_num is None:
@@ -177,7 +199,11 @@ def _ensure_logic(meeting_dir: Path) -> None:
         if logic_path.exists() and not _is_output_stale(logic_path, facts) and _logic_has_horses(logic_path):
             continue
         print(f"🧠 Building deterministic Logic for Race {race_num}...")
-        _run([PYTHON, str(AUTO_LOGIC), str(facts), "--output", str(logic_path)])
+        tasks.append({
+            "label": f"Build deterministic Logic — Race {race_num}",
+            "cmd": [PYTHON, str(AUTO_LOGIC), str(facts), "--output", str(logic_path)],
+        })
+    run_labeled_commands(tasks, cwd=PROJECT_ROOT, max_workers=workers)
 
 
 def _matching_formguide(formguides: list[Path], race_num: int) -> Path | None:
@@ -193,10 +219,21 @@ def _race_num_from_name(name: str) -> int | None:
 
 
 def _venue_from_meeting(meeting_name: str) -> str:
-    if "_" in meeting_name:
-        return meeting_name.split("_")[-1]
-    parts = meeting_name.split()
-    return " ".join(parts[1:-3]) if len(parts) > 3 and "Race" in meeting_name else meeting_name
+    # Remove date prefix: "2025-01-15_Randwick_Race_1_1200m" → "Randwick_Race_1_1200m"
+    name = re.sub(r"^\d{4}-\d{2}-\d{2}[_\s-]*", "", meeting_name).strip()
+    if "_" in name:
+        # Take first word before any underscore followed by "Race" or number
+        parts = name.split("_")
+        venue_parts = []
+        for p in parts:
+            if re.match(r"^race\s*\d+", p, re.I) or re.match(r"^\d+", p):
+                break
+            venue_parts.append(p)
+        if venue_parts:
+            return " ".join(venue_parts)
+        return parts[0]
+    parts = name.split()
+    return " ".join(parts[1:-3]) if len(parts) > 3 and "Race" in name else name
 
 
 def _distance_for_race(racecard: Path, formguide: Path | None) -> int | None:
@@ -236,7 +273,9 @@ def _is_output_stale(output_path: Path, *source_paths: Path) -> bool:
 def _logic_has_horses(logic_path: Path) -> bool:
     try:
         logic = json.loads(logic_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+    except (json.JSONDecodeError, OSError, AttributeError):
+        return False
+    if not isinstance(logic, dict):
         return False
     horses = logic.get("horses")
     return isinstance(horses, dict) and bool(horses)

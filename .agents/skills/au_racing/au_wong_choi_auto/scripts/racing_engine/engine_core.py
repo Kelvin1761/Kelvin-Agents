@@ -2,16 +2,18 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import re
 import sys
 from collections import Counter
+from datetime import datetime
 from pathlib import Path
 
 from matrix_mapper import map_features_to_matrix, map_features_to_matrix_scores
 from rank_adjustments import (
     jt_sample_size_rank_cap,
     narrow_overrated_rank_shield,
-    should_use_named_jt_ratings,
+
     market_free_rank_adjustment,
 )
 from scoring import (
@@ -37,6 +39,7 @@ from scoring import (
     parse_record_line,
     parse_recent_finishes,
     safe_ratio,
+    soft_race_shape_modifier,
 )
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[5] / "scripts"))  # .agents/scripts/
@@ -135,6 +138,7 @@ VENUE_TRACK_MAP = {
     "eagle farm": "04b_track_eagle_farm.md",
     "doomben": "04b_track_doomben.md",
     "warwick farm": "04b_track_warwick_farm.md",
+    "canterbury": "04b_track_provincial.md",
     "provincial": "04b_track_provincial.md",
 }
 
@@ -275,7 +279,7 @@ HORSE_BLOCK_RE = re.compile(
 )
 RACECARD_HORSE_RE = re.compile(r"^\d+\.\s+(.+?)\s+\((\d+)\)$")
 RACECARD_META_RE = re.compile(
-    r"^Trainer:\s.*?\|\sJockey:\s.*?\|\sWeight:\s*([0-9.]+)\s*\|\sAge:\s.*?\|\sRating:\s*([0-9.]+)"
+    r"^Trainer:\s.*?\|\sJockey:\s.*?\|\sWeight:\s*([0-9.]+)(?:kg)?(?:\s*\([^|]*\))?\s*\|\sAge:\s.*?\|\sRating:\s*([0-9.]+)"
 )
 
 
@@ -337,6 +341,7 @@ class RacingEngine:
             "track_score": self._track_score,
             "formline_score": self._formline_score,
             "consistency_score": self._consistency_score,
+            "health_score": self._health_score,
             "confidence_score": self._confidence_score,
         }.items():
             score, note, source = func()
@@ -412,38 +417,92 @@ class RacingEngine:
         matrix_scores = map_features_to_matrix_scores(feature_scores)
         matrix = map_features_to_matrix(feature_scores)
         dynamic_weights = get_dynamic_matrix_weights(self.race_context)
-        ability_score = round(sum(matrix_scores[key] * dynamic_weights[key] for key in dynamic_weights), 2)
+        pure_7d_score = round(sum(matrix_scores[key] * MATRIX_WEIGHTS[key] for key in MATRIX_WEIGHTS), 4)
+        dynamic_7d_score = round(sum(matrix_scores[key] * dynamic_weights[key] for key in dynamic_weights), 4)
+        report_only_score = dynamic_7d_score
+        soft_shape_modifier = soft_race_shape_modifier(self.race_context, matrix_scores)
+        report_only_score = round(report_only_score + soft_shape_modifier, 4)
 
-        # ── Diversity Bonus ──
+        # ── Report-only legacy modifiers ──
+        # Clean 7D mode keeps ranking on the official matrix score. These values
+        # remain visible for audit/watchlist work but no longer move Top3.
         # Balanced horses (no section under 56) are more reliable Top3
         # candidates.  Rewarding them improves Gold (Top3 all in Top3).
         min_section = min(matrix_scores.values())
+        diversity_bonus = 0.0
         if min_section >= 56:
-            ability_score = round(ability_score + 2.0, 2)
+            diversity_bonus = 2.0
+            report_only_score = round(report_only_score + diversity_bonus, 4)
 
         # ── SIP: Barrier bias integration ──
         # Based on AU_Racing_Historical_Stats.md venue-specific barrier data.
         # Flemington B6 = 13.5% win / B8 = 5.1% | Randwick B3 = 13.4% / B14+ ≈ 0%.
         barrier_bias = self._barrier_bias_adjustment()
-        ability_score = round(ability_score + barrier_bias, 2)
-        if abs(barrier_bias) >= 1.0:
-            self.reason_codes.append("barrier_bias_adjusted")
+        report_only_score = round(report_only_score + barrier_bias, 4)
 
-        grade = compute_grade(ability_score)
+        soft_wetproof_cap = self._soft_wetproof_cap_modifier(matrix_scores, report_only_score)
+        if abs(soft_wetproof_cap) >= 0.01:
+            report_only_score = round(report_only_score + soft_wetproof_cap, 4)
+
+        base_7d_score = pure_7d_score
+        reason_codes_before_report_only = list(self.reason_codes)
         place_tightening_bonus = self._place_tightening_bonus(feature_scores)
-        rank_score = round(ability_score + place_tightening_bonus + self._micro_rank_bonus(matrix_scores, feature_scores), 4)
+        micro_rank_bonus = self._micro_rank_bonus(matrix_scores, feature_scores)
+        self.reason_codes = reason_codes_before_report_only
+        report_only_score = round(report_only_score + place_tightening_bonus + micro_rank_bonus, 4)
+
+        # ── P5+P4: Wet track condition adjustment ──
+        wet_condition_modifier = 0.0
+        wet_adj = self._wet_track_condition_adjustment(matrix_scores)
+        if abs(wet_adj) >= 0.1:
+            wet_condition_modifier += wet_adj
+        if not self._today_going() and not self._wet_kind():
+            cond = str(self.race_context.get("condition", "") or "").lower()
+            if "soft" in cond or "heavy" in cond:
+                wet_adj2 = self._wet_track_condition_adjustment(matrix_scores, condition_override=cond)
+                if abs(wet_adj2) >= 0.1:
+                    wet_condition_modifier += wet_adj2
+        report_only_score = round(report_only_score + wet_condition_modifier, 4)
+
+        ability_score = pure_7d_score
+        grade = compute_grade(ability_score)
+
         matrix_reasoning = self._matrix_reasoning(matrix_scores, feature_scores, feature_notes)
         advantages = self._advantages(feature_scores, matrix_scores)
         disadvantages = self._disadvantages(feature_scores, matrix_scores)
         core_logic = self._core_logic(feature_scores, matrix_scores, advantages, disadvantages)
-        grade_transparency = self._au_grade_computation_transparency(matrix_scores, matrix, feature_scores, ability_score, grade)
-        core_logic_transparency = self._au_core_logic_transparency(feature_scores, matrix_scores, matrix, ability_score, grade)
+        grade_transparency = self._au_grade_computation_transparency(matrix_scores, matrix, feature_scores, base_7d_score, ability_score, grade)
+        core_logic_transparency = self._au_core_logic_transparency(feature_scores, matrix_scores, matrix, base_7d_score, ability_score, grade)
 
         return {
             "version": "AU_AUTO_SCORE_V3",
+            "pure_7d_score": round(pure_7d_score, 4),
+            "dynamic_7d_score": round(dynamic_7d_score, 4),
+            "base_7d_score": base_7d_score,
+            "final_rank_score": ability_score,
             "ability_score": ability_score,
-            "rank_score": rank_score,
+            "rank_score": ability_score,
+            "soft_race_shape_modifier": round(soft_shape_modifier, 4),
+            "diversity_bonus": round(diversity_bonus, 4),
+            "soft_wetproof_cap_modifier": round(soft_wetproof_cap, 4),
+            "barrier_bias_modifier": round(barrier_bias, 4),
             "place_tightening_bonus": round(place_tightening_bonus, 4),
+            "micro_rank_bonus": round(micro_rank_bonus, 4),
+            "wet_condition_modifier": round(wet_condition_modifier, 4),
+            "report_only_legacy_score": round(report_only_score, 4),
+            "adjustment_breakdown": {
+                "pure_7d_score": round(pure_7d_score, 4),
+                "dynamic_7d_score": round(dynamic_7d_score, 4),
+                "soft_race_shape_modifier": round(soft_shape_modifier, 4),
+                "diversity_bonus": round(diversity_bonus, 4),
+                "barrier_bias_modifier": round(barrier_bias, 4),
+                "soft_wetproof_cap_modifier": round(soft_wetproof_cap, 4),
+                "place_tightening_bonus": round(place_tightening_bonus, 4),
+                "micro_rank_bonus": round(micro_rank_bonus, 4),
+                "wet_condition_modifier": round(wet_condition_modifier, 4),
+                "report_only_legacy_score": round(report_only_score, 4),
+                "final_rank_score": round(ability_score, 4),
+            },
             "grade": grade,
             "race_context": {
                 "going": self._today_going(),
@@ -837,20 +896,78 @@ class RacingEngine:
                     score += w.get("fallback_inside_bonus", 2.0)
                     notes.append("排位內檔，無統計數據參考")
 
-        return score, "；".join(notes) + f"。檔位分 {clip_score(score):.1f}。" if notes else "檔位中性，分數不變。", "barrier+empirical_bias"
+        # ── Pace-bias term (uses already-parsed speed_map roles + predicted_pace) ──
+        # Racing prior (the model's own collapse_point rule): a slow/controlled tempo
+        # advantages on-pace/leader runners and compromises closers; a hot/fast tempo
+        # does the reverse. Previously the parsed role buckets were ignored here, so the
+        # race_shape dimension carried only a thin draw-bias signal. This adds a small,
+        # capped, deterministic pace adjustment from data we already extract.
+        pace_adj, pace_note = self._pace_bias_adjustment()
+        if abs(pace_adj) >= 0.01:
+            score += pace_adj
+            notes.append(pace_note)
+
+        return score, "；".join(notes) + f"。檔位分 {clip_score(score):.1f}。" if notes else "檔位中性，分數不變。", "barrier+empirical_bias+pace_role"
+
+    def _pace_bias_adjustment(self):
+        """Return (modifier, note) from this horse's pace role vs predicted tempo.
+        Modifier is capped at ±4 and only fires when the speed map is confident
+        enough (a recognised role and a non-neutral predicted pace)."""
+        # Shadow / opt-in only. A clean A/B over the Flemington+Randwick archive
+        # (336 races) showed this term is a wash-to-slightly-negative on the
+        # headline Good rate (39.58%→38.39%) while raising perfect-race Gold
+        # (10→14) — it does NOT pass the improvement gate, so it is OFF by default.
+        # Enable for further tuning/experiments with WC_PACE_BIAS=1.
+        if os.environ.get("WC_PACE_BIAS", "0") != "1":
+            return 0.0, ""
+        speed_map = self._speed_map()
+        if not speed_map:
+            return 0.0, ""
+        horse_num = int(parse_float(self.horse_data.get("horse_number") or self.horse_data.get("number")) or 0)
+        if not horse_num:
+            return 0.0, ""
+
+        def bucket(name):
+            return {int(x) for x in (speed_map.get(name) or []) if str(x).strip().isdigit() or isinstance(x, int)}
+
+        role = None
+        for name in ("leaders", "on_pace", "pressers", "mid_pack", "closers"):
+            if horse_num in bucket(name):
+                role = name
+                break
+        if role is None:
+            return 0.0, ""
+
+        pace = str(speed_map.get("predicted_pace") or speed_map.get("expected_pace") or "")
+        n_lead = len(bucket("leaders"))
+        n_press = len(bucket("pressers"))
+        # Classify tempo: slow/controlled vs hot/fast vs neutral.
+        slow = any(t in pace for t in ("極慢", "慢", "controlled", "slow")) or (n_lead == 0 and n_press <= 1)
+        fast = any(t in pace for t in ("極快", "快", "hot", "fast", "genuine")) or (n_lead + n_press >= 5)
+        if slow == fast:  # neutral or ambiguous → no adjustment
+            return 0.0, ""
+
+        if slow:
+            table = {"leaders": 3.0, "on_pace": 3.0, "pressers": 1.5, "mid_pack": 0.0, "closers": -3.0}
+            tempo = "慢步速"
+        else:
+            table = {"closers": 3.0, "mid_pack": 1.0, "pressers": -1.0, "on_pace": -2.0, "leaders": -3.0}
+            tempo = "快步速"
+        adj = max(-4.0, min(4.0, table.get(role, 0.0)))
+        if abs(adj) < 0.01:
+            return 0.0, ""
+        role_zh = {"leaders": "領放", "on_pace": "貼前", "pressers": "跟前", "mid_pack": "守中", "closers": "後上"}
+        sign = "受惠" if adj > 0 else "受制"
+        return adj, f"步速形勢: 預測{tempo}，本馬屬{role_zh.get(role, role)}{sign} ({adj:+.1f})"
 
     def _jockey_rating_profile(self, jockey: str):
         if not jockey:
-            return None
-        if not should_use_named_jt_ratings(self.race_context):
             return None
         jockey_cache, _ = _load_named_rating_stats()
         return jockey_cache.get(_normalize_rating_identity(jockey))
 
     def _trainer_rating_profile(self, trainer: str):
         if not trainer:
-            return None
-        if not should_use_named_jt_ratings(self.race_context):
             return None
         _, trainer_cache = _load_named_rating_stats()
         return trainer_cache.get(_normalize_rating_identity(trainer))
@@ -1626,17 +1743,18 @@ class RacingEngine:
             return "主要保留位"
         return "中性參考"
 
-    def _au_grade_computation_transparency(self, matrix_scores, matrix_bands, feature_scores, ability_score, grade):
+    def _au_grade_computation_transparency(self, matrix_scores, matrix_bands, feature_scores, base_7d_score, ability_score, grade):
         """AU version: Generate computation walkthrough for the 7D matrix."""
-        dims = [
-            ("stability", "狀態與穩定性", "半核心", 0.18),
-            ("sectional", "段速與引擎", "核心", 0.30),
-            ("race_shape", "檔位形勢", "半核心", 0.18),
-            ("jockey_trainer", "騎練訊號", "半核心", 0.14),
-            ("class_weight", "級數與負重", "輔助", 0.08),
-            ("track", "場地適性", "輔助", 0.06),
-            ("form_line", "賽績線", "輔助", 0.06),
-        ]
+        roles = {
+            "stability": ("狀態與穩定性", "半核心"),
+            "sectional": ("段速與引擎", "核心"),
+            "race_shape": ("檔位形勢", "半核心"),
+            "jockey_trainer": ("騎練訊號", "半核心"),
+            "class_weight": ("級數與負重", "輔助"),
+            "track": ("場地適性", "輔助"),
+            "form_line": ("賽績線", "輔助"),
+        }
+        dims = [(key, *roles[key], float(MATRIX_WEIGHTS.get(key, 0.0))) for key in MATRIX_WEIGHTS]
         lines = []
         weighted_sum = 0.0
         for key, label, role, weight in dims:
@@ -1644,13 +1762,13 @@ class RacingEngine:
             band = matrix_bands.get(key, "➖")
             contribution = round(raw_score * weight, 2)
             weighted_sum += contribution
-            pct = f"{int(weight * 100)}%"
+            pct = f"{weight * 100:.1f}%"
             lines.append(f"  - {label} [{role}]: {raw_score:.1f}分 × {pct} = {contribution:.2f} → {band}")
         lines_text = "\n".join(lines)
         summary = (
-            f"**🧮 7D 加權總分計算 (Python Auto 矩陣引擎):**\n\n"
+            f"**🧮 7D 加權總分計算 (Python Auto Clean 7D):**\n\n"
             f"{lines_text}\n\n"
-            f"**→ 加權總分 = {weighted_sum:.2f} 分 → Grade = [{grade}]**\n"
+            f"**→ 官方 7D clean ranking score = {base_7d_score:.2f} 分；綜合戰力分 = {ability_score:.2f} 分 → Grade = [{grade}]**\n"
         )
         if self.risk_flags:
             flag_descriptions = []
@@ -1662,7 +1780,7 @@ class RacingEngine:
                 summary += f"\n**⚠️ 風險標記:**\n" + "\n".join(flag_descriptions) + "\n"
         return {"detail_lines": lines, "weighted_sum": round(weighted_sum, 2), "summary": summary}
 
-    def _au_core_logic_transparency(self, feature_scores, matrix_scores, matrix_bands, ability_score, grade):
+    def _au_core_logic_transparency(self, feature_scores, matrix_scores, matrix_bands, base_7d_score, ability_score, grade):
         """AU version: Generate structured transparency block."""
         dims = [
             ("stability", "狀態與穩定性", "半核心"),
@@ -1699,7 +1817,8 @@ class RacingEngine:
             scores_text,
             "",
             f"**統計:** 核心正面={core_strong} | 半核心正面={semi_strong} | 輔助正面={aux_strong} | 總負面={total_weak}",
-            f"**7D 加權總分:** {ability_score:.1f}分",
+            f"**7D Clean 排名分:** {base_7d_score:.1f}分",
+            f"**綜合戰力分:** {ability_score:.1f}分",
             f"**Grade 查表:** {ability_score:.1f}分 → **[{grade}]**",
         ]
         if self.risk_flags:
@@ -2185,18 +2304,19 @@ class RacingEngine:
                 continue
             if capture and text.startswith("- **🔧 引擎與距離"):
                 break
-            if not capture or not text.startswith("|") or "對手後續成績" in text or "---" in text:
+            if not capture or not text.startswith("|") or "對手後續成績" in text or "強度評估" in text or "---" in text:
                 continue
             cols = [col.strip() for col in text.strip("|").split("|")]
-            if len(cols) >= 8:
+            offset = 1 if cols and (cols[0] == "#" or cols[0].isdigit()) else 0
+            if len(cols) >= offset + 7:
                 rows.append({
-                    "date": cols[1],
-                    "race": cols[2],
-                    "finish": cols[3],
-                    "opponent": cols[4],
-                    "next_class": cols[5],
-                    "next_result": cols[6],
-                    "strength": cols[7],
+                    "date": cols[offset],
+                    "race": cols[offset + 1],
+                    "finish": cols[offset + 2],
+                    "opponent": cols[offset + 3],
+                    "next_class": cols[offset + 4],
+                    "next_result": cols[offset + 5],
+                    "strength": cols[offset + 6],
                 })
         self._formline_row_cache = rows
         return rows
@@ -2242,6 +2362,75 @@ class RacingEngine:
         going = self._today_going()
         match = re.search(r"(Soft|Heavy)", going, re.I)
         return match.group(1).lower() if match else ""
+
+    def _wet_track_condition_adjustment(self, matrix_scores: dict, condition_override: str = "") -> float:
+        going = condition_override or self._today_going().lower()
+        if not going:
+            mi = self._meeting_intelligence()
+            going = str(mi.get("condition", "") or mi.get("going", "") or "").lower()
+        if not going:
+            going = str(self.race_context.get("going", "") or "").lower()
+        stab = float(matrix_scores.get("stability", 60))
+        sec = float(matrix_scores.get("sectional", 60))
+        trk = float(matrix_scores.get("track", 60))
+        delta = 0.0
+        if "soft" in going:
+            if stab >= 75:
+                delta -= (stab - 75) * 0.10
+            if trk >= 68:
+                delta += (trk - 62) * 0.08
+        elif "heavy" in going:
+            if stab >= 75:
+                delta -= (stab - 75) * 0.10
+            if sec >= 75:
+                delta -= (sec - 75) * 0.08
+            if trk >= 68:
+                delta += (trk - 62) * 0.10
+        return round(delta, 4)
+
+    def _soft_wetproof_cap_modifier(self, matrix_scores: dict, ability_score: float) -> float:
+        if self._wet_kind() != "soft":
+            return 0.0
+        if float(ability_score or 0.0) < 66.0:
+            return 0.0
+
+        track = float(matrix_scores.get("track", 60))
+        sectional = float(matrix_scores.get("sectional", 60))
+        stability = float(matrix_scores.get("stability", 60))
+        race_shape = float(matrix_scores.get("race_shape", 60))
+        soft_stats = self._going_stats().get("軟地", {})
+
+        exposed_no_wet_place = soft_stats.get("starts", 0) >= 1 and soft_stats.get("places", 0) == 0
+        ordinary_track_high_score = track < 66.0
+        speed_stability_only = (sectional >= 66.0 or stability >= 70.0) and track < 66.0 and race_shape < 66.0
+        unstable_profile = self._soft_unstable_profile_count() >= 1
+
+        delta = 0.0
+        if exposed_no_wet_place:
+            delta -= 0.7
+        if ordinary_track_high_score:
+            delta -= 0.4
+        if speed_stability_only:
+            delta -= 0.5
+        if unstable_profile:
+            delta -= 0.3
+        return round(max(-1.4, delta), 4)
+
+    def _soft_unstable_profile_count(self) -> int:
+        count = 0
+        for entry in self._official_entries():
+            going = str(entry.get("going") or "")
+            going_number = parse_float(going)
+            is_soft = "Soft" in going or "軟" in going or (going_number is not None and 5 <= going_number <= 7)
+            if not is_soft:
+                continue
+            text = " ".join(
+                str(entry.get(key) or "")
+                for key in ("trajectory", "notes", "forgiveness", "run_style")
+            )
+            if any(token in text for token in ("wide", "Wide", "caught wide", "Wd", "慢出", "外", "slow")):
+                count += 1
+        return count
 
     def _going_level(self):
         going = self._today_going()
@@ -2550,7 +2739,9 @@ class RacingEngine:
         return str(self._speed_map_field("pace_confidence") or "").strip()
 
     def _barrier_bias_adjustment(self):
-        """Return rank_score adjustment based on venue-specific historical barrier bias."""
+        """Return ability_score adjustment based on venue-specific historical barrier bias."""
+        if not self.race_context.get("enable_legacy_barrier_bias") and os.environ.get("WC_ENABLE_LEGACY_BARRIER_BIAS") != "1":
+            return 0.0
         venue = self._clean_identity(
             self._track_profile().get("venue") or self._meeting_intelligence().get("venue") or ""
         ).lower()
@@ -2644,6 +2835,28 @@ class RacingEngine:
 
     def _has_last10_warning(self):
         return bool(str(self.data.get("warning_line") or "").strip())
+
+    def _latest_official_text(self):
+        latest = self._official_entries()[0] if self._official_entries() else {}
+        return " ".join(str(latest.get(key) or "") for key in ("notes", "forgiveness", "trajectory"))
+
+    def _spell_days(self):
+        explicit = parse_float(self.data.get("spell_days"))
+        if explicit is not None and explicit > 0:
+            return int(explicit)
+        latest_date = str(self.data.get("latest_official_date") or "").strip()
+        if not latest_date and self._official_entries():
+            latest_date = str(self._official_entries()[0].get("date") or "").strip()
+        meeting_date = str(
+            self._meeting_intelligence().get("date")
+            or self.race_context.get("date")
+            or ""
+        ).strip()
+        latest = _parse_iso_date(latest_date)
+        meeting = _parse_iso_date(meeting_date)
+        if not latest or not meeting:
+            return 0
+        return max(0, (meeting - latest).days)
 
     def _trial_summary_text(self):
         trial_count = int(parse_float(self.data.get("trial_count")) or len(self._trial_places()))
@@ -2885,7 +3098,74 @@ class RacingEngine:
     def _formline_level(self):
         text = str(self.data.get("formline_line") or "").strip()
         text = text.replace("✅", "").replace("⚠️", "").strip()
+        if self._formline_rows() and ("無資料" in text or "未有出賽" in text):
+            return "待驗證 (有對手線，未有後續承接)"
+        if self._formline_rows() and self._is_misleading_formline_headline(text):
+            return self._formline_inferred_level() or text
         return text
+
+    def _is_misleading_formline_headline(self, text):
+        clean = str(text or "")
+        return bool(
+            re.search(r"強組比例:\s*0(?:\.0)?/1", clean)
+            and any(token in clean for token in ("強", "極強"))
+            and self._formline_support_summary()[0] < 1.0
+        )
+
+    def _formline_support_summary(self):
+        valid = 0
+        support = 0.0
+        for row in self._formline_rows():
+            strength = str(row.get("strength") or "")
+            if not strength or strength == "-":
+                continue
+            if not any(token in strength for token in ("組", "強", "弱")):
+                continue
+            valid += 1
+            if "超強" in strength or "極強" in strength:
+                support += 2.0
+            elif "強組" in strength:
+                support += 1.0
+            elif "中組" in strength:
+                support += 0.5
+        return support, valid
+
+    def _formline_support_text(self, support, valid):
+        if valid <= 0:
+            return "0/0"
+        support_text = str(int(support)) if float(support).is_integer() else f"{support:.1f}"
+        return f"{support_text}/{valid}"
+
+    def _formline_inferred_signal(self):
+        support, valid = self._formline_support_summary()
+        if valid <= 0:
+            return "neutral" if self._formline_rows() else ""
+        ratio = support / valid
+        if support >= 2 and ratio >= 0.7:
+            return "elite"
+        if support >= 1 and ratio >= 0.5:
+            return "strong"
+        if ratio >= 0.3:
+            return "medium_strong"
+        if ratio >= 0.15:
+            return "medium_weak"
+        return "weak"
+
+    def _formline_inferred_level(self):
+        signal = self._formline_inferred_signal()
+        if not signal:
+            return ""
+        if signal == "neutral":
+            return "待驗證 (有對手線，未有後續承接)"
+        support, valid = self._formline_support_summary()
+        label_map = {
+            "elite": "極強",
+            "strong": "強",
+            "medium_strong": "中強",
+            "medium_weak": "中弱",
+            "weak": "❌ 弱",
+        }
+        return f"{label_map.get(signal, '待驗證')} (承接分: {self._formline_support_text(support, valid)})"
 
     def _consumption_weighted_score(self):
         text = str(self.data.get("consumption_summary") or self._consumption_summary() or "")
@@ -3211,19 +3491,28 @@ class RacingEngine:
 
     def _formline_signal(self):
         text = str(self.data.get("formline_line") or "")
+        has_rows = bool(self._formline_rows())
+        if has_rows and self._is_misleading_formline_headline(text):
+            inferred = self._formline_inferred_signal()
+            if inferred:
+                return inferred
         if "極強" in text or "超強組" in text:
             return "elite"
-        elif "強" in text:
-            return "strong"
         elif "中強" in text:
             return "medium_strong"
         elif "中組" in text:
             return "medium"
         elif "中弱" in text:
             return "medium_weak"
+        elif "強" in text:
+            return "strong"
         elif "弱" in text:
             return "weak"
+        elif "待驗證" in text:
+            return "neutral"
         elif "無資料" in text or "未有出賽" in text:
+            if has_rows:
+                return "neutral"
             return "unknown"
         return "neutral"
 
@@ -3260,12 +3549,16 @@ class RacingEngine:
         if headwinner and any(token in headwinner for token in ("頭馬", "亞軍")):
             score += w.get("headwinner_bonus", 2.0)
 
+        row_strength_text = " ".join(str(row.get("strength") or "") for row in self._formline_rows())
+        has_strong_row = any(token in row_strength_text for token in ("強組", "超強組", "極強組"))
+        has_medium_row = "中組" in row_strength_text
+        has_weak_row = "弱組" in row_strength_text
         text = str(self.data.get("formline_line") or "")
-        if "強組" in text:
+        if has_strong_row:
             score = max(score, w.get("med_strong_base", 68.0))
-        elif "弱組" in text:
+        elif has_weak_row and not has_medium_row:
             score = min(score, w.get("med_weak_base", 56.0) - 2.0)
-        if "無資料" in text or "未有出賽" in text:
+        if ("無資料" in text or "未有出賽" in text) and not self._formline_rows():
             score = min(score, 60.0)
 
         return clip_score(score), f"賽績線級別與對手後續升降班交叉評為 {clip_score(score):.1f} 分。", "formline+opponent_followups+class_followups+headwinner"
@@ -3352,6 +3645,55 @@ class RacingEngine:
             score -= 1
         return score, f"可用分析錨點 {anchors}/14，並按 style confidence、正式樣本、jockey history、source 同 warnings 校正後，信心分 {clip_score(score):.1f}。", "data_coverage+style_meta+warnings+formline+jockey_history"
 
+    def _health_score(self):
+        if os.environ.get("WC_DISABLE_AU_HEALTH_SCORE") == "1":
+            return 60.0, "健康/備戰分以 validation flag 暫作中性 60。", "disabled_neutral"
+        score = 60.0
+        notes = []
+        warning_text = " ".join(
+            str(value or "")
+            for value in (
+                self.data.get("warning_line"),
+                self.data.get("gear_line"),
+                self._latest_official_text(),
+            )
+        ).lower()
+        if self._has_last10_warning():
+            score -= 1.5
+            notes.append("Last10/警告存在")
+        if any(token in warning_text for token in ("lame", "cardiac", "bleed", "poor recovery", "vet", "vetted", "examined by vet")):
+            score -= 2.0
+            notes.append("近績有獸醫/健康疑點")
+        if any(token in warning_text for token in ("slow recovery", "respiratory", "heart", "eased down")):
+            score -= 1.5
+            notes.append("恢復或呼吸/心肺訊號需保守")
+
+        spell = self._spell_days()
+        if 14 <= spell <= 45:
+            score += 1.0
+            notes.append(f"休後 {spell} 日屬正常間隔")
+        elif spell > 90:
+            trial_speed = parse_float(self.data.get("timing_trial_600m_avg_speed"))
+            if trial_speed:
+                score += 0.5
+                notes.append(f"久休 {spell} 日但有試閘時間支撐")
+            else:
+                score -= 1.0
+                notes.append(f"久休 {spell} 日而缺少試閘時間支撐")
+
+        gear_line = str(self.data.get("gear_line") or "")
+        if gear_line:
+            if "Blinkers: Yes" in gear_line:
+                score += 0.4
+                notes.append("配戴 blinkers")
+            changes = str(self.data.get("gear_changes") or "")
+            if changes and changes.lower() != "none":
+                score += 0.3
+                notes.append("有 gear change 訊號")
+
+        note = "；".join(notes) if notes else "未見明確健康或備戰扣分訊號"
+        return score, f"{note}。備戰完整度分 {clip_score(score):.1f}。", "warnings+spell+gear"
+
     def _micro_rank_bonus(self, matrix_scores, feature_scores):
         bonus = 0.0
         barrier = parse_float(self.horse_data.get("barrier"))
@@ -3390,25 +3732,26 @@ class RacingEngine:
         
         # ── SIP: Intelligent Spell & Trial Heuristic ──
         _data = self.horse_data.get("_data", {})
-        spell = _data.get("spell_days", 0)
+        spell = self._spell_days()
         margin = _data.get("trial_margin", -999.0)
         
-        if 14 <= spell <= 28:
-            bonus += 0.4
-            self.reason_codes.append("peak_fitness_spell")
-        elif 29 <= spell <= 45:
-            bonus += 0.2
-        elif spell > 90:
-            if margin != -999.0:
-                if margin < 2.0:
-                    bonus += 0.4
-                    self.reason_codes.append("first_up_strong_trial")
-                elif margin > 4.0:
-                    bonus -= 0.6
-                    self.reason_codes.append("first_up_weak_trial")
-            else:
-                bonus -= 0.4
-                self.reason_codes.append("first_up_no_trial")
+        if os.environ.get("WC_ENABLE_AU_SPELL_RANK") == "1":
+            if 14 <= spell <= 28:
+                bonus += 0.4
+                self.reason_codes.append("peak_fitness_spell")
+            elif 29 <= spell <= 45:
+                bonus += 0.2
+            elif spell > 90:
+                if margin != -999.0:
+                    if margin < 2.0:
+                        bonus += 0.4
+                        self.reason_codes.append("first_up_strong_trial")
+                    elif margin > 4.0:
+                        bonus -= 0.6
+                        self.reason_codes.append("first_up_weak_trial")
+                else:
+                    bonus -= 0.4
+                    self.reason_codes.append("first_up_no_trial")
                 
         return bonus
 
@@ -3634,8 +3977,8 @@ def enrich_logic_from_facts(logic_data: dict, facts_path: Path) -> dict:
     auto_speed_map = _parse_speed_map(text)
     race_number = _extract_first_int(str(race_analysis.get("race_number") or facts_path.name), r"(\d+)")
     racecard_profiles = _load_racecard_profiles(facts_path, race_number)
-    formguide_digests = _load_formguide_digests(facts_path)
-    meeting_intelligence = _load_meeting_intelligence(facts_path)
+    formguide_digests = _load_formguide_digests(facts_path, race_number)
+    meeting_intelligence = _load_meeting_intelligence(facts_path, race_number)
     track_profile = _load_track_profile(
         meeting_intelligence.get("venue", ""),
         _distance_to_int(race_analysis.get("distance") or ""),
@@ -3652,6 +3995,7 @@ def enrich_logic_from_facts(logic_data: dict, facts_path: Path) -> dict:
         race_analysis["meeting_intelligence"] = meeting_intelligence
     if track_profile:
         race_analysis["track_profile"] = track_profile
+    race_analysis["context_completeness"] = _context_completeness(meeting_intelligence, track_profile)
     if meeting_intelligence.get("going"):
         race_analysis["going"] = meeting_intelligence["going"]
     if meeting_intelligence.get("bias_summary"):
@@ -3717,6 +4061,10 @@ def enrich_logic_from_facts(logic_data: dict, facts_path: Path) -> dict:
         _merge_data_value(data, "current_market_last", formguide.get("current_market_last"))
         _merge_data_value(data, "current_market_low", formguide.get("current_market_low"))
         _merge_data_value(data, "current_market_trend", formguide.get("current_market_trend"))
+        _merge_data_value(data, "gear_line", formguide.get("gear_line"))
+        _merge_data_value(data, "has_blinkers", formguide.get("has_blinkers"))
+        _merge_data_value(data, "gear_changes", formguide.get("gear_changes"))
+        _merge_data_value(data, "latest_official_date", formguide.get("latest_official_date"))
         _merge_data_value(data, "latest_official_jockey", formguide.get("latest_official_jockey"))
         _merge_data_value(data, "latest_official_last_flucs", formguide.get("latest_official_last_flucs"))
         _merge_data_value(data, "latest_official_market_trend", formguide.get("latest_official_market_trend"))
@@ -4002,14 +4350,14 @@ def _tactical_scenario_text(expected_position: str, barrier: int, consumption: s
     return text
 
 
-def _formguide_path_for_facts(facts_path: Path) -> Path | None:
-    race_number = _extract_race_number_from_text_or_name(facts_path.read_text(encoding="utf-8"), facts_path.name)
+def _formguide_path_for_facts(facts_path: Path, race_number: int = 0) -> Path | None:
+    race_number = race_number or _extract_race_number_from_text_or_name(facts_path.read_text(encoding="utf-8"), facts_path.name)
     matches = sorted(facts_path.parent.glob(f"*Race {race_number} Formguide.md"))
     return matches[0] if matches else None
 
 
-def _load_formguide_digests(facts_path: Path) -> dict[str, dict]:
-    formguide_path = _formguide_path_for_facts(facts_path)
+def _load_formguide_digests(facts_path: Path, race_number: int = 0) -> dict[str, dict]:
+    formguide_path = _formguide_path_for_facts(facts_path, race_number)
     if not formguide_path or not formguide_path.exists():
         return {}
     text = formguide_path.read_text(encoding="utf-8")
@@ -4058,6 +4406,8 @@ def _summarize_formguide_section(section: str, horse_name: str) -> dict:
     sire_line = _capture(section, r"Sire:\s*([^|]+)")
     current_market_line = _capture(section, r"^Flucs:\s*(.+)$")
     current_market_values = _parse_fluc_values(current_market_line)
+    gear_line = _capture(section, r"^Gear:\s*(.+)$")
+    gear_changes = _capture(gear_line, r"Changes:\s*(.+)$") if gear_line else ""
     entries = _parse_formguide_entries(section, horse_name)
     official_entries = [entry for entry in entries if not entry["is_trial"]]
     trial_entries = [entry for entry in entries if entry["is_trial"]]
@@ -4109,6 +4459,10 @@ def _summarize_formguide_section(section: str, horse_name: str) -> dict:
         "current_market_last": current_market_values[-1] if current_market_values else "",
         "current_market_low": min(current_market_values) if current_market_values else "",
         "current_market_trend": _market_trend_label(current_market_values),
+        "gear_line": gear_line,
+        "has_blinkers": "Blinkers: Yes" in gear_line,
+        "gear_changes": gear_changes,
+        "latest_official_date": latest_official.get("date") or "",
         "latest_official_jockey": _clean_identity(latest_official.get("jockey")),
         "latest_official_last_flucs": latest_official.get("last_flucs") or "",
         "latest_official_market_trend": _market_trend_label(_parse_fluc_values(latest_official.get("flucs") or latest_official.get("last_flucs") or "")),
@@ -4226,6 +4580,16 @@ def _parse_time_to_seconds(text: str) -> float | None:
     return int(match.group(1)) * 60 + int(match.group(2)) + int(match.group(3)) / 1000.0
 
 
+def _parse_iso_date(text: str):
+    match = re.search(r"(\d{4}-\d{2}-\d{2})", str(text or ""))
+    if not match:
+        return None
+    try:
+        return datetime.strptime(match.group(1), "%Y-%m-%d")
+    except ValueError:
+        return None
+
+
 def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
     pattern = re.compile(r"^(\S.+?)\s+R(\d+)\s+(\d{4}-\d{2}-\d{2})\s+(\d+m)\s+cond:(\S+)\s+\$([0-9,]+)", re.M)
     entries = []
@@ -4264,6 +4628,7 @@ def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
         if l600_match:
             l600_split = _parse_time_to_seconds(l600_match.group(1))
         entries.append({
+            "date": match.group(3),
             "is_trial": is_trial,
             "jockey": jockey,
             "flucs": flucs,
@@ -4479,11 +4844,102 @@ def _normalize_speed_map_text(text: str) -> str:
     return value
 
 
-def _load_meeting_intelligence(facts_path: Path) -> dict:
+def _load_meeting_intelligence(facts_path: Path, race_number: int = 0) -> dict:
     meeting_path = facts_path.parent / "_Meeting_Intelligence_Package.md"
-    if not meeting_path.exists():
-        return {}
-    return _parse_meeting_intelligence(meeting_path.read_text(encoding="utf-8"), facts_path.parent.name)
+    if meeting_path.exists():
+        intelligence = _parse_meeting_intelligence(meeting_path.read_text(encoding="utf-8"), facts_path.parent.name)
+    else:
+        intelligence = {}
+    fallback = _meeting_context_from_extractor_files(facts_path, race_number)
+    for key, value in fallback.items():
+        if value and not intelligence.get(key):
+            intelligence[key] = value
+    if fallback:
+        intelligence["source"] = _merge_sources(intelligence.get("source"), fallback.get("source"))
+    return intelligence
+
+
+def _meeting_context_from_extractor_files(facts_path: Path, race_number: int = 0) -> dict:
+    folder = facts_path.parent
+    context = {
+        "venue": _venue_from_folder_name(folder.name),
+        "date": _capture(folder.name, r"(\d{4}-\d{2}-\d{2})"),
+        "weather_summary": "",
+        "track_summary": "",
+        "going": "",
+        "rail_position": "",
+        "bias_summary": "",
+        "surface": "",
+        "source": "",
+    }
+    sources: list[str] = []
+
+    summary_path = folder / "Meeting_Summary.md"
+    if summary_path.exists():
+        summary = summary_path.read_text(encoding="utf-8")
+        context["date"] = _first_clean(_capture(summary, r"^Date:\s*([^\n]+)"), context["date"])
+        context["going"] = _first_clean(_capture(summary, r"^Track Condition:\s*([^\n]+)"), context["going"])
+        context["surface"] = _first_clean(_capture(summary, r"^Surface:\s*([^\n]+)"), context["surface"])
+        context["weather_summary"] = _first_clean(_capture(summary, r"^Weather:\s*([^\n]+)"), context["weather_summary"])
+        context["rail_position"] = _first_clean(_capture(summary, r"^Rails?:\s*([^\n]+)"), context["rail_position"])
+        sources.append("Meeting_Summary.md")
+
+    race_number = race_number or _extract_first_int(facts_path.name, r"Race[ _](\d+)")
+    racecards = sorted(folder.glob(f"*Race {race_number} Racecard.md"))
+    if racecards:
+        racecard = racecards[0].read_text(encoding="utf-8")
+        meta_line = _first_line_matching(racecard, r"^Track:")
+        if meta_line:
+            context["going"] = _first_clean(_capture(meta_line, r"Track:\s*([^|]+)"), context["going"])
+            context["weather_summary"] = _first_clean(_capture(meta_line, r"Weather:\s*([^|]+)"), context["weather_summary"])
+            context["rail_position"] = _first_clean(_capture(meta_line, r"Rail:\s*([^|]+)"), context["rail_position"])
+            sources.append(racecards[0].name)
+
+    if context["going"]:
+        context["track_summary"] = context["going"]
+    context["source"] = " + ".join(dict.fromkeys(sources + (["folder_name"] if context["venue"] else [])))
+    return {key: value for key, value in context.items() if value}
+
+
+def _venue_from_folder_name(name: str) -> str:
+    value = re.sub(r"^\d{4}-\d{2}-\d{2}[_\s-]*", "", str(name or "")).strip()
+    value = re.sub(r"\bRace\s*\d+.*$", "", value, flags=re.I).strip(" _-")
+    value = value.replace("_", " ").strip()
+    return value
+
+
+def _first_line_matching(text: str, pattern: str) -> str:
+    regex = re.compile(pattern)
+    for line in str(text or "").splitlines():
+        if regex.search(line.strip()):
+            return line.strip()
+    return ""
+
+
+def _first_clean(value: str, fallback: str = "") -> str:
+    clean = str(value or "").strip().strip(" |")
+    return clean or str(fallback or "").strip()
+
+
+def _merge_sources(primary: str, fallback: str) -> str:
+    parts = []
+    for raw in (primary, fallback):
+        for part in re.split(r"\s+\+\s+|;", str(raw or "")):
+            clean = part.strip()
+            if clean and clean not in parts:
+                parts.append(clean)
+    return " + ".join(parts)
+
+
+def _context_completeness(meeting_intelligence: dict, track_profile: dict) -> dict:
+    return {
+        "venue": bool(meeting_intelligence.get("venue")),
+        "date": bool(meeting_intelligence.get("date")),
+        "going": bool(meeting_intelligence.get("going")),
+        "rail_position": bool(meeting_intelligence.get("rail_position")),
+        "weather_summary": bool(meeting_intelligence.get("weather_summary")),
+        "track_profile": bool(track_profile),
+    }
 
 
 def _parse_meeting_intelligence(text: str, fallback_venue: str = "") -> dict:
@@ -4526,18 +4982,39 @@ def _load_track_profile(venue: str, distance_m: int = 0) -> dict:
     if not track_file or not track_file.exists():
         return {}
     text = track_file.read_text(encoding="utf-8")
+    section = _track_venue_section(text, venue) or text
     profile = {
         "venue": venue,
-        "circumference_m": _extract_first_int(text, r"賽道周長:\**\s*([0-9]+)m"),
-        "straight_m": _extract_first_int(text, r"直路長度:\**\s*([0-9]+)m"),
-        "direction": _capture(text, r"賽道風向:\**\s*([^\n]+)"),
-        "key_traits": _extract_track_traits(text),
-        "distance_note": _compact_text(_track_distance_note(text, distance_m)),
-        "going_note": _compact_text(_section_text(text, "## 🌧️ 天氣與場地互動 (Track Condition Bias)")),
+        "circumference_m": _track_table_int(section, "周長") or _extract_first_int(section, r"(?:賽道)?周長:\**\s*([0-9]+)m"),
+        "straight_m": _track_table_int(section, "直路") or _extract_first_int(section, r"直路(?:長度)?:\**\s*([0-9]+)m"),
+        "direction": _track_table_text(section, "方向") or _capture(section, r"賽道風向:\**\s*([^\n]+)"),
+        "key_traits": _extract_track_traits(section),
+        "distance_note": _compact_text(_track_distance_note(section, distance_m) or _track_distance_note(text, distance_m)),
+        "going_note": _compact_text(_section_text(section, "## 🌧️ 天氣與場地互動 (Track Condition Bias)") or _section_text(text, "## 🌧️ 天氣與場地互動 (Track Condition Bias)")),
         "source_file": track_file.name,
     }
     TRACK_PROFILE_CACHE[cache_key] = profile
     return profile
+
+
+def _track_venue_section(text: str, venue: str) -> str:
+    venue_words = [re.escape(part) for part in re.split(r"\s+", str(venue or "").strip()) if part]
+    if not venue_words:
+        return ""
+    venue_pattern = r"\s+".join(venue_words)
+    match = re.search(rf"(^##\s+.*{venue_pattern}.*?\n.*?)(?=^##\s+|\Z)", text, re.I | re.M | re.S)
+    return match.group(1).strip() if match else ""
+
+
+def _track_table_text(text: str, label: str) -> str:
+    match = re.search(rf"^\|\s*\*\*{re.escape(label)}\*\*\s*\|\s*([^|\n]+)", text, re.M)
+    return match.group(1).strip() if match else ""
+
+
+def _track_table_int(text: str, label: str) -> int:
+    value = _track_table_text(text, label)
+    match = re.search(r"([0-9]+)", value)
+    return int(match.group(1)) if match else 0
 
 
 def _track_distance_note(text: str, distance_m: int) -> str:
@@ -4565,6 +5042,8 @@ def _extract_track_traits(text: str) -> list[str]:
         clean = clean.replace("ON-PACE", "On-Pace").replace("TIGHT-TURNING", "Tight-turning")
         if clean:
             traits.append(clean)
+    if not traits:
+        traits.extend(_compact_text(item) for item in re.findall(r"^\-\s+(.+)$", text, re.M))
     return traits
 
 
@@ -4587,7 +5066,7 @@ def _compact_text(text: str) -> str:
 
 # ── Barrier bias lookup tables ──
 # Derived from AU_Racing_Historical_Stats.md venue-level barrier analysis.
-# Values represent rank_score adjustment: positive = advantage, negative = disadvantage.
+# Values represent ability_score adjustment: positive = advantage, negative = disadvantage.
 _BARRIER_ADJ = {
     "flemington": {
         1: 1.0, 2: 0.5, 3: 0.0, 4: 2.5, 5: 2.0,

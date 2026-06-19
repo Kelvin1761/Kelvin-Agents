@@ -46,6 +46,25 @@ def init_db():
             going TEXT
         );
 
+        CREATE TABLE IF NOT EXISTS bet_panel_states (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            date TEXT NOT NULL,
+            venue TEXT NOT NULL,
+            region TEXT NOT NULL DEFAULT 'hkjc',
+            race_number INTEGER NOT NULL,
+            horse_number INTEGER NOT NULL,
+            horse_name TEXT,
+            jockey TEXT,
+            trainer TEXT,
+            odds REAL,
+            stage TEXT NOT NULL,
+            consensus_type TEXT,
+            kelvin_grade TEXT,
+            heison_grade TEXT,
+            UNIQUE(date, venue, race_number, horse_number)
+        );
+
         CREATE TABLE IF NOT EXISTS roi_snapshots (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -61,6 +80,8 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_bets_date ON bets(date);
         CREATE INDEX IF NOT EXISTS idx_bets_region ON bets(region);
         CREATE INDEX IF NOT EXISTS idx_bets_status ON bets(status);
+        CREATE INDEX IF NOT EXISTS idx_bet_panel_states_meeting
+            ON bet_panel_states(date, venue, race_number);
     """)
     conn.commit()
     conn.close()

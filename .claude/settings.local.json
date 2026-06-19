@@ -53,7 +53,14 @@
       "Bash(find '/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity' -type f -name CLAUDE.md -o -type f -name *.md -path *Kelvin* -o -type f -name *.md -path *Heison*)",
       "Bash(wc -l \"/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/2026-03-25_HappyValley \\(Kelvin\\)/2026-03-25_HappyValley_Race_1_Analysis.txt\" \"/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/2026-03-25_HappyValley/Heison_2026-03-25_HappyValley_Race_1_Analysis.txt\")",
       "Bash(wc -w \"/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/2026-03-25_HappyValley \\(Kelvin\\)/2026-03-25_HappyValley_Race_1_Analysis.txt\" \"/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/2026-03-25_HappyValley/Heison_2026-03-25_HappyValley_Race_1_Analysis.txt\")",
-      "Bash(stat \"/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/2026-03-25_HappyValley \\(Kelvin\\)/2026-03-25_HappyValley_Race_1_Analysis.txt\")"
+      "Bash(stat \"/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/2026-03-25_HappyValley \\(Kelvin\\)/2026-03-25_HappyValley_Race_1_Analysis.txt\")",
+      "Bash(python3 -)",
+      "Bash(py -3 -)",
+      "Bash(python -c ' *)",
+      "Bash(python au_bugfix_impact_probe.py)",
+      "Bash(break)",
+      "Bash(python au_weight_improvement_search.py)",
+      "Bash(python au_rescore_and_eval.py --rescore --tag \"BEFORE \\(current engine\\)\")"
     ]
   }
 }

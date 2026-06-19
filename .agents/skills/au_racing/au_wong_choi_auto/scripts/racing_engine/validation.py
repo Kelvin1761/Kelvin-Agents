@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scoring import FEATURE_KEYS, MATRIX_WEIGHTS, compute_grade, get_dynamic_matrix_weights
+from scoring import FEATURE_KEYS, MATRIX_WEIGHTS, compute_grade
 
 
 MATRIX_KEYS = tuple(MATRIX_WEIGHTS.keys())
@@ -28,8 +28,6 @@ def validate_engine_scripts(script_root: Path) -> list[str]:
 def validate_logic_data(logic_data: dict) -> list[str]:
     errors = []
     horses = logic_data.get("horses", {})
-    race_context = logic_data.get("race_analysis", {})
-    dynamic_weights = get_dynamic_matrix_weights(race_context)
     scored = []
     for horse_num, horse in horses.items():
         auto = horse.get("python_auto")
@@ -37,7 +35,7 @@ def validate_logic_data(logic_data: dict) -> list[str]:
             errors.append(f"SCHEMA-001 horse {horse_num} missing python_auto")
             continue
         scored.append((str(horse_num), auto))
-        errors.extend(_validate_auto_namespace(str(horse_num), auto, dynamic_weights))
+        errors.extend(_validate_auto_namespace(str(horse_num), auto))
     verdict = logic_data.get("python_auto_verdict")
     if not isinstance(verdict, dict):
         errors.append("VERDICT-001 missing python_auto_verdict")
@@ -52,7 +50,7 @@ def validate_report_output(text: str) -> list[str]:
     return issues
 
 
-def _validate_auto_namespace(horse_num: str, auto: dict, dynamic_weights: dict = None) -> list[str]:
+def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
     errors = []
     features = auto.get("feature_scores", {})
     missing = sorted(set(FEATURE_KEYS) - set(features))
@@ -62,17 +60,16 @@ def _validate_auto_namespace(horse_num: str, auto: dict, dynamic_weights: dict =
     if sorted(matrix_scores.keys()) != sorted(MATRIX_KEYS):
         errors.append(f"SCHEMA-003 horse {horse_num} matrix_scores keys mismatch")
     ability = auto.get("ability_score")
-    weights = dynamic_weights if dynamic_weights else MATRIX_WEIGHTS
+    base_7d = auto.get("base_7d_score")
     if ability is None:
         errors.append(f"SCORE-001 horse {horse_num} missing ability score")
     else:
-        expected = sum(float(matrix_scores.get(key, 60)) * weight for key, weight in weights.items())
-        # Diversity bonus: +2.0 for horses with no section below 56
-        min_section = min(float(matrix_scores.get(k, 60)) for k in MATRIX_KEYS)
-        if min_section >= 56:
-            expected += 2.0
+        expected = sum(float(matrix_scores.get(key, 60)) * weight for key, weight in MATRIX_WEIGHTS.items())
+        expected_score = float(base_7d if base_7d is not None else ability)
+        if abs(expected_score - expected) > 0.06:
+            errors.append(f"SCORE-002 horse {horse_num} clean 7D mismatch: {expected_score:.2f} != {expected:.2f}")
         if abs(float(ability) - expected) > 0.06:
-            errors.append(f"SCORE-002 horse {horse_num} ability mismatch: {ability} != {expected:.2f}")
+            errors.append(f"SCORE-004 horse {horse_num} ability is not clean 7D: {float(ability):.2f} != {expected:.2f}")
         if auto.get("grade") != compute_grade(float(ability)):
             errors.append(f"SCORE-003 horse {horse_num} grade mismatch")
     if len(str(auto.get("core_logic", "")).strip()) < 40:

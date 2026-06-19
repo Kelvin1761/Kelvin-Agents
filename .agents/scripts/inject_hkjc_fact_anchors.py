@@ -172,56 +172,128 @@ def load_draw_stats() -> dict:
     _DRAW_STATS = {}
     return _DRAW_STATS
 
-def get_draw_verdict(race_num: int, draw: int) -> str:
-    """Get draw verdict for a specific race/draw. Returns e.g. '✅有利 (上名30%)' or empty."""
-    ds = load_draw_stats()
-    if not ds or 'races' not in ds:
-        return ''
-    for race in ds['races']:
-        if race.get('race') == race_num:
-            for d in race.get('draws', []):
-                if d.get('draw') == draw:
-                    starts = d.get('starts', 0)
-                    low_sample = ' ⚠️樣本少' if starts < 10 else ''
-                    return f"{d['verdict']} (上名{d.get('place_pct','?')}%){low_sample}"
+
+def _normalize_draw_stats_meeting_venue(value: str) -> str:
+    text = str(value or '').strip()
+    if any(token in text for token in ('跑馬地', 'Happy Valley', 'HappyValley', 'HV')):
+        return '跑馬地'
+    if any(token in text for token in ('沙田', 'Sha Tin', 'ShaTin', 'ST')):
+        return '沙田'
     return ''
 
-def get_draw_detail(race_num: int, draw: int) -> dict:
-    """Get full draw stats dict for a specific race/draw.
-    Returns dict with win_pct, quinella_pct, place_pct, verdict, etc."""
+
+def _normalize_expected_draw_venue(value: str) -> str:
+    text = str(value or '').strip()
+    if '跑馬地' in text:
+        return '跑馬地'
+    if '沙田' in text or 'AWT' in text:
+        return '沙田'
+    return ''
+
+
+def _expected_draw_surface(expected_venue: str) -> str:
+    text = str(expected_venue or '').strip()
+    if 'AWT' in text or '全天候' in text or '泥' in text:
+        return '全天候'
+    if text:
+        return '草地'
+    return ''
+
+
+def _resolve_draw_stats_race(
+    race_num: int,
+    expected_venue: str = '',
+    expected_distance: int = 0,
+    expected_surface: str = '',
+) -> dict:
     ds = load_draw_stats()
     if not ds or 'races' not in ds:
         return {}
-    for race in ds['races']:
-        if race.get('race') == race_num:
-            for d in race.get('draws', []):
-                if d.get('draw') == draw:
-                    return d
+    race = next((item for item in ds.get('races', []) if item.get('race') == race_num), None)
+    if not race:
+        return {}
+
+    meeting_venue = _normalize_draw_stats_meeting_venue(ds.get('meta', {}).get('meeting', ''))
+    venue_norm = _normalize_expected_draw_venue(expected_venue)
+    surface_norm = expected_surface or _expected_draw_surface(expected_venue)
+
+    if venue_norm and meeting_venue != venue_norm:
+        return {}
+    if expected_distance:
+        try:
+            if int(race.get('distance') or 0) != int(expected_distance):
+                return {}
+        except (TypeError, ValueError):
+            return {}
+    if surface_norm and str(race.get('surface') or '').strip() != surface_norm:
+        return {}
+
+    return race
+
+
+def get_draw_verdict(
+    race_num: int,
+    draw: int,
+    expected_venue: str = '',
+    expected_distance: int = 0,
+    expected_surface: str = '',
+) -> str:
+    """Get draw verdict for a specific race/draw. Returns e.g. '✅有利 (上名30%)' or empty."""
+    race = _resolve_draw_stats_race(race_num, expected_venue, expected_distance, expected_surface)
+    if not race:
+        return ''
+    for d in race.get('draws', []):
+        if d.get('draw') == draw:
+            starts = d.get('starts', 0)
+            low_sample = ' ⚠️樣本少' if starts < 10 else ''
+            return f"{d['verdict']} (上名{d.get('place_pct','?')}%){low_sample}"
+    return ''
+
+
+def get_draw_detail(
+    race_num: int,
+    draw: int,
+    expected_venue: str = '',
+    expected_distance: int = 0,
+    expected_surface: str = '',
+) -> dict:
+    """Get full draw stats dict for a specific race/draw.
+    Returns dict with win_pct, quinella_pct, place_pct, verdict, etc."""
+    race = _resolve_draw_stats_race(race_num, expected_venue, expected_distance, expected_surface)
+    if not race:
+        return {}
+    for d in race.get('draws', []):
+        if d.get('draw') == draw:
+            return d
     return {}
 
-def get_draw_summary_block(race_num: int) -> str:
+
+def get_draw_summary_block(
+    race_num: int,
+    expected_venue: str = '',
+    expected_distance: int = 0,
+    expected_surface: str = '',
+) -> str:
     """Generate 🎯 檔位優劣判讀 block for Facts.md header."""
     ds = load_draw_stats()
-    if not ds or 'races' not in ds:
+    race = _resolve_draw_stats_race(race_num, expected_venue, expected_distance, expected_surface)
+    if not ds or not race:
         return ''
-    for race in ds['races']:
-        if race.get('race') == race_num:
-            lines = [f"### 🎯 檔位優劣判讀 ({race.get('distance','')}m {race.get('surface','')})"]
-            avg_place = race.get('avg_place_pct', race.get('avg_win_pct', 0))
-            lines.append(f"平均上名率: {avg_place}%")
-            favourable = [d for d in race['draws'] if d['verdict'] == '✅有利']
-            unfavourable = [d for d in race['draws'] if d['verdict'] == '❌不利']
-            if favourable:
-                draws_str = ', '.join(f"檔{d['draw']}(上名{d.get('place_pct','?')}%/入Q{d.get('quinella_pct','?')}%/勝{d['win_pct']}%{' ⚠️樣本少' if d.get('starts',0)<10 else ''})" for d in favourable)
-                lines.append(f"✅ 有利檔位: {draws_str}")
-            if unfavourable:
-                draws_str = ', '.join(f"檔{d['draw']}(上名{d.get('place_pct','?')}%/入Q{d.get('quinella_pct','?')}%/勝{d['win_pct']}%{' ⚠️樣本少' if d.get('starts',0)<10 else ''})" for d in unfavourable)
-                lines.append(f"❌ 不利檔位: {draws_str}")
-            if not favourable and not unfavourable:
-                lines.append("⚠️ 所有檔位上名率接近平均，無明顯優劣")
-            lines.append(f"(數據來源: HKJC 檔位統計 {ds.get('meta',{}).get('meeting','')})")
-            return '\n'.join(lines)
-    return ''
+    lines = [f"### 🎯 檔位優劣判讀 ({race.get('distance','')}m {race.get('surface','')})"]
+    avg_place = race.get('avg_place_pct', race.get('avg_win_pct', 0))
+    lines.append(f"平均上名率: {avg_place}%")
+    favourable = [d for d in race['draws'] if d['verdict'] == '✅有利']
+    unfavourable = [d for d in race['draws'] if d['verdict'] == '❌不利']
+    if favourable:
+        draws_str = ', '.join(f"檔{d['draw']}(上名{d.get('place_pct','?')}%/入Q{d.get('quinella_pct','?')}%/勝{d['win_pct']}%{' ⚠️樣本少' if d.get('starts',0)<10 else ''})" for d in favourable)
+        lines.append(f"✅ 有利檔位: {draws_str}")
+    if unfavourable:
+        draws_str = ', '.join(f"檔{d['draw']}(上名{d.get('place_pct','?')}%/入Q{d.get('quinella_pct','?')}%/勝{d['win_pct']}%{' ⚠️樣本少' if d.get('starts',0)<10 else ''})" for d in unfavourable)
+        lines.append(f"❌ 不利檔位: {draws_str}")
+    if not favourable and not unfavourable:
+        lines.append("⚠️ 所有檔位上名率接近平均，無明顯優劣")
+    lines.append(f"(數據來源: HKJC 檔位統計 {ds.get('meta',{}).get('meeting','')})")
+    return '\n'.join(lines)
 
 # Season start month (Sep)
 SEASON_START_MONTH = 9
@@ -639,6 +711,7 @@ def parse_hkjc_formguide(filepath: str) -> dict:
         rc_path = str(fp).replace('賽績.md', '排位表.md').replace('Formguide.txt', '排位表.md')
         mapping = {}
         gear_map = {}
+        trainer_map = {}
         if os.path.exists(rc_path):
             text = Path(rc_path).read_text(encoding='utf-8')
             for match in re.finditer(r'馬名:\s*(.*?)\n.*?烙號:\s*([A-Za-z0-9_]+)', text, re.DOTALL):
@@ -648,14 +721,19 @@ def parse_hkjc_formguide(filepath: str) -> dict:
             for blk in horse_blocks:
                 nm = re.search(r'馬名:\s*(.+?)$', blk, re.MULTILINE)
                 gm = re.search(r'配備:\s*(.*)$', blk, re.MULTILINE)
+                tm = re.search(r'練馬師:\s*(.*)$', blk, re.MULTILINE)
                 if nm and gm:
                     gear_val = gm.group(1).strip()
                     # Guard against empty gear or accidental field bleed
                     if gear_val and not gear_val.startswith('父系') and not gear_val.startswith('母系'):
                         gear_map[nm.group(1).strip()] = gear_val
-        return mapping, gear_map
+                if nm and tm:
+                    trainer_val = tm.group(1).strip()
+                    if trainer_val:
+                        trainer_map[nm.group(1).strip()] = trainer_val
+        return mapping, gear_map, trainer_map
     
-    brand_mapping, gear_mapping = load_brand_mapping(filepath)
+    brand_mapping, gear_mapping, trainer_mapping = load_brand_mapping(filepath)
     pdf_path = get_pdf_path(filepath)
 
     text = Path(filepath).read_text(encoding='utf-8')
@@ -707,15 +785,19 @@ def parse_hkjc_formguide(filepath: str) -> dict:
         
         horse_num = int(horse_num_str) if horse_num_str.isdigit() else idx + 1
         
-        # Extract barrier, jockey, weight, body weight, gear
+        # Extract barrier, jockey, trainer, weight, body weight, gear
         barrier_m = re.search(r'檔位:\s*(\d+)', block)
         jockey_m = re.search(r'騎師:\s*(.+?)$', block, re.MULTILINE)
+        trainer_m = re.search(r'練馬師:\s*(.+?)$', block, re.MULTILINE)
         weight_m = re.search(r'負磅:\s*(\d+)', block)
         bw_m = re.search(r'排位體重:\s*(\d+)', block)
         gear_m = re.search(r'配備:\s*(.+?)$', block, re.MULTILINE)
         
         barrier = int(barrier_m.group(1)) if barrier_m else 0
         jockey = jockey_m.group(1).strip() if jockey_m else ''
+        trainer = trainer_m.group(1).strip() if trainer_m else ''
+        if not trainer:
+            trainer = trainer_mapping.get(horse_name, '')
         weight = int(weight_m.group(1)) if weight_m else 0
         body_weight = int(bw_m.group(1)) if bw_m else 0
         today_gear = gear_m.group(1).strip() if gear_m else ''
@@ -838,6 +920,7 @@ def parse_hkjc_formguide(filepath: str) -> dict:
             'brand_no': brand_no,
             'barrier': barrier,
             'jockey': jockey,
+            'trainer': trainer,
             'weight': weight,
             'body_weight': body_weight,
             'today_gear': today_gear,
@@ -1482,8 +1565,11 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     races = horse['races']
     p_entries = profile_data.get('entries', []) if profile_data else []
     
-    # Determine trainer (from profile if available)
+    # Prefer SSR trainer, but keep the formguide trainer as a fallback for
+    # debutants or runners without profile enrichment.
     trainer = profile_data.get('trainer', '') if profile_data else ''
+    if not trainer:
+        trainer = horse.get('trainer', '')
     
     # Header
     header_parts = [f"### 馬號 {horse['num']} — {horse['name']}"]
@@ -1496,7 +1582,12 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     
     # Per-horse draw verdict (if draw stats available)
     if race_num > 0:
-        draw_detail = get_draw_detail(race_num, horse['barrier'])
+        draw_detail = get_draw_detail(
+            race_num,
+            horse['barrier'],
+            expected_venue=today_venue,
+            expected_distance=today_dist,
+        )
         if draw_detail:
             lines.append(f"📊 **檔位判定:** 檔{horse['barrier']} → {draw_detail.get('verdict', '?')} "
                          f"(勝率: {draw_detail.get('win_pct', '?')}% | "
@@ -2154,11 +2245,20 @@ def main():
     
     # Inject draw verdict block if race_num provided
     if race_num > 0:
-        draw_block = get_draw_summary_block(race_num)
+        draw_block = get_draw_summary_block(
+            race_num,
+            expected_venue=today_venue,
+            expected_distance=today_dist,
+        )
         if draw_block:
             output_lines.append(draw_block)
             output_lines.append(f"")
             print(f"   🎯 檔位判讀: Race {race_num} 已注入", file=sys.stderr)
+        elif load_draw_stats().get('races'):
+            print(
+                f"   ⚠️ 檔位統計與今場不匹配，已略過注入 (Race {race_num}: {today_venue} {today_dist}m)",
+                file=sys.stderr,
+            )
 
     speed_map_block, _speed_map = build_race_speed_map_block(data, today_venue, today_dist, race_class)
     output_lines.append(speed_map_block)

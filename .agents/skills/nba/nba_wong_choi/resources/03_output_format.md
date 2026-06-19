@@ -12,6 +12,11 @@
 5. **獨立發現** — LLM 自行發現嘅風險/機會 (至少 1 個)
 6. **SGM Parlay 組合** — SGM 建議（≥2 組：🛡️ 穩膽 + 🔥 價值，可選 💎 進取）+ 條件觸發 Value Bomb
 
+   **Engine mode 必須清楚顯示：**
+   - 預設為 `Hybrid V1`：10-Factor 負責 EV/Kelly calibration，ML 負責 ranking / confirmation / penalty。
+   - `ML Main V1` 只可作對照或實驗輸出；若無合格正 EV 組合，必須輸出「無合格組合」，不得硬湊。
+   - `10-Factor V8 Legacy` 保留作回歸測試及 legacy 對照。
+
    **每個 Leg 必須包含以下欄位（數理引擎）：**
    - **賠率** (@X.XX)
    - **隱含勝率** (1/賠率 × 100%)
@@ -29,13 +34,15 @@
    - **克服信心**
 
    **每個組合必須包含組合結算：**
-   - 總賠率 / 回報 / 組合 Edge / 注碼建議
+   - 總賠率 / 回報 / 組合 Edge / `Combo EV%` / Kelly 注碼建議
+   - `Combo EV% <= 0` 或 Kelly = 0% bankroll 時，該組合不可出現在正式下注建議內。
 
    **組合結構強制要求**:
    - **組合 1:🛡️ 穩膽 SGM (Low Risk)** — L10 命中 ≥70%, 組合賠率 ≥ 2x
    - **組合 2:🔥 均衡 +EV 價值膽 (Mid Risk)** — 組合賠率 ≥ 3x, 目標 5x
    - **組合 3:💎 高倍率進取型 (High Risk)** — 組合賠率 ≥ 8x
    - **組合 X:💣 Value Bomb (條件觸發)** — Edge ≥10% 低估時出現
+   - 若任何 tier 無法通過 Post-Reflector EV Gate，必須輸出「無符合條件組合」；嚴禁為滿足數量而放寬負 EV / 0 Kelly / AST median / Finals usage gate。
 
    > 賠率來自 Sportsbet 直接提取。組合賠率以 Sportsbet SGM 實際顯示為準。
 

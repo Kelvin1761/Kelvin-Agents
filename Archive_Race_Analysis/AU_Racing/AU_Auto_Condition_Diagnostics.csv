@@ -1,4 +1,4 @@
 condition_bucket,races,horses,ability_top1_rate,ability_top3_winner_rate,ability_top3_place_precision,favourite_win_rate,favourite_place_rate
-Good/Firm,216,2327,0.1759,0.4306,0.3889,0.3565,0.713
-Soft,60,717,0.1333,0.35,0.3889,0.3333,0.6333
-Heavy,40,438,0.15,0.375,0.325,0.325,0.5
+Good/Firm,216,2327,0.2685,0.5139,0.4444,0.3565,0.713
+Soft,60,717,0.1167,0.5,0.4111,0.3333,0.6333
+Heavy,40,438,0.3,0.45,0.35,0.325,0.5

@@ -33,7 +33,9 @@ class AuRacingEngine(RacingEngine):
         """
         score = 60
         notes = []
-        current_prize = float(self.race_context.get("prize") or 0)
+        from scoring import parse_float
+        current_prize_str = self.race_context.get("prize", "")
+        current_prize = float(parse_float(current_prize_str) or 0)
         
         if current_prize > 0:
             entries = self._official_entries()
@@ -128,7 +130,9 @@ class AuRacingEngine(RacingEngine):
         score = 60
         notes = []
         
-        current_prize = float(self.race_context.get("prize") or 0)
+        from scoring import parse_float
+        current_prize_str = self.race_context.get("prize", "")
+        current_prize = float(parse_float(current_prize_str) or 0)
         
         entries = self._official_entries()
         good_prizes = []
@@ -185,6 +189,9 @@ class AuRacingEngine(RacingEngine):
 
     def _sectional_score(self):
         """
-        Bypass HKJC absolute sectional penalties.
+        TODO(AU): Currently returns neutral 60 to bypass HKJC-specific absolute sectional rules.
+        AU sectional evaluation should be implemented here using AU-specific metrics
+        (e.g., field-relative 600m/400m splits, track/class adjusted).
         """
-        return 60, "AU段速(無HKJC扣分)", "sectional_au"
+        return 60, "AU中性段速評估(預留AU實作)", "sectional_au"
+REPLACE

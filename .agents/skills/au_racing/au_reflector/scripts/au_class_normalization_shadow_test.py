@@ -15,6 +15,7 @@ import json
 import pathlib
 import re
 import sys
+import time
 from dataclasses import asdict
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[5]
@@ -284,6 +285,7 @@ def _ranked_picks_from_logic(logic_path: pathlib.Path, variant_name: str, varian
 
 def run_variant(base_dir: pathlib.Path, variant_name: str, variant: dict) -> dict:
     meetings = find_au_meetings(base_dir)
+    started = time.perf_counter()
     aggregate = {
         "meetings": len(meetings),
         "races": 0,
@@ -301,7 +303,9 @@ def run_variant(base_dir: pathlib.Path, variant_name: str, variant: dict) -> dic
     details = []
     diagnostics = []
 
-    for meeting in meetings:
+    for index, meeting in enumerate(meetings, start=1):
+        meeting_started = time.perf_counter()
+        print(f"🔍 AU class shadow [{variant_name}]: {index}/{len(meetings)} {meeting.name}", flush=True)
         results_file = meeting_results_file(meeting)
         if not results_file:
             continue
@@ -337,6 +341,11 @@ def run_variant(base_dir: pathlib.Path, variant_name: str, variant: dict) -> dic
                 **summary,
                 "races_detail": [asdict(item) for item in race_stats],
             }
+        )
+        print(
+            f"✅ AU class shadow [{variant_name}]: {meeting.name} "
+            f"({races} races, {time.perf_counter() - meeting_started:.2f}s, total {time.perf_counter() - started:.2f}s)",
+            flush=True,
         )
 
     aggregate["races"] = total_races

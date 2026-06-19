@@ -107,11 +107,12 @@ def main():
                 actual_pos = int(row["pos"])
 
                 # Re-run engine
-                data = horse.get("_data", {}) if isinstance(horse.get("_data"), dict) else {}
-                facts = data.get("facts_section", "")
                 race_context = dict(race_analysis)
                 race_context["field_summary"] = build_field_summary(logic.get("horses", {}))
-                engine = RacingEngine(horse, race_context, facts_section=facts)
+                
+                # Build a dummy facts path so engine_core can extract race date
+                dummy_facts_path = str(meeting_dir / f"{meeting_date}_dummy.md")
+                engine = RacingEngine(horse, race_context, horse.get("_data", {}).get("facts_section", ""), facts_path=dummy_facts_path)
                 result = engine.analyze_horse()
                 new_rank = float(result.get("rank_score") or result.get("ability_score") or 0)
 

@@ -7,6 +7,10 @@ import RatingBadge from "./RatingBadge";
  */
 export default function HorseCard({ horse, topPickRank, primaryCondition }) {
   const [expanded, setExpanded] = useState(false);
+  const weightText =
+    horse.weight === null || horse.weight === undefined
+      ? ""
+      : String(horse.weight);
 
   // Card is expandable if there's any detailed analysis content
   const hasAnalysis =
@@ -88,9 +92,7 @@ export default function HorseCard({ horse, topPickRank, primaryCondition }) {
                 <span title="負磅/排位體重">
                   {" "}
                   · ⚖️ 負磅:{" "}
-                  {horse.weight.includes("磅")
-                    ? horse.weight
-                    : `${horse.weight}磅`}
+                  {weightText.includes("磅") ? weightText : `${weightText}磅`}
                 </span>
               )}
               {horse.barrier && <span> · 檔{horse.barrier}</span>}

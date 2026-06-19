@@ -71,6 +71,8 @@ def narrow_overrated_rank_shield(matrix_scores: dict, wet_state: str, field_coun
         penalty -= 0.4
     if penalty < 0 and jockey_trainer >= 72:
         penalty += 0.3
+
+
     return penalty
 
 
@@ -140,23 +142,49 @@ def market_free_rank_adjustment(
     field912_stability = stability if field == "Field 9-12" else 0.0
     bm_class_weight = class_weight if race_class in {"BM58-70", "BM72-84", "BM88+"} else 0.0
     wet_track = track if condition in {"Soft", "Heavy"} else 0.0
+    wet_stability = stability if condition in {"Soft", "Heavy"} else 0.0
+    # False Positive Traps (Empty Form & Class Exposed)
+    # Using centered values: 70 -> 1.0, 65 -> 0.5, 60 -> 0.0
+    empty_form_trap = stability if (stability >= 1.0 and class_weight < 0.5 and race_shape < 0.5) else 0.0
+    class_exposed = class_weight if (stability >= 1.0 and class_weight < 0.0) else 0.0
 
-    # Calculate adjustment delta
-    delta = (
-        -0.19 * stability
-        - 0.31 * race_shape
+    # Calculate adjustment delta.
+    delta_v1 = (
+        - 0.35 * stability
+        - 0.33 * sectional
+        - 0.19 * race_shape
         + 0.31 * jockey_trainer
-        - 0.24 * class_weight
-        - 0.33 * track
-        - 0.29 * form_line
-        - 0.20 * field13_race_shape
-        + 0.46 * field13_sectional
-        + 0.53 * field13_form_line
-        + 0.40 * field912_form_line
-        - 0.09 * field912_stability
-        - 0.24 * bm_class_weight
-        - 0.45 * wet_track
+        + 0.06 * class_weight
+        - 0.64 * track
+        - 0.77 * form_line
+        + 0.06 * field13_race_shape
+        + 0.48 * field13_sectional
+        + 1.01 * field13_form_line
+        - 0.03 * field912_form_line
+        - 0.74 * field912_stability
+        - 0.97 * bm_class_weight
+        - 1.12 * wet_track
+        + 0.01 * wet_stability
+        + 0.54 * empty_form_trap
+        + 0.49 * class_exposed
     )
 
-    return max(-3.5, min(3.5, delta))
+    delta_v2 = (
+        - 0.36 * stability
+        - 0.30 * sectional
+        + 0.42 * race_shape
+        - 0.12 * jockey_trainer
+        + 0.20 * class_weight
+        + 0.21 * track
+        - 0.15 * form_line
+        + 0.29 * field13_race_shape
+        - 0.58 * field13_form_line
+        - 0.49 * field912_form_line
+        - 0.52 * field912_stability
+        + 0.32 * bm_class_weight
+        + 0.29 * wet_track
+        - 0.36 * wet_stability
+    )
+
+    return max(-3.5, min(3.5, delta_v1)) + max(-3.5, min(3.5, delta_v2))
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -22,18 +23,26 @@ VENUE_TRACK_MAP = {
     "eagle farm": "04b_track_eagle_farm.md",
     "doomben": "04b_track_doomben.md",
     "warwick farm": "04b_track_warwick_farm.md",
+    "canterbury": "04b_track_provincial.md",
     "provincial": "04b_track_provincial.md",
 }
 
 
+# BUGFIX: weight may be unknown — inject_fact_anchors emits "負重: 未知" when the
+# racecard has no declared weight. The trailing weight group must therefore also
+# match 未知/N/A/- (group 6 stays None → weight=None) so the whole header line
+# still matches and the horse is NOT silently dropped from the field.
 HORSE_HEADER_RE = re.compile(
-    r"^### 馬匹 #(\d+) (.+?) \(檔位 (\d+)\)(?:\s*\| 騎師: ([^|]+?))?(?:\s*\| 練馬師: ([^|\n\r]+?))?(?:\s*\| 負重: ([0-9.]+)kg)?$",
+    r"^### 馬匹 #(\d+) (.+?) \(檔位 (\d+)\)(?:\s*\| 騎師: ([^|]+?))?(?:\s*\| 練馬師: ([^|\n\r]+?))?(?:\s*\| 負重: (?:([0-9.]+)kg|未知|N/A|-))?$",
     re.M,
 )
-FIELD_TRAILER_RE = re.compile(r"\s*\|\s*負重:\s*[0-9.]+kg\s*$")
+FIELD_TRAILER_RE = re.compile(r"\s*\|\s*負重:\s*(?:[0-9.]+kg|未知|N/A|-)\s*$")
 RACECARD_HORSE_RE = re.compile(r"^\d+\.\s+(.+?)\s+\((\d+)\)$")
+# BUGFIX: rating may be a non-numeric placeholder ("-", "—", "NR", blank). Make the
+# rating group optional so an unrated horse does not fail the whole meta line (which
+# would also drop its declared weight). group(2) is None when rating is absent.
 RACECARD_META_RE = re.compile(
-    r"^Trainer:\s.*?\|\sJockey:\s.*?\|\sWeight:\s*([0-9.]+)\s*\|\sAge:\s.*?\|\sRating:\s*([0-9.]+)"
+    r"^Trainer:\s.*?\|\sJockey:\s.*?\|\sWeight:\s*([0-9.]+)(?:kg)?(?:\s*\([^|]*\))?\s*\|\sAge:\s.*?\|\sRating:\s*([0-9.]+)?"
 )
 
 
@@ -42,7 +51,7 @@ def build_logic_from_facts(facts_path: Path) -> dict:
     race_number = _extract_race_number(facts_path.name, text)
     race_class, distance, prize = _extract_race_meta(facts_path, text)
     racecard_profiles = _load_racecard_profiles(facts_path, race_number)
-    meeting_intelligence = _load_meeting_intelligence(facts_path)
+    meeting_intelligence = _load_meeting_intelligence(facts_path, race_number)
     track_profile = _load_track_profile(
         meeting_intelligence.get("venue", ""),
         _distance_to_int(distance),
@@ -59,12 +68,22 @@ def build_logic_from_facts(facts_path: Path) -> dict:
             "speed_map": speed_map,
             "meeting_intelligence": meeting_intelligence,
             "track_profile": track_profile,
+            "context_completeness": _context_completeness(meeting_intelligence, track_profile),
             "going": meeting_intelligence.get("going", ""),
             "track_bias": meeting_intelligence.get("bias_summary", ""),
         },
         "horses": {},
     }
     matches = list(HORSE_HEADER_RE.finditer(text))
+    # BUGFIX guard: every "### 馬匹 #N" block must parse. If the strict header regex
+    # matches fewer than the raw horse-block count, a runner is being silently
+    # dropped from the field (was the unknown-weight bug). Fail loudly instead.
+    raw_header_count = len(re.findall(r"^### 馬匹 #\d+ ", text, re.M))
+    if raw_header_count != len(matches):
+        sys.stderr.write(
+            f"⚠️ FIELD MISMATCH in {facts_path.name}: {raw_header_count} horse blocks "
+            f"but only {len(matches)} parsed — a runner failed header parsing.\n"
+        )
     for idx, match in enumerate(matches):
         start = match.start()
         end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
@@ -165,8 +184,9 @@ def _load_racecard_profiles(facts_path: Path, race_number: int) -> dict[str, dic
         meta_match = RACECARD_META_RE.match(lines[index + 1].strip())
         if meta_match:
             horse_name = _clean_identity(horse_match.group(1))
+            rating_raw = meta_match.group(2)
             profiles[_normalize_horse_name(horse_name)] = {
-                "horse_rating": float(meta_match.group(2)),
+                "horse_rating": float(rating_raw) if rating_raw else None,
                 "declared_weight": float(meta_match.group(1)),
             }
         index += 2
@@ -198,7 +218,7 @@ def _parse_speed_map(text: str) -> dict:
         return match.group(1).strip() if match else ""
     return {
         "predicted_pace": field("predicted_pace"),
-        "expected_pace": field("predicted_pace"),
+        "expected_pace": field("expected_pace"),
         "pace_confidence": field("pace_confidence"),
         "style_confidence": field("style_confidence"),
         "leaders": [int(x) for x in re.findall(r"\d+", field("leaders"))],
@@ -359,12 +379,103 @@ def _normalize_speed_map_text(text: str) -> str:
     return value
 
 
-def _load_meeting_intelligence(facts_path: Path) -> dict:
+def _load_meeting_intelligence(facts_path: Path, race_number: int = 0) -> dict:
     meeting_path = facts_path.parent / "_Meeting_Intelligence_Package.md"
-    if not meeting_path.exists():
-        return {}
-    text = meeting_path.read_text(encoding="utf-8")
-    return _parse_meeting_intelligence(text, facts_path.parent.name)
+    if meeting_path.exists():
+        text = meeting_path.read_text(encoding="utf-8")
+        intelligence = _parse_meeting_intelligence(text, facts_path.parent.name)
+    else:
+        intelligence = {}
+    fallback = _meeting_context_from_extractor_files(facts_path, race_number)
+    for key, value in fallback.items():
+        if value and not intelligence.get(key):
+            intelligence[key] = value
+    if fallback:
+        intelligence["source"] = _merge_sources(intelligence.get("source"), fallback.get("source"))
+    return intelligence
+
+
+def _meeting_context_from_extractor_files(facts_path: Path, race_number: int = 0) -> dict:
+    folder = facts_path.parent
+    context = {
+        "venue": _venue_from_folder_name(folder.name),
+        "date": _capture(folder.name, r"(\d{4}-\d{2}-\d{2})"),
+        "weather_summary": "",
+        "track_summary": "",
+        "going": "",
+        "rail_position": "",
+        "bias_summary": "",
+        "surface": "",
+        "source": "",
+    }
+    sources: list[str] = []
+
+    summary_path = folder / "Meeting_Summary.md"
+    if summary_path.exists():
+        summary = summary_path.read_text(encoding="utf-8")
+        context["date"] = _first_clean(_capture(summary, r"^Date:\s*([^\n]+)"), context["date"])
+        context["going"] = _first_clean(_capture(summary, r"^Track Condition:\s*([^\n]+)"), context["going"])
+        context["surface"] = _first_clean(_capture(summary, r"^Surface:\s*([^\n]+)"), context["surface"])
+        context["weather_summary"] = _first_clean(_capture(summary, r"^Weather:\s*([^\n]+)"), context["weather_summary"])
+        context["rail_position"] = _first_clean(_capture(summary, r"^Rails?:\s*([^\n]+)"), context["rail_position"])
+        sources.append("Meeting_Summary.md")
+
+    race_number = race_number or _extract_race_number(facts_path.name, facts_path.read_text(encoding="utf-8"))
+    racecards = sorted(folder.glob(f"*Race {race_number} Racecard.md"))
+    if racecards:
+        racecard = racecards[0].read_text(encoding="utf-8")
+        meta_line = _first_line_matching(racecard, r"^Track:")
+        if meta_line:
+            context["going"] = _first_clean(_capture(meta_line, r"Track:\s*([^|]+)"), context["going"])
+            context["weather_summary"] = _first_clean(_capture(meta_line, r"Weather:\s*([^|]+)"), context["weather_summary"])
+            context["rail_position"] = _first_clean(_capture(meta_line, r"Rail:\s*([^|]+)"), context["rail_position"])
+            sources.append(racecards[0].name)
+
+    if context["going"]:
+        context["track_summary"] = context["going"]
+    context["source"] = " + ".join(dict.fromkeys(sources + (["folder_name"] if context["venue"] else [])))
+    return {key: value for key, value in context.items() if value}
+
+
+def _venue_from_folder_name(name: str) -> str:
+    value = re.sub(r"^\d{4}-\d{2}-\d{2}[_\s-]*", "", str(name or "")).strip()
+    value = re.sub(r"\bRace\s*\d+.*$", "", value, flags=re.I).strip(" _-")
+    value = value.replace("_", " ").strip()
+    return value
+
+
+def _first_line_matching(text: str, pattern: str) -> str:
+    regex = re.compile(pattern)
+    for line in str(text or "").splitlines():
+        if regex.search(line.strip()):
+            return line.strip()
+    return ""
+
+
+def _first_clean(value: str, fallback: str = "") -> str:
+    clean = str(value or "").strip().strip(" |")
+    return clean or str(fallback or "").strip()
+
+
+def _merge_sources(primary: str, fallback: str) -> str:
+    parts = []
+    for raw in (primary, fallback):
+        for part in re.split(r"\s+\+\s+|;", str(raw or "")):
+            clean = part.strip()
+            if clean and clean not in parts:
+                parts.append(clean)
+    return " + ".join(parts)
+
+
+def _context_completeness(meeting_intelligence: dict, track_profile: dict) -> dict:
+    return {
+        "venue": bool(meeting_intelligence.get("venue")),
+        "date": bool(meeting_intelligence.get("date")),
+        "going": bool(meeting_intelligence.get("going")),
+        "rail_position": bool(meeting_intelligence.get("rail_position")),
+        "weather_summary": bool(meeting_intelligence.get("weather_summary")),
+        "track_profile": bool(track_profile),
+    }
 
 
 def _parse_meeting_intelligence(text: str, fallback_venue: str = "") -> dict:
@@ -403,16 +514,37 @@ def _load_track_profile(venue: str, distance_m: int = 0) -> dict:
     if not track_file or not track_file.exists():
         return {}
     text = track_file.read_text(encoding="utf-8")
+    section = _track_venue_section(text, venue) or text
     return {
         "venue": venue,
-        "circumference_m": _extract_first_int(text, r"賽道周長:\**\s*([0-9]+)m"),
-        "straight_m": _extract_first_int(text, r"直路長度:\**\s*([0-9]+)m"),
-        "direction": _capture(text, r"賽道風向:\**\s*([^\n]+)"),
-        "key_traits": _extract_track_traits(text),
-        "distance_note": _compact_text(_track_distance_note(text, distance_m)),
-        "going_note": _compact_text(_section_text(text, "## 🌧️ 天氣與場地互動 (Track Condition Bias)")),
+        "circumference_m": _track_table_int(section, "周長") or _extract_first_int(section, r"(?:賽道)?周長:\**\s*([0-9]+)m"),
+        "straight_m": _track_table_int(section, "直路") or _extract_first_int(section, r"直路(?:長度)?:\**\s*([0-9]+)m"),
+        "direction": _track_table_text(section, "方向") or _capture(section, r"賽道風向:\**\s*([^\n]+)"),
+        "key_traits": _extract_track_traits(section),
+        "distance_note": _compact_text(_track_distance_note(section, distance_m) or _track_distance_note(text, distance_m)),
+        "going_note": _compact_text(_section_text(section, "## 🌧️ 天氣與場地互動 (Track Condition Bias)") or _section_text(text, "## 🌧️ 天氣與場地互動 (Track Condition Bias)")),
         "source_file": track_file.name,
     }
+
+
+def _track_venue_section(text: str, venue: str) -> str:
+    venue_words = [re.escape(part) for part in re.split(r"\s+", str(venue or "").strip()) if part]
+    if not venue_words:
+        return ""
+    venue_pattern = r"\s+".join(venue_words)
+    match = re.search(rf"(^##\s+.*{venue_pattern}.*?\n.*?)(?=^##\s+|\Z)", text, re.I | re.M | re.S)
+    return match.group(1).strip() if match else ""
+
+
+def _track_table_text(text: str, label: str) -> str:
+    match = re.search(rf"^\|\s*\*\*{re.escape(label)}\*\*\s*\|\s*([^|\n]+)", text, re.M)
+    return match.group(1).strip() if match else ""
+
+
+def _track_table_int(text: str, label: str) -> int:
+    value = _track_table_text(text, label)
+    match = re.search(r"([0-9]+)", value)
+    return int(match.group(1)) if match else 0
 
 
 def _track_distance_note(text: str, distance_m: int) -> str:
@@ -440,6 +572,8 @@ def _extract_track_traits(text: str) -> list[str]:
         clean = clean.replace("ON-PACE", "On-Pace").replace("TIGHT-TURNING", "Tight-turning")
         if clean:
             traits.append(clean)
+    if not traits:
+        traits.extend(_compact_text(item) for item in re.findall(r"^\-\s+(.+)$", text, re.M))
     return traits
 
 

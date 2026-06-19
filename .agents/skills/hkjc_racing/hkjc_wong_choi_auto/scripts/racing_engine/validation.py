@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scoring import FEATURE_KEYS, MATRIX_WEIGHTS, compute_grade
+from scoring import DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS, MATRIX_WEIGHTS, compute_grade
 
 
 FORBIDDEN_SCRIPT_TERMS = (
@@ -95,14 +95,7 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
         is_debut = any("debut" in code for code in reason_codes)
         
         if is_debut:
-            debut_weights = {
-                'trainer_signal': 0.30,
-                'horse_health': 0.30,
-                'race_shape': 0.20,
-                'stability': 0.15,
-                'class_advantage': 0.05
-            }
-            expected = sum(float(matrix_scores.get(key, 60)) * weight for key, weight in debut_weights.items())
+            expected = sum(float(matrix_scores.get(key, 60)) * weight for key, weight in DEBUT_MATRIX_WEIGHTS.items())
         else:
             expected = sum(float(matrix_scores.get(key, 60)) * weight for key, weight in MATRIX_WEIGHTS.items())
             

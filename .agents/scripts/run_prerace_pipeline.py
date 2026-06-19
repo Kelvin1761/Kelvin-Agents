@@ -24,6 +24,8 @@ import argparse
 from pathlib import Path
 from datetime import datetime, timedelta
 
+from subprocess_pool import bounded_workers, run_labeled_commands
+
 
 SCRIPT_DIR = Path(__file__).parent
 STANDARD_TIMES_JSON = SCRIPT_DIR / "hkjc_standard_times.json"
@@ -84,7 +86,7 @@ def step2_scrape_draw_stats() -> dict:
     return run_script("scrape_draw_stats.py", label="Step 2: Draw Stats Scrape")
 
 
-def step3_inject_facts(meeting_dir: Path) -> list:
+def step3_inject_facts(meeting_dir: Path, workers: int = 1) -> list:
     """Inject Facts.md for each race in the meeting folder."""
     results = []
 
@@ -104,6 +106,7 @@ def step3_inject_facts(meeting_dir: Path) -> list:
 
     print(f"\n📂 Found {len(formguides)} formguide(s) in {meeting_dir.name}")
 
+    tasks = []
     for fg in formguides:
         # Extract race number from filename
         import re
@@ -121,11 +124,31 @@ def step3_inject_facts(meeting_dir: Path) -> list:
         if race_num > 0:
             inject_args.extend(["--race-num", str(race_num)])
 
-        result = run_script("inject_hkjc_fact_anchors.py", inject_args,
-                           label=f"Step 3: Race {race_num} Facts.md")
-        result["race_num"] = race_num
-        result["output"] = str(out_path)
-        results.append(result)
+        tasks.append({
+            "label": f"Step 3: Race {race_num} Facts.md",
+            "cmd": [sys.executable, str(SCRIPT_DIR / "inject_hkjc_fact_anchors.py"), *inject_args],
+            "meta": {
+                "script": "inject_hkjc_fact_anchors.py",
+                "race_num": race_num,
+                "output": str(out_path),
+            },
+        })
+
+    task_results = run_labeled_commands(
+        tasks,
+        cwd=SCRIPT_DIR.parent.parent,
+        max_workers=workers,
+        timeout=900,
+    )
+    for result in task_results:
+        results.append({
+            "script": result.get("script", "inject_hkjc_fact_anchors.py"),
+            "status": "OK" if result["returncode"] == 0 else "FAILED",
+            "returncode": result["returncode"],
+            "error": result.get("stderr") if result["returncode"] != 0 else None,
+            "race_num": result.get("race_num"),
+            "output": result.get("output"),
+        })
 
     return results
 
@@ -167,6 +190,7 @@ def main():
     parser.add_argument("--skip-std-times", action="store_true", help="Skip standard times sync")
     parser.add_argument("--skip-draw", action="store_true", help="Skip draw stats scrape")
     parser.add_argument("--skip-inject", action="store_true", help="Skip Facts.md injection")
+    parser.add_argument("--inject-workers", type=int, default=1, help="Race-level Facts injection workers")
     args = parser.parse_args()
 
     meeting_dir = Path(args.meeting_dir).resolve()
@@ -185,7 +209,8 @@ def main():
     step2 = {"status": "SKIPPED"} if args.skip_draw else step2_scrape_draw_stats()
 
     # Step 3: Facts Injection
-    step3 = [] if args.skip_inject else step3_inject_facts(meeting_dir)
+    inject_workers = bounded_workers(args.inject_workers)
+    step3 = [] if args.skip_inject else step3_inject_facts(meeting_dir, workers=inject_workers)
 
     # Generate summary
     summary = generate_summary(meeting_dir, step1, step2, step3)

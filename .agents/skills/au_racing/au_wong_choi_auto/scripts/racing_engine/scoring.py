@@ -8,6 +8,7 @@ FEATURE_KEYS = ("form_score","trial_score","sectional_score","pace_map_score","j
 MATRIX_WEIGHTS = {"stability":0.330,"sectional":0.105,"race_shape":0.234,"jockey_trainer":0.214,"class_weight":0.050,"track":0.067,"form_line":0.000}
 _WEIGHT_FLOOR = {"stability":0.10}
 _WEIGHT_CEILING = {"class_weight":0.15,"track":0.17}
+SOFT_RACE_SHAPE_SCALE = 1.0
 
 CLASS_MICRO_WEIGHTS = {
     "career0_base": 57.7,
@@ -157,7 +158,7 @@ def get_dynamic_matrix_weights(race_context):
     if "soft" in going or "heavy" in going:
         weights["race_shape"] -= 0.005; weights["track"] += 0.01; weights["stability"] -= 0.005
     elif "good" in going or "firm" in going:
-        weights["speed_performance"] += 0.03; weights["sectional"] += 0.02; weights["track"] -= 0.02
+        weights["sectional"] += 0.05; weights["track"] -= 0.02
 
     if "bm" in race_class:
         bm_tokens = tuple(f"bm{n}" for n in range(50,100))
@@ -167,6 +168,8 @@ def get_dynamic_matrix_weights(race_context):
             weights["class_weight"] -= 0.02
         elif any(t in race_class for t in bm_tokens): 
             weights["class_weight"] += 0.005
+    for key in weights:
+        weights[key] = max(0.0, weights[key])
     total = sum(weights.values())
     if total > 0:
         for key in weights: weights[key] = weights[key] / total
@@ -176,6 +179,14 @@ def get_dynamic_matrix_weights(race_context):
         if weights[key] > ceil_val: weights[key] = ceil_val
     for key in weights: weights[key] = round(weights[key],4)
     return weights
+
+def soft_race_shape_modifier(race_context, matrix_scores):
+    context = race_context or {}
+    going = f"{context.get('going', '')} {context.get('condition', '')}".lower()
+    if "soft" not in going:
+        return 0.0
+    race_shape = clip_score((matrix_scores or {}).get("race_shape", 60.0))
+    return round(((race_shape - 60.0) / 10.0) * SOFT_RACE_SHAPE_SCALE, 4)
 
 PLACE_TIGHTENING_FEATURE_WEIGHTS = {"form_score":0.103,"trial_score":0.179,"trainer_score":0.204,"jockey_horse_fit_score":0.170,"consistency_score":0.143,"distance_score":-0.033,"confidence_score":0.027,"weight_score":-0.141,"sectional_score":0.05}
 PLACE_TIGHTENING_SCALE = 1.4

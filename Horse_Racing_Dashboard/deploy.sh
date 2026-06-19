@@ -6,6 +6,7 @@ set -euo pipefail
 # ==========================================
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DIST_DIR="$SCRIPT_DIR/.cloudflare_dist"
 HTML_OUT="$DIST_DIR/index.html"
 JSON_OUT="$DIST_DIR/dashboard-data.json"
@@ -13,6 +14,7 @@ MANIFEST_OUT="$DIST_DIR/deploy-manifest.json"
 BUILD_ONLY=0
 KEEP_DIST=0
 PAGES_PROJECT="${WC_CLOUDFLARE_PAGES_PROJECT:-wongchoi-dashboard}"
+DEPLOY_CWD="${WC_CLOUDFLARE_DEPLOY_CWD:-${TMPDIR:-/private/tmp}}"
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -89,10 +91,23 @@ fi
 
 echo "☁️ 第三步：推送上 Cloudflare Pages..."
 echo "   - Pages Project: $PAGES_PROJECT"
-if [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
-    echo "   - Account ID: ${CLOUDFLARE_ACCOUNT_ID}"
+RESOLVED_ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID:-}"
+if [ -z "$RESOLVED_ACCOUNT_ID" ]; then
+    RESOLVED_ACCOUNT_ID="$("$PYTHON_BIN" -c 'import json, subprocess
+try:
+    raw = subprocess.check_output(["npx", "wrangler", "whoami", "--json"], text=True)
+    data = json.loads(raw)
+    accounts = data.get("accounts") or []
+    if accounts:
+        print(accounts[0].get("id", ""))
+except Exception:
+    pass
+' 2>/dev/null)"
+fi
+if [ -n "$RESOLVED_ACCOUNT_ID" ]; then
+    echo "   - Account ID: ${RESOLVED_ACCOUNT_ID}"
 else
-    echo "   ⚠️ 未設 CLOUDFLARE_ACCOUNT_ID；如使用 token auth，建議明確設置"
+    echo "   ⚠️ 未能自動解析 CLOUDFLARE_ACCOUNT_ID；如 deploy 卡住，請明確設置"
 fi
 
 if [ -n "${CLOUDFLARE_API_TOKEN:-}" ]; then
@@ -101,7 +116,27 @@ else
     echo "   ℹ️ 未設 CLOUDFLARE_API_TOKEN；將依賴本機 wrangler login session"
 fi
 
-npx wrangler pages deploy "$DIST_DIR" --project-name "$PAGES_PROJECT"
+COMMIT_HASH="manual"
+COMMIT_MESSAGE="manual dashboard deploy"
+COMMIT_DIRTY="true"
+if command -v git >/dev/null 2>&1 && git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    COMMIT_HASH="$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || printf 'manual')"
+    COMMIT_MESSAGE="$(git -C "$REPO_ROOT" log -1 --pretty=%s 2>/dev/null || printf 'manual dashboard deploy')"
+fi
+
+mkdir -p "$DEPLOY_CWD"
+echo "   - Wrangler CWD: $DEPLOY_CWD"
+echo "   - Commit Hash: $COMMIT_HASH"
+
+(
+    cd "$DEPLOY_CWD"
+    env CI=1 CLOUDFLARE_ACCOUNT_ID="$RESOLVED_ACCOUNT_ID" npx wrangler pages deploy "$DIST_DIR" \
+        --project-name "$PAGES_PROJECT" \
+        --branch main \
+        --commit-hash "$COMMIT_HASH" \
+        --commit-message "$COMMIT_MESSAGE" \
+        --commit-dirty="$COMMIT_DIRTY"
+)
 
 if [ "$KEEP_DIST" -eq 0 ]; then
     rm -rf "$DIST_DIR"

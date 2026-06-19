@@ -72,14 +72,21 @@ def parse_draw_tables(html: str) -> dict:
     soup = BeautifulSoup(html, 'html.parser')
     tables = soup.find_all('table')
 
-    # Extract meeting info from first table
+    # Extract meeting info from page text
     meeting_info = ""
-    if tables:
-        first_header = tables[0].get_text(strip=True) if tables[0] else ""
-        # e.g. "22/04/2026跑馬地"
-        m = re.search(r'(\d{2}/\d{2}/\d{4})(.*?)進階', first_header)
-        if m:
-            meeting_info = f"{m.group(1)} {m.group(2).strip()}"
+    page_text = soup.get_text(" ", strip=True)
+    for pattern in (
+        r'(\d{2}/\d{2}/\d{4})\s*(沙田|跑馬地)',
+        r'(沙田|跑馬地)\s*(\d{2}/\d{2}/\d{4})',
+    ):
+        m = re.search(pattern, page_text)
+        if not m:
+            continue
+        if pattern.startswith('('):
+            meeting_info = f"{m.group(2)} {m.group(1)}"
+        else:
+            meeting_info = f"{m.group(1)} {m.group(2)}"
+        break
 
     result = {
         "meta": {

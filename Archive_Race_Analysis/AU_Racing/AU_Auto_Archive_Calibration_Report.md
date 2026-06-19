@@ -5,9 +5,9 @@
 - Clean sample races: **305**
 - Clean sample horses: **3345**
 - Excluded result-gap races: **11**
-- Model top-1 win rate: **16.5%** raw | **17.0%** clean
-- Model top-3 contains winner: **40.8%** raw | **42.3%** clean
-- Model top-3 place precision: **38.1%** raw | **39.2%** clean
+- Model top-1 win rate: **24.4%** raw | **25.2%** clean
+- Model top-3 contains winner: **50.3%** raw | **52.1%** clean
+- Model top-3 place precision: **42.6%** raw | **44.0%** clean
 - Market favourite win rate: **34.8%** raw | **36.1%** clean
 - Market favourite place rate: **67.1%** raw | **69.2%** clean
 - Analysis profile: **Market-agnostic horse analysis**
@@ -16,40 +16,41 @@
 
 | Condition | Races | Horses | Model@1 | Model@Top3 | Top3 Precision | Fav@1 | Fav@Top3 |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Good/Firm | 216 | 2327 | 17.6% | 43.1% | 38.9% | 35.6% | 71.3% |
-| Soft | 60 | 717 | 13.3% | 35.0% | 38.9% | 33.3% | 63.3% |
-| Heavy | 29 | 301 | 20.7% | 51.7% | 42.5% | 44.8% | 65.5% |
+| Good/Firm | 216 | 2327 | 26.9% | 51.4% | 44.4% | 35.6% | 71.3% |
+| Soft | 60 | 717 | 11.7% | 50.0% | 41.1% | 33.3% | 63.3% |
+| Heavy | 29 | 301 | 41.4% | 62.1% | 47.1% | 44.8% | 65.5% |
 
 ## Section Diagnostics
 
 | Section | Current | Suggested | Delta | Pairwise | Winner@1 | Winner@Top3 | Top3 Precision | Winner Lift | Spread |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 賽績線 | 0.17 | 0.20 | +0.03 | 0.575 | 17.7% | 45.9% | 40.4% | 1.20 | 3.09 |
-| 狀態與穩定性 | 0.18 | 0.20 | +0.02 | 0.574 | 17.7% | 45.2% | 39.2% | 2.87 | 6.37 |
-| 騎練訊號 | 0.16 | 0.14 | -0.02 | 0.529 | 10.8% | 35.4% | 30.6% | 0.57 | 3.64 |
-| 檔位形勢 | 0.09 | 0.12 | +0.03 | 0.522 | 12.5% | 27.2% | 31.5% | 0.17 | 3.06 |
-| 場地適性 | 0.13 | 0.12 | -0.01 | 0.518 | 9.8% | 31.1% | 30.2% | 0.31 | 4.39 |
-| 段速與引擎 | 0.21 | 0.11 | -0.10 | 0.501 | 9.8% | 31.8% | 29.9% | 0.10 | 0.83 |
-| 級數與負重 | 0.06 | 0.11 | +0.05 | 0.494 | 8.9% | 29.8% | 29.8% | -0.38 | 5.09 |
+| 狀態與穩定性 | 0.28 | 0.19 | -0.09 | 0.579 | 18.0% | 44.3% | 40.8% | 1.85 | 4.30 |
+| 騎練訊號 | 0.17 | 0.17 | -0.00 | 0.549 | 18.7% | 43.0% | 37.5% | 0.76 | 2.27 |
+| 場地適性 | 0.12 | 0.15 | +0.03 | 0.537 | 16.7% | 38.4% | 34.3% | 0.81 | 3.60 |
+| 檔位形勢 | 0.21 | 0.14 | -0.07 | 0.541 | 17.4% | 34.4% | 32.7% | 0.35 | 1.45 |
+| 賽績線 | 0.06 | 0.13 | +0.07 | 0.503 | 13.1% | 39.0% | 35.4% | 0.01 | 0.50 |
+| 級數與負重 | 0.03 | 0.12 | +0.09 | 0.524 | 8.9% | 34.8% | 31.7% | -0.06 | 1.13 |
+| 段速與引擎 | 0.13 | 0.11 | -0.02 | 0.507 | 11.5% | 29.5% | 31.6% | 0.05 | 1.19 |
 
 ## What To Raise
 
-- `賽績線` appears under-weighted: suggested 0.20 vs current 0.17, pairwise 0.575, winner@top3 45.9%.
-- `檔位形勢` appears under-weighted: suggested 0.12 vs current 0.09, pairwise 0.522, winner@top3 27.2%.
-- `級數與負重` appears under-weighted: suggested 0.11 vs current 0.06, pairwise 0.494, winner@top3 29.8%.
+- `場地適性` appears under-weighted: suggested 0.15 vs current 0.12, pairwise 0.537, winner@top3 38.4%.
+- `賽績線` appears under-weighted: suggested 0.13 vs current 0.06, pairwise 0.503, winner@top3 39.0%.
+- `級數與負重` appears under-weighted: suggested 0.12 vs current 0.03, pairwise 0.524, winner@top3 34.8%.
 
 ## What To Trim
 
-- `段速與引擎` looks overweight: suggested 0.11 vs current 0.21, pairwise 0.501, average spread 0.83.
+- `狀態與穩定性` looks overweight: suggested 0.19 vs current 0.28, pairwise 0.579, average spread 4.30.
+- `檔位形勢` looks overweight: suggested 0.14 vs current 0.21, pairwise 0.541, average spread 1.45.
 
 ## Blind Spots
 
-- `賽績線` still lacks discrimination: score spread only 3.09.
-- `騎練訊號` still lacks discrimination: pairwise only 0.529 and score spread only 3.64.
-- `檔位形勢` still lacks discrimination: pairwise only 0.522 and score spread only 3.06.
-- `場地適性` still lacks discrimination: pairwise only 0.518.
-- `段速與引擎` still lacks discrimination: pairwise only 0.501 and score spread only 0.83.
-- `級數與負重` still lacks discrimination: pairwise only 0.494.
+- `騎練訊號` still lacks discrimination: score spread only 2.27.
+- `場地適性` still lacks discrimination: pairwise only 0.537 and score spread only 3.60.
+- `檔位形勢` still lacks discrimination: score spread only 1.45.
+- `賽績線` still lacks discrimination: pairwise only 0.503 and score spread only 0.50.
+- `級數與負重` still lacks discrimination: pairwise only 0.524 and score spread only 1.13.
+- `段速與引擎` still lacks discrimination: pairwise only 0.507 and score spread only 1.19.
 
 ## Coverage Gaps
 

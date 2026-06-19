@@ -165,6 +165,36 @@ def filter_sportsbet_files_by_date(files: list[str], target_tags: set[str]) -> l
     return filtered
 
 
+def _load_sportsbet_json(path: str) -> dict:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def sportsbet_json_matches_target(path: str, target_date: str, target_tags: set[str]) -> bool:
+    payload = _load_sportsbet_json(path)
+    inferred_tag = extract_game_tag(path)
+    payload_tag = payload.get("matchup", "").replace(" @ ", "_").strip()
+    effective_tag = payload_tag or inferred_tag
+
+    explicit_date = payload.get("target_analysis_date") or payload.get("event_local_date")
+    if explicit_date:
+        if explicit_date != target_date:
+            return False
+        if target_tags and effective_tag not in target_tags:
+            return False
+        return True
+
+    # Older JSON without explicit date metadata is unsafe for strict date requests.
+    return False
+
+
+def filter_sportsbet_files_for_target(files: list[str], target_date: str, target_tags: set[str]) -> list[str]:
+    return [path for path in files if sportsbet_json_matches_target(path, target_date, target_tags)]
+
+
 def check_skeleton_exists(target_dir: str, game_tag: str) -> str | None:
     patterns = [
         f"Game_{game_tag}_Full_Analysis.md",
@@ -212,7 +242,8 @@ def _count_fill_residuals(target_dir: str) -> int:
 
 def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
                         date_str: str, game_num: int | None = None,
-                        debug_skip_extractor: bool = False) -> bool:
+                        debug_skip_extractor: bool = False,
+                        legacy: bool = False) -> bool:
     prefix = f"Game {game_num}" if game_num else game_tag
     print(f"\n{'='*60}")
     print(f"🏀 [{prefix}] {game_tag} — 開始 Pipeline")
@@ -263,11 +294,14 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
     debug_prefix = "[DEBUG]_" if debug_skip_extractor else ""
     analysis_md = os.path.join(target_dir, f"{debug_prefix}Game_{game_tag}_Full_Analysis.md")
     print(f"\n📊 [{prefix}] Phase 1B: 執行 generate_nba_reports.py 生成分析報告...")
-    report_ok = run_script(GENERATE_REPORTS, [
+    _report_args = [
         "--sportsbet", sportsbet_json,
         "--extractor", extractor_json,
-        "--output", analysis_md
-    ], label=f"{prefix} Report Generator")
+        "--output", analysis_md,
+    ]
+    if legacy:
+        _report_args.append("--legacy")
+    report_ok = run_script(GENERATE_REPORTS, _report_args, label=f"{prefix} Report Generator")
 
     if not report_ok or not os.path.exists(analysis_md):
         print(f"❌ [{prefix}] 分析報告生成失敗！")
@@ -356,6 +390,8 @@ def main():
     parser.add_argument("--debug-skip-extractor", action="store_true",
                         help="⚠️ DEBUG ONLY: 跳過 nba_extractor.py（用 Sportsbet fallback）。"
                              "生成嘅報告標記為 DEBUG_ONLY_DO_NOT_BET。")
+    parser.add_argument("--legacy", action="store_true",
+                        help="使用舊版 10-Factor 引擎（預設為 ML RandomForest）")
     args = parser.parse_args()
 
     if not args.date:
@@ -385,24 +421,26 @@ def main():
     target_dir = get_target_dir(args.date)
     print(f"📁 目標目錄: {target_dir}\n")
 
+    expected_tags = _load_espn_tags(args.date)
     # ── Phase 0: Sportsbet Odds Crawling ──
     json_files = discover_sportsbet_jsons(target_dir)
+    if json_files:
+        verified_files = filter_sportsbet_files_for_target(json_files, args.date, expected_tags)
+        rejected_count = len(json_files) - len(verified_files)
+        if rejected_count:
+            print(f"🧹 已排除 {rejected_count} 個 stale / 跨日 / 無法驗證日期嘅 Sportsbet JSON")
+        json_files = verified_files
+
     if not json_files:
-        print("🚨 Phase 0: 缺少 Sportsbet JSON 盤口數據！啟動 Claw 抓取...")
+        print("🚨 Phase 0: 缺少可驗證屬於目標日期嘅 Sportsbet JSON！啟動 Claw 抓取...")
         claw_ok = run_script(CLAW_SPORTSBET, ["--outdir", target_dir, "--date", args.date], label="Claw Sportsbet")
         if not claw_ok:
             print("❌ [Fatal] Claw 執行失敗！可能 Cloudflare 阻擋或當日無賽事。")
             sys.exit(1)
         json_files = discover_sportsbet_jsons(target_dir)
+        json_files = filter_sportsbet_files_for_target(json_files, args.date, expected_tags)
         if not json_files:
-            print("❌ [Fatal] 爬蟲執行後仍無 Sportsbet JSON！")
-            sys.exit(1)
-
-    expected_tags = _load_espn_tags(args.date)
-    if expected_tags:
-        json_files = filter_sportsbet_files_by_date(json_files, expected_tags)
-        if not json_files:
-            print("❌ [Fatal] 找到嘅 Sportsbet JSON 全部唔屬於目標日期賽事。")
+            print("❌ [Fatal] 爬蟲執行後仍無任何明確屬於目標日期嘅 Sportsbet JSON！")
             sys.exit(1)
 
     # Build game list
@@ -455,7 +493,8 @@ def main():
         sb_json = game["sportsbet_json"]
         success = process_single_game(
             tag, sb_json, target_dir, args.date,
-            game_num=idx, debug_skip_extractor=args.debug_skip_extractor
+            game_num=idx, debug_skip_extractor=args.debug_skip_extractor,
+            legacy=args.legacy
         )
         if success:
             results["passed"].append(tag)

@@ -341,6 +341,24 @@ def check_fw11_combo_gates(content: str) -> list:
                 if ev_val < -10:
                     issues.append(f"FW-11 ❌ BLOCK: 組合 Leg EV% 極差 ({ev_val}%)：{line[:160]}")
                     break
+
+    for match in re.finditer(r'\*\*Combo EV%\*\*:\s*([+-]?\d+(?:\.\d+)?)%', content):
+        combo_ev = float(match.group(1))
+        if combo_ev <= 0:
+            issues.append(
+                f"FW-11 ❌ BLOCK: 正式組合含非正 Combo EV% ({combo_ev}%) — "
+                "negative/zero EV combo 必須 hard block 或改為觀望"
+            )
+            break
+
+    for match in re.finditer(r'\*\*🎯 Kelly 注碼建議\*\*:\s*(\d+(?:\.\d+)?)% bankroll', content):
+        kelly_pct = float(match.group(1))
+        if kelly_pct <= 0:
+            issues.append(
+                "FW-11 ❌ BLOCK: 正式組合 Kelly = 0% — "
+                "zero Kelly combo 不可作正式 SGM 推薦"
+            )
+            break
     return issues
 
 

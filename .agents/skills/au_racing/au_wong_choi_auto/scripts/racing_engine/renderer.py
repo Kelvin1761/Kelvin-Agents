@@ -6,6 +6,7 @@ import os
 import re
 from pathlib import Path
 
+from hidden_signal_rescue import apply_report_only_hidden_signal
 from scoring import clip_score
 
 
@@ -26,9 +27,8 @@ FEATURE_LABELS = {
     "track_score": "場地分",
     "formline_score": "賽績線分",
     "consistency_score": "穩定性分",
-    "health_score": "健康分",
+    "health_score": "備戰完整度分",
     "confidence_score": "信心分",
-    "speed_rating_score": "速度分",
 }
 
 MATRIX_LABELS = {
@@ -42,6 +42,7 @@ MATRIX_LABELS = {
 }
 
 REPORT_BANS = ("[FILL]", "PLACEHOLDER", "待補", "分析中")
+HIDDEN_SIGNAL_REPORT_ONLY_ENABLED = False
 
 
 def ensure_verdict(logic_data: dict) -> dict:
@@ -52,13 +53,15 @@ def ensure_verdict(logic_data: dict) -> dict:
                 "horse_number": str(num),
                 "horse_name": horse.get("horse_name", ""),
                 "ability_score": float(horse.get("python_auto", {}).get("ability_score", 0)),
-                "rank_score": float(horse.get("python_auto", {}).get("rank_score", horse.get("python_auto", {}).get("ability_score", 0))),
                 "grade": horse.get("python_auto", {}).get("grade", ""),
             }
             for num, horse in horses.items()
             if isinstance(horse.get("python_auto"), dict)
         ],
-        key=lambda item: (-item["ability_score"], _horse_number_sort_key(item["horse_number"])),
+        key=lambda item: (
+            -item["ability_score"],
+            _horse_number_sort_key(item["horse_number"]),
+        ),
     )
     for idx, item in enumerate(ranked, start=1):
         auto = horses[item["horse_number"]]["python_auto"]
@@ -66,10 +69,13 @@ def ensure_verdict(logic_data: dict) -> dict:
         auto["model_pick_status"] = "MODEL_TOP_PICK" if idx <= 2 else ("WATCH" if idx <= 4 else "NO_PICK")
         item["rank"] = idx
         item["model_pick_status"] = auto["model_pick_status"]
+    _apply_hidden_signal_report_only(ranked, horses)
+    watchlist = _build_rank_4_6_watchlist(ranked, horses)
     verdict = {
         "ranking": ranked,
         "top2": ranked[:2],
         "top4": ranked[:4],
+        "rank_4_6_watchlist": watchlist,
     }
     logic_data["python_auto_verdict"] = verdict
     return verdict
@@ -94,6 +100,7 @@ def render_race_markdown(logic_data: dict) -> str:
 def render_race_csv(logic_data: dict) -> str:
     ensure_verdict(logic_data)
     output = io.StringIO()
+    from scoring import FEATURE_KEYS
     fields = [
         "race_number",
         "horse_number",
@@ -101,11 +108,27 @@ def render_race_csv(logic_data: dict) -> str:
         "jockey",
         "trainer",
         "rank",
+        "pure_7d_score",
+        "dynamic_7d_score",
+        "base_7d_score",
+        "final_rank_score",
         "ability_score",
-        "rank_score",
+        "report_only_legacy_score",
         "grade",
         "model_pick_status",
-        *FEATURE_LABELS.keys(),
+        "soft_race_shape_modifier",
+        "diversity_bonus",
+        "soft_wetproof_cap_modifier",
+        "barrier_bias_modifier",
+        "place_tightening_bonus",
+        "micro_rank_bonus",
+        "wet_condition_modifier",
+        "watchlist_level",
+        "watchlist_reasons",
+        "hidden_signal_rescue_modifier",
+        "hidden_signal_reasons",
+        "shadow_rank_score",
+        *FEATURE_KEYS,
     ]
     writer = csv.DictWriter(output, fieldnames=fields)
     writer.writeheader()
@@ -119,14 +142,67 @@ def render_race_csv(logic_data: dict) -> str:
             "jockey": horse.get("jockey", ""),
             "trainer": horse.get("trainer", ""),
             "rank": auto.get("rank", ""),
+            "pure_7d_score": auto.get("pure_7d_score", ""),
+            "dynamic_7d_score": auto.get("dynamic_7d_score", ""),
+            "base_7d_score": auto.get("base_7d_score", ""),
+            "final_rank_score": auto.get("final_rank_score", ""),
             "ability_score": auto.get("ability_score", ""),
-            "rank_score": auto.get("rank_score", ""),
+            "report_only_legacy_score": auto.get("report_only_legacy_score", ""),
             "grade": auto.get("grade", ""),
             "model_pick_status": auto.get("model_pick_status", ""),
+            "soft_race_shape_modifier": auto.get("soft_race_shape_modifier", ""),
+            "diversity_bonus": auto.get("diversity_bonus", ""),
+            "soft_wetproof_cap_modifier": auto.get("soft_wetproof_cap_modifier", ""),
+            "barrier_bias_modifier": auto.get("barrier_bias_modifier", ""),
+            "place_tightening_bonus": auto.get("place_tightening_bonus", ""),
+            "micro_rank_bonus": auto.get("micro_rank_bonus", ""),
+            "wet_condition_modifier": auto.get("wet_condition_modifier", ""),
+            "watchlist_level": auto.get("watchlist_level", ""),
+            "watchlist_reasons": ";".join(auto.get("watchlist_reasons", []) or []),
+            "hidden_signal_rescue_modifier": auto.get("hidden_signal_rescue_modifier", ""),
+            "hidden_signal_reasons": ";".join(auto.get("hidden_signal_reasons", []) or []),
+            "shadow_rank_score": auto.get("shadow_rank_score", ""),
         }
         row.update(auto.get("feature_scores", {}))
         writer.writerow(row)
     return output.getvalue()
+
+
+def _apply_hidden_signal_report_only(ranked: list[dict], horses: dict) -> None:
+    if not HIDDEN_SIGNAL_REPORT_ONLY_ENABLED:
+        for item in ranked:
+            horse = horses[str(item["horse_number"])]
+            auto = horse.get("python_auto", {})
+            auto["hidden_signal_rescue_modifier"] = 0.0
+            auto["hidden_signal_reasons"] = []
+            auto["shadow_rank_score"] = round(float(auto.get("rank_score") or auto.get("ability_score") or 0.0), 4)
+        return
+
+    rows = []
+    for item in ranked:
+        horse = horses[str(item["horse_number"])]
+        auto = horse.get("python_auto", {})
+        rows.append(
+            {
+                "horse_number": int(item["horse_number"]),
+                "horse_name": item.get("horse_name") or horse.get("horse_name", ""),
+                "rank_score": float(auto.get("rank_score") or auto.get("ability_score") or 0.0),
+                "ability_score": float(auto.get("ability_score") or 0.0),
+                "feature_scores": dict(auto.get("feature_scores") or {}),
+                "matrix_scores": dict(auto.get("matrix_scores") or {}),
+                "risk_flags": list(auto.get("risk_flags") or []),
+            }
+        )
+
+    shadow_rows = apply_report_only_hidden_signal(rows)
+    shadow_lookup = {int(row["horse_number"]): row for row in shadow_rows}
+    for item in ranked:
+        horse = horses[str(item["horse_number"])]
+        auto = horse.get("python_auto", {})
+        shadow = shadow_lookup.get(int(item["horse_number"]), {})
+        auto["hidden_signal_rescue_modifier"] = round(float(shadow.get("hidden_signal_rescue_modifier") or 0.0), 4)
+        auto["hidden_signal_reasons"] = list(shadow.get("hidden_signal_reasons") or [])
+        auto["shadow_rank_score"] = round(float(shadow.get("shadow_score") or auto.get("rank_score") or auto.get("ability_score") or 0.0), 4)
 
 
 def render_meeting_csv(results: list[dict]) -> str:
@@ -276,15 +352,114 @@ def _render_verdict(verdict, horses):
             f"- **評級 / 戰力分:** {auto.get('grade', '')} / {float(auto.get('ability_score', 0)):.1f}",
             "",
         ])
+    watchlist = verdict.get("rank_4_6_watchlist") or []
+    if watchlist:
+        lines.extend([
+            "## Rank 4-6 Danger Watchlist (Report-only)",
+            "",
+            "| Rank | 馬號 | 馬名 | Level | Gap | 理由 |",
+            "|---:|---:|---|---|---:|---|",
+        ])
+        for item in watchlist:
+            reasons = "；".join(_watchlist_reason_label(reason) for reason in item.get("reasons", []))
+            lines.append(
+                f"| {item['rank']} | {item['horse_number']} | {item['horse_name']} | "
+                f"{item['level']} | {item['gap_to_top3']:.2f} | {reasons} |"
+            )
+        lines.append("")
     lines.extend([
         "## [第四部分] 分析盲區(緊隨第三部分)",
         "",
-        "- ranking 以 deterministic score + 微細 tie-break 排序，不依賴人工覆寫。",
+        "- ranking 以 `ability_score`（綜合戰力分）排序；`base_7d_score` 只作 7D 基礎分解釋。",
+        "- Clean 7D 模式下 `ability_score` = `pure_7d_score` = `final_rank_score`；post-7D modifier 只保留於 CSV / adjustment_breakdown 作 report-only audit。",
+        "- Rank 4-6 danger watchlist 只係提醒候選，不會交換 Top3 或 Top4 排名。",
         "- 初出馬若正式賽績空白，會較依賴試閘、馬房、走位結構與路程投影，信心不會無上限放大。",
         "- 如 Facts / Logic 更新，應重新執行 AU Auto orchestrator。",
         "",
     ])
     return lines
+
+
+def _build_rank_4_6_watchlist(ranked, horses):
+    if len(ranked) < 4:
+        return []
+    top3_cutoff = float(ranked[2]["ability_score"]) if len(ranked) >= 3 else 0.0
+    watchlist = []
+    for item in ranked[3:6]:
+        horse = horses[str(item["horse_number"])]
+        auto = horse.get("python_auto", {})
+        level, reasons, gap = _watchlist_signal(horse, auto, top3_cutoff)
+        auto["watchlist_level"] = level
+        auto["watchlist_reasons"] = reasons
+        auto["watchlist_report_only"] = bool(level)
+        if level:
+            watchlist.append({
+                "rank": item["rank"],
+                "horse_number": item["horse_number"],
+                "horse_name": item["horse_name"],
+                "level": level,
+                "gap_to_top3": gap,
+                "reasons": reasons,
+            })
+    return watchlist
+
+
+def _watchlist_signal(horse: dict, auto: dict, top3_cutoff: float) -> tuple[str, list[str], float]:
+    score = float(auto.get("ability_score") or 0.0)
+    gap = max(0.0, top3_cutoff - score)
+    matrix = auto.get("matrix_scores") or {}
+    features = auto.get("feature_scores") or {}
+    data = horse.get("_data", {}) if isinstance(horse.get("_data"), dict) else {}
+    reasons = []
+    if gap <= 2.5:
+        reasons.append("near_top3_score")
+    if _as_float(matrix.get("stability"), 60.0) >= 66.0:
+        reasons.append("stable_enough")
+    if _as_float(matrix.get("class_weight"), 60.0) >= 61.5:
+        reasons.append("class_weight_ok")
+    if _as_float(matrix.get("jockey_trainer"), 60.0) >= 64.0 or _as_float(features.get("trial_score"), 60.0) >= 66.0:
+        reasons.append("jt_or_trial_support")
+    if _as_float(features.get("distance_score"), 60.0) >= 60.0:
+        reasons.append("distance_ok")
+    market_low = _as_float(data.get("current_market_low"), None)
+    if market_low is not None and market_low <= 15.0:
+        reasons.append("market_context")
+    timing_recent = _as_float(data.get("timing_600m_recent_speed"), None)
+    if timing_recent is not None and timing_recent >= 17.0:
+        reasons.append("timing_context")
+    if _as_float(data.get("recent_shape_wide_no_cover_count"), 0.0) or _as_float(data.get("recent_shape_early_work_count"), 0.0):
+        reasons.append("excuse_shape_context")
+    gear_changes = str(data.get("gear_changes") or "").strip().lower()
+    if gear_changes and gear_changes != "none":
+        reasons.append("gear_context")
+    count = len(reasons)
+    level = "High" if count >= 5 else "Medium" if count >= 3 else "Low" if count >= 1 else ""
+    return level, reasons, round(gap, 4)
+
+
+def _watchlist_reason_label(reason: str) -> str:
+    labels = {
+        "near_top3_score": "分差接近 Top3",
+        "stable_enough": "穩定性夠",
+        "class_weight_ok": "級數/負磅合理",
+        "jt_or_trial_support": "騎練或試閘支持",
+        "distance_ok": "路程無明顯扣分",
+        "market_context": "市場只作背景支持",
+        "timing_context": "時間/段速背景支持",
+        "excuse_shape_context": "近仗有走位/形勢藉口",
+        "gear_context": "配備變動背景",
+    }
+    return labels.get(reason, reason)
+
+
+def _as_float(value, default=0.0):
+    try:
+        if value is None:
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        match = re.search(r"-?\d+(?:\.\d+)?", str(value or ""))
+        return float(match.group(0)) if match else default
 
 
 def _horses_by_rank(horses):

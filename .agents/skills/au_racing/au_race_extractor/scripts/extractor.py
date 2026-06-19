@@ -8,7 +8,7 @@ import re
 import platform
 from pathlib import Path
 
-SKILL_ROOT = Path(__file__).resolve().parents[2]
+SKILL_ROOT = Path(__file__).resolve().parents[3]  # au_race_extractor/scripts → au_racing/
 if str(SKILL_ROOT) not in sys.path:
     sys.path.insert(0, str(SKILL_ROOT))
 
@@ -177,7 +177,12 @@ def process_race(nuxt_data, f_rc, f_fg, race_num=None):
         num = sel.get('competitorNumber', '?')
         # Look up horse name from competitor ref if needed, or sel has it?
         # sel didn't have name previously, we need to find it in Apollo cache
-        c_id = sel.get('competitor', {}).get('id') if isinstance(sel.get('competitor'), dict) else sel.get('competitor', {}).get('__ref', '').replace('Competitor:', '')
+        comp = sel.get('competitor', {})
+        if isinstance(comp, dict):
+            c_id = comp.get('id')
+        else:
+            ref = str(comp.get('__ref', '')) if isinstance(comp, dict) else str(comp)
+            c_id = ref.replace('Competitor:', '')
         
         # The selections object has a lot of data but name might be in apollo
         apollo = nuxt_data.get('apollo', {}).get('defaultClient', nuxt_data.get('apollo', {}).get('horseClient', {}))
@@ -253,6 +258,24 @@ def process_race(nuxt_data, f_rc, f_fg, race_num=None):
         dam_name = comp.get('dam', 'Unknown')
         sire_of_dam = comp.get('sireOfDam', 'Unknown')
         
+        sire_stats_str = ""
+        father_competitor = comp.get('fatherCompetitor')
+        if isinstance(father_competitor, dict):
+            father_id = father_competitor.get('id')
+            if father_id:
+                father_obj = apollo.get(f"Competitor:{father_id}", {})
+                stats_ref = father_obj.get('stats')
+                if isinstance(stats_ref, dict):
+                    stats_id = stats_ref.get('id')
+                    if stats_id:
+                        breeding_stats = apollo.get(stats_id, {})
+                        total_runs = breeding_stats.get('totalRuns', 0)
+                        win_pct = breeding_stats.get('winPercentage', 0)
+                        dry_pct = breeding_stats.get('dryWinPercentage', 0)
+                        wet_pct = breeding_stats.get('wetWinPercentage', 0)
+                        if total_runs > 0:
+                            sire_stats_str = f"Sire Stats: All: {win_pct}% Dry: {dry_pct}% Wet: {wet_pct}% Starts: {total_runs}"
+        
         trainer_obj = sel.get('trainer') or {}
         trainer_name = trainer_obj.get('name', 'Unknown')
         trainer_ly = trainer_obj.get('stats', {})
@@ -271,9 +294,18 @@ def process_race(nuxt_data, f_rc, f_fg, race_num=None):
         flucs_str = f"Flucs: ${' $'.join(flucs_list)}" if flucs_list else "Flucs: -"
         owners = comp.get('owner', 'Unknown')
         f_fg.write(f"{age}yo{comp.get('sexShort', '?')} {comp.get('colour', '?')} | {sire_info}\n")
+        if sire_stats_str:
+            f_fg.write(f"{sire_stats_str}\n")
         f_fg.write(f"{flucs_str}\n")
         f_fg.write(f"Owners: {owners}\n")
-        f_fg.write(f"T: {trainer_name} (LY: {trainer_ly}) | J: {jockey_name} (LY: {jockey_ly})\n\n")
+        f_fg.write(f"T: {trainer_name} (LY: {trainer_ly}) | J: {jockey_name} (LY: {jockey_ly})\n")
+        
+        gear_changes = sel.get('gearChanges') or []
+        gear_str = ", ".join([f"{g.get('gear', '')} ({g.get('changeType', '')})" for g in gear_changes if isinstance(g, dict)])
+        if gear_str or sel.get('hasBlinkers'):
+            has_blinkers_str = "Yes" if sel.get('hasBlinkers') else "No"
+            f_fg.write(f"Gear: Blinkers: {has_blinkers_str} | Changes: {gear_str if gear_str else 'None'}\n")
+        f_fg.write("\n")
         
         # Align stats
         prize_money = stats.get('totalPrizeMoney') or 0

@@ -231,6 +231,8 @@ class AuAutoOutputTests(unittest.TestCase):
         self.assertIn("#### 主要優勢", report)
         self.assertIn("#### 主要風險", report)
         self.assertIn("若", report)
+        self.assertIn("信心分", report)
+        self.assertNotIn("速度分 60.0", report)
 
 
 if __name__ == "__main__":

@@ -287,7 +287,11 @@ def test_fixture_integrity():
 def test_orchestrator_filters():
     section("Orchestrator Date Filters")
 
-    from nba_orchestrator import filter_sportsbet_files_by_date
+    from nba_orchestrator import (
+        filter_sportsbet_files_by_date,
+        filter_sportsbet_files_for_target,
+        sportsbet_json_matches_target,
+    )
 
     with tempfile.TemporaryDirectory() as td:
         paths = [
@@ -308,6 +312,42 @@ def test_orchestrator_filters():
         test("empty ESPN whitelist leaves existing files unchanged",
              unfiltered == paths,
              f"got {unfiltered}")
+
+        dated_json = os.path.join(td, "Sportsbet_Odds_OKC_DEN.json")
+        with open(dated_json, "w", encoding="utf-8") as f:
+            json.dump({
+                "target_analysis_date": "2026-04-11",
+                "event_local_date": "2026-04-11",
+                "matchup": "OKC @ DEN",
+            }, f)
+
+        stale_json = os.path.join(td, "Sportsbet_Odds_BOS_MIA.json")
+        with open(stale_json, "w", encoding="utf-8") as f:
+            json.dump({
+                "target_analysis_date": "2026-04-10",
+                "event_local_date": "2026-04-10",
+                "matchup": "BOS @ MIA",
+            }, f)
+
+        legacy_json = os.path.join(td, "Sportsbet_Odds_LAC_PHX.json")
+        with open(legacy_json, "w", encoding="utf-8") as f:
+            json.dump({"matchup": "LAC @ PHX"}, f)
+
+        test("explicit matching date metadata passes strict target check",
+             sportsbet_json_matches_target(dated_json, "2026-04-11", {"OKC_DEN"}))
+        test("explicit stale date metadata fails strict target check",
+             not sportsbet_json_matches_target(stale_json, "2026-04-11", {"BOS_MIA"}))
+        test("legacy undated JSON is rejected when no whitelist is available",
+             not sportsbet_json_matches_target(legacy_json, "2026-04-11", set()))
+
+        strict_filtered = filter_sportsbet_files_for_target(
+            [dated_json, stale_json, legacy_json],
+            "2026-04-11",
+            {"OKC_DEN", "LAC_PHX"},
+        )
+        test("strict target filter keeps only verified current-date files",
+             [os.path.basename(p) for p in strict_filtered] == ["Sportsbet_Odds_OKC_DEN.json"],
+             f"got {[os.path.basename(p) for p in strict_filtered]}")
 
 
 # ─── Main ───────────────────────────────────────────────────────────────

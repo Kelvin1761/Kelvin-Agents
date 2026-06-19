@@ -11,6 +11,7 @@ import json
 import pathlib
 import re
 import sys
+import time
 from dataclasses import asdict
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[5]
@@ -256,6 +257,7 @@ def _rendered_mainline_race_stats(meeting: pathlib.Path, results_file: pathlib.P
 
 def run_recomputed_review(base_dir: pathlib.Path) -> dict:
     meetings = find_au_meetings(base_dir)
+    started = time.perf_counter()
     aggregate = {
         "meetings": len(meetings),
         "races": 0,
@@ -271,7 +273,9 @@ def run_recomputed_review(base_dir: pathlib.Path) -> dict:
     top4_weighted = 0.0
     total_races = 0
     details = []
-    for meeting in meetings:
+    for index, meeting in enumerate(meetings, start=1):
+        meeting_started = time.perf_counter()
+        print(f"🔍 AU recomputed review: {index}/{len(meetings)} {meeting.name}", flush=True)
         results_file = meeting_results_file(meeting)
         if not results_file:
             continue
@@ -306,6 +310,11 @@ def run_recomputed_review(base_dir: pathlib.Path) -> dict:
                 **summary,
                 "races_detail": [asdict(item) for item in race_stats],
             }
+        )
+        print(
+            f"✅ AU recomputed review: {meeting.name} "
+            f"({races} races, {time.perf_counter() - meeting_started:.2f}s, total {time.perf_counter() - started:.2f}s)",
+            flush=True,
         )
     aggregate["races"] = total_races
     aggregate["MRR"] = round(mrr_weighted / total_races, 4) if total_races else 0.0

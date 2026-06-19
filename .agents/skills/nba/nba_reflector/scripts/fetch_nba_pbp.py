@@ -32,8 +32,13 @@ API_SLEEP = 0.8
 try:
     from nba_api.stats.endpoints import (
         playbyplayv3,
-        scoreboardv3,
     )
+    try:
+        from nba_api.stats.endpoints import scoreboardv3
+        SCOREBOARD_VERSION = 'v3'
+    except ImportError:
+        from nba_api.stats.endpoints import scoreboardv2
+        SCOREBOARD_VERSION = 'v2'
     NBA_API_OK = True
 except ImportError:
     NBA_API_OK = False
@@ -44,13 +49,63 @@ except ImportError:
 def fetch_scoreboard(game_date):
     """Fetch all games on a given date."""
     try:
-        sb = scoreboardv3.ScoreboardV3(game_date=game_date)
+        if SCOREBOARD_VERSION == 'v3':
+            sb = scoreboardv3.ScoreboardV3(game_date=game_date)
+            time.sleep(API_SLEEP)
+            data = sb.get_dict()
+            return data.get('scoreboard', {}).get('games', [])
+        sb = scoreboardv2.ScoreboardV2(game_date=game_date)
         time.sleep(API_SLEEP)
-        data = sb.get_dict()
-        return data.get('scoreboard', {}).get('games', [])
+        return _convert_scoreboard_v2(sb.get_dict())
     except Exception as e:
-        print(f"  ❌ ScoreboardV3 失敗: {e}")
+        print(f"  ❌ Scoreboard{SCOREBOARD_VERSION.upper()} 失敗: {e}")
         return []
+
+
+def _result_set_map(data):
+    """Map nba_api resultSets into {name: [row dicts]}."""
+    mapped = {}
+    for result_set in data.get('resultSets', []):
+        headers = result_set.get('headers', [])
+        mapped[result_set.get('name', '')] = [
+            dict(zip(headers, row)) for row in result_set.get('rowSet', [])
+        ]
+    return mapped
+
+
+def _convert_scoreboard_v2(data):
+    """Convert ScoreboardV2 rows into the ScoreboardV3-like shape used below."""
+    sets = _result_set_map(data)
+    game_headers = sets.get('GameHeader', [])
+    line_scores = sets.get('LineScore', [])
+    line_by_game = {}
+    for row in line_scores:
+        line_by_game.setdefault(row.get('GAME_ID'), []).append(row)
+
+    games = []
+    for header in game_headers:
+        game_id = header.get('GAME_ID')
+        home_team_id = header.get('HOME_TEAM_ID')
+        teams = line_by_game.get(game_id, [])
+        home_row = next((r for r in teams if r.get('TEAM_ID') == home_team_id), {})
+        away_row = next((r for r in teams if r.get('TEAM_ID') != home_team_id), {})
+        games.append({
+            'gameId': game_id,
+            'gameStatusText': header.get('GAME_STATUS_TEXT', ''),
+            'homeTeam': {
+                'teamId': home_row.get('TEAM_ID'),
+                'teamTricode': home_row.get('TEAM_ABBREVIATION', '?'),
+                'teamName': home_row.get('TEAM_CITY_NAME', '?'),
+                'score': home_row.get('PTS', 0),
+            },
+            'awayTeam': {
+                'teamId': away_row.get('TEAM_ID'),
+                'teamTricode': away_row.get('TEAM_ABBREVIATION', '?'),
+                'teamName': away_row.get('TEAM_CITY_NAME', '?'),
+                'score': away_row.get('PTS', 0),
+            },
+        })
+    return games
 
 
 def parse_clock(clock_str):

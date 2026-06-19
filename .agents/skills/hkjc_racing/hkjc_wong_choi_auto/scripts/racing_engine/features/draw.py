@@ -11,7 +11,7 @@ def _get_draw_bias():
     if _DRAW_BIAS_CACHE is not None:
         return _DRAW_BIAS_CACHE
     
-    root = Path(".")
+    root = Path(__file__).resolve().parents[7]
     stats_root = root / "Archive_Race_Analysis" / "HK_Racing" / "HKJC_Race_Results_Database" / "comprehensive_stats"
     paths = [
         stats_root / "24_25" / "draw_bias_stats.csv",

@@ -77,7 +77,8 @@ def get_true_horse_name(horse: dict) -> str:
     match = re.search(r"^\[\d+\]\s+([^(]+?)(?:\s+\(\d+\))?\n", facts)
     if match:
         return match.group(1).strip()
-    return str(get_true_horse_name(horse) or "").strip()
+    name = horse.get("horse_name") or horse.get("name") or ""
+    return str(name).strip()
 
 def normalize_horse_name(name: str) -> str:
     clean = re.sub(r"\s*\([^)]*\)", "", str(name or ""))
@@ -131,7 +132,10 @@ def load_scoring_rows(path: Path) -> list[dict]:
                 continue
             feature_scores = {}
             for key in FEATURE_SCORE_KEYS:
-                value = parse_float(row.get(key), 60.0)
+                source_value = row.get(key)
+                if key == "health_score" and source_value in (None, ""):
+                    source_value = row.get("readiness_score")
+                value = parse_float(source_value, 60.0)
                 feature_scores[key] = value if value is not None else 60.0
             rows.append(
                 {
@@ -139,7 +143,11 @@ def load_scoring_rows(path: Path) -> list[dict]:
                     "horse_slug": normalize_horse_name(row.get("horse_name") or ""),
                     "horse_name": str(row.get("horse_name") or "").strip(),
                     "ability_score": parse_float(row.get("ability_score"), 0.0) or 0.0,
-                    "rank_score": parse_float(row.get("rank_score"), 0.0) or 0.0,
+                    "rank_score": (
+                        parse_float(row.get("rank_score"), None)
+                        if row.get("rank_score") not in (None, "")
+                        else parse_float(row.get("ability_score"), 0.0)
+                    ) or 0.0,
                     "rank": parse_int(row.get("rank")),
                     "grade": str(row.get("grade") or "").strip(),
                     "model_pick_status": str(row.get("model_pick_status") or "").strip(),
@@ -163,7 +171,9 @@ def archive_snapshot(
     python_auto = horse.get("python_auto") or {}
     matrix_scores = python_auto.get("matrix_scores") or {}
     if matrix_scores:
-        feature_scores = python_auto.get("feature_scores") or {}
+        feature_scores = dict(python_auto.get("feature_scores") or {})
+        if "health_score" not in feature_scores and "readiness_score" in feature_scores:
+            feature_scores["health_score"] = feature_scores["readiness_score"]
         return {
             "ability_score": float(python_auto.get("ability_score") or 0.0),
             "rank_score": float(python_auto.get("rank_score") or python_auto.get("ability_score") or 0.0),
@@ -238,7 +248,11 @@ def choose_track_rows(rows, meeting_track: str):
     if exact:
         return exact
     loose = [row for row in rows if row["track_slug"] in target_slug or target_slug in row["track_slug"]]
-    return loose or rows
+    # BUGFIX: never fall back to ALL rows. When a meeting's track does not match any
+    # result-row track, returning every track's race-N rows silently joins scoring
+    # against the WRONG track's results. Return [] so the race is (correctly) treated
+    # as un-evaluable instead of contaminating metrics/training data.
+    return loose
 
 
 def iter_logic_rows(archive_root: Path, historical_results):
@@ -283,7 +297,7 @@ def iter_logic_rows(archive_root: Path, historical_results):
                     "horse_name": str(get_true_horse_name(horse) or "").strip(),
                     "ability_score": float(snapshot.get("ability_score") or 0.0),
                     "rank_score": float(snapshot.get("rank_score") or snapshot.get("ability_score") or 0.0),
-                    "model_score": float(snapshot.get("rank_score") or snapshot.get("ability_score") or 0.0),
+                    "model_score": float(snapshot.get("ability_score") or snapshot.get("rank_score") or 0.0),
                     "rank": snapshot.get("rank"),
                     "grade": snapshot.get("grade", ""),
                     "model_pick_status": snapshot.get("model_pick_status", ""),

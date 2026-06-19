@@ -11,6 +11,8 @@ from __future__ import annotations
 import json
 import pathlib
 import sys
+import time
+from dataclasses import asdict
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[5]
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
@@ -182,6 +184,7 @@ def _ranked_picks_from_logic(logic_path: pathlib.Path, variant: dict) -> list[tu
 
 def run_variant(base_dir: pathlib.Path, variant_name: str, variant: dict) -> dict:
     meetings = find_au_meetings(base_dir)
+    started = time.perf_counter()
     aggregate = {
         "meetings": len(meetings),
         "races": 0,
@@ -196,8 +199,11 @@ def run_variant(base_dir: pathlib.Path, variant_name: str, variant: dict) -> dic
     mrr_weighted = 0.0
     top4_weighted = 0.0
     total_races = 0
+    details = []
 
-    for meeting in meetings:
+    for index, meeting in enumerate(meetings, start=1):
+        meeting_started = time.perf_counter()
+        print(f"🔍 AU bundle shadow [{variant_name}]: {index}/{len(meetings)} {meeting.name}", flush=True)
         results_file = meeting_results_file(meeting)
         if not results_file:
             continue
@@ -227,11 +233,23 @@ def run_variant(base_dir: pathlib.Path, variant_name: str, variant: dict) -> dic
         aggregate["Order Issue"] += summary["Order Issue"]
         mrr_weighted += summary["MRR"] * races
         top4_weighted += summary["Avg Top4 Hits"] * races
+        details.append(
+            {
+                "meeting": meeting.name,
+                **summary,
+                "races_detail": [asdict(item) for item in race_stats],
+            }
+        )
+        print(
+            f"✅ AU bundle shadow [{variant_name}]: {meeting.name} "
+            f"({races} races, {time.perf_counter() - meeting_started:.2f}s, total {time.perf_counter() - started:.2f}s)",
+            flush=True,
+        )
 
     aggregate["races"] = total_races
     aggregate["MRR"] = round(mrr_weighted / total_races, 4) if total_races else 0.0
     aggregate["Avg Top4 Hits"] = round(top4_weighted / total_races, 3) if total_races else 0.0
-    return {"variant": variant_name, "current_live": aggregate}
+    return {"variant": variant_name, "current_live": aggregate, "details": details}
 
 
 def _pct(count: int, total: int) -> str:

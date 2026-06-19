@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import os
 import re
@@ -31,6 +32,7 @@ from hkjc_orchestrator_helpers import (
     trigger_extractor,
 )
 from cloudflare_deploy_hook import run_post_success_cloudflare_deploy
+from subprocess_pool import bounded_workers
 
 
 PYTHON = sys.executable
@@ -77,7 +79,7 @@ def _maybe_extract(url: str | None, target_dir: Path, skip_extract: bool) -> Non
     trigger_extractor(url, str(target_dir))
 
 
-def _generate_facts(target_dir: Path, skip_facts: bool) -> None:
+def _generate_facts(target_dir: Path, skip_facts: bool, workers: int = 1) -> None:
     if skip_facts:
         return
     cmd = [
@@ -86,6 +88,8 @@ def _generate_facts(target_dir: Path, skip_facts: bool) -> None:
         str(target_dir),
         "--skip-std-times",
         "--skip-draw",
+        "--inject-workers",
+        str(workers),
     ]
     _run(cmd, "Generate Facts.md")
 
@@ -121,13 +125,14 @@ def _logic_needs_refresh(facts_path: Path, logic_path: Path, horse_nums: list[in
     return not expected.issubset(horses.keys())
 
 
-def _generate_logic(target_dir: Path, skip_logic: bool) -> None:
+def _generate_logic(target_dir: Path, skip_logic: bool, workers: int = 1) -> None:
     if skip_logic:
         return
     facts_files = _iter_facts_files(target_dir)
     if not facts_files:
         raise SystemExit(f"❌ No Facts.md files found in {target_dir}")
 
+    jobs = []
     for race_num, facts_path in facts_files:
         horse_nums = _extract_horse_nums(facts_path)
         if not horse_nums:
@@ -136,17 +141,69 @@ def _generate_logic(target_dir: Path, skip_logic: bool) -> None:
         if not _logic_needs_refresh(facts_path, logic_path, horse_nums):
             print(f"⏭️  Logic up-to-date — Race {race_num}")
             continue
-        for horse_num in horse_nums:
-            cmd = [
-                PYTHON,
-                str(SCRIPT_DIR / "create_hkjc_logic_skeleton.py"),
-                str(facts_path),
-                str(race_num),
-                str(horse_num),
-                "--output",
-                str(logic_path),
-            ]
-            _run(cmd, f"Build Logic JSON — Race {race_num} Horse {horse_num}")
+        jobs.append((race_num, facts_path, horse_nums, logic_path))
+
+    race_workers = bounded_workers(workers)
+    if not jobs:
+        return
+    if race_workers == 1 or len(jobs) == 1:
+        for job in jobs:
+            _generate_logic_for_race(*job, stream=True)
+        return
+
+    print(f"⚙️ Building HKJC Logic for {len(jobs)} race(s) with {race_workers} worker(s)")
+    with ThreadPoolExecutor(max_workers=race_workers) as executor:
+        futures = [executor.submit(_generate_logic_for_race, *job, stream=False) for job in jobs]
+        for future in as_completed(futures):
+            result = future.result()
+            print(result["stdout"], end="" if result["stdout"].endswith("\n") else "\n")
+            if result["stderr"]:
+                print(result["stderr"], file=sys.stderr, end="" if result["stderr"].endswith("\n") else "\n")
+            if result["returncode"] != 0:
+                raise SystemExit(result["returncode"])
+
+
+def _generate_logic_for_race(
+    race_num: int,
+    facts_path: Path,
+    horse_nums: list[int],
+    logic_path: Path,
+    *,
+    stream: bool,
+) -> dict[str, object]:
+    stdout_parts: list[str] = []
+    stderr_parts: list[str] = []
+    for horse_num in horse_nums:
+        cmd = [
+            PYTHON,
+            str(SCRIPT_DIR / "create_hkjc_logic_skeleton.py"),
+            str(facts_path),
+            str(race_num),
+            str(horse_num),
+            "--output",
+            str(logic_path),
+        ]
+        label = f"Build Logic JSON — Race {race_num} Horse {horse_num}"
+        if stream:
+            _run(cmd, label)
+            continue
+        result = subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True)
+        stdout_parts.append(f"\n{'=' * 72}\n{label}\n{' '.join(cmd)}\n{'=' * 72}\n")
+        stdout_parts.append(result.stdout or "")
+        stderr_parts.append(result.stderr or "")
+        if result.returncode != 0:
+            return {
+                "race_num": race_num,
+                "returncode": result.returncode,
+                "stdout": "".join(stdout_parts),
+                "stderr": "".join(stderr_parts),
+            }
+    return {
+        "race_num": race_num,
+        "returncode": 0,
+        "stdout": "".join(stdout_parts),
+        "stderr": "".join(stderr_parts),
+    }
 
 
 def _run_auto(target_dir: Path, validate_engine: bool) -> None:
@@ -182,6 +239,13 @@ def _cleanup_temp_artifacts(target_dir: Path | None) -> None:
         print(f"🧹 Removed {removed} temporary file(s)")
 
 
+def _default_race_workers() -> int:
+    try:
+        return int(os.environ.get("WC_RACE_WORKERS", "3"))
+    except ValueError:
+        return 3
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="HKJC Wong Choi Full Python Orchestrator")
     parser.add_argument("target", help="HKJC racecard URL or meeting folder")
@@ -192,19 +256,26 @@ def main() -> None:
     parser.add_argument("--validate-engine", action="store_true", help="Run auto engine validation before scoring")
     parser.add_argument("--keep-temp", action="store_true", help="Keep temporary files after completion")
     parser.add_argument("--skip-cloudflare-deploy", action="store_true", help="Skip post-success Cloudflare deploy")
+    parser.add_argument("--batch-cloudflare-deploy", action="store_true", help="Queue dashboard deploy for a later batch flush")
+    parser.add_argument("--flush-cloudflare-deploy", action="store_true", help="Flush any queued dashboard deploy after this run")
+    parser.add_argument("--race-workers", type=int, default=_default_race_workers(), help="Race-level Facts/Logic workers")
     args = parser.parse_args()
 
     target_dir: Path | None = None
     try:
         target_dir, url = _resolve_target(args.target)
         _maybe_extract(url, target_dir, args.skip_extract)
-        _generate_facts(target_dir, args.skip_facts)
-        _generate_logic(target_dir, args.skip_logic)
+        race_workers = bounded_workers(args.race_workers)
+        print(f"⚙️ Race-level workers: {race_workers}")
+        _generate_facts(target_dir, args.skip_facts, race_workers)
+        _generate_logic(target_dir, args.skip_logic, race_workers)
         _run_auto(target_dir, args.validate_engine)
         run_post_success_cloudflare_deploy(
             source="HKJC Wong Choi",
             target_dir=target_dir,
             skip=args.skip_cloudflare_deploy,
+            batch=args.batch_cloudflare_deploy,
+            flush_batch=args.flush_cloudflare_deploy,
             allow_failure=True,
         )
     finally:

@@ -125,10 +125,24 @@ def extract_legs_from_report(report_path):
     )
 
     current_combo = '?'
+    seen = set()
     for line in content.split('\n'):
         combo_match = combo_pattern.search(line)
         if combo_match:
             current_combo = combo_match.group(1)
+
+        table_leg = _extract_v5_table_leg(line, current_combo)
+        if table_leg:
+            key = (
+                table_leg['combo_id'],
+                table_leg['player'],
+                table_leg['stat_normalized'],
+                table_leg['line'],
+            )
+            if key not in seen:
+                legs.append(table_leg)
+                seen.add(key)
+            continue
 
         leg_match = leg_pattern.search(line)
         if leg_match:
@@ -137,16 +151,58 @@ def extract_legs_from_report(report_path):
             prop_line = float(leg_match.group(3))
             odds = float(leg_match.group(4)) if leg_match.group(4) else None
 
-            legs.append({
+            leg = {
                 'player': player,
                 'stat': stat,
                 'stat_normalized': normalize_stat(stat),
                 'line': prop_line,
                 'odds': odds,
                 'combo_id': current_combo,
-            })
+            }
+            key = (leg['combo_id'], leg['player'], leg['stat_normalized'], leg['line'])
+            if key not in seen:
+                legs.append(leg)
+                seen.add(key)
 
     return legs
+
+
+def _extract_v5_table_leg(line, combo_id):
+    """Extract a leg from V5 markdown table rows.
+
+    Example:
+    | 🧩 1 | Stephon Castle (SA) AST 6+ | @1.39 | ...
+    """
+    if '| 🧩' not in line and '|🧩' not in line:
+        return None
+
+    cells = [cell.strip() for cell in line.strip().strip('|').split('|')]
+    if len(cells) < 3 or '🧩' not in cells[0]:
+        return None
+
+    option = cells[1]
+    odds_cell = cells[2]
+    option_match = re.match(
+        r"(.+?)(?:\s+\([A-Z]{2,3}\))?\s+"
+        r"(PTS|REB|AST|3PM|PRA|PR|PA|RA|SB|Points|Rebounds|Assists|Threes Made?|"
+        r"Pts\+Reb\+Ast|Pts\+Reb|Pts\+Ast|Reb\+Ast|Stl\+Blk)\s+"
+        r"(\d+(?:\.\d+)?)\+?$",
+        option,
+        re.IGNORECASE,
+    )
+    if not option_match:
+        return None
+
+    odds_match = re.search(r'@?\s*(\d+\.\d+)', odds_cell)
+    stat = option_match.group(2).strip()
+    return {
+        'player': option_match.group(1).strip(),
+        'stat': stat,
+        'stat_normalized': normalize_stat(stat),
+        'line': float(option_match.group(3)),
+        'odds': float(odds_match.group(1)) if odds_match else None,
+        'combo_id': combo_id,
+    }
 
 
 def verify_legs(legs, game_result):

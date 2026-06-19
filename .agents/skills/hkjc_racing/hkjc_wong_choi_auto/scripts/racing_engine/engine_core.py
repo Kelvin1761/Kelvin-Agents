@@ -13,7 +13,7 @@ from trainer import TrainerScorer
 from live_priors import TrainerSignalPriors
 from matrix_mapper import MATRIX_FORMULAS, map_features_to_matrix, map_features_to_matrix_scores
 import scoring
-from scoring import FEATURE_KEYS, MATRIX_WEIGHTS, clip_score, compute_grade, parse_float, parse_record, score_band
+from scoring import DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS, MATRIX_WEIGHTS, clip_score, compute_grade, parse_float, parse_record, score_band
 
 _TRAINER_SIGNAL_PRIORS = None
 
@@ -62,6 +62,7 @@ class RacingEngine:
             "margin_trend_score": self._margin_trend_score(),
             "same_distance_signal_score": self._same_distance_signal_score(),
             "trackwork_trend_score": self._trackwork_trend_score(),
+            "race_shape_context_score": self._race_shape_context_score(feature_scores),
         }
         for name, (score, note, source) in derived_scores.items():
             feature_scores[name] = clip_score(score)
@@ -372,16 +373,124 @@ class RacingEngine:
             
         return final_score, note, "trackwork_digest"
 
+    def _race_shape_context_score(self, features):
+        draw = float(features.get("draw_score", 60))
+        if self._is_sha_tin_context():
+            fit_score, fit_note = self._draw_position_fit_score()
+            trip_score, trip_note = self._trip_consumption_score()
+            weights = scoring.RACE_SHAPE_CONTEXT_WEIGHTS
+            draw_w = weights["sha_tin_draw"]
+            fit_w = weights["sha_tin_draw_position_fit"]
+            trip_w = weights["sha_tin_trip_consumption"]
+            score = clip_score(draw * draw_w + fit_score * fit_w + trip_score * trip_w)
+            note = (
+                f"沙田 race-shape formula：檔位{draw:.1f} x{draw_w:.0%} + "
+                f"檔位走位匹配{fit_score:.1f} x{fit_w:.0%} + 近仗消耗{trip_score:.1f} x{trip_w:.0%}，"
+                f"檔位走位情境分{score:.1f}。{fit_note}{trip_note}"
+            )
+            return score, note, "race_shape_context"
+        delta, detail = self._race_shape_context_delta()
+        score = clip_score(draw + delta)
+        note = (
+            f"非沙田採保守 race-shape context：檔位{draw:.1f} 加情境修正 {delta:+.1f}，"
+            f"檔位走位情境分{score:.1f}。{detail}"
+        )
+        return score, note, "race_shape_context"
+
+    def _draw_position_fit_score(self):
+        text = self._text("draw_position_fit", "position_pi", "running_style")
+        weights = scoring.RACE_SHAPE_FIT_WEIGHTS
+        score = weights["base"]
+        details = []
+        if "✅匹配" in text:
+            score += weights["match_bonus"]
+            details.append("檔位與跑法匹配")
+        if "❌錯配" in text or "錯配!" in text:
+            score += weights["mismatch_pen"]
+            self.risk_flags.append("draw_position_mismatch")
+            details.append("檔位與跑法有錯配")
+        if "⚠️需主動切入" in text:
+            score += weights["active_slot_pen"]
+            self.risk_flags.append("needs_active_slotting")
+            details.append("早段需要主動切入")
+        if "上升軌" in text:
+            score += weights["pi_up_bonus"]
+            details.append("走位 PI 有上升軌")
+        elif "微升" in text:
+            score += weights["pi_micro_up_bonus"]
+            details.append("走位 PI 微升")
+        elif "衰退中" in text:
+            score += weights["pi_down_pen"]
+            details.append("走位 PI 衰退")
+        elif "微跌" in text:
+            score += weights["pi_micro_down_pen"]
+            details.append("走位 PI 微跌")
+        detail = "；".join(details) if details else "檔位跑法匹配未見鮮明偏差"
+        return clip_score(score), f"匹配面：{detail}。"
+
+    def _trip_consumption_score(self):
+        text = self._clean(self._value("position_window") or "")
+        mapping = scoring.RACE_SHAPE_TRIP_CONSUMPTION_SCORES
+        scores = []
+        labels = []
+        for part in text.split("|")[:3]:
+            part = part.strip()
+            for label, score in mapping.items():
+                if label in part:
+                    scores.append(score)
+                    labels.append(label)
+                    break
+        if not scores:
+            return 60.0, "近仗消耗未有清晰標籤，按中性處理。"
+        score = sum(scores) / len(scores)
+        return clip_score(score), f"近{len(scores)}仗走位消耗以{'、'.join(labels)}為主。"
+
+    def _race_shape_context_delta(self):
+        text = self._text("draw_position_fit", "position_pi", "position_window", "running_style")
+        weights = scoring.RACE_SHAPE_CONTEXT_DELTA_WEIGHTS
+        delta = 0.0
+        details = []
+        if "✅匹配" in text:
+            delta += weights["match_bonus"]
+            details.append("檔位跑法匹配")
+        if "❌錯配" in text or "錯配!" in text:
+            delta += weights["mismatch_pen"]
+            self.risk_flags.append("draw_position_mismatch")
+            details.append("檔位跑法錯配")
+        if "⚠️需主動切入" in text:
+            delta += weights["active_slot_pen"]
+            self.risk_flags.append("needs_active_slotting")
+            details.append("需要主動切入")
+        if "上升軌" in text:
+            delta += weights["pi_up_bonus"]
+            details.append("走位 PI 上升")
+        elif "衰退中" in text:
+            delta += weights["pi_down_pen"]
+            details.append("走位 PI 衰退")
+        if "信心: 高" in text:
+            delta += weights["high_conf_bonus"]
+            details.append("位置窗信心較高")
+        elif "信心: 低" in text:
+            delta += weights["low_conf_pen"]
+            details.append("位置窗信心較低")
+        recent = self._clean(self._value("position_window") or "").split("|")[0]
+        if "低消耗" in recent:
+            delta += weights["recent_low_consumption_bonus"]
+            details.append("最近走位低消耗")
+        elif "極高" in recent:
+            delta += weights["recent_extreme_consumption_pen"]
+            details.append("最近走位極高消耗")
+        elif "高" in recent:
+            delta += weights["recent_high_consumption_pen"]
+            details.append("最近走位高消耗")
+        context_weights = scoring.RACE_SHAPE_CONTEXT_WEIGHTS
+        delta = max(context_weights["non_sha_tin_delta_floor"], min(context_weights["non_sha_tin_delta_cap"], delta))
+        detail = "、".join(details) if details else "情境資料未見明顯偏移"
+        return delta, detail + "。"
+
     def _ability_score(self, matrix_scores):
         if self._is_debut():
-            debut_weights = {
-                'trainer_signal': 0.30,
-                'horse_health': 0.30,
-                'race_shape': 0.20,
-                'stability': 0.15,
-                'class_advantage': 0.05
-            }
-            return sum(matrix_scores.get(key, 60.0) * weight for key, weight in debut_weights.items())
+            return sum(matrix_scores.get(key, 60.0) * weight for key, weight in DEBUT_MATRIX_WEIGHTS.items())
         else:
             return sum(matrix_scores[key] * weight for key, weight in MATRIX_WEIGHTS.items())
 
@@ -880,15 +989,7 @@ class RacingEngine:
         """
         is_debut = self._is_debut()
         
-        debut_weights = {
-            'trainer_signal': 0.30,
-            'horse_health': 0.30,
-            'race_shape': 0.20,
-            'stability': 0.15,
-            'class_advantage': 0.05
-        }
-        
-        active_weights = debut_weights if is_debut else MATRIX_WEIGHTS
+        active_weights = DEBUT_MATRIX_WEIGHTS if is_debut else MATRIX_WEIGHTS
         
         dims = [
             ("stability", "進度穩定及狀態趨勢", "基礎"),
@@ -921,7 +1022,7 @@ class RacingEngine:
         specs = {
             "stability": ("狀態與穩定性", ("form_score", "consistency_score", "trackwork_trend_score")),
             "sectional": ("段速與場地適性", ("speed_score", "track_going_score")),
-            "race_shape": ("檔位與走位（不含步速）", ("draw_score",)),
+            "race_shape": ("檔位與走位情境（不含步速）", ("race_shape_context_score",)),
             "trainer_signal": ("騎練訊號", ("jockey_score", "trainer_score")),
             "horse_health": ("馬匹健康 / 新鮮感", ("risk_score", "weight_score", "confidence_score")),
             "form_line": ("賽績線", ("formline_strength_score", "margin_trend_score")),
@@ -964,8 +1065,12 @@ class RacingEngine:
 
     def _core_logic(self, features, matrix_scores, matrix_reasoning):
         name = self.horse_data.get("horse_name", "此駒")
-        top = sorted(matrix_scores.items(), key=lambda item: item[1], reverse=True)[:2]
-        low = sorted(matrix_scores.items(), key=lambda item: item[1])[:2]
+        ms_for_text = dict(matrix_scores)
+        if self._is_debut():
+            ms_for_text.pop("sectional", None)
+            ms_for_text.pop("form_line", None)
+        top = sorted(ms_for_text.items(), key=lambda item: item[1], reverse=True)[:2]
+        low = sorted(ms_for_text.items(), key=lambda item: item[1])[:2]
         top_keys = {key for key, _score in top}
         low_keys = {key for key, _score in low}
         
@@ -976,7 +1081,7 @@ class RacingEngine:
         context = self._context_sentence(features, top_keys, low_keys, include_trackwork)
         risk = self._risk_sentence({"trackwork_slowing"} if include_trackwork else None)
         overall = self._overall_projection_sentence(top, low, features)
-        competitiveness = self._competitiveness_opening(matrix_scores, features, top, low)
+        competitiveness = self._competitiveness_opening(ms_for_text, features, top, low)
         
         # More natural flowing text without robotic prefixes
         parts = [
@@ -1080,11 +1185,11 @@ class RacingEngine:
         return "近況有一定交代，但穩定度未算完全企穩，仍然要睇臨場節奏配合。"
 
     def _draw_context_sentence(self, features):
-        draw_score = float(features.get("draw_score", 60))
-        if draw_score >= 72:
-            return "今場形勢唔差，檔位至少有助佢用比較順手嘅方式入局。"
-        elif draw_score < 55:
-            return "今場形勢唔算就手，檔位同走位成本都有機會限制發揮。"
+        shape_score = float(features.get("race_shape_context_score", features.get("draw_score", 60)))
+        if shape_score >= 72:
+            return "今場形勢唔差，檔位、跑法同近期走位消耗配合後，至少有助佢用比較順手嘅方式入局。"
+        elif shape_score < 55:
+            return "今場形勢唔算就手，檔位、跑法匹配或走位成本都有機會限制發揮。"
         return "今場形勢大致中性，未見明顯著數，但亦未去到先天輸蝕。"
 
     def _trackwork_context_sentence(self, features):
@@ -1297,6 +1402,11 @@ class RacingEngine:
     def _is_debut(self):
         return bool(self.horse_data.get("is_debut") or self.horse_data.get("debut_runner") or self.horse_data.get("career_tag") == "DEBUT")
 
+    def _is_sha_tin_context(self):
+        value = self.race_context.get("venue") or self.race_context.get("course") or self.race_context.get("racecourse") or ""
+        text = str(value)
+        return text in {"ST", "Sha Tin", "ShaTin", "沙田"} or "沙田" in text or "ShaTin" in text or "Sha Tin" in text
+
     def _clean(self, value):
         text = str(value or "").strip()
         return "資料未完成，中性處理" if "[FILL" in text.upper() else text
@@ -1318,6 +1428,7 @@ class RacingEngine:
             "weight_score": "負磅",
             "consistency_score": "穩定性",
             "trackwork_trend_score": "操練趨勢",
+            "race_shape_context_score": "檔位走位情境",
             "risk_score": "風險",
             "confidence_score": "信心",
         }[key]
@@ -1335,6 +1446,7 @@ class RacingEngine:
             "weight_score": "負磅分",
             "consistency_score": "穩定性分",
             "trackwork_trend_score": "操練趨勢分",
+            "race_shape_context_score": "檔位走位情境分",
             "risk_score": "風險分",
             "confidence_score": "信心分",
             "formline_strength_score": "賽績線強度分",
@@ -1831,6 +1943,9 @@ class RacingEngine:
             draw = f"今仗排{barrier}檔，檔位形勢受壓，走位容錯較低。"
         if draw_verdict:
             draw += draw_verdict
+        context_note = self._clean(evidence or "")
+        if context_note and "資料不足" not in context_note and "相關來源不足" not in context_note:
+            draw += context_note
         close = self._matrix_close(score, "綜合來看，今場形勢有利於發揮本身能力。", "綜合來看，形勢普通，要靠臨場發揮補足。", "綜合來看，今場走位形勢唔算舒服。")
         return f"{draw}{close}"
 
@@ -2017,15 +2132,24 @@ class RacingEngine:
         
         Returns a dict with textual breakdown suitable for markdown rendering.
         """
-        dims = [
-            ("stability", "狀態與穩定性", "半核心", 0.0919),
-            ("sectional", "段速與場地適性", "核心", 0.1849),
-            ("race_shape", "檔位與走位", "半核心", 0.2560),
-            ("trainer_signal", "騎練訊號", "核心", 0.2209),
-            ("horse_health", "馬匹健康 / 新鮮感", "輔助", 0.0378),
-            ("form_line", "賽績線", "輔助", 0.0749),
-            ("class_advantage", "級數優勢", "輔助", 0.1335),
-        ]
+        if self._is_debut():
+            dims = [
+                ("stability", "狀態與穩定性", "半核心", DEBUT_MATRIX_WEIGHTS["stability"]),
+                ("race_shape", "檔位與走位", "半核心", DEBUT_MATRIX_WEIGHTS["race_shape"]),
+                ("trainer_signal", "騎練訊號", "核心", DEBUT_MATRIX_WEIGHTS["trainer_signal"]),
+                ("horse_health", "馬匹健康 / 新鮮感", "輔助", DEBUT_MATRIX_WEIGHTS["horse_health"]),
+                ("class_advantage", "級數優勢", "輔助", DEBUT_MATRIX_WEIGHTS["class_advantage"]),
+            ]
+        else:
+            dims = [
+                ("stability", "狀態與穩定性", "半核心", MATRIX_WEIGHTS["stability"]),
+                ("sectional", "段速與場地適性", "核心", MATRIX_WEIGHTS["sectional"]),
+                ("race_shape", "檔位與走位", "半核心", MATRIX_WEIGHTS["race_shape"]),
+                ("trainer_signal", "騎練訊號", "核心", MATRIX_WEIGHTS["trainer_signal"]),
+                ("horse_health", "馬匹健康 / 新鮮感", "輔助", MATRIX_WEIGHTS["horse_health"]),
+                ("form_line", "賽績線", "輔助", MATRIX_WEIGHTS["form_line"]),
+                ("class_advantage", "級數優勢", "輔助", MATRIX_WEIGHTS["class_advantage"]),
+            ]
         
         lines = []
         weighted_sum = 0.0
@@ -2123,6 +2247,8 @@ class RacingEngine:
         total_weak = 0
         
         for key, label, role in dims:
+            if self._is_debut() and key in ("sectional", "form_line"):
+                continue
             raw_score = float(matrix_scores.get(key, 60))
             band = matrix_bands.get(key, score_band(raw_score))
             score_lines.append(f"  - {label} [{role}]: {raw_score:.1f}分 → {band}")

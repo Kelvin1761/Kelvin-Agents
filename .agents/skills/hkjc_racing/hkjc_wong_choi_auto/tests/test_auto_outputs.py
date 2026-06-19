@@ -479,7 +479,7 @@ class AutoOutputTests(unittest.TestCase):
 
         self.assertEqual(result["feature_scores"]["distance_score"], 62.0)
         self.assertNotIn("distance_score", [item["key"] for item in result["matrix_reasoning"]["class_advantage"]["components"]])
-        self.assertEqual(result["matrix_reasoning"]["race_shape"]["components"][0]["key"], "draw_score")
+        self.assertEqual(result["matrix_reasoning"]["race_shape"]["components"][0]["key"], "race_shape_context_score")
         self.assertEqual(len(result["matrix_reasoning"]["race_shape"]["components"]), 1)
 
     def test_trackwork_parser_separates_sectionals_from_total_time(self) -> None:

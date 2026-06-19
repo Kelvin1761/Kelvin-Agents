@@ -32,6 +32,54 @@ MATRIX_WEIGHTS = {
     "form_line": 0.0749,
 }
 
+DEBUT_MATRIX_WEIGHTS = {
+    "trainer_signal": 0.30,
+    "horse_health": 0.30,
+    "race_shape": 0.20,
+    "stability": 0.15,
+    "class_advantage": 0.05,
+}
+
+RACE_SHAPE_CONTEXT_WEIGHTS = {
+    "sha_tin_draw": 0.55,
+    "sha_tin_draw_position_fit": 0.25,
+    "sha_tin_trip_consumption": 0.20,
+    "non_sha_tin_delta_floor": -10.0,
+    "non_sha_tin_delta_cap": 7.0,
+}
+
+RACE_SHAPE_FIT_WEIGHTS = {
+    "base": 60.0,
+    "match_bonus": 12.0,
+    "mismatch_pen": -14.0,
+    "active_slot_pen": -6.0,
+    "pi_up_bonus": 5.0,
+    "pi_micro_up_bonus": 2.0,
+    "pi_down_pen": -5.0,
+    "pi_micro_down_pen": -2.0,
+}
+
+RACE_SHAPE_TRIP_CONSUMPTION_SCORES = {
+    "低消耗": 70.0,
+    "中低": 66.0,
+    "中等": 60.0,
+    "高": 52.0,
+    "極高": 46.0,
+}
+
+RACE_SHAPE_CONTEXT_DELTA_WEIGHTS = {
+    "match_bonus": 4.0,
+    "mismatch_pen": -8.0,
+    "active_slot_pen": -3.0,
+    "pi_up_bonus": 2.0,
+    "pi_down_pen": -2.0,
+    "high_conf_bonus": 0.8,
+    "low_conf_pen": -0.8,
+    "recent_low_consumption_bonus": 1.0,
+    "recent_high_consumption_pen": -1.2,
+    "recent_extreme_consumption_pen": -2.0,
+}
+
 GRADE_THRESHOLDS = (
     (96, "S+"),
     (92, "S"),

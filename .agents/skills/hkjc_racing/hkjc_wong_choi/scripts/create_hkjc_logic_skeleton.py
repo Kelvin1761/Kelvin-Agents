@@ -933,49 +933,94 @@ def _load_draw_stats_json():
     return {}
 
 
-def _get_draw_verdict_str(barrier, race_num=0):
+def _normalize_draw_stats_meeting_venue(value: str) -> str:
+    text = str(value or '').strip()
+    if any(token in text for token in ('跑馬地', 'Happy Valley', 'HappyValley', 'HV')):
+        return '跑馬地'
+    if any(token in text for token in ('沙田', 'Sha Tin', 'ShaTin', 'ST')):
+        return '沙田'
+    return ''
+
+
+def _normalize_expected_draw_venue(value: str) -> str:
+    text = str(value or '').strip()
+    if '跑馬地' in text:
+        return '跑馬地'
+    if '沙田' in text or 'AWT' in text:
+        return '沙田'
+    return ''
+
+
+def _expected_draw_surface(expected_venue: str) -> str:
+    text = str(expected_venue or '').strip()
+    if 'AWT' in text or '全天候' in text or '泥' in text:
+        return '全天候'
+    if text:
+        return '草地'
+    return ''
+
+
+def _resolve_draw_stats_race(race_num=0, expected_venue='', expected_distance=0, expected_surface=''):
+    ds = _load_draw_stats_json()
+    if not ds or 'races' not in ds:
+        return None
+    race = next((item for item in ds.get('races', []) if item.get('race') == race_num), None)
+    if not race:
+        return None
+
+    meeting_venue = _normalize_draw_stats_meeting_venue(ds.get('meta', {}).get('meeting', ''))
+    venue_norm = _normalize_expected_draw_venue(expected_venue)
+    surface_norm = expected_surface or _expected_draw_surface(expected_venue)
+
+    if venue_norm and meeting_venue != venue_norm:
+        return None
+    if expected_distance:
+        try:
+            if int(race.get('distance') or 0) != int(expected_distance):
+                return None
+        except (TypeError, ValueError):
+            return None
+    if surface_norm and str(race.get('surface') or '').strip() != surface_norm:
+        return None
+
+    return race
+
+
+def _get_draw_verdict_str(barrier, race_num=0, expected_venue='', expected_distance=0):
     """Get draw verdict string for skeleton pre-fill from hkjc_draw_stats.json.
     Display order: 上名率(place) → 入Q率(quinella) → 勝率(win) — Top 3 priority.
     """
-    ds = _load_draw_stats_json()
-    if not ds or 'races' not in ds:
+    race = _resolve_draw_stats_race(race_num, expected_venue, expected_distance)
+    if not race:
         return '數據不可用'
     barrier_int = int(barrier) if str(barrier).isdigit() else 0
-    for race in ds.get('races', []):
-        if race.get('race') == race_num:
-            for d in race.get('draws', []):
-                if d.get('draw') == barrier_int:
-                    return f"{d['verdict']} (上名{d.get('place_pct','?')}%/入Q{d.get('quinella_pct','?')}%/勝{d['win_pct']}%)"
-            # Race found but barrier not in data (e.g. barrier 13-14)
-            return f'⚠️檔位{barrier_int}超出檔位統計數據範圍(最大檔{max(d["draw"] for d in race["draws"])})'
-    # Race not found (e.g. race 10-11)
-    return f'⚠️第{race_num}場無檔位統計數據'
+    for d in race.get('draws', []):
+        if d.get('draw') == barrier_int:
+            return f"{d['verdict']} (上名{d.get('place_pct','?')}%/入Q{d.get('quinella_pct','?')}%/勝{d['win_pct']}%)"
+    return f'檔位{barrier_int}超出統計範圍(最大檔{max(d["draw"] for d in race["draws"])})'
 
 
-def _get_full_draw_table(race_num=0):
+def _get_full_draw_table(race_num=0, expected_venue='', expected_distance=0):
     """Get the complete draw stats table for a race, formatted for LLM reasoning.
     Column order: 上名率 → 入Q率 → 勝率 (Top 3 priority).
     """
-    ds = _load_draw_stats_json()
-    if not ds or 'races' not in ds:
+    race = _resolve_draw_stats_race(race_num, expected_venue, expected_distance)
+    if not race:
         return ''
-    for race in ds.get('races', []):
-        if race.get('race') == race_num:
-            draws = race.get('draws', [])
-            if not draws:
-                return ''
-            lines = [f'全場檔位統計 (第{race_num}場 {race.get("distance","?")}m {race.get("surface","?")}):',
-                     '| 檔位 | 出賽 | 上名% | 入Q% | 勝率% | 判定 |',
-                     '|------|------|-------|------|-------|------|']
-            for d in sorted(draws, key=lambda x: x['draw']):
-                lines.append(
-                    f"| {d['draw']} | {d.get('starts','?')} | {d.get('place_pct','?')} | "
-                    f"{d.get('quinella_pct','?')} | {d['win_pct']} | {d['verdict']} |")
-            avg_place = race.get('avg_place_pct', '?')
-            avg_win = race.get('avg_win_pct', '?')
-            lines.append(f'平均上名率: {avg_place}% | 平均勝率: {avg_win}%')
-            return '\n  '.join(lines)
-    return f'⚠️第{race_num}場無檔位統計數據'
+    draws = race.get('draws', [])
+    if not draws:
+        return ''
+    lines = [f'全場檔位統計 (第{race_num}場 {race.get("distance","?")}m {race.get("surface","?")}):',
+             '| 檔位 | 出賽 | 上名% | 入Q% | 勝率% | 判定 |',
+             '|------|------|-------|------|-------|------|']
+    for d in sorted(draws, key=lambda x: x['draw']):
+        lines.append(
+            f"| {d['draw']} | {d.get('starts','?')} | {d.get('place_pct','?')} | "
+            f"{d.get('quinella_pct','?')} | {d['win_pct']} | {d['verdict']} |")
+    avg_place = race.get('avg_place_pct', '?')
+    avg_win = race.get('avg_win_pct', '?')
+    lines.append(f'平均上名率: {avg_place}% | 平均勝率: {avg_win}%')
+    return '\n  '.join(lines)
 
 
 def compute_draw_position_fit(position_detail: list, today_barrier: int = 0,
@@ -1131,41 +1176,38 @@ def compute_draw_position_fit(position_detail: list, today_barrier: int = 0,
     return ' | '.join(parts)
 
 
-def compute_track_bias_from_draws(race_num: int) -> str:
+def compute_track_bias_from_draws(race_num: int, expected_venue: str = '', expected_distance: int = 0) -> str:
     """Compute track bias (inner vs outer draw advantage) from draw stats.
 
     Compares average place_pct of low draws (1-4) vs high draws (9+).
     Returns a one-line bias indicator.
     """
-    ds = _load_draw_stats_json()
-    if not ds or 'races' not in ds:
-        return '場地偏差數據不可用'
-    for race in ds.get('races', []):
-        if race.get('race') == race_num:
-            draws = race.get('draws', [])
-            if not draws:
-                return ''
-            inner = [d for d in draws if d['draw'] <= 4 and d.get('starts', 0) >= 10]
-            outer = [d for d in draws if d['draw'] >= 9 and d.get('starts', 0) >= 10]
-            if not inner or not outer:
-                return '場地偏差樣本不足'
-            avg_inner_place = sum(d.get('place_pct', 0) for d in inner) / len(inner)
-            avg_outer_place = sum(d.get('place_pct', 0) for d in outer) / len(outer)
-            diff = avg_inner_place - avg_outer_place
-            inner_str = f"內檔(1-4)上名率{avg_inner_place:.1f}%"
-            outer_str = f"外檔(9+)上名率{avg_outer_place:.1f}%"
-            if diff >= 10:
-                bias = '→ 明顯偏內 ⚠️外檔不利'
-            elif diff >= 5:
-                bias = '→ 輕微偏內'
-            elif diff <= -10:
-                bias = '→ 明顯偏外 ⚠️內檔不利'
-            elif diff <= -5:
-                bias = '→ 輕微偏外'
-            else:
-                bias = '→ 均勻無偏差'
-            return f"{inner_str} vs {outer_str} {bias}"
-    return f'⚠️第{race_num}場無場地偏差數據'
+    race = _resolve_draw_stats_race(race_num, expected_venue, expected_distance)
+    if not race:
+        return '數據不可用'
+    draws = race.get('draws', [])
+    if not draws:
+        return ''
+    inner = [d for d in draws if d['draw'] <= 4 and d.get('starts', 0) >= 10]
+    outer = [d for d in draws if d['draw'] >= 9 and d.get('starts', 0) >= 10]
+    if not inner or not outer:
+        return '樣本不足'
+    avg_inner_place = sum(d.get('place_pct', 0) for d in inner) / len(inner)
+    avg_outer_place = sum(d.get('place_pct', 0) for d in outer) / len(outer)
+    diff = avg_inner_place - avg_outer_place
+    inner_str = f"內檔(1-4)上名率{avg_inner_place:.1f}%"
+    outer_str = f"外檔(9+)上名率{avg_outer_place:.1f}%"
+    if diff >= 10:
+        bias = '→ 明顯偏內 ⚠️外檔不利'
+    elif diff >= 5:
+        bias = '→ 輕微偏內'
+    elif diff <= -10:
+        bias = '→ 明顯偏外 ⚠️內檔不利'
+    elif diff <= -5:
+        bias = '→ 輕微偏外'
+    else:
+        bias = '→ 均勻無偏向'
+    return f"{inner_str} vs {outer_str} {bias}"
 
 def build_skeleton(data, race_num=0, horse_block='', trackwork=None, facts_path=''):
     """Build JSON skeleton: real data pre-filled, analysis fields as [FILL].
@@ -1201,7 +1243,15 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None, facts_path=
     wins = data.get('wins', 0)
     starts = data.get('starts', 0)
 
-    draw_verdict_str = _get_draw_verdict_str(barrier, race_num)
+    race_header = extract_race_header(Path(facts_path).read_text(encoding='utf-8')) if facts_path and Path(facts_path).exists() else {}
+    expected_venue = race_header.get('venue', '')
+    expected_distance = 0
+    distance_text = race_header.get('distance', '')
+    distance_match = re.search(r'(\d+)', distance_text)
+    if distance_match:
+        expected_distance = int(distance_match.group(1))
+
+    draw_verdict_str = _get_draw_verdict_str(barrier, race_num, expected_venue, expected_distance)
     nonce = 'SKEL_' + hashlib.md5(f"{name}_{time.time()}".encode('utf-8')).hexdigest()
 
     # ── V4.2 Enrichment ──
@@ -1334,11 +1384,11 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None, facts_path=
         f"[📎 必讀: 03_engine_pace_context.md + 04_engine_corrections.md + 05_forensic_analysis.md (段速法醫 + 醫療事故作廢)]\n"
         f"→ [判讀: FILL]"
     )
-    full_draw_table = _get_full_draw_table(race_num)
+    full_draw_table = _get_full_draw_table(race_num, expected_venue, expected_distance)
     barrier_int = int(barrier) if str(barrier).isdigit() else 0
     full_draw_hist = parse_all_draw_history(horse_block) if horse_block else []
     draw_pos_fit = compute_draw_position_fit(position_detail, barrier_int, full_draw_hist)
-    track_bias = compute_track_bias_from_draws(race_num)
+    track_bias = compute_track_bias_from_draws(race_num, expected_venue, expected_distance)
     r_race_shape = (
         f"[Resource Check: 05_forensic_analysis.md / 檔位數據 + 今日預計走位 + 近3-5仗走位消耗]\n"
         f"[近3-5仗走位窗口: {position_window_str}]\n"

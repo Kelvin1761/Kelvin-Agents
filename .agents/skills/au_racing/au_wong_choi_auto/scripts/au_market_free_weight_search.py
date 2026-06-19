@@ -37,6 +37,11 @@ INTERACTION_KEYS = (
     "bm_class_weight",
     "wet_track",
     "wet_stability",
+    "empty_form_trap",
+    "class_exposed",
+    "fresh_horse_spell",
+    "long_spell",
+    "quick_backup",
 )
 
 ALL_KEYS = FEATURE_KEYS + INTERACTION_KEYS
@@ -68,6 +73,22 @@ def vector_for(horse: dict, race: dict) -> dict:
     vec["bm_class_weight"] = vec["class_weight"] if race_class in {"BM58-70", "BM72-84", "BM88+"} else 0.0
     vec["wet_track"] = vec["track"] if condition in {"Soft", "Heavy"} else 0.0
     vec["wet_stability"] = vec["stability"] if condition in {"Soft", "Heavy"} else 0.0
+
+    # False Positive Traps (Empty Form & Class Exposed)
+    # Using centered values: 70 -> 1.0, 65 -> 0.5, 60 -> 0.0
+    vec["empty_form_trap"] = vec["stability"] if (vec["stability"] >= 1.0 and vec["class_weight"] < 0.5 and vec["race_shape"] < 0.5) else 0.0
+    vec["class_exposed"] = vec["class_weight"] if (vec["stability"] >= 1.0 and vec["class_weight"] < 0.0) else 0.0
+
+    # Spell Days logic
+    features = horse.get("feature_scores", {})
+    spell_days = int(features.get("spell_days", -1))
+    if spell_days > 60:
+        vec["fresh_horse_spell"] = 1.0
+    if spell_days > 120:
+        vec["long_spell"] = 1.0
+    if 0 <= spell_days <= 7:
+        vec["quick_backup"] = 1.0
+
     return vec
 
 

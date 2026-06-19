@@ -534,7 +534,7 @@ class HKJCAutoOrchestrator:
 
     def _write_evaluation_summary(self, results):
         actual = self._load_meeting_results()
-        kpis = {"gold": 0, "good": 0, "min_threshold": 0, "champion": 0}
+        kpis = {"gold": 0, "good": 0, "min_threshold": 0, "single": 0, "champion": 0}
         shadow_profile_stats = {}
         for logic_data in results:
             race_number = str((logic_data.get("race_analysis") or {}).get("race_number") or "")
@@ -554,18 +554,22 @@ class HKJCAutoOrchestrator:
             )
             picks = [horse_num for horse_num, _rank, _ability in ranked[:3]]
             actual_top3_set = set(actual_top3)
-            if picks[:3] == actual_top3[:3]:
+            hits_in_top3 = sum(1 for horse_num in picks[:3] if horse_num in actual_top3_set)
+            top2_hits = sum(1 for horse_num in picks[:2] if horse_num in actual_top3_set)
+            if hits_in_top3 == 3:
                 kpis["gold"] += 1
-            if sum(1 for horse_num in picks if horse_num in actual_top3_set) >= 2:
+            if top2_hits == 2:
                 kpis["good"] += 1
-            if any(horse_num in actual_top3_set for horse_num in picks):
+            if hits_in_top3 >= 2:
                 kpis["min_threshold"] += 1
+            if hits_in_top3 >= 1:
+                kpis["single"] += 1
             if picks and actual_top3 and picks[0] == actual_top3[0]:
                 kpis["champion"] += 1
             for profile_name, verdict in (logic_data.get("python_auto_shadow_verdicts") or {}).items():
                 shadow_stats = shadow_profile_stats.setdefault(
                     profile_name,
-                    {"gold": 0, "good": 0, "min_threshold": 0, "champion": 0, "races": 0},
+                    {"gold": 0, "good": 0, "min_threshold": 0, "single": 0, "champion": 0, "races": 0},
                 )
                 shadow_picks = []
                 for item in verdict.get("top4", []):
@@ -576,12 +580,16 @@ class HKJCAutoOrchestrator:
                 if not shadow_picks:
                     continue
                 shadow_stats["races"] += 1
-                if shadow_picks[:3] == actual_top3[:3]:
+                shadow_hits_in_top3 = sum(1 for horse_num in shadow_picks[:3] if horse_num in actual_top3_set)
+                shadow_top2_hits = sum(1 for horse_num in shadow_picks[:2] if horse_num in actual_top3_set)
+                if shadow_hits_in_top3 == 3:
                     shadow_stats["gold"] += 1
-                if sum(1 for horse_num in shadow_picks[:2] if horse_num in actual_top3_set) == 2:
+                if shadow_top2_hits == 2:
                     shadow_stats["good"] += 1
-                if any(horse_num in actual_top3_set for horse_num in shadow_picks[:3]):
+                if shadow_hits_in_top3 >= 2:
                     shadow_stats["min_threshold"] += 1
+                if shadow_hits_in_top3 >= 1:
+                    shadow_stats["single"] += 1
                 if actual_top3 and shadow_picks[0] == actual_top3[0]:
                     shadow_stats["champion"] += 1
 
