@@ -1,6 +1,33 @@
 from __future__ import annotations
 
-from tennis_wc.ingestion.confirmed_metadata import confirmed_competition_meta
+from tennis_wc.ingestion.confirmed_metadata import (
+    confirmed_competition_meta,
+    tennisdata_competition_meta,
+)
+
+
+def test_tennisdata_index_resolves_long_tail_tour_events():
+    # Tour events not in the hand-curated list should still resolve level+surface
+    # from the historical tennis-data index.
+    m = tennisdata_competition_meta("Mallorca Championships", "ATP")
+    assert m == {"tour": "ATP", "level": "ATP_250", "surface": "Grass"}
+
+
+def test_tennisdata_index_is_tour_aware():
+    atp = tennisdata_competition_meta("Adelaide International", "ATP")
+    wta = tennisdata_competition_meta("Adelaide International", "WTA")
+    assert atp["surface"] == "Hard" and atp["level"] == "ATP_250"
+    assert wta["level"] == "WTA_500"
+
+
+def test_tennisdata_index_excludes_non_tour_events():
+    for name in ("ITF China Futures", "Mens UTR Pro Series, Australia", "Some Random Cup"):
+        assert tennisdata_competition_meta(name, "ATP") is None
+
+
+def test_tennisdata_index_requires_a_tour():
+    assert tennisdata_competition_meta("Mallorca Championships", None) is None
+    assert tennisdata_competition_meta("Mallorca Championships", "UNKNOWN") is None
 
 
 def test_exact_alias_still_matches():

@@ -5,9 +5,51 @@ from dataclasses import dataclass
 
 from tennis_wc.database.db import get_connection
 from tennis_wc.ingestion.raw_response_store import store_raw_response, utc_now
+from tennis_wc.ingestion.tennisdata_tournament_index import TENNISDATA_TOURNAMENTS
 
 
 CONFIRMED_METADATA_PROVIDER = "curated_tournament_metadata"
+# Best-effort fallback derived from historical tennis-data.co.uk seasons. Surface
+# is reliable; level can lag promotions/demotions, so this only fills gaps the
+# hand-verified curated list does not cover.
+TENNISDATA_METADATA_PROVIDER = "tennisdata_tournament_index"
+
+
+def tennisdata_competition_meta(competition: str | None, tour: str | None) -> dict | None:
+    """Resolve (level, surface) from the historical tennis-data index, tour-aware.
+
+    Matches a competition to an index entry by tournament-name token-subset
+    (specific) or, failing that, by city/location token-subset — but a location
+    match is only trusted when every location-matched entry agrees on
+    (level, surface), so multi-event cities (e.g. London) never guess. Returns
+    None when nothing matches or a location is ambiguous.
+    """
+    tour_norm = (tour or "").upper()
+    if not competition or tour_norm not in {"ATP", "WTA"}:
+        return None
+    comp_tokens = set(_tokens(competition))
+    if not comp_tokens:
+        return None
+    name_hits: list[tuple[int, str, str]] = []  # (num_name_tokens, level, surface)
+    loc_hits: list[tuple[str, str]] = []        # (level, surface)
+    for (entry_tour, name), (level, surface, location) in TENNISDATA_TOURNAMENTS.items():
+        if entry_tour != tour_norm:
+            continue
+        name_tokens = set(name.split())
+        if name_tokens and name_tokens <= comp_tokens:
+            name_hits.append((len(name_tokens), level, surface))
+            continue
+        loc_tokens = set(location.split()) if location else set()
+        if loc_tokens and loc_tokens <= comp_tokens:
+            loc_hits.append((level, surface))
+    if name_hits:
+        # Most specific (most tokens) name match wins.
+        _, level, surface = max(name_hits, key=lambda hit: hit[0])
+        return {"tour": tour_norm, "level": level, "surface": surface}
+    if loc_hits and len(set(loc_hits)) == 1:
+        level, surface = loc_hits[0]
+        return {"tour": tour_norm, "level": level, "surface": surface}
+    return None
 
 
 @dataclass(frozen=True)
@@ -195,9 +237,22 @@ def backfill_confirmed_metadata_for_date(match_date: str) -> dict:
             (match_date,),
         ).fetchall()
         for row in tournament_rows:
-            meta = confirmed_competition_meta(row["tournament_name"], row["match_tour"])
-            if meta is None:
-                continue
+            name = row["tournament_name"]
+            match_tour = row["match_tour"]
+            # Hand-verified curated list wins; the tennis-data index fills the
+            # long tail of tour events the curated list does not cover.
+            meta = confirmed_competition_meta(name, match_tour)
+            if meta is not None:
+                resolved_tour, level, surface, indoor = meta.tour, meta.level, meta.surface, meta.indoor_outdoor
+                source = CONFIRMED_METADATA_PROVIDER
+                source_url = meta.source_url
+            else:
+                td = tennisdata_competition_meta(name, match_tour)
+                if td is None:
+                    continue
+                resolved_tour, level, surface, indoor = td["tour"], td["level"], td["surface"], None
+                source = TENNISDATA_METADATA_PROVIDER
+                source_url = "tennis-data.co.uk historical seasons"
             conn.execute(
                 """
                 INSERT INTO tournament_levels (
@@ -214,11 +269,11 @@ def backfill_confirmed_metadata_for_date(match_date: str) -> dict:
                 """,
                 (
                     int(row["tournament_id"]),
-                    meta.tour,
-                    meta.level,
-                    meta.surface,
-                    meta.indoor_outdoor,
-                    CONFIRMED_METADATA_PROVIDER,
+                    resolved_tour,
+                    level,
+                    surface,
+                    indoor,
+                    source,
                     raw_id,
                     now,
                     now,
@@ -232,15 +287,16 @@ def backfill_confirmed_metadata_for_date(match_date: str) -> dict:
                   AND tournament_id = ?
                   AND (tour IS NULL OR tour = '' OR tour = 'UNKNOWN')
                 """,
-                (meta.tour, now, match_date, int(row["tournament_id"])),
+                (resolved_tour, now, match_date, int(row["tournament_id"])),
             )
             applied.append(
                 {
-                    "tournament": row["tournament_name"],
-                    "tour": meta.tour,
-                    "level": meta.level,
-                    "surface": meta.surface,
-                    "source_url": meta.source_url,
+                    "tournament": name,
+                    "tour": resolved_tour,
+                    "level": level,
+                    "surface": surface,
+                    "source": source,
+                    "source_url": source_url,
                 }
             )
 
@@ -307,7 +363,7 @@ def metadata_audit_for_date(match_date: str) -> dict:
     summary = {"matches": len(rows), "missing_level": 0, "missing_surface": 0, "missing_round": 0}
     for row in rows:
         missing = []
-        reliable_tournament_metadata = row["metadata_source"] == CONFIRMED_METADATA_PROVIDER
+        reliable_tournament_metadata = row["metadata_source"] in {CONFIRMED_METADATA_PROVIDER, TENNISDATA_METADATA_PROVIDER}
         if not reliable_tournament_metadata or not _is_filled(row["level"]):
             missing.append("level")
             summary["missing_level"] += 1

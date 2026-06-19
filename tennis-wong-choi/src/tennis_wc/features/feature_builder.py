@@ -21,6 +21,7 @@ from tennis_wc.features.tournament_level import calculate_tournament_level_stats
 FEATURE_SET_VERSION = "stage3.v1"
 RELIABLE_TOURNAMENT_METADATA_SOURCES = {
     "curated_tournament_metadata",
+    "tennisdata_tournament_index",
     "bsd_tennis",
     "espn",
     "statsperform",

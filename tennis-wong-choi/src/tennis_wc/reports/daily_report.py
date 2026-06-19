@@ -1258,7 +1258,7 @@ def _metadata_gap_summary_lines(rows: list[dict]) -> list[str]:
             missing = sum(
                 1
                 for row in rows
-                if row.get("metadata_source") != "curated_tournament_metadata"
+                if row.get("metadata_source") not in {"curated_tournament_metadata", "tennisdata_tournament_index"}
                 or not _is_confirmed_context_value(row.get(key))
             )
         else:
