@@ -3520,10 +3520,11 @@ class RacingEngine:
             m = re.search(r"（([^）]+)）|\(([^)]+)\)", et)  # keep the Chinese type, drop 'Type A/B'
             add("段速型態", (m.group(1) or m.group(2)) if m else et, "")
         dp = str(d.get("distance_profile_line") or "")
-        m = re.search(r"今仗[^-]+", dp)
+        # only the clean "今仗 1717m: …" segment; skip the messy "今仗 | ≥2000m" form
+        m = re.search(r"今仗\s*\d+\s*m[：:]?\s*[^|（(]+", dp)
         if m:
-            seg = m.group(0).strip(" -")
-            band = "✅" if "✅" in seg else ("⚠️" if "⚠️" in seg else "➖")
+            seg = m.group(0).strip(" -：:")
+            band = "✅" if "✅" in m.group(0) else ("⚠️" if "⚠️" in m.group(0) else "➖")
             seg = re.sub(r"[✅⚠️]", "", seg).strip()
             add("今仗路程", seg, "", band=band)
         cm = d.get("class_move")

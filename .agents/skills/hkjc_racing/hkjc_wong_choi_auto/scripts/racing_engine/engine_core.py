@@ -992,7 +992,15 @@ class RacingEngine:
             add("段速趨勢", self._seq_endpoints(l400, "s"), self._trend_tail(l400))
         energy = self._value("energy_trend")
         if present(energy):
-            add("能量趨勢", self._seq_endpoints(energy), self._trend_tail(energy))
+            # Derive direction from the numbers (the source tail label is unreliable,
+            # same class of bug as rating_trend — e.g. '99→90 → 上升' is wrong).
+            enums = re.findall(r"-?\d+\.?\d*", re.split(r"→\s*趨勢|趨勢", str(energy))[0])
+            edir = ""
+            if len(enums) >= 2:
+                ef, el = float(enums[0]), float(enums[-1])
+                edir = "能量上升" if el - ef >= 2 else ("能量回落" if ef - el >= 2 else "能量平穩")
+            add("能量趨勢", self._seq_endpoints(energy), edir,
+                band="✅" if edir == "能量上升" else ("⚠️" if edir == "能量回落" else "➖"))
         ftb = self._value("finish_time_block")
         if present(ftb):
             tr = "進步中" if "進步" in str(ftb) else ("退步中" if "退步" in str(ftb) else "平穩")

@@ -492,6 +492,7 @@ def _render_horse_section(horse_num: str, horse: dict, auto: dict) -> list[str]:
         shadow_line,
         consistency_shadow_line,
         "",
+        *_data_readout_lines(auto),
         "#### 📋 Facts 摘錄",
         *_facts_digest_lines(horse, data),
         "",
@@ -529,6 +530,7 @@ def _render_horse_section(horse_num: str, horse: dict, auto: dict) -> list[str]:
         shadow_line,
         consistency_shadow_line,
         "",
+        *_data_readout_lines(auto),
         "#### 📋 Facts 摘錄",
         *_facts_digest_lines(horse, data),
         "",
@@ -894,6 +896,21 @@ def _feature_score_line(features: dict) -> str:
 def _matrix_score_display(auto: dict, key: str) -> str:
     score = auto.get("matrix_scores", {}).get(key)
     return f"{float(score):.1f}分" if isinstance(score, (int, float)) else "N/A"
+
+
+def _data_readout_lines(auto: dict) -> list[str]:
+    """Render the structured 數據判讀 rows as a scannable markdown block."""
+    rows = auto.get("data_readout") or []
+    if not rows:
+        return []
+    lines = ["#### 📊 數據判讀", ""]
+    for r in rows:
+        val = f" {r['value']}" if r.get("value") else ""
+        trend = f" — {r['trend']}" if r.get("trend") else ""
+        reason = f"（{r['reason']}）" if r.get("reason") else ""
+        lines.append(f"- {r.get('band', '➖')} **{r['label']}**{val}{trend}{reason}")
+    lines.append("")
+    return lines
 
 
 def _core_logic(auto: dict, horse: dict) -> str:
