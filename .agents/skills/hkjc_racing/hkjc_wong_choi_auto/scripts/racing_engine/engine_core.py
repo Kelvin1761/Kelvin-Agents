@@ -99,6 +99,7 @@ class RacingEngine:
             "matrix_scores": matrix_scores,
             "matrix_reasoning": matrix_reasoning,
             "core_logic": self._core_logic(feature_scores, matrix_scores, matrix_reasoning),
+            "data_readout": self._data_readout(feature_scores, matrix_scores),
             "grade_transparency": grade_transparency,
             "core_logic_transparency": self._core_logic_transparency(feature_scores, matrix_scores, matrix, ability_score, grade),
             "feature_scores": {key: round(feature_scores[key], 2) for key in FEATURE_KEYS},
@@ -893,34 +894,133 @@ class RacingEngine:
             for key in FEATURE_KEYS
         }
 
+    # ── 數據判讀 (structured data readout) ──────────────────────────────
+    POSITIVE_TREND_WORDS = ("上升", "進步", "加強", "改善", "回升", "提升", "向好")
+    NEGATIVE_TREND_WORDS = ("下降", "退步", "放緩", "回落", "轉差", "走低", "減弱")
+
+    def _readout_band(self, trend):
+        t = str(trend or "")
+        if any(w in t for w in self.POSITIVE_TREND_WORDS):
+            return "✅"
+        if any(w in t for w in self.NEGATIVE_TREND_WORDS):
+            return "⚠️"
+        return "➖"
+
+    def _trend_tail(self, text):
+        """Pull the human trend label: prefer text after '趨勢:'; else last →-segment."""
+        s = str(text or "")
+        m = re.search(r"趨勢[:：]\s*([^|\n]+)", s)
+        tail = m.group(1) if m else (s.rsplit("→", 1)[-1] if "→" in s else "")
+        return re.sub(r"[📈📉🔴⚠️✅\s]+", " ", tail).strip()
+
+    def _seq_endpoints(self, text, unit=""):
+        head = re.split(r"→\s*趨勢|趨勢", str(text or ""))[0]
+        nums = re.findall(r"-?\d+\.?\d*", head)
+        return f"{nums[0]}→{nums[-1]}{unit}" if len(nums) >= 2 else ""
+
+    def _data_readout(self, features, matrix_scores):
+        """Structured, fully-Chinese 數據判讀 rows: each = label/value/trend/band.
+        Feeds both the .md report and the dashboard preview. Skips absent data."""
+        rows = []
+
+        def add(label, value, trend, band=None):
+            value = str(value or "").strip()
+            trend = str(trend or "").strip()
+            if value or trend:
+                rows.append({"label": label, "value": value, "trend": trend,
+                             "band": band or self._readout_band(trend)})
+
+        def present(v):
+            return v is not None and str(v).strip() not in ("", "N/A", "-", "--", "數據不可用")
+
+        l400 = self._value("l400_trend")
+        if present(l400):
+            add("段速趨勢", self._seq_endpoints(l400, "s"), self._trend_tail(l400))
+        energy = self._value("energy_trend")
+        if present(energy):
+            add("能量趨勢", self._seq_endpoints(energy), self._trend_tail(energy))
+        ftb = self._value("finish_time_block")
+        if present(ftb):
+            tr = "進步中" if "進步" in str(ftb) else ("退步中" if "退步" in str(ftb) else "平穩")
+            add("完成時間", "對標偏差", tr)
+        rt = self._value("rating_trend")
+        if present(rt):
+            add("評分走勢", self._seq_endpoints(rt), self._trend_tail(rt))
+        pi = self._value("position_pi")
+        if present(pi):
+            add("走位動量", "", self._trend_tail(pi))
+        wt = self._value("weight_trend")
+        if present(wt):
+            span = re.search(r"波幅(\d+)\s*lb", str(wt))
+            direction = re.search(r"(急[升跌增減]|微[升跌增減]|穩定|平穩)", str(wt))
+            add("體重狀態", f"波幅{span.group(1)}lb" if span else "",
+                direction.group(1) if direction else "")
+        eng = self._value("engine_type")
+        if present(eng):
+            add("段速型態", str(eng).split("|")[0].strip(), "")
+        bd = self._value("best_distance")
+        if present(bd):
+            rec = re.search(r"(\d+場\s*\([\d\-]+\))", str(bd))
+            dist = str(bd).split("|")[0].strip()
+            add("今仗路程", f"{dist}　{rec.group(1)}" if rec else dist, "")
+        last6 = self._value("last_6_finishes")
+        if present(last6):
+            add("近六場", str(last6).strip(), "")
+        draw = self._value("barrier") or self._value("draw")
+        if present(draw):
+            add("檔位", f"{str(draw).strip()}檔", "")
+        # 騎練 + 晨操 use matrix bands / digests already computed
+        ts = matrix_scores.get("trainer_signal", 60)
+        add("騎練組合", f"{self._clean(self._value('jockey') or '')}／{self._clean(self._value('trainer') or '')}".strip("／"),
+            "強訊號" if ts >= 70 else ("偏弱" if ts < 55 else "中性"),
+            band="✅" if ts >= 70 else ("⚠️" if ts < 55 else "➖"))
+        tw = self._value("trackwork_digest")
+        if present(tw):
+            twtrend = "加強中" if "加強" in str(tw) else ("放緩" if "放緩" in str(tw) else "")
+            add("晨操備戰", "已提取", twtrend or "中性")
+        return rows
+
+    DIM_LABELS = {
+        "stability": "穩定性", "sectional": "段速", "race_shape": "形勢檔位",
+        "trainer_signal": "騎練訊號", "horse_health": "健康新鮮", "form_line": "賽績線",
+        "class_advantage": "班次優勢",
+    }
+
     def _core_logic(self, features, matrix_scores, matrix_reasoning):
+        """Precise, data-grounded 2-3 sentence verdict. Each clause cites an actual
+        readout signal (段速/能量/評分趨勢, 檔位, 騎練…) — no filler padding."""
         name = self.horse_data.get("horse_name", "此駒")
-        top = sorted(matrix_scores.items(), key=lambda item: item[1], reverse=True)[:2]
-        low = sorted(matrix_scores.items(), key=lambda item: item[1])[:2]
-        top_keys = {key for key, _score in top}
-        low_keys = {key for key, _score in low}
-        
-        top_text = " ".join(self._core_support_sentence(key, score, features) for key, score in top)
-        low_text = " ".join(self._core_risk_sentence(key, score, features) for key, score in low)
-        
-        include_trackwork = self._should_include_trackwork_context(top_keys, low_keys)
-        context = self._context_sentence(features, top_keys, low_keys, include_trackwork)
-        risk = self._risk_sentence({"trackwork_slowing"} if include_trackwork else None)
-        overall = self._overall_projection_sentence(top, low, features)
-        competitiveness = self._competitiveness_opening(matrix_scores, features, top, low)
-        
-        # More natural flowing text without robotic prefixes
-        parts = [
-            f"{name}{competitiveness}",
-            top_text,
-            f"不過要留意，{low_text}" if low_text else "",
-            context,
-            overall,
-            risk
-        ]
-        
-        text = " ".join(part.strip() for part in parts if part and part.strip())
-        return self._normalize_prose(text)
+        readout = self._data_readout(features, matrix_scores)
+        pos = [r for r in readout if r["band"] == "✅"]
+        neg = [r for r in readout if r["band"] == "⚠️"]
+        ordered = sorted(matrix_scores.items(), key=lambda kv: kv[1], reverse=True)
+        top_dim = self.DIM_LABELS.get(ordered[0][0], ordered[0][0])
+        low_dim = self.DIM_LABELS.get(ordered[-1][0], ordered[-1][0])
+
+        def clause(rows):
+            bits = []
+            for r in rows[:3]:
+                detail = r["trend"] or r["value"]
+                bits.append(f"{r['label']}{detail}".replace("　", ""))
+            return "、".join(bits)
+
+        sents = []
+        if pos:
+            sents.append(f"{name}數據正路集中喺{clause(pos)}，當中{top_dim}係主要支撐。")
+        else:
+            sents.append(f"{name}數據面未見突出強項，現階段主要靠{top_dim}托住評分。")
+        if neg:
+            sents.append(f"要留意嘅係{clause(neg)}，而{low_dim}為七維中最弱一環，臨場須靠形勢補足。")
+        else:
+            sents.append(f"暫未見明顯數據紅旗，{low_dim}屬相對較弱一環，仍要睇臨場節奏配合。")
+        if self._is_debut():
+            sents.append("初出馬無正式賽績，以上以備戰及試閘數據作背景參考，落地與否要臨場驗證。")
+        else:
+            verdict = "整體數據紮實，具爭勝條件" if len(pos) >= 3 and not neg else (
+                "整體偏保留，需形勢及執行力配合先易兌現" if len(neg) >= len(pos) else
+                "整體中性偏好，數據面有支點但未到壓倒性")
+            sents.append(f"{verdict}。")
+        return self._normalize_prose("".join(sents))
 
     def _context_sentence(self, features, top_keys=None, low_keys=None, include_trackwork=True):
         top_keys = set(top_keys or ())
@@ -2001,9 +2101,9 @@ class RacingEngine:
         
         # Build summary block
         summary = (
-            f"**🧮 7D 加權總分計算 (Python Auto 矩陣引擎):**\n\n"
+            f"**🧮 七維加權總分計算：**\n\n"
             f"{lines_text}\n\n"
-            f"**→ 加權總分 = {weighted_sum:.2f} 分 → Grade = [{grade}]**\n"
+            f"**→ 加權總分 = {weighted_sum:.2f} 分 → 評級 [{grade}]**\n"
         )
         
         # Add grade threshold context
@@ -2047,7 +2147,7 @@ class RacingEngine:
         }
         explanation = thresholds.get(grade, "")
         if explanation:
-            return f"**📊 Grade 定義:** {explanation}"
+            return f"**📊 評級定義：** {explanation}"
         return ""
 
     def _core_logic_transparency(self, feature_scores, matrix_scores, matrix_bands, ability_score, grade):
@@ -2090,14 +2190,14 @@ class RacingEngine:
         
         # Build the transparency block
         parts = [
-            "**🧮 Python 矩陣計算全記錄:**",
+            "**🧮 七維矩陣計算全記錄：**",
             "",
-            "**7D 維度評分:**",
+            "**七維維度評分：**",
             scores_text,
             "",
             f"**統計:** 核心正面={core_strong} | 半核心正面={semi_strong} | 輔助正面={aux_strong} | 總負面={total_weak}",
-            f"**7D 加權總分:** {ability_score:.1f}分",
-            f"**Grade 查表:** {ability_score:.1f}分 → **[{grade}]**",
+            f"**七維加權總分：** {ability_score:.1f}分",
+            f"**評級查表：** {ability_score:.1f}分 → **[{grade}]**",
         ]
         
         # Add risk flags
