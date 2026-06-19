@@ -418,7 +418,7 @@ def run_daily(args: argparse.Namespace) -> None:
         "tennis_wc_pipeline",
         "/run-daily/source-errors",
         {"date": args.date},
-        source_errors,
+        {"mode": "mvp_snapshot" if args.mvp_snapshot else "live_full", "errors": source_errors},
         207 if source_errors else 200,
         "run_daily_source_errors",
         args.date,

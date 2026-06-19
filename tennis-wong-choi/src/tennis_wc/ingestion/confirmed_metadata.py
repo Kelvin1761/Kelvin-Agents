@@ -83,16 +83,91 @@ CONFIRMED_TOURNAMENTS: tuple[ConfirmedTournamentMeta, ...] = (
         source_note="ATP Challenger tournament overview",
         aliases=("ATP Poznan Challenger", "Poznan Challenger", "Poznań Open", "Poznan Open"),
     ),
+    # --- Grass swing (June, Wimbledon warm-up). Verified levels/surfaces. ---
+    ConfirmedTournamentMeta(
+        tour="ATP",
+        tournament_name="ATP Queen's Club (HSBC Championships)",
+        level="ATP_500",
+        surface="Grass",
+        indoor_outdoor="outdoor",
+        source_url="https://en.wikipedia.org/wiki/2025_Queen%27s_Club_Championships",
+        source_note="ATP 500 grass, Queen's Club London (HSBC Championships)",
+        aliases=("HSBC Championships", "Queen's Club Championships", "Queens Club Championships", "Cinch Championships", "Queens Club", "Queen's Club"),
+    ),
+    ConfirmedTournamentMeta(
+        tour="ATP",
+        tournament_name="ATP Mallorca Championships",
+        level="ATP_250",
+        surface="Grass",
+        indoor_outdoor="outdoor",
+        source_url="https://www.atptour.com/en/tournaments/mallorca/9163/overview",
+        source_note="ATP 250 grass, Mallorca",
+        aliases=("Mallorca Championships", "Mallorca Open", "ATP Mallorca"),
+    ),
+    ConfirmedTournamentMeta(
+        tour="ATP",
+        tournament_name="ATP Eastbourne",
+        level="ATP_250",
+        surface="Grass",
+        indoor_outdoor="outdoor",
+        source_url="https://en.wikipedia.org/wiki/2025_Eastbourne_Open",
+        source_note="ATP 250 grass, Eastbourne (men)",
+        aliases=("Eastbourne International", "Rothesay International", "Eastbourne Open", "ATP Eastbourne"),
+    ),
+    ConfirmedTournamentMeta(
+        tour="WTA",
+        tournament_name="WTA Eastbourne",
+        level="WTA_500",
+        surface="Grass",
+        indoor_outdoor="outdoor",
+        source_url="https://en.wikipedia.org/wiki/2025_Eastbourne_Open",
+        source_note="WTA 500 grass, Eastbourne (women)",
+        aliases=("Eastbourne International", "Rothesay International", "Eastbourne Open", "WTA Eastbourne"),
+    ),
+    ConfirmedTournamentMeta(
+        tour="WTA",
+        tournament_name="WTA Bad Homburg",
+        level="WTA_500",
+        surface="Grass",
+        indoor_outdoor="outdoor",
+        source_url="https://en.wikipedia.org/wiki/Bad_Homburg_Open",
+        source_note="WTA 500 grass, Bad Homburg",
+        aliases=("Bad Homburg Open", "Bad Homburg", "WTA Bad Homburg"),
+    ),
 )
 
 
-def confirmed_competition_meta(competition: str | None) -> ConfirmedTournamentMeta | None:
+def confirmed_competition_meta(competition: str | None, tour: str | None = None) -> ConfirmedTournamentMeta | None:
     key = _metadata_key(competition)
     if not key:
         return None
+    comp_tokens = set(_tokens(competition))
+    exact: list[ConfirmedTournamentMeta] = []
+    fuzzy: list[ConfirmedTournamentMeta] = []
     for meta in CONFIRMED_TOURNAMENTS:
         if key in {_metadata_key(alias) for alias in meta.aliases}:
-            return meta
+            exact.append(meta)
+            continue
+        # Token-subset: every token of a multi-word alias appears as a token in
+        # the competition name. Catches sponsor-prefixed feeds, e.g. "VANDA
+        # Pharmaceuticals Berlin Tennis Open" -> alias "Berlin Tennis Open".
+        # Multi-word only (>=2 tokens) so a single generic token can't false-match
+        # (e.g. "Halle" must not match inside "Challenger").
+        if any(len(at := set(_tokens(alias))) >= 2 and at <= comp_tokens for alias in meta.aliases):
+            fuzzy.append(meta)
+    tour_norm = (tour or "").upper() or None
+    for bucket in (exact, fuzzy):
+        if not bucket:
+            continue
+        if tour_norm:
+            # A tour was requested: only accept a same-tour entry. Some venues run
+            # an ATP and a WTA event under one name (e.g. Eastbourne ATP 250 /
+            # WTA 500); never apply the wrong tour's level — prefer UNKNOWN.
+            same_tour = [meta for meta in bucket if meta.tour.upper() == tour_norm]
+            if same_tour:
+                return same_tour[0]
+            continue
+        return bucket[0]
     return None
 
 
@@ -120,7 +195,7 @@ def backfill_confirmed_metadata_for_date(match_date: str) -> dict:
             (match_date,),
         ).fetchall()
         for row in tournament_rows:
-            meta = confirmed_competition_meta(row["tournament_name"])
+            meta = confirmed_competition_meta(row["tournament_name"], row["match_tour"])
             if meta is None:
                 continue
             conn.execute(
@@ -260,6 +335,10 @@ def metadata_audit_for_date(match_date: str) -> dict:
 
 def _metadata_key(value: str | None) -> str:
     return re.sub(r"[^a-z0-9]+", "", str(value or "").lower())
+
+
+def _tokens(value: str | None) -> list[str]:
+    return [token for token in re.split(r"[^a-z0-9]+", str(value or "").lower()) if token]
 
 
 def _is_filled(value: object) -> bool:

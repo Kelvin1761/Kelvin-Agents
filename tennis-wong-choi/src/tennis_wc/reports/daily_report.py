@@ -192,6 +192,16 @@ def source_status_for_date(match_date: str) -> dict:
             """,
             (match_date, match_date),
         ).fetchone()
+    # The run-daily record is either a bare list (legacy) or {"mode", "errors"}.
+    run_mode = None
+    run_errors: list = []
+    if latest_run_errors:
+        payload = json.loads(latest_run_errors["response_json"])
+        if isinstance(payload, dict):
+            run_mode = payload.get("mode")
+            run_errors = payload.get("errors") or []
+        else:
+            run_errors = payload
     return {
         "sportsbet_odds_rows": int(sportsbet["odds_rows"] or 0),
         "sportsbet_linked_rows": int(sportsbet["linked_rows"] or 0),
@@ -200,7 +210,8 @@ def source_status_for_date(match_date: str) -> dict:
         "fixture_note": "Sportsbet odds-backed provisional fixtures enabled; unconfirmed competitions remain NO_BET.",
         "history_source": "Jeff Sackmann ATP/WTA snapshots + local Elo cache",
         "market_odds_note": f"{int(market_count['rows'] or 0)} selections across {int(market_count['markets'] or 0)} market types. Non-match-winner markets are review-only.",
-        "latest_run_errors": json.loads(latest_run_errors["response_json"]) if latest_run_errors else [],
+        "run_mode": run_mode,
+        "latest_run_errors": run_errors,
     }
 
 
@@ -1098,6 +1109,14 @@ def _selection_side_for_market_row(row: dict) -> str | None:
     return None
 
 
+def _mode_status_line(run_mode: str | None) -> str:
+    if run_mode == "live_full":
+        return "- Mode：LIVE_FULL（今次跑 live 抓取：fixtures + 全市場 + metadata backfill）"
+    if run_mode == "mvp_snapshot":
+        return "- Mode：SNAPSHOT_MODE（使用最近已保存嘅 Sportsbet / local snapshot；唔扮 live odds）"
+    return "- Mode：未知（report 找唔到今次 run 嘅 mode 記錄）"
+
+
 def render_daily_report(match_date: str, rows: list[dict], source_status: dict | None = None, unanalysed: list[dict] | None = None) -> str:
     bets = [row for row in rows if row["decision"] == "BET"]
     watchlist = [row for row in rows if row["decision"] == "WATCHLIST"]
@@ -1120,7 +1139,7 @@ def render_daily_report(match_date: str, rows: list[dict], source_status: dict |
         f"- 已配對 / 已建 provisional fixture：{source_status.get('sportsbet_linked_rows', 0)}",
         f"- Sportsbet 最新抓取時間：{source_status.get('sportsbet_latest_fetch') or 'N/A'}",
         "- Bankroll：100u virtual bankroll；1 unit = $1；注碼用 tenth-Kelly，1u 起跳、最大 5u",
-        "- Mode：SNAPSHOT_MODE（使用最近已成功保存嘅 Sportsbet / local history snapshot；唔扮 live odds）",
+        _mode_status_line(source_status.get("run_mode")),
         f"- Tennis fixture source：{source_status.get('bsd_fixture_status') or 'N/A'}",
         f"- Fixture 補齊策略：{source_status.get('fixture_note') or 'N/A'}",
         f"- 歷史數據 / Elo：{source_status.get('history_source') or 'N/A'}",
