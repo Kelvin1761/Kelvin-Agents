@@ -455,6 +455,7 @@ class RacingEngine:
             "matrix_reasoning": matrix_reasoning,
             "feature_scores": {key: round(feature_scores[key], 2) for key in FEATURE_KEYS},
             "core_logic": core_logic,
+            "data_readout": self._data_readout(feature_scores, matrix_scores),
             "advantages": advantages,
             "disadvantages": disadvantages,
             "grade_transparency": grade_transparency,
@@ -3484,19 +3485,103 @@ class RacingEngine:
             items.append("頂磅環境下要自己讓人，發揮要求會更高")
         return items[:3] or ["主要變數仍然係臨場步速同對手反應，安全邊際只算一般"]
 
+    def _au_readout_band(self, trend):
+        t = str(trend or "")
+        if any(w in t for w in ("上升", "進步", "加強", "改善", "受捧", "合拍", "已驗證", "升級")):
+            return "✅"
+        if any(w in t for w in ("下降", "退步", "放緩", "回落", "受冷", "轉差", "未驗證")):
+            return "⚠️"
+        return "➖"
+
+    def _data_readout(self, feature_scores, matrix_scores):
+        """Structured, fully-Chinese 數據判讀 rows for AU (label/value/trend/band/reason).
+        Feeds the report + dashboard. Mirrors the HKJC readout using AU data lines."""
+        rows = []
+
+        def add(label, value, trend, band=None, reason=""):
+            value = str(value or "").strip()
+            trend = str(trend or "").strip()
+            if value or trend:
+                rows.append({"label": label, "value": value, "trend": trend,
+                             "band": band or self._au_readout_band(trend), "reason": reason})
+
+        def present(v):
+            return v is not None and str(v).strip() not in ("", "N/A", "-", "--")
+
+        d = self.data
+        rf = d.get("recent_form") or self.horse_data.get("recent_form")
+        if present(rf):
+            add("近績", str(rf).strip(), "")
+        l4 = self._l400_text()
+        if l4:
+            add("段速", l4, "")
+        et = str(d.get("engine_type_line") or "")
+        if present(et):
+            m = re.search(r"（([^）]+)）|\(([^)]+)\)", et)  # keep the Chinese type, drop 'Type A/B'
+            add("段速型態", (m.group(1) or m.group(2)) if m else et, "")
+        dp = str(d.get("distance_profile_line") or "")
+        m = re.search(r"今仗[^-]+", dp)
+        if m:
+            seg = m.group(0).strip(" -")
+            band = "✅" if "✅" in seg else ("⚠️" if "⚠️" in seg else "➖")
+            seg = re.sub(r"[✅⚠️]", "", seg).strip()
+            add("今仗路程", seg, "", band=band)
+        cm = d.get("class_move")
+        if present(cm):
+            add("班次走向", str(cm).strip(), "")
+        counts = self._formline_followup_counts()
+        opp = self._formline_headwinner() if hasattr(self, "_formline_headwinner") else ""
+        validated = counts["higher"] + counts["same"] + counts["lower"]
+        field = set(self.race_context.get("field_horse_names") or []) if isinstance(getattr(self, "race_context", None), dict) else set()
+        mine = self.horse_data.get("horse_name")
+        h2h = sorted({nm for r in self._formline_rows() for nm in field
+                      if nm and nm != mine and nm in str(r.get("opponent", ""))})
+        if h2h:
+            add("賽績線", "重遇" + "、".join(h2h), "曾交手", band="✅",
+                reason=f"今場重遇曾交手對手{'、'.join(h2h)}")
+        elif validated or opp:
+            add("賽績線", f"曾勝對手「{opp}」" if opp else "近仗對手",
+                "對手已驗證" if validated else "對手未驗證",
+                band="✅" if validated else "➖",
+                reason=(f"{counts['higher']}匹對手其後升班再贏" if counts['higher'] else
+                        (f"{validated}匹對手其後再贏" if validated else "")))
+        mt = d.get("current_market_trend")
+        if present(mt):
+            band = "✅" if "受捧" in str(mt) else ("⚠️" if "受冷" in str(mt) else "➖")
+            add("市場走勢", str(mt).strip(), "", band=band)
+        gs = str(d.get("going_stats_line") or "")
+        if present(gs):
+            add("場地往績", gs.split("|")[0].strip(), "")
+        cur = self._clean_identity(self.horse_data.get("jockey"))
+        cur_line = str(d.get("current_jockey_history_line") or "")
+        best_line = str(d.get("best_jockey_history_line") or "")
+        if cur:
+            up = best_line and cur and cur not in best_line  # today's rider ≠ the best historical one
+            add("騎師", cur, "", reason=cur_line[:48] or None)
+            if up and present(best_line):
+                add("騎師往績", "", "最佳拍檔非今仗", band="➖", reason=best_line[:48])
+        return rows
+
     def _core_logic(self, feature_scores, matrix_scores, advantages, disadvantages):
-        horse_name = self.horse_data.get("horse_name", "")
-        parts = [
-            self._core_opening(horse_name, matrix_scores),
-            self._core_status_line(),
-            self._core_sectional_line(feature_scores),
-            self._core_tactical_line(),
-            self._core_formline_line(),
-            self._core_forgiveness_line(),
-            self._core_condition_branch(disadvantages),
-        ]
-        text = " ".join(part for part in parts if part)
-        return re.sub(r"\s{2,}", " ", text).strip()
+        """Data-grounded verdict: a concrete 七維 framing sentence, then the actual
+        strengths and concerns (reusing the already-specific advantages/disadvantages).
+        Drops the generic '做主軸 / 保留型 / 走勢未算鮮明' filler."""
+        name = self.horse_data.get("horse_name", "此駒")
+        ordered = sorted(matrix_scores.items(), key=lambda kv: kv[1], reverse=True)
+        top_dim = self._matrix_label(ordered[0][0])
+        low_dim = self._matrix_label(ordered[-1][0])
+        sents = [f"{name}今場七維評分以{top_dim}（{ordered[0][1]:.0f}）最強、{low_dim}（{ordered[-1][1]:.0f}）最弱。"]
+        real_adv = [a for a in (advantages or []) if "整體結構平均" not in a]
+        real_dis = [d for d in (disadvantages or []) if "主要變數仍然係臨場步速" not in d]
+        if real_adv:
+            sents.append("優勢在於" + "；".join(real_adv[:3]) + "。")
+        if real_dis:
+            sents.append("要留意" + "；".join(real_dis[:3]) + "。")
+        if not real_adv and not real_dis:
+            sents.append("整體結構平均，未見特別爆點亦無明顯穿崩，臨場步速與形勢將係關鍵。")
+        if self._career_starts() == 0:
+            sents.append("初出馬正式賽績空白，以上以備戰及試閘數據作背景參考，須臨場驗證。")
+        return re.sub(r"\s{2,}", " ", "".join(sents)).strip()
 
     def _core_opening(self, horse_name, matrix_scores):
         strong_key = max(matrix_scores, key=matrix_scores.get)

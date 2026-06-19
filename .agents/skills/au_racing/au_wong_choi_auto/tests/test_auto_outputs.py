@@ -106,14 +106,22 @@ def _horse(overrides: dict | None = None) -> dict:
 
 
 class AuAutoOutputTests(unittest.TestCase):
-    def test_core_logic_contains_evidence_chain_and_condition_branch(self) -> None:
+    def test_core_logic_is_data_grounded_with_readout(self) -> None:
         result = _analyze(_horse(), _race_context())
         core = result["core_logic"]
 
-        self.assertIn("L400", core)
-        self.assertIn("今次排 3 檔", core)
-        self.assertIn("對手線", core)
-        self.assertIn("若", core)
+        # New design: concrete 七維 framing + real strengths/concerns, no filler.
+        self.assertIn("七維評分以", core)
+        self.assertTrue("優勢在於" in core or "要留意" in core)
+        self.assertNotIn("做主軸", core)        # dropped generic opener
+        self.assertNotIn("保留型", core)        # dropped filler verdict
+        self.assertGreaterEqual(len(core.strip()), 40)
+        # Structured 數據判讀 rows are emitted with band markers.
+        readout = result.get("data_readout")
+        self.assertIsInstance(readout, list)
+        self.assertTrue(readout, "data_readout should not be empty")
+        for row in readout:
+            self.assertIn(row["band"], ("✅", "➖", "⚠️"))
 
     def test_forgiveness_lifts_consistency_score(self) -> None:
         neutral_horse = _horse(
