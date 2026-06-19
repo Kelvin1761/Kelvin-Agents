@@ -1,0 +1,62 @@
+{
+  "baseline_obj": 5.0063291139240516,
+  "combo_obj": 5.2515822784810124,
+  "noisy_components": [
+    {
+      "section": "CLASS",
+      "key": "class_up_pen",
+      "current_val": -4.1,
+      "diff_obj": 0.11234177215189689,
+      "diff_good": 0.0031645569620253056
+    },
+    {
+      "section": "SECTIONAL",
+      "key": "trial_extreme_bonus",
+      "current_val": 24.4,
+      "diff_obj": 0.11392405063291111,
+      "diff_good": 0.009493670886075944
+    },
+    {
+      "section": "SECTIONAL",
+      "key": "trial_excellent_bonus",
+      "current_val": 15.1,
+      "diff_obj": 0.01424050632911289,
+      "diff_good": 0.009493670886075944
+    },
+    {
+      "section": "PACE",
+      "key": "fallback_wide_pen",
+      "current_val": -5.9,
+      "diff_obj": 0.02531645569620178,
+      "diff_good": 0.0
+    },
+    {
+      "section": "FIT",
+      "key": "debut_top_trainer_bonus",
+      "current_val": 8.0,
+      "diff_obj": 0.017405063291138667,
+      "diff_good": 0.0031645569620253056
+    },
+    {
+      "section": "FIT",
+      "key": "young_top_jt_bonus",
+      "current_val": 11.62,
+      "diff_obj": 0.042721518987341334,
+      "diff_good": 0.0031645569620253056
+    },
+    {
+      "section": "FIT",
+      "key": "jockey_downgrade_vs_best_pen",
+      "current_val": -4.0,
+      "diff_obj": 0.004746835443038222,
+      "diff_good": 0.0
+    },
+    {
+      "section": "FIT",
+      "key": "latest_upgrade_bonus",
+      "current_val": 1.61,
+      "diff_obj": 0.03797468354430311,
+      "diff_good": 0.006329113924050611
+    }
+  ]
+}

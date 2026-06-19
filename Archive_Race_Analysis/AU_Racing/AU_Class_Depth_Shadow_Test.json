@@ -1,0 +1,103 @@
+{
+  "baseline_variant": "baseline",
+  "variants": [
+    {
+      "variant": "baseline",
+      "current_live": {
+        "meetings": 44,
+        "races": 395,
+        "Champion": 85,
+        "Gold": 18,
+        "Good": 78,
+        "Minimum": 149,
+        "MRR": 0.3612,
+        "Order Issue": 153,
+        "Avg Top4 Hits": 1.648
+      }
+    },
+    {
+      "variant": "prize_positive_soft",
+      "current_live": {
+        "meetings": 44,
+        "races": 395,
+        "Champion": 82,
+        "Gold": 17,
+        "Good": 68,
+        "Minimum": 151,
+        "MRR": 0.357,
+        "Order Issue": 151,
+        "Avg Top4 Hits": 1.658
+      }
+    },
+    {
+      "variant": "prize_tiebreak_small",
+      "current_live": {
+        "meetings": 44,
+        "races": 395,
+        "Champion": 85,
+        "Gold": 14,
+        "Good": 68,
+        "Minimum": 147,
+        "MRR": 0.3614,
+        "Order Issue": 159,
+        "Avg Top4 Hits": 1.673
+      }
+    },
+    {
+      "variant": "prize_tiebreak_bm_focus",
+      "current_live": {
+        "meetings": 44,
+        "races": 395,
+        "Champion": 85,
+        "Gold": 15,
+        "Good": 70,
+        "Minimum": 151,
+        "MRR": 0.3635,
+        "Order Issue": 155,
+        "Avg Top4 Hits": 1.663
+      }
+    },
+    {
+      "variant": "prize_tiebreak_bm_strict",
+      "current_live": {
+        "meetings": 44,
+        "races": 395,
+        "Champion": 85,
+        "Gold": 16,
+        "Good": 70,
+        "Minimum": 151,
+        "MRR": 0.3599,
+        "Order Issue": 159,
+        "Avg Top4 Hits": 1.656
+      }
+    },
+    {
+      "variant": "prize_rank36_bm_micro",
+      "current_live": {
+        "meetings": 44,
+        "races": 395,
+        "Champion": 84,
+        "Gold": 17,
+        "Good": 69,
+        "Minimum": 151,
+        "MRR": 0.3561,
+        "Order Issue": 159,
+        "Avg Top4 Hits": 1.646
+      }
+    },
+    {
+      "variant": "prize_rank46_bm_micro",
+      "current_live": {
+        "meetings": 44,
+        "races": 395,
+        "Champion": 84,
+        "Gold": 17,
+        "Good": 75,
+        "Minimum": 151,
+        "MRR": 0.3599,
+        "Order Issue": 152,
+        "Avg Top4 Hits": 1.653
+      }
+    }
+  ]
+}

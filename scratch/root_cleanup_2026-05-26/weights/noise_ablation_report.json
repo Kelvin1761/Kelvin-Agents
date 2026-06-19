@@ -1,0 +1,22 @@
+{
+  "baseline_obj": 5.2674050632911396,
+  "combo_obj": 5.272151898734178,
+  "noisy_features": [
+    "form_line"
+  ],
+  "lean_weights": {
+    "stability": 0.416,
+    "sectional": 0.08,
+    "race_shape": 0.162,
+    "jockey_trainer": 0.157,
+    "class_weight": 0.128,
+    "track": 0.057,
+    "form_line": 0.0
+  },
+  "combo_metrics": {
+    "good": 0.1867,
+    "pass": 0.5538,
+    "place_avg": 1.557,
+    "champion": 0.1551
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "accuracy": 0.8962,
+  "precision": 0.5665,
+  "recall": 0.8179,
+  "f1": 0.6694,
+  "roc_auc": 0.9496,
+  "brier_score": 0.0725,
+  "log_loss": 0.2319,
+  "test_size": 2351,
+  "train_size": 9401,
+  "baseline_hit_rate": 0.1283,
+  "cv_roc_auc_mean": 0.9434,
+  "cv_roc_auc_std": 0.0027,
+  "baseline_comparison": {
+    "baseline_roc_auc": 0.8997,
+    "ml_roc_auc": 0.9496,
+    "baseline_brier": 0.0669,
+    "ml_brier": 0.0725
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "stability": 0.33,
+  "sectional": 0.105,
+  "race_shape": 0.234,
+  "jockey_trainer": 0.214,
+  "class_weight": 0.05,
+  "track": 0.067,
+  "form_line": 0.0
+}

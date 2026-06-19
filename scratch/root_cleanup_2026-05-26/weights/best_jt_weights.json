@@ -1,0 +1,43 @@
+{
+  "JOCKEY_MICRO_WEIGHTS": {
+    "elite_bonus": 10.65,
+    "solid_bonus": 6.77,
+    "apprentice_fresh_bonus": 1.0
+  },
+  "TRAINER_MICRO_WEIGHTS": {
+    "elite_bonus": 9.98,
+    "waller_debut_bonus": 6.85,
+    "track_high_vol_high_place_bonus": 9.79,
+    "track_med_vol_high_place_bonus": 4.7,
+    "track_med_vol_med_place_bonus": 2.09,
+    "track_low_place_pen": -1.0
+  },
+  "FIT_MICRO_WEIGHTS": {
+    "debut_top_trainer_bonus": 8.0,
+    "young_top_jt_bonus": 11.62,
+    "trial_ok_bonus": 3.92,
+    "trial_ok_top_jt_bonus": 1.0,
+    "current_formal_cap": 5.0,
+    "current_formal_mult": 1.5,
+    "current_basic_fit_bonus": 2.0,
+    "current_high_fit_bonus": 2.36,
+    "current_trial_cap": 4.0,
+    "current_trial_mult": 1.5,
+    "best_formal_cap": 6.0,
+    "best_formal_mult": 1.5,
+    "jockey_upgrade_vs_best_bonus": 2.48,
+    "jockey_downgrade_vs_best_pen": -4.0,
+    "latest_upgrade_bonus": 1.61,
+    "latest_downgrade_pen": -3.98,
+    "leave_proven_jockey_pen": -2.98,
+    "combo_high_vol_high_place_bonus": 7.75,
+    "combo_med_place_bonus": 1.26,
+    "combo_low_place_pen": -1.0,
+    "combo_win_bonus": 1.63,
+    "combo_no_ride_good_place_bonus": 1.6,
+    "trainer_track_top_jockey_bonus": 1.76,
+    "signal_best_jockey_bonus": 2.8,
+    "signal_upgrade_bonus": 8.45,
+    "signal_downgrade_pen": -3.44
+  }
+}

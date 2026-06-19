@@ -1,0 +1,932 @@
+{
+  "meta": {
+    "result_sources": {
+      "json": 129
+    },
+    "before_audit": {
+      "Canterbury": {
+        "races": 14,
+        "going_blank": 14,
+        "track_profile_blank": 14,
+        "barrier_all_zero": 14
+      },
+      "Randwick": {
+        "races": 19,
+        "going_blank": 19,
+        "track_profile_blank": 19,
+        "barrier_all_zero": 19
+      },
+      "Flemington": {
+        "races": 9,
+        "going_blank": 9,
+        "track_profile_blank": 9,
+        "barrier_all_zero": 9
+      },
+      "2026-04-17 Cranbourne Race 1-8": {
+        "races": 8,
+        "going_blank": 8,
+        "barrier_all_zero": 8
+      },
+      "2026-04-18 Randwick": {
+        "races": 10,
+        "going_blank": 10,
+        "barrier_all_zero": 10
+      },
+      "2026-04-22 Canterbury Race 1-8": {
+        "races": 8,
+        "going_blank": 8,
+        "barrier_all_zero": 8
+      },
+      "2026-04-25 Randwick Race 1-8": {
+        "races": 8,
+        "going_blank": 8,
+        "barrier_all_zero": 8
+      },
+      "Caulfield Heath": {
+        "races": 8,
+        "going_blank": 8,
+        "track_profile_blank": 8,
+        "barrier_all_zero": 8
+      },
+      "Doomben": {
+        "races": 8,
+        "going_blank": 8,
+        "track_profile_blank": 8,
+        "barrier_all_zero": 8
+      },
+      "Caulfield": {
+        "races": 9,
+        "going_blank": 9,
+        "track_profile_blank": 9,
+        "barrier_all_zero": 9
+      },
+      "Eagle Farm": {
+        "races": 18,
+        "going_blank": 18,
+        "track_profile_blank": 18,
+        "barrier_all_zero": 18
+      },
+      "Rosehill Gardens": {
+        "races": 10,
+        "going_blank": 10,
+        "track_profile_blank": 10,
+        "barrier_all_zero": 10
+      }
+    },
+    "after_audit": {
+      "Canterbury": {
+        "races": 14,
+        "barrier_all_zero": 14
+      },
+      "Randwick": {
+        "races": 19,
+        "barrier_all_zero": 19
+      },
+      "Flemington": {
+        "races": 9,
+        "barrier_all_zero": 9
+      },
+      "2026-04-17 Cranbourne Race 1-8": {
+        "races": 8,
+        "barrier_all_zero": 8
+      },
+      "2026-04-18 Randwick": {
+        "races": 10,
+        "barrier_all_zero": 10
+      },
+      "2026-04-22 Canterbury Race 1-8": {
+        "races": 8,
+        "barrier_all_zero": 8
+      },
+      "2026-04-25 Randwick Race 1-8": {
+        "races": 8,
+        "barrier_all_zero": 8
+      },
+      "Caulfield Heath": {
+        "races": 8,
+        "barrier_all_zero": 8
+      },
+      "Doomben": {
+        "races": 8,
+        "barrier_all_zero": 8
+      },
+      "Caulfield": {
+        "races": 9,
+        "barrier_all_zero": 9
+      },
+      "Eagle Farm": {
+        "races": 18,
+        "barrier_all_zero": 18
+      },
+      "Rosehill Gardens": {
+        "races": 10,
+        "barrier_all_zero": 10
+      }
+    },
+    "errors": [],
+    "error_count": 0
+  },
+  "results": {
+    "all": {
+      "baseline": {
+        "races": 129,
+        "gold": 8,
+        "good": 44,
+        "pass": 110,
+        "top3_win": 56,
+        "top3_place": 162,
+        "0hit": 19,
+        "mrr": 0.3733,
+        "changed_races": 0,
+        "examples": []
+      },
+      "context_recompute": {
+        "races": 129,
+        "gold": 9,
+        "good": 51,
+        "pass": 112,
+        "top3_win": 59,
+        "top3_place": 172,
+        "0hit": 17,
+        "mrr": 0.3734,
+        "changed_races": 101,
+        "examples": [
+          {
+            "meeting": "2026-06-08 Canterbury Race 1-8",
+            "race": 3,
+            "baseline_top4": [
+              7,
+              1,
+              8,
+              3
+            ],
+            "variant_top4": [
+              8,
+              3,
+              1,
+              9
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-06-08 Canterbury Race 1-8",
+            "race": 4,
+            "baseline_top4": [
+              1,
+              6,
+              4,
+              5
+            ],
+            "variant_top4": [
+              1,
+              4,
+              6,
+              7
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-06-08 Canterbury Race 1-8",
+            "race": 5,
+            "baseline_top4": [
+              3,
+              4,
+              8,
+              5
+            ],
+            "variant_top4": [
+              3,
+              4,
+              8,
+              6
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-06-08 Canterbury Race 1-8",
+            "race": 6,
+            "baseline_top4": [
+              10,
+              8,
+              2,
+              5
+            ],
+            "variant_top4": [
+              8,
+              10,
+              5,
+              2
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-06-08 Canterbury Race 1-8",
+            "race": 7,
+            "baseline_top4": [
+              18,
+              7,
+              19,
+              2
+            ],
+            "variant_top4": [
+              18,
+              12,
+              11,
+              9
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-06-08 Canterbury Race 1-8",
+            "race": 8,
+            "baseline_top4": [
+              11,
+              8,
+              3,
+              6
+            ],
+            "variant_top4": [
+              6,
+              11,
+              8,
+              3
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2025-09-06 Randwick Race 1-10",
+            "race": 2,
+            "baseline_top4": [
+              5,
+              14,
+              19,
+              15
+            ],
+            "variant_top4": [
+              5,
+              14,
+              16,
+              1
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2025-09-06 Randwick Race 1-10",
+            "race": 4,
+            "baseline_top4": [
+              8,
+              6,
+              5,
+              1
+            ],
+            "variant_top4": [
+              6,
+              8,
+              5,
+              1
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2025-09-06 Randwick Race 1-10",
+            "race": 5,
+            "baseline_top4": [
+              2,
+              13,
+              12,
+              11
+            ],
+            "variant_top4": [
+              13,
+              2,
+              7,
+              12
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2025-09-06 Randwick Race 1-10",
+            "race": 6,
+            "baseline_top4": [
+              1,
+              3,
+              4,
+              6
+            ],
+            "variant_top4": [
+              1,
+              3,
+              16,
+              2
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          }
+        ]
+      }
+    },
+    "canterbury": {
+      "baseline": {
+        "races": 22,
+        "gold": 1,
+        "good": 10,
+        "pass": 18,
+        "top3_win": 10,
+        "top3_place": 29,
+        "0hit": 4,
+        "mrr": 0.39,
+        "changed_races": 0,
+        "examples": []
+      },
+      "context_recompute": {
+        "races": 22,
+        "gold": 0,
+        "good": 10,
+        "pass": 19,
+        "top3_win": 11,
+        "top3_place": 29,
+        "0hit": 3,
+        "mrr": 0.4051,
+        "changed_races": 16,
+        "examples": [
+          {
+            "meeting": "2026-06-08 Canterbury Race 1-8",
+            "race": 3,
+            "baseline_top4": [
+              7,
+              1,
+              8,
+              3
+            ],
+            "variant_top4": [
+              8,
+              3,
+              1,
+              9
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-06-08 Canterbury Race 1-8",
+            "race": 4,
+            "baseline_top4": [
+              1,
+              6,
+              4,
+              5
+            ],
+            "variant_top4": [
+              1,
+              4,
+              6,
+              7
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-06-08 Canterbury Race 1-8",
+            "race": 5,
+            "baseline_top4": [
+              3,
+              4,
+              8,
+              5
+            ],
+            "variant_top4": [
+              3,
+              4,
+              8,
+              6
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-06-08 Canterbury Race 1-8",
+            "race": 6,
+            "baseline_top4": [
+              10,
+              8,
+              2,
+              5
+            ],
+            "variant_top4": [
+              8,
+              10,
+              5,
+              2
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-06-08 Canterbury Race 1-8",
+            "race": 7,
+            "baseline_top4": [
+              18,
+              7,
+              19,
+              2
+            ],
+            "variant_top4": [
+              18,
+              12,
+              11,
+              9
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-06-08 Canterbury Race 1-8",
+            "race": 8,
+            "baseline_top4": [
+              11,
+              8,
+              3,
+              6
+            ],
+            "variant_top4": [
+              6,
+              11,
+              8,
+              3
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-04-22 Canterbury Race 1-8",
+            "race": 3,
+            "baseline_top4": [
+              13,
+              7,
+              11,
+              3
+            ],
+            "variant_top4": [
+              13,
+              7,
+              4,
+              11
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-04-22 Canterbury Race 1-8",
+            "race": 4,
+            "baseline_top4": [
+              2,
+              1,
+              6,
+              7
+            ],
+            "variant_top4": [
+              2,
+              1,
+              6,
+              3
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-04-22 Canterbury Race 1-8",
+            "race": 6,
+            "baseline_top4": [
+              4,
+              10,
+              3,
+              5
+            ],
+            "variant_top4": [
+              4,
+              10,
+              5,
+              3
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-04-22 Canterbury Race 1-8",
+            "race": 7,
+            "baseline_top4": [
+              1,
+              13,
+              3,
+              12
+            ],
+            "variant_top4": [
+              1,
+              13,
+              12,
+              9
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          }
+        ]
+      }
+    },
+    "tight_turn": {
+      "baseline": {
+        "races": 47,
+        "gold": 6,
+        "good": 18,
+        "pass": 42,
+        "top3_win": 23,
+        "top3_place": 66,
+        "0hit": 5,
+        "mrr": 0.4055,
+        "changed_races": 0,
+        "examples": []
+      },
+      "context_recompute": {
+        "races": 47,
+        "gold": 6,
+        "good": 22,
+        "pass": 41,
+        "top3_win": 26,
+        "top3_place": 69,
+        "0hit": 6,
+        "mrr": 0.4308,
+        "changed_races": 36,
+        "examples": [
+          {
+            "meeting": "2026-06-08 Canterbury Race 1-8",
+            "race": 3,
+            "baseline_top4": [
+              7,
+              1,
+              8,
+              3
+            ],
+            "variant_top4": [
+              8,
+              3,
+              1,
+              9
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-06-08 Canterbury Race 1-8",
+            "race": 4,
+            "baseline_top4": [
+              1,
+              6,
+              4,
+              5
+            ],
+            "variant_top4": [
+              1,
+              4,
+              6,
+              7
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-06-08 Canterbury Race 1-8",
+            "race": 5,
+            "baseline_top4": [
+              3,
+              4,
+              8,
+              5
+            ],
+            "variant_top4": [
+              3,
+              4,
+              8,
+              6
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-06-08 Canterbury Race 1-8",
+            "race": 6,
+            "baseline_top4": [
+              10,
+              8,
+              2,
+              5
+            ],
+            "variant_top4": [
+              8,
+              10,
+              5,
+              2
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-06-08 Canterbury Race 1-8",
+            "race": 7,
+            "baseline_top4": [
+              18,
+              7,
+              19,
+              2
+            ],
+            "variant_top4": [
+              18,
+              12,
+              11,
+              9
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-06-08 Canterbury Race 1-8",
+            "race": 8,
+            "baseline_top4": [
+              11,
+              8,
+              3,
+              6
+            ],
+            "variant_top4": [
+              6,
+              11,
+              8,
+              3
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-04-17 Cranbourne Race 1-8",
+            "race": 1,
+            "baseline_top4": [
+              6,
+              5,
+              4,
+              2
+            ],
+            "variant_top4": [
+              5,
+              6,
+              4,
+              2
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-04-17 Cranbourne Race 1-8",
+            "race": 2,
+            "baseline_top4": [
+              8,
+              3,
+              9,
+              10
+            ],
+            "variant_top4": [
+              8,
+              10,
+              3,
+              9
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-04-17 Cranbourne Race 1-8",
+            "race": 4,
+            "baseline_top4": [
+              2,
+              8,
+              3,
+              6
+            ],
+            "variant_top4": [
+              2,
+              6,
+              8,
+              3
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          },
+          {
+            "meeting": "2026-04-17 Cranbourne Race 1-8",
+            "race": 5,
+            "baseline_top4": [
+              3,
+              2,
+              6,
+              1
+            ],
+            "variant_top4": [
+              2,
+              3,
+              6,
+              1
+            ],
+            "context": {
+              "venue": true,
+              "date": true,
+              "going": true,
+              "rail_position": true,
+              "weather_summary": true,
+              "track_profile": true
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,2909 @@
+{
+  "archive": {
+    "results": {
+      "Baseline": {
+        "races": 444,
+        "champion": 104,
+        "gold": 18,
+        "good": 89,
+        "pass": 168,
+        "winner_top3": 220,
+        "winner_top5": 303,
+        "top3_places": 567,
+        "top3_slots": 1332,
+        "hit_distribution": {
+          "3": 18,
+          "2": 150,
+          "0": 63,
+          "1": 213
+        }
+      },
+      "V1 Formline Merit Rescue": {
+        "races": 444,
+        "champion": 102,
+        "gold": 18,
+        "good": 88,
+        "pass": 167,
+        "winner_top3": 218,
+        "winner_top5": 304,
+        "top3_places": 567,
+        "top3_slots": 1332,
+        "hit_distribution": {
+          "3": 18,
+          "2": 149,
+          "0": 62,
+          "1": 215
+        }
+      },
+      "V2 Trial/JT Comeback Rescue": {
+        "races": 444,
+        "champion": 102,
+        "gold": 20,
+        "good": 91,
+        "pass": 171,
+        "winner_top3": 217,
+        "winner_top5": 301,
+        "top3_places": 572,
+        "top3_slots": 1332,
+        "hit_distribution": {
+          "3": 20,
+          "2": 151,
+          "0": 63,
+          "1": 210
+        }
+      },
+      "V3 Sectional Hardness Relief": {
+        "races": 444,
+        "champion": 101,
+        "gold": 19,
+        "good": 75,
+        "pass": 159,
+        "winner_top3": 215,
+        "winner_top5": 300,
+        "top3_places": 552,
+        "top3_slots": 1332,
+        "hit_distribution": {
+          "3": 19,
+          "2": 140,
+          "1": 215,
+          "0": 70
+        }
+      },
+      "V4 Combined Conservative Overlay": {
+        "races": 444,
+        "champion": 99,
+        "gold": 19,
+        "good": 80,
+        "pass": 160,
+        "winner_top3": 216,
+        "winner_top5": 305,
+        "top3_places": 563,
+        "top3_slots": 1332,
+        "hit_distribution": {
+          "3": 19,
+          "2": 141,
+          "1": 224,
+          "0": 60
+        }
+      }
+    },
+    "by_condition": {
+      "Other": {
+        "Baseline": {
+          "races": 301,
+          "champion": 75,
+          "gold": 14,
+          "good": 70,
+          "pass": 125,
+          "winner_top3": 155,
+          "winner_top5": 208,
+          "top3_places": 401,
+          "top3_slots": 903,
+          "hit_distribution": {
+            "3": 14,
+            "2": 111,
+            "0": 39,
+            "1": 137
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 301,
+          "champion": 75,
+          "gold": 13,
+          "good": 69,
+          "pass": 125,
+          "winner_top3": 154,
+          "winner_top5": 208,
+          "top3_places": 400,
+          "top3_slots": 903,
+          "hit_distribution": {
+            "3": 13,
+            "2": 112,
+            "0": 39,
+            "1": 137
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 301,
+          "champion": 75,
+          "gold": 14,
+          "good": 71,
+          "pass": 126,
+          "winner_top3": 156,
+          "winner_top5": 208,
+          "top3_places": 403,
+          "top3_slots": 903,
+          "hit_distribution": {
+            "3": 14,
+            "2": 112,
+            "0": 38,
+            "1": 137
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 301,
+          "champion": 71,
+          "gold": 13,
+          "good": 55,
+          "pass": 113,
+          "winner_top3": 148,
+          "winner_top5": 207,
+          "top3_places": 385,
+          "top3_slots": 903,
+          "hit_distribution": {
+            "3": 13,
+            "2": 100,
+            "1": 146,
+            "0": 42
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 301,
+          "champion": 71,
+          "gold": 14,
+          "good": 61,
+          "pass": 113,
+          "winner_top3": 151,
+          "winner_top5": 210,
+          "top3_places": 390,
+          "top3_slots": 903,
+          "hit_distribution": {
+            "3": 14,
+            "2": 99,
+            "1": 150,
+            "0": 38
+          }
+        }
+      },
+      "Good/Firm": {
+        "Baseline": {
+          "races": 43,
+          "champion": 10,
+          "gold": 0,
+          "good": 4,
+          "pass": 16,
+          "winner_top3": 25,
+          "winner_top5": 33,
+          "top3_places": 54,
+          "top3_slots": 129,
+          "hit_distribution": {
+            "2": 16,
+            "1": 22,
+            "0": 5
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 43,
+          "champion": 9,
+          "gold": 1,
+          "good": 4,
+          "pass": 16,
+          "winner_top3": 25,
+          "winner_top5": 33,
+          "top3_places": 57,
+          "top3_slots": 129,
+          "hit_distribution": {
+            "2": 15,
+            "1": 24,
+            "3": 1,
+            "0": 3
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 43,
+          "champion": 10,
+          "gold": 2,
+          "good": 6,
+          "pass": 18,
+          "winner_top3": 23,
+          "winner_top5": 33,
+          "top3_places": 57,
+          "top3_slots": 129,
+          "hit_distribution": {
+            "2": 16,
+            "3": 2,
+            "1": 19,
+            "0": 6
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 43,
+          "champion": 11,
+          "gold": 1,
+          "good": 5,
+          "pass": 15,
+          "winner_top3": 25,
+          "winner_top5": 34,
+          "top3_places": 51,
+          "top3_slots": 129,
+          "hit_distribution": {
+            "2": 14,
+            "1": 20,
+            "0": 8,
+            "3": 1
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 43,
+          "champion": 11,
+          "gold": 1,
+          "good": 5,
+          "pass": 17,
+          "winner_top3": 25,
+          "winner_top5": 32,
+          "top3_places": 57,
+          "top3_slots": 129,
+          "hit_distribution": {
+            "2": 16,
+            "1": 22,
+            "3": 1,
+            "0": 4
+          }
+        }
+      },
+      "Soft": {
+        "Baseline": {
+          "races": 67,
+          "champion": 11,
+          "gold": 3,
+          "good": 11,
+          "pass": 20,
+          "winner_top3": 25,
+          "winner_top5": 40,
+          "top3_places": 78,
+          "top3_slots": 201,
+          "hit_distribution": {
+            "3": 3,
+            "2": 17,
+            "1": 35,
+            "0": 12
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 67,
+          "champion": 11,
+          "gold": 3,
+          "good": 11,
+          "pass": 20,
+          "winner_top3": 25,
+          "winner_top5": 41,
+          "top3_places": 79,
+          "top3_slots": 201,
+          "hit_distribution": {
+            "3": 3,
+            "2": 17,
+            "1": 36,
+            "0": 11
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 67,
+          "champion": 10,
+          "gold": 3,
+          "good": 10,
+          "pass": 19,
+          "winner_top3": 24,
+          "winner_top5": 37,
+          "top3_places": 76,
+          "top3_slots": 201,
+          "hit_distribution": {
+            "3": 3,
+            "2": 16,
+            "1": 35,
+            "0": 13
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 67,
+          "champion": 11,
+          "gold": 4,
+          "good": 11,
+          "pass": 21,
+          "winner_top3": 26,
+          "winner_top5": 39,
+          "top3_places": 79,
+          "top3_slots": 201,
+          "hit_distribution": {
+            "3": 4,
+            "2": 17,
+            "1": 33,
+            "0": 13
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 67,
+          "champion": 10,
+          "gold": 3,
+          "good": 10,
+          "pass": 21,
+          "winner_top3": 26,
+          "winner_top5": 40,
+          "top3_places": 80,
+          "top3_slots": 201,
+          "hit_distribution": {
+            "3": 3,
+            "2": 18,
+            "1": 35,
+            "0": 11
+          }
+        }
+      },
+      "Heavy": {
+        "Baseline": {
+          "races": 33,
+          "champion": 8,
+          "gold": 1,
+          "good": 4,
+          "pass": 7,
+          "winner_top3": 15,
+          "winner_top5": 22,
+          "top3_places": 34,
+          "top3_slots": 99,
+          "hit_distribution": {
+            "1": 19,
+            "2": 6,
+            "0": 7,
+            "3": 1
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 33,
+          "champion": 7,
+          "gold": 1,
+          "good": 4,
+          "pass": 6,
+          "winner_top3": 14,
+          "winner_top5": 22,
+          "top3_places": 31,
+          "top3_slots": 99,
+          "hit_distribution": {
+            "0": 9,
+            "2": 5,
+            "1": 18,
+            "3": 1
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 33,
+          "champion": 7,
+          "gold": 1,
+          "good": 4,
+          "pass": 8,
+          "winner_top3": 14,
+          "winner_top5": 23,
+          "top3_places": 36,
+          "top3_slots": 99,
+          "hit_distribution": {
+            "0": 6,
+            "1": 19,
+            "2": 7,
+            "3": 1
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 33,
+          "champion": 8,
+          "gold": 1,
+          "good": 4,
+          "pass": 10,
+          "winner_top3": 16,
+          "winner_top5": 20,
+          "top3_places": 37,
+          "top3_slots": 99,
+          "hit_distribution": {
+            "0": 7,
+            "2": 9,
+            "3": 1,
+            "1": 16
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 33,
+          "champion": 7,
+          "gold": 1,
+          "good": 4,
+          "pass": 9,
+          "winner_top3": 14,
+          "winner_top5": 23,
+          "top3_places": 36,
+          "top3_slots": 99,
+          "hit_distribution": {
+            "0": 7,
+            "2": 8,
+            "1": 17,
+            "3": 1
+          }
+        }
+      }
+    },
+    "by_class": {
+      "Other": {
+        "Baseline": {
+          "races": 330,
+          "champion": 80,
+          "gold": 15,
+          "good": 74,
+          "pass": 133,
+          "winner_top3": 168,
+          "winner_top5": 228,
+          "top3_places": 434,
+          "top3_slots": 990,
+          "hit_distribution": {
+            "3": 15,
+            "2": 118,
+            "0": 44,
+            "1": 153
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 330,
+          "champion": 80,
+          "gold": 15,
+          "good": 73,
+          "pass": 133,
+          "winner_top3": 167,
+          "winner_top5": 228,
+          "top3_places": 434,
+          "top3_slots": 990,
+          "hit_distribution": {
+            "3": 15,
+            "2": 118,
+            "0": 44,
+            "1": 153
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 330,
+          "champion": 80,
+          "gold": 16,
+          "good": 76,
+          "pass": 138,
+          "winner_top3": 170,
+          "winner_top5": 228,
+          "top3_places": 441,
+          "top3_slots": 990,
+          "hit_distribution": {
+            "3": 16,
+            "2": 122,
+            "0": 43,
+            "1": 149
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 330,
+          "champion": 76,
+          "gold": 14,
+          "good": 59,
+          "pass": 124,
+          "winner_top3": 163,
+          "winner_top5": 226,
+          "top3_places": 420,
+          "top3_slots": 990,
+          "hit_distribution": {
+            "3": 14,
+            "2": 110,
+            "1": 158,
+            "0": 48
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 330,
+          "champion": 76,
+          "gold": 16,
+          "good": 65,
+          "pass": 123,
+          "winner_top3": 165,
+          "winner_top5": 230,
+          "top3_places": 427,
+          "top3_slots": 990,
+          "hit_distribution": {
+            "3": 16,
+            "2": 107,
+            "1": 165,
+            "0": 42
+          }
+        }
+      },
+      "BM58-70": {
+        "Baseline": {
+          "races": 59,
+          "champion": 12,
+          "gold": 1,
+          "good": 9,
+          "pass": 18,
+          "winner_top3": 29,
+          "winner_top5": 39,
+          "top3_places": 71,
+          "top3_slots": 177,
+          "hit_distribution": {
+            "2": 17,
+            "1": 34,
+            "0": 7,
+            "3": 1
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 59,
+          "champion": 12,
+          "gold": 1,
+          "good": 9,
+          "pass": 17,
+          "winner_top3": 28,
+          "winner_top5": 40,
+          "top3_places": 70,
+          "top3_slots": 177,
+          "hit_distribution": {
+            "2": 16,
+            "1": 35,
+            "0": 7,
+            "3": 1
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 59,
+          "champion": 12,
+          "gold": 1,
+          "good": 10,
+          "pass": 17,
+          "winner_top3": 26,
+          "winner_top5": 37,
+          "top3_places": 69,
+          "top3_slots": 177,
+          "hit_distribution": {
+            "2": 16,
+            "1": 34,
+            "0": 8,
+            "3": 1
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 59,
+          "champion": 13,
+          "gold": 2,
+          "good": 10,
+          "pass": 18,
+          "winner_top3": 29,
+          "winner_top5": 37,
+          "top3_places": 71,
+          "top3_slots": 177,
+          "hit_distribution": {
+            "2": 16,
+            "1": 33,
+            "0": 8,
+            "3": 2
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 59,
+          "champion": 13,
+          "gold": 1,
+          "good": 10,
+          "pass": 19,
+          "winner_top3": 29,
+          "winner_top5": 41,
+          "top3_places": 72,
+          "top3_slots": 177,
+          "hit_distribution": {
+            "2": 18,
+            "1": 33,
+            "0": 7,
+            "3": 1
+          }
+        }
+      },
+      "Group 2/3": {
+        "Baseline": {
+          "races": 16,
+          "champion": 2,
+          "gold": 0,
+          "good": 0,
+          "pass": 3,
+          "winner_top3": 6,
+          "winner_top5": 9,
+          "top3_places": 15,
+          "top3_slots": 48,
+          "hit_distribution": {
+            "1": 9,
+            "2": 3,
+            "0": 4
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 16,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 3,
+          "winner_top3": 6,
+          "winner_top5": 10,
+          "top3_places": 16,
+          "top3_slots": 48,
+          "hit_distribution": {
+            "1": 10,
+            "2": 3,
+            "0": 3
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 16,
+          "champion": 2,
+          "gold": 0,
+          "good": 0,
+          "pass": 3,
+          "winner_top3": 4,
+          "winner_top5": 8,
+          "top3_places": 15,
+          "top3_slots": 48,
+          "hit_distribution": {
+            "1": 9,
+            "2": 3,
+            "0": 4
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 16,
+          "champion": 2,
+          "gold": 0,
+          "good": 0,
+          "pass": 2,
+          "winner_top3": 5,
+          "winner_top5": 10,
+          "top3_places": 12,
+          "top3_slots": 48,
+          "hit_distribution": {
+            "1": 8,
+            "2": 2,
+            "0": 6
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 16,
+          "champion": 2,
+          "gold": 0,
+          "good": 0,
+          "pass": 4,
+          "winner_top3": 5,
+          "winner_top5": 8,
+          "top3_places": 16,
+          "top3_slots": 48,
+          "hit_distribution": {
+            "1": 8,
+            "2": 4,
+            "0": 4
+          }
+        }
+      },
+      "Maiden": {
+        "Baseline": {
+          "races": 23,
+          "champion": 7,
+          "gold": 1,
+          "good": 3,
+          "pass": 10,
+          "winner_top3": 12,
+          "winner_top5": 15,
+          "top3_places": 30,
+          "top3_slots": 69,
+          "hit_distribution": {
+            "0": 4,
+            "3": 1,
+            "2": 9,
+            "1": 9
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 23,
+          "champion": 6,
+          "gold": 1,
+          "good": 3,
+          "pass": 10,
+          "winner_top3": 12,
+          "winner_top5": 15,
+          "top3_places": 30,
+          "top3_slots": 69,
+          "hit_distribution": {
+            "0": 4,
+            "3": 1,
+            "2": 9,
+            "1": 9
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 23,
+          "champion": 5,
+          "gold": 1,
+          "good": 3,
+          "pass": 9,
+          "winner_top3": 11,
+          "winner_top5": 16,
+          "top3_places": 29,
+          "top3_slots": 69,
+          "hit_distribution": {
+            "0": 4,
+            "3": 1,
+            "2": 8,
+            "1": 10
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 23,
+          "champion": 7,
+          "gold": 2,
+          "good": 3,
+          "pass": 11,
+          "winner_top3": 12,
+          "winner_top5": 15,
+          "top3_places": 32,
+          "top3_slots": 69,
+          "hit_distribution": {
+            "0": 4,
+            "3": 2,
+            "2": 9,
+            "1": 8
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 23,
+          "champion": 5,
+          "gold": 1,
+          "good": 3,
+          "pass": 10,
+          "winner_top3": 12,
+          "winner_top5": 16,
+          "top3_places": 31,
+          "top3_slots": 69,
+          "hit_distribution": {
+            "0": 3,
+            "3": 1,
+            "2": 9,
+            "1": 10
+          }
+        }
+      },
+      "Group 1": {
+        "Baseline": {
+          "races": 6,
+          "champion": 0,
+          "gold": 0,
+          "good": 1,
+          "pass": 1,
+          "winner_top3": 1,
+          "winner_top5": 4,
+          "top3_places": 5,
+          "top3_slots": 18,
+          "hit_distribution": {
+            "2": 1,
+            "1": 3,
+            "0": 2
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 6,
+          "champion": 0,
+          "gold": 0,
+          "good": 1,
+          "pass": 1,
+          "winner_top3": 1,
+          "winner_top5": 3,
+          "top3_places": 5,
+          "top3_slots": 18,
+          "hit_distribution": {
+            "2": 1,
+            "1": 3,
+            "0": 2
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 6,
+          "champion": 0,
+          "gold": 1,
+          "good": 1,
+          "pass": 1,
+          "winner_top3": 2,
+          "winner_top5": 4,
+          "top3_places": 6,
+          "top3_slots": 18,
+          "hit_distribution": {
+            "3": 1,
+            "1": 3,
+            "0": 2
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 6,
+          "champion": 0,
+          "gold": 0,
+          "good": 1,
+          "pass": 1,
+          "winner_top3": 1,
+          "winner_top5": 4,
+          "top3_places": 5,
+          "top3_slots": 18,
+          "hit_distribution": {
+            "2": 1,
+            "1": 3,
+            "0": 2
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 6,
+          "champion": 0,
+          "gold": 0,
+          "good": 1,
+          "pass": 1,
+          "winner_top3": 0,
+          "winner_top5": 2,
+          "top3_places": 5,
+          "top3_slots": 18,
+          "hit_distribution": {
+            "2": 1,
+            "1": 3,
+            "0": 2
+          }
+        }
+      },
+      "BM72-84": {
+        "Baseline": {
+          "races": 8,
+          "champion": 3,
+          "gold": 1,
+          "good": 2,
+          "pass": 2,
+          "winner_top3": 3,
+          "winner_top5": 7,
+          "top3_places": 9,
+          "top3_slots": 24,
+          "hit_distribution": {
+            "0": 2,
+            "1": 4,
+            "3": 1,
+            "2": 1
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 8,
+          "champion": 3,
+          "gold": 1,
+          "good": 2,
+          "pass": 2,
+          "winner_top3": 3,
+          "winner_top5": 7,
+          "top3_places": 9,
+          "top3_slots": 24,
+          "hit_distribution": {
+            "0": 2,
+            "1": 4,
+            "3": 1,
+            "2": 1
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 8,
+          "champion": 3,
+          "gold": 1,
+          "good": 1,
+          "pass": 2,
+          "winner_top3": 3,
+          "winner_top5": 7,
+          "top3_places": 9,
+          "top3_slots": 24,
+          "hit_distribution": {
+            "0": 2,
+            "1": 4,
+            "3": 1,
+            "2": 1
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 8,
+          "champion": 3,
+          "gold": 1,
+          "good": 2,
+          "pass": 2,
+          "winner_top3": 4,
+          "winner_top5": 7,
+          "top3_places": 9,
+          "top3_slots": 24,
+          "hit_distribution": {
+            "0": 2,
+            "1": 4,
+            "3": 1,
+            "2": 1
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 8,
+          "champion": 3,
+          "gold": 1,
+          "good": 1,
+          "pass": 2,
+          "winner_top3": 4,
+          "winner_top5": 7,
+          "top3_places": 9,
+          "top3_slots": 24,
+          "hit_distribution": {
+            "0": 2,
+            "1": 4,
+            "3": 1,
+            "2": 1
+          }
+        }
+      },
+      "BM88+": {
+        "Baseline": {
+          "races": 2,
+          "champion": 0,
+          "gold": 0,
+          "good": 0,
+          "pass": 1,
+          "winner_top3": 1,
+          "winner_top5": 1,
+          "top3_places": 3,
+          "top3_slots": 6,
+          "hit_distribution": {
+            "1": 1,
+            "2": 1
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 2,
+          "champion": 0,
+          "gold": 0,
+          "good": 0,
+          "pass": 1,
+          "winner_top3": 1,
+          "winner_top5": 1,
+          "top3_places": 3,
+          "top3_slots": 6,
+          "hit_distribution": {
+            "1": 1,
+            "2": 1
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 2,
+          "champion": 0,
+          "gold": 0,
+          "good": 0,
+          "pass": 1,
+          "winner_top3": 1,
+          "winner_top5": 1,
+          "top3_places": 3,
+          "top3_slots": 6,
+          "hit_distribution": {
+            "1": 1,
+            "2": 1
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 2,
+          "champion": 0,
+          "gold": 0,
+          "good": 0,
+          "pass": 1,
+          "winner_top3": 1,
+          "winner_top5": 1,
+          "top3_places": 3,
+          "top3_slots": 6,
+          "hit_distribution": {
+            "1": 1,
+            "2": 1
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 2,
+          "champion": 0,
+          "gold": 0,
+          "good": 0,
+          "pass": 1,
+          "winner_top3": 1,
+          "winner_top5": 1,
+          "top3_places": 3,
+          "top3_slots": 6,
+          "hit_distribution": {
+            "1": 1,
+            "2": 1
+          }
+        }
+      }
+    },
+    "by_field": {
+      "Field <=8": {
+        "Baseline": {
+          "races": 84,
+          "champion": 29,
+          "gold": 9,
+          "good": 30,
+          "pass": 49,
+          "winner_top3": 51,
+          "winner_top5": 76,
+          "top3_places": 136,
+          "top3_slots": 252,
+          "hit_distribution": {
+            "3": 9,
+            "2": 40,
+            "1": 29,
+            "0": 6
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 84,
+          "champion": 29,
+          "gold": 10,
+          "good": 30,
+          "pass": 49,
+          "winner_top3": 51,
+          "winner_top5": 76,
+          "top3_places": 137,
+          "top3_slots": 252,
+          "hit_distribution": {
+            "3": 10,
+            "2": 39,
+            "1": 29,
+            "0": 6
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 84,
+          "champion": 29,
+          "gold": 11,
+          "good": 31,
+          "pass": 51,
+          "winner_top3": 53,
+          "winner_top5": 76,
+          "top3_places": 141,
+          "top3_slots": 252,
+          "hit_distribution": {
+            "3": 11,
+            "2": 40,
+            "1": 28,
+            "0": 5
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 84,
+          "champion": 27,
+          "gold": 10,
+          "good": 25,
+          "pass": 55,
+          "winner_top3": 54,
+          "winner_top5": 75,
+          "top3_places": 145,
+          "top3_slots": 252,
+          "hit_distribution": {
+            "3": 10,
+            "2": 45,
+            "1": 25,
+            "0": 4
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 84,
+          "champion": 28,
+          "gold": 10,
+          "good": 27,
+          "pass": 54,
+          "winner_top3": 53,
+          "winner_top5": 75,
+          "top3_places": 143,
+          "top3_slots": 252,
+          "hit_distribution": {
+            "3": 10,
+            "2": 44,
+            "1": 25,
+            "0": 5
+          }
+        }
+      },
+      "Field 13+": {
+        "Baseline": {
+          "races": 108,
+          "champion": 18,
+          "gold": 2,
+          "good": 13,
+          "pass": 33,
+          "winner_top3": 47,
+          "winner_top5": 69,
+          "top3_places": 119,
+          "top3_slots": 324,
+          "hit_distribution": {
+            "2": 31,
+            "1": 51,
+            "0": 24,
+            "3": 2
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 108,
+          "champion": 17,
+          "gold": 1,
+          "good": 12,
+          "pass": 33,
+          "winner_top3": 46,
+          "winner_top5": 69,
+          "top3_places": 120,
+          "top3_slots": 324,
+          "hit_distribution": {
+            "2": 32,
+            "1": 53,
+            "0": 22,
+            "3": 1
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 108,
+          "champion": 18,
+          "gold": 2,
+          "good": 14,
+          "pass": 36,
+          "winner_top3": 46,
+          "winner_top5": 67,
+          "top3_places": 124,
+          "top3_slots": 324,
+          "hit_distribution": {
+            "2": 34,
+            "1": 50,
+            "0": 22,
+            "3": 2
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 108,
+          "champion": 20,
+          "gold": 3,
+          "good": 12,
+          "pass": 28,
+          "winner_top3": 42,
+          "winner_top5": 65,
+          "top3_places": 110,
+          "top3_slots": 324,
+          "hit_distribution": {
+            "1": 51,
+            "0": 29,
+            "2": 25,
+            "3": 3
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 108,
+          "champion": 19,
+          "gold": 4,
+          "good": 13,
+          "pass": 31,
+          "winner_top3": 44,
+          "winner_top5": 66,
+          "top3_places": 118,
+          "top3_slots": 324,
+          "hit_distribution": {
+            "2": 27,
+            "1": 52,
+            "0": 25,
+            "3": 4
+          }
+        }
+      },
+      "Field 9-12": {
+        "Baseline": {
+          "races": 252,
+          "champion": 57,
+          "gold": 7,
+          "good": 46,
+          "pass": 86,
+          "winner_top3": 122,
+          "winner_top5": 158,
+          "top3_places": 312,
+          "top3_slots": 756,
+          "hit_distribution": {
+            "2": 79,
+            "0": 33,
+            "3": 7,
+            "1": 133
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 252,
+          "champion": 56,
+          "gold": 7,
+          "good": 46,
+          "pass": 85,
+          "winner_top3": 121,
+          "winner_top5": 159,
+          "top3_places": 310,
+          "top3_slots": 756,
+          "hit_distribution": {
+            "2": 78,
+            "0": 34,
+            "3": 7,
+            "1": 133
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 252,
+          "champion": 55,
+          "gold": 7,
+          "good": 46,
+          "pass": 84,
+          "winner_top3": 118,
+          "winner_top5": 158,
+          "top3_places": 307,
+          "top3_slots": 756,
+          "hit_distribution": {
+            "2": 77,
+            "0": 36,
+            "3": 7,
+            "1": 132
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 252,
+          "champion": 54,
+          "gold": 6,
+          "good": 38,
+          "pass": 76,
+          "winner_top3": 119,
+          "winner_top5": 160,
+          "top3_places": 297,
+          "top3_slots": 756,
+          "hit_distribution": {
+            "1": 139,
+            "0": 37,
+            "2": 70,
+            "3": 6
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 252,
+          "champion": 52,
+          "gold": 5,
+          "good": 40,
+          "pass": 75,
+          "winner_top3": 119,
+          "winner_top5": 164,
+          "top3_places": 302,
+          "top3_slots": 756,
+          "hit_distribution": {
+            "1": 147,
+            "0": 30,
+            "2": 70,
+            "3": 5
+          }
+        }
+      }
+    },
+    "candidate_stats": {
+      "V1 Formline Merit Rescue": {
+        "races_with_candidate": 67,
+        "candidate_count": 86,
+        "candidate_actual_top3": 23
+      },
+      "V2 Trial/JT Comeback Rescue": {
+        "races_with_candidate": 85,
+        "candidate_count": 188,
+        "candidate_actual_top3": 62
+      },
+      "V3 Sectional Hardness Relief": {
+        "races_with_candidate": 342,
+        "candidate_count": 1127,
+        "candidate_actual_top3": 286
+      },
+      "V4 Combined Conservative Overlay": {
+        "races_with_candidate": 385,
+        "candidate_count": 385,
+        "candidate_actual_top3": 123
+      }
+    },
+    "reason_counts": {
+      "V1 Formline Merit Rescue": {
+        "class_rating_support": 16,
+        "recent_form_not_hard_block": 15,
+        "strong_formline_hidden_merit": 64,
+        "balanced_formline_class_confidence": 15
+      },
+      "V2 Trial/JT Comeback Rescue": {
+        "strong_trial_signal": 188,
+        "jt_matrix_support": 132,
+        "jockey_support": 85,
+        "jockey_horse_fit_support": 136,
+        "recent_form_not_hard_block": 64,
+        "trainer_support": 103
+      },
+      "V3 Sectional Hardness Relief": {
+        "sectional_low_score_relief": 1127,
+        "track_support": 700,
+        "distance_ok": 1021,
+        "jt_support": 790,
+        "confidence_support": 828,
+        "class_support": 255,
+        "rating_support": 332,
+        "trial_support": 60,
+        "formline_support": 54
+      },
+      "V4 Combined Conservative Overlay": {
+        "sectional_low_score_relief": 301,
+        "track_support": 211,
+        "confidence_support": 229,
+        "distance_ok": 278,
+        "jt_support": 229,
+        "class_support": 85,
+        "rating_support": 120,
+        "strong_trial_signal": 56,
+        "jt_matrix_support": 48,
+        "jockey_support": 34,
+        "jockey_horse_fit_support": 46,
+        "trainer_support": 39,
+        "recent_form_not_hard_block": 25,
+        "strong_formline_hidden_merit": 27,
+        "balanced_formline_class_confidence": 5,
+        "formline_support": 16,
+        "trial_support": 6,
+        "class_rating_support": 1
+      }
+    },
+    "examples": [
+      {
+        "label": "V3 Sectional Hardness Relief",
+        "meeting": "2025-08-02 Flemington Race 1-9",
+        "race": 2,
+        "baseline_hits": 3,
+        "shadow_hits": 2,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field <=8",
+        "baseline_top3": [
+          "#7 Muktamil (rank 1, pos 3, score 67.86)",
+          "#6 Bold Soul (rank 2, pos 1, score 67.51)",
+          "#2 Changingoftheguard (rank 3, pos 2, score 65.84)"
+        ],
+        "shadow_top3": [
+          "#7 Muktamil (rank 1, pos 3, score 67.86)",
+          "#6 Bold Soul (rank 2, pos 1, score 67.51)",
+          "#8 Samuel Langhorne (rank 5, pos 7, score 66.59, +1.25 v3_sectional_hardness_relief)"
+        ]
+      },
+      {
+        "label": "V4 Combined Conservative Overlay",
+        "meeting": "2025-08-02 Flemington Race 1-9",
+        "race": 2,
+        "baseline_hits": 3,
+        "shadow_hits": 2,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field <=8",
+        "baseline_top3": [
+          "#7 Muktamil (rank 1, pos 3, score 67.86)",
+          "#6 Bold Soul (rank 2, pos 1, score 67.51)",
+          "#2 Changingoftheguard (rank 3, pos 2, score 65.84)"
+        ],
+        "shadow_top3": [
+          "#7 Muktamil (rank 1, pos 3, score 67.86)",
+          "#6 Bold Soul (rank 2, pos 1, score 67.51)",
+          "#8 Samuel Langhorne (rank 5, pos 7, score 66.59, +1.25 v4_combined_conservative)"
+        ]
+      },
+      {
+        "label": "V3 Sectional Hardness Relief",
+        "meeting": "2025-08-02 Flemington Race 1-9",
+        "race": 3,
+        "baseline_hits": 2,
+        "shadow_hits": 1,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#6 De Bergerac (rank 1, pos 1, score 69.55)",
+          "#10 Prevailed (rank 2, pos 4, score 68.72)",
+          "#2 Capper Thirtynine (rank 3, pos 2, score 68.28)"
+        ],
+        "shadow_top3": [
+          "#6 De Bergerac (rank 1, pos 1, score 69.55)",
+          "#10 Prevailed (rank 2, pos 4, score 68.72)",
+          "#15 She's Pretty Rich (rank 4, pos 11, score 68.45, +1.12 v3_sectional_hardness_relief)"
+        ]
+      },
+      {
+        "label": "V3 Sectional Hardness Relief",
+        "meeting": "2025-08-02 Flemington Race 1-9",
+        "race": 4,
+        "baseline_hits": 2,
+        "shadow_hits": 1,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 9-12",
+        "baseline_top3": [
+          "#2 Losesomewinmore (rank 1, pos 1, score 66.34)",
+          "#8 Smart Little Miss (rank 2, pos 9, score 65.26)",
+          "#6 Call To Glory (rank 3, pos 2, score 64.50)"
+        ],
+        "shadow_top3": [
+          "#2 Losesomewinmore (rank 1, pos 1, score 66.34)",
+          "#5 Veloce Carro (rank 4, pos 6, score 65.57, +1.25 v3_sectional_hardness_relief)",
+          "#10 Commands Success (rank 5, pos 5, score 65.39, +1.12 v3_sectional_hardness_relief)"
+        ]
+      },
+      {
+        "label": "V4 Combined Conservative Overlay",
+        "meeting": "2025-08-02 Flemington Race 1-9",
+        "race": 4,
+        "baseline_hits": 2,
+        "shadow_hits": 1,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 9-12",
+        "baseline_top3": [
+          "#2 Losesomewinmore (rank 1, pos 1, score 66.34)",
+          "#8 Smart Little Miss (rank 2, pos 9, score 65.26)",
+          "#6 Call To Glory (rank 3, pos 2, score 64.50)"
+        ],
+        "shadow_top3": [
+          "#2 Losesomewinmore (rank 1, pos 1, score 66.34)",
+          "#5 Veloce Carro (rank 4, pos 6, score 65.57, +1.25 v4_combined_conservative)",
+          "#8 Smart Little Miss (rank 2, pos 9, score 65.26)"
+        ]
+      },
+      {
+        "label": "V3 Sectional Hardness Relief",
+        "meeting": "2025-08-02 Flemington Race 1-9",
+        "race": 6,
+        "baseline_hits": 3,
+        "shadow_hits": 1,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 9-12",
+        "baseline_top3": [
+          "#7 Running By (rank 1, pos 2, score 67.23)",
+          "#8 Zou Sensation (rank 2, pos 1, score 66.87)",
+          "#6 Fortunate Kiss (rank 3, pos 3, score 66.82)"
+        ],
+        "shadow_top3": [
+          "#9 Green Fly (rank 4, pos 4, score 67.67, +1.25 v3_sectional_hardness_relief)",
+          "#2 Munhamek (rank 5, pos 8, score 67.52, +1.25 v3_sectional_hardness_relief)",
+          "#7 Running By (rank 1, pos 2, score 67.23)"
+        ]
+      },
+      {
+        "label": "V4 Combined Conservative Overlay",
+        "meeting": "2025-08-02 Flemington Race 1-9",
+        "race": 6,
+        "baseline_hits": 3,
+        "shadow_hits": 2,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 9-12",
+        "baseline_top3": [
+          "#7 Running By (rank 1, pos 2, score 67.23)",
+          "#8 Zou Sensation (rank 2, pos 1, score 66.87)",
+          "#6 Fortunate Kiss (rank 3, pos 3, score 66.82)"
+        ],
+        "shadow_top3": [
+          "#9 Green Fly (rank 4, pos 4, score 67.67, +1.25 v4_combined_conservative)",
+          "#7 Running By (rank 1, pos 2, score 67.23)",
+          "#8 Zou Sensation (rank 2, pos 1, score 66.87)"
+        ]
+      },
+      {
+        "label": "V3 Sectional Hardness Relief",
+        "meeting": "2025-08-02 Flemington Race 1-9",
+        "race": 8,
+        "baseline_hits": 2,
+        "shadow_hits": 0,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#11 One Long Day (rank 1, pos 10, score 69.93)",
+          "#3 Hard To Cross (rank 2, pos 3, score 68.21)",
+          "#15 Too Darn Discreet (rank 3, pos 1, score 67.62)"
+        ],
+        "shadow_top3": [
+          "#11 One Long Day (rank 1, pos 10, score 69.93)",
+          "#7 Whisky On The Hill (rank 4, pos 8, score 68.72, +1.12 v3_sectional_hardness_relief)",
+          "#14 He'll Rip (rank 7, pos 11, score 68.39, +1.25 v3_sectional_hardness_relief)"
+        ]
+      },
+      {
+        "label": "V4 Combined Conservative Overlay",
+        "meeting": "2025-08-02 Flemington Race 1-9",
+        "race": 8,
+        "baseline_hits": 2,
+        "shadow_hits": 1,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#11 One Long Day (rank 1, pos 10, score 69.93)",
+          "#3 Hard To Cross (rank 2, pos 3, score 68.21)",
+          "#15 Too Darn Discreet (rank 3, pos 1, score 67.62)"
+        ],
+        "shadow_top3": [
+          "#11 One Long Day (rank 1, pos 10, score 69.93)",
+          "#14 He'll Rip (rank 7, pos 11, score 68.39, +1.25 v4_combined_conservative)",
+          "#3 Hard To Cross (rank 2, pos 3, score 68.21)"
+        ]
+      },
+      {
+        "label": "V3 Sectional Hardness Relief",
+        "meeting": "2025-08-23 Randwick Race 1-10",
+        "race": 2,
+        "baseline_hits": 2,
+        "shadow_hits": 1,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#8 Xcessive Force (rank 1, pos 2, score 68.77)",
+          "#2 Exit Fee (rank 2, pos 6, score 68.47)",
+          "#5 Neil (rank 3, pos 1, score 68.22)"
+        ],
+        "shadow_top3": [
+          "#8 Xcessive Force (rank 1, pos 2, score 68.77)",
+          "#4 Calido Magic (rank 4, pos 5, score 68.72, +1.25 v3_sectional_hardness_relief)",
+          "#2 Exit Fee (rank 2, pos 6, score 68.47)"
+        ]
+      },
+      {
+        "label": "V4 Combined Conservative Overlay",
+        "meeting": "2025-08-23 Randwick Race 1-10",
+        "race": 2,
+        "baseline_hits": 2,
+        "shadow_hits": 1,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#8 Xcessive Force (rank 1, pos 2, score 68.77)",
+          "#2 Exit Fee (rank 2, pos 6, score 68.47)",
+          "#5 Neil (rank 3, pos 1, score 68.22)"
+        ],
+        "shadow_top3": [
+          "#8 Xcessive Force (rank 1, pos 2, score 68.77)",
+          "#4 Calido Magic (rank 4, pos 5, score 68.72, +1.25 v4_combined_conservative)",
+          "#2 Exit Fee (rank 2, pos 6, score 68.47)"
+        ]
+      },
+      {
+        "label": "V3 Sectional Hardness Relief",
+        "meeting": "2025-08-23 Randwick Race 1-10",
+        "race": 3,
+        "baseline_hits": 1,
+        "shadow_hits": 2,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 9-12",
+        "baseline_top3": [
+          "#5 Bluestone (rank 1, pos 3, score 68.24)",
+          "#6 Piggyback (rank 2, pos 4, score 68.23)",
+          "#1 Juja Kibo (rank 3, pos 6, score 66.89)"
+        ],
+        "shadow_top3": [
+          "#5 Bluestone (rank 1, pos 3, score 68.24)",
+          "#6 Piggyback (rank 2, pos 4, score 68.23)",
+          "#4 Cormac T (rank 5, pos 2, score 67.66, +1.12 v3_sectional_hardness_relief)"
+        ]
+      },
+      {
+        "label": "V3 Sectional Hardness Relief",
+        "meeting": "2025-08-23 Randwick Race 1-10",
+        "race": 7,
+        "baseline_hits": 2,
+        "shadow_hits": 3,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field <=8",
+        "baseline_top3": [
+          "#4 Autumn Glow (rank 1, pos 1, score 69.15)",
+          "#8 Hi Dubai (rank 2, pos 3, score 68.83)",
+          "#10 Bonita Queen (rank 3, pos 8, score 68.33)"
+        ],
+        "shadow_top3": [
+          "#4 Autumn Glow (rank 1, pos 1, score 69.15)",
+          "#8 Hi Dubai (rank 2, pos 3, score 68.83)",
+          "#12 Gangsta Granny (rank 4, pos 2, score 68.62, +1.12 v3_sectional_hardness_relief)"
+        ]
+      },
+      {
+        "label": "V3 Sectional Hardness Relief",
+        "meeting": "2025-08-23 Randwick Race 1-10",
+        "race": 9,
+        "baseline_hits": 1,
+        "shadow_hits": 2,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field <=8",
+        "baseline_top3": [
+          "#5 General Salute (rank 1, pos 3, score 68.50)",
+          "#8 Romeo's Choice (rank 2, pos 5, score 68.37)",
+          "#6 Corniche (rank 3, pos 6, score 67.70)"
+        ],
+        "shadow_top3": [
+          "#12 Just Feelin' Lucky (rank 4, pos 8, score 68.62, +1.12 v3_sectional_hardness_relief)",
+          "#5 General Salute (rank 1, pos 3, score 68.50)",
+          "#4 Lazzura (rank 5, pos 1, score 68.42, +1.12 v3_sectional_hardness_relief)"
+        ]
+      },
+      {
+        "label": "V2 Trial/JT Comeback Rescue",
+        "meeting": "2025-09-06 Randwick Race 1-10",
+        "race": 2,
+        "baseline_hits": 1,
+        "shadow_hits": 2,
+        "condition": "Good/Firm",
+        "class": "Other",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#5 So Magnificent (rank 1, pos 1, score 77.90)",
+          "#14 Lightning Speed (rank 2, pos 16, score 76.53)",
+          "#19 Graceful Ellen (rank 3, pos 13, score 76.13)"
+        ],
+        "shadow_top3": [
+          "#5 So Magnificent (rank 1, pos 1, score 77.90)",
+          "#15 Zumbo (rank 4, pos 2, score 76.87, +1.25 v2_trial_jt_comeback)",
+          "#16 Poisen Point (rank 5, pos 4, score 76.66, +1.36 v2_trial_jt_comeback)"
+        ]
+      },
+      {
+        "label": "V1 Formline Merit Rescue",
+        "meeting": "2025-09-06 Randwick Race 1-10",
+        "race": 4,
+        "baseline_hits": 2,
+        "shadow_hits": 3,
+        "condition": "Good/Firm",
+        "class": "Other",
+        "field": "Field <=8",
+        "baseline_top3": [
+          "#8 Travolta (rank 1, pos 2, score 69.26)",
+          "#6 Muktamil (rank 2, pos 3, score 68.13)",
+          "#5 Tajanis (rank 3, pos 5, score 63.81)"
+        ],
+        "shadow_top3": [
+          "#8 Travolta (rank 1, pos 2, score 69.26)",
+          "#6 Muktamil (rank 2, pos 3, score 68.13)",
+          "#1 Changingoftheguard (rank 4, pos 1, score 63.91, +0.63 v1_formline_merit)"
+        ]
+      },
+      {
+        "label": "V2 Trial/JT Comeback Rescue",
+        "meeting": "2025-09-06 Randwick Race 1-10",
+        "race": 4,
+        "baseline_hits": 2,
+        "shadow_hits": 3,
+        "condition": "Good/Firm",
+        "class": "Other",
+        "field": "Field <=8",
+        "baseline_top3": [
+          "#8 Travolta (rank 1, pos 2, score 69.26)",
+          "#6 Muktamil (rank 2, pos 3, score 68.13)",
+          "#5 Tajanis (rank 3, pos 5, score 63.81)"
+        ],
+        "shadow_top3": [
+          "#8 Travolta (rank 1, pos 2, score 69.26)",
+          "#6 Muktamil (rank 2, pos 3, score 68.13)",
+          "#1 Changingoftheguard (rank 4, pos 1, score 64.33, +1.05 v2_trial_jt_comeback)"
+        ]
+      },
+      {
+        "label": "V4 Combined Conservative Overlay",
+        "meeting": "2025-09-06 Randwick Race 1-10",
+        "race": 4,
+        "baseline_hits": 2,
+        "shadow_hits": 3,
+        "condition": "Good/Firm",
+        "class": "Other",
+        "field": "Field <=8",
+        "baseline_top3": [
+          "#8 Travolta (rank 1, pos 2, score 69.26)",
+          "#6 Muktamil (rank 2, pos 3, score 68.13)",
+          "#5 Tajanis (rank 3, pos 5, score 63.81)"
+        ],
+        "shadow_top3": [
+          "#8 Travolta (rank 1, pos 2, score 69.26)",
+          "#6 Muktamil (rank 2, pos 3, score 68.13)",
+          "#1 Changingoftheguard (rank 4, pos 1, score 64.33, +1.05 v4_combined_conservative)"
+        ]
+      },
+      {
+        "label": "V2 Trial/JT Comeback Rescue",
+        "meeting": "2025-09-06 Randwick Race 1-10",
+        "race": 8,
+        "baseline_hits": 2,
+        "shadow_hits": 1,
+        "condition": "Good/Firm",
+        "class": "Group 2/3",
+        "field": "Field 9-12",
+        "baseline_top3": [
+          "#4 Lady Shenandoah (rank 1, pos 2, score 75.37)",
+          "#9 In Flight (rank 2, pos 6, score 74.68)",
+          "#5 Headwall (rank 3, pos 1, score 73.88)"
+        ],
+        "shadow_top3": [
+          "#4 Lady Shenandoah (rank 1, pos 2, score 75.37)",
+          "#9 In Flight (rank 2, pos 6, score 74.68)",
+          "#1 Jimmysstar (rank 4, pos 5, score 73.90, +1.46 v2_trial_jt_comeback)"
+        ]
+      },
+      {
+        "label": "V1 Formline Merit Rescue",
+        "meeting": "2025-09-06 Randwick Race 1-10",
+        "race": 9,
+        "baseline_hits": 0,
+        "shadow_hits": 1,
+        "condition": "Good/Firm",
+        "class": "Group 2/3",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#17 Depth Of Character (rank 1, pos 12, score 75.75)",
+          "#6 Kovalica (rank 2, pos 11, score 75.10)",
+          "#15 Swiftfalcon (rank 3, pos 6, score 72.95)"
+        ],
+        "shadow_top3": [
+          "#17 Depth Of Character (rank 1, pos 12, score 75.75)",
+          "#6 Kovalica (rank 2, pos 11, score 75.10)",
+          "#5 Private Eye (rank 4, pos 2, score 73.14, +0.77 v1_formline_merit)"
+        ]
+      },
+      {
+        "label": "V2 Trial/JT Comeback Rescue",
+        "meeting": "2025-09-06 Randwick Race 1-10",
+        "race": 9,
+        "baseline_hits": 0,
+        "shadow_hits": 1,
+        "condition": "Good/Firm",
+        "class": "Group 2/3",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#17 Depth Of Character (rank 1, pos 12, score 75.75)",
+          "#6 Kovalica (rank 2, pos 11, score 75.10)",
+          "#15 Swiftfalcon (rank 3, pos 6, score 72.95)"
+        ],
+        "shadow_top3": [
+          "#17 Depth Of Character (rank 1, pos 12, score 75.75)",
+          "#6 Kovalica (rank 2, pos 11, score 75.10)",
+          "#5 Private Eye (rank 4, pos 2, score 73.87, +1.50 v2_trial_jt_comeback)"
+        ]
+      },
+      {
+        "label": "V4 Combined Conservative Overlay",
+        "meeting": "2025-09-06 Randwick Race 1-10",
+        "race": 9,
+        "baseline_hits": 0,
+        "shadow_hits": 1,
+        "condition": "Good/Firm",
+        "class": "Group 2/3",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#17 Depth Of Character (rank 1, pos 12, score 75.75)",
+          "#6 Kovalica (rank 2, pos 11, score 75.10)",
+          "#15 Swiftfalcon (rank 3, pos 6, score 72.95)"
+        ],
+        "shadow_top3": [
+          "#17 Depth Of Character (rank 1, pos 12, score 75.75)",
+          "#6 Kovalica (rank 2, pos 11, score 75.10)",
+          "#5 Private Eye (rank 4, pos 2, score 73.87, +1.50 v4_combined_conservative)"
+        ]
+      },
+      {
+        "label": "V2 Trial/JT Comeback Rescue",
+        "meeting": "2025-09-13 Flemington Race 1-10",
+        "race": 1,
+        "baseline_hits": 1,
+        "shadow_hits": 2,
+        "condition": "Good/Firm",
+        "class": "BM58-70",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#15 Persian Spirit (rank 1, pos 1, score 78.24)",
+          "#10 She's An Artist (rank 2, pos 4, score 75.95)",
+          "#2 De Bergerac (rank 3, pos 5, score 75.31)"
+        ],
+        "shadow_top3": [
+          "#15 Persian Spirit (rank 1, pos 1, score 78.24)",
+          "#8 Tonkin (rank 4, pos 2, score 76.63, +1.50 v2_trial_jt_comeback)",
+          "#10 She's An Artist (rank 2, pos 4, score 75.95)"
+        ]
+      },
+      {
+        "label": "V4 Combined Conservative Overlay",
+        "meeting": "2025-09-13 Flemington Race 1-10",
+        "race": 1,
+        "baseline_hits": 1,
+        "shadow_hits": 2,
+        "condition": "Good/Firm",
+        "class": "BM58-70",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#15 Persian Spirit (rank 1, pos 1, score 78.24)",
+          "#10 She's An Artist (rank 2, pos 4, score 75.95)",
+          "#2 De Bergerac (rank 3, pos 5, score 75.31)"
+        ],
+        "shadow_top3": [
+          "#15 Persian Spirit (rank 1, pos 1, score 78.24)",
+          "#8 Tonkin (rank 4, pos 2, score 76.63, +1.50 v4_combined_conservative)",
+          "#10 She's An Artist (rank 2, pos 4, score 75.95)"
+        ]
+      },
+      {
+        "label": "V2 Trial/JT Comeback Rescue",
+        "meeting": "2025-09-13 Flemington Race 1-10",
+        "race": 3,
+        "baseline_hits": 1,
+        "shadow_hits": 0,
+        "condition": "Good/Firm",
+        "class": "Other",
+        "field": "Field 9-12",
+        "baseline_top3": [
+          "#3 Crossbow (rank 1, pos 9, score 73.68)",
+          "#1 Vinrock (rank 2, pos 1, score 71.72)",
+          "#5 Arcora (rank 3, pos 10, score 71.50)"
+        ],
+        "shadow_top3": [
+          "#3 Crossbow (rank 1, pos 9, score 73.68)",
+          "#12 Just Kick (rank 5, pos 7, score 72.65, +1.45 v2_trial_jt_comeback)",
+          "#4 Prestige Ole (rank 4, pos 5, score 72.40, +1.08 v2_trial_jt_comeback)"
+        ]
+      },
+      {
+        "label": "V2 Trial/JT Comeback Rescue",
+        "meeting": "2025-09-13 Flemington Race 1-10",
+        "race": 6,
+        "baseline_hits": 1,
+        "shadow_hits": 2,
+        "condition": "Good/Firm",
+        "class": "Group 2/3",
+        "field": "Field 9-12",
+        "baseline_top3": [
+          "#4 Arkansaw Kid (rank 1, pos 1, score 72.17)",
+          "#9 Enxuto (rank 2, pos 7, score 71.58)",
+          "#3 Steparty (rank 3, pos 8, score 70.48)"
+        ],
+        "shadow_top3": [
+          "#4 Arkansaw Kid (rank 1, pos 1, score 72.17)",
+          "#9 Enxuto (rank 2, pos 7, score 71.58)",
+          "#10 Media World (rank 4, pos 3, score 71.56, +1.15 v2_trial_jt_comeback)"
+        ]
+      },
+      {
+        "label": "V4 Combined Conservative Overlay",
+        "meeting": "2025-09-13 Flemington Race 1-10",
+        "race": 6,
+        "baseline_hits": 1,
+        "shadow_hits": 2,
+        "condition": "Good/Firm",
+        "class": "Group 2/3",
+        "field": "Field 9-12",
+        "baseline_top3": [
+          "#4 Arkansaw Kid (rank 1, pos 1, score 72.17)",
+          "#9 Enxuto (rank 2, pos 7, score 71.58)",
+          "#3 Steparty (rank 3, pos 8, score 70.48)"
+        ],
+        "shadow_top3": [
+          "#4 Arkansaw Kid (rank 1, pos 1, score 72.17)",
+          "#9 Enxuto (rank 2, pos 7, score 71.58)",
+          "#10 Media World (rank 4, pos 3, score 71.56, +1.15 v4_combined_conservative)"
+        ]
+      },
+      {
+        "label": "V2 Trial/JT Comeback Rescue",
+        "meeting": "2025-09-13 Flemington Race 1-10",
+        "race": 8,
+        "baseline_hits": 2,
+        "shadow_hits": 3,
+        "condition": "Good/Firm",
+        "class": "Group 1",
+        "field": "Field <=8",
+        "baseline_top3": [
+          "#5 Via Sistina (rank 1, pos 3, score 75.87)",
+          "#6 Aeliana (rank 2, pos 2, score 73.91)",
+          "#4 Mark Twain (rank 3, pos 6, score 71.83)"
+        ],
+        "shadow_top3": [
+          "#5 Via Sistina (rank 1, pos 3, score 75.87)",
+          "#6 Aeliana (rank 2, pos 2, score 73.91)",
+          "#1 Mr Brightside (rank 5, pos 1, score 73.17, +1.50 v2_trial_jt_comeback)"
+        ]
+      },
+      {
+        "label": "V2 Trial/JT Comeback Rescue",
+        "meeting": "2025-09-13 Flemington Race 1-10",
+        "race": 9,
+        "baseline_hits": 1,
+        "shadow_hits": 0,
+        "condition": "Good/Firm",
+        "class": "Group 2/3",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#13 Bossy Benita (rank 1, pos 11, score 76.77)",
+          "#7 On Display (rank 2, pos 10, score 75.17)",
+          "#3 Lazzura (rank 3, pos 1, score 74.58)"
+        ],
+        "shadow_top3": [
+          "#13 Bossy Benita (rank 1, pos 11, score 76.77)",
+          "#7 On Display (rank 2, pos 10, score 75.17)",
+          "#11 Splash Back (rank 4, pos 5, score 74.91, +1.27 v2_trial_jt_comeback)"
+        ]
+      },
+      {
+        "label": "V4 Combined Conservative Overlay",
+        "meeting": "2025-09-13 Flemington Race 1-10",
+        "race": 9,
+        "baseline_hits": 1,
+        "shadow_hits": 0,
+        "condition": "Good/Firm",
+        "class": "Group 2/3",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#13 Bossy Benita (rank 1, pos 11, score 76.77)",
+          "#7 On Display (rank 2, pos 10, score 75.17)",
+          "#3 Lazzura (rank 3, pos 1, score 74.58)"
+        ],
+        "shadow_top3": [
+          "#13 Bossy Benita (rank 1, pos 11, score 76.77)",
+          "#7 On Display (rank 2, pos 10, score 75.17)",
+          "#2 Marble Arch (rank 5, pos 6, score 74.81, +1.50 v4_combined_conservative)"
+        ]
+      },
+      {
+        "label": "V3 Sectional Hardness Relief",
+        "meeting": "2025-09-21 Flemington Race 1-8",
+        "race": 6,
+        "baseline_hits": 2,
+        "shadow_hits": 1,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#9 Jennyanydots (rank 1, pos 4, score 69.48)",
+          "#12 Sun Setting (rank 2, pos 2, score 68.44)",
+          "#15 Per Sempre (rank 3, pos 1, score 68.44)"
+        ],
+        "shadow_top3": [
+          "#9 Jennyanydots (rank 1, pos 4, score 69.48)",
+          "#5 Deepfloat Diva (rank 5, pos 9, score 68.96, +1.12 v3_sectional_hardness_relief)",
+          "#13 Mckeyla (rank 7, pos 3, score 68.82, +1.25 v3_sectional_hardness_relief)"
+        ]
+      },
+      {
+        "label": "V3 Sectional Hardness Relief",
+        "meeting": "2025-10-04 Flemington Race 1-10",
+        "race": 1,
+        "baseline_hits": 2,
+        "shadow_hits": 1,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#7 Persian Spirit (rank 1, pos 5, score 68.96)",
+          "#10 Stoli Bolli (rank 2, pos 2, score 68.85)",
+          "#2 De Bergerac (rank 3, pos 1, score 68.41)"
+        ],
+        "shadow_top3": [
+          "#11 Princess Que (rank 5, pos 7, score 69.35, +1.25 v3_sectional_hardness_relief)",
+          "#12 She's An Artist (rank 6, pos 3, score 69.12, +1.25 v3_sectional_hardness_relief)",
+          "#7 Persian Spirit (rank 1, pos 5, score 68.96)"
+        ]
+      },
+      {
+        "label": "V4 Combined Conservative Overlay",
+        "meeting": "2025-10-04 Flemington Race 1-10",
+        "race": 1,
+        "baseline_hits": 2,
+        "shadow_hits": 1,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#7 Persian Spirit (rank 1, pos 5, score 68.96)",
+          "#10 Stoli Bolli (rank 2, pos 2, score 68.85)",
+          "#2 De Bergerac (rank 3, pos 1, score 68.41)"
+        ],
+        "shadow_top3": [
+          "#11 Princess Que (rank 5, pos 7, score 69.35, +1.25 v4_combined_conservative)",
+          "#7 Persian Spirit (rank 1, pos 5, score 68.96)",
+          "#10 Stoli Bolli (rank 2, pos 2, score 68.85)"
+        ]
+      },
+      {
+        "label": "V3 Sectional Hardness Relief",
+        "meeting": "2025-10-04 Flemington Race 1-10",
+        "race": 5,
+        "baseline_hits": 1,
+        "shadow_hits": 2,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 9-12",
+        "baseline_top3": [
+          "#2 Miraval Rose (rank 1, pos 1, score 68.07)",
+          "#7 Roll On High (rank 2, pos 7, score 67.38)",
+          "#3 Pop Award (rank 3, pos 6, score 66.85)"
+        ],
+        "shadow_top3": [
+          "#2 Miraval Rose (rank 1, pos 1, score 68.07)",
+          "#4 On Display (rank 5, pos 3, score 67.81, +1.12 v3_sectional_hardness_relief)",
+          "#5 Running By (rank 6, pos 10, score 67.71, +1.25 v3_sectional_hardness_relief)"
+        ]
+      },
+      {
+        "label": "V3 Sectional Hardness Relief",
+        "meeting": "2025-10-04 Flemington Race 1-10",
+        "race": 6,
+        "baseline_hits": 0,
+        "shadow_hits": 1,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 9-12",
+        "baseline_top3": [
+          "#9 Inkaruna (rank 1, pos 7, score 68.26)",
+          "#3 Jimmy Recard (rank 2, pos 6, score 68.05)",
+          "#5 Shining Smile (rank 3, pos 8, score 67.85)"
+        ],
+        "shadow_top3": [
+          "#1 Tentyris (rank 4, pos 3, score 68.82, +1.25 v3_sectional_hardness_relief)",
+          "#2 Tycoon Star (rank 5, pos 5, score 68.67, +1.25 v3_sectional_hardness_relief)",
+          "#4 Legacy Bound (rank 6, pos 4, score 68.58, +1.25 v3_sectional_hardness_relief)"
+        ]
+      },
+      {
+        "label": "V4 Combined Conservative Overlay",
+        "meeting": "2025-10-04 Flemington Race 1-10",
+        "race": 6,
+        "baseline_hits": 0,
+        "shadow_hits": 1,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 9-12",
+        "baseline_top3": [
+          "#9 Inkaruna (rank 1, pos 7, score 68.26)",
+          "#3 Jimmy Recard (rank 2, pos 6, score 68.05)",
+          "#5 Shining Smile (rank 3, pos 8, score 67.85)"
+        ],
+        "shadow_top3": [
+          "#1 Tentyris (rank 4, pos 3, score 68.82, +1.25 v4_combined_conservative)",
+          "#9 Inkaruna (rank 1, pos 7, score 68.26)",
+          "#3 Jimmy Recard (rank 2, pos 6, score 68.05)"
+        ]
+      },
+      {
+        "label": "V3 Sectional Hardness Relief",
+        "meeting": "2025-10-04 Flemington Race 1-10",
+        "race": 8,
+        "baseline_hits": 1,
+        "shadow_hits": 2,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#4 Via Sistina (rank 1, pos 3, score 70.00)",
+          "#7 Aeliana (rank 2, pos 5, score 69.96)",
+          "#10 Golden Path (rank 3, pos 13, score 69.68)"
+        ],
+        "shadow_top3": [
+          "#3 Sir Delius (rank 4, pos 1, score 70.34, +1.25 v3_sectional_hardness_relief)",
+          "#4 Via Sistina (rank 1, pos 3, score 70.00)",
+          "#7 Aeliana (rank 2, pos 5, score 69.96)"
+        ]
+      },
+      {
+        "label": "V4 Combined Conservative Overlay",
+        "meeting": "2025-10-04 Flemington Race 1-10",
+        "race": 8,
+        "baseline_hits": 1,
+        "shadow_hits": 2,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#4 Via Sistina (rank 1, pos 3, score 70.00)",
+          "#7 Aeliana (rank 2, pos 5, score 69.96)",
+          "#10 Golden Path (rank 3, pos 13, score 69.68)"
+        ],
+        "shadow_top3": [
+          "#3 Sir Delius (rank 4, pos 1, score 70.34, +1.25 v4_combined_conservative)",
+          "#4 Via Sistina (rank 1, pos 3, score 70.00)",
+          "#7 Aeliana (rank 2, pos 5, score 69.96)"
+        ]
+      },
+      {
+        "label": "V3 Sectional Hardness Relief",
+        "meeting": "2025-10-04 Flemington Race 1-10",
+        "race": 10,
+        "baseline_hits": 2,
+        "shadow_hits": 0,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 9-12",
+        "baseline_top3": [
+          "#11 Enxuto (rank 1, pos 5, score 68.34)",
+          "#9 Media World (rank 2, pos 1, score 67.86)",
+          "#3 Cafe Millenium (rank 3, pos 2, score 66.99)"
+        ],
+        "shadow_top3": [
+          "#11 Enxuto (rank 1, pos 5, score 68.34)",
+          "#7 Warnie (rank 4, pos 4, score 68.21, +1.25 v3_sectional_hardness_relief)",
+          "#5 Is It Me (rank 5, pos 6, score 68.04, +1.12 v3_sectional_hardness_relief)"
+        ]
+      },
+      {
+        "label": "V4 Combined Conservative Overlay",
+        "meeting": "2025-10-04 Flemington Race 1-10",
+        "race": 10,
+        "baseline_hits": 2,
+        "shadow_hits": 1,
+        "condition": "Other",
+        "class": "Other",
+        "field": "Field 9-12",
+        "baseline_top3": [
+          "#11 Enxuto (rank 1, pos 5, score 68.34)",
+          "#9 Media World (rank 2, pos 1, score 67.86)",
+          "#3 Cafe Millenium (rank 3, pos 2, score 66.99)"
+        ],
+        "shadow_top3": [
+          "#11 Enxuto (rank 1, pos 5, score 68.34)",
+          "#7 Warnie (rank 4, pos 4, score 68.21, +1.25 v4_combined_conservative)",
+          "#9 Media World (rank 2, pos 1, score 67.86)"
+        ]
+      }
+    ]
+  },
+  "eagle_farm_holdout": {
+    "results": {
+      "Baseline": {
+        "races": 9,
+        "champion": 2,
+        "gold": 0,
+        "good": 0,
+        "pass": 3,
+        "winner_top3": 6,
+        "winner_top5": 7,
+        "top3_places": 9,
+        "top3_slots": 27,
+        "hit_distribution": {
+          "2": 3,
+          "0": 3,
+          "1": 3
+        }
+      },
+      "V1 Formline Merit Rescue": {
+        "races": 9,
+        "champion": 2,
+        "gold": 0,
+        "good": 0,
+        "pass": 3,
+        "winner_top3": 6,
+        "winner_top5": 6,
+        "top3_places": 9,
+        "top3_slots": 27,
+        "hit_distribution": {
+          "2": 3,
+          "0": 3,
+          "1": 3
+        }
+      },
+      "V2 Trial/JT Comeback Rescue": {
+        "races": 9,
+        "champion": 2,
+        "gold": 0,
+        "good": 0,
+        "pass": 1,
+        "winner_top3": 4,
+        "winner_top5": 7,
+        "top3_places": 7,
+        "top3_slots": 27,
+        "hit_distribution": {
+          "2": 1,
+          "0": 3,
+          "1": 5
+        }
+      },
+      "V3 Sectional Hardness Relief": {
+        "races": 9,
+        "champion": 2,
+        "gold": 0,
+        "good": 0,
+        "pass": 2,
+        "winner_top3": 5,
+        "winner_top5": 7,
+        "top3_places": 9,
+        "top3_slots": 27,
+        "hit_distribution": {
+          "2": 2,
+          "1": 5,
+          "0": 2
+        }
+      },
+      "V4 Combined Conservative Overlay": {
+        "races": 9,
+        "champion": 2,
+        "gold": 0,
+        "good": 0,
+        "pass": 2,
+        "winner_top3": 5,
+        "winner_top5": 7,
+        "top3_places": 8,
+        "top3_slots": 27,
+        "hit_distribution": {
+          "2": 2,
+          "0": 3,
+          "1": 4
+        }
+      }
+    },
+    "by_condition": {
+      "Heavy": {
+        "Baseline": {
+          "races": 9,
+          "champion": 2,
+          "gold": 0,
+          "good": 0,
+          "pass": 3,
+          "winner_top3": 6,
+          "winner_top5": 7,
+          "top3_places": 9,
+          "top3_slots": 27,
+          "hit_distribution": {
+            "2": 3,
+            "0": 3,
+            "1": 3
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 9,
+          "champion": 2,
+          "gold": 0,
+          "good": 0,
+          "pass": 3,
+          "winner_top3": 6,
+          "winner_top5": 6,
+          "top3_places": 9,
+          "top3_slots": 27,
+          "hit_distribution": {
+            "2": 3,
+            "0": 3,
+            "1": 3
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 9,
+          "champion": 2,
+          "gold": 0,
+          "good": 0,
+          "pass": 1,
+          "winner_top3": 4,
+          "winner_top5": 7,
+          "top3_places": 7,
+          "top3_slots": 27,
+          "hit_distribution": {
+            "2": 1,
+            "0": 3,
+            "1": 5
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 9,
+          "champion": 2,
+          "gold": 0,
+          "good": 0,
+          "pass": 2,
+          "winner_top3": 5,
+          "winner_top5": 7,
+          "top3_places": 9,
+          "top3_slots": 27,
+          "hit_distribution": {
+            "2": 2,
+            "1": 5,
+            "0": 2
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 9,
+          "champion": 2,
+          "gold": 0,
+          "good": 0,
+          "pass": 2,
+          "winner_top3": 5,
+          "winner_top5": 7,
+          "top3_places": 8,
+          "top3_slots": 27,
+          "hit_distribution": {
+            "2": 2,
+            "0": 3,
+            "1": 4
+          }
+        }
+      }
+    },
+    "by_class": {
+      "Other": {
+        "Baseline": {
+          "races": 3,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 1,
+          "winner_top3": 1,
+          "winner_top5": 1,
+          "top3_places": 2,
+          "top3_slots": 9,
+          "hit_distribution": {
+            "2": 1,
+            "0": 2
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 3,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 1,
+          "winner_top3": 1,
+          "winner_top5": 1,
+          "top3_places": 2,
+          "top3_slots": 9,
+          "hit_distribution": {
+            "2": 1,
+            "0": 2
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 3,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 1,
+          "winner_top3": 1,
+          "winner_top5": 1,
+          "top3_places": 2,
+          "top3_slots": 9,
+          "hit_distribution": {
+            "2": 1,
+            "0": 2
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 3,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 1,
+          "winner_top3": 1,
+          "winner_top5": 1,
+          "top3_places": 3,
+          "top3_slots": 9,
+          "hit_distribution": {
+            "2": 1,
+            "1": 1,
+            "0": 1
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 3,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 1,
+          "winner_top3": 1,
+          "winner_top5": 1,
+          "top3_places": 2,
+          "top3_slots": 9,
+          "hit_distribution": {
+            "2": 1,
+            "0": 2
+          }
+        }
+      },
+      "Group 2/3": {
+        "Baseline": {
+          "races": 4,
+          "champion": 0,
+          "gold": 0,
+          "good": 0,
+          "pass": 2,
+          "winner_top3": 3,
+          "winner_top5": 4,
+          "top3_places": 5,
+          "top3_slots": 12,
+          "hit_distribution": {
+            "1": 1,
+            "0": 1,
+            "2": 2
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 4,
+          "champion": 0,
+          "gold": 0,
+          "good": 0,
+          "pass": 2,
+          "winner_top3": 3,
+          "winner_top5": 3,
+          "top3_places": 5,
+          "top3_slots": 12,
+          "hit_distribution": {
+            "1": 1,
+            "0": 1,
+            "2": 2
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 4,
+          "champion": 0,
+          "gold": 0,
+          "good": 0,
+          "pass": 0,
+          "winner_top3": 1,
+          "winner_top5": 4,
+          "top3_places": 3,
+          "top3_slots": 12,
+          "hit_distribution": {
+            "1": 3,
+            "0": 1
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 4,
+          "champion": 0,
+          "gold": 0,
+          "good": 0,
+          "pass": 1,
+          "winner_top3": 2,
+          "winner_top5": 4,
+          "top3_places": 4,
+          "top3_slots": 12,
+          "hit_distribution": {
+            "1": 2,
+            "0": 1,
+            "2": 1
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 4,
+          "champion": 0,
+          "gold": 0,
+          "good": 0,
+          "pass": 1,
+          "winner_top3": 2,
+          "winner_top5": 4,
+          "top3_places": 4,
+          "top3_slots": 12,
+          "hit_distribution": {
+            "1": 2,
+            "0": 1,
+            "2": 1
+          }
+        }
+      },
+      "Group 1": {
+        "Baseline": {
+          "races": 2,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 0,
+          "winner_top3": 2,
+          "winner_top5": 2,
+          "top3_places": 2,
+          "top3_slots": 6,
+          "hit_distribution": {
+            "1": 2
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 2,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 0,
+          "winner_top3": 2,
+          "winner_top5": 2,
+          "top3_places": 2,
+          "top3_slots": 6,
+          "hit_distribution": {
+            "1": 2
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 2,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 0,
+          "winner_top3": 2,
+          "winner_top5": 2,
+          "top3_places": 2,
+          "top3_slots": 6,
+          "hit_distribution": {
+            "1": 2
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 2,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 0,
+          "winner_top3": 2,
+          "winner_top5": 2,
+          "top3_places": 2,
+          "top3_slots": 6,
+          "hit_distribution": {
+            "1": 2
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 2,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 0,
+          "winner_top3": 2,
+          "winner_top5": 2,
+          "top3_places": 2,
+          "top3_slots": 6,
+          "hit_distribution": {
+            "1": 2
+          }
+        }
+      }
+    },
+    "by_field": {
+      "Field 9-12": {
+        "Baseline": {
+          "races": 5,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 2,
+          "winner_top3": 4,
+          "winner_top5": 4,
+          "top3_places": 6,
+          "top3_slots": 15,
+          "hit_distribution": {
+            "2": 2,
+            "1": 2,
+            "0": 1
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 5,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 2,
+          "winner_top3": 4,
+          "winner_top5": 4,
+          "top3_places": 6,
+          "top3_slots": 15,
+          "hit_distribution": {
+            "2": 2,
+            "1": 2,
+            "0": 1
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 5,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 1,
+          "winner_top3": 3,
+          "winner_top5": 4,
+          "top3_places": 5,
+          "top3_slots": 15,
+          "hit_distribution": {
+            "2": 1,
+            "1": 3,
+            "0": 1
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 5,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 2,
+          "winner_top3": 4,
+          "winner_top5": 4,
+          "top3_places": 6,
+          "top3_slots": 15,
+          "hit_distribution": {
+            "2": 2,
+            "1": 2,
+            "0": 1
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 5,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 2,
+          "winner_top3": 4,
+          "winner_top5": 4,
+          "top3_places": 6,
+          "top3_slots": 15,
+          "hit_distribution": {
+            "2": 2,
+            "1": 2,
+            "0": 1
+          }
+        }
+      },
+      "Field 13+": {
+        "Baseline": {
+          "races": 4,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 1,
+          "winner_top3": 2,
+          "winner_top5": 3,
+          "top3_places": 3,
+          "top3_slots": 12,
+          "hit_distribution": {
+            "0": 2,
+            "2": 1,
+            "1": 1
+          }
+        },
+        "V1 Formline Merit Rescue": {
+          "races": 4,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 1,
+          "winner_top3": 2,
+          "winner_top5": 2,
+          "top3_places": 3,
+          "top3_slots": 12,
+          "hit_distribution": {
+            "0": 2,
+            "2": 1,
+            "1": 1
+          }
+        },
+        "V2 Trial/JT Comeback Rescue": {
+          "races": 4,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 0,
+          "winner_top3": 1,
+          "winner_top5": 3,
+          "top3_places": 2,
+          "top3_slots": 12,
+          "hit_distribution": {
+            "0": 2,
+            "1": 2
+          }
+        },
+        "V3 Sectional Hardness Relief": {
+          "races": 4,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 0,
+          "winner_top3": 1,
+          "winner_top5": 3,
+          "top3_places": 3,
+          "top3_slots": 12,
+          "hit_distribution": {
+            "1": 3,
+            "0": 1
+          }
+        },
+        "V4 Combined Conservative Overlay": {
+          "races": 4,
+          "champion": 1,
+          "gold": 0,
+          "good": 0,
+          "pass": 0,
+          "winner_top3": 1,
+          "winner_top5": 3,
+          "top3_places": 2,
+          "top3_slots": 12,
+          "hit_distribution": {
+            "0": 2,
+            "1": 2
+          }
+        }
+      }
+    },
+    "candidate_stats": {
+      "V1 Formline Merit Rescue": {
+        "races_with_candidate": 6,
+        "candidate_count": 8,
+        "candidate_actual_top3": 3
+      },
+      "V2 Trial/JT Comeback Rescue": {
+        "races_with_candidate": 6,
+        "candidate_count": 18,
+        "candidate_actual_top3": 4
+      },
+      "V3 Sectional Hardness Relief": {
+        "races_with_candidate": 7,
+        "candidate_count": 21,
+        "candidate_actual_top3": 7
+      },
+      "V4 Combined Conservative Overlay": {
+        "races_with_candidate": 8,
+        "candidate_count": 8,
+        "candidate_actual_top3": 1
+      }
+    },
+    "reason_counts": {
+      "V1 Formline Merit Rescue": {
+        "strong_formline_hidden_merit": 4,
+        "balanced_formline_class_confidence": 4,
+        "recent_form_not_hard_block": 5,
+        "class_rating_support": 2
+      },
+      "V2 Trial/JT Comeback Rescue": {
+        "strong_trial_signal": 18,
+        "jt_matrix_support": 16,
+        "jockey_horse_fit_support": 13,
+        "trainer_support": 10,
+        "jockey_support": 9,
+        "recent_form_not_hard_block": 9
+      },
+      "V3 Sectional Hardness Relief": {
+        "sectional_low_score_relief": 21,
+        "trial_support": 14,
+        "track_support": 12,
+        "confidence_support": 18,
+        "distance_ok": 12,
+        "jt_support": 14,
+        "formline_support": 11,
+        "class_support": 2,
+        "rating_support": 2
+      },
+      "V4 Combined Conservative Overlay": {
+        "strong_formline_hidden_merit": 3,
+        "recent_form_not_hard_block": 4,
+        "strong_trial_signal": 2,
+        "jt_matrix_support": 2,
+        "jockey_support": 2,
+        "jockey_horse_fit_support": 2,
+        "sectional_low_score_relief": 3,
+        "formline_support": 3,
+        "class_support": 1,
+        "track_support": 2,
+        "confidence_support": 3,
+        "distance_ok": 3,
+        "trial_support": 2,
+        "jt_support": 2,
+        "trainer_support": 1
+      }
+    },
+    "examples": [
+      {
+        "label": "V3 Sectional Hardness Relief",
+        "meeting": "2026-06-13 Eagle Farm Race 1-9",
+        "race": 2,
+        "baseline_hits": 0,
+        "shadow_hits": 1,
+        "condition": "Heavy",
+        "class": "Other",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#4 Bowdene (rank 1, pos 9, score 63.73)",
+          "#8 Pearl Of Dubai (rank 2, pos 5, score 63.42)",
+          "#5 Hard To Exceed (rank 3, pos 7, score 62.73)"
+        ],
+        "shadow_top3": [
+          "#4 Bowdene (rank 1, pos 9, score 63.73)",
+          "#8 Pearl Of Dubai (rank 2, pos 5, score 63.42)",
+          "#2 Areprice (rank 5, pos 3, score 62.88, +1.25 v3_sectional_hardness_relief)"
+        ]
+      },
+      {
+        "label": "V2 Trial/JT Comeback Rescue",
+        "meeting": "2026-06-13 Eagle Farm Race 1-9",
+        "race": 6,
+        "baseline_hits": 2,
+        "shadow_hits": 1,
+        "condition": "Heavy",
+        "class": "Group 2/3",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#10 Savagery Vibe (rank 1, pos 3, score 68.14)",
+          "#5 Ahha Ahha (rank 2, pos 14, score 67.74)",
+          "#8 She's Got Pizzazz (rank 3, pos 1, score 65.80)"
+        ],
+        "shadow_top3": [
+          "#10 Savagery Vibe (rank 1, pos 3, score 68.14)",
+          "#5 Ahha Ahha (rank 2, pos 14, score 67.74)",
+          "#13 Poster Girl (rank 4, pos 4, score 66.97, +1.22 v2_trial_jt_comeback)"
+        ]
+      },
+      {
+        "label": "V3 Sectional Hardness Relief",
+        "meeting": "2026-06-13 Eagle Farm Race 1-9",
+        "race": 6,
+        "baseline_hits": 2,
+        "shadow_hits": 1,
+        "condition": "Heavy",
+        "class": "Group 2/3",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#10 Savagery Vibe (rank 1, pos 3, score 68.14)",
+          "#5 Ahha Ahha (rank 2, pos 14, score 67.74)",
+          "#8 She's Got Pizzazz (rank 3, pos 1, score 65.80)"
+        ],
+        "shadow_top3": [
+          "#10 Savagery Vibe (rank 1, pos 3, score 68.14)",
+          "#5 Ahha Ahha (rank 2, pos 14, score 67.74)",
+          "#13 Poster Girl (rank 4, pos 4, score 66.99, +1.25 v3_sectional_hardness_relief)"
+        ]
+      },
+      {
+        "label": "V4 Combined Conservative Overlay",
+        "meeting": "2026-06-13 Eagle Farm Race 1-9",
+        "race": 6,
+        "baseline_hits": 2,
+        "shadow_hits": 1,
+        "condition": "Heavy",
+        "class": "Group 2/3",
+        "field": "Field 13+",
+        "baseline_top3": [
+          "#10 Savagery Vibe (rank 1, pos 3, score 68.14)",
+          "#5 Ahha Ahha (rank 2, pos 14, score 67.74)",
+          "#8 She's Got Pizzazz (rank 3, pos 1, score 65.80)"
+        ],
+        "shadow_top3": [
+          "#10 Savagery Vibe (rank 1, pos 3, score 68.14)",
+          "#5 Ahha Ahha (rank 2, pos 14, score 67.74)",
+          "#13 Poster Girl (rank 4, pos 4, score 66.99, +1.25 v4_combined_conservative)"
+        ]
+      },
+      {
+        "label": "V2 Trial/JT Comeback Rescue",
+        "meeting": "2026-06-13 Eagle Farm Race 1-9",
+        "race": 9,
+        "baseline_hits": 2,
+        "shadow_hits": 1,
+        "condition": "Heavy",
+        "class": "Group 2/3",
+        "field": "Field 9-12",
+        "baseline_top3": [
+          "#4 Asterix (rank 1, pos 6, score 67.52)",
+          "#5 Militarize (rank 2, pos 3, score 66.37)",
+          "#7 Royal Supremacy (rank 3, pos 1, score 63.27)"
+        ],
+        "shadow_top3": [
+          "#4 Asterix (rank 1, pos 6, score 67.52)",
+          "#5 Militarize (rank 2, pos 3, score 66.37)",
+          "#8 Zambardo (rank 5, pos 7, score 63.40, +1.01 v2_trial_jt_comeback)"
+        ]
+      }
+    ]
+  },
+  "promotion_gate": {
+    "passed": false,
+    "checks": {
+      "archive_pass_not_lower": false,
+      "archive_top3_places_not_lower": false,
+      "archive_0hit_not_higher": true,
+      "archive_winner_top5_tolerance": true,
+      "holdout_pass_not_lower": false,
+      "holdout_top3_places_not_lower": false,
+      "holdout_winner_top5_not_lower": true
+    }
+  }
+}

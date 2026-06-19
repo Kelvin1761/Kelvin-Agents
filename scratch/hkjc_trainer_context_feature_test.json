@@ -1,0 +1,2571 @@
+{
+  "meta": {
+    "meetings": 17,
+    "races": 169,
+    "horses": 2078,
+    "skipped": {
+      "duplicate_race": 19,
+      "no_results_file": 1
+    }
+  },
+  "matrix_weights": {
+    "sectional": 0.1849,
+    "trainer_signal": 0.2209,
+    "stability": 0.0919,
+    "race_shape": 0.256,
+    "class_advantage": 0.1335,
+    "horse_health": 0.0378,
+    "form_line": 0.0749
+  },
+  "contract": "ability-only ranking; no draw micro tiebreak; only trainer_signal feature context is varied",
+  "scopes": {
+    "all": {
+      "current_live": {
+        "summary": {
+          "races": 169,
+          "gold": 10,
+          "good": 41,
+          "min_threshold": 77,
+          "single": 140,
+          "champion": 42,
+          "top3_has_champion": 89,
+          "order_issue": 54,
+          "avg_winner_rank": 4.385,
+          "mrr": 0.441,
+          "avg_pick1_finish": 4.136,
+          "avg_top4_hits": 2.012
+        },
+        "trainer_signal_change": {
+          "changed_horses": 0,
+          "avg_trainer_signal_delta": 0.0,
+          "positive_deltas": 0,
+          "negative_deltas": 0
+        }
+      },
+      "trainer_v3_additive": {
+        "summary": {
+          "races": 169,
+          "gold": 10,
+          "good": 43,
+          "min_threshold": 79,
+          "single": 141,
+          "champion": 43,
+          "top3_has_champion": 90,
+          "order_issue": 59,
+          "avg_winner_rank": 4.29,
+          "mrr": 0.4471,
+          "avg_pick1_finish": 4.219,
+          "avg_top4_hits": 2.03
+        },
+        "trainer_signal_change": {
+          "changed_horses": 1051,
+          "avg_trainer_signal_delta": 1.8394,
+          "positive_deltas": 1051,
+          "negative_deltas": 0
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 2,
+          "min_threshold": 2,
+          "champion": 1,
+          "top3_has_champion": 1,
+          "order_issue": 5,
+          "avg_winner_rank": -0.095,
+          "mrr": 0.0061,
+          "avg_pick1_finish": 0.083,
+          "avg_top4_hits": 0.018
+        }
+      },
+      "trainer_v4_change_quality_additive": {
+        "summary": {
+          "races": 169,
+          "gold": 10,
+          "good": 43,
+          "min_threshold": 77,
+          "single": 143,
+          "champion": 43,
+          "top3_has_champion": 89,
+          "order_issue": 58,
+          "avg_winner_rank": 4.266,
+          "mrr": 0.4479,
+          "avg_pick1_finish": 4.219,
+          "avg_top4_hits": 2.03
+        },
+        "trainer_signal_change": {
+          "changed_horses": 1107,
+          "avg_trainer_signal_delta": 1.6848,
+          "positive_deltas": 1024,
+          "negative_deltas": 83
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 2,
+          "min_threshold": 0,
+          "champion": 1,
+          "top3_has_champion": 0,
+          "order_issue": 4,
+          "avg_winner_rank": -0.119,
+          "mrr": 0.0069,
+          "avg_pick1_finish": 0.083,
+          "avg_top4_hits": 0.018
+        }
+      },
+      "change_quality_only_additive": {
+        "summary": {
+          "races": 169,
+          "gold": 10,
+          "good": 41,
+          "min_threshold": 78,
+          "single": 142,
+          "champion": 41,
+          "top3_has_champion": 91,
+          "order_issue": 55,
+          "avg_winner_rank": 4.308,
+          "mrr": 0.4428,
+          "avg_pick1_finish": 4.219,
+          "avg_top4_hits": 2.024
+        },
+        "trainer_signal_change": {
+          "changed_horses": 152,
+          "avg_trainer_signal_delta": -0.4211,
+          "positive_deltas": 40,
+          "negative_deltas": 112
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 1,
+          "champion": -1,
+          "top3_has_champion": 2,
+          "order_issue": 1,
+          "avg_winner_rank": -0.077,
+          "mrr": 0.0018,
+          "avg_pick1_finish": 0.083,
+          "avg_top4_hits": 0.012
+        }
+      },
+      "direct_pair_damped": {
+        "summary": {
+          "races": 169,
+          "gold": 10,
+          "good": 40,
+          "min_threshold": 77,
+          "single": 141,
+          "champion": 42,
+          "top3_has_champion": 90,
+          "order_issue": 56,
+          "avg_winner_rank": 4.32,
+          "mrr": 0.444,
+          "avg_pick1_finish": 4.154,
+          "avg_top4_hits": 2.03
+        },
+        "trainer_signal_change": {
+          "changed_horses": 249,
+          "avg_trainer_signal_delta": 0.3851,
+          "positive_deltas": 173,
+          "negative_deltas": 76
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": -1,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 1,
+          "order_issue": 2,
+          "avg_winner_rank": -0.065,
+          "mrr": 0.003,
+          "avg_pick1_finish": 0.018,
+          "avg_top4_hits": 0.018
+        }
+      },
+      "direct_pair_damped_change_quality": {
+        "summary": {
+          "races": 169,
+          "gold": 10,
+          "good": 41,
+          "min_threshold": 77,
+          "single": 142,
+          "champion": 41,
+          "top3_has_champion": 91,
+          "order_issue": 55,
+          "avg_winner_rank": 4.308,
+          "mrr": 0.4426,
+          "avg_pick1_finish": 4.243,
+          "avg_top4_hits": 2.03
+        },
+        "trainer_signal_change": {
+          "changed_horses": 372,
+          "avg_trainer_signal_delta": 0.1718,
+          "positive_deltas": 190,
+          "negative_deltas": 182
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": -1,
+          "top3_has_champion": 2,
+          "order_issue": 1,
+          "avg_winner_rank": -0.077,
+          "mrr": 0.0016,
+          "avg_pick1_finish": 0.107,
+          "avg_top4_hits": 0.018
+        }
+      },
+      "no_jockey_change_penalty": {
+        "summary": {
+          "races": 169,
+          "gold": 11,
+          "good": 41,
+          "min_threshold": 77,
+          "single": 140,
+          "champion": 41,
+          "top3_has_champion": 88,
+          "order_issue": 55,
+          "avg_winner_rank": 4.414,
+          "mrr": 0.4371,
+          "avg_pick1_finish": 4.183,
+          "avg_top4_hits": 2.024
+        },
+        "trainer_signal_change": {
+          "changed_horses": 577,
+          "avg_trainer_signal_delta": 0.8236,
+          "positive_deltas": 577,
+          "negative_deltas": 0
+        },
+        "delta_vs_current": {
+          "gold": 1,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": -1,
+          "top3_has_champion": -1,
+          "order_issue": 1,
+          "avg_winner_rank": 0.029,
+          "mrr": -0.0039,
+          "avg_pick1_finish": 0.047,
+          "avg_top4_hits": 0.012
+        }
+      },
+      "relaxed_context_replace": {
+        "summary": {
+          "races": 169,
+          "gold": 10,
+          "good": 41,
+          "min_threshold": 76,
+          "single": 142,
+          "champion": 41,
+          "top3_has_champion": 90,
+          "order_issue": 56,
+          "avg_winner_rank": 4.42,
+          "mrr": 0.4379,
+          "avg_pick1_finish": 4.201,
+          "avg_top4_hits": 2.0
+        },
+        "trainer_signal_change": {
+          "changed_horses": 1281,
+          "avg_trainer_signal_delta": 0.3793,
+          "positive_deltas": 945,
+          "negative_deltas": 336
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": -1,
+          "champion": -1,
+          "top3_has_champion": 1,
+          "order_issue": 2,
+          "avg_winner_rank": 0.035,
+          "mrr": -0.0031,
+          "avg_pick1_finish": 0.065,
+          "avg_top4_hits": -0.012
+        }
+      },
+      "relaxed_no_change_penalty": {
+        "summary": {
+          "races": 169,
+          "gold": 10,
+          "good": 43,
+          "min_threshold": 76,
+          "single": 142,
+          "champion": 41,
+          "top3_has_champion": 89,
+          "order_issue": 59,
+          "avg_winner_rank": 4.414,
+          "mrr": 0.4378,
+          "avg_pick1_finish": 4.166,
+          "avg_top4_hits": 2.036
+        },
+        "trainer_signal_change": {
+          "changed_horses": 1445,
+          "avg_trainer_signal_delta": 0.6652,
+          "positive_deltas": 1204,
+          "negative_deltas": 241
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 2,
+          "min_threshold": -1,
+          "champion": -1,
+          "top3_has_champion": 0,
+          "order_issue": 5,
+          "avg_winner_rank": 0.029,
+          "mrr": -0.0032,
+          "avg_pick1_finish": 0.03,
+          "avg_top4_hits": 0.024
+        }
+      },
+      "place_context_replace": {
+        "summary": {
+          "races": 169,
+          "gold": 9,
+          "good": 43,
+          "min_threshold": 75,
+          "single": 142,
+          "champion": 40,
+          "top3_has_champion": 89,
+          "order_issue": 55,
+          "avg_winner_rank": 4.414,
+          "mrr": 0.4363,
+          "avg_pick1_finish": 4.249,
+          "avg_top4_hits": 2.0
+        },
+        "trainer_signal_change": {
+          "changed_horses": 1637,
+          "avg_trainer_signal_delta": -0.0782,
+          "positive_deltas": 798,
+          "negative_deltas": 839
+        },
+        "delta_vs_current": {
+          "gold": -1,
+          "good": 2,
+          "min_threshold": -2,
+          "champion": -2,
+          "top3_has_champion": 0,
+          "order_issue": 1,
+          "avg_winner_rank": 0.029,
+          "mrr": -0.0047,
+          "avg_pick1_finish": 0.113,
+          "avg_top4_hits": -0.012
+        }
+      },
+      "place_no_change_penalty": {
+        "summary": {
+          "races": 169,
+          "gold": 9,
+          "good": 43,
+          "min_threshold": 76,
+          "single": 142,
+          "champion": 40,
+          "top3_has_champion": 88,
+          "order_issue": 58,
+          "avg_winner_rank": 4.438,
+          "mrr": 0.4353,
+          "avg_pick1_finish": 4.249,
+          "avg_top4_hits": 2.018
+        },
+        "trainer_signal_change": {
+          "changed_horses": 1716,
+          "avg_trainer_signal_delta": 0.2024,
+          "positive_deltas": 1041,
+          "negative_deltas": 675
+        },
+        "delta_vs_current": {
+          "gold": -1,
+          "good": 2,
+          "min_threshold": -1,
+          "champion": -2,
+          "top3_has_champion": -1,
+          "order_issue": 4,
+          "avg_winner_rank": 0.053,
+          "mrr": -0.0057,
+          "avg_pick1_finish": 0.113,
+          "avg_top4_hits": 0.006
+        }
+      }
+    },
+    "happy_valley": {
+      "current_live": {
+        "summary": {
+          "races": 72,
+          "gold": 5,
+          "good": 15,
+          "min_threshold": 34,
+          "single": 62,
+          "champion": 19,
+          "top3_has_champion": 41,
+          "order_issue": 18,
+          "avg_winner_rank": 4.125,
+          "mrr": 0.4618,
+          "avg_pick1_finish": 3.847,
+          "avg_top4_hits": 2.0
+        },
+        "trainer_signal_change": {
+          "changed_horses": 0,
+          "avg_trainer_signal_delta": 0.0,
+          "positive_deltas": 0,
+          "negative_deltas": 0
+        }
+      },
+      "trainer_v3_additive": {
+        "summary": {
+          "races": 72,
+          "gold": 5,
+          "good": 17,
+          "min_threshold": 33,
+          "single": 61,
+          "champion": 18,
+          "top3_has_champion": 38,
+          "order_issue": 19,
+          "avg_winner_rank": 4.097,
+          "mrr": 0.4537,
+          "avg_pick1_finish": 4.0,
+          "avg_top4_hits": 2.014
+        },
+        "trainer_signal_change": {
+          "changed_horses": 443,
+          "avg_trainer_signal_delta": 1.8494,
+          "positive_deltas": 443,
+          "negative_deltas": 0
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 2,
+          "min_threshold": -1,
+          "champion": -1,
+          "top3_has_champion": -3,
+          "order_issue": 1,
+          "avg_winner_rank": -0.028,
+          "mrr": -0.0081,
+          "avg_pick1_finish": 0.153,
+          "avg_top4_hits": 0.014
+        }
+      },
+      "trainer_v4_change_quality_additive": {
+        "summary": {
+          "races": 72,
+          "gold": 5,
+          "good": 17,
+          "min_threshold": 32,
+          "single": 61,
+          "champion": 18,
+          "top3_has_champion": 38,
+          "order_issue": 19,
+          "avg_winner_rank": 4.111,
+          "mrr": 0.4531,
+          "avg_pick1_finish": 4.0,
+          "avg_top4_hits": 2.014
+        },
+        "trainer_signal_change": {
+          "changed_horses": 472,
+          "avg_trainer_signal_delta": 1.6882,
+          "positive_deltas": 436,
+          "negative_deltas": 36
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 2,
+          "min_threshold": -2,
+          "champion": -1,
+          "top3_has_champion": -3,
+          "order_issue": 1,
+          "avg_winner_rank": -0.014,
+          "mrr": -0.0087,
+          "avg_pick1_finish": 0.153,
+          "avg_top4_hits": 0.014
+        }
+      },
+      "change_quality_only_additive": {
+        "summary": {
+          "races": 72,
+          "gold": 5,
+          "good": 15,
+          "min_threshold": 34,
+          "single": 62,
+          "champion": 18,
+          "top3_has_champion": 41,
+          "order_issue": 17,
+          "avg_winner_rank": 4.111,
+          "mrr": 0.4574,
+          "avg_pick1_finish": 4.056,
+          "avg_top4_hits": 2.0
+        },
+        "trainer_signal_change": {
+          "changed_horses": 69,
+          "avg_trainer_signal_delta": -0.3188,
+          "positive_deltas": 19,
+          "negative_deltas": 50
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": -1,
+          "top3_has_champion": 0,
+          "order_issue": -1,
+          "avg_winner_rank": -0.014,
+          "mrr": -0.0044,
+          "avg_pick1_finish": 0.209,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "direct_pair_damped": {
+        "summary": {
+          "races": 72,
+          "gold": 5,
+          "good": 14,
+          "min_threshold": 34,
+          "single": 62,
+          "champion": 19,
+          "top3_has_champion": 41,
+          "order_issue": 18,
+          "avg_winner_rank": 4.083,
+          "mrr": 0.4625,
+          "avg_pick1_finish": 3.847,
+          "avg_top4_hits": 2.014
+        },
+        "trainer_signal_change": {
+          "changed_horses": 122,
+          "avg_trainer_signal_delta": 0.4525,
+          "positive_deltas": 89,
+          "negative_deltas": 33
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": -1,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": -0.042,
+          "mrr": 0.0007,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.014
+        }
+      },
+      "direct_pair_damped_change_quality": {
+        "summary": {
+          "races": 72,
+          "gold": 5,
+          "good": 15,
+          "min_threshold": 34,
+          "single": 62,
+          "champion": 18,
+          "top3_has_champion": 41,
+          "order_issue": 17,
+          "avg_winner_rank": 4.083,
+          "mrr": 0.4579,
+          "avg_pick1_finish": 4.056,
+          "avg_top4_hits": 2.014
+        },
+        "trainer_signal_change": {
+          "changed_horses": 181,
+          "avg_trainer_signal_delta": 0.2442,
+          "positive_deltas": 100,
+          "negative_deltas": 81
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": -1,
+          "top3_has_champion": 0,
+          "order_issue": -1,
+          "avg_winner_rank": -0.042,
+          "mrr": -0.0039,
+          "avg_pick1_finish": 0.209,
+          "avg_top4_hits": 0.014
+        }
+      },
+      "no_jockey_change_penalty": {
+        "summary": {
+          "races": 72,
+          "gold": 5,
+          "good": 16,
+          "min_threshold": 34,
+          "single": 62,
+          "champion": 19,
+          "top3_has_champion": 41,
+          "order_issue": 19,
+          "avg_winner_rank": 4.153,
+          "mrr": 0.4608,
+          "avg_pick1_finish": 3.847,
+          "avg_top4_hits": 2.028
+        },
+        "trainer_signal_change": {
+          "changed_horses": 244,
+          "avg_trainer_signal_delta": 0.8236,
+          "positive_deltas": 244,
+          "negative_deltas": 0
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 1,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 1,
+          "avg_winner_rank": 0.028,
+          "mrr": -0.001,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.028
+        }
+      },
+      "relaxed_context_replace": {
+        "summary": {
+          "races": 72,
+          "gold": 5,
+          "good": 15,
+          "min_threshold": 33,
+          "single": 62,
+          "champion": 18,
+          "top3_has_champion": 41,
+          "order_issue": 18,
+          "avg_winner_rank": 4.181,
+          "mrr": 0.4536,
+          "avg_pick1_finish": 3.972,
+          "avg_top4_hits": 2.0
+        },
+        "trainer_signal_change": {
+          "changed_horses": 509,
+          "avg_trainer_signal_delta": 0.3318,
+          "positive_deltas": 348,
+          "negative_deltas": 161
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": -1,
+          "champion": -1,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": 0.056,
+          "mrr": -0.0082,
+          "avg_pick1_finish": 0.125,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "relaxed_no_change_penalty": {
+        "summary": {
+          "races": 72,
+          "gold": 5,
+          "good": 16,
+          "min_threshold": 33,
+          "single": 62,
+          "champion": 19,
+          "top3_has_champion": 41,
+          "order_issue": 21,
+          "avg_winner_rank": 4.167,
+          "mrr": 0.461,
+          "avg_pick1_finish": 3.847,
+          "avg_top4_hits": 2.056
+        },
+        "trainer_signal_change": {
+          "changed_horses": 583,
+          "avg_trainer_signal_delta": 0.6343,
+          "positive_deltas": 465,
+          "negative_deltas": 118
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 1,
+          "min_threshold": -1,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 3,
+          "avg_winner_rank": 0.042,
+          "mrr": -0.0008,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.056
+        }
+      },
+      "place_context_replace": {
+        "summary": {
+          "races": 72,
+          "gold": 5,
+          "good": 16,
+          "min_threshold": 32,
+          "single": 62,
+          "champion": 18,
+          "top3_has_champion": 40,
+          "order_issue": 19,
+          "avg_winner_rank": 4.139,
+          "mrr": 0.4546,
+          "avg_pick1_finish": 3.917,
+          "avg_top4_hits": 2.0
+        },
+        "trainer_signal_change": {
+          "changed_horses": 679,
+          "avg_trainer_signal_delta": -0.1658,
+          "positive_deltas": 296,
+          "negative_deltas": 383
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 1,
+          "min_threshold": -2,
+          "champion": -1,
+          "top3_has_champion": -1,
+          "order_issue": 1,
+          "avg_winner_rank": 0.014,
+          "mrr": -0.0072,
+          "avg_pick1_finish": 0.07,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "place_no_change_penalty": {
+        "summary": {
+          "races": 72,
+          "gold": 5,
+          "good": 16,
+          "min_threshold": 32,
+          "single": 62,
+          "champion": 18,
+          "top3_has_champion": 40,
+          "order_issue": 21,
+          "avg_winner_rank": 4.167,
+          "mrr": 0.4537,
+          "avg_pick1_finish": 3.917,
+          "avg_top4_hits": 2.014
+        },
+        "trainer_signal_change": {
+          "changed_horses": 712,
+          "avg_trainer_signal_delta": 0.1241,
+          "positive_deltas": 401,
+          "negative_deltas": 311
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 1,
+          "min_threshold": -2,
+          "champion": -1,
+          "top3_has_champion": -1,
+          "order_issue": 3,
+          "avg_winner_rank": 0.042,
+          "mrr": -0.0081,
+          "avg_pick1_finish": 0.07,
+          "avg_top4_hits": 0.014
+        }
+      }
+    },
+    "sha_tin": {
+      "current_live": {
+        "summary": {
+          "races": 97,
+          "gold": 5,
+          "good": 26,
+          "min_threshold": 43,
+          "single": 78,
+          "champion": 23,
+          "top3_has_champion": 48,
+          "order_issue": 36,
+          "avg_winner_rank": 4.577,
+          "mrr": 0.4256,
+          "avg_pick1_finish": 4.351,
+          "avg_top4_hits": 2.021
+        },
+        "trainer_signal_change": {
+          "changed_horses": 0,
+          "avg_trainer_signal_delta": 0.0,
+          "positive_deltas": 0,
+          "negative_deltas": 0
+        }
+      },
+      "trainer_v3_additive": {
+        "summary": {
+          "races": 97,
+          "gold": 5,
+          "good": 26,
+          "min_threshold": 46,
+          "single": 80,
+          "champion": 25,
+          "top3_has_champion": 52,
+          "order_issue": 40,
+          "avg_winner_rank": 4.433,
+          "mrr": 0.4421,
+          "avg_pick1_finish": 4.381,
+          "avg_top4_hits": 2.041
+        },
+        "trainer_signal_change": {
+          "changed_horses": 608,
+          "avg_trainer_signal_delta": 1.832,
+          "positive_deltas": 608,
+          "negative_deltas": 0
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 3,
+          "champion": 2,
+          "top3_has_champion": 4,
+          "order_issue": 4,
+          "avg_winner_rank": -0.144,
+          "mrr": 0.0165,
+          "avg_pick1_finish": 0.03,
+          "avg_top4_hits": 0.02
+        }
+      },
+      "trainer_v4_change_quality_additive": {
+        "summary": {
+          "races": 97,
+          "gold": 5,
+          "good": 26,
+          "min_threshold": 45,
+          "single": 82,
+          "champion": 25,
+          "top3_has_champion": 51,
+          "order_issue": 39,
+          "avg_winner_rank": 4.381,
+          "mrr": 0.4441,
+          "avg_pick1_finish": 4.381,
+          "avg_top4_hits": 2.041
+        },
+        "trainer_signal_change": {
+          "changed_horses": 635,
+          "avg_trainer_signal_delta": 1.6823,
+          "positive_deltas": 588,
+          "negative_deltas": 47
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 2,
+          "champion": 2,
+          "top3_has_champion": 3,
+          "order_issue": 3,
+          "avg_winner_rank": -0.196,
+          "mrr": 0.0185,
+          "avg_pick1_finish": 0.03,
+          "avg_top4_hits": 0.02
+        }
+      },
+      "change_quality_only_additive": {
+        "summary": {
+          "races": 97,
+          "gold": 5,
+          "good": 26,
+          "min_threshold": 44,
+          "single": 80,
+          "champion": 23,
+          "top3_has_champion": 50,
+          "order_issue": 38,
+          "avg_winner_rank": 4.454,
+          "mrr": 0.432,
+          "avg_pick1_finish": 4.34,
+          "avg_top4_hits": 2.041
+        },
+        "trainer_signal_change": {
+          "changed_horses": 83,
+          "avg_trainer_signal_delta": -0.506,
+          "positive_deltas": 21,
+          "negative_deltas": 62
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 1,
+          "champion": 0,
+          "top3_has_champion": 2,
+          "order_issue": 2,
+          "avg_winner_rank": -0.123,
+          "mrr": 0.0064,
+          "avg_pick1_finish": -0.011,
+          "avg_top4_hits": 0.02
+        }
+      },
+      "direct_pair_damped": {
+        "summary": {
+          "races": 97,
+          "gold": 5,
+          "good": 26,
+          "min_threshold": 43,
+          "single": 79,
+          "champion": 23,
+          "top3_has_champion": 49,
+          "order_issue": 38,
+          "avg_winner_rank": 4.495,
+          "mrr": 0.4303,
+          "avg_pick1_finish": 4.381,
+          "avg_top4_hits": 2.041
+        },
+        "trainer_signal_change": {
+          "changed_horses": 127,
+          "avg_trainer_signal_delta": 0.3205,
+          "positive_deltas": 84,
+          "negative_deltas": 43
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 1,
+          "order_issue": 2,
+          "avg_winner_rank": -0.082,
+          "mrr": 0.0047,
+          "avg_pick1_finish": 0.03,
+          "avg_top4_hits": 0.02
+        }
+      },
+      "direct_pair_damped_change_quality": {
+        "summary": {
+          "races": 97,
+          "gold": 5,
+          "good": 26,
+          "min_threshold": 43,
+          "single": 80,
+          "champion": 23,
+          "top3_has_champion": 50,
+          "order_issue": 38,
+          "avg_winner_rank": 4.474,
+          "mrr": 0.4313,
+          "avg_pick1_finish": 4.381,
+          "avg_top4_hits": 2.041
+        },
+        "trainer_signal_change": {
+          "changed_horses": 191,
+          "avg_trainer_signal_delta": 0.1031,
+          "positive_deltas": 90,
+          "negative_deltas": 101
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 2,
+          "order_issue": 2,
+          "avg_winner_rank": -0.103,
+          "mrr": 0.0057,
+          "avg_pick1_finish": 0.03,
+          "avg_top4_hits": 0.02
+        }
+      },
+      "no_jockey_change_penalty": {
+        "summary": {
+          "races": 97,
+          "gold": 6,
+          "good": 25,
+          "min_threshold": 43,
+          "single": 78,
+          "champion": 22,
+          "top3_has_champion": 47,
+          "order_issue": 36,
+          "avg_winner_rank": 4.608,
+          "mrr": 0.4194,
+          "avg_pick1_finish": 4.433,
+          "avg_top4_hits": 2.021
+        },
+        "trainer_signal_change": {
+          "changed_horses": 333,
+          "avg_trainer_signal_delta": 0.8235,
+          "positive_deltas": 333,
+          "negative_deltas": 0
+        },
+        "delta_vs_current": {
+          "gold": 1,
+          "good": -1,
+          "min_threshold": 0,
+          "champion": -1,
+          "top3_has_champion": -1,
+          "order_issue": 0,
+          "avg_winner_rank": 0.031,
+          "mrr": -0.0062,
+          "avg_pick1_finish": 0.082,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "relaxed_context_replace": {
+        "summary": {
+          "races": 97,
+          "gold": 5,
+          "good": 26,
+          "min_threshold": 43,
+          "single": 80,
+          "champion": 23,
+          "top3_has_champion": 49,
+          "order_issue": 38,
+          "avg_winner_rank": 4.598,
+          "mrr": 0.4262,
+          "avg_pick1_finish": 4.371,
+          "avg_top4_hits": 2.0
+        },
+        "trainer_signal_change": {
+          "changed_horses": 772,
+          "avg_trainer_signal_delta": 0.4107,
+          "positive_deltas": 597,
+          "negative_deltas": 175
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 1,
+          "order_issue": 2,
+          "avg_winner_rank": 0.021,
+          "mrr": 0.0006,
+          "avg_pick1_finish": 0.02,
+          "avg_top4_hits": -0.021
+        }
+      },
+      "relaxed_no_change_penalty": {
+        "summary": {
+          "races": 97,
+          "gold": 5,
+          "good": 27,
+          "min_threshold": 43,
+          "single": 80,
+          "champion": 22,
+          "top3_has_champion": 48,
+          "order_issue": 38,
+          "avg_winner_rank": 4.598,
+          "mrr": 0.4205,
+          "avg_pick1_finish": 4.402,
+          "avg_top4_hits": 2.021
+        },
+        "trainer_signal_change": {
+          "changed_horses": 862,
+          "avg_trainer_signal_delta": 0.6861,
+          "positive_deltas": 739,
+          "negative_deltas": 123
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 1,
+          "min_threshold": 0,
+          "champion": -1,
+          "top3_has_champion": 0,
+          "order_issue": 2,
+          "avg_winner_rank": 0.021,
+          "mrr": -0.0051,
+          "avg_pick1_finish": 0.051,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "place_context_replace": {
+        "summary": {
+          "races": 97,
+          "gold": 4,
+          "good": 27,
+          "min_threshold": 43,
+          "single": 80,
+          "champion": 22,
+          "top3_has_champion": 49,
+          "order_issue": 36,
+          "avg_winner_rank": 4.619,
+          "mrr": 0.4226,
+          "avg_pick1_finish": 4.495,
+          "avg_top4_hits": 2.0
+        },
+        "trainer_signal_change": {
+          "changed_horses": 958,
+          "avg_trainer_signal_delta": -0.0161,
+          "positive_deltas": 502,
+          "negative_deltas": 456
+        },
+        "delta_vs_current": {
+          "gold": -1,
+          "good": 1,
+          "min_threshold": 0,
+          "champion": -1,
+          "top3_has_champion": 1,
+          "order_issue": 0,
+          "avg_winner_rank": 0.042,
+          "mrr": -0.003,
+          "avg_pick1_finish": 0.144,
+          "avg_top4_hits": -0.021
+        }
+      },
+      "place_no_change_penalty": {
+        "summary": {
+          "races": 97,
+          "gold": 4,
+          "good": 27,
+          "min_threshold": 44,
+          "single": 80,
+          "champion": 22,
+          "top3_has_champion": 48,
+          "order_issue": 37,
+          "avg_winner_rank": 4.639,
+          "mrr": 0.4216,
+          "avg_pick1_finish": 4.495,
+          "avg_top4_hits": 2.021
+        },
+        "trainer_signal_change": {
+          "changed_horses": 1004,
+          "avg_trainer_signal_delta": 0.2579,
+          "positive_deltas": 640,
+          "negative_deltas": 364
+        },
+        "delta_vs_current": {
+          "gold": -1,
+          "good": 1,
+          "min_threshold": 1,
+          "champion": -1,
+          "top3_has_champion": 0,
+          "order_issue": 1,
+          "avg_winner_rank": 0.062,
+          "mrr": -0.004,
+          "avg_pick1_finish": 0.144,
+          "avg_top4_hits": 0.0
+        }
+      }
+    },
+    "happy_valley_1200": {
+      "current_live": {
+        "summary": {
+          "races": 32,
+          "gold": 2,
+          "good": 6,
+          "min_threshold": 17,
+          "single": 26,
+          "champion": 11,
+          "top3_has_champion": 17,
+          "order_issue": 9,
+          "avg_winner_rank": 4.031,
+          "mrr": 0.4986,
+          "avg_pick1_finish": 4.094,
+          "avg_top4_hits": 2.0
+        },
+        "trainer_signal_change": {
+          "changed_horses": 0,
+          "avg_trainer_signal_delta": 0.0,
+          "positive_deltas": 0,
+          "negative_deltas": 0
+        }
+      },
+      "trainer_v3_additive": {
+        "summary": {
+          "races": 32,
+          "gold": 2,
+          "good": 8,
+          "min_threshold": 17,
+          "single": 26,
+          "champion": 11,
+          "top3_has_champion": 17,
+          "order_issue": 9,
+          "avg_winner_rank": 3.938,
+          "mrr": 0.5006,
+          "avg_pick1_finish": 4.312,
+          "avg_top4_hits": 2.0
+        },
+        "trainer_signal_change": {
+          "changed_horses": 214,
+          "avg_trainer_signal_delta": 1.9704,
+          "positive_deltas": 214,
+          "negative_deltas": 0
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 2,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": -0.093,
+          "mrr": 0.002,
+          "avg_pick1_finish": 0.218,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "trainer_v4_change_quality_additive": {
+        "summary": {
+          "races": 32,
+          "gold": 2,
+          "good": 8,
+          "min_threshold": 17,
+          "single": 26,
+          "champion": 11,
+          "top3_has_champion": 17,
+          "order_issue": 9,
+          "avg_winner_rank": 3.938,
+          "mrr": 0.5006,
+          "avg_pick1_finish": 4.312,
+          "avg_top4_hits": 2.0
+        },
+        "trainer_signal_change": {
+          "changed_horses": 224,
+          "avg_trainer_signal_delta": 1.8579,
+          "positive_deltas": 209,
+          "negative_deltas": 15
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 2,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": -0.093,
+          "mrr": 0.002,
+          "avg_pick1_finish": 0.218,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "change_quality_only_additive": {
+        "summary": {
+          "races": 32,
+          "gold": 2,
+          "good": 6,
+          "min_threshold": 17,
+          "single": 26,
+          "champion": 11,
+          "top3_has_champion": 17,
+          "order_issue": 9,
+          "avg_winner_rank": 4.031,
+          "mrr": 0.4986,
+          "avg_pick1_finish": 4.281,
+          "avg_top4_hits": 2.0
+        },
+        "trainer_signal_change": {
+          "changed_horses": 29,
+          "avg_trainer_signal_delta": -0.1897,
+          "positive_deltas": 10,
+          "negative_deltas": 19
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": 0.0,
+          "mrr": 0.0,
+          "avg_pick1_finish": 0.187,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "direct_pair_damped": {
+        "summary": {
+          "races": 32,
+          "gold": 2,
+          "good": 6,
+          "min_threshold": 17,
+          "single": 26,
+          "champion": 11,
+          "top3_has_champion": 17,
+          "order_issue": 9,
+          "avg_winner_rank": 4.0,
+          "mrr": 0.4993,
+          "avg_pick1_finish": 4.094,
+          "avg_top4_hits": 2.031
+        },
+        "trainer_signal_change": {
+          "changed_horses": 67,
+          "avg_trainer_signal_delta": 0.5284,
+          "positive_deltas": 52,
+          "negative_deltas": 15
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": -0.031,
+          "mrr": 0.0007,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.031
+        }
+      },
+      "direct_pair_damped_change_quality": {
+        "summary": {
+          "races": 32,
+          "gold": 2,
+          "good": 6,
+          "min_threshold": 17,
+          "single": 26,
+          "champion": 11,
+          "top3_has_champion": 17,
+          "order_issue": 9,
+          "avg_winner_rank": 4.0,
+          "mrr": 0.4993,
+          "avg_pick1_finish": 4.281,
+          "avg_top4_hits": 2.031
+        },
+        "trainer_signal_change": {
+          "changed_horses": 91,
+          "avg_trainer_signal_delta": 0.3588,
+          "positive_deltas": 57,
+          "negative_deltas": 34
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": -0.031,
+          "mrr": 0.0007,
+          "avg_pick1_finish": 0.187,
+          "avg_top4_hits": 0.031
+        }
+      },
+      "no_jockey_change_penalty": {
+        "summary": {
+          "races": 32,
+          "gold": 2,
+          "good": 7,
+          "min_threshold": 17,
+          "single": 26,
+          "champion": 11,
+          "top3_has_champion": 17,
+          "order_issue": 9,
+          "avg_winner_rank": 4.094,
+          "mrr": 0.4965,
+          "avg_pick1_finish": 4.094,
+          "avg_top4_hits": 2.031
+        },
+        "trainer_signal_change": {
+          "changed_horses": 112,
+          "avg_trainer_signal_delta": 0.8245,
+          "positive_deltas": 112,
+          "negative_deltas": 0
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 1,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": 0.063,
+          "mrr": -0.0021,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.031
+        }
+      },
+      "relaxed_context_replace": {
+        "summary": {
+          "races": 32,
+          "gold": 2,
+          "good": 6,
+          "min_threshold": 16,
+          "single": 26,
+          "champion": 11,
+          "top3_has_champion": 17,
+          "order_issue": 9,
+          "avg_winner_rank": 4.062,
+          "mrr": 0.497,
+          "avg_pick1_finish": 4.094,
+          "avg_top4_hits": 1.969
+        },
+        "trainer_signal_change": {
+          "changed_horses": 253,
+          "avg_trainer_signal_delta": 0.3545,
+          "positive_deltas": 168,
+          "negative_deltas": 85
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": -1,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": 0.031,
+          "mrr": -0.0016,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": -0.031
+        }
+      },
+      "relaxed_no_change_penalty": {
+        "summary": {
+          "races": 32,
+          "gold": 2,
+          "good": 7,
+          "min_threshold": 16,
+          "single": 26,
+          "champion": 11,
+          "top3_has_champion": 17,
+          "order_issue": 10,
+          "avg_winner_rank": 4.094,
+          "mrr": 0.4965,
+          "avg_pick1_finish": 4.094,
+          "avg_top4_hits": 2.031
+        },
+        "trainer_signal_change": {
+          "changed_horses": 273,
+          "avg_trainer_signal_delta": 0.6664,
+          "positive_deltas": 212,
+          "negative_deltas": 61
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 1,
+          "min_threshold": -1,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 1,
+          "avg_winner_rank": 0.063,
+          "mrr": -0.0021,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.031
+        }
+      },
+      "place_context_replace": {
+        "summary": {
+          "races": 32,
+          "gold": 2,
+          "good": 6,
+          "min_threshold": 16,
+          "single": 26,
+          "champion": 11,
+          "top3_has_champion": 17,
+          "order_issue": 9,
+          "avg_winner_rank": 4.0,
+          "mrr": 0.4996,
+          "avg_pick1_finish": 4.25,
+          "avg_top4_hits": 2.0
+        },
+        "trainer_signal_change": {
+          "changed_horses": 321,
+          "avg_trainer_signal_delta": -0.1036,
+          "positive_deltas": 156,
+          "negative_deltas": 165
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": -1,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": -0.031,
+          "mrr": 0.001,
+          "avg_pick1_finish": 0.156,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "place_no_change_penalty": {
+        "summary": {
+          "races": 32,
+          "gold": 2,
+          "good": 6,
+          "min_threshold": 16,
+          "single": 26,
+          "champion": 11,
+          "top3_has_champion": 17,
+          "order_issue": 10,
+          "avg_winner_rank": 4.062,
+          "mrr": 0.4975,
+          "avg_pick1_finish": 4.25,
+          "avg_top4_hits": 2.031
+        },
+        "trainer_signal_change": {
+          "changed_horses": 328,
+          "avg_trainer_signal_delta": 0.1799,
+          "positive_deltas": 196,
+          "negative_deltas": 132
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": -1,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 1,
+          "avg_winner_rank": 0.031,
+          "mrr": -0.0011,
+          "avg_pick1_finish": 0.156,
+          "avg_top4_hits": 0.031
+        }
+      }
+    },
+    "happy_valley_1650": {
+      "current_live": {
+        "summary": {
+          "races": 23,
+          "gold": 2,
+          "good": 4,
+          "min_threshold": 8,
+          "single": 21,
+          "champion": 7,
+          "top3_has_champion": 17,
+          "order_issue": 7,
+          "avg_winner_rank": 3.13,
+          "mrr": 0.5356,
+          "avg_pick1_finish": 3.652,
+          "avg_top4_hits": 1.87
+        },
+        "trainer_signal_change": {
+          "changed_horses": 0,
+          "avg_trainer_signal_delta": 0.0,
+          "positive_deltas": 0,
+          "negative_deltas": 0
+        }
+      },
+      "trainer_v3_additive": {
+        "summary": {
+          "races": 23,
+          "gold": 2,
+          "good": 4,
+          "min_threshold": 7,
+          "single": 21,
+          "champion": 6,
+          "top3_has_champion": 15,
+          "order_issue": 8,
+          "avg_winner_rank": 3.174,
+          "mrr": 0.511,
+          "avg_pick1_finish": 3.826,
+          "avg_top4_hits": 1.913
+        },
+        "trainer_signal_change": {
+          "changed_horses": 133,
+          "avg_trainer_signal_delta": 1.8064,
+          "positive_deltas": 133,
+          "negative_deltas": 0
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": -1,
+          "champion": -1,
+          "top3_has_champion": -2,
+          "order_issue": 1,
+          "avg_winner_rank": 0.044,
+          "mrr": -0.0246,
+          "avg_pick1_finish": 0.174,
+          "avg_top4_hits": 0.043
+        }
+      },
+      "trainer_v4_change_quality_additive": {
+        "summary": {
+          "races": 23,
+          "gold": 2,
+          "good": 4,
+          "min_threshold": 7,
+          "single": 21,
+          "champion": 6,
+          "top3_has_champion": 15,
+          "order_issue": 8,
+          "avg_winner_rank": 3.217,
+          "mrr": 0.5088,
+          "avg_pick1_finish": 3.826,
+          "avg_top4_hits": 1.913
+        },
+        "trainer_signal_change": {
+          "changed_horses": 141,
+          "avg_trainer_signal_delta": 1.5975,
+          "positive_deltas": 130,
+          "negative_deltas": 11
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": -1,
+          "champion": -1,
+          "top3_has_champion": -2,
+          "order_issue": 1,
+          "avg_winner_rank": 0.087,
+          "mrr": -0.0268,
+          "avg_pick1_finish": 0.174,
+          "avg_top4_hits": 0.043
+        }
+      },
+      "change_quality_only_additive": {
+        "summary": {
+          "races": 23,
+          "gold": 2,
+          "good": 4,
+          "min_threshold": 8,
+          "single": 21,
+          "champion": 6,
+          "top3_has_champion": 17,
+          "order_issue": 7,
+          "avg_winner_rank": 3.174,
+          "mrr": 0.5139,
+          "avg_pick1_finish": 4.043,
+          "avg_top4_hits": 1.87
+        },
+        "trainer_signal_change": {
+          "changed_horses": 20,
+          "avg_trainer_signal_delta": -0.75,
+          "positive_deltas": 3,
+          "negative_deltas": 17
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": -1,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": 0.044,
+          "mrr": -0.0217,
+          "avg_pick1_finish": 0.391,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "direct_pair_damped": {
+        "summary": {
+          "races": 23,
+          "gold": 2,
+          "good": 4,
+          "min_threshold": 8,
+          "single": 21,
+          "champion": 7,
+          "top3_has_champion": 17,
+          "order_issue": 7,
+          "avg_winner_rank": 3.13,
+          "mrr": 0.5356,
+          "avg_pick1_finish": 3.652,
+          "avg_top4_hits": 1.87
+        },
+        "trainer_signal_change": {
+          "changed_horses": 38,
+          "avg_trainer_signal_delta": 0.4026,
+          "positive_deltas": 26,
+          "negative_deltas": 12
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": 0.0,
+          "mrr": 0.0,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "direct_pair_damped_change_quality": {
+        "summary": {
+          "races": 23,
+          "gold": 2,
+          "good": 4,
+          "min_threshold": 8,
+          "single": 21,
+          "champion": 6,
+          "top3_has_champion": 17,
+          "order_issue": 7,
+          "avg_winner_rank": 3.174,
+          "mrr": 0.5139,
+          "avg_pick1_finish": 4.043,
+          "avg_top4_hits": 1.87
+        },
+        "trainer_signal_change": {
+          "changed_horses": 55,
+          "avg_trainer_signal_delta": 0.1418,
+          "positive_deltas": 27,
+          "negative_deltas": 28
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": -1,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": 0.044,
+          "mrr": -0.0217,
+          "avg_pick1_finish": 0.391,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "no_jockey_change_penalty": {
+        "summary": {
+          "races": 23,
+          "gold": 2,
+          "good": 4,
+          "min_threshold": 8,
+          "single": 21,
+          "champion": 7,
+          "top3_has_champion": 17,
+          "order_issue": 7,
+          "avg_winner_rank": 3.13,
+          "mrr": 0.5356,
+          "avg_pick1_finish": 3.652,
+          "avg_top4_hits": 1.87
+        },
+        "trainer_signal_change": {
+          "changed_horses": 75,
+          "avg_trainer_signal_delta": 0.8236,
+          "positive_deltas": 75,
+          "negative_deltas": 0
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": 0.0,
+          "mrr": 0.0,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "relaxed_context_replace": {
+        "summary": {
+          "races": 23,
+          "gold": 2,
+          "good": 4,
+          "min_threshold": 8,
+          "single": 21,
+          "champion": 6,
+          "top3_has_champion": 17,
+          "order_issue": 7,
+          "avg_winner_rank": 3.174,
+          "mrr": 0.5139,
+          "avg_pick1_finish": 4.043,
+          "avg_top4_hits": 1.913
+        },
+        "trainer_signal_change": {
+          "changed_horses": 159,
+          "avg_trainer_signal_delta": 0.1599,
+          "positive_deltas": 97,
+          "negative_deltas": 62
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": -1,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": 0.044,
+          "mrr": -0.0217,
+          "avg_pick1_finish": 0.391,
+          "avg_top4_hits": 0.043
+        }
+      },
+      "relaxed_no_change_penalty": {
+        "summary": {
+          "races": 23,
+          "gold": 2,
+          "good": 4,
+          "min_threshold": 8,
+          "single": 21,
+          "champion": 7,
+          "top3_has_champion": 17,
+          "order_issue": 7,
+          "avg_winner_rank": 3.13,
+          "mrr": 0.5356,
+          "avg_pick1_finish": 3.652,
+          "avg_top4_hits": 1.913
+        },
+        "trainer_signal_change": {
+          "changed_horses": 185,
+          "avg_trainer_signal_delta": 0.4712,
+          "positive_deltas": 139,
+          "negative_deltas": 46
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": 0.0,
+          "mrr": 0.0,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.043
+        }
+      },
+      "place_context_replace": {
+        "summary": {
+          "races": 23,
+          "gold": 2,
+          "good": 4,
+          "min_threshold": 7,
+          "single": 21,
+          "champion": 6,
+          "top3_has_champion": 16,
+          "order_issue": 8,
+          "avg_winner_rank": 3.174,
+          "mrr": 0.5124,
+          "avg_pick1_finish": 3.652,
+          "avg_top4_hits": 1.913
+        },
+        "trainer_signal_change": {
+          "changed_horses": 225,
+          "avg_trainer_signal_delta": -0.3509,
+          "positive_deltas": 79,
+          "negative_deltas": 146
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": -1,
+          "champion": -1,
+          "top3_has_champion": -1,
+          "order_issue": 1,
+          "avg_winner_rank": 0.044,
+          "mrr": -0.0232,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.043
+        }
+      },
+      "place_no_change_penalty": {
+        "summary": {
+          "races": 23,
+          "gold": 2,
+          "good": 4,
+          "min_threshold": 7,
+          "single": 21,
+          "champion": 6,
+          "top3_has_champion": 16,
+          "order_issue": 8,
+          "avg_winner_rank": 3.174,
+          "mrr": 0.5124,
+          "avg_pick1_finish": 3.652,
+          "avg_top4_hits": 1.87
+        },
+        "trainer_signal_change": {
+          "changed_horses": 234,
+          "avg_trainer_signal_delta": -0.0734,
+          "positive_deltas": 111,
+          "negative_deltas": 123
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": -1,
+          "champion": -1,
+          "top3_has_champion": -1,
+          "order_issue": 1,
+          "avg_winner_rank": 0.044,
+          "mrr": -0.0232,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.0
+        }
+      }
+    },
+    "happy_valley_1800": {
+      "current_live": {
+        "summary": {
+          "races": 7,
+          "gold": 0,
+          "good": 2,
+          "min_threshold": 3,
+          "single": 5,
+          "champion": 1,
+          "top3_has_champion": 3,
+          "order_issue": 0,
+          "avg_winner_rank": 5.0,
+          "mrr": 0.3664,
+          "avg_pick1_finish": 3.286,
+          "avg_top4_hits": 1.857
+        },
+        "trainer_signal_change": {
+          "changed_horses": 0,
+          "avg_trainer_signal_delta": 0.0,
+          "positive_deltas": 0,
+          "negative_deltas": 0
+        }
+      },
+      "trainer_v3_additive": {
+        "summary": {
+          "races": 7,
+          "gold": 0,
+          "good": 2,
+          "min_threshold": 3,
+          "single": 4,
+          "champion": 1,
+          "top3_has_champion": 2,
+          "order_issue": 1,
+          "avg_winner_rank": 4.857,
+          "mrr": 0.3372,
+          "avg_pick1_finish": 3.286,
+          "avg_top4_hits": 1.857
+        },
+        "trainer_signal_change": {
+          "changed_horses": 38,
+          "avg_trainer_signal_delta": 1.6316,
+          "positive_deltas": 38,
+          "negative_deltas": 0
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": -1,
+          "order_issue": 1,
+          "avg_winner_rank": -0.143,
+          "mrr": -0.0292,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "trainer_v4_change_quality_additive": {
+        "summary": {
+          "races": 7,
+          "gold": 0,
+          "good": 2,
+          "min_threshold": 2,
+          "single": 4,
+          "champion": 1,
+          "top3_has_champion": 2,
+          "order_issue": 1,
+          "avg_winner_rank": 4.857,
+          "mrr": 0.3372,
+          "avg_pick1_finish": 3.286,
+          "avg_top4_hits": 1.857
+        },
+        "trainer_signal_change": {
+          "changed_horses": 44,
+          "avg_trainer_signal_delta": 1.5227,
+          "positive_deltas": 41,
+          "negative_deltas": 3
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": -1,
+          "champion": 0,
+          "top3_has_champion": -1,
+          "order_issue": 1,
+          "avg_winner_rank": -0.143,
+          "mrr": -0.0292,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "change_quality_only_additive": {
+        "summary": {
+          "races": 7,
+          "gold": 0,
+          "good": 2,
+          "min_threshold": 3,
+          "single": 5,
+          "champion": 1,
+          "top3_has_champion": 3,
+          "order_issue": 0,
+          "avg_winner_rank": 4.857,
+          "mrr": 0.3694,
+          "avg_pick1_finish": 3.286,
+          "avg_top4_hits": 1.857
+        },
+        "trainer_signal_change": {
+          "changed_horses": 9,
+          "avg_trainer_signal_delta": 0.5556,
+          "positive_deltas": 4,
+          "negative_deltas": 5
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": -0.143,
+          "mrr": 0.003,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "direct_pair_damped": {
+        "summary": {
+          "races": 7,
+          "gold": 0,
+          "good": 2,
+          "min_threshold": 3,
+          "single": 5,
+          "champion": 1,
+          "top3_has_champion": 3,
+          "order_issue": 0,
+          "avg_winner_rank": 4.714,
+          "mrr": 0.371,
+          "avg_pick1_finish": 3.286,
+          "avg_top4_hits": 1.857
+        },
+        "trainer_signal_change": {
+          "changed_horses": 6,
+          "avg_trainer_signal_delta": 0.4,
+          "positive_deltas": 4,
+          "negative_deltas": 2
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": -0.286,
+          "mrr": 0.0046,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "direct_pair_damped_change_quality": {
+        "summary": {
+          "races": 7,
+          "gold": 0,
+          "good": 2,
+          "min_threshold": 3,
+          "single": 5,
+          "champion": 1,
+          "top3_has_champion": 3,
+          "order_issue": 0,
+          "avg_winner_rank": 4.714,
+          "mrr": 0.371,
+          "avg_pick1_finish": 3.286,
+          "avg_top4_hits": 1.857
+        },
+        "trainer_signal_change": {
+          "changed_horses": 14,
+          "avg_trainer_signal_delta": 0.35,
+          "positive_deltas": 8,
+          "negative_deltas": 6
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": -0.286,
+          "mrr": 0.0046,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "no_jockey_change_penalty": {
+        "summary": {
+          "races": 7,
+          "gold": 0,
+          "good": 2,
+          "min_threshold": 3,
+          "single": 5,
+          "champion": 1,
+          "top3_has_champion": 3,
+          "order_issue": 1,
+          "avg_winner_rank": 5.0,
+          "mrr": 0.3664,
+          "avg_pick1_finish": 3.286,
+          "avg_top4_hits": 2.0
+        },
+        "trainer_signal_change": {
+          "changed_horses": 27,
+          "avg_trainer_signal_delta": 0.8222,
+          "positive_deltas": 27,
+          "negative_deltas": 0
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 1,
+          "avg_winner_rank": 0.0,
+          "mrr": 0.0,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.143
+        }
+      },
+      "relaxed_context_replace": {
+        "summary": {
+          "races": 7,
+          "gold": 0,
+          "good": 2,
+          "min_threshold": 3,
+          "single": 5,
+          "champion": 1,
+          "top3_has_champion": 3,
+          "order_issue": 0,
+          "avg_winner_rank": 5.0,
+          "mrr": 0.3664,
+          "avg_pick1_finish": 3.286,
+          "avg_top4_hits": 1.857
+        },
+        "trainer_signal_change": {
+          "changed_horses": 41,
+          "avg_trainer_signal_delta": 0.5246,
+          "positive_deltas": 34,
+          "negative_deltas": 7
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": 0.0,
+          "mrr": 0.0,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "relaxed_no_change_penalty": {
+        "summary": {
+          "races": 7,
+          "gold": 0,
+          "good": 2,
+          "min_threshold": 3,
+          "single": 5,
+          "champion": 1,
+          "top3_has_champion": 3,
+          "order_issue": 2,
+          "avg_winner_rank": 4.857,
+          "mrr": 0.3736,
+          "avg_pick1_finish": 3.286,
+          "avg_top4_hits": 2.143
+        },
+        "trainer_signal_change": {
+          "changed_horses": 57,
+          "avg_trainer_signal_delta": 0.7672,
+          "positive_deltas": 51,
+          "negative_deltas": 6
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 2,
+          "avg_winner_rank": -0.143,
+          "mrr": 0.0072,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.286
+        }
+      },
+      "place_context_replace": {
+        "summary": {
+          "races": 7,
+          "gold": 0,
+          "good": 3,
+          "min_threshold": 3,
+          "single": 5,
+          "champion": 1,
+          "top3_has_champion": 3,
+          "order_issue": 0,
+          "avg_winner_rank": 5.0,
+          "mrr": 0.3664,
+          "avg_pick1_finish": 3.286,
+          "avg_top4_hits": 1.857
+        },
+        "trainer_signal_change": {
+          "changed_horses": 54,
+          "avg_trainer_signal_delta": 0.0746,
+          "positive_deltas": 25,
+          "negative_deltas": 29
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 1,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": 0.0,
+          "mrr": 0.0,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "place_no_change_penalty": {
+        "summary": {
+          "races": 7,
+          "gold": 0,
+          "good": 3,
+          "min_threshold": 3,
+          "single": 5,
+          "champion": 1,
+          "top3_has_champion": 3,
+          "order_issue": 1,
+          "avg_winner_rank": 5.0,
+          "mrr": 0.3664,
+          "avg_pick1_finish": 3.286,
+          "avg_top4_hits": 2.0
+        },
+        "trainer_signal_change": {
+          "changed_horses": 64,
+          "avg_trainer_signal_delta": 0.4102,
+          "positive_deltas": 42,
+          "negative_deltas": 22
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 1,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 1,
+          "avg_winner_rank": 0.0,
+          "mrr": 0.0,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.143
+        }
+      }
+    },
+    "target_2026_06_10": {
+      "current_live": {
+        "summary": {
+          "races": 9,
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 3,
+          "single": 8,
+          "champion": 1,
+          "top3_has_champion": 5,
+          "order_issue": 6,
+          "avg_winner_rank": 4.0,
+          "mrr": 0.3438,
+          "avg_pick1_finish": 3.778,
+          "avg_top4_hits": 2.444
+        },
+        "trainer_signal_change": {
+          "changed_horses": 0,
+          "avg_trainer_signal_delta": 0.0,
+          "positive_deltas": 0,
+          "negative_deltas": 0
+        }
+      },
+      "trainer_v3_additive": {
+        "summary": {
+          "races": 9,
+          "gold": 0,
+          "good": 2,
+          "min_threshold": 3,
+          "single": 8,
+          "champion": 1,
+          "top3_has_champion": 4,
+          "order_issue": 5,
+          "avg_winner_rank": 3.778,
+          "mrr": 0.3602,
+          "avg_pick1_finish": 3.667,
+          "avg_top4_hits": 2.556
+        },
+        "trainer_signal_change": {
+          "changed_horses": 70,
+          "avg_trainer_signal_delta": 1.7769,
+          "positive_deltas": 70,
+          "negative_deltas": 0
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 2,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": -1,
+          "order_issue": -1,
+          "avg_winner_rank": -0.222,
+          "mrr": 0.0164,
+          "avg_pick1_finish": -0.111,
+          "avg_top4_hits": 0.112
+        }
+      },
+      "trainer_v4_change_quality_additive": {
+        "summary": {
+          "races": 9,
+          "gold": 0,
+          "good": 2,
+          "min_threshold": 3,
+          "single": 8,
+          "champion": 1,
+          "top3_has_champion": 4,
+          "order_issue": 5,
+          "avg_winner_rank": 3.889,
+          "mrr": 0.3546,
+          "avg_pick1_finish": 3.667,
+          "avg_top4_hits": 2.556
+        },
+        "trainer_signal_change": {
+          "changed_horses": 78,
+          "avg_trainer_signal_delta": 1.6267,
+          "positive_deltas": 72,
+          "negative_deltas": 6
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 2,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": -1,
+          "order_issue": -1,
+          "avg_winner_rank": -0.111,
+          "mrr": 0.0108,
+          "avg_pick1_finish": -0.111,
+          "avg_top4_hits": 0.112
+        }
+      },
+      "change_quality_only_additive": {
+        "summary": {
+          "races": 9,
+          "gold": 0,
+          "good": 1,
+          "min_threshold": 3,
+          "single": 8,
+          "champion": 1,
+          "top3_has_champion": 5,
+          "order_issue": 5,
+          "avg_winner_rank": 4.0,
+          "mrr": 0.3611,
+          "avg_pick1_finish": 3.778,
+          "avg_top4_hits": 2.444
+        },
+        "trainer_signal_change": {
+          "changed_horses": 14,
+          "avg_trainer_signal_delta": 0.1786,
+          "positive_deltas": 6,
+          "negative_deltas": 8
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 1,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": -1,
+          "avg_winner_rank": 0.0,
+          "mrr": 0.0173,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "direct_pair_damped": {
+        "summary": {
+          "races": 9,
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 3,
+          "single": 8,
+          "champion": 1,
+          "top3_has_champion": 5,
+          "order_issue": 6,
+          "avg_winner_rank": 4.0,
+          "mrr": 0.3438,
+          "avg_pick1_finish": 3.778,
+          "avg_top4_hits": 2.556
+        },
+        "trainer_signal_change": {
+          "changed_horses": 21,
+          "avg_trainer_signal_delta": 0.419,
+          "positive_deltas": 15,
+          "negative_deltas": 6
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": 0.0,
+          "mrr": 0.0,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.112
+        }
+      },
+      "direct_pair_damped_change_quality": {
+        "summary": {
+          "races": 9,
+          "gold": 0,
+          "good": 1,
+          "min_threshold": 3,
+          "single": 8,
+          "champion": 1,
+          "top3_has_champion": 5,
+          "order_issue": 5,
+          "avg_winner_rank": 3.889,
+          "mrr": 0.3623,
+          "avg_pick1_finish": 3.778,
+          "avg_top4_hits": 2.556
+        },
+        "trainer_signal_change": {
+          "changed_horses": 33,
+          "avg_trainer_signal_delta": 0.3045,
+          "positive_deltas": 20,
+          "negative_deltas": 13
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 1,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": -1,
+          "avg_winner_rank": -0.111,
+          "mrr": 0.0185,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.112
+        }
+      },
+      "no_jockey_change_penalty": {
+        "summary": {
+          "races": 9,
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 3,
+          "single": 8,
+          "champion": 1,
+          "top3_has_champion": 5,
+          "order_issue": 7,
+          "avg_winner_rank": 4.0,
+          "mrr": 0.3438,
+          "avg_pick1_finish": 3.778,
+          "avg_top4_hits": 2.667
+        },
+        "trainer_signal_change": {
+          "changed_horses": 49,
+          "avg_trainer_signal_delta": 0.8241,
+          "positive_deltas": 49,
+          "negative_deltas": 0
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 1,
+          "avg_winner_rank": 0.0,
+          "mrr": 0.0,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.223
+        }
+      },
+      "relaxed_context_replace": {
+        "summary": {
+          "races": 9,
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 3,
+          "single": 8,
+          "champion": 1,
+          "top3_has_champion": 5,
+          "order_issue": 6,
+          "avg_winner_rank": 4.0,
+          "mrr": 0.3438,
+          "avg_pick1_finish": 3.778,
+          "avg_top4_hits": 2.444
+        },
+        "trainer_signal_change": {
+          "changed_horses": 61,
+          "avg_trainer_signal_delta": 0.4284,
+          "positive_deltas": 47,
+          "negative_deltas": 14
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": 0.0,
+          "mrr": 0.0,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.0
+        }
+      },
+      "relaxed_no_change_penalty": {
+        "summary": {
+          "races": 9,
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 3,
+          "single": 8,
+          "champion": 1,
+          "top3_has_champion": 5,
+          "order_issue": 8,
+          "avg_winner_rank": 3.889,
+          "mrr": 0.3494,
+          "avg_pick1_finish": 3.778,
+          "avg_top4_hits": 2.778
+        },
+        "trainer_signal_change": {
+          "changed_horses": 82,
+          "avg_trainer_signal_delta": 0.8107,
+          "positive_deltas": 73,
+          "negative_deltas": 9
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 2,
+          "avg_winner_rank": -0.111,
+          "mrr": 0.0056,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.334
+        }
+      },
+      "place_context_replace": {
+        "summary": {
+          "races": 9,
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 3,
+          "single": 8,
+          "champion": 1,
+          "top3_has_champion": 5,
+          "order_issue": 6,
+          "avg_winner_rank": 3.889,
+          "mrr": 0.3494,
+          "avg_pick1_finish": 3.778,
+          "avg_top4_hits": 2.556
+        },
+        "trainer_signal_change": {
+          "changed_horses": 83,
+          "avg_trainer_signal_delta": 0.0016,
+          "positive_deltas": 41,
+          "negative_deltas": 42
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 0,
+          "avg_winner_rank": -0.111,
+          "mrr": 0.0056,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.112
+        }
+      },
+      "place_no_change_penalty": {
+        "summary": {
+          "races": 9,
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 3,
+          "single": 8,
+          "champion": 1,
+          "top3_has_champion": 5,
+          "order_issue": 7,
+          "avg_winner_rank": 3.889,
+          "mrr": 0.3494,
+          "avg_pick1_finish": 3.778,
+          "avg_top4_hits": 2.667
+        },
+        "trainer_signal_change": {
+          "changed_horses": 92,
+          "avg_trainer_signal_delta": 0.4399,
+          "positive_deltas": 69,
+          "negative_deltas": 23
+        },
+        "delta_vs_current": {
+          "gold": 0,
+          "good": 0,
+          "min_threshold": 0,
+          "champion": 0,
+          "top3_has_champion": 0,
+          "order_issue": 1,
+          "avg_winner_rank": -0.111,
+          "mrr": 0.0056,
+          "avg_pick1_finish": 0.0,
+          "avg_top4_hits": 0.223
+        }
+      }
+    }
+  }
+}
