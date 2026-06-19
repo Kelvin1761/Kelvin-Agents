@@ -77,3 +77,12 @@ tennis-wong-choi/tennis_wc.db
 failed_meetings.log
 temp_profile.html
 .claude/settings.local.json
+
+# ----------------------------------------------------------------------
+# 9. Consolidated analysis outputs (local-only, kept off GitHub)
+# ----------------------------------------------------------------------
+Sports Wong Choi/
+# Large data/analysis dirs read by scripts in place (kept local, off GitHub):
+Archive_Race_Analysis/
+Archive_NBA_Analysis/
+NBA_ML_Dataset/
