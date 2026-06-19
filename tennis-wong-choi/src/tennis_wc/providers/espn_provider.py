@@ -43,11 +43,21 @@ class EspnTennisProvider(TennisProvider):
                             results.append(normalised)
         return results
 
+    # This is a SUPPLEMENTARY backfill — the authoritative history backbone is the
+    # local Sackmann import. ESPN's scoreboard API is flaky and the default window
+    # is wide (~550 days x 2 tours = ~1100 calls), so a degraded API used to hang
+    # the whole daily run for a very long time at the 20s socket timeout. Use a
+    # short timeout and trip a circuit breaker after a run of consecutive failures
+    # so a down ESPN costs seconds, not hours.
+    _HISTORICAL_TIMEOUT_SECONDS = 8
+    _HISTORICAL_MAX_CONSECUTIVE_FAILURES = 6
+
     def fetch_historical_matches(self, start_date: str, end_date: str) -> list[dict]:
         start = date.fromisoformat(start_date)
         end = date.fromisoformat(end_date)
         current = start
         results = []
+        consecutive_failures = 0
         while current <= end:
             date_str = current.isoformat()
             formatted_date = date_str.replace('-', '')
@@ -55,9 +65,18 @@ class EspnTennisProvider(TennisProvider):
                 url = f'https://site.api.espn.com/apis/site/v2/sports/tennis/{tour}/scoreboard'
                 params = {'dates': formatted_date}
                 try:
-                    body = get_json(url, params=params)
+                    body = get_json(url, params=params, timeout=self._HISTORICAL_TIMEOUT_SECONDS)
+                    consecutive_failures = 0
                 except Exception as e:
+                    consecutive_failures += 1
                     logger.error(f'Failed to fetch ESPN historical {tour} scoreboard: {e}')
+                    if consecutive_failures >= self._HISTORICAL_MAX_CONSECUTIVE_FAILURES:
+                        logger.error(
+                            'ESPN historical backfill aborted after '
+                            f'{consecutive_failures} consecutive failures '
+                            '(API likely down); relying on local Sackmann history.'
+                        )
+                        return results
                     continue
                 for event in body.get('events', []):
                     for grouping in event.get('groupings', []):

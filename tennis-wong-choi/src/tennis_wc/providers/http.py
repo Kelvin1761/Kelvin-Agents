@@ -7,12 +7,12 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 
-def get_json(url: str, headers: dict[str, str] | None = None, params: dict | None = None) -> dict | list:
+def get_json(url: str, headers: dict[str, str] | None = None, params: dict | None = None, timeout: float = 20) -> dict | list:
     query = urlencode({k: v for k, v in (params or {}).items() if v is not None}, doseq=True)
     request_url = f"{url}?{query}" if query else url
     request = Request(request_url, headers=headers or {})
     try:
-        with urlopen(request, timeout=20) as response:
+        with urlopen(request, timeout=timeout) as response:
             return json.loads(_decode_response_body(response.read(), response.headers.get("Content-Encoding")))
     except HTTPError as exc:
         body = _decode_response_body(exc.read(), exc.headers.get("Content-Encoding"))
