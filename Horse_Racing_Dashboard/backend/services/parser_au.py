@@ -8,6 +8,31 @@ import io
 from pathlib import Path
 from typing import Optional
 
+
+def _parse_data_readout(block: str) -> Optional[list]:
+    """Parse the '📊 數據判讀' markdown block into structured rows for the UI.
+    Each line: '- <band> **<label>**<value> — <trend>（<reason>）'."""
+    section_m = re.search(r'數據判讀\s*\n+(.*?)(?:\n#### |\n## |\Z)', block, re.DOTALL)
+    if not section_m:
+        return None
+    rows = []
+    for line in section_m.group(1).splitlines():
+        line = line.strip()
+        m = re.match(r'^-\s*(✅|➖|⚠️)\s*\*\*(.+?)\*\*\s*(.*)$', line)
+        if not m:
+            continue
+        band, label, rest = m.group(1), m.group(2).strip(), m.group(3).strip()
+        reason = ''
+        rm = re.search(r'（(.+?)）\s*$', rest)
+        if rm:
+            reason = rm.group(1).strip()
+            rest = rest[:rm.start()].strip()
+        value, trend = rest, ''
+        if '—' in rest:
+            value, trend = [p.strip() for p in rest.split('—', 1)]
+        rows.append({'band': band, 'label': label, 'value': value, 'trend': trend, 'reason': reason})
+    return rows or None
+
 from models.race import (
     HorseAnalysis, RaceAnalysis, TopPick, MonteCarloPick, RatingDimension, RatingMatrix
 )
@@ -370,6 +395,7 @@ def parse_au_horse_block(horse_num: int, horse_name: str, block: str) -> HorseAn
         horse_profile=horse_profile,
         core_analysis=core_analysis,
         core_logic=core_logic,
+        data_readout=_parse_data_readout(block),
         engine_type=engine_type,
         engine_type_label=engine_label,
         engine_distance_summary=engine_summary,
