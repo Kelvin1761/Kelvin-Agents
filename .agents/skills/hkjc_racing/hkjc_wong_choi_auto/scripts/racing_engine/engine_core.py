@@ -232,13 +232,35 @@ class RacingEngine:
             return scoring.CONSISTENCY_MICRO_WEIGHTS.get("good_form_base", 66.0), "近績樣本少但名次訊號正面，穩定性分66分。", "last_6_finishes"
         return scoring.CONSISTENCY_MICRO_WEIGHTS.get("neutral_base", 60.0), "近績樣本不足，穩定性分60分。", "missing_neutral"
 
+    def _is_foreign_runner(self):
+        """True for a visiting international runner: has real overseas race rows
+        but no HKJC form. Such horses must NOT be penalised for missing HK-only
+        data (medical/coverage) — absence here is 'data N/A', not 'bad news'."""
+        pdf = self.data.get("pdf_overseas_races") or self.horse_data.get("pdf_overseas_races") or []
+        real = any(
+            isinstance(r, dict) and any(
+                str(r.get(k, "-")).strip() not in ("-", "", "N/A", "--")
+                for k in ("class_level", "rank", "time", "margin")
+            )
+            for r in pdf
+        )
+        if not real:
+            return False
+        hk_form = str(self._value("last_6_finishes") or "").strip()
+        has_hk_form = hk_form not in ("", "N/A") and any(c.isdigit() for c in hk_form)
+        return not has_hk_form
+
     def _risk_score(self, features):
         score = scoring.RISK_MICRO_WEIGHTS.get("base", 68.0)
         notes = []
         medical = self._text("medical_flags")
         trackwork = self._text("trackwork_health", "trackwork_digest")
+        foreign = self._is_foreign_runner()
         if "無醫療事故" in medical:
             notes.append("醫療欄未見事故")
+        elif foreign:
+            # Visiting runner with no HKJC medical record — treat as neutral, not a risk.
+            notes.append("海外賽駒，本會醫療欄無記錄，按中性處理")
         else:
             score += scoring.RISK_MICRO_WEIGHTS.get("medical_unknown_pen", -8.0)
             self.risk_flags.append("medical_record_unknown")
@@ -274,6 +296,12 @@ class RacingEngine:
             score += scoring.CONFIDENCE_MICRO_WEIGHTS.get("debut_pen", -4.0)
         if features.get("risk_score", 60) < 55:
             score += scoring.CONFIDENCE_MICRO_WEIGHTS.get("high_risk_pen", -5.0)
+        if self._is_foreign_runner():
+            # Don't dock a visiting runner for lacking HKJC-only coverage fields;
+            # floor at neutral so foreign horses aren't structurally low-confidence.
+            score = max(score, 60.0)
+            note = f"海外賽駒，本會資料欄有限，信心分按中性floor處理為{clip_score(score):.1f}。"
+            return clip_score(score), note, "data_coverage"
         note = f"可用資料覆蓋{present}/{len(important_sources)}項，信心分{clip_score(score):.1f}。"
         return clip_score(score), note, "data_coverage"
 

@@ -212,6 +212,45 @@ class AutoOutputTests(unittest.TestCase):
 
         self.assertEqual(result["feature_scores"]["track_going_score"], 60.0)
 
+    def test_foreign_runner_not_penalised_for_missing_hk_data(self) -> None:
+        # A visiting international runner: real overseas form, no HKJC form/medical.
+        foreign = {
+            "horse_name": "外國馬",
+            "jockey": "海外騎師",
+            "trainer": "海外練馬師",
+            "weight": "126",
+            "barrier": "6",
+            "_data": {
+                "pdf_overseas_races": [
+                    {"date": "2026/05/01", "track_dist": "Royal Ascot 1600m",
+                     "class_level": "G1", "rank": "1/12", "jockey": "X",
+                     "weight": "126", "time": "1.35.2", "margin": "1"},
+                ],
+            },
+        }
+        # Same horse but with NO real overseas rows (all-dash placeholder) and no HK data.
+        blank = {
+            **foreign,
+            "_data": {"pdf_overseas_races": [
+                {"date": "-", "track_dist": "-", "class_level": "-", "rank": "-",
+                 "jockey": "-", "weight": "-", "time": "-", "margin": "-"}]},
+        }
+        eng_f = RacingEngine(foreign, {"distance": "1600m"})
+        eng_b = RacingEngine(blank, {"distance": "1600m"})
+        self.assertTrue(eng_f._is_foreign_runner())
+        self.assertFalse(eng_b._is_foreign_runner())
+
+        # Isolate the medical/coverage gating with neutral features (no draw/distance noise).
+        neutral = {"draw_score": 60, "distance_score": 60, "risk_score": 60}
+        risk_f, _, _ = eng_f._risk_score(neutral)
+        risk_b, _, _ = eng_b._risk_score(neutral)
+        self.assertNotIn("medical_record_unknown", eng_f.risk_flags)
+        self.assertIn("medical_record_unknown", eng_b.risk_flags)
+        self.assertGreater(risk_f, risk_b)  # foreign not docked for missing HK medical
+
+        conf_f, _, _ = eng_f._confidence_score(neutral)
+        self.assertGreaterEqual(conf_f, 60.0)  # not structurally low-confidence
+
     def test_confidence_does_not_create_trainer_signal_edge(self) -> None:
         low_confidence = {
             "form_score": 60,
