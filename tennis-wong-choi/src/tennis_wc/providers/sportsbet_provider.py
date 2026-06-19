@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
 from tennis_wc.config import get_settings
 
 from .http import get_json, post_json
@@ -63,7 +66,11 @@ class SportsbetOddsProvider(OddsProvider):
     def fetch_upcoming_odds_for_date(self, match_date: str) -> list[dict]:
         if hasattr(self, "_fallback"):
             return self._fallback.fetch_upcoming_odds_for_date(match_date)
-        return self.fetch_upcoming_odds("tennis", ["au"], ["match_winner"])
+        return [
+            row
+            for row in self.fetch_upcoming_odds("tennis", ["au"], ["match_winner"])
+            if not row.get("local_date") or row.get("local_date") == match_date
+        ]
 
     def fetch_event_odds(self, event_id: str, markets: list[str]) -> dict:
         if hasattr(self, "_fallback"):
@@ -125,6 +132,8 @@ class SportsbetOddsProvider(OddsProvider):
                 "player_a_open_odds": home_market.get("start_price"),
                 "player_b_open_odds": away_market.get("start_price"),
                 "timestamp": timestamp,
+                "start_time_utc": self._fixture_utc_time(fixture),
+                "local_date": self._fixture_local_date(fixture),
                 "raw": {"fixture": fixture, "odds": odds_body},
             }
         ]
@@ -136,3 +145,44 @@ class SportsbetOddsProvider(OddsProvider):
             if participant_name in market_name:
                 return market
         return None
+
+    def _fixture_utc_time(self, fixture: dict) -> str | None:
+        parsed = self._fixture_datetime(fixture)
+        if not parsed:
+            return None
+        return parsed.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+    def _fixture_local_date(self, fixture: dict) -> str | None:
+        parsed = self._fixture_datetime(fixture)
+        if not parsed:
+            return None
+        return parsed.astimezone(ZoneInfo("Australia/Sydney")).date().isoformat()
+
+    def _fixture_datetime(self, fixture: dict) -> datetime | None:
+        for key in ("start_time", "startTime", "commence_time", "commenceTime", "game_time", "date", "match_date"):
+            value = fixture.get(key)
+            parsed = _parse_datetime(value)
+            if parsed:
+                return parsed
+        return None
+
+
+def _parse_datetime(value) -> datetime | None:
+    if value in {None, ""}:
+        return None
+    if isinstance(value, (int, float)):
+        seconds = float(value) / 1000 if float(value) > 10_000_000_000 else float(value)
+        return datetime.fromtimestamp(seconds, tz=timezone.utc)
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        try:
+            parsed = datetime.strptime(text[:10], "%Y-%m-%d")
+        except ValueError:
+            return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed

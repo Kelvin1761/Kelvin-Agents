@@ -17,27 +17,37 @@ from tennis_wc.ingestion.ingest_odds import (
     ingest_odds,
     probe_sportsbet_event_markets,
 )
+from tennis_wc.ingestion.confirmed_metadata import backfill_confirmed_metadata_for_date, metadata_audit_for_date
 from tennis_wc.ingestion.ingest_player_stats import ingest_player_stats
 from tennis_wc.ingestion.ingest_rankings import ingest_rankings
 from tennis_wc.ingestion.raw_response_store import store_raw_response
 from tennis_wc.ingestion.ingest_sackmann import ingest_sackmann_history
+from tennis_wc.ingestion.ingest_tennismylife import ingest_tennismylife_results
 from tennis_wc.ingestion.ingest_tournaments import ingest_tournaments
 from tennis_wc.betting.bet_filter import apply_bet_filter
 from tennis_wc.betting.ledger import (
+    combo_roi_summary,
     fetch_closing_odds_for_date,
     ledger_summary,
     record_bet as record_bet_entry,
+    review_date as review_date_entry,
     settle_bets_for_date,
+    sync_clv_tracker_for_date,
+    sync_combo_tracker_for_date,
+    tier_roi_summary,
 )
 from tennis_wc.agents.runner import run_agents as run_agent_reviews
 from tennis_wc.modelling.backtester import run_backtest
 from tennis_wc.modelling.calibration import calibrate_sackmann_elo
 from tennis_wc.modelling.elo_builder import build_sackmann_elo
+from tennis_wc.modelling.ml_baseline import train_ml_baseline
 from tennis_wc.modelling.prediction_store import store_prediction
 from tennis_wc.modelling.pricing import price_match_snapshot
 from tennis_wc.providers import get_news_provider, get_odds_provider, get_tennis_provider
 from tennis_wc.reports.daily_report import analysis_output_dir, clear_pipeline_source_errors, generate_daily_report
+from tennis_wc.reports.calibration_report import banker_calibration_summary
 from tennis_wc.reports.match_report import render_match_report
+from tennis_wc.reports.market_validation_report import aces_prop_sanity_for_date, market_validation_summary
 from tennis_wc.reports.performance_report import prediction_summary
 from tennis_wc.config import get_settings
 
@@ -137,6 +147,14 @@ def bootstrap_sackmann_history(args: argparse.Namespace) -> None:
     _print_json(ingest_sackmann_history(args.start_year, args.end_year, tours))
 
 
+def ingest_tennismylife(args: argparse.Namespace) -> None:
+    start = args.start or args.date
+    end = args.end or args.date
+    if not start:
+        raise SystemExit("Provide --date or --start/--end.")
+    _print_json(ingest_tennismylife_results(start, end))
+
+
 def build_elo(args: argparse.Namespace) -> None:
     _print_json(build_sackmann_elo(args.initial_rating, args.k_factor))
 
@@ -193,6 +211,14 @@ def probe_event_markets(args: argparse.Namespace) -> None:
 def build_features(args: argparse.Namespace) -> None:
     snapshots = build_feature_snapshots_for_date(args.date)
     _print_json({"date": args.date, "snapshots": len(snapshots), "data_quality": [s["data_quality"] for s in snapshots]})
+
+
+def backfill_metadata(args: argparse.Namespace) -> None:
+    _print_json(backfill_confirmed_metadata_for_date(args.date))
+
+
+def metadata_audit(args: argparse.Namespace) -> None:
+    _print_json(metadata_audit_for_date(args.date))
 
 
 def validate_provenance(args: argparse.Namespace) -> None:
@@ -279,8 +305,73 @@ def settle_bets(args: argparse.Namespace) -> None:
     _print_json(settle_bets_for_date(args.date))
 
 
+def sync_clv_tracker(args: argparse.Namespace) -> None:
+    _print_json(sync_clv_tracker_for_date(args.date))
+
+
+def sync_combo_tracker(args: argparse.Namespace) -> None:
+    _print_json(sync_combo_tracker_for_date(args.date))
+
+
+def tier_roi(_: argparse.Namespace) -> None:
+    _print_json(tier_roi_summary())
+
+
+def combo_roi(_: argparse.Namespace) -> None:
+    _print_json(combo_roi_summary())
+
+
+def calibration_report(args: argparse.Namespace) -> None:
+    _print_json(banker_calibration_summary(args.min_samples))
+
+
+def market_validation_report(args: argparse.Namespace) -> None:
+    _print_json(market_validation_summary(args.min_samples))
+
+
+def aces_prop_sanity(args: argparse.Namespace) -> None:
+    _print_json(aces_prop_sanity_for_date(args.date, args.min_history))
+
+
+def train_ml(_: argparse.Namespace) -> None:
+    _print_json(train_ml_baseline())
+
+
+def review_date(args: argparse.Namespace) -> None:
+    _print_json(review_date_entry(args.date))
+
+
 def backtest(args: argparse.Namespace) -> None:
     _print_json(run_backtest(args.start, args.end))
+
+
+def external_backtest(args: argparse.Namespace) -> None:
+    from tennis_wc.modelling.external_backtest import run_match_winner_backtest
+
+    years = [int(y) for y in str(args.years).split(",") if y.strip()]
+    tours = tuple(t.strip().upper() for t in str(args.tours).split(",") if t.strip())
+    _print_json(
+        run_match_winner_backtest(
+            years,
+            tours=tours,
+            k_factor=None if args.flat_k is None else float(args.flat_k),
+            min_edge=args.min_edge,
+        )
+    )
+
+
+def _distinct_market_keys_for_date(match_date: str) -> int:
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT COUNT(DISTINCT mo.market_key)
+            FROM market_odds_snapshots mo
+            JOIN matches m ON m.id = mo.match_id
+            WHERE m.match_date = ?
+            """,
+            (match_date,),
+        ).fetchone()
+    return int(row[0] or 0)
 
 
 def run_daily(args: argparse.Namespace) -> None:
@@ -289,6 +380,10 @@ def run_daily(args: argparse.Namespace) -> None:
     clear_pipeline_source_errors(args.date)
     if args.mvp_snapshot:
         os.environ["DATA_MAX_STALENESS_MINUTES_ODDS"] = str(24 * 60)
+        try:
+            backfill_confirmed_metadata_for_date(args.date)
+        except Exception as exc:
+            source_errors.append({"source": "metadata_backfill", "error": str(exc)})
     else:
         for label, step in (
             ("tournaments", lambda: ingest_tournaments(args.date, args.date)),
@@ -298,12 +393,27 @@ def run_daily(args: argparse.Namespace) -> None:
             ("upcoming_matches", lambda: ingest_upcoming_matches(args.date)),
             ("odds", lambda: ingest_odds(args.date)),
             ("event_markets", lambda: enrich_sportsbet_event_markets(args.date)),
+            ("metadata_backfill", lambda: backfill_confirmed_metadata_for_date(args.date)),
         ):
             try:
                 step()
             except Exception as exc:
                 source_errors.append({"source": label, "error": str(exc)})
-    
+        # Guard: confirm the per-event enrichment actually captured multi-market
+        # odds. If a day ends up with only match-winner, combos collapse — make it
+        # a loud, surfaced warning rather than a silent gap.
+        try:
+            market_keys = _distinct_market_keys_for_date(args.date)
+            if market_keys <= 1:
+                source_errors.append(
+                    {
+                        "source": "event_markets",
+                        "error": "only_match_winner_odds_captured__multi_market_enrichment_incomplete",
+                    }
+                )
+        except Exception as exc:  # noqa: BLE001
+            source_errors.append({"source": "event_markets_check", "error": str(exc)})
+
     store_raw_response(
         "tennis_wc_pipeline",
         "/run-daily/source-errors",
@@ -402,6 +512,12 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--tours", default="ATP,WTA")
     p.set_defaults(func=bootstrap_sackmann_history)
 
+    p = sub.add_parser("ingest-tennismylife-results")
+    p.add_argument("--date")
+    p.add_argument("--start")
+    p.add_argument("--end")
+    p.set_defaults(func=ingest_tennismylife)
+
     p = sub.add_parser("build-sackmann-elo")
     p.add_argument("--initial-rating", type=float, default=1500.0)
     p.add_argument("--k-factor", type=float, default=32.0)
@@ -439,6 +555,14 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("build-features")
     p.add_argument("--date", required=True)
     p.set_defaults(func=build_features)
+
+    p = sub.add_parser("backfill-metadata")
+    p.add_argument("--date", required=True)
+    p.set_defaults(func=backfill_metadata)
+
+    p = sub.add_parser("metadata-audit")
+    p.add_argument("--date", required=True)
+    p.set_defaults(func=metadata_audit)
 
     p = sub.add_parser("validate-provenance")
     p.add_argument("--date", required=True)
@@ -478,10 +602,47 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--date", required=True)
     p.set_defaults(func=settle_bets)
 
+    p = sub.add_parser("sync-clv-tracker")
+    p.add_argument("--date", required=True)
+    p.set_defaults(func=sync_clv_tracker)
+
+    p = sub.add_parser("sync-combo-tracker")
+    p.add_argument("--date", required=True)
+    p.set_defaults(func=sync_combo_tracker)
+
+    sub.add_parser("tier-roi").set_defaults(func=tier_roi)
+    sub.add_parser("combo-roi").set_defaults(func=combo_roi)
+
+    p = sub.add_parser("calibration-report")
+    p.add_argument("--min-samples", type=int, default=10)
+    p.set_defaults(func=calibration_report)
+
+    p = sub.add_parser("market-validation-report")
+    p.add_argument("--min-samples", type=int, default=20)
+    p.set_defaults(func=market_validation_report)
+
+    p = sub.add_parser("aces-prop-sanity")
+    p.add_argument("--date", required=True)
+    p.add_argument("--min-history", type=int, default=10)
+    p.set_defaults(func=aces_prop_sanity)
+
+    sub.add_parser("train-ml-baseline").set_defaults(func=train_ml)
+
+    p = sub.add_parser("review-date")
+    p.add_argument("--date", required=True)
+    p.set_defaults(func=review_date)
+
     p = sub.add_parser("backtest")
     p.add_argument("--start", required=True)
     p.add_argument("--end", required=True)
     p.set_defaults(func=backtest)
+
+    p = sub.add_parser("external-backtest", help="Walk-forward match-winner backtest vs tennis-data.co.uk Pinnacle closing odds")
+    p.add_argument("--years", default="2022,2023,2024", help="comma-separated seasons")
+    p.add_argument("--tours", default="ATP,WTA")
+    p.add_argument("--min-edge", type=float, default=0.03)
+    p.add_argument("--flat-k", type=float, default=None, help="force a flat Elo K (omit for production decayed-K)")
+    p.set_defaults(func=external_backtest)
 
     args = parser.parse_args(argv)
     args.func(args)

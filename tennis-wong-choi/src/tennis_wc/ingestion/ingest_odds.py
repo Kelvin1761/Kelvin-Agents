@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import date as date_type, timedelta
+from datetime import date as date_type, datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 
 from tennis_wc.database.db import get_connection
 from tennis_wc.ingestion.entity_mapping import get_or_create_player, upsert_tournament
@@ -26,6 +27,8 @@ def ingest_odds(date: str) -> int:
     )
     now = utc_now()
     count = 0
+    rows = [row for row in rows if _row_matches_requested_date(row, date)]
+    _prune_stale_sportsbet_odds_for_date(provider.provider_name, date, {str(row.get("event_id")) for row in rows if row.get("event_id")})
     for row in rows:
         if provider.provider_name == "mock":
             row = row | {"event_id": f"mock-event-{date}-1"}
@@ -113,6 +116,33 @@ def _insert_market_odds(conn, row: dict, match_id: int | None, provider_name: st
                     now,
                 ),
             )
+
+
+def _prune_stale_sportsbet_odds_for_date(provider_name: str, match_date: str, active_event_ids: set[str]) -> None:
+    if provider_name not in {"sportsbet", "sportsbet_scrape"} or not active_event_ids:
+        return
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT id
+            FROM matches
+            WHERE match_date = ?
+              AND source_provider IN ('sportsbet', 'sportsbet_scrape')
+              AND market_event_id IS NOT NULL
+            """,
+            (match_date,),
+        ).fetchall()
+        stale_ids = []
+        for row in rows:
+            match = conn.execute("SELECT market_event_id FROM matches WHERE id = ?", (row["id"],)).fetchone()
+            if match and str(match["market_event_id"]) not in active_event_ids:
+                stale_ids.append(int(row["id"]))
+        if not stale_ids:
+            return
+        placeholders = ",".join("?" for _ in stale_ids)
+        conn.execute(f"DELETE FROM odds_snapshots WHERE match_id IN ({placeholders}) AND source_provider IN ('sportsbet', 'sportsbet_scrape')", stale_ids)
+        conn.execute(f"DELETE FROM market_odds_snapshots WHERE match_id IN ({placeholders}) AND source_provider IN ('sportsbet', 'sportsbet_scrape')", stale_ids)
+        conn.execute(f"DELETE FROM market_predictions WHERE match_id IN ({placeholders})", stale_ids)
 
 
 def _selection_side(row: dict, selection_name: str) -> str | None:
@@ -240,6 +270,56 @@ def _nearby_dates(match_date: str) -> list[str]:
     return [(base + timedelta(days=offset)).isoformat() for offset in (0, -1, 1)]
 
 
+def _row_matches_requested_date(row: dict, requested_date: str) -> bool:
+    local_date = row.get("local_date")
+    if local_date:
+        return str(local_date) == requested_date
+    for key in ("match_date", "date"):
+        value = row.get(key)
+        if isinstance(value, str) and len(value) >= 10 and value[:10].count("-") == 2:
+            return value[:10] == requested_date
+    parsed = _row_local_date(row)
+    return parsed is None or parsed == requested_date
+
+
+def _row_local_date(row: dict) -> str | None:
+    for key in ("start_time_utc", "start_time", "startTime", "commence_time", "commenceTime", "match_date", "date"):
+        parsed = _parse_datetime(row.get(key))
+        if parsed:
+            return parsed.astimezone(ZoneInfo("Australia/Sydney")).date().isoformat()
+    raw = row.get("raw")
+    if isinstance(raw, dict):
+        event = raw.get("event") if isinstance(raw.get("event"), dict) else {}
+        fixture = raw.get("fixture") if isinstance(raw.get("fixture"), dict) else {}
+        for source in (event, fixture):
+            for key in ("start_time", "startTime", "commence_time", "commenceTime", "game_time", "date", "match_date"):
+                parsed = _parse_datetime(source.get(key))
+                if parsed:
+                    return parsed.astimezone(ZoneInfo("Australia/Sydney")).date().isoformat()
+    return None
+
+
+def _parse_datetime(value) -> datetime | None:
+    if value in {None, ""}:
+        return None
+    if isinstance(value, (int, float)):
+        seconds = float(value) / 1000 if float(value) > 10_000_000_000 else float(value)
+        return datetime.fromtimestamp(seconds, tz=timezone.utc)
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        try:
+            parsed = datetime.strptime(text[:10], "%Y-%m-%d")
+        except ValueError:
+            return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
 def _normalise_name(value: str | None) -> str:
     return " ".join(str(value or "").lower().strip().split())
 
@@ -326,15 +406,40 @@ def enrich_sportsbet_event_markets(match_date: str) -> dict:
             (int(latest_raw["id"]),),
         ).fetchall()
     enriched = 0
-    errors = []
+    failed: list[dict] = []
     for row in rows:
         event_ref = row["event_url"] or row["event_id"]
         try:
             ingest_event_odds(event_ref, int(row["match_id"]) if row["match_id"] is not None else None)
             enriched += 1
-        except Exception as exc:
-            errors.append({"event_id": row["event_id"], "event_url": row["event_url"], "error": _classify_sportsbet_probe_error(str(exc))})
-    return {"date": match_date, "events": len(rows), "enriched": enriched, "errors": errors}
+        except Exception as exc:  # noqa: BLE001
+            failed.append({"row": row, "event_id": row["event_id"], "event_url": row["event_url"], "error": _classify_sportsbet_probe_error(str(exc))})
+
+    # Retry transient per-event failures (network blips) up to 2 extra passes so a
+    # day reliably ends up with ALL markets, not just the headline match-winner.
+    for _attempt in range(2):
+        if not failed:
+            break
+        still: list[dict] = []
+        for item in failed:
+            row = item["row"]
+            event_ref = row["event_url"] or row["event_id"]
+            try:
+                ingest_event_odds(event_ref, int(row["match_id"]) if row["match_id"] is not None else None)
+                enriched += 1
+            except Exception as exc:  # noqa: BLE001
+                still.append({"row": row, "event_id": row["event_id"], "event_url": row["event_url"], "error": _classify_sportsbet_probe_error(str(exc))})
+        failed = still
+
+    errors = [{"event_id": item["event_id"], "event_url": item["event_url"], "error": item["error"]} for item in failed]
+    return {
+        "date": match_date,
+        "events": len(rows),
+        "enriched": enriched,
+        "failed": len(errors),
+        "coverage": round(enriched / len(rows), 3) if rows else 0.0,
+        "errors": errors,
+    }
 
 
 def probe_sportsbet_event_markets(match_date: str, limit: int | None = None) -> dict:

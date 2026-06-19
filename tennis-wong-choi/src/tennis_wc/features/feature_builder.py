@@ -9,14 +9,24 @@ from tennis_wc.features.big_match import calculate_big_match_stats
 from tennis_wc.features.bo_format import calculate_bo_format_stats, detect_match_format
 from tennis_wc.features.common import datapoint, provenance, utc_now
 from tennis_wc.features.data_quality import validate_data_freshness
+from tennis_wc.features.head_to_head import calculate_head_to_head_stats
 from tennis_wc.features.opponent_elo_buckets import calculate_player_elo_bucket_stats
 from tennis_wc.features.opponent_rank_buckets import calculate_player_rank_bucket_stats
+from tennis_wc.features.pressure import calculate_pressure_stats
 from tennis_wc.features.round_performance import calculate_round_stats, normalise_round
 from tennis_wc.features.surface_elo import get_surface_elo
 from tennis_wc.features.tournament_level import calculate_tournament_level_stats
 
 
 FEATURE_SET_VERSION = "stage3.v1"
+RELIABLE_TOURNAMENT_METADATA_SOURCES = {
+    "curated_tournament_metadata",
+    "bsd_tennis",
+    "espn",
+    "statsperform",
+    "jeff_sackmann",
+    "mock",
+}
 
 
 def _raw_meta(raw_response_id: int | None) -> dict:
@@ -83,7 +93,7 @@ def _wrap_numeric_tree(value: Any, prov: dict) -> Any:
     return value
 
 
-def _player_payload(player_id: int, match_context: dict, as_of_date: date) -> dict:
+def _player_payload(player_id: int, opponent_id: int, match_context: dict, as_of_date: date) -> dict:
     with get_connection() as conn:
         player = conn.execute("SELECT * FROM players WHERE id = ?", (player_id,)).fetchone()
     if player is None:
@@ -102,6 +112,9 @@ def _player_payload(player_id: int, match_context: dict, as_of_date: date) -> di
     round_stats = calculate_round_stats(player_id, round_name, level, surface, as_of_date, "LAST_52_WEEKS")
     big_match = calculate_big_match_stats(player_id, surface, as_of_date, "LAST_52_WEEKS")
     bo_format = calculate_bo_format_stats(player_id, match_format, surface, as_of_date, "LAST_52_WEEKS")
+    pressure = calculate_pressure_stats(player_id, surface, as_of_date, "LAST_52_WEEKS")
+    h2h = calculate_head_to_head_stats(player_id, opponent_id, surface, as_of_date)
+    rest_days = _rest_days(player_id, as_of_date)
 
     overall_elo = player["overall_elo"]
     surface_elo = get_surface_elo(player["surface_elo_json"], surface, overall_elo)
@@ -125,28 +138,132 @@ def _player_payload(player_id: int, match_context: dict, as_of_date: date) -> di
         "round_stats": _wrap_numeric_tree(round_stats, history_prov),
         "big_match_stats": _wrap_numeric_tree(big_match, history_prov),
         "bo_format_stats": _wrap_numeric_tree(bo_format, history_prov),
-        "fatigue": {"status": "UNKNOWN", "provenance": history_prov},
+        "pressure_stats": _wrap_numeric_tree(pressure, history_prov),
+        "head_to_head": _wrap_numeric_tree(h2h, history_prov),
+        "fatigue": {"status": "KNOWN" if rest_days is not None else "UNKNOWN", "rest_days": datapoint(rest_days, history_prov), "provenance": history_prov},
         "injury": {"risk": "UNKNOWN", "provenance": history_prov},
     }
+
+
+def _rest_days(player_id: int, as_of_date: date) -> int | None:
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT MAX(match_date) AS last_match_date
+            FROM player_match_history
+            WHERE player_id = ?
+              AND match_date < ?
+            """,
+            (player_id, as_of_date.isoformat()),
+        ).fetchone()
+    if not row or not row["last_match_date"]:
+        return None
+    return max(0, (as_of_date - date.fromisoformat(row["last_match_date"])).days)
 
 
 def _match_context(match: dict, tournament: dict, tournament_level: dict) -> dict:
     match_prov = _raw_meta(match["raw_response_id"])
     tournament_prov = _raw_meta(tournament_level["raw_response_id"])
+    metadata_source = str(tournament_level.get("source_provider") or "")
+    level = tournament_level["level"]
+    surface = tournament_level["surface"]
+    indoor_outdoor = tournament_level["indoor_outdoor"]
+    if metadata_source not in RELIABLE_TOURNAMENT_METADATA_SOURCES:
+        level = "UNKNOWN"
+        surface = None
+        indoor_outdoor = None
     base = {
         "tournament": datapoint(tournament["name"], tournament_prov),
         "tour": datapoint(match["tour"], match_prov),
-        "level": datapoint(tournament_level["level"], tournament_prov),
+        "level": datapoint(level, tournament_prov),
         "round": datapoint(normalise_round(match["round"]), match_prov),
-        "surface": datapoint(tournament_level["surface"], tournament_prov),
-        "indoor_outdoor": datapoint(tournament_level["indoor_outdoor"], tournament_prov),
+        "surface": datapoint(surface, tournament_prov),
+        "indoor_outdoor": datapoint(indoor_outdoor, tournament_prov),
         "match_date": datapoint(match["match_date"], match_prov),
     }
-    base["format"] = datapoint(detect_match_format({"tour": match["tour"], "level": tournament_level["level"]}), tournament_prov)
+    base["format"] = datapoint(detect_match_format({"tour": match["tour"], "level": level}), tournament_prov)
     return base
 
 
+def _normalise_name(value: str | None) -> str:
+    return " ".join(str(value or "").lower().strip().split())
+
+
 def _market(match_id: int) -> dict:
+    with get_connection() as conn:
+        match = conn.execute(
+            """
+            SELECT p1.name AS player_a_name, p2.name AS player_b_name
+            FROM matches m
+            JOIN players p1 ON p1.id = m.player_a_id
+            JOIN players p2 ON p2.id = m.player_b_id
+            WHERE m.id = ?
+            """,
+            (match_id,),
+        ).fetchone()
+        odds_rows = conn.execute(
+            """
+            SELECT *
+            FROM market_odds_snapshots
+            WHERE match_id = ?
+              AND market_key = 'match_winner'
+              AND id IN (
+                  SELECT MAX(id)
+                  FROM market_odds_snapshots
+                  WHERE match_id = ?
+                    AND market_key = 'match_winner'
+                  GROUP BY selection_name, COALESCE(line, -999999)
+              )
+            ORDER BY id DESC
+            """,
+            (match_id, match_id),
+        ).fetchall()
+    if not odds_rows:
+        return _legacy_positional_market(match_id)
+    if match is None:
+        prov = _raw_meta(odds_rows[0]["raw_response_id"])
+        return {"errors": ["odds_selection_mapping_failed"], "timestamp": datapoint(odds_rows[0]["fetched_at"], prov)}
+
+    player_a_name = match["player_a_name"]
+    player_b_name = match["player_b_name"]
+    player_a_key = _normalise_name(player_a_name)
+    player_b_key = _normalise_name(player_b_name)
+    player_a_row = None
+    player_b_row = None
+    for row in odds_rows:
+        selection_key = _normalise_name(row["selection_name"])
+        if selection_key == player_a_key:
+            player_a_row = row
+        elif selection_key == player_b_key:
+            player_b_row = row
+
+    prov = _raw_meta(odds_rows[0]["raw_response_id"])
+    if player_a_row is None or player_b_row is None:
+        return {
+            "bookmaker": datapoint(odds_rows[0]["bookmaker"], prov),
+            "market": datapoint("match_winner", prov),
+            "timestamp": datapoint(odds_rows[0]["fetched_at"], prov),
+            "mapping_status": datapoint("failed", prov),
+            "errors": ["odds_selection_mapping_failed"],
+            "available_selections": [row["selection_name"] for row in odds_rows],
+        }
+
+    return {
+        "bookmaker": datapoint(player_a_row["bookmaker"], prov),
+        "market": datapoint("match_winner", prov),
+        "player_a_odds": datapoint(player_a_row["odds"], prov),
+        "player_b_odds": datapoint(player_b_row["odds"], prov),
+        "player_a_open_odds": datapoint(None, prov),
+        "player_b_open_odds": datapoint(None, prov),
+        "player_a_selection_name": datapoint(player_a_row["selection_name"], prov),
+        "player_b_selection_name": datapoint(player_b_row["selection_name"], prov),
+        "timestamp": datapoint(max(player_a_row["fetched_at"], player_b_row["fetched_at"]), prov),
+        "mapping_status": datapoint("verified", prov),
+        "errors": [],
+    }
+
+
+def _legacy_positional_market(match_id: int) -> dict:
     with get_connection() as conn:
         row = conn.execute(
             """
@@ -169,13 +286,18 @@ def _market(match_id: int) -> dict:
         "player_a_open_odds": datapoint(row["player_a_open_odds"], prov),
         "player_b_open_odds": datapoint(row["player_b_open_odds"], prov),
         "timestamp": datapoint(row["fetched_at"], prov),
+        "mapping_status": datapoint("legacy_positional_fallback", prov),
+        "errors": [],
     }
 
 
-def build_match_feature_snapshot(match_id: int) -> dict:
+def assemble_match_feature_snapshot(match_id: int) -> tuple[dict, dict]:
     """
-    Build complete feature set for both players.
-    Store feature snapshots in database and return structured JSON.
+    Build the complete two-player feature snapshot WITHOUT persisting it.
+
+    Returns (snapshot, tournament_level_row) so callers that want to persist can
+    reuse the same assembly. This is read-only and safe to call repeatedly
+    (e.g. from backtests) because it never writes to feature_snapshots.
     """
     with get_connection() as conn:
         match = conn.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
@@ -184,10 +306,11 @@ def build_match_feature_snapshot(match_id: int) -> dict:
         tournament = conn.execute("SELECT * FROM tournaments WHERE id = ?", (match["tournament_id"],)).fetchone()
         tournament_level = conn.execute(
             """
-            SELECT * FROM tournament_levels 
+            SELECT * FROM tournament_levels
             WHERE tournament_id = ? AND tour = ?
-            ORDER BY 
-                (level != 'UNKNOWN' AND level != '未確認') DESC, 
+            ORDER BY
+                (source_provider = 'curated_tournament_metadata') DESC,
+                (level != 'UNKNOWN' AND level != '未確認') DESC,
                 (surface IS NOT NULL) DESC,
                 id DESC
             LIMIT 1
@@ -204,8 +327,8 @@ def build_match_feature_snapshot(match_id: int) -> dict:
         "match_id": datapoint(match_id, _raw_meta(match["raw_response_id"])),
         "feature_set_version": FEATURE_SET_VERSION,
         "match_context": context,
-        "player_a": _player_payload(match["player_a_id"], context, as_of_date),
-        "player_b": _player_payload(match["player_b_id"], context, as_of_date),
+        "player_a": _player_payload(match["player_a_id"], match["player_b_id"], context, as_of_date),
+        "player_b": _player_payload(match["player_b_id"], match["player_a_id"], context, as_of_date),
         "market": _market(match_id),
         "entity_mapping_complete": True,
     }
@@ -215,6 +338,16 @@ def build_match_feature_snapshot(match_id: int) -> dict:
         "match_raw_response_id": match["raw_response_id"],
         "tournament_raw_response_id": tournament_level["raw_response_id"],
     }
+    return snapshot, dict(tournament_level)
+
+
+def build_match_feature_snapshot(match_id: int) -> dict:
+    """
+    Build complete feature set for both players.
+    Store feature snapshots in database and return structured JSON.
+    """
+    snapshot, _tournament_level = assemble_match_feature_snapshot(match_id)
+    quality = snapshot["data_quality"]
 
     now = utc_now()
     with get_connection() as conn:

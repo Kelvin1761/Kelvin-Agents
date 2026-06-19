@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from tennis_wc.betting.segment_risk import apply_segment_risk, segment_risk
 from tennis_wc.config import get_settings
 from tennis_wc.features.market import implied_probability, remove_vig_two_way
 from tennis_wc.modelling.probability_model import predict_match_probability
@@ -28,7 +29,8 @@ def _minimum_acceptable_odds(probability: float, min_edge: float) -> float:
 def price_match_snapshot(snapshot: dict) -> dict:
     model = predict_match_probability(snapshot)
     odds_a, odds_b = _market_odds(snapshot)
-    if odds_a is None or odds_b is None:
+    market_errors = list(snapshot.get("market", {}).get("errors") or [])
+    if odds_a is None or odds_b is None or market_errors:
         return {
             "model": model,
             "selection_side": None,
@@ -40,7 +42,7 @@ def price_match_snapshot(snapshot: dict) -> dict:
             "no_vig_market_probability": None,
             "edge": None,
             "minimum_acceptable_odds": None,
-            "errors": ["missing_market_odds"],
+            "errors": market_errors or ["missing_market_odds"],
         }
 
     prob_a = model["player_a_probability"]
@@ -68,6 +70,16 @@ def price_match_snapshot(snapshot: dict) -> dict:
         no_vig = no_vig_b
         edge = edge_b
 
+    # Single source of truth for segment risk: shrink the model probability
+    # toward the market for noisy/low-data segments (WTA 250, unknown level)
+    # HERE, so the single-bet card, the bet filter, the stake, and the
+    # predictions-backed combos all use the same conservative number. The raw
+    # market-path combo pool applies the same shrink separately because it never
+    # passes through this layer.
+    context = snapshot.get("match_context", {})
+    risk_label, discount = segment_risk(_value(context.get("tour")), _value(context.get("level")))
+    model_probability, edge = apply_segment_risk(model_probability, edge, no_vig, discount)
+
     min_edge = get_settings().min_edge_match_winner
     return {
         "model": model,
@@ -81,5 +93,7 @@ def price_match_snapshot(snapshot: dict) -> dict:
         "no_vig_market_probability": round(no_vig, 6),
         "edge": round(edge, 6),
         "minimum_acceptable_odds": _minimum_acceptable_odds(model_probability, min_edge),
+        "segment_risk_label": risk_label,
+        "segment_risk_discount": discount,
         "errors": [],
     }

@@ -61,6 +61,9 @@ class Settings:
     ai_review_enabled: bool
     min_edge_match_winner: float
     max_stake_units: float
+    min_stake_units: float
+    kelly_fraction: float
+    stake_round_increment: float
     default_bankroll_units: float
 
     @property
@@ -94,6 +97,14 @@ def get_settings() -> Settings:
         ),
         ai_review_enabled=_bool_env("AI_REVIEW_ENABLED", True),
         min_edge_match_winner=_float_env("MIN_EDGE_MATCH_WINNER", 0.035),
-        max_stake_units=_float_env("MAX_STAKE_UNITS", 1.0),
+        # Stakes are tenth-Kelly sized on the model probability vs the actual
+        # decimal odds, expressed in units where the bankroll is
+        # DEFAULT_BANKROLL_UNITS (100u). Every recommended bet starts at
+        # MIN_STAKE_UNITS (1u) and ladders up to MAX_STAKE_UNITS (5u) with
+        # conviction; only the strongest edges reach the cap.
+        max_stake_units=_float_env("MAX_STAKE_UNITS", 5.0),
+        min_stake_units=_float_env("MIN_STAKE_UNITS", 1.0),
+        kelly_fraction=_float_env("KELLY_FRACTION", 0.10),
+        stake_round_increment=_float_env("STAKE_ROUND_INCREMENT", 0.5),
         default_bankroll_units=_float_env("DEFAULT_BANKROLL_UNITS", 100.0),
     )

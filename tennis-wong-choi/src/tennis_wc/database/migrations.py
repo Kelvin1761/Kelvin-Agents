@@ -122,6 +122,12 @@ CREATE TABLE IF NOT EXISTS player_match_history (
     opponent_elo REAL,
     hold_rate REAL,
     break_rate REAL,
+    ace_count REAL,
+    double_fault_count REAL,
+    break_points_saved REAL,
+    break_points_faced REAL,
+    break_points_converted REAL,
+    break_points_chances REAL,
     first_serve_points_won_pct REAL,
     second_serve_points_won_pct REAL,
     return_points_won_pct REAL,
@@ -147,6 +153,30 @@ CREATE TABLE IF NOT EXISTS rankings_history (
     created_at TEXT NOT NULL,
     UNIQUE(player_id, ranking_date, tour, source_provider)
 );
+
+CREATE INDEX IF NOT EXISTS idx_player_match_history_player_date
+ON player_match_history(player_id, match_date);
+
+CREATE INDEX IF NOT EXISTS idx_player_match_history_player_surface_date
+ON player_match_history(player_id, surface, match_date);
+
+CREATE INDEX IF NOT EXISTS idx_player_match_history_player_level_surface_date
+ON player_match_history(player_id, tournament_level, surface, match_date);
+
+CREATE INDEX IF NOT EXISTS idx_player_match_history_player_round_level_surface_date
+ON player_match_history(player_id, round, tournament_level, surface, match_date);
+
+CREATE INDEX IF NOT EXISTS idx_player_match_history_player_format_surface_date
+ON player_match_history(player_id, format, surface, match_date);
+
+CREATE INDEX IF NOT EXISTS idx_player_match_history_pair_date
+ON player_match_history(player_id, opponent_id, match_date);
+
+CREATE INDEX IF NOT EXISTS idx_rankings_history_player_date
+ON rankings_history(player_id, ranking_date);
+
+CREATE INDEX IF NOT EXISTS idx_market_odds_snapshots_match_market_selection
+ON market_odds_snapshots(match_id, market_key, selection_name, line, id);
 
 CREATE TABLE IF NOT EXISTS tournament_levels (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -312,6 +342,30 @@ CREATE TABLE IF NOT EXISTS predictions (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS market_predictions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    match_id INTEGER NOT NULL,
+    market_odds_snapshot_id INTEGER,
+    market_key TEXT NOT NULL,
+    market_name TEXT NOT NULL,
+    selection_name TEXT NOT NULL,
+    selection_side TEXT,
+    line REAL,
+    odds REAL NOT NULL,
+    model_status TEXT NOT NULL,
+    model_probability REAL,
+    no_vig_market_probability REAL,
+    edge REAL,
+    minimum_acceptable_odds REAL,
+    decision TEXT NOT NULL,
+    banker_eligible INTEGER NOT NULL,
+    confidence INTEGER NOT NULL,
+    risk TEXT NOT NULL,
+    reason TEXT,
+    pricing_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS closing_odds_snapshots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     match_id INTEGER NOT NULL,
@@ -330,6 +384,7 @@ CREATE TABLE IF NOT EXISTS match_results (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     match_id INTEGER NOT NULL,
     winner_player_id INTEGER NOT NULL,
+    score_json TEXT,
     source_provider TEXT NOT NULL,
     raw_response_id INTEGER,
     created_at TEXT NOT NULL,
@@ -342,6 +397,12 @@ CREATE TABLE IF NOT EXISTS bet_ledger (
     match_id INTEGER NOT NULL,
     selection_player_id INTEGER,
     selection_name TEXT NOT NULL,
+    market_key TEXT,
+    market_name TEXT,
+    tier TEXT,
+    model_probability REAL,
+    edge REAL,
+    confidence INTEGER,
     odds_taken REAL NOT NULL,
     stake_units REAL NOT NULL,
     status TEXT NOT NULL,
@@ -350,6 +411,51 @@ CREATE TABLE IF NOT EXISTS bet_ledger (
     profit_loss_units REAL,
     recorded_at TEXT NOT NULL,
     settled_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS clv_tracker (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recommendation_type TEXT NOT NULL,
+    source_id INTEGER NOT NULL,
+    match_id INTEGER NOT NULL,
+    match_date TEXT NOT NULL,
+    selection_name TEXT NOT NULL,
+    selection_side TEXT,
+    market_key TEXT NOT NULL,
+    market_name TEXT NOT NULL,
+    market_line REAL,
+    tier TEXT NOT NULL,
+    model_probability REAL,
+    edge REAL,
+    confidence INTEGER,
+    odds_taken REAL NOT NULL,
+    closing_odds REAL,
+    clv REAL,
+    result_status TEXT NOT NULL,
+    profit_loss_units REAL,
+    recorded_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(recommendation_type, source_id)
+);
+
+CREATE TABLE IF NOT EXISTS combo_tracker (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    combo_key TEXT NOT NULL,
+    match_id INTEGER NOT NULL,
+    match_date TEXT NOT NULL,
+    match_label TEXT NOT NULL,
+    tier TEXT NOT NULL,
+    legs_json TEXT NOT NULL,
+    combo_odds REAL NOT NULL,
+    adjusted_confidence INTEGER,
+    adjusted_edge REAL,
+    stake_units REAL NOT NULL,
+    result_status TEXT NOT NULL,
+    profit_loss_units REAL,
+    recorded_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    settled_at TEXT,
+    UNIQUE(combo_key)
 );
 
 CREATE TABLE IF NOT EXISTS backtest_runs (
@@ -365,3 +471,21 @@ CREATE TABLE IF NOT EXISTS backtest_runs (
 def init_db() -> None:
     with get_connection() as conn:
         conn.executescript(SCHEMA)
+        _ensure_compat_columns(conn)
+
+
+def _ensure_compat_columns(conn) -> None:
+    history_columns = {row["name"] for row in conn.execute("PRAGMA table_info(player_match_history)").fetchall()}
+    for name, ddl in {
+        "ace_count": "ALTER TABLE player_match_history ADD COLUMN ace_count REAL",
+        "double_fault_count": "ALTER TABLE player_match_history ADD COLUMN double_fault_count REAL",
+        "break_points_saved": "ALTER TABLE player_match_history ADD COLUMN break_points_saved REAL",
+        "break_points_faced": "ALTER TABLE player_match_history ADD COLUMN break_points_faced REAL",
+        "break_points_converted": "ALTER TABLE player_match_history ADD COLUMN break_points_converted REAL",
+        "break_points_chances": "ALTER TABLE player_match_history ADD COLUMN break_points_chances REAL",
+    }.items():
+        if name not in history_columns:
+            conn.execute(ddl)
+    result_columns = {row["name"] for row in conn.execute("PRAGMA table_info(match_results)").fetchall()}
+    if "score_json" not in result_columns:
+        conn.execute("ALTER TABLE match_results ADD COLUMN score_json TEXT")

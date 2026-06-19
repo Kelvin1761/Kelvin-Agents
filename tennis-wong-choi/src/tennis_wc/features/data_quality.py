@@ -80,6 +80,12 @@ def validate_data_freshness(feature_snapshot: dict) -> dict:
     if level == "UNKNOWN":
         warnings.append("unknown tournament level")
         warning_penalty += 10
+    round_name = context.get("round", {})
+    if isinstance(round_name, dict):
+        round_name = round_name.get("value")
+    if not round_name or round_name == "UNKNOWN":
+        warnings.append("unknown match round")
+        warning_penalty += 8
 
     market = feature_snapshot.get("market", {})
     required_odds = ["player_a_odds", "player_b_odds"]

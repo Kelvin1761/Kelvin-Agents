@@ -49,17 +49,13 @@ def infer_tournament_metadata(name: str, match_date: str) -> dict:
     elif "grand slam" in name_lower:
         level = "Grand Slam"
 
-    # 3. Heuristic Surface (Month based)
-    # Extract month from match_date (YYYY-MM-DD)
-    try:
-        month = int(match_date.split("-")[1])
-        if 4 <= month <= 5:
-            surface = "Clay" # April-May is mostly clay season
-        elif month == 6 or (month == 7 and "wimbledon" in name_lower):
-            surface = "Grass" # June is grass season
-        else:
-            surface = "Hard" # Default to hard
-    except:
+    # Surface must be explicit or curated; do not infer from month/season.
+    surface = None
+    if "grass" in name_lower:
+        surface = "Grass"
+    elif "clay" in name_lower:
+        surface = "Clay"
+    elif "hard" in name_lower:
         surface = "Hard"
 
     return {"level": level, "surface": surface}

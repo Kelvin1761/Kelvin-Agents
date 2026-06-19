@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from tennis_wc.ingestion.confirmed_metadata import confirmed_competition_meta
+
 
 @dataclass(frozen=True)
 class SportsbetCompetitionMeta:
@@ -28,7 +30,7 @@ ROUND_PATTERNS = (
     (re.compile(r"\bquarter(?:-| )?finals?\b|\bqf\b", re.IGNORECASE), "QF"),
     (re.compile(r"\bsemi(?:-| )?finals?\b|\bsf\b", re.IGNORECASE), "SF"),
     (re.compile(r"\bfinals?\b", re.IGNORECASE), "F"),
-    (re.compile(r"\bqual(?:ifying|ifier)?\b", re.IGNORECASE), "Q"),
+    (re.compile(r"\bqual(?:ifying|ifier|ifiers)?\b", re.IGNORECASE), "QUALIFYING"),
 )
 
 
@@ -37,6 +39,17 @@ def sportsbet_competition_meta(competition: str | None, match_date: str | None =
         return SportsbetCompetitionMeta("UNKNOWN", "UNKNOWN", "UNKNOWN", None, None, False, "missing_competition")
     if competition in CONFIRMED_COMPETITIONS:
         return CONFIRMED_COMPETITIONS[competition]
+    confirmed = confirmed_competition_meta(competition)
+    if confirmed is not None:
+        return SportsbetCompetitionMeta(
+            confirmed.tour,
+            confirmed.tournament_name,
+            confirmed.level,
+            confirmed.surface,
+            confirmed.indoor_outdoor,
+            True,
+            None,
+        )
 
     lowered = competition.lower()
     if "doubles" in lowered:
@@ -51,15 +64,12 @@ def sportsbet_competition_meta(competition: str | None, match_date: str | None =
         reason = "competition_metadata_not_confirmed"
 
     tour = "WTA" if lowered.startswith(("wta", "ladies")) else "ATP" if lowered.startswith(("atp", "mens")) else "UNKNOWN"
-    
-    # Try heuristic fallback if match_date is provided
     level = "UNKNOWN"
     surface = None
-    if match_date:
-        from tennis_wc.providers.metadata_utils import infer_tournament_metadata
-        meta = infer_tournament_metadata(competition, match_date)
-        level = meta["level"]
-        surface = meta["surface"]
+    if "challenger" in lowered:
+        level = "Challenger"
+    elif "itf" in lowered:
+        level = "ITF"
 
     return SportsbetCompetitionMeta(tour, competition, level, surface, None, False, reason)
 

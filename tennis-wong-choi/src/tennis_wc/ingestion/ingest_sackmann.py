@@ -145,16 +145,24 @@ def _insert_history_pair(tour: str, row: dict, raw_id: int, winner_id: int, lose
                 INSERT INTO player_match_history (
                     provider_match_id, player_id, opponent_id, tour, match_date, surface,
                     tournament_external_id, tournament_level, round, format, won,
-                    opponent_elo, hold_rate, break_rate, first_serve_points_won_pct,
+                    opponent_elo, hold_rate, break_rate, ace_count, double_fault_count,
+                    break_points_saved, break_points_faced, break_points_converted,
+                    break_points_chances, first_serve_points_won_pct,
                     second_serve_points_won_pct, return_points_won_pct, tiebreak_won,
                     deciding_set_won, lost_first_set, comeback_after_losing_first_set,
                     source_provider, raw_response_id, created_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(source_provider, provider_match_id, player_id) DO UPDATE SET
                     won = excluded.won,
                     hold_rate = excluded.hold_rate,
                     break_rate = excluded.break_rate,
+                    ace_count = excluded.ace_count,
+                    double_fault_count = excluded.double_fault_count,
+                    break_points_saved = excluded.break_points_saved,
+                    break_points_faced = excluded.break_points_faced,
+                    break_points_converted = excluded.break_points_converted,
+                    break_points_chances = excluded.break_points_chances,
                     first_serve_points_won_pct = excluded.first_serve_points_won_pct,
                     second_serve_points_won_pct = excluded.second_serve_points_won_pct,
                     return_points_won_pct = excluded.return_points_won_pct,
@@ -175,6 +183,12 @@ def _insert_history_pair(tour: str, row: dict, raw_id: int, winner_id: int, lose
                     None,
                     payload["hold_rate"],
                     payload["break_rate"],
+                    payload["ace_count"],
+                    payload["double_fault_count"],
+                    payload["break_points_saved"],
+                    payload["break_points_faced"],
+                    payload["break_points_converted"],
+                    payload["break_points_chances"],
                     payload["first_serve_points_won_pct"],
                     payload["second_serve_points_won_pct"],
                     payload["return_points_won_pct"],
@@ -219,6 +233,8 @@ def _metrics(row: dict, own_prefix: str, opp_prefix: str) -> dict[str, float | N
     sv_gms = _float_or_none(row.get(f"{own_prefix}_SvGms"))
     bp_saved = _float_or_none(row.get(f"{own_prefix}_bpSaved"))
     bp_faced = _float_or_none(row.get(f"{own_prefix}_bpFaced"))
+    aces = _float_or_none(row.get(f"{own_prefix}_ace"))
+    double_faults = _float_or_none(row.get(f"{own_prefix}_df"))
     opp_svpt = _float_or_none(row.get(f"{opp_prefix}_svpt"))
     opp_first_won = _float_or_none(row.get(f"{opp_prefix}_1stWon"))
     opp_second_won = _float_or_none(row.get(f"{opp_prefix}_2ndWon"))
@@ -228,6 +244,12 @@ def _metrics(row: dict, own_prefix: str, opp_prefix: str) -> dict[str, float | N
     return {
         "hold_rate": _safe_rate(sv_gms - (bp_faced - bp_saved), sv_gms) if None not in (sv_gms, bp_faced, bp_saved) else None,
         "break_rate": _safe_rate(opp_bp_faced - opp_bp_saved, opp_sv_gms) if None not in (opp_bp_faced, opp_bp_saved, opp_sv_gms) else None,
+        "ace_count": aces,
+        "double_fault_count": double_faults,
+        "break_points_saved": bp_saved,
+        "break_points_faced": bp_faced,
+        "break_points_converted": opp_bp_faced - opp_bp_saved if None not in (opp_bp_faced, opp_bp_saved) else None,
+        "break_points_chances": opp_bp_faced,
         "first_serve_points_won_pct": _safe_rate(first_won, first_in),
         "second_serve_points_won_pct": _safe_rate(second_won, svpt - first_in) if None not in (svpt, first_in, second_won) else None,
         "return_points_won_pct": _safe_rate(opp_svpt - opp_first_won - opp_second_won, opp_svpt) if None not in (opp_svpt, opp_first_won, opp_second_won) else None,

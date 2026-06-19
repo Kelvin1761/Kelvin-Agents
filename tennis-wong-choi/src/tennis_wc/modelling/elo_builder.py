@@ -5,16 +5,21 @@ from collections import defaultdict
 
 from tennis_wc.database.db import get_connection
 from tennis_wc.features.elo import elo_probability
+from tennis_wc.modelling.calibration import elo_k_factor
 from tennis_wc.ingestion.raw_response_store import store_raw_response, utc_now
 
 
-def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float = 32.0) -> dict:
+def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float | None = None) -> dict:
     """
     Build deterministic Elo ratings from stored Jeff Sackmann match history.
 
     Uses only local API snapshots already stored in player_match_history. Ratings
     are written back to players.overall_elo and players.surface_elo_json, and
     opponent pre-match Elo is backfilled into player_match_history.
+
+    K is match-count-decayed (Sackmann-style) by default — the same curve used
+    by the calibration scorer — so production ratings match what calibration
+    validates. Pass a float ``k_factor`` to force a flat K.
     """
     with get_connection() as conn:
         rows = [
@@ -42,7 +47,11 @@ def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float = 32.0) -
     overall: dict[int, float] = defaultdict(lambda: initial_rating)
     surface_ratings: dict[int, dict[str, float]] = defaultdict(dict)
     matches_by_player: dict[int, int] = defaultdict(int)
+    surface_matches: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     surfaces_seen: set[str] = set()
+
+    def k_for(played: int) -> float:
+        return float(k_factor) if k_factor is not None else elo_k_factor(played)
 
     with get_connection() as conn:
         for row in rows:
@@ -53,8 +62,10 @@ def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float = 32.0) -
             winner_pre = overall[winner_id]
             loser_pre = overall[loser_id]
             winner_expected = elo_probability(winner_pre, loser_pre)
-            overall[winner_id] = winner_pre + k_factor * (1 - winner_expected)
-            overall[loser_id] = loser_pre + k_factor * (0 - (1 - winner_expected))
+            k_winner = k_for(matches_by_player[winner_id])
+            k_loser = k_for(matches_by_player[loser_id])
+            overall[winner_id] = winner_pre + k_winner * (1 - winner_expected)
+            overall[loser_id] = loser_pre + k_loser * (0 - (1 - winner_expected))
 
             winner_surface_pre = None
             loser_surface_pre = None
@@ -63,8 +74,12 @@ def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float = 32.0) -
                 winner_surface_pre = surface_ratings[winner_id].get(surface, winner_pre)
                 loser_surface_pre = surface_ratings[loser_id].get(surface, loser_pre)
                 surface_expected = elo_probability(winner_surface_pre, loser_surface_pre)
-                surface_ratings[winner_id][surface] = winner_surface_pre + k_factor * (1 - surface_expected)
-                surface_ratings[loser_id][surface] = loser_surface_pre + k_factor * (0 - (1 - surface_expected))
+                ks_winner = k_for(surface_matches[winner_id][surface])
+                ks_loser = k_for(surface_matches[loser_id][surface])
+                surface_ratings[winner_id][surface] = winner_surface_pre + ks_winner * (1 - surface_expected)
+                surface_ratings[loser_id][surface] = loser_surface_pre + ks_loser * (0 - (1 - surface_expected))
+                surface_matches[winner_id][surface] += 1
+                surface_matches[loser_id][surface] += 1
 
             winner_match_id = row["provider_match_id"]
             loser_match_id = winner_match_id.removesuffix("-winner") + "-loser"

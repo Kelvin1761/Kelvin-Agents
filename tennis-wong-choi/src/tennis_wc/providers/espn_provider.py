@@ -44,7 +44,31 @@ class EspnTennisProvider(TennisProvider):
         return results
 
     def fetch_historical_matches(self, start_date: str, end_date: str) -> list[dict]:
-        return []
+        start = date.fromisoformat(start_date)
+        end = date.fromisoformat(end_date)
+        current = start
+        results = []
+        while current <= end:
+            date_str = current.isoformat()
+            formatted_date = date_str.replace('-', '')
+            for tour in ['atp', 'wta']:
+                url = f'https://site.api.espn.com/apis/site/v2/sports/tennis/{tour}/scoreboard'
+                params = {'dates': formatted_date}
+                try:
+                    body = get_json(url, params=params)
+                except Exception as e:
+                    logger.error(f'Failed to fetch ESPN historical {tour} scoreboard: {e}')
+                    continue
+                for event in body.get('events', []):
+                    for grouping in event.get('groupings', []):
+                        for competition in grouping.get('competitions', []):
+                            match_date = competition.get('date', event.get('date', ''))[:10]
+                            if match_date != date_str or not _is_completed(competition):
+                                continue
+                            normalised = self._normalise_history_match(event, competition, tour.upper())
+                            results.extend(normalised)
+            current += timedelta(days=1)
+        return results
 
     def fetch_match_stats(self, match_id: str) -> dict:
         return {}
@@ -101,3 +125,51 @@ class EspnTennisProvider(TennisProvider):
             'raw': competition
         }
 
+    def _normalise_history_match(self, event: dict, competition: dict, tour: str) -> list[dict]:
+        match = self._normalise_match(event, competition, tour)
+        if not match:
+            return []
+        competitors = competition.get('competitors', [])
+        rows = []
+        for idx, competitor in enumerate(competitors[:2]):
+            athlete = competitor.get('athlete', {})
+            opponent = competitors[1 - idx]
+            opponent_athlete = opponent.get('athlete', {})
+            rows.append(
+                {
+                    'id': f"{competition.get('id')}-{idx + 1}",
+                    'tour': tour,
+                    'match_date': match['match_date'],
+                    'player_id': str(competitor.get('id')),
+                    'opponent_id': str(opponent.get('id')),
+                    'player_name': athlete.get('displayName'),
+                    'opponent_name': opponent_athlete.get('displayName'),
+                    'won': _competitor_won(competitor, opponent),
+                    'surface': match.get('surface'),
+                    'tournament_id': match.get('tournament_id'),
+                    'tournament_level': match.get('tournament_level'),
+                    'round': match.get('round'),
+                    'format': 'BO5' if 'men' in str(event.get('name', '')).lower() and 'french open' in str(event.get('name', '')).lower() else 'BO3',
+                    'raw': competition,
+                }
+            )
+        return rows
+
+
+def _is_completed(competition: dict) -> bool:
+    status_type = (competition.get('status') or {}).get('type') or {}
+    name = str(status_type.get('name') or status_type.get('state') or '').lower()
+    if name in {'status_final', 'final', 'post'}:
+        return True
+    return bool(status_type.get('completed'))
+
+
+def _competitor_won(competitor: dict, opponent: dict) -> bool:
+    if competitor.get('winner') is not None:
+        return bool(competitor.get('winner'))
+    try:
+        own_score = float(competitor.get('score'))
+        opp_score = float(opponent.get('score'))
+    except (TypeError, ValueError):
+        return False
+    return own_score > opp_score

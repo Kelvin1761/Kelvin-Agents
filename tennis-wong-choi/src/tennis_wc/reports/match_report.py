@@ -13,7 +13,7 @@ def get_latest_match_prediction(match_id: int) -> dict | None:
                 SELECT *,
                        ROW_NUMBER() OVER (
                            PARTITION BY tournament_id, tour 
-                           ORDER BY (level != 'UNKNOWN' AND level != '未確認') DESC, (surface IS NOT NULL) DESC, id DESC
+                           ORDER BY (source_provider = 'curated_tournament_metadata') DESC, (level != 'UNKNOWN' AND level != '未確認') DESC, (surface IS NOT NULL) DESC, id DESC
                        ) as rn
                 FROM tournament_levels
             )

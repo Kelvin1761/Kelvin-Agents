@@ -26,7 +26,7 @@ class CompositeTennisProvider(TennisProvider):
         return matches
 
     def fetch_historical_matches(self, start_date: str, end_date: str) -> list[dict]:
-        return []
+        return self.espn.fetch_historical_matches(start_date, end_date)
 
     def fetch_match_stats(self, match_id: str) -> dict:
         return self.espn.fetch_match_stats(match_id)
@@ -68,4 +68,3 @@ def get_news_provider() -> NewsProvider:
     if provider == 'mock':
         return MockNewsProvider()
     raise ValueError(f'Unsupported news provider: {provider}')
-

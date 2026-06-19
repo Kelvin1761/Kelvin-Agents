@@ -39,6 +39,8 @@ def apply_bet_filter(feature_snapshot: dict, pricing: dict) -> dict:
         hard_no_bet_reasons.append("missing_core_elo_inputs")
     if any("LLM" in error or "llm" in error for error in errors):
         hard_no_bet_reasons.append("llm_generated_stat_detected")
+    if "odds_selection_mapping_failed" in errors:
+        hard_no_bet_reasons.append("odds_selection_mapping_failed")
 
     injury_risk = _injury_risk(feature_snapshot, pricing.get("selection_side"))
     if injury_risk in {"D", "E"}:
@@ -54,7 +56,17 @@ def apply_bet_filter(feature_snapshot: dict, pricing: dict) -> dict:
 
     edge_decision = classify_edge(pricing.get("edge"))
     decision_band = "NO_BET" if hard_no_bet_reasons else edge_decision
-    stake = stake_for_decision(decision_band, risk_adjustments)
+    stake = stake_for_decision(
+        decision_band,
+        model_probability=pricing.get("model_probability"),
+        decimal_odds=pricing.get("current_market_odds"),
+        risk_adjustments=risk_adjustments,
+    )
+    # Half-Kelly returns 0 when the pick is not +EV at the actual (vigged) price,
+    # even if it cleared the no-vig edge gate. Such a bet should not be placed.
+    if decision_band in {"SMALL_BET", "STANDARD_BET", "STRONG_BET"} and stake <= 0:
+        hard_no_bet_reasons.append("negative_ev_at_market_price")
+        decision_band = "NO_BET"
     confidence = max(0, min(100, int(quality.get("score", 0) + max((pricing.get("edge") or 0), 0) * 100)))
     return {
         "decision": "BET" if decision_band in {"SMALL_BET", "STANDARD_BET", "STRONG_BET"} else decision_band,

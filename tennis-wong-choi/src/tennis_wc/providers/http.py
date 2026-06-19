@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import json
 from urllib.error import HTTPError
 from urllib.parse import urlencode
@@ -12,9 +13,9 @@ def get_json(url: str, headers: dict[str, str] | None = None, params: dict | Non
     request = Request(request_url, headers=headers or {})
     try:
         with urlopen(request, timeout=20) as response:
-            return json.loads(response.read().decode("utf-8"))
+            return json.loads(_decode_response_body(response.read(), response.headers.get("Content-Encoding")))
     except HTTPError as exc:
-        body = exc.read().decode("utf-8")
+        body = _decode_response_body(exc.read(), exc.headers.get("Content-Encoding"))
         raise RuntimeError(f"HTTP {exc.code} from {request_url}: {body[:300]}") from exc
 
 
@@ -24,7 +25,15 @@ def post_json(url: str, headers: dict[str, str] | None = None, body: dict | None
     request = Request(url, data=payload, headers=request_headers, method="POST")
     try:
         with urlopen(request, timeout=20) as response:
-            return json.loads(response.read().decode("utf-8"))
+            return json.loads(_decode_response_body(response.read(), response.headers.get("Content-Encoding")))
     except HTTPError as exc:
-        error_body = exc.read().decode("utf-8")
+        error_body = _decode_response_body(exc.read(), exc.headers.get("Content-Encoding"))
         raise RuntimeError(f"HTTP {exc.code} from {url}: {error_body[:300]}") from exc
+
+
+def _decode_response_body(raw: bytes, content_encoding: str | None = None) -> str:
+    if content_encoding and "gzip" in content_encoding.lower():
+        raw = gzip.decompress(raw)
+    elif raw.startswith(b"\x1f\x8b"):
+        raw = gzip.decompress(raw)
+    return raw.decode("utf-8")
