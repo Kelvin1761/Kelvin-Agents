@@ -42,9 +42,11 @@ from models.race import (
 # Horse block splitting (AU format)
 # ──────────────────────────────────────────────
 
-# AU format: ### 【No.1】Northern Eyes（檔位：13） or  【No.1】Campaldino（檔位：7）
+# AU formats:
+#   ### 【No.1】Northern Eyes（檔位：13）        — old, name followed by （
+#   ### 【No.1】 Exit Fee | 騎師: … | 檔位: 4   — Auto report, name followed by |
 AU_HORSE_HEADER_RE = re.compile(
-    r'^(?:###\s*)?【No\.(\d+)】\s*(.+?)(?:（|[\(])',
+    r'^(?:#+\s*)?【No\.(\d+)】\s*(.+?)(?=\s*(?:\||（|\(|$))',
     re.MULTILINE
 )
 
