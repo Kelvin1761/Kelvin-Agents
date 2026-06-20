@@ -31,6 +31,7 @@ def _get_draw_bias():
     df = pd.concat(frames, ignore_index=True)
     df["Starts"] = pd.to_numeric(df["Starts"], errors="coerce").fillna(0.0)
     df["Places"] = pd.to_numeric(df["Places"], errors="coerce").fillna(0.0)
+    df["Wins"] = pd.to_numeric(df.get("Wins", 0), errors="coerce").fillna(0.0)
     
     def norm_v(v):
         v = str(v).strip()
@@ -41,16 +42,18 @@ def _get_draw_bias():
     df["Venue"] = df["Venue"].apply(norm_v)
     df["Track"] = df["Track"].apply(lambda t: "Turf" if "turf" in str(t).lower() or "草" in str(t) else "AWT")
     
-    grouped = df.groupby(["Venue", "Track", "Distance", "Draw"])[["Starts", "Places"]].sum().reset_index()
+    grouped = df.groupby(["Venue", "Track", "Distance", "Draw"])[["Starts", "Places", "Wins"]].sum().reset_index()
     records = {}
     for row in grouped.to_dict(orient="records"):
         starts = float(row.get("Starts", 0.0))
         places = float(row.get("Places", 0.0))
+        wins = float(row.get("Wins", 0.0))
         key = (str(row["Venue"]), str(row["Track"]), int(row["Distance"]), int(row["Draw"]))
         if starts > 0:
             records[key] = {
                 "starts": starts,
-                "place_rate": (places / starts * 100.0)
+                "place_rate": (places / starts * 100.0),
+                "win_rate": (wins / starts * 100.0),
             }
             
     _DRAW_BIAS_CACHE = records

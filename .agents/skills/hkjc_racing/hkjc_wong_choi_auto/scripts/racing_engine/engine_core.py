@@ -972,6 +972,69 @@ class RacingEngine:
                 "jockey": self._clean(self._value("jockey") or ""),
                 "trainer": self._clean(self._value("trainer") or "")}
 
+    def _class_num(self, text):
+        t = str(text or "")
+        cm = re.search(r"第([一二三四五六七])班", t)
+        if cm:
+            return "一二三四五六七".index(cm.group(1)) + 1
+        cm = re.search(r"C(?:lass)?\s*([1-7])", t, re.I)
+        if cm:
+            return int(cm.group(1))
+        return None
+
+    def _class_move_note(self):
+        """Class the horse ran last time vs today: 降班/同班/升班 (lower number = higher class)."""
+        today = self._class_num(self.race_context.get("race_class"))
+        rd = str(self._value("recent_6_detail") or "")
+        m = re.search(r"第1仗\([^)]*?(第[一二三四五六七]班)", rd)
+        last = self._class_num(m.group(1)) if m else None
+        if not (today and last):
+            return ""
+        move = "降班" if today > last else ("升班" if today < last else "同班")
+        return f"上仗第{last}班→今仗第{today}班（{move}）"
+
+    def _draw_stats_note(self, draw):
+        """Historical win/place rate for this barrier at today's venue/track/distance."""
+        try:
+            from features.draw import _get_draw_bias
+            dn = int(str(draw).strip())
+        except Exception:
+            return ""
+        dm = re.search(r"(\d+)", str(self.race_context.get("distance") or ""))
+        if not dm:
+            return ""
+        venue = str(self.race_context.get("venue") or "")
+        track = str(self.race_context.get("track") or "")
+        v = "沙田" if ("沙田" in venue or "shatin" in venue.lower().replace(" ", "") or venue.upper() == "ST") else "跑馬地"
+        t = "AWT" if ("awt" in track.lower() or "dirt" in track.lower() or "泥" in track) else "Turf"
+        row = _get_draw_bias().get((v, t, int(dm.group(1)), dn))
+        if not row or row.get("starts", 0) < 15:
+            return ""
+        return f"此檔歷史 上名率{row['place_rate']:.0f}%、勝率{row.get('win_rate', 0):.0f}%（{int(row['starts'])}場）"
+
+    def _format_formline_finish(self, my_finish):
+        """'3 (-3-1/4)' -> '名次第3、落後3-1/4長'; '1 (...)' -> '名次第1（勝出）'."""
+        s = str(my_finish or "").strip()
+        fm = re.match(r"\s*(\d+)", s)
+        pos = fm.group(1) if fm else s
+        if pos == "1":
+            return "名次第1（勝出）"
+        mm = re.search(r"\(([^)]+)\)", s)
+        marg = mm.group(1).lstrip("-").strip() if mm else ""
+        return f"名次第{pos}、落後{marg}長" if marg else f"名次第{pos}"
+
+    def _formline_opponent_class_note(self):
+        """How the past opponents went on to perform: upper/same class re-wins."""
+        summ = str(self._value("formline_opponent_summary") or "")
+        hi = re.search(r"(\d+)\s*匹其後升上更高班", summ)
+        sm = re.search(r"(\d+)\s*匹其後於同班", summ)
+        bits = []
+        if hi:
+            bits.append(f"當中{hi.group(1)}匹對手其後升班仍再贏")
+        if sm:
+            bits.append(f"{sm.group(1)}匹對手其後同班再贏")
+        return "、".join(bits)
+
     def _data_readout(self, features, matrix_scores):
         """Structured, fully-Chinese 數據判讀 rows: each = label/value/trend/band(/reason).
         Feeds both the .md report and the dashboard preview. Skips absent data."""
@@ -997,9 +1060,12 @@ class RacingEngine:
             # can look contradictory (e.g. '99→90 → 上升'). Keeps display consistent
             # with how speed.py scores energy.
             etail = self._trend_tail(energy)
-            edir = ("能量" + etail) if etail else ""
-            band = "✅" if "上升" in etail else ("⚠️" if "下降" in etail else "➖")
-            add("能量趨勢", "", edir, band=band)
+            # Only surface energy when it is actually rising/falling — a "穩定" row
+            # carries no signal, so skip it (user feedback).
+            if "上升" in etail:
+                add("能量趨勢", "", "能量上升", band="✅")
+            elif "下降" in etail:
+                add("能量趨勢", "", "能量下降", band="⚠️")
         ftb = self._value("finish_time_block")
         if present(ftb):
             tr = "進步中" if "進步" in str(ftb) else ("退步中" if "退步" in str(ftb) else "平穩")
@@ -1008,12 +1074,13 @@ class RacingEngine:
         if present(rt):
             direction = self._rating_direction(rt)
             ends = self._seq_endpoints(rt)
-            add("評分走勢", ends, direction,
-                band="✅" if direction == "評分上升" else "➖",
-                reason=f"官方評分{ends}、{direction[2:]}" if ends and direction else "")
-        pi = self._value("position_pi")
-        if present(pi):
-            add("走位動量", "", self._trend_tail(pi))
+            cls_note = self._class_move_note()
+            reason = "；".join([p for p in (cls_note, f"官方評分{ends}、{direction[2:]}" if ends and direction else "") if p])
+            cmove = "降班" if "降班" in cls_note else ("升班" if "升班" in cls_note else "")
+            add("評分走勢", ends, cmove or direction,
+                band="✅" if (cmove == "降班" or direction == "評分上升") else "➖",
+                reason=reason)
+        # (走位動量 row removed — low signal, per user feedback)
         wt = self._value("weight_trend")
         if present(wt):
             span = re.search(r"波幅(\d+)\s*lb", str(wt))
@@ -1025,15 +1092,21 @@ class RacingEngine:
             add("段速型態", str(eng).split("|")[0].strip(), "")
         bd = self._value("best_distance")
         if present(bd):
-            rec = re.search(r"(\d+場\s*\([\d\-]+\))", str(bd))
-            dist = str(bd).split("|")[0].strip()
-            add("今仗路程", f"{dist}　{rec.group(1)}" if rec else dist, "")
+            m = re.search(r"今仗\s*(\d+m)\s*=\s*(\d+)場\s*\(([\d\-]+)\)", str(bd))
+            if m:
+                dist, n, rec = m.group(1), m.group(2), m.group(3)
+                parts = [int(x) for x in rec.split("-")]
+                rband = "✅" if parts and parts[0] > 0 else ("➖" if sum(parts[1:]) > 0 else "⚠️")
+                add("今仗路程", dist, "", band=rband,
+                    reason=f"同程往績 {n}場（{parts[0]}冠/{(parts[1] if len(parts)>1 else 0)}亞/{(parts[2] if len(parts)>2 else 0)}季）")
+            else:
+                add("今仗路程", str(bd).split("|")[0].strip(), "")
         last6 = self._value("last_6_finishes")
         if present(last6):
             add("近六場", str(last6).strip(), "")
         draw = self._value("barrier") or self._value("draw")
         if present(draw):
-            add("檔位", f"{str(draw).strip()}檔", "")
+            add("檔位", f"{str(draw).strip()}檔", "", reason=self._draw_stats_note(draw))
         # 騎練 + 晨操 use matrix bands / digests already computed
         ts = matrix_scores.get("trainer_signal", 60)
         jc = self._jockey_combo_detail()
@@ -1044,11 +1117,12 @@ class RacingEngine:
         if jc.get("changed"):
             parts_r.append(f"今仗轉用上格騎師{jc['jockey']}" if jscore >= 75 else f"今仗換上{jc['jockey']}")
         if row and row.get("starts", 0) >= 1:
-            wins, avg = int(row.get("wins", 0)), row.get("avg_finish", 0)
+            wins, places, avg = int(row.get("wins", 0)), int(row.get("places", 0)), row.get("avg_finish", 0)
+            rec = f"{int(row['starts'])}仗{wins}勝{places}上名、平均{avg:.1f}名"
             if wins > 0 or avg <= 4.5:
-                parts_r.append(f"與此馬 {int(row['starts'])}仗{wins}勝、平均{avg:.1f}名（合拍）")
+                parts_r.append(f"與此馬 {rec}（合拍）")
             else:
-                parts_r.append(f"惟與此馬 {int(row['starts'])}仗未勝、平均{avg:.1f}名")
+                parts_r.append(f"惟與此馬 {rec}")
         elif ts >= 70 and not jc.get("changed"):
             parts_r.append(f"騎練班底評分高（{jt}）")
         jreason = "，".join(parts_r)
@@ -1058,20 +1132,27 @@ class RacingEngine:
         if fl:
             if fl["h2h"]:
                 names = "、".join(sorted({nm for nm, _ in fl["h2h"]}))
-                rsn = f"今場重遇曾交手對手{names}"
-                add("賽績線", f"重遇{names}", "曾交手", band="✅", reason=rsn)
+                add("賽績線", f"重遇{names}", "曾交手", band="✅",
+                    reason=f"今場重遇曾交手對手{names}")
             else:
                 trend = "對手已驗證" if fl["validated"] >= 1 else "對手未驗證"
+                # Clarify the finish wording + add the class the opponents went on to win in.
+                fin_note = self._format_formline_finish(fl["my_finish"])
+                cls_note = self._formline_opponent_class_note()
+                bits = [b for b in (
+                    f"最近最佳{fin_note}，對手「{fl['best_opp']}」" if fl.get("best_opp") else "",
+                    cls_note,
+                ) if b]
                 add("賽績線", f"近{fl['n']}仗", trend,
                     band="✅" if fl["validated"] >= 1 else "➖",
-                    reason=f"最佳一仗{fl['my_finish']}、對手「{fl['best_opp']}」；其後{fl['validated']}名對手有勝出" if fl["best_opp"] else "")
+                    reason="；".join(bits))
         tw = self._value("trackwork_digest")
         if present(tw):
             tw_s = str(tw)
             twtrend = "加強中" if "加強" in tw_s else ("放緩" if "放緩" in tw_s else "中性")
             m = re.search(r"快操(\d+)課.*?試閘(\d+)課.*?踱步(\d+)課.*?游水(\d+)課", tw_s)
             detail = f"近21日 快操{m.group(1)}、試閘{m.group(2)}、游水{m.group(4)}" if m else ""
-            add("晨操備戰", "已提取", twtrend, reason=detail)
+            add("晨操備戰", detail or twtrend, twtrend if detail else "", band=self._readout_band(twtrend))
         return rows
 
     DIM_LABELS = {
