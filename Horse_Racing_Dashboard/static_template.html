@@ -579,6 +579,28 @@ function toggleBetRace(rn) {
   render();
 }
 
+// One-click: commit THIS meeting's 投注面板 records straight into the shared
+// database (Cloudflare KV via /api/sync). No file picker. Routes by region (the
+// records carry date|venue|region). Also migrates any odds that currently only
+// live in this device's localStorage up to the shared store → syncs everywhere.
+async function commitBetsToDatabase() {
+  const m = selectedMeeting;
+  if (!m) { alert('請先選擇一個賽馬日。'); return; }
+  if (!BET_SYNC_ENDPOINT) { alert('此頁以檔案方式開啟，無法連接共享資料庫；請用線上版本。'); return; }
+  // Merge the current meeting's panel (incl. localStorage-only odds) into the
+  // synced store, then force a push (bypass the no-op dedupe).
+  saveBettingState();
+  const n = Object.values(bettingState || {}).filter(s => s && (s.confirmed || s.skipped)).length;
+  if (n === 0) { alert('呢場暫時冇已確認嘅投注記錄可寫入。'); return; }
+  lastSyncedSerialized = null;
+  try {
+    await pushBettingStateToCloud();
+    alert(`✅ 已將 ${m.venue}（${m.region}）${n} 條投注記錄寫入共享資料庫，並同步到所有裝置。`);
+  } catch (e) {
+    alert('寫入共享資料庫失敗，請稍後再試。');
+  }
+}
+
 function exportBetsJSON() {
   const m = selectedMeeting;
   if (!m) return;
@@ -948,7 +970,7 @@ function renderDashboardBettingPanel(meeting, races, isDualAnalyst) {
   // Bottom bar (add bp-bar--fixed class for mobile sticky)
   html += `<div class="bp-bar bp-bar--fixed">`;
   html += `<div class="bp-bar-info">\u7e3d\u8a08 ${totalBets} \u6ce8${totalBets > 0 ? ` \u00b7 \u6de8\u5229 <span class="bh-profit ${totalProfit >= 0 ? 'bh-profit--win' : 'bh-profit--loss'}">${totalProfit >= 0 ? '+' : ''}$${totalProfit.toFixed(2)}</span>` : ''}</div>`;
-  html += `<button class="bp-bar-btn" onclick="exportBetsJSON()" ${totalBets===0?'disabled':''}>\ud83d\udcbe \u532f\u51fa\u6295\u6ce8\u8a18\u9304</button>`;
+  html += `<button class="bp-bar-btn" onclick="commitBetsToDatabase()" ${totalBets===0?'disabled':''}>\ud83d\udce5 \u532f\u5165\u6295\u6ce8\u8a18\u9304</button>`;
   html += `</div>`;
 
   // ROI Summary Table
