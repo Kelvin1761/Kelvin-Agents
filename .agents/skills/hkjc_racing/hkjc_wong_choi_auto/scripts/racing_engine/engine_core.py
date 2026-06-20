@@ -1119,21 +1119,41 @@ class RacingEngine:
         cur = self._value("current_rating")
         if present(rt) or present(cur):
             direction = self._rating_direction(rt) if present(rt) else ""
-            ends = self._seq_endpoints(rt) if present(rt) else ""
             cls_note = self._class_move_note()
-            hist = (f"近績官評{ends}、{direction[2:]}" if ends and direction
-                    else (f"近績官評{ends}" if ends else ""))
+            # historical official ratings (oldest→newest); used for min/max + last-race compare
+            rt_nums = ([int(x) for x in
+                        re.findall(r"\d+", re.split(r"→\s*趨勢|趨勢", str(rt))[0])]
+                       if present(rt) else [])
+            last_rt = rt_nums[-1] if rt_nums else None
             cur_int = None
             if present(cur):
                 try:
                     cur_int = int(float(cur))
                 except (TypeError, ValueError):
                     cur_int = None
-            cur_txt = f"今仗官方評分{cur_int}" if cur_int is not None else ""
-            reason = "；".join([p for p in (cls_note, cur_txt, hist) if p])
+            # min/max range of the available rating history (the horse's recent floor/ceiling)
+            range_txt = ""
+            if rt_nums:
+                lo, hi = min(rt_nums), max(rt_nums)
+                dir_word = direction[2:] if direction else ""
+                range_txt = (f"近{len(rt_nums)}仗評分{lo}-{hi}分"
+                             + (f"（走勢{dir_word}）" if dir_word else ""))
+            # today's mark vs the rating it last raced off → 加分/減分
+            delta_txt, delta_tag = "", ""
+            if cur_int is not None and last_rt is not None:
+                d = cur_int - last_rt
+                if d > 0:
+                    delta_txt, delta_tag = f"今仗{cur_int}分、較上仗{last_rt}分 +{d}（加分）", f"+{d} 加分"
+                elif d < 0:
+                    delta_txt, delta_tag = f"今仗{cur_int}分、較上仗{last_rt}分 {d}（減分）", f"{d} 減分"
+                else:
+                    delta_txt, delta_tag = f"今仗{cur_int}分、與上仗持平（{last_rt}分）", "與上仗持平"
+            elif cur_int is not None:
+                delta_txt = f"今仗官方評分{cur_int}"
+            reason = "；".join([p for p in (cls_note, delta_txt, range_txt) if p])
             cmove = "降班" if "降班" in cls_note else ("升班" if "升班" in cls_note else "")
-            value = f"今仗{cur_int}分" if cur_int is not None else ends
-            add("評分走勢", value, cmove or direction,
+            value = f"今仗{cur_int}分" if cur_int is not None else self._seq_endpoints(rt)
+            add("評分走勢", value, cmove or delta_tag or direction,
                 band="✅" if (cmove == "降班" or direction == "評分上升") else "➖",
                 reason=reason)
         # (走位動量 row removed — low signal, per user feedback)
