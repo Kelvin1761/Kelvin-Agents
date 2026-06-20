@@ -1,3 +1,4 @@
+import re
 import scoring
 from scoring import BaseScorer, clip_score, parse_float
 
@@ -55,6 +56,11 @@ class SpeedScorer(BaseScorer):
         if energy_trend:
             signals += 1
             reasons.append(f"能量={energy_trend}")
+            # NOTE: scoring intentionally keys on the source 趨勢 LABEL, not the raw
+            # first-vs-last numbers. Deriving direction from the numbers was ML-tested
+            # (walk-forward, RICH-only) and REGRESSED min/champ/top3 — the label is a
+            # model assessment that out-predicts naive endpoint direction. Do not
+            # "fix" it to use numbers.
             if "上升" in energy_trend and "✅" in energy_trend:
                 score += scoring.SPEED_MICRO_WEIGHTS.get("energy_up_bonus", 4.0)
                 strong_signals += 1
