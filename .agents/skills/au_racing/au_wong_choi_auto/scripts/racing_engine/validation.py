@@ -71,6 +71,9 @@ def _validate_auto_namespace(horse_num: str, auto: dict, dynamic_weights: dict =
         min_section = min(float(matrix_scores.get(k, 60)) for k in MATRIX_KEYS)
         if min_section >= 56:
             expected += 2.0
+        # Barrier-bias adjustment is folded into ability_score by the engine and
+        # persisted separately; account for it so the check matches the real formula.
+        expected += float(auto.get("barrier_bias", 0) or 0)
         if abs(float(ability) - expected) > 0.06:
             errors.append(f"SCORE-002 horse {horse_num} ability mismatch: {ability} != {expected:.2f}")
         if auto.get("grade") != compute_grade(float(ability)):

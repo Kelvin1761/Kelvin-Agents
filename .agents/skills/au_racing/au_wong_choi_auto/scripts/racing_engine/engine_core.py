@@ -443,6 +443,7 @@ class RacingEngine:
             "version": "AU_AUTO_SCORE_V3",
             "ability_score": ability_score,
             "rank_score": rank_score,
+            "barrier_bias": round(barrier_bias, 2),
             "place_tightening_bonus": round(place_tightening_bonus, 4),
             "grade": grade,
             "race_context": {
