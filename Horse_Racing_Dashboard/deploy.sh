@@ -101,7 +101,14 @@ else
     echo "   ℹ️ 未設 CLOUDFLARE_API_TOKEN；將依賴本機 wrangler login session"
 fi
 
-npx wrangler pages deploy "$DIST_DIR" --project-name "$PAGES_PROJECT"
+# Deploy to the PRODUCTION branch (main). Force the branch and run from a non-git
+# directory so wrangler doesn't fall back to the local git branch — which would make
+# this a PREVIEW deploy (wongchoi-dashboard.pages.dev would not update).
+( cd "${TMPDIR:-/tmp}" && env CI=1 CF_PAGES_BRANCH=main \
+    npx wrangler pages deploy "$DIST_DIR" \
+        --project-name "$PAGES_PROJECT" \
+        --branch main \
+        --commit-dirty=true )
 
 if [ "$KEEP_DIST" -eq 0 ]; then
     rm -rf "$DIST_DIR"
