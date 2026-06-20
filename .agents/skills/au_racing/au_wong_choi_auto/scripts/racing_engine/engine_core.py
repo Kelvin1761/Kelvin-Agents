@@ -3530,7 +3530,19 @@ class RacingEngine:
             add("今仗路程", seg, "", band=band)
         cm = d.get("class_move")
         if present(cm):
-            add("班次走向", str(cm).strip(), "")
+            cm_s = str(cm).strip()
+            cband = "✅" if "降班" in cm_s else ("➖" if "升班" in cm_s else "➖")
+            add("班次走向", cm_s, "", band=cband)
+        # 檔位 + running-position bucket (AU has no per-barrier historical table,
+        # so show the position bucket, not fabricated stats).
+        bar = self.horse_data.get("barrier")
+        if bar not in (None, "", 0):
+            try:
+                bn = int(bar)
+                bucket = "內檔" if bn <= 4 else ("中檔" if bn <= 8 else ("外檔" if bn <= 12 else "極外檔"))
+                add("檔位", f"{bn}檔", bucket, band="✅" if bn <= 4 else ("⚠️" if bn >= 13 else "➖"))
+            except (TypeError, ValueError):
+                pass
         counts = self._formline_followup_counts()
         opp = self._formline_headwinner() if hasattr(self, "_formline_headwinner") else ""
         validated = counts["higher"] + counts["same"] + counts["lower"]
@@ -3542,11 +3554,18 @@ class RacingEngine:
             add("賽績線", "重遇" + "、".join(h2h), "曾交手", band="✅",
                 reason=f"今場重遇曾交手對手{'、'.join(h2h)}")
         elif validated or opp:
+            cls_bits = []
+            if counts["higher"]:
+                cls_bits.append(f"{counts['higher']}匹其後升班再贏")
+            if counts["same"]:
+                cls_bits.append(f"{counts['same']}匹同班再贏")
+            if counts["lower"]:
+                cls_bits.append(f"{counts['lower']}匹降班再贏")
+            head = f"曾交手頭馬「{opp}」" if opp else "近仗對手線"
             add("賽績線", f"曾勝對手「{opp}」" if opp else "近仗對手",
                 "對手已驗證" if validated else "對手未驗證",
                 band="✅" if validated else "➖",
-                reason=(f"{counts['higher']}匹對手其後升班再贏" if counts['higher'] else
-                        (f"{validated}匹對手其後再贏" if validated else "")))
+                reason="；".join([head] + cls_bits) if cls_bits else head)
         mt = d.get("current_market_trend")
         if present(mt):
             band = "✅" if "受捧" in str(mt) else ("⚠️" if "受冷" in str(mt) else "➖")
