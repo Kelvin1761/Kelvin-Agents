@@ -1057,6 +1057,49 @@ class RacingEngine:
             bits.append(f"{sm.group(1)}匹對手其後同班再贏")
         return "、".join(bits)
 
+    def _recent_races_detailed(self):
+        """Per-race history for the 近六場 readout: class, finishing place, 頭馬距離
+        and the official rating the horse CARRIED that race. recent_6_detail and
+        rating_trend are both ordered newest→oldest and align positionally
+        (第1仗 ↔ rating_trend[0]), so we zip them by index."""
+        rd = str(self._value("recent_6_detail") or "")
+        if not rd.strip():
+            return []
+        rt_nums = [int(x) for x in
+                   re.findall(r"\d+", re.split(r"→\s*趨勢|趨勢", str(self._value("rating_trend") or ""))[0])]
+        races = []
+        for seg in rd.split("|"):
+            m = re.search(r"第(\d+)仗\(([^)]*)\)\s*[:：]\s*(\d+)\s*名\s*(.*)$", seg.strip())
+            if not m:
+                continue
+            idx = int(m.group(1))
+            meta = m.group(2).strip()
+            dm = re.search(r"\d{2}/\d{2}/\d{4}", meta)
+            date = dm.group(0) if dm else ""
+            cls = meta.replace(date, "").strip()
+            rating = rt_nums[idx - 1] if 1 <= idx <= len(rt_nums) else None
+            races.append({"idx": idx, "date": date, "cls": cls,
+                          "finish": int(m.group(3)), "margin": m.group(4).strip(),
+                          "rating": rating})
+        return races
+
+    def _class_rank_note(self):
+        """Average finishing place grouped by class over the available recent races
+        (e.g. '三級賽 2.0名(1)、一級賽 3.5名(4)')."""
+        races = self._recent_races_detailed()
+        if not races:
+            return ""
+        buckets = {}
+        for r in races:
+            buckets.setdefault(r["cls"] or "未知", []).append(r["finish"])
+        # order by class strength (graded above 班次)
+        def keyf(item):
+            n = self._class_num(item[0])
+            return n if n is not None else 99
+        parts = [f"{cls} 平均{sum(v)/len(v):.1f}名（{len(v)}場）"
+                 for cls, v in sorted(buckets.items(), key=keyf)]
+        return "、".join(parts)
+
     def _predicted_style(self):
         """Parse the pre-computed running_style ('後上 | 信心: 高 | 依據: …') into a
         tactical label the punter cares about (前置／守好位／守中／後上) plus the WHY.
@@ -1117,28 +1160,35 @@ class RacingEngine:
             add("完成時間", "對標偏差", tr)
         rt = self._value("rating_trend")
         cur = self._value("current_rating")
+        chg = self._value("rating_change")  # authoritative 評分+/- from the racecard
         if present(rt) or present(cur):
-            direction = self._rating_direction(rt) if present(rt) else ""
             cls_note = self._class_move_note()
-            # historical official ratings (oldest→newest); used for min/max + last-race compare
+            # rating history numbers, ordered newest→oldest (rt_nums[0] = last race)
             rt_nums = ([int(x) for x in
                         re.findall(r"\d+", re.split(r"→\s*趨勢|趨勢", str(rt))[0])]
                        if present(rt) else [])
-            last_rt = rt_nums[-1] if rt_nums else None
             cur_int = None
             if present(cur):
                 try:
                     cur_int = int(float(cur))
                 except (TypeError, ValueError):
                     cur_int = None
-            # min/max range of the available rating history (the horse's recent floor/ceiling)
-            range_txt = ""
-            if rt_nums:
-                lo, hi = min(rt_nums), max(rt_nums)
-                dir_word = direction[2:] if direction else ""
-                range_txt = (f"近{len(rt_nums)}仗評分{lo}-{hi}分"
-                             + (f"（走勢{dir_word}）" if dir_word else ""))
-            # today's mark vs the rating it last raced off → 加分/減分
+            # previous-race rating: prefer the authoritative 評分+/- delta, else
+            # the newest history value (rt_nums[0]).
+            chg_int = None
+            if present(chg):
+                try:
+                    chg_int = int(float(chg))
+                except (TypeError, ValueError):
+                    chg_int = None
+            if cur_int is not None and chg_int is not None:
+                last_rt = cur_int - chg_int
+            else:
+                last_rt = rt_nums[0] if rt_nums else None
+            # recent floor/ceiling across the available history + today's mark
+            pool = list(rt_nums) + ([cur_int] if cur_int is not None else [])
+            range_txt = f"近{len(rt_nums)}仗評分區間{min(pool)}-{max(pool)}分" if rt_nums else ""
+            # today vs last-race rating → 加分/減分
             delta_txt, delta_tag = "", ""
             if cur_int is not None and last_rt is not None:
                 d = cur_int - last_rt
@@ -1153,8 +1203,9 @@ class RacingEngine:
             reason = "；".join([p for p in (cls_note, delta_txt, range_txt) if p])
             cmove = "降班" if "降班" in cls_note else ("升班" if "升班" in cls_note else "")
             value = f"今仗{cur_int}分" if cur_int is not None else self._seq_endpoints(rt)
-            add("評分走勢", value, cmove or delta_tag or direction,
-                band="✅" if (cmove == "降班" or direction == "評分上升") else "➖",
+            rising = (cur_int is not None and last_rt is not None and cur_int > last_rt)
+            add("評分走勢", value, cmove or delta_tag,
+                band="✅" if (cmove == "降班" or rising) else "➖",
                 reason=reason)
         # (走位動量 row removed — low signal, per user feedback)
         wt = self._value("weight_trend")
@@ -1179,7 +1230,22 @@ class RacingEngine:
                 add("今仗路程", str(bd).split("|")[0].strip(), "")
         last6 = self._value("last_6_finishes")
         if present(last6):
-            add("近六場", str(last6).strip(), "")
+            # Enrich with per-race 班次 / 名次 / 頭馬距離 / 當時評分 + 各班平均名次.
+            races = self._recent_races_detailed()
+            detail = ""
+            if races:
+                segs = []
+                for r in races:
+                    bits = [r["cls"], f"{r['finish']}名"]
+                    if r["margin"]:
+                        bits.append(r["margin"])
+                    if r["rating"] is not None:
+                        bits.append(f"評{r['rating']}")
+                    segs.append("·".join(b for b in bits if b))
+                detail = " ｜ ".join(segs)
+            cls_rank = self._class_rank_note()
+            reason = "；".join([p for p in (detail, cls_rank) if p])
+            add("近六場", str(last6).strip(), "", reason=reason)
         draw = self._value("barrier") or self._value("draw")
         if present(draw):
             add("檔位", f"{str(draw).strip()}檔", "", reason=self._draw_stats_note(draw))
