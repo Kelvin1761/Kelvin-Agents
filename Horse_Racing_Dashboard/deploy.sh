@@ -101,10 +101,12 @@ else
     echo "   ℹ️ 未設 CLOUDFLARE_API_TOKEN；將依賴本機 wrangler login session"
 fi
 
-# Deploy to the PRODUCTION branch (main). Force the branch and run from a non-git
-# directory so wrangler doesn't fall back to the local git branch — which would make
-# this a PREVIEW deploy (wongchoi-dashboard.pages.dev would not update).
-( cd "${TMPDIR:-/tmp}" && env CI=1 CF_PAGES_BRANCH=main \
+# Deploy to the PRODUCTION branch (main). Run from SCRIPT_DIR so wrangler finds
+# wrangler.toml (KV binding WC_STATE) and functions/ — REQUIRED for the /api/sync
+# bet-sync Function. CF_PAGES_BRANCH=main + --branch main force a production deploy
+# even though the local git branch differs (otherwise it becomes a preview deploy
+# and wongchoi-dashboard.pages.dev would not update).
+( cd "$SCRIPT_DIR" && env CI=1 CF_PAGES_BRANCH=main \
     npx wrangler pages deploy "$DIST_DIR" \
         --project-name "$PAGES_PROJECT" \
         --branch main \
