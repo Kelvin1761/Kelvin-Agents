@@ -365,6 +365,19 @@ let syncedBettingState = {};
 let syncPollTimer = null;
 let syncPushTimer = null;
 let lastSyncedSerialized = '';
+// Permanent ROI ledger (separate from the editable panel) — committed via the
+// 匯入投注記錄 button, survives panel clears, feeds the ROI tab cross-device.
+const ROI_LEDGER_ENDPOINT = window.location.protocol === 'file:' ? null : '/api/roi';
+let roiLedger = [];
+async function loadRoiLedger() {
+  if (!ROI_LEDGER_ENDPOINT) return;
+  try {
+    const res = await fetch(ROI_LEDGER_ENDPOINT, { cache: 'no-store' });
+    if (!res.ok) return;
+    const d = await res.json();
+    roiLedger = Object.values(d || {});
+  } catch (e) {}
+}
 
 function meetingStorageKey(meeting) {
   if (!meeting) return null;
@@ -586,18 +599,50 @@ function toggleBetRace(rn) {
 async function commitBetsToDatabase() {
   const m = selectedMeeting;
   if (!m) { alert('請先選擇一個賽馬日。'); return; }
-  if (!BET_SYNC_ENDPOINT) { alert('此頁以檔案方式開啟，無法連接共享資料庫；請用線上版本。'); return; }
-  // Merge the current meeting's panel (incl. localStorage-only odds) into the
-  // synced store, then force a push (bypass the no-op dedupe).
+  if (!ROI_LEDGER_ENDPOINT) { alert('此頁以檔案方式開啟，無法連接資料庫；請用線上版本。'); return; }
+  // Keep the editable panel synced too (so cross-device editing still works).
   saveBettingState();
-  const n = Object.values(bettingState || {}).filter(s => s && (s.confirmed || s.skipped)).length;
-  if (n === 0) { alert('呢場暫時冇已確認嘅投注記錄可寫入。'); return; }
   lastSyncedSerialized = null;
+  pushBettingStateToCloud();
+  // Build the finalized records for THIS meeting and commit them to the PERMANENT
+  // ROI ledger (survives clearing the panel; feeds the ROI tab on every device).
+  const racesData = getRacesData(m);
+  if (!racesData) { alert('搵唔到呢場嘅賽事資料。'); return; }
+  const merged = getMergedRaces(racesData);
+  const isDual = (m.analysts?.length > 1);
+  const records = [];
+  merged.forEach(race => {
+    getRaceBettingCandidates(m, race.race_number, isDual).forEach(c => {
+      const s = getBetState(m.date, m.venue, race.race_number, c.horse_number);
+      if (s.confirmed && !s.scratched) {
+        const pos = s.result;
+        const profit = calcProfit(s);
+        records.push({
+          date: m.date, venue: m.venue, region: m.region,
+          race_number: race.race_number, horse_number: c.horse_number,
+          horse_name: c.horse_name, jockey: c.jockey, trainer: c.trainer,
+          kelvin_grade: c.kelvin_grade, heison_grade: c.heison_grade,
+          odds: s.odds || 0, result_position: pos, stake: 1,
+          payout: (pos >= 1 && pos <= 3) ? (s.odds || 0) : 0,
+          net_profit: profit !== null && profit !== undefined ? profit : ((pos === null || pos === undefined) ? 0 : -1),
+          status: (pos >= 1 && pos <= 3) ? 'won' : ((pos === null || pos === undefined) ? 'pending' : 'lost'),
+        });
+      }
+    });
+  });
+  if (records.length === 0) { alert('呢場暫時冇已確認嘅投注記錄可寫入。'); return; }
   try {
-    await pushBettingStateToCloud();
-    alert(`✅ 已將 ${m.venue}（${m.region}）${n} 條投注記錄寫入共享資料庫，並同步到所有裝置。`);
+    const res = await fetch(ROI_LEDGER_ENDPOINT, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(records),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.success) throw new Error(j.error || 'failed');
+    await loadRoiLedger();
+    if (currentView === 'roi') render();
+    alert(`✅ 已將 ${m.venue}（${m.region}）${records.length} 條投注記錄永久寫入 ROI 資料庫（即使清空投注面板亦會保留）。ROI 已即時更新並同步到所有裝置。`);
   } catch (e) {
-    alert('寫入共享資料庫失敗，請稍後再試。');
+    alert('寫入 ROI 資料庫失敗，請稍後再試。');
   }
 }
 
@@ -1644,6 +1689,8 @@ function showROI() {
   currentView = 'roi';
   render();
   window.scrollTo(0, 0);
+  // Refresh the permanent ledger from the shared DB, then re-render with it.
+  loadRoiLedger().then(() => { if (currentView === 'roi') render(); });
 }
 
 function setRoiRegion(r) { roiRegionFilter = r; render(); }
@@ -1655,7 +1702,11 @@ function toggleSession(key) {
 
 function getFilteredROI() {
   const roi = DASHBOARD_DATA.roi || {};
-  const baseBets = (roi.bets || []).slice();
+  // Permanent committed records (ROI ledger) override the pre-baked snapshot.
+  const baseMap = {};
+  (roi.bets || []).forEach(b => { baseMap[`${b.date}|${b.venue}|${b.race_number}|${b.horse_number}`] = b; });
+  roiLedger.forEach(b => { baseMap[`${b.date}|${b.venue}|${b.race_number}|${b.horse_number}`] = b; });
+  const baseBets = Object.values(baseMap);
 
   // Merge localStorage betting panel data into ROI
   // Only merge from meetings with analysis data (avoids ghost entries)
@@ -2008,6 +2059,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   startBettingSyncPolling();
   pullBettingStateFromCloud(false).finally(() => render());
+  loadRoiLedger().then(() => { if (currentView === 'roi') render(); });
   showDashboard();
 });
 </script>
