@@ -1151,14 +1151,14 @@ function renderHorseCard(horse, topPickRank) {
   const cleanRisk = cleanText(horse.risk);
   if (cleanAdv) html += `<div style="margin-top:8px">✅ <strong>優勢:</strong> ${esc(cleanAdv)}</div>`;
   if (cleanRisk) html += `<div>⚠️ <strong>風險:</strong> ${esc(cleanRisk)}</div>`;
-  // 📊 數據判讀 — structured data readout grid (shown on top of 核心邏輯)
+  // 📊 數據判讀 — structured data readout (value · trend — concrete reason)
   if (Array.isArray(horse.data_readout) && horse.data_readout.length) {
     const roRows = horse.data_readout.map(r => {
-      const dv = r.trend || r.value || '';
-      const t = r.reason ? ` title="${esc(r.reason)}"` : '';
-      return `<div${t} style="display:flex;gap:5px;align-items:baseline;overflow:hidden"><span>${esc(r.band||'➖')}</span><span style="color:#64748B;white-space:nowrap">${esc(r.label)}</span><strong style="color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(dv)}</strong></div>`;
+      const main = [r.value, r.trend].filter(Boolean).join(' · ');
+      const rsn = r.reason ? ` <span style="color:#94A3B8">— ${esc(r.reason)}</span>` : '';
+      return `<div style="line-height:1.55"><span>${esc(r.band||'➖')}</span> <span style="color:#64748B">${esc(r.label)}</span> <strong style="color:#334155">${esc(main)}</strong>${rsn}</div>`;
     }).join('');
-    html += `<div style="margin-top:8px;padding:8px 10px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px"><div style="font-size:0.72rem;font-weight:600;color:#475569;margin-bottom:4px">📊 數據判讀</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;font-size:0.78rem">${roRows}</div></div>`;
+    html += `<div style="margin-top:8px;padding:8px 10px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px"><div style="font-size:0.72rem;font-weight:600;color:#475569;margin-bottom:4px">📊 數據判讀</div><div style="display:flex;flex-direction:column;gap:3px;font-size:0.78rem">${roRows}</div></div>`;
   }
   // Extract 核心邏輯 from conclusion for preview
   const logicText = horse.core_logic || (horse.conclusion ? (horse.conclusion.match(/核心邏輯[：:]\s*\*{0,2}\s*(.+?)(?:\n|$)/) || [])[1] : null);

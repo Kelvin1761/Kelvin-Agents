@@ -1068,8 +1068,11 @@ class RacingEngine:
                     reason=f"最佳一仗{fl['my_finish']}、對手「{fl['best_opp']}」；其後{fl['validated']}名對手有勝出" if fl["best_opp"] else "")
         tw = self._value("trackwork_digest")
         if present(tw):
-            twtrend = "加強中" if "加強" in str(tw) else ("放緩" if "放緩" in str(tw) else "")
-            add("晨操備戰", "已提取", twtrend or "中性")
+            tw_s = str(tw)
+            twtrend = "加強中" if "加強" in tw_s else ("放緩" if "放緩" in tw_s else "中性")
+            m = re.search(r"快操(\d+)課.*?試閘(\d+)課.*?踱步(\d+)課.*?游水(\d+)課", tw_s)
+            detail = f"近21日 快操{m.group(1)}、試閘{m.group(2)}、游水{m.group(4)}" if m else ""
+            add("晨操備戰", "已提取", twtrend, reason=detail)
         return rows
 
     DIM_LABELS = {
