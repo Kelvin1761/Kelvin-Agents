@@ -2010,15 +2010,25 @@ def extract_race_context(text: str) -> dict:
     if dm:
         ctx['distance'] = int(dm.group(1))
     
-    # Class
-    cm = re.search(r'第(\d)班', overview)
-    if cm:
-        ctx['class'] = f"C{cm.group(1)}"
-    elif '分級賽' in overview or 'Group' in overview:
-        ctx['class'] = 'G'
-    elif '新馬' in overview or 'Griffin' in overview:
-        ctx['class'] = 'GR'
-    
+    # Class — graded races (一/二/三級賽 = Group 1/2/3) rank ABOVE all 班次 and must
+    # NOT collapse to the default 'C4'. Check graded/Listed before numbered classes.
+    gm = re.search(r'([一二三])級賽', overview)
+    if gm:
+        ctx['class'] = gm.group(1) + '級賽'
+    elif '上市賽' in overview or '表列賽' in overview or re.search(r'\b(?:Listed|LR)\b', overview, re.I):
+        ctx['class'] = '上市賽'
+    elif re.search(r'(?:Group|Grade|G)\s*([123])', overview, re.I):
+        g = re.search(r'(?:Group|Grade|G)\s*([123])', overview, re.I).group(1)
+        ctx['class'] = '一二三'[int(g) - 1] + '級賽'
+    else:
+        cm = re.search(r'第(\d)班', overview)
+        if cm:
+            ctx['class'] = f"C{cm.group(1)}"
+        elif '分級賽' in overview or 'Group' in overview:
+            ctx['class'] = 'G'
+        elif '新馬' in overview or 'Griffin' in overview:
+            ctx['class'] = 'GR'
+
     return ctx
 
 

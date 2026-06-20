@@ -187,6 +187,30 @@ def _trackwork_path_for_logic(logic_path, race_number):
     return matches[0] if matches else None
 
 
+def _racecard_path_for_logic(logic_path, race_number):
+    if race_number in (None, ""):
+        return None
+    matches = sorted(logic_path.parent.glob(f"*Race {race_number} 排位表.md"))
+    return matches[0] if matches else None
+
+
+def _parse_racecard_meta(text):
+    """Read the authoritative race class + each runner's CURRENT official rating
+    from the racecard (排位表.md). The Facts header can mis-label graded races
+    (三級賽/二級賽/一級賽) as a default 'C4', so the racecard wins for display."""
+    race_class = ""
+    cm = re.search(r"班次:\s*(.+)", text)
+    if cm and cm.group(1).strip():
+        race_class = cm.group(1).strip()
+    ratings = {}
+    for block in re.split(r"(?=馬名:\s*)", text):
+        nm = re.search(r"馬名:\s*(.+)", block)
+        rt = re.search(r"^評分:\s*(\d+)", block, re.M)
+        if nm and rt:
+            ratings[nm.group(1).strip()] = int(rt.group(1))
+    return race_class, ratings
+
+
 def _section_for_horse(text, horse_number):
     pattern = re.compile(
         rf"^### 馬號 {re.escape(str(horse_number))} — .*?(?=^### 馬號 \d+ — |\Z)",
@@ -465,6 +489,22 @@ class HKJCAutoOrchestrator:
                 h.get("horse_name") for h in horses.values()
                 if isinstance(h, dict) and h.get("horse_name")
             ]
+            # Authoritative class + current ratings from the racecard (排位表.md):
+            # corrects graded-race class (三級賽=Group 3, above Class 1-5) which the
+            # Facts header can default to 'C4', and surfaces each runner's CURRENT
+            # official rating (display-only; not used in scoring).
+            racecard_path = _racecard_path_for_logic(race_file, race_context.get("race_number"))
+            if racecard_path and racecard_path.exists():
+                rc_class, rc_ratings = _parse_racecard_meta(
+                    racecard_path.read_text(encoding="utf-8"))
+                if rc_class:
+                    race_context["race_class"] = rc_class
+                for h_obj in horses.values():
+                    if not isinstance(h_obj, dict):
+                        continue
+                    rating = rc_ratings.get(h_obj.get("horse_name"))
+                    if rating is not None:
+                        h_obj.setdefault("_data", {})["current_rating"] = rating
         header_anchor_map = _load_header_anchor_map(race_file, race_context)
         _enrich_horse_headers(horses, header_anchor_map)
         formline_summaries = _load_formline_opponent_summaries(race_file, race_context, horses)

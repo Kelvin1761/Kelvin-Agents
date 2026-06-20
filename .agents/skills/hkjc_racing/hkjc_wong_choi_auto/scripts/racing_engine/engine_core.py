@@ -973,25 +973,47 @@ class RacingEngine:
                 "trainer": self._clean(self._value("trainer") or "")}
 
     def _class_num(self, text):
+        """Unified class rank — LOWER number = HIGHER class. Graded races
+        (一/二/三級賽 = Group 1/2/3) and 上市賽 (Listed) rank ABOVE all 班次,
+        so a horse moving from 第二班 to 三級賽 is 升班, not a same-/down-grade."""
         t = str(text or "")
+        gm = re.search(r"([一二三])級賽", t)
+        if gm:
+            return "一二三".index(gm.group(1)) + 1          # G1=1, G2=2, G3=3
+        gm = re.search(r"(?:Group|Grade|G)\s*([123])", t, re.I)
+        if gm:
+            return int(gm.group(1))
+        if "上市賽" in t or "表列賽" in t or re.search(r"\b(?:Listed|LR)\b", t, re.I):
+            return 4                                         # Listed: just below Group 3
         cm = re.search(r"第([一二三四五六七])班", t)
         if cm:
-            return "一二三四五六七".index(cm.group(1)) + 1
+            return 10 + "一二三四五六七".index(cm.group(1))   # 第一班=10 … 第七班=16
         cm = re.search(r"C(?:lass)?\s*([1-7])", t, re.I)
         if cm:
-            return int(cm.group(1))
+            return 9 + int(cm.group(1))                      # C1=10 … C7=16
         return None
 
+    def _class_label(self, text):
+        """Tidy a class string for display: 'C4'→'第四班', graded kept as-is."""
+        t = str(text or "").strip()
+        cm = re.search(r"C(?:lass)?\s*([1-7])", t, re.I)
+        if cm:
+            return f"第{'一二三四五六七'[int(cm.group(1)) - 1]}班"
+        return t
+
     def _class_move_note(self):
-        """Class the horse ran last time vs today: 降班/同班/升班 (lower number = higher class)."""
-        today = self._class_num(self.race_context.get("race_class"))
+        """Class the horse ran last time vs today: 降班/同班/升班 (lower rank = higher class).
+        Handles graded races (三級賽 etc.) which sit above all 班次."""
+        today_txt = str(self.race_context.get("race_class") or "")
+        today = self._class_num(today_txt)
         rd = str(self._value("recent_6_detail") or "")
-        m = re.search(r"第1仗\([^)]*?(第[一二三四五六七]班)", rd)
-        last = self._class_num(m.group(1)) if m else None
+        m = re.search(r"第1仗\([^)]*?([一二三]級賽|上市賽|表列賽|第[一二三四五六七]班)", rd)
+        last_txt = m.group(1) if m else ""
+        last = self._class_num(last_txt)
         if not (today and last):
             return ""
         move = "降班" if today > last else ("升班" if today < last else "同班")
-        return f"上仗第{last}班→今仗第{today}班（{move}）"
+        return f"上仗{last_txt}→今仗{self._class_label(today_txt)}（{move}）"
 
     def _draw_stats_note(self, draw):
         """Historical win/place rate for this barrier at today's venue/track/distance."""
@@ -1035,6 +1057,29 @@ class RacingEngine:
             bits.append(f"{sm.group(1)}匹對手其後同班再贏")
         return "、".join(bits)
 
+    def _predicted_style(self):
+        """Parse the pre-computed running_style ('後上 | 信心: 高 | 依據: …') into a
+        tactical label the punter cares about (前置／守好位／守中／後上) plus the WHY.
+        Reference only — never enters the rating matrix."""
+        raw = str(self._value("running_style") or "").strip()
+        if not raw or raw in ("N/A", "-", "--"):
+            return None
+        parts = [p.strip() for p in raw.split("|")]
+        style_cn = parts[0] if parts else ""
+        conf, basis = "", ""
+        for p in parts[1:]:
+            seg = p.split("：", 1)[-1].split(":", 1)[-1].strip()
+            if "信心" in p:
+                conf = seg
+            elif "依據" in p:
+                basis = seg
+        label_map = {"前領": "前置", "跟前": "守好位", "中段": "守中",
+                     "後上": "後上", "靈活": "靈活（隨步速）"}
+        label = label_map.get(style_cn, style_cn)
+        if not label:
+            return None
+        return {"label": label, "conf": conf, "basis": basis}
+
     def _data_readout(self, features, matrix_scores):
         """Structured, fully-Chinese 數據判讀 rows: each = label/value/trend/band(/reason).
         Feeds both the .md report and the dashboard preview. Skips absent data."""
@@ -1071,13 +1116,24 @@ class RacingEngine:
             tr = "進步中" if "進步" in str(ftb) else ("退步中" if "退步" in str(ftb) else "平穩")
             add("完成時間", "對標偏差", tr)
         rt = self._value("rating_trend")
-        if present(rt):
-            direction = self._rating_direction(rt)
-            ends = self._seq_endpoints(rt)
+        cur = self._value("current_rating")
+        if present(rt) or present(cur):
+            direction = self._rating_direction(rt) if present(rt) else ""
+            ends = self._seq_endpoints(rt) if present(rt) else ""
             cls_note = self._class_move_note()
-            reason = "；".join([p for p in (cls_note, f"官方評分{ends}、{direction[2:]}" if ends and direction else "") if p])
+            hist = (f"近績官評{ends}、{direction[2:]}" if ends and direction
+                    else (f"近績官評{ends}" if ends else ""))
+            cur_int = None
+            if present(cur):
+                try:
+                    cur_int = int(float(cur))
+                except (TypeError, ValueError):
+                    cur_int = None
+            cur_txt = f"今仗官方評分{cur_int}" if cur_int is not None else ""
+            reason = "；".join([p for p in (cls_note, cur_txt, hist) if p])
             cmove = "降班" if "降班" in cls_note else ("升班" if "升班" in cls_note else "")
-            add("評分走勢", ends, cmove or direction,
+            value = f"今仗{cur_int}分" if cur_int is not None else ends
+            add("評分走勢", value, cmove or direction,
                 band="✅" if (cmove == "降班" or direction == "評分上升") else "➖",
                 reason=reason)
         # (走位動量 row removed — low signal, per user feedback)
@@ -1107,6 +1163,20 @@ class RacingEngine:
         draw = self._value("barrier") or self._value("draw")
         if present(draw):
             add("檔位", f"{str(draw).strip()}檔", "", reason=self._draw_stats_note(draw))
+        # 預測跑法 — tactical position read (前置／守好位／守中／後上). Reference only:
+        # explicitly NOT in the rating matrix; explains the WHY (recent runs, jockey change).
+        ps = self._predicted_style()
+        if ps:
+            jc = self._jockey_combo_detail()
+            why = []
+            if ps["basis"]:
+                why.append(ps["basis"])
+            if jc.get("changed") and jc.get("jockey"):
+                why.append(f"今仗換上騎師{jc['jockey']}，跑法或有調整")
+            why.append("參考用，未計入評分")
+            add("預測跑法", ps["label"],
+                f"信心{ps['conf']}" if ps["conf"] else "",
+                band="➖", reason="；".join(why))
         # 騎練 + 晨操 use matrix bands / digests already computed
         ts = matrix_scores.get("trainer_signal", 60)
         jc = self._jockey_combo_detail()

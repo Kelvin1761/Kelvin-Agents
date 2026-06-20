@@ -1853,6 +1853,34 @@ class RacingEngine:
                 return token
         return ""
 
+    def _predicted_style(self):
+        """Tactical position read (前置／守好位／守中／後上) + the WHY, for the 數據判讀.
+        Reference only — never enters the rating matrix. Uses the pre-computed
+        running_style_line / tactical_plan; WHY comes from the race scenario."""
+        raw = self._running_style() or self._tactical_position_text()
+        token = ""
+        for cand in ("前領", "前置", "居中前", "跟前", "守好位", "中後", "後上",
+                     "守中", "中段", "居中"):
+            if cand in str(raw):
+                token = cand
+                break
+        if not token:
+            return None
+        label_map = {"前領": "前置", "前置": "前置", "居中前": "守好位", "跟前": "守好位",
+                     "守好位": "守好位", "中後": "後上", "後上": "後上",
+                     "守中": "守中", "中段": "守中", "居中": "守中"}
+        label = label_map.get(token, token)
+        conf = re.sub(r"^.*?[:：]", "", self._style_confidence()).strip() or self._style_confidence().strip()
+        why_bits = []
+        scenario = self._tactical_scenario_text()
+        if scenario:
+            why_bits.append(scenario)
+        else:
+            shape = self._recent_settled_pattern_brief()
+            if shape:
+                why_bits.append(f"近仗走位：{shape}")
+        return {"label": label, "conf": conf, "why": "；".join(why_bits)}
+
     def _fact_anchor_value(self, label: str) -> str:
         match = re.search(rf"\n  - {re.escape(label)}: ([^\n]+)", "\n" + self.facts_section)
         return match.group(1).strip() if match else ""
@@ -3543,6 +3571,14 @@ class RacingEngine:
                 add("檔位", f"{bn}檔", bucket, band="✅" if bn <= 4 else ("⚠️" if bn >= 13 else "➖"))
             except (TypeError, ValueError):
                 pass
+        # 預測跑法 — tactical position read (前置／守好位／守中／後上). Reference only:
+        # explicitly NOT in the rating matrix; the WHY comes from the race scenario.
+        ps = self._predicted_style()
+        if ps:
+            why = [b for b in (ps["why"],) if b] + ["參考用，未計入評分"]
+            add("預測跑法", ps["label"],
+                f"信心{ps['conf']}" if ps["conf"] else "",
+                band="➖", reason="；".join(why))
         counts = self._formline_followup_counts()
         opp = self._formline_headwinner() if hasattr(self, "_formline_headwinner") else ""
         validated = counts["higher"] + counts["same"] + counts["lower"]
