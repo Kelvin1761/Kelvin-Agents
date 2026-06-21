@@ -1307,12 +1307,14 @@ class RacingEngine:
         # explicitly NOT in the rating matrix; explains the WHY (recent runs, jockey change).
         ps = self._predicted_style()
         if ps:
-            jc = self._jockey_combo_detail()
             why = []
             if ps["basis"]:
                 why.append(ps["basis"])
-            if jc.get("changed") and jc.get("jockey"):
-                why.append(f"今仗換上騎師{jc['jockey']}，跑法或有調整")
+            # Jockey-change note is authoritative (set only on a REAL change vs last
+            # start, with the new rider's prior style on this horse). No note ⇒ no change.
+            jcn = self._value("jockey_change_note")
+            if jcn:
+                why.append(str(jcn))
             add("預測跑法", ps["label"],
                 f"信心{ps['conf']}" if ps["conf"] else "",
                 band="➖", reason="；".join(why))

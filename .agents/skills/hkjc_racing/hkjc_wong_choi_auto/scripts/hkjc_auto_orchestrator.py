@@ -129,6 +129,24 @@ def _enrich_profile_history(horses):
             order = ["前置", "守好位", "守中", "後上"]
             data["style_breakdown_6"] = "、".join(
                 f"{style_counts[st]}場{st}" for st in order if style_counts.get(st))
+        # Jockey change vs LAST start (authoritative: entries[0] = most recent race).
+        # Only flag a real change, and if the new rider has ridden THIS horse before,
+        # report the horse's running style under that rider.
+        declared = str(h_obj.get("jockey") or "").strip()
+        last_j = str(ents[0].get("jockey") or "").strip()
+        if declared and last_j and declared != last_j:
+            prior = [e for e in ents if str(e.get("jockey") or "").strip() == declared]
+            if prior:
+                wins = sum(1 for e in prior if e.get("placing") == 1)
+                pstyles = Counter(s for s in (_style_from_positions(e.get("running_positions"))
+                                              for e in prior) if s)
+                sstr = "、".join(f"{n}次{st}" for st, n in pstyles.most_common())
+                win_txt = f"，{wins}勝" if wins else ""
+                style_txt = f"，跑法：{sstr}" if sstr else ""
+                data["jockey_change_note"] = (
+                    f"今仗轉用騎師{declared}（曾策此駒{len(prior)}次{win_txt}{style_txt}）")
+            else:
+                data["jockey_change_note"] = f"今仗轉用騎師{declared}（與此駒首次合作）"
 
 
 CLASS_RANK_MAP = {
