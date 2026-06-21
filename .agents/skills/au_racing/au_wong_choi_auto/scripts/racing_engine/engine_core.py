@@ -3575,7 +3575,7 @@ class RacingEngine:
         # explicitly NOT in the rating matrix; the WHY comes from the race scenario.
         ps = self._predicted_style()
         if ps:
-            why = [b for b in (ps["why"],) if b] + ["參考用，未計入評分"]
+            why = [b for b in (ps["why"],) if b]
             add("預測跑法", ps["label"],
                 f"信心{ps['conf']}" if ps["conf"] else "",
                 band="➖", reason="；".join(why))

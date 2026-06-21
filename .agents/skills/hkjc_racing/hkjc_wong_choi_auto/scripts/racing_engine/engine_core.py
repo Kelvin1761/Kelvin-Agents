@@ -985,7 +985,12 @@ class RacingEngine:
             opp_text = str(r.get("opponents", ""))
             for nm in field:
                 if nm and nm != mine and nm in opp_text:
-                    h2h.append((nm, fin(r)))
+                    # opponent's finish that day: the [N] tag before its name (頭馬 ⇒ 1)
+                    seg = opp_text[opp_text.find(nm):]
+                    om = re.search(r"\[(\d+)\]", opp_text[:opp_text.find(nm)] or opp_text)
+                    opp_fin = (1 if "頭馬" in seg else (int(om.group(1)) if om else None))
+                    h2h.append({"name": nm, "my_fin": fin(r), "opp_fin": opp_fin,
+                                "date": str(r.get("date", "")).strip()})
         return {"best_opp": opp, "my_finish": my, "validated": validated,
                 "n": len(table), "h2h": h2h, "key_opp": key_opp}
 
@@ -1127,7 +1132,7 @@ class RacingEngine:
             return n if n is not None else 99
         parts = [f"{cls} 平均{sum(v)/len(v):.1f}名（{len(v)}場）"
                  for cls, v in sorted(buckets.items(), key=keyf)]
-        return "、".join(parts)
+        return " | ".join(parts)
 
     def _predicted_style(self):
         """Parse the pre-computed running_style ('後上 | 信心: 高 | 依據: …') into a
@@ -1150,6 +1155,10 @@ class RacingEngine:
         label = label_map.get(style_cn, style_cn)
         if not label:
             return None
+        # Prefer the compact 近6仗 走位 breakdown (e.g. "5場守好位、1場後上") over the
+        # verbose per-race "近1仗評語顯示…" basis.
+        breakdown = str(self._value("style_breakdown_6") or "").strip()
+        basis = f"近6仗 {breakdown}" if breakdown else basis
         return {"label": label, "conf": conf, "basis": basis}
 
     def _data_readout(self, features, matrix_scores):
@@ -1214,9 +1223,25 @@ class RacingEngine:
                 last_rt = cur_int - chg_int
             else:
                 last_rt = rt_nums[0] if rt_nums else None
-            # recent floor/ceiling across the available history + today's mark
-            pool = list(rt_nums) + ([cur_int] if cur_int is not None else [])
-            range_txt = f"近{len(rt_nums)}仗評分區間{min(pool)}-{max(pool)}分" if rt_nums else ""
+            # rating range: prefer 近三季 (profile) high/low + 季初評分; else recent pool
+            ss = self._value("rating_season_start")
+            hi3, lo3 = self._value("rating_high_3s"), self._value("rating_low_3s")
+            range_bits = []
+            if ss is not None:
+                try:
+                    range_bits.append(f"季初評分{int(float(ss))}")
+                except (TypeError, ValueError):
+                    pass
+            if hi3 is not None and lo3 is not None:
+                try:
+                    range_bits.append(f"近三季最高{int(float(hi3))}·最低{int(float(lo3))}")
+                except (TypeError, ValueError):
+                    pass
+            if range_bits:
+                range_txt = "；".join(range_bits)
+            else:
+                pool = list(rt_nums) + ([cur_int] if cur_int is not None else [])
+                range_txt = f"近{len(rt_nums)}仗評分區間{min(pool)}-{max(pool)}分" if rt_nums else ""
             # today vs last-race rating → 加分/減分
             delta_txt, delta_tag = "", ""
             if cur_int is not None and last_rt is not None:
@@ -1287,7 +1312,6 @@ class RacingEngine:
                 why.append(ps["basis"])
             if jc.get("changed") and jc.get("jockey"):
                 why.append(f"今仗換上騎師{jc['jockey']}，跑法或有調整")
-            why.append("參考用，未計入評分")
             add("預測跑法", ps["label"],
                 f"信心{ps['conf']}" if ps["conf"] else "",
                 band="➖", reason="；".join(why))
@@ -1315,9 +1339,16 @@ class RacingEngine:
         fl = self._formline_summary()
         if fl:
             if fl["h2h"]:
-                names = "、".join(sorted({nm for nm, _ in fl["h2h"]}))
+                mine = self.horse_data.get("horse_name", "本駒")
+                names = "、".join(sorted({d["name"] for d in fl["h2h"]}))
+                # show how BOTH horses finished the last time they met
+                bits = []
+                for d in fl["h2h"]:
+                    if d.get("my_fin") and d.get("my_fin") != 99 and d.get("opp_fin"):
+                        when = f"（{d['date']}）" if d.get("date") else ""
+                        bits.append(f"上次交手{when}：{mine}第{d['my_fin']}、{d['name']}第{d['opp_fin']}")
                 add("賽績線", f"重遇{names}", "曾交手", band="✅",
-                    reason=f"今場重遇曾交手對手{names}")
+                    reason="；".join(bits) if bits else f"今場重遇曾交手對手{names}")
             else:
                 ko = fl.get("key_opp") or {}
                 trend = "對手已驗證" if fl["validated"] >= 1 else "對手未驗證"
@@ -1339,9 +1370,10 @@ class RacingEngine:
                 add("賽績線", f"近{fl['n']}仗", trend,
                     band="✅" if fl["validated"] >= 1 else "➖", reason=reason)
         # 班次表現 — average finishing place grouped by class (own section).
-        cls_perf = self._class_rank_note()
+        # Prefer the 近三季 profile-derived breakdown; fall back to recent races.
+        cls_perf = self._value("class_perf_3s") or self._class_rank_note()
         if cls_perf:
-            add("班次表現", cls_perf, "", band="➖")
+            add("班次表現", str(cls_perf), "", band="➖")
         tw = self._value("trackwork_digest")
         if present(tw):
             tw_s = str(tw)

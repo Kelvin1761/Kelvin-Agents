@@ -27,6 +27,109 @@ from renderer import ensure_verdict, render_meeting_csv, write_race_outputs
 from scoring import compute_grade
 from validation import validate_engine_scripts, validate_logic_data
 
+# Optional: horse-profile scraper for multi-season (近三季) readout enrichment.
+# DISPLAY-ONLY — failures degrade gracefully and never affect scoring.
+sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
+try:
+    from scrape_hkjc_horse_profile import scrape_horse_profile
+    _HAS_PROFILE_SCRAPER = True
+except Exception:
+    _HAS_PROFILE_SCRAPER = False
+
+# class_grade → readable label (graded races vs 班次)
+_PROFILE_CLASS_LABEL = {
+    "G1": "一級賽", "G2": "二級賽", "G3": "三級賽",
+    "1": "第一班", "2": "第二班", "3": "第三班", "4": "第四班", "5": "第五班",
+}
+_PROFILE_CLASS_ORDER = {
+    "一級賽": 1, "二級賽": 2, "三級賽": 3, "上市賽": 4,
+    "第一班": 10, "第二班": 11, "第三班": 12, "第四班": 13, "第五班": 14,
+}
+
+
+def _profile_season_key(date_str):
+    """HK racing season (Sep–Aug) start year from a dd/mm/yy date."""
+    m = re.match(r"(\d{2})/(\d{2})/(\d{2})", str(date_str or ""))
+    if not m:
+        return None
+    mm, yy = int(m.group(2)), 2000 + int(m.group(3))
+    return yy if mm >= 9 else yy - 1
+
+
+def _style_from_positions(positions, field_size=12):
+    """Single-race tactical style from in-race positions (mirrors the engine's
+    position fallback): 前置 / 守好位 / 守中 / 後上."""
+    if not positions:
+        return None
+    fp = positions[0] if isinstance(positions[0], int) else None
+    if not fp or fp <= 0:
+        return None
+    mid_cut = max(int(field_size * 0.55), 4)
+    if fp == 1:
+        return "前置"
+    if fp <= 4:
+        return "守好位"
+    if fp <= mid_cut:
+        return "守中"
+    return "後上"
+
+
+def _enrich_profile_history(horses):
+    """Inject DISPLAY-ONLY multi-season fields from the horse profile page:
+    近三季 per-class average finish, season-start + 近三季 high/low rating, and a
+    近6仗 running-style breakdown. Never raises; never touches scoring inputs."""
+    if not _HAS_PROFILE_SCRAPER:
+        return
+    for h_obj in horses.values():
+        if not isinstance(h_obj, dict):
+            continue
+        tw = h_obj.get("trackwork")
+        hid = tw.get("horseid") if isinstance(tw, dict) else None
+        if not hid:
+            continue
+        try:
+            ents = (scrape_horse_profile(hid) or {}).get("entries") or []
+        except Exception:
+            continue
+        if not ents:
+            continue
+        data = h_obj.setdefault("_data", {})
+        seasons = sorted({s for s in (_profile_season_key(e.get("date")) for e in ents) if s},
+                         reverse=True)[:3]
+        recent = [e for e in ents if _profile_season_key(e.get("date")) in seasons] if seasons else ents
+        buckets, ratings = {}, []
+        for e in recent:
+            lbl = _PROFILE_CLASS_LABEL.get(str(e.get("class_grade") or "").strip(),
+                                           str(e.get("class_grade") or "").strip())
+            pl = e.get("placing")
+            if lbl and isinstance(pl, int) and pl > 0:
+                buckets.setdefault(lbl, []).append(pl)
+            rt = e.get("rating")
+            if isinstance(rt, int) and rt > 0:
+                ratings.append(rt)
+        if buckets:
+            parts = [f"{lbl} 平均{sum(v) / len(v):.1f}名（{len(v)}場）"
+                     for lbl, v in sorted(buckets.items(), key=lambda kv: _PROFILE_CLASS_ORDER.get(kv[0], 99))]
+            data["class_perf_3s"] = " | ".join(parts)
+        if ratings:
+            data["rating_high_3s"] = max(ratings)
+            data["rating_low_3s"] = min(ratings)
+        if seasons:
+            cur = [e["rating"] for e in ents
+                   if _profile_season_key(e.get("date")) == seasons[0]
+                   and isinstance(e.get("rating"), int) and e["rating"] > 0]
+            if cur:
+                data["rating_season_start"] = cur[-1]  # earliest race of current season
+        style_counts = {}
+        for e in ents[:6]:
+            st = _style_from_positions(e.get("running_positions"))
+            if st:
+                style_counts[st] = style_counts.get(st, 0) + 1
+        if style_counts:
+            order = ["前置", "守好位", "守中", "後上"]
+            data["style_breakdown_6"] = "、".join(
+                f"{style_counts[st]}場{st}" for st in order if style_counts.get(st))
+
 
 CLASS_RANK_MAP = {
     "一級賽": 0,
@@ -515,6 +618,8 @@ class HKJCAutoOrchestrator:
                         data["current_rating"] = info["rating"]
                         if info.get("change") is not None:
                             data["rating_change"] = info["change"]
+            # 近三季 profile enrichment (display-only; graceful if offline)
+            _enrich_profile_history(horses)
         header_anchor_map = _load_header_anchor_map(race_file, race_context)
         _enrich_horse_headers(horses, header_anchor_map)
         formline_summaries = _load_formline_opponent_summaries(race_file, race_context, horses)
