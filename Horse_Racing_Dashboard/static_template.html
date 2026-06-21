@@ -1222,8 +1222,10 @@ function renderHorseCard(horse, topPickRank) {
   if (Array.isArray(horse.data_readout) && horse.data_readout.length) {
     const roRows = horse.data_readout.map(r => {
       const main = [r.value, r.trend].filter(Boolean).join(' · ');
-      const rsn = r.reason ? ` <span style="color:#94A3B8">— ${esc(r.reason)}</span>` : '';
-      return `<div style="line-height:1.55"><span>${esc(r.band||'➖')}</span> <span style="color:#64748B">${esc(r.label)}</span> <strong style="color:#334155">${esc(main)}</strong>${rsn}</div>`;
+      const head = `<div style="line-height:1.5"><span>${esc(r.band||'➖')}</span> <span style="color:#64748B;font-weight:600">${esc(r.label)}</span> <strong style="color:#334155">${esc(main)}</strong></div>`;
+      // reason on its own indented line — keeps dense rows scannable
+      const rsn = r.reason ? `<div style="margin:1px 0 5px 20px;color:#94A3B8;font-size:0.73rem;line-height:1.5">${esc(r.reason)}</div>` : '';
+      return head + rsn;
     }).join('');
     html += `<div style="margin-top:8px;padding:8px 10px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px"><div style="font-size:0.72rem;font-weight:600;color:#475569;margin-bottom:4px">📊 數據判讀</div><div style="display:flex;flex-direction:column;gap:3px;font-size:0.78rem">${roRows}</div></div>`;
   }

@@ -932,8 +932,9 @@ class RacingEngine:
         return "評分平穩"
 
     def _formline_summary(self):
-        """Concrete 賽績線: best run vs a named opponent, plus whether those
-        opponents went on to win (form validation) and any rematch today (H2H)."""
+        """Concrete 賽績線: EVERY notable past opponent — my finish + margin that day,
+        whether the opponent went on to win (form validation) and at what class move.
+        Opponents that are also in today's field are flagged 同場對手."""
         table = self._value("formline_table")
         if not isinstance(table, list) or not table:
             return None
@@ -950,49 +951,49 @@ class RacingEngine:
             return int(m.group(1)) if m else 0
 
         def best_class_rank(text):
-            # highest class (lowest rank number) among the tokens in next_class
             ranks = [self._class_num(tok) for tok in re.split(r"[ /、,]+", str(text or "")) if tok]
             ranks = [r for r in ranks if r is not None]
             return min(ranks) if ranks else None
 
-        validated = sum(1 for r in table if opp_wins(r) >= 1)
-        # KEY opponent: prefer a validated opponent (one that went on to win), taking
-        # my best finish among them; else my best finish overall. This is what the
-        # punter cares about — "I ran Pth behind X, who then won at a higher class".
-        validated_rows = [r for r in table if opp_wins(r) >= 1 and opp_name(r)]
-        pool = validated_rows or [r for r in table if opp_name(r)]
-        key = min(pool, key=fin) if pool else best
         today_rank = self._class_num(self.race_context.get("race_class"))
-        opp_rank = best_class_rank(key.get("next_class"))
-        opp_move = ""
-        if today_rank is not None and opp_rank is not None:
-            opp_move = "升班" if opp_rank < today_rank else ("降班" if opp_rank > today_rank else "同班")
-        key_opp = {
-            "name": opp_name(key),
-            "my_finish": str(key.get("my_finish", "")).strip(),
-            "wins": opp_wins(key),
-            "next_class": str(key.get("next_class", "")).strip(),
-            "move": opp_move,
-        }
-        best = min(table, key=fin)
-        opp = opp_name(best)
-        my = str(best.get("my_finish", "")).strip()
-        # head-to-head against today's field (names injected via race_context)
         field = set(self.race_context.get("field_horse_names") or [])
         mine = self.horse_data.get("horse_name")
-        h2h = []
+
+        opponents = []
         for r in table:
+            nm = opp_name(r)
+            if not nm:
+                continue
+            orank = best_class_rank(r.get("next_class"))
+            move = ""
+            if today_rank is not None and orank is not None:
+                move = "升班" if orank < today_rank else ("降班" if orank > today_rank else "同班")
             opp_text = str(r.get("opponents", ""))
-            for nm in field:
-                if nm and nm != mine and nm in opp_text:
-                    # opponent's finish that day: the [N] tag before its name (頭馬 ⇒ 1)
-                    seg = opp_text[opp_text.find(nm):]
-                    om = re.search(r"\[(\d+)\]", opp_text[:opp_text.find(nm)] or opp_text)
-                    opp_fin = (1 if "頭馬" in seg else (int(om.group(1)) if om else None))
-                    h2h.append({"name": nm, "my_fin": fin(r), "opp_fin": opp_fin,
-                                "date": str(r.get("date", "")).strip()})
-        return {"best_opp": opp, "my_finish": my, "validated": validated,
-                "n": len(table), "h2h": h2h, "key_opp": key_opp}
+            om = re.search(r"\[(\d+)\]", opp_text)
+            opponents.append({
+                "name": nm,
+                "my_fin": fin(r),
+                "my_finish_raw": str(r.get("my_finish", "")).strip(),
+                "wins": opp_wins(r),
+                "next_class": str(r.get("next_class", "")).strip(),
+                "move": move,
+                "is_field": any(f and f != mine and f in opp_text for f in field),
+                "opp_fin": (1 if "頭馬" in opp_text else (int(om.group(1)) if om else None)),
+                "date": str(r.get("date", "")).strip(),
+            })
+        validated = sum(1 for o in opponents if o["wins"] >= 1)
+        return {"opponents": opponents, "validated": validated, "n": len(table)}
+
+    def _compact_finish(self, raw):
+        """'5 (-3-3/4)' → '第5負3-3/4'; '1 (...)' → '第1（勝出）'."""
+        s = str(raw or "").strip()
+        fm = re.match(r"\s*(\d+)", s)
+        pos = fm.group(1) if fm else s
+        if pos == "1":
+            return "第1（勝出）"
+        mm = re.search(r"\(([^)]+)\)", s)
+        marg = mm.group(1).lstrip("-").strip() if mm else ""
+        return f"第{pos}負{marg}" if marg else f"第{pos}"
 
     def _jockey_combo_detail(self):
         """Concrete 騎練 reason: combo record + whether jockey changed this run."""
@@ -1132,7 +1133,7 @@ class RacingEngine:
             return n if n is not None else 99
         parts = [f"{cls} 平均{sum(v)/len(v):.1f}名（{len(v)}場）"
                  for cls, v in sorted(buckets.items(), key=keyf)]
-        return " | ".join(parts)
+        return " ｜ ".join(parts)
 
     def _predicted_style(self):
         """Parse the pre-computed running_style ('後上 | 信心: 高 | 依據: …') into a
@@ -1337,38 +1338,39 @@ class RacingEngine:
         add("騎練組合", jt, "強訊號" if ts >= 70 else ("偏弱" if ts < 55 else "中性"),
             band="✅" if ts >= 70 else ("⚠️" if ts < 55 else "➖"), reason=jreason)
         fl = self._formline_summary()
-        if fl:
-            if fl["h2h"]:
-                mine = self.horse_data.get("horse_name", "本駒")
-                names = "、".join(sorted({d["name"] for d in fl["h2h"]}))
-                # show how BOTH horses finished the last time they met
-                bits = []
-                for d in fl["h2h"]:
-                    if d.get("my_fin") and d.get("my_fin") != 99 and d.get("opp_fin"):
-                        when = f"（{d['date']}）" if d.get("date") else ""
-                        bits.append(f"上次交手{when}：{mine}第{d['my_fin']}、{d['name']}第{d['opp_fin']}")
-                add("賽績線", f"重遇{names}", "曾交手", band="✅",
-                    reason="；".join(bits) if bits else f"今場重遇曾交手對手{names}")
-            else:
-                ko = fl.get("key_opp") or {}
-                trend = "對手已驗證" if fl["validated"] >= 1 else "對手未驗證"
-                # The punter-facing story: the race vs the key opponent — where MY horse
-                # finished + by how much, and whether that opponent later won at a
-                # higher / same / lower class. (Drops the vague "最近最佳名次".)
-                if ko.get("name"):
-                    fin_note = self._format_formline_finish(ko["my_finish"])
-                    if ko.get("wins", 0) >= 1:
-                        cls = ko.get("next_class") or ""
-                        move = ko.get("move") or ""
-                        won = (f"該駒其後{move}（{cls}）再勝{ko['wins']}場" if move
-                               else f"該駒其後於{cls}再勝{ko['wins']}場")
-                        reason = f"對手「{ko['name']}」一仗：當日我{fin_note}；{won}"
-                    else:
-                        reason = f"對手「{ko['name']}」一仗：當日我{fin_note}；該駒其後未再勝出"
+        if fl and fl.get("opponents"):
+            opps = fl["opponents"]
+            # Surface every meaningful opponent: today's rivals (同場對手) first, then the
+            # rest of the validated ones (opponents that went on to win). Order: field
+            # rivals → most subsequent wins → my best finish.
+            cand = [o for o in opps if o["is_field"] or o["wins"] >= 1] or opps[:1]
+            # dedupe by opponent name (a rival can beat me in several of my past races);
+            # keep the strongest instance: field-rival > more subsequent wins > my best finish
+            byname = {}
+            for o in cand:
+                e = byname.get(o["name"])
+                if e is None or (o["is_field"], o["wins"], -o["my_fin"]) > (e["is_field"], e["wins"], -e["my_fin"]):
+                    byname[o["name"]] = o
+            shown = sorted(byname.values(), key=lambda o: (not o["is_field"], -o["wins"], o["my_fin"]))[:4]
+            field_n = sum(1 for o in shown if o["is_field"])
+            lines = []
+            for o in shown:
+                fin_c = self._compact_finish(o["my_finish_raw"])
+                tag = "⭐同場對手" if o["is_field"] else ""
+                if o["wins"] >= 1:
+                    cls = o["next_class"]
+                    won = (f"其後{o['move']}（{cls}）再勝{o['wins']}場" if o["move"]
+                           else f"其後於{cls}再勝{o['wins']}場")
                 else:
-                    reason = ""
-                add("賽績線", f"近{fl['n']}仗", trend,
-                    band="✅" if fl["validated"] >= 1 else "➖", reason=reason)
+                    won = "其後未再勝"
+                meet = (f"當日我{fin_c}、佢第{o['opp_fin']}" if o["is_field"] and o["opp_fin"]
+                        else f"當日我{fin_c}")
+                lines.append(f"{tag}「{o['name']}」{meet}，{won}".lstrip())
+            trend = (f"同場對手{field_n}駒" if field_n else
+                     ("對手已驗證" if fl["validated"] >= 1 else "對手未驗證"))
+            add("賽績線", f"近{fl['n']}仗", trend,
+                band="✅" if (field_n or fl["validated"] >= 1) else "➖",
+                reason=" ｜ ".join(lines))
         # 班次表現 — average finishing place grouped by class (own section).
         # Prefer the 近三季 profile-derived breakdown; fall back to recent races.
         cls_perf = self._value("class_perf_3s") or self._class_rank_note()

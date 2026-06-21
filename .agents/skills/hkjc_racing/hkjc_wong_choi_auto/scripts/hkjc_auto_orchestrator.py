@@ -110,7 +110,7 @@ def _enrich_profile_history(horses):
         if buckets:
             parts = [f"{lbl} 平均{sum(v) / len(v):.1f}名（{len(v)}場）"
                      for lbl, v in sorted(buckets.items(), key=lambda kv: _PROFILE_CLASS_ORDER.get(kv[0], 99))]
-            data["class_perf_3s"] = " | ".join(parts)
+            data["class_perf_3s"] = " ｜ ".join(parts)
         if ratings:
             data["rating_high_3s"] = max(ratings)
             data["rating_low_3s"] = min(ratings)
