@@ -1353,18 +1353,19 @@ class RacingEngine:
                     byname[o["name"]] = o
             shown = sorted(byname.values(), key=lambda o: (not o["is_field"], -o["wins"], o["my_fin"]))[:4]
             field_n = sum(1 for o in shown if o["is_field"])
+            mine = self.horse_data.get("horse_name", "本駒")
             lines = []
             for o in shown:
                 fin_c = self._compact_finish(o["my_finish_raw"])
                 tag = "⭐同場對手" if o["is_field"] else ""
                 if o["wins"] >= 1:
                     cls = o["next_class"]
-                    won = (f"其後{o['move']}（{cls}）再勝{o['wins']}場" if o["move"]
-                           else f"其後於{cls}再勝{o['wins']}場")
+                    won = (f"{o['name']}其後{o['move']}（{cls}）再勝{o['wins']}場" if o["move"]
+                           else f"{o['name']}其後於{cls}再勝{o['wins']}場")
                 else:
-                    won = "其後未再勝"
-                meet = (f"當日我{fin_c}、佢第{o['opp_fin']}" if o["is_field"] and o["opp_fin"]
-                        else f"當日我{fin_c}")
+                    won = f"{o['name']}其後未再勝"
+                meet = (f"當日{mine}{fin_c}、{o['name']}第{o['opp_fin']}" if o["is_field"] and o["opp_fin"]
+                        else f"當日{mine}{fin_c}")
                 lines.append(f"{tag}「{o['name']}」{meet}，{won}".lstrip())
             trend = (f"同場對手{field_n}駒" if field_n else
                      ("對手已驗證" if fl["validated"] >= 1 else "對手未驗證"))
