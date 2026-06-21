@@ -85,12 +85,21 @@ def review_previous_day(match_date: str) -> dict:
 def analyse_next_day(match_date: str) -> None:
     log(f"Running next-day analysis: {match_date}")
     payload = run_cli_json("run-daily", "--date", match_date)
+    matches = intish(payload.get("matches_analysed"))
+    source_errors = payload.get("source_errors") or []
     log(
         "Analysis complete. "
         f"matches={payload.get('matches_analysed')} "
         f"valid={payload.get('valid_feature_snapshots')} "
         f"dir={payload.get('analysis_dir')}"
     )
+
+    # A zero-match run caused by upstream data sources failing is NOT a normal
+    # "no bets today" outcome - it means the pipeline never saw any matches.
+    # Make it loud so it is not silently mistaken for a quiet betting day.
+    if matches == 0 and source_errors:
+        sources = ", ".join(str(err.get("source", "?")) for err in source_errors)
+        log(f"WARNING: 0 matches analysed because data sources failed: {sources}. Details: {compact_json(source_errors)}")
 
     # Store the generated recommendations for tomorrow so the next review can settle them.
     clv = run_cli_json("sync-clv-tracker", "--date", match_date)
