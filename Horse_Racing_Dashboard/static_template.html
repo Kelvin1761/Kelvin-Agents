@@ -1227,20 +1227,7 @@ function renderHorseCard(horse, topPickRank) {
     }).join('');
     html += `<div style="margin-top:8px;padding:8px 10px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px"><div style="font-size:0.72rem;font-weight:600;color:#475569;margin-bottom:4px">📊 數據判讀</div><div style="display:flex;flex-direction:column;gap:3px;font-size:0.78rem">${roRows}</div></div>`;
   }
-  // Extract 核心邏輯 from conclusion for preview
-  const logicText = horse.core_logic || (horse.conclusion ? (horse.conclusion.match(/核心邏輯[：:]\s*\*{0,2}\s*(.+?)(?:\n|$)/) || [])[1] : null);
-  if (logicText) {
-    let formattedLogic = logicText.trim()
-      .replace(/[、，]?\s*(?=\(\d+\)|（\d+）|[①②③④⑤⑥⑦⑧⑨⑩])/g, '\n')
-      .replace(/。/g, '。\n');
-    const lines = formattedLogic.split('\n').filter(s => s.trim());
-    const renderedLines = lines.map(line => {
-      const isBullet = line.match(/^(\(\d+\)|（\d+）|[①-⑩])/);
-      const style = isBullet ? 'padding-left:18px;text-indent:-18px;margin-top:2px;display:block;' : 'display:block;';
-      return `<div style="${style}">${esc(line.trim())}</div>`;
-    });
-    html += `<div style="margin-top:8px;padding:8px 12px;background:#F0F9FF;border-left:3px solid #3B82F6;border-radius:4px;font-size:0.78rem;line-height:1.8">💡 <strong>核心邏輯:</strong><br>${renderedLines.join('')}</div>`;
-  }
+  // 核心邏輯 removed from the preview card (user request) — 數據判讀 only.
   // Underhorse signal
   if (horse.underhorse_triggered) {
     let uhHtml = `<div style="margin-top:8px;padding:8px 12px;background:#FFF7ED;border-left:3px solid #F59E0B;border-radius:4px;font-size:0.78rem;line-height:1.8">🐴⚡ <strong>冷門馬訊號: 觸發!</strong>`;

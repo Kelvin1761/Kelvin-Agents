@@ -942,12 +942,41 @@ class RacingEngine:
             m = re.match(r"\s*(\d+)", str(row.get("my_finish", "")))
             return int(m.group(1)) if m else 99
 
+        def opp_name(row):
+            return re.sub(r"^\[\d+\]\s*", "", str(row.get("opponents", "")).split("(")[0]).strip()
+
+        def opp_wins(row):
+            m = re.search(r":\s*(\d+)\s*勝", str(row.get("next_performance", "")))
+            return int(m.group(1)) if m else 0
+
+        def best_class_rank(text):
+            # highest class (lowest rank number) among the tokens in next_class
+            ranks = [self._class_num(tok) for tok in re.split(r"[ /、,]+", str(text or "")) if tok]
+            ranks = [r for r in ranks if r is not None]
+            return min(ranks) if ranks else None
+
+        validated = sum(1 for r in table if opp_wins(r) >= 1)
+        # KEY opponent: prefer a validated opponent (one that went on to win), taking
+        # my best finish among them; else my best finish overall. This is what the
+        # punter cares about — "I ran Pth behind X, who then won at a higher class".
+        validated_rows = [r for r in table if opp_wins(r) >= 1 and opp_name(r)]
+        pool = validated_rows or [r for r in table if opp_name(r)]
+        key = min(pool, key=fin) if pool else best
+        today_rank = self._class_num(self.race_context.get("race_class"))
+        opp_rank = best_class_rank(key.get("next_class"))
+        opp_move = ""
+        if today_rank is not None and opp_rank is not None:
+            opp_move = "升班" if opp_rank < today_rank else ("降班" if opp_rank > today_rank else "同班")
+        key_opp = {
+            "name": opp_name(key),
+            "my_finish": str(key.get("my_finish", "")).strip(),
+            "wins": opp_wins(key),
+            "next_class": str(key.get("next_class", "")).strip(),
+            "move": opp_move,
+        }
         best = min(table, key=fin)
-        opp = re.sub(r"^\[\d+\]\s*", "", str(best.get("opponents", "")).split("(")[0]).strip()
+        opp = opp_name(best)
         my = str(best.get("my_finish", "")).strip()
-        validated = sum(1 for r in table
-                        if re.search(r"[1-9]\d*\s*勝", str(r.get("next_performance", "")))
-                        and "0 勝" not in str(r.get("next_performance", "")))
         # head-to-head against today's field (names injected via race_context)
         field = set(self.race_context.get("field_horse_names") or [])
         mine = self.horse_data.get("horse_name")
@@ -958,7 +987,7 @@ class RacingEngine:
                 if nm and nm != mine and nm in opp_text:
                     h2h.append((nm, fin(r)))
         return {"best_opp": opp, "my_finish": my, "validated": validated,
-                "n": len(table), "h2h": h2h}
+                "n": len(table), "h2h": h2h, "key_opp": key_opp}
 
     def _jockey_combo_detail(self):
         """Concrete 騎練 reason: combo record + whether jockey changed this run."""
@@ -1243,9 +1272,8 @@ class RacingEngine:
                         bits.append(f"評{r['rating']}")
                     segs.append("·".join(b for b in bits if b))
                 detail = " ｜ ".join(segs)
-            cls_rank = self._class_rank_note()
-            reason = "；".join([p for p in (detail, cls_rank) if p])
-            add("近六場", str(last6).strip(), "", reason=reason)
+            # 各班平均名次 now lives in its own 班次表現 section (see below).
+            add("近六場", str(last6).strip(), "", reason=detail)
         draw = self._value("barrier") or self._value("draw")
         if present(draw):
             add("檔位", f"{str(draw).strip()}檔", "", reason=self._draw_stats_note(draw))
@@ -1291,24 +1319,45 @@ class RacingEngine:
                 add("賽績線", f"重遇{names}", "曾交手", band="✅",
                     reason=f"今場重遇曾交手對手{names}")
             else:
+                ko = fl.get("key_opp") or {}
                 trend = "對手已驗證" if fl["validated"] >= 1 else "對手未驗證"
-                # Clarify the finish wording + add the class the opponents went on to win in.
-                fin_note = self._format_formline_finish(fl["my_finish"])
-                cls_note = self._formline_opponent_class_note()
-                bits = [b for b in (
-                    f"最近最佳{fin_note}，對手「{fl['best_opp']}」" if fl.get("best_opp") else "",
-                    cls_note,
-                ) if b]
+                # The punter-facing story: the race vs the key opponent — where MY horse
+                # finished + by how much, and whether that opponent later won at a
+                # higher / same / lower class. (Drops the vague "最近最佳名次".)
+                if ko.get("name"):
+                    fin_note = self._format_formline_finish(ko["my_finish"])
+                    if ko.get("wins", 0) >= 1:
+                        cls = ko.get("next_class") or ""
+                        move = ko.get("move") or ""
+                        won = (f"該駒其後{move}（{cls}）再勝{ko['wins']}場" if move
+                               else f"該駒其後於{cls}再勝{ko['wins']}場")
+                        reason = f"對手「{ko['name']}」一仗：當日我{fin_note}；{won}"
+                    else:
+                        reason = f"對手「{ko['name']}」一仗：當日我{fin_note}；該駒其後未再勝出"
+                else:
+                    reason = ""
                 add("賽績線", f"近{fl['n']}仗", trend,
-                    band="✅" if fl["validated"] >= 1 else "➖",
-                    reason="；".join(bits))
+                    band="✅" if fl["validated"] >= 1 else "➖", reason=reason)
+        # 班次表現 — average finishing place grouped by class (own section).
+        cls_perf = self._class_rank_note()
+        if cls_perf:
+            add("班次表現", cls_perf, "", band="➖")
         tw = self._value("trackwork_digest")
         if present(tw):
             tw_s = str(tw)
-            twtrend = "加強中" if "加強" in tw_s else ("放緩" if "放緩" in tw_s else "中性")
+            # NOTE: 放緩/加強 here = gallop-TIME trend (gallops getting slower/faster),
+            # NOT the number of 快操. Spell it out so a higher 快操 count sitting next to
+            # "放緩" is not misread as a contradiction (user feedback, R1 #4 vs #7).
+            if "加強" in tw_s:
+                twtrend = "快操時間趨快"
+            elif "放緩" in tw_s:
+                twtrend = "快操時間趨慢"
+            else:
+                twtrend = "操練平穩"
             m = re.search(r"快操(\d+)課.*?試閘(\d+)課.*?踱步(\d+)課.*?游水(\d+)課", tw_s)
             detail = f"近21日 快操{m.group(1)}、試閘{m.group(2)}、游水{m.group(4)}" if m else ""
-            add("晨操備戰", detail or twtrend, twtrend if detail else "", band=self._readout_band(twtrend))
+            band = "✅" if "趨快" in twtrend else ("⚠️" if "趨慢" in twtrend else "➖")
+            add("晨操備戰", detail or twtrend, twtrend, band=band)
         return rows
 
     DIM_LABELS = {
