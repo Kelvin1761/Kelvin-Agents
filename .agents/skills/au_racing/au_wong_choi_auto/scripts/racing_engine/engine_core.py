@@ -28,18 +28,13 @@ from scoring import (
     JOCKEY_MICRO_WEIGHTS,
     TRAINER_MICRO_WEIGHTS,
     FIT_MICRO_WEIGHTS,
-    PLACE_TIGHTENING_FEATURE_WEIGHTS,
-    PLACE_TIGHTENING_MAX_ABS_BONUS,
-    PLACE_TIGHTENING_SCALE,
     clip_score,
     compute_grade,
-    get_dynamic_matrix_weights,
     parse_float,
     parse_numbers,
     parse_record_line,
     parse_recent_finishes,
     safe_ratio,
-    soft_race_shape_modifier,
     wet_form_feature,
 )
 
@@ -417,53 +412,12 @@ class RacingEngine:
 
         matrix_scores = map_features_to_matrix_scores(feature_scores)
         matrix = map_features_to_matrix(feature_scores)
-        dynamic_weights = get_dynamic_matrix_weights(self.race_context)
         pure_7d_score = round(sum(matrix_scores[key] * MATRIX_WEIGHTS[key] for key in MATRIX_WEIGHTS), 4)
-        dynamic_7d_score = round(sum(matrix_scores[key] * dynamic_weights[key] for key in dynamic_weights), 4)
-        report_only_score = dynamic_7d_score
-        soft_shape_modifier = soft_race_shape_modifier(self.race_context, matrix_scores)
-        report_only_score = round(report_only_score + soft_shape_modifier, 4)
-
-        # ── Report-only legacy modifiers ──
-        # Clean 7D mode keeps ranking on the official matrix score. These values
-        # remain visible for audit/watchlist work but no longer move Top3.
-        # Balanced horses (no section under 56) are more reliable Top3
-        # candidates.  Rewarding them improves Gold (Top3 all in Top3).
-        min_section = min(matrix_scores.values())
-        diversity_bonus = 0.0
-        if min_section >= 56:
-            diversity_bonus = 2.0
-            report_only_score = round(report_only_score + diversity_bonus, 4)
-
-        # ── SIP: Barrier bias integration ──
-        # Based on AU_Racing_Historical_Stats.md venue-specific barrier data.
-        # Flemington B6 = 13.5% win / B8 = 5.1% | Randwick B3 = 13.4% / B14+ ≈ 0%.
-        barrier_bias = self._barrier_bias_adjustment()
-        report_only_score = round(report_only_score + barrier_bias, 4)
-
-        soft_wetproof_cap = self._soft_wetproof_cap_modifier(matrix_scores, report_only_score)
-        if abs(soft_wetproof_cap) >= 0.01:
-            report_only_score = round(report_only_score + soft_wetproof_cap, 4)
-
         base_7d_score = pure_7d_score
-        reason_codes_before_report_only = list(self.reason_codes)
-        place_tightening_bonus = self._place_tightening_bonus(feature_scores)
-        micro_rank_bonus = self._micro_rank_bonus(matrix_scores, feature_scores)
-        self.reason_codes = reason_codes_before_report_only
-        report_only_score = round(report_only_score + place_tightening_bonus + micro_rank_bonus, 4)
-
-        # ── P5+P4: Wet track condition adjustment ──
-        wet_condition_modifier = 0.0
-        wet_adj = self._wet_track_condition_adjustment(matrix_scores)
-        if abs(wet_adj) >= 0.1:
-            wet_condition_modifier += wet_adj
-        if not self._today_going() and not self._wet_kind():
-            cond = str(self.race_context.get("condition", "") or "").lower()
-            if "soft" in cond or "heavy" in cond:
-                wet_adj2 = self._wet_track_condition_adjustment(matrix_scores, condition_override=cond)
-                if abs(wet_adj2) >= 0.1:
-                    wet_condition_modifier += wet_adj2
-        report_only_score = round(report_only_score + wet_condition_modifier, 4)
+        # Report-only post-7D modifiers (dynamic weights, soft-shape, diversity, barrier,
+        # soft-wetproof, place-tightening, micro-rank, wet-condition) were retired
+        # 2026-06-22: ML-refuted (barrier net-negative; place-tightening overfit) and
+        # never entered ranking/display. Ranking + 綜合戰力分 = pure 7D + wet_form feature only.
 
         # Wet-form going-suitability feature: 0 on dry going, folded into ability on
         # Soft/Heavy. base_7d_score stays pure 7D; 綜合戰力分 (ability_score) becomes
@@ -482,33 +436,11 @@ class RacingEngine:
         return {
             "version": "AU_AUTO_SCORE_V3",
             "pure_7d_score": round(pure_7d_score, 4),
-            "dynamic_7d_score": round(dynamic_7d_score, 4),
             "base_7d_score": base_7d_score,
             "final_rank_score": ability_score,
             "ability_score": ability_score,
             "rank_score": ability_score,
             "wet_form_feature": round(wet_form_feat, 4),
-            "soft_race_shape_modifier": round(soft_shape_modifier, 4),
-            "diversity_bonus": round(diversity_bonus, 4),
-            "soft_wetproof_cap_modifier": round(soft_wetproof_cap, 4),
-            "barrier_bias_modifier": round(barrier_bias, 4),
-            "place_tightening_bonus": round(place_tightening_bonus, 4),
-            "micro_rank_bonus": round(micro_rank_bonus, 4),
-            "wet_condition_modifier": round(wet_condition_modifier, 4),
-            "report_only_legacy_score": round(report_only_score, 4),
-            "adjustment_breakdown": {
-                "pure_7d_score": round(pure_7d_score, 4),
-                "dynamic_7d_score": round(dynamic_7d_score, 4),
-                "soft_race_shape_modifier": round(soft_shape_modifier, 4),
-                "diversity_bonus": round(diversity_bonus, 4),
-                "barrier_bias_modifier": round(barrier_bias, 4),
-                "soft_wetproof_cap_modifier": round(soft_wetproof_cap, 4),
-                "place_tightening_bonus": round(place_tightening_bonus, 4),
-                "micro_rank_bonus": round(micro_rank_bonus, 4),
-                "wet_condition_modifier": round(wet_condition_modifier, 4),
-                "report_only_legacy_score": round(report_only_score, 4),
-                "final_rank_score": round(ability_score, 4),
-            },
             "grade": grade,
             "race_context": {
                 "going": self._today_going(),
@@ -528,19 +460,6 @@ class RacingEngine:
             "risk_flags": sorted(set(self.risk_flags)),
             "score_provenance": self.provenance,
         }
-
-    def _place_tightening_bonus(self, feature_scores):
-        bonus = 0.0
-        for key, weight in PLACE_TIGHTENING_FEATURE_WEIGHTS.items():
-            bonus += weight * (clip_score(feature_scores.get(key), 60.0) - 60.0)
-        bonus *= PLACE_TIGHTENING_SCALE
-        bonus = max(-PLACE_TIGHTENING_MAX_ABS_BONUS, min(PLACE_TIGHTENING_MAX_ABS_BONUS, bonus))
-        if bonus >= 1.0:
-            self.reason_codes.append("place_tightening_upgrade")
-        elif bonus <= -1.0:
-            self.reason_codes.append("place_tightening_downgrade")
-        self.provenance["place_tightening_bonus"] = "archive_top6_place_model_v1"
-        return bonus
 
     def _get_class_tier(self, text):
         text = str(text).lower()
@@ -2369,75 +2288,6 @@ class RacingEngine:
         match = re.search(r"(Soft|Heavy)", going, re.I)
         return match.group(1).lower() if match else ""
 
-    def _wet_track_condition_adjustment(self, matrix_scores: dict, condition_override: str = "") -> float:
-        going = condition_override or self._today_going().lower()
-        if not going:
-            mi = self._meeting_intelligence()
-            going = str(mi.get("condition", "") or mi.get("going", "") or "").lower()
-        if not going:
-            going = str(self.race_context.get("going", "") or "").lower()
-        stab = float(matrix_scores.get("stability", 60))
-        sec = float(matrix_scores.get("sectional", 60))
-        trk = float(matrix_scores.get("track", 60))
-        delta = 0.0
-        if "soft" in going:
-            if stab >= 75:
-                delta -= (stab - 75) * 0.10
-            if trk >= 68:
-                delta += (trk - 62) * 0.08
-        elif "heavy" in going:
-            if stab >= 75:
-                delta -= (stab - 75) * 0.10
-            if sec >= 75:
-                delta -= (sec - 75) * 0.08
-            if trk >= 68:
-                delta += (trk - 62) * 0.10
-        return round(delta, 4)
-
-    def _soft_wetproof_cap_modifier(self, matrix_scores: dict, ability_score: float) -> float:
-        if self._wet_kind() != "soft":
-            return 0.0
-        if float(ability_score or 0.0) < 66.0:
-            return 0.0
-
-        track = float(matrix_scores.get("track", 60))
-        sectional = float(matrix_scores.get("sectional", 60))
-        stability = float(matrix_scores.get("stability", 60))
-        race_shape = float(matrix_scores.get("race_shape", 60))
-        soft_stats = self._going_stats().get("軟地", {})
-
-        exposed_no_wet_place = soft_stats.get("starts", 0) >= 1 and soft_stats.get("places", 0) == 0
-        ordinary_track_high_score = track < 66.0
-        speed_stability_only = (sectional >= 66.0 or stability >= 70.0) and track < 66.0 and race_shape < 66.0
-        unstable_profile = self._soft_unstable_profile_count() >= 1
-
-        delta = 0.0
-        if exposed_no_wet_place:
-            delta -= 0.7
-        if ordinary_track_high_score:
-            delta -= 0.4
-        if speed_stability_only:
-            delta -= 0.5
-        if unstable_profile:
-            delta -= 0.3
-        return round(max(-1.4, delta), 4)
-
-    def _soft_unstable_profile_count(self) -> int:
-        count = 0
-        for entry in self._official_entries():
-            going = str(entry.get("going") or "")
-            going_number = parse_float(going)
-            is_soft = "Soft" in going or "軟" in going or (going_number is not None and 5 <= going_number <= 7)
-            if not is_soft:
-                continue
-            text = " ".join(
-                str(entry.get(key) or "")
-                for key in ("trajectory", "notes", "forgiveness", "run_style")
-            )
-            if any(token in text for token in ("wide", "Wide", "caught wide", "Wd", "慢出", "外", "slow")):
-                count += 1
-        return count
-
     def _going_level(self):
         going = self._today_going()
         match = re.search(r"(?:Soft|Heavy)\s*([0-9]+)", going, re.I)
@@ -2743,28 +2593,6 @@ class RacingEngine:
 
     def _pace_confidence(self):
         return str(self._speed_map_field("pace_confidence") or "").strip()
-
-    def _barrier_bias_adjustment(self):
-        """Return ability_score adjustment based on venue-specific historical barrier bias."""
-        if not self.race_context.get("enable_legacy_barrier_bias") and os.environ.get("WC_ENABLE_LEGACY_BARRIER_BIAS") != "1":
-            return 0.0
-        venue = self._clean_identity(
-            self._track_profile().get("venue") or self._meeting_intelligence().get("venue") or ""
-        ).lower()
-        if not venue:
-            return 0.0
-        adj_map = _BARRIER_ADJ.get(venue)
-        if not adj_map:
-            return 0.0
-        barrier = parse_float(self.horse_data.get("barrier"))
-        if barrier is None:
-            return 0.0
-        adj = adj_map.get(int(barrier), 0.0)
-        # Scale up for large fields where barrier matters more
-        field_count = int(self._field_summary().get("count") or 0)
-        if field_count >= 13:
-            adj *= 1.5
-        return adj
 
     def _style_confidence(self):
         return str(self.data.get("style_confidence_line") or self._speed_map_field("style_confidence") or "").strip()
@@ -3699,67 +3527,6 @@ class RacingEngine:
 
         note = "；".join(notes) if notes else "未見明確健康或備戰扣分訊號"
         return score, f"{note}。備戰完整度分 {clip_score(score):.1f}。", "warnings+spell+gear"
-
-    def _micro_rank_bonus(self, matrix_scores, feature_scores):
-        bonus = 0.0
-        barrier = parse_float(self.horse_data.get("barrier"))
-        style = self._running_style()
-        if barrier is not None and barrier <= 4:
-            bonus += 0.35
-        if barrier is not None and barrier >= 12:
-            bonus -= 0.35
-        if barrier is not None and barrier <= 6 and any(token in style for token in ("前", "跟前", "居中前")):
-            bonus += 0.20
-        if barrier is not None and barrier >= 10 and any(token in style for token in ("後", "中後")):
-            bonus -= 0.20
-        if matrix_scores.get("jockey_trainer", 60) >= 75 and feature_scores.get("jockey_horse_fit_score", 60) >= 72:
-            bonus += 0.25
-        if self._forgiveness_count() >= 2 and matrix_scores.get("stability", 60) >= 66:
-            bonus += 0.20
-        if self._wet_state() and self._has_verified_wet_place():
-            bonus += 0.15
-        if self._formline_followup_counts()["higher"] > 0:
-            bonus += 0.20
-        if feature_scores.get("confidence_score", 60) <= 50:
-            bonus -= 0.20
-        bonus += self._jt_sample_size_rank_cap(matrix_scores)
-        bonus += self._narrow_overrated_rank_shield(matrix_scores)
-        
-        # ── Market-Free Weight Adjustment (Rank 2 Optimization) ──
-        mf_adj = market_free_rank_adjustment(
-            matrix_scores,
-            int(self._field_summary().get("count", 0)),
-            self._today_going(),
-            self.race_context.get("race_class", ""),
-        )
-        if mf_adj != 0.0:
-            bonus += mf_adj
-            self.reason_codes.append("market_free_adjusted")
-        
-        # ── SIP: Intelligent Spell & Trial Heuristic ──
-        _data = self.horse_data.get("_data", {})
-        spell = self._spell_days()
-        margin = _data.get("trial_margin", -999.0)
-        
-        if os.environ.get("WC_ENABLE_AU_SPELL_RANK") == "1":
-            if 14 <= spell <= 28:
-                bonus += 0.4
-                self.reason_codes.append("peak_fitness_spell")
-            elif 29 <= spell <= 45:
-                bonus += 0.2
-            elif spell > 90:
-                if margin != -999.0:
-                    if margin < 2.0:
-                        bonus += 0.4
-                        self.reason_codes.append("first_up_strong_trial")
-                    elif margin > 4.0:
-                        bonus -= 0.6
-                        self.reason_codes.append("first_up_weak_trial")
-                else:
-                    bonus -= 0.4
-                    self.reason_codes.append("first_up_no_trial")
-                
-        return bonus
 
     def _jt_sample_size_rank_cap(self, matrix_scores):
         penalty = jt_sample_size_rank_cap(
