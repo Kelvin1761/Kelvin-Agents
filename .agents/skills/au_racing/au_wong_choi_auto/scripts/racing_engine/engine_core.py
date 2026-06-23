@@ -40,6 +40,7 @@ from scoring import (
     parse_recent_finishes,
     safe_ratio,
     soft_race_shape_modifier,
+    wet_form_feature,
 )
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[5] / "scripts"))  # .agents/scripts/
@@ -464,7 +465,11 @@ class RacingEngine:
                     wet_condition_modifier += wet_adj2
         report_only_score = round(report_only_score + wet_condition_modifier, 4)
 
-        ability_score = pure_7d_score
+        # Wet-form going-suitability feature: 0 on dry going, folded into ability on
+        # Soft/Heavy. base_7d_score stays pure 7D; 綜合戰力分 (ability_score) becomes
+        # wet-aware on wet tracks. Walk-forward validated (Soft box-trifecta +2.2pp OOS).
+        wet_form_feat = wet_form_feature(self._today_going(), self.data.get("going_stats_line"))
+        ability_score = round(pure_7d_score + wet_form_feat, 4)
         grade = compute_grade(ability_score)
 
         matrix_reasoning = self._matrix_reasoning(matrix_scores, feature_scores, feature_notes)
@@ -482,6 +487,7 @@ class RacingEngine:
             "final_rank_score": ability_score,
             "ability_score": ability_score,
             "rank_score": ability_score,
+            "wet_form_feature": round(wet_form_feat, 4),
             "soft_race_shape_modifier": round(soft_shape_modifier, 4),
             "diversity_bonus": round(diversity_bonus, 4),
             "soft_wetproof_cap_modifier": round(soft_wetproof_cap, 4),

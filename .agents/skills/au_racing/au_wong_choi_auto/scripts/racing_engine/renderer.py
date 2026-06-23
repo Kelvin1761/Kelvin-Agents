@@ -113,6 +113,7 @@ def render_race_csv(logic_data: dict) -> str:
         "base_7d_score",
         "final_rank_score",
         "ability_score",
+        "wet_form_feature",
         "report_only_legacy_score",
         "grade",
         "model_pick_status",
@@ -147,6 +148,7 @@ def render_race_csv(logic_data: dict) -> str:
             "base_7d_score": auto.get("base_7d_score", ""),
             "final_rank_score": auto.get("final_rank_score", ""),
             "ability_score": auto.get("ability_score", ""),
+            "wet_form_feature": auto.get("wet_form_feature", ""),
             "report_only_legacy_score": auto.get("report_only_legacy_score", ""),
             "grade": auto.get("grade", ""),
             "model_pick_status": auto.get("model_pick_status", ""),
@@ -259,7 +261,7 @@ def _going_box_advisory(race):
     return [
         f"> **⚠️ 場地位置信心：{conf}**（{going}）",
         f"> {advice}",
-        "> _（純報告提示，唔影響綜合戰力分排名。）_",
+        "> _綜合戰力分已計入濕地往績（going suitability feature）；上述為落注 box 闊度建議。_",
         "",
     ]
 

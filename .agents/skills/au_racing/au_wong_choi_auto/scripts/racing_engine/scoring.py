@@ -10,6 +10,52 @@ _WEIGHT_FLOOR = {"stability":0.10}
 _WEIGHT_CEILING = {"class_weight":0.15,"track":0.17}
 SOFT_RACE_SHAPE_SCALE = 1.0
 
+# ── Wet-form 7D feature (gated to Soft/Heavy races) ──
+# A horse's career wet-going place record IS predictive of box-trifecta on wet
+# tracks, where the dry 7D score under-rates proven wet performers. This is a
+# per-horse going-suitability feature folded into the single ability_score
+# (綜合戰力分) on wet races — NOT a post-hoc ranking bolt-on and NOT one of the
+# retired report-only micro-modifiers. On dry races it is exactly 0, so the dry
+# score is unchanged and stays == pure 7D.
+# Walk-forward validated (held-out, expanding window): Soft box-trifecta
+# 14.4% → 16.6% at scale 12 (robust plateau 6–12; Heavy unaffected). The going
+# record is densely populated (92.7% of runners have ≥1 wet start).
+WET_FORM_FEATURE_SCALE = 12.0   # points of ability per (shrunk_wet_place_rate − prior)
+WET_FORM_SHRINK_A = 4.0         # pseudo-count for place-rate shrinkage toward prior
+WET_FORM_PRIOR = 0.5            # global career wet place-rate (~0.496 measured)
+WET_FORM_MAX_ABS = 5.0          # clamp the feature to a sane ±range
+
+
+def _parse_wet_record(going_stats_line):
+    """Career (soft+heavy) starts & places from the 軟地/重地 segments of going_stats_line."""
+    starts = places = 0
+    for label in ("軟地", "重地"):
+        match = re.search(rf"{label}:\s*([^|]+)", going_stats_line or "")
+        if not match:
+            continue
+        nums = [int(n) for n in re.findall(r"\d+", match.group(1))]
+        if len(nums) >= 4:
+            starts += nums[0]
+            places += nums[1] + nums[2] + nums[3]
+        elif nums:
+            starts += nums[0]
+    return starts, places
+
+
+def wet_form_feature(going, going_stats_line):
+    """Per-horse wet-going-suitability contribution to ability_score (綜合戰力分).
+
+    Returns 0.0 on dry (Good/Firm) going so the score stays == pure 7D. On Soft/Heavy
+    going, returns scale·(shrunk_wet_place_rate − prior), clamped to ±WET_FORM_MAX_ABS.
+    A horse with no wet starts shrinks to the prior → 0 (neutral)."""
+    g = str(going or "").lower()
+    if "soft" not in g and "heavy" not in g:
+        return 0.0
+    starts, places = _parse_wet_record(going_stats_line)
+    rate = (places + WET_FORM_SHRINK_A * WET_FORM_PRIOR) / (starts + WET_FORM_SHRINK_A)
+    value = WET_FORM_FEATURE_SCALE * (rate - WET_FORM_PRIOR)
+    return round(max(-WET_FORM_MAX_ABS, min(WET_FORM_MAX_ABS, value)), 4)
+
 CLASS_MICRO_WEIGHTS = {
     "career0_base": 57.7,
     "career0_2yo_bonus": 0.84,
