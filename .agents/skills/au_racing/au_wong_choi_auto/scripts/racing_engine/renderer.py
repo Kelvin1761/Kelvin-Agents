@@ -93,7 +93,7 @@ def render_race_markdown(logic_data: dict) -> str:
     ]
     for horse_num, horse in _horses_by_rank(horses):
         lines.extend(_render_horse_section(horse_num, horse, horse["python_auto"]))
-    lines.extend(_render_verdict(verdict, horses))
+    lines.extend(_render_verdict(verdict, horses, race))
     return "\n".join(lines).strip() + "\n"
 
 
@@ -232,6 +232,38 @@ def validate_report_text(text: str) -> list[str]:
     return [f"REPORT-001 contains banned term: {term}" for term in REPORT_BANS if term in text]
 
 
+def _going_box_advisory(race):
+    """Report-only track-condition confidence flag for box-trifecta staking.
+    Does NOT affect ranking / 綜合戰力分. Grounded in the archive box-trifecta
+    (all 3 placers within top-4) hit-rate by going over 616 races:
+    Good/Firm 16.2%, Soft 13.8%, Heavy 8.9%. Wet (esp. Heavy) finds the winner
+    fine but 2nd/3rd go chaotic, so widen the box / size down rather than trust top-4."""
+    going = str(race.get("going") or "").strip()
+    m = re.search(r"(Soft|Heavy)\s*([0-9]+)?", going, re.I)
+    if not m:
+        return []
+    kind = m.group(1).lower()
+    level = int(m.group(2)) if m.group(2) else 0
+    if kind == "heavy":
+        conf = "🔴 低"
+        advice = ("Heavy 場位次高度混亂：歷史 box-trifecta 命中率 ≈ 8.9%，約為好/快地 (16.2%) 一半。"
+                  "冠軍仍具參考性，惟 2/3 名隨機性大。建議：box 由 4 匹擴至 5–6 匹，或減注。")
+    elif kind == "soft" and level >= 7:
+        conf = "🟠 中低"
+        advice = "Soft 7+ 偏濕：位次穩定性下降 (box ≈ 13–14%)。建議：box 適度擴至 5 匹或減注。"
+    elif kind == "soft":
+        conf = "🟡 中"
+        advice = "Soft 5–6：輕微濕地影響 (box ≈ 13.8%)，可正常注碼，惟留意位次波動。"
+    else:
+        return []
+    return [
+        f"> **⚠️ 場地位置信心：{conf}**（{going}）",
+        f"> {advice}",
+        "> _（純報告提示，唔影響綜合戰力分排名。）_",
+        "",
+    ]
+
+
 def _panorama(race, verdict, horses):
     race_number = race.get("race_number", "")
     distance = race.get("distance", "")
@@ -248,6 +280,7 @@ def _panorama(race, verdict, horses):
         f"| 出馬數 | {len(horses)} |",
         f"| 跑道偏差 | {track_bias} |",
         "",
+        *_going_box_advisory(race),
         "**🏃 形勢推演**",
         "",
         *_shape_overview_lines(speed_map),
@@ -333,10 +366,11 @@ def _render_horse_section(horse_num, horse, auto):
     return lines
 
 
-def _render_verdict(verdict, horses):
+def _render_verdict(verdict, horses, race=None):
     lines = [
         "## [第三部分] 🏆 Top 4 位置精選",
         "",
+        *(_going_box_advisory(race) if race else []),
     ]
     labels = ("🥇", "🥈", "🥉", "🏅")
     text_labels = ("第一選", "第二選", "第三選", "第四選")
