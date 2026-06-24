@@ -124,13 +124,17 @@ if command -v git >/dev/null 2>&1 && git -C "$REPO_ROOT" rev-parse --is-inside-w
     COMMIT_MESSAGE="$(git -C "$REPO_ROOT" log -1 --pretty=%s 2>/dev/null || printf 'manual dashboard deploy')"
 fi
 
-mkdir -p "$DEPLOY_CWD"
-echo "   - Wrangler CWD: $DEPLOY_CWD"
+echo "   - Wrangler CWD: $SCRIPT_DIR (for wrangler.toml KV + functions/)"
 echo "   - Commit Hash: $COMMIT_HASH"
 
+# MUST run from SCRIPT_DIR so wrangler picks up wrangler.toml (KV binding
+# WC_STATE) and functions/ — REQUIRED for the /api/sync bet-sync Function.
+# Running from a tmp CWD silently drops Functions + KV → 匯入投注記錄 fails with
+# "寫入 ROI 資料庫失敗". CF_PAGES_BRANCH=main + --branch main force a production
+# deploy so wongchoi-dashboard.pages.dev updates.
 (
-    cd "$DEPLOY_CWD"
-    env CI=1 CLOUDFLARE_ACCOUNT_ID="$RESOLVED_ACCOUNT_ID" npx wrangler pages deploy "$DIST_DIR" \
+    cd "$SCRIPT_DIR"
+    env CI=1 CF_PAGES_BRANCH=main CLOUDFLARE_ACCOUNT_ID="$RESOLVED_ACCOUNT_ID" npx wrangler pages deploy "$DIST_DIR" \
         --project-name "$PAGES_PROJECT" \
         --branch main \
         --commit-hash "$COMMIT_HASH" \
