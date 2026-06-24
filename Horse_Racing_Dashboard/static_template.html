@@ -365,6 +365,19 @@ let syncedBettingState = {};
 let syncPollTimer = null;
 let syncPushTimer = null;
 let lastSyncedSerialized = '';
+// Permanent ROI ledger (separate from the editable panel) — committed via the
+// 匯入投注記錄 button, survives panel clears, feeds the ROI tab cross-device.
+const ROI_LEDGER_ENDPOINT = window.location.protocol === 'file:' ? null : '/api/roi';
+let roiLedger = [];
+async function loadRoiLedger() {
+  if (!ROI_LEDGER_ENDPOINT) return;
+  try {
+    const res = await fetch(ROI_LEDGER_ENDPOINT, { cache: 'no-store' });
+    if (!res.ok) return;
+    const d = await res.json();
+    roiLedger = Object.values(d || {});
+  } catch (e) {}
+}
 
 function meetingStorageKey(meeting) {
   if (!meeting) return null;
@@ -577,6 +590,60 @@ function toggleBetRace(rn) {
   if (expandedBetRaces.has(rn)) expandedBetRaces.delete(rn);
   else expandedBetRaces.add(rn);
   render();
+}
+
+// One-click: commit THIS meeting's 投注面板 records straight into the shared
+// database (Cloudflare KV via /api/sync). No file picker. Routes by region (the
+// records carry date|venue|region). Also migrates any odds that currently only
+// live in this device's localStorage up to the shared store → syncs everywhere.
+async function commitBetsToDatabase() {
+  const m = selectedMeeting;
+  if (!m) { alert('請先選擇一個賽馬日。'); return; }
+  if (!ROI_LEDGER_ENDPOINT) { alert('此頁以檔案方式開啟，無法連接資料庫；請用線上版本。'); return; }
+  // Keep the editable panel synced too (so cross-device editing still works).
+  saveBettingState();
+  lastSyncedSerialized = null;
+  pushBettingStateToCloud();
+  // Build the finalized records for THIS meeting and commit them to the PERMANENT
+  // ROI ledger (survives clearing the panel; feeds the ROI tab on every device).
+  const racesData = getRacesData(m);
+  if (!racesData) { alert('搵唔到呢場嘅賽事資料。'); return; }
+  const merged = getMergedRaces(racesData);
+  const isDual = (m.analysts?.length > 1);
+  const records = [];
+  merged.forEach(race => {
+    getRaceBettingCandidates(m, race.race_number, isDual).forEach(c => {
+      const s = getBetState(m.date, m.venue, race.race_number, c.horse_number);
+      if (s.confirmed && !s.scratched) {
+        const pos = s.result;
+        const profit = calcProfit(s);
+        records.push({
+          date: m.date, venue: m.venue, region: m.region,
+          race_number: race.race_number, horse_number: c.horse_number,
+          horse_name: c.horse_name, jockey: c.jockey, trainer: c.trainer,
+          kelvin_grade: c.kelvin_grade, heison_grade: c.heison_grade,
+          odds: s.odds || 0, result_position: pos, stake: 1,
+          payout: (pos >= 1 && pos <= 3) ? (s.odds || 0) : 0,
+          net_profit: profit !== null && profit !== undefined ? profit : ((pos === null || pos === undefined) ? 0 : -1),
+          status: (pos >= 1 && pos <= 3) ? 'won' : ((pos === null || pos === undefined) ? 'pending' : 'lost'),
+        });
+      }
+    });
+  });
+  if (records.length === 0) { alert('呢場暫時冇已確認嘅投注記錄可寫入。'); return; }
+  try {
+    const res = await fetch(ROI_LEDGER_ENDPOINT, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(records),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || !j.success) throw new Error(j.error || 'failed');
+    await loadRoiLedger();
+    if (currentView === 'roi') render();
+    alert(`✅ 已將 ${m.venue}（${m.region}）${records.length} 條投注記錄永久寫入 ROI 資料庫（即使清空投注面板亦會保留）。ROI 已即時更新並同步到所有裝置。`);
+  } catch (e) {
+    alert('寫入 ROI 資料庫失敗，請稍後再試。');
+  }
 }
 
 function exportBetsJSON() {
@@ -948,7 +1015,7 @@ function renderDashboardBettingPanel(meeting, races, isDualAnalyst) {
   // Bottom bar (add bp-bar--fixed class for mobile sticky)
   html += `<div class="bp-bar bp-bar--fixed">`;
   html += `<div class="bp-bar-info">\u7e3d\u8a08 ${totalBets} \u6ce8${totalBets > 0 ? ` \u00b7 \u6de8\u5229 <span class="bh-profit ${totalProfit >= 0 ? 'bh-profit--win' : 'bh-profit--loss'}">${totalProfit >= 0 ? '+' : ''}$${totalProfit.toFixed(2)}</span>` : ''}</div>`;
-  html += `<button class="bp-bar-btn" onclick="exportBetsJSON()" ${totalBets===0?'disabled':''}>\ud83d\udcbe \u532f\u51fa\u6295\u6ce8\u8a18\u9304</button>`;
+  html += `<button class="bp-bar-btn" onclick="commitBetsToDatabase()" ${totalBets===0?'disabled':''}>\ud83d\udce5 \u532f\u5165\u6295\u6ce8\u8a18\u9304</button>`;
   html += `</div>`;
 
   // ROI Summary Table
@@ -1151,20 +1218,18 @@ function renderHorseCard(horse, topPickRank) {
   const cleanRisk = cleanText(horse.risk);
   if (cleanAdv) html += `<div style="margin-top:8px">✅ <strong>優勢:</strong> ${esc(cleanAdv)}</div>`;
   if (cleanRisk) html += `<div>⚠️ <strong>風險:</strong> ${esc(cleanRisk)}</div>`;
-  // Extract 核心邏輯 from conclusion for preview
-  const logicText = horse.core_logic || (horse.conclusion ? (horse.conclusion.match(/核心邏輯[：:]\s*\*{0,2}\s*(.+?)(?:\n|$)/) || [])[1] : null);
-  if (logicText) {
-    let formattedLogic = logicText.trim()
-      .replace(/[、，]?\s*(?=\(\d+\)|（\d+）|[①②③④⑤⑥⑦⑧⑨⑩])/g, '\n')
-      .replace(/。/g, '。\n');
-    const lines = formattedLogic.split('\n').filter(s => s.trim());
-    const renderedLines = lines.map(line => {
-      const isBullet = line.match(/^(\(\d+\)|（\d+）|[①-⑩])/);
-      const style = isBullet ? 'padding-left:18px;text-indent:-18px;margin-top:2px;display:block;' : 'display:block;';
-      return `<div style="${style}">${esc(line.trim())}</div>`;
-    });
-    html += `<div style="margin-top:8px;padding:8px 12px;background:#F0F9FF;border-left:3px solid #3B82F6;border-radius:4px;font-size:0.78rem;line-height:1.8">💡 <strong>核心邏輯:</strong><br>${renderedLines.join('')}</div>`;
+  // 📊 數據判讀 — structured data readout (value · trend — concrete reason)
+  if (Array.isArray(horse.data_readout) && horse.data_readout.length) {
+    const roRows = horse.data_readout.map(r => {
+      const main = [r.value, r.trend].filter(Boolean).join(' · ');
+      const head = `<div style="line-height:1.5"><span>${esc(r.band||'➖')}</span> <span style="color:#64748B;font-weight:600">${esc(r.label)}</span> <strong style="color:#334155">${esc(main)}</strong></div>`;
+      // reason on its own indented line — keeps dense rows scannable
+      const rsn = r.reason ? `<div style="margin:1px 0 5px 20px;color:#94A3B8;font-size:0.73rem;line-height:1.5">${esc(r.reason)}</div>` : '';
+      return head + rsn;
+    }).join('');
+    html += `<div style="margin-top:8px;padding:8px 10px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px"><div style="font-size:0.72rem;font-weight:600;color:#475569;margin-bottom:4px">📊 數據判讀</div><div style="display:flex;flex-direction:column;gap:3px;font-size:0.78rem">${roRows}</div></div>`;
   }
+  // 核心邏輯 removed from the preview card (user request) — 數據判讀 only.
   // Underhorse signal
   if (horse.underhorse_triggered) {
     let uhHtml = `<div style="margin-top:8px;padding:8px 12px;background:#FFF7ED;border-left:3px solid #F59E0B;border-radius:4px;font-size:0.78rem;line-height:1.8">🐴⚡ <strong>冷門馬訊號: 觸發!</strong>`;
@@ -1613,6 +1678,8 @@ function showROI() {
   currentView = 'roi';
   render();
   window.scrollTo(0, 0);
+  // Refresh the permanent ledger from the shared DB, then re-render with it.
+  loadRoiLedger().then(() => { if (currentView === 'roi') render(); });
 }
 
 function setRoiRegion(r) { roiRegionFilter = r; render(); }
@@ -1624,7 +1691,11 @@ function toggleSession(key) {
 
 function getFilteredROI() {
   const roi = DASHBOARD_DATA.roi || {};
-  const baseBets = (roi.bets || []).slice();
+  // Permanent committed records (ROI ledger) override the pre-baked snapshot.
+  const baseMap = {};
+  (roi.bets || []).forEach(b => { baseMap[`${b.date}|${b.venue}|${b.race_number}|${b.horse_number}`] = b; });
+  roiLedger.forEach(b => { baseMap[`${b.date}|${b.venue}|${b.race_number}|${b.horse_number}`] = b; });
+  const baseBets = Object.values(baseMap);
 
   // Merge localStorage betting panel data into ROI
   // Only merge from meetings with analysis data (avoids ghost entries)
@@ -1977,6 +2048,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   startBettingSyncPolling();
   pullBettingStateFromCloud(false).finally(() => render());
+  loadRoiLedger().then(() => { if (currentView === 'roi') render(); });
   showDashboard();
 });
 </script>

@@ -34,6 +34,11 @@ def process_logic_file(logic_path: Path) -> dict:
         logic_data["race_analysis"] = {}
     race_context = logic_data["race_analysis"]
     race_context["field_summary"] = _build_field_summary(logic_data.get("horses", {}))
+    # Today's runner names so the engine can flag 賽績線 head-to-head rematches.
+    race_context["field_horse_names"] = [
+        h.get("horse_name") for h in logic_data.get("horses", {}).values()
+        if isinstance(h, dict) and h.get("horse_name")
+    ]
     for horse_num, horse in logic_data.get("horses", {}).items():
         # Inject the saddlecloth number (it is the dict key, not a field) so the
         # engine can match the horse to its speed-map pace role / settling pattern.

@@ -258,6 +258,60 @@ export default function HorseCard({ horse, topPickRank, primaryCondition }) {
               {horse.form_cycle && <>狀態週期: {horse.form_cycle}</>}
             </div>
           )}
+          {/* 📊 數據判讀 — structured data readout (mockup-style preview) */}
+          {horse.data_readout && horse.data_readout.length > 0 && (
+            <div
+              style={{
+                marginTop: "8px",
+                padding: "8px 10px",
+                background: "#f8fafc",
+                borderRadius: "8px",
+                border: "1px solid #e2e8f0",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "0.72rem",
+                  fontWeight: 600,
+                  color: "#475569",
+                  marginBottom: "4px",
+                }}
+              >
+                📊 數據判讀
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "2px 14px",
+                  fontSize: "0.78rem",
+                }}
+              >
+                {horse.data_readout.map((r, i) => (
+                  <div
+                    key={i}
+                    title={r.reason || undefined}
+                    style={{ display: "flex", gap: "5px", alignItems: "baseline" }}
+                  >
+                    <span>{r.band}</span>
+                    <span style={{ color: "#64748b", whiteSpace: "nowrap" }}>
+                      {r.label}
+                    </span>
+                    <strong
+                      style={{
+                        color: "#334155",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {r.trend || r.value}
+                    </strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Engine distance summary */}
           {horse.engine_distance_summary && (
             <div

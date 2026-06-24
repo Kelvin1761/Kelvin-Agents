@@ -2,7 +2,7 @@
 Pydantic models for race analysis data.
 """
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from enum import Enum
 
 
@@ -76,6 +76,7 @@ class HorseAnalysis(BaseModel):
     # Conclusion
     conclusion: Optional[str] = None  # 💡 結論
     core_logic: Optional[str] = None  # 核心邏輯
+    data_readout: Optional[List[dict]] = None  # 📊 數據判讀 rows: {label,value,trend,band,reason}
     advantage: Optional[str] = None  # 最大競爭優勢
     risk: Optional[str] = None  # 最大失敗原因
     

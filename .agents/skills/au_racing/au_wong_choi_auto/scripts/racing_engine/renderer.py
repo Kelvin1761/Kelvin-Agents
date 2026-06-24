@@ -291,6 +291,7 @@ def _render_horse_section(horse_num, horse, auto):
         "",
         f"⭐ 最終評級: **{auto.get('grade', '')}** | {ABILITY_LABEL}: **{float(auto.get('ability_score', 0)):.1f}** | 排名: **{auto.get('rank', '')}**",
         "",
+        *_data_readout_lines(auto),
         "#### ⏱️ 近績解構",
         f"- **近績序列:** `{_display_text(data.get('recent_form') or horse.get('recent_form'))}`",
         f"- **狀態週期:** `{_humanize_text(horse.get('status_cycle')) or '-'}`",
@@ -930,6 +931,21 @@ def _horse_positioning(horse: dict, auto: dict) -> str:
     if race_shape >= 66:
         return "形勢型"
     return "保留"
+
+
+def _data_readout_lines(auto: dict) -> list[str]:
+    """Render the structured 數據判讀 rows as a scannable markdown block (AU)."""
+    rows = auto.get("data_readout") or []
+    if not rows:
+        return []
+    lines = ["#### 📊 數據判讀", ""]
+    for r in rows:
+        val = f" {r['value']}" if r.get("value") else ""
+        trend = f" — {r['trend']}" if r.get("trend") else ""
+        reason = f"（{r['reason']}）" if r.get("reason") else ""
+        lines.append(f"- {r.get('band', '➖')} **{r['label']}**{val}{trend}{reason}")
+    lines.append("")
+    return lines
 
 
 def _render_core_logic(horse: dict, auto: dict) -> str:

@@ -358,6 +358,14 @@ def score_band(score):
         return "❌"
     return "❌❌"
 
+# Finish-time deviation TREND (vs HKJC standard) applied to the sectional matrix
+# dim. ML-validated add-on signal: +/-5 lifted min/single/top3 on the held-out
+# backtest split with no metric regressing (stable across magnitudes 3-6).
+FINISH_TREND_MICRO_WEIGHTS = {
+    "improving": 5.0,
+    "declining": -5.0,
+}
+
 TRACKWORK_MICRO_WEIGHTS = {
     # 1. LLM 綜合文字指標 (Text-based trend)
     "rebound_base": 66.0,    # 翻案復刻

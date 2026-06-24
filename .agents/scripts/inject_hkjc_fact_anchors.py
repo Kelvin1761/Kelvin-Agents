@@ -1857,47 +1857,94 @@ def generate_horse_block(horse: dict, today_venue: str = '',
             lines.append(f"  🔧 修正水平: {adj_level} (近 {min(len(adj_deviations), 3)} 仗修正平均: {avg_adj:+.2f}s)")
             lines.append(f"  💡 修正方法: 扣除全場頭馬偏差(步速因子) — [極慢/偏慢]場次嘅原始偏差會被折扣")
     
-    # === V5.1: 人馬組合統計 (Jockey-Horse Combo Stats) ===
+    # === V5.2: 人馬組合統計 (Jockey-Horse Combo Stats) — 全季往績 ===
+    # FIX: previously the combo win/place rate was computed from
+    # `zip(races, p_entries)`, which truncates to the shorter list. Since the
+    # formguide `races` block only carries the most recent ~6 runs, the rate was
+    # silently capped at ~6 starts — unreliable and not what the HKJC horse page
+    # shows. We now compute over the FULL horse-profile history (all seasons the
+    # HKJC horse page lists), falling back to the formguide only when no profile.
     current_jockey = horse.get('jockey', '')
     combo_stats = {}  # {jockey_name: {starts, wins, places, shows, total_placing}}
-    jockey_history = []  # Recent races: [{date, jockey, placing, changed}]
-    
-    all_race_data = list(zip(races, p_entries)) if p_entries else [(r, {}) for r in races]
+    jockey_history = []  # Recent races (display only): [{date, jockey, placing, changed}]
+
+    if p_entries:
+        full_record = [
+            {'jockey': e.get('jockey', ''), 'finish': e.get('placing', 0), 'date': e.get('date', '')}
+            for e in p_entries
+        ]
+    else:
+        full_record = [
+            {'jockey': r.get('jockey', ''), 'finish': r.get('finish', 0), 'date': r.get('date', '')}
+            for r in races
+        ]
+
+    # DISPLAY window = the horse's two most recent HK seasons (Sep→Aug).
+    # Point-in-time backtest rationale: a single-season window has a severe
+    # season-start cold-start (~5% of early-season runners get any combo signal
+    # vs ~33% for a 2-season window); two seasons gives full coverage with no
+    # cold-start, and is effectively identical to full-career for current HK
+    # horses while staying future-proof as careers lengthen. SCORING is
+    # unaffected — it reads the 近6場 recency table, always inside this window.
+    def _hk_season(dt):
+        return dt.year if dt.month >= 9 else dt.year - 1
+    def _combo_date(s):
+        # Profile dates are DD/MM/YY; formguide DD/MM/YYYY. Try both.
+        s = (s or '').strip()
+        for fmt in ('%d/%m/%y', '%d/%m/%Y'):
+            try:
+                return datetime.strptime(s, fmt)
+            except ValueError:
+                continue
+        return None
+    _parsed = [(rec, _combo_date(rec['date'])) for rec in full_record]
+    _seasons = sorted({_hk_season(dt) for _, dt in _parsed if dt})
+    if len(_seasons) > 2:
+        _keep = set(_seasons[-2:])
+        full_record = [rec for rec, dt in _parsed if dt is None or _hk_season(dt) in _keep]
+    season_span = len(_seasons[-2:]) if _seasons else 0
+
     prev_jockey_name = None
-    
-    for i, (r, p) in enumerate(all_race_data):
-        j_name = r.get('jockey', p.get('jockey', ''))
-        finish = r.get('finish', p.get('placing', 0))
+    for i, rec in enumerate(full_record):
+        j_name = rec['jockey']
+        finish = rec['finish']
         if isinstance(finish, str):
             try:
                 finish = int(finish)
             except (ValueError, TypeError):
                 finish = 0
-        date = r.get('date', p.get('date', ''))
-        
-        if j_name:
+        date = rec['date']
+
+        # Only count completed runs (finish>0) so scratched/DNF rows do not
+        # dilute the win/place denominator.
+        if j_name and finish > 0:
             if j_name not in combo_stats:
                 combo_stats[j_name] = {'starts': 0, 'wins': 0, 'places': 0, 'shows': 0, 'total_placing': 0}
             combo_stats[j_name]['starts'] += 1
-            if finish > 0:
-                combo_stats[j_name]['total_placing'] += finish
+            combo_stats[j_name]['total_placing'] += finish
             if finish == 1:
                 combo_stats[j_name]['wins'] += 1
-            if finish <= 2 and finish > 0:
+            if finish <= 2:
                 combo_stats[j_name]['places'] += 1
-            if finish <= 3 and finish > 0:
+            if finish <= 3:
                 combo_stats[j_name]['shows'] += 1
-        
+
         if i < 6:
             changed = '← 換騎' if prev_jockey_name and j_name != prev_jockey_name else ''
             jockey_history.append({'date': date, 'jockey': j_name, 'placing': finish, 'changed': changed})
         prev_jockey_name = j_name
-    
+
     if combo_stats:
+        total_starts = sum(s['starts'] for s in combo_stats.values())
+        span = ''
+        dated = [r['date'] for r in full_record if r['date']]
+        if dated:
+            scope = f"近{season_span}季" if season_span else "近期"
+            span = f" ({scope} {total_starts} 場: {dated[-1]} → {dated[0]})"
         lines.append(f"")
-        lines.append(f"🏇 **人馬組合統計 [V5.1]:**")
+        lines.append(f"🏇 **人馬組合統計 [V5.3 近2季]:**")
         lines.append(f"  今場騎師: {current_jockey}")
-        lines.append(f"  📊 騎師×此馬歷史:")
+        lines.append(f"  📊 騎師×此馬歷史{span}:")
         lines.append(f"  | 騎師 | 場次 | 勝 | 入Q | 上名 | 平均名次 | 勝率 | 位率 |")
         lines.append(f"  |------|------|---|-----|------|----------|------|------|")
         # Sort: current jockey first, then by starts descending
@@ -2101,15 +2148,25 @@ def extract_race_context(text: str) -> dict:
     if dm:
         ctx['distance'] = int(dm.group(1))
     
-    # Class
-    cm = re.search(r'第(\d)班', overview)
-    if cm:
-        ctx['class'] = f"C{cm.group(1)}"
-    elif '分級賽' in overview or 'Group' in overview:
-        ctx['class'] = 'G'
-    elif '新馬' in overview or 'Griffin' in overview:
-        ctx['class'] = 'GR'
-    
+    # Class — graded races (一/二/三級賽 = Group 1/2/3) rank ABOVE all 班次 and must
+    # NOT collapse to the default 'C4'. Check graded/Listed before numbered classes.
+    gm = re.search(r'([一二三])級賽', overview)
+    if gm:
+        ctx['class'] = gm.group(1) + '級賽'
+    elif '上市賽' in overview or '表列賽' in overview or re.search(r'\b(?:Listed|LR)\b', overview, re.I):
+        ctx['class'] = '上市賽'
+    elif re.search(r'(?:Group|Grade|G)\s*([123])', overview, re.I):
+        g = re.search(r'(?:Group|Grade|G)\s*([123])', overview, re.I).group(1)
+        ctx['class'] = '一二三'[int(g) - 1] + '級賽'
+    else:
+        cm = re.search(r'第(\d)班', overview)
+        if cm:
+            ctx['class'] = f"C{cm.group(1)}"
+        elif '分級賽' in overview or 'Group' in overview:
+            ctx['class'] = 'G'
+        elif '新馬' in overview or 'Griffin' in overview:
+            ctx['class'] = 'GR'
+
     return ctx
 
 
