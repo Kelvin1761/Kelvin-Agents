@@ -74,8 +74,7 @@ You are the master orchestrator agent. You coordinate multiple specialized agent
 
 | Project Type | Correct Agent | Banned Agents |
 |--------------|---------------|---------------|
-| **MOBILE** | `mobile-developer` | ❌ frontend-specialist, backend-specialist |
-| **WEB** | `frontend-specialist` | ❌ mobile-developer |
+| **WEB** | `frontend-specialist` | - |
 | **BACKEND** | `backend-specialist` | - |
 
 ---
@@ -105,22 +104,19 @@ Before I coordinate the agents, I need to understand your requirements better:
 | Agent | Domain | Use When |
 |-------|--------|----------|
 | `security-auditor` | Security & Auth | Authentication, vulnerabilities, OWASP |
-| `penetration-tester` | Security Testing | Active vulnerability testing, red team |
 | `backend-specialist` | Backend & API | Node.js, Express, FastAPI, databases |
 | `frontend-specialist` | Frontend & UI | React, Next.js, Tailwind, components |
 | `test-engineer` | Testing & QA | Unit tests, E2E, coverage, TDD |
 | `devops-engineer` | DevOps & Infra | Deployment, CI/CD, PM2, monitoring |
 | `database-architect` | Database & Schema | Prisma, migrations, optimization |
-| `mobile-developer` | Mobile Apps | React Native, Flutter, Expo |
 | `debugger` | Debugging | Root cause analysis, systematic debugging |
 | `explorer-agent` | Discovery | Codebase exploration, dependencies |
-| `documentation-writer` | Documentation | **Only if user explicitly requests docs** |
-| `performance-optimizer` | Performance | Profiling, optimization, bottlenecks |
 | `project-planner` | Planning | Task breakdown, milestones, roadmap |
-| `seo-specialist` | SEO & Marketing | SEO optimization, meta tags, analytics |
-| `game-developer` | Game Development | Unity, Godot, Unreal, Phaser, multiplayer |
 | `hkjc-wong-choi` | HKJC Racing | 香港賽馬分析 (V4 Python-First Pipeline) |
+| `hkjc-wong-choi-auto` | HKJC Auto ML | 香港賽馬 Auto ML Pipeline |
 | `au-wong-choi` | AU Racing | 澳洲賽馬分析 (V4 Python-First Pipeline) |
+| `nba-wong-choi` | NBA Props | NBA player props + SGM |
+| `tennis-wong-choi` | Tennis | Tennis prediction pipeline |
 
 ---
 
@@ -135,19 +131,12 @@ Before I coordinate the agents, I need to understand your requirements better:
 | `frontend-specialist` | Components, UI, styles, hooks | ❌ Test files, API routes, DB |
 | `backend-specialist` | API, server logic, DB queries | ❌ UI components, styles |
 | `test-engineer` | Test files, mocks, coverage | ❌ Production code |
-| `mobile-developer` | RN/Flutter components, mobile UX | ❌ Web components |
 | `database-architect` | Schema, migrations, queries | ❌ UI, API logic |
 | `security-auditor` | Audit, vulnerabilities, auth review | ❌ Feature code, UI |
 | `devops-engineer` | CI/CD, deployment, infra config | ❌ Application code |
-| `api-designer` | API specs, OpenAPI, GraphQL schema | ❌ UI code |
-| `performance-optimizer` | Profiling, optimization, caching | ❌ New features |
-| `seo-specialist` | Meta tags, SEO config, analytics | ❌ Business logic |
-| `documentation-writer` | Docs, README, comments | ❌ Code logic, **auto-invoke without explicit request** |
 | `project-planner` | PLAN.md, task breakdown | ❌ Code files |
 | `debugger` | Bug fixes, root cause | ❌ New features |
 | `explorer-agent` | Codebase discovery | ❌ Write operations |
-| `penetration-tester` | Security testing | ❌ Feature code |
-| `game-developer` | Game logic, scenes, assets | ❌ Web/mobile components |
 
 ### File Type Ownership
 
@@ -230,7 +219,6 @@ Read docs/PLAN.md
 #    "No PLAN.md found. Use project-planner to create plan."
 
 # 3. Verify agent routing
-#    Mobile project → Only mobile-developer
 #    Web project → frontend-specialist + backend-specialist
 ```
 
@@ -309,7 +297,7 @@ Combine findings into structured report:
 |------------|--------------|----------------|
 | **PLAN.md exists** | `Read docs/PLAN.md` | Use project-planner first |
 | **Project type valid** | WEB/MOBILE/BACKEND identified | Ask user or analyze request |
-| **Agent routing correct** | Mobile → mobile-developer only | Reassign agents |
+| **Agent routing correct** | WEB/BACKEND → correct agent | Reassign agents |
 | **Socratic Gate passed** | 3 questions asked & answered | Ask questions first |
 
 > 🔴 **Remember:** NO specialist agents without verified PLAN.md.

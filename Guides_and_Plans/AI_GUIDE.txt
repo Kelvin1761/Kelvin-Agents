@@ -1,6 +1,6 @@
 # 🚀 Antigravity Kit：AI 協作指南 (User Guide)
 
-歡迎使用 **Antigravity Kit**！呢套工具將你嘅 AI 由一個單一嘅聊天助手，徹底升級做一個擁有 20 個專項領域專家嘅**技術團隊**。
+歡迎使用 **Antigravity Kit**！呢套工具將你嘅 AI 由一個單一嘅聊天助手，徹底升級做一個擁有 10 個專項領域專家嘅**技術團隊**。
 
 為咗令我（AI）可以完美融入你嘅專案並同你現有嘅 Agents 無縫合作，呢份指南整理咗你需要知道嘅最佳實踐。
 
@@ -24,21 +24,16 @@
 
 ---
 
-## 2. 工具箱全覽：20 位專屬領域專家 (The 20 Agents)
+## 2. 工具箱全覽：10 位專屬領域專家 (The 10 Agents)
 
-Antigravity Kit 內置咗 20 個經過特定 Persona 同技能訓練嘅 Agent，涵蓋由產品構思去到最終上線部署嘅每一個階段。呢 20 個特工隨時 Ready 當你嘅隊員，以下係佢哋嘅專長同埋應用場景：
+Antigravity Kit 內置咗 10 個經過特定 Persona 同技能訓練嘅 Agent，涵蓋由產品構思去到最終上線部署嘅每一個階段。呢 10 個特工隨時 Ready 當你嘅隊員，以下係佢哋嘅專長同埋應用場景：
 
-### 💡 規劃與管理團隊 (Planning & Product)
-* **`@product-owner` (產品負責人):** 幫你梳理產品願景，確認需求，確保開發方向同業務目標一致。
-* **`@product-manager` (產品經理):** 負責寫 User Story，拆解功能細節，幫你排好功能開發嘅先後次序。
+### 💡 規劃與管理團隊 (Planning & Coordination)
 * **`@project-planner` (專案策劃師):** 當你指令 `/plan`，佢會幫你將大諗法拆解成 Step-by-Step 嘅實作清單，仲會畫埋架構圖。
 * **`@orchestrator` (總指揮 / 協調員):** 面對橫跨多個領域嘅超大型任務，佢會負責調度唔同嘅 Agents 一齊做嘢，確保大家步調一致。
 
 ### 🖥️ 前端與用戶體驗專家 (Frontend & UX)
 * **`@frontend-specialist` (前端開發專家):** 精通 React, Vue, Tailwind 等，幫你打造靚爆鏡嘅 UI，仲會處理埋複雜嘅 State 管理同畫面動畫效能。
-* **`@mobile-developer` (流動裝置開發者):** 專注於 iOS/Android App 開發（例如 React Native/Flutter），處理手機設備特有嘅佈局同效能問題。
-* **`@game-developer` (遊戲開發者):** 無論係 Web Game 還是小遊戲機制（好似旺財街機），佢會幫你處理 Game Loop 同碰撞演算等複雜邏輯。
-* **`@seo-specialist` (SEO 專家):** 幫你優化網站 Metadata、HTML 語義同埋載入速度，令你個網站喺 Google 排名推到最高。
 
 ### ⚙️ 後端與數據庫專家 (Backend & Data)
 * **`@backend-specialist` (後端開發專家):** 幫你寫健壯嘅 API 系統、處理複雜嘅商業邏輯，熟悉 Node.js, Python 等後端技術。
@@ -46,19 +41,14 @@ Antigravity Kit 內置咗 20 個經過特定 Persona 同技能訓練嘅 Agent，
 
 ### 🛡️ 安全與營運團隊 (Security & DevOps)
 * **`@security-auditor` (安全審查員):** 嚴格檢查你嘅 Code 有無潛在漏洞（例如 SQL Injection、XSS 等），為系統安全嚴格把關。
-* **`@penetration-tester` (滲透測試員):** 模擬黑客攻擊你嘅系統，主動幫你搵出深層嘅保安盲點同防禦弱點。
 * **`@devops-engineer` (DevOps 工程師):** 幫你搞 CI/CD Pipelines、Docker 容器化同埋伺服器部署，令你順利將心血推上雲端。
 
 ### 🧪 測試與品質保證 (QA & Testing)
 * **`@test-engineer` (測試工程師):** 幫你寫 Unit Test 同 Integration Test，確保每一行 Code 都達到預期效果。
-* **`@qa-automation-engineer` (自動化測試工程師):** 幫你建立 End-to-End (E2E) 嘅自動化測試流程（如 Cypress/Playwright），等系統唔會一改就崩潰。
 
 ### 🔧 優化與維護專家 (Optimization & Maintenance)
 * **`@debugger` (除錯大師):** 當系統爆 Error 又無從入手，佢會用四階段系統性除錯法，幫你抽絲剝繭還原案發現場，找出 Root Cause。
-* **`@performance-optimizer` (效能優化專家):** 專治網站 Load 得慢、Memory Leak 等問題，幫你將系統效能跑到極致。
-* **`@code-archaeologist` (代碼考古學家):** 接手舊 Project 恩物！佢幫你分析年代久遠、缺乏 Document 嘅 Legacy Code，理清前人留落嚟嘅邏輯脈絡。（又稱「執屎專家」😂）
 * **`@explorer-agent` (探索員):** 當需要研究新技術或未知領域，佢會幫你掃描文件、做實驗，最後俾個最好嘅整合建議你。
-* **`@documentation-writer` (文件撰寫員):** 替你包辦所有 Markdown、API Docs 同 README 撰寫工作，確保專案嘅規格文件清晰易讀。
 
 ---
 
