@@ -23,6 +23,28 @@
 - 點配置 Cloudflare deployment
 - 點 troubleshoot 常見問題
 
+## ⚡ Quick Start（新機一鍵設定）
+
+新電腦最快上手，照呢 3 步：
+
+```bash
+# 1. Clone 去一個【本地】資料夾（唔好放喺 Google Drive — 見下面警告）
+git clone https://github.com/Kelvin1761/Kelvin-Agents.git ~/dev/Kelvin-Agents
+cd ~/dev/Kelvin-Agents
+
+# 2. 跑 bootstrap（建 venv + 裝依賴 + Playwright + 設定資料位置 + 驗證）
+./bootstrap.sh                 # macOS / Linux
+#  powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1   # Windows
+
+# 3. 每次開新 shell 先 activate
+source .venv/bin/activate      # macOS / Linux
+#  .venv\Scripts\Activate.ps1  # Windows
+```
+
+bootstrap 會問你 **`DATA_ROOT`** —— 即係啲大型「Wong Choi … Analysis」資料夾放邊（通常喺 Google Drive）。你貼個路徑，佢寫入 `.wongchoi_data_root`（每部機各自設定，唔入 git）。`wongchoi_paths.py` 會據此解析所有資料路徑，所以 **Mac 同 Windows 都跑得**。想手動設亦得：設環境變數 `WONGCHOI_DATA_ROOT`。
+
+> ⚠️ **唔好將 code repo 放喺 Google Drive 同步資料夾入面。** Drive 同步 `.git` 會令 `git commit` 卡死、多機之間 branch ref 跳動、檔案消失（實測過）。**Code 放本地、用 `git pull/push` 經 GitHub 同步;資料先放 Drive。** 詳見 `wongchoi_paths.py` 開頭註解。
+
 ## Language And Reply Style
 
 如果你係用 Antigravity 入面嘅 agents / workflows 同新用戶或團隊成員協作，建議統一以下預設：
@@ -91,11 +113,35 @@
 ## 2. Clone The Repository
 
 ```bash
-git clone <your-repo-url>
-cd Antigravity
+git clone https://github.com/Kelvin1761/Kelvin-Agents.git ~/dev/Kelvin-Agents
+cd ~/dev/Kelvin-Agents
 ```
 
-clone 完之後，你理論上只需要繼續跟住本文件做落去。
+> ⚠️ Clone 去一個**本地**路徑（如 `~/dev/Kelvin-Agents`），**唔好**放喺 Google Drive 同步資料夾。多機經 Drive 同步同一個 `.git` 會令 commit 卡死、ref 跳動、檔案消失。各機之間用 `git pull/push`（GitHub）同步就夠。
+
+clone 完之後，跑 `./bootstrap.sh`（或 Windows 嘅 `bootstrap.ps1`）就會自動做埋下面 3–5 節（venv / 依賴 / Playwright / 資料路徑）。想手動逐步做就繼續睇落去。
+
+### 2.1 設定資料位置（DATA_ROOT）
+
+啲大型資料夾（`Wong Choi Horse Race Analysis`、`Wong Choi NBA Analysis`、`Wong Choi Tennis Analysis`、`NBA_ML_Dataset` 等）唔入 git，通常留喺 Google Drive。`wongchoi_paths.py` 會用以下次序搵佢哋：
+
+1. 環境變數 `WONGCHOI_DATA_ROOT`
+2. repo root 嘅 `.wongchoi_data_root` 檔（一行路徑，唔入 git）
+3. 都冇就用 repo 本身
+
+設定方法（揀一個）：
+
+```bash
+# macOS 例子：指向 Google Drive 嘅 Antigravity 資料夾
+echo "/Users/<you>/Library/CloudStorage/GoogleDrive-<acct>/我的雲端硬碟/Antigravity Shared/Antigravity" > .wongchoi_data_root
+```
+
+```powershell
+# Windows 例子
+Set-Content .wongchoi_data_root "G:\我的雲端硬碟\Antigravity Shared\Antigravity"
+```
+
+驗證：`python3 wongchoi_paths.py` —— 應該見到每個資料夾 `(exists)`。
 
 ## 3. Create A Virtual Environment
 
