@@ -1,7 +1,11 @@
 import sys, io
+from pathlib import Path
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-path = r'G:\我的雲端硬碟\Antigravity Shared\Antigravity\2026-04-01_ShaTin (Kelvin)\04-01 Race 3 Analysis.md'
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys; _sys.path.insert(0, str(_PROJECT_ROOT))
+from wongchoi_paths import DATA_ROOT
+path = str(DATA_ROOT / "2026-04-01_ShaTin (Kelvin)" / "04-01 Race 3 Analysis.md")
 with open(path, 'r', encoding='utf-8') as f:
     text = f.read()
 

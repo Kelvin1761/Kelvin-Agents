@@ -20,7 +20,10 @@ except ImportError:  # pragma: no cover - Python < 3.9 fallback
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 ANTIGRAVITY_DIR = PROJECT_DIR.parent
-ARCHIVE_DIR = ANTIGRAVITY_DIR / "Archieve Tennis Analysis"
+PROJECT_ROOT = PROJECT_DIR.parents[0]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import TENNIS_ANALYSIS
+ARCHIVE_DIR = TENNIS_ANALYSIS
 LOG_DIR = PROJECT_DIR / "data" / "logs"
 PYTHON = PROJECT_DIR / ".venv" / "bin" / "python"
 TIMEZONE = "Australia/Sydney"

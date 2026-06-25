@@ -8,11 +8,13 @@ from pathlib import Path
 
 # Config
 PYTHON = sys.executable
-PROJECT_ROOT = Path("/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity")
+PROJECT_ROOT = Path(__file__).resolve().parents[5]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING
 ORCHESTRATOR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi" / "scripts" / "au_orchestrator.py"
 RESULTS_CLAWER = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "claw_racenet_results.py"
 ARCHIVE_DIR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "archive race analysis"
-OLD_ARCHIVE_DIR = PROJECT_ROOT / "Archive_Race_Analysis" / "AU_Racing"
+OLD_ARCHIVE_DIR = AU_RACING
 
 def run_command(cmd, cwd=PROJECT_ROOT):
     print(f"🚀 Running: {' '.join(cmd)}")

@@ -10,6 +10,8 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING
 
 sys.path.append(str(SCRIPT_DIR))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
@@ -19,7 +21,7 @@ from build_au_logic import _load_track_profile  # type: ignore
 from inject_fact_anchors import _aggregate_confidence, _classify_pace_v2, _pace_confidence  # type: ignore
 
 
-ARCHIVE_ROOT = PROJECT_ROOT / "Archive_Race_Analysis" / "AU_Racing"
+ARCHIVE_ROOT = AU_RACING
 STYLE_GROUP_MAP = {
     "前領": "leaders",
     "跟前": "pressers",

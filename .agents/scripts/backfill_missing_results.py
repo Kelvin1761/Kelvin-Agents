@@ -3,9 +3,14 @@ import glob
 import subprocess
 import re
 import time
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING
 
 def main():
-    base = r'Archive_Race_Analysis\AU_Racing'
+    base = str(AU_RACING)
     claw_script = r'.agents\skills\au_racing\claw_racenet_results.py'
     
     # 1. 找出所有有 Analysis 嘅 folders

@@ -2,9 +2,13 @@ import os
 import sys
 import glob
 import subprocess
+from pathlib import Path
 
-ARCHIVE_DIR = r"g:\我的雲端硬碟\Antigravity Shared\Antigravity\Archive_Race_Analysis\HK_Racing"
-ORCHESTRATOR_PATH = r"g:\我的雲端硬碟\Antigravity Shared\Antigravity\.agents\skills\hkjc_racing\hkjc_wong_choi\scripts\hkjc_orchestrator.py"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import HK_RACING
+ARCHIVE_DIR = str(HK_RACING)
+ORCHESTRATOR_PATH = str(PROJECT_ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi" / "scripts" / "hkjc_orchestrator.py")
 
 def run_backfill():
     print("="*50)

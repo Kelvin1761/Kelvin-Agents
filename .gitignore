@@ -86,3 +86,6 @@ Sports Wong Choi/
 Archive_Race_Analysis/
 Archive_NBA_Analysis/
 NBA_ML_Dataset/
+
+# Machine-specific data location for wongchoi_paths.py (set per machine)
+.wongchoi_data_root

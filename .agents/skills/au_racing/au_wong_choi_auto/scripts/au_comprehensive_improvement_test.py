@@ -866,7 +866,7 @@ def main() -> int:
         "Each variant is tested independently against the full archive.",
         "Only variants showing **positive Pass delta AND reduced 0-hit** should be considered.",
         "",
-        f"Archive: `{len(races)}` races from `Archive_Race_Analysis/AU_Racing/`",
+        f"Archive: `{len(races)}` races from `Wong Choi Horse Race Analysis/AU_Racing/`",
         "",
     ]
 

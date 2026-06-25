@@ -22,6 +22,11 @@ warnings.filterwarnings('ignore')
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
+from pathlib import Path as _Path
+PROJECT_ROOT = _Path(__file__).resolve().parents[4]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import NBA_ML_DATASET
+
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
@@ -50,8 +55,8 @@ try:
 except ImportError:
     print("⚠️ SHAP not installed (pip install shap) — skipping SHAP analysis")
 
-DATASET_PATH = "NBA_ML_Dataset/dataset.csv"
-DEFAULT_OUTPUT = "NBA_ML_Dataset/models/v1"
+DATASET_PATH = str(NBA_ML_DATASET / "dataset.csv")
+DEFAULT_OUTPUT = str(NBA_ML_DATASET / "models" / "v1")
 
 FEATURE_COLS = [
     # Core L10 stats

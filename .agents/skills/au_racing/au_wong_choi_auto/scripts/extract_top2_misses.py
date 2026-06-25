@@ -5,6 +5,8 @@ import sys
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[5]
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING
 sys.path.append(str(SCRIPT_DIR))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"))
@@ -22,7 +24,7 @@ from au_review_auto_weighting import (
 )
 from engine_core import RacingEngine, enrich_logic_from_facts
 
-ARCHIVE_ROOT = PROJECT_ROOT / "Archive_Race_Analysis" / "AU_Racing"
+ARCHIVE_ROOT = AU_RACING
 
 def extract_misses():
     meetings = find_au_meetings(ARCHIVE_ROOT)

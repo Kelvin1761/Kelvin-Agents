@@ -15,6 +15,8 @@ from urllib.parse import parse_qs, urlparse
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[5]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING, HK_RACING
 SHARED_ROOT = Path(__file__).resolve().parent
 AU_REFLECTOR_SCRIPTS = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_reflector" / "scripts"
 HKJC_REFLECTOR_SCRIPTS = PROJECT_ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_reflector" / "scripts"
@@ -85,8 +87,8 @@ def _import_hkjc_sync():
 
 DOMAIN_LABELS = {"au": "AU", "hkjc": "HKJC"}
 DOMAIN_ARCHIVES = {
-    "au": PROJECT_ROOT / "Archive_Race_Analysis" / "AU_Racing",
-    "hkjc": PROJECT_ROOT / "Archive_Race_Analysis" / "HK_Racing",
+    "au": AU_RACING,
+    "hkjc": HK_RACING,
 }
 DEFAULT_REPORT_NAMES = {
     "au": "{meeting}_Reflector_Report.md",

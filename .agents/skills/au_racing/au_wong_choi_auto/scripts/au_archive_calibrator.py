@@ -14,12 +14,14 @@ import sys
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING
 sys.path.append(str(SCRIPT_DIR / "racing_engine"))
 
 from matrix_mapper import map_features_to_matrix_scores
 from scoring import MATRIX_WEIGHTS as LIVE_MATRIX_WEIGHTS
 
-ARCHIVE_ROOT = PROJECT_ROOT / "Archive_Race_Analysis" / "AU_Racing"
+ARCHIVE_ROOT = AU_RACING
 HISTORICAL_RESULTS_CSV = ARCHIVE_ROOT / "AU_Historical_Raw_Race_Results.csv"
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Auto_Archive_Calibration_Report.md"
 OUTPUT_CSV = ARCHIVE_ROOT / "AU_Auto_Section_Diagnostics.csv"

@@ -4,7 +4,9 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
-ARCHIVE_ROOT = PROJECT_ROOT / "Archive_Race_Analysis" / "AU_Racing"
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING
+ARCHIVE_ROOT = AU_RACING
 
 sys.path.append(str(SCRIPT_DIR))
 from au_auto_orchestrator import process_meeting_dir

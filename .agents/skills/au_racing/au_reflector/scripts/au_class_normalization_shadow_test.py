@@ -20,6 +20,8 @@ from dataclasses import asdict
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[5]
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING
 sys.path.append(str(SCRIPT_DIR))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"))
@@ -39,7 +41,7 @@ from engine_core import RacingEngine, enrich_logic_from_facts  # noqa: E402
 from scoring import parse_float  # noqa: E402
 
 
-ARCHIVE_ROOT = PROJECT_ROOT / "Archive_Race_Analysis" / "AU_Racing"
+ARCHIVE_ROOT = AU_RACING
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Class_Normalization_Shadow_Test.md"
 OUTPUT_JSON = ARCHIVE_ROOT / "AU_Class_Normalization_Shadow_Test.json"
 
@@ -452,7 +454,7 @@ def build_report(results: list[dict]) -> str:
 
 def main():
     parser = argparse.ArgumentParser(description="Shadow test AU class/venue normalization ideas")
-    parser.add_argument("--base-dir", default=str(PROJECT_ROOT / "Archive_Race_Analysis" / "AU_Racing"))
+    parser.add_argument("--base-dir", default=str(AU_RACING))
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 

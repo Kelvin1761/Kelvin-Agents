@@ -4,8 +4,11 @@ import collections
 from pathlib import Path
 import re
 
-CSV_PATH = "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Archive_Race_Analysis/AU_Racing/AU_Historical_Raw_Race_Results.csv"
-OUTPUT_JSON = "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/skills/au_racing/au_wong_choi_auto/scripts/racing_engine/au_draw_bias_matrix.json"
+PROJECT_ROOT = Path(__file__).resolve().parents[6]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING
+CSV_PATH = str(AU_RACING / "AU_Historical_Raw_Race_Results.csv")
+OUTPUT_JSON = str(Path(__file__).resolve().parent / "au_draw_bias_matrix.json")
 
 def get_bucket(barrier):
     if barrier <= 4:

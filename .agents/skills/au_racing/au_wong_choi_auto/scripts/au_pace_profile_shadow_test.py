@@ -10,6 +10,8 @@ import sys
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING
 
 sys.path.append(str(SCRIPT_DIR))
 sys.path.append(str(SCRIPT_DIR / "racing_engine"))
@@ -31,7 +33,7 @@ def _resolve_target_meeting_dir(name: str) -> Path:
     direct = PROJECT_ROOT / name
     if direct.exists():
         return direct
-    archive = PROJECT_ROOT / "Archive_Race_Analysis" / "AU_Racing" / name
+    archive = AU_RACING / name
     return archive
 
 

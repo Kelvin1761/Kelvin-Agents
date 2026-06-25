@@ -9,10 +9,14 @@ import argparse
 import requests
 from datetime import datetime
 from dotenv import load_dotenv
+from pathlib import Path
 
 load_dotenv()
 
-DB_PATH = r'g:\我的雲端硬碟\Antigravity Shared\Antigravity\.agents\skills\au_racing\shared_resources\wong_choi_racing.db'
+PROJECT_ROOT = Path(__file__).resolve().parents[5]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import DATA_ROOT
+DB_PATH = str(DATA_ROOT / "wong_choi_racing.db")
 
 COURSE_GEO = {
     'Randwick': {'lat': -33.9114, 'lon': 151.2286},

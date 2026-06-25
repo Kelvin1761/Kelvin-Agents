@@ -38,6 +38,9 @@ from scoring import (
     wet_form_feature,
 )
 
+_PROJECT_ROOT = Path(__file__).resolve().parents[6]
+import sys as _sys; _sys.path.insert(0, str(_PROJECT_ROOT))
+from wongchoi_paths import AU_RACING as _AU_RACING
 sys.path.insert(0, str(Path(__file__).resolve().parents[5] / "scripts"))  # .agents/scripts/
 try:
     from formline_analyzer import analyze_formline as _fa_analyze_formline, _parse_margin as _fa_parse_margin, _extract_opponent_name as _fa_extract_name
@@ -48,7 +51,7 @@ except ImportError:
 
 TRACK_RESOURCE_DIR = Path(__file__).resolve().parents[3] / "au_horse_analyst" / "resources"
 AUTO_RESOURCE_DIR = Path(__file__).resolve().parents[2] / "resources"
-ARCHIVE_AU_DIR = Path(__file__).resolve().parents[6] / "Archive_Race_Analysis" / "AU_Racing"
+ARCHIVE_AU_DIR = _AU_RACING
 JOCKEY_TRAINER_COMBO_STATS_PATH = ARCHIVE_AU_DIR / "AU_Jockey_Trainer_Combo_Stats.csv"
 JOCKEY_RATINGS_PATH = AUTO_RESOURCE_DIR / "AU_Jockey_Ratings.csv"
 TRAINER_RATINGS_PATH = AUTO_RESOURCE_DIR / "AU_Trainer_Ratings.csv"

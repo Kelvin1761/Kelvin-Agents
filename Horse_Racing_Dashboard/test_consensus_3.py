@@ -1,10 +1,14 @@
 import sys
+from pathlib import Path
 sys.path.insert(0, 'backend')
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys; _sys.path.insert(0, str(_PROJECT_ROOT))
+from wongchoi_paths import DATA_ROOT
 from services.parser_hkjc import parse_hkjc_analysis
 from services.consensus import find_consensus_horses
 
-kelvin_path = "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/2026-04-19_ShaTin/04-19_ShaTin Race 4 Analysis.md"
-heison_path = "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/2026-04-19_ShaTin (Heison)/04-19_ShaTin Race 4 Analysis.md"
+kelvin_path = str(DATA_ROOT / "2026-04-19_ShaTin" / "04-19_ShaTin Race 4 Analysis.md")
+heison_path = str(DATA_ROOT / "2026-04-19_ShaTin (Heison)" / "04-19_ShaTin Race 4 Analysis.md")
 
 k_race = parse_hkjc_analysis(kelvin_path)
 h_race = parse_hkjc_analysis(heison_path)

@@ -4,24 +4,23 @@ from pathlib import Path
 import scoring
 from scoring import BaseScorer
 
+_PROJECT_ROOT = Path(__file__).resolve().parents[7]
+import sys as _sys; _sys.path.insert(0, str(_PROJECT_ROOT))
+from wongchoi_paths import HK_RACING
+
 _DRAW_BIAS_CACHE = None
 
 def _get_draw_bias():
     global _DRAW_BIAS_CACHE
     if _DRAW_BIAS_CACHE is not None:
         return _DRAW_BIAS_CACHE
-    
-    # The draw-bias CSVs live in the repo's Archive_Race_Analysis tree, outside
-    # this skill. Try the CWD (works when run from repo root) AND the repo root
-    # resolved from this module, so a non-root CWD doesn't silently disable stats.
-    rel = Path("Archive_Race_Analysis") / "HK_Racing" / "HKJC_Race_Results_Database" / "comprehensive_stats"
+
+    # The draw-bias CSVs live under HK_RACING (data root).
+    stats_root = HK_RACING / "HKJC_Race_Results_Database" / "comprehensive_stats"
     candidates = []
-    for base in (Path("."), *Path(__file__).resolve().parents):
-        stats_root = base / rel
-        if stats_root.exists():
-            candidates = [stats_root / "24_25" / "draw_bias_stats.csv",
-                          stats_root / "25_26" / "draw_bias_stats.csv"]
-            break
+    if stats_root.exists():
+        candidates = [stats_root / "24_25" / "draw_bias_stats.csv",
+                      stats_root / "25_26" / "draw_bias_stats.csv"]
 
     frames = [pd.read_csv(p, encoding="utf-8-sig") for p in candidates if p.exists()]
     if not frames:

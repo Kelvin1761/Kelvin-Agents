@@ -44,12 +44,14 @@ from datetime import datetime, timedelta
 SCRIPT_DIR = Path(__file__).resolve().parent
 # archive race analysis/ → au_racing/ → skills/ → .agents/ → PROJECT_ROOT
 PROJECT_ROOT = SCRIPT_DIR.parents[3]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING
 
 # racenet_transport lives in au_racing/
 AU_RACING_DIR = PROJECT_ROOT / ".agents" / "skills" / "au_racing"
 
-# Output goes to: antigravity/Archive_Race_Analysis/AU_Racing/
-AU_OUTPUT_DIR = PROJECT_ROOT / "Archive_Race_Analysis" / "AU_Racing"
+# Output goes to: Wong Choi Horse Race Analysis/AU_Racing/
+AU_OUTPUT_DIR = AU_RACING
 OUTPUT_DIR = AU_OUTPUT_DIR  # For existing code that references OUTPUT_DIR
 if not AU_OUTPUT_DIR.exists():
     AU_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

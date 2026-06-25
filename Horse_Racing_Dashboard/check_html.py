@@ -1,7 +1,11 @@
 import sys, io, json, re
+from pathlib import Path
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-with open(r'g:\我的雲端硬碟\Antigravity Shared\Antigravity\Horse Racing Dashboard\Open Dashboard.html', 'r', encoding='utf-8') as f:
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+import sys as _sys; _sys.path.insert(0, str(_PROJECT_ROOT))
+from wongchoi_paths import DATA_ROOT
+with open(str(DATA_ROOT / "Horse Racing Dashboard" / "Open Dashboard.html"), 'r', encoding='utf-8') as f:
     content = f.read()
 
 m = re.search(r'const DASHBOARD_DATA\s*=\s*(\{.+?\});\s*\n', content, re.DOTALL)

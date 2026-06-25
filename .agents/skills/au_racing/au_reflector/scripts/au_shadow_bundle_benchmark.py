@@ -16,6 +16,8 @@ from dataclasses import asdict
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[5]
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING
 sys.path.append(str(SCRIPT_DIR))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"))
@@ -37,7 +39,7 @@ from matrix_mapper import MATRIX_FORMULAS
 from scoring import clip_score
 
 
-ARCHIVE_ROOT = PROJECT_ROOT / "Archive_Race_Analysis" / "AU_Racing"
+ARCHIVE_ROOT = AU_RACING
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Shadow_Bundle_Benchmark.md"
 
 ORIGINAL_FORMULAS = {key: tuple(value) for key, value in MATRIX_FORMULAS.items()}

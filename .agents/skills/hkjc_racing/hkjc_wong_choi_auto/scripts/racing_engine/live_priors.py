@@ -8,9 +8,10 @@ import pandas as pd
 
 from scoring import clip_score, parse_float
 
-
 ROOT = Path(__file__).resolve().parents[6]
-STATS_ROOT = ROOT / "Archive_Race_Analysis" / "HK_Racing" / "HKJC_Race_Results_Database" / "comprehensive_stats"
+import sys as _sys; _sys.path.insert(0, str(ROOT))
+from wongchoi_paths import HK_RACING
+STATS_ROOT = HK_RACING / "HKJC_Race_Results_Database" / "comprehensive_stats"
 
 GENERAL_PRIOR_FILES = {
     "combo": [

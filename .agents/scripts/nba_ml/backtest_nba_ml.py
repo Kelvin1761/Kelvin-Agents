@@ -37,10 +37,14 @@ from sklearn.metrics import roc_auc_score, brier_score_loss
 sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 from nba_ml_predictor import MLPropPredictor
 
-ARCHIVE_DIR = "Archive_NBA_Analysis"
-DATASET_DIR = "NBA_ML_Dataset"
-RESULTS_DIR = os.path.join(DATASET_DIR, "results_brief")
-OUTPUT_DIR = os.path.join(DATASET_DIR, "backtest")
+from pathlib import Path as _Path
+PROJECT_ROOT = _Path(__file__).resolve().parents[4]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import NBA_ANALYSIS, NBA_ML_DATASET
+ARCHIVE_DIR = str(NBA_ANALYSIS)
+DATASET_DIR = str(NBA_ML_DATASET)
+RESULTS_DIR = str(NBA_ML_DATASET / "results_brief")
+OUTPUT_DIR = str(NBA_ML_DATASET / "backtest")
 
 STAT_KEY_MAP = {"PTS": "pts", "REB": "reb", "AST": "ast", "FG3M": "fg3m"}
 SPORTSBET_LINES = {

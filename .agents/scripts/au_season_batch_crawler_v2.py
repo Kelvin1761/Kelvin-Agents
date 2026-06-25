@@ -65,6 +65,9 @@ SLUG_TO_DISPLAY = {
 }
 
 # Paths
+import sys as _sys; _sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from pathlib import Path as _Path
+from wongchoi_paths import AU_RACING
 ORCHESTRATOR_PATH = os.path.join(
     ".agents", "skills", "au_racing", "au_wong_choi", "scripts", "au_orchestrator.py"
 )
@@ -74,7 +77,7 @@ RESULTS_SCRIPT_PATH = os.path.join(
 REFLECTOR_PATH = os.path.join(
     ".agents", "skills", "au_racing", "au_reflector", "scripts", "au_reflector_orchestrator.py"
 )
-ARCHIVE_DIR = os.path.join("Archive_Race_Analysis", "AU_Racing")
+ARCHIVE_DIR = str(AU_RACING)
 
 # Anti-block pacing
 SLEEP_BETWEEN_TRACK_CHECKS = (1.5, 3.0)

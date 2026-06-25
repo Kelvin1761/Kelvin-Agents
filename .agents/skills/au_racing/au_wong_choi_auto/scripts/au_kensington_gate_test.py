@@ -14,7 +14,9 @@ from au_sip_tester import evaluate_races, load_all_races, report_summary  # noqa
 
 
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
-KENSINGTON_DIR = PROJECT_ROOT / "Archive_Race_Analysis" / "AU_Racing" / "2026-06-10 Kensington Race 1-7"
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING
+KENSINGTON_DIR = AU_RACING / "2026-06-10 Kensington Race 1-7"
 
 
 def place_rerank_candidate(horses: list[dict], race: dict) -> list[dict]:

@@ -99,8 +99,12 @@ def ratio(numerator: int, denominator: int) -> float:
 
 
 def main() -> None:
+    from pathlib import Path as _Path
+    _PROJECT_ROOT = _Path(__file__).resolve().parents[5]
+    import sys as _sys; _sys.path.insert(0, str(_PROJECT_ROOT))
+    from wongchoi_paths import AU_RACING as _AU_RACING
     parser = argparse.ArgumentParser(description="Audit AU extractor/Facts feature coverage.")
-    parser.add_argument("--base-dir", default="Archive_Race_Analysis/AU_Racing")
+    parser.add_argument("--base-dir", default=str(_AU_RACING))
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 

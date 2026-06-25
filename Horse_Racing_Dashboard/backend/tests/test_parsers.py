@@ -12,6 +12,10 @@ from services.parser_hkjc import parse_hkjc_analysis
 from services.meeting_detector import discover_meetings, load_meeting_races
 import config
 
+_PROJECT_ROOT = Path(__file__).resolve().parents[4]
+import sys as _sys; _sys.path.insert(0, str(_PROJECT_ROOT))
+from wongchoi_paths import HK_RACING as _HK_RACING
+
 
 def test_hkjc_auto_parser():
     """Test HKJC parser with full Python Auto analysis output."""
@@ -44,7 +48,7 @@ def test_hkjc_auto_parser():
 
 def test_hkjc_auto_archive_parser():
     """Test HKJC parser against archived Auto output in analysis archive."""
-    path = config.ANTIGRAVITY_ROOT / "Archive_Race_Analysis" / "2026-05-03_ShaTin" / "Race_1_Auto_Analysis.md"
+    path = _HK_RACING / "2026-05-03_ShaTin" / "Race_1_Auto_Analysis.md"
     if not path.exists():
         print("⚠️ Archived HKJC auto fixture not found, skipping")
         return True

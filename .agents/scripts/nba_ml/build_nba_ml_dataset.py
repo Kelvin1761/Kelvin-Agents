@@ -6,7 +6,7 @@ build_nba_ml_dataset.py — NBA ML Dataset Builder V1
 即使 API 日後唔再 available，data 依然留低咗。
 
 What it does:
-1. Scan all Archive_NBA_Analysis/ folders for nba_game_data_*.json (features)
+1. Scan all Wong Choi NBA Analysis/ folders for nba_game_data_*.json (features)
 2. For each date, fetch Results_Brief via nba_api (labels / box scores)
 3. Build consolidated feature + label dataset → NBA_ML_Dataset/
 4. Save every raw Results_Brief permanently in NBA_ML_Dataset/results_brief/
@@ -37,8 +37,12 @@ import io
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-ARCHIVE_DIR = "Archive_NBA_Analysis"
-DATASET_DIR = "NBA_ML_Dataset"
+from pathlib import Path as _Path
+PROJECT_ROOT = _Path(__file__).resolve().parents[4]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import NBA_ANALYSIS, NBA_ML_DATASET
+ARCHIVE_DIR = str(NBA_ANALYSIS)
+DATASET_DIR = str(NBA_ML_DATASET)
 
 # Stat categories we care about
 STAT_CATEGORIES = ["PTS", "REB", "AST", "FG3M"]

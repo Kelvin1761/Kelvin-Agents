@@ -6,9 +6,11 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[5]
+import sys as _sys; _sys.path.insert(0, str(ROOT))
+from wongchoi_paths import HK_RACING, HORSE_RACE_ANALYSIS
 
-LEGACY_ANALYSIS_DB = ROOT / "Archive_Race_Analysis"
-HK_RACING_ANALYSIS_DB = LEGACY_ANALYSIS_DB / "HK_Racing"
+LEGACY_ANALYSIS_DB = HORSE_RACE_ANALYSIS
+HK_RACING_ANALYSIS_DB = HK_RACING
 CANONICAL_RESULTS_DB = HK_RACING_ANALYSIS_DB / "HKJC_Race_Results_Database"
 LEGACY_RESULTS_DB = LEGACY_ANALYSIS_DB / "HKJC_Race_Results_Database"
 

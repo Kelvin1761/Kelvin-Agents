@@ -7,6 +7,8 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING
 AUTO_DIR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"
 sys.path.insert(0, str(AUTO_DIR))
 sys.path.insert(0, str(AUTO_DIR / "racing_engine"))
@@ -23,7 +25,7 @@ from au_market_free_ablation import (  # noqa: E402
 )
 
 
-OUTPUT_MD = PROJECT_ROOT / "Archive_Race_Analysis" / "AU_Racing" / "AU_BM58_GoodFirm_Search.md"
+OUTPUT_MD = AU_RACING / "AU_BM58_GoodFirm_Search.md"
 
 FOCUS_FORMULAS = (
     "jt_fit_tempered",

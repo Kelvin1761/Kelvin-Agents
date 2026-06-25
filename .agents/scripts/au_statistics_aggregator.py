@@ -3,8 +3,12 @@ import glob
 import re
 import pandas as pd
 from collections import defaultdict
+from pathlib import Path
 
-ARCHIVE_DIR = r"g:\我的雲端硬碟\Antigravity Shared\Antigravity\Archive_Race_Analysis\AU_Racing"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING
+ARCHIVE_DIR = str(AU_RACING)
 OUTPUT_FILE = os.path.join(ARCHIVE_DIR, "AU_Racing_Historical_Stats.md")
 
 def parse_markdown_results():

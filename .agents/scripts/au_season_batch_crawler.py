@@ -18,9 +18,12 @@ TRACKS = ["flemington", "randwick"]
 
 # 工具路徑
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(BASE_DIR)
+import sys as _sys; _sys.path.insert(0, PROJECT_ROOT)
+from wongchoi_paths import AU_RACING
 ORCHESTRATOR_PATH = os.path.join(".agents", "skills", "au_racing", "au_wong_choi", "scripts", "au_orchestrator.py")
 RESULTS_SCRIPT_PATH = os.path.join(".agents", "skills", "au_racing", "claw_racenet_results.py")
-ARCHIVE_DIR = os.path.join("Archive_Race_Analysis", "AU_Racing")
+ARCHIVE_DIR = str(AU_RACING)
 
 def check_date_for_tracks(date_obj):
     """檢查 Racenet 該日是否有指定的馬場賽事"""

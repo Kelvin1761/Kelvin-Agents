@@ -11,15 +11,15 @@ from pathlib import Path
 SKILL_ROOT = Path(__file__).resolve().parents[3]  # au_race_extractor/scripts → au_racing/
 if str(SKILL_ROOT) not in sys.path:
     sys.path.insert(0, str(SKILL_ROOT))
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING
 
 from racenet_transport import RacenetBlockedError, fetch_nuxt_data
 
 def get_base_path():
-    """Cross-platform base path for Antigravity workspace."""
-    if platform.system() == 'Windows':
-        return r"g:\我的雲端硬碟\Antigravity Shared\Antigravity"
-    else:
-        return "."
+    """Cross-platform base path for AU Racing output folder."""
+    return str(AU_RACING)
 
 def generate_print_url(url):
     # E.g. https://www.racenet.com.au/form-guide/horse-racing/caulfield-heath-20260304/briga-fliedner-2026-lady-of-racing-finalist-race-1/overview

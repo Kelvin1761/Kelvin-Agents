@@ -5,8 +5,12 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 import sqlite3
 import argparse
+from pathlib import Path
 
-DB_PATH = r'g:\我的雲端硬碟\Antigravity Shared\Antigravity\.agents\skills\au_racing\shared_resources\wong_choi_racing.db'
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import DATA_ROOT
+DB_PATH = str(DATA_ROOT / "wong_choi_racing.db")
 
 RATING_MAP = {
     'Firm 1': 1, 'Firm 2': 2, 'Good 3': 3, 'Good 4': 4,

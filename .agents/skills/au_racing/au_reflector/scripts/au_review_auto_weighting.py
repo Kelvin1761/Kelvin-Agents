@@ -15,6 +15,8 @@ import time
 from dataclasses import asdict
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[5]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING, HORSE_RACE_ANALYSIS
 sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "racing_engine"))
@@ -367,7 +369,7 @@ def run_review(base_dir: pathlib.Path, mode: str = "rendered") -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description="Review AU current live deterministic weighting baseline")
-    parser.add_argument("--base-dir", default=str(PROJECT_ROOT / "Archive_Race_Analysis"))
+    parser.add_argument("--base-dir", default=str(HORSE_RACE_ANALYSIS))
     parser.add_argument("--mode", choices=("rendered", "recomputed"), default="rendered")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()

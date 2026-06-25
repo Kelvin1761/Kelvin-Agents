@@ -27,7 +27,7 @@ def sync_tree(src: Path, dst: Path, dry_run: bool = False) -> list[tuple[Path, P
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Backfill legacy HKJC results database into canonical Archive_Race_Analysis/HKJC_Race_Results_Database")
+    parser = argparse.ArgumentParser(description="Backfill legacy HKJC results database into canonical Wong Choi Horse Race Analysis/HK_Racing/HKJC_Race_Results_Database")
     parser.add_argument("legacy_root", help="Legacy results root to import from")
     parser.add_argument("--dry-run", action="store_true", help="Show files that would be copied without changing anything")
     args = parser.parse_args()

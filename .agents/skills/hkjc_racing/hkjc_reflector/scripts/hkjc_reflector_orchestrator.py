@@ -17,7 +17,7 @@ from unified_reflector_core import default_report_path, run_unified_reflector
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="HKJC reflector orchestrator (unified workflow wrapper)")
-    parser.add_argument("meeting_dir", help="HKJC meeting dir or folder name under Archive_Race_Analysis")
+    parser.add_argument("meeting_dir", help="HKJC meeting dir or folder name under Wong Choi Horse Race Analysis")
     parser.add_argument("--results-file", help="Optional existing HKJC results file")
     parser.add_argument("--results-url", help="Optional HKJC results URL for extraction")
     parser.add_argument("--race", dest="races", action="append", type=int, help="Reflect only specific race numbers")

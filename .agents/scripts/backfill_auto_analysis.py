@@ -4,8 +4,12 @@ import glob
 import shutil
 import datetime
 import subprocess
+from pathlib import Path
 
-ARCHIVE_DIR = os.path.join("Archive_Race_Analysis", "AU_Racing")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING
+ARCHIVE_DIR = str(AU_RACING)
 ORCHESTRATOR_PATH = os.path.join(".agents", "skills", "au_racing", "au_wong_choi", "scripts", "au_orchestrator.py")
 
 def run():

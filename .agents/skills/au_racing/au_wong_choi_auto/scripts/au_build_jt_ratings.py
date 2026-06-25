@@ -9,7 +9,9 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
-ARCHIVE_ROOT = PROJECT_ROOT / "Archive_Race_Analysis" / "AU_Racing"
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING
+ARCHIVE_ROOT = AU_RACING
 ANALYST_RESOURCES = SCRIPT_DIR.parents[1] / "au_horse_analyst" / "resources"
 AUTO_RESOURCES = SCRIPT_DIR.parent / "resources"
 

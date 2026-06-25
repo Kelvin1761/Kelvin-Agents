@@ -17,6 +17,8 @@ from dataclasses import asdict
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[5]
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
+import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING
 sys.path.append(str(SCRIPT_DIR))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"))
@@ -35,7 +37,7 @@ from au_review_auto_weighting import (  # noqa: E402
 from engine_core import RacingEngine, enrich_logic_from_facts  # noqa: E402
 
 
-ARCHIVE_ROOT = PROJECT_ROOT / "Archive_Race_Analysis" / "AU_Racing"
+ARCHIVE_ROOT = AU_RACING
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Class_Depth_Shadow_Test.md"
 OUTPUT_JSON = ARCHIVE_ROOT / "AU_Class_Depth_Shadow_Test.json"
 
