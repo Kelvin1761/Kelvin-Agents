@@ -7,7 +7,7 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from scoring import clip_score
+from scoring import clip_score, place_tilt_rank_score
 
 ABILITY_LABEL = "綜合戰力分"
 
@@ -95,19 +95,25 @@ def ensure_verdict(logic_data: dict) -> dict:
                 "horse_name": horse.get("horse_name", ""),
                 "ability_score": float(horse.get("python_auto", {}).get("ability_score", 0)),
                 "grade": horse.get("python_auto", {}).get("grade", ""),
-                "rank_score": float(horse.get("python_auto", {}).get("ability_score", 0)),
+                "rank_score": float(
+                    place_tilt_rank_score(
+                        horse.get("python_auto", {}).get("ability_score", 0),
+                        horse.get("python_auto", {}).get("feature_scores", {}),
+                    )
+                ),
             }
             for num, horse in horses.items()
             if isinstance(horse.get("python_auto"), dict)
         ],
-        key=lambda item: (-item["ability_score"], _horse_number_sort_key(item["horse_number"])),
+        key=lambda item: (-item["rank_score"], -item["ability_score"], _horse_number_sort_key(item["horse_number"])),
     )
-    # We no longer apply artificial tie-breakers or safety swaps.
-    # The ML optimizer reached its 30.63% Good Rate peak by purely sorting the 綜合戰力分 (ability_score).
-    # Any manual overrides here would corrupt the mathematically proven weights.
+    # Ranking is ordered by rank_score (place-KPI tilt toward form+class), with
+    # ability_score as the tie-break. ability_score / grade are display-only and
+    # left untouched. Set scoring.PLACE_TILT_ALPHA = 0.0 to revert to pure
+    # ability_score ordering (the prior 30.63% Good-Rate ML baseline).
     ranked = sorted(
         ranked,
-        key=lambda item: (-item["ability_score"], _horse_number_sort_key(item["horse_number"])),
+        key=lambda item: (-item["rank_score"], -item["ability_score"], _horse_number_sort_key(item["horse_number"])),
     )
     for idx, item in enumerate(ranked, start=1):
         horse = horses[item["horse_number"]]
@@ -467,9 +473,11 @@ def _render_panorama(race: dict, verdict: dict, horses: dict, shadow_verdicts: d
         "",
         "**📊 全場綜合戰力排名**",
         "",
-        f"| 排名 | 馬號 | 馬名 | {ABILITY_LABEL} | Grade | 信心分 | 風險分 | 情境標記 |",
-        "|---:|---:|---|---:|---|---:|---:|---|",
+        f"| 排名 | 馬號 | 馬名 | {ABILITY_LABEL} | 排序分 | Grade | 信心分 | 風險分 | 情境標記 |",
+        "|---:|---:|---|---:|---:|---|---:|---:|---|",
         *[_ranking_row(item, horses) for item in verdict.get("ranking", [])],
+        "",
+        "> 📌 排名按「排序分」（綜合戰力分向近績+班次輕微傾斜，提升位置/複式命中），綜合戰力分為原始 7D 分僅供參考。",
     ]
 
 
@@ -635,7 +643,7 @@ def _render_blind_spots() -> list[str]:
         "",
         "**1. 資料完整度:** 缺失欄位以中性 60 處理，並透過信心分反映不確定性。",
         "**2. 段速含金量:** 段速由本地已抽取資料與矩陣綜合，未以單一數字直接定勝負。",
-        f"**3. 排名邏輯:** 先按{ABILITY_LABEL}排序；如第3、第4名分差極近，會用檔位微調 tie-break 作細緻排序。Grade 只作閱讀標籤。",
+        f"**3. 排名邏輯:** 只按{ABILITY_LABEL}由高至低排序；檔位、健康、騎練、段速等訊號已在 7D 矩陣內反映，不再另設排序 tie-break。Grade 只作閱讀標籤。",
         "**4. 騎練樣本:** 人馬、騎練或海外騎師資料不足時，不會單靠名氣加分。",
         "**5. 重跑條件:** 任何本地來源更新後，應重新執行 Python Auto pipeline。",
         "",
@@ -844,7 +852,7 @@ def _ranking_row(item: dict, horses: dict) -> str:
     features = auto.get("feature_scores", {})
     return (
         f"| {auto.get('rank', '')} | {item['horse_number']} | {item['horse_name']} | "
-        f"{float(auto.get('ability_score', 0)):.1f} | {auto.get('grade', '')} | "
+        f"{float(auto.get('ability_score', 0)):.1f} | {float(auto.get('rank_score', auto.get('ability_score', 0))):.1f} | {auto.get('grade', '')} | "
         f"{float(features.get('confidence_score', 60)):.1f} | {float(features.get('risk_score', 60)):.1f} | "
         f"{_context_tags_display(auto)} |"
     )

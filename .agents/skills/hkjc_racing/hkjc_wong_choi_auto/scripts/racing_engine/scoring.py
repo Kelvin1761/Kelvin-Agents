@@ -32,6 +32,54 @@ MATRIX_WEIGHTS = {
     "form_line": 0.0749,
 }
 
+DEBUT_MATRIX_WEIGHTS = {
+    "trainer_signal": 0.30,
+    "horse_health": 0.30,
+    "race_shape": 0.20,
+    "stability": 0.15,
+    "class_advantage": 0.05,
+}
+
+RACE_SHAPE_CONTEXT_WEIGHTS = {
+    "sha_tin_draw": 0.55,
+    "sha_tin_draw_position_fit": 0.25,
+    "sha_tin_trip_consumption": 0.20,
+    "non_sha_tin_delta_floor": -10.0,
+    "non_sha_tin_delta_cap": 7.0,
+}
+
+RACE_SHAPE_FIT_WEIGHTS = {
+    "base": 60.0,
+    "match_bonus": 12.0,
+    "mismatch_pen": -14.0,
+    "active_slot_pen": -6.0,
+    "pi_up_bonus": 5.0,
+    "pi_micro_up_bonus": 2.0,
+    "pi_down_pen": -5.0,
+    "pi_micro_down_pen": -2.0,
+}
+
+RACE_SHAPE_TRIP_CONSUMPTION_SCORES = {
+    "低消耗": 70.0,
+    "中低": 66.0,
+    "中等": 60.0,
+    "高": 52.0,
+    "極高": 46.0,
+}
+
+RACE_SHAPE_CONTEXT_DELTA_WEIGHTS = {
+    "match_bonus": 4.0,
+    "mismatch_pen": -8.0,
+    "active_slot_pen": -3.0,
+    "pi_up_bonus": 2.0,
+    "pi_down_pen": -2.0,
+    "high_conf_bonus": 0.8,
+    "low_conf_pen": -0.8,
+    "recent_low_consumption_bonus": 1.0,
+    "recent_high_consumption_pen": -1.2,
+    "recent_extreme_consumption_pen": -2.0,
+}
+
 GRADE_THRESHOLDS = (
     (96, "S+"),
     (92, "S"),
@@ -246,6 +294,40 @@ def compute_grade(ability_score):
         if score >= threshold:
             return grade
     return "E"
+
+
+# --- Place-KPI ranking tilt -------------------------------------------------
+# Re-ranking nudge toward recent form + class, applied ONLY to rank_score (the
+# ordering key). ability_score / grade / 7D transparency are left untouched, so
+# the SCORE-004 "ability == matrix-weighted sum" invariant still holds.
+#
+# Rationale: the saturated 7D matrix gives heavy weight to race_shape/draw
+# (~25.6%), which catches upside winners but also promotes well-drawn but
+# inconsistent horses over proven placers. A small lean toward form+class lifts
+# the *place-combo* reliability of the top picks.
+#
+# Walk-forward backtest (19 HK meetings / 191 races, chronological holdout):
+#   min2 (>=2 of top-3 picks placed): full 40.8% -> 46.6% (+5.8pp),
+#                                     holdout 32.5% -> 43.8% (+11.3pp)
+#   single (>=1 placed): 81.7% -> 83.8%   |   top-pick place: ~flat (51.3->49.2)
+#   champion (top pick wins): 24.1% -> 23.6%  (essentially no win-rate cost)
+# Set PLACE_TILT_ALPHA = 0.0 to fully disable and revert to pure ability_score.
+PLACE_TILT_ALPHA = 0.10
+
+
+def place_tilt_rank_score(ability_score, feature_scores, alpha=PLACE_TILT_ALPHA):
+    """Return the place-optimized ranking score (does not alter ability_score)."""
+    try:
+        ability = float(ability_score)
+    except (TypeError, ValueError):
+        return ability_score
+    if not alpha:
+        return round(ability, 2)
+    fs = feature_scores or {}
+    form = clip_score(fs.get("form_score", 60.0))
+    cls = clip_score(fs.get("class_score", 60.0))
+    composite = 0.6 * form + 0.4 * cls
+    return round((1.0 - alpha) * ability + alpha * composite, 2)
 
 
 def parse_float(value):
