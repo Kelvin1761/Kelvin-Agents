@@ -24,10 +24,14 @@ MATRIX_FORMULAS = {
         ("trainer_score", 0.20),
         ("jockey_horse_fit_score", 0.52),
     ),
+    # rating_score up-weighted 0.15 -> 0.70 (2026-06-29): official handicap rating
+    # is the one run-style-independent ability signal that lifts box4 OOS. Combined
+    # with the distance removal above, walk-forward (5-fold, fixed sub-weight, no
+    # negative fold on box4) gives box4 +0.6pp, good +0.6pp, champion +0.8pp.
     "class_weight": (
-        ("class_score", 0.45),
-        ("rating_score", 0.15),
-        ("weight_score", 0.40),
+        ("class_score", 0.159),
+        ("rating_score", 0.70),
+        ("weight_score", 0.141),
     ),
     "track": (
         ("track_score", 0.82),
