@@ -8,10 +8,12 @@ MATRIX_FORMULAS = {
         ("form_score", 0.60),
         ("consistency_score", 0.40),
     ),
+    # distance_score removed from 段速與引擎 (2026-06-29): walk-forward backtest
+    # showed dropping it lifts good +0.6pp / champion +1.0pp OOS; weights
+    # renormalised onto sectional_score + trial (0.62/0.15 -> 0.805/0.195).
     "sectional": (
-        ("sectional_score", 0.62),
-        ("distance_score", 0.23),
-        ("trial_score", 0.15),
+        ("sectional_score", 0.805),
+        ("trial_score", 0.195),
     ),
     "race_shape": (
         ("pace_map_score", 0.70),
