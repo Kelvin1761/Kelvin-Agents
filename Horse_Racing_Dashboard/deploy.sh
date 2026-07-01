@@ -64,6 +64,55 @@ if [ ! -f "$MANIFEST_OUT" ]; then
     exit 1
 fi
 
+# ==========================================
+# 🛡️ 發佈前健康檢查：防止過期 checkout 把舊版 dashboard 推上線
+# 背景：repo 同 .git 住喺 Google Drive，主 checkout 曾經被 stranded 喺舊 commit
+# (019c595)，加上十幾個 worktree 狀態唔一，隨手喺舊 copy run deploy.sh 就會
+# 令 dashboard 回退到舊版（無 評級矩陣 / 數據判讀，投注按鈕變返「匯出」）。
+# 呢個 guard 會喺推送前 fail-fast，唔畀舊版靜靜雞上線。
+# ==========================================
+echo "🛡️ 健康檢查：驗證 build 內容 (防止舊版誤發)..."
+
+# HTML 模板層必須帶新版區塊；缺任何一個 = 呢個 checkout 係舊版 → 中止
+REQUIRED_HTML_MARKERS=(
+    "評級矩陣"        # 7D 評級矩陣 renderer
+    "數據判讀"        # data_readout 區塊 (commit 8ac53b8 之後先有)
+    "匯入投注記錄"    # ROI 匯入按鈕（新版）；舊版係「匯出」
+)
+GUARD_FAIL=0
+for marker in "${REQUIRED_HTML_MARKERS[@]}"; do
+    if ! grep -q "$marker" "$HTML_OUT"; then
+        echo "   ❌ build 缺少必要區塊：$marker"
+        GUARD_FAIL=1
+    fi
+done
+
+# 資料層：JSON 要真係帶到新欄位，唔淨係模板有 (報告要用新版 code 生成)
+for field in "rating_matrix" "data_readout"; do
+    if ! grep -q "\"$field\"" "$JSON_OUT" 2>/dev/null; then
+        echo "   ⚠️ dashboard-data.json 未見 $field —— 報告可能係舊版 code 生成，請重新 re-score"
+    fi
+done
+
+# 過期 checkout 提示（用本機已知嘅 origin/main ref，唔做 network fetch 以免喺 Drive 卡住）
+if command -v git >/dev/null 2>&1 && git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    BEHIND="$(git -C "$REPO_ROOT" rev-list --count HEAD..origin/main 2>/dev/null || echo 0)"
+    if [ "${BEHIND:-0}" -gt 0 ]; then
+        echo "   ⚠️ 呢個 checkout 落後 origin/main ${BEHIND} 個 commit —— 好可能係舊 copy，建議先 git pull"
+    fi
+fi
+
+if [ "$GUARD_FAIL" -ne 0 ]; then
+    echo ""
+    echo "🛑 發佈中止：呢個 checkout 產生嘅係舊版 dashboard，唔會推上 Cloudflare。"
+    echo "   成因：多數係喺過期嘅 Google Drive checkout / worktree 度 run deploy.sh。"
+    echo "   正確做法：喺 off-Drive clone 度發佈 ——"
+    echo "     cd ~/dev/Kelvin-Agents && git checkout main && git pull"
+    echo "     WONGCHOI_DATA_ROOT=<Drive 資料路徑> ./Horse_Racing_Dashboard/deploy.sh"
+    exit 1
+fi
+echo "   ✅ build 完整：評級矩陣 / 數據判讀 / 匯入投注記錄 齊全"
+
 echo "📦 第二步：Cloudflare deploy bundle 已準備完成"
 echo "   - HTML: $(basename "$HTML_OUT")"
 echo "   - Data: $(basename "$JSON_OUT")"
