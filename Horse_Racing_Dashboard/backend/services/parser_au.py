@@ -213,8 +213,49 @@ def _parse_au_header(header_line: str, block: str) -> dict:
     return result
 
 
+_NEW_MATRIX_HEADER_RE = re.compile(
+    r'^#####\s+(.+?)[：:]\s*`?([\d.]+)\s*分`?[　\s]+([✅➖❌]+)\s*(\S*)\s*$',
+    re.MULTILINE,
+)
+_NEW_MATRIX_RATIONALE_RE = re.compile(r'\*\*點解[：:]\*\*\s*(.+?)\s*$', re.MULTILINE)
+
+
+def _parse_new_format_rating_matrix(text: str) -> Optional[RatingMatrix]:
+    """Parse the current 🧮 評分矩陣 (7D 數值拆解) report format (shipped 2026-07-01,
+    same header shape in both HK and AU renderers): per-dimension header
+    `##### {label}：{score}分 {emoji} {band}` followed by 評分構成/點解/數據.
+    Tier tags ([核心]/[半核心]/[輔助]) were removed from this format, so `category`
+    holds the band word instead of the old role tag."""
+    headers = list(_NEW_MATRIX_HEADER_RE.finditer(text))
+    if not headers:
+        return None
+    dimensions = []
+    for i, m in enumerate(headers):
+        name, score, symbol, band_word = m.group(1), m.group(2), m.group(3), m.group(4)
+        end = headers[i + 1].start() if i + 1 < len(headers) else len(text)
+        chunk = text[m.end():end]
+        rationale_m = _NEW_MATRIX_RATIONALE_RE.search(chunk)
+        rationale = rationale_m.group(1).strip() if rationale_m else f"{name.strip()} {score}分"
+        dimensions.append(RatingDimension(
+            name=name.strip(),
+            category=band_word.strip() or symbol.strip(),
+            value=symbol.strip(),
+            rationale=rationale,
+        ))
+    grade_m = re.search(r'⭐\s*最終評級[：:]\s*\*{0,2}\[?`?([A-DS][+\-]?)\]?`?\*{0,2}', text)
+    return RatingMatrix(
+        dimensions=dimensions,
+        base_rating=grade_m.group(1) if grade_m else None,
+        adjustment=None,
+        override=None,
+    )
+
+
 def _parse_au_rating_matrix(text: str) -> Optional[RatingMatrix]:
     """Parse AU 📊 評級矩陣 (8 dimensions)."""
+    new_format = _parse_new_format_rating_matrix(text)
+    if new_format:
+        return new_format
     section = _extract_section(text,
         ['📊 評級矩陣', '**📊 評級矩陣'],
         ['💡 結論', '**💡 結論', '⭐ 最終評級']
