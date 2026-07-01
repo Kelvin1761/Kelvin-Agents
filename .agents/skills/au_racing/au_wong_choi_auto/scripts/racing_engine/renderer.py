@@ -42,6 +42,17 @@ MATRIX_LABELS = {
     "form_line": "賽績線",
 }
 
+# 同一 sub 分喺唔同維度可用唔同名，避免「同一個場地分出現兩次」嘅重覆錯覺。
+# track_score 喺「場地適性」係純場地紀錄（場地分）；喺「檔位形勢」係場地×步速交互
+# 貢獻，所以叫「場地配套分」。兩者用同一數值，係刻意（已驗證：抽走會蝕 box4/贏Top3）。
+MATRIX_COMPONENT_LABELS = {
+    ("race_shape", "track_score"): "場地配套分",
+}
+
+
+def _component_label(key, name):
+    return MATRIX_COMPONENT_LABELS.get((key, name)) or FEATURE_LABELS.get(name, name)
+
 REPORT_BANS = ("[FILL]", "PLACEHOLDER", "待補", "分析中")
 HIDDEN_SIGNAL_REPORT_ONLY_ENABLED = False
 
@@ -295,7 +306,7 @@ def _matrix_composition_line(key, auto):
     if not comps:
         return ""
     fs = auto.get("feature_scores", {})
-    parts = [f"{FEATURE_LABELS.get(n, n)} {clip_score(fs.get(n, 60)):.0f} ×{w*100:.0f}%" for n, w in comps]
+    parts = [f"{_component_label(key, n)} {clip_score(fs.get(n, 60)):.0f} ×{w*100:.0f}%" for n, w in comps]
     total = float(auto.get("matrix_scores", {}).get(key, 60))
     return " ＋ ".join(parts) + f" ＝ {total:.1f}"
 
@@ -318,7 +329,7 @@ def _matrix_subscore_lines(key, auto):
     out = []
     for name, _w in comps:
         v = clip_score(fs.get(name, 60))
-        label = FEATURE_LABELS.get(name, name)
+        label = _component_label(key, name)
         note = _clean_subscore_note(notes.get(name, ""))
         out.append(f"{label} {v:.0f} ← {note}" if note else f"{label} {v:.0f}")
     return out
@@ -331,7 +342,7 @@ def _matrix_why(key, score, auto):
     if not comps:
         return f"加權後 {score:.1f} 分，屬{band}。"
     fs = auto.get("feature_scores", {})
-    rows = [(FEATURE_LABELS.get(n, n), clip_score(fs.get(n, 60)), w) for n, w in comps]
+    rows = [(_component_label(key, n), clip_score(fs.get(n, 60)), w) for n, w in comps]
     driver = max(rows, key=lambda r: r[1] * r[2])
     weakest = min(rows, key=lambda r: r[1])
     bits = [f"主要由{driver[0]} {driver[1]:.0f}（佔比 {driver[2]*100:.0f}%）帶動"]

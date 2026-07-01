@@ -1519,6 +1519,27 @@ class RacingEngine:
             
         return " ".join(part for part in (assessment, " ".join(details)) if part)
 
+    def _l600_speed_brief(self):
+        """原始 L600 速度（m/s）作跑法識別 — 各馬得分觸底但速度不同，畀用家分辨。"""
+        data = self.data
+        avg = parse_float(data.get("timing_600m_avg_speed"))
+        best = parse_float(data.get("timing_600m_best_speed"))
+        recent = parse_float(data.get("timing_600m_recent_speed"))
+        if avg is None and best is None and recent is None:
+            return ""
+        parts = []
+        if avg is not None:
+            parts.append(f"平均 {avg:.2f}")
+        if best is not None:
+            parts.append(f"最快 {best:.2f}")
+        if recent is not None:
+            parts.append(f"近仗 {recent:.2f}")
+        trend = str(data.get("timing_600m_trend") or "").strip()
+        count = data.get("timing_l600_entries_count")
+        tail = f"；趨勢 {trend}" if trend else ""
+        cnt = f"（{count} 場樣本）" if count else ""
+        return f"{' / '.join(parts)} m/s{tail}{cnt}"
+
     def _matrix_anchor_lines(self, key):
         if key == "stability":
             return self._anchor_lines(
@@ -1537,9 +1558,10 @@ class RacingEngine:
             return self._anchor_lines(
                 ("累積段速總分", f"{self._sectional_breakdown()['score']:.1f} / 100"),
                 ("計分明細", self._sectional_breakdown()['notes']),
+                ("近段速度 L600（識別用·未入排名）", self._l600_speed_brief()),
                 ("近段 PI 走勢", self._sectional_trend_brief()),
                 ("試閘交代", self._trial_summary_text()),
-                ("說明", "段速數據對排名影響極低（已驗證）；此分只作識別跑法，唔反映勝算"),
+                ("說明", "段速分多數觸底（AU 無 numeric L400 PI），故各馬得分相近；真正可分辨嘅係上面 L600 原始速度。已驗證段速對排名影響極低，此分只作識別跑法，唔反映勝算"),
             )
         if key == "race_shape":
             # 跑法資訊合併成一條（標籤＋信心），唔再分開出 跑法信心／style evidence／預計走法；
@@ -1584,7 +1606,6 @@ class RacingEngine:
                 ("場地/路線紀錄", str(self.data.get("track_record_line") or "").strip()),
                 ("地狀分拆", str(self.data.get("going_stats_line") or "").strip()),
                 ("今場掛牌", self._today_going()),
-                ("Track family", self._track_family_confidence_brief()),
                 ("濕地血統", self._wet_bloodline_signal()),
                 ("Meeting bias", self._meeting_bias_brief()),
                 ("賽道幾何", self._track_geometry_brief()),
