@@ -502,59 +502,78 @@ PYTHONPATH=src python -m tennis_wc.cli generate-report --date 2026-05-08
 
 ## 12. Dashboard And Cloudflare Deploy
 
-repo root 有 wrapper：
+### 一句講晒：任何機、任何位置，都係 run 一個指令
 
 ```bash
 ./deploy.sh
 ```
 
-佢實際會轉去：
+**唔使理你而家喺 Google Drive 個 copy 定係本地 clone 度 run —— 兩邊都會正確發最新版。**
+唔使記路徑、唔使自己設環境變數。冇 memory 嘅 agent（例如 Codex）照跟呢句就得。
 
-`Horse_Racing_Dashboard/deploy.sh`
-
-用途：
-
-- 生成最新 dashboard snapshot
-- 打包 HKJC + AU 分析資料
-- 推送到 Cloudflare Pages
-
-如果只想 build snapshot 唔 deploy：
+只想 build snapshot、唔真係推上線：
 
 ```bash
 ./deploy.sh --build-only
 ```
 
-注意：
+### 背後點運作（點解唔會再發舊版）
 
-- `deploy.sh` 係 Bash script。
-- macOS 可直接用。
-- Windows 建議用 Git Bash 或 WSL 跑 deploy wrapper。
-- 如果只想喺 Windows 本機生成 snapshot，可直接用 Python：
+呢個 repo 曾經因為 **code + `.git` 放喺 Google Drive、多機同步** 而反覆出事：
+Drive 個 checkout 會 stranded 喺舊 commit，直接由嗰度 build 就會發**舊版 dashboard**
+（唔見咗 `評級矩陣` / `數據判讀`，投注掣變返「匯出」）。依家有 **三重防線**：
 
-```bash
-python Horse_Racing_Dashboard/generate_static.py
-```
+1. **Drive checkout 已退役 → 自動轉駁 proxy。**
+   Drive 上嘅 `Horse_Racing_Dashboard/deploy.sh`（同 root `./deploy.sh`）唔再自己 build，而係自動：
+   - 搵本機 off-Drive clone（預設 `~/dev/Kelvin-Agents`）；**冇就自動 `git clone`**（首次免手動）
+   - `git checkout main` + `git pull --ff-only origin main`（同步到最新）
+   - 用**本機自己嘅 Drive 資料路徑**做 data root（由 script 位置自動推算，用 `WONGCHOI_DATA_ROOT` 注入 —— 所以新機 clone 完即用，唔使預先設 `.wongchoi_data_root`）
+   - 交俾 off-Drive clone 果個有 guard 嘅 `deploy.sh`
 
-另外，HKJC / AU 主 orchestrator 成功完成後，依家預設會自動嘗試 Cloudflare deploy。你可以用以下方法停用：
+2. **Build guard（喺 off-Drive clone 個 deploy.sh 入面）。**
+   推上 Cloudflare 之前會驗證 build 有齊 `評級矩陣` / `數據判讀` / `匯入投注記錄`；
+   **冇齊就直接 abort，唔會誤發舊版**，並提示去 off-Drive clone 部署。`--build-only` 都會行呢個檢查。
+
+3. **Off-Drive clone 係唯一真正 build + 推送嘅地方**（`~/dev/Kelvin-Agents`），
+   果度 git 即時、唔會 hang，永遠對住 GitHub `main`。
+
+> 直接由 off-Drive clone deploy 亦得（其實 proxy 最後都係行呢句）：
+> ```bash
+> cd ~/dev/Kelvin-Agents && git checkout main && git pull && ./deploy.sh
+> ```
+
+### 喺一部新機首次 deploy —— 環境要求（proxy 冇能力自動裝，要人手備妥一次）
+
+proxy 可以自動 clone + pull + 揀正確資料根，但以下係作業系統／帳戶層面嘅嘢，**每部機做一次**：
+
+1. **GitHub 憑證** —— 私 repo，自動 `git clone` 要你已登入（如 `gh auth login`、SSH key、或 credential manager）。
+   自動 clone 失敗嘅話，proxy 會 `exit 1` 兼印手動 `git clone` 指令，跟住做一次就得。
+2. **Node.js + npx** —— 行 `wrangler` 用。
+3. **Cloudflare 認證**（推送嗰步先需要）：
+   - `wrangler login`（本機 session），或
+   - 設 `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`
+   - 詳見 [CLOUDFLARE_DEPLOYMENT.md](CLOUDFLARE_DEPLOYMENT.md)
+4. **Windows**：一定要用 **Git Bash 或 WSL** 行 `deploy.sh`（Bash script，cmd/PowerShell 行唔到）。
+   （只想本機生成 snapshot 唔推送，可直接 `python Horse_Racing_Dashboard/generate_static.py`。）
+
+### 可調環境變數（通常唔使郁）
+
+| 變數 | 用途 | 預設 |
+|------|------|------|
+| `WONGCHOI_OFFDRIVE_CLONE` | off-Drive clone 路徑 | `~/dev/Kelvin-Agents` |
+| `WONGCHOI_REPO_URL` | 自動 clone 用嘅 repo 網址 | `https://github.com/Kelvin1761/Kelvin-Agents.git` |
+| `WONGCHOI_DATA_ROOT` | 資料根（proxy 會自動注入本機 Drive 路徑；手動 deploy 先要自己設） | 由 proxy 推算 |
+| `WC_CLOUDFLARE_PAGES_PROJECT` | Cloudflare Pages project 名 | `wongchoi-dashboard` |
+
+### 自動 deploy（orchestrator 跑完之後）
+
+HKJC / AU 主 orchestrator 成功完成後，預設會自動嘗試 Cloudflare deploy（一樣經上面條 proxy）。想停用：
 
 - command flag：`--skip-cloudflare-deploy`
 - env var：`WC_DISABLE_POST_SUCCESS_DEPLOY=1`
 
-如果新用戶只係想先跑分析，呢一節可以之後先睇。
-
-### Cloudflare setup guide
-
-如果要喺另一部機 deploy，請再讀：
-
-- [CLOUDFLARE_DEPLOYMENT.md](CLOUDFLARE_DEPLOYMENT.md)
-
-重點包括：
-
-- `Node.js` / `npx`
-- `wrangler` login 或 token auth
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
-- `WC_CLOUDFLARE_PAGES_PROJECT`
+> ⚠️ **切記：唔好喺 Google Drive 個 copy 度自己改 `deploy.sh` 或者繞過 proxy 直接 build。**
+> 一律 run `./deploy.sh`，等 proxy + guard 保護你。真正發佈只可以由 off-Drive clone 出。
 
 ## 13. Troubleshooting
 
