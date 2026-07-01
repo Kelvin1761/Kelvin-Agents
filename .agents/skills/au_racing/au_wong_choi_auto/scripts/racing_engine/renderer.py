@@ -7,7 +7,8 @@ import re
 from pathlib import Path
 
 from hidden_signal_rescue import apply_report_only_hidden_signal
-from scoring import clip_score
+from scoring import clip_score, score_band
+from matrix_mapper import MATRIX_FORMULAS
 
 
 ABILITY_LABEL = "綜合戰力分"
@@ -280,6 +281,66 @@ def _panorama(race, verdict, horses):
     ])
 
 
+_BAND_WORD = {"✅✅": "很強", "✅": "偏強", "➖": "中性", "❌": "偏弱", "❌❌": "很弱"}
+
+
+def _band_label(score):
+    b = score_band(score)
+    return f"{b} {_BAND_WORD.get(b, '')}".strip()
+
+
+def _matrix_composition_line(key, auto):
+    """顯示維度分點計出嚟：sub分 × 權重 ＋ … ＝ 維度分。直接答到『點解係呢個分』。"""
+    comps = MATRIX_FORMULAS.get(key)
+    if not comps:
+        return ""
+    fs = auto.get("feature_scores", {})
+    parts = [f"{FEATURE_LABELS.get(n, n)} {clip_score(fs.get(n, 60)):.0f} ×{w*100:.0f}%" for n, w in comps]
+    total = float(auto.get("matrix_scores", {}).get(key, 60))
+    return " ＋ ".join(parts) + f" ＝ {total:.1f}"
+
+
+def _clean_subscore_note(note):
+    """去掉 sub分 note 尾巴重覆嘅自述分數（個分我哋已經喺前面顯示）。
+    只剝走最尾一段（要有分隔符 boundary，唔可以跨過逗號食埋真正內容）。
+    兩種格式：『…跑法穩定性 93.0 分。』同『…近績分 54.2』。"""
+    note = str(note or "").strip().rstrip("。 ")
+    note = re.sub(r"[，,、；;。]\s*[^，,、；;。]*?\d+(?:\.\d+)?\s*分。?\s*$", "", note)   # 「…, X 93.0 分」
+    note = re.sub(r"[，,、；;。]\s*[^，,、；;。]*?分\s*\d+(?:\.\d+)?。?\s*$", "", note)    # 「…, 近績分 54.2」
+    return note.strip(" ，,、；;。")
+
+
+def _matrix_subscore_lines(key, auto):
+    """每個 sub分點計出嚟：用 leaf scorer 自己嘅 note 解釋（答到『點解近績分 54』）。"""
+    comps = MATRIX_FORMULAS.get(key) or []
+    fs = auto.get("feature_scores", {})
+    notes = auto.get("feature_notes", {})
+    out = []
+    for name, _w in comps:
+        v = clip_score(fs.get(name, 60))
+        label = FEATURE_LABELS.get(name, name)
+        note = _clean_subscore_note(notes.get(name, ""))
+        out.append(f"{label} {v:.0f} ← {note}" if note else f"{label} {v:.0f}")
+    return out
+
+
+def _matrix_why(key, score, auto):
+    """一句點解：邊個 sub分帶動、邊個拖低、加權後落喺邊個 band。"""
+    comps = MATRIX_FORMULAS.get(key)
+    band = _band_label(score)
+    if not comps:
+        return f"加權後 {score:.1f} 分，屬{band}。"
+    fs = auto.get("feature_scores", {})
+    rows = [(FEATURE_LABELS.get(n, n), clip_score(fs.get(n, 60)), w) for n, w in comps]
+    driver = max(rows, key=lambda r: r[1] * r[2])
+    weakest = min(rows, key=lambda r: r[1])
+    bits = [f"主要由{driver[0]} {driver[1]:.0f}（佔比 {driver[2]*100:.0f}%）帶動"]
+    if weakest[0] != driver[0]:
+        verb = "拖低" if weakest[1] < 55 else "為相對最弱一環"
+        bits.append(f"{weakest[0]} {weakest[1]:.0f} {verb}")
+    return "；".join(bits) + f"；加權 {score:.1f} 分屬{band}。"
+
+
 def _render_horse_section(horse_num, horse, auto):
     jockey = _display_text(horse.get("jockey"))
     trainer = _display_text(horse.get("trainer"))
@@ -296,8 +357,6 @@ def _render_horse_section(horse_num, horse, auto):
         f"- **近績序列:** `{_display_text(data.get('recent_form') or horse.get('recent_form'))}`",
         f"- **狀態週期:** `{_humanize_text(horse.get('status_cycle')) or '-'}`",
         f"- **趨勢總評:** {_trend_summary(horse) or '-'}",
-        f"- **預計走法:** {_humanize_text(_tactical_position(horse)) or '-'}",
-        f"- **戰術劇本:** {_humanize_text(_tactical_scenario(horse)) or '-'}",
         "",
         "#### 📋 完整賽績檔案",
         *_complete_record_lines(data),
@@ -306,23 +365,28 @@ def _render_horse_section(horse_num, horse, auto):
         f"- {_render_core_logic(horse, auto)}",
         "",
         "#### 📊 7D 評分矩陣",
+        "> 每個維度：**評分構成**（點計出個分）→ **點解**（邊個 sub分帶動／拖低）→ **數據**（用到嘅原始資料）。",
     ]
     for key, label in MATRIX_LABELS.items():
-        score = auto.get("matrix_scores", {}).get(key, 60)
+        score = float(auto.get("matrix_scores", {}).get(key, 60))
         reason_bundle = auto.get("matrix_reasoning", {}).get(key, {})
-        reason = reason_bundle.get("text", "")
-        lines.append(f"- **{label}:** {score:.1f}")
-        lines.append(f"  - Python 判讀: {_humanize_text(reason)}")
+        lines.append("")
+        lines.append(f"##### {label}：{score:.1f} 分　{_band_label(score)}")
+        comp = _matrix_composition_line(key, auto)
+        if comp:
+            lines.append(f"  - **評分構成：** {comp}")
+            for sub in _matrix_subscore_lines(key, auto):
+                lines.append(f"    - {sub}")
+        lines.append(f"  - **點解：** {_matrix_why(key, score, auto)}")
         fact_lines = reason_bundle.get("anchors") or _matrix_fact_lines(key, horse, auto)
         if fact_lines:
-            lines.append(f"  - **資料錨點:** {fact_lines[0]}")
+            lines.append(f"  - **數據：** {fact_lines[0]}")
             for fact in fact_lines[1:]:
-                lines.append(f"  - {fact}")
-    # 加入 Python 計算透明度
+                lines.append(f"    - {fact}")
+    # Python 計算透明度：只保留加權總分一份；舊「矩陣計算全記錄」與佢重覆，已移除。
     grade_trans = auto.get("grade_transparency", {})
     grade_summary = grade_trans.get("summary", "") if isinstance(grade_trans, dict) else ""
-    core_trans = auto.get("core_logic_transparency", "")
-    
+
     if grade_summary:
         lines.extend([
             "",
@@ -330,12 +394,7 @@ def _render_horse_section(horse_num, horse, auto):
             "",
             grade_summary,
         ])
-    if core_trans:
-        lines.extend([
-            "",
-            core_trans,
-        ])
-    
+
     lines.extend([
         "",
         "#### 主要優勢",
@@ -949,19 +1008,14 @@ def _data_readout_lines(auto: dict) -> list[str]:
 
 
 def _render_core_logic(horse: dict, auto: dict) -> str:
+    # 核心分析 = 一句七維 framing（最強/最弱維度）+ 一句定位結論。
+    # 跑法／戰術劇本只喺「檔位形勢」7D 維度出一次，呢度唔再覆述，避免廢話。
     base = _humanize_text(str(auto.get("core_logic") or "").strip())
-    barrier = _display_text(horse.get("barrier"))
-    expected_position = _humanize_text(_tactical_position(horse))
-    scenario = _humanize_text(_tactical_scenario(horse))
     positioning = _horse_positioning(horse, auto)
     risk = _risk_summary(auto)
     pieces = []
     if base:
         pieces.append(base)
-    if expected_position not in {"", "-"}:
-        pieces.append(f"配合今次 {barrier} 檔，同埋預計以「{expected_position}」方式應戰，跑法上有相應劇本。")
-    if scenario not in {"", "-"}:
-        pieces.append(f"如果能夠照住呢個場面劇本落位，{scenario}")
     if positioning == "爭勝":
         pieces.append("整體屬於有條件主動爭勝嗰類。")
     elif positioning == "爭位":

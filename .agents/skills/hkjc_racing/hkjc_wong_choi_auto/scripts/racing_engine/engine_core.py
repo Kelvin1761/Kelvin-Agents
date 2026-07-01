@@ -423,7 +423,7 @@ class RacingEngine:
             trip_w = weights["sha_tin_trip_consumption"]
             score = clip_score(draw * draw_w + fit_score * fit_w + trip_score * trip_w)
             note = (
-                f"沙田 race-shape formula：檔位{draw:.1f} x{draw_w:.0%} + "
+                f"沙田檔位計法：檔位{draw:.1f} x{draw_w:.0%} + "
                 f"檔位走位匹配{fit_score:.1f} x{fit_w:.0%} + 近仗消耗{trip_score:.1f} x{trip_w:.0%}，"
                 f"檔位走位情境分{score:.1f}。{fit_note}{trip_note}"
             )
@@ -587,7 +587,7 @@ class RacingEngine:
             updated["consistency_score"] = clip_score(consistency_score)
             notes["consistency_score"] = self._append_note(
                 feature_notes.get("consistency_score"),
-                "已套用 CX01 consistency context，加入輸距權重、近期回暖/回落與 margin trend。",
+                "已再參考近期輸距同回暖/回落走勢，重新評估穩定性。",
             )
             sources["consistency_score"] = "cx01_consistency_context"
 
@@ -647,7 +647,7 @@ class RacingEngine:
 
         if not triggers:
             return updated, ""
-        note = "已套用 TH01 騎練先驗，上下文包含" + "、".join(dict.fromkeys(triggers)) + "。"
+        note = "已再參考" + "、".join(dict.fromkeys(triggers)) + "調整騎練分。"
         return updated, note
 
     def _apply_health_only_v2(self, base_score):
@@ -733,7 +733,7 @@ class RacingEngine:
         if "blank_days=3" in trackwork_health or "blank_days=4" in trackwork_health:
             score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["blank_days_small_pen"]
 
-        note = "已套用 TH01 健康上下文，綜合醫療、休賽、體重波幅與晨操旗標重算風險分。"
+        note = "已再綜合醫療紀錄、休賽日數、體重波幅同晨操訊號，重新評估風險分。"
         return clip_score(score), note
 
     def _candidate_consistency_shadow_score(self):
@@ -1026,7 +1026,7 @@ class RacingEngine:
                 
             raw_score = float(matrix_scores.get(key, 60))
             band = matrix_bands.get(key, score_band(raw_score))
-            score_lines.append(f"  - {label} [{role}]: {raw_score:.1f}分 -> {band}")
+            score_lines.append(f"  - {label}: {raw_score:.1f}分 -> {band}")
             
             if band in ("極強", "強"):
                 if role == "核心": core_strong += 1
@@ -1067,12 +1067,12 @@ class RacingEngine:
         lines = []
         for key, label, role in dims:
             if is_debut and key in ("sectional", "form_line"):
-                lines.append(f"  - {label} [{role}]: (初出馬豁免 - 權重 0.00)")
+                lines.append(f"  - {label}: (初出馬豁免 - 權重 0.00)")
                 continue
                 
             weight = active_weights.get(key, 0.0)
             score = matrix_scores.get(key, 60.0)
-            lines.append(f"  - {label} [{role}]: {score:.1f} x {weight:.2f}")
+            lines.append(f"  - {label}: {score:.1f} x {weight:.2f}")
             
         lines.append(f"  > **Final Ability Score**: {ability_score:.1f}")
         
@@ -1722,7 +1722,8 @@ class RacingEngine:
         if key == "form_score":
             if "No recent" in note or "Indeterminable" in note:
                 return "近績資料不足，近績分按中性處理。"
-            return "近績分由最近名次加權計算。"
+            # FormScorer now emits a specific Chinese note (finishes + top3/win counts) — pass through.
+            return note
         if key == "speed_score":
             if "Sectional data incomplete" in note:
                 return "賽績段速資料未完整，速度分按中性處理。"
@@ -2202,7 +2203,7 @@ class RacingEngine:
         variants = (
             "段速與場地適性未夠銳利，若步韻一快或者要靠衝刺補數，末段反應未算有十足把握。",
             "速度面仍有隱憂，一旦臨場要靠末段硬追，反應未必夠利。",
-            "段速輪廓未算 sharp，今場如果步速形勢變複雜，末段應對未必夠穩。",
+            "段速輪廓未算突出，今場如果步速形勢變複雜，末段應對未必夠穩。",
         )
         return variants[self._variant_seed() % len(variants)]
 
@@ -2537,7 +2538,7 @@ class RacingEngine:
         elif features.get("speed_score", 60) >= 68:
             speed = "近仗 L400、能量走勢同步速修正表現整體正面，基本速度感未有流失。"
         elif features.get("speed_score", 60) >= 62:
-            speed = "近仗段速輪廓尚算平穩，基本反應仍在，但未見特別 sharp 的加速訊號。"
+            speed = "近仗段速輪廓尚算平穩，基本反應仍在，但未見特別突出嘅加速訊號。"
         elif features.get("speed_score", 60) >= 60:
             speed = "近仗段速數據只屬中性，速度面未算失守，但亦未見明顯加分。"
         else:
@@ -2655,9 +2656,9 @@ class RacingEngine:
 
     def _describe_class_advantage_matrix(self, score, features, evidence):
         if features.get("class_score", 60) >= 70:
-            class_text = "班次 context 算穩，正式賽經驗、季內交代同評分底子都提供到支持。"
+            class_text = "班次背景算穩，正式賽經驗、季內交代同評分底子都提供到支持。"
         elif features.get("class_score", 60) < 60:
-            class_text = "班次 context 未算硬淨，實戰經驗或季內交代仍有缺口，級數面未見明顯著數。"
+            class_text = "班次背景未算硬淨，實戰經驗或季內交代仍有缺口，級數面未見明顯著數。"
         else:
             class_text = "班次層面大致中性，基本經驗有，但未形成鮮明級數優勢。"
         if features.get("weight_score", 60) >= 68:
@@ -2785,13 +2786,13 @@ class RacingEngine:
 
             if weight == 0.0:
                 tag = "初出馬豁免" if is_debut else "0% 權重（僅作風險參考）"
-                lines.append(f"  - {label} [{role}]: {raw_score:.1f}分 ({tag})")
+                lines.append(f"  - {label}: {raw_score:.1f}分 ({tag})")
                 continue
 
             # Build human-readable computation line
             pct = f"{weight * 100:.1f}%"
             lines.append(
-                f"  - {label} [{role}]: {raw_score:.1f}分 × {pct} = {contribution:.2f} → {band}"
+                f"  - {label}: {raw_score:.1f}分 × {pct} = {contribution:.2f} → {band}"
             )
         
         # Add health micro-adjustment note if applicable
@@ -2879,7 +2880,7 @@ class RacingEngine:
                 continue
             raw_score = float(matrix_scores.get(key, 60))
             band = matrix_bands.get(key, score_band(raw_score))
-            score_lines.append(f"  - {label} [{role}]: {raw_score:.1f}分 → {band}")
+            score_lines.append(f"  - {label}: {raw_score:.1f}分 → {band}")
             
             if band in ("✅✅", "✅"):
                 if role == "核心":

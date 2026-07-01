@@ -454,6 +454,7 @@ class RacingEngine:
             "matrix_scores": matrix_scores,
             "matrix_reasoning": matrix_reasoning,
             "feature_scores": {key: round(feature_scores[key], 2) for key in FEATURE_KEYS},
+            "feature_notes": {key: feature_notes.get(key, "") for key in FEATURE_KEYS},
             "core_logic": core_logic,
             "data_readout": self._data_readout(feature_scores, matrix_scores),
             "advantages": advantages,
@@ -1253,22 +1254,24 @@ class RacingEngine:
         engine = self._engine_distance_brief()
         breakdown = self._sectional_breakdown()
         trial_text = self._trial_summary_text()
-        trend_text = self._sectional_trend_brief()
         pf_text = self._latest_l600_rt_brief()
         latest_note = self._latest_official_note_brief()
-        
+
         if feature_scores["sectional_score"] >= 72:
             opener = "末段爆發力有實質數據支持，段速水準明顯高於同場平均值。"
         elif feature_scores["distance_score"] <= 56:
             opener = "段速指標暫時未算硬淨，關鍵在於今次路程投射能否如期落地。"
         else:
             opener = "段速線具備一定素材，但仍需配合路程性能及試閘走勢作進一步確認。"
-            
+
         middle_bits = []
         if engine:
             middle_bits.append(f"{engine}。")
-        if trend_text:
-            middle_bits.append(f"段速趨勢顯示 {trend_text}。")
+        # 只講走勢方向，唔再喺判讀度重印成串 PI（PI 數列已在資料錨點出一次）。
+        trends = self._sectional_trends()
+        pi_trend = self._clean_trend_label(trends.get("pi_trend") or trends.get("l400_trend"))
+        if pi_trend and pi_trend != "未明":
+            middle_bits.append(f"近段 PI 走勢{pi_trend}。")
         if pf_text:
             middle_bits.append(f"近期 PF 指標為 {pf_text}。")
         if trial_text:
@@ -1282,10 +1285,9 @@ class RacingEngine:
         style_conf = self._style_confidence() or "未明"
         style = self._running_style() or self._tactical_position_text() or "跑法未明"
         barrier = self.horse_data.get("barrier")
-        tactical = self._tactical_scenario_text() or "戰術劇本未算鮮明"
         geometry_fit = self._track_fit_brief()
         shape_brief = self._recent_settled_pattern_brief()
-        
+
         opener = f"排 {barrier} 檔配合預期「{style}」跑法"
         if shape_brief:
             opener += f"（近仗 settled pattern 顯示 {shape_brief}），"
@@ -1302,9 +1304,7 @@ class RacingEngine:
         parts = [opener + assessment]
         if geometry_fit:
             parts.append(f"賽道幾何配套：{geometry_fit}。")
-        if tactical and tactical != "戰術劇本未算鮮明":
-            parts.append(f"預期劇本：{tactical}。")
-            
+        # 戰術劇本只喺資料錨點出一次（已標明係模板），判讀唔再覆述。
         return " ".join(parts)
 
     def _describe_jockey_trainer_matrix(self, score, feature_scores):
@@ -1532,25 +1532,23 @@ class RacingEngine:
                 ("試閘交代", self._trial_summary_text()),
             )
         if key == "sectional":
+            # AU 無 numeric L400 PI，段速分多數觸底 35.8（一致偏弱）；已驗證段速對排名
+            # 影響極低，所以呢度只作識別用，並去掉重覆 PI 列印（PI 走勢一條就夠）。
             return self._anchor_lines(
-                ("Section內部權重", "段速 62% / 路程 23% / 試閘 15%"),
-                ("段速計分模型", "Zero-based (L400 PI + L600 Peak)"),
                 ("累積段速總分", f"{self._sectional_breakdown()['score']:.1f} / 100"),
                 ("計分明細", self._sectional_breakdown()['notes']),
-                ("段速趨勢", self._sectional_trend_brief()),
-                ("L400", self._l400_text()),
-                ("上仗註腳", self._latest_official_note_brief()),
+                ("近段 PI 走勢", self._sectional_trend_brief()),
                 ("試閘交代", self._trial_summary_text()),
+                ("說明", "段速數據對排名影響極低（已驗證）；此分只作識別跑法，唔反映勝算"),
             )
         if key == "race_shape":
+            # 跑法資訊合併成一條（標籤＋信心），唔再分開出 跑法信心／style evidence／預計走法；
+            # 戰術劇本明確標示係「跑法×檔位模板」，唔係實測 trip。
             return self._anchor_lines(
-                ("跑法信心", self._style_confidence()),
-                ("style evidence", self._style_evidence_for_horse()),
+                ("預期跑法", self._run_style_brief()),
                 ("近仗 Settled Pattern", self._recent_settled_pattern_brief()),
-                ("預計走法", self._running_style() or self._tactical_position_text()),
-                ("檔位", str(self.horse_data.get("barrier") or "").strip()),
                 ("賽道幾何配套", self._track_fit_brief()),
-                ("戰術劇本", self._tactical_scenario_text()),
+                ("戰術劇本（跑法×檔位推演·非實測）", self._tactical_scenario_text()),
             )
         if key == "jockey_trainer":
             return self._anchor_lines(
@@ -1692,7 +1690,8 @@ class RacingEngine:
             contribution = round(raw_score * weight, 2)
             weighted_sum += contribution
             pct = f"{weight * 100:.1f}%"
-            lines.append(f"  - {label} [{role}]: {raw_score:.1f}分 × {pct} = {contribution:.2f} → {band}")
+            # 拿走 [核心/半核心/輔助] 標籤：權重百分比已經表達咗重要性，標籤多餘。
+            lines.append(f"  - {label}：{raw_score:.1f}分 × 權重 {pct} = {contribution:.2f} → {band}")
         lines_text = "\n".join(lines)
         summary = (
             f"**🧮 7D 加權總分計算 (Python Auto Clean 7D):**\n\n"
@@ -1969,8 +1968,11 @@ class RacingEngine:
         if self._sectional_trend_cache is not None:
             return self._sectional_trend_cache
         block = str(self.data.get("sectional_trend_line") or "")
-        pi_line = re.search(r"PI \(定位→終點\):\s*([^\n]+?)\s*→\s*趨勢:\s*([^\n]+)", block)
-        l400_line = re.search(r"L400 PI \(400m→終點\):\s*([^\n]+?)\s*→\s*趨勢:\s*([^\n]+)", block)
+        # FIX (2026-07-01): pi 趨勢標籤過去會貪婪 bleed 埋後面成條 "- L400 PI …→ 趨勢: X"，
+        # 令 _run_style_score (:`"穩定" in pi_trend`) 實際 match 緊 L400 尾巴而唔係真 PI 趨勢。
+        # 喺撞到「- L400」/「；」/行尾前停低，pi_trend 先係正確嘅定位→終點趨勢。
+        pi_line = re.search(r"PI \(定位→終點\):\s*([^\n]+?)\s*→\s*趨勢:\s*([^\n]+?)(?=\s*[-–—]\s*L400|；|$)", block)
+        l400_line = re.search(r"L400 PI \(400m→終點\):\s*([^\n]+?)\s*→\s*趨勢:\s*([^\n]+?)(?=\s*；|$)", block)
         self._sectional_trend_cache = {
             "pi_values": parse_numbers(pi_line.group(1)) if pi_line else [],
             "pi_trend": pi_line.group(2).strip() if pi_line else "",
@@ -2640,6 +2642,20 @@ class RacingEngine:
         match = re.search(rf"#{re.escape(horse_num)}\s+([^;]+)", evidence)
         return match.group(1).strip() if match else ""
 
+    def _run_style_brief(self):
+        """單一 canonical 跑法顯示：clean 標籤（前置／守好位／守中／後上）＋信心。
+        取代舊有分散嘅 跑法信心 / style evidence / 預計走法 三條重覆欄位，
+        亦統一咗之前三個函數各自俾出唔同字串嘅問題。"""
+        ps = self._predicted_style()
+        if ps and ps.get("label"):
+            label, conf = ps["label"], (ps.get("conf") or "")
+        else:
+            label = (self._running_style() or self._tactical_position_text() or "").strip()
+            conf = re.sub(r"^.*?[:：]", "", self._style_confidence()).strip()
+        if not label:
+            return ""
+        return f"{label}（信心{conf}）" if conf else label
+
     def _formguide_shape_stats(self):
         if self._formguide_shape_cache is not None:
             return self._formguide_shape_cache
@@ -2907,14 +2923,21 @@ class RacingEngine:
             parts.append(f"路程信心 {confidence_match.group(1).strip()}")
         return "；".join(parts) if parts else line
 
+    @staticmethod
+    def _clean_trend_label(raw):
+        # 顯示用：剝走 bleed 入趨勢標籤嘅 L400 子句 / 重覆「→ 趨勢:」，scoring cache 不受影響。
+        first = re.split(r"\s*[-–—]\s*L400|L400 PI|；", str(raw or ""))[0]
+        return first.strip() or "未明"
+
     def _sectional_trend_brief(self):
+        # 只出一條 PI 序列（定位→終點）＋趨勢；舊版同時印 PI 同 L400 PI 兩條近乎一樣嘅序列，重覆。
         trends = self._sectional_trends()
-        bits = []
-        if trends.get("pi_values"):
-            bits.append(f"PI {', '.join(str(int(v)) if float(v).is_integer() else str(v) for v in trends['pi_values'])}（{trends.get('pi_trend') or '未明'}）")
-        if trends.get("l400_values"):
-            bits.append(f"L400 PI {', '.join(str(int(v)) if float(v).is_integer() else str(v) for v in trends['l400_values'])}（{trends.get('l400_trend') or '未明'}）")
-        return "；".join(bits)
+        values = trends.get("pi_values") or trends.get("l400_values")
+        raw = trends.get("pi_trend") if trends.get("pi_values") else trends.get("l400_trend")
+        if not values:
+            return ""
+        seq = ", ".join(str(int(v)) if float(v).is_integer() else str(v) for v in values)
+        return f"PI {seq}（{self._clean_trend_label(raw)}）"
 
     def _formline_followup_brief(self):
         rows = self._formline_rows()
@@ -3427,7 +3450,26 @@ class RacingEngine:
         if ("無資料" in text or "未有出賽" in text) and not self._formline_rows():
             score = min(score, 60.0)
 
-        return clip_score(score), f"賽績線級別與對手後續升降班交叉評為 {clip_score(score):.1f} 分。", "formline+opponent_followups+class_followups+headwinner"
+        signal_zh = {"elite": "頂級", "strong": "強", "medium_strong": "中強", "medium": "中等",
+                     "medium_weak": "中偏弱", "weak": "弱", "neutral": "中性", "unknown": "資料不足"}
+        notes = [f"賽績線級別{signal_zh.get(signal, signal)}"]
+        if future_win_hits:
+            notes.append(f"曾交手對手其後有 {future_win_hits} 場勝出")
+        if strong_hits:
+            notes.append(f"曾與 {strong_hits} 隻強組對手交手")
+        if followups["higher"] > 0:
+            notes.append(f"{followups['higher']} 匹對手其後升班仍能再贏（含金量高）")
+        if followups["same"] >= 2:
+            notes.append(f"{followups['same']} 匹對手其後同班再贏")
+        if followups["lower"] >= 3 and followups["higher"] == 0:
+            notes.append("對手多數要降班先再贏，含金量有限")
+        if headwinner and any(token in headwinner for token in ("頭馬", "亞軍")):
+            notes.append(f"曾與 {headwinner} 直接交手")
+        if has_strong_row:
+            notes.append("賽績線含強組往績")
+        elif has_weak_row and not has_medium_row:
+            notes.append("賽績線多屬弱組")
+        return clip_score(score), f"{'；'.join(notes)}，賽績線分 {clip_score(score):.1f}。", "formline+opponent_followups+class_followups+headwinner"
 
     def _consistency_score(self):
         w = CONSISTENCY_MICRO_WEIGHTS
@@ -3690,13 +3732,13 @@ class RacingEngine:
             except (TypeError, ValueError):
                 pass
         # 預測跑法 — tactical position read (前置／守好位／守中／後上). Reference only:
-        # explicitly NOT in the rating matrix; the WHY comes from the race scenario.
+        # explicitly NOT in the rating matrix. 戰術劇本（race scenario）只喺「檔位形勢」
+        # 7D 維度出一次，呢度唔再塞落 reason，避免同一段劇本重覆四次。
         ps = self._predicted_style()
         if ps:
-            why = [b for b in (ps["why"],) if b]
             add("預測跑法", ps["label"],
                 f"信心{ps['conf']}" if ps["conf"] else "",
-                band="➖", reason="；".join(why))
+                band="➖")
         counts = self._formline_followup_counts()
         opp = self._formline_headwinner() if hasattr(self, "_formline_headwinner") else ""
         validated = counts["higher"] + counts["same"] + counts["lower"]

@@ -34,8 +34,7 @@ MATRIX_FORMULAS = {
         ("weight_score", 0.141),
     ),
     "track": (
-        ("track_score", 0.82),
-        ("health_score", 0.18),
+        ("track_score", 1.0),
     ),
     "form_line": (
         ("formline_score", 0.78),
