@@ -30,6 +30,7 @@ FEATURE_LABELS = {
     "consistency_score": "穩定性分",
     "health_score": "備戰完整度分",
     "confidence_score": "信心分",
+    "pace_figure_score": "段速實速分",
 }
 
 MATRIX_LABELS = {
@@ -40,6 +41,7 @@ MATRIX_LABELS = {
     "class_weight": "級數與負重",
     "track": "場地適性",
     "form_line": "賽績線",
+    "pace_figure": "段速實速（實測L600）",
 }
 
 # 同一 sub 分喺唔同維度可用唔同名，避免「同一個場地分出現兩次」嘅重覆錯覺。

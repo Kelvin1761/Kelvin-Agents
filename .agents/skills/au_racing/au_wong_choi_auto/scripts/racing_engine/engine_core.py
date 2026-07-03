@@ -342,6 +342,7 @@ class RacingEngine:
             "consistency_score": self._consistency_score,
             "health_score": self._health_score,
             "confidence_score": self._confidence_score,
+            "pace_figure_score": self._pace_figure_score,
         }.items():
             score, note, source = func()
             feature_scores[name] = clip_score(score)
@@ -736,7 +737,7 @@ class RacingEngine:
         score = breakdown["score"]
         notes = []
         notes.append(
-            "段速採用 Zero-based (L400 PI + L600 Peak) 模型累積計分"
+            "段速以 L400 PI 同 L600 段速峰值為基礎，由零分起計"
         )
         if breakdown.get("notes") and breakdown["notes"] != "-":
             notes.append(breakdown["notes"])
@@ -812,7 +813,15 @@ class RacingEngine:
                 # Dampen the modifier slightly to avoid over-punishing wide draws in tiny samples
                 modifier = max(w.get("modifier_cap_min", -6.0), min(w.get("modifier_cap_max", 6.0), modifier))
                 score += modifier
-                notes.append(f"檔位 {int(barrier)} ({bucket}) 據 {source_level} 統計勝率為 {win_rate*100:.1f}% (基準 {expected_wr*100:.1f}%)")
+                # 內部 bucket/f_cat 係 lookup key（"inside"/"field_1_8" 等），唔應該直
+                # 接印出嚟畀人睇 —— 之前呢句會將英文 key 貼硬入中文句子。呢度加返中文
+                # 顯示名，內部 lookup 邏輯（matrix keys）完全冇改。
+                bucket_zh = {"inside": "內檔", "middle": "中檔", "outside": "外檔", "wide": "大外檔"}.get(bucket, bucket)
+                source_level_zh = re.sub(r"field_(\d+)_(\d+|plus)",
+                                          lambda m: (f"{m.group(1)}-{m.group(2)}騎陣容" if m.group(2) != "plus"
+                                                     else f"{m.group(1)}騎以上陣容"),
+                                          source_level)
+                notes.append(f"檔位 {int(barrier)}（{bucket_zh}）據 {source_level_zh} 統計勝率為 {win_rate*100:.1f}%（基準 {expected_wr*100:.1f}%）")
                 if modifier > 2:
                     notes.append("排位具統計優勢")
                 elif modifier < -2:
@@ -1105,7 +1114,7 @@ class RacingEngine:
                 notes.append("回配熟手騎師")
         if status_cycle in {"First-up", "久休復出"} and stage_stats["first_up"]["places"] > 0:
             score += 2
-            notes.append("過往 fresh run 有基本交代")
+            notes.append("過往首仗上陣有基本交代")
         if status_cycle in {"Second-up", "二出"} and stage_stats["second_up"]["places"] > 0:
             score += 2
             notes.append("二出歷史有承接")
@@ -1122,7 +1131,7 @@ class RacingEngine:
             score -= 5
             notes.append("馬房資料不完整")
         note = "；".join(notes) if notes else "暫未見特別鮮明嘅人馬部署加成"
-        return score, f"{note}，並結合 stage stats / jockey history / 試閘連貫性 / track combo 消化後，人馬配合評為 {clip_score(score):.1f} 分。", "jockey_trainer_fit+stage_stats+trial_continuity+formguide_jockey_history+track_combo_stats"
+        return score, f"{note}，並結合步速統計、人馬往績、試閘連貫性、同場配搭往績消化後，人馬配合評為 {clip_score(score):.1f} 分。", "jockey_trainer_fit+stage_stats+trial_continuity+formguide_jockey_history+track_combo_stats"
 
     def _matrix_reasoning(self, matrix_scores, feature_scores, feature_notes):
         return {
@@ -1228,7 +1237,7 @@ class RacingEngine:
         forgiveness = self._forgiveness_brief()
         repeatability = self._repeatability_brief()
         if self._career_starts() == 0:
-            opener = "此駒正式賽樣本仍薄，呢一格主要靠備戰完整度、試閘交代同狀態週期去判 ready 程度。"
+            opener = "此駒正式賽樣本仍薄，呢一格主要靠備戰完整度、試閘交代同狀態週期去判備戰程度。"
         elif recent:
             opener = f"近績 {recent} 配合 {status} 階段，走勢大致呈「{trend}」。"
         else:
@@ -1486,10 +1495,14 @@ class RacingEngine:
                 details.append("同場已有多次經驗，但成績暫未見突破。")
             
         if going != "掛牌未明":
+            # 同一維度其他句子已用「重地/軟地」講地狀，呢度亦跟返呢個講法，唔好一時中一時英文。
+            going_zh = re.sub(r"\b(Good|Soft|Heavy)\b",
+                               lambda m: {"Good": "好地", "Soft": "軟地", "Heavy": "重地"}[m.group(1)],
+                               going, flags=re.I)
             if going_sample.get("starts", 0) > 0 and going_sample.get("places", 0) > 0:
-                details.append(f"今場 {going} 掛牌屬射程範圍。")
+                details.append(f"今場{going_zh}掛牌屬射程範圍。")
             elif going_sample.get("starts", 0) >= 2:
-                details.append(f"今場 {going} 掛牌暫未見突出成績。")
+                details.append(f"今場{going_zh}掛牌暫未見突出成績。")
 
         if wet_state in {"soft7plus", "heavy"} and not self._has_verified_wet_place():
             details.append("缺乏爛地實績證明，場地風險偏高。")
@@ -1586,7 +1599,7 @@ class RacingEngine:
                 ("已知合作騎師", self._known_jockeys_brief()),
                 ("試閘交代", self._trial_summary_text()),
                 ("狀態週期", self._status_cycle_display()),
-                ("stage stats", str(self.data.get("stage_stats_line") or "").strip()),
+                ("首次/二次上陣往績", str(self.data.get("stage_stats_line") or "").strip()),
             )
         if key == "class_weight":
             return self._anchor_lines(
@@ -1607,7 +1620,7 @@ class RacingEngine:
                 ("地狀分拆", str(self.data.get("going_stats_line") or "").strip()),
                 ("今場掛牌", self._today_going()),
                 ("濕地血統", self._wet_bloodline_signal()),
-                ("Meeting bias", self._meeting_bias_brief()),
+                ("今日場地偏差", self._meeting_bias_brief()),
                 ("賽道幾何", self._track_geometry_brief()),
                 ("路段提示", self._track_distance_note_brief()),
                 ("跑法/檔位配套", self._track_fit_brief()),
@@ -1701,8 +1714,9 @@ class RacingEngine:
             "class_weight": ("級數與負重", "輔助"),
             "track": ("場地適性", "輔助"),
             "form_line": ("賽績線", "輔助"),
+            "pace_figure": ("段速實速（實測L600）", "輔助"),
         }
-        dims = [(key, *roles[key], float(MATRIX_WEIGHTS.get(key, 0.0))) for key in MATRIX_WEIGHTS]
+        dims = [(key, *roles.get(key, (key, "輔助")), float(MATRIX_WEIGHTS.get(key, 0.0))) for key in MATRIX_WEIGHTS]
         lines = []
         weighted_sum = 0.0
         for key, label, role, weight in dims:
@@ -2937,7 +2951,12 @@ class RacingEngine:
         confidence_match = re.search(r"信心:\s*([^|]+)", line)
         parts = []
         if engine_match:
-            parts.append(f"引擎輪廓 {engine_match.group(1).strip()}")
+            engine_raw = engine_match.group(1).strip()
+            # engine_raw 通常係「Type A/B (混合型)」— 內部代碼 + 已有嘅中文譯名同時存在；
+            # 淨係留中文譯名，內部代碼對用戶冇意思。冇括號就照用原文（已經係中文）。
+            zh_match = re.search(r"（([^）]+)）|\(([^)]+)\)", engine_raw)
+            engine_label = (zh_match.group(1) or zh_match.group(2)) if zh_match else engine_raw
+            parts.append(f"引擎輪廓 {engine_label}")
         if distance_match:
             parts.append(f"今次 {distance_match.group(1)} 以上 {distance_match.group(2).strip()} 系列作投射")
         if confidence_match:
@@ -3233,6 +3252,28 @@ class RacingEngine:
 
         score = clip_score(60.0 + adjustment)
         return score, f"{'；'.join(notes)}，Rating 分 {score:.1f}。", "racecard_rating+field_relative"
+
+    def _pace_figure_score(self):
+        """8th dimension 實測段速: field-relative racenet L600-vs-benchmark.
+        Lower l600_delta (faster than the race benchmark) → higher score. Neutral
+        60 when the runner has no PF data or the field has <3 with data (→ this
+        dimension is rank-neutral on no-PF races). scale 20 / weight 0.05 reproduce
+        the validated backtest config. See scoring.MATRIX_WEIGHTS note."""
+        pf_agg = (self.data.get("pf_metrics") or {}).get("pf_aggregates") or {}
+        value = pf_agg.get("l600_delta_avg")
+        field = self._field_summary()
+        count = int(field.get("l600_delta_field_count") or 0)
+        if value is None or count < 3:
+            return 60, "無實測段速數據（racenet PuntingForm 未覆蓋此馬近績），段速實速分中性 60。", "missing_neutral"
+        mean = parse_float(field.get("l600_delta_field_mean"))
+        stdev = parse_float(field.get("l600_delta_field_stdev")) or 0.0
+        if mean is None or stdev <= 0.0:
+            return 60, "同場實測段速無有效分散，段速實速分中性處理。", "no_spread"
+        z = (float(value) - mean) / stdev
+        score = clip_score(60 - z * 20.0)  # faster-than-benchmark (negative delta/z) → higher
+        note = (f"實測 L600 對基準差 {float(value):+.2f}s（場均 {mean:+.2f}s），"
+                f"場內 z={z:+.2f} → 段速實速分 {score:.1f}（愈快愈高）。")
+        return score, note, "pf_l600_delta_field_relative"
 
     def _is_wfa_or_sw_race(self):
         text = self._race_class_text().lower()

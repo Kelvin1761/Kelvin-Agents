@@ -3,9 +3,17 @@
 from __future__ import annotations
 import re
 
-FEATURE_KEYS = ("form_score","trial_score","sectional_score","pace_map_score","jockey_score","trainer_score","jockey_horse_fit_score","class_score","rating_score","weight_score","distance_score","track_score","formline_score","consistency_score","health_score","confidence_score")
+FEATURE_KEYS = ("form_score","trial_score","sectional_score","pace_map_score","jockey_score","trainer_score","jockey_horse_fit_score","class_score","rating_score","weight_score","distance_score","track_score","formline_score","consistency_score","health_score","confidence_score","pace_figure_score")
 
-MATRIX_WEIGHTS = {"stability":0.330,"sectional":0.105,"race_shape":0.234,"jockey_trainer":0.214,"class_weight":0.050,"track":0.067,"form_line":0.000}
+# pace_figure = 8th dimension: field-relative L600-vs-benchmark ("實測段速") from
+# racenet PuntingForm. Added 2026-07-02 at weight 0.05 (existing 7 dims ×0.95, sum
+# stays 1.0) — reproduces the validated backtest config sep_dim(l600_delta, w=0.05,
+# scale20). Neutral 60 where PF data absent → rank-neutral on no-PF races. Phase-1
+# AUC 0.60 (vs old sectional 0.545); Phase-2 in-sample (152 races) leans Good+Pass
+# +2pp (P>0=69%) with a confirmed box4 −3.3pp trade the user accepted. NOT yet
+# walk-forward-confirmed on a large sample — revert to the 7-key dict (drop
+# pace_figure, restore 0.330/0.105/0.234/0.214/0.050/0.067/0.000) to disable.
+MATRIX_WEIGHTS = {"stability":0.3135,"sectional":0.09975,"race_shape":0.2223,"jockey_trainer":0.2033,"class_weight":0.0475,"track":0.06365,"form_line":0.000,"pace_figure":0.050}
 _WEIGHT_FLOOR = {"stability":0.10}
 _WEIGHT_CEILING = {"class_weight":0.15,"track":0.17}
 SOFT_RACE_SHAPE_SCALE = 1.0

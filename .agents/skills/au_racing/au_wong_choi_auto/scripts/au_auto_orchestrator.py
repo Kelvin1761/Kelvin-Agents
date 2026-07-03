@@ -108,6 +108,7 @@ def _logic_sort_key(path: Path):
 def _build_field_summary(horses):
     weights = []
     ratings = []
+    l600_deltas = []  # racenet PuntingForm L600-vs-benchmark, per runner (for pace_figure z)
     for horse in horses.values():
         try:
             weight = float(horse.get("weight"))
@@ -121,10 +122,25 @@ def _build_field_summary(horses):
             rating = None
         if rating is not None:
             ratings.append(rating)
+        pf_agg = ((horse.get("_data") or {}).get("pf_metrics") or {}).get("pf_aggregates") or {}
+        ld = pf_agg.get("l600_delta_avg")
+        if ld is not None:
+            try:
+                l600_deltas.append(float(ld))
+            except (TypeError, ValueError):
+                pass
     if not horses:
         return {}
     ratings_sorted = sorted(ratings, reverse=True)
+    l600_mean = (sum(l600_deltas) / len(l600_deltas)) if l600_deltas else 0.0
+    l600_stdev = (
+        (sum((v - l600_mean) ** 2 for v in l600_deltas) / len(l600_deltas)) ** 0.5
+        if len(l600_deltas) >= 2 else 0.0
+    )
     return {
+        "l600_delta_field_count": len(l600_deltas),
+        "l600_delta_field_mean": l600_mean,
+        "l600_delta_field_stdev": l600_stdev,
         "count": len(horses),
         "min_weight": min(weights) if weights else 0.0,
         "max_weight": max(weights) if weights else 0.0,
