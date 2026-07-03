@@ -1919,12 +1919,59 @@ class RacingEngine:
 
 
 
+    def _formline_proximity_note(self):
+        """Display-only. Surfaces the strongest 'ran CLOSE to a rival who later
+        validated' evidence from formline_table — the genuinely predictive angle
+        (proximity to validated strong-group rivals) that the formline STRENGTH
+        SCORE ignores (it only counts opponents who later won, not how close the
+        horse finished to them). Purely narrative; does not affect any score."""
+        table = self._value("formline_table")
+        if not isinstance(table, list):
+            return ""
+        STRONG = ("超強組", "強組")
+        best = None
+        for row in table:
+            if not isinstance(row, dict):
+                continue
+            strength = str(row.get("strength") or "")
+            if not any(s in strength for s in STRONG):
+                continue
+            m = re.match(r"\s*(\d+)", str(row.get("my_finish") or ""))
+            if not m:
+                continue
+            fin = int(m.group(1))
+            if fin > 3:  # only genuine "ran close" evidence
+                continue
+            perf = str(row.get("next_performance") or "")
+            wm = re.search(r"(\d+)\s*勝", perf)
+            wins = int(wm.group(1)) if wm else 0
+            if wins < 1:  # rival must have validated the form later
+                continue
+            opp = re.sub(r"^\[\d+\]\s*", "", str(row.get("opponents") or "").split(",")[0])
+            opp = opp.replace("(頭馬)", "").strip()
+            next_cls = "／".join(str(row.get("next_class") or "").split())
+            sm = re.search(r"出\s*(\d+)\s*次", perf)
+            starts = int(sm.group(1)) if sm else 0
+            grp = "超強組" if "超強組" in strength else "強組"
+            key = (1 if grp == "超強組" else 0, -fin, wins)
+            phrase = f"當時喺{grp}賽事以第{fin}名貼近對手「{opp}」"
+            if next_cls and next_cls != "-" and starts:
+                phrase += f"，該對手其後於{next_cls}出賽{starts}次贏{wins}場"
+            phrase += "，證明貼得到呢類已兌現嘅對手"
+            if best is None or key > best[0]:
+                best = (key, phrase)
+        return best[1] if best else ""
+
     def _formline_opponent_highlight(self):
         context_parts = []
         formline_table = self._value("formline_table")
         recent_6_detail = self._value("recent_6_detail") or str(self.horse_data.get("last_6_finishes") or "")
-        
-        if isinstance(formline_table, list) and len(formline_table) > 0:
+
+        proximity = self._formline_proximity_note()
+        if proximity:
+            context_parts.append(proximity)
+
+        if not proximity and isinstance(formline_table, list) and len(formline_table) > 0:
             valid_opponents = [row for row in formline_table if row.get('opponents', '未知') not in ('未知', '賽果查詢失敗')]
             if valid_opponents:
                 best_opp = valid_opponents[0]
