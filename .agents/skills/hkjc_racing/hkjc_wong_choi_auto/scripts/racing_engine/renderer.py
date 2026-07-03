@@ -47,6 +47,14 @@ MATRIX_ROLES = {
 }
 
 
+BAND_LABELS = {
+    "✅✅": "極強",
+    "✅": "正面",
+    "➖": "中性",
+    "❌": "偏弱",
+    "❌❌": "極弱",
+}
+
 PICK_LABELS = {
     "MODEL_TOP_PICK": "模型首選",
     "WATCH": "觀望",
@@ -604,16 +612,25 @@ def _matrix_lines(horse: dict, auto: dict) -> list[str]:
             else:
                 text = f"{label} 暫缺可用分數；相關來源不足，以中性處理。"
         component_line = _matrix_component_line(components)
-        lines.extend([
-            f"##### {label} [{MATRIX_ROLES[key]}]: `{float(score):.1f}分`" if isinstance(score, (int, float)) else f"##### {label} [{MATRIX_ROLES[key]}]: `N/A`",
-            f"  - **評分構成:** {component_line}",
-            f"  - **Python 判讀:** {_sanitize_text(text)}",
-        ])
+        if isinstance(score, (int, float)):
+            band = BAND_LABELS.get(matrix.get(key, "➖"), "")
+            header = f"##### {label}：`{float(score):.1f}分`　{matrix.get(key, '')} {band}".rstrip()
+        else:
+            header = f"##### {label}：`N/A`"
+        lines.append(header)
+        lines.append(f"  - **評分構成:** {component_line}")
+        # 逐個 sub分點解：用 leaf scorer 自己嘅 note 解釋『點解係呢個分』。
+        for comp in components:
+            clbl = comp.get("label", "分項")
+            csc = float(comp.get("score", 60))
+            cnote = _clean_subscore_note(comp.get("note", ""))
+            lines.append(f"    - {clbl} {csc:.0f} ← {cnote}" if cnote else f"    - {clbl} {csc:.0f}")
+        lines.append(f"  - **點解:** {_sanitize_text(text)}")
         fact_lines = _matrix_fact_lines(key, horse)
         if fact_lines:
-            lines.append(f"  - **資料錨點:** {fact_lines[0]}")
-            for fact in fact_lines[1:]:
-                lines.append(f"  - {fact}")
+            lines.append("  - **數據:**")
+            for fact in fact_lines:
+                lines.extend(_expand_fact_lines(fact))
     return lines
 
 
@@ -998,6 +1015,35 @@ def _sanitize_text(text: str) -> str:
     return text
 
 
+def _expand_fact_lines(fact: object) -> list[str]:
+    """Make a dense 數據 anchor scannable: a『標籤: a | b | c』pipe-list becomes the
+    label then one bullet per item; a long paragraph (e.g. 晨操 digest) is split into
+    sentence bullets. Short single-value facts stay on one line."""
+    fact = str(fact or "").strip()
+    if not fact:
+        return []
+    m = re.match(r"^\s*([^:：]{1,24}[:：])\s*(.*)$", fact, re.S)
+    label, rest = (m.group(1).strip(), m.group(2).strip()) if m else ("", fact)
+    items = []
+    if re.search(r"\s[|｜]\s", rest):
+        items = [x.strip() for x in re.split(r"\s*[|｜]\s*", rest) if x.strip()]
+    elif len(rest) > 110:
+        items = [x.strip() for x in re.split(r"(?<=[。；])\s*", rest) if x.strip()]
+    if len(items) > 1:
+        head = f"    - {label}" if label else "    - 明細:"
+        return [head] + [f"      - {it}" for it in items]
+    return [f"    - {fact}"]
+
+
+def _clean_subscore_note(note: object) -> str:
+    """去掉 sub分 note 尾巴重覆嘅自述分數（個分我哋已喺前面顯示）。只剝最尾一段，
+    要有分隔符 boundary，唔可以跨過逗號食埋真內容。兩種格式：『… 93.0 分。』『…近績分 54.2』。"""
+    note = str(note or "").strip().rstrip("。 ")
+    note = re.sub(r"[，,、；;。]\s*[^，,、；;。]*?\d+(?:\.\d+)?\s*分。?\s*$", "", note)
+    note = re.sub(r"[，,、；;。]\s*[^，,、；;。]*?分\s*\d+(?:\.\d+)?。?\s*$", "", note)
+    return note.strip(" ，,、；;。")
+
+
 def _matrix_component_line(components: list[dict]) -> str:
     if not components:
         return "相關來源不足，以中性拆分處理。"
@@ -1158,15 +1204,8 @@ def _matrix_grade_section(auto: dict, features: dict) -> str:
         parts.append("**🔢 7D 矩陣加權總分計算 (Python Auto 引擎):**")
         parts.append("")
         parts.append(grade_trans["summary"])
-    
-    core_trans = auto.get("core_logic_transparency", "")
-    if core_trans:
-        if parts:
-            parts.append("")
-            parts.append("---")
-            parts.append("")
-        parts.append(core_trans)
-    
+    # 舊「七維矩陣計算全記錄」footer 同上面加權總分重覆（仲用返 核心/半核心 標籤），已移除。
+
     if not parts:
         return ""
     

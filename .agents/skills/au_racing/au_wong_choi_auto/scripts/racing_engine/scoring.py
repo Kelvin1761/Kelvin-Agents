@@ -3,12 +3,27 @@
 from __future__ import annotations
 import re
 
-FEATURE_KEYS = ("form_score","trial_score","sectional_score","pace_map_score","jockey_score","trainer_score","jockey_horse_fit_score","class_score","rating_score","weight_score","distance_score","track_score","formline_score","consistency_score","health_score","confidence_score")
+FEATURE_KEYS = ("form_score","trial_score","sectional_score","pace_map_score","jockey_score","trainer_score","jockey_horse_fit_score","class_score","rating_score","weight_score","distance_score","track_score","formline_score","consistency_score","health_score","confidence_score","pace_figure_score")
 
-MATRIX_WEIGHTS = {"stability":0.330,"sectional":0.105,"race_shape":0.234,"jockey_trainer":0.214,"class_weight":0.050,"track":0.067,"form_line":0.000}
+# pace_figure = 8th dimension: field-relative L600-vs-benchmark ("實測段速") from
+# racenet PuntingForm (AUC 0.60 vs old text-sectional 0.545). Neutral 60 where PF
+# data absent → rank-neutral on no-PF races.
+# 2026-07-03 段速 restructure ("swap"): the MEASURED pace figure is now the primary
+# 段速 signal (0.143) and the old text-PI sectional dimension is demoted to 0.045 —
+# it is near-noise (AUC 0.528 ceiling) but its "has timing data" floor still carries
+# a mild winner signal, so it keeps a small weight rather than zero. Validated on
+# TWO independent PF windows (05-22→06-13: GGP 89→91; 06-19→07-01 OOS: GGP 29→38)
+# AND the full 687-race archive (gold 33→37, pass 285→297, champ +0.9pp, winT3
+# +2.0pp, box4 +0.2pp; good −1 within noise). Direct stability-weight cuts were
+# tested the same day and LOSE window A — the gain is from the 段速 restructure,
+# not from de-weighting stability. Weights sum to exactly 1.0 (normalised from the
+# tested 1.0475-sum config; ranking-identical, keeps grade thresholds honest).
+# Rollback: pace_figure 0.05 config {"stability":0.3135,"sectional":0.09975,
+# "race_shape":0.2223,"jockey_trainer":0.2033,"class_weight":0.0475,
+# "track":0.06365,"form_line":0.000,"pace_figure":0.050}.
+MATRIX_WEIGHTS = {"stability":0.29928,"sectional":0.04535,"race_shape":0.21222,"jockey_trainer":0.19408,"class_weight":0.04535,"track":0.06076,"form_line":0.000,"pace_figure":0.14296}
 _WEIGHT_FLOOR = {"stability":0.10}
 _WEIGHT_CEILING = {"class_weight":0.15,"track":0.17}
-SOFT_RACE_SHAPE_SCALE = 1.0
 
 # ── Wet-form 7D feature (gated to Soft/Heavy races) ──
 # A horse's career wet-going place record IS predictive of box-trifecta on wet
@@ -226,17 +241,6 @@ def get_dynamic_matrix_weights(race_context):
     for key in weights: weights[key] = round(weights[key],4)
     return weights
 
-def soft_race_shape_modifier(race_context, matrix_scores):
-    context = race_context or {}
-    going = f"{context.get('going', '')} {context.get('condition', '')}".lower()
-    if "soft" not in going:
-        return 0.0
-    race_shape = clip_score((matrix_scores or {}).get("race_shape", 60.0))
-    return round(((race_shape - 60.0) / 10.0) * SOFT_RACE_SHAPE_SCALE, 4)
-
-PLACE_TIGHTENING_FEATURE_WEIGHTS = {"form_score":0.103,"trial_score":0.179,"trainer_score":0.204,"jockey_horse_fit_score":0.170,"consistency_score":0.143,"distance_score":-0.033,"confidence_score":0.027,"weight_score":-0.141,"sectional_score":0.05}
-PLACE_TIGHTENING_SCALE = 1.4
-PLACE_TIGHTENING_MAX_ABS_BONUS = 4.0
 GRADE_THRESHOLDS = ((96,"S+"),(92,"S"),(88,"S-"),(84,"A+"),(80,"A"),(76,"A-"),(72,"B+"),(68,"B"),(64,"B-"),(60,"C+"),(56,"C"),(52,"C-"),(48,"D"),(0,"E"))
 
 def clip_score(value, default=60.0):
@@ -289,9 +293,19 @@ def parse_record_line(line):
     return {"starts":0,"wins":0,"seconds":0,"thirds":0,"places":0}
 
 def parse_recent_finishes(text):
+    """Finish positions from a recent-form string, newest conventions honoured.
+
+    Handles both separated ("8-9-7-6") and compact ("2134") formats — the compact
+    form previously parsed as one giant number and silently returned nothing,
+    zeroing the consistency place/poor components for those horses. In compact
+    form each digit is one run and "0" is the AU code for 10th-or-worse.
+    """
     if not text: return None
-    nums = parse_numbers(str(text))
-    if nums: return [n for n in nums if 1 <= n <= 24]
+    raw = str(text).strip()
+    if re.fullmatch(r"\d{2,}", raw):
+        return [int(ch) if ch != "0" else 10 for ch in raw]
+    nums = parse_numbers(raw)
+    if nums: return [n if n != 0 else 10 for n in nums if 0 <= n <= 24]
     return None
 
 def safe_ratio(numerator, denominator):

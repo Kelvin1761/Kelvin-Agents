@@ -7,7 +7,8 @@ class FormScorer(BaseScorer):
         form = self.horse_data.get("last_6_finishes", "N/A")
         
         scores = []
-        
+        ranks = []  # keep the actual finishing positions so the note can be specific
+
         # 1. Parse local form
         if form != "N/A" and form != "" and str(form).replace("-", "").replace("N/A", "").strip():
             parts = str(form).replace("-", " ").replace(",", " ").split()
@@ -17,6 +18,7 @@ class FormScorer(BaseScorer):
                         rank = int(p.split("/")[0])
                     else:
                         rank = int(p)
+                    ranks.append(rank)
                     if rank == 1: scores.append(scoring.FORM_MICRO_WEIGHTS.get("rank_1", 100))
                     elif rank == 2: scores.append(scoring.FORM_MICRO_WEIGHTS.get("rank_2", 85))
                     elif rank == 3: scores.append(scoring.FORM_MICRO_WEIGHTS.get("rank_3", 75))
@@ -49,11 +51,28 @@ class FormScorer(BaseScorer):
                 weighted_sum += s * weight
                 total_weight += weight
             self.score = weighted_sum / total_weight
-            
+
+            # Build a SPECIFIC Chinese note (finishes + top3/win counts) instead of the
+            # generic "近績分由最近名次加權計算". No trailing "…分" so the report's
+            # sub-score-note cleanup won't strip it.
+            used = ranks[:6]
+            wins = sum(1 for r in ranks if r == 1)
+            top3 = sum(1 for r in ranks if r <= 3)
+            poor = sum(1 for r in ranks if r >= 8)
+            bits = [f"近{len(used)}仗名次 {'-'.join(str(r) for r in used)}"] if used else []
+            detail = []
+            if wins:
+                detail.append(f"{wins}冠")
+            if top3:
+                detail.append(f"{top3}次前三")
+            if poor:
+                detail.append(f"{poor}次八名以後")
+            if detail:
+                bits.append("、".join(detail))
+            bits.append("越近仗權重越高")
             if len(scores) > local_count:
-                self.reason = f"Form Score calculated from {len(scores)} starts (Includes Overseas)"
-            else:
-                self.reason = f"Form Score calculated from {len(scores)} starts"
+                bits.append("已計海外往績")
+            self.reason = "；".join(bits)
             return self.score, self.reason
 
         self.score = 60.0

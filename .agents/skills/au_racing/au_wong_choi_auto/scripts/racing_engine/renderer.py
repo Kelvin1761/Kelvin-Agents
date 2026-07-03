@@ -6,8 +6,8 @@ import os
 import re
 from pathlib import Path
 
-from hidden_signal_rescue import apply_report_only_hidden_signal
-from scoring import clip_score
+from scoring import clip_score, score_band
+from matrix_mapper import MATRIX_FORMULAS
 
 
 ABILITY_LABEL = "綜合戰力分"
@@ -29,6 +29,7 @@ FEATURE_LABELS = {
     "consistency_score": "穩定性分",
     "health_score": "備戰完整度分",
     "confidence_score": "信心分",
+    "pace_figure_score": "段速實速分",
 }
 
 MATRIX_LABELS = {
@@ -39,10 +40,21 @@ MATRIX_LABELS = {
     "class_weight": "級數與負重",
     "track": "場地適性",
     "form_line": "賽績線",
+    "pace_figure": "段速實速（實測L600）",
 }
 
+# 同一 sub 分喺唔同維度可用唔同名，避免「同一個場地分出現兩次」嘅重覆錯覺。
+# track_score 喺「場地適性」係純場地紀錄（場地分）；喺「檔位形勢」係場地×步速交互
+# 貢獻，所以叫「場地配套分」。兩者用同一數值，係刻意（已驗證：抽走會蝕 box4/贏Top3）。
+MATRIX_COMPONENT_LABELS = {
+    ("race_shape", "track_score"): "場地配套分",
+}
+
+
+def _component_label(key, name):
+    return MATRIX_COMPONENT_LABELS.get((key, name)) or FEATURE_LABELS.get(name, name)
+
 REPORT_BANS = ("[FILL]", "PLACEHOLDER", "待補", "分析中")
-HIDDEN_SIGNAL_REPORT_ONLY_ENABLED = False
 
 
 def ensure_verdict(logic_data: dict) -> dict:
@@ -69,7 +81,6 @@ def ensure_verdict(logic_data: dict) -> dict:
         auto["model_pick_status"] = "MODEL_TOP_PICK" if idx <= 2 else ("WATCH" if idx <= 4 else "NO_PICK")
         item["rank"] = idx
         item["model_pick_status"] = auto["model_pick_status"]
-    _apply_hidden_signal_report_only(ranked, horses)
     watchlist = _build_rank_4_6_watchlist(ranked, horses)
     verdict = {
         "ranking": ranked,
@@ -117,9 +128,6 @@ def render_race_csv(logic_data: dict) -> str:
         "model_pick_status",
         "watchlist_level",
         "watchlist_reasons",
-        "hidden_signal_rescue_modifier",
-        "hidden_signal_reasons",
-        "shadow_rank_score",
         *FEATURE_KEYS,
     ]
     writer = csv.DictWriter(output, fieldnames=fields)
@@ -143,50 +151,10 @@ def render_race_csv(logic_data: dict) -> str:
             "model_pick_status": auto.get("model_pick_status", ""),
             "watchlist_level": auto.get("watchlist_level", ""),
             "watchlist_reasons": ";".join(auto.get("watchlist_reasons", []) or []),
-            "hidden_signal_rescue_modifier": auto.get("hidden_signal_rescue_modifier", ""),
-            "hidden_signal_reasons": ";".join(auto.get("hidden_signal_reasons", []) or []),
-            "shadow_rank_score": auto.get("shadow_rank_score", ""),
         }
         row.update(auto.get("feature_scores", {}))
         writer.writerow(row)
     return output.getvalue()
-
-
-def _apply_hidden_signal_report_only(ranked: list[dict], horses: dict) -> None:
-    if not HIDDEN_SIGNAL_REPORT_ONLY_ENABLED:
-        for item in ranked:
-            horse = horses[str(item["horse_number"])]
-            auto = horse.get("python_auto", {})
-            auto["hidden_signal_rescue_modifier"] = 0.0
-            auto["hidden_signal_reasons"] = []
-            auto["shadow_rank_score"] = round(float(auto.get("rank_score") or auto.get("ability_score") or 0.0), 4)
-        return
-
-    rows = []
-    for item in ranked:
-        horse = horses[str(item["horse_number"])]
-        auto = horse.get("python_auto", {})
-        rows.append(
-            {
-                "horse_number": int(item["horse_number"]),
-                "horse_name": item.get("horse_name") or horse.get("horse_name", ""),
-                "rank_score": float(auto.get("rank_score") or auto.get("ability_score") or 0.0),
-                "ability_score": float(auto.get("ability_score") or 0.0),
-                "feature_scores": dict(auto.get("feature_scores") or {}),
-                "matrix_scores": dict(auto.get("matrix_scores") or {}),
-                "risk_flags": list(auto.get("risk_flags") or []),
-            }
-        )
-
-    shadow_rows = apply_report_only_hidden_signal(rows)
-    shadow_lookup = {int(row["horse_number"]): row for row in shadow_rows}
-    for item in ranked:
-        horse = horses[str(item["horse_number"])]
-        auto = horse.get("python_auto", {})
-        shadow = shadow_lookup.get(int(item["horse_number"]), {})
-        auto["hidden_signal_rescue_modifier"] = round(float(shadow.get("hidden_signal_rescue_modifier") or 0.0), 4)
-        auto["hidden_signal_reasons"] = list(shadow.get("hidden_signal_reasons") or [])
-        auto["shadow_rank_score"] = round(float(shadow.get("shadow_score") or auto.get("rank_score") or auto.get("ability_score") or 0.0), 4)
 
 
 def render_meeting_csv(results: list[dict]) -> str:
@@ -280,6 +248,66 @@ def _panorama(race, verdict, horses):
     ])
 
 
+_BAND_WORD = {"✅✅": "很強", "✅": "偏強", "➖": "中性", "❌": "偏弱", "❌❌": "很弱"}
+
+
+def _band_label(score):
+    b = score_band(score)
+    return f"{b} {_BAND_WORD.get(b, '')}".strip()
+
+
+def _matrix_composition_line(key, auto):
+    """顯示維度分點計出嚟：sub分 × 權重 ＋ … ＝ 維度分。直接答到『點解係呢個分』。"""
+    comps = MATRIX_FORMULAS.get(key)
+    if not comps:
+        return ""
+    fs = auto.get("feature_scores", {})
+    parts = [f"{_component_label(key, n)} {clip_score(fs.get(n, 60)):.0f} ×{w*100:.0f}%" for n, w in comps]
+    total = float(auto.get("matrix_scores", {}).get(key, 60))
+    return " ＋ ".join(parts) + f" ＝ {total:.1f}"
+
+
+def _clean_subscore_note(note):
+    """去掉 sub分 note 尾巴重覆嘅自述分數（個分我哋已經喺前面顯示）。
+    只剝走最尾一段（要有分隔符 boundary，唔可以跨過逗號食埋真正內容）。
+    兩種格式：『…跑法穩定性 93.0 分。』同『…近績分 54.2』。"""
+    note = str(note or "").strip().rstrip("。 ")
+    note = re.sub(r"[，,、；;。]\s*[^，,、；;。]*?\d+(?:\.\d+)?\s*分。?\s*$", "", note)   # 「…, X 93.0 分」
+    note = re.sub(r"[，,、；;。]\s*[^，,、；;。]*?分\s*\d+(?:\.\d+)?。?\s*$", "", note)    # 「…, 近績分 54.2」
+    return note.strip(" ，,、；;。")
+
+
+def _matrix_subscore_lines(key, auto):
+    """每個 sub分點計出嚟：用 leaf scorer 自己嘅 note 解釋（答到『點解近績分 54』）。"""
+    comps = MATRIX_FORMULAS.get(key) or []
+    fs = auto.get("feature_scores", {})
+    notes = auto.get("feature_notes", {})
+    out = []
+    for name, _w in comps:
+        v = clip_score(fs.get(name, 60))
+        label = _component_label(key, name)
+        note = _clean_subscore_note(notes.get(name, ""))
+        out.append(f"{label} {v:.0f} ← {note}" if note else f"{label} {v:.0f}")
+    return out
+
+
+def _matrix_why(key, score, auto):
+    """一句點解：邊個 sub分帶動、邊個拖低、加權後落喺邊個 band。"""
+    comps = MATRIX_FORMULAS.get(key)
+    band = _band_label(score)
+    if not comps:
+        return f"加權後 {score:.1f} 分，屬{band}。"
+    fs = auto.get("feature_scores", {})
+    rows = [(_component_label(key, n), clip_score(fs.get(n, 60)), w) for n, w in comps]
+    driver = max(rows, key=lambda r: r[1] * r[2])
+    weakest = min(rows, key=lambda r: r[1])
+    bits = [f"主要由{driver[0]} {driver[1]:.0f}（佔比 {driver[2]*100:.0f}%）帶動"]
+    if weakest[0] != driver[0]:
+        verb = "拖低" if weakest[1] < 55 else "為相對最弱一環"
+        bits.append(f"{weakest[0]} {weakest[1]:.0f} {verb}")
+    return "；".join(bits) + f"；加權 {score:.1f} 分屬{band}。"
+
+
 def _render_horse_section(horse_num, horse, auto):
     jockey = _display_text(horse.get("jockey"))
     trainer = _display_text(horse.get("trainer"))
@@ -296,8 +324,6 @@ def _render_horse_section(horse_num, horse, auto):
         f"- **近績序列:** `{_display_text(data.get('recent_form') or horse.get('recent_form'))}`",
         f"- **狀態週期:** `{_humanize_text(horse.get('status_cycle')) or '-'}`",
         f"- **趨勢總評:** {_trend_summary(horse) or '-'}",
-        f"- **預計走法:** {_humanize_text(_tactical_position(horse)) or '-'}",
-        f"- **戰術劇本:** {_humanize_text(_tactical_scenario(horse)) or '-'}",
         "",
         "#### 📋 完整賽績檔案",
         *_complete_record_lines(data),
@@ -306,23 +332,28 @@ def _render_horse_section(horse_num, horse, auto):
         f"- {_render_core_logic(horse, auto)}",
         "",
         "#### 📊 7D 評分矩陣",
+        "> 每個維度：**評分構成**（點計出個分）→ **點解**（邊個 sub分帶動／拖低）→ **數據**（用到嘅原始資料）。",
     ]
     for key, label in MATRIX_LABELS.items():
-        score = auto.get("matrix_scores", {}).get(key, 60)
+        score = float(auto.get("matrix_scores", {}).get(key, 60))
         reason_bundle = auto.get("matrix_reasoning", {}).get(key, {})
-        reason = reason_bundle.get("text", "")
-        lines.append(f"- **{label}:** {score:.1f}")
-        lines.append(f"  - Python 判讀: {_humanize_text(reason)}")
+        lines.append("")
+        lines.append(f"##### {label}：{score:.1f} 分　{_band_label(score)}")
+        comp = _matrix_composition_line(key, auto)
+        if comp:
+            lines.append(f"  - **評分構成：** {comp}")
+            for sub in _matrix_subscore_lines(key, auto):
+                lines.append(f"    - {sub}")
+        lines.append(f"  - **點解：** {_matrix_why(key, score, auto)}")
         fact_lines = reason_bundle.get("anchors") or _matrix_fact_lines(key, horse, auto)
         if fact_lines:
-            lines.append(f"  - **資料錨點:** {fact_lines[0]}")
+            lines.append(f"  - **數據：** {fact_lines[0]}")
             for fact in fact_lines[1:]:
-                lines.append(f"  - {fact}")
-    # 加入 Python 計算透明度
+                lines.append(f"    - {fact}")
+    # Python 計算透明度：只保留加權總分一份；舊「矩陣計算全記錄」與佢重覆，已移除。
     grade_trans = auto.get("grade_transparency", {})
     grade_summary = grade_trans.get("summary", "") if isinstance(grade_trans, dict) else ""
-    core_trans = auto.get("core_logic_transparency", "")
-    
+
     if grade_summary:
         lines.extend([
             "",
@@ -330,12 +361,7 @@ def _render_horse_section(horse_num, horse, auto):
             "",
             grade_summary,
         ])
-    if core_trans:
-        lines.extend([
-            "",
-            core_trans,
-        ])
-    
+
     lines.extend([
         "",
         "#### 主要優勢",
@@ -661,15 +687,6 @@ def _formline_summary(facts_section: str) -> str:
     return headline
 
 
-def _fact_bullets(facts_section: str) -> list[tuple[str, str]]:
-    labels = ("班次負重", "引擎距離", "步態場地", "配備意圖", "人馬組合")
-    output = []
-    for label in labels:
-        match = re.search(rf"- \*\*{re.escape(label)}:\*\* ([^\n]+)", facts_section)
-        if match:
-            output.append((label, _shorten_fact(match.group(1), 220)))
-    return output
-
 
 def _energy_summary(facts_section: str) -> str:
     block = _fact_block_excerpt(facts_section, "⚡ 走位消耗摘要")
@@ -949,19 +966,14 @@ def _data_readout_lines(auto: dict) -> list[str]:
 
 
 def _render_core_logic(horse: dict, auto: dict) -> str:
+    # 核心分析 = 一句七維 framing（最強/最弱維度）+ 一句定位結論。
+    # 跑法／戰術劇本只喺「檔位形勢」7D 維度出一次，呢度唔再覆述，避免廢話。
     base = _humanize_text(str(auto.get("core_logic") or "").strip())
-    barrier = _display_text(horse.get("barrier"))
-    expected_position = _humanize_text(_tactical_position(horse))
-    scenario = _humanize_text(_tactical_scenario(horse))
     positioning = _horse_positioning(horse, auto)
     risk = _risk_summary(auto)
     pieces = []
     if base:
         pieces.append(base)
-    if expected_position not in {"", "-"}:
-        pieces.append(f"配合今次 {barrier} 檔，同埋預計以「{expected_position}」方式應戰，跑法上有相應劇本。")
-    if scenario not in {"", "-"}:
-        pieces.append(f"如果能夠照住呢個場面劇本落位，{scenario}")
     if positioning == "爭勝":
         pieces.append("整體屬於有條件主動爭勝嗰類。")
     elif positioning == "爭位":
@@ -1066,22 +1078,3 @@ def _inline_text(value: object) -> str:
     text = str(value or "").strip()
     return " ".join(text.split()) if text else ""
 
-
-def _forgiveness_digest(horse: dict, data: dict) -> str:
-    facts_section = str(data.get("facts_section") or "")
-    rows = [line.strip() for line in facts_section.splitlines() if line.strip().startswith("|") and "| 類型 |" not in line and "|---" not in line]
-    reasons = []
-    for line in rows[:4]:
-        cols = [col.strip() for col in line.strip("|").split("|")]
-        if len(cols) < 18 or "試閘" in cols[1]:
-            continue
-        forgiveness = cols[17]
-        notes = cols[16]
-        if forgiveness and forgiveness not in {"[-]", "[需判定]"}:
-            reasons.append(forgiveness)
-        elif any(token in notes for token in ("Crowded", "Bumped", "Steadied", "Looking for run", "Worked early", "Too much start")):
-            reasons.append(notes)
-    if not reasons:
-        return "未見鮮明寬恕背景"
-    text = "；".join(reasons[:2])
-    return _shorten_fact(_humanize_text(text), 120)

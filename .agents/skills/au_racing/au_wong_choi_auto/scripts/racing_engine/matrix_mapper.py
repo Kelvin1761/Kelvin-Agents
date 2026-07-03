@@ -34,12 +34,17 @@ MATRIX_FORMULAS = {
         ("weight_score", 0.141),
     ),
     "track": (
-        ("track_score", 0.82),
-        ("health_score", 0.18),
+        ("track_score", 1.0),
     ),
     "form_line": (
         ("formline_score", 0.78),
         ("form_score", 0.22),
+    ),
+    # 8th dimension (2026-07-02): field-relative 實測段速 (L600 vs race benchmark)
+    # from racenet PuntingForm. Single leaf; the field-relative z is in
+    # _pace_figure_score. See scoring.MATRIX_WEIGHTS note for provenance/rollback.
+    "pace_figure": (
+        ("pace_figure_score", 1.0),
     ),
 }
 

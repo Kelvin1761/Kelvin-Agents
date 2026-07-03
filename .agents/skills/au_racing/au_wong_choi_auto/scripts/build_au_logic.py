@@ -46,8 +46,79 @@ RACECARD_META_RE = re.compile(
 )
 
 
+_PF_TOKEN_RE = re.compile(r"PF\[(.+?)\]")
+_FG_HORSE_HDR_RE = re.compile(r"^\[(\d+)\]\s+(.+?)\s+\((\d+)\)\s*$", re.M)
+
+
+def _pf_num(pattern: str, text: str):
+    m = re.search(pattern, text)
+    try:
+        return float(m.group(1)) if m else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _pf_str(pattern: str, text: str):
+    m = re.search(pattern, text)
+    return m.group(1).strip() if m else None
+
+
+def _parse_pf_token(tok: str) -> dict:
+    return {
+        "l600_time": _pf_num(r"Last600:\s*([-\d.]+)", tok),        # raw last-600m time (run-style confounded)
+        "runner_time": _pf_num(r"Runner Time:\s*([-\d.]+)", tok),  # horse finishing time (s)
+        "race_time_diff": _pf_num(r"Race Time:\s*([-\d.]+)", tok), # time vs race benchmark (adjusted)
+        "l600_delta": _pf_num(r"L600 Delta:\s*([-\d.]+)", tok),    # L600 vs benchmark (adjusted)
+        "rt_rating": _pf_num(r"RT Rating:\s*([-\d.]+)", tok),      # racenet RT rating (if scraped)
+        "early_runner_pace": _pf_str(r"Early Runner Pace:\s*([^.]+)\.", tok),
+        "early_race_pace": _pf_str(r"Early Race Pace:\s*([^.]+)\.", tok),
+    }
+
+
+def _parse_formguide_pf_metrics(facts_path: Path) -> dict:
+    """Parse racenet PuntingForm PF[...] tokens from the sibling Formguide file.
+
+    inject_fact_anchors only forwards L600/RT + early-runner-pace into the Facts;
+    the adjusted benchmark metrics (race_time_diff, l600_delta, rt_rating) are
+    dropped before scoring. Recover the full set here into _data so they are
+    available for future testing / feature work. Keyed by saddlecloth number.
+    Network-free (consumes already-scraped Formguide). Returns {} if absent.
+    """
+    fg = facts_path.with_name(facts_path.name.replace("Facts", "Formguide"))
+    if not fg.exists():
+        return {}
+    try:
+        text = fg.read_text(encoding="utf-8")
+    except OSError:
+        return {}
+    out: dict = {}
+    headers = list(_FG_HORSE_HDR_RE.finditer(text))
+    for idx, hm in enumerate(headers):
+        body = text[hm.end(): headers[idx + 1].start() if idx + 1 < len(headers) else len(text)]
+        runs = [_parse_pf_token(t) for t in _PF_TOKEN_RE.findall(body)]
+        agg: dict = {}
+        if runs:
+            def col(k):
+                return [r[k] for r in runs if r.get(k) is not None]
+            for k in ("race_time_diff", "l600_delta", "runner_time", "l600_time"):
+                vals = col(k)
+                if vals:
+                    agg[f"{k}_avg"] = round(sum(vals) / len(vals), 3)
+                    agg[f"{k}_best"] = round(min(vals), 3)  # lower time/diff = better
+            rt = col("rt_rating")
+            if rt:
+                agg["rt_rating_avg"] = round(sum(rt) / len(rt), 3)
+                agg["rt_rating_best"] = round(max(rt), 3)  # higher rating = better
+            agg["latest_early_runner_pace"] = runs[0].get("early_runner_pace")
+            agg["latest_early_race_pace"] = runs[0].get("early_race_pace")
+            agg["pf_run_count"] = len(runs)
+        out[hm.group(1)] = {"pf_runs": runs, "pf_aggregates": agg}
+    return out
+
+
 def build_logic_from_facts(facts_path: Path) -> dict:
     text = facts_path.read_text(encoding="utf-8")
+    pf_by_horse = _parse_formguide_pf_metrics(facts_path)
     race_number = _extract_race_number(facts_path.name, text)
     race_class, distance, prize = _extract_race_meta(facts_path, text)
     racecard_profiles = _load_racecard_profiles(facts_path, race_number)
@@ -104,6 +175,10 @@ def build_logic_from_facts(facts_path: Path) -> dict:
             "_data": {
                 "horse_rating": racecard_profile.get("horse_rating"),
                 "facts_section": block,
+                # Full racenet PuntingForm metrics recovered from the Formguide
+                # (race_time_diff / l600_delta / rt_rating / paces). Stored for
+                # future feature-testing; not yet consumed by the scorer.
+                "pf_metrics": pf_by_horse.get(horse_num, {}),
                 "last10_raw": _capture(block, r"Last 10 字串:\s*`?([^`\n]+)`?"),
                 "recent_form": _capture(block, r"近績序列解讀: `?([^`\n]+)`?"),
                 "career_record_line": _capture(block, r"生涯: ([^\n]+)"),
