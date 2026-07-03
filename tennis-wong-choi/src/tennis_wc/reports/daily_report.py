@@ -192,6 +192,20 @@ def source_status_for_date(match_date: str) -> dict:
             """,
             (match_date, match_date),
         ).fetchone()
+        ranking_status = {
+            tour: conn.execute(
+                """
+                SELECT status_code, response_json, fetched_at
+                FROM raw_api_responses
+                WHERE entity_type = 'ranking'
+                  AND entity_external_id = ?
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (tour,),
+            ).fetchone()
+            for tour in ("ATP", "WTA")
+        }
     # The run-daily record is either a bare list (legacy) or {"mode", "errors"}.
     run_mode = None
     run_errors: list = []
@@ -209,6 +223,7 @@ def source_status_for_date(match_date: str) -> dict:
         "bsd_fixture_status": _bsd_status(bsd_error["response_json"] if bsd_error else None),
         "fixture_note": "Sportsbet odds-backed provisional fixtures enabled; unconfirmed competitions remain NO_BET.",
         "history_source": "Jeff Sackmann ATP/WTA snapshots + local Elo cache",
+        "ranking_source_note": _ranking_source_note(ranking_status),
         "market_odds_note": f"{int(market_count['rows'] or 0)} selections across {int(market_count['markets'] or 0)} market types. Non-match-winner markets are review-only.",
         "run_mode": run_mode,
         "latest_run_errors": run_errors,
@@ -226,6 +241,34 @@ def clear_pipeline_source_errors(match_date: str) -> None:
             """,
             (match_date,),
         )
+
+
+def _ranking_source_note(rows: dict) -> str:
+    parts = []
+    for tour in ("ATP", "WTA"):
+        row = rows.get(tour)
+        if not row:
+            parts.append(f"{tour}: no recent ranking refresh record")
+            continue
+        status = int(row["status_code"])
+        if status == 206:
+            payload = json.loads(row["response_json"])
+            latest = payload.get("cached_latest_ranking_date") or "unknown"
+            count = payload.get("cached_rows") or 0
+            parts.append(f"{tour}: cached fallback ({count} rows, latest {latest})")
+        elif status >= 400:
+            parts.append(f"{tour}: refresh failed ({status})")
+        elif status == 204:
+            parts.append(f"{tour}: live refresh returned no rows")
+        else:
+            payload = json.loads(row["response_json"])
+            if isinstance(payload, list) and payload:
+                latest = max(str(item.get("ranking_date") or "") for item in payload) or "unknown"
+                source = (payload[0].get("raw") or {}).get("source") or "provider"
+                parts.append(f"{tour}: live refresh OK ({len(payload)} rows, latest {latest}, {source})")
+            else:
+                parts.append(f"{tour}: live refresh OK")
+    return "; ".join(parts)
 
 
 def unanalysed_sportsbet_rows(match_date: str) -> list[dict]:
@@ -518,7 +561,10 @@ def _market_decision(
     minimum_acceptable = round(1 / max(model_probability - min_edge, 0.01), 4)
     odds = float(row["odds"])
     base_confidence = int(prediction_row.get("confidence") or 0)
-    confidence = max(0, min(100, int(base_confidence + max(edge, 0) * 100)))
+    # Cap the edge contribution (see bet_filter: perceived edge has no backtested
+    # predictive value, so it must not inflate confidence; base_confidence is
+    # already edge-aware, so this avoids double-counting a worthless signal).
+    confidence = max(0, min(100, int(base_confidence + min(max(edge, 0), 0.10) * 100)))
     if model_status == "PROP_MODEL":
         return {
             "model_status": model_status,
@@ -1142,6 +1188,7 @@ def render_daily_report(match_date: str, rows: list[dict], source_status: dict |
         _mode_status_line(source_status.get("run_mode")),
         f"- Tennis fixture source：{source_status.get('bsd_fixture_status') or 'N/A'}",
         f"- Fixture 補齊策略：{source_status.get('fixture_note') or 'N/A'}",
+        f"- Ranking refresh：{source_status.get('ranking_source_note') or 'N/A'}",
         f"- 歷史數據 / Elo：{source_status.get('history_source') or 'N/A'}",
         f"- 多市場 odds：{source_status.get('market_odds_note') or 'N/A'}",
         "",
@@ -1444,6 +1491,24 @@ def render_banker_report(match_date: str, rows: list[dict]) -> str:
         "每個 tier 列多個組合俾你揀；同 tier 嘅組合可能共用 leg（屬替代方案，揀其一落，唔好同一隻腳重複疊注）。",
         "",
     ]
+    lines.extend(
+        [
+            "📉 回測提示（10,643 注 walk-forward vs Pinnacle 收盤線）：本 match-winner 模型長期 ROI 約 −10~12%，"
+            "而且 perceived edge 越大輸得越多（≥20% 已 −17%，≥30% −27%），長賠 ≥5.0 更 −37%。",
+            "   ⇒ 已自動 NO_BET 呢兩個區（edge≥20% / 賠率≥5.0）。組合（parlay）係負優勢腳相乘，只會輸得更快 ——",
+            "   以下組合僅供參考，唔建議當賺錢策略；真正想落，只跟下面已過 gate 嘅低-edge 合格單腳，平注為主。",
+            "",
+        ]
+    )
+    # Report-only additions (no impact on combo math): a low-variance anchor and
+    # a thin-slate / leg-concentration warning so the user understands the real
+    # number of independent positions (the 06-21 'all missed' lesson).
+    if legs:
+        lines.extend(_anchor_single_lines(legs))
+        lines.extend(_slate_concentration_lines(legs, result))
+    # Backtest-positive structure: chalk parlays (built from market favourites by
+    # odds, not from the +EV leg pool), so it runs off `rows` regardless of legs.
+    lines.extend(_chalk_combo_lines(rows))
     if market_keys and market_keys <= {"match_winner", ""}:
         lines.extend(
             [
@@ -1500,6 +1565,160 @@ def render_banker_report(match_date: str, rows: list[dict]) -> str:
 # Minimum combo odds across the four tiers (a 2-leg parlay below this is treated
 # as "bet the singles instead").
 _TIER_ODDS_FLOORS = (1.9, 2.5, 5.0, 5.0)
+
+
+# Model probability at/above which a single is a true favourite that can serve
+# as a low-variance "banker" anchor (a hit-rate play, not a value play).
+_ANCHOR_MIN_PROB = 0.60
+
+
+def _anchor_single_lines(legs: list) -> list[str]:
+    """Report-only '今日最穩' anchor: the single strongest favourite among the
+    qualified legs, shown at its real (short) odds and clearly framed as a
+    hit-rate play, NOT a +EV value bet. This gives a stable main pick on the
+    (common) days when no +EV banker COMBO can form, without faking combo math.
+    If no >=60% favourite qualifies, say so honestly instead of forcing one."""
+    lines = ["## 今日最穩單注（低波動 anchor）", ""]
+    favourites = [leg for leg in legs if leg.model_probability >= _ANCHOR_MIN_PROB]
+    if not favourites:
+        lines.extend(
+            [
+                "今日合格腳全部係接近五五波或細冷（無 ≥60% 大熱腳），冇適合做 anchor 嘅穩膽。",
+                "唔好為咗「有膽」而硬揀一隻無把握嘅腳 —— 寧願今日唔落穩膽。",
+                "",
+            ]
+        )
+        return lines
+    anchor = max(favourites, key=lambda leg: (leg.model_probability, leg.confidence))
+    factors = _combo_leg_factor_line(anchor)
+    suffix = f"｜支持：{factors}" if factors else ""
+    risk = f"｜{anchor.risk_label}" if anchor.risk_label else ""
+    lines.extend(
+        [
+            f"- {anchor.selection_name} @ {_fmt(anchor.decimal_odds)}（{anchor.match_label}）{risk}｜"
+            f"模型 {_pct(anchor.model_probability)}｜Edge {_pct(anchor.edge, signed=True)}{suffix}",
+            "⚠ 呢個係「博命中率」嘅 anchor：賠率低、贏粒糖；唔係厚 value。做你今日嘅定心主腳，平注 / 細注即可，唔好大注追。",
+            "",
+        ]
+    )
+    return lines
+
+
+def _slate_concentration_lines(legs: list, result: dict) -> list[str]:
+    """Surface the leg-concentration / thin-slate fragility that makes a string
+    of combos collapse together when one shared leg loses (the 06-21 'all
+    missed' experience), and explain why the daily BET count can exceed the
+    combo leg count (high-edge artifacts are deliberately held out of combos)."""
+    leg_count = result.get("leg_count", len(legs))
+    lines: list[str] = []
+    if 0 < leg_count <= 3:
+        lines.extend(
+            [
+                f"⚠ 薄牌警告：今日得 {leg_count} 隻合格腳。所有組合大量共用呢幾隻腳 —— "
+                f"你實際係 {leg_count} 個獨立倉位，唔係 {result.get('candidate_count', 0)} 條獨立優勢。"
+                "一隻腳輸，多數組合會一齊冚（呢個就係 06-21 全失手嘅主因：唔好當佢哋係幾條互相獨立嘅注）。",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            "ℹ 單注數 vs 組合腳數：模型 edge 過大（>30%）或模型同市場分歧過闊嘅單注，"
+            "會被組合引擎當低可靠度 artifact（多數係排名 fallback Elo 估出嚟）剔走，唔會入組合。"
+            "所以每日報告嘅「建議投注」可能多過呢度嘅合格腳 —— 嗰啲被剔嘅，建議當細注 / 觀察，唔好疊大注。",
+            "",
+        ]
+    )
+    return lines
+
+
+# Chalk-combo banker: the ONE tennis combo structure that does NOT bleed vs the
+# closing line. Parlay short-odds MARKET favourites (favourite-longshot bias --
+# heavy chalk is mildly underpriced); different matches are independent so there
+# is no correlation haircut. Re-verified 2026-07-03 (ATP+WTA 2022-24, 20,180
+# matches, Pinnacle close, DISJOINT deployable chains): 2-leg hit 81% ROI +0.3%,
+# 3-leg hit 74% ROI +0.8% (with Elo veto ~+0.7-0.8%); per-year noisy
+# (+4.6%/-0.8%/-1.5%), i.e. ~breakeven vs the sharp close -- versus -8..-25% for
+# model-edge parlays. Cutoffs above 1.20 go negative (1.25 -1.0%, 1.30 -3.3%).
+# We require a genuine tour-level model price (model_probability above the 0.50
+# 'no-opinion' default AND confidence >= the bet floor) so we never parlay
+# ITF/quali junk the model cannot price. NOT an edge play -- requiring model
+# edge here LOSES; the model only vetoes favourites it disagrees with and
+# screens out low-data junk.
+_CHALK_MIN_ODDS = 1.05
+_CHALK_MAX_ODDS = 1.20
+_CHALK_MIN_MODEL_PROB = 0.52
+_CHALK_MIN_CONFIDENCE = 65
+_CHALK_FLAT_STAKE_U = 1.0
+
+
+def _chalk_combo_legs(rows: list[dict]) -> list[dict]:
+    """One qualifying chalk favourite per match (highest model prob)."""
+    best: dict[int, dict] = {}
+    for r in rows:
+        if str(r.get("market_key") or "") != "match_winner":
+            continue
+        odds, mp = r.get("odds"), r.get("model_probability")
+        if odds is None or mp is None:
+            continue
+        if not (_CHALK_MIN_ODDS <= float(odds) <= _CHALK_MAX_ODDS):
+            continue
+        if float(mp) <= _CHALK_MIN_MODEL_PROB or int(r.get("confidence") or 0) < _CHALK_MIN_CONFIDENCE:
+            continue
+        mid = int(r["match_id"])
+        if mid not in best or float(mp) > float(best[mid]["model_probability"]):
+            best[mid] = r
+    return list(best.values())
+
+
+def _chalk_combo_lines(rows: list[dict]) -> list[str]:
+    legs = _chalk_combo_legs(rows)
+    lines = [
+        "## 🎯 穩膽大熱串（市場大熱 ≤1.20｜回測唯一唔蝕入肉嘅組合結構）",
+        "",
+        "原理：串市場大熱（賠率 ≤1.20），食 favourite-longshot bias（大熱被輕微低估）；唔同場互相獨立，冇相關性折讓。",
+        "回測（2022-24 vs Pinnacle 收盤、可落盤嘅不重疊串法）：2 腳命中 81% ROI +0.3%、3 腳命中 74% ROI +0.8%；逐年有波動（+4.6%/−0.8%/−1.5%）。",
+        "⇒ 期望值大約打和，唔係印錢機；但對比模型 edge 串（每腳 −8% 起，串埋蝕更快）係唯一企得住嘅串法。價格好過收盤先落，價差就係你嘅真 edge。",
+        "平注；唔靠模型 edge（要 edge 反而蝕），模型淨係用嚟剔走佢唔同意嘅大熱 + 隔走低數據 junk。",
+        "",
+    ]
+    if len(legs) < 2:
+        if len(legs) == 1:
+            r = legs[0]
+            lines.append(
+                f"今日得 1 隻合資格大熱：{_display_label(r['selection_name'])} @ {_fmt(r['odds'])}"
+                f"（模型 {_pct(r['model_probability'])}），唔夠砌串；可當單注穩膽平注。"
+            )
+        else:
+            lines.append("今日無合資格 ≤1.20 大熱（要 tour 級、模型有真實評分、信心 ≥65）；薄牌日唔好硬砌。")
+        lines.append("")
+        return lines
+    legs.sort(key=lambda r: -float(r["model_probability"]))
+
+    def combo_block(size: int, top_n: int) -> list[str]:
+        out: list[str] = []
+        shown = 0
+        for grp in combinations(legs, size):
+            odds = hit = mkt = 1.0
+            for r in grp:
+                odds *= float(r["odds"])
+                hit *= float(r["model_probability"])
+                mkt *= float(r.get("no_vig_market_probability") or r["model_probability"])
+            out.append(f"### {size} 腳大熱串｜Odds {_fmt(round(odds, 3))}｜建議 {_CHALK_FLAT_STAKE_U:g}u（平注）")
+            out.append(f"模型命中：{_pct(hit)}｜市場隱含命中：{_pct(mkt)}")
+            for r in grp:
+                out.append(f"- {_display_label(r['selection_name'])} @ {_fmt(r['odds'])}（模型 {_pct(r['model_probability'])}）")
+            out.append("")
+            shown += 1
+            if shown >= top_n:
+                break
+        return out
+
+    lines.extend(combo_block(2, 3))
+    if len(legs) >= 3:
+        lines.extend(combo_block(3, 2))
+    lines.append("⚠ +EV 係對 Pinnacle 收盤計；Sportsbet 大熱價通常較差，逐隻腳格價，唔夠收盤價就唔好落。賠率薄、靠量同紀律。")
+    lines.append("")
+    return lines
 
 
 def _qualifying_singles_lines(legs: list) -> list[str]:
@@ -3331,7 +3550,10 @@ def _hk_reason(reason: str) -> str:
         "challenger_outside_mvp_scope": "Challenger，不在 MVP 範圍",
         "itf_outside_mvp_scope": "ITF/Futures，不在 MVP 範圍",
         "longshot_requires_higher_data_quality": "高賠率 longshot 需要更高資料質素",
+        "edge_artifact_no_bet": "模型 edge ≥20%，回測證實呢類分歧長期輸錢（artifact），唔落",
+        "longshot_negative_roi_no_bet": "賠率 ≥5.0 longshot，回測 ROI −37%，唔落",
         "missing_core_elo_inputs": "缺少核心 Elo 輸入",
+        "confidence_below_bet_floor": "風險調整後信心低過下注門檻",
         "negative_ev_at_market_price": "現價計 Kelly 為 0（扣水後 -EV），唔落",
         "missing_market_odds": "缺少市場賠率",
         "other": "其他／未分類",
@@ -3416,10 +3638,15 @@ def _report_red_flags(filter_result: dict) -> list[str]:
         labels.append("部分歷史對手排名缺失，沒有用現時排名代替")
     if any("missing_player_history" in warning for warning in warnings):
         labels.append("部分球員歷史資料不足，模型只使用有 provenance 嘅特徵")
+    if any("rank_seed_elo" in warning for warning in warnings):
+        labels.append("Elo 由即時排名 fallback 估算，已降低信心/注碼")
     if any("unknown tournament level" in warning or "unknown_tournament_level" in warning for warning in warnings):
         labels.append("賽事級別未確認，不能作投注建議")
     if any("stale" in warning for warning in warnings):
         labels.append("部分資料接近 freshness 上限")
+    risk_adjustments = filter_result.get("risk_adjustments") or []
+    if "rank_seed_destaked" in risk_adjustments:
+        labels.append("Elo 由即時排名 fallback，可靠度低：已封頂至最低注")
     return labels[:5]
 
 

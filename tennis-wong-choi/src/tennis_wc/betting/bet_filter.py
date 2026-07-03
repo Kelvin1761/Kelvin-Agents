@@ -1,6 +1,13 @@
 from __future__ import annotations
 
 from tennis_wc.betting.staking import stake_for_decision
+from tennis_wc.config import get_settings
+
+# Backtest-driven NO_BET cutoffs (see apply_bet_filter). Perceived edge at/above
+# this is an artifact (model-vs-sharp-market disagreement) that loses long-term;
+# decimal odds at/above the longshot cutoff bleed ~-37% ROI vs the closing line.
+_EDGE_ARTIFACT_NO_BET = 0.20
+_LONGSHOT_NO_BET_ODDS = 5.0
 
 
 def classify_edge(edge: float | None) -> str:
@@ -53,6 +60,8 @@ def apply_bet_filter(feature_snapshot: dict, pricing: dict) -> dict:
         risk_adjustments.append("low_sample")
     if any("stale" in warning for warning in warnings):
         risk_adjustments.append("stale_but_acceptable")
+    if "rank_seed_elo" in model_warnings:
+        risk_adjustments.append("rank_seed_elo")
 
     edge_decision = classify_edge(pricing.get("edge"))
     decision_band = "NO_BET" if hard_no_bet_reasons else edge_decision
@@ -67,7 +76,44 @@ def apply_bet_filter(feature_snapshot: dict, pricing: dict) -> dict:
     if decision_band in {"SMALL_BET", "STANDARD_BET", "STRONG_BET"} and stake <= 0:
         hard_no_bet_reasons.append("negative_ev_at_market_price")
         decision_band = "NO_BET"
-    confidence = max(0, min(100, int(quality.get("score", 0) + max((pricing.get("edge") or 0), 0) * 100)))
+    # Backtest-driven NO_BET gates. External walk-forward backtest (10,643 bets,
+    # 2022-24, vs Pinnacle closing) shows the model has NO profitable subset and
+    # that two zones bleed badly with large, monotonic samples:
+    #   * perceived edge >= 20%  -> ROI -17.5%, and >= 30% -> -27.2%
+    #   * decimal odds   >= 5.0  -> ROI -36.6% (1974 bets)
+    # These are not real value -- the model is simply wrong when it disagrees this
+    # much with the close. Refuse them outright (user-approved: no-bet the losers).
+    # Remaining bets are still ~-5..-10% vs close, so the surviving rank-fallback
+    # picks are kept at minimum stake only (live reliability hygiene).
+    edge_val = pricing.get("edge") or 0
+    odds_val = pricing.get("current_market_odds") or 0
+    if decision_band in {"SMALL_BET", "STANDARD_BET", "STRONG_BET"}:
+        if edge_val >= _EDGE_ARTIFACT_NO_BET:
+            hard_no_bet_reasons.append("edge_artifact_no_bet")
+            decision_band = "NO_BET"
+            stake = 0.0
+        elif odds_val >= _LONGSHOT_NO_BET_ODDS:
+            hard_no_bet_reasons.append("longshot_negative_roi_no_bet")
+            decision_band = "NO_BET"
+            stake = 0.0
+        elif "rank_seed_elo" in risk_adjustments and stake > get_settings().min_stake_units:
+            risk_adjustments.append("rank_seed_destaked")
+            stake = get_settings().min_stake_units
+    # Confidence must NOT be inflated by perceived edge. The external backtest
+    # (6934 bets, 2023-24 vs Pinnacle closing) shows the model's edge has no
+    # predictive value (ROI ~-10% at every edge band), so a large edge is a sign
+    # of model-vs-sharp-market disagreement (often rank-fallback Elo), not of a
+    # reliable pick. Cap the edge contribution so a huge artifact edge can't mint
+    # a "92 confidence". A BET already requires data-quality >= 65, so this cap
+    # never changes which bets qualify -- it only makes the number honest.
+    edge_bonus = min(max((pricing.get("edge") or 0), 0), 0.10) * 100
+    confidence = max(0, min(100, int(quality.get("score", 0) + edge_bonus)))
+    if "rank_seed_elo" in risk_adjustments:
+        confidence = max(0, confidence - 8)
+    if decision_band in {"SMALL_BET", "STANDARD_BET", "STRONG_BET"} and confidence < 65:
+        hard_no_bet_reasons.append("confidence_below_bet_floor")
+        decision_band = "NO_BET"
+        stake = 0.0
     return {
         "decision": "BET" if decision_band in {"SMALL_BET", "STANDARD_BET", "STRONG_BET"} else decision_band,
         "decision_band": decision_band,

@@ -78,6 +78,13 @@ def _value(payload, default=None):
     return payload if payload is not None else default
 
 
+def _provenance_warnings(payload) -> tuple[str, ...]:
+    if isinstance(payload, dict):
+        provenance = payload.get("provenance") or {}
+        return tuple(provenance.get("warnings") or ())
+    return ()
+
+
 def _clamp(value: float, low: float = 0.05, high: float = 0.95) -> float:
     return max(low, min(high, value))
 
@@ -123,6 +130,12 @@ def _component_probabilities(feature_snapshot: dict) -> list[Component]:
     b_surface_elo = _value(b.get("surface_elo"))
     a_overall_elo = _value(a.get("overall_elo"))
     b_overall_elo = _value(b.get("overall_elo"))
+    surface_elo_warnings = tuple(
+        sorted(set([*_provenance_warnings(a.get("surface_elo")), *_provenance_warnings(b.get("surface_elo"))]))
+    )
+    overall_elo_warnings = tuple(
+        sorted(set([*_provenance_warnings(a.get("overall_elo")), *_provenance_warnings(b.get("overall_elo"))]))
+    )
 
     components: list[Component] = []
     if a_surface_elo is not None and b_surface_elo is not None:
@@ -131,7 +144,8 @@ def _component_probabilities(feature_snapshot: dict) -> list[Component]:
                 "surface_elo_edge",
                 elo_probability(float(a_surface_elo), float(b_surface_elo)),
                 WEIGHTS["surface_elo_edge"],
-                "Surface Elo probability from API-fed player stats",
+                "Surface Elo probability from stored player rating",
+                surface_elo_warnings,
             )
         )
     else:
@@ -143,7 +157,8 @@ def _component_probabilities(feature_snapshot: dict) -> list[Component]:
                 "overall_elo_edge",
                 elo_probability(float(a_overall_elo), float(b_overall_elo)),
                 WEIGHTS["overall_elo_edge"],
-                "Overall Elo probability from API-fed player stats",
+                "Overall Elo probability from stored player rating",
+                overall_elo_warnings,
             )
         )
     else:

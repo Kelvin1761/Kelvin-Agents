@@ -10,6 +10,7 @@ _RISK_MULTIPLIERS = {
     "injury_B": 0.75,
     "low_sample": 0.75,
     "stale_but_acceptable": 0.75,
+    "rank_seed_elo": 0.5,
     "injury_C": 0.5,
 }
 

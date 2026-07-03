@@ -183,9 +183,9 @@ def upsert_tournament(
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(tournament_id, tour, source_provider) DO UPDATE SET
-                level = excluded.level,
-                surface = excluded.surface,
-                indoor_outdoor = excluded.indoor_outdoor,
+                level = COALESCE(NULLIF(excluded.level, 'UNKNOWN'), tournament_levels.level),
+                surface = COALESCE(excluded.surface, tournament_levels.surface),
+                indoor_outdoor = COALESCE(excluded.indoor_outdoor, tournament_levels.indoor_outdoor),
                 raw_response_id = excluded.raw_response_id,
                 updated_at = excluded.updated_at
             """,

@@ -119,12 +119,13 @@ def _player_payload(player_id: int, opponent_id: int, match_context: dict, as_of
 
     overall_elo = player["overall_elo"]
     surface_elo = get_surface_elo(player["surface_elo_json"], surface, overall_elo)
+    elo_prov = _elo_provenance(player_prov, dict(player))
     return {
         "id": datapoint(player_id, player_prov),
         "name": player["name"],
         "current_rank": datapoint(player["current_rank"], player_prov),
-        "overall_elo": datapoint(overall_elo, player_prov),
-        "surface_elo": datapoint(surface_elo, player_prov),
+        "overall_elo": datapoint(overall_elo, elo_prov),
+        "surface_elo": datapoint(surface_elo, elo_prov),
         "serve_return": {
             "note": "Stage 3 placeholder until serve-return provider mapping is confirmed.",
             "provenance": history_prov,
@@ -144,6 +145,18 @@ def _player_payload(player_id: int, opponent_id: int, match_context: dict, as_of
         "fatigue": {"status": "KNOWN" if rest_days is not None else "UNKNOWN", "rest_days": datapoint(rest_days, history_prov), "provenance": history_prov},
         "injury": {"risk": "UNKNOWN", "provenance": history_prov},
     }
+
+
+def _elo_provenance(player_prov: dict, player: dict) -> dict:
+    has_rank_seed_shape = (
+        player.get("overall_elo") is not None
+        and player.get("current_rank") is not None
+        and not player.get("surface_elo_json")
+    )
+    if player_prov.get("source_endpoint") != "/rankings" and not has_rank_seed_shape:
+        return player_prov
+    warnings = sorted(set([*player_prov.get("warnings", []), "rank_seed_elo"]))
+    return player_prov | {"warnings": warnings}
 
 
 def _rest_days(player_id: int, as_of_date: date) -> int | None:
