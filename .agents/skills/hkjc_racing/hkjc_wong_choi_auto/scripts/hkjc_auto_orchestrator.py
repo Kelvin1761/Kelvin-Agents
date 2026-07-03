@@ -541,12 +541,12 @@ class HKJCAutoOrchestrator:
             logic_files = sorted(list(self.target_path.glob("Race_*_Logic.json")))
             if not logic_files:
                 print(f"❌ No Race_*_Logic.json files found in {self.target_path}")
-                return
+                return 1
             self.races = logic_files
         else:
             if not self.target_path.name.endswith("_Logic.json"):
                 print(f"❌ Target {self.target_path} is not a Logic JSON file.")
-                return
+                return 1
             self.races = [self.target_path]
         self._emit_event(
             "run_started",
@@ -560,7 +560,11 @@ class HKJCAutoOrchestrator:
         results = []
         failed = []
         for race_file in self.races:
-            result = self.score_race(race_file)
+            try:
+                result = self.score_race(race_file)
+            except Exception as exc:
+                print(f"❌ {race_file.name}: unhandled scoring error: {exc}")
+                result = None
             if result:
                 results.append(result)
             else:

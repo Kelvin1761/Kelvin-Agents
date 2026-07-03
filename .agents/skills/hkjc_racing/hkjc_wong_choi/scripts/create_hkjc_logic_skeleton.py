@@ -321,7 +321,6 @@ def parse_overseas_races_table(block):
 
 import hashlib
 import time
-import secrets
 
 
 # ── V4.2 Enrichment Parsers ──────────────────────────────────────────
@@ -512,20 +511,19 @@ def parse_venue_transfer(block):
     return '未知'
 
 
-def parse_distance_fitness(block, today_distance=None):
-    """Extract distance fitness data."""
-    result = {'same_distance': '', 'best_distance': '', 'today_vs_best': ''}
-    m = re.search(r'同程[::]\s*(.+?)(?:\||$)', block)
-    if m:
-        result['same_distance'] = m.group(1).strip()
-    m = re.search(r'最佳距離[::]\s*(.+?)$', block, re.MULTILINE)
-    if m:
-        result['best_distance'] = m.group(1).strip()
-    return result
 
 
-def load_trackwork_for_horse(facts_path, race_num, horse_num):
-    """Load pre-digested trackwork JSON for this race/horse if available."""
+def _core_horse_name_tw(s):
+    """Strip brand suffix e.g. '閃電小子(L126)' -> '閃電小子' for name matching."""
+    return re.sub(r"\s*[\(（][A-Z]\d+[\)）]\s*$", "", str(s or "").strip())
+
+
+def load_trackwork_for_horse(facts_path, race_num, horse_num, horse_name=None):
+    """Load pre-digested trackwork JSON for this race/horse if available.
+
+    晨操.json 嘅 slot 號可以同排位表錯位（localtrackwork 頁有後備馬時頭幾個
+    slot 移位，實測 ~9% 馬掛錯第二隻馬嘅晨操）。所以攞咗之後要用馬名核對；
+    唔啱名就全檔搵返啱嗰隻，搵唔到當 missing，唔好用錯馬資料評分。"""
     facts_dir = Path(facts_path).parent
     candidates = sorted(facts_dir.glob(f"* Race {race_num} 晨操.json"))
     if not candidates:
@@ -558,6 +556,16 @@ def load_trackwork_for_horse(facts_path, race_num, horse_num):
         with open(candidates[0], "r", encoding="utf-8") as f:
             payload = json.load(f)
         horse_payload = payload.get("horses", {}).get(str(horse_num))
+        expected_name = _core_horse_name_tw(horse_name)
+        if expected_name and horse_payload:
+            got_name = _core_horse_name_tw(horse_payload.get("horse_name"))
+            if got_name and got_name != expected_name:
+                horse_payload = None  # slot 錯位 — 唔可以用第二隻馬嘅晨操
+        if expected_name and not horse_payload:
+            for cand in payload.get("horses", {}).values():
+                if isinstance(cand, dict) and _core_horse_name_tw(cand.get("horse_name")) == expected_name:
+                    horse_payload = cand
+                    break
         if not horse_payload:
             return {
                 "status": "missing",
@@ -997,7 +1005,8 @@ def _get_draw_verdict_str(barrier, race_num=0, expected_venue='', expected_dista
     for d in race.get('draws', []):
         if d.get('draw') == barrier_int:
             return f"{d['verdict']} (上名{d.get('place_pct','?')}%/入Q{d.get('quinella_pct','?')}%/勝{d['win_pct']}%)"
-    return f'檔位{barrier_int}超出統計範圍(最大檔{max(d["draw"] for d in race["draws"])})'
+    max_draw = max((d.get("draw", 0) for d in race.get("draws", [])), default=0)
+    return f'檔位{barrier_int}超出統計範圍(最大檔{max_draw})'
 
 
 def _get_full_draw_table(race_num=0, expected_venue='', expected_distance=0):
@@ -1287,7 +1296,8 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None, facts_path=
     # V9.1 FIX: Only tag DEBUT if horse has 0 actual starts.
     # '新馬' can appear as race class name (e.g. 第五班新馬), NOT horse status.
     is_import = '自購馬' in horse_block or '海外賠馬' in horse_block
-    hk_starts_m = re.search(r'港賽\s*(\d+)', horse_block)
+    # inject 寫出嚟嘅格式係「生涯標記: `TAG` (香港出賽 N 場)」；舊 regex 港賽N 永遠 match 唔到
+    hk_starts_m = re.search(r'香港出賽\s*(\d+)\s*場', horse_block) or re.search(r'港賽\s*(\d+)', horse_block)
     hk_starts = int(hk_starts_m.group(1)) if hk_starts_m else starts
     text_hints_debut = '新馬' in horse_block or '首出' in horse_block or '(無往績記錄)' in horse_block
     # Hard guard: a horse with actual starts > 0 is NEVER a debut
@@ -1348,7 +1358,7 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None, facts_path=
     racecard_block = ''
     if is_debut and facts_path:
         racecard_block = load_racecard_horse_block(facts_path, race_num, data.get('num', 0))
-    debut_sire_profile = parse_debut_sire_profile(horse_block, data.get('distance', None), racecard_block=racecard_block) if is_debut else {}
+    debut_sire_profile = parse_debut_sire_profile(horse_block, expected_distance or None, racecard_block=racecard_block) if is_debut else {}
     debut_trial_profile = build_debut_trial_profile(raw_trackwork) if is_debut else {}
     debut_readiness_flags = build_debut_readiness_flags(raw_trackwork) if is_debut else []
     debut_sire_line = f"[初出 Sire profile: {json.dumps(debut_sire_profile, ensure_ascii=False)}]\n" if is_debut else ""
@@ -1620,7 +1630,8 @@ def main():
     horse_data = {**header, **summary, **recent, **trends}
 
     # Build skeleton
-    trackwork = load_trackwork_for_horse(args.facts_path, args.race_num, args.horse_num)
+    trackwork = load_trackwork_for_horse(args.facts_path, args.race_num, args.horse_num,
+                                         horse_name=horse_data.get('name'))
     skeleton = build_skeleton(horse_data, race_num=args.race_num, horse_block=block, trackwork=trackwork, facts_path=args.facts_path)
 
     # Determine output path

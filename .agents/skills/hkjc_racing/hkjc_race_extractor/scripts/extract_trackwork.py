@@ -769,7 +769,10 @@ def run(args: argparse.Namespace) -> int:
             web_id_by_no = {h["horse_no"]: h["horseid"] for h in web_horses}
             web_id_by_name = {h.get("horse_name", ""): h["horseid"] for h in web_horses if h.get("horse_name")}
             for h in racecard_horses:
-                real_id = web_id_by_no.get(h["horse_no"]) or web_id_by_name.get(h["horse_name"])
+                # 馬名優先：localtrackwork 頁嘅馬號同排位表可以錯位（有後備馬時
+                # 頭一兩個 slot 成日移咗位），用馬號 join 會令馬匹掛住第二隻馬
+                # 嘅晨操紀錄（實測 ~9% 馬受影響）。馬名先至係權威 key。
+                real_id = web_id_by_name.get(h["horse_name"]) or web_id_by_no.get(h["horse_no"])
                 if real_id and real_id != h["horseid"]:
                     print(f"   🔄 Horse #{h['horse_no']} {h['horse_name']}: "
                           f"corrected horseid {h['horseid']} → {real_id}",

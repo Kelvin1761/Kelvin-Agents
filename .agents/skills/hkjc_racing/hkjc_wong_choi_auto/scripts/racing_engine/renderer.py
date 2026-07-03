@@ -46,13 +46,6 @@ MATRIX_ROLES = {
     "class_advantage": "輔助",
 }
 
-BAND_LABELS = {
-    "✅✅": "極強",
-    "✅": "正面",
-    "➖": "中性",
-    "❌": "偏弱",
-    "❌❌": "極弱",
-}
 
 PICK_LABELS = {
     "MODEL_TOP_PICK": "模型首選",
@@ -105,10 +98,6 @@ def ensure_verdict(logic_data: dict) -> dict:
     # We no longer apply artificial tie-breakers or safety swaps.
     # The ML optimizer reached its 30.63% Good Rate peak by purely sorting the 綜合戰力分 (ability_score).
     # Any manual overrides here would corrupt the mathematically proven weights.
-    ranked = sorted(
-        ranked,
-        key=lambda item: (-item["ability_score"], _horse_number_sort_key(item["horse_number"])),
-    )
     for idx, item in enumerate(ranked, start=1):
         horse = horses[item["horse_number"]]
         auto = horse["python_auto"]
@@ -130,51 +119,6 @@ def ensure_verdict(logic_data: dict) -> dict:
     }
     logic_data["python_auto_verdict"] = verdict
     return verdict
-
-
-def _apply_draw_micro_tiebreak(ranked: list[dict], horses: dict, race_context: dict) -> None:
-    if len(ranked) < 4:
-        return
-    third = ranked[2]
-    fourth = ranked[3]
-    if abs(float(third["ability_score"]) - float(fourth["ability_score"])) > 0.8:
-        return
-    third_horse = horses.get(third["horse_number"], {})
-    fourth_horse = horses.get(fourth["horse_number"], {})
-    third_auto = third_horse.get("python_auto", {}) if isinstance(third_horse.get("python_auto"), dict) else {}
-    fourth_auto = fourth_horse.get("python_auto", {}) if isinstance(fourth_horse.get("python_auto"), dict) else {}
-    third_bonus = _draw_micro_bonus(third_horse, race_context, third_auto)
-    fourth_bonus = _draw_micro_bonus(fourth_horse, race_context, fourth_auto)
-    if third_bonus == fourth_bonus:
-        return
-    third["rank_score"] = round(float(third["ability_score"]) + third_bonus, 4)
-    fourth["rank_score"] = round(float(fourth["ability_score"]) + fourth_bonus, 4)
-
-
-def _apply_top2_safety_swap(ranked: list[dict], horses: dict, race_context: dict) -> None:
-    if len(ranked) < 3:
-        return
-    second = ranked[1]
-    third = ranked[2]
-    second_score = float(second.get("rank_score", second["ability_score"]))
-    third_score = float(third.get("rank_score", third["ability_score"]))
-    if second_score - third_score > 0.35:
-        return
-    second_horse = horses.get(second["horse_number"], {})
-    third_horse = horses.get(third["horse_number"], {})
-    second_auto = second_horse.get("python_auto", {}) if isinstance(second_horse.get("python_auto"), dict) else {}
-    third_auto = third_horse.get("python_auto", {}) if isinstance(third_horse.get("python_auto"), dict) else {}
-    second_edge = _draw_micro_bonus(second_horse, race_context, second_auto) + _form_micro_bonus(second_auto)
-    third_edge = _draw_micro_bonus(third_horse, race_context, third_auto) + _form_micro_bonus(third_auto)
-    if third_edge - second_edge < 0.2:
-        return
-    second["rank_score"] = round(second_score - 0.2, 4)
-    third["rank_score"] = round(third_score + 0.2, 4)
-
-
-def _form_micro_bonus(auto: dict) -> float:
-    feature_scores = auto.get("feature_scores", {}) if isinstance(auto.get("feature_scores"), dict) else {}
-    return clip_score(feature_scores.get("form_score", 60.0)) / 100.0
 
 
 def _draw_micro_bonus(horse: dict, race_context: dict, auto: dict) -> float:
@@ -920,28 +864,6 @@ def _core_logic(auto: dict, horse: dict) -> str:
     return f"{horse.get('horse_name', '')} 目前{ABILITY_LABEL} {float(auto.get('ability_score', 0)):.1f}，由 12 項分數及 7D 矩陣產生。"
 
 
-def _translate_reason_text(text: str) -> str:
-    replacements = {
-        "Neutral Jockey": "騎師資料中性",
-        "Neutral Trainer": "練馬師資料中性",
-        "Invalid Draw": "檔位資料未能解析，中性處理",
-        "No recent form (Neutral)": "近績資料不足，中性處理",
-        "Indeterminable form": "近績格式未能解析，中性處理",
-        "Sectional data incomplete": "賽績段速資料不足，中性處理",
-        "Weak race sectional profile": "賽績段速輪廓偏弱",
-        "Neutral race sectional profile": "賽績段速輪廓中性",
-        "Fair race sectional profile": "賽績段速輪廓尚可",
-        "Positive race sectional profile": "賽績段速輪廓正面",
-        "Strong race sectional profile": "賽績段速輪廓突出",
-        "Inside Draw": "內檔有利",
-        "Middle Draw": "中檔中性偏正面",
-        "Outside Draw": "外檔不利",
-        "Form Score calculated from": "近績分按場次計算：",
-        "starts": "場",
-    }
-    for src, dst in replacements.items():
-        text = text.replace(src, dst)
-    return text
 
 
 def _advantage_text(features: dict) -> str:
@@ -1225,8 +1147,6 @@ def _atomic_write_text(path: Path, content: str) -> None:
     os.replace(tmp, path)
 
 
-def _band_label(band: str) -> str:
-    return BAND_LABELS.get(band, band)
 
 
 def _matrix_grade_section(auto: dict, features: dict) -> str:

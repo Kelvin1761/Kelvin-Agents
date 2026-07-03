@@ -1696,39 +1696,39 @@ def generate_horse_block(horse: dict, today_venue: str = '',
             if class_g:
                 cmap = {'1': '第一班', '2': '第二班', '3': '第三班', '4': '第四班', '5': '第五班', 'G1': '一級賽', 'G2': '二級賽', 'G3': '三級賽', 'G': '分級賽', '4R': '四歲馬系列', 'GRIFFIN': '新馬賽'}
                 class_g = cmap.get(str(class_g).upper(), f"C{class_g}" if str(class_g).isdigit() else class_g)
-                barrier = r.get('barrier', p.get('barrier', 0))
-                jockey = r.get('jockey', p.get('jockey', ''))
-                weight = r.get('weight', p.get('weight_carried', 0))
-                finish = r.get('finish', p.get('placing', 0))
-                margin = p.get('margin_raw', '-')
-                energy = r.get('energy', 0)
-                energy_str = str(energy) if energy > 0 else '-'
-                sect = r.get('sectionals', {})
-                l400_str = f"{sect['L400']:.2f}" if sect.get('L400') else '-'
-                wide = r.get('wide_info', {})
-                wide_str = f"({wide['pattern']})" if wide.get('pattern') else '-'
-                consumption = wide.get('consumption', '-') if wide.get('pattern') else '-'
-                pos_list = p.get('running_positions', [])
-                pos_str = '-'.join(str(x) for x in pos_list) if pos_list else '-'
-                ftime = p.get('finish_time_raw', '-')
-                
-                std_diff_str = '-'
-                if ftime != '-':
-                    try:
-                        ftime_sec = parse_time_to_seconds(ftime)
-                        race_std = get_standard_time(venue, distance, class_g)
-                        if ftime_sec and race_std:
-                            diff = ftime_sec - race_std
-                            std_diff_str = f"{diff:+.2f}s"
-                    except Exception:
-                        pass
+            barrier = r.get('barrier', p.get('barrier', 0))
+            jockey = r.get('jockey', p.get('jockey', ''))
+            weight = r.get('weight', p.get('weight_carried', 0))
+            finish = r.get('finish', p.get('placing', 0))
+            margin = p.get('margin_raw', '-')
+            energy = r.get('energy', 0)
+            energy_str = str(energy) if energy > 0 else '-'
+            sect = r.get('sectionals', {})
+            l400_str = f"{sect['L400']:.2f}" if sect.get('L400') else '-'
+            wide = r.get('wide_info', {})
+            wide_str = f"({wide['pattern']})" if wide.get('pattern') else '-'
+            consumption = wide.get('consumption', '-') if wide.get('pattern') else '-'
+            pos_list = p.get('running_positions', [])
+            pos_str = '-'.join(str(x) for x in pos_list) if pos_list else '-'
+            ftime = p.get('finish_time_raw', '-')
 
-                dw = p.get('declared_weight', r.get('body_weight', 0))
-                dw_str = str(dw) if dw > 0 else '-'
-                gear = p.get('gear', '-')
-                comment = r.get('comment', '')
-                forgiveness = auto_determine_forgiveness(comment)
-                lines.append(f"| {i+1} | {date} | {venue} | {distance} | {class_g} | {barrier} | {jockey} | {weight} | {finish} | {margin} | {energy_str} | {l400_str} | {wide_str} | {consumption} | {pos_str} | {ftime} | {std_diff_str} | {dw_str} | {gear} | {comment} | {forgiveness} |")
+            std_diff_str = '-'
+            if ftime != '-':
+                try:
+                    ftime_sec = parse_time_to_seconds(ftime)
+                    race_std = get_standard_time(venue, distance, class_g)
+                    if ftime_sec and race_std:
+                        diff = ftime_sec - race_std
+                        std_diff_str = f"{diff:+.2f}s"
+                except Exception:
+                    pass
+
+            dw = p.get('declared_weight', r.get('body_weight', 0))
+            dw_str = str(dw) if dw > 0 else '-'
+            gear = p.get('gear', '-')
+            comment = r.get('comment', '')
+            forgiveness = auto_determine_forgiveness(comment)
+            lines.append(f"| {i+1} | {date} | {venue} | {distance} | {class_g} | {barrier} | {jockey} | {weight} | {finish} | {margin} | {energy_str} | {l400_str} | {wide_str} | {consumption} | {pos_str} | {ftime} | {std_diff_str} | {dw_str} | {gear} | {comment} | {forgiveness} |")
 
     lines.append(f"")
     
@@ -1738,14 +1738,22 @@ def generate_horse_block(horse: dict, today_venue: str = '',
         lines.append(f"| # | 日期 | 場地/路程 | 班次 | 名次/馬匹數 | 騎師 | 負磅 | 締速 | 勝負距離 |")
         lines.append(f"|---|------|-----------|------|-------------|------|------|------|----------|")
         for i, ovr in enumerate(horse['pdf_overseas_races']):
-            ovr_date = ovr.get('date', '-')
-            ovr_track = ovr.get('track_dist', '-')
-            ovr_class = ovr.get('class_level', '-')
-            ovr_rank = ovr.get('rank', '-')
-            ovr_jockey = ovr.get('jockey', '-')
-            ovr_weight = ovr.get('weight', '-')
-            ovr_time = ovr.get('time', '-')
-            ovr_margin = ovr.get('margin', '-')
+            # parse_pdf_overseas_races 出嘅 key 係 Date/Distance/Placing/Field_Size/
+            # Finish_Time_Raw（大寫）；舊寫法讀 date/track_dist/... 全部 miss 晒，
+            # 成個表變 '-'，下游 real_overseas_rows 就會當無海外賽績。
+            ovr_date = ovr.get('Date', ovr.get('date', '-')) or '-'
+            ovr_track = ovr.get('Distance', ovr.get('track_dist', '-')) or '-'
+            ovr_class = ovr.get('class_level', '-') or '-'
+            placing = ovr.get('Placing')
+            field_size = ovr.get('Field_Size')
+            if placing:
+                ovr_rank = f"{placing}/{field_size}" if field_size else str(placing)
+            else:
+                ovr_rank = ovr.get('rank', '-') or '-'
+            ovr_jockey = ovr.get('jockey', '-') or '-'
+            ovr_weight = ovr.get('weight', '-') or '-'
+            ovr_time = ovr.get('Finish_Time_Raw', ovr.get('time', '-')) or '-'
+            ovr_margin = ovr.get('margin', '-') or '-'
             lines.append(f"| {i+1} | {ovr_date} | {ovr_track} | {ovr_class} | {ovr_rank} | {ovr_jockey} | {ovr_weight} | {ovr_time} | {ovr_margin} |")
         lines.append(f"")
     

@@ -305,10 +305,6 @@ def parse_float(value):
     return float(match.group(0)) if match else None
 
 
-def parse_numbers(value):
-    if not value:
-        return []
-    return [float(item) for item in re.findall(r"-?\d+(?:\.\d+)?", str(value))]
 
 
 def parse_record(value):
@@ -328,22 +324,6 @@ def parse_record(value):
     }
 
 
-def score_from_finish(rank):
-    try:
-        rank = int(rank)
-    except (TypeError, ValueError):
-        return None
-    if rank <= 1:
-        return 92
-    if rank == 2:
-        return 82
-    if rank == 3:
-        return 74
-    if rank <= 5:
-        return 62
-    if rank <= 8:
-        return 48
-    return 38
 
 
 def score_band(score):

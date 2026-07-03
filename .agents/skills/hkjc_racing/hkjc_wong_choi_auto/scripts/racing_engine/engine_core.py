@@ -386,11 +386,21 @@ class RacingEngine:
             note = "操練趨勢未見鮮明方向，按中性處理。"
             
         # 2. Raw exercise numerical multipliers
-        summary = self.horse_data.get("trackwork", {}).get("summary", {})
-        gallops = int(summary.get("gallops_21d", 0))
-        trials = int(summary.get("trials_21d", 0))
-        trotting = int(summary.get("trotting_21d", 0))
-        swimming = int(summary.get("swimming_21d", 0))
+        trackwork = self.horse_data.get("trackwork")
+        summary = trackwork.get("summary") if isinstance(trackwork, dict) else {}
+        if not isinstance(summary, dict):
+            summary = {}
+
+        def _count(key):
+            try:
+                return int(float(summary.get(key, 0) or 0))
+            except (TypeError, ValueError):
+                return 0
+
+        gallops = _count("gallops_21d")
+        trials = _count("trials_21d")
+        trotting = _count("trotting_21d")
+        swimming = _count("swimming_21d")
         
         gallop_w = scoring.TRACKWORK_MICRO_WEIGHTS.get("gallop_weight", 0.5)
         trial_w = scoring.TRACKWORK_MICRO_WEIGHTS.get("trial_weight", 1.0)
@@ -474,7 +484,8 @@ class RacingEngine:
         labels = []
         for part in text.split("|")[:3]:
             part = part.strip()
-            for label, score in mapping.items():
+            # 長標籤優先，否則「高」會搶先 match 走「極高」
+            for label, score in sorted(mapping.items(), key=lambda kv: -len(kv[0])):
                 if label in part:
                     scores.append(score)
                     labels.append(label)
@@ -550,6 +561,12 @@ class RacingEngine:
             reason = "影子排序重算 consistency_score，加入輸距權重、近期回暖/回落與 margin trend。"
 
         matrix_scores = map_features_to_matrix_scores(shadow_features)
+        # 同主線一致：重算後必須重套 finish-time trend nudge，否則 ability_delta 被污染。
+        # reason_codes 係主線嗰個 list，shadow 重算唔可以 append 落去。
+        saved_reason_codes = self.reason_codes
+        self.reason_codes = list(saved_reason_codes)
+        matrix_scores["sectional"] = self._apply_finish_time_trend(matrix_scores["sectional"])
+        self.reason_codes = saved_reason_codes
         ability_score = round(self._ability_score(matrix_scores), 2)
         base_ability = float(auto.get("ability_score", ability_score))
         return {
@@ -963,123 +980,8 @@ class RacingEngine:
         return base + " " + extra
 
 
-    def _core_logic(self, features, matrix_scores, matrix_reasoning):
-        name = self.horse_data.get("horse_name", "未知馬匹")
-        
-        # Filter out dimensions with 0% weight for debut horses to avoid generating text for them
-        ms_for_text = dict(matrix_scores)
-        if self._is_debut():
-            ms_for_text.pop("sectional", None)
-            ms_for_text.pop("form_line", None)
-            
-        top = sorted(ms_for_text.items(), key=lambda item: item[1], reverse=True)[:2]
-        low = sorted(ms_for_text.items(), key=lambda item: item[1])[:2]
-        top_keys = {key for key, _score in top}
-        low_keys = {key for key, _score in low}
-        
-        top_text = " ".join(self._core_support_sentence(key, score, features) for key, score in top)
-        low_text = " ".join(self._core_risk_sentence(key, score, features) for key, score in low)
-        
-        include_trackwork = self._should_include_trackwork_context(top_keys, low_keys)
-        context = self._context_sentence(features, top_keys, low_keys, include_trackwork)
-        risk = self._risk_sentence({"trackwork_slowing"} if include_trackwork else None)
-        overall = self._overall_projection_sentence(top, low, features)
-        competitiveness = self._competitiveness_opening(ms_for_text, features, top, low)
-        
-        # More natural flowing text without robotic prefixes
-        parts = [
-            f"{name}{competitiveness}",
-            top_text,
-            f"不過要留意嘅係{low_text}" if low_text else "",
-            context,
-            overall,
-            risk
-        ]
-        
-        return " ".join(p for p in parts if p.strip())
 
-    def _core_logic_transparency(self, feature_scores, matrix_scores, matrix_bands, ability_score, grade):
-        """Generate a structured transparency block showing exactly what Python computed.
-        
-        This returns a text block that accompanies the natural-language core_logic.
-        """
-        dims = [
-            ("stability", "進度穩定及狀態趨勢", "基礎"),
-            ("sectional", "段速模型潛在爆發力", "核心"),
-            ("race_shape", "步速形勢與檔位", "戰術"),
-            ("trainer_signal", "練馬師出擊及騎練", "訊號"),
-            ("horse_health", "傷患記錄 / 操練強度", "風險"),
-            ("form_line", "賽績水準", "風險"),
-            ("class_advantage", "班底優勢", "風險"),
-        ]
-        
-        score_lines = []
-        core_strong = 0
-        semi_strong = 0
-        aux_strong = 0
-        total_weak = 0
-        
-        for key, label, role in dims:
-            # Skip outputting sectional and form_line transparency for debut horses
-            if self._is_debut() and key in ("sectional", "form_line"):
-                continue
-                
-            raw_score = float(matrix_scores.get(key, 60))
-            band = matrix_bands.get(key, score_band(raw_score))
-            score_lines.append(f"  - {label} [{role}]: {raw_score:.1f}分 -> {band}")
-            
-            if band in ("極強", "強"):
-                if role == "核心": core_strong += 1
-                elif role == "基礎": semi_strong += 1
-                else: aux_strong += 1
-            elif band == "弱" or band == "極弱":
-                total_weak += 1
-                
-        matrix_profile = f"強項分佈: {core_strong} 核心, {semi_strong} 基礎, {aux_strong} 戰術/風險 | 弱點: {total_weak}"
-        
-        return "\n".join([
-            "【Python Engine Matrix Transparency】",
-            *score_lines,
-            f"  > Matrix Profile: {matrix_profile}",
-            f"  > Computed Ability Score: {ability_score:.1f}",
-            f"  > Assigned Grade: {grade}"
-        ])
 
-    def _grade_computation_transparency(self, matrix_scores, ability_score, grade):
-        """Generate a detailed computation walkthrough for the 7D matrix.
-        
-        Returns a dict with textual breakdown suitable for markdown rendering.
-        """
-        is_debut = self._is_debut()
-        
-        active_weights = DEBUT_MATRIX_WEIGHTS if is_debut else MATRIX_WEIGHTS
-        
-        dims = [
-            ("stability", "進度穩定及狀態趨勢", "基礎"),
-            ("sectional", "段速模型潛在爆發力", "核心"),
-            ("race_shape", "步速形勢與檔位", "戰術"),
-            ("trainer_signal", "練馬師出擊及騎練", "訊號"),
-            ("horse_health", "傷患記錄 / 操練強度", "風險"),
-            ("form_line", "賽績水準", "風險"),
-            ("class_advantage", "班底優勢", "風險"),
-        ]
-        
-        lines = []
-        for key, label, role in dims:
-            if is_debut and key in ("sectional", "form_line"):
-                lines.append(f"  - {label} [{role}]: (初出馬豁免 - 權重 0.00)")
-                continue
-                
-            weight = active_weights.get(key, 0.0)
-            score = matrix_scores.get(key, 60.0)
-            lines.append(f"  - {label} [{role}]: {score:.1f} x {weight:.2f}")
-            
-        lines.append(f"  > **Final Ability Score**: {ability_score:.1f}")
-        
-        return {
-            "title": "7D Matrix Computation Breakdown",
-            "text": "\n".join(lines)
-        }
 
     def _matrix_reasoning(self, matrix_scores, matrix, features, notes):
         specs = {
@@ -1301,28 +1203,7 @@ class RacingEngine:
             return ""
         return f"此檔歷史 上名率{row['place_rate']:.0f}%、勝率{row.get('win_rate', 0):.0f}%（{int(row['starts'])}場）"
 
-    def _format_formline_finish(self, my_finish):
-        """'3 (-3-1/4)' -> '名次第3、落後3-1/4長'; '1 (...)' -> '名次第1（勝出）'."""
-        s = str(my_finish or "").strip()
-        fm = re.match(r"\s*(\d+)", s)
-        pos = fm.group(1) if fm else s
-        if pos == "1":
-            return "名次第1（勝出）"
-        mm = re.search(r"\(([^)]+)\)", s)
-        marg = mm.group(1).lstrip("-").strip() if mm else ""
-        return f"名次第{pos}、落後{marg}長" if marg else f"名次第{pos}"
 
-    def _formline_opponent_class_note(self):
-        """How the past opponents went on to perform: upper/same class re-wins."""
-        summ = str(self._value("formline_opponent_summary") or "")
-        hi = re.search(r"(\d+)\s*匹其後升上更高班", summ)
-        sm = re.search(r"(\d+)\s*匹其後於同班", summ)
-        bits = []
-        if hi:
-            bits.append(f"當中{hi.group(1)}匹對手其後升班仍再贏")
-        if sm:
-            bits.append(f"{sm.group(1)}匹對手其後同班再贏")
-        return "、".join(bits)
 
     def _recent_races_detailed(self):
         """Per-race history for the 近六場 readout: class, finishing place, 頭馬距離
@@ -1669,33 +1550,7 @@ class RacingEngine:
             sents.append("初出馬無正式賽績，以上以備戰及試閘數據作背景參考，須臨場驗證。")
         return self._normalize_prose("".join(sents))
 
-    def _context_sentence(self, features, top_keys=None, low_keys=None, include_trackwork=True):
-        top_keys = set(top_keys or ())
-        low_keys = set(low_keys or ())
-        bits = []
-        if self._is_debut():
-            bits.append("此駒屬初出馬，正式賽績空白，所以今次主要靠備戰內容同資料完整度去判斷 ready 未。")
-        else:
-            if "stability" not in top_keys and "stability" not in low_keys:
-                bits.append(self._form_context_sentence(features))
-        if "race_shape" not in top_keys and "race_shape" not in low_keys:
-            bits.append(self._draw_context_sentence(features))
-        if include_trackwork:
-            bits.append(self._trackwork_context_sentence(features))
-        return "".join(bits)
 
-    def _risk_sentence(self, suppressed_flags=None):
-        suppressed_flags = set(suppressed_flags or ())
-        visible_flags = [flag for flag in self.risk_flags if flag not in suppressed_flags]
-        if not visible_flags:
-            return "暫未見重大紅旗，但仍要留意臨場場地及資料更新。"
-        phrases = [self._risk_phrase_for_flag(flag) for flag in sorted(set(visible_flags))[:3]]
-        phrases = [phrase for phrase in phrases if phrase]
-        if not phrases:
-            return "仍有一兩項風險未完全消化，臨場要再留意。"
-        if len(phrases) == 1:
-            return phrases[0]
-        return "另外要留意" + "、".join(phrases[:-1]) + "，以及" + phrases[-1] + "。"
 
     def _normalize_reason(self, key, note):
         note = str(note or "").strip()
@@ -1748,46 +1603,8 @@ class RacingEngine:
                 return note
         return "相關來源不足，該維度以中性或保守分處理。"
 
-    def _form_context_sentence(self, features):
-        form_score = float(features.get("form_score", 60))
-        consistency_score = float(features.get("consistency_score", 60))
-        if form_score >= 80 and consistency_score >= 75:
-            return "近況走勢整體向上，而且唔止一場交代，呢點令基本面較實。"
-        if form_score < 52 or consistency_score < 52:
-            return "近期表現反覆，前列再現率未算高，所以近態信心只能保守少少。"
-        return "近況有一定交代，但穩定度未算完全企穩，仍然要睇臨場節奏配合。"
 
-    def _draw_context_sentence(self, features):
-        shape_score = float(features.get("race_shape_context_score", features.get("draw_score", 60)))
-        if shape_score >= 72:
-            return "今場形勢唔差，檔位、跑法同近期走位消耗配合後，至少有助佢用比較順手嘅方式入局。"
-        elif shape_score < 55:
-            return "今場形勢唔算就手，檔位、跑法匹配或走位成本都有機會限制發揮。"
-        return "今場形勢大致中性，未見明顯著數，但亦未去到先天輸蝕。"
 
-    def _trackwork_context_sentence(self, features):
-        trackwork = self._trackwork_markers()
-        if not any(trackwork.values()):
-            return "晨操部署未見鮮明變化，今次只可作輔助參考。"
-        if trackwork["classification"] == "翻案復刻":
-            lead = "備戰部署帶有翻案味道，馬房似乎想用近期操練去補回正式賽績上的不足。"
-        elif trackwork["classification"]:
-            lead = f"備戰部署以「{trackwork['classification']}」為主，反映今次準備方向大致清晰。"
-        else:
-            lead = "備戰內容有一定訊號，但未去到非常鮮明。"
-        if "加強" in trackwork["trend"]:
-            trend = "近課節奏有推進，屬正面備戰。"
-        elif "放緩" in trackwork["trend"]:
-            trend = "近課節奏略為放緩，所以只能視作輔助確認。"
-        else:
-            trend = "近課節奏大致正常，未見特別升溫或失速。"
-        if trackwork["positive"] and trackwork["positive"] != "無":
-            close = "至少唔似無備而來。"
-        elif trackwork["risk"] and trackwork["risk"] != "無":
-            close = "但暫時未見可以單靠備戰訊號扭轉全局。"
-        else:
-            close = "整體只屬輔助資訊。"
-        return lead + trend + close
 
     def _prep_score(self):
         digest = self._value("trackwork_digest")
@@ -2030,27 +1847,7 @@ class RacingEngine:
         text = str(value or "").strip()
         return "資料未完成，中性處理" if "[FILL" in text.upper() else text
 
-    def _short(self, value, limit):
-        text = " ".join(str(value or "").split())
-        return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 
-    def _feature_label(self, key):
-        return {
-            "form_score": "近績",
-            "speed_score": "速度",
-            "class_score": "級數",
-            "jockey_score": "騎師",
-            "trainer_score": "練馬師",
-            "draw_score": "檔位",
-            "distance_score": "路程",
-            "track_going_score": "場地",
-            "weight_score": "負磅",
-            "consistency_score": "穩定性",
-            "trackwork_trend_score": "操練趨勢",
-            "race_shape_context_score": "檔位走位情境",
-            "risk_score": "風險",
-            "confidence_score": "信心",
-        }[key]
 
     def _feature_score_label(self, key):
         return {
@@ -2099,246 +1896,27 @@ class RacingEngine:
         text = builder(score, features, evidence).strip()
         return text or f"{label} 主要根據現有本地資料作保守判讀。"
 
-    def _core_support_sentence(self, key, score, features):
-        builders = {
-            "stability": self._core_support_stability,
-            "sectional": self._core_support_sectional,
-            "race_shape": self._core_support_race_shape,
-            "trainer_signal": self._core_support_trainer_signal,
-            "horse_health": self._core_support_horse_health,
-            "form_line": self._core_support_form_line,
-            "class_advantage": self._core_support_class_advantage,
-        }
-        return builders.get(key, self._core_support_generic)(score, features)
 
-    def _core_risk_sentence(self, key, score, features):
-        builders = {
-            "stability": self._core_risk_stability,
-            "sectional": self._core_risk_sectional,
-            "race_shape": self._core_risk_race_shape,
-            "trainer_signal": self._core_risk_trainer_signal,
-            "horse_health": self._core_risk_horse_health,
-            "form_line": self._core_risk_form_line,
-            "class_advantage": self._core_risk_class_advantage,
-        }
-        return builders.get(key, self._core_risk_generic)(score, features)
 
-    def _core_support_stability(self, score, features):
-        variants = (
-            "最大賣點先在狀態與穩定性，近期表現唔係一次半次搶返來，而係持續維持到前列競爭感。",
-            "近況係佢今場最重要嘅支撐，因為近期唔只交到一場，而係整體穩定度有維持。",
-            "正面來源主要在近況，至少近期表現唔似偶一為之，基本競爭感係有連續性。",
-        )
-        if features.get("form_score", 60) >= 80 and features.get("consistency_score", 60) >= 75:
-            return variants[self._variant_seed() % len(variants)]
-        base = (
-            "狀態與穩定性方面有基本交代，至少反映到近期仲有維持競爭力。",
-            "近況未算爆燈，但整體仍然交代到一定穩定度，唔係完全靠估。",
-            "狀態面至少仲有基本支撐，顯示近期表現未至於全面走樣。",
-        )
-        return base[self._variant_seed() % len(base)]
 
-    def _core_support_sectional(self, score, features):
-        variants = (
-            "段速與場地適性屬正面板塊，反映末段走勢、速度形態同跑道適配有一定水準。",
-            "速度輪廓係佢今場一個可取位，至少末段反應同步速修正後未見失守。",
-            "段速面提供到實質支持，代表呢匹馬唔係單靠形勢先撐得起分數。",
-        )
-        return variants[self._variant_seed() % len(variants)]
 
-    def _core_support_race_shape(self, score, features):
-        barrier = self.horse_data.get("barrier") or self.horse_data.get("draw") or "N/A"
-        variants = (
-            f"形勢上亦有可取之處，今仗排{barrier}檔，走位起步成本相對可控。",
-            f"今場其中一個著數在形勢，{barrier}檔起步至少唔使先輸步位。",
-            f"排{barrier}檔令佢今場入局方式較易處理，早段唔需要額外蝕太多位置。",
-        )
-        return variants[self._variant_seed() % len(variants)]
 
-    def _core_support_trainer_signal(self, score, features):
-        combo_summary = self._trainer_signal_combo_summary()
-        if combo_summary:
-            return combo_summary
-        jockey = self.horse_data.get("jockey", "騎師")
-        trainer = self.horse_data.get("trainer", "練馬師")
-        variants = (
-            f"騎練訊號算站得住腳，由{jockey}操刀配合{trainer}馬房，臨場執行力有基本保證。",
-            f"人馬配置係正面來源之一，{jockey}同{trainer}組合至少提供到基本執行力。",
-            f"騎練層面唔算虛，{jockey}配{trainer}馬房屬可跟進配置，臨場操作有基本依靠。",
-        )
-        return variants[self._variant_seed() % len(variants)]
 
-    def _core_support_horse_health(self, score, features):
-        variants = (
-            "健康與新鮮感大致正路，起碼未見明顯消耗或備戰失衡的紅旗。",
-            "體能同新鮮感暫時屬可接受範圍，未見有太大警號拖住後腿。",
-            "健康面算平穩，至少未見明顯跡象顯示今場會先輸體能銜接。",
-        )
-        return variants[self._variant_seed() % len(variants)]
 
-    def _core_support_form_line(self, score, features):
-        return self._core_form_line_support_sentence(features)
 
-    def _core_support_class_advantage(self, score, features):
-        variants = (
-            "級數與負磅配套合理，今場唔似硬碰硬蝕底，基本班底可以支撐佢留在競爭圈。",
-            "班底配合負磅條件算順手，起碼唔似未跑已經喺硬件上輸蝕。",
-            "級數背景係有基本底氣，今場唔需要靠超水準先填補班底落差。",
-        )
-        return variants[self._variant_seed() % len(variants)]
 
-    def _core_support_generic(self, score, features):
-        return "其中一個正面板塊有基本支持，唔需要完全靠運氣先跑得出。"
 
-    def _core_risk_stability(self, score, features):
-        variants = (
-            "狀態面仍有保留，近期表現起伏未完全收窄，未必能夠穩定重複好表現。",
-            "近況未算完全企穩，最大問題係好表現未必場場都複製得到。",
-            "狀態延續性仍然係問號，近期表現仲帶住一定波幅。",
-        )
-        return variants[self._variant_seed() % len(variants)]
 
-    def _core_risk_sectional(self, score, features):
-        variants = (
-            "段速與場地適性未夠銳利，若步韻一快或者要靠衝刺補數，末段反應未算有十足把握。",
-            "速度面仍有隱憂，一旦臨場要靠末段硬追，反應未必夠利。",
-            "段速輪廓未算 sharp，今場如果步速形勢變複雜，末段應對未必夠穩。",
-        )
-        return variants[self._variant_seed() % len(variants)]
 
-    def _core_risk_race_shape(self, score, features):
-        barrier = self.horse_data.get("barrier") or self.horse_data.get("draw") or "N/A"
-        variants = (
-            f"檔位與走位板塊偏弱，今仗排{barrier}檔未必容易慳到位，走位成本有機會偏高。",
-            f"形勢面最大擔心係{barrier}檔未必容易入到理想位置，早段操作成本會上升。",
-            f"排{barrier}檔令走位容錯變細，一旦早段失位，之後補救空間有限。",
-        )
-        return variants[self._variant_seed() % len(variants)]
 
-    def _core_risk_trainer_signal(self, score, features):
-        combo_summary = self._trainer_signal_combo_summary()
-        if combo_summary:
-            return self._normalize_prose(combo_summary + " 今場唔適宜將希望過份放喺單一騎練變招上。")
-        variants = (
-            "騎練配搭未見明顯優勢，所以唔能夠期望單靠人手變招就扭轉形勢。",
-            "騎練層面未有額外加成，臨場想靠人手變招補足唔會太容易。",
-            "人馬配搭只屬中性，今場唔適宜將希望過份放喺騎練操作上。",
-        )
-        return variants[self._variant_seed() % len(variants)]
 
-    def _core_risk_horse_health(self, score, features):
-        variants = (
-            "健康與新鮮感只屬一般，休賽銜接同臨場維持度仍有少量保留。",
-            "體能銜接未算完全放心，特別係臨場能否由頭到尾維持同一強度。",
-            "健康面唔算大問題，但新鮮感同臨場續航仍然未去到完全無保留。",
-        )
-        return variants[self._variant_seed() % len(variants)]
 
-    def _core_risk_form_line(self, score, features):
-        return self._core_form_line_risk_sentence(features)
 
-    def _core_risk_class_advantage(self, score, features):
-        variants = (
-            "級數優勢唔算鮮明，若對手有更完整近況，單靠班底未必頂得住。",
-            "班底硬度未算突出，一旦對手近況更完整，呢邊未必夠硬食。",
-            "級數面未有壓倒性，今場如果要鬥硬淨，未必有太大著數。",
-        )
-        return variants[self._variant_seed() % len(variants)]
 
-    def _core_risk_generic(self, score, features):
-        return "其中一個關鍵板塊未夠穩，實戰容錯率會被壓低。"
 
-    def _overall_projection_sentence(self, top, low, features):
-        support_keys = {key for key, _score in top}
-        risk_keys = {key for key, _score in low}
-        
-        if "stability" in support_keys and "form_line" in support_keys:
-            return "反映此駒近況與賽績線均到位，只要臨場唔失準，基本盤有保證。"
-        if "sectional" in support_keys and "trainer_signal" in support_keys:
-            return "顯示具備足夠執行力及速度感，只要跑法順手，有力交出更高水準。"
-        if "race_shape" in support_keys and "class_advantage" in support_keys:
-            return "勝在形勢與班底配合順手，若早段步位理想，威脅比表面更大。"
-        if "sectional" in risk_keys and "race_shape" in risk_keys:
-            return "換言之，今場最大隱憂在於形勢未必就手，且末段反應存疑，一旦早段蝕位較難補救。"
-        if "stability" in risk_keys and "form_line" in risk_keys:
-            return "即係話，今仗近況與賽績線均未夠穩，若受壓未必有第二腳回應。"
-            
-        support = self._matrix_hook(next(iter(support_keys)), "support") if support_keys else "基本盤"
-        risk = self._matrix_hook(next(iter(risk_keys)), "risk") if risk_keys else "臨場發揮"
-        
-        variants = (
-            f"總括而言，今場要靠{support}維持競爭力。最後能否把分數兌現，好睇{risk}頂唔頂得住。",
-            f"歸根究底，核心點在於{support}可否順利落地，同時要避開{risk}拖後腿，先有機會跑返水準。",
-            f"綜合睇，今場發揮關鍵在於{support}能否轉化成實際優勢，而{risk}就係最大變數。"
-        )
-        return variants[self._variant_seed() % len(variants)]
 
-    def _competitiveness_opening(self, matrix_scores, features, top, low):
-        ability = float(self._ability_score(matrix_scores))
-        confidence = float(features.get("confidence_score", 60))
-        top_key = top[0][0] if top else None
-        low_key = low[0][0] if low else None
-        support = self._matrix_hook(top_key, "support")
-        risk_text = self._matrix_hook(low_key, "risk")
-        seed = self._variant_seed()
-        
-        weight = self.horse_data.get("weight", "適中")
-        class_text = "班底" if features.get("class_score", 60) >= 65 else "現時評分"
-        
-        if ability >= 72 and confidence >= 75:
-            variants = (
-                f"以{class_text}及負{weight}磅計，屬今場前列機會馬。最大底氣來自{support}，只要{risk_text}配合，整體競爭力甚高。",
-                f"整體指標位處前列，係今場爭勝主角之一。{support}提供咗明確支撐，只要{risk_text}唔成為缺口，走勢會十分正面。",
-                f"評分及數據基礎均見硬淨，屬三甲機會馬。今場最可取之處在於{support}，若{risk_text}控制得宜，勝算不俗。"
-            )
-            return variants[seed % len(variants)]
-        if ability >= 67:
-            variants = (
-                f"以各項數據計，具備實際爭位權。{support}撐得住基本盤，若{risk_text}唔出錯，有力留喺爭位圈。",
-                f"實力位處中上游，唔係純靠亂局先有機會。{support}足以支撐基本競爭力，但要守住位置，仍要睇{risk_text}會唔會拖後腿。",
-                f"具備基本爭位條件，其中{support}係關鍵支持。只要{risk_text}唔出大問題，應有力跟住大局。"
-            )
-            return variants[seed % len(variants)]
-        if ability >= 60:
-            variants = (
-                f"整體屬中游偏上、需要條件配合嘅一類。暫時靠{support}維持可爭感，不過{risk_text}會限制成績上限。",
-                f"今場有一定介入空間，但未算非常穩陣。現階段主要靠{support}托住評分，如果{risk_text}處理唔好，上限會幾快見頂。",
-                f"雖然唔係完全冇機會，但容錯空間較窄。眼前仍要靠{support}撐場，而{risk_text}就係最容易出錯嗰一環。"
-            )
-            return variants[seed % len(variants)]
-        variants = (
-            f"整體評估屬邊線偷位型。除非{support}完全兌現，同時{risk_text}冇再失分，否則驚喜空間有限。",
-            f"今場大致只屬冷門邊線。要由{support}大幅超預期發揮，仲要避開{risk_text}帶來嘅壓力，先至有機會爆冷。",
-            f"數據起步點相對較低，暫時只可寄望{support}帶來額外幫助。若{risk_text}依然構成障礙，成績幾難有突破。"
-        )
-        return variants[seed % len(variants)]
 
-    def _core_form_line_support_sentence(self, features):
-        strength = self._formline_strength_signal()
-        trend = self._margin_trend_signal()
-        highlight = self._formline_opponent_highlight()
-        if strength in {"elite", "strong"} and trend == "improving":
-            if highlight:
-                return f"賽績線係主要支持之一，例如{highlight}，而且近期輸距走勢亦見收窄，證明唔係純粹跟強組搵位。"
-            return "賽績線係主要支持之一，因為之前所處組別本身有強度，而且近期輸距走勢亦見收窄。"
-        if strength in {"elite", "strong"}:
-            if highlight:
-                return f"賽績線有說服力，例如{highlight}，即係當時嗰條對手線其後真係有兌現。"
-            return "賽績線有說服力，因為之前碰過嘅對手組合普遍唔弱，唔係普通水位下搶返來。"
-        if trend == "improving":
-            return "賽績線方面有回升味道，雖然對手強度未必特別突出，但自己表現走勢係向好。"
-        return "賽績線方面有基本交代，但對手強度未算特別鮮明，所以只能作輔助支持。"
 
-    def _core_form_line_risk_sentence(self, features):
-        strength = self._formline_strength_signal()
-        trend = self._margin_trend_signal()
-        if strength in {"elite", "strong"} and trend == "worsening":
-            return "賽績線雖然來自偏強對手，但自己近期未能將呢條線延續返落去，轉化能力仍有疑問。"
-        if strength in {"neutral", "unknown"}:
-            return "賽績線保證未算高，因為之前對手強度未有清晰證明，唔能夠單靠呢條線撐起信心。"
-        if trend == "worsening":
-            return "賽績線近期有降溫跡象，即使舊績唔差，近況都未見可以原樣複製。"
-        return "賽績線未算完全穩陣，仍要靠其他板塊補足。"
 
     def _formline_opponent_highlight(self):
         context_parts = []
@@ -2371,41 +1949,7 @@ class RacingEngine:
             return ""
         return text
 
-    def _should_include_trackwork_context(self, top_keys, low_keys):
-        return "stability" not in top_keys and "stability" not in low_keys and "horse_health" not in top_keys and "horse_health" not in low_keys
 
-    def _matrix_hook(self, key, mode):
-        hooks = {
-            "stability": {
-                "support": "近況穩定度",
-                "risk": "狀態延續性",
-            },
-            "sectional": {
-                "support": "末段反應同速度質量",
-                "risk": "末段爆發力",
-            },
-            "race_shape": {
-                "support": "排檔同走位成本",
-                "risk": "走位形勢",
-            },
-            "trainer_signal": {
-                "support": "人馬執行力",
-                "risk": "騎練加成",
-            },
-            "horse_health": {
-                "support": "健康銜接",
-                "risk": "體能維持度",
-            },
-            "form_line": {
-                "support": "賽績線含金量",
-                "risk": "賽績線轉化",
-            },
-            "class_advantage": {
-                "support": "班底同負磅配套",
-                "risk": "級數硬度",
-            },
-        }
-        return hooks.get(key, {}).get(mode, "整體發揮")
 
     def _risk_phrase_for_flag(self, flag):
         mapping = {
@@ -2419,10 +1963,6 @@ class RacingEngine:
         }
         return mapping.get(flag, "")
 
-    def _variant_seed(self):
-        name = str(self.horse_data.get("horse_name") or "")
-        barrier = str(self.horse_data.get("barrier") or self.horse_data.get("draw") or "")
-        return sum(ord(ch) for ch in f"{name}|{barrier}")
 
     def _season_record(self):
         return parse_record(self.horse_data.get("season_stats") or self._value("season_stats_line"))
@@ -2484,13 +2024,6 @@ class RacingEngine:
             return "holding"
         return "mixed"
 
-    def _stats_text(self, value):
-        text = self._clean(value or "")
-        if not text or text == "N/A":
-            return text
-        text = text.replace(" | ", "；").replace("|", "；")
-        text = " ".join(part.strip() for part in text.split())
-        return self._normalize_prose(text)
 
     def _normalize_prose(self, text):
         text = " ".join(str(text or "").split())
@@ -2692,13 +2225,6 @@ class RacingEngine:
             return neutral_text
         return weak_text
 
-    def _coverage_sentence(self, confidence_score):
-        confidence_score = float(confidence_score)
-        if confidence_score >= 80:
-            return "資料覆蓋完整，今次判讀可信度較高。"
-        if confidence_score >= 68:
-            return "主要欄位算齊，今次判讀有一定依據。"
-        return "資料未算完整，所以呢個判讀需要保守理解。"
 
     def _trackwork_markers(self):
         digest = self._clean(self._value("trackwork_digest") or "")
@@ -2722,29 +2248,7 @@ class RacingEngine:
             "risk": risk,
         }
 
-    def _matrix_dimension_label(self, key):
-        labels = {
-            "stability": "狀態與穩定性",
-            "sectional": "段速與場地適性",
-            "race_shape": "檔位與走位",
-            "trainer_signal": "騎練訊號",
-            "horse_health": "馬匹健康 / 新鮮感",
-            "form_line": "賽績線",
-            "class_advantage": "級數優勢",
-        }
-        return labels.get(key, key)
 
-    def _matrix_dimension_role(self, key):
-        roles = {
-            "stability": "半核心",
-            "sectional": "核心",
-            "race_shape": "半核心",
-            "trainer_signal": "核心",
-            "horse_health": "輔助",
-            "form_line": "輔助",
-            "class_advantage": "輔助",
-        }
-        return roles.get(key, "輔助")
 
     def _grade_computation_transparency(self, matrix_scores, ability_score, grade):
         """Generate a detailed computation walkthrough for the 7D matrix.
@@ -2754,14 +2258,7 @@ class RacingEngine:
         so the displayed 加權總分 always matches the real ability_score.
         """
         is_debut = self._is_debut()
-        debut_weights = {
-            "trainer_signal": 0.30,
-            "horse_health": 0.30,
-            "race_shape": 0.20,
-            "stability": 0.15,
-            "class_advantage": 0.05,
-        }
-        active_weights = debut_weights if is_debut else MATRIX_WEIGHTS
+        active_weights = DEBUT_MATRIX_WEIGHTS if is_debut else MATRIX_WEIGHTS
 
         dims = [
             ("stability", "狀態與穩定性", "半核心"),
@@ -2793,12 +2290,6 @@ class RacingEngine:
             lines.append(
                 f"  - {label} [{role}]: {raw_score:.1f}分 × {pct} = {contribution:.2f} → {band}"
             )
-        
-        # Add health micro-adjustment note if applicable
-        health_notes = []
-        original_health = float(matrix_scores.get("horse_health", 60))
-        # The health score already went through _apply_health_only_v2 in analyze_horse()
-        # We can note that micro-adjustments were applied
         
         lines_text = "\n".join(lines)
         

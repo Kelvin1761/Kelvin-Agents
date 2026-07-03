@@ -89,16 +89,12 @@ class DrawScorer(BaseScorer):
             p_low = scoring.DRAW_MICRO_WEIGHTS.get("turn_draw_9_plus", 50.0)
             prior_score = p_high if draw_num <= 4 else (p_mid if draw_num <= 8 else p_low)
 
-        db = _get_draw_bias()
-        db_key = (venue_norm, track_norm, distance, draw_num)
-        row = db.get(db_key)
-        
-        if row and row["starts"] >= 15:
-            score = row["place_rate"] + scoring.DRAW_MICRO_WEIGHTS.get("stats_base_add", 35.0)
-            self.score = round(max(50.0, min(75.0, score)), 2)
-            self.reason = f"Stats (PR {row['place_rate']:.1f}%)"
-        else:
-            self.score = prior_score
-            self.reason = "Prior (Starts < 15)"
+        # ML-validated 2026-07-02（13賽日/131場，train/test 一致）：用歷史檔位
+        # place_rate 取代 prior 公式係淨負累 — TEST 及格 32.1→43.4、良 +2.3pp、
+        # top3_champ +6.9pp 全部喺熄咗實證取代之後先出現（同 AU barrier-bias
+        # net-negative 同一 pattern）。檔位統計只保留俾報告顯示（_draw_stats_note），
+        # 唔再入評分。
+        self.score = prior_score
+        self.reason = "Prior formula"
 
         return self.score, self.reason

@@ -1,4 +1,3 @@
-import re
 import scoring
 from scoring import BaseScorer, clip_score, parse_float
 

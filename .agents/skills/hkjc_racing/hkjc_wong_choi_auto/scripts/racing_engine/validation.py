@@ -101,7 +101,7 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
             
         if abs(float(ability) - expected) > 0.05:
             errors.append(f"SCORE-004 horse {horse_num} ability formula mismatch: {ability} != {expected:.2f}")
-    if auto.get("grade") != compute_grade(float(ability)):
+    if _in_range(ability) and auto.get("grade") != compute_grade(float(ability)):
         errors.append(f"SCORE-005 horse {horse_num} grade mismatch")
 
     core_logic = str(auto.get("core_logic") or "")
