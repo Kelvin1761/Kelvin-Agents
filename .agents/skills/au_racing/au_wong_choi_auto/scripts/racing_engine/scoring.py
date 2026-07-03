@@ -6,14 +6,22 @@ import re
 FEATURE_KEYS = ("form_score","trial_score","sectional_score","pace_map_score","jockey_score","trainer_score","jockey_horse_fit_score","class_score","rating_score","weight_score","distance_score","track_score","formline_score","consistency_score","health_score","confidence_score","pace_figure_score")
 
 # pace_figure = 8th dimension: field-relative L600-vs-benchmark ("實測段速") from
-# racenet PuntingForm. Added 2026-07-02 at weight 0.05 (existing 7 dims ×0.95, sum
-# stays 1.0) — reproduces the validated backtest config sep_dim(l600_delta, w=0.05,
-# scale20). Neutral 60 where PF data absent → rank-neutral on no-PF races. Phase-1
-# AUC 0.60 (vs old sectional 0.545); Phase-2 in-sample (152 races) leans Good+Pass
-# +2pp (P>0=69%) with a confirmed box4 −3.3pp trade the user accepted. NOT yet
-# walk-forward-confirmed on a large sample — revert to the 7-key dict (drop
-# pace_figure, restore 0.330/0.105/0.234/0.214/0.050/0.067/0.000) to disable.
-MATRIX_WEIGHTS = {"stability":0.3135,"sectional":0.09975,"race_shape":0.2223,"jockey_trainer":0.2033,"class_weight":0.0475,"track":0.06365,"form_line":0.000,"pace_figure":0.050}
+# racenet PuntingForm (AUC 0.60 vs old text-sectional 0.545). Neutral 60 where PF
+# data absent → rank-neutral on no-PF races.
+# 2026-07-03 段速 restructure ("swap"): the MEASURED pace figure is now the primary
+# 段速 signal (0.143) and the old text-PI sectional dimension is demoted to 0.045 —
+# it is near-noise (AUC 0.528 ceiling) but its "has timing data" floor still carries
+# a mild winner signal, so it keeps a small weight rather than zero. Validated on
+# TWO independent PF windows (05-22→06-13: GGP 89→91; 06-19→07-01 OOS: GGP 29→38)
+# AND the full 687-race archive (gold 33→37, pass 285→297, champ +0.9pp, winT3
+# +2.0pp, box4 +0.2pp; good −1 within noise). Direct stability-weight cuts were
+# tested the same day and LOSE window A — the gain is from the 段速 restructure,
+# not from de-weighting stability. Weights sum to exactly 1.0 (normalised from the
+# tested 1.0475-sum config; ranking-identical, keeps grade thresholds honest).
+# Rollback: pace_figure 0.05 config {"stability":0.3135,"sectional":0.09975,
+# "race_shape":0.2223,"jockey_trainer":0.2033,"class_weight":0.0475,
+# "track":0.06365,"form_line":0.000,"pace_figure":0.050}.
+MATRIX_WEIGHTS = {"stability":0.29928,"sectional":0.04535,"race_shape":0.21222,"jockey_trainer":0.19408,"class_weight":0.04535,"track":0.06076,"form_line":0.000,"pace_figure":0.14296}
 _WEIGHT_FLOOR = {"stability":0.10}
 _WEIGHT_CEILING = {"class_weight":0.15,"track":0.17}
 
