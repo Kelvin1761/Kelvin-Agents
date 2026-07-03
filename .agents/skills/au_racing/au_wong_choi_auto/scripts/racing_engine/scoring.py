@@ -16,7 +16,6 @@ FEATURE_KEYS = ("form_score","trial_score","sectional_score","pace_map_score","j
 MATRIX_WEIGHTS = {"stability":0.3135,"sectional":0.09975,"race_shape":0.2223,"jockey_trainer":0.2033,"class_weight":0.0475,"track":0.06365,"form_line":0.000,"pace_figure":0.050}
 _WEIGHT_FLOOR = {"stability":0.10}
 _WEIGHT_CEILING = {"class_weight":0.15,"track":0.17}
-SOFT_RACE_SHAPE_SCALE = 1.0
 
 # ── Wet-form 7D feature (gated to Soft/Heavy races) ──
 # A horse's career wet-going place record IS predictive of box-trifecta on wet
@@ -234,17 +233,6 @@ def get_dynamic_matrix_weights(race_context):
     for key in weights: weights[key] = round(weights[key],4)
     return weights
 
-def soft_race_shape_modifier(race_context, matrix_scores):
-    context = race_context or {}
-    going = f"{context.get('going', '')} {context.get('condition', '')}".lower()
-    if "soft" not in going:
-        return 0.0
-    race_shape = clip_score((matrix_scores or {}).get("race_shape", 60.0))
-    return round(((race_shape - 60.0) / 10.0) * SOFT_RACE_SHAPE_SCALE, 4)
-
-PLACE_TIGHTENING_FEATURE_WEIGHTS = {"form_score":0.103,"trial_score":0.179,"trainer_score":0.204,"jockey_horse_fit_score":0.170,"consistency_score":0.143,"distance_score":-0.033,"confidence_score":0.027,"weight_score":-0.141,"sectional_score":0.05}
-PLACE_TIGHTENING_SCALE = 1.4
-PLACE_TIGHTENING_MAX_ABS_BONUS = 4.0
 GRADE_THRESHOLDS = ((96,"S+"),(92,"S"),(88,"S-"),(84,"A+"),(80,"A"),(76,"A-"),(72,"B+"),(68,"B"),(64,"B-"),(60,"C+"),(56,"C"),(52,"C-"),(48,"D"),(0,"E"))
 
 def clip_score(value, default=60.0):
@@ -297,9 +285,19 @@ def parse_record_line(line):
     return {"starts":0,"wins":0,"seconds":0,"thirds":0,"places":0}
 
 def parse_recent_finishes(text):
+    """Finish positions from a recent-form string, newest conventions honoured.
+
+    Handles both separated ("8-9-7-6") and compact ("2134") formats — the compact
+    form previously parsed as one giant number and silently returned nothing,
+    zeroing the consistency place/poor components for those horses. In compact
+    form each digit is one run and "0" is the AU code for 10th-or-worse.
+    """
     if not text: return None
-    nums = parse_numbers(str(text))
-    if nums: return [n for n in nums if 1 <= n <= 24]
+    raw = str(text).strip()
+    if re.fullmatch(r"\d{2,}", raw):
+        return [int(ch) if ch != "0" else 10 for ch in raw]
+    nums = parse_numbers(raw)
+    if nums: return [n if n != 0 else 10 for n in nums if 0 <= n <= 24]
     return None
 
 def safe_ratio(numerator, denominator):

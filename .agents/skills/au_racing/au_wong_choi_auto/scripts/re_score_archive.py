@@ -34,20 +34,10 @@ from au_target_gap_report import (
     field_size_bucket,
 )
 
-
-def build_field_summary(horses: dict) -> dict:
-    weights = []
-    for horse in horses.values():
-        try:
-            weights.append(float(horse.get("weight")))
-        except (TypeError, ValueError):
-            continue
-    return {
-        "count": len(horses),
-        "min_weight": min(weights) if weights else 0,
-        "max_weight": max(weights) if weights else 0,
-        "avg_weight": sum(weights) / len(weights) if weights else 0,
-    }
+# Use the orchestrator's field summary so the engine sees the same rated_count /
+# l600 keys as live scoring (the old local builder only set count/weights,
+# silently neutralizing rating_score and pace_figure during re-scores).
+from au_auto_orchestrator import _build_field_summary as build_field_summary
 
 
 def main():

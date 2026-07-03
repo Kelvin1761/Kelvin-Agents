@@ -6,7 +6,6 @@ import os
 import re
 from pathlib import Path
 
-from hidden_signal_rescue import apply_report_only_hidden_signal
 from scoring import clip_score, score_band
 from matrix_mapper import MATRIX_FORMULAS
 
@@ -56,7 +55,6 @@ def _component_label(key, name):
     return MATRIX_COMPONENT_LABELS.get((key, name)) or FEATURE_LABELS.get(name, name)
 
 REPORT_BANS = ("[FILL]", "PLACEHOLDER", "待補", "分析中")
-HIDDEN_SIGNAL_REPORT_ONLY_ENABLED = False
 
 
 def ensure_verdict(logic_data: dict) -> dict:
@@ -83,7 +81,6 @@ def ensure_verdict(logic_data: dict) -> dict:
         auto["model_pick_status"] = "MODEL_TOP_PICK" if idx <= 2 else ("WATCH" if idx <= 4 else "NO_PICK")
         item["rank"] = idx
         item["model_pick_status"] = auto["model_pick_status"]
-    _apply_hidden_signal_report_only(ranked, horses)
     watchlist = _build_rank_4_6_watchlist(ranked, horses)
     verdict = {
         "ranking": ranked,
@@ -131,9 +128,6 @@ def render_race_csv(logic_data: dict) -> str:
         "model_pick_status",
         "watchlist_level",
         "watchlist_reasons",
-        "hidden_signal_rescue_modifier",
-        "hidden_signal_reasons",
-        "shadow_rank_score",
         *FEATURE_KEYS,
     ]
     writer = csv.DictWriter(output, fieldnames=fields)
@@ -157,50 +151,10 @@ def render_race_csv(logic_data: dict) -> str:
             "model_pick_status": auto.get("model_pick_status", ""),
             "watchlist_level": auto.get("watchlist_level", ""),
             "watchlist_reasons": ";".join(auto.get("watchlist_reasons", []) or []),
-            "hidden_signal_rescue_modifier": auto.get("hidden_signal_rescue_modifier", ""),
-            "hidden_signal_reasons": ";".join(auto.get("hidden_signal_reasons", []) or []),
-            "shadow_rank_score": auto.get("shadow_rank_score", ""),
         }
         row.update(auto.get("feature_scores", {}))
         writer.writerow(row)
     return output.getvalue()
-
-
-def _apply_hidden_signal_report_only(ranked: list[dict], horses: dict) -> None:
-    if not HIDDEN_SIGNAL_REPORT_ONLY_ENABLED:
-        for item in ranked:
-            horse = horses[str(item["horse_number"])]
-            auto = horse.get("python_auto", {})
-            auto["hidden_signal_rescue_modifier"] = 0.0
-            auto["hidden_signal_reasons"] = []
-            auto["shadow_rank_score"] = round(float(auto.get("rank_score") or auto.get("ability_score") or 0.0), 4)
-        return
-
-    rows = []
-    for item in ranked:
-        horse = horses[str(item["horse_number"])]
-        auto = horse.get("python_auto", {})
-        rows.append(
-            {
-                "horse_number": int(item["horse_number"]),
-                "horse_name": item.get("horse_name") or horse.get("horse_name", ""),
-                "rank_score": float(auto.get("rank_score") or auto.get("ability_score") or 0.0),
-                "ability_score": float(auto.get("ability_score") or 0.0),
-                "feature_scores": dict(auto.get("feature_scores") or {}),
-                "matrix_scores": dict(auto.get("matrix_scores") or {}),
-                "risk_flags": list(auto.get("risk_flags") or []),
-            }
-        )
-
-    shadow_rows = apply_report_only_hidden_signal(rows)
-    shadow_lookup = {int(row["horse_number"]): row for row in shadow_rows}
-    for item in ranked:
-        horse = horses[str(item["horse_number"])]
-        auto = horse.get("python_auto", {})
-        shadow = shadow_lookup.get(int(item["horse_number"]), {})
-        auto["hidden_signal_rescue_modifier"] = round(float(shadow.get("hidden_signal_rescue_modifier") or 0.0), 4)
-        auto["hidden_signal_reasons"] = list(shadow.get("hidden_signal_reasons") or [])
-        auto["shadow_rank_score"] = round(float(shadow.get("shadow_score") or auto.get("rank_score") or auto.get("ability_score") or 0.0), 4)
 
 
 def render_meeting_csv(results: list[dict]) -> str:
@@ -733,15 +687,6 @@ def _formline_summary(facts_section: str) -> str:
     return headline
 
 
-def _fact_bullets(facts_section: str) -> list[tuple[str, str]]:
-    labels = ("班次負重", "引擎距離", "步態場地", "配備意圖", "人馬組合")
-    output = []
-    for label in labels:
-        match = re.search(rf"- \*\*{re.escape(label)}:\*\* ([^\n]+)", facts_section)
-        if match:
-            output.append((label, _shorten_fact(match.group(1), 220)))
-    return output
-
 
 def _energy_summary(facts_section: str) -> str:
     block = _fact_block_excerpt(facts_section, "⚡ 走位消耗摘要")
@@ -1133,22 +1078,3 @@ def _inline_text(value: object) -> str:
     text = str(value or "").strip()
     return " ".join(text.split()) if text else ""
 
-
-def _forgiveness_digest(horse: dict, data: dict) -> str:
-    facts_section = str(data.get("facts_section") or "")
-    rows = [line.strip() for line in facts_section.splitlines() if line.strip().startswith("|") and "| 類型 |" not in line and "|---" not in line]
-    reasons = []
-    for line in rows[:4]:
-        cols = [col.strip() for col in line.strip("|").split("|")]
-        if len(cols) < 18 or "試閘" in cols[1]:
-            continue
-        forgiveness = cols[17]
-        notes = cols[16]
-        if forgiveness and forgiveness not in {"[-]", "[需判定]"}:
-            reasons.append(forgiveness)
-        elif any(token in notes for token in ("Crowded", "Bumped", "Steadied", "Looking for run", "Worked early", "Too much start")):
-            reasons.append(notes)
-    if not reasons:
-        return "未見鮮明寬恕背景"
-    text = "；".join(reasons[:2])
-    return _shorten_fact(_humanize_text(text), 120)

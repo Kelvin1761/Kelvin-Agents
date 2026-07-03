@@ -6,12 +6,6 @@ from scoring import FEATURE_KEYS, MATRIX_WEIGHTS, compute_grade
 
 
 MATRIX_KEYS = tuple(MATRIX_WEIGHTS.keys())
-GENERIC_REPORT_PHRASES = (
-    "資料不足，中性處理",
-    "分析中",
-    "待補",
-    "[FILL]",
-)
 
 
 def validate_engine_scripts(script_root: Path) -> list[str]:
@@ -28,26 +22,16 @@ def validate_engine_scripts(script_root: Path) -> list[str]:
 def validate_logic_data(logic_data: dict) -> list[str]:
     errors = []
     horses = logic_data.get("horses", {})
-    scored = []
     for horse_num, horse in horses.items():
         auto = horse.get("python_auto")
         if not isinstance(auto, dict):
             errors.append(f"SCHEMA-001 horse {horse_num} missing python_auto")
             continue
-        scored.append((str(horse_num), auto))
         errors.extend(_validate_auto_namespace(str(horse_num), auto))
     verdict = logic_data.get("python_auto_verdict")
     if not isinstance(verdict, dict):
         errors.append("VERDICT-001 missing python_auto_verdict")
     return errors
-
-
-def validate_report_output(text: str) -> list[str]:
-    issues = []
-    for phrase in GENERIC_REPORT_PHRASES:
-        if phrase in text:
-            issues.append(f"REPORT-001 forbidden phrase remains: {phrase}")
-    return issues
 
 
 def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
