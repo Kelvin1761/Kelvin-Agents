@@ -313,6 +313,18 @@ def sync_combo_tracker(args: argparse.Namespace) -> None:
     _print_json(sync_combo_tracker_for_date(args.date))
 
 
+def settle_props(args: argparse.Namespace) -> None:
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props.settlement import settle_props as _settle, prop_roi_report
+    conn = get_connection()
+    graded = _settle(conn)
+    _print_json({
+        "graded": graded,
+        "roi_all": prop_roi_report(conn),
+        "roi_value_only": prop_roi_report(conn, value_only=True),
+    })
+
+
 def tier_roi(_: argparse.Namespace) -> None:
     _print_json(tier_roi_summary())
 
@@ -612,6 +624,7 @@ def main(argv: list[str] | None = None) -> None:
 
     sub.add_parser("tier-roi").set_defaults(func=tier_roi)
     sub.add_parser("combo-roi").set_defaults(func=combo_roi)
+    sub.add_parser("settle-props").set_defaults(func=settle_props)
 
     p = sub.add_parser("calibration-report")
     p.add_argument("--min-samples", type=int, default=10)

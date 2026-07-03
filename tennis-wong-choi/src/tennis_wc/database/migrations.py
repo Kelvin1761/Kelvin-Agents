@@ -465,6 +465,33 @@ CREATE TABLE IF NOT EXISTS backtest_runs (
     summary_json TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS prop_tracker (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    prop_key TEXT NOT NULL,
+    match_id INTEGER NOT NULL,
+    match_date TEXT NOT NULL,
+    match_label TEXT NOT NULL,
+    market_key TEXT NOT NULL,
+    line REAL NOT NULL,
+    selection TEXT NOT NULL,
+    decimal_odds REAL NOT NULL,
+    model_prob REAL,
+    market_prob_fair REAL,
+    blended_prob REAL,
+    edge REAL,
+    ev REAL,
+    predicted_mean REAL,
+    stake_units REAL NOT NULL,
+    is_value INTEGER NOT NULL DEFAULT 0,
+    result_status TEXT NOT NULL DEFAULT 'PENDING',
+    actual_value REAL,
+    profit_loss_units REAL,
+    recorded_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    settled_at TEXT,
+    UNIQUE(prop_key)
+);
 """
 
 

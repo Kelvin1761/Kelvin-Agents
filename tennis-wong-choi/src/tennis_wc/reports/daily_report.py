@@ -102,6 +102,12 @@ def generate_daily_report(match_date: str, output_dir: str | Path | None = None)
     refresh_market_predictions(match_date, rows)
     export_market_odds_report(match_date, output_dir)
     export_banker_report(match_date, output_dir, banker_market_predictions_for_date(match_date))
+    # Grade any now-settleable ace props (live-validation of the prop engine).
+    try:
+        from tennis_wc.props.settlement import settle_props
+        settle_props(get_connection())
+    except Exception:
+        pass
     return output_path
 
 
@@ -1509,6 +1515,9 @@ def render_banker_report(match_date: str, rows: list[dict]) -> str:
     # Backtest-positive structure: chalk parlays (built from market favourites by
     # odds, not from the +EV leg pool), so it runs off `rows` regardless of legs.
     lines.extend(_chalk_combo_lines(rows))
+    # NBA-style player props (total aces) on the soft book -- experimental,
+    # calibrated, live-validating. Self-contained; runs off its own data.
+    lines.extend(_ace_prop_lines(match_date))
     if market_keys and market_keys <= {"match_winner", ""}:
         lines.extend(
             [
@@ -1718,6 +1727,52 @@ def _chalk_combo_lines(rows: list[dict]) -> list[str]:
         lines.extend(combo_block(3, 2))
     lines.append("⚠ +EV 係對 Pinnacle 收盤計；Sportsbet 大熱價通常較差，逐隻腳格價，唔夠收盤價就唔好落。賠率薄、靠量同紀律。")
     lines.append("")
+    return lines
+
+
+def _ace_prop_lines(match_date: str) -> list[str]:
+    """NBA-style player-prop section: TOTAL MATCH ACES on the soft Sportsbet book,
+    priced by the calibrated ace model (props/ace_model.py). Honest by design --
+    it shows model vs de-vigged market per line, flags +EV only within the
+    calibratable range (never longshot extrapolation), and states plainly that
+    prop ROI is not yet verified (settlement overlap ~16 matches). Every surfaced
+    prop is logged to prop_tracker for live validation."""
+    try:
+        from tennis_wc.props.daily import price_ace_props_for_date
+        props = price_ace_props_for_date(get_connection(), match_date, log=True)
+    except Exception as exc:  # never let an experimental section break the report
+        return ["## 🎾 球員 Prop：全場 Aces（實驗中）", "", f"（Prop 引擎今日無法產生：{exc}）", ""]
+    lines = [
+        "## 🎾 球員 Prop：全場 Aces（NBA 式 soft-market，實驗中・上線驗證緊）",
+        "",
+        "學 NBA 打球員 prop：只用 soft book（Sportsbet）、模型經 27k 場歷史校準（P(over) 係實測頻率）。",
+        "⚠ 未經 ROI 驗證：ace 市場「有賠率＋有結果」得約 16 場，statistically 等於零。以下係模型 vs 市場對照，",
+        "   已自動剔走超出校準範圍嘅長賠（>1.25× 預測均值 = 外推假 edge，即係整死 match-winner 嗰個陷阱）。",
+        "   每條已記入 prop_tracker，賽後自動結算，儲夠幾百注先有真 ROI。切勿當已證實嘅賺錢盤。",
+        "",
+    ]
+    if not props:
+        lines.extend(["今日無可定價嘅 aces prop（無 ace 盤，或球員近況數據不足 <5 場）。", ""])
+        return lines
+    any_value = False
+    for m in props:
+        a = m.anchor
+        lines.append(f"### {m.match_label}｜模型預測全場 aces ≈ {m.predicted_mean}")
+        for lg in m.legs:
+            tag = "  ✅+EV" if lg.is_value else ""
+            gap = lg.model_prob - lg.market_prob_fair
+            note = "（市場定價偏緊，over 無 value）" if gap <= -0.05 else ("（模型同市場分歧大，觀察）" if abs(gap) >= 0.10 else "")
+            any_value = any_value or lg.is_value
+            lines.append(
+                f"- {int(lg.line)}+ @ {_fmt(lg.decimal_odds)}｜模型 {_pct(lg.model_prob)}｜市場fair {_pct(lg.market_prob_fair)}"
+                f"｜edge {_pct(lg.edge, signed=True)}｜EV {_pct(lg.ev, signed=True)}{tag} {note}"
+            )
+        if a:
+            lines.append(f"  最高命中 anchor：{int(a.line)}+ @ {_fmt(a.decimal_odds)}（命中 {_pct(a.blended_prob)}）— 高命中盤,唔代表 +EV")
+        lines.append("")
+    if not any_value:
+        lines.append("結論：今日 aces over 全部唔夠 +EV（soft book 都將主線定得緊）。唔好硬追 over；等 prop_tracker 儲夠數據再定策略。")
+        lines.append("")
     return lines
 
 
