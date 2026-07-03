@@ -125,7 +125,52 @@ def test_price_ace_legs_empty_when_thin_history(tmp_path, monkeypatch):
 # --------------------------------------------------------------------------- #
 # Settlement
 # --------------------------------------------------------------------------- #
-def test_settlement_grades_from_score_json(tmp_path, monkeypatch):
+def _rec(conn, settlement, *, line, selection, side, odds, model_p, market_p,
+         market_key="total_aces_in_the_match", scope="match", subject=None,
+         stake=1.0, value=True, match_id=1):
+    settlement.record_prop(
+        conn, match_id=match_id, match_date="2026-01-01", match_label="A vs B",
+        market_key=market_key, line=line, selection=selection, side=side,
+        prop_scope=scope, subject_player_id=subject, decimal_odds=odds,
+        model_prob=model_p, market_prob_fair=market_p, blended_prob=model_p,
+        edge=model_p - market_p, ev=model_p * odds - 1, predicted_mean=13.0,
+        stake_units=stake, is_value=value)
+
+
+# --------------------------------------------------------------------------- #
+# Two-way pricing
+# --------------------------------------------------------------------------- #
+def test_price_two_way_devigs_and_picks_value_side():
+    # model thinks aces LOW: pred mean 8, line 12.5 -> model P(over) small ->
+    # under should be the value side.
+    tw = ace_model.price_two_way(1, "total_aces_12_5", "match", 9.5,
+                                 over_odds=1.90, under_odds=1.90, predicted_mean=9.0,
+                                 curve=ace_model.MATCH_ACE_CURVE)
+    assert tw is not None
+    # exact two-way de-vig of equal odds -> ~0.5 each
+    assert abs(tw.fair_prob_over - 0.5) < 0.02
+    # at ratio ~1.06 model P(over) < 0.5 -> under is the value side
+    assert tw.value_side in ("under", None)
+
+
+def test_price_two_way_refuses_out_of_range_line():
+    tw = ace_model.price_two_way(1, "total_aces_30_5", "match", 30.5,
+                                 over_odds=2.0, under_odds=1.8, predicted_mean=9.0,
+                                 curve=ace_model.MATCH_ACE_CURVE)
+    assert tw is None, "line far above predicted mean must be refused"
+
+
+def test_player_ace_prediction_uses_own_curve():
+    p_over = ace_model.interp_prob_over(5.5, 6.0, ace_model.PLAYER_ACE_CURVE)
+    m_over = ace_model.interp_prob_over(5.5, 6.0, ace_model.MATCH_ACE_CURVE)
+    assert p_over != m_over, "player and match curves must differ"
+    assert 0.0 < p_over < 1.0
+
+
+# --------------------------------------------------------------------------- #
+# Settlement + review
+# --------------------------------------------------------------------------- #
+def test_settlement_grades_over_and_under(tmp_path, monkeypatch):
     from conftest import configure_test_db
     configure_test_db(tmp_path, monkeypatch)
     from tennis_wc.database.migrations import init_db
@@ -133,30 +178,52 @@ def test_settlement_grades_from_score_json(tmp_path, monkeypatch):
     from tennis_wc.props import settlement
     init_db()
     conn = get_connection()
-    _seed_player(conn, 1, "A")
-    _seed_player(conn, 2, "B")
+    _seed_player(conn, 1, "A"); _seed_player(conn, 2, "B")
+    _seed_match(conn, 1, 1, 2)
+    conn.execute("INSERT INTO match_results (match_id, winner_player_id, source_provider, created_at, score_json) VALUES (1,1,'t','now', ?)",
+                 ('{"player_a_aces": 8, "player_b_aces": 5}',))  # total 13
+    conn.commit()
+    assert settlement.actual_total_aces(conn, 1) == 13.0
+    assert settlement.actual_player_aces(conn, 1, 1) == 8.0
+    # match total 13: Over 7+ wins; Under 15.5 wins; player_a Over 9.5 loses (8<9.5)
+    _rec(conn, settlement, line=7.0, selection="7+", side="over", odds=1.5, model_p=0.7, market_p=0.72)
+    _rec(conn, settlement, line=15.5, selection="Under 15.5", side="under", odds=1.9,
+         model_p=0.6, market_p=0.55, market_key="total_aces_15_5")
+    _rec(conn, settlement, line=9.5, selection="Over 9.5", side="over", odds=2.0, model_p=0.5, market_p=0.48,
+         market_key="total_a_aces_9_5", scope="player", subject=1)
+    conn.commit()
+    out = settlement.settle_props(conn)
+    assert out["graded"] == 3
+    roi = settlement.prop_roi_report(conn)
+    # 7+ win (+0.5), under 15.5 win (+0.9), player over 9.5 loss (-1.0) -> +0.4
+    assert roi["overall"]["settled"] == 3 and roi["overall"]["wins"] == 2
+    assert abs(roi["overall"]["pnl"] - 0.4) < 1e-6
+    assert "over" in roi["by_side"] and "under" in roi["by_side"]
+
+
+def test_scorecard_compares_model_and_market(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import settlement
+    init_db()
+    conn = get_connection()
+    _seed_player(conn, 1, "A"); _seed_player(conn, 2, "B")
     _seed_match(conn, 1, 1, 2)
     conn.execute("INSERT INTO match_results (match_id, winner_player_id, source_provider, created_at, score_json) VALUES (1,1,'t','now', ?)",
                  ('{"player_a_aces": 8, "player_b_aces": 5}',))
     conn.commit()
-    assert settlement.actual_total_aces(conn, 1) == 13.0
-    # record a winning 7+ and a losing 15+
-    settlement.record_prop(conn, match_id=1, match_date="2026-01-01", match_label="A vs B",
-                           market_key="total_aces_in_the_match", line=7.0, selection="7+",
-                           decimal_odds=1.5, model_prob=0.7, market_prob_fair=0.72,
-                           blended_prob=0.71, edge=-0.01, ev=0.05, predicted_mean=13.0,
-                           stake_units=1.0, is_value=True)
-    settlement.record_prop(conn, match_id=1, match_date="2026-01-01", match_label="A vs B",
-                           market_key="total_aces_in_the_match", line=15.0, selection="15+",
-                           decimal_odds=6.0, model_prob=0.2, market_prob_fair=0.22,
-                           blended_prob=0.21, edge=-0.01, ev=0.05, predicted_mean=13.0,
-                           stake_units=1.0, is_value=True)
-    out = settlement.settle_props(conn)
-    assert out["graded"] == 2
-    roi = settlement.prop_roi_report(conn)
-    assert roi["settled"] == 2 and roi["wins"] == 1
-    # 7+ won (+0.5u), 15+ lost (-1u) -> pnl -0.5u
-    assert abs(roi["pnl"] + 0.5) < 1e-6
+    # record several over-side rows with model/market probs; grade; scorecard
+    for i, line in enumerate((5.0, 7.0, 9.0, 11.0)):
+        _rec(conn, settlement, line=line, selection=f"{int(line)}+", side="over", odds=1.5,
+             model_p=0.6, market_p=0.7, stake=0.0, value=False)
+    conn.commit()
+    settlement.settle_props(conn)
+    sc = settlement.model_vs_market_scorecard(conn)
+    assert sc["settled"] == 4
+    assert sc["model"] is not None and sc["market"] is not None
+    assert "verdict" in sc
 
 
 def test_record_prop_idempotent(tmp_path, monkeypatch):
@@ -168,11 +235,7 @@ def test_record_prop_idempotent(tmp_path, monkeypatch):
     init_db()
     conn = get_connection()
     for _ in range(3):
-        settlement.record_prop(conn, match_id=1, match_date="2026-01-01", match_label="A vs B",
-                               market_key="total_aces_in_the_match", line=7.0, selection="7+",
-                               decimal_odds=1.5, model_prob=0.7, market_prob_fair=0.72,
-                               blended_prob=0.71, edge=-0.01, ev=0.05, predicted_mean=13.0,
-                               stake_units=1.0, is_value=True)
+        _rec(conn, settlement, line=7.0, selection="7+", side="over", odds=1.5, model_p=0.7, market_p=0.72)
     conn.commit()
     n = conn.execute("SELECT COUNT(*) FROM prop_tracker").fetchone()[0]
     assert n == 1, "same prop_key must upsert, not duplicate"

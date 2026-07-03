@@ -315,13 +315,15 @@ def sync_combo_tracker(args: argparse.Namespace) -> None:
 
 def settle_props(args: argparse.Namespace) -> None:
     from tennis_wc.database.db import get_connection
-    from tennis_wc.props.settlement import settle_props as _settle, prop_roi_report
+    from tennis_wc.props.settlement import (
+        settle_props as _settle, prop_roi_report, model_vs_market_scorecard,
+    )
     conn = get_connection()
     graded = _settle(conn)
     _print_json({
         "graded": graded,
-        "roi_all": prop_roi_report(conn),
-        "roi_value_only": prop_roi_report(conn, value_only=True),
+        "scorecard": model_vs_market_scorecard(conn),
+        "roi": prop_roi_report(conn),
     })
 
 

@@ -1731,48 +1731,99 @@ def _chalk_combo_lines(rows: list[dict]) -> list[str]:
 
 
 def _ace_prop_lines(match_date: str) -> list[str]:
-    """NBA-style player-prop section: TOTAL MATCH ACES on the soft Sportsbet book,
-    priced by the calibrated ace model (props/ace_model.py). Honest by design --
-    it shows model vs de-vigged market per line, flags +EV only within the
-    calibratable range (never longshot extrapolation), and states plainly that
-    prop ROI is not yet verified (settlement overlap ~16 matches). Every surfaced
-    prop is logged to prop_tracker for live validation."""
+    """NBA-style player-prop section: match-total AND single-player ACES on the
+    soft Sportsbet book, priced by the calibrated ace model. Two-way markets are
+    de-vigged exactly and BOTH sides priced, so we can back the UNDER (fade) where
+    the model sees value. Honest by design: +EV flagged only within the calibrated
+    range (never longshot extrapolation), ROI stated as unverified, and a live
+    model-vs-market scorecard shows who is actually right as results settle."""
     try:
         from tennis_wc.props.daily import price_ace_props_for_date
-        props = price_ace_props_for_date(get_connection(), match_date, log=True)
+        from tennis_wc.props.settlement import (
+            settle_props, prop_roi_report, model_vs_market_scorecard,
+        )
+        conn = get_connection()
+        settle_props(conn)  # grade anything now settleable before we review
+        boards = price_ace_props_for_date(conn, match_date, log=True)
     except Exception as exc:  # never let an experimental section break the report
-        return ["## 🎾 球員 Prop：全場 Aces（實驗中）", "", f"（Prop 引擎今日無法產生：{exc}）", ""]
+        return ["## 🎾 球員 Prop：Aces（實驗中）", "", f"（Prop 引擎今日無法產生：{exc}）", ""]
     lines = [
-        "## 🎾 球員 Prop：全場 Aces（NBA 式 soft-market，實驗中・上線驗證緊）",
+        "## 🎾 球員 Prop：Aces（NBA 式 soft-market，實驗中・上線驗證緊）",
         "",
-        "學 NBA 打球員 prop：只用 soft book（Sportsbet）、模型經 27k 場歷史校準（P(over) 係實測頻率）。",
-        "⚠ 未經 ROI 驗證：ace 市場「有賠率＋有結果」得約 16 場，statistically 等於零。以下係模型 vs 市場對照，",
-        "   已自動剔走超出校準範圍嘅長賠（>1.25× 預測均值 = 外推假 edge，即係整死 match-winner 嗰個陷阱）。",
-        "   每條已記入 prop_tracker，賽後自動結算，儲夠幾百注先有真 ROI。切勿當已證實嘅賺錢盤。",
+        "學 NBA 打 prop：只用 soft book（Sportsbet），模型經歷史校準（P(over) 係實測頻率）。",
+        "兩邊盤（Over/Under X.5）已精確去水，兩邊都定價 → 可以夾 under（模型認為 aces 會少過條線嗰邊）。",
+        "⚠ ROI 未驗證：ace 結算 overlap 得約 16 場。已剔走超出校準範圍嘅長賠（>1.25× 預測均值 = 外推假 edge）。",
+        "每條記入 prop_tracker、賽後自動結算；睇下面『模型 vs 市場記分卡』知邊個啱（比 ROI 快）。",
         "",
     ]
-    if not props:
-        lines.extend(["今日無可定價嘅 aces prop（無 ace 盤，或球員近況數據不足 <5 場）。", ""])
-        return lines
-    any_value = False
-    for m in props:
-        a = m.anchor
-        lines.append(f"### {m.match_label}｜模型預測全場 aces ≈ {m.predicted_mean}")
-        for lg in m.legs:
-            tag = "  ✅+EV" if lg.is_value else ""
-            gap = lg.model_prob - lg.market_prob_fair
-            note = "（市場定價偏緊，over 無 value）" if gap <= -0.05 else ("（模型同市場分歧大，觀察）" if abs(gap) >= 0.10 else "")
-            any_value = any_value or lg.is_value
-            lines.append(
-                f"- {int(lg.line)}+ @ {_fmt(lg.decimal_odds)}｜模型 {_pct(lg.model_prob)}｜市場fair {_pct(lg.market_prob_fair)}"
-                f"｜edge {_pct(lg.edge, signed=True)}｜EV {_pct(lg.ev, signed=True)}{tag} {note}"
-            )
-        if a:
-            lines.append(f"  最高命中 anchor：{int(a.line)}+ @ {_fmt(a.decimal_odds)}（命中 {_pct(a.blended_prob)}）— 高命中盤,唔代表 +EV")
+    val_picks: list[str] = []
+    for bd in boards:
+        seg = [f"### {bd.match_label}｜模型預測全場 aces ≈ {bd.predicted_match_mean}"]
+        for tw in bd.match_ou:
+            seg.append(_two_way_line("全場", tw, val_picks))
+        for tw in bd.player_ou:
+            seg.append(_two_way_line(tw.scope, tw, val_picks))
+        if bd.anchor:
+            a = bd.anchor
+            seg.append(f"- N+ 高命中 anchor：{int(a.line)}+ @ {_fmt(a.decimal_odds)}（命中 {_pct(a.blended_prob)}）— 唔代表 +EV")
+        if len(seg) > 1:
+            lines.extend(seg + [""])
+    if val_picks:
+        lines.extend(["### ✅ 今日模型認為有 value 嘅 prop（未證實，細注試 + 格價）", "", *val_picks, ""])
+    else:
+        lines.extend(["今日冇 prop 過到 value 關（soft book 主線都定得緊）。唔好硬追；等記分卡儲夠數據。", ""])
+    # ---- Review block: scorecard + segmented ROI (live validation) ----
+    try:
+        sc = model_vs_market_scorecard(conn)
+        roi = prop_roi_report(conn)
+        lines.extend(_prop_review_lines(sc, roi))
+    except Exception:
+        pass
+    return lines
+
+
+def _two_way_line(scope_label: str, tw, val_picks: list[str]) -> str:
+    """Render one Over/Under prop; append to val_picks if it carries value."""
+    base = (f"- {scope_label} O/U {tw.line}：Over @ {_fmt(tw.over_odds)} / Under @ {_fmt(tw.under_odds)}"
+            f"｜模型 P(over) {_pct(tw.model_prob_over)}｜市場fair {_pct(tw.fair_prob_over)}")
+    if tw.value_side:
+        tag = f"  ✅ {('大' if tw.value_side=='over' else '細')}({tw.value_side}) @ {_fmt(tw.value_odds)}｜edge {_pct(tw.edge, signed=True)}｜EV {_pct(tw.ev, signed=True)}"
+        val_picks.append(
+            f"- {scope_label} {tw.value_side.upper()} {tw.line} @ {_fmt(tw.value_odds)}"
+            f"（模型 {_pct(tw.blended_prob)} / edge {_pct(tw.edge, signed=True)}）"
+        )
+        return base + tag
+    return base
+
+
+def _prop_review_lines(sc: dict, roi: dict) -> list[str]:
+    lines = ["## 📊 Prop 結果檢討（上線驗證）", ""]
+    n = sc.get("settled", 0)
+    if not n:
+        lines.extend(["模型 vs 市場記分卡：暫無已結算 prop（跑多幾日 run-daily 就會有）。", ""])
+    else:
+        m, k = sc["model"], sc["market"]
+        lines.extend([
+            f"模型 vs 市場記分卡（{n} 條已結算，Brier / LogLoss 越低越準）：",
+            f"- 模型：Brier {m['brier']}｜LogLoss {m['log_loss']}",
+            f"- 市場：Brier {k['brier']}｜LogLoss {k['log_loss']}",
+            f"- 判定：{sc['verdict']}",
+            "",
+        ])
+        if sc.get("calibration"):
+            lines.append("校準（模型預測 P vs 實際命中）：")
+            for c in sc["calibration"]:
+                lines.append(f"  預測 {_pct(c['pred'])} → 實際 {_pct(c['realised'])}（n={c['n']}）")
+            lines.append("")
+    o = roi.get("overall", {})
+    if o.get("settled"):
+        lines.append(f"已結算注 ROI：{o['settled']} 注、命中 {_pct(o.get('hit_rate'))}、ROI {_pct(o.get('roi'), signed=True)}（純參考，樣本細）")
+        for side, s in (roi.get("by_side") or {}).items():
+            if s.get("settled"):
+                lines.append(f"  {side}: {s['settled']} 注 命中 {_pct(s.get('hit_rate'))} ROI {_pct(s.get('roi'), signed=True)}")
         lines.append("")
-    if not any_value:
-        lines.append("結論：今日 aces over 全部唔夠 +EV（soft book 都將主線定得緊）。唔好硬追 over；等 prop_tracker 儲夠數據再定策略。")
-        lines.append("")
+    else:
+        lines.extend(["已結算注 ROI：暫無（value 注仲未有結果）。", ""])
     return lines
 
 

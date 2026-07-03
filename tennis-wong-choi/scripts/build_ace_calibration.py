@@ -1,15 +1,15 @@
-"""Rebuild the ace-model calibration curve from player_match_history.
+"""Rebuild the ace-model calibration curves from player_match_history.
 
-Emits the CALIBRATION_CURVE list embedded in tennis_wc.props.ace_model. Re-run
-after a large history backfill and paste the printed CURVE back into ace_model.py.
+Emits MATCH_ACE_CURVE and PLAYER_ACE_CURVE embedded in tennis_wc.props.ace_model.
+Re-run after a large history backfill and paste the printed curves back in.
 
     PYTHONPATH=src .venv/bin/python scripts/build_ace_calibration.py
 
-Method (matches the model exactly): pair player_match_history rows into matches
-(-winner/-loser share a base id), walk forward in date order using only prior
-matches per player, predict the match total-ace mean (overall+surface serve rate
-blended with the opponent's conceded-aces), then bucket ratio = line/predicted
-against the realised P(total >= line). ~12k samples per 0.05 ratio bucket.
+Method (matches the model exactly): walk forward in date order using only prior
+matches per player. MATCH curve pairs both sides (-winner/-loser share a base id)
+and predicts the match total-ace mean; PLAYER curve predicts a single player's
+aces. Both blend overall+surface serve rate with the opponent's conceded-aces,
+then bucket ratio = line/predicted against the realised P(aces >= line).
 """
 from __future__ import annotations
 
@@ -79,9 +79,61 @@ def build_curve() -> list[tuple[float, float]]:
     curve = [(b, round(w / n, 4)) for b, (w, n) in sorted(bins.items())
              if n >= 200 and 0.3 <= b <= 1.6]
     print(f"# built from {len(recs)} paired matches")
-    print("CALIBRATION_CURVE =", curve)
+    print("MATCH_ACE_CURVE =", curve)
+    return curve
+
+
+def build_player_curve() -> list[tuple[float, float]]:
+    """Single-player ace curve (each history row is one player's match)."""
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT provider_match_id, player_id, opponent_id, match_date, surface, ace_count "
+        "FROM player_match_history WHERE ace_count IS NOT NULL "
+        "ORDER BY match_date ASC, provider_match_id ASC"
+    ).fetchall()
+    opp_aces = defaultdict(dict)
+    for r in rows:
+        opp_aces[_base_id(r["provider_match_id"])][r["player_id"]] = r["ace_count"]
+
+    ph = defaultdict(lambda: deque(maxlen=_LAST_N))
+    ps = defaultdict(lambda: defaultdict(lambda: deque(maxlen=_LAST_N)))
+    oc = defaultdict(lambda: deque(maxlen=_LAST_N))
+
+    def pm(dq, fb):
+        return sum(dq) / len(dq) if dq else fb
+
+    recs: list[tuple[float, float]] = []
+    for r in rows:
+        pid, opp, surf = r["player_id"], r["opponent_id"], (r["surface"] or "hard").lower()
+        h = ph[pid]
+        if len(h) >= _MIN_HISTORY:
+            ov = pm(h, _GLOBAL_ACE_FALLBACK)
+            sf = pm(ps[pid][surf], ov)
+            pred = (1 - _SURFACE_WEIGHT) * ov + _SURFACE_WEIGHT * sf
+            oppc = pm(oc[opp], None)
+            if oppc is not None:
+                pred = (1 - _CONCEDE_WEIGHT) * pred + _CONCEDE_WEIGHT * oppc
+            recs.append((pred, r["ace_count"]))
+        ph[pid].append(r["ace_count"]); ps[pid][surf].append(r["ace_count"])
+        oa = opp_aces[_base_id(r["provider_match_id"])].get(opp)
+        if oa is not None:
+            oc[pid].append(oa)
+
+    bins = defaultdict(lambda: [0, 0])
+    for pred, act in recs:
+        if pred <= 0:
+            continue
+        for line in [x + 0.5 for x in range(0, 20)]:
+            b = round((line / pred) * 20) / 20
+            bins[b][0] += 1 if act >= line else 0
+            bins[b][1] += 1
+    curve = [(b, round(w / n, 4)) for b, (w, n) in sorted(bins.items())
+             if n >= 200 and 0.3 <= b <= 1.8]
+    print(f"# built from {len(recs)} player-matches")
+    print("PLAYER_ACE_CURVE =", curve)
     return curve
 
 
 if __name__ == "__main__":
     build_curve()
+    build_player_curve()

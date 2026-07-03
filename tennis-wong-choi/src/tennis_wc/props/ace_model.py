@@ -26,7 +26,8 @@ from dataclasses import dataclass, field
 # Monotonic by construction; we linearly interpolate and clamp to the ends.
 # Regenerate with scripts/build_ace_calibration.py if the history grows a lot.
 # --------------------------------------------------------------------------- #
-CALIBRATION_CURVE: list[tuple[float, float]] = [
+# MATCH total aces (both players combined). Fit on 27,299 paired matches.
+MATCH_ACE_CURVE: list[tuple[float, float]] = [
     (0.30, 0.9551), (0.35, 0.9324), (0.40, 0.9159), (0.45, 0.8881),
     (0.50, 0.8578), (0.55, 0.8244), (0.60, 0.7859), (0.65, 0.7515),
     (0.70, 0.7134), (0.75, 0.6731), (0.80, 0.6261), (0.85, 0.5890),
@@ -35,6 +36,20 @@ CALIBRATION_CURVE: list[tuple[float, float]] = [
     (1.30, 0.2718), (1.35, 0.2535), (1.40, 0.2320), (1.45, 0.2056),
     (1.50, 0.1847), (1.55, 0.1772), (1.60, 0.1559),
 ]
+# SINGLE player's aces. Fit on 57,971 player-matches. Flatter than the match
+# curve -- individual ace counts are more dispersed relative to their mean.
+PLAYER_ACE_CURVE: list[tuple[float, float]] = [
+    (0.30, 0.8569), (0.35, 0.8372), (0.40, 0.8178), (0.45, 0.7811),
+    (0.50, 0.7600), (0.55, 0.7229), (0.60, 0.6910), (0.65, 0.6637),
+    (0.70, 0.6217), (0.75, 0.5870), (0.80, 0.5621), (0.85, 0.5304),
+    (0.90, 0.4976), (0.95, 0.4624), (1.00, 0.4387), (1.05, 0.4003),
+    (1.10, 0.3826), (1.15, 0.3553), (1.20, 0.3244), (1.25, 0.2977),
+    (1.30, 0.2781), (1.35, 0.2618), (1.40, 0.2359), (1.45, 0.2212),
+    (1.50, 0.1954), (1.55, 0.1902), (1.60, 0.1658), (1.65, 0.1533),
+    (1.70, 0.1399), (1.75, 0.1325), (1.80, 0.1147),
+]
+# Back-compat alias (older callers / tests import CALIBRATION_CURVE).
+CALIBRATION_CURVE = MATCH_ACE_CURVE
 
 _LAST_N = 15            # recency window for the ace profile
 _MIN_HISTORY = 5        # both players need >= this many prior ace matches to price
@@ -52,12 +67,14 @@ _GLOBAL_ACE_FALLBACK = 5.0  # per-player mean if a side is thin (rarely used)
 _MAX_LINE_RATIO = 1.25
 
 
-def interp_prob_over(line: float, predicted_mean: float) -> float:
-    """Empirical P(total aces >= line) given the model's predicted mean."""
+def interp_prob_over(line: float, predicted_mean: float,
+                     curve: list[tuple[float, float]] = MATCH_ACE_CURVE) -> float:
+    """Empirical P(aces >= line) given the model's predicted mean. Pass
+    PLAYER_ACE_CURVE for a single-player prop, MATCH_ACE_CURVE (default) for the
+    match total."""
     if predicted_mean <= 0 or line <= 0:
         return 0.0
     ratio = line / predicted_mean
-    curve = CALIBRATION_CURVE
     if ratio <= curve[0][0]:
         return curve[0][1]
     if ratio >= curve[-1][0]:
@@ -133,6 +150,75 @@ def predict_match_ace_mean(a: AceProfile, b: AceProfile) -> float:
     if a.conceded_mean is not None:
         b_pred = (1 - _CONCEDE_WEIGHT) * b_pred + _CONCEDE_WEIGHT * a.conceded_mean
     return round(a_pred + b_pred, 2)
+
+
+def predict_player_ace_mean(player: AceProfile, opponent: AceProfile) -> float:
+    """A SINGLE player's expected aces: own serve rate nudged by how many aces
+    the opponent usually concedes (a poor returner lets the server ace more)."""
+    pred = player.serve_estimate
+    if opponent.conceded_mean is not None:
+        pred = (1 - _CONCEDE_WEIGHT) * pred + _CONCEDE_WEIGHT * opponent.conceded_mean
+    return round(pred, 2)
+
+
+# --------------------------------------------------------------------------- #
+# Two-way (Over/Under) pricing -- the clean case: exact de-vig from both sides.
+# --------------------------------------------------------------------------- #
+@dataclass
+class TwoWayProp:
+    match_id: int
+    market_key: str
+    scope: str                 # "match" or a player name
+    line: float
+    over_odds: float
+    under_odds: float
+    predicted_mean: float
+    model_prob_over: float
+    fair_prob_over: float      # exact two-way de-vig
+    # the side the model prefers as value (or None)
+    value_side: str | None     # "over" | "under" | None
+    value_odds: float | None
+    edge: float                # blended - fair on the value side (0 if none)
+    ev: float                  # blended*odds-1 on the value side (<=0 if none)
+    blended_prob: float        # blended prob of the value side (or of over if none)
+    factors: dict = field(default_factory=dict)
+
+
+def price_two_way(match_id: int, market_key: str, scope: str, line: float,
+                  over_odds: float, under_odds: float, predicted_mean: float,
+                  curve: list[tuple[float, float]], factors: dict | None = None,
+                  within_range_ratio: float = _MAX_LINE_RATIO) -> TwoWayProp | None:
+    """Price an Over/Under ace market. Exact two-way de-vig (Over+Under),
+    calibrated model P(over), shrink toward market, pick the +EV value side.
+    Refuses lines outside the calibration range (fake-edge protection)."""
+    if predicted_mean <= 0 or over_odds <= 1.0 or under_odds <= 1.0:
+        return None
+    if line > within_range_ratio * predicted_mean or line < 0.30 * predicted_mean:
+        return None  # outside where the curve is trustworthy
+    model_over = interp_prob_over(line, predicted_mean, curve)
+    imp_over, imp_under = 1.0 / over_odds, 1.0 / under_odds
+    overround = imp_over + imp_under
+    fair_over = imp_over / overround
+    blended_over = (1 - _MARKET_SHRINK) * model_over + _MARKET_SHRINK * fair_over
+    blended_under = 1.0 - blended_over
+    ev_over = blended_over * over_odds - 1.0
+    ev_under = blended_under * under_odds - 1.0
+    fair_under = 1.0 - fair_over
+    edge_over = blended_over - fair_over
+    edge_under = blended_under - fair_under
+    side, s_odds, s_edge, s_ev, s_blend = None, None, 0.0, min(ev_over, ev_under), blended_over
+    if edge_over >= _MIN_EDGE and ev_over > 0:
+        side, s_odds, s_edge, s_ev, s_blend = "over", over_odds, edge_over, ev_over, blended_over
+    elif edge_under >= _MIN_EDGE and ev_under > 0:
+        side, s_odds, s_edge, s_ev, s_blend = "under", under_odds, edge_under, ev_under, blended_under
+    return TwoWayProp(
+        match_id=match_id, market_key=market_key, scope=scope, line=line,
+        over_odds=round(over_odds, 3), under_odds=round(under_odds, 3),
+        predicted_mean=predicted_mean, model_prob_over=round(model_over, 4),
+        fair_prob_over=round(fair_over, 4), value_side=side,
+        value_odds=round(s_odds, 3) if s_odds else None, edge=round(s_edge, 4),
+        ev=round(s_ev, 4), blended_prob=round(s_blend, 4), factors=factors or {},
+    )
 
 
 # --------------------------------------------------------------------------- #

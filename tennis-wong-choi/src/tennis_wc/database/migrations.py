@@ -475,6 +475,9 @@ CREATE TABLE IF NOT EXISTS prop_tracker (
     market_key TEXT NOT NULL,
     line REAL NOT NULL,
     selection TEXT NOT NULL,
+    side TEXT NOT NULL DEFAULT 'over',
+    prop_scope TEXT NOT NULL DEFAULT 'match',
+    subject_player_id INTEGER,
     decimal_odds REAL NOT NULL,
     model_prob REAL,
     market_prob_fair REAL,
@@ -516,3 +519,11 @@ def _ensure_compat_columns(conn) -> None:
     result_columns = {row["name"] for row in conn.execute("PRAGMA table_info(match_results)").fetchall()}
     if "score_json" not in result_columns:
         conn.execute("ALTER TABLE match_results ADD COLUMN score_json TEXT")
+    prop_cols = {row["name"] for row in conn.execute("PRAGMA table_info(prop_tracker)").fetchall()}
+    for name, ddl in {
+        "side": "ALTER TABLE prop_tracker ADD COLUMN side TEXT NOT NULL DEFAULT 'over'",
+        "prop_scope": "ALTER TABLE prop_tracker ADD COLUMN prop_scope TEXT NOT NULL DEFAULT 'match'",
+        "subject_player_id": "ALTER TABLE prop_tracker ADD COLUMN subject_player_id INTEGER",
+    }.items():
+        if prop_cols and name not in prop_cols:
+            conn.execute(ddl)
