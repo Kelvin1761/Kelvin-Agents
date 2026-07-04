@@ -1757,12 +1757,18 @@ def _ace_prop_lines(match_date: str) -> list[str]:
         "",
     ]
     val_picks: list[str] = []
+    value_legs: list[dict] = []
     for bd in boards:
-        seg = [f"### {bd.match_label}｜模型預測全場 aces ≈ {bd.predicted_match_mean}"]
+        hdr = f"### {bd.match_label}｜預測 aces ≈ {bd.predicted_match_mean}"
+        if bd.predicted_games:
+            hdr += f"｜預測總局數 ≈ {bd.predicted_games}"
+        seg = [hdr]
         for tw in bd.match_ou:
-            seg.append(_two_way_line("全場", tw, val_picks))
+            seg.append(_two_way_line("全場aces", tw, val_picks, value_legs))
         for tw in bd.player_ou:
-            seg.append(_two_way_line(tw.scope, tw, val_picks))
+            seg.append(_two_way_line(f"{tw.scope} aces", tw, val_picks, value_legs))
+        for tw in bd.games_ou:
+            seg.append(_two_way_line("總局數", tw, val_picks, value_legs))
         if bd.anchor:
             a = bd.anchor
             seg.append(f"- N+ 高命中 anchor：{int(a.line)}+ @ {_fmt(a.decimal_odds)}（命中 {_pct(a.blended_prob)}）— 唔代表 +EV")
@@ -1772,6 +1778,9 @@ def _ace_prop_lines(match_date: str) -> list[str]:
         lines.extend(["### ✅ 今日模型認為有 value 嘅 prop（未證實，細注試 + 格價）", "", *val_picks, ""])
     else:
         lines.extend(["今日冇 prop 過到 value 關（soft book 主線都定得緊）。唔好硬追；等記分卡儲夠數據。", ""])
+    # Prop parlays (NBA banker structure): different-match legs are independent, so
+    # +EV compounds. Surfaced so combinations can be tested during validation.
+    lines.extend(_prop_combo_lines(value_legs))
     # ---- Review block: scorecard + segmented ROI (live validation) ----
     try:
         sc = model_vs_market_scorecard(conn)
@@ -1782,18 +1791,56 @@ def _ace_prop_lines(match_date: str) -> list[str]:
     return lines
 
 
-def _two_way_line(scope_label: str, tw, val_picks: list[str]) -> str:
-    """Render one Over/Under prop; append to val_picks if it carries value."""
+def _two_way_line(scope_label: str, tw, val_picks: list[str], value_legs: list[dict] | None = None) -> str:
+    """Render one Over/Under prop; record value picks (for the ✅ list and combos)."""
     base = (f"- {scope_label} O/U {tw.line}：Over @ {_fmt(tw.over_odds)} / Under @ {_fmt(tw.under_odds)}"
             f"｜模型 P(over) {_pct(tw.model_prob_over)}｜市場fair {_pct(tw.fair_prob_over)}")
     if tw.value_side:
         tag = f"  ✅ {('大' if tw.value_side=='over' else '細')}({tw.value_side}) @ {_fmt(tw.value_odds)}｜edge {_pct(tw.edge, signed=True)}｜EV {_pct(tw.ev, signed=True)}"
-        val_picks.append(
-            f"- {scope_label} {tw.value_side.upper()} {tw.line} @ {_fmt(tw.value_odds)}"
-            f"（模型 {_pct(tw.blended_prob)} / edge {_pct(tw.edge, signed=True)}）"
-        )
+        desc = f"{scope_label} {tw.value_side.upper()} {tw.line} @ {_fmt(tw.value_odds)}"
+        val_picks.append(f"- {desc}（模型 {_pct(tw.blended_prob)} / edge {_pct(tw.edge, signed=True)}）")
+        if value_legs is not None:
+            value_legs.append({"match_id": tw.match_id, "desc": desc,
+                               "odds": tw.value_odds, "prob": tw.blended_prob})
         return base + tag
     return base
+
+
+def _prop_combo_lines(value_legs: list[dict]) -> list[str]:
+    """NBA-style prop parlays: combine +EV value legs from DIFFERENT matches
+    (independent -> joint prob = product, no correlation haircut). Flat 1u. These
+    are the combinations to test during validation."""
+    lines = ["## 🎯 Prop 串（NBA banker 式・唔同場獨立相乘）", ""]
+    if len(value_legs) < 2:
+        lines.extend(["今日 value prop 唔夠 2 條（唔同場）夾唔到串；有得夾會喺度顯示。", ""])
+        return lines
+    lines.extend([
+        "原理：唔同場嘅 prop 互相獨立 → 命中率相乘、賠率相乘、+EV 疊加（同 NBA banker 一樣）。",
+        "⚠ 每條 leg 都係未證實嘅 value；平注細試、逐條格價。同場嘅腳唔夾（會相關）。",
+        "",
+    ])
+    combos: list[tuple] = []
+    n = len(value_legs)
+    for size in (2, 3):
+        for idx in combinations(range(n), size):
+            legs = [value_legs[i] for i in idx]
+            if len({lg["match_id"] for lg in legs}) != size:
+                continue  # different matches only
+            odds = prob = 1.0
+            for lg in legs:
+                odds *= lg["odds"]; prob *= lg["prob"]
+            ev = prob * odds - 1.0
+            combos.append((ev, prob, odds, legs))
+    if not combos:
+        lines.extend(["今日 value prop 全部同場，夾唔到獨立串。", ""])
+        return lines
+    combos.sort(key=lambda c: -c[0])
+    for i, (ev, prob, odds, legs) in enumerate(combos[:5], 1):
+        lines.append(f"### 串 {i}｜{len(legs)} 腳｜Odds {_fmt(round(odds,2))}｜命中 {_pct(prob)}｜EV {_pct(ev, signed=True)}｜1u")
+        for lg in legs:
+            lines.append(f"- {lg['desc']}")
+        lines.append("")
+    return lines
 
 
 def _prop_review_lines(sc: dict, roi: dict) -> list[str]:
