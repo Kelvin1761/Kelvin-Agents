@@ -151,10 +151,12 @@ def _log_two_way(conn, match_date, label, tw: "ace_model.TwoWayProp",
 
 
 def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[AcePropBoard]:
+    from tennis_wc.props import calibration
     rows = _rows_for_date(conn, match_date)
     ladder = _ladder_odds(rows)
     two_way = _two_way_odds(rows)
     prob_map = _match_prob_map(conn, match_date)
+    temper = calibration.current_strength(conn)  # keeps EV honest until validated
     match_ids = {r["match_id"] for r in rows}
     boards: list[AcePropBoard] = []
     for mid in match_ids:
@@ -180,7 +182,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                 continue
             if _MATCH_OU.match(mk):
                 tw = ace_model.price_two_way(mid, mk, "match", line, od["over"], od["under"],
-                                             match_mean, ace_model.MATCH_ACE_CURVE)
+                                             match_mean, ace_model.MATCH_ACE_CURVE, temper=temper)
                 if tw:
                     board.match_ou.append(tw)
                     if log:
@@ -193,14 +195,14 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                 opp = b if pid == meta["player_a_id"] else a
                 pmean = ace_model.predict_player_ace_mean(subj, opp)
                 tw = ace_model.price_two_way(mid, mk, pname, line, od["over"], od["under"],
-                                             pmean, ace_model.PLAYER_ACE_CURVE)
+                                             pmean, ace_model.PLAYER_ACE_CURVE, temper=temper)
                 if tw:
                     board.player_ou.append(tw)
                     if log:
                         _log_two_way(conn, match_date, label, tw, "player", pid)
             elif _MATCH_GAMES_OU.match(mk):
                 tw = games_model.price_games_two_way(
-                    mid, mk, line, od["over"], od["under"], prob_map.get(mid), best_of=3)
+                    mid, mk, line, od["over"], od["under"], prob_map.get(mid), best_of=3, temper=temper)
                 if tw:
                     board.predicted_games = tw.predicted_mean
                     board.games_ou.append(tw)

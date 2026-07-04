@@ -187,15 +187,20 @@ class TwoWayProp:
 def price_two_way(match_id: int, market_key: str, scope: str, line: float,
                   over_odds: float, under_odds: float, predicted_mean: float,
                   curve: list[tuple[float, float]], factors: dict | None = None,
-                  within_range_ratio: float = _MAX_LINE_RATIO) -> TwoWayProp | None:
+                  within_range_ratio: float = _MAX_LINE_RATIO,
+                  temper: float = 0.0) -> TwoWayProp | None:
     """Price an Over/Under ace market. Exact two-way de-vig (Over+Under),
     calibrated model P(over), shrink toward market, pick the +EV value side.
-    Refuses lines outside the calibration range (fake-edge protection)."""
+    Refuses lines outside the calibration range (fake-edge protection). `temper`
+    (0..1) pulls the model prob toward 0.5 before edge/EV to keep EV honest while
+    the model is under-validated (see props.calibration)."""
     if predicted_mean <= 0 or over_odds <= 1.0 or under_odds <= 1.0:
         return None
     if line > within_range_ratio * predicted_mean or line < 0.30 * predicted_mean:
         return None  # outside where the curve is trustworthy
     model_over = interp_prob_over(line, predicted_mean, curve)
+    if temper:
+        model_over = 0.5 + (model_over - 0.5) * (1.0 - min(0.95, max(0.0, temper)))
     imp_over, imp_under = 1.0 / over_odds, 1.0 / under_odds
     overround = imp_over + imp_under
     fair_over = imp_over / overround

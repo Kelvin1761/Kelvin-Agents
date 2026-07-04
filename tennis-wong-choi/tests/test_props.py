@@ -226,6 +226,30 @@ def test_scorecard_compares_model_and_market(tmp_path, monkeypatch):
     assert "verdict" in sc
 
 
+def test_temper_reduces_confidence_and_ev():
+    from tennis_wc.props import calibration
+    # tempering pulls prob toward 0.5
+    assert abs(calibration.temper_probability(0.8, 0.5) - 0.65) < 1e-9
+    assert calibration.temper_probability(0.5, 0.9) == 0.5
+    # a tempered two-way prop has a smaller |edge| than the untempered one
+    raw = ace_model.price_two_way(1, "total_aces_8_5", "match", 7.5, 2.0, 1.9, 9.0,
+                                  ace_model.MATCH_ACE_CURVE, temper=0.0)
+    tem = ace_model.price_two_way(1, "total_aces_8_5", "match", 7.5, 2.0, 1.9, 9.0,
+                                  ace_model.MATCH_ACE_CURVE, temper=0.30)
+    if raw.value_side and tem.value_side:
+        assert abs(tem.edge) <= abs(raw.edge) + 1e-9
+
+
+def test_current_strength_defaults_conservative_when_few_settled(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import calibration
+    init_db()
+    assert calibration.current_strength(get_connection()) == calibration.DEFAULT_STRENGTH
+
+
 def test_predict_total_games_more_for_close_matches():
     from tennis_wc.props import games_model
     close = games_model.predict_total_games(0.5, best_of=3)   # coin-flip

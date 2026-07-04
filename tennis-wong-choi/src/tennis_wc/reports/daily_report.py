@@ -1325,10 +1325,23 @@ def _metadata_gap_summary_lines(rows: list[dict]) -> list[str]:
 
 _TIER_BLURB = {
     combo_engine.TIER_BANKER: ("組合1 穩膽", "高命中、賠率 ~2.0-3.6；最穩主線。"),
-    combo_engine.TIER_VALUE: ("組合2 價值膽", "命中中等但 +EV 厚，賠率 ~2.5-5.5。"),
-    combo_engine.TIER_HIGH: ("組合3 高倍率", "進取小注，賠率 5+；要 +EV 先出。"),
-    combo_engine.TIER_BOMB: ("組合X 火藥庫", "穩腳 + 高 edge 爆冷腳，長賠 +EV。"),
+    combo_engine.TIER_VALUE: ("組合2 價值膽（僅供參考）", "命中中等、賠率 ~2.5-5.5。"),
+    combo_engine.TIER_HIGH: ("組合3 高倍率（僅供參考）", "長賠 5+。"),
+    combo_engine.TIER_BOMB: ("組合X 火藥庫（僅供參考）", "穩腳 + 高 edge 爆冷腳，長賠。"),
 }
+
+# The long-odds match-winner tiers are demoted to reference-only: a 15,299-bet
+# walk-forward backtest (2022-24 vs de-vigged close) shows they bleed and get
+# WORSE with more edge -- value(2.5-5.5) −5.4% hit 28%, high(5+) −32% hit 8%,
+# high@edge≥20% −39%. The model's edge is anti-predictive at long odds. Shown for
+# context, NOT recommended; profit path is the prop unders/overs (which beat the
+# market on the live scorecard).
+_DEMOTED_TIERS = {combo_engine.TIER_VALUE, combo_engine.TIER_HIGH, combo_engine.TIER_BOMB}
+_DEMOTED_TIER_WARNING = (
+    "⛔ 僅供參考，唔建議落：回測（15,299 注 vs 收盤）證實 match-winner 長賠 edge 係反指標 —— "
+    "價值膽 −5.4%（命中 28%）、高倍率 −32%（命中 8%），而且 edge 越大輸得越勁。"
+    "想要「高賠率但長期企得住」，請睇上面嘅 🎾 Prop / 🎯 Prop 串（唯一喺記分卡贏市場嘅結構）。"
+)
 
 
 def _leg_risk_map(match_date: str) -> dict[int, tuple[str, str]]:
@@ -1546,6 +1559,8 @@ def render_banker_report(match_date: str, rows: list[dict]) -> str:
             section = tiers.get(tier) or []
             title, blurb = _TIER_BLURB[tier]
             lines.extend([f"## {title}", "", blurb, ""])
+            if tier in _DEMOTED_TIERS:
+                lines.extend([_DEMOTED_TIER_WARNING, ""])
             if not section:
                 lines.extend(["（今日無合資格組合）", ""])
                 continue
@@ -1742,9 +1757,11 @@ def _ace_prop_lines(match_date: str) -> list[str]:
         from tennis_wc.props.settlement import (
             settle_props, prop_roi_report, model_vs_market_scorecard,
         )
+        from tennis_wc.props import calibration
         conn = get_connection()
         settle_props(conn)  # grade anything now settleable before we review
         boards = price_ace_props_for_date(conn, match_date, log=True)
+        _ev_note = calibration.strength_note(calibration.current_strength(conn), conn)
     except Exception as exc:  # never let an experimental section break the report
         return ["## 🎾 球員 Prop：Aces（實驗中）", "", f"（Prop 引擎今日無法產生：{exc}）", ""]
     lines = [
@@ -1754,6 +1771,7 @@ def _ace_prop_lines(match_date: str) -> list[str]:
         "兩邊盤（Over/Under X.5）已精確去水，兩邊都定價 → 可以夾 under（模型認為 aces 會少過條線嗰邊）。",
         "⚠ ROI 未驗證：ace 結算 overlap 得約 16 場。已剔走超出校準範圍嘅長賠（>1.25× 預測均值 = 外推假 edge）。",
         "每條記入 prop_tracker、賽後自動結算；睇下面『模型 vs 市場記分卡』知邊個啱（比 ROI 快）。",
+        f"🔧 {_ev_note}（模型未夠數據前把機率向 50% 收，避免高估 EV；夠數據會自動放鬆或收緊）。",
         "",
     ]
     val_picks: list[str] = []

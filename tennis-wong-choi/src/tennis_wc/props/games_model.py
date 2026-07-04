@@ -49,11 +49,12 @@ def predict_total_games(match_prob: float | None, best_of: int = 3) -> float | N
 
 def price_games_two_way(match_id: int, market_key: str, line: float,
                         over_odds: float, under_odds: float,
-                        match_prob: float | None, best_of: int = 3) -> TwoWayProp | None:
+                        match_prob: float | None, best_of: int = 3,
+                        temper: float = 0.0) -> TwoWayProp | None:
     pred = predict_total_games(match_prob, best_of)
     if pred is None:
         return None
     return price_two_way(match_id, market_key, "match_games", line, over_odds,
                          under_odds, pred, GAMES_CURVE,
                          factors={"match_prob": match_prob, "best_of": best_of},
-                         within_range_ratio=_GAMES_LINE_RATIO)
+                         within_range_ratio=_GAMES_LINE_RATIO, temper=temper)
