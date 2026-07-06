@@ -7,8 +7,9 @@
 # It does, in order:
 #   1. Settle the PRIOR day and sync CLV / combo trackers  -> measures profitability over time
 #   2. LIVE run-daily for the target day                   -> fixtures + ALL Sportsbet markets
-#      (per-event enrichment, with retries) + predictions + agents + daily/banker/market reports
-#   3. Print the banker/combo report and flag if multi-market odds did NOT fully extract
+#      (per-event enrichment, with retries) + predictions + agents + the ONE merged
+#      betting report (Tennis_Daily_Report.txt) + the raw odds appendix
+#   3. Print the betting report and flag if multi-market odds did NOT fully extract
 #
 # Run it on a machine with Sportsbet (AU) network access. Do NOT pass --mvp-snapshot;
 # snapshot mode skips the live multi-market enrichment.
@@ -52,9 +53,9 @@ if [ "${MARKETS:-0}" -le 1 ]; then
   echo "     Combos will be limited. Check network to www.sportsbet.com.au and re-run (live, no --mvp-snapshot)."
 fi
 
-REPORT="../${DATE} Tennis Analysis/Tennis_Banker_Report.txt"
+REPORT="../${DATE} Tennis Analysis/Tennis_Daily_Report.txt"
 echo "----------------------------------------------------------------------"
-[ -f "$REPORT" ] && cat "$REPORT" || echo "  (no banker report found at: $REPORT)"
+[ -f "$REPORT" ] && cat "$REPORT" || echo "  (no daily report found at: $REPORT)"
 
 echo "--- profitability so far (flat-1u, needs settled history) ---"
 "${PY[@]}" tier-roi   || true

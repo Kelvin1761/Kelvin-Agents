@@ -112,7 +112,7 @@ def _high_odds_value_row(
     }
 
 
-def test_render_daily_report_includes_match_context_and_explanation():
+def test_render_daily_report_mobile_first_structure():
     from tennis_wc.reports.daily_report import render_daily_report
 
     rows = [
@@ -154,15 +154,34 @@ def test_render_daily_report_includes_match_context_and_explanation():
 
     report = render_daily_report("2026-05-10", rows, {}, [])
 
+    # The recommended-bets summary must come first, before any detail.
+    assert "## 🎯 今日落注建議" in report
+    assert report.index("🎯 今日落注建議") < report.index("數據狀態")
+    # No chalk favourites -> the 0.60 favourite is surfaced as the fallback
+    # hit-rate anchor with the honest framing (not a value play).
+    assert "今日最穩單注" in report
+    assert "類型：" in report and "主要風險：" in report
+    # Model-edge singles are demoted to reference with the backtest warning.
+    assert "❌ 跳過：Match-winner 模型 edge 單" in report
+    assert "📎 參考：Match-winner 模型 edge 單" in report
+    assert "1. Karolina Pliskova @ 1.92" in report
+    # Scoring breakdown shows supports (player-b side flips 0.35 -> 65%).
+    assert "➕" in report
+    # The old per-card boilerplate must be gone.
+    assert "### BET 1｜" not in report
+    assert "模型勝率以 Elo 為骨幹，喺 logit 空間加入其他有效因素微調" not in report
+    # Bankroll/staking conventions still stated once.
     assert "1 unit = $1" in report
     assert "tenth-Kelly" in report
-    assert "### BET 1｜Opponent Player vs Karolina Pliskova" in report
-    assert "建議注碼：1u ($1.00)" in report
-    assert "分析：" in report
-    assert "支持因素：" in report
-    assert "logit 空間" in report
-    assert "分項拆解：" not in report
-    assert "對手：Opponent Player" not in report
+
+
+def test_render_daily_report_honest_when_no_bets():
+    from tennis_wc.reports.daily_report import render_daily_report
+
+    report = render_daily_report("2026-05-10", [], {}, [])
+
+    assert "今日結論：❌ 今日無清晰好注，建議唔落" in report
+    assert "今日無通過 hard rule 嘅模型 edge 單" in report
 
 
 def test_derived_at_least_one_set_market_uses_yes_no_selection():
@@ -204,9 +223,14 @@ def test_sportsbet_round_label_from_event_text():
     assert sportsbet_round_label(None, None) == "UNKNOWN"
 
 
-def test_render_banker_report_uses_nba_style_four_tiers_and_positive_ev():
+def test_render_banker_report_uses_nba_style_four_tiers_and_positive_ev(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
     from tennis_wc.reports.daily_report import render_banker_report
 
+    init_db()
     # Two trustworthy match-winner BETs in different matches -> one +EV combo.
     rows = [
         _market_banker_row(1, "Player One", 1.84, edge=0.13, confidence=85),
@@ -260,8 +284,14 @@ def test_render_banker_report_empty_when_no_trustworthy_legs(tmp_path, monkeypat
     assert "無合格單腳" in report
 
 
-def test_opened_markets_produce_trial_combos():
+def test_opened_markets_produce_trial_combos(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
     from tennis_wc.reports.daily_report import render_banker_report
+
+    init_db()
 
     def derived_leg(match_id, selection, odds, edge):
         return {
