@@ -324,6 +324,28 @@ def unanalysed_sportsbet_rows(match_date: str) -> list[dict]:
     return unanalysed
 
 
+def _market_selection_side(row: dict) -> str | None:
+    """selection_side oriented to the matches-table player order. The stored
+    snapshot side can be mirror-flipped when the scrape listed the players in
+    the opposite order to the fixture match row, so recompute from the joined
+    DB player names (same normalise-and-contains rule as ingestion) and only
+    fall back to the stored value when neither name matches."""
+    selection = _side_norm(row.get("selection_name"))
+    player_a = _side_norm(row.get("player_a_name"))
+    player_b = _side_norm(row.get("player_b_name"))
+    if player_a and player_a in selection:
+        return "player_a"
+    if player_b and player_b in selection:
+        return "player_b"
+    if selection in {"over", "under"}:
+        return selection
+    return row.get("selection_side")
+
+
+def _side_norm(value: object) -> str:
+    return "".join(ch for ch in str(value or "").lower() if ch.isalnum())
+
+
 def refresh_market_predictions(match_date: str, rows: list[dict] | None = None) -> None:
     _ensure_market_predictions_table()
     rows = rows if rows is not None else latest_predictions_for_date(match_date)
@@ -362,7 +384,7 @@ def refresh_market_predictions(match_date: str, rows: list[dict] | None = None) 
                         row["market_key"],
                         row["market_name"],
                         row["selection_name"],
-                        row["selection_side"],
+                        _market_selection_side(row),
                         row["line"],
                         row["odds"],
                         prediction["model_status"],
@@ -1216,7 +1238,7 @@ def render_daily_report(
             ]
         )
     picks = _recommended_picks(chalk_legs, prop, bets)
-    lines.extend(_recommended_bets_lines(picks, bets))
+    lines.extend(_recommended_bets_lines(picks, bets, prop))
     lines.extend(_bet_breakdown_lines(picks))
     if prop and not prop.get("error"):
         lines.extend(_prop_review_lines(prop.get("scorecard") or {}, prop.get("roi") or {}))
@@ -1303,23 +1325,55 @@ def _chalk_parlay_stats(pick: list[dict]) -> tuple[float, float, float]:
     return odds, prob, mkt
 
 
-def _recommended_bets_lines(picks: dict, bets: list[dict]) -> list[str]:
+def _scorecard_note(prop: dict | None) -> tuple[str, int]:
+    """Human-readable state of the live model-vs-market scorecard + settled n.
+    Feeds the 信心理據 lines so the confidence grade is traceable to evidence."""
+    scorecard = (prop or {}).get("scorecard") or {}
+    n = int(scorecard.get("settled") or 0)
+    if not n:
+        return ("記分卡未有已結算 prop —— 模型準唔準暫時零證據", 0)
+    model = scorecard.get("model") or {}
+    market = scorecard.get("market") or {}
+    try:
+        model_winning = float(model.get("brier")) < float(market.get("brier"))
+    except (TypeError, ValueError):
+        model_winning = False
+    verdict = "模型暫時贏市場" if model_winning else "市場贏緊（要小心）"
+    return (
+        f"記分卡 {n} 條已結算：模型 Brier {model.get('brier')} vs 市場 {market.get('brier')}（{verdict}）",
+        n,
+    )
+
+
+_CONFIDENCE_SCALE_NOTE = "≥70%＝高、55–70%＝中、<55%＝低"
+
+# Below this many settled props, a value-prop confidence grade is capped at 中:
+# the model may look right so far, but the evidence base is too thin for 高.
+_PROP_CONFIDENCE_CAP_N = 30
+
+
+def _recommended_bets_lines(picks: dict, bets: list[dict], prop: dict | None = None) -> list[str]:
     lines = ["## 🎯 今日落注建議（先睇呢度）", ""]
     blocks: list[list[str]] = []
+    sc_note, sc_n = _scorecard_note(prop)
 
     banker = picks.get("banker")
     if banker and len(banker) >= 2:
         odds, prob, mkt = _chalk_parlay_stats(banker)
         hist_hit = "74%" if len(banker) == 3 else "81%"
         legs_str = " ＋ ".join(f"{_display_label(r['selection_name'])} @ {_fmt(r['odds'])}" for r in banker)
+        leg_confs = "／".join(str(int(r.get("confidence") or 0)) for r in banker)
         blocks.append(
             [
                 f"### 注 1｜🔒 穩膽：大熱串（{len(banker)} 腳）",
                 f"- 組合：{legs_str}",
                 "- 類型：穩膽（市場大熱串 ≤1.20；食 favourite-longshot bias，唔靠模型 edge）",
                 f"- 合併賠率：{_fmt(round(odds, 3))}｜注碼：1u（平注）",
-                f"- 信心：{_confidence_label(prob)}（模型命中 {_pct(prob)}｜市場隱含 {_pct(mkt)}）",
-                f"- 點解落：≤1.20 大熱長期被市場輕微低估（回測 2022-24：{len(banker)} 腳命中 {hist_hit}、ROI 打和偏好）；模型冇否決任何一腳，全部 tour 級、信心 ≥65",
+                f"- 信心：{_confidence_label(prob)}（模型串命中 {_pct(prob)}；{_CONFIDENCE_SCALE_NOTE}）",
+                f"- 信心理據：①每腳都係 tour 級大熱 ≤1.20，模型信心分 {leg_confs}（≥65 先入圍，低數據 junk 已隔走）"
+                f"②模型冇否決任何一腳（模型唔同意嘅大熱會被剔）③市場隱含串命中 {_pct(mkt)}，同模型 {_pct(prob)} 接近，冇離地位"
+                f"④回測 2022-24：呢類 {len(banker)} 腳串命中 {hist_hit}",
+                f"- 點解落：≤1.20 大熱長期被市場輕微低估（favourite-longshot bias），係回測唯一唔蝕入肉嘅 match-winner 結構；串起嚟 +EV 疊加",
                 "- 主要風險：賠率薄，一腳爆冷即全冚；Sportsbet 大熱價通常差過收盤 —— 每腳格價，唔夠價唔落",
             ]
         )
@@ -1331,20 +1385,35 @@ def _recommended_bets_lines(picks: dict, bets: list[dict]) -> list[str]:
                 f"- 選擇：{_display_label(r['selection_name'])} @ {_fmt(r['odds'])}（{_match_label(r)}）",
                 "- 類型：穩膽單（市場大熱 ≤1.20，唔靠模型 edge）",
                 f"- 賠率：{_fmt(r['odds'])}｜注碼：1u（平注）",
-                f"- 信心：{_confidence_label(r['model_probability'])}（模型 {_pct(r['model_probability'])}）",
+                f"- 信心：{_confidence_label(r['model_probability'])}（模型 {_pct(r['model_probability'])}；{_CONFIDENCE_SCALE_NOTE}）",
+                f"- 信心理據：①tour 級大熱 ≤1.20，模型信心分 {int(r.get('confidence') or 0)}（≥65 先入圍）"
+                f"②模型評 {_pct(r['model_probability'])}，冇同市場唱反調（模型唔同意會直接剔走）"
+                f"③回測 ≤1.20 大熱單命中 ~92%、ROI 輕微正",
                 "- 點解落：今日得一隻合資格大熱，唔夠砌串；單落一樣食大熱輕微低估嘅長期優勢",
                 "- 主要風險：賠率極薄，贏粒糖；注碼唔好放大，價唔夠收盤就唔落",
             ]
         )
     elif picks.get("anchor") is not None:
         a = picks["anchor"]
+        try:
+            payload = json.loads(a["pricing_json"])
+            components = payload.get("pricing", {}).get("model", {}).get("components", [])
+            filter_result = payload.get("filter", {})
+        except (TypeError, ValueError, KeyError):
+            components, filter_result = [], {}
+        side = "player_a" if _same_name(str(a.get("selection_name") or ""), str(a.get("player_a_name") or "")) else "player_b"
+        supportive = _component_summary(components, side, True)
+        red_flags = _report_red_flags(filter_result)
         blocks.append(
             [
                 "### 注 1｜🔒 穩膽（退而求其次）：今日最穩單注",
                 f"- 選擇：{_display_label(a['selection_name'])} @ {_fmt(a['current_market_odds'])}（{_match_label(a)}）",
                 "- 類型：低波動 anchor（博命中率，唔係厚 value）",
                 f"- 賠率：{_fmt(a['current_market_odds'])}｜注碼：1u（平注／細注）",
-                f"- 信心：{_confidence_label(a['model_probability'])}（模型 {_pct(a['model_probability'])}｜信心分 {a.get('confidence')}）",
+                f"- 信心：{_confidence_label(a['model_probability'])}（模型 {_pct(a['model_probability'])}；{_CONFIDENCE_SCALE_NOTE}）",
+                f"- 信心理據：①模型信心分 {a.get('confidence')}/100（風險調整後）"
+                f"②評分支持：{supportive or '各因素接近中性，主要靠 Elo 差距'}"
+                f"③紅旗：{'；'.join(red_flags[:2]) if red_flags else '無'}",
                 "- 點解落：今日冇 ≤1.20 合資格大熱，呢隻係模型最有把握嘅腳，做定心主腳",
                 "- 主要風險：唔係經回測驗證嘅 +EV 結構；只可細注，唔好大注追",
             ]
@@ -1352,15 +1421,22 @@ def _recommended_bets_lines(picks: dict, bets: list[dict]) -> list[str]:
 
     for i, v in enumerate(picks.get("value") or [], start=1):
         title = "### 注 2｜💰 價值注：Prop（soft book）" if i == 1 else "### 注 2b｜💰 價值注（另一條，可二揀一）"
+        label = _confidence_label(v["prob"])
+        cap_note = ""
+        if label == "高" and sc_n < _PROP_CONFIDENCE_CAP_N:
+            label = "中"
+            cap_note = f"；記分卡未夠 {_PROP_CONFIDENCE_CAP_N} 條前最高只畀「中」"
+        temper_note = (prop or {}).get("ev_note") or "EV 未有 temper 資訊"
         blocks.append(
             [
                 title,
                 f"- 選擇：{v['desc']}（{v['match_label']}）",
                 "- 類型：價值注（模型 vs soft book 兩邊定價後嘅 +EV 邊）",
                 f"- 賠率：{_fmt(v['odds'])}｜注碼：1u（細注試）",
-                f"- 信心：{_confidence_label(v['prob'])}（模型 {_pct(v['prob'])}｜edge {_pct(v['edge'], signed=True)}｜EV {_pct(v['ev'], signed=True)}）",
+                f"- 信心：{label}（模型 {_pct(v['prob'])}；{_CONFIDENCE_SCALE_NOTE}{cap_note}）",
+                f"- 信心理據：①{sc_note}②{temper_note}③edge {_pct(v['edge'], signed=True)}／EV {_pct(v['ev'], signed=True)} 係精確去水兼向市場收縮後先計，唔係 raw 模型自吹",
                 f"- 點解落：{_prop_value_reason(v)}",
-                "- 主要風險：prop ROI 未經長期結算驗證（記分卡暫時模型贏市場，但樣本細）；同 book 分歧有機會係模型錯",
+                "- 主要風險：prop ROI 未經長期結算驗證；同 book 分歧有機會係模型錯（記分卡會逐日話你知）",
             ]
         )
 
@@ -1373,7 +1449,8 @@ def _recommended_bets_lines(picks: dict, bets: list[dict]) -> list[str]:
                 *[f"- 腳 {j}：{lg['desc']}（{lg.get('match_label') or ''}）" for j, lg in enumerate(legs, start=1)],
                 "- 類型：高賠細注（唔同場 value prop 獨立相乘，+EV 疊加）",
                 f"- 合併賠率：{_fmt(round(high['odds'], 2))}｜注碼：1u（只限細注）",
-                f"- 信心：低（命中 {_pct(high['prob'])}——高賠本質係低命中｜EV {_pct(high['ev'], signed=True)}）",
+                f"- 信心：低（串命中 {_pct(high['prob'])}——高賠結構本質係低命中，一定標「低」）",
+                f"- 信心理據：①每條腳獨立通過 value 關（唔同場，冇相關性折讓）②{sc_note}③EV {_pct(high['ev'], signed=True)} 為正但波動大，靠量同紀律先食到",
                 "- 點解落：每條腳獨立有 value，唔同場冇相關性折讓，係目前唯一有根據嘅高賠結構",
                 "- 主要風險：中率低、輸多贏少係常態；每條腳都未經長期驗證，注碼一定要細",
             ]

@@ -161,6 +161,9 @@ def test_render_daily_report_mobile_first_structure():
     # hit-rate anchor with the honest framing (not a value play).
     assert "今日最穩單注" in report
     assert "類型：" in report and "主要風險：" in report
+    # Every recommended bet must state WHY the confidence grade was given.
+    assert "信心理據：" in report
+    assert "信心分 80/100" in report
     # Model-edge singles are demoted to reference with the backtest warning.
     assert "❌ 跳過：Match-winner 模型 edge 單" in report
     assert "📎 參考：Match-winner 模型 edge 單" in report
