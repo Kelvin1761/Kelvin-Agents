@@ -1,62 +1,16 @@
 import re
-import pandas as pd
-from pathlib import Path
 import scoring
 from scoring import BaseScorer
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[7]
-import sys as _sys; _sys.path.insert(0, str(_PROJECT_ROOT))
-from wongchoi_paths import HK_RACING
-
-_DRAW_BIAS_CACHE = None
-
-def _get_draw_bias():
-    global _DRAW_BIAS_CACHE
-    if _DRAW_BIAS_CACHE is not None:
-        return _DRAW_BIAS_CACHE
-
-    # The draw-bias CSVs live under HK_RACING (data root).
-    stats_root = HK_RACING / "HKJC_Race_Results_Database" / "comprehensive_stats"
-    candidates = []
-    if stats_root.exists():
-        candidates = [stats_root / "24_25" / "draw_bias_stats.csv",
-                      stats_root / "25_26" / "draw_bias_stats.csv"]
-
-    frames = [pd.read_csv(p, encoding="utf-8-sig") for p in candidates if p.exists()]
-    if not frames:
-        _DRAW_BIAS_CACHE = {}
-        return {}
-        
-    df = pd.concat(frames, ignore_index=True)
-    df["Starts"] = pd.to_numeric(df["Starts"], errors="coerce").fillna(0.0)
-    df["Places"] = pd.to_numeric(df["Places"], errors="coerce").fillna(0.0)
-    df["Wins"] = pd.to_numeric(df.get("Wins", 0), errors="coerce").fillna(0.0)
-    
-    def norm_v(v):
-        v = str(v).strip()
-        if v in ["ST", "Sha Tin", "沙田"]: return "沙田"
-        if v in ["HV", "Happy Valley", "跑馬地"]: return "跑馬地"
-        return v
-        
-    df["Venue"] = df["Venue"].apply(norm_v)
-    df["Track"] = df["Track"].apply(lambda t: "Turf" if "turf" in str(t).lower() or "草" in str(t) else "AWT")
-    
-    grouped = df.groupby(["Venue", "Track", "Distance", "Draw"])[["Starts", "Places", "Wins"]].sum().reset_index()
-    records = {}
-    for row in grouped.to_dict(orient="records"):
-        starts = float(row.get("Starts", 0.0))
-        places = float(row.get("Places", 0.0))
-        wins = float(row.get("Wins", 0.0))
-        key = (str(row["Venue"]), str(row["Track"]), int(row["Distance"]), int(row["Draw"]))
-        if starts > 0:
-            records[key] = {
-                "starts": starts,
-                "place_rate": (places / starts * 100.0),
-                "win_rate": (wins / starts * 100.0),
-            }
-            
-    _DRAW_BIAS_CACHE = records
-    return _DRAW_BIAS_CACHE
+# 檔位評分 = 位置先驗公式（1-4檔好 / 直路8+好）。
+# ⚠️ 2026-07-05 backtest（RICH 131場 + 高覆蓋 60場，harness 重現 production baseline）：
+#    將 HKJC 官方檔位數據入評分——無論用 verdict tier(有利/中性/不利)、上位率+35、
+#    上位率 steep、定 hybrid——喺 benchmark(good/min) 全部輸畀呢個位置先驗
+#    （高覆蓋組 good −5~−7pp、min −5~−8pp），甚至同「一律 neutral」差唔多。
+#    原因：官方檔位上位率係細樣本+混質雜訊；排名只需穩定嘅位置梯度，馬匹實力由其餘
+#    6 個 7D 維度負責。同 2026-07-02 ML 結論一致。故評分保留先驗；HKJC 官方數據
+#    只用於「顯示」(數據判讀 _draw_stats_note + 詳細分析 draw_verdict)，不入評分。
+# 舊 _get_draw_bias() 讀自家 draw_bias_stats.csv 亦已移除。
 
 class DrawScorer(BaseScorer):
     def compute(self):
@@ -89,11 +43,6 @@ class DrawScorer(BaseScorer):
             p_low = scoring.DRAW_MICRO_WEIGHTS.get("turn_draw_9_plus", 50.0)
             prior_score = p_high if draw_num <= 4 else (p_mid if draw_num <= 8 else p_low)
 
-        # ML-validated 2026-07-02（13賽日/131場，train/test 一致）：用歷史檔位
-        # place_rate 取代 prior 公式係淨負累 — TEST 及格 32.1→43.4、良 +2.3pp、
-        # top3_champ +6.9pp 全部喺熄咗實證取代之後先出現（同 AU barrier-bias
-        # net-negative 同一 pattern）。檔位統計只保留俾報告顯示（_draw_stats_note），
-        # 唔再入評分。
         self.score = prior_score
         self.reason = "Prior formula"
 

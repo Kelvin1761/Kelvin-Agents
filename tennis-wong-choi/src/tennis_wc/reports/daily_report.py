@@ -1497,40 +1497,36 @@ def render_banker_report(match_date: str, rows: list[dict]) -> str:
     combo_min_odds = min(_TIER_ODDS_FLOORS) if legs else None
 
     market_keys = {str(r.get("market_key") or "") for r in rows}
+    # STRATEGY (2026-07-04): player props are the primary play. A 15,299-bet
+    # backtest showed the match-winner model's edge is anti-predictive at real
+    # odds (value −5.4% / high −32%), so match-winner is NO LONGER a standalone
+    # value bet -- it is used only as a STABLE combo leg (short-priced favourites
+    # in the 大熱串, or a strong-fav anchor). Props lead; match-winner is reference.
     lines = [
         "Tennis Wong Choi 每日 Banker / Combo Report",
         f"日期：{match_date}",
         "",
-        "## 今日組合（NBA Wong Choi 式四線）",
+        "## 🎯 策略重心：Player Props（match-winner 只作穩定組合腳）",
         "",
-        f"合資格 +EV 組合：{result['candidate_count']} 條路徑（基於 {result['leg_count']} 隻獨立合格腳）",
-        f"⚠ {result['candidate_count']} 係排列組合數，唔係 {result['candidate_count']} 個獨立優勢；同 tier 共用 leg，揀其一落即可。",
-        "全部組合已過硬性 +EV / Kelly 關；命中率＝模型機率連乘再扣相關性，另有 Monte Carlo 核對。",
-        "注碼＝tenth-Kelly（1u 起跳、最大 5u）。同場多腳屬相關，combo 賠率係連乘、實際 SGM 盤口會略低，落注前核對。",
-        "每個 tier 列多個組合俾你揀；同 tier 嘅組合可能共用 leg（屬替代方案，揀其一落，唔好同一隻腳重複疊注）。",
+        "回測結論：match-winner 模型 edge 係反指標（價值 −5.4%、高倍率 −32%，edge 越大越蝕），唔再做主打。",
+        "主打 = 下面嘅 🎾 Prop + 🎯 Prop 串（唯一喺記分卡贏緊市場嘅結構）。",
+        "match-winner 淨係喺『穩膽大熱串』（市場大熱 ≤1.20）或做強熱 anchor 先用，只作穩定組合腳，唔再單獨當 value 落。",
         "",
     ]
-    lines.extend(
-        [
-            "📉 回測提示（10,643 注 walk-forward vs Pinnacle 收盤線）：本 match-winner 模型長期 ROI 約 −10~12%，"
-            "而且 perceived edge 越大輸得越多（≥20% 已 −17%，≥30% −27%），長賠 ≥5.0 更 −37%。",
-            "   ⇒ 已自動 NO_BET 呢兩個區（edge≥20% / 賠率≥5.0）。組合（parlay）係負優勢腳相乘，只會輸得更快 ——",
-            "   以下組合僅供參考，唔建議當賺錢策略；真正想落，只跟下面已過 gate 嘅低-edge 合格單腳，平注為主。",
-            "",
-        ]
-    )
-    # Report-only additions (no impact on combo math): a low-variance anchor and
-    # a thin-slate / leg-concentration warning so the user understands the real
-    # number of independent positions (the 06-21 'all missed' lesson).
+    # PRIMARY: player props + prop parlays + live scorecard.
+    lines.extend(_ace_prop_lines(match_date))
+    # Stable match-winner legs: chalk favourites (≤1.20) parlayed -- the one
+    # match-winner structure that does not bleed. This is "match-winner as a
+    # stable combo leg" in practice.
+    lines.extend(_chalk_combo_lines(rows))
+    # ---- reference zone: match-winner edge combos (demoted, backtest-negative) ----
+    lines.extend([
+        "────────── 以下：match-winner 參考區（回測長期蝕，只作組合腳 / 觀察，唔建議單獨追）──────────",
+        "",
+    ])
     if legs:
         lines.extend(_anchor_single_lines(legs))
         lines.extend(_slate_concentration_lines(legs, result))
-    # Backtest-positive structure: chalk parlays (built from market favourites by
-    # odds, not from the +EV leg pool), so it runs off `rows` regardless of legs.
-    lines.extend(_chalk_combo_lines(rows))
-    # NBA-style player props (total aces) on the soft book -- experimental,
-    # calibrated, live-validating. Self-contained; runs off its own data.
-    lines.extend(_ace_prop_lines(match_date))
     if market_keys and market_keys <= {"match_winner", ""}:
         lines.extend(
             [
