@@ -23,9 +23,10 @@ MATRIX_FORMULAS = {
         ("weight_score", 0.35),
         ("confidence_score", 0.10),
     ),
+    # margin_trend_score 已剔出計分（同 stability 逐仗輸距 credit 重複；
+    # 2026-07-08 backtest：淨計 formline_strength 全套指標無倒退、gold/champ 升）。
     "form_line": (
-        ("formline_strength_score", 0.70),
-        ("margin_trend_score", 0.30),
+        ("formline_strength_score", 1.00),
     ),
     "class_advantage": (
         ("class_score", 0.75),

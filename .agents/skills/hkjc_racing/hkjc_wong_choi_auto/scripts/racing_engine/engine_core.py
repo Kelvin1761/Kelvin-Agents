@@ -256,7 +256,6 @@ class RacingEngine:
         score = scoring.RISK_MICRO_WEIGHTS.get("base", 68.0)
         notes = []
         medical = self._text("medical_flags")
-        trackwork = self._text("trackwork_health", "trackwork_digest")
         foreign = self._is_foreign_runner()
         if "無醫療事故" in medical:
             notes.append("醫療欄未見事故")
@@ -267,10 +266,6 @@ class RacingEngine:
             score += scoring.RISK_MICRO_WEIGHTS.get("medical_unknown_pen", -8.0)
             self.risk_flags.append("medical_record_unknown")
             notes.append("醫療欄資料不足")
-        if "操練放緩" in trackwork:
-            score += scoring.RISK_MICRO_WEIGHTS.get("trackwork_slowing_pen", -6.0)
-            self.risk_flags.append("trackwork_slowing")
-            notes.append("晨操趨勢放緩")
         if self._is_debut():
             score += scoring.RISK_MICRO_WEIGHTS.get("debut_pen", -5.0)
             self.risk_flags.append("debut_race_experience_unknown")
@@ -558,7 +553,7 @@ class RacingEngine:
         reason = "未觸發 consistency shadow，沿用主線穩定性評分。"
         if applied:
             shadow_features["consistency_score"] = clip_score(shadow_score)
-            reason = "影子排序重算 consistency_score，加入輸距權重、近期回暖/回落與 margin trend。"
+            reason = "影子排序重算 consistency_score，加入輸距權重同近期回暖/回落。"
 
         matrix_scores = map_features_to_matrix_scores(shadow_features)
         # 同主線一致：重算後必須重套 finish-time trend nudge，否則 ability_delta 被污染。
@@ -596,19 +591,33 @@ class RacingEngine:
         health_score, health_note = self._candidate_health_risk_score()
         if health_score is not None:
             updated["risk_score"] = clip_score(health_score)
-            notes["risk_score"] = self._append_note(feature_notes.get("risk_score"), health_note)
+            notes["risk_score"] = self._append_note(
+                self._strip_embedded_score(feature_notes.get("risk_score"), "風險分"),
+                f"{health_note}重算風險分{clip_score(health_score):.1f}。",
+            )
             sources["risk_score"] = "th01_health_context"
 
         consistency_score = self._candidate_consistency_shadow_score()
         if consistency_score is not None:
             updated["consistency_score"] = clip_score(consistency_score)
             notes["consistency_score"] = self._append_note(
-                feature_notes.get("consistency_score"),
-                "已再參考近期輸距同回暖/回落走勢，重新評估穩定性。",
+                self._strip_embedded_score(feature_notes.get("consistency_score"), "穩定性分"),
+                f"已再參考近期輸距同回暖/回落走勢，重算穩定性分{clip_score(consistency_score):.1f}。",
             )
             sources["consistency_score"] = "cx01_consistency_context"
 
         return updated, notes, sources
+
+    @staticmethod
+    def _strip_embedded_score(note, label):
+        """覆蓋分數時，將原註解入面自述嘅舊分（例：「穩定性分66分」）清走，
+        避免報告出現「穩定性分 76 ← ...穩定性分66分」呢種前後對唔上。"""
+        text = str(note or "").strip()
+        if not text:
+            return text
+        text = re.sub(rf"[，,、；;]?\s*{label}[為約]?\s*\d+(?:\.\d+)?\s*分?", "", text)
+        text = re.sub(r"。{2,}", "。", text).strip(" ，,、；;")
+        return text
 
     def _apply_trainer_signal_context(self, feature_scores):
         updated = dict(feature_scores)
@@ -695,7 +704,6 @@ class RacingEngine:
         score = scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["base"]
         medical = self._text("medical_flags")
         weight_trend = self._text("weight_trend")
-        trackwork_health = self._text("trackwork_health")
         days = parse_float(self._value("days_since_last") or self.horse_data.get("days_since_last"))
         weight_span = self._weight_trend_span(weight_trend)
 
@@ -740,17 +748,7 @@ class RacingEngine:
             else:
                 score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["span_gt_32_pen"]
 
-        if "操練放緩" in trackwork_health:
-            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["trackwork_slowing_pen"]
-        elif "risk_flags=[]" in trackwork_health or "risk_flags: []" in trackwork_health:
-            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["trackwork_clean_bonus"]
-
-        if "swimming=0" in trackwork_health and days is not None and days <= 21:
-            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["swimming_zero_quick_return_pen"]
-        if "blank_days=3" in trackwork_health or "blank_days=4" in trackwork_health:
-            score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["blank_days_small_pen"]
-
-        note = "已再綜合醫療紀錄、休賽日數、體重波幅同晨操訊號，重新評估風險分。"
+        note = "已再綜合醫療紀錄、休賽日數同體重波幅，"
         return clip_score(score), note
 
     def _candidate_consistency_shadow_score(self):
@@ -793,15 +791,10 @@ class RacingEngine:
         poor_ratio = poor_debit / weighted_total if weighted_total else 0.0
         severe_ratio = severe_debit / weighted_total if weighted_total else 0.0
 
+        # 輸距趨勢 nudge（收窄+4/擴大−4/波動−1）已移除：輸距本身經逐仗 close/poor
+        # credit 計入，趨勢再加一次係同 form_line 重複；2026-07-08 backtest 兩邊
+        # 一齊移除先零倒退（test gold/champ 反而升）。
         score = 58.0 + close_ratio * 18.0 - poor_ratio * 14.0 - severe_ratio * 10.0
-        margin_trend = self._text("margin_trend")
-        if "收窄中" in margin_trend:
-            score += 4.0
-        elif "擴大中" in margin_trend:
-            score -= 4.0
-        elif "波動" in margin_trend:
-            score -= 1.0
-
         finish_positions = [run["rank"] for run in runs[:6]]
         if len(finish_positions) >= 5:
             recent_avg = sum(finish_positions[:3]) / 3.0
@@ -990,7 +983,7 @@ class RacingEngine:
             "race_shape": ("檔位與走位情境（不含步速）", ("race_shape_context_score",)),
             "trainer_signal": ("騎練訊號", ("jockey_score", "trainer_score")),
             "horse_health": ("馬匹健康 / 新鮮感", ("risk_score", "weight_score", "confidence_score")),
-            "form_line": ("賽績線", ("formline_strength_score", "margin_trend_score")),
+            "form_line": ("賽績線", ("formline_strength_score",)),
             "class_advantage": ("級數優勢", ("class_score", "weight_score")),
         }
         reasoning = {}
@@ -1185,23 +1178,19 @@ class RacingEngine:
         return f"上仗{last_txt}→今仗{self._class_label(today_txt)}（{move}）"
 
     def _draw_stats_note(self, draw):
-        """Historical win/place rate for this barrier at today's venue/track/distance."""
-        try:
-            from features.draw import _get_draw_bias
-            dn = int(str(draw).strip())
-        except Exception:
+        """今場此檔嘅官方 HKJC 檔位統計（racing.hkjc.com 檔位頁）。
+        與評分（DrawScorer）同詳細分析（draw_verdict）同源 —— 全部讀 skeleton 一次
+        resolve 好嘅 _data['draw_stats']，唔再用自家 draw_bias_stats.csv。"""
+        entry = self._value("draw_stats")
+        if not isinstance(entry, dict) or not entry.get("in_range"):
             return ""
-        dm = re.search(r"(\d+)", str(self.race_context.get("distance") or ""))
-        if not dm:
+        place = entry.get("place_pct")
+        starts = entry.get("starts")
+        if place is None or starts is None:
             return ""
-        venue = str(self.race_context.get("venue") or "")
-        track = str(self.race_context.get("track") or "")
-        v = "沙田" if ("沙田" in venue or "shatin" in venue.lower().replace(" ", "") or venue.upper() == "ST") else "跑馬地"
-        t = "AWT" if ("awt" in track.lower() or "dirt" in track.lower() or "泥" in track) else "Turf"
-        row = _get_draw_bias().get((v, t, int(dm.group(1)), dn))
-        if not row or row.get("starts", 0) < 15:
-            return ""
-        return f"此檔歷史 上名率{row['place_rate']:.0f}%、勝率{row.get('win_rate', 0):.0f}%（{int(row['starts'])}場）"
+        win = entry.get("win_pct")
+        win_txt = f"、勝率{win:.0f}%" if isinstance(win, (int, float)) else ""
+        return f"此檔歷史 上名率{place:.0f}%{win_txt}（{int(starts)}場）"
 
 
 
@@ -2001,7 +1990,6 @@ class RacingEngine:
 
     def _risk_phrase_for_flag(self, flag):
         mapping = {
-            "trackwork_slowing": "備戰節奏略慢，臨場狀態維持度要再觀察",
             "debut_race_experience_unknown": "初出實戰感仍然係未知數",
             "draw_pressure": "排檔形勢有機會令早段走位先蝕",
             "distance_unproven": "今場路程仍未有足夠實績支持",
@@ -2169,8 +2157,8 @@ class RacingEngine:
         return f"{jockey_text}{trainer_text}{combo_text}{close}"
 
     def _describe_horse_health_matrix(self, score, features, evidence):
+        # 晨操敘述已統一歸 stability（狀態與穩定性）獨家負責，健康維度只講醫療／休賽／體重。
         medical = self._text("medical_flags")
-        trackwork = self._trackwork_markers()
         days = parse_float(self._value("days_since_last") or self.horse_data.get("days_since_last"))
         if "無醫療事故" in medical:
             medical_text = "醫療欄未見明顯事故，基本健康面尚算平穩。"
@@ -2184,14 +2172,8 @@ class RacingEngine:
             freshness = f"休後{int(days)}日再出，間隔正常，新鮮感屬合理範圍。"
         else:
             freshness = f"休後{int(days)}日再出，會有一定新鮮感，但實戰感仍要再驗證。"
-        if "加強" in trackwork["trend"]:
-            track = f"晨操方面{trackwork['trend']}，備戰節奏偏積極。"
-        elif "放緩" in trackwork["trend"]:
-            track = f"晨操方面{trackwork['trend']}，狀態維持度未算完全無保留。"
-        else:
-            track = "晨操節奏未見太大異常，健康面主要屬中性觀察。"
         close = self._matrix_close(score, "整體健康/新鮮感屬安心範圍。", "整體健康/新鮮感大致正常，但仍有少量保留。", "整體健康/新鮮感未算理想，臨場要多留神。")
-        return f"{medical_text}{freshness}{track}{close}"
+        return f"{medical_text}{freshness}{close}"
 
     def _describe_form_line_matrix(self, score, features, evidence):
         strength = self._formline_strength_signal()

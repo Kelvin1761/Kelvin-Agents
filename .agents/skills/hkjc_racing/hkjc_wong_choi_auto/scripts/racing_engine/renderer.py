@@ -445,65 +445,17 @@ def _render_horse_section(horse_num: str, horse: dict, auto: dict) -> list[str]:
         consistency_shadow_line,
         "",
         *_data_readout_lines(auto),
-        "#### 📋 Facts 摘錄",
-        *_facts_digest_lines(horse, data),
-        "",
         "#### ⏱️ 近績解構",
         f"- **近六場:** {_fmt(horse.get('last_6_finishes'))} (左=剛戰 → 右=最舊)",
         f"- **休後復出:** {_fmt(horse.get('days_since_last') or data.get('days_since_last'))} 日",
         f"- **統計:** {_fmt(horse.get('season_stats') or data.get('season_stats_line'))}",
         f"- **近績分 / 穩定性分:** {float(features.get('form_score', 60)):.1f} / {float(features.get('consistency_score', 60)):.1f}",
-        "",
-        "#### 🏇 晨操摘要 (Trackwork Digest)",
-        f"- **摘要:** {_short(data.get('trackwork_digest') or '未有完整晨操摘要，中性處理', 360)}",
-        f"- **健康 / 新鮮感:** {_matrix_score_display(auto, 'horse_health')}；風險標記：{_risk_text(auto)}",
         "",
         "#### 🧮 評分矩陣 (7D 數值拆解)",
         "",
         *_matrix_lines(horse, auto),
         "",
         _matrix_grade_section(auto, features) if grade_summary else "",
-        "",
-        "#### 12 項分數",
-        _feature_score_line(features),
-        "",
-        "#### 💡 結論與評語 (Conclusion & Analyst View)",
-        f"> - **核心邏輯:** {_core_logic(auto, horse)}",
-        f"> - **最大競爭優勢:** {_advantage_text(features)}",
-        f"> - **最大失敗風險:** {_risk_text(auto)}",
-        "",
-        _final_rating_line(auto),
-        "",
-        "---",
-        "",
-    ] if not grade_summary else [
-        f"**【No.{horse_num}】 {horse.get('horse_name', '')}** | 騎師:{horse.get('jockey', '')} | 練馬師:{horse.get('trainer', '')} | 負磅:{_fmt(horse.get('weight'))} | 檔位:{_fmt(horse.get('barrier'))}",
-        _summary_banner(auto, features),
-        shadow_line,
-        consistency_shadow_line,
-        "",
-        *_data_readout_lines(auto),
-        "#### 📋 Facts 摘錄",
-        *_facts_digest_lines(horse, data),
-        "",
-        "#### ⏱️ 近績解構",
-        f"- **近六場:** {_fmt(horse.get('last_6_finishes'))} (左=剛戰 → 右=最舊)",
-        f"- **休後復出:** {_fmt(horse.get('days_since_last') or data.get('days_since_last'))} 日",
-        f"- **統計:** {_fmt(horse.get('season_stats') or data.get('season_stats_line'))}",
-        f"- **近績分 / 穩定性分:** {float(features.get('form_score', 60)):.1f} / {float(features.get('consistency_score', 60)):.1f}",
-        "",
-        "#### 🏇 晨操摘要 (Trackwork Digest)",
-        f"- **摘要:** {_short(data.get('trackwork_digest') or '未有完整晨操摘要，中性處理', 360)}",
-        f"- **健康 / 新鮮感:** {_matrix_score_display(auto, 'horse_health')}；風險標記：{_risk_text(auto)}",
-        "",
-        "#### 🧮 評分矩陣 (7D 數值拆解)",
-        "",
-        *_matrix_lines(horse, auto),
-        "",
-        _matrix_grade_section(auto, features),
-        "",
-        "#### 12 項分數",
-        _feature_score_line(features),
         "",
         "#### 💡 結論與評語 (Conclusion & Analyst View)",
         f"> - **核心邏輯:** {_core_logic(auto, horse)}",
@@ -523,7 +475,7 @@ def _render_verdict(verdict: dict, horses: dict, shadow_verdicts: dict | None = 
         "#### [第三部分] 最終預測 (The Verdict)",
         "",
         f"- **全場信心指數:** `{_race_confidence(verdict.get('top4', []), horses)}`",
-        "- **關鍵變數:** 檔位轉化、路程證明、晨操健康訊號、資料完整度",
+        "- **關鍵變數:** 檔位轉化、路程證明、晨操趨勢（歸狀態與穩定性）、資料完整度",
         "",
         "**🏆 Top 4 位置精選**",
         "",
@@ -680,7 +632,6 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
         )
         return _compact_fact_lines(
             ("休賽 / 體重趨勢", rest_weight, 260),
-            ("晨操健康", data.get("trackwork_health"), 220),
             ("健康掃描", data.get("medical_flags"), 120),
         )
     if key == "form_line":
@@ -716,29 +667,6 @@ def _compact_fact_lines(*items: tuple[str, object, int]) -> list[str]:
             continue
         lines.append(f"{label}: {_short(text, limit)}")
     return lines
-
-
-def _facts_digest_lines(horse: dict, data: dict) -> list[str]:
-    items = _compact_fact_lines(
-        ("近3-5仗走位窗口", data.get("position_window"), 360),
-        ("檔位 / 跑法", _join_nonempty(data.get("draw_verdict"), data.get("running_style"), sep=" | "), 300),
-        ("L400 / 能量趨勢", _join_nonempty(data.get("raw_l400"), data.get("l400_trend"), data.get("energy_trend"), sep=" | "), 320),
-        ("步速修正", _join_nonempty(data.get("finish_time_adj"), data.get("finish_time_adj_level"), sep=" | "), 260),
-        ("人馬組合統計", _jockey_combo_fact(data.get("jockey_combo_block")), 280),
-        ("休賽 / 體重趨勢", _join_nonempty(
-            f"休賽: {horse.get('days_since_last') or data.get('days_since_last')}日" if (horse.get("days_since_last") or data.get("days_since_last")) else "",
-            f"體重趨勢: {data.get('weight_trend')}" if data.get("weight_trend") else "",
-            sep=", ",
-        ), 260),
-        ("賽績線對手後續", data.get("formline_opponent_summary"), 320),
-        ("班次 / 評分背景", _join_nonempty(
-            f"{data.get('total_starts')}戰{data.get('total_wins')}勝" if data.get("total_starts") is not None and data.get("total_wins") is not None else "",
-            f"評分趨勢={data.get('rating_trend')}" if data.get("rating_trend") else "",
-            f"負磅={data.get('weight_carried')}" if data.get("weight_carried") not in (None, "") else "",
-            sep=", ",
-        ), 260),
-    )
-    return [f"- **{item.split(':', 1)[0]}:** {item.split(':', 1)[1].strip()}" for item in items[:6]] or ["- **資料摘要:** Facts 可用資料有限，暫以現有矩陣錨點為主。"]
 
 
 def _inline_text(value: object) -> str:
@@ -788,14 +716,6 @@ def _jockey_combo_snapshot(block: object) -> list[tuple[str, str, int]]:
         summary = "、".join(f"{name}{count}次" for name, count in counts.items())
         output.append(("近6場騎師分佈", summary, 180))
     return output
-
-
-def _jockey_combo_fact(block: object) -> str:
-    snapshot = _jockey_combo_snapshot(block)
-    for label, value, _limit in snapshot:
-        if label == "人馬組合統計":
-            return value
-    return snapshot[0][1] if snapshot else ""
 
 
 def _table_cols(line: str) -> list[str]:
@@ -848,15 +768,6 @@ def _horses_by_rank(horses: dict) -> list[tuple[str, dict]]:
 
 def _horse_number_sort_key(value: object) -> int:
     return int(value) if str(value).isdigit() else 999
-
-
-def _feature_score_line(features: dict) -> str:
-    return "、".join(f"{label} {float(features.get(key, 60)):.1f}" for key, label in FEATURE_LABELS.items())
-
-
-def _matrix_score_display(auto: dict, key: str) -> str:
-    score = auto.get("matrix_scores", {}).get(key)
-    return f"{float(score):.1f}分" if isinstance(score, (int, float)) else "N/A"
 
 
 def _data_readout_lines(auto: dict) -> list[str]:
