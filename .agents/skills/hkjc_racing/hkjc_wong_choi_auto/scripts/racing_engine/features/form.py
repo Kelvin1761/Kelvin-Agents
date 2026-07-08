@@ -52,9 +52,9 @@ class FormScorer(BaseScorer):
                 total_weight += weight
             self.score = weighted_sum / total_weight
 
-            # Build a SPECIFIC Chinese note (finishes + top3/win counts) instead of the
-            # generic "近績分由最近名次加權計算". No trailing "…分" so the report's
-            # sub-score-note cleanup won't strip it.
+            # Build a SPECIFIC Chinese note (finishes + top3/win counts). No filler
+            # like 越近仗權重越高 (計法解釋唔幫到落注)。海外賽績唔混入呢句 —
+            # 由 engine 嘅「海外往績判讀」獨立交代。
             used = ranks[:6]
             wins = sum(1 for r in ranks if r == 1)
             top3 = sum(1 for r in ranks if r <= 3)
@@ -69,9 +69,12 @@ class FormScorer(BaseScorer):
                 detail.append(f"{poor}次八名以後")
             if detail:
                 bits.append("、".join(detail))
-            bits.append("越近仗權重越高")
-            if len(scores) > local_count:
-                bits.append("已計海外往績")
+            overseas_used = len(scores) - local_count
+            if overseas_used:
+                if not used:
+                    bits.append(f"未有香港賽績，以{overseas_used}仗海外賽績計（見海外往績判讀）")
+                else:
+                    bits.append(f"另計{overseas_used}仗海外賽績（見海外往績判讀）")
             self.reason = "；".join(bits)
             return self.score, self.reason
 

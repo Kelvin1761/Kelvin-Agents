@@ -452,7 +452,8 @@ def _render_horse_section(horse_num: str, horse: dict, auto: dict) -> list[str]:
         f"- **統計:** {_fmt(horse.get('season_stats') or data.get('season_stats_line'))}",
         f"- **近績分 / 穩定性分:** {float(features.get('form_score', 60)):.1f} / {float(features.get('consistency_score', 60)):.1f}",
         "",
-        "#### 🏇 晨操解讀 (Trackwork)",
+        *_overseas_form_lines(auto),
+        "#### 🏇 晨操分析 (Trackwork)",
         *_trackwork_lines(auto, data),
         "",
         "#### 🧮 7D 評分矩陣逐項拆解",
@@ -578,6 +579,9 @@ def _matrix_lines(horse: dict, auto: dict) -> list[str]:
             csc = float(comp.get("score", 60))
             cnote = _clean_subscore_note(comp.get("note", ""))
             lines.append(f"    - {clbl} {csc:.0f} ← {cnote}" if cnote else f"    - {clbl} {csc:.0f}")
+        adjustment = reasoning.get("adjustment") if isinstance(reasoning, dict) else None
+        if adjustment:
+            lines.append(f"    - {adjustment}")
         if key == "trainer_signal":
             lines.extend(_trainer_signal_adjustment_lines(auto))
         lines.append(f"  - **判讀:** {_sanitize_text(text)}")
@@ -658,7 +662,7 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
         return _compact_fact_lines(
             ("近6場數據", data.get("recent_6_detail"), 320),
             ("頭馬距離趨勢", data.get("margin_trend"), 180),
-            ("晨操 digest", _strip_digest_directive(data.get("trackwork_digest")), 260),
+            ("晨操原文摘要", _strip_digest_directive(data.get("trackwork_digest")), 260),
         )
     if key == "sectional":
         finish_time = " | ".join(
@@ -737,7 +741,20 @@ def _compact_fact_lines(*items: tuple[str, object, int]) -> list[str]:
 
 def _strip_digest_directive(text: object) -> str:
     """去除晨操 digest 內部指令句（「判讀指令：…」係俾引擎用，唔係俾人讀）。"""
-    return re.sub(r"判讀指令[:：][^。]*。?", "", str(text or "")).strip()
+    return re.sub(r"判讀指令[:：].*$", "", str(text or ""), flags=re.S).strip()
+
+
+def _overseas_form_lines(auto: dict) -> list[str]:
+    """海外往績判讀 — 只有新造馬／海外馬／香港樣本少先出現。"""
+    read = auto.get("overseas_form_read")
+    if not isinstance(read, dict):
+        return []
+    lines = ["#### 🌏 海外往績判讀"]
+    lines.extend(f"- {item}" for item in read.get("lines", []))
+    if read.get("verdict"):
+        lines.append(f"- **判讀:** {read['verdict']}")
+    lines.append("")
+    return lines
 
 
 def _trackwork_lines(auto: dict, data: dict) -> list[str]:

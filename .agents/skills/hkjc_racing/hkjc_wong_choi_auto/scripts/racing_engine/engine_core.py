@@ -106,6 +106,7 @@ class RacingEngine:
             "grade_transparency": grade_transparency,
             "trainer_signal_detail": self.trainer_signal_detail,
             "trackwork_read": self._trackwork_interpretation(),
+            "overseas_form_read": self._overseas_form_interpretation(),
             "feature_scores": {key: round(feature_scores[key], 2) for key in FEATURE_KEYS},
             # Persist the derived sub-features that feed form_line/stability so the
             # backtest harness can faithfully reproduce production scoring (these
@@ -255,6 +256,52 @@ class RacingEngine:
         has_hk_form = hk_form not in ("", "N/A") and any(c.isdigit() for c in hk_form)
         return not has_hk_form
 
+    def _overseas_form_interpretation(self):
+        """海外往績獨立判讀（display-only）：新造馬／海外賽駒／香港樣本少嘅馬，
+        海外賽績唔混入一般穩定性字句，喺呢度單獨交代含量同轉化保留。"""
+        pdf = self.data.get("pdf_overseas_races") or self.horse_data.get("pdf_overseas_races") or []
+        rows = [
+            r for r in pdf
+            if isinstance(r, dict) and any(
+                str(r.get(k, "-")).strip() not in ("-", "", "N/A", "--")
+                for k in ("class_level", "rank", "time", "margin")
+            )
+        ]
+        if not rows:
+            return None
+        hk_form = str(self._value("last_6_finishes") or "")
+        hk_runs = len(re.findall(r"\d+", hk_form))
+        if not (self._is_foreign_runner() or hk_runs < 3):
+            return None
+
+        ranks = []
+        for r in rows:
+            rank_str = str(r.get("rank", ""))
+            try:
+                ranks.append(int(rank_str.split("/")[0]) if "/" in rank_str else int(rank_str))
+            except (TypeError, ValueError):
+                continue
+        levels = []
+        for r in rows:
+            lvl = str(r.get("class_level", "")).strip()
+            if lvl and lvl not in ("-", "N/A", "--") and lvl not in levels:
+                levels.append(lvl)
+
+        lines = []
+        if ranks:
+            wins = sum(1 for x in ranks if x == 1)
+            top3 = sum(1 for x in ranks if x <= 3)
+            lines.append(f"海外賽績{len(ranks)}仗：{wins}冠、{top3}次前三")
+        else:
+            lines.append(f"海外賽績{len(rows)}仗（名次資料不全）")
+        if levels:
+            lines.append(f"曾出賽級別：{('、'.join(levels[:4]))}")
+        if hk_runs == 0:
+            verdict = "未有香港賽績，評分主要靠海外賽績轉化——海外班級同香港唔直接對等，轉化有折扣，評分可信度較本地馬低。"
+        else:
+            verdict = f"香港賽績僅{hk_runs}仗，海外賽績作補充參考——以香港表現為主、海外做背景，唔宜直接當本地實績用。"
+        return {"lines": lines, "verdict": verdict}
+
     def _risk_score(self, features):
         score = scoring.RISK_MICRO_WEIGHTS.get("base", 68.0)
         notes = []
@@ -290,19 +337,26 @@ class RacingEngine:
             if self._value(key) not in (None, "", "N/A"):
                 present += 1
         score = scoring.CONFIDENCE_MICRO_WEIGHTS.get("base", 48.0) + present * scoring.CONFIDENCE_MICRO_WEIGHTS.get("present_mult", 6.0)
+        bits = [f"可用資料覆蓋{present}/{len(important_sources)}項"]
         if self._value("jockey_combo_block"):
-            score += scoring.CONFIDENCE_MICRO_WEIGHTS.get("jockey_combo_bonus", 5.0)
+            bonus = scoring.CONFIDENCE_MICRO_WEIGHTS.get("jockey_combo_bonus", 5.0)
+            score += bonus
+            bits.append(f"人馬組合檔案齊（+{bonus:.0f}）")
         if self._is_debut():
-            score += scoring.CONFIDENCE_MICRO_WEIGHTS.get("debut_pen", -4.0)
+            pen = scoring.CONFIDENCE_MICRO_WEIGHTS.get("debut_pen", -4.0)
+            score += pen
+            bits.append(f"初出未有正式賽數據（{pen:.1f}）")
         if features.get("risk_score", 60) < 55:
-            score += scoring.CONFIDENCE_MICRO_WEIGHTS.get("high_risk_pen", -5.0)
+            pen = scoring.CONFIDENCE_MICRO_WEIGHTS.get("high_risk_pen", -5.0)
+            score += pen
+            bits.append(f"風險分偏低再扣（{pen:.0f}）")
         if self._is_foreign_runner():
             # Don't dock a visiting runner for lacking HKJC-only coverage fields;
             # floor at neutral so foreign horses aren't structurally low-confidence.
             score = max(score, 60.0)
             note = f"海外賽駒，本會資料欄有限，信心分按中性floor處理為{clip_score(score):.1f}。"
             return clip_score(score), note, "data_coverage"
-        note = f"可用資料覆蓋{present}/{len(important_sources)}項，信心分{clip_score(score):.1f}。"
+        note = "、".join(bits) + f"，信心分{clip_score(score):.1f}。"
         return clip_score(score), note, "data_coverage"
 
     def _formline_strength_score(self):
@@ -372,16 +426,16 @@ class RacingEngine:
         # 1. Text-based trend base score
         if classification == "翻案復刻":
             base_score = scoring.TRACKWORK_MICRO_WEIGHTS.get("rebound_base", 66.0)
-            note = "晨操摘要屬翻案復刻，顯示團隊正嘗試用備戰訊號替近績波動補強。"
+            note = "操練訊號好過近績反映（馬房用狀態翻案部署），操練分由偏高起點計"
         elif "加強" in trend:
             base_score = scoring.TRACKWORK_MICRO_WEIGHTS.get("improving_base", 70.0)
-            note = f"{trend}，備戰力度有推進，對狀態延續屬正面訊號。"
+            note = "快操時間一課比一課快，備戰上緊"
         elif "放緩" in trend:
             base_score = scoring.TRACKWORK_MICRO_WEIGHTS.get("slowing_base", 52.0)
-            note = f"{trend}，狀態維持度要保守少少。"
+            note = "快操時間趨慢，備戰力度回落，操練分要扣"
         else:
             base_score = scoring.TRACKWORK_MICRO_WEIGHTS.get("neutral_base", 60.0)
-            note = "操練趨勢未見鮮明方向，按中性處理。"
+            note = "操練節奏平穩，中性處理"
             
         # 2. Raw exercise numerical multipliers
         trackwork = self.horse_data.get("trackwork")
@@ -414,9 +468,9 @@ class RacingEngine:
         
         final_score = scoring.clip_score(base_score + activity_bonus)
         if activity_bonus > 2.0:
-            note += f" (數據顯示操練特別積極 +{activity_bonus:.1f})"
+            note += f"；操練量充足（活躍度+{activity_bonus:.1f}）"
         elif activity_bonus < -1.0:
-            note += f" (數據顯示活躍度偏低 {activity_bonus:.1f})"
+            note += f"；操練量偏少（活躍度-{abs(activity_bonus):.1f}）"
             
         return final_score, note, "trackwork_digest"
 
@@ -600,12 +654,16 @@ class RacingEngine:
             )
             sources["risk_score"] = "th01_health_context"
 
-        consistency_score = self._candidate_consistency_shadow_score()
-        if consistency_score is not None:
-            updated["consistency_score"] = clip_score(consistency_score)
+        shadow = self._consistency_shadow_detail()
+        if shadow is not None:
+            updated["consistency_score"] = clip_score(shadow["score"])
+            shift_txt = {"recovering": "，且近三仗名次好過再之前", "declining": "，但近三仗名次差過再之前"}.get(shadow["recent_shift"], "")
             notes["consistency_score"] = self._append_note(
                 self._strip_embedded_score(feature_notes.get("consistency_score"), "穩定性分"),
-                f"已再參考近期輸距同回暖/回落走勢，重算穩定性分{clip_score(consistency_score):.1f}。",
+                (
+                    f"逐仗連輸距覆核：近{shadow['n']}仗有{shadow['close_runs']}仗跑近前列、"
+                    f"{shadow['poor_runs']}仗明顯敗陣{shift_txt}，穩定性分定為{clip_score(shadow['score']):.1f}。"
+                ),
             )
             sources["consistency_score"] = "cx01_consistency_context"
 
@@ -817,6 +875,12 @@ class RacingEngine:
         return clip_score(score), note
 
     def _candidate_consistency_shadow_score(self):
+        detail = self._consistency_shadow_detail()
+        return detail["score"] if detail else None
+
+    def _consistency_shadow_detail(self):
+        """逐仗連輸距重算穩定性分，並回傳可以直接寫入報告嘅事實統計
+        （幾多仗貼近前列、幾多仗明顯敗陣、近三仗係咪好過之前）。"""
         if self._is_debut():
             return None
 
@@ -830,6 +894,8 @@ class RacingEngine:
         close_credit = 0.0
         poor_debit = 0.0
         severe_debit = 0.0
+        close_runs = 0
+        poor_runs = 0
 
         for idx, run in enumerate(runs[:6]):
             weight = weights[idx]
@@ -838,16 +904,21 @@ class RacingEngine:
 
             if rank <= 3:
                 close_credit += weight
+                close_runs += 1
                 continue
             if rank <= 5 and margin is not None and margin <= 3.0:
                 close_credit += weight * 0.75
+                close_runs += 1
             elif rank <= 7 and margin is not None and margin <= 2.5:
                 close_credit += weight * 0.40
+                close_runs += 1
 
             if rank >= 8 and margin is not None and margin >= 5.0:
                 poor_debit += weight
+                poor_runs += 1
             elif rank >= 6 and margin is not None and margin >= 7.0:
                 poor_debit += weight * 0.70
+                poor_runs += 1
 
             if rank >= 10 and margin is not None and margin >= 8.0:
                 severe_debit += weight
@@ -861,16 +932,25 @@ class RacingEngine:
         # 一齊移除先零倒退（test gold/champ 反而升）。
         score = 58.0 + close_ratio * 18.0 - poor_ratio * 14.0 - severe_ratio * 10.0
         finish_positions = [run["rank"] for run in runs[:6]]
+        recent_shift = ""
         if len(finish_positions) >= 5:
             recent_avg = sum(finish_positions[:3]) / 3.0
             older = finish_positions[3:6]
             older_avg = sum(older) / len(older)  # was /3.0 — undercounted when only 5 runs (2 elems)
             if recent_avg + 1.0 < older_avg:
                 score += 3.0
+                recent_shift = "recovering"
             elif recent_avg > older_avg + 1.0:
                 score -= 3.0
+                recent_shift = "declining"
 
-        return clip_score(score)
+        return {
+            "score": clip_score(score),
+            "n": len(runs[:6]),
+            "close_runs": close_runs,
+            "poor_runs": poor_runs,
+            "recent_shift": recent_shift,
+        }
 
     def _parse_recent_runs(self, detail):
         runs = []
@@ -1074,6 +1154,17 @@ class RacingEngine:
                 "evidence": evidence,
                 "text": self._matrix_summary_text(key, label, score, features, evidence),
             }
+            # 矩陣後調整（例如 sectional 嘅完成時間對標趨勢 ±5）唔喺 sub分加權入面，
+            # 唔寫出嚟嘅話「評分構成」加極都對唔返 header 個分 — 呢度補返一行。
+            expected = clip_score(sum(clip_score(features.get(name, 60.0)) * weight
+                                      for name, weight in MATRIX_FORMULAS[key]))
+            diff = round(float(score) - expected, 2)
+            if abs(diff) >= 0.05:
+                if key == "sectional" and any(c.startswith("finish_time_trend") for c in self.reason_codes):
+                    direction = "進步" if diff > 0 else "退步"
+                    reasoning[key]["adjustment"] = f"完成時間對標趨勢{direction}：sub分加權後再{diff:+.1f}"
+                else:
+                    reasoning[key]["adjustment"] = f"矩陣後調整：sub分加權後再{diff:+.1f}"
         return reasoning
 
     def _score_breakdown(self, features, notes):
@@ -1546,22 +1637,13 @@ class RacingEngine:
         cls_perf = self._value("class_perf_3s") or self._class_rank_note()
         if cls_perf:
             add("班次表現", str(cls_perf), "", band="➖")
-        tw = self._value("trackwork_digest")
-        if present(tw):
-            tw_s = str(tw)
-            # NOTE: 放緩/加強 here = gallop-TIME trend (gallops getting slower/faster),
-            # NOT the number of 快操. Spell it out so a higher 快操 count sitting next to
-            # "放緩" is not misread as a contradiction (user feedback, R1 #4 vs #7).
-            if "加強" in tw_s:
-                twtrend = "快操時間趨快"
-            elif "放緩" in tw_s:
-                twtrend = "快操時間趨慢"
-            else:
-                twtrend = "操練平穩"
-            m = re.search(r"快操(\d+)課.*?試閘(\d+)課.*?踱步(\d+)課.*?游水(\d+)課", tw_s)
-            detail = f"近21日 快操{m.group(1)}、試閘{m.group(2)}、游水{m.group(4)}" if m else ""
-            band = "✅" if "趨快" in twtrend else ("⚠️" if "趨慢" in twtrend else "➖")
-            add("晨操備戰", detail or twtrend, twtrend, band=band)
+        # 晨操 row 同晨操分析／狀態與穩定性共用 _trackwork_pattern 呢個單一判定，
+        # 呢度只出 pattern 標籤＋賽日騎師參與＋一句原因；原始課數留返晨操分析度睇。
+        tw_pattern = self._trackwork_pattern()
+        if tw_pattern:
+            jockey_txt = "賽日騎師有落場操" if tw_pattern["jockey_in"] else ""
+            add("晨操", tw_pattern["label"], jockey_txt,
+                band=tw_pattern["band"], reason=tw_pattern["reason"])
         return rows
 
     DIM_LABELS = {
@@ -2183,28 +2265,63 @@ class RacingEngine:
     def _describe_stability_matrix(self, score, features, evidence):
         finishes = self._recent_finish_list()
         recent_trend = self._recent_form_trend(finishes)
-        trackwork = self._trackwork_markers()
         seq = "-".join(str(f) for f in finishes[:6])
-        seq_txt = f"近{min(len(finishes), 6)}仗名次{seq}，" if seq else ""
+        seq_txt = f"近{min(len(finishes), 6)}仗名次{seq}：" if seq else ""
+
+        # 1) 近仗係穩定定反覆（名次面）
         if features.get("form_score", 60) >= 78 and features.get("consistency_score", 60) >= 75:
-            lead = f"{seq_txt}持續企在前列競爭圈而且唔止一次交代——狀態係實在嘅，可以當近況支柱用。"
+            lead = f"{seq_txt}場場企喺前列競爭圈，唔係一次過發威——狀態係實在嘅近況支柱。"
         elif features.get("form_score", 60) < 52 or features.get("consistency_score", 60) < 52:
-            lead = f"{seq_txt}前列支撐不足、名次波幅大——想佢今仗突然企穩，需要形勢或部署明顯配合先得。"
+            lead = f"{seq_txt}前列支撐不足、名次反覆——想今仗突然企穩，要形勢或部署明顯配合先得。"
         elif recent_trend == "warming":
-            lead = f"{seq_txt}走勢有回暖跡象：方向向好，但未去到場場穩定，屬「可upside、未可靠」一類。"
+            lead = f"{seq_txt}近三仗名次好過再之前，狀態回勇中，但仲未去到場場穩定。"
         elif recent_trend == "cooling":
-            lead = f"{seq_txt}表現有回落跡象，之前較好嘅狀態未必搬得返出嚟，追捧近績要留手。"
+            lead = f"{seq_txt}近三仗名次差過再之前，狀態回落中，之前嘅好表現未必搬得返出嚟。"
         else:
-            lead = f"{seq_txt}有一定交代但未算場場穩定，屬穩中帶保留。"
-        if trackwork["classification"] == "翻案復刻":
-            track = "晨操屬「翻案復刻」部署——操練訊號好過賽績反映，馬房有意翻案，賽績以外有隱藏upside。"
-        elif "加強" in trackwork["trend"]:
-            track = "晨操備戰力度推進緊（快操時間趨快），近績以外多一重狀態佐證。"
-        elif "放緩" in trackwork["trend"]:
-            track = "但晨操力度放緩緊，狀態延續要打個折扣。"
+            lead = f"{seq_txt}有交代但未算場場穩定，屬穩中帶保留。"
+
+        # 2) 輸距面（同穩定性分覆核用同一組事實）
+        shadow = self._consistency_shadow_detail()
+        margin_txt = ""
+        if shadow and shadow["n"] >= 3:
+            if shadow["poor_runs"] == 0 and shadow["close_runs"] >= max(2, shadow["n"] - 2):
+                margin_txt = f"輸距方面冇一仗大敗、{shadow['close_runs']}仗貼近前列，敗仗都輸得有交代。"
+            elif shadow["poor_runs"] >= 2:
+                margin_txt = f"輸距方面有{shadow['poor_runs']}仗明顯敗陣（輸5個馬位以上），差嗰啲唔係細範圍波動。"
+            elif shadow["poor_runs"] == 1:
+                margin_txt = "輸距方面得一仗明顯敗陣，其餘敗仗輸幅可接受。"
+
+        # 3) 晨操同賽績趨勢夾唔夾（用統一 _trackwork_pattern）
+        pattern = self._trackwork_pattern()
+        if pattern is None:
+            track = "晨操資料不足，判斷全靠正式賽績。"
         else:
-            track = "晨操平穩，唔加分唔減分，判斷主要靠正式賽績。"
-        return f"{lead}{track}"
+            positive_work = pattern["label"] in ("轉強", "操練積極")
+            mild_negative = pattern["label"] == "操練放緩"
+            negative_work = pattern["label"] == "轉弱"
+            if pattern["classification"] == "翻案復刻":
+                track = f"晨操{pattern['label']}（{pattern['reason']}）——操練訊號好過近績反映，馬房有意用狀態翻案，係翻身伏線多過即時保證。"
+            elif positive_work and recent_trend in ("warming", "holding"):
+                track = f"晨操{pattern['label']}（{pattern['reason']}），同近績走勢同一方向，狀態有雙重佐證。"
+            elif positive_work and recent_trend == "cooling":
+                track = f"晨操{pattern['label']}，但近績回落緊——兩個訊號有矛盾，穩陣做法係信賽績、當晨操係翻身伏線。"
+            elif mild_negative:
+                track = f"晨操操練放緩（{pattern['reason']}）——未必等於退步，但狀態延續冇額外佐證，唔好靠晨操加持。"
+            elif negative_work and recent_trend in ("warming", "holding"):
+                track = f"不過晨操{pattern['label']}（{pattern['reason']}），近績雖然企得住，狀態延續要打個折扣。"
+            elif negative_work:
+                track = f"晨操{pattern['label']}，同近績回落一致——狀態方向偏淡，唔宜寄望突然翻身。"
+            else:
+                track = "晨操中性，唔加分唔減分，判斷主要靠正式賽績。"
+
+        # 4) 對分數嘅意義
+        if score >= 75:
+            close = f"綜合落嚟呢維度{score:.0f}分，係今場其中一個加分位。"
+        elif score >= 58:
+            close = f"綜合落嚟呢維度{score:.0f}分，中性，唔會拖低亦唔會托高總分。"
+        else:
+            close = f"綜合落嚟呢維度{score:.0f}分，係總分嘅實際拖累位。"
+        return f"{lead}{margin_txt}{track}{close}"
 
     def _describe_sectional_matrix(self, score, features, evidence):
         l400 = self._seq_endpoints(self._value("l400_trend"), "s")
@@ -2412,6 +2529,51 @@ class RacingEngine:
         }
 
     # 已知晨操訊號 → 實戰意義（揀馬用語，唔係機械覆述）
+    def _trackwork_pattern(self):
+        """晨操 pattern 嘅單一判定來源 — 數據判讀、晨操分析、狀態與穩定性判讀共用，
+        保證三度講嘅係同一個結論。label ∈ {轉強, 操練積極, 中性, 操練放緩, 轉弱}。
+        reason 係一句白話、唔含原始課數（課數只喺晨操分析度展示）。"""
+        digest = self._clean(self._value("trackwork_digest") or "")
+        if not digest:
+            return None
+        markers = self._trackwork_markers()
+        m = re.search(r"快操(\d+)課.*?試閘(\d+)課.*?踱步(\d+)課.*?游水(\d+)課", digest)
+        gallops = trials = trotting = swimming = None
+        if m:
+            gallops, trials, trotting, swimming = (int(x) for x in m.groups())
+        trend = markers["trend"]
+        positive = markers["positive"] or ""
+        jockey_in = "賽日騎師" in positive or "賽日騎師" in digest
+        trainer_in = "練馬師親自" in positive
+        if "加強" in trend:
+            label, band = "轉強", "✅"
+            reason = "快操時間一課比一課快，備戰上緊"
+        elif "放緩" in trend:
+            if gallops is not None and gallops >= 3:
+                label, band = "操練放緩", "➖"
+                reason = "快操時間趨慢但課數唔少，似操夠後收操保鮮多過退步"
+            else:
+                label, band = "轉弱", "⚠️"
+                reason = "快操時間趨慢、課數亦一般，備戰力度回落"
+        elif gallops is not None and gallops >= 4:
+            label, band = "操練積極", "✅"
+            reason = "快操頻密，體能儲備充足"
+        elif gallops is not None and gallops <= 1 and (swimming or 0) >= 10:
+            label, band = "操練放緩", "⚠️"
+            reason = "實地快操極少、以游水踱步為主，偏向護理式備戰"
+        else:
+            label, band = "中性", "➖"
+            reason = "操練量同節奏正常，冇特別加壓亦冇異常"
+        return {
+            "label": label,
+            "band": band,
+            "reason": reason,
+            "jockey_in": jockey_in,
+            "trainer_in": trainer_in,
+            "classification": markers["classification"],
+            "counts": {"gallops": gallops, "trials": trials, "trotting": trotting, "swimming": swimming},
+        }
+
     _TRACKWORK_SIGNAL_MEANINGS = {
         "賽日騎師有參與操練": "賽日騎師親自上陣操練＝人馬預先磨合，屬出擊部署訊號",
         "練馬師親自操練": "練馬師親自策騎操練＝馬房極重視呢匹馬（最強訊號之一）",
@@ -2446,8 +2608,9 @@ class RacingEngine:
         # 1. 備戰量 — 課數點解讀
         if gallops is not None:
             vol = f"近21日快操{gallops}課、試閘{trials}課、踱步{trotting}課、游水{swimming}課"
+            # 呢行只講「工作量」；快慢方向由下面統一 pattern 講，避免兩行打架
             if gallops >= 4:
-                read = "快操頻密，備戰進取，體能儲備充足"
+                read = "快操課數唔少，工作量充足"
             elif gallops >= 2:
                 read = "快操量正常，屬持續備戰而唔係齋維持"
             elif (swimming or 0) >= 10:
@@ -2460,17 +2623,10 @@ class RacingEngine:
         if blank is not None and blank >= 5:
             lines.append(f"近21日有{blank}日完全冇紀錄——空白日偏多，慎防中間有小狀況")
 
-        # 2. 趨勢 — 快操時間方向
-        trend = markers["trend"]
-        if "加強" in trend:
-            lines.append("快操時間趨快：狀態上緊，馬房開緊佢，屬正面備戰訊號")
-        elif "放緩" in trend:
-            if gallops is not None and gallops >= 3:
-                lines.append("快操時間趨慢，但課數唔少：可能係操夠之後收操保鮮，未必係退步，宜配合近績一齊判斷")
-            else:
-                lines.append("快操時間趨慢、課數亦一般：備戰力度回落，狀態延續有保留")
-        else:
-            lines.append("操練節奏平穩：以維持現有狀態為主，冇特別加壓亦冇異常")
+        # 2. 趨勢 — 用 _trackwork_pattern 嘅統一判定（同數據判讀、穩定性判讀一致）
+        pattern = self._trackwork_pattern()
+        if pattern:
+            lines.append(f"操練 pattern：**{pattern['label']}** — {pattern['reason']}")
 
         # 3. 訊號 — 逐個翻譯成實戰意義
         for raw in [s.strip() for s in re.split(r"[、,]", markers["positive"] or "") if s.strip() and s.strip() != "無"]:
@@ -2495,14 +2651,15 @@ class RacingEngine:
                 score_line += " — 三項齊上70，備戰面冇明顯短板"
             lines.append(score_line)
 
-        # 5. 部署定性
+        # 5. 部署定性 — 以統一 pattern 標籤開頭（原因喺上面 pattern 行已講，唔重複）
         cls = markers["classification"]
+        head = pattern["label"] if pattern else "資料有限"
         if cls == "翻案復刻":
-            verdict = "整體部署屬「翻案復刻」：近績唔突出但操練有起色，馬房有意用狀態翻案——實力容易被近績表面數字遮住，值得多望一眼"
+            verdict = f"{head}。部署屬「翻案復刻」：近績唔突出但操練有起色，馬房有意用狀態翻案——實力容易被近績表面數字遮住，值得多望一眼"
         elif cls:
-            verdict = f"整體部署屬「{cls}」：馬房按正常軌道備戰，晨操主要用嚟確認近績可以延續落今仗"
+            verdict = f"{head}。部署屬「{cls}」：馬房按正常軌道備戰，晨操主要用嚟確認近績可以延續落今仗"
         else:
-            verdict = "晨操資料未有清晰部署定性，作輔助參考"
+            verdict = f"{head}。晨操資料未有清晰部署定性，作輔助參考"
 
         return {"lines": lines, "verdict": verdict}
 
