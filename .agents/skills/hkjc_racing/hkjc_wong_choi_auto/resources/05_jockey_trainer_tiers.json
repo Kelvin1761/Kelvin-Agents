@@ -3,34 +3,90 @@
     {
       "score": 85,
       "reason": "Elite Jockey (+25)",
-      "names": ["PURTON", "MCDONALD", "BOWMAN", "MOREIRA", "PARTON", "潘頓", "布文", "莫雷拉", "麥道朗"]
+      "names": [
+        "PURTON",
+        "MCDONALD",
+        "BOWMAN",
+        "MOREIRA",
+        "PARTON",
+        "潘頓",
+        "布文",
+        "莫雷拉",
+        "麥道朗"
+      ]
     },
     {
       "score": 75,
       "reason": "Top Tier Jockey (+15)",
-      "names": ["KARIS TEETAN", "TEETAN", "HO", "BADEL", "DE MELO", "ETHAN BROWN", "E BROWN", "BROWN E", "田泰安", "何澤堯", "巴度", "艾道拿", "艾兆禮", "布浩榮"]
+      "names": [
+        "KARIS TEETAN",
+        "TEETAN",
+        "HO",
+        "BADEL",
+        "DE MELO",
+        "ETHAN BROWN",
+        "E BROWN",
+        "BROWN E",
+        "田泰安",
+        "何澤堯",
+        "巴度",
+        "艾道拿",
+        "艾兆禮",
+        "布浩榮"
+      ]
     },
     {
       "score": 70,
       "reason": "Positive Jockey Tier (+10)",
-      "names": ["CHUNG", "WONG", "POON", "鍾易禮", "黃寶妮", "潘明輝", "袁幸堯"]
+      "names": [
+        "CHUNG",
+        "WONG",
+        "POON",
+        "鍾易禮",
+        "黃寶妮",
+        "潘明輝",
+        "袁幸堯"
+      ]
     }
   ],
   "trainer": [
     {
       "score": 80,
       "reason": "High Efficiency Trainer (+20)",
-      "names": ["SIZE", "LUI", "FOWNES", "LOR", "蔡約翰", "呂健威", "方嘉柏", "羅富全"]
+      "names": [
+        "SIZE",
+        "LUI",
+        "FOWNES",
+        "LOR",
+        "蔡約翰",
+        "呂健威",
+        "方嘉柏",
+        "羅富全"
+      ]
     },
     {
       "score": 75,
       "reason": "Consistent Trainer (+15)",
-      "names": ["SHUM", "WHYTE", "NEWNHAM", "RICHARDS", "沈集成", "韋達", "伍鵬志", "大衛希斯"]
+      "names": [
+        "SHUM",
+        "WHYTE",
+        "NEWNHAM",
+        "RICHARDS",
+        "沈集成",
+        "韋達",
+        "伍鵬志",
+        "大衛希斯"
+      ]
     },
     {
       "score": 70,
       "reason": "Supported Trainer Tier (+10)",
-      "names": ["黎昭昇", "巫偉傑", "廖康銘", "姚本輝"]
+      "names": [
+        "黎昭昇",
+        "巫偉傑",
+        "廖康銘",
+        "姚本輝"
+      ]
     }
   ]
 }

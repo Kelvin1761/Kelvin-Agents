@@ -5,6 +5,11 @@ from features.jockey import real_overseas_rows
 
 class TrainerScorer(BaseScorer):
     def compute(self):
+        from features.jockey import continuous_rating
+        rated = continuous_rating("trainer", self.horse_data.get("trainer", ""))
+        if rated is not None:
+            self.score, self.reason = rated
+            return self.score, self.reason
         self.score, self.reason = score_tier("trainer", self.horse_data.get("trainer", ""), "Neutral Trainer")
 
         if self.score == 60.0:

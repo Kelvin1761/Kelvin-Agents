@@ -26,11 +26,12 @@ FEATURE_LABELS = {
     "confidence_score": "信心分",
 }
 
+# 次序＝報告顯示次序（用戶要求：騎練訊號緊跟狀態與穩定性）
 MATRIX_LABELS = {
     "stability": "狀態與穩定性",
+    "trainer_signal": "騎練訊號",
     "sectional": "段速與場地適性",
     "race_shape": "檔位與走位（不含步速）",
-    "trainer_signal": "騎練訊號",
     "horse_health": "馬匹健康 / 新鮮感",
     "form_line": "賽績線",
     "class_advantage": "級數優勢",
@@ -452,10 +453,6 @@ def _render_horse_section(horse_num: str, horse: dict, auto: dict) -> list[str]:
         f"- **統計:** {_fmt(horse.get('season_stats') or data.get('season_stats_line'))}",
         f"- **近績分 / 穩定性分:** {float(features.get('form_score', 60)):.1f} / {float(features.get('consistency_score', 60)):.1f}",
         "",
-        *_overseas_form_lines(auto),
-        "#### 🏇 晨操分析 (Trackwork)",
-        *_trackwork_lines(auto, data),
-        "",
         "#### 🧮 7D 評分矩陣逐項拆解",
         "> 每個維度：**評分構成**（sub分 × 權重點砌出嚟）→ 每個 sub分嘅來源 → **實證調整** → **判讀** → **數據**。",
         "",
@@ -585,6 +582,19 @@ def _matrix_lines(horse: dict, auto: dict) -> list[str]:
         if key == "trainer_signal":
             lines.extend(_trainer_signal_adjustment_lines(auto))
         lines.append(f"  - **判讀:** {_sanitize_text(text)}")
+        if key == "stability":
+            # 晨操分析＋海外往績直接住喺狀態與穩定性維度入面（用戶要求，唔另開 section）
+            data = horse.get("_data", {}) if isinstance(horse.get("_data"), dict) else {}
+            tw_lines = _trackwork_lines(auto, data)
+            if tw_lines:
+                lines.append("  - **晨操分析:**")
+                lines.extend(f"    {item}" for item in tw_lines)
+            overseas = auto.get("overseas_form_read")
+            if isinstance(overseas, dict):
+                lines.append("  - **海外往績:**")
+                lines.extend(f"    - {item}" for item in overseas.get("lines", []))
+                if overseas.get("verdict"):
+                    lines.append(f"    - **判讀:** {overseas['verdict']}")
         fact_lines = _matrix_fact_lines(key, horse)
         if key == "form_line":
             fact_lines = _formline_table_lines(horse) + fact_lines
@@ -602,17 +612,13 @@ def _trainer_signal_adjustment_lines(auto: dict) -> list[str]:
         return []
     lines: list[str] = []
     adjustments = detail.get("adjustments") or []
+    # 每項因子有數據就顯示（±0都寫）；直接用因子名做標題（用戶要求）
     for adj in adjustments:
         delta = float(adj.get("delta", 0) or 0)
-        lines.append(f"    - 實證調整（{adj.get('target', '')}）{delta:+.1f} ← {adj.get('factor', '')}：{adj.get('evidence', '')}")
-    jb, jf = detail.get("jockey_base"), detail.get("jockey_final")
-    tb, tf = detail.get("trainer_base"), detail.get("trainer_final")
-    if isinstance(jb, (int, float)) and isinstance(jf, (int, float)) and abs(jf - jb) >= 0.05:
-        lines.append(f"    - 騎師分軌跡: 層級基礎 {jb:.1f} → 調整後 {jf:.1f}")
-    if isinstance(tb, (int, float)) and isinstance(tf, (int, float)) and abs(tf - tb) >= 0.05:
-        lines.append(f"    - 練馬師分軌跡: 層級基礎 {tb:.1f} → 調整後 {tf:.1f}")
+        delta_txt = f"{delta:+.1f}" if delta else "0"
+        lines.append(f"    - {adj.get('factor', '調整')}（{adj.get('target', '')}）{delta_txt} ← {adj.get('evidence', '')}")
     if not adjustments:
-        lines.append("    - 實證調整: 無觸發（人馬歷史／騎練組合／同程統計均未達加減分門檻）")
+        lines.append("    - 統計調整: 人馬歷史／騎練組合／同程均無可用統計")
     return lines
 
 
@@ -662,7 +668,6 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
         return _compact_fact_lines(
             ("近6場數據", data.get("recent_6_detail"), 320),
             ("頭馬距離趨勢", data.get("margin_trend"), 180),
-            ("晨操原文摘要", _strip_digest_directive(data.get("trackwork_digest")), 260),
         )
     if key == "sectional":
         finish_time = " | ".join(
@@ -689,9 +694,9 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
         )
     if key == "trainer_signal":
         combo_lines = _jockey_combo_snapshot(data.get("jockey_combo_block"))
+        # 晨操部署已搬去狀態與穩定性嘅晨操分析（晨操嘢一律住嗰度）
         return _compact_fact_lines(
             ("配備變動", data.get("gear_change"), 180),
-            ("晨操部署", data.get("trackwork_trainer"), 260),
             *[(label, value, limit) for label, value, limit in combo_lines],
         )
     if key == "horse_health":
@@ -744,30 +749,23 @@ def _strip_digest_directive(text: object) -> str:
     return re.sub(r"判讀指令[:：].*$", "", str(text or ""), flags=re.S).strip()
 
 
-def _overseas_form_lines(auto: dict) -> list[str]:
-    """海外往績判讀 — 只有新造馬／海外馬／香港樣本少先出現。"""
-    read = auto.get("overseas_form_read")
-    if not isinstance(read, dict):
-        return []
-    lines = ["#### 🌏 海外往績判讀"]
-    lines.extend(f"- {item}" for item in read.get("lines", []))
-    if read.get("verdict"):
-        lines.append(f"- **判讀:** {read['verdict']}")
-    lines.append("")
-    return lines
 
 
 def _trackwork_lines(auto: dict, data: dict) -> list[str]:
-    """晨操分析：優先用引擎嘅逐項判讀（trackwork_read），冇先fallback原文摘要。"""
+    """晨操分析：優先用引擎嘅逐項判讀（trackwork_read），冇先fallback原文摘要。
+    晨操部署（操練者身份／配備／部署旗標）一併住呢度——晨操嘢唔分家。"""
     lines: list[str] = []
     read = auto.get("trackwork_read")
     if isinstance(read, dict) and read.get("lines"):
         lines.extend(f"- {item}" for item in read["lines"])
-        if read.get("verdict"):
-            lines.append(f"- **判讀:** {read['verdict']}")
     else:
         digest = _strip_digest_directive(data.get("trackwork_digest"))
         lines.append(f"- **摘要:** {_short(digest or '未有完整晨操摘要，中性處理', 360)}")
+    deployment = _inline_text(data.get("trackwork_trainer"))
+    if deployment and deployment not in {"N/A", "未知"}:
+        lines.append(f"- 部署：{_short(deployment, 260)}")
+    if isinstance(read, dict) and read.get("verdict"):
+        lines.append(f"- **判讀:** {read['verdict']}")
     return lines
 
 

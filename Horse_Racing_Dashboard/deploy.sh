@@ -7,14 +7,28 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-DIST_DIR="$SCRIPT_DIR/.cloudflare_dist"
+
+# ⚠️ 成個 deploy bundle（dist + wrangler.toml + functions/）一定要住喺本地
+# /tmp，wrangler 亦要喺本地 CWD 行。個 repo 喺 Google Drive 上面：Drive 同步
+# 高峰時，喺 Drive 路徑讀寫會 hang 到 40 分鐘以上；搬晒去本地係 5 秒內完成
+# （2026-07-08 實測）。Codex / Claude / 人手行都一樣受惠。
+STAGING_DIR="$(mktemp -d "${TMPDIR:-/tmp}/wongchoi_deploy.XXXXXX")"
+DIST_DIR="$STAGING_DIR/dist"
 HTML_OUT="$DIST_DIR/index.html"
 JSON_OUT="$DIST_DIR/dashboard-data.json"
 MANIFEST_OUT="$DIST_DIR/deploy-manifest.json"
 BUILD_ONLY=0
 KEEP_DIST=0
 PAGES_PROJECT="${WC_CLOUDFLARE_PAGES_PROJECT:-wongchoi-dashboard}"
-DEPLOY_CWD="${WC_CLOUDFLARE_DEPLOY_CWD:-${TMPDIR:-/private/tmp}}"
+
+cleanup_staging() {
+    if [ "$KEEP_DIST" -eq 0 ]; then
+        rm -rf "$STAGING_DIR"
+    else
+        echo "🗂  已保留 deploy bundle：$STAGING_DIR"
+    fi
+}
+trap cleanup_staging EXIT
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -64,12 +78,16 @@ if [ ! -f "$MANIFEST_OUT" ]; then
     exit 1
 fi
 
-echo "📦 第二步：Cloudflare deploy bundle 已準備完成"
+echo "📦 第二步：Cloudflare deploy bundle 已準備完成（本地 staging：$STAGING_DIR）"
 echo "   - HTML: $(basename "$HTML_OUT")"
 echo "   - Data: $(basename "$JSON_OUT")"
 echo "   - Manifest: $(basename "$MANIFEST_OUT")"
+# wrangler 要喺 CWD 搵到 wrangler.toml（KV binding WC_STATE）同 functions/
+# （/api/sync bet-sync Function）——照樣搬入本地 staging，唔留喺 Drive。
+cp "$SCRIPT_DIR/wrangler.toml" "$STAGING_DIR/wrangler.toml"
 if [ -d "$SCRIPT_DIR/functions" ]; then
-    echo "   - Pages Functions: functions/"
+    cp -R "$SCRIPT_DIR/functions" "$STAGING_DIR/functions"
+    echo "   - Pages Functions: functions/（已複製到本地 staging）"
 else
     echo "   ⚠️ 未發現 functions/，Cloudflare sync API 會缺席"
 fi
@@ -119,21 +137,25 @@ fi
 COMMIT_HASH="manual"
 COMMIT_MESSAGE="manual dashboard deploy"
 COMMIT_DIRTY="true"
+SNAPSHOT_TAG="$(date -u +%Y%m%d%H%M%S)"
 if command -v git >/dev/null 2>&1 && git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    COMMIT_HASH="$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || printf 'manual')"
     COMMIT_MESSAGE="$(git -C "$REPO_ROOT" log -1 --pretty=%s 2>/dev/null || printf 'manual dashboard deploy')"
 fi
+COMMIT_HASH="manual-${SNAPSHOT_TAG}"
+COMMIT_MESSAGE="${COMMIT_MESSAGE} [snapshot ${SNAPSHOT_TAG}]"
 
-echo "   - Wrangler CWD: $SCRIPT_DIR (for wrangler.toml KV + functions/)"
+echo "   - Wrangler CWD: $STAGING_DIR (本地 staging，內有 wrangler.toml KV + functions/)"
 echo "   - Commit Hash: $COMMIT_HASH"
 
-# MUST run from SCRIPT_DIR so wrangler picks up wrangler.toml (KV binding
-# WC_STATE) and functions/ — REQUIRED for the /api/sync bet-sync Function.
-# Running from a tmp CWD silently drops Functions + KV → 匯入投注記錄 fails with
-# "寫入 ROI 資料庫失敗". CF_PAGES_BRANCH=main + --branch main force a production
-# deploy so wongchoi-dashboard.pages.dev updates.
+# MUST run from a CWD that contains wrangler.toml (KV binding WC_STATE) and
+# functions/ — REQUIRED for the /api/sync bet-sync Function; missing them
+# silently drops Functions + KV → 匯入投注記錄 fails with "寫入 ROI 資料庫失敗".
+# 我哋已將兩者複製到本地 $STAGING_DIR，喺嗰度行——千祈唔好改返去 Drive 上面嘅
+# $SCRIPT_DIR 行（Drive 同步時 wrangler 會 hang 40 分鐘以上）。
+# CF_PAGES_BRANCH=main + --branch main force a production deploy so
+# wongchoi-dashboard.pages.dev updates.
 (
-    cd "$SCRIPT_DIR"
+    cd "$STAGING_DIR"
     env CI=1 CF_PAGES_BRANCH=main CLOUDFLARE_ACCOUNT_ID="$RESOLVED_ACCOUNT_ID" npx wrangler pages deploy "$DIST_DIR" \
         --project-name "$PAGES_PROJECT" \
         --branch main \
@@ -141,9 +163,5 @@ echo "   - Commit Hash: $COMMIT_HASH"
         --commit-message "$COMMIT_MESSAGE" \
         --commit-dirty="$COMMIT_DIRTY"
 )
-
-if [ "$KEEP_DIST" -eq 0 ]; then
-    rm -rf "$DIST_DIR"
-fi
 
 echo "🎉 發佈完成！Cloudflare 版本已更新 HKJC + AU race analysis snapshot。"
