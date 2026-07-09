@@ -1191,7 +1191,7 @@ class RacingEngine:
     def _matrix_reasoning(self, matrix_scores, matrix, features, notes):
         specs = {
             "stability": ("狀態與穩定性", ("form_score", "consistency_score", "trackwork_trend_score")),
-            "sectional": ("段速與場地適性", ("speed_score", "track_going_score")),
+            "sectional": ("段速", ("speed_score",)),
             "race_shape": ("檔位與走位情境（不含步速）", ("race_shape_context_score",)),
             "trainer_signal": ("騎練訊號", ("jockey_score", "trainer_score")),
             "horse_health": ("馬匹健康 / 新鮮感", ("risk_score", "weight_score", "confidence_score")),
@@ -2810,7 +2810,7 @@ class RacingEngine:
         dims = [
             ("stability", "狀態與穩定性"),
             ("trainer_signal", "騎練訊號"),
-            ("sectional", "段速與場地適性"),
+            ("sectional", "段速"),
             ("race_shape", "檔位與走位"),
             ("horse_health", "馬匹健康 / 新鮮感"),
             ("form_line", "賽績線"),

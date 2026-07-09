@@ -22,14 +22,18 @@ FEATURE_KEYS = (
     "confidence_score",
 )
 
+# 2026-07-10 場地分全移除後重新歸一：段速維度只剩純速度分，維度權重由 0.1849
+# 下調至 0.65×0.1849（保留原速度影響力），其餘維度按比例放大令總和＝1。
+# 排名等效於「段速=速度×0.65 + 場地60×0.35」舊結構（場地嗰 0.35 只乘 constant，
+# 對排名零貢獻）。pit_backtest：gold/min/champ 不變、single/t3c 微升。
 MATRIX_WEIGHTS = {
-    "sectional": 0.1849,
-    "trainer_signal": 0.2209,
-    "stability": 0.0919,
-    "race_shape": 0.2560,
-    "class_advantage": 0.1335,
-    "horse_health": 0.0378,
-    "form_line": 0.0749,
+    "sectional": 0.1285,
+    "trainer_signal": 0.2362,
+    "stability": 0.0983,
+    "race_shape": 0.2737,
+    "class_advantage": 0.1428,
+    "horse_health": 0.0404,
+    "form_line": 0.0801,
 }
 
 DEBUT_MATRIX_WEIGHTS = {

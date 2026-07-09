@@ -30,7 +30,7 @@ FEATURE_LABELS = {
 MATRIX_LABELS = {
     "stability": "狀態與穩定性",
     "trainer_signal": "騎練訊號",
-    "sectional": "段速與場地適性",
+    "sectional": "段速",
     "race_shape": "檔位與走位（不含步速）",
     "horse_health": "馬匹健康 / 新鮮感",
     "form_line": "賽績線",

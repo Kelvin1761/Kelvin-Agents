@@ -158,20 +158,19 @@ class AutoOutputTests(unittest.TestCase):
             self.assertEqual(horse["_data"]["trainer_name"], "蔡約翰")
 
     def test_calibrated_matrix_weights_are_locked(self) -> None:
-        # ML walk-forward backtest (18 meetings / 180 races) showed horse_health
-        # is noise in the ranking layer; its 0.0378 mass was redistributed
-        # proportionally (total mass kept at 0.9999 to preserve the grade scale).
+        # 2026-07-10: 場地分全移除，段速維度只剩純速度分；維度權重由 0.1849 下調至
+        # 0.65×0.1849 並將 7D 重新歸一（保留原速度影響力、排名等效）。總和仍＝1。
         self.assertAlmostEqual(sum(MATRIX_WEIGHTS.values()), 1.0, places=3)
         self.assertEqual(
             MATRIX_WEIGHTS,
             {
-                "sectional": 0.1849,
-                "trainer_signal": 0.2209,
-                "stability": 0.0919,
-                "race_shape": 0.2560,
-                "class_advantage": 0.1335,
-                "horse_health": 0.0378,
-                "form_line": 0.0749,
+                "sectional": 0.1285,
+                "trainer_signal": 0.2362,
+                "stability": 0.0983,
+                "race_shape": 0.2737,
+                "class_advantage": 0.1428,
+                "horse_health": 0.0404,
+                "form_line": 0.0801,
             },
         )
 
@@ -374,7 +373,7 @@ class AutoOutputTests(unittest.TestCase):
         self.assertGreater(high_score, base_score)
         self.assertLess(low_score, high_score)
 
-    def test_sectional_uses_recalibrated_speed_and_going_mix(self) -> None:
+    def test_sectional_is_pure_speed_after_going_removed(self) -> None:
         features = {
             "form_score": 60,
             "speed_score": 80,
@@ -394,7 +393,8 @@ class AutoOutputTests(unittest.TestCase):
 
         scores = map_features_to_matrix_scores(features)
 
-        self.assertEqual(scores["sectional"], 73.0)
+        # 場地分已移除：段速 = 純速度分（speed_score 80 → 80）
+        self.assertEqual(scores["sectional"], 80.0)
 
     def test_horse_health_matrix_embeds_health_only_v2(self) -> None:
         steady = {

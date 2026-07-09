@@ -7,9 +7,11 @@ MATRIX_FORMULAS = {
         ("consistency_score", 0.40),
         ("trackwork_trend_score", 0.10),
     ),
+    # 場地分 (track_going_score) 已全移除：HKJC 無場地適性數據，佢一直恒 60、零 signal，
+    # 只做壓縮 anchor。改為純速度分，維度 7D 權重同步下調並重新歸一（見 MATRIX_WEIGHTS），
+    # pit_backtest 確認 gold/min/champ 不變、single/t3c 微升。維度改名「段速」。
     "sectional": (
-        ("speed_score", 0.65),
-        ("track_going_score", 0.35),
+        ("speed_score", 1.00),
     ),
     "race_shape": (
         ("race_shape_context_score", 1.00),
