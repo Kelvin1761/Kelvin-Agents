@@ -205,27 +205,19 @@ class RacingEngine:
         return scoring.DISTANCE_MICRO_WEIGHTS.get("neutral_base", 60.0), "路程證據不足，按中性60分。", "missing_neutral"
 
     def _track_going_score(self, _features):
-        # good_record/soft_record/course_record 係 AU 承襲落嚟嘅「地面往績」欄，
-        # HKJC 抽取根本冇呢啲欄（恒空），移走後計分不變。場地分只用實際存在嘅
-        # 訊號：track_bias（場地偏差）＋ draw_verdict（今場檔位配置）。
-        tb = self._clean(self._value("track_bias") or "")
-        dv = self._clean(self._value("draw_verdict") or "")
-        text = f"{tb} {dv}"
-        # 抽出簡短判詞做 note evidence（計分邏輯不變，只令報告見到 WHY）
-        def _dead(v):
-            return (not v) or v in ("數據不可用", "N/A", "無資料", "-", "--")
-        bits = []
-        if not _dead(tb):
-            bits.append("場地偏差" + (tb.split("→")[-1].strip() if "→" in tb else tb))
-        # 檔位配置只喺真正有利／不利時先當 driver 顯示（中性＝冇訊號，唔當噪音列出）
-        if not _dead(dv) and ("有利" in dv or "不利" in dv):
-            bits.append("檔位配置" + (dv.split("(")[0].strip() or dv))
-        ev = "；".join(bits) if bits else "今場無場地偏差／檔位統計"
-        if "✅有利" in text or ("同場同程" in text and "(0-0-0-0)" not in text):
-            return scoring.TRACK_MICRO_WEIGHTS.get("favorable_base", 66.0), f"{ev} → 對今場有利，場地分66分。", "track_bias"
-        if any(token in text for token in ("❌不利", "不利", "差", "無資料")):
-            return scoring.TRACK_MICRO_WEIGHTS.get("unfavorable_base", 58.0), f"{ev} → 支持不足，場地分58分。", "track_bias"
-        return scoring.TRACK_MICRO_WEIGHTS.get("neutral_base", 60.0), f"{ev}，中性處理，場地分60分。", "missing_neutral"
+        # 場地適性一向中性 60。原因（2026-07-10 檢討 + pit_backtest 驗證）：
+        #  1. HKJC 抽取根本冇真實地面適性數據（good/soft/course record 係 AU 承襲、恒空；
+        #     race_results 個 Going 欄裝錯咗班次字串）。
+        #  2. 之前用 track_bias（場地偏差）＋ draw_verdict 嚟計係「方向盲」——只 grep
+        #     「不利」就扣分，唔理今匹馬實際排內定排外，令排內檔（本應受惠）嘅馬喺偏內
+        #     場地都照扣；而且檔位／場地偏差已由「檔位與走位」維度正正經經計算，喺呢度
+        #     再扣＝同一 draw 訊號扣兩次（double deduct）。
+        #  中性化後 pit_backtest 零倒退、good/champ 反而微升（draw 訊號集中喺 race_shape
+        #  一處，唔再互相污染）。段速維度靠 speed_score 差異區分，場地保持 0.35 權重
+        #  只作壓縮（回測最佳），唔再引入方向盲扣分。
+        return scoring.TRACK_MICRO_WEIGHTS.get("neutral_base", 60.0), \
+            "HKJC 未有可靠場地適性數據；檔位／場地偏差已於「檔位與走位」維度計算，此處不重複扣分，中性60分。", \
+            "missing_neutral"
 
     def _weight_score(self, _features):
         weight = parse_float(self._value("weight_carried") or self._value("weight"))
@@ -2485,13 +2477,9 @@ class RacingEngine:
             speed = f"{l400_txt}段速中性"
         else:
             speed = f"{l400_txt}末段偏弱，難靠後上"
-        if features.get("track_going_score", 60) >= 66:
-            going = "；場地配合"
-        elif features.get("track_going_score", 60) < 60:
-            going = "；場地無補強"
-        else:
-            going = "；場地中性"
-        return f"{speed}{going}{self._score_close(score)}"
+        # 場地分現為中性常數（HKJC 無場地適性數據、draw 歸 race_shape）——唔再喺
+        # 判讀出「場地中性」贅語，句子聚焦速度。
+        return f"{speed}{self._score_close(score)}"
 
     def _describe_race_shape_matrix(self, score, features, evidence):
         barrier = self.horse_data.get("barrier") or self.horse_data.get("draw") or "N/A"

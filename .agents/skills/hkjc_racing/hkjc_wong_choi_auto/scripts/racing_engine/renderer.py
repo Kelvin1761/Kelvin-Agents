@@ -673,13 +673,13 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
         finish_time = " | ".join(
             part for part in (data.get("finish_time_adj"), data.get("finish_time_adj_level")) if part
         )
-        # 速度半邊嘅錨點，跟住場地半邊（track_bias 係場地分嘅實際計分輸入，要顯示）
+        # 純速度錨點。場地偏差（track_bias）唔喺度顯示：佢係 draw/course 訊號，
+        # 已於「檔位與走位」維度嘅數據錨點顯示，唔重複。
         return _compact_fact_lines(
             ("引擎分佈", data.get("engine_type"), 220),
             ("最佳路程", data.get("best_distance"), 160),
             ("L400 / 能量趨勢", _join_nonempty(data.get("raw_l400"), data.get("l400_trend"), data.get("energy_trend"), sep=" | "), 320),
             ("步速修正", finish_time, 260),
-            ("場地偏差", data.get("track_bias"), 200),
         )
     if key == "race_shape":
         draw_running = _join_nonempty(
