@@ -208,12 +208,24 @@ class RacingEngine:
         # good_record/soft_record/course_record 係 AU 承襲落嚟嘅「地面往績」欄，
         # HKJC 抽取根本冇呢啲欄（恒空），移走後計分不變。場地分只用實際存在嘅
         # 訊號：track_bias（場地偏差）＋ draw_verdict（今場檔位配置）。
-        text = self._text("track_bias", "draw_verdict")
+        tb = self._clean(self._value("track_bias") or "")
+        dv = self._clean(self._value("draw_verdict") or "")
+        text = f"{tb} {dv}"
+        # 抽出簡短判詞做 note evidence（計分邏輯不變，只令報告見到 WHY）
+        def _dead(v):
+            return (not v) or v in ("數據不可用", "N/A", "無資料", "-", "--")
+        bits = []
+        if not _dead(tb):
+            bits.append("場地偏差" + (tb.split("→")[-1].strip() if "→" in tb else tb))
+        # 檔位配置只喺真正有利／不利時先當 driver 顯示（中性＝冇訊號，唔當噪音列出）
+        if not _dead(dv) and ("有利" in dv or "不利" in dv):
+            bits.append("檔位配置" + (dv.split("(")[0].strip() or dv))
+        ev = "；".join(bits) if bits else "今場無場地偏差／檔位統計"
         if "✅有利" in text or ("同場同程" in text and "(0-0-0-0)" not in text):
-            return scoring.TRACK_MICRO_WEIGHTS.get("favorable_base", 66.0), "場地偏差／檔位配置對今場有利，場地分66分。", "track_bias"
+            return scoring.TRACK_MICRO_WEIGHTS.get("favorable_base", 66.0), f"{ev} → 對今場有利，場地分66分。", "track_bias"
         if any(token in text for token in ("❌不利", "不利", "差", "無資料")):
-            return scoring.TRACK_MICRO_WEIGHTS.get("unfavorable_base", 58.0), "場地偏差／檔位配置支持不足，場地分58分。", "track_bias"
-        return scoring.TRACK_MICRO_WEIGHTS.get("neutral_base", 60.0), "未有明確場地偏差訊號，場地分60分。", "missing_neutral"
+            return scoring.TRACK_MICRO_WEIGHTS.get("unfavorable_base", 58.0), f"{ev} → 支持不足，場地分58分。", "track_bias"
+        return scoring.TRACK_MICRO_WEIGHTS.get("neutral_base", 60.0), f"{ev}，中性處理，場地分60分。", "missing_neutral"
 
     def _weight_score(self, _features):
         weight = parse_float(self._value("weight_carried") or self._value("weight"))
