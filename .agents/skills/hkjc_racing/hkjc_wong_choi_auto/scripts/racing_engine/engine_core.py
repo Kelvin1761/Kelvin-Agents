@@ -17,6 +17,19 @@ from scoring import DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS, MATRIX_WEIGHTS, clip_sco
 
 _TRAINER_SIGNAL_PRIORS = None
 
+# 班次顯示標籤（新馬賽等）——顯示用，唔影響評分
+_HKJC_CLASS_DISPLAY_LABELS = {
+    "GRIFFIN": "新馬賽",
+    "GR": "新馬賽",
+}
+
+
+def _format_hkjc_class_display(value):
+    text = str(value)
+    for raw, display in _HKJC_CLASS_DISPLAY_LABELS.items():
+        text = re.sub(rf"\b{re.escape(raw)}\b", display, text, flags=re.I)
+    return text
+
 
 class RacingEngine:
     def __init__(self, horse_data, race_context):
@@ -1740,7 +1753,7 @@ class RacingEngine:
         # Prefer the 近三季 profile-derived breakdown; fall back to recent races.
         cls_perf = self._value("class_perf_3s") or self._class_rank_note()
         if cls_perf:
-            add("班次表現", str(cls_perf), "", band="➖")
+            add("班次表現", _format_hkjc_class_display(cls_perf), "", band="➖")
         # 配備變動 — 顯示用（加減 blinkers 等曾測試入分：out-of-sample NULL，只做提示）
         gear_read = self._gear_change_readable()
         if gear_read:
