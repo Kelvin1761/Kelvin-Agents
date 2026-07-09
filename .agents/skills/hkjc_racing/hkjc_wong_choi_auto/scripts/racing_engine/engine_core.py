@@ -205,12 +205,15 @@ class RacingEngine:
         return scoring.DISTANCE_MICRO_WEIGHTS.get("neutral_base", 60.0), "路程證據不足，按中性60分。", "missing_neutral"
 
     def _track_going_score(self, _features):
-        text = self._text("good_record", "soft_record", "course_record", "track_bias", "draw_verdict")
+        # good_record/soft_record/course_record 係 AU 承襲落嚟嘅「地面往績」欄，
+        # HKJC 抽取根本冇呢啲欄（恒空），移走後計分不變。場地分只用實際存在嘅
+        # 訊號：track_bias（場地偏差）＋ draw_verdict（今場檔位配置）。
+        text = self._text("track_bias", "draw_verdict")
         if "✅有利" in text or ("同場同程" in text and "(0-0-0-0)" not in text):
-            return scoring.TRACK_MICRO_WEIGHTS.get("favorable_base", 66.0), "場地/跑道資料有明確支持，場地分66分。", "draw_verdict"
+            return scoring.TRACK_MICRO_WEIGHTS.get("favorable_base", 66.0), "場地偏差／檔位配置對今場有利，場地分66分。", "track_bias"
         if any(token in text for token in ("❌不利", "不利", "差", "無資料")):
-            return scoring.TRACK_MICRO_WEIGHTS.get("unfavorable_base", 58.0), "場地或場地紀錄支持不足，場地分58分。", "course_record"
-        return scoring.TRACK_MICRO_WEIGHTS.get("neutral_base", 60.0), "未有明確場地適性證據，場地分60分。", "missing_neutral"
+            return scoring.TRACK_MICRO_WEIGHTS.get("unfavorable_base", 58.0), "場地偏差／檔位配置支持不足，場地分58分。", "track_bias"
+        return scoring.TRACK_MICRO_WEIGHTS.get("neutral_base", 60.0), "未有明確場地偏差訊號，場地分60分。", "missing_neutral"
 
     def _weight_score(self, _features):
         weight = parse_float(self._value("weight_carried") or self._value("weight"))
@@ -1555,8 +1558,18 @@ class RacingEngine:
                 add("能量趨勢", "", "能量下降", band="⚠️")
         ftb = self._value("finish_time_block")
         if present(ftb):
-            tr = "進步中" if "進步" in str(ftb) else ("退步中" if "退步" in str(ftb) else "平穩")
-            add("完成時間", "對標偏差", tr)
+            # 趨勢箭嘴喺抽取檔用 emoji（📈進步／📉退步／📊平穩）表達，早期格式先用中文；
+            # 兩者都認，先前淨 grep 中文令呢行幾乎永遠顯示「平穩」（BUG A 顯示修正）。
+            s = str(ftb)
+            if "📈" in s or "進步" in s:
+                tr = "進步中"
+            elif "📉" in s or "退步" in s:
+                tr = "退步中"
+            else:
+                tr = "平穩"
+            # 「趨勢」= 近幾仗完成時間對標準嘅方向（改善／退步），有別於速度分講嘅
+            # 絕對水平（快／慢）——並排時唔會被誤讀成矛盾。
+            add("完成時間趨勢", "對標準", tr)
         rt = self._value("rating_trend")
         cur = self._value("current_rating")
         chg = self._value("rating_change")  # authoritative 評分+/- from the racecard
