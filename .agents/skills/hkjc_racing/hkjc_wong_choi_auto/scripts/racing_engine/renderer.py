@@ -583,6 +583,8 @@ def _matrix_lines(horse: dict, auto: dict) -> list[str]:
             lines.extend(_trainer_signal_adjustment_lines(auto))
         if key == "sectional":
             lines.extend(_speed_detail_lines(auto))
+        if key == "race_shape":
+            lines.extend(_race_shape_detail_lines(auto))
         lines.append(f"  - **判讀:** {_sanitize_text(text)}")
         if key == "stability":
             # 晨操分析＋海外往績直接住喺狀態與穩定性維度入面（用戶要求，唔另開 section）
@@ -604,6 +606,30 @@ def _matrix_lines(horse: dict, auto: dict) -> list[str]:
             lines.append("  - **數據:**")
             for fact in fact_lines:
                 lines.extend(_expand_fact_lines(fact))
+    return lines
+
+
+def _race_shape_detail_lines(auto: dict) -> list[str]:
+    """檔位與走位逐項拆解：沙田 = 檔位分×55%＋走位匹配分×25%＋近仗消耗分×20%；
+    跑馬地 = 檔位分 + 走位情境修正逐項。令情境分完全透明。"""
+    d = auto.get("race_shape_detail")
+    if not isinstance(d, dict):
+        return []
+    lines = []
+    if d.get("mode") == "沙田":
+        lines.append("    - 情境分＝檔位分×55% + 走位匹配分×25% + 近仗消耗分×20%：")
+        for c in d.get("components", []):
+            why = str(c.get("why", "")).strip()
+            lines.append(f"      · {c.get('label')} {float(c.get('score', 60)):.0f} × {float(c.get('weight', 0))*100:.0f}%　{why}")
+    else:  # 跑馬地
+        lines.append(f"    - 情境分＝檔位分 {d.get('base', 60):.0f} + 走位情境修正：")
+        items = d.get("items", [])
+        if items:
+            for it in items:
+                dv = float(it.get("delta", 0) or 0)
+                lines.append(f"      · {it.get('factor', '修正')} {dv:+.1f}　{it.get('why', '')}")
+        else:
+            lines.append("      · 走位情境中性，不加不減")
     return lines
 
 
