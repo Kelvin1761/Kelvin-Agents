@@ -41,6 +41,8 @@ class RacingEngine:
         self.provenance = {}
         # 騎練訊號逐項調整紀錄（因子、加減分、原始數據）— 供報告完整追溯
         self.trainer_signal_detail = None
+        # 速度分逐項訊號明細（L400／步速修正／能量／引擎／路程）— 供報告完整追溯
+        self.speed_detail = None
 
     def analyze_horse(self):
         feature_scores = {}
@@ -53,10 +55,13 @@ class RacingEngine:
             "form_score": FormScorer,
             "speed_score": SpeedScorer,
         }.items():
-            score, note = scorer_class(self.horse_data, self.race_context).compute()
+            scorer = scorer_class(self.horse_data, self.race_context)
+            score, note = scorer.compute()
             feature_scores[name] = clip_score(score)
             feature_notes[name] = self._normalize_reason(name, note)
             self.provenance[name] = self._source_for(name)
+            if name == "speed_score":
+                self.speed_detail = getattr(scorer, "detail", None)
 
         for name, func in {
             "class_score": self._class_score,
@@ -118,6 +123,7 @@ class RacingEngine:
             "data_readout": self._data_readout(feature_scores, matrix_scores),
             "grade_transparency": grade_transparency,
             "trainer_signal_detail": self.trainer_signal_detail,
+            "speed_detail": getattr(self, "speed_detail", None),
             "trackwork_read": self._trackwork_interpretation(),
             "overseas_form_read": self._overseas_form_interpretation(),
             "feature_scores": {key: round(feature_scores[key], 2) for key in FEATURE_KEYS},
@@ -1891,28 +1897,20 @@ class RacingEngine:
             # FormScorer now emits a specific Chinese note (finishes + top3/win counts) — pass through.
             return note
         if key == "speed_score":
+            # 一句定性收結即可——逐項 L400／步速修正／能量／引擎／路程 嘅加減分
+            # 已喺報告「速度分＝基準60 + 逐項訊號」明細度全部列晒，唔喺度重複塞細節。
             if "Sectional data incomplete" in note:
                 return "賽績段速資料未完整，速度分按中性處理。"
-            # 直接由乾淨欄位重組明細（唔靠 regex 剪 note 原文）：跳過字面 "N/A"。
-            detail_bits = []
-            raw_l400 = str(self._value("raw_l400") or "").strip()
-            if raw_l400 and raw_l400.upper() != "N/A":
-                detail_bits.append(f"L400 {raw_l400}")
-            for label, field in (("完成時間", "finish_time_adj_level"), ("能量", "energy_trend"), ("L400走勢", "l400_trend")):
-                val = self._trend_tail(self._value(field)) or str(self._value(field) or "").strip()
-                if val and val.upper() != "N/A":
-                    detail_bits.append(f"{label}{val}")
-            detail_text = f"（{'、'.join(detail_bits[:3])}）" if detail_bits else ""
             if "Strong race sectional profile" in note:
-                return f"近仗末段、能量與步速修正訊號偏強{detail_text}，速度分有明顯支持。"
+                return "末段訊號偏強（逐項見下）。"
             if "Positive race sectional profile" in note:
-                return f"近仗 L400、能量走勢同步速修正表現正面{detail_text}，速度分有基本支持。"
+                return "末段表現正面（逐項見下）。"
             if "Fair race sectional profile" in note:
-                return f"近仗段速輪廓尚算平穩{detail_text}，速度分輕微正面。"
+                return "段速尚算平穩（逐項見下）。"
             if "Neutral race sectional profile" in note:
-                return f"近仗段速數據只屬中性{detail_text}，速度分未見額外加成。"
+                return "段速只屬中性（逐項見下）。"
             if "Weak race sectional profile" in note:
-                return f"近仗末段或步速修正表現偏弱{detail_text}，速度分要保守處理。"
+                return "末段表現偏弱（逐項見下）。"
             return self._clean(note)
         return self._clean(note)
 

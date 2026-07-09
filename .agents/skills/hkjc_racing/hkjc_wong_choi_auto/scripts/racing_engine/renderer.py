@@ -581,6 +581,8 @@ def _matrix_lines(horse: dict, auto: dict) -> list[str]:
             lines.append(f"    - {adjustment}")
         if key == "trainer_signal":
             lines.extend(_trainer_signal_adjustment_lines(auto))
+        if key == "sectional":
+            lines.extend(_speed_detail_lines(auto))
         lines.append(f"  - **判讀:** {_sanitize_text(text)}")
         if key == "stability":
             # 晨操分析＋海外往績直接住喺狀態與穩定性維度入面（用戶要求，唔另開 section）
@@ -602,6 +604,23 @@ def _matrix_lines(horse: dict, auto: dict) -> list[str]:
             lines.append("  - **數據:**")
             for fact in fact_lines:
                 lines.extend(_expand_fact_lines(fact))
+    return lines
+
+
+def _speed_detail_lines(auto: dict) -> list[str]:
+    """速度分逐項訊號：每個 factor / 原始值 / ±分 / 白話，令 65% 速度分完全透明。
+    速度分 = 基準60 + 各訊號加減。"""
+    detail = auto.get("speed_detail")
+    if not isinstance(detail, list) or not detail:
+        return []
+    lines = ["    - 速度分＝基準60 + 以下逐項訊號："]
+    for d in detail:
+        delta = float(d.get("delta", 0) or 0)
+        dtxt = f"{delta:+.1f}" if delta else "0"
+        val = str(d.get("value", "")).strip()
+        why = str(d.get("why", "")).strip()
+        val_part = f"（{val}）" if val else ""
+        lines.append(f"      · {d.get('factor', '訊號')}{val_part} {dtxt}　{why}")
     return lines
 
 
