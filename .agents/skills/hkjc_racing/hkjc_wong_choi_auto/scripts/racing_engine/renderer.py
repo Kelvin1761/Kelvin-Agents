@@ -610,26 +610,20 @@ def _matrix_lines(horse: dict, auto: dict) -> list[str]:
 
 
 def _race_shape_detail_lines(auto: dict) -> list[str]:
-    """檔位與走位逐項拆解：沙田 = 檔位分×55%＋走位匹配分×25%＋近仗消耗分×20%；
-    跑馬地 = 檔位分 + 走位情境修正逐項。令情境分完全透明。"""
+    """檔位與走位逐項：檔位分 / 走位匹配分 / 近仗消耗分，各一行（連原因）。
+    組合方式（沙田加權 / 跑馬地檔位為主）用一句短講。"""
     d = auto.get("race_shape_detail")
     if not isinstance(d, dict):
         return []
-    lines = []
-    if d.get("mode") == "沙田":
-        lines.append("    - 情境分＝檔位分×55% + 走位匹配分×25% + 近仗消耗分×20%：")
-        for c in d.get("components", []):
-            why = str(c.get("why", "")).strip()
-            lines.append(f"      · {c.get('label')} {float(c.get('score', 60)):.0f} × {float(c.get('weight', 0))*100:.0f}%　{why}")
-    else:  # 跑馬地
-        lines.append(f"    - 情境分＝檔位分 {d.get('base', 60):.0f} + 走位情境修正：")
-        items = d.get("items", [])
-        if items:
-            for it in items:
-                dv = float(it.get("delta", 0) or 0)
-                lines.append(f"      · {it.get('factor', '修正')} {dv:+.1f}　{it.get('why', '')}")
-        else:
-            lines.append("      · 走位情境中性，不加不減")
+    lines = [
+        f"    - 檔位分 {float(d.get('draw', 60)):.0f}",
+        f"    - 走位匹配分 {float(d.get('fit', 60)):.0f}　{d.get('fit_why', '')}",
+        f"    - 近仗消耗分 {float(d.get('trip', 60)):.0f}　{d.get('trip_why', '')}",
+    ]
+    if d.get("rail"):
+        lines.append(f"    - 今場賽道 {d.get('rail')}（僅供參考，未入評分）")
+    if d.get("combine"):
+        lines.append(f"    - 組合：{d.get('combine')}")
     return lines
 
 

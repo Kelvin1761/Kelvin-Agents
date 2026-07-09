@@ -315,6 +315,19 @@ def _racecard_path_for_logic(logic_path, race_number):
     return matches[0] if matches else None
 
 
+_RAIL_RE = re.compile(r'(?:草地|全天候|泥地)\s*[-–]?\s*[「"]?\s*([ABC](?:\s*\+\s*\d)?)\s*[」"]?\s*賽道')
+
+
+def _parse_rail(text):
+    """今場賽道配置（A/B/C/C+3…）by racecard 文字。顯示用，唔入評分。"""
+    m = _RAIL_RE.search(str(text or ""))
+    if m:
+        return m.group(1).replace(" ", "")
+    # 後備：淨「B 賽道」而無草地前綴
+    m2 = re.search(r'\b([ABC](?:\s*\+\s*\d)?)\s*賽道', str(text or ""))
+    return m2.group(1).replace(" ", "") if m2 else None
+
+
 def _parse_racecard_meta(text):
     """Read the authoritative race class + each runner's CURRENT official rating
     and the official rating CHANGE since last start (評分+/-) from the racecard
@@ -627,10 +640,13 @@ class HKJCAutoOrchestrator:
             # official rating (display-only; not used in scoring).
             racecard_path = _racecard_path_for_logic(race_file, race_context.get("race_number"))
             if racecard_path and racecard_path.exists():
-                rc_class, rc_info = _parse_racecard_meta(
-                    racecard_path.read_text(encoding="utf-8"))
+                rc_text = racecard_path.read_text(encoding="utf-8")
+                rc_class, rc_info = _parse_racecard_meta(rc_text)
                 if rc_class:
                     race_context["race_class"] = rc_class
+                rail = _parse_rail(rc_text)
+                if rail:
+                    race_context["rail"] = rail  # 賽道（A/B/C/C+3）— 顯示用，未入評分
                 for h_obj in horses.values():
                     if not isinstance(h_obj, dict):
                         continue

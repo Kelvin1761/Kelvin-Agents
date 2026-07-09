@@ -527,41 +527,35 @@ class RacingEngine:
     def _race_shape_context_score(self, features):
         draw = float(features.get("draw_score", 60))
         barrier = str(self.horse_data.get("barrier") or self.horse_data.get("draw") or "").strip()
+        # 走位匹配分 + 近仗消耗分：兩場地都計、都顯示（口徑一致）。分數組合方式先分場地。
+        fit_score, fit_note = self._draw_position_fit_score()
+        trip_score, trip_note = self._trip_consumption_score()
+        fit_why = fit_note.replace("匹配面：", "").rstrip("。")
+        trip_why = trip_note.rstrip("。")
+        rail = self._rail_label()
         if self._is_sha_tin_context():
-            fit_score, fit_note = self._draw_position_fit_score()
-            trip_score, trip_note = self._trip_consumption_score()
-            weights = scoring.RACE_SHAPE_CONTEXT_WEIGHTS
-            draw_w = weights["sha_tin_draw"]
-            fit_w = weights["sha_tin_draw_position_fit"]
-            trip_w = weights["sha_tin_trip_consumption"]
-            score = clip_score(draw * draw_w + fit_score * fit_w + trip_score * trip_w)
-            # 逐項明細（沙田：檔位×55% + 走位匹配×25% + 近仗消耗×20%）
-            self.race_shape_detail = {
-                "mode": "沙田",
-                "components": [
-                    {"label": "檔位分", "score": round(draw, 1), "weight": draw_w,
-                     "why": f"排{barrier}檔位置先驗"},
-                    {"label": "走位匹配分", "score": round(fit_score, 1), "weight": fit_w,
-                     "why": fit_note.replace("匹配面：", "").rstrip("。")},
-                    {"label": "近仗消耗分", "score": round(trip_score, 1), "weight": trip_w,
-                     "why": trip_note.rstrip("。")},
-                ],
-            }
-            note = f"排{barrier}檔情境分{score:.1f}（檔位×55%＋走位匹配×25%＋近仗消耗×20%）。"
-            return score, note, "race_shape_context"
-        delta, delta_items = self._race_shape_context_delta()
-        score = clip_score(draw + delta)
-        # 逐項明細（跑馬地：檔位先驗 + 走位情境修正，修正夾 [-10,+7]）
-        self.race_shape_detail = {
-            "mode": "跑馬地",
-            "base": round(draw, 1), "delta": round(delta, 1),
-            "items": delta_items,
-        }
-        if delta_items:
-            note = f"排{barrier}檔情境分{score:.1f}（檔位{draw:.0f}，走位情境修正{delta:+.1f}）。"
+            w = scoring.RACE_SHAPE_CONTEXT_WEIGHTS
+            score = clip_score(draw * w["sha_tin_draw"] + fit_score * w["sha_tin_draw_position_fit"] + trip_score * w["sha_tin_trip_consumption"])
+            combine = "沙田加權 檔位55%＋走位匹配25%＋近仗消耗20%"
         else:
-            note = f"排{barrier}檔情境分{score:.1f}（檔位{draw:.0f}，走位情境中性、不加不減）。"
+            delta, _items = self._race_shape_context_delta()
+            score = clip_score(draw + delta)
+            combine = f"跑馬地以檔位為主，走位情境微調 {delta:+.0f}"
+        self.race_shape_detail = {
+            "draw": round(draw, 1), "fit": round(fit_score, 1), "trip": round(trip_score, 1),
+            "fit_why": fit_why, "trip_why": trip_why, "combine": combine, "rail": rail,
+        }
+        note = f"排{barrier}檔　{score:.0f}分" + (f"（{rail}賽道）" if rail else "")
         return score, note, "race_shape_context"
+
+    def _rail_label(self):
+        """今場賽道（A/B/C/C+3 等），顯示用。由 race_context 讀（賽前 pipeline 注入）；
+        冇就回 None。唔入計分。"""
+        for k in ("rail", "course_rail", "course_config"):
+            v = self._clean(str(self.race_context.get(k) or ""))
+            if v and v not in ("N/A", "-", ""):
+                return v
+        return None
 
     def _draw_position_fit_score(self):
         text = self._text("draw_position_fit", "position_pi", "running_style")
