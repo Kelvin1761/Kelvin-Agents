@@ -89,3 +89,6 @@ NBA_ML_Dataset/
 
 # Machine-specific data location for wongchoi_paths.py (set per machine)
 .wongchoi_data_root
+
+# stats rebuild backups
+**/comprehensive_stats/**/*.bak
