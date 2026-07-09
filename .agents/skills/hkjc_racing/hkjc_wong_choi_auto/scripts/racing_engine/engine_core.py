@@ -1191,7 +1191,7 @@ class RacingEngine:
     def _matrix_reasoning(self, matrix_scores, matrix, features, notes):
         specs = {
             "stability": ("狀態與穩定性", ("form_score", "consistency_score", "trackwork_trend_score")),
-            "sectional": ("段速", ("speed_score",)),
+            "sectional": ("段速表現", ("speed_score",)),
             "race_shape": ("檔位與走位情境（不含步速）", ("race_shape_context_score",)),
             "trainer_signal": ("騎練訊號", ("jockey_score", "trainer_score")),
             "horse_health": ("馬匹健康 / 新鮮感", ("risk_score", "weight_score", "confidence_score")),
@@ -1550,9 +1550,11 @@ class RacingEngine:
         def present(v):
             return v is not None and str(v).strip() not in ("", "N/A", "-", "--", "數據不可用")
 
-        l400 = self._value("l400_trend")
-        if present(l400):
-            add("段速趨勢", self._seq_endpoints(l400, "s"), self._trend_tail(l400))
+        # 段速表現：一句總結（優勢／中性／劣勢＋理據），取代舊「段速趨勢」端點行；
+        # 同 7D 段速判讀共用 _speed_verdict，口徑一致。
+        if str(self._value("raw_l400") or "").strip() or str(self._value("l400_trend") or "").strip():
+            v = self._speed_verdict(features)
+            add("段速表現", v["label"], v["why"], band=v["band"])
         energy = self._value("energy_trend")
         if present(energy):
             # Show the source 趨勢 LABEL (a model assessment that out-predicts naive
@@ -2462,22 +2464,33 @@ class RacingEngine:
                 track = "；晨操中性"
         return f"{lead}{margin_txt}{track}{self._score_close(score)}"
 
-    def _describe_sectional_matrix(self, score, features, evidence):
-        l400 = self._seq_endpoints(self._value("l400_trend"), "s")
-        l400_txt = f"L400 {l400}：" if l400 else ""
-        if features.get("speed_score", 60) >= 76:
-            speed = f"{l400_txt}末段有真競爭力"
-        elif features.get("speed_score", 60) >= 68:
-            speed = f"{l400_txt}末段正面，鬥得"
-        elif features.get("speed_score", 60) >= 62:
-            speed = f"{l400_txt}段速平穩，欠加速訊號"
-        elif features.get("speed_score", 60) >= 60:
-            speed = f"{l400_txt}段速中性"
+    def _speed_verdict(self, features):
+        """段速表現總結：優勢／中性／劣勢＋主要理據，直接由 speed_detail 嘅實際加減分
+        砌出嚟——令判讀同數據判讀同「速度分逐項訊號」完全一致（唔會口徑唔同）。
+        門檻對齊 band：≥70 優勢、55–70 中性、<55 劣勢。"""
+        sp = float(features.get("speed_score", 60))
+        detail = self.speed_detail if isinstance(self.speed_detail, list) else []
+        pos = sorted([d for d in detail if float(d.get("delta", 0) or 0) > 0],
+                     key=lambda x: -float(x["delta"]))
+        neg = sorted([d for d in detail if float(d.get("delta", 0) or 0) < 0],
+                     key=lambda x: float(x["delta"]))
+        if sp >= 70:
+            label, band = "優勢", "✅"
+        elif sp >= 55:
+            label, band = "中性", "➖"
         else:
-            speed = f"{l400_txt}末段偏弱，難靠後上"
-        # 場地分現為中性常數（HKJC 無場地適性數據、draw 歸 race_shape）——唔再喺
-        # 判讀出「場地中性」贅語，句子聚焦速度。
-        return f"{speed}{self._score_close(score)}"
+            label, band = "劣勢", "⚠️"
+        bits = [f"{d['why']}(+{float(d['delta']):.1f})" for d in pos[:2]]
+        bits += [f"{d['why']}({float(d['delta']):.1f})" for d in neg[:1]]
+        why = "、".join(bits) if bits else "各項段速訊號中性"
+        return {"label": label, "band": band, "why": why, "score": sp}
+
+    def _describe_sectional_matrix(self, score, features, evidence):
+        # 判讀由 speed_detail 實際加減分砌出，同「速度分逐項訊號」拆解一致。
+        v = self._speed_verdict(features)
+        l400 = self._seq_endpoints(self._value("l400_trend"), "s")
+        l400_txt = f"L400 {l400}；" if l400 else ""
+        return f"{l400_txt}段速{v['label']}：{v['why']}{self._score_close(score)}"
 
     def _describe_race_shape_matrix(self, score, features, evidence):
         barrier = self.horse_data.get("barrier") or self.horse_data.get("draw") or "N/A"
@@ -2810,7 +2823,7 @@ class RacingEngine:
         dims = [
             ("stability", "狀態與穩定性"),
             ("trainer_signal", "騎練訊號"),
-            ("sectional", "段速"),
+            ("sectional", "段速表現"),
             ("race_shape", "檔位與走位"),
             ("horse_health", "馬匹健康 / 新鮮感"),
             ("form_line", "賽績線"),
