@@ -84,7 +84,9 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
             errors.append(f"SCORE-002 horse {horse_num} matrix {key} outside 0-100: {score}")
         reasoning = matrix_reasoning.get(key) if isinstance(matrix_reasoning, dict) else None
         text = reasoning.get("text") if isinstance(reasoning, dict) else ""
-        if not text or len(text.strip()) < 24:
+        # 12字下限：判讀而家係濃縮實句（例如檔位可以一句講完），唔靠塞字數；
+        # gate 只攔真空/爛輸出。
+        if not text or len(text.strip()) < 12:
             errors.append(f"MATRIX-001 horse {horse_num} {key} missing narrative reasoning")
 
     ability = auto.get("ability_score")

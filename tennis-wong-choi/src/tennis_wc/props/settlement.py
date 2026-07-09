@@ -68,6 +68,23 @@ def actual_player_aces(conn, match_id: int, player_id: int) -> float | None:
     return _history_aces(conn, match_id, player_id)
 
 
+def actual_total_games(conn, match_id: int) -> float | None:
+    """Actual total match games from match_results.score_json (a+b games)."""
+    row = conn.execute(
+        "SELECT score_json FROM match_results WHERE match_id = ? ORDER BY id DESC LIMIT 1",
+        (match_id,),
+    ).fetchone()
+    if row and row["score_json"]:
+        try:
+            s = json.loads(row["score_json"])
+            ga, gb = s.get("player_a_games"), s.get("player_b_games")
+            if ga is not None and gb is not None:
+                return float(ga) + float(gb)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            pass
+    return None
+
+
 def _history_aces(conn, match_id: int, player_id: int) -> float | None:
     meta = conn.execute("SELECT match_date FROM matches WHERE id = ?", (match_id,)).fetchone()
     if not meta:
@@ -115,7 +132,10 @@ def record_prop(conn, *, match_id: int, match_date: str, match_label: str,
 
 
 def _actual_for(conn, p) -> float | None:
-    if (p["prop_scope"] or "match") == "match":
+    scope = p["prop_scope"] or "match"
+    if scope == "match_games":
+        return actual_total_games(conn, p["match_id"])
+    if scope == "match":
         return actual_total_aces(conn, p["match_id"])
     return actual_player_aces(conn, p["match_id"], p["subject_player_id"])
 
@@ -163,6 +183,8 @@ def prop_roi_report(conn, value_only: bool = True) -> dict:
                 "roi": round(pnl / staked, 4) if staked else None}
 
     def family(mk: str) -> str:
+        if mk.startswith("total_match_games"):
+            return "match_total_games"
         if mk.startswith("total_aces") or mk == "total_aces_in_the_match":
             return "match_total_aces"
         if "_aces" in mk:

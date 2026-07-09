@@ -27,11 +27,17 @@ class FormScorer(BaseScorer):
                 except ValueError:
                     continue
 
-        # 2. Add overseas form if available
+        # 2. Add overseas form if available.
+        # PDF 往績表係「包括本會及海外賽績」— 同近6場日期相同嘅 rows 其實係本地賽事，
+        # 直接跳過，唔好當海外計多次。
         local_count = len(scores)
+        local_dates = str(data.get("recent_6_detail", "") or "")
         pdf_races = data.get("pdf_overseas_races", [])
         if pdf_races:
             for r in pdf_races:
+                race_date = str(r.get("date", "")).strip()
+                if race_date and race_date not in ("-", "N/A") and race_date in local_dates:
+                    continue
                 rank_str = str(r.get("rank", ""))
                 try:
                     rank = int(rank_str.split("/")[0]) if "/" in rank_str else int(rank_str)
@@ -52,9 +58,9 @@ class FormScorer(BaseScorer):
                 total_weight += weight
             self.score = weighted_sum / total_weight
 
-            # Build a SPECIFIC Chinese note (finishes + top3/win counts) instead of the
-            # generic "近績分由最近名次加權計算". No trailing "…分" so the report's
-            # sub-score-note cleanup won't strip it.
+            # Build a SPECIFIC Chinese note (finishes + top3/win counts). No filler
+            # like 越近仗權重越高 (計法解釋唔幫到落注)。海外賽績唔混入呢句 —
+            # 由 engine 嘅「海外往績判讀」獨立交代。
             used = ranks[:6]
             wins = sum(1 for r in ranks if r == 1)
             top3 = sum(1 for r in ranks if r <= 3)
@@ -69,9 +75,13 @@ class FormScorer(BaseScorer):
                 detail.append(f"{poor}次八名以後")
             if detail:
                 bits.append("、".join(detail))
-            bits.append("越近仗權重越高")
-            if len(scores) > local_count:
-                bits.append("已計海外往績")
+            # 只計實際入咗近6仗計分窗嘅海外場數，唔好報大數
+            overseas_used = max(0, min(len(scores), 6) - local_count)
+            if overseas_used:
+                if not used:
+                    bits.append(f"未有香港賽績，以{overseas_used}仗海外賽績計（明細見海外往績）")
+                else:
+                    bits.append(f"另計{overseas_used}仗海外賽績（明細見海外往績）")
             self.reason = "；".join(bits)
             return self.score, self.reason
 

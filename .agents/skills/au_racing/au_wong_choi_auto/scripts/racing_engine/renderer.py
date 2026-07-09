@@ -314,11 +314,23 @@ def _render_horse_section(horse_num, horse, auto):
     weight = _display_weight(horse.get("weight"))
     barrier = _display_text(horse.get("barrier"))
     data = horse.get("_data", {}) if isinstance(horse.get("_data"), dict) else {}
+    # 唯一嘅總分區：評分總覽緊跟 header，之後唔再重覆總分／評級。
+    grade_trans = auto.get("grade_transparency", {})
+    grade_summary = grade_trans.get("summary", "") if isinstance(grade_trans, dict) else ""
     lines = [
         f"### 【No.{horse_num}】 {horse.get('horse_name', '')} | 騎師: {jockey} | 練馬師: {trainer} | 負重: {weight} | 檔位: {barrier}",
         "",
         f"⭐ 最終評級: **{auto.get('grade', '')}** | {ABILITY_LABEL}: **{float(auto.get('ability_score', 0)):.1f}** | 排名: **{auto.get('rank', '')}**",
         "",
+    ]
+    if grade_summary:
+        lines.extend([
+            "#### 🔢 評分總覽（7D 加權計算 · Python Auto 引擎）",
+            "",
+            grade_summary,
+            "",
+        ])
+    lines.extend([
         *_data_readout_lines(auto),
         "#### ⏱️ 近績解構",
         f"- **近績序列:** `{_display_text(data.get('recent_form') or horse.get('recent_form'))}`",
@@ -331,9 +343,9 @@ def _render_horse_section(horse_num, horse, auto):
         "#### 🧠 核心分析",
         f"- {_render_core_logic(horse, auto)}",
         "",
-        "#### 📊 7D 評分矩陣",
-        "> 每個維度：**評分構成**（點計出個分）→ **點解**（邊個 sub分帶動／拖低）→ **數據**（用到嘅原始資料）。",
-    ]
+        "#### 📊 7D 評分矩陣逐項拆解",
+        "> 每個維度：**評分構成**（點計出個分）→ 每個 sub分嘅來源 → **實證調整** → **判讀** → **數據**。",
+    ])
     for key, label in MATRIX_LABELS.items():
         score = float(auto.get("matrix_scores", {}).get(key, 60))
         reason_bundle = auto.get("matrix_reasoning", {}).get(key, {})
@@ -344,23 +356,18 @@ def _render_horse_section(horse_num, horse, auto):
             lines.append(f"  - **評分構成：** {comp}")
             for sub in _matrix_subscore_lines(key, auto):
                 lines.append(f"    - {sub}")
-        lines.append(f"  - **點解：** {_matrix_why(key, score, auto)}")
+        if key == "jockey_trainer":
+            lines.extend(_jt_fit_adjustment_lines(auto))
+        reasoning_text = str(reason_bundle.get("text") or "").strip()
+        lines.append(f"  - **判讀：** {reasoning_text}" if reasoning_text
+                     else f"  - **判讀：** {_matrix_why(key, score, auto)}")
         fact_lines = reason_bundle.get("anchors") or _matrix_fact_lines(key, horse, auto)
+        if key == "form_line":
+            fact_lines = _au_formline_table_lines(auto) + list(fact_lines or [])
         if fact_lines:
             lines.append(f"  - **數據：** {fact_lines[0]}")
             for fact in fact_lines[1:]:
                 lines.append(f"    - {fact}")
-    # Python 計算透明度：只保留加權總分一份；舊「矩陣計算全記錄」與佢重覆，已移除。
-    grade_trans = auto.get("grade_transparency", {})
-    grade_summary = grade_trans.get("summary", "") if isinstance(grade_trans, dict) else ""
-
-    if grade_summary:
-        lines.extend([
-            "",
-            "**🔢 7D 矩陣加權總分計算 (Python Auto 引擎):**",
-            "",
-            grade_summary,
-        ])
 
     lines.extend([
         "",
@@ -370,10 +377,80 @@ def _render_horse_section(horse_num, horse, auto):
         "#### 主要風險",
         *[f"- {_humanize_text(item)}" for item in auto.get("disadvantages", [])],
         "",
-        "#### 16 項分數",
-        f"- " + " | ".join(f"{FEATURE_LABELS[key]} {clip_score(auto.get('feature_scores', {}).get(key, 60)):.1f}" for key in FEATURE_LABELS),
-        "",
     ])
+    return lines
+
+
+def _jt_fit_adjustment_lines(auto):
+    """人馬配搭分完整追溯：基礎分 → 每項實證調整（因子＋原始統計）→ 最終分。"""
+    detail = auto.get("jt_fit_detail")
+    if not isinstance(detail, dict):
+        return []
+    lines = []
+    adjustments = detail.get("adjustments") or []
+    for adj in adjustments:
+        delta = float(adj.get("delta", 0) or 0)
+        evidence = str(adj.get("evidence") or "").strip()
+        tail = f"：{evidence}" if evidence else ""
+        lines.append(f"    - 實證調整（人馬配搭分）{delta:+.1f} ← {adj.get('factor', '')}{tail}")
+    base, final = detail.get("base"), detail.get("final")
+    if isinstance(base, (int, float)) and isinstance(final, (int, float)) and abs(final - base) >= 0.05:
+        lines.append(f"    - 人馬配搭分軌跡: 基礎 {base:.1f} → 調整後 {final:.1f}")
+    if not adjustments:
+        lines.append("    - 實證調整: 無觸發（試閘／人馬往績／場館組合統計均未達加減分門檻）")
+    return lines
+
+
+def _au_formline_table_lines(auto):
+    """賽績線全表：每場過往賽事 — 本駒名次、對手、對手之後班次與戰績（franking）。"""
+    rows = auto.get("formline_rows")
+    if not isinstance(rows, list) or not rows:
+        return []
+    lines = []
+    validated = 0
+    unverifiable = 0
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        date = str(row.get("date") or "").strip()
+        race = str(row.get("race") or "").strip()
+        finish = str(row.get("finish") or "").strip()
+        opponent = str(row.get("opponent") or "").strip()
+        next_class = str(row.get("next_class") or "").strip()
+        next_result = str(row.get("next_result") or "").strip()
+        strength = str(row.get("strength") or "").strip()
+        # 跳過查冊失敗嘅延續行／空行（冇日期又冇對手，得個失敗標記）
+        if date in {"查冊失敗", "-", ""} and not opponent:
+            continue
+        if strength in {"-", "--", "N/A"}:
+            strength = ""
+        m = re.search(r"出\s*\d+\s*次:\s*(\d+)\s*勝", next_result)
+        wins = int(m.group(1)) if m else 0
+        if wins >= 1:
+            validated += 1
+        if "查冊失敗" in next_result or "查冊失敗" in next_class:
+            frank = "對手後續查冊失敗（無法驗證）"
+            unverifiable += 1
+        elif next_class and next_class != "-" and next_result and next_result != "-":
+            frank = f"對手其後{next_class} {next_result}"
+        elif next_result and next_result != "-":
+            frank = f"對手其後{next_result}"
+        else:
+            frank = "對手後續未有資料"
+            unverifiable += 1
+        bits = [b for b in (date, race, strength, f"本駒名次 {finish}" if finish else "", f"對手 {opponent}" if opponent else "", frank) if b]
+        lines.append("賽績線明細: " + "；".join(bits))
+    if lines:
+        n = len(lines)
+        if validated >= 2:
+            verdict = "已受賽果驗證（franked）"
+        elif validated == 1:
+            verdict = "有基本背書"
+        elif unverifiable == n:
+            verdict = "對手後續全部查冊失敗，未能驗證"
+        else:
+            verdict = "暫未有對手後續勝出背書"
+        lines.insert(0, f"賽績線兌現度: {validated}/{n} 場嘅對手其後再勝 → {verdict}")
     return lines
 
 

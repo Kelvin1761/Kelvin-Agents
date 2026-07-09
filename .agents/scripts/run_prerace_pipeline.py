@@ -19,6 +19,7 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 import json
+import re
 import subprocess
 import argparse
 from pathlib import Path
@@ -84,6 +85,56 @@ def step1_sync_standard_times() -> dict:
 def step2_scrape_draw_stats() -> dict:
     """Scrape draw stats (always refresh — data changes per meeting)."""
     return run_script("scrape_draw_stats.py", label="Step 2: Draw Stats Scrape")
+
+
+def step2c_rebuild_stats() -> dict:
+    """Rebuild jockey/trainer comprehensive_stats CSVs so the engine's continuous
+    ratings + combo/distance priors reflect every completed meeting up to now.
+
+    賽前重建：只會計到上一個已完成賽日（今場結果未有），對今場評分冇 lookahead，
+    正正就係我哋要嘅「rating 貼市」。--write 會自動 backup .bak。跑贏就靠佢，
+    出錯只警告唔中斷（沿用現有快照）。"""
+    return run_script("build_comprehensive_stats.py", args=["--write"],
+                      label="Step 2c: Rebuild Jockey/Trainer Stats")
+
+
+def check_draw_stats_freshness(meeting_dir: Path) -> dict:
+    """Loudly warn if hkjc_draw_stats.json doesn't match THIS meeting.
+
+    Draw stats are per-meeting (racing.hkjc.com 檔位頁). If the scrape returned 0
+    races (off-season/未出檔) the previous file is kept — and if that file is from
+    another meeting, every 檔位 stat resolves to 「數據不可用」and scoring falls back
+    to the position prior. That's exactly the stale-report failure we want surfaced,
+    not hidden. Advisory only: never blocks the run, just makes staleness visible.
+    """
+    try:
+        with open(DRAW_STATS_JSON, 'r', encoding='utf-8') as f:
+            meta = json.load(f).get("meta", {})
+    except Exception:
+        print("   ⚠️ 檔位統計檔案缺失/讀取失敗 — 下游將顯示「數據不可用」並 fallback 位置先驗。")
+        return {"status": "MISSING"}
+
+    meeting_str = str(meta.get("meeting", ""))
+    scraped_at = str(meta.get("scraped_at", ""))
+    m = re.match(r"(\d{4})-(\d{2})-(\d{2})_?(\w+)?", meeting_dir.name)
+    exp_date = f"{m.group(3)}/{m.group(2)}/{m.group(1)}" if m else ""
+    folder_venue = (m.group(4) or "") if m else ""
+    exp_venue = "沙田" if "Sha" in folder_venue else ("跑馬地" if "Happy" in folder_venue else "")
+
+    date_ok = (not exp_date) or (exp_date in meeting_str)
+    venue_ok = (not exp_venue) or (exp_venue in meeting_str)
+    if date_ok and venue_ok:
+        print(f"   ✅ 檔位統計匹配本賽日: {meeting_str} (scraped {scraped_at})")
+        return {"status": "FRESH", "meeting": meeting_str}
+
+    print("\n" + "!" * 60)
+    print("   ⚠️⚠️  檔位統計不匹配本賽日 — 報告會用到錯/舊賽日數據！")
+    print(f"       本賽日 : {(exp_venue + ' ' + exp_date).strip()}  (資料夾 {meeting_dir.name})")
+    print(f"       檔位檔 : {meeting_str or '（空）'}  (scraped {scraped_at})")
+    print("       → 檔位統計會 resolve 失敗顯示「數據不可用」、評分 fallback 位置先驗。")
+    print("       → 請確認本賽日已出檔（今日 scrape 是否 0 場）再重跑，切勿用錯賽日數據出報告。")
+    print("!" * 60)
+    return {"status": "STALE", "meeting": meeting_str, "expected": f"{exp_venue} {exp_date}".strip()}
 
 
 def step3_inject_facts(meeting_dir: Path, workers: int = 1) -> list:
@@ -153,7 +204,7 @@ def step3_inject_facts(meeting_dir: Path, workers: int = 1) -> list:
     return results
 
 
-def generate_summary(meeting_dir: Path, step1: dict, step2: dict, step3: list) -> dict:
+def generate_summary(meeting_dir: Path, step1: dict, step2: dict, step3: list, step2c: dict = None) -> dict:
     """Generate pipeline_summary.json."""
     summary = {
         "meta": {
@@ -164,6 +215,7 @@ def generate_summary(meeting_dir: Path, step1: dict, step2: dict, step3: list) -
         "steps": {
             "standard_times": step1,
             "draw_stats": step2,
+            "jockey_trainer_stats": step2c or {"status": "SKIPPED"},
             "facts_injection": step3,
         },
         "stats": {
@@ -189,6 +241,7 @@ def main():
     parser.add_argument("meeting_dir", help="Path to meeting directory (e.g. 2026-04-22_HappyValley/)")
     parser.add_argument("--skip-std-times", action="store_true", help="Skip standard times sync")
     parser.add_argument("--skip-draw", action="store_true", help="Skip draw stats scrape")
+    parser.add_argument("--skip-stats", action="store_true", help="Skip jockey/trainer stats rebuild")
     parser.add_argument("--skip-inject", action="store_true", help="Skip Facts.md injection")
     parser.add_argument("--inject-workers", type=int, default=1, help="Race-level Facts injection workers")
     args = parser.parse_args()
@@ -208,19 +261,26 @@ def main():
     # Step 2: Draw Stats
     step2 = {"status": "SKIPPED"} if args.skip_draw else step2_scrape_draw_stats()
 
+    # Step 2b: verify the (possibly kept) draw stats actually match THIS meeting
+    draw_freshness = check_draw_stats_freshness(meeting_dir)
+
+    # Step 2c: rebuild jockey/trainer stats so ratings/priors are current
+    step2c = {"status": "SKIPPED"} if args.skip_stats else step2c_rebuild_stats()
+
     # Step 3: Facts Injection
     inject_workers = bounded_workers(args.inject_workers)
     step3 = [] if args.skip_inject else step3_inject_facts(meeting_dir, workers=inject_workers)
 
     # Generate summary
-    summary = generate_summary(meeting_dir, step1, step2, step3)
+    summary = generate_summary(meeting_dir, step1, step2, step3, step2c)
 
     # Final report
     print(f"\n{'='*60}")
     print(f"✅ PIPELINE COMPLETE")
     print(f"{'='*60}")
     print(f"   Standard Times: {step1.get('status', 'N/A')}")
-    print(f"   Draw Stats: {step2.get('status', 'N/A')}")
+    print(f"   Draw Stats: {step2.get('status', 'N/A')} | 匹配本賽日: {draw_freshness.get('status', 'N/A')}")
+    print(f"   Jockey/Trainer Stats: {step2c.get('status', 'N/A')}")
     print(f"   Facts Injection: {summary['stats']['successful']}/{summary['stats']['total_races']} OK")
     if summary['stats']['failed'] > 0:
         print(f"   ⚠️ {summary['stats']['failed']} race(s) failed!")

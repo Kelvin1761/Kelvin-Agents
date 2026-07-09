@@ -15,11 +15,13 @@ import re
 from dataclasses import dataclass, field
 
 from tennis_wc.props import ace_model
+from tennis_wc.props import games_model
 from tennis_wc.props.settlement import record_prop
 
 _LADDER_MARKET = "total_aces_in_the_match"
 _MATCH_OU = re.compile(r"^total_aces_\d+_5$")
 _PLAYER_OU = re.compile(r"^total_(?P<name>[a-z0-9_]+)_aces_\d+_5$")
+_MATCH_GAMES_OU = re.compile(r"^total_match_games_\d+_5$")
 
 
 @dataclass
@@ -28,8 +30,10 @@ class AcePropBoard:
     match_label: str
     predicted_match_mean: float
     ladder_legs: list = field(default_factory=list)     # PricedAceLeg (over-only N+)
-    match_ou: list = field(default_factory=list)        # TwoWayProp
-    player_ou: list = field(default_factory=list)        # TwoWayProp (scope=player)
+    match_ou: list = field(default_factory=list)        # TwoWayProp (aces)
+    player_ou: list = field(default_factory=list)        # TwoWayProp (player aces)
+    games_ou: list = field(default_factory=list)        # TwoWayProp (total match games)
+    predicted_games: float | None = None
     anchor: object | None = None
 
 
@@ -59,11 +63,25 @@ def _rows_for_date(conn, match_date: str):
         SELECT mo.match_id, mo.market_key, mo.market_name, mo.selection_name,
                mo.line, mo.odds, mo.id
         FROM market_odds_snapshots mo JOIN matches m ON m.id = mo.match_id
-        WHERE m.match_date = ? AND (mo.market_key = ? OR mo.market_key LIKE 'total_%aces_%')
+        WHERE m.match_date = ? AND (mo.market_key = ? OR mo.market_key LIKE 'total_%aces_%'
+                                    OR mo.market_key LIKE 'total_match_games_%')
         ORDER BY mo.id ASC
         """,
         (match_date, _LADDER_MARKET),
     ).fetchall()
+
+
+def _match_prob_map(conn, match_date: str) -> dict:
+    """Latest model match-win probability per match (for games competitiveness)."""
+    rows = conn.execute(
+        """
+        SELECT p.match_id, p.model_probability
+        FROM predictions p JOIN matches m ON m.id = p.match_id
+        WHERE m.match_date = ? AND p.id IN (SELECT MAX(id) FROM predictions GROUP BY match_id)
+        """,
+        (match_date,),
+    ).fetchall()
+    return {r["match_id"]: r["model_probability"] for r in rows if r["model_probability"] is not None}
 
 
 def _two_way_odds(rows):
@@ -133,9 +151,12 @@ def _log_two_way(conn, match_date, label, tw: "ace_model.TwoWayProp",
 
 
 def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[AcePropBoard]:
+    from tennis_wc.props import calibration
     rows = _rows_for_date(conn, match_date)
     ladder = _ladder_odds(rows)
     two_way = _two_way_odds(rows)
+    prob_map = _match_prob_map(conn, match_date)
+    temper = calibration.current_strength(conn)  # keeps EV honest until validated
     match_ids = {r["match_id"] for r in rows}
     boards: list[AcePropBoard] = []
     for mid in match_ids:
@@ -161,7 +182,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                 continue
             if _MATCH_OU.match(mk):
                 tw = ace_model.price_two_way(mid, mk, "match", line, od["over"], od["under"],
-                                             match_mean, ace_model.MATCH_ACE_CURVE)
+                                             match_mean, ace_model.MATCH_ACE_CURVE, temper=temper)
                 if tw:
                     board.match_ou.append(tw)
                     if log:
@@ -174,11 +195,19 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                 opp = b if pid == meta["player_a_id"] else a
                 pmean = ace_model.predict_player_ace_mean(subj, opp)
                 tw = ace_model.price_two_way(mid, mk, pname, line, od["over"], od["under"],
-                                             pmean, ace_model.PLAYER_ACE_CURVE)
+                                             pmean, ace_model.PLAYER_ACE_CURVE, temper=temper)
                 if tw:
                     board.player_ou.append(tw)
                     if log:
                         _log_two_way(conn, match_date, label, tw, "player", pid)
+            elif _MATCH_GAMES_OU.match(mk):
+                tw = games_model.price_games_two_way(
+                    mid, mk, line, od["over"], od["under"], prob_map.get(mid), best_of=3, temper=temper)
+                if tw:
+                    board.predicted_games = tw.predicted_mean
+                    board.games_ou.append(tw)
+                    if log:
+                        _log_two_way(conn, match_date, label, tw, "match_games", None)
         # log legacy ladder value legs + anchor (over-only)
         if log and board.ladder_legs:
             for lg in board.ladder_legs:
@@ -191,9 +220,9 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                             market_prob_fair=lg.market_prob_fair, blended_prob=lg.blended_prob,
                             edge=lg.edge, ev=lg.ev, predicted_mean=lg.predicted_mean,
                             stake_units=1.0 if lg.is_value else 0.0, is_value=lg.is_value)
-        if board.ladder_legs or board.match_ou or board.player_ou:
+        if board.ladder_legs or board.match_ou or board.player_ou or board.games_ou:
             boards.append(board)
     if log:
         conn.commit()
-    boards.sort(key=lambda x: -sum(1 for t in (x.match_ou + x.player_ou) if t.value_side))
+    boards.sort(key=lambda x: -sum(1 for t in (x.match_ou + x.player_ou + x.games_ou) if t.value_side))
     return boards

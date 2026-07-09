@@ -144,7 +144,6 @@ CONSISTENCY_MICRO_WEIGHTS = {
 RISK_MICRO_WEIGHTS = {
     "base": 68.0,
     "medical_unknown_pen": -6.59,
-    "trackwork_slowing_pen": -4.59,
     "debut_pen": -5.0,
     "draw_pressure_pen": -5.0,
     "distance_unproven_pen": -3.39
@@ -258,10 +257,8 @@ HORSE_HEALTH_CONTEXT_WEIGHTS = {
     "span_le_18_bonus": 1.5,
     "span_le_32_pen": -2.0,
     "span_gt_32_pen": -4.0,
-    "trackwork_slowing_pen": -1.5,
-    "trackwork_clean_bonus": 0.5,
-    "swimming_zero_quick_return_pen": -1.0,
-    "blank_days_small_pen": -0.5,
+    # 晨操訊號已統一由 stability 嘅 trackwork_trend_score 獨家計分
+    # （2026-07-08 backtest 確認：health/risk 嘅 trackwork 罰分全部移除後零倒退）。
 }
 
 

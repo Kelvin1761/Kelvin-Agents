@@ -176,13 +176,19 @@ class AutoOutputTests(unittest.TestCase):
         )
 
     def test_chinese_jockey_and_trainer_names_are_scored(self) -> None:
-        self.assertEqual(JockeyScorer({"jockey": "潘頓"}, {}).compute()[0], 85.0)
-        self.assertEqual(JockeyScorer({"jockey": "麥道朗"}, {}).compute()[0], 85.0)
-        self.assertEqual(JockeyScorer({"jockey": "田泰安"}, {}).compute()[0], 75.0)
-        self.assertEqual(JockeyScorer({"jockey": "艾兆禮"}, {}).compute()[0], 75.0)
-        self.assertEqual(TrainerScorer({"trainer": "蔡約翰"}, {}).compute()[0], 80.0)
-        self.assertEqual(TrainerScorer({"trainer": "韋達"}, {}).compute()[0], 75.0)
-        self.assertEqual(TrainerScorer({"trainer": "姚本輝"}, {}).compute()[0], 70.0)
+        # 主要來源＝兩季 master stats 連續實績評分（2026-07-08 ML 驗證上線）
+        score, reason = JockeyScorer({"jockey": "潘頓"}, {}).compute()
+        self.assertGreaterEqual(score, 75.0)
+        self.assertIn("實績評分", reason)
+        mid_score, _ = JockeyScorer({"jockey": "田泰安"}, {}).compute()
+        self.assertGreater(score, mid_score)  # 連續評分要拉得開，唔係層級一刀切
+        t_score, t_reason = TrainerScorer({"trainer": "蔡約翰"}, {}).compute()
+        self.assertGreater(t_score, 60.0)
+        self.assertIn("實績評分", t_reason)
+        # 唔喺 ratings 表（例如英文名）→ 退返層級表
+        self.assertEqual(JockeyScorer({"jockey": "PURTON"}, {}).compute()[0], 85.0)
+        # 完全未知 → 中性 60
+        self.assertEqual(JockeyScorer({"jockey": "無名氏測試"}, {}).compute()[0], 60.0)
 
     def test_grade_uses_displayed_ability_boundary(self) -> None:
         self.assertEqual(compute_grade(60.0), "C+")
@@ -627,7 +633,7 @@ class AutoOutputTests(unittest.TestCase):
             self.assertNotIn("- **模型狀態:** 不選", report)
             self.assertNotIn("**模型狀態:** `不選`", report)
             self.assertIn("近3-5仗走位窗口", report)
-            self.assertIn("晨操部署", report)
+            self.assertIn("部署：", report)  # 晨操部署已併入穩定性嘅晨操分析
             self.assertIn("休賽 / 體重趨勢", report)
             self.assertIn("班次 / 評分背景", report)
             self.assertNotIn("`✅`", report)

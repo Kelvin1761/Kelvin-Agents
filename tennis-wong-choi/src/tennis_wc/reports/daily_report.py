@@ -1325,10 +1325,23 @@ def _metadata_gap_summary_lines(rows: list[dict]) -> list[str]:
 
 _TIER_BLURB = {
     combo_engine.TIER_BANKER: ("組合1 穩膽", "高命中、賠率 ~2.0-3.6；最穩主線。"),
-    combo_engine.TIER_VALUE: ("組合2 價值膽", "命中中等但 +EV 厚，賠率 ~2.5-5.5。"),
-    combo_engine.TIER_HIGH: ("組合3 高倍率", "進取小注，賠率 5+；要 +EV 先出。"),
-    combo_engine.TIER_BOMB: ("組合X 火藥庫", "穩腳 + 高 edge 爆冷腳，長賠 +EV。"),
+    combo_engine.TIER_VALUE: ("組合2 價值膽（僅供參考）", "命中中等、賠率 ~2.5-5.5。"),
+    combo_engine.TIER_HIGH: ("組合3 高倍率（僅供參考）", "長賠 5+。"),
+    combo_engine.TIER_BOMB: ("組合X 火藥庫（僅供參考）", "穩腳 + 高 edge 爆冷腳，長賠。"),
 }
+
+# The long-odds match-winner tiers are demoted to reference-only: a 15,299-bet
+# walk-forward backtest (2022-24 vs de-vigged close) shows they bleed and get
+# WORSE with more edge -- value(2.5-5.5) −5.4% hit 28%, high(5+) −32% hit 8%,
+# high@edge≥20% −39%. The model's edge is anti-predictive at long odds. Shown for
+# context, NOT recommended; profit path is the prop unders/overs (which beat the
+# market on the live scorecard).
+_DEMOTED_TIERS = {combo_engine.TIER_VALUE, combo_engine.TIER_HIGH, combo_engine.TIER_BOMB}
+_DEMOTED_TIER_WARNING = (
+    "⛔ 僅供參考，唔建議落：回測（15,299 注 vs 收盤）證實 match-winner 長賠 edge 係反指標 —— "
+    "價值膽 −5.4%（命中 28%）、高倍率 −32%（命中 8%），而且 edge 越大輸得越勁。"
+    "想要「高賠率但長期企得住」，請睇上面嘅 🎾 Prop / 🎯 Prop 串（唯一喺記分卡贏市場嘅結構）。"
+)
 
 
 def _leg_risk_map(match_date: str) -> dict[int, tuple[str, str]]:
@@ -1484,40 +1497,36 @@ def render_banker_report(match_date: str, rows: list[dict]) -> str:
     combo_min_odds = min(_TIER_ODDS_FLOORS) if legs else None
 
     market_keys = {str(r.get("market_key") or "") for r in rows}
+    # STRATEGY (2026-07-04): player props are the primary play. A 15,299-bet
+    # backtest showed the match-winner model's edge is anti-predictive at real
+    # odds (value −5.4% / high −32%), so match-winner is NO LONGER a standalone
+    # value bet -- it is used only as a STABLE combo leg (short-priced favourites
+    # in the 大熱串, or a strong-fav anchor). Props lead; match-winner is reference.
     lines = [
         "Tennis Wong Choi 每日 Banker / Combo Report",
         f"日期：{match_date}",
         "",
-        "## 今日組合（NBA Wong Choi 式四線）",
+        "## 🎯 策略重心：Player Props（match-winner 只作穩定組合腳）",
         "",
-        f"合資格 +EV 組合：{result['candidate_count']} 條路徑（基於 {result['leg_count']} 隻獨立合格腳）",
-        f"⚠ {result['candidate_count']} 係排列組合數，唔係 {result['candidate_count']} 個獨立優勢；同 tier 共用 leg，揀其一落即可。",
-        "全部組合已過硬性 +EV / Kelly 關；命中率＝模型機率連乘再扣相關性，另有 Monte Carlo 核對。",
-        "注碼＝tenth-Kelly（1u 起跳、最大 5u）。同場多腳屬相關，combo 賠率係連乘、實際 SGM 盤口會略低，落注前核對。",
-        "每個 tier 列多個組合俾你揀；同 tier 嘅組合可能共用 leg（屬替代方案，揀其一落，唔好同一隻腳重複疊注）。",
+        "回測結論：match-winner 模型 edge 係反指標（價值 −5.4%、高倍率 −32%，edge 越大越蝕），唔再做主打。",
+        "主打 = 下面嘅 🎾 Prop + 🎯 Prop 串（唯一喺記分卡贏緊市場嘅結構）。",
+        "match-winner 淨係喺『穩膽大熱串』（市場大熱 ≤1.20）或做強熱 anchor 先用，只作穩定組合腳，唔再單獨當 value 落。",
         "",
     ]
-    lines.extend(
-        [
-            "📉 回測提示（10,643 注 walk-forward vs Pinnacle 收盤線）：本 match-winner 模型長期 ROI 約 −10~12%，"
-            "而且 perceived edge 越大輸得越多（≥20% 已 −17%，≥30% −27%），長賠 ≥5.0 更 −37%。",
-            "   ⇒ 已自動 NO_BET 呢兩個區（edge≥20% / 賠率≥5.0）。組合（parlay）係負優勢腳相乘，只會輸得更快 ——",
-            "   以下組合僅供參考，唔建議當賺錢策略；真正想落，只跟下面已過 gate 嘅低-edge 合格單腳，平注為主。",
-            "",
-        ]
-    )
-    # Report-only additions (no impact on combo math): a low-variance anchor and
-    # a thin-slate / leg-concentration warning so the user understands the real
-    # number of independent positions (the 06-21 'all missed' lesson).
+    # PRIMARY: player props + prop parlays + live scorecard.
+    lines.extend(_ace_prop_lines(match_date))
+    # Stable match-winner legs: chalk favourites (≤1.20) parlayed -- the one
+    # match-winner structure that does not bleed. This is "match-winner as a
+    # stable combo leg" in practice.
+    lines.extend(_chalk_combo_lines(rows))
+    # ---- reference zone: match-winner edge combos (demoted, backtest-negative) ----
+    lines.extend([
+        "────────── 以下：match-winner 參考區（回測長期蝕，只作組合腳 / 觀察，唔建議單獨追）──────────",
+        "",
+    ])
     if legs:
         lines.extend(_anchor_single_lines(legs))
         lines.extend(_slate_concentration_lines(legs, result))
-    # Backtest-positive structure: chalk parlays (built from market favourites by
-    # odds, not from the +EV leg pool), so it runs off `rows` regardless of legs.
-    lines.extend(_chalk_combo_lines(rows))
-    # NBA-style player props (total aces) on the soft book -- experimental,
-    # calibrated, live-validating. Self-contained; runs off its own data.
-    lines.extend(_ace_prop_lines(match_date))
     if market_keys and market_keys <= {"match_winner", ""}:
         lines.extend(
             [
@@ -1546,6 +1555,8 @@ def render_banker_report(match_date: str, rows: list[dict]) -> str:
             section = tiers.get(tier) or []
             title, blurb = _TIER_BLURB[tier]
             lines.extend([f"## {title}", "", blurb, ""])
+            if tier in _DEMOTED_TIERS:
+                lines.extend([_DEMOTED_TIER_WARNING, ""])
             if not section:
                 lines.extend(["（今日無合資格組合）", ""])
                 continue
@@ -1742,9 +1753,11 @@ def _ace_prop_lines(match_date: str) -> list[str]:
         from tennis_wc.props.settlement import (
             settle_props, prop_roi_report, model_vs_market_scorecard,
         )
+        from tennis_wc.props import calibration
         conn = get_connection()
         settle_props(conn)  # grade anything now settleable before we review
         boards = price_ace_props_for_date(conn, match_date, log=True)
+        _ev_note = calibration.strength_note(calibration.current_strength(conn), conn)
     except Exception as exc:  # never let an experimental section break the report
         return ["## 🎾 球員 Prop：Aces（實驗中）", "", f"（Prop 引擎今日無法產生：{exc}）", ""]
     lines = [
@@ -1754,15 +1767,22 @@ def _ace_prop_lines(match_date: str) -> list[str]:
         "兩邊盤（Over/Under X.5）已精確去水，兩邊都定價 → 可以夾 under（模型認為 aces 會少過條線嗰邊）。",
         "⚠ ROI 未驗證：ace 結算 overlap 得約 16 場。已剔走超出校準範圍嘅長賠（>1.25× 預測均值 = 外推假 edge）。",
         "每條記入 prop_tracker、賽後自動結算；睇下面『模型 vs 市場記分卡』知邊個啱（比 ROI 快）。",
+        f"🔧 {_ev_note}（模型未夠數據前把機率向 50% 收，避免高估 EV；夠數據會自動放鬆或收緊）。",
         "",
     ]
     val_picks: list[str] = []
+    value_legs: list[dict] = []
     for bd in boards:
-        seg = [f"### {bd.match_label}｜模型預測全場 aces ≈ {bd.predicted_match_mean}"]
+        hdr = f"### {bd.match_label}｜預測 aces ≈ {bd.predicted_match_mean}"
+        if bd.predicted_games:
+            hdr += f"｜預測總局數 ≈ {bd.predicted_games}"
+        seg = [hdr]
         for tw in bd.match_ou:
-            seg.append(_two_way_line("全場", tw, val_picks))
+            seg.append(_two_way_line("全場aces", tw, val_picks, value_legs))
         for tw in bd.player_ou:
-            seg.append(_two_way_line(tw.scope, tw, val_picks))
+            seg.append(_two_way_line(f"{tw.scope} aces", tw, val_picks, value_legs))
+        for tw in bd.games_ou:
+            seg.append(_two_way_line("總局數", tw, val_picks, value_legs))
         if bd.anchor:
             a = bd.anchor
             seg.append(f"- N+ 高命中 anchor：{int(a.line)}+ @ {_fmt(a.decimal_odds)}（命中 {_pct(a.blended_prob)}）— 唔代表 +EV")
@@ -1772,6 +1792,9 @@ def _ace_prop_lines(match_date: str) -> list[str]:
         lines.extend(["### ✅ 今日模型認為有 value 嘅 prop（未證實，細注試 + 格價）", "", *val_picks, ""])
     else:
         lines.extend(["今日冇 prop 過到 value 關（soft book 主線都定得緊）。唔好硬追；等記分卡儲夠數據。", ""])
+    # Prop parlays (NBA banker structure): different-match legs are independent, so
+    # +EV compounds. Surfaced so combinations can be tested during validation.
+    lines.extend(_prop_combo_lines(value_legs))
     # ---- Review block: scorecard + segmented ROI (live validation) ----
     try:
         sc = model_vs_market_scorecard(conn)
@@ -1782,18 +1805,56 @@ def _ace_prop_lines(match_date: str) -> list[str]:
     return lines
 
 
-def _two_way_line(scope_label: str, tw, val_picks: list[str]) -> str:
-    """Render one Over/Under prop; append to val_picks if it carries value."""
+def _two_way_line(scope_label: str, tw, val_picks: list[str], value_legs: list[dict] | None = None) -> str:
+    """Render one Over/Under prop; record value picks (for the ✅ list and combos)."""
     base = (f"- {scope_label} O/U {tw.line}：Over @ {_fmt(tw.over_odds)} / Under @ {_fmt(tw.under_odds)}"
             f"｜模型 P(over) {_pct(tw.model_prob_over)}｜市場fair {_pct(tw.fair_prob_over)}")
     if tw.value_side:
         tag = f"  ✅ {('大' if tw.value_side=='over' else '細')}({tw.value_side}) @ {_fmt(tw.value_odds)}｜edge {_pct(tw.edge, signed=True)}｜EV {_pct(tw.ev, signed=True)}"
-        val_picks.append(
-            f"- {scope_label} {tw.value_side.upper()} {tw.line} @ {_fmt(tw.value_odds)}"
-            f"（模型 {_pct(tw.blended_prob)} / edge {_pct(tw.edge, signed=True)}）"
-        )
+        desc = f"{scope_label} {tw.value_side.upper()} {tw.line} @ {_fmt(tw.value_odds)}"
+        val_picks.append(f"- {desc}（模型 {_pct(tw.blended_prob)} / edge {_pct(tw.edge, signed=True)}）")
+        if value_legs is not None:
+            value_legs.append({"match_id": tw.match_id, "desc": desc,
+                               "odds": tw.value_odds, "prob": tw.blended_prob})
         return base + tag
     return base
+
+
+def _prop_combo_lines(value_legs: list[dict]) -> list[str]:
+    """NBA-style prop parlays: combine +EV value legs from DIFFERENT matches
+    (independent -> joint prob = product, no correlation haircut). Flat 1u. These
+    are the combinations to test during validation."""
+    lines = ["## 🎯 Prop 串（NBA banker 式・唔同場獨立相乘）", ""]
+    if len(value_legs) < 2:
+        lines.extend(["今日 value prop 唔夠 2 條（唔同場）夾唔到串；有得夾會喺度顯示。", ""])
+        return lines
+    lines.extend([
+        "原理：唔同場嘅 prop 互相獨立 → 命中率相乘、賠率相乘、+EV 疊加（同 NBA banker 一樣）。",
+        "⚠ 每條 leg 都係未證實嘅 value；平注細試、逐條格價。同場嘅腳唔夾（會相關）。",
+        "",
+    ])
+    combos: list[tuple] = []
+    n = len(value_legs)
+    for size in (2, 3):
+        for idx in combinations(range(n), size):
+            legs = [value_legs[i] for i in idx]
+            if len({lg["match_id"] for lg in legs}) != size:
+                continue  # different matches only
+            odds = prob = 1.0
+            for lg in legs:
+                odds *= lg["odds"]; prob *= lg["prob"]
+            ev = prob * odds - 1.0
+            combos.append((ev, prob, odds, legs))
+    if not combos:
+        lines.extend(["今日 value prop 全部同場，夾唔到獨立串。", ""])
+        return lines
+    combos.sort(key=lambda c: -c[0])
+    for i, (ev, prob, odds, legs) in enumerate(combos[:5], 1):
+        lines.append(f"### 串 {i}｜{len(legs)} 腳｜Odds {_fmt(round(odds,2))}｜命中 {_pct(prob)}｜EV {_pct(ev, signed=True)}｜1u")
+        for lg in legs:
+            lines.append(f"- {lg['desc']}")
+        lines.append("")
+    return lines
 
 
 def _prop_review_lines(sc: dict, roi: dict) -> list[str]:

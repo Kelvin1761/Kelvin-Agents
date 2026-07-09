@@ -226,6 +226,73 @@ def test_scorecard_compares_model_and_market(tmp_path, monkeypatch):
     assert "verdict" in sc
 
 
+def test_temper_reduces_confidence_and_ev():
+    from tennis_wc.props import calibration
+    # tempering pulls prob toward 0.5
+    assert abs(calibration.temper_probability(0.8, 0.5) - 0.65) < 1e-9
+    assert calibration.temper_probability(0.5, 0.9) == 0.5
+    # a tempered two-way prop has a smaller |edge| than the untempered one
+    raw = ace_model.price_two_way(1, "total_aces_8_5", "match", 7.5, 2.0, 1.9, 9.0,
+                                  ace_model.MATCH_ACE_CURVE, temper=0.0)
+    tem = ace_model.price_two_way(1, "total_aces_8_5", "match", 7.5, 2.0, 1.9, 9.0,
+                                  ace_model.MATCH_ACE_CURVE, temper=0.30)
+    if raw.value_side and tem.value_side:
+        assert abs(tem.edge) <= abs(raw.edge) + 1e-9
+
+
+def test_current_strength_defaults_conservative_when_few_settled(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import calibration
+    init_db()
+    assert calibration.current_strength(get_connection()) == calibration.DEFAULT_STRENGTH
+
+
+def test_predict_total_games_more_for_close_matches():
+    from tennis_wc.props import games_model
+    close = games_model.predict_total_games(0.5, best_of=3)   # coin-flip
+    lopsided = games_model.predict_total_games(0.9, best_of=3)  # heavy fav
+    assert close > lopsided, "closer matches should predict more games"
+    assert games_model.predict_total_games(0.5, best_of=5) > close, "BO5 > BO3"
+    assert games_model.predict_total_games(None) is None
+
+
+def test_price_games_two_way_devigs():
+    from tennis_wc.props import games_model
+    tw = games_model.price_games_two_way(1, "total_match_games_22_5", 22.5,
+                                         over_odds=1.9, under_odds=1.9, match_prob=0.55)
+    assert tw is not None
+    assert tw.market_key == "total_match_games_22_5"
+    assert abs(tw.fair_prob_over - 0.5) < 0.02
+    assert 0.0 < tw.model_prob_over < 1.0
+
+
+def test_games_settlement_grades_total_games(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import settlement
+    init_db()
+    conn = get_connection()
+    _seed_player(conn, 1, "A"); _seed_player(conn, 2, "B")
+    _seed_match(conn, 1, 1, 2)
+    conn.execute("INSERT INTO match_results (match_id, winner_player_id, source_provider, created_at, score_json) VALUES (1,1,'t','now', ?)",
+                 ('{"player_a_games": 13, "player_b_games": 11}',))  # 24 total
+    conn.commit()
+    assert settlement.actual_total_games(conn, 1) == 24.0
+    # Over 22.5 wins (24>22.5); Under 22.5 would lose
+    _rec(conn, settlement, line=22.5, selection="Over 22.5", side="over", odds=1.9,
+         model_p=0.55, market_p=0.5, market_key="total_match_games_22_5", scope="match_games")
+    conn.commit()
+    settlement.settle_props(conn)
+    roi = settlement.prop_roi_report(conn)
+    assert roi["overall"]["settled"] == 1 and roi["overall"]["wins"] == 1
+    assert "match_total_games" in roi["by_family"]
+
+
 def test_record_prop_idempotent(tmp_path, monkeypatch):
     from conftest import configure_test_db
     configure_test_db(tmp_path, monkeypatch)
