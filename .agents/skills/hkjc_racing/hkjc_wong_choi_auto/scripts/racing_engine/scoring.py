@@ -347,6 +347,15 @@ FINISH_TREND_MICRO_WEIGHTS = {
     "declining": -5.0,
 }
 
+# 配備訊號（2026-07-10 pit backtest，15 賽日 153 場）：
+#   除去配備 −3 於 TRAIN/TEST 齊升（FULL min +0.7、gold +0.7、single +0.6，
+#   零回退；−1/−2/−3 同方向、單調）→ 入分。
+#   初戴（任何/淨眼罩/晨操預演 gated）全部 NULL 或過擬合（TRAIN 升 TEST 唔升）
+#   → 只做顯示。詳見 memory hkjc-gear-module-spec。
+GEAR_SIGNAL_WEIGHTS = {
+    "gear_removed_pen": -3.0,
+}
+
 TRACKWORK_MICRO_WEIGHTS = {
     # 1. LLM 綜合文字指標 (Text-based trend)
     "rebound_base": 66.0,    # 翻案復刻

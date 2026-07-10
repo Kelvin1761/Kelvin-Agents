@@ -875,6 +875,23 @@ class RacingEngine:
         return round(clip_score(base_score), 2)
 
     def _apply_trainer_signal_v3(self, base_score):
+        # 配備訊號（pit backtest 2026-07-10 驗證）：除去配備＝練馬師部署負面訊號，
+        # 扣騎練訊號維度分。初戴類全部 out-of-sample NULL，維持顯示唔入分。
+        gear = str(self._value("gear_change") or "")
+        if "除去" in gear:
+            delta = scoring.GEAR_SIGNAL_WEIGHTS["gear_removed_pen"]
+            self.reason_codes.append("gear_removed")
+            removed = self._gear_change_readable() or {}
+            detail = getattr(self, "trainer_signal_detail", None)
+            if isinstance(detail, dict):
+                detail.setdefault("adjustments", []).append({
+                    "factor": "除去配備",
+                    "target": "騎練訊號",
+                    "delta": round(delta, 2),
+                    "evidence": (removed.get("value") or "今仗除去配備")
+                    + "（歷史回測：除去配備平均走樣，扣3分）",
+                })
+            return round(clip_score(base_score + delta), 2)
         return round(clip_score(base_score), 2)
 
     def _apply_finish_time_trend(self, base_score):
@@ -1784,10 +1801,14 @@ class RacingEngine:
         cls_perf = self._value("class_perf_3s") or self._class_rank_note()
         if cls_perf:
             add("班次表現", _format_hkjc_class_display(cls_perf), "", band="➖")
-        # 配備變動 — 顯示用（加減 blinkers 等曾測試入分：out-of-sample NULL，只做提示）
+        # 配備變動 — 初戴類顯示用（曾測試入分：out-of-sample NULL）；
+        # 除去配備已入分（騎練訊號 −3，見 _apply_trainer_signal_v3），band 標 ⚠️
         gear_read = self._gear_change_readable()
         if gear_read:
-            add("配備變動", gear_read["value"], gear_read["trend"], band=gear_read["band"],
+            removed_scored = "gear_removed" in self.reason_codes
+            add("配備變動", gear_read["value"],
+                gear_read["trend"] + ("，騎練訊號 −3分" if removed_scored else ""),
+                band=("⚠️" if removed_scored else gear_read["band"]),
                 reason=gear_read["reason"])
         # 晨操 row 同晨操分析／狀態與穩定性共用 _trackwork_pattern 呢個單一判定，
         # 呢度只出 pattern 標籤＋賽日騎師參與＋一句原因；原始課數留返晨操分析度睇。
