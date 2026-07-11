@@ -698,6 +698,10 @@ def _formline_table_lines(horse: dict) -> list[str]:
         verdict = ("已受賽果驗證（franked）" if validated >= 2 else
                    ("有基本背書" if validated == 1 else "暫未有對手後續勝出背書"))
         lines.insert(0, f"賽績線兌現度: {validated}/{n} 場嘅對手其後再勝 → {verdict}")
+        # 對手陣容強度（強組比例）——事實描述，補回逐場強組別嘅總覽（display-only）
+        ratio_m = re.search(r"強組比例:\s*(\d+)\s*/\s*(\d+)", str(data.get("formline_strength") or ""))
+        if ratio_m:
+            lines.insert(1, f"對手陣容強度: 近仗對手中 {ratio_m.group(1)}/{ratio_m.group(2)} 場屬強組")
     return lines
 
 
