@@ -49,13 +49,13 @@ def find_python():
     sys.exit(1)
 
 
-def run_step(python: str, cmd: list, step_name: str) -> bool:
+def run_step(python: str, cmd: list, step_name: str, timeout: int = 120) -> bool:
     """Execute a pipeline step and return success status."""
     log(f"▶ {step_name}")
     try:
         result = subprocess.run(
             [python] + cmd,
-            capture_output=True, text=True, timeout=120,
+            capture_output=True, text=True, timeout=timeout,
             env={**os.environ, "PYTHONUTF8": "1"}
         )
         if result.returncode == 0:
@@ -65,7 +65,7 @@ def run_step(python: str, cmd: list, step_name: str) -> bool:
             log(f"  ❌ {step_name} 失敗: {result.stderr[:200]}", "ERROR")
             return False
     except subprocess.TimeoutExpired:
-        log(f"  ⏰ {step_name} 超時 (120s)", "ERROR")
+        log(f"  ⏰ {step_name} 超時 ({timeout}s)", "ERROR")
         return False
     except FileNotFoundError:
         log(f"  ❌ 腳本不存在", "ERROR")
@@ -147,6 +147,48 @@ def main():
         log("⏭️ build_au_logic.py 不存在或無 Facts，跳過 Logic 生成")
         summary["steps"]["logic_build"] = {"status": "SKIP"}
 
+    # Step 3.5: racenet sectionals timing enrichment (2026-07-11)
+    # timing_600m_* 原始 writer 已失傳、上游 06-19 起斷供；呢步由每場 /sectionals
+    # 頁重建（真 L600 時間，最近5場語義）。網絡步驟：被封/失敗只會 skip，
+    # 引擎對 missing timing 有中性處理，唔會影響後面 orchestrator。
+    timing_script = AU_AUTO_SCRIPTS / "au_sectionals_timing_enrich.py"
+    if timing_script.exists() and logic_count > 0:
+        ok = run_step(python, [str(timing_script), str(meeting_dir)],
+                      "Sectionals timing 補完", timeout=600)
+        summary["steps"]["timing_enrich"] = {"status": "PASS" if ok else "WARN"}
+    else:
+        summary["steps"]["timing_enrich"] = {"status": "SKIP"}
+
+    # Step 3.6: free official trial / jump-out readiness evidence.  The
+    # collector routes from each trial's venue (NSW/QLD/VIC/SA/WA/TAS), not
+    # from today's meeting.  It is deliberately shadow-only and non-fatal.
+    official_trial_script = AU_AUTO_SCRIPTS / "au_official_free_data.py"
+    if official_trial_script.exists() and logic_count > 0:
+        ok = run_step(
+            python,
+            [str(official_trial_script), "--meeting-dir", str(meeting_dir), "--limit", "120", "--delay", "0.8"],
+            "官方試閘／跳閘資料核對（按州／馬場路由）",
+            timeout=180,
+        )
+        summary["steps"]["official_trial_shadow"] = {"status": "PASS" if ok else "WARN"}
+    else:
+        summary["steps"]["official_trial_shadow"] = {"status": "SKIP"}
+
+    # Step 3.7: persist the verified heat-level time and exact trial-jockey
+    # fields onto Logic for research.  The engine intentionally ignores these
+    # shadow fields until their walk-forward test is positive.
+    official_trial_feature_script = AU_AUTO_SCRIPTS / "au_official_trial_feature_enrich.py"
+    if official_trial_feature_script.exists() and logic_count > 0:
+        ok = run_step(
+            python,
+            [str(official_trial_feature_script), "--meeting-dir", str(meeting_dir)],
+            "官方試閘 shadow feature 寫入 Logic",
+            timeout=60,
+        )
+        summary["steps"]["official_trial_feature_shadow"] = {"status": "PASS" if ok else "WARN"}
+    else:
+        summary["steps"]["official_trial_feature_shadow"] = {"status": "SKIP"}
+
     # Step 4: Run deterministic auto orchestrator
     auto_script = AU_AUTO_SCRIPTS / "au_auto_orchestrator.py"
     if auto_script.exists():
@@ -157,7 +199,8 @@ def main():
         summary["steps"]["auto_pipeline"] = {"status": "SKIP"}
 
     # Output summary
-    all_pass = all(s.get("status") in ("PASS", "SKIP") for s in summary["steps"].values())
+    # WARN = 非致命網絡步驟（timing enrichment）失敗，唔應拖冧成條 pipeline
+    all_pass = all(s.get("status") in ("PASS", "SKIP", "WARN") for s in summary["steps"].values())
     summary["status"] = "PASS" if all_pass else "PARTIAL"
 
     summary_path = meeting_dir / "pipeline_summary.json"
