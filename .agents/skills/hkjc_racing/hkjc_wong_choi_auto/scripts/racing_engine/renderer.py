@@ -766,14 +766,23 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
             ("上仗結果", last_result, 140),
         )
     if key == "class_advantage":
+        # 見習減磅：負磅係讓磅前分配磅，實揹=負磅−減磅（事實描述，未入評分）
+        allowance = data.get("jockey_allowance") or 0
+        weight_bits = f"負磅={data.get('weight_carried')}" if data.get("weight_carried") not in (None, "") else ""
+        try:
+            if allowance and data.get("weight_carried") not in (None, ""):
+                eff = int(float(data.get("weight_carried"))) - int(allowance)
+                weight_bits = f"負磅={data.get('weight_carried')}（見習減{int(allowance)}磅，實揹{eff}磅）"
+        except (TypeError, ValueError):
+            pass
         record = _join_nonempty(
             f"{data.get('total_starts')}戰{data.get('total_wins')}勝" if data.get("total_starts") is not None and data.get("total_wins") is not None else "",
             f"評分趨勢={data.get('rating_trend')}" if data.get("rating_trend") else "",
-            f"負磅={data.get('weight_carried')}" if data.get("weight_carried") not in (None, "") else "",
+            weight_bits,
             sep=", ",
         )
         return _compact_fact_lines(
-            ("班次 / 評分背景", record, 220),
+            ("班次 / 評分背景", record, 260),
             ("場地轉換", data.get("venue_transfer"), 80),
         )
     return []

@@ -156,32 +156,30 @@ class RacingEngine:
         career_tag = self._clean(self._value("career_tag") or self.horse_data.get("career_tag") or "")
         if career_tag == "ESTABLISHED":
             score += scoring.CLASS_MICRO_WEIGHTS.get("established_bonus", 4.0)
-            notes.append("屬已建立賽駒")
+            notes.append("已建立賽駒")
         if starts is not None:
             if starts >= 20:
                 score += scoring.CLASS_MICRO_WEIGHTS.get("starts_20_bonus", 4.0)
-                notes.append("正式賽經驗充足")
+                notes.append("經驗充足")
             elif starts <= 8:
                 score += scoring.CLASS_MICRO_WEIGHTS.get("starts_8_pen", -2.0)
-                notes.append("正式賽樣本較薄")
+                notes.append("樣本薄")
         if season:
             if season["places"] >= 3:
                 score += scoring.CLASS_MICRO_WEIGHTS.get("season_place_3_bonus", 4.0)
-                notes.append("季內有基本交代")
+                notes.append("季內有交代")
             elif season["places"] == 0:
                 score += scoring.CLASS_MICRO_WEIGHTS.get("season_place_0_pen", -4.0)
                 self.risk_flags.append("class_edge_unproven")
-                notes.append("季內未見上名")
+                notes.append("季內未上名")
         if same_distance and same_distance["places"] > 0:
             score += scoring.CLASS_MICRO_WEIGHTS.get("same_dist_place_bonus", 4.0)
             notes.append("同程有實績")
         elif same_distance and same_distance["starts"] > 0 and same_distance["places"] == 0:
             score += scoring.CLASS_MICRO_WEIGHTS.get("same_dist_unplaced_pen", -2.0)
-            notes.append("同程未有實績")
-        note = "班次優勢按實戰經驗、季內交代與同程適應評估"
-        if notes:
-            note += "，" + "、".join(notes)
-        note += f"，班次分{clip_score(score):.1f}。"
+            notes.append("同程未上名")
+        # 短而準：分數行頭，訊號做 tag；無訊號＝各項中性
+        note = f"班次分{clip_score(score):.0f}：" + ("、".join(notes) if notes else "經驗／季內／同程均中性")
         return clip_score(score), note, "career_context"
 
     def _distance_score(self, _features):

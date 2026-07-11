@@ -792,6 +792,19 @@ def load_racecard_horse_block(facts_path, race_num, horse_num):
     return ''
 
 
+def parse_apprentice_allowance(racecard_block):
+    """見習騎師減磅：排位表騎師欄「(-N)」= 見習認可減磅（磅）。
+    ⚠️ 排位表「負磅」係讓磅前分配磅（=評分+95），此 claim 未扣入去；
+    馬匹實揹 = 負磅 − claim。回測證見習馬並非優勢（上名率反而偏低），
+    故只作顯示，不入評分。回傳 (allowance_lb:int, is_apprentice:bool)。"""
+    if not racecard_block:
+        return 0, False
+    m = re.search(r'騎師[:：]\s*[^\n(]*\(-(\d+)\)', racecard_block)
+    if m:
+        return int(m.group(1)), True
+    return 0, False
+
+
 def parse_debut_sire_profile(block, today_distance=None, racecard_block=''):
     """Extract a small debut pedigree profile.
 
@@ -1355,9 +1368,11 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None, facts_path=
     tw_trainer_line = format_trackwork_trainer_line(raw_trackwork)
     tw_health_line = format_trackwork_health_line(raw_trackwork)
     # Load racecard block for sire/dam fallback (排位表.md always has bloodline data)
+    # 兼取見習減磅（騎師欄「(-N)」）——所有馬都要讀，唔淨係初出。
     racecard_block = ''
-    if is_debut and facts_path:
+    if facts_path:
         racecard_block = load_racecard_horse_block(facts_path, race_num, data.get('num', 0))
+    jockey_allowance, is_apprentice = parse_apprentice_allowance(racecard_block)
     debut_sire_profile = parse_debut_sire_profile(horse_block, expected_distance or None, racecard_block=racecard_block) if is_debut else {}
     debut_trial_profile = build_debut_trial_profile(raw_trackwork) if is_debut else {}
     debut_readiness_flags = build_debut_readiness_flags(raw_trackwork) if is_debut else []
@@ -1546,6 +1561,9 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None, facts_path=
             'total_wins': wins,
             'rating_trend': rating_trend,
             'weight_carried': weight,
+            # 見習減磅（display-only；負磅係讓磅前分配磅，實揹=負磅−減磅）
+            'jockey_allowance': jockey_allowance,
+            'is_apprentice': is_apprentice,
             'venue_transfer': vt_str,
         },
 
