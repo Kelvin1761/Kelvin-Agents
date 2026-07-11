@@ -1672,7 +1672,7 @@ class RacingEngine:
         # 段速表現：一句總結（優勢／中性／劣勢＋理據），取代舊「段速趨勢」端點行；
         # 同 7D 段速判讀共用 _speed_verdict，口徑一致。
         if str(self._value("raw_l400") or "").strip() or str(self._value("l400_trend") or "").strip():
-            v = self._speed_verdict(features)
+            v = self._speed_verdict(features, sectional_score=matrix_scores.get("sectional"))
             add("段速表現", v["label"], v["why"], band=v["band"])
         energy = self._value("energy_trend")
         if present(energy):
@@ -1773,8 +1773,9 @@ class RacingEngine:
             band = self._layoff_band(int(days))
             last_date = self._last_race_date()
             val = f"距今{int(days)}日" + (f"（上次{last_date}）" if last_date else "")
+            # 正常休息唔係 edge：只有風險 band（急放／長休）標 ⚠️，其餘中性 ➖，冇 ✅
             add("休賽", val, band,
-                band="✅" if band in ("正常間隔", "短休後復出") else ("⚠️" if band in ("較長休賽", "長期休養後首戰", "急放上陣") else "➖"))
+                band="⚠️" if band in ("較長休賽", "長期休養後首戰", "急放上陣") else "➖")
         # 體重狀態：白話（較上仗增/減N磅 + 波幅），取代舊「波幅/方向」端點行
         bw = self._bodyweight_readout()
         if bw:
@@ -2595,30 +2596,27 @@ class RacingEngine:
                 track = "；晨操中性"
         return f"{lead}{margin_txt}{track}{self._score_close(score)}"
 
-    def _speed_verdict(self, features):
-        """段速表現總結：優勢／中性／劣勢＋主要理據，直接由 speed_detail 嘅實際加減分
-        砌出嚟——令判讀同數據判讀同「速度分逐項訊號」完全一致（唔會口徑唔同）。
-        門檻對齊 band：≥70 優勢、55–70 中性、<55 劣勢。"""
-        sp = float(features.get("speed_score", 60))
+    def _speed_verdict(self, features, sectional_score=None):
+        """段速表現總結：優勢／中性／劣勢＋主要理據。band 直接由「最終 sectional
+        維度分」（已含完成時間趨勢 nudge）經 score_band 判定，令判讀 emoji 同
+        7D 逐項拆解嘅維度 emoji 100% 對齊——避免「原始速度分優勢但維度中性」矛盾。
+        理據仍列 speed_detail 實際加減分。"""
+        sp = float(sectional_score) if sectional_score is not None else float(features.get("speed_score", 60))
         detail = self.speed_detail if isinstance(self.speed_detail, list) else []
         pos = sorted([d for d in detail if float(d.get("delta", 0) or 0) > 0],
                      key=lambda x: -float(x["delta"]))
         neg = sorted([d for d in detail if float(d.get("delta", 0) or 0) < 0],
                      key=lambda x: float(x["delta"]))
-        if sp >= 70:
-            label, band = "優勢", "✅"
-        elif sp >= 55:
-            label, band = "中性", "➖"
-        else:
-            label, band = "劣勢", "⚠️"
+        band = score_band(sp)
+        label = "優勢" if band in ("✅", "✅✅") else ("中性" if band == "➖" else "劣勢")
         bits = [f"{d['why']}(+{float(d['delta']):.1f})" for d in pos[:2]]
         bits += [f"{d['why']}({float(d['delta']):.1f})" for d in neg[:1]]
         why = "、".join(bits) if bits else "各項段速訊號中性"
         return {"label": label, "band": band, "why": why, "score": sp}
 
     def _describe_sectional_matrix(self, score, features, evidence):
-        # 判讀由 speed_detail 實際加減分砌出，同「速度分逐項訊號」拆解一致。
-        v = self._speed_verdict(features)
+        # 判讀由 speed_detail 實際加減分砌出，band 用最終維度分（同拆解 emoji 對齊）。
+        v = self._speed_verdict(features, sectional_score=score)
         l400 = self._seq_endpoints(self._value("l400_trend"), "s")
         l400_txt = f"L400 {l400}；" if l400 else ""
         return f"{l400_txt}段速{v['label']}：{v['why']}{self._score_close(score)}"
