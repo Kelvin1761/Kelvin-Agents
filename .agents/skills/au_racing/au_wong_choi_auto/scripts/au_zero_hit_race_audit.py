@@ -102,7 +102,7 @@ def collect_failure_tags(deltas: dict[str, float], winner_rank: int | None, race
         tags.append("級數與負重低估")
     if deltas.get("jockey_trainer", 0.0) >= 2.0:
         tags.append("騎練訊號低估")
-    if deltas.get("sectional", 0.0) >= 2.0:
+    if deltas.get("pace_perf", deltas.get("sectional", 0.0)) >= 2.0:
         tags.append("段速與引擎低估")
     if deltas.get("stability", 0.0) >= 2.0:
         tags.append("狀態與穩定性低估")
@@ -111,7 +111,7 @@ def collect_failure_tags(deltas: dict[str, float], winner_rank: int | None, race
 
     if deltas.get("race_shape", 0.0) <= -2.0:
         tags.append("檔位形勢可能過信")
-    if deltas.get("sectional", 0.0) <= -2.0:
+    if deltas.get("pace_perf", deltas.get("sectional", 0.0)) <= -2.0:
         tags.append("段速與引擎可能過信")
     if deltas.get("jockey_trainer", 0.0) <= -2.0:
         tags.append("騎練訊號可能過信")

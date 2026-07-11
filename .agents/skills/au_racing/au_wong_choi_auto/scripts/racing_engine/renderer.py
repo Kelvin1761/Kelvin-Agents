@@ -34,21 +34,18 @@ FEATURE_LABELS = {
 
 MATRIX_LABELS = {
     "stability": "狀態與穩定性",
-    "sectional": "段速與引擎",
+    # 2026-07-10: 段速與引擎 + 段速實速 合併為 段速表現（實測L600主軸＋PI＋試閘）
+    "pace_perf": "段速表現",
     "race_shape": "檔位形勢",
     "jockey_trainer": "騎練訊號",
     "class_weight": "級數與負重",
     "track": "場地適性",
     "form_line": "賽績線",
-    "pace_figure": "段速實速（實測L600）",
 }
 
-# 同一 sub 分喺唔同維度可用唔同名，避免「同一個場地分出現兩次」嘅重覆錯覺。
-# track_score 喺「場地適性」係純場地紀錄（場地分）；喺「檔位形勢」係場地×步速交互
-# 貢獻，所以叫「場地配套分」。兩者用同一數值，係刻意（已驗證：抽走會蝕 box4/贏Top3）。
-MATRIX_COMPONENT_LABELS = {
-    ("race_shape", "track_score"): "場地配套分",
-}
+# 2026-07-11：track_score 已去重，只喺「場地適性」維度出現。「檔位形勢」而家係
+# 純檔位/走位，冇再借用 track_score，所以呢個跨維度別名表清空。
+MATRIX_COMPONENT_LABELS = {}
 
 
 def _component_label(key, name):
@@ -270,11 +267,17 @@ def _matrix_composition_line(key, auto):
 def _clean_subscore_note(note):
     """去掉 sub分 note 尾巴重覆嘅自述分數（個分我哋已經喺前面顯示）。
     只剝走最尾一段（要有分隔符 boundary，唔可以跨過逗號食埋真正內容）。
-    兩種格式：『…跑法穩定性 93.0 分。』同『…近績分 54.2』。"""
+    兩種格式：『…跑法穩定性 93.0 分。』同『…近績分 54.2』。
+    事後修正尾巴（「；[環境] …」「；[級數] …」）要保留——但佢哋令自述分數唔再喺
+    結尾（而且嗰個係調整前嘅舊分，同顯示分對唔上），所以先斬開尾巴、清洗頭段、再駁返。"""
     note = str(note or "").strip().rstrip("。 ")
-    note = re.sub(r"[，,、；;。]\s*[^，,、；;。]*?\d+(?:\.\d+)?\s*分。?\s*$", "", note)   # 「…, X 93.0 分」
-    note = re.sub(r"[，,、；;。]\s*[^，,、；;。]*?分\s*\d+(?:\.\d+)?。?\s*$", "", note)    # 「…, 近績分 54.2」
-    return note.strip(" ，,、；;。")
+    # 事後修正尾巴嘅 boundary：舊「；[…]」＋新精簡版「；級數偏弱…」「；場地未明…」
+    m = re.search(r"；\s*(?:\[|級數偏弱|場地未明)", note)
+    head, tail = (note[:m.start()], note[m.start():]) if m else (note, "")
+    head = head.rstrip("。 ")
+    head = re.sub(r"[，,、；;。]\s*[^，,、；;。]*?\d+(?:\.\d+)?\s*分。?\s*$", "", head)   # 「…, X 93.0 分」
+    head = re.sub(r"[，,、；;。]\s*[^，,、；;。]*?分\s*\d+(?:\.\d+)?。?\s*$", "", head)    # 「…, 近績分 54.2」
+    return (head.strip(" ，,、；;。") + tail).strip(" ，,、；;。")
 
 
 def _matrix_subscore_lines(key, auto):
@@ -289,6 +292,229 @@ def _matrix_subscore_lines(key, auto):
         note = _clean_subscore_note(notes.get(name, ""))
         out.append(f"{label} {v:.0f} ← {note}" if note else f"{label} {v:.0f}")
     return out
+
+
+def _stability_detail_lines(auto, name):
+    """近績分／穩定性分嘅完整評分構成（HK 式透明度）：
+    基礎分、每項加減嘅分值同依據、逐仗底分×班次×近期權重，全部攤開。"""
+    sd = auto.get("stability_detail")
+    if not isinstance(sd, dict):
+        return []
+    if name == "form_score":
+        d = sd.get("form") or {}
+        lines = []
+        if d.get("note"):
+            lines.append(str(d["note"]))
+        rows = d.get("rows") or []
+        num_total = 0.0
+        wt_total = 0.0
+        for r in rows:
+            recency = "（最近）" if r.get("idx") == 1 else ""
+            cls = f"（{r['cls']}）" if r.get("cls") else ""
+            contrib = r["base"] * r["mult"] * r["decay"]
+            num_total += contrib
+            wt_total += r["decay"]
+            lines.append(
+                f"第{r['idx']}仗{recency}：第{r['place']}名{cls} → {r['base']}"
+                f" ×班次係數 {r['mult']:.2f} ×近期權重 {r['decay']:.1f} ＝ {contrib:.1f}"
+            )
+        if rows and d.get("avg") is not None:
+            lines.append(f"名次加權平均 ＝ {num_total:.1f} ÷ 權重和 {wt_total:.1f} ＝ {d['avg']:.1f}")
+        for b in d.get("bonus") or []:
+            ev = f" ← {b['evidence']}" if b.get("evidence") else ""
+            lines.append(f"{b['factor']} {float(b['delta']):+.1f}{ev}")
+        if (d.get("bonus")) and d.get("final") is not None:
+            lines.append(f"最終近績分 ＝ {d['final']:.1f}")
+        return lines
+    if name == "consistency_score":
+        d = sd.get("consistency") or {}
+        lines = []
+        if d.get("base") is not None:
+            lines.append(f"{d.get('base_label', '基礎分')} {float(d['base']):.1f}")
+        for a in d.get("adjustments") or []:
+            ev = f" ← {a['evidence']}" if a.get("evidence") else ""
+            lines.append(f"{a['factor']} {float(a['delta']):+.2f}{ev}")
+        for note in d.get("display_notes") or []:
+            lines.append(f"（{note}）")
+        if d.get("final") is not None and (d.get("adjustments") or d.get("display_notes")):
+            lines.append(f"合計（0-100 封頂）＝ {float(d['final']):.1f}")
+        return lines
+    return []
+
+
+def _pace_perf_detail_lines(auto, name):
+    """段速表現三個 sub 分嘅完整組件（人話版，唔用統計行話）。
+    段速分四個組件永遠列晒（冇觸發都寫明點解 0 分）。"""
+    sd = auto.get("pace_perf_detail")
+    if not isinstance(sd, dict):
+        return []
+    if name == "pace_figure_score":
+        d = sd.get("pace") or {}
+        state = d.get("state")
+        if state == "no_pf":
+            return ["無實測段速數據（PF 未覆蓋近績）→ 中性 60 分，此組件唔影響排名"]
+        if state == "no_spread":
+            return ["同場有實測數據嘅馬太少 → 中性 60 分"]
+        if state == "ok":
+            def vs_bench(x):
+                if x is None:
+                    return "無數據"
+                return (f"快過基準 {abs(x):.2f} 秒" if x < 0
+                        else f"慢過基準 {abs(x):.2f} 秒" if x > 0 else "貼住基準")
+            z = float(d.get("z") or 0)
+            if z <= -1.5:
+                rank_word = "屬全場最快嗰批"
+            elif z <= -0.5:
+                rank_word = "快過場內大多數對手"
+            elif z < 0.5:
+                rank_word = "同場內平均差唔多"
+            elif z < 1.5:
+                rank_word = "慢過場內大多數對手"
+            else:
+                rank_word = "屬全場最慢嗰批"
+            return [
+                f"本駒平均{vs_bench(d.get('value'))}；今場有數據對手平均{vs_bench(d.get('mean'))}",
+                f"全場對比：{rank_word} → {float(d.get('final') or 60):.1f} 分（60 為中性）",
+            ]
+        return []
+    if name == "sectional_score":
+        d = sd.get("sectional") or {}
+        # 冇 PI 嘅馬壓縮做一行（唔好逐行印 ＋0，讀落似壞咗）：「有冇數據」本身
+        # 係四度驗證過嘅排名訊號（移除/中性化都蝕），呢度直接講明機制。
+        if not d.get("has_pi"):
+            base = float(d.get("base") or 35.8)
+            return [f"缺 L400 PI 紀錄 → 維持基礎分 {base:.1f}。"
+                    "有 PI 紀錄兼末段升位嘅馬先攞到加分——「有冇數據」本身係驗證過嘅訊號，唔係漏計"]
+        lines = []
+        if d.get("base") is not None:
+            lines.append(f"基礎分 {float(d['base']):.1f}")
+        for a in d.get("items") or []:
+            delta = float(a["delta"])
+            ev = f" ← {a['evidence']}" if a.get("evidence") else ""
+            val = f"{delta:+.2f}" if delta else "＋0"
+            lines.append(f"{a['factor']} {val}{ev}")
+        if d.get("score") is not None and (d.get("items") or ()):
+            lines.append(f"合計 ＝ {float(d['score']):.1f}")
+        return lines
+    if name == "trial_score":
+        d = sd.get("trial") or {}
+        lines = []
+        if d.get("note"):
+            lines.append(str(d["note"]))
+        if d.get("base") is not None and d.get("adjustments"):
+            lines.append(f"基礎分 {float(d['base']):.1f}")
+        for a in d.get("adjustments") or []:
+            ev = f" ← {a['evidence']}" if a.get("evidence") else ""
+            lines.append(f"{a['factor']} {float(a['delta']):+.1f}{ev}")
+        if d.get("adjustments") and d.get("final") is not None:
+            lines.append(f"合計（0-100 封頂）＝ {float(d['final']):.1f}")
+        return lines
+    return []
+
+
+def _race_shape_detail_lines(auto, name):
+    """檔位形勢 sub 分嘅完整組件（人話）。"""
+    sd = auto.get("race_shape_detail")
+    if not isinstance(sd, dict):
+        return []
+    if name == "pace_map_score":
+        d = sd.get("pace_map") or {}
+        lines = [f"基礎分 {float(d['base']):.1f}"] if d.get("base") is not None else []
+        lines += [str(x) for x in (d.get("lines") or [])]
+        if d.get("final") is not None and (d.get("lines")):
+            lines.append(f"檔位分 ＝ {float(d['final']):.1f}")
+        return lines
+    if name == "track_score":
+        d = sd.get("track") or {}
+        lines = []
+        if d.get("base") is not None:
+            lines.append(f"基礎分 {float(d['base']):.1f}（同「場地適性」維度共用同一場地往績分）")
+        for n in d.get("notes") or []:
+            lines.append(str(n))
+        if d.get("final") is not None and d.get("notes"):
+            lines.append(f"場地往績分 ＝ {float(d['final']):.1f}")
+        return lines
+    return []
+
+
+def _track_dim_detail_lines(auto, name):
+    """場地適性維度 sub 分（track_score）嘅完整組件（人話）。"""
+    if name != "track_score":
+        return []
+    d = (auto.get("race_shape_detail") or {}).get("track") or {}
+    lines = []
+    if d.get("base") is not None:
+        lines.append(f"基礎分 {float(d['base']):.1f}")
+    for n in d.get("notes") or []:
+        lines.append(str(n))
+    if d.get("final") is not None and d.get("notes"):
+        lines.append(f"場地分 ＝ {float(d['final']):.1f}")
+    return lines
+
+
+def _class_weight_detail_lines(auto, name):
+    """級數與負重 sub 分嘅完整組件（人話）。"""
+    sd = auto.get("class_weight_detail")
+    if not isinstance(sd, dict):
+        return []
+    if name == "class_score":
+        d = sd.get("class") or {}
+        lines = [f"基礎分 {float(d['base']):.1f}"] if d.get("base") is not None else []
+        for n in d.get("notes") or []:
+            lines.append(str(n))
+        if d.get("final") is not None and d.get("notes"):
+            lines.append(f"級數分 ＝ {float(d['final']):.1f}")
+        return lines
+    if name == "rating_score":
+        d = sd.get("rating") or {}
+        return [str(x) for x in (d.get("lines") or [])]
+    if name == "weight_score":
+        d = sd.get("weight") or {}
+        lines = []
+        if d.get("weight") is not None:
+            lines.append(f"今場負磅 {float(d['weight']):.1f}kg（基礎分 {float(d.get('base', 62)):.0f}）")
+        for n in d.get("notes") or []:
+            lines.append(str(n))
+        if d.get("final") is not None and d.get("notes"):
+            lines.append(f"負磅分 ＝ {float(d['final']):.1f}")
+        return lines
+    return []
+
+
+def _jt_detail_lines(auto, name):
+    """騎練訊號三個 sub 分嘅完整組件（同 stability/pace_perf 一樣嘅透明度）。"""
+    if name == "jockey_score":
+        d = (auto.get("jt_signal_detail") or {}).get("jockey") or {}
+        return [str(x) for x in (d.get("lines") or [])]
+    if name == "trainer_score":
+        d = (auto.get("jt_signal_detail") or {}).get("trainer") or {}
+        lines = []
+        if d.get("base") is not None:
+            label = f"（{d['base_label']}）" if d.get("base_label") else ""
+            lines.append(f"基礎分 {float(d['base']):.1f}{label}")
+        if d.get("ly_line"):
+            lines.append(str(d["ly_line"]))
+        for a in d.get("adjustments") or []:
+            ev = f" ← {a['evidence']}" if a.get("evidence") else ""
+            lines.append(f"{a['factor']} {float(a['delta']):+.1f}{ev}")
+        if d.get("adjustments") and d.get("final") is not None:
+            lines.append(f"合計 ＝ {float(d['final']):.1f}")
+        return lines
+    if name == "jockey_horse_fit_score":
+        d = auto.get("jt_fit_detail") or {}
+        lines = []
+        if d.get("base") is not None:
+            lines.append(f"基礎分 {float(d['base']):.1f}")
+        adjustments = d.get("adjustments") or []
+        for a in adjustments:
+            ev = f" ← {a['evidence']}" if a.get("evidence") else ""
+            lines.append(f"{a['factor']} {float(a['delta']):+.1f}{ev}")
+        if not adjustments:
+            lines.append("實證調整：無觸發（試閘／人馬往績／換騎訊號均未達門檻）")
+        elif d.get("final") is not None:
+            lines.append(f"合計（0-100 封頂）＝ {float(d['final']):.1f}")
+        return lines
+    return []
 
 
 def _matrix_why(key, score, auto):
@@ -354,10 +580,27 @@ def _render_horse_section(horse_num, horse, auto):
         comp = _matrix_composition_line(key, auto)
         if comp:
             lines.append(f"  - **評分構成：** {comp}")
-            for sub in _matrix_subscore_lines(key, auto):
+            comp_names = [n for n, _w in (MATRIX_FORMULAS.get(key) or [])]
+            for name, sub in zip(comp_names, _matrix_subscore_lines(key, auto)):
                 lines.append(f"    - {sub}")
-        if key == "jockey_trainer":
-            lines.extend(_jt_fit_adjustment_lines(auto))
+                if key == "stability":
+                    for dline in _stability_detail_lines(auto, name):
+                        lines.append(f"      - {dline}")
+                elif key == "pace_perf":
+                    for dline in _pace_perf_detail_lines(auto, name):
+                        lines.append(f"      - {dline}")
+                elif key == "jockey_trainer":
+                    for dline in _jt_detail_lines(auto, name):
+                        lines.append(f"      - {dline}")
+                elif key == "race_shape":
+                    for dline in _race_shape_detail_lines(auto, name):
+                        lines.append(f"      - {dline}")
+                elif key == "class_weight":
+                    for dline in _class_weight_detail_lines(auto, name):
+                        lines.append(f"      - {dline}")
+                elif key == "track":
+                    for dline in _track_dim_detail_lines(auto, name):
+                        lines.append(f"      - {dline}")
         reasoning_text = str(reason_bundle.get("text") or "").strip()
         lines.append(f"  - **判讀：** {reasoning_text}" if reasoning_text
                      else f"  - **判讀：** {_matrix_why(key, score, auto)}")
@@ -378,26 +621,6 @@ def _render_horse_section(horse_num, horse, auto):
         *[f"- {_humanize_text(item)}" for item in auto.get("disadvantages", [])],
         "",
     ])
-    return lines
-
-
-def _jt_fit_adjustment_lines(auto):
-    """人馬配搭分完整追溯：基礎分 → 每項實證調整（因子＋原始統計）→ 最終分。"""
-    detail = auto.get("jt_fit_detail")
-    if not isinstance(detail, dict):
-        return []
-    lines = []
-    adjustments = detail.get("adjustments") or []
-    for adj in adjustments:
-        delta = float(adj.get("delta", 0) or 0)
-        evidence = str(adj.get("evidence") or "").strip()
-        tail = f"：{evidence}" if evidence else ""
-        lines.append(f"    - 實證調整（人馬配搭分）{delta:+.1f} ← {adj.get('factor', '')}{tail}")
-    base, final = detail.get("base"), detail.get("final")
-    if isinstance(base, (int, float)) and isinstance(final, (int, float)) and abs(final - base) >= 0.05:
-        lines.append(f"    - 人馬配搭分軌跡: 基礎 {base:.1f} → 調整後 {final:.1f}")
-    if not adjustments:
-        lines.append("    - 實證調整: 無觸發（試閘／人馬往績／場館組合統計均未達加減分門檻）")
     return lines
 
 
@@ -809,7 +1032,7 @@ def _matrix_fact_lines(key: str, horse: dict, auto: dict) -> list[str]:
             ("試閘交代", _trial_anchor(data, facts_section), 180),
             ("走位消耗", _energy_summary(facts_section), 180),
         )
-    if key == "sectional":
+    if key == "pace_perf":
         return _compact_fact_lines(
             ("引擎與路程", _engine_distance_summary(data), 320),
             ("L400", _l400_anchor(horse, data), 80),
@@ -1027,17 +1250,92 @@ def _horse_positioning(horse: dict, auto: dict) -> str:
     return "保留"
 
 
-def _data_readout_lines(auto: dict) -> list[str]:
-    """Render the structured 數據判讀 rows as a scannable markdown block (AU)."""
-    rows = auto.get("data_readout") or []
+def _seven_d_summary_lines(auto: dict) -> list[str]:
+    """7D 矩陣一覽 digest：支柱／最弱環節／數據信心／總評，放喺數據判讀最頂。"""
+    gt = auto.get("grade_transparency") or {}
+    rows = [r for r in (gt.get("rows") or []) if isinstance(r, dict)]
     if not rows:
         return []
-    lines = ["#### 📊 數據判讀", ""]
-    for r in rows:
-        val = f" {r['value']}" if r.get("value") else ""
-        trend = f" — {r['trend']}" if r.get("trend") else ""
-        reason = f"（{r['reason']}）" if r.get("reason") else ""
-        lines.append(f"- {r.get('band', '➖')} **{r['label']}**{val}{trend}{reason}")
+    # 排名用貢獻（weight×score）；最弱用原始分，兩者都撇走 0 權重維度（如賽績線）
+    live = [r for r in rows if float(r.get("weight") or 0) > 0.001]
+    if not live:
+        return []
+    by_contrib = sorted(live, key=lambda r: float(r.get("contribution") or 0), reverse=True)
+    by_score = sorted(live, key=lambda r: float(r.get("score") or 60))
+
+    def cell(r):
+        return f"{r.get('label', '')} {float(r.get('score') or 60):.0f} {r.get('band', '➖')}"
+
+    pillars = "、".join(cell(r) for r in by_contrib[:2])
+    weakest = by_score[0]
+    weak_txt = cell(weakest) if float(weakest.get("score") or 60) < 60 else ""
+
+    # 數據信心：邊啲維度靠中性 fallback（無實測），明講
+    prov = auto.get("score_provenance") or {}
+    gaps = []
+    if str(prov.get("pace_figure_score", "")) in ("missing_neutral", "no_spread"):
+        gaps.append("段速實速（PF 未覆蓋）")
+    if str(prov.get("rating_score", "")) in ("missing_neutral", "class_proxy"):
+        gaps.append("官方 Rating（處女/未評分）")
+    conf = f"{len(live) - len(gaps)}/{len(live)} 維度有實測數據" + (
+        f"；靠代理/中性：{'、'.join(gaps)}" if gaps else "")
+
+    grade = auto.get("grade", "")
+    ability = float(auto.get("ability_score", 0) or 0)
+    rank = auto.get("rank", "")
+    lines = [
+        "#### 📊 數據判讀",
+        "",
+        f"- 🧭 **7D 綜合**：綜合戰力分 {ability:.1f}｜Grade {grade}｜排名 {rank}",
+        f"- 🟢 **主要支柱**：{pillars}（佔分最重）",
+    ]
+    if weak_txt:
+        lines.append(f"- 🔴 **最弱環節**：{weak_txt}")
+    lines.append(f"- 📶 **數據信心**：{conf}")
+    lines.append("")
+    return lines
+
+
+def _seven_d_matrix_digest_lines(auto: dict) -> list[str]:
+    """逐維一覽：每個 7D 維度一個標題行（分＋band）＋各 sub 分要點，分行易讀。
+    緊湊版——深層 derivation 留喺下面『7D 評分矩陣逐項拆解』。"""
+    reasoning = auto.get("matrix_reasoning") or {}
+    mscores = auto.get("matrix_scores") or {}
+    if not reasoning:
+        return []
+    out = ["**逐維一覽：**", ""]
+    for key, label in MATRIX_LABELS.items():
+        rb = reasoning.get(key)
+        if not isinstance(rb, dict):
+            continue
+        score = float(mscores.get(key, rb.get("score", 60)) or 60)
+        out.append(f"**{label}：{score:.1f} 分　{_band_label(score)}**")
+        comps = rb.get("components") or []
+        if comps:
+            for c in comps:
+                note = _clean_subscore_note(c.get("note", ""))
+                cl = c.get("label", "")
+                cv = float(c.get("score", 60) or 60)
+                out.append(f"- {cl} {cv:.0f}" + (f" ← {note}" if note else ""))
+        else:
+            # 單 leaf 維度（如場地適性）— 用判讀短句
+            txt = str(rb.get("text") or "").strip()
+            if txt:
+                out.append(f"- {txt}")
+        out.append("")
+    return out
+
+
+def _data_readout_lines(auto: dict) -> list[str]:
+    """Render the structured 數據判讀 block (AU): 7D 綜合 digest → 逐維一覽。
+    原始數據錨點已移除（2026-07-11，用戶要求）—— 原始事實已散落各 7D 維度嘅
+    『數據』錨點，唔需要喺呢度重覆一次。"""
+    summary = _seven_d_summary_lines(auto)
+    digest = _seven_d_matrix_digest_lines(auto)
+    if not summary and not digest:
+        return []
+    lines = list(summary) if summary else ["#### 📊 數據判讀", ""]
+    lines.extend(digest)
     lines.append("")
     return lines
 

@@ -8,16 +8,23 @@ MATRIX_FORMULAS = {
         ("form_score", 0.60),
         ("consistency_score", 0.40),
     ),
-    # distance_score removed from 段速與引擎 (2026-06-29): walk-forward backtest
-    # showed dropping it lifts good +0.6pp / champion +1.0pp OOS; weights
-    # renormalised onto sectional_score + trial (0.62/0.15 -> 0.805/0.195).
-    "sectional": (
-        ("sectional_score", 0.805),
-        ("trial_score", 0.195),
+    # 段速表現 (2026-07-10): 段速與引擎 (sectional 0.04535 = 0.805 sec + 0.195 trial)
+    # 同 段速實速 (pace_figure 0.14296) 合併為一個維度，總權重 0.18831。內部權重
+    # 係舊有效 leaf 權重嘅精確折算（0.14296/0.0365/0.0088 ÷ 0.18831）→ 排名逐匹
+    # 完全一致（702場 A/B 驗證 GGP/champ/box4 全部相同）。內部權重 sweep（p.85/.90/
+    # 1.0、s.25）全部兩窗唔贏 → 呢個折算比例就係局部最優。
+    # Rollback: 拆返 "sectional":(sec .805, trial .195) w=0.04535 + "pace_figure" w=0.14296。
+    "pace_perf": (
+        ("pace_figure_score", 0.759174),
+        ("sectional_score", 0.193864),
+        ("trial_score", 0.046962),
     ),
+    # 2026-07-11: 檔位形勢 淨化為純檔位/走位（pace_map 100%）。原本借用嘅 30%
+    # track_score 已全數歸還「場地適性」維度 —— 消除跨維度重複，track_score 而家
+    # 只喺一個維度出現，將來獨立升級唔使兩邊改。權重按代數對調（見 scoring 註）→
+    # 逐匹綜合分完全一致（rank-identical，702場驗證 max diff 0.0001）。
     "race_shape": (
-        ("pace_map_score", 0.70),
-        ("track_score", 0.30),
+        ("pace_map_score", 1.0),
     ),
     "jockey_trainer": (
         ("jockey_score", 0.28),
@@ -39,12 +46,6 @@ MATRIX_FORMULAS = {
     "form_line": (
         ("formline_score", 0.78),
         ("form_score", 0.22),
-    ),
-    # 8th dimension (2026-07-02): field-relative 實測段速 (L600 vs race benchmark)
-    # from racenet PuntingForm. Single leaf; the field-relative z is in
-    # _pace_figure_score. See scoring.MATRIX_WEIGHTS note for provenance/rollback.
-    "pace_figure": (
-        ("pace_figure_score", 1.0),
     ),
 }
 

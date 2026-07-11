@@ -68,8 +68,15 @@ def _parse_pf_token(tok: str) -> dict:
         "l600_time": _pf_num(r"Last600:\s*([-\d.]+)", tok),        # raw last-600m time (run-style confounded)
         "runner_time": _pf_num(r"Runner Time:\s*([-\d.]+)", tok),  # horse finishing time (s)
         "race_time_diff": _pf_num(r"Race Time:\s*([-\d.]+)", tok), # time vs race benchmark (adjusted)
+        # benchmark-adjusted split profile (2026-07-04): L800/L600/L400/L200 deltas
+        # form a par-fair energy-distribution across the run; L600 is the shipped
+        # pace_figure source, the rest are new (were discarded upstream till now).
+        "l800_delta": _pf_num(r"L800 Delta:\s*([-\d.]+)", tok),
         "l600_delta": _pf_num(r"L600 Delta:\s*([-\d.]+)", tok),    # L600 vs benchmark (adjusted)
-        "rt_rating": _pf_num(r"RT Rating:\s*([-\d.]+)", tok),      # racenet RT rating (if scraped)
+        "l400_delta": _pf_num(r"L400 Delta:\s*([-\d.]+)", tok),
+        "l200_delta": _pf_num(r"L200 Delta:\s*([-\d.]+)", tok),
+        "tempo_qrank": _pf_num(r"Tempo QRank:\s*([-\d.]+)", tok),  # within-field tempo quantile (0-1)
+        "rt_rating": _pf_num(r"RT Rating:\s*([-\d.]+)", tok),      # legacy; racenet has no per-run RT rating
         "early_runner_pace": _pf_str(r"Early Runner Pace:\s*([^.]+)\.", tok),
         "early_race_pace": _pf_str(r"Early Race Pace:\s*([^.]+)\.", tok),
     }
@@ -100,11 +107,15 @@ def _parse_formguide_pf_metrics(facts_path: Path) -> dict:
         if runs:
             def col(k):
                 return [r[k] for r in runs if r.get(k) is not None]
-            for k in ("race_time_diff", "l600_delta", "runner_time", "l600_time"):
+            for k in ("race_time_diff", "l800_delta", "l600_delta", "l400_delta",
+                      "l200_delta", "runner_time", "l600_time"):
                 vals = col(k)
                 if vals:
                     agg[f"{k}_avg"] = round(sum(vals) / len(vals), 3)
-                    agg[f"{k}_best"] = round(min(vals), 3)  # lower time/diff = better
+                    agg[f"{k}_best"] = round(min(vals), 3)  # lower time/diff = better (faster than benchmark)
+            qr = col("tempo_qrank")
+            if qr:
+                agg["tempo_qrank_avg"] = round(sum(qr) / len(qr), 4)
             rt = col("rt_rating")
             if rt:
                 agg["rt_rating_avg"] = round(sum(rt) / len(rt), 3)
@@ -116,9 +127,45 @@ def _parse_formguide_pf_metrics(facts_path: Path) -> dict:
     return out
 
 
+# T:/J: 同一行以「 | 」分隔（`T: Mick Price (LY: …) | J: Craig Williams (LY: …)`），
+# 所以錨點要係行首或「|」之後 — 用 ^ 會永遠 miss J:（2026-07-11 修）。
+_FG_JT_LY_RE = re.compile(
+    r"(?:^|\|)\s*(T|J):\s*([^(|\n]+?)\s*\(LY:\s*(\d+):(\d+)-(\d+)-(\d+)\)", re.M)
+
+
+def _parse_formguide_jt_ly(facts_path: Path) -> dict:
+    """騎師／練馬師「去年官方全季統計」（LY: 騎數:冠-亞-季），由 sibling Formguide
+    每匹馬塊抽出。任何騎師（包括鄉村）都有——係 curated rating DB（59 名）以外
+    嘅普及覆蓋層。Keyed by saddlecloth。2026-07-11 加入。"""
+    fg = facts_path.with_name(facts_path.name.replace("Facts", "Formguide"))
+    if not fg.exists():
+        return {}
+    try:
+        text = fg.read_text(encoding="utf-8")
+    except OSError:
+        return {}
+    out: dict = {}
+    headers = list(_FG_HORSE_HDR_RE.finditer(text))
+    for idx, hm in enumerate(headers):
+        body = text[hm.end(): headers[idx + 1].start() if idx + 1 < len(headers) else len(text)]
+        rec: dict = {}
+        for m in _FG_JT_LY_RE.finditer(body):
+            kind = "trainer_ly" if m.group(1) == "T" else "jockey_ly"
+            if kind in rec:
+                continue
+            rides = int(m.group(3))
+            wins, seconds, thirds = int(m.group(4)), int(m.group(5)), int(m.group(6))
+            rec[kind] = {"name": m.group(2).strip(), "rides": rides, "wins": wins,
+                         "places": wins + seconds + thirds}
+        if rec:
+            out[hm.group(1)] = rec
+    return out
+
+
 def build_logic_from_facts(facts_path: Path) -> dict:
     text = facts_path.read_text(encoding="utf-8")
     pf_by_horse = _parse_formguide_pf_metrics(facts_path)
+    jt_ly_by_horse = _parse_formguide_jt_ly(facts_path)
     race_number = _extract_race_number(facts_path.name, text)
     race_class, distance, prize = _extract_race_meta(facts_path, text)
     racecard_profiles = _load_racecard_profiles(facts_path, race_number)
@@ -179,6 +226,9 @@ def build_logic_from_facts(facts_path: Path) -> dict:
                 # (race_time_diff / l600_delta / rt_rating / paces). Stored for
                 # future feature-testing; not yet consumed by the scorer.
                 "pf_metrics": pf_by_horse.get(horse_num, {}),
+                # 騎師/練馬師去年官方全季統計（LY），普及覆蓋任何騎師（2026-07-11）
+                "jockey_ly": (jt_ly_by_horse.get(horse_num) or {}).get("jockey_ly"),
+                "trainer_ly": (jt_ly_by_horse.get(horse_num) or {}).get("trainer_ly"),
                 "last10_raw": _capture(block, r"Last 10 字串:\s*`?([^`\n]+)`?"),
                 "recent_form": _capture(block, r"近績序列解讀: `?([^`\n]+)`?"),
                 "career_record_line": _capture(block, r"生涯: ([^\n]+)"),

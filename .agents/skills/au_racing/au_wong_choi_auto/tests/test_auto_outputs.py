@@ -160,7 +160,14 @@ class AuAutoOutputTests(unittest.TestCase):
         neutral = _analyze(neutral_horse, _race_context())
         forgiven = _analyze(forgiven_horse, _race_context())
 
-        self.assertGreater(forgiven["feature_scores"]["consistency_score"], neutral["feature_scores"]["consistency_score"])
+        # 2026-07-10: 寬恕補償退出計分（A/B 移除零影響）→ 分數必須一樣，
+        # 但寬恕背景要以純顯示 note 交代。
+        self.assertEqual(
+            round(forgiven["feature_scores"]["consistency_score"], 2),
+            round(neutral["feature_scores"]["consistency_score"], 2),
+        )
+        display_notes = forgiven.get("stability_detail", {}).get("consistency", {}).get("display_notes", [])
+        self.assertTrue(any("寬恕" in note for note in display_notes))
 
     def test_verified_wet_runner_scores_better_on_heavy(self) -> None:
         verified = _analyze(_horse(), _race_context("Heavy 8"))

@@ -11,26 +11,62 @@ from typing import Optional
 
 def _parse_data_readout(block: str) -> Optional[list]:
     """Parse the '📊 數據判讀' markdown block into structured rows for the UI.
-    Each line: '- <band> **<label>**<value> — <trend>（<reason>）'."""
+
+    Supports the 2026-07-11 upgraded format (7D 綜合 digest + 逐維一覽) AND the
+    legacy raw-anchor format. UI renders each row as {band} {label} {value/trend}
+    with reason as tooltip, and prints the band string verbatim (any emoji OK).
+    New-format line shapes:
+      - <emoji> **<label>**：<value>              (7D 綜合 summary bullets)
+      **<維度>：<score> 分　<band> <word>**        (per-dimension header)
+      - <sub-label> <score> ← <note>              (per-dimension sub-score)
+    Legacy:
+      - <band> **<label>** <value> — <trend>（<reason>）
+    """
     section_m = re.search(r'數據判讀\s*\n+(.*?)(?:\n#### |\n## |\Z)', block, re.DOTALL)
     if not section_m:
         return None
     rows = []
-    for line in section_m.group(1).splitlines():
-        line = line.strip()
-        m = re.match(r'^-\s*(✅|➖|⚠️)\s*\*\*(.+?)\*\*\s*(.*)$', line)
-        if not m:
+    for raw in section_m.group(1).splitlines():
+        line = raw.strip()
+        if not line or line.startswith('**逐維一覽'):
             continue
-        band, label, rest = m.group(1), m.group(2).strip(), m.group(3).strip()
-        reason = ''
-        rm = re.search(r'（(.+?)）\s*$', rest)
-        if rm:
-            reason = rm.group(1).strip()
-            rest = rest[:rm.start()].strip()
-        value, trend = rest, ''
-        if '—' in rest:
-            value, trend = [p.strip() for p in rest.split('—', 1)]
-        rows.append({'band': band, 'label': label, 'value': value, 'trend': trend, 'reason': reason})
+
+        # legacy raw-anchor: '- <band> **<label>** <rest>'
+        m = re.match(r'^-\s*(✅|➖|⚠️)\s*\*\*(.+?)\*\*\s*(.*)$', line)
+        if m:
+            band, label, rest = m.group(1), m.group(2).strip(), m.group(3).strip()
+            reason = ''
+            rm = re.search(r'（(.+?)）\s*$', rest)
+            if rm:
+                reason = rm.group(1).strip()
+                rest = rest[:rm.start()].strip()
+            value, trend = rest, ''
+            if '—' in rest:
+                value, trend = [p.strip() for p in rest.split('—', 1)]
+            rows.append({'band': band, 'label': label, 'value': value, 'trend': trend, 'reason': reason})
+            continue
+
+        # 7D 綜合 summary bullet: '- <emoji> **<label>**：<value>'
+        m = re.match(r'^-\s*(\S+)\s*\*\*(.+?)\*\*[：:]\s*(.*)$', line)
+        if m:
+            rows.append({'band': m.group(1).strip(), 'label': m.group(2).strip(),
+                         'value': m.group(3).strip(), 'trend': '', 'reason': ''})
+            continue
+
+        # per-dimension header: '**<維度>：<score> 分　<band> <word>**'
+        m = re.match(r'^\*\*(.+?)[：:]\s*([\d.]+)\s*分\s*([✅➖⚠️❌]+)\s*(.*)\*\*$', line)
+        if m:
+            rows.append({'band': m.group(3).strip(), 'label': m.group(1).strip(),
+                         'value': f"{m.group(2)} 分", 'trend': m.group(4).strip(), 'reason': ''})
+            continue
+
+        # per-dimension sub-score: '- <sub-label> <score> ← <note>'
+        m = re.match(r'^-\s*(.+?)\s+([\d.]+)\s*(?:←\s*(.*))?$', line)
+        if m:
+            rows.append({'band': '·', 'label': m.group(1).strip(),
+                         'value': m.group(2), 'trend': '', 'reason': (m.group(3) or '').strip()})
+            continue
+
     return rows or None
 
 from models.race import (

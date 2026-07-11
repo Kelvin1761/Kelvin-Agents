@@ -29,7 +29,7 @@ OUTPUT_CONDITION_CSV = ARCHIVE_ROOT / "AU_Auto_Condition_Diagnostics.csv"
 
 MATRIX_KEYS = (
     "stability",
-    "sectional",
+    "pace_perf",
     "race_shape",
     "jockey_trainer",
     "class_weight",
@@ -39,7 +39,7 @@ MATRIX_KEYS = (
 
 MATRIX_LABELS = {
     "stability": "狀態與穩定性",
-    "sectional": "段速與引擎",
+    "pace_perf": "段速表現",
     "race_shape": "檔位形勢",
     "jockey_trainer": "騎練訊號",
     "class_weight": "級數與負重",
@@ -497,7 +497,7 @@ def summarize_archive(archive_root: Path, historical_results):
                 data = row["data"]
                 if key == "jockey_trainer" and not str(data.get("current_jockey_history_line") or "").strip():
                     missing_notes["jockey history missing"] += 1
-                if key == "sectional" and not str(data.get("sectional_trend_line") or "").strip():
+                if key == "pace_perf" and not str(data.get("sectional_trend_line") or "").strip():
                     missing_notes["sectional trend missing"] += 1
                 if key == "track" and not str(data.get("track_record_line") or "").strip():
                     missing_notes["track record missing"] += 1
