@@ -1032,6 +1032,13 @@ class RacingEngine:
         if bw:
             lines.append(bw)
 
+        # 急放紅旗（display-only）：≤7日 + 上仗大敗（≥6名）。歷史此組合上名率僅
+        # 6.6% vs 全體 24%（15賽日76樣本）。入分測試唔穩健（同 form 重複，過擬合），
+        # 只作提示。
+        l6 = re.findall(r"\d+", str(self.horse_data.get("last_6_finishes") or ""))
+        if days is not None and days <= 7 and l6 and int(l6[0]) >= 6:
+            lines.append(f"⚠️ 上仗大敗（{l6[0]}名）後{int(days)}日內急放，歷史此組合上名率偏低（約6.6%），須留神")
+
         # 傷病後復出：醫療欄有真事故（非「無事故」）＋今仗復出
         medical = self._text("medical_flags")
         has_incident = bool(medical) and "無醫療事故" not in medical and medical not in ("N/A", "")
