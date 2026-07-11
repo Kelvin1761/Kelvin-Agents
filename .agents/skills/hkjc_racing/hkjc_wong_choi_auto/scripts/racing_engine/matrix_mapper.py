@@ -20,10 +20,12 @@ MATRIX_FORMULAS = {
         ("jockey_score", 0.55),
         ("trainer_score", 0.45),
     ),
+    # 信心分（confidence_score）2026-07-11 移除：佢係「資料完整度」計量表，非初出
+    # 幾乎全部 83 分（近常數）、佔總分僅 0.10×0.0404≈0.4%，pit 回測移除後 5/6 指標
+    # 不變（good −0.7 屬 1 場噪音）→ 純噪音兼令報告難明。0.10 按比例撥返 risk/weight。
     "horse_health": (
-        ("risk_score", 0.55),
-        ("weight_score", 0.35),
-        ("confidence_score", 0.10),
+        ("risk_score", 0.611),
+        ("weight_score", 0.389),
     ),
     # margin_trend_score 已剔出計分（同 stability 逐仗輸距 credit 重複；
     # 2026-07-08 backtest：淨計 formline_strength 全套指標無倒退、gold/champ 升）。

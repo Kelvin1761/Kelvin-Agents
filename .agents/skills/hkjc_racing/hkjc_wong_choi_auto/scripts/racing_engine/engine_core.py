@@ -129,6 +129,7 @@ class RacingEngine:
             "race_shape_detail": getattr(self, "race_shape_detail", None),
             "trackwork_read": self._trackwork_interpretation(),
             "overseas_form_read": self._overseas_form_interpretation(),
+            "health_readout": self._health_readout(),
             "feature_scores": {key: round(feature_scores[key], 2) for key in FEATURE_KEYS},
             # Persist the derived sub-features that feed form_line/stability so the
             # backtest harness can faithfully reproduce production scoring (these
@@ -961,6 +962,97 @@ class RacingEngine:
         note = "已再綜合醫療紀錄、休賽日數同體重波幅，"
         return clip_score(score), note
 
+    # 休賽日 band —— 以 15 賽日 1753 個樣本嘅分佈定門檻（中位24 / p25=18 / p75=35 / p90=49），
+    # 唔用主觀數字。key=上限（含），標籤＝白話。
+    _LAYOFF_BANDS = (
+        (7, "急放上陣"),        # ≤7：極少（2%）
+        (20, "較密間隔"),       # 8-20：低於中位
+        (35, "正常間隔"),       # 21-35：主流（median 24）
+        (60, "短休後復出"),     # 36-60
+        (120, "較長休賽"),      # 61-120
+        (10**9, "長期休養後首戰"),  # >120：長休復出
+    )
+
+    def _layoff_band(self, days):
+        for hi, label in self._LAYOFF_BANDS:
+            if days <= hi:
+                return label
+        return "長期休養後首戰"
+
+    def _last_race_date(self):
+        """由 recent_6_detail「第1仗(DD/MM/YYYY …)」抽最近一仗日期 → 中文。"""
+        detail = self._text("recent_6_detail")
+        m = re.search(r"第1仗\((\d{2})/(\d{2})/(\d{4})", detail)
+        if not m:
+            return None
+        d, mo, y = m.group(1), m.group(2), m.group(3)
+        return f"{y}年{int(mo)}月{int(d)}日"
+
+    def _bodyweight_readout(self):
+        """今仗排位體重 vs 上仗 → 白話（seq 新→舊，seq[0]=今仗）。"""
+        seq = [int(x) for x in re.findall(r"\d{3,4}", self._text("weight_trend"))]
+        if len(seq) < 2:
+            return None
+        delta = seq[0] - seq[1]
+        span = max(seq) - min(seq)
+        a = abs(delta)
+        if delta >= 15:
+            word = f"體重較上仗增加{a}磅，屬明顯上升"
+        elif delta >= 8:
+            word = f"體重較上仗增加{a}磅，中度上升"
+        elif delta >= 3:
+            word = f"體重較上仗微升{a}磅"
+        elif delta <= -15:
+            word = f"體重較上仗下降{a}磅，屬明顯下降"
+        elif delta <= -8:
+            word = f"體重較上仗下降{a}磅，中度下降"
+        elif delta <= -3:
+            word = f"體重較上仗微降{a}磅"
+        else:
+            word = "體重與上仗相若"
+        # 波幅：>18lb 偏大（span p75≈18-25 為分界）
+        if span >= 19:
+            word += f"；近仗波幅{span}磅偏大"
+        return word
+
+    def _health_readout(self):
+        """馬匹健康白話判讀（display-only）：上次出賽日期＋休賽 band＋體重＋
+        傷後/長休＋長休×晨操 context。回傳 {lines, verdict}。"""
+        lines = []
+        days = parse_float(self._value("days_since_last") or self.horse_data.get("days_since_last"))
+        last_date = self._last_race_date()
+        if last_date and days is not None:
+            band = self._layoff_band(int(days))
+            lines.append(f"上次出賽：{last_date}")
+            lines.append(f"距今：{int(days)}日（{band}）")
+        elif days is not None:
+            lines.append(f"距今：{int(days)}日（{self._layoff_band(int(days))}）")
+
+        bw = self._bodyweight_readout()
+        if bw:
+            lines.append(bw)
+
+        # 傷病後復出：醫療欄有真事故（非「無事故」）＋今仗復出
+        medical = self._text("medical_flags")
+        has_incident = bool(medical) and "無醫療事故" not in medical and medical not in ("N/A", "")
+        if has_incident:
+            lines.append("醫療欄有紀錄，或屬傷病後復出，須留意復原情況")
+
+        # 長休 × 晨操 context（#6）：長休（>60日）要睇操練夠唔夠
+        tw = self._text("trackwork_digest") + self._text("trackwork_trainer")
+        if days is not None and days > 60:
+            strong = any(k in tw for k in ("快操", "試閘", "積極", "加強", "操練充足", "好過近績"))
+            weak = any(k in tw for k in ("放緩", "偏保守", "操練量少", "操練不足"))
+            if strong:
+                lines.append("復出前操練量充足，狀態有支持")
+            elif weak:
+                lines.append("長休後操練偏保守，狀態須觀察")
+            else:
+                lines.append("長休復出，宜對照晨操判斷備戰")
+
+        verdict = "；".join(lines[1:]) if len(lines) > 1 else (lines[0] if lines else "")
+        return {"lines": lines, "verdict": verdict}
+
     def _candidate_consistency_shadow_score(self):
         detail = self._consistency_shadow_detail()
         return detail["score"] if detail else None
@@ -1214,7 +1306,7 @@ class RacingEngine:
             "sectional": ("段速表現", ("speed_score",)),
             "race_shape": ("檔位與走位情境（不含步速）", ("race_shape_context_score",)),
             "trainer_signal": ("騎練訊號", ("jockey_score", "trainer_score")),
-            "horse_health": ("馬匹健康 / 新鮮感", ("risk_score", "weight_score", "confidence_score")),
+            "horse_health": ("馬匹健康 / 新鮮感", ("risk_score", "weight_score")),
             "form_line": ("賽績線", ("formline_strength_score",)),
             "class_advantage": ("級數優勢", ("class_score", "weight_score")),
         }
@@ -1668,12 +1760,20 @@ class RacingEngine:
                 band="✅" if (cmove == "降班" or rising) else "➖",
                 reason=reason)
         # (走位動量 row removed — low signal, per user feedback)
-        wt = self._value("weight_trend")
-        if present(wt):
-            span = re.search(r"波幅(\d+)\s*lb", str(wt))
-            direction = re.search(r"(急[升跌增減]|微[升跌增減]|穩定|平穩)", str(wt))
-            add("體重狀態", f"波幅{span.group(1)}lb" if span else "",
-                direction.group(1) if direction else "")
+        # 休賽：上次出賽日期 + 距今日數 + band（數據門檻）
+        days = parse_float(self._value("days_since_last") or self.horse_data.get("days_since_last"))
+        if days is not None and days > 0:
+            band = self._layoff_band(int(days))
+            last_date = self._last_race_date()
+            val = f"距今{int(days)}日" + (f"（上次{last_date}）" if last_date else "")
+            add("休賽", val, band,
+                band="✅" if band in ("正常間隔", "短休後復出") else ("⚠️" if band in ("較長休賽", "長期休養後首戰", "急放上陣") else "➖"))
+        # 體重狀態：白話（較上仗增/減N磅 + 波幅），取代舊「波幅/方向」端點行
+        bw = self._bodyweight_readout()
+        if bw:
+            trend_word = "明顯上升" if "明顯上升" in bw else ("明顯下降" if "明顯下降" in bw else ("波幅偏大" if "波幅" in bw and "偏大" in bw else ""))
+            add("體重狀態", bw.split("；")[0], trend_word,
+                band="⚠️" if trend_word in ("明顯上升", "明顯下降", "波幅偏大") else "➖")
         eng = self._value("engine_type")
         if present(eng):
             add("段速型態", str(eng).split("|")[0].strip(), "")

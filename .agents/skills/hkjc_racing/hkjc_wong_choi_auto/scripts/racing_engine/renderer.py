@@ -599,6 +599,12 @@ def _matrix_lines(horse: dict, auto: dict) -> list[str]:
                 lines.extend(f"    - {item}" for item in overseas.get("lines", []))
                 if overseas.get("verdict"):
                     lines.append(f"    - **判讀:** {overseas['verdict']}")
+        if key == "horse_health":
+            # 健康解讀：上次出賽日期＋休賽 band＋體重白話＋傷後/長休＋長休×晨操（display-only）
+            hr = auto.get("health_readout")
+            if isinstance(hr, dict) and hr.get("lines"):
+                lines.append("  - **健康解讀:**")
+                lines.extend(f"    - {item}" for item in hr["lines"])
         fact_lines = _matrix_fact_lines(key, horse)
         if key == "form_line":
             fact_lines = _formline_table_lines(horse) + fact_lines

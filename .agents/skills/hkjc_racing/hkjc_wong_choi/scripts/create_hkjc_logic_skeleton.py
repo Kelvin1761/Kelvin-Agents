@@ -325,31 +325,74 @@ import time
 
 # ── V4.2 Enrichment Parsers ──────────────────────────────────────────
 
-def parse_medical_flags(block):
-    """Scan race comments for medical events (口內有血, 喘鳴症, etc.)."""
-    med_keywords = ['口內有血', '喘鳴症', '流鼻血', '傷患', '跛行', '呼吸問題', '受傷']
+# 醫療 / 健康事故關鍵詞（擴充版）——分類覆蓋呼吸道、傷患、心臟、其他。
+# ⚠️ 舊版只得 7 個窄詞兼掃 Facts.md（實測零 incident 字眼），漏咗 2/3 事故
+# （賽績.md 有：氣管/痰/喘鳴/心律/失去平衡/鼻血…）。現擴詞 + 掃 賽績 往績短評。
+MEDICAL_KEYWORDS = {
+    '呼吸道': ['口內有血', '氣管', '有痰', '喘鳴', '流鼻血', '鼻血', '呼吸問題', '內窺鏡'],
+    '傷患': ['傷患', '跛行', '不良於行', '受傷', '扭傷', '骨折', '拉傷', '抽筋', '肌肉'],
+    '心臟': ['心律不正', '心律', '心房顫動', '心臟'],
+    '其他': ['不適', '手術', '感染'],  # 「失去平衡」屬走位事故非健康，交race_shape/reflector處理
+}
+# 例行 / 非事故噪音——命中即跳過（賽後常規檢查唔算健康風險）。
+MEDICAL_ROUTINE_NOISE = ['抽取樣本', '並無發現', '沒有發現', '無特別報告', '例行',
+                         '檢驗尿液', '無異常', '並無異常', '檢查正常']
+
+
+def parse_medical_flags(block, saiji_block=''):
+    """掃 Facts.md + 賽績.md 往績短評，抽真醫療/健康事故（剔例行噪音）。"""
     flags = []
-    # Look at each race's comment section
-    lines = block.split('\n')
+    seen = set()
+    lines = (str(block or '') + '\n' + str(saiji_block or '')).split('\n')
     for i, line in enumerate(lines):
-        for kw in med_keywords:
-            if kw in line:
-                # Try to find which race this belongs to
-                date_match = re.search(r'(\d{2}/\d{2}/\d{4})', line)
-                race_num = None
-                # Look backwards for race number context
-                for j in range(i, max(0, i-5), -1):
-                    rm = re.search(r'第(\d+)仗', lines[j])
-                    if rm:
-                        race_num = int(rm.group(1))
-                        break
-                flags.append({
-                    'keyword': kw,
-                    'race_num': race_num,
-                    'date': date_match.group(1) if date_match else None,
-                    'context': line.strip()[:80]
-                })
+        if any(noise in line for noise in MEDICAL_ROUTINE_NOISE):
+            continue  # 例行檢查，唔當事故
+        for category, kws in MEDICAL_KEYWORDS.items():
+            for kw in kws:
+                if kw in line:
+                    date_match = re.search(r'(\d{2}/\d{2}/\d{4})', line)
+                    date = date_match.group(1) if date_match else None
+                    key = (kw, date)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    race_num = None
+                    for j in range(i, max(0, i - 5), -1):
+                        rm = re.search(r'第(\d+)仗|\[(\d+)\]', lines[j])
+                        if rm:
+                            race_num = int(rm.group(1) or rm.group(2))
+                            break
+                    flags.append({
+                        'keyword': kw,
+                        'category': category,
+                        'race_num': race_num,
+                        'date': date,
+                        'context': line.strip()[:80],
+                    })
+                    break
     return flags
+
+
+def load_saiji_horse_block(facts_path, race_num, horse_name):
+    """讀 賽績.md 該馬 block（往績短評含健康/事故資料）。馬名做 key。"""
+    if not facts_path or not horse_name:
+        return ''
+    facts_dir = Path(facts_path).parent
+    candidates = sorted(facts_dir.glob(f"*Race {race_num} 賽績.md"))
+    if not candidates:
+        return ''
+    try:
+        content = candidates[0].read_text(encoding='utf-8')
+    except Exception:
+        return ''
+    name = str(horse_name).strip()
+    # 賽績.md 每匹 block 以「馬號: N」開頭，內含「馬名: NAME」
+    blocks = re.split(r'(?=馬號[:：]\s*\d+)', content)
+    for blk in blocks:
+        nm = re.search(r'馬名[:：]\s*(.+)', blk)
+        if nm and nm.group(1).strip() == name:
+            return blk
+    return ''
 
 
 def parse_finish_time_summary(block):
@@ -1277,8 +1320,18 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None, facts_path=
     nonce = 'SKEL_' + hashlib.md5(f"{name}_{time.time()}".encode('utf-8')).hexdigest()
 
     # ── V4.2 Enrichment ──
-    med_flags = parse_medical_flags(horse_block) if horse_block else []
-    med_str = '; '.join([f"第{f['race_num']}仗({f['date']}): ⚠️ {f['keyword']}" for f in med_flags]) if med_flags else '✅ 無醫療事故記錄'
+    # 醫療：Facts.md + 賽績.md 往績短評齊掃（賽績先係 incident 真源）。
+    saiji_block = load_saiji_horse_block(facts_path, race_num, name) if facts_path else ''
+    med_flags = parse_medical_flags(horse_block or '', saiji_block)
+    if med_flags:
+        bits = []
+        for f in med_flags:
+            loc = f"第{f['race_num']}仗" if f.get('race_num') else "往績"
+            dt = f"({f['date']})" if f.get('date') else ""
+            bits.append(f"{loc}{dt}: ⚠️ {f['category']}·{f['keyword']}")
+        med_str = '; '.join(bits)
+    else:
+        med_str = '✅ 無醫療事故記錄'
     finish_time = parse_finish_time_summary(horse_block) if horse_block else {}
     ft_str = finish_time.get('full_block', '偏差趨勢未找到')
     ft_adj_str = finish_time.get('adj_deviation', '')
