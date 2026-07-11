@@ -1762,10 +1762,9 @@ class RacingEngine:
             reason = "；".join([p for p in (cls_note, delta_txt, range_txt) if p])
             cmove = "降班" if "降班" in cls_note else ("升班" if "升班" in cls_note else "")
             value = f"今仗{cur_int}分" if cur_int is not None else self._seq_endpoints(rt)
-            rising = (cur_int is not None and last_rt is not None and cur_int > last_rt)
-            add("評分走勢", value, cmove or delta_tag,
-                band="✅" if (cmove == "降班" or rising) else "➖",
-                reason=reason)
+            # 評分／班次走勢係 handicapping 情境（降班、評分變動），但 rating 唔入
+            # 評分（實測入分會 regress）——故一律中性 ➖，避免標 ✅ 令人以為有加分。
+            add("評分走勢", value, cmove or delta_tag, band="➖", reason=reason)
         # (走位動量 row removed — low signal, per user feedback)
         # 休賽：上次出賽日期 + 距今日數 + band（數據門檻）
         days = parse_float(self._value("days_since_last") or self.horse_data.get("days_since_last"))
@@ -1912,10 +1911,12 @@ class RacingEngine:
         gear_read = self._gear_change_readable()
         if gear_read:
             removed_scored = "gear_removed" in self.reason_codes
+            # reason 用白話 value（唔用 raw gear_change，佢含 ASCII pipe 會漏入
+            # core_logic 觸發 NLG-002 假陽性）
             add("配備變動", gear_read["value"],
                 gear_read["trend"] + ("，騎練訊號 −3分" if removed_scored else ""),
                 band=("⚠️" if removed_scored else gear_read["band"]),
-                reason=gear_read["reason"])
+                reason=gear_read["value"])
         # 晨操 row 同晨操分析／狀態與穩定性共用 _trackwork_pattern 呢個單一判定，
         # 呢度只出 pattern 標籤＋賽日騎師參與＋一句原因；原始課數留返晨操分析度睇。
         tw_pattern = self._trackwork_pattern()
@@ -1963,7 +1964,9 @@ class RacingEngine:
             sents.append("各項數據趨勢偏中性，暫未見鮮明強弱訊號，臨場節奏與形勢將係關鍵。")
         if self._is_debut():
             sents.append("初出馬無正式賽績，以上以備戰及試閘數據作背景參考，須臨場驗證。")
-        return self._normalize_prose("".join(sents))
+        # 保險：清走任何殘餘 ASCII pipe（raw 欄漏入會觸發 NLG-002 假陽性）；
+        # 全形「｜」係賽績線敘述分隔，保留。
+        return self._normalize_prose("".join(sents)).replace(" | ", "；").replace("|", "；")
 
 
 
