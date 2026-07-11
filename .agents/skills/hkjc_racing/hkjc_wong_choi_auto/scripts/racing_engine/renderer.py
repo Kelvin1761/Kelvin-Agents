@@ -23,7 +23,7 @@ FEATURE_LABELS = {
     "weight_score": "負磅分",
     "consistency_score": "穩定性分",
     "risk_score": "風險分",
-    "confidence_score": "信心分",
+    "confidence_score": "資料完整度",
 }
 
 # 次序＝報告顯示次序（用戶要求：騎練訊號緊跟狀態與穩定性）
@@ -414,13 +414,13 @@ def _render_panorama(race: dict, verdict: dict, horses: dict, shadow_verdicts: d
         f"- 場次: 第 {race_number} 場",
         f"- 出馬數: {len(horses)}",
         f"- 檔位分較高: {_top_feature_horses(horses, 'draw_score')}",
-        f"- 信心分較高: {_top_feature_horses(horses, 'confidence_score')}",
+        f"- 資料完整度較高: {_top_feature_horses(horses, 'confidence_score')}",
         f"- 影子觀察: {_shadow_watch_summary(verdict)}",
         f"- Consistency Shadow: {_consistency_shadow_summary(shadow_verdicts.get('consistency_context'))}",
         "",
         "**📊 全場綜合戰力排名**",
         "",
-        f"| 排名 | 馬號 | 馬名 | {ABILITY_LABEL} | Grade | 信心分 | 風險分 | 情境標記 |",
+        f"| 排名 | 馬號 | 馬名 | {ABILITY_LABEL} | Grade | 資料完整度 | 風險分 | 情境標記 |",
         "|---:|---:|---|---:|---|---:|---:|---|",
         *[_ranking_row(item, horses) for item in verdict.get("ranking", [])],
     ]
@@ -538,7 +538,7 @@ def _render_blind_spots() -> list[str]:
         "---",
         "#### [第四部分] 分析盲區(緊隨第三部分)",
         "",
-        "**1. 資料完整度:** 缺失欄位以中性 60 處理，並透過信心分反映不確定性。",
+        "**1. 資料完整度:** 缺失欄位以中性 60 處理，並以資料完整度指標反映不確定性（不再計入評分）。",
         "**2. 段速含金量:** 段速由本地已抽取資料與矩陣綜合，未以單一數字直接定勝負。",
         f"**3. 排名邏輯:** 只按{ABILITY_LABEL}由高至低排序；檔位、健康、騎練、段速等訊號已在 7D 矩陣內反映，不再另設排序 tie-break。Grade 只作閱讀標籤。",
         "**4. 騎練樣本:** 人馬、騎練或海外騎師資料不足時，不會單靠名氣加分。",
@@ -707,7 +707,8 @@ def _formline_table_lines(horse: dict) -> list[str]:
         # 對手陣容強度（強組比例）——事實描述，補回逐場強組別嘅總覽（display-only）
         ratio_m = re.search(r"強組比例:\s*(\d+)\s*/\s*(\d+)", str(data.get("formline_strength") or ""))
         if ratio_m:
-            lines.insert(1, f"對手陣容強度: 近仗對手中 {ratio_m.group(1)}/{ratio_m.group(2)} 場屬強組")
+            # 官方「強組比例」= 強組對手數／仗數（一仗可遇多個強組對手，故可 >1）
+            lines.insert(1, f"對手陣容強度: 強組對手比例 {ratio_m.group(1)}/{ratio_m.group(2)}（強組對手數／仗數）")
     return lines
 
 
@@ -1169,7 +1170,7 @@ def _summary_banner(auto: dict, features: dict) -> str:
         parts.append(f"全場排名 `{rank}`")
     parts.extend(
         [
-            f"信心分 `{float(features.get('confidence_score', 60)):.1f}`",
+            f"資料完整度 `{float(features.get('confidence_score', 60)):.1f}`",
             f"風險分 `{float(features.get('risk_score', 60)):.1f}`",
         ]
     )
