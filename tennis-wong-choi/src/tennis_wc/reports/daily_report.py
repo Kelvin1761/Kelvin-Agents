@@ -914,7 +914,13 @@ def _market_upgrade_gate(market_key: str, model_status: str) -> dict:
             "tier": "MARKET_TRIAL",
             "reason": "settlement_supported_sample_building",
         }
-    if (history["avg_clv"] or 0) <= 0 or (history["roi"] or 0) < 0:
+    # CLV blocks only when NEGATIVE. Our "closing odds" are the last Sportsbet
+    # scrape, so when a line never moves CLV is exactly 0.0 — that is "no line
+    # movement information", not adverse evidence; requiring strictly-positive
+    # CLV made graduation depend on noise (total_sets sat at ROI +18% with
+    # avg_clv 0.0 and could never pass). ROI on settled shadow picks is the
+    # real gate.
+    if (history["avg_clv"] or 0) < 0 or (history["roi"] or 0) < 0:
         return {
             "banker_allowed": False,
             "core_allowed": False,
@@ -1325,7 +1331,15 @@ def _metadata_gap_summary_lines(rows: list[dict]) -> list[str]:
 
 
 _TIER_BLURB = {
-    combo_engine.TIER_BANKER: ("組合1 穩膽", "高命中、賠率 ~2.0-3.6；最穩主線。"),
+    # 穩膽 tier retired from the model-edge combo engine (Phase 3, 2026-07-12):
+    # its odds/hit band was unsatisfiable for favourites and model-edge parlays
+    # backtest negative anyway. The 穩膽 slot is the chalk chain section above
+    # (穩膽大熱串), which is tracked and settles in combo_tracker.
+    combo_engine.TIER_BANKER: (
+        "組合1 穩膽",
+        "呢欄已由「🎯 穩膽大熱串」取代（見上面）——市場大熱 ≤1.20 平注串，唔靠模型 edge；"
+        "模型 edge 組合經回測證實砌唔出高命中低賠組合。",
+    ),
     combo_engine.TIER_VALUE: ("組合2 價值膽（僅供參考）", "命中中等、賠率 ~2.5-5.5。"),
     combo_engine.TIER_HIGH: ("組合3 高倍率（僅供參考）", "長賠 5+。"),
     combo_engine.TIER_BOMB: ("組合X 火藥庫（僅供參考）", "穩腳 + 高 edge 爆冷腳，長賠。"),
@@ -3973,7 +3987,6 @@ def _component_label(name: str) -> str:
         "round_performance_edge": "相同圈數表現",
         "big_match_edge": "大賽抗壓表現",
         "fatigue_edge": "體能因素",
-        "injury_penalty": "傷患風險",
         "pressure_edge": "壓力位表現",
         "head_to_head_edge": "H2H 對戰",
     }

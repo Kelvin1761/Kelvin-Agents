@@ -7,20 +7,17 @@ class FatigueInjuryAgent(BaseAgent):
     name = "fatigue_injury"
 
     def review(self, feature_snapshot: dict, pricing: dict | None = None, filter_result: dict | None = None) -> dict:
-        selection_side = (pricing or {}).get("selection_side")
-        warnings = ["Injury/news status is UNKNOWN in current Stage 5 MVP."]
-        override = None
-        if selection_side in {"player_a", "player_b"}:
-            injury_risk = feature_snapshot.get(selection_side, {}).get("injury", {}).get("risk", "UNKNOWN")
-            if injury_risk in {"D", "E"}:
-                override = "NO_BET"
-                warnings.append("Selected player injury risk is D/E.")
+        # Injury override removed 2026-07-12 (Phase 3): no injury data source
+        # is wired (feature_builder hardcodes risk=UNKNOWN), so the old D/E
+        # NO_BET override could never fire. This agent now only states the
+        # honest data gap; fatigue itself is priced by the model's
+        # fatigue_edge nudge.
         return {
             "agent": self.name,
             "edge": "Neutral",
             "key_points": ["Fatigue and injury data are only read from structured snapshot fields."],
-            "warnings": warnings,
+            "warnings": ["Injury/news status is UNKNOWN — no injury data source is wired."],
             "confidence_adjustment": "downgrade",
             "stake_adjustment": "reduce",
-            "decision_override": override,
+            "decision_override": None,
         }

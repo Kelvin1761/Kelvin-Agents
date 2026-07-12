@@ -6,25 +6,6 @@ from dataclasses import dataclass
 from tennis_wc.features.elo import elo_probability
 
 
-# Display/diagnostic weights (used for the component breakdown shown in reports).
-# NOTE: these are NO LONGER a linear-average weighting. The combiner is a
-# logit-space model: a proven Elo backbone plus modest nudge adjustments so that
-# neutral (0.5) components contribute nothing instead of diluting strong signals.
-WEIGHTS = {
-    "surface_elo_edge": 0.22,
-    "overall_elo_edge": 0.10,
-    "serve_return_edge": 0.20,
-    "recent_form_edge": 0.10,
-    "opponent_rank_bucket_edge": 0.10,
-    "tournament_level_edge": 0.08,
-    "round_performance_edge": 0.05,
-    "big_match_edge": 0.05,
-    "pressure_edge": 0.06,
-    "head_to_head_edge": 0.03,
-    "fatigue_edge": 0.05,
-    "injury_penalty": 0.05,
-}
-
 # Backbone: the walk-forward-calibrated Elo blend (0.65 surface + 0.35 overall)
 # scores ~62% favourite accuracy on 11.5k historical matches on its own. It is
 # the trusted base probability; everything else only nudges it.
@@ -37,6 +18,8 @@ ELO_BACKBONE_WEIGHTS = {
 # component (0.5) adds 0. Gains are deliberately modest so secondary signals
 # adjust the Elo base rather than override it. serve/return carries the most
 # weight because hold/break is the strongest non-Elo match signal.
+# (injury_penalty removed 2026-07-12: no injury data source exists — the
+# component was permanently neutral with gain 0.0.)
 NUDGE_GAINS = {
     "serve_return_edge": 1.10,
     "recent_form_edge": 0.55,
@@ -47,8 +30,14 @@ NUDGE_GAINS = {
     "pressure_edge": 0.30,
     "head_to_head_edge": 0.45,
     "fatigue_edge": 0.30,
-    "injury_penalty": 0.0,
 }
+
+# Component weights as surfaced in reports/diagnostics. These are the ACTUAL
+# influence numbers — backbone shares for the Elo components, logit nudge gains
+# for the rest. (The old hand-picked "display weights" dict was decorative and
+# misranked factors in the report's 支持因素 lines, e.g. H2H shown at 0.03
+# while its real gain is 0.45; removed 2026-07-12.)
+WEIGHTS = {**ELO_BACKBONE_WEIGHTS, **NUDGE_GAINS}
 
 # Cap the total nudge so secondary signals cannot fully override the Elo base.
 _MAX_TOTAL_NUDGE = 1.20
@@ -261,7 +250,6 @@ def _component_probabilities(feature_snapshot: dict) -> list[Component]:
         components.append(Component("fatigue_edge", _clamp(0.5 + rest_diff * 0.015, 0.40, 0.60), WEIGHTS["fatigue_edge"], "Rest-days differential from match history"))
     else:
         components.append(Component("fatigue_edge", 0.5, WEIGHTS["fatigue_edge"], "Fatigue rest-days unavailable; neutralised", ("fatigue_unknown",)))
-    components.append(Component("injury_penalty", 0.5, WEIGHTS["injury_penalty"], "Injury/news data unavailable in Stage 4; neutralised", ("injury_unknown",)))
     return components
 
 
@@ -341,7 +329,6 @@ def _is_active_component(component: Component) -> bool:
         "missing_overall_elo",
         "missing_serve_return",
         "fatigue_unknown",
-        "injury_unknown",
         "round_unknown",
     }
     return not any(warning in inactive_warnings for warning in component.warnings)

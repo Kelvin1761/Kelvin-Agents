@@ -49,13 +49,9 @@ def apply_bet_filter(feature_snapshot: dict, pricing: dict) -> dict:
     if "odds_selection_mapping_failed" in errors:
         hard_no_bet_reasons.append("odds_selection_mapping_failed")
 
-    injury_risk = _injury_risk(feature_snapshot, pricing.get("selection_side"))
-    if injury_risk in {"D", "E"}:
-        hard_no_bet_reasons.append("injury_risk_hard_no_bet")
-    if injury_risk == "B":
-        risk_adjustments.append("injury_B")
-    if injury_risk == "C":
-        risk_adjustments.append("injury_C")
+    # Injury gates removed 2026-07-12 (Phase 3): no news/injury provider is
+    # wired, feature_builder hardcodes risk=UNKNOWN, so the old D/E hard gate
+    # and B/C de-staking could never fire — dead scaffolding, not safety.
     if any("low_sample" in warning for warning in warnings):
         risk_adjustments.append("low_sample")
     if any("stale" in warning for warning in warnings):
@@ -125,13 +121,6 @@ def apply_bet_filter(feature_snapshot: dict, pricing: dict) -> dict:
         "warnings": warnings,
         "errors": errors,
     }
-
-
-def _injury_risk(feature_snapshot: dict, selection_side: str | None) -> str:
-    if selection_side not in {"player_a", "player_b"}:
-        return "UNKNOWN"
-    injury = feature_snapshot.get(selection_side, {}).get("injury", {})
-    return injury.get("risk", "UNKNOWN")
 
 
 def _model_warnings(pricing: dict) -> set[str]:

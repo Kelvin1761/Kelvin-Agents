@@ -325,8 +325,13 @@ def classify_tier(combo: dict) -> str | None:
     # Value Bomb: a safe anchor leg + a value spike, longer odds.
     if odds >= 5.0 and min_leg >= 0.62 and avg_edge >= 0.08 and ev >= 0.10:
         return TIER_BOMB
-    if 1.9 <= odds <= 3.6 and hit >= 0.50 and min_leg >= 0.60 and ev > 0:
-        return TIER_BANKER
+    # 穩膽 is no longer assignable from model-edge combos (2026-07-12 Phase 3).
+    # The old band (1.9<=odds<=3.6 AND hit>=0.50 AND min_leg>=0.60) was
+    # self-contradictory for favourites — two 0.65-prob legs give hit 0.42 —
+    # so it fired on ~1 report day in 25, and model-edge parlays backtest at
+    # −8%/leg regardless. The real 穩膽 structure is the chalk chain (market
+    # favourites ≤1.20 parlayed, model used only as a veto), built in
+    # daily_report._chalk_combo_dicts and tracked as 穩膽大熱串.
     if 2.5 <= odds <= 5.5 and hit >= 0.33 and avg_edge >= 0.04 and ev >= 0.05:
         return TIER_VALUE
     if 5.0 <= odds <= 21.0 and hit >= 0.12 and ev >= 0.08:
