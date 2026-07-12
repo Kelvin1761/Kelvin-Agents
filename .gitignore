@@ -13,6 +13,8 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 *.egg-info/
+# HKJC 馬匹往績 scrape cache（可重生數據，唔入 git）
+.hkjc_cache/
 build/
 dist/
 venv/
