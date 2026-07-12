@@ -13,6 +13,11 @@ CONFIRMED_METADATA_PROVIDER = "curated_tournament_metadata"
 # is reliable; level can lag promotions/demotions, so this only fills gaps the
 # hand-verified curated list does not cover.
 TENNISDATA_METADATA_PROVIDER = "tennisdata_tournament_index"
+# Last-resort tier: Sportsbet's own competition names carry the circuit level
+# ("ATP Iasi Challenger", "ITF Spain Futures", "UTR Singles", "WTA Bastad
+# 125K"). Level/tour only — a name never proves the surface, so surface stays
+# None (honest) and the segment-risk discount for low tiers still applies.
+NAME_HEURISTIC_METADATA_PROVIDER = "competition_name_heuristic"
 
 
 def tennisdata_competition_meta(competition: str | None, tour: str | None) -> dict | None:
@@ -213,6 +218,50 @@ def confirmed_competition_meta(competition: str | None, tour: str | None = None)
     return None
 
 
+_NAME_LEVEL_RULES: tuple[tuple[str, str], ...] = (
+    # (regex on the competition name, resolved level) — precision first: these
+    # words are unambiguous circuit markers in Sportsbet naming.
+    (r"\bchallenger\b", "CHALLENGER"),
+    (r"\bitf\b|\bfutures\b", "ITF"),
+    (r"\butr\b", "UTR"),
+    (r"\b125k?\b", "125"),
+    (r"\bdavis cup\b|\bbillie jean king cup\b|\bunited cup\b|\bhopman cup\b|\blaver cup\b", "TEAM_EVENT"),
+)
+
+
+def is_doubles_competition(competition: str | None) -> bool:
+    """Doubles events must never enter the singles pipeline — the 'players' are
+    pair labels with no Elo/history, so every model read is junk."""
+    return bool(re.search(r"\bdoubles\b", competition or "", re.IGNORECASE))
+
+
+def sportsbet_name_competition_meta(competition: str | None, tour: str | None) -> dict | None:
+    """Resolve (tour, level) from unambiguous markers in the competition name.
+
+    Fallback tier AFTER the curated list and the tennis-data index: it mainly
+    catches the low-tier long tail (Challenger/ITF/UTR/125) that no curated
+    source covers. Never resolves doubles events, and never guesses surface.
+    """
+    if not competition or is_doubles_competition(competition):
+        return None
+    lowered = competition.lower()
+    level = next(
+        (lvl for pattern, lvl in _NAME_LEVEL_RULES if re.search(pattern, lowered)),
+        None,
+    )
+    if level is None:
+        return None
+    tour_norm = (tour or "").upper()
+    if tour_norm not in {"ATP", "WTA"}:
+        if re.search(r"\bwomen'?s?\b|\bladies\b|\bwta\b", lowered):
+            tour_norm = "WTA"
+        elif re.search(r"\bmen'?s?\b|\batp\b", lowered):
+            tour_norm = "ATP"
+        else:
+            tour_norm = "UNKNOWN"
+    return {"tour": tour_norm, "level": level, "surface": None}
+
+
 def backfill_confirmed_metadata_for_date(match_date: str) -> dict:
     raw_id = store_raw_response(
         CONFIRMED_METADATA_PROVIDER,
@@ -248,11 +297,17 @@ def backfill_confirmed_metadata_for_date(match_date: str) -> dict:
                 source_url = meta.source_url
             else:
                 td = tennisdata_competition_meta(name, match_tour)
-                if td is None:
-                    continue
-                resolved_tour, level, surface, indoor = td["tour"], td["level"], td["surface"], None
-                source = TENNISDATA_METADATA_PROVIDER
-                source_url = "tennis-data.co.uk historical seasons"
+                if td is not None:
+                    resolved_tour, level, surface, indoor = td["tour"], td["level"], td["surface"], None
+                    source = TENNISDATA_METADATA_PROVIDER
+                    source_url = "tennis-data.co.uk historical seasons"
+                else:
+                    nh = sportsbet_name_competition_meta(name, match_tour)
+                    if nh is None:
+                        continue
+                    resolved_tour, level, surface, indoor = nh["tour"], nh["level"], None, None
+                    source = NAME_HEURISTIC_METADATA_PROVIDER
+                    source_url = "sportsbet competition name"
             conn.execute(
                 """
                 INSERT INTO tournament_levels (

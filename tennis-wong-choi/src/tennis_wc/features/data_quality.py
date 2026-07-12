@@ -71,7 +71,14 @@ def validate_data_freshness(feature_snapshot: dict) -> dict:
     if isinstance(surface, dict):
         surface = surface.get("value")
     if not surface:
-        errors.append("missing tournament surface")
+        # Warning, not error: low-tier events (ITF/Challenger) often have no
+        # reliable surface source. The model degrades gracefully (surface Elo
+        # falls back to overall Elo) and segment risk already discounts these
+        # tiers — a hard error made every such match invalid, which is why
+        # ~85% of a typical slate died at "quality below 65" (2026-07-12 audit;
+        # Kelvin wants ITF/Challenger measurable, not auto-killed).
+        warnings.append("missing tournament surface")
+        warning_penalty += 10
     level = context.get("level", {})
     if isinstance(level, dict):
         level = level.get("value")

@@ -22,6 +22,10 @@ FEATURE_SET_VERSION = "stage3.v1"
 RELIABLE_TOURNAMENT_METADATA_SOURCES = {
     "curated_tournament_metadata",
     "tennisdata_tournament_index",
+    # Level/tour parsed from unambiguous circuit markers in Sportsbet's own
+    # competition names ("... Challenger", "ITF ...", "UTR", "125K"). Level is
+    # trustworthy; it never claims a surface (stored as NULL).
+    "competition_name_heuristic",
     "bsd_tennis",
     "espn",
     "statsperform",
@@ -396,11 +400,14 @@ def build_feature_snapshots_for_date(match_date: str) -> list[dict]:
 
 
 def build_sportsbet_feature_snapshots_for_date(match_date: str) -> list[dict]:
+    from tennis_wc.ingestion.confirmed_metadata import is_doubles_competition
+
     with get_connection() as conn:
         rows = conn.execute(
             """
-            SELECT DISTINCT m.id
+            SELECT DISTINCT m.id, t.name AS tournament_name
             FROM matches m
+            JOIN tournaments t ON t.id = m.tournament_id
             JOIN odds_snapshots o ON o.match_id = m.id
             WHERE m.match_date = ?
               AND o.source_provider = 'sportsbet'
@@ -408,4 +415,11 @@ def build_sportsbet_feature_snapshots_for_date(match_date: str) -> list[dict]:
             """,
             (match_date,),
         ).fetchall()
-    return [build_match_feature_snapshot(int(row["id"])) for row in rows]
+    # Doubles events must never enter the singles pipeline: the "players" are
+    # pair labels with no Elo/history, so every downstream read is junk (130
+    # doubles matches had produced 257 junk predictions before this filter).
+    return [
+        build_match_feature_snapshot(int(row["id"]))
+        for row in rows
+        if not is_doubles_competition(row["tournament_name"])
+    ]

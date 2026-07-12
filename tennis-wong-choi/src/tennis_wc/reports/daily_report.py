@@ -3,6 +3,7 @@ from __future__ import annotations
 from itertools import combinations
 import json
 import math
+import re
 from pathlib import Path
 
 from tennis_wc.betting import combos as combo_engine
@@ -1669,6 +1670,13 @@ _CHALK_MAX_ODDS = 1.20
 _CHALK_MIN_MODEL_PROB = 0.52
 _CHALK_MIN_CONFIDENCE = 65
 _CHALK_FLAT_STAKE_U = 1.0
+# The chalk backtest (tennis-data seasons) covers TOUR-LEVEL events only. Now
+# that Phase 2 lets ITF/Challenger matches score above the quality floor, keep
+# them out of the chalk chains until their own tracker record proves the
+# favourite-longshot edge exists down there too.
+_CHALK_EXCLUDED_COMPETITION_RE = re.compile(
+    r"\b(challenger|itf|futures|utr|doubles)\b", re.IGNORECASE
+)
 
 
 def _chalk_combo_legs(rows: list[dict]) -> list[dict]:
@@ -1676,6 +1684,8 @@ def _chalk_combo_legs(rows: list[dict]) -> list[dict]:
     best: dict[int, dict] = {}
     for r in rows:
         if str(r.get("market_key") or "") != "match_winner":
+            continue
+        if _CHALK_EXCLUDED_COMPETITION_RE.search(str(r.get("tournament_name") or "")):
             continue
         odds, mp = r.get("odds"), r.get("model_probability")
         if odds is None or mp is None:
