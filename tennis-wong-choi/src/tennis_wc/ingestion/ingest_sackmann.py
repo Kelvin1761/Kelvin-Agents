@@ -26,6 +26,12 @@ TML_PROVIDER_NAME = "tennismylife_history"
 TML_LOW_TIER_URLS = {
     "CHALLENGER": "https://stats.tennismylife.org/data/{year}_challenger.csv",
     "ATP_QUALI": "https://stats.tennismylife.org/data/atp_quali/{year}_atp_quali.csv",
+    # ATP tour-level main draws. OVERLAPS the Sackmann backbone, so these rows
+    # are inserted only when no jeff_sackmann row exists for the same player
+    # pair on the same tourney_date (cross-provider dedup) — this keeps tour
+    # history FRESH after the last Sackmann pull (frozen 2026-06-02; github
+    # unreachable) without double-counting matches in Elo/feature stats.
+    "ATP_MAIN": "https://stats.tennismylife.org/data/{year}.csv",
 }
 # Elo must consume both history backbones; elo_builder imports this.
 HISTORY_PROVIDERS = (PROVIDER_NAME, TML_PROVIDER_NAME)
@@ -84,8 +90,8 @@ def ingest_tml_low_tier_history(start_year: int, end_year: int, include_quali: b
     Sackmann backbone (that covers tour-level main draws only), so no
     double-counted matches enter the Elo pool.
     """
-    kinds = ["CHALLENGER"] + (["ATP_QUALI"] if include_quali else [])
-    imported = {"files": 0, "matches": 0, "player_rows": 0, "ranking_rows": 0, "errors": []}
+    kinds = ["CHALLENGER"] + (["ATP_QUALI"] if include_quali else []) + ["ATP_MAIN"]
+    imported = {"files": 0, "matches": 0, "player_rows": 0, "ranking_rows": 0, "skipped_duplicates": 0, "errors": []}
     for kind in kinds:
         for year in range(start_year, end_year + 1):
             url = TML_LOW_TIER_URLS[kind].format(year=year)
@@ -105,17 +111,30 @@ def ingest_tml_low_tier_history(start_year: int, end_year: int, include_quali: b
                 "match_history",
                 f"{kind}-{year}",
             )
-            stats = _ingest_rows("ATP", rows, raw_id, provider=TML_PROVIDER_NAME)
+            stats = _ingest_rows(
+                "ATP",
+                rows,
+                raw_id,
+                provider=TML_PROVIDER_NAME,
+                dedup_against_provider=PROVIDER_NAME if kind == "ATP_MAIN" else None,
+            )
             imported["files"] += 1
             imported["matches"] += stats["matches"]
             imported["player_rows"] += stats["player_rows"]
             imported["ranking_rows"] += stats["ranking_rows"]
+            imported["skipped_duplicates"] += stats.get("skipped_duplicates", 0)
     return imported
 
 
-def _ingest_rows(tour: str, rows: list[dict], raw_id: int, provider: str = PROVIDER_NAME) -> dict[str, int]:
+def _ingest_rows(
+    tour: str,
+    rows: list[dict],
+    raw_id: int,
+    provider: str = PROVIDER_NAME,
+    dedup_against_provider: str | None = None,
+) -> dict[str, int]:
     now = utc_now()
-    stats = {"matches": 0, "player_rows": 0, "ranking_rows": 0}
+    stats = {"matches": 0, "player_rows": 0, "ranking_rows": 0, "skipped_duplicates": 0}
     for row in rows:
         match_date = _parse_tourney_date(row.get("tourney_date"))
         if not match_date:
@@ -148,10 +167,36 @@ def _ingest_rows(tour: str, rows: list[dict], raw_id: int, provider: str = PROVI
         )
         stats["ranking_rows"] += _upsert_rank(winner_id, match_date, tour, row.get("winner_rank"), row.get("winner_rank_points"), raw_id, now, provider)
         stats["ranking_rows"] += _upsert_rank(loser_id, match_date, tour, row.get("loser_rank"), row.get("loser_rank_points"), raw_id, now, provider)
+        if dedup_against_provider and _history_pair_exists(dedup_against_provider, winner_id, loser_id, match_date):
+            stats["skipped_duplicates"] += 1
+            continue
         _insert_history_pair(tour, row, raw_id, winner_id, loser_id, match_date, now, provider)
         stats["matches"] += 1
         stats["player_rows"] += 2
     return stats
+
+
+def _history_pair_exists(provider: str, winner_id: int, loser_id: int, match_date: str) -> bool:
+    """True when another provider already recorded this player pair NEARBY —
+    cross-provider dedup so overlapping season files never double-count a
+    match in Elo/feature stats. The window is ±10 days (not exact-date)
+    because the two sources use different date conventions: Sackmann stamps
+    every match with the tournament START date, TML main files carry the
+    actual per-day match date (verified: AO 2026 = 13 distinct TML dates vs 1
+    Sackmann date; exact-date dedup let 1,027 tour matches through twice).
+    A genuinely repeated pairing within 10 days is far rarer than the
+    double-count this prevents."""
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT 1 FROM player_match_history
+            WHERE source_provider = ? AND player_id = ? AND opponent_id = ?
+              AND match_date BETWEEN date(?, '-10 days') AND date(?, '+10 days')
+            LIMIT 1
+            """,
+            (provider, winner_id, loser_id, match_date, match_date),
+        ).fetchone()
+    return row is not None
 
 
 def _insert_history_pair(tour: str, row: dict, raw_id: int, winner_id: int, loser_id: int, match_date: str, now: str, provider: str = PROVIDER_NAME) -> None:

@@ -86,13 +86,36 @@ def actual_total_games(conn, match_id: int) -> float | None:
 
 
 def _history_aces(conn, match_id: int, player_id: int) -> float | None:
-    meta = conn.execute("SELECT match_date FROM matches WHERE id = ?", (match_id,)).fetchone()
+    """Ace count from ingested season files, matched by OPPONENT within the
+    event window. History rows carry the tournament START date (Sackmann/TML
+    tourney_date convention) while matches.match_date is the actual day, so an
+    exact-date join almost never hit (only day-1 matches). Requiring the same
+    opponent within [-16d, +2d] pins the row to this specific match; the same
+    pairing recurring inside one window is rare enough to accept (closest date
+    wins)."""
+    meta = conn.execute(
+        "SELECT match_date, player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)
+    ).fetchone()
     if not meta:
         return None
+    if player_id == meta["player_a_id"]:
+        opponent_id = meta["player_b_id"]
+    elif player_id == meta["player_b_id"]:
+        opponent_id = meta["player_a_id"]
+    else:
+        return None
+    day = (meta["match_date"] or "")[:10]
+    if not day:
+        return None
     row = conn.execute(
-        "SELECT ace_count FROM player_match_history "
-        "WHERE player_id = ? AND ace_count IS NOT NULL AND substr(match_date,1,10) = ? LIMIT 1",
-        (player_id, (meta["match_date"] or "")[:10]),
+        """
+        SELECT ace_count FROM player_match_history
+        WHERE player_id = ? AND opponent_id = ? AND ace_count IS NOT NULL
+          AND match_date BETWEEN date(?, '-16 days') AND date(?, '+2 days')
+        ORDER BY ABS(julianday(match_date) - julianday(?))
+        LIMIT 1
+        """,
+        (player_id, opponent_id, day, day, day),
     ).fetchone()
     return float(row["ace_count"]) if row else None
 
