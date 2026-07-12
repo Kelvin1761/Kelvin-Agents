@@ -1690,6 +1690,64 @@ def _chalk_combo_legs(rows: list[dict]) -> list[dict]:
     return list(best.values())
 
 
+def _chalk_combo_dicts(rows: list[dict]) -> list[dict]:
+    """Deployable DISJOINT chalk chains for the combo tracker（tier 穩膽大熱串）.
+
+    The report section shows ranked (overlapping) candidate parlays; the
+    tracker records only the greedy disjoint chains — 3-leg first, then a
+    2-leg from the remainder — matching the structure the backtest validated,
+    at the flat stake. This gives the headline 穩膽 recommendation a settled
+    track record instead of being report-only."""
+    legs = _chalk_combo_legs(rows)
+    if len(legs) < 2:
+        return []
+    legs.sort(key=lambda r: -float(r["model_probability"]))
+    chains: list[list[dict]] = []
+    i = 0
+    while len(legs) - i >= 3:
+        chains.append(legs[i : i + 3])
+        i += 3
+    if len(legs) - i == 2:
+        chains.append(legs[i : i + 2])
+    out: list[dict] = []
+    for grp in chains:
+        odds = hit = 1.0
+        leg_dicts: list[dict] = []
+        for r in grp:
+            odds *= float(r["odds"])
+            hit *= float(r["model_probability"])
+            leg_dicts.append(
+                {
+                    "id": r.get("id"),
+                    "match_id": r.get("match_id"),
+                    "match_label": r.get("match_label"),
+                    "market_key": r.get("market_key"),
+                    "market_name": r.get("market_name"),
+                    "selection_name": r.get("selection_name"),
+                    "selection_side": r.get("selection_side"),
+                    "line": r.get("line"),
+                    "tier": "穩膽大熱串",
+                    "odds": r.get("odds"),
+                    "edge": r.get("edge"),
+                    "confidence": r.get("confidence"),
+                }
+            )
+        out.append(
+            {
+                "legs": leg_dicts,
+                "tier": "穩膽大熱串",
+                "combo_odds": round(odds, 4),
+                "adjusted_hit_probability": round(hit, 4),
+                "average_edge": None,
+                "adjusted_edge": None,
+                "min_confidence": min(int(r.get("confidence") or 0) for r in grp),
+                "adjusted_confidence": min(int(r.get("confidence") or 0) for r in grp),
+                "stake_units": _CHALK_FLAT_STAKE_U,
+            }
+        )
+    return out
+
+
 def _chalk_combo_lines(rows: list[dict]) -> list[str]:
     legs = _chalk_combo_legs(rows)
     lines = [
@@ -1949,6 +2007,9 @@ def banker_combinations_for_date(match_date: str) -> list[dict]:
     for tier in combo_engine._TIER_ORDER:
         for combo in result["tiers"].get(tier) or []:
             out.append(_combo_to_legacy_dict(combo, tier))
+    # Track the chalk chains too — the headline 穩膽 recommendation must accrue
+    # a settled record, not stay report-only.
+    out.extend(_chalk_combo_dicts(rows))
     return out
 
 

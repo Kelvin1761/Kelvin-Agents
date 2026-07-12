@@ -227,6 +227,41 @@ def test_render_banker_report_uses_nba_style_four_tiers_and_positive_ev():
     assert "Player One" in report and "Player Two" in report
 
 
+def test_chalk_combo_dicts_builds_disjoint_tracked_chains():
+    from tennis_wc.reports.daily_report import _chalk_combo_dicts
+
+    def chalk_row(match_id: int, name: str, odds: float, prob: float) -> dict:
+        row = _market_banker_row(match_id, name, odds, confidence=80)
+        row["model_probability"] = prob
+        return row
+
+    rows = [
+        chalk_row(1, "Fav One", 1.10, 0.90),
+        chalk_row(2, "Fav Two", 1.15, 0.85),
+        chalk_row(3, "Fav Three", 1.18, 0.80),
+        chalk_row(4, "Fav Four", 1.20, 0.75),
+        chalk_row(5, "Fav Five", 1.19, 0.70),
+        # Non-qualifiers must be excluded: odds above cap / low model prob.
+        chalk_row(6, "Too Long", 1.40, 0.90),
+        chalk_row(7, "No Opinion", 1.10, 0.50),
+    ]
+
+    combos = _chalk_combo_dicts(rows)
+
+    # 5 qualifying legs -> one 3-leg chain + one 2-leg chain, disjoint.
+    assert [len(c["legs"]) for c in combos] == [3, 2]
+    assert all(c["tier"] == "穩膽大熱串" for c in combos)
+    assert all(c["stake_units"] == 1.0 for c in combos)
+    seen: set[str] = set()
+    for combo in combos:
+        for leg in combo["legs"]:
+            assert leg["selection_name"] not in seen
+            seen.add(leg["selection_name"])
+    assert "Too Long" not in seen and "No Opinion" not in seen
+    # Strongest three favourites form the first chain.
+    assert {leg["selection_name"] for leg in combos[0]["legs"]} == {"Fav One", "Fav Two", "Fav Three"}
+
+
 def test_render_banker_report_excludes_untrusted_prop_legs(tmp_path, monkeypatch):
     from conftest import configure_test_db
 
