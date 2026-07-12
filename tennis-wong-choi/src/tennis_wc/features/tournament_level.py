@@ -20,7 +20,7 @@ def _rows(player_id: int, tournament_level: str, surface: str | None, as_of_date
     query = """
         SELECT *
         FROM player_match_history
-        WHERE player_id = ? AND tournament_level = ? AND match_date >= ? AND match_date < ?
+        WHERE player_id = ? AND upper(tournament_level) = upper(?) AND match_date >= ? AND match_date < ?
     """
     params: list = [player_id, tournament_level, start, end]
     if surface:

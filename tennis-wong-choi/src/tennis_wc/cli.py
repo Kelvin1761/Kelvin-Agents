@@ -21,7 +21,7 @@ from tennis_wc.ingestion.confirmed_metadata import backfill_confirmed_metadata_f
 from tennis_wc.ingestion.ingest_player_stats import ingest_player_stats
 from tennis_wc.ingestion.ingest_rankings import ingest_rankings
 from tennis_wc.ingestion.raw_response_store import store_raw_response
-from tennis_wc.ingestion.ingest_sackmann import ingest_sackmann_history
+from tennis_wc.ingestion.ingest_sackmann import ingest_sackmann_history, ingest_tml_low_tier_history
 from tennis_wc.ingestion.ingest_tennismylife import ingest_tennismylife_results
 from tennis_wc.ingestion.ingest_tournaments import ingest_tournaments
 from tennis_wc.betting.bet_filter import apply_bet_filter
@@ -146,6 +146,14 @@ def fetch_player_stats(args: argparse.Namespace) -> None:
 def bootstrap_sackmann_history(args: argparse.Namespace) -> None:
     tours = args.tours.split(",") if args.tours else None
     _print_json(ingest_sackmann_history(args.start_year, args.end_year, tours))
+
+
+def bootstrap_lowtier_history(args: argparse.Namespace) -> None:
+    _print_json(
+        ingest_tml_low_tier_history(
+            args.start_year, args.end_year, include_quali=not args.no_quali
+        )
+    )
 
 
 def ingest_tennismylife(args: argparse.Namespace) -> None:
@@ -417,11 +425,19 @@ def run_daily(args: argparse.Namespace) -> None:
         except Exception as exc:
             source_errors.append({"source": "metadata_backfill", "error": str(exc)})
     else:
+        current_year = int(args.date[:4])
         for label, step in (
             ("tournaments", lambda: ingest_tournaments(args.date, args.date)),
             ("rankings_atp", lambda: ingest_rankings("ATP", args.date)),
             ("rankings_wta", lambda: ingest_rankings("WTA", args.date)),
             ("history", lambda: ingest_default_history(args.date)),
+            # TML challenger/quali season files are live-updated: re-pull the
+            # current year daily (upsert dedup) so Challenger players keep a
+            # fresh history, then rebuild Elo so today's ratings include it
+            # (previously Elo only advanced when build-sackmann-elo was run by
+            # hand — ratings were frozen at the last manual build).
+            ("history_lowtier", lambda: ingest_tml_low_tier_history(current_year, current_year)),
+            ("elo_rebuild", lambda: build_sackmann_elo()),
             ("upcoming_matches", lambda: ingest_upcoming_matches(args.date)),
             ("odds", lambda: ingest_odds(args.date)),
             ("event_markets", lambda: enrich_sportsbet_event_markets(args.date)),
@@ -556,6 +572,12 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--end-year", required=True, type=int)
     p.add_argument("--tours", default="ATP,WTA")
     p.set_defaults(func=bootstrap_sackmann_history)
+
+    p = sub.add_parser("bootstrap-lowtier-history")
+    p.add_argument("--start-year", required=True, type=int)
+    p.add_argument("--end-year", required=True, type=int)
+    p.add_argument("--no-quali", action="store_true")
+    p.set_defaults(func=bootstrap_lowtier_history)
 
     p = sub.add_parser("ingest-tennismylife-results")
     p.add_argument("--date")
