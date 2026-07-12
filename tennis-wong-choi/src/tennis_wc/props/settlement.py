@@ -141,6 +141,11 @@ def _actual_for(conn, p) -> float | None:
 
 
 def settle_props(conn) -> dict:
+    # Legacy label migration: prop_tracker used WIN/LOSS while every other
+    # tracker uses WON/LOST. Converge idempotently so cross-table stats need
+    # only one vocabulary (also fixes rows written by machines on old code).
+    conn.execute("UPDATE prop_tracker SET result_status='WON' WHERE result_status='WIN'")
+    conn.execute("UPDATE prop_tracker SET result_status='LOST' WHERE result_status='LOSS'")
     pending = conn.execute("SELECT * FROM prop_tracker WHERE result_status = 'PENDING'").fetchall()
     graded = 0
     for p in pending:
@@ -153,7 +158,7 @@ def settle_props(conn) -> dict:
         conn.execute(
             "UPDATE prop_tracker SET result_status=?, actual_value=?, profit_loss_units=?, "
             "settled_at=?, updated_at=? WHERE id=?",
-            ("WIN" if won else "LOSS", actual, round(pl, 4), utc_now(), utc_now(), p["id"]),
+            ("WON" if won else "LOST", actual, round(pl, 4), utc_now(), utc_now(), p["id"]),
         )
         graded += 1
     conn.commit()
@@ -166,7 +171,7 @@ def settle_props(conn) -> dict:
 def prop_roi_report(conn, value_only: bool = True) -> dict:
     """Realised ROI over settled BET props (is_value), segmented by market family
     and side. value_only=False includes scorecard-only (stake 0) rows too."""
-    where = "result_status IN ('WIN','LOSS') AND stake_units > 0"
+    where = "result_status IN ('WON','LOST') AND stake_units > 0"
     if value_only:
         where += " AND is_value = 1"
     rows = conn.execute(f"SELECT * FROM prop_tracker WHERE {where}").fetchall()
@@ -175,7 +180,7 @@ def prop_roi_report(conn, value_only: bool = True) -> dict:
         n = len(rs)
         if not n:
             return {"settled": 0, "wins": 0, "hit_rate": None, "staked": 0.0, "pnl": 0.0, "roi": None}
-        wins = sum(1 for r in rs if r["result_status"] == "WIN")
+        wins = sum(1 for r in rs if r["result_status"] == "WON")
         staked = sum((r["stake_units"] or 0.0) for r in rs)
         pnl = sum((r["profit_loss_units"] or 0.0) for r in rs)
         return {"settled": n, "wins": wins, "hit_rate": round(wins / n, 4),
@@ -213,7 +218,7 @@ def model_vs_market_scorecard(conn) -> dict:
     predicted-prob bucket vs realised hit."""
     rows = conn.execute(
         "SELECT model_prob, market_prob_fair, result_status FROM prop_tracker "
-        "WHERE result_status IN ('WIN','LOSS') AND model_prob IS NOT NULL AND market_prob_fair IS NOT NULL"
+        "WHERE result_status IN ('WON','LOST') AND model_prob IS NOT NULL AND market_prob_fair IS NOT NULL"
     ).fetchall()
     n = len(rows)
     if not n:
@@ -226,7 +231,7 @@ def model_vs_market_scorecard(conn) -> dict:
     m_brier = mk_brier = m_ll = mk_ll = 0.0
     cal = {}
     for r in rows:
-        y = 1.0 if r["result_status"] == "WIN" else 0.0
+        y = 1.0 if r["result_status"] == "WON" else 0.0
         mp, kp = clamp(r["model_prob"]), clamp(r["market_prob_fair"])
         m_brier += (mp - y) ** 2
         mk_brier += (kp - y) ** 2

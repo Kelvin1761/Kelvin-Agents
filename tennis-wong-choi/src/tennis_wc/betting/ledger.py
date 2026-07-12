@@ -403,6 +403,61 @@ def settle_bets_for_date(match_date: str, auto_refresh: bool = True) -> dict:
     }
 
 
+def pending_settlement_dates(before_date: str, lookback_days: int = 30) -> list[str]:
+    """Distinct past match dates that still hold PENDING tracker/ledger rows."""
+    from datetime import date, timedelta
+
+    _ensure_tracking_schema()
+    cutoff = (date.fromisoformat(before_date) - timedelta(days=lookback_days)).isoformat()
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT DISTINCT match_date FROM (
+                SELECT match_date FROM clv_tracker WHERE result_status = 'PENDING'
+                UNION SELECT match_date FROM combo_tracker WHERE result_status = 'PENDING'
+                UNION SELECT match_date FROM prop_tracker WHERE result_status = 'PENDING'
+                UNION SELECT m.match_date
+                FROM bet_ledger b JOIN matches m ON m.id = b.match_id
+                WHERE b.status = 'PENDING'
+            )
+            WHERE match_date < ? AND match_date >= ?
+            ORDER BY match_date
+            """,
+            (before_date, cutoff),
+        ).fetchall()
+    return [row["match_date"] for row in rows]
+
+
+def settle_pending_backlog(before_date: str, lookback_days: int = 30, max_dates: int = 10) -> dict:
+    """Sweep past dates that still have PENDING rows: fetch results, sync and
+    settle every tracker for each date, then grade props globally.
+
+    run-daily calls this directly so settlement/recording no longer depends on
+    the launchd wrapper being healthy — the 2026-06-19..07-08 tracker gap came
+    from that coupling (scheduler died, so nothing synced or settled).
+    """
+    dates = pending_settlement_dates(before_date, lookback_days)
+    summary: dict = {"dates": {}, "skipped_dates": dates[max_dates:]}
+    for match_date in dates[:max_dates]:
+        try:
+            result = settle_bets_for_date(match_date)
+            summary["dates"][match_date] = {
+                "settled": result.get("settled"),
+                "tracker_settled": (result.get("tracker_settlement") or {}).get("settled"),
+                "combo_settled": (result.get("combo_settlement") or {}).get("settled"),
+            }
+        except Exception as exc:  # noqa: BLE001 - one bad date must not stop the sweep
+            summary["dates"][match_date] = {"error": str(exc)}
+    try:
+        from tennis_wc.props.settlement import settle_props
+
+        with get_connection() as conn:
+            summary["props"] = settle_props(conn)
+    except Exception as exc:  # noqa: BLE001
+        summary["props"] = {"error": str(exc)}
+    return summary
+
+
 def settle_clv_tracker_for_date(match_date: str) -> dict:
     _ensure_tracking_schema()
     now = utc_now()

@@ -32,6 +32,7 @@ from tennis_wc.betting.ledger import (
     record_bet as record_bet_entry,
     review_date as review_date_entry,
     settle_bets_for_date,
+    settle_pending_backlog,
     sync_clv_tracker_for_date,
     sync_combo_tracker_for_date,
     tier_roi_summary,
@@ -305,6 +306,14 @@ def settle_bets(args: argparse.Namespace) -> None:
     _print_json(settle_bets_for_date(args.date))
 
 
+def settle_backlog(args: argparse.Namespace) -> None:
+    _print_json(
+        settle_pending_backlog(
+            args.date, lookback_days=args.lookback_days, max_dates=args.max_dates
+        )
+    )
+
+
 def sync_clv_tracker(args: argparse.Namespace) -> None:
     _print_json(sync_clv_tracker_for_date(args.date))
 
@@ -392,6 +401,15 @@ def run_daily(args: argparse.Namespace) -> None:
     provider_healthcheck(args)
     source_errors = []
     clear_pipeline_source_errors(args.date)
+    # Settle any past dates still holding PENDING tracker rows BEFORE today's
+    # report, so the prop scorecard/ROI blocks reflect the freshest sample.
+    # Kept inside run-daily (not only the scheduler wrapper) so a manual run
+    # also records + settles — the 06-19..07-08 tracking gap must not recur.
+    settlement_backlog: dict = {}
+    try:
+        settlement_backlog = settle_pending_backlog(args.date)
+    except Exception as exc:  # noqa: BLE001
+        source_errors.append({"source": "settlement_backlog", "error": str(exc)})
     if args.mvp_snapshot:
         os.environ["DATA_MAX_STALENESS_MINUTES_ODDS"] = str(24 * 60)
         try:
@@ -454,6 +472,17 @@ def run_daily(args: argparse.Namespace) -> None:
             }
         )
     report_path = generate_daily_report(args.date)
+    # Record today's recommendations in the trackers as part of the pipeline
+    # itself. Previously only the scheduler wrapper did this, so manual runs
+    # left no CLV/combo rows behind (nothing to settle or measure later).
+    tracker_sync: dict = {}
+    try:
+        tracker_sync = {
+            "clv": sync_clv_tracker_for_date(args.date),
+            "combo": sync_combo_tracker_for_date(args.date),
+        }
+    except Exception as exc:  # noqa: BLE001
+        source_errors.append({"source": "tracker_sync", "error": str(exc)})
     _print_json(
         {
             "date": args.date,
@@ -464,6 +493,8 @@ def run_daily(args: argparse.Namespace) -> None:
             "analysis_dir": str(analysis_output_dir(args.date)),
             "report_path": str(report_path),
             "source_errors": source_errors,
+            "settlement_backlog": settlement_backlog,
+            "tracker_sync": tracker_sync,
             "stage": "7",
             "mode": "mvp_snapshot" if args.mvp_snapshot else "live_full",
         }
@@ -615,6 +646,12 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("settle-bets")
     p.add_argument("--date", required=True)
     p.set_defaults(func=settle_bets)
+
+    p = sub.add_parser("settle-backlog")
+    p.add_argument("--date", required=True, help="Settle PENDING rows on dates before this one.")
+    p.add_argument("--lookback-days", type=int, default=30)
+    p.add_argument("--max-dates", type=int, default=10)
+    p.set_defaults(func=settle_backlog)
 
     p = sub.add_parser("sync-clv-tracker")
     p.add_argument("--date", required=True)

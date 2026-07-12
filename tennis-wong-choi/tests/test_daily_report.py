@@ -217,7 +217,9 @@ def test_render_banker_report_uses_nba_style_four_tiers_and_positive_ev():
 
     report = render_banker_report("2026-06-03", rows)
 
-    assert "NBA Wong Choi 式四線" in report
+    # 4d7110f demoted the value/high tiers: the headline is now the prop-first
+    # strategy banner, but the four tier sections still render (reference-only).
+    assert "策略重心：Player Props" in report
     assert "組合1 穩膽" in report
     assert "組合X 火藥庫" in report
     # The combo must be reported with a +EV figure and a half-Kelly stake.
