@@ -989,12 +989,18 @@ class RacingEngine:
         return f"{y}年{int(mo)}月{int(d)}日"
 
     def _bodyweight_readout(self):
-        """今仗排位體重 vs 上仗 → 白話（seq 新→舊，seq[0]=今仗）。"""
+        """今仗排位體重 vs 上仗 → 白話（seq 新→舊，seq[0]=今仗）。
+        兩個唔同概念要分清，唔好撞（用戶反映『相若又話波幅大』矛盾）：
+          ① 今仗 vs 上仗（點對點）→ 相若／增／減
+          ② 近仗走勢（多仗）→ 分「穩步升／跌」（單向趨勢）同「上落較大」（亂）：
+             用 span vs |淨變幅| 區分——span≈淨變幅＝單向趨勢（唔算不穩），
+             span 遠大於淨變幅＝真・亂上落先叫波幅大。"""
         seq = [int(x) for x in re.findall(r"\d{3,4}", self._text("weight_trend"))]
         if len(seq) < 2:
             return None
-        delta = seq[0] - seq[1]
-        span = max(seq) - min(seq)
+        delta = seq[0] - seq[1]           # 今 vs 上
+        net = seq[0] - seq[-1]            # 今 vs 最舊（淨走勢）
+        span = max(seq) - min(seq)        # 全段幅度
         a = abs(delta)
         if delta >= 15:
             word = f"體重較上仗增加{a}磅，屬明顯上升"
@@ -1010,9 +1016,15 @@ class RacingEngine:
             word = f"體重較上仗微降{a}磅"
         else:
             word = "體重與上仗相若"
-        # 波幅：>18lb 偏大（span p75≈18-25 為分界）
+        # 近仗走勢（只喺幅度夠大先講）：
         if span >= 19:
-            word += f"；近仗波幅{span}磅偏大"
+            erratic = span - abs(net)     # 亂度＝總幅度扣淨走勢
+            if abs(net) >= 15 and erratic <= 10:
+                # 單向趨勢（穩步升／跌），唔算不穩
+                word += f"；近{len(seq)}仗{'穩步回升' if net > 0 else '持續轉輕'}（{seq[-1]}→{seq[0]}磅）"
+            elif erratic >= 15:
+                # 真・上落不定
+                word += f"；近{len(seq)}仗體重上落較大（波幅{span}磅），狀態欠穩定"
         return word
 
     def _health_readout(self):
@@ -1775,12 +1787,11 @@ class RacingEngine:
             # 正常休息唔係 edge：只有風險 band（急放／長休）標 ⚠️，其餘中性 ➖，冇 ✅
             add("休賽", val, band,
                 band="⚠️" if band in ("較長休賽", "長期休養後首戰", "急放上陣") else "➖")
-        # 體重狀態：白話（較上仗增/減N磅 + 波幅），取代舊「波幅/方向」端點行
+        # 體重狀態：整句白話（今仗vs上仗 ＋ 近仗走勢），唔拆開避免「相若／波幅大」讀落矛盾。
         bw = self._bodyweight_readout()
         if bw:
-            trend_word = "明顯上升" if "明顯上升" in bw else ("明顯下降" if "明顯下降" in bw else ("波幅偏大" if "波幅" in bw and "偏大" in bw else ""))
-            add("體重狀態", bw.split("；")[0], trend_word,
-                band="⚠️" if trend_word in ("明顯上升", "明顯下降", "波幅偏大") else "➖")
+            concerning = any(k in bw for k in ("明顯上升", "明顯下降", "上落較大", "狀態欠穩定"))
+            add("體重狀態", bw, "", band="⚠️" if concerning else "➖")
         eng = self._value("engine_type")
         if present(eng):
             add("段速型態", str(eng).split("|")[0].strip(), "")
