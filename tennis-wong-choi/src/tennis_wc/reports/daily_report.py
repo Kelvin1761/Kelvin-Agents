@@ -14,7 +14,7 @@ from tennis_wc.betting.staking import kelly_stake_units
 from tennis_wc.config import get_settings
 from tennis_wc.database.db import get_connection
 from tennis_wc.features.common import utc_now
-from tennis_wc.features.market import implied_probability, remove_vig_two_way
+from tennis_wc.features.market import implied_probability
 from tennis_wc.modelling import market_models
 from tennis_wc.modelling import set_distribution
 from tennis_wc.ingestion.sportsbet_fixture_mapping import sportsbet_competition_meta
@@ -478,11 +478,18 @@ def _group_market_rows(rows: list[dict]) -> dict[tuple, list[dict]]:
 
 
 def _no_vig_probabilities(rows: list[dict]) -> dict[int, float]:
-    if len(rows) != 2:
+    """Proportional de-vig across a group of mutually exclusive selections.
+
+    Was 2-way only, which left every multiway market (e.g. full-match Set
+    Betting: 4 outcomes) with no fair price -> edge None -> never shadow
+    tracked. For 2 selections this is identical to remove_vig_two_way."""
+    if len(rows) < 2:
         return {}
     implied = [implied_probability(float(row["odds"])) for row in rows]
-    no_vig = remove_vig_two_way(implied[0], implied[1])
-    return {int(rows[0]["id"]): no_vig[0], int(rows[1]["id"]): no_vig[1]}
+    total = sum(implied)
+    if total <= 0:
+        return {}
+    return {int(row["id"]): imp / total for row, imp in zip(rows, implied)}
 
 
 def _price_market_selection(row: dict, prediction_row: dict | None, no_vig_probability: float | None) -> dict:
