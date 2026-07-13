@@ -44,7 +44,7 @@ def _norm(s: str) -> str:
 def _match_meta(conn, match_id: int):
     return conn.execute(
         """
-        SELECT m.id, m.player_a_id, m.player_b_id, m.match_date,
+        SELECT m.id, m.player_a_id, m.player_b_id, m.match_date, m.tour,
                pa.name AS a_name, pb.name AS b_name,
                (SELECT tl.surface FROM tournament_levels tl
                  WHERE tl.tournament_id = m.tournament_id AND tl.surface IS NOT NULL
@@ -55,6 +55,24 @@ def _match_meta(conn, match_id: int):
         """,
         (match_id,),
     ).fetchone()
+
+
+def _aces_gradeable(tour: str | None) -> bool:
+    """Only ATP ace props can currently be graded: actual ace counts come from
+    the TML/Sackmann season files (ATP only — 41 of 43 stuck-PENDING props were
+    WTA aces) and result score_json carries no ace fields. Games props are
+    gradeable for BOTH tours (score_json games coverage). Value bets must never
+    be surfaced on a market we cannot settle — ungradeable props stay priced
+    and logged (stake 0) so they can settle retroactively if a source appears."""
+    return str(tour or "").upper() == "ATP"
+
+
+def _strip_value(tw: "ace_model.TwoWayProp") -> "ace_model.TwoWayProp":
+    tw.value_side = None
+    tw.value_odds = None
+    tw.edge = 0.0
+    tw.ev = min(float(tw.ev or 0.0), 0.0)
+    return tw
 
 
 def _rows_for_date(conn, match_date: str):
@@ -175,6 +193,9 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
             board.ladder_legs = ace_model.price_ace_legs(
                 conn, mid, meta["player_a_id"], meta["player_b_id"],
                 meta["match_date"], meta["surface"], ladder[mid])
+            if not _aces_gradeable(meta["tour"]):
+                for lg in board.ladder_legs:
+                    lg.is_value = False
             board.anchor = ace_model.anchor_leg(board.ladder_legs)
         # two-way markets
         for (m_id, mk, line), od in two_way.items():
@@ -182,8 +203,11 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                 continue
             if _MATCH_OU.match(mk):
                 tw = ace_model.price_two_way(mid, mk, "match", line, od["over"], od["under"],
-                                             match_mean, ace_model.MATCH_ACE_CURVE, temper=temper)
+                                             match_mean, ace_model.match_curve_for_surface(meta["surface"]),
+                                             temper=temper)
                 if tw:
+                    if not _aces_gradeable(meta["tour"]):
+                        tw = _strip_value(tw)
                     board.match_ou.append(tw)
                     if log:
                         _log_two_way(conn, match_date, label, tw, "match", None)
@@ -195,8 +219,11 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                 opp = b if pid == meta["player_a_id"] else a
                 pmean = ace_model.predict_player_ace_mean(subj, opp)
                 tw = ace_model.price_two_way(mid, mk, pname, line, od["over"], od["under"],
-                                             pmean, ace_model.PLAYER_ACE_CURVE, temper=temper)
+                                             pmean, ace_model.player_curve_for_surface(meta["surface"]),
+                                             temper=temper)
                 if tw:
+                    if not _aces_gradeable(meta["tour"]):
+                        tw = _strip_value(tw)
                     board.player_ou.append(tw)
                     if log:
                         _log_two_way(conn, match_date, label, tw, "player", pid)

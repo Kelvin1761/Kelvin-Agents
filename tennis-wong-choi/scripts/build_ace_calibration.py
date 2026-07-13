@@ -28,6 +28,34 @@ def _base_id(pid: str) -> str:
     return pid
 
 
+def _norm_surface(s: str | None) -> str:
+    s = (s or "hard").lower()
+    return "hard" if s == "carpet" else s
+
+
+def _fit_bins(recs, lines, min_bin, lo, hi):
+    bins = defaultdict(lambda: [0, 0])
+    for pred, act in recs:
+        if pred <= 0:
+            continue
+        for line in lines:
+            b = round((line / pred) * 20) / 20
+            bins[b][0] += 1 if act >= line else 0
+            bins[b][1] += 1
+    return [(b, round(w / n, 4)) for b, (w, n) in sorted(bins.items()) if n >= min_bin and lo <= b <= hi]
+
+
+def _print_surface_curves(name: str, recs_by_surface, lines, min_bin, lo, hi) -> None:
+    """Per-surface curves (holdout-validated 2026-07-12: surface-split beats the
+    global curve on every surface for both MATCH and PLAYER — biggest gains on
+    clay/grass where the all-surface average distorts most)."""
+    print(f"{name} = {{")
+    for surf in ("hard", "clay", "grass"):
+        curve = _fit_bins(recs_by_surface.get(surf, []), lines, min_bin, lo, hi)
+        print(f'    "{surf}": {curve},')
+    print("}")
+
+
 def build_curve() -> list[tuple[float, float]]:
     conn = get_connection()
     rows = conn.execute(
@@ -49,8 +77,9 @@ def build_curve() -> list[tuple[float, float]]:
         return sum(dq) / len(dq) if dq else fb
 
     recs: list[tuple[float, float]] = []
+    recs_by_surface: dict[str, list[tuple[float, float]]] = defaultdict(list)
     for _mid, (a, b) in order:
-        surf = (a["surface"] or "hard").lower()
+        surf = _norm_surface(a["surface"])
         ah, bh = ph[a["player_id"]], ph[b["player_id"]]
         if len(ah) >= _MIN_HISTORY and len(bh) >= _MIN_HISTORY:
             ab, bb = pm(ah, _GLOBAL_ACE_FALLBACK), pm(bh, _GLOBAL_ACE_FALLBACK)
@@ -64,6 +93,7 @@ def build_curve() -> list[tuple[float, float]]:
             if ac is not None:
                 bp = (1 - _CONCEDE_WEIGHT) * bp + _CONCEDE_WEIGHT * ac
             recs.append((ap + bp, a["ace_count"] + b["ace_count"]))
+            recs_by_surface[surf].append((ap + bp, a["ace_count"] + b["ace_count"]))
         ph[a["player_id"]].append(a["ace_count"]); ph[b["player_id"]].append(b["ace_count"])
         ps[a["player_id"]][surf].append(a["ace_count"]); ps[b["player_id"]][surf].append(b["ace_count"])
         oc[a["player_id"]].append(b["ace_count"]); oc[b["player_id"]].append(a["ace_count"])
@@ -80,6 +110,7 @@ def build_curve() -> list[tuple[float, float]]:
              if n >= 200 and 0.3 <= b <= 1.6]
     print(f"# built from {len(recs)} paired matches")
     print("MATCH_ACE_CURVE =", curve)
+    _print_surface_curves("MATCH_ACE_CURVE_BY_SURFACE", recs_by_surface, list(range(1, 26)), 200, 0.3, 1.6)
     return curve
 
 
@@ -103,8 +134,9 @@ def build_player_curve() -> list[tuple[float, float]]:
         return sum(dq) / len(dq) if dq else fb
 
     recs: list[tuple[float, float]] = []
+    recs_by_surface: dict[str, list[tuple[float, float]]] = defaultdict(list)
     for r in rows:
-        pid, opp, surf = r["player_id"], r["opponent_id"], (r["surface"] or "hard").lower()
+        pid, opp, surf = r["player_id"], r["opponent_id"], _norm_surface(r["surface"])
         h = ph[pid]
         if len(h) >= _MIN_HISTORY:
             ov = pm(h, _GLOBAL_ACE_FALLBACK)
@@ -114,6 +146,7 @@ def build_player_curve() -> list[tuple[float, float]]:
             if oppc is not None:
                 pred = (1 - _CONCEDE_WEIGHT) * pred + _CONCEDE_WEIGHT * oppc
             recs.append((pred, r["ace_count"]))
+            recs_by_surface[surf].append((pred, r["ace_count"]))
         ph[pid].append(r["ace_count"]); ps[pid][surf].append(r["ace_count"])
         oa = opp_aces[_base_id(r["provider_match_id"])].get(opp)
         if oa is not None:
@@ -131,6 +164,7 @@ def build_player_curve() -> list[tuple[float, float]]:
              if n >= 200 and 0.3 <= b <= 1.8]
     print(f"# built from {len(recs)} player-matches")
     print("PLAYER_ACE_CURVE =", curve)
+    _print_surface_curves("PLAYER_ACE_CURVE_BY_SURFACE", recs_by_surface, [x + 0.5 for x in range(0, 20)], 200, 0.3, 1.8)
     return curve
 
 

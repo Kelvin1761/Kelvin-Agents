@@ -1847,6 +1847,7 @@ def _ace_prop_lines(match_date: str) -> list[str]:
         "",
         "學 NBA 打 prop：只用 soft book（Sportsbet），模型經歷史校準（P(over) 係實測頻率）。",
         "兩邊盤（Over/Under X.5）已精確去水，兩邊都定價 → 可以夾 under（模型認為 aces 會少過條線嗰邊）。",
+        "ℹ️ WTA aces 暫時只做定價展示、唔出 value 注：冇可結算嘅 WTA ace 數據源（結唔到數嘅注冇得驗證）；總局數兩邊 tour 照出。",
         "⚠ ROI 未驗證：ace 結算 overlap 得約 16 場。已剔走超出校準範圍嘅長賠（>1.25× 預測均值 = 外推假 edge）。",
         "每條記入 prop_tracker、賽後自動結算；睇下面『模型 vs 市場記分卡』知邊個啱（比 ROI 快）。",
         f"🔧 {_ev_note}（模型未夠數據前把機率向 50% 收，避免高估 EV；夠數據會自動放鬆或收緊）。",

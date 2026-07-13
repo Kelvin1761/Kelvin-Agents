@@ -306,3 +306,46 @@ def test_record_prop_idempotent(tmp_path, monkeypatch):
     conn.commit()
     n = conn.execute("SELECT COUNT(*) FROM prop_tracker").fetchone()[0]
     assert n == 1, "same prop_key must upsert, not duplicate"
+
+
+def test_wta_ace_props_never_flag_value():
+    """Ungradeable markets must not surface value bets: WTA aces have no
+    settleable data source, so value flags are stripped (still priced/logged)."""
+    from tennis_wc.props import ace_model
+    from tennis_wc.props.daily import _aces_gradeable, _strip_value
+
+    assert _aces_gradeable("ATP")
+    assert not _aces_gradeable("WTA")
+    assert not _aces_gradeable(None)
+    assert not _aces_gradeable("UNKNOWN")
+
+    tw = ace_model.price_two_way(
+        1, "total_aces_9_5", "match", 9.5,
+        over_odds=2.4, under_odds=1.55, predicted_mean=12.0,
+        curve=ace_model.MATCH_ACE_CURVE,
+    )
+    assert tw is not None and tw.value_side is not None  # a clear value side exists
+    stripped = _strip_value(tw)
+    assert stripped.value_side is None
+    assert stripped.value_odds is None
+    assert stripped.edge == 0.0
+    assert stripped.ev <= 0.0
+
+
+def test_surface_curves_present_and_fallback():
+    from tennis_wc.props import ace_model
+
+    for surf in ("hard", "clay", "grass"):
+        assert ace_model.match_curve_for_surface(surf) == ace_model.MATCH_ACE_CURVE_BY_SURFACE[surf]
+        assert ace_model.player_curve_for_surface(surf) == ace_model.PLAYER_ACE_CURVE_BY_SURFACE[surf]
+        # monotonic non-increasing survival curves
+        probs = [p for _, p in ace_model.MATCH_ACE_CURVE_BY_SURFACE[surf]]
+        assert all(a >= b for a, b in zip(probs, probs[1:]))
+    # unknown/carpet fall back sensibly
+    assert ace_model.match_curve_for_surface(None) == ace_model.MATCH_ACE_CURVE
+    assert ace_model.match_curve_for_surface("carpet") == ace_model.MATCH_ACE_CURVE_BY_SURFACE["hard"]
+    # grass survives higher at the same ratio than clay (more aces on grass)
+    from tennis_wc.props.ace_model import interp_prob_over
+    g = interp_prob_over(10, 10.0, ace_model.match_curve_for_surface("grass"))
+    c = interp_prob_over(10, 10.0, ace_model.match_curve_for_surface("clay"))
+    assert g > c
