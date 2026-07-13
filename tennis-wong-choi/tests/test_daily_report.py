@@ -191,7 +191,7 @@ def test_derived_at_least_one_set_market_uses_yes_no_selection():
     yes = _derived_market_probability(row, prediction, None)
     no = _derived_market_probability(row | {"selection_name": "Player A No"}, prediction, None)
 
-    assert yes["reason"] == "derived_at_least_one_set_from_match_model"
+    assert yes["reason"] == "derived_at_least_one_set_from_set_distribution"
     assert yes["probability"] > 0.7
     assert round(yes["probability"] + no["probability"], 6) == 1.0
 

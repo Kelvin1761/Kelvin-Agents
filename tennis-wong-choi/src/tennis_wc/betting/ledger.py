@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -183,7 +184,7 @@ def sync_clv_tracker_for_date(match_date: str) -> dict:
                     mp.model_status = 'DERIVED_MODEL'
                     AND mp.decision = 'MODEL_REVIEW'
                     AND COALESCE(mp.edge, 0) > 0
-                    AND mp.market_key IN ('total_sets', 'both_players_to_win_a_set_yes_no', 'set_handicap', 'game_handicap', 'to_win_1st_set', 'winner_related')
+                    AND mp.market_key IN ('total_sets', 'both_players_to_win_a_set_yes_no', 'set_handicap', 'game_handicap', 'to_win_1st_set', 'winner_related', 'set_betting')
                 )
               )
             """,
@@ -1457,6 +1458,8 @@ def _settle_market_leg(row: dict) -> bool | None:
         if "no" in selection:
             return not both
         return None
+    if market_key == "set_betting" and str(row.get("market_name") or "").strip().lower() == "set betting":
+        return _settle_set_betting(row, score)
     if _is_to_win_at_least_one_set_market(row):
         return _settle_to_win_at_least_one_set(row, score)
     if market_key in {"to_win_1st_set", "winner_related"} or _is_set_winner_market(row):
@@ -1471,6 +1474,31 @@ def _settle_market_leg(row: dict) -> bool | None:
         return _settle_count_prop(row, score, "aces")
     if "double_fault" in market_key or "double fault" in str(row.get("market_name") or "").lower():
         return _settle_count_prop(row, score, "double_faults")
+    return None
+
+
+_SET_BETTING_SCORE_RE = re.compile(r"\s+2-([01])\s*$")
+
+
+def _settle_set_betting(row: dict, score: dict) -> bool | None:
+    """Full-match Set Betting: '<Player> 2-0' / '<Player> 2-1' (BO3 only)."""
+    selection = str(row.get("selection_name") or "")
+    m = _SET_BETTING_SCORE_RE.search(selection)
+    if not m:
+        return None
+    sets_lost = int(m.group(1))
+    name = selection[: m.start()].strip()
+    try:
+        a_sets = int(score.get("player_a_sets"))
+        b_sets = int(score.get("player_b_sets"))
+    except (TypeError, ValueError):
+        return None
+    if max(a_sets, b_sets) != 2:
+        return None  # BO5 or incomplete score
+    if _same_name(name, str(row.get("player_a_name") or "")):
+        return a_sets == 2 and b_sets == sets_lost
+    if _same_name(name, str(row.get("player_b_name") or "")):
+        return b_sets == 2 and a_sets == sets_lost
     return None
 
 

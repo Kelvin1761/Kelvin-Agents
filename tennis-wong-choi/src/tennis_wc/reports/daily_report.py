@@ -16,6 +16,7 @@ from tennis_wc.database.db import get_connection
 from tennis_wc.features.common import utc_now
 from tennis_wc.features.market import implied_probability, remove_vig_two_way
 from tennis_wc.modelling import market_models
+from tennis_wc.modelling import set_distribution
 from tennis_wc.ingestion.sportsbet_fixture_mapping import sportsbet_competition_meta
 
 
@@ -663,17 +664,23 @@ def _derived_market_probability(row: dict, prediction_row: dict, no_vig_probabil
         side = _selection_side_for_market_row(row)
         if side in {"player_a", "player_b"}:
             base = p_a if side == "player_a" else p_b
-            return {"probability": _clamp_probability(0.5 + (base - 0.5) * 0.78), "reason": "derived_set_winner_from_match_model"}
+            # Empirical set-distribution table (68,876 BO3 matches) replaced the
+            # old hand-picked 0.78 compression — holdout Brier win (2026-07-12).
+            return {"probability": _clamp_probability(set_distribution.first_set_win_probability(base)), "reason": "derived_set_winner_from_set_distribution"}
 
     if _is_to_win_at_least_one_set_market(key, name):
         side = _selection_side_for_market_row(row)
         is_yes = _selection_is_yes_no(selection)
         if side in {"player_a", "player_b"} and is_yes is not None:
             base = p_a if side == "player_a" else p_b
-            probability = _win_at_least_one_set_probability(base)
+            probability = set_distribution.win_at_least_one_set_probability(base)
             if not is_yes:
                 probability = 1 - probability
-            return {"probability": _clamp_probability(probability), "reason": "derived_at_least_one_set_from_match_model"}
+            return {"probability": _clamp_probability(probability), "reason": "derived_at_least_one_set_from_set_distribution"}
+
+    set_betting = _set_betting_probability(row, p_a, p_b)
+    if set_betting is not None:
+        return set_betting
 
     if key == "game_handicap":
         side = _selection_side_for_market_row(row)
@@ -718,8 +725,18 @@ def _derived_market_probability(row: dict, prediction_row: dict, no_vig_probabil
                 return {"probability": _clamp_probability(probability), "reason": reason}
 
     if key in {"total_sets", "both_players_to_win_a_set_yes_no"} or "both players to win a set" in name:
-        competitiveness = 1 - abs(p_a - p_b)
         line_value = float(line) if line is not None else 2.5
+        if line_value < 3.5:
+            # BO3: P(over 2.5 sets) = P(goes three) from the empirical set
+            # distribution — the old competitiveness heuristic said up to 62%
+            # three-setters for coin-flips; reality is ~38% (straight sets are
+            # far more common than independence or the heuristic assumed).
+            over_probability = _clamp_probability(set_distribution.three_sets_probability(p_a), 0.05, 0.60)
+            is_yes_or_over = _selection_is_yes_or_over(selection)
+            if is_yes_or_over is not None:
+                probability = over_probability if is_yes_or_over else 1 - over_probability
+                return {"probability": _clamp_probability(probability), "reason": "derived_total_sets_from_set_distribution"}
+        competitiveness = 1 - abs(p_a - p_b)
         if line_value >= 4.5:
             over_probability = _clamp_probability(0.06 + competitiveness * 0.22, 0.04, 0.34)
         elif line_value >= 3.5:
@@ -856,10 +873,39 @@ def _is_to_win_at_least_one_set_market(market_key: str, market_name: str) -> boo
     return "to win at least one set" in text or "to win at least 1 set" in text
 
 
-def _win_at_least_one_set_probability(match_win_probability: float) -> float:
-    if match_win_probability >= 0.5:
-        return _clamp_probability(0.72 + (match_win_probability - 0.5) * 0.45, 0.55, 0.92)
-    return _clamp_probability(0.34 + match_win_probability * 0.46, 0.18, 0.62)
+# NOTE: the old hand-picked _win_at_least_one_set_probability heuristic was
+# replaced by set_distribution.win_at_least_one_set_probability (2026-07-12).
+
+_SET_BETTING_SCORE_RE = re.compile(r"\s+2-([01])\s*$")
+
+
+def _set_betting_probability(row: dict, p_a: float, p_b: float) -> dict | None:
+    """Full-match Set Betting (correct set score, BO3): '<Player> 2-0'/'2-1'.
+
+    Priced from the empirical set-outcome distribution. Returns None for the
+    other selections sharing the set_betting key (per-set correct GAME scores,
+    BO5 3-x selections) — those stay unpriced/unrecorded."""
+    if str(row.get("market_name") or "").strip().lower() != "set betting":
+        return None
+    selection = str(row.get("selection_name") or "")
+    m = _SET_BETTING_SCORE_RE.search(selection)
+    if not m:
+        return None
+    sets_lost = int(m.group(1))
+    name = selection[: m.start()].strip()
+    if _same_name(name, str(row.get("player_a_name") or "")):
+        p_side = p_a
+    elif _same_name(name, str(row.get("player_b_name") or "")):
+        p_side = p_b
+    else:
+        return None
+    probability = set_distribution.set_score_probability(p_side, sets_lost)
+    if probability is None:
+        return None
+    return {
+        "probability": _clamp_probability(probability, 0.02, 0.90),
+        "reason": "derived_set_betting_from_set_distribution",
+    }
 
 
 def _banker_tier(probability: float, edge: float, odds: float, confidence: int, model_status: str) -> str:
@@ -936,7 +982,11 @@ def _market_upgrade_gate(market_key: str, model_status: str) -> dict:
 
 
 def _settlement_supported_market_keys() -> set[str]:
-    return {"total_sets", "both_players_to_win_a_set_yes_no", "set_handicap", "game_handicap", "total_games", "to_win_1st_set", "winner_related"}
+    # set_betting: only full-match "Set Betting" rows are ever PRICED (the
+    # per-set correct-game-score rows sharing the key get no model probability,
+    # so they never enter the shadow tracker), and those settle from
+    # score_json set counts.
+    return {"total_sets", "both_players_to_win_a_set_yes_no", "set_handicap", "game_handicap", "total_games", "to_win_1st_set", "winner_related", "set_betting"}
 
 
 def _total_games_set_index(market_name: str) -> int | None:
