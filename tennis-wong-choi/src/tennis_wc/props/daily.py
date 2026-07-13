@@ -188,6 +188,9 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
         match_mean = ace_model.predict_match_ace_mean(a, b)
         label = f"{meta['a_name']} vs {meta['b_name']}"
         board = AcePropBoard(match_id=mid, match_label=label, predicted_match_mean=match_mean)
+        # v2 serve-dominance input for the games model (walk-forward safe).
+        hold_sum = games_model.combined_hold(
+            conn, meta["player_a_id"], meta["player_b_id"], meta["match_date"])
         # legacy N+ ladder
         if mid in ladder:
             board.ladder_legs = ace_model.price_ace_legs(
@@ -229,7 +232,8 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                         _log_two_way(conn, match_date, label, tw, "player", pid)
             elif _MATCH_GAMES_OU.match(mk):
                 tw = games_model.price_games_two_way(
-                    mid, mk, line, od["over"], od["under"], prob_map.get(mid), best_of=3, temper=temper)
+                    mid, mk, line, od["over"], od["under"], prob_map.get(mid), best_of=3,
+                    temper=temper, hold_sum=hold_sum)
                 if tw:
                     board.predicted_games = tw.predicted_mean
                     board.games_ou.append(tw)

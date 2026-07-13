@@ -10,9 +10,12 @@ matches go long (more third sets, tighter sets) -> more games.
   P(total > line) = interp(GAMES_CURVE, ratio = line / predicted_mean)
 
 Both tables are embedded below; rebuild with scripts/build_games_calibration.py.
-v1 uses competitiveness + best_of only. Serve-dominance (hold rates) is a known
-second-order driver and a future enhancement -- the scorecard will show whether
-this simpler model already beats the market before we add complexity.
+
+v2 (2026-07-12): serve-dominance add-on. Combined pre-match HOLD RATE of both
+players scales the closeness mean multiplicatively — shadow-validated on
+71,364 season-file matches (walk-forward, holdout post-2025-10): Brier
+0.22142 -> 0.22044, ratio table monotone (double-big-servers +4.9% games,
+break-fests -2.9%). Center bucket normalised to 1.0; unknown hold = neutral.
 """
 from __future__ import annotations
 
@@ -35,26 +38,76 @@ GAMES_CURVE: list[tuple[float, float]] = [
 ]
 _GAMES_LINE_RATIO = 1.45  # curve is trustworthy out to 1.45x the mean
 
+# v2 hold-rate multiplier: combined (a+b) pre-match hold rate -> games ratio.
+# Fit on 62,343 train matches relative to the closeness-only mean, center
+# bucket normalised to 1.0 (raw 1.0005); unknown -> 1.0 (neutral, NOT the
+# dataset's 'unk' ratio, which reflects low-tier selection bias).
+_HOLD_RATIO: list[tuple[float, float]] = [
+    # (upper bound of combined hold sum, ratio)
+    (1.35, 0.971),
+    (1.45, 0.989),
+    (1.55, 1.000),
+    (1.65, 1.022),
+    (9.99, 1.049),
+]
+_HOLD_MIN_SAMPLES = 5
+_HOLD_WINDOW = 20
 
-def predict_total_games(match_prob: float | None, best_of: int = 3) -> float | None:
-    """Expected total match games from the favourite's win probability."""
+
+def hold_ratio(hold_sum: float | None) -> float:
+    if hold_sum is None:
+        return 1.0
+    for upper, ratio in _HOLD_RATIO:
+        if hold_sum < upper:
+            return ratio
+    return 1.0
+
+
+def combined_hold(conn, player_a_id: int, player_b_id: int, as_of_date: str) -> float | None:
+    """Sum of both players' mean hold rate over their last N matches strictly
+    before the match date (walk-forward safe). None unless both have >= 5
+    hold samples — unknown must stay neutral, not penalised."""
+    sums: list[float] = []
+    for pid in (player_a_id, player_b_id):
+        rows = conn.execute(
+            """
+            SELECT hold_rate FROM player_match_history
+            WHERE player_id = ? AND hold_rate IS NOT NULL AND match_date < ?
+            ORDER BY match_date DESC LIMIT ?
+            """,
+            (pid, as_of_date, _HOLD_WINDOW),
+        ).fetchall()
+        vals = [float(r["hold_rate"]) for r in rows]
+        if len(vals) < _HOLD_MIN_SAMPLES:
+            return None
+        sums.append(sum(vals) / len(vals))
+    return sums[0] + sums[1]
+
+
+def predict_total_games(match_prob: float | None, best_of: int = 3,
+                        hold_sum: float | None = None) -> float | None:
+    """Expected total match games from the favourite's win probability, scaled
+    by the serve-dominance (combined hold) ratio when available."""
     if match_prob is None:
         return None
     p = float(match_prob)
     closeness = 1.0 - abs(2 * p - 1)
     bucket = round(closeness * 5) / 5
     bo = 5 if best_of == 5 else 3
-    return MEAN_BY_CLOSENESS.get((bo, bucket)) or MEAN_BY_CLOSENESS.get((bo, 0.6))
+    base = MEAN_BY_CLOSENESS.get((bo, bucket)) or MEAN_BY_CLOSENESS.get((bo, 0.6))
+    return base * hold_ratio(hold_sum) if base is not None else None
 
 
 def price_games_two_way(match_id: int, market_key: str, line: float,
                         over_odds: float, under_odds: float,
                         match_prob: float | None, best_of: int = 3,
-                        temper: float = 0.0) -> TwoWayProp | None:
-    pred = predict_total_games(match_prob, best_of)
+                        temper: float = 0.0,
+                        hold_sum: float | None = None) -> TwoWayProp | None:
+    pred = predict_total_games(match_prob, best_of, hold_sum=hold_sum)
     if pred is None:
         return None
     return price_two_way(match_id, market_key, "match_games", line, over_odds,
                          under_odds, pred, GAMES_CURVE,
-                         factors={"match_prob": match_prob, "best_of": best_of},
+                         factors={"match_prob": match_prob, "best_of": best_of,
+                                  "hold_sum": hold_sum},
                          within_range_ratio=_GAMES_LINE_RATIO, temper=temper)

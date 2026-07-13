@@ -349,3 +349,18 @@ def test_surface_curves_present_and_fallback():
     g = interp_prob_over(10, 10.0, ace_model.match_curve_for_surface("grass"))
     c = interp_prob_over(10, 10.0, ace_model.match_curve_for_surface("clay"))
     assert g > c
+
+
+def test_games_v2_hold_ratio_scales_mean():
+    from tennis_wc.props import games_model
+
+    # Bucket boundaries + neutrality of unknown.
+    assert games_model.hold_ratio(None) == 1.0
+    assert games_model.hold_ratio(1.30) == 0.971
+    assert games_model.hold_ratio(1.50) == 1.000
+    assert games_model.hold_ratio(1.70) == 1.049
+    base = games_model.predict_total_games(0.5, 3)
+    big_serve = games_model.predict_total_games(0.5, 3, hold_sum=1.70)
+    breakfest = games_model.predict_total_games(0.5, 3, hold_sum=1.30)
+    assert big_serve > base > breakfest
+    assert abs(big_serve / base - 1.049) < 1e-9
