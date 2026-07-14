@@ -75,6 +75,26 @@ def ingest_odds(date: str) -> int:
 
 
 def _insert_market_odds(conn, row: dict, match_id: int | None, provider_name: str, raw_id: int, now: str) -> None:
+    # selection_side must be oriented to the LINKED match row's player order:
+    # the scrape can list players in the opposite order to the fixture-created
+    # match, and a flipped side mirror-flips every downstream factor readout.
+    side_row = row
+    if match_id is not None:
+        match_players = conn.execute(
+            """
+            SELECT pa.name AS player_a_name, pb.name AS player_b_name
+            FROM matches m
+            JOIN players pa ON pa.id = m.player_a_id
+            JOIN players pb ON pb.id = m.player_b_id
+            WHERE m.id = ?
+            """,
+            (match_id,),
+        ).fetchone()
+        if match_players and match_players["player_a_name"] and match_players["player_b_name"]:
+            side_row = {
+                "player_a_name": match_players["player_a_name"],
+                "player_b_name": match_players["player_b_name"],
+            }
     markets = row.get("markets") or [
         {
             "market_key": row.get("market", "match_winner"),
@@ -107,7 +127,7 @@ def _insert_market_odds(conn, row: dict, match_id: int | None, provider_name: st
                     market.get("market_key") or row.get("market", "unknown"),
                     market.get("market_name") or market.get("market_key") or "Unknown",
                     selection_name,
-                    _selection_side(row, selection_name),
+                    _selection_side(side_row, selection_name),
                     selection.get("line"),
                     float(odds),
                     provider_name,
