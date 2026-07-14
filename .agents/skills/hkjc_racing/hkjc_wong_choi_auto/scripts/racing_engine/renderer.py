@@ -688,7 +688,21 @@ def _formline_table_lines(horse: dict) -> list[str]:
         next_perf = " ".join(str(row.get("next_performance") or "").split())
         wm = re.search(r"(\d+)\s*勝", next_perf)
         wins = int(wm.group(1)) if wm else 0
-        if wins >= 1:
+        # 兌現度只計「今馬當日跑得埋堆」：≤6名 且 落後 ≤5 個馬位（同引擎口徑）；
+        # 跑第13負十幾個馬位嘅場次唔當已驗證（逐場明細仍照列事實）。
+        pos_m = re.match(r"\s*(\d+)", my_finish)
+        pos = int(pos_m.group(1)) if pos_m else 99
+        mg_m = re.search(r"\(\s*-\s*([\d\-/]+)", my_finish)
+        behind = 0.0
+        if mg_m:
+            for p in mg_m.group(1).split("-"):
+                if "/" in p:
+                    a, b = p.split("/")
+                    behind += float(a) / float(b) if b and b != "0" else 0
+                elif p:
+                    behind += float(p)
+        competitive = pos <= 6 and behind <= 5.0
+        if wins >= 1 and competitive:
             validated += 1
         if next_class and next_class != "-" and next_perf and next_perf != "-":
             frank = f"對手其後{next_class} {next_perf}"

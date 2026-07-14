@@ -1424,6 +1424,32 @@ class RacingEngine:
             m = re.match(r"\s*(\d+)", str(row.get("my_finish", "")))
             return int(m.group(1)) if m else 99
 
+        def margin_behind(row):
+            """今馬當日負幾多個馬位（正值=落後咁多；贏/領放=0）。
+            my_finish 例：'13 (-11-3/4)'→11.75；'5 (-3/4)'→0.75；'1 (...)'→0。"""
+            raw = str(row.get("my_finish", ""))
+            mm = re.search(r"\(\s*(-?)\s*([\d\-/]+)", raw)
+            if not mm:
+                return None
+            behind = mm.group(1) == "-"
+            if not behind:
+                return 0.0  # 贏或領放，唔算落後
+            tok = mm.group(2)
+
+            def _frac(s):
+                if "/" in s:
+                    a, b = s.split("/")
+                    try:
+                        return float(a) / float(b)
+                    except (ValueError, ZeroDivisionError):
+                        return 0.0
+                try:
+                    return float(s)
+                except ValueError:
+                    return 0.0
+            parts = tok.split("-")  # '11-3/4' → ['11','3/4']；'3/4' → ['3/4']
+            return sum(_frac(p) for p in parts if p)
+
         def opp_name(row):
             return re.sub(r"^\[\d+\]\s*", "", str(row.get("opponents", "")).split("(")[0]).strip()
 
@@ -1451,9 +1477,16 @@ class RacingEngine:
                 move = "升班" if orank < today_rank else ("降班" if orank > today_rank else "同班")
             opp_text = str(r.get("opponents", ""))
             om = re.search(r"\[(\d+)\]", opp_text)
+            my_fin = fin(r)
+            mgn = margin_behind(r)
+            # 「跑得埋堆」先算數：今馬當日 ≤6 名 且 落後 ≤5 個馬位（貼近頭三名）。
+            # 跑第13、負11-3/4＝根本冇同對手交手，唔當賽績線驗證（用戶反映）。
+            competitive = (my_fin <= 6) and (mgn is None or mgn <= 5.0)
             opponents.append({
                 "name": nm,
-                "my_fin": fin(r),
+                "my_fin": my_fin,
+                "my_margin": mgn,
+                "competitive": competitive,
                 "my_finish_raw": str(r.get("my_finish", "")).strip(),
                 "wins": opp_wins(r),
                 "next_class": str(r.get("next_class", "")).strip(),
@@ -1462,7 +1495,8 @@ class RacingEngine:
                 "opp_fin": (1 if "頭馬" in opp_text else (int(om.group(1)) if om else None)),
                 "date": str(r.get("date", "")).strip(),
             })
-        validated = sum(1 for o in opponents if o["wins"] >= 1)
+        # 只計「今馬當日跑得埋堆」而對手其後又贏嘅場次先算已驗證。
+        validated = sum(1 for o in opponents if o["wins"] >= 1 and o["competitive"])
         return {"opponents": opponents, "validated": validated, "n": len(table)}
 
     def _compact_finish(self, raw):
@@ -1883,9 +1917,9 @@ class RacingEngine:
             # Surface every meaningful opponent: today's rivals (同場對手) first, then the
             # rest of the validated ones (opponents that went on to win). Order: field
             # rivals → most subsequent wins → my best finish.
-            cand = [o for o in opps if o["is_field"] or o["wins"] >= 1] or opps[:1]
-            # dedupe by opponent name (a rival can beat me in several of my past races);
-            # keep the strongest instance: field-rival > more subsequent wins > my best finish
+            # 驗證對手要「今馬當日跑得埋堆」(competitive) 先surface；同場對手照顯示
+            # （相關），但唔當已驗證。跑第13負十幾個馬位嗰啲唔會再誤當賽績線兌現。
+            cand = [o for o in opps if o["is_field"] or (o["wins"] >= 1 and o["competitive"])] or opps[:1]
             byname = {}
             for o in cand:
                 e = byname.get(o["name"])
@@ -1893,24 +1927,29 @@ class RacingEngine:
                     byname[o["name"]] = o
             shown = sorted(byname.values(), key=lambda o: (not o["is_field"], -o["wins"], o["my_fin"]))[:4]
             field_n = sum(1 for o in shown if o["is_field"])
+            comp_field = sum(1 for o in shown if o["is_field"] and o["competitive"])
             mine = self.horse_data.get("horse_name", "本駒")
             lines = []
             for o in shown:
                 fin_c = self._compact_finish(o["my_finish_raw"])
                 tag = "⭐同場對手" if o["is_field"] else ""
-                if o["wins"] >= 1:
+                # 已驗證只計「跑得埋堆」嗰啲；跑唔近就寫實況（曾同場但落後多）
+                if o["wins"] >= 1 and o["competitive"]:
                     cls = o["next_class"]
                     won = (f"{o['name']}其後{o['move']}（{cls}）再勝{o['wins']}場" if o["move"]
                            else f"{o['name']}其後於{cls}再勝{o['wins']}場")
+                elif o["wins"] >= 1:
+                    won = f"{o['name']}其後再勝但當日跑唔近（僅供參考）"
                 else:
                     won = f"{o['name']}其後未再勝"
                 meet = (f"當日{mine}{fin_c}、{o['name']}第{o['opp_fin']}" if o["is_field"] and o["opp_fin"]
                         else f"當日{mine}{fin_c}")
                 lines.append(f"{tag}「{o['name']}」{meet}，{won}".lstrip())
+            has_evidence = fl["validated"] >= 1 or comp_field >= 1
             trend = (f"同場對手{field_n}駒" if field_n else
-                     ("對手已驗證" if fl["validated"] >= 1 else "對手未驗證"))
+                     ("對手已驗證" if fl["validated"] >= 1 else "近仗未跑近已兌現對手"))
             add("賽績線", f"近{fl['n']}仗", trend,
-                band="✅" if (field_n or fl["validated"] >= 1) else "➖",
+                band="✅" if has_evidence else "➖",
                 reason=" ｜ ".join(lines))
         # 班次表現 — average finishing place grouped by class (own section).
         # Prefer the 近三季 profile-derived breakdown; fall back to recent races.
