@@ -3,6 +3,7 @@ from __future__ import annotations
 from itertools import combinations
 import json
 import math
+import os
 import re
 from pathlib import Path
 
@@ -90,6 +91,18 @@ def latest_predictions_for_date(match_date: str) -> list[dict]:
 
 
 def analysis_output_dir(match_date: str) -> Path:
+    # The engine now lives on local disk (repo migrated off Google Drive) but
+    # Kelvin reads reports from the Drive folders. TENNIS_ANALYSIS_OUTPUT_ROOT
+    # points there; fall back to the repo root when it is unset or the Drive
+    # mount is not available (report still generated, just locally).
+    override = os.environ.get("TENNIS_ANALYSIS_OUTPUT_ROOT")
+    if override:
+        root = Path(override)
+        try:
+            if root.is_dir():
+                return root / f"{match_date} Tennis Analysis"
+        except OSError:
+            pass
     return PROJECT_ROOT / f"{match_date} Tennis Analysis"
 
 

@@ -19,7 +19,14 @@ except ImportError:  # pragma: no cover - Python < 3.9 fallback
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
-ANTIGRAVITY_DIR = PROJECT_DIR.parent
+# Engine runs from local disk; analysis/archive folders stay on Google Drive
+# so Kelvin keeps reading reports where he always has. Falls back to the
+# repo parent when the override is unset or the Drive mount is unavailable.
+_OUTPUT_ROOT_OVERRIDE = os.environ.get("TENNIS_ANALYSIS_OUTPUT_ROOT")
+if _OUTPUT_ROOT_OVERRIDE and Path(_OUTPUT_ROOT_OVERRIDE).is_dir():
+    ANTIGRAVITY_DIR = Path(_OUTPUT_ROOT_OVERRIDE)
+else:
+    ANTIGRAVITY_DIR = PROJECT_DIR.parent
 ARCHIVE_DIR = ANTIGRAVITY_DIR / "Archieve Tennis Analysis"
 LOG_DIR = PROJECT_DIR / "data" / "logs"
 PYTHON = PROJECT_DIR / ".venv" / "bin" / "python"
