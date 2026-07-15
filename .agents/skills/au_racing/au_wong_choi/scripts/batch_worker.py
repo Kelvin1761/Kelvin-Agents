@@ -13,7 +13,8 @@ import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
 from wongchoi_paths import AU_RACING
 ORCHESTRATOR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi" / "scripts" / "au_orchestrator.py"
 RESULTS_CLAWER = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "claw_racenet_results.py"
-ARCHIVE_DIR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "archive race analysis"
+# New runs already land in the Drive-resident AU analysis archive.
+ARCHIVE_DIR = AU_RACING
 OLD_ARCHIVE_DIR = AU_RACING
 
 def run_command(cmd, cwd=PROJECT_ROOT):
@@ -77,7 +78,7 @@ def process_meeting(meeting):
     venue_name = meeting['track'].replace("-", " ").title()
     date_str = meeting['date']
     meeting_dir = None
-    for p in PROJECT_ROOT.iterdir():
+    for p in AU_RACING.iterdir():
         if p.is_dir() and p.name.startswith(date_str) and venue_name in p.name:
             meeting_dir = p
             break
@@ -99,7 +100,12 @@ def process_meeting(meeting):
             res_file.replace(target_path)
             print(f"✅ Saved results to {target_path}")
 
-    # 4. Move entire directory to ARCHIVE_DIR
+    # 4. The meeting already lives in the Drive-resident archive.
+    if meeting_dir.parent == ARCHIVE_DIR:
+        print(f"📦 Analysis retained in Google Drive: {meeting_dir}")
+        return True
+
+    # Legacy fallback for a manually supplied meeting outside AU_RACING.
     os.makedirs(ARCHIVE_DIR, exist_ok=True)
     archive_path = ARCHIVE_DIR / meeting_dir.name
     if archive_path.exists():

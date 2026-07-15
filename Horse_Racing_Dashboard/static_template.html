@@ -43,11 +43,18 @@
 
     /* Betting Panel */
     .bp { background: #fff; border-radius: 12px; border: 1px solid #E2E8F0; margin-top: 24px; overflow: hidden; }
-    .bp-hdr { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: linear-gradient(135deg,#F0F9FF,#EFF6FF); border-bottom: 1px solid #E2E8F0; }
+    .bp-hdr { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; background: linear-gradient(135deg,#F0F9FF,#EFF6FF); border-bottom: 1px solid #E2E8F0; }
     .bp-title { font-size: 0.9rem; font-weight: 800; color: #1E40AF; }
     .bp-sub { font-size: 0.72rem; color: #64748B; font-weight: 500; }
+    .bp-header-meta { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+    .bet-sync-status { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border: 1px solid #CBD5E1; border-radius: 999px; background: #fff; color: #64748B; font-size: 0.68rem; font-weight: 700; white-space: nowrap; }
+    .bet-sync-status::before { content: ''; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: currentColor; }
+    .bet-sync-status--saving { color: #B45309; background: #FFFBEB; border-color: #FDE68A; }
+    .bet-sync-status--saved { color: #047857; background: #ECFDF5; border-color: #A7F3D0; }
+    .bet-sync-status--error { color: #B91C1C; background: #FEF2F2; border-color: #FECACA; }
+    .bet-sync-status--local { color: #475569; background: #F8FAFC; }
     .bp-race { border-bottom: 1px solid #F1F5F9; }
-    .bp-race-hdr { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; cursor: pointer; }
+    .bp-race-hdr { display: flex; width: 100%; justify-content: space-between; align-items: center; padding: 12px 16px; cursor: pointer; border: 0; background: transparent; color: inherit; text-align: left; font: inherit; }
     .bp-race-hdr:hover { background: #F8FAFC; }
     .bp-race-lbl { font-weight: 800; font-size: 0.85rem; color: #1E40AF; margin-right: 8px; }
     .bp-race-meta { font-size: 0.72rem; color: #94A3B8; }
@@ -61,29 +68,54 @@
     .bp-bar-btn:hover { background: #1E40AF; }
     .bp-bar-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     /* Bet Horse Card */
-    .bh { background: #fff; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; margin-bottom: 8px; transition: all 0.2s; }
+    .bh { display: grid; grid-template-columns: minmax(360px, 1fr) auto; align-items: center; column-gap: 18px; background: linear-gradient(105deg,#FFFFFF 0%,#FFFFFF 62%,#F8FAFF 100%); border: 1px solid #DCE5F2; border-left: 3px solid #BFDBFE; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; box-shadow: 0 2px 8px rgba(15,23,42,0.04); transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease; }
+    .bh:hover { border-color: #BFDBFE; border-left-color: #3B82F6; box-shadow: 0 5px 16px rgba(37,99,235,0.08); }
     .bh--bet { border-color: #059669; background: linear-gradient(135deg,#F0FDF4,#ECFDF5); }
     .bh--skip { border-color: #94A3B8; opacity: 0.6; }
     .bh--scratch { border-color: #DC2626; opacity: 0.5; background: #FEF2F2; }
-    .bh-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
-    .bh-info { display: flex; align-items: center; gap: 10px; }
-    .bh-num { width: 32px; height: 32px; background: #1E40AF; color: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; flex-shrink: 0; }
+    .bh-top { display: flex; justify-content: space-between; align-items: center; gap: 18px; min-width: 0; margin: 0; }
+    .bh-info { display: flex; min-width: 0; align-items: center; gap: 10px; }
+    .bh-num { min-width: 48px; height: 40px; padding: 3px 7px; background: #1E40AF; color: #fff; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; flex-shrink: 0; }
+    .bh-num-label { font-size: 0.52rem; font-weight: 600; opacity: 0.8; }
+    .bh-num-value { margin-top: 3px; font-size: 1rem; font-weight: 900; font-variant-numeric: tabular-nums; }
     .bh-name { font-weight: 700; font-size: 0.88rem; }
-    .bh-meta { font-size: 0.68rem; color: #94A3B8; margin-top: 2px; }
-    .bh-grades { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .bh-analysis { font-size: 0.65rem; color: #3B82F6; background: none; border: 1px solid #BFDBFE; border-radius: 4px; padding: 1px 6px; cursor: pointer; margin-left: 4px; }
+    .bh-copy { min-width: 0; }
+    .bh-name-en, .horse-card__name-en { margin-top: 2px; color: #475569; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.035em; line-height: 1.25; text-transform: uppercase; }
+    .bh-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 3px; color: #94A3B8; font-size: 0.68rem; }
+    .bh-meta-item { white-space: nowrap; }
+    .bh-grades { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
+    .bh-analysis { min-height: 24px; font-size: 0.65rem; color: #2563EB; background: #FFFFFF; border: 1px solid #BFDBFE; border-radius: 999px; padding: 2px 8px; cursor: pointer; margin-left: 2px; }
+    .bh-analysis:hover { color: #1D4ED8; border-color: #60A5FA; background: #EFF6FF; }
     .bh-profit { font-size: 0.78rem; font-weight: 800; }
     .bh-profit--win { color: #059669; }
     .bh-profit--loss { color: #DC2626; }
-    .bh-step { margin-top: 4px; }
-    .bh-step-label { font-size: 0.72rem; color: #64748B; font-weight: 600; margin-bottom: 4px; }
-    .bh-step-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    .bh-odds-input { width: 70px; padding: 4px 8px; border: 1px solid #CBD5E1; border-radius: 6px; font-size: 0.8rem; text-align: center; }
-    .bb { padding: 4px 10px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; border: 1px solid; cursor: pointer; }
-    .bb-lock { background: #1D4ED8; color: #fff; border-color: #1D4ED8; }
+    .bh-profit--pending { color: #64748B; }
+    .bh-step { min-width: 250px; margin: 0; padding: 8px 10px; border: 1px solid #DBEAFE; border-radius: 10px; background: rgba(239,246,255,0.78); }
+    .bh-step-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+    .bh-step-heading .bh-step-label { margin-bottom: 0; }
+    .bh-step-label { font-size: 0.68rem; color: #64748B; font-weight: 700; margin-bottom: 5px; letter-spacing: 0.01em; }
+    .bh-step-row { display: flex; align-items: center; justify-content: flex-end; gap: 7px; flex-wrap: wrap; }
+    .bh-status { display: inline-flex; align-items: center; min-height: 22px; padding: 2px 7px; border-radius: 999px; font-size: 0.65rem; font-weight: 800; white-space: nowrap; }
+    .bh-status--draft { color: #1D4ED8; background: #EFF6FF; }
+    .bh-status--decision { color: #B45309; background: #FFFBEB; }
+    .bh-status--pending { color: #0F766E; background: #F0FDFA; }
+    .bh-status--settled { color: #047857; background: #ECFDF5; }
+    .bh-status--skip { color: #64748B; background: #F1F5F9; }
+    .horse-silk { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 40px; overflow: hidden; border: 0; background: transparent; }
+    .horse-silk img { display: block; width: 40px; height: 40px; object-fit: contain; }
+    .horse-silk--sm { width: 36px; height: 36px; flex-basis: 36px; border-radius: 7px; }
+    .horse-silk--sm img { width: 36px; height: 36px; }
+    .horse-silk--missing { display: none; }
+    .bh-odds-input { width: 92px; min-height: 40px; padding: 7px 10px; border: 1px solid #93A8C4; border-radius: 8px; background: #fff; color: #0F172A; font-size: 0.75rem; font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; appearance: textfield; }
+    .bh-odds-input::-webkit-inner-spin-button, .bh-odds-input::-webkit-outer-spin-button { margin: 0; appearance: none; }
+    .bh-odds-input::placeholder { color: #64748B; font-size: 0.75rem; font-weight: 400; opacity: 1; }
+    .bb { min-height: 36px; padding: 7px 12px; border-radius: 7px; font-size: 0.72rem; font-weight: 700; border: 1px solid; cursor: pointer; touch-action: manipulation; }
+    .bb-lock { min-height: 40px; padding-inline: 14px; background: linear-gradient(135deg,#2563EB,#1D4ED8); color: #fff; border-color: #1D4ED8; box-shadow: 0 2px 6px rgba(37,99,235,0.18); }
+    .bb-lock:hover { background: linear-gradient(135deg,#1D4ED8,#1E3A8A); box-shadow: 0 4px 10px rgba(37,99,235,0.24); }
     .bb-bet { background: #059669; color: #fff; border-color: #059669; }
     .bb-skip { background: #F1F5F9; color: #64748B; border-color: #E2E8F0; }
     .bb-edit { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
+    .bb-edit--inline { flex: 0 0 auto; min-height: 30px; padding: 4px 10px; }
     .bb-scratch { background: #FEE2E2; color: #DC2626; border-color: #FECACA; }
     .bb-restore { background: #EFF6FF; color: #1D4ED8; border-color: #BFDBFE; }
     .bb-reopen { background: #F0F9FF; color: #0369A1; border-color: #BAE6FD; }
@@ -99,6 +131,13 @@
     .roi-sum th { padding: 6px 10px; text-align: left; color: #94A3B8; border-bottom: 1px solid #E2E8F0; font-weight: 600; }
     .roi-sum td { padding: 6px 10px; border-bottom: 1px solid #F8FAFC; }
     .roi-sum-total td { font-weight: 700; background: #F8FAFC; border-top: 2px solid #E2E8F0; }
+    .roi-desktop-horse { display: flex; align-items: center; gap: 8px; min-width: 170px; }
+    .roi-desktop-horse .horse-silk { width: 32px; height: 32px; flex-basis: 32px; }
+    .roi-desktop-horse .horse-silk img { width: 32px; height: 32px; }
+    .roi-desktop-horse-name { color: #0F172A; font-weight: 700; }
+    .roi-desktop-horse-name-en { margin-top: 2px; color: #64748B; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.025em; line-height: 1.15; text-transform: uppercase; }
+    .roi-mobile-list { display: none; }
+    .roi-mobile-item { border: 1px solid #E2E8F0; border-radius: 10px; background: #FFFFFF; }
     /* Smooth expand/collapse animation */
     .expand-animate { overflow: hidden; transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease; opacity: 1; }
     .expand-animate--collapsed { max-height: 0 !important; opacity: 0; }
@@ -115,10 +154,56 @@
     .chart-tooltip { position: absolute; background: #1E293B; color: #fff; padding: 6px 10px; border-radius: 8px; font-size: 0.7rem; pointer-events: none; white-space: nowrap; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translate(-50%, -100%); margin-top: -10px; opacity: 0; transition: opacity 0.15s ease; }
     .chart-tooltip--visible { opacity: 1; }
     .chart-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #1E293B; }
+    .bp button:focus-visible, .bp input:focus-visible, .back-to-top:focus-visible { outline: 3px solid rgba(37,99,235,0.35); outline-offset: 2px; }
     /* Mobile: fixed bottom betting bar */
     @media (max-width: 768px) {
       .bp-bar--fixed { position: fixed; bottom: 0; left: 0; right: 0; z-index: 999; border-radius: 0; border-top: 2px solid #1D4ED8; box-shadow: 0 -4px 16px rgba(0,0,0,0.1); }
+      .bp-bar--fixed { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+      .app-main { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
+      .bp-hdr { align-items: flex-start; }
+      .bp-header-meta { align-items: flex-end; flex-direction: column; gap: 4px; }
+      .bb, .br, .bp-race-hdr, .bp-bar-btn { min-height: 44px; }
+      .br { width: 44px; height: 44px; }
+      .bh { display: block; padding: 12px; }
+      .bh-top { display: grid; grid-template-columns: minmax(0,1fr); align-items: flex-start; gap: 8px; }
+      .bh-info { display: grid; grid-template-columns: 40px 48px minmax(0,1fr); align-items: center; width: 100%; gap: 10px; }
+      .bh-name-en { overflow: hidden; max-width: 100%; white-space: nowrap; text-overflow: ellipsis; }
+      .bh-meta { flex-wrap: nowrap; gap: 9px; }
+      .bh-grades { width: 100%; box-sizing: border-box; justify-content: flex-start; padding-left: 108px; }
+      .bh-analysis { min-height: 44px; padding: 7px 11px; }
+      .bh-step { min-width: 0; margin-top: 12px; }
+      .bh-step-row { justify-content: flex-start; gap: 8px; }
+      .bh-step-row--result { flex-wrap: nowrap; }
+      .bb-edit--inline { min-height: 44px; }
+      .roi-sum { overflow: visible; border: 0; border-radius: 0; background: transparent; }
+      .roi-sum-hdr { align-items: flex-start; flex-direction: column; gap: 3px; padding: 10px 12px; border: 1px solid #DCE5F2; border-radius: 10px; background: linear-gradient(135deg,#F8FAFC,#EFF6FF); line-height: 1.35; }
+      .roi-desktop-table { display: none; }
+      .roi-mobile-list { display: grid; gap: 0; margin-top: 8px; overflow: hidden; border: 1px solid #E2E8F0; border-radius: 10px; background: #FFFFFF; }
+      .roi-mobile-item { display: grid; grid-template-columns: 28px 32px minmax(0,1fr) auto; grid-template-areas: "silk race main side"; align-items: center; gap: 6px; min-height: 48px; padding: 5px 7px; border: 0; border-bottom: 1px solid #EEF2F7; border-radius: 0; box-shadow: none; }
+      .roi-mobile-item--skipped { opacity: 0.68; background: #F8FAFC; }
+      .roi-mobile-silk { grid-area: silk; display: flex; align-items: center; justify-content: center; }
+      .roi-mobile-silk .horse-silk, .roi-mobile-silk .horse-silk img { width: 28px; height: 28px; }
+      .roi-mobile-silk .horse-silk { flex-basis: 28px; }
+      .roi-mobile-race { grid-area: race; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 7px; background: #EFF6FF; color: #1D4ED8; font-size: 0.64rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+      .roi-mobile-main { grid-area: main; min-width: 0; }
+      .roi-mobile-name { overflow: hidden; color: #0F172A; font-size: 0.69rem; font-weight: 800; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+      .roi-mobile-jockey { color: #64748B; font-size: 0.58rem; font-weight: 600; }
+      .roi-mobile-name-en { overflow: hidden; margin-top: 2px; color: #64748B; font-size: 0.54rem; font-weight: 700; letter-spacing: 0.015em; line-height: 1.05; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+      .roi-mobile-side { grid-area: side; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+      .roi-mobile-price { display: flex; align-items: center; justify-content: flex-end; gap: 4px; color: #0F172A; font-size: 0.64rem; font-weight: 800; white-space: nowrap; }
+      .roi-mobile-result { padding: 2px 6px; border-radius: 999px; background: #F1F5F9; color: #64748B; font-size: 0.56rem; font-weight: 800; white-space: nowrap; }
+      .roi-mobile-result--win { background: #ECFDF5; color: #047857; }
+      .roi-mobile-result--loss { background: #FEF2F2; color: #B91C1C; }
+      .roi-mobile-result--skip { background: #F1F5F9; color: #64748B; }
+      .roi-mobile-total { display: flex; align-items: center; justify-content: space-between; padding: 7px 9px; background: #F8FAFC; color: #334155; font-size: 0.68rem; font-weight: 800; }
       .back-to-top { bottom: 72px; right: 16px; width: 40px; height: 40px; font-size: 1rem; }
+    }
+    @media (min-width: 769px) and (max-width: 1040px) {
+      .bh { grid-template-columns: minmax(320px, 1fr) auto; column-gap: 12px; }
+      .bh-top { gap: 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
     }
   </style>
 </head>
@@ -140,13 +225,32 @@
     </footer>
   </div>
 </div>
-<button class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回到頂部">↑</button>
+<button type="button" class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回到頂部" aria-label="回到頂部">↑</button>
 
 <script>
 // ═══════════════════════════════════════════════
 // Embedded Data (injected by generate_static.py)
 // ═══════════════════════════════════════════════
 const DASHBOARD_DATA = "__DATA_PLACEHOLDER__";
+
+// `static_template.html` is source code, not a standalone dashboard.  Keep a
+// readable fallback here because opening the template directly otherwise looks
+// like a broken production build (the CSS and data are injected by the
+// generator).
+if (typeof DASHBOARD_DATA === 'string') {
+  document.title = '旺財 Dashboard — 請先生成成品';
+  document.getElementById('root').innerHTML = `
+    <main style="max-width:680px;margin:64px auto;padding:28px;border:1px solid #dbe4ee;border-radius:16px;background:#fff;box-shadow:0 12px 35px rgba(30,58,95,.10);font:16px/1.65 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#24344d">
+      <div style="font-size:40px;margin-bottom:10px">🏇</div>
+      <h1 style="font-size:24px;margin:0 0 12px">呢個係 Dashboard 原始模板</h1>
+      <p style="margin:0 0 14px">CSS 同賽事資料仍未注入，所以唔應該直接開啟 <strong>static_template.html</strong>。</p>
+      <p style="margin:0 0 8px">請喺 <strong>Horse_Racing_Dashboard</strong> 目錄執行：</p>
+      <code style="display:block;padding:12px 14px;border-radius:8px;background:#f1f5f9;color:#0f3f72">python3 generate_static.py</code>
+      <p style="margin:14px 0 0">完成後請開啟 <strong>Open Dashboard.html</strong>。</p>
+    </main>`;
+  document.getElementById('backToTop')?.remove();
+  throw new Error('static_template.html must be processed by generate_static.py before use.');
+}
 
 // ═══════════════════════════════════════════════
 // State
@@ -184,9 +288,16 @@ function ratingBadge(grade, size) {
   return `<span class="badge ${cls}${sz}">${esc(grade)}</span>`;
 }
 
-function esc(s) { 
+function esc(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderSilk(horse, size = 'md') {
+  if (!horse?.silk_url) return '';
+  const sizeClass = size === 'sm' ? ' horse-silk--sm' : '';
+  const horseName = [horse.horse_name, horse.horse_name_en].filter(Boolean).join(' / ') || `馬號 ${horse.horse_number || ''}`;
+  return `<span class="horse-silk${sizeClass}" title="${esc(horseName)}綵衣"><img src="${esc(horse.silk_url)}" width="40" height="40" loading="lazy" decoding="async" referrerpolicy="no-referrer" alt="${esc(horseName)}綵衣" onerror="this.parentElement.classList.add('horse-silk--missing');this.remove()"></span>`;
 }
 
 // Clean markdown artifacts from pipeline output
@@ -339,6 +450,9 @@ function formatRawAnalysis(text) {
 function getMeetingKey(m) { return `${m.date}|${m.venue}`; }
 function getRacesData(m) { return DASHBOARD_DATA.races[getMeetingKey(m)]; }
 function getConsensus(m, raceNum) { return DASHBOARD_DATA.consensus[`${getMeetingKey(m)}|${raceNum}`]; }
+function formatVenueDisplay(venue) {
+  return ({ HappyValley: 'Happy Valley', ShaTin: 'Sha Tin' })[venue] || venue;
+}
 
 function getMergedRaces(racesData) {
   if (!racesData || !racesData.races_by_analyst) return [];
@@ -360,11 +474,17 @@ function getMergedRaces(racesData) {
 function betKey(date, venue, race, horse) { return `bet|${date}|${venue}|${race}|${horse}`; }
 let bettingState = {};
 const BET_SYNC_ENDPOINT = window.location.protocol === 'file:' ? null : '/api/sync';
-const BET_SYNC_POLL_MS = 5000;
+const BET_SYNC_POLL_MS = 15000;
+const BET_SYNC_DEBOUNCE_MS = 1200;
 let syncedBettingState = {};
 let syncPollTimer = null;
 let syncPushTimer = null;
 let lastSyncedSerialized = '';
+let syncInFlight = false;
+let hasPendingCommittedChanges = false;
+let syncMutationVersion = 0;
+let syncStatus = 'idle';
+let syncStatusDetail = '';
 // Permanent ROI ledger (separate from the editable panel) — committed via the
 // 匯入投注記錄 button, survives panel clears, feeds the ROI tab cross-device.
 const ROI_LEDGER_ENDPOINT = window.location.protocol === 'file:' ? null : '/api/roi';
@@ -372,7 +492,7 @@ let roiLedger = [];
 async function loadRoiLedger() {
   if (!ROI_LEDGER_ENDPOINT) return;
   try {
-    const res = await fetch(ROI_LEDGER_ENDPOINT, { cache: 'no-store' });
+    const res = await authorizedFetch(ROI_LEDGER_ENDPOINT, { cache: 'no-store' });
     if (!res.ok) return;
     const d = await res.json();
     roiLedger = Object.values(d || {});
@@ -391,6 +511,78 @@ function meetingBetPrefix(meeting) {
 
 function cloneBettingState(obj) {
   return JSON.parse(JSON.stringify(obj || {}));
+}
+
+function getSyncToken() {
+  try { return sessionStorage.getItem('wc_sync_token') || ''; } catch(e) { return ''; }
+}
+
+function setSyncToken(token) {
+  try {
+    if (token) sessionStorage.setItem('wc_sync_token', token);
+    else sessionStorage.removeItem('wc_sync_token');
+  } catch(e) {}
+}
+
+async function authorizedFetch(url, options = {}, allowPrompt = true) {
+  const token = getSyncToken();
+  const headers = new Headers(options.headers || {});
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  let response = await fetch(url, { ...options, headers });
+  if (response.status === 401 && allowPrompt) {
+    const entered = window.prompt('此內部 Dashboard 已啟用同步保護，請輸入同步密碼：');
+    if (entered) {
+      setSyncToken(entered.trim());
+      return authorizedFetch(url, options, false);
+    }
+  }
+  return response;
+}
+
+function stateUpdatedAt(state) {
+  const raw = state?.updatedAt ?? state?.updated_at ?? 0;
+  const numeric = Number(raw);
+  if (Number.isFinite(numeric)) return numeric;
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function mergeBetStateMaps(localState, remoteState) {
+  const merged = cloneBettingState(localState);
+  Object.entries(remoteState || {}).forEach(([key, remoteRecord]) => {
+    const localRecord = merged[key];
+    if (!localRecord || stateUpdatedAt(remoteRecord) >= stateUpdatedAt(localRecord)) {
+      merged[key] = cloneBettingState(remoteRecord);
+    }
+  });
+  return merged;
+}
+
+function isOddsInputActive() {
+  return Boolean(document.activeElement?.classList?.contains('bh-odds-input'));
+}
+
+function syncStatusCopy() {
+  if (!BET_SYNC_ENDPOINT) return { text: '本機模式', cls: 'local' };
+  if (syncStatus === 'saving') return { text: '同步中…', cls: 'saving' };
+  if (syncStatus === 'saved') return { text: '已同步', cls: 'saved' };
+  if (syncStatus === 'error') return { text: syncStatusDetail || '同步失敗', cls: 'error' };
+  return { text: '自動同步', cls: 'idle' };
+}
+
+function renderSyncStatus() {
+  const status = syncStatusCopy();
+  return `<span class="bet-sync-status bet-sync-status--${status.cls}" role="status" aria-live="polite">${esc(status.text)}</span>`;
+}
+
+function updateSyncStatus(nextStatus, detail = '') {
+  syncStatus = nextStatus;
+  syncStatusDetail = detail;
+  const status = syncStatusCopy();
+  document.querySelectorAll('.bet-sync-status').forEach(node => {
+    node.className = `bet-sync-status bet-sync-status--${status.cls}`;
+    node.textContent = status.text;
+  });
 }
 
 function extractMeetingState(store, meeting) {
@@ -440,18 +632,21 @@ function loadBettingState() {
   let localState = {};
   try { localState = JSON.parse(localStorage.getItem(k) || '{}'); } catch(e) { localState = {}; }
   const syncedState = extractMeetingState(syncedBettingState, selectedMeeting);
-  bettingState = cloneBettingState(syncedState && Object.keys(syncedState).length ? syncedState : localState);
+  bettingState = mergeBetStateMaps(localState, syncedState);
 }
 
-function saveBettingState() {
+function saveBettingState({ sync = true } = {}) {
   if (!selectedMeeting) return;
   const k = meetingStorageKey(selectedMeeting);
   try { localStorage.setItem(k, JSON.stringify(bettingState)); } catch(e) {}
+  if (!sync) return;
   syncedBettingState = setMeetingStateInStore(syncedBettingState, selectedMeeting, bettingState);
+  hasPendingCommittedChanges = true;
+  syncMutationVersion += 1;
   scheduleBettingSync();
 }
 
-function scheduleBettingSync(delay = 250) {
+function scheduleBettingSync(delay = BET_SYNC_DEBOUNCE_MS) {
   if (!BET_SYNC_ENDPOINT) return;
   if (syncPushTimer) clearTimeout(syncPushTimer);
   syncPushTimer = setTimeout(() => {
@@ -461,40 +656,68 @@ function scheduleBettingSync(delay = 250) {
 }
 
 async function pushBettingStateToCloud() {
-  if (!BET_SYNC_ENDPOINT) return;
+  if (!BET_SYNC_ENDPOINT || syncInFlight) return false;
   const body = JSON.stringify(syncedBettingState);
-  if (body === lastSyncedSerialized) return;
+  if (body === lastSyncedSerialized && !hasPendingCommittedChanges) return true;
+  const pushedVersion = syncMutationVersion;
+  syncInFlight = true;
+  updateSyncStatus('saving');
   try {
-    const res = await fetch(BET_SYNC_ENDPOINT, {
+    const res = await authorizedFetch(BET_SYNC_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body,
     });
-    if (res.ok) lastSyncedSerialized = body;
-  } catch(e) {}
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok || !payload.success) throw new Error(payload.error || `HTTP ${res.status}`);
+    if (payload.state && typeof payload.state === 'object') {
+      syncedBettingState = payload.state;
+      if (selectedMeeting) {
+        const remoteMeetingState = extractMeetingState(syncedBettingState, selectedMeeting);
+        bettingState = mergeBetStateMaps(bettingState, remoteMeetingState);
+        try { localStorage.setItem(meetingStorageKey(selectedMeeting), JSON.stringify(bettingState)); } catch(e) {}
+      }
+    }
+    lastSyncedSerialized = JSON.stringify(syncedBettingState);
+    if (pushedVersion === syncMutationVersion) hasPendingCommittedChanges = false;
+    updateSyncStatus('saved');
+    return true;
+  } catch(e) {
+    hasPendingCommittedChanges = true;
+    updateSyncStatus('error', '同步失敗 · 將自動重試');
+    return false;
+  } finally {
+    syncInFlight = false;
+    if (hasPendingCommittedChanges) scheduleBettingSync(3000);
+  }
 }
 
 async function pullBettingStateFromCloud(renderAfterSync = true) {
-  if (!BET_SYNC_ENDPOINT) return;
+  if (!BET_SYNC_ENDPOINT || syncInFlight || hasPendingCommittedChanges || isOddsInputActive()) return;
   try {
-    const res = await fetch(BET_SYNC_ENDPOINT, { cache: 'no-store' });
+    const res = await authorizedFetch(BET_SYNC_ENDPOINT, { cache: 'no-store' });
     if (!res.ok) return;
     const remote = await res.json();
     if (!remote || typeof remote !== 'object') return;
     const serialized = JSON.stringify(remote);
     lastSyncedSerialized = serialized;
-    syncedBettingState = remote;
     if (!selectedMeeting) return;
     const k = meetingStorageKey(selectedMeeting);
-    const remoteMeetingState = extractMeetingState(syncedBettingState, selectedMeeting);
+    const remoteMeetingState = extractMeetingState(remote, selectedMeeting);
     if (!remoteMeetingState || typeof remoteMeetingState !== 'object') return;
     const currentSerialized = JSON.stringify(bettingState || {});
-    const remoteSerialized = JSON.stringify(remoteMeetingState);
-    if (currentSerialized === remoteSerialized) return;
-    bettingState = cloneBettingState(remoteMeetingState);
-    try { localStorage.setItem(k, remoteSerialized); } catch(e) {}
-    if (renderAfterSync) render();
-  } catch(e) {}
+    const mergedMeetingState = mergeBetStateMaps(bettingState, remoteMeetingState);
+    const mergedSerialized = JSON.stringify(mergedMeetingState);
+    syncedBettingState = setMeetingStateInStore(remote, selectedMeeting, mergedMeetingState);
+    lastSyncedSerialized = JSON.stringify(syncedBettingState);
+    if (currentSerialized === mergedSerialized) return;
+    bettingState = mergedMeetingState;
+    try { localStorage.setItem(k, mergedSerialized); } catch(e) {}
+    updateSyncStatus('saved');
+    if (renderAfterSync && !isOddsInputActive()) render();
+  } catch(e) {
+    updateSyncStatus('error', '離線 · 使用本機資料');
+  }
 }
 
 function startBettingSyncPolling() {
@@ -517,7 +740,7 @@ function setBetState(date, venue, race, horse, patch) {
 
 function calcProfit(s) {
   if (!s.confirmed || s.scratched) return null;
-  if (s.result === null || s.result === undefined) return -1;  // Assumed loss until result confirmed
+  if (s.result === null || s.result === undefined) return null; // Pending until result confirmed
   const pos = typeof s.result === 'string' ? parseInt(s.result) : Number(s.result);
   if (isNaN(pos) || pos <= 0) return -1;
   if (pos <= 3) return (s.odds || 0) - 1;                     // Top 3: profit = odds - 1
@@ -549,7 +772,9 @@ function isEmptySection(text) {
 function setOddsValue(date, venue, race, horse, val) {
   const k = betKey(date,venue,race,horse);
   bettingState[k] = { ...getBetState(date,venue,race,horse), odds: parseFloat(val) || null, updatedAt: Date.now() };
-  saveBettingState();
+  // Keep a partial input as a local draft.  It is committed to shared state
+  // only when the user confirms the odds, avoiding one KV write per keystroke.
+  saveBettingState({ sync: false });
 }
 
 function lockOdds(date, venue, race, horse) {
@@ -592,6 +817,10 @@ function toggleBetRace(rn) {
   render();
 }
 
+function defaultExpandedBetRaces(racesData) {
+  return new Set(getMergedRaces(racesData).map(race => race.race_number));
+}
+
 // One-click: commit THIS meeting's 投注面板 records straight into the shared
 // database (Cloudflare KV via /api/sync). No file picker. Routes by region (the
 // records carry date|venue|region). Also migrates any odds that currently only
@@ -603,7 +832,7 @@ async function commitBetsToDatabase() {
   // Keep the editable panel synced too (so cross-device editing still works).
   saveBettingState();
   lastSyncedSerialized = null;
-  pushBettingStateToCloud();
+  await pushBettingStateToCloud();
   // Build the finalized records for THIS meeting and commit them to the PERMANENT
   // ROI ledger (survives clearing the panel; feeds the ROI tab on every device).
   const racesData = getRacesData(m);
@@ -620,7 +849,7 @@ async function commitBetsToDatabase() {
         records.push({
           date: m.date, venue: m.venue, region: m.region,
           race_number: race.race_number, horse_number: c.horse_number,
-          horse_name: c.horse_name, jockey: c.jockey, trainer: c.trainer,
+          horse_name: c.horse_name, horse_name_en: c.horse_name_en || null, jockey: c.jockey, trainer: c.trainer,
           kelvin_grade: c.kelvin_grade, heison_grade: c.heison_grade,
           odds: s.odds || 0, result_position: pos, stake: 1,
           payout: (pos >= 1 && pos <= 3) ? (s.odds || 0) : 0,
@@ -632,7 +861,7 @@ async function commitBetsToDatabase() {
   });
   if (records.length === 0) { alert('呢場暫時冇已確認嘅投注記錄可寫入。'); return; }
   try {
-    const res = await fetch(ROI_LEDGER_ENDPOINT, {
+    const res = await authorizedFetch(ROI_LEDGER_ENDPOINT, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(records),
     });
@@ -662,7 +891,7 @@ function exportBetsJSON() {
         betsToExport.push({
           date: m.date, venue: m.venue, region: m.region,
           race_number: race.race_number, horse_number: c.horse_number,
-          horse_name: c.horse_name, jockey: c.jockey, trainer: c.trainer,
+          horse_name: c.horse_name, horse_name_en: c.horse_name_en || null, jockey: c.jockey, trainer: c.trainer,
           kelvin_grade: c.kelvin_grade, heison_grade: c.heison_grade,
           odds: s.odds, status: s.scratched ? 'scratched' : s.confirmed ? (s.result >= 1 && s.result <= 3 ? 'won' : s.result === 0 ? 'lost' : 'pending') : 'skipped',
           result_position: s.result, net_profit: calcProfit(s),
@@ -714,13 +943,25 @@ function renderDashboard() {
   let html = '<div class="meeting-selector">';
   meetings.forEach((m, i) => {
     const sel = selectedMeeting && m.date === selectedMeeting.date && m.venue === selectedMeeting.venue ? 'selected' : '';
-    html += `<div class="meeting-card card--clickable ${sel}" onclick="selectMeeting(${i})">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div class="meeting-card__date">${esc(m.date)}</div>
-        <span class="badge badge--region-${m.region}">${m.region === 'hkjc' ? '🇭🇰 HKJC' : '🇦🇺 AU'}</span>
+    const meetingRaceCount = getMergedRaces(getRacesData(m)).length;
+    const isHkjc = m.region === 'hkjc';
+    const regionClass = isHkjc ? 'meeting-card--hkjc' : 'meeting-card--au';
+    const regionFlag = isHkjc ? '🇭🇰' : '🇦🇺';
+    const countryName = isHkjc ? 'Hong Kong' : 'Australia';
+    html += `<div class="meeting-card ${regionClass} card--clickable ${sel}" onclick="selectMeeting(${i})">
+      <div class="meeting-card__flag" aria-hidden="true">${regionFlag}</div>
+      <div class="meeting-card__body">
+        <div class="meeting-card__region">
+          <span class="meeting-card__country">${countryName}</span>
+        </div>
+        <div class="meeting-card__venue">${esc(formatVenueDisplay(m.venue))}</div>
+        <div class="meeting-card__meta">
+          <span>${esc(m.date)}</span>
+          <span class="meeting-card__meta-separator" aria-hidden="true">•</span>
+          <span>${meetingRaceCount} 場</span>
+        </div>
       </div>
-      <div class="meeting-card__venue">📍 ${esc(m.venue)}</div>
-      <div class="meeting-card__analysts">${m.analysts.map(a => `<span class="badge badge--b">${esc(a)}</span>`).join('')}</div>
+      <div class="meeting-card__arrow" aria-hidden="true">→</div>
     </div>`;
   });
   html += '</div>';
@@ -731,16 +972,20 @@ function renderDashboard() {
       const merged = getMergedRaces(racesData);
       const flag = selectedMeeting.region === 'hkjc' ? '🇭🇰' : '🇦🇺';
       const isDualAnalyst = (selectedMeeting.analysts?.length > 1);
-      const analystNote = isDualAnalyst ? `<span style="font-size:0.75rem;font-weight:400;color:#64748B;margin-left:8px">(${selectedMeeting.analysts.join(' + ')} 分析)</span>` : '';
-      
-      html += `<h2 style="margin:24px 0 8px;font-size:1.1rem;font-weight:700">${flag} ${esc(selectedMeeting.venue)} · ${esc(selectedMeeting.date)}${analystNote}</h2>`;
-      html += '<div class="race-board">';
+      const analystNote = isDualAnalyst ? `<span class="race-overview-analysts">${selectedMeeting.analysts.map(esc).join(' + ')} 分析</span>` : '';
+
+      html += `<div class="race-overview-header">
+        <h2 class="race-overview-title">${flag} ${esc(formatVenueDisplay(selectedMeeting.venue))} · ${esc(selectedMeeting.date)}${analystNote}</h2>
+        <div class="race-overview-summary">全部 ${merged.length} 場 · 點擊查看詳細分析</div>
+      </div>`;
+      const raceBoardClass = merged.length === 11 ? ' race-board--eleven' : '';
+      html += `<div class="race-board${raceBoardClass}">`;
       merged.forEach(race => {
         html += `<div class="race-tile card--clickable" onclick="showRace(${race.race_number})">
           <div class="race-tile__number">R${race.race_number}</div>
           <div class="race-tile__info">${esc(race.distance || '\u2014')} ${esc(race.race_class || '')}</div>
-          <div style="font-size:0.7rem;color:#94A3B8;margin-top:4px">\ud83d\udc34 ${race.horses_count || race.horses?.length || 0} \u5339\u99ac</div>
-          <div style="margin-top:8px;font-size:0.7rem;color:#3B82F6;font-weight:600">\u67e5\u770b\u5206\u6790 \u2192</div>
+          <div class="race-tile__runner-count">\ud83d\udc34 ${race.horses_count || race.horses?.length || 0} \u5339\u99ac</div>
+          <div class="race-tile__cta">\u67e5\u770b\u5206\u6790 \u2192</div>
         </div>`;
       });
       html += '</div>';
@@ -756,11 +1001,8 @@ function selectMeeting(index) {
   selectedMeeting = DASHBOARD_DATA.meetings[index];
   loadBettingState();
   pullBettingStateFromCloud(true);
-  expandedBetRaces.clear();
   const racesData = getRacesData(selectedMeeting);
-  if (racesData) {
-    getMergedRaces(racesData).forEach(r => expandedBetRaces.add(r.race_number));
-  }
+  expandedBetRaces = racesData ? defaultExpandedBetRaces(racesData) : new Set();
   render();
 }
 
@@ -903,12 +1145,26 @@ function renderBetCard(c, m, raceNum) {
 
   // Top row: horse info + grades + profit
   h += `<div class="bh-top"><div class="bh-info">`;
-  h += `<div class="bh-num">${c.horse_number}</div><div>`;
+  h += renderSilk(c);
+  h += `<div class="bh-num"><span class="bh-num-label">馬號</span><strong class="bh-num-value">${c.horse_number}</strong></div><div class="bh-copy">`;
   h += `<div class="bh-name">${esc(c.horse_name)}</div>`;
-  h += `<div class="bh-meta">${[c.jockey ? '\ud83c\udfc7 '+esc(c.jockey) : '', c.trainer ? '\ud83c\udfe0 '+esc(c.trainer) : ''].filter(Boolean).join(' \u00b7 ')}</div>`;
+  if (c.horse_name_en) h += `<div class="bh-name-en">${esc(c.horse_name_en)}</div>`;
+  h += `<div class="bh-meta">`;
+  if (c.jockey) h += `<span class="bh-meta-item">\ud83c\udfc7 ${esc(c.jockey)}</span>`;
+  if (c.trainer) h += `<span class="bh-meta-item">\ud83c\udfe0 ${esc(c.trainer)}</span>`;
+  h += `</div>`;
   h += `</div></div>`;
-  h += `<div class="bh-grades">${ratingBadge(String(c.kelvin_grade||c.grade||''))}${c.heison_grade?' '+ratingBadge(String(c.heison_grade)):''}`;
-  h += `<button class="bh-analysis" onclick="showRace(${raceNum})">查看分析\u2192</button>`;
+  const statusMeta = s.scratched
+    ? {label:'已退出', cls:'skip'}
+    : s.skipped
+      ? {label:'已選唔投', cls:'skip'}
+      : s.confirmed
+        ? (s.result === null || s.result === undefined ? {label:'待賽果', cls:'pending'} : {label:'已結算', cls:'settled'})
+        : s.oddsConfirmed
+          ? {label:'待決定', cls:'decision'}
+          : {label:'輸入賠率', cls:'draft'};
+  h += `<div class="bh-grades"><span class="bh-status bh-status--${statusMeta.cls}">${statusMeta.label}</span>${ratingBadge(String(c.kelvin_grade||c.grade||''))}${c.heison_grade?' '+ratingBadge(String(c.heison_grade)):''}`;
+  h += `<button type="button" class="bh-analysis" onclick="showRace(${raceNum})">查看分析\u2192</button>`;
   const profit = calcProfit(s);
   if (profit !== null) {
     h += `<span class="bh-profit ${profit >= 0 ? 'bh-profit--win' : 'bh-profit--loss'}">${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}</span>`;
@@ -918,46 +1174,88 @@ function renderBetCard(c, m, raceNum) {
   if (s.scratched) {
     h += `<div class="bh-step"><div class="bh-step-row">`;
     h += `<span style="font-size:0.75rem;color:#64748B">\ud83d\udeab \u5df2\u9000\u51fa (Scratched)</span>`;
-    h += `<button class="bb bb-restore" onclick="unscratchHorse(${A})">\u21a9\ufe0f \u5fa9\u539f</button>`;
+    h += `<button type="button" class="bb bb-restore" onclick="unscratchHorse(${A})">\u21a9\ufe0f \u5fa9\u539f</button>`;
     h += `</div></div>`;
   } else if (s.skipped) {
     h += `<div class="bh-step"><div class="bh-step-row">`;
     h += `<span style="font-size:0.75rem;color:#64748B">\u23ed\ufe0f \u5df2\u653e\u68c4\u6b64\u99ac${s.odds ? ' \u00b7 \u8ce0\u7387 @'+s.odds : ''}</span>`;
-    h += `<button class="bb bb-reopen" onclick="reopenBet(${A})">\ud83d\udd04 \u91cd\u65b0\u8003\u616e</button>`;
+    h += `<button type="button" class="bb bb-reopen" onclick="reopenBet(${A})">\ud83d\udd04 \u91cd\u65b0\u8003\u616e</button>`;
     h += `</div></div>`;
   } else if (s.confirmed) {
     h += `<div class="bh-step">`;
-    h += `<div class="bh-step-label">\ud83d\udcb0 \u5df2\u6295\u6ce8 \u00b7 \u8ce0\u7387 @${s.odds}</div>`;
-    h += `<div class="bh-step-row">`;
+    h += `<div class="bh-step-heading"><div class="bh-step-label">\ud83d\udcb0 \u5df2\u6295\u6ce8 \u00b7 \u8ce0\u7387 @${s.odds}</div>`;
+    h += `<button type="button" class="bb bb-edit bb-edit--inline" onclick="unlockOdds(${A})">\u270f\ufe0f \u6539\u8ce0\u7387</button></div>`;
+    h += `<div class="bh-step-row bh-step-row--result">`;
     h += `<span style="font-size:0.72rem;color:#94A3B8;margin-right:4px">\u540d\u6b21:</span>`;
     h += `<div class="br-group">`;
     ;[1,2,3].forEach(p => {
-      h += `<button class="br${s.result===p?' br--on':''}" onclick="setResult(${A},${p})">${p}</button>`;
+      h += `<button type="button" class="br${s.result===p?' br--on':''}" aria-label="第${p}名" onclick="setResult(${A},${p})">${p}</button>`;
     });
-    h += `<button class="br br--x${s.result===0?' br--x-on':''}" onclick="setResult(${A},0)">X</button>`;
+    h += `<button type="button" class="br br--x${s.result===0?' br--x-on':''}" aria-label="未能入位" onclick="setResult(${A},0)">X</button>`;
     h += `</div>`;
-    h += `<button class="bb bb-scratch" onclick="scratchHorse(${A})" style="margin-left:8px">\ud83d\udeab \u5df2\u9000\u51fa</button>`;
-    h += `<button class="bb bb-edit" onclick="unlockOdds(${A})" style="margin-left:4px">\u270f\ufe0f \u6539\u8ce0\u7387</button>`;
+    h += `<button type="button" class="bb bb-scratch" onclick="scratchHorse(${A})" style="margin-left:8px">\ud83d\udeab \u5df2\u9000\u51fa</button>`;
     h += `</div></div>`;
   } else if (s.oddsConfirmed) {
     h += `<div class="bh-step">`;
     h += `<div class="bh-step-label">\u8ce0\u7387\u5df2\u78ba\u8a8d @${s.odds} \u2014 \u662f\u5426\u6295\u6ce8\uff1f</div>`;
     h += `<div class="bh-step-row">`;
-    h += `<button class="bb bb-bet" onclick="placeBet(${A})">\ud83d\udcb0 \u6295\u6ce8</button>`;
-    h += `<button class="bb bb-skip" onclick="skipBet(${A})">\u23ed\ufe0f \u5514\u6295</button>`;
-    h += `<button class="bb bb-edit" onclick="unlockOdds(${A})" style="margin-left:4px">\u270f\ufe0f \u6539\u8ce0\u7387</button>`;
+    h += `<button type="button" class="bb bb-bet" onclick="placeBet(${A})">\ud83d\udcb0 \u78ba\u8a8d\u6295\u6ce8</button>`;
+    h += `<button type="button" class="bb bb-skip" onclick="skipBet(${A})">\u23ed\ufe0f \u5514\u6295</button>`;
+    h += `<button type="button" class="bb bb-edit" onclick="unlockOdds(${A})" style="margin-left:4px">\u270f\ufe0f \u6539\u8ce0\u7387</button>`;
     h += `</div></div>`;
   } else {
     h += `<div class="bh-step">`;
-    h += `<div class="bh-step-label">\u2460 \u8f38\u5165\u8ce0\u7387</div>`;
+    const oddsLabelId = `odds-label-${raceNum}-${c.horse_number}`;
+    h += `<div class="bh-step-label" id="${oddsLabelId}">\u2460 \u8f38\u5165\u8ce0\u7387</div>`;
     h += `<div class="bh-step-row">`;
-    h += `<input class="bh-odds-input" type="number" step="0.1" min="1" placeholder="\u8ce0\u7387" value="${s.odds||''}" onchange="setOddsValue(${A},this.value)" oninput="setOddsValue(${A},this.value)">`;
-    h += `<button class="bb bb-lock" onclick="lockOdds(${A})">\ud83d\udd12 \u78ba\u8a8d\u8ce0\u7387</button>`;
+    h += `<input class="bh-odds-input" type="number" name="odds-${raceNum}-${c.horse_number}" inputmode="decimal" autocomplete="off" step="0.1" min="1" placeholder="例如 2.5…" aria-labelledby="${oddsLabelId}" value="${s.odds??''}" oninput="setOddsValue(${A},this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();lockOdds(${A})}">`;
+    h += `<button type="button" class="bb bb-lock" onclick="lockOdds(${A})">\ud83d\udd12 \u78ba\u8a8d\u8ce0\u7387</button>`;
     h += `</div></div>`;
   }
 
   h += '</div>';
   return h;
+}
+
+function renderMobileRoiRecord(b, mode = 'confirmed') {
+  const grade = ratingBadge(String(b.grade || '')) + (b.heison ? ' ' + ratingBadge(String(b.heison)) : '');
+  const horse = {horse_number:b.num, horse_name:b.name, horse_name_en:b.name_en, silk_url:b.silk_url};
+  const jockey = b.jockey ? `<span class="roi-mobile-jockey"> \u00b7 ${esc(b.jockey)}</span>` : '';
+  const englishName = b.name_en ? `<div class="roi-mobile-name-en" title="${esc(b.name_en)}">${esc(b.name_en)}</div>` : '';
+  let resultLabel = '\u5f85\u8cfd\u679c';
+  let resultClass = '';
+  if (mode === 'skipped') {
+    resultLabel = '\u5df2\u653e\u68c4';
+    resultClass = ' roi-mobile-result--skip';
+  } else if (b.result !== null && b.result !== undefined) {
+    const won = b.result >= 1 && b.result <= 3;
+    const resultText = won ? `\u7b2c${b.result}\u540d` : '\u672a\u5165\u4f4d';
+    const profitText = b.profit !== null && b.profit !== undefined
+      ? ` \u00b7 ${b.profit >= 0 ? '+' : ''}$${b.profit.toFixed(2)}`
+      : '';
+    resultLabel = resultText + profitText;
+    resultClass = won ? ' roi-mobile-result--win' : ' roi-mobile-result--loss';
+  }
+  return `<div class="roi-mobile-item${mode === 'skipped' ? ' roi-mobile-item--skipped' : ''}">
+    <div class="roi-mobile-silk">${renderSilk(horse, 'sm')}</div>
+    <div class="roi-mobile-race">R${b.race}</div>
+    <div class="roi-mobile-main">
+      <div class="roi-mobile-name">#${b.num} \u00b7 ${esc(b.name)}${jockey}</div>
+      ${englishName}
+    </div>
+    <div class="roi-mobile-side">
+      <div class="roi-mobile-price">${grade}<span>@${b.odds || '\u2014'}</span></div>
+      <div class="roi-mobile-result${resultClass}">${resultLabel}</div>
+    </div>
+  </div>`;
+}
+
+function renderDesktopRoiHorse(b) {
+  const horse = {horse_number:b.num, horse_name:b.name, horse_name_en:b.name_en, silk_url:b.silk_url};
+  return `<div class="roi-desktop-horse">
+    ${renderSilk(horse, 'sm')}
+    <div><div class="roi-desktop-horse-name">${esc(b.name)}</div>${b.name_en ? `<div class="roi-desktop-horse-name-en">${esc(b.name_en)}</div>` : ''}</div>
+  </div>`;
 }
 
 function renderDashboardBettingPanel(meeting, races, isDualAnalyst) {
@@ -967,34 +1265,42 @@ function renderDashboardBettingPanel(meeting, races, isDualAnalyst) {
     allRC.push({ rn: race.race_number, cands: getRaceBettingCandidates(m, race.race_number, isDualAnalyst), race });
   });
 
-  let totalBets = 0, totalProfit = 0;
+  let totalBets = 0, totalSettled = 0, totalProfit = 0;
   allRC.forEach(({rn, cands}) => cands.forEach(c => {
     const s = getBetState(m.date, m.venue, rn, c.horse_number);
-    if (s.confirmed && !s.scratched) { totalBets++; const p = calcProfit(s); if (p !== null) totalProfit += p; }
+    if (s.confirmed && !s.scratched) {
+      totalBets++;
+      const p = calcProfit(s);
+      if (p !== null) { totalSettled++; totalProfit += p; }
+    }
   }));
 
   let html = `<div class="bp">
     <div class="bp-hdr"><div class="bp-title">\ud83c\udfaf \u6295\u6ce8\u9762\u677f</div>
-    <span class="bp-sub">${isDualAnalyst ? 'Top 2 \u5171\u8b58\u99ac' : 'Top 2 \u7cbe\u9078'} \u00b7 $1 \u5e73\u6ce8\u5236</span></div>`;
+    <div class="bp-header-meta">${renderSyncStatus()}<span class="bp-sub">${isDualAnalyst ? 'Top 2 \u5171\u8b58\u99ac' : 'Top 2 \u7cbe\u9078'} \u00b7 $1 \u5e73\u6ce8\u5236</span></div></div>`;
 
   allRC.forEach(({rn, cands, race}) => {
-    let rBets=0, rProfit=0;
+    let rBets=0, rSettled=0, rProfit=0;
     cands.forEach(c => {
       const s = getBetState(m.date, m.venue, rn, c.horse_number);
-      if (s.confirmed && !s.scratched) { rBets++; const p=calcProfit(s); if(p!==null) rProfit+=p; }
+      if (s.confirmed && !s.scratched) {
+        rBets++;
+        const p=calcProfit(s);
+        if(p!==null) { rSettled++; rProfit+=p; }
+      }
     });
 
     const isExp = expandedBetRaces.has(rn);
-    const profitStr = rBets > 0 ? `${rProfit >= 0 ? '+' : ''}$${rProfit.toFixed(2)}` : '';
-    const profitCls = rProfit >= 0 ? 'bh-profit--win' : 'bh-profit--loss';
+    const profitStr = rSettled > 0 ? `${rProfit >= 0 ? '+' : ''}$${rProfit.toFixed(2)}` : (rBets > 0 ? '待賽果' : '');
+    const profitCls = rSettled > 0 ? (rProfit >= 0 ? 'bh-profit--win' : 'bh-profit--loss') : 'bh-profit--pending';
 
-    html += `<div class="bp-race"><div class="bp-race-hdr" onclick="toggleBetRace(${rn})">`;
+    html += `<div class="bp-race"><button type="button" class="bp-race-hdr" aria-expanded="${isExp}" onclick="toggleBetRace(${rn})">`;
     html += `<div><span class="bp-race-lbl">R${rn}</span><span class="bp-race-meta">${esc(race.distance||'')} ${esc(race.race_class||'')}</span>`;
     html += ` <span class="bp-race-stat">${cands.length} \u5019\u9078</span></div>`;
     html += `<div style="display:flex;align-items:center;gap:8px">`;
     if (rBets>0) html += `<span style="font-size:0.75rem;color:#94A3B8">${rBets}\u6ce8</span>`;
     if (profitStr) html += `<span class="bh-profit ${profitCls}" style="font-size:0.78rem">${profitStr}</span>`;
-    html += `<span style="font-size:0.6rem;color:#475569">${isExp?'\u25b2':'\u25bc'}</span></div></div>`;
+    html += `<span style="font-size:0.6rem;color:#475569">${isExp?'\u25b2':'\u25bc'}</span></div></button>`;
 
     if (isExp) {
       html += `<div class="bp-race-body">`;
@@ -1014,8 +1320,8 @@ function renderDashboardBettingPanel(meeting, races, isDualAnalyst) {
 
   // Bottom bar (add bp-bar--fixed class for mobile sticky)
   html += `<div class="bp-bar bp-bar--fixed">`;
-  html += `<div class="bp-bar-info">\u7e3d\u8a08 ${totalBets} \u6ce8${totalBets > 0 ? ` \u00b7 \u6de8\u5229 <span class="bh-profit ${totalProfit >= 0 ? 'bh-profit--win' : 'bh-profit--loss'}">${totalProfit >= 0 ? '+' : ''}$${totalProfit.toFixed(2)}</span>` : ''}</div>`;
-  html += `<button class="bp-bar-btn" onclick="commitBetsToDatabase()" ${totalBets===0?'disabled':''}>\ud83d\udce5 \u532f\u5165\u6295\u6ce8\u8a18\u9304</button>`;
+  html += `<div class="bp-bar-info">\u7e3d\u8a08 ${totalBets} \u6ce8${totalSettled > 0 ? ` \u00b7 \u6de8\u5229 <span class="bh-profit ${totalProfit >= 0 ? 'bh-profit--win' : 'bh-profit--loss'}">${totalProfit >= 0 ? '+' : ''}$${totalProfit.toFixed(2)}</span>` : (totalBets > 0 ? ' \u00b7 \u5f85\u8cfd\u679c' : '')}</div>`;
+  html += `<button type="button" class="bp-bar-btn" onclick="commitBetsToDatabase()" ${totalBets===0?'disabled':''}>\ud83d\udce5 \u532f\u5165\u6295\u6ce8\u8a18\u9304</button>`;
   html += `</div>`;
 
   // ROI Summary Table
@@ -1026,38 +1332,46 @@ function renderDashboardBettingPanel(meeting, races, isDualAnalyst) {
       const s = getBetState(m.date, m.venue, rn, c.horse_number);
       if (s.confirmed && !s.scratched) {
         const p = calcProfit(s);
-        allConfirmed.push({race:rn, num:c.horse_number, name:c.horse_name, jockey:c.jockey, trainer:c.trainer, odds:s.odds, result:s.result, profit:p, grade:c.kelvin_grade||c.grade, heison:c.heison_grade});
+        allConfirmed.push({race:rn, num:c.horse_number, name:c.horse_name, name_en:c.horse_name_en, silk_url:c.silk_url, jockey:c.jockey, trainer:c.trainer, odds:s.odds, result:s.result, profit:p, grade:c.kelvin_grade||c.grade, heison:c.heison_grade});
       } else if (s.skipped) {
-        allSkipped.push({race:rn, num:c.horse_number, name:c.horse_name, jockey:c.jockey, trainer:c.trainer, odds:s.odds, grade:c.kelvin_grade||c.grade, heison:c.heison_grade});
+        allSkipped.push({race:rn, num:c.horse_number, name:c.horse_name, name_en:c.horse_name_en, silk_url:c.silk_url, jockey:c.jockey, trainer:c.trainer, odds:s.odds, grade:c.kelvin_grade||c.grade, heison:c.heison_grade});
       }
     });
   });
   if (allConfirmed.length > 0) {
-    const totalStake = allConfirmed.length;
+    const settledBets = allConfirmed.filter(b => b.profit !== null);
+    const pendingBets = allConfirmed.length - settledBets.length;
+    const totalStake = settledBets.length;
     const totalPnl = allConfirmed.reduce((a,b) => a + (b.profit||0), 0);
-    const wins = allConfirmed.filter(b => b.profit !== null && b.profit > 0).length;
+    const wins = settledBets.filter(b => b.profit > 0).length;
+    const losses = settledBets.length - wins;
     const roi = totalStake > 0 ? (totalPnl / totalStake * 100) : 0;
     html += `<div class="roi-sum">`;
-    html += `<div class="roi-sum-hdr"><span>\ud83d\udcca \u6295\u6ce8\u8a18\u9304 \u00b7 ${m.venue} ${m.date}</span><span style="font-size:0.72rem;color:#6B7280;font-weight:500">${wins}W/${allConfirmed.length-wins}L \u00b7 ROI ${roi>=0?'+':''}${roi.toFixed(1)}%</span></div>`;
-    html += `<table><thead><tr><th>\u5834\u6b21</th><th>\u99ac\u865f</th><th>\u99ac\u5339</th><th>\u9a0e\u5e2b</th><th>\u7df4\u99ac\u5e2b</th><th>\u8a55\u7d1a</th><th>\u8cde\u7387</th><th>\u540d\u6b21</th><th>\u6de8\u5229</th></tr></thead><tbody>`;
+    html += `<div class="roi-sum-hdr"><span>\ud83d\udcca \u6295\u6ce8\u8a18\u9304 \u00b7 ${m.venue} ${m.date}</span><span style="font-size:0.72rem;color:#6B7280;font-weight:500">${wins}W/${losses}L${pendingBets ? ` \u00b7 ${pendingBets} \u5f85\u8cfd\u679c` : ''} \u00b7 ROI ${roi>=0?'+':''}${roi.toFixed(1)}%</span></div>`;
+    html += `<table class="roi-desktop-table"><thead><tr><th>\u5834\u6b21</th><th>\u99ac\u865f</th><th>\u99ac\u5339</th><th>\u9a0e\u5e2b</th><th>\u7df4\u99ac\u5e2b</th><th>\u8a55\u7d1a</th><th>\u8cde\u7387</th><th>\u540d\u6b21</th><th>\u6de8\u5229</th></tr></thead><tbody>`;
     allConfirmed.forEach(b => {
       const rStr = b.result === null ? '\u2014' : b.result === 0 ? 'X' : b.result;
       const pStr = b.profit !== null ? `<span style="color:${b.profit>=0?'#059669':'#DC2626'};font-weight:700">${b.profit>=0?'+':''}$${b.profit.toFixed(2)}</span>` : '<span style="color:#9CA3AF">\u2014</span>';
       const gStr = ratingBadge(String(b.grade||'')) + (b.heison ? ' '+ratingBadge(String(b.heison)) : '');
-      html += `<tr><td>R${b.race}</td><td>#${b.num}</td><td>${esc(b.name)}</td><td style="font-size:0.68rem;color:#6B7280">${esc(b.jockey||'')}</td><td style="font-size:0.68rem;color:#6B7280">${esc(b.trainer||'')}</td><td>${gStr}</td><td>@${b.odds}</td><td style="font-weight:700">${rStr}</td><td>${pStr}</td></tr>`;
+      html += `<tr><td>R${b.race}</td><td>#${b.num}</td><td>${renderDesktopRoiHorse(b)}</td><td style="font-size:0.68rem;color:#6B7280">${esc(b.jockey||'')}</td><td style="font-size:0.68rem;color:#6B7280">${esc(b.trainer||'')}</td><td>${gStr}</td><td>@${b.odds}</td><td style="font-weight:700">${rStr}</td><td>${pStr}</td></tr>`;
     });
-    html += `<tr class="roi-sum-total"><td colspan="6" style="text-align:right">\u7e3d\u8a08 ${totalStake}\u6ce8</td><td></td><td>${wins}/${allConfirmed.length}</td><td><span style="color:${totalPnl>=0?'#059669':'#DC2626'}">${totalPnl>=0?'+':''}$${totalPnl.toFixed(2)}</span></td></tr>`;
-    html += `</tbody></table></div>`;
+    html += `<tr class="roi-sum-total"><td colspan="6" style="text-align:right">\u7e3d\u8a08 ${allConfirmed.length}\u6ce8</td><td></td><td>${wins}/${settledBets.length}${pendingBets ? ` \u00b7 ${pendingBets}\u5f85` : ''}</td><td><span style="color:${totalPnl>=0?'#059669':'#DC2626'}">${totalPnl>=0?'+':''}$${totalPnl.toFixed(2)}</span></td></tr>`;
+    html += `</tbody></table><div class="roi-mobile-list">`;
+    allConfirmed.forEach(b => { html += renderMobileRoiRecord(b); });
+    html += `<div class="roi-mobile-total"><span>\u7e3d\u8a08 ${allConfirmed.length}\u6ce8 \u00b7 ${wins}/${settledBets.length}${pendingBets ? ` \u00b7 ${pendingBets}\u5f85` : ''}</span><span class="${totalPnl>=0?'bh-profit--win':'bh-profit--loss'}">${totalPnl>=0?'+':''}$${totalPnl.toFixed(2)}</span></div>`;
+    html += `</div></div>`;
   }
   if (allSkipped.length > 0) {
     html += `<div class="roi-sum" style="margin-top:10px;opacity:0.7">`;
     html += `<div class="roi-sum-hdr" style="background:linear-gradient(135deg,#F9FAFB,#F3F4F6)"><span style="color:#6B7280">\u274c \u653e\u68c4\u99ac \u00b7 ${allSkipped.length} \u5339</span></div>`;
-    html += `<table><thead><tr><th>\u5834\u6b21</th><th>\u99ac\u865f</th><th>\u99ac\u5339</th><th>\u9a0e\u5e2b</th><th>\u7df4\u99ac\u5e2b</th><th>\u8a55\u7d1a</th><th>\u8cde\u7387</th></tr></thead><tbody>`;
+    html += `<table class="roi-desktop-table"><thead><tr><th>\u5834\u6b21</th><th>\u99ac\u865f</th><th>\u99ac\u5339</th><th>\u9a0e\u5e2b</th><th>\u7df4\u99ac\u5e2b</th><th>\u8a55\u7d1a</th><th>\u8cde\u7387</th></tr></thead><tbody>`;
     allSkipped.forEach(b => {
       const gStr = ratingBadge(String(b.grade||'')) + (b.heison ? ' '+ratingBadge(String(b.heison)) : '');
-      html += `<tr style="color:#9CA3AF"><td>R${b.race}</td><td>#${b.num}</td><td>${esc(b.name)}</td><td style="font-size:0.68rem">${esc(b.jockey||'')}</td><td style="font-size:0.68rem">${esc(b.trainer||'')}</td><td>${gStr}</td><td>@${b.odds||'\u2014'}</td></tr>`;
+      html += `<tr style="color:#9CA3AF"><td>R${b.race}</td><td>#${b.num}</td><td>${renderDesktopRoiHorse(b)}</td><td style="font-size:0.68rem">${esc(b.jockey||'')}</td><td style="font-size:0.68rem">${esc(b.trainer||'')}</td><td>${gStr}</td><td>@${b.odds||'\u2014'}</td></tr>`;
     });
-    html += `</tbody></table></div>`;
+    html += `</tbody></table><div class="roi-mobile-list">`;
+    allSkipped.forEach(b => { html += renderMobileRoiRecord(b, 'skipped'); });
+    html += `</div></div>`;
   }
 
   html += `</div>`;
@@ -1073,6 +1387,9 @@ function getRaceBettingCandidates(meeting, raceNum, isDualAnalyst) {
       consensusHorses.filter(h => h.is_top2_consensus).forEach(h => {
         let jockey = h.jockey || null;
         let trainer = h.trainer || null;
+        let horseNameEn = h.horse_name_en || null;
+        let horseCode = h.horse_code || null;
+        let silkUrl = h.silk_url || null;
         const racesData = getRacesData(meeting);
         if (racesData && racesData.races_by_analyst && racesData.races_by_analyst['Kelvin']) {
            const kRace = racesData.races_by_analyst['Kelvin'].find(r => r.race_number === raceNum);
@@ -1081,12 +1398,17 @@ function getRaceBettingCandidates(meeting, raceNum, isDualAnalyst) {
                if (kHorse) {
                    jockey = kHorse.jockey || jockey;
                    trainer = kHorse.trainer || trainer;
+                   horseNameEn = kHorse.horse_name_en || horseNameEn;
+                   horseCode = kHorse.horse_code || horseCode;
+                   silkUrl = kHorse.silk_url || silkUrl;
                }
            }
         }
         candidates.push({
           horse_number: h.horse_number, horse_name: h.horse_name,
+          horse_name_en: horseNameEn,
           jockey: jockey, trainer: trainer,
+          horse_code: horseCode, silk_url: silkUrl,
           kelvin_grade: h.kelvin_grade, heison_grade: h.heison_grade,
           grade: h.kelvin_grade || h.heison_grade, consensus_type: 'Top 2 \u5171\u8b58',
         });
@@ -1100,8 +1422,11 @@ function getRaceBettingCandidates(meeting, raceNum, isDualAnalyst) {
         candidates.push({
           horse_number: h.horse_number,
           horse_name: h.horse_name,
+          horse_name_en: h.horse_name_en || null,
           jockey: h.jockey || null,
           trainer: h.trainer || null,
+          horse_code: h.horse_code || null,
+          silk_url: h.silk_url || null,
           scenario: h.scenario || null,
           grade: h.kelvin_grade || h.heison_grade || null,
           kelvin_grade: h.kelvin_grade || null,
@@ -1123,7 +1448,9 @@ function getRaceBettingCandidates(meeting, raceNum, isDualAnalyst) {
           const h = horseMap[p.horse_number] || {};
           candidates.push({
             horse_number: p.horse_number, horse_name: p.horse_name || h.horse_name || '?',
+            horse_name_en: h.horse_name_en || null,
             jockey: h.jockey || null, trainer: h.trainer || null,
+            horse_code: h.horse_code || null, silk_url: h.silk_url || null,
             grade: h.final_grade || p.grade, kelvin_grade: h.final_grade || p.grade, heison_grade: null,
             consensus_type: 'Top 2 \u7cbe\u9078',
           });
@@ -1136,7 +1463,9 @@ function getRaceBettingCandidates(meeting, raceNum, isDualAnalyst) {
         top2.forEach(h => {
           candidates.push({
             horse_number: h.horse_number, horse_name: h.horse_name,
+            horse_name_en: h.horse_name_en || null,
             jockey: h.jockey || null, trainer: h.trainer || null,
+            horse_code: h.horse_code || null, silk_url: h.silk_url || null,
             grade: h.final_grade, kelvin_grade: h.final_grade, heison_grade: null,
             consensus_type: 'Top 2 \u7cbe\u9078',
           });
@@ -1153,7 +1482,7 @@ function renderBettingPanel(meeting, raceNum, isDualAnalyst, consensus) {
 
   let html = `<div class="bp" style="margin-top:24px">
     <div class="bp-hdr"><div class="bp-title">\ud83c\udfaf R${raceNum} \u6295\u6ce8\u9762\u677f</div>
-    <span class="bp-sub">$1 \u5e73\u6ce8\u5236</span></div>`;
+    <div class="bp-header-meta">${renderSyncStatus()}<span class="bp-sub">$1 \u5e73\u6ce8\u5236</span></div></div>`;
 
   if (candidates.length === 0) {
     html += `<div style="text-align:center;padding:20px;color:#475569;font-size:0.85rem">
@@ -1196,6 +1525,7 @@ function renderHorseCard(horse, topPickRank) {
   html += ratingBadge(horse.final_grade, 'lg');
   if (horse.underhorse_triggered) html += '<span class="badge badge--consensus" title="冷門馬訊號">🐴⚡</span>';
   html += '</div>';
+  if (horse.horse_name_en) html += `<div class="horse-card__name-en">${esc(horse.horse_name_en)}</div>`;
   html += '<div class="horse-card__meta">';
   if (horse.jockey) html += `<span>🏇 ${esc(horse.jockey)}</span>`;
   if (horse.trainer) html += `<span> · 🏠 ${esc(horse.trainer)}</span>`;
@@ -1278,7 +1608,7 @@ function renderHorseCard(horse, topPickRank) {
   } else {
     if (horse.speed_forensics && !isEmptySection(horse.speed_forensics)) html += renderSection('🔬','段速法醫','#2563EB','#EFF6FF', horse.speed_forensics);
     if (horse.eem_energy && !isEmptySection(horse.eem_energy)) html += renderSection('⚡','EEM 能量引擎','#D97706','#FFFBEB', horse.eem_energy);
-    if (horse.forgiveness_file && !isEmptySection(horse.forgiveness_file)) html += renderSection('📋','寬恕檔案','#7C3AED','#F5F3FF', horse.forgiveness_file);
+    if (horse.forgiveness_file && !isEmptySection(horse.forgiveness_file)) html += renderSection('📋','寬恕檔案','#0F766E','#F0FDFA', horse.forgiveness_file);
     if (horse.form_line && !isEmptySection(horse.form_line)) html += renderSection('🔗','賽績線','#475569','#F8FAFC', horse.form_line);
     if (horse.horse_profile && !isEmptySection(horse.horse_profile)) html += renderSection('🐴','馬匹剖析','#475569','#F8FAFC', horse.horse_profile);
     if (horse.core_analysis && !isEmptySection(horse.core_analysis)) html += renderSection('🧠','核心分析','#1E40AF','#EFF6FF', horse.core_analysis);
@@ -1316,7 +1646,7 @@ function parseRawTextSections(text) {
   const sectionDefs = [
     { pattern: /(?:🔬|段速法醫|Speed Forensics|Sectional|Step 10)/i, icon: '🔬', title: '段速法醫', color: '#2563EB', bg: '#EFF6FF' },
     { pattern: /(?:⚡|EEM|能量引擎|Energy Engine)/i, icon: '⚡', title: 'EEM 能量引擎', color: '#D97706', bg: '#FFFBEB' },
-    { pattern: /(?:寬恕檔案|Forgiveness|修正)/i, icon: '📋', title: '寬恕檔案', color: '#7C3AED', bg: '#F5F3FF' },
+    { pattern: /(?:寬恕檔案|Forgiveness|修正)/i, icon: '📋', title: '寬恕檔案', color: '#0F766E', bg: '#F0FDFA' },
     { pattern: /(?:🔗|賽績線|Form Line|近績)/i, icon: '🔗', title: '賽績線', color: '#475569', bg: '#F8FAFC' },
     { pattern: /(?:🐴|馬匹剖析|Horse Profile|馬匹資料)/i, icon: '🐴', title: '馬匹剖析', color: '#475569', bg: '#F8FAFC' },
     { pattern: /(?:🧠|核心分析|Core Analysis|核心邏輯)/i, icon: '🧠', title: '核心分析', color: '#1E40AF', bg: '#EFF6FF' },
@@ -1383,7 +1713,8 @@ function renderComparisonView(analyses, analysts) {
         const col = i===0?'#D97706':i===1?'#6B7280':i===2?'#B45309':'#2563EB';
         html += `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;${i<top4.length-1?'border-bottom:1px solid #F1F5F9':''}">
           <div style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.9rem;flex-shrink:0;background:${bg};color:${col}">${i+1}</div>
-          <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:0.9rem">${esc(horse.horse_name)}</div><div style="font-size:0.7rem;color:#94A3B8">馬號 #${horse.horse_number}${horse.jockey ? ' · 🏇 '+esc(horse.jockey) : ''}</div></div>
+          ${renderSilk(horse, 'sm')}
+          <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:0.9rem">${esc(horse.horse_name)}</div>${horse.horse_name_en ? `<div class="bh-name-en">${esc(horse.horse_name_en)}</div>` : ''}<div style="font-size:0.7rem;color:#94A3B8">馬號 #${horse.horse_number}${horse.jockey ? ' · 🏇 '+esc(horse.jockey) : ''}</div></div>
           ${ratingBadge(horse.final_grade, 'lg')}
         </div>`;
       });
@@ -1398,9 +1729,9 @@ function renderComparisonView(analyses, analysts) {
     html += `<div style="margin-bottom:24px"><h2 style="font-size:1rem;font-weight:700;margin-bottom:12px">🎲 Monte Carlo 概率模擬</h2>`;
     mcAnalysts.forEach(analyst => {
       const isK = analyst.toLowerCase() === 'kelvin';
-      const headerClr = isK ? '#1D4ED8' : '#7C3AED';
-      const headerBg = isK ? '#EFF6FF' : '#F5F3FF';
-      const headerBdr = isK ? '#BFDBFE' : '#DDD6FE';
+      const headerClr = isK ? '#1D4ED8' : '#0F766E';
+      const headerBg = isK ? '#EFF6FF' : '#F0FDFA';
+      const headerBdr = isK ? '#BFDBFE' : '#99F6E4';
       html += `<div style="margin-bottom:12px"><div style="font-size:0.78rem;font-weight:700;color:${headerClr};padding:6px 12px;background:${headerBg};border-radius:6px 6px 0 0;border:1px solid ${headerBdr};border-bottom:none">${esc(analyst)} 分析</div>`;
 
       html += renderMonteCarloPanel(analyses[analyst], true);
@@ -1645,7 +1976,8 @@ function renderSingleAnalystView(analysis, analystName) {
       const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'🏅';
       html += `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;${i<top4.length-1?'border-bottom:1px solid #F1F5F9':''}">
         <div style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.9rem;flex-shrink:0;background:${bg};color:${col}">${i+1}</div>
-        <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:0.9rem">${esc(horse.horse_name)}</div><div style="font-size:0.7rem;color:#94A3B8">馬號 #${horse.horse_number}${horse.jockey ? ' · 🏇 '+esc(horse.jockey) : ''}</div></div>
+        ${renderSilk(horse, 'sm')}
+        <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:0.9rem">${esc(horse.horse_name)}</div>${horse.horse_name_en ? `<div class="bh-name-en">${esc(horse.horse_name_en)}</div>` : ''}<div style="font-size:0.7rem;color:#94A3B8">馬號 #${horse.horse_number}${horse.jockey ? ' · 🏇 '+esc(horse.jockey) : ''}</div></div>
         <span style="font-size:1.2rem">${medal}</span>
         ${ratingBadge(horse.final_grade, 'lg')}
       </div>`;
@@ -2044,7 +2376,7 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedMeeting = DASHBOARD_DATA.meetings[0];
     loadBettingState();
     const rd = getRacesData(selectedMeeting);
-    if (rd) getMergedRaces(rd).forEach(r => expandedBetRaces.add(r.race_number));
+    expandedBetRaces = rd ? defaultExpandedBetRaces(rd) : new Set();
   }
   startBettingSyncPolling();
   pullBettingStateFromCloud(false).finally(() => render());

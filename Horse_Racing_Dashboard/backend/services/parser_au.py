@@ -778,14 +778,32 @@ def parse_mc_results_json(filepath: str) -> list['MonteCarloPick']:
     results = data.get('results', {})
     pi_breakdown = data.get('power_index_breakdown', {})
     concordance = data.get('concordance', {})
+    # Older MC archives used an integer concordance score instead of the
+    # current object schema.  They still contain valid simulation results, so
+    # treat the missing rank lists as optional rather than aborting a full
+    # dashboard build.
+    if not isinstance(concordance, dict):
+        concordance = {}
     logic_top4 = concordance.get('logic_top4', [])
     mc_top4 = concordance.get('mc_top4', [])
+
+    if not isinstance(results, dict):
+        return []
+    if not isinstance(logic_top4, list):
+        logic_top4 = []
+    if not isinstance(mc_top4, list):
+        mc_top4 = []
     
     if not results:
         return []
     
     # Sort by win_pct descending
-    sorted_horses = sorted(results.items(), key=lambda x: x[1].get('win_pct', 0), reverse=True)
+    valid_results = {
+        horse_name: stats
+        for horse_name, stats in results.items()
+        if isinstance(stats, dict)
+    }
+    sorted_horses = sorted(valid_results.items(), key=lambda x: x[1].get('win_pct', 0), reverse=True)
     
     picks = []
     for rank, (horse_name, stats) in enumerate(sorted_horses, 1):

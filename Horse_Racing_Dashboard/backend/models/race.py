@@ -33,6 +33,9 @@ class RatingMatrix(BaseModel):
 class HorseAnalysis(BaseModel):
     horse_number: int
     horse_name: str
+    horse_name_en: Optional[str] = None
+    horse_code: Optional[str] = None  # HKJC brand number, e.g. K178
+    silk_url: Optional[str] = None  # HKJC racing colour image
     jockey: Optional[str] = None
     trainer: Optional[str] = None
     weight: Optional[str] = None

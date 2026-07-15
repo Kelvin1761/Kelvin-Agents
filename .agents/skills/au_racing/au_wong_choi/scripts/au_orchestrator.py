@@ -21,9 +21,11 @@ SHARED_HOOK_DIR = PROJECT_ROOT / ".agents" / "skills" / "shared_racing" / "post_
 
 sys.path.insert(0, str(SHARED_SCRIPTS))
 sys.path.insert(0, str(SHARED_HOOK_DIR))
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from cloudflare_deploy_hook import run_post_success_cloudflare_deploy
 from subprocess_pool import bounded_workers, run_labeled_commands
+from wongchoi_paths import AU_RACING
 
 PYTHON = sys.executable
 EXTRACTOR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_race_extractor" / "scripts" / "extractor.py"
@@ -134,7 +136,7 @@ def _get_target_dir_from_url(url: str) -> Path | None:
     date_str = match.group(2)
     formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
     candidates = []
-    for path in PROJECT_ROOT.iterdir():
+    for path in AU_RACING.iterdir():
         if not path.is_dir():
             continue
         if path.name.startswith(f"{formatted_date} {venue}") or path.name.startswith(f"{formatted_date}_{venue}_Race_"):

@@ -1,7 +1,4 @@
-"""
-File Watcher — Monitors Antigravity root for new/modified analysis files.
-Invalidates the meetings cache when changes are detected.
-"""
+"""Watch the configured analysis root for new or modified reports."""
 import time
 import threading
 import logging
@@ -14,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class AnalysisFileHandler(FileSystemEventHandler):
-    """Watches for *Analysis.txt file changes."""
+    """Watch analysis plus racecard metadata consumed by the test API."""
     
     def __init__(self, on_change_callback):
         super().__init__()
@@ -23,12 +20,19 @@ class AnalysisFileHandler(FileSystemEventHandler):
         self._debounce_seconds = 3  # Avoid rapid-fire refreshes
     
     def _should_handle(self, path: str) -> bool:
-        """Only handle analysis files."""
+        """Handle every source that can change races or runner display data."""
         p = Path(path)
-        return (
-            p.suffix in ('.txt', '.md') and 
-            'Analysis' in p.name and
-            not p.name.startswith('.')
+        if p.name.startswith('.') or p.suffix not in ('.txt', '.md', '.json'):
+            return False
+        return any(
+            marker in p.name
+            for marker in (
+                'Analysis',
+                'Racecard',
+                '排位表',
+                '全日出賽馬匹資料',
+                'MC_Results',
+            )
         )
     
     def _debounced_trigger(self):
@@ -53,7 +57,7 @@ class FileWatcher:
     def __init__(self, on_change_callback):
         self.observer = Observer()
         self.handler = AnalysisFileHandler(on_change_callback)
-        self.watch_path = str(config.ANTIGRAVITY_ROOT)
+        self.watch_path = str(config.ANALYSIS_ROOT)
         self._running = False
         self.last_updated = time.time()
         self._original_callback = on_change_callback

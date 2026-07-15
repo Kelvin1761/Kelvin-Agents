@@ -8,10 +8,10 @@ import re
 import platform
 from pathlib import Path
 
-SKILL_ROOT = Path(__file__).resolve().parents[3]  # au_race_extractor/scripts → au_racing/
+SKILL_ROOT = Path(__file__).resolve().parents[2]  # au_race_extractor/scripts → au_racing/
 if str(SKILL_ROOT) not in sys.path:
     sys.path.insert(0, str(SKILL_ROOT))
-PROJECT_ROOT = Path(__file__).resolve().parents[4]
+PROJECT_ROOT = Path(__file__).resolve().parents[5]
 import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
 from wongchoi_paths import AU_RACING
 
@@ -175,6 +175,7 @@ def process_race(nuxt_data, f_rc, f_fg, race_num=None):
          
     for sel in selections:
         num = sel.get('competitorNumber', '?')
+        silk_url = str(sel.get('silkImageUrl') or '').strip()
         # Look up horse name from competitor ref if needed, or sel has it?
         # sel didn't have name previously, we need to find it in Apollo cache
         comp = sel.get('competitor', {})
@@ -198,7 +199,12 @@ def process_race(nuxt_data, f_rc, f_fg, race_num=None):
         status_abv = sel.get('statusAbv')
         if status_abv in ['S', 'Scratched'] or status in ['S', 'Scratched', 'SCRATCHED']:
              f_rc.write(f"{num}. {name} - status:Scratched\n")
-             f_fg.write(f"{num}. {name} - status:Scratched\n\n")
+             if silk_url:
+                 f_rc.write(f"Silk: {silk_url}\n")
+             f_fg.write(f"{num}. {name} - status:Scratched\n")
+             if silk_url:
+                 f_fg.write(f"Silk: {silk_url}\n")
+             f_fg.write("\n")
              continue
              
         barrier = sel.get('barrierNumber', '?')
@@ -242,6 +248,8 @@ def process_race(nuxt_data, f_rc, f_fg, race_num=None):
         
         # Write row
         f_rc.write(f"{num}. {name} ({barrier})\n")
+        if silk_url:
+            f_rc.write(f"Silk: {silk_url}\n")
         f_rc.write(f"Trainer: {trainer} | Jockey: {jockey} | Weight: {effective_weight_str} | Age: {age} | Rating: {rating}\n")
         f_rc.write(f"Career: {career} | Last 10: {last10} | Win: {win_pct}% | Place: {plc_pct}% | Last: {last_race}\n")
         f_rc.write("-" * 40 + "\n")
@@ -288,6 +296,8 @@ def process_race(nuxt_data, f_rc, f_fg, race_num=None):
         
         # Formatting nicely
         f_fg.write(f"[{num}] {name} ({barrier})\n")
+        if silk_url:
+            f_fg.write(f"Silk: {silk_url}\n")
         
         sire_info = f"Sire: {sire_name} | Dam: {dam_name} ({sire_of_dam})"
         flucs_list = [str(f.get('value')) for f in sel.get('flucOdds', []) if isinstance(f, dict) and 'value' in f]

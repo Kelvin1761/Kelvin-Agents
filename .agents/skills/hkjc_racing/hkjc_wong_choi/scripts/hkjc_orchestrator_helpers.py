@@ -10,6 +10,9 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR.parents[4]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from wongchoi_paths import HK_RACING
 PYTHON = sys.executable
 
 
@@ -56,14 +59,14 @@ def parse_url_for_details(url: str) -> tuple[str, str, str]:
 def get_target_dir(venue: str, formatted_date: str, auto_create: bool = False) -> str | None:
     prefix = f"{formatted_date}_{venue}"
     dirs = sorted(
-        (path for path in ROOT.iterdir() if path.is_dir() and path.name.startswith(prefix)),
+        (path for path in HK_RACING.iterdir() if path.is_dir() and path.name.startswith(prefix)),
         key=lambda path: path.name,
     )
     if dirs:
         return str(dirs[0].resolve())
     if not auto_create:
         return None
-    new_dir = (ROOT / prefix).resolve()
+    new_dir = (HK_RACING / prefix).resolve()
     new_dir.mkdir(parents=True, exist_ok=True)
     return str(new_dir)
 

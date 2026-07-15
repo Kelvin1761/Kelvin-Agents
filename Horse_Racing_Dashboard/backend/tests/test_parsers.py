@@ -19,7 +19,7 @@ from wongchoi_paths import HK_RACING as _HK_RACING
 
 def test_hkjc_auto_parser():
     """Test HKJC parser with full Python Auto analysis output."""
-    path = str(config.ANTIGRAVITY_ROOT / "2026-05-13_HappyValley" / "Race_9_Auto_Analysis.md")
+    path = str(config.HKJC_ANALYSIS_ROOT / "2026-05-13_HappyValley" / "Race_9_Auto_Analysis.md")
     result = parse_hkjc_analysis(path)
 
     assert result is not None, "Failed to parse HKJC Auto Race 9"
@@ -64,7 +64,7 @@ def test_hkjc_auto_archive_parser():
 
 def test_hkjc_sha_tin_loader_normalizes_meeting_venue():
     """Dashboard loader should use the meeting folder venue for HKJC races."""
-    meetings = discover_meetings(str(config.ANTIGRAVITY_ROOT))
+    meetings = discover_meetings()
     meeting = next(
         (m for m in meetings if m.region.value == "hkjc" and m.date == "2026-05-31" and m.venue == "ShaTin"),
         None,
@@ -83,7 +83,7 @@ def test_hkjc_sha_tin_loader_normalizes_meeting_venue():
 
 def test_au_auto_parser_ballarat():
     """Test AU parser against current Ballarat auto analysis output."""
-    path = config.ANTIGRAVITY_ROOT / "2026-05-24 Ballarat Race 1-8" / "Race_1_Auto_Analysis.md"
+    path = config.AU_ANALYSIS_ROOT / "2026-05-24 Ballarat Race 1-8" / "Race_1_Auto_Analysis.md"
     result = parse_au_analysis(str(path))
 
     assert result is not None, "Failed to parse AU Auto Ballarat Race 1"
@@ -106,7 +106,7 @@ def test_au_auto_parser_ballarat():
 
 def test_au_meeting_loader_ballarat():
     """Test meeting loader returns horse counts for AU meetings used by dashboard."""
-    meetings = discover_meetings(str(config.ANTIGRAVITY_ROOT))
+    meetings = discover_meetings()
     meeting = next(
         (m for m in meetings if m.region.value == "au" and m.date == "2026-05-24" and m.venue == "Ballarat"),
         None,

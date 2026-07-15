@@ -82,6 +82,8 @@ When extracting from the Racecard, ensure the output format strictly matches `ex
 #### 第二部分:馬匹資料 (Horse Info)
 For every horse, you MUST output the data as explicit key-value pairs. Reference `examples/racecard_output_example.txt` for the exact string format.
 
+The racecard output must include `英文馬名:` immediately after `馬名:`. Resolve it from the official English racecard by matching the same `烙號`; if the English endpoint is temporarily unavailable, continue with the Chinese fields and report the warning on stderr.
+
 #### Extraction Method: Python Script
 Execute the specialized Python extraction script included in this skill's folder:
 ```bash

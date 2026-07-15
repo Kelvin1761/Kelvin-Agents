@@ -19,6 +19,7 @@ JSON_OUT="$DIST_DIR/dashboard-data.json"
 MANIFEST_OUT="$DIST_DIR/deploy-manifest.json"
 BUILD_ONLY=0
 KEEP_DIST=0
+SKIP_METADATA_OVERLAY=0
 PAGES_PROJECT="${WC_CLOUDFLARE_PAGES_PROJECT:-wongchoi-dashboard}"
 
 cleanup_staging() {
@@ -38,9 +39,12 @@ while [ $# -gt 0 ]; do
         --keep-dist)
             KEEP_DIST=1
             ;;
+        --skip-metadata-overlay)
+            SKIP_METADATA_OVERLAY=1
+            ;;
         *)
             echo "❌ 未知參數: $1"
-            echo "用法: ./deploy.sh [--build-only] [--keep-dist]"
+            echo "用法: ./deploy.sh [--build-only] [--keep-dist] [--skip-metadata-overlay]"
             exit 1
             ;;
     esac
@@ -63,10 +67,17 @@ fi
 rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
 
-"$PYTHON_BIN" generate_static.py \
-    --output-html "$HTML_OUT" \
-    --output-json "$JSON_OUT" \
+BUILD_ARGS=(
+    --output-html "$HTML_OUT"
+    --output-json "$JSON_OUT"
     --output-manifest "$MANIFEST_OUT"
+)
+if [ "$SKIP_METADATA_OVERLAY" -eq 1 ]; then
+    BUILD_ARGS+=(--skip-metadata-overlay)
+fi
+
+"$PYTHON_BIN" build_test_dashboard.py \
+    "${BUILD_ARGS[@]}"
 
 if [ ! -f "$HTML_OUT" ]; then
     echo "❌ 錯誤：找不到 $HTML_OUT，請確認生成是否成功！"
@@ -78,7 +89,7 @@ if [ ! -f "$MANIFEST_OUT" ]; then
     exit 1
 fi
 
-echo "📦 第二步：Cloudflare deploy bundle 已準備完成（本地 staging：$STAGING_DIR）"
+echo "📦 第二步：Cloudflare deploy bundle 已準備完成（本地 staging：${STAGING_DIR}）"
 echo "   - HTML: $(basename "$HTML_OUT")"
 echo "   - Data: $(basename "$JSON_OUT")"
 echo "   - Manifest: $(basename "$MANIFEST_OUT")"

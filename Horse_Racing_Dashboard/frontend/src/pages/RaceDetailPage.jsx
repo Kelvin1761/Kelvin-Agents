@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import HorseCard from "../components/HorseCard";
 import RatingBadge from "../components/RatingBadge";
+import RunnerSilk from "../components/RunnerSilk";
 
 /** Trim long going strings: 'Soft 6 (天氣極不穩定...)' → 'Soft 6' */
 function trimGoing(going) {
@@ -10,6 +11,18 @@ function trimGoing(going) {
   // Remove parenthesized extra info
   const trimmed = going.replace(/\s*[（(].*$/, '').trim();
   return trimmed || going;
+}
+
+function withRunnerMetadata(pick, horses = []) {
+  const horse = horses.find(
+    (candidate) => candidate.horse_number === pick.horse_number,
+  );
+  return {
+    ...pick,
+    horse_name_en: horse?.horse_name_en || pick.horse_name_en || null,
+    horse_code: horse?.horse_code || pick.horse_code || null,
+    silk_url: horse?.silk_url || pick.silk_url || null,
+  };
 }
 
 /**
@@ -570,6 +583,8 @@ function BettingPanel({
   const [raceBets, setRaceBets] = useState([]);
   const [oddsInput, setOddsInput] = useState({});
   const [localStates, setLocalStates] = useState({}); // horse_number -> 'pending'|'skipped'
+  const currentRaceData =
+    analystsData?.Kelvin || Object.values(analystsData || {})[0] || null;
 
   const loadBets = useCallback(() => {
     api
@@ -603,6 +618,8 @@ function BettingPanel({
               heison_grade: null,
               jockey: kHorse?.jockey || null,
               trainer: kHorse?.trainer || null,
+              horse_name_en: kHorse?.horse_name_en || null,
+              silk_url: kHorse?.silk_url || null,
               scenario: kelvinData.primary_condition,
               consensus_type: `預期 (${primaryLabel}) Top ${p.rank}`,
             });
@@ -621,6 +638,8 @@ function BettingPanel({
               heison_grade: null,
               jockey: kHorse?.jockey || null,
               trainer: kHorse?.trainer || null,
+              horse_name_en: kHorse?.horse_name_en || null,
+              silk_url: kHorse?.silk_url || null,
               scenario: kelvinData.alt_condition,
               consensus_type: `備選 (${altLabel}) Top ${p.rank}`,
             });
@@ -648,6 +667,8 @@ function BettingPanel({
                   heison_grade: null,
                   jockey: kHorse?.jockey || null,
                   trainer: kHorse?.trainer || null,
+                  horse_name_en: kHorse?.horse_name_en || null,
+                  silk_url: kHorse?.silk_url || null,
                   scenario: label,
                   consensus_type: `${conditionPrefix}${tGoing(label)} Top 2`,
                 });
@@ -668,6 +689,8 @@ function BettingPanel({
               heison_grade: null,
               jockey: kHorse?.jockey || null,
               trainer: kHorse?.trainer || null,
+              horse_name_en: kHorse?.horse_name_en || null,
+              silk_url: kHorse?.silk_url || null,
               scenario: null,
               consensus_type: "Top 2 精選",
             });
@@ -680,6 +703,8 @@ function BettingPanel({
           .map((h) => {
             let jockey = h.jockey || null;
             let trainer = h.trainer || null;
+            let horseNameEn = h.horse_name_en || null;
+            let silkUrl = h.silk_url || null;
 
             if (
               analystsData &&
@@ -692,12 +717,16 @@ function BettingPanel({
               if (kHorse) {
                 jockey = kHorse.jockey || jockey;
                 trainer = kHorse.trainer || trainer;
+                horseNameEn = kHorse.horse_name_en || horseNameEn;
+                silkUrl = kHorse.silk_url || silkUrl;
               }
             }
 
             return {
               horse_number: h.horse_number,
               horse_name: h.horse_name,
+              horse_name_en: horseNameEn,
+              silk_url: silkUrl,
               kelvin_grade: h.kelvin_grade,
               heison_grade: h.heison_grade,
               jockey: jockey,
@@ -710,7 +739,7 @@ function BettingPanel({
     }
     setCandidates(newCandidates);
     loadBets();
-  }, [consensus, date, venue, raceNumber, region, loadBets]);
+  }, [consensus, date, venue, raceNumber, region, analystsData, loadBets]);
 
   const getBetForHorse = (horseNum) =>
     raceBets.find((b) => b.horse_number === horseNum);
@@ -743,8 +772,8 @@ function BettingPanel({
       consensus_type: candidate.consensus_type,
       kelvin_grade: candidate.kelvin_grade,
       heison_grade: candidate.heison_grade,
-      track_type: raceData?.track,
-      going: raceData?.going,
+      track_type: currentRaceData?.track,
+      going: currentRaceData?.going,
     });
 
     setLocalStates((prev) => ({
@@ -816,13 +845,23 @@ function BettingPanel({
           >
             <div className="bet-candidate__header">
               <div className="bet-candidate__identity">
+                <RunnerSilk
+                  silkUrl={candidate.silk_url}
+                  horseName={candidate.horse_name}
+                />
                 <div className="bet-candidate__number">
-                  {candidate.horse_number}
+                  <span>馬號</span>
+                  <strong>{candidate.horse_number}</strong>
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: "0.95rem" }}>
                     {candidate.horse_name}
                   </div>
+                  {candidate.horse_name_en && (
+                    <div className="horse-card__name-en">
+                      {candidate.horse_name_en}
+                    </div>
+                  )}
                   <div style={{ fontSize: "0.7rem", color: "#94A3B8" }}>
                     {[candidate.jockey, candidate.trainer]
                       .filter(Boolean)
@@ -851,7 +890,7 @@ function BettingPanel({
             {/* ── PENDING: show odds input + confirm/skip ── */}
             {status === "pending" && (
               <div className="bet-candidate__actions">
-                <div className="bet-odds-input">
+                <label className="bet-odds-input">
                   <span
                     style={{
                       fontSize: "0.75rem",
@@ -863,6 +902,8 @@ function BettingPanel({
                   </span>
                   <input
                     type="number"
+                    inputMode="decimal"
+                    autoComplete="off"
                     step="0.1"
                     min="1"
                     placeholder="2.50"
@@ -874,7 +915,7 @@ function BettingPanel({
                       }))
                     }
                   />
-                </div>
+                </label>
                 <button
                   className="btn btn--primary btn--sm"
                   onClick={() => handleConfirmBet(candidate)}
@@ -1031,8 +1072,13 @@ function ComparisonView({ data, analysts }) {
           {analysts.map((analyst) => {
             const analysis = data.analyses[analyst];
             if (!analysis) return null;
-            const picks = analysis.top_picks || [];
-            const altPicks = analysis.alt_top_picks || [];
+            const horses = analysis.horses || [];
+            const picks = (analysis.top_picks || []).map((pick) =>
+              withRunnerMetadata(pick, horses),
+            );
+            const altPicks = (analysis.alt_top_picks || []).map((pick) =>
+              withRunnerMetadata(pick, horses),
+            );
             const isDualTrack = analysis.is_dual_track;
             const primaryCond = analysis.primary_condition || "預期場地";
             const altCond = analysis.alt_condition || "備選場地";
@@ -1113,6 +1159,11 @@ function ComparisonView({ data, analysts }) {
                           {pick.rank}
                         </div>
                         {/* Horse info */}
+                        <RunnerSilk
+                          silkUrl={pick.silk_url}
+                          horseName={pick.horse_name}
+                          size="sm"
+                        />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>
                             {pick.horse_name}
@@ -1120,6 +1171,11 @@ function ComparisonView({ data, analysts }) {
                           <div style={{ fontSize: "0.7rem", color: "#94A3B8" }}>
                             馬號 #{pick.horse_number}
                           </div>
+                          {pick.horse_name_en && (
+                            <div className="horse-card__name-en">
+                              {pick.horse_name_en}
+                            </div>
+                          )}
                         </div>
                         {/* Grade */}
                         <RatingBadge grade={pick.grade} size="lg" />
@@ -1176,6 +1232,11 @@ function ComparisonView({ data, analysts }) {
                           >
                             {pick.rank}
                           </div>
+                          <RunnerSilk
+                            silkUrl={pick.silk_url}
+                            horseName={pick.horse_name}
+                            size="sm"
+                          />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div
                               style={{
@@ -1191,6 +1252,11 @@ function ComparisonView({ data, analysts }) {
                             >
                               馬號 #{pick.horse_number}
                             </div>
+                            {pick.horse_name_en && (
+                              <div className="horse-card__name-en">
+                                {pick.horse_name_en}
+                              </div>
+                            )}
                           </div>
                           <RatingBadge grade={pick.grade} size="md" />
                         </div>
@@ -1338,8 +1404,10 @@ function ComparisonView({ data, analysts }) {
 function SingleAnalystView({ analysis, analystName }) {
   if (!analysis) return null;
 
-  const picks = analysis.top_picks || [];
   const horses = analysis.horses || [];
+  const picks = (analysis.top_picks || []).map((pick) =>
+    withRunnerMetadata(pick, horses),
+  );
   const isKelvin = (analystName || "").toLowerCase() === "kelvin";
 
   // Sort by top_pick rank first, then by grade
@@ -1352,7 +1420,9 @@ function SingleAnalystView({ analysis, analystName }) {
     return sortByGrade(a.final_grade, b.final_grade);
   });
 
-  const altPicks = analysis.alt_top_picks || [];
+  const altPicks = (analysis.alt_top_picks || []).map((pick) =>
+    withRunnerMetadata(pick, horses),
+  );
   const isDualTrack = analysis.is_dual_track;
   const primaryCond = analysis.primary_condition || "預期場地";
   const altCond = analysis.alt_condition || "備選場地";
@@ -1522,7 +1592,7 @@ function MonteCarloPanel({ results, analystName }) {
     if (ag.includes("🔄")) return "#3B82F6";
     if (ag.includes("⚠️")) return "#F59E0B";
     if (ag.includes("❌")) return "#EF4444";
-    if (ag.includes("🆕")) return "#8B5CF6";
+    if (ag.includes("🆕")) return "#0D9488";
     return "#94A3B8";
   };
 
@@ -1649,6 +1719,11 @@ function PickRow({ pick, index, isLast }) {
       >
         {pick.rank}
       </div>
+      <RunnerSilk
+        silkUrl={pick.silk_url}
+        horseName={pick.horse_name}
+        size="sm"
+      />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 700, fontSize: "0.85rem" }}>
           {pick.horse_name}
@@ -1656,6 +1731,9 @@ function PickRow({ pick, index, isLast }) {
         <div style={{ fontSize: "0.65rem", color: "#94A3B8" }}>
           馬號 #{pick.horse_number}
         </div>
+        {pick.horse_name_en && (
+          <div className="horse-card__name-en">{pick.horse_name_en}</div>
+        )}
       </div>
       <span style={{ fontSize: "1rem" }}>
         {medals[i] || "🏅"}

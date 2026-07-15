@@ -1,23 +1,29 @@
-"""
-Configuration for the Racing Dashboard backend.
+"""Configuration for the Racing Dashboard backend.
+
+Code always runs from the local checkout.  Race analyses are resolved through
+``wongchoi_paths`` so the dashboard reads the same data root as the HKJC and
+AU pipelines (Google Drive on this machine).
 """
 import os
+import sys
 from pathlib import Path
 
-# Root directory of the Antigravity project
-# Priority: ANTIGRAVITY_ROOT env var → Google Drive path → auto-detect fallback
-_GDRIVE_PATH = Path(os.path.expanduser(
-    "~/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com"
-    "/我的雲端硬碟/Antigravity Shared/Antigravity"
-))
+# ``backend/config.py`` -> ``Horse_Racing_Dashboard/backend`` -> repo root.
+PROJECT_ROOT = Path(
+    os.environ.get("ANTIGRAVITY_CODE_ROOT", Path(__file__).resolve().parents[2])
+).expanduser()
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-if os.environ.get("ANTIGRAVITY_ROOT"):
-    ANTIGRAVITY_ROOT = Path(os.environ["ANTIGRAVITY_ROOT"])
-elif _GDRIVE_PATH.exists():
-    ANTIGRAVITY_ROOT = _GDRIVE_PATH
-else:
-    # Legacy fallback: parent.parent.parent of config.py
-    ANTIGRAVITY_ROOT = Path(__file__).resolve().parent.parent.parent
+from wongchoi_paths import AU_RACING, HK_RACING, HORSE_RACE_ANALYSIS
+
+# Kept for code that needs project assets such as skills and ROI summaries.
+ANTIGRAVITY_ROOT = PROJECT_ROOT
+
+# The only locations scanned for race meetings and watched for report changes.
+ANALYSIS_ROOT = HORSE_RACE_ANALYSIS
+HKJC_ANALYSIS_ROOT = HK_RACING
+AU_ANALYSIS_ROOT = AU_RACING
 
 # Skills directories
 HKJC_SKILLS = ANTIGRAVITY_ROOT / ".agents" / "skills" / "hkjc_racing"

@@ -85,6 +85,9 @@ export default function HorseCard({ horse, topPickRank, primaryCondition }) {
           </div>
           <div>
             <div className="horse-card__name">{horse.horse_name}</div>
+            {horse.horse_name_en && (
+              <div className="horse-card__name-en">{horse.horse_name_en}</div>
+            )}
             <div className="horse-card__meta">
               {horse.jockey && <span>🏇 {horse.jockey}</span>}
               {horse.trainer && <span> · 🏠 {horse.trainer}</span>}
@@ -457,7 +460,7 @@ export default function HorseCard({ horse, topPickRank, primaryCondition }) {
                   <AnalysisSection
                     icon="📋"
                     title="寬恕檔案"
-                    colorTheme="purple"
+                    colorTheme="emerald"
                     content={horse.forgiveness_file}
                   />
                 )}
@@ -618,7 +621,7 @@ function StructuredAnalysisRenderer({ text }) {
   const sectionPatterns = [
     { pattern: /(?:🔬|段速法醫|Speed Forensics|Sectional)/i, icon: "🔬", title: "段速法醫", theme: "blue" },
     { pattern: /(?:⚡|EEM|能量引擎|Energy Engine)/i, icon: "⚡", title: "EEM 能量引擎", theme: "amber" },
-    { pattern: /(?:📋|寬恕檔案|Forgiveness|可|修正)/i, icon: "📋", title: "寬恕檔案", theme: "purple" },
+    { pattern: /(?:📋|寬恕檔案|Forgiveness|可|修正)/i, icon: "📋", title: "寬恕檔案", theme: "emerald" },
     { pattern: /(?:🔗|賽績線|Form Line|近績)/i, icon: "🔗", title: "賽績線", theme: "slate" },
     { pattern: /(?:🐴|馬匹剖析|Horse Profile|馬匹資料)/i, icon: "🐴", title: "馬匹剖析", theme: "slate" },
     { pattern: /(?:🧠|核心分析|Core Analysis|核心邏輯)/i, icon: "🧠", title: "核心分析", theme: "blue" },

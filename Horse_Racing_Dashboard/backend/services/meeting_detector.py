@@ -1,7 +1,4 @@
-"""
-Meeting Detector — Scans Antigravity root for race meeting folders.
-Pairs HKJC Kelvin + Heison folders and detects AU racing folders.
-"""
+"""Discover HKJC and AU race meetings from the configured analysis folders."""
 import re
 from pathlib import Path
 from typing import Optional
@@ -35,17 +32,23 @@ HKJC_FOLDER_VENUE_MAP = {
 
 
 def discover_meetings(root_dir: Optional[str] = None) -> list[Meeting]:
-    """Scan the Antigravity root directory for race meetings.
-    Returns a list of Meeting objects with folder paths."""
-    
-    root = Path(root_dir) if root_dir else config.ANTIGRAVITY_ROOT
-    if not root.exists():
+    """Scan one explicit folder, or the configured HKJC and AU analysis homes."""
+
+    roots = [Path(root_dir)] if root_dir else [
+        config.HKJC_ANALYSIS_ROOT,
+        config.AU_ANALYSIS_ROOT,
+    ]
+    roots = [root for root in roots if root.exists()]
+    if not roots:
         return []
     
     meetings = []
     hkjc_groups = {}  # (date, venue) -> dict with kelvin_path, heison_path
     
-    for item in sorted(root.iterdir()):
+    for item in sorted(
+        (item for root in roots for item in root.iterdir()),
+        key=lambda item: str(item),
+    ):
         if not item.is_dir() or item.name.startswith('.'):
             continue
         

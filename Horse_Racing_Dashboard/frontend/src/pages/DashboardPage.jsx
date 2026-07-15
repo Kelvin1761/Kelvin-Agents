@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import RatingBadge from "../components/RatingBadge";
+import RunnerSilk from "../components/RunnerSilk";
 
 /**
  * Merge races across analysts into a single deduplicated list.
@@ -28,6 +29,16 @@ function getMergedRaces(racesData) {
   }
   // Single analyst
   return racesData.races || [];
+}
+
+function formatVenueDisplay(venue) {
+  return { HappyValley: "Happy Valley", ShaTin: "Sha Tin" }[venue] || venue;
+}
+
+function getMeetingRegionMeta(region) {
+  return region === "hkjc"
+    ? { flag: "🇭🇰", country: "Hong Kong" }
+    : { flag: "🇦🇺", country: "Australia" };
 }
 /**
  * DashboardPage — Main dashboard with meeting selector and race board.
@@ -136,6 +147,8 @@ export default function DashboardPage() {
       </div>
     );
 
+  const mergedRaces = races ? getMergedRaces(races) : [];
+
   return (
     <div>
       {/* Auto-refresh toast */}
@@ -162,64 +175,59 @@ export default function DashboardPage() {
       )}
       {/* Meeting Selector */}
       <div className="meeting-selector">
-        {meetings.map((m, i) => (
-          <div
-            key={i}
-            className={`meeting-card card--clickable ${selected === m ? "selected" : ""}`}
-            onClick={() => setSelected(m)}
-          >
+        {meetings.map((m, i) => {
+          const regionMeta = getMeetingRegionMeta(m.region);
+          const raceCount = selected === m ? mergedRaces.length : m.race_count;
+          return (
             <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
+              key={i}
+              className={`meeting-card meeting-card--${m.region === "hkjc" ? "hkjc" : "au"} card--clickable ${selected === m ? "selected" : ""}`}
+              onClick={() => setSelected(m)}
             >
-              <div className="meeting-card__date">{m.date}</div>
-              <span className={`badge badge--region-${m.region}`}>
-                {m.region === "hkjc" ? "🇭🇰 HKJC" : "🇦🇺 AU"}
-              </span>
+              <div className="meeting-card__flag" aria-hidden="true">
+                {regionMeta.flag}
+              </div>
+              <div className="meeting-card__body">
+                <div className="meeting-card__region">
+                  <span className="meeting-card__country">{regionMeta.country}</span>
+                </div>
+                <div className="meeting-card__venue">{formatVenueDisplay(m.venue)}</div>
+                <div className="meeting-card__meta">
+                  <span>{m.date}</span>
+                  {raceCount > 0 && (
+                    <>
+                      <span className="meeting-card__meta-separator" aria-hidden="true">•</span>
+                      <span>{raceCount} 場</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="meeting-card__arrow" aria-hidden="true">→</div>
             </div>
-            <div className="meeting-card__venue">📍 {m.venue}</div>
-            <div className="meeting-card__analysts">
-              {m.analysts.map((a) => (
-                <span key={a} className="badge badge--b">
-                  {a}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Race Board — merged R1-R10 (no analyst separation) */}
       {selected && races && (
         <div>
-          <h2
-            style={{
-              margin: "24px 0 8px",
-              fontSize: "1.1rem",
-              fontWeight: 700,
-            }}
-          >
-            {selected.region === "hkjc" ? "🇭🇰" : "🇦🇺"} {selected.venue} ·{" "}
-            {selected.date}
-            {selected.analysts?.length > 1 && (
-              <span
-                style={{
-                  fontSize: "0.75rem",
-                  fontWeight: 400,
-                  color: "#64748B",
-                  marginLeft: "8px",
-                }}
-              >
-                ({selected.analysts.join(" + ")} 分析)
-              </span>
-            )}
-          </h2>
+          <div className="race-overview-header">
+            <h2 className="race-overview-title">
+              {selected.region === "hkjc" ? "🇭🇰" : "🇦🇺"} {formatVenueDisplay(selected.venue)} ·{" "}
+              {selected.date}
+              {selected.analysts?.length > 1 && (
+                <span className="race-overview-analysts">
+                  {selected.analysts.join(" + ")} 分析
+                </span>
+              )}
+            </h2>
+            <div className="race-overview-summary">
+              全部 {mergedRaces.length} 場 · 點擊查看詳細分析
+            </div>
+          </div>
 
-          <div className="race-board">
-            {getMergedRaces(races).map((race) => (
+          <div className={`race-board${mergedRaces.length === 11 ? " race-board--eleven" : ""}`}>
+            {mergedRaces.map((race) => (
               <div
                 key={race.race_number}
                 className="race-tile card--clickable"
@@ -231,48 +239,16 @@ export default function DashboardPage() {
               >
                 <div className="race-tile__number">R{race.race_number}</div>
                 {race.race_name && (
-                  <div
-                    style={{
-                      fontSize: "0.75rem",
-                      fontWeight: 700,
-                      marginTop: "6px",
-                      marginBottom: "2px",
-                      color: "#1E293B",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
+                  <div className="race-tile__name">
                     {race.race_name}
                   </div>
                 )}
-                <div
-                  className="race-tile__info"
-                  style={{ marginTop: race.race_name ? "2px" : "4px" }}
-                >
+                <div className="race-tile__info">
                   {race.distance || "—"} {race.race_class || ""}
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    gap: "6px",
-                    alignItems: "center",
-                    marginTop: "6px",
-                    flexWrap: "wrap",
-                  }}
-                >
+                <div className="race-tile__badges">
                   {race.analysis_type === "auto" && (
-                    <span
-                      style={{
-                        fontSize: "0.65rem",
-                        fontWeight: 700,
-                        color: "#1D4ED8",
-                        background: "#DBEAFE",
-                        padding: "2px 6px",
-                        borderRadius: "6px",
-                      }}
-                    >
+                    <span className="race-tile__auto-badge">
                       Auto
                     </span>
                   )}
@@ -280,23 +256,10 @@ export default function DashboardPage() {
                     <RatingBadge grade={race.top_picks[0].grade} size="md" />
                   )}
                 </div>
-                <div
-                  style={{
-                    fontSize: "0.7rem",
-                    color: "#94A3B8",
-                    marginTop: "4px",
-                  }}
-                >
-                  🐴 {race.horses_count} 匹馬
+                <div className="race-tile__runner-count">
+                  🐴 {race.horses_count || race.horses?.length || 0} 匹馬
                 </div>
-                <div
-                  style={{
-                    marginTop: "8px",
-                    fontSize: "0.7rem",
-                    color: "#3B82F6",
-                    fontWeight: 600,
-                  }}
-                >
+                <div className="race-tile__cta">
                   查看分析 →
                 </div>
               </div>
@@ -308,7 +271,7 @@ export default function DashboardPage() {
             date={selected.date}
             venue={selected.venue}
             region={selected.region}
-            races={getMergedRaces(races)}
+            races={mergedRaces}
           />
         </div>
       )}
@@ -572,6 +535,11 @@ function MeetingBettingPanel({ date, venue, region, races }) {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <RunnerSilk
+              silkUrl={candidate.silk_url}
+              horseName={candidate.horse_name}
+              size="sm"
+            />
             <div
               style={{
                 width: "32px",
@@ -593,6 +561,11 @@ function MeetingBettingPanel({ date, venue, region, races }) {
               <div style={{ fontWeight: 700, fontSize: "0.95rem" }}>
                 {candidate.horse_name}
               </div>
+              {candidate.horse_name_en && (
+                <div className="horse-card__name-en">
+                  {candidate.horse_name_en}
+                </div>
+              )}
               <div style={{ fontSize: "0.7rem", color: "#94A3B8", marginTop: "2px" }}>
                 {candidate.jockey && <span>🏇 {candidate.jockey}</span>}
                 {candidate.trainer && <span> · 🏠 {candidate.trainer}</span>}
@@ -720,24 +693,29 @@ function MeetingBettingPanel({ date, venue, region, races }) {
                 ⊙ 輸入賠率
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="1"
-                  placeholder="賠率"
-                  value={oddsInput[key] || ""}
-                  onChange={(e) =>
-                    setOddsInput((prev) => ({ ...prev, [key]: e.target.value }))
-                  }
-                  style={{
-                    width: "60px",
-                    padding: "4px 6px",
-                    border: "1px solid #E2E8F0",
-                    borderRadius: "6px",
-                    fontSize: "0.75rem",
-                    textAlign: "center",
-                  }}
-                />
+                <label>
+                  <span className="sr-only">賠率</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    step="0.1"
+                    min="1"
+                    placeholder="賠率"
+                    value={oddsInput[key] || ""}
+                    onChange={(e) =>
+                      setOddsInput((prev) => ({ ...prev, [key]: e.target.value }))
+                    }
+                    style={{
+                      width: "60px",
+                      padding: "4px 6px",
+                      border: "1px solid #E2E8F0",
+                      borderRadius: "6px",
+                      fontSize: "0.75rem",
+                      textAlign: "center",
+                    }}
+                  />
+                </label>
                 <button
                   onClick={() => handleConfirmOdds(race, candidate)}
                   style={{

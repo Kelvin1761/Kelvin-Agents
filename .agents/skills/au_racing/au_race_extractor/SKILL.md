@@ -70,7 +70,7 @@ Use the existing `scripts/extractor.py` to fetch and parse the data. Do not crea
 
 #### Step 3: Formatting Rules
 - **Looping/Multiple Races:** If the user specifies "Race 2-3", your Python script must loop through the different `eventSlug` URLs and extract them sequentially.
-- **Racecard Needs**: Extract `#Number.Horse (Barrier), Trainer, Jockey, Weight, Age, Rating, Career, Last 10 Results, Win %, Place %, Last Race`. Exclude Odds.
+- **Racecard Needs**: Extract `#Number.Horse (Barrier), Silk URL, Trainer, Jockey, Weight, Age, Rating, Career, Last 10 Results, Win %, Place %, Last Race`. Use the selection-level Racenet `silkImageUrl` and exclude Odds.
   - Combine all target races into exactly ONE file: `[MM-DD] Race [Start-End] Racecard.md`
   - Separate horses by blank lines or clear dashed dividers.
 - **Form Guide Needs**: Extract past runs, weights, dates, track conditions, finish position, and video comments.
