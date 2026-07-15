@@ -15,6 +15,7 @@ SKILL_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi_auto"
 SCRIPT = SKILL_DIR / "scripts" / "hkjc_auto_orchestrator.py"
 ENGINE_DIR = SKILL_DIR / "scripts" / "racing_engine"
 EXTRACTOR_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_race_extractor" / "scripts"
+sys.path.insert(0, str(SKILL_DIR / "scripts"))
 sys.path.insert(0, str(ENGINE_DIR))
 sys.path.insert(0, str(EXTRACTOR_DIR))
 
@@ -22,6 +23,7 @@ import extract_trackwork
 from matrix_mapper import map_features_to_matrix_scores
 from scoring import MATRIX_WEIGHTS, compute_grade
 from engine_core import RacingEngine
+from hkjc_auto_orchestrator import _parse_racecard_meta
 from features.jockey import JockeyScorer
 from features.speed import SpeedScorer
 from features.trainer import TrainerScorer
@@ -89,6 +91,36 @@ def _logic() -> dict:
 
 
 class AutoOutputTests(unittest.TestCase):
+    def test_gear_change_ignores_hkjc_double_dash_placeholder(self) -> None:
+        logic = _logic()
+        horse = logic["horses"]["1"]
+
+        horse["_data"]["gear_change"] = "上仗 P → 今仗 -- | 配備變動"
+        result = RacingEngine(horse, logic["race_analysis"])._gear_change_readable()
+        self.assertEqual(result["value"], "除下防沙眼罩")
+        self.assertNotIn("--", result["value"])
+
+        horse["_data"]["gear_change"] = "上仗 -- → 今仗 TT/V | 配備變動"
+        result = RacingEngine(horse, logic["race_analysis"])._gear_change_readable()
+        self.assertEqual(result["value"], "戴上繫舌帶、開縫眼罩")
+        self.assertNotIn("--", result["value"])
+
+    def test_racecard_meta_keeps_exact_official_horse_profile_url(self) -> None:
+        race_class, metadata = _parse_racecard_meta(
+            "班次: 第五班\n\n"
+            "馬名: 測試甲\n烙號: J503\nHKJC馬匹ID: HK_2023_J503\n"
+            "官方馬匹資料: https://racing.hkjc.com/zh-hk/local/information/horse?horseid=HK_2023_J503\n"
+            "評分: 48\n評分+/-: 0\n"
+        )
+
+        self.assertEqual(race_class, "第五班")
+        self.assertEqual(metadata["測試甲"]["horse_code"], "J503")
+        self.assertEqual(metadata["測試甲"]["hkjc_horse_id"], "HK_2023_J503")
+        self.assertEqual(
+            metadata["測試甲"]["horse_profile_url"],
+            "https://racing.hkjc.com/zh-hk/local/information/horse?horseid=HK_2023_J503",
+        )
+
     def test_orchestrator_backfills_missing_header_metadata_from_facts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)

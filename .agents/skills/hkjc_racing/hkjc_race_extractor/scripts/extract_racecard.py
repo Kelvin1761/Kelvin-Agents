@@ -1,6 +1,7 @@
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
 import urllib.request
+from urllib.parse import parse_qs, urljoin, urlparse
 import ssl
 from bs4 import BeautifulSoup
 import sys
@@ -30,6 +31,34 @@ def parse_english_name_map(html):
         if re.fullmatch(r'[A-Z]\d{3}', brand) and name:
             names[brand] = name
     return names
+
+
+HKJC_HORSE_ID_RE = re.compile(r"^HK_\d{4}_[A-HJ-Z]\d{3}$", re.IGNORECASE)
+HKJC_HORSE_PROFILE_BASE = "https://racing.hkjc.com"
+
+
+def parse_horse_profile_link(row):
+    """Return the exact official horse id and canonical profile URL from a row."""
+    for link in row.find_all("a", href=True):
+        href = link.get("href", "").strip()
+        full_url = urljoin(HKJC_HORSE_PROFILE_BASE, href)
+        horse_id = ""
+        for key, values in parse_qs(urlparse(full_url).query).items():
+            if key.lower() == "horseid" and values:
+                horse_id = values[0].strip().upper()
+                break
+        if not horse_id:
+            match = re.search(r"HK_\d{4}_[A-HJ-Z]\d{3}", href, re.IGNORECASE)
+            horse_id = match.group(0).upper() if match else ""
+        if HKJC_HORSE_ID_RE.fullmatch(horse_id):
+            return {
+                "hkjc_horse_id": horse_id,
+                "horse_profile_url": (
+                    "https://racing.hkjc.com/zh-hk/local/information/horse"
+                    f"?horseid={horse_id}"
+                ),
+            }
+    return {}
 
 def extract_racecard(url):
     ctx = ssl.create_default_context()
@@ -125,7 +154,6 @@ def extract_racecard(url):
                 print(f"評分: {rating}")
                 print(f"班次: {race_class}")
             else:
-                from urllib.parse import urlparse, parse_qs
                 parsed = urlparse(url)
                 qs = parse_qs(parsed.query)
                 date_str = qs.get('racedate', [''])[0]
@@ -154,6 +182,10 @@ def extract_racecard(url):
                             print(f"英文馬名: {english_names[brand]}")
                         print(f"賽績: {tds[1]}")
                         print(f"烙號: {brand}")
+                        profile = parse_horse_profile_link(tr)
+                        if profile:
+                            print(f"HKJC馬匹ID: {profile['hkjc_horse_id']}")
+                            print(f"官方馬匹資料: {profile['horse_profile_url']}")
                         print(f"負磅: {tds[5]}")
                         print(f"騎師: {tds[6]}")
                         print(f"檔位: {tds[8]}")

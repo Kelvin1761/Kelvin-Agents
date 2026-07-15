@@ -25,6 +25,191 @@ function withRunnerMetadata(pick, horses = []) {
   };
 }
 
+const BATTLEFIELD_REMOVED_RANKING_FIELDS = new Set([
+  "資料完整度",
+  "風險分",
+  "情境標記",
+]);
+
+function cleanBattlefieldCell(value) {
+  return String(value || "")
+    .replace(/\*{1,3}/g, "")
+    .replace(/`+/g, "")
+    .replace(/^\[|\]$/g, "")
+    .replace(/(\d+)mm\b/g, "$1m")
+    .trim();
+}
+
+function parseBattlefieldTable(tableLines) {
+  if (!tableLines?.length) return null;
+  const parseLine = (line) => line.split("|").slice(1, -1).map(cleanBattlefieldCell);
+  const headers = parseLine(tableLines[0]);
+  const start = /^\|[-:\s|]+\|$/.test(tableLines[1]?.trim() || "") ? 2 : 1;
+  return {
+    headers,
+    rows: tableLines.slice(start).map(parseLine).filter((row) => row.some(Boolean)),
+  };
+}
+
+function parseBattlefieldOverview(text) {
+  const sourceLines = String(text || "").split("\n");
+  const filteredLines = [];
+  let skippingAutoSummary = false;
+
+  sourceLines.forEach((line) => {
+    const clean = cleanBattlefieldCell(line).replace(/^#+\s*/, "");
+    if (/^📍\s*Auto\s*走位與檔位摘要（不含節奏預測）\s*[:：]?$/.test(clean)) {
+      skippingAutoSummary = true;
+      return;
+    }
+    if (skippingAutoSummary && /^📊\s*全場綜合戰力排名/.test(clean)) {
+      skippingAutoSummary = false;
+      filteredLines.push(line);
+      return;
+    }
+    if (!skippingAutoSummary) filteredLines.push(line);
+  });
+
+  const tables = [];
+  const notes = [];
+  for (let index = 0; index < filteredLines.length;) {
+    if (!filteredLines[index].trim().startsWith("|")) {
+      notes.push(filteredLines[index]);
+      index += 1;
+      continue;
+    }
+    const tableLines = [];
+    while (index < filteredLines.length && filteredLines[index].trim().startsWith("|")) {
+      tableLines.push(filteredLines[index]);
+      index += 1;
+    }
+    const table = parseBattlefieldTable(tableLines);
+    if (table) tables.push(table);
+  }
+
+  const factsTable = tables.find((table) => table.headers.includes("項目") && table.headers.includes("內容"));
+  const rawRanking = tables.find((table) => table.headers.includes("排名") && table.headers.includes("馬號"));
+  let ranking = null;
+  if (rawRanking) {
+    const keepIndexes = rawRanking.headers
+      .map((header, index) => BATTLEFIELD_REMOVED_RANKING_FIELDS.has(header) ? -1 : index)
+      .filter((index) => index >= 0);
+    ranking = {
+      headers: keepIndexes.map((index) => rawRanking.headers[index]),
+      rows: rawRanking.rows.map((row) => keepIndexes.map((index) => row[index] || "")),
+    };
+  }
+
+  const cleanNotes = notes
+    .map((line) => line.trim())
+    .filter((line) => line && !/^---+$/.test(line))
+    .filter((line) => !/(?:\[第一部分\].*)?(?:🗺️\s*)?戰場全景/i.test(cleanBattlefieldCell(line)))
+    .filter((line) => !/^📊\s*全場綜合戰力排名/.test(cleanBattlefieldCell(line)))
+    .map((line) => cleanBattlefieldCell(line).replace(/^[-_>]+\s*/, ""));
+
+  return {
+    facts: factsTable?.rows.map((row) => ({ label: row[0], value: row[1] })) || [],
+    ranking,
+    notes: cleanNotes,
+  };
+}
+
+function splitBattlefieldRacePattern(value) {
+  return cleanBattlefieldCell(value).split("/").map((part) => part.trim()).filter(Boolean).map((part, index) => {
+    if (index === 0) return { label: /^Race\s*\d+/i.test(part) ? "場次" : "班次", value: part };
+    if (index === 1 && /\d+\s*m\b/i.test(part)) return { label: "路程", value: part };
+    if (/^HKJC$/i.test(part)) return { label: "賽區", value: "香港" };
+    if (/^(?:AU|Australia)$/i.test(part)) return { label: "賽區", value: "澳洲" };
+    return { label: "賽事條件", value: part };
+  });
+}
+
+function BattlefieldOverview({ text, horses = [] }) {
+  const overview = parseBattlefieldOverview(text);
+  const racePattern = splitBattlefieldRacePattern(
+    overview.facts.find((fact) => cleanBattlefieldCell(fact.label) === "賽事格局")?.value || "",
+  );
+  const horseLookup = new Map(horses.map((horse) => [String(horse.horse_number), horse]));
+
+  return (
+    <div className="battlefield battlefield--refined">
+      <div className="battlefield__header">
+        <div>
+          <div className="battlefield__eyebrow">賽事快照</div>
+          <div className="battlefield__title">🗺️ 戰場全景</div>
+        </div>
+        <span className="battlefield__header-note">賽事格局 · 綜合戰力</span>
+      </div>
+      <div className="battlefield__body">
+        {racePattern.length > 0 && (
+          <section className="battlefield__race-pattern" aria-label="賽事格局">
+            {racePattern.map((item, index) => (
+              <div className="battlefield__race-segment" key={`${item.label}-${index}`}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                {index < racePattern.length - 1 && <i aria-hidden="true" />}
+              </div>
+            ))}
+          </section>
+        )}
+
+        {overview.notes.length > 0 && (
+          <div className="battlefield__notes battlefield__notes--refined">
+            {overview.notes.map((line, index) => <div key={index}>{line}</div>)}
+          </div>
+        )}
+
+        {overview.ranking?.rows?.length > 0 && (
+          <div className="battlefield-ranking">
+            <div className="battlefield-ranking__header">
+              <div><span aria-hidden="true">📊</span><strong>全場綜合戰力排名</strong></div>
+              <span>{overview.ranking.rows.length} 匹馬</span>
+            </div>
+            <div className="battlefield-ranking__scroll">
+              <table className="battlefield-ranking__table">
+                <thead><tr>{overview.ranking.headers.map((header) => <th key={header}>{header}</th>)}</tr></thead>
+                <tbody>
+                  {overview.ranking.rows.map((row, rowIndex) => (
+                    <tr key={rowIndex} className={rowIndex < 3 ? "battlefield-ranking__row--top" : ""}>
+                      {overview.ranking.headers.map((header, cellIndex) => {
+                        const value = row[cellIndex] || "";
+                        const numberIndex = overview.ranking.headers.indexOf("馬號");
+                        const horse = horseLookup.get(String(row[numberIndex] || ""));
+                        if (header === "排名") {
+                          const medal = rowIndex === 0 ? "🥇" : rowIndex === 1 ? "🥈" : rowIndex === 2 ? "🥉" : value;
+                          return <td key={header}><span className="battlefield-ranking__rank">{medal}</span></td>;
+                        }
+                        if (header === "馬號") return <td key={header}><span className="battlefield-ranking__horse-number">{value}</span></td>;
+                        if (header === "馬名") return (
+                          <td key={header}>
+                            <div className="battlefield-ranking__runner">
+                              <RunnerSilk silkUrl={horse?.silk_url} horseName={value} size="sm" />
+                              <div>
+                                <strong className="battlefield-ranking__horse-name">{value}</strong>
+                                {horse?.horse_name_en && <span>{horse.horse_name_en}</span>}
+                              </div>
+                            </div>
+                          </td>
+                        );
+                        if (header === "綜合戰力分") {
+                          const score = Math.max(0, Math.min(100, Number(value) || 0));
+                          return <td key={header}><div className="battlefield-ranking__score"><strong>{value}</strong><span aria-hidden="true"><i style={{ width: `${score}%` }} /></span></div></td>;
+                        }
+                        if (/^Grade$/i.test(header)) return <td key={header}><RatingBadge grade={value} /></td>;
+                        return <td key={header}>{value || "—"}</td>;
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /**
  * RaceDetailPage — Full race analysis with all horses, Top picks,
  * and dual-analyst comparison (HKJC).
@@ -384,137 +569,9 @@ export default function RaceDetailPage() {
       )}
 
       {/* Battlefield overview / 戰場全景 */}
-      {analysis?.battlefield_overview && (() => {
-        const raw = analysis.battlefield_overview
-          .replace(/^[#]+\s*/gm, "")
-          .replace(/^\[第一部分\]\s*/gm, "")
-          .replace(/^(?:🗺️|🌍)?\s*戰場全景(?:\s*\(Course & Environment\))?\s*/gm, "")
-          .replace(/^(?:🗺️|🌍)?\s*賽事環境與 Speed Map 預判\s*/gm, "")
-          .replace(/`/g, "")
-          .replace(/^\s+/g, "")
-          .trim();
-        
-        const lines = raw.split("\n");
-        const infoChips = [];
-        const speedMapGroups = {};
-        const otherLines = [];
-        let inSpeedMap = false;
-        
-        // Known chip field icons
-        const chipIcons = {
-          "場地": "🏟️", "賽道": "🏟️", "track": "🏟️", "venue": "🏟️",
-          "距離": "📏", "distance": "📏",
-          "場地狀況": "🌧️", "going": "🌧️", "場地評分": "🌧️",
-          "班次": "🏷️", "class": "🏷️", "race_class": "🏷️",
-          "彎道": "🔄", "rail": "🔄", "欄位": "🔄",
-          "天氣": "☁️", "weather": "☁️",
-          "起步位": "🚦", "barrier": "🚦",
-          "跑道": "🛤️", "surface": "🛤️",
-        };
-        
-        // Group classification for speed map
-        const groupClassMap = {
-          "領放": "lead", "前列": "lead", "帶": "lead",
-          "前中": "mid-front", "緊跟": "mid-front",
-          "中後": "mid-back", "中段": "mid-back",
-          "後上": "back", "後段": "back", "包尾": "back",
-        };
-        
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || /^\|[-:\s|]+\|$/.test(trimmed)) continue;
-          
-          if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
-            const cells = trimmed.split("|").filter(Boolean).map(c => c.replace(/\*{1,2}/g, "").trim());
-            if (cells.length >= 2) {
-              infoChips.push({ label: cells[0], value: cells.slice(1).join(" · ") });
-            }
-          } else if (/Speed Map|速度地圖|預判走位/.test(trimmed)) {
-            inSpeedMap = true;
-          } else if (inSpeedMap && trimmed.startsWith("-")) {
-            const content = trimmed.replace(/^-\s*/, "").replace(/\*{1,2}/g, "");
-            // Detect which group this belongs to
-            const groupKey = Object.keys(groupClassMap).find(g => content.includes(g));
-            const groupClass = groupKey ? groupClassMap[groupKey] : "mid-back";
-            const groupLabel = groupKey || "中段";
-            
-            if (!speedMapGroups[groupClass]) {
-              speedMapGroups[groupClass] = { label: groupLabel, horses: [] };
-            }
-            // Extract horse names/numbers from the line
-            const afterColon = content.includes("：") ? content.split("：").slice(1).join("：") :
-                               content.includes(":") ? content.split(":").slice(1).join(":") : content;
-            const horseNames = afterColon.split(/[、,，]/).map(h => h.trim()).filter(h => h.length > 0);
-            speedMapGroups[groupClass].horses.push(...horseNames);
-          } else if (trimmed === "---") {
-            continue;
-          } else {
-            if (inSpeedMap && !trimmed.startsWith("-")) inSpeedMap = false;
-            otherLines.push(trimmed.replace(/\*{1,2}/g, ""));
-          }
-        }
-
-        // Order for speed map lanes
-        const laneOrder = ["lead", "mid-front", "mid-back", "back"];
-        const laneLabels = { "lead": "領放", "mid-front": "前中", "mid-back": "中後", "back": "後上" };
-
-        return (
-          <div className="battlefield">
-            <div className="battlefield__header">
-              🗺️ 戰場全景
-            </div>
-            <div className="battlefield__body">
-              {/* Info chips */}
-              {infoChips.length > 0 && (
-                <div className="battlefield__chips">
-                  {infoChips.map((chip, i) => {
-                    const iconKey = Object.keys(chipIcons).find(k => chip.label.toLowerCase().includes(k));
-                    return (
-                      <div key={i} className="battlefield__chip">
-                        <span className="battlefield__chip-icon">
-                          {iconKey ? chipIcons[iconKey] : "📋"}
-                        </span>
-                        <span className="battlefield__chip-label">{chip.label}</span>
-                        <span className="battlefield__chip-value">{chip.value}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              {/* Speed Map visual */}
-              {Object.keys(speedMapGroups).length > 0 && (
-                <div className="battlefield__speedmap">
-                  <div className="battlefield__speedmap-title">
-                    📍 Speed Map 預判走位
-                  </div>
-                  {laneOrder.map(laneKey => {
-                    const group = speedMapGroups[laneKey];
-                    if (!group || group.horses.length === 0) return null;
-                    return (
-                      <div key={laneKey} className={`battlefield__lane battlefield__lane--${laneKey}`}>
-                        <span className="battlefield__lane-label">
-                          {laneLabels[laneKey]}
-                        </span>
-                        <div className="battlefield__lane-horses">
-                          {group.horses.map((horse, i) => (
-                            <span key={i} className="battlefield__horse-pill">{horse}</span>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              {/* Other notes */}
-              {otherLines.length > 0 && (
-                <div className="battlefield__notes">
-                  {otherLines.map((l, i) => <div key={i}>{l}</div>)}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })()}
+      {analysis?.battlefield_overview && (
+        <BattlefieldOverview text={analysis.battlefield_overview} horses={analysis.horses || []} />
+      )}
 
       {/* ═══════════════════════════════════════════
           VIEW MODES
@@ -1057,219 +1114,12 @@ function BettingPanel({
 }
 
 /* ═══════════════════════════════════════════
-   Comparison View — Vertical top picks per analyst + synchronized horse rows
+   Comparison View — synchronized horse rows
    ═══════════════════════════════════════════ */
 
 function ComparisonView({ data, analysts }) {
   return (
     <div>
-      {/* Vertical Top Picks — side by side with ranking */}
-      <div style={{ marginBottom: "24px" }}>
-        <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "12px" }}>
-          🏆 Top Picks 對比
-        </h2>
-        <div className="comparison">
-          {analysts.map((analyst) => {
-            const analysis = data.analyses[analyst];
-            if (!analysis) return null;
-            const horses = analysis.horses || [];
-            const picks = (analysis.top_picks || []).map((pick) =>
-              withRunnerMetadata(pick, horses),
-            );
-            const altPicks = (analysis.alt_top_picks || []).map((pick) =>
-              withRunnerMetadata(pick, horses),
-            );
-            const isDualTrack = analysis.is_dual_track;
-            const primaryCond = analysis.primary_condition || "預期場地";
-            const altCond = analysis.alt_condition || "備選場地";
-            const isKelvin = analyst.toLowerCase() === "kelvin";
-            return (
-              <div key={analyst} className="comparison__column">
-                <div
-                  className={`comparison__header comparison__header--${isKelvin ? "kelvin" : "heison"}`}
-                >
-                  {analyst}
-                  {isDualTrack && (
-                    <div
-                      style={{
-                        fontSize: "0.75rem",
-                        fontWeight: "normal",
-                        opacity: 0.9,
-                      }}
-                    >
-                      預期: {primaryCond} | 備選: {altCond}
-                    </div>
-                  )}
-                </div>
-                <div className="comparison__body" style={{ padding: 0 }}>
-                  {picks.length === 0 ? (
-                    <div
-                      style={{
-                        padding: "16px",
-                        textAlign: "center",
-                        color: "#94A3B8",
-                        fontSize: "0.8rem",
-                      }}
-                    >
-                      暫無 Top Picks 數據
-                    </div>
-                  ) : (
-                    picks.map((pick, i) => (
-                      <div
-                        key={pick.rank}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "12px",
-                          padding: "12px 16px",
-                          borderBottom:
-                            i < picks.length - 1 ? "1px solid #F1F5F9" : "none",
-                        }}
-                      >
-                        {/* Rank medal */}
-                        <div
-                          style={{
-                            width: "32px",
-                            height: "32px",
-                            borderRadius: "8px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontWeight: 800,
-                            fontSize: "0.9rem",
-                            flexShrink: 0,
-                            background:
-                              i === 0
-                                ? "#FEF3C7"
-                                : i === 1
-                                  ? "#F1F5F9"
-                                  : i === 2
-                                    ? "#FFF7ED"
-                                    : "#EFF6FF",
-                            color:
-                              i === 0
-                                ? "#D97706"
-                                : i === 1
-                                  ? "#6B7280"
-                                  : i === 2
-                                    ? "#B45309"
-                                    : "#2563EB",
-                          }}
-                        >
-                          {pick.rank}
-                        </div>
-                        {/* Horse info */}
-                        <RunnerSilk
-                          silkUrl={pick.silk_url}
-                          horseName={pick.horse_name}
-                          size="sm"
-                        />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>
-                            {pick.horse_name}
-                          </div>
-                          <div style={{ fontSize: "0.7rem", color: "#94A3B8" }}>
-                            馬號 #{pick.horse_number}
-                          </div>
-                          {pick.horse_name_en && (
-                            <div className="horse-card__name-en">
-                              {pick.horse_name_en}
-                            </div>
-                          )}
-                        </div>
-                        {/* Grade */}
-                        <RatingBadge grade={pick.grade} size="lg" />
-                      </div>
-                    ))
-                  )}
-
-                  {/* Alternate Top Picks for Dual Track */}
-                  {isDualTrack && altPicks.length > 0 && (
-                    <>
-                      <div
-                        style={{
-                          padding: "8px 16px",
-                          background: "#F8FAFC",
-                          borderBottom: "1px solid #E2E8F0",
-                          fontSize: "0.8rem",
-                          fontWeight: 700,
-                          color: "#475569",
-                          textAlign: "center",
-                        }}
-                      >
-                        🔄 備選場地 Top Picks ({altCond})
-                      </div>
-                      {altPicks.map((pick, i) => (
-                        <div
-                          key={`alt-${pick.rank}`}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "12px",
-                            padding: "10px 16px",
-                            borderBottom:
-                              i < altPicks.length - 1
-                                ? "1px solid #F1F5F9"
-                                : "none",
-                            background: "#FAFAF9",
-                            opacity: 0.9,
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: "28px",
-                              height: "28px",
-                              borderRadius: "6px",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontWeight: 800,
-                              fontSize: "0.8rem",
-                              flexShrink: 0,
-                              background: "#F1F5F9",
-                              color: "#64748B",
-                            }}
-                          >
-                            {pick.rank}
-                          </div>
-                          <RunnerSilk
-                            silkUrl={pick.silk_url}
-                            horseName={pick.horse_name}
-                            size="sm"
-                          />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div
-                              style={{
-                                fontWeight: 700,
-                                fontSize: "0.85rem",
-                                color: "#475569",
-                              }}
-                            >
-                              {pick.horse_name}
-                            </div>
-                            <div
-                              style={{ fontSize: "0.65rem", color: "#94A3B8" }}
-                            >
-                              馬號 #{pick.horse_number}
-                            </div>
-                            {pick.horse_name_en && (
-                              <div className="horse-card__name-en">
-                                {pick.horse_name_en}
-                              </div>
-                            )}
-                          </div>
-                          <RatingBadge grade={pick.grade} size="md" />
-                        </div>
-                      ))}
-                    </>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Full horse cards — paired rows for equal height */}
       <h2 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "12px" }}>
         📋 全場馬匹分析
@@ -1398,7 +1248,7 @@ function ComparisonView({ data, analysts }) {
 }
 
 /* ═══════════════════════════════════════════
-   Single Analyst View — Vertical top picks + horse grid
+   Single Analyst View — horse grid
    ═══════════════════════════════════════════ */
 
 function SingleAnalystView({ analysis, analystName }) {
@@ -1420,99 +1270,8 @@ function SingleAnalystView({ analysis, analystName }) {
     return sortByGrade(a.final_grade, b.final_grade);
   });
 
-  const altPicks = (analysis.alt_top_picks || []).map((pick) =>
-    withRunnerMetadata(pick, horses),
-  );
-  const isDualTrack = analysis.is_dual_track;
-  const primaryCond = analysis.primary_condition || "預期場地";
-  const altCond = analysis.alt_condition || "備選場地";
-
   return (
     <div>
-      {/* Top Picks — side-by-side for dual track */}
-      {(picks.length > 0 || altPicks.length > 0) && (
-        <div style={{ marginBottom: "24px" }}>
-          <h2
-            style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "12px" }}
-          >
-            🏆 Top Picks
-            {isDualTrack && (
-              <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "#64748B", marginLeft: "8px" }}>
-                (雙軌制：{trimGoing(primaryCond)} / {trimGoing(altCond)})
-              </span>
-            )}
-          </h2>
-
-          {isDualTrack && altPicks.length > 0 ? (
-            /* ── Side-by-side dual-track layout (stacks on mobile) ── */
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "12px" }}>
-              {/* Primary / 預期場地 */}
-              <div className="comparison__column">
-                <div
-                  style={{
-                    padding: "8px 16px",
-                    background: "linear-gradient(135deg, #059669, #10B981)",
-                    color: "#fff",
-                    fontWeight: 700,
-                    fontSize: "0.8rem",
-                    borderRadius: "8px 8px 0 0",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                  }}
-                >
-                  預期場地
-                  <span style={{ fontWeight: 500, fontSize: "0.7rem", opacity: 0.9 }}>({trimGoing(primaryCond)})</span>
-                </div>
-                <div className="comparison__body" style={{ padding: 0 }}>
-                  {picks.map((pick, i) => (
-                    <PickRow key={pick.rank} pick={pick} index={i} isLast={i === picks.length - 1} />
-                  ))}
-                </div>
-              </div>
-              {/* Alternate / 備選場地 */}
-              <div className="comparison__column">
-                <div
-                  style={{
-                    padding: "8px 16px",
-                    background: "linear-gradient(135deg, #D97706, #F59E0B)",
-                    color: "#fff",
-                    fontWeight: 700,
-                    fontSize: "0.8rem",
-                    borderRadius: "8px 8px 0 0",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                  }}
-                >
-                  備選場地
-                  <span style={{ fontWeight: 500, fontSize: "0.7rem", opacity: 0.9 }}>({trimGoing(altCond)})</span>
-                </div>
-                <div className="comparison__body" style={{ padding: 0 }}>
-                  {altPicks.map((pick, i) => (
-                    <PickRow key={`alt-${pick.rank}`} pick={pick} index={i} isLast={i === altPicks.length - 1} />
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* ── Single column (non dual-track) ── */
-            <div className="comparison__column" style={{ maxWidth: "600px" }}>
-              <div
-                className={`comparison__header comparison__header--${isKelvin ? "kelvin" : "heison"}`}
-              >
-                {analystName || "Analyst"}
-              </div>
-              <div className="comparison__body" style={{ padding: 0 }}>
-                {picks.map((pick, i) => (
-                  <PickRow key={pick.rank} pick={pick} index={i} isLast={i === picks.length - 1} />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Monte Carlo Panel */}
       {analysis.monte_carlo_results && analysis.monte_carlo_results.length > 0 && (
         <MonteCarloPanel results={analysis.monte_carlo_results} analystName={analystName} />
@@ -1680,65 +1439,6 @@ function MonteCarloPanel({ results, analystName }) {
           🐍 由 Monte Carlo V2 Engine 自動計算 · 偏態分佈 + 近態衰減 + 步速互動
         </p>
       </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════
-   PickRow — Reusable Top Pick display row
-   ═══════════════════════════════════════════ */
-function PickRow({ pick, index, isLast }) {
-  const medals = ["🥇", "🥈", "🥉", "🏅"];
-  const bgColors = ["#FEF3C7", "#F1F5F9", "#FFF7ED", "#EFF6FF"];
-  const fgColors = ["#D97706", "#6B7280", "#B45309", "#2563EB"];
-  const i = index;
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "10px",
-        padding: "10px 14px",
-        borderBottom: isLast ? "none" : "1px solid #F1F5F9",
-      }}
-    >
-      <div
-        style={{
-          width: "28px",
-          height: "28px",
-          borderRadius: "6px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontWeight: 800,
-          fontSize: "0.85rem",
-          flexShrink: 0,
-          background: bgColors[i] || "#EFF6FF",
-          color: fgColors[i] || "#2563EB",
-        }}
-      >
-        {pick.rank}
-      </div>
-      <RunnerSilk
-        silkUrl={pick.silk_url}
-        horseName={pick.horse_name}
-        size="sm"
-      />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 700, fontSize: "0.85rem" }}>
-          {pick.horse_name}
-        </div>
-        <div style={{ fontSize: "0.65rem", color: "#94A3B8" }}>
-          馬號 #{pick.horse_number}
-        </div>
-        {pick.horse_name_en && (
-          <div className="horse-card__name-en">{pick.horse_name_en}</div>
-        )}
-      </div>
-      <span style={{ fontSize: "1rem" }}>
-        {medals[i] || "🏅"}
-      </span>
-      <RatingBadge grade={pick.grade} size="md" />
     </div>
   );
 }

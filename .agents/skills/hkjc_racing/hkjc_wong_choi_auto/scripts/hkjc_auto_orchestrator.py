@@ -332,9 +332,15 @@ def _parse_racecard_meta(text):
         rt = re.search(r"^評分:\s*(\d+)", block, re.M)
         if nm and rt:
             ch = re.search(r"^評分\+/-:\s*(-?\d+)", block, re.M)
+            horse_id = re.search(r"^HKJC馬匹ID:\s*(HK_\d{4}_[A-HJ-Z]\d{3})", block, re.M | re.I)
+            profile_url = re.search(r"^官方馬匹資料:\s*(\S+)", block, re.M)
+            horse_code = re.search(r"^烙號:\s*([A-HJ-Z]\d{3})", block, re.M | re.I)
             info[nm.group(1).strip()] = {
                 "rating": int(rt.group(1)),
                 "change": int(ch.group(1)) if ch else None,
+                "horse_code": horse_code.group(1).upper() if horse_code else None,
+                "hkjc_horse_id": horse_id.group(1).upper() if horse_id else None,
+                "horse_profile_url": profile_url.group(1).strip() if profile_url else None,
             }
     return race_class, info
 
@@ -635,6 +641,10 @@ class HKJCAutoOrchestrator:
                     if not isinstance(h_obj, dict):
                         continue
                     info = rc_info.get(h_obj.get("horse_name"))
+                    if info:
+                        for field in ("horse_code", "hkjc_horse_id", "horse_profile_url"):
+                            if info.get(field):
+                                h_obj[field] = info[field]
                     if info and info.get("rating") is not None:
                         data = h_obj.setdefault("_data", {})
                         data["current_rating"] = info["rating"]

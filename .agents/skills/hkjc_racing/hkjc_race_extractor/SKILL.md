@@ -84,6 +84,8 @@ For every horse, you MUST output the data as explicit key-value pairs. Reference
 
 The racecard output must include `英文馬名:` immediately after `馬名:`. Resolve it from the official English racecard by matching the same `烙號`; if the English endpoint is temporarily unavailable, continue with the Chinese fields and report the warning on stderr.
 
+For every runner, also extract the exact `horseid` from the official horse link in the racecard row and output `HKJC馬匹ID:` plus the canonical `官方馬匹資料:` URL. Do not guess the registration year when the page supplies the exact ID.
+
 #### Extraction Method: Python Script
 Execute the specialized Python extraction script included in this skill's folder:
 ```bash

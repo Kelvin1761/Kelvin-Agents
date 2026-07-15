@@ -69,6 +69,8 @@ def _build_hkjc_consensus_payload(meeting, kelvin_race, heison_race):
             horse_data["trainer"] = horse.trainer
             horse_data["horse_name_en"] = horse.horse_name_en
             horse_data["horse_code"] = horse.horse_code
+            horse_data["hkjc_horse_id"] = horse.hkjc_horse_id
+            horse_data["horse_profile_url"] = horse.horse_profile_url
             horse_data["silk_url"] = horse.silk_url
     for suggestion in suggestions:
         horse = all_horses.get(suggestion["horse_number"])
@@ -77,6 +79,8 @@ def _build_hkjc_consensus_payload(meeting, kelvin_race, heison_race):
             suggestion["trainer"] = horse.trainer
             suggestion["horse_name_en"] = horse.horse_name_en
             suggestion["horse_code"] = horse.horse_code
+            suggestion["hkjc_horse_id"] = horse.hkjc_horse_id
+            suggestion["horse_profile_url"] = horse.horse_profile_url
             suggestion["silk_url"] = horse.silk_url
     return {
         "race_number": kelvin_race.race_number,

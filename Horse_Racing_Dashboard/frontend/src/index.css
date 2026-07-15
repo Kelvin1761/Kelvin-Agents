@@ -227,7 +227,9 @@ a:hover {
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-secondary);
-  transition: all var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
   text-decoration: none;
   white-space: nowrap;
 }
@@ -1024,6 +1026,11 @@ a:hover {
 .horse-card__expand-btn:hover {
   background: var(--color-surface-hover);
   color: #1d4ed8;
+}
+
+.horse-card__expand-btn:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 2px;
 }
 
 .analysis-detail {
@@ -2128,6 +2135,243 @@ a:hover {
   background: var(--color-surface);
 }
 
+.battlefield--refined {
+  border-color: #cbd5e1;
+  box-shadow: 0 10px 28px rgba(15, 39, 70, 0.08);
+}
+
+.battlefield--refined .battlefield__header {
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: #102a4c;
+  border-bottom: 3px solid #3b82f6;
+}
+
+.battlefield__eyebrow {
+  margin-bottom: 2px;
+  color: #93c5fd;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.battlefield__title {
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.battlefield__header-note {
+  color: #bfdbfe;
+  font-size: 0.68rem;
+  font-weight: 650;
+}
+
+.battlefield__race-pattern {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin-bottom: 18px;
+  overflow: hidden;
+  border: 1px solid #dbe3ee;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #f8fbff, #f1f6fd);
+}
+
+.battlefield__race-segment {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  min-height: 68px;
+  padding: 12px 16px;
+}
+
+.battlefield__race-segment > i {
+  position: absolute;
+  top: 13px;
+  right: 0;
+  bottom: 13px;
+  width: 1px;
+  background: #dbe3ee;
+}
+
+.battlefield__race-segment > span,
+.battlefield__race-segment > strong {
+  overflow-wrap: anywhere;
+}
+
+.battlefield__race-segment > span {
+  color: #64748b;
+  font-size: 0.64rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+.battlefield__race-segment > strong {
+  color: #0f2746;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.battlefield__notes--refined {
+  margin: 0 0 18px;
+  border: 1px solid #fde68a;
+  border-left: 3px solid #f59e0b;
+}
+
+.battlefield-ranking {
+  overflow: hidden;
+  border: 1px solid #dbe3ee;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.battlefield-ranking__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border-bottom: 1px solid #dbe3ee;
+  background: #f8fafc;
+  color: #1e293b;
+  font-size: 0.76rem;
+}
+
+.battlefield-ranking__header > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.battlefield-ranking__header > span {
+  color: #64748b;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.battlefield-ranking__scroll {
+  overflow-x: auto;
+}
+
+.battlefield-ranking__table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  color: #334155;
+  font-size: 0.72rem;
+}
+
+.battlefield-ranking__table th,
+.battlefield-ranking__table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #eef2f7;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.battlefield-ranking__table th {
+  background: #fff;
+  color: #64748b;
+  font-size: 0.64rem;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+
+.battlefield-ranking__table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.battlefield-ranking__table tbody tr:nth-child(even) {
+  background: #fafcff;
+}
+
+.battlefield-ranking__row--top {
+  background: #f4f8ff !important;
+}
+
+.battlefield-ranking__rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.battlefield-ranking__horse-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: 6px;
+  background: #eaf2ff;
+  color: #1d4ed8;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.battlefield-ranking__horse-name {
+  display: block;
+  color: #1e293b;
+  font-weight: 750;
+}
+
+.battlefield-ranking__runner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 150px;
+}
+
+.battlefield-ranking__runner > div {
+  min-width: 0;
+}
+
+.battlefield-ranking__runner > div > span {
+  display: block;
+  margin-top: 1px;
+  color: #718096;
+  font-size: 0.58rem;
+  font-weight: 650;
+  letter-spacing: 0.025em;
+  line-height: 1.3;
+}
+
+.battlefield-ranking__score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 118px;
+  font-variant-numeric: tabular-nums;
+}
+
+.battlefield-ranking__score > strong {
+  min-width: 32px;
+  color: #1e293b;
+}
+
+.battlefield-ranking__score > span {
+  width: 72px;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.battlefield-ranking__score i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #3b82f6;
+}
+
 /* Chip grid for race info */
 .battlefield__chips {
   display: flex;
@@ -2147,7 +2391,9 @@ a:hover {
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border-light);
   color: var(--color-text-secondary);
-  transition: all var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .battlefield__chip:hover {
@@ -2412,6 +2658,31 @@ a:hover {
 @media (max-width: 768px) {
   .battlefield__body {
     padding: 12px 14px;
+  }
+  .battlefield--refined .battlefield__header {
+    padding: 12px 14px;
+  }
+  .battlefield__header-note {
+    display: none;
+  }
+  .battlefield__race-pattern {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 14px;
+  }
+  .battlefield__race-segment {
+    min-height: 60px;
+    padding: 10px 12px;
+  }
+  .battlefield__race-segment:nth-child(2) > i {
+    display: none;
+  }
+  .battlefield__race-segment:nth-child(n + 3) {
+    grid-column: 1 / -1;
+    border-top: 1px solid #dbe3ee;
+  }
+  .battlefield-ranking__table th,
+  .battlefield-ranking__table td {
+    padding: 7px 9px;
   }
   .battlefield__chips {
     gap: 6px;

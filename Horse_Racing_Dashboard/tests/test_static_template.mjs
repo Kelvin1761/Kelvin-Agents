@@ -73,6 +73,8 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       setSelectedMeetingForTest: (meeting) => { selectedMeeting = meeting; },
       renderHorseCard,
       buildHorseAnalysisSections,
+      sanitizeBattlefieldOverviewText,
+      renderBattlefieldOverview,
     };
   `;
   vm.runInContext(source, context);
@@ -125,6 +127,60 @@ test("dashboard overview keeps an eleven-race meeting in the dense desktop layou
   assert.equal((html.match(/race-tile__cta/g) || []).length, 11);
 });
 
+test("battlefield overview removes auto-position summary and trims ranking columns", () => {
+  const { sanitizeBattlefieldOverviewText, renderBattlefieldOverview } = loadTemplateFunctions();
+  const source = `[第一部分] 🗺️ 戰場全景
+
+| 項目 | 內容 |
+|:---|:---|
+| 賽事格局 | 第四班 / 1200mm / HKJC |
+| **賽事類型** | **\`[HKJC Wong Choi Auto Python 7D]\`** |
+| 天氣 / 場地 | 好地 |
+| 分析邊界 | 不使用即市資料 |
+
+**📍 Auto 走位與檔位摘要（不含節奏預測）:**
+- 場次: 第 4 場
+- 出馬數: 12
+- 檔位分較高: 3 匹馬
+- 資料完整度較高: 3 匹馬
+- Consistency Shadow: 未啟用
+
+**📊 全場綜合戰力排名**
+
+| 排名 | 馬號 | 馬名 | 綜合戰力分 | Grade | 資料完整度 | 風險分 | 情境標記 |
+|---:|---:|---|---:|---|---:|---:|---|
+| 1 | 5 | 日馳千里 | 67.8 | B- | 83.0 | 67.0 | 模型首選 |
+| 2 | 7 | 升升雙息 | 67.8 | B- | 83.0 | 70.0 |  |`;
+
+  const sanitized = sanitizeBattlefieldOverviewText(source);
+  const html = renderBattlefieldOverview(source, [{
+    horse_number: 5,
+    horse_name: "日馳千里",
+    horse_name_en: "GIANT LEAP",
+    silk_url: "https://example.test/silks/5.png",
+  }]);
+
+  assert.doesNotMatch(sanitized, /Auto 走位與檔位摘要|檔位分較高|資料完整度較高|Consistency Shadow/);
+  assert.doesNotMatch(html, /賽事類型|天氣 \/ 場地|分析邊界|資料完整度|風險分|情境標記/);
+  assert.doesNotMatch(html, /\*\*|1200mm/);
+  assert.match(html, /battlefield__race-pattern/);
+  assert.match(html, /班次[\s\S]*第四班/);
+  assert.match(html, /路程[\s\S]*1200m/);
+  assert.match(html, /賽區[\s\S]*香港/);
+  assert.match(html, /battlefield-ranking__score/);
+  assert.match(html, /日馳千里/);
+  assert.match(html, /GIANT LEAP/);
+  assert.match(html, /https:\/\/example\.test\/silks\/5\.png/);
+  assert.equal((html.match(/<th>/g) || []).length, 5);
+});
+
+test("race detail removes duplicate Top Picks panels", () => {
+  const template = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+  const reactPage = fs.readFileSync(new URL("../frontend/src/pages/RaceDetailPage.jsx", import.meta.url), "utf8");
+  assert.doesNotMatch(template, /🏆 Top Picks|Top Picks 對比|暫無 Top Picks/);
+  assert.doesNotMatch(reactPage, /🏆 Top Picks|Top Picks 對比|暫無 Top Picks/);
+});
+
 test("long horse analysis shows every data row and every expanded section", () => {
   const { renderHorseCard, buildHorseAnalysisSections } = loadTemplateFunctions();
   const dataReadout = [
@@ -155,7 +211,8 @@ test("long horse analysis shows every data row and every expanded section", () =
   const html = renderHorseCard(horse, 1);
   assert.match(html, /data-readout--complete/);
   assert.equal((html.match(/data-readout__item/g) || []).length, 6);
-  assert.match(html, /長理由六/);
+  assert.doesNotMatch(html, /長理由六/);
+  assert.equal((html.match(/data-readout__reason/g) || []).length, 5);
   assert.doesNotMatch(html, /data-readout__more|另有 \d+ 項/);
   assert.match(html, /horse-silk horse-silk--sm/);
   assert.match(html, /https:\/\/example\.test\/G292\.gif/);
@@ -197,16 +254,17 @@ test("data readout splits detail rows, labels trainer-jockey stats, and removes 
       {
         band: "⚠️",
         label: "配備變動",
-        value: "除下羊毛面箍",
+        value: "戴上繫舌帶、開縫眼罩；除下--",
         trend: "配備有變",
-        reason: "除下羊毛面箍",
+        reason: "戴上繫舌帶、開縫眼罩；除下--",
       },
     ],
   });
 
   assert.match(html, /<span>季初評分49<\/span><span>近三季最高63·最低40<\/span>/);
   assert.match(html, /<span>騎練拍檔31仗勝率6%、上名率26%<\/span>/);
-  assert.equal((html.match(/除下羊毛面箍/g) || []).length, 1);
+  assert.equal((html.match(/戴上繫舌帶、開縫眼罩/g) || []).length, 1);
+  assert.doesNotMatch(html, /(?:戴上|除下)--/);
 });
 
 
@@ -269,6 +327,17 @@ test("HKJC horse profile link uses the official registration-year horse id", () 
     hkjcHorseProfileUrl({ hkjc_horse_id: "HK_2024_K390", horse_code: "K390" }),
     "https://racing.hkjc.com/zh-hk/local/information/horse?horseid=HK_2024_K390",
   );
+  assert.equal(
+    hkjcHorseProfileUrl({ horse_code: "E114" }),
+    "https://racing.hkjc.com/zh-hk/local/information/horse?horseid=HK_2020_E114",
+  );
+  assert.equal(
+    hkjcHorseProfileUrl({
+      horse_code: "J503",
+      horse_profile_url: "https://racing.hkjc.com/zh-hk/local/information/horse?horseid=HK_2023_J503",
+    }),
+    "https://racing.hkjc.com/zh-hk/local/information/horse?horseid=HK_2023_J503",
+  );
   assert.equal(hkjcHorseProfileUrl({ horse_name: "AU Runner" }), "");
 
   const hkHtml = renderHorseCard({ horse_number: 4, horse_name: "多利神駒", horse_code: "G292" });
@@ -277,12 +346,32 @@ test("HKJC horse profile link uses the official registration-year horse id", () 
   assert.match(hkHtml, /target="_blank" rel="noopener noreferrer"/);
   assert.match(hkHtml, />官方馬匹資料 <span/);
 
+  const matrixHtml = renderHorseCard({
+    horse_number: 4,
+    horse_name: "多利神駒",
+    rating_matrix: { dimensions: [{ name: "段速表現", value: "✅", rationale: "優勢" }] },
+  });
+  assert.doesNotMatch(matrixHtml, /horse-card__section-title">📊 評級矩陣/);
+  assert.doesNotMatch(matrixHtml, /✅ 段速表現/);
+
   const auHtml = renderHorseCard({ horse_number: 4, horse_name: "AU Runner" });
   assert.doesNotMatch(auHtml, /horse-card__official-link/);
 });
 
+test("both horse-card renderers keep the rating matrix out of the preview", () => {
+  const reactSource = fs.readFileSync(
+    new URL("../frontend/src/components/HorseCard.jsx", import.meta.url),
+    "utf8",
+  );
+  const expandedStart = reactSource.indexOf("{expanded && hasAnalysis");
+  const matrixRender = reactSource.indexOf("<RatingMatrixTable");
 
-test("HKJC silk reaches both betting candidates and Top Picks", () => {
+  assert.ok(expandedStart >= 0, "React horse card should have an expanded analysis boundary");
+  assert.ok(matrixRender > expandedStart, "React rating matrix must only render after expansion");
+});
+
+
+test("HKJC silk reaches betting candidates and the ranked horse analysis", () => {
   const horse = {
     horse_number: 1,
     horse_name: "摘星聲升",

@@ -21,7 +21,8 @@ export default function HorseCard({ horse, topPickRank, primaryCondition }) {
     horse.form_line ||
     horse.horse_profile ||
     horse.core_analysis ||
-    horse.conclusion;
+    horse.conclusion ||
+    horse.rating_matrix?.dimensions?.length > 0;
 
   return (
     <div
@@ -425,14 +426,6 @@ export default function HorseCard({ horse, topPickRank, primaryCondition }) {
           )}
         </div>
 
-        {/* 3.3a — Rating matrix: table-format display */}
-        {horse.rating_matrix && horse.rating_matrix.dimensions?.length > 0 && (
-          <div className="horse-card__section">
-            <div className="horse-card__section-title">📊 評級矩陣</div>
-            <RatingMatrixTable matrix={horse.rating_matrix} />
-          </div>
-        )}
-
         {/* Expanded: Structured analysis sections (single layer) */}
         {expanded && hasAnalysis && (
           <div className="analysis-sections">
@@ -496,6 +489,12 @@ export default function HorseCard({ horse, topPickRank, primaryCondition }) {
                     {formatAnalysis(horse.conclusion)}
                   </div>
                 )}
+                {horse.rating_matrix?.dimensions?.length > 0 && (
+                  <div className="horse-card__section">
+                    <div className="horse-card__section-title">📊 評級矩陣</div>
+                    <RatingMatrixTable matrix={horse.rating_matrix} />
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -504,7 +503,9 @@ export default function HorseCard({ horse, topPickRank, primaryCondition }) {
 
       {hasAnalysis && (
         <button
+          type="button"
           className="horse-card__expand-btn"
+          aria-expanded={expanded}
           onClick={() => setExpanded(!expanded)}
         >
           {expanded ? "收起分析 ▲" : "展開完整分析 ▼"}

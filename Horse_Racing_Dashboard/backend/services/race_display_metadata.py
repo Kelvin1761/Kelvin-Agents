@@ -12,6 +12,11 @@ from models.race import Region
 HKJC_SILK_BASE_URL = "https://racing.hkjc.com/racing/content/Images/RaceColor"
 HKJC_RACECARD_RACE_RE = re.compile(r"Race\s+(\d+)\s+排位表\.md$", re.IGNORECASE)
 HKJC_HORSE_CODE_RE = re.compile(r"^[A-Z]\d{3}$")
+HKJC_HORSE_ID_RE = re.compile(r"^HK_\d{4}_[A-HJ-Z]\d{3}$")
+HKJC_HORSE_REGISTRATION_YEARS = {
+    "A": 2016, "B": 2017, "C": 2018, "D": 2019, "E": 2020,
+    "G": 2021, "H": 2022, "J": 2023, "K": 2024, "L": 2025, "M": 2026,
+}
 HKJC_PDF_ENGLISH_NAME_RE = re.compile(
     r"^(?:(?:\d+|Standby)\s+)+(?P<zh>[\u3400-\u9fff]+)\s+(?P<en>[A-Z][A-Z0-9'&. -]+)$"
 )
@@ -19,6 +24,27 @@ AU_RACECARD_RACE_RE = re.compile(r"\bRACE\s+(\d+)\b", re.IGNORECASE)
 AU_SILK_URL_RE = re.compile(
     r"^https://images\.puntcdn\.com/silks/[A-Za-z0-9_./-]+\.svg(?:\?.*)?$"
 )
+
+
+def hkjc_horse_profile_metadata(horse_code, horse_id=None, profile_url=None):
+    """Return a validated canonical HKJC horse id/profile pair."""
+    code = str(horse_code or "").strip().upper()
+    candidate = str(horse_id or "").strip().upper()
+    if not candidate and profile_url:
+        match = re.search(r"horseid=(HK_\d{4}_[A-HJ-Z]\d{3})", str(profile_url), re.I)
+        candidate = match.group(1).upper() if match else ""
+    if not HKJC_HORSE_ID_RE.fullmatch(candidate):
+        year = HKJC_HORSE_REGISTRATION_YEARS.get(code[:1])
+        candidate = f"HK_{year}_{code}" if year and HKJC_HORSE_CODE_RE.fullmatch(code) else ""
+    if not HKJC_HORSE_ID_RE.fullmatch(candidate):
+        return {"hkjc_horse_id": None, "horse_profile_url": None}
+    return {
+        "hkjc_horse_id": candidate,
+        "horse_profile_url": (
+            "https://racing.hkjc.com/zh-hk/local/information/horse"
+            f"?horseid={candidate}"
+        ),
+    }
 
 
 def parse_hkjc_racecard_silks(path):
@@ -33,17 +59,25 @@ def parse_hkjc_racecard_silks(path):
         number_match = re.search(r"^馬號:\s*(\d+)\s*$", block, re.MULTILINE)
         code_match = re.search(r"^烙號:\s*([^\s]+)\s*$", block, re.MULTILINE)
         english_match = re.search(r"^英文馬名:\s*(.+?)\s*$", block, re.MULTILINE)
+        horse_id_match = re.search(r"^HKJC馬匹ID:\s*(\S+)\s*$", block, re.MULTILINE | re.I)
+        profile_match = re.search(r"^官方馬匹資料:\s*(\S+)\s*$", block, re.MULTILINE)
         if not number_match or not code_match:
             continue
         horse_code = code_match.group(1).strip().upper()
         if not HKJC_HORSE_CODE_RE.fullmatch(horse_code):
             continue
+        profile = hkjc_horse_profile_metadata(
+            horse_code,
+            horse_id_match.group(1) if horse_id_match else None,
+            profile_match.group(1) if profile_match else None,
+        )
         silks[int(number_match.group(1))] = {
             "horse_code": horse_code,
             "silk_url": f"{HKJC_SILK_BASE_URL}/{horse_code}.gif",
             "horse_name_en": (
                 english_match.group(1).strip().upper() if english_match else None
             ),
+            **profile,
         }
     return silks
 
@@ -105,6 +139,8 @@ def enrich_hkjc_display_metadata(meeting, all_races):
                 silk = race_silks.get(horse.horse_number)
                 if silk:
                     horse.horse_code = silk["horse_code"]
+                    horse.hkjc_horse_id = silk.get("hkjc_horse_id")
+                    horse.horse_profile_url = silk.get("horse_profile_url")
                     horse.silk_url = silk["silk_url"]
                     horse.horse_name_en = (
                         silk.get("horse_name_en") or horse.horse_name_en
@@ -208,7 +244,7 @@ def enrich_snapshot_display_metadata(data, meeting):
                 horse_count += 1
                 horse_number = int(horse.get("horse_number") or 0)
                 metadata = race_metadata.get(race_number, {}).get(horse_number, {})
-                for field in ("horse_code", "silk_url", "horse_name_en"):
+                for field in ("horse_code", "hkjc_horse_id", "horse_profile_url", "silk_url", "horse_name_en"):
                     if metadata.get(field):
                         horse[field] = metadata[field]
                 if not horse.get("horse_name_en"):
@@ -256,6 +292,8 @@ def _copy_display_fields(target, horse):
     for field in (
         "horse_name_en",
         "horse_code",
+        "hkjc_horse_id",
+        "horse_profile_url",
         "silk_url",
         "jockey",
         "trainer",

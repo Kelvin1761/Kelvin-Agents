@@ -20,7 +20,8 @@ from generate_static import (
 )
 from models.race import AnalystName, HorseAnalysis, Meeting, RaceAnalysis, Region
 from services.parser_au import parse_mc_results_json
-from extract_racecard import parse_english_name_map
+from bs4 import BeautifulSoup
+from extract_racecard import parse_english_name_map, parse_horse_profile_link
 from api import races as races_api
 
 
@@ -59,6 +60,8 @@ def test_hkjc_racecard_silk_parser_uses_brand_number(tmp_path):
 馬名: 摘星聲升
 英文馬名: EMERGING STAR
 烙號: K390
+HKJC馬匹ID: HK_2024_K390
+官方馬匹資料: https://racing.hkjc.com/zh-hk/local/information/horse?horseid=HK_2024_K390
 
 馬號: 2
 馬名: 勇者無敵
@@ -73,8 +76,23 @@ def test_hkjc_racecard_silk_parser_uses_brand_number(tmp_path):
         "horse_code": "K390",
         "silk_url": "https://racing.hkjc.com/racing/content/Images/RaceColor/K390.gif",
         "horse_name_en": "EMERGING STAR",
+        "hkjc_horse_id": "HK_2024_K390",
+        "horse_profile_url": "https://racing.hkjc.com/zh-hk/local/information/horse?horseid=HK_2024_K390",
     }
     assert silks[2]["horse_code"] == "K217"
+    assert silks[2]["hkjc_horse_id"] == "HK_2024_K217"
+
+
+def test_hkjc_racecard_extractor_captures_exact_official_horse_profile_url():
+    soup = BeautifulSoup(
+        '<tr><td><a href="/zh-hk/local/information/horse?horseid=HK_2023_J503">Horse</a></td></tr>',
+        "html.parser",
+    )
+
+    assert parse_horse_profile_link(soup.tr) == {
+        "hkjc_horse_id": "HK_2023_J503",
+        "horse_profile_url": "https://racing.hkjc.com/zh-hk/local/information/horse?horseid=HK_2023_J503",
+    }
 
 
 def test_hkjc_silks_are_enriched_for_every_analyst(tmp_path):
@@ -99,6 +117,8 @@ def test_hkjc_silks_are_enriched_for_every_analyst(tmp_path):
     for races in all_races.values():
         horse = races[0].horses[0]
         assert horse.horse_code == "K390"
+        assert horse.hkjc_horse_id == "HK_2024_K390"
+        assert horse.horse_profile_url.endswith("horseid=HK_2024_K390")
         assert horse.silk_url.endswith("/K390.gif")
         assert horse.horse_name_en == "EMERGING STAR"
 

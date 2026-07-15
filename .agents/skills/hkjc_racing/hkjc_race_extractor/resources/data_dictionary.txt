@@ -2,6 +2,8 @@ Data Dictionary for HKJC Extractions:
 
 Racecard Fields:
 - 烙號 (Brand Number): Unique alphanumeric identifier (e.g., E114).
+- HKJC馬匹ID (HKJC Horse ID): Exact identifier extracted from the official horse link (e.g., HK_2020_E114).
+- 官方馬匹資料 (Official Horse Profile): Canonical HKJC profile URL containing the exact `horseid`.
 - 負磅 (Carried Weight): Weight carried by the horse in pounds.
 - 評分 (Rating): Official HKJC rating.
 # ... other fields ...

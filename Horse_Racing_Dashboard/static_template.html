@@ -301,6 +301,12 @@ function renderSilk(horse, size = 'md') {
 }
 
 function hkjcHorseProfileUrl(horse) {
+  const suppliedUrl = String(horse?.horse_profile_url || '').trim();
+  const suppliedMatch = suppliedUrl.match(/[?&]horseid=(HK_\d{4}_[A-HJ-Z]\d{3})(?:&|$)/i);
+  if (suppliedMatch) {
+    const suppliedId = suppliedMatch[1].toUpperCase();
+    return `https://racing.hkjc.com/zh-hk/local/information/horse?horseid=${encodeURIComponent(suppliedId)}`;
+  }
   const directId = String(horse?.hkjc_horse_id || horse?.horse_id || '').trim().toUpperCase();
   if (/^HK_\d{4}_[A-HJ-Z]\d{3}$/.test(directId)) {
     return `https://racing.hkjc.com/zh-hk/local/information/horse?horseid=${encodeURIComponent(directId)}`;
@@ -308,11 +314,11 @@ function hkjcHorseProfileUrl(horse) {
   const code = String(horse?.horse_code || '').trim().toUpperCase();
   const match = code.match(/^([A-HJ-Z])(\d{3})$/);
   if (!match) return '';
-  const prefixIndex = 'ABCDEFGH'.includes(match[1])
-    ? match[1].charCodeAt(0) - 65
-    : match[1].charCodeAt(0) - 66;
-  const registrationYear = 2015 + prefixIndex;
-  if (registrationYear < 2015 || registrationYear > 2099) return '';
+  const registrationYear = {
+    A: 2016, B: 2017, C: 2018, D: 2019, E: 2020,
+    G: 2021, H: 2022, J: 2023, K: 2024, L: 2025, M: 2026,
+  }[match[1]];
+  if (!registrationYear) return '';
   const horseId = `HK_${registrationYear}_${code}`;
   return `https://racing.hkjc.com/zh-hk/local/information/horse?horseid=${encodeURIComponent(horseId)}`;
 }
@@ -1100,7 +1106,7 @@ function renderRaceDetail() {
 
   // 🗺️ 戰場全景 — simple inline card before consensus
   if (analysis.battlefield_overview) {
-    html += `<div class="battlefield"><div class="battlefield__header">🗺️ 戰場全景</div><div class="battlefield__body" style="font-size:0.82rem;line-height:1.7;color:#334155">${formatRichSection(analysis.battlefield_overview)}</div></div>`;
+    html += renderBattlefieldOverview(analysis.battlefield_overview, analysis.horses || []);
   } else if (analysis.pace_prediction) {
     html += `<div class="card" style="margin-bottom:16px;padding:12px 16px"><span style="font-size:0.75rem;font-weight:700;color:#64748B">🏃 步速預測</span><div style="font-size:0.85rem;margin-top:4px;white-space:pre-wrap">${esc(analysis.pace_prediction)}</div></div>`;
   }
@@ -1539,20 +1545,30 @@ function dataReadoutReasonLines(row) {
   reason = reason
     .replace(/[，,]\s*拍檔(?=\d+仗勝率)/g, '；騎練拍檔')
     .replace(/(^|[；;])\s*拍檔(?=\d+仗勝率)/g, '$1騎練拍檔');
-  const compact = value => String(value || '').replace(/[\s，,。；;]+/g, '');
-  const valueKey = compact(row?.value);
   const isEquipment = String(row?.label || '').includes('配備變動');
+  // The equipment value is already the complete user-facing summary. Raw HKJC
+  // transitions add no information and may contain placeholders such as "--".
+  if (isEquipment) return [];
   return reason
     .split(/[；;]/)
     .map(line => line.trim())
-    .filter(Boolean)
-    .filter(line => !(isEquipment && valueKey && compact(line) === valueKey));
+    .filter(Boolean);
+}
+
+function sanitizeEquipmentDisplayText(value) {
+  return String(value || '')
+    .split(/[；;]/)
+    .map(part => part.trim())
+    .filter(part => part && !/^(?:戴上|除下|維持)\s*[-‐‑‒–—]+$/.test(part))
+    .join('；');
 }
 
 function renderDataReadoutItem(row) {
   const band = row.band || '➖';
   const tone = dataReadoutTone(band);
-  const main = [row.value, row.trend].filter(Boolean).join(' · ') || '—';
+  const isEquipment = String(row?.label || '').includes('配備變動');
+  const displayValue = isEquipment ? sanitizeEquipmentDisplayText(row.value) : row.value;
+  const main = [displayValue, row.trend].filter(Boolean).join(' · ') || '—';
   const reasonLines = dataReadoutReasonLines(row);
   return `<div class="data-readout__item">
     <span class="data-readout__signal data-readout__signal--${tone}" aria-hidden="true">${esc(band)}</span>
@@ -1570,6 +1586,158 @@ function renderDataReadout(rows) {
   html += `<div class="data-readout__header"><div class="data-readout__title">📊 數據判讀</div><div class="data-readout__summary">${esc(dataReadoutSummary(source))}</div></div>`;
   html += `<div class="data-readout__grid">${source.map(renderDataReadoutItem).join('')}</div>`;
   html += '</div>';
+  return html;
+}
+
+function cleanBattlefieldCell(value) {
+  return String(value || '')
+    .replace(/\*{1,3}/g, '')
+    .replace(/`+/g, '')
+    .replace(/^\[|\]$/g, '')
+    .replace(/(\d+)mm\b/g, '$1m')
+    .trim();
+}
+
+function parseBattlefieldTable(tableText) {
+  const lines = String(tableText || '').trim().split('\n').filter(line => line.trim().startsWith('|'));
+  if (lines.length < 2) return null;
+  const parseLine = line => line.split('|').slice(1, -1).map(cleanBattlefieldCell);
+  const header = parseLine(lines[0]);
+  const start = /^\|[-:\s|]+\|$/.test(lines[1].trim()) ? 2 : 1;
+  return {
+    headers: header,
+    rows: lines.slice(start).map(parseLine).filter(row => row.some(Boolean)),
+  };
+}
+
+function sanitizeBattlefieldOverviewText(text) {
+  const sourceLines = String(text || '').split('\n');
+  const withoutAutoSummary = [];
+  let skippingAutoSummary = false;
+  sourceLines.forEach(line => {
+    const clean = cleanBattlefieldCell(line).replace(/^#+\s*/, '');
+    if (/^📍\s*Auto\s*走位與檔位摘要（不含節奏預測）\s*[:：]?$/.test(clean)) {
+      skippingAutoSummary = true;
+      return;
+    }
+    if (skippingAutoSummary && /^📊\s*全場綜合戰力排名/.test(clean)) {
+      skippingAutoSummary = false;
+      withoutAutoSummary.push(line);
+      return;
+    }
+    if (!skippingAutoSummary) withoutAutoSummary.push(line);
+  });
+
+  const unwantedHeaders = new Set(['資料完整度', '風險分', '情境標記']);
+  const output = [];
+  for (let i = 0; i < withoutAutoSummary.length;) {
+    if (!withoutAutoSummary[i].trim().startsWith('|')) {
+      output.push(withoutAutoSummary[i]);
+      i += 1;
+      continue;
+    }
+    const tableLines = [];
+    while (i < withoutAutoSummary.length && withoutAutoSummary[i].trim().startsWith('|')) {
+      tableLines.push(withoutAutoSummary[i]);
+      i += 1;
+    }
+    const parsed = parseBattlefieldTable(tableLines.join('\n'));
+    if (!parsed) {
+      output.push(...tableLines);
+      continue;
+    }
+    const keepIndexes = parsed.headers
+      .map((header, index) => unwantedHeaders.has(cleanBattlefieldCell(header)) ? -1 : index)
+      .filter(index => index >= 0);
+    if (keepIndexes.length === parsed.headers.length) {
+      output.push(...tableLines);
+      continue;
+    }
+    output.push(`| ${keepIndexes.map(index => parsed.headers[index]).join(' | ')} |`);
+    output.push(`| ${keepIndexes.map(() => '---').join(' | ')} |`);
+    parsed.rows.forEach(row => {
+      output.push(`| ${keepIndexes.map(index => row[index] || '').join(' | ')} |`);
+    });
+  }
+  return output.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function parseBattlefieldOverview(text) {
+  const sanitized = sanitizeBattlefieldOverviewText(text);
+  const tablePattern = /(?:^\s*\|.*\|\s*$\n?){2,}/gm;
+  const tables = [...sanitized.matchAll(tablePattern)].map(match => ({
+    raw: match[0],
+    parsed: parseBattlefieldTable(match[0]),
+  }));
+  const factsTable = tables.find(table => table.parsed?.headers.includes('項目') && table.parsed?.headers.includes('內容'));
+  const rankingTable = tables.find(table => table.parsed?.headers.includes('排名') && table.parsed?.headers.includes('馬號'));
+  let notes = sanitized;
+  tables.forEach(table => { notes = notes.replace(table.raw, '\n'); });
+  notes = notes
+    .replace(/^\s*(?:#{1,6}\s*)?(?:\[第一部分\]\s*)?(?:🗺️\s*)?戰場全景.*$/gmi, '')
+    .replace(/^\s*\*{0,2}📊\s*全場綜合戰力排名\*{0,2}\s*$/gmi, '')
+    .replace(/^\s*---+\s*$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  return {
+    facts: factsTable?.parsed?.rows.map(row => ({ label: row[0], value: row[1] })) || [],
+    ranking: rankingTable?.parsed || null,
+    notes,
+  };
+}
+
+function splitBattlefieldRacePattern(value) {
+  const parts = cleanBattlefieldCell(value).split('/').map(part => part.trim()).filter(Boolean);
+  return parts.map((part, index) => {
+    if (index === 0) return { label: /^Race\s*\d+/i.test(part) ? '場次' : '班次', value: part };
+    if (index === 1 && /\d+\s*m\b/i.test(part)) return { label: '路程', value: part };
+    if (/^HKJC$/i.test(part)) return { label: '賽區', value: '香港' };
+    if (/^(?:AU|Australia)$/i.test(part)) return { label: '賽區', value: '澳洲' };
+    return { label: '賽事條件', value: part };
+  });
+}
+
+function renderBattlefieldOverview(text, horses = []) {
+  const overview = parseBattlefieldOverview(text);
+  const racePattern = splitBattlefieldRacePattern(overview.facts.find(fact => cleanBattlefieldCell(fact.label) === '賽事格局')?.value || '');
+  const horseLookup = new Map(horses.map(horse => [String(horse.horse_number), horse]));
+  let html = '<div class="battlefield battlefield--refined">';
+  html += '<div class="battlefield__header"><div><div class="battlefield__eyebrow">賽事快照</div><div class="battlefield__title">🗺️ 戰場全景</div></div><span class="battlefield__header-note">賽事格局 · 綜合戰力</span></div>';
+  html += '<div class="battlefield__body">';
+  if (racePattern.length) {
+    html += `<section class="battlefield__race-pattern" aria-label="賽事格局">${racePattern.map((item, index) => `<div class="battlefield__race-segment"><span>${esc(item.label)}</span><strong>${esc(item.value)}</strong>${index < racePattern.length - 1 ? '<i aria-hidden="true"></i>' : ''}</div>`).join('')}</section>`;
+  }
+  if (overview.notes) html += `<div class="battlefield__notes battlefield__notes--refined">${formatRichSection(overview.notes)}</div>`;
+  if (overview.ranking?.rows?.length) {
+    html += `<div class="battlefield-ranking"><div class="battlefield-ranking__header"><div><span>📊</span><strong>全場綜合戰力排名</strong></div><span>${overview.ranking.rows.length} 匹馬</span></div>`;
+    html += `<div class="battlefield-ranking__scroll"><table class="battlefield-ranking__table"><thead><tr>${overview.ranking.headers.map(header => `<th>${esc(header)}</th>`).join('')}</tr></thead><tbody>`;
+    overview.ranking.rows.forEach((row, index) => {
+      const numberIndex = overview.ranking.headers.indexOf('馬號');
+      const horse = horseLookup.get(String(row[numberIndex] || ''));
+      html += `<tr class="${index < 3 ? 'battlefield-ranking__row--top' : ''}">`;
+      overview.ranking.headers.forEach((header, cellIndex) => {
+        const value = row[cellIndex] || '';
+        if (header === '排名') {
+          const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : esc(value || String(index + 1));
+          html += `<td><span class="battlefield-ranking__rank">${medal}</span></td>`;
+        } else if (header === '馬號') {
+          html += `<td><span class="battlefield-ranking__horse-number">${esc(value)}</span></td>`;
+        } else if (header === '馬名') {
+          html += `<td><div class="battlefield-ranking__runner">${renderSilk(horse || {}, 'sm')}<div><strong class="battlefield-ranking__horse-name">${esc(value)}</strong>${horse?.horse_name_en ? `<span>${esc(horse.horse_name_en)}</span>` : ''}</div></div></td>`;
+        } else if (header === '綜合戰力分') {
+          const numericScore = Math.max(0, Math.min(100, Number(value) || 0));
+          html += `<td><div class="battlefield-ranking__score"><strong>${esc(value)}</strong><span aria-hidden="true"><i style="width:${numericScore}%"></i></span></div></td>`;
+        } else if (/^Grade$/i.test(header)) {
+          html += `<td>${ratingBadge(value)}</td>`;
+        } else {
+          html += `<td>${esc(value || '—')}</td>`;
+        }
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table></div></div>';
+  }
+  html += '</div></div>';
   return html;
 }
 
@@ -1696,24 +1864,6 @@ function renderHorseCard(horse, topPickRank) {
   }
   html += '</div>';
 
-  // Rating matrix
-  if (horse.rating_matrix?.dimensions?.length) {
-    html += '<div class="horse-card__section"><div class="horse-card__section-title">📊 評級矩陣</div><div style="display:flex;flex-wrap:wrap;gap:4px">';
-    horse.rating_matrix.dimensions.forEach(dim => {
-      const bg = dim.value==='✅'||dim.value==='✅✅'?'#D1FAE5':dim.value==='❌'||dim.value==='❌❌'?'#FEE2E2':dim.value==='➖'?'#F1F5F9':'#F1F5F9';
-      const col = dim.value==='✅'||dim.value==='✅✅'?'#059669':dim.value==='❌'||dim.value==='❌❌'?'#DC2626':'#6B7280';
-      html += `<span title="${esc(dim.name)}: ${esc(dim.rationale||'')}" style="font-size:0.7rem;padding:2px 6px;border-radius:4px;background:${bg};color:${col}">${esc(dim.value)} ${esc(dim.name)}</span>`;
-    });
-    html += '</div></div>';
-  } else if (horse.final_grade) {
-    // Show adjustment note if available (grade badge is already in the header)
-    const adjText = cleanText(horse.rating_matrix?.adjustment || '');
-    if (adjText && adjText.length > 2 && !/^[+\-]$/.test(adjText)) {
-      html += '<div class="horse-card__section"><div class="horse-card__section-title">📊 評級備註</div>';
-      html += `<div style="font-size:0.72rem;color:#64748B;line-height:1.6">${esc(adjText)}</div></div>`;
-    }
-  }
-
   // Expand button — inside body, before expandable section
   if (hasAnalysis) {
     html += `<button type="button" class="horse-card__expand-btn" aria-expanded="false" aria-controls="${cardId}-detail" onclick="toggleCard('${cardId}', this)">
@@ -1810,43 +1960,7 @@ function parseRawTextSections(text) {
 // Comparison View (HKJC dual analyst)
 // ═══════════════════════════════════════════════
 function renderComparisonView(analyses, analysts) {
-  let html = '<div style="margin-bottom:24px"><h2 style="font-size:1rem;font-weight:700;margin-bottom:12px">🏆 Top Picks 對比</h2>';
-  html += '<div class="comparison">';
-  analysts.forEach(analyst => {
-    const picks = analyses[analyst]?.top_picks || [];
-    const isK = analyst.toLowerCase() === 'kelvin';
-    html += `<div class="comparison__column"><div class="comparison__header comparison__header--${isK?'kelvin':'heison'}">${esc(analyst)}</div><div class="comparison__body" style="padding:0">`;
-    if (!picks.length && !analyses[analyst]?.horses?.length) {
-      html += '<div style="padding:16px;text-align:center;color:#94A3B8;font-size:0.8rem">暫無 Top Picks 數據</div>';
-    } else {
-      // Use top_picks from parser (authoritative verdict), fallback to grade sort
-      const horses = analyses[analyst]?.horses || [];
-      const horseMap = {};
-      horses.forEach(h => { horseMap[h.horse_number] = h; });
-      let top4;
-      if (picks.length) {
-        top4 = picks.slice(0, 4).map(p => {
-          const h = horseMap[p.horse_number];
-          return h || { horse_number: p.horse_number, horse_name: p.horse_name || '?', final_grade: p.grade, jockey: '' };
-        });
-      } else {
-        top4 = [...horses].filter(h => h.final_grade).sort((a, b) => sortByGrade(a.final_grade, b.final_grade)).slice(0, 4);
-      }
-
-      top4.forEach((horse, i) => {
-        const bg = i===0?'#FEF3C7':i===1?'#F1F5F9':i===2?'#FFF7ED':'#EFF6FF';
-        const col = i===0?'#D97706':i===1?'#6B7280':i===2?'#B45309':'#2563EB';
-        html += `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;${i<top4.length-1?'border-bottom:1px solid #F1F5F9':''}">
-          <div style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.9rem;flex-shrink:0;background:${bg};color:${col}">${i+1}</div>
-          ${renderSilk(horse, 'sm')}
-          <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:0.9rem">${esc(horse.horse_name)}</div>${horse.horse_name_en ? `<div class="bh-name-en">${esc(horse.horse_name_en)}</div>` : ''}<div style="font-size:0.7rem;color:#94A3B8">馬號 #${horse.horse_number}${horse.jockey ? ' · 🏇 '+esc(horse.jockey) : ''}</div></div>
-          ${ratingBadge(horse.final_grade, 'lg')}
-        </div>`;
-      });
-    }
-    html += '</div></div>';
-  });
-  html += '</div></div>';
+  let html = '';
 
   // MC panels for each analyst
   const mcAnalysts = analysts.filter(a => analyses[a]?.monte_carlo_simulation?.length);
@@ -2079,37 +2193,6 @@ function renderSingleAnalystView(analysis, analystName) {
   });
 
   let html = '';
-  // Top picks
-  // Use top_picks from parser (authoritative verdict), fallback to grade sort
-  const horseMap = {};
-  horses.forEach(h => { horseMap[h.horse_number] = h; });
-  let top4;
-  if (picks.length) {
-    top4 = picks.slice(0, 4).map(p => {
-      const h = horseMap[p.horse_number];
-      return h || { horse_number: p.horse_number, horse_name: p.horse_name || '?', final_grade: p.grade, jockey: '' };
-    });
-  } else {
-    top4 = [...horses].filter(h => h.final_grade).sort((a, b) => sortByGrade(a.final_grade, b.final_grade)).slice(0, 4);
-  }
-  if (top4.length) {
-    html += `<div style="margin-bottom:24px"><h2 style="font-size:1rem;font-weight:700;margin-bottom:12px">🏆 Top Picks</h2>
-      <div class="comparison__column" style="max-width:600px"><div class="comparison__header comparison__header--${isK?'kelvin':'heison'}">${esc(analystName||'Analyst')}</div><div class="comparison__body" style="padding:0">`;
-    top4.forEach((horse, i) => {
-      const bg = i===0?'#FEF3C7':i===1?'#F1F5F9':i===2?'#FFF7ED':'#EFF6FF';
-      const col = i===0?'#D97706':i===1?'#6B7280':i===2?'#B45309':'#2563EB';
-      const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'🏅';
-      html += `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;${i<top4.length-1?'border-bottom:1px solid #F1F5F9':''}">
-        <div style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.9rem;flex-shrink:0;background:${bg};color:${col}">${i+1}</div>
-        ${renderSilk(horse, 'sm')}
-        <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:0.9rem">${esc(horse.horse_name)}</div>${horse.horse_name_en ? `<div class="bh-name-en">${esc(horse.horse_name_en)}</div>` : ''}<div style="font-size:0.7rem;color:#94A3B8">馬號 #${horse.horse_number}${horse.jockey ? ' · 🏇 '+esc(horse.jockey) : ''}</div></div>
-        <span style="font-size:1.2rem">${medal}</span>
-        ${ratingBadge(horse.final_grade, 'lg')}
-      </div>`;
-    });
-    html += '</div></div></div>';
-  }
-
   // Monte Carlo simulation panel
   html += renderMonteCarloPanel(analysis);
 

@@ -6,6 +6,8 @@ export default function RunnerSilk({ silkUrl, horseName, size = "md" }) {
       <img
         src={silkUrl}
         alt={`${horseName || "馬匹"} 綵衣`}
+        width="40"
+        height="40"
         loading="lazy"
         referrerPolicy="no-referrer"
         onError={(event) => {

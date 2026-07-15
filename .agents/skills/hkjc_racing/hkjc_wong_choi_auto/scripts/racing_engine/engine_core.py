@@ -1328,8 +1328,16 @@ class RacingEngine:
     }
 
     def _gear_codes_to_names(self, text):
-        parts = [c.strip() for c in str(text or "").replace("＋", "/").split("/")
-                 if c.strip() and c.strip() not in ("-", "無", "N/A")]
+        parts = []
+        for raw_part in str(text or "").replace("＋", "/").split("/"):
+            part = raw_part.strip()
+            if (
+                not part
+                or part.upper() in ("無", "N/A", "NONE")
+                or re.fullmatch(r"[-‐‑‒–—]+", part)
+            ):
+                continue
+            parts.append(part)
         out = []
         for p in parts:
             code = re.sub(r"\d+$", "", p.upper()).strip()
