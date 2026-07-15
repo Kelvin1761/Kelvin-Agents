@@ -1,0 +1,41 @@
+{
+  "version": "hkjc-class4-shadow-v1-20260714",
+  "status": "frozen_prospective_shadow",
+  "trained_through": "2026-05-24",
+  "prospective_start": "2026-07-14",
+  "target_race_class": "Class 4",
+  "market_features_allowed": false,
+  "variants": {
+    "primary_full_support": {
+      "description": "Top-2-first Class 4 supporting matrix",
+      "weights": {
+        "trackwork_trial": 0.2,
+        "variant_sectional": 0.1,
+        "historical_professional_priors": 0.1,
+        "rail_draw_condition": 0.1
+      }
+    },
+    "challenger_trackwork_variant": {
+      "description": "Top-4 challenger using Class 4 trackwork and sectional evidence",
+      "weights": {
+        "trackwork_trial": 0.2,
+        "variant_sectional": 0.1
+      }
+    }
+  },
+  "promotion_gate": {
+    "minimum_prospective_races": 100,
+    "minimum_prospective_class4_races": 60,
+    "minimum_meetings": 10,
+    "minimum_venues": 2,
+    "top1_delta_floor_pp": -1.0,
+    "top2_delta_target_pp": 2.0,
+    "top2_ci_lower_floor_pp": 0.0,
+    "both_top2_delta_floor_pp": 0.0,
+    "avg_top4_hits_delta_floor": 0.0,
+    "top4_all_delta_floor_pp": 0.0,
+    "time_blocks": 3,
+    "minimum_nonnegative_time_blocks": 2,
+    "manual_approval_required": true
+  }
+}

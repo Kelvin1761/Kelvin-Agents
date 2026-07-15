@@ -108,6 +108,11 @@ def main() -> int:
     parser.add_argument("--race", dest="races", action="append", type=int, help="Reflect a specific race number; repeat for multiple races")
     parser.add_argument("--report-path", help="Optional markdown output path")
     parser.add_argument("--force-extract", action="store_true", help="Force results extraction even if a local results file already exists")
+    parser.add_argument(
+        "--sync-results-database",
+        action="store_true",
+        help="For HKJC only, also copy extracted results into the shared results database",
+    )
     parser.add_argument("--skip-backtest", action="store_true", help="Skip archive backtest / candidate testing")
     parser.add_argument("--json", action="store_true", help="Print the final summary as JSON")
     parser.add_argument("request", nargs="*", help="Optional freeform request, e.g. reflect HKJC Sha Tin 2026-05-20 race 3")
@@ -129,6 +134,7 @@ def main() -> int:
         report_path=args.report_path,
         force_extract=args.force_extract,
         skip_backtest=args.skip_backtest,
+        sync_hkjc_results_database=args.sync_results_database,
     )
 
     if args.json:

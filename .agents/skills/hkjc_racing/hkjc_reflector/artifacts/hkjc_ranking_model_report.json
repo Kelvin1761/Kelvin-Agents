@@ -1,6 +1,6 @@
 {
   "dataset_rows": 1611,
-  "dataset_path": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/.agents/skills/hkjc_racing/hkjc_reflector/artifacts/hkjc_ranking_dataset.csv",
+  "dataset_path": "/Users/imac/dev/Antigravity/.agents/skills/hkjc_racing/hkjc_reflector/artifacts/hkjc_ranking_dataset.csv",
   "feature_sets": {
     "engine_facts_trends": 93
   },
@@ -211,7 +211,7 @@
       ],
       "fold_rows": [
         {
-          "meeting": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Archive_Race_Analysis/HK_Racing/2026-05-09_ShaTin",
+          "meeting": "/Users/imac/dev/Antigravity/Archive_Race_Analysis/HK_Racing/2026-05-09_ShaTin",
           "meeting_name": "2026-05-09_ShaTin",
           "date": "2026-05-09",
           "train_races": 80,
@@ -246,7 +246,7 @@
           }
         },
         {
-          "meeting": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Archive_Race_Analysis/HK_Racing/2026-05-13_HappyValley",
+          "meeting": "/Users/imac/dev/Antigravity/Archive_Race_Analysis/HK_Racing/2026-05-13_HappyValley",
           "meeting_name": "2026-05-13_HappyValley",
           "date": "2026-05-13",
           "train_races": 91,
@@ -281,7 +281,7 @@
           }
         },
         {
-          "meeting": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Archive_Race_Analysis/HK_Racing/2026-05-17_ShaTin",
+          "meeting": "/Users/imac/dev/Antigravity/Archive_Race_Analysis/HK_Racing/2026-05-17_ShaTin",
           "meeting_name": "2026-05-17_ShaTin",
           "date": "2026-05-17",
           "train_races": 100,
@@ -316,7 +316,7 @@
           }
         },
         {
-          "meeting": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Archive_Race_Analysis/HK_Racing/2026-05-20_HappyValley",
+          "meeting": "/Users/imac/dev/Antigravity/Archive_Race_Analysis/HK_Racing/2026-05-20_HappyValley",
           "meeting_name": "2026-05-20_HappyValley",
           "date": "2026-05-20",
           "train_races": 111,
@@ -351,7 +351,7 @@
           }
         },
         {
-          "meeting": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/meetings/2026-05-24_ShaTin",
+          "meeting": "/Users/imac/dev/Antigravity/meetings/2026-05-24_ShaTin",
           "meeting_name": "2026-05-24_ShaTin",
           "date": "2026-05-24",
           "train_races": 120,

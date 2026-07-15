@@ -1,7 +1,7 @@
 ---
 name: AU Reflector V3
 description: This skill should be used when the user wants to "覆盤 AU races", "review AU results", "澳洲賽後檢討", "反思澳洲賽果", "validate AU auto changes", "AU 盲測", or run the current unified AU reflector workflow against a meeting folder or results file.
-version: 3.1.0
+version: 3.2.0
 ag_kit_skills:
   - brainstorming
 ---
@@ -23,6 +23,7 @@ python3 .agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.
 - `--report-path`
 - `--force-extract`
 - `--skip-backtest`
+- `--skip-structural-shadow`
 - `--json`
 
 ## What The Current Workflow Does
@@ -32,8 +33,15 @@ python3 .agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.
 1. resolve AU meeting directory
 2. 找現成 results file；如未有而且提供咗 `--results-url`，就跑 Racenet results extractor
 3. 用 shared unified reflector core 做 meeting-level stats、prediction vs result compare、incident analysis
+   - 支援 Racenet current markdown result table 同舊式 prose format
+   - 任何目標賽事零名次會 fail fast，不會錯當模型 `Miss`
+   - 主報告直接列 Top1、Top2 place、Top3、Top4 trifecta 同 Top5 metrics
 4. 如未 `--skip-backtest`，再跑 AU archive backtests / shadow diagnostics
-5. 生成 final markdown report，同可選 JSON summary
+5. 如有 frozen shadow 同 markdown 賽果，自動更新舊 structural tracker 及 dual-objective Place／Coverage tracker
+6. 將每次 shadow 成功／略過／失敗狀態寫入 `Reflector_Shadow_Update_Status.json`，避免 meeting 靜默漏跑
+7. Dual-objective tracker 自動檢查150場、3 tracks、3類途程、CI、time blocks、segment safety 及連續50場窗口
+8. 達標後自動生成 `AU_Dual_Objective_Promotion_Ready.md`；不會自動修改主模型
+9. 生成 final markdown report，內含 data-quality gate 同 REF-DA01 five-angle audit，同可選 JSON summary
 
 ## Supported Inputs
 
@@ -47,11 +55,21 @@ python3 .agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.
 - results summary JSON
 - race-level miss / hit diagnostics
 - archive backtest summary
+- `Structural_Shadow_Forward_Review.md`
+- `AU_Structural_Shadow_Tracker.md`
+- `Dual_Objective_Shadow_Forward_Review.md`
+- `Dual_Objective_Shadow_Update_Status.json`
+- `Reflector_Shadow_Update_Status.json`
+- `AU_Dual_Objective_Shadow_Tracker.md`
+- `AU_Dual_Objective_Promotion_Ready.md` (只在 gate/canary 需要行動時出現)
 
 ## Important Current Reality
 
 - 主入口係 Python unified wrapper，唔應再假設要跟舊式 AU reflector prompt chain。
 - `--skip-backtest` 只會略過 archive backtests；單 meeting 覆盤報告仍然會生成。
+- `--skip-structural-shadow` 會同時略過舊 structural 及新 dual-objective tracker，並在 status JSON 留下記錄。
+- 重跑同一 meeting 會覆蓋該 meeting batch，tracker 不會 double count。
+- 單場 feature 訊號不會被宣稱為「有足夠歷史證據」；未有 incident data 也不會被定性為 clean model failure。
 - 如果文檔同 script 行為唔一致，以 `au_reflector_orchestrator.py --help` 同 shared unified core 為準。
 
 ## Related Components
@@ -70,7 +88,9 @@ python3 .agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.
 
 ---
 
-## Step 9: 用戶批准後 SIP BAKE (🧠)
+## Legacy Step 9: SIP BAKE（非現役自動流程）
+
+> 以下段落只供舊 SIP archive 參考。現役 Python reflector 只會產生 shadow / promotion evidence，不會自動 BAKE 或改主模型。
 
 ### 9a. BAKE SIPs
 - 用戶批准 → **LLM BAKE** approved SIPs 入對應 resource 檔案

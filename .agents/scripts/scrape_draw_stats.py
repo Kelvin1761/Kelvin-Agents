@@ -187,10 +187,23 @@ def main():
     script_dir = Path(__file__).parent
     out_path = Path(args.output) if args.output else script_dir / "hkjc_draw_stats.json"
 
+    n_races = len(result["races"])
+
+    # FAIL-SAFE: never clobber a good file with an empty parse. 0 races means either
+    # off-season (no upcoming meeting with published draws) or a page-structure change.
+    # Overwriting here would silently poison every downstream report to 「數據不可用」.
+    # Keep whatever is on disk and exit non-zero so the pipeline surfaces the problem.
+    if n_races == 0:
+        print("[SKIP] 抓到 0 場檔位統計 — 可能無賽期/未出檔/頁面改版。")
+        if out_path.exists():
+            print(f"[KEEP] 保留現有 {out_path.name}（不覆寫），下游沿用上次資料。")
+        else:
+            print(f"[WARN] 現有檔案不存在，下游將顯示「數據不可用」並 fallback 位置先驗。")
+        sys.exit(2)
+
     with open(out_path, 'w', encoding='utf-8') as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
 
-    n_races = len(result["races"])
     meeting = result["meta"].get("meeting", "N/A")
     print(f"[DONE] {meeting} — {n_races} races extracted → {out_path.name}")
     for r in result["races"][:3]:

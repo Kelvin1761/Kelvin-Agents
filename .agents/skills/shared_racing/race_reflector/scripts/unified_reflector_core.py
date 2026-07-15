@@ -169,17 +169,10 @@ class RacePerformance:
 
 def default_report_path(platform: str, meeting_dir: Path) -> Path:
     pattern = DEFAULT_REPORT_NAMES[platform]
-    report_dir = meeting_dir
-    if platform == "hkjc":
-        archive_root = DOMAIN_ARCHIVES[platform].resolve()
-        resolved_meeting_dir = meeting_dir.resolve()
-        try:
-            resolved_meeting_dir.relative_to(archive_root)
-        except ValueError:
-            report_dir = archive_root / meeting_dir.name
-        else:
-            report_dir = resolved_meeting_dir
-    return report_dir / pattern.format(meeting=meeting_dir.name)
+    # A reflector run must be self-contained: keep its report beside the
+    # analysis and results supplied by the caller, even after that folder has
+    # been moved outside the conventional archive root.
+    return meeting_dir.resolve() / pattern.format(meeting=meeting_dir.name)
 
 
 def run_logged_command(cmd: list[str], label: str, ok_codes: tuple[int, ...] = (0,)) -> subprocess.CompletedProcess[str]:
@@ -211,6 +204,10 @@ def resolve_meeting_dir(platform: str, meeting_ref: str | None = None, meeting_d
 
     if not meeting_ref:
         raise SystemExit("❌ meeting_ref / meeting_dir 不能留空。")
+
+    explicit_path = Path(meeting_ref).expanduser()
+    if explicit_path.is_dir():
+        return explicit_path.resolve()
 
     archive_root = DOMAIN_ARCHIVES[platform]
     exact = archive_root / meeting_ref
@@ -263,7 +260,13 @@ def find_existing_results_file(platform: str, meeting_dir: Path) -> Path | None:
     return hkjc["find_meeting_results_file"](meeting_dir, hkjc["get_season_results_roots"]())
 
 
-def ensure_results_file(platform: str, meeting_dir: Path, results_url: str | None, force_extract: bool = False) -> Path:
+def ensure_results_file(
+    platform: str,
+    meeting_dir: Path,
+    results_url: str | None,
+    force_extract: bool = False,
+    sync_hkjc_results_database: bool = False,
+) -> Path:
     if not force_extract:
         existing = find_existing_results_file(platform, meeting_dir)
         if existing and existing.exists():
@@ -298,9 +301,10 @@ def ensure_results_file(platform: str, meeting_dir: Path, results_url: str | Non
             ],
             "Extract HKJC Results",
         )
-        sync_meeting_results = _import_hkjc_sync()
-        copies = sync_meeting_results(meeting_dir)
-        print(f"✅ HKJC results sync completed: {len(copies)} file copies")
+        if sync_hkjc_results_database:
+            sync_meeting_results = _import_hkjc_sync()
+            copies = sync_meeting_results(meeting_dir)
+            print(f"✅ HKJC results database sync completed: {len(copies)} file copies")
 
     extracted = find_existing_results_file(platform, meeting_dir)
     if not extracted:
@@ -394,6 +398,49 @@ def load_structured_results(platform: str, results_file: Path) -> dict[int, dict
             continue
         if current_race is None:
             continue
+
+        # Current Racenet markdown exports use a pipe table instead of the
+        # older prose format (for example, ``1st: #4 Horse``).  Parse the
+        # deterministic result columns directly and deliberately do not use
+        # the SP column as an analysis input.
+        if line.startswith("|") and line.endswith("|"):
+            cells = [cell.strip() for cell in line.strip("|").split("|")]
+            if len(cells) >= 3:
+                placing_match = re.fullmatch(r"(\d+)(?:st|nd|rd|th|DH)?", cells[0], re.IGNORECASE)
+                horse_no_match = re.fullmatch(r"#?(\d+)", cells[1])
+                if placing_match and horse_no_match:
+                    placing = int(placing_match.group(1))
+                    horse_no = int(horse_no_match.group(1))
+                    row_key = (placing, horse_no)
+                    existing_keys = {
+                        (row["placing"], row["horse_no"])
+                        for row in results[current_race]["results"]
+                    }
+                    if placing > 0 and horse_no > 0 and row_key not in existing_keys:
+                        results[current_race]["results"].append(
+                            {
+                                "placing": placing,
+                                "horse_no": horse_no,
+                                "horse_name": re.sub(r"[*_`]", "", cells[2]).strip(),
+                                "margin": cells[7] if len(cells) > 7 else None,
+                                "odds": None,
+                                "race_time": cells[9] if len(cells) > 9 else "",
+                                "comments": "",
+                                "running_positions": [],
+                            }
+                        )
+                    continue
+
+        distance_match = re.search(r"\*\*Distance:\*\*\s*([^|]+)", line, re.IGNORECASE)
+        if distance_match:
+            results[current_race]["meta"]["distance"] = distance_match.group(1).strip()
+        track_match = re.search(r"\*\*Track:\*\*\s*([^|]+)", line, re.IGNORECASE)
+        if track_match:
+            results[current_race]["meta"]["track"] = track_match.group(1).strip()
+        winning_time_match = re.search(r"\*\*Winning Time:\*\*\s*(\S+)", line, re.IGNORECASE)
+        if winning_time_match:
+            results[current_race]["meta"]["winning_time"] = winning_time_match.group(1).strip()
+
         result_match = re.match(
             r"(?:(\d+)(?:st|nd|rd|th)|第(\d+)名)[：:.\s]+#?(\d+)\s+(.+?)(?:\s+\(([^)]+)\))?(?:\s+SP\$?([\d.]+))?$",
             line,
@@ -414,7 +461,38 @@ def load_structured_results(platform: str, results_file: Path) -> dict[int, dict
                 "running_positions": [],
             }
         )
+    for race in results.values():
+        race["results"].sort(key=lambda item: (item["placing"], item["horse_no"]))
     return results
+
+
+def validate_result_coverage(
+    meeting_stats: dict[str, Any],
+    structured_results: dict[int, dict[str, Any]],
+    target_races: set[int] | None = None,
+) -> dict[str, Any]:
+    expected = [
+        int(race["race_num"])
+        for race in meeting_stats.get("races", [])
+        if not target_races or int(race["race_num"]) in target_races
+    ]
+    missing = [
+        race_num
+        for race_num in expected
+        if not structured_results.get(race_num, {}).get("results")
+    ]
+    if missing:
+        missing_text = ", ".join(str(race_num) for race_num in missing)
+        raise SystemExit(
+            "❌ Reflector data-quality gate failed: "
+            f"Race {missing_text} 抽唔到任何正式名次。"
+            "已停止評分，避免將缺失賽果錯當成模型 Miss。"
+        )
+    return {
+        "expected_races": len(expected),
+        "parsed_races": len(expected) - len(missing),
+        "missing_races": missing,
+    }
 
 
 def _to_float(value: Any) -> float | None:
@@ -524,7 +602,7 @@ def derive_improvement_theme(row: dict[str, Any]) -> tuple[str, str]:
         return "sectional", "加強段速 / 試閘 / 速度訊號"
     if any(name in keys for name in ("consistency_score", "form_score", "health_score", "risk_score")):
         return "stability", "改善近況 / 穩定性 / 風險寬恕"
-    return "general", "微調綜合戰力分矩陣權重"
+    return "general", "重建或擴充可回測的結構性 feature / rating block"
 
 
 def extract_incident_signals(text: str) -> list[str]:
@@ -576,13 +654,21 @@ def analyse_missed_horse(
         verdict = "可寬恕 / 需保留"
         reason = f"官方 / 可用備註見到 {', '.join(incident_signals)} 訊號，呢類偏向賽事事故，未必應直接當成純模型失誤。"
     elif candidate["derived_rank"] <= 6 and (gap is None or gap <= 3.0):
-        verdict = "模型有訊號但低估"
-        reason = "其實模型已經將呢匹馬放喺前列邊緣，只係未能推入 Top 3，較似權重排序問題多過完全 miss。"
+        verdict = "模型有訊號但低估" if incident_text else "排序低估（事故資料不足）"
+        reason = (
+            "其實模型已經將呢匹馬放喺前列邊緣，只係未能推入 Top 3，可列為結構性排序回測 candidate。"
+            if incident_text
+            else "模型已將呢匹馬放喺前列邊緣，但未有 stewards / incident evidence，暫時只能記錄為排序低估，不能定性為 pure model failure。"
+        )
     else:
-        verdict = "模型失誤"
-        reason = "現有綜合戰力分未有足夠把呢匹馬推上前列，較似矩陣權重或 context factor 漏捉。"
+        verdict = "模型失誤" if incident_text else "疑似模型漏捉（事故資料不足）"
+        reason = (
+            "現有綜合戰力分未有足夠把呢匹馬推上前列，可列為矩陣或 context feature 結構性回測 candidate。"
+            if incident_text
+            else "現有綜合戰力分未有把呢匹馬推上前列，但因為未有 stewards / incident evidence，只能標記為疑似漏捉，必須先做跨場回測。"
+        )
 
-    evidence = "有" if strengths else "有限"
+    evidence = "未有（單場 feature 診斷，須跨場歷史回測）"
     hidden_signals = " / ".join(strengths[:2]) if strengths else "未見明顯隱藏訊號"
     weakness_text = " / ".join(weaknesses[:2]) if weaknesses else "未見清晰短板"
 
@@ -649,6 +735,15 @@ def analyse_race_incidents(
         "signals": list(signal_counter.elements()),
         "excerpt": matched_excerpts[:2],
     }
+
+
+def race_failure_verdict(race: RacePerformance) -> str:
+    classification = race.incident_analysis.get("classification")
+    if classification == "資料不足":
+        return "事故資料不足，暫時不能判定 pure model failure"
+    if classification == "無明顯事故" and race.label in {"Miss", "1 Hit"}:
+        return "偏向 clean model failure，但仍需跨場回測"
+    return "帶有可寬恕元素或非純模型錯誤"
 
 
 def build_race_performances(
@@ -768,14 +863,45 @@ def summarize_shortlist_metrics(races: list[RacePerformance]) -> dict[str, Any]:
     if not total:
         return {
             "races": 0,
+            "top1_winner": 0,
+            "top2_place_hits": 0,
+            "top2_both_place": 0,
+            "top3_place_hits": 0,
+            "top4_place_hits": 0,
+            "top4_trifecta": 0,
             "top5_3plus": 0,
             "top5_2plus": 0,
             "winner_in_top5": 0,
             "avg_actual_top3_in_top5": 0.0,
+            "top1_winner_rate": 0.0,
+            "top2_place_strike_rate": 0.0,
+            "top2_both_place_rate": 0.0,
+            "top3_place_coverage_rate": 0.0,
+            "top4_place_coverage_rate": 0.0,
+            "top4_trifecta_rate": 0.0,
             "top5_3plus_rate": 0.0,
             "top5_2plus_rate": 0.0,
             "winner_in_top5_rate": 0.0,
         }
+
+    top1_winner = 0
+    top2_place_hits = 0
+    top2_both_place = 0
+    top3_place_hits = 0
+    top4_place_hits = 0
+    top4_trifecta = 0
+    for race in races:
+        actual_nums = {row["horse_no"] for row in race.actual_top3}
+        winner = race.actual_top3[0]["horse_no"] if race.actual_top3 else None
+        ranked_nums = [row["horse_no"] for row in race.model_top5]
+        top1_winner += int(bool(ranked_nums and winner is not None and ranked_nums[0] == winner))
+        top2_hits = sum(1 for horse_no in ranked_nums[:2] if horse_no in actual_nums)
+        top2_place_hits += top2_hits
+        top2_both_place += int(top2_hits == 2)
+        top3_place_hits += sum(1 for horse_no in ranked_nums[:3] if horse_no in actual_nums)
+        top4_hits = sum(1 for horse_no in ranked_nums[:4] if horse_no in actual_nums)
+        top4_place_hits += top4_hits
+        top4_trifecta += int(len(actual_nums) == 3 and top4_hits == 3)
 
     top5_3plus = sum(1 for race in races if race.top5_actual_top3_hits >= 3)
     top5_2plus = sum(1 for race in races if race.top5_actual_top3_hits >= 2)
@@ -783,10 +909,22 @@ def summarize_shortlist_metrics(races: list[RacePerformance]) -> dict[str, Any]:
     avg_hits = sum(race.top5_actual_top3_hits for race in races) / total
     return {
         "races": total,
+        "top1_winner": top1_winner,
+        "top2_place_hits": top2_place_hits,
+        "top2_both_place": top2_both_place,
+        "top3_place_hits": top3_place_hits,
+        "top4_place_hits": top4_place_hits,
+        "top4_trifecta": top4_trifecta,
         "top5_3plus": top5_3plus,
         "top5_2plus": top5_2plus,
         "winner_in_top5": winner_in_top5,
         "avg_actual_top3_in_top5": round(avg_hits, 3),
+        "top1_winner_rate": round(top1_winner / total * 100, 1),
+        "top2_place_strike_rate": round(top2_place_hits / (2 * total) * 100, 1),
+        "top2_both_place_rate": round(top2_both_place / total * 100, 1),
+        "top3_place_coverage_rate": round(top3_place_hits / (3 * total) * 100, 1),
+        "top4_place_coverage_rate": round(top4_place_hits / (3 * total) * 100, 1),
+        "top4_trifecta_rate": round(top4_trifecta / total * 100, 1),
         "top5_3plus_rate": round(top5_3plus / total * 100, 1),
         "top5_2plus_rate": round(top5_2plus / total * 100, 1),
         "winner_in_top5_rate": round(winner_in_top5 / total * 100, 1),
@@ -963,6 +1101,7 @@ def run_hkjc_backtests(meeting_dir: Path) -> list[dict[str, Any]]:
         hkjc["get_season_results_roots"](),
         hkjc["get_season_csvs"](),
         include_races=True,
+        routine=True,
     )
     race_records = review.get("race_records") or []
     model_roles = review.get("model_roles") or {}
@@ -1048,6 +1187,12 @@ def render_markdown_report(
     distribution = summarize_label_distribution(race_performances)
     shortlist = summarize_shortlist_metrics(race_performances)
     reflected_races = ", ".join(str(race.race_num) for race in race_performances) or "N/A"
+    result_complete = sum(1 for race in race_performances if race.actual_rows)
+    incident_available = sum(
+        1
+        for race in race_performances
+        if race.incident_analysis.get("classification") not in {"資料不足", "無明顯事故"}
+    )
     lines = [
         f"# Unified {DOMAIN_LABELS[platform]} Race Reflector Report",
         "",
@@ -1058,12 +1203,24 @@ def render_markdown_report(
         f"- Results file: `{results_file.name}`",
         f"- Approval gate: **任何 improvement suggestion 只供審批，不會自動改 code / matrix。**",
         "",
+        "## Reflector Data-Quality Gate",
+        f"- Official result coverage: {result_complete}/{len(race_performances)} reflected races",
+        "- Missing-result handling: **PASS — 如有任何目標賽事零名次，流程會 fail fast，不會產生假 Miss。**",
+        f"- Incident / stewards evidence available: {incident_available}/{len(race_performances)} races",
+        "- Market input audit: **Reflector 同 shadow scoring 不使用 SP / odds / market ranking。**",
+        "",
         "## Meeting Performance Summary",
         f"- Gold: {distribution['Gold']}",
         f"- Good: {distribution['Good']}",
         f"- Pass: {distribution['Pass']}",
         f"- 1 Hit: {distribution['1 Hit']}",
         f"- Miss: {distribution['Miss']}",
+        f"- Top 1 冠軍命中: {shortlist['top1_winner']}/{shortlist['races']} ({shortlist['top1_winner_rate']}%)",
+        f"- Top 2 place strike: {shortlist['top2_place_hits']}/{shortlist['races'] * 2} ({shortlist['top2_place_strike_rate']}%)",
+        f"- Top 2 兩匹同時入位: {shortlist['top2_both_place']}/{shortlist['races']} ({shortlist['top2_both_place_rate']}%)",
+        f"- Top 3 place coverage: {shortlist['top3_place_hits']}/{shortlist['races'] * 3} ({shortlist['top3_place_coverage_rate']}%)",
+        f"- Top 4 place coverage: {shortlist['top4_place_hits']}/{shortlist['races'] * 3} ({shortlist['top4_place_coverage_rate']}%)",
+        f"- Top 4 包齊三重彩: {shortlist['top4_trifecta']}/{shortlist['races']} ({shortlist['top4_trifecta_rate']}%)",
         f"- Top 5 包齊實際前三: {shortlist['top5_3plus']}/{shortlist['races']} ({shortlist['top5_3plus_rate']}%)",
         f"- Top 5 包至少兩匹實際前三: {shortlist['top5_2plus']}/{shortlist['races']} ({shortlist['top5_2plus_rate']}%)",
         f"- 冠軍在模型 Top 5: {shortlist['winner_in_top5']}/{shortlist['races']} ({shortlist['winner_in_top5_rate']}%)",
@@ -1076,6 +1233,10 @@ def render_markdown_report(
     lines.extend(f"- {item}" for item in summarize_meeting_failures(race_performances))
 
     for race in race_performances:
+        actual_nums = {row["horse_no"] for row in race.actual_top3}
+        ranked_nums = [row["horse_no"] for row in race.model_top5]
+        race_top2_hits = sum(1 for horse_no in ranked_nums[:2] if horse_no in actual_nums)
+        race_top4_hits = sum(1 for horse_no in ranked_nums[:4] if horse_no in actual_nums)
         model_top3_text = ", ".join(
             f"#{row['horse_no']} {row['horse_name']}" for row in race.model_top3
         ) or "N/A"
@@ -1093,6 +1254,8 @@ def render_markdown_report(
                 f"- Model Top 3: {model_top3_text}",
                 f"- Model Top 5 shortlist: {model_top5_text}",
                 f"- Actual Top 3: {actual_top3_text}",
+                f"- Top 2 place result: {race_top2_hits}/2 selections placed",
+                f"- Top 4 trifecta coverage: {race_top4_hits}/3 actual placegetters; exact coverage: {'Yes' if race_top4_hits == 3 else 'No'}",
                 f"- Top 5 shortlist coverage: {race.top5_actual_top3_hits}/3 actual Top 3; winner in Top 5: {'Yes' if race.winner_in_model_top5 else 'No'}",
                 f"- Incident / forgiveness: **{race.incident_analysis.get('classification', 'N/A')}** — {race.incident_analysis.get('summary', 'N/A')}",
             ]
@@ -1121,10 +1284,21 @@ def render_markdown_report(
                 lines.append(f"  - 建議測試方向: {missed.get('suggestion_text', 'N/A')}")
                 if missed.get("incident_excerpt"):
                     lines.append(f"  - Incident / notes excerpt: {missed['incident_excerpt']}")
-        race_clean_fail = race.incident_analysis.get("classification") in {"無明顯事故", "資料不足"}
-        lines.append(
-            f"- Race verdict: {'偏向 clean model failure' if race_clean_fail and race.label in {'Miss', '1 Hit'} else '帶有可寬恕元素或非純模型錯誤'}"
-        )
+        lines.append(f"- Race verdict: {race_failure_verdict(race)}")
+
+    lines.extend(
+        [
+            "",
+            "## REF-DA01 Five-Angle Audit",
+            f"- **Outcome Delta:** Top1 {shortlist['top1_winner_rate']}%, Top2 place {shortlist['top2_place_strike_rate']}%, "
+            f"Top4 coverage {shortlist['top4_place_coverage_rate']}%; 逐場 miss / ordering delta 已於上文列出。",
+            f"- **Process Delta:** 賽果完整度 {result_complete}/{len(race_performances)}；incident / stewards evidence "
+            f"{incident_available}/{len(race_performances)}，資料不足不會被定性為 clean failure。",
+            "- **SIP / Protocol Audit:** 展示任何 suggestion 前都要經歷史回測、forward shadow 同人工審批；本流程不改寫 official rank。",
+            "- **Generalizability:** 單一 meeting 只可用作診斷，不可作為全澳矩陣修改證據；需經多軌、多路程及時間分段 gate。",
+            "- **Design Pattern Proposal:** 優先使用獨立 Place Rating / Trifecta Coverage Rating 同 condition-aware matrix，不做 7D 後處理微調。",
+        ]
+    )
 
     lines.extend(["", "## Backtested Improvement Suggestions"])
     if not backtests:
@@ -1213,6 +1387,7 @@ def run_unified_reflector(
     report_path: str | Path | None = None,
     force_extract: bool = False,
     skip_backtest: bool = False,
+    sync_hkjc_results_database: bool = False,
 ) -> dict[str, Any]:
     if platform not in {"au", "hkjc"}:
         raise SystemExit("❌ platform 必須係 `au` 或 `hkjc`。")
@@ -1223,6 +1398,7 @@ def run_unified_reflector(
         resolved_meeting_dir,
         results_url,
         force_extract=force_extract,
+        sync_hkjc_results_database=sync_hkjc_results_database,
     )
 
     print(f"✅ Using meeting dir: {resolved_meeting_dir}")
@@ -1236,6 +1412,7 @@ def run_unified_reflector(
     structured_results = load_structured_results(platform, resolved_results_file)
     prediction_rows = load_prediction_rows(resolved_meeting_dir, platform)
     race_filter = set(target_races) if target_races else None
+    validate_result_coverage(meeting_stats, structured_results, race_filter)
     races = build_race_performances(
         platform,
         meeting_stats,

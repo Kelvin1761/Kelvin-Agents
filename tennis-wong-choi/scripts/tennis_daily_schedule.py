@@ -20,8 +20,13 @@ except ImportError:  # pragma: no cover - Python < 3.9 fallback
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 ANTIGRAVITY_DIR = PROJECT_DIR.parent
-ARCHIVE_DIR = ANTIGRAVITY_DIR / "Archieve Tennis Analysis"
+# Completed, reviewed daily folders belong in the user-facing Tennis archive.
+# Keep the active analysis folder at the Antigravity root until settlement has
+# been verified, then move it here so the historic Wong Choi reports stay
+# together.
+ARCHIVE_DIR = ANTIGRAVITY_DIR / "Wong Choi Tennis Analysis"
 LOG_DIR = PROJECT_DIR / "data" / "logs"
+EVENT_LOG_PATH = LOG_DIR / "tennis_daily_schedule.jsonl"
 PYTHON = PROJECT_DIR / ".venv" / "bin" / "python"
 TIMEZONE = "Australia/Sydney"
 
@@ -32,6 +37,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--skip-analysis", action="store_true", help="Skip tomorrow run-daily.")
     parser.add_argument("--skip-review", action="store_true", help="Skip yesterday review/archive.")
     parser.add_argument("--no-archive", action="store_true", help="Review yesterday but do not move the folder.")
+    parser.add_argument("--refresh-analysis", action="store_true", help="Refresh tomorrow's fixtures/markets without rebuilding history or Elo.")
     args = parser.parse_args(argv)
 
     LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -47,6 +53,7 @@ def main(argv: list[str] | None = None) -> int:
         yesterday = today - timedelta(days=1)
         tomorrow = today + timedelta(days=1)
         log(f"Starting scheduled workflow. today={today} review={yesterday} analysis={tomorrow}")
+        log_event("workflow_started", today=str(today), review_date=str(yesterday), analysis_date=str(tomorrow))
 
         try:
             run_cli("init-db")
@@ -55,7 +62,7 @@ def main(argv: list[str] | None = None) -> int:
                 if not args.no_archive:
                     archive_previous_day(yesterday.isoformat(), review_payload)
             if not args.skip_analysis:
-                analyse_next_day(tomorrow.isoformat())
+                analyse_next_day(tomorrow.isoformat(), refresh=args.refresh_analysis)
         except subprocess.CalledProcessError as exc:
             log(f"Command failed with exit code {exc.returncode}: {' '.join(exc.cmd)}")
             return exc.returncode or 1
@@ -64,6 +71,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
         log("Scheduled workflow complete.")
+        log_event("workflow_complete", today=str(today))
         return 0
 
 
@@ -79,12 +87,24 @@ def review_previous_day(match_date: str) -> dict:
     report_path = payload.get("review_report_path")
     qa_path = payload.get("settlement_qa_report_path")
     log(f"Review written. summary={report_path or 'none'} qa={qa_path or 'none'}")
+    settlement = payload.get("settlement") or {}
+    result_health = ((settlement.get("auto_refresh") or {}).get("results") or {})
+    log_event(
+        "settlement_qa_complete",
+        date=match_date,
+        reports_ready=bool(report_path and qa_path),
+        result_error=result_health.get("error"),
+        winners_seen=intish(result_health.get("winners_seen")),
+        lookup_winners_seen=intish(result_health.get("lookup_winners_seen")),
+        pending=_pending_count(settlement),
+    )
     return payload
 
 
-def analyse_next_day(match_date: str) -> None:
-    log(f"Running next-day analysis: {match_date}")
-    payload = run_cli_json("run-daily", "--date", match_date)
+def analyse_next_day(match_date: str, *, refresh: bool = False) -> dict:
+    command = "refresh-daily" if refresh else "run-daily"
+    log(f"Running next-day analysis: {match_date} mode={command}")
+    payload = run_cli_json(command, "--date", match_date)
     matches = intish(payload.get("matches_analysed"))
     source_errors = payload.get("source_errors") or []
     log(
@@ -100,41 +120,79 @@ def analyse_next_day(match_date: str) -> None:
     if matches == 0 and source_errors:
         sources = ", ".join(str(err.get("source", "?")) for err in source_errors)
         log(f"WARNING: 0 matches analysed because data sources failed: {sources}. Details: {compact_json(source_errors)}")
+        log_event("analysis_blocked_by_source_error", date=match_date, mode=command, source_errors=source_errors)
+    elif matches == 0:
+        log(f"WARNING: 0 matches analysed with no explicit source error for {match_date}.")
+        log_event("analysis_zero_matches", date=match_date, mode=command)
+    elif source_errors:
+        log(f"WARNING: analysis completed with degraded sources: {compact_json(source_errors)}")
+        log_event("analysis_completed_with_source_errors", date=match_date, mode=command, source_errors=source_errors)
+    elif intish(payload.get("valid_feature_snapshots")) < matches:
+        log_event("analysis_completed_with_invalid_matches", date=match_date, mode=command, matches=matches, valid=intish(payload.get("valid_feature_snapshots")))
+    else:
+        log_event("analysis_complete", date=match_date, mode=command, matches=matches, valid=intish(payload.get("valid_feature_snapshots")))
 
     # Store the generated recommendations for tomorrow so the next review can settle them.
     clv = run_cli_json("sync-clv-tracker", "--date", match_date)
     combos = run_cli_json("sync-combo-tracker", "--date", match_date)
     log(f"Trackers synced. clv={compact_json(clv)} combo={compact_json(combos)}")
+    log_event("trackers_synced", date=match_date, clv=clv, combo=combos)
+    return payload
 
 
-def archive_previous_day(match_date: str, review_payload: dict) -> None:
+def archive_previous_day(match_date: str, review_payload: dict) -> dict:
     source = ANTIGRAVITY_DIR / f"{match_date} Tennis Analysis"
     destination = ARCHIVE_DIR / source.name
 
     if not source.exists():
         if destination.exists():
             log(f"Archive already contains {destination.name}; no live folder to move.")
-            return
+            result = {"status": "already_archived", "date": match_date, "destination": str(destination)}
+            log_event("archive_skipped", **result)
+            return result
         log(f"No analysis folder found for {match_date}; archive skipped.")
-        return
+        result = {"status": "source_folder_missing", "date": match_date}
+        log_event("archive_skipped", **result)
+        return result
 
-    if not can_archive(review_payload):
-        log(f"Review did not confirm result extraction for {match_date}; archive skipped.")
-        return
+    decision = archive_decision(review_payload)
+    if not decision["allowed"]:
+        log(f"Review did not confirm result extraction for {match_date}; archive skipped. reasons={','.join(decision['reasons'])}")
+        result = {"status": "result_unconfirmed", "date": match_date, **decision}
+        log_event("archive_skipped", **result)
+        return result
+
+    if destination.exists():
+        # An earlier confirmed run owns this archive name.  Keep subsequent QA
+        # output at the live path rather than creating timestamped duplicates.
+        log(f"Archive already contains {destination.name}; source folder retained to avoid duplicate archive move.")
+        result = {"status": "already_archived", "date": match_date, "destination": str(destination)}
+        log_event("archive_skipped", **result)
+        return result
 
     ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
-    final_destination = destination
-    if final_destination.exists():
-        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        final_destination = ARCHIVE_DIR / f"{source.name} rerun {stamp}"
-
-    shutil.move(str(source), str(final_destination))
-    log(f"Archived {source.name} -> {final_destination}")
+    shutil.move(str(source), str(destination))
+    manifest = {
+        "archive_version": 1,
+        "analysis_date": match_date,
+        "archived_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "archive_decision": decision,
+    }
+    (destination / "Archive_Manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    log(f"Archived {source.name} -> {destination}")
+    result = {"status": "archived", "date": match_date, "destination": str(destination), **decision}
+    log_event("archive_complete", **result)
+    return result
 
 
 def can_archive(payload: dict) -> bool:
+    return bool(archive_decision(payload)["allowed"])
+
+
+def archive_decision(payload: dict) -> dict:
+    reasons: list[str] = []
     if not payload.get("review_report_path") or not payload.get("settlement_qa_report_path"):
-        return False
+        reasons.append("review_reports_missing")
 
     settlement = payload.get("settlement") or {}
     tracker = settlement.get("tracker_settlement") or {}
@@ -143,7 +201,7 @@ def can_archive(payload: dict) -> bool:
     tml = result_health.get("tennismylife") or {}
     resolver = result_health.get("resolver") or {}
 
-    extracted = any(
+    result_evidence = any(
         intish(value) > 0
         for value in (
             result_health.get("imported"),
@@ -160,7 +218,20 @@ def can_archive(payload: dict) -> bool:
             combo.get("settled"),
         )
     )
-    pending = sum(
+    pending = _pending_count(settlement)
+    if result_health.get("error"):
+        reasons.append("result_source_error")
+    if not result_evidence:
+        reasons.append("official_results_unconfirmed")
+    if pending:
+        reasons.append("pending_settlements")
+    return {"allowed": not reasons, "reasons": reasons, "result_evidence": result_evidence, "pending": pending}
+
+
+def _pending_count(settlement: dict) -> int:
+    tracker = settlement.get("tracker_settlement") or {}
+    combo = settlement.get("combo_settlement") or {}
+    return sum(
         intish(value)
         for value in (
             settlement.get("pending_without_result"),
@@ -168,7 +239,6 @@ def can_archive(payload: dict) -> bool:
             combo.get("pending_without_result"),
         )
     )
-    return extracted or pending == 0
 
 
 def run_cli_json(*args: str) -> dict:
@@ -232,6 +302,13 @@ def log(message: str) -> None:
     print(line, flush=True)
     with (LOG_DIR / "tennis_daily_schedule.log").open("a", encoding="utf-8") as handle:
         handle.write(line + "\n")
+
+
+def log_event(event: str, **payload: object) -> None:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    record = {"timestamp": datetime.now().astimezone().isoformat(timespec="seconds"), "event": event, **payload}
+    with EVENT_LOG_PATH.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
 
 
 if __name__ == "__main__":

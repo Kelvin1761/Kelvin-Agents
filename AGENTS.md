@@ -5,6 +5,12 @@
 
 > `GEMINI.md` 已 deprecated。新用戶同現役 workflow 請以 `SETUP.md` 同 `AGENTS.md` 為準。
 
+## Codex Collaboration Defaults
+
+- 同用戶及團隊成員溝通時，預設使用香港繁體中文（廣東話口吻）。
+- implementation plan、next-step plan 同 status update 都使用香港繁體中文。
+- code、file path、CLI command、package name 保持英文原文。
+
 ## Current Status
 
 Antigravity 目前最重要嘅兩條賽馬主線已經轉咗做 **full Python pipeline**：
@@ -135,6 +141,8 @@ Antigravity 目前最重要嘅兩條賽馬主線已經轉咗做 **full Python pi
 - `Race_X_Auto_Analysis.md`
 - `Race_X_Auto_Scoring.csv`
 - `Meeting_Auto_Scoring.csv`
+- `Meeting_Structural_Shadow.csv`
+- `Meeting_Dual_Objective_Shadow.csv`
 
 ### Meeting folder naming
 
@@ -249,12 +257,15 @@ Deploy wrapper：
 - 單 meeting review
 - report generation
 - archive backtest / review phase
+- AU 會額外自動更新 frozen structural + dual-objective shadow trackers，同寫入漏跑／promotion-ready 狀態
 
 ### Typical outputs
 
 - meeting-level reflector report
 - results summary JSON / markdown
 - review / backtest summary
+- AU `Reflector_Shadow_Update_Status.json`
+- AU `AU_Dual_Objective_Shadow_Tracker.md/json`
 
 ## Related Components
 

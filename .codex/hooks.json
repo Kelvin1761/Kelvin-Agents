@@ -4,8 +4,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "\"G:/??????/Antigravity Shared/Antigravity/.codex/hooks/gsd-check-update.cmd\"",
-          "commandWindows": "\"G:/??????/Antigravity Shared/Antigravity/.codex/hooks/gsd-check-update.cmd\""
+          "command": "node \".codex/hooks/gsd-check-update.js\""
         }
       ]
     }
@@ -15,7 +14,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "\"G:/??????/Antigravity Shared/Antigravity/.codex/hooks/gsd-context-monitor.cmd\"",
+          "command": "node \".codex/hooks/gsd-context-monitor.js\"",
           "timeout": 10
         }
       ]
@@ -26,7 +25,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "\"G:/??????/Antigravity Shared/Antigravity/.codex/hooks/gsd-context-monitor.cmd\"",
+          "command": "node \".codex/hooks/gsd-context-monitor.js\"",
           "timeout": 10
         }
       ]
@@ -37,7 +36,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "\"G:/??????/Antigravity Shared/Antigravity/.codex/hooks/gsd-context-monitor.cmd\"",
+          "command": "node \".codex/hooks/gsd-context-monitor.js\"",
           "timeout": 10
         }
       ]

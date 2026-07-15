@@ -1,0 +1,58 @@
+{
+  "version": "AU_STRUCTURAL_SHADOW_V1",
+  "status": "frozen_forward_shadow",
+  "trained_through": "2026-07-08",
+  "training_races": 710,
+  "training_runners": 7530,
+  "market_inputs": false,
+  "performance_alpha": 1.25,
+  "pairwise_alpha": 2.0,
+  "pairwise_c": 0.1,
+  "matrix_order": [
+    "stability",
+    "pace_perf",
+    "race_shape",
+    "jockey_trainer",
+    "class_weight",
+    "track",
+    "form_line"
+  ],
+  "pairwise_weights": [
+    0.301422963853786,
+    0.034230913000786754,
+    0.057029841742459,
+    0.2889399991633984,
+    0.13267242448715455,
+    0.011913985437758798,
+    0.005547850106871076
+  ],
+  "shape_alpha": 0.5,
+  "shape_base_place_rate": 0.28300132802124833,
+  "shape_table": {
+    "fast|closer": -0.49241384368744767,
+    "fast|leader": 0.1980292528319768,
+    "fast|mid": -0.10023369298680418,
+    "fast|on_pace": -0.07898062176813281,
+    "fast|presser": -0.07754913291920396,
+    "normal|closer": -0.3806139907738948,
+    "normal|leader": 0.23608713429805916,
+    "normal|mid": 0.01454062928640687,
+    "normal|on_pace": 0.21532227109633784,
+    "normal|presser": 0.2267715171198027,
+    "slow|closer": -0.27269699654132706,
+    "slow|leader": 0.11957123258527158,
+    "slow|mid": 0.09110201151323227,
+    "slow|on_pace": 0.2599063485614358,
+    "slow|presser": 0.31385443804297297
+  },
+  "promotion_gate": {
+    "minimum_forward_races": 150,
+    "minimum_tracks": 3,
+    "top1_delta_floor_pp": 0.0,
+    "top2_delta_target_pp": 2.0,
+    "top2_ci_lower_floor_pp": 0.0,
+    "top4_delta_floor_pp": 0.0,
+    "minimum_nonnegative_time_blocks": 3,
+    "time_blocks": 4
+  }
+}

@@ -19,6 +19,7 @@ sys.path.append(str(SCRIPT_DIR / "racing_engine"))
 from engine_core import RacingEngine, enrich_logic_from_facts
 from renderer import ensure_verdict, render_meeting_csv, validate_report_text, write_race_outputs
 from validation import validate_engine_scripts, validate_logic_data
+from au_structural_shadow import write_meeting_shadow
 
 
 def process_logic_file(logic_path: Path) -> dict:
@@ -83,6 +84,21 @@ def process_meeting_dir(meeting_dir: Path) -> list[dict]:
     if meeting_csv:
         (meeting_dir / "Meeting_Auto_Scoring.csv").write_text(meeting_csv, encoding="utf-8")
         print("✅ Meeting_Auto_Scoring.csv updated")
+    try:
+        shadow_path, shadow_rows = write_meeting_shadow(meeting_dir)
+        print(f"✅ Structural shadow written: {shadow_path.name} ({len(shadow_rows)} runners)")
+    except Exception as exc:
+        # Shadow research must never block the official clean-7D pipeline.
+        print(f"⚠️  Structural shadow skipped: {exc}", file=sys.stderr)
+    try:
+        # Lazy import keeps the official engine operational even if the optional
+        # frozen sklearn shadow pack is unavailable on another machine.
+        from au_dual_objective_shadow import write_meeting_shadow as write_dual_shadow
+
+        dual_path, dual_rows = write_dual_shadow(meeting_dir)
+        print(f"✅ Dual-objective shadow written: {dual_path.name} ({len(dual_rows)} runners)")
+    except Exception as exc:
+        print(f"⚠️  Dual-objective shadow skipped: {exc}", file=sys.stderr)
     return results
 
 

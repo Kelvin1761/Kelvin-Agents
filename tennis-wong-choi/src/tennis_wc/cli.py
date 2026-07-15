@@ -462,16 +462,53 @@ def run_daily(args: argparse.Namespace) -> None:
         except Exception as exc:  # noqa: BLE001
             source_errors.append({"source": "event_markets_check", "error": str(exc)})
 
-    store_raw_response(
-        "tennis_wc_pipeline",
-        "/run-daily/source-errors",
-        {"date": args.date},
-        {"mode": "mvp_snapshot" if args.mvp_snapshot else "live_full", "errors": source_errors},
-        207 if source_errors else 200,
-        "run_daily_source_errors",
+    _render_and_track_daily_analysis(
         args.date,
+        source_errors,
+        "mvp_snapshot" if args.mvp_snapshot else "live_full",
+        settlement_backlog=settlement_backlog,
     )
-    snapshots = build_sportsbet_feature_snapshots_for_date(args.date)
+
+
+def refresh_daily(args: argparse.Namespace) -> None:
+    """Refresh fixtures and markets without re-running history/Elo work.
+
+    Intended for the pre-bet evening pass: pricing and reports are refreshed,
+    while open predictions are updated in place and trackers remain idempotent.
+    """
+    provider_healthcheck(args)
+    source_errors = []
+    clear_pipeline_source_errors(args.date)
+    for label, step in (
+        ("tournaments", lambda: ingest_tournaments(args.date, args.date)),
+        ("upcoming_matches", lambda: ingest_upcoming_matches(args.date)),
+        ("odds", lambda: ingest_odds(args.date)),
+        ("event_markets", lambda: enrich_sportsbet_event_markets(args.date)),
+        ("metadata_backfill", lambda: backfill_confirmed_metadata_for_date(args.date)),
+    ):
+        try:
+            step()
+        except Exception as exc:  # noqa: BLE001 - report every degraded source
+            source_errors.append({"source": label, "error": str(exc)})
+    try:
+        market_keys = _distinct_market_keys_for_date(args.date)
+        if market_keys <= 1:
+            source_errors.append(
+                {"source": "event_markets", "error": "only_match_winner_odds_captured__multi_market_enrichment_incomplete"}
+            )
+    except Exception as exc:  # noqa: BLE001
+        source_errors.append({"source": "event_markets_check", "error": str(exc)})
+    _render_and_track_daily_analysis(args.date, source_errors, "market_refresh")
+
+
+def _render_and_track_daily_analysis(
+    match_date: str,
+    source_errors: list[dict],
+    mode: str,
+    *,
+    settlement_backlog: dict | None = None,
+) -> None:
+    snapshots = build_sportsbet_feature_snapshots_for_date(match_date)
     valid = [snapshot for snapshot in snapshots if snapshot["data_quality"]["is_valid"]]
     predictions = []
     for snapshot in snapshots:
@@ -487,32 +524,41 @@ def run_daily(args: argparse.Namespace) -> None:
                 "edge": pricing.get("edge"),
             }
         )
-    report_path = generate_daily_report(args.date)
     # Record today's recommendations in the trackers as part of the pipeline
     # itself. Previously only the scheduler wrapper did this, so manual runs
     # left no CLV/combo rows behind (nothing to settle or measure later).
     tracker_sync: dict = {}
     try:
         tracker_sync = {
-            "clv": sync_clv_tracker_for_date(args.date),
-            "combo": sync_combo_tracker_for_date(args.date),
+            "clv": sync_clv_tracker_for_date(match_date),
+            "combo": sync_combo_tracker_for_date(match_date),
         }
     except Exception as exc:  # noqa: BLE001
         source_errors.append({"source": "tracker_sync", "error": str(exc)})
+    store_raw_response(
+        "tennis_wc_pipeline",
+        "/run-daily/source-errors",
+        {"date": match_date},
+        {"mode": mode, "errors": source_errors},
+        207 if source_errors else 200,
+        "run_daily_source_errors",
+        match_date,
+    )
+    report_path = generate_daily_report(match_date)
     _print_json(
         {
-            "date": args.date,
+            "date": match_date,
             "matches_analysed": len(snapshots),
             "valid_feature_snapshots": len(valid),
             "invalid_due_to_data_issue": len(snapshots) - len(valid),
             "predictions": predictions,
-            "analysis_dir": str(analysis_output_dir(args.date)),
+            "analysis_dir": str(analysis_output_dir(match_date)),
             "report_path": str(report_path),
             "source_errors": source_errors,
-            "settlement_backlog": settlement_backlog,
+            "settlement_backlog": settlement_backlog or {},
             "tracker_sync": tracker_sync,
             "stage": "7",
-            "mode": "mvp_snapshot" if args.mvp_snapshot else "live_full",
+            "mode": mode,
         }
     )
 
@@ -639,6 +685,10 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--date", default=date.today().isoformat())
     p.add_argument("--mvp-snapshot", action="store_true", help="Use existing Sportsbet/local snapshots without live source refresh.")
     p.set_defaults(func=run_daily)
+
+    p = sub.add_parser("refresh-daily")
+    p.add_argument("--date", default=date.today().isoformat())
+    p.set_defaults(func=refresh_daily)
 
     p = sub.add_parser("predict-daily")
     p.add_argument("--date", required=True)

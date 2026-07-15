@@ -2,7 +2,7 @@
 set -eu
 
 LABEL="com.antigravity.tennis-wong-choi.daily"
-PROJECT_DIR="/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/tennis-wong-choi"
+PROJECT_DIR="/Users/imac/dev/Antigravity/tennis-wong-choi"
 TEMPLATE="$PROJECT_DIR/launchd/$LABEL.plist.template"
 DEST_DIR="$HOME/Library/LaunchAgents"
 DEST="$DEST_DIR/$LABEL.plist"

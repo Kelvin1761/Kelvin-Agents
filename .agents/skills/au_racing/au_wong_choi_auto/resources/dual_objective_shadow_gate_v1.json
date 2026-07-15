@@ -1,0 +1,95 @@
+{
+  "version": "AU_DUAL_OBJECTIVE_SHADOW_GATE_V1",
+  "status": "research_gate_not_production",
+  "market_inputs": false,
+  "research_source": "AU_Dual_Objective_Performance_Research_2026-07-13.json",
+  "candidate_family": {
+    "place_rating": {
+      "objective": "probability_of_finishing_top3_for_top2_selection",
+      "structure": "race_balanced_logistic_combination_of_existing_7d_matrices",
+      "performance_figure_inputs": false,
+      "entry_decision": "eligible_for_forward_shadow_not_main",
+      "development_top2_delta_pp": 5.81,
+      "development_positive_top2_blocks": 4,
+      "development_blocks": 4,
+      "final_top1_delta_pp": 5.63,
+      "final_top2_delta_pp": 4.23,
+      "final_top2_ci95_pp": [-1.41, 9.86]
+    },
+    "trifecta_coverage_rating_7d": {
+      "objective": "pairwise_top3_over_non_top3_for_top4_selection",
+      "structure": "race_pairwise_logistic_combination_of_existing_7d_matrices",
+      "performance_figure_inputs": false,
+      "entry_decision": "eligible_for_forward_shadow_not_main",
+      "development_top4_exact_delta_pp": 2.82,
+      "development_nonnegative_top4_blocks": 4,
+      "development_blocks": 4,
+      "final_top4_exact_delta_pp": 0.0,
+      "final_top4_coverage_delta_pp": 2.35,
+      "final_top4_coverage_ci95_pp": [-1.17, 5.87]
+    },
+    "trifecta_coverage_rating_pf": {
+      "objective": "pairwise_top3_over_non_top3_with_separate_standardised_sustained_and_burst_features",
+      "structure": "race_pairwise_logistic_7d_plus_pf",
+      "performance_figure_inputs": true,
+      "entry_decision": "secondary_forward_shadow_only_due_final_signal_not_preselected_winner",
+      "development_top4_exact_delta_pp": 1.76,
+      "final_top4_exact_delta_pp": 0.70,
+      "final_top4_coverage_delta_pp": 4.23,
+      "final_top4_coverage_ci95_pp": [0.47, 7.98]
+    }
+  },
+  "rejected_structures": {
+    "pf_in_place_rating": "did_not_beat_7d_only_place_model_on_development",
+    "distance_specific_matrices": "weaker_development_and_or_negative_final_top4_exact",
+    "top4_boundary_weighted_loss": "negative_development_and_final_deltas",
+    "single_combined_time_score": "inferior_to_7d_only_and_no_consistent_gain_from_standardisation"
+  },
+  "main_promotion_gate": {
+    "minimum_forward_races": 150,
+    "minimum_tracks": 3,
+    "distance_families": {
+      "Sprint <=1400m": 30,
+      "Middle 1401-1800m": 30,
+      "Staying 1801m+": 30
+    },
+    "place_rating": {
+      "top1_delta_floor_pp": 0.0,
+      "top2_place_delta_target_pp": 2.0,
+      "top2_place_ci95_lower_floor_pp": 0.0,
+      "top2_both_delta_floor_pp": 0.0
+    },
+    "trifecta_coverage_rating": {
+      "top4_exact_delta_floor_pp": 0.0,
+      "top4_coverage_delta_target_pp": 1.0,
+      "top4_coverage_ci95_lower_floor_pp": 0.0,
+      "top5_exact_delta_floor_pp": 0.0
+    },
+    "time_consistency": {
+      "blocks": 4,
+      "minimum_nonnegative_focus_blocks": 3,
+      "minimum_consecutive_positive_50_race_windows": 2
+    },
+    "segment_safety": {
+      "minimum_segment_races": 20,
+      "maximum_focus_metric_decline_pp": 3.0,
+      "maximum_top1_decline_pp": 3.0
+    },
+    "independence": {
+      "archive_development_and_holdout_must_pass": true,
+      "forward_shadow_must_start_after_training_cutoff": true,
+      "no_parameter_changes_during_forward_shadow": true,
+      "explicit_human_approval_required": true
+    }
+  },
+  "canary_and_rollback": {
+    "canary_races": 50,
+    "automatic_rollback_on_rolling_50": {
+      "place_top2_delta_at_or_below_pp": -2.0,
+      "top1_delta_at_or_below_pp": -2.0,
+      "coverage_top4_exact_delta_at_or_below_pp": -1.0,
+      "coverage_top4_coverage_delta_at_or_below_pp": -2.0
+    },
+    "rollback_on_two_consecutive_negative_focus_blocks": true
+  }
+}

@@ -1,12 +1,16 @@
 import os
+import random
 import shutil
 import tempfile
+import time
 from pathlib import Path
 from typing import List, Optional
 
 from curl_cffi import requests as cffi_requests
 from playwright.sync_api import sync_playwright
 
+
+RACENET_HOME = "https://www.racenet.com.au/"
 
 BLOCK_MARKERS = (
     "403 error",
@@ -19,6 +23,11 @@ BLOCK_MARKERS = (
     "captcha",
 )
 
+# NOTE: this UA is used ONLY by the Playwright fallback context. The curl_cffi path
+# deliberately does NOT send a hardcoded User-Agent — curl_cffi's impersonate=<target>
+# already emits the matching UA *and* the matching sec-ch-ua / sec-fetch headers. Sending
+# a Chrome/136 UA alongside an impersonate=chrome124 TLS fingerprint (as the old code did)
+# is a self-inconsistent fingerprint that bot walls flag instantly. Keep them aligned.
 DEFAULT_HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
     "Accept-Language": "en-AU,en;q=0.9",
@@ -32,7 +41,170 @@ DEFAULT_HEADERS = {
     ),
 }
 
-DEFAULT_IMPERSONATIONS = ("chrome136", "chrome131", "chrome124", "chrome120")
+# Lead with the newest fingerprints, and include a Safari target (a different TLS
+# stack that sometimes clears when every Chrome JA3 is being challenged). Override
+# via RACENET_IMPERSONATIONS="chrome136,safari180,...".
+DEFAULT_IMPERSONATIONS = ("chrome136", "chrome133a", "chrome131", "safari180", "chrome124")
+
+
+def _impersonation_pool() -> List[str]:
+    override = os.getenv("RACENET_IMPERSONATIONS")
+    if override:
+        pool = [tok.strip() for tok in override.split(",") if tok.strip()]
+        if pool:
+            return pool
+    return list(DEFAULT_IMPERSONATIONS)
+
+
+def _sleep_jitter(low: float, high: float) -> None:
+    """Human-like pause between requests (disable with RACENET_NO_JITTER=1)."""
+    if os.getenv("RACENET_NO_JITTER") in {"1", "true", "yes"}:
+        return
+    time.sleep(random.uniform(low, high))
+
+
+# ── Human-pacing + returning-visitor machinery (pass 2, 2026-07-04) ──
+# CloudFront's WAF ("Request blocked" 403) keys on rate + fingerprint + IP
+# reputation, so the realistic-browser story is: ONE session per process, warmed
+# once, aged cookies persisted across runs, a minimum think-time between every
+# target hit, and a real cooldown after a block — not a fresh incognito burst.
+
+def _think_delay():
+    lo = float(os.getenv("RACENET_MIN_DELAY", "2.0"))
+    hi = float(os.getenv("RACENET_MAX_DELAY", "5.0"))
+    return (lo, hi) if hi >= lo else (hi, lo)
+
+
+_LAST_REQUEST_TS = [0.0]
+
+
+def _pace_target_request() -> None:
+    """Enforce a minimum randomised gap between *target* requests across the whole
+    process, so a batch of race pages is spaced like a human reading each page."""
+    if os.getenv("RACENET_NO_JITTER") in {"1", "true", "yes"}:
+        return
+    lo, hi = _think_delay()
+    want = random.uniform(lo, hi)
+    elapsed = time.time() - _LAST_REQUEST_TS[0]
+    if 0 < elapsed < want:
+        time.sleep(want - elapsed)
+    _LAST_REQUEST_TS[0] = time.time()
+
+
+def _cooldown_after_block(status_code: Optional[int]) -> None:
+    """A CloudFront/rate block needs time to clear; hammering the next fingerprint
+    immediately just extends the ban. 403/429/503 → long randomised cooldown."""
+    if os.getenv("RACENET_NO_JITTER") in {"1", "true", "yes"}:
+        return
+    if status_code in {403, 429, 503}:
+        lo = float(os.getenv("RACENET_BLOCK_COOLDOWN_MIN", "12"))
+        hi = float(os.getenv("RACENET_BLOCK_COOLDOWN_MAX", "30"))
+        wait = random.uniform(lo, hi)
+        print(f"⏳ block cooldown {wait:.0f}s before next fingerprint", flush=True)
+        time.sleep(wait)
+
+
+def _cookie_jar_path() -> Optional[str]:
+    val = os.getenv("RACENET_COOKIE_JAR", str(Path.home() / ".racenet_session_cookies.json"))
+    return val or None  # empty string disables persistence
+
+
+def _load_cookies(session) -> int:
+    path = _cookie_jar_path()
+    if not path or not Path(path).exists():
+        return 0
+    try:
+        # Ignore a stale jar — an old CloudFront token can itself trigger a block.
+        max_age_h = float(os.getenv("RACENET_COOKIE_MAX_AGE_H", "12"))
+        if max_age_h > 0 and (time.time() - Path(path).stat().st_mtime) > max_age_h * 3600:
+            return 0
+        import json
+        data = json.loads(Path(path).read_text())
+        for c in data:
+            session.cookies.set(
+                c["name"], c["value"],
+                domain=c.get("domain") or ".racenet.com.au",
+                path=c.get("path") or "/",
+            )
+        return len(data)
+    except Exception:
+        return 0
+
+
+def _save_cookies(session) -> None:
+    path = _cookie_jar_path()
+    if not path:
+        return
+    try:
+        import json
+        out = []
+        for c in session.cookies.jar:
+            out.append({"name": c.name, "value": c.value, "domain": c.domain, "path": c.path})
+        if out:
+            Path(path).write_text(json.dumps(out))
+    except Exception:
+        pass
+
+
+_SESSION_CACHE: dict = {}     # impersonate -> {"session": s, "warmed": bool}
+_PROCESS_POOL: List[str] = []
+
+
+def _process_pool() -> List[str]:
+    """Impersonation order for THIS process — lead with the strongest, shuffle the
+    tail once so a batch doesn't always present the same JA3 sequence."""
+    global _PROCESS_POOL
+    if not _PROCESS_POOL:
+        pool = _impersonation_pool()
+        if len(pool) > 2:
+            head, tail = pool[:1], pool[1:]
+            random.shuffle(tail)
+            pool = head + tail
+        _PROCESS_POOL = pool
+    return _PROCESS_POOL
+
+
+def _get_session(impersonate: str, proxies):
+    entry = _SESSION_CACHE.get(impersonate)
+    if entry is not None:
+        return entry["session"], entry["warmed"]
+    session = cffi_requests.Session(impersonate=impersonate, proxies=proxies, timeout=30)
+    n = _load_cookies(session)
+    if n:
+        print(f"ℹ️ restored {n} racenet cookies (returning-visitor)", flush=True)
+    _SESSION_CACHE[impersonate] = {"session": session, "warmed": False}
+    return session, False
+
+
+def _mark_warmed(impersonate: str) -> None:
+    if impersonate in _SESSION_CACHE:
+        _SESSION_CACHE[impersonate]["warmed"] = True
+
+
+def _drop_session(impersonate: str) -> None:
+    entry = _SESSION_CACHE.pop(impersonate, None)
+    if entry:
+        try:
+            entry["session"].close()
+        except Exception:
+            pass
+
+
+def _nav_headers(referer: Optional[str], same_origin: bool) -> dict:
+    """Top-level document-navigation headers. curl_cffi's impersonate sets the
+    UA/sec-ch-ua; we set the Sec-Fetch-* nav semantics + Referer so a deep page
+    reads as a real in-site click (same-origin) rather than a bare bot GET."""
+    headers = {
+        "Accept-Language": "en-AU,en;q=0.9",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "same-origin" if same_origin else "none",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
+    }
+    if referer:
+        headers["Referer"] = referer
+    return headers
 
 
 def get_macos_chrome_profile() -> Optional[str]:
@@ -115,44 +287,105 @@ def fetch_html(url: str, referer: Optional[str] = None, context_label: str = "Ra
     raise RacenetBlockedError(_build_block_message(url, context_label, blockers))
 
 
-def _try_curl(url: str, referer: Optional[str], context_label: str, decode_nuxt: bool = True) -> dict:
-    headers = dict(DEFAULT_HEADERS)
-    if referer:
-        headers["Referer"] = referer
+def _session_get_with_backoff(session, url, headers, context_label, impersonate):
+    """GET with retry+exponential-backoff on transient rate-limit codes (429/503).
 
-    proxies = get_proxies()
-
-    for impersonate in DEFAULT_IMPERSONATIONS:
+    Returns the response, or None if it exhausted retries / raised. Retries only the
+    codes worth waiting out; a hard 403 challenge is handled by the caller (next
+    impersonation), not retried on the same fingerprint.
+    """
+    max_retries = int(os.getenv("RACENET_MAX_RETRIES", "2"))
+    for attempt in range(max_retries + 1):
         try:
-            resp = cffi_requests.get(
-                url, 
-                impersonate=impersonate, 
-                headers=headers, 
-                proxies=proxies,
-                timeout=30
-            )
+            resp = session.get(url, headers=headers, timeout=30)
         except Exception as exc:
-            blocker = f"{context_label}: curl_cffi {impersonate} exception: {exc}"
-            print(f"⚠️ {blocker}", flush=True)
+            print(f"⚠️ {context_label}: curl_cffi {impersonate} exception: {exc}", flush=True)
+            return None
+        if resp.status_code in {429, 503} and attempt < max_retries:
+            backoff = (2 ** attempt) + random.uniform(0.5, 1.5)
+            print(f"⚠️ {context_label}: {impersonate} HTTP {resp.status_code}, backing off {backoff:.1f}s", flush=True)
+            time.sleep(backoff)
+            continue
+        return resp
+    return None
+
+
+def _try_curl(url: str, referer: Optional[str], context_label: str, decode_nuxt: bool = True) -> dict:
+    """curl_cffi path — behaves like ONE human browsing continuously.
+
+    Pass-2 (2026-07-04) human-likeness upgrades over the pass-1 warmed-session:
+      - process-lifetime Session reuse (a batch of race pages shares one warmed
+        session + aged cookies, exactly like a person clicking through tabs — not a
+        fresh incognito hit per URL);
+      - persistent cookie jar (returning-visitor, staleness-guarded);
+      - Sec-Fetch-* navigation semantics so a deep page reads as a same-origin
+        click after the homepage warmup, not a bare bot GET;
+      - a minimum think-time enforced BETWEEN target requests across the whole
+        process, and a real cooldown after a 403/429/503 before rotating JA3;
+      - impersonate owns the UA/sec-ch-ua (TLS and headers always consistent);
+      - on block, rotate to the next fingerprint (fresh session) rather than bail.
+    """
+    proxies = get_proxies()
+    warmup = os.getenv("RACENET_WARMUP", "1") not in {"0", "false", "no"}
+    is_home = url.rstrip("/") == RACENET_HOME.rstrip("/")
+    last: dict = {"nuxt_data": None, "html": None, "blocker": None}
+
+    for idx, impersonate in enumerate(_process_pool()):
+        try:
+            session, warmed = _get_session(impersonate, proxies)
+        except Exception as exc:
+            last["blocker"] = f"{context_label}: curl_cffi {impersonate} session error: {exc}"
+            print(f"⚠️ {last['blocker']}", flush=True)
             continue
 
-        if detect_blocked_response(resp.text, resp.status_code):
-            blocker = f"{context_label}: curl_cffi {impersonate} blocked with HTTP {resp.status_code}"
-            print(f"⚠️ {blocker}", flush=True)
-            return {"nuxt_data": None, "html": None, "blocker": blocker}
+        try:
+            effective_referer = referer
+            # Warm this session ONCE (homepage → clearance cookie), then reuse it for
+            # every subsequent URL in the batch.
+            if warmup and not warmed and not is_home:
+                try:
+                    _pace_target_request()
+                    session.get(RACENET_HOME, headers=_nav_headers(None, same_origin=False), timeout=30)
+                    _mark_warmed(impersonate)
+                    effective_referer = effective_referer or RACENET_HOME
+                    _sleep_jitter(*_think_delay())
+                except Exception:
+                    pass  # warmup is best-effort; still try the target
 
-        if not decode_nuxt:
-            print(f"✅ {context_label}: curl_cffi {impersonate} fetched HTML ({len(resp.text)} bytes)", flush=True)
-            return {"nuxt_data": None, "html": resp.text, "blocker": None}
+            _pace_target_request()  # min gap between target hits across the process
+            headers = _nav_headers(effective_referer, same_origin=bool(effective_referer))
+            resp = _session_get_with_backoff(session, url, headers, context_label, impersonate)
+            if resp is None:
+                last["blocker"] = f"{context_label}: curl_cffi {impersonate} no response"
+                _drop_session(impersonate)
+                continue
 
-        nuxt_data = extract_nuxt_from_html(resp.text)
-        if nuxt_data:
-            print(f"✅ {context_label}: curl_cffi {impersonate} fetched and decoded __NUXT__", flush=True)
-            return {"nuxt_data": nuxt_data, "html": resp.text, "blocker": None}
+            if detect_blocked_response(resp.text, resp.status_code):
+                last["blocker"] = f"{context_label}: curl_cffi {impersonate} blocked with HTTP {resp.status_code}"
+                print(f"⚠️ {last['blocker']}", flush=True)
+                _drop_session(impersonate)          # burn the challenged session
+                _cooldown_after_block(resp.status_code)
+                continue                             # try the next fingerprint
 
-        print(f"⚠️ {context_label}: curl_cffi {impersonate} returned HTML without __NUXT__", flush=True)
+            # success — persist the aged cookies, keep the session alive for reuse
+            _save_cookies(session)
 
-    return {"nuxt_data": None, "html": None, "blocker": None}
+            if not decode_nuxt:
+                print(f"✅ {context_label}: curl_cffi {impersonate} fetched HTML ({len(resp.text)} bytes)", flush=True)
+                return {"nuxt_data": None, "html": resp.text, "blocker": None}
+
+            nuxt_data = extract_nuxt_from_html(resp.text)
+            if nuxt_data:
+                print(f"✅ {context_label}: curl_cffi {impersonate} fetched and decoded __NUXT__", flush=True)
+                return {"nuxt_data": nuxt_data, "html": resp.text, "blocker": None}
+
+            print(f"⚠️ {context_label}: curl_cffi {impersonate} returned HTML without __NUXT__", flush=True)
+        except Exception as exc:
+            last["blocker"] = f"{context_label}: curl_cffi {impersonate} error: {exc}"
+            print(f"⚠️ {last['blocker']}", flush=True)
+            _drop_session(impersonate)
+
+    return last
 
 
 def _try_live_browser(url: str, referer: Optional[str], context_label: str) -> dict:
@@ -221,13 +454,54 @@ def _try_live_browser(url: str, referer: Optional[str], context_label: str) -> d
                 Object.defineProperty(navigator, 'platform', { get: () => 'MacIntel' });
                 Object.defineProperty(navigator, 'language', { get: () => 'en-AU' });
                 Object.defineProperty(navigator, 'languages', { get: () => ['en-AU', 'en'] });
+                // Broaden stealth: headless Chrome leaks these. Give it a plausible
+                // plugin list, a chrome runtime object, a spoofed WebGL vendor, and a
+                // permissions.query that matches a real browser.
+                Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+                Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 8 });
+                Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 });
+                window.chrome = window.chrome || { runtime: {} };
+                const _q = window.navigator.permissions && window.navigator.permissions.query;
+                if (_q) {
+                    window.navigator.permissions.query = (p) => (
+                        p && p.name === 'notifications'
+                            ? Promise.resolve({ state: Notification.permission })
+                            : _q(p)
+                    );
+                }
+                const _gp = WebGLRenderingContext.prototype.getParameter;
+                WebGLRenderingContext.prototype.getParameter = function (p) {
+                    if (p === 37445) return 'Google Inc. (Apple)';        // UNMASKED_VENDOR_WEBGL
+                    if (p === 37446) return 'ANGLE (Apple, Apple M1, OpenGL 4.1)';  // UNMASKED_RENDERER_WEBGL
+                    return _gp.call(this, p);
+                };
                 """
             )
             if referer:
                 page.set_extra_http_headers({"Referer": referer})
 
+            # Human navigation: land on the homepage first (clearance cookie +
+            # same-origin Referer), pause, then click through to the deep URL.
+            warm_browser = os.getenv("RACENET_WARMUP", "1") not in {"0", "false", "no"}
+            if warm_browser and url.rstrip("/") != RACENET_HOME.rstrip("/"):
+                try:
+                    page.goto(RACENET_HOME, wait_until="domcontentloaded", timeout=timeout_ms)
+                    page.wait_for_timeout(random.randint(1500, 3500))
+                    page.mouse.move(random.randint(200, 900), random.randint(200, 700))
+                    page.mouse.wheel(0, random.randint(400, 1200))
+                    page.wait_for_timeout(random.randint(800, 1800))
+                except Exception:
+                    pass
+
             response = page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
-            page.wait_for_timeout(4000)
+            # Human dwell: small scroll + randomised read time before scraping the DOM.
+            page.wait_for_timeout(random.randint(2500, 4500))
+            try:
+                page.mouse.move(random.randint(200, 900), random.randint(200, 700))
+                page.mouse.wheel(0, random.randint(600, 1600))
+                page.wait_for_timeout(random.randint(700, 1500))
+            except Exception:
+                pass
             html = page.content()
             status_code = response.status if response else None
 

@@ -6,7 +6,7 @@
 # This wrapper lives locally and delegates to the real script.
 # ──────────────────────────────────────────────
 
-DASHBOARD_DIR="/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Horse Racing Dashboard"
+DASHBOARD_DIR="/Users/imac/dev/Antigravity/Horse Racing Dashboard"
 LOG_DIR="$DASHBOARD_DIR/logs"
 mkdir -p "$LOG_DIR"
 

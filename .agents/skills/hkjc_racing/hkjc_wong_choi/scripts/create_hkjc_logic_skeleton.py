@@ -963,8 +963,10 @@ def _expected_draw_surface(expected_venue: str) -> str:
     text = str(expected_venue or '').strip()
     if 'AWT' in text or '全天候' in text or '泥' in text:
         return '全天候'
-    if text:
+    if '草' in text:
         return '草地'
+    # 場地字串冇明確標示跑道時，唔好硬當草地 —— 否則全天候賽事會 surface mismatch
+    # 而錯報「數據不可用」。留空即跳過 surface gate，靠 場次號+場地+距離 已足以唯一定位。
     return ''
 
 
@@ -994,19 +996,49 @@ def _resolve_draw_stats_race(race_num=0, expected_venue='', expected_distance=0,
     return race
 
 
-def _get_draw_verdict_str(barrier, race_num=0, expected_venue='', expected_distance=0):
-    """Get draw verdict string for skeleton pre-fill from hkjc_draw_stats.json.
-    Display order: 上名率(place) → 入Q率(quinella) → 勝率(win) — Top 3 priority.
+def _get_draw_stats_entry(barrier, race_num=0, expected_venue='', expected_distance=0):
+    """Resolve THIS barrier's official HKJC draw stats (racing.hkjc.com 檔位頁).
+
+    Single source of truth consumed by BOTH scoring (DrawScorer) and display
+    (數據判讀 _draw_stats_note / 詳細分析 draw_verdict), so every section agrees.
+    resolved=False → meeting/race couldn't be matched (stale/missing scrape).
+    in_range=False → race matched but this barrier isn't in the stats table.
     """
     race = _resolve_draw_stats_race(race_num, expected_venue, expected_distance)
     if not race:
-        return '數據不可用'
+        return {'resolved': False}
     barrier_int = int(barrier) if str(barrier).isdigit() else 0
     for d in race.get('draws', []):
         if d.get('draw') == barrier_int:
-            return f"{d['verdict']} (上名{d.get('place_pct','?')}%/入Q{d.get('quinella_pct','?')}%/勝{d['win_pct']}%)"
-    max_draw = max((d.get("draw", 0) for d in race.get("draws", [])), default=0)
-    return f'檔位{barrier_int}超出統計範圍(最大檔{max_draw})'
+            return {
+                'resolved': True,
+                'in_range': True,
+                'draw': barrier_int,
+                'verdict': d.get('verdict', ''),
+                'place_pct': d.get('place_pct'),
+                'quinella_pct': d.get('quinella_pct'),
+                'win_pct': d.get('win_pct'),
+                'starts': d.get('starts'),
+            }
+    max_draw = max((d.get('draw', 0) for d in race.get('draws', [])), default=0)
+    return {'resolved': True, 'in_range': False, 'draw': barrier_int, 'max_draw': max_draw}
+
+
+def _draw_verdict_str_from_entry(entry):
+    """Render the 詳細分析 verdict string from a _get_draw_stats_entry() dict.
+    Display order: 上名率(place) → 入Q率(quinella) → 勝率(win) — Top 3 priority."""
+    if not entry.get('resolved'):
+        return '數據不可用'
+    if not entry.get('in_range'):
+        return f"檔位{entry.get('draw', 0)}超出統計範圍(最大檔{entry.get('max_draw', 0)})"
+    return (f"{entry.get('verdict', '')} (上名{entry.get('place_pct', '?')}%/"
+            f"入Q{entry.get('quinella_pct', '?')}%/勝{entry.get('win_pct', '?')}%)")
+
+
+def _get_draw_verdict_str(barrier, race_num=0, expected_venue='', expected_distance=0):
+    """Backward-compatible wrapper: resolve + render the verdict string."""
+    return _draw_verdict_str_from_entry(
+        _get_draw_stats_entry(barrier, race_num, expected_venue, expected_distance))
 
 
 def _get_full_draw_table(race_num=0, expected_venue='', expected_distance=0):
@@ -1260,7 +1292,9 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None, facts_path=
     if distance_match:
         expected_distance = int(distance_match.group(1))
 
-    draw_verdict_str = _get_draw_verdict_str(barrier, race_num, expected_venue, expected_distance)
+    # Resolve official HKJC draw stats ONCE; scoring + both display sections read this.
+    draw_stats_entry = _get_draw_stats_entry(barrier, race_num, expected_venue, expected_distance)
+    draw_verdict_str = _draw_verdict_str_from_entry(draw_stats_entry)
     nonce = 'SKEL_' + hashlib.md5(f"{name}_{time.time()}".encode('utf-8')).hexdigest()
 
     # ── V4.2 Enrichment ──
@@ -1514,6 +1548,7 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None, facts_path=
             # ── 形勢與走位 (race_shape) ──
             'position_window': position_window_str,
             'draw_verdict': draw_verdict_str,
+            'draw_stats': draw_stats_entry,  # 官方 HKJC 檔位統計，評分+顯示同源
             'running_style': running_style,
             'position_pi': position_pi,
             'draw_position_fit': draw_pos_fit,

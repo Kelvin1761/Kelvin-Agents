@@ -4,19 +4,15 @@ Configuration for the Racing Dashboard backend.
 import os
 from pathlib import Path
 
-# Root directory of the Antigravity project
-# Priority: ANTIGRAVITY_ROOT env var → Google Drive path → auto-detect fallback
-_GDRIVE_PATH = Path(os.path.expanduser(
-    "~/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com"
-    "/我的雲端硬碟/Antigravity Shared/Antigravity"
-))
-
+# Root directory of the Antigravity project.
+# Portable resolution (works on any machine / any checkout location):
+#   1. ANTIGRAVITY_ROOT env var (explicit override)
+#   2. auto-detect relative to this file (config.py is at <root>/Horse_Racing_Dashboard/backend/)
+# Intentionally does NOT hardcode the Google Drive path, so a local clone on
+# any machine resolves correctly.
 if os.environ.get("ANTIGRAVITY_ROOT"):
     ANTIGRAVITY_ROOT = Path(os.environ["ANTIGRAVITY_ROOT"])
-elif _GDRIVE_PATH.exists():
-    ANTIGRAVITY_ROOT = _GDRIVE_PATH
 else:
-    # Legacy fallback: parent.parent.parent of config.py
     ANTIGRAVITY_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # Skills directories

@@ -30,6 +30,9 @@ EXTRACTOR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_race_extract
 FACTS_INJECTOR = PROJECT_ROOT / ".agents" / "scripts" / "inject_fact_anchors.py"
 AUTO_LOGIC = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "build_au_logic.py"
 AUTO_ORCH = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "au_auto_orchestrator.py"
+OFFICIAL_FREE_DATA = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "au_official_free_data.py"
+OFFICIAL_TRIAL_FEATURES = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "au_official_trial_feature_enrich.py"
+TRAINER_ROLLING = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "au_trainer_rolling_database.py"
 TEMP_ROOT = PROJECT_ROOT / "_temporary_files"
 TEMP_FILE_PATTERNS = (
     "racenet_temp_*.html",
@@ -53,6 +56,7 @@ def main():
     parser.add_argument("--batch-cloudflare-deploy", action="store_true", help="Queue dashboard deploy for a later batch flush")
     parser.add_argument("--flush-cloudflare-deploy", action="store_true", help="Flush any queued dashboard deploy after this run")
     parser.add_argument("--race-workers", type=int, default=_default_race_workers(), help="Race-level Facts/Logic workers")
+    parser.add_argument("--skip-official-free-data", action="store_true", help="Skip the non-fatal official trial/jump-out shadow-data collection")
     args = parser.parse_args()
 
     target = args.target.strip()
@@ -65,6 +69,9 @@ def main():
             meeting_dir = Path(target).resolve()
             if meeting_dir.is_file():
                 cleanup_target = meeting_dir.parent
+                _collect_official_free_data(meeting_dir.parent, skip=args.skip_official_free_data)
+                _attach_official_trial_shadow(meeting_dir.parent, skip=args.skip_official_free_data)
+                _attach_trainer_rolling_shadow(meeting_dir.parent)
                 _run([PYTHON, str(AUTO_ORCH), str(meeting_dir)])
                 run_post_success_cloudflare_deploy(
                     source="AU Wong Choi",
@@ -88,6 +95,9 @@ def main():
         print(f"⚙️ Race-level workers: {race_workers}")
         _ensure_facts(meeting_dir, race_workers)
         _ensure_logic(meeting_dir, race_workers)
+        _collect_official_free_data(meeting_dir, skip=args.skip_official_free_data)
+        _attach_official_trial_shadow(meeting_dir, skip=args.skip_official_free_data)
+        _attach_trainer_rolling_shadow(meeting_dir)
         _run([PYTHON, str(AUTO_ORCH), str(meeting_dir)])
         run_post_success_cloudflare_deploy(
             source="AU Wong Choi",
@@ -115,6 +125,67 @@ def _default_race_workers() -> int:
         return int(os.environ.get("WC_RACE_WORKERS", "3"))
     except ValueError:
         return 3
+
+
+def _collect_official_free_data(meeting_dir: Path, *, skip: bool) -> None:
+    """Collect official pre-race readiness evidence without blocking analysis.
+
+    The collector selects the source from each historical trial venue (not the
+    current meeting venue), and treats unrecognised tracks as an audit item.
+    It writes shadow records only; production scoring remains unchanged.
+    """
+    if skip:
+        print("⏭️ 官方試閘／跳閘 shadow 資料：按要求跳過")
+        return
+    if not OFFICIAL_FREE_DATA.exists():
+        print("⚠️ 官方試閘／跳閘 shadow 抽取器不存在；略過", file=sys.stderr)
+        return
+    print("🔎 核對官方試閘／跳閘資料（按州／馬場路由；失敗不影響賽前分析）")
+    try:
+        result = subprocess.run(
+            [PYTHON, str(OFFICIAL_FREE_DATA), "--meeting-dir", str(meeting_dir), "--limit", "120", "--delay", "0.8"],
+            check=False,
+            text=True,
+            timeout=180,
+        )
+        if result.returncode:
+            print(f"⚠️ 官方試閘／跳閘 shadow 抽取未完成（exit {result.returncode}）；主分析照常繼續", file=sys.stderr)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(f"⚠️ 官方試閘／跳閘 shadow 抽取略過：{type(exc).__name__}；主分析照常繼續", file=sys.stderr)
+
+
+def _attach_official_trial_shadow(meeting_dir: Path, *, skip: bool) -> None:
+    """Attach verified trial fields to Logic, without changing production scores."""
+    if skip or not OFFICIAL_TRIAL_FEATURES.exists():
+        return
+    try:
+        result = subprocess.run(
+            [PYTHON, str(OFFICIAL_TRIAL_FEATURES), "--meeting-dir", str(meeting_dir)],
+            check=False,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode:
+            print("⚠️ 官方試閘 shadow feature 未寫入 Logic；主分析照常繼續", file=sys.stderr)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(f"⚠️ 官方試閘 shadow feature 略過：{type(exc).__name__}", file=sys.stderr)
+
+
+def _attach_trainer_rolling_shadow(meeting_dir: Path) -> None:
+    """Attach strict-as-of trainer 90/365-day context; never affects scores."""
+    if not TRAINER_ROLLING.exists():
+        return
+    try:
+        result = subprocess.run(
+            [PYTHON, str(TRAINER_ROLLING), "--meeting-dir", str(meeting_dir)],
+            check=False,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode:
+            print("⚠️ 練馬師 rolling shadow 未寫入；主分析照常繼續", file=sys.stderr)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(f"⚠️ 練馬師 rolling shadow 略過：{type(exc).__name__}", file=sys.stderr)
 
 
 def _extract_meeting(url: str) -> Path:

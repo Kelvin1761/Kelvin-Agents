@@ -92,3 +92,10 @@ NBA_ML_Dataset/
 
 # stats rebuild backups
 **/comprehensive_stats/**/*.bak
+
+# Data folders — keep analysis data out of the code repo (read via DATA_ROOT)
+Wong Choi Horse Race Analysis/
+Wong Choi NBA Analysis/
+Wong Choi Tennis Analysis/
+.hkjc_cache/
+Databases/

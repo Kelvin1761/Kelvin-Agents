@@ -1306,6 +1306,27 @@ def _tie_break_draw_bonus(horse: dict, race_context: dict, features: dict[str, f
     return bonus
 
 
+def _compact_horse_for_archive_review(horse: dict) -> dict:
+    """Keep only fields used after per-horse candidate scoring is complete.
+
+    Archived Logic horses can contain large form, trackwork and narrative
+    payloads.  Retaining every payload for every race made routine reflector
+    archive reviews consume unnecessary memory and could terminate before the
+    meeting report was written.  Draw tie-break diagnostics only need this
+    small immutable snapshot.
+    """
+    data = horse.get("_data") or {}
+    return {
+        "barrier": horse.get("barrier"),
+        "draw": horse.get("draw"),
+        "_data": {
+            "draw_position_fit": data.get("draw_position_fit"),
+            "position_pi": data.get("position_pi"),
+            "draw_verdict": data.get("draw_verdict"),
+        },
+    }
+
+
 def _last_open_sectional(details: str) -> float | None:
     text = str(details or "")
     without_paren = re.sub(r"\([^)]*\)", " ", text)
@@ -1987,6 +2008,7 @@ def run_review(
     results_roots: list[Path],
     season_csvs: list[Path],
     include_races: bool = False,
+    routine: bool = False,
 ) -> dict:
     debut_priors = DebutPriors()
     trainer_signal_priors = TrainerSignalPriors()
@@ -2093,6 +2115,25 @@ def run_review(
             "feature_transform": draw_hkjc_anchor_no_bleed_candidate,
         },
     }
+    if routine:
+        # Routine meeting reflection needs representative structural candidates,
+        # not every historical ablation.  The full profile remains available to
+        # dedicated research commands.  This keeps the default reflector fast
+        # enough to finish before writing its meeting report.
+        routine_models = {
+            "current_live",
+            "candidate_ml_7d_weight_shadow",
+            "candidate_class_distance_weight_joint",
+            "candidate_trainer_signal_context",
+            "candidate_sectional_context",
+            "candidate_race_sectional_score_non_debut",
+            "candidate_consistency_context",
+            "candidate_horse_health_risk_only",
+            "candidate_draw_hkjc_anchor_no_bleed",
+        }
+        model_specs = {
+            name: spec for name, spec in model_specs.items() if name in routine_models
+        }
     results_index = build_results_index(results_roots)
     meetings = hk_meeting_dirs(meeting_roots)
     all_races: list[dict] = []
@@ -2154,8 +2195,11 @@ def run_review(
                 horses.append({
                     "horse_num": horse_num,
                     "horse_name": horse.get("horse_name", ""),
-                    "horse": horse,
-                    "feature_scores": features,
+                    "horse": _compact_horse_for_archive_review(horse),
+                    "feature_scores": {
+                        "draw_score": features.get("draw_score", 60.0),
+                        "form_score": features.get("form_score", 60.0),
+                    },
                     "models": models,
                 })
             if not horses:
@@ -2304,7 +2348,9 @@ def run_review(
         [race["models"]["candidate_draw_micro_tiebreak_hv_mid_shape60_gap08_edge05"] for race in all_races if race["has_debut"]]
     )
 
-    best_outer_weights, best_outer_summary = pick_best_outer_weight_candidate(all_races)
+    best_outer_weights, best_outer_summary = (
+        (None, None) if routine else pick_best_outer_weight_candidate(all_races)
+    )
     if best_outer_weights and best_outer_summary:
         model_summary["candidate_outer_weights_retune"] = best_outer_summary
         debut_race_summary["candidate_outer_weights_retune"] = summarize_outer_weight_subset(all_races, best_outer_weights, only_debut=True)

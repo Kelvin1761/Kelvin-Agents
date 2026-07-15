@@ -8,7 +8,12 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/zsh</string>
-    <string>__PROJECT_DIR__/scripts/run_tennis_daily_schedule.sh</string>
+    <!--
+      This must be a local-disk launcher (outside Google Drive). It waits for
+      the project mount to materialise after wake/login before running the
+      in-project daily script.
+    -->
+    <string>__LOCAL_LAUNCHER__</string>
   </array>
 
   <key>WorkingDirectory</key>

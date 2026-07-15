@@ -13,8 +13,10 @@ import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
 from wongchoi_paths import AU_RACING
 ORCHESTRATOR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi" / "scripts" / "au_orchestrator.py"
 RESULTS_CLAWER = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "claw_racenet_results.py"
-ARCHIVE_DIR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "archive race analysis"
-OLD_ARCHIVE_DIR = AU_RACING
+# Finished meetings stay at the Antigravity project root so the dashboard can read them.
+ARCHIVE_DIR = PROJECT_ROOT
+# Legacy location of already-processed meetings (still checked so they aren't re-run).
+LEGACY_ARCHIVE_DIR = AU_RACING
 
 def run_command(cmd, cwd=PROJECT_ROOT):
     print(f"🚀 Running: {' '.join(cmd)}")
@@ -99,15 +101,20 @@ def process_meeting(meeting):
             res_file.replace(target_path)
             print(f"✅ Saved results to {target_path}")
 
-    # 4. Move entire directory to ARCHIVE_DIR
-    os.makedirs(ARCHIVE_DIR, exist_ok=True)
+    # 4. Keep the meeting directory at the Antigravity project root so the
+    #    Horse Racing Dashboard (which scans the root) can read it.
     archive_path = ARCHIVE_DIR / meeting_dir.name
+    if archive_path.resolve() == meeting_dir.resolve():
+        print(f"✅ Meeting kept at project root: {meeting_dir}")
+        return True
+
+    os.makedirs(ARCHIVE_DIR, exist_ok=True)
     if archive_path.exists():
         import shutil
         shutil.rmtree(archive_path)
-    
+
     meeting_dir.rename(archive_path)
-    print(f"📦 Archived to: {archive_path}")
+    print(f"📦 Moved to: {archive_path}")
 
     return True
 
@@ -131,8 +138,8 @@ def main():
         date_str = meeting['date']
         is_done = False
         
-        # Check both new and old archive dirs
-        for adir in [ARCHIVE_DIR, OLD_ARCHIVE_DIR]:
+        # Check both the project root and the legacy archive dir
+        for adir in [ARCHIVE_DIR, LEGACY_ARCHIVE_DIR]:
             if not adir.exists(): continue
             for p in adir.iterdir():
                 if p.is_dir() and p.name.startswith(date_str) and venue_name in p.name:

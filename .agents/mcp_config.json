@@ -21,7 +21,7 @@
         "-y",
         "@anthropic/mcp-server-git",
         "--repository",
-        "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity"
+        "/Users/imac/dev/Antigravity"
       ]
     },
     "filesystem": {
@@ -29,7 +29,7 @@
       "args": [
         "-y",
         "@anthropic/mcp-server-filesystem",
-        "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity"
+        "/Users/imac/dev/Antigravity"
       ]
     }
   }

@@ -650,8 +650,8 @@ class RacingEngine:
             base = 58 if starts == 0 else 60
             detail["base"] = base
             detail["final"] = base
-            detail["note"] = "無試閘紀錄，按保守中性處理"
-            return base, "試閘訊號有限，試閘分保守處理。", "trial_table"
+            detail["note"] = "未有可用試閘數據，不把資料缺口當成中性表現"
+            return base, "未有可用試閘數據；不納入試閘加減分，試閘分按保守基礎處理。", "trial_table"
         good = sum(1 for place in trial_places[:3] if place <= 3)
         score = 56
         detail["base"] = 56
@@ -722,7 +722,14 @@ class RacingEngine:
             if full_test >= 2 and competitive == 0:
                 add(-3, "盡試冇料", "多課全力試但未見競爭力")
         detail["final"] = round(clip_score(score), 2)
-        return score, f"近試閘前 3 名次 {trial_places[:3]}，有 {good} 次前列，並按最近一課/試閘密度修正，試閘分 {clip_score(score):.1f}。", "trial_table"
+        trial_speed = parse_float(self.data.get("timing_trial_600m_avg_speed"))
+        if trial_speed:
+            source_label = (f"試閘名次加 Formguide L600 平均速度 {trial_speed:.2f}m/s"
+                            "（只屬低信心備戰 proxy，非正式賽逐馬段速）")
+        else:
+            source_label = "只有試閘名次／密度，未有可靠逐馬時間（不視為段速）"
+        return score, (f"{source_label}；近試閘前 3 名次 {trial_places[:3]}，有 {good} 次前列，"
+                       f"並按最近一課/試閘密度修正，試閘分 {clip_score(score):.1f}。"), "trial_table"
 
     def _sectional_breakdown(self):
         if self._sectional_breakdown_cache is not None:
@@ -1146,13 +1153,30 @@ class RacingEngine:
         rating = self._trainer_rating_profile(trainer)
         score = rating["base_score"] if rating else 60
         detail = {"base": round(float(score), 1), "base_label": "", "adjustments": [],
-                  "final": None, "ly_line": ""}
+                  "final": None, "ly_line": "", "rolling_line": ""}
         self.trainer_detail = detail
         tly = self.data.get("trainer_ly") or {}
         if tly.get("rides"):
             _r = int(tly["rides"]); _p = int(tly.get("places") or 0); _w = int(tly.get("wins") or 0)
             detail["ly_line"] = (f"去年官方：{_r} 場、{_w} 冠 {_p} 上名"
                                  f"（勝率 {_w / _r * 100:.0f}%、上名率 {_p / _r * 100:.0f}%）")
+        rolling = self.data.get("trainer_rolling_shadow") or {}
+        r90 = rolling.get("stats_90d") or {}
+        r365 = rolling.get("stats_365d") or {}
+        if rolling.get("as_of_date"):
+            def _rolling_part(label, stats):
+                runs = int(stats.get("runs") or 0)
+                places = int(stats.get("places") or 0)
+                wins = int(stats.get("wins") or 0)
+                return f"{label}{runs}場、{wins}冠 {places}上名"
+            cutoff = str(rolling.get("source_max_date") or "未明")
+            stale = rolling.get("source_stale_days")
+            freshness = f"（資料截至{cutoff}" + (f"，相距{int(stale)}日" if stale is not None else "") + "）"
+            candidate = rolling.get("candidate_score")
+            suffix = (f"；候選 {float(candidate):.1f} 分（shadow，未入分）"
+                      if candidate is not None else "；樣本不足，未評候選")
+            detail["rolling_line"] = (f"本地結果庫 rolling（覆蓋未驗證）：{_rolling_part('90日', r90)}；"
+                                      f"{_rolling_part('365日', r365)}{freshness}{suffix}")
         notes = []
 
         def add(delta, factor, evidence=""):
@@ -1199,7 +1223,19 @@ class RacingEngine:
             add(TRAINER_MICRO_WEIGHTS.get("track_low_place_pen", -2.0),
                 "今場場館樣本未見承托", track_ev)
         detail["final"] = round(clip_score(score), 2)
-        note = "；".join(notes) if notes else f"{trainer or '練馬師資料'} 反映馬房部署基礎"
+        if notes:
+            note = "；".join(notes)
+        elif rolling.get("candidate_score") is not None:
+            note = (f"{trainer or '練馬師資料'} {detail['rolling_line']}")
+        elif tly.get("rides"):
+            # Official prior-season trainer data is present but intentionally
+            # display-only: shadow backtest has not shown a holdout gain from
+            # converting it into a ranking adjustment.
+            note = (f"{trainer or '練馬師資料'} 官方往季 {int(tly['rides'])} 場、"
+                    f"{int(tly.get('wins') or 0)} 冠 {int(tly.get('places') or 0)} 上名"
+                    "（已覆蓋，暫未通過入分回測）")
+        else:
+            note = f"{trainer or '練馬師資料'} 反映馬房部署基礎"
         return score, f"{note}，練馬師分 {clip_score(score):.1f}。", "trainer_name+trainer_track_stats"
 
     def _jockey_horse_fit_score(self):
@@ -1507,12 +1543,19 @@ class RacingEngine:
         barrier = self.horse_data.get("barrier")
         pm = feature_scores["pace_map_score"]
 
+        # Keep the classification separate from the raw draw number: the
+        # underlying pace-map score already represents field size and the
+        # available empirical bias, so barrier 1/12 is never auto-labelled.
         if pm >= 68:
-            draw_v = f"排 {barrier} 檔據場地統計係著數位"
-        elif pm <= 56:
-            draw_v = f"排 {barrier} 檔據場地統計偏蝕，走位容錯較低"
-        else:
+            draw_v = f"排 {barrier} 檔屬明顯有利（據現有場地統計）"
+        elif pm >= 62:
+            draw_v = f"排 {barrier} 檔屬輕微有利（據現有場地統計）"
+        elif pm >= 57:
             draw_v = f"排 {barrier} 檔屬中性"
+        elif pm >= 52:
+            draw_v = f"排 {barrier} 檔屬輕微不利，走位容錯較低"
+        else:
+            draw_v = f"排 {barrier} 檔屬明顯不利，走位成本偏高"
         if style:
             draw_v += f"，預期「{style}」跑法"
         return draw_v + "。"

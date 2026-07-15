@@ -389,20 +389,22 @@ def main():
             f.write(refl_md)
         print(f"📄 Reflector results saved: {refl_path}")
 
-    # === Write JSON (optional) ===
-    if args.json:
-        json_data = {
-            'meeting': meeting,
-            'events': {str(k): v for k, v in events.items()},
-            'results': {str(k): v for k, v in all_results.items()},
-        }
-        # Remove non-serializable refs
-        for ev in json_data['events'].values():
-            ev.pop('selections_refs', None)
-        json_path = os.path.join(output_dir, f"Race_Results_{venue.replace(' ', '_')}_{date_str}.json")
-        with open(json_path, 'w', encoding='utf-8') as f:
-            json.dump(json_data, f, ensure_ascii=False, indent=2, default=str)
-        print(f"📄 JSON results saved: {json_path}")
+    # === Write canonical JSON ===
+    # The trainer rolling database consumes this structured result artifact
+    # after reflection.  Keep --json as a backward-compatible flag, but write
+    # it by default so a completed meeting can update the daily history.
+    json_data = {
+        'meeting': meeting,
+        'events': {str(k): v for k, v in events.items()},
+        'results': {str(k): v for k, v in all_results.items()},
+    }
+    # Remove non-serializable refs
+    for ev in json_data['events'].values():
+        ev.pop('selections_refs', None)
+    json_path = os.path.join(output_dir, f"Race_Results_{venue.replace(' ', '_')}_{date_str}.json")
+    with open(json_path, 'w', encoding='utf-8') as f:
+        json.dump(json_data, f, ensure_ascii=False, indent=2, default=str)
+    print(f"📄 JSON results saved: {json_path}")
 
     print(f"\n✅ Done! {len(events)} races extracted for {venue} ({date_str})")
     return 0

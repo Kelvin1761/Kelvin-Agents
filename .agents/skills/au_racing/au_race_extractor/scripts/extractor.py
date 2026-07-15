@@ -13,13 +13,18 @@ if str(SKILL_ROOT) not in sys.path:
     sys.path.insert(0, str(SKILL_ROOT))
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
-from wongchoi_paths import AU_RACING
+from wongchoi_paths import DATA_ROOT
 
 from racenet_transport import RacenetBlockedError, fetch_nuxt_data
 
 def get_base_path():
-    """Cross-platform base path for AU Racing output folder."""
-    return str(AU_RACING)
+    """Cross-platform base path for AU meeting output.
+
+    Meetings are created directly under the Antigravity project root (DATA_ROOT)
+    so the Horse Racing Dashboard's discover_meetings() — which scans the root
+    non-recursively — can read them.
+    """
+    return str(DATA_ROOT)
 
 def generate_print_url(url):
     # E.g. https://www.racenet.com.au/form-guide/horse-racing/caulfield-heath-20260304/briga-fliedner-2026-lady-of-racing-finalist-race-1/overview
@@ -395,17 +400,32 @@ def _format_past_run_extra_tokens(pr: dict) -> str:
         runner_pace = benchmark.get('runnerTempoLabel')
         race_pace = benchmark.get('leaderTempoLabel')
         l600_diff = benchmark.get('runnerTimeDifferenceL600')
-        rt_rating = pr.get('rtRating') or pr.get('rating')
+        # 2026-07-04: CompetitorFormBenchmark carries the FULL benchmark-adjusted
+        # split profile, not just L600. Capture L800/L400/L200 (a par-fair
+        # energy-distribution across the run) + the within-field tempo quantile
+        # rank. Previously only L600 was emitted; the rest was silently discarded.
+        # (There is no per-past-run "RT Rating" field in the racenet apollo — the
+        # old pr.get('rtRating')/('rating') always resolved empty, so it is dropped.)
+        l800_diff = benchmark.get('runnerTimeDifferenceL800')
+        l400_diff = benchmark.get('runnerTimeDifferenceL400')
+        l200_diff = benchmark.get('runnerTimeDifferenceL200')
+        tempo_qrank = benchmark.get('runnerTempoQuantileRank')
         if runner_time_diff not in (None, ''):
             pf_parts.append(f"Race Time: {runner_time_diff}")
         if runner_pace:
             pf_parts.append(f"Early Runner Pace: {_pf_label(runner_pace)}.")
         if race_pace:
             pf_parts.append(f"Early Race Pace: {_pf_label(race_pace)}.")
+        if l800_diff not in (None, ''):
+            pf_parts.append(f"L800 Delta: {l800_diff}")
         if l600_diff not in (None, ''):
             pf_parts.append(f"L600 Delta: {l600_diff}")
-        if rt_rating not in (None, ''):
-            pf_parts.append(f"RT Rating: {rt_rating}")
+        if l400_diff not in (None, ''):
+            pf_parts.append(f"L400 Delta: {l400_diff}")
+        if l200_diff not in (None, ''):
+            pf_parts.append(f"L200 Delta: {l200_diff}")
+        if tempo_qrank not in (None, ''):
+            pf_parts.append(f"Tempo QRank: {tempo_qrank}")
 
     if pf_parts:
         tokens.append(f"PF[{' '.join(pf_parts)}]")

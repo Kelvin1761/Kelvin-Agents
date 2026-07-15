@@ -494,6 +494,8 @@ def _jt_detail_lines(auto, name):
             lines.append(f"基礎分 {float(d['base']):.1f}{label}")
         if d.get("ly_line"):
             lines.append(str(d["ly_line"]))
+        if d.get("rolling_line"):
+            lines.append(str(d["rolling_line"]))
         for a in d.get("adjustments") or []:
             ev = f" ← {a['evidence']}" if a.get("evidence") else ""
             lines.append(f"{a['factor']} {float(a['delta']):+.1f}{ev}")
@@ -1327,14 +1329,15 @@ def _seven_d_matrix_digest_lines(auto: dict) -> list[str]:
 
 
 def _data_readout_lines(auto: dict) -> list[str]:
-    """Render the structured 數據判讀 block (AU): 7D 綜合 digest → 逐維一覽。
-    原始數據錨點已移除（2026-07-11，用戶要求）—— 原始事實已散落各 7D 維度嘅
-    『數據』錨點，唔需要喺呢度重覆一次。"""
-    summary = _seven_d_summary_lines(auto)
+    """Render the AU 數據判讀 block as a concise 7D component readout.
+
+    總分、Grade、排名、主支柱及數據信心已喺評分總覽交代；呢度只保留逐維
+    實際數據及計分來源，避免同一匹馬重覆四行摘要。
+    """
     digest = _seven_d_matrix_digest_lines(auto)
-    if not summary and not digest:
+    if not digest:
         return []
-    lines = list(summary) if summary else ["#### 📊 數據判讀", ""]
+    lines = ["#### 📊 數據判讀", ""]
     lines.extend(digest)
     lines.append("")
     return lines
@@ -1452,4 +1455,3 @@ def _shorten_fact(text: object, limit: int) -> str:
 def _inline_text(value: object) -> str:
     text = str(value or "").strip()
     return " ".join(text.split()) if text else ""
-

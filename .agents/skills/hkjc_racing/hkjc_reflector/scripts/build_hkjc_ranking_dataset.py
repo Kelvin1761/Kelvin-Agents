@@ -92,6 +92,13 @@ def _distance_token(value: object) -> str:
 
 def _race_class_number(value: object) -> int | None:
     text = str(value or "").strip()
+    upper = text.upper()
+    if "級賽" in text or upper.startswith(("G1", "G2", "G3", "GROUP")):
+        return None
+    chinese_numbers = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5}
+    chinese_match = re.search(r"第?([一二三四五])班", text)
+    if chinese_match:
+        return chinese_numbers[chinese_match.group(1)]
     match = re.search(r"(\d+)", text)
     if not match:
         return None
@@ -99,13 +106,32 @@ def _race_class_number(value: object) -> int | None:
 
 
 def _race_class_label(value: object) -> str:
+    text = str(value or "").strip()
+    upper = text.upper()
+    if upper in {"GR", "GRIFFIN"}:
+        return "Griffin"
+    if "一級賽" in text or upper.startswith(("G1", "GROUP 1")):
+        return "Group 1"
+    if "二級賽" in text or upper.startswith(("G2", "GROUP 2")):
+        return "Group 2"
+    if "三級賽" in text or upper.startswith(("G3", "GROUP 3")):
+        return "Group 3"
     num = _race_class_number(value)
     return f"Class {num}" if num is not None else "Unknown"
 
 
+def _normalize_meeting_venue(value: object) -> str:
+    venue = _normalize_venue(value)
+    if "沙田" in venue:
+        return "沙田"
+    if "跑馬地" in venue:
+        return "跑馬地"
+    return venue
+
+
 def _normalize_track(value: object) -> str:
     text = str(value or "").strip().upper()
-    if any(token in text for token in ("泥", "AWT", "DIRT", "ALL WEATHER")):
+    if any(token in text for token in ("泥", "全天候", "AWT", "DIRT", "ALL WEATHER")):
         return "AWT"
     return "Turf"
 
@@ -202,7 +228,7 @@ def _claim_lbs(value: object) -> float:
 
 
 def _line_value(block: str, label: str) -> str:
-    match = re.search(rf"^{re.escape(label)}:\s*(.+)$", block, re.MULTILINE)
+    match = re.search(rf"^{re.escape(label)}:[ \t]*(.*?)[ \t]*$", block, re.MULTILINE)
     return match.group(1).strip() if match else ""
 
 
@@ -580,8 +606,19 @@ def _current_live_snapshot(horse: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def build_rows(meeting_roots: list[Path], results_roots: list[Path]) -> tuple[pd.DataFrame, dict[str, Any]]:
-    results_index = build_results_index(results_roots)
+def build_rows(
+    meeting_roots: list[Path],
+    results_roots: list[Path],
+    *,
+    results_index_override: dict[str, Path] | None = None,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Build rows, optionally using an explicit date-to-results mapping.
+
+    The override is used by the post-race shadow tracker so an already-resolved
+    results file is consumed directly.  It avoids depending on filename or
+    results-database layout while preserving the existing archive-build API.
+    """
+    results_index = results_index_override or build_results_index(results_roots)
     meetings = _dedup_meeting_dirs(hk_meeting_dirs(meeting_roots))
     rows: list[dict[str, Any]] = []
     priors = HistoricalPriors()
@@ -623,13 +660,20 @@ def build_rows(meeting_roots: list[Path], results_roots: list[Path]) -> tuple[pd
             racecard_snapshot = _load_racecard_snapshot(str(meeting_dir), race_num)
             racecard_info = racecard_snapshot.get("race_info") or {}
             racecard_horses = racecard_snapshot.get("horses") or {}
-            venue = _normalize_venue(race_context.get("venue") or racecard_info.get("venue") or meeting_venue)
+            venue = _normalize_meeting_venue(
+                race_context.get("venue") or racecard_info.get("venue") or meeting_venue
+            )
             track = _normalize_track(race_context.get("track") or race_context.get("surface") or racecard_info.get("track"))
-            course = _normalize_course(racecard_info.get("course"))
-            distance_token = _distance_token(race_context.get("distance"))
+            course = "AWT" if track == "AWT" else _normalize_course(racecard_info.get("course"))
+            distance_source = race_context.get("distance") or racecard_info.get("distance")
+            if not distance_source and track == "AWT":
+                distance_source = racecard_info.get("course")
+            distance_token = _distance_token(distance_source)
             distance_num = _coerce_int(distance_token)
             race_class_num = _race_class_number(race_context.get("race_class"))
             race_class_label = _race_class_label(race_context.get("race_class") or racecard_info.get("race_class"))
+            if race_class_label == "Unknown" and not str(racecard_info.get("race_class") or "").strip():
+                race_class_label = "Griffin"
             horses = logic.get("horses") or {}
             field_size = len(horses)
             if not horses:

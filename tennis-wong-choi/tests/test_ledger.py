@@ -13,6 +13,28 @@ def test_ledger_summary_empty(tmp_path, monkeypatch):
     assert ledger_summary()["clv_tracker"]["total_tracked"] == 0
 
 
+def test_open_prediction_is_updated_in_place_for_market_refresh(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.modelling.prediction_store import store_prediction
+
+    init_db()
+    pricing = {"selection_name": "Player A", "current_market_odds": 2.0, "edge": 0.1}
+    filter_result = {"decision": "BET", "stake_units": 1.0, "confidence": 70, "risk": "MEDIUM"}
+    first = store_prediction(999, "v1", pricing, filter_result)
+    pricing["current_market_odds"] = 2.2
+    second = store_prediction(999, "v1", pricing, filter_result)
+
+    with get_connection() as conn:
+        rows = conn.execute("SELECT id, current_market_odds FROM predictions WHERE match_id = 999").fetchall()
+    assert first == second
+    assert len(rows) == 1
+    assert rows[0]["current_market_odds"] == 2.2
+
+
 def test_tier_roi_empty(tmp_path, monkeypatch):
     from conftest import configure_test_db
 

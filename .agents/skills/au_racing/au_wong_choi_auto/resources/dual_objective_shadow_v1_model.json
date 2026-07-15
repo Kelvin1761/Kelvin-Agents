@@ -1,0 +1,31 @@
+{
+  "version": "AU_DUAL_OBJECTIVE_SHADOW_V1",
+  "trained_through": "2026-07-08",
+  "training_races": 710,
+  "training_runners": 7530,
+  "market_inputs": false,
+  "matrix_order": [
+    "stability",
+    "pace_perf",
+    "race_shape",
+    "jockey_trainer",
+    "class_weight",
+    "track",
+    "form_line"
+  ],
+  "profile_spec": {
+    "max_runs": 5,
+    "recency_weights": [
+      1.0,
+      0.85,
+      0.7,
+      0.55,
+      0.4
+    ],
+    "shrinkage_prior_runs": 2.0
+  },
+  "model_file": "dual_objective_shadow_v1.joblib",
+  "sha256": "b664c3bdea0c65ef9f0a6f79cf4948f8dbfea9b24519998310522487b8ad27b2",
+  "generator": "scratch/au_dual_objective_performance_research.py",
+  "generated_at": "2026-07-13T15:01:31.782258+00:00"
+}

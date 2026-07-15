@@ -78,7 +78,7 @@ if [ ! -f "$MANIFEST_OUT" ]; then
     exit 1
 fi
 
-echo "📦 第二步：Cloudflare deploy bundle 已準備完成（本地 staging：$STAGING_DIR）"
+echo "📦 第二步：Cloudflare deploy bundle 已準備完成（本地 staging：${STAGING_DIR}）"
 echo "   - HTML: $(basename "$HTML_OUT")"
 echo "   - Data: $(basename "$JSON_OUT")"
 echo "   - Manifest: $(basename "$MANIFEST_OUT")"
