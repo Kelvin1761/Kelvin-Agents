@@ -438,7 +438,18 @@ class RacingEngine:
             note_map[signal] += f" 對手後續有{same_count}匹於同班再贏，證明基本線索有兌現。"
         elif lower_count and not higher_count:
             note_map[signal] += f" 對手後續主要在較低班再贏，提升幅度只宜保守。"
-        return clip_score(score + bonus), note_map[signal], "formline_strength"
+        final = clip_score(score + bonus)
+        # 「碰過強敵」要今馬自己跑得埋堆先算數：若所有賽績線往績都冇跑近過
+        # （≤6名兼落後≤5個馬位＝competitive ratio 0，例：次次被拋離十幾個馬位），
+        # 則封頂 60——面對強陣但每次大敗，唔應照當高含金量。
+        # pit 驗證（FL2_zero_cap）：good +0.7、champ +0.6、TEST 零變、零回退。
+        fl = self._formline_summary()
+        if fl and fl.get("opponents") and final > 60:
+            ops = fl["opponents"]
+            if not any(o["competitive"] for o in ops):
+                final = 60.0
+                note_map[signal] = "曾碰強陣但今馬每仗都跑唔近（大敗收場），賽績線含金量存疑，按中性60分。"
+        return final, note_map[signal], "formline_strength"
 
     def _margin_trend_score(self):
         signal = self._margin_trend_signal()
