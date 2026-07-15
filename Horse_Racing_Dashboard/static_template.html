@@ -300,6 +300,23 @@ function renderSilk(horse, size = 'md') {
   return `<span class="horse-silk${sizeClass}" title="${esc(horseName)}綵衣"><img src="${esc(horse.silk_url)}" width="40" height="40" loading="lazy" decoding="async" referrerpolicy="no-referrer" alt="${esc(horseName)}綵衣" onerror="this.parentElement.classList.add('horse-silk--missing');this.remove()"></span>`;
 }
 
+function hkjcHorseProfileUrl(horse) {
+  const directId = String(horse?.hkjc_horse_id || horse?.horse_id || '').trim().toUpperCase();
+  if (/^HK_\d{4}_[A-HJ-Z]\d{3}$/.test(directId)) {
+    return `https://racing.hkjc.com/zh-hk/local/information/horse?horseid=${encodeURIComponent(directId)}`;
+  }
+  const code = String(horse?.horse_code || '').trim().toUpperCase();
+  const match = code.match(/^([A-HJ-Z])(\d{3})$/);
+  if (!match) return '';
+  const prefixIndex = 'ABCDEFGH'.includes(match[1])
+    ? match[1].charCodeAt(0) - 65
+    : match[1].charCodeAt(0) - 66;
+  const registrationYear = 2015 + prefixIndex;
+  if (registrationYear < 2015 || registrationYear > 2099) return '';
+  const horseId = `HK_${registrationYear}_${code}`;
+  return `https://racing.hkjc.com/zh-hk/local/information/horse?horseid=${encodeURIComponent(horseId)}`;
+}
+
 // Clean markdown artifacts from pipeline output
 function cleanText(s) {
   if (!s) return '';
@@ -322,23 +339,21 @@ function formatAnalysis(text) {
 // Convert markdown table to styled HTML table
 function mdTableToHtml(tableText, headerBg) {
   const rows = tableText.trim().split('\n').filter(r => r.trim().startsWith('|'));
-  if (rows.length < 2) return `<div style="white-space:pre-wrap;font-size:0.75rem">${esc(tableText)}</div>`;
+  if (rows.length < 2) return `<div class="rich-paragraph rich-paragraph--pre">${esc(tableText)}</div>`;
   const bg = headerBg || '#F8FAFC';
-  let html = `<div style="overflow-x:auto;margin:6px 0"><table style="width:100%;border-collapse:collapse;font-size:0.72rem">`;
+  let html = `<div class="rich-table-wrap"><table class="rich-table" style="--rich-table-header:${bg}">`;
   rows.forEach((row, i) => {
     if (/^\|[-:\s|]+\|/.test(row)) return; // skip separator
     const cells = row.split('|').slice(1,-1).map(c => c.trim());
     if (i === 0) {
-      html += `<thead><tr style="background:${bg};color:#64748B">`;
-      cells.forEach(c => { html += `<th style="padding:5px 8px;text-align:left;font-weight:600;white-space:nowrap">${esc(c)}</th>`; });
+      html += '<thead><tr>';
+      cells.forEach(c => { html += `<th>${esc(c)}</th>`; });
       html += `</tr></thead><tbody>`;
     } else {
-      const rowBg = i % 2 === 0 ? '#F8FAFC' : '#fff';
-      html += `<tr style="background:${rowBg};border-bottom:1px solid #F1F5F9">`;
+      html += '<tr>';
       cells.forEach((c,ci) => {
         const isNum = /^[\d\-\/\.]+$/.test(c);
-        const numStyle = isNum ? 'text-align:right;font-variant-numeric:tabular-nums;' : '';
-        html += `<td style="padding:5px 8px;${numStyle}color:#334155;white-space:nowrap">${esc(c)}</td>`;
+        html += `<td${isNum ? ' class="rich-table__number"' : ''}>${esc(c)}</td>`;
       });
       html += '</tr>';
     }
@@ -373,70 +388,70 @@ function formatRichSection(text) {
     }
     if (inTable) flushTable();
 
-    if (!line) { html += '<div style="height:4px"></div>'; continue; }
+    if (!line) { html += '<div class="rich-spacer"></div>'; continue; }
 
     // Skip placeholder / dash-only lines like "** -", "• -", "原始 L600/L400: -"
     const stripped = line.replace(/\*+/g,'').replace(/^[-•]\s*/,'').trim();
     if (stripped === '-' || stripped === '—' || /^[-—\s|]+$/.test(stripped)) continue;
     if (/^[^:：]+[:：]\s*[\*\s]*[-—]+[\*\s]*$/.test(line)) continue;
 
-    // Section headers (####, ###, ##, #)
-    const hm = line.match(/^(#{1,4})\s+(.+)/);
+    // Section headers (# through ######)
+    const hm = line.match(/^(#{1,6})\s+(.+)/);
     if (hm) {
       const lvl = hm[1].length;
-      const fsz = lvl <= 2 ? '0.85rem' : '0.78rem';
-      const col = lvl <= 2 ? '#1E40AF' : '#475569';
       const inner = hm[2].replace(/\*\*/g,'').trim();
-      html += `<div style="font-size:${fsz};font-weight:700;color:${col};margin:8px 0 3px;border-bottom:1px solid #E2E8F0;padding-bottom:2px">${esc(inner)}</div>`;
+      html += `<div class="rich-heading rich-heading--${lvl}">${esc(inner)}</div>`;
       continue;
     }
 
     // Blockquote
     if (line.startsWith('>')) {
       const inner = line.replace(/^>\s*-?\s*/, '');
-      html += renderKeyValueLine(inner, '1px solid #CBD5E1', '#F8FAFC');
+      html += renderKeyValueLine(inner, 'quote');
       continue;
     }
 
     // Bullet or dash list item
     if (line.startsWith('- ') || line.startsWith('* ')) {
       const inner = line.slice(2);
-      html += renderKeyValueLine(inner, 'none', 'transparent', true);
+      html += renderKeyValueLine(inner, 'bullet');
       continue;
     }
 
     // Separator
     if (/^[-=]{3,}$/.test(line)) {
-      html += '<hr style="border:none;border-top:1px solid #E2E8F0;margin:6px 0">';
+      html += '<hr class="rich-divider">';
       continue;
     }
 
     // Plain text (possibly with **bold** inline)
-    html += `<div style="font-size:0.75rem;color:#334155;line-height:1.7">${renderInlineMd(line)}</div>`;
+    html += `<div class="rich-paragraph">${renderInlineMd(line)}</div>`;
   }
   if (inTable) flushTable();
   return html;
 }
 
 // Render **key:** value line
-function renderKeyValueLine(text, border, bg, isBullet) {
-  const kvMatch = text.match(/^\*{0,2}([^*:]+?)\*{0,2}[:\uff1a]\s*(.*)$/);
+function renderKeyValueLine(text, type) {
+  const normalized = String(text || '').replace(/^\*\*([^*]+?[:\uff1a])\*\*\s*/, '$1 ');
+  const kvMatch = normalized.match(/^\*{0,2}([^*:]+?)\*{0,2}[:\uff1a]\s*(.*)$/);
   if (kvMatch) {
     const key = kvMatch[1].replace(/\*\*/g,'').trim();
     const val = kvMatch[2].trim();
-    const prefix = isBullet ? '<span style="color:#94A3B8;margin-right:6px">•</span>' : '';
-    return `<div style="display:flex;gap:6px;padding:3px 8px;border-left:${border};background:${bg};margin:2px 0;border-radius:2px">${prefix}<span style="font-size:0.72rem;color:#64748B;white-space:nowrap;flex-shrink:0">${esc(key)}:</span><span style="font-size:0.72rem;color:#334155;flex:1">${renderInlineMd(val)}</span></div>`;
+    const prefix = type === 'bullet' ? '<span class="rich-kv__bullet" aria-hidden="true">•</span>' : '';
+    return `<div class="rich-kv rich-kv--${type}">${prefix}<span class="rich-kv__key">${esc(key)}:</span><span class="rich-kv__value">${renderInlineMd(val)}</span></div>`;
   }
-  const prefix = isBullet ? '• ' : '';
-  return `<div style="font-size:0.72rem;color:#334155;padding:2px 6px;line-height:1.6">${esc(prefix)}${renderInlineMd(text)}</div>`;
+  return type === 'bullet'
+    ? `<div class="rich-list-item"><span aria-hidden="true">•</span><span>${renderInlineMd(text)}</span></div>`
+    : `<div class="rich-quote">${renderInlineMd(normalized)}</div>`;
 }
 
 // Render inline markdown: **bold**, `code`, [text]
 function renderInlineMd(text) {
   return esc(text)
-    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#1E293B">$1</strong>')
-    .replace(/`([^`]+)`/g, '<code style="background:#F1F5F9;color:#059669;padding:1px 4px;border-radius:3px;font-size:0.68rem">$1</code>')
-    .replace(/\[([^\]]+)\]/g, '<span style="color:#2563EB">$1</span>');
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code class="rich-code">$1</code>')
+    .replace(/\[([^\]]+)\]/g, '<span class="rich-reference">$1</span>');
 }
 
 function formatRawAnalysis(text) {
@@ -1503,8 +1518,121 @@ function setAnalyst(a) { activeAnalyst = a; render(); }
 // ═══════════════════════════════════════════════
 // Horse Card
 // ═══════════════════════════════════════════════
+function dataReadoutTone(band) {
+  const value = String(band || '');
+  if (/[✅↑＋+]/.test(value)) return 'positive';
+  if (/[⚠❌↓]/.test(value)) return 'warning';
+  return 'neutral';
+}
+
+function dataReadoutSummary(rows) {
+  const positive = rows.filter(row => dataReadoutTone(row.band) === 'positive').length;
+  const warnings = rows.filter(row => dataReadoutTone(row.band) === 'warning').length;
+  return [positive ? `${positive} 優勢` : '', warnings ? `${warnings} 注意` : '', `${rows.length} 項資料`]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function dataReadoutReasonLines(row) {
+  let reason = String(row?.reason || '').trim();
+  if (!reason) return [];
+  reason = reason
+    .replace(/[，,]\s*拍檔(?=\d+仗勝率)/g, '；騎練拍檔')
+    .replace(/(^|[；;])\s*拍檔(?=\d+仗勝率)/g, '$1騎練拍檔');
+  const compact = value => String(value || '').replace(/[\s，,。；;]+/g, '');
+  const valueKey = compact(row?.value);
+  const isEquipment = String(row?.label || '').includes('配備變動');
+  return reason
+    .split(/[；;]/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .filter(line => !(isEquipment && valueKey && compact(line) === valueKey));
+}
+
+function renderDataReadoutItem(row) {
+  const band = row.band || '➖';
+  const tone = dataReadoutTone(band);
+  const main = [row.value, row.trend].filter(Boolean).join(' · ') || '—';
+  const reasonLines = dataReadoutReasonLines(row);
+  return `<div class="data-readout__item">
+    <span class="data-readout__signal data-readout__signal--${tone}" aria-hidden="true">${esc(band)}</span>
+    <div class="data-readout__content">
+      <div class="data-readout__line"><span class="data-readout__label">${esc(row.label || '數據')}</span><strong class="data-readout__value">${esc(main)}</strong></div>
+      ${reasonLines.length ? `<div class="data-readout__reason">${reasonLines.map(line => `<span>${esc(line)}</span>`).join('')}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+function renderDataReadout(rows) {
+  const source = Array.isArray(rows) ? rows.filter(Boolean) : [];
+  if (!source.length) return '';
+  let html = '<div class="data-readout data-readout--complete">';
+  html += `<div class="data-readout__header"><div class="data-readout__title">📊 數據判讀</div><div class="data-readout__summary">${esc(dataReadoutSummary(source))}</div></div>`;
+  html += `<div class="data-readout__grid">${source.map(renderDataReadoutItem).join('')}</div>`;
+  html += '</div>';
+  return html;
+}
+
+function buildHorseAnalysisSections(horse) {
+  let sections;
+  if (horse.raw_text) {
+    sections = parseRawTextSections(horse.raw_text).filter(section => !isEmptySection(section.content));
+  } else {
+    sections = [
+      { icon:'🔬', title:'段速法醫', color:'#2563EB', bg:'#EFF6FF', content:horse.speed_forensics },
+      { icon:'⚡', title:'EEM 能量引擎', color:'#D97706', bg:'#FFFBEB', content:horse.eem_energy },
+      { icon:'📋', title:'寬恕檔案', color:'#0F766E', bg:'#F0FDFA', content:horse.forgiveness_file },
+      { icon:'🔗', title:'賽績線', color:'#475569', bg:'#F8FAFC', content:horse.form_line },
+      { icon:'🐴', title:'馬匹剖析', color:'#475569', bg:'#F8FAFC', content:horse.horse_profile },
+      { icon:'🧠', title:'核心分析', color:'#1E40AF', bg:'#EFF6FF', content:horse.core_analysis },
+      { icon:'💡', title:'結論', color:'#059669', bg:'#ECFDF5', content:horse.conclusion },
+    ].filter(section => section.content && !isEmptySection(section.content));
+  }
+  if (Array.isArray(horse.data_readout) && horse.data_readout.length) {
+    sections = sections.filter(section => section.title !== '數據判讀');
+  }
+  const merged = [];
+  const mergedByTitle = new Map();
+  sections.forEach((section, index) => {
+    const titleKey = String(section.title || '分析').replace(/\s+/g, '').toLowerCase();
+    const content = String(section.content || '').trim();
+    const existing = mergedByTitle.get(titleKey);
+    if (!existing) {
+      const item = { ...section, content, sourceIndex: index };
+      merged.push(item);
+      mergedByTitle.set(titleKey, item);
+      return;
+    }
+    if (content && !existing.content.includes(content)) existing.content += `\n\n${content}`;
+  });
+  const priority = { '結論': 0, '風險分析': 1, '核心分析': 2, '段速法醫': 3 };
+  return merged
+    .sort((a, b) => (priority[a.title] ?? 20) - (priority[b.title] ?? 20) || a.sourceIndex - b.sourceIndex);
+}
+
+function analysisSectionTheme(section) {
+  if (section.title === '風險分析' || section.color === '#DC2626') return 'rose';
+  if (section.title === '結論' || section.color === '#059669' || section.color === '#0F766E') return 'emerald';
+  if (section.color === '#D97706') return 'amber';
+  if (section.color === '#2563EB' || section.color === '#1E40AF') return 'blue';
+  return 'slate';
+}
+
+function renderAnalysisDocumentSection(section, index, cardId) {
+  const theme = analysisSectionTheme(section);
+  const chapter = String(index + 1).padStart(2, '0');
+  return `<section id="${cardId}-chapter-${index + 1}" class="analysis-document__section analysis-document__section--${theme}">
+    <div class="analysis-document__section-title"><span class="analysis-document__chapter">${chapter}</span><span aria-hidden="true">${section.icon}</span><span>${esc(section.title)}</span></div>
+    <div class="analysis-document__section-body">${formatRichSection(section.content)}</div>
+  </section>`;
+}
+
 function renderHorseCard(horse, topPickRank) {
-  const hasAnalysis = horse.raw_text || horse.speed_forensics || horse.eem_energy || horse.forgiveness_file || horse.form_line || horse.horse_profile || horse.core_analysis || horse.conclusion;
+  const dataRows = Array.isArray(horse.data_readout) ? horse.data_readout.filter(Boolean) : [];
+  const analysisSections = buildHorseAnalysisSections(horse);
+  const topicCount = analysisSections.length;
+  const hasAnalysis = topicCount > 0;
+  const officialHorseUrl = hkjcHorseProfileUrl(horse);
   const cardId = `horse-${horse.horse_number}-${Math.random().toString(36).slice(2,8)}`;
   const topClass = topPickRank ? ` horse-card--top-pick rank-${topPickRank}` : '';
 
@@ -1517,6 +1645,7 @@ function renderHorseCard(horse, topPickRank) {
     const medal = topPickRank===1?'🥇':topPickRank===2?'🥈':topPickRank===3?'🥉':'#'+topPickRank;
     html += `<div style="width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.85rem;flex-shrink:0;background:${bg};color:${col}">${medal}</div>`;
   }
+  html += renderSilk(horse, 'sm');
   html += `<div class="horse-card__number"><span style="font-size:0.55rem;color:#94A3B8;line-height:1;font-weight:600">馬號</span><span>${horse.horse_number}</span></div>`;
   html += '<div style="min-width:0;flex:1">';
   // Horse name + grade badge on the same line
@@ -1531,7 +1660,11 @@ function renderHorseCard(horse, topPickRank) {
   if (horse.trainer) html += `<span> · 🏠 ${esc(horse.trainer)}</span>`;
   if (horse.weight) { const w = esc(horse.weight); html += `<span title="負磅/排位體重"> · ⚖️ 負磅: ${w.includes('磅') ? w : w + '磅'}</span>`; }
   if (horse.barrier) html += `<span> · 檔${horse.barrier}</span>`;
-  html += '</div></div></div></div>';
+  html += '</div></div></div>';
+  if (officialHorseUrl) {
+    html += `<a class="horse-card__official-link" href="${esc(officialHorseUrl)}" target="_blank" rel="noopener noreferrer" aria-label="在新分頁開啟${esc(horse.horse_name || '')}官方馬匹資料">官方馬匹資料 <span aria-hidden="true">↗</span></a>`;
+  }
+  html += '</div>';
 
   // Body
   html += '<div class="horse-card__body"><div class="horse-card__details">';
@@ -1548,17 +1681,8 @@ function renderHorseCard(horse, topPickRank) {
   const cleanRisk = cleanText(horse.risk);
   if (cleanAdv) html += `<div style="margin-top:8px">✅ <strong>優勢:</strong> ${esc(cleanAdv)}</div>`;
   if (cleanRisk) html += `<div>⚠️ <strong>風險:</strong> ${esc(cleanRisk)}</div>`;
-  // 📊 數據判讀 — structured data readout (value · trend — concrete reason)
-  if (Array.isArray(horse.data_readout) && horse.data_readout.length) {
-    const roRows = horse.data_readout.map(r => {
-      const main = [r.value, r.trend].filter(Boolean).join(' · ');
-      const head = `<div style="line-height:1.5"><span>${esc(r.band||'➖')}</span> <span style="color:#64748B;font-weight:600">${esc(r.label)}</span> <strong style="color:#334155">${esc(main)}</strong></div>`;
-      // reason on its own indented line — keeps dense rows scannable
-      const rsn = r.reason ? `<div style="margin:1px 0 5px 20px;color:#94A3B8;font-size:0.73rem;line-height:1.5">${esc(r.reason)}</div>` : '';
-      return head + rsn;
-    }).join('');
-    html += `<div style="margin-top:8px;padding:8px 10px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px"><div style="font-size:0.72rem;font-weight:600;color:#475569;margin-bottom:4px">📊 數據判讀</div><div style="display:flex;flex-direction:column;gap:3px;font-size:0.78rem">${roRows}</div></div>`;
-  }
+  // Keep every signal and its reason visible; desktop uses two readable columns.
+  if (dataRows.length) html += renderDataReadout(dataRows);
   // 核心邏輯 removed from the preview card (user request) — 數據判讀 only.
   // Underhorse signal
   if (horse.underhorse_triggered) {
@@ -1592,29 +1716,23 @@ function renderHorseCard(horse, topPickRank) {
 
   // Expand button — inside body, before expandable section
   if (hasAnalysis) {
-    html += `<div onclick="toggleCard('${cardId}', this)" style="display:block;padding:10px 12px;background:#F8FAFC;border-top:1px solid #E2E8F0;cursor:pointer;font-size:0.8rem;font-weight:600;color:#3B82F6;text-align:center;transition:background 0.2s;box-sizing:border-box">展開完整分析 ▼</div>`;
+    html += `<button type="button" class="horse-card__expand-btn" aria-expanded="false" aria-controls="${cardId}-detail" onclick="toggleCard('${cardId}', this)">
+      <span class="horse-card__expand-label">完整分析</span>
+      <span class="horse-card__expand-meta">${topicCount} 個章節 <span class="horse-card__expand-chevron" aria-hidden="true">⌄</span></span>
+    </button>`;
   }
 
-  // Expandable section — compact bordered callouts with smooth animation
-  html += `<div id="${cardId}-detail" class="expand-animate expand-animate--collapsed" style="margin-top:0">`;
-  const renderSection = (icon, title, borderColor, bgColor, content) => {
-    return `<div style="margin-bottom:8px;padding:8px 12px;background:${bgColor};border-left:3px solid ${borderColor};border-radius:4px;font-size:0.78rem;line-height:1.8">${icon} <strong style="color:${borderColor}">${title}:</strong><br><div style="color:#334155;margin-top:4px">${formatRichSection(content)}</div></div>`;
-  };
-  if (horse.raw_text) {
-    const sections = parseRawTextSections(horse.raw_text).filter(sec => !isEmptySection(sec.content));
-    sections.forEach(sec => {
-      html += renderSection(sec.icon, sec.title, sec.color, sec.bg, sec.content);
-    });
-  } else {
-    if (horse.speed_forensics && !isEmptySection(horse.speed_forensics)) html += renderSection('🔬','段速法醫','#2563EB','#EFF6FF', horse.speed_forensics);
-    if (horse.eem_energy && !isEmptySection(horse.eem_energy)) html += renderSection('⚡','EEM 能量引擎','#D97706','#FFFBEB', horse.eem_energy);
-    if (horse.forgiveness_file && !isEmptySection(horse.forgiveness_file)) html += renderSection('📋','寬恕檔案','#0F766E','#F0FDFA', horse.forgiveness_file);
-    if (horse.form_line && !isEmptySection(horse.form_line)) html += renderSection('🔗','賽績線','#475569','#F8FAFC', horse.form_line);
-    if (horse.horse_profile && !isEmptySection(horse.horse_profile)) html += renderSection('🐴','馬匹剖析','#475569','#F8FAFC', horse.horse_profile);
-    if (horse.core_analysis && !isEmptySection(horse.core_analysis)) html += renderSection('🧠','核心分析','#1E40AF','#EFF6FF', horse.core_analysis);
-    if (horse.conclusion && !isEmptySection(horse.conclusion)) html += renderSection('💡','結論','#059669','#ECFDF5', horse.conclusion);
+  // Only the outer control collapses; once opened, every chapter stays visible.
+  if (hasAnalysis) {
+    const chapterLinks = analysisSections.map((section, index) => `<a href="#${cardId}-chapter-${index + 1}"><span>${String(index + 1).padStart(2, '0')}</span>${esc(section.title)}</a>`).join('');
+    html += `<div id="${cardId}-detail" class="expand-animate expand-animate--collapsed" style="margin-top:0">
+      <div class="analysis-detail">
+        <div class="analysis-detail__header"><div class="analysis-detail__title">完整分析</div><div class="analysis-detail__hint">全部內容已展開 · 可用章節索引快速跳讀</div></div>
+        <nav class="analysis-document__nav" aria-label="完整分析章節"><span class="analysis-document__nav-label">章節</span>${chapterLinks}</nav>
+        <div class="analysis-document">${analysisSections.map((section, index) => renderAnalysisDocumentSection(section, index, cardId)).join('')}</div>
+      </div>
+    </div>`;
   }
-  html += '</div>'; // closes expand section
   html += '</div>'; // closes horse-card__body
   html += '</div>'; // closes horse-card container
   return html;
@@ -1624,10 +1742,13 @@ function toggleCard(id, btn) {
   const el = document.getElementById(id + '-detail');
   if (!el) return;
   const isCollapsed = el.classList.contains('expand-animate--collapsed');
+  const label = btn.querySelector('.horse-card__expand-label');
   if (isCollapsed) {
     el.style.maxHeight = el.scrollHeight + 'px';
     el.classList.remove('expand-animate--collapsed');
-    btn.textContent = '收起分析 ▲';
+    btn.classList.add('is-expanded');
+    btn.setAttribute('aria-expanded', 'true');
+    if (label) label.textContent = '收起完整分析';
     // Update max-height after content renders
     setTimeout(() => { el.style.maxHeight = el.scrollHeight + 'px'; }, 50);
     setTimeout(() => { el.style.maxHeight = 'none'; }, 400);
@@ -1637,7 +1758,9 @@ function toggleCard(id, btn) {
       el.classList.add('expand-animate--collapsed');
       el.style.maxHeight = '0';
     });
-    btn.textContent = '展開完整分析 ▼';
+    btn.classList.remove('is-expanded');
+    btn.setAttribute('aria-expanded', 'false');
+    if (label) label.textContent = '完整分析';
   }
 }
 
@@ -1647,11 +1770,13 @@ function parseRawTextSections(text) {
     { pattern: /(?:🔬|段速法醫|Speed Forensics|Sectional|Step 10)/i, icon: '🔬', title: '段速法醫', color: '#2563EB', bg: '#EFF6FF' },
     { pattern: /(?:⚡|EEM|能量引擎|Energy Engine)/i, icon: '⚡', title: 'EEM 能量引擎', color: '#D97706', bg: '#FFFBEB' },
     { pattern: /(?:寬恕檔案|Forgiveness|修正)/i, icon: '📋', title: '寬恕檔案', color: '#0F766E', bg: '#F0FDFA' },
-    { pattern: /(?:🔗|賽績線|Form Line|近績)/i, icon: '🔗', title: '賽績線', color: '#475569', bg: '#F8FAFC' },
+    { pattern: /(?:🔗|賽績線|Form Line)/i, icon: '🔗', title: '賽績線', color: '#475569', bg: '#F8FAFC' },
     { pattern: /(?:🐴|馬匹剖析|Horse Profile|馬匹資料)/i, icon: '🐴', title: '馬匹剖析', color: '#475569', bg: '#F8FAFC' },
     { pattern: /(?:🧠|核心分析|Core Analysis|核心邏輯)/i, icon: '🧠', title: '核心分析', color: '#1E40AF', bg: '#EFF6FF' },
-    { pattern: /(?:💡|結論|Conclusion|Verdict|最終評級|綜合評級)/i, icon: '💡', title: '結論', color: '#059669', bg: '#ECFDF5' },
-    { pattern: /(?:📊|評級矩陣|Rating Matrix|Grading)/i, icon: '📊', title: '評級矩陣', color: '#2563EB', bg: '#EFF6FF' },
+    { pattern: /(?:💡|最終判讀|結論|Conclusion|Verdict|最終評級|綜合評級)/i, icon: '💡', title: '結論', color: '#059669', bg: '#ECFDF5' },
+    { pattern: /(?:評分總覽|7D\s*評分矩陣|評級矩陣|Rating Matrix|Grading)/i, icon: '📊', title: '評級矩陣', color: '#2563EB', bg: '#EFF6FF' },
+    { pattern: /(?:數據判讀|Data Readout)/i, icon: '📊', title: '數據判讀', color: '#2563EB', bg: '#EFF6FF' },
+    { pattern: /(?:近績解構|Recent Form)/i, icon: '⏱️', title: '近績解構', color: '#475569', bg: '#F8FAFC' },
     { pattern: /(?:⚠️|風險|Risk|警號)/i, icon: '⚠️', title: '風險分析', color: '#DC2626', bg: '#FEF2F2' },
     { pattern: /(?:走勢趨勢|Step \d)/i, icon: '📋', title: '完整分析', color: '#475569', bg: '#F8FAFC' },
   ];
@@ -1661,7 +1786,7 @@ function parseRawTextSections(text) {
   let currentLines = [];
   const flush = () => {
     const content = currentLines.join('\n').trim();
-    if (content) sections.push({ ...(current || { icon: '📋', title: '分析', color: '#475569', bg: '#F8FAFC' }), content });
+    if (content) sections.push({ ...(current || { icon: '📝', title: '分析摘要', color: '#475569', bg: '#F8FAFC' }), content });
     currentLines = [];
     current = null;
   };
