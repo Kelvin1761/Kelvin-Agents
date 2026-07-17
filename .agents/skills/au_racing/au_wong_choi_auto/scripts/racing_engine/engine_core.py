@@ -930,6 +930,13 @@ class RacingEngine:
             if stats and stats.get("sample_size", 0) > 0:
                 win_rate = stats.get("win_rate", expected_wr)
                 raw_modifier = (win_rate - expected_wr) * 100 * w.get("modifier_multiplier", 1.0)
+                # Empirical-Bayes 收縮（2026-07-17）：細樣本 cell（例如 Rosehill 1200m
+                # 內檔 n=16 錄得 0 勝）純隨機都好常見，之前直接食 cap_min 一巴 −9.4。
+                # 修正按樣本量 n/(n+k) 收縮向 0：n=16 → 39%、n=112 → 82%、n=1499 → 98%。
+                # 710 場 walk-forward 驗證聚合非倒退（scratch/au_draw_bias_fix_test.py）。
+                shrink_k = w.get("shrinkage_k", 25.0)
+                n_samples = stats.get("sample_size", 0)
+                raw_modifier *= n_samples / (n_samples + shrink_k)
                 # 對稱化：勝率統計嘅波幅（尤其細樣本）用 cap 收窄，避免單一檔位被過度加減。
                 cap_min, cap_max = w.get("modifier_cap_min", -6.0), w.get("modifier_cap_max", 6.0)
                 modifier = max(cap_min, min(cap_max, raw_modifier))
@@ -943,7 +950,7 @@ class RacingEngine:
                 n_samp = int(stats.get("sample_size", 0))
                 detail["lines"] = [
                     f"檔位 {int(barrier)}（{bucket_zh}）→ {source_level_zh}：歷史勝率 {win_rate * 100:.0f}%，"
-                    f"場均基準 {expected_wr * 100:.0f}%（{n_samp} 場樣本）",
+                    f"場均基準 {expected_wr * 100:.0f}%（{n_samp} 場樣本，樣本收縮係數 {n_samples / (n_samples + shrink_k):.2f}）",
                     f"勝率差 → 檔位修正 {modifier:+.1f} 分" + (
                         f"（原始 {raw_modifier:+.1f}，因樣本波幅封頂於 {modifier:+.1f}）"
                         if abs(raw_modifier - modifier) > 0.05 else ""),
