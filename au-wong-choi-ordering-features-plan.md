@@ -1,5 +1,17 @@
 # AU Wong Choi — Head-to-Head Ordering Features Plan (2026-07-17)
 
+> **Status 2026-07-17 — executed same day; hypothesis RETIRED with a clean
+> negative result.** Phase 0 passed (賽績線 coverage 94.7%; H2H pairs in 38.9%
+> of ordering-opportunity races). Phase 1 killed F3/F4 (no stable OOS delta)
+> and F1 (pairwise direction accuracy 51.3% valid — coin flip); F2 (last-start
+> margin quality) showed a real, stable retrodictive delta (+0.24/+0.23).
+> Phase 2 walk-forward gate on F2(+F1): **FAIL** — positional Good +0.55pp,
+> Miss +6, Top1 −1.93pp, 3/5 folds. Scripts: `scratch/au_ordering_phase0.py`,
+> `au_ordering_phase1.py`, `au_ordering_phase2_gate.py`; evidence:
+> `scratch/au_ordering_features_raw.json`. Conclusion: the current archive's
+> information content cannot order the front of the field better than
+> ability_score already does — engine build (tasks 3–6) correctly NOT started.
+
 ## Goal
 
 Lift **positional Good**(頭兩揀齊入三甲) from 19.2% toward the 25%+ range by
