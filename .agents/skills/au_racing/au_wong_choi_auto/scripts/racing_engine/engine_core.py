@@ -3859,7 +3859,14 @@ def enrich_logic_from_facts(logic_data: dict, facts_path: Path) -> dict:
         _merge_data_value(data, "timing_speed_variance", formguide.get("timing_speed_variance"))
         _merge_data_value(data, "trial_video_signals", formguide.get("trial_video_signals"))
         _merge_data_value(data, "timing_trial_600m_avg_speed", formguide.get("timing_trial_600m_avg_speed"))
-        _merge_data_value(data, "facts_section", facts_section)
+        # The Facts file is the source of truth for the per-horse facts_section.
+        # Older Logic files carry a stale pre-realignment blob that the modern
+        # feature parsers (賽績線 / 試閘 / L400 / 近況) cannot read, so a
+        # fill-if-missing merge would leave form/trial/health blind forever.
+        if facts_section:
+            data["facts_section"] = facts_section
+        else:
+            _merge_data_value(data, "facts_section", facts_section)
         _merge_data_value(data, "last_finish_line", section.get("last_finish_line"))
         _merge_data_value(data, "warning_line", section.get("warning_line"))
         _merge_data_value(data, "sire_line", formguide.get("sire_line"))

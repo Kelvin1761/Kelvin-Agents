@@ -475,20 +475,16 @@ def load_prediction_rows(meeting_dir: Path, platform: str) -> dict[int, list[dic
 
 
 def performance_label_from_rows(model_top3: list[dict[str, Any]], actual_top3: list[dict[str, Any]]) -> str:
+    # Delegates to the canonical shared ruler so reflector labels can never
+    # drift from backtest/calibration labels.
+    _add_sys_path(SHARED_ROOT.parents[1])
+    from eval_metrics import exclusive_label
+
     actual_set = {row["horse_no"] for row in actual_top3}
     pick_nums = [row["horse_no"] for row in model_top3[:3]]
     top3_hits = sum(1 for horse_no in pick_nums if horse_no in actual_set)
     top2_hits = sum(1 for horse_no in pick_nums[:2] if horse_no in actual_set)
-
-    if top3_hits == 3:
-        return "Gold"
-    if top2_hits == 2:
-        return "Good"
-    if top3_hits >= 2:
-        return "Pass"
-    if top2_hits >= 1:
-        return "1 Hit"
-    return "Miss"
+    return exclusive_label(top3_hits, top2_hits)
 
 
 def label_rank(label: str) -> int:

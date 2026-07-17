@@ -65,6 +65,7 @@ FEATURE_SCORE_KEYS = (
     "consistency_score",
     "health_score",
     "confidence_score",
+    "pace_figure_score",
 )
 
 
@@ -141,10 +142,17 @@ def load_scoring_rows(path: Path) -> list[dict]:
                 feature_scores[key] = value if value is not None else 60.0
             rows.append(
                 {
+                    "race_number": parse_int(row.get("race_number")),
                     "horse_number": horse_number,
                     "horse_slug": normalize_horse_name(row.get("horse_name") or ""),
                     "horse_name": str(row.get("horse_name") or "").strip(),
                     "ability_score": parse_float(row.get("ability_score"), 0.0) or 0.0,
+                    "pure_7d_score": (
+                        parse_float(row.get("pure_7d_score"), None)
+                        if row.get("pure_7d_score") not in (None, "")
+                        else parse_float(row.get("base_7d_score"), None)
+                    ),
+                    "wet_form_feature": parse_float(row.get("wet_form_feature"), 0.0) or 0.0,
                     "rank_score": (
                         parse_float(row.get("rank_score"), None)
                         if row.get("rank_score") not in (None, "")
@@ -178,6 +186,13 @@ def archive_snapshot(
             feature_scores["health_score"] = feature_scores["readiness_score"]
         return {
             "ability_score": float(python_auto.get("ability_score") or 0.0),
+            "pure_7d_score": float(
+                python_auto.get("pure_7d_score")
+                or python_auto.get("base_7d_score")
+                or python_auto.get("ability_score")
+                or 0.0
+            ),
+            "wet_form_feature": float(python_auto.get("wet_form_feature") or 0.0),
             "rank_score": float(python_auto.get("rank_score") or python_auto.get("ability_score") or 0.0),
             "rank": parse_int(python_auto.get("rank")),
             "grade": str(python_auto.get("grade") or "").strip(),
@@ -298,6 +313,13 @@ def iter_logic_rows(archive_root: Path, historical_results):
                     "horse_number": parse_int(horse_num) or 999,
                     "horse_name": str(get_true_horse_name(horse) or "").strip(),
                     "ability_score": float(snapshot.get("ability_score") or 0.0),
+                    "pure_7d_score": float(
+                        snapshot.get("pure_7d_score")
+                        if snapshot.get("pure_7d_score") is not None
+                        else snapshot.get("ability_score")
+                        or 0.0
+                    ),
+                    "wet_form_feature": float(snapshot.get("wet_form_feature") or 0.0),
                     "rank_score": float(snapshot.get("rank_score") or snapshot.get("ability_score") or 0.0),
                     "model_score": float(snapshot.get("ability_score") or snapshot.get("rank_score") or 0.0),
                     "rank": snapshot.get("rank"),

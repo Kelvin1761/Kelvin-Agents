@@ -21,11 +21,75 @@ from renderer import ensure_verdict, render_meeting_csv, validate_report_text, w
 from validation import validate_engine_scripts, validate_logic_data
 
 
-def process_logic_file(logic_path: Path) -> dict:
+def _condition_family(condition: str) -> str:
+    from au_archive_calibrator import normalize_condition_bucket
+
+    return normalize_condition_bucket(condition)
+
+
+def stored_going(logic_data: dict) -> str:
+    """Today's going exactly as the engine would read it (same precedence)."""
+    race = logic_data.get("race_analysis") or {}
+    meeting = race.get("meeting_intelligence") if isinstance(race.get("meeting_intelligence"), dict) else {}
+    speed_map = race.get("speed_map") if isinstance(race.get("speed_map"), dict) else {}
+    return str(
+        meeting.get("going")
+        or speed_map.get("going")
+        or speed_map.get("track_condition")
+        or race.get("going")
+        or ""
+    ).strip()
+
+
+def apply_going_refresh(logic_data: dict, official_going: str) -> dict:
+    """Overwrite every going field the engine reads with the official pre-race going.
+
+    Data-correctness gate from the 2026-07-16 shadow review: Warwick Farm
+    2026-07-15 was scored on stale Soft 5 Logic data while the meeting raced
+    Good 4 (4/7 races mismatched). Going must be refreshed immediately before
+    scoring; the audit trail is stored in race_analysis["going_refresh"].
+    """
+    official_going = str(official_going).strip()
+    race = logic_data.setdefault("race_analysis", {})
+    previous = stored_going(logic_data)
+    race["going"] = official_going
+    speed_map = race.get("speed_map")
+    if isinstance(speed_map, dict):
+        speed_map["going"] = official_going
+        if "track_condition" in speed_map:
+            speed_map["track_condition"] = official_going
+    meeting = race.get("meeting_intelligence")
+    if isinstance(meeting, dict):
+        meeting["going"] = official_going
+        meeting["track_summary"] = official_going
+    audit = {
+        "previous": previous,
+        "applied": official_going,
+        "changed": previous != official_going,
+        "family_changed": _condition_family(previous) != _condition_family(official_going),
+    }
+    race["going_refresh"] = audit
+    return audit
+
+
+def process_logic_file(logic_path: Path, going_override: str | None = None) -> dict:
     try:
         logic_data = json.loads(logic_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as e:
         raise ValueError(f"Failed to read/parse Logic.json: {logic_path}\n{e}")
+    if going_override:
+        audit = apply_going_refresh(logic_data, going_override)
+        if audit["family_changed"]:
+            print(
+                f"⚠️  GOING REFRESH {logic_path.name}: stored '{audit['previous']}' → official "
+                f"'{audit['applied']}' (family change — wet/soft handling recomputed)",
+                file=sys.stderr,
+            )
+        elif audit["changed"]:
+            print(
+                f"ℹ️  Going refresh {logic_path.name}: '{audit['previous']}' → '{audit['applied']}'",
+                file=sys.stderr,
+            )
     race_number = logic_data.get("race_analysis", {}).get("race_number")
     facts_path = _facts_path_for_logic(logic_path, race_number)
     if facts_path and facts_path.exists():
@@ -68,14 +132,14 @@ def process_logic_file(logic_path: Path) -> dict:
     return logic_data
 
 
-def process_meeting_dir(meeting_dir: Path) -> list[dict]:
+def process_meeting_dir(meeting_dir: Path, going_override: str | None = None) -> list[dict]:
     results = []
     logic_files = sorted(meeting_dir.glob("Race_*_Logic.json"), key=_logic_sort_key)
     if not logic_files:
         raise FileNotFoundError(f"No Race_*_Logic.json files found in {meeting_dir}")
     for logic_path in logic_files:
         try:
-            results.append(process_logic_file(logic_path))
+            results.append(process_logic_file(logic_path, going_override=going_override))
         except Exception as e:
             print(f"⚠️  Skipping {logic_path.name}: {e}", file=sys.stderr)
             continue
@@ -83,6 +147,15 @@ def process_meeting_dir(meeting_dir: Path) -> list[dict]:
     if meeting_csv:
         (meeting_dir / "Meeting_Auto_Scoring.csv").write_text(meeting_csv, encoding="utf-8")
         print("✅ Meeting_Auto_Scoring.csv updated")
+    refreshed = [r.get("race_analysis", {}).get("going_refresh") for r in results]
+    refreshed = [audit for audit in refreshed if audit]
+    if refreshed:
+        family_changes = sum(1 for audit in refreshed if audit["family_changed"])
+        text_changes = sum(1 for audit in refreshed if audit["changed"])
+        print(
+            f"✅ Going refresh applied to {len(refreshed)} races "
+            f"({text_changes} changed, {family_changes} family changes)"
+        )
     return results
 
 
@@ -93,8 +166,13 @@ def _facts_path_for_logic(logic_path: Path, race_number):
     safe_race_num = re.sub(r"[^0-9]", "", str(race_number))
     if not safe_race_num:
         return None
-    matches = sorted(logic_path.parent.glob(f"*Race_{safe_race_num}_Facts.md"))
-    return matches[0] if matches else None
+    # Archive meetings name Facts files "MM-DD Race N Facts.md" (spaces), live
+    # tooling uses "Race_N_Facts.md" (underscores) — accept both.
+    for pattern in (f"*Race_{safe_race_num}_Facts.md", f"*Race {safe_race_num} Facts.md"):
+        matches = sorted(logic_path.parent.glob(pattern))
+        if matches:
+            return matches[0]
+    return None
 
 
 def _logic_sort_key(path: Path):
@@ -168,6 +246,17 @@ def _horse_number_sort_key(value: str) -> int:
 def main():
     parser = argparse.ArgumentParser(description="AU Wong Choi Auto Orchestrator")
     parser.add_argument("target", help="Meeting directory or Race_X_Logic.json")
+    parser.add_argument(
+        "--going",
+        default=None,
+        help=(
+            "Official current track condition (e.g. 'Good 4'). Applied to every going "
+            "field the engine reads immediately before scoring, with an audit trail in "
+            "race_analysis.going_refresh. Always pass this for live meetings — stored "
+            "Logic going can be stale (Warwick Farm 2026-07-15 raced Good 4 but was "
+            "scored on Soft 5 Logic data)."
+        ),
+    )
     args = parser.parse_args()
 
     script_errors = validate_engine_scripts(SCRIPT_DIR / "racing_engine")
@@ -176,9 +265,9 @@ def main():
 
     target = Path(args.target).resolve()
     if target.is_file():
-        process_logic_file(target)
+        process_logic_file(target, going_override=args.going)
     elif target.is_dir():
-        process_meeting_dir(target)
+        process_meeting_dir(target, going_override=args.going)
     else:
         raise FileNotFoundError(target)
 

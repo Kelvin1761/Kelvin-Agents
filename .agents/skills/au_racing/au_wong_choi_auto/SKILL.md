@@ -15,8 +15,14 @@ version: 1.0.0
 
 ## Entry Point
 ```bash
-python3 .agents/skills/au_racing/au_wong_choi_auto/scripts/au_auto_orchestrator.py <meeting_dir_or_logic_file>
+python3 .agents/skills/au_racing/au_wong_choi_auto/scripts/au_auto_orchestrator.py <meeting_dir_or_logic_file> [--going "Good 4"]
 ```
+
+For live meetings, ALWAYS pass `--going` with the official current track condition
+(from the extractor / racenet meeting page) so scoring never runs on stale Logic
+going (Warwick Farm 2026-07-15 raced Good 4 but was scored on stale Soft 5 data).
+The refresh overwrites every going field the engine reads and records an audit
+trail in `race_analysis.going_refresh`.
 
 ## Outputs
 - `Race_X_Auto_Analysis.md`

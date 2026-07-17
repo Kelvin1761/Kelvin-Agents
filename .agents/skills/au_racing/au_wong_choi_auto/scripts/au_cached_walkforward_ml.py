@@ -14,6 +14,9 @@ from statistics import mean
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 sys.path.append(str(SCRIPT_DIR))
+sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "shared_racing"))
+
+from eval_metrics import race_metrics, summarize_races  # noqa: E402
 
 from au_archive_calibrator import (  # noqa: E402
     ARCHIVE_ROOT,
@@ -113,17 +116,23 @@ def iter_scoring_race_rows(historical_results) -> tuple[list[dict], int]:
         meeting_track = meeting_track_from_name(meeting_dir)
         if not meeting_date or not meeting_track:
             continue
+        meeting_scoring_path = meeting_dir / "Meeting_Auto_Scoring.csv"
+        scoring_groups: dict[int, list[dict]] = defaultdict(list)
+        if meeting_scoring_path.exists():
+            for scoring_row in load_scoring_rows(meeting_scoring_path):
+                race_no = parse_int(scoring_row.get("race_number"))
+                if race_no:
+                    scoring_groups[race_no].append(scoring_row)
         for scoring_path in sorted(meeting_dir.glob("Race_*_Auto_Scoring.csv")):
             race_no = parse_int(scoring_path.stem)
-            if not race_no:
-                skipped_races += 1
-                continue
+            if race_no and race_no not in scoring_groups:
+                scoring_groups[race_no].extend(load_scoring_rows(scoring_path))
+        for race_no, scoring_rows in sorted(scoring_groups.items()):
             result_rows = choose_track_rows(historical_results.get((meeting_date, race_no), []), meeting_track)
             if not result_rows:
                 skipped_races += 1
                 continue
             race_lookup = {row["horse_slug"]: row for row in result_rows}
-            scoring_rows = load_scoring_rows(scoring_path)
             race_rows = []
             for scoring_row in scoring_rows:
                 result_row = race_lookup.get(normalize_horse_name(scoring_row.get("horse_name", "")))
@@ -142,6 +151,12 @@ def iter_scoring_race_rows(historical_results) -> tuple[list[dict], int]:
                         "horse_name": scoring_row["horse_name"],
                         "actual_pos": int(result_row["pos"]),
                         "ability_score": scoring_row["ability_score"],
+                        "pure_7d_score": (
+                            scoring_row.get("pure_7d_score")
+                            if scoring_row.get("pure_7d_score") is not None
+                            else scoring_row["ability_score"]
+                        ),
+                        "wet_form_feature": scoring_row.get("wet_form_feature", 0.0),
                         "rank_score": scoring_row["rank_score"],
                         "feature_scores": scoring_row.get("feature_scores") or {},
                         "matrix_scores": scoring_row.get("matrix_scores") or {},
@@ -189,6 +204,8 @@ def materialize_dataset(rebuild: bool = False) -> list[dict]:
                 "is_top3": 1 if int(source.get("actual_pos") or 99) <= 3 else 0,
                 "is_winner": 1 if int(source.get("actual_pos") or 99) == 1 else 0,
                 "ability_score": source.get("ability_score", 0.0),
+                "pure_7d_score": source.get("pure_7d_score", source.get("ability_score", 0.0)),
+                "wet_form_feature": source.get("wet_form_feature", 0.0),
                 "rank_score": source.get("rank_score", source.get("ability_score", 0.0)),
                 "wet_flag": 1 if wet else 0,
                 "soft_flag": 1 if soft else 0,
@@ -248,6 +265,8 @@ def load_dataset(path: Path) -> list[dict]:
                 row[key] = int(as_float(row.get(key), 0))
             for key in (
                 "ability_score",
+                "pure_7d_score",
+                "wet_form_feature",
                 "rank_score",
                 *[f"mx_{m}" for m in MATRIX_KEYS],
                 *[f"wet_{m}" for m in MATRIX_KEYS],
@@ -271,35 +290,37 @@ def group_races(rows: list[dict]) -> list[list[dict]]:
     return sorted(races, key=lambda race: (race[0]["date"], race[0]["meeting"], race[0]["race"]))
 
 
-def metrics_for_races(races: list[list[dict]], score_key: str = "_score") -> dict:
-    bucket = Counter()
-    top3_hits = 0
-    top3_slots = 0
+def race_eval_rows(races: list[list[dict]], score_key: str = "_score") -> list[dict]:
+    """Canonical per-race metrics (shared_racing.eval_metrics) for cached rows."""
+    eval_rows = []
     for race in races:
         ranked = sorted(race, key=lambda row: (-as_float(row[score_key]), int(row["horse_number"])))
-        top3 = ranked[:3]
-        hits = sum(1 for row in top3 if row["actual_pos"] <= 3)
-        bucket["races"] += 1
-        bucket[f"{hits}hit"] += 1
-        bucket["top3_hits"] += hits
-        bucket["top3_slots"] += len(top3)
-        bucket["winner_in_top3"] += 1 if any(row["actual_pos"] == 1 for row in top3) else 0
-        bucket["top1_wins"] += 1 if ranked and ranked[0]["actual_pos"] == 1 else 0
-        bucket["gold"] += 1 if hits == 3 else 0
-        bucket["good"] += 1 if hits >= 2 else 0
-        bucket["pass"] += 1 if hits >= 1 else 0
-    races_n = max(1, bucket["races"])
-    slots = max(1, bucket["top3_slots"])
+        picks = [int(row["horse_number"]) for row in ranked]
+        actual_pos = {int(row["horse_number"]): int(row["actual_pos"]) for row in ranked}
+        actual_top3 = [horse for horse, pos in actual_pos.items() if pos <= 3]
+        eval_rows.append(race_metrics(picks, actual_top3, actual_pos=actual_pos))
+    return eval_rows
+
+
+def metrics_for_races(races: list[list[dict]], score_key: str = "_score") -> dict:
+    summary = summarize_races(race_eval_rows(races, score_key))
+    counts = summary["counts"]
+    races_n = max(1, summary["races"])
     return {
-        "races": bucket["races"],
-        "gold": bucket["gold"],
-        "good": bucket["good"],
-        "pass": bucket["pass"],
-        "miss": bucket["0hit"],
-        "one_hit": bucket["1hit"],
-        "top3_precision": bucket["top3_hits"] / slots,
-        "winner_in_top3": bucket["winner_in_top3"] / races_n,
-        "top1_win": bucket["top1_wins"] / races_n,
+        "races": summary["races"],
+        "gold": counts["gold"],
+        # legacy cumulative keys: good = any 2 of top 3 hit, pass = any hit
+        "good": counts["good_any2"],
+        "pass": counts["pass_any1"],
+        "miss": summary["hit_distribution"]["0hit"],
+        "one_hit": summary["hit_distribution"]["1hit"],
+        "top3_precision": summary["top3_precision"],
+        "winner_in_top3": counts["winner_in_top3"] / races_n,
+        "top1_win": counts["champion"] / races_n,
+        # canonical additions (same ruler as HKJC reports)
+        "good_positional": counts["good_positional"],
+        "exclusive_labels": summary["exclusive_labels"],
+        "mrr": summary["mrr"],
     }
 
 

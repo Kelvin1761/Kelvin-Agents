@@ -20,6 +20,10 @@ os.environ.setdefault("PYTHONUTF8", "1")
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
+_PROJECT_ROOT = Path(__file__).resolve().parents[5]
+sys.path.insert(0, str(_PROJECT_ROOT / ".agents" / "skills" / "shared_racing"))
+from eval_metrics import race_metrics  # noqa: E402
+
 
 OLD_MATRIX_WEIGHTS = {
     "sectional": 0.23,
@@ -148,7 +152,9 @@ def score_meeting(meeting_dir: Path) -> dict:
                 "prod": clip_score(auto.get("ability_score", 60.0)),
             })
         if scored:
-            races.append(evaluate_race(race_num, scored, actual[race_num]))
+            race_eval = evaluate_race(race_num, scored, actual[race_num])
+            race_eval["field"] = len(scored)
+            races.append(race_eval)
 
     return {
         "meeting": str(meeting_dir),
@@ -173,24 +179,22 @@ def evaluate_race(race_num: int, scored: list[dict], actual_pos: dict[int, int])
 def evaluate_model(scored: list[dict], actual_pos: dict[int, int], actual_top3: list[int], key: str) -> dict:
     # Deterministic tie-break: higher score first, then lower horse number.
     picks = [item["horse_num"] for item in sorted(scored, key=lambda item: (-item[key], item["horse_num"]))[:4]]
-    actual_set = set(actual_top3)
-    hits = sum(1 for horse in picks[:3] if horse in actual_set)
-    winner = actual_top3[0] if actual_top3 else None
-    order_issue = False
-    if len(picks) >= 4:
-        order_issue = min(actual_pos.get(picks[2], 99), actual_pos.get(picks[3], 99)) < min(
-            actual_pos.get(picks[0], 99), actual_pos.get(picks[1], 99)
-        )
+    canonical = race_metrics(picks, actual_top3, actual_pos=actual_pos)
     return {
         "picks": picks,
-        "hits": hits,
-        "gold": hits == 3,
-        "good": len(picks) >= 2 and picks[0] in actual_set and picks[1] in actual_set,
-        "min_threshold": hits >= 2,
-        "single": hits >= 1,
-        "champion": bool(picks and picks[0] == winner),
-        "top3_has_champion": winner in set(picks[:3]),
-        "order_issue": order_issue,
+        "hits": canonical["hits"],
+        "gold": canonical["gold"],
+        # legacy HKJC "good" is the positional definition (picks 1+2 both in top 3)
+        "good": canonical["good_positional"],
+        "min_threshold": canonical["good_any2"],
+        "single": canonical["pass_any1"],
+        "champion": canonical["champion"],
+        "top3_has_champion": canonical["winner_in_top3"],
+        "order_issue": canonical["order_issue"],
+        # canonical additions (same ruler as AU reports)
+        "good_any2": canonical["good_any2"],
+        "exclusive_label": canonical["exclusive_label"],
+        "mrr": canonical["reciprocal_rank"],
     }
 
 
@@ -207,6 +211,7 @@ def summarize(races: list[dict]) -> dict:
             "champion": sum(r[key]["champion"] for r in races),
             "top3_has_champion": sum(r[key]["top3_has_champion"] for r in races),
             "order_issue": sum(r[key]["order_issue"] for r in races),
+            "good_any2": sum(r[key].get("good_any2", False) for r in races),
         }
     return summary
 
