@@ -123,3 +123,38 @@ gap to HKJC (21.0%).**
 3. Future weight calibrations must run on refreshed scores — the Phase-5
    candidate FAILs above were measured on stale evidence and should be
    re-tested after adoption.
+
+## 6. Adoption executed and verified (approved 2026-07-17)
+
+- 85 meetings adopted onto the Drive archive (2,323 files); originals preserved
+  at `AU_Racing_prescore_backup_2026-07-17` (Drive-internal rename, reversible).
+- Production ML cache rebuilt from the adopted archive; pre-adoption cache kept
+  at `/private/tmp/au_wong_choi_ml_cache_prescore_2026-07-17`. Rebuilt metrics
+  match the sandbox benchmark exactly (OOS 363R: 22G/149g2/75gp/43M).
+- **Post-adoption AU vs HKJC (one ruler)**: positional Good 19.2% vs 21.0%
+  (gap CI [-4.2%, +7.7%]); winner-in-Top3 **52.0% vs 51.9%**; Top1
+  **23.9% vs 23.5%**; Gold 5.5% vs 3.7%; Top3 precision 44.8% vs 42.8%;
+  MRR 0.443 vs 0.427. AU now matches or leads HKJC on most canonical KPIs.
+
+### Re-tests on refreshed evidence (all FAIL / HOLD — keep current arithmetic)
+
+- Nine Phase-5 arithmetic candidates: best was shrinkage λ=0.50 (+1.10pp
+  any-2 but −0.83pp positional); weight perturbations now clearly negative —
+  the live weights are well-tuned for the refreshed evidence.
+- Maiden class_weight fallback (redistribute the 0.70 rating share when
+  rating is default): zero effect — unrated maidens also have default
+  class/weight scores. Maiden weakness is anyway largely healed by the
+  refresh (maiden OOS positional Good 36.9%, 5 misses in 65 races).
+
+### Remaining weak cohorts (next candidates, in priority order)
+
+1. **Fields 12+** (n=250): positional Good 14.0% (was 10.8%), still −5.7pp
+   Top3 vs overall — the one big structural deficit left.
+2. **Tight score-gap races** (top1−top3 spread < 2 pts; n=249): positional
+   Good 13.3% — the engine knows when it is unsure; a confidence-aware
+   treatment (e.g. shortlist widening or abstention reporting) is the natural
+   candidate, and it overlaps heavily with the 12+ field cohort.
+3. Soft 5 detail (n=95, −3.4pp) and Sandown Lakeside (n=31, watch only).
+4. pace_figure coverage is still ~100% default before 2026-07 — it grows
+   organically as PF sectionals accumulate; revisit weight of pace_perf once
+   coverage is material.

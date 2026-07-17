@@ -2,463 +2,49 @@
  {
   "name": "reliability shrinkage λ=0.15 (all fields)",
   "oos_races": 363,
-  "affected_top3_changes": 20,
+  "affected_top3_changes": 17,
   "baseline": {
    "races": 363,
-   "gold": 21,
-   "good": 135,
-   "pass": 298,
-   "miss": 65,
-   "one_hit": 163,
-   "top3_precision": 0.41689623507805323,
-   "winner_in_top3": 0.47107438016528924,
-   "top1_win": 0.1763085399449036,
-   "good_positional": 62,
+   "gold": 22,
+   "good": 149,
+   "pass": 320,
+   "miss": 43,
+   "one_hit": 171,
+   "top3_precision": 0.4508723599632691,
+   "winner_in_top3": 0.5289256198347108,
+   "top1_win": 0.22589531680440772,
+   "good_positional": 75,
    "exclusive_labels": {
-    "Gold": 21,
-    "Good": 41,
-    "Pass": 73,
-    "1 Hit": 114,
-    "Miss": 114
+    "Gold": 22,
+    "Good": 53,
+    "Pass": 74,
+    "1 Hit": 123,
+    "Miss": 91
    },
-   "mrr": 0.3875841177494068
+   "mrr": 0.43376526289749434
   },
   "candidate": {
    "races": 363,
-   "gold": 21,
-   "good": 134,
-   "pass": 299,
-   "miss": 64,
-   "one_hit": 165,
-   "top3_precision": 0.41689623507805323,
-   "winner_in_top3": 0.4738292011019284,
-   "top1_win": 0.17355371900826447,
-   "good_positional": 63,
+   "gold": 22,
+   "good": 152,
+   "pass": 320,
+   "miss": 43,
+   "one_hit": 168,
+   "top3_precision": 0.45362718089990817,
+   "winner_in_top3": 0.5289256198347108,
+   "top1_win": 0.22589531680440772,
+   "good_positional": 75,
    "exclusive_labels": {
-    "Gold": 21,
-    "Good": 42,
-    "Pass": 71,
-    "1 Hit": 115,
-    "Miss": 114
+    "Gold": 22,
+    "Good": 53,
+    "Pass": 77,
+    "1 Hit": 121,
+    "Miss": 90
    },
-   "mrr": 0.3861454890380508
+   "mrr": 0.43414459736773786
   },
-  "good_lift_pp": -0.28,
-  "good_positional_lift_pp": 0.28,
-  "losses_pp": {
-   "gold": 0.0,
-   "top1": 0.28,
-   "winner_in_top3": -0.28
-  },
-  "miss_delta": -1,
-  "folds": [
-   {
-    "fold": 1,
-    "baseline": {
-     "races": 55,
-     "gold": 9,
-     "good": 29,
-     "pass": 51,
-     "miss": 4,
-     "one_hit": 22,
-     "top3_precision": 0.5393939393939394,
-     "winner_in_top3": 0.6,
-     "top1_win": 0.2,
-     "good_positional": 14,
-     "exclusive_labels": {
-      "Gold": 9,
-      "Good": 5,
-      "Pass": 15,
-      "1 Hit": 19,
-      "Miss": 7
-     },
-     "mrr": 0.4435998345089254
-    },
-    "candidate": {
-     "races": 55,
-     "gold": 9,
-     "good": 29,
-     "pass": 51,
-     "miss": 4,
-     "one_hit": 22,
-     "top3_precision": 0.5393939393939394,
-     "winner_in_top3": 0.6,
-     "top1_win": 0.2,
-     "good_positional": 14,
-     "exclusive_labels": {
-      "Gold": 9,
-      "Good": 5,
-      "Pass": 15,
-      "1 Hit": 19,
-      "Miss": 7
-     },
-     "mrr": 0.4435998345089254
-    }
-   },
-   {
-    "fold": 2,
-    "baseline": {
-     "races": 64,
-     "gold": 0,
-     "good": 24,
-     "pass": 59,
-     "miss": 5,
-     "one_hit": 35,
-     "top3_precision": 0.4322916666666667,
-     "winner_in_top3": 0.515625,
-     "top1_win": 0.15625,
-     "good_positional": 9,
-     "exclusive_labels": {
-      "Gold": 0,
-      "Good": 9,
-      "Pass": 15,
-      "1 Hit": 26,
-      "Miss": 14
-     },
-     "mrr": 0.39317956349206334
-    },
-    "candidate": {
-     "races": 64,
-     "gold": 0,
-     "good": 24,
-     "pass": 60,
-     "miss": 4,
-     "one_hit": 36,
-     "top3_precision": 0.4375,
-     "winner_in_top3": 0.53125,
-     "top1_win": 0.15625,
-     "good_positional": 9,
-     "exclusive_labels": {
-      "Gold": 0,
-      "Good": 9,
-      "Pass": 15,
-      "1 Hit": 27,
-      "Miss": 13
-     },
-     "mrr": 0.3978670634920634
-    }
-   },
-   {
-    "fold": 3,
-    "baseline": {
-     "races": 109,
-     "gold": 9,
-     "good": 40,
-     "pass": 79,
-     "miss": 30,
-     "one_hit": 39,
-     "top3_precision": 0.39143730886850153,
-     "winner_in_top3": 0.44954128440366975,
-     "top1_win": 0.2018348623853211,
-     "good_positional": 22,
-     "exclusive_labels": {
-      "Gold": 9,
-      "Good": 13,
-      "Pass": 18,
-      "1 Hit": 24,
-      "Miss": 45
-     },
-     "mrr": 0.38911967237655326
-    },
-    "candidate": {
-     "races": 109,
-     "gold": 9,
-     "good": 39,
-     "pass": 79,
-     "miss": 30,
-     "one_hit": 40,
-     "top3_precision": 0.38837920489296635,
-     "winner_in_top3": 0.44954128440366975,
-     "top1_win": 0.1926605504587156,
-     "good_positional": 22,
-     "exclusive_labels": {
-      "Gold": 9,
-      "Good": 13,
-      "Pass": 17,
-      "1 Hit": 25,
-      "Miss": 45
-     },
-     "mrr": 0.38300346442548294
-    }
-   },
-   {
-    "fold": 4,
-    "baseline": {
-     "races": 106,
-     "gold": 2,
-     "good": 33,
-     "pass": 87,
-     "miss": 19,
-     "one_hit": 54,
-     "top3_precision": 0.3836477987421384,
-     "winner_in_top3": 0.42452830188679247,
-     "top1_win": 0.1509433962264151,
-     "good_positional": 13,
-     "exclusive_labels": {
-      "Gold": 2,
-      "Good": 11,
-      "Pass": 20,
-      "1 Hit": 37,
-      "Miss": 36
-     },
-     "mrr": 0.3602318017412357
-    },
-    "candidate": {
-     "races": 106,
-     "gold": 2,
-     "good": 33,
-     "pass": 87,
-     "miss": 19,
-     "one_hit": 54,
-     "top3_precision": 0.3836477987421384,
-     "winner_in_top3": 0.42452830188679247,
-     "top1_win": 0.1509433962264151,
-     "good_positional": 14,
-     "exclusive_labels": {
-      "Gold": 2,
-      "Good": 12,
-      "Pass": 19,
-      "1 Hit": 36,
-      "Miss": 37
-     },
-     "mrr": 0.3586594746972105
-    }
-   },
-   {
-    "fold": 5,
-    "baseline": {
-     "races": 29,
-     "gold": 1,
-     "good": 9,
-     "pass": 22,
-     "miss": 7,
-     "one_hit": 13,
-     "top3_precision": 0.367816091954023,
-     "winner_in_top3": 0.3793103448275862,
-     "top1_win": 0.1724137931034483,
-     "good_positional": 4,
-     "exclusive_labels": {
-      "Gold": 1,
-      "Good": 3,
-      "Pass": 5,
-      "1 Hit": 8,
-      "Miss": 12
-     },
-     "mrr": 0.3632047071702244
-    },
-    "candidate": {
-     "races": 29,
-     "gold": 1,
-     "good": 9,
-     "pass": 22,
-     "miss": 7,
-     "one_hit": 13,
-     "top3_precision": 0.367816091954023,
-     "winner_in_top3": 0.3793103448275862,
-     "top1_win": 0.1724137931034483,
-     "good_positional": 4,
-     "exclusive_labels": {
-      "Gold": 1,
-      "Good": 3,
-      "Pass": 5,
-      "1 Hit": 8,
-      "Miss": 12
-     },
-     "mrr": 0.36358784893267654
-    }
-   }
-  ],
-  "top3_non_worse_folds": "4/5",
-  "slices": {
-   "12+": {
-    "races": 123,
-    "gold": 3,
-    "good": 29,
-    "pass": 91,
-    "miss": 32,
-    "one_hit": 62,
-    "top3_precision": 0.3333333333333333,
-    "winner_in_top3": 0.34146341463414637,
-    "top1_win": 0.13008130081300814,
-    "good_positional": 13,
-    "exclusive_labels": {
-     "Gold": 3,
-     "Good": 10,
-     "Pass": 16,
-     "1 Hit": 39,
-     "Miss": 55
-    },
-    "mrr": 0.30906009076740787
-   },
-   "9-11": {
-    "races": 148,
-    "gold": 4,
-    "good": 50,
-    "pass": 124,
-    "miss": 24,
-    "one_hit": 74,
-    "top3_precision": 0.4009009009009009,
-    "winner_in_top3": 0.4797297297297297,
-    "top1_win": 0.1554054054054054,
-    "good_positional": 20,
-    "exclusive_labels": {
-     "Gold": 4,
-     "Good": 16,
-     "Pass": 30,
-     "1 Hit": 55,
-     "Miss": 43
-    },
-    "mrr": 0.3852670040170043
-   },
-   "<=8": {
-    "races": 92,
-    "gold": 14,
-    "good": 55,
-    "pass": 84,
-    "miss": 8,
-    "one_hit": 29,
-    "top3_precision": 0.5543478260869565,
-    "winner_in_top3": 0.6413043478260869,
-    "top1_win": 0.2608695652173913,
-    "good_positional": 30,
-    "exclusive_labels": {
-     "Gold": 14,
-     "Good": 16,
-     "Pass": 25,
-     "1 Hit": 21,
-     "Miss": 16
-    },
-    "mrr": 0.4906185300207042
-   },
-   "going Good/Firm": {
-    "races": 96,
-    "gold": 7,
-    "good": 39,
-    "pass": 91,
-    "miss": 5,
-    "one_hit": 52,
-    "top3_precision": 0.4756944444444444,
-    "winner_in_top3": 0.5729166666666666,
-    "top1_win": 0.15625,
-    "good_positional": 19,
-    "exclusive_labels": {
-     "Gold": 7,
-     "Good": 12,
-     "Pass": 20,
-     "1 Hit": 41,
-     "Miss": 16
-    },
-    "mrr": 0.40806438931438943
-   },
-   "going Heavy": {
-    "races": 87,
-    "gold": 4,
-    "good": 26,
-    "pass": 63,
-    "miss": 24,
-    "one_hit": 37,
-    "top3_precision": 0.3563218390804598,
-    "winner_in_top3": 0.4827586206896552,
-    "top1_win": 0.1839080459770115,
-    "good_positional": 13,
-    "exclusive_labels": {
-     "Gold": 4,
-     "Good": 9,
-     "Pass": 13,
-     "1 Hit": 25,
-     "Miss": 36
-    },
-    "mrr": 0.39879057723885325
-   },
-   "going Soft": {
-    "races": 171,
-    "gold": 9,
-    "good": 66,
-    "pass": 138,
-    "miss": 33,
-    "one_hit": 72,
-    "top3_precision": 0.4152046783625731,
-    "winner_in_top3": 0.4093567251461988,
-    "top1_win": 0.17543859649122806,
-    "good_positional": 29,
-    "exclusive_labels": {
-     "Gold": 9,
-     "Good": 20,
-     "Pass": 37,
-     "1 Hit": 46,
-     "Miss": 59
-    },
-    "mrr": 0.36446826402966803
-   },
-   "going Synthetic": {
-    "races": 9,
-    "gold": 1,
-    "good": 3,
-    "pass": 7,
-    "miss": 2,
-    "one_hit": 4,
-    "top3_precision": 0.4074074074074074,
-    "winner_in_top3": 0.5555555555555556,
-    "top1_win": 0.2222222222222222,
-    "good_positional": 2,
-    "exclusive_labels": {
-     "Gold": 1,
-     "Good": 1,
-     "Pass": 1,
-     "1 Hit": 3,
-     "Miss": 3
-    },
-    "mrr": 0.4419753086419753
-   }
-  },
-  "passed": false
- },
- {
-  "name": "reliability shrinkage λ=0.15 (12+ fields only)",
-  "oos_races": 363,
-  "affected_top3_changes": 10,
-  "baseline": {
-   "races": 363,
-   "gold": 21,
-   "good": 135,
-   "pass": 298,
-   "miss": 65,
-   "one_hit": 163,
-   "top3_precision": 0.41689623507805323,
-   "winner_in_top3": 0.47107438016528924,
-   "top1_win": 0.1763085399449036,
-   "good_positional": 62,
-   "exclusive_labels": {
-    "Gold": 21,
-    "Good": 41,
-    "Pass": 73,
-    "1 Hit": 114,
-    "Miss": 114
-   },
-   "mrr": 0.3875841177494068
-  },
-  "candidate": {
-   "races": 363,
-   "gold": 21,
-   "good": 135,
-   "pass": 298,
-   "miss": 65,
-   "one_hit": 163,
-   "top3_precision": 0.41689623507805323,
-   "winner_in_top3": 0.47107438016528924,
-   "top1_win": 0.1763085399449036,
-   "good_positional": 63,
-   "exclusive_labels": {
-    "Gold": 21,
-    "Good": 42,
-    "Pass": 72,
-    "1 Hit": 112,
-    "Miss": 116
-   },
-   "mrr": 0.38683419427221055
-  },
-  "good_lift_pp": 0.0,
-  "good_positional_lift_pp": 0.28,
+  "good_lift_pp": 0.83,
+  "good_positional_lift_pp": 0.0,
   "losses_pp": {
    "gold": 0.0,
    "top1": 0.0,
@@ -470,215 +56,215 @@
     "fold": 1,
     "baseline": {
      "races": 55,
-     "gold": 9,
+     "gold": 7,
      "good": 29,
      "pass": 51,
      "miss": 4,
      "one_hit": 22,
-     "top3_precision": 0.5393939393939394,
-     "winner_in_top3": 0.6,
-     "top1_win": 0.2,
-     "good_positional": 14,
+     "top3_precision": 0.5272727272727272,
+     "winner_in_top3": 0.5818181818181818,
+     "top1_win": 0.21818181818181817,
+     "good_positional": 15,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 5,
-      "Pass": 15,
-      "1 Hit": 19,
-      "Miss": 7
+      "Gold": 7,
+      "Good": 8,
+      "Pass": 14,
+      "1 Hit": 14,
+      "Miss": 12
      },
-     "mrr": 0.4435998345089254
+     "mrr": 0.44992673992673976
     },
     "candidate": {
      "races": 55,
-     "gold": 9,
-     "good": 29,
+     "gold": 7,
+     "good": 30,
      "pass": 51,
      "miss": 4,
-     "one_hit": 22,
-     "top3_precision": 0.5393939393939394,
+     "one_hit": 21,
+     "top3_precision": 0.5333333333333333,
      "winner_in_top3": 0.6,
-     "top1_win": 0.2,
-     "good_positional": 14,
+     "top1_win": 0.21818181818181817,
+     "good_positional": 15,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 5,
+      "Gold": 7,
+      "Good": 8,
       "Pass": 15,
-      "1 Hit": 19,
-      "Miss": 7
+      "1 Hit": 14,
+      "Miss": 11
      },
-     "mrr": 0.4435998345089254
+     "mrr": 0.45447219447219434
     }
    },
    {
     "fold": 2,
     "baseline": {
      "races": 64,
-     "gold": 0,
-     "good": 24,
-     "pass": 59,
-     "miss": 5,
-     "one_hit": 35,
-     "top3_precision": 0.4322916666666667,
-     "winner_in_top3": 0.515625,
-     "top1_win": 0.15625,
-     "good_positional": 9,
+     "gold": 3,
+     "good": 25,
+     "pass": 58,
+     "miss": 6,
+     "one_hit": 33,
+     "top3_precision": 0.4479166666666667,
+     "winner_in_top3": 0.640625,
+     "top1_win": 0.296875,
+     "good_positional": 11,
      "exclusive_labels": {
-      "Gold": 0,
-      "Good": 9,
-      "Pass": 15,
+      "Gold": 3,
+      "Good": 8,
+      "Pass": 14,
       "1 Hit": 26,
-      "Miss": 14
+      "Miss": 13
      },
-     "mrr": 0.39317956349206334
+     "mrr": 0.505412556193806
     },
     "candidate": {
      "races": 64,
-     "gold": 0,
-     "good": 24,
-     "pass": 59,
-     "miss": 5,
-     "one_hit": 35,
-     "top3_precision": 0.4322916666666667,
-     "winner_in_top3": 0.515625,
-     "top1_win": 0.15625,
-     "good_positional": 9,
+     "gold": 3,
+     "good": 26,
+     "pass": 58,
+     "miss": 6,
+     "one_hit": 32,
+     "top3_precision": 0.453125,
+     "winner_in_top3": 0.640625,
+     "top1_win": 0.296875,
+     "good_positional": 11,
      "exclusive_labels": {
-      "Gold": 0,
-      "Good": 9,
+      "Gold": 3,
+      "Good": 8,
       "Pass": 15,
       "1 Hit": 25,
-      "Miss": 15
+      "Miss": 13
      },
-     "mrr": 0.39396081349206336
+     "mrr": 0.505412556193806
     }
    },
    {
     "fold": 3,
     "baseline": {
      "races": 109,
-     "gold": 9,
-     "good": 40,
-     "pass": 79,
-     "miss": 30,
-     "one_hit": 39,
-     "top3_precision": 0.39143730886850153,
-     "winner_in_top3": 0.44954128440366975,
+     "gold": 5,
+     "good": 43,
+     "pass": 94,
+     "miss": 15,
+     "one_hit": 51,
+     "top3_precision": 0.43425076452599387,
+     "winner_in_top3": 0.4954128440366973,
      "top1_win": 0.2018348623853211,
-     "good_positional": 22,
+     "good_positional": 28,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 13,
-      "Pass": 18,
-      "1 Hit": 24,
-      "Miss": 45
+      "Gold": 5,
+      "Good": 23,
+      "Pass": 15,
+      "1 Hit": 35,
+      "Miss": 31
      },
-     "mrr": 0.38911967237655326
+     "mrr": 0.4114282761071754
     },
     "candidate": {
      "races": 109,
-     "gold": 9,
-     "good": 40,
-     "pass": 79,
-     "miss": 30,
-     "one_hit": 39,
-     "top3_precision": 0.39143730886850153,
-     "winner_in_top3": 0.44954128440366975,
+     "gold": 5,
+     "good": 43,
+     "pass": 94,
+     "miss": 15,
+     "one_hit": 51,
+     "top3_precision": 0.43425076452599387,
+     "winner_in_top3": 0.48623853211009177,
      "top1_win": 0.2018348623853211,
-     "good_positional": 22,
+     "good_positional": 28,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 13,
-      "Pass": 18,
-      "1 Hit": 24,
-      "Miss": 45
+      "Gold": 5,
+      "Good": 23,
+      "Pass": 15,
+      "1 Hit": 36,
+      "Miss": 30
      },
-     "mrr": 0.3875906203887857
+     "mrr": 0.4104999231146022
     }
    },
    {
     "fold": 4,
     "baseline": {
      "races": 106,
-     "gold": 2,
-     "good": 33,
-     "pass": 87,
-     "miss": 19,
-     "one_hit": 54,
-     "top3_precision": 0.3836477987421384,
-     "winner_in_top3": 0.42452830188679247,
-     "top1_win": 0.1509433962264151,
-     "good_positional": 13,
+     "gold": 5,
+     "good": 43,
+     "pass": 92,
+     "miss": 14,
+     "one_hit": 49,
+     "top3_precision": 0.44025157232704404,
+     "winner_in_top3": 0.4811320754716981,
+     "top1_win": 0.2169811320754717,
+     "good_positional": 18,
      "exclusive_labels": {
-      "Gold": 2,
-      "Good": 11,
-      "Pass": 20,
-      "1 Hit": 37,
-      "Miss": 36
+      "Gold": 5,
+      "Good": 13,
+      "Pass": 25,
+      "1 Hit": 36,
+      "Miss": 27
      },
-     "mrr": 0.3602318017412357
+     "mrr": 0.41461559928541075
     },
     "candidate": {
      "races": 106,
-     "gold": 2,
-     "good": 33,
-     "pass": 87,
-     "miss": 19,
-     "one_hit": 54,
-     "top3_precision": 0.3836477987421384,
-     "winner_in_top3": 0.42452830188679247,
-     "top1_win": 0.1509433962264151,
-     "good_positional": 14,
+     "gold": 5,
+     "good": 43,
+     "pass": 92,
+     "miss": 14,
+     "one_hit": 49,
+     "top3_precision": 0.44025157232704404,
+     "winner_in_top3": 0.4811320754716981,
+     "top1_win": 0.2169811320754717,
+     "good_positional": 18,
      "exclusive_labels": {
-      "Gold": 2,
-      "Good": 12,
-      "Pass": 19,
-      "1 Hit": 36,
-      "Miss": 37
+      "Gold": 5,
+      "Good": 13,
+      "Pass": 25,
+      "1 Hit": 35,
+      "Miss": 28
      },
-     "mrr": 0.3586594746972105
+     "mrr": 0.41451077748247583
     }
    },
    {
     "fold": 5,
     "baseline": {
      "races": 29,
-     "gold": 1,
+     "gold": 2,
      "good": 9,
-     "pass": 22,
-     "miss": 7,
-     "one_hit": 13,
-     "top3_precision": 0.367816091954023,
-     "winner_in_top3": 0.3793103448275862,
-     "top1_win": 0.1724137931034483,
-     "good_positional": 4,
+     "pass": 25,
+     "miss": 4,
+     "one_hit": 16,
+     "top3_precision": 0.41379310344827586,
+     "winner_in_top3": 0.4827586206896552,
+     "top1_win": 0.20689655172413793,
+     "good_positional": 3,
      "exclusive_labels": {
-      "Gold": 1,
-      "Good": 3,
-      "Pass": 5,
-      "1 Hit": 8,
-      "Miss": 12
+      "Gold": 2,
+      "Good": 1,
+      "Pass": 6,
+      "1 Hit": 12,
+      "Miss": 8
      },
-     "mrr": 0.3632047071702244
+     "mrr": 0.3989476041200179
     },
     "candidate": {
      "races": 29,
-     "gold": 1,
-     "good": 9,
-     "pass": 22,
-     "miss": 7,
-     "one_hit": 13,
-     "top3_precision": 0.367816091954023,
-     "winner_in_top3": 0.3793103448275862,
-     "top1_win": 0.1724137931034483,
-     "good_positional": 4,
+     "gold": 2,
+     "good": 10,
+     "pass": 25,
+     "miss": 4,
+     "one_hit": 15,
+     "top3_precision": 0.42528735632183906,
+     "winner_in_top3": 0.4827586206896552,
+     "top1_win": 0.20689655172413793,
+     "good_positional": 3,
      "exclusive_labels": {
-      "Gold": 1,
-      "Good": 3,
-      "Pass": 5,
-      "1 Hit": 8,
-      "Miss": 12
+      "Gold": 2,
+      "Good": 1,
+      "Pass": 7,
+      "1 Hit": 11,
+      "Miss": 8
      },
-     "mrr": 0.36358784893267654
+     "mrr": 0.3989476041200179
     }
    }
   ],
@@ -686,143 +272,557 @@
   "slices": {
    "12+": {
     "races": 123,
-    "gold": 3,
-    "good": 29,
-    "pass": 91,
-    "miss": 32,
-    "one_hit": 62,
-    "top3_precision": 0.3333333333333333,
-    "winner_in_top3": 0.34146341463414637,
-    "top1_win": 0.13008130081300814,
-    "good_positional": 13,
+    "gold": 5,
+    "good": 38,
+    "pass": 103,
+    "miss": 20,
+    "one_hit": 65,
+    "top3_precision": 0.3956639566395664,
+    "winner_in_top3": 0.43089430894308944,
+    "top1_win": 0.2032520325203252,
+    "good_positional": 17,
     "exclusive_labels": {
-     "Gold": 3,
-     "Good": 10,
-     "Pass": 16,
-     "1 Hit": 39,
-     "Miss": 55
+     "Gold": 5,
+     "Good": 12,
+     "Pass": 21,
+     "1 Hit": 46,
+     "Miss": 39
     },
-    "mrr": 0.30906009076740787
+    "mrr": 0.3824423769545724
    },
    "9-11": {
     "races": 148,
     "gold": 4,
-    "good": 51,
-    "pass": 123,
-    "miss": 25,
-    "one_hit": 72,
-    "top3_precision": 0.4009009009009009,
-    "winner_in_top3": 0.47297297297297297,
-    "top1_win": 0.16216216216216217,
-    "good_positional": 20,
+    "good": 58,
+    "pass": 128,
+    "miss": 20,
+    "one_hit": 70,
+    "top3_precision": 0.42792792792792794,
+    "winner_in_top3": 0.5135135135135135,
+    "top1_win": 0.20945945945945946,
+    "good_positional": 26,
     "exclusive_labels": {
      "Gold": 4,
-     "Good": 16,
-     "Pass": 31,
-     "1 Hit": 52,
-     "Miss": 45
+     "Good": 22,
+     "Pass": 32,
+     "1 Hit": 49,
+     "Miss": 41
     },
-    "mrr": 0.38695619320619357
+    "mrr": 0.41746641121641154
    },
    "<=8": {
     "races": 92,
-    "gold": 14,
-    "good": 55,
-    "pass": 84,
-    "miss": 8,
-    "one_hit": 29,
-    "top3_precision": 0.5543478260869565,
-    "winner_in_top3": 0.6413043478260869,
-    "top1_win": 0.2608695652173913,
-    "good_positional": 30,
+    "gold": 13,
+    "good": 56,
+    "pass": 89,
+    "miss": 3,
+    "one_hit": 33,
+    "top3_precision": 0.572463768115942,
+    "winner_in_top3": 0.6847826086956522,
+    "top1_win": 0.2826086956521739,
+    "good_positional": 32,
     "exclusive_labels": {
-     "Gold": 14,
-     "Good": 16,
-     "Pass": 25,
-     "1 Hit": 21,
-     "Miss": 16
+     "Gold": 13,
+     "Good": 19,
+     "Pass": 24,
+     "1 Hit": 26,
+     "Miss": 10
     },
-    "mrr": 0.4906185300207042
+    "mrr": 0.5300983436853004
    },
    "going Good/Firm": {
     "races": 96,
-    "gold": 7,
-    "good": 39,
-    "pass": 90,
-    "miss": 6,
-    "one_hit": 51,
-    "top3_precision": 0.4722222222222222,
-    "winner_in_top3": 0.5625,
-    "top1_win": 0.15625,
-    "good_positional": 19,
+    "gold": 6,
+    "good": 41,
+    "pass": 87,
+    "miss": 9,
+    "one_hit": 46,
+    "top3_precision": 0.4652777777777778,
+    "winner_in_top3": 0.6041666666666666,
+    "top1_win": 0.2708333333333333,
+    "good_positional": 21,
     "exclusive_labels": {
-     "Gold": 7,
-     "Good": 12,
+     "Gold": 6,
+     "Good": 15,
      "Pass": 20,
-     "1 Hit": 40,
-     "Miss": 17
+     "1 Hit": 35,
+     "Miss": 20
     },
-    "mrr": 0.4054602226477228
+    "mrr": 0.48340270840270866
    },
    "going Heavy": {
     "races": 87,
-    "gold": 4,
-    "good": 26,
-    "pass": 63,
-    "miss": 24,
+    "gold": 6,
+    "good": 37,
+    "pass": 74,
+    "miss": 13,
     "one_hit": 37,
-    "top3_precision": 0.3563218390804598,
-    "winner_in_top3": 0.4827586206896552,
-    "top1_win": 0.1839080459770115,
-    "good_positional": 13,
+    "top3_precision": 0.4482758620689655,
+    "winner_in_top3": 0.5172413793103449,
+    "top1_win": 0.27586206896551724,
+    "good_positional": 20,
     "exclusive_labels": {
-     "Gold": 4,
-     "Good": 9,
-     "Pass": 13,
-     "1 Hit": 25,
-     "Miss": 36
+     "Gold": 6,
+     "Good": 14,
+     "Pass": 17,
+     "1 Hit": 26,
+     "Miss": 24
     },
-    "mrr": 0.39879057723885325
+    "mrr": 0.4565139522036075
    },
    "going Soft": {
     "races": 171,
     "gold": 9,
-    "good": 67,
-    "pass": 138,
-    "miss": 33,
-    "one_hit": 71,
-    "top3_precision": 0.4171539961013645,
-    "winner_in_top3": 0.4093567251461988,
+    "good": 72,
+    "pass": 150,
+    "miss": 21,
+    "one_hit": 78,
+    "top3_precision": 0.4502923976608187,
+    "winner_in_top3": 0.4853801169590643,
     "top1_win": 0.18128654970760233,
-    "good_positional": 29,
+    "good_positional": 32,
     "exclusive_labels": {
      "Gold": 9,
-     "Good": 20,
-     "Pass": 38,
-     "1 Hit": 44,
-     "Miss": 60
+     "Good": 23,
+     "Pass": 40,
+     "1 Hit": 56,
+     "Miss": 43
     },
-    "mrr": 0.3673922406378552
+    "mrr": 0.3972482358447276
    },
    "going Synthetic": {
     "races": 9,
     "gold": 1,
-    "good": 3,
-    "pass": 7,
-    "miss": 2,
-    "one_hit": 4,
-    "top3_precision": 0.4074074074074074,
-    "winner_in_top3": 0.5555555555555556,
-    "top1_win": 0.2222222222222222,
+    "good": 2,
+    "pass": 9,
+    "miss": 0,
+    "one_hit": 7,
+    "top3_precision": 0.4444444444444444,
+    "winner_in_top3": 0.6666666666666666,
+    "top1_win": 0.1111111111111111,
     "good_positional": 2,
     "exclusive_labels": {
      "Gold": 1,
      "Good": 1,
-     "Pass": 1,
-     "1 Hit": 3,
+     "Pass": 0,
+     "1 Hit": 4,
      "Miss": 3
     },
-    "mrr": 0.4419753086419753
+    "mrr": 0.3935185185185185
+   }
+  },
+  "passed": false
+ },
+ {
+  "name": "reliability shrinkage λ=0.15 (12+ fields only)",
+  "oos_races": 363,
+  "affected_top3_changes": 12,
+  "baseline": {
+   "races": 363,
+   "gold": 22,
+   "good": 149,
+   "pass": 320,
+   "miss": 43,
+   "one_hit": 171,
+   "top3_precision": 0.4508723599632691,
+   "winner_in_top3": 0.5289256198347108,
+   "top1_win": 0.22589531680440772,
+   "good_positional": 75,
+   "exclusive_labels": {
+    "Gold": 22,
+    "Good": 53,
+    "Pass": 74,
+    "1 Hit": 123,
+    "Miss": 91
+   },
+   "mrr": 0.43376526289749434
+  },
+  "candidate": {
+   "races": 363,
+   "gold": 22,
+   "good": 150,
+   "pass": 320,
+   "miss": 43,
+   "one_hit": 170,
+   "top3_precision": 0.45179063360881544,
+   "winner_in_top3": 0.5261707988980716,
+   "top1_win": 0.22589531680440772,
+   "good_positional": 75,
+   "exclusive_labels": {
+    "Gold": 22,
+    "Good": 53,
+    "Pass": 75,
+    "1 Hit": 122,
+    "Miss": 91
+   },
+   "mrr": 0.4335050853645895
+  },
+  "good_lift_pp": 0.28,
+  "good_positional_lift_pp": 0.0,
+  "losses_pp": {
+   "gold": 0.0,
+   "top1": 0.0,
+   "winner_in_top3": 0.28
+  },
+  "miss_delta": 0,
+  "folds": [
+   {
+    "fold": 1,
+    "baseline": {
+     "races": 55,
+     "gold": 7,
+     "good": 29,
+     "pass": 51,
+     "miss": 4,
+     "one_hit": 22,
+     "top3_precision": 0.5272727272727272,
+     "winner_in_top3": 0.5818181818181818,
+     "top1_win": 0.21818181818181817,
+     "good_positional": 15,
+     "exclusive_labels": {
+      "Gold": 7,
+      "Good": 8,
+      "Pass": 14,
+      "1 Hit": 14,
+      "Miss": 12
+     },
+     "mrr": 0.44992673992673976
+    },
+    "candidate": {
+     "races": 55,
+     "gold": 7,
+     "good": 29,
+     "pass": 51,
+     "miss": 4,
+     "one_hit": 22,
+     "top3_precision": 0.5272727272727272,
+     "winner_in_top3": 0.5818181818181818,
+     "top1_win": 0.21818181818181817,
+     "good_positional": 15,
+     "exclusive_labels": {
+      "Gold": 7,
+      "Good": 8,
+      "Pass": 14,
+      "1 Hit": 14,
+      "Miss": 12
+     },
+     "mrr": 0.44992673992673976
+    }
+   },
+   {
+    "fold": 2,
+    "baseline": {
+     "races": 64,
+     "gold": 3,
+     "good": 25,
+     "pass": 58,
+     "miss": 6,
+     "one_hit": 33,
+     "top3_precision": 0.4479166666666667,
+     "winner_in_top3": 0.640625,
+     "top1_win": 0.296875,
+     "good_positional": 11,
+     "exclusive_labels": {
+      "Gold": 3,
+      "Good": 8,
+      "Pass": 14,
+      "1 Hit": 26,
+      "Miss": 13
+     },
+     "mrr": 0.505412556193806
+    },
+    "candidate": {
+     "races": 64,
+     "gold": 3,
+     "good": 25,
+     "pass": 58,
+     "miss": 6,
+     "one_hit": 33,
+     "top3_precision": 0.4479166666666667,
+     "winner_in_top3": 0.640625,
+     "top1_win": 0.296875,
+     "good_positional": 11,
+     "exclusive_labels": {
+      "Gold": 3,
+      "Good": 8,
+      "Pass": 14,
+      "1 Hit": 26,
+      "Miss": 13
+     },
+     "mrr": 0.505412556193806
+    }
+   },
+   {
+    "fold": 3,
+    "baseline": {
+     "races": 109,
+     "gold": 5,
+     "good": 43,
+     "pass": 94,
+     "miss": 15,
+     "one_hit": 51,
+     "top3_precision": 0.43425076452599387,
+     "winner_in_top3": 0.4954128440366973,
+     "top1_win": 0.2018348623853211,
+     "good_positional": 28,
+     "exclusive_labels": {
+      "Gold": 5,
+      "Good": 23,
+      "Pass": 15,
+      "1 Hit": 35,
+      "Miss": 31
+     },
+     "mrr": 0.4114282761071754
+    },
+    "candidate": {
+     "races": 109,
+     "gold": 5,
+     "good": 43,
+     "pass": 94,
+     "miss": 15,
+     "one_hit": 51,
+     "top3_precision": 0.43425076452599387,
+     "winner_in_top3": 0.48623853211009177,
+     "top1_win": 0.2018348623853211,
+     "good_positional": 28,
+     "exclusive_labels": {
+      "Gold": 5,
+      "Good": 23,
+      "Pass": 15,
+      "1 Hit": 36,
+      "Miss": 30
+     },
+     "mrr": 0.4106637501132916
+    }
+   },
+   {
+    "fold": 4,
+    "baseline": {
+     "races": 106,
+     "gold": 5,
+     "good": 43,
+     "pass": 92,
+     "miss": 14,
+     "one_hit": 49,
+     "top3_precision": 0.44025157232704404,
+     "winner_in_top3": 0.4811320754716981,
+     "top1_win": 0.2169811320754717,
+     "good_positional": 18,
+     "exclusive_labels": {
+      "Gold": 5,
+      "Good": 13,
+      "Pass": 25,
+      "1 Hit": 36,
+      "Miss": 27
+     },
+     "mrr": 0.41461559928541075
+    },
+    "candidate": {
+     "races": 106,
+     "gold": 5,
+     "good": 43,
+     "pass": 92,
+     "miss": 14,
+     "one_hit": 49,
+     "top3_precision": 0.44025157232704404,
+     "winner_in_top3": 0.4811320754716981,
+     "top1_win": 0.2169811320754717,
+     "good_positional": 18,
+     "exclusive_labels": {
+      "Gold": 5,
+      "Good": 13,
+      "Pass": 25,
+      "1 Hit": 35,
+      "Miss": 28
+     },
+     "mrr": 0.41451077748247583
+    }
+   },
+   {
+    "fold": 5,
+    "baseline": {
+     "races": 29,
+     "gold": 2,
+     "good": 9,
+     "pass": 25,
+     "miss": 4,
+     "one_hit": 16,
+     "top3_precision": 0.41379310344827586,
+     "winner_in_top3": 0.4827586206896552,
+     "top1_win": 0.20689655172413793,
+     "good_positional": 3,
+     "exclusive_labels": {
+      "Gold": 2,
+      "Good": 1,
+      "Pass": 6,
+      "1 Hit": 12,
+      "Miss": 8
+     },
+     "mrr": 0.3989476041200179
+    },
+    "candidate": {
+     "races": 29,
+     "gold": 2,
+     "good": 10,
+     "pass": 25,
+     "miss": 4,
+     "one_hit": 15,
+     "top3_precision": 0.42528735632183906,
+     "winner_in_top3": 0.4827586206896552,
+     "top1_win": 0.20689655172413793,
+     "good_positional": 3,
+     "exclusive_labels": {
+      "Gold": 2,
+      "Good": 1,
+      "Pass": 7,
+      "1 Hit": 11,
+      "Miss": 8
+     },
+     "mrr": 0.3989476041200179
+    }
+   }
+  ],
+  "top3_non_worse_folds": "5/5",
+  "slices": {
+   "12+": {
+    "races": 123,
+    "gold": 5,
+    "good": 38,
+    "pass": 103,
+    "miss": 20,
+    "one_hit": 65,
+    "top3_precision": 0.3956639566395664,
+    "winner_in_top3": 0.43089430894308944,
+    "top1_win": 0.2032520325203252,
+    "good_positional": 17,
+    "exclusive_labels": {
+     "Gold": 5,
+     "Good": 12,
+     "Pass": 21,
+     "1 Hit": 46,
+     "Miss": 39
+    },
+    "mrr": 0.3824423769545724
+   },
+   "9-11": {
+    "races": 148,
+    "gold": 4,
+    "good": 56,
+    "pass": 128,
+    "miss": 20,
+    "one_hit": 72,
+    "top3_precision": 0.42342342342342343,
+    "winner_in_top3": 0.5067567567567568,
+    "top1_win": 0.20945945945945946,
+    "good_positional": 26,
+    "exclusive_labels": {
+     "Gold": 4,
+     "Good": 22,
+     "Pass": 30,
+     "1 Hit": 50,
+     "Miss": 42
+    },
+    "mrr": 0.41589787839787873
+   },
+   "<=8": {
+    "races": 92,
+    "gold": 13,
+    "good": 56,
+    "pass": 89,
+    "miss": 3,
+    "one_hit": 33,
+    "top3_precision": 0.572463768115942,
+    "winner_in_top3": 0.6847826086956522,
+    "top1_win": 0.2826086956521739,
+    "good_positional": 32,
+    "exclusive_labels": {
+     "Gold": 13,
+     "Good": 19,
+     "Pass": 24,
+     "1 Hit": 26,
+     "Miss": 10
+    },
+    "mrr": 0.5300983436853004
+   },
+   "going Good/Firm": {
+    "races": 96,
+    "gold": 6,
+    "good": 40,
+    "pass": 87,
+    "miss": 9,
+    "one_hit": 47,
+    "top3_precision": 0.4618055555555556,
+    "winner_in_top3": 0.59375,
+    "top1_win": 0.2708333333333333,
+    "good_positional": 21,
+    "exclusive_labels": {
+     "Gold": 6,
+     "Good": 15,
+     "Pass": 19,
+     "1 Hit": 35,
+     "Miss": 21
+    },
+    "mrr": 0.48079854173604203
+   },
+   "going Heavy": {
+    "races": 87,
+    "gold": 6,
+    "good": 37,
+    "pass": 74,
+    "miss": 13,
+    "one_hit": 37,
+    "top3_precision": 0.4482758620689655,
+    "winner_in_top3": 0.5172413793103449,
+    "top1_win": 0.27586206896551724,
+    "good_positional": 20,
+    "exclusive_labels": {
+     "Gold": 6,
+     "Good": 14,
+     "Pass": 17,
+     "1 Hit": 26,
+     "Miss": 24
+    },
+    "mrr": 0.4567192067192069
+   },
+   "going Soft": {
+    "races": 171,
+    "gold": 9,
+    "good": 71,
+    "pass": 150,
+    "miss": 21,
+    "one_hit": 79,
+    "top3_precision": 0.44834307992202727,
+    "winner_in_top3": 0.4853801169590643,
+    "top1_win": 0.18128654970760233,
+    "good_positional": 32,
+    "exclusive_labels": {
+     "Gold": 9,
+     "Good": 23,
+     "Pass": 39,
+     "1 Hit": 57,
+     "Miss": 43
+    },
+    "mrr": 0.3972482358447276
+   },
+   "going Synthetic": {
+    "races": 9,
+    "gold": 1,
+    "good": 2,
+    "pass": 9,
+    "miss": 0,
+    "one_hit": 7,
+    "top3_precision": 0.4444444444444444,
+    "winner_in_top3": 0.6666666666666666,
+    "top1_win": 0.1111111111111111,
+    "good_positional": 2,
+    "exclusive_labels": {
+     "Gold": 1,
+     "Good": 1,
+     "Pass": 0,
+     "1 Hit": 4,
+     "Miss": 3
+    },
+    "mrr": 0.3935185185185185
    }
   },
   "passed": false
@@ -830,269 +830,269 @@
  {
   "name": "reliability shrinkage λ=0.30 (all fields)",
   "oos_races": 363,
-  "affected_top3_changes": 36,
+  "affected_top3_changes": 32,
   "baseline": {
    "races": 363,
-   "gold": 21,
-   "good": 135,
-   "pass": 298,
-   "miss": 65,
-   "one_hit": 163,
-   "top3_precision": 0.41689623507805323,
-   "winner_in_top3": 0.47107438016528924,
-   "top1_win": 0.1763085399449036,
-   "good_positional": 62,
+   "gold": 22,
+   "good": 149,
+   "pass": 320,
+   "miss": 43,
+   "one_hit": 171,
+   "top3_precision": 0.4508723599632691,
+   "winner_in_top3": 0.5289256198347108,
+   "top1_win": 0.22589531680440772,
+   "good_positional": 75,
    "exclusive_labels": {
-    "Gold": 21,
-    "Good": 41,
-    "Pass": 73,
-    "1 Hit": 114,
-    "Miss": 114
+    "Gold": 22,
+    "Good": 53,
+    "Pass": 74,
+    "1 Hit": 123,
+    "Miss": 91
    },
-   "mrr": 0.3875841177494068
+   "mrr": 0.43376526289749434
   },
   "candidate": {
    "races": 363,
-   "gold": 21,
-   "good": 135,
-   "pass": 301,
-   "miss": 62,
-   "one_hit": 166,
-   "top3_precision": 0.4196510560146924,
-   "winner_in_top3": 0.4765840220385675,
-   "top1_win": 0.17355371900826447,
-   "good_positional": 63,
+   "gold": 22,
+   "good": 152,
+   "pass": 319,
+   "miss": 44,
+   "one_hit": 167,
+   "top3_precision": 0.4527089072543618,
+   "winner_in_top3": 0.5316804407713499,
+   "top1_win": 0.2231404958677686,
+   "good_positional": 73,
    "exclusive_labels": {
-    "Gold": 21,
-    "Good": 42,
-    "Pass": 72,
-    "1 Hit": 113,
-    "Miss": 115
+    "Gold": 22,
+    "Good": 51,
+    "Pass": 79,
+    "1 Hit": 123,
+    "Miss": 88
    },
-   "mrr": 0.3863432557647431
+   "mrr": 0.43359363318041005
   },
-  "good_lift_pp": 0.0,
-  "good_positional_lift_pp": 0.28,
+  "good_lift_pp": 0.83,
+  "good_positional_lift_pp": -0.55,
   "losses_pp": {
    "gold": 0.0,
    "top1": 0.28,
-   "winner_in_top3": -0.55
+   "winner_in_top3": -0.28
   },
-  "miss_delta": -3,
+  "miss_delta": 1,
   "folds": [
    {
     "fold": 1,
     "baseline": {
      "races": 55,
-     "gold": 9,
+     "gold": 7,
      "good": 29,
      "pass": 51,
      "miss": 4,
      "one_hit": 22,
-     "top3_precision": 0.5393939393939394,
-     "winner_in_top3": 0.6,
-     "top1_win": 0.2,
-     "good_positional": 14,
+     "top3_precision": 0.5272727272727272,
+     "winner_in_top3": 0.5818181818181818,
+     "top1_win": 0.21818181818181817,
+     "good_positional": 15,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 5,
-      "Pass": 15,
-      "1 Hit": 19,
-      "Miss": 7
+      "Gold": 7,
+      "Good": 8,
+      "Pass": 14,
+      "1 Hit": 14,
+      "Miss": 12
      },
-     "mrr": 0.4435998345089254
+     "mrr": 0.44992673992673976
     },
     "candidate": {
      "races": 55,
-     "gold": 9,
+     "gold": 7,
      "good": 29,
      "pass": 51,
      "miss": 4,
      "one_hit": 22,
-     "top3_precision": 0.5393939393939394,
+     "top3_precision": 0.5272727272727272,
      "winner_in_top3": 0.6,
      "top1_win": 0.2,
-     "good_positional": 14,
+     "good_positional": 15,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 5,
-      "Pass": 15,
-      "1 Hit": 19,
-      "Miss": 7
+      "Gold": 7,
+      "Good": 8,
+      "Pass": 14,
+      "1 Hit": 15,
+      "Miss": 11
      },
-     "mrr": 0.4435998345089254
+     "mrr": 0.44538128538128524
     }
    },
    {
     "fold": 2,
     "baseline": {
      "races": 64,
-     "gold": 0,
-     "good": 24,
-     "pass": 59,
-     "miss": 5,
-     "one_hit": 35,
-     "top3_precision": 0.4322916666666667,
-     "winner_in_top3": 0.515625,
-     "top1_win": 0.15625,
-     "good_positional": 9,
+     "gold": 3,
+     "good": 25,
+     "pass": 58,
+     "miss": 6,
+     "one_hit": 33,
+     "top3_precision": 0.4479166666666667,
+     "winner_in_top3": 0.640625,
+     "top1_win": 0.296875,
+     "good_positional": 11,
      "exclusive_labels": {
-      "Gold": 0,
-      "Good": 9,
-      "Pass": 15,
+      "Gold": 3,
+      "Good": 8,
+      "Pass": 14,
       "1 Hit": 26,
-      "Miss": 14
+      "Miss": 13
      },
-     "mrr": 0.39317956349206334
+     "mrr": 0.505412556193806
     },
     "candidate": {
      "races": 64,
-     "gold": 0,
-     "good": 24,
-     "pass": 60,
-     "miss": 4,
-     "one_hit": 36,
-     "top3_precision": 0.4375,
-     "winner_in_top3": 0.53125,
-     "top1_win": 0.15625,
-     "good_positional": 9,
+     "gold": 3,
+     "good": 26,
+     "pass": 58,
+     "miss": 6,
+     "one_hit": 32,
+     "top3_precision": 0.453125,
+     "winner_in_top3": 0.640625,
+     "top1_win": 0.3125,
+     "good_positional": 10,
      "exclusive_labels": {
-      "Gold": 0,
-      "Good": 9,
-      "Pass": 15,
-      "1 Hit": 27,
+      "Gold": 3,
+      "Good": 7,
+      "Pass": 16,
+      "1 Hit": 25,
       "Miss": 13
      },
-     "mrr": 0.3978670634920634
+     "mrr": 0.513225056193806
     }
    },
    {
     "fold": 3,
     "baseline": {
      "races": 109,
-     "gold": 9,
-     "good": 40,
-     "pass": 79,
-     "miss": 30,
-     "one_hit": 39,
-     "top3_precision": 0.39143730886850153,
-     "winner_in_top3": 0.44954128440366975,
+     "gold": 5,
+     "good": 43,
+     "pass": 94,
+     "miss": 15,
+     "one_hit": 51,
+     "top3_precision": 0.43425076452599387,
+     "winner_in_top3": 0.4954128440366973,
      "top1_win": 0.2018348623853211,
-     "good_positional": 22,
+     "good_positional": 28,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 13,
-      "Pass": 18,
-      "1 Hit": 24,
-      "Miss": 45
+      "Gold": 5,
+      "Good": 23,
+      "Pass": 15,
+      "1 Hit": 35,
+      "Miss": 31
      },
-     "mrr": 0.38911967237655326
+     "mrr": 0.4114282761071754
     },
     "candidate": {
      "races": 109,
-     "gold": 9,
-     "good": 40,
-     "pass": 81,
-     "miss": 28,
-     "one_hit": 41,
-     "top3_precision": 0.39755351681957185,
-     "winner_in_top3": 0.45871559633027525,
-     "top1_win": 0.1926605504587156,
-     "good_positional": 21,
+     "gold": 5,
+     "good": 43,
+     "pass": 94,
+     "miss": 15,
+     "one_hit": 51,
+     "top3_precision": 0.43425076452599387,
+     "winner_in_top3": 0.48623853211009177,
+     "top1_win": 0.2018348623853211,
+     "good_positional": 28,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 12,
-      "Pass": 19,
-      "1 Hit": 24,
-      "Miss": 45
+      "Gold": 5,
+      "Good": 23,
+      "Pass": 15,
+      "1 Hit": 37,
+      "Miss": 29
      },
-     "mrr": 0.38373158441965793
+     "mrr": 0.41095863871093247
     }
    },
    {
     "fold": 4,
     "baseline": {
      "races": 106,
-     "gold": 2,
-     "good": 33,
-     "pass": 87,
-     "miss": 19,
-     "one_hit": 54,
-     "top3_precision": 0.3836477987421384,
-     "winner_in_top3": 0.42452830188679247,
-     "top1_win": 0.1509433962264151,
-     "good_positional": 13,
+     "gold": 5,
+     "good": 43,
+     "pass": 92,
+     "miss": 14,
+     "one_hit": 49,
+     "top3_precision": 0.44025157232704404,
+     "winner_in_top3": 0.4811320754716981,
+     "top1_win": 0.2169811320754717,
+     "good_positional": 18,
      "exclusive_labels": {
-      "Gold": 2,
-      "Good": 11,
-      "Pass": 20,
-      "1 Hit": 37,
-      "Miss": 36
+      "Gold": 5,
+      "Good": 13,
+      "Pass": 25,
+      "1 Hit": 36,
+      "Miss": 27
      },
-     "mrr": 0.3602318017412357
+     "mrr": 0.41461559928541075
     },
     "candidate": {
      "races": 106,
-     "gold": 2,
-     "good": 33,
-     "pass": 87,
-     "miss": 19,
-     "one_hit": 54,
-     "top3_precision": 0.3836477987421384,
-     "winner_in_top3": 0.42452830188679247,
-     "top1_win": 0.1509433962264151,
-     "good_positional": 14,
+     "gold": 5,
+     "good": 43,
+     "pass": 92,
+     "miss": 14,
+     "one_hit": 49,
+     "top3_precision": 0.44025157232704404,
+     "winner_in_top3": 0.4811320754716981,
+     "top1_win": 0.20754716981132076,
+     "good_positional": 17,
      "exclusive_labels": {
-      "Gold": 2,
+      "Gold": 5,
       "Good": 12,
-      "Pass": 19,
-      "1 Hit": 35,
-      "Miss": 38
+      "Pass": 26,
+      "1 Hit": 36,
+      "Miss": 27
      },
-     "mrr": 0.35858800528611845
+     "mrr": 0.41136612339442546
     }
    },
    {
     "fold": 5,
     "baseline": {
      "races": 29,
-     "gold": 1,
+     "gold": 2,
      "good": 9,
-     "pass": 22,
-     "miss": 7,
-     "one_hit": 13,
-     "top3_precision": 0.367816091954023,
-     "winner_in_top3": 0.3793103448275862,
-     "top1_win": 0.1724137931034483,
-     "good_positional": 4,
+     "pass": 25,
+     "miss": 4,
+     "one_hit": 16,
+     "top3_precision": 0.41379310344827586,
+     "winner_in_top3": 0.4827586206896552,
+     "top1_win": 0.20689655172413793,
+     "good_positional": 3,
      "exclusive_labels": {
-      "Gold": 1,
-      "Good": 3,
-      "Pass": 5,
-      "1 Hit": 8,
-      "Miss": 12
+      "Gold": 2,
+      "Good": 1,
+      "Pass": 6,
+      "1 Hit": 12,
+      "Miss": 8
      },
-     "mrr": 0.3632047071702244
+     "mrr": 0.3989476041200179
     },
     "candidate": {
      "races": 29,
-     "gold": 1,
-     "good": 9,
-     "pass": 22,
-     "miss": 7,
+     "gold": 2,
+     "good": 11,
+     "pass": 24,
+     "miss": 5,
      "one_hit": 13,
-     "top3_precision": 0.367816091954023,
-     "winner_in_top3": 0.3793103448275862,
-     "top1_win": 0.1724137931034483,
-     "good_positional": 5,
+     "top3_precision": 0.42528735632183906,
+     "winner_in_top3": 0.5172413793103449,
+     "top1_win": 0.20689655172413793,
+     "good_positional": 3,
      "exclusive_labels": {
-      "Gold": 1,
-      "Good": 4,
-      "Pass": 4,
-      "1 Hit": 8,
-      "Miss": 12
+      "Gold": 2,
+      "Good": 1,
+      "Pass": 8,
+      "1 Hit": 10,
+      "Miss": 8
      },
-     "mrr": 0.36358784893267654
+     "mrr": 0.4018211673384087
     }
    }
   ],
@@ -1100,143 +1100,143 @@
   "slices": {
    "12+": {
     "races": 123,
-    "gold": 3,
-    "good": 29,
-    "pass": 92,
-    "miss": 31,
-    "one_hit": 63,
-    "top3_precision": 0.33604336043360433,
-    "winner_in_top3": 0.34146341463414637,
-    "top1_win": 0.13008130081300814,
-    "good_positional": 12,
+    "gold": 5,
+    "good": 38,
+    "pass": 103,
+    "miss": 20,
+    "one_hit": 65,
+    "top3_precision": 0.3956639566395664,
+    "winner_in_top3": 0.43089430894308944,
+    "top1_win": 0.2032520325203252,
+    "good_positional": 16,
     "exclusive_labels": {
-     "Gold": 3,
-     "Good": 9,
-     "Pass": 17,
-     "1 Hit": 38,
-     "Miss": 56
+     "Gold": 5,
+     "Good": 11,
+     "Pass": 22,
+     "1 Hit": 47,
+     "Miss": 38
     },
-    "mrr": 0.30911141703824635
+    "mrr": 0.3824423769545724
    },
    "9-11": {
     "races": 148,
     "gold": 4,
-    "good": 51,
-    "pass": 125,
-    "miss": 23,
-    "one_hit": 74,
-    "top3_precision": 0.40540540540540543,
-    "winner_in_top3": 0.4864864864864865,
-    "top1_win": 0.1554054054054054,
-    "good_positional": 20,
+    "good": 58,
+    "pass": 127,
+    "miss": 21,
+    "one_hit": 69,
+    "top3_precision": 0.42567567567567566,
+    "winner_in_top3": 0.5202702702702703,
+    "top1_win": 0.20270270270270271,
+    "good_positional": 25,
     "exclusive_labels": {
      "Gold": 4,
-     "Good": 16,
-     "Pass": 31,
-     "1 Hit": 54,
-     "Miss": 43
+     "Good": 21,
+     "Pass": 33,
+     "1 Hit": 49,
+     "Miss": 41
     },
-    "mrr": 0.385709410709411
+    "mrr": 0.4149889337389341
    },
    "<=8": {
     "races": 92,
-    "gold": 14,
-    "good": 55,
-    "pass": 84,
-    "miss": 8,
-    "one_hit": 29,
-    "top3_precision": 0.5543478260869565,
-    "winner_in_top3": 0.6413043478260869,
-    "top1_win": 0.2608695652173913,
-    "good_positional": 31,
+    "gold": 13,
+    "good": 56,
+    "pass": 89,
+    "miss": 3,
+    "one_hit": 33,
+    "top3_precision": 0.572463768115942,
+    "winner_in_top3": 0.6847826086956522,
+    "top1_win": 0.2826086956521739,
+    "good_positional": 32,
     "exclusive_labels": {
-     "Gold": 14,
-     "Good": 17,
+     "Gold": 13,
+     "Good": 19,
      "Pass": 24,
-     "1 Hit": 21,
-     "Miss": 16
+     "1 Hit": 27,
+     "Miss": 9
     },
-    "mrr": 0.4906185300207042
+    "mrr": 0.5319099378881988
    },
    "going Good/Firm": {
     "races": 96,
-    "gold": 7,
-    "good": 39,
-    "pass": 91,
-    "miss": 5,
-    "one_hit": 52,
-    "top3_precision": 0.4756944444444444,
-    "winner_in_top3": 0.5729166666666666,
-    "top1_win": 0.15625,
-    "good_positional": 19,
+    "gold": 6,
+    "good": 41,
+    "pass": 87,
+    "miss": 9,
+    "one_hit": 46,
+    "top3_precision": 0.4652777777777778,
+    "winner_in_top3": 0.6041666666666666,
+    "top1_win": 0.2708333333333333,
+    "good_positional": 20,
     "exclusive_labels": {
-     "Gold": 7,
-     "Good": 12,
-     "Pass": 20,
-     "1 Hit": 41,
-     "Miss": 16
+     "Gold": 6,
+     "Good": 14,
+     "Pass": 21,
+     "1 Hit": 35,
+     "Miss": 20
     },
-    "mrr": 0.40806438931438943
+    "mrr": 0.48340270840270866
    },
    "going Heavy": {
     "races": 87,
-    "gold": 4,
-    "good": 27,
-    "pass": 64,
-    "miss": 23,
-    "one_hit": 37,
-    "top3_precision": 0.36398467432950193,
-    "winner_in_top3": 0.4942528735632184,
-    "top1_win": 0.1839080459770115,
-    "good_positional": 13,
+    "gold": 6,
+    "good": 38,
+    "pass": 74,
+    "miss": 13,
+    "one_hit": 36,
+    "top3_precision": 0.4521072796934866,
+    "winner_in_top3": 0.5287356321839081,
+    "top1_win": 0.26436781609195403,
+    "good_positional": 19,
     "exclusive_labels": {
-     "Gold": 4,
-     "Good": 9,
-     "Pass": 14,
-     "1 Hit": 24,
-     "Miss": 36
+     "Gold": 6,
+     "Good": 13,
+     "Pass": 19,
+     "1 Hit": 26,
+     "Miss": 23
     },
-    "mrr": 0.3995431771293842
+    "mrr": 0.45421510162889495
    },
    "going Soft": {
     "races": 171,
     "gold": 9,
-    "good": 66,
-    "pass": 139,
-    "miss": 32,
-    "one_hit": 73,
-    "top3_precision": 0.4171539961013645,
-    "winner_in_top3": 0.4093567251461988,
-    "top1_win": 0.17543859649122806,
-    "good_positional": 28,
+    "good": 71,
+    "pass": 150,
+    "miss": 21,
+    "one_hit": 79,
+    "top3_precision": 0.44834307992202727,
+    "winner_in_top3": 0.4853801169590643,
+    "top1_win": 0.18128654970760233,
+    "good_positional": 32,
     "exclusive_labels": {
      "Gold": 9,
-     "Good": 19,
-     "Pass": 38,
-     "1 Hit": 45,
-     "Miss": 60
+     "Good": 23,
+     "Pass": 39,
+     "1 Hit": 58,
+     "Miss": 42
     },
-    "mrr": 0.36450518292623607
+    "mrr": 0.3972482358447276
    },
    "going Synthetic": {
     "races": 9,
     "gold": 1,
-    "good": 3,
-    "pass": 7,
-    "miss": 2,
-    "one_hit": 4,
+    "good": 2,
+    "pass": 8,
+    "miss": 1,
+    "one_hit": 6,
     "top3_precision": 0.4074074074074074,
-    "winner_in_top3": 0.5555555555555556,
-    "top1_win": 0.2222222222222222,
-    "good_positional": 3,
+    "winner_in_top3": 0.6666666666666666,
+    "top1_win": 0.1111111111111111,
+    "good_positional": 2,
     "exclusive_labels": {
      "Gold": 1,
-     "Good": 2,
+     "Good": 1,
      "Pass": 0,
-     "1 Hit": 3,
+     "1 Hit": 4,
      "Miss": 3
     },
-    "mrr": 0.4419753086419753
+    "mrr": 0.3935185185185185
    }
   },
   "passed": false
@@ -1244,269 +1244,269 @@
  {
   "name": "reliability shrinkage λ=0.30 (12+ fields only)",
   "oos_races": 363,
-  "affected_top3_changes": 14,
+  "affected_top3_changes": 15,
   "baseline": {
    "races": 363,
-   "gold": 21,
-   "good": 135,
-   "pass": 298,
-   "miss": 65,
-   "one_hit": 163,
-   "top3_precision": 0.41689623507805323,
-   "winner_in_top3": 0.47107438016528924,
-   "top1_win": 0.1763085399449036,
-   "good_positional": 62,
+   "gold": 22,
+   "good": 149,
+   "pass": 320,
+   "miss": 43,
+   "one_hit": 171,
+   "top3_precision": 0.4508723599632691,
+   "winner_in_top3": 0.5289256198347108,
+   "top1_win": 0.22589531680440772,
+   "good_positional": 75,
    "exclusive_labels": {
-    "Gold": 21,
-    "Good": 41,
-    "Pass": 73,
-    "1 Hit": 114,
-    "Miss": 114
+    "Gold": 22,
+    "Good": 53,
+    "Pass": 74,
+    "1 Hit": 123,
+    "Miss": 91
    },
-   "mrr": 0.3875841177494068
+   "mrr": 0.43376526289749434
   },
   "candidate": {
    "races": 363,
-   "gold": 21,
-   "good": 135,
-   "pass": 299,
-   "miss": 64,
-   "one_hit": 164,
-   "top3_precision": 0.41781450872359965,
-   "winner_in_top3": 0.47107438016528924,
-   "top1_win": 0.1763085399449036,
-   "good_positional": 62,
+   "gold": 22,
+   "good": 150,
+   "pass": 320,
+   "miss": 43,
+   "one_hit": 170,
+   "top3_precision": 0.45179063360881544,
+   "winner_in_top3": 0.5261707988980716,
+   "top1_win": 0.22589531680440772,
+   "good_positional": 74,
    "exclusive_labels": {
-    "Gold": 21,
-    "Good": 41,
-    "Pass": 73,
-    "1 Hit": 111,
-    "Miss": 117
+    "Gold": 22,
+    "Good": 52,
+    "Pass": 76,
+    "1 Hit": 123,
+    "Miss": 90
    },
-   "mrr": 0.38685158581852763
+   "mrr": 0.4335050853645895
   },
-  "good_lift_pp": 0.0,
-  "good_positional_lift_pp": 0.0,
+  "good_lift_pp": 0.28,
+  "good_positional_lift_pp": -0.28,
   "losses_pp": {
    "gold": 0.0,
    "top1": 0.0,
-   "winner_in_top3": 0.0
+   "winner_in_top3": 0.28
   },
-  "miss_delta": -1,
+  "miss_delta": 0,
   "folds": [
    {
     "fold": 1,
     "baseline": {
      "races": 55,
-     "gold": 9,
+     "gold": 7,
      "good": 29,
      "pass": 51,
      "miss": 4,
      "one_hit": 22,
-     "top3_precision": 0.5393939393939394,
-     "winner_in_top3": 0.6,
-     "top1_win": 0.2,
-     "good_positional": 14,
+     "top3_precision": 0.5272727272727272,
+     "winner_in_top3": 0.5818181818181818,
+     "top1_win": 0.21818181818181817,
+     "good_positional": 15,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 5,
-      "Pass": 15,
-      "1 Hit": 19,
-      "Miss": 7
+      "Gold": 7,
+      "Good": 8,
+      "Pass": 14,
+      "1 Hit": 14,
+      "Miss": 12
      },
-     "mrr": 0.4435998345089254
+     "mrr": 0.44992673992673976
     },
     "candidate": {
      "races": 55,
-     "gold": 9,
+     "gold": 7,
      "good": 29,
      "pass": 51,
      "miss": 4,
      "one_hit": 22,
-     "top3_precision": 0.5393939393939394,
-     "winner_in_top3": 0.6,
-     "top1_win": 0.2,
-     "good_positional": 14,
+     "top3_precision": 0.5272727272727272,
+     "winner_in_top3": 0.5818181818181818,
+     "top1_win": 0.21818181818181817,
+     "good_positional": 15,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 5,
-      "Pass": 15,
-      "1 Hit": 19,
-      "Miss": 7
+      "Gold": 7,
+      "Good": 8,
+      "Pass": 14,
+      "1 Hit": 14,
+      "Miss": 12
      },
-     "mrr": 0.4435998345089254
+     "mrr": 0.44992673992673976
     }
    },
    {
     "fold": 2,
     "baseline": {
      "races": 64,
-     "gold": 0,
-     "good": 24,
-     "pass": 59,
-     "miss": 5,
-     "one_hit": 35,
-     "top3_precision": 0.4322916666666667,
-     "winner_in_top3": 0.515625,
-     "top1_win": 0.15625,
-     "good_positional": 9,
+     "gold": 3,
+     "good": 25,
+     "pass": 58,
+     "miss": 6,
+     "one_hit": 33,
+     "top3_precision": 0.4479166666666667,
+     "winner_in_top3": 0.640625,
+     "top1_win": 0.296875,
+     "good_positional": 11,
      "exclusive_labels": {
-      "Gold": 0,
-      "Good": 9,
-      "Pass": 15,
+      "Gold": 3,
+      "Good": 8,
+      "Pass": 14,
       "1 Hit": 26,
-      "Miss": 14
+      "Miss": 13
      },
-     "mrr": 0.39317956349206334
+     "mrr": 0.505412556193806
     },
     "candidate": {
      "races": 64,
-     "gold": 0,
-     "good": 24,
-     "pass": 59,
-     "miss": 5,
-     "one_hit": 35,
-     "top3_precision": 0.4322916666666667,
-     "winner_in_top3": 0.515625,
-     "top1_win": 0.15625,
-     "good_positional": 9,
+     "gold": 3,
+     "good": 25,
+     "pass": 58,
+     "miss": 6,
+     "one_hit": 33,
+     "top3_precision": 0.4479166666666667,
+     "winner_in_top3": 0.640625,
+     "top1_win": 0.296875,
+     "good_positional": 11,
      "exclusive_labels": {
-      "Gold": 0,
-      "Good": 9,
-      "Pass": 15,
-      "1 Hit": 25,
-      "Miss": 15
+      "Gold": 3,
+      "Good": 8,
+      "Pass": 14,
+      "1 Hit": 26,
+      "Miss": 13
      },
-     "mrr": 0.39396081349206336
+     "mrr": 0.505412556193806
     }
    },
    {
     "fold": 3,
     "baseline": {
      "races": 109,
-     "gold": 9,
-     "good": 40,
-     "pass": 79,
-     "miss": 30,
-     "one_hit": 39,
-     "top3_precision": 0.39143730886850153,
-     "winner_in_top3": 0.44954128440366975,
+     "gold": 5,
+     "good": 43,
+     "pass": 94,
+     "miss": 15,
+     "one_hit": 51,
+     "top3_precision": 0.43425076452599387,
+     "winner_in_top3": 0.4954128440366973,
      "top1_win": 0.2018348623853211,
-     "good_positional": 22,
+     "good_positional": 28,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 13,
-      "Pass": 18,
-      "1 Hit": 24,
-      "Miss": 45
+      "Gold": 5,
+      "Good": 23,
+      "Pass": 15,
+      "1 Hit": 35,
+      "Miss": 31
      },
-     "mrr": 0.38911967237655326
+     "mrr": 0.4114282761071754
     },
     "candidate": {
      "races": 109,
-     "gold": 9,
-     "good": 40,
-     "pass": 80,
-     "miss": 29,
-     "one_hit": 40,
-     "top3_precision": 0.3944954128440367,
-     "winner_in_top3": 0.44954128440366975,
+     "gold": 5,
+     "good": 43,
+     "pass": 94,
+     "miss": 15,
+     "one_hit": 51,
+     "top3_precision": 0.43425076452599387,
+     "winner_in_top3": 0.48623853211009177,
      "top1_win": 0.2018348623853211,
-     "good_positional": 21,
+     "good_positional": 28,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 12,
-      "Pass": 19,
-      "1 Hit": 24,
-      "Miss": 45
+      "Gold": 5,
+      "Good": 23,
+      "Pass": 15,
+      "1 Hit": 37,
+      "Miss": 29
      },
-     "mrr": 0.3877180413877664
+     "mrr": 0.4106637501132916
     }
    },
    {
     "fold": 4,
     "baseline": {
      "races": 106,
-     "gold": 2,
-     "good": 33,
-     "pass": 87,
-     "miss": 19,
-     "one_hit": 54,
-     "top3_precision": 0.3836477987421384,
-     "winner_in_top3": 0.42452830188679247,
-     "top1_win": 0.1509433962264151,
-     "good_positional": 13,
+     "gold": 5,
+     "good": 43,
+     "pass": 92,
+     "miss": 14,
+     "one_hit": 49,
+     "top3_precision": 0.44025157232704404,
+     "winner_in_top3": 0.4811320754716981,
+     "top1_win": 0.2169811320754717,
+     "good_positional": 18,
      "exclusive_labels": {
-      "Gold": 2,
-      "Good": 11,
-      "Pass": 20,
-      "1 Hit": 37,
-      "Miss": 36
+      "Gold": 5,
+      "Good": 13,
+      "Pass": 25,
+      "1 Hit": 36,
+      "Miss": 27
      },
-     "mrr": 0.3602318017412357
+     "mrr": 0.41461559928541075
     },
     "candidate": {
      "races": 106,
-     "gold": 2,
-     "good": 33,
-     "pass": 87,
-     "miss": 19,
-     "one_hit": 54,
-     "top3_precision": 0.3836477987421384,
-     "winner_in_top3": 0.42452830188679247,
-     "top1_win": 0.1509433962264151,
-     "good_positional": 14,
+     "gold": 5,
+     "good": 43,
+     "pass": 92,
+     "miss": 14,
+     "one_hit": 49,
+     "top3_precision": 0.44025157232704404,
+     "winner_in_top3": 0.4811320754716981,
+     "top1_win": 0.2169811320754717,
+     "good_positional": 17,
      "exclusive_labels": {
-      "Gold": 2,
+      "Gold": 5,
       "Good": 12,
-      "Pass": 19,
+      "Pass": 26,
       "1 Hit": 35,
-      "Miss": 38
+      "Miss": 28
      },
-     "mrr": 0.35858800528611845
+     "mrr": 0.41451077748247583
     }
    },
    {
     "fold": 5,
     "baseline": {
      "races": 29,
-     "gold": 1,
+     "gold": 2,
      "good": 9,
-     "pass": 22,
-     "miss": 7,
-     "one_hit": 13,
-     "top3_precision": 0.367816091954023,
-     "winner_in_top3": 0.3793103448275862,
-     "top1_win": 0.1724137931034483,
-     "good_positional": 4,
+     "pass": 25,
+     "miss": 4,
+     "one_hit": 16,
+     "top3_precision": 0.41379310344827586,
+     "winner_in_top3": 0.4827586206896552,
+     "top1_win": 0.20689655172413793,
+     "good_positional": 3,
      "exclusive_labels": {
-      "Gold": 1,
-      "Good": 3,
-      "Pass": 5,
-      "1 Hit": 8,
-      "Miss": 12
+      "Gold": 2,
+      "Good": 1,
+      "Pass": 6,
+      "1 Hit": 12,
+      "Miss": 8
      },
-     "mrr": 0.3632047071702244
+     "mrr": 0.3989476041200179
     },
     "candidate": {
      "races": 29,
-     "gold": 1,
-     "good": 9,
-     "pass": 22,
-     "miss": 7,
-     "one_hit": 13,
-     "top3_precision": 0.367816091954023,
-     "winner_in_top3": 0.3793103448275862,
-     "top1_win": 0.1724137931034483,
-     "good_positional": 4,
+     "gold": 2,
+     "good": 10,
+     "pass": 25,
+     "miss": 4,
+     "one_hit": 15,
+     "top3_precision": 0.42528735632183906,
+     "winner_in_top3": 0.4827586206896552,
+     "top1_win": 0.20689655172413793,
+     "good_positional": 3,
      "exclusive_labels": {
-      "Gold": 1,
-      "Good": 3,
-      "Pass": 5,
-      "1 Hit": 8,
-      "Miss": 12
+      "Gold": 2,
+      "Good": 1,
+      "Pass": 7,
+      "1 Hit": 11,
+      "Miss": 8
      },
-     "mrr": 0.36358784893267654
+     "mrr": 0.3989476041200179
     }
    }
   ],
@@ -1514,143 +1514,143 @@
   "slices": {
    "12+": {
     "races": 123,
-    "gold": 3,
-    "good": 29,
-    "pass": 92,
-    "miss": 31,
-    "one_hit": 63,
-    "top3_precision": 0.33604336043360433,
-    "winner_in_top3": 0.34146341463414637,
-    "top1_win": 0.13008130081300814,
-    "good_positional": 12,
+    "gold": 5,
+    "good": 38,
+    "pass": 103,
+    "miss": 20,
+    "one_hit": 65,
+    "top3_precision": 0.3956639566395664,
+    "winner_in_top3": 0.43089430894308944,
+    "top1_win": 0.2032520325203252,
+    "good_positional": 16,
     "exclusive_labels": {
-     "Gold": 3,
-     "Good": 9,
-     "Pass": 17,
-     "1 Hit": 38,
-     "Miss": 56
+     "Gold": 5,
+     "Good": 11,
+     "Pass": 22,
+     "1 Hit": 47,
+     "Miss": 38
     },
-    "mrr": 0.30911141703824635
+    "mrr": 0.3824423769545724
    },
    "9-11": {
     "races": 148,
     "gold": 4,
-    "good": 51,
-    "pass": 123,
-    "miss": 25,
+    "good": 56,
+    "pass": 128,
+    "miss": 20,
     "one_hit": 72,
-    "top3_precision": 0.4009009009009009,
-    "winner_in_top3": 0.47297297297297297,
-    "top1_win": 0.16216216216216217,
-    "good_positional": 20,
+    "top3_precision": 0.42342342342342343,
+    "winner_in_top3": 0.5067567567567568,
+    "top1_win": 0.20945945945945946,
+    "good_positional": 26,
     "exclusive_labels": {
      "Gold": 4,
-     "Good": 16,
-     "Pass": 31,
-     "1 Hit": 52,
-     "Miss": 45
+     "Good": 22,
+     "Pass": 30,
+     "1 Hit": 50,
+     "Miss": 42
     },
-    "mrr": 0.38695619320619357
+    "mrr": 0.41589787839787873
    },
    "<=8": {
     "races": 92,
-    "gold": 14,
-    "good": 55,
-    "pass": 84,
-    "miss": 8,
-    "one_hit": 29,
-    "top3_precision": 0.5543478260869565,
-    "winner_in_top3": 0.6413043478260869,
-    "top1_win": 0.2608695652173913,
-    "good_positional": 30,
+    "gold": 13,
+    "good": 56,
+    "pass": 89,
+    "miss": 3,
+    "one_hit": 33,
+    "top3_precision": 0.572463768115942,
+    "winner_in_top3": 0.6847826086956522,
+    "top1_win": 0.2826086956521739,
+    "good_positional": 32,
     "exclusive_labels": {
-     "Gold": 14,
-     "Good": 16,
-     "Pass": 25,
-     "1 Hit": 21,
-     "Miss": 16
+     "Gold": 13,
+     "Good": 19,
+     "Pass": 24,
+     "1 Hit": 26,
+     "Miss": 10
     },
-    "mrr": 0.4906185300207042
+    "mrr": 0.5300983436853004
    },
    "going Good/Firm": {
     "races": 96,
-    "gold": 7,
-    "good": 39,
-    "pass": 90,
-    "miss": 6,
-    "one_hit": 51,
-    "top3_precision": 0.4722222222222222,
-    "winner_in_top3": 0.5625,
-    "top1_win": 0.15625,
-    "good_positional": 19,
+    "gold": 6,
+    "good": 40,
+    "pass": 87,
+    "miss": 9,
+    "one_hit": 47,
+    "top3_precision": 0.4618055555555556,
+    "winner_in_top3": 0.59375,
+    "top1_win": 0.2708333333333333,
+    "good_positional": 21,
     "exclusive_labels": {
-     "Gold": 7,
-     "Good": 12,
-     "Pass": 20,
-     "1 Hit": 40,
-     "Miss": 17
+     "Gold": 6,
+     "Good": 15,
+     "Pass": 19,
+     "1 Hit": 35,
+     "Miss": 21
     },
-    "mrr": 0.4054602226477228
+    "mrr": 0.48079854173604203
    },
    "going Heavy": {
     "races": 87,
-    "gold": 4,
-    "good": 26,
-    "pass": 63,
-    "miss": 24,
+    "gold": 6,
+    "good": 37,
+    "pass": 74,
+    "miss": 13,
     "one_hit": 37,
-    "top3_precision": 0.3563218390804598,
-    "winner_in_top3": 0.4827586206896552,
-    "top1_win": 0.1839080459770115,
-    "good_positional": 13,
+    "top3_precision": 0.4482758620689655,
+    "winner_in_top3": 0.5172413793103449,
+    "top1_win": 0.27586206896551724,
+    "good_positional": 19,
     "exclusive_labels": {
-     "Gold": 4,
-     "Good": 9,
-     "Pass": 13,
-     "1 Hit": 25,
-     "Miss": 36
+     "Gold": 6,
+     "Good": 13,
+     "Pass": 18,
+     "1 Hit": 26,
+     "Miss": 24
     },
-    "mrr": 0.39879057723885325
+    "mrr": 0.4567192067192069
    },
    "going Soft": {
     "races": 171,
     "gold": 9,
-    "good": 67,
-    "pass": 139,
-    "miss": 32,
-    "one_hit": 72,
-    "top3_precision": 0.4191033138401559,
-    "winner_in_top3": 0.4093567251461988,
+    "good": 71,
+    "pass": 150,
+    "miss": 21,
+    "one_hit": 79,
+    "top3_precision": 0.44834307992202727,
+    "winner_in_top3": 0.4853801169590643,
     "top1_win": 0.18128654970760233,
-    "good_positional": 28,
+    "good_positional": 32,
     "exclusive_labels": {
      "Gold": 9,
-     "Good": 19,
+     "Good": 23,
      "Pass": 39,
-     "1 Hit": 43,
-     "Miss": 61
+     "1 Hit": 58,
+     "Miss": 42
     },
-    "mrr": 0.36742915953442323
+    "mrr": 0.3972482358447276
    },
    "going Synthetic": {
     "races": 9,
     "gold": 1,
-    "good": 3,
-    "pass": 7,
-    "miss": 2,
-    "one_hit": 4,
-    "top3_precision": 0.4074074074074074,
-    "winner_in_top3": 0.5555555555555556,
-    "top1_win": 0.2222222222222222,
+    "good": 2,
+    "pass": 9,
+    "miss": 0,
+    "one_hit": 7,
+    "top3_precision": 0.4444444444444444,
+    "winner_in_top3": 0.6666666666666666,
+    "top1_win": 0.1111111111111111,
     "good_positional": 2,
     "exclusive_labels": {
      "Gold": 1,
      "Good": 1,
-     "Pass": 1,
-     "1 Hit": 3,
+     "Pass": 0,
+     "1 Hit": 4,
      "Miss": 3
     },
-    "mrr": 0.4419753086419753
+    "mrr": 0.3935185185185185
    }
   },
   "passed": false
@@ -1658,413 +1658,413 @@
  {
   "name": "reliability shrinkage λ=0.50 (all fields)",
   "oos_races": 363,
-  "affected_top3_changes": 60,
+  "affected_top3_changes": 52,
   "baseline": {
    "races": 363,
-   "gold": 21,
-   "good": 135,
-   "pass": 298,
-   "miss": 65,
-   "one_hit": 163,
-   "top3_precision": 0.41689623507805323,
-   "winner_in_top3": 0.47107438016528924,
-   "top1_win": 0.1763085399449036,
-   "good_positional": 62,
+   "gold": 22,
+   "good": 149,
+   "pass": 320,
+   "miss": 43,
+   "one_hit": 171,
+   "top3_precision": 0.4508723599632691,
+   "winner_in_top3": 0.5289256198347108,
+   "top1_win": 0.22589531680440772,
+   "good_positional": 75,
    "exclusive_labels": {
-    "Gold": 21,
-    "Good": 41,
-    "Pass": 73,
-    "1 Hit": 114,
-    "Miss": 114
+    "Gold": 22,
+    "Good": 53,
+    "Pass": 74,
+    "1 Hit": 123,
+    "Miss": 91
    },
-   "mrr": 0.3875841177494068
+   "mrr": 0.43376526289749434
   },
   "candidate": {
    "races": 363,
-   "gold": 21,
-   "good": 134,
-   "pass": 300,
-   "miss": 63,
+   "gold": 22,
+   "good": 153,
+   "pass": 319,
+   "miss": 44,
    "one_hit": 166,
-   "top3_precision": 0.41781450872359965,
-   "winner_in_top3": 0.47107438016528924,
-   "top1_win": 0.17355371900826447,
-   "good_positional": 63,
+   "top3_precision": 0.45362718089990817,
+   "winner_in_top3": 0.5344352617079889,
+   "top1_win": 0.2231404958677686,
+   "good_positional": 72,
    "exclusive_labels": {
-    "Gold": 21,
-    "Good": 42,
-    "Pass": 71,
-    "1 Hit": 117,
-    "Miss": 112
+    "Gold": 22,
+    "Good": 50,
+    "Pass": 81,
+    "1 Hit": 122,
+    "Miss": 88
    },
-   "mrr": 0.38753127802714554
+   "mrr": 0.4338723948228081
   },
-  "good_lift_pp": -0.28,
-  "good_positional_lift_pp": 0.28,
+  "good_lift_pp": 1.1,
+  "good_positional_lift_pp": -0.83,
   "losses_pp": {
    "gold": 0.0,
    "top1": 0.28,
-   "winner_in_top3": 0.0
+   "winner_in_top3": -0.55
   },
-  "miss_delta": -2,
+  "miss_delta": 1,
   "folds": [
    {
     "fold": 1,
     "baseline": {
      "races": 55,
-     "gold": 9,
+     "gold": 7,
      "good": 29,
      "pass": 51,
      "miss": 4,
      "one_hit": 22,
-     "top3_precision": 0.5393939393939394,
-     "winner_in_top3": 0.6,
-     "top1_win": 0.2,
-     "good_positional": 14,
+     "top3_precision": 0.5272727272727272,
+     "winner_in_top3": 0.5818181818181818,
+     "top1_win": 0.21818181818181817,
+     "good_positional": 15,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 5,
-      "Pass": 15,
-      "1 Hit": 19,
-      "Miss": 7
+      "Gold": 7,
+      "Good": 8,
+      "Pass": 14,
+      "1 Hit": 14,
+      "Miss": 12
      },
-     "mrr": 0.4435998345089254
+     "mrr": 0.44992673992673976
     },
     "candidate": {
      "races": 55,
-     "gold": 9,
+     "gold": 7,
      "good": 29,
      "pass": 51,
      "miss": 4,
      "one_hit": 22,
-     "top3_precision": 0.5393939393939394,
-     "winner_in_top3": 0.5818181818181818,
+     "top3_precision": 0.5272727272727272,
+     "winner_in_top3": 0.6,
      "top1_win": 0.2,
-     "good_positional": 14,
+     "good_positional": 15,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 5,
-      "Pass": 15,
-      "1 Hit": 19,
-      "Miss": 7
+      "Gold": 7,
+      "Good": 8,
+      "Pass": 14,
+      "1 Hit": 15,
+      "Miss": 11
      },
-     "mrr": 0.4420846829937738
+     "mrr": 0.44538128538128524
     }
    },
    {
     "fold": 2,
     "baseline": {
      "races": 64,
-     "gold": 0,
-     "good": 24,
-     "pass": 59,
-     "miss": 5,
-     "one_hit": 35,
-     "top3_precision": 0.4322916666666667,
-     "winner_in_top3": 0.515625,
-     "top1_win": 0.15625,
-     "good_positional": 9,
+     "gold": 3,
+     "good": 25,
+     "pass": 58,
+     "miss": 6,
+     "one_hit": 33,
+     "top3_precision": 0.4479166666666667,
+     "winner_in_top3": 0.640625,
+     "top1_win": 0.296875,
+     "good_positional": 11,
      "exclusive_labels": {
-      "Gold": 0,
-      "Good": 9,
-      "Pass": 15,
+      "Gold": 3,
+      "Good": 8,
+      "Pass": 14,
       "1 Hit": 26,
-      "Miss": 14
+      "Miss": 13
      },
-     "mrr": 0.39317956349206334
+     "mrr": 0.505412556193806
     },
     "candidate": {
      "races": 64,
-     "gold": 0,
-     "good": 24,
-     "pass": 59,
-     "miss": 5,
-     "one_hit": 35,
-     "top3_precision": 0.4322916666666667,
-     "winner_in_top3": 0.515625,
-     "top1_win": 0.15625,
-     "good_positional": 10,
+     "gold": 3,
+     "good": 26,
+     "pass": 58,
+     "miss": 6,
+     "one_hit": 32,
+     "top3_precision": 0.453125,
+     "winner_in_top3": 0.640625,
+     "top1_win": 0.3125,
+     "good_positional": 9,
      "exclusive_labels": {
-      "Gold": 0,
-      "Good": 10,
-      "Pass": 14,
-      "1 Hit": 27,
-      "Miss": 13
+      "Gold": 3,
+      "Good": 6,
+      "Pass": 17,
+      "1 Hit": 26,
+      "Miss": 12
      },
-     "mrr": 0.3991691468253968
+     "mrr": 0.513225056193806
     }
    },
    {
     "fold": 3,
     "baseline": {
      "races": 109,
-     "gold": 9,
-     "good": 40,
-     "pass": 79,
-     "miss": 30,
-     "one_hit": 39,
-     "top3_precision": 0.39143730886850153,
-     "winner_in_top3": 0.44954128440366975,
+     "gold": 5,
+     "good": 43,
+     "pass": 94,
+     "miss": 15,
+     "one_hit": 51,
+     "top3_precision": 0.43425076452599387,
+     "winner_in_top3": 0.4954128440366973,
      "top1_win": 0.2018348623853211,
-     "good_positional": 22,
+     "good_positional": 28,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 13,
-      "Pass": 18,
-      "1 Hit": 24,
-      "Miss": 45
+      "Gold": 5,
+      "Good": 23,
+      "Pass": 15,
+      "1 Hit": 35,
+      "Miss": 31
      },
-     "mrr": 0.38911967237655326
+     "mrr": 0.4114282761071754
     },
     "candidate": {
      "races": 109,
-     "gold": 9,
-     "good": 40,
-     "pass": 81,
-     "miss": 28,
-     "one_hit": 41,
-     "top3_precision": 0.39755351681957185,
-     "winner_in_top3": 0.45871559633027525,
+     "gold": 5,
+     "good": 44,
+     "pass": 94,
+     "miss": 15,
+     "one_hit": 50,
+     "top3_precision": 0.43730886850152906,
+     "winner_in_top3": 0.4954128440366973,
      "top1_win": 0.1926605504587156,
-     "good_positional": 21,
+     "good_positional": 28,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 12,
-      "Pass": 19,
-      "1 Hit": 26,
-      "Miss": 43
+      "Gold": 5,
+      "Good": 23,
+      "Pass": 16,
+      "1 Hit": 35,
+      "Miss": 30
      },
-     "mrr": 0.3857002579479644
+     "mrr": 0.40713600874151346
     }
    },
    {
     "fold": 4,
     "baseline": {
      "races": 106,
-     "gold": 2,
-     "good": 33,
-     "pass": 87,
-     "miss": 19,
-     "one_hit": 54,
-     "top3_precision": 0.3836477987421384,
-     "winner_in_top3": 0.42452830188679247,
-     "top1_win": 0.1509433962264151,
-     "good_positional": 13,
+     "gold": 5,
+     "good": 43,
+     "pass": 92,
+     "miss": 14,
+     "one_hit": 49,
+     "top3_precision": 0.44025157232704404,
+     "winner_in_top3": 0.4811320754716981,
+     "top1_win": 0.2169811320754717,
+     "good_positional": 18,
      "exclusive_labels": {
-      "Gold": 2,
-      "Good": 11,
-      "Pass": 20,
-      "1 Hit": 37,
-      "Miss": 36
+      "Gold": 5,
+      "Good": 13,
+      "Pass": 25,
+      "1 Hit": 36,
+      "Miss": 27
      },
-     "mrr": 0.3602318017412357
+     "mrr": 0.41461559928541075
     },
     "candidate": {
      "races": 106,
-     "gold": 2,
-     "good": 32,
-     "pass": 87,
-     "miss": 19,
-     "one_hit": 55,
-     "top3_precision": 0.3805031446540881,
-     "winner_in_top3": 0.42452830188679247,
-     "top1_win": 0.1509433962264151,
-     "good_positional": 14,
+     "gold": 5,
+     "good": 43,
+     "pass": 92,
+     "miss": 14,
+     "one_hit": 49,
+     "top3_precision": 0.44025157232704404,
+     "winner_in_top3": 0.4811320754716981,
+     "top1_win": 0.2169811320754717,
+     "good_positional": 17,
      "exclusive_labels": {
-      "Gold": 2,
+      "Gold": 5,
       "Good": 12,
-      "Pass": 18,
-      "1 Hit": 37,
-      "Miss": 37
+      "Pass": 26,
+      "1 Hit": 36,
+      "Miss": 27
      },
-     "mrr": 0.36063203044335124
+     "mrr": 0.4162515681383609
     }
    },
    {
     "fold": 5,
     "baseline": {
      "races": 29,
-     "gold": 1,
+     "gold": 2,
      "good": 9,
-     "pass": 22,
-     "miss": 7,
-     "one_hit": 13,
-     "top3_precision": 0.367816091954023,
-     "winner_in_top3": 0.3793103448275862,
-     "top1_win": 0.1724137931034483,
-     "good_positional": 4,
+     "pass": 25,
+     "miss": 4,
+     "one_hit": 16,
+     "top3_precision": 0.41379310344827586,
+     "winner_in_top3": 0.4827586206896552,
+     "top1_win": 0.20689655172413793,
+     "good_positional": 3,
      "exclusive_labels": {
-      "Gold": 1,
-      "Good": 3,
-      "Pass": 5,
-      "1 Hit": 8,
-      "Miss": 12
+      "Gold": 2,
+      "Good": 1,
+      "Pass": 6,
+      "1 Hit": 12,
+      "Miss": 8
      },
-     "mrr": 0.3632047071702244
+     "mrr": 0.3989476041200179
     },
     "candidate": {
      "races": 29,
-     "gold": 1,
-     "good": 9,
-     "pass": 22,
-     "miss": 7,
+     "gold": 2,
+     "good": 11,
+     "pass": 24,
+     "miss": 5,
      "one_hit": 13,
-     "top3_precision": 0.367816091954023,
-     "winner_in_top3": 0.3793103448275862,
-     "top1_win": 0.1724137931034483,
-     "good_positional": 4,
+     "top3_precision": 0.42528735632183906,
+     "winner_in_top3": 0.5172413793103449,
+     "top1_win": 0.20689655172413793,
+     "good_positional": 3,
      "exclusive_labels": {
-      "Gold": 1,
-      "Good": 3,
-      "Pass": 5,
-      "1 Hit": 8,
-      "Miss": 12
+      "Gold": 2,
+      "Good": 1,
+      "Pass": 8,
+      "1 Hit": 10,
+      "Miss": 8
      },
-     "mrr": 0.36358784893267654
+     "mrr": 0.4018211673384087
     }
    }
   ],
-  "top3_non_worse_folds": "4/5",
+  "top3_non_worse_folds": "5/5",
   "slices": {
    "12+": {
     "races": 123,
-    "gold": 3,
-    "good": 28,
-    "pass": 92,
-    "miss": 31,
+    "gold": 5,
+    "good": 39,
+    "pass": 103,
+    "miss": 20,
     "one_hit": 64,
-    "top3_precision": 0.3333333333333333,
-    "winner_in_top3": 0.3333333333333333,
-    "top1_win": 0.13008130081300814,
-    "good_positional": 12,
+    "top3_precision": 0.3983739837398374,
+    "winner_in_top3": 0.43902439024390244,
+    "top1_win": 0.2032520325203252,
+    "good_positional": 16,
     "exclusive_labels": {
-     "Gold": 3,
-     "Good": 9,
-     "Pass": 16,
-     "1 Hit": 40,
-     "Miss": 55
+     "Gold": 5,
+     "Good": 11,
+     "Pass": 23,
+     "1 Hit": 47,
+     "Miss": 37
     },
-    "mrr": 0.3101785071297267
+    "mrr": 0.38326506375286895
    },
    "9-11": {
     "races": 148,
     "gold": 4,
-    "good": 51,
-    "pass": 124,
-    "miss": 24,
-    "one_hit": 73,
-    "top3_precision": 0.40315315315315314,
-    "winner_in_top3": 0.4797297297297297,
-    "top1_win": 0.1554054054054054,
-    "good_positional": 20,
+    "good": 58,
+    "pass": 127,
+    "miss": 21,
+    "one_hit": 69,
+    "top3_precision": 0.42567567567567566,
+    "winner_in_top3": 0.5202702702702703,
+    "top1_win": 0.19594594594594594,
+    "good_positional": 24,
     "exclusive_labels": {
      "Gold": 4,
-     "Good": 16,
-     "Pass": 31,
-     "1 Hit": 56,
+     "Good": 20,
+     "Pass": 34,
+     "1 Hit": 49,
      "Miss": 41
     },
-    "mrr": 0.38773643773643796
+    "mrr": 0.4116105553605557
    },
    "<=8": {
     "races": 92,
-    "gold": 14,
-    "good": 55,
-    "pass": 84,
-    "miss": 8,
-    "one_hit": 29,
-    "top3_precision": 0.5543478260869565,
-    "winner_in_top3": 0.6413043478260869,
-    "top1_win": 0.2608695652173913,
-    "good_positional": 31,
+    "gold": 13,
+    "good": 56,
+    "pass": 89,
+    "miss": 3,
+    "one_hit": 33,
+    "top3_precision": 0.572463768115942,
+    "winner_in_top3": 0.6847826086956522,
+    "top1_win": 0.29347826086956524,
+    "good_positional": 32,
     "exclusive_labels": {
-     "Gold": 14,
-     "Good": 17,
+     "Gold": 13,
+     "Good": 19,
      "Pass": 24,
-     "1 Hit": 21,
-     "Miss": 16
+     "1 Hit": 26,
+     "Miss": 10
     },
-    "mrr": 0.4906185300207042
+    "mrr": 0.5373447204968945
    },
    "going Good/Firm": {
     "races": 96,
-    "gold": 7,
-    "good": 39,
-    "pass": 90,
-    "miss": 6,
-    "one_hit": 51,
-    "top3_precision": 0.4722222222222222,
-    "winner_in_top3": 0.5520833333333334,
-    "top1_win": 0.15625,
-    "good_positional": 20,
+    "gold": 6,
+    "good": 41,
+    "pass": 87,
+    "miss": 9,
+    "one_hit": 46,
+    "top3_precision": 0.4652777777777778,
+    "winner_in_top3": 0.6041666666666666,
+    "top1_win": 0.2708333333333333,
+    "good_positional": 19,
     "exclusive_labels": {
-     "Gold": 7,
+     "Gold": 6,
      "Good": 13,
-     "Pass": 19,
-     "1 Hit": 41,
-     "Miss": 16
+     "Pass": 22,
+     "1 Hit": 36,
+     "Miss": 19
     },
-    "mrr": 0.4080643893143894
+    "mrr": 0.4835887203074705
    },
    "going Heavy": {
     "races": 87,
-    "gold": 4,
-    "good": 27,
-    "pass": 63,
-    "miss": 24,
+    "gold": 6,
+    "good": 38,
+    "pass": 74,
+    "miss": 13,
     "one_hit": 36,
-    "top3_precision": 0.36015325670498083,
-    "winner_in_top3": 0.4827586206896552,
-    "top1_win": 0.1839080459770115,
-    "good_positional": 12,
+    "top3_precision": 0.4521072796934866,
+    "winner_in_top3": 0.5287356321839081,
+    "top1_win": 0.25287356321839083,
+    "good_positional": 19,
     "exclusive_labels": {
-     "Gold": 4,
-     "Good": 8,
-     "Pass": 15,
-     "1 Hit": 26,
-     "Miss": 34
+     "Gold": 6,
+     "Good": 13,
+     "Pass": 19,
+     "1 Hit": 25,
+     "Miss": 24
     },
-    "mrr": 0.40241674034777497
+    "mrr": 0.44846797519211334
    },
    "going Soft": {
     "races": 171,
     "gold": 9,
-    "good": 65,
-    "pass": 140,
-    "miss": 31,
-    "one_hit": 75,
-    "top3_precision": 0.4171539961013645,
-    "winner_in_top3": 0.4152046783625731,
-    "top1_win": 0.17543859649122806,
-    "good_positional": 28,
+    "good": 72,
+    "pass": 150,
+    "miss": 21,
+    "one_hit": 78,
+    "top3_precision": 0.4502923976608187,
+    "winner_in_top3": 0.49122807017543857,
+    "top1_win": 0.1871345029239766,
+    "good_positional": 32,
     "exclusive_labels": {
      "Gold": 9,
-     "Good": 19,
-     "Pass": 37,
-     "1 Hit": 47,
-     "Miss": 59
+     "Good": 23,
+     "Pass": 40,
+     "1 Hit": 57,
+     "Miss": 42
     },
-    "mrr": 0.3655651366177686
+    "mrr": 0.40065954188761266
    },
    "going Synthetic": {
     "races": 9,
     "gold": 1,
-    "good": 3,
-    "pass": 7,
-    "miss": 2,
-    "one_hit": 4,
+    "good": 2,
+    "pass": 8,
+    "miss": 1,
+    "one_hit": 6,
     "top3_precision": 0.4074074074074074,
-    "winner_in_top3": 0.5555555555555556,
-    "top1_win": 0.2222222222222222,
-    "good_positional": 3,
+    "winner_in_top3": 0.6666666666666666,
+    "top1_win": 0.1111111111111111,
+    "good_positional": 2,
     "exclusive_labels": {
      "Gold": 1,
-     "Good": 2,
+     "Good": 1,
      "Pass": 0,
-     "1 Hit": 3,
+     "1 Hit": 4,
      "Miss": 3
     },
-    "mrr": 0.4419753086419753
+    "mrr": 0.3935185185185185
    }
   },
   "passed": false
@@ -2072,413 +2072,413 @@
  {
   "name": "reliability shrinkage λ=0.50 (12+ fields only)",
   "oos_races": 363,
-  "affected_top3_changes": 27,
+  "affected_top3_changes": 22,
   "baseline": {
    "races": 363,
-   "gold": 21,
-   "good": 135,
-   "pass": 298,
-   "miss": 65,
-   "one_hit": 163,
-   "top3_precision": 0.41689623507805323,
-   "winner_in_top3": 0.47107438016528924,
-   "top1_win": 0.1763085399449036,
-   "good_positional": 62,
+   "gold": 22,
+   "good": 149,
+   "pass": 320,
+   "miss": 43,
+   "one_hit": 171,
+   "top3_precision": 0.4508723599632691,
+   "winner_in_top3": 0.5289256198347108,
+   "top1_win": 0.22589531680440772,
+   "good_positional": 75,
    "exclusive_labels": {
-    "Gold": 21,
-    "Good": 41,
-    "Pass": 73,
-    "1 Hit": 114,
-    "Miss": 114
+    "Gold": 22,
+    "Good": 53,
+    "Pass": 74,
+    "1 Hit": 123,
+    "Miss": 91
    },
-   "mrr": 0.3875841177494068
+   "mrr": 0.43376526289749434
   },
   "candidate": {
    "races": 363,
-   "gold": 21,
-   "good": 134,
-   "pass": 299,
-   "miss": 64,
-   "one_hit": 165,
-   "top3_precision": 0.41689623507805323,
-   "winner_in_top3": 0.46831955922865015,
-   "top1_win": 0.1763085399449036,
-   "good_positional": 62,
+   "gold": 22,
+   "good": 151,
+   "pass": 320,
+   "miss": 43,
+   "one_hit": 169,
+   "top3_precision": 0.4527089072543618,
+   "winner_in_top3": 0.5289256198347108,
+   "top1_win": 0.22589531680440772,
+   "good_positional": 74,
    "exclusive_labels": {
-    "Gold": 21,
-    "Good": 41,
-    "Pass": 72,
-    "1 Hit": 113,
-    "Miss": 116
+    "Gold": 22,
+    "Good": 52,
+    "Pass": 77,
+    "1 Hit": 123,
+    "Miss": 89
    },
-   "mrr": 0.38721316179993837
+   "mrr": 0.4337838470069874
   },
-  "good_lift_pp": -0.28,
-  "good_positional_lift_pp": 0.0,
+  "good_lift_pp": 0.55,
+  "good_positional_lift_pp": -0.28,
   "losses_pp": {
    "gold": 0.0,
    "top1": 0.0,
-   "winner_in_top3": 0.28
+   "winner_in_top3": 0.0
   },
-  "miss_delta": -1,
+  "miss_delta": 0,
   "folds": [
    {
     "fold": 1,
     "baseline": {
      "races": 55,
-     "gold": 9,
+     "gold": 7,
      "good": 29,
      "pass": 51,
      "miss": 4,
      "one_hit": 22,
-     "top3_precision": 0.5393939393939394,
-     "winner_in_top3": 0.6,
-     "top1_win": 0.2,
-     "good_positional": 14,
+     "top3_precision": 0.5272727272727272,
+     "winner_in_top3": 0.5818181818181818,
+     "top1_win": 0.21818181818181817,
+     "good_positional": 15,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 5,
-      "Pass": 15,
-      "1 Hit": 19,
-      "Miss": 7
+      "Gold": 7,
+      "Good": 8,
+      "Pass": 14,
+      "1 Hit": 14,
+      "Miss": 12
      },
-     "mrr": 0.4435998345089254
+     "mrr": 0.44992673992673976
     },
     "candidate": {
      "races": 55,
-     "gold": 9,
+     "gold": 7,
      "good": 29,
      "pass": 51,
      "miss": 4,
      "one_hit": 22,
-     "top3_precision": 0.5393939393939394,
+     "top3_precision": 0.5272727272727272,
      "winner_in_top3": 0.5818181818181818,
-     "top1_win": 0.2,
-     "good_positional": 14,
+     "top1_win": 0.21818181818181817,
+     "good_positional": 15,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 5,
-      "Pass": 15,
-      "1 Hit": 19,
-      "Miss": 7
+      "Gold": 7,
+      "Good": 8,
+      "Pass": 14,
+      "1 Hit": 14,
+      "Miss": 12
      },
-     "mrr": 0.4420846829937738
+     "mrr": 0.4502514152514151
     }
    },
    {
     "fold": 2,
     "baseline": {
      "races": 64,
-     "gold": 0,
-     "good": 24,
-     "pass": 59,
-     "miss": 5,
-     "one_hit": 35,
-     "top3_precision": 0.4322916666666667,
-     "winner_in_top3": 0.515625,
-     "top1_win": 0.15625,
-     "good_positional": 9,
+     "gold": 3,
+     "good": 25,
+     "pass": 58,
+     "miss": 6,
+     "one_hit": 33,
+     "top3_precision": 0.4479166666666667,
+     "winner_in_top3": 0.640625,
+     "top1_win": 0.296875,
+     "good_positional": 11,
      "exclusive_labels": {
-      "Gold": 0,
-      "Good": 9,
-      "Pass": 15,
+      "Gold": 3,
+      "Good": 8,
+      "Pass": 14,
       "1 Hit": 26,
-      "Miss": 14
+      "Miss": 13
      },
-     "mrr": 0.39317956349206334
+     "mrr": 0.505412556193806
     },
     "candidate": {
      "races": 64,
-     "gold": 0,
-     "good": 24,
-     "pass": 59,
-     "miss": 5,
-     "one_hit": 35,
-     "top3_precision": 0.4322916666666667,
-     "winner_in_top3": 0.515625,
-     "top1_win": 0.15625,
-     "good_positional": 9,
+     "gold": 3,
+     "good": 25,
+     "pass": 58,
+     "miss": 6,
+     "one_hit": 33,
+     "top3_precision": 0.4479166666666667,
+     "winner_in_top3": 0.640625,
+     "top1_win": 0.296875,
+     "good_positional": 11,
      "exclusive_labels": {
-      "Gold": 0,
-      "Good": 9,
-      "Pass": 15,
-      "1 Hit": 25,
-      "Miss": 15
+      "Gold": 3,
+      "Good": 8,
+      "Pass": 14,
+      "1 Hit": 27,
+      "Miss": 12
      },
-     "mrr": 0.39396081349206336
+     "mrr": 0.505412556193806
     }
    },
    {
     "fold": 3,
     "baseline": {
      "races": 109,
-     "gold": 9,
-     "good": 40,
-     "pass": 79,
-     "miss": 30,
-     "one_hit": 39,
-     "top3_precision": 0.39143730886850153,
-     "winner_in_top3": 0.44954128440366975,
+     "gold": 5,
+     "good": 43,
+     "pass": 94,
+     "miss": 15,
+     "one_hit": 51,
+     "top3_precision": 0.43425076452599387,
+     "winner_in_top3": 0.4954128440366973,
      "top1_win": 0.2018348623853211,
-     "good_positional": 22,
+     "good_positional": 28,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 13,
-      "Pass": 18,
-      "1 Hit": 24,
-      "Miss": 45
+      "Gold": 5,
+      "Good": 23,
+      "Pass": 15,
+      "1 Hit": 35,
+      "Miss": 31
      },
-     "mrr": 0.38911967237655326
+     "mrr": 0.4114282761071754
     },
     "candidate": {
      "races": 109,
-     "gold": 9,
-     "good": 40,
-     "pass": 80,
-     "miss": 29,
-     "one_hit": 40,
-     "top3_precision": 0.3944954128440367,
-     "winner_in_top3": 0.44954128440366975,
+     "gold": 5,
+     "good": 44,
+     "pass": 94,
+     "miss": 15,
+     "one_hit": 50,
+     "top3_precision": 0.43730886850152906,
+     "winner_in_top3": 0.4954128440366973,
      "top1_win": 0.2018348623853211,
-     "good_positional": 21,
+     "good_positional": 28,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 12,
-      "Pass": 19,
-      "1 Hit": 25,
-      "Miss": 44
+      "Gold": 5,
+      "Good": 23,
+      "Pass": 16,
+      "1 Hit": 36,
+      "Miss": 29
      },
-     "mrr": 0.3896867149160729
+     "mrr": 0.4114282761071754
     }
    },
    {
     "fold": 4,
     "baseline": {
      "races": 106,
-     "gold": 2,
-     "good": 33,
-     "pass": 87,
-     "miss": 19,
-     "one_hit": 54,
-     "top3_precision": 0.3836477987421384,
-     "winner_in_top3": 0.42452830188679247,
-     "top1_win": 0.1509433962264151,
-     "good_positional": 13,
+     "gold": 5,
+     "good": 43,
+     "pass": 92,
+     "miss": 14,
+     "one_hit": 49,
+     "top3_precision": 0.44025157232704404,
+     "winner_in_top3": 0.4811320754716981,
+     "top1_win": 0.2169811320754717,
+     "good_positional": 18,
      "exclusive_labels": {
-      "Gold": 2,
-      "Good": 11,
-      "Pass": 20,
-      "1 Hit": 37,
-      "Miss": 36
+      "Gold": 5,
+      "Good": 13,
+      "Pass": 25,
+      "1 Hit": 36,
+      "Miss": 27
      },
-     "mrr": 0.3602318017412357
+     "mrr": 0.41461559928541075
     },
     "candidate": {
      "races": 106,
-     "gold": 2,
-     "good": 32,
-     "pass": 87,
-     "miss": 19,
-     "one_hit": 55,
-     "top3_precision": 0.3805031446540881,
-     "winner_in_top3": 0.42452830188679247,
-     "top1_win": 0.1509433962264151,
-     "good_positional": 14,
+     "gold": 5,
+     "good": 43,
+     "pass": 92,
+     "miss": 14,
+     "one_hit": 49,
+     "top3_precision": 0.44025157232704404,
+     "winner_in_top3": 0.4811320754716981,
+     "top1_win": 0.2169811320754717,
+     "good_positional": 17,
      "exclusive_labels": {
-      "Gold": 2,
+      "Gold": 5,
       "Good": 12,
-      "Pass": 18,
-      "1 Hit": 36,
-      "Miss": 38
+      "Pass": 26,
+      "1 Hit": 35,
+      "Miss": 28
      },
-     "mrr": 0.3585880052861185
+     "mrr": 0.41451077748247583
     }
    },
    {
     "fold": 5,
     "baseline": {
      "races": 29,
-     "gold": 1,
+     "gold": 2,
      "good": 9,
-     "pass": 22,
-     "miss": 7,
-     "one_hit": 13,
-     "top3_precision": 0.367816091954023,
-     "winner_in_top3": 0.3793103448275862,
-     "top1_win": 0.1724137931034483,
-     "good_positional": 4,
+     "pass": 25,
+     "miss": 4,
+     "one_hit": 16,
+     "top3_precision": 0.41379310344827586,
+     "winner_in_top3": 0.4827586206896552,
+     "top1_win": 0.20689655172413793,
+     "good_positional": 3,
      "exclusive_labels": {
-      "Gold": 1,
-      "Good": 3,
-      "Pass": 5,
-      "1 Hit": 8,
-      "Miss": 12
+      "Gold": 2,
+      "Good": 1,
+      "Pass": 6,
+      "1 Hit": 12,
+      "Miss": 8
      },
-     "mrr": 0.3632047071702244
+     "mrr": 0.3989476041200179
     },
     "candidate": {
      "races": 29,
-     "gold": 1,
-     "good": 9,
-     "pass": 22,
-     "miss": 7,
-     "one_hit": 13,
-     "top3_precision": 0.367816091954023,
-     "winner_in_top3": 0.3793103448275862,
-     "top1_win": 0.1724137931034483,
-     "good_positional": 4,
+     "gold": 2,
+     "good": 10,
+     "pass": 25,
+     "miss": 4,
+     "one_hit": 15,
+     "top3_precision": 0.42528735632183906,
+     "winner_in_top3": 0.4827586206896552,
+     "top1_win": 0.20689655172413793,
+     "good_positional": 3,
      "exclusive_labels": {
-      "Gold": 1,
-      "Good": 3,
-      "Pass": 5,
-      "1 Hit": 8,
-      "Miss": 12
+      "Gold": 2,
+      "Good": 1,
+      "Pass": 7,
+      "1 Hit": 11,
+      "Miss": 8
      },
-     "mrr": 0.36358784893267654
+     "mrr": 0.3989476041200179
     }
    }
   ],
-  "top3_non_worse_folds": "4/5",
+  "top3_non_worse_folds": "5/5",
   "slices": {
    "12+": {
     "races": 123,
-    "gold": 3,
-    "good": 28,
-    "pass": 92,
-    "miss": 31,
+    "gold": 5,
+    "good": 39,
+    "pass": 103,
+    "miss": 20,
     "one_hit": 64,
-    "top3_precision": 0.3333333333333333,
-    "winner_in_top3": 0.3333333333333333,
-    "top1_win": 0.13008130081300814,
-    "good_positional": 12,
+    "top3_precision": 0.3983739837398374,
+    "winner_in_top3": 0.43902439024390244,
+    "top1_win": 0.2032520325203252,
+    "good_positional": 16,
     "exclusive_labels": {
-     "Gold": 3,
-     "Good": 9,
-     "Pass": 16,
-     "1 Hit": 40,
-     "Miss": 55
+     "Gold": 5,
+     "Good": 11,
+     "Pass": 23,
+     "1 Hit": 47,
+     "Miss": 37
     },
-    "mrr": 0.3101785071297267
+    "mrr": 0.38326506375286895
    },
    "9-11": {
     "races": 148,
     "gold": 4,
-    "good": 51,
-    "pass": 123,
-    "miss": 25,
+    "good": 56,
+    "pass": 128,
+    "miss": 20,
     "one_hit": 72,
-    "top3_precision": 0.4009009009009009,
-    "winner_in_top3": 0.47297297297297297,
-    "top1_win": 0.16216216216216217,
-    "good_positional": 20,
+    "top3_precision": 0.42342342342342343,
+    "winner_in_top3": 0.5067567567567568,
+    "top1_win": 0.20945945945945946,
+    "good_positional": 26,
     "exclusive_labels": {
      "Gold": 4,
-     "Good": 16,
-     "Pass": 31,
-     "1 Hit": 52,
-     "Miss": 45
+     "Good": 22,
+     "Pass": 30,
+     "1 Hit": 50,
+     "Miss": 42
     },
-    "mrr": 0.38695619320619357
+    "mrr": 0.41589787839787873
    },
    "<=8": {
     "races": 92,
-    "gold": 14,
-    "good": 55,
-    "pass": 84,
-    "miss": 8,
-    "one_hit": 29,
-    "top3_precision": 0.5543478260869565,
-    "winner_in_top3": 0.6413043478260869,
-    "top1_win": 0.2608695652173913,
-    "good_positional": 30,
+    "gold": 13,
+    "good": 56,
+    "pass": 89,
+    "miss": 3,
+    "one_hit": 33,
+    "top3_precision": 0.572463768115942,
+    "winner_in_top3": 0.6847826086956522,
+    "top1_win": 0.2826086956521739,
+    "good_positional": 32,
     "exclusive_labels": {
-     "Gold": 14,
-     "Good": 16,
-     "Pass": 25,
-     "1 Hit": 21,
-     "Miss": 16
+     "Gold": 13,
+     "Good": 19,
+     "Pass": 24,
+     "1 Hit": 26,
+     "Miss": 10
     },
-    "mrr": 0.4906185300207042
+    "mrr": 0.5300983436853004
    },
    "going Good/Firm": {
     "races": 96,
-    "gold": 7,
-    "good": 39,
-    "pass": 90,
-    "miss": 6,
-    "one_hit": 51,
-    "top3_precision": 0.4722222222222222,
-    "winner_in_top3": 0.5520833333333334,
-    "top1_win": 0.15625,
-    "good_positional": 19,
+    "gold": 6,
+    "good": 40,
+    "pass": 87,
+    "miss": 9,
+    "one_hit": 47,
+    "top3_precision": 0.4618055555555556,
+    "winner_in_top3": 0.59375,
+    "top1_win": 0.2708333333333333,
+    "good_positional": 21,
     "exclusive_labels": {
-     "Gold": 7,
-     "Good": 12,
-     "Pass": 20,
-     "1 Hit": 40,
-     "Miss": 17
+     "Gold": 6,
+     "Good": 15,
+     "Pass": 19,
+     "1 Hit": 36,
+     "Miss": 20
     },
-    "mrr": 0.4045921670921672
+    "mrr": 0.4809845536408039
    },
    "going Heavy": {
     "races": 87,
-    "gold": 4,
-    "good": 26,
-    "pass": 62,
-    "miss": 25,
-    "one_hit": 36,
-    "top3_precision": 0.3524904214559387,
-    "winner_in_top3": 0.47126436781609193,
-    "top1_win": 0.1839080459770115,
-    "good_positional": 13,
+    "gold": 6,
+    "good": 37,
+    "pass": 74,
+    "miss": 13,
+    "one_hit": 37,
+    "top3_precision": 0.4482758620689655,
+    "winner_in_top3": 0.5172413793103449,
+    "top1_win": 0.27586206896551724,
+    "good_positional": 19,
     "exclusive_labels": {
-     "Gold": 4,
-     "Good": 9,
-     "Pass": 13,
+     "Gold": 6,
+     "Good": 13,
+     "Pass": 18,
      "1 Hit": 26,
-     "Miss": 35
+     "Miss": 24
     },
-    "mrr": 0.39974843164498347
+    "mrr": 0.4567192067192069
    },
    "going Soft": {
     "races": 171,
     "gold": 9,
-    "good": 66,
-    "pass": 140,
-    "miss": 31,
-    "one_hit": 74,
-    "top3_precision": 0.4191033138401559,
-    "winner_in_top3": 0.4152046783625731,
+    "good": 72,
+    "pass": 150,
+    "miss": 21,
+    "one_hit": 78,
+    "top3_precision": 0.4502923976608187,
+    "winner_in_top3": 0.49122807017543857,
     "top1_win": 0.18128654970760233,
-    "good_positional": 28,
+    "good_positional": 32,
     "exclusive_labels": {
      "Gold": 9,
-     "Good": 19,
-     "Pass": 38,
-     "1 Hit": 44,
-     "Miss": 61
+     "Good": 23,
+     "Pass": 40,
+     "1 Hit": 57,
+     "Miss": 42
     },
-    "mrr": 0.3681967155651371
+    "mrr": 0.39773556527942544
    },
    "going Synthetic": {
     "races": 9,
     "gold": 1,
-    "good": 3,
-    "pass": 7,
-    "miss": 2,
-    "one_hit": 4,
-    "top3_precision": 0.4074074074074074,
-    "winner_in_top3": 0.5555555555555556,
-    "top1_win": 0.2222222222222222,
+    "good": 2,
+    "pass": 9,
+    "miss": 0,
+    "one_hit": 7,
+    "top3_precision": 0.4444444444444444,
+    "winner_in_top3": 0.6666666666666666,
+    "top1_win": 0.1111111111111111,
     "good_positional": 2,
     "exclusive_labels": {
      "Gold": 1,
      "Good": 1,
-     "Pass": 1,
-     "1 Hit": 3,
+     "Pass": 0,
+     "1 Hit": 4,
      "Miss": 3
     },
-    "mrr": 0.4419753086419753
+    "mrr": 0.3935185185185185
    }
   },
   "passed": false
@@ -2486,950 +2486,102 @@
  {
   "name": "weights: stability x0.8",
   "oos_races": 363,
-  "affected_top3_changes": 79,
+  "affected_top3_changes": 102,
   "baseline": {
    "races": 363,
    "gold": 22,
    "good": 143,
-   "pass": 309,
-   "miss": 54,
-   "one_hit": 166,
-   "top3_precision": 0.43526170798898073,
-   "winner_in_top3": 0.4793388429752066,
-   "top1_win": 0.1790633608815427,
-   "good_positional": 65,
+   "pass": 321,
+   "miss": 42,
+   "one_hit": 178,
+   "top3_precision": 0.4462809917355372,
+   "winner_in_top3": 0.5179063360881543,
+   "top1_win": 0.23415977961432508,
+   "good_positional": 78,
    "exclusive_labels": {
     "Gold": 22,
-    "Good": 43,
-    "Pass": 78,
-    "1 Hit": 115,
-    "Miss": 105
+    "Good": 56,
+    "Pass": 65,
+    "1 Hit": 125,
+    "Miss": 95
    },
-   "mrr": 0.39153133368009374
+   "mrr": 0.4367747648739384
   },
   "candidate": {
    "races": 363,
    "gold": 21,
-   "good": 144,
-   "pass": 303,
-   "miss": 60,
-   "one_hit": 159,
-   "top3_precision": 0.4297520661157025,
-   "winner_in_top3": 0.4793388429752066,
-   "top1_win": 0.17079889807162535,
-   "good_positional": 69,
+   "good": 140,
+   "pass": 321,
+   "miss": 42,
+   "one_hit": 181,
+   "top3_precision": 0.4426078971533517,
+   "winner_in_top3": 0.512396694214876,
+   "top1_win": 0.23140495867768596,
+   "good_positional": 76,
    "exclusive_labels": {
     "Gold": 21,
-    "Good": 48,
-    "Pass": 75,
-    "1 Hit": 113,
-    "Miss": 106
+    "Good": 55,
+    "Pass": 64,
+    "1 Hit": 129,
+    "Miss": 94
    },
-   "mrr": 0.3892377671303288
+   "mrr": 0.43666117323142106
   },
-  "good_lift_pp": 0.28,
-  "good_positional_lift_pp": 1.1,
+  "good_lift_pp": -0.83,
+  "good_positional_lift_pp": -0.55,
   "losses_pp": {
    "gold": 0.28,
-   "top1": 0.83,
-   "winner_in_top3": 0.0
+   "top1": 0.28,
+   "winner_in_top3": 0.55
   },
-  "miss_delta": 6,
+  "miss_delta": 0,
   "folds": [
    {
     "fold": 1,
     "baseline": {
      "races": 55,
-     "gold": 10,
-     "good": 30,
-     "pass": 54,
-     "miss": 1,
-     "one_hit": 24,
-     "top3_precision": 0.5696969696969697,
-     "winner_in_top3": 0.6363636363636364,
-     "top1_win": 0.2,
-     "good_positional": 17,
-     "exclusive_labels": {
-      "Gold": 10,
-      "Good": 7,
-      "Pass": 13,
-      "1 Hit": 21,
-      "Miss": 4
-     },
-     "mrr": 0.4526690985781895
-    },
-    "candidate": {
-     "races": 55,
-     "gold": 9,
-     "good": 32,
-     "pass": 54,
-     "miss": 1,
+     "gold": 7,
+     "good": 29,
+     "pass": 51,
+     "miss": 4,
      "one_hit": 22,
-     "top3_precision": 0.5757575757575758,
-     "winner_in_top3": 0.6545454545454545,
-     "top1_win": 0.16363636363636364,
-     "good_positional": 18,
+     "top3_precision": 0.5272727272727272,
+     "winner_in_top3": 0.5818181818181818,
+     "top1_win": 0.21818181818181817,
+     "good_positional": 15,
      "exclusive_labels": {
-      "Gold": 9,
-      "Good": 9,
+      "Gold": 7,
+      "Good": 8,
       "Pass": 14,
-      "1 Hit": 19,
-      "Miss": 4
+      "1 Hit": 14,
+      "Miss": 12
      },
-     "mrr": 0.44326728826728823
-    }
-   },
-   {
-    "fold": 2,
-    "baseline": {
-     "races": 64,
-     "gold": 1,
-     "good": 25,
-     "pass": 59,
-     "miss": 5,
-     "one_hit": 34,
-     "top3_precision": 0.4427083333333333,
-     "winner_in_top3": 0.453125,
-     "top1_win": 0.1875,
-     "good_positional": 6,
-     "exclusive_labels": {
-      "Gold": 1,
-      "Good": 5,
-      "Pass": 19,
-      "1 Hit": 26,
-      "Miss": 13
-     },
-     "mrr": 0.3980840773809524
+     "mrr": 0.44992673992673976
     },
     "candidate": {
-     "races": 64,
-     "gold": 2,
-     "good": 26,
-     "pass": 58,
-     "miss": 6,
-     "one_hit": 32,
-     "top3_precision": 0.4479166666666667,
-     "winner_in_top3": 0.484375,
-     "top1_win": 0.203125,
-     "good_positional": 8,
-     "exclusive_labels": {
-      "Gold": 2,
-      "Good": 6,
-      "Pass": 18,
-      "1 Hit": 25,
-      "Miss": 13
-     },
-     "mrr": 0.4120349702380952
-    }
-   },
-   {
-    "fold": 3,
-    "baseline": {
-     "races": 109,
-     "gold": 7,
-     "good": 43,
-     "pass": 83,
-     "miss": 26,
-     "one_hit": 40,
-     "top3_precision": 0.40672782874617736,
-     "winner_in_top3": 0.4954128440366973,
-     "top1_win": 0.1834862385321101,
-     "good_positional": 26,
-     "exclusive_labels": {
-      "Gold": 7,
-      "Good": 19,
-      "Pass": 17,
-      "1 Hit": 22,
-      "Miss": 44
-     },
-     "mrr": 0.38562380534857604
-    },
-    "candidate": {
-     "races": 109,
-     "gold": 6,
-     "good": 41,
-     "pass": 81,
-     "miss": 28,
-     "one_hit": 40,
-     "top3_precision": 0.39143730886850153,
-     "winner_in_top3": 0.47706422018348627,
-     "top1_win": 0.1743119266055046,
-     "good_positional": 25,
-     "exclusive_labels": {
-      "Gold": 6,
-      "Good": 19,
-      "Pass": 16,
-      "1 Hit": 24,
-      "Miss": 44
-     },
-     "mrr": 0.37913989680044735
-    }
-   },
-   {
-    "fold": 4,
-    "baseline": {
-     "races": 106,
-     "gold": 3,
-     "good": 34,
-     "pass": 90,
-     "miss": 16,
-     "one_hit": 56,
-     "top3_precision": 0.39937106918238996,
-     "winner_in_top3": 0.41509433962264153,
-     "top1_win": 0.16037735849056603,
-     "good_positional": 11,
-     "exclusive_labels": {
-      "Gold": 3,
-      "Good": 8,
-      "Pass": 23,
-      "1 Hit": 38,
-      "Miss": 34
-     },
-     "mrr": 0.3688384204893641
-    },
-    "candidate": {
-     "races": 106,
-     "gold": 3,
-     "good": 34,
-     "pass": 88,
-     "miss": 18,
-     "one_hit": 54,
-     "top3_precision": 0.39308176100628933,
-     "winner_in_top3": 0.41509433962264153,
-     "top1_win": 0.1509433962264151,
-     "good_positional": 12,
-     "exclusive_labels": {
-      "Gold": 3,
-      "Good": 9,
-      "Pass": 22,
-      "1 Hit": 37,
-      "Miss": 35
-     },
-     "mrr": 0.36358960745753216
-    }
-   },
-   {
-    "fold": 5,
-    "baseline": {
-     "races": 29,
-     "gold": 1,
-     "good": 11,
-     "pass": 23,
-     "miss": 6,
-     "one_hit": 12,
-     "top3_precision": 0.40229885057471265,
-     "winner_in_top3": 0.41379310344827586,
-     "top1_win": 0.1724137931034483,
-     "good_positional": 5,
-     "exclusive_labels": {
-      "Gold": 1,
-      "Good": 4,
-      "Pass": 6,
-      "1 Hit": 8,
-      "Miss": 10
-     },
-     "mrr": 0.36626984126984125
-    },
-    "candidate": {
-     "races": 29,
-     "gold": 1,
-     "good": 11,
-     "pass": 22,
-     "miss": 7,
-     "one_hit": 11,
-     "top3_precision": 0.39080459770114945,
-     "winner_in_top3": 0.3793103448275862,
-     "top1_win": 0.1724137931034483,
-     "good_positional": 6,
-     "exclusive_labels": {
-      "Gold": 1,
-      "Good": 5,
-      "Pass": 5,
-      "1 Hit": 8,
-      "Miss": 10
-     },
-     "mrr": 0.36815942678011637
-    }
-   }
-  ],
-  "top3_non_worse_folds": "2/5",
-  "slices": {
-   "12+": {
-    "races": 123,
-    "gold": 3,
-    "good": 31,
-    "pass": 92,
-    "miss": 31,
-    "one_hit": 61,
-    "top3_precision": 0.34146341463414637,
-    "winner_in_top3": 0.35772357723577236,
-    "top1_win": 0.13008130081300814,
-    "good_positional": 14,
-    "exclusive_labels": {
-     "Gold": 3,
-     "Good": 11,
-     "Pass": 17,
-     "1 Hit": 38,
-     "Miss": 54
-    },
-    "mrr": 0.3167990997259292
-   },
-   "9-11": {
-    "races": 148,
-    "gold": 4,
-    "good": 53,
-    "pass": 127,
-    "miss": 21,
-    "one_hit": 74,
-    "top3_precision": 0.4144144144144144,
-    "winner_in_top3": 0.47297297297297297,
-    "top1_win": 0.16216216216216217,
-    "good_positional": 24,
-    "exclusive_labels": {
-     "Gold": 4,
-     "Good": 20,
-     "Pass": 29,
-     "1 Hit": 56,
-     "Miss": 39
-    },
-    "mrr": 0.3940773565773569
-   },
-   "<=8": {
-    "races": 92,
-    "gold": 14,
-    "good": 60,
-    "pass": 84,
-    "miss": 8,
-    "one_hit": 24,
-    "top3_precision": 0.572463768115942,
-    "winner_in_top3": 0.6521739130434783,
-    "top1_win": 0.2391304347826087,
-    "good_positional": 31,
-    "exclusive_labels": {
-     "Gold": 14,
-     "Good": 17,
-     "Pass": 29,
-     "1 Hit": 19,
-     "Miss": 13
-    },
-    "mrr": 0.47829968944099405
-   },
-   "going Good/Firm": {
-    "races": 96,
-    "gold": 9,
-    "good": 47,
-    "pass": 90,
-    "miss": 6,
-    "one_hit": 43,
-    "top3_precision": 0.5069444444444444,
-    "winner_in_top3": 0.5833333333333334,
-    "top1_win": 0.16666666666666666,
-    "good_positional": 20,
-    "exclusive_labels": {
-     "Gold": 9,
-     "Good": 11,
-     "Pass": 27,
-     "1 Hit": 35,
-     "Miss": 14
-    },
-    "mrr": 0.41611626221001236
-   },
-   "going Heavy": {
-    "races": 87,
-    "gold": 3,
-    "good": 28,
-    "pass": 66,
-    "miss": 21,
-    "one_hit": 38,
-    "top3_precision": 0.3716475095785441,
-    "winner_in_top3": 0.4827586206896552,
-    "top1_win": 0.1839080459770115,
-    "good_positional": 14,
-    "exclusive_labels": {
-     "Gold": 3,
-     "Good": 11,
-     "Pass": 14,
-     "1 Hit": 23,
-     "Miss": 36
-    },
-    "mrr": 0.3962458359010083
-   },
-   "going Soft": {
-    "races": 171,
-    "gold": 8,
-    "good": 65,
-    "pass": 140,
-    "miss": 31,
-    "one_hit": 75,
-    "top3_precision": 0.4152046783625731,
-    "winner_in_top3": 0.4152046783625731,
-    "top1_win": 0.16374269005847952,
-    "good_positional": 33,
-    "exclusive_labels": {
-     "Gold": 8,
-     "Good": 25,
-     "Pass": 32,
-     "1 Hit": 53,
-     "Miss": 53
-    },
-    "mrr": 0.36800184870360364
-   },
-   "going Synthetic": {
-    "races": 9,
-    "gold": 1,
-    "good": 4,
-    "pass": 7,
-    "miss": 2,
-    "one_hit": 3,
-    "top3_precision": 0.4444444444444444,
-    "winner_in_top3": 0.5555555555555556,
-    "top1_win": 0.2222222222222222,
-    "good_positional": 2,
-    "exclusive_labels": {
-     "Gold": 1,
-     "Good": 1,
-     "Pass": 2,
-     "1 Hit": 2,
-     "Miss": 3
-    },
-    "mrr": 0.43827160493827155
-   }
-  },
-  "passed": false
- },
- {
-  "name": "weights: jockey_trainer x1.2",
-  "oos_races": 363,
-  "affected_top3_changes": 41,
-  "baseline": {
-   "races": 363,
-   "gold": 22,
-   "good": 143,
-   "pass": 309,
-   "miss": 54,
-   "one_hit": 166,
-   "top3_precision": 0.43526170798898073,
-   "winner_in_top3": 0.4793388429752066,
-   "top1_win": 0.1790633608815427,
-   "good_positional": 65,
-   "exclusive_labels": {
-    "Gold": 22,
-    "Good": 43,
-    "Pass": 78,
-    "1 Hit": 115,
-    "Miss": 105
-   },
-   "mrr": 0.39153133368009374
-  },
-  "candidate": {
-   "races": 363,
-   "gold": 22,
-   "good": 147,
-   "pass": 305,
-   "miss": 58,
-   "one_hit": 158,
-   "top3_precision": 0.43526170798898073,
-   "winner_in_top3": 0.47107438016528924,
-   "top1_win": 0.17355371900826447,
-   "good_positional": 68,
-   "exclusive_labels": {
-    "Gold": 22,
-    "Good": 46,
-    "Pass": 79,
-    "1 Hit": 111,
-    "Miss": 105
-   },
-   "mrr": 0.38783217089002203
-  },
-  "good_lift_pp": 1.1,
-  "good_positional_lift_pp": 0.83,
-  "losses_pp": {
-   "gold": 0.0,
-   "top1": 0.55,
-   "winner_in_top3": 0.83
-  },
-  "miss_delta": 4,
-  "folds": [
-   {
-    "fold": 1,
-    "baseline": {
      "races": 55,
-     "gold": 10,
-     "good": 30,
-     "pass": 54,
-     "miss": 1,
+     "gold": 7,
+     "good": 28,
+     "pass": 52,
+     "miss": 3,
      "one_hit": 24,
-     "top3_precision": 0.5696969696969697,
-     "winner_in_top3": 0.6363636363636364,
-     "top1_win": 0.2,
-     "good_positional": 17,
+     "top3_precision": 0.5272727272727272,
+     "winner_in_top3": 0.6,
+     "top1_win": 0.23636363636363636,
+     "good_positional": 15,
      "exclusive_labels": {
-      "Gold": 10,
-      "Good": 7,
-      "Pass": 13,
-      "1 Hit": 21,
-      "Miss": 4
-     },
-     "mrr": 0.4526690985781895
-    },
-    "candidate": {
-     "races": 55,
-     "gold": 10,
-     "good": 33,
-     "pass": 54,
-     "miss": 1,
-     "one_hit": 21,
-     "top3_precision": 0.5878787878787879,
-     "winner_in_top3": 0.6545454545454545,
-     "top1_win": 0.18181818181818182,
-     "good_positional": 18,
-     "exclusive_labels": {
-      "Gold": 10,
+      "Gold": 7,
       "Good": 8,
-      "Pass": 15,
-      "1 Hit": 18,
-      "Miss": 4
+      "Pass": 13,
+      "1 Hit": 16,
+      "Miss": 11
      },
-     "mrr": 0.4419036519036519
+     "mrr": 0.4653812853812852
     }
    },
    {
     "fold": 2,
     "baseline": {
-     "races": 64,
-     "gold": 1,
-     "good": 25,
-     "pass": 59,
-     "miss": 5,
-     "one_hit": 34,
-     "top3_precision": 0.4427083333333333,
-     "winner_in_top3": 0.453125,
-     "top1_win": 0.1875,
-     "good_positional": 6,
-     "exclusive_labels": {
-      "Gold": 1,
-      "Good": 5,
-      "Pass": 19,
-      "1 Hit": 26,
-      "Miss": 13
-     },
-     "mrr": 0.3980840773809524
-    },
-    "candidate": {
-     "races": 64,
-     "gold": 1,
-     "good": 26,
-     "pass": 58,
-     "miss": 6,
-     "one_hit": 32,
-     "top3_precision": 0.4427083333333333,
-     "winner_in_top3": 0.453125,
-     "top1_win": 0.1875,
-     "good_positional": 8,
-     "exclusive_labels": {
-      "Gold": 1,
-      "Good": 7,
-      "Pass": 18,
-      "1 Hit": 24,
-      "Miss": 14
-     },
-     "mrr": 0.3988033234126984
-    }
-   },
-   {
-    "fold": 3,
-    "baseline": {
-     "races": 109,
-     "gold": 7,
-     "good": 43,
-     "pass": 83,
-     "miss": 26,
-     "one_hit": 40,
-     "top3_precision": 0.40672782874617736,
-     "winner_in_top3": 0.4954128440366973,
-     "top1_win": 0.1834862385321101,
-     "good_positional": 26,
-     "exclusive_labels": {
-      "Gold": 7,
-      "Good": 19,
-      "Pass": 17,
-      "1 Hit": 22,
-      "Miss": 44
-     },
-     "mrr": 0.38562380534857604
-    },
-    "candidate": {
-     "races": 109,
-     "gold": 7,
-     "good": 43,
-     "pass": 82,
-     "miss": 27,
-     "one_hit": 39,
-     "top3_precision": 0.4036697247706422,
-     "winner_in_top3": 0.47706422018348627,
-     "top1_win": 0.1743119266055046,
-     "good_positional": 26,
-     "exclusive_labels": {
-      "Gold": 7,
-      "Good": 19,
-      "Pass": 17,
-      "1 Hit": 22,
-      "Miss": 44
-     },
-     "mrr": 0.37947903269004196
-    }
-   },
-   {
-    "fold": 4,
-    "baseline": {
-     "races": 106,
-     "gold": 3,
-     "good": 34,
-     "pass": 90,
-     "miss": 16,
-     "one_hit": 56,
-     "top3_precision": 0.39937106918238996,
-     "winner_in_top3": 0.41509433962264153,
-     "top1_win": 0.16037735849056603,
-     "good_positional": 11,
-     "exclusive_labels": {
-      "Gold": 3,
-      "Good": 8,
-      "Pass": 23,
-      "1 Hit": 38,
-      "Miss": 34
-     },
-     "mrr": 0.3688384204893641
-    },
-    "candidate": {
-     "races": 106,
-     "gold": 3,
-     "good": 34,
-     "pass": 88,
-     "miss": 18,
-     "one_hit": 54,
-     "top3_precision": 0.39308176100628933,
-     "winner_in_top3": 0.39622641509433965,
-     "top1_win": 0.16037735849056603,
-     "good_positional": 12,
-     "exclusive_labels": {
-      "Gold": 3,
-      "Good": 9,
-      "Pass": 22,
-      "1 Hit": 39,
-      "Miss": 33
-     },
-     "mrr": 0.36764079735777866
-    }
-   },
-   {
-    "fold": 5,
-    "baseline": {
-     "races": 29,
-     "gold": 1,
-     "good": 11,
-     "pass": 23,
-     "miss": 6,
-     "one_hit": 12,
-     "top3_precision": 0.40229885057471265,
-     "winner_in_top3": 0.41379310344827586,
-     "top1_win": 0.1724137931034483,
-     "good_positional": 5,
-     "exclusive_labels": {
-      "Gold": 1,
-      "Good": 4,
-      "Pass": 6,
-      "1 Hit": 8,
-      "Miss": 10
-     },
-     "mrr": 0.36626984126984125
-    },
-    "candidate": {
-     "races": 29,
-     "gold": 1,
-     "good": 11,
-     "pass": 23,
-     "miss": 6,
-     "one_hit": 12,
-     "top3_precision": 0.40229885057471265,
-     "winner_in_top3": 0.41379310344827586,
-     "top1_win": 0.1724137931034483,
-     "good_positional": 4,
-     "exclusive_labels": {
-      "Gold": 1,
-      "Good": 3,
-      "Pass": 7,
-      "1 Hit": 8,
-      "Miss": 10
-     },
-     "mrr": 0.36626984126984125
-    }
-   }
-  ],
-  "top3_non_worse_folds": "3/5",
-  "slices": {
-   "12+": {
-    "races": 123,
-    "gold": 3,
-    "good": 32,
-    "pass": 94,
-    "miss": 29,
-    "one_hit": 62,
-    "top3_precision": 0.34959349593495936,
-    "winner_in_top3": 0.35772357723577236,
-    "top1_win": 0.12195121951219512,
-    "good_positional": 14,
-    "exclusive_labels": {
-     "Gold": 3,
-     "Good": 11,
-     "Pass": 18,
-     "1 Hit": 40,
-     "Miss": 51
-    },
-    "mrr": 0.31238632641071684
-   },
-   "9-11": {
-    "races": 148,
-    "gold": 5,
-    "good": 54,
-    "pass": 127,
-    "miss": 21,
-    "one_hit": 73,
-    "top3_precision": 0.4189189189189189,
-    "winner_in_top3": 0.46621621621621623,
-    "top1_win": 0.17567567567567569,
-    "good_positional": 24,
-    "exclusive_labels": {
-     "Gold": 5,
-     "Good": 19,
-     "Pass": 30,
-     "1 Hit": 53,
-     "Miss": 41
-    },
-    "mrr": 0.39654947154947184
-   },
-   "<=8": {
-    "races": 92,
-    "gold": 14,
-    "good": 61,
-    "pass": 84,
-    "miss": 8,
-    "one_hit": 23,
-    "top3_precision": 0.5760869565217391,
-    "winner_in_top3": 0.6304347826086957,
-    "top1_win": 0.2391304347826087,
-    "good_positional": 30,
-    "exclusive_labels": {
-     "Gold": 14,
-     "Good": 16,
-     "Pass": 31,
-     "1 Hit": 18,
-     "Miss": 13
-    },
-    "mrr": 0.47467650103519693
-   },
-   "going Good/Firm": {
-    "races": 96,
-    "gold": 9,
-    "good": 48,
-    "pass": 90,
-    "miss": 6,
-    "one_hit": 42,
-    "top3_precision": 0.5104166666666666,
-    "winner_in_top3": 0.5625,
-    "top1_win": 0.16666666666666666,
-    "good_positional": 21,
-    "exclusive_labels": {
-     "Gold": 9,
-     "Good": 12,
-     "Pass": 27,
-     "1 Hit": 32,
-     "Miss": 16
-    },
-    "mrr": 0.4065139143264143
-   },
-   "going Heavy": {
-    "races": 87,
-    "gold": 3,
-    "good": 28,
-    "pass": 67,
-    "miss": 20,
-    "one_hit": 39,
-    "top3_precision": 0.37547892720306514,
-    "winner_in_top3": 0.4827586206896552,
-    "top1_win": 0.1839080459770115,
-    "good_positional": 12,
-    "exclusive_labels": {
-     "Gold": 3,
-     "Good": 9,
-     "Pass": 16,
-     "1 Hit": 23,
-     "Miss": 36
-    },
-    "mrr": 0.3960727969348659
-   },
-   "going Soft": {
-    "races": 171,
-    "gold": 9,
-    "good": 67,
-    "pass": 141,
-    "miss": 30,
-    "one_hit": 74,
-    "top3_precision": 0.42300194931773877,
-    "winner_in_top3": 0.4093567251461988,
-    "top1_win": 0.1695906432748538,
-    "good_positional": 33,
-    "exclusive_labels": {
-     "Gold": 9,
-     "Good": 24,
-     "Pass": 34,
-     "1 Hit": 54,
-     "Miss": 50
-    },
-    "mrr": 0.3704968683038864
-   },
-   "going Synthetic": {
-    "races": 9,
-    "gold": 1,
-    "good": 4,
-    "pass": 7,
-    "miss": 2,
-    "one_hit": 3,
-    "top3_precision": 0.4444444444444444,
-    "winner_in_top3": 0.5555555555555556,
-    "top1_win": 0.2222222222222222,
-    "good_positional": 2,
-    "exclusive_labels": {
-     "Gold": 1,
-     "Good": 1,
-     "Pass": 2,
-     "1 Hit": 2,
-     "Miss": 3
-    },
-    "mrr": 0.43827160493827155
-   }
-  },
-  "passed": false
- },
- {
-  "name": "weights: stability x0.8 + jockey_trainer x1.2",
-  "oos_races": 363,
-  "affected_top3_changes": 92,
-  "baseline": {
-   "races": 363,
-   "gold": 22,
-   "good": 143,
-   "pass": 309,
-   "miss": 54,
-   "one_hit": 166,
-   "top3_precision": 0.43526170798898073,
-   "winner_in_top3": 0.4793388429752066,
-   "top1_win": 0.1790633608815427,
-   "good_positional": 65,
-   "exclusive_labels": {
-    "Gold": 22,
-    "Good": 43,
-    "Pass": 78,
-    "1 Hit": 115,
-    "Miss": 105
-   },
-   "mrr": 0.39153133368009374
-  },
-  "candidate": {
-   "races": 363,
-   "gold": 22,
-   "good": 143,
-   "pass": 304,
-   "miss": 59,
-   "one_hit": 161,
-   "top3_precision": 0.43067033976124885,
-   "winner_in_top3": 0.4765840220385675,
-   "top1_win": 0.16804407713498623,
-   "good_positional": 67,
-   "exclusive_labels": {
-    "Gold": 22,
-    "Good": 45,
-    "Pass": 76,
-    "1 Hit": 114,
-    "Miss": 106
-   },
-   "mrr": 0.3859666962972745
-  },
-  "good_lift_pp": 0.0,
-  "good_positional_lift_pp": 0.55,
-  "losses_pp": {
-   "gold": 0.0,
-   "top1": 1.1,
-   "winner_in_top3": 0.28
-  },
-  "miss_delta": 5,
-  "folds": [
-   {
-    "fold": 1,
-    "baseline": {
-     "races": 55,
-     "gold": 10,
-     "good": 30,
-     "pass": 54,
-     "miss": 1,
-     "one_hit": 24,
-     "top3_precision": 0.5696969696969697,
-     "winner_in_top3": 0.6363636363636364,
-     "top1_win": 0.2,
-     "good_positional": 17,
-     "exclusive_labels": {
-      "Gold": 10,
-      "Good": 7,
-      "Pass": 13,
-      "1 Hit": 21,
-      "Miss": 4
-     },
-     "mrr": 0.4526690985781895
-    },
-    "candidate": {
-     "races": 55,
-     "gold": 10,
-     "good": 34,
-     "pass": 54,
-     "miss": 1,
-     "one_hit": 20,
-     "top3_precision": 0.593939393939394,
-     "winner_in_top3": 0.6363636363636364,
-     "top1_win": 0.18181818181818182,
-     "good_positional": 18,
-     "exclusive_labels": {
-      "Gold": 10,
-      "Good": 8,
-      "Pass": 16,
-      "1 Hit": 17,
-      "Miss": 4
-     },
-     "mrr": 0.4502369852369852
-    }
-   },
-   {
-    "fold": 2,
-    "baseline": {
-     "races": 64,
-     "gold": 1,
-     "good": 25,
-     "pass": 59,
-     "miss": 5,
-     "one_hit": 34,
-     "top3_precision": 0.4427083333333333,
-     "winner_in_top3": 0.453125,
-     "top1_win": 0.1875,
-     "good_positional": 6,
-     "exclusive_labels": {
-      "Gold": 1,
-      "Good": 5,
-      "Pass": 19,
-      "1 Hit": 26,
-      "Miss": 13
-     },
-     "mrr": 0.3980840773809524
-    },
-    "candidate": {
      "races": 64,
      "gold": 2,
      "good": 24,
@@ -3437,290 +2589,1138 @@
      "miss": 6,
      "one_hit": 34,
      "top3_precision": 0.4375,
-     "winner_in_top3": 0.5,
-     "top1_win": 0.1875,
-     "good_positional": 7,
+     "winner_in_top3": 0.609375,
+     "top1_win": 0.3125,
+     "good_positional": 11,
      "exclusive_labels": {
       "Gold": 2,
-      "Good": 5,
-      "Pass": 17,
-      "1 Hit": 27,
-      "Miss": 13
+      "Good": 9,
+      "Pass": 13,
+      "1 Hit": 26,
+      "Miss": 14
      },
-     "mrr": 0.4032056051587301
+     "mrr": 0.5106208895271395
+    },
+    "candidate": {
+     "races": 64,
+     "gold": 1,
+     "good": 24,
+     "pass": 58,
+     "miss": 6,
+     "one_hit": 34,
+     "top3_precision": 0.4322916666666667,
+     "winner_in_top3": 0.625,
+     "top1_win": 0.328125,
+     "good_positional": 9,
+     "exclusive_labels": {
+      "Gold": 1,
+      "Good": 8,
+      "Pass": 15,
+      "1 Hit": 25,
+      "Miss": 15
+     },
+     "mrr": 0.5129212367493616
     }
    },
    {
     "fold": 3,
     "baseline": {
      "races": 109,
-     "gold": 7,
+     "gold": 5,
      "good": 43,
-     "pass": 83,
-     "miss": 26,
-     "one_hit": 40,
-     "top3_precision": 0.40672782874617736,
+     "pass": 94,
+     "miss": 15,
+     "one_hit": 51,
+     "top3_precision": 0.43425076452599387,
      "winner_in_top3": 0.4954128440366973,
-     "top1_win": 0.1834862385321101,
-     "good_positional": 26,
+     "top1_win": 0.2018348623853211,
+     "good_positional": 28,
      "exclusive_labels": {
-      "Gold": 7,
-      "Good": 19,
-      "Pass": 17,
-      "1 Hit": 22,
-      "Miss": 44
+      "Gold": 5,
+      "Good": 23,
+      "Pass": 15,
+      "1 Hit": 35,
+      "Miss": 31
      },
-     "mrr": 0.38562380534857604
+     "mrr": 0.4114282761071754
     },
     "candidate": {
      "races": 109,
-     "gold": 6,
+     "gold": 5,
      "good": 41,
-     "pass": 81,
-     "miss": 28,
-     "one_hit": 40,
-     "top3_precision": 0.39143730886850153,
-     "winner_in_top3": 0.47706422018348627,
-     "top1_win": 0.1651376146788991,
-     "good_positional": 23,
+     "pass": 95,
+     "miss": 14,
+     "one_hit": 54,
+     "top3_precision": 0.43119266055045874,
+     "winner_in_top3": 0.46788990825688076,
+     "top1_win": 0.1834862385321101,
+     "good_positional": 29,
      "exclusive_labels": {
-      "Gold": 6,
-      "Good": 17,
-      "Pass": 18,
-      "1 Hit": 24,
-      "Miss": 44
+      "Gold": 5,
+      "Good": 24,
+      "Pass": 12,
+      "1 Hit": 38,
+      "Miss": 30
      },
-     "mrr": 0.37238569279853695
+     "mrr": 0.40255282434181544
     }
    },
    {
     "fold": 4,
     "baseline": {
      "races": 106,
-     "gold": 3,
-     "good": 34,
-     "pass": 90,
-     "miss": 16,
-     "one_hit": 56,
-     "top3_precision": 0.39937106918238996,
-     "winner_in_top3": 0.41509433962264153,
-     "top1_win": 0.16037735849056603,
-     "good_positional": 11,
+     "gold": 6,
+     "good": 38,
+     "pass": 93,
+     "miss": 13,
+     "one_hit": 55,
+     "top3_precision": 0.4308176100628931,
+     "winner_in_top3": 0.4716981132075472,
+     "top1_win": 0.2358490566037736,
+     "good_positional": 21,
      "exclusive_labels": {
-      "Gold": 3,
-      "Good": 8,
-      "Pass": 23,
+      "Gold": 6,
+      "Good": 15,
+      "Pass": 17,
       "1 Hit": 38,
-      "Miss": 34
+      "Miss": 30
      },
-     "mrr": 0.3688384204893641
+     "mrr": 0.42365297176617944
     },
     "candidate": {
      "races": 106,
-     "gold": 3,
-     "good": 33,
-     "pass": 89,
-     "miss": 17,
-     "one_hit": 56,
-     "top3_precision": 0.39308176100628933,
-     "winner_in_top3": 0.4056603773584906,
-     "top1_win": 0.1509433962264151,
-     "good_positional": 13,
+     "gold": 6,
+     "good": 38,
+     "pass": 93,
+     "miss": 13,
+     "one_hit": 55,
+     "top3_precision": 0.4308176100628931,
+     "winner_in_top3": 0.4811320754716981,
+     "top1_win": 0.22641509433962265,
+     "good_positional": 20,
      "exclusive_labels": {
-      "Gold": 3,
-      "Good": 10,
-      "Pass": 20,
-      "1 Hit": 38,
-      "Miss": 35
+      "Gold": 6,
+      "Good": 14,
+      "Pass": 18,
+      "1 Hit": 39,
+      "Miss": 29
      },
-     "mrr": 0.3602615152143456
+     "mrr": 0.4252103242669284
     }
    },
    {
     "fold": 5,
     "baseline": {
      "races": 29,
-     "gold": 1,
-     "good": 11,
-     "pass": 23,
-     "miss": 6,
-     "one_hit": 12,
-     "top3_precision": 0.40229885057471265,
-     "winner_in_top3": 0.41379310344827586,
-     "top1_win": 0.1724137931034483,
-     "good_positional": 5,
+     "gold": 2,
+     "good": 9,
+     "pass": 25,
+     "miss": 4,
+     "one_hit": 16,
+     "top3_precision": 0.41379310344827586,
+     "winner_in_top3": 0.4482758620689655,
+     "top1_win": 0.20689655172413793,
+     "good_positional": 3,
      "exclusive_labels": {
-      "Gold": 1,
-      "Good": 4,
+      "Gold": 2,
+      "Good": 1,
       "Pass": 6,
-      "1 Hit": 8,
-      "Miss": 10
+      "1 Hit": 12,
+      "Miss": 8
      },
-     "mrr": 0.36626984126984125
+     "mrr": 0.39209085933223864
     },
     "candidate": {
      "races": 29,
-     "gold": 1,
-     "good": 11,
-     "pass": 22,
-     "miss": 7,
-     "one_hit": 11,
+     "gold": 2,
+     "good": 9,
+     "pass": 23,
+     "miss": 6,
+     "one_hit": 14,
      "top3_precision": 0.39080459770114945,
      "winner_in_top3": 0.3793103448275862,
-     "top1_win": 0.1724137931034483,
-     "good_positional": 6,
+     "top1_win": 0.20689655172413793,
+     "good_positional": 3,
      "exclusive_labels": {
-      "Gold": 1,
-      "Good": 5,
-      "Pass": 5,
-      "1 Hit": 8,
-      "Miss": 10
+      "Gold": 2,
+      "Good": 1,
+      "Pass": 6,
+      "1 Hit": 11,
+      "Miss": 9
      },
-     "mrr": 0.3710329899985072
+     "mrr": 0.38394909688013135
     }
    }
   ],
-  "top3_non_worse_folds": "1/5",
+  "top3_non_worse_folds": "2/5",
   "slices": {
    "12+": {
     "races": 123,
-    "gold": 3,
-    "good": 31,
-    "pass": 92,
-    "miss": 31,
-    "one_hit": 61,
-    "top3_precision": 0.34146341463414637,
-    "winner_in_top3": 0.36585365853658536,
-    "top1_win": 0.13008130081300814,
-    "good_positional": 15,
+    "gold": 4,
+    "good": 33,
+    "pass": 101,
+    "miss": 22,
+    "one_hit": 68,
+    "top3_precision": 0.37398373983739835,
+    "winner_in_top3": 0.3983739837398374,
+    "top1_win": 0.2032520325203252,
+    "good_positional": 20,
     "exclusive_labels": {
-     "Gold": 3,
-     "Good": 12,
-     "Pass": 16,
-     "1 Hit": 38,
-     "Miss": 54
+     "Gold": 4,
+     "Good": 16,
+     "Pass": 13,
+     "1 Hit": 49,
+     "Miss": 41
     },
-    "mrr": 0.31822107431863556
+    "mrr": 0.3855852142437511
    },
    "9-11": {
     "races": 148,
     "gold": 5,
-    "good": 53,
-    "pass": 127,
-    "miss": 21,
-    "one_hit": 74,
-    "top3_precision": 0.4166666666666667,
-    "winner_in_top3": 0.4594594594594595,
-    "top1_win": 0.1554054054054054,
-    "good_positional": 22,
+    "good": 52,
+    "pass": 130,
+    "miss": 18,
+    "one_hit": 78,
+    "top3_precision": 0.42117117117117114,
+    "winner_in_top3": 0.5067567567567568,
+    "top1_win": 0.20270270270270271,
+    "good_positional": 26,
     "exclusive_labels": {
      "Gold": 5,
-     "Good": 17,
-     "Pass": 31,
-     "1 Hit": 56,
-     "Miss": 39
+     "Good": 21,
+     "Pass": 26,
+     "1 Hit": 55,
+     "Miss": 41
     },
-    "mrr": 0.3859987422487426
+    "mrr": 0.4147205647205651
    },
    "<=8": {
     "races": 92,
-    "gold": 14,
-    "good": 59,
-    "pass": 85,
-    "miss": 7,
-    "one_hit": 26,
-    "top3_precision": 0.572463768115942,
-    "winner_in_top3": 0.6521739130434783,
-    "top1_win": 0.2391304347826087,
+    "gold": 12,
+    "good": 55,
+    "pass": 90,
+    "miss": 2,
+    "one_hit": 35,
+    "top3_precision": 0.5688405797101449,
+    "winner_in_top3": 0.6739130434782609,
+    "top1_win": 0.31521739130434784,
     "good_positional": 30,
     "exclusive_labels": {
-     "Gold": 14,
-     "Good": 16,
-     "Pass": 29,
-     "1 Hit": 20,
-     "Miss": 13
+     "Gold": 12,
+     "Good": 18,
+     "Pass": 25,
+     "1 Hit": 25,
+     "Miss": 12
     },
-    "mrr": 0.47648809523809554
+    "mrr": 0.5402432712215323
    },
    "going Good/Firm": {
     "races": 96,
-    "gold": 10,
-    "good": 47,
-    "pass": 90,
-    "miss": 6,
-    "one_hit": 43,
-    "top3_precision": 0.5104166666666666,
-    "winner_in_top3": 0.5833333333333334,
-    "top1_win": 0.16666666666666666,
+    "gold": 5,
+    "good": 40,
+    "pass": 88,
+    "miss": 8,
+    "one_hit": 48,
+    "top3_precision": 0.4618055555555556,
+    "winner_in_top3": 0.6041666666666666,
+    "top1_win": 0.28125,
     "good_positional": 19,
     "exclusive_labels": {
-     "Gold": 10,
-     "Good": 9,
-     "Pass": 28,
+     "Gold": 5,
+     "Good": 14,
+     "Pass": 21,
      "1 Hit": 35,
-     "Miss": 14
+     "Miss": 21
     },
-    "mrr": 0.41422307437932454
+    "mrr": 0.4858167295667298
    },
    "going Heavy": {
     "races": 87,
-    "gold": 3,
-    "good": 26,
-    "pass": 66,
-    "miss": 21,
-    "one_hit": 40,
-    "top3_precision": 0.36398467432950193,
+    "gold": 6,
+    "good": 31,
+    "pass": 74,
+    "miss": 13,
+    "one_hit": 43,
+    "top3_precision": 0.42528735632183906,
     "winner_in_top3": 0.47126436781609193,
-    "top1_win": 0.1839080459770115,
-    "good_positional": 13,
+    "top1_win": 0.25287356321839083,
+    "good_positional": 19,
     "exclusive_labels": {
-     "Gold": 3,
-     "Good": 10,
-     "Pass": 13,
-     "1 Hit": 25,
-     "Miss": 36
+     "Gold": 6,
+     "Good": 13,
+     "Pass": 12,
+     "1 Hit": 32,
+     "Miss": 24
     },
-    "mrr": 0.39556165418234374
+    "mrr": 0.4442947537775126
    },
    "going Soft": {
     "races": 171,
-    "gold": 8,
-    "good": 66,
-    "pass": 141,
-    "miss": 30,
-    "one_hit": 75,
-    "top3_precision": 0.4191033138401559,
-    "winner_in_top3": 0.4152046783625731,
-    "top1_win": 0.15789473684210525,
-    "good_positional": 33,
+    "gold": 9,
+    "good": 67,
+    "pass": 151,
+    "miss": 20,
+    "one_hit": 84,
+    "top3_precision": 0.442495126705653,
+    "winner_in_top3": 0.47953216374269003,
+    "top1_win": 0.19883040935672514,
+    "good_positional": 37,
     "exclusive_labels": {
-     "Gold": 8,
-     "Good": 25,
-     "Pass": 33,
-     "1 Hit": 52,
-     "Miss": 53
+     "Gold": 9,
+     "Good": 28,
+     "Pass": 30,
+     "1 Hit": 58,
+     "Miss": 46
     },
-    "mrr": 0.36227399955470196
+    "mrr": 0.40891397426485193
    },
    "going Synthetic": {
     "races": 9,
     "gold": 1,
-    "good": 4,
-    "pass": 7,
-    "miss": 2,
-    "one_hit": 3,
-    "top3_precision": 0.4444444444444444,
+    "good": 2,
+    "pass": 8,
+    "miss": 1,
+    "one_hit": 6,
+    "top3_precision": 0.4074074074074074,
     "winner_in_top3": 0.5555555555555556,
-    "top1_win": 0.2222222222222222,
+    "top1_win": 0.1111111111111111,
+    "good_positional": 1,
+    "exclusive_labels": {
+     "Gold": 1,
+     "Good": 0,
+     "Pass": 1,
+     "1 Hit": 4,
+     "Miss": 3
+    },
+    "mrr": 0.3657407407407407
+   }
+  },
+  "passed": false
+ },
+ {
+  "name": "weights: jockey_trainer x1.2",
+  "oos_races": 363,
+  "affected_top3_changes": 35,
+  "baseline": {
+   "races": 363,
+   "gold": 22,
+   "good": 143,
+   "pass": 321,
+   "miss": 42,
+   "one_hit": 178,
+   "top3_precision": 0.4462809917355372,
+   "winner_in_top3": 0.5179063360881543,
+   "top1_win": 0.23415977961432508,
+   "good_positional": 78,
+   "exclusive_labels": {
+    "Gold": 22,
+    "Good": 56,
+    "Pass": 65,
+    "1 Hit": 125,
+    "Miss": 95
+   },
+   "mrr": 0.4367747648739384
+  },
+  "candidate": {
+   "races": 363,
+   "gold": 22,
+   "good": 144,
+   "pass": 320,
+   "miss": 43,
+   "one_hit": 176,
+   "top3_precision": 0.4462809917355372,
+   "winner_in_top3": 0.5206611570247934,
+   "top1_win": 0.23415977961432508,
+   "good_positional": 78,
+   "exclusive_labels": {
+    "Gold": 22,
+    "Good": 56,
+    "Pass": 66,
+    "1 Hit": 130,
+    "Miss": 89
+   },
+   "mrr": 0.4392769611777875
+  },
+  "good_lift_pp": 0.28,
+  "good_positional_lift_pp": 0.0,
+  "losses_pp": {
+   "gold": 0.0,
+   "top1": 0.0,
+   "winner_in_top3": -0.28
+  },
+  "miss_delta": 1,
+  "folds": [
+   {
+    "fold": 1,
+    "baseline": {
+     "races": 55,
+     "gold": 7,
+     "good": 29,
+     "pass": 51,
+     "miss": 4,
+     "one_hit": 22,
+     "top3_precision": 0.5272727272727272,
+     "winner_in_top3": 0.5818181818181818,
+     "top1_win": 0.21818181818181817,
+     "good_positional": 15,
+     "exclusive_labels": {
+      "Gold": 7,
+      "Good": 8,
+      "Pass": 14,
+      "1 Hit": 14,
+      "Miss": 12
+     },
+     "mrr": 0.44992673992673976
+    },
+    "candidate": {
+     "races": 55,
+     "gold": 7,
+     "good": 29,
+     "pass": 52,
+     "miss": 3,
+     "one_hit": 23,
+     "top3_precision": 0.5333333333333333,
+     "winner_in_top3": 0.6,
+     "top1_win": 0.21818181818181817,
+     "good_positional": 15,
+     "exclusive_labels": {
+      "Gold": 7,
+      "Good": 8,
+      "Pass": 14,
+      "1 Hit": 15,
+      "Miss": 11
+     },
+     "mrr": 0.4596237096237094
+    }
+   },
+   {
+    "fold": 2,
+    "baseline": {
+     "races": 64,
+     "gold": 2,
+     "good": 24,
+     "pass": 58,
+     "miss": 6,
+     "one_hit": 34,
+     "top3_precision": 0.4375,
+     "winner_in_top3": 0.609375,
+     "top1_win": 0.3125,
+     "good_positional": 11,
+     "exclusive_labels": {
+      "Gold": 2,
+      "Good": 9,
+      "Pass": 13,
+      "1 Hit": 26,
+      "Miss": 14
+     },
+     "mrr": 0.5106208895271395
+    },
+    "candidate": {
+     "races": 64,
+     "gold": 2,
+     "good": 25,
+     "pass": 58,
+     "miss": 6,
+     "one_hit": 33,
+     "top3_precision": 0.4427083333333333,
+     "winner_in_top3": 0.609375,
+     "top1_win": 0.3125,
+     "good_positional": 12,
+     "exclusive_labels": {
+      "Gold": 2,
+      "Good": 10,
+      "Pass": 13,
+      "1 Hit": 26,
+      "Miss": 13
+     },
+     "mrr": 0.5106208895271394
+    }
+   },
+   {
+    "fold": 3,
+    "baseline": {
+     "races": 109,
+     "gold": 5,
+     "good": 43,
+     "pass": 94,
+     "miss": 15,
+     "one_hit": 51,
+     "top3_precision": 0.43425076452599387,
+     "winner_in_top3": 0.4954128440366973,
+     "top1_win": 0.2018348623853211,
+     "good_positional": 28,
+     "exclusive_labels": {
+      "Gold": 5,
+      "Good": 23,
+      "Pass": 15,
+      "1 Hit": 35,
+      "Miss": 31
+     },
+     "mrr": 0.4114282761071754
+    },
+    "candidate": {
+     "races": 109,
+     "gold": 5,
+     "good": 43,
+     "pass": 94,
+     "miss": 15,
+     "one_hit": 51,
+     "top3_precision": 0.43425076452599387,
+     "winner_in_top3": 0.48623853211009177,
+     "top1_win": 0.2018348623853211,
+     "good_positional": 27,
+     "exclusive_labels": {
+      "Gold": 5,
+      "Good": 22,
+      "Pass": 16,
+      "1 Hit": 37,
+      "Miss": 29
+     },
+     "mrr": 0.4121709585012339
+    }
+   },
+   {
+    "fold": 4,
+    "baseline": {
+     "races": 106,
+     "gold": 6,
+     "good": 38,
+     "pass": 93,
+     "miss": 13,
+     "one_hit": 55,
+     "top3_precision": 0.4308176100628931,
+     "winner_in_top3": 0.4716981132075472,
+     "top1_win": 0.2358490566037736,
+     "good_positional": 21,
+     "exclusive_labels": {
+      "Gold": 6,
+      "Good": 15,
+      "Pass": 17,
+      "1 Hit": 38,
+      "Miss": 30
+     },
+     "mrr": 0.42365297176617944
+    },
+    "candidate": {
+     "races": 106,
+     "gold": 6,
+     "good": 38,
+     "pass": 92,
+     "miss": 14,
+     "one_hit": 54,
+     "top3_precision": 0.4276729559748428,
+     "winner_in_top3": 0.4811320754716981,
+     "top1_win": 0.2358490566037736,
+     "good_positional": 21,
+     "exclusive_labels": {
+      "Gold": 6,
+      "Good": 15,
+      "Pass": 17,
+      "1 Hit": 40,
+      "Miss": 28
+     },
+     "mrr": 0.42641169103433274
+    }
+   },
+   {
+    "fold": 5,
+    "baseline": {
+     "races": 29,
+     "gold": 2,
+     "good": 9,
+     "pass": 25,
+     "miss": 4,
+     "one_hit": 16,
+     "top3_precision": 0.41379310344827586,
+     "winner_in_top3": 0.4482758620689655,
+     "top1_win": 0.20689655172413793,
+     "good_positional": 3,
+     "exclusive_labels": {
+      "Gold": 2,
+      "Good": 1,
+      "Pass": 6,
+      "1 Hit": 12,
+      "Miss": 8
+     },
+     "mrr": 0.39209085933223864
+    },
+    "candidate": {
+     "races": 29,
+     "gold": 2,
+     "good": 9,
+     "pass": 24,
+     "miss": 5,
+     "one_hit": 15,
+     "top3_precision": 0.40229885057471265,
+     "winner_in_top3": 0.4482758620689655,
+     "top1_win": 0.20689655172413793,
+     "good_positional": 3,
+     "exclusive_labels": {
+      "Gold": 2,
+      "Good": 1,
+      "Pass": 6,
+      "1 Hit": 12,
+      "Miss": 8
+     },
+     "mrr": 0.3921455938697318
+    }
+   }
+  ],
+  "top3_non_worse_folds": "3/5",
+  "slices": {
+   "12+": {
+    "races": 123,
+    "gold": 5,
+    "good": 34,
+    "pass": 101,
+    "miss": 22,
+    "one_hit": 67,
+    "top3_precision": 0.3794037940379404,
+    "winner_in_top3": 0.4065040650406504,
+    "top1_win": 0.21138211382113822,
+    "good_positional": 20,
+    "exclusive_labels": {
+     "Gold": 5,
+     "Good": 15,
+     "Pass": 14,
+     "1 Hit": 47,
+     "Miss": 42
+    },
+    "mrr": 0.38526845782943364
+   },
+   "9-11": {
+    "races": 148,
+    "gold": 5,
+    "good": 54,
+    "pass": 129,
+    "miss": 19,
+    "one_hit": 75,
+    "top3_precision": 0.42342342342342343,
+    "winner_in_top3": 0.5202702702702703,
+    "top1_win": 0.20945945945945946,
+    "good_positional": 27,
+    "exclusive_labels": {
+     "Gold": 5,
+     "Good": 22,
+     "Pass": 27,
+     "1 Hit": 55,
+     "Miss": 39
+    },
+    "mrr": 0.42196262821262864
+   },
+   "<=8": {
+    "races": 92,
+    "gold": 12,
+    "good": 56,
+    "pass": 90,
+    "miss": 2,
+    "one_hit": 34,
+    "top3_precision": 0.572463768115942,
+    "winner_in_top3": 0.6739130434782609,
+    "top1_win": 0.30434782608695654,
+    "good_positional": 31,
+    "exclusive_labels": {
+     "Gold": 12,
+     "Good": 19,
+     "Pass": 25,
+     "1 Hit": 28,
+     "Miss": 8
+    },
+    "mrr": 0.5393374741200828
+   },
+   "going Good/Firm": {
+    "races": 96,
+    "gold": 6,
+    "good": 42,
+    "pass": 88,
+    "miss": 8,
+    "one_hit": 46,
+    "top3_precision": 0.4722222222222222,
+    "winner_in_top3": 0.6041666666666666,
+    "top1_win": 0.2708333333333333,
+    "good_positional": 22,
+    "exclusive_labels": {
+     "Gold": 6,
+     "Good": 16,
+     "Pass": 20,
+     "1 Hit": 34,
+     "Miss": 20
+    },
+    "mrr": 0.48461798618048646
+   },
+   "going Heavy": {
+    "races": 87,
+    "gold": 7,
+    "good": 32,
+    "pass": 74,
+    "miss": 13,
+    "one_hit": 42,
+    "top3_precision": 0.4329501915708812,
+    "winner_in_top3": 0.5057471264367817,
+    "top1_win": 0.26436781609195403,
+    "good_positional": 19,
+    "exclusive_labels": {
+     "Gold": 7,
+     "Good": 12,
+     "Pass": 13,
+     "1 Hit": 32,
+     "Miss": 23
+    },
+    "mrr": 0.45152427393806716
+   },
+   "going Soft": {
+    "races": 171,
+    "gold": 8,
+    "good": 68,
+    "pass": 150,
+    "miss": 21,
+    "one_hit": 82,
+    "top3_precision": 0.4405458089668616,
+    "winner_in_top3": 0.47368421052631576,
+    "top1_win": 0.2046783625730994,
+    "good_positional": 35,
+    "exclusive_labels": {
+     "Gold": 8,
+     "Good": 27,
+     "Pass": 33,
+     "1 Hit": 60,
+     "Miss": 43
+    },
+    "mrr": 0.40999960078907516
+   },
+   "going Synthetic": {
+    "races": 9,
+    "gold": 1,
+    "good": 2,
+    "pass": 8,
+    "miss": 1,
+    "one_hit": 6,
+    "top3_precision": 0.4074074074074074,
+    "winner_in_top3": 0.6666666666666666,
+    "top1_win": 0.1111111111111111,
     "good_positional": 2,
     "exclusive_labels": {
      "Gold": 1,
      "Good": 1,
-     "Pass": 2,
-     "1 Hit": 2,
+     "Pass": 0,
+     "1 Hit": 4,
      "Miss": 3
     },
-    "mrr": 0.44197530864197526
+    "mrr": 0.3935185185185185
+   }
+  },
+  "passed": false
+ },
+ {
+  "name": "weights: stability x0.8 + jockey_trainer x1.2",
+  "oos_races": 363,
+  "affected_top3_changes": 115,
+  "baseline": {
+   "races": 363,
+   "gold": 22,
+   "good": 143,
+   "pass": 321,
+   "miss": 42,
+   "one_hit": 178,
+   "top3_precision": 0.4462809917355372,
+   "winner_in_top3": 0.5179063360881543,
+   "top1_win": 0.23415977961432508,
+   "good_positional": 78,
+   "exclusive_labels": {
+    "Gold": 22,
+    "Good": 56,
+    "Pass": 65,
+    "1 Hit": 125,
+    "Miss": 95
+   },
+   "mrr": 0.4367747648739384
+  },
+  "candidate": {
+   "races": 363,
+   "gold": 22,
+   "good": 140,
+   "pass": 323,
+   "miss": 40,
+   "one_hit": 183,
+   "top3_precision": 0.44536271808999084,
+   "winner_in_top3": 0.5206611570247934,
+   "top1_win": 0.22865013774104684,
+   "good_positional": 76,
+   "exclusive_labels": {
+    "Gold": 22,
+    "Good": 54,
+    "Pass": 64,
+    "1 Hit": 133,
+    "Miss": 90
+   },
+   "mrr": 0.43762327357368674
+  },
+  "good_lift_pp": -0.83,
+  "good_positional_lift_pp": -0.55,
+  "losses_pp": {
+   "gold": 0.0,
+   "top1": 0.55,
+   "winner_in_top3": -0.28
+  },
+  "miss_delta": -2,
+  "folds": [
+   {
+    "fold": 1,
+    "baseline": {
+     "races": 55,
+     "gold": 7,
+     "good": 29,
+     "pass": 51,
+     "miss": 4,
+     "one_hit": 22,
+     "top3_precision": 0.5272727272727272,
+     "winner_in_top3": 0.5818181818181818,
+     "top1_win": 0.21818181818181817,
+     "good_positional": 15,
+     "exclusive_labels": {
+      "Gold": 7,
+      "Good": 8,
+      "Pass": 14,
+      "1 Hit": 14,
+      "Miss": 12
+     },
+     "mrr": 0.44992673992673976
+    },
+    "candidate": {
+     "races": 55,
+     "gold": 7,
+     "good": 28,
+     "pass": 52,
+     "miss": 3,
+     "one_hit": 24,
+     "top3_precision": 0.5272727272727272,
+     "winner_in_top3": 0.6,
+     "top1_win": 0.23636363636363636,
+     "good_positional": 15,
+     "exclusive_labels": {
+      "Gold": 7,
+      "Good": 8,
+      "Pass": 13,
+      "1 Hit": 17,
+      "Miss": 10
+     },
+     "mrr": 0.46990509490509474
+    }
+   },
+   {
+    "fold": 2,
+    "baseline": {
+     "races": 64,
+     "gold": 2,
+     "good": 24,
+     "pass": 58,
+     "miss": 6,
+     "one_hit": 34,
+     "top3_precision": 0.4375,
+     "winner_in_top3": 0.609375,
+     "top1_win": 0.3125,
+     "good_positional": 11,
+     "exclusive_labels": {
+      "Gold": 2,
+      "Good": 9,
+      "Pass": 13,
+      "1 Hit": 26,
+      "Miss": 14
+     },
+     "mrr": 0.5106208895271395
+    },
+    "candidate": {
+     "races": 64,
+     "gold": 2,
+     "good": 24,
+     "pass": 60,
+     "miss": 4,
+     "one_hit": 36,
+     "top3_precision": 0.4479166666666667,
+     "winner_in_top3": 0.640625,
+     "top1_win": 0.3125,
+     "good_positional": 9,
+     "exclusive_labels": {
+      "Gold": 2,
+      "Good": 7,
+      "Pass": 15,
+      "1 Hit": 27,
+      "Miss": 13
+     },
+     "mrr": 0.5086429629398377
+    }
+   },
+   {
+    "fold": 3,
+    "baseline": {
+     "races": 109,
+     "gold": 5,
+     "good": 43,
+     "pass": 94,
+     "miss": 15,
+     "one_hit": 51,
+     "top3_precision": 0.43425076452599387,
+     "winner_in_top3": 0.4954128440366973,
+     "top1_win": 0.2018348623853211,
+     "good_positional": 28,
+     "exclusive_labels": {
+      "Gold": 5,
+      "Good": 23,
+      "Pass": 15,
+      "1 Hit": 35,
+      "Miss": 31
+     },
+     "mrr": 0.4114282761071754
+    },
+    "candidate": {
+     "races": 109,
+     "gold": 5,
+     "good": 40,
+     "pass": 95,
+     "miss": 14,
+     "one_hit": 55,
+     "top3_precision": 0.42813455657492355,
+     "winner_in_top3": 0.46788990825688076,
+     "top1_win": 0.1834862385321101,
+     "good_positional": 28,
+     "exclusive_labels": {
+      "Gold": 5,
+      "Good": 23,
+      "Pass": 12,
+      "1 Hit": 40,
+      "Miss": 29
+     },
+     "mrr": 0.4043221559276608
+    }
+   },
+   {
+    "fold": 4,
+    "baseline": {
+     "races": 106,
+     "gold": 6,
+     "good": 38,
+     "pass": 93,
+     "miss": 13,
+     "one_hit": 55,
+     "top3_precision": 0.4308176100628931,
+     "winner_in_top3": 0.4716981132075472,
+     "top1_win": 0.2358490566037736,
+     "good_positional": 21,
+     "exclusive_labels": {
+      "Gold": 6,
+      "Good": 15,
+      "Pass": 17,
+      "1 Hit": 38,
+      "Miss": 30
+     },
+     "mrr": 0.42365297176617944
+    },
+    "candidate": {
+     "races": 106,
+     "gold": 6,
+     "good": 39,
+     "pass": 93,
+     "miss": 13,
+     "one_hit": 54,
+     "top3_precision": 0.4339622641509434,
+     "winner_in_top3": 0.5,
+     "top1_win": 0.22641509433962265,
+     "good_positional": 22,
+     "exclusive_labels": {
+      "Gold": 6,
+      "Good": 16,
+      "Pass": 17,
+      "1 Hit": 38,
+      "Miss": 29
+     },
+     "mrr": 0.42669688801764305
+    }
+   },
+   {
+    "fold": 5,
+    "baseline": {
+     "races": 29,
+     "gold": 2,
+     "good": 9,
+     "pass": 25,
+     "miss": 4,
+     "one_hit": 16,
+     "top3_precision": 0.41379310344827586,
+     "winner_in_top3": 0.4482758620689655,
+     "top1_win": 0.20689655172413793,
+     "good_positional": 3,
+     "exclusive_labels": {
+      "Gold": 2,
+      "Good": 1,
+      "Pass": 6,
+      "1 Hit": 12,
+      "Miss": 8
+     },
+     "mrr": 0.39209085933223864
+    },
+    "candidate": {
+     "races": 29,
+     "gold": 2,
+     "good": 9,
+     "pass": 23,
+     "miss": 6,
+     "one_hit": 14,
+     "top3_precision": 0.39080459770114945,
+     "winner_in_top3": 0.3793103448275862,
+     "top1_win": 0.20689655172413793,
+     "good_positional": 2,
+     "exclusive_labels": {
+      "Gold": 2,
+      "Good": 0,
+      "Pass": 7,
+      "1 Hit": 11,
+      "Miss": 9
+     },
+     "mrr": 0.3847701149425287
+    }
+   }
+  ],
+  "top3_non_worse_folds": "3/5",
+  "slices": {
+   "12+": {
+    "races": 123,
+    "gold": 4,
+    "good": 34,
+    "pass": 100,
+    "miss": 23,
+    "one_hit": 66,
+    "top3_precision": 0.37398373983739835,
+    "winner_in_top3": 0.4065040650406504,
+    "top1_win": 0.2032520325203252,
+    "good_positional": 21,
+    "exclusive_labels": {
+     "Gold": 4,
+     "Good": 17,
+     "Pass": 13,
+     "1 Hit": 48,
+     "Miss": 41
+    },
+    "mrr": 0.38585005780127757
+   },
+   "9-11": {
+    "races": 148,
+    "gold": 5,
+    "good": 52,
+    "pass": 133,
+    "miss": 15,
+    "one_hit": 81,
+    "top3_precision": 0.42792792792792794,
+    "winner_in_top3": 0.5135135135135135,
+    "top1_win": 0.19594594594594594,
+    "good_positional": 26,
+    "exclusive_labels": {
+     "Gold": 5,
+     "Good": 21,
+     "Pass": 26,
+     "1 Hit": 58,
+     "Miss": 38
+    },
+    "mrr": 0.4159593034593039
+   },
+   "<=8": {
+    "races": 92,
+    "gold": 13,
+    "good": 54,
+    "pass": 90,
+    "miss": 2,
+    "one_hit": 36,
+    "top3_precision": 0.5688405797101449,
+    "winner_in_top3": 0.6847826086956522,
+    "top1_win": 0.31521739130434784,
+    "good_positional": 29,
+    "exclusive_labels": {
+     "Gold": 13,
+     "Good": 16,
+     "Pass": 25,
+     "1 Hit": 27,
+     "Miss": 11
+    },
+    "mrr": 0.541692546583851
+   },
+   "going Good/Firm": {
+    "races": 96,
+    "gold": 5,
+    "good": 40,
+    "pass": 90,
+    "miss": 6,
+    "one_hit": 50,
+    "top3_precision": 0.46875,
+    "winner_in_top3": 0.6041666666666666,
+    "top1_win": 0.28125,
+    "good_positional": 19,
+    "exclusive_labels": {
+     "Gold": 5,
+     "Good": 14,
+     "Pass": 21,
+     "1 Hit": 37,
+     "Miss": 19
+    },
+    "mrr": 0.48763964623339656
+   },
+   "going Heavy": {
+    "races": 87,
+    "gold": 6,
+    "good": 31,
+    "pass": 74,
+    "miss": 13,
+    "one_hit": 43,
+    "top3_precision": 0.42528735632183906,
+    "winner_in_top3": 0.4827586206896552,
+    "top1_win": 0.25287356321839083,
+    "good_positional": 18,
+    "exclusive_labels": {
+     "Gold": 6,
+     "Good": 12,
+     "Pass": 13,
+     "1 Hit": 32,
+     "Miss": 24
+    },
+    "mrr": 0.4452526081836428
+   },
+   "going Soft": {
+    "races": 171,
+    "gold": 10,
+    "good": 67,
+    "pass": 151,
+    "miss": 20,
+    "one_hit": 84,
+    "top3_precision": 0.4444444444444444,
+    "winner_in_top3": 0.49122807017543857,
+    "top1_win": 0.19298245614035087,
+    "good_positional": 38,
+    "exclusive_labels": {
+     "Gold": 10,
+     "Good": 28,
+     "Pass": 29,
+     "1 Hit": 60,
+     "Miss": 44
+    },
+    "mrr": 0.4094456063754314
+   },
+   "going Synthetic": {
+    "races": 9,
+    "gold": 1,
+    "good": 2,
+    "pass": 8,
+    "miss": 1,
+    "one_hit": 6,
+    "top3_precision": 0.4074074074074074,
+    "winner_in_top3": 0.5555555555555556,
+    "top1_win": 0.1111111111111111,
+    "good_positional": 1,
+    "exclusive_labels": {
+     "Gold": 1,
+     "Good": 0,
+     "Pass": 1,
+     "1 Hit": 4,
+     "Miss": 3
+    },
+    "mrr": 0.3657407407407407
    }
   },
   "passed": false
