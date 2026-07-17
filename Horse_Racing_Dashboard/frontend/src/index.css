@@ -829,6 +829,7 @@ a:hover {
   line-height: 1.2;
   text-decoration: none;
   white-space: nowrap;
+  touch-action: manipulation;
   transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
 }
 
@@ -1249,6 +1250,117 @@ a:hover {
 .rich-kv__value {
   min-width: 0;
   color: #334155;
+}
+
+.rich-subheading {
+  margin: 14px 0 7px;
+  color: #334155;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.chronology {
+  margin: 7px 0 10px;
+  padding: 10px 12px;
+  border: 1px solid #dbe5f1;
+  border-radius: 9px;
+  background: #fbfdff;
+}
+
+.chronology__header,
+.chronology__summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chronology__header {
+  justify-content: space-between;
+  color: #334155;
+  font-size: 0.72rem;
+}
+
+.chronology__header > span {
+  color: #2563eb;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.chronology__track {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 9px;
+  padding-bottom: 2px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  font-variant-numeric: tabular-nums;
+}
+
+.chronology__point {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.chronology__point--latest {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.chronology__arrow,
+.chronology__summary-arrow {
+  color: #94a3b8;
+}
+
+.chronology__summary {
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 0.67rem;
+}
+
+.chronology__summary strong {
+  color: #334155;
+}
+
+.chronology__trend {
+  margin-left: auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+}
+
+.chronology__trend--positive {
+  background: #dcfce7;
+  color: #047857;
+}
+
+.chronology__trend--warning {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.chronology__trend--neutral {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.chronology__verdict {
+  margin: -3px 0 10px;
+  padding: 7px 10px;
+  border-left: 3px solid #93c5fd;
+  border-radius: 0 6px 6px 0;
+  background: #eff6ff;
+  color: #475569;
+  font-size: 0.71rem;
+  line-height: 1.55;
 }
 
 .rich-table-wrap {
@@ -2948,7 +3060,7 @@ a:hover {
     overflow: visible;
   }
   .horse-card__official-link {
-    min-height: 38px;
+    min-height: 44px;
     margin-top: 6px;
     margin-left: auto;
     padding-inline: 9px;

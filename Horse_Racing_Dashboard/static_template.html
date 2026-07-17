@@ -342,6 +342,64 @@ function formatAnalysis(text) {
   return esc(text.replace(/\*\*/g,'').replace(/^[#]+\s*/gm,'').replace(/^[-*]\s+/gm,'• ').replace(/;\s*\[/g,';\n[').replace(/\|\s*修正/g,'\n修正').replace(/\|\s*段速/g,'\n段速').replace(/\|\s*結論/g,'\n結論').replace(/\n{3,}/g,'\n\n').trim());
 }
 
+function parseChronologySeries(text, assumeNewestFirst = true) {
+  let source = String(text || '').replace(/\*+/g, '').trim();
+  const markedOldestFirst = /最舊\s*→\s*最新/.test(source);
+  source = source.replace(/[（(]?最舊\s*→\s*最新[）)]?\s*[:：]?\s*/, '');
+  const trendMatch = source.match(/^(.*?)(?:\s*→\s*趨勢[:：]\s*(.+))$/);
+  const seriesText = trendMatch ? trendMatch[1] : source;
+  const trend = trendMatch ? trendMatch[2].trim() : '';
+  const points = seriesText.split(/\s*→\s*/).map(point => point.trim()).filter(Boolean);
+  if (points.length < 2 || points.some(point => !/[+-]?\d+(?:\.\d+)?/.test(point))) return null;
+  if (assumeNewestFirst && !markedOldestFirst) points.reverse();
+  return { points, trend, direction: '最舊 → 最新' };
+}
+
+function chronologyTone(trend) {
+  const value = String(trend || '');
+  if (/衰退|退步|下降|偏慢|落後|❌|⚠/.test(value)) return 'warning';
+  if (/上升|改善|競爭力|快於|✅/.test(value)) return 'positive';
+  return 'neutral';
+}
+
+function chronologyAverage(points, label) {
+  const values = points.map(point => Number((point.match(/[+-]?\d+(?:\.\d+)?/) || [])[0])).filter(Number.isFinite);
+  if (!values.length) return '';
+  const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const isSeconds = label !== '能量';
+  const signed = label === '步速修正' && average > 0 ? '+' : '';
+  return `${signed}${average.toFixed(label === '能量' ? 1 : 2)}${isSeconds ? 's' : ''}`;
+}
+
+function renderChronologySeries(text, label) {
+  const parsed = parseChronologySeries(text);
+  if (!parsed) return '';
+  const title = label === 'L400' ? 'L400 走勢' : `${label}走勢`;
+  const readingHint = label === 'L400'
+    ? '秒數越低越快'
+    : (label === '步速修正' ? '偏差越低越快' : '按較舊／最新平均判讀');
+  const splitAt = Math.floor(parsed.points.length / 2);
+  const older = parsed.points.slice(0, splitAt || 1);
+  const latest = parsed.points.slice(splitAt || 1);
+  const displayPoint = point => label === 'L400' && !/s(?:\b|\[)/i.test(point) ? `${point}s` : point;
+  const pointsHtml = parsed.points.map((point, index) =>
+    `${index ? '<span class="chronology__arrow" aria-hidden="true">→</span>' : ''}<span class="chronology__point${index === parsed.points.length - 1 ? ' chronology__point--latest' : ''}">${esc(displayPoint(point))}</span>`
+  ).join('');
+  const trendHtml = parsed.trend
+    ? `<strong class="chronology__trend chronology__trend--${chronologyTone(parsed.trend)}">判讀：${esc(parsed.trend)}</strong>`
+    : '';
+  return `<div class="chronology" role="group" aria-label="${esc(`${title}，${parsed.direction}`)}">
+    <div class="chronology__header"><strong>${esc(title)}</strong><span>${parsed.direction} · ${esc(readingHint)}</span></div>
+    <div class="chronology__track">${pointsHtml}</div>
+    <div class="chronology__summary">
+      <span>較舊 ${older.length} 仗平均 <strong>${esc(chronologyAverage(older, label))}</strong></span>
+      <span class="chronology__summary-arrow" aria-hidden="true">→</span>
+      <span>最新 ${latest.length} 仗平均 <strong>${esc(chronologyAverage(latest, label))}</strong></span>
+      ${trendHtml}
+    </div>
+  </div>`;
+}
+
 // Convert markdown table to styled HTML table
 function mdTableToHtml(tableText, headerBg) {
   const rows = tableText.trim().split('\n').filter(r => r.trim().startsWith('|'));
@@ -375,6 +433,8 @@ function formatRichSection(text) {
   let html = '';
   let tableLines = [];
   let inTable = false;
+  let chronologyContext = '';
+  let chronologySeriesCount = 0;
 
   const flushTable = () => {
     if (tableLines.length) {
@@ -404,6 +464,7 @@ function formatRichSection(text) {
     // Section headers (# through ######)
     const hm = line.match(/^(#{1,6})\s+(.+)/);
     if (hm) {
+      chronologyContext = '';
       const lvl = hm[1].length;
       const inner = hm[2].replace(/\*\*/g,'').trim();
       html += `<div class="rich-heading rich-heading--${lvl}">${esc(inner)}</div>`;
@@ -420,6 +481,51 @@ function formatRichSection(text) {
     // Bullet or dash list item
     if (line.startsWith('- ') || line.startsWith('* ')) {
       const inner = line.slice(2);
+      const plain = inner.replace(/\*+/g, '').trim();
+      const directChronology = plain.match(/^(L400\s*走勢|能量走勢|步速修正偏差)[（(]最舊\s*→\s*最新[）)][: ：]+(.+)$/);
+      if (directChronology) {
+        const label = directChronology[1].startsWith('L400')
+          ? 'L400'
+          : (directChronology[1].startsWith('能量') ? '能量' : '步速修正');
+        const chronology = renderChronologySeries(`（最舊 → 最新）${directChronology[2]}`, label);
+        if (chronology) {
+          html += chronology;
+          continue;
+        }
+      }
+      if (/^L400\s*\/\s*能量趨勢[:：]?$/.test(plain)) {
+        chronologyContext = 'sectional';
+        chronologySeriesCount = 0;
+        html += '<div class="rich-subheading">L400 與能量走勢</div>';
+        continue;
+      }
+      if (/^步速修正[:：]?$/.test(plain)) {
+        chronologyContext = 'pace';
+        chronologySeriesCount = 0;
+        html += '<div class="rich-subheading">步速修正</div>';
+        continue;
+      }
+      if (chronologyContext && plain.includes('→')) {
+        const label = chronologyContext === 'pace'
+          ? '步速修正'
+          : (chronologySeriesCount === 0 ? 'L400' : '能量');
+        const chronology = renderChronologySeries(plain, label);
+        if (chronology) {
+          html += chronology;
+          chronologySeriesCount += 1;
+          if (chronologyContext === 'sectional' && chronologySeriesCount >= 2) chronologyContext = '';
+          continue;
+        }
+      }
+      if (chronologyContext === 'sectional' && chronologySeriesCount === 0 && /^\d+(?:\.\d+)?s?$/.test(plain)) {
+        html += `<div class="rich-kv rich-kv--bullet"><span class="rich-kv__bullet" aria-hidden="true">•</span><span class="rich-kv__key">最新一仗 L400:</span><span class="rich-kv__value">${esc(plain.replace(/s$/i, ''))}s</span></div>`;
+        continue;
+      }
+      if (chronologyContext === 'pace' && chronologySeriesCount > 0) {
+        html += `<div class="chronology__verdict">${renderInlineMd(plain)}</div>`;
+        chronologyContext = '';
+        continue;
+      }
       html += renderKeyValueLine(inner, 'bullet');
       continue;
     }
@@ -1567,7 +1673,11 @@ function renderDataReadoutItem(row) {
   const band = row.band || '➖';
   const tone = dataReadoutTone(band);
   const isEquipment = String(row?.label || '').includes('配備變動');
-  const displayValue = isEquipment ? sanitizeEquipmentDisplayText(row.value) : row.value;
+  let displayValue = isEquipment ? sanitizeEquipmentDisplayText(row.value) : row.value;
+  if (String(row?.label || '').includes('段速趨勢') && !/最舊\s/.test(String(displayValue || ''))) {
+    const endpointMatch = String(displayValue || '').match(/^\s*([+-]?\d+(?:\.\d+)?)\s*→\s*([+-]?\d+(?:\.\d+)?)s?\s*$/i);
+    if (endpointMatch) displayValue = `最舊 ${endpointMatch[2]}s → 最新 ${endpointMatch[1]}s`;
+  }
   const main = [displayValue, row.trend].filter(Boolean).join(' · ') || '—';
   const reasonLines = dataReadoutReasonLines(row);
   return `<div class="data-readout__item">

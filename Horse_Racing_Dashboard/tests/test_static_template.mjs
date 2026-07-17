@@ -73,6 +73,10 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       setSelectedMeetingForTest: (meeting) => { selectedMeeting = meeting; },
       renderHorseCard,
       buildHorseAnalysisSections,
+      parseChronologySeries,
+      renderChronologySeries,
+      formatRichSection,
+      renderDataReadoutItem,
       sanitizeBattlefieldOverviewText,
       renderBattlefieldOverview,
     };
@@ -265,6 +269,51 @@ test("data readout splits detail rows, labels trainer-jockey stats, and removes 
   assert.match(html, /<span>騎練拍檔31仗勝率6%、上名率26%<\/span>/);
   assert.equal((html.match(/戴上繫舌帶、開縫眼罩/g) || []).length, 1);
   assert.doesNotMatch(html, /(?:戴上|除下)--/);
+});
+
+test("sectional and pace timelines display oldest to latest without changing the verdict", () => {
+  const { parseChronologySeries, renderChronologySeries, formatRichSection, renderDataReadoutItem } = loadTemplateFunctions();
+  const parsed = parseChronologySeries("23.39→22.86→24.83→23.55→22.82→22.56 → 趨勢: 衰退中 ⚠️");
+
+  assert.deepEqual([...parsed.points], ["22.56", "22.82", "23.55", "24.83", "22.86", "23.39"]);
+  assert.equal(parsed.trend, "衰退中 ⚠️");
+
+  const l400 = renderChronologySeries("23.39→22.86→24.83→23.55→22.82→22.56 → 趨勢: 衰退中 ⚠️", "L400");
+  assert.match(l400, /最舊 → 最新/);
+  assert.ok(l400.indexOf("22.56s") < l400.indexOf("23.39s"));
+  assert.match(l400, /較舊 3 仗平均[\s\S]*22\.98s/);
+  assert.match(l400, /最新 3 仗平均[\s\S]*23\.69s/);
+  assert.match(l400, /衰退中/);
+
+  const pace = renderChronologySeries("+0.00s→+0.34s[偏快]→+1.74s[偏快]→+0.34s→+0.94s[偏快]→+0.64s", "步速修正");
+  assert.ok(pace.indexOf("+0.64s") < pace.indexOf("+0.00s"));
+  assert.match(pace, /最新 3 仗平均[\s\S]*\+0\.69s/);
+
+  const rich = formatRichSection(`- **L400 / 能量趨勢:**
+- 23.39
+- 23.39→22.86→24.83→23.55→22.82→22.56 → 趨勢: 衰退中 ⚠️
+- 97→91→79→95→93→92 → 趨勢: 下降 ⚠️
+- **步速修正:**
+- +0.00s→+0.34s[偏快]→+1.74s[偏快]→+0.34s→+0.94s[偏快]→+0.64s
+- ➖ 步速修正後接近平均 (近 3 仗修正平均: +0.69s)`);
+  assert.match(rich, /L400 與能量走勢/);
+  assert.equal((rich.match(/class="chronology"/g) || []).length, 3);
+  assert.match(rich, /chronology__verdict/);
+  const firstTrack = rich.match(/chronology__track">([\s\S]*?)<\/div>/)?.[1] || '';
+  assert.ok(firstTrack.indexOf("22.56s") < firstTrack.indexOf("23.39s"));
+
+  const futureRich = formatRichSection(`- L400 走勢（最舊 → 最新）: 22.56 → 22.82 → 23.39 → 趨勢: 衰退中 ⚠️
+- 步速修正偏差（最舊 → 最新）: +0.64s → +0.34s → +0.00s`);
+  assert.equal((futureRich.match(/class="chronology"/g) || []).length, 2);
+  assert.ok(futureRich.indexOf("22.56s") < futureRich.indexOf("23.39s"));
+
+  const preview = renderDataReadoutItem({
+    band: "⚠️",
+    label: "段速趨勢",
+    value: "23.39→22.56s",
+    trend: "衰退中",
+  });
+  assert.match(preview, /最舊 22\.56s → 最新 23\.39s · 衰退中/);
 });
 
 
