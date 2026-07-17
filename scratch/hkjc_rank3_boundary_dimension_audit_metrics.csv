@@ -1,0 +1,16 @@
+﻿family,dimension,pairs,rank3_rescue_pairs,rank2_protect_pairs,boundary_auc,direction_correct,direction_ties,direction_accuracy,balanced_direction_accuracy,mean_oriented_gap,median_oriented_gap,rank3_rescue_positive,rank3_rescue_ties,rank3_rescue_positive_rate,rank3_rescue_adjusted_rate,rank3_rescue_mean_gap,rank2_protect_positive,rank2_protect_ties,rank2_protect_positive_rate,rank2_protect_adjusted_rate,rank2_protect_mean_gap,positive_days,observed_days,reliable_pairs,reliable_rank3_rescue_pairs,reliable_rank2_protect_pairs,reliable_boundary_auc,reliable_balanced_direction_accuracy
+official_total,pure_matrix_total,49,17,32,0.5901,34,0,0.6939,0.5864,0.4107,0.5059,4,0,0.2353,0.2353,-0.8076,30,0,0.9375,0.9375,1.0579,7,9,0,0,0,,
+official_dimension,sectional,49,17,32,0.4926,6,39,0.5204,0.4949,0.3884,-0.0,0,14,0.0,0.4118,-0.5338,6,25,0.1875,0.5781,0.8782,2,9,0,0,0,,
+official_dimension,trainer_signal,49,17,32,0.3364,16,0,0.3265,0.3051,-2.1619,-1.42,4,0,0.2353,0.2353,-3.7332,12,0,0.375,0.375,-1.3272,3,9,0,0,0,,
+official_dimension,stability,49,17,32,0.4393,21,5,0.4796,0.4499,0.0209,0.0,5,2,0.2941,0.3529,-5.528,16,3,0.5,0.5469,2.9687,5,9,0,0,0,,
+official_dimension,race_shape,49,17,32,0.6406,25,5,0.5612,0.5607,2.0476,0.69,9,1,0.5294,0.5588,1.8841,16,4,0.5,0.5625,2.1344,7,9,0,0,0,,
+official_dimension,class_advantage,49,17,32,0.6305,26,7,0.602,0.5712,1.6224,1.0,6,4,0.3529,0.4706,-0.0484,20,3,0.625,0.6719,2.51,6,9,0,0,0,,
+official_dimension,horse_health,49,17,32,0.5901,23,8,0.551,0.5046,0.6306,0.0,4,4,0.2353,0.3529,-0.3618,19,4,0.5938,0.6562,1.1578,6,9,0,0,0,,
+official_dimension,form_line,49,17,32,0.6195,24,10,0.5918,0.6186,0.4939,0.0,10,4,0.5882,0.7059,1.6588,14,6,0.4375,0.5312,-0.125,6,9,0,0,0,,
+rebuilt_dimension,speed_engine,49,17,32,0.477,17,18,0.5306,0.5097,-0.0704,-0.0,4,7,0.2353,0.4412,-0.7492,13,11,0.4062,0.5781,0.2901,4,9,29,8,21,0.3929,0.4851
+rebuilt_dimension,stability,49,17,32,0.454,20,5,0.4592,0.4343,0.2963,-0.0,5,2,0.2941,0.3529,-1.1728,15,3,0.4688,0.5156,1.0767,4,9,37,12,25,0.4433,0.405
+rebuilt_dimension,distance_context,49,17,32,0.3989,3,35,0.4184,0.4444,-0.4779,-0.0,3,12,0.1765,0.5294,0.0986,0,23,0.0,0.3594,-0.7842,1,9,0,0,0,,
+rebuilt_dimension,class_weight,49,17,32,0.5708,23,2,0.4898,0.5404,0.1034,-0.0,12,0,0.7059,0.7059,2.3884,11,2,0.3438,0.375,-1.1105,5,9,47,16,31,0.5938,0.5605
+rebuilt_dimension,trainer_signal,49,17,32,0.3382,18,0,0.3673,0.3502,-1.7293,-1.5217,5,0,0.2941,0.2941,-3.5891,13,0,0.4062,0.4062,-0.7413,2,9,33,10,23,0.4261,0.3891
+rebuilt_dimension,readiness_risk,49,17,32,0.6149,18,20,0.5714,0.5823,0.2041,0.0,5,11,0.2941,0.6176,0.4412,13,9,0.4062,0.5469,0.0781,5,9,46,16,30,0.6188,0.5875
+rebuilt_dimension,form_line,49,17,32,0.5276,21,10,0.5306,0.551,-0.1635,-0.0,8,5,0.4706,0.6176,-0.065,13,5,0.4062,0.4844,-0.2158,4,9,17,6,11,0.447,0.5189

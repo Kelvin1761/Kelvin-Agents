@@ -21,7 +21,12 @@ sys.path.append(str(PROJECT_ROOT))
 sys.path.append(str(SCRIPT_DIR / "racing_engine"))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_reflector" / "scripts"))
 
-from engine_core import RacingEngine
+from engine_core import (
+    MAINLINE_HEALTH_PROFILE,
+    RacingEngine,
+    SUPPORTED_HEALTH_PROFILES,
+    SUPPORTED_SHADOW_PROFILES,
+)
 from hkjc_results_db import get_combo_priors_csv
 from renderer import ensure_verdict, render_meeting_csv, write_race_outputs
 from scoring import compute_grade
@@ -190,8 +195,6 @@ def _apply_sip_enhancements(horses):
         auto = h_obj.get("python_auto", {})
         if not auto:
             continue
-        grade = auto.get("grade", "")
-        ability_score = auto.get("ability_score", 0)
         weight = h_obj.get("weight")
         barrier = h_obj.get("barrier")
         try:
@@ -202,31 +205,38 @@ def _apply_sip_enhancements(horses):
         if weight_val is None or barrier_val is None:
             continue
 
-        is_light = weight_val <= field_median
-        is_good_draw = barrier_val <= 5
-        boost = 0.0
-        reasons = []
-
         fs = auto.get("feature_scores", {})
-        speed = fs.get("speed_score", 0)
-        form = fs.get("form_score", 0)
-        consist = fs.get("consistency_score", 0)
+        _apply_sip_to_score(auto, fs, weight_val, barrier_val, field_median)
+        for shadow in (auto.get("shadow_profiles") or {}).values():
+            if isinstance(shadow, dict):
+                _apply_sip_to_score(shadow, fs, weight_val, barrier_val, field_median)
 
-        if grade == "B-" and is_light and is_good_draw:
-            if speed >= 68 or (form >= 55 and consist >= 55):
-                boost = 1.0
-                reasons.append("輕磅+好檔+速度/穩定性(SIP-C)")
 
-        if boost > 0:
-            new_score = round(ability_score + boost, 2)
-            auto["ability_score"] = new_score
-            auto["grade"] = compute_grade(new_score)
-            auto.setdefault("sip_flags", []).append({
-                "reason": "; ".join(reasons),
-                "boost": round(boost, 1),
-                "original_score": ability_score,
-                "original_grade": grade,
-            })
+def _apply_sip_to_score(target, feature_scores, weight_val, barrier_val, field_median):
+    """Apply the same downstream SIP rule independently to one score profile."""
+    grade = target.get("grade", "")
+    ability_score = float(target.get("ability_score", 0) or 0)
+    is_light = weight_val <= field_median
+    is_good_draw = barrier_val <= 5
+    speed = feature_scores.get("speed_score", 0)
+    form = feature_scores.get("form_score", 0)
+    consist = feature_scores.get("consistency_score", 0)
+    boost = 0.0
+    reasons = []
+    if grade == "B-" and is_light and is_good_draw:
+        if speed >= 68 or (form >= 55 and consist >= 55):
+            boost = 1.0
+            reasons.append("輕磅+好檔+速度/穩定性(SIP-C)")
+    if boost <= 0:
+        return
+    target["ability_score"] = round(ability_score + boost, 2)
+    target["grade"] = compute_grade(target["ability_score"])
+    target.setdefault("sip_flags", []).append({
+        "reason": "; ".join(reasons),
+        "boost": round(boost, 1),
+        "original_score": ability_score,
+        "original_grade": grade,
+    })
 
 
 def _class_rank(text):
@@ -529,11 +539,18 @@ def _load_formline_opponent_summaries(logic_path, race_context, horses):
     return summaries
 
 class HKJCAutoOrchestrator:
-    def __init__(self, target_path, scoring_profile="mainline", shadow_profile=None):
+    def __init__(
+        self,
+        target_path,
+        scoring_profile="mainline",
+        shadow_profile=None,
+        health_profile=MAINLINE_HEALTH_PROFILE,
+    ):
         self.target_path = Path(target_path)
         self.is_meeting = self.target_path.is_dir()
         self.scoring_profile = scoring_profile
         self.shadow_profile = shadow_profile
+        self.health_profile = health_profile
         self.races = []
         self.log_path = (self.target_path if self.is_meeting else self.target_path.parent) / "racing_run_log.jsonl"
         self.summary_path = (self.target_path if self.is_meeting else self.target_path.parent) / "evaluation_summary.json"
@@ -559,6 +576,7 @@ class HKJCAutoOrchestrator:
             target=str(self.target_path),
             scoring_profile=self.scoring_profile,
             shadow_profile=self.shadow_profile,
+            health_profile=self.health_profile,
             race_count=len(self.races),
             is_meeting=self.is_meeting,
         )
@@ -668,7 +686,7 @@ class HKJCAutoOrchestrator:
             h_name = h_obj.get("horse_name", "Unknown")
             print(f"   - Scoring Horse {h_num}: {h_name}")
             
-            engine = RacingEngine(h_obj, race_context)
+            engine = RacingEngine(h_obj, race_context, health_profile=self.health_profile)
             result = engine.analyze_horse()
             shadow = self._build_shadow_profile(engine, result)
             if shadow:
@@ -685,6 +703,7 @@ class HKJCAutoOrchestrator:
                 grade=result.get("grade"),
                 shadow_profile=shadow["profile"] if shadow else "",
                 shadow_ability_score=shadow.get("ability_score") if shadow else "",
+                health_profile=self.health_profile,
             )
             # Also update the classic matrix if requested (optional rule)
             # h_obj["matrix"] = result["matrix"]
@@ -790,6 +809,7 @@ class HKJCAutoOrchestrator:
         summary = {
             "scoring_profile": self.scoring_profile,
             "shadow_profile": self.shadow_profile,
+            "health_profile": self.health_profile,
             "race_count": len(results),
             "kpis": kpis,
         }
@@ -824,12 +844,12 @@ class HKJCAutoOrchestrator:
         return results
 
     def _build_shadow_profile(self, engine, result):
-        if self.shadow_profile != "consistency_context":
+        if self.shadow_profile not in SUPPORTED_SHADOW_PROFILES:
             return None
         return engine.build_shadow_profile(self.shadow_profile, base_auto=result)
 
     def _finalize_shadow_profiles(self, logic_data):
-        if self.shadow_profile != "consistency_context":
+        if self.shadow_profile not in SUPPORTED_SHADOW_PROFILES:
             return
         horses = logic_data.get("horses", {})
         ranked = []
@@ -855,18 +875,34 @@ class HKJCAutoOrchestrator:
             auto = horse["python_auto"]
             shadow = auto["shadow_profiles"][self.shadow_profile]
             base_rank = int(auto.get("rank", 999) or 999)
+            shadow["ability_delta"] = round(float(shadow.get("ability_score", 0.0)) - float(auto.get("ability_score", 0.0)), 2)
             shadow["rank"] = idx
             shadow["rank_delta"] = base_rank - idx
             shadow["entered_top4"] = idx <= 4 and base_rank > 4
+            shadow["entered_top2"] = idx <= 2 and base_rank > 2
+            shadow["exited_top2"] = idx > 2 and base_rank <= 2
             item["rank"] = idx
+            item["base_rank"] = base_rank
             item["rank_delta"] = shadow["rank_delta"]
-            if shadow["entered_top4"] or shadow["rank_delta"] >= 2:
+            item["entered_top2"] = shadow["entered_top2"]
+            item["exited_top2"] = shadow["exited_top2"]
+            if shadow["entered_top2"] or shadow["entered_top4"] or shadow["rank_delta"] >= 2:
                 promoted.append(item)
+        base_top2 = [
+            item["horse_number"]
+            for item in sorted(ranked, key=lambda item: (item["base_rank"], int(item["horse_number"])))[:2]
+        ]
+        shadow_top2 = [item["horse_number"] for item in ranked[:2]]
         logic_data.setdefault("python_auto_shadow_verdicts", {})[self.shadow_profile] = {
             "profile": self.shadow_profile,
             "ranking": ranked,
             "top4": ranked[:4],
             "promoted": promoted,
+            "base_top2": base_top2,
+            "shadow_top2": shadow_top2,
+            "top2_changed": set(base_top2) != set(shadow_top2),
+            "entered_top2": [item for item in ranked if item.get("entered_top2")],
+            "exited_top2": [item for item in ranked if item.get("exited_top2")],
         }
 
 if __name__ == "__main__":
@@ -874,9 +910,25 @@ if __name__ == "__main__":
     parser.add_argument("target", help="Path to Race_X_Logic.json or meeting folder")
     parser.add_argument("--validate-engine", action="store_true", help="Accepted for compatibility; renderer validation runs after writing Markdown")
     parser.add_argument("--scoring-profile", default="mainline", help="Observability label for this scoring run")
-    parser.add_argument("--shadow-profile", default=None, help="Optional shadow profile to compute without changing mainline ranking")
+    parser.add_argument(
+        "--health-profile",
+        default=MAINLINE_HEALTH_PROFILE,
+        choices=SUPPORTED_HEALTH_PROFILES,
+        help="Mainline horse-health profile; legacy_health_v2 is an explicit rollback mode",
+    )
+    parser.add_argument(
+        "--shadow-profile",
+        default=None,
+        choices=SUPPORTED_SHADOW_PROFILES,
+        help="Optional shadow profile to compute without changing mainline ranking",
+    )
     args = parser.parse_args()
     
-    orchestrator = HKJCAutoOrchestrator(args.target, scoring_profile=args.scoring_profile, shadow_profile=args.shadow_profile)
+    orchestrator = HKJCAutoOrchestrator(
+        args.target,
+        scoring_profile=args.scoring_profile,
+        shadow_profile=args.shadow_profile,
+        health_profile=args.health_profile,
+    )
     orchestrator._validate_engine_requested = args.validate_engine
     raise SystemExit(orchestrator.run())

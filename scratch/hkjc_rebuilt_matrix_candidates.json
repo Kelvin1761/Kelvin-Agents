@@ -1,0 +1,185 @@
+{
+  "method": {
+    "candidate_definitions_frozen_before_measurement": true,
+    "grid_search": false,
+    "held_dimensions_weight": 0.0,
+    "held_out_outcomes_loaded": false,
+    "full_race_rerank": true,
+    "micro_tiebreak": false,
+    "blind_swap": false,
+    "exact_tie_sort": "horse_number only; frequency reported"
+  },
+  "candidates": {
+    "balanced_core": {
+      "hypothesis": "三個通過dimension等權，避免單一訊號主導。",
+      "weights": {
+        "speed_engine": 0.3334,
+        "stability": 0.3333,
+        "trainer_signal": 0.3333
+      }
+    },
+    "stability_led": {
+      "hypothesis": "按development最強且9/9正向嘅stability主導，trainer次之，speed作支持。",
+      "weights": {
+        "speed_engine": 0.2,
+        "stability": 0.5,
+        "trainer_signal": 0.3
+      }
+    },
+    "winner_guard": {
+      "hypothesis": "提高development頭馬AUC強嘅trainer比重，stability保留主體，speed只作確認。",
+      "weights": {
+        "speed_engine": 0.15,
+        "stability": 0.4,
+        "trainer_signal": 0.45
+      }
+    }
+  },
+  "debut_formula": {
+    "neutral_anchor": 0.5,
+    "trainer_signal": 0.5,
+    "note": "初出馬缺正式賽證據，三候選統一用50%中性60＋50%trainer；不使用draw或被暫緩dimension。"
+  },
+  "development_baseline": {
+    "races": 88,
+    "distribution": {
+      "0": 21,
+      "1": 40,
+      "2": 27
+    },
+    "total_top2_hits": 94,
+    "winner_top2": 39
+  },
+  "development_candidates": {
+    "balanced_core": {
+      "races": 88,
+      "distribution": {
+        "0": 23,
+        "1": 50,
+        "2": 15
+      },
+      "total_top2_hits": 80,
+      "winner_top2": 28
+    },
+    "stability_led": {
+      "races": 88,
+      "distribution": {
+        "0": 27,
+        "1": 51,
+        "2": 10
+      },
+      "total_top2_hits": 71,
+      "winner_top2": 27
+    },
+    "winner_guard": {
+      "races": 88,
+      "distribution": {
+        "0": 20,
+        "1": 55,
+        "2": 13
+      },
+      "total_top2_hits": 81,
+      "winner_top2": 29
+    }
+  },
+  "development_comparisons": {
+    "balanced_core": {
+      "top2_set_changes": 76,
+      "hit_helped": 21,
+      "hit_harmed": 29,
+      "zero_to_positive": 13,
+      "one_to_two": 8,
+      "one_to_zero": 9,
+      "winner_helped": 6,
+      "winner_harmed": 17,
+      "rank3_promotions": 25,
+      "effective_rank3_rescues": 7,
+      "harmful_rank3_promotions": 9,
+      "rank3_rescue_net": -2
+    },
+    "stability_led": {
+      "top2_set_changes": 79,
+      "hit_helped": 12,
+      "hit_harmed": 29,
+      "zero_to_positive": 8,
+      "one_to_two": 4,
+      "one_to_zero": 8,
+      "winner_helped": 6,
+      "winner_harmed": 18,
+      "rank3_promotions": 26,
+      "effective_rank3_rescues": 5,
+      "harmful_rank3_promotions": 10,
+      "rank3_rescue_net": -5
+    },
+    "winner_guard": {
+      "top2_set_changes": 77,
+      "hit_helped": 18,
+      "hit_harmed": 27,
+      "zero_to_positive": 13,
+      "one_to_two": 5,
+      "one_to_zero": 8,
+      "winner_helped": 7,
+      "winner_harmed": 17,
+      "rank3_promotions": 24,
+      "effective_rank3_rescues": 6,
+      "harmful_rank3_promotions": 10,
+      "rank3_rescue_net": -4
+    }
+  },
+  "development_gates": {
+    "balanced_core": {
+      "advances_to_step6": false,
+      "path": "FAIL",
+      "common_no_harm": false,
+      "zero_hit_delta": 2,
+      "top2_hit_delta": -14,
+      "winner_top2_delta": -11,
+      "rank3_rescue_net": -2
+    },
+    "stability_led": {
+      "advances_to_step6": false,
+      "path": "FAIL",
+      "common_no_harm": false,
+      "zero_hit_delta": 6,
+      "top2_hit_delta": -23,
+      "winner_top2_delta": -12,
+      "rank3_rescue_net": -5
+    },
+    "winner_guard": {
+      "advances_to_step6": false,
+      "path": "FAIL",
+      "common_no_harm": false,
+      "zero_hit_delta": -1,
+      "top2_hit_delta": -13,
+      "winner_top2_delta": -10,
+      "rank3_rescue_net": -4
+    }
+  },
+  "tie_stats": {
+    "balanced_core": {
+      "all_races": 245,
+      "all_boundary_ties": 0,
+      "all_boundary_tie_rate": 0.0,
+      "development_races": 88,
+      "development_boundary_ties": 0,
+      "development_boundary_tie_rate": 0.0
+    },
+    "stability_led": {
+      "all_races": 245,
+      "all_boundary_ties": 0,
+      "all_boundary_tie_rate": 0.0,
+      "development_races": 88,
+      "development_boundary_ties": 0,
+      "development_boundary_tie_rate": 0.0
+    },
+    "winner_guard": {
+      "all_races": 245,
+      "all_boundary_ties": 0,
+      "all_boundary_tie_rate": 0.0,
+      "development_races": 88,
+      "development_boundary_ties": 0,
+      "development_boundary_tie_rate": 0.0
+    }
+  },
+  "validation_errors": []
+}

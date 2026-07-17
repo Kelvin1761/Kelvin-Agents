@@ -1762,12 +1762,15 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     lines.append(f"📊 **段速趨勢:**")
     
     if trends['l400_values']:
-        l400_str = '→'.join(f"{v:.2f}" for v in trends['l400_values'])
-        lines.append(f"  L400: {l400_str} → 趨勢: {trends['l400_trend']}")
+        # Internal race arrays stay newest-first because the scoring logic relies on
+        # that order.  Human-facing timelines are reversed so an arrow always reads
+        # naturally from older evidence towards the latest run.
+        l400_str = '→'.join(f"{v:.2f}" for v in reversed(trends['l400_values']))
+        lines.append(f"  L400: （最舊 → 最新）{l400_str} → 趨勢: {trends['l400_trend']}")
     
     if trends['energy_values']:
-        e_str = '→'.join(str(v) for v in trends['energy_values'])
-        lines.append(f"  能量: {e_str} → 趨勢: {trends['energy_trend']}")
+        e_str = '→'.join(str(v) for v in reversed(trends['energy_values']))
+        lines.append(f"  能量: （最舊 → 最新）{e_str} → 趨勢: {trends['energy_trend']}")
     
     # === 完成時間偏差趨勢 [SIP-P2c] ===
     ft_deviations = []
@@ -1810,7 +1813,7 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     if len(ft_deviations) >= 2:
         lines.append(f"")
         lines.append(f"📊 **完成時間偏差趨勢 [SIP-P2c] (vs HKJC 標準):**")
-        dev_str = '→'.join(f"{v:+.2f}s" for v in ft_deviations)
+        dev_str = '→'.join(f"{v:+.2f}s" for v in reversed(ft_deviations))
         # Trend analysis
         if len(ft_deviations) >= 3:
             recent_avg = sum(ft_deviations[:len(ft_deviations)//2]) / max(len(ft_deviations)//2, 1)
@@ -1839,13 +1842,14 @@ def generate_horse_block(horse: dict, today_venue: str = '',
             ft_level = '⚠️ 略慢於標準'
         else:
             ft_level = '❌ 明顯慢於標準'
-        lines.append(f"  偏差: {dev_str} → 趨勢: {ft_trend}")
+        lines.append(f"  偏差: （最舊 → 最新）{dev_str} → 趨勢: {ft_trend}")
         lines.append(f"  水平: {ft_level} (近 {min(len(ft_deviations), 3)} 仗平均偏差: {avg_dev:+.2f}s)")
         lines.append(f"  含金量: {ft_reading}")
         # V5.1: Pace-adjusted deviation (subtracts race pace factor)
         if len(adj_deviations) >= 2:
             adj_str_parts = []
-            for j, ad in enumerate(adj_deviations):
+            for j in range(len(adj_deviations) - 1, -1, -1):
+                ad = adj_deviations[j]
                 pl = pace_labels[j] if j < len(pace_labels) else ''
                 if pl in ('極慢', '偏慢', '偏快'):
                     adj_str_parts.append(f"{ad:+.2f}s[{pl}]")
@@ -1861,7 +1865,7 @@ def generate_horse_block(horse: dict, today_venue: str = '',
                 adj_level = '⚠️ 步速修正後仍偏慢'
             else:
                 adj_level = '❌ 步速修正後明顯落後'
-            lines.append(f"  🔧 步速修正偏差: {adj_str}")
+            lines.append(f"  🔧 步速修正偏差: （最舊 → 最新）{adj_str}")
             lines.append(f"  🔧 修正水平: {adj_level} (近 {min(len(adj_deviations), 3)} 仗修正平均: {avg_adj:+.2f}s)")
             lines.append(f"  💡 修正方法: 扣除全場頭馬偏差(步速因子) — [極慢/偏慢]場次嘅原始偏差會被折扣")
     

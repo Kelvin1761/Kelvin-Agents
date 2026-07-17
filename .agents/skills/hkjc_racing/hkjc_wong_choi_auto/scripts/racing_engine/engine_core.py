@@ -16,12 +16,20 @@ import scoring
 from scoring import DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS, MATRIX_WEIGHTS, clip_score, compute_grade, parse_float, parse_record, score_band
 
 _TRAINER_SIGNAL_PRIORS = None
+READINESS_HEALTH_PROFILE = "readiness_health_slot"
+MAINLINE_HEALTH_PROFILE = "legacy_health_v2"
+SUPPORTED_HEALTH_PROFILES = (MAINLINE_HEALTH_PROFILE, READINESS_HEALTH_PROFILE)
+SUPPORTED_SHADOW_PROFILES = ("consistency_context", "readiness_health_slot", "legacy_health_slot")
 
 
 class RacingEngine:
-    def __init__(self, horse_data, race_context):
+    def __init__(self, horse_data, race_context, health_profile=MAINLINE_HEALTH_PROFILE):
+        if health_profile not in SUPPORTED_HEALTH_PROFILES:
+            raise ValueError(f"unsupported health profile: {health_profile}")
         self.horse_data = horse_data
         self.race_context = race_context
+        self.health_profile = health_profile
+        self.health_slot_detail = None
         self.data = horse_data.get("_data", {}) if isinstance(horse_data.get("_data"), dict) else {}
         self.reason_codes = []
         self.risk_flags = []
@@ -82,7 +90,19 @@ class RacingEngine:
 
         matrix_scores = map_features_to_matrix_scores(feature_scores)
         matrix_scores["trainer_signal"] = self._apply_trainer_signal_v3(matrix_scores["trainer_signal"])
-        matrix_scores["horse_health"] = self._apply_health_only_v2(matrix_scores["horse_health"])
+        legacy_health = self._apply_health_only_v2(matrix_scores["horse_health"])
+        readiness_detail = self._readiness_health_slot_detail()
+        self.health_slot_detail = {
+            "profile": self.health_profile,
+            "legacy_horse_health": legacy_health,
+            **readiness_detail,
+        }
+        if self.health_profile == READINESS_HEALTH_PROFILE:
+            matrix_scores["horse_health"] = readiness_detail["score"]
+            self.provenance["horse_health_slot"] = "days_since_last + weight_trend_span; evidence shrink to neutral 60"
+        else:
+            matrix_scores["horse_health"] = legacy_health
+            self.provenance["horse_health_slot"] = "legacy risk_score + weight_score + confidence_score mapping"
         matrix_scores["sectional"] = self._apply_finish_time_trend(matrix_scores["sectional"])
         matrix = map_features_to_matrix(feature_scores)
         matrix["trainer_signal"] = score_band(matrix_scores["trainer_signal"])
@@ -95,7 +115,13 @@ class RacingEngine:
         grade_transparency = self._grade_computation_transparency(matrix_scores, ability_score, grade, feature_scores)
 
         return {
-            "version": "HKJC_AUTO_SCORE_V2",
+            "version": (
+                "HKJC_AUTO_SCORE_V3_READINESS_HEALTH"
+                if self.health_profile == READINESS_HEALTH_PROFILE
+                else "HKJC_AUTO_SCORE_V2"
+            ),
+            "health_slot_profile": self.health_profile,
+            "health_slot_detail": dict(self.health_slot_detail),
             "ability_score": ability_score,
             "grade": grade,
             "matrix": matrix,
@@ -618,9 +644,14 @@ class RacingEngine:
             return sum(matrix_scores[key] * weight for key, weight in MATRIX_WEIGHTS.items())
 
     def build_shadow_profile(self, profile_name, base_auto=None):
-        if profile_name != "consistency_context":
+        if profile_name not in SUPPORTED_SHADOW_PROFILES:
             return None
         auto = base_auto or self.analyze_horse()
+        if profile_name == "readiness_health_slot":
+            return self._build_readiness_health_shadow(auto)
+        if profile_name == "legacy_health_slot":
+            return self._build_legacy_health_shadow(auto)
+
         base_features = auto.get("feature_scores", {}) if isinstance(auto, dict) else {}
         if not isinstance(base_features, dict) or not base_features:
             return None
@@ -652,6 +683,106 @@ class RacingEngine:
             "consistency_delta": round(float(shadow_features.get("consistency_score", 60.0)) - float(base_features.get("consistency_score", 60.0)), 2),
             "matrix_scores": matrix_scores,
             "reason": reason,
+        }
+
+    def _build_readiness_health_shadow(self, auto):
+        """Replace only the shadow horse-health slot with the frozen readiness score.
+
+        Mainline feature/matrix dictionaries are copied and never mutated.  The
+        formula mirrors the Step-3/5d research contract exactly: structured
+        rest and body-weight-span bands, with evidence-count shrinkage to 60.
+        """
+        base_matrix = auto.get("matrix_scores", {}) if isinstance(auto, dict) else {}
+        if not isinstance(base_matrix, dict) or not base_matrix:
+            return None
+        detail = self._readiness_health_slot_detail()
+        matrix_scores = {key: round(float(value), 2) for key, value in base_matrix.items()}
+        matrix_scores["horse_health"] = detail["score"]
+        ability_score = round(self._ability_score(matrix_scores), 2)
+        base_ability = float(auto.get("ability_score", ability_score))
+        base_health = float(base_matrix.get("horse_health", 60.0))
+        if detail["evidence_count"]:
+            reason = (
+                f"影子health槽只用休賽日數及體重波幅；證據{detail['evidence_count']}/2，"
+                f"可靠度{detail['reliability']:.2f}，由raw {detail['raw_score']:.1f}向中性60收縮。"
+            )
+        else:
+            reason = "休賽日數及體重波幅均缺，影子health槽按中性60。"
+        return {
+            "profile": "readiness_health_slot",
+            "applied": bool(detail["evidence_count"]),
+            "ability_score": ability_score,
+            "ability_delta": round(ability_score - base_ability, 2),
+            "grade": compute_grade(ability_score),
+            "base_horse_health": round(base_health, 2),
+            "readiness_health_score": detail["score"],
+            "horse_health_delta": round(detail["score"] - base_health, 2),
+            "raw_readiness_score": detail["raw_score"],
+            "reliability": detail["reliability"],
+            "evidence_count": detail["evidence_count"],
+            "days_since_last": detail["days_since_last"],
+            "weight_trend_span": detail["weight_trend_span"],
+            "matrix_scores": matrix_scores,
+            "reason": reason,
+        }
+
+    def _build_legacy_health_shadow(self, auto):
+        """Rebuild the previous health slot as an explicit rollback shadow."""
+        base_matrix = auto.get("matrix_scores", {}) if isinstance(auto, dict) else {}
+        detail = auto.get("health_slot_detail", {}) if isinstance(auto, dict) else {}
+        if not isinstance(base_matrix, dict) or not base_matrix:
+            return None
+        legacy_health = float(detail.get("legacy_horse_health", base_matrix.get("horse_health", 60.0)))
+        matrix_scores = {key: round(float(value), 2) for key, value in base_matrix.items()}
+        matrix_scores["horse_health"] = round(clip_score(legacy_health), 2)
+        ability_score = round(self._ability_score(matrix_scores), 2)
+        base_ability = float(auto.get("ability_score", ability_score))
+        return {
+            "profile": "legacy_health_slot",
+            "applied": self.health_profile != "legacy_health_v2",
+            "ability_score": ability_score,
+            "ability_delta": round(ability_score - base_ability, 2),
+            "grade": compute_grade(ability_score),
+            "legacy_horse_health": matrix_scores["horse_health"],
+            "horse_health_delta": round(matrix_scores["horse_health"] - float(base_matrix.get("horse_health", 60.0)), 2),
+            "matrix_scores": matrix_scores,
+            "reason": "回退影子只恢復舊版health槽；其他六個matrix dimension保持主線不變。",
+        }
+
+    def _readiness_health_slot_detail(self):
+        days = parse_float(self._value("days_since_last") or self.horse_data.get("days_since_last"))
+        span = self._weight_trend_span(self._text("weight_trend"))
+        raw_score = 60.0
+        available = 0
+        if days is not None:
+            available += 1
+            if days <= 7:
+                raw_score += 2.0 if span is not None and span <= 14.0 else -1.0
+            elif days <= 21:
+                raw_score += 2.0
+            elif days <= 45:
+                raw_score += 1.0
+            elif days > 75:
+                raw_score -= 3.0
+        if span is not None:
+            available += 1
+            if span <= 12:
+                raw_score += 3.0
+            elif span <= 18:
+                raw_score += 1.5
+            elif span <= 32:
+                raw_score -= 2.0
+            else:
+                raw_score -= 4.0
+        reliability = available / 2.0
+        score = 60.0 + reliability * (raw_score - 60.0)
+        return {
+            "score": round(clip_score(score), 2),
+            "raw_score": round(clip_score(raw_score), 2),
+            "reliability": round(reliability, 2),
+            "evidence_count": available,
+            "days_since_last": round(days, 2) if days is not None else None,
+            "weight_trend_span": round(span, 2) if span is not None else None,
         }
 
     def _apply_mainline_context(self, feature_scores, feature_notes):
@@ -1176,16 +1307,32 @@ class RacingEngine:
         for key, (label, feature_keys) in specs.items():
             evidence = self._best_evidence(feature_keys, notes)
             score = matrix_scores[key]
-            components = [
-                {
-                    "key": name,
-                    "label": self._feature_score_label(name),
-                    "score": round(features[name], 2),
-                    "weight": weight,
-                    "note": self._clean(notes.get(name, "資料不足，中性60分。")),
-                }
-                for name, weight in MATRIX_FORMULAS[key]
-            ]
+            if key == "horse_health" and self.health_profile == READINESS_HEALTH_PROFILE:
+                detail = self.health_slot_detail or self._readiness_health_slot_detail()
+                components = [
+                    {
+                        "key": "readiness_health_slot",
+                        "label": "休賽日數／體重波幅可靠度收縮",
+                        "score": round(float(detail.get("score", 60.0)), 2),
+                        "weight": 1.0,
+                        "note": (
+                            f"證據{int(detail.get('evidence_count', 0))}/2；"
+                            f"raw {float(detail.get('raw_score', 60.0)):.1f}向中性60收縮。"
+                        ),
+                    }
+                ]
+                evidence = self.provenance.get("horse_health_slot", "readiness_missing_neutral")
+            else:
+                components = [
+                    {
+                        "key": name,
+                        "label": self._feature_score_label(name),
+                        "score": round(features[name], 2),
+                        "weight": weight,
+                        "note": self._clean(notes.get(name, "資料不足，中性60分。")),
+                    }
+                    for name, weight in MATRIX_FORMULAS[key]
+                ]
             reasoning[key] = {
                 "label": label,
                 "score": round(score, 2),
@@ -1197,8 +1344,11 @@ class RacingEngine:
             }
             # 矩陣後調整（例如 sectional 嘅完成時間對標趨勢 ±5）唔喺 sub分加權入面，
             # 唔寫出嚟嘅話「評分構成」加極都對唔返 header 個分 — 呢度補返一行。
-            expected = clip_score(sum(clip_score(features.get(name, 60.0)) * weight
-                                      for name, weight in MATRIX_FORMULAS[key]))
+            if key == "horse_health" and self.health_profile == READINESS_HEALTH_PROFILE:
+                expected = float(score)
+            else:
+                expected = clip_score(sum(clip_score(features.get(name, 60.0)) * weight
+                                          for name, weight in MATRIX_FORMULAS[key]))
             diff = round(float(score) - expected, 2)
             if abs(diff) >= 0.05:
                 if key == "sectional" and any(c.startswith("finish_time_trend") for c in self.reason_codes):
@@ -1237,10 +1387,19 @@ class RacingEngine:
         tail = m.group(1) if m else (s.rsplit("→", 1)[-1] if "→" in s else "")
         return re.sub(r"[📈📉🔴⚠️✅\s]+", " ", tail).strip()
 
-    def _seq_endpoints(self, text, unit=""):
-        head = re.split(r"→\s*趨勢|趨勢", str(text or ""))[0]
+    def _seq_endpoints(self, text, unit="", newest_first=False):
+        raw = str(text or "")
+        marked_oldest_first = bool(re.search(r"最舊\s*→\s*最新", raw))
+        head = re.split(r"→\s*趨勢|趨勢", raw)[0]
+        head = re.sub(r"[（(]?最舊\s*→\s*最新[）)]?", "", head)
         nums = re.findall(r"-?\d+\.?\d*", head)
-        return f"{nums[0]}→{nums[-1]}{unit}" if len(nums) >= 2 else ""
+        if len(nums) < 2:
+            return ""
+        if newest_first and not marked_oldest_first:
+            oldest, latest = nums[-1], nums[0]
+        else:
+            oldest, latest = nums[0], nums[-1]
+        return f"最舊 {oldest}{unit} → 最新 {latest}{unit}" if newest_first else f"{oldest}→{latest}{unit}"
 
     def _rating_direction(self, text):
         """Derive rating direction from the actual numbers (the source tail label is
@@ -1534,7 +1693,7 @@ class RacingEngine:
 
         l400 = self._value("l400_trend")
         if present(l400):
-            add("段速趨勢", self._seq_endpoints(l400, "s"), self._trend_tail(l400))
+            add("段速趨勢", self._seq_endpoints(l400, "s", newest_first=True), self._trend_tail(l400))
         energy = self._value("energy_trend")
         if present(energy):
             # Show the source 趨勢 LABEL (a model assessment that out-predicts naive
@@ -2443,7 +2602,7 @@ class RacingEngine:
         return f"{lead}{margin_txt}{track}{self._score_close(score)}"
 
     def _describe_sectional_matrix(self, score, features, evidence):
-        l400 = self._seq_endpoints(self._value("l400_trend"), "s")
+        l400 = self._seq_endpoints(self._value("l400_trend"), "s", newest_first=True)
         l400_txt = f"L400 {l400}：" if l400 else ""
         if features.get("speed_score", 60) >= 76:
             speed = f"{l400_txt}末段有真競爭力"
@@ -2507,25 +2666,39 @@ class RacingEngine:
         return f"{jockey}（{jw}）配{trainer}（{tw}）{extras}{self._score_close(score)}"
 
     def _describe_horse_health_matrix(self, score, features, evidence):
-        # 晨操敘述已統一歸 stability（狀態與穩定性）獨家負責，健康維度只講醫療／休賽／體重。
-        medical = self._text("medical_flags")
-        days = parse_float(self._value("days_since_last") or self.horse_data.get("days_since_last"))
-        wt = self._text("weight_trend")
-        span = self._weight_trend_span(wt)
-        medical_text = "醫療乾淨" if "無醫療事故" in medical else "醫療資料未齊，保守處理"
+        if self.health_profile == "legacy_health_v2":
+            return f"舊版健康槽回退模式；沿用風險、負磅及資料信心映射{self._score_close(score)}"
+        detail = self.health_slot_detail or self._readiness_health_slot_detail()
+        days = detail.get("days_since_last")
+        span = detail.get("weight_trend_span")
+        evidence_count = int(detail.get("evidence_count", 0))
         if days is None:
-            freshness = "；休賽間隔不明"
-        elif days <= 14:
-            freshness = f"；休後{int(days)}日快出，回氣要留意"
+            freshness = "休賽間隔未有資料"
+        elif days <= 7:
+            freshness = f"休後{int(days)}日快出"
+        elif days <= 21:
+            freshness = f"休後{int(days)}日，間隔有利"
         elif days <= 45:
-            freshness = f"；休後{int(days)}日，間隔正常"
+            freshness = f"休後{int(days)}日，間隔正常"
+        elif days > 75:
+            freshness = f"休後{int(days)}日，實戰感有風險"
         else:
-            freshness = f"；休後{int(days)}日，實戰感成疑"
-        if span is not None:
-            weight_txt = f"；體重波幅{span:.0f}lb正常" if span <= 14 else f"；體重波幅{span:.0f}lb偏大"
+            freshness = f"休後{int(days)}日"
+        if span is None:
+            weight_text = "體重波幅未有資料"
+        elif span <= 12:
+            weight_text = f"體重波幅{span:.0f}lb穩定"
+        elif span <= 18:
+            weight_text = f"體重波幅{span:.0f}lb可接受"
+        elif span <= 32:
+            weight_text = f"體重波幅{span:.0f}lb偏大"
         else:
-            weight_txt = ""
-        return f"{medical_text}{freshness}{weight_txt}{self._score_close(score)}"
+            weight_text = f"體重波幅{span:.0f}lb明顯波動"
+        reliability = float(detail.get("reliability", 0.0))
+        return (
+            f"{freshness}；{weight_text}；證據{evidence_count}/2、可靠度{reliability:.2f}，"
+            f"向中性60收縮{self._score_close(score)}"
+        )
 
     def _describe_form_line_matrix(self, score, features, evidence):
         strength = self._formline_strength_signal()

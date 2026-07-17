@@ -1,0 +1,1213 @@
+{
+  "contract": {
+    "baseline": "current engine mainline Top 2",
+    "candidate": "readiness_health_slot",
+    "datasets": [
+      "independent_recent",
+      "external_2026_07_15"
+    ],
+    "outcome_blind_scoring": true,
+    "source_write_policy": "read-only; staged temp copies only"
+  },
+  "race_count": 118,
+  "meeting_count": 12,
+  "combined": {
+    "current": {
+      "races": 118,
+      "distribution": {
+        "0": 33,
+        "1": 61,
+        "2": 24
+      },
+      "total_top2_hits": 109,
+      "top2_hit_rate_pct": 46.2,
+      "at_least_one_rate_pct": 72.0,
+      "two_hit_rate_pct": 20.3,
+      "winner_top2": 45,
+      "winner_top2_rate_pct": 38.1,
+      "winner_top1": 29
+    },
+    "shadow": {
+      "races": 118,
+      "distribution": {
+        "0": 33,
+        "1": 57,
+        "2": 28
+      },
+      "total_top2_hits": 113,
+      "top2_hit_rate_pct": 47.9,
+      "at_least_one_rate_pct": 72.0,
+      "two_hit_rate_pct": 23.7,
+      "winner_top2": 48,
+      "winner_top2_rate_pct": 40.7,
+      "winner_top1": 28
+    },
+    "deltas": {
+      "zero_hit": 0,
+      "one_hit": -4,
+      "two_hit": 4,
+      "total_top2_hits": 4,
+      "winner_top2": 3,
+      "winner_top1": -1
+    },
+    "changes": {
+      "top2_set_changes": 14,
+      "improved_races": 6,
+      "harmed_races": 2,
+      "zero_to_positive": 2,
+      "one_to_two": 4,
+      "one_to_zero": 2,
+      "two_to_one_or_zero": 0,
+      "effective_replacement": 6,
+      "harmful_replacement": 2,
+      "effective_rank3_rescue": 6,
+      "harmful_rank3_promotion": 2
+    }
+  },
+  "by_split": {
+    "external_2026_07_15": {
+      "current": {
+        "races": 9,
+        "distribution": {
+          "0": 4,
+          "1": 2,
+          "2": 3
+        },
+        "total_top2_hits": 8,
+        "top2_hit_rate_pct": 44.4,
+        "at_least_one_rate_pct": 55.6,
+        "two_hit_rate_pct": 33.3,
+        "winner_top2": 1,
+        "winner_top2_rate_pct": 11.1,
+        "winner_top1": 1
+      },
+      "shadow": {
+        "races": 9,
+        "distribution": {
+          "0": 4,
+          "1": 2,
+          "2": 3
+        },
+        "total_top2_hits": 8,
+        "top2_hit_rate_pct": 44.4,
+        "at_least_one_rate_pct": 55.6,
+        "two_hit_rate_pct": 33.3,
+        "winner_top2": 1,
+        "winner_top2_rate_pct": 11.1,
+        "winner_top1": 1
+      },
+      "deltas": {
+        "zero_hit": 0,
+        "one_hit": 0,
+        "two_hit": 0,
+        "total_top2_hits": 0,
+        "winner_top2": 0,
+        "winner_top1": 0
+      },
+      "changes": {
+        "top2_set_changes": 0,
+        "improved_races": 0,
+        "harmed_races": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 0,
+        "one_to_zero": 0,
+        "two_to_one_or_zero": 0,
+        "effective_replacement": 0,
+        "harmful_replacement": 0,
+        "effective_rank3_rescue": 0,
+        "harmful_rank3_promotion": 0
+      }
+    },
+    "independent_recent": {
+      "current": {
+        "races": 109,
+        "distribution": {
+          "0": 29,
+          "1": 59,
+          "2": 21
+        },
+        "total_top2_hits": 101,
+        "top2_hit_rate_pct": 46.3,
+        "at_least_one_rate_pct": 73.4,
+        "two_hit_rate_pct": 19.3,
+        "winner_top2": 44,
+        "winner_top2_rate_pct": 40.4,
+        "winner_top1": 28
+      },
+      "shadow": {
+        "races": 109,
+        "distribution": {
+          "0": 29,
+          "1": 55,
+          "2": 25
+        },
+        "total_top2_hits": 105,
+        "top2_hit_rate_pct": 48.2,
+        "at_least_one_rate_pct": 73.4,
+        "two_hit_rate_pct": 22.9,
+        "winner_top2": 47,
+        "winner_top2_rate_pct": 43.1,
+        "winner_top1": 27
+      },
+      "deltas": {
+        "zero_hit": 0,
+        "one_hit": -4,
+        "two_hit": 4,
+        "total_top2_hits": 4,
+        "winner_top2": 3,
+        "winner_top1": -1
+      },
+      "changes": {
+        "top2_set_changes": 14,
+        "improved_races": 6,
+        "harmed_races": 2,
+        "zero_to_positive": 2,
+        "one_to_two": 4,
+        "one_to_zero": 2,
+        "two_to_one_or_zero": 0,
+        "effective_replacement": 6,
+        "harmful_replacement": 2,
+        "effective_rank3_rescue": 6,
+        "harmful_rank3_promotion": 2
+      }
+    }
+  },
+  "by_venue": {
+    "HappyValley": {
+      "current": {
+        "races": 43,
+        "distribution": {
+          "0": 14,
+          "1": 20,
+          "2": 9
+        },
+        "total_top2_hits": 38,
+        "top2_hit_rate_pct": 44.2,
+        "at_least_one_rate_pct": 67.4,
+        "two_hit_rate_pct": 20.9,
+        "winner_top2": 16,
+        "winner_top2_rate_pct": 37.2,
+        "winner_top1": 12
+      },
+      "shadow": {
+        "races": 43,
+        "distribution": {
+          "0": 14,
+          "1": 19,
+          "2": 10
+        },
+        "total_top2_hits": 39,
+        "top2_hit_rate_pct": 45.3,
+        "at_least_one_rate_pct": 67.4,
+        "two_hit_rate_pct": 23.3,
+        "winner_top2": 16,
+        "winner_top2_rate_pct": 37.2,
+        "winner_top1": 12
+      },
+      "deltas": {
+        "zero_hit": 0,
+        "one_hit": -1,
+        "two_hit": 1,
+        "total_top2_hits": 1,
+        "winner_top2": 0,
+        "winner_top1": 0
+      },
+      "changes": {
+        "top2_set_changes": 1,
+        "improved_races": 1,
+        "harmed_races": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 1,
+        "one_to_zero": 0,
+        "two_to_one_or_zero": 0,
+        "effective_replacement": 1,
+        "harmful_replacement": 0,
+        "effective_rank3_rescue": 1,
+        "harmful_rank3_promotion": 0
+      }
+    },
+    "ShaTin": {
+      "current": {
+        "races": 75,
+        "distribution": {
+          "0": 19,
+          "1": 41,
+          "2": 15
+        },
+        "total_top2_hits": 71,
+        "top2_hit_rate_pct": 47.3,
+        "at_least_one_rate_pct": 74.7,
+        "two_hit_rate_pct": 20.0,
+        "winner_top2": 29,
+        "winner_top2_rate_pct": 38.7,
+        "winner_top1": 17
+      },
+      "shadow": {
+        "races": 75,
+        "distribution": {
+          "0": 19,
+          "1": 38,
+          "2": 18
+        },
+        "total_top2_hits": 74,
+        "top2_hit_rate_pct": 49.3,
+        "at_least_one_rate_pct": 74.7,
+        "two_hit_rate_pct": 24.0,
+        "winner_top2": 32,
+        "winner_top2_rate_pct": 42.7,
+        "winner_top1": 16
+      },
+      "deltas": {
+        "zero_hit": 0,
+        "one_hit": -3,
+        "two_hit": 3,
+        "total_top2_hits": 3,
+        "winner_top2": 3,
+        "winner_top1": -1
+      },
+      "changes": {
+        "top2_set_changes": 13,
+        "improved_races": 5,
+        "harmed_races": 2,
+        "zero_to_positive": 2,
+        "one_to_two": 3,
+        "one_to_zero": 2,
+        "two_to_one_or_zero": 0,
+        "effective_replacement": 5,
+        "harmful_replacement": 2,
+        "effective_rank3_rescue": 5,
+        "harmful_rank3_promotion": 2
+      }
+    }
+  },
+  "by_meeting": {
+    "2026-05-27_HappyValley": {
+      "current": {
+        "races": 8,
+        "distribution": {
+          "0": 3,
+          "1": 4,
+          "2": 1
+        },
+        "total_top2_hits": 6,
+        "top2_hit_rate_pct": 37.5,
+        "at_least_one_rate_pct": 62.5,
+        "two_hit_rate_pct": 12.5,
+        "winner_top2": 2,
+        "winner_top2_rate_pct": 25.0,
+        "winner_top1": 2
+      },
+      "shadow": {
+        "races": 8,
+        "distribution": {
+          "0": 3,
+          "1": 4,
+          "2": 1
+        },
+        "total_top2_hits": 6,
+        "top2_hit_rate_pct": 37.5,
+        "at_least_one_rate_pct": 62.5,
+        "two_hit_rate_pct": 12.5,
+        "winner_top2": 2,
+        "winner_top2_rate_pct": 25.0,
+        "winner_top1": 2
+      },
+      "deltas": {
+        "zero_hit": 0,
+        "one_hit": 0,
+        "two_hit": 0,
+        "total_top2_hits": 0,
+        "winner_top2": 0,
+        "winner_top1": 0
+      },
+      "changes": {
+        "top2_set_changes": 0,
+        "improved_races": 0,
+        "harmed_races": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 0,
+        "one_to_zero": 0,
+        "two_to_one_or_zero": 0,
+        "effective_replacement": 0,
+        "harmful_replacement": 0,
+        "effective_rank3_rescue": 0,
+        "harmful_rank3_promotion": 0
+      }
+    },
+    "2026-06-03_HappyValley": {
+      "current": {
+        "races": 8,
+        "distribution": {
+          "0": 1,
+          "1": 6,
+          "2": 1
+        },
+        "total_top2_hits": 8,
+        "top2_hit_rate_pct": 50.0,
+        "at_least_one_rate_pct": 87.5,
+        "two_hit_rate_pct": 12.5,
+        "winner_top2": 5,
+        "winner_top2_rate_pct": 62.5,
+        "winner_top1": 3
+      },
+      "shadow": {
+        "races": 8,
+        "distribution": {
+          "0": 1,
+          "1": 6,
+          "2": 1
+        },
+        "total_top2_hits": 8,
+        "top2_hit_rate_pct": 50.0,
+        "at_least_one_rate_pct": 87.5,
+        "two_hit_rate_pct": 12.5,
+        "winner_top2": 5,
+        "winner_top2_rate_pct": 62.5,
+        "winner_top1": 3
+      },
+      "deltas": {
+        "zero_hit": 0,
+        "one_hit": 0,
+        "two_hit": 0,
+        "total_top2_hits": 0,
+        "winner_top2": 0,
+        "winner_top1": 0
+      },
+      "changes": {
+        "top2_set_changes": 0,
+        "improved_races": 0,
+        "harmed_races": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 0,
+        "one_to_zero": 0,
+        "two_to_one_or_zero": 0,
+        "effective_replacement": 0,
+        "harmful_replacement": 0,
+        "effective_rank3_rescue": 0,
+        "harmful_rank3_promotion": 0
+      }
+    },
+    "2026-06-07_ShaTin": {
+      "current": {
+        "races": 9,
+        "distribution": {
+          "0": 2,
+          "1": 4,
+          "2": 3
+        },
+        "total_top2_hits": 10,
+        "top2_hit_rate_pct": 55.6,
+        "at_least_one_rate_pct": 77.8,
+        "two_hit_rate_pct": 33.3,
+        "winner_top2": 3,
+        "winner_top2_rate_pct": 33.3,
+        "winner_top1": 2
+      },
+      "shadow": {
+        "races": 9,
+        "distribution": {
+          "0": 3,
+          "1": 2,
+          "2": 4
+        },
+        "total_top2_hits": 10,
+        "top2_hit_rate_pct": 55.6,
+        "at_least_one_rate_pct": 66.7,
+        "two_hit_rate_pct": 44.4,
+        "winner_top2": 4,
+        "winner_top2_rate_pct": 44.4,
+        "winner_top1": 2
+      },
+      "deltas": {
+        "zero_hit": 1,
+        "one_hit": -2,
+        "two_hit": 1,
+        "total_top2_hits": 0,
+        "winner_top2": 1,
+        "winner_top1": 0
+      },
+      "changes": {
+        "top2_set_changes": 3,
+        "improved_races": 1,
+        "harmed_races": 1,
+        "zero_to_positive": 0,
+        "one_to_two": 1,
+        "one_to_zero": 1,
+        "two_to_one_or_zero": 0,
+        "effective_replacement": 1,
+        "harmful_replacement": 1,
+        "effective_rank3_rescue": 1,
+        "harmful_rank3_promotion": 1
+      }
+    },
+    "2026-06-10_HappyValley": {
+      "current": {
+        "races": 9,
+        "distribution": {
+          "0": 2,
+          "1": 4,
+          "2": 3
+        },
+        "total_top2_hits": 10,
+        "top2_hit_rate_pct": 55.6,
+        "at_least_one_rate_pct": 77.8,
+        "two_hit_rate_pct": 33.3,
+        "winner_top2": 4,
+        "winner_top2_rate_pct": 44.4,
+        "winner_top1": 3
+      },
+      "shadow": {
+        "races": 9,
+        "distribution": {
+          "0": 2,
+          "1": 3,
+          "2": 4
+        },
+        "total_top2_hits": 11,
+        "top2_hit_rate_pct": 61.1,
+        "at_least_one_rate_pct": 77.8,
+        "two_hit_rate_pct": 44.4,
+        "winner_top2": 4,
+        "winner_top2_rate_pct": 44.4,
+        "winner_top1": 3
+      },
+      "deltas": {
+        "zero_hit": 0,
+        "one_hit": -1,
+        "two_hit": 1,
+        "total_top2_hits": 1,
+        "winner_top2": 0,
+        "winner_top1": 0
+      },
+      "changes": {
+        "top2_set_changes": 1,
+        "improved_races": 1,
+        "harmed_races": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 1,
+        "one_to_zero": 0,
+        "two_to_one_or_zero": 0,
+        "effective_replacement": 1,
+        "harmful_replacement": 0,
+        "effective_rank3_rescue": 1,
+        "harmful_rank3_promotion": 0
+      }
+    },
+    "2026-06-13_ShaTin": {
+      "current": {
+        "races": 11,
+        "distribution": {
+          "0": 4,
+          "1": 4,
+          "2": 3
+        },
+        "total_top2_hits": 10,
+        "top2_hit_rate_pct": 45.5,
+        "at_least_one_rate_pct": 63.6,
+        "two_hit_rate_pct": 27.3,
+        "winner_top2": 2,
+        "winner_top2_rate_pct": 18.2,
+        "winner_top1": 2
+      },
+      "shadow": {
+        "races": 11,
+        "distribution": {
+          "0": 4,
+          "1": 3,
+          "2": 4
+        },
+        "total_top2_hits": 11,
+        "top2_hit_rate_pct": 50.0,
+        "at_least_one_rate_pct": 63.6,
+        "two_hit_rate_pct": 36.4,
+        "winner_top2": 2,
+        "winner_top2_rate_pct": 18.2,
+        "winner_top1": 2
+      },
+      "deltas": {
+        "zero_hit": 0,
+        "one_hit": -1,
+        "two_hit": 1,
+        "total_top2_hits": 1,
+        "winner_top2": 0,
+        "winner_top1": 0
+      },
+      "changes": {
+        "top2_set_changes": 2,
+        "improved_races": 1,
+        "harmed_races": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 1,
+        "one_to_zero": 0,
+        "two_to_one_or_zero": 0,
+        "effective_replacement": 1,
+        "harmful_replacement": 0,
+        "effective_rank3_rescue": 1,
+        "harmful_rank3_promotion": 0
+      }
+    },
+    "2026-06-21_ShaTin": {
+      "current": {
+        "races": 11,
+        "distribution": {
+          "0": 3,
+          "1": 7,
+          "2": 1
+        },
+        "total_top2_hits": 9,
+        "top2_hit_rate_pct": 40.9,
+        "at_least_one_rate_pct": 72.7,
+        "two_hit_rate_pct": 9.1,
+        "winner_top2": 7,
+        "winner_top2_rate_pct": 63.6,
+        "winner_top1": 3
+      },
+      "shadow": {
+        "races": 11,
+        "distribution": {
+          "0": 2,
+          "1": 7,
+          "2": 2
+        },
+        "total_top2_hits": 11,
+        "top2_hit_rate_pct": 50.0,
+        "at_least_one_rate_pct": 81.8,
+        "two_hit_rate_pct": 18.2,
+        "winner_top2": 7,
+        "winner_top2_rate_pct": 63.6,
+        "winner_top1": 3
+      },
+      "deltas": {
+        "zero_hit": -1,
+        "one_hit": 0,
+        "two_hit": 1,
+        "total_top2_hits": 2,
+        "winner_top2": 0,
+        "winner_top1": 0
+      },
+      "changes": {
+        "top2_set_changes": 2,
+        "improved_races": 2,
+        "harmed_races": 0,
+        "zero_to_positive": 1,
+        "one_to_two": 1,
+        "one_to_zero": 0,
+        "two_to_one_or_zero": 0,
+        "effective_replacement": 2,
+        "harmful_replacement": 0,
+        "effective_rank3_rescue": 2,
+        "harmful_rank3_promotion": 0
+      }
+    },
+    "2026-06-27_ShaTin": {
+      "current": {
+        "races": 11,
+        "distribution": {
+          "0": 4,
+          "1": 5,
+          "2": 2
+        },
+        "total_top2_hits": 9,
+        "top2_hit_rate_pct": 40.9,
+        "at_least_one_rate_pct": 63.6,
+        "two_hit_rate_pct": 18.2,
+        "winner_top2": 4,
+        "winner_top2_rate_pct": 36.4,
+        "winner_top1": 3
+      },
+      "shadow": {
+        "races": 11,
+        "distribution": {
+          "0": 4,
+          "1": 5,
+          "2": 2
+        },
+        "total_top2_hits": 9,
+        "top2_hit_rate_pct": 40.9,
+        "at_least_one_rate_pct": 63.6,
+        "two_hit_rate_pct": 18.2,
+        "winner_top2": 5,
+        "winner_top2_rate_pct": 45.5,
+        "winner_top1": 2
+      },
+      "deltas": {
+        "zero_hit": 0,
+        "one_hit": 0,
+        "two_hit": 0,
+        "total_top2_hits": 0,
+        "winner_top2": 1,
+        "winner_top1": -1
+      },
+      "changes": {
+        "top2_set_changes": 2,
+        "improved_races": 1,
+        "harmed_races": 1,
+        "zero_to_positive": 1,
+        "one_to_two": 0,
+        "one_to_zero": 1,
+        "two_to_one_or_zero": 0,
+        "effective_replacement": 1,
+        "harmful_replacement": 1,
+        "effective_rank3_rescue": 1,
+        "harmful_rank3_promotion": 1
+      }
+    },
+    "2026-07-01_ShaTin": {
+      "current": {
+        "races": 11,
+        "distribution": {
+          "0": 2,
+          "1": 5,
+          "2": 4
+        },
+        "total_top2_hits": 13,
+        "top2_hit_rate_pct": 59.1,
+        "at_least_one_rate_pct": 81.8,
+        "two_hit_rate_pct": 36.4,
+        "winner_top2": 5,
+        "winner_top2_rate_pct": 45.5,
+        "winner_top1": 1
+      },
+      "shadow": {
+        "races": 11,
+        "distribution": {
+          "0": 2,
+          "1": 5,
+          "2": 4
+        },
+        "total_top2_hits": 13,
+        "top2_hit_rate_pct": 59.1,
+        "at_least_one_rate_pct": 81.8,
+        "two_hit_rate_pct": 36.4,
+        "winner_top2": 6,
+        "winner_top2_rate_pct": 54.5,
+        "winner_top1": 1
+      },
+      "deltas": {
+        "zero_hit": 0,
+        "one_hit": 0,
+        "two_hit": 0,
+        "total_top2_hits": 0,
+        "winner_top2": 1,
+        "winner_top1": 0
+      },
+      "changes": {
+        "top2_set_changes": 3,
+        "improved_races": 0,
+        "harmed_races": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 0,
+        "one_to_zero": 0,
+        "two_to_one_or_zero": 0,
+        "effective_replacement": 0,
+        "harmful_replacement": 0,
+        "effective_rank3_rescue": 0,
+        "harmful_rank3_promotion": 0
+      }
+    },
+    "2026-07-04_ShaTin": {
+      "current": {
+        "races": 11,
+        "distribution": {
+          "0": 0,
+          "1": 9,
+          "2": 2
+        },
+        "total_top2_hits": 13,
+        "top2_hit_rate_pct": 59.1,
+        "at_least_one_rate_pct": 100.0,
+        "two_hit_rate_pct": 18.2,
+        "winner_top2": 5,
+        "winner_top2_rate_pct": 45.5,
+        "winner_top1": 4
+      },
+      "shadow": {
+        "races": 11,
+        "distribution": {
+          "0": 0,
+          "1": 9,
+          "2": 2
+        },
+        "total_top2_hits": 13,
+        "top2_hit_rate_pct": 59.1,
+        "at_least_one_rate_pct": 100.0,
+        "two_hit_rate_pct": 18.2,
+        "winner_top2": 5,
+        "winner_top2_rate_pct": 45.5,
+        "winner_top1": 4
+      },
+      "deltas": {
+        "zero_hit": 0,
+        "one_hit": 0,
+        "two_hit": 0,
+        "total_top2_hits": 0,
+        "winner_top2": 0,
+        "winner_top1": 0
+      },
+      "changes": {
+        "top2_set_changes": 0,
+        "improved_races": 0,
+        "harmed_races": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 0,
+        "one_to_zero": 0,
+        "two_to_one_or_zero": 0,
+        "effective_replacement": 0,
+        "harmful_replacement": 0,
+        "effective_rank3_rescue": 0,
+        "harmful_rank3_promotion": 0
+      }
+    },
+    "2026-07-08_HappyValley": {
+      "current": {
+        "races": 9,
+        "distribution": {
+          "0": 4,
+          "1": 4,
+          "2": 1
+        },
+        "total_top2_hits": 6,
+        "top2_hit_rate_pct": 33.3,
+        "at_least_one_rate_pct": 55.6,
+        "two_hit_rate_pct": 11.1,
+        "winner_top2": 4,
+        "winner_top2_rate_pct": 44.4,
+        "winner_top1": 3
+      },
+      "shadow": {
+        "races": 9,
+        "distribution": {
+          "0": 4,
+          "1": 4,
+          "2": 1
+        },
+        "total_top2_hits": 6,
+        "top2_hit_rate_pct": 33.3,
+        "at_least_one_rate_pct": 55.6,
+        "two_hit_rate_pct": 11.1,
+        "winner_top2": 4,
+        "winner_top2_rate_pct": 44.4,
+        "winner_top1": 3
+      },
+      "deltas": {
+        "zero_hit": 0,
+        "one_hit": 0,
+        "two_hit": 0,
+        "total_top2_hits": 0,
+        "winner_top2": 0,
+        "winner_top1": 0
+      },
+      "changes": {
+        "top2_set_changes": 0,
+        "improved_races": 0,
+        "harmed_races": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 0,
+        "one_to_zero": 0,
+        "two_to_one_or_zero": 0,
+        "effective_replacement": 0,
+        "harmful_replacement": 0,
+        "effective_rank3_rescue": 0,
+        "harmful_rank3_promotion": 0
+      }
+    },
+    "2026-07-12_ShaTin": {
+      "current": {
+        "races": 11,
+        "distribution": {
+          "0": 4,
+          "1": 7,
+          "2": 0
+        },
+        "total_top2_hits": 7,
+        "top2_hit_rate_pct": 31.8,
+        "at_least_one_rate_pct": 63.6,
+        "two_hit_rate_pct": 0.0,
+        "winner_top2": 3,
+        "winner_top2_rate_pct": 27.3,
+        "winner_top1": 2
+      },
+      "shadow": {
+        "races": 11,
+        "distribution": {
+          "0": 4,
+          "1": 7,
+          "2": 0
+        },
+        "total_top2_hits": 7,
+        "top2_hit_rate_pct": 31.8,
+        "at_least_one_rate_pct": 63.6,
+        "two_hit_rate_pct": 0.0,
+        "winner_top2": 3,
+        "winner_top2_rate_pct": 27.3,
+        "winner_top1": 2
+      },
+      "deltas": {
+        "zero_hit": 0,
+        "one_hit": 0,
+        "two_hit": 0,
+        "total_top2_hits": 0,
+        "winner_top2": 0,
+        "winner_top1": 0
+      },
+      "changes": {
+        "top2_set_changes": 1,
+        "improved_races": 0,
+        "harmed_races": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 0,
+        "one_to_zero": 0,
+        "two_to_one_or_zero": 0,
+        "effective_replacement": 0,
+        "harmful_replacement": 0,
+        "effective_rank3_rescue": 0,
+        "harmful_rank3_promotion": 0
+      }
+    },
+    "2026-07-15_HappyValley": {
+      "current": {
+        "races": 9,
+        "distribution": {
+          "0": 4,
+          "1": 2,
+          "2": 3
+        },
+        "total_top2_hits": 8,
+        "top2_hit_rate_pct": 44.4,
+        "at_least_one_rate_pct": 55.6,
+        "two_hit_rate_pct": 33.3,
+        "winner_top2": 1,
+        "winner_top2_rate_pct": 11.1,
+        "winner_top1": 1
+      },
+      "shadow": {
+        "races": 9,
+        "distribution": {
+          "0": 4,
+          "1": 2,
+          "2": 3
+        },
+        "total_top2_hits": 8,
+        "top2_hit_rate_pct": 44.4,
+        "at_least_one_rate_pct": 55.6,
+        "two_hit_rate_pct": 33.3,
+        "winner_top2": 1,
+        "winner_top2_rate_pct": 11.1,
+        "winner_top1": 1
+      },
+      "deltas": {
+        "zero_hit": 0,
+        "one_hit": 0,
+        "two_hit": 0,
+        "total_top2_hits": 0,
+        "winner_top2": 0,
+        "winner_top1": 0
+      },
+      "changes": {
+        "top2_set_changes": 0,
+        "improved_races": 0,
+        "harmed_races": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 0,
+        "one_to_zero": 0,
+        "two_to_one_or_zero": 0,
+        "effective_replacement": 0,
+        "harmful_replacement": 0,
+        "effective_rank3_rescue": 0,
+        "harmful_rank3_promotion": 0
+      }
+    }
+  },
+  "stored_vs_current": {
+    "stored": {
+      "races": 118,
+      "distribution": {
+        "0": 42,
+        "1": 57,
+        "2": 19
+      },
+      "total_top2_hits": 95,
+      "winner_top2": 38
+    },
+    "current": {
+      "races": 118,
+      "distribution": {
+        "0": 33,
+        "1": 61,
+        "2": 24
+      },
+      "total_top2_hits": 109,
+      "top2_hit_rate_pct": 46.2,
+      "at_least_one_rate_pct": 72.0,
+      "two_hit_rate_pct": 20.3,
+      "winner_top2": 45,
+      "winner_top2_rate_pct": 38.1,
+      "winner_top1": 29
+    },
+    "deltas": {
+      "zero_hit": -9,
+      "total_top2_hits": 14,
+      "winner_top2": 7
+    }
+  },
+  "determinism": {
+    "passes": true,
+    "errors": []
+  },
+  "source_audit": {
+    "meetings": {
+      "2026-05-27_HappyValley": {
+        "source_dir": "/tmp/hkjc_current_engine_cache/2026-05-27_HappyValley",
+        "source_mode": "connector_cache",
+        "races": 8,
+        "logic_files": 8,
+        "support_files": 16,
+        "missing_support": {
+          "晨操": 8
+        },
+        "logic_bundle_sha256": "65e111a56c5b8f86fbc69c2acffb6adfedb6d2f11265de4fcf514caee0f42715",
+        "results_path": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/HK_Racing/2026-05-27_HappyValley/2026-05-27_HappyValley_全日賽果.json"
+      },
+      "2026-06-03_HappyValley": {
+        "source_dir": "/tmp/hkjc_current_engine_cache/2026-06-03_HappyValley",
+        "source_mode": "connector_cache",
+        "races": 8,
+        "logic_files": 8,
+        "support_files": 16,
+        "missing_support": {
+          "晨操": 8
+        },
+        "logic_bundle_sha256": "b7005d756654d42a1d4eace85c08c462d2fab11a0acf9c87a8f7124f69ca615d",
+        "results_path": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/HK_Racing/2026-06-03_HappyValley/2026-06-03_HappyValley_全日賽果.json"
+      },
+      "2026-06-07_ShaTin": {
+        "source_dir": "/tmp/hkjc_current_engine_cache/2026-06-07_ShaTin",
+        "source_mode": "connector_cache",
+        "races": 9,
+        "logic_files": 9,
+        "support_files": 18,
+        "missing_support": {
+          "晨操": 9
+        },
+        "logic_bundle_sha256": "b388d089ac28e0d0164f9700abb8d46f1ecba079ca33b94e1a80002a8dfeb7dc",
+        "results_path": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/HK_Racing/2026-06-07_ShaTin/2026-06-07_ShaTin_全日賽果.json"
+      },
+      "2026-06-10_HappyValley": {
+        "source_dir": "/tmp/hkjc_current_engine_cache/2026-06-10_HappyValley",
+        "source_mode": "connector_cache",
+        "races": 9,
+        "logic_files": 9,
+        "support_files": 18,
+        "missing_support": {
+          "晨操": 9
+        },
+        "logic_bundle_sha256": "2c34fe2aeec1deae8e6991983da4ccec839c3f1d891826d3568922bb39c9a4e8",
+        "results_path": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/HK_Racing/2026-06-10_HappyValley/2026-06-10_HappyValley_全日賽果.json"
+      },
+      "2026-06-13_ShaTin": {
+        "source_dir": "/tmp/hkjc_current_engine_cache/2026-06-13_ShaTin",
+        "source_mode": "connector_cache",
+        "races": 11,
+        "logic_files": 11,
+        "support_files": 22,
+        "missing_support": {
+          "晨操": 11
+        },
+        "logic_bundle_sha256": "423b3b41442ba356040091bc07b58c5e1d17312c94903c7ae6f01d3b7dab09d3",
+        "results_path": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/HK_Racing/2026-06-13_ShaTin/2026-06-13_ShaTin_全日賽果.json"
+      },
+      "2026-06-21_ShaTin": {
+        "source_dir": "/tmp/hkjc_current_engine_cache/2026-06-21_ShaTin",
+        "source_mode": "connector_cache",
+        "races": 11,
+        "logic_files": 11,
+        "support_files": 22,
+        "missing_support": {
+          "晨操": 11
+        },
+        "logic_bundle_sha256": "e72702d394fc552cc71c13a54e3c53631dd2913a8738a5c79ceaff835175607d",
+        "results_path": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/HK_Racing/2026-06-21_ShaTin/2026-06-21_ShaTin_全日賽果.json"
+      },
+      "2026-06-27_ShaTin": {
+        "source_dir": "/tmp/hkjc_current_engine_cache/2026-06-27_ShaTin",
+        "source_mode": "connector_cache",
+        "races": 11,
+        "logic_files": 11,
+        "support_files": 22,
+        "missing_support": {
+          "晨操": 11
+        },
+        "logic_bundle_sha256": "8989e049b849a3d210c354413c399cdd57042d61a46f8237763423c66161133a",
+        "results_path": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/HK_Racing/2026-06-27_ShaTin/2026-06-27_ShaTin_全日賽果.json"
+      },
+      "2026-07-01_ShaTin": {
+        "source_dir": "/tmp/hkjc_current_engine_cache/2026-07-01_ShaTin",
+        "source_mode": "connector_cache",
+        "races": 11,
+        "logic_files": 11,
+        "support_files": 22,
+        "missing_support": {
+          "晨操": 11
+        },
+        "logic_bundle_sha256": "64a901f5f86dd6171dc44729f6866804b72c5ca11620bb2dda2e1abf80f0bb88",
+        "results_path": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/HK_Racing/2026-07-01_ShaTin/2026-07-01_ShaTin_全日賽果.json"
+      },
+      "2026-07-04_ShaTin": {
+        "source_dir": "/tmp/hkjc_current_engine_cache/2026-07-04_ShaTin",
+        "source_mode": "connector_cache",
+        "races": 11,
+        "logic_files": 11,
+        "support_files": 22,
+        "missing_support": {
+          "晨操": 11
+        },
+        "logic_bundle_sha256": "78ab4bb62bbdb2e9c3fb23463631937d4d40a1c4b5268d65d0dbb1d56872b1bc",
+        "results_path": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/HK_Racing/2026-07-04_ShaTin/2026-07-04_ShaTin_全日賽果.json"
+      },
+      "2026-07-08_HappyValley": {
+        "source_dir": "/tmp/hkjc_current_engine_cache/2026-07-08_HappyValley",
+        "source_mode": "connector_cache",
+        "races": 9,
+        "logic_files": 9,
+        "support_files": 18,
+        "missing_support": {
+          "晨操": 9
+        },
+        "logic_bundle_sha256": "4c5eadf449506163297efac550d9b82b839320550fe62ae91a4e9ddd52af483f",
+        "results_path": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/HK_Racing/2026-07-08_HappyValley/2026-07-08_HappyValley_全日賽果.json"
+      },
+      "2026-07-12_ShaTin": {
+        "source_dir": "/tmp/hkjc_current_engine_cache/2026-07-12_ShaTin",
+        "source_mode": "connector_cache",
+        "races": 11,
+        "logic_files": 11,
+        "support_files": 22,
+        "missing_support": {
+          "晨操": 11
+        },
+        "logic_bundle_sha256": "8cc46d1eb9d6b925c016520fc1247621d15c9003f09d8a744e937ef8ee11a659",
+        "results_path": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/HK_Racing/2026-07-12_ShaTin/2026-07-12_ShaTin_全日賽果.json"
+      },
+      "2026-07-15_HappyValley": {
+        "source_dir": "/tmp/hkjc_current_engine_cache/2026-07-15_HappyValley",
+        "source_mode": "connector_cache",
+        "races": 9,
+        "logic_files": 9,
+        "support_files": 18,
+        "missing_support": {
+          "晨操": 9
+        },
+        "logic_bundle_sha256": "0f49a3e63e2912df3f0856bd7434b5e1f889aea501b63f64e6124848528b0d92",
+        "results_path": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/2026-07-15_HappyValley/2026-07-15_HappyValley_全日賽果.json"
+      }
+    },
+    "error_count": 0,
+    "errors": []
+  },
+  "promotion_gate": {
+    "passes": true,
+    "combined_non_harm": true,
+    "split_non_harm": true,
+    "venue_non_harm": true,
+    "positive_signal": true,
+    "minimum_five_top2_changes": true
+  },
+  "promotion_parity": {
+    "passes": false,
+    "races_checked": 118,
+    "evidence_races": 118,
+    "mismatch_count": 15,
+    "mismatches": [
+      {
+        "meeting": "2026-06-07_ShaTin",
+        "race_number": 3,
+        "expected_shadow_top2": "2/4",
+        "promoted_mainline_top2": "2/12"
+      },
+      {
+        "meeting": "2026-06-07_ShaTin",
+        "race_number": 9,
+        "expected_shadow_top2": "1/5",
+        "promoted_mainline_top2": "1/6"
+      },
+      {
+        "meeting": "2026-06-07_ShaTin",
+        "race_number": 10,
+        "expected_shadow_top2": "6/3",
+        "promoted_mainline_top2": "6/9"
+      },
+      {
+        "meeting": "2026-06-10_HappyValley",
+        "race_number": 8,
+        "expected_shadow_top2": "8/5",
+        "promoted_mainline_top2": "8/10"
+      },
+      {
+        "meeting": "2026-06-13_ShaTin",
+        "race_number": 3,
+        "expected_shadow_top2": "9/11",
+        "promoted_mainline_top2": "9/13"
+      },
+      {
+        "meeting": "2026-06-13_ShaTin",
+        "race_number": 5,
+        "expected_shadow_top2": "3/2",
+        "promoted_mainline_top2": "3/5"
+      },
+      {
+        "meeting": "2026-06-21_ShaTin",
+        "race_number": 1,
+        "expected_shadow_top2": "8/7",
+        "promoted_mainline_top2": "8/12"
+      },
+      {
+        "meeting": "2026-06-21_ShaTin",
+        "race_number": 2,
+        "expected_shadow_top2": "2/9",
+        "promoted_mainline_top2": "2/8"
+      },
+      {
+        "meeting": "2026-06-27_ShaTin",
+        "race_number": 2,
+        "expected_shadow_top2": "3/12",
+        "promoted_mainline_top2": "12/3"
+      },
+      {
+        "meeting": "2026-06-27_ShaTin",
+        "race_number": 8,
+        "expected_shadow_top2": "8/5",
+        "promoted_mainline_top2": "8/7"
+      },
+      {
+        "meeting": "2026-06-27_ShaTin",
+        "race_number": 10,
+        "expected_shadow_top2": "1/6",
+        "promoted_mainline_top2": "1/14"
+      },
+      {
+        "meeting": "2026-07-01_ShaTin",
+        "race_number": 6,
+        "expected_shadow_top2": "6/3",
+        "promoted_mainline_top2": "6/12"
+      },
+      {
+        "meeting": "2026-07-01_ShaTin",
+        "race_number": 7,
+        "expected_shadow_top2": "12/6",
+        "promoted_mainline_top2": "2/12"
+      },
+      {
+        "meeting": "2026-07-01_ShaTin",
+        "race_number": 11,
+        "expected_shadow_top2": "3/2",
+        "promoted_mainline_top2": "3/6"
+      },
+      {
+        "meeting": "2026-07-12_ShaTin",
+        "race_number": 11,
+        "expected_shadow_top2": "6/1",
+        "promoted_mainline_top2": "8/6"
+      }
+    ]
+  }
+}

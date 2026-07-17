@@ -1,0 +1,8 @@
+﻿dimension,decision,top3_auc,winner_auc,reliable_top3_auc,reliable_top3_pairs,top3_mean_race_delta,winner_mean_race_delta,mean_reliability,reliability_ge_0_5_rate,neutral_60_rate,positive_meetings,negative_meetings,median_meeting_auc,standalone_zero,standalone_one,standalone_two,standalone_total_hits,standalone_winner_top2,ablation_delta_hits,ablation_delta_zero,ablation_delta_winner,ablation_delta_top3_auc
+speed_engine,ADVANCE_CORE,0.5649,0.5647,0.5993,1541,0.4733,0.4877,0.4204,64.7,35.5,5,0,0.5437,39,44,5,54,21,-1,3,-3,-0.0004
+stability,ADVANCE_CORE,0.689,0.6488,0.7039,1918,2.7778,2.2383,0.8028,82.1,12.5,9,0,0.6728,31,43,14,71,25,-15,13,-7,-0.0636
+distance_context,HOLD_OR_REJECT,0.4938,0.4517,0.5,0,-0.0936,-0.361,0.0534,0.2,82.2,2,3,0.5159,40,41,7,55,13,-1,1,-4,0.0012
+class_weight,HOLD_OR_REJECT,0.5255,0.5104,0.5242,2435,0.4188,0.185,0.9374,97.8,4.7,5,0,0.5278,44,37,7,51,14,9,-6,-2,0.0165
+trainer_signal,ADVANCE_CORE,0.6092,0.6478,0.6176,1518,1.7328,2.6557,0.6014,74.1,2.9,8,0,0.6147,33,46,9,64,27,-7,3,-14,-0.0241
+readiness_risk,HOLD_OR_REJECT,0.5004,0.497,0.5004,2310,0.062,0.0337,0.5366,92.7,15.6,6,3,0.5303,46,41,1,43,11,0,1,-1,-0.0053
+form_line,HOLD_OR_REJECT,0.5281,0.4567,0.4978,671,0.2379,-0.4538,0.3673,46.4,26.1,4,3,0.5123,42,42,4,50,15,-1,0,-3,0.006

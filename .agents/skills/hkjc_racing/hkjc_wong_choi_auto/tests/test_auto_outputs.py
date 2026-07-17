@@ -21,9 +21,10 @@ sys.path.insert(0, str(EXTRACTOR_DIR))
 
 import extract_trackwork
 from matrix_mapper import map_features_to_matrix_scores
-from scoring import MATRIX_WEIGHTS, compute_grade
+from scoring import DEBUT_MATRIX_WEIGHTS, MATRIX_WEIGHTS, compute_grade
 from engine_core import RacingEngine
-from hkjc_auto_orchestrator import _parse_racecard_meta
+from hkjc_auto_orchestrator import HKJCAutoOrchestrator, _apply_sip_enhancements, _parse_racecard_meta
+from renderer import _chronological_series
 from features.jockey import JockeyScorer
 from features.speed import SpeedScorer
 from features.trainer import TrainerScorer
@@ -91,6 +92,231 @@ def _logic() -> dict:
 
 
 class AutoOutputTests(unittest.TestCase):
+    def test_sip_is_applied_independently_to_mainline_and_shadow(self) -> None:
+        horses = {
+            "1": {
+                "weight": "120",
+                "barrier": "2",
+                "python_auto": {
+                    "ability_score": 65.0,
+                    "grade": "B-",
+                    "feature_scores": {"speed_score": 70, "form_score": 60, "consistency_score": 60},
+                    "shadow_profiles": {
+                        "readiness_health_slot": {"ability_score": 68.0, "grade": "B"}
+                    },
+                },
+            },
+            "2": {
+                "weight": "130",
+                "barrier": "10",
+                "python_auto": {
+                    "ability_score": 70.0,
+                    "grade": "B",
+                    "feature_scores": {"speed_score": 60, "form_score": 60, "consistency_score": 60},
+                },
+            },
+        }
+
+        _apply_sip_enhancements(horses)
+
+        self.assertEqual(horses["1"]["python_auto"]["ability_score"], 66.0)
+        self.assertEqual(
+            horses["1"]["python_auto"]["shadow_profiles"]["readiness_health_slot"]["ability_score"],
+            68.0,
+        )
+        self.assertTrue(horses["1"]["python_auto"]["sip_flags"])
+        self.assertNotIn(
+            "sip_flags",
+            horses["1"]["python_auto"]["shadow_profiles"]["readiness_health_slot"],
+        )
+
+    def test_readiness_health_opt_in_and_legacy_default_change_only_health(self) -> None:
+        logic = _logic()
+        horse = logic["horses"]["1"]
+        horse["days_since_last"] = 14
+
+        promoted = RacingEngine(
+            horse,
+            logic["race_analysis"],
+            health_profile="readiness_health_slot",
+        ).analyze_horse()
+        legacy = RacingEngine(horse, logic["race_analysis"]).analyze_horse()
+
+        self.assertEqual(promoted["version"], "HKJC_AUTO_SCORE_V3_READINESS_HEALTH")
+        self.assertEqual(promoted["health_slot_profile"], "readiness_health_slot")
+        self.assertEqual(promoted["matrix_scores"]["horse_health"], 65.0)
+        self.assertEqual(
+            legacy["matrix_scores"]["horse_health"],
+            promoted["health_slot_detail"]["legacy_horse_health"],
+        )
+        for key in promoted["matrix_scores"]:
+            if key != "horse_health":
+                self.assertEqual(promoted["matrix_scores"][key], legacy["matrix_scores"][key])
+        self.assertEqual(
+            promoted["matrix_reasoning"]["horse_health"]["components"][0]["key"],
+            "readiness_health_slot",
+        )
+        self.assertIn("證據", promoted["matrix_reasoning"]["horse_health"]["text"])
+
+    def test_legacy_health_shadow_is_explicit_rollback(self) -> None:
+        logic = _logic()
+        horse = logic["horses"]["1"]
+        horse["days_since_last"] = 14
+        engine = RacingEngine(horse, logic["race_analysis"], health_profile="readiness_health_slot")
+        promoted = engine.analyze_horse()
+
+        rollback = engine.build_shadow_profile("legacy_health_slot", base_auto=promoted)
+
+        self.assertTrue(rollback["applied"])
+        self.assertEqual(
+            rollback["matrix_scores"]["horse_health"],
+            promoted["health_slot_detail"]["legacy_horse_health"],
+        )
+        for key in promoted["matrix_scores"]:
+            if key != "horse_health":
+                self.assertEqual(rollback["matrix_scores"][key], promoted["matrix_scores"][key])
+        expected = round(sum(rollback["matrix_scores"][key] * weight for key, weight in MATRIX_WEIGHTS.items()), 2)
+        self.assertEqual(rollback["ability_score"], expected)
+
+    def test_readiness_health_shadow_replaces_only_health_slot(self) -> None:
+        logic = _logic()
+        horse = logic["horses"]["1"]
+        horse["days_since_last"] = 14
+        engine = RacingEngine(horse, logic["race_analysis"])
+        mainline = engine.analyze_horse()
+        mainline_before = json.dumps(mainline, ensure_ascii=False, sort_keys=True)
+
+        shadow = engine.build_shadow_profile("readiness_health_slot", base_auto=mainline)
+
+        self.assertIsNotNone(shadow)
+        self.assertEqual(json.dumps(mainline, ensure_ascii=False, sort_keys=True), mainline_before)
+        self.assertEqual(shadow["raw_readiness_score"], 65.0)
+        self.assertEqual(shadow["reliability"], 1.0)
+        self.assertEqual(shadow["readiness_health_score"], 65.0)
+        self.assertEqual(shadow["evidence_count"], 2)
+        self.assertEqual(shadow["days_since_last"], 14.0)
+        self.assertEqual(shadow["weight_trend_span"], 5.0)
+        for key, score in mainline["matrix_scores"].items():
+            if key != "horse_health":
+                self.assertEqual(shadow["matrix_scores"][key], score)
+        expected = round(sum(shadow["matrix_scores"][key] * weight for key, weight in MATRIX_WEIGHTS.items()), 2)
+        self.assertEqual(shadow["ability_score"], expected)
+
+    def test_readiness_health_shadow_missing_evidence_is_neutral(self) -> None:
+        logic = _logic()
+        horse = logic["horses"]["2"]
+        horse["is_debut"] = True
+        engine = RacingEngine(horse, logic["race_analysis"])
+        mainline = engine.analyze_horse()
+
+        shadow = engine.build_shadow_profile("readiness_health_slot", base_auto=mainline)
+
+        self.assertFalse(shadow["applied"])
+        self.assertEqual(shadow["evidence_count"], 0)
+        self.assertEqual(shadow["reliability"], 0.0)
+        self.assertEqual(shadow["readiness_health_score"], 60.0)
+        expected = round(
+            sum(shadow["matrix_scores"].get(key, 60.0) * weight for key, weight in DEBUT_MATRIX_WEIGHTS.items()),
+            2,
+        )
+        self.assertEqual(shadow["ability_score"], expected)
+
+    def test_readiness_shadow_verdict_tracks_top2_entry_without_changing_mainline(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            orchestrator = HKJCAutoOrchestrator(tmp, shadow_profile="readiness_health_slot")
+            logic = {
+                "horses": {
+                    "1": {"horse_name": "甲", "python_auto": {"rank": 1, "ability_score": 80.0, "shadow_profiles": {"readiness_health_slot": {"ability_score": 80.0, "grade": "A"}}}},
+                    "2": {"horse_name": "乙", "python_auto": {"rank": 2, "ability_score": 78.0, "shadow_profiles": {"readiness_health_slot": {"ability_score": 77.0, "grade": "B+"}}}},
+                    "3": {"horse_name": "丙", "python_auto": {"rank": 3, "ability_score": 77.0, "shadow_profiles": {"readiness_health_slot": {"ability_score": 78.0, "grade": "B+"}}}},
+                }
+            }
+
+            orchestrator._finalize_shadow_profiles(logic)
+
+            verdict = logic["python_auto_shadow_verdicts"]["readiness_health_slot"]
+            self.assertTrue(verdict["top2_changed"])
+            self.assertEqual(verdict["base_top2"], ["1", "2"])
+            self.assertEqual(verdict["shadow_top2"], ["1", "3"])
+            self.assertEqual([item["horse_number"] for item in verdict["entered_top2"]], ["3"])
+            self.assertEqual([item["horse_number"] for item in verdict["exited_top2"]], ["2"])
+            self.assertEqual(logic["horses"]["2"]["python_auto"]["rank"], 2)
+            self.assertEqual(logic["horses"]["3"]["python_auto"]["rank"], 3)
+
+    def test_readiness_shadow_cli_is_internal_and_mainline_output_is_identical(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            base_folder = root / "base"
+            shadow_folder = root / "shadow"
+            base_folder.mkdir()
+            shadow_folder.mkdir()
+            logic = _logic()
+            logic["horses"]["1"]["days_since_last"] = 14
+            logic["horses"]["2"]["days_since_last"] = 80
+            for folder in (base_folder, shadow_folder):
+                (folder / "Race_1_Logic.json").write_text(
+                    json.dumps(logic, ensure_ascii=False),
+                    encoding="utf-8",
+                )
+
+            base_run = subprocess.run(
+                [sys.executable, str(SCRIPT), str(base_folder)],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            shadow_run = subprocess.run(
+                [sys.executable, str(SCRIPT), str(shadow_folder), "--shadow-profile", "readiness_health_slot"],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+            self.assertEqual(base_run.returncode, 0, base_run.stderr + base_run.stdout)
+            self.assertEqual(shadow_run.returncode, 0, shadow_run.stderr + shadow_run.stdout)
+            base_logic = json.loads((base_folder / "Race_1_Logic.json").read_text(encoding="utf-8"))
+            shadow_logic = json.loads((shadow_folder / "Race_1_Logic.json").read_text(encoding="utf-8"))
+            self.assertEqual(base_logic["python_auto_verdict"], shadow_logic["python_auto_verdict"])
+            for horse_number in base_logic["horses"]:
+                base_auto = dict(base_logic["horses"][horse_number]["python_auto"])
+                shadow_auto = dict(shadow_logic["horses"][horse_number]["python_auto"])
+                shadow_profiles = shadow_auto.pop("shadow_profiles")
+                self.assertEqual(base_auto, shadow_auto)
+                self.assertIn("readiness_health_slot", shadow_profiles)
+            self.assertIn("readiness_health_slot", shadow_logic["python_auto_shadow_verdicts"])
+
+            base_report = (base_folder / "Race_1_Auto_Analysis.md").read_text(encoding="utf-8")
+            shadow_report = (shadow_folder / "Race_1_Auto_Analysis.md").read_text(encoding="utf-8")
+            self.assertEqual(base_report, shadow_report)
+            self.assertNotIn("readiness_health_slot", shadow_report)
+
+            rows = list(
+                csv.DictReader(
+                    io.StringIO((shadow_folder / "Race_1_Auto_Scoring.csv").read_text(encoding="utf-8"))
+                )
+            )
+            self.assertTrue(rows[0]["shadow_readiness_rank"])
+            self.assertTrue(rows[0]["shadow_readiness_ability"])
+            self.assertTrue(rows[0]["shadow_readiness_health"])
+            self.assertTrue(rows[0]["shadow_readiness_reliability"])
+            self.assertEqual(rows[0]["health_slot_profile"], "legacy_health_v2")
+            self.assertTrue(rows[0]["mainline_readiness_health"])
+            self.assertTrue(rows[0]["mainline_readiness_reliability"])
+
+    def test_human_sectional_timelines_are_oldest_to_latest(self) -> None:
+        self.assertEqual(
+            _chronological_series("23.39→22.86→24.83→23.55→22.82→22.56 → 趨勢: 衰退中 ⚠️"),
+            "22.56 → 22.82 → 23.55 → 24.83 → 22.86 → 23.39 → 趨勢: 衰退中 ⚠️",
+        )
+        self.assertEqual(
+            _chronological_series("（最舊 → 最新）22.56→22.82→23.39 → 趨勢: 衰退中 ⚠️"),
+            "22.56 → 22.82 → 23.39 → 趨勢: 衰退中 ⚠️",
+        )
+
     def test_gear_change_ignores_hkjc_double_dash_placeholder(self) -> None:
         logic = _logic()
         horse = logic["horses"]["1"]
@@ -638,6 +864,7 @@ class AutoOutputTests(unittest.TestCase):
             self.assertIn("python_auto_verdict", updated)
             auto = updated["horses"]["1"]["python_auto"]
             self.assertEqual(auto["version"], "HKJC_AUTO_SCORE_V2")
+            self.assertEqual(auto["health_slot_profile"], "legacy_health_v2")
             self.assertEqual(len(auto["feature_scores"]), 12)
             self.assertIn("matrix_scores", auto)
             self.assertIn("matrix_reasoning", auto)

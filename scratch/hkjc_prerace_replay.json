@@ -1,0 +1,2255 @@
+{
+  "method": {
+    "full_current_engine_replay_possible": false,
+    "reason": "archive source Logic files unavailable; common structured pre-race primitive intersection used",
+    "primitive_inputs_are_outcome_free": true,
+    "labels_isolated": [
+      "label_finish_position",
+      "label_is_winner",
+      "label_is_top3"
+    ],
+    "original_model_reference_isolated": [
+      "reference_original_rank",
+      "reference_original_top2",
+      "reference_original_ability"
+    ],
+    "excluded": [
+      "going",
+      "draw",
+      "barrier",
+      "track bias",
+      "pace",
+      "run style",
+      "odds",
+      "market",
+      "ROI",
+      "edge",
+      "narrative hidden-form flags"
+    ],
+    "historical_priors": "fixed 2024/25 pre-race win/place rates and sample counts; ROI excluded"
+  },
+  "coverage": {
+    "meetings": 25,
+    "races": 245,
+    "horses": 3054,
+    "by_split": {
+      "archive_development": 1093,
+      "archive_temporal_holdout": 487,
+      "independent_recent": 1367,
+      "external_2026_07_15": 107
+    },
+    "by_source_mode": {
+      "archived_materialized_prerace_snapshot": 1580,
+      "current_logic_reconstructed_primitives": 1474
+    }
+  },
+  "primitive_columns": [
+    "weight_carried",
+    "days_since_last",
+    "starts",
+    "wins",
+    "hk_starts",
+    "card_rating",
+    "last6_runs",
+    "last6_mean_finish",
+    "last6_best_finish",
+    "last6_worst_finish",
+    "last6_top3_count",
+    "last6_top5_count",
+    "season_starts",
+    "season_wins",
+    "season_seconds",
+    "season_thirds",
+    "same_distance_starts",
+    "same_distance_wins",
+    "same_distance_seconds",
+    "same_distance_thirds",
+    "same_venue_distance_starts",
+    "same_venue_distance_wins",
+    "same_venue_distance_seconds",
+    "same_venue_distance_thirds",
+    "tw_entries_count",
+    "tw_gallop_count",
+    "tw_flags_count",
+    "tw_confidence_high",
+    "tw_confidence_low",
+    "tw_jockey_present",
+    "raw_formline_higher_win_count",
+    "raw_formline_same_win_count",
+    "raw_formline_lower_win_count",
+    "raw_l400",
+    "raw_finish_time_adj",
+    "raw_total_starts",
+    "raw_total_wins",
+    "raw_last_margin",
+    "raw_last_finish",
+    "raw_weight_trend_span",
+    "prior_combo_starts",
+    "prior_combo_win_rate",
+    "prior_combo_place_rate",
+    "prior_jockey_cd_starts",
+    "prior_jockey_cd_win_rate",
+    "prior_jockey_cd_place_rate",
+    "prior_trainer_cd_starts",
+    "prior_trainer_cd_win_rate",
+    "prior_trainer_cd_place_rate",
+    "prior_class_distance_starts",
+    "prior_class_distance_win_rate",
+    "prior_class_distance_place_rate",
+    "prior_weight_class_starts",
+    "prior_weight_class_win_rate",
+    "prior_weight_class_place_rate",
+    "prior_rest_bucket_starts",
+    "prior_rest_bucket_win_rate",
+    "prior_rest_bucket_place_rate"
+  ],
+  "primitive_provenance_groups": {
+    "archive_all": "hkjc_ranking_dataset.csv same-named pre-race materialized columns",
+    "current_horse_fields": [
+      "days_since_last",
+      "starts",
+      "wins",
+      "hk_starts",
+      "is_debut",
+      "is_import"
+    ],
+    "current_horse_data": [
+      "weight_carried",
+      "card_rating"
+    ],
+    "current_last6_parser": [
+      "last6_runs",
+      "last6_mean_finish",
+      "last6_best_finish",
+      "last6_worst_finish",
+      "last6_top3_count",
+      "last6_top5_count"
+    ],
+    "current_season_stats_parser": [
+      "season_starts",
+      "season_wins",
+      "season_seconds",
+      "season_thirds",
+      "same_distance_starts",
+      "same_distance_wins",
+      "same_distance_seconds",
+      "same_distance_thirds",
+      "same_venue_distance_starts",
+      "same_venue_distance_wins",
+      "same_venue_distance_seconds",
+      "same_venue_distance_thirds"
+    ],
+    "current_trackwork_parser": [
+      "tw_entries_count",
+      "tw_gallop_count",
+      "tw_flags_count",
+      "tw_confidence_high",
+      "tw_confidence_low",
+      "tw_jockey_present"
+    ],
+    "current_structured_forensic": [
+      "raw_formline_higher_win_count",
+      "raw_formline_same_win_count",
+      "raw_formline_lower_win_count",
+      "raw_l400",
+      "raw_finish_time_adj",
+      "raw_total_starts",
+      "raw_total_wins",
+      "raw_last_margin",
+      "raw_last_finish",
+      "raw_weight_trend_span"
+    ],
+    "current_fixed_2024_25_priors": [
+      "prior_combo_starts",
+      "prior_combo_win_rate",
+      "prior_combo_place_rate",
+      "prior_jockey_cd_starts",
+      "prior_jockey_cd_win_rate",
+      "prior_jockey_cd_place_rate",
+      "prior_trainer_cd_starts",
+      "prior_trainer_cd_win_rate",
+      "prior_trainer_cd_place_rate",
+      "prior_class_distance_starts",
+      "prior_class_distance_win_rate",
+      "prior_class_distance_place_rate",
+      "prior_weight_class_starts",
+      "prior_weight_class_win_rate",
+      "prior_weight_class_place_rate",
+      "prior_rest_bucket_starts",
+      "prior_rest_bucket_win_rate",
+      "prior_rest_bucket_place_rate"
+    ]
+  },
+  "evidence_families": {
+    "form": [
+      "last6_runs",
+      "raw_last_finish",
+      "raw_last_margin",
+      "season_starts"
+    ],
+    "speed": [
+      "raw_l400",
+      "raw_finish_time_adj"
+    ],
+    "class_weight": [
+      "card_rating",
+      "weight_carried",
+      "starts"
+    ],
+    "distance": [
+      "same_distance_starts",
+      "same_venue_distance_starts",
+      "prior_class_distance_starts"
+    ],
+    "trainer": [
+      "prior_combo_starts",
+      "prior_jockey_cd_starts",
+      "prior_trainer_cd_starts"
+    ],
+    "readiness": [
+      "days_since_last",
+      "tw_entries_count",
+      "tw_gallop_count",
+      "raw_weight_trend_span"
+    ],
+    "formline": [
+      "raw_formline_higher_win_count",
+      "raw_formline_same_win_count",
+      "raw_formline_lower_win_count"
+    ]
+  },
+  "availability": [
+    {
+      "split": "overall",
+      "primitive": "weight_carried",
+      "rows": 3054,
+      "present": 3054,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "overall",
+      "primitive": "days_since_last",
+      "rows": 3054,
+      "present": 2974,
+      "availability_rate": 97.4
+    },
+    {
+      "split": "overall",
+      "primitive": "starts",
+      "rows": 3054,
+      "present": 2696,
+      "availability_rate": 88.3
+    },
+    {
+      "split": "overall",
+      "primitive": "wins",
+      "rows": 3054,
+      "present": 2696,
+      "availability_rate": 88.3
+    },
+    {
+      "split": "overall",
+      "primitive": "hk_starts",
+      "rows": 3054,
+      "present": 2458,
+      "availability_rate": 80.5
+    },
+    {
+      "split": "overall",
+      "primitive": "card_rating",
+      "rows": 3054,
+      "present": 3009,
+      "availability_rate": 98.5
+    },
+    {
+      "split": "overall",
+      "primitive": "last6_runs",
+      "rows": 3054,
+      "present": 3054,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "overall",
+      "primitive": "last6_mean_finish",
+      "rows": 3054,
+      "present": 2842,
+      "availability_rate": 93.1
+    },
+    {
+      "split": "overall",
+      "primitive": "last6_best_finish",
+      "rows": 3054,
+      "present": 2842,
+      "availability_rate": 93.1
+    },
+    {
+      "split": "overall",
+      "primitive": "last6_worst_finish",
+      "rows": 3054,
+      "present": 2842,
+      "availability_rate": 93.1
+    },
+    {
+      "split": "overall",
+      "primitive": "last6_top3_count",
+      "rows": 3054,
+      "present": 3054,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "overall",
+      "primitive": "last6_top5_count",
+      "rows": 3054,
+      "present": 3054,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "overall",
+      "primitive": "season_starts",
+      "rows": 3054,
+      "present": 2849,
+      "availability_rate": 93.3
+    },
+    {
+      "split": "overall",
+      "primitive": "season_wins",
+      "rows": 3054,
+      "present": 2849,
+      "availability_rate": 93.3
+    },
+    {
+      "split": "overall",
+      "primitive": "season_seconds",
+      "rows": 3054,
+      "present": 2849,
+      "availability_rate": 93.3
+    },
+    {
+      "split": "overall",
+      "primitive": "season_thirds",
+      "rows": 3054,
+      "present": 2849,
+      "availability_rate": 93.3
+    },
+    {
+      "split": "overall",
+      "primitive": "same_distance_starts",
+      "rows": 3054,
+      "present": 2849,
+      "availability_rate": 93.3
+    },
+    {
+      "split": "overall",
+      "primitive": "same_distance_wins",
+      "rows": 3054,
+      "present": 2849,
+      "availability_rate": 93.3
+    },
+    {
+      "split": "overall",
+      "primitive": "same_distance_seconds",
+      "rows": 3054,
+      "present": 2849,
+      "availability_rate": 93.3
+    },
+    {
+      "split": "overall",
+      "primitive": "same_distance_thirds",
+      "rows": 3054,
+      "present": 2849,
+      "availability_rate": 93.3
+    },
+    {
+      "split": "overall",
+      "primitive": "same_venue_distance_starts",
+      "rows": 3054,
+      "present": 2821,
+      "availability_rate": 92.4
+    },
+    {
+      "split": "overall",
+      "primitive": "same_venue_distance_wins",
+      "rows": 3054,
+      "present": 2821,
+      "availability_rate": 92.4
+    },
+    {
+      "split": "overall",
+      "primitive": "same_venue_distance_seconds",
+      "rows": 3054,
+      "present": 2821,
+      "availability_rate": 92.4
+    },
+    {
+      "split": "overall",
+      "primitive": "same_venue_distance_thirds",
+      "rows": 3054,
+      "present": 2821,
+      "availability_rate": 92.4
+    },
+    {
+      "split": "overall",
+      "primitive": "tw_entries_count",
+      "rows": 3054,
+      "present": 2352,
+      "availability_rate": 77.0
+    },
+    {
+      "split": "overall",
+      "primitive": "tw_gallop_count",
+      "rows": 3054,
+      "present": 2352,
+      "availability_rate": 77.0
+    },
+    {
+      "split": "overall",
+      "primitive": "tw_flags_count",
+      "rows": 3054,
+      "present": 2352,
+      "availability_rate": 77.0
+    },
+    {
+      "split": "overall",
+      "primitive": "tw_confidence_high",
+      "rows": 3054,
+      "present": 3054,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "overall",
+      "primitive": "tw_confidence_low",
+      "rows": 3054,
+      "present": 3054,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "overall",
+      "primitive": "tw_jockey_present",
+      "rows": 3054,
+      "present": 3054,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "overall",
+      "primitive": "raw_formline_higher_win_count",
+      "rows": 3054,
+      "present": 2460,
+      "availability_rate": 80.6
+    },
+    {
+      "split": "overall",
+      "primitive": "raw_formline_same_win_count",
+      "rows": 3054,
+      "present": 2460,
+      "availability_rate": 80.6
+    },
+    {
+      "split": "overall",
+      "primitive": "raw_formline_lower_win_count",
+      "rows": 3054,
+      "present": 2460,
+      "availability_rate": 80.6
+    },
+    {
+      "split": "overall",
+      "primitive": "raw_l400",
+      "rows": 3054,
+      "present": 2591,
+      "availability_rate": 84.8
+    },
+    {
+      "split": "overall",
+      "primitive": "raw_finish_time_adj",
+      "rows": 3054,
+      "present": 1897,
+      "availability_rate": 62.1
+    },
+    {
+      "split": "overall",
+      "primitive": "raw_total_starts",
+      "rows": 3054,
+      "present": 2214,
+      "availability_rate": 72.5
+    },
+    {
+      "split": "overall",
+      "primitive": "raw_total_wins",
+      "rows": 3054,
+      "present": 2214,
+      "availability_rate": 72.5
+    },
+    {
+      "split": "overall",
+      "primitive": "raw_last_margin",
+      "rows": 3054,
+      "present": 1848,
+      "availability_rate": 60.5
+    },
+    {
+      "split": "overall",
+      "primitive": "raw_last_finish",
+      "rows": 3054,
+      "present": 2120,
+      "availability_rate": 69.4
+    },
+    {
+      "split": "overall",
+      "primitive": "raw_weight_trend_span",
+      "rows": 3054,
+      "present": 1354,
+      "availability_rate": 44.3
+    },
+    {
+      "split": "overall",
+      "primitive": "prior_combo_starts",
+      "rows": 3054,
+      "present": 2583,
+      "availability_rate": 84.6
+    },
+    {
+      "split": "overall",
+      "primitive": "prior_combo_win_rate",
+      "rows": 3054,
+      "present": 2583,
+      "availability_rate": 84.6
+    },
+    {
+      "split": "overall",
+      "primitive": "prior_combo_place_rate",
+      "rows": 3054,
+      "present": 2583,
+      "availability_rate": 84.6
+    },
+    {
+      "split": "overall",
+      "primitive": "prior_jockey_cd_starts",
+      "rows": 3054,
+      "present": 2526,
+      "availability_rate": 82.7
+    },
+    {
+      "split": "overall",
+      "primitive": "prior_jockey_cd_win_rate",
+      "rows": 3054,
+      "present": 2526,
+      "availability_rate": 82.7
+    },
+    {
+      "split": "overall",
+      "primitive": "prior_jockey_cd_place_rate",
+      "rows": 3054,
+      "present": 2526,
+      "availability_rate": 82.7
+    },
+    {
+      "split": "overall",
+      "primitive": "prior_trainer_cd_starts",
+      "rows": 3054,
+      "present": 2685,
+      "availability_rate": 87.9
+    },
+    {
+      "split": "overall",
+      "primitive": "prior_trainer_cd_win_rate",
+      "rows": 3054,
+      "present": 2685,
+      "availability_rate": 87.9
+    },
+    {
+      "split": "overall",
+      "primitive": "prior_trainer_cd_place_rate",
+      "rows": 3054,
+      "present": 2685,
+      "availability_rate": 87.9
+    },
+    {
+      "split": "overall",
+      "primitive": "prior_class_distance_starts",
+      "rows": 3054,
+      "present": 1805,
+      "availability_rate": 59.1
+    },
+    {
+      "split": "overall",
+      "primitive": "prior_class_distance_win_rate",
+      "rows": 3054,
+      "present": 1805,
+      "availability_rate": 59.1
+    },
+    {
+      "split": "overall",
+      "primitive": "prior_class_distance_place_rate",
+      "rows": 3054,
+      "present": 1805,
+      "availability_rate": 59.1
+    },
+    {
+      "split": "overall",
+      "primitive": "prior_weight_class_starts",
+      "rows": 3054,
+      "present": 2157,
+      "availability_rate": 70.6
+    },
+    {
+      "split": "overall",
+      "primitive": "prior_weight_class_win_rate",
+      "rows": 3054,
+      "present": 2157,
+      "availability_rate": 70.6
+    },
+    {
+      "split": "overall",
+      "primitive": "prior_weight_class_place_rate",
+      "rows": 3054,
+      "present": 2157,
+      "availability_rate": 70.6
+    },
+    {
+      "split": "overall",
+      "primitive": "prior_rest_bucket_starts",
+      "rows": 3054,
+      "present": 2974,
+      "availability_rate": 97.4
+    },
+    {
+      "split": "overall",
+      "primitive": "prior_rest_bucket_win_rate",
+      "rows": 3054,
+      "present": 2974,
+      "availability_rate": 97.4
+    },
+    {
+      "split": "overall",
+      "primitive": "prior_rest_bucket_place_rate",
+      "rows": 3054,
+      "present": 2974,
+      "availability_rate": 97.4
+    },
+    {
+      "split": "archive_development",
+      "primitive": "weight_carried",
+      "rows": 1093,
+      "present": 1093,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_development",
+      "primitive": "days_since_last",
+      "rows": 1093,
+      "present": 1013,
+      "availability_rate": 92.7
+    },
+    {
+      "split": "archive_development",
+      "primitive": "starts",
+      "rows": 1093,
+      "present": 735,
+      "availability_rate": 67.2
+    },
+    {
+      "split": "archive_development",
+      "primitive": "wins",
+      "rows": 1093,
+      "present": 735,
+      "availability_rate": 67.2
+    },
+    {
+      "split": "archive_development",
+      "primitive": "hk_starts",
+      "rows": 1093,
+      "present": 497,
+      "availability_rate": 45.5
+    },
+    {
+      "split": "archive_development",
+      "primitive": "card_rating",
+      "rows": 1093,
+      "present": 1067,
+      "availability_rate": 97.6
+    },
+    {
+      "split": "archive_development",
+      "primitive": "last6_runs",
+      "rows": 1093,
+      "present": 1093,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_development",
+      "primitive": "last6_mean_finish",
+      "rows": 1093,
+      "present": 957,
+      "availability_rate": 87.6
+    },
+    {
+      "split": "archive_development",
+      "primitive": "last6_best_finish",
+      "rows": 1093,
+      "present": 957,
+      "availability_rate": 87.6
+    },
+    {
+      "split": "archive_development",
+      "primitive": "last6_worst_finish",
+      "rows": 1093,
+      "present": 957,
+      "availability_rate": 87.6
+    },
+    {
+      "split": "archive_development",
+      "primitive": "last6_top3_count",
+      "rows": 1093,
+      "present": 1093,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_development",
+      "primitive": "last6_top5_count",
+      "rows": 1093,
+      "present": 1093,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_development",
+      "primitive": "season_starts",
+      "rows": 1093,
+      "present": 960,
+      "availability_rate": 87.8
+    },
+    {
+      "split": "archive_development",
+      "primitive": "season_wins",
+      "rows": 1093,
+      "present": 960,
+      "availability_rate": 87.8
+    },
+    {
+      "split": "archive_development",
+      "primitive": "season_seconds",
+      "rows": 1093,
+      "present": 960,
+      "availability_rate": 87.8
+    },
+    {
+      "split": "archive_development",
+      "primitive": "season_thirds",
+      "rows": 1093,
+      "present": 960,
+      "availability_rate": 87.8
+    },
+    {
+      "split": "archive_development",
+      "primitive": "same_distance_starts",
+      "rows": 1093,
+      "present": 960,
+      "availability_rate": 87.8
+    },
+    {
+      "split": "archive_development",
+      "primitive": "same_distance_wins",
+      "rows": 1093,
+      "present": 960,
+      "availability_rate": 87.8
+    },
+    {
+      "split": "archive_development",
+      "primitive": "same_distance_seconds",
+      "rows": 1093,
+      "present": 960,
+      "availability_rate": 87.8
+    },
+    {
+      "split": "archive_development",
+      "primitive": "same_distance_thirds",
+      "rows": 1093,
+      "present": 960,
+      "availability_rate": 87.8
+    },
+    {
+      "split": "archive_development",
+      "primitive": "same_venue_distance_starts",
+      "rows": 1093,
+      "present": 932,
+      "availability_rate": 85.3
+    },
+    {
+      "split": "archive_development",
+      "primitive": "same_venue_distance_wins",
+      "rows": 1093,
+      "present": 932,
+      "availability_rate": 85.3
+    },
+    {
+      "split": "archive_development",
+      "primitive": "same_venue_distance_seconds",
+      "rows": 1093,
+      "present": 932,
+      "availability_rate": 85.3
+    },
+    {
+      "split": "archive_development",
+      "primitive": "same_venue_distance_thirds",
+      "rows": 1093,
+      "present": 932,
+      "availability_rate": 85.3
+    },
+    {
+      "split": "archive_development",
+      "primitive": "tw_entries_count",
+      "rows": 1093,
+      "present": 391,
+      "availability_rate": 35.8
+    },
+    {
+      "split": "archive_development",
+      "primitive": "tw_gallop_count",
+      "rows": 1093,
+      "present": 391,
+      "availability_rate": 35.8
+    },
+    {
+      "split": "archive_development",
+      "primitive": "tw_flags_count",
+      "rows": 1093,
+      "present": 391,
+      "availability_rate": 35.8
+    },
+    {
+      "split": "archive_development",
+      "primitive": "tw_confidence_high",
+      "rows": 1093,
+      "present": 1093,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_development",
+      "primitive": "tw_confidence_low",
+      "rows": 1093,
+      "present": 1093,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_development",
+      "primitive": "tw_jockey_present",
+      "rows": 1093,
+      "present": 1093,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_development",
+      "primitive": "raw_formline_higher_win_count",
+      "rows": 1093,
+      "present": 927,
+      "availability_rate": 84.8
+    },
+    {
+      "split": "archive_development",
+      "primitive": "raw_formline_same_win_count",
+      "rows": 1093,
+      "present": 927,
+      "availability_rate": 84.8
+    },
+    {
+      "split": "archive_development",
+      "primitive": "raw_formline_lower_win_count",
+      "rows": 1093,
+      "present": 927,
+      "availability_rate": 84.8
+    },
+    {
+      "split": "archive_development",
+      "primitive": "raw_l400",
+      "rows": 1093,
+      "present": 707,
+      "availability_rate": 64.7
+    },
+    {
+      "split": "archive_development",
+      "primitive": "raw_finish_time_adj",
+      "rows": 1093,
+      "present": 214,
+      "availability_rate": 19.6
+    },
+    {
+      "split": "archive_development",
+      "primitive": "raw_total_starts",
+      "rows": 1093,
+      "present": 253,
+      "availability_rate": 23.1
+    },
+    {
+      "split": "archive_development",
+      "primitive": "raw_total_wins",
+      "rows": 1093,
+      "present": 253,
+      "availability_rate": 23.1
+    },
+    {
+      "split": "archive_development",
+      "primitive": "raw_last_margin",
+      "rows": 1093,
+      "present": 214,
+      "availability_rate": 19.6
+    },
+    {
+      "split": "archive_development",
+      "primitive": "raw_last_finish",
+      "rows": 1093,
+      "present": 235,
+      "availability_rate": 21.5
+    },
+    {
+      "split": "archive_development",
+      "primitive": "raw_weight_trend_span",
+      "rows": 1093,
+      "present": 160,
+      "availability_rate": 14.6
+    },
+    {
+      "split": "archive_development",
+      "primitive": "prior_combo_starts",
+      "rows": 1093,
+      "present": 912,
+      "availability_rate": 83.4
+    },
+    {
+      "split": "archive_development",
+      "primitive": "prior_combo_win_rate",
+      "rows": 1093,
+      "present": 912,
+      "availability_rate": 83.4
+    },
+    {
+      "split": "archive_development",
+      "primitive": "prior_combo_place_rate",
+      "rows": 1093,
+      "present": 912,
+      "availability_rate": 83.4
+    },
+    {
+      "split": "archive_development",
+      "primitive": "prior_jockey_cd_starts",
+      "rows": 1093,
+      "present": 861,
+      "availability_rate": 78.8
+    },
+    {
+      "split": "archive_development",
+      "primitive": "prior_jockey_cd_win_rate",
+      "rows": 1093,
+      "present": 861,
+      "availability_rate": 78.8
+    },
+    {
+      "split": "archive_development",
+      "primitive": "prior_jockey_cd_place_rate",
+      "rows": 1093,
+      "present": 861,
+      "availability_rate": 78.8
+    },
+    {
+      "split": "archive_development",
+      "primitive": "prior_trainer_cd_starts",
+      "rows": 1093,
+      "present": 902,
+      "availability_rate": 82.5
+    },
+    {
+      "split": "archive_development",
+      "primitive": "prior_trainer_cd_win_rate",
+      "rows": 1093,
+      "present": 902,
+      "availability_rate": 82.5
+    },
+    {
+      "split": "archive_development",
+      "primitive": "prior_trainer_cd_place_rate",
+      "rows": 1093,
+      "present": 902,
+      "availability_rate": 82.5
+    },
+    {
+      "split": "archive_development",
+      "primitive": "prior_class_distance_starts",
+      "rows": 1093,
+      "present": 668,
+      "availability_rate": 61.1
+    },
+    {
+      "split": "archive_development",
+      "primitive": "prior_class_distance_win_rate",
+      "rows": 1093,
+      "present": 668,
+      "availability_rate": 61.1
+    },
+    {
+      "split": "archive_development",
+      "primitive": "prior_class_distance_place_rate",
+      "rows": 1093,
+      "present": 668,
+      "availability_rate": 61.1
+    },
+    {
+      "split": "archive_development",
+      "primitive": "prior_weight_class_starts",
+      "rows": 1093,
+      "present": 846,
+      "availability_rate": 77.4
+    },
+    {
+      "split": "archive_development",
+      "primitive": "prior_weight_class_win_rate",
+      "rows": 1093,
+      "present": 846,
+      "availability_rate": 77.4
+    },
+    {
+      "split": "archive_development",
+      "primitive": "prior_weight_class_place_rate",
+      "rows": 1093,
+      "present": 846,
+      "availability_rate": 77.4
+    },
+    {
+      "split": "archive_development",
+      "primitive": "prior_rest_bucket_starts",
+      "rows": 1093,
+      "present": 1013,
+      "availability_rate": 92.7
+    },
+    {
+      "split": "archive_development",
+      "primitive": "prior_rest_bucket_win_rate",
+      "rows": 1093,
+      "present": 1013,
+      "availability_rate": 92.7
+    },
+    {
+      "split": "archive_development",
+      "primitive": "prior_rest_bucket_place_rate",
+      "rows": 1093,
+      "present": 1013,
+      "availability_rate": 92.7
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "weight_carried",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "days_since_last",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "starts",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "wins",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "hk_starts",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "card_rating",
+      "rows": 487,
+      "present": 485,
+      "availability_rate": 99.6
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "last6_runs",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "last6_mean_finish",
+      "rows": 487,
+      "present": 469,
+      "availability_rate": 96.3
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "last6_best_finish",
+      "rows": 487,
+      "present": 469,
+      "availability_rate": 96.3
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "last6_worst_finish",
+      "rows": 487,
+      "present": 469,
+      "availability_rate": 96.3
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "last6_top3_count",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "last6_top5_count",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "season_starts",
+      "rows": 487,
+      "present": 470,
+      "availability_rate": 96.5
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "season_wins",
+      "rows": 487,
+      "present": 470,
+      "availability_rate": 96.5
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "season_seconds",
+      "rows": 487,
+      "present": 470,
+      "availability_rate": 96.5
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "season_thirds",
+      "rows": 487,
+      "present": 470,
+      "availability_rate": 96.5
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "same_distance_starts",
+      "rows": 487,
+      "present": 470,
+      "availability_rate": 96.5
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "same_distance_wins",
+      "rows": 487,
+      "present": 470,
+      "availability_rate": 96.5
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "same_distance_seconds",
+      "rows": 487,
+      "present": 470,
+      "availability_rate": 96.5
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "same_distance_thirds",
+      "rows": 487,
+      "present": 470,
+      "availability_rate": 96.5
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "same_venue_distance_starts",
+      "rows": 487,
+      "present": 470,
+      "availability_rate": 96.5
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "same_venue_distance_wins",
+      "rows": 487,
+      "present": 470,
+      "availability_rate": 96.5
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "same_venue_distance_seconds",
+      "rows": 487,
+      "present": 470,
+      "availability_rate": 96.5
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "same_venue_distance_thirds",
+      "rows": 487,
+      "present": 470,
+      "availability_rate": 96.5
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "tw_entries_count",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "tw_gallop_count",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "tw_flags_count",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "tw_confidence_high",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "tw_confidence_low",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "tw_jockey_present",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "raw_formline_higher_win_count",
+      "rows": 487,
+      "present": 330,
+      "availability_rate": 67.8
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "raw_formline_same_win_count",
+      "rows": 487,
+      "present": 330,
+      "availability_rate": 67.8
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "raw_formline_lower_win_count",
+      "rows": 487,
+      "present": 330,
+      "availability_rate": 67.8
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "raw_l400",
+      "rows": 487,
+      "present": 469,
+      "availability_rate": 96.3
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "raw_finish_time_adj",
+      "rows": 487,
+      "present": 445,
+      "availability_rate": 91.4
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "raw_total_starts",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "raw_total_wins",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "raw_last_margin",
+      "rows": 487,
+      "present": 427,
+      "availability_rate": 87.7
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "raw_last_finish",
+      "rows": 487,
+      "present": 469,
+      "availability_rate": 96.3
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "raw_weight_trend_span",
+      "rows": 487,
+      "present": 308,
+      "availability_rate": 63.2
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "prior_combo_starts",
+      "rows": 487,
+      "present": 411,
+      "availability_rate": 84.4
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "prior_combo_win_rate",
+      "rows": 487,
+      "present": 411,
+      "availability_rate": 84.4
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "prior_combo_place_rate",
+      "rows": 487,
+      "present": 411,
+      "availability_rate": 84.4
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "prior_jockey_cd_starts",
+      "rows": 487,
+      "present": 424,
+      "availability_rate": 87.1
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "prior_jockey_cd_win_rate",
+      "rows": 487,
+      "present": 424,
+      "availability_rate": 87.1
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "prior_jockey_cd_place_rate",
+      "rows": 487,
+      "present": 424,
+      "availability_rate": 87.1
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "prior_trainer_cd_starts",
+      "rows": 487,
+      "present": 457,
+      "availability_rate": 93.8
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "prior_trainer_cd_win_rate",
+      "rows": 487,
+      "present": 457,
+      "availability_rate": 93.8
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "prior_trainer_cd_place_rate",
+      "rows": 487,
+      "present": 457,
+      "availability_rate": 93.8
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "prior_class_distance_starts",
+      "rows": 487,
+      "present": 478,
+      "availability_rate": 98.2
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "prior_class_distance_win_rate",
+      "rows": 487,
+      "present": 478,
+      "availability_rate": 98.2
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "prior_class_distance_place_rate",
+      "rows": 487,
+      "present": 478,
+      "availability_rate": 98.2
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "prior_weight_class_starts",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "prior_weight_class_win_rate",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "prior_weight_class_place_rate",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "prior_rest_bucket_starts",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "prior_rest_bucket_win_rate",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "archive_temporal_holdout",
+      "primitive": "prior_rest_bucket_place_rate",
+      "rows": 487,
+      "present": 487,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "weight_carried",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "days_since_last",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "starts",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "wins",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "hk_starts",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "card_rating",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "last6_runs",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "last6_mean_finish",
+      "rows": 107,
+      "present": 106,
+      "availability_rate": 99.1
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "last6_best_finish",
+      "rows": 107,
+      "present": 106,
+      "availability_rate": 99.1
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "last6_worst_finish",
+      "rows": 107,
+      "present": 106,
+      "availability_rate": 99.1
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "last6_top3_count",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "last6_top5_count",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "season_starts",
+      "rows": 107,
+      "present": 106,
+      "availability_rate": 99.1
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "season_wins",
+      "rows": 107,
+      "present": 106,
+      "availability_rate": 99.1
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "season_seconds",
+      "rows": 107,
+      "present": 106,
+      "availability_rate": 99.1
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "season_thirds",
+      "rows": 107,
+      "present": 106,
+      "availability_rate": 99.1
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "same_distance_starts",
+      "rows": 107,
+      "present": 106,
+      "availability_rate": 99.1
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "same_distance_wins",
+      "rows": 107,
+      "present": 106,
+      "availability_rate": 99.1
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "same_distance_seconds",
+      "rows": 107,
+      "present": 106,
+      "availability_rate": 99.1
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "same_distance_thirds",
+      "rows": 107,
+      "present": 106,
+      "availability_rate": 99.1
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "same_venue_distance_starts",
+      "rows": 107,
+      "present": 106,
+      "availability_rate": 99.1
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "same_venue_distance_wins",
+      "rows": 107,
+      "present": 106,
+      "availability_rate": 99.1
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "same_venue_distance_seconds",
+      "rows": 107,
+      "present": 106,
+      "availability_rate": 99.1
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "same_venue_distance_thirds",
+      "rows": 107,
+      "present": 106,
+      "availability_rate": 99.1
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "tw_entries_count",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "tw_gallop_count",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "tw_flags_count",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "tw_confidence_high",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "tw_confidence_low",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "tw_jockey_present",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "raw_formline_higher_win_count",
+      "rows": 107,
+      "present": 102,
+      "availability_rate": 95.3
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "raw_formline_same_win_count",
+      "rows": 107,
+      "present": 102,
+      "availability_rate": 95.3
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "raw_formline_lower_win_count",
+      "rows": 107,
+      "present": 102,
+      "availability_rate": 95.3
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "raw_l400",
+      "rows": 107,
+      "present": 106,
+      "availability_rate": 99.1
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "raw_finish_time_adj",
+      "rows": 107,
+      "present": 104,
+      "availability_rate": 97.2
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "raw_total_starts",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "raw_total_wins",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "raw_last_margin",
+      "rows": 107,
+      "present": 94,
+      "availability_rate": 87.9
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "raw_last_finish",
+      "rows": 107,
+      "present": 106,
+      "availability_rate": 99.1
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "raw_weight_trend_span",
+      "rows": 107,
+      "present": 66,
+      "availability_rate": 61.7
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "prior_combo_starts",
+      "rows": 107,
+      "present": 99,
+      "availability_rate": 92.5
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "prior_combo_win_rate",
+      "rows": 107,
+      "present": 99,
+      "availability_rate": 92.5
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "prior_combo_place_rate",
+      "rows": 107,
+      "present": 99,
+      "availability_rate": 92.5
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "prior_jockey_cd_starts",
+      "rows": 107,
+      "present": 95,
+      "availability_rate": 88.8
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "prior_jockey_cd_win_rate",
+      "rows": 107,
+      "present": 95,
+      "availability_rate": 88.8
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "prior_jockey_cd_place_rate",
+      "rows": 107,
+      "present": 95,
+      "availability_rate": 88.8
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "prior_trainer_cd_starts",
+      "rows": 107,
+      "present": 104,
+      "availability_rate": 97.2
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "prior_trainer_cd_win_rate",
+      "rows": 107,
+      "present": 104,
+      "availability_rate": 97.2
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "prior_trainer_cd_place_rate",
+      "rows": 107,
+      "present": 104,
+      "availability_rate": 97.2
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "prior_class_distance_starts",
+      "rows": 107,
+      "present": 0,
+      "availability_rate": 0.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "prior_class_distance_win_rate",
+      "rows": 107,
+      "present": 0,
+      "availability_rate": 0.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "prior_class_distance_place_rate",
+      "rows": 107,
+      "present": 0,
+      "availability_rate": 0.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "prior_weight_class_starts",
+      "rows": 107,
+      "present": 33,
+      "availability_rate": 30.8
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "prior_weight_class_win_rate",
+      "rows": 107,
+      "present": 33,
+      "availability_rate": 30.8
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "prior_weight_class_place_rate",
+      "rows": 107,
+      "present": 33,
+      "availability_rate": 30.8
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "prior_rest_bucket_starts",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "prior_rest_bucket_win_rate",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "external_2026_07_15",
+      "primitive": "prior_rest_bucket_place_rate",
+      "rows": 107,
+      "present": 107,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "weight_carried",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "days_since_last",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "starts",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "wins",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "hk_starts",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "card_rating",
+      "rows": 1367,
+      "present": 1350,
+      "availability_rate": 98.8
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "last6_runs",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "last6_mean_finish",
+      "rows": 1367,
+      "present": 1310,
+      "availability_rate": 95.8
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "last6_best_finish",
+      "rows": 1367,
+      "present": 1310,
+      "availability_rate": 95.8
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "last6_worst_finish",
+      "rows": 1367,
+      "present": 1310,
+      "availability_rate": 95.8
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "last6_top3_count",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "last6_top5_count",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "season_starts",
+      "rows": 1367,
+      "present": 1313,
+      "availability_rate": 96.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "season_wins",
+      "rows": 1367,
+      "present": 1313,
+      "availability_rate": 96.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "season_seconds",
+      "rows": 1367,
+      "present": 1313,
+      "availability_rate": 96.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "season_thirds",
+      "rows": 1367,
+      "present": 1313,
+      "availability_rate": 96.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "same_distance_starts",
+      "rows": 1367,
+      "present": 1313,
+      "availability_rate": 96.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "same_distance_wins",
+      "rows": 1367,
+      "present": 1313,
+      "availability_rate": 96.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "same_distance_seconds",
+      "rows": 1367,
+      "present": 1313,
+      "availability_rate": 96.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "same_distance_thirds",
+      "rows": 1367,
+      "present": 1313,
+      "availability_rate": 96.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "same_venue_distance_starts",
+      "rows": 1367,
+      "present": 1313,
+      "availability_rate": 96.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "same_venue_distance_wins",
+      "rows": 1367,
+      "present": 1313,
+      "availability_rate": 96.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "same_venue_distance_seconds",
+      "rows": 1367,
+      "present": 1313,
+      "availability_rate": 96.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "same_venue_distance_thirds",
+      "rows": 1367,
+      "present": 1313,
+      "availability_rate": 96.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "tw_entries_count",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "tw_gallop_count",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "tw_flags_count",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "tw_confidence_high",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "tw_confidence_low",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "tw_jockey_present",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "raw_formline_higher_win_count",
+      "rows": 1367,
+      "present": 1101,
+      "availability_rate": 80.5
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "raw_formline_same_win_count",
+      "rows": 1367,
+      "present": 1101,
+      "availability_rate": 80.5
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "raw_formline_lower_win_count",
+      "rows": 1367,
+      "present": 1101,
+      "availability_rate": 80.5
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "raw_l400",
+      "rows": 1367,
+      "present": 1309,
+      "availability_rate": 95.8
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "raw_finish_time_adj",
+      "rows": 1367,
+      "present": 1134,
+      "availability_rate": 83.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "raw_total_starts",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "raw_total_wins",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "raw_last_margin",
+      "rows": 1367,
+      "present": 1113,
+      "availability_rate": 81.4
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "raw_last_finish",
+      "rows": 1367,
+      "present": 1310,
+      "availability_rate": 95.8
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "raw_weight_trend_span",
+      "rows": 1367,
+      "present": 820,
+      "availability_rate": 60.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "prior_combo_starts",
+      "rows": 1367,
+      "present": 1161,
+      "availability_rate": 84.9
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "prior_combo_win_rate",
+      "rows": 1367,
+      "present": 1161,
+      "availability_rate": 84.9
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "prior_combo_place_rate",
+      "rows": 1367,
+      "present": 1161,
+      "availability_rate": 84.9
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "prior_jockey_cd_starts",
+      "rows": 1367,
+      "present": 1146,
+      "availability_rate": 83.8
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "prior_jockey_cd_win_rate",
+      "rows": 1367,
+      "present": 1146,
+      "availability_rate": 83.8
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "prior_jockey_cd_place_rate",
+      "rows": 1367,
+      "present": 1146,
+      "availability_rate": 83.8
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "prior_trainer_cd_starts",
+      "rows": 1367,
+      "present": 1222,
+      "availability_rate": 89.4
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "prior_trainer_cd_win_rate",
+      "rows": 1367,
+      "present": 1222,
+      "availability_rate": 89.4
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "prior_trainer_cd_place_rate",
+      "rows": 1367,
+      "present": 1222,
+      "availability_rate": 89.4
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "prior_class_distance_starts",
+      "rows": 1367,
+      "present": 659,
+      "availability_rate": 48.2
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "prior_class_distance_win_rate",
+      "rows": 1367,
+      "present": 659,
+      "availability_rate": 48.2
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "prior_class_distance_place_rate",
+      "rows": 1367,
+      "present": 659,
+      "availability_rate": 48.2
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "prior_weight_class_starts",
+      "rows": 1367,
+      "present": 791,
+      "availability_rate": 57.9
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "prior_weight_class_win_rate",
+      "rows": 1367,
+      "present": 791,
+      "availability_rate": 57.9
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "prior_weight_class_place_rate",
+      "rows": 1367,
+      "present": 791,
+      "availability_rate": 57.9
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "prior_rest_bucket_starts",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "prior_rest_bucket_win_rate",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    },
+    {
+      "split": "independent_recent",
+      "primitive": "prior_rest_bucket_place_rate",
+      "rows": 1367,
+      "present": 1367,
+      "availability_rate": 100.0
+    }
+  ],
+  "build_errors": [],
+  "schema_errors": []
+}

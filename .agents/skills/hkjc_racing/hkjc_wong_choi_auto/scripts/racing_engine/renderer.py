@@ -342,12 +342,27 @@ def render_race_csv(logic_data: dict) -> str:
         "ability_score",
         "grade",
         "model_pick_status",
+        "health_slot_profile",
+        "mainline_readiness_health",
+        "mainline_readiness_raw",
+        "mainline_readiness_reliability",
+        "mainline_readiness_evidence_count",
+        "mainline_readiness_days_since_last",
+        "mainline_readiness_weight_span",
+        "legacy_horse_health",
         "shadow_flag_labels",
         "shadow_flag_reasons",
         "shadow_consistency_rank",
         "shadow_consistency_ability",
         "shadow_consistency_delta",
         "shadow_consistency_reason",
+        "shadow_readiness_rank",
+        "shadow_readiness_ability",
+        "shadow_readiness_rank_delta",
+        "shadow_readiness_health",
+        "shadow_readiness_health_delta",
+        "shadow_readiness_reliability",
+        "shadow_readiness_reason",
         *FEATURE_LABELS.keys(),
     ]
     writer = csv.DictWriter(output, fieldnames=fields)
@@ -355,6 +370,7 @@ def render_race_csv(logic_data: dict) -> str:
     race_number = logic_data.get("race_analysis", {}).get("race_number", "")
     for horse_num, horse in _sorted_horses(logic_data.get("horses", {})):
         auto = horse.get("python_auto", {})
+        health_detail = auto.get("health_slot_detail", {}) if isinstance(auto.get("health_slot_detail"), dict) else {}
         row = {
             "race_number": race_number,
             "horse_number": horse_num,
@@ -365,12 +381,27 @@ def render_race_csv(logic_data: dict) -> str:
             "ability_score": auto.get("ability_score", ""),
             "grade": auto.get("grade", ""),
             "model_pick_status": auto.get("model_pick_status", ""),
+            "health_slot_profile": auto.get("health_slot_profile", ""),
+            "mainline_readiness_health": health_detail.get("score", ""),
+            "mainline_readiness_raw": health_detail.get("raw_score", ""),
+            "mainline_readiness_reliability": health_detail.get("reliability", ""),
+            "mainline_readiness_evidence_count": health_detail.get("evidence_count", ""),
+            "mainline_readiness_days_since_last": health_detail.get("days_since_last", ""),
+            "mainline_readiness_weight_span": health_detail.get("weight_trend_span", ""),
+            "legacy_horse_health": health_detail.get("legacy_horse_health", ""),
             "shadow_flag_labels": _shadow_flag_labels(auto),
             "shadow_flag_reasons": _shadow_flag_reasons(auto),
             "shadow_consistency_rank": _shadow_profile_value(auto, "consistency_context", "rank"),
             "shadow_consistency_ability": _shadow_profile_value(auto, "consistency_context", "ability_score"),
             "shadow_consistency_delta": _shadow_profile_value(auto, "consistency_context", "rank_delta"),
             "shadow_consistency_reason": _shadow_profile_value(auto, "consistency_context", "reason"),
+            "shadow_readiness_rank": _shadow_profile_value(auto, "readiness_health_slot", "rank"),
+            "shadow_readiness_ability": _shadow_profile_value(auto, "readiness_health_slot", "ability_score"),
+            "shadow_readiness_rank_delta": _shadow_profile_value(auto, "readiness_health_slot", "rank_delta"),
+            "shadow_readiness_health": _shadow_profile_value(auto, "readiness_health_slot", "readiness_health_score"),
+            "shadow_readiness_health_delta": _shadow_profile_value(auto, "readiness_health_slot", "horse_health_delta"),
+            "shadow_readiness_reliability": _shadow_profile_value(auto, "readiness_health_slot", "reliability"),
+            "shadow_readiness_reason": _shadow_profile_value(auto, "readiness_health_slot", "reason"),
         }
         row.update(auto.get("feature_scores", {}))
         writer.writerow(row)
@@ -670,14 +701,14 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
             ("頭馬距離趨勢", data.get("margin_trend"), 180),
         )
     if key == "sectional":
-        finish_time = " | ".join(
-            part for part in (data.get("finish_time_adj"), data.get("finish_time_adj_level")) if part
-        )
         return _compact_fact_lines(
             ("引擎分佈", data.get("engine_type"), 220),
             ("最佳路程", data.get("best_distance"), 160),
-            ("L400 / 能量趨勢", _join_nonempty(data.get("raw_l400"), data.get("l400_trend"), data.get("energy_trend"), sep=" | "), 320),
-            ("步速修正", finish_time, 260),
+            ("最新一仗 L400", _with_seconds(data.get("raw_l400")), 80),
+            ("L400 走勢（最舊 → 最新）", _chronological_series(data.get("l400_trend")), 320),
+            ("能量走勢（最舊 → 最新）", _chronological_series(data.get("energy_trend")), 260),
+            ("時間偏差走勢（最舊 → 最新）", _chronological_series(data.get("finish_time_adj")), 260),
+            ("步速修正判讀", data.get("finish_time_adj_level"), 220),
         )
     if key == "race_shape":
         draw_running = _join_nonempty(
@@ -742,6 +773,32 @@ def _compact_fact_lines(*items: tuple[str, object, int]) -> list[str]:
             continue
         lines.append(f"{label}: {_short(text, limit)}")
     return lines
+
+
+def _with_seconds(value: object) -> str:
+    text = _inline_text(value)
+    if not text or text.upper() == "N/A":
+        return text
+    return text if text.lower().endswith("s") else f"{text}s"
+
+
+def _chronological_series(value: object) -> str:
+    """Render a stored newest-first series as an unambiguous oldest-to-latest timeline.
+
+    New Facts files already carry the explicit direction marker.  This fallback also
+    fixes older Logic JSON files without changing their stored values or scoring.
+    """
+    text = _inline_text(value)
+    if not text:
+        return ""
+    marked_oldest_first = bool(re.search(r"最舊\s*→\s*最新", text))
+    text = re.sub(r"[（(]?最舊\s*→\s*最新[）)]?\s*[:：]?\s*", "", text)
+    match = re.match(r"^(.*?)(\s*→\s*趨勢[:：].*)$", text)
+    series, suffix = (match.group(1), match.group(2)) if match else (text, "")
+    points = [part.strip() for part in re.split(r"\s*→\s*", series) if part.strip()]
+    if len(points) >= 2 and not marked_oldest_first:
+        points.reverse()
+    return " → ".join(points) + suffix
 
 
 def _strip_digest_directive(text: object) -> str:
