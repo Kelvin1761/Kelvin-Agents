@@ -72,10 +72,22 @@ def ensure_verdict(logic_data: dict) -> dict:
             _horse_number_sort_key(item["horse_number"]),
         ),
     )
+    # Confidence tier from the top1-top3 ability spread (710-race archive
+    # calibration, 2026-07-17): in tight races the top-2 catch >=2 placegetters
+    # only 13% of the time while the top-5 catch 72%, so the betting radar must
+    # widen; in clear races the top-2 are genuinely strong (winner inside 51%).
+    top3_gap = (ranked[0]["ability_score"] - ranked[2]["ability_score"]) if len(ranked) >= 3 else 99.0
+    if top3_gap < 2.0:
+        confidence_tier, radar_size = "tight", 5
+    elif top3_gap < 5.0:
+        confidence_tier, radar_size = "medium", 4
+    else:
+        confidence_tier, radar_size = "clear", 4
+    watch_limit = max(4, radar_size)
     for idx, item in enumerate(ranked, start=1):
         auto = horses[item["horse_number"]]["python_auto"]
         auto["rank"] = idx
-        auto["model_pick_status"] = "MODEL_TOP_PICK" if idx <= 2 else ("WATCH" if idx <= 4 else "NO_PICK")
+        auto["model_pick_status"] = "MODEL_TOP_PICK" if idx <= 2 else ("WATCH" if idx <= watch_limit else "NO_PICK")
         item["rank"] = idx
         item["model_pick_status"] = auto["model_pick_status"]
     watchlist = _build_rank_4_6_watchlist(ranked, horses)
@@ -84,6 +96,10 @@ def ensure_verdict(logic_data: dict) -> dict:
         "top2": ranked[:2],
         "top4": ranked[:4],
         "rank_4_6_watchlist": watchlist,
+        "confidence_tier": confidence_tier,
+        "top1_top3_gap": round(top3_gap, 2),
+        "radar_size": radar_size,
+        "radar": ranked[:radar_size],
     }
     logic_data["python_auto_verdict"] = verdict
     return verdict
@@ -213,6 +229,18 @@ def _going_box_advisory(race):
     ]
 
 
+def _confidence_tier_text(verdict) -> str:
+    tier = verdict.get("confidence_tier") or "medium"
+    gap = verdict.get("top1_top3_gap")
+    radar = verdict.get("radar_size", 4)
+    labels = {
+        "tight": f"分數擠迫（頭三差 {gap}）— 建議圍捕：模型 Top {radar} 同級睇待",
+        "medium": f"中等分野（頭三差 {gap}）— 常規：Top 2 主選、Top {radar} 雷達",
+        "clear": f"分數清晰（頭三差 {gap}）— Top 2 主選訊號較強",
+    }
+    return labels.get(tier, labels["medium"])
+
+
 def _panorama(race, verdict, horses):
     race_number = race.get("race_number", "")
     distance = race.get("distance", "")
@@ -228,6 +256,7 @@ def _panorama(race, verdict, horses):
         "| **賽事類型** | **`[AU Wong Choi Auto Python 7D]`** |",
         f"| 出馬數 | {len(horses)} |",
         f"| 跑道偏差 | {track_bias} |",
+        f"| 信心分層 | {_confidence_tier_text(verdict)} |",
         "",
         *_going_box_advisory(race),
         "**🏃 形勢推演**",
