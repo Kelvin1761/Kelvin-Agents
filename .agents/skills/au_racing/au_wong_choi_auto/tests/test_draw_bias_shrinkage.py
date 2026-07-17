@@ -26,16 +26,38 @@ def _score(barrier: int, venue: str, distance: str, field_count: int) -> tuple[f
 
 
 class DrawBiasShrinkageTests(unittest.TestCase):
-    def test_thin_sample_cell_no_longer_slams(self) -> None:
-        # Rosehill Gardens 1200m inside: n=16, win_rate 0.0 — previously the raw
-        # −10 modifier hit cap_min (−9.43); with n/(n+25) shrinkage it must be
-        # a bounded, sane deduction.
-        base = PACE_MICRO_WEIGHTS["base"]
+    def test_modifier_matches_shrunk_formula(self) -> None:
+        # The applied modifier must equal (win_rate − 1/field) × 110 × n/(n+k),
+        # capped — verified against whatever the live matrix holds for the
+        # Rosehill Gardens 1200m inside cell, so the test survives matrix
+        # rebuilds as backfill data grows.
+        import json
+        from pathlib import Path
+
+        matrix = json.loads((ENGINE_DIR / "au_draw_bias_matrix.json").read_text(encoding="utf-8"))
+        cell = matrix["tracks"]["Rosehill Gardens"]["distances"]["1200"]["inside"]
+        self.assertGreaterEqual(cell["sample_size"], 10)  # cascade accepts this cell
+        w = PACE_MICRO_WEIGHTS
+        expected_wr = 1.0 / 11
+        raw = (cell["win_rate"] - expected_wr) * 100 * w["modifier_multiplier"]
+        n = cell["sample_size"]
+        raw *= n / (n + w.get("shrinkage_k", 25.0))
+        expected_mod = max(w["modifier_cap_min"], min(w["modifier_cap_max"], raw))
+
         score, note = _score(barrier=2, venue="Rosehill Gardens", distance="1200m", field_count=11)
-        modifier = score - base
-        self.assertLess(modifier, 0.0)  # still a negative signal
-        self.assertGreater(modifier, -5.0)  # but no cap-min slam
+        self.assertAlmostEqual(score - w["base"], expected_mod, places=1)
         self.assertIn("收縮", note + "")
+
+    def test_thin_cell_cannot_reach_cap_min(self) -> None:
+        # Mechanism guarantee: even a 0%-win cell at the n>=10 acceptance
+        # threshold cannot reach the raw cap_min once shrunk — n=10 keeps at
+        # most 10/35 = 29% of the raw modifier.
+        w = PACE_MICRO_WEIGHTS
+        expected_wr = 1.0 / 11
+        raw = (0.0 - expected_wr) * 100 * w["modifier_multiplier"]  # worst case ≈ −10
+        shrunk = raw * 10 / (10 + w.get("shrinkage_k", 25.0))
+        self.assertGreater(shrunk, -3.5)
+        self.assertGreater(shrunk, w["modifier_cap_min"])
 
     def test_dense_cell_keeps_most_of_its_signal(self) -> None:
         # Global field_9_12 inside: n=1499 — shrinkage factor ~0.98, near-unchanged.
