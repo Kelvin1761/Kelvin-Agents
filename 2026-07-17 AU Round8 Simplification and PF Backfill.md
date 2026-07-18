@@ -62,3 +62,21 @@ pace_figure (system's strongest signal when present: separation 6.49; default
 ## Session request ledger (2026-07-17 evening)
 
 Results backfill batch 5 meetings (~7), probes (~6) — all clean, no blocks.
+
+
+## 3. PF backfill — first live batch + apply pipeline (2026-07-17 late)
+
+- Second semantic validation (different state/venue): Eagle Farm 2026-05-30
+  **37/37 exact** — semantics generalize.
+- Batch 1: 2025-08-02 Flemington + 2025-08-09 Randwick staged (219 runner-PF
+  records); apply pipeline (`scratch/au_pf_apply_and_gate.py`) injected 229
+  horses, re-scored both meetings in a local sandbox — top-4 changed in 18/19
+  races (pace_figure = 14.3% of ability once awake). Adoption deferred until
+  enough meetings are patched to run the archive-wide gate.
+- Data-quality find: 2025-08-09 Randwick is an **abandoned meeting** — racenet
+  returns finish_position −8 for every runner; the canonical CSV's corrupted
+  "Pos=8" rows came from that. Restored from backup and documented as
+  permanently excluded (it never had results); the archive's silent exclusion
+  of it was CORRECT behaviour.
+- Canonical results CSV audit: 744 races, only those 10 (the abandoned
+  meeting) unresolvable — the rest are clean.
