@@ -50,12 +50,16 @@ OLD_MATRIX_FORMULAS = {
 # import them straight from the engine's single source of truth. Falls back to a
 # pinned copy only if the engine package can't be located.
 #
-# WARNING: the recompute path below can only use the 12 persisted feature_scores.
-# Production's form_line uses formline_strength_score / margin_trend_score and
-# stability uses trackwork_trend_score — these sub-features are NOT persisted, so
-# the recompute CANNOT reproduce production form_line/stability exactly. For a
-# faithful production backtest, trust the "prod" column, which ranks by the
-# persisted python_auto.ability_score directly.
+# NOTE on recompute fidelity: production form_line/stability/race_shape depend on
+# derived sub-features (formline_strength_score, margin_trend_score,
+# trackwork_trend_score, race_shape_context_score). Since commit d28a9e8 the engine
+# persists them in python_auto.derived_feature_scores and score_meeting() merges
+# them into the recompute features. Meetings scored by OLDER engine versions lack
+# that block — there the recompute falls back to neutral-60 / draw_score and CANNOT
+# reproduce production form_line/stability/race_shape exactly. Post-matrix
+# adjustments (trainer_signal v3, health_only_v2, finish-time trend) are likewise
+# not re-applied. For a faithful production backtest, trust the "prod" column,
+# which ranks by the persisted python_auto.ability_score directly.
 _ENGINE = Path(__file__).resolve().parents[2] / "hkjc_wong_choi_auto" / "scripts" / "racing_engine"
 try:
     sys.path.insert(0, str(_ENGINE))
@@ -144,6 +148,12 @@ def score_meeting(meeting_dir: Path) -> dict:
             features = auto.get("feature_scores", {})
             if not features:
                 continue
+            # Merge persisted derived sub-features (formline_strength, margin_trend,
+            # trackwork_trend, race_shape_context, ...) so the recompute matches the
+            # production matrix formulas where the engine version persisted them.
+            derived = auto.get("derived_feature_scores")
+            if isinstance(derived, dict):
+                features = {**features, **derived}
             scored.append({
                 "horse_num": horse_num,
                 "old": compute_ability(features, OLD_MATRIX_FORMULAS, OLD_MATRIX_WEIGHTS),

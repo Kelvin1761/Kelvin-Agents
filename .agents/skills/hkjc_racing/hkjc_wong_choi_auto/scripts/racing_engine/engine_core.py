@@ -134,13 +134,14 @@ class RacingEngine:
             "trackwork_read": self._trackwork_interpretation(),
             "overseas_form_read": self._overseas_form_interpretation(),
             "feature_scores": {key: round(feature_scores[key], 2) for key in FEATURE_KEYS},
-            # Persist the derived sub-features that feed form_line/stability so the
-            # backtest harness can faithfully reproduce production scoring (these
+            # Persist the derived sub-features that feed form_line/stability/race_shape
+            # so the backtest harness can faithfully reproduce production scoring (these
             # are NOT in the 12 FEATURE_KEYS but matrix formulas depend on them).
             "derived_feature_scores": {
                 key: round(feature_scores.get(key, 60.0), 2)
                 for key in ("formline_strength_score", "margin_trend_score",
-                            "same_distance_signal_score", "trackwork_trend_score")
+                            "same_distance_signal_score", "trackwork_trend_score",
+                            "race_shape_context_score")
             },
             "score_breakdown": score_breakdown,
             "reason_codes": sorted(set(self.reason_codes)),

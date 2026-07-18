@@ -541,6 +541,32 @@ class AutoOutputTests(unittest.TestCase):
         self.assertGreater(inside_scores["race_shape"], low_scores["race_shape"])
         self.assertEqual(inside_scores["race_shape"], 75.0)
 
+    def test_derived_feature_scores_persist_and_reproduce_matrix(self) -> None:
+        # Faithful-replay contract: python_auto must persist every derived
+        # sub-feature the matrix formulas depend on, and merging them back into
+        # the 12 persisted feature_scores must reproduce the stored matrix
+        # scores for the dimensions without post-matrix adjustments.
+        logic = _logic()
+        result = RacingEngine(logic["horses"]["1"], logic["race_analysis"]).analyze_horse()
+
+        derived = result["derived_feature_scores"]
+        for key in (
+            "formline_strength_score",
+            "margin_trend_score",
+            "same_distance_signal_score",
+            "trackwork_trend_score",
+            "race_shape_context_score",
+        ):
+            self.assertIn(key, derived)
+
+        merged = {**result["feature_scores"], **derived}
+        recomputed = map_features_to_matrix_scores(merged)
+        for dim in ("stability", "form_line", "race_shape", "class_advantage"):
+            self.assertAlmostEqual(
+                recomputed[dim], result["matrix_scores"][dim], delta=0.02,
+                msg=f"replay mismatch on {dim}",
+            )
+
     def test_stability_uses_trackwork_trend_instead_of_confidence(self) -> None:
         base = {
             "form_score": 70,
