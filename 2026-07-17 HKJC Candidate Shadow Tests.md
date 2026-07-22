@@ -54,13 +54,26 @@ trainer_signal 減權嘅硬成本。**現行權重保留。**
 樣樣都唔起眼——係爆冷/缺證據，唔係「訊號存在但被權重蓋過」。**重新配權救唔到呢啲場**，同 AU
 （zero-hit 係 missing-evidence 問題）結論一致。
 
-## 建議：HKJC 專屬 confidence-tiered radar（未實作，附數據）
+## HKJC 專屬 confidence-tiered radar（已實作）
 
 Cohort 顯示 **tight score-gap（top1−top3 < 2）佔 98/243 = 40% 場次**，係弱 cohort
-（Good-pos 16.3%、W-in-T3 46.9%，皆低於 archive 平均）。AU 已 ship 咗 tight-gap → Top-5 WATCH
-radar（`ensure_verdict` confidence_tier）。HKJC `ensure_verdict` 現時只有 ranking/top2/
-watch_list/shadow_watch，**未有 score-gap radar**。建議按 HKJC 自身 gap 分佈（tight 佔比高達 40%，
-遠高於 AU）另行校準一個 tier 門檻再實作——列為後續 feature，需自己嘅測試，唔喺本次 review 落地。
+（Good-pos 16.3%、W-in-T3 46.9%，皆低於 archive 平均）。已喺 HKJC 自身 archive 校準並實作
+（`ensure_verdict` 加 `confidence_tier`/`radar`；顯示層加「信心分層投注雷達」；純顧問性，
+**不改排名、分數或 model_pick_status**）。
+
+校準（`scratch/hkjc_radar_calibration.py`，逐 tier 統計 radar 命中率）：
+
+| Tier（頭三分差） | n | Top-2 捉≥2冷門 | Top-4 | Top-5 | 頭馬 win@2 | win@5 | radar |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| tight (<2) | 98 | 16.3% | 60.2% | 70.4% | 28.6% | 59.2% | **5** |
+| medium (2-5) | 125 | 24.0% | 56.8% | 69.6% | 43.2% | 70.4% | **4** |
+| clear (>=5) | 20 | 25.0% | 60.0% | 75.0% | 45.0% | 80.0% | **4** |
+
+tight tier 之下 Top-2 只捉到 16.3% 嘅「≥2冷門入前三」場，擴到 Top-5 升到 70.4%，所以 radar 開到 5；
+medium/clear 維持 4（Top-4 已捉到約 57-60%）。HKJC 專屬事實：tight 佔 40% 場次（遠高於 AU），
+所以雷達會經常觸發。實作見 `renderer.py` `_confidence_tier`/`_radar_lines`；測試
+`test_confidence_radar_tiers_from_score_gap_and_leaves_ranking_unchanged`、
+`test_confidence_radar_renders_without_banned_terms`。
 
 ## 可重跑輸出
 

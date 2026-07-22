@@ -24,7 +24,7 @@ from matrix_mapper import map_features_to_matrix_scores
 from scoring import DEBUT_MATRIX_WEIGHTS, MATRIX_WEIGHTS, compute_grade
 from engine_core import RacingEngine
 from hkjc_auto_orchestrator import HKJCAutoOrchestrator, _apply_sip_enhancements, _parse_racecard_meta
-from renderer import _chronological_series
+from renderer import _chronological_series, ensure_verdict, render_race_markdown, validate_report_text
 from features.jockey import JockeyScorer
 from features.speed import SpeedScorer
 from features.trainer import TrainerScorer
@@ -566,6 +566,47 @@ class AutoOutputTests(unittest.TestCase):
                 recomputed[dim], result["matrix_scores"][dim], delta=0.02,
                 msg=f"replay mismatch on {dim}",
             )
+
+    @staticmethod
+    def _logic_with_abilities(abilities):
+        horses = {}
+        for i, score in enumerate(abilities, start=1):
+            horses[str(i)] = {
+                "horse_name": f"測試{i}", "jockey": "潘頓", "trainer": "蔡約翰",
+                "weight": "126", "barrier": str(i),
+                "python_auto": {
+                    "ability_score": float(score), "grade": "B",
+                    "feature_scores": {"speed_score": 60, "form_score": 60, "consistency_score": 60},
+                },
+            }
+        return {"race_analysis": {"race_number": 1, "race_class": "第四班", "distance": "1200"},
+                "horses": horses}
+
+    def test_confidence_radar_tiers_from_score_gap_and_leaves_ranking_unchanged(self) -> None:
+        cases = {
+            # top1-top3 gap: tight <2 -> radar 5; medium 2-5 -> 4; clear >=5 -> 4
+            "tight": ([72.0, 71.0, 70.5, 69.0, 67.0, 65.0], 5),
+            "medium": ([74.0, 72.0, 70.5, 68.0, 66.0, 64.0], 4),
+            "clear": ([80.0, 72.0, 68.0, 66.0, 64.0, 62.0], 4),
+        }
+        for tier, (abilities, expected_radar) in cases.items():
+            logic = self._logic_with_abilities(abilities)
+            verdict = ensure_verdict(logic)
+            self.assertEqual(verdict["confidence_tier"], tier)
+            self.assertEqual(verdict["radar_size"], expected_radar)
+            self.assertEqual(len(verdict["radar"]), expected_radar)
+            # radar is advisory: ranking + model_pick_status must be untouched
+            self.assertEqual([r["horse_number"] for r in verdict["ranking"]],
+                             ["1", "2", "3", "4", "5", "6"])
+            self.assertEqual([item["horse_number"] for item in verdict["top2"]], ["1", "2"])
+            self.assertEqual(logic["horses"]["1"]["python_auto"]["model_pick_status"], "MODEL_TOP_PICK")
+
+    def test_confidence_radar_renders_without_banned_terms(self) -> None:
+        logic = self._logic_with_abilities([66.0, 65.0, 64.5, 63.0, 61.0, 59.0])
+        markdown = render_race_markdown(logic)
+        self.assertIn("信心分層投注雷達", markdown)
+        self.assertIn("頭三分差", markdown)
+        self.assertEqual(validate_report_text(markdown), [])
 
     def test_stability_uses_trackwork_trend_instead_of_confidence(self) -> None:
         base = {

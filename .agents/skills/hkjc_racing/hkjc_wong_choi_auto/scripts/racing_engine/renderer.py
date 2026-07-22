@@ -117,6 +117,7 @@ def ensure_verdict(logic_data: dict) -> dict:
         item["rank"] = idx
         item["model_pick_status"] = auto["model_pick_status"]
         item["shadow_flags"] = [flag.get("label", "") for flag in auto.get("shadow_flags", []) if flag.get("label")]
+    confidence_tier, top1_top3_gap, radar_size = _confidence_tier(ranked)
     verdict = {
         "ranking": ranked,
         "top2": ranked[:2],
@@ -125,9 +126,36 @@ def ensure_verdict(logic_data: dict) -> dict:
         "watch_list": [item for item in ranked if item["model_pick_status"] == "WATCH"],
         "shadow_watch": [item for item in ranked if item.get("shadow_flags")],
         "no_pick": [item for item in ranked if item["model_pick_status"] == "NO_PICK"],
+        # Confidence-tiered betting radar — advisory only, does NOT change ranking
+        # or model_pick_status. Calibrated on HKJC's own 243-race archive gap
+        # distribution (scratch/hkjc_radar_calibration.py, 2026-07-17): tight races
+        # (頭三分差 <2, 40% of races) have the top-2 catching >=2 placegetters only
+        # 16.3% of the time vs 70.4% for the top-5, so the radar widens to 5; medium
+        # and clear tiers stay at 4 (top-4 catches ~57-60% of >=2-placegetter races).
+        "confidence_tier": confidence_tier,
+        "top1_top3_gap": top1_top3_gap,
+        "radar_size": radar_size,
+        "radar": ranked[:radar_size],
     }
     logic_data["python_auto_verdict"] = verdict
     return verdict
+
+
+def _confidence_tier(ranked: list) -> tuple:
+    """(tier, top1_top3_gap, radar_size) from the top1-top3 ability spread.
+
+    Advisory betting-radar width only; never feeds scoring or ranking."""
+    if len(ranked) >= 3:
+        gap = float(ranked[0]["ability_score"]) - float(ranked[2]["ability_score"])
+    else:
+        gap = 99.0
+    if gap < 2.0:
+        tier, radar_size = "tight", 5
+    elif gap < 5.0:
+        tier, radar_size = "medium", 4
+    else:
+        tier, radar_size = "clear", 4
+    return tier, round(gap, 2), radar_size
 
 
 def _draw_micro_bonus(horse: dict, race_context: dict, auto: dict) -> float:
@@ -526,6 +554,7 @@ def _render_verdict(verdict: dict, horses: dict, shadow_verdicts: dict | None = 
         *_top2_lines(verdict.get("top2", []), horses),
         "",
     ])
+    lines.extend(_radar_lines(verdict))
     shadow_watch = verdict.get("shadow_watch", [])
     if shadow_watch:
         lines.extend([
@@ -1199,6 +1228,31 @@ def _consistency_shadow_line(auto: dict) -> str:
 def _verdict_pick_line(auto: dict) -> list[str]:
     tags = _context_tags_display(auto)
     return [f"- **情境標記:** {tags}"] if tags else []
+
+
+_TIER_TEXT = {
+    "tight": "分數擠迫（頭三分差 {gap}）— 頭兩匹分野薄，建議圍捕：模型 Top {n} 同級睇待",
+    "medium": "中等分野（頭三分差 {gap}）— 常規：Top 2 主選、Top {n} 雷達參考",
+    "clear": "分野清晰（頭三分差 {gap}）— 頭兩匹實力較硬，Top {n} 雷達收窄",
+}
+
+
+def _radar_lines(verdict: dict) -> list[str]:
+    """Confidence-tiered betting radar block (advisory; ranking unchanged)."""
+    tier = verdict.get("confidence_tier")
+    if not tier:
+        return []
+    gap = verdict.get("top1_top3_gap", 0.0)
+    radar = verdict.get("radar", []) or []
+    radar_size = verdict.get("radar_size", len(radar))
+    tier_text = _TIER_TEXT.get(tier, _TIER_TEXT["medium"]).format(gap=gap, n=radar_size)
+    picks = "、".join(f"[{item['horse_number']}] {item['horse_name']}" for item in radar) or "—"
+    return [
+        f"**🛰️ 信心分層投注雷達 (Confidence Radar · Top {radar_size})**",
+        f"- **分層:** {tier_text}",
+        f"- **雷達名單:** {picks}",
+        "",
+    ]
 
 
 def _shadow_watch_summary(verdict: dict) -> str:
