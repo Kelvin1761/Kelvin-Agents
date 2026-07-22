@@ -63,6 +63,14 @@ def main(argv: list[str] | None = None) -> int:
                     archive_previous_day(yesterday.isoformat(), review_payload)
             if not args.skip_analysis:
                 analyse_next_day(tomorrow.isoformat())
+            # Sunday: emit the weekly validation review into today's folder.
+            # weekday() == 6 is Sunday; guard so a bad review never fails the run.
+            if today.weekday() == 6:
+                try:
+                    run_cli("weekly-review", "--date", today.isoformat())
+                    log("Weekly review written.")
+                except Exception as exc:  # noqa: BLE001
+                    log(f"Weekly review skipped: {exc}")
         except subprocess.CalledProcessError as exc:
             log(f"Command failed with exit code {exc.returncode}: {' '.join(exc.cmd)}")
             return exc.returncode or 1

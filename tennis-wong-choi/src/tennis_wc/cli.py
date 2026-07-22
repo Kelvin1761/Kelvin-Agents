@@ -344,6 +344,17 @@ def settle_props(args: argparse.Namespace) -> None:
     })
 
 
+def weekly_review(args: argparse.Namespace) -> None:
+    from tennis_wc.reports.weekly_review import generate_weekly_review, render_weekly_review
+
+    if getattr(args, "print", False):
+        print(render_weekly_review(args.date))
+        return
+    path = generate_weekly_review(args.date)
+    print(render_weekly_review(args.date))
+    print(f"\nwritten: {path}")
+
+
 def tier_roi(_: argparse.Namespace) -> None:
     _print_json(tier_roi_summary())
 
@@ -686,6 +697,11 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("tier-roi").set_defaults(func=tier_roi)
     sub.add_parser("combo-roi").set_defaults(func=combo_roi)
     sub.add_parser("settle-props").set_defaults(func=settle_props)
+
+    p = sub.add_parser("weekly-review")
+    p.add_argument("--date", required=True, help="As-of date; report lands in that date's analysis folder.")
+    p.add_argument("--print", action="store_true", help="Print only, do not write the file.")
+    p.set_defaults(func=weekly_review)
 
     p = sub.add_parser("calibration-report")
     p.add_argument("--min-samples", type=int, default=10)
