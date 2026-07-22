@@ -1,0 +1,6967 @@
+{
+ "report_date": "2026-07-17",
+ "overall": {
+  "races": 243,
+  "counts": {
+   "gold": 9,
+   "good_positional": 51,
+   "good_any2": 105,
+   "pass_any1": 198,
+   "champion": 57,
+   "winner_in_top3": 126,
+   "order_issue": 93
+  },
+  "rates": {
+   "gold": 0.037037037037037035,
+   "good_positional": 0.20987654320987653,
+   "good_any2": 0.43209876543209874,
+   "pass_any1": 0.8148148148148148,
+   "champion": 0.2345679012345679,
+   "winner_in_top3": 0.5185185185185185,
+   "order_issue": 0.38271604938271603
+  },
+  "hit_distribution": {
+   "0hit": 45,
+   "1hit": 93,
+   "2hit": 96,
+   "3hit": 9
+  },
+  "exclusive_labels": {
+   "Gold": 9,
+   "Good": 42,
+   "Pass": 54,
+   "1 Hit": 65,
+   "Miss": 73
+  },
+  "top3_precision": 0.4279835390946502,
+  "mrr": 0.42731033255724626
+ },
+ "cohort_table": [
+  {
+   "slice": "feature_coverage",
+   "cohort": "rich (<15% default)",
+   "races": 153,
+   "underpowered": false,
+   "good_positional_rate": 0.16339869281045752,
+   "good_any2_rate": 0.38562091503267976,
+   "winner_in_top3": 0.46405228758169936,
+   "top3_precision": 0.39433551198257083,
+   "miss_rate": 0.3333333333333333,
+   "delta_good_positional": -0.04647785039941901,
+   "delta_winner_in_top3": -0.05446623093681913,
+   "delta_top3_precision": -0.03364802711207937
+  },
+  {
+   "slice": "month",
+   "cohort": "2026-06",
+   "races": 61,
+   "underpowered": false,
+   "good_positional_rate": 0.14754098360655737,
+   "good_any2_rate": 0.36065573770491804,
+   "winner_in_top3": 0.47540983606557374,
+   "top3_precision": 0.3989071038251366,
+   "miss_rate": 0.3770491803278688,
+   "delta_good_positional": -0.06233555960331916,
+   "delta_winner_in_top3": -0.04310868245294475,
+   "delta_top3_precision": -0.02907643526951359
+  },
+  {
+   "slice": "month",
+   "cohort": "2026-05",
+   "races": 80,
+   "underpowered": false,
+   "good_positional_rate": 0.2125,
+   "good_any2_rate": 0.3875,
+   "winner_in_top3": 0.4875,
+   "top3_precision": 0.4,
+   "miss_rate": 0.3125,
+   "delta_good_positional": 0.002623456790123463,
+   "delta_winner_in_top3": -0.0310185185185185,
+   "delta_top3_precision": -0.02798353909465018
+  },
+  {
+   "slice": "field_size",
+   "cohort": "12+",
+   "races": 215,
+   "underpowered": false,
+   "good_positional_rate": 0.2,
+   "good_any2_rate": 0.4325581395348837,
+   "winner_in_top3": 0.4930232558139535,
+   "top3_precision": 0.42170542635658914,
+   "miss_rate": 0.31627906976744186,
+   "delta_good_positional": -0.00987654320987652,
+   "delta_winner_in_top3": -0.02549526270456498,
+   "delta_top3_precision": -0.006278112738061059
+  },
+  {
+   "slice": "venue",
+   "cohort": "HappyValley",
+   "races": 81,
+   "underpowered": false,
+   "good_positional_rate": 0.19753086419753085,
+   "good_any2_rate": 0.3950617283950617,
+   "winner_in_top3": 0.5432098765432098,
+   "top3_precision": 0.42386831275720166,
+   "miss_rate": 0.2839506172839506,
+   "delta_good_positional": -0.012345679012345678,
+   "delta_winner_in_top3": 0.024691358024691357,
+   "delta_top3_precision": -0.004115226337448541
+  },
+  {
+   "slice": "score_gap",
+   "cohort": "tight (top1-top3 < 2)",
+   "races": 98,
+   "underpowered": false,
+   "good_positional_rate": 0.16326530612244897,
+   "good_any2_rate": 0.42857142857142855,
+   "winner_in_top3": 0.46938775510204084,
+   "top3_precision": 0.42517006802721086,
+   "miss_rate": 0.35714285714285715,
+   "delta_good_positional": -0.046611237087427565,
+   "delta_winner_in_top3": -0.04913076341647765,
+   "delta_top3_precision": -0.0028134710674393437
+  },
+  {
+   "slice": "class",
+   "cohort": "Other",
+   "races": 147,
+   "underpowered": false,
+   "good_positional_rate": 0.23129251700680273,
+   "good_any2_rate": 0.4217687074829932,
+   "winner_in_top3": 0.48299319727891155,
+   "top3_precision": 0.42630385487528344,
+   "miss_rate": 0.3129251700680272,
+   "delta_good_positional": 0.021415973796926197,
+   "delta_winner_in_top3": -0.035525321239606944,
+   "delta_top3_precision": -0.0016796842193667616
+  },
+  {
+   "slice": "venue",
+   "cohort": "ShaTin",
+   "races": 162,
+   "underpowered": false,
+   "good_positional_rate": 0.21604938271604937,
+   "good_any2_rate": 0.4506172839506173,
+   "winner_in_top3": 0.5061728395061729,
+   "top3_precision": 0.43004115226337447,
+   "miss_rate": 0.30864197530864196,
+   "delta_good_positional": 0.006172839506172839,
+   "delta_winner_in_top3": -0.012345679012345623,
+   "delta_top3_precision": 0.0020576131687242705
+  },
+  {
+   "slice": "score_gap",
+   "cohort": "medium (2-5)",
+   "races": 125,
+   "underpowered": false,
+   "good_positional_rate": 0.24,
+   "good_any2_rate": 0.432,
+   "winner_in_top3": 0.552,
+   "top3_precision": 0.432,
+   "miss_rate": 0.264,
+   "delta_good_positional": 0.03012345679012346,
+   "delta_winner_in_top3": 0.033481481481481556,
+   "delta_top3_precision": 0.004016460905349795
+  },
+  {
+   "slice": "month",
+   "cohort": "2026-07",
+   "races": 42,
+   "underpowered": false,
+   "good_positional_rate": 0.14285714285714285,
+   "good_any2_rate": 0.5476190476190477,
+   "winner_in_top3": 0.5476190476190477,
+   "top3_precision": 0.4523809523809524,
+   "miss_rate": 0.2619047619047619,
+   "delta_good_positional": -0.06701940035273368,
+   "delta_winner_in_top3": 0.029100529100529182,
+   "delta_top3_precision": 0.024397413286302183
+  },
+  {
+   "slice": "class",
+   "cohort": "Class4",
+   "races": 47,
+   "underpowered": false,
+   "good_positional_rate": 0.2127659574468085,
+   "good_any2_rate": 0.44680851063829785,
+   "winner_in_top3": 0.5957446808510638,
+   "top3_precision": 0.45390070921985815,
+   "miss_rate": 0.2978723404255319,
+   "delta_good_positional": 0.002889414236931981,
+   "delta_winner_in_top3": 0.07722616233254531,
+   "delta_top3_precision": 0.025917170125207944
+  },
+  {
+   "slice": "month",
+   "cohort": "2026-04",
+   "races": 60,
+   "underpowered": false,
+   "good_positional_rate": 0.31666666666666665,
+   "good_any2_rate": 0.48333333333333334,
+   "winner_in_top3": 0.5833333333333334,
+   "top3_precision": 0.4777777777777778,
+   "miss_rate": 0.23333333333333334,
+   "delta_good_positional": 0.10679012345679012,
+   "delta_winner_in_top3": 0.06481481481481488,
+   "delta_top3_precision": 0.0497942386831276
+  },
+  {
+   "slice": "feature_coverage",
+   "cohort": "medium (15-35% default)",
+   "races": 80,
+   "underpowered": false,
+   "good_positional_rate": 0.2875,
+   "good_any2_rate": 0.5375,
+   "winner_in_top3": 0.6,
+   "top3_precision": 0.49166666666666664,
+   "miss_rate": 0.2375,
+   "delta_good_positional": 0.07762345679012345,
+   "delta_winner_in_top3": 0.08148148148148149,
+   "delta_top3_precision": 0.06368312757201644
+  },
+  {
+   "slice": "class",
+   "cohort": "Group/Listed",
+   "races": 5,
+   "underpowered": true,
+   "good_positional_rate": 0.0,
+   "good_any2_rate": 0.0,
+   "winner_in_top3": 0.6,
+   "top3_precision": 0.2,
+   "miss_rate": 0.4,
+   "delta_good_positional": -0.20987654320987653,
+   "delta_winner_in_top3": 0.08148148148148149,
+   "delta_top3_precision": -0.2279835390946502
+  },
+  {
+   "slice": "class",
+   "cohort": "Class2",
+   "races": 4,
+   "underpowered": true,
+   "good_positional_rate": 0.0,
+   "good_any2_rate": 0.25,
+   "winner_in_top3": 0.5,
+   "top3_precision": 0.25,
+   "miss_rate": 0.5,
+   "delta_good_positional": -0.20987654320987653,
+   "delta_winner_in_top3": -0.01851851851851849,
+   "delta_top3_precision": -0.1779835390946502
+  },
+  {
+   "slice": "class",
+   "cohort": "Class3",
+   "races": 22,
+   "underpowered": true,
+   "good_positional_rate": 0.13636363636363635,
+   "good_any2_rate": 0.45454545454545453,
+   "winner_in_top3": 0.4090909090909091,
+   "top3_precision": 0.4090909090909091,
+   "miss_rate": 0.2727272727272727,
+   "delta_good_positional": -0.07351290684624018,
+   "delta_winner_in_top3": -0.10942760942760937,
+   "delta_top3_precision": -0.018892630003741084
+  },
+  {
+   "slice": "score_gap",
+   "cohort": "clear (>=5)",
+   "races": 20,
+   "underpowered": true,
+   "good_positional_rate": 0.25,
+   "good_any2_rate": 0.45,
+   "winner_in_top3": 0.55,
+   "top3_precision": 0.4166666666666667,
+   "miss_rate": 0.25,
+   "delta_good_positional": 0.04012345679012347,
+   "delta_winner_in_top3": 0.031481481481481555,
+   "delta_top3_precision": -0.011316872427983515
+  },
+  {
+   "slice": "feature_coverage",
+   "cohort": "thin (>=35% default)",
+   "races": 10,
+   "underpowered": true,
+   "good_positional_rate": 0.3,
+   "good_any2_rate": 0.3,
+   "winner_in_top3": 0.7,
+   "top3_precision": 0.43333333333333335,
+   "miss_rate": 0.3,
+   "delta_good_positional": 0.09012345679012346,
+   "delta_winner_in_top3": 0.18148148148148147,
+   "delta_top3_precision": 0.005349794238683148
+  },
+  {
+   "slice": "class",
+   "cohort": "Class5",
+   "races": 13,
+   "underpowered": true,
+   "good_positional_rate": 0.15384615384615385,
+   "good_any2_rate": 0.5384615384615384,
+   "winner_in_top3": 0.6923076923076923,
+   "top3_precision": 0.46153846153846156,
+   "miss_rate": 0.15384615384615385,
+   "delta_good_positional": -0.05603038936372268,
+   "delta_winner_in_top3": 0.1737891737891738,
+   "delta_top3_precision": 0.033554922443811364
+  },
+  {
+   "slice": "field_size",
+   "cohort": "<=8",
+   "races": 7,
+   "underpowered": true,
+   "good_positional_rate": 0.2857142857142857,
+   "good_any2_rate": 0.42857142857142855,
+   "winner_in_top3": 1.0,
+   "top3_precision": 0.47619047619047616,
+   "miss_rate": 0.0,
+   "delta_good_positional": 0.07583774250440917,
+   "delta_winner_in_top3": 0.4814814814814815,
+   "delta_top3_precision": 0.048206937095825964
+  },
+  {
+   "slice": "field_size",
+   "cohort": "9-11",
+   "races": 21,
+   "underpowered": true,
+   "good_positional_rate": 0.2857142857142857,
+   "good_any2_rate": 0.42857142857142855,
+   "winner_in_top3": 0.6190476190476191,
+   "top3_precision": 0.47619047619047616,
+   "miss_rate": 0.23809523809523808,
+   "delta_good_positional": 0.07583774250440917,
+   "delta_winner_in_top3": 0.10052910052910058,
+   "delta_top3_precision": 0.048206937095825964
+  },
+  {
+   "slice": "class",
+   "cohort": "Class1",
+   "races": 2,
+   "underpowered": true,
+   "good_positional_rate": 0.0,
+   "good_any2_rate": 0.5,
+   "winner_in_top3": 0.5,
+   "top3_precision": 0.5,
+   "miss_rate": 0.5,
+   "delta_good_positional": -0.20987654320987653,
+   "delta_winner_in_top3": -0.01851851851851849,
+   "delta_top3_precision": 0.0720164609053498
+  },
+  {
+   "slice": "class",
+   "cohort": "Griffin/Maiden",
+   "races": 3,
+   "underpowered": true,
+   "good_positional_rate": 0.6666666666666666,
+   "good_any2_rate": 1.0,
+   "winner_in_top3": 1.0,
+   "top3_precision": 0.6666666666666666,
+   "miss_rate": 0.0,
+   "delta_good_positional": 0.4567901234567901,
+   "delta_winner_in_top3": 0.4814814814814815,
+   "delta_top3_precision": 0.23868312757201643
+  }
+ ],
+ "attribution": {
+  "baseline": {
+   "ALL": {
+    "races": 243,
+    "counts": {
+     "gold": 10,
+     "good_positional": 51,
+     "good_any2": 103,
+     "pass_any1": 200,
+     "champion": 57,
+     "winner_in_top3": 125,
+     "order_issue": 87
+    },
+    "rates": {
+     "gold": 0.0411522633744856,
+     "good_positional": 0.20987654320987653,
+     "good_any2": 0.42386831275720166,
+     "pass_any1": 0.823045267489712,
+     "champion": 0.2345679012345679,
+     "winner_in_top3": 0.51440329218107,
+     "order_issue": 0.35802469135802467
+    },
+    "hit_distribution": {
+     "0hit": 43,
+     "1hit": 97,
+     "2hit": 93,
+     "3hit": 10
+    },
+    "exclusive_labels": {
+     "Gold": 10,
+     "Good": 41,
+     "Pass": 52,
+     "1 Hit": 72,
+     "Miss": 68
+    },
+    "top3_precision": 0.42935528120713307,
+    "mrr": 0.43070717576890444
+   },
+   "HappyValley": {
+    "races": 81,
+    "counts": {
+     "gold": 5,
+     "good_positional": 16,
+     "good_any2": 34,
+     "pass_any1": 68,
+     "champion": 22,
+     "winner_in_top3": 46,
+     "order_issue": 25
+    },
+    "rates": {
+     "gold": 0.06172839506172839,
+     "good_positional": 0.19753086419753085,
+     "good_any2": 0.41975308641975306,
+     "pass_any1": 0.8395061728395061,
+     "champion": 0.2716049382716049,
+     "winner_in_top3": 0.5679012345679012,
+     "order_issue": 0.30864197530864196
+    },
+    "hit_distribution": {
+     "0hit": 13,
+     "1hit": 34,
+     "2hit": 29,
+     "3hit": 5
+    },
+    "exclusive_labels": {
+     "Gold": 5,
+     "Good": 11,
+     "Pass": 18,
+     "1 Hit": 26,
+     "Miss": 21
+    },
+    "top3_precision": 0.4403292181069959,
+    "mrr": 0.4615391124650384
+   },
+   "ShaTin": {
+    "races": 162,
+    "counts": {
+     "gold": 5,
+     "good_positional": 35,
+     "good_any2": 69,
+     "pass_any1": 132,
+     "champion": 35,
+     "winner_in_top3": 79,
+     "order_issue": 62
+    },
+    "rates": {
+     "gold": 0.030864197530864196,
+     "good_positional": 0.21604938271604937,
+     "good_any2": 0.42592592592592593,
+     "pass_any1": 0.8148148148148148,
+     "champion": 0.21604938271604937,
+     "winner_in_top3": 0.4876543209876543,
+     "order_issue": 0.38271604938271603
+    },
+    "hit_distribution": {
+     "0hit": 30,
+     "1hit": 63,
+     "2hit": 64,
+     "3hit": 5
+    },
+    "exclusive_labels": {
+     "Gold": 5,
+     "Good": 30,
+     "Pass": 34,
+     "1 Hit": 46,
+     "Miss": 47
+    },
+    "top3_precision": 0.42386831275720166,
+    "mrr": 0.4152912074208374
+   },
+   "field 12+": {
+    "races": 215,
+    "counts": {
+     "gold": 7,
+     "good_positional": 43,
+     "good_any2": 92,
+     "pass_any1": 175,
+     "champion": 46,
+     "winner_in_top3": 106,
+     "order_issue": 81
+    },
+    "rates": {
+     "gold": 0.03255813953488372,
+     "good_positional": 0.2,
+     "good_any2": 0.42790697674418604,
+     "pass_any1": 0.813953488372093,
+     "champion": 0.21395348837209302,
+     "winner_in_top3": 0.4930232558139535,
+     "order_issue": 0.3767441860465116
+    },
+    "hit_distribution": {
+     "0hit": 40,
+     "1hit": 83,
+     "2hit": 85,
+     "3hit": 7
+    },
+    "exclusive_labels": {
+     "Gold": 7,
+     "Good": 36,
+     "Pass": 49,
+     "1 Hit": 61,
+     "Miss": 62
+    },
+    "top3_precision": 0.4248062015503876,
+    "mrr": 0.41245265070846504
+   },
+   "tight gap": {
+    "races": 98,
+    "counts": {
+     "gold": 3,
+     "good_positional": 17,
+     "good_any2": 39,
+     "pass_any1": 78,
+     "champion": 15,
+     "winner_in_top3": 43,
+     "order_issue": 34
+    },
+    "rates": {
+     "gold": 0.030612244897959183,
+     "good_positional": 0.17346938775510204,
+     "good_any2": 0.3979591836734694,
+     "pass_any1": 0.7959183673469388,
+     "champion": 0.15306122448979592,
+     "winner_in_top3": 0.4387755102040816,
+     "order_issue": 0.3469387755102041
+    },
+    "hit_distribution": {
+     "0hit": 20,
+     "1hit": 39,
+     "2hit": 36,
+     "3hit": 3
+    },
+    "exclusive_labels": {
+     "Gold": 3,
+     "Good": 14,
+     "Pass": 22,
+     "1 Hit": 31,
+     "Miss": 28
+    },
+    "top3_precision": 0.40816326530612246,
+    "mrr": 0.3654571618857334
+   }
+  },
+  "dimensions": {
+   "stability": {
+    "drop": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 5,
+       "good_positional": 42,
+       "good_any2": 92,
+       "pass_any1": 206,
+       "champion": 55,
+       "winner_in_top3": 123,
+       "order_issue": 88
+      },
+      "rates": {
+       "gold": 0.0205761316872428,
+       "good_positional": 0.1728395061728395,
+       "good_any2": 0.3786008230452675,
+       "pass_any1": 0.8477366255144033,
+       "champion": 0.22633744855967078,
+       "winner_in_top3": 0.5061728395061729,
+       "order_issue": 0.36213991769547327
+      },
+      "hit_distribution": {
+       "0hit": 37,
+       "1hit": 114,
+       "2hit": 87,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 37,
+       "Pass": 50,
+       "1 Hit": 80,
+       "Miss": 71
+      },
+      "top3_precision": 0.4156378600823045,
+      "mrr": 0.4226171176788463
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 3,
+       "good_positional": 18,
+       "good_any2": 33,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 22
+      },
+      "rates": {
+       "gold": 0.037037037037037035,
+       "good_positional": 0.2222222222222222,
+       "good_any2": 0.4074074074074074,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.2716049382716049
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 35,
+       "2hit": 30,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 15,
+       "Pass": 15,
+       "1 Hit": 27,
+       "Miss": 21
+      },
+      "top3_precision": 0.4279835390946502,
+      "mrr": 0.4704162435643919
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 2,
+       "good_positional": 24,
+       "good_any2": 59,
+       "pass_any1": 138,
+       "champion": 33,
+       "winner_in_top3": 77,
+       "order_issue": 66
+      },
+      "rates": {
+       "gold": 0.012345679012345678,
+       "good_positional": 0.14814814814814814,
+       "good_any2": 0.36419753086419754,
+       "pass_any1": 0.8518518518518519,
+       "champion": 0.2037037037037037,
+       "winner_in_top3": 0.47530864197530864,
+       "order_issue": 0.4074074074074074
+      },
+      "hit_distribution": {
+       "0hit": 24,
+       "1hit": 79,
+       "2hit": 57,
+       "3hit": 2
+      },
+      "exclusive_labels": {
+       "Gold": 2,
+       "Good": 22,
+       "Pass": 35,
+       "1 Hit": 53,
+       "Miss": 50
+      },
+      "top3_precision": 0.4094650205761317,
+      "mrr": 0.3987175547360737
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 4,
+       "good_positional": 35,
+       "good_any2": 81,
+       "pass_any1": 180,
+       "champion": 44,
+       "winner_in_top3": 104,
+       "order_issue": 80
+      },
+      "rates": {
+       "gold": 0.018604651162790697,
+       "good_positional": 0.16279069767441862,
+       "good_any2": 0.3767441860465116,
+       "pass_any1": 0.8372093023255814,
+       "champion": 0.20465116279069767,
+       "winner_in_top3": 0.48372093023255813,
+       "order_issue": 0.37209302325581395
+      },
+      "hit_distribution": {
+       "0hit": 35,
+       "1hit": 99,
+       "2hit": 77,
+       "3hit": 4
+      },
+      "exclusive_labels": {
+       "Gold": 4,
+       "Good": 31,
+       "Pass": 46,
+       "1 Hit": 69,
+       "Miss": 65
+      },
+      "top3_precision": 0.4108527131782946,
+      "mrr": 0.4028900298667744
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 2,
+       "good_positional": 11,
+       "good_any2": 36,
+       "pass_any1": 80,
+       "champion": 15,
+       "winner_in_top3": 42,
+       "order_issue": 40
+      },
+      "rates": {
+       "gold": 0.02040816326530612,
+       "good_positional": 0.11224489795918367,
+       "good_any2": 0.3673469387755102,
+       "pass_any1": 0.8163265306122449,
+       "champion": 0.15306122448979592,
+       "winner_in_top3": 0.42857142857142855,
+       "order_issue": 0.40816326530612246
+      },
+      "hit_distribution": {
+       "0hit": 18,
+       "1hit": 44,
+       "2hit": 34,
+       "3hit": 2
+      },
+      "exclusive_labels": {
+       "Gold": 2,
+       "Good": 9,
+       "Pass": 25,
+       "1 Hit": 31,
+       "Miss": 31
+      },
+      "top3_precision": 0.4013605442176871,
+      "mrr": 0.3586627941219778
+     }
+    },
+    "-20%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 49,
+       "good_any2": 99,
+       "pass_any1": 200,
+       "champion": 55,
+       "winner_in_top3": 125,
+       "order_issue": 87
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.20164609053497942,
+       "good_any2": 0.4074074074074074,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.22633744855967078,
+       "winner_in_top3": 0.51440329218107,
+       "order_issue": 0.35802469135802467
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 101,
+       "2hit": 89,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 39,
+       "Pass": 50,
+       "1 Hit": 74,
+       "Miss": 70
+      },
+      "top3_precision": 0.42386831275720166,
+      "mrr": 0.42583095916429275
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 21,
+       "winner_in_top3": 46,
+       "order_issue": 24
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.25925925925925924,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.2962962962962963
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 18,
+       "1 Hit": 26,
+       "Miss": 21
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.4566498316498316
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 33,
+       "good_any2": 65,
+       "pass_any1": 132,
+       "champion": 34,
+       "winner_in_top3": 79,
+       "order_issue": 63
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.2037037037037037,
+       "good_any2": 0.4012345679012346,
+       "pass_any1": 0.8148148148148148,
+       "champion": 0.20987654320987653,
+       "winner_in_top3": 0.4876543209876543,
+       "order_issue": 0.3888888888888889
+      },
+      "hit_distribution": {
+       "0hit": 30,
+       "1hit": 67,
+       "2hit": 60,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 28,
+       "Pass": 32,
+       "1 Hit": 48,
+       "Miss": 49
+      },
+      "top3_precision": 0.4156378600823045,
+      "mrr": 0.41042152292152334
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 41,
+       "good_any2": 88,
+       "pass_any1": 175,
+       "champion": 44,
+       "winner_in_top3": 106,
+       "order_issue": 79
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.19069767441860466,
+       "good_any2": 0.40930232558139534,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.20465116279069767,
+       "winner_in_top3": 0.4930232558139535,
+       "order_issue": 0.3674418604651163
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 87,
+       "2hit": 81,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 34,
+       "Pass": 47,
+       "1 Hit": 63,
+       "Miss": 64
+      },
+      "top3_precision": 0.4186046511627907,
+      "mrr": 0.40692293494619114
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 15,
+       "good_any2": 40,
+       "pass_any1": 78,
+       "champion": 13,
+       "winner_in_top3": 43,
+       "order_issue": 37
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.15306122448979592,
+       "good_any2": 0.40816326530612246,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.1326530612244898,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.37755102040816324
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 38,
+       "2hit": 37,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 12,
+       "Pass": 25,
+       "1 Hit": 28,
+       "Miss": 30
+      },
+      "top3_precision": 0.41156462585034015,
+      "mrr": 0.3538111831479178
+     }
+    },
+    "-10%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 51,
+       "good_any2": 101,
+       "pass_any1": 200,
+       "champion": 57,
+       "winner_in_top3": 125,
+       "order_issue": 88
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.4156378600823045,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.2345679012345679,
+       "winner_in_top3": 0.51440329218107,
+       "order_issue": 0.36213991769547327
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 99,
+       "2hit": 91,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 41,
+       "Pass": 50,
+       "1 Hit": 72,
+       "Miss": 70
+      },
+      "top3_precision": 0.42661179698216734,
+      "mrr": 0.43110726721837855
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 33,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 25
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.4074074074074074,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.30864197530864196
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 35,
+       "2hit": 28,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 17,
+       "1 Hit": 27,
+       "Miss": 21
+      },
+      "top3_precision": 0.43621399176954734,
+      "mrr": 0.46175957101883025
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 35,
+       "good_any2": 68,
+       "pass_any1": 132,
+       "champion": 35,
+       "winner_in_top3": 79,
+       "order_issue": 63
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.21604938271604937,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8148148148148148,
+       "champion": 0.21604938271604937,
+       "winner_in_top3": 0.4876543209876543,
+       "order_issue": 0.3888888888888889
+      },
+      "hit_distribution": {
+       "0hit": 30,
+       "1hit": 64,
+       "2hit": 63,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 30,
+       "Pass": 33,
+       "1 Hit": 45,
+       "Miss": 49
+      },
+      "top3_precision": 0.4218106995884774,
+      "mrr": 0.4157811153181527
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 43,
+       "good_any2": 90,
+       "pass_any1": 175,
+       "champion": 46,
+       "winner_in_top3": 106,
+       "order_issue": 80
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.2,
+       "good_any2": 0.4186046511627907,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.21395348837209302,
+       "winner_in_top3": 0.4930232558139535,
+       "order_issue": 0.37209302325581395
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 85,
+       "2hit": 83,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 36,
+       "Pass": 47,
+       "1 Hit": 61,
+       "Miss": 64
+      },
+      "top3_precision": 0.42170542635658914,
+      "mrr": 0.41282179061248864
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 17,
+       "good_any2": 39,
+       "pass_any1": 78,
+       "champion": 15,
+       "winner_in_top3": 43,
+       "order_issue": 36
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.17346938775510204,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.15306122448979592,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.3673469387755102
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 39,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 14,
+       "Pass": 22,
+       "1 Hit": 29,
+       "Miss": 30
+      },
+      "top3_precision": 0.40816326530612246,
+      "mrr": 0.365202059844917
+     }
+    },
+    "+10%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 11,
+       "good_positional": 51,
+       "good_any2": 103,
+       "pass_any1": 200,
+       "champion": 57,
+       "winner_in_top3": 127,
+       "order_issue": 90
+      },
+      "rates": {
+       "gold": 0.04526748971193416,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.42386831275720166,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.2345679012345679,
+       "winner_in_top3": 0.522633744855967,
+       "order_issue": 0.37037037037037035
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 97,
+       "2hit": 92,
+       "3hit": 11
+      },
+      "exclusive_labels": {
+       "Gold": 11,
+       "Good": 40,
+       "Pass": 52,
+       "1 Hit": 71,
+       "Miss": 69
+      },
+      "top3_precision": 0.43072702331961593,
+      "mrr": 0.43092614975331045
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 17,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 26
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.32098765432098764
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 12,
+       "Pass": 17,
+       "1 Hit": 25,
+       "Miss": 22
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.45901608679386463
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 6,
+       "good_positional": 34,
+       "good_any2": 69,
+       "pass_any1": 132,
+       "champion": 35,
+       "winner_in_top3": 81,
+       "order_issue": 64
+      },
+      "rates": {
+       "gold": 0.037037037037037035,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.42592592592592593,
+       "pass_any1": 0.8148148148148148,
+       "champion": 0.21604938271604937,
+       "winner_in_top3": 0.5,
+       "order_issue": 0.3950617283950617
+      },
+      "hit_distribution": {
+       "0hit": 30,
+       "1hit": 63,
+       "2hit": 63,
+       "3hit": 6
+      },
+      "exclusive_labels": {
+       "Gold": 6,
+       "Good": 28,
+       "Pass": 35,
+       "1 Hit": 46,
+       "Miss": 47
+      },
+      "top3_precision": 0.42592592592592593,
+      "mrr": 0.41688118123303347
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 8,
+       "good_positional": 43,
+       "good_any2": 92,
+       "pass_any1": 175,
+       "champion": 46,
+       "winner_in_top3": 108,
+       "order_issue": 83
+      },
+      "rates": {
+       "gold": 0.037209302325581395,
+       "good_positional": 0.2,
+       "good_any2": 0.42790697674418604,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.21395348837209302,
+       "winner_in_top3": 0.5023255813953489,
+       "order_issue": 0.386046511627907
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 83,
+       "2hit": 84,
+       "3hit": 8
+      },
+      "exclusive_labels": {
+       "Gold": 8,
+       "Good": 35,
+       "Pass": 49,
+       "1 Hit": 60,
+       "Miss": 63
+      },
+      "top3_precision": 0.4263565891472868,
+      "mrr": 0.41281088420623335
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 16,
+       "good_any2": 40,
+       "pass_any1": 78,
+       "champion": 15,
+       "winner_in_top3": 44,
+       "order_issue": 38
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.16326530612244897,
+       "good_any2": 0.40816326530612246,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.15306122448979592,
+       "winner_in_top3": 0.4489795918367347,
+       "order_issue": 0.3877551020408163
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 38,
+       "2hit": 37,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 13,
+       "Pass": 24,
+       "1 Hit": 29,
+       "Miss": 29
+      },
+      "top3_precision": 0.41156462585034015,
+      "mrr": 0.36321388362204693
+     }
+    },
+    "+20%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 12,
+       "good_positional": 51,
+       "good_any2": 103,
+       "pass_any1": 201,
+       "champion": 55,
+       "winner_in_top3": 129,
+       "order_issue": 92
+      },
+      "rates": {
+       "gold": 0.04938271604938271,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.42386831275720166,
+       "pass_any1": 0.8271604938271605,
+       "champion": 0.22633744855967078,
+       "winner_in_top3": 0.5308641975308642,
+       "order_issue": 0.3786008230452675
+      },
+      "hit_distribution": {
+       "0hit": 42,
+       "1hit": 98,
+       "2hit": 91,
+       "3hit": 12
+      },
+      "exclusive_labels": {
+       "Gold": 12,
+       "Good": 39,
+       "Pass": 52,
+       "1 Hit": 71,
+       "Miss": 69
+      },
+      "top3_precision": 0.4334705075445816,
+      "mrr": 0.4275098586826983
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 17,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 27
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.3333333333333333
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 12,
+       "Pass": 17,
+       "1 Hit": 24,
+       "Miss": 23
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.459603976270643
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 7,
+       "good_positional": 34,
+       "good_any2": 69,
+       "pass_any1": 133,
+       "champion": 33,
+       "winner_in_top3": 83,
+       "order_issue": 65
+      },
+      "rates": {
+       "gold": 0.043209876543209874,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.42592592592592593,
+       "pass_any1": 0.8209876543209876,
+       "champion": 0.2037037037037037,
+       "winner_in_top3": 0.5123456790123457,
+       "order_issue": 0.4012345679012346
+      },
+      "hit_distribution": {
+       "0hit": 29,
+       "1hit": 64,
+       "2hit": 62,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 27,
+       "Pass": 35,
+       "1 Hit": 47,
+       "Miss": 46
+      },
+      "top3_precision": 0.43004115226337447,
+      "mrr": 0.41146279988872614
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 9,
+       "good_positional": 43,
+       "good_any2": 92,
+       "pass_any1": 177,
+       "champion": 44,
+       "winner_in_top3": 110,
+       "order_issue": 85
+      },
+      "rates": {
+       "gold": 0.04186046511627907,
+       "good_positional": 0.2,
+       "good_any2": 0.42790697674418604,
+       "pass_any1": 0.8232558139534883,
+       "champion": 0.20465116279069767,
+       "winner_in_top3": 0.5116279069767442,
+       "order_issue": 0.3953488372093023
+      },
+      "hit_distribution": {
+       "0hit": 38,
+       "1hit": 85,
+       "2hit": 83,
+       "3hit": 9
+      },
+      "exclusive_labels": {
+       "Gold": 9,
+       "Good": 34,
+       "Pass": 49,
+       "1 Hit": 60,
+       "Miss": 63
+      },
+      "top3_precision": 0.4310077519379845,
+      "mrr": 0.40894968081014627
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 16,
+       "good_any2": 40,
+       "pass_any1": 79,
+       "champion": 13,
+       "winner_in_top3": 45,
+       "order_issue": 40
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.16326530612244897,
+       "good_any2": 0.40816326530612246,
+       "pass_any1": 0.8061224489795918,
+       "champion": 0.1326530612244898,
+       "winner_in_top3": 0.45918367346938777,
+       "order_issue": 0.40816326530612246
+      },
+      "hit_distribution": {
+       "0hit": 19,
+       "1hit": 39,
+       "2hit": 37,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 13,
+       "Pass": 24,
+       "1 Hit": 28,
+       "Miss": 30
+      },
+      "top3_precision": 0.41496598639455784,
+      "mrr": 0.3550384705996951
+     }
+    }
+   },
+   "sectional": {
+    "drop": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 48,
+       "good_any2": 100,
+       "pass_any1": 203,
+       "champion": 52,
+       "winner_in_top3": 123,
+       "order_issue": 98
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.411522633744856,
+       "pass_any1": 0.8353909465020576,
+       "champion": 0.2139917695473251,
+       "winner_in_top3": 0.5061728395061729,
+       "order_issue": 0.40329218106995884
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 103,
+       "2hit": 90,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 38,
+       "Pass": 52,
+       "1 Hit": 76,
+       "Miss": 67
+      },
+      "top3_precision": 0.42935528120713307,
+      "mrr": 0.41549379975305906
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 4,
+       "good_positional": 17,
+       "good_any2": 32,
+       "pass_any1": 68,
+       "champion": 19,
+       "winner_in_top3": 44,
+       "order_issue": 27
+      },
+      "rates": {
+       "gold": 0.04938271604938271,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.3950617283950617,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2345679012345679,
+       "winner_in_top3": 0.5432098765432098,
+       "order_issue": 0.3333333333333333
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 36,
+       "2hit": 28,
+       "3hit": 4
+      },
+      "exclusive_labels": {
+       "Gold": 4,
+       "Good": 13,
+       "Pass": 15,
+       "1 Hit": 27,
+       "Miss": 22
+      },
+      "top3_precision": 0.4279835390946502,
+      "mrr": 0.43625986496356867
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 6,
+       "good_positional": 31,
+       "good_any2": 68,
+       "pass_any1": 135,
+       "champion": 33,
+       "winner_in_top3": 79,
+       "order_issue": 71
+      },
+      "rates": {
+       "gold": 0.037037037037037035,
+       "good_positional": 0.19135802469135801,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8333333333333334,
+       "champion": 0.2037037037037037,
+       "winner_in_top3": 0.4876543209876543,
+       "order_issue": 0.4382716049382716
+      },
+      "hit_distribution": {
+       "0hit": 27,
+       "1hit": 67,
+       "2hit": 62,
+       "3hit": 6
+      },
+      "exclusive_labels": {
+       "Gold": 6,
+       "Good": 25,
+       "Pass": 37,
+       "1 Hit": 49,
+       "Miss": 45
+      },
+      "top3_precision": 0.43004115226337447,
+      "mrr": 0.40511076714780475
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 8,
+       "good_positional": 41,
+       "good_any2": 90,
+       "pass_any1": 177,
+       "champion": 43,
+       "winner_in_top3": 103,
+       "order_issue": 92
+      },
+      "rates": {
+       "gold": 0.037209302325581395,
+       "good_positional": 0.19069767441860466,
+       "good_any2": 0.4186046511627907,
+       "pass_any1": 0.8232558139534883,
+       "champion": 0.2,
+       "winner_in_top3": 0.4790697674418605,
+       "order_issue": 0.42790697674418604
+      },
+      "hit_distribution": {
+       "0hit": 38,
+       "1hit": 87,
+       "2hit": 82,
+       "3hit": 8
+      },
+      "exclusive_labels": {
+       "Gold": 8,
+       "Good": 33,
+       "Pass": 49,
+       "1 Hit": 62,
+       "Miss": 63
+      },
+      "top3_precision": 0.4263565891472868,
+      "mrr": 0.398185277255045
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 11,
+       "good_any2": 37,
+       "pass_any1": 79,
+       "champion": 10,
+       "winner_in_top3": 42,
+       "order_issue": 40
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.11224489795918367,
+       "good_any2": 0.37755102040816324,
+       "pass_any1": 0.8061224489795918,
+       "champion": 0.10204081632653061,
+       "winner_in_top3": 0.42857142857142855,
+       "order_issue": 0.40816326530612246
+      },
+      "hit_distribution": {
+       "0hit": 19,
+       "1hit": 42,
+       "2hit": 34,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 8,
+       "Pass": 26,
+       "1 Hit": 37,
+       "Miss": 24
+      },
+      "top3_precision": 0.40476190476190477,
+      "mrr": 0.33471913573954387
+     }
+    },
+    "-20%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 47,
+       "good_any2": 104,
+       "pass_any1": 200,
+       "champion": 57,
+       "winner_in_top3": 126,
+       "order_issue": 90
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.1934156378600823,
+       "good_any2": 0.4279835390946502,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.2345679012345679,
+       "winner_in_top3": 0.5185185185185185,
+       "order_issue": 0.37037037037037035
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 96,
+       "2hit": 94,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 37,
+       "Pass": 57,
+       "1 Hit": 71,
+       "Miss": 68
+      },
+      "top3_precision": 0.43072702331961593,
+      "mrr": 0.43109910208675645
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 15,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 21,
+       "winner_in_top3": 46,
+       "order_issue": 25
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.18518518518518517,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.25925925925925924,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.30864197530864196
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 10,
+       "Pass": 19,
+       "1 Hit": 26,
+       "Miss": 21
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.45575819927671785
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 32,
+       "good_any2": 70,
+       "pass_any1": 132,
+       "champion": 36,
+       "winner_in_top3": 80,
+       "order_issue": 65
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.43209876543209874,
+       "pass_any1": 0.8148148148148148,
+       "champion": 0.2222222222222222,
+       "winner_in_top3": 0.49382716049382713,
+       "order_issue": 0.4012345679012346
+      },
+      "hit_distribution": {
+       "0hit": 30,
+       "1hit": 62,
+       "2hit": 65,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 27,
+       "Pass": 38,
+       "1 Hit": 45,
+       "Miss": 47
+      },
+      "top3_precision": 0.42592592592592593,
+      "mrr": 0.41876955349177614
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 39,
+       "good_any2": 93,
+       "pass_any1": 175,
+       "champion": 46,
+       "winner_in_top3": 107,
+       "order_issue": 83
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.1813953488372093,
+       "good_any2": 0.4325581395348837,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.21395348837209302,
+       "winner_in_top3": 0.49767441860465117,
+       "order_issue": 0.386046511627907
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 82,
+       "2hit": 86,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 32,
+       "Pass": 54,
+       "1 Hit": 60,
+       "Miss": 62
+      },
+      "top3_precision": 0.4263565891472868,
+      "mrr": 0.4127405798336035
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 15,
+       "good_any2": 41,
+       "pass_any1": 78,
+       "champion": 15,
+       "winner_in_top3": 43,
+       "order_issue": 37
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.15306122448979592,
+       "good_any2": 0.41836734693877553,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.15306122448979592,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.37755102040816324
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 37,
+       "2hit": 38,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 12,
+       "Pass": 26,
+       "1 Hit": 29,
+       "Miss": 28
+      },
+      "top3_precision": 0.41496598639455784,
+      "mrr": 0.36617792638200813
+     }
+    },
+    "-10%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 50,
+       "good_any2": 103,
+       "pass_any1": 200,
+       "champion": 58,
+       "winner_in_top3": 126,
+       "order_issue": 90
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.205761316872428,
+       "good_any2": 0.42386831275720166,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.23868312757201646,
+       "winner_in_top3": 0.5185185185185185,
+       "order_issue": 0.37037037037037035
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 97,
+       "2hit": 93,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 40,
+       "Pass": 53,
+       "1 Hit": 72,
+       "Miss": 68
+      },
+      "top3_precision": 0.42935528120713307,
+      "mrr": 0.433169779466076
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 25
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.30864197530864196
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 18,
+       "1 Hit": 26,
+       "Miss": 21
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.46092182851442115
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 34,
+       "good_any2": 69,
+       "pass_any1": 132,
+       "champion": 36,
+       "winner_in_top3": 80,
+       "order_issue": 65
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.42592592592592593,
+       "pass_any1": 0.8148148148148148,
+       "champion": 0.2222222222222222,
+       "winner_in_top3": 0.49382716049382713,
+       "order_issue": 0.4012345679012346
+      },
+      "hit_distribution": {
+       "0hit": 30,
+       "1hit": 63,
+       "2hit": 64,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 29,
+       "Pass": 35,
+       "1 Hit": 46,
+       "Miss": 47
+      },
+      "top3_precision": 0.42386831275720166,
+      "mrr": 0.41929375494190346
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 42,
+       "good_any2": 92,
+       "pass_any1": 175,
+       "champion": 47,
+       "winner_in_top3": 107,
+       "order_issue": 83
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.19534883720930232,
+       "good_any2": 0.42790697674418604,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.2186046511627907,
+       "winner_in_top3": 0.49767441860465117,
+       "order_issue": 0.386046511627907
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 83,
+       "2hit": 85,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 35,
+       "Pass": 50,
+       "1 Hit": 61,
+       "Miss": 62
+      },
+      "top3_precision": 0.4248062015503876,
+      "mrr": 0.4152359655848031
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 16,
+       "good_any2": 40,
+       "pass_any1": 78,
+       "champion": 16,
+       "winner_in_top3": 43,
+       "order_issue": 37
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.16326530612244897,
+       "good_any2": 0.40816326530612246,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.16326530612244897,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.37755102040816324
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 38,
+       "2hit": 37,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 13,
+       "Pass": 24,
+       "1 Hit": 30,
+       "Miss": 28
+      },
+      "top3_precision": 0.41156462585034015,
+      "mrr": 0.3708143047428763
+     }
+    },
+    "+10%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 51,
+       "good_any2": 103,
+       "pass_any1": 200,
+       "champion": 57,
+       "winner_in_top3": 125,
+       "order_issue": 87
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.42386831275720166,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.2345679012345679,
+       "winner_in_top3": 0.51440329218107,
+       "order_issue": 0.35802469135802467
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 97,
+       "2hit": 93,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 41,
+       "Pass": 52,
+       "1 Hit": 71,
+       "Miss": 69
+      },
+      "top3_precision": 0.42935528120713307,
+      "mrr": 0.43089497379620867
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 25
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.30864197530864196
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 18,
+       "1 Hit": 25,
+       "Miss": 22
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.4615391124650384
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 35,
+       "good_any2": 69,
+       "pass_any1": 132,
+       "champion": 35,
+       "winner_in_top3": 79,
+       "order_issue": 62
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.21604938271604937,
+       "good_any2": 0.42592592592592593,
+       "pass_any1": 0.8148148148148148,
+       "champion": 0.21604938271604937,
+       "winner_in_top3": 0.4876543209876543,
+       "order_issue": 0.38271604938271603
+      },
+      "hit_distribution": {
+       "0hit": 30,
+       "1hit": 63,
+       "2hit": 64,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 30,
+       "Pass": 34,
+       "1 Hit": 46,
+       "Miss": 47
+      },
+      "top3_precision": 0.42386831275720166,
+      "mrr": 0.41557290446179385
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 43,
+       "good_any2": 92,
+       "pass_any1": 175,
+       "champion": 46,
+       "winner_in_top3": 106,
+       "order_issue": 80
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.2,
+       "good_any2": 0.42790697674418604,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.21395348837209302,
+       "winner_in_top3": 0.4930232558139535,
+       "order_issue": 0.37209302325581395
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 83,
+       "2hit": 85,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 36,
+       "Pass": 49,
+       "1 Hit": 61,
+       "Miss": 62
+      },
+      "top3_precision": 0.4248062015503876,
+      "mrr": 0.41266490615327867
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 17,
+       "good_any2": 39,
+       "pass_any1": 78,
+       "champion": 15,
+       "winner_in_top3": 43,
+       "order_issue": 34
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.17346938775510204,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.15306122448979592,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.3469387755102041
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 39,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 14,
+       "Pass": 22,
+       "1 Hit": 31,
+       "Miss": 28
+      },
+      "top3_precision": 0.40816326530612246,
+      "mrr": 0.3664613730940262
+     }
+    },
+    "+20%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 52,
+       "good_any2": 104,
+       "pass_any1": 200,
+       "champion": 58,
+       "winner_in_top3": 126,
+       "order_issue": 86
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.2139917695473251,
+       "good_any2": 0.4279835390946502,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.23868312757201646,
+       "winner_in_top3": 0.5185185185185185,
+       "order_issue": 0.35390946502057613
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 96,
+       "2hit": 94,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 42,
+       "Pass": 52,
+       "1 Hit": 71,
+       "Miss": 68
+      },
+      "top3_precision": 0.43072702331961593,
+      "mrr": 0.4327696880166018
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 17,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 25
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.30864197530864196
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 12,
+       "Pass": 17,
+       "1 Hit": 25,
+       "Miss": 22
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.46347914773840704
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 35,
+       "good_any2": 70,
+       "pass_any1": 132,
+       "champion": 36,
+       "winner_in_top3": 80,
+       "order_issue": 61
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.21604938271604937,
+       "good_any2": 0.43209876543209874,
+       "pass_any1": 0.8148148148148148,
+       "champion": 0.2222222222222222,
+       "winner_in_top3": 0.49382716049382713,
+       "order_issue": 0.3765432098765432
+      },
+      "hit_distribution": {
+       "0hit": 30,
+       "1hit": 62,
+       "2hit": 65,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 30,
+       "Pass": 35,
+       "1 Hit": 46,
+       "Miss": 46
+      },
+      "top3_precision": 0.42592592592592593,
+      "mrr": 0.4174149581556993
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 43,
+       "good_any2": 93,
+       "pass_any1": 175,
+       "champion": 46,
+       "winner_in_top3": 107,
+       "order_issue": 79
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.2,
+       "good_any2": 0.4325581395348837,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.21395348837209302,
+       "winner_in_top3": 0.49767441860465117,
+       "order_issue": 0.3674418604651163
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 82,
+       "2hit": 86,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 36,
+       "Pass": 50,
+       "1 Hit": 61,
+       "Miss": 61
+      },
+      "top3_precision": 0.4263565891472868,
+      "mrr": 0.41245818780702537
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 18,
+       "good_any2": 39,
+       "pass_any1": 78,
+       "champion": 16,
+       "winner_in_top3": 43,
+       "order_issue": 34
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.1836734693877551,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.16326530612244897,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.3469387755102041
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 39,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 15,
+       "Pass": 21,
+       "1 Hit": 31,
+       "Miss": 28
+      },
+      "top3_precision": 0.40816326530612246,
+      "mrr": 0.3732478972274892
+     }
+    }
+   },
+   "race_shape": {
+    "drop": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 37,
+       "good_any2": 89,
+       "pass_any1": 200,
+       "champion": 52,
+       "winner_in_top3": 113,
+       "order_issue": 100
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.1522633744855967,
+       "good_any2": 0.3662551440329218,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.2139917695473251,
+       "winner_in_top3": 0.46502057613168724,
+       "order_issue": 0.411522633744856
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 111,
+       "2hit": 79,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 27,
+       "Pass": 52,
+       "1 Hit": 85,
+       "Miss": 69
+      },
+      "top3_precision": 0.4101508916323731,
+      "mrr": 0.41030522974967437
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 13,
+       "good_any2": 27,
+       "pass_any1": 67,
+       "champion": 18,
+       "winner_in_top3": 40,
+       "order_issue": 30
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.16049382716049382,
+       "good_any2": 0.3333333333333333,
+       "pass_any1": 0.8271604938271605,
+       "champion": 0.2222222222222222,
+       "winner_in_top3": 0.49382716049382713,
+       "order_issue": 0.37037037037037035
+      },
+      "hit_distribution": {
+       "0hit": 14,
+       "1hit": 40,
+       "2hit": 22,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 8,
+       "Pass": 14,
+       "1 Hit": 33,
+       "Miss": 21
+      },
+      "top3_precision": 0.4074074074074074,
+      "mrr": 0.42171449949227735
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 24,
+       "good_any2": 62,
+       "pass_any1": 133,
+       "champion": 34,
+       "winner_in_top3": 73,
+       "order_issue": 70
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.14814814814814814,
+       "good_any2": 0.38271604938271603,
+       "pass_any1": 0.8209876543209876,
+       "champion": 0.20987654320987653,
+       "winner_in_top3": 0.4506172839506173,
+       "order_issue": 0.43209876543209874
+      },
+      "hit_distribution": {
+       "0hit": 29,
+       "1hit": 71,
+       "2hit": 57,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 19,
+       "Pass": 38,
+       "1 Hit": 52,
+       "Miss": 48
+      },
+      "top3_precision": 0.411522633744856,
+      "mrr": 0.404600594878373
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 31,
+       "good_any2": 79,
+       "pass_any1": 175,
+       "champion": 41,
+       "winner_in_top3": 96,
+       "order_issue": 91
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.14418604651162792,
+       "good_any2": 0.3674418604651163,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.19069767441860466,
+       "winner_in_top3": 0.44651162790697674,
+       "order_issue": 0.4232558139534884
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 96,
+       "2hit": 72,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 24,
+       "Pass": 48,
+       "1 Hit": 73,
+       "Miss": 63
+      },
+      "top3_precision": 0.4046511627906977,
+      "mrr": 0.39195184660300963
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 2,
+       "good_positional": 16,
+       "good_any2": 37,
+       "pass_any1": 82,
+       "champion": 13,
+       "winner_in_top3": 38,
+       "order_issue": 42
+      },
+      "rates": {
+       "gold": 0.02040816326530612,
+       "good_positional": 0.16326530612244897,
+       "good_any2": 0.37755102040816324,
+       "pass_any1": 0.8367346938775511,
+       "champion": 0.1326530612244898,
+       "winner_in_top3": 0.3877551020408163,
+       "order_issue": 0.42857142857142855
+      },
+      "hit_distribution": {
+       "0hit": 16,
+       "1hit": 45,
+       "2hit": 35,
+       "3hit": 2
+      },
+      "exclusive_labels": {
+       "Gold": 2,
+       "Good": 14,
+       "Pass": 21,
+       "1 Hit": 32,
+       "Miss": 29
+      },
+      "top3_precision": 0.41156462585034015,
+      "mrr": 0.3520784770784771
+     }
+    },
+    "-20%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 49,
+       "good_any2": 97,
+       "pass_any1": 201,
+       "champion": 55,
+       "winner_in_top3": 123,
+       "order_issue": 95
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.20164609053497942,
+       "good_any2": 0.3991769547325103,
+       "pass_any1": 0.8271604938271605,
+       "champion": 0.22633744855967078,
+       "winner_in_top3": 0.5061728395061729,
+       "order_issue": 0.39094650205761317
+      },
+      "hit_distribution": {
+       "0hit": 42,
+       "1hit": 104,
+       "2hit": 87,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 39,
+       "Pass": 48,
+       "1 Hit": 77,
+       "Miss": 69
+      },
+      "top3_precision": 0.4224965706447188,
+      "mrr": 0.4251174751174754
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 17,
+       "good_any2": 35,
+       "pass_any1": 67,
+       "champion": 20,
+       "winner_in_top3": 46,
+       "order_issue": 30
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.43209876543209874,
+       "pass_any1": 0.8271604938271605,
+       "champion": 0.24691358024691357,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.37037037037037035
+      },
+      "hit_distribution": {
+       "0hit": 14,
+       "1hit": 32,
+       "2hit": 30,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 12,
+       "Pass": 18,
+       "1 Hit": 22,
+       "Miss": 24
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.4448279087167976
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 32,
+       "good_any2": 62,
+       "pass_any1": 134,
+       "champion": 35,
+       "winner_in_top3": 77,
+       "order_issue": 65
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.38271604938271603,
+       "pass_any1": 0.8271604938271605,
+       "champion": 0.21604938271604937,
+       "winner_in_top3": 0.47530864197530864,
+       "order_issue": 0.4012345679012346
+      },
+      "hit_distribution": {
+       "0hit": 28,
+       "1hit": 72,
+       "2hit": 57,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 27,
+       "Pass": 30,
+       "1 Hit": 55,
+       "Miss": 45
+      },
+      "top3_precision": 0.41358024691358025,
+      "mrr": 0.41526225831781427
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 40,
+       "good_any2": 87,
+       "pass_any1": 176,
+       "champion": 44,
+       "winner_in_top3": 105,
+       "order_issue": 88
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.18604651162790697,
+       "good_any2": 0.4046511627906977,
+       "pass_any1": 0.8186046511627907,
+       "champion": 0.20465116279069767,
+       "winner_in_top3": 0.4883720930232558,
+       "order_issue": 0.40930232558139534
+      },
+      "hit_distribution": {
+       "0hit": 39,
+       "1hit": 89,
+       "2hit": 80,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 33,
+       "Pass": 47,
+       "1 Hit": 65,
+       "Miss": 63
+      },
+      "top3_precision": 0.4186046511627907,
+      "mrr": 0.4064395294627857
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 17,
+       "good_any2": 39,
+       "pass_any1": 78,
+       "champion": 13,
+       "winner_in_top3": 42,
+       "order_issue": 44
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.17346938775510204,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.1326530612244898,
+       "winner_in_top3": 0.42857142857142855,
+       "order_issue": 0.4489795918367347
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 39,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 14,
+       "Pass": 22,
+       "1 Hit": 28,
+       "Miss": 31
+      },
+      "top3_precision": 0.40816326530612246,
+      "mrr": 0.35006637353576125
+     }
+    },
+    "-10%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 51,
+       "good_any2": 100,
+       "pass_any1": 200,
+       "champion": 56,
+       "winner_in_top3": 124,
+       "order_issue": 89
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.411522633744856,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.23045267489711935,
+       "winner_in_top3": 0.5102880658436214,
+       "order_issue": 0.3662551440329218
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 100,
+       "2hit": 90,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 41,
+       "Pass": 49,
+       "1 Hit": 73,
+       "Miss": 70
+      },
+      "top3_precision": 0.4252400548696845,
+      "mrr": 0.42841618829273176
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 17,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 21,
+       "winner_in_top3": 46,
+       "order_issue": 25
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.25925925925925924,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.30864197530864196
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 12,
+       "Pass": 17,
+       "1 Hit": 25,
+       "Miss": 22
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.4534894803413323
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 34,
+       "good_any2": 66,
+       "pass_any1": 132,
+       "champion": 35,
+       "winner_in_top3": 78,
+       "order_issue": 64
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.4074074074074074,
+       "pass_any1": 0.8148148148148148,
+       "champion": 0.21604938271604937,
+       "winner_in_top3": 0.48148148148148145,
+       "order_issue": 0.3950617283950617
+      },
+      "hit_distribution": {
+       "0hit": 30,
+       "1hit": 66,
+       "2hit": 61,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 29,
+       "Pass": 32,
+       "1 Hit": 48,
+       "Miss": 48
+      },
+      "top3_precision": 0.4176954732510288,
+      "mrr": 0.4158795422684315
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 43,
+       "good_any2": 89,
+       "pass_any1": 175,
+       "champion": 45,
+       "winner_in_top3": 105,
+       "order_issue": 82
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.2,
+       "good_any2": 0.413953488372093,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.20930232558139536,
+       "winner_in_top3": 0.4883720930232558,
+       "order_issue": 0.3813953488372093
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 86,
+       "2hit": 82,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 36,
+       "Pass": 46,
+       "1 Hit": 62,
+       "Miss": 64
+      },
+      "top3_precision": 0.4201550387596899,
+      "mrr": 0.4099740440438118
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 16,
+       "good_any2": 39,
+       "pass_any1": 78,
+       "champion": 14,
+       "winner_in_top3": 43,
+       "order_issue": 39
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.16326530612244897,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.14285714285714285,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.3979591836734694
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 39,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 13,
+       "Pass": 23,
+       "1 Hit": 29,
+       "Miss": 30
+      },
+      "top3_precision": 0.40816326530612246,
+      "mrr": 0.3589827972481034
+     }
+    },
+    "+10%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 52,
+       "good_any2": 102,
+       "pass_any1": 199,
+       "champion": 55,
+       "winner_in_top3": 124,
+       "order_issue": 82
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.2139917695473251,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8189300411522634,
+       "champion": 0.22633744855967078,
+       "winner_in_top3": 0.5102880658436214,
+       "order_issue": 0.3374485596707819
+      },
+      "hit_distribution": {
+       "0hit": 44,
+       "1hit": 97,
+       "2hit": 92,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 42,
+       "Pass": 50,
+       "1 Hit": 73,
+       "Miss": 68
+      },
+      "top3_precision": 0.42661179698216734,
+      "mrr": 0.4257246639962691
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 45,
+       "order_issue": 23
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5555555555555556,
+       "order_issue": 0.2839506172839506
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 18,
+       "1 Hit": 26,
+       "Miss": 21
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.46070181533144494
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 36,
+       "good_any2": 68,
+       "pass_any1": 131,
+       "champion": 33,
+       "winner_in_top3": 79,
+       "order_issue": 59
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.2222222222222222,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.808641975308642,
+       "champion": 0.2037037037037037,
+       "winner_in_top3": 0.4876543209876543,
+       "order_issue": 0.36419753086419754
+      },
+      "hit_distribution": {
+       "0hit": 31,
+       "1hit": 63,
+       "2hit": 63,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 31,
+       "Pass": 32,
+       "1 Hit": 47,
+       "Miss": 47
+      },
+      "top3_precision": 0.41975308641975306,
+      "mrr": 0.4082360883286814
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 44,
+       "good_any2": 91,
+       "pass_any1": 175,
+       "champion": 45,
+       "winner_in_top3": 105,
+       "order_issue": 76
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.20465116279069767,
+       "good_any2": 0.4232558139534884,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.20930232558139536,
+       "winner_in_top3": 0.4883720930232558,
+       "order_issue": 0.35348837209302325
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 84,
+       "2hit": 84,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 37,
+       "Pass": 47,
+       "1 Hit": 61,
+       "Miss": 63
+      },
+      "top3_precision": 0.4232558139534884,
+      "mrr": 0.40912837808186686
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 17,
+       "good_any2": 40,
+       "pass_any1": 78,
+       "champion": 13,
+       "winner_in_top3": 42,
+       "order_issue": 33
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.17346938775510204,
+       "good_any2": 0.40816326530612246,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.1326530612244898,
+       "winner_in_top3": 0.42857142857142855,
+       "order_issue": 0.336734693877551
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 38,
+       "2hit": 37,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 14,
+       "Pass": 23,
+       "1 Hit": 29,
+       "Miss": 29
+      },
+      "top3_precision": 0.41156462585034015,
+      "mrr": 0.3528268500207276
+     }
+    },
+    "+20%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 11,
+       "good_positional": 50,
+       "good_any2": 100,
+       "pass_any1": 201,
+       "champion": 56,
+       "winner_in_top3": 121,
+       "order_issue": 82
+      },
+      "rates": {
+       "gold": 0.04526748971193416,
+       "good_positional": 0.205761316872428,
+       "good_any2": 0.411522633744856,
+       "pass_any1": 0.8271604938271605,
+       "champion": 0.23045267489711935,
+       "winner_in_top3": 0.49794238683127573,
+       "order_issue": 0.3374485596707819
+      },
+      "hit_distribution": {
+       "0hit": 42,
+       "1hit": 101,
+       "2hit": 89,
+       "3hit": 11
+      },
+      "exclusive_labels": {
+       "Gold": 11,
+       "Good": 39,
+       "Pass": 50,
+       "1 Hit": 74,
+       "Miss": 69
+      },
+      "top3_precision": 0.4279835390946502,
+      "mrr": 0.4261835443934211
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 17,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 44,
+       "order_issue": 23
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5432098765432098,
+       "order_issue": 0.2839506172839506
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 12,
+       "Pass": 17,
+       "1 Hit": 26,
+       "Miss": 21
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.46258796073610897
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 6,
+       "good_positional": 33,
+       "good_any2": 66,
+       "pass_any1": 133,
+       "champion": 34,
+       "winner_in_top3": 77,
+       "order_issue": 59
+      },
+      "rates": {
+       "gold": 0.037037037037037035,
+       "good_positional": 0.2037037037037037,
+       "good_any2": 0.4074074074074074,
+       "pass_any1": 0.8209876543209876,
+       "champion": 0.20987654320987653,
+       "winner_in_top3": 0.47530864197530864,
+       "order_issue": 0.36419753086419754
+      },
+      "hit_distribution": {
+       "0hit": 29,
+       "1hit": 67,
+       "2hit": 60,
+       "3hit": 6
+      },
+      "exclusive_labels": {
+       "Gold": 6,
+       "Good": 27,
+       "Pass": 33,
+       "1 Hit": 48,
+       "Miss": 48
+      },
+      "top3_precision": 0.4218106995884774,
+      "mrr": 0.40798133622207733
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 8,
+       "good_positional": 42,
+       "good_any2": 89,
+       "pass_any1": 176,
+       "champion": 46,
+       "winner_in_top3": 102,
+       "order_issue": 76
+      },
+      "rates": {
+       "gold": 0.037209302325581395,
+       "good_positional": 0.19534883720930232,
+       "good_any2": 0.413953488372093,
+       "pass_any1": 0.8186046511627907,
+       "champion": 0.21395348837209302,
+       "winner_in_top3": 0.4744186046511628,
+       "order_issue": 0.35348837209302325
+      },
+      "hit_distribution": {
+       "0hit": 39,
+       "1hit": 87,
+       "2hit": 81,
+       "3hit": 8
+      },
+      "exclusive_labels": {
+       "Gold": 8,
+       "Good": 34,
+       "Pass": 47,
+       "1 Hit": 62,
+       "Miss": 64
+      },
+      "top3_precision": 0.4232558139534884,
+      "mrr": 0.40949198088733013
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 14,
+       "good_any2": 39,
+       "pass_any1": 78,
+       "champion": 14,
+       "winner_in_top3": 40,
+       "order_issue": 33
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.14285714285714285,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.14285714285714285,
+       "winner_in_top3": 0.40816326530612246,
+       "order_issue": 0.336734693877551
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 39,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 11,
+       "Pass": 25,
+       "1 Hit": 29,
+       "Miss": 30
+      },
+      "top3_precision": 0.40816326530612246,
+      "mrr": 0.3559690592853859
+     }
+    }
+   },
+   "trainer_signal": {
+    "drop": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 11,
+       "good_positional": 43,
+       "good_any2": 91,
+       "pass_any1": 200,
+       "champion": 34,
+       "winner_in_top3": 112,
+       "order_issue": 104
+      },
+      "rates": {
+       "gold": 0.04526748971193416,
+       "good_positional": 0.17695473251028807,
+       "good_any2": 0.37448559670781895,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.13991769547325103,
+       "winner_in_top3": 0.4609053497942387,
+       "order_issue": 0.4279835390946502
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 109,
+       "2hit": 80,
+       "3hit": 11
+      },
+      "exclusive_labels": {
+       "Gold": 11,
+       "Good": 32,
+       "Pass": 48,
+       "1 Hit": 69,
+       "Miss": 83
+      },
+      "top3_precision": 0.41426611796982166,
+      "mrr": 0.36176589756836697
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 6,
+       "good_positional": 17,
+       "good_any2": 35,
+       "pass_any1": 67,
+       "champion": 17,
+       "winner_in_top3": 43,
+       "order_issue": 32
+      },
+      "rates": {
+       "gold": 0.07407407407407407,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.43209876543209874,
+       "pass_any1": 0.8271604938271605,
+       "champion": 0.20987654320987653,
+       "winner_in_top3": 0.5308641975308642,
+       "order_issue": 0.3950617283950617
+      },
+      "hit_distribution": {
+       "0hit": 14,
+       "1hit": 32,
+       "2hit": 29,
+       "3hit": 6
+      },
+      "exclusive_labels": {
+       "Gold": 6,
+       "Good": 11,
+       "Pass": 18,
+       "1 Hit": 21,
+       "Miss": 25
+      },
+      "top3_precision": 0.4444444444444444,
+      "mrr": 0.41584540288243976
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 26,
+       "good_any2": 56,
+       "pass_any1": 133,
+       "champion": 17,
+       "winner_in_top3": 69,
+       "order_issue": 72
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.16049382716049382,
+       "good_any2": 0.345679012345679,
+       "pass_any1": 0.8209876543209876,
+       "champion": 0.10493827160493827,
+       "winner_in_top3": 0.42592592592592593,
+       "order_issue": 0.4444444444444444
+      },
+      "hit_distribution": {
+       "0hit": 29,
+       "1hit": 77,
+       "2hit": 51,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 21,
+       "Pass": 30,
+       "1 Hit": 48,
+       "Miss": 58
+      },
+      "top3_precision": 0.3991769547325103,
+      "mrr": 0.33472614491133057
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 9,
+       "good_positional": 36,
+       "good_any2": 79,
+       "pass_any1": 177,
+       "champion": 28,
+       "winner_in_top3": 96,
+       "order_issue": 95
+      },
+      "rates": {
+       "gold": 0.04186046511627907,
+       "good_positional": 0.16744186046511628,
+       "good_any2": 0.3674418604651163,
+       "pass_any1": 0.8232558139534883,
+       "champion": 0.13023255813953488,
+       "winner_in_top3": 0.44651162790697674,
+       "order_issue": 0.4418604651162791
+      },
+      "hit_distribution": {
+       "0hit": 38,
+       "1hit": 98,
+       "2hit": 70,
+       "3hit": 9
+      },
+      "exclusive_labels": {
+       "Gold": 9,
+       "Good": 27,
+       "Pass": 43,
+       "1 Hit": 61,
+       "Miss": 75
+      },
+      "top3_precision": 0.4108527131782946,
+      "mrr": 0.3507216039774184
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 2,
+       "good_positional": 12,
+       "good_any2": 35,
+       "pass_any1": 76,
+       "champion": 9,
+       "winner_in_top3": 41,
+       "order_issue": 44
+      },
+      "rates": {
+       "gold": 0.02040816326530612,
+       "good_positional": 0.12244897959183673,
+       "good_any2": 0.35714285714285715,
+       "pass_any1": 0.7755102040816326,
+       "champion": 0.09183673469387756,
+       "winner_in_top3": 0.41836734693877553,
+       "order_issue": 0.4489795918367347
+      },
+      "hit_distribution": {
+       "0hit": 22,
+       "1hit": 41,
+       "2hit": 33,
+       "3hit": 2
+      },
+      "exclusive_labels": {
+       "Gold": 2,
+       "Good": 10,
+       "Pass": 23,
+       "1 Hit": 26,
+       "Miss": 37
+      },
+      "top3_precision": 0.3843537414965986,
+      "mrr": 0.31921890467808817
+     }
+    },
+    "-20%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 13,
+       "good_positional": 55,
+       "good_any2": 102,
+       "pass_any1": 201,
+       "champion": 53,
+       "winner_in_top3": 123,
+       "order_issue": 84
+      },
+      "rates": {
+       "gold": 0.053497942386831275,
+       "good_positional": 0.22633744855967078,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8271604938271605,
+       "champion": 0.21810699588477367,
+       "winner_in_top3": 0.5061728395061729,
+       "order_issue": 0.345679012345679
+      },
+      "hit_distribution": {
+       "0hit": 42,
+       "1hit": 99,
+       "2hit": 89,
+       "3hit": 13
+      },
+      "exclusive_labels": {
+       "Gold": 13,
+       "Good": 42,
+       "Pass": 47,
+       "1 Hit": 71,
+       "Miss": 70
+      },
+      "top3_precision": 0.4334705075445816,
+      "mrr": 0.42077986028603326
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 19,
+       "good_any2": 33,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 44,
+       "order_issue": 24
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.2345679012345679,
+       "good_any2": 0.4074074074074074,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5432098765432098,
+       "order_issue": 0.2962962962962963
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 35,
+       "2hit": 28,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 14,
+       "Pass": 14,
+       "1 Hit": 25,
+       "Miss": 23
+      },
+      "top3_precision": 0.43621399176954734,
+      "mrr": 0.45984937559011646
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 8,
+       "good_positional": 36,
+       "good_any2": 69,
+       "pass_any1": 133,
+       "champion": 31,
+       "winner_in_top3": 79,
+       "order_issue": 60
+      },
+      "rates": {
+       "gold": 0.04938271604938271,
+       "good_positional": 0.2222222222222222,
+       "good_any2": 0.42592592592592593,
+       "pass_any1": 0.8209876543209876,
+       "champion": 0.19135802469135801,
+       "winner_in_top3": 0.4876543209876543,
+       "order_issue": 0.37037037037037035
+      },
+      "hit_distribution": {
+       "0hit": 29,
+       "1hit": 64,
+       "2hit": 61,
+       "3hit": 8
+      },
+      "exclusive_labels": {
+       "Gold": 8,
+       "Good": 28,
+       "Pass": 33,
+       "1 Hit": 46,
+       "Miss": 47
+      },
+      "top3_precision": 0.43209876543209874,
+      "mrr": 0.40124510263399193
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 10,
+       "good_positional": 46,
+       "good_any2": 91,
+       "pass_any1": 176,
+       "champion": 43,
+       "winner_in_top3": 105,
+       "order_issue": 78
+      },
+      "rates": {
+       "gold": 0.046511627906976744,
+       "good_positional": 0.21395348837209302,
+       "good_any2": 0.4232558139534884,
+       "pass_any1": 0.8186046511627907,
+       "champion": 0.2,
+       "winner_in_top3": 0.4883720930232558,
+       "order_issue": 0.3627906976744186
+      },
+      "hit_distribution": {
+       "0hit": 39,
+       "1hit": 85,
+       "2hit": 81,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 36,
+       "Pass": 45,
+       "1 Hit": 60,
+       "Miss": 64
+      },
+      "top3_precision": 0.4294573643410853,
+      "mrr": 0.403927196834174
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 18,
+       "good_any2": 39,
+       "pass_any1": 78,
+       "champion": 11,
+       "winner_in_top3": 41,
+       "order_issue": 35
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.1836734693877551,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.11224489795918367,
+       "winner_in_top3": 0.41836734693877553,
+       "order_issue": 0.35714285714285715
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 39,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 15,
+       "Pass": 21,
+       "1 Hit": 29,
+       "Miss": 30
+      },
+      "top3_precision": 0.40816326530612246,
+      "mrr": 0.34455425526854105
+     }
+    },
+    "-10%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 51,
+       "good_any2": 101,
+       "pass_any1": 200,
+       "champion": 55,
+       "winner_in_top3": 124,
+       "order_issue": 84
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.4156378600823045,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.22633744855967078,
+       "winner_in_top3": 0.5102880658436214,
+       "order_issue": 0.345679012345679
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 99,
+       "2hit": 91,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 41,
+       "Pass": 50,
+       "1 Hit": 73,
+       "Miss": 69
+      },
+      "top3_precision": 0.42661179698216734,
+      "mrr": 0.42544229889908924
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 17,
+       "good_any2": 33,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 45,
+       "order_issue": 25
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.4074074074074074,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5555555555555556,
+       "order_issue": 0.30864197530864196
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 35,
+       "2hit": 28,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 12,
+       "Pass": 16,
+       "1 Hit": 25,
+       "Miss": 23
+      },
+      "top3_precision": 0.43621399176954734,
+      "mrr": 0.4594574492722641
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 34,
+       "good_any2": 68,
+       "pass_any1": 132,
+       "champion": 33,
+       "winner_in_top3": 79,
+       "order_issue": 59
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8148148148148148,
+       "champion": 0.2037037037037037,
+       "winner_in_top3": 0.4876543209876543,
+       "order_issue": 0.36419753086419754
+      },
+      "hit_distribution": {
+       "0hit": 30,
+       "1hit": 64,
+       "2hit": 63,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 29,
+       "Pass": 34,
+       "1 Hit": 48,
+       "Miss": 46
+      },
+      "top3_precision": 0.4218106995884774,
+      "mrr": 0.40843472371250183
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 42,
+       "good_any2": 90,
+       "pass_any1": 175,
+       "champion": 44,
+       "winner_in_top3": 105,
+       "order_issue": 78
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.19534883720930232,
+       "good_any2": 0.4186046511627907,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.20465116279069767,
+       "winner_in_top3": 0.4883720930232558,
+       "order_issue": 0.3627906976744186
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 85,
+       "2hit": 83,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 35,
+       "Pass": 48,
+       "1 Hit": 62,
+       "Miss": 63
+      },
+      "top3_precision": 0.42170542635658914,
+      "mrr": 0.4064836584604031
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 17,
+       "good_any2": 38,
+       "pass_any1": 78,
+       "champion": 13,
+       "winner_in_top3": 42,
+       "order_issue": 34
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.17346938775510204,
+       "good_any2": 0.3877551020408163,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.1326530612244898,
+       "winner_in_top3": 0.42857142857142855,
+       "order_issue": 0.3469387755102041
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 40,
+       "2hit": 35,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 14,
+       "Pass": 21,
+       "1 Hit": 30,
+       "Miss": 30
+      },
+      "top3_precision": 0.40476190476190477,
+      "mrr": 0.3530904186516432
+     }
+    },
+    "+10%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 50,
+       "good_any2": 98,
+       "pass_any1": 201,
+       "champion": 56,
+       "winner_in_top3": 124,
+       "order_issue": 90
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.205761316872428,
+       "good_any2": 0.40329218106995884,
+       "pass_any1": 0.8271604938271605,
+       "champion": 0.23045267489711935,
+       "winner_in_top3": 0.5102880658436214,
+       "order_issue": 0.37037037037037035
+      },
+      "hit_distribution": {
+       "0hit": 42,
+       "1hit": 103,
+       "2hit": 88,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 40,
+       "Pass": 48,
+       "1 Hit": 76,
+       "Miss": 69
+      },
+      "top3_precision": 0.42386831275720166,
+      "mrr": 0.4282086454925963
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 33,
+       "pass_any1": 68,
+       "champion": 21,
+       "winner_in_top3": 46,
+       "order_issue": 24
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.4074074074074074,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.25925925925925924,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.2962962962962963
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 35,
+       "2hit": 28,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 17,
+       "1 Hit": 27,
+       "Miss": 21
+      },
+      "top3_precision": 0.43621399176954734,
+      "mrr": 0.45548385085422133
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 34,
+       "good_any2": 65,
+       "pass_any1": 133,
+       "champion": 35,
+       "winner_in_top3": 78,
+       "order_issue": 66
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.4012345679012346,
+       "pass_any1": 0.8209876543209876,
+       "champion": 0.21604938271604937,
+       "winner_in_top3": 0.48148148148148145,
+       "order_issue": 0.4074074074074074
+      },
+      "hit_distribution": {
+       "0hit": 29,
+       "1hit": 68,
+       "2hit": 60,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 29,
+       "Pass": 31,
+       "1 Hit": 49,
+       "Miss": 48
+      },
+      "top3_precision": 0.4176954732510288,
+      "mrr": 0.414571042811784
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 42,
+       "good_any2": 87,
+       "pass_any1": 175,
+       "champion": 46,
+       "winner_in_top3": 105,
+       "order_issue": 82
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.19534883720930232,
+       "good_any2": 0.4046511627906977,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.21395348837209302,
+       "winner_in_top3": 0.4883720930232558,
+       "order_issue": 0.3813953488372093
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 88,
+       "2hit": 80,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 35,
+       "Pass": 45,
+       "1 Hit": 65,
+       "Miss": 63
+      },
+      "top3_precision": 0.4170542635658915,
+      "mrr": 0.4120650538092402
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 16,
+       "good_any2": 39,
+       "pass_any1": 79,
+       "champion": 14,
+       "winner_in_top3": 43,
+       "order_issue": 37
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.16326530612244897,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.8061224489795918,
+       "champion": 0.14285714285714285,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.37755102040816324
+      },
+      "hit_distribution": {
+       "0hit": 19,
+       "1hit": 40,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 13,
+       "Pass": 23,
+       "1 Hit": 30,
+       "Miss": 29
+      },
+      "top3_precision": 0.41156462585034015,
+      "mrr": 0.35865444079729797
+     }
+    },
+    "+20%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 48,
+       "good_any2": 100,
+       "pass_any1": 200,
+       "champion": 57,
+       "winner_in_top3": 125,
+       "order_issue": 98
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.411522633744856,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.2345679012345679,
+       "winner_in_top3": 0.51440329218107,
+       "order_issue": 0.40329218106995884
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 100,
+       "2hit": 90,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 38,
+       "Pass": 52,
+       "1 Hit": 72,
+       "Miss": 71
+      },
+      "top3_precision": 0.4252400548696845,
+      "mrr": 0.42825110417703033
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 15,
+       "good_any2": 33,
+       "pass_any1": 67,
+       "champion": 20,
+       "winner_in_top3": 45,
+       "order_issue": 28
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.18518518518518517,
+       "good_any2": 0.4074074074074074,
+       "pass_any1": 0.8271604938271605,
+       "champion": 0.24691358024691357,
+       "winner_in_top3": 0.5555555555555556,
+       "order_issue": 0.345679012345679
+      },
+      "hit_distribution": {
+       "0hit": 14,
+       "1hit": 34,
+       "2hit": 28,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 10,
+       "Pass": 18,
+       "1 Hit": 25,
+       "Miss": 23
+      },
+      "top3_precision": 0.43209876543209874,
+      "mrr": 0.4453668074038445
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 33,
+       "good_any2": 67,
+       "pass_any1": 133,
+       "champion": 37,
+       "winner_in_top3": 80,
+       "order_issue": 70
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.2037037037037037,
+       "good_any2": 0.41358024691358025,
+       "pass_any1": 0.8209876543209876,
+       "champion": 0.22839506172839505,
+       "winner_in_top3": 0.49382716049382713,
+       "order_issue": 0.43209876543209874
+      },
+      "hit_distribution": {
+       "0hit": 29,
+       "1hit": 66,
+       "2hit": 62,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 28,
+       "Pass": 34,
+       "1 Hit": 47,
+       "Miss": 48
+      },
+      "top3_precision": 0.4218106995884774,
+      "mrr": 0.41969325256362344
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 40,
+       "good_any2": 88,
+       "pass_any1": 174,
+       "champion": 47,
+       "winner_in_top3": 106,
+       "order_issue": 90
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.18604651162790697,
+       "good_any2": 0.40930232558139534,
+       "pass_any1": 0.8093023255813954,
+       "champion": 0.2186046511627907,
+       "winner_in_top3": 0.4930232558139535,
+       "order_issue": 0.4186046511627907
+      },
+      "hit_distribution": {
+       "0hit": 41,
+       "1hit": 86,
+       "2hit": 81,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 33,
+       "Pass": 48,
+       "1 Hit": 62,
+       "Miss": 65
+      },
+      "top3_precision": 0.4170542635658915,
+      "mrr": 0.41195800323707343
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 15,
+       "good_any2": 42,
+       "pass_any1": 78,
+       "champion": 15,
+       "winner_in_top3": 44,
+       "order_issue": 42
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.15306122448979592,
+       "good_any2": 0.42857142857142855,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.15306122448979592,
+       "winner_in_top3": 0.4489795918367347,
+       "order_issue": 0.42857142857142855
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 36,
+       "2hit": 39,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 12,
+       "Pass": 27,
+       "1 Hit": 25,
+       "Miss": 31
+      },
+      "top3_precision": 0.41836734693877553,
+      "mrr": 0.3616795902510188
+     }
+    }
+   },
+   "horse_health": {
+    "drop": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 52,
+       "good_any2": 104,
+       "pass_any1": 201,
+       "champion": 56,
+       "winner_in_top3": 127,
+       "order_issue": 90
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.2139917695473251,
+       "good_any2": 0.4279835390946502,
+       "pass_any1": 0.8271604938271605,
+       "champion": 0.23045267489711935,
+       "winner_in_top3": 0.522633744855967,
+       "order_issue": 0.37037037037037035
+      },
+      "hit_distribution": {
+       "0hit": 42,
+       "1hit": 97,
+       "2hit": 94,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 42,
+       "Pass": 52,
+       "1 Hit": 70,
+       "Miss": 69
+      },
+      "top3_precision": 0.43209876543209874,
+      "mrr": 0.4297698186587078
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 17,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 24
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.2962962962962963
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 12,
+       "Pass": 17,
+       "1 Hit": 26,
+       "Miss": 21
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.46234746049560865
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 35,
+       "good_any2": 70,
+       "pass_any1": 133,
+       "champion": 34,
+       "winner_in_top3": 81,
+       "order_issue": 66
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.21604938271604937,
+       "good_any2": 0.43209876543209874,
+       "pass_any1": 0.8209876543209876,
+       "champion": 0.20987654320987653,
+       "winner_in_top3": 0.5,
+       "order_issue": 0.4074074074074074
+      },
+      "hit_distribution": {
+       "0hit": 29,
+       "1hit": 63,
+       "2hit": 65,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 30,
+       "Pass": 35,
+       "1 Hit": 44,
+       "Miss": 48
+      },
+      "top3_precision": 0.4279835390946502,
+      "mrr": 0.41348099774025737
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 44,
+       "good_any2": 93,
+       "pass_any1": 175,
+       "champion": 46,
+       "winner_in_top3": 108,
+       "order_issue": 82
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.20465116279069767,
+       "good_any2": 0.4325581395348837,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.21395348837209302,
+       "winner_in_top3": 0.5023255813953489,
+       "order_issue": 0.3813953488372093
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 82,
+       "2hit": 86,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 37,
+       "Pass": 49,
+       "1 Hit": 59,
+       "Miss": 63
+      },
+      "top3_precision": 0.4263565891472868,
+      "mrr": 0.4134807053411709
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 17,
+       "good_any2": 40,
+       "pass_any1": 79,
+       "champion": 14,
+       "winner_in_top3": 44,
+       "order_issue": 37
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.17346938775510204,
+       "good_any2": 0.40816326530612246,
+       "pass_any1": 0.8061224489795918,
+       "champion": 0.14285714285714285,
+       "winner_in_top3": 0.4489795918367347,
+       "order_issue": 0.37755102040816324
+      },
+      "hit_distribution": {
+       "0hit": 19,
+       "1hit": 39,
+       "2hit": 37,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 14,
+       "Pass": 23,
+       "1 Hit": 29,
+       "Miss": 29
+      },
+      "top3_precision": 0.41496598639455784,
+      "mrr": 0.36139172618764465
+     }
+    },
+    "-20%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 51,
+       "good_any2": 103,
+       "pass_any1": 200,
+       "champion": 56,
+       "winner_in_top3": 126,
+       "order_issue": 90
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.42386831275720166,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.23045267489711935,
+       "winner_in_top3": 0.5185185185185185,
+       "order_issue": 0.37037037037037035
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 97,
+       "2hit": 93,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 41,
+       "Pass": 52,
+       "1 Hit": 72,
+       "Miss": 68
+      },
+      "top3_precision": 0.42935528120713307,
+      "mrr": 0.4289810669440302
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 25
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.30864197530864196
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 18,
+       "1 Hit": 26,
+       "Miss": 21
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.4615391124650384
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 35,
+       "good_any2": 69,
+       "pass_any1": 132,
+       "champion": 34,
+       "winner_in_top3": 80,
+       "order_issue": 65
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.21604938271604937,
+       "good_any2": 0.42592592592592593,
+       "pass_any1": 0.8148148148148148,
+       "champion": 0.20987654320987653,
+       "winner_in_top3": 0.49382716049382713,
+       "order_issue": 0.4012345679012346
+      },
+      "hit_distribution": {
+       "0hit": 30,
+       "1hit": 63,
+       "2hit": 64,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 30,
+       "Pass": 34,
+       "1 Hit": 46,
+       "Miss": 47
+      },
+      "top3_precision": 0.42386831275720166,
+      "mrr": 0.4127020441835261
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 43,
+       "good_any2": 92,
+       "pass_any1": 175,
+       "champion": 46,
+       "winner_in_top3": 107,
+       "order_issue": 82
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.2,
+       "good_any2": 0.42790697674418604,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.21395348837209302,
+       "winner_in_top3": 0.49767441860465117,
+       "order_issue": 0.3813953488372093
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 83,
+       "2hit": 85,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 36,
+       "Pass": 49,
+       "1 Hit": 61,
+       "Miss": 62
+      },
+      "top3_precision": 0.4248062015503876,
+      "mrr": 0.41274427123264373
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 17,
+       "good_any2": 39,
+       "pass_any1": 78,
+       "champion": 14,
+       "winner_in_top3": 43,
+       "order_issue": 37
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.17346938775510204,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.14285714285714285,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.37755102040816324
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 39,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 14,
+       "Pass": 22,
+       "1 Hit": 31,
+       "Miss": 28
+      },
+      "top3_precision": 0.40816326530612246,
+      "mrr": 0.3600311819699575
+     }
+    },
+    "-10%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 51,
+       "good_any2": 104,
+       "pass_any1": 200,
+       "champion": 57,
+       "winner_in_top3": 126,
+       "order_issue": 90
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.4279835390946502,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.2345679012345679,
+       "winner_in_top3": 0.5185185185185185,
+       "order_issue": 0.37037037037037035
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 96,
+       "2hit": 94,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 41,
+       "Pass": 53,
+       "1 Hit": 71,
+       "Miss": 68
+      },
+      "top3_precision": 0.43072702331961593,
+      "mrr": 0.4313293587984948
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 25
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.30864197530864196
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 18,
+       "1 Hit": 26,
+       "Miss": 21
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.4615391124650384
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 35,
+       "good_any2": 70,
+       "pass_any1": 132,
+       "champion": 35,
+       "winner_in_top3": 80,
+       "order_issue": 65
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.21604938271604937,
+       "good_any2": 0.43209876543209874,
+       "pass_any1": 0.8148148148148148,
+       "champion": 0.21604938271604937,
+       "winner_in_top3": 0.49382716049382713,
+       "order_issue": 0.4012345679012346
+      },
+      "hit_distribution": {
+       "0hit": 30,
+       "1hit": 62,
+       "2hit": 65,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 30,
+       "Pass": 35,
+       "1 Hit": 45,
+       "Miss": 47
+      },
+      "top3_precision": 0.42592592592592593,
+      "mrr": 0.4162244819652231
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 43,
+       "good_any2": 93,
+       "pass_any1": 175,
+       "champion": 46,
+       "winner_in_top3": 107,
+       "order_issue": 83
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.2,
+       "good_any2": 0.4325581395348837,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.21395348837209302,
+       "winner_in_top3": 0.49767441860465117,
+       "order_issue": 0.386046511627907
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 82,
+       "2hit": 86,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 36,
+       "Pass": 50,
+       "1 Hit": 60,
+       "Miss": 62
+      },
+      "top3_precision": 0.4263565891472868,
+      "mrr": 0.41307280574722466
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 17,
+       "good_any2": 39,
+       "pass_any1": 78,
+       "champion": 15,
+       "winner_in_top3": 43,
+       "order_issue": 37
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.17346938775510204,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.15306122448979592,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.37755102040816324
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 39,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 14,
+       "Pass": 22,
+       "1 Hit": 31,
+       "Miss": 28
+      },
+      "top3_precision": 0.40816326530612246,
+      "mrr": 0.365967365967366
+     }
+    },
+    "+10%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 11,
+       "good_positional": 50,
+       "good_any2": 103,
+       "pass_any1": 200,
+       "champion": 57,
+       "winner_in_top3": 125,
+       "order_issue": 88
+      },
+      "rates": {
+       "gold": 0.04526748971193416,
+       "good_positional": 0.205761316872428,
+       "good_any2": 0.42386831275720166,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.2345679012345679,
+       "winner_in_top3": 0.51440329218107,
+       "order_issue": 0.36213991769547327
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 97,
+       "2hit": 92,
+       "3hit": 11
+      },
+      "exclusive_labels": {
+       "Gold": 11,
+       "Good": 39,
+       "Pass": 53,
+       "1 Hit": 72,
+       "Miss": 68
+      },
+      "top3_precision": 0.43072702331961593,
+      "mrr": 0.430021304712663
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 25
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.30864197530864196
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 18,
+       "1 Hit": 26,
+       "Miss": 21
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.4615391124650384
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 6,
+       "good_positional": 34,
+       "good_any2": 69,
+       "pass_any1": 132,
+       "champion": 35,
+       "winner_in_top3": 79,
+       "order_issue": 63
+      },
+      "rates": {
+       "gold": 0.037037037037037035,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.42592592592592593,
+       "pass_any1": 0.8148148148148148,
+       "champion": 0.21604938271604937,
+       "winner_in_top3": 0.4876543209876543,
+       "order_issue": 0.3888888888888889
+      },
+      "hit_distribution": {
+       "0hit": 30,
+       "1hit": 63,
+       "2hit": 63,
+       "3hit": 6
+      },
+      "exclusive_labels": {
+       "Gold": 6,
+       "Good": 28,
+       "Pass": 35,
+       "1 Hit": 46,
+       "Miss": 47
+      },
+      "top3_precision": 0.42592592592592593,
+      "mrr": 0.41426240083647525
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 8,
+       "good_positional": 42,
+       "good_any2": 92,
+       "pass_any1": 175,
+       "champion": 46,
+       "winner_in_top3": 106,
+       "order_issue": 82
+      },
+      "rates": {
+       "gold": 0.037209302325581395,
+       "good_positional": 0.19534883720930232,
+       "good_any2": 0.42790697674418604,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.21395348837209302,
+       "winner_in_top3": 0.4930232558139535,
+       "order_issue": 0.3813953488372093
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 83,
+       "2hit": 84,
+       "3hit": 8
+      },
+      "exclusive_labels": {
+       "Gold": 8,
+       "Good": 34,
+       "Pass": 50,
+       "1 Hit": 61,
+       "Miss": 62
+      },
+      "top3_precision": 0.4263565891472868,
+      "mrr": 0.4116774569100154
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 16,
+       "good_any2": 39,
+       "pass_any1": 78,
+       "champion": 15,
+       "winner_in_top3": 43,
+       "order_issue": 35
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.16326530612244897,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.15306122448979592,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.35714285714285715
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 39,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 13,
+       "Pass": 23,
+       "1 Hit": 31,
+       "Miss": 28
+      },
+      "top3_precision": 0.40816326530612246,
+      "mrr": 0.3637564816136245
+     }
+    },
+    "+20%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 11,
+       "good_positional": 50,
+       "good_any2": 103,
+       "pass_any1": 200,
+       "champion": 57,
+       "winner_in_top3": 125,
+       "order_issue": 88
+      },
+      "rates": {
+       "gold": 0.04526748971193416,
+       "good_positional": 0.205761316872428,
+       "good_any2": 0.42386831275720166,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.2345679012345679,
+       "winner_in_top3": 0.51440329218107,
+       "order_issue": 0.36213991769547327
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 97,
+       "2hit": 92,
+       "3hit": 11
+      },
+      "exclusive_labels": {
+       "Gold": 11,
+       "Good": 39,
+       "Pass": 53,
+       "1 Hit": 72,
+       "Miss": 68
+      },
+      "top3_precision": 0.43072702331961593,
+      "mrr": 0.4300784606340164
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 25
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.30864197530864196
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 18,
+       "1 Hit": 26,
+       "Miss": 21
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.4615391124650384
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 6,
+       "good_positional": 34,
+       "good_any2": 69,
+       "pass_any1": 132,
+       "champion": 35,
+       "winner_in_top3": 79,
+       "order_issue": 63
+      },
+      "rates": {
+       "gold": 0.037037037037037035,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.42592592592592593,
+       "pass_any1": 0.8148148148148148,
+       "champion": 0.21604938271604937,
+       "winner_in_top3": 0.4876543209876543,
+       "order_issue": 0.3888888888888889
+      },
+      "hit_distribution": {
+       "0hit": 30,
+       "1hit": 63,
+       "2hit": 63,
+       "3hit": 6
+      },
+      "exclusive_labels": {
+       "Gold": 6,
+       "Good": 28,
+       "Pass": 35,
+       "1 Hit": 46,
+       "Miss": 47
+      },
+      "top3_precision": 0.42592592592592593,
+      "mrr": 0.4143481347185054
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 8,
+       "good_positional": 42,
+       "good_any2": 92,
+       "pass_any1": 175,
+       "champion": 46,
+       "winner_in_top3": 106,
+       "order_issue": 82
+      },
+      "rates": {
+       "gold": 0.037209302325581395,
+       "good_positional": 0.19534883720930232,
+       "good_any2": 0.42790697674418604,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.21395348837209302,
+       "winner_in_top3": 0.4930232558139535,
+       "order_issue": 0.3813953488372093
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 83,
+       "2hit": 84,
+       "3hit": 8
+      },
+      "exclusive_labels": {
+       "Gold": 8,
+       "Good": 34,
+       "Pass": 50,
+       "1 Hit": 61,
+       "Miss": 62
+      },
+      "top3_precision": 0.4263565891472868,
+      "mrr": 0.4117420563932195
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 16,
+       "good_any2": 39,
+       "pass_any1": 78,
+       "champion": 15,
+       "winner_in_top3": 43,
+       "order_issue": 35
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.16326530612244897,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.15306122448979592,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.35714285714285715
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 39,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 13,
+       "Pass": 23,
+       "1 Hit": 31,
+       "Miss": 28
+      },
+      "top3_precision": 0.40816326530612246,
+      "mrr": 0.3637564816136245
+     }
+    }
+   },
+   "form_line": {
+    "drop": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 11,
+       "good_positional": 47,
+       "good_any2": 100,
+       "pass_any1": 203,
+       "champion": 52,
+       "winner_in_top3": 125,
+       "order_issue": 90
+      },
+      "rates": {
+       "gold": 0.04526748971193416,
+       "good_positional": 0.1934156378600823,
+       "good_any2": 0.411522633744856,
+       "pass_any1": 0.8353909465020576,
+       "champion": 0.2139917695473251,
+       "winner_in_top3": 0.51440329218107,
+       "order_issue": 0.37037037037037035
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 103,
+       "2hit": 89,
+       "3hit": 11
+      },
+      "exclusive_labels": {
+       "Gold": 11,
+       "Good": 36,
+       "Pass": 53,
+       "1 Hit": 77,
+       "Miss": 66
+      },
+      "top3_precision": 0.43072702331961593,
+      "mrr": 0.42010690498344844
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 33,
+       "pass_any1": 69,
+       "champion": 20,
+       "winner_in_top3": 46,
+       "order_issue": 28
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.4074074074074074,
+       "pass_any1": 0.8518518518518519,
+       "champion": 0.24691358024691357,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.345679012345679
+      },
+      "hit_distribution": {
+       "0hit": 12,
+       "1hit": 36,
+       "2hit": 28,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 17,
+       "1 Hit": 27,
+       "Miss": 21
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.4512657438583365
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 6,
+       "good_positional": 31,
+       "good_any2": 67,
+       "pass_any1": 134,
+       "champion": 32,
+       "winner_in_top3": 79,
+       "order_issue": 62
+      },
+      "rates": {
+       "gold": 0.037037037037037035,
+       "good_positional": 0.19135802469135801,
+       "good_any2": 0.41358024691358025,
+       "pass_any1": 0.8271604938271605,
+       "champion": 0.19753086419753085,
+       "winner_in_top3": 0.4876543209876543,
+       "order_issue": 0.38271604938271603
+      },
+      "hit_distribution": {
+       "0hit": 28,
+       "1hit": 67,
+       "2hit": 61,
+       "3hit": 6
+      },
+      "exclusive_labels": {
+       "Gold": 6,
+       "Good": 25,
+       "Pass": 36,
+       "1 Hit": 50,
+       "Miss": 45
+      },
+      "top3_precision": 0.42592592592592593,
+      "mrr": 0.40452748554600443
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 8,
+       "good_positional": 39,
+       "good_any2": 89,
+       "pass_any1": 177,
+       "champion": 41,
+       "winner_in_top3": 106,
+       "order_issue": 84
+      },
+      "rates": {
+       "gold": 0.037209302325581395,
+       "good_positional": 0.1813953488372093,
+       "good_any2": 0.413953488372093,
+       "pass_any1": 0.8232558139534883,
+       "champion": 0.19069767441860466,
+       "winner_in_top3": 0.4930232558139535,
+       "order_issue": 0.39069767441860465
+      },
+      "hit_distribution": {
+       "0hit": 38,
+       "1hit": 88,
+       "2hit": 81,
+       "3hit": 8
+      },
+      "exclusive_labels": {
+       "Gold": 8,
+       "Good": 31,
+       "Pass": 50,
+       "1 Hit": 66,
+       "Miss": 60
+      },
+      "top3_precision": 0.4248062015503876,
+      "mrr": 0.4001765676184285
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 14,
+       "good_any2": 38,
+       "pass_any1": 78,
+       "champion": 10,
+       "winner_in_top3": 43,
+       "order_issue": 33
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.14285714285714285,
+       "good_any2": 0.3877551020408163,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.10204081632653061,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.336734693877551
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 40,
+       "2hit": 35,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 11,
+       "Pass": 24,
+       "1 Hit": 33,
+       "Miss": 27
+      },
+      "top3_precision": 0.40476190476190477,
+      "mrr": 0.3357552594797492
+     }
+    },
+    "-20%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 51,
+       "good_any2": 103,
+       "pass_any1": 201,
+       "champion": 57,
+       "winner_in_top3": 125,
+       "order_issue": 84
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.42386831275720166,
+       "pass_any1": 0.8271604938271605,
+       "champion": 0.2345679012345679,
+       "winner_in_top3": 0.51440329218107,
+       "order_issue": 0.345679012345679
+      },
+      "hit_distribution": {
+       "0hit": 42,
+       "1hit": 98,
+       "2hit": 93,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 41,
+       "Pass": 52,
+       "1 Hit": 72,
+       "Miss": 68
+      },
+      "top3_precision": 0.43072702331961593,
+      "mrr": 0.4308835426119379
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 24
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.2962962962962963
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 18,
+       "1 Hit": 26,
+       "Miss": 21
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.46165669036039414
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 35,
+       "good_any2": 69,
+       "pass_any1": 133,
+       "champion": 35,
+       "winner_in_top3": 79,
+       "order_issue": 60
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.21604938271604937,
+       "good_any2": 0.42592592592592593,
+       "pass_any1": 0.8209876543209876,
+       "champion": 0.21604938271604937,
+       "winner_in_top3": 0.4876543209876543,
+       "order_issue": 0.37037037037037035
+      },
+      "hit_distribution": {
+       "0hit": 29,
+       "1hit": 64,
+       "2hit": 64,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 30,
+       "Pass": 34,
+       "1 Hit": 46,
+       "Miss": 47
+      },
+      "top3_precision": 0.42592592592592593,
+      "mrr": 0.4154969687377099
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 43,
+       "good_any2": 92,
+       "pass_any1": 175,
+       "champion": 46,
+       "winner_in_top3": 106,
+       "order_issue": 78
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.2,
+       "good_any2": 0.42790697674418604,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.21395348837209302,
+       "winner_in_top3": 0.4930232558139535,
+       "order_issue": 0.3627906976744186
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 83,
+       "2hit": 85,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 36,
+       "Pass": 49,
+       "1 Hit": 61,
+       "Miss": 62
+      },
+      "top3_precision": 0.4248062015503876,
+      "mrr": 0.4127627282278448
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 17,
+       "good_any2": 39,
+       "pass_any1": 78,
+       "champion": 15,
+       "winner_in_top3": 43,
+       "order_issue": 31
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.17346938775510204,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.15306122448979592,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.3163265306122449
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 39,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 14,
+       "Pass": 22,
+       "1 Hit": 31,
+       "Miss": 28
+      },
+      "top3_precision": 0.40816326530612246,
+      "mrr": 0.3650441395339355
+     }
+    },
+    "-10%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 51,
+       "good_any2": 103,
+       "pass_any1": 201,
+       "champion": 57,
+       "winner_in_top3": 125,
+       "order_issue": 85
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.42386831275720166,
+       "pass_any1": 0.8271604938271605,
+       "champion": 0.2345679012345679,
+       "winner_in_top3": 0.51440329218107,
+       "order_issue": 0.3497942386831276
+      },
+      "hit_distribution": {
+       "0hit": 42,
+       "1hit": 98,
+       "2hit": 93,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 41,
+       "Pass": 52,
+       "1 Hit": 72,
+       "Miss": 68
+      },
+      "top3_precision": 0.43072702331961593,
+      "mrr": 0.43084434998015264
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 24
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.2962962962962963
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 18,
+       "1 Hit": 26,
+       "Miss": 21
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.4615391124650384
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 35,
+       "good_any2": 69,
+       "pass_any1": 133,
+       "champion": 35,
+       "winner_in_top3": 79,
+       "order_issue": 61
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.21604938271604937,
+       "good_any2": 0.42592592592592593,
+       "pass_any1": 0.8209876543209876,
+       "champion": 0.21604938271604937,
+       "winner_in_top3": 0.4876543209876543,
+       "order_issue": 0.3765432098765432
+      },
+      "hit_distribution": {
+       "0hit": 29,
+       "1hit": 64,
+       "2hit": 64,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 30,
+       "Pass": 34,
+       "1 Hit": 46,
+       "Miss": 47
+      },
+      "top3_precision": 0.42592592592592593,
+      "mrr": 0.4154969687377099
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 43,
+       "good_any2": 92,
+       "pass_any1": 175,
+       "champion": 46,
+       "winner_in_top3": 106,
+       "order_issue": 79
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.2,
+       "good_any2": 0.42790697674418604,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.21395348837209302,
+       "winner_in_top3": 0.4930232558139535,
+       "order_issue": 0.3674418604651163
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 83,
+       "2hit": 85,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 36,
+       "Pass": 49,
+       "1 Hit": 61,
+       "Miss": 62
+      },
+      "top3_precision": 0.4248062015503876,
+      "mrr": 0.41260768946815496
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 17,
+       "good_any2": 39,
+       "pass_any1": 78,
+       "champion": 15,
+       "winner_in_top3": 43,
+       "order_issue": 32
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.17346938775510204,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.15306122448979592,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.32653061224489793
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 39,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 14,
+       "Pass": 22,
+       "1 Hit": 31,
+       "Miss": 28
+      },
+      "top3_precision": 0.40816326530612246,
+      "mrr": 0.36528709385852254
+     }
+    },
+    "+10%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 11,
+       "good_positional": 51,
+       "good_any2": 104,
+       "pass_any1": 199,
+       "champion": 57,
+       "winner_in_top3": 126,
+       "order_issue": 88
+      },
+      "rates": {
+       "gold": 0.04526748971193416,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.4279835390946502,
+       "pass_any1": 0.8189300411522634,
+       "champion": 0.2345679012345679,
+       "winner_in_top3": 0.5185185185185185,
+       "order_issue": 0.36213991769547327
+      },
+      "hit_distribution": {
+       "0hit": 44,
+       "1hit": 95,
+       "2hit": 93,
+       "3hit": 11
+      },
+      "exclusive_labels": {
+       "Gold": 11,
+       "Good": 40,
+       "Pass": 53,
+       "1 Hit": 70,
+       "Miss": 69
+      },
+      "top3_precision": 0.43072702331961593,
+      "mrr": 0.4302091027399672
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 24
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.2962962962962963
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 18,
+       "1 Hit": 26,
+       "Miss": 21
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.4615391124650384
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 6,
+       "good_positional": 35,
+       "good_any2": 70,
+       "pass_any1": 131,
+       "champion": 35,
+       "winner_in_top3": 80,
+       "order_issue": 64
+      },
+      "rates": {
+       "gold": 0.037037037037037035,
+       "good_positional": 0.21604938271604937,
+       "good_any2": 0.43209876543209874,
+       "pass_any1": 0.808641975308642,
+       "champion": 0.21604938271604937,
+       "winner_in_top3": 0.49382716049382713,
+       "order_issue": 0.3950617283950617
+      },
+      "hit_distribution": {
+       "0hit": 31,
+       "1hit": 61,
+       "2hit": 64,
+       "3hit": 6
+      },
+      "exclusive_labels": {
+       "Gold": 6,
+       "Good": 29,
+       "Pass": 35,
+       "1 Hit": 44,
+       "Miss": 48
+      },
+      "top3_precision": 0.42592592592592593,
+      "mrr": 0.4145440978774316
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 8,
+       "good_positional": 43,
+       "good_any2": 93,
+       "pass_any1": 175,
+       "champion": 46,
+       "winner_in_top3": 107,
+       "order_issue": 82
+      },
+      "rates": {
+       "gold": 0.037209302325581395,
+       "good_positional": 0.2,
+       "good_any2": 0.4325581395348837,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.21395348837209302,
+       "winner_in_top3": 0.49767441860465117,
+       "order_issue": 0.3813953488372093
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 82,
+       "2hit": 85,
+       "3hit": 8
+      },
+      "exclusive_labels": {
+       "Gold": 8,
+       "Good": 35,
+       "Pass": 50,
+       "1 Hit": 59,
+       "Miss": 63
+      },
+      "top3_precision": 0.42790697674418604,
+      "mrr": 0.4118897123548291
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 17,
+       "good_any2": 39,
+       "pass_any1": 78,
+       "champion": 15,
+       "winner_in_top3": 43,
+       "order_issue": 36
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.17346938775510204,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.15306122448979592,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.3673469387755102
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 39,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 14,
+       "Pass": 22,
+       "1 Hit": 30,
+       "Miss": 29
+      },
+      "top3_precision": 0.40816326530612246,
+      "mrr": 0.36412496233924807
+     }
+    },
+    "+20%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 50,
+       "good_any2": 103,
+       "pass_any1": 199,
+       "champion": 56,
+       "winner_in_top3": 126,
+       "order_issue": 89
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.205761316872428,
+       "good_any2": 0.42386831275720166,
+       "pass_any1": 0.8189300411522634,
+       "champion": 0.23045267489711935,
+       "winner_in_top3": 0.5185185185185185,
+       "order_issue": 0.3662551440329218
+      },
+      "hit_distribution": {
+       "0hit": 44,
+       "1hit": 96,
+       "2hit": 93,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 40,
+       "Pass": 53,
+       "1 Hit": 71,
+       "Miss": 69
+      },
+      "top3_precision": 0.4279835390946502,
+      "mrr": 0.427557067989167
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 24
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.2962962962962963
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 18,
+       "1 Hit": 26,
+       "Miss": 21
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.4621074056259242
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 34,
+       "good_any2": 69,
+       "pass_any1": 131,
+       "champion": 34,
+       "winner_in_top3": 80,
+       "order_issue": 65
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.42592592592592593,
+       "pass_any1": 0.808641975308642,
+       "champion": 0.20987654320987653,
+       "winner_in_top3": 0.49382716049382713,
+       "order_issue": 0.4012345679012346
+      },
+      "hit_distribution": {
+       "0hit": 31,
+       "1hit": 62,
+       "2hit": 64,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 29,
+       "Pass": 35,
+       "1 Hit": 45,
+       "Miss": 48
+      },
+      "top3_precision": 0.4218106995884774,
+      "mrr": 0.4102818991707884
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 42,
+       "good_any2": 92,
+       "pass_any1": 175,
+       "champion": 46,
+       "winner_in_top3": 107,
+       "order_issue": 83
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.19534883720930232,
+       "good_any2": 0.42790697674418604,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.21395348837209302,
+       "winner_in_top3": 0.49767441860465117,
+       "order_issue": 0.386046511627907
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 83,
+       "2hit": 85,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 35,
+       "Pass": 50,
+       "1 Hit": 60,
+       "Miss": 63
+      },
+      "top3_precision": 0.4248062015503876,
+      "mrr": 0.41121787772950597
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 17,
+       "good_any2": 39,
+       "pass_any1": 78,
+       "champion": 14,
+       "winner_in_top3": 43,
+       "order_issue": 35
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.17346938775510204,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.14285714285714285,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.35714285714285715
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 39,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 14,
+       "Pass": 22,
+       "1 Hit": 30,
+       "Miss": 29
+      },
+      "top3_precision": 0.40816326530612246,
+      "mrr": 0.36058187843902134
+     }
+    }
+   },
+   "class_advantage": {
+    "drop": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 8,
+       "good_positional": 42,
+       "good_any2": 99,
+       "pass_any1": 204,
+       "champion": 57,
+       "winner_in_top3": 124,
+       "order_issue": 90
+      },
+      "rates": {
+       "gold": 0.03292181069958848,
+       "good_positional": 0.1728395061728395,
+       "good_any2": 0.4074074074074074,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2345679012345679,
+       "winner_in_top3": 0.5102880658436214,
+       "order_issue": 0.37037037037037035
+      },
+      "hit_distribution": {
+       "0hit": 39,
+       "1hit": 105,
+       "2hit": 91,
+       "3hit": 8
+      },
+      "exclusive_labels": {
+       "Gold": 8,
+       "Good": 34,
+       "Pass": 57,
+       "1 Hit": 82,
+       "Miss": 62
+      },
+      "top3_precision": 0.42661179698216734,
+      "mrr": 0.42944652512553766
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 4,
+       "good_positional": 17,
+       "good_any2": 33,
+       "pass_any1": 68,
+       "champion": 21,
+       "winner_in_top3": 45,
+       "order_issue": 24
+      },
+      "rates": {
+       "gold": 0.04938271604938271,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.4074074074074074,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.25925925925925924,
+       "winner_in_top3": 0.5555555555555556,
+       "order_issue": 0.2962962962962963
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 35,
+       "2hit": 29,
+       "3hit": 4
+      },
+      "exclusive_labels": {
+       "Gold": 4,
+       "Good": 13,
+       "Pass": 16,
+       "1 Hit": 30,
+       "Miss": 18
+      },
+      "top3_precision": 0.43209876543209874,
+      "mrr": 0.46020210927618344
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 4,
+       "good_positional": 25,
+       "good_any2": 66,
+       "pass_any1": 136,
+       "champion": 36,
+       "winner_in_top3": 79,
+       "order_issue": 66
+      },
+      "rates": {
+       "gold": 0.024691358024691357,
+       "good_positional": 0.15432098765432098,
+       "good_any2": 0.4074074074074074,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2222222222222222,
+       "winner_in_top3": 0.4876543209876543,
+       "order_issue": 0.4074074074074074
+      },
+      "hit_distribution": {
+       "0hit": 26,
+       "1hit": 70,
+       "2hit": 62,
+       "3hit": 4
+      },
+      "exclusive_labels": {
+       "Gold": 4,
+       "Good": 21,
+       "Pass": 41,
+       "1 Hit": 52,
+       "Miss": 44
+      },
+      "top3_precision": 0.42386831275720166,
+      "mrr": 0.41406873305021497
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 6,
+       "good_positional": 35,
+       "good_any2": 88,
+       "pass_any1": 179,
+       "champion": 47,
+       "winner_in_top3": 105,
+       "order_issue": 81
+      },
+      "rates": {
+       "gold": 0.027906976744186046,
+       "good_positional": 0.16279069767441862,
+       "good_any2": 0.40930232558139534,
+       "pass_any1": 0.8325581395348837,
+       "champion": 0.2186046511627907,
+       "winner_in_top3": 0.4883720930232558,
+       "order_issue": 0.3767441860465116
+      },
+      "hit_distribution": {
+       "0hit": 36,
+       "1hit": 91,
+       "2hit": 82,
+       "3hit": 6
+      },
+      "exclusive_labels": {
+       "Gold": 6,
+       "Good": 29,
+       "Pass": 53,
+       "1 Hit": 70,
+       "Miss": 57
+      },
+      "top3_precision": 0.4232558139534884,
+      "mrr": 0.41365794412306073
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 2,
+       "good_positional": 14,
+       "good_any2": 41,
+       "pass_any1": 79,
+       "champion": 16,
+       "winner_in_top3": 43,
+       "order_issue": 36
+      },
+      "rates": {
+       "gold": 0.02040816326530612,
+       "good_positional": 0.14285714285714285,
+       "good_any2": 0.41836734693877553,
+       "pass_any1": 0.8061224489795918,
+       "champion": 0.16326530612244897,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.3673469387755102
+      },
+      "hit_distribution": {
+       "0hit": 19,
+       "1hit": 38,
+       "2hit": 39,
+       "3hit": 2
+      },
+      "exclusive_labels": {
+       "Gold": 2,
+       "Good": 12,
+       "Pass": 27,
+       "1 Hit": 30,
+       "Miss": 27
+      },
+      "top3_precision": 0.41496598639455784,
+      "mrr": 0.3725022143389491
+     }
+    },
+    "-20%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 9,
+       "good_positional": 50,
+       "good_any2": 101,
+       "pass_any1": 200,
+       "champion": 57,
+       "winner_in_top3": 125,
+       "order_issue": 87
+      },
+      "rates": {
+       "gold": 0.037037037037037035,
+       "good_positional": 0.205761316872428,
+       "good_any2": 0.4156378600823045,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.2345679012345679,
+       "winner_in_top3": 0.51440329218107,
+       "order_issue": 0.35802469135802467
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 99,
+       "2hit": 92,
+       "3hit": 9
+      },
+      "exclusive_labels": {
+       "Gold": 9,
+       "Good": 41,
+       "Pass": 51,
+       "1 Hit": 74,
+       "Miss": 68
+      },
+      "top3_precision": 0.4252400548696845,
+      "mrr": 0.4306057796798541
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 24
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.2962962962962963
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 18,
+       "1 Hit": 26,
+       "Miss": 21
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.4634742486594339
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 4,
+       "good_positional": 34,
+       "good_any2": 67,
+       "pass_any1": 132,
+       "champion": 35,
+       "winner_in_top3": 79,
+       "order_issue": 63
+      },
+      "rates": {
+       "gold": 0.024691358024691357,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.41358024691358025,
+       "pass_any1": 0.8148148148148148,
+       "champion": 0.21604938271604937,
+       "winner_in_top3": 0.4876543209876543,
+       "order_issue": 0.3888888888888889
+      },
+      "hit_distribution": {
+       "0hit": 30,
+       "1hit": 65,
+       "2hit": 63,
+       "3hit": 4
+      },
+      "exclusive_labels": {
+       "Gold": 4,
+       "Good": 30,
+       "Pass": 33,
+       "1 Hit": 48,
+       "Miss": 47
+      },
+      "top3_precision": 0.4176954732510288,
+      "mrr": 0.4141715451900642
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 6,
+       "good_positional": 42,
+       "good_any2": 90,
+       "pass_any1": 175,
+       "champion": 47,
+       "winner_in_top3": 106,
+       "order_issue": 80
+      },
+      "rates": {
+       "gold": 0.027906976744186046,
+       "good_positional": 0.19534883720930232,
+       "good_any2": 0.4186046511627907,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.2186046511627907,
+       "winner_in_top3": 0.4930232558139535,
+       "order_issue": 0.37209302325581395
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 85,
+       "2hit": 84,
+       "3hit": 6
+      },
+      "exclusive_labels": {
+       "Gold": 6,
+       "Good": 36,
+       "Pass": 48,
+       "1 Hit": 62,
+       "Miss": 63
+      },
+      "top3_precision": 0.4201550387596899,
+      "mrr": 0.41458057446429575
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 16,
+       "good_any2": 39,
+       "pass_any1": 79,
+       "champion": 15,
+       "winner_in_top3": 43,
+       "order_issue": 35
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.16326530612244897,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.8061224489795918,
+       "champion": 0.15306122448979592,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.35714285714285715
+      },
+      "hit_distribution": {
+       "0hit": 19,
+       "1hit": 40,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 13,
+       "Pass": 23,
+       "1 Hit": 30,
+       "Miss": 29
+      },
+      "top3_precision": 0.41156462585034015,
+      "mrr": 0.364711733844387
+     }
+    },
+    "-10%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 9,
+       "good_positional": 51,
+       "good_any2": 103,
+       "pass_any1": 200,
+       "champion": 57,
+       "winner_in_top3": 125,
+       "order_issue": 88
+      },
+      "rates": {
+       "gold": 0.037037037037037035,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.42386831275720166,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.2345679012345679,
+       "winner_in_top3": 0.51440329218107,
+       "order_issue": 0.36213991769547327
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 97,
+       "2hit": 94,
+       "3hit": 9
+      },
+      "exclusive_labels": {
+       "Gold": 9,
+       "Good": 42,
+       "Pass": 52,
+       "1 Hit": 72,
+       "Miss": 68
+      },
+      "top3_precision": 0.4279835390946502,
+      "mrr": 0.4303299466879717
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 24
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.2962962962962963
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 18,
+       "1 Hit": 26,
+       "Miss": 21
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.4613186539112466
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 4,
+       "good_positional": 35,
+       "good_any2": 69,
+       "pass_any1": 132,
+       "champion": 35,
+       "winner_in_top3": 79,
+       "order_issue": 64
+      },
+      "rates": {
+       "gold": 0.024691358024691357,
+       "good_positional": 0.21604938271604937,
+       "good_any2": 0.42592592592592593,
+       "pass_any1": 0.8148148148148148,
+       "champion": 0.21604938271604937,
+       "winner_in_top3": 0.4876543209876543,
+       "order_issue": 0.3950617283950617
+      },
+      "hit_distribution": {
+       "0hit": 30,
+       "1hit": 63,
+       "2hit": 65,
+       "3hit": 4
+      },
+      "exclusive_labels": {
+       "Gold": 4,
+       "Good": 31,
+       "Pass": 34,
+       "1 Hit": 46,
+       "Miss": 47
+      },
+      "top3_precision": 0.4218106995884774,
+      "mrr": 0.4148355930763342
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 6,
+       "good_positional": 43,
+       "good_any2": 92,
+       "pass_any1": 175,
+       "champion": 47,
+       "winner_in_top3": 106,
+       "order_issue": 80
+      },
+      "rates": {
+       "gold": 0.027906976744186046,
+       "good_positional": 0.2,
+       "good_any2": 0.42790697674418604,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.2186046511627907,
+       "winner_in_top3": 0.4930232558139535,
+       "order_issue": 0.37209302325581395
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 83,
+       "2hit": 86,
+       "3hit": 6
+      },
+      "exclusive_labels": {
+       "Gold": 6,
+       "Good": 37,
+       "Pass": 49,
+       "1 Hit": 61,
+       "Miss": 62
+      },
+      "top3_precision": 0.4232558139534884,
+      "mrr": 0.4142688190362613
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 17,
+       "good_any2": 39,
+       "pass_any1": 78,
+       "champion": 15,
+       "winner_in_top3": 43,
+       "order_issue": 35
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.17346938775510204,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.15306122448979592,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.35714285714285715
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 39,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 14,
+       "Pass": 22,
+       "1 Hit": 31,
+       "Miss": 28
+      },
+      "top3_precision": 0.40816326530612246,
+      "mrr": 0.3645096400198442
+     }
+    },
+    "+10%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 50,
+       "good_any2": 104,
+       "pass_any1": 200,
+       "champion": 57,
+       "winner_in_top3": 126,
+       "order_issue": 88
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.205761316872428,
+       "good_any2": 0.4279835390946502,
+       "pass_any1": 0.823045267489712,
+       "champion": 0.2345679012345679,
+       "winner_in_top3": 0.5185185185185185,
+       "order_issue": 0.36213991769547327
+      },
+      "hit_distribution": {
+       "0hit": 43,
+       "1hit": 96,
+       "2hit": 94,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 40,
+       "Pass": 54,
+       "1 Hit": 69,
+       "Miss": 70
+      },
+      "top3_precision": 0.43072702331961593,
+      "mrr": 0.43056525093562154
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 26
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.32098765432098764
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 18,
+       "1 Hit": 25,
+       "Miss": 22
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.459187554557925
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 34,
+       "good_any2": 70,
+       "pass_any1": 132,
+       "champion": 35,
+       "winner_in_top3": 80,
+       "order_issue": 62
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.43209876543209874,
+       "pass_any1": 0.8148148148148148,
+       "champion": 0.21604938271604937,
+       "winner_in_top3": 0.49382716049382713,
+       "order_issue": 0.38271604938271603
+      },
+      "hit_distribution": {
+       "0hit": 30,
+       "1hit": 62,
+       "2hit": 65,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 29,
+       "Pass": 36,
+       "1 Hit": 44,
+       "Miss": 48
+      },
+      "top3_precision": 0.42592592592592593,
+      "mrr": 0.4162540991244699
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 42,
+       "good_any2": 93,
+       "pass_any1": 175,
+       "champion": 46,
+       "winner_in_top3": 107,
+       "order_issue": 82
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.19534883720930232,
+       "good_any2": 0.4325581395348837,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.21395348837209302,
+       "winner_in_top3": 0.49767441860465117,
+       "order_issue": 0.3813953488372093
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 82,
+       "2hit": 86,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 35,
+       "Pass": 51,
+       "1 Hit": 58,
+       "Miss": 64
+      },
+      "top3_precision": 0.4263565891472868,
+      "mrr": 0.4124029846122873
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 16,
+       "good_any2": 39,
+       "pass_any1": 78,
+       "champion": 15,
+       "winner_in_top3": 43,
+       "order_issue": 37
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.16326530612244897,
+       "good_any2": 0.3979591836734694,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.15306122448979592,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.37755102040816324
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 39,
+       "2hit": 36,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 13,
+       "Pass": 23,
+       "1 Hit": 29,
+       "Miss": 30
+      },
+      "top3_precision": 0.40816326530612246,
+      "mrr": 0.3626469901980106
+     }
+    },
+    "+20%": {
+     "ALL": {
+      "races": 243,
+      "counts": {
+       "gold": 10,
+       "good_positional": 50,
+       "good_any2": 104,
+       "pass_any1": 201,
+       "champion": 56,
+       "winner_in_top3": 126,
+       "order_issue": 88
+      },
+      "rates": {
+       "gold": 0.0411522633744856,
+       "good_positional": 0.205761316872428,
+       "good_any2": 0.4279835390946502,
+       "pass_any1": 0.8271604938271605,
+       "champion": 0.23045267489711935,
+       "winner_in_top3": 0.5185185185185185,
+       "order_issue": 0.36213991769547327
+      },
+      "hit_distribution": {
+       "0hit": 42,
+       "1hit": 97,
+       "2hit": 94,
+       "3hit": 10
+      },
+      "exclusive_labels": {
+       "Gold": 10,
+       "Good": 40,
+       "Pass": 54,
+       "1 Hit": 68,
+       "Miss": 71
+      },
+      "top3_precision": 0.43209876543209874,
+      "mrr": 0.4285305001354386
+     },
+     "HappyValley": {
+      "races": 81,
+      "counts": {
+       "gold": 5,
+       "good_positional": 16,
+       "good_any2": 34,
+       "pass_any1": 68,
+       "champion": 22,
+       "winner_in_top3": 46,
+       "order_issue": 25
+      },
+      "rates": {
+       "gold": 0.06172839506172839,
+       "good_positional": 0.19753086419753085,
+       "good_any2": 0.41975308641975306,
+       "pass_any1": 0.8395061728395061,
+       "champion": 0.2716049382716049,
+       "winner_in_top3": 0.5679012345679012,
+       "order_issue": 0.30864197530864196
+      },
+      "hit_distribution": {
+       "0hit": 13,
+       "1hit": 34,
+       "2hit": 29,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 11,
+       "Pass": 18,
+       "1 Hit": 25,
+       "Miss": 22
+      },
+      "top3_precision": 0.4403292181069959,
+      "mrr": 0.4588446190298042
+     },
+     "ShaTin": {
+      "races": 162,
+      "counts": {
+       "gold": 5,
+       "good_positional": 34,
+       "good_any2": 70,
+       "pass_any1": 133,
+       "champion": 34,
+       "winner_in_top3": 80,
+       "order_issue": 63
+      },
+      "rates": {
+       "gold": 0.030864197530864196,
+       "good_positional": 0.20987654320987653,
+       "good_any2": 0.43209876543209874,
+       "pass_any1": 0.8209876543209876,
+       "champion": 0.20987654320987653,
+       "winner_in_top3": 0.49382716049382713,
+       "order_issue": 0.3888888888888889
+      },
+      "hit_distribution": {
+       "0hit": 29,
+       "1hit": 63,
+       "2hit": 65,
+       "3hit": 5
+      },
+      "exclusive_labels": {
+       "Gold": 5,
+       "Good": 29,
+       "Pass": 36,
+       "1 Hit": 43,
+       "Miss": 49
+      },
+      "top3_precision": 0.4279835390946502,
+      "mrr": 0.4133734406882559
+     },
+     "field 12+": {
+      "races": 215,
+      "counts": {
+       "gold": 7,
+       "good_positional": 42,
+       "good_any2": 93,
+       "pass_any1": 175,
+       "champion": 44,
+       "winner_in_top3": 107,
+       "order_issue": 82
+      },
+      "rates": {
+       "gold": 0.03255813953488372,
+       "good_positional": 0.19534883720930232,
+       "good_any2": 0.4325581395348837,
+       "pass_any1": 0.813953488372093,
+       "champion": 0.20465116279069767,
+       "winner_in_top3": 0.49767441860465117,
+       "order_issue": 0.3813953488372093
+      },
+      "hit_distribution": {
+       "0hit": 40,
+       "1hit": 82,
+       "2hit": 86,
+       "3hit": 7
+      },
+      "exclusive_labels": {
+       "Gold": 7,
+       "Good": 35,
+       "Pass": 51,
+       "1 Hit": 57,
+       "Miss": 65
+      },
+      "top3_precision": 0.4263565891472868,
+      "mrr": 0.40777766161487133
+     },
+     "tight gap": {
+      "races": 98,
+      "counts": {
+       "gold": 3,
+       "good_positional": 16,
+       "good_any2": 41,
+       "pass_any1": 78,
+       "champion": 14,
+       "winner_in_top3": 43,
+       "order_issue": 38
+      },
+      "rates": {
+       "gold": 0.030612244897959183,
+       "good_positional": 0.16326530612244897,
+       "good_any2": 0.41836734693877553,
+       "pass_any1": 0.7959183673469388,
+       "champion": 0.14285714285714285,
+       "winner_in_top3": 0.4387755102040816,
+       "order_issue": 0.3877551020408163
+      },
+      "hit_distribution": {
+       "0hit": 20,
+       "1hit": 37,
+       "2hit": 38,
+       "3hit": 3
+      },
+      "exclusive_labels": {
+       "Gold": 3,
+       "Good": 13,
+       "Pass": 25,
+       "1 Hit": 26,
+       "Miss": 31
+      },
+      "top3_precision": 0.41496598639455784,
+      "mrr": 0.3584519788601422
+     }
+    }
+   }
+  },
+  "reconstruction_error": {
+   "ALL": {
+    "stored_good_pos": 51,
+    "recon_good_pos": 51
+   },
+   "HappyValley": {
+    "stored_good_pos": 16,
+    "recon_good_pos": 16
+   },
+   "ShaTin": {
+    "stored_good_pos": 35,
+    "recon_good_pos": 35
+   },
+   "field 12+": {
+    "stored_good_pos": 43,
+    "recon_good_pos": 43
+   },
+   "tight gap": {
+    "stored_good_pos": 16,
+    "recon_good_pos": 17
+   }
+  }
+ },
+ "zero_hit": {
+  "zero_hit_races": 45,
+  "winner_minus_top2_avg": {
+   "stability": -8.016,
+   "sectional": -2.861,
+   "race_shape": -8.569,
+   "trainer_signal": -4.948,
+   "horse_health": 0.494,
+   "form_line": -0.349,
+   "class_advantage": -1.523
+  }
+ }
+}

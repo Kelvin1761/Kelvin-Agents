@@ -1,0 +1,341 @@
+{
+ "generated": "2026-07-17",
+ "n_all": 243,
+ "n_faithful": 171,
+ "in_sample": {
+  "trainer_signal x0.7": {
+   "all_good_pos_pp": 22.22,
+   "faithful_good_pos_pp": 18.71
+  },
+  "trainer_signal x0.8": {
+   "all_good_pos_pp": 22.63,
+   "faithful_good_pos_pp": 19.3
+  },
+  "trainer_signal x0.9": {
+   "all_good_pos_pp": 20.99,
+   "faithful_good_pos_pp": 17.54
+  },
+  "baseline": {
+   "all_good_pos_pp": 20.99,
+   "faithful_good_pos_pp": 17.54
+  }
+ },
+ "walk_forward": {
+  "all_archive": {
+   "folds": [
+    {
+     "fold": 1,
+     "train_meetings": 4,
+     "test_meetings": 4,
+     "test_races": 40,
+     "selected_mult": 0.7,
+     "base": {
+      "gold": 0.025,
+      "good_positional": 0.275,
+      "good_any2": 0.475,
+      "pass_any1": 0.85,
+      "champion": 0.3,
+      "winner_in_top3": 0.625,
+      "order_issue": 0.175
+     },
+     "cand": {
+      "gold": 0.025,
+      "good_positional": 0.275,
+      "good_any2": 0.5,
+      "pass_any1": 0.85,
+      "champion": 0.275,
+      "winner_in_top3": 0.6,
+      "order_issue": 0.175
+     },
+     "base_top3prec": 0.45,
+     "cand_top3prec": 0.4583333333333333,
+     "base_miss": 6,
+     "cand_miss": 6
+    },
+    {
+     "fold": 2,
+     "train_meetings": 8,
+     "test_meetings": 4,
+     "test_races": 40,
+     "selected_mult": 0.7,
+     "base": {
+      "gold": 0.075,
+      "good_positional": 0.2,
+      "good_any2": 0.45,
+      "pass_any1": 0.8,
+      "champion": 0.175,
+      "winner_in_top3": 0.425,
+      "order_issue": 0.4
+     },
+     "cand": {
+      "gold": 0.075,
+      "good_positional": 0.225,
+      "good_any2": 0.375,
+      "pass_any1": 0.75,
+      "champion": 0.15,
+      "winner_in_top3": 0.375,
+      "order_issue": 0.45
+     },
+     "base_top3prec": 0.44166666666666665,
+     "cand_top3prec": 0.4,
+     "base_miss": 13,
+     "cand_miss": 15
+    },
+    {
+     "fold": 3,
+     "train_meetings": 12,
+     "test_meetings": 4,
+     "test_races": 39,
+     "selected_mult": 0.7,
+     "base": {
+      "gold": 0.05128205128205128,
+      "good_positional": 0.1794871794871795,
+      "good_any2": 0.3333333333333333,
+      "pass_any1": 0.7435897435897436,
+      "champion": 0.2564102564102564,
+      "winner_in_top3": 0.48717948717948717,
+      "order_issue": 0.3076923076923077
+     },
+     "cand": {
+      "gold": 0.05128205128205128,
+      "good_positional": 0.23076923076923078,
+      "good_any2": 0.3333333333333333,
+      "pass_any1": 0.7948717948717948,
+      "champion": 0.2564102564102564,
+      "winner_in_top3": 0.5128205128205128,
+      "order_issue": 0.38461538461538464
+     },
+     "base_top3prec": 0.37606837606837606,
+     "cand_top3prec": 0.39316239316239315,
+     "base_miss": 13,
+     "cand_miss": 14
+    },
+    {
+     "fold": 4,
+     "train_meetings": 16,
+     "test_meetings": 4,
+     "test_races": 42,
+     "selected_mult": 0.7,
+     "base": {
+      "gold": 0.023809523809523808,
+      "good_positional": 0.11904761904761904,
+      "good_any2": 0.2619047619047619,
+      "pass_any1": 0.7857142857142857,
+      "champion": 0.16666666666666666,
+      "winner_in_top3": 0.4523809523809524,
+      "order_issue": 0.47619047619047616
+     },
+     "cand": {
+      "gold": 0.07142857142857142,
+      "good_positional": 0.09523809523809523,
+      "good_any2": 0.30952380952380953,
+      "pass_any1": 0.7857142857142857,
+      "champion": 0.14285714285714285,
+      "winner_in_top3": 0.42857142857142855,
+      "order_issue": 0.42857142857142855
+     },
+     "base_top3prec": 0.35714285714285715,
+     "cand_top3prec": 0.3888888888888889,
+     "base_miss": 18,
+     "cand_miss": 15
+    },
+    {
+     "fold": 5,
+     "train_meetings": 20,
+     "test_meetings": 4,
+     "test_races": 42,
+     "selected_mult": 0.8,
+     "base": {
+      "gold": 0.0,
+      "good_positional": 0.14285714285714285,
+      "good_any2": 0.47619047619047616,
+      "pass_any1": 0.8333333333333334,
+      "champion": 0.21428571428571427,
+      "winner_in_top3": 0.5476190476190477,
+      "order_issue": 0.47619047619047616
+     },
+     "cand": {
+      "gold": 0.0,
+      "good_positional": 0.16666666666666666,
+      "good_any2": 0.5,
+      "pass_any1": 0.8571428571428571,
+      "champion": 0.21428571428571427,
+      "winner_in_top3": 0.5714285714285714,
+      "order_issue": 0.42857142857142855
+     },
+     "base_top3prec": 0.4365079365079365,
+     "cand_top3prec": 0.4523809523809524,
+     "base_miss": 12,
+     "cand_miss": 12
+    }
+   ],
+   "gate": {
+    "good_delta_pp": 1.53,
+    "gold_delta_pp": 0.95,
+    "top1_delta_pp": -1.48,
+    "wint3_delta_pp": -0.99,
+    "miss_delta_races_mean": 0,
+    "top3_fold_stability": "4/5",
+    "PASS": false
+   }
+  },
+  "faithful_only": {
+   "folds": [
+    {
+     "fold": 1,
+     "train_meetings": 2,
+     "test_meetings": 3,
+     "test_races": 29,
+     "selected_mult": 0.7,
+     "base": {
+      "gold": 0.10344827586206896,
+      "good_positional": 0.2413793103448276,
+      "good_any2": 0.5172413793103449,
+      "pass_any1": 0.8275862068965517,
+      "champion": 0.20689655172413793,
+      "winner_in_top3": 0.4827586206896552,
+      "order_issue": 0.3448275862068966
+     },
+     "cand": {
+      "gold": 0.10344827586206896,
+      "good_positional": 0.20689655172413793,
+      "good_any2": 0.41379310344827586,
+      "pass_any1": 0.7931034482758621,
+      "champion": 0.20689655172413793,
+      "winner_in_top3": 0.4482758620689655,
+      "order_issue": 0.3448275862068966
+     },
+     "base_top3prec": 0.4827586206896552,
+     "cand_top3prec": 0.4367816091954023,
+     "base_miss": 7,
+     "cand_miss": 8
+    },
+    {
+     "fold": 2,
+     "train_meetings": 5,
+     "test_meetings": 3,
+     "test_races": 29,
+     "selected_mult": 0.7,
+     "base": {
+      "gold": 0.06896551724137931,
+      "good_positional": 0.13793103448275862,
+      "good_any2": 0.27586206896551724,
+      "pass_any1": 0.7586206896551724,
+      "champion": 0.3103448275862069,
+      "winner_in_top3": 0.5517241379310345,
+      "order_issue": 0.3103448275862069
+     },
+     "cand": {
+      "gold": 0.06896551724137931,
+      "good_positional": 0.20689655172413793,
+      "good_any2": 0.27586206896551724,
+      "pass_any1": 0.7931034482758621,
+      "champion": 0.3103448275862069,
+      "winner_in_top3": 0.5517241379310345,
+      "order_issue": 0.3103448275862069
+     },
+     "base_top3prec": 0.367816091954023,
+     "cand_top3prec": 0.3793103448275862,
+     "base_miss": 10,
+     "cand_miss": 10
+    },
+    {
+     "fold": 3,
+     "train_meetings": 8,
+     "test_meetings": 3,
+     "test_races": 30,
+     "selected_mult": 0.7,
+     "base": {
+      "gold": 0.0,
+      "good_positional": 0.16666666666666666,
+      "good_any2": 0.3333333333333333,
+      "pass_any1": 0.7666666666666667,
+      "champion": 0.1,
+      "winner_in_top3": 0.36666666666666664,
+      "order_issue": 0.5
+     },
+     "cand": {
+      "gold": 0.03333333333333333,
+      "good_positional": 0.16666666666666666,
+      "good_any2": 0.4,
+      "pass_any1": 0.8,
+      "champion": 0.1,
+      "winner_in_top3": 0.36666666666666664,
+      "order_issue": 0.5666666666666667
+     },
+     "base_top3prec": 0.36666666666666664,
+     "cand_top3prec": 0.4111111111111111,
+     "base_miss": 12,
+     "cand_miss": 12
+    },
+    {
+     "fold": 4,
+     "train_meetings": 11,
+     "test_meetings": 3,
+     "test_races": 33,
+     "selected_mult": 0.7,
+     "base": {
+      "gold": 0.030303030303030304,
+      "good_positional": 0.18181818181818182,
+      "good_any2": 0.36363636363636365,
+      "pass_any1": 0.7878787878787878,
+      "champion": 0.21212121212121213,
+      "winner_in_top3": 0.5151515151515151,
+      "order_issue": 0.36363636363636365
+     },
+     "cand": {
+      "gold": 0.09090909090909091,
+      "good_positional": 0.15151515151515152,
+      "good_any2": 0.36363636363636365,
+      "pass_any1": 0.8181818181818182,
+      "champion": 0.18181818181818182,
+      "winner_in_top3": 0.5454545454545454,
+      "order_issue": 0.30303030303030304
+     },
+     "base_top3prec": 0.3939393939393939,
+     "cand_top3prec": 0.42424242424242425,
+     "base_miss": 11,
+     "cand_miss": 9
+    },
+    {
+     "fold": 5,
+     "train_meetings": 14,
+     "test_meetings": 3,
+     "test_races": 31,
+     "selected_mult": 0.8,
+     "base": {
+      "gold": 0.0,
+      "good_positional": 0.0967741935483871,
+      "good_any2": 0.45161290322580644,
+      "pass_any1": 0.8387096774193549,
+      "champion": 0.22580645161290322,
+      "winner_in_top3": 0.5483870967741935,
+      "order_issue": 0.5161290322580645
+     },
+     "cand": {
+      "gold": 0.0,
+      "good_positional": 0.12903225806451613,
+      "good_any2": 0.45161290322580644,
+      "pass_any1": 0.8387096774193549,
+      "champion": 0.22580645161290322,
+      "winner_in_top3": 0.5483870967741935,
+      "order_issue": 0.4838709677419355
+     },
+     "base_top3prec": 0.43010752688172044,
+     "cand_top3prec": 0.43010752688172044,
+     "base_miss": 10,
+     "cand_miss": 10
+    }
+   ],
+   "gate": {
+    "good_delta_pp": 0.73,
+    "gold_delta_pp": 1.88,
+    "top1_delta_pp": -0.61,
+    "wint3_delta_pp": -0.08,
+    "miss_delta_races_mean": -0.2,
+    "top3_fold_stability": "4/5",
+    "PASS": false
+   }
+  }
+ }
+}
