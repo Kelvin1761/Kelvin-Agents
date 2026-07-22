@@ -9,7 +9,12 @@ description = "API-only tennis betting pricing engine with strict data provenanc
 # The engine runs on the system Python (3.9) on the live Mac; nothing here
 # uses 3.10+ syntax at runtime. Kept at 3.9 so `pip install -e` works there.
 requires-python = ">=3.9"
-dependencies = []
+# curl_cffi impersonates a real Chrome TLS fingerprint. It is REQUIRED for the
+# live Sportsbet scrape: without it the provider falls back to plain urlopen,
+# which Sportsbet's Cloudflare bot-protection blocks intermittently (esp. on
+# the many per-event multi-market requests) — the "only match-winner captured
+# / DNS / 0 matches" failures traced 2026-07-22. Keep it installed in the venv.
+dependencies = ["curl_cffi>=0.6"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
