@@ -6,7 +6,9 @@ build-backend = "setuptools.build_meta"
 name = "tennis-wong-choi"
 version = "0.1.0"
 description = "API-only tennis betting pricing engine with strict data provenance."
-requires-python = ">=3.11"
+# The engine runs on the system Python (3.9) on the live Mac; nothing here
+# uses 3.10+ syntax at runtime. Kept at 3.9 so `pip install -e` works there.
+requires-python = ">=3.9"
 dependencies = []
 
 [project.optional-dependencies]

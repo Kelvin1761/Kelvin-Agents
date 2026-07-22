@@ -248,16 +248,16 @@ def test_result_name_matching_requires_confident_pair_match(tmp_path, monkeypatc
     with get_connection() as conn:
         conn.execute(
             """
-            INSERT INTO players (id, provider_player_id, name, tour, created_at, updated_at)
+            INSERT INTO players (id, name, tour, source_provider, created_at, updated_at)
             VALUES
-                (1, 'p1', 'Ben Shelton', 'ATP', 'now', 'now'),
-                (2, 'p2', 'Nick Kyrgios', 'ATP', 'now', 'now')
+                (1, 'Ben Shelton', 'ATP', 'sportsbet', 'now', 'now'),
+                (2, 'Nick Kyrgios', 'ATP', 'sportsbet', 'now', 'now')
             """
         )
         conn.execute(
             """
-            INSERT INTO tournaments (id, provider_tournament_id, name, tour, level, start_date, end_date, created_at, updated_at)
-            VALUES (1, 't1', 'Halle', 'ATP', 'ATP_500', '2026-06-16', '2026-06-22', 'now', 'now')
+            INSERT INTO tournaments (id, name, tour, external_id, source_provider, created_at, updated_at)
+            VALUES (1, 'Halle', 'ATP', 'halle', 'sportsbet', 'now', 'now')
             """
         )
         conn.execute(
@@ -269,6 +269,7 @@ def test_result_name_matching_requires_confident_pair_match(tmp_path, monkeypatc
             VALUES (1, 'm1', 'ATP', '2026-06-16', 1, 1, 2, 'R32', 'sportsbet', 'now', 'now')
             """
         )
+        conn.commit()  # _match_by_names opens its own connection; commit so it sees the rows
 
         assert _match_by_names(conn, "2026-06-16", "Taylor Fritz", "Zizou Bergs") is None
         assert _match_by_names(conn, "2026-06-16", "B. Shelton", "N. Kyrgios")["id"] == 1
@@ -337,8 +338,10 @@ def test_local_history_resolver_backfills_pending_match_result(tmp_path, monkeyp
                     1, 'local_fixture', 1, 'now')
             """
         )
+        conn.commit()  # resolver opens its own connection; commit so setup is visible
 
-        assert _resolve_pending_from_player_history("2026-06-16") == 1
+    assert _resolve_pending_from_player_history("2026-06-16") == 1
+    with get_connection() as conn:
         result = conn.execute(
             "SELECT winner_player_id, source_provider FROM match_results WHERE match_id = 1"
         ).fetchone()
