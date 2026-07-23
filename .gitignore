@@ -93,3 +93,5 @@ NBA_ML_Dataset/
 # stats rebuild backups
 **/comprehensive_stats/**/*.bak
 scratch/betfair_bsp/
+
+scratch/betfair_snapshot.json
