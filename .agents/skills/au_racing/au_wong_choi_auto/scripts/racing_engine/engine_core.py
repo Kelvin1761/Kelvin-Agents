@@ -3126,7 +3126,19 @@ class RacingEngine:
             wdetail["final"] = 60.0
             return 60, "負磅資料不足，負磅分中性處理。", "missing_neutral"
 
-        score = 62
+        # DIRECTION FIX 2026-07-24 (dead-weight/inversion audit): the old logic
+        # rewarded light weight (score 68) and penalised topweight (56) on the
+        # physics intuition "less to carry = faster". In AU HANDICAPS that is
+        # backwards — the handicapper assigns weight BY ABILITY, so topweights
+        # are the better horses. Empirically light-weighted horses finish top-3
+        # 23.2% vs topweights 34.3% (710-race archive). The old narrative
+        # ("負輕磅有明顯優勢") was therefore factually wrong. The ability signal in
+        # weight is already carried by rating_score, so weight_score stays NEUTRAL
+        # by default and only applies the genuinely orthogonal situational nudges
+        # (real burden in wet going; class-move weight relief). Ranking impact is
+        # a validated wash (Δgp/g2/miss 0, 5/5 folds) — this is a correctness /
+        # narrative-truth fix, not a performance claim.
+        score = 60
         wdetail["weight"] = round(float(weight), 1)
         notes = []
         wet_state = self._wet_state()
@@ -3134,29 +3146,25 @@ class RacingEngine:
         is_wfa_or_sw = self._is_wfa_or_sw_race()
 
         if is_wfa_or_sw:
-            notes.append("定磅賽事不計讓磅劣勢")
+            notes.append("定磅賽事，負磅中性")
         else:
-            if weight <= 54.5:
-                score = 68
-                notes.append("負輕磅有明顯優勢")
-            elif weight >= 60.0:
-                score = 56
+            if weight >= 60.0:
+                # topweight = handicapper rates it best; flag for context, no penalty
                 self.risk_flags.append("top_weight")
-                notes.append("頂磅環境要自己讓人")
+                notes.append("頂磅：讓磅官評為本場能力最高之列")
 
+            # genuine physics burden: heavy weight in wet/heavy going is a real drag
             if wet_state in {"soft7plus", "heavy"} and weight >= 59.0:
                 score -= 4
-                notes.append("爛地加重磅消耗顯著")
+                notes.append("爛地孭重磅，體能消耗顯著")
 
+            # class-move weight relief is a real, rating-independent angle
             if "降班" in class_move and weight <= 56.5:
                 score += 3
-                notes.append("降班配輕磅，外在門檻大幅下降")
+                notes.append("降班配輕磅，實際任務下降")
             elif "升班" in class_move and weight >= 58.0:
                 score -= 3
                 notes.append("升班兼高負磅，雙重打擊")
-            elif "升班" in class_move and weight <= 54.0:
-                score += 1
-                notes.append("升班配輕磅，有助彌補級數差距")
 
         wdetail["notes"] = list(notes)
         wdetail["final"] = round(clip_score(score), 2)
