@@ -47,8 +47,10 @@ def norm_name(name: str) -> str:
 
 
 def parse_menu_hint(hint: str) -> tuple[str | None, str | None]:
-    """'AUS / Rosehill (AUS) 27th Jun' -> (track_norm, 'MM-DD' without year)."""
-    m = re.search(r"/\s*(.+?)\s*\(AUS\)\s*(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3})", hint or "")
+    """Real format 'Eagle Farm (AUS) 30th May' (older: 'AUS / Rosehill (AUS)
+    27th Jun') -> (track_norm, 'MM-DD'). Leading 'AUS /' is optional."""
+    m = re.search(r"(?:/\s*)?([A-Za-z][A-Za-z .'-]+?)\s*\(AUS\)\s*(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3})",
+                  hint or "")
     if not m:
         return None, None
     track = re.sub(r"[^a-z0-9]", "", m.group(1).lower())
@@ -56,21 +58,25 @@ def parse_menu_hint(hint: str) -> tuple[str | None, str | None]:
     return (track, f"{mon:02d}-{day:02d}") if mon else (track, None)
 
 
-def load_bsp(bsp_dir: Path) -> dict:
-    """-> {(mmdd, track_norm, horse_norm): row_dict}. Year-agnostic MM-DD key
-    (Betfair files are per-day, so the filename/date disambiguates years)."""
+def _ci(row: dict, key: str):
+    # real files use lowercase headers; be case-insensitive
+    return row.get(key) or row.get(key.upper()) or row.get(key.lower())
+
+
+def load_bsp(bsp_dir: Path) -> tuple[dict, int]:
+    """-> {(mmdd, track_norm, horse_norm): row_dict}. Keyed by the menu_hint
+    race date (MM-DD), which is robust to Betfair's filename+1 settlement offset."""
     out = {}
-    files = sorted(bsp_dir.glob("*.csv"))
+    files = sorted(bsp_dir.glob("dwbfprices*win*.csv"))
     for fp in files:
         with fp.open(encoding="utf-8-sig", errors="replace") as f:
             for row in csv.DictReader(f):
-                track, mmdd = parse_menu_hint(row.get("MENU_HINT", ""))
+                track, mmdd = parse_menu_hint(_ci(row, "menu_hint") or "")
                 if not track or not mmdd:
                     continue
-                horse = norm_name(row.get("SELECTION_NAME", ""))
-                if not horse:
-                    continue
-                out[(mmdd, track, horse)] = row
+                horse = norm_name(_ci(row, "selection_name") or "")
+                if horse:
+                    out[(mmdd, track, horse)] = row
     return out, len(files)
 
 
