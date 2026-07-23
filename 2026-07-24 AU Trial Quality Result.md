@@ -49,3 +49,38 @@ pursuing only if Kelvin wants to formally close the loop.
 Not a re-ranker — a **display flag** ("won last trial" / trial record) shown on
 the analysis for the human eye, and an optional odds-free candidate in a
 widened shortlist. Informative context; never touches the ranking.
+
+## ADDENDUM — trial L600 sectional time is INFEASIBLE (data doesn't exist)
+
+Kelvin preferred trial L600 sectional time over rankings. Feasibility probe
+(racenet, 2 requests) is definitive:
+
+| page | trials with L600 | real races with L600 |
+|---|---:|---:|
+| overview | **0 / 20** | all |
+| sectionals | **0 / 20** | 45 / 45 |
+
+racenet does **not** compute/publish L600 sectional times for trials (barrier
+trials aren't officially timed at sectional level) — confirmed on both page
+types AND cross-confirmed by the Facts record table (trial L600 = "-"). The
+direction cannot be built: the data does not exist.
+
+Trials DO carry `finishPosition` (have it — washes out) and `margin`
+(available via extraction, but only a refinement of position → very low
+expectation). Not pursued without an explicit go.
+
+## Decision on removing trial_score (#2)
+
+Removing trial_score from the model (renormalise pace_perf) is a **wash**:
+gp −3, g2 +1, W-in-T3 +0.5, miss +0, folds 3/5. It contributes ~nothing at
+its 0.88% weight (as the marginal-signal finding predicted), but removing it
+is not beneficial either. Options:
+- **KEEP as-is** (recommended): removal doesn't help; trial is the model's only
+  nod to first-up / lightly-raced horses, and no better replacement exists
+  (L600 infeasible).
+- **REMOVE** for a cleaner model (signal-map philosophy): defensible and
+  near-costless (wash), but do it as a documented rank-identity-checked SIP,
+  not ad hoc.
+
+Net: the trial avenue is exhausted — no learnable odds-free upgrade exists in
+the data we can access.
