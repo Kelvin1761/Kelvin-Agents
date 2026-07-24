@@ -265,13 +265,23 @@ def _panorama(race, verdict, horses):
         "",
         "**📊 全場綜合戰力排名**",
         "",
-        f"| 排名 | 馬號 | 馬名 | {ABILITY_LABEL} | Grade | 定位 |",
-        "|---:|---:|---|---:|---|---|",
+        f"| 排名 | 馬號 | 馬名 | {ABILITY_LABEL} | Grade | 資料 | 定位 |",
+        "|---:|---:|---|---:|---|:---:|---|",
         *[
-            f"| {item['rank']} | {item['horse_number']} | {item['horse_name']} | {item['ability_score']:.1f} | {item['grade']} | {_horse_positioning(horses[str(item['horse_number'])], horses[str(item['horse_number'])].get('python_auto', {}))} |"
+            f"| {item['rank']} | {item['horse_number']} | {item['horse_name']} | {item['ability_score']:.1f} | {item['grade']} | {_coverage_cell(horses[str(item['horse_number'])].get('python_auto', {}))} | {_horse_positioning(horses[str(item['horse_number'])], horses[str(item['horse_number'])].get('python_auto', {}))} |"
             for item in verdict.get("ranking", [])
         ],
+        "",
+        "> 「資料」= 評分建基於幾多真數據（非缺失預設）。**薄** = 分數靠少數真訊號，"
+        "宜留意；例如缺失段速/騎練評分嘅馬，分數可信度較低。",
     ])
+
+
+def _coverage_cell(auto: dict) -> str:
+    cov = auto.get("data_coverage") if isinstance(auto, dict) else None
+    if not isinstance(cov, dict):
+        return "—"
+    return f"{cov.get('confidence', '—')} {cov.get('coverage_pct', 0):.0f}%"
 
 
 _BAND_WORD = {"✅✅": "很強", "✅": "偏強", "➖": "中性", "❌": "偏弱", "❌❌": "很弱"}

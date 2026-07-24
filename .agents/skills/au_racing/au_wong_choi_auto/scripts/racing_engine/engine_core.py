@@ -433,6 +433,7 @@ class RacingEngine:
         ability_score = round(pure_7d_score + wet_form_feat, 4)
         grade = compute_grade(ability_score)
 
+        data_coverage = self._data_coverage(feature_scores)
         matrix_reasoning = self._matrix_reasoning(matrix_scores, feature_scores, feature_notes)
         advantages = self._advantages(feature_scores, matrix_scores)
         disadvantages = self._disadvantages(feature_scores, matrix_scores)
@@ -455,6 +456,7 @@ class RacingEngine:
             },
             "matrix": matrix,
             "matrix_scores": matrix_scores,
+            "data_coverage": data_coverage,
             "matrix_reasoning": matrix_reasoning,
             "feature_scores": {key: round(feature_scores[key], 2) for key in FEATURE_KEYS},
             "feature_notes": {key: feature_notes.get(key, "") for key in FEATURE_KEYS},
@@ -491,6 +493,38 @@ class RacingEngine:
             "reason_codes": sorted(set(self.reason_codes)),
             "risk_flags": sorted(set(self.risk_flags)),
             "score_provenance": self.provenance,
+        }
+
+    # Ability-feeding features (per matrix_mapper). formline is weight-0 so it is
+    # excluded from the coverage that reflects the actual ranking evidence.
+    _COVERAGE_FEATURES = (
+        "form_score", "consistency_score", "pace_figure_score", "sectional_score",
+        "trial_score", "pace_map_score", "jockey_score", "trainer_score",
+        "jockey_horse_fit_score", "class_score", "rating_score", "weight_score",
+        "track_score",
+    )
+
+    def _data_coverage(self, feature_scores):
+        """Per-horse data-completeness = fraction of ranking features backed by
+        REAL data (not the neutral-60 default). Makes the silent default-60
+        explicit so a thin-data score is never mistaken for a confident one."""
+        missing = [k for k in self._COVERAGE_FEATURES
+                   if abs(float(feature_scores.get(k, 60.0)) - 60.0) < 1e-9]
+        total = len(self._COVERAGE_FEATURES)
+        present = total - len(missing)
+        pct = round(100.0 * present / total, 1)
+        if pct >= 75:
+            label = "高"        # confident: most features real
+        elif pct >= 50:
+            label = "中"
+        else:
+            label = "薄"        # thin: score rests on few real signals
+        return {
+            "coverage_pct": pct,
+            "present": present,
+            "total": total,
+            "confidence": label,
+            "missing_features": missing,
         }
 
     def _get_class_tier(self, text):
