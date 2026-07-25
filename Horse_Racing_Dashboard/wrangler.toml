@@ -5,3 +5,9 @@ pages_build_output_dir = ".cloudflare_dist"
 [[kv_namespaces]]
 binding = "WC_STATE"
 id = "1438d580c73b4c938a2f43a03fca34c9"
+
+[[d1_databases]]
+binding = "WC_LEDGER"
+database_name = "wongchoi-ledger"
+database_id = "c211139a-9f61-4409-a4aa-4b679da862b3"
+migrations_dir = "migrations"

@@ -3,6 +3,14 @@
 // Stored in KV WC_STATE under key "ROI_LEDGER" as a dict keyed by
 // date|venue|race_number|horse_number (so re-committing a meeting updates,
 // not duplicates).
+import {
+  deleteD1Bet,
+  getD1Bet,
+  hasD1,
+  listD1Bets,
+  putD1Bet,
+} from "../_lib/d1-ledger.js";
+
 const KEY = "ROI_LEDGER";
 const CORS = {
   "Content-Type": "application/json; charset=utf-8",
@@ -89,11 +97,92 @@ function recordMatchesKey(record, key) {
   return validRecord(record) && recKey(record) === key;
 }
 
+function horseBetId(key) {
+  return `horse:${key}`;
+}
+
+function horseToD1Bet(record, key, previous = null) {
+  const now = Number(record._updated_at || Date.now());
+  return {
+    id: horseBetId(key),
+    sport: "horses",
+    source_id: key,
+    event_date: record.date,
+    event_name: `${record.venue} R${record.race_number}`,
+    market: "Place",
+    selection: `#${record.horse_number} ${record.horse_name || ""}`.trim(),
+    bet_type: "single",
+    odds: Number(record.odds || 0),
+    settlement_odds: record.status === "won" ? Number(record.odds || 0) : null,
+    stake: Number(record.stake || 1),
+    status: record.status,
+    payout: Number(record.payout || 0),
+    profit: Number(record.net_profit || 0),
+    bookmaker: "Horse Racing",
+    note: "",
+    legs: [],
+    analysis_snapshot: {
+      region: record.region || "",
+      venue: record.venue,
+      race_number: Number(record.race_number),
+      horse_number: Number(record.horse_number),
+      horse_name: record.horse_name || "",
+      result_position: record.result_position,
+    },
+    settlement_source: record.status === "pending" ? "" : "horse-result",
+    settlement_ref: `${record.date}|${record.venue}|R${record.race_number}`,
+    settlement_reason: "",
+    idempotency_key: previous?.idempotency_key || "",
+    version: Number(previous?.version || 0) + 1,
+    created_at: previous?.created_at || now,
+    updated_at: now,
+    settled_at: record.status === "pending" ? null : (previous?.settled_at || now),
+  };
+}
+
+function d1BetToHorse(record) {
+  const snapshot = record.analysis_snapshot || {};
+  return {
+    date: record.event_date,
+    venue: snapshot.venue || String(record.event_name || "").replace(/\s+R\d+$/, ""),
+    region: snapshot.region || "",
+    race_number: Number(snapshot.race_number),
+    horse_number: Number(snapshot.horse_number),
+    horse_name: snapshot.horse_name || String(record.selection || "").replace(/^#\d+\s*/, ""),
+    stake: Number(record.stake),
+    odds: Number(record.odds),
+    result_position: snapshot.result_position ?? null,
+    payout: Number(record.payout || 0),
+    net_profit: Number(record.profit || 0),
+    status: record.status,
+    _updated_at: Number(record.updated_at),
+  };
+}
+
+async function readKvLedger(context) {
+  const raw = await context.env.WC_STATE.get(KEY);
+  return JSON.parse(raw || "{}");
+}
+
+async function readHorseLedger(context) {
+  if (hasD1(context.env)) {
+    const d1 = await listD1Bets(context.env.WC_LEDGER, "horses");
+    if (d1.total > 0) {
+      const records = {};
+      for (const record of Object.values(d1.records)) {
+        const horse = d1BetToHorse(record);
+        records[record.source_id || recKey(horse)] = horse;
+      }
+      return records;
+    }
+  }
+  return readKvLedger(context);
+}
+
 export async function onRequestGet(context) {
   if (!isAuthorized(context)) return jsonResponse({ error: "unauthorized" }, 401);
   try {
-    const v = await context.env.WC_STATE.get(KEY);
-    return new Response(v || "{}", { headers: CORS });
+    return jsonResponse(await readHorseLedger(context));
   } catch (e) {
     return jsonResponse({ error: e.message }, 500);
   }
@@ -108,11 +197,26 @@ export async function onRequestPost(context) {
     }
     if (incoming.length > 500) return jsonResponse({ error: "too many records" }, 413);
     if (!incoming.every(validRecord)) return jsonResponse({ error: "invalid bet record" }, 422);
-    const cur = JSON.parse((await context.env.WC_STATE.get(KEY)) || "{}");
+    const cur = await readHorseLedger(context);
     for (const b of incoming) {
       if (b && b.date && b.venue && b.race_number != null && b.horse_number != null) {
         const normalized = normalizeRecord(b);
-        cur[recKey(normalized)] = normalized;
+        const key = recKey(normalized);
+        const previousD1 = hasD1(context.env)
+          ? await getD1Bet(context.env.WC_LEDGER, horseBetId(key))
+          : null;
+        cur[key] = normalized;
+        if (hasD1(context.env)) {
+          const bet = horseToD1Bet(normalized, key, previousD1);
+          const idempotencyKey = `roi-import:${key}:${normalized.status}:${normalized.result_position}:${normalized.odds}`;
+          bet.idempotency_key = previousD1?.idempotency_key || idempotencyKey;
+          await putD1Bet(context.env.WC_LEDGER, bet, {
+            before: previousD1,
+            action: previousD1 ? "import-update" : "import-create",
+            idempotencyKey,
+            actor: "horse-roi-import",
+          });
+        }
       }
     }
     await context.env.WC_STATE.put(KEY, JSON.stringify(cur));
@@ -134,8 +238,13 @@ export async function onRequestPatch(context) {
       return jsonResponse({ error: "updates must be an object" }, 422);
     }
 
-    const cur = JSON.parse((await context.env.WC_STATE.get(KEY)) || "{}");
-    const existing = cur[key] && !cur[key]._deleted ? cur[key] : payload?.base_record;
+    const cur = await readHorseLedger(context);
+    const existingD1 = hasD1(context.env)
+      ? await getD1Bet(context.env.WC_LEDGER, horseBetId(key))
+      : null;
+    const existing = existingD1
+      ? d1BetToHorse(existingD1)
+      : (cur[key] && !cur[key]._deleted ? cur[key] : payload?.base_record);
     if (!recordMatchesKey(existing, key)) {
       return jsonResponse({ error: "record not found" }, 404);
     }
@@ -147,6 +256,19 @@ export async function onRequestPatch(context) {
     const next = normalizeRecord({ ...existing, ...editable });
     if (!validRecord(next)) return jsonResponse({ error: "invalid bet record" }, 422);
     cur[key] = next;
+    if (hasD1(context.env)) {
+      const idempotencyKey = String(
+        context.request.headers.get("Idempotency-Key")
+        || payload.idempotency_key
+        || `roi-update:${key}:${next._updated_at}`,
+      ).slice(0, 200);
+      await putD1Bet(context.env.WC_LEDGER, horseToD1Bet(next, key, existingD1), {
+        before: existingD1,
+        action: next.status !== existing?.status ? "settle" : "update",
+        idempotencyKey,
+        actor: "horse-roi-editor",
+      });
+    }
     await context.env.WC_STATE.put(KEY, JSON.stringify(cur));
     return jsonResponse({ success: true, key, record: next });
   } catch (e) {
@@ -161,8 +283,11 @@ export async function onRequestDelete(context) {
     const key = payload?.key;
     if (!validLedgerKey(key)) return jsonResponse({ error: "invalid record key" }, 422);
 
-    const cur = JSON.parse((await context.env.WC_STATE.get(KEY)) || "{}");
-    const existing = cur[key] || payload?.record;
+    const cur = await readHorseLedger(context);
+    const existingD1 = hasD1(context.env)
+      ? await getD1Bet(context.env.WC_LEDGER, horseBetId(key))
+      : null;
+    const existing = existingD1 ? d1BetToHorse(existingD1) : (cur[key] || payload?.record);
     if (!recordMatchesKey(existing, key)) {
       return jsonResponse({ error: "record not found" }, 404);
     }
@@ -178,6 +303,16 @@ export async function onRequestDelete(context) {
       _deleted: true,
       deleted_at: Date.now(),
     };
+    if (hasD1(context.env)) {
+      await deleteD1Bet(context.env.WC_LEDGER, existingD1 || horseToD1Bet(existing, key), {
+        idempotencyKey: String(
+          context.request.headers.get("Idempotency-Key")
+          || payload.idempotency_key
+          || `roi-delete:${key}:${cur[key].deleted_at}`,
+        ).slice(0, 200),
+        actor: "horse-roi-editor",
+      });
+    }
     await context.env.WC_STATE.put(KEY, JSON.stringify(cur));
     return jsonResponse({ success: true, key });
   } catch (e) {

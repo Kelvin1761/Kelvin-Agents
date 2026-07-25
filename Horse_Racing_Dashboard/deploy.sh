@@ -193,3 +193,12 @@ echo "   - Commit Hash: $COMMIT_HASH"
 )
 
 echo "🎉 發佈完成！Cloudflare 版本已更新 HKJC + AU race analysis snapshot。"
+
+if [ "${WC_DISABLE_AUTO_SETTLEMENT:-0}" != "1" ]; then
+    echo "🧾 第四步：檢查 NBA／Tennis 已驗證賽果並冪等結算..."
+    if ! "$PYTHON_BIN" "$SCRIPT_DIR/settle_dashboard_bets.py" --apply; then
+        echo "⚠️ 自動結算未完成；Dashboard 已成功發佈，請查看上方 settlement 訊息後重試。"
+    fi
+else
+    echo "⏭️ 已按 WC_DISABLE_AUTO_SETTLEMENT=1 跳過 NBA／Tennis 自動結算。"
+fi

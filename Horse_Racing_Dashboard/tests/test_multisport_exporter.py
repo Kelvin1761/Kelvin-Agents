@@ -59,13 +59,22 @@ class MultiSportExporterTests(unittest.TestCase):
 
             self.assertEqual(snapshot["validation_status"], "valid")
             self.assertEqual(snapshot["analysis_run_id"], "nba:2026-04-15")
-            self.assertEqual(len(snapshot["recommendations"]), 1)
-            recommendation = snapshot["recommendations"][0]
+            self.assertEqual(len(snapshot["recommendations"]), 2)
+            recommendation = next(
+                row for row in snapshot["recommendations"] if row["bet_type"] == "combo"
+            )
+            banker = next(
+                row for row in snapshot["recommendations"] if row["category"] == "banker"
+            )
             self.assertEqual(recommendation["odds"], 2.12)
             self.assertEqual(recommendation["bet_type"], "combo")
             self.assertEqual(len(recommendation["legs"]), 2)
             self.assertEqual(recommendation["legs"][0]["odds"], 1.72)
             self.assertIn("Sportsbet_Odds_CHI_WAS.json", recommendation["source_files"])
+            self.assertEqual(banker["selection"], "Zach LaVine 24+ PTS")
+            self.assertEqual(banker["metrics"]["model_probability"], 0.74)
+            self.assertEqual(banker["metrics"]["expected_value"], 0.051)
+            self.assertEqual(banker["metrics"]["l10_hit_rate"], 0.8)
 
     def test_nba_exporter_blocks_analysis_without_matching_sportsbet_json(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -97,6 +106,10 @@ class MultiSportExporterTests(unittest.TestCase):
             self.assertEqual(single["selection"], "Otto Virtanen")
             self.assertEqual(single["odds"], 1.56)
             self.assertEqual(single["metrics"]["model_probability"], 0.779823)
+            self.assertEqual(single["metrics"]["expected_value"], 0.216524)
+            self.assertEqual(single["metrics"]["closing_odds"], 1.5)
+            self.assertEqual(single["metrics"]["clv"], 0.04)
+            self.assertEqual(single["outcome"], "won")
             self.assertEqual(combo["odds"], 3.9)
             self.assertEqual(len(combo["legs"]), 2)
             self.assertEqual(combo["legs"][1]["selection"], "Otto Virtanen")
@@ -183,6 +196,17 @@ class MultiSportExporterTests(unittest.TestCase):
                 updated_at TEXT NOT NULL,
                 settled_at TEXT
             );
+            CREATE TABLE clv_tracker (
+                id INTEGER PRIMARY KEY,
+                recommendation_type TEXT NOT NULL,
+                source_id INTEGER NOT NULL,
+                match_id INTEGER NOT NULL,
+                match_date TEXT NOT NULL,
+                closing_odds REAL,
+                clv REAL,
+                result_status TEXT NOT NULL,
+                profit_loss_units REAL
+            );
             INSERT INTO players VALUES (1, 'Maks Kasnikowski'), (2, 'Otto Virtanen');
             INSERT INTO tournaments VALUES (1, 'ATP Tampere Challenger');
             INSERT INTO matches VALUES (10, '2026-07-25', 'ATP', 'UNKNOWN', 1, 1, 2);
@@ -197,6 +221,10 @@ class MultiSportExporterTests(unittest.TestCase):
                 'over', 22.5, 1.90, 'MODELLED', 0.52, 0.50,
                 0.02, 1.85, 'NO_BET', 0, 55, 'Medium',
                 'edge_too_small', '{}', '2026-07-25T03:53:50Z'
+            );
+            INSERT INTO clv_tracker VALUES (
+                1, 'MARKET_LEG', 100, 10, '2026-07-25',
+                1.50, 0.04, 'WON', 0.56
             );
             """
         )

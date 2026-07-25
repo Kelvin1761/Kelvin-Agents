@@ -264,6 +264,11 @@
     .history-card__legs { margin: 0; padding-left: 18px; color: #526176; }
     .history-card__source { margin-top: auto; padding: 9px 16px; border-top: 1px solid #EEF2F7; background: #FAFCFE; color: #94A3B8; font-size: .59rem; line-height: 1.45; }
     .history-card__actions { display: flex; gap: 8px; padding: 11px 16px 14px; }
+    .inline-bet-confirm { display:grid; grid-template-columns:minmax(150px,1fr) minmax(120px,.7fr) auto; gap:10px; align-items:end; margin:0 16px 14px; padding:12px; border:1px solid color-mix(in srgb,var(--sport-accent) 35%,#DCE5EF); border-radius:10px; background:#F8FAFC; }
+    .inline-bet-confirm__intro { grid-column:1/-1; display:flex; justify-content:space-between; gap:12px; color:#475569; font-size:.68rem; line-height:1.45; }
+    .inline-bet-confirm__intro strong { color:#0F172A; }
+    .inline-bet-confirm__stake { min-height:44px; display:flex; align-items:center; padding:9px 11px; border:1px solid #E2E8F0; border-radius:8px; background:#FFFFFF; color:#0F172A; font-size:.84rem; font-weight:850; }
+    .inline-bet-confirm__error { display:none; grid-column:1/-1; color:#B91C1C; font-size:.68rem; font-weight:750; }
     .sports-btn { min-height: 40px; padding: 8px 13px; border: 1px solid #CBD5E1; border-radius: 8px; background: #FFFFFF; color: #334155; font: inherit; font-size: .7rem; font-weight: 850; cursor: pointer; }
     .sports-btn--primary { border-color: var(--sport-accent); background: var(--sport-accent); color:#FFFFFF; }
     .sports-btn--danger { border-color:#FECACA; background:#FEF2F2; color:#B91C1C; }
@@ -275,23 +280,38 @@
     .sports-record__selection { margin-top:2px; color:#64748B; font-size:.65rem; line-height:1.4; }
     .sports-record__cell { color:#475569; font-size:.68rem; }
     .sports-record__cell strong { display:block; color:#0F172A; font-size:.76rem; }
+    .sports-record__status-select { width:100%; min-height:38px; padding:7px 9px; border:1px solid #CBD5E1; border-radius:8px; background:#FFFFFF; color:#0F172A; font:inherit; font-size:.7rem; font-weight:800; }
     .sports-record__actions { display:flex; gap:6px; }
     .sports-roi-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin-bottom:16px; }
     .sports-roi-card { padding:14px; border:1px solid #E2E8F0; border-radius:12px; background:#FFFFFF; }
     .sports-roi-card span { color:#64748B; font-size:.62rem; font-weight:750; }
     .sports-roi-card strong { display:block; margin-top:4px; color:#0F172A; font-size:1.15rem; }
+    .portfolio-table { width:100%; border-collapse:collapse; overflow:hidden; border:1px solid #E2E8F0; border-radius:12px; background:#FFFFFF; }
+    .portfolio-table th,.portfolio-table td { padding:12px 14px; border-bottom:1px solid #EEF2F7; text-align:right; font-size:.72rem; }
+    .portfolio-table th { color:#64748B; background:#F8FAFC; font-size:.64rem; text-transform:uppercase; letter-spacing:.04em; }
+    .portfolio-table th:first-child,.portfolio-table td:first-child { text-align:left; }
+    .portfolio-table tr:last-child td { border-bottom:0; }
     .sports-modal__grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
     .sports-modal__grid .roi-modal__field--wide { grid-column:1/-1; }
     .sports-leg-editor { grid-column:1/-1; display:grid; gap:8px; padding:11px; border:1px solid #DCE5EF; border-radius:10px; background:#F8FAFC; }
     .sports-leg-editor__title { color:#334155; font-size:.7rem; font-weight:900; }
-    .sports-leg-editor__row { display:grid; grid-template-columns:minmax(0,1fr) 90px; gap:8px; }
+    .sports-leg-editor__row { display:grid; grid-template-columns:minmax(0,1fr) 118px; gap:8px; align-items:end; }
+    .sports-leg-editor__summary { min-height:44px; display:flex; align-items:center; padding:9px 11px; border:1px solid #E2E8F0; border-radius:8px; background:#FFFFFF; color:#334155; font-size:.72rem; line-height:1.35; }
     .sports-record__legs { grid-column:1/-1; margin:0; padding:9px 12px 9px 28px; border-radius:8px; background:#F8FAFC; color:#526176; font-size:.64rem; line-height:1.5; }
+    .sports-record__leg { display:grid; grid-template-columns:minmax(0,1fr) 120px; gap:10px; align-items:center; margin:5px 0; }
+    .audit-list { display:grid; gap:10px; }
+    .audit-item { padding:11px 12px; border:1px solid #E2E8F0; border-radius:10px; background:#F8FAFC; }
+    .audit-item__top { display:flex; justify-content:space-between; gap:10px; color:#334155; font-size:.7rem; font-weight:850; }
+    .audit-item__meta { margin-top:4px; color:#64748B; font-size:.64rem; }
+    .audit-item__change { margin-top:7px; color:#475569; font-size:.68rem; line-height:1.45; }
     @media (max-width: 840px) {
       .app-header { flex-wrap:wrap; }
       .sport-switcher { order:3; width:100%; }
       .sport-switch { flex:1; padding-inline:8px; }
       .sports-hero { grid-template-columns:1fr; padding:18px; }
       .history-grid { grid-template-columns:1fr; }
+      .inline-bet-confirm { grid-template-columns:1fr 1fr; }
+      .inline-bet-confirm .sports-btn--primary { grid-column:1/-1; }
       .sports-record { grid-template-columns:minmax(0,1fr) auto; }
       .sports-record__cell { display:none; }
       .sports-record__actions { align-self:start; }
@@ -303,6 +323,10 @@
       .sports-hero__aside { grid-template-columns:1fr 1fr; }
       .sports-modal__grid { grid-template-columns:1fr; }
       .sports-modal__grid .roi-modal__field--wide { grid-column:auto; }
+      .sports-leg-editor__row { grid-template-columns:1fr; }
+      .inline-bet-confirm { grid-template-columns:1fr; }
+      .inline-bet-confirm .sports-btn--primary { grid-column:auto; min-height:44px; }
+      .sports-record__leg { grid-template-columns:1fr; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
@@ -320,6 +344,7 @@
         <button type="button" id="sport-horses" class="sport-switch sport-switch--active" onclick="showSport('horses')">🏇 Horses</button>
         <button type="button" id="sport-nba" class="sport-switch" onclick="showSport('nba')">🏀 NBA</button>
         <button type="button" id="sport-tennis" class="sport-switch" onclick="showSport('tennis')">🎾 Tennis</button>
+        <button type="button" id="sport-portfolio" class="sport-switch" onclick="showSport('portfolio')">📈 Portfolio</button>
       </div>
       <nav class="app-header__nav-capsule" id="horse-nav">
         <a href="#" id="nav-races" class="nav-pill nav-pill--active" onclick="showDashboard(); return false;">📋 賽事</a>
@@ -372,13 +397,17 @@ let roiRegionFilter = null; // null = all, 'hkjc', 'au'
 let expandedSession = null;
 let expandedBetRaces = new Set();
 let sportsBetLedger = [];
+let portfolioSnapshot = null;
+let activeInlineBetSourceId = null;
 const SPORTS_BET_ENDPOINT = window.location.protocol === 'file:' ? null : '/api/sports-bets';
+const PORTFOLIO_ENDPOINT = window.location.protocol === 'file:' ? null : '/api/portfolio';
+const AUDIT_ENDPOINT = window.location.protocol === 'file:' ? null : '/api/audit';
 let sportsLedgerMode = SPORTS_BET_ENDPOINT ? 'cloud' : 'local';
 
 function getInitialSportFromUrl() {
   const match = String(window.location?.search || '').match(/[?&]sport=([^&]+)/);
   const value = match ? String(match[1]).toLowerCase() : '';
-  return ['horses', 'nba', 'tennis'].includes(value) ? value : 'horses';
+  return ['horses', 'nba', 'tennis', 'portfolio'].includes(value) ? value : 'horses';
 }
 
 function syncSportUrl(sport) {
@@ -1189,13 +1218,19 @@ function exportBetsJSON() {
 // NBA / Tennis workspace
 // ═══════════════════════════════════════════════
 function showSport(sport) {
-  if (!['horses', 'nba', 'tennis'].includes(sport)) return;
+  if (!['horses', 'nba', 'tennis', 'portfolio'].includes(sport)) return;
   activeSport = sport;
   syncSportUrl(sport);
   if (sport === 'horses') {
     currentView = 'dashboard';
     selectedMeeting = selectedMeeting || DASHBOARD_DATA.meetings[0] || null;
     render();
+  } else if (sport === 'portfolio') {
+    currentView = 'portfolio';
+    render();
+    Promise.all([loadSportsBetLedger(), loadPortfolio()]).then(() => {
+      if (currentView === 'portfolio') render();
+    });
   } else {
     currentView = 'sports';
     activeSportsTab = 'history';
@@ -1203,6 +1238,20 @@ function showSport(sport) {
     loadSportsBetLedger().then(() => { if (currentView === 'sports' && activeSport === sport) render(); });
   }
   window.scrollTo(0, 0);
+}
+
+async function loadPortfolio() {
+  if (!PORTFOLIO_ENDPOINT) {
+    portfolioSnapshot = null;
+    return;
+  }
+  try {
+    const response = await authorizedFetch(PORTFOLIO_ENDPOINT, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    portfolioSnapshot = await response.json();
+  } catch (e) {
+    portfolioSnapshot = { error: e.message };
+  }
 }
 
 function setSportsTab(tab) {
@@ -1268,6 +1317,7 @@ function sportsMetricLabels(item, sport) {
     if (metrics.coefficient_of_variation != null) rows.push(`CoV ${Number(metrics.coefficient_of_variation).toFixed(3)}`);
     if (metrics.minutes != null) rows.push(`實際 ${metrics.minutes} MIN`);
   } else {
+    if (metrics.clv != null) rows.push(`CLV ${Number(metrics.clv) >= 0 ? '+' : ''}${pct(metrics.clv)}`);
     if (metrics.model_probability != null) rows.push(`模型概率 ${pct(metrics.model_probability)}`);
     if (metrics.market_fair_probability != null) rows.push(`市場 fair ${pct(metrics.market_fair_probability)}`);
     if (metrics.edge != null) rows.push(`Edge +${pct(metrics.edge)}`);
@@ -1287,11 +1337,16 @@ function sportsLegLabel(leg) {
   const event = leg?.event_name ? `${leg.event_name} · ` : '';
   const market = leg?.market ? `${leg.market} · ` : '';
   const odds = leg?.odds != null ? ` @ ${Number(leg.odds).toFixed(2)}` : '';
-  return `${event}${market}${leg?.selection || '未命名 leg'}${odds}`;
+  const status = leg?.status && leg.status !== 'pending' ? ` · ${sportsStatusLabel(leg.status)}` : '';
+  return `${event}${market}${leg?.selection || '未命名 leg'}${odds}${status}`;
 }
 
 function renderHistoryCard(item, sport) {
-  const metrics = sportsMetricLabels(item, sport)
+  const context = item.context || {};
+  const contextLabels = sport === 'tennis'
+    ? [item.category ? `Tier ${String(item.category).toUpperCase()}` : '', context.tour, context.round, context.tournament].filter(Boolean)
+    : [item.category ? String(item.category).toUpperCase() : ''];
+  const metrics = [...contextLabels, ...sportsMetricLabels(item, sport)]
     .map(label => `<span class="metric-chip">${esc(label)}</span>`).join('');
   const odds = item.odds == null
     ? '<span class="odds-missing">原始賠率未存檔 · 落注時手動輸入</span>'
@@ -1318,8 +1373,9 @@ function renderHistoryCard(item, sport) {
     </div>
     <div class="history-card__source">資料來源：${esc(item.provenance || 'repository artifact')}</div>
     <div class="history-card__actions">
-      <button type="button" class="sports-btn sports-btn--primary" onclick="openSportsBetModal('${esc(item.id)}')">＋ 加入投注單</button>
+      <button type="button" class="sports-btn sports-btn--primary" onclick="toggleInlineBetDraft('${encodeURIComponent(item.id)}')">${activeInlineBetSourceId === item.id ? '收起投注確認' : '＋ 加入投注單'}</button>
     </div>
+    ${activeInlineBetSourceId === item.id ? renderInlineBetDraft(item, sport) : ''}
   </article>`;
 }
 
@@ -1351,16 +1407,26 @@ function renderSportsBets(sport) {
   return `${modeNotice}<div class="sports-records">${records.map(record => {
     const profit = Number(record.profit || 0);
     const recordLegs = record.bet_type === 'combo' && record.legs?.length
-      ? `<ol class="sports-record__legs">${record.legs.map(leg => `<li>${esc(sportsLegLabel(leg))}</li>`).join('')}</ol>`
+      ? `<ol class="sports-record__legs">${record.legs.map((leg, index) => `<li class="sports-record__leg">
+          <span>${esc(sportsLegLabel({...leg, status: 'pending'}))}</span>
+          <select class="sports-record__status-select" aria-label="Leg ${index + 1} 結果" onchange="updateSportsComboLegResult('${encodeURIComponent(record.id)}',${index},this.value)">
+            ${['pending','won','lost','void'].map(status => `<option value="${status}" ${(leg.status || 'pending') === status ? 'selected' : ''}>${sportsStatusLabel(status)}</option>`).join('')}
+          </select>
+        </li>`).join('')}</ol>`
       : '';
     return `<article class="sports-record">
       <div><div class="sports-record__event">${esc(record.event_name)}</div><div class="sports-record__selection">${esc(record.market)} · ${esc(record.selection)}</div></div>
       <div class="sports-record__cell">日期<strong>${esc(record.event_date)}</strong></div>
       <div class="sports-record__cell">賠率<strong>${Number(record.odds).toFixed(2)}</strong></div>
       <div class="sports-record__cell">注碼<strong>${Number(record.stake).toFixed(2)}u</strong></div>
-      <div class="sports-record__cell">結果<strong>${esc(sportsStatusLabel(record.status))}</strong></div>
+      <div class="sports-record__cell">結果${record.bet_type === 'combo'
+        ? `<strong>${esc(sportsStatusLabel(record.status))}</strong>`
+        : `<select class="sports-record__status-select" aria-label="${esc(record.selection)} 結果" onchange="updateSportsBetResult('${encodeURIComponent(record.id)}',this.value)">
+            ${['pending','won','lost','void'].map(status => `<option value="${status}" ${record.status === status ? 'selected' : ''}>${sportsStatusLabel(status)}</option>`).join('')}
+          </select>`}</div>
       <div class="sports-record__actions">
-        <button type="button" class="sports-btn" onclick="openSportsBetModal(null,'${esc(record.id)}')">編輯</button>
+        <button type="button" class="sports-btn" onclick="openSportsOddsEditor('${encodeURIComponent(record.id)}')">改賠率</button>
+        <button type="button" class="sports-btn" onclick="openBetAudit('${encodeURIComponent(record.id)}')">紀錄</button>
         <button type="button" class="sports-btn sports-btn--danger" onclick="deleteSportsBet('${esc(record.id)}')">刪除</button>
       </div>
       <div style="grid-column:1/-1;color:${profit > 0 ? '#047857' : profit < 0 ? '#B91C1C' : '#64748B'};font-size:.68rem;font-weight:800">P/L ${profit > 0 ? '+' : ''}${profit.toFixed(2)}u${record.note ? ` · ${esc(record.note)}` : ''}</div>
@@ -1439,9 +1505,52 @@ function renderSportsWorkspace(sport = activeSport) {
   </section>`;
 }
 
+function renderPortfolioWorkspace() {
+  const data = portfolioSnapshot;
+  if (!data || data.error) {
+    return `<section class="sports-shell sports-shell--portfolio">
+      <div class="sports-hero"><div><div class="sports-eyebrow">WONG CHOI PORTFOLIO</div><h1 class="sports-title">📈 全運動 Portfolio</h1><p class="sports-intro">統一顯示 Horses、NBA、Tennis 嘅已結算 ROI 同 pending exposure。</p></div></div>
+      <div class="sports-notice"><span>⏳</span><span>D1 Portfolio 暫時未能讀取${data?.error ? `：${esc(data.error)}` : ''}。</span></div>
+    </section>`;
+  }
+  const total = data.total || {};
+  const sports = [
+    ['horses', '🏇 Horses'],
+    ['nba', '🏀 NBA'],
+    ['tennis', '🎾 Tennis'],
+  ];
+  const profitColor = Number(total.profit || 0) >= 0 ? '#047857' : '#B91C1C';
+  const rows = sports.map(([key, label]) => {
+    const item = data.by_sport?.[key] || {};
+    const color = Number(item.profit || 0) >= 0 ? '#047857' : '#B91C1C';
+    const roi = item.roi == null ? '—' : `${(Number(item.roi) * 100).toFixed(1)}%`;
+    return `<tr><td><strong>${label}</strong></td><td>${Number(item.bets || 0)}</td><td>${Number(item.settled || 0)}</td><td>${Number(item.pending || 0)}</td><td>${Number(item.pending_exposure || 0).toFixed(2)}u</td><td style="color:${color};font-weight:850">${Number(item.profit || 0) > 0 ? '+' : ''}${Number(item.profit || 0).toFixed(2)}u</td><td style="color:${color};font-weight:850">${roi}</td></tr>`;
+  }).join('');
+  return `<section class="sports-shell sports-shell--portfolio">
+    <div class="sports-hero">
+      <div><div class="sports-eyebrow">WONG CHOI PORTFOLIO · D1 LEDGER</div><h1 class="sports-title">📈 全運動 Portfolio</h1><p class="sports-intro">已結算 P/L 同 pending exposure 分開計，pending 永遠唔會預先當輸。</p></div>
+      <div class="sports-hero__aside">
+        <div class="sports-hero-stat"><strong>${Number(total.bets || 0)}</strong><span>總投注</span></div>
+        <div class="sports-hero-stat"><strong>${Number(total.pending || 0)}</strong><span>Pending</span></div>
+        <div class="sports-hero-stat"><strong>${Number(total.pending_exposure || 0).toFixed(2)}u</strong><span>Exposure</span></div>
+        <div class="sports-hero-stat"><strong style="color:${profitColor}">${Number(total.profit || 0) > 0 ? '+' : ''}${Number(total.profit || 0).toFixed(2)}u</strong><span>Realised P/L</span></div>
+      </div>
+    </div>
+    <div class="sports-roi-grid">
+      <div class="sports-roi-card"><span>已結算</span><strong>${Number(total.settled || 0)}</strong></div>
+      <div class="sports-roi-card"><span>Won / Lost / Void</span><strong>${Number(total.wins || 0)} / ${Number(total.losses || 0)} / ${Number(total.voids || 0)}</strong></div>
+      <div class="sports-roi-card"><span>已結算注碼</span><strong>${Number(total.realised_stake || 0).toFixed(2)}u</strong></div>
+      <div class="sports-roi-card"><span>淨利</span><strong style="color:${profitColor}">${Number(total.profit || 0) > 0 ? '+' : ''}${Number(total.profit || 0).toFixed(2)}u</strong></div>
+      <div class="sports-roi-card"><span>Portfolio ROI</span><strong style="color:${profitColor}">${total.roi == null ? '—' : `${(Number(total.roi) * 100).toFixed(1)}%`}</strong></div>
+    </div>
+    <div style="overflow-x:auto"><table class="portfolio-table"><thead><tr><th>Sport</th><th>投注</th><th>Settled</th><th>Pending</th><th>Exposure</th><th>P/L</th><th>ROI</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="sports-notice"><span>🧾</span><span>資料來源：Cloudflare D1 unified ledger。所有修改、刪除及結算都會寫 audit log；KV 保留作 rollback shadow。</span></div>
+  </section>`;
+}
+
 function sportsModalField(label, name, value, type = 'text', wide = false) {
   const safeValue = esc(value ?? '');
-  if (name === 'note') {
+  if (['note', 'settlement_reason'].includes(name)) {
     return `<label class="roi-modal__field ${wide ? 'roi-modal__field--wide' : ''}">${esc(label)}<textarea class="roi-modal__input" name="${name}" rows="3">${safeValue}</textarea></label>`;
   }
   return `<label class="roi-modal__field ${wide ? 'roi-modal__field--wide' : ''}">${esc(label)}<input class="roi-modal__input" name="${name}" type="${type}" value="${safeValue}" ${type === 'number' ? 'step="0.01"' : ''} required></label>`;
@@ -1466,51 +1575,168 @@ function sportsBetDraftFromSource(source, sport = activeSport) {
   };
 }
 
+function renderInlineBetDraft(source, sport = activeSport) {
+  const draft = sportsBetDraftFromSource(source, sport);
+  const extractedOdds = source.odds == null ? '' : Number(source.odds).toFixed(2);
+  const stakeSource = source.metrics?.stake_units != null ? '旺財建議注碼' : '旺財平注注碼';
+  return `<form class="inline-bet-confirm" onsubmit="confirmInlineSportsBet(event,'${encodeURIComponent(source.id)}')">
+    <div class="inline-bet-confirm__intro">
+      <span><strong>${esc(source.selection)}</strong><br>${esc(source.market)} · 賽事資料已鎖定</span>
+      <span>只需確認實際落注賠率</span>
+    </div>
+    <label class="roi-modal__field">實際賠率
+      <input class="roi-modal__input" name="actual_odds" type="number" min="1.01" step="0.01" inputmode="decimal" value="${esc(extractedOdds)}" placeholder="輸入實際賠率" required>
+    </label>
+    <label class="roi-modal__field">${stakeSource}
+      <span class="inline-bet-confirm__stake">${Number(draft.stake).toFixed(2)}u</span>
+    </label>
+    <button type="submit" class="sports-btn sports-btn--primary">確認落注</button>
+    <div class="inline-bet-confirm__error" role="alert"></div>
+  </form>`;
+}
+
+function toggleInlineBetDraft(encodedSourceId) {
+  const sourceId = decodeURIComponent(encodedSourceId);
+  activeInlineBetSourceId = activeInlineBetSourceId === sourceId ? null : sourceId;
+  render();
+}
+
+function sourceAnalysisSnapshot(source) {
+  return {
+    metrics: source.metrics || {},
+    insight: source.insight || '',
+    risk: source.risk || '',
+    provenance: source.provenance || '',
+    event_date: source.event_date,
+    event_name: source.event_name,
+    market: source.market,
+    selection: source.selection,
+    legs: JSON.parse(JSON.stringify(source.legs || [])),
+  };
+}
+
+function deriveLocalSportsRecord(record) {
+  const next = { ...record };
+  if (next.bet_type === 'combo' && next.legs?.some(leg => leg.status !== 'pending')) {
+    const statuses = next.legs.map(leg => leg.status || 'pending');
+    next.status = statuses.includes('lost') ? 'lost'
+      : statuses.includes('pending') ? 'pending'
+      : statuses.every(status => status === 'void') ? 'void' : 'won';
+    const effectiveOdds = next.legs
+      .filter(leg => leg.status === 'won')
+      .reduce((product, leg) => product * (Number(leg.odds) > 1 ? Number(leg.odds) : 1), 1);
+    next.settlement_odds = next.status === 'won' ? effectiveOdds : next.status === 'void' ? 1 : null;
+  }
+  const payoutOdds = next.settlement_odds ?? next.odds;
+  next.payout = next.status === 'won' ? next.stake * payoutOdds : next.status === 'void' ? next.stake : 0;
+  next.profit = next.status === 'won' ? next.payout - next.stake : next.status === 'lost' ? -next.stake : 0;
+  return next;
+}
+
+async function persistSportsBet(record, isEdit, updates = null) {
+  if (SPORTS_BET_ENDPOINT && sportsLedgerMode === 'cloud') {
+    const response = await authorizedFetch(SPORTS_BET_ENDPOINT, {
+      method: isEdit ? 'PATCH' : 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': `${isEdit ? 'edit' : 'create'}:${record.id}:${Date.now()}`,
+      },
+      body: JSON.stringify(isEdit ? { id: record.id, updates: updates || record } : record),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+  } else {
+    const existing = sportsBetLedger.find(item => item.id === record.id);
+    const next = deriveLocalSportsRecord({
+      ...existing,
+      ...(updates || record),
+      analysis_snapshot: existing?.analysis_snapshot || record.analysis_snapshot,
+    });
+    sportsBetLedger = [...sportsBetLedger.filter(item => item.id !== record.id), next];
+    localStorage.setItem('wc_sports_bets', JSON.stringify(sportsBetLedger));
+  }
+  await loadSportsBetLedger();
+}
+
+async function confirmInlineSportsBet(event, encodedSourceId) {
+  event.preventDefault();
+  const sourceId = decodeURIComponent(encodedSourceId);
+  const source = sportsHistory(activeSport).find(item => item.id === sourceId);
+  if (!source) return;
+  const form = event.currentTarget;
+  const odds = Number(new FormData(form).get('actual_odds'));
+  const error = form.querySelector('.inline-bet-confirm__error');
+  const button = form.querySelector('button[type="submit"]');
+  if (!(odds > 1)) {
+    error.style.display = 'block';
+    error.textContent = '請輸入大過 1.00 嘅實際賠率。';
+    return;
+  }
+  const record = {
+    ...sportsBetDraftFromSource(source, activeSport),
+    odds,
+    status: 'pending',
+    analysis_snapshot: sourceAnalysisSnapshot(source),
+  };
+  button.disabled = true;
+  button.textContent = '儲存中…';
+  try {
+    await persistSportsBet(record, false);
+    activeInlineBetSourceId = null;
+    activeSportsTab = 'bets';
+    render();
+  } catch (saveError) {
+    error.style.display = 'block';
+    error.textContent = `儲存失敗：${saveError.message}`;
+    button.disabled = false;
+    button.textContent = '確認落注';
+  }
+}
+
 function renderSportsLegEditors(legs) {
   if (!legs?.length) return '';
   return `<div class="sports-leg-editor">
-    <div class="sports-leg-editor__title">組合注 Legs · 可以按你實際落注內容修正</div>
+    <div class="sports-leg-editor__title">組合注 Legs · 只需更新逐腿結果</div>
     ${legs.map((leg, index) => `<div class="sports-leg-editor__row">
-      <label class="roi-modal__field">Leg ${index + 1}<input class="roi-modal__input" name="leg_selection_${index}" value="${esc(leg.selection || '')}" required></label>
-      <label class="roi-modal__field">Leg 賠率<input class="roi-modal__input" name="leg_odds_${index}" type="number" step="0.01" value="${esc(leg.odds ?? '')}"></label>
+      <div><div class="sports-leg-editor__title">Leg ${index + 1}</div><div class="sports-leg-editor__summary">${esc(sportsLegLabel(leg))}</div></div>
+      <label class="roi-modal__field">Leg 結果<select class="roi-modal__input" name="leg_status_${index}">
+        ${['pending','won','lost','void'].map(status => `<option value="${status}" ${(leg.status || 'pending') === status ? 'selected' : ''}>${sportsStatusLabel(status)}</option>`).join('')}
+      </select></label>
     </div>`).join('')}
+    <div class="roi-modal__hint">組合注會按逐腿結果自動結算：任何一腿輸＝全注輸；Void 腿會由有效賠率剔除。</div>
   </div>`;
 }
 
 function openSportsBetModal(sourceId = null, recordId = null) {
   const existing = recordId ? sportsBetLedger.find(record => record.id === recordId) : null;
-  const source = sourceId ? sportsHistory(activeSport).find(item => item.id === sourceId) : null;
-  if (!existing && !source) return;
-  const record = existing || sportsBetDraftFromSource(source, activeSport);
+  if (!existing) return;
+  const record = existing;
   document.getElementById('sportsBetModal')?.remove();
   const modal = document.createElement('div');
   modal.id = 'sportsBetModal';
   modal.className = 'roi-modal-backdrop';
   modal.innerHTML = `<div class="roi-modal" role="dialog" aria-modal="true" aria-labelledby="sports-modal-title">
-    <div class="roi-modal__header"><div><div class="roi-modal__title" id="sports-modal-title">${existing ? '編輯投注記錄' : '加入投注單'}</div><div class="roi-modal__meta">${esc(record.event_name)}</div></div><button type="button" class="roi-modal__close" onclick="closeSportsBetModal()" aria-label="關閉">×</button></div>
-    <form class="roi-modal__body" onsubmit="saveSportsBet(event,'${esc(record.id)}',${existing ? 'true' : 'false'})">
-      <input type="hidden" name="source_id" value="${esc(record.source_id || '')}">
+    <div class="roi-modal__header"><div><div class="roi-modal__title" id="sports-modal-title">修改實際賠率</div><div class="roi-modal__meta">${esc(record.event_name)}</div></div><button type="button" class="roi-modal__close" onclick="closeSportsBetModal()" aria-label="關閉">×</button></div>
+    <form class="roi-modal__body" onsubmit="saveSportsBet(event,'${esc(record.id)}',true)">
+      <div class="sports-notice" style="margin:0"><span>🔒</span><span>${esc(record.event_date)} · ${esc(record.market)} · <strong>${esc(record.selection)}</strong><br>賽事、選擇同旺財注碼 ${Number(record.stake).toFixed(2)}u 已鎖定。</span></div>
       <div class="sports-modal__grid">
-        ${sportsModalField('日期', 'event_date', record.event_date, 'date')}
-        ${sportsModalField('Bookmaker', 'bookmaker', record.bookmaker || '')}
-        ${sportsModalField('賽事', 'event_name', record.event_name, 'text', true)}
-        ${sportsModalField('市場', 'market', record.market)}
-        ${sportsModalField('選擇', 'selection', record.selection)}
-        ${sportsModalField('實際賠率', 'odds', record.odds, 'number')}
-        ${sportsModalField('注碼 (u)', 'stake', record.stake, 'number')}
-        <label class="roi-modal__field">結果<select class="roi-modal__input" name="status">
+        ${sportsModalField('實際賠率', 'odds', record.odds, 'number', true)}
+        ${record.bet_type === 'combo' ? '' : `<label class="roi-modal__field">結果<select class="roi-modal__input" name="status">
           ${['pending','won','lost','void'].map(status => `<option value="${status}" ${record.status === status ? 'selected' : ''}>${sportsStatusLabel(status)}</option>`).join('')}
-        </select></label>
-        ${sportsModalField('備註', 'note', record.note || '', 'text', true)}
+        </select></label>`}
+        ${sportsModalField('結算原因／更正原因', 'settlement_reason', record.settlement_reason || '', 'text', true)}
         ${renderSportsLegEditors(record.legs)}
       </div>
-      ${source?.odds == null ? '<div class="sports-notice" style="margin:0"><span>⚠️</span><span>呢個 NBA 歷史案例無保存原始賠率，請只輸入你實際落注價。</span></div>' : ''}
       <div class="roi-modal__error" id="sportsBetError"></div>
       <div class="roi-modal__actions"><button type="button" class="sports-btn" onclick="closeSportsBetModal()">取消</button><button type="submit" class="sports-btn sports-btn--primary">儲存</button></div>
     </form>
   </div>`;
   document.body.appendChild(modal);
   modal.addEventListener('click', event => { if (event.target === modal) closeSportsBetModal(); });
+}
+
+function openSportsOddsEditor(encodedRecordId) {
+  openSportsBetModal(null, decodeURIComponent(encodedRecordId));
 }
 
 function closeSportsBetModal() {
@@ -1522,62 +1748,37 @@ async function saveSportsBet(event, id, isEdit) {
   const form = event.currentTarget;
   const values = Object.fromEntries(new FormData(form).entries());
   const existingRecord = sportsBetLedger.find(record => record.id === id);
-  const source = sportsHistory(activeSport).find(item => item.id === values.source_id)
-    || sportsHistory(activeSport).find(item => item.id === existingRecord?.source_id);
-  const baseLegs = source?.legs || existingRecord?.legs || [];
+  if (!existingRecord) return;
+  const baseLegs = existingRecord.legs || [];
   const editedLegs = baseLegs.map((leg, index) => ({
     ...leg,
-    selection: values[`leg_selection_${index}`] || leg.selection,
-    odds: values[`leg_odds_${index}`] === '' || values[`leg_odds_${index}`] == null
-      ? leg.odds
-      : Number(values[`leg_odds_${index}`]),
+    status: values[`leg_status_${index}`] || leg.status || 'pending',
   }));
   const record = {
-    id,
-    sport: activeSport,
-    source_id: source?.id || sportsBetLedger.find(item => item.id === id)?.source_id || '',
-    event_date: values.event_date,
-    event_name: values.event_name,
-    market: values.market,
-    selection: values.selection,
-    bet_type: source?.bet_type || existingRecord?.bet_type || 'single',
+    ...existingRecord,
     legs: editedLegs,
     odds: Number(values.odds),
-    stake: Number(values.stake),
-    status: values.status,
-    bookmaker: values.bookmaker,
-    note: values.note,
-    analysis_snapshot: source ? {
-      metrics: source.metrics || {},
-      insight: source.insight || '',
-      risk: source.risk || '',
-      provenance: source.provenance || '',
-    } : {},
+    status: values.status || existingRecord.status,
+    note: existingRecord.note || '',
+    settlement_source: (values.status || existingRecord.status) === 'pending' ? '' : 'manual_dashboard',
+    settlement_reason: values.settlement_reason || '',
   };
-  if (!(record.odds > 1) || !(record.stake > 0)) {
+  if (!(record.odds > 1)) {
     const error = document.getElementById('sportsBetError');
     error.style.display = 'block';
-    error.textContent = '請輸入大過 1.00 嘅實際賠率，同大過 0 嘅注碼。';
+    error.textContent = '請輸入大過 1.00 嘅實際賠率。';
     return;
   }
   try {
-    if (SPORTS_BET_ENDPOINT && sportsLedgerMode === 'cloud') {
-      const response = await authorizedFetch(SPORTS_BET_ENDPOINT, {
-        method: isEdit ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(isEdit ? { id, updates: record } : record),
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    } else {
-      const existing = sportsBetLedger.find(item => item.id === id);
-      const next = { ...existing, ...record, analysis_snapshot: existing?.analysis_snapshot || record.analysis_snapshot };
-      next.payout = next.status === 'won' ? next.stake * next.odds : next.status === 'void' ? next.stake : 0;
-      next.profit = next.status === 'won' ? next.payout - next.stake : next.status === 'lost' ? -next.stake : 0;
-      sportsBetLedger = [...sportsBetLedger.filter(item => item.id !== id), next];
-      localStorage.setItem('wc_sports_bets', JSON.stringify(sportsBetLedger));
-    }
+    await persistSportsBet(record, true, {
+      odds: record.odds,
+      status: record.status,
+      legs: record.legs,
+      note: record.note,
+      settlement_source: record.settlement_source,
+      settlement_reason: record.settlement_reason,
+    });
     closeSportsBetModal();
-    await loadSportsBetLedger();
     activeSportsTab = 'bets';
     render();
   } catch (error) {
@@ -1587,13 +1788,75 @@ async function saveSportsBet(event, id, isEdit) {
   }
 }
 
+async function updateSportsBetResult(encodedId, status) {
+  const id = decodeURIComponent(encodedId);
+  const existing = sportsBetLedger.find(record => record.id === id);
+  if (!existing || !['pending','won','lost','void'].includes(status)) return;
+  let reason = 'Dashboard inline result update';
+  if (existing.status !== 'pending' && existing.status !== status) {
+    reason = window.prompt('請輸入更正結果原因（會保存喺 audit log）：', '') || '';
+    if (!reason) {
+      render();
+      return;
+    }
+  }
+  try {
+    await persistSportsBet(existing, true, {
+      status,
+      settlement_source: status === 'pending' ? '' : 'manual_dashboard',
+      settlement_reason: status === 'pending' ? 'Reopened from dashboard' : reason,
+    });
+    render();
+  } catch (error) {
+    window.alert(`更新結果失敗：${error.message}`);
+    render();
+  }
+}
+
+async function updateSportsComboLegResult(encodedId, legIndex, status) {
+  const id = decodeURIComponent(encodedId);
+  const existing = sportsBetLedger.find(record => record.id === id);
+  if (!existing || existing.bet_type !== 'combo' || !['pending','won','lost','void'].includes(status)) return;
+  const currentLeg = existing.legs?.[legIndex];
+  if (!currentLeg) return;
+  let reason = 'Dashboard inline combo leg result update';
+  if ((currentLeg.status || 'pending') !== 'pending' && currentLeg.status !== status) {
+    reason = window.prompt(`請輸入 Leg ${legIndex + 1} 更正原因（會保存喺 audit log）：`, '') || '';
+    if (!reason) {
+      render();
+      return;
+    }
+  }
+  const legs = existing.legs.map((leg, index) => index === legIndex
+    ? {
+      ...leg,
+      status,
+      settlement_source: status === 'pending' ? '' : 'manual_dashboard',
+    }
+    : leg);
+  try {
+    await persistSportsBet(existing, true, {
+      legs,
+      settlement_source: status === 'pending' ? '' : 'manual_dashboard',
+      settlement_reason: status === 'pending' ? `Reopened combo leg ${legIndex + 1}` : reason,
+    });
+    render();
+  } catch (error) {
+    window.alert(`更新 Leg ${legIndex + 1} 結果失敗：${error.message}`);
+    render();
+  }
+}
+
 async function deleteSportsBet(id) {
   if (!window.confirm('確定刪除呢筆投注記錄？')) return;
   try {
     if (SPORTS_BET_ENDPOINT && sportsLedgerMode === 'cloud') {
       const response = await authorizedFetch(SPORTS_BET_ENDPOINT, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `delete:${id}:${Date.now()}`,
+        },
         body: JSON.stringify({ id }),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -1605,6 +1868,54 @@ async function deleteSportsBet(id) {
     render();
   } catch (error) {
     window.alert(`刪除失敗：${error.message}`);
+  }
+}
+
+function closeBetAudit() {
+  document.getElementById('betAuditModal')?.remove();
+}
+
+function auditStatusChange(item) {
+  const before = item.before?.status;
+  const after = item.after?.status;
+  if (before && after && before !== after) {
+    return `${sportsStatusLabel(before)} → ${sportsStatusLabel(after)}`;
+  }
+  if (item.action === 'delete') return '記錄已刪除（D1 保留 audit trail）';
+  return after ? `狀態：${sportsStatusLabel(after)}` : '已記錄操作';
+}
+
+async function openBetAudit(encodedId) {
+  const id = decodeURIComponent(encodedId);
+  document.getElementById('betAuditModal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'betAuditModal';
+  modal.className = 'roi-modal-backdrop';
+  modal.innerHTML = `<div class="roi-modal" role="dialog" aria-modal="true" aria-labelledby="audit-modal-title">
+    <div class="roi-modal__header"><div><div class="roi-modal__title" id="audit-modal-title">修改及結算紀錄</div><div class="roi-modal__meta">${esc(id)}</div></div><button type="button" class="roi-modal__close" onclick="closeBetAudit()" aria-label="關閉">×</button></div>
+    <div class="roi-modal__body"><div class="sports-notice" style="margin:0"><span>⏳</span><span>讀取 D1 audit log…</span></div></div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', event => { if (event.target === modal) closeBetAudit(); });
+  const body = modal.querySelector('.roi-modal__body');
+  if (!AUDIT_ENDPOINT) {
+    body.innerHTML = '<div class="sports-notice" style="margin:0"><span>💾</span><span>本機模式未有 D1 audit log。</span></div>';
+    return;
+  }
+  try {
+    const response = await authorizedFetch(`${AUDIT_ENDPOINT}?id=${encodeURIComponent(id)}&limit=100`, { cache: 'no-store' });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+    const items = payload.audit || [];
+    body.innerHTML = items.length
+      ? `<div class="audit-list">${items.map(item => `<div class="audit-item">
+          <div class="audit-item__top"><span>${esc(item.action)}</span><span>${esc(new Date(Number(item.created_at)).toLocaleString('zh-HK'))}</span></div>
+          <div class="audit-item__meta">${esc(item.actor || 'dashboard')} · ${esc(item.idempotency_key || '')}</div>
+          <div class="audit-item__change">${esc(auditStatusChange(item))}</div>
+        </div>`).join('')}</div>`
+      : '<div class="sports-notice" style="margin:0"><span>ℹ️</span><span>呢筆舊資料未有修改紀錄；之後每次修改、刪除或結算都會喺度顯示。</span></div>';
+  } catch (error) {
+    body.innerHTML = `<div class="sports-notice" style="margin:0"><span>⚠️</span><span>讀取失敗：${esc(error.message)}</span></div>`;
   }
 }
 
@@ -3264,7 +3575,7 @@ function renderMonthlyBreakdown(sessions, bets) {
           const stLabel = b.status==='won'?'✅':b.status==='lost'?'❌':'⏳';
           const encodedKey = b._ledger_key ? encodeRoiKey(b._ledger_key) : '';
           const actions = encodedKey
-            ? `<div class="roi-record-actions"><button class="roi-record-action roi-record-action--edit" type="button" onclick="editRoiRecord('${encodedKey}')">編輯</button><button class="roi-record-action roi-record-action--delete" type="button" onclick="deleteRoiRecord('${encodedKey}')">刪除</button></div>`
+            ? `<div class="roi-record-actions"><button class="roi-record-action roi-record-action--edit" type="button" onclick="editRoiRecord('${encodedKey}')">編輯</button><button class="roi-record-action" type="button" onclick="openBetAudit('${encodeURIComponent(`horse:${b._ledger_key}`)}')">紀錄</button><button class="roi-record-action roi-record-action--delete" type="button" onclick="deleteRoiRecord('${encodedKey}')">刪除</button></div>`
             : '<span style="color:#CBD5E1">—</span>';
           html += `<tr style="border-bottom:1px solid #F8FAFC"><td style="padding:4px 8px">R${b.race_number}</td><td style="padding:4px 8px"><strong>#${b.horse_number}</strong> ${esc(b.horse_name)}</td><td style="padding:4px 8px">${b.odds||'—'}</td><td style="padding:4px 8px">${b.result_position??'—'}</td><td style="padding:4px 8px"><span style="background:${stBg};color:${stCol};padding:1px 6px;border-radius:999px;font-size:0.65rem;font-weight:700">${stLabel}</span></td><td style="padding:4px 8px;text-align:right;font-weight:700;color:${bc}">${b.net_profit!=null?`${b.net_profit>0?'+':''}$${Number(b.net_profit).toFixed(2)}`:'—'}</td><td style="padding:4px 8px;text-align:right">${actions}</td></tr>`;
         });
@@ -3284,7 +3595,7 @@ function renderMonthlyBreakdown(sessions, bets) {
 function render() {
   const main = document.getElementById('app-main');
   if (!main) return;
-  ['horses', 'nba', 'tennis'].forEach(sport => {
+  ['horses', 'nba', 'tennis', 'portfolio'].forEach(sport => {
     const button = document.getElementById(`sport-${sport}`);
     if (button) button.className = `sport-switch${activeSport === sport ? ' sport-switch--active' : ''}`;
   });
@@ -3301,6 +3612,8 @@ function render() {
     main.innerHTML = renderROI();
   } else if (currentView === 'sports') {
     main.innerHTML = renderSportsWorkspace(activeSport);
+  } else if (currentView === 'portfolio') {
+    main.innerHTML = renderPortfolioWorkspace();
   } else {
     main.innerHTML = renderDashboard();
   }

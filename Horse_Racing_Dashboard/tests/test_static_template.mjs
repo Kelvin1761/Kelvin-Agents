@@ -693,6 +693,34 @@ test("multi-sport workspace shows provenance, archived-odds warnings, and add-to
   assert.match(tennis, /模型概率 74\.8%/);
 });
 
+test("tennis cards show tier, tour, round and CLV context when available", () => {
+  const data = {
+    ...EMPTY_DASHBOARD_DATA,
+    sports_history: {
+      nba: [],
+      tennis: [{
+        id: "tennis-context",
+        event_date: "2026-07-25",
+        event_name: "A vs B",
+        market: "Match Betting",
+        selection: "A",
+        odds: 2,
+        category: "core_banker",
+        outcome: "won",
+        metrics: { clv: 0.04 },
+        context: { tour: "ATP", round: "QF", tournament: "Sydney Open" },
+      }],
+    },
+  };
+  const { renderSportsWorkspace } = loadTemplateFunctions(data);
+  const html = renderSportsWorkspace("tennis");
+  assert.match(html, /Tier CORE_BANKER/);
+  assert.match(html, /ATP/);
+  assert.match(html, /QF/);
+  assert.match(html, /Sydney Open/);
+  assert.match(html, /CLV \+4\.0%/);
+});
+
 test("sports ROI excludes pending bets and handles won lost and void results", () => {
   const { calculateSportsRoi } = loadTemplateFunctions();
   const roi = calculateSportsRoi([
@@ -716,14 +744,33 @@ test("multi-sport workspace has a single-column mobile contract", () => {
   assert.match(template, /@media \(max-width: 520px\)[\s\S]*?\.sports-modal__grid \{ grid-template-columns:1fr; \}/);
 });
 
-test("sport URL state accepts only horses NBA and tennis", () => {
+test("sport URL state accepts horses NBA tennis and portfolio", () => {
   const { getInitialSportFromUrl, setLocationSearchForTest } = loadTemplateFunctions();
   setLocationSearchForTest("?sport=tennis");
   assert.equal(getInitialSportFromUrl(), "tennis");
   setLocationSearchForTest("?sport=nba");
   assert.equal(getInitialSportFromUrl(), "nba");
+  setLocationSearchForTest("?sport=portfolio");
+  assert.equal(getInitialSportFromUrl(), "portfolio");
   setLocationSearchForTest("?sport=football");
   assert.equal(getInitialSportFromUrl(), "horses");
+});
+
+test("portfolio workspace is backed by the D1 portfolio endpoint", () => {
+  const template = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+  assert.match(template, /id="sport-portfolio"[\s\S]*?showSport\('portfolio'\)/);
+  assert.match(template, /const PORTFOLIO_ENDPOINT = [^;]*'\/api\/portfolio'/);
+  assert.match(template, /function renderPortfolioWorkspace\(/);
+});
+
+test("sports ledger exposes per-leg settlement controls and D1 audit history", () => {
+  const template = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+  assert.match(template, /name="leg_status_\$\{index\}"/);
+  assert.match(template, /組合注會按逐腿結果自動結算/);
+  assert.match(template, /const AUDIT_ENDPOINT = [^;]*'\/api\/audit'/);
+  assert.match(template, /function openBetAudit\(/);
+  assert.match(template, />紀錄<\/button>/);
+  assert.match(template, /Idempotency-Key/);
 });
 
 test("live tennis feed replaces fallback history and keeps combo legs in the bet draft", () => {
@@ -774,4 +821,30 @@ test("live tennis feed replaces fallback history and keeps combo legs in the bet
   assert.equal(draft.bet_type, "combo");
   assert.equal(draft.legs.length, 2);
   assert.equal(draft.legs[1].selection, "Otto Virtanen");
+});
+
+test("adding a recommendation uses an inline odds-only confirmation flow", () => {
+  const template = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+
+  assert.match(template, /function toggleInlineBetDraft\(/);
+  assert.match(template, /function renderInlineBetDraft\(/);
+  assert.match(template, /name="actual_odds"/);
+  assert.match(template, /旺財建議注碼/);
+  assert.match(template, /確認落注/);
+  assert.doesNotMatch(
+    template,
+    /onclick="openSportsBetModal\('\$\{esc\(item\.id\)\}'\)">＋ 加入投注單/,
+  );
+});
+
+test("saved bet cards update the result inline without editing event metadata", () => {
+  const template = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+
+  assert.match(template, /function updateSportsBetResult\(/);
+  assert.match(template, /function updateSportsComboLegResult\(/);
+  assert.match(template, /onchange="updateSportsBetResult\(/);
+  assert.match(template, /onchange="updateSportsComboLegResult\(/);
+  assert.match(template, /function openSportsOddsEditor\(/);
+  assert.match(template, /實際賠率/);
+  assert.doesNotMatch(template, /openSportsBetModal\(null,'\$\{esc\(record\.id\)\}'\)/);
 });

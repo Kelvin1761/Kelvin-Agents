@@ -4,9 +4,9 @@ import test from "node:test";
 
 
 async function loadModule(relativePath) {
-  const source = fs.readFileSync(new URL(relativePath, import.meta.url), "utf8");
-  const url = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
-  return import(url);
+  const url = new URL(relativePath, import.meta.url);
+  url.searchParams.set("testRun", `${Date.now()}-${Math.random()}`);
+  return import(url.href);
 }
 
 
@@ -323,6 +323,234 @@ test("sports bet API edits combo legs while preserving the original recommendati
 
   assert.equal(response.status, 200);
   const body = await response.json();
-  assert.deepEqual(body.record.legs, updatedLegs);
+  assert.deepEqual(
+    body.record.legs,
+    updatedLegs.map((leg) => ({ ...leg, status: "pending" })),
+  );
   assert.equal(body.record.analysis_snapshot.legs[0].selection, "A");
+});
+
+test("sports bet create is idempotent when the same idempotency key is retried", async () => {
+  const sports = await loadModule("../functions/api/sports-bets.js");
+  const kv = memoryKv();
+  const payload = {
+    id: "tennis-idempotent-create",
+    sport: "tennis",
+    source_id: "tennis:market:42",
+    event_date: "2026-07-25",
+    event_name: "A vs B",
+    market: "Match Betting",
+    selection: "A",
+    odds: 2.1,
+    stake: 1,
+    status: "pending",
+  };
+  const request = () => new Request("https://dashboard.example/api/sports-bets", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Sec-Fetch-Site": "same-origin",
+      "Idempotency-Key": "create-tennis-42",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const first = await sports.onRequestPost({ request: request(), env: { WC_STATE: kv } });
+  const second = await sports.onRequestPost({ request: request(), env: { WC_STATE: kv } });
+
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal((await second.json()).idempotent, true);
+});
+
+test("combo settlement supports a won leg plus a void leg using effective odds", async () => {
+  const sports = await loadModule("../functions/api/sports-bets.js");
+  const id = "tennis-partial-void";
+  const original = {
+    id,
+    sport: "tennis",
+    source_id: "tennis:combo:partial-void",
+    event_date: "2026-07-25",
+    event_name: "2-match Combo",
+    market: "Tennis Multi",
+    selection: "A + B",
+    bet_type: "combo",
+    legs: [
+      { selection: "A", market: "Match Betting", odds: 2.0, status: "pending" },
+      { selection: "B", market: "Match Betting", odds: 1.5, status: "pending" },
+    ],
+    odds: 3.0,
+    stake: 2,
+    status: "pending",
+    analysis_snapshot: {},
+  };
+  const kv = memoryKv({ SPORTS_BET_LEDGER: JSON.stringify({ [id]: original }) });
+
+  const response = await sports.onRequestPatch({
+    request: new Request("https://dashboard.example/api/sports-bets", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "Sec-Fetch-Site": "same-origin",
+        "Idempotency-Key": "settle-partial-void",
+      },
+      body: JSON.stringify({
+        id,
+        updates: {
+          legs: [
+            { selection: "A", market: "Match Betting", odds: 2.0, status: "won" },
+            { selection: "B", market: "Match Betting", odds: 1.5, status: "void" },
+          ],
+          settlement_source: "tennis_wc.db",
+          settlement_ref: "combo_tracker#partial-void",
+        },
+      }),
+    }),
+    env: { WC_STATE: kv },
+  });
+
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.record.status, "won");
+  assert.equal(body.record.settlement_odds, 2);
+  assert.equal(body.record.payout, 4);
+  assert.equal(body.record.profit, 2);
+});
+
+test("D1 migration defines the unified ledger, leg, settlement and audit contracts", () => {
+  const schema = fs.readFileSync(
+    new URL("../migrations/0001_unified_bet_ledger.sql", import.meta.url),
+    "utf8",
+  );
+  for (const table of ["analysis_runs", "recommendations", "bets", "bet_legs", "settlements", "audit_log"]) {
+    assert.match(schema, new RegExp(`CREATE TABLE IF NOT EXISTS ${table}`));
+  }
+  assert.match(schema, /UNIQUE \(bet_id, leg_index\)/);
+  assert.match(schema, /idempotency_key TEXT NOT NULL UNIQUE/);
+});
+
+test("portfolio summary separates realised ROI from pending exposure by sport", async () => {
+  const portfolio = await loadModule("../functions/api/portfolio.js");
+  const summary = portfolio.buildPortfolio({
+    horseWon: { sport: "horses", status: "won", stake: 1, profit: 1.5 },
+    nbaLost: { sport: "nba", status: "lost", stake: 2, profit: -2 },
+    tennisVoid: { sport: "tennis", status: "void", stake: 1, profit: 0 },
+    tennisPending: { sport: "tennis", status: "pending", stake: 3, profit: 0 },
+  });
+
+  assert.equal(summary.total.pending_exposure, 3);
+  assert.equal(summary.total.realised_stake, 4);
+  assert.equal(summary.total.profit, -0.5);
+  assert.equal(summary.total.roi, -0.125);
+  assert.equal(summary.by_sport.tennis.pending, 1);
+  assert.equal(summary.by_sport.horses.wins, 1);
+});
+
+test("results-backed settlement preserves actual odds and stake while grading a single", async () => {
+  const settlements = await loadModule("../functions/api/settlements.js");
+  const existing = {
+    id: "nba-user-bet-1",
+    sport: "nba",
+    source_id: "nba:2026-04-15:chi-was:banker",
+    event_date: "2026-04-15",
+    event_name: "CHI @ WAS",
+    market: "Player PTS",
+    selection: "Zach LaVine 24+ PTS",
+    bet_type: "single",
+    odds: 1.85,
+    stake: 3,
+    status: "pending",
+    payout: 0,
+    profit: 0,
+    analysis_snapshot: { edge: 0.051 },
+    version: 1,
+    created_at: 100,
+    updated_at: 100,
+    legs: [],
+  };
+  const proposal = {
+    source_id: existing.source_id,
+    sport: "nba",
+    status: "won",
+    source: "nba_reflector",
+    source_ref: "Results_Brief_2026-04-15.json",
+    reason: "box score",
+    idempotency_key: "nba-result-1",
+  };
+
+  const record = settlements.applySettlementProposal(existing, proposal, 200);
+
+  assert.equal(record.odds, 1.85);
+  assert.equal(record.stake, 3);
+  assert.equal(record.payout, 5.55);
+  assert.equal(record.profit, 2.55);
+  assert.equal(record.analysis_snapshot.edge, 0.051);
+  assert.equal(record.settlement_source, "nba_reflector");
+});
+
+test("results-backed combo settlement preserves leg prices and supports partial void", async () => {
+  const settlements = await loadModule("../functions/api/settlements.js");
+  const existing = {
+    id: "tennis-user-combo-1",
+    sport: "tennis",
+    source_id: "tennis:combo:42",
+    event_date: "2026-07-25",
+    event_name: "A + B",
+    market: "Tennis Multi",
+    selection: "A + B",
+    bet_type: "combo",
+    odds: 3,
+    stake: 2,
+    status: "pending",
+    payout: 0,
+    profit: 0,
+    analysis_snapshot: {},
+    version: 1,
+    created_at: 100,
+    updated_at: 100,
+    legs: [
+      { selection: "A", odds: 2, status: "pending" },
+      { selection: "B", odds: 1.5, status: "pending" },
+    ],
+  };
+  const proposal = {
+    source_id: existing.source_id,
+    sport: "tennis",
+    status: "won",
+    source: "tennis_wc.db",
+    source_ref: "combo_tracker#42",
+    reason: "per-leg results",
+    idempotency_key: "tennis-result-42",
+    legs: [
+      { selection: "ignored", odds: 99, status: "won", result_value: 2 },
+      { selection: "ignored", odds: 99, status: "void" },
+    ],
+  };
+
+  const record = settlements.applySettlementProposal(existing, proposal, 200);
+
+  assert.equal(record.status, "won");
+  assert.equal(record.settlement_odds, 2);
+  assert.equal(record.payout, 4);
+  assert.equal(record.profit, 2);
+  assert.equal(record.legs[0].odds, 2);
+  assert.equal(record.legs[1].odds, 1.5);
+  assert.deepEqual(record.legs.map((leg) => leg.status), ["won", "void"]);
+});
+
+test("settlement endpoint contract only trusts native tennis and NBA reflector sources", async () => {
+  const settlements = await loadModule("../functions/api/settlements.js");
+  const base = {
+    source_id: "source:1",
+    sport: "tennis",
+    status: "won",
+    source: "tennis_wc.db",
+    source_ref: "clv_tracker#1",
+    idempotency_key: "result:1",
+  };
+  assert.equal(settlements.validateSettlementProposal(base), "");
+  assert.equal(
+    settlements.validateSettlementProposal({ ...base, source: "browser_form" }),
+    "untrusted settlement source",
+  );
 });

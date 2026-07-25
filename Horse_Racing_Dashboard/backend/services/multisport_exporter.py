@@ -106,10 +106,63 @@ def _parse_nba_leg_row(line: str) -> Optional[Dict[str, Any]]:
     odds = _safe_float(odds_match.group(1))
     if odds is None or odds <= 1:
         return None
+    selection = cells[1]
+
+    def percent_at(index: int) -> Optional[float]:
+        if index >= len(cells):
+            return None
+        match = re.search(r"([+-]?\d+(?:\.\d+)?)\s*%", cells[index])
+        return _safe_float(float(match.group(1)) / 100) if match else None
+
+    l10_hit_rate = percent_at(3)
+    model_probability = percent_at(4)
+    if len(cells) >= 8:
+        edge = percent_at(5)
+        expected_value = percent_at(6)
+        cov_match = re.search(r"(\d+(?:\.\d+)?)", cells[7])
+    else:
+        edge = None
+        expected_value = percent_at(5)
+        cov_match = None
+
+    player = ""
+    stat = ""
+    line_value = None
+    patterns = [
+        re.compile(
+            r"^(?P<player>.+?)(?:\s+\([A-Z]{2,4}\))?\s+"
+            r"(?P<stat>PTS|REB|AST|3PM|PRA|PR|PA|RA|STL|BLK|TOV)\s+"
+            r"(?P<line>\d+(?:\.\d+)?)\+",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"^(?P<player>.+?)(?:\s+\([A-Z]{2,4}\))?\s+"
+            r"(?P<line>\d+(?:\.\d+)?)\+\s+"
+            r"(?P<stat>PTS|REB|AST|3PM|PRA|PR|PA|RA|STL|BLK|TOV)",
+            re.IGNORECASE,
+        ),
+    ]
+    for pattern in patterns:
+        parsed = pattern.search(selection)
+        if parsed:
+            player = parsed.group("player").strip()
+            stat = parsed.group("stat").upper()
+            line_value = _safe_float(parsed.group("line"))
+            break
     return {
-        "selection": cells[1],
-        "market": "NBA player/team milestone",
+        "selection": selection,
+        "market": f"Player {stat}" if stat else "NBA player/team milestone",
         "odds": odds,
+        "player": player,
+        "stat": stat,
+        "line": line_value,
+        "metrics": {
+            "l10_hit_rate": l10_hit_rate,
+            "model_probability": model_probability,
+            "edge": edge,
+            "expected_value": expected_value,
+            "coefficient_of_variation": _safe_float(cov_match.group(1)) if cov_match else None,
+        },
         "source_row": line.strip(),
     }
 
@@ -154,7 +207,21 @@ def _parse_nba_combos(
                 "odds_status": "archived",
                 "bet_type": "combo",
                 "legs": legs,
-                "metrics": {"leg_count": len(legs)},
+                "metrics": {
+                    "leg_count": len(legs),
+                    "model_probability": _safe_float(
+                        _product(
+                            leg.get("metrics", {}).get("model_probability")
+                            for leg in legs
+                        )
+                    ),
+                    "average_edge": _safe_float(
+                        _mean(
+                            leg.get("metrics", {}).get("edge")
+                            for leg in legs
+                        )
+                    ),
+                },
                 "insight": "由 NBA Wong Choi Python Auto-Selection 正式報告直接匯出。",
                 "risk": risk,
                 "decision": "BET",
@@ -167,6 +234,74 @@ def _parse_nba_combos(
             }
         )
     return recommendations
+
+
+def _product(values: Iterable[Optional[float]]) -> Optional[float]:
+    usable = [float(value) for value in values if value is not None]
+    if not usable:
+        return None
+    result = 1.0
+    for value in usable:
+        result *= value
+    return result
+
+
+def _mean(values: Iterable[Optional[float]]) -> Optional[float]:
+    usable = [float(value) for value in values if value is not None]
+    return sum(usable) / len(usable) if usable else None
+
+
+def _build_nba_bankers(combos: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    bankers = []
+    for combo in combos:
+        if not str(combo.get("id") or "").endswith(":combo:1"):
+            continue
+        legs = combo.get("legs") or []
+        if not legs:
+            continue
+        leg = max(
+            legs,
+            key=lambda item: (
+                item.get("metrics", {}).get("expected_value") is not None,
+                item.get("metrics", {}).get("expected_value") or float("-inf"),
+                item.get("metrics", {}).get("edge") or float("-inf"),
+                item.get("metrics", {}).get("l10_hit_rate") or float("-inf"),
+            ),
+        )
+        bankers.append(
+            {
+                "id": str(combo["id"]).replace(":combo:1", ":banker"),
+                "sport": "nba",
+                "category": "banker",
+                "event_date": combo["event_date"],
+                "event_name": combo["event_name"],
+                "market": leg.get("market") or "NBA player prop",
+                "selection": leg.get("selection") or "",
+                "odds": leg.get("odds"),
+                "odds_status": combo.get("odds_status"),
+                "bet_type": "single",
+                "legs": [],
+                "metrics": leg.get("metrics") or {},
+                "insight": "組合 1 入面最高 EV 嘅正式 Banker leg；直接由 Python Auto-Selection 表格匯出。",
+                "risk": combo.get("risk") or "",
+                "decision": "BET",
+                "confidence": (
+                    (leg.get("metrics") or {}).get("model_probability")
+                ),
+                "outcome": "pending",
+                "actual": "待賽果",
+                "provenance": combo.get("provenance"),
+                "source_files": combo.get("source_files") or [],
+                "validation_status": "valid",
+                "settlement_contract": {
+                    "player": leg.get("player") or "",
+                    "stat": leg.get("stat") or "",
+                    "line": leg.get("line"),
+                    "direction": "over_or_milestone",
+                },
+            }
+        )
+    return bankers
 
 
 def export_nba_snapshot(root: Path, target_date: Optional[str] = None) -> Dict[str, Any]:
@@ -205,7 +340,9 @@ def export_nba_snapshot(root: Path, target_date: Optional[str] = None) -> Dict[s
             warnings.append(f"nba_report_validation_failed:{game_tag}")
             continue
         source_files = [sportsbet_path.name, report.name]
-        recommendations.extend(_parse_nba_combos(content, analysis_date, game_tag, source_files))
+        combos = _parse_nba_combos(content, analysis_date, game_tag, source_files)
+        recommendations.extend(combos)
+        recommendations.extend(_build_nba_bankers(combos))
         all_source_files.extend(source_files)
 
     if not recommendations:
@@ -277,8 +414,23 @@ def _tennis_outcome(status: Any) -> str:
 
 
 def _export_tennis_singles(connection: sqlite3.Connection, analysis_date: str) -> List[Dict[str, Any]]:
-    rows = connection.execute(
+    has_clv = _table_exists(connection, "clv_tracker")
+    clv_columns = (
+        ", ct.closing_odds, ct.clv, ct.result_status, ct.profit_loss_units"
+        if has_clv
+        else ", NULL AS closing_odds, NULL AS clv, NULL AS result_status, NULL AS profit_loss_units"
+    )
+    clv_join = (
         """
+        LEFT JOIN clv_tracker ct
+          ON ct.recommendation_type = 'MARKET_LEG'
+         AND ct.source_id = mp.id
+        """
+        if has_clv
+        else ""
+    )
+    rows = connection.execute(
+        f"""
         SELECT
             mp.id, mp.match_id, mp.market_key, mp.market_name,
             mp.selection_name, mp.selection_side, mp.line, mp.odds,
@@ -288,11 +440,13 @@ def _export_tennis_singles(connection: sqlite3.Connection, analysis_date: str) -
             m.match_date, m.tour, m.round,
             pa.name AS player_a, pb.name AS player_b,
             t.name AS tournament_name
+            {clv_columns}
         FROM market_predictions mp
         JOIN matches m ON m.id = mp.match_id
         LEFT JOIN players pa ON pa.id = m.player_a_id
         LEFT JOIN players pb ON pb.id = m.player_b_id
         LEFT JOIN tournaments t ON t.id = m.tournament_id
+        {clv_join}
         WHERE m.match_date = ? AND mp.decision = 'BET'
         ORDER BY mp.banker_eligible DESC, mp.confidence DESC, mp.edge DESC, mp.id
         """,
@@ -308,6 +462,14 @@ def _export_tennis_singles(connection: sqlite3.Connection, analysis_date: str) -
         selection = str(item.get("selection_name") or "").strip()
         if line is not None and str(line) not in selection:
             selection = f"{selection} {line:g}" if isinstance(line, (int, float)) else f"{selection} {line}"
+        outcome = _tennis_outcome(item.get("result_status"))
+        model_probability = _safe_float(item.get("model_probability"))
+        odds = _safe_float(item.get("odds"))
+        expected_value = (
+            _safe_float(model_probability * odds - 1)
+            if model_probability is not None and odds is not None
+            else None
+        )
         recommendations.append(
             {
                 "id": f"tennis:market:{item['id']}",
@@ -317,23 +479,31 @@ def _export_tennis_singles(connection: sqlite3.Connection, analysis_date: str) -
                 "event_name": event_name,
                 "market": item.get("market_name") or item.get("market_key"),
                 "selection": selection,
-                "odds": _safe_float(item.get("odds")),
+                "odds": odds,
                 "odds_status": "archived",
                 "bet_type": "single",
                 "legs": [],
                 "metrics": {
-                    "model_probability": _safe_float(item.get("model_probability")),
+                    "model_probability": model_probability,
                     "market_fair_probability": _safe_float(item.get("no_vig_market_probability")),
                     "edge": _safe_float(item.get("edge")),
+                    "expected_value": expected_value,
                     "minimum_acceptable_odds": _safe_float(item.get("minimum_acceptable_odds")),
                     "confidence": item.get("confidence"),
+                    "closing_odds": _safe_float(item.get("closing_odds")),
+                    "clv": _safe_float(item.get("clv")),
+                    "profit_loss_units": _safe_float(item.get("profit_loss_units")),
                 },
                 "insight": item.get("reason") or f"{tier} · Tennis pricing engine",
                 "risk": item.get("risk") or "",
                 "decision": "BET",
                 "confidence": item.get("confidence"),
-                "outcome": "pending",
-                "actual": "待賽果",
+                "outcome": outcome,
+                "actual": (
+                    "待賽果"
+                    if outcome == "pending"
+                    else f"{item.get('result_status')} · {item.get('profit_loss_units') or 0:+g}u"
+                ),
                 "provenance": f"tennis_wc.db · market_predictions#{item['id']}",
                 "source_files": ["tennis-wong-choi/tennis_wc.db"],
                 "validation_status": "valid",

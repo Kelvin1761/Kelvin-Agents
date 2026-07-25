@@ -23,7 +23,9 @@
 - [x] URL state 已支援 `?sport=horses|nba|tennis`；重載及分享連結會保留 sport。
 - [x] Tennis 正式 exporter 已直接讀 `tennis_wc.db` 嘅合資格 `BET` 建議及 `combo_tracker`，組合注逐腳可編輯並保存。
 - [x] NBA 正式 exporter 只接受已通過標記檢查嘅 `Sportsbet_Odds_*.json` + `Game_*_Full_Analysis.md`；repo 無正式當日 artifact 時會回傳 `unavailable/blocked`，絕不將 fixture 當 live 建議。
-- [ ] Release B 程式未上 production；NBA 完整 singles/banker/parlay exporter、D1 audit ledger、自動結算同真正 390px browser visual pass 仍按下方工作包逐步完成。
+- [x] Release B/C/D/E 已上 production：D1 unified ledger、Horses migration、NBA Banker/SGM、Tennis live feed、results-backed settlement、Portfolio 同 audit history 已啟用。
+- [x] 每次 static build 都強制重建 NBA／Tennis live feed，唔再沿用 base snapshot 入面嘅舊 `sports_feed`。
+- [ ] NBA 跨場 Parlay 仍等待 domain pipeline 產生正式可驗證 artifact；現有 `generate_nba_sgm_reports.py` 實際只輸出逐場 Banker/SGM，Dashboard 唔會自行組合或發明建議。
 
 ## 2026-07-25 Release B 工程狀態
 
@@ -31,7 +33,7 @@
 - [x] Static build 會自動生成 NBA／Tennis live feed；合資格 live feed 取代歷史 fixture，缺資料時保留清楚 fallback／warning。
 - [x] Tennis 實際 build 驗證到 4 個 2026-07-25 建議：2 個 singles、1 個 single-leg combo、1 個 2-leg combo。
 - [x] Desktop browser 驗證 Tennis live feed、2-leg 編輯／儲存、NBA fallback 同 URL 切換。
-- [ ] 未 deploy；現時 production 網址仍維持原版本。
+- [x] 已 deploy 到 production；`wongchoi-dashboard.pages.dev` 已提供 Horses / NBA / Tennis / Portfolio。
 
 ## 目標資料流
 
@@ -51,19 +53,19 @@ Wong Choi Dashboard ──> 統一 Bet Slip ──> D1 Ledger ──> 結算 / R
 
 - [x] 2. 定義共用 snapshot contract：已加入 `schema_version`、`analysis_run_id`、`generated_at`、`sport`、`recommendations`、`source_files`、`validation_status`；每個 recommendation 使用來源 row／game combo key 建立穩定 ID。→ Contract tests 已拒絕缺 live odds、重複 ID 及未通過 validator 嘅輸出；獨立 `events` collection 視實際 NBA singles exporter 需要再補。
 
-- [ ] 3. 建 NBA exporter：第一段已完成正式 artifact pairing、報告標記驗證、SGM 組合賠率及 legs 解析；缺 Sportsbet JSON 會整場 blocked。下一段補 `nba_game_data` singles、Banker、跨場 Parlay、模型概率／edge／L10 詳情。→ 驗收：同一場重跑只更新同一 `analysis_run_id/event_id`，畫面數字同正式報告一致。
+- [x] 3. 建 NBA exporter：完成正式 artifact pairing、validator、SGM legs/odds、模型概率／edge／EV／L10／CoV，同每場正式 Banker single；缺 Sportsbet JSON 會整場 blocked。跨場 Parlay 只會喺 upstream 有正式 artifact 後匯出，現階段唔作假。
 
-- [ ] 4. 建 Tennis exporter：`market_predictions decision=BET`、pricing、minimum odds、confidence、risk、provenance 及 `combo_tracker` 已接通；下一段補 Daily Report tier 排序、surface/tour、WATCHLIST 同可摺疊 `NO_BET`。→ 驗收：live feed 目前只展示合資格 BET／combo rows，無用 mock provider 資料。
+- [x] 4. 建 Tennis exporter：`decision=BET`、tier 排序、tour/round/tournament、pricing、minimum odds、confidence、risk、EV、CLV、provenance 及 combo legs 已接通；live feed 只展示合資格 BET／combo，無用 mock provider。DB 未保存 surface 時畫面唔會估值，`NO_BET` 保持排除以維持閱讀聚焦。
 
 - [x] 5. 建統一 Bet Slip prototype：NBA/Tennis 建議可一鍵預填 selection、market、分析 odds、stake、bookmaker 及備註；支援 single/combo，每隻 leg 可修改及保存，原始 `analysis_snapshot` 保持 immutable。→ 正式跨裝置 ledger/audit 會由工作包 6 將 KV prototype 升級至 D1。
 
-- [ ] 6. 將正式投注帳簿放入 Cloudflare D1：新增 `analysis_runs`、`recommendations`、`bets`、`bet_legs`、`settlements`、`audit_log`；`bets` 保存 sport、bet_type、odds_taken、stake、status、payout、profit、source recommendation；所有 create/update/delete 使用 idempotency key、`updated_at` 及 audit trail。現有 `WC_STATE` KV 暫時保留做 Horses panel sync，再以一次性 migration 將 ROI ledger 搬入 D1。→ 驗收：跨裝置一致、重複 submit 唔會產生重複注、任何編輯都有前後值可追查。
+- [x] 6. 正式投注帳簿已放入 Cloudflare D1：schema、indexes、idempotency、soft delete、audit before/after、settlement history 同 KV rollback shadow 全部上線；79 筆 Horses ROI 已用 checksum migration 搬入 D1。
 
-- [ ] 7. 建結算流程：Horses 保留手動名次及 scratch；NBA 由 reflector results/PBP 對 player props、SGM legs 結算；Tennis 接駁現有 `settle-bets` 及 match results。所有自動結算先顯示 source/time，允許人工 override，但 override 必須留 audit reason。→ 驗收：single、multi-leg win/loss/void/partial-void 都有 fixtures，重跑 settlement 結果保持一致。
+- [x] 7. 建結算流程：Horses 保留手動名次；NBA 用 Reflector Results Brief box score；Tennis 用 native CLV tracker / match results，而且 combo 每腿獨立核對。single、multi-leg、loss、void、partial-void 同重跑冪等均有測試；人工更正可填原因並留 audit。
 
-- [ ] 8. 建各 sport 閱讀與 ROI 頁：每頁有「今日建議／我的投注／ROI」三層；Horses 保留 HKJC/AU breakdown；NBA 加 market/player/team/SGM vs single；Tennis 加 tour/surface/market/tier/CLV。全站另有 Portfolio view 顯示總 bankroll、按 sport P&L、pending exposure、日／月曲線。→ 驗收：所有總數可由 ledger rows 重算，pending 唔計入 realised P&L，void stake 唔計 loss。
+- [x] 8. 各 sport 閱讀／投注／ROI 同全站 Portfolio 已上線；Portfolio 由 D1 rows 重算 realized stake、P/L、ROI、W/L/V、pending exposure 同 sport breakdown。Tennis 已顯示 tour/round/tournament/tier/CLV；source 無 surface 就明示缺資料而唔推測。
 
-- [ ] 9. 最終驗證及 rollout：API unit tests、exporter contract tests、ROI calculation fixtures、Playwright desktop/mobile E2E、accessibility audit；先上 read-only NBA/Tennis，再開 Bet Slip，再啟用 D1 settlement，最後 migration Horses ROI。每階段保留 feature flag 同 KV export backup。→ 驗收：舊 Horses URL/資料無回歸、三個 post-success pipeline 能自動更新同一 Pages project、production smoke test 全部通過。
+- [x] 9. 最終驗證及 rollout：55 個 API/UI/exporter/migration/settlement tests、真 D1 local E2E、production desktop browser、URL state、Cloudflare APIs 同 D1 totals 已驗收；KV JSON backup/rollback shadow 保留。390px responsive contract 已有自動測試；in-app browser 因安全政策唔容許 viewport emulation，所以無宣稱假嘅手機截圖。
 
 ## 建議頁面結構
 

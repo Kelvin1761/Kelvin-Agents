@@ -396,17 +396,20 @@ def collect_all_data(cache_path=DEFAULT_CACHE_PATH):
 
 def generate_html(data):
     """Generate self-contained HTML dashboard."""
-    if "sports_feed" not in data:
-        try:
-            data["sports_feed"] = build_multisport_feed(Path(__file__).resolve().parent.parent)
-        except Exception as exc:
-            print(f"   ⚠️ Live multi-sport feed not available: {exc}")
-            data["sports_feed"] = {
-                "schema_version": 2,
-                "validation_status": "blocked",
-                "validation_errors": [str(exc)],
-                "sports": {},
-            }
+    # A base snapshot may already contain yesterday's sports_feed.  It is only
+    # a transport/cache for race data, never the authority for NBA/Tennis.
+    # Rebuild the feed on every deploy so completed domain analysis appears
+    # immediately and stale recommendations cannot survive a snapshot reuse.
+    try:
+        data["sports_feed"] = build_multisport_feed(Path(__file__).resolve().parent.parent)
+    except Exception as exc:
+        print(f"   ⚠️ Live multi-sport feed not available: {exc}")
+        data["sports_feed"] = {
+            "schema_version": 2,
+            "validation_status": "blocked",
+            "validation_errors": [str(exc)],
+            "sports": {},
+        }
     history_path = Path(__file__).resolve().parent / "data" / "multisport_history.json"
     if "sports_history" not in data:
         try:
