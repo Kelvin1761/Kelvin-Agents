@@ -185,6 +185,9 @@ class TwoWayProp:
     over_odds: float
     under_odds: float
     predicted_mean: float
+    # RAW, odds-blind model P(over) straight off the calibrated curve. This is the
+    # only number that can honestly answer "does our model beat the market", so it
+    # must never be overwritten by a risk haircut (see temper_strength below).
     model_prob_over: float
     fair_prob_over: float      # exact two-way de-vig
     # the side the model prefers as value (or None)
@@ -193,6 +196,10 @@ class TwoWayProp:
     edge: float                # blended - fair on the value side (0 if none)
     ev: float                  # blended*odds-1 on the value side (<=0 if none)
     blended_prob: float        # blended prob of the value side (or of over if none)
+    # P(over) after the temper haircut but BEFORE the market shrink. Staking-side
+    # number; kept separate so the raw model stays measurable.
+    tempered_prob_over: float = 0.0
+    temper_strength: float = 0.0
     factors: dict = field(default_factory=dict)
 
 
@@ -210,13 +217,17 @@ def price_two_way(match_id: int, market_key: str, scope: str, line: float,
         return None
     if line > within_range_ratio * predicted_mean or line < 0.30 * predicted_mean:
         return None  # outside where the curve is trustworthy
+    # RAW model output. Deliberately NOT reassigned below: the temper haircut used
+    # to overwrite this, which meant the scorecard graded a probability already
+    # pulled toward 0.5, while the temper strength was itself derived from that
+    # scorecard. Keeping the two apart breaks that loop.
     model_over = interp_prob_over(line, predicted_mean, curve)
-    if temper:
-        model_over = 0.5 + (model_over - 0.5) * (1.0 - min(0.95, max(0.0, temper)))
+    strength = min(0.95, max(0.0, temper)) if temper else 0.0
+    tempered_over = 0.5 + (model_over - 0.5) * (1.0 - strength)
     imp_over, imp_under = 1.0 / over_odds, 1.0 / under_odds
     overround = imp_over + imp_under
     fair_over = imp_over / overround
-    blended_over = (1 - _MARKET_SHRINK) * model_over + _MARKET_SHRINK * fair_over
+    blended_over = (1 - _MARKET_SHRINK) * tempered_over + _MARKET_SHRINK * fair_over
     blended_under = 1.0 - blended_over
     ev_over = blended_over * over_odds - 1.0
     ev_under = blended_under * under_odds - 1.0
@@ -234,7 +245,9 @@ def price_two_way(match_id: int, market_key: str, scope: str, line: float,
         predicted_mean=predicted_mean, model_prob_over=round(model_over, 4),
         fair_prob_over=round(fair_over, 4), value_side=side,
         value_odds=round(s_odds, 3) if s_odds else None, edge=round(s_edge, 4),
-        ev=round(s_ev, 4), blended_prob=round(s_blend, 4), factors=factors or {},
+        ev=round(s_ev, 4), blended_prob=round(s_blend, 4),
+        tempered_prob_over=round(tempered_over, 4), temper_strength=round(strength, 4),
+        factors=factors or {},
     )
 
 

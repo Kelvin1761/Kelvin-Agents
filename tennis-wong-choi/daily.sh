@@ -21,13 +21,33 @@ PY=(python3 -m tennis_wc.cli)
 DATE="${1:-$(date +%F)}"
 # previous day (works on both macOS and Linux date)
 PREV="$(date -v-1d -j -f %F "$DATE" +%F 2>/dev/null || date -d "$DATE -1 day" +%F 2>/dev/null || echo "")"
+# How far back to re-pull results / re-attempt settlement each run. Results
+# arrive late and unevenly, so a 1-day window permanently strands anything the
+# provider was slow on. 14 days is cheap (TML ships whole-season CSVs anyway).
+RESULT_LOOKBACK_DAYS="${RESULT_LOOKBACK_DAYS:-14}"
+INGEST_FROM="$(date -v-${RESULT_LOOKBACK_DAYS}d -j -f %F "$DATE" +%F 2>/dev/null \
+  || date -d "$DATE -${RESULT_LOOKBACK_DAYS} day" +%F 2>/dev/null || echo "$PREV")"
 
 echo "==================== Tennis Wong Choi daily: $DATE ===================="
 
 if [ -n "$PREV" ]; then
   echo "--- [1/3] settle prior day $PREV + update trackers (profitability) ---"
+  # Results FIRST, or there is nothing to settle against. settle-bets only pulls
+  # results via the tennis provider, which covers ~40% of our fixtures (it misses
+  # most Challenger/ITF, i.e. most of what we price). Without this step the
+  # trackers silently stall: on 2026-07-25 we found 76 props and 83 tracker rows
+  # stuck PENDING back to 2026-05-10, and MARKET_REVIEW was 0/16 settled, which
+  # made every ROI/graduation number optimistic. Backfilling 390 results fixed it.
+  # The window is deliberately wider than one day: TML publishes late, so a
+  # yesterday-only pull keeps missing the same matches forever.
+  "${PY[@]}" ingest-tennismylife-results --start "$INGEST_FROM" --end "$PREV" \
+    || echo "  (ingest-tennismylife-results skipped/failed)"
   "${PY[@]}" fetch-closing-odds --date "$PREV"  || echo "  (fetch-closing-odds skipped/failed)"
   "${PY[@]}" settle-bets        --date "$PREV"  || echo "  (settle-bets skipped/failed)"
+  # Sweep older PENDING rows whose results only just arrived above.
+  "${PY[@]}" settle-backlog     --date "$DATE" --lookback-days "$RESULT_LOOKBACK_DAYS" \
+    || echo "  (settle-backlog skipped/failed)"
+  "${PY[@]}" settle-props       || echo "  (settle-props skipped/failed)"
   "${PY[@]}" sync-clv-tracker   --date "$PREV"  || echo "  (sync-clv-tracker skipped/failed)"
   "${PY[@]}" sync-combo-tracker --date "$PREV"  || echo "  (sync-combo-tracker skipped/failed)"
 fi

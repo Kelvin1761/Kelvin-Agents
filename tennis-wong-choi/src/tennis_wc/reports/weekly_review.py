@@ -8,7 +8,9 @@ the same summary functions the daily report and settlement use, so the numbers
 always agree.
 
 Decision rule surfaced at the bottom (matches _market_upgrade_gate):
-  - a derived market graduates at >= 20 settled + ROI >= 0 + avg_clv >= 0;
+  - a derived market graduates at >= 20 settled + ROI >= 0 (CLV is NOT a gate:
+    stored closing odds are contaminated with in-play prices -- see
+    daily_report._market_upgrade_gate);
   - props/chalk are judged on the model-vs-market scorecard + realised ROI,
     but stakes stay flat until ~150-200 settled legs (small-sample caution).
 """
@@ -153,14 +155,17 @@ def render_weekly_review(as_of_date: str) -> str:
         lines += ["", "分家庭 ROI（有注碼 value 注）："] + fam_lines
 
     # Derived-market graduation
-    lines += ["", "## 🎓 衍生市場畢業進度（≥20 結算 ＋ ROI≥0 ＋ CLV≥0 先可落）", ""]
+    lines += ["", "## 🎓 衍生市場畢業進度（≥20 結算 ＋ ROI≥0 先可落）", ""]
+    lines.append("⚠️ CLV 已停用做門檻：儲存嘅「收盤價」有部分係開賽後（in-play）抓到，")
+    lines.append("   例如 4.65 → 「收」1.17，嗰啲唔係走盤而係場中價。下面 CLV 只作參考，唔可信。")
+    lines.append("")
     for r in data["derived_markets"]:
         badge = "✅ 已畢業" if r["tier"] == "VALIDATED_DERIVED_MARKET" else (
-            f"⏳ 仲差 {r['to_graduate']} 條" if r["to_graduate"] > 0 else "🔍 夠數據但未達正 ROI/CLV"
+            f"⏳ 仲差 {r['to_graduate']} 條" if r["to_graduate"] > 0 else "🔍 夠數據但 ROI 未轉正"
         )
         lines.append(
             f"- {r['market']}：{r['settled']} 結算｜ROI {_pct(r['roi'], signed=True)}"
-            f"｜CLV {_pct(r['avg_clv'], signed=True)}｜{badge}"
+            f"｜CLV {_pct(r['avg_clv'], signed=True)}（不可信）｜{badge}"
         )
 
     # Decision hints

@@ -125,9 +125,20 @@ def record_prop(conn, *, match_id: int, match_date: str, match_label: str,
                 prop_scope: str, subject_player_id: int | None, decimal_odds: float,
                 model_prob: float, market_prob_fair: float, blended_prob: float,
                 edge: float, ev: float, predicted_mean: float,
-                stake_units: float, is_value: bool) -> None:
+                stake_units: float, is_value: bool,
+                model_prob_raw: float | None = None,
+                temper_strength: float | None = None) -> None:
     """Upsert a surfaced prop as PENDING (idempotent per match+market+selection).
-    model_prob / market_prob_fair are the probabilities OF THIS SIDE."""
+    All probabilities are OF THIS SIDE.
+
+    model_prob      -- staking-side probability (tempered). Historical meaning.
+    model_prob_raw  -- RAW odds-blind model probability. This is what the
+                       model-vs-market scorecard grades; without it the scorecard
+                       measures a risk-adjusted number and cannot tell us whether
+                       the model itself has any skill.
+    temper_strength -- haircut applied to get from raw to model_prob, recorded so
+                       any row can be audited after the fact.
+    """
     prop_key = f"{match_id}|{market_key}|{selection}"
     now = utc_now()
     conn.execute(
@@ -135,12 +146,15 @@ def record_prop(conn, *, match_id: int, match_date: str, match_label: str,
         INSERT INTO prop_tracker (
             prop_key, match_id, match_date, match_label, market_key, line, selection,
             side, prop_scope, subject_player_id, decimal_odds, model_prob,
+            model_prob_raw, temper_strength,
             market_prob_fair, blended_prob, edge, ev, predicted_mean, stake_units,
             is_value, result_status, profit_loss_units, actual_value,
             recorded_at, updated_at, settled_at
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING', NULL, NULL, ?, ?, NULL)
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING', NULL, NULL, ?, ?, NULL)
         ON CONFLICT(prop_key) DO UPDATE SET
             decimal_odds=excluded.decimal_odds, model_prob=excluded.model_prob,
+            model_prob_raw=excluded.model_prob_raw,
+            temper_strength=excluded.temper_strength,
             market_prob_fair=excluded.market_prob_fair, blended_prob=excluded.blended_prob,
             edge=excluded.edge, ev=excluded.ev, predicted_mean=excluded.predicted_mean,
             stake_units=excluded.stake_units, is_value=excluded.is_value,
@@ -149,6 +163,7 @@ def record_prop(conn, *, match_id: int, match_date: str, match_label: str,
         """,
         (prop_key, match_id, match_date, match_label, market_key, line, selection,
          side, prop_scope, subject_player_id, decimal_odds, model_prob,
+         model_prob_raw, temper_strength,
          market_prob_fair, blended_prob, edge, ev, predicted_mean, stake_units,
          1 if is_value else 0, now, now),
     )
@@ -233,20 +248,37 @@ def prop_roi_report(conn, value_only: bool = True) -> dict:
 # --------------------------------------------------------------------------- #
 # Review 2: model-vs-market scorecard (needs only outcomes, not bets)
 # --------------------------------------------------------------------------- #
-def model_vs_market_scorecard(conn) -> dict:
+def model_vs_market_scorecard(conn, use_raw: bool = True) -> dict:
     """On every settled prop, compare the MODEL's probability of the recorded
     side vs the MARKET's de-vigged probability, via Brier + log-loss. Lower is
     better. If the model beats the market, our edge is real; if the market wins,
     the model is the weak link (as with match-winner). Also a calibration table:
-    predicted-prob bucket vs realised hit."""
+    predicted-prob bucket vs realised hit.
+
+    Grades `model_prob_raw` -- the odds-blind model output -- because that is the
+    only column that answers "does the model have skill". `model_prob` is the
+    tempered/staking number: grading it flattered the model (pulling a probability
+    toward 0.5 lowers Brier whenever the model is overconfident) AND fed a loop,
+    since the temper strength is itself picked from this scorecard. Rows written
+    before 2026-07-25 have no raw column and are reported separately rather than
+    silently mixed in. Pass use_raw=False for the legacy tempered view.
+    """
+    column = "model_prob_raw" if use_raw else "model_prob"
     rows = conn.execute(
-        "SELECT model_prob, market_prob_fair, result_status FROM prop_tracker "
-        "WHERE result_status IN ('WON','LOST') AND model_prob IS NOT NULL AND market_prob_fair IS NOT NULL"
+        f"SELECT {column} AS prob, market_prob_fair, result_status FROM prop_tracker "
+        f"WHERE result_status IN ('WON','LOST') AND {column} IS NOT NULL "
+        "AND market_prob_fair IS NOT NULL"
     ).fetchall()
+    legacy_only = conn.execute(
+        "SELECT COUNT(*) FROM prop_tracker WHERE result_status IN ('WON','LOST') "
+        "AND model_prob_raw IS NULL AND model_prob IS NOT NULL"
+    ).fetchone()[0]
     n = len(rows)
     if not n:
-        return {"settled": 0, "model": None, "market": None, "verdict": "no settled props yet",
-                "calibration": []}
+        return {"settled": 0, "model": None, "market": None,
+                "verdict": ("no settled props with a raw model probability yet — "
+                            f"{legacy_only} older rows only stored the tempered value"),
+                "calibration": [], "graded_on": column, "legacy_rows_excluded": legacy_only}
 
     def clamp(p):
         return min(1 - 1e-9, max(1e-9, p))
@@ -255,7 +287,7 @@ def model_vs_market_scorecard(conn) -> dict:
     cal = {}
     for r in rows:
         y = 1.0 if r["result_status"] == "WON" else 0.0
-        mp, kp = clamp(r["model_prob"]), clamp(r["market_prob_fair"])
+        mp, kp = clamp(r["prob"]), clamp(r["market_prob_fair"])
         m_brier += (mp - y) ** 2
         mk_brier += (kp - y) ** 2
         m_ll += -(y * math.log(mp) + (1 - y) * math.log(1 - mp))
@@ -276,4 +308,5 @@ def model_vs_market_scorecard(conn) -> dict:
         for b, (s, w, c) in sorted(cal.items()) if c >= 5
     ]
     return {"settled": n, "model": model, "market": market, "verdict": verdict,
-            "calibration": calibration}
+            "calibration": calibration, "graded_on": column,
+            "legacy_rows_excluded": legacy_only if use_raw else 0}

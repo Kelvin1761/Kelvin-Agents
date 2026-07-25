@@ -462,3 +462,77 @@ def test_calibration_safety_margin_for_overconfident_bucket(tmp_path, monkeypatc
             )
 
     assert banker_probability_safety_margin(0.68) > 0
+
+
+# --------------------------------------------------------------------------- #
+# Calibration haircut must actually bite (2026-07-25)
+# --------------------------------------------------------------------------- #
+def _seed_tracker(conn, prob, wins, losses, tier="VALUE_BANKER"):
+    n = 0
+    for status, count in (("WON", wins), ("LOST", losses)):
+        for _ in range(count):
+            n += 1
+            conn.execute(
+                """INSERT INTO clv_tracker
+                   (recommendation_type, source_id, match_id, match_date, selection_name,
+                    market_key, market_name, tier, model_probability, odds_taken,
+                    result_status, recorded_at, updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                ("prediction", n, n, "2026-07-01", f"P{n}", "match_winner",
+                 "Match Betting", tier, prob, 2.0, status, "now", "now"),
+            )
+    conn.commit()
+
+
+def test_overconfident_bucket_haircut_blocks_banker(tmp_path, monkeypatch):
+    """A bucket that forecasts 87% but wins 60% must be cut hard enough to fail
+    the banker gates. The old rule capped the haircut at 0.10, which left 0.877
+    -> 0.777 and still cleared CORE_BANKER (>=0.68) on a bucket losing 40%."""
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.reports import calibration_report as cr
+
+    init_db()
+
+    with get_connection() as conn:
+        _seed_tracker(conn, 0.88, wins=18, losses=12)   # forecast 88%, actual 60%
+
+    haircut = cr.banker_probability_safety_margin(0.88)
+    assert haircut > 0.10, f"haircut must exceed the old 0.10 cap, got {haircut}"
+    assert 0.88 - haircut < 0.68, "effective prob must fail the CORE_BANKER gate"
+
+
+def test_underconfident_bucket_gets_no_bonus(tmp_path, monkeypatch):
+    """We never inflate a probability -- that would manufacture bankers."""
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.reports import calibration_report as cr
+
+    init_db()
+
+    with get_connection() as conn:
+        _seed_tracker(conn, 0.52, wins=25, losses=8)    # forecast 52%, actual 76%
+
+    assert cr.banker_probability_safety_margin(0.52) == 0.0
+
+
+def test_thin_bucket_is_shrunk_not_trusted(tmp_path, monkeypatch):
+    """Small samples must not swing the gate on their own."""
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.reports import calibration_report as cr
+
+    init_db()
+
+    with get_connection() as conn:
+        _seed_tracker(conn, 0.72, wins=2, losses=10)    # forecast 72%, actual 17%
+
+    haircut = cr.banker_probability_safety_margin(0.72)
+    raw_error = 0.72 - (2 / 12)
+    assert 0 < haircut < raw_error, "thin bucket must be shrunk toward 0"

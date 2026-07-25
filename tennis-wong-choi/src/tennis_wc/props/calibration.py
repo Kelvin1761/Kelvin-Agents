@@ -37,10 +37,17 @@ def temper_probability(prob: float, strength: float) -> float:
 
 
 def current_strength(conn) -> float:
-    """Pick the temper strength from the live model-vs-market scorecard."""
+    """Pick the temper strength from the live model-vs-market scorecard.
+
+    Reads the RAW scorecard on purpose. Until 2026-07-25 the stored "model"
+    probability WAS the tempered one, so this function chose a haircut by looking
+    at numbers that already had that haircut baked in -- a feedback loop that could
+    never report the model getting better or worse on its own merits. Grading the
+    odds-blind column makes the decision independent of its own output.
+    """
     try:
         from tennis_wc.props.settlement import model_vs_market_scorecard
-        sc = model_vs_market_scorecard(conn)
+        sc = model_vs_market_scorecard(conn, use_raw=True)
     except Exception:
         return DEFAULT_STRENGTH
     n = sc.get("settled", 0)

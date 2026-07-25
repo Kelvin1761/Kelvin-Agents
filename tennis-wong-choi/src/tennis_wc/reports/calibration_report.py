@@ -42,7 +42,37 @@ def banker_calibration_summary(min_samples: int = 10) -> dict:
     }
 
 
+# Haircut tuning. The old rule (only act above 0.08 overconfidence, then cap the
+# haircut at 0.10) was far too weak to protect the banker gates. Measured on 336
+# settled tracker rows (2026-07-25):
+#     bucket 0.70-0.75  predicted 72.8%  ->  actual 37.5%  (n=16, error 0.353)
+#     bucket 0.80-1.00  predicted 87.9%  ->  actual 60.0%  (n=30, error 0.279)
+# A 0.10 cap turns 72.8% into 62.8% -- still clearing the >=0.56 VALUE_BANKER
+# gate and nearly clearing CORE_BANKER, on a bucket that actually wins 3 times in
+# 8. So the cap, not the model, was letting these through.
+#
+# Now: shrink the model's forecast toward the bucket's OBSERVED hit rate. The
+# margin returned is just the size of that move, so callers keep subtracting it:
+#     effective = (1-w)*predicted + w*actual   with  w = n/(n+SHRINK_N)
+#     margin    = predicted - effective        = w*(predicted - actual)
+# This is ordinary empirical-Bayes shrinkage: a thin bucket barely moves the
+# forecast, a fat one is believed. Worked examples on the 2026-07-25 data:
+#     n=16, 72.8% -> 37.5%:  w=0.62  effective 51.1%  (fails every banker gate)
+#     n=30, 87.9% -> 60.0%:  w=0.75  effective 67.0%  (fails CORE_BANKER >=0.68)
+# SHRINK_N matches min_samples, so at the minimum sample we weight the observed
+# rate 50/50 against the forecast rather than nodding it through.
+_HAIRCUT_DEADBAND = 0.03      # below this, treat as noise
+_HAIRCUT_CAP = 0.35           # ceiling on a single correction
+_HAIRCUT_SHRINK_N = 10        # n/(n+10): n=10 -> 0.50x, n=30 -> 0.75x, n=100 -> 0.91x
+
+
 def banker_probability_safety_margin(probability: float, min_samples: int = 10) -> float:
+    """Haircut to subtract from a model probability before the banker gates.
+
+    Positive only when the bucket this probability falls in has HISTORICALLY come
+    in below its own forecast; underconfident buckets get no bonus (we never
+    inflate a probability, that would manufacture bankers).
+    """
     rows = _settled_tracker_rows()
     for low, high in BUCKETS:
         if low <= probability < high:
@@ -54,7 +84,11 @@ def banker_probability_safety_margin(probability: float, min_samples: int = 10) 
             if predicted is None or actual is None:
                 return 0.0
             overconfidence = predicted - actual
-            return min(0.10, max(0.0, overconfidence)) if overconfidence >= 0.08 else 0.0
+            if overconfidence < _HAIRCUT_DEADBAND:
+                return 0.0
+            n = len(items)
+            shrunk = overconfidence * n / (n + _HAIRCUT_SHRINK_N)
+            return round(min(_HAIRCUT_CAP, max(0.0, shrunk)), 6)
     return 0.0
 
 
@@ -96,17 +130,21 @@ def _warning(buckets: list[dict]) -> str:
 
 
 def _banker_safety_margin(buckets: list[dict], min_samples: int) -> float:
+    """Worst haircut currently in force, for reporting. Mirrors
+    banker_probability_safety_margin so the report cannot disagree with the gate."""
     margins = []
     for bucket in buckets:
-        if int(bucket["samples"] or 0) < min_samples:
+        samples = int(bucket["samples"] or 0)
+        if samples < min_samples:
             continue
         predicted = bucket.get("avg_predicted_probability")
         actual = bucket.get("actual_hit_rate")
         if predicted is None or actual is None:
             continue
         overconfidence = float(predicted) - float(actual)
-        if overconfidence >= 0.08:
-            margins.append(min(0.10, overconfidence))
+        if overconfidence < _HAIRCUT_DEADBAND:
+            continue
+        margins.append(min(_HAIRCUT_CAP, overconfidence * samples / (samples + _HAIRCUT_SHRINK_N)))
     return max(margins) if margins else 0.0
 
 

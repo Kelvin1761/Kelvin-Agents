@@ -127,12 +127,13 @@ def test_price_ace_legs_empty_when_thin_history(tmp_path, monkeypatch):
 # --------------------------------------------------------------------------- #
 def _rec(conn, settlement, *, line, selection, side, odds, model_p, market_p,
          market_key="total_aces_in_the_match", scope="match", subject=None,
-         stake=1.0, value=True, match_id=1):
+         stake=1.0, value=True, match_id=1, raw_p=None):
     settlement.record_prop(
         conn, match_id=match_id, match_date="2026-01-01", match_label="A vs B",
         market_key=market_key, line=line, selection=selection, side=side,
         prop_scope=scope, subject_player_id=subject, decimal_odds=odds,
         model_prob=model_p, market_prob_fair=market_p, blended_prob=model_p,
+        model_prob_raw=model_p if raw_p is None else raw_p, temper_strength=0.0,
         edge=model_p - market_p, ev=model_p * odds - 1, predicted_mean=13.0,
         stake_units=stake, is_value=value)
 
@@ -364,3 +365,116 @@ def test_games_v2_hold_ratio_scales_mean():
     breakfest = games_model.predict_total_games(0.5, 3, hold_sum=1.30)
     assert big_serve > base > breakfest
     assert abs(big_serve / base - 1.049) < 1e-9
+
+
+# --------------------------------------------------------------------------- #
+# Games props are priced-but-never-staked (2026-07-25)
+# --------------------------------------------------------------------------- #
+def test_games_props_are_never_value_bets():
+    """match_total_games is the one family reliably losing money (11 settled,
+    ROI -33.3%) and the games model under-predicts by ~1.9 games, so games props
+    must stay priced/logged for the scorecard but never reach the betting card."""
+    from tennis_wc.props import daily as props_daily
+
+    assert props_daily._games_bettable() is False
+
+    # A games O/U the model disagrees with hard enough to normally flag value.
+    tw = props_daily.games_model.price_games_two_way(
+        1, "total_match_games_20_5", 20.5, over_odds=1.90, under_odds=1.90,
+        match_prob=0.5, best_of=3,
+    )
+    assert tw is not None
+    stripped = props_daily._strip_value(tw)
+    assert stripped.value_side is None, "games prop must not carry a value side"
+    assert stripped.edge == 0.0
+    assert stripped.ev <= 0.0
+    # still usable for the board / scorecard
+    assert stripped.predicted_mean is not None
+
+
+# --------------------------------------------------------------------------- #
+# Raw model probability must stay separate from the staking haircut (2026-07-25)
+# --------------------------------------------------------------------------- #
+def test_temper_does_not_contaminate_raw_model_probability():
+    """The temper haircut used to overwrite model_prob_over, so the scorecard
+    graded a probability already pulled toward 0.5 while the temper strength was
+    itself chosen from that scorecard. raw must be temper-free."""
+    kw = dict(match_id=1, market_key="total_aces_9_5", scope="match", line=9.5,
+              over_odds=1.90, under_odds=1.90, predicted_mean=13.0,
+              curve=ace_model.MATCH_ACE_CURVE)
+    plain = ace_model.price_two_way(**kw, temper=0.0)
+    tempered = ace_model.price_two_way(**kw, temper=0.35)
+    assert plain is not None and tempered is not None
+
+    # raw is identical regardless of the haircut in force
+    assert tempered.model_prob_over == plain.model_prob_over
+    # the haircut lands on the staking number instead, pulling it toward 0.5
+    assert tempered.temper_strength == 0.35
+    assert abs(tempered.tempered_prob_over - 0.5) < abs(plain.model_prob_over - 0.5)
+    # and it is recorded, so any row can be audited later
+    assert plain.temper_strength == 0.0
+
+
+def test_scorecard_grades_raw_not_tempered(tmp_path, monkeypatch):
+    """A model that is overconfident scores BETTER after tempering (pulling toward
+    0.5 lowers Brier). Grading the tempered column therefore flatters the model --
+    the scorecard must read the raw one."""
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import settlement
+
+    init_db()
+    conn = get_connection()
+    _seed_player(conn, 1, "A"); _seed_player(conn, 2, "B")
+    _seed_match(conn, 1, 1, 2)
+    conn.execute(
+        "INSERT INTO match_results (match_id, winner_player_id, source_provider, created_at, score_json)"
+        " VALUES (1,1,'t','now', ?)", ('{"player_a_aces": 2, "player_b_aces": 1}',))
+    conn.commit()
+    # Confident OVER calls (raw 0.90) that all LOSE; tempered version says 0.60.
+    for line in (5.0, 7.0, 9.0, 11.0):
+        _rec(conn, settlement, line=line, selection=f"{int(line)}+", side="over",
+             odds=1.5, model_p=0.60, market_p=0.55, raw_p=0.90, stake=0.0, value=False)
+    conn.commit()
+    settlement.settle_props(conn)
+
+    raw_sc = settlement.model_vs_market_scorecard(conn, use_raw=True)
+    tempered_sc = settlement.model_vs_market_scorecard(conn, use_raw=False)
+    assert raw_sc["graded_on"] == "model_prob_raw"
+    assert raw_sc["settled"] == 4
+    # every leg lost, so the confident raw model must look WORSE than the softened one
+    assert raw_sc["model"]["brier"] > tempered_sc["model"]["brier"], (
+        "grading the tempered column hides the raw model's overconfidence")
+
+
+def test_scorecard_excludes_legacy_rows_instead_of_mixing(tmp_path, monkeypatch):
+    """Pre-2026-07-25 rows only stored the tempered value. Counting them as raw
+    would silently blend two different quantities."""
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import settlement
+
+    init_db()
+    conn = get_connection()
+    _seed_player(conn, 1, "A"); _seed_player(conn, 2, "B")
+    _seed_match(conn, 1, 1, 2)
+    conn.execute(
+        "INSERT INTO match_results (match_id, winner_player_id, source_provider, created_at, score_json)"
+        " VALUES (1,1,'t','now', ?)", ('{"player_a_aces": 8, "player_b_aces": 5}',))
+    conn.commit()
+    for line in (5.0, 7.0):
+        _rec(conn, settlement, line=line, selection=f"{int(line)}+", side="over",
+             odds=1.5, model_p=0.6, market_p=0.7, stake=0.0, value=False)
+    conn.commit()
+    settlement.settle_props(conn)
+    # simulate legacy rows: raw column never populated
+    conn.execute("UPDATE prop_tracker SET model_prob_raw = NULL WHERE line = 5.0")
+    conn.commit()
+
+    sc = settlement.model_vs_market_scorecard(conn, use_raw=True)
+    assert sc["settled"] == 1, "legacy row must not be graded as raw"
+    assert sc["legacy_rows_excluded"] == 1

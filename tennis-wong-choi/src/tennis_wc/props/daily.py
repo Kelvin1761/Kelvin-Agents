@@ -57,6 +57,23 @@ def _match_meta(conn, match_id: int):
     ).fetchone()
 
 
+def _games_bettable() -> bool:
+    """Total-match-games props are PRICED and LOGGED but never staked.
+
+    Settled evidence as of 2026-07-25 (after backfilling 390 missing results):
+    match_total_games is the worst family we run -- 11 settled, 36.4% hit,
+    ROI -33.3%, while player_aces (+6.2%) and match_total_aces (+0.6%) are
+    around breakeven. The games model is also biased: across 53 settled games
+    props it predicted 23.34 games vs 25.23 actual (median -2.55), i.e. it
+    systematically under-predicts, so its OVER/UNDER calls are skewed.
+
+    Keep pricing them: the rows still feed the model-vs-market scorecard, so the
+    family can earn its way back with evidence instead of a guess. It just must
+    not reach the betting card while it is the one family reliably losing money.
+    """
+    return False
+
+
 def _aces_gradeable(tour: str | None) -> bool:
     """Only ATP ace props can currently be graded: actual ace counts come from
     the TML/Sackmann season files (ATP only — 41 of 43 stuck-PENDING props were
@@ -145,16 +162,24 @@ def _resolve_player(market_name: str, meta) -> tuple[int | None, str]:
 
 def _log_two_way(conn, match_date, label, tw: "ace_model.TwoWayProp",
                  scope: str, subject_player_id):
-    """Log the over side (scorecard) + the value side (bet) for a two-way prop."""
+    """Log the over side (scorecard) + the value side (bet) for a two-way prop.
+
+    Two probabilities are stored per row: `model_prob` is the staking-side
+    (tempered) number, `model_prob_raw` is the odds-blind model output that the
+    scorecard grades. They used to be the same value, which made the scorecard
+    unable to see the model's real skill."""
     fair_over = tw.fair_prob_over
+    tempered_over = tw.tempered_prob_over or tw.model_prob_over
     # over-side row (always; stake only if over is the value side)
     over_is_val = tw.value_side == "over"
     record_prop(conn, match_id=tw.match_id, match_date=match_date, match_label=label,
                 market_key=tw.market_key, line=tw.line, selection=f"Over {tw.line}",
                 side="over", prop_scope=scope, subject_player_id=subject_player_id,
-                decimal_odds=tw.over_odds, model_prob=tw.model_prob_over,
+                decimal_odds=tw.over_odds, model_prob=tempered_over,
+                model_prob_raw=tw.model_prob_over,
+                temper_strength=tw.temper_strength,
                 market_prob_fair=fair_over,
-                blended_prob=tw.blended_prob if over_is_val else round(1 - (1 - tw.model_prob_over), 4),
+                blended_prob=tw.blended_prob if over_is_val else tempered_over,
                 edge=tw.edge if over_is_val else 0.0, ev=tw.ev if over_is_val else 0.0,
                 predicted_mean=tw.predicted_mean, stake_units=1.0 if over_is_val else 0.0,
                 is_value=over_is_val)
@@ -162,7 +187,9 @@ def _log_two_way(conn, match_date, label, tw: "ace_model.TwoWayProp",
         record_prop(conn, match_id=tw.match_id, match_date=match_date, match_label=label,
                     market_key=tw.market_key, line=tw.line, selection=f"Under {tw.line}",
                     side="under", prop_scope=scope, subject_player_id=subject_player_id,
-                    decimal_odds=tw.under_odds, model_prob=round(1 - tw.model_prob_over, 4),
+                    decimal_odds=tw.under_odds, model_prob=round(1 - tempered_over, 4),
+                    model_prob_raw=round(1 - tw.model_prob_over, 4),
+                    temper_strength=tw.temper_strength,
                     market_prob_fair=round(1 - fair_over, 4), blended_prob=tw.blended_prob,
                     edge=tw.edge, ev=tw.ev, predicted_mean=tw.predicted_mean,
                     stake_units=1.0, is_value=True)
@@ -235,6 +262,8 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                     mid, mk, line, od["over"], od["under"], prob_map.get(mid), best_of=3,
                     temper=temper, hold_sum=hold_sum)
                 if tw:
+                    if not _games_bettable():
+                        tw = _strip_value(tw)
                     board.predicted_games = tw.predicted_mean
                     board.games_ou.append(tw)
                     if log:
@@ -247,7 +276,10 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                 record_prop(conn, match_id=mid, match_date=match_date, match_label=label,
                             market_key=_LADDER_MARKET, line=lg.line, selection=f"{int(lg.line)}+",
                             side="over", prop_scope="match", subject_player_id=None,
+                            # The N+ ladder never applied a temper, so its model_prob
+                            # was always the raw curve output -- record it as such.
                             decimal_odds=lg.decimal_odds, model_prob=lg.model_prob,
+                            model_prob_raw=lg.model_prob, temper_strength=0.0,
                             market_prob_fair=lg.market_prob_fair, blended_prob=lg.blended_prob,
                             edge=lg.edge, ev=lg.ev, predicted_mean=lg.predicted_mean,
                             stake_units=1.0 if lg.is_value else 0.0, is_value=lg.is_value)

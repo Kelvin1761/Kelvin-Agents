@@ -1010,13 +1010,17 @@ def _market_upgrade_gate(market_key: str, model_status: str) -> dict:
             "tier": "MARKET_TRIAL",
             "reason": "settlement_supported_sample_building",
         }
-    # CLV blocks only when NEGATIVE. Our "closing odds" are the last Sportsbet
-    # scrape, so when a line never moves CLV is exactly 0.0 — that is "no line
-    # movement information", not adverse evidence; requiring strictly-positive
-    # CLV made graduation depend on noise (total_sets sat at ROI +18% with
-    # avg_clv 0.0 and could never pass). ROI on settled shadow picks is the
-    # real gate.
-    if (history["avg_clv"] or 0) < 0 or (history["roi"] or 0) < 0:
+    # CLV is NOT part of this gate: our stored "closing odds" are the last
+    # Sportsbet scrape, and an audit on 2026-07-25 showed that scrape often lands
+    # AFTER the match is under way, so the field is contaminated with in-play
+    # prices. Examples: took @4.65 -> "close" @1.17 (CLV +297%), took @4.35 ->
+    # @1.19 (+266%). Those are not line moves, they are live prices on a match
+    # already being won. Only 44 of 388 rows even had a non-zero CLV, and the
+    # non-zero ones are exactly the corrupted ones, which inflated
+    # HIGH_ODDS_VALUE to a fake avg_clv +32.8%. Gating on that would let a
+    # market graduate on an artifact. ROI on settled shadow picks is the gate
+    # until closing-odds capture is fixed (must be a pre-off price).
+    if (history["roi"] or 0) < 0:
         return {
             "banker_allowed": False,
             "core_allowed": False,
@@ -1408,6 +1412,13 @@ def _scorecard_note(prop: dict | None) -> tuple[str, int]:
     scorecard = (prop or {}).get("scorecard") or {}
     n = int(scorecard.get("settled") or 0)
     if not n:
+        # Distinguish "brand new" from "we have history but it is not raw-comparable".
+        # The scorecard now grades model_prob_raw; rows written before 2026-07-25
+        # only stored the tempered value, so they are excluded rather than mixed.
+        legacy = int(scorecard.get("legacy_rows_excluded") or 0)
+        if legacy:
+            return (f"記分卡重建中：舊 {legacy} 條只存過 temper 後機率（唔可比），"
+                    "原始模型記分卡由今日起累積", 0)
         return ("記分卡未有已結算 prop —— 模型準唔準暫時零證據", 0)
     model = scorecard.get("model") or {}
     market = scorecard.get("market") or {}
@@ -2486,7 +2497,19 @@ def _prop_review_lines(sc: dict, roi: dict) -> list[str]:
     lines = ["## 📊 Prop 結果檢討（上線驗證）", ""]
     n = sc.get("settled", 0)
     if not n:
-        lines.extend(["模型 vs 市場記分卡：暫無已結算 prop（跑多幾日 run-daily 就會有）。", ""])
+        legacy = int(sc.get("legacy_rows_excluded") or 0)
+        if legacy:
+            lines.extend([
+                f"模型 vs 市場記分卡：重建中（原始模型 0 條，舊 {legacy} 條已排除）。",
+                "",
+                f"⚠️ 之前嗰 {legacy} 條記分卡評嘅係 **temper 之後** 嘅機率（向 50% 拉過 15%），",
+                "   而 temper 強度又係由同一張記分卡揀出嚟 —— 循環，量度唔到原始模型實力。",
+                "   由 2026-07-25 起，raw（odds-blind）同 staking 機率分開記錄，記分卡只評 raw。",
+                "   舊資料唔可比，所以排除而唔係混入。要重新累積約 120 條才有判斷力。",
+                "",
+            ])
+        else:
+            lines.extend(["模型 vs 市場記分卡：暫無已結算 prop（跑多幾日 run-daily 就會有）。", ""])
     else:
         m, k = sc["model"], sc["market"]
         lines.extend([
