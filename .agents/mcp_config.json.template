@@ -1,0 +1,49 @@
+{
+  "_comment": [
+    "TEMPLATE — copy to .agents/mcp_config.json and replace the placeholder paths",
+    "with this machine's own paths. The real mcp_config.json is gitignored so each",
+    "workstation (Mac / Windows) keeps its own without merge conflicts.",
+    "",
+    "  <DATA_ROOT>  = the folder that CONTAINS the 'Wong Choi ... Analysis' dirs,",
+    "                 i.e. the same path you put in .wongchoi_data_root.",
+    "                 macOS   e.g. /Users/<you>/Library/CloudStorage/GoogleDrive-<acct>/我的雲端硬碟/Antigravity Shared/Antigravity",
+    "                 Windows e.g. G:\\My Drive\\Antigravity Shared\\Antigravity",
+    "  <SQLITE_DB>  = path to your local wong_choi.db",
+    "",
+    "On Windows, write backslashes escaped in JSON: \"G:\\\\My Drive\\\\...\"."
+  ],
+  "mcpServers": {
+    "sqlite": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-server-sqlite",
+        "<SQLITE_DB>"
+      ]
+    },
+    "memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-memory"
+      ]
+    },
+    "git": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@anthropic/mcp-server-git",
+        "--repository",
+        "<DATA_ROOT>"
+      ]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@anthropic/mcp-server-filesystem",
+        "<DATA_ROOT>"
+      ]
+    }
+  }
+}

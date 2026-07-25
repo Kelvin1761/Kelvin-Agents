@@ -40,8 +40,18 @@ else
   fi
 fi
 
-echo "==> 5/5  Verify resolved paths"
+echo "==> 5/5  Verify resolved paths + data preflight"
 python3 wongchoi_paths.py
+
+echo
+echo "==> Per-machine MCP config"
+if [ -f .agents/mcp_config.json ]; then
+  echo "   .agents/mcp_config.json already present"
+else
+  echo "   Not present. It is gitignored (each machine keeps its own)."
+  echo "   Copy the template and edit the placeholder paths:"
+  echo "     cp .agents/mcp_config.json.template .agents/mcp_config.json"
+fi
 
 echo
 echo "✅ Setup done. Each new shell: source .venv/bin/activate"

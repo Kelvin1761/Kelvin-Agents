@@ -20,6 +20,8 @@ Antigravity 係一個 prediction / analysis workspace，現時主線最重要嘅
 
 1. [SETUP.md](SETUP.md)
    安裝 Python、建立 venv、裝依賴、驗證環境，並了解點跑 HKJC / AU / NBA / tennis / reflectors
+   —— **Windows 用戶請改睇 [WINDOWS_SETUP.md](WINDOWS_SETUP.md)**（由零開始，包埋
+   Google Drive「可離線使用」、Git Bash 換行符、Cloudflare 認證同已知限制）
 2. [AGENTS.md](AGENTS.md)
    了解目前 agent / pipeline 架構，同 HKJC / AU / NBA / tennis / reflector 入口
 3. [.agents/ARCHITECTURE.md](.agents/ARCHITECTURE.md)
@@ -88,7 +90,11 @@ PYTHONPATH=src python -m tennis_wc.cli --help
 - `AGENTS.md` 係目前最準確嘅 HKJC / AU / NBA / tennis / reflector 架構導覽
 - `.agents/rules/GEMINI.md` 已 deprecated，只係為舊工具相容而保留
 - `CLOUDFLARE_DEPLOYMENT.md` 係目前最準確嘅 Cloudflare setup 指南
+- `WINDOWS_SETUP.md` 係 Windows workstation 嘅完整安裝指南
 - Windows 如要 deploy dashboard，建議用 `Git Bash`、`WSL` 或 `bash deploy.sh`
+- 驗證安裝：`./run_tests.sh`（macOS/Linux）或 `.\run_tests.ps1`（Windows）——
+  每個 suite 開獨立 process，因為 AU 同 HKJC 都有叫 `scoring` 嘅 module，同一個
+  process 入面會互相蓋過
 
 ## Common Next Steps
 

@@ -95,3 +95,19 @@ NBA_ML_Dataset/
 scratch/betfair_bsp/
 
 scratch/betfair_snapshot.json
+
+# ----------------------------------------------------------------------
+# 10. Per-machine config (each workstation keeps its own — see the
+#     matching *.template files, which ARE tracked)
+# ----------------------------------------------------------------------
+# Hardcodes this machine's DATA_ROOT + sqlite path. Copy from
+# .agents/mcp_config.json.template and edit locally.
+.agents/mcp_config.json
+
+# ----------------------------------------------------------------------
+# 11. Scratch analysis dumps (multi-MB one-off runs, regenerable)
+# ----------------------------------------------------------------------
+scratch/*.bak
+scratch/au_reflector_*/
+scratch/pf_backfill_staging/
+scratch/warwick_farm_good4_counterfactual/

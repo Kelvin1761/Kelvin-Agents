@@ -1,0 +1,44 @@
+# ----------------------------------------------------------------------
+# Line-ending policy — REQUIRED for the Windows workstation.
+#
+# Git for Windows defaults to core.autocrlf=true, which rewrites checked-out
+# text files to CRLF. Any shell script that gets CRLF fails under Git Bash /
+# WSL with:  bash: ./deploy.sh: /bin/bash^M: bad interpreter
+#
+# The Cloudflare deploy (Horse_Racing_Dashboard/deploy.sh) and bootstrap.sh
+# are bash-only, so they MUST stay LF on every platform.
+# ----------------------------------------------------------------------
+
+# Default: let git normalise text in the index, check out native per platform.
+* text=auto
+
+# Anything a POSIX shell has to execute stays LF, on Windows too.
+*.sh            text eol=lf
+*.bash          text eol=lf
+bootstrap.sh    text eol=lf
+
+# launchd / plist templates are consumed by macOS only, keep them LF.
+*.plist         text eol=lf
+*.plist.template text eol=lf
+
+# Windows-native scripts stay CRLF so cmd.exe / PowerShell parse them.
+*.bat           text eol=crlf
+*.cmd           text eol=crlf
+*.ps1           text eol=crlf
+
+# ----------------------------------------------------------------------
+# Binary — never touch, never diff
+# ----------------------------------------------------------------------
+*.db            binary
+*.sqlite        binary
+*.sqlite3       binary
+*.numbers       binary
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.svg           text
+*.pdf           binary
+*.xlsx          binary
+*.woff          binary
+*.woff2         binary

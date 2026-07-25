@@ -13,7 +13,30 @@ Set-Location -Path $PSScriptRoot
 $env:PYTHONUTF8 = "1"
 
 Write-Host "==> 1/5  Python virtual environment (.venv)"
-if (-not (Test-Path ".venv")) { py -3.10 -m venv .venv }
+# Nothing in the codebase needs 3.10+ syntax (the live Mac runs 3.9), so accept
+# any 3.9+ interpreter instead of hard-pinning `py -3.10` — that pin fails
+# outright on a box that only has 3.11 / 3.12 / 3.13 installed.
+if (-not (Test-Path ".venv")) {
+  $exe = $null
+  $exeArgs = @()
+  # Prefer the Windows launcher, newest sensible version first.
+  foreach ($v in @("3.13", "3.12", "3.11", "3.10", "3.9")) {
+    & py "-$v" -c "import sys" 2>$null
+    if ($LASTEXITCODE -eq 0) { $exe = "py"; $exeArgs = @("-$v"); break }
+  }
+  if (-not $exe) {
+    # No launcher match — fall back to `python` on PATH if it is 3.9+.
+    try {
+      & python -c "import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)" 2>$null
+      if ($LASTEXITCODE -eq 0) { $exe = "python" }
+    } catch { }
+  }
+  if (-not $exe) {
+    throw "No Python 3.9+ found. Install it from https://www.python.org/downloads/ (tick 'Add python.exe to PATH'), then re-run this script."
+  }
+  Write-Host "   using: $exe $exeArgs"
+  & $exe @exeArgs -m venv .venv
+}
 & .\.venv\Scripts\Activate.ps1
 python -m pip install --quiet --upgrade pip setuptools wheel
 
@@ -42,8 +65,18 @@ if (Test-Path ".wongchoi_data_root") {
   }
 }
 
-Write-Host "==> 5/5  Verify resolved paths"
+Write-Host "==> 5/5  Verify resolved paths + data preflight"
 python wongchoi_paths.py
+
+Write-Host ""
+Write-Host "==> Per-machine MCP config"
+if (Test-Path ".agents\mcp_config.json") {
+  Write-Host "   .agents\mcp_config.json already present"
+} else {
+  Write-Host "   Not present. It is gitignored (each machine keeps its own)."
+  Write-Host "   Copy the template and edit the placeholder paths:"
+  Write-Host "     copy .agents\mcp_config.json.template .agents\mcp_config.json"
+}
 
 Write-Host ""
 Write-Host "OK. Each new shell: .\.venv\Scripts\Activate.ps1"

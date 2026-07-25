@@ -22,6 +22,15 @@ KEEP_DIST=0
 SKIP_METADATA_OVERLAY=0
 PAGES_PROJECT="${WC_CLOUDFLARE_PAGES_PROJECT:-wongchoi-dashboard}"
 
+# Pin wrangler. We deploy from a local staging dir (see below), so a
+# package.json in this folder would NOT be picked up — the version has to be
+# pinned on the npx invocation itself. Unpinned `npx wrangler` resolves to
+# whatever is latest that day, which is how a deploy breaks on one machine
+# (e.g. the Windows box) while another keeps working. Keep this in sync with
+# devDependencies.wrangler in package.json.
+WRANGLER_VERSION="${WC_WRANGLER_VERSION:-4.86.0}"
+export WRANGLER_VERSION   # read by the inline python whoami helper below
+
 cleanup_staging() {
     if [ "$KEEP_DIST" -eq 0 ]; then
         rm -rf "$STAGING_DIR"
@@ -129,9 +138,10 @@ echo "☁️ 第三步：推送上 Cloudflare Pages..."
 echo "   - Pages Project: $PAGES_PROJECT"
 RESOLVED_ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID:-}"
 if [ -z "$RESOLVED_ACCOUNT_ID" ]; then
-    RESOLVED_ACCOUNT_ID="$("$PYTHON_BIN" -c 'import json, subprocess
+    RESOLVED_ACCOUNT_ID="$("$PYTHON_BIN" -c 'import json, os, subprocess
+pinned = "wrangler@" + os.environ["WRANGLER_VERSION"]
 try:
-    raw = subprocess.check_output(["npx", "wrangler", "whoami", "--json"], text=True)
+    raw = subprocess.check_output(["npx", pinned, "whoami", "--json"], text=True)
     data = json.loads(raw)
     accounts = data.get("accounts") or []
     if accounts:
@@ -174,7 +184,7 @@ echo "   - Commit Hash: $COMMIT_HASH"
 # wongchoi-dashboard.pages.dev updates.
 (
     cd "$STAGING_DIR"
-    env CI=1 CF_PAGES_BRANCH=main CLOUDFLARE_ACCOUNT_ID="$RESOLVED_ACCOUNT_ID" npx wrangler pages deploy "$DIST_DIR" \
+    env CI=1 CF_PAGES_BRANCH=main CLOUDFLARE_ACCOUNT_ID="$RESOLVED_ACCOUNT_ID" npx "wrangler@${WRANGLER_VERSION}" pages deploy "$DIST_DIR" \
         --project-name "$PAGES_PROJECT" \
         --branch main \
         --commit-hash "$COMMIT_HASH" \

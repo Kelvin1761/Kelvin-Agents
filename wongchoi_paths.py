@@ -82,6 +82,49 @@ def new_analysis_dir(sport: str, label: str) -> Path:
     return d
 
 
+# --- Files the engines hard-depend on (not in git — they live on DATA_ROOT) --
+# Used by the bootstrap preflight so a new machine finds out NOW, rather than
+# mid-scoring-run, that its Google Drive folder is not actually synced.
+REQUIRED_DATA_FILES = {
+    # AU: read by racing_engine/au_draw_bias_calculator.py
+    "AU draw bias (historical)": AU_RACING / "AU_Historical_Raw_Race_Results.csv",
+    "AU draw bias (backfill)": AU_RACING / "AU_Backfill_Race_Results.csv",
+}
+
+
+def check_data_root() -> list[str]:
+    """Return a list of human-readable problems with the resolved DATA_ROOT.
+
+    Empty list means everything the engines need is reachable. Each check is
+    wrapped because a cloud-storage root can raise (not just return False) —
+    macOS revoking CloudStorage access raises PermissionError from .exists().
+    """
+    problems: list[str] = []
+
+    try:
+        if not DATA_ROOT.is_dir():
+            problems.append(
+                f"DATA_ROOT does not exist: {DATA_ROOT}\n"
+                "     Fix: set it in .wongchoi_data_root (one line) or the "
+                "WONGCHOI_DATA_ROOT env var.\n"
+                "     On Windows this is usually your Google Drive path, e.g.\n"
+                '       G:\\My Drive\\Antigravity Shared\\Antigravity'
+            )
+            return problems
+    except OSError as exc:
+        problems.append(f"DATA_ROOT is not readable ({exc.__class__.__name__}): {DATA_ROOT}")
+        return problems
+
+    for label, path in REQUIRED_DATA_FILES.items():
+        try:
+            if not path.is_file():
+                problems.append(f"missing [{label}]: {path}")
+        except OSError as exc:
+            problems.append(f"unreadable [{label}] ({exc.__class__.__name__}): {path}")
+
+    return problems
+
+
 if __name__ == "__main__":
     print("PROJECT_ROOT        :", PROJECT_ROOT)
     print("DATA_ROOT           :", DATA_ROOT, "(exists)" if DATA_ROOT.is_dir() else "(MISSING)")
@@ -89,3 +132,17 @@ if __name__ == "__main__":
                  "AU_RACING", "HK_RACING", "NBA_ML_DATASET"):
         p = globals()[name]
         print(f"{name:20}:", p, "(exists)" if p.is_dir() else "(missing)")
+
+    print()
+    issues = check_data_root()
+    if not issues:
+        print("Data preflight     : OK — all required engine data files reachable.")
+    else:
+        print(f"Data preflight     : {len(issues)} PROBLEM(S)")
+        for item in issues:
+            print("  -", item)
+        print()
+        print("  HKJC scoring still works (its priors are committed in-repo).")
+        print("  AU scoring needs the files above — they are gitignored and live")
+        print("  on Google Drive. Install Google Drive Desktop, sign in, and set")
+        print("  the 'Antigravity Shared' folder to 'Available offline'.")

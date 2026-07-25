@@ -27,6 +27,9 @@
 
 新電腦最快上手，照呢 3 步：
 
+> 🪟 **Windows 用戶：睇 [WINDOWS_SETUP.md](WINDOWS_SETUP.md)。** 嗰份由零開始，
+> 逐步講埋 Google Drive「可離線使用」、Git Bash 換行符、Cloudflare 認證同已知限制。
+
 ```bash
 # 1. Clone 去一個【本地】資料夾（唔好放喺 Google Drive — 見下面警告）
 git clone https://github.com/Kelvin1761/Kelvin-Agents.git ~/dev/Kelvin-Agents
