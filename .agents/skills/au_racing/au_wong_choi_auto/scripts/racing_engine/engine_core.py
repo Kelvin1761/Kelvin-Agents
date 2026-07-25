@@ -1229,21 +1229,23 @@ class RacingEngine:
                 "Freedman", "Price", "Payne", "Pride", "Snowden", "Charlton",
                 "Hawkes", "O'Shea", "Conners", "Cummings", "Gollan", "Lees", "Neasham", "Moody"
             )
-            # EMPIRICAL FILL 2026-07-25: the curated ratings CSV lists only ~57
-            # trainers, so 22-72% of runners previously fell through to a flat
-            # neutral 60 (the single biggest coverage hole in the matrix — see
-            # "2026-07-25 AU Full Matrix Data Barrier Scan"). The engine already
-            # carries trainer_ly (last-year official rides/wins/places) but only
-            # used it for narrative. Now unlisted trainers are scored from their
-            # OWN last-year place rate, empirical-Bayes shrunk toward the field
-            # norm so small samples can't swing the score (same discipline as the
-            # draw-bias shrinkage).
-            empirical = self._trainer_empirical_base(tly)
-            if empirical is not None:
-                base_delta, ev = empirical
-                add(base_delta, "去年實證班底水準", ev)
-                detail["base_label"] = f"名單外，改用去年實證（{ev}）"
-            elif any(token in trainer for token in strong_tokens):
+            # EMPIRICAL FILL — TESTED AND REVERTED 2026-07-25.
+            # The curated ratings CSV lists only ~57 trainers, so 39% of runners
+            # fall through to a flat neutral 60 (the biggest coverage hole in the
+            # matrix). Filling those from the trainer's own trainer_ly last-year
+            # place rate (empirical-Bayes shrunk) WAS implemented and validated by
+            # re-scoring the whole archive (708 comparable races): it made
+            # performance WORSE — 頭兩揀齊三甲 18.9%→18.6%, Top3中2隻 288→281,
+            # 捉到冠軍 −1.0pp, 頭揀贏 −1.6pp, and split-half unstable (前半 +6場 /
+            # 後半 −8場). Scaling the effect down looked better in-sample (0.5×
+            # gave +6場) but the honest holdout (284 unseen races, magnitude chosen
+            # on train only) was clearly worse: 頭兩揀 19.0%→16.9%, 捉冠軍 −3.5pp.
+            # Reason: unlisted trainers are mostly small stables whose strike rate
+            # mainly re-expresses horse quality that form/rating already capture —
+            # filling the hole adds noise and double-counts. Coverage ≠ accuracy.
+            # `_trainer_empirical_base` is kept (unused) so the analysis is
+            # reproducible; do NOT re-enable without passing the honest holdout.
+            if any(token in trainer for token in strong_tokens):
                 add(TRAINER_MICRO_WEIGHTS.get("elite_bonus", 12.0), "全國強勢班底", "名單 fallback")
                 detail["base_label"] = "資料庫無記錄，中性起步"
             else:

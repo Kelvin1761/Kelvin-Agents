@@ -23,34 +23,30 @@ def _score(trainer: str, ly: dict) -> float:
     return score
 
 
-class TrainerEmpiricalFillTests(unittest.TestCase):
-    """Unlisted trainers are scored from their own last-year record instead of
-    silently defaulting to a flat neutral 60 (the biggest matrix coverage hole)."""
+class TrainerEmpiricalFillRevertedTests(unittest.TestCase):
+    """The empirical trainer fill was tested on the whole archive and REVERTED
+    (it made accuracy worse; see the comment in _trainer_score). These tests lock
+    the revert: unlisted trainers must stay neutral, and the analysis helper must
+    remain available but unused."""
 
     UNLISTED = "Zzz Unlisted Smalltime Trainer"
 
-    def test_strong_unlisted_trainer_scores_above_neutral(self) -> None:
-        self.assertGreater(_score(self.UNLISTED, {"rides": 60, "wins": 10, "places": 17}), 61.0)
+    def test_unlisted_trainer_stays_neutral_regardless_of_record(self) -> None:
+        for ly in ({"rides": 60, "wins": 10, "places": 17},
+                   {"rides": 50, "wins": 2, "places": 4},
+                   {"rides": 5, "wins": 2, "places": 1},
+                   {}):
+            self.assertAlmostEqual(_score(self.UNLISTED, ly), 60.0, places=1)
 
-    def test_weak_unlisted_trainer_scores_below_neutral(self) -> None:
-        self.assertLess(_score(self.UNLISTED, {"rides": 50, "wins": 2, "places": 4}), 59.0)
-
-    def test_monotonic_in_place_rate(self) -> None:
-        weak = _score(self.UNLISTED, {"rides": 40, "wins": 2, "places": 4})
-        mid = _score(self.UNLISTED, {"rides": 40, "wins": 4, "places": 8})
-        strong = _score(self.UNLISTED, {"rides": 40, "wins": 7, "places": 12})
-        self.assertLess(weak, mid)
-        self.assertLess(mid, strong)
-
-    def test_thin_sample_stays_neutral(self) -> None:
-        # <10 rides must not move the score at all
-        self.assertAlmostEqual(_score(self.UNLISTED, {"rides": 5, "wins": 2, "places": 1}), 60.0, places=1)
-        self.assertAlmostEqual(_score(self.UNLISTED, {}), 60.0, places=1)
-
-    def test_shrinkage_bounds_the_adjustment(self) -> None:
-        # even an absurd 100% place rate cannot exceed the cap
-        extreme = _score(self.UNLISTED, {"rides": 30, "wins": 15, "places": 15})
-        self.assertLessEqual(extreme - 60.0, 9.0 + 1e-6)
+    def test_analysis_helper_kept_for_reproducibility(self) -> None:
+        # helper still computes a sane, bounded, monotonic value — but nothing calls it
+        eng = RacingEngine({"horse_name": "T", "horse_number": "1", "trainer": self.UNLISTED}, _ctx())
+        weak = eng._trainer_empirical_base({"rides": 40, "wins": 2, "places": 4})
+        strong = eng._trainer_empirical_base({"rides": 40, "wins": 7, "places": 12})
+        self.assertIsNotNone(weak)
+        self.assertIsNotNone(strong)
+        self.assertLess(weak[0], strong[0])
+        self.assertIsNone(eng._trainer_empirical_base({"rides": 5, "wins": 2, "places": 1}))
 
 
 class ComboStatsResilienceTests(unittest.TestCase):
