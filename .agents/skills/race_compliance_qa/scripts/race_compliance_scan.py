@@ -138,8 +138,10 @@ def parse_result_json(data: Any) -> dict[int, list[tuple[int, int, str]]]:
 
     # Archive dialect:
     #   {"meeting": {...}, "events": {"1": {...}}, "results": {"1": [row, ...]}}
-    # i.e. a top-level `results` MAPPING of race number -> finisher list. All 28
-    # real AU Race_Results_*.json files (3494 rows) use this shape. The generic
+    # i.e. a top-level `results` MAPPING of race number -> finisher list. All 35
+    # real AU Race_Results_*.json files (4401 rows) use this shape — note some
+    # meeting folders nest a second copy of the same folder name, so search
+    # recursively if you re-audit this. The generic
     # walk below cannot read it — it treats "meeting"/"events"/"results" as race
     # keys, finds no race number in them, and returns {}. That made
     # check_results_json() emit RESULT-002 ("did not yield race/position/horse

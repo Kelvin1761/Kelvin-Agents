@@ -33,8 +33,8 @@ class RaceComplianceScanTests(unittest.TestCase):
         """Scratched runners carry finish_position -1 in the archive dialect.
 
         parse_int() digit-scrapes "-1" to 1, so an unguarded parse invents a
-        phantom winner that outranks the real one. All 28 real AU
-        Race_Results_*.json files contain such rows (871 of 3494).
+        phantom winner that outranks the real one. All 35 real AU
+        Race_Results_*.json files contain such rows (1027 of 4401).
         """
         parsed = parse_result_json(
             {
