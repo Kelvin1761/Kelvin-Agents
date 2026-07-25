@@ -416,6 +416,21 @@ def _distinct_market_keys_for_date(match_date: str) -> int:
     return int(row[0] or 0)
 
 
+def _sportsbet_odds_rows_for_date(match_date: str) -> int:
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT COUNT(*)
+            FROM odds_snapshots o
+            JOIN matches m ON m.id = o.match_id
+            WHERE m.match_date = ?
+              AND o.source_provider = 'sportsbet'
+            """,
+            (match_date,),
+        ).fetchone()
+    return int(row[0] or 0)
+
+
 def run_daily(args: argparse.Namespace) -> None:
     provider_healthcheck(args)
     source_errors = []
@@ -462,8 +477,9 @@ def run_daily(args: argparse.Namespace) -> None:
         # odds. If a day ends up with only match-winner, combos collapse — make it
         # a loud, surfaced warning rather than a silent gap.
         try:
+            odds_rows = _sportsbet_odds_rows_for_date(args.date)
             market_keys = _distinct_market_keys_for_date(args.date)
-            if market_keys <= 1:
+            if odds_rows > 0 and market_keys <= 1:
                 source_errors.append(
                     {
                         "source": "event_markets",

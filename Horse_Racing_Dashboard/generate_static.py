@@ -35,6 +35,7 @@ from services.race_display_metadata import (
     parse_hkjc_pdf_english_names as _parse_hkjc_pdf_english_names,
     parse_hkjc_racecard_silks as _parse_hkjc_racecard_silks,
 )
+from services.multisport_exporter import build_multisport_feed
 from models.race import AnalystName, Meeting, Region
 
 
@@ -395,6 +396,30 @@ def collect_all_data(cache_path=DEFAULT_CACHE_PATH):
 
 def generate_html(data):
     """Generate self-contained HTML dashboard."""
+    if "sports_feed" not in data:
+        try:
+            data["sports_feed"] = build_multisport_feed(Path(__file__).resolve().parent.parent)
+        except Exception as exc:
+            print(f"   ⚠️ Live multi-sport feed not available: {exc}")
+            data["sports_feed"] = {
+                "schema_version": 2,
+                "validation_status": "blocked",
+                "validation_errors": [str(exc)],
+                "sports": {},
+            }
+    history_path = Path(__file__).resolve().parent / "data" / "multisport_history.json"
+    if "sports_history" not in data:
+        try:
+            history = json.loads(history_path.read_text(encoding="utf-8"))
+            data["sports_history"] = {
+                "schema_version": history.get("schema_version", 1),
+                "generated_from": history.get("generated_from", ""),
+                "nba": history.get("nba", []),
+                "tennis": history.get("tennis", []),
+            }
+        except (OSError, ValueError) as exc:
+            print(f"   ⚠️ Multi-sport history not available: {exc}")
+            data["sports_history"] = {"schema_version": 1, "nba": [], "tennis": []}
     css_path = Path(__file__).resolve().parent / "frontend" / "src" / "index.css"
     css_content = css_path.read_text(encoding="utf-8") if css_path.exists() else ""
     

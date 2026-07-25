@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "generated_from": "Repository historical artifacts",
+  "nba": [
+    {
+      "id": "nba-2026-04-24-nyk-atl-brunson-25",
+      "event_date": "2026-04-24",
+      "event_name": "NYK @ ATL",
+      "market": "Player Points",
+      "selection": "Jalen Brunson 25+",
+      "odds": null,
+      "odds_status": "not_archived",
+      "outcome": "won",
+      "actual": "實際命中",
+      "metrics": {
+        "monte_carlo": 0.229,
+        "factor_model": 0.81
+      },
+      "insight": "Monte Carlo 同 8-Factor 出現嚴重分歧，但實際命中；畫面要並列兩套訊號，唔可以只顯示一個信心分。",
+      "risk": "模型分歧大，必須降低信心標籤並保留人工判讀。",
+      "provenance": "NBA Reflector observation_log.md · OBS-002"
+    },
+    {
+      "id": "nba-2026-04-24-nyk-atl-naw-points",
+      "event_date": "2026-04-24",
+      "event_name": "NYK @ ATL",
+      "market": "Player Points",
+      "selection": "Nickeil Alexander-Walker points",
+      "odds": null,
+      "odds_status": "not_archived",
+      "outcome": "lost",
+      "actual": "14 PTS · 未達原建議門檻",
+      "metrics": {
+        "banker_confidence": 0.9,
+        "last_game_points": 9
+      },
+      "insight": "L1 只有 9 分兼趨勢向下，仍被列為 90% 穩膽，結果落空。",
+      "risk": "下降趨勢球員唔應只靠總體命中率升做穩膽。",
+      "provenance": "NBA Reflector observation_log.md · OBS-003"
+    },
+    {
+      "id": "nba-2026-04-24-den-min-murray-3pm",
+      "event_date": "2026-04-24",
+      "event_name": "DEN @ MIN",
+      "market": "Player 3-Pointers",
+      "selection": "Jamal Murray 3+ threes",
+      "odds": null,
+      "odds_status": "not_archived",
+      "outcome": "lost",
+      "actual": "0/5 3PT",
+      "metrics": {
+        "coefficient_of_variation": 0.639
+      },
+      "insight": "三分波波動率偏高，實際 0/5；高 CoV 應直接顯示為紅色風險訊號。",
+      "risk": "高變異 prop 唔適合當核心穩膽。",
+      "provenance": "NBA Reflector observation_log.md · OBS-004"
+    },
+    {
+      "id": "nba-2026-04-24-cle-tor-bench-minutes",
+      "event_date": "2026-04-24",
+      "event_name": "CLE @ TOR",
+      "market": "Bench Player Props",
+      "selection": "Bench minutes assumption",
+      "odds": null,
+      "odds_status": "not_archived",
+      "outcome": "review",
+      "actual": "Mamukelashvili 11 MIN / 0 PTS / 2 REB",
+      "metrics": {
+        "minutes": 11
+      },
+      "insight": "替補球員實際上陣時間太短，任何 points／rebounds prop 都要先過 minutes floor。",
+      "risk": "輪換同垃圾時間會令平均數失效。",
+      "provenance": "NBA Reflector observation_log.md · OBS-001"
+    }
+  ],
+  "tennis": [
+    {
+      "id": "tennis-2026-07-23-baez-hanfmann-aces",
+      "event_date": "2026-07-23",
+      "event_name": "Sebastian Baez vs Yannick Hanfmann",
+      "market": "Sebastian Baez Aces",
+      "selection": "Over 1.5",
+      "odds": 1.88,
+      "odds_status": "archived",
+      "outcome": "lost",
+      "actual": "Baez 0 aces",
+      "metrics": {
+        "model_probability": 0.699,
+        "market_fair_probability": 0.496,
+        "edge": 0.152,
+        "expected_value": 0.219
+      },
+      "insight": "模型認為明顯有 value，但實際 0 aces；卡片要同時顯示 edge 同模型未證明長期 ROI 嘅警告。",
+      "risk": "Prop 模型當時仍未經長期結算驗證。",
+      "provenance": "2026-07-23 Tennis_Daily_Report.txt + tennis_wc.db settled result"
+    },
+    {
+      "id": "tennis-2026-07-23-halys-navone-aces",
+      "event_date": "2026-07-23",
+      "event_name": "Quentin Halys vs Mariano Navone",
+      "market": "Total Aces",
+      "selection": "Over 5.5",
+      "odds": 1.7,
+      "odds_status": "archived",
+      "outcome": "won",
+      "actual": "9 aces",
+      "metrics": {
+        "model_probability": 0.748,
+        "market_fair_probability": 0.544,
+        "edge": 0.153,
+        "expected_value": 0.186
+      },
+      "insight": "模型預測約 11.18 aces，實際 9 aces，成功越過 5.5 線。",
+      "risk": "當日模型記分卡仍只係 model ≈ market。",
+      "provenance": "2026-07-23 Tennis_Daily_Report.txt + tennis_wc.db settled result"
+    },
+    {
+      "id": "tennis-2026-07-23-buse-etcheverry-aces",
+      "event_date": "2026-07-23",
+      "event_name": "Ignacio Buse vs Tomas Martin Etcheverry",
+      "market": "Total Aces",
+      "selection": "Over 5.5",
+      "odds": 1.95,
+      "odds_status": "archived",
+      "outcome": "won",
+      "actual": "8 aces",
+      "metrics": {
+        "model_probability": 0.615,
+        "market_fair_probability": 0.477,
+        "edge": 0.104,
+        "expected_value": 0.133
+      },
+      "insight": "原本係高賠 3 腳串關其中一腳，單獨結算命中。",
+      "risk": "串關整體仍受其餘腳拖累，唔可以用單腳命中當整注勝出。",
+      "provenance": "2026-07-23 Tennis_Daily_Report.txt + tennis_wc.db settled result"
+    },
+    {
+      "id": "tennis-2026-07-23-prop-combo",
+      "event_date": "2026-07-23",
+      "event_name": "3-match Prop Combo",
+      "market": "Aces Combo",
+      "selection": "Baez O1.5 + Buse/Etcheverry O5.5 + Halys/Navone O5.5",
+      "odds": 6.23,
+      "odds_status": "archived",
+      "outcome": "lost",
+      "actual": "2/3 legs won",
+      "bet_type": "combo",
+      "metrics": {
+        "model_probability": 0.263,
+        "expected_value": 0.637
+      },
+      "insight": "兩腳命中都無法補救其中一腳落空；combo 卡片應逐腳顯示，而唔係只顯示合併賠率。",
+      "risk": "低命中、高 variance，只適合細注。",
+      "legs": [
+        "Sebastian Baez aces Over 1.5 @ 1.88 · LOST",
+        "Buse/Etcheverry total aces Over 5.5 @ 1.95 · WON",
+        "Halys/Navone total aces Over 5.5 @ 1.70 · WON"
+      ],
+      "provenance": "2026-07-23 Tennis_Daily_Report.txt + tennis_wc.db settled results"
+    }
+  ]
+}

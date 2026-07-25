@@ -18,6 +18,6 @@ launchctl bootstrap "gui/$(id -u)" "$DEST"
 launchctl enable "$SERVICE"
 
 echo "Installed $LABEL"
-echo "Schedule: daily at 18:00 local time"
+echo "Schedule: daily at 20:00 local time"
 echo "Plist: $DEST"
 echo "Logs: $PROJECT_DIR/data/logs/"

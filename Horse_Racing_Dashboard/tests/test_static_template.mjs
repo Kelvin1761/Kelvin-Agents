@@ -71,6 +71,10 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       defaultExpandedBetRaces,
       renderDashboard,
       setSelectedMeetingForTest: (meeting) => { selectedMeeting = meeting; },
+      setRoiLedgerForTest: (records) => { roiLedger = records; },
+      setRoiRegionForTest: (region) => { roiRegionFilter = region; },
+      setLocalStorageForTest: (key, value) => { localStorage.setItem(key, JSON.stringify(value)); },
+      getFilteredROI,
       renderHorseCard,
       buildHorseAnalysisSections,
       parseChronologySeries,
@@ -79,6 +83,13 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       renderDataReadoutItem,
       sanitizeBattlefieldOverviewText,
       renderBattlefieldOverview,
+      renderSportsWorkspace: typeof renderSportsWorkspace === "function" ? renderSportsWorkspace : null,
+      calculateSportsRoi: typeof calculateSportsRoi === "function" ? calculateSportsRoi : null,
+      setSportsLedgerForTest: (records) => { sportsBetLedger = records; },
+      setSportsTabForTest: (tab) => { activeSportsTab = tab; },
+      getInitialSportFromUrl: typeof getInitialSportFromUrl === "function" ? getInitialSportFromUrl : null,
+      sportsBetDraftFromSource: typeof sportsBetDraftFromSource === "function" ? sportsBetDraftFromSource : null,
+      setLocationSearchForTest: (search) => { window.location.search = search; },
     };
   `;
   vm.runInContext(source, context);
@@ -352,6 +363,120 @@ test("pending bet has no realised profit", () => {
 });
 
 
+test("committed ROI result is not overwritten by stale pending local panel state", () => {
+  const meeting = { date: "2026-07-15", venue: "HappyValley", region: "hkjc", analysts: ["Kelvin"] };
+  const dashboardData = {
+    meetings: [meeting],
+    races: {
+      "2026-07-15|HappyValley": {
+        meeting,
+        races_by_analyst: {
+          Kelvin: [{
+            race_number: 1,
+            horses: [{ horse_number: 3, horse_name: "Test Horse" }],
+          }],
+        },
+      },
+    },
+    consensus: {},
+    roi: {
+      bets: [{
+        date: "2026-07-15",
+        venue: "HappyValley",
+        region: "hkjc",
+        race_number: 1,
+        horse_number: 3,
+        horse_name: "Test Horse",
+        stake: 1,
+        odds: 2.5,
+        result_position: 2,
+        payout: 2.5,
+        net_profit: 1.5,
+        status: "won",
+      }],
+    },
+  };
+  const {
+    getFilteredROI,
+    setLocalStorageForTest,
+    setRoiLedgerForTest,
+  } = loadTemplateFunctions(dashboardData);
+  const betKey = "bet|2026-07-15|HappyValley|1|3";
+  setLocalStorageForTest("bets_2026-07-15_HappyValley", {
+    [betKey]: {
+      confirmed: true,
+      scratched: false,
+      odds: 2.5,
+      result: null,
+      updatedAt: 999,
+    },
+  });
+  setRoiLedgerForTest([{
+    ...dashboardData.roi.bets[0],
+    _ledger_key: "2026-07-15|HappyValley|1|3",
+  }]);
+
+  const filtered = getFilteredROI();
+  assert.equal(filtered.total_bets, 1);
+  assert.equal(filtered.bets[0].status, "won");
+  assert.equal(filtered.bets[0].result_position, 2);
+  assert.equal(filtered.total_profit, 1.5);
+});
+
+
+test("ROI tombstone removes a matching pre-baked snapshot record", () => {
+  const record = {
+    date: "2026-07-15",
+    venue: "HappyValley",
+    region: "hkjc",
+    race_number: 1,
+    horse_number: 3,
+    horse_name: "Test Horse",
+    stake: 1,
+    odds: 2.5,
+    result_position: 2,
+    payout: 2.5,
+    net_profit: 1.5,
+    status: "won",
+  };
+  const dashboardData = { meetings: [], races: {}, consensus: {}, roi: { bets: [record] } };
+  const { getFilteredROI, setRoiLedgerForTest } = loadTemplateFunctions(dashboardData);
+  setRoiLedgerForTest([{
+    ...record,
+    _ledger_key: "2026-07-15|HappyValley|1|3",
+    _deleted: true,
+  }]);
+
+  const filtered = getFilteredROI();
+  assert.equal(filtered.total_bets, 0);
+});
+
+
+test("pre-baked ROI records receive stable ledger keys for edit and delete actions", () => {
+  const record = {
+    date: "2026-07-15",
+    venue: "HappyValley",
+    region: "hkjc",
+    race_number: 1,
+    horse_number: 3,
+    horse_name: "Snapshot Horse",
+    stake: 1,
+    odds: 2.5,
+    result_position: null,
+    payout: 0,
+    net_profit: 0,
+    status: "pending",
+  };
+  const dashboardData = { meetings: [], races: {}, consensus: {}, roi: { bets: [record] } };
+  const { getFilteredROI } = loadTemplateFunctions(dashboardData);
+
+  assert.equal(
+    getFilteredROI().bets[0]._ledger_key,
+    "2026-07-15|HappyValley|1|3",
+  );
+});
+
+
 test("silk renderer is safe and only renders when a URL exists", () => {
   const { renderSilk } = loadTemplateFunctions();
 
@@ -522,4 +647,131 @@ test("confirmed bet puts edit odds beside the odds heading", () => {
   assert.match(template, /bh-step-row bh-step-row--result/);
   assert.match(template, /\.bh-name-en \{[^}]*white-space: nowrap/);
   assert.match(template, /\.bh-grades \{[^}]*padding-left: 108px/);
+});
+
+test("multi-sport workspace shows provenance, archived-odds warnings, and add-to-bet actions", () => {
+  const history = {
+    nba: [{
+      id: "nba-nyk-atl-brunson-25",
+      event_date: "2026-04-24",
+      event_name: "NYK @ ATL",
+      market: "Player Points",
+      selection: "Jalen Brunson 25+",
+      odds: null,
+      odds_status: "not_archived",
+      outcome: "won",
+      actual: "命中",
+      metrics: { monte_carlo: 0.229, factor_model: 0.81 },
+      insight: "兩個模型訊號衝突，實際命中。",
+      provenance: "NBA Reflector observation log",
+    }],
+    tennis: [{
+      id: "tennis-2026-07-23-halys-navone-aces",
+      event_date: "2026-07-23",
+      event_name: "Quentin Halys vs Mariano Navone",
+      market: "Total Aces",
+      selection: "Over 5.5",
+      odds: 1.7,
+      outcome: "won",
+      actual: "9 aces",
+      metrics: { model_probability: 0.7484, edge: 0.1531 },
+      insight: "模型 value bet，賽後命中。",
+      provenance: "tennis_wc.db + Tennis Daily Report",
+    }],
+  };
+  const data = { ...EMPTY_DASHBOARD_DATA, sports_history: history };
+  const { renderSportsWorkspace } = loadTemplateFunctions(data);
+  const nba = renderSportsWorkspace("nba");
+  const tennis = renderSportsWorkspace("tennis");
+
+  assert.match(nba, /NYK @ ATL/);
+  assert.match(nba, /原始賠率未存檔/);
+  assert.match(nba, /NBA Reflector observation log/);
+  assert.match(nba, /加入投注單/);
+  assert.match(tennis, /Quentin Halys vs Mariano Navone/);
+  assert.match(tennis, /1\.70/);
+  assert.match(tennis, /模型概率 74\.8%/);
+});
+
+test("sports ROI excludes pending bets and handles won lost and void results", () => {
+  const { calculateSportsRoi } = loadTemplateFunctions();
+  const roi = calculateSportsRoi([
+    { sport: "tennis", stake: 2, status: "won", profit: 1.4, payout: 3.4 },
+    { sport: "tennis", stake: 1, status: "lost", profit: -1, payout: 0 },
+    { sport: "tennis", stake: 5, status: "pending", profit: 0, payout: 0 },
+    { sport: "tennis", stake: 1, status: "void", profit: 0, payout: 1 },
+  ]);
+
+  assert.equal(roi.total_bets, 4);
+  assert.equal(roi.settled_bets, 3);
+  assert.equal(roi.total_stake, 4);
+  assert.equal(roi.total_profit, 0.4);
+  assert.equal(roi.roi_pct, 10);
+});
+
+test("multi-sport workspace has a single-column mobile contract", () => {
+  const template = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+  assert.match(template, /@media \(max-width: 840px\)[\s\S]*?\.history-grid \{ grid-template-columns:1fr; \}/);
+  assert.match(template, /@media \(max-width: 840px\)[\s\S]*?\.sport-switch \{ flex:1;/);
+  assert.match(template, /@media \(max-width: 520px\)[\s\S]*?\.sports-modal__grid \{ grid-template-columns:1fr; \}/);
+});
+
+test("sport URL state accepts only horses NBA and tennis", () => {
+  const { getInitialSportFromUrl, setLocationSearchForTest } = loadTemplateFunctions();
+  setLocationSearchForTest("?sport=tennis");
+  assert.equal(getInitialSportFromUrl(), "tennis");
+  setLocationSearchForTest("?sport=nba");
+  assert.equal(getInitialSportFromUrl(), "nba");
+  setLocationSearchForTest("?sport=football");
+  assert.equal(getInitialSportFromUrl(), "horses");
+});
+
+test("live tennis feed replaces fallback history and keeps combo legs in the bet draft", () => {
+  const liveCombo = {
+    id: "tennis:combo:live",
+    sport: "tennis",
+    category: "combo",
+    event_date: "2026-07-25",
+    event_name: "2-match Combo · 價值膽",
+    market: "Tennis Multi",
+    selection: "Elina Avanesyan + Otto Virtanen",
+    odds: 3.9,
+    outcome: "pending",
+    decision: "BET",
+    bet_type: "combo",
+    legs: [
+      { selection: "Elina Avanesyan", odds: 2.5 },
+      { selection: "Otto Virtanen", odds: 1.56 },
+    ],
+    metrics: {
+      model_probability: 0.75,
+      minimum_acceptable_odds: 3.4,
+      confidence: 75,
+    },
+    risk: "逐腳結算",
+    provenance: "tennis_wc.db · combo_tracker",
+  };
+  const data = {
+    ...EMPTY_DASHBOARD_DATA,
+    sports_history: { nba: [], tennis: [{ id: "fallback-old" }] },
+    sports_feed: {
+      schema_version: 2,
+      sports: {
+        nba: { validation_status: "unavailable", recommendations: [] },
+        tennis: { validation_status: "valid", recommendations: [liveCombo] },
+      },
+    },
+  };
+  const { renderSportsWorkspace, sportsBetDraftFromSource } = loadTemplateFunctions(data);
+
+  const html = renderSportsWorkspace("tennis");
+  const draft = sportsBetDraftFromSource(liveCombo, "tennis");
+
+  assert.match(html, /今日建議/);
+  assert.match(html, /2-match Combo/);
+  assert.match(html, /最低可接受 3\.40/);
+  assert.doesNotMatch(html, /fallback-old/);
+  assert.equal(draft.bet_type, "combo");
+  assert.equal(draft.legs.length, 2);
+  assert.equal(draft.legs[1].selection, "Otto Virtanen");
 });

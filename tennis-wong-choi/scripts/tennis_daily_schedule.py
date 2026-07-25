@@ -33,6 +33,10 @@ PYTHON = PROJECT_DIR / ".venv" / "bin" / "python"
 TIMEZONE = "Australia/Sydney"
 
 
+class TemporaryDataUnavailable(RuntimeError):
+    """The scheduled run needs live data and should be retried later."""
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Daily Tennis Wong Choi scheduler runner.")
     parser.add_argument("--today", help="Override today's date in YYYY-MM-DD for testing.")
@@ -56,6 +60,7 @@ def main(argv: list[str] | None = None) -> int:
         log(f"Starting scheduled workflow. today={today} review={yesterday} analysis={tomorrow}")
 
         try:
+            ensure_live_network()
             run_cli("init-db")
             if not args.skip_review:
                 review_payload = review_previous_day(yesterday.isoformat())
@@ -74,6 +79,9 @@ def main(argv: list[str] | None = None) -> int:
         except subprocess.CalledProcessError as exc:
             log(f"Command failed with exit code {exc.returncode}: {' '.join(exc.cmd)}")
             return exc.returncode or 1
+        except TemporaryDataUnavailable as exc:
+            log(f"TEMPORARY DATA FAILURE: {exc}")
+            return 75
         except Exception as exc:
             log(f"Workflow failed: {exc}")
             return 1
@@ -86,6 +94,18 @@ def local_today() -> date:
     if ZoneInfo is not None:
         return datetime.now(ZoneInfo(TIMEZONE)).date()
     return datetime.now().date()
+
+
+def ensure_live_network() -> None:
+    """Fail before creating misleading reports when the task has no network."""
+    payload = run_cli_json("network-check")
+    diagnosis = str(payload.get("diagnosis") or "unknown")
+    if diagnosis != "network_ready":
+        raise TemporaryDataUnavailable(
+            f"live network preflight failed ({diagnosis}); rerun the scheduled "
+            "script with host network access"
+        )
+    log("Live network preflight passed.")
 
 
 def review_previous_day(match_date: str) -> dict:
@@ -120,6 +140,39 @@ def analyse_next_day(match_date: str) -> None:
     clv = run_cli_json("sync-clv-tracker", "--date", match_date)
     combos = run_cli_json("sync-combo-tracker", "--date", match_date)
     log(f"Trackers synced. clv={compact_json(clv)} combo={compact_json(combos)}")
+
+    retry_reasons = analysis_retry_reasons(payload)
+    if retry_reasons:
+        raise TemporaryDataUnavailable(
+            f"analysis for {match_date} is incomplete: {'; '.join(retry_reasons)}"
+        )
+
+
+def analysis_retry_reasons(payload: dict) -> list[str]:
+    """Return only failures that make a scheduled betting report incomplete."""
+    matches = intish(payload.get("matches_analysed"))
+    valid = intish(payload.get("valid_feature_snapshots"))
+    source_errors = payload.get("source_errors") or []
+    reasons: list[str] = []
+
+    if matches == 0 and source_errors:
+        reasons.append("zero matches after source failures")
+    elif matches > 0 and valid == 0:
+        reasons.append("all feature snapshots are invalid")
+
+    critical_sources = {
+        "odds",
+        "event_markets",
+        "event_markets_check",
+        "upcoming_matches",
+    }
+    for error in source_errors:
+        source = str(error.get("source") or "unknown")
+        if source in critical_sources:
+            reasons.append(f"{source}: {error.get('error') or 'unknown error'}")
+
+    # Preserve order but avoid repeating the same reason.
+    return list(dict.fromkeys(reasons))
 
 
 def archive_previous_day(match_date: str, review_payload: dict) -> None:

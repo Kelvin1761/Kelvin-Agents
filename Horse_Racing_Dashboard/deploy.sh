@@ -72,6 +72,13 @@ BUILD_ARGS=(
     --output-json "$JSON_OUT"
     --output-manifest "$MANIFEST_OUT"
 )
+if [ -n "${WC_DASHBOARD_BASE_SNAPSHOT:-}" ]; then
+    if [ ! -f "$WC_DASHBOARD_BASE_SNAPSHOT" ]; then
+        echo "❌ 錯誤：指定嘅 dashboard snapshot 唔存在：$WC_DASHBOARD_BASE_SNAPSHOT"
+        exit 1
+    fi
+    BUILD_ARGS+=(--base-snapshot "$WC_DASHBOARD_BASE_SNAPSHOT")
+fi
 if [ "$SKIP_METADATA_OVERLAY" -eq 1 ]; then
     BUILD_ARGS+=(--skip-metadata-overlay)
 fi

@@ -138,6 +138,22 @@
     .roi-desktop-horse-name-en { margin-top: 2px; color: #64748B; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.025em; line-height: 1.15; text-transform: uppercase; }
     .roi-mobile-list { display: none; }
     .roi-mobile-item { border: 1px solid #E2E8F0; border-radius: 10px; background: #FFFFFF; }
+    .roi-record-actions { display: flex; justify-content: flex-end; gap: 6px; }
+    .roi-record-action { min-height: 34px; padding: 5px 9px; border: 1px solid; border-radius: 7px; background: #fff; font-size: 0.68rem; font-weight: 800; cursor: pointer; }
+    .roi-record-action--edit { color: #92400E; border-color: #FDE68A; background: #FFFBEB; }
+    .roi-record-action--delete { color: #B91C1C; border-color: #FECACA; background: #FEF2F2; }
+    .roi-modal-backdrop { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 16px; background: rgba(15,23,42,0.58); }
+    .roi-modal { width: min(480px,100%); max-height: calc(100vh - 32px); overflow-y: auto; border-radius: 14px; background: #fff; box-shadow: 0 24px 80px rgba(15,23,42,0.3); }
+    .roi-modal__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 20px 12px; border-bottom: 1px solid #E2E8F0; }
+    .roi-modal__title { color: #0F172A; font-size: 1rem; font-weight: 800; }
+    .roi-modal__meta { margin-top: 4px; color: #64748B; font-size: 0.72rem; }
+    .roi-modal__close { width: 40px; height: 40px; border: 0; border-radius: 8px; background: #F1F5F9; color: #475569; font-size: 1.1rem; cursor: pointer; }
+    .roi-modal__body { display: grid; gap: 14px; padding: 18px 20px 20px; }
+    .roi-modal__field { display: grid; gap: 6px; color: #475569; font-size: 0.72rem; font-weight: 700; }
+    .roi-modal__input { width: 100%; min-height: 44px; box-sizing: border-box; padding: 9px 11px; border: 1px solid #CBD5E1; border-radius: 8px; background: #fff; color: #0F172A; font: inherit; font-size: 0.85rem; }
+    .roi-modal__hint { color: #94A3B8; font-size: 0.68rem; font-weight: 500; line-height: 1.4; }
+    .roi-modal__error { display: none; padding: 9px 11px; border-radius: 8px; background: #FEF2F2; color: #B91C1C; font-size: 0.72rem; font-weight: 700; }
+    .roi-modal__actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 2px; }
     /* Smooth expand/collapse animation */
     .expand-animate { overflow: hidden; transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease; opacity: 1; }
     .expand-animate--collapsed { max-height: 0 !important; opacity: 0; }
@@ -175,6 +191,8 @@
       .bh-step-row { justify-content: flex-start; gap: 8px; }
       .bh-step-row--result { flex-wrap: nowrap; }
       .bb-edit--inline { min-height: 44px; }
+      .roi-record-action { min-width: 44px; min-height: 44px; }
+      .roi-modal { border-radius: 12px; }
       .roi-sum { overflow: visible; border: 0; border-radius: 0; background: transparent; }
       .roi-sum-hdr { align-items: flex-start; flex-direction: column; gap: 3px; padding: 10px 12px; border: 1px solid #DCE5F2; border-radius: 10px; background: linear-gradient(135deg,#F8FAFC,#EFF6FF); line-height: 1.35; }
       .roi-desktop-table { display: none; }
@@ -202,6 +220,90 @@
       .bh { grid-template-columns: minmax(320px, 1fr) auto; column-gap: 12px; }
       .bh-top { gap: 10px; }
     }
+    /* ─── Horses / NBA / Tennis workspace ─── */
+    .sport-switcher { display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid #D7E1ED; border-radius: 12px; background: #F1F5F9; }
+    .sport-switch { min-height: 38px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: #64748B; font: inherit; font-size: 0.76rem; font-weight: 800; cursor: pointer; }
+    .sport-switch:hover { color: #1E40AF; background: #FFFFFF; }
+    .sport-switch--active { color: #FFFFFF; background: #1E40AF; box-shadow: 0 3px 9px rgba(30,64,175,.22); }
+    .sport-switch--active:hover { color: #FFFFFF; background: #1E3A8A; }
+    .sports-shell { --sport-accent:#1D4ED8; max-width: 1180px; margin: 0 auto; }
+    .sports-shell--tennis { --sport-accent:#047857; }
+    .sports-hero { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(260px,.7fr); gap: 18px; margin-bottom: 18px; padding: 24px; border: 1px solid #D8E3EF; border-radius: 18px; background: linear-gradient(135deg,#FFFFFF 0%,#EFF6FF 100%); box-shadow: 0 10px 30px rgba(15,23,42,.06); }
+    .sports-shell--tennis .sports-hero { background: linear-gradient(135deg,#FFFFFF 0%,#ECFDF5 100%); }
+    .sports-eyebrow { color: var(--sport-accent); font-size: .7rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+    .sports-title { margin: 7px 0 8px; color: #0F172A; font-size: clamp(1.45rem,3vw,2.25rem); line-height: 1.1; letter-spacing: -.035em; }
+    .sports-intro { max-width: 720px; margin: 0; color: #526176; font-size: .82rem; line-height: 1.7; }
+    .sports-hero__aside { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-content: center; }
+    .sports-hero-stat { padding: 12px; border: 1px solid rgba(148,163,184,.28); border-radius: 12px; background: rgba(255,255,255,.78); }
+    .sports-hero-stat strong { display: block; color: #0F172A; font-size: 1.15rem; }
+    .sports-hero-stat span { color: #64748B; font-size: .65rem; font-weight: 700; }
+    .sports-tabs { display: flex; gap: 5px; margin-bottom: 18px; padding: 4px; overflow-x: auto; border: 1px solid #E2E8F0; border-radius: 11px; background: #F8FAFC; }
+    .sports-tab { flex: 0 0 auto; min-height: 40px; padding: 8px 15px; border: 0; border-radius: 8px; background: transparent; color: #64748B; font: inherit; font-size: .75rem; font-weight: 800; cursor: pointer; }
+    .sports-tab--active { color: #FFFFFF; background: var(--sport-accent); }
+    .sports-notice { display: flex; gap: 10px; margin-bottom: 14px; padding: 11px 13px; border: 1px solid #FDE68A; border-radius: 10px; background: #FFFBEB; color: #854D0E; font-size: .72rem; line-height: 1.55; }
+    .history-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+    .history-card { display: flex; min-width: 0; flex-direction: column; border: 1px solid #DCE5EF; border-radius: 14px; background: #FFFFFF; box-shadow: 0 5px 18px rgba(15,23,42,.045); overflow: hidden; }
+    .history-card__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 15px 16px 10px; }
+    .history-card__date { margin-bottom: 3px; color: #94A3B8; font-size: .62rem; font-weight: 800; }
+    .history-card__event { color: #0F172A; font-size: .9rem; font-weight: 850; line-height: 1.35; }
+    .outcome-chip { flex: 0 0 auto; padding: 4px 8px; border-radius: 999px; font-size: .62rem; font-weight: 900; }
+    .outcome-chip--won { color:#047857; background:#ECFDF5; }
+    .outcome-chip--lost { color:#B91C1C; background:#FEF2F2; }
+    .outcome-chip--pending { color:#B45309; background:#FFFBEB; }
+    .outcome-chip--void { color:#475569; background:#F1F5F9; }
+    .outcome-chip--review { color:#475569; background:#F1F5F9; }
+    .history-card__pick { margin: 0 16px 10px; padding: 11px 12px; border-left: 3px solid var(--sport-accent); border-radius: 0 9px 9px 0; background: #F8FAFC; }
+    .history-card__market { color: #64748B; font-size: .62rem; font-weight: 750; }
+    .history-card__selection { margin-top: 2px; color: #0F172A; font-size: .86rem; font-weight: 900; line-height: 1.4; }
+    .history-card__price { margin-top: 3px; color: var(--sport-accent); font-size: .72rem; font-weight: 850; }
+    .odds-missing { color:#B45309; }
+    .metric-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 10px; }
+    .metric-chip { padding: 5px 8px; border: 1px solid #E2E8F0; border-radius: 7px; background: #FFFFFF; color: #475569; font-size: .62rem; font-weight: 750; }
+    .history-card__copy { display: grid; gap: 7px; padding: 0 16px 13px; color: #526176; font-size: .7rem; line-height: 1.55; }
+    .history-card__copy strong { color: #334155; }
+    .history-card__legs { margin: 0; padding-left: 18px; color: #526176; }
+    .history-card__source { margin-top: auto; padding: 9px 16px; border-top: 1px solid #EEF2F7; background: #FAFCFE; color: #94A3B8; font-size: .59rem; line-height: 1.45; }
+    .history-card__actions { display: flex; gap: 8px; padding: 11px 16px 14px; }
+    .sports-btn { min-height: 40px; padding: 8px 13px; border: 1px solid #CBD5E1; border-radius: 8px; background: #FFFFFF; color: #334155; font: inherit; font-size: .7rem; font-weight: 850; cursor: pointer; }
+    .sports-btn--primary { border-color: var(--sport-accent); background: var(--sport-accent); color:#FFFFFF; }
+    .sports-btn--danger { border-color:#FECACA; background:#FEF2F2; color:#B91C1C; }
+    .sports-btn:disabled { opacity:.5; cursor:not-allowed; }
+    .sports-empty { padding: 48px 20px; border: 1px dashed #CBD5E1; border-radius: 14px; color:#64748B; text-align:center; }
+    .sports-records { display: grid; gap: 10px; }
+    .sports-record { display: grid; grid-template-columns: minmax(0,1.8fr) repeat(4,minmax(80px,.5fr)) auto; gap: 12px; align-items:center; padding: 13px 14px; border: 1px solid #E2E8F0; border-radius: 12px; background:#FFFFFF; }
+    .sports-record__event { color:#0F172A; font-size:.78rem; font-weight:850; }
+    .sports-record__selection { margin-top:2px; color:#64748B; font-size:.65rem; line-height:1.4; }
+    .sports-record__cell { color:#475569; font-size:.68rem; }
+    .sports-record__cell strong { display:block; color:#0F172A; font-size:.76rem; }
+    .sports-record__actions { display:flex; gap:6px; }
+    .sports-roi-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin-bottom:16px; }
+    .sports-roi-card { padding:14px; border:1px solid #E2E8F0; border-radius:12px; background:#FFFFFF; }
+    .sports-roi-card span { color:#64748B; font-size:.62rem; font-weight:750; }
+    .sports-roi-card strong { display:block; margin-top:4px; color:#0F172A; font-size:1.15rem; }
+    .sports-modal__grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .sports-modal__grid .roi-modal__field--wide { grid-column:1/-1; }
+    .sports-leg-editor { grid-column:1/-1; display:grid; gap:8px; padding:11px; border:1px solid #DCE5EF; border-radius:10px; background:#F8FAFC; }
+    .sports-leg-editor__title { color:#334155; font-size:.7rem; font-weight:900; }
+    .sports-leg-editor__row { display:grid; grid-template-columns:minmax(0,1fr) 90px; gap:8px; }
+    .sports-record__legs { grid-column:1/-1; margin:0; padding:9px 12px 9px 28px; border-radius:8px; background:#F8FAFC; color:#526176; font-size:.64rem; line-height:1.5; }
+    @media (max-width: 840px) {
+      .app-header { flex-wrap:wrap; }
+      .sport-switcher { order:3; width:100%; }
+      .sport-switch { flex:1; padding-inline:8px; }
+      .sports-hero { grid-template-columns:1fr; padding:18px; }
+      .history-grid { grid-template-columns:1fr; }
+      .sports-record { grid-template-columns:minmax(0,1fr) auto; }
+      .sports-record__cell { display:none; }
+      .sports-record__actions { align-self:start; }
+      .sports-roi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
+    @media (max-width: 520px) {
+      .app-header__nav-capsule { width:100%; order:4; }
+      .nav-pill { flex:1; text-align:center; }
+      .sports-hero__aside { grid-template-columns:1fr 1fr; }
+      .sports-modal__grid { grid-template-columns:1fr; }
+      .sports-modal__grid .roi-modal__field--wide { grid-column:auto; }
+    }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
     }
@@ -212,16 +314,21 @@
   <div class="app-layout">
     <header class="app-header">
       <div class="app-header__left">
-        <a href="#" class="app-header__logo" onclick="showDashboard(); return false;">🏇 旺財 Dashboard</a>
+        <a href="#" class="app-header__logo" onclick="showSport('horses'); return false;">旺財 Dashboard</a>
       </div>
-      <nav class="app-header__nav-capsule">
+      <div class="sport-switcher" role="tablist" aria-label="運動切換">
+        <button type="button" id="sport-horses" class="sport-switch sport-switch--active" onclick="showSport('horses')">🏇 Horses</button>
+        <button type="button" id="sport-nba" class="sport-switch" onclick="showSport('nba')">🏀 NBA</button>
+        <button type="button" id="sport-tennis" class="sport-switch" onclick="showSport('tennis')">🎾 Tennis</button>
+      </div>
+      <nav class="app-header__nav-capsule" id="horse-nav">
         <a href="#" id="nav-races" class="nav-pill nav-pill--active" onclick="showDashboard(); return false;">📋 賽事</a>
         <a href="#" id="nav-roi" class="nav-pill" onclick="showROI(); return false;">📊 ROI</a>
       </nav>
     </header>
     <main class="app-main" id="app-main"></main>
     <footer style="text-align:center;padding:12px;font-size:0.7rem;color:#94A3B8;border-top:1px solid #E2E8F0">
-      旺財 Racing Dashboard · Static Snapshot · Generated __GENERATED_TIME__
+      旺財 Multi-Sport Dashboard · Static Snapshot · Generated __GENERATED_TIME__
     </footer>
   </div>
 </div>
@@ -256,12 +363,33 @@ if (typeof DASHBOARD_DATA === 'string') {
 // State
 // ═══════════════════════════════════════════════
 let selectedMeeting = null;
-let currentView = 'dashboard'; // 'dashboard' | 'race' | 'roi'
+let currentView = 'dashboard'; // 'dashboard' | 'race' | 'roi' | 'sports'
+let activeSport = 'horses';
+let activeSportsTab = 'history'; // 'history' | 'bets' | 'roi'
 let currentRace = null;
 let activeAnalyst = null; // null = comparison mode
 let roiRegionFilter = null; // null = all, 'hkjc', 'au'
 let expandedSession = null;
 let expandedBetRaces = new Set();
+let sportsBetLedger = [];
+const SPORTS_BET_ENDPOINT = window.location.protocol === 'file:' ? null : '/api/sports-bets';
+let sportsLedgerMode = SPORTS_BET_ENDPOINT ? 'cloud' : 'local';
+
+function getInitialSportFromUrl() {
+  const match = String(window.location?.search || '').match(/[?&]sport=([^&]+)/);
+  const value = match ? String(match[1]).toLowerCase() : '';
+  return ['horses', 'nba', 'tennis'].includes(value) ? value : 'horses';
+}
+
+function syncSportUrl(sport) {
+  if (!window.history?.replaceState) return;
+  try {
+    const url = new URL(window.location.href || 'https://dashboard.local/');
+    if (sport === 'horses') url.searchParams.delete('sport');
+    else url.searchParams.set('sport', sport);
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  } catch (e) {}
+}
 
 // ═══════════════════════════════════════════════
 // Grade utils
@@ -622,7 +750,10 @@ async function loadRoiLedger() {
     const res = await authorizedFetch(ROI_LEDGER_ENDPOINT, { cache: 'no-store' });
     if (!res.ok) return;
     const d = await res.json();
-    roiLedger = Object.values(d || {});
+    roiLedger = Object.entries(d || {}).map(([key, record]) => ({
+      ...(record || {}),
+      _ledger_key: key,
+    }));
   } catch (e) {}
 }
 
@@ -1055,9 +1186,433 @@ function exportBetsJSON() {
 }
 
 // ═══════════════════════════════════════════════
+// NBA / Tennis workspace
+// ═══════════════════════════════════════════════
+function showSport(sport) {
+  if (!['horses', 'nba', 'tennis'].includes(sport)) return;
+  activeSport = sport;
+  syncSportUrl(sport);
+  if (sport === 'horses') {
+    currentView = 'dashboard';
+    selectedMeeting = selectedMeeting || DASHBOARD_DATA.meetings[0] || null;
+    render();
+  } else {
+    currentView = 'sports';
+    activeSportsTab = 'history';
+    render();
+    loadSportsBetLedger().then(() => { if (currentView === 'sports' && activeSport === sport) render(); });
+  }
+  window.scrollTo(0, 0);
+}
+
+function setSportsTab(tab) {
+  if (!['history', 'bets', 'roi'].includes(tab)) return;
+  activeSportsTab = tab;
+  render();
+}
+
+async function loadSportsBetLedger() {
+  if (!SPORTS_BET_ENDPOINT) {
+    sportsLedgerMode = 'local';
+    try {
+      sportsBetLedger = JSON.parse(localStorage.getItem('wc_sports_bets') || '[]');
+    } catch (e) { sportsBetLedger = []; }
+    return;
+  }
+  try {
+    const response = await authorizedFetch(SPORTS_BET_ENDPOINT, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    sportsBetLedger = Object.values(payload || {}).filter(record => record && !record._deleted);
+    sportsLedgerMode = 'cloud';
+  } catch (e) {
+    sportsLedgerMode = 'local';
+    try { sportsBetLedger = JSON.parse(localStorage.getItem('wc_sports_bets') || '[]'); }
+    catch (_) { sportsBetLedger = []; }
+  }
+}
+
+function sportsFeedSnapshot(sport) {
+  return DASHBOARD_DATA.sports_feed?.sports?.[sport] || null;
+}
+
+function hasLiveSportsFeed(sport) {
+  const snapshot = sportsFeedSnapshot(sport);
+  return Boolean(snapshot && ['valid', 'partial'].includes(snapshot.validation_status) && snapshot.recommendations?.length);
+}
+
+function sportsHistory(sport) {
+  if (hasLiveSportsFeed(sport)) return sportsFeedSnapshot(sport).recommendations;
+  return DASHBOARD_DATA.sports_history?.[sport] || [];
+}
+
+function sportsRecords(sport) {
+  return (sportsBetLedger || [])
+    .filter(record => record && !record._deleted && record.sport === sport)
+    .sort((a, b) => String(b.event_date || '').localeCompare(String(a.event_date || '')));
+}
+
+function pct(value, digits = 1) {
+  const number = Number(value);
+  return Number.isFinite(number) ? `${(number * 100).toFixed(digits)}%` : '—';
+}
+
+function sportsMetricLabels(item, sport) {
+  const metrics = item.metrics || {};
+  const rows = [];
+  if (sport === 'nba') {
+    if (metrics.monte_carlo != null) rows.push(`Monte Carlo ${pct(metrics.monte_carlo)}`);
+    if (metrics.factor_model != null) rows.push(`8-Factor ${pct(metrics.factor_model)}`);
+    if (metrics.banker_confidence != null) rows.push(`原穩膽信心 ${pct(metrics.banker_confidence)}`);
+    if (metrics.last_game_points != null) rows.push(`L1 ${metrics.last_game_points} PTS`);
+    if (metrics.coefficient_of_variation != null) rows.push(`CoV ${Number(metrics.coefficient_of_variation).toFixed(3)}`);
+    if (metrics.minutes != null) rows.push(`實際 ${metrics.minutes} MIN`);
+  } else {
+    if (metrics.model_probability != null) rows.push(`模型概率 ${pct(metrics.model_probability)}`);
+    if (metrics.market_fair_probability != null) rows.push(`市場 fair ${pct(metrics.market_fair_probability)}`);
+    if (metrics.edge != null) rows.push(`Edge +${pct(metrics.edge)}`);
+    if (metrics.expected_value != null) rows.push(`EV +${pct(metrics.expected_value)}`);
+    if (metrics.minimum_acceptable_odds != null) rows.push(`最低可接受 ${Number(metrics.minimum_acceptable_odds).toFixed(2)}`);
+    if (metrics.confidence != null) rows.push(`信心 ${Number(metrics.confidence).toFixed(0)}%`);
+  }
+  return rows;
+}
+
+function outcomeLabel(value) {
+  return ({ won: '✅ 命中', lost: '❌ 落空', pending: '⏳ 待賽果', void: '↩️ 取消', review: '🔎 檢討案例' })[value] || '待檢視';
+}
+
+function sportsLegLabel(leg) {
+  if (typeof leg === 'string') return leg;
+  const event = leg?.event_name ? `${leg.event_name} · ` : '';
+  const market = leg?.market ? `${leg.market} · ` : '';
+  const odds = leg?.odds != null ? ` @ ${Number(leg.odds).toFixed(2)}` : '';
+  return `${event}${market}${leg?.selection || '未命名 leg'}${odds}`;
+}
+
+function renderHistoryCard(item, sport) {
+  const metrics = sportsMetricLabels(item, sport)
+    .map(label => `<span class="metric-chip">${esc(label)}</span>`).join('');
+  const odds = item.odds == null
+    ? '<span class="odds-missing">原始賠率未存檔 · 落注時手動輸入</span>'
+    : `歷史賠率 <strong>${Number(item.odds).toFixed(2)}</strong>`;
+  const legs = (item.legs || []).length
+    ? `<ul class="history-card__legs">${item.legs.map(leg => `<li>${esc(sportsLegLabel(leg))}</li>`).join('')}</ul>`
+    : '';
+  return `<article class="history-card">
+    <div class="history-card__top">
+      <div><div class="history-card__date">${esc(item.event_date)}</div><div class="history-card__event">${esc(item.event_name)}</div></div>
+      <span class="outcome-chip outcome-chip--${esc(item.outcome || 'review')}">${esc(outcomeLabel(item.outcome))}</span>
+    </div>
+    <div class="history-card__pick">
+      <div class="history-card__market">${esc(item.market)}</div>
+      <div class="history-card__selection">${esc(item.selection)}</div>
+      <div class="history-card__price">${odds}</div>
+    </div>
+    <div class="metric-row">${metrics}</div>
+    <div class="history-card__copy">
+      <div><strong>實際：</strong>${esc(item.actual || '—')}</div>
+      <div><strong>點解值得保留：</strong>${esc(item.insight || '—')}</div>
+      <div><strong>風險：</strong>${esc(item.risk || '—')}</div>
+      ${legs}
+    </div>
+    <div class="history-card__source">資料來源：${esc(item.provenance || 'repository artifact')}</div>
+    <div class="history-card__actions">
+      <button type="button" class="sports-btn sports-btn--primary" onclick="openSportsBetModal('${esc(item.id)}')">＋ 加入投注單</button>
+    </div>
+  </article>`;
+}
+
+function renderSportsHistory(sport) {
+  const items = sportsHistory(sport);
+  if (!items.length) return '<div class="sports-empty">未有可用歷史分析。</div>';
+  const live = hasLiveSportsFeed(sport);
+  const snapshot = sportsFeedSnapshot(sport);
+  const notice = live
+    ? `<div class="sports-notice"><span>✅</span><span>正式 ${sport === 'nba' ? 'NBA Wong Choi artifacts' : 'tennis_wc.db'} live feed · ${esc(snapshot.analysis_run_id || '')} · ${items.length} 個已驗證建議。所有 odds／legs 直接由 pipeline 匯出。</span></div>`
+    : sport === 'nba'
+    ? `<div class="sports-notice"><span>⚠️</span><span>NBA 呢批係真實 Reflector 案例，但舊版流程無保存原始 Sportsbet 賠率。為免作假，畫面唔會估賠率；加入投注單時要輸入你實際落注價。</span></div>`
+    : `<div class="sports-notice"><span>🧪</span><span>Tennis 呢批由 2026-07-23 每日報告同已結算資料組成，用嚟測試「模型訊號 → 落注 → 結算 → 檢討」嘅最佳讀法；唔代表今日建議。</span></div>`;
+  return `${notice}<div class="history-grid">${items.map(item => renderHistoryCard(item, sport)).join('')}</div>`;
+}
+
+function sportsStatusLabel(status) {
+  return ({ pending: '⏳ 待結算', won: '✅ 贏', lost: '❌ 輸', void: '↩️ 取消' })[status] || status;
+}
+
+function renderSportsBets(sport) {
+  const records = sportsRecords(sport);
+  const modeNotice = sportsLedgerMode === 'local'
+    ? '<div class="sports-notice"><span>💾</span><span>目前係本機儲存模式；部署到有 Cloudflare Functions 嘅正式版後會自動用跨裝置 ledger。</span></div>'
+    : '';
+  if (!records.length) {
+    return `${modeNotice}<div class="sports-empty"><div style="font-size:2rem;margin-bottom:8px">${sport === 'nba' ? '🏀' : '🎾'}</div>未有投注記錄。去「歷史分析」揀一張卡加入投注單。</div>`;
+  }
+  return `${modeNotice}<div class="sports-records">${records.map(record => {
+    const profit = Number(record.profit || 0);
+    const recordLegs = record.bet_type === 'combo' && record.legs?.length
+      ? `<ol class="sports-record__legs">${record.legs.map(leg => `<li>${esc(sportsLegLabel(leg))}</li>`).join('')}</ol>`
+      : '';
+    return `<article class="sports-record">
+      <div><div class="sports-record__event">${esc(record.event_name)}</div><div class="sports-record__selection">${esc(record.market)} · ${esc(record.selection)}</div></div>
+      <div class="sports-record__cell">日期<strong>${esc(record.event_date)}</strong></div>
+      <div class="sports-record__cell">賠率<strong>${Number(record.odds).toFixed(2)}</strong></div>
+      <div class="sports-record__cell">注碼<strong>${Number(record.stake).toFixed(2)}u</strong></div>
+      <div class="sports-record__cell">結果<strong>${esc(sportsStatusLabel(record.status))}</strong></div>
+      <div class="sports-record__actions">
+        <button type="button" class="sports-btn" onclick="openSportsBetModal(null,'${esc(record.id)}')">編輯</button>
+        <button type="button" class="sports-btn sports-btn--danger" onclick="deleteSportsBet('${esc(record.id)}')">刪除</button>
+      </div>
+      <div style="grid-column:1/-1;color:${profit > 0 ? '#047857' : profit < 0 ? '#B91C1C' : '#64748B'};font-size:.68rem;font-weight:800">P/L ${profit > 0 ? '+' : ''}${profit.toFixed(2)}u${record.note ? ` · ${esc(record.note)}` : ''}</div>
+      ${recordLegs}
+    </article>`;
+  }).join('')}</div>`;
+}
+
+function calculateSportsRoi(records) {
+  const all = (records || []).filter(record => record && !record._deleted);
+  const settled = all.filter(record => ['won', 'lost', 'void'].includes(record.status));
+  const totalStake = settled.reduce((sum, record) => sum + Number(record.stake || 0), 0);
+  const totalPayout = settled.reduce((sum, record) => sum + Number(record.payout || 0), 0);
+  const totalProfit = settled.reduce((sum, record) => sum + Number(record.profit || 0), 0);
+  const wins = settled.filter(record => record.status === 'won').length;
+  const losses = settled.filter(record => record.status === 'lost').length;
+  return {
+    total_bets: all.length,
+    settled_bets: settled.length,
+    total_stake: Number(totalStake.toFixed(2)),
+    total_payout: Number(totalPayout.toFixed(2)),
+    total_profit: Number(totalProfit.toFixed(2)),
+    roi_pct: totalStake ? Number((totalProfit / totalStake * 100).toFixed(1)) : 0,
+    win_rate: wins + losses ? Number((wins / (wins + losses) * 100).toFixed(1)) : 0,
+  };
+}
+
+function renderSportsRoi(sport) {
+  const records = sportsRecords(sport);
+  const roi = calculateSportsRoi(records);
+  const profitColor = roi.total_profit >= 0 ? '#047857' : '#B91C1C';
+  return `<div class="sports-roi-grid">
+    <div class="sports-roi-card"><span>總投注</span><strong>${roi.total_bets}</strong></div>
+    <div class="sports-roi-card"><span>已結算</span><strong>${roi.settled_bets}</strong></div>
+    <div class="sports-roi-card"><span>已結算注碼</span><strong>${roi.total_stake.toFixed(2)}u</strong></div>
+    <div class="sports-roi-card"><span>淨利</span><strong style="color:${profitColor}">${roi.total_profit > 0 ? '+' : ''}${roi.total_profit.toFixed(2)}u</strong></div>
+    <div class="sports-roi-card"><span>ROI</span><strong style="color:${profitColor}">${roi.roi_pct.toFixed(1)}%</strong></div>
+  </div>
+  <div class="sports-notice"><span>ℹ️</span><span>ROI 只用已結算 won／lost／void 計算；pending 唔會預先當輸。Void 會退回注碼，profit = 0。</span></div>
+  ${renderSportsBets(sport)}`;
+}
+
+function renderSportsWorkspace(sport = activeSport) {
+  const isNba = sport === 'nba';
+  const history = sportsHistory(sport);
+  const records = sportsRecords(sport);
+  const settled = history.filter(item => ['won', 'lost'].includes(item.outcome));
+  const wins = settled.filter(item => item.outcome === 'won').length;
+  const body = activeSportsTab === 'bets'
+    ? renderSportsBets(sport)
+    : activeSportsTab === 'roi'
+      ? renderSportsRoi(sport)
+      : renderSportsHistory(sport);
+  return `<section class="sports-shell sports-shell--${esc(sport)}">
+    <div class="sports-hero">
+      <div>
+        <div class="sports-eyebrow">${isNba ? 'NBA WONG CHOI' : 'TENNIS WONG CHOI'}</div>
+        <h1 class="sports-title">${isNba ? '🏀 NBA 分析與投注工作台' : '🎾 Tennis 分析與投注工作台'}</h1>
+        <p class="sports-intro">${isNba
+          ? '先睇 matchup、球員盤同風險訊號，再保存你實際落注賠率；賽後同一頁結算及回看當時分析。'
+          : '將模型概率、市場 fair probability、edge、EV 同主要風險放埋一張卡，減少來回翻報告。'}</p>
+      </div>
+      <div class="sports-hero__aside">
+        <div class="sports-hero-stat"><strong>${history.length}</strong><span>歷史案例</span></div>
+        <div class="sports-hero-stat"><strong>${wins}/${settled.length}</strong><span>案例命中</span></div>
+        <div class="sports-hero-stat"><strong>${records.length}</strong><span>我的投注</span></div>
+        <div class="sports-hero-stat"><strong>${isNba ? 'Reflector' : 'Settled'}</strong><span>資料狀態</span></div>
+      </div>
+    </div>
+    <div class="sports-tabs" role="tablist">
+      <button type="button" class="sports-tab ${activeSportsTab === 'history' ? 'sports-tab--active' : ''}" onclick="setSportsTab('history')">${hasLiveSportsFeed(sport) ? '📡 今日建議' : '📚 歷史分析'}</button>
+      <button type="button" class="sports-tab ${activeSportsTab === 'bets' ? 'sports-tab--active' : ''}" onclick="setSportsTab('bets')">🧾 我的投注 ${records.length ? `(${records.length})` : ''}</button>
+      <button type="button" class="sports-tab ${activeSportsTab === 'roi' ? 'sports-tab--active' : ''}" onclick="setSportsTab('roi')">📊 ROI</button>
+    </div>
+    ${body}
+  </section>`;
+}
+
+function sportsModalField(label, name, value, type = 'text', wide = false) {
+  const safeValue = esc(value ?? '');
+  if (name === 'note') {
+    return `<label class="roi-modal__field ${wide ? 'roi-modal__field--wide' : ''}">${esc(label)}<textarea class="roi-modal__input" name="${name}" rows="3">${safeValue}</textarea></label>`;
+  }
+  return `<label class="roi-modal__field ${wide ? 'roi-modal__field--wide' : ''}">${esc(label)}<input class="roi-modal__input" name="${name}" type="${type}" value="${safeValue}" ${type === 'number' ? 'step="0.01"' : ''} required></label>`;
+}
+
+function sportsBetDraftFromSource(source, sport = activeSport) {
+  return {
+    id: `${sport}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    sport,
+    source_id: source.id,
+    event_date: source.event_date,
+    event_name: source.event_name,
+    market: source.market,
+    selection: source.selection,
+    bet_type: source.bet_type || 'single',
+    legs: JSON.parse(JSON.stringify(source.legs || [])),
+    odds: source.odds ?? '',
+    stake: Number(source.metrics?.stake_units || 1),
+    status: 'pending',
+    bookmaker: 'Sportsbet',
+    note: '',
+  };
+}
+
+function renderSportsLegEditors(legs) {
+  if (!legs?.length) return '';
+  return `<div class="sports-leg-editor">
+    <div class="sports-leg-editor__title">組合注 Legs · 可以按你實際落注內容修正</div>
+    ${legs.map((leg, index) => `<div class="sports-leg-editor__row">
+      <label class="roi-modal__field">Leg ${index + 1}<input class="roi-modal__input" name="leg_selection_${index}" value="${esc(leg.selection || '')}" required></label>
+      <label class="roi-modal__field">Leg 賠率<input class="roi-modal__input" name="leg_odds_${index}" type="number" step="0.01" value="${esc(leg.odds ?? '')}"></label>
+    </div>`).join('')}
+  </div>`;
+}
+
+function openSportsBetModal(sourceId = null, recordId = null) {
+  const existing = recordId ? sportsBetLedger.find(record => record.id === recordId) : null;
+  const source = sourceId ? sportsHistory(activeSport).find(item => item.id === sourceId) : null;
+  if (!existing && !source) return;
+  const record = existing || sportsBetDraftFromSource(source, activeSport);
+  document.getElementById('sportsBetModal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'sportsBetModal';
+  modal.className = 'roi-modal-backdrop';
+  modal.innerHTML = `<div class="roi-modal" role="dialog" aria-modal="true" aria-labelledby="sports-modal-title">
+    <div class="roi-modal__header"><div><div class="roi-modal__title" id="sports-modal-title">${existing ? '編輯投注記錄' : '加入投注單'}</div><div class="roi-modal__meta">${esc(record.event_name)}</div></div><button type="button" class="roi-modal__close" onclick="closeSportsBetModal()" aria-label="關閉">×</button></div>
+    <form class="roi-modal__body" onsubmit="saveSportsBet(event,'${esc(record.id)}',${existing ? 'true' : 'false'})">
+      <input type="hidden" name="source_id" value="${esc(record.source_id || '')}">
+      <div class="sports-modal__grid">
+        ${sportsModalField('日期', 'event_date', record.event_date, 'date')}
+        ${sportsModalField('Bookmaker', 'bookmaker', record.bookmaker || '')}
+        ${sportsModalField('賽事', 'event_name', record.event_name, 'text', true)}
+        ${sportsModalField('市場', 'market', record.market)}
+        ${sportsModalField('選擇', 'selection', record.selection)}
+        ${sportsModalField('實際賠率', 'odds', record.odds, 'number')}
+        ${sportsModalField('注碼 (u)', 'stake', record.stake, 'number')}
+        <label class="roi-modal__field">結果<select class="roi-modal__input" name="status">
+          ${['pending','won','lost','void'].map(status => `<option value="${status}" ${record.status === status ? 'selected' : ''}>${sportsStatusLabel(status)}</option>`).join('')}
+        </select></label>
+        ${sportsModalField('備註', 'note', record.note || '', 'text', true)}
+        ${renderSportsLegEditors(record.legs)}
+      </div>
+      ${source?.odds == null ? '<div class="sports-notice" style="margin:0"><span>⚠️</span><span>呢個 NBA 歷史案例無保存原始賠率，請只輸入你實際落注價。</span></div>' : ''}
+      <div class="roi-modal__error" id="sportsBetError"></div>
+      <div class="roi-modal__actions"><button type="button" class="sports-btn" onclick="closeSportsBetModal()">取消</button><button type="submit" class="sports-btn sports-btn--primary">儲存</button></div>
+    </form>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', event => { if (event.target === modal) closeSportsBetModal(); });
+}
+
+function closeSportsBetModal() {
+  document.getElementById('sportsBetModal')?.remove();
+}
+
+async function saveSportsBet(event, id, isEdit) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const values = Object.fromEntries(new FormData(form).entries());
+  const existingRecord = sportsBetLedger.find(record => record.id === id);
+  const source = sportsHistory(activeSport).find(item => item.id === values.source_id)
+    || sportsHistory(activeSport).find(item => item.id === existingRecord?.source_id);
+  const baseLegs = source?.legs || existingRecord?.legs || [];
+  const editedLegs = baseLegs.map((leg, index) => ({
+    ...leg,
+    selection: values[`leg_selection_${index}`] || leg.selection,
+    odds: values[`leg_odds_${index}`] === '' || values[`leg_odds_${index}`] == null
+      ? leg.odds
+      : Number(values[`leg_odds_${index}`]),
+  }));
+  const record = {
+    id,
+    sport: activeSport,
+    source_id: source?.id || sportsBetLedger.find(item => item.id === id)?.source_id || '',
+    event_date: values.event_date,
+    event_name: values.event_name,
+    market: values.market,
+    selection: values.selection,
+    bet_type: source?.bet_type || existingRecord?.bet_type || 'single',
+    legs: editedLegs,
+    odds: Number(values.odds),
+    stake: Number(values.stake),
+    status: values.status,
+    bookmaker: values.bookmaker,
+    note: values.note,
+    analysis_snapshot: source ? {
+      metrics: source.metrics || {},
+      insight: source.insight || '',
+      risk: source.risk || '',
+      provenance: source.provenance || '',
+    } : {},
+  };
+  if (!(record.odds > 1) || !(record.stake > 0)) {
+    const error = document.getElementById('sportsBetError');
+    error.style.display = 'block';
+    error.textContent = '請輸入大過 1.00 嘅實際賠率，同大過 0 嘅注碼。';
+    return;
+  }
+  try {
+    if (SPORTS_BET_ENDPOINT && sportsLedgerMode === 'cloud') {
+      const response = await authorizedFetch(SPORTS_BET_ENDPOINT, {
+        method: isEdit ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(isEdit ? { id, updates: record } : record),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } else {
+      const existing = sportsBetLedger.find(item => item.id === id);
+      const next = { ...existing, ...record, analysis_snapshot: existing?.analysis_snapshot || record.analysis_snapshot };
+      next.payout = next.status === 'won' ? next.stake * next.odds : next.status === 'void' ? next.stake : 0;
+      next.profit = next.status === 'won' ? next.payout - next.stake : next.status === 'lost' ? -next.stake : 0;
+      sportsBetLedger = [...sportsBetLedger.filter(item => item.id !== id), next];
+      localStorage.setItem('wc_sports_bets', JSON.stringify(sportsBetLedger));
+    }
+    closeSportsBetModal();
+    await loadSportsBetLedger();
+    activeSportsTab = 'bets';
+    render();
+  } catch (error) {
+    const node = document.getElementById('sportsBetError');
+    node.style.display = 'block';
+    node.textContent = `儲存失敗：${error.message}`;
+  }
+}
+
+async function deleteSportsBet(id) {
+  if (!window.confirm('確定刪除呢筆投注記錄？')) return;
+  try {
+    if (SPORTS_BET_ENDPOINT && sportsLedgerMode === 'cloud') {
+      const response = await authorizedFetch(SPORTS_BET_ENDPOINT, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } else {
+      sportsBetLedger = sportsBetLedger.filter(record => record.id !== id);
+      localStorage.setItem('wc_sports_bets', JSON.stringify(sportsBetLedger));
+    }
+    await loadSportsBetLedger();
+    render();
+  } catch (error) {
+    window.alert(`刪除失敗：${error.message}`);
+  }
+}
+
+// ═══════════════════════════════════════════════
 // Dashboard View
 // ═══════════════════════════════════════════════
 function showDashboard() {
+  activeSport = 'horses';
   currentView = 'dashboard';
   selectedMeeting = selectedMeeting || DASHBOARD_DATA.meetings[0] || null;
   render();
@@ -1137,6 +1692,7 @@ function selectMeeting(index) {
 // Race Detail View
 // ═══════════════════════════════════════════════
 function showRace(raceNumber) {
+  activeSport = 'horses';
   currentView = 'race';
   currentRace = raceNumber;
   // Determine default analyst mode
@@ -2325,6 +2881,7 @@ function renderSingleAnalystView(analysis, analystName) {
 // ROI View
 // ═══════════════════════════════════════════════
 function showROI() {
+  activeSport = 'horses';
   currentView = 'roi';
   render();
   window.scrollTo(0, 0);
@@ -2341,64 +2898,20 @@ function toggleSession(key) {
 
 function getFilteredROI() {
   const roi = DASHBOARD_DATA.roi || {};
-  // Permanent committed records (ROI ledger) override the pre-baked snapshot.
+  // The permanent ROI ledger is authoritative.  Tombstones suppress matching
+  // records in the pre-baked snapshot, and local panel drafts never overwrite
+  // committed results.
   const baseMap = {};
-  (roi.bets || []).forEach(b => { baseMap[`${b.date}|${b.venue}|${b.race_number}|${b.horse_number}`] = b; });
-  roiLedger.forEach(b => { baseMap[`${b.date}|${b.venue}|${b.race_number}|${b.horse_number}`] = b; });
-  const baseBets = Object.values(baseMap);
-
-  // Merge localStorage betting panel data into ROI
-  // Only merge from meetings with analysis data (avoids ghost entries)
-  const localBets = [];
-  const meetings = DASHBOARD_DATA.meetings || [];
-  meetings.forEach(m => {
-    const k = `bets_${m.date}_${m.venue}`;
-    let meetingBets = {};
-    try { meetingBets = JSON.parse(localStorage.getItem(k) || '{}'); } catch(e) { return; }
-    if (!Object.keys(meetingBets).length) return;
-
-    const racesData = getRacesData(m);
-    if (!racesData) return;
-    const analysts = Object.keys(racesData.races_by_analyst);
-    const races = racesData.races_by_analyst[analysts[0]] || [];
-
-    // Build horse name lookup
-    const horseMap = {};
-    races.forEach(race => {
-      (race.horses || []).forEach(horse => {
-        horseMap[betKey(m.date, m.venue, race.race_number, horse.horse_number)] = {
-          horse_name: horse.horse_name, jockey: horse.jockey || '', trainer: horse.trainer || '',
-          race_number: race.race_number, horse_number: horse.horse_number,
-        };
-      });
-    });
-
-    // Only process bets that match known horses
-    Object.keys(meetingBets).forEach(bk => {
-      const s = meetingBets[bk];
-      if (!s || !s.confirmed || s.scratched) return;
-      const info = horseMap[bk];
-      if (!info) return; // Skip unknown horses
-      const profit = calcProfit(s);
-      const pos = s.result;
-      localBets.push({
-        date: m.date, venue: m.venue, region: m.region,
-        race_number: info.race_number, horse_number: info.horse_number,
-        horse_name: info.horse_name, jockey: info.jockey, trainer: info.trainer,
-        stake: 1, odds: s.odds || 0,
-        result_position: pos,
-        payout: (pos >= 1 && pos <= 3) ? (s.odds || 0) : 0,
-        net_profit: profit !== null ? profit : -1,
-        status: pos >= 1 && pos <= 3 ? 'won' : (pos === null || pos === undefined) ? 'pending' : 'lost',
-        source: 'local',
-      });
-    });
+  (roi.bets || []).forEach(b => {
+    const key = `${b.date}|${b.venue}|${b.race_number}|${b.horse_number}`;
+    baseMap[key] = { ...b, _ledger_key: key };
   });
-
-  // Deduplicate: remove baseBets that match a localBet (same date+venue+race+horse)
-  const localKeys = new Set(localBets.map(b => `${b.date}|${b.venue}|${b.race_number}|${b.horse_number}`));
-  const deduped = baseBets.filter(b => !localKeys.has(`${b.date}|${b.venue}|${b.race_number}|${b.horse_number}`));
-  const allBets = [...deduped, ...localBets];
+  roiLedger.forEach(b => {
+    const key = b._ledger_key || `${b.date}|${b.venue}|${b.race_number}|${b.horse_number}`;
+    if (b._deleted) delete baseMap[key];
+    else baseMap[key] = b;
+  });
+  const allBets = Object.values(baseMap);
   allBets.sort((a,b) => (a.date||'').localeCompare(b.date||''));
 
   // Apply region filter
@@ -2597,6 +3110,126 @@ function getMonthLabel(ds) {
   return `${names[m]||m} '${y}`;
 }
 
+let editingRoiKey = null;
+let editingRoiBaseRecord = null;
+
+function encodeRoiKey(key) {
+  return encodeURIComponent(key).replace(/'/g, '%27');
+}
+
+function closeRoiEditor() {
+  editingRoiKey = null;
+  editingRoiBaseRecord = null;
+  document.getElementById('roi-edit-backdrop')?.remove();
+}
+
+function editRoiRecord(encodedKey) {
+  const key = decodeURIComponent(encodedKey);
+  const record = getFilteredROI().bets.find(item => item._ledger_key === key);
+  if (!record) {
+    alert('搵唔到呢條已匯入記錄，請重新整理後再試。');
+    return;
+  }
+  closeRoiEditor();
+  editingRoiKey = key;
+  editingRoiBaseRecord = record;
+  const resultValue = record.result_position ?? '';
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="roi-edit-backdrop" class="roi-modal-backdrop" onclick="if(event.target===this)closeRoiEditor()">
+      <section class="roi-modal" role="dialog" aria-modal="true" aria-labelledby="roi-edit-title">
+        <div class="roi-modal__header">
+          <div>
+            <div id="roi-edit-title" class="roi-modal__title">編輯 ROI 投注記錄</div>
+            <div class="roi-modal__meta">${esc(record.date)} · ${esc(record.venue)} · R${record.race_number} · #${record.horse_number}</div>
+          </div>
+          <button class="roi-modal__close" type="button" aria-label="關閉" onclick="closeRoiEditor()">×</button>
+        </div>
+        <form class="roi-modal__body" onsubmit="saveRoiRecord(event)">
+          <label class="roi-modal__field">馬名
+            <input id="roi-edit-horse-name" class="roi-modal__input" value="${esc(record.horse_name || '')}" autocomplete="off">
+          </label>
+          <label class="roi-modal__field">位置賠率
+            <input id="roi-edit-odds" class="roi-modal__input" type="number" min="0" step="0.01" value="${esc(record.odds ?? '')}" required inputmode="decimal">
+          </label>
+          <label class="roi-modal__field">完成名次
+            <input id="roi-edit-result" class="roi-modal__input" type="number" min="0" step="1" value="${esc(resultValue)}" inputmode="numeric" placeholder="留空 = 待定">
+            <span class="roi-modal__hint">留空代表待定；1–3 名自動計作位置中獎；0 或 4 名以後計作落敗。</span>
+          </label>
+          <div id="roi-edit-error" class="roi-modal__error" role="alert"></div>
+          <div class="roi-modal__actions">
+            <button class="btn btn--secondary" type="button" onclick="closeRoiEditor()">取消</button>
+            <button id="roi-edit-save" class="btn btn--primary" type="submit">儲存並重計 ROI</button>
+          </div>
+        </form>
+      </section>
+    </div>`);
+  document.getElementById('roi-edit-result')?.focus();
+}
+
+async function saveRoiRecord(event) {
+  event.preventDefault();
+  if (!editingRoiKey || !editingRoiBaseRecord || !ROI_LEDGER_ENDPOINT) return;
+  const odds = Number(document.getElementById('roi-edit-odds')?.value);
+  const resultRaw = document.getElementById('roi-edit-result')?.value.trim() || '';
+  const resultPosition = resultRaw === '' ? null : Number(resultRaw);
+  const horseName = document.getElementById('roi-edit-horse-name')?.value.trim() || '';
+  const errorNode = document.getElementById('roi-edit-error');
+  const saveButton = document.getElementById('roi-edit-save');
+
+  if (!Number.isFinite(odds) || odds < 0 || (resultPosition !== null && (!Number.isInteger(resultPosition) || resultPosition < 0))) {
+    errorNode.textContent = '請輸入有效賠率及完成名次。';
+    errorNode.style.display = 'block';
+    return;
+  }
+
+  saveButton.disabled = true;
+  saveButton.textContent = '儲存中…';
+  try {
+    const res = await authorizedFetch(ROI_LEDGER_ENDPOINT, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        key: editingRoiKey,
+        base_record: editingRoiBaseRecord,
+        updates: { horse_name: horseName, odds, result_position: resultPosition },
+      }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok || !payload.success) throw new Error(payload.error || `HTTP ${res.status}`);
+    closeRoiEditor();
+    await loadRoiLedger();
+    if (currentView === 'roi') render();
+  } catch (error) {
+    errorNode.textContent = `儲存失敗：${error.message || '請稍後再試'}`;
+    errorNode.style.display = 'block';
+    saveButton.disabled = false;
+    saveButton.textContent = '儲存並重計 ROI';
+  }
+}
+
+async function deleteRoiRecord(encodedKey) {
+  const key = decodeURIComponent(encodedKey);
+  const record = getFilteredROI().bets.find(item => item._ledger_key === key);
+  if (!record) {
+    alert('搵唔到呢條已匯入記錄，請重新整理後再試。');
+    return;
+  }
+  if (!confirm(`確認刪除 ${record.date} ${record.venue} R${record.race_number} #${record.horse_number} ${record.horse_name || ''}？\n\n刪除後 ROI 會即時重計。`)) return;
+  try {
+    const res = await authorizedFetch(ROI_LEDGER_ENDPOINT, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, record }),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok || !payload.success) throw new Error(payload.error || `HTTP ${res.status}`);
+    await loadRoiLedger();
+    if (currentView === 'roi') render();
+  } catch (error) {
+    alert(`刪除失敗：${error.message || '請稍後再試'}`);
+  }
+}
+
 function renderMonthlyBreakdown(sessions, bets) {
   const sorted = [...sessions].sort((a,b) => normalizeDate(b.date).localeCompare(normalizeDate(a.date)));
   const groups = [];
@@ -2623,13 +3256,17 @@ function renderMonthlyBreakdown(sessions, bets) {
           <div style="display:flex;align-items:center;gap:10px"><span style="font-weight:800;font-size:0.85rem;color:${p>=0?'#059669':'#DC2626'}">${p>=0?'+':''}$${p.toFixed(2)}</span><span style="font-size:0.7rem;color:#94A3B8">${isExp?'▲':'▼'}</span></div>
         </button>`;
       if (isExp && sBets.length) {
-        html += '<div style="border-top:1px solid #F1F5F9;padding:12px 16px;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:0.75rem"><thead><tr style="border-bottom:1px solid #E2E8F0;color:#94A3B8"><th style="padding:4px 8px;text-align:left">場次</th><th style="padding:4px 8px;text-align:left">馬匹</th><th style="padding:4px 8px;text-align:left">賠率</th><th style="padding:4px 8px;text-align:left">名次</th><th style="padding:4px 8px;text-align:left">狀態</th><th style="padding:4px 8px;text-align:right">淨利</th></tr></thead><tbody>';
+        html += '<div style="border-top:1px solid #F1F5F9;padding:12px 16px;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:0.75rem"><thead><tr style="border-bottom:1px solid #E2E8F0;color:#94A3B8"><th style="padding:4px 8px;text-align:left">場次</th><th style="padding:4px 8px;text-align:left">馬匹</th><th style="padding:4px 8px;text-align:left">賠率</th><th style="padding:4px 8px;text-align:left">名次</th><th style="padding:4px 8px;text-align:left">狀態</th><th style="padding:4px 8px;text-align:right">淨利</th><th style="padding:4px 8px;text-align:right">操作</th></tr></thead><tbody>';
         sBets.forEach(b => {
           const bc = b.net_profit>0?'#059669':b.net_profit<0?'#DC2626':'#94A3B8';
           const stBg = b.status==='won'?'#D1FAE5':b.status==='lost'?'#FEE2E2':'#FEF3C7';
           const stCol = b.status==='won'?'#059669':b.status==='lost'?'#DC2626':'#D97706';
           const stLabel = b.status==='won'?'✅':b.status==='lost'?'❌':'⏳';
-          html += `<tr style="border-bottom:1px solid #F8FAFC"><td style="padding:4px 8px">R${b.race_number}</td><td style="padding:4px 8px"><strong>#${b.horse_number}</strong> ${esc(b.horse_name)}</td><td style="padding:4px 8px">${b.odds||'—'}</td><td style="padding:4px 8px">${b.result_position||'—'}</td><td style="padding:4px 8px"><span style="background:${stBg};color:${stCol};padding:1px 6px;border-radius:999px;font-size:0.65rem;font-weight:700">${stLabel}</span></td><td style="padding:4px 8px;text-align:right;font-weight:700;color:${bc}">${b.net_profit!=null?`${b.net_profit>0?'+':''}$${b.net_profit.toFixed(2)}`:'—'}</td></tr>`;
+          const encodedKey = b._ledger_key ? encodeRoiKey(b._ledger_key) : '';
+          const actions = encodedKey
+            ? `<div class="roi-record-actions"><button class="roi-record-action roi-record-action--edit" type="button" onclick="editRoiRecord('${encodedKey}')">編輯</button><button class="roi-record-action roi-record-action--delete" type="button" onclick="deleteRoiRecord('${encodedKey}')">刪除</button></div>`
+            : '<span style="color:#CBD5E1">—</span>';
+          html += `<tr style="border-bottom:1px solid #F8FAFC"><td style="padding:4px 8px">R${b.race_number}</td><td style="padding:4px 8px"><strong>#${b.horse_number}</strong> ${esc(b.horse_name)}</td><td style="padding:4px 8px">${b.odds||'—'}</td><td style="padding:4px 8px">${b.result_position??'—'}</td><td style="padding:4px 8px"><span style="background:${stBg};color:${stCol};padding:1px 6px;border-radius:999px;font-size:0.65rem;font-weight:700">${stLabel}</span></td><td style="padding:4px 8px;text-align:right;font-weight:700;color:${bc}">${b.net_profit!=null?`${b.net_profit>0?'+':''}$${Number(b.net_profit).toFixed(2)}`:'—'}</td><td style="padding:4px 8px;text-align:right">${actions}</td></tr>`;
         });
         html += '</tbody></table></div>';
       }
@@ -2646,13 +3283,24 @@ function renderMonthlyBreakdown(sessions, bets) {
 // ═══════════════════════════════════════════════
 function render() {
   const main = document.getElementById('app-main');
+  if (!main) return;
+  ['horses', 'nba', 'tennis'].forEach(sport => {
+    const button = document.getElementById(`sport-${sport}`);
+    if (button) button.className = `sport-switch${activeSport === sport ? ' sport-switch--active' : ''}`;
+  });
+  const horseNav = document.getElementById('horse-nav');
+  if (horseNav) horseNav.style.display = activeSport === 'horses' ? '' : 'none';
   // Update nav active state
-  document.getElementById('nav-races').className = currentView !== 'roi' ? 'nav-pill nav-pill--active' : 'nav-pill';
-  document.getElementById('nav-roi').className = currentView === 'roi' ? 'nav-pill nav-pill--active' : 'nav-pill';
+  const racesNav = document.getElementById('nav-races');
+  const roiNav = document.getElementById('nav-roi');
+  if (racesNav) racesNav.className = currentView !== 'roi' ? 'nav-pill nav-pill--active' : 'nav-pill';
+  if (roiNav) roiNav.className = currentView === 'roi' ? 'nav-pill nav-pill--active' : 'nav-pill';
   if (currentView === 'race') {
     main.innerHTML = renderRaceDetail();
   } else if (currentView === 'roi') {
     main.innerHTML = renderROI();
+  } else if (currentView === 'sports') {
+    main.innerHTML = renderSportsWorkspace(activeSport);
   } else {
     main.innerHTML = renderDashboard();
   }
@@ -2699,7 +3347,10 @@ document.addEventListener('DOMContentLoaded', () => {
   startBettingSyncPolling();
   pullBettingStateFromCloud(false).finally(() => render());
   loadRoiLedger().then(() => { if (currentView === 'roi') render(); });
-  showDashboard();
+  loadSportsBetLedger();
+  const initialSport = getInitialSportFromUrl();
+  if (initialSport === 'horses') showDashboard();
+  else showSport(initialSport);
 });
 </script>
 </body>
