@@ -83,8 +83,7 @@ JSON 裡面 backslash 要 double escape：`"G:\\My Drive\\Antigravity Shared\\An
 powershell -ExecutionPolicy Bypass -File .\run_tests.ps1
 ```
 
-應該全部 PASS，除咗一個已知嘅 pre-existing failure（`Race compliance QA`，
-同 Windows 無關，見第 7 節）。
+應該全部 9 個 suite PASS。
 
 > 唔好試住用一句 `pytest` 跑齊 AU 同 HKJC —— AU 同 HKJC 各有一個叫 `scoring`
 > 嘅 module，同一個 Python process 裡面會互相蓋過，一定 ImportError。
@@ -161,7 +160,7 @@ Horse_Racing_Dashboard\start-dashboard.bat
 |---|---|
 | **Tennis DB** | `tennis_wc.db` 冇入 git → 新機由空 DB 開始。跑 `tennis-wc init-db` 再由 API 重建。 |
 | **Tennis 排程** | 只有 macOS launchd 版。Windows 要用 Task Scheduler 自己叫 `scripts\tennis_daily_schedule.py`。 |
-| **`Race compliance QA` 測試** | 1 個 pre-existing failure（`parse_result_json` archive mapping），同平台無關，未修。 |
+| ~~`Race compliance QA` 測試~~ | ✅ 已修（`parse_result_json` 而家識讀 archive results mapping）。全部 suite 應該綠。 |
 | **`launch-wrapper.sh`** | macOS 專用，Windows 用 `start-dashboard.bat` 代替。 |
 
 ---
