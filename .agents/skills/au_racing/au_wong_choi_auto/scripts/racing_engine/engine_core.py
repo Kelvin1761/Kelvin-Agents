@@ -173,32 +173,45 @@ def _load_jockey_trainer_combo_stats():
 
     combo_cache: dict[tuple[str, str, str], dict] = {}
     trainer_cache: dict[tuple[str, str], dict] = {}
-    if JOCKEY_TRAINER_COMBO_STATS_PATH.exists():
-        with JOCKEY_TRAINER_COMBO_STATS_PATH.open("r", encoding="utf-8-sig") as handle:
-            reader = csv.DictReader(handle)
-            for row in reader:
-                track = _normalize_identity_text(row.get("Track")).lower()
-                jockey = _normalize_identity_text(row.get("Jockey")).lower()
-                trainer = _normalize_identity_text(row.get("Trainer")).lower()
-                if not track or not trainer:
-                    continue
-                runs = int(parse_float(row.get("Total Runs")) or 0)
-                wins = int(parse_float(row.get("Wins")) or 0)
-                places = int(parse_float(row.get("Places (Top 3)")) or 0)
-                win_rate = (wins / runs) if runs else 0.0
-                place_rate = (places / runs) if runs else 0.0
-                if jockey:
-                    combo_cache[(track, jockey, trainer)] = {
-                        "runs": runs,
-                        "wins": wins,
-                        "places": places,
-                        "win_rate": win_rate,
-                        "place_rate": place_rate,
-                    }
-                trainer_bucket = trainer_cache.setdefault((track, trainer), {"runs": 0, "wins": 0, "places": 0})
-                trainer_bucket["runs"] += runs
-                trainer_bucket["wins"] += wins
-                trainer_bucket["places"] += places
+    # BUGFIX 2026-07-25: this read used to be unguarded, so any I/O problem on the
+    # Google Drive data root (macOS revoking CloudStorage access gives
+    # PermissionError, and `.exists()` itself can raise) crashed the WHOLE scoring
+    # run instead of degrading. Optional enrichment must never take the engine
+    # down — on failure we cache empty dicts and score without combo stats.
+    try:
+        available = JOCKEY_TRAINER_COMBO_STATS_PATH.exists()
+    except OSError:
+        available = False
+    if available:
+        try:
+            with JOCKEY_TRAINER_COMBO_STATS_PATH.open("r", encoding="utf-8-sig") as handle:
+                reader = csv.DictReader(handle)
+                for row in reader:
+                    track = _normalize_identity_text(row.get("Track")).lower()
+                    jockey = _normalize_identity_text(row.get("Jockey")).lower()
+                    trainer = _normalize_identity_text(row.get("Trainer")).lower()
+                    if not track or not trainer:
+                        continue
+                    runs = int(parse_float(row.get("Total Runs")) or 0)
+                    wins = int(parse_float(row.get("Wins")) or 0)
+                    places = int(parse_float(row.get("Places (Top 3)")) or 0)
+                    win_rate = (wins / runs) if runs else 0.0
+                    place_rate = (places / runs) if runs else 0.0
+                    if jockey:
+                        combo_cache[(track, jockey, trainer)] = {
+                            "runs": runs,
+                            "wins": wins,
+                            "places": places,
+                            "win_rate": win_rate,
+                            "place_rate": place_rate,
+                        }
+                    trainer_bucket = trainer_cache.setdefault((track, trainer), {"runs": 0, "wins": 0, "places": 0})
+                    trainer_bucket["runs"] += runs
+                    trainer_bucket["wins"] += wins
+                    trainer_bucket["places"] += places
+        except OSError as exc:
+            print(f"⚠️  J/T combo stats unavailable ({type(exc).__name__}) — scoring without them")
+            combo_cache, trainer_cache = {}, {}
     for stats in trainer_cache.values():
         runs = stats["runs"] or 0
         stats["win_rate"] = (stats["wins"] / runs) if runs else 0.0
@@ -1216,7 +1229,21 @@ class RacingEngine:
                 "Freedman", "Price", "Payne", "Pride", "Snowden", "Charlton",
                 "Hawkes", "O'Shea", "Conners", "Cummings", "Gollan", "Lees", "Neasham", "Moody"
             )
-            if any(token in trainer for token in strong_tokens):
+            # EMPIRICAL FILL 2026-07-25: the curated ratings CSV lists only ~57
+            # trainers, so 22-72% of runners previously fell through to a flat
+            # neutral 60 (the single biggest coverage hole in the matrix — see
+            # "2026-07-25 AU Full Matrix Data Barrier Scan"). The engine already
+            # carries trainer_ly (last-year official rides/wins/places) but only
+            # used it for narrative. Now unlisted trainers are scored from their
+            # OWN last-year place rate, empirical-Bayes shrunk toward the field
+            # norm so small samples can't swing the score (same discipline as the
+            # draw-bias shrinkage).
+            empirical = self._trainer_empirical_base(tly)
+            if empirical is not None:
+                base_delta, ev = empirical
+                add(base_delta, "去年實證班底水準", ev)
+                detail["base_label"] = f"名單外，改用去年實證（{ev}）"
+            elif any(token in trainer for token in strong_tokens):
                 add(TRAINER_MICRO_WEIGHTS.get("elite_bonus", 12.0), "全國強勢班底", "名單 fallback")
                 detail["base_label"] = "資料庫無記錄，中性起步"
             else:
@@ -1242,6 +1269,36 @@ class RacingEngine:
         detail["final"] = round(clip_score(score), 2)
         note = "；".join(notes) if notes else f"{trainer or '練馬師資料'} 反映馬房部署基礎"
         return score, f"{note}，練馬師分 {clip_score(score):.1f}。", "trainer_name+trainer_track_stats"
+
+    # Field-wide AU last-year place rate (~30% of runners place). Trainers are
+    # scored relative to this norm; SHRINK_K keeps thin samples near neutral.
+    _TRAINER_LY_NORM = 0.30
+    _TRAINER_LY_SHRINK_K = 40.0
+    _TRAINER_LY_SCALE = 34.0   # score points per unit of place-rate deviation
+    _TRAINER_LY_CAP = 9.0      # bounded either way; never dominates the feature
+
+    def _trainer_empirical_base(self, tly):
+        """(delta, evidence) from a trainer's own last-year record, or None.
+
+        Only fires for trainers absent from the curated ratings CSV, so it fills
+        the coverage hole without overriding analyst tiers.
+        """
+        try:
+            rides = int(tly.get("rides") or 0)
+            places = int(tly.get("places") or 0)
+            wins = int(tly.get("wins") or 0)
+        except (TypeError, ValueError):
+            return None
+        if rides < 10:
+            return None  # too thin to say anything
+        place_rate = (places + wins) / rides if places or wins else 0.0
+        shrunk = (place_rate * rides + self._TRAINER_LY_NORM * self._TRAINER_LY_SHRINK_K) / (
+            rides + self._TRAINER_LY_SHRINK_K)
+        delta = (shrunk - self._TRAINER_LY_NORM) * self._TRAINER_LY_SCALE
+        delta = max(-self._TRAINER_LY_CAP, min(self._TRAINER_LY_CAP, delta))
+        ev = (f"去年 {rides} 場、上名率 {place_rate * 100:.0f}%"
+              f"（收縮後 {shrunk * 100:.0f}%、基準 {self._TRAINER_LY_NORM * 100:.0f}%）")
+        return round(delta, 2), ev
 
     def _jockey_horse_fit_score(self):
         jockey = self._clean_identity(self.horse_data.get("jockey"))
