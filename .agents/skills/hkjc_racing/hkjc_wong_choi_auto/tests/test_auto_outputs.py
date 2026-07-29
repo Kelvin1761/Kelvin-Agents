@@ -8,6 +8,7 @@ import tempfile
 import unittest
 import io
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[5]
@@ -21,13 +22,14 @@ sys.path.insert(0, str(EXTRACTOR_DIR))
 
 import extract_trackwork
 from matrix_mapper import map_features_to_matrix_scores
-from scoring import DEBUT_MATRIX_WEIGHTS, MATRIX_WEIGHTS, compute_grade
-from engine_core import RacingEngine
+from scoring import MATRIX_WEIGHTS, compute_grade
+from engine_core import RacingEngine, scoring_run_contract
 from hkjc_auto_orchestrator import HKJCAutoOrchestrator, _apply_sip_enhancements, _parse_racecard_meta
 from renderer import _chronological_series, ensure_verdict, render_race_markdown, validate_report_text
 from features.jockey import JockeyScorer
 from features.speed import SpeedScorer
 from features.trainer import TrainerScorer
+import live_priors
 
 
 def _logic() -> dict:
@@ -216,10 +218,23 @@ class AutoOutputTests(unittest.TestCase):
         self.assertEqual(shadow["reliability"], 0.0)
         self.assertEqual(shadow["readiness_health_score"], 60.0)
         expected = round(
-            sum(shadow["matrix_scores"].get(key, 60.0) * weight for key, weight in DEBUT_MATRIX_WEIGHTS.items()),
+            sum(shadow["matrix_scores"].get(key, 60.0) * weight for key, weight in MATRIX_WEIGHTS.items()),
             2,
         )
         self.assertEqual(shadow["ability_score"], expected)
+
+    def test_debut_runner_uses_shared_outer_matrix_weights(self) -> None:
+        logic = _logic()
+        horse = logic["horses"]["2"]
+        horse["is_debut"] = True
+        auto = RacingEngine(horse, logic["race_analysis"]).analyze_horse()
+
+        expected = round(
+            sum(auto["matrix_scores"][key] * weight for key, weight in MATRIX_WEIGHTS.items()),
+            2,
+        )
+        self.assertEqual(auto["ability_score"], expected)
+        self.assertNotIn("debut_matrix_weights", scoring_run_contract())
 
     def test_readiness_shadow_verdict_tracks_top2_entry_without_changing_mainline(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -416,18 +431,19 @@ class AutoOutputTests(unittest.TestCase):
             self.assertEqual(horse["_data"]["trainer_name"], "蔡約翰")
 
     def test_calibrated_matrix_weights_are_locked(self) -> None:
-        # ML walk-forward backtest (18 meetings / 180 races) showed horse_health
-        # is noise in the ranking layer; its 0.0378 mass was redistributed
-        # proportionally (total mass kept at 0.9999 to preserve the grade scale).
+        # The 2026-07-30 competitiveness review covered 25 meetings / 245 races.
+        # Moving 3% from race_shape equally into trainer, stability and class
+        # improved zero-hit, Top-2 hits, NDCG and winner capture across the
+        # full archive and the fixed temporal holdout.
         self.assertAlmostEqual(sum(MATRIX_WEIGHTS.values()), 1.0, places=3)
         self.assertEqual(
             MATRIX_WEIGHTS,
             {
                 "sectional": 0.1849,
-                "trainer_signal": 0.2209,
-                "stability": 0.0919,
-                "race_shape": 0.2560,
-                "class_advantage": 0.1335,
+                "trainer_signal": 0.2309,
+                "stability": 0.1019,
+                "race_shape": 0.2260,
+                "class_advantage": 0.1435,
                 "horse_health": 0.0378,
                 "form_line": 0.0749,
             },
@@ -435,14 +451,25 @@ class AutoOutputTests(unittest.TestCase):
 
     def test_chinese_jockey_and_trainer_names_are_scored(self) -> None:
         # 主要來源＝兩季 master stats 連續實績評分（2026-07-08 ML 驗證上線）
-        score, reason = JockeyScorer({"jockey": "潘頓"}, {}).compute()
-        self.assertGreaterEqual(score, 75.0)
-        self.assertIn("實績評分", reason)
-        mid_score, _ = JockeyScorer({"jockey": "田泰安"}, {}).compute()
-        self.assertGreater(score, mid_score)  # 連續評分要拉得開，唔係層級一刀切
-        t_score, t_reason = TrainerScorer({"trainer": "蔡約翰"}, {}).compute()
-        self.assertGreater(t_score, 60.0)
-        self.assertIn("實績評分", t_reason)
+        records = {
+            ("jockey", "潘頓"): {"score": 82.0, "starts": 600, "win_rate": 22, "place_rate": 51},
+            ("jockey", "田泰安"): {"score": 69.0, "starts": 500, "win_rate": 11, "place_rate": 34},
+            ("trainer", "蔡約翰"): {"score": 72.0, "starts": 700, "win_rate": 13, "place_rate": 37},
+        }
+
+        class FixtureRatings:
+            def lookup(self, group, name):
+                return records.get((group, name))
+
+        with mock.patch.object(live_priors, "_JT_RATINGS", FixtureRatings()):
+            score, reason = JockeyScorer({"jockey": "潘頓"}, {}).compute()
+            self.assertGreaterEqual(score, 75.0)
+            self.assertIn("實績評分", reason)
+            mid_score, _ = JockeyScorer({"jockey": "田泰安"}, {}).compute()
+            self.assertGreater(score, mid_score)  # 連續評分要拉得開，唔係層級一刀切
+            t_score, t_reason = TrainerScorer({"trainer": "蔡約翰"}, {}).compute()
+            self.assertGreater(t_score, 60.0)
+            self.assertIn("實績評分", t_reason)
         # 唔喺 ratings 表（例如英文名）→ 退返層級表
         self.assertEqual(JockeyScorer({"jockey": "PURTON"}, {}).compute()[0], 85.0)
         # 完全未知 → 中性 60
@@ -514,6 +541,22 @@ class AutoOutputTests(unittest.TestCase):
 
         conf_f, _, _ = eng_f._confidence_score(neutral)
         self.assertGreaterEqual(conf_f, 60.0)  # not structurally low-confidence
+
+    def test_foreign_runner_uses_hk_starts_not_overseas_last6_digits(self) -> None:
+        overseas = {
+            "horse_name": "外隊馬",
+            "hk_starts": 0,
+            "last_6_finishes": "1-2-1",
+            "_data": {
+                "pdf_overseas_races": [
+                    {"class_level": "G1", "rank": "1/12", "time": "1.35.2", "margin": "1"},
+                ]
+            },
+        }
+        local_import = {**overseas, "hk_starts": 3}
+
+        self.assertTrue(RacingEngine(overseas, {})._is_foreign_runner())
+        self.assertFalse(RacingEngine(local_import, {})._is_foreign_runner())
 
     def test_confidence_does_not_create_trainer_signal_edge(self) -> None:
         low_confidence = {

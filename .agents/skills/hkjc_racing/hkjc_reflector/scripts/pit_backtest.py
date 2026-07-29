@@ -195,7 +195,10 @@ def main() -> int:
     # 強制 combo 行 as-of（archive 有注入 jockey_trainer_combo_prior，會蓋過 as-of）
     RacingEngine._jockey_trainer_prior = lambda self: None
 
-    all_rows = load_all_rows()
+    try:
+        all_rows = load_all_rows()
+    except (OSError, RuntimeError) as exc:
+        raise SystemExit(f"PIT source preflight failed: {exc}") from exc
     print(f"raw rows: {len(all_rows)}  date range {all_rows['Date'].min()}→{all_rows['Date'].max()}")
 
     all_races, errors, skipped = [], [], []

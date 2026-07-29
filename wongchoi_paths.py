@@ -21,9 +21,24 @@ Usage from any script:
 from __future__ import annotations
 
 import os
+import stat as stat_module
 from pathlib import Path
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent
+
+
+def is_materialized_file(path: Path) -> bool:
+    """True only when a regular file has local bytes, not a cloud placeholder."""
+    try:
+        info = Path(path).stat()
+    except OSError:
+        return False
+    blocks = getattr(info, "st_blocks", None)
+    return (
+        stat_module.S_ISREG(info.st_mode)
+        and info.st_size > 0
+        and not (blocks == 0 and info.st_size > 0)
+    )
 
 
 def _resolve_data_root() -> Path:
@@ -142,7 +157,9 @@ if __name__ == "__main__":
         for item in issues:
             print("  -", item)
         print()
-        print("  HKJC scoring still works (its priors are committed in-repo).")
+        print("  HKJC scoring can fall back to neutral/tier ratings when cloud priors")
+        print("  are unavailable; materialize the HKJC statistics files for the")
+        print("  calibrated continuous jockey/trainer and combination priors.")
         print("  AU scoring needs the files above — they are gitignored and live")
         print("  on Google Drive. Install Google Drive Desktop, sign in, and set")
         print("  the 'Antigravity Shared' folder to 'Available offline'.")

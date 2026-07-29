@@ -4,6 +4,7 @@ import csv
 import io
 import os
 import re
+import tempfile
 from collections import Counter
 from pathlib import Path
 
@@ -46,6 +47,14 @@ MATRIX_ROLES = {
     "form_line": "輔助",
     "class_advantage": "輔助",
 }
+
+DERIVED_SCORE_KEYS = (
+    "formline_strength_score",
+    "margin_trend_score",
+    "same_distance_signal_score",
+    "trackwork_trend_score",
+    "race_shape_context_score",
+)
 
 
 BAND_LABELS = {
@@ -158,77 +167,6 @@ def _confidence_tier(ranked: list) -> tuple:
     return tier, round(gap, 2), radar_size
 
 
-def _draw_micro_bonus(horse: dict, race_context: dict, auto: dict) -> float:
-    bonus = 0.0
-    draw = horse.get("barrier") or horse.get("draw")
-    try:
-        draw_num = int(draw)
-    except (TypeError, ValueError):
-        return 0.0
-
-    data = horse.get("_data", {}) if isinstance(horse.get("_data"), dict) else {}
-    fit = str(data.get("draw_position_fit") or "")
-    trend = str(data.get("position_pi") or "")
-    verdict = str(data.get("draw_verdict") or "")
-
-    if "✅匹配" in fit:
-        bonus += 1.5
-    elif "❌錯配" in fit:
-        bonus -= 2.0
-    elif "偏好走外但起步在內" in fit or "偏好走內但被迫走外" in fit:
-        bonus -= 1.5
-    elif "需主動切入內疊" in fit:
-        bonus -= 1.0
-
-    if "上升軌" in trend:
-        bonus += 0.8
-    elif "衰退中" in trend:
-        bonus -= 0.8
-
-    if "✅有利" in verdict:
-        bonus += 0.7
-    elif "❌不利" in verdict:
-        bonus -= 0.7
-
-    bonus += _horse_draw_history_adjustment(horse, draw_num) * 0.5
-
-    venue = _normalize_venue(race_context.get("venue"))
-    distance = _normalize_distance(race_context.get("distance"))
-    if venue == "跑馬地" and distance == "1650":
-        if draw_num in {1, 2, 3, 7, 8}:
-            bonus += 0.5
-        if draw_num in {11, 12}:
-            bonus -= 0.5
-
-    if clip_score(auto.get("feature_scores", {}).get("draw_score", 60.0)) <= 55.0:
-        bonus *= 1.15
-    return bonus
-
-
-def _horse_draw_history_adjustment(horse: dict, draw_num: int) -> float:
-    data = horse.get("_data", {}) if isinstance(horse.get("_data"), dict) else {}
-    fit = str(data.get("draw_position_fit") or "")
-    match = re.search(r"內檔\(1-4\)上名率(\d+)%.*?中檔\(5-8\)上名率(\d+)%.*?外檔\(9\+\)上名率(\d+)%", fit)
-    if not match:
-        return 0.0
-    inner, middle, outer = (float(match.group(i)) for i in range(1, 4))
-    if draw_num <= 4:
-        current = inner
-        best_other = max(middle, outer)
-    elif draw_num <= 8:
-        current = middle
-        best_other = max(inner, outer)
-    else:
-        current = outer
-        best_other = max(inner, middle)
-    edge = current - best_other
-    if edge >= 10.0:
-        return 1.5
-    if edge <= -10.0:
-        return -1.5
-    return 0.0
-
-
 def _normalize_venue(value) -> str:
     text = str(value or "").strip()
     if text in {"HV", "跑馬地"}:
@@ -254,6 +192,11 @@ def _shadow_flag_candidates(horse: dict, race_context: dict, auto: dict) -> list
 
     data = horse.get("_data", {}) if isinstance(horse.get("_data"), dict) else {}
     features = auto.get("feature_scores", {}) if isinstance(auto.get("feature_scores"), dict) else {}
+    derived = (
+        auto.get("derived_feature_scores", {})
+        if isinstance(auto.get("derived_feature_scores"), dict)
+        else {}
+    )
 
     flags: list[dict] = []
     best_distance = str(data.get("best_distance") or "")
@@ -261,7 +204,7 @@ def _shadow_flag_candidates(horse: dict, race_context: dict, auto: dict) -> list
     trackwork_digest = str(data.get("trackwork_digest") or "")
     trackwork_health = str(data.get("trackwork_health") or "")
     position_pi = str(data.get("position_pi") or "")
-    same_distance = clip_score(features.get("same_distance_signal_score", 60.0))
+    same_distance = clip_score(derived.get("same_distance_signal_score", 60.0))
     risk_score = clip_score(features.get("risk_score", 60.0))
     last_finish = _safe_int(data.get("last_finish"))
 
@@ -273,7 +216,10 @@ def _shadow_flag_candidates(horse: dict, race_context: dict, auto: dict) -> list
     )
     matched_draw = "✅匹配" in draw_fit
     stable_trackwork = "操練放緩" not in trackwork_health and ("加強中" in trackwork_digest or "穩定" in trackwork_digest)
-    positive_trackwork = "加強中" in trackwork_digest or clip_score(features.get("trackwork_trend_score", 60.0)) >= 68.0
+    positive_trackwork = (
+        "加強中" in trackwork_digest
+        or clip_score(derived.get("trackwork_trend_score", 60.0)) >= 68.0
+    )
 
     if (
         last_finish == 1
@@ -329,16 +275,27 @@ def _safe_int(value: object) -> int | None:
         return None
 
 
-def write_race_outputs(logic_path: Path, logic_data: dict) -> tuple[Path, Path]:
+def prepare_race_outputs(logic_path: Path, logic_data: dict) -> tuple[Path, str, Path, str]:
     stem = logic_path.stem.replace("_Logic", "")
     md_path = logic_path.with_name(f"{stem}_Auto_Analysis.md")
     csv_path = logic_path.with_name(f"{stem}_Auto_Scoring.csv")
-    _atomic_write_text(md_path, render_race_markdown(logic_data))
-    _atomic_write_text(csv_path, render_race_csv(logic_data))
-    errors = validate_report_text(md_path.read_text(encoding="utf-8"))
+    markdown = render_race_markdown(logic_data)
+    scoring_csv = render_race_csv(logic_data)
+    errors = validate_report_text(markdown)
     if errors:
         raise ValueError(f"Auto report validation failed for {md_path}:\n" + "\n".join(errors))
+    return md_path, markdown, csv_path, scoring_csv
+
+
+def write_prepared_race_outputs(prepared: tuple[Path, str, Path, str]) -> tuple[Path, Path]:
+    md_path, markdown, csv_path, scoring_csv = prepared
+    _atomic_write_text(md_path, markdown)
+    _atomic_write_text(csv_path, scoring_csv)
     return md_path, csv_path
+
+
+def write_race_outputs(logic_path: Path, logic_data: dict) -> tuple[Path, Path]:
+    return write_prepared_race_outputs(prepare_race_outputs(logic_path, logic_data))
 
 
 def render_race_markdown(logic_data: dict) -> str:
@@ -392,6 +349,8 @@ def render_race_csv(logic_data: dict) -> str:
         "shadow_readiness_reliability",
         "shadow_readiness_reason",
         *FEATURE_LABELS.keys(),
+        *DERIVED_SCORE_KEYS,
+        *(f"matrix_{key}" for key in MATRIX_LABELS),
     ]
     writer = csv.DictWriter(output, fieldnames=fields)
     writer.writeheader()
@@ -432,6 +391,13 @@ def render_race_csv(logic_data: dict) -> str:
             "shadow_readiness_reason": _shadow_profile_value(auto, "readiness_health_slot", "reason"),
         }
         row.update(auto.get("feature_scores", {}))
+        row.update(auto.get("derived_feature_scores", {}))
+        row.update(
+            {
+                f"matrix_{key}": value
+                for key, value in (auto.get("matrix_scores", {}) or {}).items()
+            }
+        )
         writer.writerow(row)
     return output.getvalue()
 
@@ -1305,9 +1271,23 @@ def _consistency_shadow_summary(verdict: dict | None) -> str:
 
 
 def _atomic_write_text(path: Path, content: str) -> None:
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(content, encoding="utf-8")
-    os.replace(tmp, path)
+    path = Path(path)
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            handle.write(content)
+            tmp_path = Path(handle.name)
+        os.replace(tmp_path, path)
+    finally:
+        if tmp_path and tmp_path.exists():
+            tmp_path.unlink()
 
 
 

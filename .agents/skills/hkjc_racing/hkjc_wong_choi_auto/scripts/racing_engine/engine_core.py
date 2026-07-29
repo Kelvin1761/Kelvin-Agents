@@ -10,16 +10,35 @@ from form import FormScorer
 from jockey import JockeyScorer
 from speed import SpeedScorer
 from trainer import TrainerScorer
-from live_priors import TrainerSignalPriors
-from matrix_mapper import MATRIX_FORMULAS, map_features_to_matrix, map_features_to_matrix_scores
+from live_priors import TrainerSignalPriors, prior_source_manifest
+from matrix_mapper import (
+    MATRIX_FORMULAS,
+    map_features_to_matrix,
+    map_features_to_matrix_scores,
+    matrix_formula_manifest,
+)
 import scoring
-from scoring import DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS, MATRIX_WEIGHTS, clip_score, compute_grade, parse_float, parse_record, score_band
+from scoring import FEATURE_KEYS, MATRIX_WEIGHTS, clip_score, compute_grade, parse_float, parse_record, score_band
 
 _TRAINER_SIGNAL_PRIORS = None
 READINESS_HEALTH_PROFILE = "readiness_health_slot"
 MAINLINE_HEALTH_PROFILE = "legacy_health_v2"
 SUPPORTED_HEALTH_PROFILES = (MAINLINE_HEALTH_PROFILE, READINESS_HEALTH_PROFILE)
 SUPPORTED_SHADOW_PROFILES = ("consistency_context", "readiness_health_slot", "legacy_health_slot")
+SCORING_CONTRACT_VERSION = scoring.SCORING_CONTRACT_VERSION
+
+
+def scoring_run_contract():
+    return {
+        "version": SCORING_CONTRACT_VERSION,
+        "standard_matrix_weights": dict(MATRIX_WEIGHTS),
+        "matrix_formulas": matrix_formula_manifest(),
+        "grade_thresholds": [
+            {"minimum": minimum, "grade": grade}
+            for minimum, grade in scoring.GRADE_THRESHOLDS
+        ],
+        "prior_sources": prior_source_manifest(),
+    }
 
 
 class RacingEngine:
@@ -121,6 +140,7 @@ class RacingEngine:
                 else "HKJC_AUTO_SCORE_V2"
             ),
             "health_slot_profile": self.health_profile,
+            "scoring_contract_id": SCORING_CONTRACT_VERSION,
             "health_slot_detail": dict(self.health_slot_detail),
             "ability_score": ability_score,
             "grade": grade,
@@ -134,9 +154,8 @@ class RacingEngine:
             "trackwork_read": self._trackwork_interpretation(),
             "overseas_form_read": self._overseas_form_interpretation(),
             "feature_scores": {key: round(feature_scores[key], 2) for key in FEATURE_KEYS},
-            # Persist the derived sub-features that feed form_line/stability/race_shape
-            # so the backtest harness can faithfully reproduce production scoring (these
-            # are NOT in the 12 FEATURE_KEYS but matrix formulas depend on them).
+            # Persist derived sub-features used by matrix formulas and advisory
+            # diagnostics. They are intentionally separate from FEATURE_KEYS.
             "derived_feature_scores": {
                 key: round(feature_scores.get(key, 60.0), 2)
                 for key in ("formline_strength_score", "margin_trend_score",
@@ -279,6 +298,12 @@ class RacingEngine:
         )
         if not real:
             return False
+        raw_hk_starts = self._value("hk_starts")
+        if raw_hk_starts in (None, ""):
+            raw_hk_starts = self.horse_data.get("hk_starts")
+        hk_starts = parse_float(raw_hk_starts)
+        if hk_starts is not None:
+            return hk_starts <= 0
         hk_form = str(self._value("last_6_finishes") or "").strip()
         has_hk_form = hk_form not in ("", "N/A") and any(c.isdigit() for c in hk_form)
         return not has_hk_form
@@ -639,10 +664,7 @@ class RacingEngine:
         return delta, detail + "。"
 
     def _ability_score(self, matrix_scores):
-        if self._is_debut():
-            return sum(matrix_scores.get(key, 60.0) * weight for key, weight in DEBUT_MATRIX_WEIGHTS.items())
-        else:
-            return sum(matrix_scores[key] * weight for key, weight in MATRIX_WEIGHTS.items())
+        return sum(matrix_scores[key] * weight for key, weight in MATRIX_WEIGHTS.items())
 
     def build_shadow_profile(self, profile_name, base_auto=None):
         if profile_name not in SUPPORTED_SHADOW_PROFILES:
@@ -2959,11 +2981,9 @@ class RacingEngine:
     def _grade_computation_transparency(self, matrix_scores, ability_score, grade, feature_scores=None):
         """The ONE scoring-summary block: a 7D contribution table (score × weight
         = contribution), the weighted total + grade, reference scores that sit
-        outside the 7D formula, and triggered risk flags. Weights are pulled live
-        from the active weight set (debut vs standard) so the displayed 加權總分
-        always matches the real ability_score."""
-        is_debut = self._is_debut()
-        active_weights = DEBUT_MATRIX_WEIGHTS if is_debut else MATRIX_WEIGHTS
+        outside the 7D formula, and triggered risk flags. All runners use the
+        same outer weights; debut uncertainty remains inside the feature scores."""
+        active_weights = MATRIX_WEIGHTS
 
         dims = [
             ("stability", "狀態與穩定性"),
@@ -2988,8 +3008,7 @@ class RacingEngine:
             rows.append({"key": key, "label": label, "score": round(raw_score, 2),
                          "weight": weight, "contribution": contribution, "band": band})
             if weight == 0.0:
-                tag = "初出馬豁免" if is_debut else "0%（僅作參考）"
-                lines.append(f"| {label} | {raw_score:.1f} | {tag} | — | {band} |")
+                lines.append(f"| {label} | {raw_score:.1f} | 0%（僅作參考） | — | {band} |")
             else:
                 lines.append(f"| {label} | {raw_score:.1f} | {weight * 100:.1f}% | {contribution:.2f} | {band} |")
 

@@ -34,7 +34,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from wongchoi_paths import HK_RACING  # noqa: E402
+from wongchoi_paths import HK_RACING, is_materialized_file  # noqa: E402
 
 DB_ROOT = HK_RACING / "HKJC_Race_Results_Database"
 STATS_ROOT = DB_ROOT / "comprehensive_stats"
@@ -56,6 +56,11 @@ def _num(v):
 
 def load_base_rows(season_key: str) -> pd.DataFrame:
     path = STATS_ROOT / season_key / SEASONS[season_key]["csv"]
+    if not is_materialized_file(path):
+        raise RuntimeError(
+            f"HKJC source CSV is not materialized locally: {path}. "
+            "Mark the statistics folder Available offline before rebuilding/PIT replay."
+        )
     df = pd.read_csv(path, encoding="utf-8-sig")
     df["Date"] = df["Date"].astype(str)
     return df

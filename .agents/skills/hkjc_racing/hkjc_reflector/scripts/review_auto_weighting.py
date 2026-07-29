@@ -74,6 +74,8 @@ HORSE_HEALTH_RISK_ONLY_FORMULAS = {
     "horse_health": (("risk_score", 1.00),),
 }
 
+# Historical pre-2026-07-30 live contract. Keep this pinned so comparison
+# reports do not silently move when CURRENT_MATRIX_WEIGHTS is recalibrated.
 ML_7D_WEIGHT_SHADOW = {
     "sectional": 0.1849,
     "trainer_signal": 0.2209,
@@ -1442,45 +1444,10 @@ def race_num_from_path(path: Path) -> int:
 
 
 def compute_full_feature_scores(horse: dict, race_context: dict) -> dict[str, float]:
-    engine = RacingEngine(horse, race_context)
-    feature_scores: dict[str, float] = {}
-
-    for name, scorer_class in {
-        "jockey_score": JockeyScorer,
-        "trainer_score": TrainerScorer,
-        "draw_score": DrawScorer,
-        "form_score": FormScorer,
-        "speed_score": SpeedScorer,
-    }.items():
-        score, _note = scorer_class(horse, race_context).compute()
-        feature_scores[name] = clip_score(score)
-
-    for name, func in {
-        "class_score": engine._class_score,
-        "distance_score": engine._distance_score,
-        "track_going_score": engine._track_going_score,
-        "weight_score": engine._weight_score,
-        "consistency_score": engine._consistency_score,
-        "risk_score": engine._risk_score,
-        "confidence_score": engine._confidence_score,
-    }.items():
-        score, _note, _source = func(feature_scores)
-        feature_scores[name] = clip_score(score)
-
-    derived = {
-        "formline_strength_score": engine._formline_strength_score(),
-        "margin_trend_score": engine._margin_trend_score(),
-        "same_distance_signal_score": engine._same_distance_signal_score(),
-        "trackwork_trend_score": engine._trackwork_trend_score(),
-    }
-    for name, (score, _note, _source) in derived.items():
-        feature_scores[name] = clip_score(score)
-
-    for key in FEATURE_KEYS:
-        feature_scores[key] = clip_score(feature_scores.get(key, 60))
-
-    feature_scores, _notes, _sources = engine._apply_mainline_context(feature_scores, {})
-    return {key: clip_score(feature_scores.get(key, 60)) for key in feature_scores}
+    auto = RacingEngine(deepcopy(horse), dict(race_context)).analyze_horse()
+    feature_scores = dict(auto.get("feature_scores") or {})
+    feature_scores.update(auto.get("derived_feature_scores") or {})
+    return {key: clip_score(value) for key, value in feature_scores.items()}
 
 
 def compute_matrix_scores(features: dict[str, float], formulas: dict[str, tuple[tuple[str, float], ...]]) -> dict[str, float]:
@@ -2141,12 +2108,20 @@ def run_review(
                     horse_num = int(horse_num_text)
                 except ValueError:
                     continue
-                features = compute_full_feature_scores(horse, race_context)
+                live_auto = RacingEngine(deepcopy(horse), dict(race_context)).analyze_horse()
+                features = dict(live_auto.get("feature_scores") or {})
+                features.update(live_auto.get("derived_feature_scores") or {})
                 models = {}
                 if horse.get("is_debut") or horse.get("debut_runner") or horse.get("career_tag") == "DEBUT":
                     has_debut = True
                     coverage["debut_horses"] += 1
                 for model_name, spec in model_specs.items():
+                    if model_name == "current_live":
+                        models[model_name] = {
+                            "matrix_scores": dict(live_auto["matrix_scores"]),
+                            "ability": float(live_auto["ability_score"]),
+                        }
+                        continue
                     transformed = spec.get("feature_transform", lambda _horse, vals, _ctx=None: vals)(horse, features, race_context)
                     matrix_scores = compute_matrix_scores(transformed, spec["formulas"])
                     ability = compute_ability(matrix_scores, spec["weights"])

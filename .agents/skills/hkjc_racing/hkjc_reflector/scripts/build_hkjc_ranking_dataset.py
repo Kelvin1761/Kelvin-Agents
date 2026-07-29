@@ -13,6 +13,7 @@ import argparse
 import json
 import math
 import re
+from copy import deepcopy
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,7 @@ from hkjc_results_db import get_comprehensive_stats_root
 from review_auto_weighting import (
     CURRENT_MATRIX_FORMULAS,
     CURRENT_MATRIX_WEIGHTS,
+    RacingEngine,
     _normalize_distance,
     _normalize_venue,
     build_results_index,
@@ -82,6 +84,30 @@ def _coerce_int(value: object) -> int | None:
     if number is None:
         return None
     return int(round(number))
+
+
+def _is_foreign_runner(horse: dict[str, Any]) -> int:
+    """Identify a visitor with real overseas form and no Hong Kong starts."""
+    data = horse.get("_data") if isinstance(horse.get("_data"), dict) else {}
+    rows = data.get("pdf_overseas_races") or horse.get("pdf_overseas_races") or []
+    real_overseas = any(
+        isinstance(row, dict)
+        and any(
+            str(row.get(key, "-")).strip() not in ("-", "", "N/A", "--")
+            for key in ("class_level", "rank", "time", "margin")
+        )
+        for row in rows
+    )
+    if not real_overseas:
+        return 0
+    raw_hk_starts = horse.get("hk_starts")
+    if raw_hk_starts in (None, ""):
+        raw_hk_starts = data.get("hk_starts")
+    hk_starts = _coerce_float(raw_hk_starts)
+    if hk_starts is not None:
+        return int(hk_starts <= 0)
+    hk_form = str(horse.get("last_6_finishes") or data.get("last_6_finishes") or "").strip()
+    return int(not any(character.isdigit() for character in hk_form))
 
 
 def _distance_token(value: object) -> str:
@@ -223,7 +249,13 @@ def _load_racecard_snapshot(meeting_dir: str, race_num: int) -> dict[str, Any]:
     if not candidates:
         return {"race_info": {}, "horses": {}}
 
-    content = candidates[0].read_text(encoding="utf-8")
+    try:
+        content = candidates[0].read_text(encoding="utf-8")
+    except OSError:
+        # Racecard markdown enriches optional metadata only.  A cloud-backed
+        # archive can time out while hydrating this file; the Logic snapshot
+        # remains sufficient for scoring and the rebuild must continue.
+        return {"race_info": {}, "horses": {}}
     race_info = {
         "venue": _line_value(content, "地點"),
         "track": _line_value(content, "場地"),
@@ -647,9 +679,18 @@ def build_rows(meeting_roots: list[Path], results_roots: list[Path]) -> tuple[pd
                 if finish_pos is None:
                     continue
 
-                feature_scores = compute_full_feature_scores(horse, race_context)
-                matrix_scores = compute_matrix_scores(feature_scores, CURRENT_MATRIX_FORMULAS)
-                ability = compute_ability(matrix_scores, CURRENT_MATRIX_WEIGHTS)
+                # Persist the exact live payload.  Rebuilding ability from the
+                # feature map alone misses matrix-level context applied inside
+                # RacingEngine (for example finish-time trend), which can make
+                # an archive gate evaluate a ranking that is not production.
+                live_auto = RacingEngine(deepcopy(horse), dict(race_context)).analyze_horse()
+                feature_scores = dict(live_auto.get("feature_scores") or {})
+                feature_scores.update(live_auto.get("derived_feature_scores") or {})
+                matrix_scores = {
+                    key: float(value)
+                    for key, value in (live_auto.get("matrix_scores") or {}).items()
+                }
+                ability = float(live_auto["ability_score"])
                 last_finishes = _parse_last_finishes(horse.get("last_6_finishes"))
                 horse_data = horse.get("_data") or {}
                 racecard_horse = racecard_horses.get(horse_num) or {}
@@ -693,6 +734,7 @@ def build_rows(meeting_roots: list[Path], results_roots: list[Path]) -> tuple[pd
                     "hk_starts": _coerce_float(horse.get("hk_starts")),
                     "is_debut": int(bool(horse.get("is_debut") or horse.get("debut_runner") or horse.get("career_tag") == "DEBUT")),
                     "is_import": int(bool(horse.get("is_import"))),
+                    "is_foreign_runner": _is_foreign_runner(horse),
                     "current_live_recomputed_ability": ability,
                     "card_age": _coerce_float(racecard_horse.get("age")),
                     "card_rating": _coerce_float(racecard_horse.get("rating")),

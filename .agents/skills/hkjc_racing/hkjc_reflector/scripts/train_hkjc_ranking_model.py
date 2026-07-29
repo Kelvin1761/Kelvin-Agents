@@ -102,6 +102,7 @@ def _feature_sets(df: pd.DataFrame) -> dict[str, list[str]]:
         "last6_top5_count",
         "is_debut",
         "is_import",
+        "is_foreign_runner",
     ]
     stack_cols = [
         "current_live_ability",

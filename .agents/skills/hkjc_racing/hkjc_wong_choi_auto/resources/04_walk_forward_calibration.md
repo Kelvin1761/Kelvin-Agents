@@ -30,9 +30,47 @@ Total sample: dynamic walk-forward coverage based on all matched meetings curren
 
 ## Decision
 
-### Previous Calibration (current mainline)
+### 2026-07-30 Competitiveness Calibration (current mainline)
 
-Mainline decision after dedup walk-forward review (`140` unique races / `14` unique meetings):
+The full-archive review rebuilt the live 7D matrices directly from archived
+pre-race Logic files. The matched evaluation layer contains `25` meetings,
+`245` valid races, and `3,054` runners, including the independent 2026-07-15
+Happy Valley meeting.
+
+Current mainline:
+
+- `race_shape`: 0.2260
+- `trainer_signal`: 0.2309
+- `stability`: 0.1019
+- `sectional`: 0.1849
+- `class_advantage`: 0.1435
+- `horse_health`: 0.0378
+- `form_line`: 0.0749
+
+The only passing candidate moved `0.03` from `race_shape` equally to
+`trainer_signal`, `stability`, and `class_advantage`. On the unfiltered
+245-race archive it reduced zero-hit races by `2`, reduced one-hit races by
+`1`, added `5` Top-2 placing hits, added `3` races with two Top-2 hits,
+improved winner-in-Top-5 by `1.22pp`, and improved NDCG@5 by `0.41pp`.
+The fixed later-meeting holdout also improved Top-2 hits, Top-3 capture@5,
+competitive recall@5, NDCG@5, and winner-in-Top-5.
+
+No result was removed for odds, incidents, or abnormal outcomes to make this
+candidate pass. Direct lighter-weight boosting and replacement form-line
+count formulas were rejected because they failed cross-period validation.
+
+A separate auditable adjusted layer matched all 245 races to official HKJC
+win odds and incident reports. It flagged 79 races only when an actual Top-3
+runner started at 30.0+ or a model Top-2 non-placer had an explicit material
+incident. On the remaining 166 races, the promoted candidate also reduced
+zero-hit races by 1, added 3 Top-2 placing hits, improved NDCG@5 by 0.71pp,
+and improved winner-in-Top-5 by 1.81pp. Odds and post-race text remain
+evaluation-only and never enter scoring.
+
+### Previous Calibration (historical baseline)
+
+Pre-2026-07-30 decision after dedup walk-forward review (`140` unique races /
+`14` unique meetings):
 
 - `race_shape`: 0.2560
 - `trainer_signal`: 0.2209
@@ -117,4 +155,4 @@ python3 .agents/skills/hkjc_racing/hkjc_reflector/scripts/review_auto_weighting.
 
 That script re-scores each archived `Race_*_Logic.json` directly through the live engine, then compares the current formula set against the prior calibrated baseline using matched actual results.
 
-Current live ranking behavior uses `ability_score` as the base order, with a draw micro tie-break applied only when the #3 and #4 horses are within the trigger gap. Walk-forward review should therefore treat that tie-break as part of the live baseline rather than as a separate cosmetic post-process.
+Current live ranking behavior uses `ability_score` only, with horse number as the deterministic exact-tie key. Draw, position, trainer, health, sectional, class, and form-line information must enter through the versioned 7D score rather than a post-ranking micro tie-break.

@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 os.environ.setdefault("PYTHONUTF8", "1")
@@ -23,6 +24,7 @@ SHARED_SCRIPTS = ROOT / ".agents" / "scripts"
 SHARED_HOOK_DIR = ROOT / ".agents" / "skills" / "shared_racing" / "post_success_hooks" / "scripts"
 
 sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(SHARED_SCRIPTS))
 sys.path.insert(0, str(SHARED_HOOK_DIR))
 
@@ -33,6 +35,7 @@ from hkjc_orchestrator_helpers import (
 )
 from cloudflare_deploy_hook import run_post_success_cloudflare_deploy
 from subprocess_pool import bounded_workers
+from wongchoi_paths import is_materialized_file
 
 
 PYTHON = sys.executable
@@ -95,13 +98,23 @@ def _generate_facts(target_dir: Path, skip_facts: bool, workers: int = 1) -> Non
 
 
 def _iter_facts_files(target_dir: Path) -> list[tuple[int, Path]]:
-    facts_files = []
-    for facts_path in sorted(target_dir.glob("* Race * Facts.md")):
+    by_race: dict[int, Path] = {}
+    for facts_path in target_dir.glob("* Race * Facts.md"):
         match = re.search(r"Race\s+(\d+)", facts_path.name)
         if not match:
             continue
-        facts_files.append((int(match.group(1)), facts_path))
-    return facts_files
+        if not is_materialized_file(facts_path):
+            raise SystemExit(
+                f"❌ Facts file is not materialized locally: {facts_path}"
+            )
+        race_number = int(match.group(1))
+        if race_number in by_race:
+            raise SystemExit(
+                "❌ Duplicate Facts files for Race "
+                f"{race_number}: {by_race[race_number].name}, {facts_path.name}"
+            )
+        by_race[race_number] = facts_path
+    return sorted(by_race.items())
 
 
 def _extract_horse_nums(facts_path: Path) -> list[int]:
@@ -112,7 +125,23 @@ def _extract_horse_nums(facts_path: Path) -> list[int]:
 def _logic_needs_refresh(facts_path: Path, logic_path: Path, horse_nums: list[int]) -> bool:
     if not logic_path.exists():
         return True
-    if facts_path.stat().st_mtime_ns > logic_path.stat().st_mtime_ns:
+    if not is_materialized_file(logic_path):
+        return True
+    source_paths = [facts_path]
+    race_match = re.search(r"Race\s+(\d+)", facts_path.name)
+    if race_match:
+        race_number = race_match.group(1)
+        for suffix in ("晨操.md", "晨操.json", "排位表.md"):
+            source_paths.extend(facts_path.parent.glob(f"*Race {race_number} {suffix}"))
+    newest_source_mtime = max(
+        (
+            path.stat().st_mtime_ns
+            for path in source_paths
+            if is_materialized_file(path)
+        ),
+        default=0,
+    )
+    if newest_source_mtime > logic_path.stat().st_mtime_ns:
         return True
     try:
         logic_data = json.loads(logic_path.read_text(encoding="utf-8"))
@@ -122,7 +151,8 @@ def _logic_needs_refresh(facts_path: Path, logic_path: Path, horse_nums: list[in
     if not isinstance(horses, dict):
         return True
     expected = {str(num) for num in horse_nums}
-    return not expected.issubset(horses.keys())
+    actual = {str(num) for num in horses}
+    return expected != actual
 
 
 def _generate_logic(target_dir: Path, skip_logic: bool, workers: int = 1) -> None:
@@ -173,30 +203,45 @@ def _generate_logic_for_race(
 ) -> dict[str, object]:
     stdout_parts: list[str] = []
     stderr_parts: list[str] = []
-    for horse_num in horse_nums:
+    with tempfile.TemporaryDirectory(dir=logic_path.parent, prefix=f".race_{race_num}_logic_") as tmp_dir:
+        fresh_logic_path = Path(tmp_dir) / logic_path.name
         cmd = [
             PYTHON,
             str(SCRIPT_DIR / "create_hkjc_logic_skeleton.py"),
             str(facts_path),
             str(race_num),
-            str(horse_num),
+            "--all-horses",
             "--output",
-            str(logic_path),
+            str(fresh_logic_path),
         ]
-        label = f"Build Logic JSON — Race {race_num} Horse {horse_num}"
+        label = f"Build complete Logic JSON — Race {race_num} ({len(horse_nums)} horses)"
         if stream:
             _run(cmd, label)
-            continue
-        result = subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True)
-        stdout_parts.append(f"\n{'=' * 72}\n{label}\n{' '.join(cmd)}\n{'=' * 72}\n")
-        stdout_parts.append(result.stdout or "")
-        stderr_parts.append(result.stderr or "")
-        if result.returncode != 0:
+        else:
+            result = subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True)
+            stdout_parts.append(f"\n{'=' * 72}\n{label}\n{' '.join(cmd)}\n{'=' * 72}\n")
+            stdout_parts.append(result.stdout or "")
+            stderr_parts.append(result.stderr or "")
+            if result.returncode != 0:
+                return {
+                    "race_num": race_num,
+                    "returncode": result.returncode,
+                    "stdout": "".join(stdout_parts),
+                    "stderr": "".join(stderr_parts),
+                }
+        try:
+            fresh_data = json.loads(fresh_logic_path.read_text(encoding="utf-8"))
+            actual = {str(num) for num in (fresh_data.get("horses") or {})}
+            expected = {str(num) for num in horse_nums}
+            if actual != expected:
+                raise ValueError(f"runner mismatch: expected {sorted(expected)}, got {sorted(actual)}")
+            os.replace(fresh_logic_path, logic_path)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
             return {
                 "race_num": race_num,
-                "returncode": result.returncode,
+                "returncode": 1,
                 "stdout": "".join(stdout_parts),
-                "stderr": "".join(stderr_parts),
+                "stderr": "".join(stderr_parts) + f"\nFailed to finalize Race {race_num} Logic: {exc}\n",
             }
     return {
         "race_num": race_num,

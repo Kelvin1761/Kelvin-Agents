@@ -45,10 +45,9 @@ OLD_MATRIX_FORMULAS = {
     "class_advantage": (("class_score", 0.70), ("distance_score", 0.30)),
 }
 
-# The "new" model mirrors live PRODUCTION. To prevent the weights drifting out of
-# sync with the engine (the original bug — they were stale and never-deployed),
-# import them straight from the engine's single source of truth. Falls back to a
-# pinned copy only if the engine package can't be located.
+# The "new" model mirrors live PRODUCTION and therefore imports from the single
+# source of truth.  Fail closed if that source is unavailable; a stale fallback
+# can silently turn a calibration run into a test of a model that is not live.
 #
 # NOTE on recompute fidelity: production form_line/stability/race_shape depend on
 # derived sub-features (formline_strength_score, margin_trend_score,
@@ -61,25 +60,9 @@ OLD_MATRIX_FORMULAS = {
 # not re-applied. For a faithful production backtest, trust the "prod" column,
 # which ranks by the persisted python_auto.ability_score directly.
 _ENGINE = Path(__file__).resolve().parents[2] / "hkjc_wong_choi_auto" / "scripts" / "racing_engine"
-try:
-    sys.path.insert(0, str(_ENGINE))
-    from scoring import MATRIX_WEIGHTS as NEW_MATRIX_WEIGHTS  # type: ignore
-    from matrix_mapper import MATRIX_FORMULAS as NEW_MATRIX_FORMULAS  # type: ignore
-except Exception:  # pragma: no cover - fallback to pinned production snapshot
-    NEW_MATRIX_WEIGHTS = {
-        "sectional": 0.1922, "trainer_signal": 0.2296, "stability": 0.0955,
-        "race_shape": 0.2661, "class_advantage": 0.1387, "horse_health": 0.0,
-        "form_line": 0.0778,
-    }
-    NEW_MATRIX_FORMULAS = {
-        "stability": (("form_score", 0.50), ("consistency_score", 0.40), ("trackwork_trend_score", 0.10)),
-        "sectional": (("speed_score", 0.65), ("track_going_score", 0.35)),
-        "race_shape": (("draw_score", 1.00),),
-        "trainer_signal": (("jockey_score", 0.55), ("trainer_score", 0.45)),
-        "horse_health": (("risk_score", 0.55), ("weight_score", 0.35), ("confidence_score", 0.10)),
-        "form_line": (("formline_strength_score", 0.70), ("margin_trend_score", 0.30)),
-        "class_advantage": (("class_score", 0.75), ("weight_score", 0.25)),
-    }
+sys.path.insert(0, str(_ENGINE))
+from scoring import MATRIX_WEIGHTS as NEW_MATRIX_WEIGHTS  # type: ignore
+from matrix_mapper import MATRIX_FORMULAS as NEW_MATRIX_FORMULAS  # type: ignore
 
 
 def clip_score(value: object, default: float = 60.0) -> float:

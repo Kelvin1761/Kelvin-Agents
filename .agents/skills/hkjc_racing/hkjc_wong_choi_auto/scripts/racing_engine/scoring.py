@@ -4,6 +4,9 @@ racing_engine/scoring.py — Core Scoring Framework
 """
 
 from abc import ABC, abstractmethod
+
+
+SCORING_CONTRACT_VERSION = "HKJC_7D_CONTRACT_2026_07_30_CORE_BALANCE"
 import re
 
 
@@ -24,21 +27,17 @@ FEATURE_KEYS = (
 
 MATRIX_WEIGHTS = {
     "sectional": 0.1849,
-    "trainer_signal": 0.2209,
-    "stability": 0.0919,
-    "race_shape": 0.2560,
-    "class_advantage": 0.1335,
+    "trainer_signal": 0.2309,
+    "stability": 0.1019,
+    "race_shape": 0.2260,
+    "class_advantage": 0.1435,
     "horse_health": 0.0378,
     "form_line": 0.0749,
 }
 
-DEBUT_MATRIX_WEIGHTS = {
-    "trainer_signal": 0.30,
-    "horse_health": 0.30,
-    "race_shape": 0.20,
-    "stability": 0.15,
-    "class_advantage": 0.05,
-}
+# Compatibility export for older research scripts.  It is intentionally the
+# same formula: production no longer has a debut-only outer-weight branch.
+DEBUT_MATRIX_WEIGHTS = dict(MATRIX_WEIGHTS)
 
 RACE_SHAPE_CONTEXT_WEIGHTS = {
     "sha_tin_draw": 0.55,

@@ -1,39 +1,51 @@
 #!/usr/bin/env python3
-import os
+"""Compatibility wrapper for building every race Logic in one process per race."""
+
+import argparse
+import re
 import subprocess
+import sys
 from pathlib import Path
 
-def run():
-    meeting_dir = Path("2026-05-09_ShaTin")
-    facts_files = sorted(list(meeting_dir.glob("* Facts.md")))
-    
-    for facts_file in facts_files:
-        # Extract race number from filename (e.g., "05-09 Race 1 Facts.md")
-        name = facts_file.name
-        import re
-        match = re.search(r"Race (\d+)", name)
-        if not match:
-            continue
-        race_num = int(match.group(1))
-        
-        print(f"--- Processing Race {race_num} ---")
-        
-        # Read facts file to find all horses
-        with open(facts_file, "r", encoding="utf-8") as f:
-            content = f.read()
-            
-        horse_nums = re.findall(r"### 馬號 (\d+)", content)
-        for h_num in horse_nums:
-            print(f"  Generating skeleton for Horse {h_num}...")
-            # Usage: python3 create_hkjc_logic_skeleton.py <facts_path> <race_num> <horse_num>
-            cmd = [
-                "python3", 
-                ".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/create_hkjc_logic_skeleton.py",
-                str(facts_file),
+
+ROOT = Path(__file__).resolve().parents[5]
+SKELETON = (
+    ROOT
+    / ".agents"
+    / "skills"
+    / "hkjc_racing"
+    / "hkjc_wong_choi"
+    / "scripts"
+    / "create_hkjc_logic_skeleton.py"
+)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("meeting_dir", type=Path)
+    args = parser.parse_args()
+    facts_files = []
+    for path in args.meeting_dir.glob("* Race * Facts.md"):
+        match = re.search(r"Race\s+(\d+)", path.name)
+        if match:
+            facts_files.append((int(match.group(1)), path))
+    for race_num, facts_path in sorted(facts_files):
+        output = args.meeting_dir / f"Race_{race_num}_Logic.json"
+        subprocess.run(
+            [
+                sys.executable,
+                str(SKELETON),
+                str(facts_path),
                 str(race_num),
-                str(h_num)
-            ]
-            subprocess.run(cmd)
+                "--all-horses",
+                "--output",
+                str(output),
+            ],
+            check=True,
+            cwd=ROOT,
+        )
+    return 0
+
 
 if __name__ == "__main__":
-    run()
+    raise SystemExit(main())

@@ -63,14 +63,6 @@ TOP4_RELEVANCE = {
     4: 0.12,
 }
 
-DEBUT_MATRIX_WEIGHTS = {
-    "trainer_signal": 0.30,
-    "horse_health": 0.30,
-    "race_shape": 0.20,
-    "stability": 0.15,
-    "class_advantage": 0.05,
-}
-
 DEFAULT_TEMPERATURE = 6.0
 DEFAULT_WINNER_LOSS_SHARE = 0.45
 DEFAULT_PAIRWISE_LOSS_SHARE = 0.35
@@ -240,12 +232,6 @@ def _score_race(prepared_race: dict[str, Any], inner_weights: dict[str, np.ndarr
     ability = np.zeros(len(prepared_race["horse_nums"]), dtype=float)
     for idx, section in enumerate(SECTIONS):
         ability += matrix_scores[section] * float(outer_weights[idx])
-    is_debut = prepared_race.get("is_debut")
-    if isinstance(is_debut, np.ndarray) and bool(np.any(is_debut)):
-        debut_ability = np.zeros(len(prepared_race["horse_nums"]), dtype=float)
-        for section, weight in DEBUT_MATRIX_WEIGHTS.items():
-            debut_ability += matrix_scores[section] * float(weight)
-        ability = np.where(is_debut, debut_ability, ability)
     return ability, matrix_scores
 
 

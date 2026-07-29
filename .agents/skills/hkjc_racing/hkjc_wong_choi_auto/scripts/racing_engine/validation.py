@@ -2,7 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scoring import DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS, MATRIX_WEIGHTS, compute_grade
+from matrix_mapper import matrix_formula_manifest
+from scoring import (
+    FEATURE_KEYS,
+    GRADE_THRESHOLDS,
+    MATRIX_WEIGHTS,
+    SCORING_CONTRACT_VERSION,
+    compute_grade,
+)
 
 
 FORBIDDEN_SCRIPT_TERMS = (
@@ -46,6 +53,22 @@ def validate_engine_scripts(script_root: Path) -> list[str]:
 
 def validate_logic_data(logic_data: dict) -> list[str]:
     errors = []
+    contract = logic_data.get("python_auto_run_contract")
+    if not isinstance(contract, dict):
+        errors.append("SCHEMA-005 missing python_auto_run_contract")
+    else:
+        if contract.get("version") != SCORING_CONTRACT_VERSION:
+            errors.append("SCHEMA-008 run contract version mismatch")
+        if contract.get("standard_matrix_weights") != MATRIX_WEIGHTS:
+            errors.append("SCHEMA-006 run contract standard weights mismatch")
+        if contract.get("matrix_formulas") != matrix_formula_manifest():
+            errors.append("SCHEMA-009 run contract matrix formulas mismatch")
+        expected_thresholds = [
+            {"minimum": minimum, "grade": grade}
+            for minimum, grade in GRADE_THRESHOLDS
+        ]
+        if contract.get("grade_thresholds") != expected_thresholds:
+            errors.append("SCHEMA-010 run contract grade thresholds mismatch")
     horses = logic_data.get("horses", {})
     scored = []
     for horse_num, horse in horses.items():
@@ -65,6 +88,8 @@ def validate_report_output(text: str) -> list[str]:
 
 def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
     errors = []
+    if auto.get("scoring_contract_id") != SCORING_CONTRACT_VERSION:
+        errors.append(f"SCHEMA-011 horse {horse_num} scoring contract mismatch")
     features = auto.get("feature_scores", {})
     missing = sorted(set(FEATURE_KEYS) - set(features))
     if missing:
@@ -92,15 +117,18 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
     ability = auto.get("ability_score")
     if not _in_range(ability):
         errors.append(f"SCORE-003 horse {horse_num} ability outside 0-100: {ability}")
-    elif not auto.get("sip_flags"):
-        reason_codes = auto.get("reason_codes", [])
-        is_debut = any("debut" in code for code in reason_codes)
-        
-        if is_debut:
-            expected = sum(float(matrix_scores.get(key, 60)) * weight for key, weight in DEBUT_MATRIX_WEIGHTS.items())
-        else:
-            expected = sum(float(matrix_scores.get(key, 60)) * weight for key, weight in MATRIX_WEIGHTS.items())
-            
+    else:
+        expected = sum(
+            float(matrix_scores.get(key, 60)) * weight
+            for key, weight in MATRIX_WEIGHTS.items()
+        )
+        try:
+            expected += sum(
+                float(flag.get("boost", 0) or 0)
+                for flag in (auto.get("sip_flags") or [])
+            )
+        except (AttributeError, TypeError, ValueError):
+            errors.append(f"SCORE-006 horse {horse_num} invalid SIP flags")
         if abs(float(ability) - expected) > 0.05:
             errors.append(f"SCORE-004 horse {horse_num} ability formula mismatch: {ability} != {expected:.2f}")
     if _in_range(ability) and auto.get("grade") != compute_grade(float(ability)):
@@ -116,6 +144,8 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
 
     if not isinstance(auto.get("score_provenance"), dict):
         errors.append(f"SCHEMA-004 horse {horse_num} missing score_provenance")
+    if not auto.get("scoring_contract_id"):
+        errors.append(f"SCHEMA-012 horse {horse_num} missing scoring_contract_id")
     errors.extend(_validate_mainline_health_slot(horse_num, auto))
     readiness_shadow = ((auto.get("shadow_profiles") or {}).get("readiness_health_slot") or {})
     if readiness_shadow:
@@ -184,10 +214,7 @@ def _validate_readiness_shadow(horse_num: str, auto: dict, shadow: dict) -> list
             continue
         if abs(float(shadow_matrix.get(key, -1)) - float(mainline_matrix.get(key, -2))) > 0.01:
             errors.append(f"SHADOW-006 horse {horse_num} readiness changed non-health matrix {key}")
-    reason_codes = auto.get("reason_codes", [])
-    is_debut = any("debut" in code for code in reason_codes)
-    weights = DEBUT_MATRIX_WEIGHTS if is_debut else MATRIX_WEIGHTS
-    expected = sum(float(shadow_matrix.get(key, 60)) * weight for key, weight in weights.items())
+    expected = sum(float(shadow_matrix.get(key, 60)) * weight for key, weight in MATRIX_WEIGHTS.items())
     expected += sum(float(item.get("boost", 0) or 0) for item in shadow.get("sip_flags", []))
     ability = shadow.get("ability_score")
     if not _in_range(ability) or abs(float(ability) - expected) > 0.05:
@@ -218,9 +245,7 @@ def _validate_legacy_health_shadow(horse_num: str, auto: dict, shadow: dict) -> 
     expected_health = float((auto.get("health_slot_detail") or {}).get("legacy_horse_health", -1))
     if abs(float(shadow_matrix.get("horse_health", -2)) - expected_health) > 0.01:
         errors.append(f"SHADOW-013 horse {horse_num} legacy health slot mismatch")
-    reason_codes = auto.get("reason_codes", [])
-    weights = DEBUT_MATRIX_WEIGHTS if any("debut" in code for code in reason_codes) else MATRIX_WEIGHTS
-    expected = sum(float(shadow_matrix.get(key, 60)) * weight for key, weight in weights.items())
+    expected = sum(float(shadow_matrix.get(key, 60)) * weight for key, weight in MATRIX_WEIGHTS.items())
     expected += sum(float(item.get("boost", 0) or 0) for item in shadow.get("sip_flags", []))
     ability = shadow.get("ability_score")
     if not _in_range(ability) or abs(float(ability) - expected) > 0.05:
@@ -234,6 +259,13 @@ def _validate_verdict(logic_data: dict, scored: list[tuple[str, dict]]) -> list[
         return ["VERDICT-001 missing python_auto_verdict"]
     errors = []
     ranked = verdict.get("ranking", [])
+    for item in ranked:
+        rank_score = float(item.get("rank_score", item.get("ability_score", -1)))
+        ability_score = float(item.get("ability_score", -1))
+        if abs(rank_score - ability_score) > 0.0001:
+            errors.append(
+                f"VERDICT-004 horse {item.get('horse_number')} rank_score must equal ability_score"
+            )
     ordered_pairs = [
         (
             float(item.get("rank_score", item.get("ability_score", -1))),
