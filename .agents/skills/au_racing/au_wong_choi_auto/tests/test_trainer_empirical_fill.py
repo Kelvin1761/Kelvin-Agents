@@ -23,30 +23,54 @@ def _score(trainer: str, ly: dict) -> float:
     return score
 
 
-class TrainerEmpiricalFillRevertedTests(unittest.TestCase):
-    """The empirical trainer fill was tested on the whole archive and REVERTED
-    (it made accuracy worse; see the comment in _trainer_score). These tests lock
-    the revert: unlisted trainers must stay neutral, and the analysis helper must
-    remain available but unused."""
+class TrainerEmpiricalFillTests(unittest.TestCase):
+    """Unlisted trainers (~44% of runners) are scored from their own last-year
+    record instead of falling through to a flat neutral 60. Magnitude is tuned
+    at 0.25 by isolated A/B over 708 archive races; these tests lock the
+    behaviour that tuning depends on rather than the exact numbers."""
 
     UNLISTED = "Zzz Unlisted Smalltime Trainer"
 
-    def test_unlisted_trainer_stays_neutral_regardless_of_record(self) -> None:
-        for ly in ({"rides": 60, "wins": 10, "places": 17},
-                   {"rides": 50, "wins": 2, "places": 4},
-                   {"rides": 5, "wins": 2, "places": 1},
-                   {}):
+    def test_unlisted_trainer_is_scored_from_own_record(self) -> None:
+        strong = _score(self.UNLISTED, {"rides": 60, "wins": 10, "places": 17})
+        weak = _score(self.UNLISTED, {"rides": 60, "wins": 1, "places": 4})
+        self.assertGreater(strong, 60.0)   # 28% -> above the 30% norm after shrink
+        self.assertLess(weak, 60.0)
+        self.assertGreater(strong, weak)
+
+    def test_thin_or_missing_record_stays_neutral(self) -> None:
+        # under 10 rides says nothing; shrinkage must not manufacture a signal
+        for ly in ({"rides": 5, "wins": 2, "places": 1}, {"rides": 0}, {}):
             self.assertAlmostEqual(_score(self.UNLISTED, ly), 60.0, places=1)
 
-    def test_analysis_helper_kept_for_reproducibility(self) -> None:
-        # helper still computes a sane, bounded, monotonic value — but nothing calls it
+    def test_fill_is_bounded_and_tempered_by_magnitude(self) -> None:
         eng = RacingEngine({"horse_name": "T", "horse_number": "1", "trainer": self.UNLISTED}, _ctx())
-        weak = eng._trainer_empirical_base({"rides": 40, "wins": 2, "places": 4})
-        strong = eng._trainer_empirical_base({"rides": 40, "wins": 7, "places": 12})
-        self.assertIsNotNone(weak)
-        self.assertIsNotNone(strong)
-        self.assertLess(weak[0], strong[0])
-        self.assertIsNone(eng._trainer_empirical_base({"rides": 5, "wins": 2, "places": 1}))
+        extreme = eng._trainer_empirical_base({"rides": 400, "wins": 200, "places": 150})
+        self.assertIsNotNone(extreme)
+        # cap * magnitude is the hard ceiling — the fill can never dominate the feature
+        self.assertLessEqual(abs(extreme[0]),
+                             eng._TRAINER_LY_CAP * eng._TRAINER_LY_MAGNITUDE + 1e-6)
+        self.assertLess(abs(extreme[0]), eng._TRAINER_LY_CAP)
+
+    def test_magnitude_zero_disables_the_fill_cleanly(self) -> None:
+        # the tuning knob must be a real off-switch, not a near-zero nudge
+        class _Off(RacingEngine):
+            _TRAINER_LY_MAGNITUDE = 0.0
+        horse = {"horse_name": "T", "horse_number": "1", "barrier": 5,
+                 "trainer": self.UNLISTED, "_data": {"trainer_ly": {"rides": 60, "wins": 10, "places": 17}}}
+        self.assertAlmostEqual(_Off(horse, _ctx())._trainer_score()[0], 60.0, places=1)
+
+    def test_coverage_decision_is_magnitude_independent(self) -> None:
+        # a trainer who earns a fill at full magnitude must still earn one when
+        # tempered — otherwise lowering the knob silently re-opens the data hole
+        ly = {"rides": 30, "wins": 3, "places": 6}
+        eng = RacingEngine({"horse_name": "T", "horse_number": "1", "trainer": self.UNLISTED}, _ctx())
+
+        class _Full(RacingEngine):
+            _TRAINER_LY_MAGNITUDE = 1.0
+        full = _Full({"horse_name": "T", "horse_number": "1", "trainer": self.UNLISTED}, _ctx())
+        self.assertEqual(eng._trainer_empirical_base(ly) is None,
+                         full._trainer_empirical_base(ly) is None)
 
 
 class ComboStatsResilienceTests(unittest.TestCase):

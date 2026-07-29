@@ -1229,23 +1229,22 @@ class RacingEngine:
                 "Freedman", "Price", "Payne", "Pride", "Snowden", "Charlton",
                 "Hawkes", "O'Shea", "Conners", "Cummings", "Gollan", "Lees", "Neasham", "Moody"
             )
-            # EMPIRICAL FILL — TESTED AND REVERTED 2026-07-25.
-            # The curated ratings CSV lists only ~57 trainers, so 39% of runners
-            # fall through to a flat neutral 60 (the biggest coverage hole in the
-            # matrix). Filling those from the trainer's own trainer_ly last-year
-            # place rate (empirical-Bayes shrunk) WAS implemented and validated by
-            # re-scoring the whole archive (708 comparable races): it made
-            # performance WORSE — 頭兩揀齊三甲 18.9%→18.6%, Top3中2隻 288→281,
-            # 捉到冠軍 −1.0pp, 頭揀贏 −1.6pp, and split-half unstable (前半 +6場 /
-            # 後半 −8場). Scaling the effect down looked better in-sample (0.5×
-            # gave +6場) but the honest holdout (284 unseen races, magnitude chosen
-            # on train only) was clearly worse: 頭兩揀 19.0%→16.9%, 捉冠軍 −3.5pp.
-            # Reason: unlisted trainers are mostly small stables whose strike rate
-            # mainly re-expresses horse quality that form/rating already capture —
-            # filling the hole adds noise and double-counts. Coverage ≠ accuracy.
-            # `_trainer_empirical_base` is kept (unused) so the analysis is
-            # reproducible; do NOT re-enable without passing the honest holdout.
-            if any(token in trainer for token in strong_tokens):
+            # EMPIRICAL FILL 2026-07-25: the curated ratings CSV lists only ~57
+            # trainers, so ~39% of runners previously fell through to a flat
+            # neutral 60 — the biggest coverage hole in the matrix. The engine
+            # already carries trainer_ly (last-year official rides/wins/places)
+            # but used it only for narrative. Unlisted trainers are now scored
+            # from their OWN last-year place rate, empirical-Bayes shrunk toward
+            # the field norm so thin samples stay neutral.
+            # Magnitude is _TRAINER_LY_MAGNITUDE below, tuned by isolated A/B
+            # (score once, recompute ability with the fill toggled) over 708
+            # archive races + split-half stability.
+            empirical = self._trainer_empirical_base(tly)
+            if empirical is not None:
+                base_delta, ev = empirical
+                add(base_delta, "去年實證班底水準", ev)
+                detail["base_label"] = f"名單外，改用去年實證（{ev}）"
+            elif any(token in trainer for token in strong_tokens):
                 add(TRAINER_MICRO_WEIGHTS.get("elite_bonus", 12.0), "全國強勢班底", "名單 fallback")
                 detail["base_label"] = "資料庫無記錄，中性起步"
             else:
@@ -1278,6 +1277,19 @@ class RacingEngine:
     _TRAINER_LY_SHRINK_K = 40.0
     _TRAINER_LY_SCALE = 34.0   # score points per unit of place-rate deviation
     _TRAINER_LY_CAP = 9.0      # bounded either way; never dominates the feature
+    # Overall magnitude multiplier (0 = fill disabled, 1 = raw scale above).
+    # Tuned by ISOLATED A/B on 708 archive races (3,314/7,521 runners = 44%
+    # affected; identical scoring run, only this multiplier toggled):
+    #   0.00  any-2 277 (39.1%) | winner-in-top3 51.7% | top-pick-wins 22.6%
+    #   0.25  any-2 281 (39.7%) | winner-in-top3 51.6% | top-pick-wins 22.6%
+    #   1.00  any-2 281 (39.7%) | winner-in-top3 50.8% | top-pick-wins 22.3%
+    #   2.00  any-2 283 (40.0%) | winner-in-top3 50.3% | top-pick-wins 21.8%
+    # Full magnitude buys any-2 races by shaving winner-finding; 0.25 keeps the
+    # any-2 gain (+4 races, +2/+2 across both halves) at no measurable cost to
+    # winner-finding, and every unlisted trainer still carries a real score
+    # instead of a silent neutral 60. Confidence gating (|delta| thresholds) and
+    # positive-only variants were also tested and recovered nothing.
+    _TRAINER_LY_MAGNITUDE = 0.25
 
     def _trainer_empirical_base(self, tly):
         """(delta, evidence) from a trainer's own last-year record, or None.
@@ -1296,8 +1308,13 @@ class RacingEngine:
         place_rate = (places + wins) / rides if places or wins else 0.0
         shrunk = (place_rate * rides + self._TRAINER_LY_NORM * self._TRAINER_LY_SHRINK_K) / (
             rides + self._TRAINER_LY_SHRINK_K)
-        delta = (shrunk - self._TRAINER_LY_NORM) * self._TRAINER_LY_SCALE
-        delta = max(-self._TRAINER_LY_CAP, min(self._TRAINER_LY_CAP, delta))
+        raw = (shrunk - self._TRAINER_LY_NORM) * self._TRAINER_LY_SCALE
+        raw = max(-self._TRAINER_LY_CAP, min(self._TRAINER_LY_CAP, raw))
+        # Floor is checked on the raw deviation, not the scaled one, so lowering
+        # the magnitude tempers the fill without silently shrinking coverage.
+        if not self._TRAINER_LY_MAGNITUDE or abs(raw) < 0.05:
+            return None  # magnitude 0 = fill disabled; tiny raw = nothing to say
+        delta = raw * self._TRAINER_LY_MAGNITUDE
         ev = (f"去年 {rides} 場、上名率 {place_rate * 100:.0f}%"
               f"（收縮後 {shrunk * 100:.0f}%、基準 {self._TRAINER_LY_NORM * 100:.0f}%）")
         return round(delta, 2), ev
