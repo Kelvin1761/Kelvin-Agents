@@ -1348,7 +1348,8 @@ def render_daily_report(
                 lines.append(f"  URL：{row['event_url']}")
         lines.append("")
 
-    lines.extend(_data_status_lines(source_status, rows, bets, watchlist, no_bets, unanalysed))
+    lines.extend(_data_status_lines(source_status, rows, bets, watchlist, no_bets,
+                                    unanalysed, match_date))
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -1798,6 +1799,32 @@ def _reference_prop_board_lines(prop: dict | None) -> list[str]:
     return lines
 
 
+def _feature_coverage_lines(match_date: str) -> list[str]:
+    """Surface Sportsbet-priced matches that never reached the model.
+
+    Previously invisible: the report showed "已分析 38 場" while 60 matches had
+    Sportsbet odds, and the 22 missing ones (an entire ATP 500) were mentioned
+    nowhere. A silent drop reads as "nothing to bet" instead of "we never looked".
+    """
+    try:
+        from tennis_wc.features.feature_builder import feature_build_coverage
+        cov = feature_build_coverage(match_date)
+    except Exception:
+        return []
+    missing = int(cov.get("missing_features") or 0)
+    if not missing:
+        return [f"- 建模覆蓋：{cov.get('with_features', 0)}/{cov.get('singles_candidates', 0)} 場有賠率單打已入模型（無缺口）"]
+    lines = [
+        f"- ⚠️ 建模覆蓋缺口：{missing} 場有 Sportsbet 賠率但未入模型"
+        f"（單打候選 {cov.get('singles_candidates', 0)}｜已建模 {cov.get('with_features', 0)}"
+        f"｜已定價 {cov.get('with_predictions', 0)}｜雙打已排除 {cov.get('doubles_excluded', 0)}）",
+        "     呢啲場冇出現喺上面任何一段 —— 唔係「冇注可落」，係「從未睇過」。缺口按賽事：",
+    ]
+    for name, n in list(cov.get("missing_by_tournament", {}).items())[:6]:
+        lines.append(f"       · {name}：{n} 場")
+    return lines
+
+
 def _data_status_lines(
     source_status: dict,
     rows: list[dict],
@@ -1805,11 +1832,13 @@ def _data_status_lines(
     watchlist: list[dict],
     no_bets: list[dict],
     unanalysed: list[dict],
+    match_date: str | None = None,
 ) -> list[str]:
     lines = [
         "## ⚙️ 數據狀態（收尾參考）",
         "",
         f"- 已分析 {len(rows)} 場｜模型 edge 單 {len(bets)}｜觀察 {len(watchlist)}｜不下注 {len(no_bets)}｜未能分析 {len(unanalysed)}",
+        *( _feature_coverage_lines(match_date) if match_date else [] ),
         f"- Sportsbet odds rows：{source_status.get('sportsbet_odds_rows', 0)}（已配對 {source_status.get('sportsbet_linked_rows', 0)}）｜最新抓取：{source_status.get('sportsbet_latest_fetch') or 'N/A'}",
         "- Bankroll：100u virtual bankroll；1 unit = $1；注碼用 tenth-Kelly，1u 起跳、最大 5u",
         _mode_status_line(source_status.get("run_mode")),

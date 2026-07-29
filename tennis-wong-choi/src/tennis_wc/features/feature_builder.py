@@ -399,11 +399,10 @@ def build_feature_snapshots_for_date(match_date: str) -> list[dict]:
     return [build_match_feature_snapshot(int(row["id"])) for row in rows]
 
 
-def build_sportsbet_feature_snapshots_for_date(match_date: str) -> list[dict]:
-    from tennis_wc.ingestion.confirmed_metadata import is_doubles_competition
-
-    with get_connection() as conn:
-        rows = conn.execute(
+def _sportsbet_priced_matches(conn, match_date: str) -> list[dict]:
+    return [
+        dict(row)
+        for row in conn.execute(
             """
             SELECT DISTINCT m.id, t.name AS tournament_name
             FROM matches m
@@ -415,11 +414,92 @@ def build_sportsbet_feature_snapshots_for_date(match_date: str) -> list[dict]:
             """,
             (match_date,),
         ).fetchall()
-    # Doubles events must never enter the singles pipeline: the "players" are
-    # pair labels with no Elo/history, so every downstream read is junk (130
-    # doubles matches had produced 257 junk predictions before this filter).
-    return [
-        build_match_feature_snapshot(int(row["id"]))
-        for row in rows
-        if not is_doubles_competition(row["tournament_name"])
     ]
+
+
+def build_sportsbet_feature_snapshots_for_date(
+    match_date: str, skipped: list[dict] | None = None
+) -> list[dict]:
+    """Build snapshots for every Sportsbet-priced SINGLES match on a date.
+
+    Each match is isolated: a match that cannot be assembled is recorded and
+    skipped, never allowed to end the loop. This used to be a bare list
+    comprehension, so the FIRST match whose tournament metadata was missing
+    raised out of the whole call and silently dropped every remaining match for
+    that date -- with no error surfaced anywhere, the report just showed a
+    smaller "已分析" count. Pass `skipped` to collect the per-match reasons.
+    """
+    from tennis_wc.ingestion.confirmed_metadata import is_doubles_competition
+
+    with get_connection() as conn:
+        rows = _sportsbet_priced_matches(conn, match_date)
+
+    log = skipped if skipped is not None else []
+    snapshots: list[dict] = []
+    for row in rows:
+        match_id = int(row["id"])
+        # Doubles events must never enter the singles pipeline: the "players" are
+        # pair labels with no Elo/history, so every downstream read is junk (130
+        # doubles matches had produced 257 junk predictions before this filter).
+        if is_doubles_competition(row["tournament_name"]):
+            log.append({"match_id": match_id, "tournament": row["tournament_name"],
+                        "reason": "doubles_competition"})
+            continue
+        try:
+            snapshots.append(build_match_feature_snapshot(match_id))
+        except Exception as exc:  # one bad match must not blind us to the rest
+            log.append({"match_id": match_id, "tournament": row["tournament_name"],
+                        "reason": f"{type(exc).__name__}: {exc}"})
+    return snapshots
+
+
+def feature_build_coverage(match_date: str) -> dict:
+    """Read-only: how many Sportsbet-priced matches actually reached the model.
+
+    Exists because the gap was invisible. On 2026-07-25 the report said "已分析 38
+    場" while 60 matches had Sportsbet odds -- including all 22 of an ATP 500
+    (Washington), which produced 2 feature snapshots and 0 predictions. Nothing
+    in any output mentioned the other 20 matches. This surfaces the drop so it
+    can never be silent again.
+    """
+    from tennis_wc.ingestion.confirmed_metadata import is_doubles_competition
+
+    with get_connection() as conn:
+        rows = _sportsbet_priced_matches(conn, match_date)
+        with_features = {
+            int(r["match_id"])
+            for r in conn.execute(
+                """
+                SELECT DISTINCT f.match_id FROM feature_snapshots f
+                JOIN matches m ON m.id = f.match_id WHERE m.match_date = ?
+                """,
+                (match_date,),
+            ).fetchall()
+        }
+        with_predictions = {
+            int(r["match_id"])
+            for r in conn.execute(
+                """
+                SELECT DISTINCT p.match_id FROM predictions p
+                JOIN matches m ON m.id = p.match_id WHERE m.match_date = ?
+                """,
+                (match_date,),
+            ).fetchall()
+        }
+    singles = [r for r in rows if not is_doubles_competition(r["tournament_name"])]
+    missing = [r for r in singles if int(r["id"]) not in with_features]
+    by_tournament: dict[str, int] = {}
+    for row in missing:
+        name = str(row["tournament_name"] or "unknown")
+        by_tournament[name] = by_tournament.get(name, 0) + 1
+    return {
+        "priced_matches": len(rows),
+        "singles_candidates": len(singles),
+        "doubles_excluded": len(rows) - len(singles),
+        "with_features": sum(1 for r in singles if int(r["id"]) in with_features),
+        "with_predictions": sum(1 for r in singles if int(r["id"]) in with_predictions),
+        "missing_features": len(missing),
+        "missing_by_tournament": dict(
+            sorted(by_tournament.items(), key=lambda kv: -kv[1])
+        ),
+    }
