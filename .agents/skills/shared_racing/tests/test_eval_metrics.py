@@ -162,5 +162,59 @@ class AuParityTests(unittest.TestCase):
             self.assertEqual(canonical["exclusive_label"], expected)
 
 
+class CompetitivenessTests(unittest.TestCase):
+    """The top-3 KPIs are binary and score a top pick beaten a length into 4th
+    identically to one that runs stone motherless last. These metrics record how
+    wrong a miss was, normalised by field size so venues stay comparable."""
+
+    def test_percentile_is_field_size_neutral(self) -> None:
+        # 4th of 7 and 8th of 15 are the same relative run; raw position is not
+        small = race_metrics([1], [9, 8, 7], winner=9,
+                             actual_pos={1: 4, **{h: h for h in range(5, 8)}}, field_size=7)
+        big = race_metrics([1], [9, 8, 7], winner=9,
+                           actual_pos={1: 8}, field_size=15)
+        self.assertAlmostEqual(small["top_pick_pct"], 0.5, places=6)
+        self.assertAlmostEqual(big["top_pick_pct"], 0.5, places=6)
+
+    def test_close_miss_and_blowout_are_distinguished(self) -> None:
+        close = race_metrics([1, 2, 3], [4, 5, 6], winner=4,
+                             actual_pos={1: 4, 2: 5, 3: 6}, field_size=13)
+        blown = race_metrics([1, 2, 3], [4, 5, 6], winner=4,
+                             actual_pos={1: 12, 2: 11, 3: 13}, field_size=13)
+        # identical under every binary KPI ...
+        for key in ("hits", "good_any2", "champion", "winner_in_top3", "exclusive_label"):
+            self.assertEqual(close[key], blown[key])
+        # ... and cleanly separated by competitiveness
+        self.assertTrue(close["top_pick_competitive"])
+        self.assertFalse(close["top_pick_blowout"])
+        self.assertFalse(blown["top_pick_competitive"])
+        self.assertTrue(blown["top_pick_blowout"])
+        self.assertLess(close["mean_top3_pct"], blown["mean_top3_pct"])
+
+    def test_winner_is_perfectly_competitive(self) -> None:
+        row = race_metrics([1, 2, 3], [1, 2, 3], winner=1,
+                           actual_pos={1: 1, 2: 2, 3: 3}, field_size=10)
+        self.assertEqual(row["top_pick_pct"], 0.0)
+        self.assertTrue(row["top2_both_competitive"])
+        self.assertFalse(row["top2_any_blowout"])
+
+    def test_absent_positions_leave_competitiveness_unscored(self) -> None:
+        row = race_metrics([1, 2, 3], [1, 2, 3], winner=1)
+        for key in ("top_pick_pct", "top_pick_competitive", "top2_both_competitive"):
+            self.assertIsNone(row[key])
+        # and such races must not be counted in the aggregate denominator
+        summary = summarize_races([row])
+        self.assertEqual(summary["competitiveness"]["top_pick_competitive"]["races"], 0)
+        self.assertIsNone(summary["competitiveness"]["mean_top_pick_pct"])
+
+    def test_summary_scores_only_races_with_positions(self) -> None:
+        scored = race_metrics([1, 2, 3], [1, 2, 3], winner=1,
+                              actual_pos={1: 1, 2: 2, 3: 3}, field_size=10)
+        unscored = race_metrics([1, 2, 3], [1, 2, 3], winner=1)
+        comp = summarize_races([scored, unscored])["competitiveness"]
+        self.assertEqual(comp["top_pick_competitive"], {"races": 1, "count": 1, "rate": 1.0})
+        self.assertEqual(comp["mean_top_pick_pct"], 0.0)
+
+
 if __name__ == "__main__":
     unittest.main()

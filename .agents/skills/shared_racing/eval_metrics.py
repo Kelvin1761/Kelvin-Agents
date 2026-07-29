@@ -29,6 +29,15 @@ from typing import Any, Iterable, Mapping, Sequence
 
 EXCLUSIVE_LABELS = ("Gold", "Good", "Pass", "1 Hit", "Miss")
 
+# Every KPI above is binary on "did the pick make the top 3", which records
+# nothing about HOW WRONG a miss was — a top pick beaten a length into 4th and
+# one that runs 11th of 14 score identically. Competitiveness metrics close that
+# gap using the pick's finishing percentile within its own field, so a 7-runner
+# country maiden and an 18-runner Flemington handicap stay comparable:
+#     pct = (finish_pos - 1) / (field_size - 1)      0.0 = won, 1.0 = last
+COMPETITIVE_PCT = 1.0 / 3.0   # beat two-thirds of the field = ran with the leaders
+BLOWOUT_PCT = 2.0 / 3.0       # finished in the back third = never in the race
+
 
 def exclusive_label(top3_hits: int, top2_hits: int) -> str:
     """Mutually exclusive reflector label.
@@ -53,14 +62,17 @@ def race_metrics(
     actual_top3: Iterable[Any],
     winner: Any = None,
     actual_pos: Mapping[Any, int] | None = None,
+    field_size: int | None = None,
 ) -> dict:
     """Per-race metrics under every definition in use.
 
     picks       — model ranking, best first (at least the top 3 where available).
     actual_top3 — identifiers that finished in the official top 3.
     winner      — identifier of the official winner (falls back to actual_pos).
-    actual_pos  — optional {identifier: finish position} for winner-rank / MRR
-                  and the legacy HKJC order-issue flag.
+    actual_pos  — optional {identifier: finish position} for winner-rank / MRR,
+                  the legacy HKJC order-issue flag, and competitiveness.
+    field_size  — runners that actually completed; defaults to len(actual_pos).
+                  Needed to make finishing percentiles field-size neutral.
     """
     picks = list(picks)
     actual_set = set(actual_top3)
@@ -87,10 +99,37 @@ def race_metrics(
             actual_pos.get(picks[0], 99), actual_pos.get(picks[1], 99)
         )
 
+    # --- competitiveness: how wrong is a miss, not just whether it missed ---
+    size = field_size or (len(actual_pos) if actual_pos else 0)
+    pick_pcts: list[float | None] = []
+    if actual_pos and size > 1:
+        for horse in top3_picks:
+            pos = actual_pos.get(horse)
+            pick_pcts.append(None if pos is None else (pos - 1) / (size - 1))
+    else:
+        pick_pcts = [None] * len(top3_picks)
+    known = [pct for pct in pick_pcts if pct is not None]
+    top_pct = pick_pcts[0] if pick_pcts else None
+    top2_pcts = [pct for pct in pick_pcts[:2] if pct is not None]
+
     return {
         "picks": picks,
         "hits": hits,
         "top2_hits": top2_hits,
+        # competitiveness (None whenever positions/field size are unavailable)
+        "field_size": size or None,
+        "pick_positions": [actual_pos.get(h) if actual_pos else None for h in top3_picks],
+        "pick_percentiles": pick_pcts,
+        "top_pick_pct": top_pct,
+        "mean_top3_pct": (sum(known) / len(known)) if known else None,
+        "top_pick_competitive": None if top_pct is None else top_pct <= COMPETITIVE_PCT,
+        "top_pick_blowout": None if top_pct is None else top_pct >= BLOWOUT_PCT,
+        "top2_both_competitive": (
+            all(pct <= COMPETITIVE_PCT for pct in top2_pcts) if len(top2_pcts) == 2 else None
+        ),
+        "top2_any_blowout": (
+            any(pct >= BLOWOUT_PCT for pct in top2_pcts) if top2_pcts else None
+        ),
         # cumulative KPIs
         "gold": hits == 3,
         "good_positional": len(picks) >= 2 and picks[0] in actual_set and picks[1] in actual_set,
@@ -124,6 +163,19 @@ def summarize_races(race_rows: Sequence[Mapping[str, Any]]) -> dict:
     label_counts = Counter(row["exclusive_label"] for row in race_rows)
     top3_slots = sum(min(3, len(row["picks"])) for row in race_rows)
     top3_hits = sum(int(row["hits"]) for row in race_rows)
+
+    # Competitiveness aggregates are scored only over races that supplied
+    # positions and a field size, so a mixed sample can't silently dilute them.
+    def _flag(key: str) -> dict:
+        scored = [row for row in race_rows if row.get(key) is not None]
+        hit = sum(bool(row[key]) for row in scored)
+        return {"races": len(scored), "count": hit,
+                "rate": (hit / len(scored)) if scored else None}
+
+    def _mean(key: str) -> float | None:
+        values = [float(row[key]) for row in race_rows if row.get(key) is not None]
+        return (sum(values) / len(values)) if values else None
+
     return {
         "races": races,
         "counts": counts,
@@ -132,6 +184,14 @@ def summarize_races(race_rows: Sequence[Mapping[str, Any]]) -> dict:
         "exclusive_labels": {label: label_counts.get(label, 0) for label in EXCLUSIVE_LABELS},
         "top3_precision": top3_hits / max(1, top3_slots),
         "mrr": sum(float(row["reciprocal_rank"]) for row in race_rows) / denominator,
+        "competitiveness": {
+            "top_pick_competitive": _flag("top_pick_competitive"),
+            "top_pick_blowout": _flag("top_pick_blowout"),
+            "top2_both_competitive": _flag("top2_both_competitive"),
+            "top2_any_blowout": _flag("top2_any_blowout"),
+            "mean_top_pick_pct": _mean("top_pick_pct"),
+            "mean_top3_pct": _mean("mean_top3_pct"),
+        },
     }
 
 
