@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -123,8 +125,6 @@ class AuParityTests(unittest.TestCase):
         ]
 
     def test_metrics_for_races_matches_canonical(self) -> None:
-        from au_cached_walkforward_ml import metrics_for_races
-
         races = [
             self._race({1: 1, 2: 2, 3: 3}),  # Gold
             self._race({1: 1, 2: 2, 4: 3}),  # positional Good
@@ -132,7 +132,23 @@ class AuParityTests(unittest.TestCase):
             self._race({3: 1, 4: 2, 5: 3}),  # pick-3-only hit → exclusive Miss
             self._race({4: 1, 5: 2}),        # miss for top-3 picks
         ]
-        metrics = metrics_for_races(races)
+        # HKJC and AU both have a top-level module named ``matrix_mapper``.
+        # Exercise AU in a clean interpreter so parity never depends on which
+        # racing stack pytest happened to import first.
+        code = (
+            "import json, sys\n"
+            f"sys.path.insert(0, {str(AU_SCRIPTS)!r})\n"
+            "from au_cached_walkforward_ml import metrics_for_races\n"
+            "print(json.dumps(metrics_for_races(json.load(sys.stdin))))\n"
+        )
+        completed = subprocess.run(
+            [sys.executable, "-c", code],
+            input=json.dumps(races),
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        metrics = json.loads(completed.stdout)
         self.assertEqual(metrics["races"], 5)
         self.assertEqual(metrics["gold"], 1)
         self.assertEqual(metrics["good"], 3)  # any-2 (cumulative)
@@ -214,6 +230,60 @@ class CompetitivenessTests(unittest.TestCase):
         comp = summarize_races([scored, unscored])["competitiveness"]
         self.assertEqual(comp["top_pick_competitive"], {"races": 1, "count": 1, "rate": 1.0})
         self.assertEqual(comp["mean_top_pick_pct"], 0.0)
+
+    def test_top3_capture_expands_from_four_to_five_picks(self) -> None:
+        actual_pos = {1: 6, 2: 7, 3: 1, 4: 2, 5: 3, 6: 4, 7: 5}
+        row = race_metrics(
+            [1, 3, 2, 4, 5, 6, 7],
+            [3, 4, 5],
+            actual_pos=actual_pos,
+            field_size=7,
+        )
+        self.assertEqual(row["top3_capture_at4_count"], 2)
+        self.assertEqual(row["top3_capture_at5_count"], 3)
+        self.assertAlmostEqual(row["top3_capture_at4"], 2 / 3)
+        self.assertEqual(row["top3_capture_at5"], 1.0)
+        self.assertFalse(row["top3_all_within_top4"])
+        self.assertTrue(row["top3_all_within_top5"])
+        self.assertEqual(row["actual_top3_model_ranks"], [2, 4, 5])
+        self.assertAlmostEqual(row["top3_mean_model_rank"], 11 / 3)
+        self.assertEqual(row["top3_worst_model_rank"], 5)
+
+    def test_competitive_tier_recall_and_ndcg_reward_order(self) -> None:
+        actual_pos = {horse: horse for horse in range(1, 13)}
+        well_ordered = race_metrics(
+            [1, 2, 3, 4, 9, 10, 11, 12, 5, 6, 7, 8],
+            [1, 2, 3],
+            actual_pos=actual_pos,
+            field_size=12,
+        )
+        reversed_order = race_metrics(
+            [4, 3, 2, 1, 9, 10, 11, 12, 5, 6, 7, 8],
+            [1, 2, 3],
+            actual_pos=actual_pos,
+            field_size=12,
+        )
+        self.assertEqual(well_ordered["competitive_cutoff"], 4)
+        self.assertEqual(well_ordered["competitive_recall_at5"], 1.0)
+        self.assertEqual(well_ordered["competitive_precision_at5"], 0.8)
+        self.assertEqual(well_ordered["ndcg_at5"], 1.0)
+        self.assertLess(reversed_order["ndcg_at5"], well_ordered["ndcg_at5"])
+
+    def test_summary_exposes_new_ranking_quality_metrics(self) -> None:
+        actual_pos = {horse: horse for horse in range(1, 13)}
+        row = race_metrics(
+            list(range(1, 13)),
+            [1, 2, 3],
+            actual_pos=actual_pos,
+            field_size=12,
+        )
+        summary = summarize_races([row])
+        self.assertEqual(summary["counts"]["winner_in_top5"], 1)
+        comp = summary["competitiveness"]
+        self.assertEqual(comp["top3_all_within_top5"]["rate"], 1.0)
+        self.assertEqual(comp["mean_top3_capture_at5"], 1.0)
+        self.assertEqual(comp["mean_competitive_recall_at5"], 1.0)
+        self.assertEqual(comp["mean_ndcg_at5"], 1.0)
 
 
 if __name__ == "__main__":

@@ -18,12 +18,23 @@ SKILL_DIR = SCRIPT_DIR.parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 SHARED_SCRIPTS = PROJECT_ROOT / ".agents" / "scripts"
 SHARED_HOOK_DIR = PROJECT_ROOT / ".agents" / "skills" / "shared_racing" / "post_success_hooks" / "scripts"
+AUTO_ENGINE_DIR = (
+    PROJECT_ROOT
+    / ".agents"
+    / "skills"
+    / "au_racing"
+    / "au_wong_choi_auto"
+    / "scripts"
+    / "racing_engine"
+)
 
 sys.path.insert(0, str(SHARED_SCRIPTS))
 sys.path.insert(0, str(SHARED_HOOK_DIR))
+sys.path.insert(0, str(AUTO_ENGINE_DIR))
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from cloudflare_deploy_hook import run_post_success_cloudflare_deploy
+from source_alignment import validate_facts_horse_alignment, venue_from_meeting_name
 from subprocess_pool import bounded_workers, run_labeled_commands
 from wongchoi_paths import AU_RACING
 
@@ -55,6 +66,10 @@ def main():
     parser.add_argument("--batch-cloudflare-deploy", action="store_true", help="Queue dashboard deploy for a later batch flush")
     parser.add_argument("--flush-cloudflare-deploy", action="store_true", help="Flush any queued dashboard deploy after this run")
     parser.add_argument("--race-workers", type=int, default=_default_race_workers(), help="Race-level Facts/Logic workers")
+    parser.add_argument(
+        "--going",
+        help="Official current track condition (e.g. 'Good 4'); overrides stored meeting data",
+    )
     args = parser.parse_args()
 
     target = args.target.strip()
@@ -67,7 +82,8 @@ def main():
             meeting_dir = Path(target).resolve()
             if meeting_dir.is_file():
                 cleanup_target = meeting_dir.parent
-                _run([PYTHON, str(AUTO_ORCH), str(meeting_dir)])
+                official_going = _resolve_official_going(meeting_dir.parent, args.going)
+                _run(_auto_command(meeting_dir, official_going))
                 run_post_success_cloudflare_deploy(
                     source="AU Wong Choi",
                     target_dir=meeting_dir.parent,
@@ -90,7 +106,8 @@ def main():
         print(f"⚙️ Race-level workers: {race_workers}")
         _ensure_facts(meeting_dir, race_workers)
         _ensure_logic(meeting_dir, race_workers)
-        _run([PYTHON, str(AUTO_ORCH), str(meeting_dir)])
+        official_going = _resolve_official_going(meeting_dir, args.going)
+        _run(_auto_command(meeting_dir, official_going))
         run_post_success_cloudflare_deploy(
             source="AU Wong Choi",
             target_dir=meeting_dir,
@@ -174,9 +191,12 @@ def _ensure_facts(meeting_dir: Path, workers: int = 1) -> None:
         formguide = _matching_formguide(formguides, race_num)
         if not formguide:
             raise FileNotFoundError(f"Missing Formguide for Race {race_num} in {meeting_dir}")
-        facts_candidates = sorted(meeting_dir.glob(f"*Race_{race_num}_Facts.md"))
-        facts_path = facts_candidates[0] if facts_candidates else None
-        if facts_path and not _is_output_stale(facts_path, racecard, formguide):
+        facts_path = _find_facts_file(meeting_dir, race_num)
+        if (
+            facts_path
+            and _facts_has_horses(facts_path)
+            and not _is_output_stale(facts_path, racecard, formguide)
+        ):
             continue
         venue = _venue_from_meeting(meeting_dir.name)
         distance = _distance_for_race(racecard, formguide)
@@ -215,27 +235,53 @@ def _matching_formguide(formguides: list[Path], race_num: int) -> Path | None:
     return None
 
 
+def _find_facts_file(meeting_dir: Path, race_num: int) -> Path | None:
+    for pattern in (
+        f"*Race_{race_num}_Facts.md",
+        f"*Race {race_num} Facts.md",
+    ):
+        matches = sorted(meeting_dir.glob(pattern))
+        if matches:
+            return matches[0]
+    return None
+
+
+def _facts_has_horses(facts_path: Path) -> bool:
+    try:
+        text = facts_path.read_text(encoding="utf-8")
+        return bool(validate_facts_horse_alignment(text, source=facts_path.name))
+    except (OSError, UnicodeError, ValueError):
+        return False
+
+
 def _race_num_from_name(name: str) -> int | None:
     match = re.search(r"Race[ _](\d+)", name)
     return int(match.group(1)) if match else None
 
 
 def _venue_from_meeting(meeting_name: str) -> str:
-    # Remove date prefix: "2025-01-15_Randwick_Race_1_1200m" → "Randwick_Race_1_1200m"
-    name = re.sub(r"^\d{4}-\d{2}-\d{2}[_\s-]*", "", meeting_name).strip()
-    if "_" in name:
-        # Take first word before any underscore followed by "Race" or number
-        parts = name.split("_")
-        venue_parts = []
-        for p in parts:
-            if re.match(r"^race\s*\d+", p, re.I) or re.match(r"^\d+", p):
-                break
-            venue_parts.append(p)
-        if venue_parts:
-            return " ".join(venue_parts)
-        return parts[0]
-    parts = name.split()
-    return " ".join(parts[1:-3]) if len(parts) > 3 and "Race" in name else name
+    return venue_from_meeting_name(meeting_name)
+
+
+def _resolve_official_going(meeting_dir: Path, override: str | None) -> str | None:
+    if override and override.strip():
+        return override.strip()
+    summary_path = meeting_dir / "Meeting_Summary.md"
+    if not summary_path.exists():
+        return None
+    match = re.search(
+        r"^Track Condition:\s*([^\n]+)",
+        summary_path.read_text(encoding="utf-8"),
+        re.M,
+    )
+    return match.group(1).strip() if match else None
+
+
+def _auto_command(target: Path, official_going: str | None) -> list[str]:
+    command = [PYTHON, str(AUTO_ORCH), str(target)]
+    if official_going:
+        command.extend(["--going", official_going])
+    return command
 
 
 def _distance_for_race(racecard: Path, formguide: Path | None) -> int | None:

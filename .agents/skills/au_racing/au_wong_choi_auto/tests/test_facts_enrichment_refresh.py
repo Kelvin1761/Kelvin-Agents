@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import sys
 import tempfile
 import unittest
@@ -11,6 +12,7 @@ sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, str(SCRIPTS / "racing_engine"))
 
 from au_auto_orchestrator import _facts_path_for_logic
+import build_au_logic
 from engine_core import enrich_logic_from_facts
 
 MODERN_FACTS = "\n".join(
@@ -52,6 +54,46 @@ class FactsPathGlobTests(unittest.TestCase):
             self.assertIsNone(_facts_path_for_logic(logic, 1))
 
 
+class BuilderEnricherParityTests(unittest.TestCase):
+    def test_canonical_builder_is_enrichment_idempotent(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            facts_path = Path(tmp) / "11-01 Race 3 Facts.md"
+            facts_path.write_text(MODERN_FACTS, encoding="utf-8")
+            built = build_au_logic.build_logic_from_facts(facts_path)
+            enriched = enrich_logic_from_facts(
+                copy.deepcopy(built),
+                facts_path,
+            )
+        self.assertEqual(built, enriched)
+
+    def test_track_resources_resolve_from_builder(self) -> None:
+        self.assertTrue(build_au_logic.TRACK_RESOURCE_DIR.is_dir())
+        profile = build_au_logic._load_track_profile("Warwick Farm", 1100)
+        self.assertEqual(profile["venue"], "Warwick Farm")
+        self.assertGreater(profile["straight_m"], 0)
+
+    def test_predicted_pace_populates_backward_compatible_alias(self) -> None:
+        facts = "\n".join(
+            [
+                "### 🗺️ 自動步速圖 (Python Facts Model V4)",
+                "- **predicted_pace:** 正常",
+                "- **pace_confidence:** High",
+            ]
+        )
+        speed_map = build_au_logic._parse_speed_map(facts)
+        self.assertEqual(speed_map["predicted_pace"], "正常")
+        self.assertEqual(speed_map["expected_pace"], "正常")
+
+    def test_arbitrary_temp_folder_is_not_a_venue(self) -> None:
+        self.assertEqual(build_au_logic._venue_from_folder_name("local"), "")
+        self.assertEqual(
+            build_au_logic._venue_from_folder_name(
+                "2026-07-15 Warwick Farm Race 1-7"
+            ),
+            "Warwick Farm",
+        )
+
+
 class FactsSectionRefreshTests(unittest.TestCase):
     def _enrich(self, logic: dict) -> dict:
         with tempfile.TemporaryDirectory() as tmp:
@@ -75,7 +117,7 @@ class FactsSectionRefreshTests(unittest.TestCase):
         self.assertIn("試閘", section)
         self.assertNotIn("OLD PRE-REALIGNMENT BLOB", section)
 
-    def test_missing_section_keeps_existing_value(self) -> None:
+    def test_missing_section_fails_instead_of_scoring_stale_logic(self) -> None:
         logic = {
             "race_analysis": {"race_number": 3},
             "horses": {
@@ -85,8 +127,27 @@ class FactsSectionRefreshTests(unittest.TestCase):
                 }
             },
         }
+        with self.assertRaisesRegex(ValueError, "FIELD ALIGNMENT FAILED"):
+            self._enrich(logic)
+
+    def test_temp_folder_name_cannot_overwrite_existing_venue(self) -> None:
+        logic = {
+            "race_analysis": {
+                "race_number": 3,
+                "meeting_intelligence": {
+                    "venue": "Warwick Farm",
+                    "going": "Soft 5",
+                    "source": "Race_3_Logic.json",
+                },
+            },
+            "horses": {
+                "7": {"horse_name": "Example Star", "_data": {}},
+            },
+        }
         enriched = self._enrich(logic)
-        self.assertEqual(enriched["horses"]["9"]["_data"]["facts_section"], "KEEP ME")
+        meeting = enriched["race_analysis"]["meeting_intelligence"]
+        self.assertEqual(meeting["venue"], "Warwick Farm")
+        self.assertNotIn("tmp", meeting["venue"].lower())
 
 
 if __name__ == "__main__":

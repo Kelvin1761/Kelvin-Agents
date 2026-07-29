@@ -27,6 +27,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
 
 from au_archive_calibrator import ARCHIVE_ROOT, normalize_condition_bucket, normalize_horse_name  # noqa: E402
+from io_utils import write_json_atomic  # noqa: E402
 from au_cached_walkforward_ml import (  # noqa: E402
     as_float,
     date_folds,
@@ -272,7 +273,7 @@ def enrich_logic_context(races: list[list[dict]], since: str) -> tuple[dict[str,
             loaded += 1
             if loaded % 20 == 0:
                 CONTEXT_CACHE.parent.mkdir(parents=True, exist_ok=True)
-                CONTEXT_CACHE.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
+                write_json_atomic(CONTEXT_CACHE, cache, indent=None)
         if context.get("missing"):
             continue
         for row in race:
@@ -292,7 +293,7 @@ def enrich_logic_context(races: list[list[dict]], since: str) -> tuple[dict[str,
             going_counts[f"{pre}->{actual}"] += 1
 
     CONTEXT_CACHE.parent.mkdir(parents=True, exist_ok=True)
-    CONTEXT_CACHE.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
+    write_json_atomic(CONTEXT_CACHE, cache, indent=None)
     return cache, {"loaded": loaded, "missing": missing, "counts": dict(going_counts), "since": since}
 
 
@@ -539,7 +540,7 @@ def main() -> int:
     }
     args.output.write_text(render_report(result), encoding="utf-8")
     OUTPUT_JSON.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT_JSON.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_json_atomic(OUTPUT_JSON, result)
     print(f"Wrote {args.output}")
     print(f"Wrote {OUTPUT_JSON}")
     return 0

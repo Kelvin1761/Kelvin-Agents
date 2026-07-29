@@ -18,7 +18,12 @@ import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
 from wongchoi_paths import AU_RACING
 sys.path.append(str(SCRIPT_DIR / "racing_engine"))
 
-from matrix_mapper import map_features_to_matrix_scores
+from matrix_mapper import (
+    MATRIX_KEYS,
+    canonicalize_matrix_scores,
+    map_features_to_matrix_scores,
+    matrix_score,
+)
 from scoring import MATRIX_WEIGHTS as LIVE_MATRIX_WEIGHTS
 
 ARCHIVE_ROOT = AU_RACING
@@ -26,16 +31,6 @@ HISTORICAL_RESULTS_CSV = ARCHIVE_ROOT / "AU_Historical_Raw_Race_Results.csv"
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Auto_Archive_Calibration_Report.md"
 OUTPUT_CSV = ARCHIVE_ROOT / "AU_Auto_Section_Diagnostics.csv"
 OUTPUT_CONDITION_CSV = ARCHIVE_ROOT / "AU_Auto_Condition_Diagnostics.csv"
-
-MATRIX_KEYS = (
-    "stability",
-    "pace_perf",
-    "race_shape",
-    "jockey_trainer",
-    "class_weight",
-    "track",
-    "form_line",
-)
 
 MATRIX_LABELS = {
     "stability": "狀態與穩定性",
@@ -120,6 +115,11 @@ def parse_float(value, default=None):
     return float(match.group(0)) if match else default
 
 
+def score_value(value, default: float = 60.0) -> float:
+    parsed = parse_float(value)
+    return default if parsed is None else parsed
+
+
 def scoring_path_for_race(meeting_dir: Path, race_no: int) -> Path | None:
     path = meeting_dir / f"Race_{race_no}_Auto_Scoring.csv"
     return path if path.exists() else None
@@ -146,6 +146,11 @@ def load_scoring_rows(path: Path) -> list[dict]:
                     "horse_number": horse_number,
                     "horse_slug": normalize_horse_name(row.get("horse_name") or ""),
                     "horse_name": str(row.get("horse_name") or "").strip(),
+                    "race_class": str(
+                        row.get("race_class")
+                        or row.get("level_of_race")
+                        or ""
+                    ).strip(),
                     "ability_score": parse_float(row.get("ability_score"), 0.0) or 0.0,
                     "pure_7d_score": (
                         parse_float(row.get("pure_7d_score"), None)
@@ -181,6 +186,7 @@ def archive_snapshot(
     python_auto = horse.get("python_auto") or {}
     matrix_scores = python_auto.get("matrix_scores") or {}
     if matrix_scores:
+        canonical_matrix = canonicalize_matrix_scores(matrix_scores)
         feature_scores = dict(python_auto.get("feature_scores") or {})
         if "health_score" not in feature_scores and "readiness_score" in feature_scores:
             feature_scores["health_score"] = feature_scores["readiness_score"]
@@ -197,8 +203,11 @@ def archive_snapshot(
             "rank": parse_int(python_auto.get("rank")),
             "grade": str(python_auto.get("grade") or "").strip(),
             "model_pick_status": str(python_auto.get("model_pick_status") or "").strip(),
-            "feature_scores": {key: float(feature_scores.get(key) or 60.0) for key in FEATURE_SCORE_KEYS},
-            "matrix_scores": {key: float(matrix_scores.get(key) or 60.0) for key in MATRIX_KEYS},
+            "feature_scores": {
+                key: score_value(feature_scores.get(key))
+                for key in FEATURE_SCORE_KEYS
+            },
+            "matrix_scores": canonical_matrix,
             "risk_flags": list(python_auto.get("risk_flags") or []),
             "reason_codes": list(python_auto.get("reason_codes") or []),
             "matrix_reasoning": python_auto.get("matrix_reasoning") or {},
@@ -214,7 +223,7 @@ def rank_items_desc(items):
 
 
 def load_historical_results(path: Path):
-    by_date_race = defaultdict(list)
+    by_track_race = defaultdict(list)
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
         for row in reader:
@@ -234,7 +243,24 @@ def load_historical_results(path: Path):
                 "sp": parse_float(row.get("SP")),
                 "condition": str(row.get("Condition") or "").strip(),
             }
-            by_date_race[(record["date"], race_no)].append(record)
+            by_track_race[
+                (record["date"], record["track_slug"], race_no)
+            ].append(record)
+    by_date_race = defaultdict(list)
+    for (date, _track_slug, race_no), rows in by_track_race.items():
+        # Reject whole corrupt race groups at the shared boundary.  A known
+        # ingest failure stamped every 2025-08-09 Randwick runner as position
+        # 8; letting that through makes downstream backtests report ten fake
+        # model misses.  Dead heats remain valid because we count rows in the
+        # observed top three rather than requiring positions exactly 1/2/3.
+        positions = [int(row["pos"]) for row in rows]
+        if (
+            len(rows) < 4
+            or 1 not in positions
+            or sum(position <= 3 for position in positions) < 3
+        ):
+            continue
+        by_date_race[(date, race_no)].extend(rows)
     return by_date_race
 
 
@@ -327,8 +353,20 @@ def iter_logic_rows(archive_root: Path, historical_results):
                     "model_pick_status": snapshot.get("model_pick_status", ""),
                     "actual_pos": int(result_row["pos"]),
                     "sp": result_row["sp"],
-                    "feature_scores": {key: float(snapshot.get("feature_scores", {}).get(key) or 60.0) for key in FEATURE_SCORE_KEYS},
-                    "matrix_scores": {key: float(snapshot.get("matrix_scores", {}).get(key) or 60.0) for key in MATRIX_KEYS},
+                    "feature_scores": {
+                        key: score_value(
+                            snapshot.get("feature_scores", {}).get(key)
+                        )
+                        for key in FEATURE_SCORE_KEYS
+                    },
+                    "matrix_scores": {
+                        key: matrix_score(
+                            snapshot.get("matrix_scores", {}),
+                            key,
+                            60.0,
+                        )
+                        for key in MATRIX_KEYS
+                    },
                     "risk_flags": list(snapshot.get("risk_flags") or []),
                     "reason_codes": list(snapshot.get("reason_codes") or []),
                     "matrix_reasoning": snapshot.get("matrix_reasoning") or {},

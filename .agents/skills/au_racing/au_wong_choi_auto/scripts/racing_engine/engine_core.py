@@ -10,7 +10,18 @@ from datetime import datetime
 from pathlib import Path
 
 from matrix_mapper import map_features_to_matrix, map_features_to_matrix_scores
+from source_alignment import (
+    HORSE_HEADER_RE,
+    RACECARD_HORSE_RE,
+    RACECARD_META_RE,
+    clean_identity as _clean_identity,
+    normalize_horse_name as _normalize_horse_name,
+    race_source_candidates,
+    validate_facts_horse_alignment,
+    venue_from_meeting_name,
+)
 from scoring import (
+    ABILITY_FEATURE_KEYS,
     FEATURE_KEYS,
     MATRIX_WEIGHTS,
     CLASS_MICRO_WEIGHTS,
@@ -19,7 +30,6 @@ from scoring import (
     TRACK_MICRO_WEIGHTS,
     FORMLINE_MICRO_WEIGHTS,
     PACE_MICRO_WEIGHTS,
-    JOCKEY_MICRO_WEIGHTS,
     TRAINER_MICRO_WEIGHTS,
     FIT_MICRO_WEIGHTS,
     clip_score,
@@ -32,13 +42,9 @@ from scoring import (
     wet_form_feature,
 )
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[6]
-import sys as _sys; _sys.path.insert(0, str(_PROJECT_ROOT))
-from wongchoi_paths import AU_RACING as _AU_RACING
 TRACK_RESOURCE_DIR = Path(__file__).resolve().parents[3] / "au_horse_analyst" / "resources"
 AUTO_RESOURCE_DIR = Path(__file__).resolve().parents[2] / "resources"
-ARCHIVE_AU_DIR = _AU_RACING
-JOCKEY_TRAINER_COMBO_STATS_PATH = ARCHIVE_AU_DIR / "AU_Jockey_Trainer_Combo_Stats.csv"
+JOCKEY_TRAINER_COMBO_STATS_PATH = AUTO_RESOURCE_DIR / "AU_Jockey_Trainer_Combo_Stats.csv"
 JOCKEY_RATINGS_PATH = AUTO_RESOURCE_DIR / "AU_Jockey_Ratings.csv"
 TRAINER_RATINGS_PATH = AUTO_RESOURCE_DIR / "AU_Trainer_Ratings.csv"
 TRACK_PROFILE_CACHE: dict[tuple[str, int], dict] = {}
@@ -173,11 +179,9 @@ def _load_jockey_trainer_combo_stats():
 
     combo_cache: dict[tuple[str, str, str], dict] = {}
     trainer_cache: dict[tuple[str, str], dict] = {}
-    # BUGFIX 2026-07-25: this read used to be unguarded, so any I/O problem on the
-    # Google Drive data root (macOS revoking CloudStorage access gives
-    # PermissionError, and `.exists()` itself can raise) crashed the WHOLE scoring
-    # run instead of degrading. Optional enrichment must never take the engine
-    # down — on failure we cache empty dicts and score without combo stats.
+    # Optional enrichment is bundled with the engine. Keeping this small snapshot
+    # out of the Drive archive avoids placeholder timeouts and makes each scoring
+    # run reproducible/offline. Failure still degrades to empty cached lookups.
     try:
         available = JOCKEY_TRAINER_COMBO_STATS_PATH.exists()
     except OSError:
@@ -246,11 +250,14 @@ def _load_named_rating_stats():
         with path.open("r", encoding="utf-8-sig", newline="") as handle:
             reader = csv.DictReader(handle)
             for row in reader:
+                base_score = parse_float(row.get("base_score"))
                 payload = {
                     "name": _normalize_identity_text(row.get("name")),
                     "canonical_name": _normalize_identity_text(row.get("canonical_name")),
                     "tier": _normalize_identity_text(row.get("tier")),
-                    "base_score": float(parse_float(row.get("base_score")) or 60),
+                    "base_score": float(
+                        60 if base_score is None else base_score
+                    ),
                     "confidence": _normalize_identity_text(row.get("confidence")),
                     "source": _normalize_identity_text(row.get("source")),
                     "notes": _normalize_identity_text(row.get("notes")),
@@ -266,24 +273,7 @@ def _load_named_rating_stats():
     return JOCKEY_RATINGS_CACHE, TRAINER_RATINGS_CACHE
 
 
-# BUGFIX 2026-07-03: ported the fixed header/meta regexes from build_au_logic —
-# the enrich path still used the pre-fix versions, so a horse with 負重: 未知/N/A
-# was silently dropped (its record rows bled into the previous horse's block and
-# its facts features collapsed to neutral), and an unrated horse failed the whole
-# racecard meta line. Groups keep the same order (num/name/barrier/jockey/trainer/
-# weight); rating group(2) is now optional.
-FIELD_TRAILER_RE = re.compile(r"\s*\|\s*負重:\s*(?:[0-9.]+kg|未知|N/A|-)\s*$")
-HORSE_BLOCK_RE = re.compile(
-    r"^### 馬匹 #(\d+) (.+?) \(檔位 (\d+)\)"
-    r"(?:\s*\| 騎師: ([^|]+?))?"
-    r"(?:\s*\| 練馬師: ([^|\n\r]+?))?"
-    r"(?:\s*\| 負重: (?:([0-9.]+)kg|未知|N/A|-))?$",
-    re.M,
-)
-RACECARD_HORSE_RE = re.compile(r"^\d+\.\s+(.+?)\s+\((\d+)\)$")
-RACECARD_META_RE = re.compile(
-    r"^Trainer:\s.*?\|\sJockey:\s.*?\|\sWeight:\s*([0-9.]+)(?:kg)?(?:\s*\([^|]*\))?\s*\|\sAge:\s.*?\|\sRating:\s*([0-9.]+)?"
-)
+HORSE_BLOCK_RE = HORSE_HEADER_RE
 
 
 class RacingEngine:
@@ -296,6 +286,7 @@ class RacingEngine:
         self.reason_codes = []
         self.risk_flags = []
         self.provenance = {}
+        self.evidence_state = {}
         # 人馬配搭分逐項調整紀錄（因子、加減分、原始數據）— 供報告完整追溯
         self.jt_fit_detail = None
         self._record_entry_cache = None
@@ -328,32 +319,7 @@ class RacingEngine:
         return ""
 
     def analyze_horse(self):
-        feature_scores = {}
-        feature_notes = {}
-
-        for name, func in {
-            "form_score": self._form_score,
-            "trial_score": self._trial_score,
-            "sectional_score": self._sectional_score,
-            "pace_map_score": self._pace_map_score,
-            "jockey_score": self._jockey_score,
-            "trainer_score": self._trainer_score,
-            "jockey_horse_fit_score": self._jockey_horse_fit_score,
-            "class_score": self._class_score,
-            "rating_score": self._rating_score,
-            "weight_score": self._weight_score,
-            "distance_score": self._distance_score,
-            "track_score": self._track_score,
-            "formline_score": self._formline_score,
-            "consistency_score": self._consistency_score,
-            "health_score": self._health_score,
-            "confidence_score": self._confidence_score,
-            "pace_figure_score": self._pace_figure_score,
-        }.items():
-            score, note, source = func()
-            feature_scores[name] = clip_score(score)
-            feature_notes[name] = note
-            self.provenance[name] = source
+        feature_scores, feature_notes = self._score_features()
 
         for key in FEATURE_KEYS:
             feature_scores[key] = clip_score(feature_scores.get(key, 60))
@@ -446,7 +412,7 @@ class RacingEngine:
         ability_score = round(pure_7d_score + wet_form_feat, 4)
         grade = compute_grade(ability_score)
 
-        data_coverage = self._data_coverage(feature_scores)
+        data_coverage = self._data_coverage()
         matrix_reasoning = self._matrix_reasoning(matrix_scores, feature_scores, feature_notes)
         advantages = self._advantages(feature_scores, matrix_scores)
         disadvantages = self._disadvantages(feature_scores, matrix_scores)
@@ -506,23 +472,83 @@ class RacingEngine:
             "reason_codes": sorted(set(self.reason_codes)),
             "risk_flags": sorted(set(self.risk_flags)),
             "score_provenance": self.provenance,
+            "feature_evidence_state": self.evidence_state,
         }
+
+    def _score_features(self):
+        feature_scores = {}
+        feature_notes = {}
+        for name in FEATURE_KEYS:
+            score, note, source = getattr(self, f"_{name}")()
+            feature_scores[name] = clip_score(score)
+            feature_notes[name] = note
+            self.provenance[name] = source
+            self.evidence_state[name] = self._feature_evidence_state(name, source)
+        return feature_scores, feature_notes
 
     # Ability-feeding features (per matrix_mapper). formline is weight-0 so it is
     # excluded from the coverage that reflects the actual ranking evidence.
-    _COVERAGE_FEATURES = (
-        "form_score", "consistency_score", "pace_figure_score", "sectional_score",
-        "trial_score", "pace_map_score", "jockey_score", "trainer_score",
-        "jockey_horse_fit_score", "class_score", "rating_score", "weight_score",
-        "track_score",
-    )
+    _COVERAGE_FEATURES = ABILITY_FEATURE_KEYS
 
-    def _data_coverage(self, feature_scores):
-        """Per-horse data-completeness = fraction of ranking features backed by
-        REAL data (not the neutral-60 default). Makes the silent default-60
-        explicit so a thin-data score is never mistaken for a confident one."""
-        missing = [k for k in self._COVERAGE_FEATURES
-                   if abs(float(feature_scores.get(k, 60.0)) - 60.0) < 1e-9]
+    def _feature_evidence_state(self, name, source):
+        """Classify evidence independently from the numeric score.
+
+        A real observation can legitimately score exactly 60, while several
+        no-data fallbacks intentionally use non-60 priors. Numeric equality is
+        therefore not a valid completeness test.
+        """
+        if source in {"missing_neutral", "disabled_neutral"}:
+            return "missing"
+        if name == "form_score":
+            return "observed" if (getattr(self, "form_detail", {}) or {}).get("rows") else "fallback"
+        if name == "trial_score":
+            return "observed" if self._trial_places() else "fallback"
+        if name == "sectional_score":
+            return "observed" if self._sectional_breakdown().get("has_pi") else "missing"
+        if name == "pace_map_score":
+            return "observed" if parse_float(self.horse_data.get("barrier")) is not None else "fallback"
+        if name == "jockey_score":
+            return "observed" if source in {"jockey_ly_stats", "jockey_rating_db"} else "fallback"
+        if name == "trainer_score":
+            detail = getattr(self, "trainer_detail", {}) or {}
+            has_stats = bool(detail.get("ly_line") or detail.get("adjustments"))
+            known_tier = "資料庫無記錄" not in str(detail.get("base_label") or "")
+            return "observed" if has_stats or known_tier else "fallback"
+        if name == "jockey_horse_fit_score":
+            detail = self.jt_fit_detail or {}
+            return "derived" if detail.get("adjustments") else "fallback"
+        if name == "class_score":
+            has_class_evidence = bool(
+                self._official_entries()
+                or str(self.data.get("class_move") or "").strip()
+            )
+            return "derived" if has_class_evidence else "fallback"
+        if name == "rating_score":
+            return "observed" if source == "racecard_rating+field_relative" else "fallback"
+        if name == "weight_score":
+            return "observed"
+        if name == "track_score":
+            detail = getattr(self, "track_detail", {}) or {}
+            return "observed" if detail.get("notes") else "fallback"
+        if name == "consistency_score":
+            return "derived" if self._official_entries() else "fallback"
+        if name == "pace_figure_score":
+            return "observed" if source == "pf_l600_delta_field_relative" else "missing"
+        if name == "distance_score":
+            return "derived" if self._official_entries() else "fallback"
+        if name == "formline_score":
+            return "derived" if self._formline_rows() else "fallback"
+        if name == "confidence_score":
+            return "derived"
+        return "observed"
+
+    def _data_coverage(self):
+        """Fraction of ranking features backed by observed or derived evidence."""
+        missing = [
+            key
+            for key in self._COVERAGE_FEATURES
+            if self.evidence_state.get(key, "missing") not in {"observed", "derived"}
+        ]
         total = len(self._COVERAGE_FEATURES)
         present = total - len(missing)
         pct = round(100.0 * present / total, 1)
@@ -538,6 +564,10 @@ class RacingEngine:
             "total": total,
             "confidence": label,
             "missing_features": missing,
+            "feature_states": {
+                key: self.evidence_state.get(key, "missing")
+                for key in self._COVERAGE_FEATURES
+            },
         }
 
     def _get_class_tier(self, text):
@@ -1008,20 +1038,9 @@ class RacingEngine:
                 elif modifier < -2:
                     notes.append("排位具統計劣勢")
             else:
-                # 完全無統計時嘅絕對 fallback。fallback_wide_pen 已係 0（外檔唔硬罰），
-                # 所以只喺真正有加減分時先出 note，唔好「有講冇分」。
-                wide_pen = w.get("fallback_wide_pen", 0.0)
-                inside_bonus = w.get("fallback_inside_bonus", 2.0)
-                if barrier >= 12 and abs(wide_pen) > 0.05:
-                    score += wide_pen
-                    notes.append(f"外檔（{bucket_zh}）無統計數據，保守修正 {wide_pen:+.1f}")
-                    detail["lines"] = [f"檔位 {int(barrier)}（{bucket_zh}）無統計數據 → 保守修正 {wide_pen:+.1f}"]
-                elif barrier <= 4 and abs(inside_bonus) > 0.05:
-                    score += inside_bonus
-                    notes.append(f"內檔（{bucket_zh}）無統計數據，輕微加分 {inside_bonus:+.1f}")
-                    detail["lines"] = [f"檔位 {int(barrier)}（{bucket_zh}）無統計數據 → 輕微加分 {inside_bonus:+.1f}"]
-                else:
-                    detail["lines"] = [f"檔位 {int(barrier)}（{bucket_zh}）無足夠統計數據 → 維持中性基礎分"]
+                # 冇統計就維持中性；舊內檔/外檔硬編碼 fallback 喺 710 場、
+                # 5 folds 同 terminal holdout 全部 0-score，唔再以猜測代替數據。
+                detail["lines"] = [f"檔位 {int(barrier)}（{bucket_zh}）無足夠統計數據 → 維持中性基礎分"]
 
         # ── Pace-bias term (uses already-parsed speed_map roles + predicted_pace) ──
         # Racing prior (the model's own collapse_point rule): a slow/controlled tempo
@@ -1173,27 +1192,13 @@ class RacingEngine:
                            f"（收縮後上名率 {rate * 100:.0f}%，全國基準 {self._JOCKEY_LY_PRIOR * 100:.0f}%），"
                            f"騎師分 {clip_score(score):.1f}。"), "jockey_ly_stats"
 
-        # 最後 fallback：舊 token 名單（LY 100% 覆蓋下極少用到）
+        # DB 同官方去年統計都冇資料時維持中性。舊硬編碼名單 fallback
+        # 喺 445 場 runtime ablation（development、terminal、5 folds）
+        # 全部精確零影響，亦會令同一騎師因缺失資料而得到不一致待遇。
         score = 60
-        elite_tokens = (
-            "McDonald", "Rawiller", "Pike", "Allen", "King", "Melham",
-            "Collett", "Berry", "Clark", "Hyeronimus", "Schiller", "Lloyd",
-            "Shinn", "Zahra", "Lane", "Bowman", "Kah", "Prebble", "Parr"
-        )
-        solid_tokens = ("McEvoy", "Layt", "Bayliss", "Moore", "Roper", "Costin", "Bullock", "Gibbons", "Jones")
-        if any(token in jockey for token in elite_tokens):
-            score += JOCKEY_MICRO_WEIGHTS.get("elite_bonus", 12.0)
-            detail["source"] = "token"
-            detail["lines"] = [f"名單 fallback：高階騎師 +{JOCKEY_MICRO_WEIGHTS.get('elite_bonus', 12.0):.0f} → {clip_score(score):.0f} 分"]
-            return score, f"{jockey} 屬高階騎師，騎師分 {clip_score(score):.1f}。", "jockey_name_fallback"
-        if any(token in jockey for token in solid_tokens):
-            score += JOCKEY_MICRO_WEIGHTS.get("solid_bonus", 6.0)
-            detail["source"] = "token"
-            detail["lines"] = [f"名單 fallback：一級半騎師 +{JOCKEY_MICRO_WEIGHTS.get('solid_bonus', 6.0):.1f} → {clip_score(score):.0f} 分"]
-            return score, f"{jockey} 屬有基本把握嘅一級半騎師，騎師分 {clip_score(score):.1f}。", "jockey_name_fallback"
         detail["source"] = "neutral"
         detail["lines"] = ["資料庫／官方統計均無記錄 → 中性 60 分"]
-        return score, f"{jockey or '騎師資料'} 屬中性配置，騎師分 {clip_score(score):.1f}。", "jockey_name_fallback"
+        return score, f"{jockey or '騎師資料'} 屬中性配置，騎師分 {clip_score(score):.1f}。", "jockey_missing_neutral"
 
     def _trainer_score(self):
         trainer = self._clean_identity(self.horse_data.get("trainer"))
@@ -1224,11 +1229,6 @@ class RacingEngine:
             detail["base_label"] = tier_text
             notes.append(tier_note)
         else:
-            strong_tokens = (
-                "Waller", "Maher", "Waterhouse", "Bott", "Hayes", "Baker",
-                "Freedman", "Price", "Payne", "Pride", "Snowden", "Charlton",
-                "Hawkes", "O'Shea", "Conners", "Cummings", "Gollan", "Lees", "Neasham", "Moody"
-            )
             # EMPIRICAL FILL 2026-07-25: the curated ratings CSV lists only ~57
             # trainers, so ~39% of runners previously fell through to a flat
             # neutral 60 — the biggest coverage hole in the matrix. The engine
@@ -1244,9 +1244,6 @@ class RacingEngine:
                 base_delta, ev = empirical
                 add(base_delta, "去年實證班底水準", ev)
                 detail["base_label"] = f"名單外，改用去年實證（{ev}）"
-            elif any(token in trainer for token in strong_tokens):
-                add(TRAINER_MICRO_WEIGHTS.get("elite_bonus", 12.0), "全國強勢班底", "名單 fallback")
-                detail["base_label"] = "資料庫無記錄，中性起步"
             else:
                 detail["base_label"] = "資料庫無記錄，中性起步"
         if "Waller" in trainer and self._career_starts() == 0:
@@ -1264,9 +1261,6 @@ class RacingEngine:
         elif track_stats.get("runs", 0) >= 8 and track_stats.get("place_rate", 0.0) >= 0.32:
             add(TRAINER_MICRO_WEIGHTS.get("track_med_vol_med_place_bonus", 3.0),
                 "今場場館有基本對位", track_ev)
-        elif track_stats.get("runs", 0) >= 8 and track_stats.get("place_rate", 0.0) < 0.18:
-            add(TRAINER_MICRO_WEIGHTS.get("track_low_place_pen", -2.0),
-                "今場場館樣本未見承托", track_ev)
         detail["final"] = round(clip_score(score), 2)
         note = "；".join(notes) if notes else f"{trainer or '練馬師資料'} 反映馬房部署基礎"
         return score, f"{note}，練馬師分 {clip_score(score):.1f}。", "trainer_name+trainer_track_stats"
@@ -1300,12 +1294,13 @@ class RacingEngine:
         try:
             rides = int(tly.get("rides") or 0)
             places = int(tly.get("places") or 0)
-            wins = int(tly.get("wins") or 0)
         except (TypeError, ValueError):
             return None
         if rides < 10:
             return None  # too thin to say anything
-        place_rate = (places + wins) / rides if places or wins else 0.0
+        # `places` is already wins + seconds + thirds (see build_au_logic).
+        # Adding wins again inflated every trainer's official place rate.
+        place_rate = places / rides if places else 0.0
         shrunk = (place_rate * rides + self._TRAINER_LY_NORM * self._TRAINER_LY_SHRINK_K) / (
             rides + self._TRAINER_LY_SHRINK_K)
         raw = (shrunk - self._TRAINER_LY_NORM) * self._TRAINER_LY_SCALE
@@ -1376,7 +1371,10 @@ class RacingEngine:
                 add(FIT_MICRO_WEIGHTS.get("trial_ok_top_jt_bonus", 2.0), "備戰同騎練配置方向一致",
                     "試閘密度足夠且配頂級騎/練")
         if current_formal_rides > 0:
-            add(min(FIT_MICRO_WEIGHTS.get("current_formal_cap", 6.0), current_formal_places * FIT_MICRO_WEIGHTS.get("current_formal_mult", 2.0) + current_formal_wins * FIT_MICRO_WEIGHTS.get("current_formal_mult", 2.0)),
+            # formal_places is W+2nd+3rd (see _summarize_formguide_section).
+            # Adding formal_wins again double-counts every win and inflates the
+            # same jockey/horse partnership signal.
+            add(min(FIT_MICRO_WEIGHTS.get("current_formal_cap", 6.0), current_formal_places * FIT_MICRO_WEIGHTS.get("current_formal_mult", 2.0)),
                 f"現役騎師曾策騎此駒 {current_formal_rides} 次正式賽",
                 f"{jockey}策此駒{current_formal_rides}次：{current_formal_wins}勝{current_formal_places}上名")
             if current_formal_places * 2 >= max(1, current_formal_rides):
@@ -1415,10 +1413,11 @@ class RacingEngine:
         if jockey_change_signal:
             if "沿用歷來最佳配搭" in jockey_change_signal:
                 add(FIT_MICRO_WEIGHTS.get("signal_best_jockey_bonus", 4.0), "沿用歷來最佳人馬配搭", jockey_change_signal)
-            elif "較強騎師" in jockey_change_signal:
-                add(FIT_MICRO_WEIGHTS.get("signal_upgrade_bonus", 5.0), "今場屬升級換騎", jockey_change_signal)
-            elif "換下較高級騎師" in jockey_change_signal:
-                add(FIT_MICRO_WEIGHTS.get("signal_downgrade_pen", -4.0), "今場屬降級換騎", jockey_change_signal)
+            elif "較強騎師" in jockey_change_signal or "換下較高級騎師" in jockey_change_signal:
+                # 之前 generic Facts signal 令呢兩支永遠行唔到。修正 alignment 後
+                # 710 場測試會改 286 場排名，但 folds/terminal 方向互相衝突；
+                # 因此保留準確描述，唔用未泛化嘅大額微調入分。
+                notes.append(f"{jockey_change_signal}（評級變化只作背景，不入分）")
             elif "沿用上仗騎師" in jockey_change_signal:
                 add(2, "沿用上仗騎師，部署連貫", jockey_change_signal)
             elif "試閘手接手" in jockey_change_signal:
@@ -1969,11 +1968,7 @@ class RacingEngine:
         return mapping.get(flag, flag)
 
     def _clean_identity(self, value):
-        text = str(value or "").strip()
-        if not text:
-            return ""
-        text = FIELD_TRAILER_RE.sub("", text)
-        return text.strip(" |")
+        return _clean_identity(value)
 
     def _career_starts(self):
         value = parse_float(self.horse_data.get("career_race_starts"))
@@ -2399,7 +2394,20 @@ class RacingEngine:
 
     def _jockey_change_signal(self):
         signal = str(self.data.get("jockey_change_signal") or "").strip()
-        if signal:
+        # Facts builder can only compare this horse's historical combinations;
+        # its generic "由 X 轉配 Y" / "回配 Y" text does not know the global
+        # jockey tiers.  Returning it immediately made the tier upgrade and
+        # downgrade branches below unreachable across the 710-race archive.
+        # Keep genuinely specific facts, but enrich generic changes here where
+        # the ratings DB is available.
+        specific_markers = (
+            "沿用歷來最佳配搭",
+            "沿用上仗騎師",
+            "試閘手接手",
+            "較合拍騎師",
+            "離開已證明配搭",
+        )
+        if signal and any(marker in signal for marker in specific_markers):
             return signal
         current = self._clean_identity(self.horse_data.get("jockey"))
         latest_official = self._latest_official_jockey()
@@ -2424,8 +2432,8 @@ class RacingEngine:
                 return f"由 {latest_official} 換下較高級騎師"
             if self._current_jockey_formal_rides() > 0:
                 return f"回配 {current}"
-            return f"由 {latest_official} 轉配 {current}"
-        return ""
+            return signal or f"由 {latest_official} 轉配 {current}"
+        return signal
 
     def _sire_line(self):
         return str(self.data.get("sire_line") or "").strip()
@@ -2636,9 +2644,6 @@ class RacingEngine:
     def _has_verified_wet_place(self):
         stats = self._going_stats()
         return any(stats[label]["places"] > 0 for label in ("軟地", "重地"))
-
-    def _pace_confidence(self):
-        return str(self._speed_map_field("pace_confidence") or "").strip()
 
     def _style_confidence(self):
         return str(self.data.get("style_confidence_line") or self._speed_map_field("style_confidence") or "").strip()
@@ -2861,27 +2866,6 @@ class RacingEngine:
             return f"{jockey} / {trainer}"
         return jockey or trainer
 
-    def _engine_distance_brief(self):
-        line = str(self.data.get("engine_line") or "").strip()
-        if not line:
-            return ""
-        engine_match = re.search(r"引擎:\s*([^|]+)", line)
-        distance_match = re.search(r"今仗\s+([0-9]+m)\s+\(([^)]+)\):\s*([^|]+)", line)
-        confidence_match = re.search(r"信心:\s*([^|]+)", line)
-        parts = []
-        if engine_match:
-            engine_raw = engine_match.group(1).strip()
-            # engine_raw 通常係「Type A/B (混合型)」— 內部代碼 + 已有嘅中文譯名同時存在；
-            # 淨係留中文譯名，內部代碼對用戶冇意思。冇括號就照用原文（已經係中文）。
-            zh_match = re.search(r"（([^）]+)）|\(([^)]+)\)", engine_raw)
-            engine_label = (zh_match.group(1) or zh_match.group(2)) if zh_match else engine_raw
-            parts.append(f"引擎輪廓 {engine_label}")
-        if distance_match:
-            parts.append(f"今次 {distance_match.group(1)} 以上 {distance_match.group(2).strip()} 系列作投射")
-        if confidence_match:
-            parts.append(f"路程信心 {confidence_match.group(1).strip()}")
-        return "；".join(parts) if parts else line
-
     @staticmethod
     def _clean_trend_label(raw):
         # 顯示用：剝走 bleed 入趨勢標籤嘅 L400 子句 / 重覆「→ 趨勢:」，scoring cache 不受影響。
@@ -3090,28 +3074,12 @@ class RacingEngine:
         if "降班" in class_move:
             score += w.get("class_drop_bonus", 6.0)
             notes.append("班次有回落")
-        elif "大幅升班" in class_move or "升班" in class_move:
-            # class_up_pen 已被 ML 推零；只喺真正有扣分時先出 note，唔好「有講冇分」。
-            up_pen = w.get("class_up_pen", 0.0)
-            if abs(up_pen) > 0.05:
-                score += up_pen
-                notes.append("今場對手層次轉強")
-
-
         if current_tier == "metro" and latest_tier == "provincial":
             if latest_rt is not None and latest_rt >= 68:
                 notes.append("省賽轉都會，但 RT 證明夠跑都會區")
             else:
                 score += w.get("metro_prov_pen", -3.0)
                 notes.append("省賽轉都會，鄉鎮賽績含金量成疑")
-
-        if latest_rt is not None:
-            if latest_rt >= 68:
-                score += w.get("rt_high_bonus", 4.0)
-                notes.append("最新 RT rating 顯示具備能力")
-            elif latest_rt <= 58:
-                score += w.get("rt_low_pen", -4.0)
-                notes.append("最新 RT rating 偏低")
 
         cdetail["notes"] = list(notes)
         cdetail["final"] = round(clip_score(score), 2)
@@ -3387,11 +3355,6 @@ class RacingEngine:
                      notes.append("重地多次出賽全無表現，適應力有疑慮")
                      self.risk_flags.append("poor_heavy_performance")
             
-            wet_bloodline = self._wet_bloodline_signal()
-            if wet_bloodline == "正面" and not self._has_verified_wet_place():
-                score += w.get("wet_bloodline_bonus", 3.0)
-                notes.append("缺乏濕地實績，但血統輪廓顯示適合爛地")
-
         # 場地／地狀往績記錄行先（用戶要求）：一眼睇到同場、好/軟/重地實績
         rec_bits = []
         same = re.match(r"\s*(\d+:\d+-\d+-\d+)", str(self.data.get("track_stats_line") or ""))
@@ -3902,15 +3865,305 @@ class RacingEngine:
         return int(match.group(1)) if match else 0
 
 
-def enrich_logic_from_facts(logic_data: dict, facts_path: Path) -> dict:
+_PF_TOKEN_RE = re.compile(r"PF\[(.+?)\]")
+_FG_HORSE_HDR_RE = re.compile(
+    r"^\[(\d+)\]\s+(.+?)\s+\((\d+)\)\s*$",
+    re.M,
+)
+_FG_JT_LY_RE = re.compile(
+    r"(?:^|\|)\s*(T|J):\s*([^(|\n]+?)\s*"
+    r"\(LY:\s*(\d+):(\d+)-(\d+)-(\d+)\)",
+    re.M,
+)
+
+
+def _pf_num(pattern: str, text: str):
+    match = re.search(pattern, text)
+    try:
+        return float(match.group(1)) if match else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _pf_str(pattern: str, text: str):
+    match = re.search(pattern, text)
+    return match.group(1).strip() if match else None
+
+
+def _parse_pf_token(token: str) -> dict:
+    return {
+        "l600_time": _pf_num(r"Last600:\s*([-\d.]+)", token),
+        "runner_time": _pf_num(r"Runner Time:\s*([-\d.]+)", token),
+        "race_time_diff": _pf_num(r"Race Time:\s*([-\d.]+)", token),
+        "l800_delta": _pf_num(r"L800 Delta:\s*([-\d.]+)", token),
+        "l600_delta": _pf_num(r"L600 Delta:\s*([-\d.]+)", token),
+        "l400_delta": _pf_num(r"L400 Delta:\s*([-\d.]+)", token),
+        "l200_delta": _pf_num(r"L200 Delta:\s*([-\d.]+)", token),
+        "tempo_qrank": _pf_num(r"Tempo QRank:\s*([-\d.]+)", token),
+        "rt_rating": _pf_num(r"RT Rating:\s*([-\d.]+)", token),
+        "early_runner_pace": _pf_str(
+            r"Early Runner Pace:\s*([^.]+)\.",
+            token,
+        ),
+        "early_race_pace": _pf_str(
+            r"Early Race Pace:\s*([^.]+)\.",
+            token,
+        ),
+    }
+
+
+def _formguide_text(facts_path: Path) -> str:
+    formguide = facts_path.with_name(
+        facts_path.name.replace("Facts", "Formguide")
+    )
+    if not formguide.exists():
+        return ""
+    try:
+        return formguide.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+
+def _parse_formguide_pf_metrics(
+    facts_path: Path,
+    *,
+    formguide_text: str | None = None,
+) -> dict:
+    text = _formguide_text(facts_path) if formguide_text is None else formguide_text
+    if not text:
+        return {}
+    output: dict = {}
+    headers = list(_FG_HORSE_HDR_RE.finditer(text))
+    for index, header in enumerate(headers):
+        body = text[
+            header.end():
+            headers[index + 1].start() if index + 1 < len(headers) else len(text)
+        ]
+        runs = [
+            _parse_pf_token(token)
+            for token in _PF_TOKEN_RE.findall(body)
+        ]
+        aggregates: dict = {}
+        if runs:
+            def values(key):
+                return [
+                    run[key]
+                    for run in runs
+                    if run.get(key) is not None
+                ]
+
+            for key in (
+                "race_time_diff",
+                "l800_delta",
+                "l600_delta",
+                "l400_delta",
+                "l200_delta",
+                "runner_time",
+                "l600_time",
+            ):
+                samples = values(key)
+                if samples:
+                    aggregates[f"{key}_avg"] = round(
+                        sum(samples) / len(samples),
+                        3,
+                    )
+                    aggregates[f"{key}_best"] = round(min(samples), 3)
+            tempo = values("tempo_qrank")
+            if tempo:
+                aggregates["tempo_qrank_avg"] = round(
+                    sum(tempo) / len(tempo),
+                    4,
+                )
+            ratings = values("rt_rating")
+            if ratings:
+                aggregates["rt_rating_avg"] = round(
+                    sum(ratings) / len(ratings),
+                    3,
+                )
+                aggregates["rt_rating_best"] = round(max(ratings), 3)
+            aggregates["latest_early_runner_pace"] = runs[0].get(
+                "early_runner_pace"
+            )
+            aggregates["latest_early_race_pace"] = runs[0].get(
+                "early_race_pace"
+            )
+            aggregates["pf_run_count"] = len(runs)
+        output[header.group(1)] = {
+            "pf_runs": runs,
+            "pf_aggregates": aggregates,
+        }
+    return output
+
+
+def _parse_formguide_jt_ly(
+    facts_path: Path,
+    *,
+    formguide_text: str | None = None,
+) -> dict:
+    text = _formguide_text(facts_path) if formguide_text is None else formguide_text
+    if not text:
+        return {}
+    output: dict = {}
+    headers = list(_FG_HORSE_HDR_RE.finditer(text))
+    for index, header in enumerate(headers):
+        body = text[
+            header.end():
+            headers[index + 1].start() if index + 1 < len(headers) else len(text)
+        ]
+        record: dict = {}
+        for match in _FG_JT_LY_RE.finditer(body):
+            kind = "trainer_ly" if match.group(1) == "T" else "jockey_ly"
+            if kind in record:
+                continue
+            wins = int(match.group(4))
+            seconds = int(match.group(5))
+            thirds = int(match.group(6))
+            record[kind] = {
+                "name": match.group(2).strip(),
+                "rides": int(match.group(3)),
+                "wins": wins,
+                "places": wins + seconds + thirds,
+            }
+        if record:
+            output[header.group(1)] = record
+    return output
+
+
+def _extract_race_number(filename: str, text: str) -> int:
+    match = re.search(r"Race[ _](\d+)", filename)
+    if match:
+        return int(match.group(1))
+    match = re.search(r"# .*Race\s+(\d+)", text)
+    return int(match.group(1)) if match else 1
+
+
+def _extract_race_meta(
+    facts_path: Path,
+    text: str,
+) -> tuple[str, str, int]:
+    race_number = _extract_race_number(facts_path.name, text)
+    distance_match = re.search(r"今仗距離:\s*([0-9]+m)", text)
+    distance = distance_match.group(1) if distance_match else ""
+    racecards = race_source_candidates(
+        facts_path.parent,
+        race_number,
+        "Racecard",
+    )
+    race_class = ""
+    prize = 0
+    if racecards:
+        lines = racecards[0].read_text(encoding="utf-8").splitlines()
+        if not lines:
+            raise ValueError(
+                f"Race {race_number} Racecard is empty: {racecards[0].name}"
+            )
+        header = lines[0]
+        class_match = re.search(
+            r"\d+m\s*\|\s*([^|$]+?)(?:\s*\||\s*$)",
+            header,
+        )
+        if class_match:
+            race_class = class_match.group(1).strip()
+        prize_match = re.search(r"\$\s*([0-9,]+)", header)
+        if prize_match:
+            prize = int(prize_match.group(1).replace(",", ""))
+        if not distance:
+            distance_match = re.search(r"[—–-]\s*(\d{3,5}m)", header)
+            if distance_match:
+                distance = distance_match.group(1)
+    return race_class, distance, prize
+
+
+def _extract_career_starts(block: str) -> int:
+    line = _capture(block, r"生涯: ([^\n]+)")
+    match = re.match(r"(\d+):", line or "")
+    return int(match.group(1)) if match else 0
+
+
+def _extract_career_tag(block: str) -> str:
+    starts = _extract_career_starts(block)
+    if starts == 0:
+        return "DEBUT"
+    if starts <= 5:
+        return "EARLY_CAREER"
+    return "ESTABLISHED"
+
+
+def build_logic_from_facts(facts_path: Path) -> dict:
+    """Build one canonical Logic object through the enrichment parser."""
     text = facts_path.read_text(encoding="utf-8")
+    race_number = _extract_race_number(facts_path.name, text)
+    race_class, distance, prize = _extract_race_meta(facts_path, text)
+    matches = validate_facts_horse_alignment(
+        text,
+        source=facts_path.name,
+    )
+    logic = {
+        "race_analysis": {
+            "race_number": race_number,
+            "race_class": race_class,
+            "distance": distance,
+            "prize": prize,
+        },
+        "horses": {},
+    }
+    for match in matches:
+        horse_number = match.group(1)
+        logic["horses"][horse_number] = {
+            "horse_name": _clean_identity(match.group(2)),
+            "barrier": int(match.group(3)),
+            "jockey": _clean_identity(match.group(4)),
+            "trainer": _clean_identity(match.group(5)),
+            "weight": parse_float(match.group(6)),
+            "_data": {},
+        }
+    return enrich_logic_from_facts(
+        logic,
+        facts_path,
+        facts_text=text,
+    )
+
+
+def enrich_logic_from_facts(
+    logic_data: dict,
+    facts_path: Path,
+    *,
+    facts_text: str | None = None,
+) -> dict:
+    text = (
+        facts_path.read_text(encoding="utf-8")
+        if facts_text is None
+        else facts_text
+    )
     race_analysis = logic_data.setdefault("race_analysis", {})
     speed_map = race_analysis.setdefault("speed_map", {})
     auto_speed_map = _parse_speed_map(text)
     race_number = _extract_first_int(str(race_analysis.get("race_number") or facts_path.name), r"(\d+)")
     racecard_profiles = _load_racecard_profiles(facts_path, race_number)
+    formguide_text = _formguide_text(facts_path)
     formguide_digests = _load_formguide_digests(facts_path, race_number)
-    meeting_intelligence = _load_meeting_intelligence(facts_path, race_number)
+    pf_by_horse = _parse_formguide_pf_metrics(
+        facts_path,
+        formguide_text=formguide_text,
+    )
+    jt_ly_by_horse = _parse_formguide_jt_ly(
+        facts_path,
+        formguide_text=formguide_text,
+    )
+    existing_meeting = race_analysis.get("meeting_intelligence")
+    existing_meeting = existing_meeting if isinstance(existing_meeting, dict) else {}
+    fresh_meeting = _load_meeting_intelligence(facts_path, race_number)
+    # Facts/extractor context is fresher, but may be deliberately run from a
+    # temporary work directory whose name is not a meeting identity. Preserve
+    # existing non-empty context when the fresh source cannot prove a value.
+    meeting_intelligence = dict(existing_meeting)
+    for key, value in fresh_meeting.items():
+        if value:
+            meeting_intelligence[key] = value
+    meeting_intelligence["source"] = _merge_sources(
+        existing_meeting.get("source"),
+        fresh_meeting.get("source"),
+    )
     track_profile = _load_track_profile(
         meeting_intelligence.get("venue", ""),
         _distance_to_int(race_analysis.get("distance") or ""),
@@ -3933,6 +4186,11 @@ def enrich_logic_from_facts(logic_data: dict, facts_path: Path) -> dict:
     if meeting_intelligence.get("bias_summary"):
         race_analysis["track_bias"] = meeting_intelligence["bias_summary"]
 
+    validate_facts_horse_alignment(
+        text,
+        logic_horse_keys=logic_data.get("horses", {}).keys(),
+        source=facts_path.name,
+    )
     sections = _parse_horse_sections(text)
     for horse_num, horse in logic_data.get("horses", {}).items():
         section = sections.get(str(horse_num), {})
@@ -3940,6 +4198,7 @@ def enrich_logic_from_facts(logic_data: dict, facts_path: Path) -> dict:
             _normalize_horse_name(section.get("horse_name") or horse.get("horse_name"))
         ) or {}
         formguide = formguide_digests.get(str(horse_num), {})
+        jt_ly = jt_ly_by_horse.get(str(horse_num), {})
         facts_section = section.get("raw_text", "")
         data = horse.setdefault("_data", {})
         data.pop("eem_summary", None)
@@ -3947,14 +4206,25 @@ def enrich_logic_from_facts(logic_data: dict, facts_path: Path) -> dict:
         _merge_prefer_clean(horse, "horse_name", section.get("horse_name"))
         _merge_prefer_clean(horse, "jockey", section.get("jockey"))
         _merge_prefer_clean(horse, "trainer", section.get("trainer"))
-        _merge_if_missing(horse, "rating", racecard_profile.get("horse_rating"))
-        _merge_if_missing(horse, "weight", section.get("weight"))
-        _merge_if_missing(horse, "barrier", section.get("barrier"))
+        if racecard_profile.get("horse_rating") is not None:
+            horse["rating"] = racecard_profile["horse_rating"]
+        if section.get("weight") is not None:
+            horse["weight"] = section["weight"]
+        if section.get("barrier") is not None:
+            horse["barrier"] = section["barrier"]
         horse["tactical_plan"] = _build_tactical_plan(
             int(section.get("barrier") or horse.get("barrier") or 0),
             facts_section,
         )
-        _merge_data_value(data, "horse_rating", racecard_profile.get("horse_rating"))
+        if racecard_profile.get("horse_rating") is not None:
+            data["horse_rating"] = racecard_profile["horse_rating"]
+        _merge_data_value(
+            data,
+            "pf_metrics",
+            pf_by_horse.get(str(horse_num)),
+        )
+        _merge_data_value(data, "jockey_ly", jt_ly.get("jockey_ly"))
+        _merge_data_value(data, "trainer_ly", jt_ly.get("trainer_ly"))
         _merge_data_value(data, "last10_raw", section.get("last10_raw"))
         _merge_data_value(data, "recent_form", section.get("recent_form"))
         _merge_data_value(data, "career_record_line", section.get("career_line"))
@@ -3990,6 +4260,10 @@ def enrich_logic_from_facts(logic_data: dict, facts_path: Path) -> dict:
         # fill-if-missing merge would leave form/trial/health blind forever.
         if facts_section:
             data["facts_section"] = facts_section
+            horse["career_race_starts"] = _extract_career_starts(
+                facts_section
+            )
+            horse["career_tag"] = _extract_career_tag(facts_section)
         else:
             _merge_data_value(data, "facts_section", facts_section)
         _merge_data_value(data, "last_finish_line", section.get("last_finish_line"))
@@ -4089,7 +4363,7 @@ def _parse_speed_map(text: str) -> dict:
         return match.group(1).strip() if match else ""
     return {
         "predicted_pace": field("predicted_pace"),
-        "expected_pace": field("predicted_pace"),
+        "expected_pace": field("expected_pace") or field("predicted_pace"),
         "pace_confidence": field("pace_confidence"),
         "style_confidence": field("style_confidence"),
         "leaders": _parse_num_list(field("leaders")),
@@ -4790,7 +5064,10 @@ def _normalize_speed_map_text(text: str) -> str:
 def _load_meeting_intelligence(facts_path: Path, race_number: int = 0) -> dict:
     meeting_path = facts_path.parent / "_Meeting_Intelligence_Package.md"
     if meeting_path.exists():
-        intelligence = _parse_meeting_intelligence(meeting_path.read_text(encoding="utf-8"), facts_path.parent.name)
+        intelligence = _parse_meeting_intelligence(
+            meeting_path.read_text(encoding="utf-8"),
+            _venue_from_folder_name(facts_path.parent.name),
+        )
     else:
         intelligence = {}
     fallback = _meeting_context_from_extractor_files(facts_path, race_number)
@@ -4828,7 +5105,7 @@ def _meeting_context_from_extractor_files(facts_path: Path, race_number: int = 0
         sources.append("Meeting_Summary.md")
 
     race_number = race_number or _extract_first_int(facts_path.name, r"Race[ _](\d+)")
-    racecards = sorted(folder.glob(f"*Race {race_number} Racecard.md"))
+    racecards = race_source_candidates(folder, race_number, "Racecard")
     if racecards:
         racecard = racecards[0].read_text(encoding="utf-8")
         meta_line = _first_line_matching(racecard, r"^Track:")
@@ -4845,10 +5122,12 @@ def _meeting_context_from_extractor_files(facts_path: Path, race_number: int = 0
 
 
 def _venue_from_folder_name(name: str) -> str:
-    value = re.sub(r"^\d{4}-\d{2}-\d{2}[_\s-]*", "", str(name or "")).strip()
-    value = re.sub(r"\bRace\s*\d+.*$", "", value, flags=re.I).strip(" _-")
-    value = value.replace("_", " ").strip()
-    return value
+    # Folder-name fallback is only trustworthy when it carries the documented
+    # YYYY-MM-DD meeting prefix. Arbitrary temp names such as "local" must not
+    # silently become a venue and overwrite a valid Logic context.
+    if not re.match(r"^\d{4}-\d{2}-\d{2}(?:[_\s-]|$)", str(name or "")):
+        return ""
+    return venue_from_meeting_name(name)
 
 
 def _first_line_matching(text: str, pattern: str) -> str:
@@ -5021,26 +5300,14 @@ def _extract_first_int(text: str, pattern: str) -> int:
     return int(match.group(1)) if match else 0
 
 
-def _clean_identity(value):
-    text = str(value or "").strip()
-    if not text:
-        return ""
-    text = FIELD_TRAILER_RE.sub("", text)
-    return text.strip(" |")
-
-
 def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", str(text or "").lower())
-
-
-def _normalize_horse_name(name: str) -> str:
-    return _slug(re.sub(r"\s*\([^)]*\)", "", str(name or "")))
 
 
 def _load_racecard_profiles(facts_path: Path, race_number: int) -> dict[str, dict]:
     if race_number <= 0:
         return {}
-    candidates = sorted(facts_path.parent.glob(f"*Race {race_number} Racecard.md"))
+    candidates = race_source_candidates(facts_path.parent, race_number, "Racecard")
     if not candidates:
         return {}
     lines = candidates[0].read_text(encoding="utf-8").splitlines()

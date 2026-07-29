@@ -6,6 +6,7 @@ from copy import deepcopy
 
 from au_archive_calibrator import ARCHIVE_ROOT, HISTORICAL_RESULTS_CSV, iter_logic_rows, load_historical_results, parse_float
 from au_zero_hit_race_audit import field_size_bucket, race_class_bucket
+from racing_engine.matrix_mapper import matrix_score
 
 
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Formguide_Signal_Backtest.md"
@@ -43,7 +44,7 @@ def data_text(row: dict, key: str) -> str:
 
 
 def matrix(row: dict, key: str, default: float = 60.0) -> float:
-    return float((row.get("matrix_scores") or {}).get(key, default) or default)
+    return matrix_score(row.get("matrix_scores"), key, default)
 
 
 def feature(row: dict, key: str, default: float = 60.0) -> float:
@@ -232,7 +233,7 @@ def gear_score(row: dict) -> tuple[float, list[str]]:
 def top3_risk(row: dict, *, use_market: bool) -> tuple[float, list[str]]:
     reasons = []
     score = 0.0
-    weak_engine = matrix(row, "sectional") < 58.0 and matrix(row, "race_shape") < 58.0
+    weak_engine = matrix(row, "pace_perf") < 58.0 and matrix(row, "race_shape") < 58.0
     weak_support = matrix(row, "track") < 60.0 and matrix(row, "class_weight") < 60.0
     if weak_engine:
         score += 0.9

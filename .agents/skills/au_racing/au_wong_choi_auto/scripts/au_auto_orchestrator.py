@@ -17,6 +17,7 @@ PROJECT_ROOT = SCRIPT_DIR.parents[4]
 sys.path.append(str(SCRIPT_DIR / "racing_engine"))
 
 from engine_core import RacingEngine, enrich_logic_from_facts
+from io_utils import write_json_atomic as _write_json_atomic
 from renderer import ensure_verdict, render_meeting_csv, validate_report_text, write_race_outputs
 from validation import validate_engine_scripts, validate_logic_data
 
@@ -72,28 +73,37 @@ def apply_going_refresh(logic_data: dict, official_going: str) -> dict:
     return audit
 
 
-def process_logic_file(logic_path: Path, going_override: str | None = None) -> dict:
+def _load_logic_file(logic_path: Path) -> dict:
     try:
         logic_data = json.loads(logic_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as e:
         raise ValueError(f"Failed to read/parse Logic.json: {logic_path}\n{e}")
-    if going_override:
-        audit = apply_going_refresh(logic_data, going_override)
-        if audit["family_changed"]:
-            print(
-                f"⚠️  GOING REFRESH {logic_path.name}: stored '{audit['previous']}' → official "
-                f"'{audit['applied']}' (family change — wet/soft handling recomputed)",
-                file=sys.stderr,
-            )
-        elif audit["changed"]:
-            print(
-                f"ℹ️  Going refresh {logic_path.name}: '{audit['previous']}' → '{audit['applied']}'",
-                file=sys.stderr,
-            )
-    race_number = logic_data.get("race_analysis", {}).get("race_number")
+    _validate_input_shape(logic_path, logic_data)
+    race_number = logic_data["race_analysis"].get("race_number")
+    _validate_race_identity(logic_path, race_number)
+    return logic_data
+
+
+def process_logic_file(
+    logic_path: Path,
+    going_override: str | None = None,
+    *,
+    logic_data: dict | None = None,
+) -> dict:
+    logic_data = (
+        _load_logic_file(logic_path)
+        if logic_data is None
+        else logic_data
+    )
+    race_number = logic_data["race_analysis"].get("race_number")
     facts_path = _facts_path_for_logic(logic_path, race_number)
-    if facts_path and facts_path.exists():
-        logic_data = enrich_logic_from_facts(logic_data, facts_path)
+    logic_data, audit = _prepare_logic_data(
+        logic_data,
+        facts_path=facts_path,
+        going_override=going_override,
+    )
+    if audit:
+        _report_going_refresh(logic_path, audit)
     if "race_analysis" not in logic_data:
         logic_data["race_analysis"] = {}
     race_context = logic_data["race_analysis"]
@@ -119,10 +129,7 @@ def process_logic_file(logic_path: Path, going_override: str | None = None) -> d
     if errors:
         raise ValueError(f"Logic validation failed for {logic_path}:\n" + "\n".join(errors))
     # Write JSON first to avoid inconsistent state (json write before md/csv)
-    try:
-        logic_path.write_text(json.dumps(logic_data, ensure_ascii=False, indent=2), encoding="utf-8")
-    except TypeError as e:
-        raise ValueError(f"Failed to serialize Logic.json: {logic_path}\n{e}")
+    _write_json_atomic(logic_path, logic_data)
     md_path, csv_path = write_race_outputs(logic_path, logic_data)
     report_errors = validate_report_text(md_path.read_text(encoding="utf-8"))
     if report_errors:
@@ -133,19 +140,27 @@ def process_logic_file(logic_path: Path, going_override: str | None = None) -> d
 
 
 def process_meeting_dir(meeting_dir: Path, going_override: str | None = None) -> list[dict]:
-    results = []
     logic_files = sorted(meeting_dir.glob("Race_*_Logic.json"), key=_logic_sort_key)
     if not logic_files:
         raise FileNotFoundError(f"No Race_*_Logic.json files found in {meeting_dir}")
-    for logic_path in logic_files:
-        try:
-            results.append(process_logic_file(logic_path, going_override=going_override))
-        except Exception as e:
-            print(f"⚠️  Skipping {logic_path.name}: {e}", file=sys.stderr)
-            continue
+    # Preflight the whole meeting before any JSON/Markdown/CSV mutation. A
+    # corrupt late-race file must not leave earlier races refreshed and the
+    # meeting summary stale.
+    preloaded = [
+        (logic_path, _load_logic_file(logic_path))
+        for logic_path in logic_files
+    ]
+    results = [
+        process_logic_file(
+            logic_path,
+            going_override=going_override,
+            logic_data=logic_data,
+        )
+        for logic_path, logic_data in preloaded
+    ]
     meeting_csv = render_meeting_csv(results)
     if meeting_csv:
-        (meeting_dir / "Meeting_Auto_Scoring.csv").write_text(meeting_csv, encoding="utf-8")
+        _atomic_write_text(meeting_dir / "Meeting_Auto_Scoring.csv", meeting_csv)
         print("✅ Meeting_Auto_Scoring.csv updated")
     refreshed = [r.get("race_analysis", {}).get("going_refresh") for r in results]
     refreshed = [audit for audit in refreshed if audit]
@@ -157,6 +172,55 @@ def process_meeting_dir(meeting_dir: Path, going_override: str | None = None) ->
             f"({text_changes} changed, {family_changes} family changes)"
         )
     return results
+
+
+def _prepare_logic_data(
+    logic_data: dict,
+    *,
+    facts_path: Path | None,
+    going_override: str | None,
+) -> tuple[dict, dict | None]:
+    if facts_path and facts_path.exists():
+        logic_data = enrich_logic_from_facts(logic_data, facts_path)
+    audit = apply_going_refresh(logic_data, going_override) if going_override else None
+    return logic_data, audit
+
+
+def _report_going_refresh(logic_path: Path, audit: dict) -> None:
+    if audit["family_changed"]:
+        print(
+            f"⚠️  GOING REFRESH {logic_path.name}: stored '{audit['previous']}' → official "
+            f"'{audit['applied']}' (family change — wet/soft handling recomputed)",
+            file=sys.stderr,
+        )
+    elif audit["changed"]:
+        print(
+            f"ℹ️  Going refresh {logic_path.name}: '{audit['previous']}' → '{audit['applied']}'",
+            file=sys.stderr,
+        )
+
+
+def _validate_race_identity(logic_path: Path, race_number: object) -> None:
+    filename_match = re.fullmatch(r"Race_(\d+)_Logic", logic_path.stem)
+    if not filename_match:
+        raise ValueError(f"Invalid Logic filename: {logic_path.name}")
+    metadata_match = re.search(r"\d+", str(race_number or ""))
+    if not metadata_match:
+        raise ValueError(f"Missing race_analysis.race_number in {logic_path.name}")
+    if int(filename_match.group(1)) != int(metadata_match.group(0)):
+        raise ValueError(
+            f"Race identity mismatch: {logic_path.name} contains Race "
+            f"{filename_match.group(1)} but metadata says Race {race_number}"
+        )
+
+
+def _validate_input_shape(logic_path: Path, logic_data: object) -> None:
+    if not isinstance(logic_data, dict):
+        raise ValueError(f"Logic root must be an object: {logic_path}")
+    if not isinstance(logic_data.get("race_analysis"), dict):
+        raise ValueError(f"race_analysis must be an object: {logic_path}")
+    if not isinstance(logic_data.get("horses"), dict) or not logic_data["horses"]:
+        raise ValueError(f"horses must be a non-empty object: {logic_path}")
 
 
 def _facts_path_for_logic(logic_path: Path, race_number):

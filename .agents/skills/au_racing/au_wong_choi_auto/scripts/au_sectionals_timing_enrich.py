@@ -28,10 +28,12 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
+sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
 sys.path.insert(0, str(SCRIPT_DIR.parent.parent))  # au_racing (racenet_transport)
 
 from racenet_transport import fetch_nuxt_data, RacenetBlockedError  # noqa: E402
 from au_archive_calibrator import normalize_horse_name, get_true_horse_name  # noqa: E402
+from io_utils import write_json_atomic  # noqa: E402
 
 # 可信 L600 秒數帶：以舊 writer 年代 10,296 個隱含時間定（min 31.4 / p1 32.5 /
 # p99 37.6 / max 41.9）。sectionals 欄有大量帶外垃圾（<25s、>60s、中位 41.8 嘅
@@ -205,7 +207,7 @@ def main():
                 d["l600_run_history"] = []
             changed += 1
         if changed:
-            lp.write_text(json.dumps(logic, ensure_ascii=False, indent=2), encoding="utf-8")
+            write_json_atomic(lp, logic)
             total += updated
         print(f"  R{rn}: horses updated {updated}")
     print(f"TOTAL horses enriched: {total}")

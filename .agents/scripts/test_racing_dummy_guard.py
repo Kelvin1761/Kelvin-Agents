@@ -12,13 +12,15 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / ".agents" / "scripts"))
 sys.path.insert(0, str(ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi" / "scripts"))
 sys.path.insert(0, str(ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi" / "scripts"))
+sys.path.insert(0, str(ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"))
+sys.path.insert(0, str(ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "racing_engine"))
 
 from racing_content_guard import assert_no_dummy_text, quarantine_file, scan_json_for_dummy, scan_text_for_dummy
 from create_hkjc_logic_skeleton import validate_parsed_horse_header
 from create_au_logic_skeleton import extract_horse_block, validate_parsed_horse_data
 from compile_analysis_template_hkjc import _compute_letter_grade
 from compile_analysis_template import _validate_au_logic_for_compile
-from au_orchestrator import validate_au_race_ready_for_verdict, build_meeting_state_au
+from au_auto_orchestrator import _validate_input_shape, process_meeting_dir
 
 _AU_REPORTS = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi" / "scripts" / "generate_reports.py"
 _spec = importlib.util.spec_from_file_location("au_generate_reports_for_test", _AU_REPORTS)
@@ -51,12 +53,20 @@ def main():
     check("AU missing horse block", lambda: ok(extract_horse_block("[#1] Horse\n", 2) is None))
     check("HKJC compiler refuses matrix missing", lambda: _expect_error(lambda: _compute_letter_grade({}, {"horse_name": "A"})))
     check("AU compiler refuses missing dimension", lambda: _expect_error(lambda: _validate_au_logic_for_compile({"horses": {"1": {"horse_name": "A", "core_logic": "real", "matrix": {}}}})))
-    check("verdict blocks final_rating-only", lambda: _expect_error(lambda: validate_au_race_ready_for_verdict({"horses": {"1": {"horse_name": "A", "core_logic": "real", "final_rating": "A"}}})))
+    check(
+        "AU auto rejects empty horses",
+        lambda: _expect_error(
+            lambda: _validate_input_shape(
+                Path("Race_1_Logic.json"),
+                {"race_analysis": {"race_number": 1}, "horses": {}},
+            )
+        ),
+    )
     check("post compile guard blocks dummy", lambda: _expect_error(lambda: assert_no_dummy_text("Analysis [FILL]", "Analysis.md")))
     check("atomic guard no output", _test_atomic_no_output)
     check("quarantine moves reason", _test_quarantine)
     check("report guard blocks dummy", _test_report_guard)
-    check("build state quarantines dummy analysis", _test_build_state_quarantine)
+    check("AU meeting preflight preserves earlier output", _test_auto_preflight)
 
 
 def _expect_error(fn):
@@ -97,13 +107,23 @@ def _test_report_guard():
         assert not ok and reasons
 
 
-def _test_build_state_quarantine():
+def _test_auto_preflight():
     with tempfile.TemporaryDirectory() as td:
-        p = Path(td) / "2026-05-06 Race 1 Analysis.md"
-        p.write_text("[FILL]", encoding="utf-8")
-        state = build_meeting_state_au(td, 1, "2026-05-06")
-        assert state["races"]["1"]["compiled"] is False
-        assert list((Path(td) / ".runtime" / "quarantine").glob("*"))
+        folder = Path(td)
+        (folder / "Race_1_Logic.json").write_text(
+            json.dumps(
+                {
+                    "race_analysis": {"race_number": 1},
+                    "horses": {"1": {"horse_name": "Valid Runner"}},
+                }
+            ),
+            encoding="utf-8",
+        )
+        (folder / "Race_2_Logic.json").write_text("", encoding="utf-8")
+        earlier_output = folder / "Race_1_Auto_Analysis.md"
+        earlier_output.write_text("KEEP_EXISTING\n", encoding="utf-8")
+        _expect_error(lambda: process_meeting_dir(folder))
+        assert earlier_output.read_text(encoding="utf-8") == "KEEP_EXISTING\n"
 
 
 if __name__ == "__main__":

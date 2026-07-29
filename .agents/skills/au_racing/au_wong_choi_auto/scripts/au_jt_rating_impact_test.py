@@ -12,18 +12,17 @@ import engine_core  # noqa: E402
 from engine_core import RacingEngine  # noqa: E402
 
 sys.path.append(str(SCRIPT_DIR))
-from au_target_gap_report import (  # noqa: E402
+from au_archive_calibrator import (  # noqa: E402
     ARCHIVE_ROOT,
     HISTORICAL_RESULTS_CSV,
     choose_track_rows,
-    condition_bucket,
     detect_meeting_date,
     detect_meeting_track,
-    field_size_bucket,
     load_historical_results,
     normalize_horse_name,
     parse_int,
 )
+from au_target_gap_report import condition_bucket, field_size_bucket  # noqa: E402
 
 
 def build_field_summary(horses: dict) -> dict:

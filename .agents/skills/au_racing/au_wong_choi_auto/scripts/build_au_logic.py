@@ -6,13 +6,32 @@ Build deterministic AU Race_X_Logic.json from Facts.md.
 from __future__ import annotations
 
 import argparse
-import json
 import re
 import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-TRACK_RESOURCE_DIR = SCRIPT_DIR.parents[2] / "au_horse_analyst" / "resources"
+TRACK_RESOURCE_DIR = SCRIPT_DIR.parents[1] / "au_horse_analyst" / "resources"
+sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+
+from source_alignment import (
+    HORSE_HEADER_RE,
+    RACECARD_HORSE_RE,
+    RACECARD_META_RE,
+    clean_identity as _clean_identity,
+    normalize_horse_name as _normalize_horse_name,
+    race_source_candidates,
+    validate_facts_horse_alignment,
+    venue_from_meeting_name,
+)
+from engine_core import (
+    _extract_race_meta as _canonical_extract_race_meta,
+    _load_track_profile as _canonical_load_track_profile,
+    _parse_speed_map as _canonical_parse_speed_map,
+    _venue_from_folder_name as _canonical_venue_from_folder_name,
+    build_logic_from_facts as _canonical_build_logic_from_facts,
+)
+from io_utils import write_json_atomic
 
 VENUE_TRACK_MAP = {
     "randwick": "04b_track_randwick.md",
@@ -26,24 +45,6 @@ VENUE_TRACK_MAP = {
     "canterbury": "04b_track_provincial.md",
     "provincial": "04b_track_provincial.md",
 }
-
-
-# BUGFIX: weight may be unknown — inject_fact_anchors emits "負重: 未知" when the
-# racecard has no declared weight. The trailing weight group must therefore also
-# match 未知/N/A/- (group 6 stays None → weight=None) so the whole header line
-# still matches and the horse is NOT silently dropped from the field.
-HORSE_HEADER_RE = re.compile(
-    r"^### 馬匹 #(\d+) (.+?) \(檔位 (\d+)\)(?:\s*\| 騎師: ([^|]+?))?(?:\s*\| 練馬師: ([^|\n\r]+?))?(?:\s*\| 負重: (?:([0-9.]+)kg|未知|N/A|-))?$",
-    re.M,
-)
-FIELD_TRAILER_RE = re.compile(r"\s*\|\s*負重:\s*(?:[0-9.]+kg|未知|N/A|-)\s*$")
-RACECARD_HORSE_RE = re.compile(r"^\d+\.\s+(.+?)\s+\((\d+)\)$")
-# BUGFIX: rating may be a non-numeric placeholder ("-", "—", "NR", blank). Make the
-# rating group optional so an unrated horse does not fail the whole meta line (which
-# would also drop its declared weight). group(2) is None when rating is absent.
-RACECARD_META_RE = re.compile(
-    r"^Trainer:\s.*?\|\sJockey:\s.*?\|\sWeight:\s*([0-9.]+)(?:kg)?(?:\s*\([^|]*\))?\s*\|\sAge:\s.*?\|\sRating:\s*([0-9.]+)?"
-)
 
 
 _PF_TOKEN_RE = re.compile(r"PF\[(.+?)\]")
@@ -163,98 +164,8 @@ def _parse_formguide_jt_ly(facts_path: Path) -> dict:
 
 
 def build_logic_from_facts(facts_path: Path) -> dict:
-    text = facts_path.read_text(encoding="utf-8")
-    pf_by_horse = _parse_formguide_pf_metrics(facts_path)
-    jt_ly_by_horse = _parse_formguide_jt_ly(facts_path)
-    race_number = _extract_race_number(facts_path.name, text)
-    race_class, distance, prize = _extract_race_meta(facts_path, text)
-    racecard_profiles = _load_racecard_profiles(facts_path, race_number)
-    meeting_intelligence = _load_meeting_intelligence(facts_path, race_number)
-    track_profile = _load_track_profile(
-        meeting_intelligence.get("venue", ""),
-        _distance_to_int(distance),
-    )
-    speed_map = _parse_speed_map(text)
-    if meeting_intelligence.get("going") and not speed_map.get("going"):
-        speed_map["going"] = meeting_intelligence["going"]
-    logic = {
-        "race_analysis": {
-            "race_number": race_number,
-            "race_class": race_class,
-            "distance": distance,
-            "prize": prize,
-            "speed_map": speed_map,
-            "meeting_intelligence": meeting_intelligence,
-            "track_profile": track_profile,
-            "context_completeness": _context_completeness(meeting_intelligence, track_profile),
-            "going": meeting_intelligence.get("going", ""),
-            "track_bias": meeting_intelligence.get("bias_summary", ""),
-        },
-        "horses": {},
-    }
-    matches = list(HORSE_HEADER_RE.finditer(text))
-    # BUGFIX guard: every "### 馬匹 #N" block must parse. If the strict header regex
-    # matches fewer than the raw horse-block count, a runner is being silently
-    # dropped from the field (was the unknown-weight bug). Fail loudly instead.
-    raw_header_count = len(re.findall(r"^### 馬匹 #\d+ ", text, re.M))
-    if raw_header_count != len(matches):
-        sys.stderr.write(
-            f"⚠️ FIELD MISMATCH in {facts_path.name}: {raw_header_count} horse blocks "
-            f"but only {len(matches)} parsed — a runner failed header parsing.\n"
-        )
-    for idx, match in enumerate(matches):
-        start = match.start()
-        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(text)
-        block = text[start:end]
-        horse_num = match.group(1)
-        horse_name = _clean_identity(match.group(2))
-        racecard_profile = racecard_profiles.get(_slug(horse_name), {})
-        logic["horses"][horse_num] = {
-            "horse_name": horse_name,
-            "barrier": int(match.group(3)),
-            "jockey": _clean_identity(match.group(4)),
-            "trainer": _clean_identity(match.group(5)),
-            "weight": float(match.group(6)) if match.group(6) else None,
-            "rating": racecard_profile.get("horse_rating"),
-            "career_race_starts": _extract_career_starts(block),
-            "career_tag": _extract_career_tag(block),
-            "tactical_plan": _build_tactical_plan(int(match.group(3)), block),
-            "_data": {
-                "horse_rating": racecard_profile.get("horse_rating"),
-                "facts_section": block,
-                # Full racenet PuntingForm metrics recovered from the Formguide
-                # (race_time_diff / l600_delta / rt_rating / paces). Stored for
-                # future feature-testing; not yet consumed by the scorer.
-                "pf_metrics": pf_by_horse.get(horse_num, {}),
-                # 騎師/練馬師去年官方全季統計（LY），普及覆蓋任何騎師（2026-07-11）
-                "jockey_ly": (jt_ly_by_horse.get(horse_num) or {}).get("jockey_ly"),
-                "trainer_ly": (jt_ly_by_horse.get(horse_num) or {}).get("trainer_ly"),
-                "last10_raw": _capture(block, r"Last 10 字串:\s*`?([^`\n]+)`?"),
-                "recent_form": _capture(block, r"近績序列解讀: `?([^`\n]+)`?"),
-                "career_record_line": _capture(block, r"生涯: ([^\n]+)"),
-                "track_record_line": _capture(block, r"同場: ([^\n]+)") or _capture(block, r"好地: ([^\n]+)"),
-                "track_stats_line": _capture(block, r"同場: ([^\n]+)"),
-                "going_stats_line": _capture(block, r"好地: ([^\n]+)"),
-                "stage_stats_line": _capture(block, r"初出: ([^\n]+)"),
-                "last_finish_line": _capture(block, r"上仗結果\(Racecard\): ([^\n]+)"),
-                "warning_line": _capture(block, r"⚠️ 警告: ([^\n]+)"),
-                "consumption_summary": _capture_multiline(block, r"- \*\*⚡ 走位消耗摘要:\*\*(.*?)(?=\n- \*\*🔗|\n- \*\*🔧|\n### |\Z)"),
-                "formline_line": _capture(block, r"\*\*綜合評估:\*\* ([^\n]+)"),
-                "engine_line": _capture_multiline(block, r"- \*\*🔧 引擎與距離:\*\*(.*?)(?=\n### |\Z)"),
-                "sectional_trend_line": _capture_multiline(block, r"- \*\*📊 段速趨勢.*?\*\*(.*?)(?=\n- \*\*⚡|\n### |\Z)"),
-                "running_style_line": _extract_running_style_line(block),
-                "style_confidence_line": _extract_running_style_confidence(block),
-                "engine_type_line": _extract_engine_type_line(block),
-                "engine_confidence_line": _extract_engine_confidence(block),
-                "distance_profile_line": _extract_distance_profile_line(block),
-                "target_distance_line": _extract_target_distance_line(block),
-                "class_move": _extract_latest_class_move(block),
-                "formal_count": _count_formal_rows(block),
-                "trial_count": _count_trial_rows(block),
-                "trial_top3_count": _count_trial_top3(block),
-            },
-        }
-    return logic
+    """Compatibility entrypoint backed by the canonical engine parser."""
+    return _canonical_build_logic_from_facts(facts_path)
 
 
 def _extract_race_number(filename: str, text: str) -> int:
@@ -266,13 +177,24 @@ def _extract_race_number(filename: str, text: str) -> int:
 
 
 def _extract_race_meta(facts_path: Path, text: str) -> tuple[str, str, int]:
+    race_number = _extract_race_number(facts_path.name, text)
     distance_match = re.search(r"今仗距離:\s*([0-9]+m)", text)
     distance = distance_match.group(1) if distance_match else ""
-    racecard_candidates = list(facts_path.parent.glob(f"*Race {_extract_race_number(facts_path.name, text)} Racecard.md"))
+    racecard_candidates = race_source_candidates(
+        facts_path.parent,
+        race_number,
+        "Racecard",
+    )
     race_class = ""
     prize = 0
     if racecard_candidates:
-        header = racecard_candidates[0].read_text(encoding="utf-8").splitlines()[0]
+        racecard_path = racecard_candidates[0]
+        lines = racecard_path.read_text(encoding="utf-8").splitlines()
+        if not lines:
+            raise ValueError(
+                f"Race {race_number} Racecard is empty: {racecard_path.name}"
+            )
+        header = lines[0]
         class_match = re.search(r"\d+m\s*\|\s*([^|$]+?)(?:\s*\||\s*$)", header)
         if class_match:
             race_class = class_match.group(1).strip()
@@ -290,12 +212,8 @@ def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", str(text or "").lower())
 
 
-def _normalize_horse_name(name: str) -> str:
-    return _slug(re.sub(r"\s*\([^)]*\)", "", str(name or "")))
-
-
 def _load_racecard_profiles(facts_path: Path, race_number: int) -> dict[str, dict]:
-    candidates = sorted(facts_path.parent.glob(f"*Race {race_number} Racecard.md"))
+    candidates = race_source_candidates(facts_path.parent, race_number, "Racecard")
     if not candidates:
         return {}
     lines = candidates[0].read_text(encoding="utf-8").splitlines()
@@ -343,7 +261,7 @@ def _parse_speed_map(text: str) -> dict:
         return match.group(1).strip() if match else ""
     return {
         "predicted_pace": field("predicted_pace"),
-        "expected_pace": field("expected_pace"),
+        "expected_pace": field("expected_pace") or field("predicted_pace"),
         "pace_confidence": field("pace_confidence"),
         "style_confidence": field("style_confidence"),
         "leaders": [int(x) for x in re.findall(r"\d+", field("leaders"))],
@@ -508,7 +426,10 @@ def _load_meeting_intelligence(facts_path: Path, race_number: int = 0) -> dict:
     meeting_path = facts_path.parent / "_Meeting_Intelligence_Package.md"
     if meeting_path.exists():
         text = meeting_path.read_text(encoding="utf-8")
-        intelligence = _parse_meeting_intelligence(text, facts_path.parent.name)
+        intelligence = _parse_meeting_intelligence(
+            text,
+            _venue_from_folder_name(facts_path.parent.name),
+        )
     else:
         intelligence = {}
     fallback = _meeting_context_from_extractor_files(facts_path, race_number)
@@ -546,7 +467,7 @@ def _meeting_context_from_extractor_files(facts_path: Path, race_number: int = 0
         sources.append("Meeting_Summary.md")
 
     race_number = race_number or _extract_race_number(facts_path.name, facts_path.read_text(encoding="utf-8"))
-    racecards = sorted(folder.glob(f"*Race {race_number} Racecard.md"))
+    racecards = race_source_candidates(folder, race_number, "Racecard")
     if racecards:
         racecard = racecards[0].read_text(encoding="utf-8")
         meta_line = _first_line_matching(racecard, r"^Track:")
@@ -563,10 +484,9 @@ def _meeting_context_from_extractor_files(facts_path: Path, race_number: int = 0
 
 
 def _venue_from_folder_name(name: str) -> str:
-    value = re.sub(r"^\d{4}-\d{2}-\d{2}[_\s-]*", "", str(name or "")).strip()
-    value = re.sub(r"\bRace\s*\d+.*$", "", value, flags=re.I).strip(" _-")
-    value = value.replace("_", " ").strip()
-    return value
+    if not re.match(r"^\d{4}-\d{2}-\d{2}(?:[_\s-]|$)", str(name or "")):
+        return ""
+    return venue_from_meeting_name(name)
 
 
 def _first_line_matching(text: str, pattern: str) -> str:
@@ -729,12 +649,13 @@ def _extract_first_int(text: str, pattern: str) -> int:
     return int(match.group(1)) if match else 0
 
 
-def _clean_identity(value: str) -> str:
-    text = str(value or "").strip()
-    if not text:
-        return ""
-    text = FIELD_TRAILER_RE.sub("", text)
-    return text.strip(" |")
+# Preserve the public helper imports used by research/tests while routing them
+# through the same implementation as the live builder. The legacy definitions
+# above remain temporarily for source compatibility but are no longer active.
+_extract_race_meta = _canonical_extract_race_meta
+_load_track_profile = _canonical_load_track_profile
+_parse_speed_map = _canonical_parse_speed_map
+_venue_from_folder_name = _canonical_venue_from_folder_name
 
 
 def main():
@@ -746,7 +667,7 @@ def main():
     facts_path = Path(args.facts).resolve()
     logic = build_logic_from_facts(facts_path)
     output = Path(args.output).resolve() if args.output else facts_path.with_name(f"Race_{logic['race_analysis']['race_number']}_Logic.json")
-    output.write_text(json.dumps(logic, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_json_atomic(output, logic)
     print(f"✅ Logic built: {output}")
 
 

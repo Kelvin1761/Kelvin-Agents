@@ -24,7 +24,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from collections import defaultdict
 from datetime import date
@@ -38,6 +37,7 @@ sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
 sys.path.insert(0, str(PROJECT_ROOT / ".agents" / "skills" / "shared_racing"))
 
 from au_archive_calibrator import MATRIX_KEYS, normalize_condition_bucket  # noqa: E402
+from io_utils import write_json_atomic  # noqa: E402
 from au_cached_walkforward_ml import (  # noqa: E402
     as_float,
     date_folds,
@@ -252,7 +252,7 @@ def main() -> int:
     out_md = PROJECT_ROOT / f"{args.report_date} AU Phase5 Candidate Shadow Tests.md"
     out_json = PROJECT_ROOT / "scratch" / "au_phase5_candidates.json"
     out_md.write_text(report, encoding="utf-8")
-    out_json.write_text(json.dumps(results, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
+    write_json_atomic(out_json, results, indent=1, default=str)
     print(f"Wrote {out_md}")
     print(f"Wrote {out_json}")
     print()

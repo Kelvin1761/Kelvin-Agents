@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[5]
 ENGINE = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "racing_engine"
@@ -43,6 +44,20 @@ class DataCoverageTests(unittest.TestCase):
         cell = _coverage_cell(auto)
         self.assertRegex(cell, r"[高中薄] \d+%")
         self.assertEqual(_coverage_cell({}), "—")
+
+    def test_missing_jockey_data_stays_neutral_without_name_tokens(self) -> None:
+        engine = RacingEngine(
+            {
+                "horse_name": "H",
+                "horse_number": "1",
+                "jockey": "Famous McDonald Token",
+            },
+            _ctx(),
+        )
+        with patch.object(engine, "_jockey_rating_profile", return_value=None):
+            score, _note, source = engine._jockey_score()
+        self.assertEqual(score, 60)
+        self.assertEqual(source, "jockey_missing_neutral")
 
 
 if __name__ == "__main__":

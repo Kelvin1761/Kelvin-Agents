@@ -3,7 +3,22 @@
 from __future__ import annotations
 import re
 
-FEATURE_KEYS = ("form_score","trial_score","sectional_score","pace_map_score","jockey_score","trainer_score","jockey_horse_fit_score","class_score","rating_score","weight_score","distance_score","track_score","formline_score","consistency_score","health_score","confidence_score","pace_figure_score")
+FEATURE_KEYS = (
+    "form_score", "trial_score", "sectional_score", "pace_map_score",
+    "jockey_score", "trainer_score", "jockey_horse_fit_score", "class_score",
+    "rating_score", "weight_score", "distance_score", "track_score",
+    "formline_score", "consistency_score", "health_score", "confidence_score",
+    "pace_figure_score",
+)
+ABILITY_FEATURE_KEYS = (
+    "form_score", "consistency_score", "pace_figure_score", "sectional_score",
+    "trial_score", "pace_map_score", "jockey_score", "trainer_score",
+    "jockey_horse_fit_score", "class_score", "rating_score", "weight_score",
+    "track_score",
+)
+REPORT_ONLY_FEATURE_KEYS = (
+    "distance_score", "formline_score", "health_score", "confidence_score",
+)
 
 # pace_figure = 8th dimension: field-relative L600-vs-benchmark ("實測段速") from
 # racenet PuntingForm (AUC 0.60 vs old text-sectional 0.545). Neutral 60 where PF
@@ -28,8 +43,6 @@ FEATURE_KEYS = ("form_score","trial_score","sectional_score","pace_map_score","j
 # 拆乾淨：race_shape 變純 draw @0.14855、track 收晒全部 @0.12443。兩者相加同舊
 # (0.21222+0.06076) 一樣 → 逐匹 rank-identical。其餘維度不變。
 MATRIX_WEIGHTS = {"stability":0.29928,"pace_perf":0.18831,"race_shape":0.14855,"jockey_trainer":0.19408,"class_weight":0.04535,"track":0.12443,"form_line":0.000}
-_WEIGHT_FLOOR = {"stability":0.10}
-_WEIGHT_CEILING = {"class_weight":0.15,"track":0.17}
 
 # ── Wet-form 7D feature (gated to Soft/Heavy races) ──
 # A horse's career wet-going place record IS predictive of box-trifecta on wet
@@ -78,7 +91,9 @@ def wet_form_feature(going, going_stats_line):
     return round(max(-WET_FORM_MAX_ABS, min(WET_FORM_MAX_ABS, value)), 4)
 
 # 2026-07-11 修：career5_unplaced_pen 由 +0.82（語義反轉——變數叫「懲罰」卻加分，
-# ML 殘骸）改為 −0.82 對稱；class_up_pen 保持 0（ML 已推零，代碼側已停止出死 note）。
+# ML 殘骸）改為 −0.82 對稱。
+# 2026-07-30 runtime micro audit：class-up 0 權重同 RT 高低加減均冇改過
+# 7,530 匹最終分；RT 已喺 sectional/rating 層表達，移除重疊死參數。
 CLASS_MICRO_WEIGHTS = {
     "career0_base": 57.7,
     "career0_2yo_bonus": 0.84,
@@ -88,10 +103,7 @@ CLASS_MICRO_WEIGHTS = {
     "career15_unplaced_pen": -1.4,
     "career15_placed_bonus": 5.42,
     "class_drop_bonus": 2.1,
-    "class_up_pen": 0.0,
     "metro_prov_pen": -5.48,
-    "rt_high_bonus": 3.58,
-    "rt_low_pen": -3.26
 }
 
 CONSISTENCY_MICRO_WEIGHTS = {
@@ -146,8 +158,7 @@ TRACK_MICRO_WEIGHTS = {
     # 而 note 竟寫「具備重地作戰能力」；同 best_formal_mult 同款 ML 殘骸）。改 +2.0，
     # 令重地階梯單調：曾贏 +3.87 > 曾上名 +2.0 > 零上名 −5.94。A/B rank-neutral（Heavy good↔pass 互抵）。
     "heavy_place_bonus": 2.0,
-    "heavy_poor_pen": -5.94,
-    "wet_bloodline_bonus": 4.18
+    "heavy_poor_pen": -5.94
 }
 
 # 2026-07-11 單調化修：原本 med_base 68.3 > strong 66.4 > med_strong 61.8（「中等對手」
@@ -174,24 +185,13 @@ PACE_MICRO_WEIGHTS = {
     "base": 55.7,
     "modifier_cap_max": 4.05,
     "modifier_cap_min": -9.43,
-    "modifier_multiplier": 1.1,
-    "fallback_wide_pen": 0.0,
-    "fallback_inside_bonus": 1.93
+    "modifier_multiplier": 1.1
 }
-# apprentice_fresh_bonus (−0.14) 2026-07-11 刪除 — ML 殘骸負值兼 LY 普及層上線後
-# token fallback 極少觸發。
-JOCKEY_MICRO_WEIGHTS = {
-    "elite_bonus": 9.0,
-    "solid_bonus": 5.77
-}
-
 TRAINER_MICRO_WEIGHTS = {
-    "elite_bonus": 10.59,
     "waller_debut_bonus": 5.52,
     "track_high_vol_high_place_bonus": 10.96,
     "track_med_vol_high_place_bonus": 4.29,
-    "track_med_vol_med_place_bonus": 1.44,
-    "track_low_place_pen": -0.52
+    "track_med_vol_med_place_bonus": 1.44
 }
 
 # 2026-07-11 大剪裁（702場 A/B）：
@@ -212,50 +212,8 @@ FIT_MICRO_WEIGHTS = {
     "current_trial_mult": 3.8,
     "latest_downgrade_pen": -4.11,
     "leave_proven_jockey_pen": -2.98,
-    "signal_best_jockey_bonus": 3.85,
-    "signal_upgrade_bonus": 9.95,
-    "signal_downgrade_pen": -3.44
+    "signal_best_jockey_bonus": 3.85
 }
-
-def get_dynamic_matrix_weights(race_context):
-    weights = dict(MATRIX_WEIGHTS)
-    field_summary = race_context.get("field_summary",{})
-    field_count = int(field_summary.get("count",0))
-    going = str(race_context.get("going","") or "").lower()
-    race_class = str(race_context.get("race_class","") or "").lower()
-    # NOTE: dead code（引擎排名已唔用動態權重）；2026-07-10 sectional→pace_perf 改 key
-    # 純為保持可 import（au_market_free_ablation 有引用）。
-    if field_count >= 13:
-        weights["race_shape"] -= 0.02; weights["pace_perf"] -= 0.01; weights["stability"] += 0.02; weights["form_line"] += 0.01
-    elif field_count >= 9:
-        weights["race_shape"] -= 0.01; weights["pace_perf"] -= 0.005; weights["stability"] += 0.01; weights["form_line"] += 0.005
-    elif field_count > 0 and field_count <= 8:
-        weights["race_shape"] += 0.04; weights["pace_perf"] += 0.03; weights["stability"] -= 0.02; weights["form_line"] -= 0.02
-
-    if "soft" in going or "heavy" in going:
-        weights["race_shape"] -= 0.005; weights["track"] += 0.01; weights["stability"] -= 0.005
-    elif "good" in going or "firm" in going:
-        weights["pace_perf"] += 0.05; weights["track"] -= 0.02
-
-    if "bm" in race_class:
-        bm_tokens = tuple(f"bm{n}" for n in range(50,100))
-        if any(t in race_class for t in ("bm58", "bm64", "bm68", "bm70")):
-            weights["stability"] += 0.03
-            weights["jockey_trainer"] += 0.02
-            weights["class_weight"] -= 0.02
-        elif any(t in race_class for t in bm_tokens): 
-            weights["class_weight"] += 0.005
-    for key in weights:
-        weights[key] = max(0.0, weights[key])
-    total = sum(weights.values())
-    if total > 0:
-        for key in weights: weights[key] = weights[key] / total
-    for key, floor_val in _WEIGHT_FLOOR.items():
-        if weights[key] < floor_val: weights[key] = floor_val
-    for key, ceil_val in _WEIGHT_CEILING.items():
-        if weights[key] > ceil_val: weights[key] = ceil_val
-    for key in weights: weights[key] = round(weights[key],4)
-    return weights
 
 GRADE_THRESHOLDS = ((96,"S+"),(92,"S"),(88,"S-"),(84,"A+"),(80,"A"),(76,"A-"),(72,"B+"),(68,"B"),(64,"B-"),(60,"C+"),(56,"C"),(52,"C-"),(48,"D"),(0,"E"))
 

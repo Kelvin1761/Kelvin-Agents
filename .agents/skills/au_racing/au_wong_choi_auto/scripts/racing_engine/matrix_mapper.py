@@ -35,8 +35,12 @@ MATRIX_FORMULAS = {
     # is the one run-style-independent ability signal that lifts box4 OOS. Combined
     # with the distance removal above, walk-forward (5-fold, fixed sub-weight, no
     # negative fold on box4) gives box4 +0.6pp, good +0.6pp, champion +0.8pp.
+    # 2026-07-29 signal-cleaning audit (710 aligned races): direct class_score
+    # removal improved/held competitive recall, NDCG and winner@5 in all five
+    # development time folds and the untouched terminal 15% holdout.  Keep
+    # class_score available to the contextual mismatch interactions/report, but
+    # do not count the same class narrative again in this ranking matrix.
     "class_weight": (
-        ("class_score", 0.159),
         ("rating_score", 0.70),
         ("weight_score", 0.141),
     ),
@@ -49,11 +53,46 @@ MATRIX_FORMULAS = {
     ),
 }
 
+MATRIX_KEYS = tuple(MATRIX_FORMULAS)
+LEGACY_MATRIX_ALIASES = {
+    "sectional": "pace_perf",
+}
+
+
+def canonical_matrix_key(key):
+    """Return the live matrix key for a current or legacy name."""
+    return LEGACY_MATRIX_ALIASES.get(str(key), str(key))
+
+
+def matrix_score(matrix_scores, key, default=60.0):
+    """Read a matrix score without silently losing legacy `sectional` data."""
+    scores = matrix_scores if isinstance(matrix_scores, dict) else {}
+    canonical = canonical_matrix_key(key)
+    if canonical in scores:
+        return clip_score(scores[canonical], default)
+    if canonical == "pace_perf" and "sectional" in scores:
+        return clip_score(scores["sectional"], default)
+    return clip_score(default, default)
+
+
+def canonicalize_matrix_scores(matrix_scores, default=60.0):
+    return {
+        key: round(matrix_score(matrix_scores, key, default), 2)
+        for key in MATRIX_KEYS
+    }
+
 
 def map_features_to_matrix_scores(features):
     matrix_scores = {}
     for key, components in MATRIX_FORMULAS.items():
-        score = sum(clip_score(features.get(name, 60)) * weight for name, weight in components)
+        # Score weighted deviations from neutral.  This is algebraically
+        # identical to the old weighted average whenever weights sum to 1, and
+        # lets a retired leaf disappear cleanly without shifting the score
+        # scale or inventing a fake constant feature.
+        score = 60.0 + sum(
+            (clip_score(features.get(name, 60)) - 60.0) * weight
+            for name, weight in components
+        )
         matrix_scores[key] = round(clip_score(score), 2)
     return matrix_scores
 

@@ -72,11 +72,17 @@ def ensure_verdict(logic_data: dict) -> dict:
             _horse_number_sort_key(item["horse_number"]),
         ),
     )
+    pre_rank_order = [item["horse_number"] for item in ranked]
     # Confidence tier from the top1-top3 ability spread (710-race archive
     # calibration, 2026-07-17): in tight races the top-2 catch >=2 placegetters
     # only 13% of the time while the top-5 catch 72%, so the betting radar must
     # widen; in clear races the top-2 are genuinely strong (winner inside 51%).
     top3_gap = (ranked[0]["ability_score"] - ranked[2]["ability_score"]) if len(ranked) >= 3 else 99.0
+    # Separate top1-vs-top2 calibration (710-race review, 2026-07-25): when the
+    # pair is within 0.5 points, #1 wins only 17.8% and #2 is not a superior
+    # replacement.  Treat them as a tie instead of inventing false precision.
+    top2_gap = (ranked[0]["ability_score"] - ranked[1]["ability_score"]) if len(ranked) >= 2 else 99.0
+    top_pick_tied = top2_gap < 0.5
     if top3_gap < 2.0:
         confidence_tier, radar_size = "tight", 5
     elif top3_gap < 5.0:
@@ -91,18 +97,58 @@ def ensure_verdict(logic_data: dict) -> dict:
         item["rank"] = idx
         item["model_pick_status"] = auto["model_pick_status"]
     watchlist = _build_rank_4_6_watchlist(ranked, horses)
+    pace_figure_coverage = _pace_figure_coverage(horses)
+    post_rank_order = [item["horse_number"] for item in ranked]
     verdict = {
         "ranking": ranked,
         "top2": ranked[:2],
         "top4": ranked[:4],
         "rank_4_6_watchlist": watchlist,
         "confidence_tier": confidence_tier,
+        "top1_top2_gap": round(top2_gap, 2),
+        "top_pick_tied": top_pick_tied,
         "top1_top3_gap": round(top3_gap, 2),
         "radar_size": radar_size,
         "radar": ranked[:radar_size],
+        "pace_figure_coverage": pace_figure_coverage,
+        "decision_trace": {
+            "contract": "clean_7d_static",
+            "pre_rank_order": pre_rank_order,
+            "post_rank_order": post_rank_order,
+            "changed": pre_rank_order != post_rank_order,
+            "reason": (
+                "Official ranking equals the clean 7D ability score; "
+                "report-only evidence does not rerank horses."
+            ),
+        },
     }
     logic_data["python_auto_verdict"] = verdict
     return verdict
+
+
+def _pace_figure_coverage(horses: dict) -> dict:
+    """Summarise race-level PF provenance without mistaking unknown legacy data for missing."""
+    missing_labels = {"missing_neutral", "no_spread"}
+    known = covered = 0
+    for horse in horses.values():
+        auto = horse.get("python_auto") if isinstance(horse, dict) else None
+        provenance = auto.get("score_provenance") if isinstance(auto, dict) else None
+        if not isinstance(provenance, dict) or "pace_figure_score" not in provenance:
+            continue
+        known += 1
+        if str(provenance.get("pace_figure_score") or "") not in missing_labels:
+            covered += 1
+    pct = (100.0 * covered / known) if known else None
+    enough_evidence = known >= max(1, (len(horses) + 1) // 2)
+    alert = bool(enough_evidence and pct is not None and pct < 90.0)
+    return {
+        "covered": covered,
+        "known": known,
+        "field_size": len(horses),
+        "pct": round(pct, 1) if pct is not None else None,
+        "alert": alert,
+        "status": "low" if alert else ("ok" if pct is not None else "unavailable"),
+    }
 
 
 def render_race_markdown(logic_data: dict) -> str:
@@ -233,12 +279,37 @@ def _confidence_tier_text(verdict) -> str:
     tier = verdict.get("confidence_tier") or "medium"
     gap = verdict.get("top1_top3_gap")
     radar = verdict.get("radar_size", 4)
+    if verdict.get("top_pick_tied"):
+        top2_gap = verdict.get("top1_top2_gap")
+        return (
+            f"頭兩匹實質並列（差 {top2_gap}）— #1/#2 同級睇待；"
+            f"模型 Top {radar} 作雷達"
+        )
     labels = {
         "tight": f"分數擠迫（頭三差 {gap}）— 建議圍捕：模型 Top {radar} 同級睇待",
         "medium": f"中等分野（頭三差 {gap}）— 常規：Top 2 主選、Top {radar} 雷達",
         "clear": f"分數清晰（頭三差 {gap}）— Top 2 主選訊號較強",
     }
     return labels.get(tier, labels["medium"])
+
+
+def _pace_figure_coverage_text(verdict) -> str:
+    coverage = verdict.get("pace_figure_coverage")
+    if not isinstance(coverage, dict) or coverage.get("pct") is None:
+        return "舊檔未有 provenance，未能量度"
+    label = f"{coverage['pct']:.1f}%（{coverage['covered']}/{coverage['known']}）"
+    if coverage.get("alert"):
+        return f"⚠️ {label}，低過 90% live gate"
+    return f"✅ {label}"
+
+
+def _decision_trace_text(verdict) -> str:
+    trace = verdict.get("decision_trace")
+    if not isinstance(trace, dict):
+        return "未有 trace"
+    if trace.get("changed"):
+        return "⚠️ 排名前後次序有變，請查 decision trace"
+    return "Clean 7D 排名前後一致（冇後置 rerank）"
 
 
 def _panorama(race, verdict, horses):
@@ -257,6 +328,8 @@ def _panorama(race, verdict, horses):
         f"| 出馬數 | {len(horses)} |",
         f"| 跑道偏差 | {track_bias} |",
         f"| 信心分層 | {_confidence_tier_text(verdict)} |",
+        f"| PF 覆蓋 | {_pace_figure_coverage_text(verdict)} |",
+        f"| 排名審計 | {_decision_trace_text(verdict)} |",
         "",
         *_going_box_advisory(race),
         "**🏃 形勢推演**",
@@ -413,7 +486,7 @@ def _pace_perf_detail_lines(auto, name):
                 rank_word = "屬全場最慢嗰批"
             return [
                 f"本駒平均{vs_bench(d.get('value'))}；今場有數據對手平均{vs_bench(d.get('mean'))}",
-                f"全場對比：{rank_word} → {float(d.get('final') or 60):.1f} 分（60 為中性）",
+                f"全場對比：{rank_word} → {_as_float(d.get('final'), 60):.1f} 分（60 為中性）",
             ]
         return []
     if name == "sectional_score":
@@ -1278,8 +1351,8 @@ def _engine_distance_summary(data: dict) -> str:
 def _horse_positioning(horse: dict, auto: dict) -> str:
     rank = int(auto.get("rank", 99) or 99)
     ability = float(auto.get("ability_score", 0) or 0)
-    race_shape = float(auto.get("matrix_scores", {}).get("race_shape", 60) or 60)
-    stability = float(auto.get("matrix_scores", {}).get("stability", 60) or 60)
+    race_shape = _as_float(auto.get("matrix_scores", {}).get("race_shape"), 60)
+    stability = _as_float(auto.get("matrix_scores", {}).get("stability"), 60)
     if rank <= 2 and ability >= 66:
         return "爭勝"
     if rank <= 4 and stability >= 66:
@@ -1300,14 +1373,14 @@ def _seven_d_summary_lines(auto: dict) -> list[str]:
     if not live:
         return []
     by_contrib = sorted(live, key=lambda r: float(r.get("contribution") or 0), reverse=True)
-    by_score = sorted(live, key=lambda r: float(r.get("score") or 60))
+    by_score = sorted(live, key=lambda r: _as_float(r.get("score"), 60))
 
     def cell(r):
-        return f"{r.get('label', '')} {float(r.get('score') or 60):.0f} {r.get('band', '➖')}"
+        return f"{r.get('label', '')} {_as_float(r.get('score'), 60):.0f} {r.get('band', '➖')}"
 
     pillars = "、".join(cell(r) for r in by_contrib[:2])
     weakest = by_score[0]
-    weak_txt = cell(weakest) if float(weakest.get("score") or 60) < 60 else ""
+    weak_txt = cell(weakest) if _as_float(weakest.get("score"), 60) < 60 else ""
 
     # 數據信心：邊啲維度靠中性 fallback（無實測），明講
     prov = auto.get("score_provenance") or {}
@@ -1347,14 +1420,14 @@ def _seven_d_matrix_digest_lines(auto: dict) -> list[str]:
         rb = reasoning.get(key)
         if not isinstance(rb, dict):
             continue
-        score = float(mscores.get(key, rb.get("score", 60)) or 60)
+        score = _as_float(mscores.get(key, rb.get("score", 60)), 60)
         out.append(f"**{label}：{score:.1f} 分　{_band_label(score)}**")
         comps = rb.get("components") or []
         if comps:
             for c in comps:
                 note = _clean_subscore_note(c.get("note", ""))
                 cl = c.get("label", "")
-                cv = float(c.get("score", 60) or 60)
+                cv = _as_float(c.get("score", 60), 60)
                 out.append(f"- {cl} {cv:.0f}" + (f" ← {note}" if note else ""))
         else:
             # 單 leaf 維度（如場地適性）— 用判讀短句
@@ -1491,4 +1564,3 @@ def _shorten_fact(text: object, limit: int) -> str:
 def _inline_text(value: object) -> str:
     text = str(value or "").strip()
     return " ".join(text.split()) if text else ""
-

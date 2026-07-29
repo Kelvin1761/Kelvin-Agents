@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from scoring import FEATURE_KEYS, MATRIX_WEIGHTS, compute_grade
+from source_alignment import normalize_horse_name
 
 
 MATRIX_KEYS = tuple(MATRIX_WEIGHTS.keys())
@@ -22,7 +23,29 @@ def validate_engine_scripts(script_root: Path) -> list[str]:
 def validate_logic_data(logic_data: dict) -> list[str]:
     errors = []
     horses = logic_data.get("horses", {})
+    if not isinstance(horses, dict) or not horses:
+        return ["SCHEMA-000 horses must be a non-empty object"]
+    normalized_names: dict[str, str] = {}
     for horse_num, horse in horses.items():
+        if not isinstance(horse, dict):
+            errors.append(f"SCHEMA-004 horse {horse_num} must be an object")
+            continue
+        declared_number = horse.get("horse_number")
+        if declared_number is not None and str(declared_number) != str(horse_num):
+            errors.append(
+                f"ALIGN-001 horse key {horse_num} disagrees with horse_number "
+                f"{declared_number}"
+            )
+        name_key = normalize_horse_name(horse.get("horse_name"))
+        if not name_key:
+            errors.append(f"ALIGN-002 horse {horse_num} has no usable name")
+        elif name_key in normalized_names:
+            errors.append(
+                f"ALIGN-003 duplicate horse name for {normalized_names[name_key]} "
+                f"and {horse_num}"
+            )
+        else:
+            normalized_names[name_key] = str(horse_num)
         auto = horse.get("python_auto")
         if not isinstance(auto, dict):
             errors.append(f"SCHEMA-001 horse {horse_num} missing python_auto")
@@ -31,6 +54,8 @@ def validate_logic_data(logic_data: dict) -> list[str]:
     verdict = logic_data.get("python_auto_verdict")
     if not isinstance(verdict, dict):
         errors.append("VERDICT-001 missing python_auto_verdict")
+    elif len(verdict.get("ranking") or []) != len(horses):
+        errors.append("VERDICT-002 ranking count does not match horse count")
     return errors
 
 

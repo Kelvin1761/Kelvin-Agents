@@ -24,16 +24,23 @@ from au_archive_calibrator import (  # noqa: E402
     detect_meeting_track,
     load_historical_results,
     normalize_horse_name,
+    parse_float,
     parse_int,
 )
 from au_auto_orchestrator import _build_field_summary  # noqa: E402
 from engine_core import RacingEngine  # noqa: E402
+from matrix_mapper import matrix_score  # noqa: E402
 from scoring import MATRIX_WEIGHTS  # noqa: E402
 
 
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Formline_7D_ML_Test.md"
 SEED = 20260612
 ITERATIONS_PER_FOLD = 1200
+
+
+def score_value(value, default: float = 60.0) -> float:
+    parsed = parse_float(value)
+    return default if parsed is None else parsed
 
 
 def normalize(weights: dict[str, float]) -> dict[str, float]:
@@ -54,7 +61,10 @@ def with_formline_share(share: float) -> dict[str, float]:
 
 def score(row: dict, weights: dict[str, float]) -> float:
     matrix = row.get("matrix_scores") or {}
-    return sum(float(matrix.get(key, 60.0) or 60.0) * weights.get(key, 0.0) for key in MATRIX_KEYS)
+    return sum(
+        matrix_score(matrix, key, 60.0) * weights.get(key, 0.0)
+        for key in MATRIX_KEYS
+    )
 
 
 def ranked(race: list[dict], weights: dict[str, float]) -> list[dict]:
@@ -184,8 +194,17 @@ def recompute_race(logic_path: Path, actual_rows: list[dict]) -> list[dict]:
                 "horse_number": parse_int(horse_num) or 999,
                 "horse_name": horse_name(horse_num, horse),
                 "actual_pos": int(actual["pos"]),
-                "matrix_scores": {key: float((auto.get("matrix_scores") or {}).get(key) or 60.0) for key in MATRIX_KEYS},
-                "formline_score": float((auto.get("feature_scores") or {}).get("formline_score") or 60.0),
+                "matrix_scores": {
+                    key: matrix_score(
+                        auto.get("matrix_scores") or {},
+                        key,
+                        60.0,
+                    )
+                    for key in MATRIX_KEYS
+                },
+                "formline_score": score_value(
+                    (auto.get("feature_scores") or {}).get("formline_score")
+                ),
                 "formline_rows": len(engine._formline_rows()),
             }
         )

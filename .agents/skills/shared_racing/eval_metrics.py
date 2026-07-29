@@ -22,6 +22,7 @@ the top 3 (dead-heat safe: may contain more than 3), plus the winner.
 from __future__ import annotations
 
 import hashlib
+import math
 import subprocess
 from collections import Counter
 from pathlib import Path
@@ -37,6 +38,41 @@ EXCLUSIVE_LABELS = ("Gold", "Good", "Pass", "1 Hit", "Miss")
 #     pct = (finish_pos - 1) / (field_size - 1)      0.0 = won, 1.0 = last
 COMPETITIVE_PCT = 1.0 / 3.0   # beat two-thirds of the field = ran with the leaders
 BLOWOUT_PCT = 2.0 / 3.0       # finished in the back third = never in the race
+
+
+def _competitive_cutoff(field_size: int) -> int:
+    """Observed contender tier used for ranking diagnostics.
+
+    The tier is the leading third of the field, with a minimum of three and a
+    maximum of five runners.  This keeps a six-runner Griffin race from calling
+    most of the field competitive while recognising that a 14-runner handicap
+    commonly has plausible secondary contenders beyond the official placings.
+    """
+    return min(5, max(3, math.ceil(field_size / 3)))
+
+
+def _ndcg_at_k(
+    picks: Sequence[Any],
+    actual_pos: Mapping[Any, int],
+    *,
+    cutoff: int,
+    k: int,
+) -> float:
+    """Normalised ranking quality for the observed competitive tier."""
+
+    def relevance(horse: Any) -> float:
+        position = actual_pos.get(horse)
+        if position is None or position > cutoff:
+            return 0.0
+        return float(cutoff + 1 - position)
+
+    def dcg(values: Sequence[float]) -> float:
+        return sum((2.0**value - 1.0) / math.log2(index + 2.0) for index, value in enumerate(values))
+
+    observed = [relevance(horse) for horse in picks[:k]]
+    ideal = sorted((relevance(horse) for horse in actual_pos), reverse=True)[:k]
+    ideal_score = dcg(ideal)
+    return dcg(observed) / ideal_score if ideal_score > 0 else 0.0
 
 
 def exclusive_label(top3_hits: int, top2_hits: int) -> str:
@@ -86,6 +122,25 @@ def race_metrics(
     top3_picks = picks[:3]
     hits = sum(1 for horse in top3_picks if horse in actual_set)
     top2_hits = sum(1 for horse in picks[:2] if horse in actual_set)
+    top3_capture_at4_count = sum(1 for horse in picks[:4] if horse in actual_set)
+    top3_capture_at5_count = sum(1 for horse in picks[:5] if horse in actual_set)
+    actual_top3_count = len(actual_set)
+    top3_capture_at4 = top3_capture_at4_count / actual_top3_count if actual_top3_count else None
+    top3_capture_at5 = top3_capture_at5_count / actual_top3_count if actual_top3_count else None
+
+    rank_lookup = {horse: index for index, horse in enumerate(picks, 1)}
+    actual_top3_ranks = [rank_lookup.get(horse) for horse in actual_set]
+    known_top3_ranks = [rank for rank in actual_top3_ranks if rank is not None]
+    top3_mean_model_rank = (
+        sum(known_top3_ranks) / len(known_top3_ranks)
+        if known_top3_ranks and len(known_top3_ranks) == len(actual_top3_ranks)
+        else None
+    )
+    top3_worst_model_rank = (
+        max(known_top3_ranks)
+        if known_top3_ranks and len(known_top3_ranks) == len(actual_top3_ranks)
+        else None
+    )
 
     winner_rank = None
     for index, horse in enumerate(picks, 1):
@@ -111,11 +166,45 @@ def race_metrics(
     known = [pct for pct in pick_pcts if pct is not None]
     top_pct = pick_pcts[0] if pick_pcts else None
     top2_pcts = [pct for pct in pick_pcts[:2] if pct is not None]
+    competitive_cutoff = _competitive_cutoff(size) if actual_pos and size > 1 else None
+    competitive_set = (
+        {horse for horse, position in actual_pos.items() if position <= competitive_cutoff}
+        if actual_pos and competitive_cutoff is not None
+        else set()
+    )
+    competitive_hits_at5 = len(set(picks[:5]) & competitive_set)
+    competitive_recall_at5 = (
+        competitive_hits_at5 / len(competitive_set) if competitive_set else None
+    )
+    competitive_precision_at5 = (
+        competitive_hits_at5 / min(5, len(picks)) if competitive_set and picks else None
+    )
+    ndcg_at5 = (
+        _ndcg_at_k(picks, actual_pos, cutoff=competitive_cutoff, k=5)
+        if actual_pos and competitive_cutoff is not None
+        else None
+    )
 
     return {
         "picks": picks,
         "hits": hits,
         "top2_hits": top2_hits,
+        "actual_top3_count": actual_top3_count,
+        "top3_capture_at4_count": top3_capture_at4_count,
+        "top3_capture_at5_count": top3_capture_at5_count,
+        "top3_capture_at4": top3_capture_at4,
+        "top3_capture_at5": top3_capture_at5,
+        "top3_all_within_top4": (
+            top3_capture_at4_count == actual_top3_count if actual_top3_count else None
+        ),
+        "top3_all_within_top5": (
+            top3_capture_at5_count == actual_top3_count if actual_top3_count else None
+        ),
+        "actual_top3_model_ranks": sorted(
+            (rank if rank is not None else len(picks) + 1) for rank in actual_top3_ranks
+        ),
+        "top3_mean_model_rank": top3_mean_model_rank,
+        "top3_worst_model_rank": top3_worst_model_rank,
         # competitiveness (None whenever positions/field size are unavailable)
         "field_size": size or None,
         "pick_positions": [actual_pos.get(h) if actual_pos else None for h in top3_picks],
@@ -130,6 +219,12 @@ def race_metrics(
         "top2_any_blowout": (
             any(pct >= BLOWOUT_PCT for pct in top2_pcts) if top2_pcts else None
         ),
+        "competitive_cutoff": competitive_cutoff,
+        "competitive_field_size": len(competitive_set) if competitive_cutoff is not None else None,
+        "competitive_hits_at5": competitive_hits_at5 if competitive_cutoff is not None else None,
+        "competitive_recall_at5": competitive_recall_at5,
+        "competitive_precision_at5": competitive_precision_at5,
+        "ndcg_at5": ndcg_at5,
         # cumulative KPIs
         "gold": hits == 3,
         "good_positional": len(picks) >= 2 and picks[0] in actual_set and picks[1] in actual_set,
@@ -137,6 +232,7 @@ def race_metrics(
         "pass_any1": hits >= 1,
         "champion": bool(picks) and picks[0] in winners,
         "winner_in_top3": any(horse in winners for horse in top3_picks),
+        "winner_in_top5": any(horse in winners for horse in picks[:5]),
         "order_issue": order_issue,
         # winner-rank quality
         "winner_rank": winner_rank,
@@ -157,6 +253,7 @@ def summarize_races(race_rows: Sequence[Mapping[str, Any]]) -> dict:
         "pass_any1": sum(bool(row["pass_any1"]) for row in race_rows),
         "champion": sum(bool(row["champion"]) for row in race_rows),
         "winner_in_top3": sum(bool(row["winner_in_top3"]) for row in race_rows),
+        "winner_in_top5": sum(bool(row.get("winner_in_top5")) for row in race_rows),
         "order_issue": sum(bool(row["order_issue"]) for row in race_rows),
     }
     hit_distribution = Counter(int(row["hits"]) for row in race_rows)
@@ -191,6 +288,15 @@ def summarize_races(race_rows: Sequence[Mapping[str, Any]]) -> dict:
             "top2_any_blowout": _flag("top2_any_blowout"),
             "mean_top_pick_pct": _mean("top_pick_pct"),
             "mean_top3_pct": _mean("mean_top3_pct"),
+            "top3_all_within_top4": _flag("top3_all_within_top4"),
+            "top3_all_within_top5": _flag("top3_all_within_top5"),
+            "mean_top3_capture_at4": _mean("top3_capture_at4"),
+            "mean_top3_capture_at5": _mean("top3_capture_at5"),
+            "mean_top3_model_rank": _mean("top3_mean_model_rank"),
+            "mean_top3_worst_model_rank": _mean("top3_worst_model_rank"),
+            "mean_competitive_recall_at5": _mean("competitive_recall_at5"),
+            "mean_competitive_precision_at5": _mean("competitive_precision_at5"),
+            "mean_ndcg_at5": _mean("ndcg_at5"),
         },
     }
 
