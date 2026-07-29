@@ -43,6 +43,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--skip-analysis", action="store_true", help="Skip tomorrow run-daily.")
     parser.add_argument("--skip-review", action="store_true", help="Skip yesterday review/archive.")
     parser.add_argument("--no-archive", action="store_true", help="Review yesterday but do not move the folder.")
+    parser.add_argument(
+        "--refresh-today",
+        action="store_true",
+        help="Same-day mode: re-run run-daily for TODAY only (no review, no archive). "
+             "The 20:00 job analyses tomorrow against a book Sportsbet has barely "
+             "opened; this is the morning pass that rebuilds the card once the day's "
+             "matches are actually priced.",
+    )
     args = parser.parse_args(argv)
 
     LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -57,6 +65,25 @@ def main(argv: list[str] | None = None) -> int:
         today = date.fromisoformat(args.today) if args.today else local_today()
         yesterday = today - timedelta(days=1)
         tomorrow = today + timedelta(days=1)
+
+        if args.refresh_today:
+            log(f"Starting SAME-DAY refresh for {today} (no review, no archive).")
+            try:
+                ensure_live_network()
+                run_cli("init-db")
+                analyse_next_day(today.isoformat())
+            except subprocess.CalledProcessError as exc:
+                log(f"Command failed with exit code {exc.returncode}: {' '.join(exc.cmd)}")
+                return exc.returncode or 1
+            except TemporaryDataUnavailable as exc:
+                log(f"TEMPORARY DATA FAILURE: {exc}")
+                return 75
+            except Exception as exc:  # noqa: BLE001
+                log(f"Same-day refresh failed: {exc}")
+                return 1
+            log("Same-day refresh complete.")
+            return 0
+
         log(f"Starting scheduled workflow. today={today} review={yesterday} analysis={tomorrow}")
 
         try:
@@ -148,6 +175,15 @@ def analyse_next_day(match_date: str) -> None:
         )
 
 
+# Below this share of the fixture list being priced, the run is a preview of an
+# unopened book, not a betting card. The 20:00 job analyses TOMORROW, and
+# Sportsbet has not opened most of tomorrow's matches by then: 2026-07-29 was
+# built from 2 priced matches out of 102 fixtures and passed every gate, because
+# the gates only looked for "zero matches" or "all snapshots invalid".
+_MIN_PRICED_RATIO = 0.35
+_MIN_FIXTURES_FOR_RATIO_CHECK = 10
+
+
 def analysis_retry_reasons(payload: dict) -> list[str]:
     """Return only failures that make a scheduled betting report incomplete."""
     matches = intish(payload.get("matches_analysed"))
@@ -159,6 +195,15 @@ def analysis_retry_reasons(payload: dict) -> list[str]:
         reasons.append("zero matches after source failures")
     elif matches > 0 and valid == 0:
         reasons.append("all feature snapshots are invalid")
+
+    coverage = payload.get("odds_coverage") or {}
+    fixtures = intish(coverage.get("fixtures"))
+    priced = intish(coverage.get("priced_matches"))
+    if fixtures >= _MIN_FIXTURES_FOR_RATIO_CHECK and priced / fixtures < _MIN_PRICED_RATIO:
+        reasons.append(
+            f"only {priced}/{fixtures} fixtures priced "
+            f"({priced / fixtures:.0%} < {_MIN_PRICED_RATIO:.0%}) -- book likely not open yet"
+        )
 
     critical_sources = {
         "odds",

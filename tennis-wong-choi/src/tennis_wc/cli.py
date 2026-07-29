@@ -9,7 +9,11 @@ from tennis_wc.database.db import get_connection
 from tennis_wc.database.migrations import init_db
 from tennis_wc.diagnostics import run_network_check
 from tennis_wc.features.data_quality import validate_data_freshness
-from tennis_wc.features.feature_builder import build_feature_snapshots_for_date, build_sportsbet_feature_snapshots_for_date
+from tennis_wc.features.feature_builder import (
+    build_feature_snapshots_for_date,
+    build_sportsbet_feature_snapshots_for_date,
+    odds_coverage_for_date,
+)
 from tennis_wc.ingestion.ingest_matches import ingest_default_history, ingest_upcoming_matches
 from tennis_wc.ingestion.ingest_odds import (
     enrich_sportsbet_event_markets,
@@ -532,6 +536,7 @@ def run_daily(args: argparse.Namespace) -> None:
             "matches_analysed": len(snapshots),
             "valid_feature_snapshots": len(valid),
             "invalid_due_to_data_issue": len(snapshots) - len(valid),
+            "odds_coverage": odds_coverage_for_date(args.date),
             "predictions": predictions,
             "analysis_dir": str(analysis_output_dir(args.date)),
             "report_path": str(report_path),

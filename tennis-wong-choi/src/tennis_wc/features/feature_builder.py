@@ -453,6 +453,44 @@ def build_sportsbet_feature_snapshots_for_date(
     return snapshots
 
 
+def odds_coverage_for_date(match_date: str) -> dict:
+    """How much of the day's fixture list Sportsbet has actually priced.
+
+    A run can look healthy while pricing almost nothing. The 20:00 scheduled job
+    analyses TOMORROW, and Sportsbet has not opened most of tomorrow's book at
+    that hour, so on 2026-07-29 the report was built from 2 priced matches out of
+    102 fixtures (2%) and still counted as a successful run -- the retry gate only
+    fired on "zero matches" or "all snapshots invalid". Exposing the ratio lets
+    the scheduler tell "quiet betting day" apart from "the book was not open yet".
+    """
+    with get_connection() as conn:
+        fixtures = conn.execute(
+            "SELECT COUNT(*) FROM matches WHERE match_date = ?", (match_date,)
+        ).fetchone()[0]
+        priced = conn.execute(
+            """
+            SELECT COUNT(DISTINCT o.match_id) FROM odds_snapshots o
+            JOIN matches m ON m.id = o.match_id
+            WHERE m.match_date = ? AND o.source_provider = 'sportsbet'
+            """,
+            (match_date,),
+        ).fetchone()[0]
+        latest = conn.execute(
+            """
+            SELECT MAX(o.fetched_at) FROM odds_snapshots o
+            JOIN matches m ON m.id = o.match_id
+            WHERE m.match_date = ? AND o.source_provider = 'sportsbet'
+            """,
+            (match_date,),
+        ).fetchone()[0]
+    return {
+        "fixtures": int(fixtures or 0),
+        "priced_matches": int(priced or 0),
+        "priced_ratio": round((priced or 0) / fixtures, 4) if fixtures else None,
+        "latest_scrape": latest,
+    }
+
+
 def feature_build_coverage(match_date: str) -> dict:
     """Read-only: how many Sportsbet-priced matches actually reached the model.
 

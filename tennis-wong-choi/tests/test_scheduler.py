@@ -71,3 +71,41 @@ def test_main_returns_temporary_failure_code_before_workflow(monkeypatch, tmp_pa
     )
 
     assert scheduler.main(["--today", "2026-07-25"]) == 75
+
+
+# --------------------------------------------------------------------------- #
+# Thin odds coverage must not pass as a normal quiet day (2026-07-29)
+# --------------------------------------------------------------------------- #
+def _payload(fixtures, priced, matches=None, valid=None):
+    matches = priced if matches is None else matches
+    valid = matches if valid is None else valid
+    return {
+        "matches_analysed": matches,
+        "valid_feature_snapshots": valid,
+        "odds_coverage": {"fixtures": fixtures, "priced_matches": priced},
+        "source_errors": [],
+    }
+
+
+def test_unopened_book_is_flagged_for_retry():
+    """The 20:00 job analyses TOMORROW, when Sportsbet has barely opened the book.
+    On 2026-07-29 that produced a published card from 2 priced matches out of 102
+    fixtures, and every gate passed because they only checked for zero matches."""
+    reasons = scheduler.analysis_retry_reasons(_payload(fixtures=102, priced=2))
+    assert reasons, "2/102 priced must not be treated as a valid betting card"
+    assert "not open yet" in reasons[0]
+
+
+def test_healthy_same_day_coverage_passes():
+    assert scheduler.analysis_retry_reasons(_payload(fixtures=92, priced=60, valid=40)) == []
+
+
+def test_genuinely_small_card_is_not_flagged():
+    """A real quiet day (few fixtures, nearly all priced) must stay a pass --
+    the gate is about coverage, not volume."""
+    assert scheduler.analysis_retry_reasons(_payload(fixtures=9, priced=8)) == []
+
+
+def test_ratio_gate_ignores_tiny_fixture_lists():
+    """Below the fixture floor the ratio is noise, so it must not fire."""
+    assert scheduler.analysis_retry_reasons(_payload(fixtures=4, priced=1)) == []
