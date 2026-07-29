@@ -23,6 +23,18 @@ Current runtime baseline：
 提高真正有競爭力馬匹進入 Top 5 嘅 recall，同減少 0-hit，而唔係事後追逐
 精確名次。
 
+固定 scoring snapshot 嘅同場版本比較：
+
+| 版本 | Dev Comp R@5 | Dev NDCG | Dev 0-hit | Terminal Comp R@5 | Terminal NDCG | Terminal 0-hit |
+|---|---:|---:|---:|---:|---:|---:|
+| Archived mixed production | 62.94% | 52.06% | 14.26% | 58.67% | 45.85% | 19.26% |
+| Current weights, pre-clean | 63.23% | 52.43% | 12.52% | 59.00% | 46.69% | 17.78% |
+| Signal-cleaned | 63.42% | 52.62% | 12.35% | 59.19% | 46.70% | 17.78% |
+
+上表用同一批 archived leaf/matrix snapshot 比較 model version；下面嘅 710 場
+current runtime baseline 則係由 raw Logic 重跑完整 engine，兩者用途唔同，唔應
+混合當成同一條 score series。
+
 ## 資料對齊及 bug 修正
 
 1. Cache manifest 加入 schema、archive/results source path 同 file signature；
@@ -92,6 +104,13 @@ pace figure 喺 recent/terminal window 有價值，但舊 archive 大量缺失�
 - 90 個單一 matrix pair weight transfers：早段最佳係 stability →
   race-shape 3%，但獨立第五 fold competitive recall 跌 0.41pp，terminal
   0-hit 增 0.74pp；保留現行 top-level weights。
+- 可解釋 pairwise linear ranker（只用之前日期訓練、目標係 leading-third
+  competitive tier）：`matrix_6 + distance` 喺 terminal 有 NDCG +2.91pp、
+  winner@5 +7.41pp、0-hit -2.22pp，但 earlier folds 只有 3/5 NDCG 同
+  3/5 0-hit 非負。跨七個 SGD seeds 及 seven-model averaged weights 後，
+  最早 fold 仍有 competitive recall -3.84pp、NDCG -4.10pp，最後
+  development fold winner@5 -5.17pp。呢個係 data coverage/regime drift
+  下未能泛化嘅 shadow candidate，唔升 production。
 - generic jockey upgrade/downgrade scoring：雖然修正後影響 511 場分數及
   286 場排名，時間 folds 方向互相衝突，只保留準確描述。
 
@@ -120,6 +139,8 @@ coverage audit；要升級成 ranking feature，必須再有新增、較完整�
 - `au_shape_interaction_audit.py`：Racenet shape × pace interaction
 - `au_architecture_audit.py`：simple distance/threshold architecture variants
 - `au_matrix_weight_search.py`：time-ordered one-pair matrix weight search
+- `au_pairwise_ranker_audit.py`：expanding walk-forward competitive-tier
+  linear ranker gate
 
 快速測試：
 
@@ -129,4 +150,23 @@ python3 -m unittest discover \
   -p 'test_*.py'
 ```
 
-今次結果：101 tests passed。
+今次結果：104 tests passed。
+
+## Objective completion matrix
+
+| Objective | Authoritative evidence | Verdict |
+|---|---|---|
+| 全 archive、0/1-hit、misrank、compression | 710 場 raw runtime failure audit；逐場 underrated/overrated records | 完成 |
+| Micro individual/group/all-off ablation | 70 個 individual parameters、7 families、all-micro variant、5 folds + terminal | 完成 |
+| Neutral/weak/double-count signal cleanup | score/rank-change diagnostics、feature AUC、class/jockey/RT/fallback removals | 完成 |
+| Meaningful separation | SD、Top1–Top3、Top3–Top5、compressed cohorts；證實 0-hit 唔主要由 compression 引起 | 完成 |
+| Granular metrics beyond G/G/P | capture@4/5、winner@3/5、competitive recall/precision、NDCG、MRR、miss severity、false contenders | 完成 |
+| Extreme outsider analysis | SP≥31/51 outcome-only cohorts、capture/mean rank；冇用 SP 入 model | 完成 |
+| Racenet used/unused field review | field coverage/classification、within-race AUC、missing/fallback counts | 完成 |
+| New data / interactions | distance、shape×pace、jockey tier、pairwise ranker gates；全部按 repeatability 決定 promote/shadow | 完成 |
+| Structured failure records | 0/1-hit race records含 underrated、overrated、drivers、missing evidence、cohorts | 完成 |
+| Hindsight/overfit protection | scoring-before-label join、date folds、terminal holdout、selection/confirmation separation | 完成 |
+| Model version comparison | archived production、no-micro、pre-clean、signal-clean、architecture candidates，同一 archive metrics | 完成 |
+| Explainable production simplification | active engine 移除 dead/fragile micro rules；舊一次性 research scripts 退出 active path | 完成 |
+| Repeatable further improvement gate | pair-transfer、interaction、distance、linear pairwise candidates均未同時通過 folds + terminal | 暫無可升級候選 |
+| Git delivery | commit `c9ff062` 已建立；本報告/pairwise audit 會追加 commit | push 待明確 remote 授權 |
