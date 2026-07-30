@@ -251,6 +251,24 @@
     .sport-switch--active { color: #FFFFFF; background: #1E40AF; box-shadow: 0 3px 9px rgba(30,64,175,.22); }
     .sport-switch--active:hover { color: #FFFFFF; background: #1E3A8A; }
 
+    /* ─── Header refresh control ─── */
+    .app-header__refresh { display: flex; align-items: center; gap: 5px; min-height: 34px; padding: 5px 11px; border: 1px solid #D7E1ED; border-radius: 999px; background: #F8FAFC; color: #64748B; font: inherit; font-size: 0.68rem; font-weight: 800; font-variant-numeric: tabular-nums; cursor: pointer; white-space: nowrap; transition: color 0.15s ease, background-color 0.15s ease; }
+    .app-header__refresh:hover { color: #1E40AF; background: #EFF6FF; border-color: #BFD4EE; }
+    .app-header__refresh:focus-visible { outline: 3px solid rgba(37,99,235,0.35); outline-offset: 2px; }
+    .app-header__refresh-icon { font-size: 0.85rem; line-height: 1; }
+    /* Spun only while a reload is actually in flight, so it never looks busy at rest. */
+    .app-header__refresh--busy .app-header__refresh-icon { animation: refresh-spin 0.8s linear infinite; }
+    @keyframes refresh-spin { to { transform: rotate(360deg); } }
+
+    /* ─── "New analysis available" pill ─── */
+    .update-pill { position: fixed; left: 50%; bottom: calc(18px + var(--tabbar-total)); z-index: 1002; display: flex; align-items: stretch; overflow: hidden; border: 1px solid #1D4ED8; border-radius: 999px; background: #1E40AF; box-shadow: 0 8px 24px rgba(30,64,175,0.35); transform: translateX(-50%); }
+    .update-pill[hidden] { display: none; }
+    .update-pill__action { display: flex; align-items: center; gap: 7px; min-height: 42px; padding: 9px 15px; border: 0; background: transparent; color: #FFFFFF; font: inherit; font-size: 0.74rem; font-weight: 800; cursor: pointer; white-space: nowrap; }
+    .update-pill__action:hover { background: rgba(255,255,255,0.12); }
+    .update-pill__dismiss { min-width: 38px; min-height: 42px; padding: 0 12px 0 8px; border: 0; border-left: 1px solid rgba(255,255,255,0.28); background: transparent; color: rgba(255,255,255,0.85); font: inherit; font-size: 1rem; font-weight: 800; cursor: pointer; }
+    .update-pill__dismiss:hover { color: #FFFFFF; background: rgba(255,255,255,0.12); }
+    .update-pill__action:focus-visible, .update-pill__dismiss:focus-visible { outline: 3px solid rgba(255,255,255,0.6); outline-offset: -3px; }
+
     /* ─── Mobile bottom tab bar (iOS-style; the primary nav once installed as a PWA) ───
        Desktop keeps the header sport-switcher; ≤768px swaps it for this bar so the
        top-level sports stay reachable one-thumb. Heights live in --tabbar-h /
@@ -286,6 +304,11 @@
          is most of the win in standalone mode where there is no browser chrome
          to absorb the vertical space. */
       .sport-switcher { display: none; }
+      /* Clear the fixed betting bar as well as the tab bar — 92px is the same
+         allowance .app-main uses above. Landing on top of 匯入投注記錄 mid-race
+         is exactly the wrong moment to cover that button. */
+      .update-pill { bottom: calc(100px + var(--tabbar-total)); max-width: calc(100vw - 24px); }
+      .update-pill__action { font-size: 0.7rem; padding: 9px 13px; }
     }
     .sports-shell { --sport-accent:#1D4ED8; max-width: 1180px; margin: 0 auto; }
     .sports-shell--tennis { --sport-accent:#047857; }
@@ -418,6 +441,13 @@
         <a href="#" id="nav-races" class="nav-pill nav-pill--active" onclick="showDashboard(); return false;">📋 賽事</a>
         <a href="#" id="nav-roi" class="nav-pill" onclick="showROI(); return false;">📊 ROI</a>
       </nav>
+      <!-- Always-available way to reload. In standalone (PWA) mode there is no
+           address bar and no reload button, so without this the only way out of a
+           stale snapshot is deleting the home screen icon. The label doubles as
+           the loaded snapshot's age, which used to be buried in the footer. -->
+      <button type="button" class="app-header__refresh" id="snapshot-refresh" onclick="reloadSnapshot()" title="重新載入最新分析">
+        <span class="app-header__refresh-icon" aria-hidden="true">↻</span><span class="app-header__refresh-stamp" id="snapshot-stamp">—</span>
+      </button>
     </header>
     <main class="app-main" id="app-main"></main>
     <footer style="text-align:center;padding:12px;font-size:0.7rem;color:#94A3B8;border-top:1px solid #E2E8F0">
@@ -446,6 +476,16 @@
     <span class="tabbar-btn__icon" aria-hidden="true">📈</span><span class="tabbar-btn__label">Portfolio</span>
   </button>
 </nav>
+<!-- Shown only when deploy-manifest.json reports a snapshot strictly newer than
+     the one baked into this page. Catches the dangerous case: iOS restores a
+     suspended PWA and you carry on reading yesterday's race card without
+     realising anything is stale. -->
+<div class="update-pill" id="update-pill" role="status" aria-live="polite" hidden>
+  <button type="button" class="update-pill__action" onclick="reloadSnapshot()">
+    <span aria-hidden="true">🔄</span><span>有新分析 · 點擊更新</span>
+  </button>
+  <button type="button" class="update-pill__dismiss" onclick="dismissUpdatePill()" title="暫時唔理" aria-label="關閉更新提示">×</button>
+</div>
 <button type="button" class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回到頂部" aria-label="回到頂部">↑</button>
 
 <script>
@@ -471,6 +511,7 @@ if (typeof DASHBOARD_DATA === 'string') {
     </main>`;
   document.getElementById('backToTop')?.remove();
   document.getElementById('app-bottom-nav')?.remove();
+  document.getElementById('update-pill')?.remove();
   throw new Error('static_template.html must be processed by generate_static.py before use.');
 }
 
@@ -3821,6 +3862,85 @@ window.addEventListener('scroll', () => {
   }
 }, { passive: true });
 
+// ═══════════════════════════════════════════════
+// Snapshot freshness
+// ═══════════════════════════════════════════════
+// The race analysis snapshot is baked into DASHBOARD_DATA at build time, so the
+// only way to get a newer one is a full page load. Installed as a PWA there is no
+// address bar and no reload button, and iOS restores a suspended app without
+// re-navigating — which means yesterday's race card can silently come back.
+//
+// deploy-manifest.json is 369 bytes and carries the same generated_at that is
+// baked in here, so checking for a new deploy costs ~0 rather than re-pulling
+// the 1.3MB snapshot.
+const SNAPSHOT_MANIFEST_URL = window.location.protocol === 'file:' ? null : 'deploy-manifest.json';
+const LOADED_SNAPSHOT_AT = DASHBOARD_DATA?.meta?.generated_at || null;
+// Re-checking on every single foreground would be wasteful when you are flicking
+// between apps; once a minute is plenty for something that changes per deploy.
+const SNAPSHOT_CHECK_MIN_INTERVAL_MS = 60000;
+let lastSnapshotCheckAt = 0;
+let updatePillDismissedFor = null;
+
+function formatSnapshotStamp(iso) {
+  // "2026-07-30T22:45:21" → "07-30 22:45". Deliberately string-sliced rather
+  // than parsed: the value has no timezone, so `new Date()` would shift it.
+  const match = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  return match ? `${match[2]}-${match[3]} ${match[4]}:${match[5]}` : '—';
+}
+
+function renderSnapshotStamp() {
+  const stamp = document.getElementById('snapshot-stamp');
+  if (stamp) stamp.textContent = formatSnapshotStamp(LOADED_SNAPSHOT_AT);
+}
+
+function reloadSnapshot() {
+  const btn = document.getElementById('snapshot-refresh');
+  if (btn) btn.classList.add('app-header__refresh--busy');
+  // A plain reload is enough: the service worker serves navigations network-first,
+  // so this already fetches the newest deploy rather than the cached copy.
+  window.location.reload();
+}
+
+function dismissUpdatePill() {
+  const pill = document.getElementById('update-pill');
+  if (!pill) return;
+  // Remember WHICH snapshot was waved off, so dismissing once does not also
+  // suppress the notice for the next deploy.
+  updatePillDismissedFor = pill.dataset.snapshot || null;
+  pill.hidden = true;
+}
+
+function showUpdatePill(remoteGeneratedAt) {
+  const pill = document.getElementById('update-pill');
+  if (!pill || updatePillDismissedFor === remoteGeneratedAt) return;
+  pill.dataset.snapshot = remoteGeneratedAt;
+  pill.hidden = false;
+}
+
+// Strictly newer only. Both sides are the same zero-padded ISO shape, so a string
+// compare IS a time compare — and `>` rather than `!==` means a stale Cloudflare
+// edge copy can never prompt a pointless reload.
+function isNewerSnapshot(remoteGeneratedAt, loadedGeneratedAt) {
+  if (typeof remoteGeneratedAt !== 'string' || typeof loadedGeneratedAt !== 'string') return false;
+  return remoteGeneratedAt > loadedGeneratedAt;
+}
+
+async function checkForNewSnapshot() {
+  if (!SNAPSHOT_MANIFEST_URL || !LOADED_SNAPSHOT_AT) return;
+  const now = Date.now();
+  if (now - lastSnapshotCheckAt < SNAPSHOT_CHECK_MIN_INTERVAL_MS) return;
+  lastSnapshotCheckAt = now;
+  try {
+    const res = await fetch(SNAPSHOT_MANIFEST_URL, { cache: 'no-store' });
+    if (!res.ok) return;
+    const remote = await res.json();
+    if (isNewerSnapshot(remote?.generated_at, LOADED_SNAPSHOT_AT)) showUpdatePill(remote.generated_at);
+  } catch {
+    // Offline, or the manifest is not deployed alongside. Nothing to tell the
+    // user — the snapshot they already have is still the best available.
+  }
+}
+
 // Init
 document.addEventListener('DOMContentLoaded', () => {
   primeSyncedBettingStateFromLocal();
@@ -3837,6 +3957,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const initialSport = getInitialSportFromUrl();
   if (initialSport === 'horses') showDashboard();
   else showSport(initialSport);
+  renderSnapshotStamp();
+  // Also check on first load, not just on foreground: a cold launch can be served
+  // out of the service worker cache when the network is slow or absent.
+  checkForNewSnapshot();
+});
+
+// iOS does not re-navigate when it resumes a suspended PWA, so this is the only
+// hook that catches "app was in the background since yesterday".
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') checkForNewSnapshot();
 });
 
 // ═══════════════════════════════════════════════

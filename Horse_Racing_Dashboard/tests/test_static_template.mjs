@@ -92,6 +92,8 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       getInitialSportFromUrl: typeof getInitialSportFromUrl === "function" ? getInitialSportFromUrl : null,
       sportsBetDraftFromSource: typeof sportsBetDraftFromSource === "function" ? sportsBetDraftFromSource : null,
       setLocationSearchForTest: (search) => { window.location.search = search; },
+      isNewerSnapshot: typeof isNewerSnapshot === "function" ? isNewerSnapshot : null,
+      formatSnapshotStamp: typeof formatSnapshotStamp === "function" ? formatSnapshotStamp : null,
     };
   `;
   vm.runInContext(source, context);
@@ -139,6 +141,53 @@ test("mobile bottom tab bar carries every sport and stacks above the betting bar
   // two never both show.
   assert.match(html, /\.app-bottom-nav \{ display: none; \}/);
   assert.match(html, /\.sport-switcher \{ display: none; \}/);
+});
+
+test("snapshot staleness only prompts for a strictly newer build", () => {
+  const { isNewerSnapshot } = loadTemplateFunctions();
+  const loaded = "2026-07-30T22:45:21";
+  assert.equal(isNewerSnapshot("2026-07-31T09:12:00", loaded), true);
+  // Equal must not prompt — that is the normal steady state on every foreground.
+  assert.equal(isNewerSnapshot(loaded, loaded), false);
+  // Older must not prompt: a stale Cloudflare edge copy would otherwise send the
+  // user into a reload that brings back the very snapshot they already have.
+  assert.equal(isNewerSnapshot("2026-07-29T08:00:00", loaded), false);
+  for (const junk of [undefined, null, 42, {}, []]) {
+    assert.equal(isNewerSnapshot(junk, loaded), false);
+    assert.equal(isNewerSnapshot("2026-07-31T09:12:00", junk), false);
+  }
+});
+
+test("snapshot stamp is string-sliced so a timezone-less build time never shifts", () => {
+  const { formatSnapshotStamp } = loadTemplateFunctions();
+  assert.equal(formatSnapshotStamp("2026-07-30T22:45:21"), "07-30 22:45");
+  // 22:45 must stay 22:45 — parsing this as a Date would re-interpret it as UTC
+  // and slide the displayed time by the local offset.
+  assert.match(formatSnapshotStamp("2026-01-01T00:30:00"), /^01-01 00:30$/);
+  for (const junk of ["", "not-a-date", undefined, null]) {
+    assert.equal(formatSnapshotStamp(junk), "—");
+  }
+});
+
+test("standalone mode has a reload path and a new-analysis notice", () => {
+  const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+  // Installed as a PWA there is no address bar, so the only way out of a stale
+  // snapshot is an in-page control.
+  assert.match(html, /id="snapshot-refresh"[^>]*onclick="reloadSnapshot\(\)"/);
+  assert.match(html, /id="snapshot-stamp"/);
+  assert.match(html, /id="update-pill"[^>]*hidden/);
+  assert.match(html, /onclick="dismissUpdatePill\(\)"/);
+  // 369-byte manifest, not the 1.3MB snapshot.
+  assert.match(html, /'deploy-manifest\.json'/);
+  assert.match(html, /fetch\(SNAPSHOT_MANIFEST_URL, \{ cache: 'no-store' \}\)/);
+  // iOS resumes a suspended PWA without re-navigating; this is the only hook
+  // that catches "backgrounded since yesterday".
+  assert.match(html, /document\.addEventListener\('visibilitychange'/);
+  assert.match(html, /document\.visibilityState === 'visible'\) checkForNewSnapshot\(\)/);
+  // Dismissing one notice must not suppress the next deploy's notice.
+  assert.match(html, /updatePillDismissedFor === remoteGeneratedAt/);
+  // The pill has to clear the betting bar on mobile, not cover 匯入投注記錄.
+  assert.match(html, /\.update-pill \{ bottom: calc\(100px \+ var\(--tabbar-total\)\)/);
 });
 
 test("pwa bundle has a standalone manifest and a service worker that never caches /api", () => {
