@@ -192,6 +192,7 @@ def compact_metrics(summary: dict) -> dict:
     return {
         "races": summary["races"],
         "gold": rates["gold"],
+        "good_positional": rates["good_positional"],
         "good_any2": rates["good_any2"],
         "pass_any1": rates["pass_any1"],
         "zero_hit": summary["hit_distribution"]["0hit"] / max(1, summary["races"]),
@@ -199,6 +200,8 @@ def compact_metrics(summary: dict) -> dict:
         "winner_top3": rates["winner_in_top3"],
         "winner_top5": rates["winner_in_top5"],
         "mrr": summary["mrr"],
+        "top3_all_within_top4": comp["top3_all_within_top4"]["rate"],
+        "top3_capture_at4": comp["mean_top3_capture_at4"],
         "top3_capture_at5": comp["mean_top3_capture_at5"],
         "competitive_recall_at5": comp["mean_competitive_recall_at5"],
         "competitive_precision_at5": comp["mean_competitive_precision_at5"],

@@ -12,6 +12,7 @@ Current runtime baseline：
 
 | 指標 | 710 場結果 |
 |---|---:|
+| Gold / Good positional | 40 / 136（5.6% / 19.2%） |
 | 0-hit / 1-hit | 87 / 335（12.3% / 47.2%） |
 | Top-3 capture@5 | 65.8% |
 | Winner@3 / Winner@5 | 52.3% / 72.0% |
@@ -123,10 +124,42 @@ coverage audit；要升級成 ranking feature，必須再有新增、較完整�
 - Outcome/SP 必須 scoring 後先 join。
 - 任何候選至少報 development、五個時間 folds、terminal 15% holdout。
 - Weight search 只准 folds 1–4 揀候選；fold 5 同 terminal 只作確認。
-- 優先 gate：competitive recall@5 不跌、winner@5 不跌、0-hit 不升，再睇
-  NDCG 同 score separation。
+- 優先 gate 必須同時包括：
+  - `Good positional` 不跌，即 model Rank 1、2 都跑入實際 Top 3；
+  - actual Top-3 全部落入 model Top-4 嘅比率不跌（dead-heat safe）；
+  - competitive recall@5、NDCG@5、winner@5 不跌，同 0-hit 不升。
 - 改善只出現喺單一窗口、單一場地或細樣本，就保持 shadow，不升 production。
 - 新資料應優先改善 missing evidence，而唔係將同一 narrative 重複計分。
+
+## Corrected-gate fresh optimisation loop
+
+2026-07-30 再做一次由 failure review 開始嘅迭代。Google Drive connector
+完整讀取 84 份 `Meeting_Auto_Scoring.csv` 同 850KB 歷史結果表；7,679 匹
+成功按 date / track / race / horse 對齊。清洗後重現 710 場：
+
+- `2025-08-09 Randwick` 132 行結果全部錯標 position 8，整日隔離；
+- `2026-04-08 Sale R2/R4` 分析 field 冇包含後來入位嘅馬，屬 pre-race
+  coverage 缺口，唔作事後補馬；
+- `2026-06-27 Caulfield R3` 係四匹 dead-heat Top-3 集合，保留並用
+  dead-heat-safe Top-4 gate。
+
+Drive scoring snapshot只用嚟發現 hypothesis；production promotion仍以 raw
+Logic current-engine gate為準。新一輪預先限制候選範圍，冇按個別賽果開
+exception：
+
+| 方向 | 候選設計 | 結果 |
+|---|---|---|
+| 多證據共識 | people/rating、contender core、balanced core；4個細幅度 | 12個全部未過 selection + fold-5 + terminal |
+| 13+ 大場 | 兩組共識、4個幅度，只喺大場啟動 | 有4個過早期 selection，但全部喺獨立 fold 5 跌 recall/NDCG/W@5 |
+| 假爭勝／首選大敗 | rating、jockey、distance、pace-map、track 弱支持 swap/penalty | swap terminal NDCG -0.18pp；最佳 penalty 早期 0-hit +0.20pp |
+| 冷門／孤立強證據 | strongest-one / strongest-two evidence，全部馬或 rank 4–8 | 16個全部未過 selection；早期 outsider capture多數倒退 |
+| 可解釋 pairwise | 既有 matrix-6 + distance expanding walk-forward | terminal好但 earlier folds及seed ensemble方向衝突，新增 Good/Top4 gate下仍不可升級 |
+
+呢次 fresh loop冇 production scoring候選同時守住正確 Good、Top3-in-Top4、
+competitive recall、NDCG、winner@5同0-hit。停止再加規則係實證決定：
+繼續調 threshold只會用 confirmation結果反向揀參數，構成 overfitting。
+下一個合理重開條件係有新增、完整嘅前瞻 meeting window，而唔係再搜尋同一
+710場。
 
 ## 重跑
 
@@ -150,7 +183,13 @@ python3 -m unittest discover \
   -p 'test_*.py'
 ```
 
-今次結果：104 tests passed。
+今次結果：
+
+- AU auto engine：106 tests passed；
+- shared racing metrics：18 tests passed；
+- pipeline/content guards：16 checks passed；
+- 所有本輪改動 scripts 已通過 `py_compile`；
+- AU full orchestrator 同 auto orchestrator `--help` 入口 smoke test 通過。
 
 ## Objective completion matrix
 
@@ -168,5 +207,6 @@ python3 -m unittest discover \
 | Hindsight/overfit protection | scoring-before-label join、date folds、terminal holdout、selection/confirmation separation | 完成 |
 | Model version comparison | archived production、no-micro、pre-clean、signal-clean、architecture candidates，同一 archive metrics | 完成 |
 | Explainable production simplification | active engine 移除 dead/fragile micro rules；舊一次性 research scripts 退出 active path | 完成 |
-| Repeatable further improvement gate | pair-transfer、interaction、distance、linear pairwise candidates均未同時通過 folds + terminal | 暫無可升級候選 |
-| Git delivery | commit `c9ff062` 已建立；本報告/pairwise audit 會追加 commit | push 待明確 remote 授權 |
+| Correct Good + Top3-in-Top4 gate | 所有主要 AU optimization scripts、報表欄位及 regression tests | 完成 |
+| Repeatable further improvement gate | pair-transfer、interaction、distance、linear pairwise、共識、大場、弱支持、冷門 union 均未同時通過 folds + terminal | 暫無可升級候選 |
+| Git delivery | prior AU cleanup/pairwise commits已推送；本輪 corrected-gate改動已完成驗證，隨本 audit commit 一併交付 | 完成 |
