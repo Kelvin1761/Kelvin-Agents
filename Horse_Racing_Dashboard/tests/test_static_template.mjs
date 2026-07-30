@@ -84,6 +84,8 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       sanitizeBattlefieldOverviewText,
       renderBattlefieldOverview,
       renderSportsWorkspace: typeof renderSportsWorkspace === "function" ? renderSportsWorkspace : null,
+      renderHistoryCard: typeof renderHistoryCard === "function" ? renderHistoryCard : null,
+      renderInlineBetDraft: typeof renderInlineBetDraft === "function" ? renderInlineBetDraft : null,
       calculateSportsRoi: typeof calculateSportsRoi === "function" ? calculateSportsRoi : null,
       setSportsLedgerForTest: (records) => { sportsBetLedger = records; },
       setSportsTabForTest: (tab) => { activeSportsTab = tab; },
@@ -823,18 +825,55 @@ test("live tennis feed replaces fallback history and keeps combo legs in the bet
   assert.equal(draft.legs[1].selection, "Otto Virtanen");
 });
 
-test("adding a recommendation uses an inline odds-only confirmation flow", () => {
+test("pending recommendations always show a locked confirmation with extracted odds and editable stake", () => {
   const template = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+  const { renderHistoryCard } = loadTemplateFunctions();
+  const html = renderHistoryCard({
+    id: "nba:2026-07-25:NYK_ATL:banker",
+    sport: "nba",
+    category: "banker",
+    event_date: "2026-07-25",
+    event_name: "NYK @ ATL",
+    market: "Player Points",
+    selection: "Jalen Brunson 25+",
+    odds: 1.82,
+    odds_status: "sportsbet_extracted",
+    outcome: "pending",
+    decision: "BET",
+    bet_type: "single",
+    metrics: { stake_units: 1.25 },
+  }, "nba");
 
-  assert.match(template, /function toggleInlineBetDraft\(/);
   assert.match(template, /function renderInlineBetDraft\(/);
-  assert.match(template, /name="actual_odds"/);
+  assert.match(template, /function enableInlineBetField\(/);
+  assert.doesNotMatch(template, /function toggleInlineBetDraft\(/);
+  assert.match(html, /Sportsbet 提取賠率/);
+  assert.match(html, /name="actual_odds"[^>]*value="1\.82"[^>]*readonly/);
+  assert.match(html, /name="stake"[^>]*value="1\.25"[^>]*readonly/);
+  assert.match(html, /aria-label="修改實際賠率"/);
+  assert.match(html, /aria-label="修改旺財建議注碼"/);
   assert.match(template, /旺財建議注碼/);
   assert.match(template, /確認落注/);
-  assert.doesNotMatch(
-    template,
-    /onclick="openSportsBetModal\('\$\{esc\(item\.id\)\}'\)">＋ 加入投注單/,
-  );
+  assert.doesNotMatch(html, /＋ 加入投注單|收起投注確認/);
+});
+
+test("settled historical examples cannot be added as new bets", () => {
+  const { renderHistoryCard } = loadTemplateFunctions();
+  const html = renderHistoryCard({
+    id: "nba-old-case",
+    sport: "nba",
+    event_date: "2026-04-24",
+    event_name: "NYK @ ATL",
+    market: "Player Points",
+    selection: "Jalen Brunson 25+",
+    odds: null,
+    outcome: "won",
+    decision: "BET",
+    metrics: {},
+  }, "nba");
+
+  assert.match(html, /舊案例只供檢討/);
+  assert.doesNotMatch(html, /inline-bet-confirm|確認落注/);
 });
 
 test("saved bet cards update the result inline without editing event metadata", () => {
@@ -847,4 +886,85 @@ test("saved bet cards update the result inline without editing event metadata", 
   assert.match(template, /function openSportsOddsEditor\(/);
   assert.match(template, /實際賠率/);
   assert.doesNotMatch(template, /openSportsBetModal\(null,'\$\{esc\(record\.id\)\}'\)/);
+});
+
+test("ROI explains that new analysis replaces recommendations but never confirmed ledger records", () => {
+  const data = {
+    ...EMPTY_DASHBOARD_DATA,
+    sports_history: { nba: [], tennis: [] },
+    sports_feed: {
+      schema_version: 2,
+      sports: {
+        nba: {
+          analysis_run_id: "nba:2026-07-25",
+          validation_status: "valid",
+          recommendations: [{
+            id: "nba-live",
+            sport: "nba",
+            event_date: "2026-07-25",
+            event_name: "NYK @ ATL",
+            market: "Player Points",
+            selection: "Jalen Brunson 25+",
+            odds: 1.82,
+            outcome: "pending",
+            decision: "BET",
+            metrics: {},
+          }],
+        },
+        tennis: { validation_status: "unavailable", recommendations: [] },
+      },
+    },
+  };
+  const { renderSportsWorkspace, setSportsTabForTest } = loadTemplateFunctions(data);
+  setSportsTabForTest("roi");
+  const html = renderSportsWorkspace("nba");
+
+  assert.match(html, /新分析只會替換「今日建議」/);
+  assert.match(html, /已確認投注同 ROI 永久保留/);
+});
+
+test("tennis workspace shows fixture, Sportsbet and model coverage timestamps", () => {
+  const data = {
+    ...EMPTY_DASHBOARD_DATA,
+    sports_history: { nba: [], tennis: [] },
+    sports_feed: {
+      schema_version: 2,
+      sports: {
+        nba: { validation_status: "unavailable", recommendations: [] },
+        tennis: {
+          analysis_run_id: "tennis:2026-07-29",
+          validation_status: "valid",
+          recommendations: [],
+          strategy: {
+            status: "RESEARCH_ONLY",
+            raw_scorecard_settled: 15,
+            enabled_families: [],
+          },
+          coverage: {
+            fixtures_found: 102,
+            sportsbet_priced_matches: 58,
+            singles_candidates: 54,
+            modelled_matches: 54,
+            unmodelled_priced_matches: 4,
+            priced_ratio: 0.5686,
+            latest_sportsbet_scrape: "2026-07-29T03:43:50Z",
+            latest_analysis: "2026-07-29T03:46:10Z",
+          },
+        },
+      },
+    },
+  };
+  const { renderSportsWorkspace } = loadTemplateFunctions(data);
+  const html = renderSportsWorkspace("tennis");
+
+  assert.match(html, /今日賽程 102 場/);
+  assert.match(html, /Sportsbet 已開盤 58 場/);
+  assert.match(html, /可建模單打 54 場/);
+  assert.match(html, /已建模 54 場/);
+  assert.match(html, /未入模型 4 場/);
+  assert.match(html, /覆蓋 56\.9%/);
+  assert.match(html, /最後 Sportsbet 抓取：2026-07-29T03:43:50Z/);
+  assert.match(html, /Prop 策略：只做研究追蹤，暫停正式推薦/);
+  assert.match(html, /raw 記分卡 15\/120/);
+  assert.match(html, /分析已完成，但未有通過模型及風控門檻/);
 });

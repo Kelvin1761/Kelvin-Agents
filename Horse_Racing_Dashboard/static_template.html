@@ -263,12 +263,19 @@
     .history-card__copy strong { color: #334155; }
     .history-card__legs { margin: 0; padding-left: 18px; color: #526176; }
     .history-card__source { margin-top: auto; padding: 9px 16px; border-top: 1px solid #EEF2F7; background: #FAFCFE; color: #94A3B8; font-size: .59rem; line-height: 1.45; }
-    .history-card__actions { display: flex; gap: 8px; padding: 11px 16px 14px; }
     .inline-bet-confirm { display:grid; grid-template-columns:minmax(150px,1fr) minmax(120px,.7fr) auto; gap:10px; align-items:end; margin:0 16px 14px; padding:12px; border:1px solid color-mix(in srgb,var(--sport-accent) 35%,#DCE5EF); border-radius:10px; background:#F8FAFC; }
     .inline-bet-confirm__intro { grid-column:1/-1; display:flex; justify-content:space-between; gap:12px; color:#475569; font-size:.68rem; line-height:1.45; }
     .inline-bet-confirm__intro strong { color:#0F172A; }
-    .inline-bet-confirm__stake { min-height:44px; display:flex; align-items:center; padding:9px 11px; border:1px solid #E2E8F0; border-radius:8px; background:#FFFFFF; color:#0F172A; font-size:.84rem; font-weight:850; }
+    .inline-bet-confirm__field { display:grid; gap:5px; min-width:0; color:#475569; font-size:.68rem; font-weight:800; }
+    .inline-bet-confirm__field-head { display:flex; min-height:44px; align-items:center; justify-content:space-between; gap:8px; }
+    .inline-bet-confirm__edit { display:inline-flex; width:44px; height:44px; align-items:center; justify-content:center; border:1px solid #CBD5E1; border-radius:8px; background:#FFFFFF; color:var(--sport-accent); font:inherit; font-size:.9rem; font-weight:900; cursor:pointer; touch-action:manipulation; }
+    .inline-bet-confirm__edit:hover,.inline-bet-confirm__edit:focus-visible { border-color:var(--sport-accent); outline:2px solid color-mix(in srgb,var(--sport-accent) 22%,transparent); outline-offset:1px; }
+    .inline-bet-confirm__input { width:100%; min-height:44px; box-sizing:border-box; padding:9px 11px; border:1px solid #E2E8F0; border-radius:8px; background:#FFFFFF; color:#0F172A; font:inherit; font-size:.84rem; font-weight:850; font-variant-numeric:tabular-nums; }
+    .inline-bet-confirm__input[readonly] { cursor:default; }
+    .inline-bet-confirm__input:not([readonly]) { border-color:var(--sport-accent); outline:3px solid color-mix(in srgb,var(--sport-accent) 13%,transparent); }
     .inline-bet-confirm__error { display:none; grid-column:1/-1; color:#B91C1C; font-size:.68rem; font-weight:750; }
+    .inline-bet-confirm--saved { grid-template-columns:1fr auto; align-items:center; }
+    .history-card__review-only { margin:0 16px 14px; padding:10px 12px; border:1px solid #E2E8F0; border-radius:9px; background:#F8FAFC; color:#64748B; font-size:.67rem; line-height:1.5; }
     .sports-btn { min-height: 40px; padding: 8px 13px; border: 1px solid #CBD5E1; border-radius: 8px; background: #FFFFFF; color: #334155; font: inherit; font-size: .7rem; font-weight: 850; cursor: pointer; }
     .sports-btn--primary { border-color: var(--sport-accent); background: var(--sport-accent); color:#FFFFFF; }
     .sports-btn--danger { border-color:#FECACA; background:#FEF2F2; color:#B91C1C; }
@@ -398,7 +405,6 @@ let expandedSession = null;
 let expandedBetRaces = new Set();
 let sportsBetLedger = [];
 let portfolioSnapshot = null;
-let activeInlineBetSourceId = null;
 const SPORTS_BET_ENDPOINT = window.location.protocol === 'file:' ? null : '/api/sports-bets';
 const PORTFOLIO_ENDPOINT = window.location.protocol === 'file:' ? null : '/api/portfolio';
 const AUDIT_ENDPOINT = window.location.protocol === 'file:' ? null : '/api/audit';
@@ -1285,13 +1291,18 @@ function sportsFeedSnapshot(sport) {
   return DASHBOARD_DATA.sports_feed?.sports?.[sport] || null;
 }
 
+function hasCurrentSportsFeed(sport) {
+  const snapshot = sportsFeedSnapshot(sport);
+  return Boolean(snapshot && ['valid', 'partial'].includes(snapshot.validation_status));
+}
+
 function hasLiveSportsFeed(sport) {
   const snapshot = sportsFeedSnapshot(sport);
-  return Boolean(snapshot && ['valid', 'partial'].includes(snapshot.validation_status) && snapshot.recommendations?.length);
+  return Boolean(hasCurrentSportsFeed(sport) && snapshot.recommendations?.length);
 }
 
 function sportsHistory(sport) {
-  if (hasLiveSportsFeed(sport)) return sportsFeedSnapshot(sport).recommendations;
+  if (hasCurrentSportsFeed(sport)) return sportsFeedSnapshot(sport).recommendations || [];
   return DASHBOARD_DATA.sports_history?.[sport] || [];
 }
 
@@ -1350,10 +1361,16 @@ function renderHistoryCard(item, sport) {
     .map(label => `<span class="metric-chip">${esc(label)}</span>`).join('');
   const odds = item.odds == null
     ? '<span class="odds-missing">原始賠率未存檔 · 落注時手動輸入</span>'
-    : `歷史賠率 <strong>${Number(item.odds).toFixed(2)}</strong>`;
+    : `${item.odds_status === 'sportsbet_extracted' ? 'Sportsbet 提取賠率' : '分析賠率'} <strong>${Number(item.odds).toFixed(2)}</strong>`;
   const legs = (item.legs || []).length
     ? `<ul class="history-card__legs">${item.legs.map(leg => `<li>${esc(sportsLegLabel(leg))}</li>`).join('')}</ul>`
     : '';
+  const canConfirm = item.decision === 'BET' && item.outcome === 'pending' && Number(item.odds) > 1;
+  const confirmation = canConfirm
+    ? renderInlineBetDraft(item, sport)
+    : `<div class="history-card__review-only">${item.outcome !== 'pending'
+      ? '舊案例只供檢討，唔會加入新投注或 ROI。'
+      : '未有已驗證 Sportsbet 賠率，暫時唔可以確認落注。'}</div>`;
   return `<article class="history-card">
     <div class="history-card__top">
       <div><div class="history-card__date">${esc(item.event_date)}</div><div class="history-card__event">${esc(item.event_name)}</div></div>
@@ -1372,24 +1389,47 @@ function renderHistoryCard(item, sport) {
       ${legs}
     </div>
     <div class="history-card__source">資料來源：${esc(item.provenance || 'repository artifact')}</div>
-    <div class="history-card__actions">
-      <button type="button" class="sports-btn sports-btn--primary" onclick="toggleInlineBetDraft('${encodeURIComponent(item.id)}')">${activeInlineBetSourceId === item.id ? '收起投注確認' : '＋ 加入投注單'}</button>
-    </div>
-    ${activeInlineBetSourceId === item.id ? renderInlineBetDraft(item, sport) : ''}
+    ${confirmation}
   </article>`;
 }
 
 function renderSportsHistory(sport) {
   const items = sportsHistory(sport);
-  if (!items.length) return '<div class="sports-empty">未有可用歷史分析。</div>';
   const live = hasLiveSportsFeed(sport);
   const snapshot = sportsFeedSnapshot(sport);
+  const coverage = sport === 'tennis' ? snapshot?.coverage : null;
+  const strategy = sport === 'tennis' ? snapshot?.strategy : null;
+  const strategyNotice = strategy
+    ? `<div class="sports-notice"><span>${strategy.status === 'VALIDATED' ? '✅' : '🧪'}</span><span>
+        Prop 策略：${strategy.status === 'VALIDATED' ? '已通過正式推薦閘' : '只做研究追蹤，暫停正式推薦'} ·
+        raw 記分卡 ${Number(strategy.raw_scorecard_settled || 0)}/120 ·
+        已驗證分類 ${esc((strategy.enabled_families || []).join('、') || '未有')}。
+      </span></div>`
+    : '';
+  const coverageNotice = coverage
+    ? `<div class="sports-notice"><span>📡</span><span>
+        今日賽程 ${Number(coverage.fixtures_found || 0)} 場 ·
+        Sportsbet 已開盤 ${Number(coverage.sportsbet_priced_matches || 0)} 場
+        （可建模單打 ${Number(coverage.singles_candidates ?? coverage.sportsbet_priced_matches ?? 0)} 場）·
+        已建模 ${Number(coverage.modelled_matches || 0)} 場 ·
+        未入模型 ${Number(coverage.unmodelled_priced_matches || 0)} 場 ·
+        覆蓋 ${coverage.priced_ratio == null ? '—' : pct(coverage.priced_ratio)}。<br>
+        最後 Sportsbet 抓取：${esc(coverage.latest_sportsbet_scrape || '—')} ·
+        最後分析：${esc(coverage.latest_analysis || snapshot?.generated_at || '—')}
+      </span></div>`
+    : '';
+  if (!items.length) {
+    const message = hasCurrentSportsFeed(sport)
+      ? '今次分析已完成，但未有通過模型及風控門檻嘅建議。'
+      : '未有可用歷史分析。';
+    return `${coverageNotice}${strategyNotice}<div class="sports-empty">${message}</div>`;
+  }
   const notice = live
-    ? `<div class="sports-notice"><span>✅</span><span>正式 ${sport === 'nba' ? 'NBA Wong Choi artifacts' : 'tennis_wc.db'} live feed · ${esc(snapshot.analysis_run_id || '')} · ${items.length} 個已驗證建議。所有 odds／legs 直接由 pipeline 匯出。</span></div>`
+    ? `<div class="sports-notice"><span>✅</span><span>正式 ${sport === 'nba' ? 'NBA Wong Choi artifacts' : 'tennis_wc.db'} live feed · ${esc(snapshot.analysis_run_id || '')} · ${items.length} 個已驗證建議。所有 odds／legs 直接由 pipeline 匯出；下一次新分析會替換呢個建議清單，但唔會改動已確認投注。</span></div>`
     : sport === 'nba'
     ? `<div class="sports-notice"><span>⚠️</span><span>NBA 呢批係真實 Reflector 案例，但舊版流程無保存原始 Sportsbet 賠率。為免作假，畫面唔會估賠率；加入投注單時要輸入你實際落注價。</span></div>`
     : `<div class="sports-notice"><span>🧪</span><span>Tennis 呢批由 2026-07-23 每日報告同已結算資料組成，用嚟測試「模型訊號 → 落注 → 結算 → 檢討」嘅最佳讀法；唔代表今日建議。</span></div>`;
-  return `${notice}<div class="history-grid">${items.map(item => renderHistoryCard(item, sport)).join('')}</div>`;
+  return `${coverageNotice}${strategyNotice}${notice}<div class="history-grid">${items.map(item => renderHistoryCard(item, sport)).join('')}</div>`;
 }
 
 function sportsStatusLabel(status) {
@@ -1466,6 +1506,7 @@ function renderSportsRoi(sport) {
     <div class="sports-roi-card"><span>ROI</span><strong style="color:${profitColor}">${roi.roi_pct.toFixed(1)}%</strong></div>
   </div>
   <div class="sports-notice"><span>ℹ️</span><span>ROI 只用已結算 won／lost／void 計算；pending 唔會預先當輸。Void 會退回注碼，profit = 0。</span></div>
+  <div class="sports-notice"><span>🔒</span><span>新分析只會替換「今日建議」；已確認投注同 ROI 永久保留喺 D1 帳本，並保存落注當刻嘅分析 snapshot、實際賠率同注碼。</span></div>
   ${renderSportsBets(sport)}`;
 }
 
@@ -1579,26 +1620,49 @@ function renderInlineBetDraft(source, sport = activeSport) {
   const draft = sportsBetDraftFromSource(source, sport);
   const extractedOdds = source.odds == null ? '' : Number(source.odds).toFixed(2);
   const stakeSource = source.metrics?.stake_units != null ? '旺財建議注碼' : '旺財平注注碼';
+  const existing = sportsBetLedger.find(record => (
+    record && !record._deleted && record.sport === sport && record.source_id === source.id
+  ));
+  if (existing) {
+    return `<div class="inline-bet-confirm inline-bet-confirm--saved">
+      <div class="inline-bet-confirm__intro"><span><strong>已加入投注記錄</strong><br>實際賠率 ${Number(existing.odds).toFixed(2)} · 注碼 ${Number(existing.stake).toFixed(2)}u</span></div>
+      <button type="button" class="sports-btn" onclick="setSportsTab('bets')">查看我的投注</button>
+    </div>`;
+  }
   return `<form class="inline-bet-confirm" onsubmit="confirmInlineSportsBet(event,'${encodeURIComponent(source.id)}')">
     <div class="inline-bet-confirm__intro">
       <span><strong>${esc(source.selection)}</strong><br>${esc(source.market)} · 賽事資料已鎖定</span>
-      <span>只需確認實際落注賠率</span>
+      <span>賠率已由 Sportsbet 提取；需要時先撳 ✎ 修改</span>
     </div>
-    <label class="roi-modal__field">實際賠率
-      <input class="roi-modal__input" name="actual_odds" type="number" min="1.01" step="0.01" inputmode="decimal" value="${esc(extractedOdds)}" placeholder="輸入實際賠率" required>
+    <label class="inline-bet-confirm__field">
+      <span class="inline-bet-confirm__field-head"><span>實際賠率</span><button type="button" class="inline-bet-confirm__edit" aria-label="修改實際賠率" aria-pressed="false" onclick="enableInlineBetField(this,'actual_odds')">✎</button></span>
+      <input class="inline-bet-confirm__input" name="actual_odds" type="number" min="1.01" step="0.01" inputmode="decimal" autocomplete="off" value="${esc(extractedOdds)}" readonly required>
     </label>
-    <label class="roi-modal__field">${stakeSource}
-      <span class="inline-bet-confirm__stake">${Number(draft.stake).toFixed(2)}u</span>
+    <label class="inline-bet-confirm__field">
+      <span class="inline-bet-confirm__field-head"><span>${stakeSource}</span><button type="button" class="inline-bet-confirm__edit" aria-label="修改${stakeSource}" aria-pressed="false" onclick="enableInlineBetField(this,'stake')">✎</button></span>
+      <input class="inline-bet-confirm__input" name="stake" type="number" min="0.01" step="0.25" inputmode="decimal" autocomplete="off" value="${Number(draft.stake).toFixed(2)}" readonly required>
     </label>
     <button type="submit" class="sports-btn sports-btn--primary">確認落注</button>
-    <div class="inline-bet-confirm__error" role="alert"></div>
+    <div class="inline-bet-confirm__error" role="status" aria-live="polite"></div>
   </form>`;
 }
 
-function toggleInlineBetDraft(encodedSourceId) {
-  const sourceId = decodeURIComponent(encodedSourceId);
-  activeInlineBetSourceId = activeInlineBetSourceId === sourceId ? null : sourceId;
-  render();
+function enableInlineBetField(button, fieldName) {
+  const form = button.closest('.inline-bet-confirm');
+  const input = form?.querySelector(`[name="${fieldName}"]`);
+  if (!input) return;
+  const shouldEdit = input.hasAttribute('readonly');
+  if (shouldEdit) {
+    input.removeAttribute('readonly');
+    button.setAttribute('aria-pressed', 'true');
+    button.textContent = '✓';
+    input.focus();
+    input.select();
+  } else {
+    input.setAttribute('readonly', '');
+    button.setAttribute('aria-pressed', 'false');
+    button.textContent = '✎';
+  }
 }
 
 function sourceAnalysisSnapshot(source) {
@@ -1664,17 +1728,29 @@ async function confirmInlineSportsBet(event, encodedSourceId) {
   const source = sportsHistory(activeSport).find(item => item.id === sourceId);
   if (!source) return;
   const form = event.currentTarget;
-  const odds = Number(new FormData(form).get('actual_odds'));
+  const formData = new FormData(form);
+  const odds = Number(formData.get('actual_odds'));
+  const stake = Number(formData.get('stake'));
   const error = form.querySelector('.inline-bet-confirm__error');
   const button = form.querySelector('button[type="submit"]');
   if (!(odds > 1)) {
     error.style.display = 'block';
     error.textContent = '請輸入大過 1.00 嘅實際賠率。';
+    form.elements.actual_odds.removeAttribute('readonly');
+    form.elements.actual_odds.focus();
+    return;
+  }
+  if (!(stake > 0)) {
+    error.style.display = 'block';
+    error.textContent = '請輸入大過 0 嘅注碼。';
+    form.elements.stake.removeAttribute('readonly');
+    form.elements.stake.focus();
     return;
   }
   const record = {
     ...sportsBetDraftFromSource(source, activeSport),
     odds,
+    stake,
     status: 'pending',
     analysis_snapshot: sourceAnalysisSnapshot(source),
   };
@@ -1682,7 +1758,6 @@ async function confirmInlineSportsBet(event, encodedSourceId) {
   button.textContent = '儲存中…';
   try {
     await persistSportsBet(record, false);
-    activeInlineBetSourceId = null;
     activeSportsTab = 'bets';
     render();
   } catch (saveError) {

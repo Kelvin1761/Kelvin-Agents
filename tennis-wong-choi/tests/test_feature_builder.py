@@ -129,3 +129,53 @@ def test_feature_build_coverage_reports_the_gap(tmp_path, monkeypatch):
     assert cov["with_features"] == 1
     assert cov["missing_features"] == 1
     assert cov["missing_by_tournament"] == {"Big Open": 1}
+
+
+def test_odds_coverage_excludes_placeholder_and_duplicate_fixture_rows(tmp_path, monkeypatch):
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.features.feature_builder import odds_coverage_for_date
+
+    init_db()
+    with get_connection() as conn:
+        conn.execute(
+            "INSERT INTO tournaments (id,name,tour,external_id,source_provider,created_at,updated_at) "
+            "VALUES (1,'Open','ATP','T1','test','now','now')"
+        )
+        for pid, name in (
+            (1, "Real A"),
+            (2, "Real B"),
+            (3, "Real A"),
+            (4, "Real B"),
+            (5, "Unknown Player"),
+        ):
+            conn.execute(
+                "INSERT INTO players (id,name,tour,source_provider,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?)",
+                (pid, name, "ATP", "test", "now", "now"),
+            )
+        for mid, a, b in (
+            (1, 1, 2),  # canonical real fixture
+            (2, 3, 4),  # same names from another provider
+            (3, 5, 5),  # old placeholder poison
+        ):
+            conn.execute(
+                """INSERT INTO matches
+                   (id,provider_match_id,tour,match_date,tournament_id,player_a_id,
+                    player_b_id,round,source_provider,created_at,updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                (mid, f"M{mid}", "ATP", "2026-07-30", 1, a, b, "R1", "test", "now", "now"),
+            )
+        conn.execute(
+            """INSERT INTO odds_snapshots
+               (event_id,match_id,bookmaker,market,player_a_odds,player_b_odds,
+                source_provider,raw_response_id,fetched_at,created_at)
+               VALUES ('E1',1,'Sportsbet','match_winner',1.8,2.0,'sportsbet',0,'now','now')"""
+        )
+        conn.commit()
+
+    coverage = odds_coverage_for_date("2026-07-30")
+    assert coverage["fixtures"] == 1
+    assert coverage["priced_matches"] == 1
+    assert coverage["priced_ratio"] == 1.0

@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from datetime import date
+from pathlib import Path
 
 from tennis_wc.database.db import get_connection
 from tennis_wc.database.migrations import init_db
@@ -55,6 +57,12 @@ from tennis_wc.reports.match_report import render_match_report
 from tennis_wc.reports.market_validation_report import aces_prop_sanity_for_date, market_validation_summary
 from tennis_wc.reports.performance_report import prediction_summary
 from tennis_wc.config import get_settings
+from tennis_wc.pipeline_readiness import analysis_retry_reasons
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+SHARED_HOOK_DIR = REPO_ROOT / ".agents" / "skills" / "shared_racing" / "post_success_hooks" / "scripts"
+sys.path.insert(0, str(SHARED_HOOK_DIR))
+from cloudflare_deploy_hook import run_post_success_cloudflare_deploy
 
 
 def _print_json(payload: object) -> None:
@@ -435,6 +443,37 @@ def _sportsbet_odds_rows_for_date(match_date: str) -> int:
     return int(row[0] or 0)
 
 
+def _publish_daily_dashboard(args: argparse.Namespace, payload: dict) -> dict:
+    """Apply the shared completeness gate, then publish a ready daily card."""
+    retry_reasons = analysis_retry_reasons(payload)
+    payload["readiness"] = {
+        "status": "ready" if not retry_reasons else "incomplete",
+        "reasons": retry_reasons,
+    }
+    if retry_reasons:
+        payload["cloudflare_deploy"] = {
+            "attempted": False,
+            "status": "blocked_by_completeness_gate",
+        }
+        print(
+            "⏭️ Cloudflare deploy blocked: analysis completeness gate failed — "
+            + "; ".join(retry_reasons)
+        )
+        return payload
+
+    deployed = run_post_success_cloudflare_deploy(
+        source="Tennis Wong Choi",
+        target_dir=analysis_output_dir(args.date),
+        skip=args.skip_cloudflare_deploy,
+        allow_failure=False,
+    )
+    payload["cloudflare_deploy"] = {
+        "attempted": not args.skip_cloudflare_deploy,
+        "status": "deployed" if deployed else "skipped",
+    }
+    return payload
+
+
 def run_daily(args: argparse.Namespace) -> None:
     provider_healthcheck(args)
     source_errors = []
@@ -530,23 +569,23 @@ def run_daily(args: argparse.Namespace) -> None:
         }
     except Exception as exc:  # noqa: BLE001
         source_errors.append({"source": "tracker_sync", "error": str(exc)})
-    _print_json(
-        {
-            "date": args.date,
-            "matches_analysed": len(snapshots),
-            "valid_feature_snapshots": len(valid),
-            "invalid_due_to_data_issue": len(snapshots) - len(valid),
-            "odds_coverage": odds_coverage_for_date(args.date),
-            "predictions": predictions,
-            "analysis_dir": str(analysis_output_dir(args.date)),
-            "report_path": str(report_path),
-            "source_errors": source_errors,
-            "settlement_backlog": settlement_backlog,
-            "tracker_sync": tracker_sync,
-            "stage": "7",
-            "mode": "mvp_snapshot" if args.mvp_snapshot else "live_full",
-        }
-    )
+    payload = {
+        "date": args.date,
+        "matches_analysed": len(snapshots),
+        "valid_feature_snapshots": len(valid),
+        "invalid_due_to_data_issue": len(snapshots) - len(valid),
+        "odds_coverage": odds_coverage_for_date(args.date),
+        "predictions": predictions,
+        "analysis_dir": str(analysis_output_dir(args.date)),
+        "report_path": str(report_path),
+        "source_errors": source_errors,
+        "settlement_backlog": settlement_backlog,
+        "tracker_sync": tracker_sync,
+        "stage": "7",
+        "mode": "mvp_snapshot" if args.mvp_snapshot else "live_full",
+    }
+    _publish_daily_dashboard(args, payload)
+    _print_json(payload)
 
 
 def init_db_command(_: argparse.Namespace) -> None:
@@ -670,6 +709,7 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("run-daily")
     p.add_argument("--date", default=date.today().isoformat())
     p.add_argument("--mvp-snapshot", action="store_true", help="Use existing Sportsbet/local snapshots without live source refresh.")
+    p.add_argument("--skip-cloudflare-deploy", action="store_true", help="Do not refresh the Cloudflare dashboard after a successful daily run.")
     p.set_defaults(func=run_daily)
 
     p = sub.add_parser("predict-daily")

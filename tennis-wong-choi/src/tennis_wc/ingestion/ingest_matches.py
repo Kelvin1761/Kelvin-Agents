@@ -4,19 +4,23 @@ from datetime import date, timedelta
 
 from tennis_wc.config import get_settings
 from tennis_wc.database.db import get_connection
-from tennis_wc.ingestion.entity_mapping import get_internal_entity_id, get_or_create_player, upsert_tournament
+from tennis_wc.ingestion.entity_mapping import (
+    get_internal_entity_id,
+    get_or_create_player,
+    upsert_tournament,
+    valid_player_identity,
+)
 from tennis_wc.ingestion.raw_response_store import store_raw_response, utc_now
 from tennis_wc.providers import get_tennis_provider
 
 
-_PLAYER_CACHE: dict[tuple[str, str], int] = {}
-
-
 def _ensure_player(provider_name: str, provider_player_id: str, raw_id: int, embedded: dict | None = None) -> int:
-    cache_key = (provider_name, provider_player_id)
-    if cache_key in _PLAYER_CACHE:
-        return _PLAYER_CACHE[cache_key]
     if embedded and embedded.get("name"):
+        if not valid_player_identity(provider_player_id, embedded["name"]):
+            raise ValueError(
+                f"invalid embedded player identity: id={provider_player_id!r} "
+                f"name={embedded['name']!r}"
+            )
         player_id = get_or_create_player(
             provider_name,
             provider_player_id,
@@ -25,12 +29,17 @@ def _ensure_player(provider_name: str, provider_player_id: str, raw_id: int, emb
             raw_id,
             current_rank=embedded.get("current_rank"),
         )
-        _PLAYER_CACHE[cache_key] = player_id
         return player_id
 
     provider = get_tennis_provider()
     profile = provider.fetch_player_profile(provider_player_id) or {}
     stats = provider.fetch_player_stats(provider_player_id) or {}
+    resolved_name = profile.get("name")
+    if not valid_player_identity(provider_player_id, resolved_name):
+        raise ValueError(
+            f"provider returned placeholder player identity: id={provider_player_id!r} "
+            f"name={resolved_name!r}"
+        )
     player_raw_id = store_raw_response(
         provider_name,
         "/mock/player-stats",
@@ -43,14 +52,13 @@ def _ensure_player(provider_name: str, provider_player_id: str, raw_id: int, emb
     player_id = get_or_create_player(
         provider_name,
         provider_player_id,
-        profile.get("name") or "Unknown Player",
+        resolved_name,
         profile.get("tour") or "ATP",
         player_raw_id,
         current_rank=profile.get("current_rank"),
         overall_elo=stats.get("overall_elo"),
         surface_elo=stats.get("surface_elo"),
     )
-    _PLAYER_CACHE[cache_key] = player_id
     return player_id
 
 
@@ -69,18 +77,23 @@ def ingest_upcoming_matches(match_date: str) -> int:
     now = utc_now()
     count = 0
     for row in rows:
-        player_a_id = _ensure_player(
-            provider.provider_name,
-            row["player_a_id"],
-            raw_id,
-            {"name": row.get("player_a_name"), "tour": row.get("tour"), "current_rank": row.get("player_a_current_rank")},
-        )
-        player_b_id = _ensure_player(
-            provider.provider_name,
-            row["player_b_id"],
-            raw_id,
-            {"name": row.get("player_b_name"), "tour": row.get("tour"), "current_rank": row.get("player_b_current_rank")},
-        )
+        try:
+            player_a_id = _ensure_player(
+                provider.provider_name,
+                row.get("player_a_id"),
+                raw_id,
+                {"name": row.get("player_a_name"), "tour": row.get("tour"), "current_rank": row.get("player_a_current_rank")},
+            )
+            player_b_id = _ensure_player(
+                provider.provider_name,
+                row.get("player_b_id"),
+                raw_id,
+                {"name": row.get("player_b_name"), "tour": row.get("tour"), "current_rank": row.get("player_b_current_rank")},
+            )
+        except ValueError:
+            continue
+        if player_a_id == player_b_id:
+            continue
         tournament_id = upsert_tournament(
             provider.provider_name,
             row["tournament_id"],
@@ -144,18 +157,23 @@ def ingest_historical_matches(start_date: str, end_date: str) -> int:
     now = utc_now()
     count = 0
     for row in rows:
-        player_id = _ensure_player(
-            provider.provider_name,
-            row["player_id"],
-            raw_id,
-            {"name": row.get("player_name"), "tour": row.get("tour"), "current_rank": row.get("player_current_rank")},
-        )
-        opponent_id = _ensure_player(
-            provider.provider_name,
-            row["opponent_id"],
-            raw_id,
-            {"name": row.get("opponent_name"), "tour": row.get("tour"), "current_rank": row.get("opponent_current_rank")},
-        )
+        try:
+            player_id = _ensure_player(
+                provider.provider_name,
+                row.get("player_id"),
+                raw_id,
+                {"name": row.get("player_name"), "tour": row.get("tour"), "current_rank": row.get("player_current_rank")},
+            )
+            opponent_id = _ensure_player(
+                provider.provider_name,
+                row.get("opponent_id"),
+                raw_id,
+                {"name": row.get("opponent_name"), "tour": row.get("tour"), "current_rank": row.get("opponent_current_rank")},
+            )
+        except ValueError:
+            continue
+        if player_id == opponent_id:
+            continue
         upsert_tournament(
             provider.provider_name,
             row["tournament_id"],

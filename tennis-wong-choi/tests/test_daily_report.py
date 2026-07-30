@@ -157,13 +157,11 @@ def test_render_daily_report_mobile_first_structure():
     # The recommended-bets summary must come first, before any detail.
     assert "## 🎯 今日落注建議" in report
     assert report.index("🎯 今日落注建議") < report.index("數據狀態")
-    # No chalk favourites -> the 0.60 favourite is surfaced as the fallback
-    # hit-rate anchor with the honest framing (not a value play).
-    assert "今日最穩單注" in report
-    assert "類型：" in report and "主要風險：" in report
-    # Every recommended bet must state WHY the confidence grade was given.
-    assert "信心理據：" in report
-    assert "信心分 80/100" in report
+    # A model favourite without a validated price edge is reference-only.  The
+    # report must never relabel it as a fallback "穩膽".
+    assert "今日最穩單注" not in report
+    assert "今日結論：❌ 今日無清晰好注" in report
+    assert "正式推薦只做已驗證 tennis props" in report
     # Model-edge singles are demoted to reference with the backtest warning.
     assert "❌ 跳過：Match-winner 模型 edge 單" in report
     assert "📎 參考：Match-winner 模型 edge 單" in report
@@ -192,6 +190,29 @@ def test_render_daily_report_honest_when_no_bets(tmp_path, monkeypatch):
 
     assert "今日結論：❌ 今日無清晰好注，建議唔落" in report
     assert "今日無通過 hard rule 嘅模型 edge 單" in report
+
+
+def test_render_daily_report_marks_zero_live_odds_as_data_unavailable(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.reports.daily_report import render_daily_report
+
+    init_db()
+    report = render_daily_report(
+        "2026-05-10",
+        [],
+        {
+            "run_mode": "live_full",
+            "sportsbet_odds_rows": 0,
+            "latest_run_errors": [],
+        },
+        [],
+    )
+
+    assert "資料未就緒，唔可以判斷今日有冇投注機會" in report
+    assert "今日無清晰好注" not in report
 
 
 def test_derived_at_least_one_set_market_uses_yes_no_selection():
@@ -294,6 +315,51 @@ def test_chalk_combo_dicts_builds_disjoint_tracked_chains():
     assert "Too Long" not in seen and "No Opinion" not in seen
     # Strongest three favourites form the first chain.
     assert {leg["selection_name"] for leg in combos[0]["legs"]} == {"Fav One", "Fav Two", "Fav Three"}
+
+
+def test_tracked_prop_combo_keeps_each_leg_match_and_market_identity():
+    from tennis_wc.reports.daily_report import _tracked_prop_combo
+
+    combo = {
+        "odds": 3.42,
+        "prob": 0.39,
+        "ev": 0.3338,
+        "legs": [
+            {
+                "id": "prop:11:total_alex_aces_7_5:over:7.5",
+                "match_id": 11,
+                "match_label": "Alex vs Bob",
+                "market_key": "total_alex_aces_7_5",
+                "market_name": "Total Alex Aces",
+                "selection_name": "Over 7.5",
+                "selection_side": None,
+                "line": 7.5,
+                "odds": 1.80,
+                "prob": 0.65,
+                "edge": 0.06,
+            },
+            {
+                "id": "prop:22:total_aces_18_5:under:18.5",
+                "match_id": 22,
+                "match_label": "Carl vs Dan",
+                "market_key": "total_aces_18_5",
+                "market_name": "Total Aces in the Match",
+                "selection_name": "Under 18.5",
+                "selection_side": None,
+                "line": 18.5,
+                "odds": 1.90,
+                "prob": 0.60,
+                "edge": 0.05,
+            },
+        ],
+    }
+
+    tracked = _tracked_prop_combo(combo)
+
+    assert tracked["tier"] == "PROP_2_LEG_TRIAL"
+    assert [leg["match_id"] for leg in tracked["legs"]] == [11, 22]
+    assert tracked["legs"][0]["market_name"] == "Total Alex Aces"
+    assert tracked["combo_odds"] == 3.42
 
 
 def test_render_banker_report_excludes_untrusted_prop_legs(tmp_path, monkeypatch):
