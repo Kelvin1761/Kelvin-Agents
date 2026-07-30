@@ -136,6 +136,82 @@ fit、較大 race-shape 轉移及 stability-led 版本，全部至少在一個�
 主要競爭力指標出現 material regression。現階段再改只會增加 overfit 風險，
 所以以上線嘅最小權重重建作為穩定終點。
 
+## 2026-07-30 Iterative Stopping Audit
+
+為確認「分析性能改善」已完整做完，而唔係見到第一個改善就停，再用同一
+`25` 個賽日／`245` 場／`3,054` 匹 archive 做兩層獨立覆核：
+
+1. 先逐項審核賽前可得 raw signal，包括近期六仗、最近名次／距離、末段、
+   評分升跌、騎師路程紀錄、騎練組合、班次負磅 prior 及 forensic flags。
+2. 再建立 `64` 個完整 dimension blend／replacement 候選，覆蓋 stability、
+   sectional、form line、trainer、class/weight、整體競爭群同 Top-2 排序。
+
+每個候選都同時過以下固定 gate：
+
+- full archive；
+- chronological development／holdout；
+- 剔除已註明極冷門或重大競賽事故後嘅 adjusted archive；
+- adjusted chronological holdout；
+- 2026-07-15 獨立 meeting；
+- 0-hit、Top-2 hits、Top3@5、全部前三@5、competitive recall@5、
+  NDCG@5、winner@5、MRR，以及逐場 help／harm balance。
+
+結果係 `64/64` 都至少違反一項 gate，無候選適合再上線。
+
+### 最接近整體改善嘅候選
+
+`four_core_20` 將近期 form、完成時間、騎師路程紀錄同評分升跌各以 20%
+重建相關 dimension。全 archive 表面改善：
+
+- 0-hit `-1`；
+- Top-2 placing hits `+2`；
+- Top3@5 `+0.82pp`；
+- competitive recall@5 `+1.06pp`；
+- NDCG@5 `+0.86pp`；
+- winner@5 `+2.04pp`。
+
+但 adjusted chronological holdout 反而：
+
+- Top-2 placing hits `-2`；
+- Top3@5 `-1.89pp`；
+- NDCG@5 `-1.46pp`；
+- winner@5 `-1.89pp`；
+- MRR `-2.38pp`。
+
+即係改善集中 development，屬不穩定重複訊號，否決。
+
+### 專門將第三選推入 Top 2 嘅上限測試
+
+最進取嘅 `formline_last_finish_75` 令 full archive Top-2 placing hits `+9`，
+亦有 `20` 場改善、`11` 場倒退，但同時：
+
+- Top3@5 `-1.63pp`；
+- 全部 actual Top 3 在 model Top 5 `-1.63pp`；
+- NDCG@5 `-0.40pp`；
+- winner@5 `-1.22pp`；
+- adjusted 0-hit `+1`；
+- adjusted MRR `-1.85pp`；
+- 2026-07-15 winner@5 `-22.22pp`。
+
+因此佢只係提高指定 Top-2 歷史命中，並無提高整體競爭力排序質素，亦正好
+證明唔應為第三選升格而做 blind swap 或 micro tie-break。
+
+### 最終判斷
+
+現有 archive 仍可指出弱場，但已無一個只靠現存賽前欄位及 rating matrix
+重組、又能跨時段帶來有意義淨改善嘅版本。今輪無 production 改動係 gate
+結果，而唔係停止分析。
+
+下一級真正可改善空間要來自新增或重建資料證據，而唔係再調目前權重：
+
+- 統一尺度、可靠覆蓋嘅分段時間；
+- 可追溯嘅歷史評分／升降班序列；
+- 有樣本量收縮嘅對手 form-line 強度；
+- 更完整且同一版本生成嘅騎師／練馬師路程紀錄。
+
+收到呢類新資料後應重開同一套 gate；未有新訊號之前，維持
+`HKJC_7D_CONTRACT_2026_07_30_CORE_BALANCE` 係泛化風險最低嘅選擇。
+
 ## Notes
 - 極冷門、意外、受阻只作透明標籤；原始成績永遠保留，另報 adjusted metrics。
 - 所有模型改動只可使用開跑前可得資料；賠率可作賽後診斷分層，但唔可入 Auto scoring。
