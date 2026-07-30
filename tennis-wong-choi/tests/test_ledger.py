@@ -236,6 +236,87 @@ def test_settlement_block_reason_holds_retired_props_for_policy_review():
     assert _settle_market_leg(row) is None
 
 
+def test_cross_match_combo_settles_each_leg_against_its_own_result(tmp_path, monkeypatch):
+    import json
+
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.betting.ledger import settle_combo_tracker_for_date
+
+    init_db()
+    with get_connection() as conn:
+        conn.execute(
+            "INSERT INTO tournaments (id,name,tour,external_id,source_provider,created_at,updated_at) "
+            "VALUES (1,'Open','ATP','T1','test','now','now')"
+        )
+        for player_id, name in ((1, "A"), (2, "B"), (3, "C"), (4, "D")):
+            conn.execute(
+                "INSERT INTO players (id,name,tour,source_provider,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?)",
+                (player_id, name, "ATP", "test", "now", "now"),
+            )
+        for match_id, player_a, player_b in ((10, 1, 2), (20, 3, 4)):
+            conn.execute(
+                """INSERT INTO matches
+                   (id,provider_match_id,tour,match_date,tournament_id,player_a_id,
+                    player_b_id,round,source_provider,created_at,updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                (match_id, f"M{match_id}", "ATP", "2026-07-30", 1, player_a,
+                 player_b, "R1", "test", "now", "now"),
+            )
+        # First leg wins on player_a; second leg wins on player_b.  Grading both
+        # against match 10 (the old bug) incorrectly marked leg 2 as a loss.
+        conn.execute(
+            "INSERT INTO match_results (match_id,winner_player_id,source_provider,created_at) "
+            "VALUES (10,1,'test','now'),(20,4,'test','now')"
+        )
+        legs = [
+            {
+                "id": "leg-1",
+                "match_id": 10,
+                "match_label": "A vs B",
+                "market_key": "match_winner",
+                "market_name": "Match Betting",
+                "selection_name": "A",
+                "selection_side": "player_a",
+                "line": None,
+                "odds": 1.8,
+            },
+            {
+                "id": "leg-2",
+                "match_id": 20,
+                "match_label": "C vs D",
+                "market_key": "match_winner",
+                "market_name": "Match Betting",
+                "selection_name": "D",
+                "selection_side": "player_b",
+                "line": None,
+                "odds": 1.9,
+            },
+        ]
+        conn.execute(
+            """INSERT INTO combo_tracker
+               (combo_key,match_id,match_date,match_label,tier,legs_json,
+                combo_odds,stake_units,result_status,recorded_at,updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+            ("combo-1", 10, "2026-07-30", "A vs B + C vs D", "PROP_2_LEG",
+             json.dumps(legs), 3.42, 1.0, "PENDING", "now", "now"),
+        )
+        conn.commit()
+
+    summary = settle_combo_tracker_for_date("2026-07-30")
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT result_status,profit_loss_units FROM combo_tracker WHERE combo_key='combo-1'"
+        ).fetchone()
+    assert summary["settled"] == 1
+    assert row["result_status"] == "WON"
+    assert round(row["profit_loss_units"], 2) == 2.42
+
+
 def test_result_name_matching_requires_confident_pair_match(tmp_path, monkeypatch):
     from conftest import configure_test_db
 

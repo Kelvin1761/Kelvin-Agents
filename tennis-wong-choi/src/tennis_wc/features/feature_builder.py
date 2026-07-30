@@ -465,7 +465,25 @@ def odds_coverage_for_date(match_date: str) -> dict:
     """
     with get_connection() as conn:
         fixtures = conn.execute(
-            "SELECT COUNT(*) FROM matches WHERE match_date = ?", (match_date,)
+            """
+            SELECT COUNT(*) FROM (
+                SELECT DISTINCT
+                    m.tour,
+                    CASE
+                        WHEN lower(pa.name) <= lower(pb.name)
+                        THEN lower(pa.name) || '|' || lower(pb.name)
+                        ELSE lower(pb.name) || '|' || lower(pa.name)
+                    END AS player_pair
+                FROM matches m
+                JOIN players pa ON pa.id = m.player_a_id
+                JOIN players pb ON pb.id = m.player_b_id
+                WHERE m.match_date = ?
+                  AND m.player_a_id != m.player_b_id
+                  AND lower(trim(pa.name)) NOT IN ('unknown player', 'unknown', 'tbd', 'none', 'null', '')
+                  AND lower(trim(pb.name)) NOT IN ('unknown player', 'unknown', 'tbd', 'none', 'null', '')
+            )
+            """,
+            (match_date,),
         ).fetchone()[0]
         priced = conn.execute(
             """

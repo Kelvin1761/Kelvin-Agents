@@ -17,8 +17,14 @@ try:
 except ImportError:  # pragma: no cover - Python < 3.9 fallback
     ZoneInfo = None
 
-
 PROJECT_DIR = Path(__file__).resolve().parents[1]
+SRC_DIR = PROJECT_DIR / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+from tennis_wc.pipeline_readiness import analysis_retry_reasons
+
+
 # Engine runs from local disk; analysis/archive folders stay on Google Drive
 # so Kelvin keeps reading reports where he always has. Falls back to the
 # repo parent when the override is unset or the Drive mount is unavailable.
@@ -163,61 +169,22 @@ def analyse_next_day(match_date: str) -> None:
         sources = ", ".join(str(err.get("source", "?")) for err in source_errors)
         log(f"WARNING: 0 matches analysed because data sources failed: {sources}. Details: {compact_json(source_errors)}")
 
-    # Store the generated recommendations for tomorrow so the next review can settle them.
-    clv = run_cli_json("sync-clv-tracker", "--date", match_date)
-    combos = run_cli_json("sync-combo-tracker", "--date", match_date)
-    log(f"Trackers synced. clv={compact_json(clv)} combo={compact_json(combos)}")
+    # run-daily owns tracker sync and post-success dashboard deployment.  Keep
+    # this wrapper scheduling-only so manual and scheduled analysis behave the
+    # same and a scheduled run cannot sync or deploy twice.
+    tracker_sync = payload.get("tracker_sync") or {}
+    deploy = payload.get("cloudflare_deploy") or {}
+    log(
+        "Pipeline-owned post-run steps complete. "
+        f"trackers={compact_json(tracker_sync)} "
+        f"dashboard={compact_json(deploy)}"
+    )
 
     retry_reasons = analysis_retry_reasons(payload)
     if retry_reasons:
         raise TemporaryDataUnavailable(
             f"analysis for {match_date} is incomplete: {'; '.join(retry_reasons)}"
         )
-
-
-# Below this share of the fixture list being priced, the run is a preview of an
-# unopened book, not a betting card. The 20:00 job analyses TOMORROW, and
-# Sportsbet has not opened most of tomorrow's matches by then: 2026-07-29 was
-# built from 2 priced matches out of 102 fixtures and passed every gate, because
-# the gates only looked for "zero matches" or "all snapshots invalid".
-_MIN_PRICED_RATIO = 0.35
-_MIN_FIXTURES_FOR_RATIO_CHECK = 10
-
-
-def analysis_retry_reasons(payload: dict) -> list[str]:
-    """Return only failures that make a scheduled betting report incomplete."""
-    matches = intish(payload.get("matches_analysed"))
-    valid = intish(payload.get("valid_feature_snapshots"))
-    source_errors = payload.get("source_errors") or []
-    reasons: list[str] = []
-
-    if matches == 0 and source_errors:
-        reasons.append("zero matches after source failures")
-    elif matches > 0 and valid == 0:
-        reasons.append("all feature snapshots are invalid")
-
-    coverage = payload.get("odds_coverage") or {}
-    fixtures = intish(coverage.get("fixtures"))
-    priced = intish(coverage.get("priced_matches"))
-    if fixtures >= _MIN_FIXTURES_FOR_RATIO_CHECK and priced / fixtures < _MIN_PRICED_RATIO:
-        reasons.append(
-            f"only {priced}/{fixtures} fixtures priced "
-            f"({priced / fixtures:.0%} < {_MIN_PRICED_RATIO:.0%}) -- book likely not open yet"
-        )
-
-    critical_sources = {
-        "odds",
-        "event_markets",
-        "event_markets_check",
-        "upcoming_matches",
-    }
-    for error in source_errors:
-        source = str(error.get("source") or "unknown")
-        if source in critical_sources:
-            reasons.append(f"{source}: {error.get('error') or 'unknown error'}")
-
-    # Preserve order but avoid repeating the same reason.
-    return list(dict.fromkeys(reasons))
 
 
 def archive_previous_day(match_date: str, review_payload: dict) -> None:

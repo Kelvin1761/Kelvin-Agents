@@ -30,11 +30,25 @@ def test_ensure_live_network_marks_sandbox_dns_as_temporary(monkeypatch):
         raise AssertionError("network failure must stop the scheduled workflow")
 
 
-def test_analysis_retry_reasons_allow_a_genuine_empty_slate():
+def test_analysis_retry_reasons_reject_silent_empty_provider_responses():
+    reasons = scheduler.analysis_retry_reasons(
+        {
+            "matches_analysed": 0,
+            "valid_feature_snapshots": 0,
+            "odds_coverage": {"fixtures": 0, "priced_matches": 0},
+            "source_errors": [],
+        }
+    )
+    assert "without a confirmed empty slate" in reasons[0]
+
+
+def test_analysis_retry_reasons_allow_a_confirmed_empty_slate():
     assert scheduler.analysis_retry_reasons(
         {
             "matches_analysed": 0,
             "valid_feature_snapshots": 0,
+            "odds_coverage": {"fixtures": 0, "priced_matches": 0},
+            "confirmed_empty_slate": True,
             "source_errors": [],
         }
     ) == []
@@ -109,3 +123,28 @@ def test_genuinely_small_card_is_not_flagged():
 def test_ratio_gate_ignores_tiny_fixture_lists():
     """Below the fixture floor the ratio is noise, so it must not fire."""
     assert scheduler.analysis_retry_reasons(_payload(fixtures=4, priced=1)) == []
+
+
+def test_scheduled_analysis_leaves_tracker_sync_and_deploy_to_run_daily(monkeypatch):
+    calls = []
+    logs = []
+
+    def fake_run_cli_json(*args):
+        calls.append(args)
+        return {
+            "matches_analysed": 40,
+            "valid_feature_snapshots": 40,
+            "odds_coverage": {"fixtures": 60, "priced_matches": 40},
+            "source_errors": [],
+            "analysis_dir": "/tmp/analysis",
+            "tracker_sync": {"clv": {"synced": 3}, "combo": {"synced": 2}},
+            "cloudflare_deploy": {"attempted": True, "status": "deployed"},
+        }
+
+    monkeypatch.setattr(scheduler, "run_cli_json", fake_run_cli_json)
+    monkeypatch.setattr(scheduler, "log", logs.append)
+
+    scheduler.analyse_next_day("2026-07-29")
+
+    assert calls == [("run-daily", "--date", "2026-07-29")]
+    assert any("dashboard" in line and "deployed" in line for line in logs)

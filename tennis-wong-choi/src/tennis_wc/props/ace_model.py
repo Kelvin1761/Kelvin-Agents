@@ -44,7 +44,7 @@ MATCH_ACE_CURVE_BY_SURFACE: dict[str, list[tuple[float, float]]] = {
 PLAYER_ACE_CURVE_BY_SURFACE: dict[str, list[tuple[float, float]]] = {
     "hard": [(0.3, 0.8876), (0.35, 0.867), (0.4, 0.8452), (0.45, 0.8122), (0.5, 0.7826), (0.55, 0.7571), (0.6, 0.7225), (0.65, 0.6894), (0.7, 0.6543), (0.75, 0.6219), (0.8, 0.5912), (0.85, 0.5583), (0.9, 0.525), (0.95, 0.489), (1.0, 0.4635), (1.05, 0.4274), (1.1, 0.4057), (1.15, 0.3724), (1.2, 0.3498), (1.25, 0.318), (1.3, 0.297), (1.35, 0.2748), (1.4, 0.2536), (1.45, 0.2305), (1.5, 0.2072), (1.55, 0.1965), (1.6, 0.1801), (1.65, 0.1621), (1.7, 0.1448), (1.75, 0.1408), (1.8, 0.1242)],
     "clay": [(0.3, 0.7899), (0.35, 0.7584), (0.4, 0.7324), (0.45, 0.7022), (0.5, 0.6707), (0.55, 0.6324), (0.6, 0.5968), (0.65, 0.568), (0.7, 0.5323), (0.75, 0.4922), (0.8, 0.4602), (0.85, 0.4408), (0.9, 0.4117), (0.95, 0.3745), (1.0, 0.3471), (1.05, 0.3284), (1.1, 0.2995), (1.15, 0.2817), (1.2, 0.2646), (1.25, 0.2354), (1.3, 0.2191), (1.35, 0.1984), (1.4, 0.1908), (1.45, 0.1742), (1.5, 0.1559), (1.55, 0.1427), (1.6, 0.136), (1.65, 0.1171), (1.7, 0.1124), (1.75, 0.1001), (1.8, 0.0944)],
-    "grass": [(0.3, 0.9258), (0.35, 0.9215), (0.4, 0.9096), (0.45, 0.8899), (0.5, 0.8738), (0.55, 0.8397), (0.6, 0.8293), (0.65, 0.7902), (0.7, 0.7669), (0.75, 0.7465), (0.8, 0.7229), (0.85, 0.6748), (0.9, 0.6574), (0.95, 0.6417), (1.0, 0.5784), (1.05, 0.5752), (1.1, 0.5447), (1.15, 0.5225), (1.2, 0.4939), (1.25, 0.4323), (1.3, 0.4441), (1.35, 0.4204), (1.4, 0.3609), (1.45, 0.36), (1.5, 0.3293), (1.55, 0.3252), (1.6, 0.2997), (1.65, 0.2633), (1.7, 0.2547), (1.75, 0.2354), (1.8, 0.2174)],
+    "grass": [(0.3, 0.9258), (0.35, 0.9215), (0.4, 0.9096), (0.45, 0.8899), (0.5, 0.8738), (0.55, 0.8397), (0.6, 0.8293), (0.65, 0.7902), (0.7, 0.7669), (0.75, 0.7465), (0.8, 0.7229), (0.85, 0.6748), (0.9, 0.6574), (0.95, 0.6417), (1.0, 0.5784), (1.05, 0.5752), (1.1, 0.5447), (1.15, 0.5225), (1.2, 0.4939), (1.25, 0.4323), (1.3, 0.4323), (1.35, 0.4204), (1.4, 0.3609), (1.45, 0.36), (1.5, 0.3293), (1.55, 0.3252), (1.6, 0.2997), (1.65, 0.2633), (1.7, 0.2547), (1.75, 0.2354), (1.8, 0.2174)],
 }
 
 
@@ -86,6 +86,7 @@ def interp_prob_over(line: float, predicted_mean: float,
     match total."""
     if predicted_mean <= 0 or line <= 0:
         return 0.0
+    curve = _monotone_nonincreasing_curve(curve)
     ratio = line / predicted_mean
     if ratio <= curve[0][0]:
         return curve[0][1]
@@ -97,6 +98,24 @@ def interp_prob_over(line: float, predicted_mean: float,
             t = (ratio - r0) / (r1 - r0)
             return p0 + t * (p1 - p0)
     return curve[-1][1]
+
+
+def _monotone_nonincreasing_curve(
+    curve: list[tuple[float, float]],
+) -> list[tuple[float, float]]:
+    """Conservatively repair empirical survival-curve sampling noise.
+
+    A survival probability must never rise when the requested line rises.  Raw
+    low-sample surface bins can wiggle, so cap every point at the preceding
+    probability before interpolation.
+    """
+    ceiling = 1.0
+    cleaned: list[tuple[float, float]] = []
+    for ratio, probability in curve:
+        bounded = min(ceiling, max(0.0, min(1.0, float(probability))))
+        cleaned.append((float(ratio), bounded))
+        ceiling = bounded
+    return cleaned
 
 
 # --------------------------------------------------------------------------- #
@@ -118,9 +137,17 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
     surf = (surface or "hard").lower()
     rows = conn.execute(
         """
-        SELECT match_date, surface, ace_count
-        FROM player_match_history
-        WHERE player_id = ? AND ace_count IS NOT NULL AND match_date < ?
+        SELECT h.match_date, h.surface, h.ace_count
+        FROM player_match_history h
+        WHERE h.player_id = ? AND h.ace_count IS NOT NULL AND h.match_date < ?
+          AND (
+              SELECT COUNT(*)
+              FROM player_match_history duplicate
+              WHERE duplicate.player_id = h.player_id
+                AND duplicate.opponent_id = h.opponent_id
+                AND duplicate.match_date = h.match_date
+                AND duplicate.ace_count IS NOT NULL
+          ) = 1
         ORDER BY match_date DESC
         LIMIT ?
         """,
@@ -138,8 +165,19 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
         FROM player_match_history p
         JOIN player_match_history o
           ON o.opponent_id = p.player_id AND o.player_id = p.opponent_id
-         AND o.match_date = p.match_date
+         AND o.source_provider = p.source_provider
+         AND replace(replace(o.provider_match_id, '-winner', ''), '-loser', '')
+             = replace(replace(p.provider_match_id, '-winner', ''), '-loser', '')
         WHERE p.player_id = ? AND p.match_date < ? AND o.ace_count IS NOT NULL
+          AND p.ace_count IS NOT NULL
+          AND (
+              SELECT COUNT(*)
+              FROM player_match_history duplicate
+              WHERE duplicate.player_id = p.player_id
+                AND duplicate.opponent_id = p.opponent_id
+                AND duplicate.match_date = p.match_date
+                AND duplicate.ace_count IS NOT NULL
+          ) = 1
         ORDER BY p.match_date DESC LIMIT ?
         """,
         (player_id, as_of_date, last_n),

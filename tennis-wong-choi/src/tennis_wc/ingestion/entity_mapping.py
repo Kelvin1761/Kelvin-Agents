@@ -7,6 +7,53 @@ from tennis_wc.database.db import get_connection
 from tennis_wc.ingestion.raw_response_store import utc_now
 
 
+_PLACEHOLDER_PLAYER_NAMES = {
+    "",
+    "unknown",
+    "unknown player",
+    "tbd",
+    "none",
+    "null",
+}
+_MISSING_PROVIDER_IDS = {"", "none", "null", "tbd", "unknown"}
+
+
+def valid_player_identity(provider_player_id: str | None, name: str | None) -> bool:
+    """Return whether a provider supplied enough identity to persist a player.
+
+    A missing provider id used to be stringified to ``"None"`` and every such
+    row was then mapped to the same ``Unknown Player`` entity.  That polluted
+    matches, history and fixture coverage.  Identity ingestion now fails closed.
+    """
+    provider_key = str(provider_player_id or "").strip().lower()
+    name_key = normalise_player_name(str(name or ""))
+    return provider_key not in _MISSING_PROVIDER_IDS and name_key not in _PLACEHOLDER_PLAYER_NAMES
+
+
+def _canonical_player_row(conn, name: str, tour: str, exclude_id: int | None = None):
+    """Prefer the exact-name/tour entity with the richest usable history."""
+    params: list[object] = [name, tour]
+    excluded = ""
+    if exclude_id is not None:
+        excluded = "AND p.id != ?"
+        params.append(exclude_id)
+    return conn.execute(
+        f"""
+        SELECT p.id, p.name, p.tour,
+               (SELECT COUNT(*) FROM player_match_history h WHERE h.player_id = p.id) AS history_rows,
+               (SELECT COUNT(*) FROM provider_entities pe
+                WHERE pe.entity_type = 'player' AND pe.internal_entity_id = p.id) AS provider_links
+        FROM players p
+        WHERE lower(trim(p.name)) = lower(trim(?))
+          AND p.tour = ?
+          {excluded}
+        ORDER BY history_rows DESC, provider_links DESC, p.id ASC
+        LIMIT 1
+        """,
+        params,
+    ).fetchone()
+
+
 def get_or_create_player(
     provider_name: str,
     provider_player_id: str,
@@ -17,18 +64,51 @@ def get_or_create_player(
     overall_elo: float | None = None,
     surface_elo: dict | None = None,
 ) -> int:
+    if not valid_player_identity(provider_player_id, name):
+        raise ValueError(
+            f"Refusing placeholder player identity: provider={provider_name!r} "
+            f"id={provider_player_id!r} name={name!r}"
+        )
+    provider_player_id = str(provider_player_id).strip()
+    name = str(name).strip()
+    tour = str(tour or "UNKNOWN").strip().upper()
     now = utc_now()
     with get_connection() as conn:
         row = conn.execute(
             """
-            SELECT internal_entity_id
-            FROM provider_entities
-            WHERE provider_name = ? AND entity_type = 'player' AND provider_entity_id = ?
+            SELECT pe.internal_entity_id, p.name, p.tour
+            FROM provider_entities pe
+            JOIN players p ON p.id = pe.internal_entity_id
+            WHERE pe.provider_name = ? AND pe.entity_type = 'player'
+              AND pe.provider_entity_id = ?
             """,
             (provider_name, provider_player_id),
         ).fetchone()
         if row:
             player_id = int(row["internal_entity_id"])
+            canonical = _canonical_player_row(conn, name, tour, exclude_id=player_id)
+            if canonical is not None:
+                current_history = conn.execute(
+                    "SELECT COUNT(*) FROM player_match_history WHERE player_id = ?",
+                    (player_id,),
+                ).fetchone()[0]
+                # Remap stale/empty provider aliases to the established entity.
+                # Never replace a history-rich mapped identity merely because
+                # another same-name player exists.
+                if (
+                    str(row["tour"] or "UNKNOWN").upper() == "UNKNOWN"
+                    or int(canonical["history_rows"] or 0) > int(current_history or 0)
+                ):
+                    player_id = int(canonical["id"])
+                    conn.execute(
+                        """
+                        UPDATE provider_entities
+                        SET internal_entity_id = ?, entity_name = ?, updated_at = ?
+                        WHERE provider_name = ? AND entity_type = 'player'
+                          AND provider_entity_id = ?
+                        """,
+                        (player_id, name, now, provider_name, provider_player_id),
+                    )
             conn.execute(
                 """
                 UPDATE players
@@ -51,16 +131,7 @@ def get_or_create_player(
             )
             return player_id
 
-        matched_player = conn.execute(
-            """
-            SELECT id
-            FROM players
-            WHERE lower(name) = lower(?) AND tour = ?
-            ORDER BY updated_at DESC
-            LIMIT 1
-            """,
-            (name, tour),
-        ).fetchone()
+        matched_player = _canonical_player_row(conn, name, tour)
         if matched_player:
             player_id = int(matched_player["id"])
             conn.execute(

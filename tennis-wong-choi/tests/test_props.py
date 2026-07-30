@@ -42,6 +42,12 @@ def test_interp_prob_over_monotonic_decreasing_in_line():
     assert all(a >= b - 1e-9 for a, b in zip(probs, probs[1:])), "P(over) must fall as line rises"
 
 
+def test_interp_repairs_non_monotonic_empirical_curve():
+    noisy = [(0.5, 0.8), (1.0, 0.4), (1.5, 0.45), (2.0, 0.1)]
+    probs = [ace_model.interp_prob_over(line, 10.0, noisy) for line in range(5, 21)]
+    assert all(a >= b - 1e-9 for a, b in zip(probs, probs[1:]))
+
+
 def test_interp_prob_over_clamps_and_bounds():
     assert ace_model.interp_prob_over(0, 10) == 0.0
     assert ace_model.interp_prob_over(10, 0) == 0.0
@@ -87,6 +93,58 @@ def test_anchor_none_when_no_legs():
     assert ace_model.anchor_leg([]) is None
 
 
+def test_prop_strategy_stays_research_only_on_small_sample():
+    from tennis_wc.props import strategy
+
+    gate = strategy.recommendation_gate(
+        {
+            "settled": 119,
+            "model": {"brier": 0.20},
+            "market": {"brier": 0.22},
+        },
+        {
+            "by_family": {
+                "player_aces": {"settled": 100, "roi": 0.10},
+                "match_total_aces": {"settled": 100, "roi": 0.05},
+            }
+        },
+    )
+
+    assert gate["status"] == "RESEARCH_ONLY"
+    assert gate["recommendations_enabled"] is False
+
+
+def test_prop_strategy_enables_only_proven_family_and_filters_longshots():
+    from tennis_wc.props import strategy
+
+    gate = strategy.recommendation_gate(
+        {
+            "settled": 150,
+            "model": {"brier": 0.19},
+            "market": {"brier": 0.21},
+        },
+        {
+            "by_family": {
+                "player_aces": {"settled": 60, "roi": 0.04},
+                "match_total_aces": {"settled": 60, "roi": -0.01},
+            }
+        },
+    )
+
+    assert gate["status"] == "VALIDATED"
+    assert gate["enabled_families"] == ["player_aces"]
+    base = {
+        "market_key": "total_player_one_aces_7_5",
+        "prob": 0.61,
+        "data_quality": 0.90,
+        "odds": 1.90,
+        "edge": 0.06,
+        "ev": 0.08,
+    }
+    assert strategy.leg_is_formal_candidate(base, gate)
+    assert not strategy.leg_is_formal_candidate(base | {"odds": 2.30}, gate)
+
+
 # --------------------------------------------------------------------------- #
 # Longshot rungs are refused at pricing time (fake-edge trap)
 # --------------------------------------------------------------------------- #
@@ -120,6 +178,48 @@ def test_price_ace_legs_empty_when_thin_history(tmp_path, monkeypatch):
     _seed_history(conn, 1, 2, 2, 5.0)
     conn.commit()
     assert ace_model.price_ace_legs(conn, 1, 1, 2, "2026-01-01", "hard", {9.0: 1.8}) == []
+
+
+def test_conceded_aces_join_uses_exact_provider_match_pair(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+
+    init_db()
+    conn = get_connection()
+    for day in range(1, 6):
+        date = f"2025-01-{day:02d}"
+        base = f"ATP-T-{day}"
+        for provider_match_id, player_id, opponent_id, aces in (
+            (f"{base}-winner", 1, 2, 5.0),
+            (f"{base}-loser", 2, 1, 7.0),
+        ):
+            conn.execute(
+                """INSERT INTO player_match_history
+                   (provider_match_id, player_id, opponent_id, tour, match_date,
+                    tournament_external_id, tournament_level, round, format, won,
+                    source_provider, raw_response_id, created_at, surface, ace_count)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (provider_match_id, player_id, opponent_id, "ATP", date, "T", "ATP250",
+                 "R1", "BO3", 1, "test", 0, "now", "hard", aces),
+            )
+        # Same players/date but not the counterpart of player 1's row.  The old
+        # date-only join pulled this 99 into conceded form and duplicated days.
+        conn.execute(
+            """INSERT INTO player_match_history
+               (provider_match_id, player_id, opponent_id, tour, match_date,
+                tournament_external_id, tournament_level, round, format, won,
+                source_provider, raw_response_id, created_at, surface, ace_count)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (f"UNRELATED-{day}-loser", 2, 1, "ATP", date, "OTHER", "ATP250",
+             "R1", "BO3", 1, "test", 0, "now", "hard", 99.0),
+        )
+    conn.commit()
+
+    profile = ace_model.player_ace_profile(conn, 1, "2026-01-01", "hard")
+    assert profile.overall_mean == 5.0
+    assert profile.conceded_mean == 7.0
 
 
 # --------------------------------------------------------------------------- #
@@ -200,6 +300,35 @@ def test_settlement_grades_over_and_under(tmp_path, monkeypatch):
     assert roi["overall"]["settled"] == 3 and roi["overall"]["wins"] == 2
     assert abs(roi["overall"]["pnl"] - 0.4) < 1e-6
     assert "over" in roi["by_side"] and "under" in roi["by_side"]
+
+
+def test_prop_settlement_voids_retired_matches(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import settlement
+
+    init_db()
+    conn = get_connection()
+    _seed_player(conn, 1, "A"); _seed_player(conn, 2, "B")
+    _seed_match(conn, 1, 1, 2)
+    conn.execute(
+        "INSERT INTO match_results (match_id, winner_player_id, source_provider, created_at, score_json) "
+        "VALUES (1,1,'t','now', ?)",
+        ('{"player_a_aces": 2, "player_b_aces": 1, "retired": true}',),
+    )
+    _rec(conn, settlement, line=7.5, selection="Under 7.5", side="under",
+         odds=1.9, model_p=0.7, market_p=0.5)
+    conn.commit()
+
+    out = settlement.settle_props(conn)
+    row = conn.execute(
+        "SELECT result_status, profit_loss_units FROM prop_tracker"
+    ).fetchone()
+    assert out == {"graded": 0, "voided": 1, "still_pending": 0}
+    assert row["result_status"] == "VOID"
+    assert row["profit_loss_units"] == 0
 
 
 def test_scorecard_compares_model_and_market(tmp_path, monkeypatch):
@@ -339,9 +468,13 @@ def test_surface_curves_present_and_fallback():
     for surf in ("hard", "clay", "grass"):
         assert ace_model.match_curve_for_surface(surf) == ace_model.MATCH_ACE_CURVE_BY_SURFACE[surf]
         assert ace_model.player_curve_for_surface(surf) == ace_model.PLAYER_ACE_CURVE_BY_SURFACE[surf]
-        # monotonic non-increasing survival curves
-        probs = [p for _, p in ace_model.MATCH_ACE_CURVE_BY_SURFACE[surf]]
-        assert all(a >= b for a, b in zip(probs, probs[1:]))
+        # Both scopes are survival curves: harder lines cannot become likelier.
+        for curve in (
+            ace_model.MATCH_ACE_CURVE_BY_SURFACE[surf],
+            ace_model.PLAYER_ACE_CURVE_BY_SURFACE[surf],
+        ):
+            probs = [p for _, p in curve]
+            assert all(a >= b for a, b in zip(probs, probs[1:]))
     # unknown/carpet fall back sensibly
     assert ace_model.match_curve_for_surface(None) == ace_model.MATCH_ACE_CURVE
     assert ace_model.match_curve_for_surface("carpet") == ace_model.MATCH_ACE_CURVE_BY_SURFACE["hard"]

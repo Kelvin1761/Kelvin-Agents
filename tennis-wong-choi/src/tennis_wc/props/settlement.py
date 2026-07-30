@@ -178,6 +178,26 @@ def _actual_for(conn, p) -> float | None:
     return actual_player_aces(conn, p["match_id"], p["subject_player_id"])
 
 
+def _match_void_reason(conn, match_id: int) -> str | None:
+    """Return a conservative void reason from any recorded match result."""
+    rows = conn.execute(
+        "SELECT score_json FROM match_results WHERE match_id = ?",
+        (match_id,),
+    ).fetchall()
+    for row in rows:
+        if not row["score_json"]:
+            continue
+        try:
+            score = json.loads(row["score_json"])
+        except (TypeError, ValueError, json.JSONDecodeError):
+            continue
+        if score.get("retired"):
+            return "retired"
+        if score.get("walkover"):
+            return "walkover"
+    return None
+
+
 def settle_props(conn) -> dict:
     # Legacy label migration: prop_tracker used WIN/LOSS while every other
     # tracker uses WON/LOST. Converge idempotently so cross-table stats need
@@ -186,7 +206,17 @@ def settle_props(conn) -> dict:
     conn.execute("UPDATE prop_tracker SET result_status='LOST' WHERE result_status='LOSS'")
     pending = conn.execute("SELECT * FROM prop_tracker WHERE result_status = 'PENDING'").fetchall()
     graded = 0
+    voided = 0
     for p in pending:
+        void_reason = _match_void_reason(conn, int(p["match_id"]))
+        if void_reason:
+            conn.execute(
+                "UPDATE prop_tracker SET result_status='VOID', actual_value=NULL, "
+                "profit_loss_units=0, settled_at=?, updated_at=? WHERE id=?",
+                (utc_now(), utc_now(), p["id"]),
+            )
+            voided += 1
+            continue
         actual = _actual_for(conn, p)
         if actual is None:
             continue
@@ -200,19 +230,45 @@ def settle_props(conn) -> dict:
         )
         graded += 1
     conn.commit()
-    return {"graded": graded, "still_pending": len(pending) - graded}
+    return {
+        "graded": graded,
+        "voided": voided,
+        "still_pending": len(pending) - graded - voided,
+    }
 
 
 # --------------------------------------------------------------------------- #
 # Review 1: segmented ROI
 # --------------------------------------------------------------------------- #
 def prop_roi_report(conn, value_only: bool = True) -> dict:
-    """Realised ROI over settled BET props (is_value), segmented by market family
-    and side. value_only=False includes scorecard-only (stake 0) rows too."""
+    """Realised ROI over settled BET props, split into decision-useful segments.
+
+    Besides market family and side, report odds, confidence, tour, surface and
+    source-quality bands.  The fixed bands make it harder to cherry-pick a
+    profitable-looking slice after seeing the results.
+    """
     where = "result_status IN ('WON','LOST') AND stake_units > 0"
     if value_only:
         where += " AND is_value = 1"
-    rows = conn.execute(f"SELECT * FROM prop_tracker WHERE {where}").fetchall()
+    rows = conn.execute(
+        f"""
+        SELECT p.*,
+               m.tour,
+               COALESCE(
+                   (SELECT tl.surface FROM tournament_levels tl
+                    WHERE tl.tournament_id = m.tournament_id
+                    ORDER BY tl.id DESC LIMIT 1),
+                   'UNKNOWN'
+               ) AS surface,
+               (SELECT MIN(fs.data_quality_score)
+                FROM feature_snapshots fs
+                WHERE fs.match_id = p.match_id) AS data_quality_score
+        FROM prop_tracker p
+        LEFT JOIN matches m ON m.id = p.match_id
+        WHERE p.{where}
+        ORDER BY p.match_date, p.id
+        """
+    ).fetchall()
 
     def agg(rs):
         n = len(rs)
@@ -234,14 +290,62 @@ def prop_roi_report(conn, value_only: bool = True) -> dict:
             return "player_aces"
         return mk
 
-    by_side, by_family = {}, {}
+    def odds_band(value) -> str:
+        odds = float(value or 0)
+        if odds < 1.60:
+            return "<1.60"
+        if odds < 1.90:
+            return "1.60-1.89"
+        if odds < 2.20:
+            return "1.90-2.19"
+        return "2.20+"
+
+    def probability_band(value) -> str:
+        probability = float(value or 0)
+        if probability < 0.55:
+            return "<55%"
+        if probability < 0.65:
+            return "55-64%"
+        if probability < 0.75:
+            return "65-74%"
+        return "75%+"
+
+    def quality_band(value) -> str:
+        if value is None:
+            return "UNKNOWN"
+        quality = float(value)
+        if quality < 0.60:
+            return "<60%"
+        if quality < 0.80:
+            return "60-79%"
+        return "80%+"
+
+    by_side, by_family, by_odds, by_probability = {}, {}, {}, {}
+    by_tour, by_surface, by_quality = {}, {}, {}
     for r in rows:
         by_side.setdefault(r["side"] or "over", []).append(r)
         by_family.setdefault(family(r["market_key"]), []).append(r)
+        by_odds.setdefault(odds_band(r["decimal_odds"]), []).append(r)
+        by_probability.setdefault(probability_band(r["blended_prob"]), []).append(r)
+        by_tour.setdefault(str(r["tour"] or "UNKNOWN").upper(), []).append(r)
+        by_surface.setdefault(str(r["surface"] or "UNKNOWN").upper(), []).append(r)
+        by_quality.setdefault(quality_band(r["data_quality_score"]), []).append(r)
+
+    running = peak = max_drawdown = 0.0
+    for row in rows:
+        running += float(row["profit_loss_units"] or 0)
+        peak = max(peak, running)
+        max_drawdown = min(max_drawdown, running - peak)
     return {
         "overall": agg(rows),
         "by_side": {k: agg(v) for k, v in by_side.items()},
         "by_family": {k: agg(v) for k, v in by_family.items()},
+        "by_odds_band": {k: agg(v) for k, v in by_odds.items()},
+        "by_probability_band": {k: agg(v) for k, v in by_probability.items()},
+        "by_tour": {k: agg(v) for k, v in by_tour.items()},
+        "by_surface": {k: agg(v) for k, v in by_surface.items()},
+        "by_data_quality": {k: agg(v) for k, v in by_quality.items()},
+        "max_drawdown_units": round(max_drawdown, 3),
     }
 
 
