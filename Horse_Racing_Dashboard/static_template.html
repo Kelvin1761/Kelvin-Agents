@@ -2,11 +2,33 @@
 <html lang="zh-HK">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- viewport-fit=cover is REQUIRED for env(safe-area-inset-*) to resolve to
+       anything but 0. The fixed bottom bars below depend on it, otherwise they
+       sit under the iPhone home indicator in standalone (PWA) mode. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>🏇 旺財 Dashboard</title>
   <meta name="description" content="Horse Racing Analysis Dashboard — Offline Static Version">
+
+  <!-- ─── PWA / iOS "加入主畫面" ───
+       Paths are RELATIVE on purpose: the same HTML is served from the
+       Cloudflare Pages root AND opened straight off disk as
+       "Open Dashboard.html" (file://), where a leading "/" would break. -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#1E40AF">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="旺財">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
   <style>
     /* __CSS_PLACEHOLDER__ */
+
+    /* Height of the mobile bottom tab bar, 0 on desktop where it is hidden.
+       Every fixed-to-bottom element and .app-main's bottom padding stacks off
+       these two, so the bar's height is changed in exactly one place. */
+    :root { --tabbar-h: 0px; --tabbar-total: 0px; }
 
     /* ─── Static Dashboard: Rank + Card Layout ─── */
     .rank-card-row { display: flex; gap: 8px; align-items: stretch; margin-bottom: 8px; }
@@ -173,9 +195,10 @@
     .bp button:focus-visible, .bp input:focus-visible, .back-to-top:focus-visible { outline: 3px solid rgba(37,99,235,0.35); outline-offset: 2px; }
     /* Mobile: fixed bottom betting bar */
     @media (max-width: 768px) {
-      .bp-bar--fixed { position: fixed; bottom: 0; left: 0; right: 0; z-index: 999; border-radius: 0; border-top: 2px solid #1D4ED8; box-shadow: 0 -4px 16px rgba(0,0,0,0.1); }
-      .bp-bar--fixed { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
-      .app-main { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
+      /* Sits directly on top of the bottom tab bar rather than at bottom:0 —
+         the tab bar owns the safe-area inset, so this one no longer pads for it. */
+      .bp-bar--fixed { position: fixed; bottom: var(--tabbar-total); left: 0; right: 0; z-index: 999; border-radius: 0; border-top: 2px solid #1D4ED8; box-shadow: 0 -4px 16px rgba(0,0,0,0.1); }
+      .app-main { padding-bottom: calc(92px + var(--tabbar-total)); }
       .bp-hdr { align-items: flex-start; }
       .bp-header-meta { align-items: flex-end; flex-direction: column; gap: 4px; }
       .bb, .br, .bp-race-hdr, .bp-bar-btn { min-height: 44px; }
@@ -214,7 +237,8 @@
       .roi-mobile-result--loss { background: #FEF2F2; color: #B91C1C; }
       .roi-mobile-result--skip { background: #F1F5F9; color: #64748B; }
       .roi-mobile-total { display: flex; align-items: center; justify-content: space-between; padding: 7px 9px; background: #F8FAFC; color: #334155; font-size: 0.68rem; font-weight: 800; }
-      .back-to-top { bottom: 72px; right: 16px; width: 40px; height: 40px; font-size: 1rem; }
+      /* Keeps its previous 72px clearance over the betting bar, shifted up by the tab bar. */
+      .back-to-top { bottom: calc(72px + var(--tabbar-total)); right: 16px; width: 40px; height: 40px; font-size: 1rem; }
     }
     @media (min-width: 769px) and (max-width: 1040px) {
       .bh { grid-template-columns: minmax(320px, 1fr) auto; column-gap: 12px; }
@@ -226,6 +250,43 @@
     .sport-switch:hover { color: #1E40AF; background: #FFFFFF; }
     .sport-switch--active { color: #FFFFFF; background: #1E40AF; box-shadow: 0 3px 9px rgba(30,64,175,.22); }
     .sport-switch--active:hover { color: #FFFFFF; background: #1E3A8A; }
+
+    /* ─── Mobile bottom tab bar (iOS-style; the primary nav once installed as a PWA) ───
+       Desktop keeps the header sport-switcher; ≤768px swaps it for this bar so the
+       top-level sports stay reachable one-thumb. Heights live in --tabbar-h /
+       --tabbar-total so the other fixed elements (betting bar, back-to-top) and
+       .app-main's bottom padding can all stack off a single number. */
+    .app-bottom-nav { display: none; }
+    @media (max-width: 768px) {
+      :root { --tabbar-h: 56px; --tabbar-total: calc(56px + env(safe-area-inset-bottom)); }
+      .app-bottom-nav {
+        position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000;
+        display: flex; align-items: stretch;
+        height: var(--tabbar-total);
+        padding-bottom: env(safe-area-inset-bottom);
+        border-top: 1px solid #E2E8F0;
+        background: rgba(255,255,255,0.92);
+        -webkit-backdrop-filter: saturate(180%) blur(14px);
+        backdrop-filter: saturate(180%) blur(14px);
+        box-shadow: 0 -2px 12px rgba(15,23,42,0.06);
+      }
+      .tabbar-btn {
+        flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+        min-width: 0; min-height: var(--tabbar-h); padding: 6px 2px;
+        border: 0; background: transparent; color: #94A3B8; font: inherit; cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition: color 0.15s ease;
+      }
+      .tabbar-btn__icon { font-size: 1.15rem; line-height: 1.1; }
+      .tabbar-btn__label { overflow: hidden; max-width: 100%; font-size: 0.58rem; font-weight: 800; letter-spacing: 0.01em; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
+      .tabbar-btn--active { color: #1E40AF; }
+      .tabbar-btn--active .tabbar-btn__icon { transform: translateY(-1px); }
+      .tabbar-btn:focus-visible { outline: 3px solid rgba(37,99,235,0.35); outline-offset: -3px; }
+      /* The header switcher is redundant once the tab bar is up, and dropping it
+         is most of the win in standalone mode where there is no browser chrome
+         to absorb the vertical space. */
+      .sport-switcher { display: none; }
+    }
     .sports-shell { --sport-accent:#1D4ED8; max-width: 1180px; margin: 0 auto; }
     .sports-shell--tennis { --sport-accent:#047857; }
     .sports-hero { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(260px,.7fr); gap: 18px; margin-bottom: 18px; padding: 24px; border: 1px solid #D8E3EF; border-radius: 18px; background: linear-gradient(135deg,#FFFFFF 0%,#EFF6FF 100%); box-shadow: 0 10px 30px rgba(15,23,42,.06); }
@@ -364,6 +425,27 @@
     </footer>
   </div>
 </div>
+<!-- Mobile bottom tab bar. Mirrors the header sport-switcher (which is hidden at
+     ≤768px) so the four top-level sports stay one thumb away in standalone mode.
+     Labels match the desktop switcher on purpose. -->
+<!-- Plain nav + aria-current rather than role="tablist"/"tab": these switch the
+     whole view, and there is no aria-controls'd tabpanel for a tab role to point
+     at. aria-label is explicit because the visible label sits in a nested span
+     next to an aria-hidden icon. -->
+<nav class="app-bottom-nav" id="app-bottom-nav" aria-label="運動切換">
+  <button type="button" id="tabbar-horses" class="tabbar-btn tabbar-btn--active" aria-label="賽馬" aria-current="page" onclick="showSport('horses')">
+    <span class="tabbar-btn__icon" aria-hidden="true">🏇</span><span class="tabbar-btn__label">Horses</span>
+  </button>
+  <button type="button" id="tabbar-nba" class="tabbar-btn" aria-label="NBA" onclick="showSport('nba')">
+    <span class="tabbar-btn__icon" aria-hidden="true">🏀</span><span class="tabbar-btn__label">NBA</span>
+  </button>
+  <button type="button" id="tabbar-tennis" class="tabbar-btn" aria-label="網球" onclick="showSport('tennis')">
+    <span class="tabbar-btn__icon" aria-hidden="true">🎾</span><span class="tabbar-btn__label">Tennis</span>
+  </button>
+  <button type="button" id="tabbar-portfolio" class="tabbar-btn" aria-label="投資組合" onclick="showSport('portfolio')">
+    <span class="tabbar-btn__icon" aria-hidden="true">📈</span><span class="tabbar-btn__label">Portfolio</span>
+  </button>
+</nav>
 <button type="button" class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回到頂部" aria-label="回到頂部">↑</button>
 
 <script>
@@ -388,6 +470,7 @@ if (typeof DASHBOARD_DATA === 'string') {
       <p style="margin:14px 0 0">完成後請開啟 <strong>Open Dashboard.html</strong>。</p>
     </main>`;
   document.getElementById('backToTop')?.remove();
+  document.getElementById('app-bottom-nav')?.remove();
   throw new Error('static_template.html must be processed by generate_static.py before use.');
 }
 
@@ -1399,11 +1482,18 @@ function renderSportsHistory(sport) {
   const snapshot = sportsFeedSnapshot(sport);
   const coverage = sport === 'tennis' ? snapshot?.coverage : null;
   const strategy = sport === 'tennis' ? snapshot?.strategy : null;
+  const familyProgress = strategy?.families
+    ? Object.entries(strategy.families)
+        .map(([name, stats]) => `${name} ${Number(stats?.scorecard_settled || 0)}/120`)
+        .join(' · ')
+    : '';
+  const strategyValidated = strategy?.status === 'VALIDATED_SINGLE' || strategy?.status === 'VALIDATED_2_LEG';
   const strategyNotice = strategy
-    ? `<div class="sports-notice"><span>${strategy.status === 'VALIDATED' ? '✅' : '🧪'}</span><span>
-        Prop 策略：${strategy.status === 'VALIDATED' ? '已通過正式推薦閘' : '只做研究追蹤，暫停正式推薦'} ·
-        raw 記分卡 ${Number(strategy.raw_scorecard_settled || 0)}/120 ·
-        已驗證分類 ${esc((strategy.enabled_families || []).join('、') || '未有')}。
+    ? `<div class="sports-notice"><span>${strategyValidated ? '✅' : '🧪'}</span><span>
+        Prop 策略：${esc(strategy.status || 'RESEARCH_ONLY')} ·
+        ${strategyValidated ? '已通過正式推薦閘' : '逐 family 研究追蹤，暫停正式推薦'} ·
+        已驗證分類 ${esc((strategy.enabled_families || []).join('、') || '未有')}。<br>
+        Family 記分卡：${esc(familyProgress || '未有已結算樣本')}。
       </span></div>`
     : '';
   const coverageNotice = coverage
@@ -3671,8 +3761,16 @@ function render() {
   const main = document.getElementById('app-main');
   if (!main) return;
   ['horses', 'nba', 'tennis', 'portfolio'].forEach(sport => {
+    const isActive = activeSport === sport;
     const button = document.getElementById(`sport-${sport}`);
-    if (button) button.className = `sport-switch${activeSport === sport ? ' sport-switch--active' : ''}`;
+    if (button) button.className = `sport-switch${isActive ? ' sport-switch--active' : ''}`;
+    // Mobile bottom tab bar mirrors the same active sport.
+    const tab = document.getElementById(`tabbar-${sport}`);
+    if (tab) {
+      tab.className = `tabbar-btn${isActive ? ' tabbar-btn--active' : ''}`;
+      if (isActive) tab.setAttribute('aria-current', 'page');
+      else tab.removeAttribute('aria-current');
+    }
   });
   const horseNav = document.getElementById('horse-nav');
   if (horseNav) horseNav.style.display = activeSport === 'horses' ? '' : 'none';
@@ -3740,6 +3838,22 @@ document.addEventListener('DOMContentLoaded', () => {
   if (initialSport === 'horses') showDashboard();
   else showSport(initialSport);
 });
+
+// ═══════════════════════════════════════════════
+// PWA service worker
+// ═══════════════════════════════════════════════
+// Skipped on file:// — "Open Dashboard.html" opened straight off disk has no
+// service worker support and register() just throws there. Everything else is
+// left to the browser's own secure-context rule, which already limits
+// navigator.serviceWorker to https and localhost — so `./start-dashboard.sh`
+// can exercise the offline path locally. Deferred to `load` so it never competes
+// with the initial render or the bet-state pull.
+// Caching strategy (and what it deliberately refuses to cache) lives in pwa/sw.js.
+if (typeof navigator !== 'undefined' && navigator.serviceWorker && window.location.protocol !== 'file:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.warn('Service worker 註冊失敗', err));
+  });
+}
 </script>
 </body>
 </html>

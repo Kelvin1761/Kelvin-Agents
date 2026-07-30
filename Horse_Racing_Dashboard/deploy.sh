@@ -109,6 +109,18 @@ echo "📦 第二步：Cloudflare deploy bundle 已準備完成（本地 staging
 echo "   - HTML: $(basename "$HTML_OUT")"
 echo "   - Data: $(basename "$JSON_OUT")"
 echo "   - Manifest: $(basename "$MANIFEST_OUT")"
+# PWA 靜態資源（manifest / app icons / service worker）—— static_template.html
+# 用相對路徑引用，所以一定要同 index.html 一齊喺 dist 根目錄。缺咗 Safari
+# 「加入主畫面」會退化成普通書籤（有 Safari UI、icon 變網頁截圖）。
+if [ -d "$SCRIPT_DIR/pwa" ]; then
+    # `pwa/.` rather than `pwa/*` — the glob would not expand on an empty dir and
+    # `set -e` would then abort the whole deploy over a missing app icon.
+    cp -R "$SCRIPT_DIR/pwa/." "$DIST_DIR/"
+    PWA_COUNT=$(ls -1 "$SCRIPT_DIR/pwa" | wc -l | tr -d ' ')
+    echo "   - PWA assets: pwa/ → dist 根目錄（${PWA_COUNT} 個檔案）"
+else
+    echo "   ⚠️ 未發現 pwa/，Dashboard 將唔可以安裝成 iPhone app"
+fi
 # wrangler 要喺 CWD 搵到 wrangler.toml（KV binding WC_STATE）同 functions/
 # （/api/sync bet-sync Function）——照樣搬入本地 staging，唔留喺 Drive。
 cp "$SCRIPT_DIR/wrangler.toml" "$STAGING_DIR/wrangler.toml"

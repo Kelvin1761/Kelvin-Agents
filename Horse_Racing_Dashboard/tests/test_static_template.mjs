@@ -104,6 +104,69 @@ test("raw template explains that a generated dashboard must be opened", () => {
   assert.match(html, /Open Dashboard\.html/);
 });
 
+test("template ships the head tags iOS needs to install it as a standalone app", () => {
+  const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+  // Without viewport-fit=cover every env(safe-area-inset-*) below resolves to 0
+  // and the fixed bottom bars sit under the iPhone home indicator.
+  assert.match(html, /<meta name="viewport" content="[^"]*viewport-fit=cover/);
+  assert.match(html, /<link rel="manifest" href="manifest\.webmanifest">/);
+  assert.match(html, /<meta name="apple-mobile-web-app-capable" content="yes">/);
+  assert.match(html, /<link rel="apple-touch-icon" href="icon-180\.png">/);
+  assert.match(html, /<meta name="theme-color" content="#1E40AF">/);
+  // Relative, not root-absolute: the same HTML is opened off disk as
+  // "Open Dashboard.html", where a leading "/" would break.
+  assert.doesNotMatch(html, /href="\/(?:manifest\.webmanifest|icon-\d+\.png)"/);
+  // file:// has no service worker; registering there throws.
+  assert.match(html, /navigator\.serviceWorker && window\.location\.protocol !== 'file:'/);
+});
+
+test("mobile bottom tab bar carries every sport and stacks above the betting bar", () => {
+  const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+  for (const sport of ["horses", "nba", "tennis", "portfolio"]) {
+    assert.match(html, new RegExp(`id="tabbar-${sport}"[^>]*onclick="showSport\\('${sport}'\\)"`));
+  }
+  // render() has to drive both navs off the same active sport.
+  assert.match(html, /const tab = document\.getElementById\(`tabbar-\$\{sport\}`\);/);
+  assert.match(html, /aria-current/);
+  // The tab bar owns the bottom edge; the betting bar and back-to-top stack off
+  // --tabbar-total so nothing overlaps the tab bar or the home indicator.
+  assert.match(html, /:root \{ --tabbar-h: 0px; --tabbar-total: 0px; \}/);
+  assert.match(html, /--tabbar-total: calc\(56px \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(html, /\.bp-bar--fixed \{ position: fixed; bottom: var\(--tabbar-total\)/);
+  assert.match(html, /\.app-main \{ padding-bottom: calc\(92px \+ var\(--tabbar-total\)\); \}/);
+  assert.match(html, /\.back-to-top \{ bottom: calc\(72px \+ var\(--tabbar-total\)\)/);
+  // Desktop keeps the header switcher; mobile swaps it for the tab bar so the
+  // two never both show.
+  assert.match(html, /\.app-bottom-nav \{ display: none; \}/);
+  assert.match(html, /\.sport-switcher \{ display: none; \}/);
+});
+
+test("pwa bundle has a standalone manifest and a service worker that never caches /api", () => {
+  const manifest = JSON.parse(
+    fs.readFileSync(new URL("../pwa/manifest.webmanifest", import.meta.url), "utf8"),
+  );
+  assert.equal(manifest.display, "standalone");
+  assert.equal(manifest.start_url, "./");
+  assert.equal(manifest.theme_color, "#1E40AF");
+  assert.ok(
+    manifest.icons.some((icon) => icon.sizes === "512x512" && icon.purpose === "maskable"),
+    "needs a maskable 512 icon for Android adaptive masks",
+  );
+  for (const icon of manifest.icons) {
+    assert.ok(
+      fs.existsSync(new URL(`../pwa/${icon.src}`, import.meta.url)),
+      `manifest references a missing icon: ${icon.src}`,
+    );
+  }
+
+  const sw = fs.readFileSync(new URL("../pwa/sw.js", import.meta.url), "utf8");
+  // Serving a cached /api response would silently show wrong money.
+  assert.match(sw, /url\.pathname\.startsWith\("\/api\/"\)\) return;/);
+  // Navigations must be network-first so a deploy is picked up immediately.
+  assert.match(sw, /request\.mode === "navigate"/);
+  assert.match(sw, /self\.clients\.claim\(\)/);
+});
+
 test("dashboard overview keeps an eleven-race meeting in the dense desktop layout", () => {
   const meeting = { date: "2026-07-15", venue: "HappyValley", region: "hkjc", analysts: ["Kelvin"] };
   const races = Array.from({ length: 11 }, (_, index) => ({
@@ -939,6 +1002,10 @@ test("tennis workspace shows fixture, Sportsbet and model coverage timestamps", 
             status: "RESEARCH_ONLY",
             raw_scorecard_settled: 15,
             enabled_families: [],
+            families: {
+              player_aces: { scorecard_settled: 15 },
+              player_total_games: { scorecard_settled: 0 },
+            },
           },
           coverage: {
             fixtures_found: 102,
@@ -964,7 +1031,7 @@ test("tennis workspace shows fixture, Sportsbet and model coverage timestamps", 
   assert.match(html, /未入模型 4 場/);
   assert.match(html, /覆蓋 56\.9%/);
   assert.match(html, /最後 Sportsbet 抓取：2026-07-29T03:43:50Z/);
-  assert.match(html, /Prop 策略：只做研究追蹤，暫停正式推薦/);
-  assert.match(html, /raw 記分卡 15\/120/);
+  assert.match(html, /Prop 策略：RESEARCH_ONLY/);
+  assert.match(html, /player_aces 15\/120/);
   assert.match(html, /分析已完成，但未有通過模型及風控門檻/);
 });
