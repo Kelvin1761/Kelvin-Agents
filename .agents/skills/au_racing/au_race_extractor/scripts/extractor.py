@@ -404,7 +404,7 @@ def _format_past_run_extra_tokens(pr: dict) -> str:
         runner_time_diff = benchmark.get('runnerTimeDifference')
         runner_pace = benchmark.get('runnerTempoLabel')
         race_pace = benchmark.get('leaderTempoLabel')
-        l600_diff = benchmark.get('runnerTimeDifferenceL600')
+        tempo_qrank = benchmark.get('runnerTempoQuantileRank')
         rt_rating = pr.get('rtRating') or pr.get('rating')
         if runner_time_diff not in (None, ''):
             pf_parts.append(f"Race Time: {runner_time_diff}")
@@ -412,8 +412,12 @@ def _format_past_run_extra_tokens(pr: dict) -> str:
             pf_parts.append(f"Early Runner Pace: {_pf_label(runner_pace)}.")
         if race_pace:
             pf_parts.append(f"Early Race Pace: {_pf_label(race_pace)}.")
-        if l600_diff not in (None, ''):
-            pf_parts.append(f"L600 Delta: {l600_diff}")
+        if tempo_qrank not in (None, ''):
+            pf_parts.append(f"Tempo QRank: {tempo_qrank}")
+        for distance in (800, 600, 400, 200):
+            value = benchmark.get(f'runnerTimeDifferenceL{distance}')
+            if value not in (None, ''):
+                pf_parts.append(f"L{distance} Delta: {value}")
         if rt_rating not in (None, ''):
             pf_parts.append(f"RT Rating: {rt_rating}")
 

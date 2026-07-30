@@ -3952,7 +3952,7 @@ def _parse_formguide_pf_metrics(
                     if run.get(key) is not None
                 ]
 
-            for key in (
+            split_keys = (
                 "race_time_diff",
                 "l800_delta",
                 "l600_delta",
@@ -3960,7 +3960,8 @@ def _parse_formguide_pf_metrics(
                 "l200_delta",
                 "runner_time",
                 "l600_time",
-            ):
+            )
+            for key in split_keys:
                 samples = values(key)
                 if samples:
                     aggregates[f"{key}_avg"] = round(
@@ -3988,6 +3989,11 @@ def _parse_formguide_pf_metrics(
                 "early_race_pace"
             )
             aggregates["pf_run_count"] = len(runs)
+            aggregates["source"] = "racenet_formguide_cfb"
+            aggregates["value_counts"] = {
+                key: len(values(key))
+                for key in split_keys
+            }
         output[header.group(1)] = {
             "pf_runs": runs,
             "pf_aggregates": aggregates,

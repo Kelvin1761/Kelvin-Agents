@@ -250,7 +250,15 @@ def _logic_sort_key(path: Path):
 def _build_field_summary(horses):
     weights = []
     ratings = []
-    l600_deltas = []  # racenet PuntingForm L600-vs-benchmark, per runner (for pace_figure z)
+    pf_fields = {
+        "race_time_diff": [],
+        "l800_delta": [],
+        "l600_delta": [],
+        "l400_delta": [],
+        "l200_delta": [],
+        "tempo_qrank": [],
+    }
+    complete_profiles = 0
     for horse in horses.values():
         try:
             weight = float(horse.get("weight"))
@@ -265,24 +273,24 @@ def _build_field_summary(horses):
         if rating is not None:
             ratings.append(rating)
         pf_agg = ((horse.get("_data") or {}).get("pf_metrics") or {}).get("pf_aggregates") or {}
-        ld = pf_agg.get("l600_delta_avg")
-        if ld is not None:
+        for key, values in pf_fields.items():
+            value = pf_agg.get(f"{key}_avg")
+            if value is None:
+                continue
             try:
-                l600_deltas.append(float(ld))
+                values.append(float(value))
             except (TypeError, ValueError):
                 pass
+        if all(
+            pf_agg.get(f"{key}_avg") is not None
+            for key in ("l800_delta", "l600_delta", "l400_delta", "l200_delta")
+        ):
+            complete_profiles += 1
     if not horses:
         return {}
     ratings_sorted = sorted(ratings, reverse=True)
-    l600_mean = (sum(l600_deltas) / len(l600_deltas)) if l600_deltas else 0.0
-    l600_stdev = (
-        (sum((v - l600_mean) ** 2 for v in l600_deltas) / len(l600_deltas)) ** 0.5
-        if len(l600_deltas) >= 2 else 0.0
-    )
-    return {
-        "l600_delta_field_count": len(l600_deltas),
-        "l600_delta_field_mean": l600_mean,
-        "l600_delta_field_stdev": l600_stdev,
+    summary = {
+        "pf_complete_profile_field_count": complete_profiles,
         "count": len(horses),
         "min_weight": min(weights) if weights else 0.0,
         "max_weight": max(weights) if weights else 0.0,
@@ -298,6 +306,17 @@ def _build_field_summary(horses):
         ),
         "top3_rating_cutoff": ratings_sorted[2] if len(ratings_sorted) >= 3 else (ratings_sorted[-1] if ratings_sorted else 0.0),
     }
+    for key, values in pf_fields.items():
+        mean = (sum(values) / len(values)) if values else 0.0
+        stdev = (
+            (sum((value - mean) ** 2 for value in values) / len(values)) ** 0.5
+            if len(values) >= 2
+            else 0.0
+        )
+        summary[f"{key}_field_count"] = len(values)
+        summary[f"{key}_field_mean"] = mean
+        summary[f"{key}_field_stdev"] = stdev
+    return summary
 
 
 def _horse_number_sort_key(value: str) -> int:
