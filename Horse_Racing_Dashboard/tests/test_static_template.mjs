@@ -120,6 +120,10 @@ test("template ships the head tags iOS needs to install it as a standalone app",
   assert.doesNotMatch(html, /href="\/(?:manifest\.webmanifest|icon-\d+\.png)"/);
   // file:// has no service worker; registering there throws.
   assert.match(html, /navigator\.serviceWorker && window\.location\.protocol !== 'file:'/);
+  // viewport-fit=cover also extends the viewport up behind the status bar, so the
+  // header must pay the top inset or the title sits under the Dynamic Island.
+  assert.match(html, /\.app-header \{ padding-top: calc\(var\(--space-m\) \+ env\(safe-area-inset-top\)\); \}/);
+  assert.match(html, /\.app-header \{ flex-wrap:wrap; justify-content:space-between;[^}]*env\(safe-area-inset-top\)/);
 });
 
 test("mobile bottom tab bar carries every sport and stacks above the betting bar", () => {
@@ -133,7 +137,7 @@ test("mobile bottom tab bar carries every sport and stacks above the betting bar
   // The tab bar owns the bottom edge; the betting bar and back-to-top stack off
   // --tabbar-total so nothing overlaps the tab bar or the home indicator.
   assert.match(html, /:root \{ --tabbar-h: 0px; --tabbar-total: 0px; \}/);
-  assert.match(html, /--tabbar-total: calc\(56px \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(html, /--tabbar-total: calc\(64px \+ env\(safe-area-inset-bottom\)\)/);
   assert.match(html, /\.bp-bar--fixed \{ position: fixed; bottom: var\(--tabbar-total\)/);
   assert.match(html, /\.app-main \{ padding-bottom: calc\(92px \+ var\(--tabbar-total\)\); \}/);
   assert.match(html, /\.back-to-top \{ bottom: calc\(72px \+ var\(--tabbar-total\)\)/);

@@ -251,6 +251,16 @@
     .sport-switch--active { color: #FFFFFF; background: #1E40AF; box-shadow: 0 3px 9px rgba(30,64,175,.22); }
     .sport-switch--active:hover { color: #FFFFFF; background: #1E3A8A; }
 
+    /* ─── Header ───
+       viewport-fit=cover (needed for the bottom bars) also extends the layout
+       viewport UP behind the status bar, so in standalone mode the title would
+       otherwise sit under the notch / Dynamic Island. This is the only thing
+       keeping it clear, and it is a no-op in a normal browser tab where the
+       inset is 0. */
+    .app-header { padding-top: calc(var(--space-m) + env(safe-area-inset-top)); }
+    .app-header__logo-mark { font-size: 1.15em; line-height: 1; }
+    .app-header__logo-name { font-size: 1.06rem; font-weight: 850; letter-spacing: -0.015em; }
+
     /* ─── Header refresh control ─── */
     .app-header__refresh { display: flex; align-items: center; gap: 5px; min-height: 34px; padding: 5px 11px; border: 1px solid #D7E1ED; border-radius: 999px; background: #F8FAFC; color: #64748B; font: inherit; font-size: 0.68rem; font-weight: 800; font-variant-numeric: tabular-nums; cursor: pointer; white-space: nowrap; transition: color 0.15s ease, background-color 0.15s ease; }
     .app-header__refresh:hover { color: #1E40AF; background: #EFF6FF; border-color: #BFD4EE; }
@@ -276,7 +286,7 @@
        .app-main's bottom padding can all stack off a single number. */
     .app-bottom-nav { display: none; }
     @media (max-width: 768px) {
-      :root { --tabbar-h: 56px; --tabbar-total: calc(56px + env(safe-area-inset-bottom)); }
+      :root { --tabbar-h: 64px; --tabbar-total: calc(64px + env(safe-area-inset-bottom)); }
       .app-bottom-nav {
         position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000;
         display: flex; align-items: stretch;
@@ -289,14 +299,14 @@
         box-shadow: 0 -2px 12px rgba(15,23,42,0.06);
       }
       .tabbar-btn {
-        flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-        min-width: 0; min-height: var(--tabbar-h); padding: 6px 2px;
+        flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+        min-width: 0; min-height: var(--tabbar-h); padding: 8px 2px;
         border: 0; background: transparent; color: #94A3B8; font: inherit; cursor: pointer;
         -webkit-tap-highlight-color: transparent;
         transition: color 0.15s ease;
       }
-      .tabbar-btn__icon { font-size: 1.15rem; line-height: 1.1; }
-      .tabbar-btn__label { overflow: hidden; max-width: 100%; font-size: 0.58rem; font-weight: 800; letter-spacing: 0.01em; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
+      .tabbar-btn__icon { font-size: 1.4rem; line-height: 1.1; }
+      .tabbar-btn__label { overflow: hidden; max-width: 100%; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.01em; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
       .tabbar-btn--active { color: #1E40AF; }
       .tabbar-btn--active .tabbar-btn__icon { transform: translateY(-1px); }
       .tabbar-btn:focus-visible { outline: 3px solid rgba(37,99,235,0.35); outline-offset: -3px; }
@@ -396,7 +406,14 @@
     .audit-item__meta { margin-top:4px; color:#64748B; font-size:.64rem; }
     .audit-item__change { margin-top:7px; color:#475569; font-size:.68rem; line-height:1.45; }
     @media (max-width: 840px) {
-      .app-header { flex-wrap:wrap; }
+      /* Desktop centres the header as one group with a 32px gap, which on a phone
+         leaves the title and the refresh chip floating mid-row with a hole between
+         them. Anchor them to the two edges instead — a real app title bar. */
+      .app-header { flex-wrap:wrap; justify-content:space-between; gap:10px; padding:calc(10px + env(safe-area-inset-top)) 14px 10px; }
+      .app-header__left { flex:1 1 auto; min-width:0; }
+      .app-header__logo { gap:7px; }
+      .app-header__logo-name { font-size:1.02rem; }
+      .app-header__refresh { flex:0 0 auto; }
       .sport-switcher { order:3; width:100%; }
       .sport-switch { flex:1; padding-inline:8px; }
       .sports-hero { grid-template-columns:1fr; padding:18px; }
@@ -409,8 +426,15 @@
       .sports-roi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
     }
     @media (max-width: 520px) {
-      .app-header__nav-capsule { width:100%; order:4; }
-      .nav-pill { flex:1; text-align:center; }
+      .app-header { padding:calc(9px + env(safe-area-inset-top)) 12px 9px; }
+      /* Filler at this width — the row needs the space for the refresh chip, and
+         the home screen icon already reads 旺財. */
+      .app-header__logo-suffix { display:none; }
+      .app-header__logo-name { font-size:1rem; }
+      /* Slimmer 賽事/ROI row so the header costs two tight rows, not two loose ones. */
+      .app-header__nav-capsule { width:100%; order:4; padding:2px; }
+      .nav-pill { flex:1; padding:6px 10px; text-align:center; }
+      .app-header__refresh { min-height:32px; padding:4px 9px; font-size:0.64rem; }
       .sports-hero__aside { grid-template-columns:1fr 1fr; }
       .sports-modal__grid { grid-template-columns:1fr; }
       .sports-modal__grid .roi-modal__field--wide { grid-column:auto; }
@@ -429,7 +453,13 @@
   <div class="app-layout">
     <header class="app-header">
       <div class="app-header__left">
-        <a href="#" class="app-header__logo" onclick="showSport('horses'); return false;">旺財 Dashboard</a>
+        <!-- Split into spans so the title can be sized independently of
+             .app-header__logo, which index.css pins with !important at mobile
+             widths. "Dashboard" is dropped below 520px — it is filler once the
+             app is installed and the home screen icon already says 旺財. -->
+        <a href="#" class="app-header__logo" onclick="showSport('horses'); return false;">
+          <span class="app-header__logo-mark" aria-hidden="true">🏇</span><span class="app-header__logo-name">旺財<span class="app-header__logo-suffix"> Dashboard</span></span>
+        </a>
       </div>
       <div class="sport-switcher" role="tablist" aria-label="運動切換">
         <button type="button" id="sport-horses" class="sport-switch sport-switch--active" onclick="showSport('horses')">🏇 Horses</button>
