@@ -13,9 +13,9 @@ three candidate families that Phase-4 cohort/attribution evidence supports:
 
 Every candidate is evaluated out-of-sample on expanding-date folds
 (`date_folds`) with the canonical metrics, against the promotion gate:
-Good(any-2) >= +1.5pp, no loss > 0.5pp on Gold / Top1 / winner-in-Top3,
-Miss non-regression, and stability in >= 4/5 folds. Positional Good is also
-reported since it is the cross-engine headline metric.
+positional Good >= +1.5pp, exact actual-Top3-within-model-Top4
+non-regression, no loss > 0.5pp on Gold / Top1 / winner-in-Top3, Miss
+non-regression, and stability in >= 4/5 folds.
 
 Usage:
     python3 .agents/skills/au_racing/au_wong_choi_auto/scripts/au_phase5_candidates.py \
@@ -49,7 +49,7 @@ from au_failure_cohorts import FEATURE_KEYS_FOR_COVERAGE, field_band  # noqa: E4
 from scoring import MATRIX_WEIGHTS  # noqa: E402
 
 GATE = {
-    "good_lift_pp": 1.5,       # any-2 Good, the historical AU gate metric
+    "good_positional_lift_pp": 1.5,
     "max_loss_pp": 0.5,        # gold / top1 / winner-in-top3
     "fold_stability": 4,       # of 5 folds non-worse on top3 precision
 }
@@ -153,15 +153,19 @@ def evaluate_candidate(name: str, races: list[list[dict]], baseline_scorer, cand
     folds = fold_rows(races, baseline_scorer, candidate_scorer)
     top3_non_worse = sum(row["candidate"]["top3_precision"] >= row["baseline"]["top3_precision"] for row in folds)
 
-    good_lift = (rate(candidate, "good") - rate(baseline, "good")) * 100
     good_pos_lift = (rate(candidate, "good_positional") - rate(baseline, "good_positional")) * 100
+    top4_lift = (
+        rate(candidate, "top3_all_within_top4")
+        - rate(baseline, "top3_all_within_top4")
+    ) * 100
     losses = {
         "gold": (rate(baseline, "gold") - rate(candidate, "gold")) * 100,
         "top1": (baseline["top1_win"] - candidate["top1_win"]) * 100,
         "winner_in_top3": (baseline["winner_in_top3"] - candidate["winner_in_top3"]) * 100,
     }
     passed = (
-        good_lift >= GATE["good_lift_pp"]
+        good_pos_lift >= GATE["good_positional_lift_pp"]
+        and top4_lift >= 0
         and all(loss <= GATE["max_loss_pp"] for loss in losses.values())
         and candidate["miss"] <= baseline["miss"]
         and top3_non_worse >= GATE["fold_stability"]
@@ -172,8 +176,8 @@ def evaluate_candidate(name: str, races: list[list[dict]], baseline_scorer, cand
         "affected_top3_changes": affected_races(valid, baseline_scorer, candidate_scorer),
         "baseline": baseline,
         "candidate": candidate,
-        "good_lift_pp": round(good_lift, 2),
         "good_positional_lift_pp": round(good_pos_lift, 2),
+        "top3_all_within_top4_lift_pp": round(top4_lift, 2),
         "losses_pp": {key: round(value, 2) for key, value in losses.items()},
         "miss_delta": candidate["miss"] - baseline["miss"],
         "folds": folds,
@@ -187,6 +191,7 @@ def fmt(metrics: dict) -> str:
     return (
         f"{metrics['races']} races; {metrics['gold']} Gold / {metrics['good']} Good-any2 "
         f"({metrics['good_positional']} Good-pos) / {metrics['pass']} Pass / {metrics['miss']} Miss; "
+        f"T3-in-T4 {metrics['top3_all_within_top4']}; "
         f"Top3 {metrics['top3_precision'] * 100:.1f}%; W-in-T3 {metrics['winner_in_top3'] * 100:.1f}%; "
         f"Top1 {metrics['top1_win'] * 100:.1f}%"
     )
@@ -218,7 +223,9 @@ def main() -> int:
         f"# AU Wong Choi Phase-5 Candidate Shadow Tests ({args.report_date})",
         "",
         "> Research-only. Cached 710-race archive, expanding-date OOS folds.",
-        f"> Gate: Good(any-2) ≥ +{GATE['good_lift_pp']}pp, losses ≤ {GATE['max_loss_pp']}pp "
+        f"> Gate: Good(positional) ≥ +{GATE['good_positional_lift_pp']}pp, "
+        f"Actual Top3-all-within-Model-Top4 "
+        f"non-regression, losses ≤ {GATE['max_loss_pp']}pp "
         f"(Gold/Top1/W-in-T3), Miss non-regression, Top3 stability ≥ {GATE['fold_stability']}/5 folds.",
         "",
     ]
@@ -228,8 +235,9 @@ def main() -> int:
             "",
             f"- Baseline:  {fmt(result['baseline'])}",
             f"- Candidate: {fmt(result['candidate'])}",
-            f"- Good(any-2) lift: **{result['good_lift_pp']:+.2f}pp**; Good(positional) lift: "
-            f"{result['good_positional_lift_pp']:+.2f}pp; losses (pp): {result['losses_pp']}; "
+            f"- Good(positional) lift: **{result['good_positional_lift_pp']:+.2f}pp**; "
+            f"Actual Top3-all-within-Model-Top4 lift: "
+            f"{result['top3_all_within_top4_lift_pp']:+.2f}pp; losses (pp): {result['losses_pp']}; "
             f"Miss Δ: {result['miss_delta']:+d}",
             f"- Races with a changed Top3: {result['affected_top3_changes']} / {result['oos_races']}; "
             f"fold stability: {result['top3_non_worse_folds']}",
@@ -258,7 +266,8 @@ def main() -> int:
     print()
     for result in results:
         print(f"{'PASS' if result['passed'] else 'HOLD'}  {result['name']}: "
-              f"good {result['good_lift_pp']:+.2f}pp, good-pos {result['good_positional_lift_pp']:+.2f}pp, "
+              f"good-pos {result['good_positional_lift_pp']:+.2f}pp, "
+              f"T3-in-T4 {result['top3_all_within_top4_lift_pp']:+.2f}pp, "
               f"miss Δ {result['miss_delta']:+d}, folds {result['top3_non_worse_folds']}")
     return 0
 

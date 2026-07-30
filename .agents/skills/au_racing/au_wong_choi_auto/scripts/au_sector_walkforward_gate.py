@@ -93,7 +93,9 @@ def walkforward_model(races: list[list[dict]], features: tuple[str, ...], seed: 
 
 def delta_text(base: dict, cand: dict) -> str:
     return (
-        f"Gold {cand['gold'] - base['gold']:+d}, Good {cand['good'] - base['good']:+d}, "
+        f"Gold {cand['gold'] - base['gold']:+d}, "
+        f"Good-pos {cand['good_positional'] - base['good_positional']:+d}, "
+        f"Top3-in-Top4 {cand['top3_all_within_top4'] - base['top3_all_within_top4']:+d}, "
         f"Pass {cand['pass'] - base['pass']:+d}, Miss {cand['miss'] - base['miss']:+d}, "
         f"Top3 {(cand['top3_precision'] - base['top3_precision']) * 100:+.1f}pp, "
         f"W-in-T3 {(cand['winner_in_top3'] - base['winner_in_top3']) * 100:+.1f}pp"
@@ -104,9 +106,14 @@ def gate_passed(base: dict, cand: dict) -> bool:
     return (
         cand["miss"] <= base["miss"]
         and cand["winner_in_top3"] >= base["winner_in_top3"]
-        and cand["good"] >= base["good"]
+        and cand["good_positional"] >= base["good_positional"]
+        and cand["top3_all_within_top4"] >= base["top3_all_within_top4"]
         and cand["pass"] >= base["pass"]
-        and (cand["good"] > base["good"] or cand["pass"] > base["pass"])
+        and (
+            cand["good_positional"] > base["good_positional"]
+            or cand["top3_all_within_top4"] > base["top3_all_within_top4"]
+            or cand["pass"] > base["pass"]
+        )
     )
 
 
@@ -212,19 +219,46 @@ def main() -> int:
     for key in FEATURE_SCORE_KEYS:
         metrics = metrics_for_races(score_by_column(validation_races, key))
         feature_rows.append((key, baseline_metrics, metrics))
-    feature_rows.sort(key=lambda row: (row[2]["pass"], row[2]["good"], -row[2]["miss"], row[2]["top3_precision"]), reverse=True)
+    feature_rows.sort(
+        key=lambda row: (
+            row[2]["good_positional"],
+            row[2]["top3_all_within_top4"],
+            row[2]["pass"],
+            -row[2]["miss"],
+            row[2]["top3_precision"],
+        ),
+        reverse=True,
+    )
 
     matrix_rows = []
     for key in MATRIX_FEATURES:
         metrics = metrics_for_races(score_by_column(validation_races, key))
         matrix_rows.append((key, baseline_metrics, metrics))
-    matrix_rows.sort(key=lambda row: (row[2]["pass"], row[2]["good"], -row[2]["miss"], row[2]["top3_precision"]), reverse=True)
+    matrix_rows.sort(
+        key=lambda row: (
+            row[2]["good_positional"],
+            row[2]["top3_all_within_top4"],
+            row[2]["pass"],
+            -row[2]["miss"],
+            row[2]["top3_precision"],
+        ),
+        reverse=True,
+    )
 
     model_rows = []
     for name, features in STAGE_MODELS.items():
         scored, fold_rows = walkforward_model(races, features, args.seed)
         model_rows.append((name, baseline_metrics, metrics_for_races(scored), fold_rows))
-    model_rows.sort(key=lambda row: (gate_passed(row[1], row[2]), row[2]["pass"], row[2]["good"], -row[2]["miss"]), reverse=True)
+    model_rows.sort(
+        key=lambda row: (
+            gate_passed(row[1], row[2]),
+            row[2]["good_positional"],
+            row[2]["top3_all_within_top4"],
+            row[2]["pass"],
+            -row[2]["miss"],
+        ),
+        reverse=True,
+    )
 
     report = render_report(races, validation_races, baseline_metrics, feature_rows, matrix_rows, model_rows)
     args.output.write_text(report, encoding="utf-8")

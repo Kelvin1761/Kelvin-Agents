@@ -11,6 +11,7 @@ sys.path.insert(0, str(ENGINE))
 from au_pairwise_ranker_audit import (
     competitive_cutoff,
     date_partitions,
+    gate,
     predict,
     train_pairwise,
 )
@@ -92,6 +93,26 @@ class PairwiseRankerAuditTests(unittest.TestCase):
         self.assertLess(
             max(race["metadata"]["date"] for race in dev),
             min(race["metadata"]["date"] for race in terminal),
+        )
+
+    def test_gate_rejects_good_or_top4_regression(self):
+        good = {
+            "good_positional": 0.01,
+            "top3_all_within_top4": 0.01,
+            "competitive_recall_at5": 0.01,
+            "ndcg_at5": 0.01,
+            "winner_top5": 0.01,
+            "zero_hit": -0.01,
+        }
+        self.assertTrue(gate([good] * 5, good)["promote"])
+        self.assertFalse(
+            gate([good] * 5, {**good, "good_positional": -0.01})["promote"]
+        )
+        self.assertFalse(
+            gate(
+                [good] * 5,
+                {**good, "top3_all_within_top4": -0.01},
+            )["promote"]
         )
 
 

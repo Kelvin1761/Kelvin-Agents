@@ -32,6 +32,8 @@ MATRIX_KEYS = tuple(
     key for key, weight in MATRIX_WEIGHTS.items() if weight > 0
 )
 PRIORITY_METRICS = (
+    "good_positional",
+    "top3_all_within_top4",
     "competitive_recall_at5",
     "ndcg_at5",
     "winner_top5",
@@ -113,10 +115,14 @@ def selection_summary(fold_deltas: list[dict[str, float]]) -> dict:
         for metric in PRIORITY_METRICS
     }
     eligible = (
-        means["competitive_recall_at5"] >= 0
+        means["good_positional"] >= 0
+        and means["top3_all_within_top4"] >= 0
+        and means["competitive_recall_at5"] >= 0
         and means["ndcg_at5"] >= 0
         and means["winner_top5"] >= 0
         and means["zero_hit"] <= 0
+        and nonnegative["good_positional"] >= 3
+        and nonnegative["top3_all_within_top4"] >= 3
         and nonnegative["competitive_recall_at5"] >= 3
         and nonnegative["ndcg_at5"] >= 3
         and nonnegative["winner_top5"] >= 3
@@ -140,7 +146,9 @@ def selection_summary(fold_deltas: list[dict[str, float]]) -> dict:
 
 def passes_confirmation(delta: dict[str, float]) -> bool:
     return (
-        delta.get("competitive_recall_at5", 0.0) >= 0
+        delta.get("good_positional", 0.0) >= 0
+        and delta.get("top3_all_within_top4", 0.0) >= 0
+        and delta.get("competitive_recall_at5", 0.0) >= 0
         and delta.get("ndcg_at5", 0.0) >= 0
         and delta.get("winner_top5", 0.0) >= 0
         and delta.get("zero_hit", 0.0) <= 0
@@ -244,9 +252,10 @@ def render_markdown(report: dict) -> str:
         f"- Recommendation: {report['recommendation']}",
         "",
         "| Candidate | Select objective | Select eligible | Fold 5 pass | Terminal pass | "
-        "Fold 5 Comp Δ | Fold 5 NDCG Δ | Fold 5 W@5 Δ | Fold 5 0-hit Δ | "
+        "Fold 5 Good Δ | Fold 5 T3@4 Δ | Fold 5 Comp Δ | Fold 5 NDCG Δ | "
+        "Fold 5 W@5 Δ | Fold 5 0-hit Δ | Hold Good Δ | Hold T3@4 Δ | "
         "Hold Comp Δ | Hold NDCG Δ | Hold W@5 Δ | Hold 0-hit Δ |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     ranked = sorted(
         (
@@ -265,10 +274,14 @@ def render_markdown(report: dict) -> str:
             f"| {name} | {result['selection']['objective']:+.6f} | "
             f"{result['selection']['eligible']} | {result['validation_pass']} | "
             f"{result['terminal_pass']} | "
+            f"{pct(valid.get('good_positional', 0))} | "
+            f"{pct(valid.get('top3_all_within_top4', 0))} | "
             f"{pct(valid.get('competitive_recall_at5', 0))} | "
             f"{pct(valid.get('ndcg_at5', 0))} | "
             f"{pct(valid.get('winner_top5', 0))} | "
             f"{pct(valid.get('zero_hit', 0))} | "
+            f"{pct(hold.get('good_positional', 0))} | "
+            f"{pct(hold.get('top3_all_within_top4', 0))} | "
             f"{pct(hold.get('competitive_recall_at5', 0))} | "
             f"{pct(hold.get('ndcg_at5', 0))} | "
             f"{pct(hold.get('winner_top5', 0))} | "

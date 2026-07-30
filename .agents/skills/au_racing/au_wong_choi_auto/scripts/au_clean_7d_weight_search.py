@@ -95,6 +95,7 @@ def metrics(races: list[list[dict]], weights: dict[str, float]) -> dict:
         )
     summary = summarize_races(eval_rows)
     counts = summary["counts"]
+    competitiveness = summary["competitiveness"]
     races_n = summary["races"] or 1
     hit_distribution = summary["hit_distribution"]
     return {
@@ -103,6 +104,7 @@ def metrics(races: list[list[dict]], weights: dict[str, float]) -> dict:
         "gold": counts["gold"],
         "good": counts["good_positional"],
         "pass": counts["good_any2"],
+        "top3_all_within_top4": competitiveness["top3_all_within_top4"]["count"],
         "winner_top3": counts["winner_in_top3"],
         "winner_top5": winner_top5,
         "top3_places": sum(int(row["hits"]) for row in eval_rows),
@@ -212,6 +214,8 @@ def fmt_metrics(item: dict) -> str:
         f"Gold {item['gold']} ({item['gold'] / races * 100:.1f}%) / "
         f"Good {item['good']} ({item['good'] / races * 100:.1f}%) / "
         f"Pass {item['pass']} ({item['pass'] / races * 100:.1f}%) / "
+        f"T3-in-T4 {item['top3_all_within_top4']} "
+        f"({item['top3_all_within_top4'] / races * 100:.1f}%) / "
         f"Champion {item['champion']} ({item['champion'] / races * 100:.1f}%) / "
         f"0H {item['0hit']} / 1H {item['1hit']} / "
         f"Top3 {item['top3_precision'] * 100:.1f}% / "
@@ -243,7 +247,9 @@ def weight_text(weights: dict[str, float]) -> str:
 def passes_gate(base: dict, cand: dict) -> bool:
     return (
         cand["0hit"] <= base["0hit"]
+        and cand["good"] >= base["good"]
         and cand["pass"] >= base["pass"]
+        and cand["top3_all_within_top4"] >= base["top3_all_within_top4"]
         and cand["winner_top5"] >= base["winner_top5"]
         and cand["winner_top3"] >= base["winner_top3"]
         and cand["champion"] >= base["champion"]

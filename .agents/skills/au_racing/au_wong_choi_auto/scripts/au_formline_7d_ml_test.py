@@ -76,6 +76,7 @@ def metrics(races: list[list[dict]], weights: dict[str, float]) -> dict:
     for race in races:
         order = ranked(race, weights)
         top3 = order[:3]
+        top4 = order[:4]
         top5 = order[:5]
         hits = sum(1 for row in top3 if int(row["actual_pos"]) <= 3)
         top2_hits = sum(1 for row in order[:2] if int(row["actual_pos"]) <= 3)
@@ -87,6 +88,13 @@ def metrics(races: list[list[dict]], weights: dict[str, float]) -> dict:
         bucket["gold"] += 1 if hits == 3 else 0
         bucket["good"] += 1 if top2_hits == 2 else 0
         bucket["pass"] += 1 if hits >= 2 else 0
+        actual_top3_count = sum(
+            int(row["actual_pos"]) <= 3 for row in order
+        )
+        top4_hits = sum(int(row["actual_pos"]) <= 3 for row in top4)
+        bucket["top3_all_within_top4"] += (
+            1 if actual_top3_count > 0 and top4_hits == actual_top3_count else 0
+        )
     races_n = bucket["races"] or 1
     slots = bucket["top3_slots"] or 1
     return {
@@ -94,6 +102,7 @@ def metrics(races: list[list[dict]], weights: dict[str, float]) -> dict:
         "gold": bucket["gold"],
         "good": bucket["good"],
         "pass": bucket["pass"],
+        "top3_all_within_top4": bucket["top3_all_within_top4"],
         "winner_top5": bucket["winner_top5"],
         "top3_places": bucket["top3_places"],
         "top3_precision": bucket["top3_places"] / slots,
@@ -123,6 +132,8 @@ def fmt_metrics(item: dict) -> str:
         f"Gold {item['gold']} ({item['gold'] / races * 100:.1f}%) / "
         f"Good {item['good']} ({item['good'] / races * 100:.1f}%) / "
         f"Pass {item['pass']} ({item['pass'] / races * 100:.1f}%) / "
+        f"T3-in-T4 {item['top3_all_within_top4']} "
+        f"({item['top3_all_within_top4'] / races * 100:.1f}%) / "
         f"0H {item['0hit']} / 1H {item['1hit']} / "
         f"Top3 {item['top3_precision'] * 100:.1f}% / WTop5 {item['winner_top5'] / races * 100:.1f}%"
     )
@@ -324,7 +335,9 @@ def average_weights(rows: list[dict[str, float]]) -> dict[str, float]:
 def passes_gate(base: dict, cand: dict) -> bool:
     return (
         cand["0hit"] <= base["0hit"]
+        and cand["good"] >= base["good"]
         and cand["pass"] >= base["pass"]
+        and cand["top3_all_within_top4"] >= base["top3_all_within_top4"]
         and cand["winner_top5"] >= base["winner_top5"]
         and cand["top3_places"] >= base["top3_places"]
         and cand["gold"] >= base["gold"] - 2

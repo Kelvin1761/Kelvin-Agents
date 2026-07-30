@@ -405,6 +405,7 @@ def race_eval_rows(races: list[list[dict]], score_key: str = "_score") -> list[d
 def metrics_for_races(races: list[list[dict]], score_key: str = "_score") -> dict:
     summary = summarize_races(race_eval_rows(races, score_key))
     counts = summary["counts"]
+    competitiveness = summary["competitiveness"]
     races_n = max(1, summary["races"])
     return {
         "races": summary["races"],
@@ -419,6 +420,8 @@ def metrics_for_races(races: list[list[dict]], score_key: str = "_score") -> dic
         "top1_win": counts["champion"] / races_n,
         # canonical additions (same ruler as HKJC reports)
         "good_positional": counts["good_positional"],
+        "top3_all_within_top4": competitiveness["top3_all_within_top4"]["count"],
+        "top3_all_within_top4_rate": competitiveness["top3_all_within_top4"]["rate"],
         "exclusive_labels": summary["exclusive_labels"],
         "mrr": summary["mrr"],
     }
@@ -543,9 +546,12 @@ def score_baseline(races: list[list[dict]], score_source: str) -> list[list[dict
 
 def fmt_metrics(metrics: dict) -> str:
     return (
-        f"{metrics['gold']} Gold / {metrics['good']} Good / {metrics['pass']} Pass / "
+        f"{metrics['gold']} Gold / {metrics['good_positional']} Good-pos / "
+        f"{metrics['good']} Any2 / {metrics['pass']} Any1 / "
         f"{metrics['one_hit']} 1H / {metrics['miss']} Miss / "
-        f"Top3 {metrics['top3_precision'] * 100:.1f}% / W-in-T3 {metrics['winner_in_top3'] * 100:.1f}%"
+        f"T3-in-T4 {metrics['top3_all_within_top4']} / "
+        f"Top3 {metrics['top3_precision'] * 100:.1f}% / "
+        f"W-in-T3 {metrics['winner_in_top3'] * 100:.1f}%"
     )
 
 
@@ -586,6 +592,8 @@ def render_report(
     top_split = sorted(split_wet_weights.items(), key=lambda item: abs(item[1]), reverse=True)[:14]
     gate_passed = (
         wet["top3_precision"] > baseline["top3_precision"]
+        and wet["good_positional"] >= baseline["good_positional"]
+        and wet["top3_all_within_top4"] >= baseline["top3_all_within_top4"]
         and wet["winner_in_top3"] >= baseline["winner_in_top3"]
         and wet["miss"] <= baseline["miss"]
     )

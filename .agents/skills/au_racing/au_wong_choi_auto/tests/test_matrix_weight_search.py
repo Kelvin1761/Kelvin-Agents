@@ -14,6 +14,7 @@ from au_matrix_weight_search import (
     score_races,
     selection_summary,
 )
+from au_runtime_micro_ablation import metrics_for_scored_races
 from scoring import MATRIX_WEIGHTS
 
 
@@ -51,6 +52,8 @@ class MatrixWeightSearchTests(unittest.TestCase):
 
     def test_selection_and_confirmation_prioritise_recall_and_zero_hit(self):
         good = {
+            "good_positional": 0.01,
+            "top3_all_within_top4": 0.01,
             "competitive_recall_at5": 0.01,
             "ndcg_at5": 0.01,
             "winner_top5": 0.01,
@@ -61,6 +64,40 @@ class MatrixWeightSearchTests(unittest.TestCase):
         self.assertTrue(passes_confirmation(good))
         bad = {**good, "zero_hit": 0.01}
         self.assertFalse(passes_confirmation(bad))
+        self.assertFalse(
+            passes_confirmation({**good, "good_positional": -0.01})
+        )
+        self.assertFalse(
+            passes_confirmation({**good, "top3_all_within_top4": -0.01})
+        )
+
+    def test_compact_metrics_keep_positional_good_distinct_from_top4_capture(self):
+        def scored_row(number, score, actual_pos):
+            return {
+                "horse_number": number,
+                "horse_name": f"Horse {number}",
+                "score": score,
+                "actual_pos": actual_pos,
+                "result_sp_label": None,
+            }
+
+        races = [
+            [
+                scored_row(1, 80, 1),
+                scored_row(4, 70, 4),
+                scored_row(2, 60, 2),
+                scored_row(3, 50, 3),
+            ],
+            [
+                scored_row(1, 80, 1),
+                scored_row(2, 70, 2),
+                scored_row(4, 60, 4),
+                scored_row(3, 50, 3),
+            ],
+        ]
+        metrics = metrics_for_scored_races(races)
+        self.assertEqual(metrics["good_positional"], 0.5)
+        self.assertEqual(metrics["top3_all_within_top4"], 1.0)
 
 
 if __name__ == "__main__":

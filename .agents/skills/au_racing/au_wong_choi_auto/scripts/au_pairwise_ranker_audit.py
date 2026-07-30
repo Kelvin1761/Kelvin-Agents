@@ -67,6 +67,8 @@ FEATURE_SETS = {
     ),
 }
 PRIORITY_METRICS = (
+    "good_positional",
+    "top3_all_within_top4",
     "competitive_recall_at5",
     "ndcg_at5",
     "winner_top5",
@@ -289,14 +291,18 @@ def gate(
         for metric in PRIORITY_METRICS
     }
     fold_pass = (
-        mean_deltas["competitive_recall_at5"] > 0
+        mean_deltas["good_positional"] >= 0
+        and mean_deltas["top3_all_within_top4"] >= 0
+        and mean_deltas["competitive_recall_at5"] > 0
         and mean_deltas["ndcg_at5"] > 0
         and mean_deltas["winner_top5"] >= 0
         and mean_deltas["zero_hit"] <= 0
         and all(count >= max(1, len(fold_deltas) - 1) for count in nonnegative.values())
     )
     terminal_pass = (
-        terminal_delta.get("competitive_recall_at5", 0.0) > 0
+        terminal_delta.get("good_positional", 0.0) >= 0
+        and terminal_delta.get("top3_all_within_top4", 0.0) >= 0
+        and terminal_delta.get("competitive_recall_at5", 0.0) > 0
         and terminal_delta.get("ndcg_at5", 0.0) > 0
         and terminal_delta.get("winner_top5", 0.0) >= 0
         and terminal_delta.get("zero_hit", 0.0) <= 0
@@ -418,10 +424,11 @@ def render_markdown(report: dict) -> str:
         f"- Promoted: {', '.join(report['promoted_candidates']) or 'none'}",
         f"- Recommendation: {report['recommendation']}",
         "",
-        "| Model | Promote | Mean fold Comp Δ | Mean fold NDCG Δ | "
-        "Mean fold W@5 Δ | Mean fold 0-hit Δ | Terminal Comp Δ | "
-        "Terminal NDCG Δ | Terminal W@5 Δ | Terminal 0-hit Δ |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| Model | Promote | Mean fold Good Δ | Mean fold T3@4 Δ | "
+        "Mean fold Comp Δ | Mean fold NDCG Δ | Mean fold W@5 Δ | "
+        "Mean fold 0-hit Δ | Terminal Good Δ | Terminal T3@4 Δ | "
+        "Terminal Comp Δ | Terminal NDCG Δ | Terminal W@5 Δ | Terminal 0-hit Δ |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     pct = lambda value: f"{value * 100:+.2f}%"
     for name, result in report["models"].items():
@@ -429,10 +436,14 @@ def render_markdown(report: dict) -> str:
         terminal = result["terminal"]["delta"]
         lines.append(
             f"| {name} | {result['gate']['promote']} | "
+            f"{pct(fold['good_positional'])} | "
+            f"{pct(fold['top3_all_within_top4'])} | "
             f"{pct(fold['competitive_recall_at5'])} | "
             f"{pct(fold['ndcg_at5'])} | "
             f"{pct(fold['winner_top5'])} | "
             f"{pct(fold['zero_hit'])} | "
+            f"{pct(terminal.get('good_positional', 0))} | "
+            f"{pct(terminal.get('top3_all_within_top4', 0))} | "
             f"{pct(terminal.get('competitive_recall_at5', 0))} | "
             f"{pct(terminal.get('ndcg_at5', 0))} | "
             f"{pct(terminal.get('winner_top5', 0))} | "
