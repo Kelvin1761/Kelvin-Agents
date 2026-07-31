@@ -1003,6 +1003,26 @@ test("pending recommendations always show a locked confirmation with extracted o
   assert.doesNotMatch(html, /＋ 加入投注單|收起投注確認/);
 });
 
+test("the mobile race switcher sticks, and nothing upstream re-breaks it", () => {
+  const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+  const css = fs.readFileSync(new URL("../frontend/src/index.css", import.meta.url), "utf8");
+
+  // Compact one-row scroller on mobile, sticky to the top.
+  assert.match(html, /\.race-pills \{\s*position: sticky; top: 0;/);
+  assert.match(html, /flex-wrap: nowrap; overflow-x: auto/);
+  assert.match(html, /\.race-pill__name \{ display: none; \}/);
+  // Active pill is brought into view — on R7 of 9 it starts off-screen right.
+  assert.match(html, /race-pill--active'\);[\s\S]{0,160}scrollIntoView/);
+
+  // Sticky dies silently if ANY ancestor is a scroll container. Both of these were
+  // scroll containers before and both had to change; if either regresses, the sticky
+  // bar stops sticking with no error anywhere.
+  assert.match(css, /\.app-main \{[^}]*overflow-x: clip;/);
+  assert.doesNotMatch(css, /\.app-main \{[^}]*overflow: hidden;/);
+  assert.match(css, /html, body \{[^}]*overflow-y: visible;/);
+  assert.doesNotMatch(css, /html, body \{[^}]*overflow-y: auto;/);
+});
+
 test("a valid feed that passed nothing falls back to history instead of blanking", () => {
   const historyCase = {
     id: "tennis-old", event_date: "2026-07-23", event_name: "Baez vs Hanfmann",

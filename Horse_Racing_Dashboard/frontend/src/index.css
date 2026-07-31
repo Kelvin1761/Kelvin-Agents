@@ -150,7 +150,13 @@ body {
 }
 
 html, body {
-  overflow-y: auto;
+  /* Deliberately `visible`, not `auto`. With `height: auto` these never produce an
+     inner scrollbar either way — the page scrolls on the viewport regardless — but
+     `auto` here makes body a scroll container, and a scroll-container ancestor
+     silently disables `position: sticky` on everything inside it (the sticky race
+     switcher). Verified: document scrollHeight and page scrolling are identical
+     either way. Do not put `overflow-y: auto` back. */
+  overflow-y: visible;
   height: auto;
 }
 
@@ -186,7 +192,11 @@ a:hover {
   max-width: 1440px;
   margin: 0 auto;
   width: 100%;
-  overflow: hidden;
+  /* `overflow-x: clip` rather than `overflow: hidden`: both contain the wide tables
+     this was added for, but `hidden` makes this element a scroll container, and a
+     scroll container ancestor silently kills `position: sticky` on its descendants
+     (the sticky race switcher below). `clip` does not create one. */
+  overflow-x: clip;
   box-sizing: border-box;
 }
 

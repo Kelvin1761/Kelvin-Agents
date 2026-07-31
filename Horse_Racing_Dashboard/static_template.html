@@ -58,7 +58,36 @@
       .horse-card__section-title { font-size: 0.78rem; }
       .horse-card__section div[style*="white-space:pre-wrap"],
       .horse-card__section div[style*="white-space: pre-wrap"] { white-space: pre-wrap !important; word-break: break-word !important; overflow-wrap: break-word !important; max-width: 100% !important; }
-      .race-pills { gap: 4px; }
+      /* ─── Sticky race switcher ───
+         A race detail runs ~34 screens on a phone with every horse card open, and
+         nothing used to stay on screen: deep into horse 7 you could not tell which
+         race you were reading or jump to another without scrolling all the way back.
+         The desktop pills are 240px tall here (3 wrapped rows of 90x72), which would
+         eat a third of the viewport, so mobile gets a compact single-row scroller
+         instead — ~52px, and every race still one tap away. */
+      .race-pills {
+        position: sticky; top: 0; z-index: 90;
+        gap: 6px; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+        margin: 0 -12px 14px; padding: 7px 12px;
+        background: rgba(255,255,255,.94);
+        -webkit-backdrop-filter: saturate(180%) blur(12px);
+        backdrop-filter: saturate(180%) blur(12px);
+        border-bottom: 1px solid #E2E8F0;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+      }
+      .race-pills::-webkit-scrollbar { display: none; }
+      .race-pill {
+        flex: 0 0 auto;
+        width: auto; height: auto; min-height: 38px;
+        padding: 6px 11px; border-radius: 9px;
+        font-size: .8rem;
+      }
+      /* Race name is the first thing to go — R-number plus distance is enough to
+         navigate by, and keeps the bar to one line. */
+      .race-pill__name { display: none; }
+      .race-pill__distance { font-size: .55rem; font-weight: 700; opacity: .8; }
+      .race-pill:hover { transform: none; }
     }
     /* Hide analyst label on desktop (only show on mobile) */
     .rank-analyst { display: none; }
@@ -4042,6 +4071,10 @@ function render() {
   if (roiNav) roiNav.className = currentView === 'roi' ? 'nav-pill nav-pill--active' : 'nav-pill';
   if (currentView === 'race') {
     main.innerHTML = renderRaceDetail();
+    // The mobile switcher is a one-row scroller, so on R7 of 9 the active pill starts
+    // off-screen to the right. Bring it into view without scrolling the page itself.
+    const activePill = main.querySelector('.race-pill--active');
+    if (activePill?.scrollIntoView) activePill.scrollIntoView({ inline: 'center', block: 'nearest' });
   } else if (currentView === 'roi') {
     main.innerHTML = renderROI();
   } else if (currentView === 'sports') {
