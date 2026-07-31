@@ -350,6 +350,58 @@
     .history-card__market { color: #64748B; font-size: .62rem; font-weight: 750; }
     .history-card__selection { margin-top: 2px; color: #0F172A; font-size: .86rem; font-weight: 900; line-height: 1.4; }
     .history-card__price { margin-top: 3px; color: var(--sport-accent); font-size: .72rem; font-weight: 850; }
+    /* ─── The bet, front and centre ───
+       Everything above the fold answers "which game" and "what do I back"; model
+       internals live behind .history-card__more. */
+    .history-card__fixture { min-width: 0; }
+    .pick-block { margin: 0 16px 11px; padding: 11px 13px; border: 1px solid #DCE5EF; border-left: 3px solid var(--sport-accent); border-radius: 0 10px 10px 0; background: linear-gradient(135deg,#F8FAFC,#F1F6FD); }
+    .pick-block__label { color: var(--sport-accent); font-size: .6rem; font-weight: 900; letter-spacing: .03em; text-transform: uppercase; }
+    .pick-block__kicker { margin-top: 5px; color: #64748B; font-size: .62rem; font-weight: 750; }
+    .pick-block__headline { margin-top: 3px; color: #0F172A; font-size: 1rem; font-weight: 900; line-height: 1.35; word-break: break-word; }
+    .pick-block__foot { margin-top: 7px; }
+    .pick-block__price { color: #0F172A; font-size: .72rem; font-weight: 800; }
+    .pick-block__price strong { color: var(--sport-accent); font-size: .95rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+    .pick-block__noprice { color: #B45309; font-size: .66rem; font-weight: 800; }
+    /* A review note is NOT a bet — different colour, no 落注 label, so it can never be
+       mistaken for something to back. */
+    .pick-block--note { border-left-color: #94A3B8; background: #F8FAFC; }
+    .pick-block--note .pick-block__label { color: #64748B; }
+    .pick-block--note .pick-block__headline { color: #475569; font-size: .84rem; font-weight: 800; }
+    /* Combo: every leg on its own row with its own price and result. */
+    .pick-legs { display: grid; gap: 5px; margin: 7px 0 0; padding: 0; list-style: none; counter-reset: none; }
+    .pick-leg { display: grid; grid-template-columns: 18px minmax(0,1fr) auto auto; gap: 7px; align-items: center; padding: 7px 8px; border: 1px solid #E2E8F0; border-radius: 8px; background: #FFFFFF; }
+    .pick-leg__n { display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--sport-accent); color: #FFFFFF; font-size: .56rem; font-weight: 900; }
+    .pick-leg__label { min-width: 0; color: #0F172A; font-size: .7rem; font-weight: 800; line-height: 1.35; word-break: break-word; }
+    .pick-leg__odds { color: #334155; font-size: .7rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+    .pick-leg__status { font-size: .58rem; font-weight: 900; white-space: nowrap; }
+    .pick-leg--won { border-color: #A7F3D0; background: #F0FDF9; }
+    .pick-leg--lost { border-color: #FECACA; background: #FEF6F6; }
+    .pick-leg--won .pick-leg__status { color: #047857; }
+    .pick-leg--lost .pick-leg__status { color: #B91C1C; }
+    /* Collapsed analysis prose. */
+    /* margin-top:auto keeps the toggle pinned to the card's bottom edge so cards in
+       the grid stay aligned (it replaces the same trick previously on __source). */
+    .history-card__more { margin-top: auto; border-top: 1px solid #EEF2F7; }
+    .history-card__more-summary { padding: 10px 16px; color: #64748B; font-size: .66rem; font-weight: 800; cursor: pointer; list-style: none; }
+    .history-card__more-summary::-webkit-details-marker { display: none; }
+    .history-card__more-summary::before { content: '▸ '; color: #94A3B8; }
+    .history-card__more[open] .history-card__more-summary::before { content: '▾ '; }
+    .history-card__more-summary:hover { color: var(--sport-accent); background: #F8FAFC; }
+    .history-card__more-summary:focus-visible { outline: 3px solid rgba(37,99,235,.35); outline-offset: -3px; }
+    .sports-notice--gated { border-color: #FCA5A5; background: #FEF2F2; color: #991B1B; }
+    /* Says which book a page is counting, so ROI and Portfolio stop looking like they
+       contradict each other. */
+    .scope-note { display: flex; gap: 9px; margin-bottom: 14px; padding: 10px 13px; border: 1px solid #DBEAFE; border-radius: 10px; background: #F5F9FF; color: #1E3A8A; font-size: .68rem; line-height: 1.55; }
+    .scope-note strong { font-weight: 900; }
+    .sports-diagnostics { margin-bottom: 14px; border: 1px solid #E2E8F0; border-radius: 10px; background: #FFFFFF; }
+    .sports-diagnostics__summary { padding: 10px 13px; color: #64748B; font-size: .67rem; font-weight: 800; cursor: pointer; list-style: none; }
+    .sports-diagnostics__summary::-webkit-details-marker { display: none; }
+    .sports-diagnostics__summary::before { content: '▸ '; color: #94A3B8; }
+    .sports-diagnostics[open] .sports-diagnostics__summary { border-bottom: 1px solid #EEF2F7; }
+    .sports-diagnostics[open] .sports-diagnostics__summary::before { content: '▾ '; }
+    .sports-diagnostics__summary:hover { color: var(--sport-accent); }
+    .sports-diagnostics__summary:focus-visible { outline: 3px solid rgba(37,99,235,.35); outline-offset: -3px; }
+    .sports-diagnostics .sports-notice { margin: 10px 11px; }
     .odds-missing { color:#B45309; }
     .metric-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 10px; }
     .metric-chip { padding: 5px 8px; border: 1px solid #E2E8F0; border-radius: 7px; background: #FFFFFF; color: #475569; font-size: .62rem; font-weight: 750; }
@@ -1456,7 +1508,12 @@ function hasLiveSportsFeed(sport) {
 }
 
 function sportsHistory(sport) {
-  if (hasCurrentSportsFeed(sport)) return sportsFeedSnapshot(sport).recommendations || [];
+  // Gate on the feed actually HAVING recommendations (hasLiveSportsFeed), not on it
+  // merely being valid (hasCurrentSportsFeed). A valid tennis feed whose evidence
+  // gate passed nothing returns [], and gating on validity alone made that empty
+  // list win — blanking the workspace and hiding every historical case. The
+  // stricter the gate got, the emptier the page became.
+  if (hasLiveSportsFeed(sport)) return sportsFeedSnapshot(sport).recommendations || [];
   return DASHBOARD_DATA.sports_history?.[sport] || [];
 }
 
@@ -1506,6 +1563,92 @@ function sportsLegLabel(leg) {
   return `${event}${market}${leg?.selection || '未命名 leg'}${odds}${status}`;
 }
 
+// A bare side/line ("Over 1.5", "U 5.5", "O2.5") is meaningless on its own — tennis
+// puts the subject in `market` and the side in `selection`, so those have to be read
+// together. NBA already ships a self-describing selection ("Jalen Brunson 25+") with
+// `market` as a category, which belongs above it as a kicker instead.
+const BARE_LINE_RE = /^(?:over|under|o|u)\s*[\d.]+$/i;
+
+function sportsPickLines(item) {
+  const market = String(item?.market || '').trim();
+  const selection = String(item?.selection || '').trim();
+  if (!selection) return { kicker: '', headline: market || '—' };
+  if (!market) return { kicker: '', headline: selection };
+  if (BARE_LINE_RE.test(selection)) return { kicker: '', headline: `${market} · ${selection}` };
+  return { kicker: market, headline: selection };
+}
+
+// Legs arrive either as objects from the live pipeline or as pre-formatted strings in
+// the archived cases. Split off price and status either way so they can be columns
+// rather than buried in a sentence.
+function sportsLegParts(leg) {
+  if (leg && typeof leg === 'object') {
+    return {
+      label: [leg.event_name, leg.market, leg.selection].filter(Boolean).join(' · ') || '未命名 leg',
+      odds: leg.odds == null ? null : Number(leg.odds),
+      status: leg.status || null,
+    };
+  }
+  const text = String(leg || '').trim();
+  const oddsMatch = text.match(/\s@\s([\d.]+)/);
+  const statusMatch = text.match(/·\s*(WON|LOST|VOID|PENDING)\s*$/i);
+  let label = text;
+  if (oddsMatch) label = label.replace(oddsMatch[0], '');
+  if (statusMatch) label = label.replace(statusMatch[0], '');
+  return {
+    label: label.replace(/·\s*$/, '').trim() || '未命名 leg',
+    odds: oddsMatch ? Number(oddsMatch[1]) : null,
+    status: statusMatch ? statusMatch[1].toLowerCase() : null,
+  };
+}
+
+// The bet itself, at the top of the card and impossible to miss: which selection, at
+// what price, and for a combo every leg spelled out. The archived combo case's own
+// note asks for exactly this ("combo 卡片應逐腳顯示，而唔係只顯示合併賠率").
+function renderSportsPick(item, sport) {
+  const isCombo = item.bet_type === 'combo' || (item.legs || []).length > 1;
+  const reviewOnly = item.outcome === 'review';
+  const priceText = item.odds == null
+    ? `<span class="pick-block__noprice">${item.odds_status === 'not_archived' ? '原始賠率未存檔 · 落注時輸入你實際價' : '未有已驗證賠率'}</span>`
+    : `<span class="pick-block__price">${isCombo ? '合併賠率' : '賠率'} <strong>${Number(item.odds).toFixed(2)}</strong></span>`;
+
+  if (reviewOnly) {
+    // Not a bet — a modelling lesson. Labelling it as one would be actively misleading
+    // on a page whose job is telling you what to back.
+    const { kicker, headline } = sportsPickLines(item);
+    return `<div class="pick-block pick-block--note">
+      <div class="pick-block__label">📝 觀察筆記 · 唔係投注建議</div>
+      ${kicker ? `<div class="pick-block__kicker">${esc(kicker)}</div>` : ''}
+      <div class="pick-block__headline">${esc(headline)}</div>
+    </div>`;
+  }
+
+  if (isCombo) {
+    const legs = (item.legs || []).map((leg, index) => {
+      const { label, odds, status } = sportsLegParts(leg);
+      return `<li class="pick-leg${status ? ` pick-leg--${esc(status)}` : ''}">
+        <span class="pick-leg__n">${index + 1}</span>
+        <span class="pick-leg__label">${esc(label)}</span>
+        ${odds == null ? '' : `<span class="pick-leg__odds">${odds.toFixed(2)}</span>`}
+        ${status ? `<span class="pick-leg__status">${esc(sportsStatusLabel(status))}</span>` : ''}
+      </li>`;
+    }).join('');
+    return `<div class="pick-block pick-block--combo">
+      <div class="pick-block__label">🎯 落注 · ${(item.legs || []).length} 腳 combo（全中才派彩）</div>
+      <ol class="pick-legs">${legs}</ol>
+      <div class="pick-block__foot">${priceText}</div>
+    </div>`;
+  }
+
+  const { kicker, headline } = sportsPickLines(item);
+  return `<div class="pick-block">
+    <div class="pick-block__label">🎯 落注</div>
+    ${kicker ? `<div class="pick-block__kicker">${esc(kicker)}</div>` : ''}
+    <div class="pick-block__headline">${esc(headline)}</div>
+    <div class="pick-block__foot">${priceText}</div>
+  </div>`;
+}
+
 function renderHistoryCard(item, sport) {
   const context = item.context || {};
   const contextLabels = sport === 'tennis'
@@ -1516,34 +1659,36 @@ function renderHistoryCard(item, sport) {
   const odds = item.odds == null
     ? '<span class="odds-missing">原始賠率未存檔 · 落注時手動輸入</span>'
     : `${item.odds_status === 'sportsbet_extracted' ? 'Sportsbet 提取賠率' : '分析賠率'} <strong>${Number(item.odds).toFixed(2)}</strong>`;
-  const legs = (item.legs || []).length
-    ? `<ul class="history-card__legs">${item.legs.map(leg => `<li>${esc(sportsLegLabel(leg))}</li>`).join('')}</ul>`
-    : '';
   const canConfirm = item.decision === 'BET' && item.outcome === 'pending' && Number(item.odds) > 1;
   const confirmation = canConfirm
     ? renderInlineBetDraft(item, sport)
     : `<div class="history-card__review-only">${item.outcome !== 'pending'
       ? '舊案例只供檢討，唔會加入新投注或 ROI。'
       : '未有已驗證 Sportsbet 賠率，暫時唔可以確認落注。'}</div>`;
+  // Fixture and pick stay always-visible; the model commentary folds away. <details>
+  // rather than a JS toggle so there is no open/closed state to lose when render()
+  // rebuilds this innerHTML on the next bet-sync tick.
   return `<article class="history-card">
     <div class="history-card__top">
-      <div><div class="history-card__date">${esc(item.event_date)}</div><div class="history-card__event">${esc(item.event_name)}</div></div>
+      <div class="history-card__fixture">
+        <div class="history-card__event">${sport === 'nba' ? '🏀' : '🎾'} ${esc(item.event_name)}</div>
+        <div class="history-card__date">${esc(item.event_date)}</div>
+      </div>
       <span class="outcome-chip outcome-chip--${esc(item.outcome || 'review')}">${esc(outcomeLabel(item.outcome))}</span>
     </div>
-    <div class="history-card__pick">
-      <div class="history-card__market">${esc(item.market)}</div>
-      <div class="history-card__selection">${esc(item.selection)}</div>
-      <div class="history-card__price">${odds}</div>
-    </div>
-    <div class="metric-row">${metrics}</div>
-    <div class="history-card__copy">
-      <div><strong>實際：</strong>${esc(item.actual || '—')}</div>
-      <div><strong>點解值得保留：</strong>${esc(item.insight || '—')}</div>
-      <div><strong>風險：</strong>${esc(item.risk || '—')}</div>
-      ${legs}
-    </div>
-    <div class="history-card__source">資料來源：${esc(item.provenance || 'repository artifact')}</div>
+    ${renderSportsPick(item, sport)}
     ${confirmation}
+    <details class="history-card__more">
+      <summary class="history-card__more-summary">分析詳情、風險同資料來源</summary>
+      <div class="metric-row">${metrics}</div>
+      <div class="history-card__copy">
+        <div><strong>實際：</strong>${esc(item.actual || '—')}</div>
+        <div><strong>點解值得保留：</strong>${esc(item.insight || '—')}</div>
+        <div><strong>風險：</strong>${esc(item.risk || '—')}</div>
+        ${item.odds == null ? '' : `<div><strong>賠率來源：</strong>${odds}</div>`}
+      </div>
+      <div class="history-card__source">資料來源：${esc(item.provenance || 'repository artifact')}</div>
+    </details>
   </article>`;
 }
 
@@ -1585,12 +1730,27 @@ function renderSportsHistory(sport) {
       : '未有可用歷史分析。';
     return `${coverageNotice}${strategyNotice}<div class="sports-empty">${message}</div>`;
   }
+  // Today's analysis ran and passed nothing, so the cards below are history. Say so
+  // outright — otherwise old cases read as today's picks, which is the worst possible
+  // way to be wrong on a betting page.
+  const gatedTodayNotice = !live && hasCurrentSportsFeed(sport)
+    ? `<div class="sports-notice sports-notice--gated"><span>🚫</span><span><strong>今日冇合格建議。</strong>今次分析已完成，但冇任何選擇通過模型同風控門檻，所以${sport === 'nba' ? 'NBA' : 'Tennis'}今日<strong>唔應該落注</strong>。下面係過往案例，只供檢討。</span></div>`
+    : '';
   const notice = live
     ? `<div class="sports-notice"><span>✅</span><span>正式 ${sport === 'nba' ? 'NBA Wong Choi artifacts' : 'tennis_wc.db'} live feed · ${esc(snapshot.analysis_run_id || '')} · ${items.length} 個已驗證建議。所有 odds／legs 直接由 pipeline 匯出；下一次新分析會替換呢個建議清單，但唔會改動已確認投注。</span></div>`
     : sport === 'nba'
     ? `<div class="sports-notice"><span>⚠️</span><span>NBA 呢批係真實 Reflector 案例，但舊版流程無保存原始 Sportsbet 賠率。為免作假，畫面唔會估賠率；加入投注單時要輸入你實際落注價。</span></div>`
     : `<div class="sports-notice"><span>🧪</span><span>Tennis 呢批由 2026-07-23 每日報告同已結算資料組成，用嚟測試「模型訊號 → 落注 → 結算 → 檢討」嘅最佳讀法；唔代表今日建議。</span></div>`;
-  return `${coverageNotice}${strategyNotice}${notice}<div class="history-grid">${items.map(item => renderHistoryCard(item, sport)).join('')}</div>`;
+  // Coverage and strategy state are diagnostics, not answers. Stacked open they pushed
+  // the actual picks about two screens down the phone — the opposite of what this page
+  // is for. The gated/live notice stays out front because it IS the answer.
+  const diagnostics = coverageNotice || strategyNotice
+    ? `<details class="sports-diagnostics">
+        <summary class="sports-diagnostics__summary">資料覆蓋同策略狀態</summary>
+        ${coverageNotice}${strategyNotice}
+      </details>`
+    : '';
+  return `${gatedTodayNotice}${notice}${diagnostics}<div class="history-grid">${items.map(item => renderHistoryCard(item, sport)).join('')}</div>`;
 }
 
 function sportsStatusLabel(status) {
@@ -1746,6 +1906,11 @@ function renderPortfolioWorkspace() {
       <div class="sports-roi-card"><span>Portfolio ROI</span><strong style="color:${profitColor}">${total.roi == null ? '—' : `${(Number(total.roi) * 100).toFixed(1)}%`}</strong></div>
     </div>
     <div style="overflow-x:auto"><table class="portfolio-table"><thead><tr><th>Sport</th><th>投注</th><th>Settled</th><th>Pending</th><th>Exposure</th><th>P/L</th><th>ROI</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="scope-note">
+      <span>📋</span>
+      <span><strong>統計範圍：</strong>只計經 App 寫入 database 嘅投注，跨 Horses／NBA／Tennis。
+      唔包含匯入嘅賽馬歷史記錄，所以「📊 ROI」個馬匹數字會大過呢一頁 —— 兩邊都冇錯，只係計唔同嘅範圍。</span>
+    </div>
     <div class="sports-notice"><span>🧾</span><span>資料來源：Cloudflare D1 unified ledger。所有修改、刪除及結算都會寫 audit log；KV 保留作 rollback shadow。</span></div>
   </section>`;
 }
@@ -3449,14 +3614,15 @@ function getFilteredROI() {
   // records in the pre-baked snapshot, and local panel drafts never overwrite
   // committed results.
   const baseMap = {};
+  const fromLedger = new Set();
   (roi.bets || []).forEach(b => {
     const key = `${b.date}|${b.venue}|${b.race_number}|${b.horse_number}`;
     baseMap[key] = { ...b, _ledger_key: key };
   });
   roiLedger.forEach(b => {
     const key = b._ledger_key || `${b.date}|${b.venue}|${b.race_number}|${b.horse_number}`;
-    if (b._deleted) delete baseMap[key];
-    else baseMap[key] = b;
+    if (b._deleted) { delete baseMap[key]; fromLedger.delete(key); }
+    else { baseMap[key] = b; fromLedger.add(key); }
   });
   const allBets = Object.values(baseMap);
   allBets.sort((a,b) => (a.date||'').localeCompare(b.date||''));
@@ -3485,7 +3651,12 @@ function getFilteredROI() {
   });
   const db = Object.values(dm).map(d => ({...d, profit:Math.round(d.profit*100)/100}));
   db.sort((a,b) => b.date.localeCompare(a.date));
-  return {total_bets:bets.length,total_stake:Math.round(totalStake*100)/100,total_payout:Math.round(totalPayout*100)/100,total_profit:Math.round(totalProfit*100)/100,roi_pct:roiPct,win_rate:winRate,wins,losses,running_profit:rp,daily_breakdown:db,side_roi:roi.side_roi,bets};
+  // Where the rows came from, so the page can say what this ROI actually covers.
+  // Without it the ROI tab (snapshot + ledger) and the Portfolio tab (ledger only)
+  // silently disagree about how many bets you have made.
+  const ledgerCount = bets.filter(b => fromLedger.has(b._ledger_key || `${b.date}|${b.venue}|${b.race_number}|${b.horse_number}`)).length;
+  const sources = {ledger: ledgerCount, snapshot: bets.length - ledgerCount};
+  return {total_bets:bets.length,total_stake:Math.round(totalStake*100)/100,total_payout:Math.round(totalPayout*100)/100,total_profit:Math.round(totalProfit*100)/100,roi_pct:roiPct,win_rate:winRate,wins,losses,running_profit:rp,daily_breakdown:db,side_roi:roi.side_roi,bets,sources};
 }
 
 function renderROI() {
@@ -3501,11 +3672,30 @@ function renderROI() {
     <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em">📊 ROI 分析</h1>
     ${renderRegionTabs()}
   </div>`;
+  html += renderRoiScopeNote(roi);
   html += renderStatsCards(roi);
   if (roi.running_profit?.length > 0) html += renderProfitChart(roi.running_profit);
   if (roi.side_roi && !roiRegionFilter) html += renderSideBreakdowns(roi.side_roi);
   if (roi.daily_breakdown?.length > 0) html += renderMonthlyBreakdown(roi.daily_breakdown, roi.bets || []);
   return html;
+}
+
+// The ROI tab and the Portfolio tab count different books, so each has to say which.
+// ROI = the baked historical snapshot merged with the permanent ledger, horses only.
+// Portfolio = the D1 ledger alone, across all three sports. Both are correct; showing
+// them unlabelled just makes you distrust whichever you read second.
+function renderRoiScopeNote(roi) {
+  const s = roi.sources || {ledger: 0, snapshot: 0};
+  const parts = [];
+  if (s.snapshot) parts.push(`歷史記錄 ${s.snapshot} 注`);
+  if (s.ledger) parts.push(`App 記錄 ${s.ledger} 注`);
+  const breakdown = parts.length > 1 ? `（${parts.join(' + ')}）` : '';
+  const scope = roiRegionFilter ? (roiRegionFilter === 'hkjc' ? '🇭🇰 HKJC' : '🇦🇺 AU') : '全部馬場';
+  return `<div class="scope-note">
+    <span>📋</span>
+    <span><strong>統計範圍：</strong>${scope}賽馬投注，共 ${roi.total_bets} 注${breakdown}。
+    包含匯入嘅歷史記錄，所以數字會大過「📈 Portfolio」—— Portfolio 只計經 App 寫入 database 嘅投注，但跨 Horses／NBA／Tennis 三個運動。</span>
+  </div>`;
 }
 
 function renderRegionTabs() {
@@ -3923,11 +4113,32 @@ function renderSnapshotStamp() {
   if (stamp) stamp.textContent = formatSnapshotStamp(LOADED_SNAPSHOT_AT);
 }
 
-function reloadSnapshot() {
+async function reloadSnapshot() {
   const btn = document.getElementById('snapshot-refresh');
   if (btn) btn.classList.add('app-header__refresh--busy');
-  // A plain reload is enough: the service worker serves navigations network-first,
-  // so this already fetches the newest deploy rather than the cached copy.
+  // The service worker serves navigations CACHE-first (an app open is then instant and
+  // costs no data), so a plain reload would hand back the very snapshot we are trying
+  // to replace. Evict the cached shell first, then reload into a real network fetch.
+  try {
+    const names = await caches.keys();
+    await Promise.all(names.map(async (name) => {
+      const cache = await caches.open(name);
+      // Identify the shell by what the cached RESPONSE is, not by the request: the
+      // Cache API does not preserve mode === 'navigate' (every stored request reads
+      // back as 'no-cors'), and the shell is stored under whichever path was opened
+      // ('/' or '/index.html'). Matching on content-type catches both and can never
+      // evict an icon, font or silk.
+      const keys = await cache.keys();
+      await Promise.all(keys.map(async (req) => {
+        const hit = await cache.match(req);
+        if (hit && (hit.headers.get('content-type') || '').includes('text/html')) {
+          await cache.delete(req);
+        }
+      }));
+    }));
+  } catch {
+    // No Cache API (file://, or a browser without it) — a plain reload is correct there.
+  }
   window.location.reload();
 }
 

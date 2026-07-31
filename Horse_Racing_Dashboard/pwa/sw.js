@@ -8,18 +8,26 @@
  *   1. /api/* is NEVER touched. Bet sync, portfolio, audit and settlement all
  *      have to hit the network or fail loudly — a cached POST/GET here would
  *      silently show wrong money.
- *   2. Navigations are network-first, cache-fallback. Online you always get the
- *      freshly deployed snapshot; offline you get the last one you loaded.
- *   3. Same-origin static assets (icons, manifest) and the Google Fonts CDN are
- *      cache-first — they are immutable enough that revalidating costs more
- *      than it saves.
+ *   2. Navigations are CACHE-first. The shell is ~478KB brotli (5.9MB decoded)
+ *      because the snapshot is inlined, and network-first meant paying that on
+ *      every single app open even when nothing had changed. Freshness is instead
+ *      driven by the page: it fetches the 369-byte deploy-manifest.json on every
+ *      foreground, compares generated_at, and offers a reload when a newer
+ *      snapshot exists. reloadSnapshot() in the page deletes the cached shell
+ *      first, so that reload is a genuine network fetch — without that step
+ *      cache-first would hand back the very copy the user is trying to replace.
+ *   3. Same-origin static assets (icons, manifest), the Google Fonts CDN and the
+ *      silk image CDN are cache-first — they are immutable enough that
+ *      revalidating costs more than it saves, and the silks are what make an
+ *      offline racecard actually readable.
  *   4. Anything else falls through to the network untouched.
  *
- * Bump CACHE_VERSION when the caching strategy changes. Deploying new dashboard
- * HTML does not need a bump — rule 2 already keeps it fresh.
+ * Bump CACHE_VERSION when the caching strategy changes (it purges old caches on
+ * activate). Deploying new dashboard HTML does not need a bump — rule 2's
+ * manifest check handles that.
  */
 
-const CACHE_VERSION = "wongchoi-v1";
+const CACHE_VERSION = "wongchoi-v2";
 const PRECACHE = [
   "./",
   "./manifest.webmanifest",
@@ -28,7 +36,13 @@ const PRECACHE = [
   "./icon-512.png",
 ];
 
-const FONT_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com"];
+// Cross-origin hosts worth keeping offline. The silks are 18 images per racecard
+// served from puntcdn; without them an offline racecard loses every colour cue.
+const RUNTIME_CACHE_HOSTS = [
+  "fonts.googleapis.com",
+  "fonts.gstatic.com",
+  "images.puntcdn.com",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -64,26 +78,26 @@ self.addEventListener("fetch", (event) => {
   // Rule 1 — never cache or shortcut the live APIs.
   if (sameOrigin && url.pathname.startsWith("/api/")) return;
 
-  // Rule 2 — navigations: network first, fall back to the last good copy.
+  // Rule 2 — navigations: cache first. See the header comment for why, and for the
+  // page-side manifest check that keeps this honest.
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_VERSION).then((cache) => cache.put(request, copy));
+      (async () => {
+        const cache = await caches.open(CACHE_VERSION);
+        const hit = (await cache.match(request)) || (await cache.match("./"));
+        if (hit) return hit;
+        // Cold start, or reloadSnapshot() just evicted the shell on purpose.
+        try {
+          const response = await fetch(request);
+          if (response.ok) cache.put(request, response.clone());
           return response;
-        })
-        .catch(async () => {
-          const cache = await caches.open(CACHE_VERSION);
-          return (
-            (await cache.match(request)) ||
-            (await cache.match("./")) ||
-            new Response(
-              "<meta charset=utf-8><h1>離線</h1><p>未有已快取嘅 Dashboard，請連上網絡再開一次。</p>",
-              { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } },
-            )
+        } catch {
+          return new Response(
+            "<meta charset=utf-8><h1>離線</h1><p>未有已快取嘅 Dashboard，請連上網絡再開一次。</p>",
+            { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } },
           );
-        }),
+        }
+      })(),
     );
     return;
   }
@@ -91,7 +105,7 @@ self.addEventListener("fetch", (event) => {
   // Rule 3 — immutable-ish static assets: cache first, populate on miss.
   const isStaticAsset =
     (sameOrigin && /\.(?:png|svg|ico|webmanifest|woff2?)$/.test(url.pathname)) ||
-    FONT_HOSTS.includes(url.hostname);
+    RUNTIME_CACHE_HOSTS.includes(url.hostname);
 
   if (isStaticAsset) {
     event.respondWith(

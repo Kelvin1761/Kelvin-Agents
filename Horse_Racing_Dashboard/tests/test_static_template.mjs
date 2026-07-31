@@ -94,6 +94,10 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       setLocationSearchForTest: (search) => { window.location.search = search; },
       isNewerSnapshot: typeof isNewerSnapshot === "function" ? isNewerSnapshot : null,
       formatSnapshotStamp: typeof formatSnapshotStamp === "function" ? formatSnapshotStamp : null,
+      sportsPickLines: typeof sportsPickLines === "function" ? sportsPickLines : null,
+      sportsLegParts: typeof sportsLegParts === "function" ? sportsLegParts : null,
+      sportsHistory: typeof sportsHistory === "function" ? sportsHistory : null,
+      renderSportsHistory: typeof renderSportsHistory === "function" ? renderSportsHistory : null,
     };
   `;
   vm.runInContext(source, context);
@@ -215,9 +219,35 @@ test("pwa bundle has a standalone manifest and a service worker that never cache
   const sw = fs.readFileSync(new URL("../pwa/sw.js", import.meta.url), "utf8");
   // Serving a cached /api response would silently show wrong money.
   assert.match(sw, /url\.pathname\.startsWith\("\/api\/"\)\) return;/);
-  // Navigations must be network-first so a deploy is picked up immediately.
   assert.match(sw, /request\.mode === "navigate"/);
   assert.match(sw, /self\.clients\.claim\(\)/);
+  // The silks are cross-origin; without them an offline racecard loses every colour cue.
+  assert.match(sw, /"images\.puntcdn\.com"/);
+  assert.match(sw, /RUNTIME_CACHE_HOSTS\.includes\(url\.hostname\)/);
+});
+
+test("cache-first navigation is paired with an eviction on manual reload", () => {
+  const sw = fs.readFileSync(new URL("../pwa/sw.js", import.meta.url), "utf8");
+  const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+  // Cache-first: the cached shell is consulted before the network.
+  const navBlock = sw.slice(sw.indexOf('request.mode === "navigate"'), sw.indexOf('Rule 3'));
+  assert.ok(
+    navBlock.indexOf("cache.match") < navBlock.indexOf("fetch(request)"),
+    "navigation must check the cache before hitting the network",
+  );
+  // Cache-first is only safe because the reload path evicts the shell first —
+  // otherwise the refresh button hands back the snapshot it is meant to replace.
+  assert.match(html, /async function reloadSnapshot\(\)/);
+  assert.match(html, /cache\.delete\(req\)/);
+  assert.match(html, /window\.location\.reload\(\)/);
+  // The shell must be identified by the cached RESPONSE's content-type. The Cache API
+  // reads every stored request back as mode 'no-cors', so keying eviction on
+  // mode === 'navigate' silently never matches, and keying on pathname '/' alone
+  // misses the shell whenever it was opened as '/index.html'.
+  assert.match(html, /content-type[\s\S]{0,40}includes\('text\/html'\)/);
+  assert.doesNotMatch(html, /req\.mode === 'navigate'/);
+  // And the version has to move, or activate() keeps the old strategy's cache.
+  assert.match(sw, /const CACHE_VERSION = "wongchoi-v2"/);
 });
 
 test("dashboard overview keeps an eleven-race meeting in the dense desktop layout", () => {
@@ -971,6 +1001,175 @@ test("pending recommendations always show a locked confirmation with extracted o
   assert.match(template, /旺財建議注碼/);
   assert.match(template, /確認落注/);
   assert.doesNotMatch(html, /＋ 加入投注單|收起投注確認/);
+});
+
+test("a valid feed that passed nothing falls back to history instead of blanking", () => {
+  const historyCase = {
+    id: "tennis-old", event_date: "2026-07-23", event_name: "Baez vs Hanfmann",
+    market: "Sebastian Baez Aces", selection: "Over 1.5", odds: 1.88, outcome: "lost", metrics: {},
+  };
+  const data = {
+    ...EMPTY_DASHBOARD_DATA,
+    sports_history: { nba: [], tennis: [historyCase] },
+    sports_feed: {
+      sports: {
+        // The exact shape that broke it: analysis ran fine, evidence gate passed nothing.
+        tennis: { validation_status: "valid", recommendations: [], coverage: null, strategy: null },
+      },
+    },
+  };
+  const { sportsHistory, renderSportsHistory } = loadTemplateFunctions(data);
+
+  assert.equal(sportsHistory("tennis").length, 1, "must fall back to history, not return the empty live list");
+  const html = renderSportsHistory("tennis");
+  // And it has to say today is a no-bet day, or the old case reads as today's pick.
+  assert.match(html, /今日冇合格建議/);
+  assert.match(html, /唔應該落注/);
+  assert.match(html, /Baez vs Hanfmann/);
+  // The no-bet answer comes before the diagnostics, not after them.
+  assert.ok(html.indexOf("今日冇合格建議") < html.indexOf("history-grid"));
+});
+
+test("coverage and strategy diagnostics stay collapsed so picks are not buried", () => {
+  const data = {
+    ...EMPTY_DASHBOARD_DATA,
+    sports_history: { nba: [], tennis: [{ id: "t", event_name: "M", metrics: {} }] },
+    sports_feed: {
+      sports: {
+        tennis: {
+          validation_status: "valid",
+          recommendations: [],
+          coverage: { fixtures_found: 10, sportsbet_priced_matches: 1, modelled_matches: 1, priced_ratio: 0.1 },
+          strategy: { status: "RESEARCH_ONLY", enabled_families: [], families: { player_aces: { scorecard_settled: 3 } } },
+        },
+      },
+    },
+  };
+  const { renderSportsHistory } = loadTemplateFunctions(data);
+  const html = renderSportsHistory("tennis");
+  // Both diagnostics still present — but inside one collapsed block, not stacked open.
+  assert.match(html, /<details class="sports-diagnostics">/);
+  assert.match(html, /資料覆蓋同策略狀態/);
+  assert.match(html, /今日賽程 10 場/);
+  assert.match(html, /RESEARCH_ONLY/);
+  const iDetails = html.indexOf('class="sports-diagnostics"');
+  assert.ok(html.indexOf("今日賽程 10 場") > iDetails, "coverage must sit inside the collapsed block");
+  assert.ok(html.indexOf("RESEARCH_ONLY") > iDetails, "strategy must sit inside the collapsed block");
+});
+
+test("a feed with real recommendations still wins over history", () => {
+  const live = {
+    id: "tennis-live", event_date: "2026-07-31", event_name: "Live Match",
+    market: "Player Aces", selection: "Over 3.5", odds: 1.9, outcome: "pending", metrics: {},
+  };
+  const data = {
+    ...EMPTY_DASHBOARD_DATA,
+    sports_history: { nba: [], tennis: [{ id: "old", event_name: "Old Match", metrics: {} }] },
+    sports_feed: { sports: { tennis: { validation_status: "valid", recommendations: [live] } } },
+  };
+  const { sportsHistory, renderSportsHistory } = loadTemplateFunctions(data);
+  assert.equal(sportsHistory("tennis")[0].id, "tennis-live");
+  const html = renderSportsHistory("tennis");
+  assert.doesNotMatch(html, /今日冇合格建議/);
+  assert.doesNotMatch(html, /Old Match/);
+});
+
+test("a bare over/under line is joined to its subject, a self-describing pick is not", () => {
+  const { sportsPickLines } = loadTemplateFunctions();
+  // Spread the vm-realm result into this realm: deepStrictEqual compares prototypes,
+  // and objects built inside the vm carry a different Object.prototype.
+  const lines = (item) => ({ ...sportsPickLines(item) });
+  // Tennis puts the subject in market and the side in selection — "Over 1.5" alone
+  // tells you nothing about what to back.
+  assert.deepEqual(
+    lines({ market: "Sebastian Baez Aces", selection: "Over 1.5" }),
+    { kicker: "", headline: "Sebastian Baez Aces · Over 1.5" },
+  );
+  for (const bare of ["Under 5.5", "O2.5", "u 1.5"]) {
+    assert.match(sportsPickLines({ market: "Total Games", selection: bare }).headline, /^Total Games · /);
+  }
+  // NBA selections already name the player and the line; market is a category.
+  assert.deepEqual(
+    lines({ market: "Player Points", selection: "Jalen Brunson 25+" }),
+    { kicker: "Player Points", headline: "Jalen Brunson 25+" },
+  );
+  assert.equal(sportsPickLines({ market: "", selection: "Solo pick" }).headline, "Solo pick");
+  assert.equal(sportsPickLines({ market: "Only market", selection: "" }).headline, "Only market");
+  assert.equal(sportsPickLines({}).headline, "—");
+});
+
+test("combo legs are parsed out of both object and pre-formatted string form", () => {
+  const { sportsLegParts } = loadTemplateFunctions();
+  const parts = (leg) => ({ ...sportsLegParts(leg) });
+  assert.deepEqual(
+    parts("Sebastian Baez aces Over 1.5 @ 1.88 · LOST"),
+    { label: "Sebastian Baez aces Over 1.5", odds: 1.88, status: "lost" },
+  );
+  assert.deepEqual(
+    parts({ event_name: "A vs B", market: "aces", selection: "Over 5.5", odds: 1.95, status: "won" }),
+    { label: "A vs B · aces · Over 5.5", odds: 1.95, status: "won" },
+  );
+  // No price and no status must not corrupt the label.
+  assert.deepEqual(parts("Plain leg"), { label: "Plain leg", odds: null, status: null });
+  assert.equal(sportsLegParts({}).label, "未命名 leg");
+});
+
+test("a combo shows every leg with its own price, not just the combined odds", () => {
+  const { renderHistoryCard } = loadTemplateFunctions();
+  const html = renderHistoryCard({
+    id: "tennis-combo", event_date: "2026-07-23", event_name: "3-match Prop Combo",
+    market: "Aces Combo", selection: "Baez O1.5 + Buse O5.5 + Halys O5.5",
+    bet_type: "combo", odds: 6.23, outcome: "lost", metrics: {},
+    legs: [
+      "Sebastian Baez aces Over 1.5 @ 1.88 · LOST",
+      "Buse/Etcheverry total aces Over 5.5 @ 1.95 · WON",
+      "Halys/Navone total aces Over 5.5 @ 1.70 · WON",
+    ],
+  }, "tennis");
+
+  assert.match(html, /3 腳 combo/);
+  assert.equal((html.match(/class="pick-leg\b/g) || []).length, 3, "one row per leg");
+  for (const price of ["1.88", "1.95", "1.70"]) assert.ok(html.includes(price), `leg price ${price} must show`);
+  assert.match(html, /合併賠率[\s\S]*6\.23/);
+  // Per-leg results, so a 2/3 combo reads as a loss for an identifiable reason.
+  assert.match(html, /pick-leg--lost/);
+  assert.match(html, /pick-leg--won/);
+});
+
+test("a review-only observation is never presented as something to bet", () => {
+  const { renderHistoryCard } = loadTemplateFunctions();
+  const html = renderHistoryCard({
+    id: "nba-obs", event_date: "2026-04-24", event_name: "CLE @ TOR",
+    market: "Bench Player Props", selection: "Bench minutes assumption",
+    odds: null, outcome: "review", metrics: {},
+  }, "nba");
+
+  assert.match(html, /觀察筆記/);
+  assert.match(html, /唔係投注建議/);
+  assert.match(html, /pick-block--note/);
+  // The 落注 label must be absent — that word is what tells the user to back it.
+  assert.doesNotMatch(html, /🎯 落注/);
+});
+
+test("cards lead with the fixture and fold model commentary away", () => {
+  const { renderHistoryCard } = loadTemplateFunctions();
+  const html = renderHistoryCard({
+    id: "t1", event_date: "2026-07-23", event_name: "Baez vs Hanfmann",
+    market: "Sebastian Baez Aces", selection: "Over 1.5", odds: 1.88,
+    outcome: "lost", metrics: {}, insight: "why", risk: "risk", actual: "0 aces",
+  }, "tennis");
+
+  // Fixture, then the pick, then the collapsed prose — in that document order.
+  const iFixture = html.indexOf("history-card__event");
+  const iPick = html.indexOf("pick-block__headline");
+  const iMore = html.indexOf("history-card__more");
+  assert.ok(iFixture < iPick && iPick < iMore, "fixture → pick → details");
+  assert.match(html, /<details class="history-card__more">/);
+  assert.match(html, /Sebastian Baez Aces · Over 1\.5/);
+  assert.match(html, /賠率 <strong>1\.88<\/strong>/);
+  // Prose is present but inside the collapsed block.
+  assert.ok(html.indexOf("why") > iMore);
+  assert.ok(html.indexOf("risk") > iMore);
 });
 
 test("settled historical examples cannot be added as new bets", () => {
