@@ -193,7 +193,14 @@
     .roi-record-action { min-height: 34px; padding: 5px 9px; border: 1px solid; border-radius: 7px; background: #fff; font-size: 0.68rem; font-weight: 800; cursor: pointer; }
     .roi-record-action--edit { color: #92400E; border-color: #FDE68A; background: #FFFBEB; }
     .roi-record-action--delete { color: #B91C1C; border-color: #FECACA; background: #FEF2F2; }
-    .roi-modal-backdrop { position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 16px; background: rgba(15,23,42,0.58); }
+    /* Native <dialog>: focus trapping, Esc-to-close and top-layer stacking come free,
+       none of which the previous hand-rolled div overlay had. The dialog is stretched
+       to fill the viewport so that clicking the dim area targets the dialog itself,
+       which is how click-outside-to-close is detected. */
+    dialog.roi-modal-dialog { position: fixed; inset: 0; z-index: 2000; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 16px; border: 0; background: transparent; overflow: auto; }
+    dialog.roi-modal-dialog:not([open]) { display: none; }
+    dialog.roi-modal-dialog[open] { display: grid; place-items: center; }
+    dialog.roi-modal-dialog::backdrop { background: rgba(15,23,42,0.58); }
     .roi-modal { width: min(480px,100%); max-height: calc(100vh - 32px); overflow-y: auto; border-radius: 14px; background: #fff; box-shadow: 0 24px 80px rgba(15,23,42,0.3); }
     .roi-modal__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 20px 12px; border-bottom: 1px solid #E2E8F0; }
     .roi-modal__title { color: #0F172A; font-size: 1rem; font-weight: 800; }
@@ -2166,15 +2173,68 @@ function renderSportsLegEditors(legs) {
   </div>`;
 }
 
+// ═══════════════════════════════════════════════
+// Modal dialogs
+// ═══════════════════════════════════════════════
+// One helper behind all three modals. Native <dialog> handles focus trapping, Esc and
+// top-layer stacking, so none of that is hand-rolled here.
+//
+// Teardown uses .remove() (no `close` event) while user-initiated closing uses .close()
+// (fires `close`, which also covers Esc). Keeping those separate matters: the ROI editor
+// resets module state in its close handler, and if the pre-emptive teardown fired a
+// close event, that reset could land AFTER the new editor had already stored its state.
+function openModalDialog(id, innerHTML, onClose) {
+  document.getElementById(id)?.remove();
+  const dialog = document.createElement('dialog');
+  dialog.id = id;
+  dialog.className = 'roi-modal-dialog';
+  dialog.innerHTML = innerHTML;
+  dialog._wcOnClose = onClose || null;
+  document.body.appendChild(dialog);
+  // The dialog fills the viewport, so anything outside the inner .roi-modal is the dim
+  // area and targets the dialog element itself.
+  dialog.addEventListener('click', event => { if (event.target === dialog) closeModalDialog(id); });
+  // Esc: handled explicitly rather than via the native close request. Engines disagree
+  // on which events a dismissal emits — measured in one engine here, close() sets
+  // open=false and fires NEITHER `cancel` NOR `close` — which would leave the node in
+  // the DOM and, for the ROI editor, its module state still set. preventDefault takes
+  // the close request away from the browser so exactly one deterministic path runs.
+  dialog.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeModalDialog(id);
+    }
+  });
+  // Still listened to, for engines that DO emit them (e.g. a dismissal we did not see).
+  dialog.addEventListener('cancel', () => finishModalDialog(dialog));
+  dialog.addEventListener('close', () => finishModalDialog(dialog));
+  if (typeof dialog.showModal === 'function') dialog.showModal();
+  return dialog;
+}
+
+// Idempotent teardown: whichever path gets here first removes the node and runs the
+// cleanup exactly once, so an Esc-fired event and an explicit close cannot double-run it.
+function finishModalDialog(dialog) {
+  if (!dialog || dialog._wcFinished) return;
+  dialog._wcFinished = true;
+  const onClose = dialog._wcOnClose;
+  dialog.remove();
+  if (onClose) onClose();
+}
+
+function closeModalDialog(id) {
+  const dialog = document.getElementById(id);
+  if (!dialog) return;
+  if (typeof dialog.close === 'function' && dialog.open) dialog.close();
+  // Explicit, NOT left to the `close` event — that event is not reliably emitted.
+  finishModalDialog(dialog);
+}
+
 function openSportsBetModal(sourceId = null, recordId = null) {
   const existing = recordId ? sportsBetLedger.find(record => record.id === recordId) : null;
   if (!existing) return;
   const record = existing;
-  document.getElementById('sportsBetModal')?.remove();
-  const modal = document.createElement('div');
-  modal.id = 'sportsBetModal';
-  modal.className = 'roi-modal-backdrop';
-  modal.innerHTML = `<div class="roi-modal" role="dialog" aria-modal="true" aria-labelledby="sports-modal-title">
+  const modalHtml = `<div class="roi-modal">
     <div class="roi-modal__header"><div><div class="roi-modal__title" id="sports-modal-title">修改實際賠率</div><div class="roi-modal__meta">${esc(record.event_name)}</div></div><button type="button" class="roi-modal__close" onclick="closeSportsBetModal()" aria-label="關閉">×</button></div>
     <form class="roi-modal__body" onsubmit="saveSportsBet(event,'${esc(record.id)}',true)">
       <div class="sports-notice" style="margin:0"><span>🔒</span><span>${esc(record.event_date)} · ${esc(record.market)} · <strong>${esc(record.selection)}</strong><br>賽事、選擇同旺財注碼 ${Number(record.stake).toFixed(2)}u 已鎖定。</span></div>
@@ -2190,8 +2250,7 @@ function openSportsBetModal(sourceId = null, recordId = null) {
       <div class="roi-modal__actions"><button type="button" class="sports-btn" onclick="closeSportsBetModal()">取消</button><button type="submit" class="sports-btn sports-btn--primary">儲存</button></div>
     </form>
   </div>`;
-  document.body.appendChild(modal);
-  modal.addEventListener('click', event => { if (event.target === modal) closeSportsBetModal(); });
+  openModalDialog('sportsBetModal', modalHtml);
 }
 
 function openSportsOddsEditor(encodedRecordId) {
@@ -2199,7 +2258,7 @@ function openSportsOddsEditor(encodedRecordId) {
 }
 
 function closeSportsBetModal() {
-  document.getElementById('sportsBetModal')?.remove();
+  closeModalDialog('sportsBetModal');
 }
 
 async function saveSportsBet(event, id, isEdit) {
@@ -2331,7 +2390,7 @@ async function deleteSportsBet(id) {
 }
 
 function closeBetAudit() {
-  document.getElementById('betAuditModal')?.remove();
+  closeModalDialog('betAuditModal');
 }
 
 function auditStatusChange(item) {
@@ -2346,16 +2405,10 @@ function auditStatusChange(item) {
 
 async function openBetAudit(encodedId) {
   const id = decodeURIComponent(encodedId);
-  document.getElementById('betAuditModal')?.remove();
-  const modal = document.createElement('div');
-  modal.id = 'betAuditModal';
-  modal.className = 'roi-modal-backdrop';
-  modal.innerHTML = `<div class="roi-modal" role="dialog" aria-modal="true" aria-labelledby="audit-modal-title">
+  const modal = openModalDialog('betAuditModal', `<div class="roi-modal" aria-labelledby="audit-modal-title">
     <div class="roi-modal__header"><div><div class="roi-modal__title" id="audit-modal-title">修改及結算紀錄</div><div class="roi-modal__meta">${esc(id)}</div></div><button type="button" class="roi-modal__close" onclick="closeBetAudit()" aria-label="關閉">×</button></div>
     <div class="roi-modal__body"><div class="sports-notice" style="margin:0"><span>⏳</span><span>讀取 D1 audit log…</span></div></div>
-  </div>`;
-  document.body.appendChild(modal);
-  modal.addEventListener('click', event => { if (event.target === modal) closeBetAudit(); });
+  </div>`);
   const body = modal.querySelector('.roi-modal__body');
   if (!AUDIT_ENDPOINT) {
     body.innerHTML = '<div class="sports-notice" style="margin:0"><span>💾</span><span>本機模式未有 D1 audit log。</span></div>';
@@ -3913,9 +3966,11 @@ function encodeRoiKey(key) {
 }
 
 function closeRoiEditor() {
+  // State is nulled by the dialog's close handler (which also covers Esc); this stays
+  // idempotent for the case where no dialog is open.
   editingRoiKey = null;
   editingRoiBaseRecord = null;
-  document.getElementById('roi-edit-backdrop')?.remove();
+  closeModalDialog('roi-edit-backdrop');
 }
 
 function editRoiRecord(encodedKey) {
@@ -3925,13 +3980,14 @@ function editRoiRecord(encodedKey) {
     alert('搵唔到呢條已匯入記錄，請重新整理後再試。');
     return;
   }
-  closeRoiEditor();
+  // Deliberately NOT closeRoiEditor() here: that calls close(), whose async `close`
+  // event would null editingRoiKey after the lines below have set it. openModalDialog
+  // tears the old node down with remove(), which fires no event.
   editingRoiKey = key;
   editingRoiBaseRecord = record;
   const resultValue = record.result_position ?? '';
-  document.body.insertAdjacentHTML('beforeend', `
-    <div id="roi-edit-backdrop" class="roi-modal-backdrop" onclick="if(event.target===this)closeRoiEditor()">
-      <section class="roi-modal" role="dialog" aria-modal="true" aria-labelledby="roi-edit-title">
+  openModalDialog('roi-edit-backdrop', `
+      <section class="roi-modal" aria-labelledby="roi-edit-title">
         <div class="roi-modal__header">
           <div>
             <div id="roi-edit-title" class="roi-modal__title">編輯 ROI 投注記錄</div>
@@ -3956,8 +4012,12 @@ function editRoiRecord(encodedKey) {
             <button id="roi-edit-save" class="btn btn--primary" type="submit">儲存並重計 ROI</button>
           </div>
         </form>
-      </section>
-    </div>`);
+      </section>`, () => {
+    // Runs for the close button, the dim area AND Esc, so the editor never leaves
+    // stale state behind when dismissed by keyboard.
+    editingRoiKey = null;
+    editingRoiBaseRecord = null;
+  });
   document.getElementById('roi-edit-result')?.focus();
 }
 

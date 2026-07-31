@@ -14,7 +14,7 @@
 你只需自然咁講出任務，我背後嘅 Request Classifier 就會自動分析，並派出最合適嘅專家。
 
 * **你講：** 「幫我將首頁個 Login 掣改做圓角，同埋轉深色主題。」
-* **我會：** 自動加載 `@frontend-specialist` 身份，並引用 `tailwind-patterns` 技能嚟幫你修改。
+* **我會：** 自動加載 `@frontend-specialist` 身份，並引用 `frontend-design` 技能嚟幫你修改。
 
 ### 🅱️ 直接點名召喚 (Manual Override)
 如果你已經有特定嘅專家想用，或者你睇到 `.agent/agents/` 入面有你自訂嘅新 Agent，你可以直接用 `@` 點名。
@@ -103,5 +103,5 @@ Antigravity Kit 最強嘅地方就係 **100% 可塑**。如果想個 Ai 更融�
 *(結果：AI 會吐出一截平凡無奇、無擴充性、只有預設顏色嘅代碼)*
 
 ### ✅ 應該咁做 (團隊指令式玩法)
-> *"/plan 我想建立一個包含 Oauth Google 同 Email 驗證的登入系統，需要符合我哋專案而家嘅 Security 原則，用 tailwind-patterns。"*
+> *"/plan 我想建立一個包含 Oauth Google 同 Email 驗證的登入系統，需要符合我哋專案而家嘅 Security 原則，用 frontend-design。"*
 *(結果：我會先同你確認業務邏輯，然後啟動 `@frontend-specialist` 搭 `@security-auditor`，自動規劃任務並寫出嚴格符合高質標準嘅系統！)*

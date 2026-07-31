@@ -1003,6 +1003,31 @@ test("pending recommendations always show a locked confirmation with extracted o
   assert.doesNotMatch(html, /＋ 加入投注單|收起投注確認/);
 });
 
+test("modals are native dialogs with a teardown that does not trust close events", () => {
+  const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+
+  // All three modals go through the one helper, as real <dialog> in the top layer.
+  assert.match(html, /const dialog = document\.createElement\('dialog'\);/);
+  assert.match(html, /if \(typeof dialog\.showModal === 'function'\) dialog\.showModal\(\);/);
+  assert.match(html, /dialog\.roi-modal-dialog::backdrop/);
+  assert.doesNotMatch(html, /roi-modal-backdrop/, "the hand-rolled overlay class must be gone");
+  for (const id of ["sportsBetModal", "betAuditModal", "roi-edit-backdrop"]) {
+    assert.ok(html.includes(`openModalDialog('${id}'`), `${id} must open via openModalDialog`);
+  }
+
+  // Measured: one engine's close() sets open=false but fires NEITHER cancel NOR close.
+  // So teardown must be explicit, and Esc must be handled directly rather than left to
+  // the native close request — otherwise the node leaks and the ROI editor keeps state.
+  assert.match(html, /finishModalDialog\(dialog\);\s*\n\}/);
+  assert.match(html, /if \(event\.key === 'Escape'\) \{\s*\n\s*event\.preventDefault\(\);\s*\n\s*closeModalDialog\(id\);/);
+  // Idempotent, so an Esc-fired event plus an explicit close cannot run cleanup twice.
+  assert.match(html, /if \(!dialog \|\| dialog\._wcFinished\) return;/);
+
+  // The money-entry paths must be untouched by the conversion.
+  assert.match(html, /onsubmit="saveSportsBet\(event,'\$\{esc\(record\.id\)\}',true\)"/);
+  assert.match(html, /onsubmit="saveRoiRecord\(event\)"/);
+});
+
 test("off-screen analysis prose is skipped, but searchable text is not", () => {
   const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
   assert.match(html, /\.analysis-document__section \{ content-visibility: auto; contain-intrinsic-size: auto 900px; \}/);
