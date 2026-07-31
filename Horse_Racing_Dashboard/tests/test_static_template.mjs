@@ -1003,6 +1003,35 @@ test("pending recommendations always show a locked confirmation with extracted o
   assert.doesNotMatch(html, /＋ 加入投注單|收起投注確認/);
 });
 
+test("off-screen analysis prose is skipped, but searchable text is not", () => {
+  const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+  assert.match(html, /\.analysis-document__section \{ content-visibility: auto; contain-intrinsic-size: auto 900px; \}/);
+  // Safari does not expose content skipped this way to find-in-page, so it must never
+  // be applied to what you would actually search for: horse names, ratings, jockeys.
+  for (const selector of ["\\.horse-card", "\\.horse-card__name", "\\.data-readout", "\\.battlefield-ranking"]) {
+    assert.doesNotMatch(
+      html,
+      new RegExp(`${selector} \\{[^}]*content-visibility`),
+      `content-visibility must not be applied to ${selector} — it would hide it from find-in-page`,
+    );
+  }
+});
+
+test("view transitions animate real view changes only, never the bet-sync tick", () => {
+  const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+  // render() must gate on the view key changing. Without this the 15s /api/sync poll
+  // would cross-fade the whole page while you are reading a racecard.
+  assert.match(html, /const viewKey = `\$\{activeSport\}\|\$\{currentView\}`/);
+  assert.match(html, /viewChanged = lastRenderedViewKey !== null && lastRenderedViewKey !== viewKey/);
+  assert.match(html, /if \(viewChanged && !reduceMotion && typeof document\.startViewTransition === 'function'\)/);
+  // Feature-detected and motion-respecting, with a plain render as the fallback path.
+  assert.match(html, /matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches/);
+  assert.match(html, /function renderNow\(main\)/);
+  // Only #app-main is named, so the header and tab bar do not animate.
+  assert.match(html, /#app-main \{ view-transition-name: app-main; \}/);
+  assert.match(html, /::view-transition-old\(app-main\)/);
+});
+
 test("the mobile race switcher sticks, and nothing upstream re-breaks it", () => {
   const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
   const css = fs.readFileSync(new URL("../frontend/src/index.css", import.meta.url), "utf8");

@@ -280,6 +280,22 @@
     .sport-switch--active { color: #FFFFFF; background: #1E40AF; box-shadow: 0 3px 9px rgba(30,64,175,.22); }
     .sport-switch--active:hover { color: #FFFFFF; background: #1E3A8A; }
 
+    /* ─── Skip rendering off-screen analysis prose ───
+       A race detail lays out 60 analysis chapters totalling ~56,000px (10 horses x 6
+       chapters), almost all of it collapsed and unread. Letting the browser skip the
+       off-screen ones cut the measured race-detail render from ~456ms to ~228ms with
+       the page height unchanged (13,685px both ways, so no scroll jump).
+
+       Applied ONLY to the long prose chapters — deliberately NOT to .horse-card,
+       .horse-card__name or .data-readout. Safari does not expose content skipped this
+       way to find-in-page, and horse names, ratings and jockeys are exactly what you
+       would search for. The chapters are collapsed by default anyway, so for them this
+       costs nothing that was not already hidden.
+
+       `contain-intrinsic-size: auto 900px` seeds the placeholder near the measured
+       ~937px average chapter height and then remembers the real size once rendered. */
+    .analysis-document__section { content-visibility: auto; contain-intrinsic-size: auto 900px; }
+
     /* ─── Header ───
        viewport-fit=cover (needed for the bottom bars) also extends the layout
        viewport UP behind the status bar, so in standalone mode the title would
@@ -524,6 +540,19 @@
       .inline-bet-confirm .sports-btn--primary { grid-column:auto; min-height:44px; }
       .sports-record__leg { grid-template-columns:1fr; }
     }
+    /* ─── View transitions ───
+       Native cross-fade when switching sport or view, so the installed app stops
+       feeling like a page reload. Only #app-main is named, so only the part that
+       actually changes animates; the header and tab bar stay put. Kept short (170ms)
+       — this is a data tool, not a slideshow. Nothing here runs in browsers without
+       the API; render() feature-detects before starting a transition. */
+    @media (prefers-reduced-motion: no-preference) {
+      #app-main { view-transition-name: app-main; }
+      ::view-transition-old(app-main) { animation: wc-view-out 170ms ease both; }
+      ::view-transition-new(app-main) { animation: wc-view-in 170ms ease both; }
+    }
+    @keyframes wc-view-out { to { opacity: 0; transform: translateY(-5px); } }
+    @keyframes wc-view-in { from { opacity: 0; transform: translateY(7px); } }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
     }
@@ -4047,9 +4076,29 @@ function renderMonthlyBreakdown(sessions, bets) {
 // ═══════════════════════════════════════════════
 // Render
 // ═══════════════════════════════════════════════
+// Animate the swap only when the VIEW actually changes. render() also runs on the
+// 15-second bet-sync tick and after every ledger load, and cross-fading the whole page
+// every 15 seconds while you are reading a racecard would be far worse than no
+// animation at all. Falls straight through where startViewTransition is missing or the
+// reader asked for reduced motion.
+let lastRenderedViewKey = null;
+
 function render() {
   const main = document.getElementById('app-main');
   if (!main) return;
+  const viewKey = `${activeSport}|${currentView}`;
+  const viewChanged = lastRenderedViewKey !== null && lastRenderedViewKey !== viewKey;
+  lastRenderedViewKey = viewKey;
+  const reduceMotion = typeof matchMedia === 'function'
+    && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (viewChanged && !reduceMotion && typeof document.startViewTransition === 'function') {
+    document.startViewTransition(() => renderNow(main));
+    return;
+  }
+  renderNow(main);
+}
+
+function renderNow(main) {
   ['horses', 'nba', 'tennis', 'portfolio'].forEach(sport => {
     const isActive = activeSport === sport;
     const button = document.getElementById(`sport-${sport}`);
