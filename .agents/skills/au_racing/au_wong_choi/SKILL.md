@@ -34,11 +34,39 @@ python3 .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "<URL�
 python .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "<URL或資料夾>"
 ```
 
+## 覆盤都由呢個 skill 入（唔使再叫 AU Reflector）
+
+用戶講「**au wong choi review 08-01 rosehill gardens**」或者「**覆盤 08-01 flemington**」
+嗰陣，唔好叫佢貼路徑或者 URL，亦唔使另外叫 `AU Reflector` skill。先用 resolver 把
+一句話變成 meeting 目錄，再交畀 reflector orchestrator：
+
+```bash
+DIR=$(python3 .agents/skills/au_racing/au_meeting_resolver.py "08-01 rosehill gardens") \
+  && python3 .agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py "$DIR"
+```
+
+分析（唔係覆盤）就同一個 resolver 接落主入口：
+
+```bash
+DIR=$(python3 .agents/skills/au_racing/au_meeting_resolver.py "08-01 rosehill gardens") \
+  && python3 .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "$DIR"
+```
+
+Resolver 認得 `08-01` / `8-1` / `2026-08-01` / `20260801`，馬場名做大小寫無關嘅
+子字串（`rosehill` 對得住 `Rosehill Gardens`），live 根目錄同 `Archive/` 一齊搵。
+
+⚠️ **多過一個 match 佢會 exit 1 並列晒出嚟，唔會亂猜** —— 撞錯馬場好過靜靜咁分析錯。
+遇到就把個 list 畀用戶揀，唔好自己挑一個。
+
+⚠️ 覆盤要賽果。`--results-url` 已經冇用（Racenet 三條 transport 全封），賽果由
+Sportsbet 攞 —— 見 `claw_sportsbet_form.py`。
+
 ## Supported Inputs
 
-- Racenet form-guide URL
+- 一句話（例：`08-01 rosehill gardens`）— 經 `au_meeting_resolver.py`
 - 已存在 meeting folder
 - 現成 `Race_X_Logic.json`
+- ~~Racenet form-guide URL~~ — Racenet 已全面封鎖，改用 Sportsbet
 
 ## Expected Outputs
 
