@@ -3836,20 +3836,43 @@ class RacingEngine:
         return "neutral"
 
     def _formline_score(self):
-        signal = self._formline_signal()
+        # ── 2026-08-02 重建：冇對手線就唔好扮有 ────────────────────────────
+        # 舊行為：`_formline_signal()` 喺**冇任何對手線**嘅時候，會去 parse
+        # `formline_line` 個文字標題（「強」「極強」…）當作級別。實測 713 場：
+        #     valid=0（冇任何對手強度證據）  6,682 匹 **88.5%**
+        #         分數 平均 75.76 中位 78.0 範圍 57.0–89.5
+        #         場內超額前三率 **+0.0** ← 完全等於隨機
+        #     valid>=1（有對手線）             865 匹  11.5%  範圍 53.0–100.0
+        # 即係八成半嘅馬帶住一個 32 分闊嘅**純噪音**分佈，而且 79.9% 全樣本
+        # 「冇證據但攞到 >70 分」。個 leaf 場內 ρ 得 0.011（12 個 leaf 最差）
+        # 就係咁嚟 —— 唔係缺數據，係冇數據嗰批被派咗高分，蓋過咗有數據嗰批。
+        #
+        # ⚠️ 呢個唔止影響排名（form_line 權重本身係 0）。報告會照樣同用戶講
+        # 「賽績線強」，而背後乜證據都冇 —— 就算永遠唔畀權重都要修。
+        #
+        # 新行為：冇對手強度證據 → 直接坐 60（該批實測超額 +0.0，中性就係啱），
+        # 唔再讀文字標題。有證據先至用級別表。下面嘅 bonus 項本身都係證據性嘅
+        # （對手其後贏出／升班／頭馬交手），所以照計，令「得少少證據」嘅馬
+        # 仍然可以離開 60。
         w = FORMLINE_MICRO_WEIGHTS
-        mapping = {
-            "elite": w.get("elite_base", 78.0),
-            "strong": w.get("strong_base", 72.0),
-            "medium_strong": w.get("med_strong_base", 68.0),
-            "medium": w.get("med_base", 64.0),
-            "medium_weak": w.get("med_weak_base", 56.0),
-            "weak": w.get("weak_base", 50.0),
-            "neutral": w.get("neutral_base", 58.0),
-            "unknown": w.get("unknown_base", 58.0),
-        }
-        score = mapping.get(signal, w.get("unknown_base", 58.0))
-        
+        _support, valid_rows = self._formline_support_summary()
+        if valid_rows <= 0:
+            signal = "unknown"
+            score = 60.0
+        else:
+            signal = self._formline_signal()
+            mapping = {
+                "elite": w.get("elite_base", 78.0),
+                "strong": w.get("strong_base", 72.0),
+                "medium_strong": w.get("med_strong_base", 68.0),
+                "medium": w.get("med_base", 64.0),
+                "medium_weak": w.get("med_weak_base", 56.0),
+                "weak": w.get("weak_base", 50.0),
+                "neutral": w.get("neutral_base", 58.0),
+                "unknown": w.get("unknown_base", 58.0),
+            }
+            score = mapping.get(signal, w.get("unknown_base", 58.0))
+
         future_win_hits = self._formline_future_wins()
         strong_hits = self._formline_strong_opponents()
         followups = self._formline_followup_counts()
