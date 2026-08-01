@@ -3610,8 +3610,18 @@ class RacingEngine:
         detail.update({"value": round(float(value), 2), "mean": round(mean, 2),
                        "stdev": round(stdev, 2), "z": round(z, 2),
                        "final": round(score, 1), "state": "ok"})
+        # ⚠️ 個分係 **場內相對**（60 − z×20，z 對全場平均），但舊 note 只講絕對值
+        # 「快過賽事基準 X 秒」，於是會出現「快過基準 0.94 秒 → 45.4 分」呢種
+        # 睇落自相矛盾嘅句子（2026-08-01 Rosehill R5 Horizons 實例）。分數係啱嘅
+        # ——嗰場全場都快，佢排第 7 —— 錯嘅係冇講埋同場點比。所以 note 要寫埋
+        # 場均同差距，否則一個正確嘅數字會令人以為引擎壞咗。
         direction = "快過" if float(value) < 0 else "慢過"
-        note = (f"近{detail['runs']}場實測末段平均{direction}賽事基準 {abs(float(value)):.2f} 秒，"
+        field_dir = "快過" if mean < 0 else "慢過"
+        gap = float(value) - mean          # >0 = 慢過場均（l600_delta 越細越快）
+        rel = "慢過" if gap > 0 else "快過"
+        note = (f"近{detail['runs']}場實測末段平均{direction}賽事基準 "
+                f"{abs(float(value)):.2f} 秒；同場平均{field_dir}基準 {abs(mean):.2f} 秒，"
+                f"即係此駒{rel}場均 {abs(gap):.2f} 秒（本項比嘅係同場對手，唔係基準本身），"
                 f"段速實速分 {score:.1f}。")
         return score, note, "pf_l600_delta_field_relative"
 
@@ -3744,6 +3754,12 @@ class RacingEngine:
             score += w.get("same_track_poor_pen1", -3.0)
             notes.append("同場已有多次出賽但仍未交到成績")
         elif track_stats["starts"] > 0 and track_stats["places"] == 0:
+            # 2026-08-02：試過加重呢個罰分（−0.81 → −2.0 / −3.0 / −4.5）。
+            # cohort 實測的確話「1 戰零上名」超額 −2.6 而唔係 −0.81 應有嘅輕微，
+            # 但 A/B **全部唔過關**：holdout 三檔都係逐項 0.00，dev 喺 −3.0/−4.5
+            # 見 pass1 −0.66/−0.50、winT3 −0.50/−0.33、mrr −0.27/−0.28。
+            # 即係嗰 −2.6 已經由其他 leaf（近績、穩定性）講咗，喺呢度再罰一次
+            # 係重複計算。保留 −0.81。
             score += w.get("same_track_poor_pen2", -2.0)
             notes.append("有同場出賽紀錄但仍未交到成績")
 
