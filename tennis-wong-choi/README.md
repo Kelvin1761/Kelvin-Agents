@@ -1,6 +1,6 @@
 # Tennis Wong Choi
 
-API-only tennis pricing engine for ATP/WTA match-winner analysis.
+Python tennis pricing engine for ATP/WTA match and player-prop analysis.
 
 This MVP implements Stage 1-5:
 
@@ -14,10 +14,30 @@ This MVP implements Stage 1-5:
 - Weighted probability pricing
 - Fair odds, no-vig market probability, edge, minimum acceptable odds
 - Bet filter and stake sizing
+- Extensible player-prop registry and settlement for player aces, double
+  faults, player games won, player to win at least one set, first-set winner,
+  full-match game handicap, set handicap, and BO3 exact set score
+- Per-family model-vs-market scorecards and evidence-gated recommendations
 - Data-grounded deterministic agent reviews
 - CLI and unit tests
 
 The system refuses LLM-generated statistics. Numeric features must be backed by provenance from an API response or stored API snapshot.
+
+## Active Betting Strategy
+
+The active report uses only three recommendation states:
+
+- `VALIDATED_SINGLE`
+- `VALIDATED_2_LEG`
+- `RESEARCH_ONLY`
+
+The old Banker / Value / High-Odds categories are retired. Edge and expected
+value remain numeric requirements, not bet categories. New prop families are
+priced and paper-settled first; each family needs 120 raw scorecard outcomes,
+50 settled paper bets, a model Brier score at least 0.005 better than the
+de-vigged market, and positive ROI before it may be recommended. A formal combo
+is exactly two qualified props from different matches with positive joint EV;
+there is no arbitrary requirement for total odds to exceed 2.00.
 
 ## Quick Start
 

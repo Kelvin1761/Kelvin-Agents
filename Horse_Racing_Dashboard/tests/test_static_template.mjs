@@ -939,6 +939,11 @@ test("tennis workspace shows fixture, Sportsbet and model coverage timestamps", 
             status: "RESEARCH_ONLY",
             raw_scorecard_settled: 15,
             enabled_families: [],
+            families: {
+              player_aces: { scorecard_settled: 15 },
+              player_total_games: { scorecard_settled: 0 },
+              player_exact_set_score: { scorecard_settled: 8 },
+            },
           },
           coverage: {
             fixtures_found: 102,
@@ -964,7 +969,8 @@ test("tennis workspace shows fixture, Sportsbet and model coverage timestamps", 
   assert.match(html, /未入模型 4 場/);
   assert.match(html, /覆蓋 56\.9%/);
   assert.match(html, /最後 Sportsbet 抓取：2026-07-29T03:43:50Z/);
-  assert.match(html, /Prop 策略：只做研究追蹤，暫停正式推薦/);
-  assert.match(html, /raw 記分卡 15\/120/);
+  assert.match(html, /Prop 策略：RESEARCH_ONLY/);
+  assert.match(html, /Player Aces 15\/120/);
+  assert.match(html, /Player Exact Set Score 8\/120/);
   assert.match(html, /分析已完成，但未有通過模型及風控門檻/);
 });

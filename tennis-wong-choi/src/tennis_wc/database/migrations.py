@@ -321,6 +321,9 @@ CREATE TABLE IF NOT EXISTS feature_snapshots (
     created_at TEXT NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_feature_snapshots_match_quality
+ON feature_snapshots(match_id, data_quality_score);
+
 CREATE TABLE IF NOT EXISTS predictions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     match_id INTEGER NOT NULL,
@@ -497,6 +500,9 @@ CREATE TABLE IF NOT EXISTS prop_tracker (
     settled_at TEXT,
     UNIQUE(prop_key)
 );
+
+CREATE INDEX IF NOT EXISTS idx_prop_tracker_status_value
+ON prop_tracker(result_status, is_value, stake_units);
 """
 
 

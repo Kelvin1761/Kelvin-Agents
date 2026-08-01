@@ -122,6 +122,18 @@ def test_prop_strategy_enables_only_proven_family_and_filters_longshots():
             "settled": 150,
             "model": {"brier": 0.19},
             "market": {"brier": 0.21},
+            "by_family": {
+                "player_aces": {
+                    "settled": 130,
+                    "model": {"brier": 0.19},
+                    "market": {"brier": 0.21},
+                },
+                "match_total_aces": {
+                    "settled": 130,
+                    "model": {"brier": 0.22},
+                    "market": {"brier": 0.21},
+                },
+            },
         },
         {
             "by_family": {
@@ -131,7 +143,7 @@ def test_prop_strategy_enables_only_proven_family_and_filters_longshots():
         },
     )
 
-    assert gate["status"] == "VALIDATED"
+    assert gate["status"] == "VALIDATED_SINGLE"
     assert gate["enabled_families"] == ["player_aces"]
     base = {
         "market_key": "total_player_one_aces_7_5",
@@ -143,6 +155,101 @@ def test_prop_strategy_enables_only_proven_family_and_filters_longshots():
     }
     assert strategy.leg_is_formal_candidate(base, gate)
     assert not strategy.leg_is_formal_candidate(base | {"odds": 2.30}, gate)
+
+
+def test_prop_gate_uses_live_eligible_roi_not_high_odds_research_roi():
+    from tennis_wc.props import strategy
+
+    score = {
+        "settled": 130,
+        "by_family": {
+            "player_aces": {
+                "settled": 130,
+                "model": {"brier": 0.18},
+                "market": {"brier": 0.20},
+            }
+        },
+    }
+    roi = {
+        "by_family": {"player_aces": {"settled": 80, "roi": 0.25}},
+        "by_family_formal_profile": {
+            "player_aces": {"settled": 60, "roi": -0.04}
+        },
+    }
+    gate = strategy.recommendation_gate(score, roi)
+    assert gate["status"] == "RESEARCH_ONLY"
+    assert gate["family_states"]["player_aces"]["roi"] == -0.04
+
+
+def test_prop_registry_classifies_expanded_player_markets():
+    from tennis_wc.props.registry import family_for_market
+
+    assert family_for_market(
+        "total_games", "Alex De Minaur Total Games 12.5"
+    ) == "player_total_games"
+    assert family_for_market(
+        "alex_to_win_at_least_1_set", "Alex To Win At Least 1 Set"
+    ) == "player_win_a_set"
+    assert family_for_market(
+        "total_alex_double_faults_3_5", "Total Alex Double Faults 3.5"
+    ) == "player_double_faults"
+    assert family_for_market(
+        "set_1_game_6_break_points", "Set 1 Game 6 Break Points"
+    ) == "micro_break_points"
+    assert family_for_market("winner_related", "Set 1 Winner") == "first_set_winner"
+    assert family_for_market("game_handicap", "Game Handicap -4.5") == "player_game_handicap"
+    assert family_for_market("set_handicap", "Alternative Set Handicap 1.5") == "player_set_handicap"
+    assert family_for_market("game_handicap", "Set 1 Game Handicap -1.5") == "game_handicap"
+    assert family_for_market("set_betting", "Set Betting") == "player_exact_set_score"
+    assert family_for_market("set_betting", "Set 1 Correct Score") == "set_betting"
+
+
+def test_player_handicap_models_are_complementary_and_conservative():
+    import math
+    from tennis_wc.props import player_model
+
+    set_cover, set_margin = player_model.set_handicap_cover_probability(-1.5, 0.80)
+    game_cover, game_margin = player_model.game_handicap_cover_probability(-3.5, 22.0, 0.80)
+    assert 0 < set_cover < 1 and set_margin > 0
+    assert 0 < game_cover < 1 and game_margin > 0
+    unshrunk_game_cover = 1 - 0.5 * (
+        1 + math.erf((3.5-game_margin) / (5.2*math.sqrt(2)))
+    )
+    assert abs(game_cover-0.5) < abs(unshrunk_game_cover-0.5)
+
+    priced = player_model.price_spread_two_way(
+        1, "player_set_handicap_1.5", 1, "A", 2, "B",
+        -1.5, 1.5, 2.25, 1.60, set_cover, set_margin,
+    )
+    assert priced is not None
+    assert abs(priced.fair_prob_a_cover + (1-priced.fair_prob_a_cover) - 1) < 1e-9
+    assert priced.model_prob_a_cover == round(set_cover, 4)
+
+    # Three-way/integer handicaps have a push state and must not enter this
+    # complementary two-way contract.
+    assert player_model.price_spread_two_way(
+        1, "player_game_handicap_4", 1, "A", 2, "B",
+        -4.0, 4.0, 2.0, 2.0, 0.5, 4.0,
+    ) is None
+
+
+def test_exact_set_score_pricing_is_a_complete_four_way_distribution():
+    from tennis_wc.props import player_model
+
+    prop = player_model.price_exact_set_score(
+        1, "player_exact_set_score", 1, "A", 2, "B",
+        {"a20": 2.1, "a21": 4.0, "b20": 4.5, "b21": 5.5},
+        0.65, temper=0.25,
+    )
+    assert prop is not None and len(prop.selections) == 4
+    assert abs(sum(row.model_prob for row in prop.selections)-1) < 0.001
+    assert abs(sum(row.fair_prob for row in prop.selections)-1) < 0.001
+    assert abs(sum(row.tempered_prob for row in prop.selections)-1) < 0.001
+    assert abs(sum(row.blended_prob for row in prop.selections)-1) < 0.001
+    assert player_model.price_exact_set_score(
+        1, "player_exact_set_score", 1, "A", 2, "B",
+        {"a20": 2.1, "a21": 4.0}, 0.65,
+    ) is None
 
 
 # --------------------------------------------------------------------------- #
@@ -178,6 +285,24 @@ def test_price_ace_legs_empty_when_thin_history(tmp_path, monkeypatch):
     _seed_history(conn, 1, 2, 2, 5.0)
     conn.commit()
     assert ace_model.price_ace_legs(conn, 1, 1, 2, "2026-01-01", "hard", {9.0: 1.8}) == []
+
+
+def test_temper_haircut_cannot_flip_raw_model_direction_into_fake_edge():
+    # Raw model strongly supports OVER, while an extreme temper would pull the
+    # staking probability below the market and previously fabricate UNDER value.
+    tw = ace_model.price_two_way(
+        1, "total_aces_8_5", "match", 8.5, 1.35, 3.2, 12.0,
+        [(0.70, 0.80), (0.71, 0.80)], within_range_ratio=2.0, temper=0.95,
+    )
+    assert tw is not None
+    assert tw.model_prob_over > tw.fair_prob_over
+    assert tw.value_side != "under"
+    from tennis_wc.props.player_model import price_head_to_head
+    head = price_head_to_head(
+        1, "winner_related", 1, "A", 2, "B", 1.35, 3.2, 0.80, temper=0.95
+    )
+    assert head is not None
+    assert head.value_player_id != 2
 
 
 def test_conceded_aces_join_uses_exact_provider_match_pair(tmp_path, monkeypatch):
@@ -421,6 +546,151 @@ def test_games_settlement_grades_total_games(tmp_path, monkeypatch):
     roi = settlement.prop_roi_report(conn)
     assert roi["overall"]["settled"] == 1 and roi["overall"]["wins"] == 1
     assert "match_total_games" in roi["by_family"]
+
+
+def test_expanded_player_props_settle_against_named_player(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import settlement
+
+    init_db()
+    conn = get_connection()
+    _seed_player(conn, 1, "A"); _seed_player(conn, 2, "B")
+    _seed_match(conn, 1, 1, 2)
+    conn.execute(
+        "INSERT INTO match_results "
+        "(match_id, winner_player_id, source_provider, created_at, score_json) "
+        "VALUES (1,1,'t','now', ?)",
+        ('{"player_a_games":13,"player_b_games":11,"player_a_sets":2,'
+         '"player_b_sets":1,"player_a_double_faults":4,'
+         '"player_b_double_faults":2,"sets":['
+         '{"player_a_games":6,"player_b_games":4},'
+         '{"player_a_games":4,"player_b_games":6},'
+         '{"player_a_games":6,"player_b_games":1}]}',),
+    )
+    _rec(
+        conn, settlement, line=12.5, selection="Over 12.5", side="over",
+        odds=1.9, model_p=0.6, market_p=0.52,
+        market_key="player_total_games_1_12.5", scope="player_games", subject=1,
+    )
+    _rec(
+        conn, settlement, line=0.5, selection="Yes", side="over",
+        odds=1.4, model_p=0.8, market_p=0.72,
+        market_key="player_win_a_set_2", scope="player_win_set", subject=2,
+    )
+    _rec(
+        conn, settlement, line=3.5, selection="Over 3.5", side="over",
+        odds=1.9, model_p=0.6, market_p=0.52,
+        market_key="player_double_faults_1_3.5",
+        scope="player_double_faults", subject=1,
+    )
+    _rec(
+        conn, settlement, line=0.5, selection="A", side="over",
+        odds=1.8, model_p=0.62, market_p=0.55,
+        market_key="first_set_winner_1", scope="player_first_set", subject=1,
+    )
+    conn.commit()
+
+    result = settlement.settle_props(conn)
+    statuses = [
+        row["result_status"] for row in
+        conn.execute("SELECT result_status FROM prop_tracker ORDER BY id").fetchall()
+    ]
+    assert result["graded"] == 4
+    assert statuses == ["WON", "WON", "WON", "WON"]
+
+
+def test_player_handicaps_settle_from_game_and_set_margins(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import settlement
+
+    init_db()
+    conn = get_connection()
+    _seed_player(conn, 1, "A"); _seed_player(conn, 2, "B")
+    _seed_match(conn, 1, 1, 2)
+    conn.execute(
+        "INSERT INTO match_results "
+        "(match_id, winner_player_id, source_provider, created_at, score_json) "
+        "VALUES (1,1,'t','now', ?)",
+        ('{"player_a_games":13,"player_b_games":8,'
+         '"player_a_sets":2,"player_b_sets":0}',),
+    )
+    assert settlement.actual_player_margin(conn, 1, 1, "games") == 5
+    assert settlement.actual_player_margin(conn, 1, 1, "sets") == 2
+    _rec(
+        conn, settlement, line=4.5, selection="A (-4.5)", side="over",
+        odds=1.9, model_p=0.60, market_p=0.52,
+        market_key="player_game_handicap_4.5",
+        scope="player_game_margin", subject=1,
+    )
+    _rec(
+        conn, settlement, line=4.5, selection="B (+4.5)", side="under",
+        odds=1.9, model_p=0.40, market_p=0.48,
+        market_key="player_game_handicap_4.5",
+        scope="player_game_margin", subject=1,
+    )
+    _rec(
+        conn, settlement, line=1.5, selection="A (-1.5)", side="over",
+        odds=2.1, model_p=0.55, market_p=0.47,
+        market_key="player_set_handicap_1.5",
+        scope="player_set_margin", subject=1,
+    )
+    conn.commit()
+
+    result = settlement.settle_props(conn)
+    rows = conn.execute(
+        "SELECT result_status FROM prop_tracker ORDER BY id"
+    ).fetchall()
+    assert result["graded"] == 3
+    assert [row["result_status"] for row in rows] == ["WON", "LOST", "WON"]
+
+
+def test_exact_set_score_settlement_and_scorecard_count_one_match(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import settlement
+
+    init_db()
+    conn = get_connection()
+    _seed_player(conn, 1, "A"); _seed_player(conn, 2, "B")
+    _seed_match(conn, 1, 1, 2)
+    conn.execute(
+        "INSERT INTO match_results "
+        "(match_id, winner_player_id, source_provider, created_at, score_json) "
+        "VALUES (1,1,'t','now', ?)",
+        ('{"player_a_sets":2,"player_b_sets":1}',),
+    )
+    outcomes = ((1, "A 2-0", 0.32), (1, "A 2-1", 0.28),
+                (2, "B 2-0", 0.22), (2, "B 2-1", 0.18))
+    for player_id, selection, probability in outcomes:
+        sets_lost = int(selection[-1])
+        _rec(
+            conn, settlement, line=0.5, selection=selection, side="over",
+            odds=1/probability, model_p=probability, market_p=probability,
+            market_key=f"player_exact_set_score_{player_id}_{sets_lost}",
+            scope="player_exact_set_score", subject=player_id,
+            stake=0.0, value=False,
+        )
+    conn.commit()
+    result = settlement.settle_props(conn)
+    statuses = conn.execute(
+        "SELECT selection,result_status FROM prop_tracker ORDER BY id"
+    ).fetchall()
+    assert result["graded"] == 4
+    assert [(row["selection"], row["result_status"]) for row in statuses] == [
+        ("A 2-0", "LOST"), ("A 2-1", "WON"),
+        ("B 2-0", "LOST"), ("B 2-1", "LOST"),
+    ]
+    scorecard = settlement.model_vs_market_scorecard(conn)
+    assert scorecard["settled"] == 4
+    assert scorecard["by_family"]["player_exact_set_score"]["settled"] == 1
 
 
 def test_record_prop_idempotent(tmp_path, monkeypatch):

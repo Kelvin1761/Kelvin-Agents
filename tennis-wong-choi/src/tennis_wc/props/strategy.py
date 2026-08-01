@@ -13,20 +13,24 @@ MIN_LEG_PROBABILITY = 0.58
 MIN_DATA_QUALITY = 0.80
 MIN_LEG_ODDS = 1.30
 MAX_LEG_ODDS = 2.25
-MIN_COMBO_ODDS = 2.00
 MAX_FORMAL_COMBO_LEGS = 2
-SUPPORTED_FAMILIES = {"player_aces", "match_total_aces"}
+MIN_COMBO_EV = 0.03
+SUPPORTED_FAMILIES = {
+    "player_aces",
+    "match_total_aces",
+    "player_double_faults",
+    "player_total_games",
+    "player_win_a_set",
+    "first_set_winner",
+    "player_game_handicap",
+    "player_set_handicap",
+    "player_exact_set_score",
+}
 
 
 def family_for_market(market_key: str) -> str:
-    key = str(market_key or "")
-    if key.startswith("total_match_games"):
-        return "match_total_games"
-    if key.startswith("total_aces") or key == "total_aces_in_the_match":
-        return "match_total_aces"
-    if "_aces" in key:
-        return "player_aces"
-    return key
+    from tennis_wc.props.registry import family_for_market as classify
+    return classify(market_key)
 
 
 def recommendation_gate(scorecard: dict | None, roi: dict | None) -> dict:
@@ -44,49 +48,57 @@ def recommendation_gate(scorecard: dict | None, roi: dict | None) -> dict:
     scorecard = scorecard or {}
     roi = roi or {}
     raw_n = int(scorecard.get("settled") or 0)
-    model = scorecard.get("model") or {}
-    market = scorecard.get("market") or {}
     reasons: list[str] = []
-
-    if raw_n < MIN_RAW_SCORECARD:
-        reasons.append(f"raw 記分卡 {raw_n}/{MIN_RAW_SCORECARD}")
-    try:
-        model_beats_market = float(model["brier"]) <= float(market["brier"]) - 0.005
-    except (KeyError, TypeError, ValueError):
-        model_beats_market = False
-    if not model_beats_market:
-        reasons.append("模型 Brier 未明顯優於市場")
 
     enabled: list[str] = []
     family_states: dict[str, dict] = {}
-    by_family = roi.get("by_family") or {}
+    # Prefer ROI from the exact live-eligible profile.  The fallback preserves
+    # compatibility with old stored/test summaries that predate segmentation.
+    by_family = (
+        roi.get("by_family_formal_profile")
+        if "by_family_formal_profile" in roi
+        else roi.get("by_family")
+    ) or {}
+    score_by_family = scorecard.get("by_family") or {}
     for family in sorted(SUPPORTED_FAMILIES):
         stats = by_family.get(family) or {}
-        settled = int(stats.get("settled") or 0)
+        family_score = score_by_family.get(family) or {}
+        score_settled = int(family_score.get("settled") or 0)
+        roi_settled = int(stats.get("settled") or 0)
         family_roi = stats.get("roi")
+        try:
+            model_beats_market = (
+                float(family_score["model"]["brier"])
+                <= float(family_score["market"]["brier"]) - 0.005
+            )
+        except (KeyError, TypeError, ValueError):
+            model_beats_market = False
         qualified = (
-            raw_n >= MIN_RAW_SCORECARD
+            score_settled >= MIN_RAW_SCORECARD
             and model_beats_market
-            and settled >= MIN_FAMILY_SETTLED
+            and roi_settled >= MIN_FAMILY_SETTLED
             and family_roi is not None
             and float(family_roi) > 0
         )
         family_states[family] = {
             "enabled": qualified,
-            "settled": settled,
+            "settled": roi_settled,
+            "scorecard_settled": score_settled,
             "roi": family_roi,
             "minimum_settled": MIN_FAMILY_SETTLED,
+            "minimum_scorecard": MIN_RAW_SCORECARD,
+            "model_beats_market": model_beats_market,
         }
         if qualified:
             enabled.append(family)
 
     if not enabled:
         reasons.append(
-            "aces 分類未同時達到 "
+            "未有 prop family 同時達到 family 級記分卡、"
             f"{MIN_FAMILY_SETTLED} 注已結算兼正 ROI"
         )
     return {
-        "status": "VALIDATED" if enabled else "RESEARCH_ONLY",
+        "status": "VALIDATED_SINGLE" if enabled else "RESEARCH_ONLY",
         "recommendations_enabled": bool(enabled),
         "enabled_families": enabled,
         "family_states": family_states,
