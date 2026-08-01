@@ -39,6 +39,38 @@ de-vigged market, and positive ROI before it may be recommended. A formal combo
 is exactly two qualified props from different matches with positive joint EV;
 there is no arbitrary requirement for total odds to exceed 2.00.
 
+Prop probabilities and formula confidence are deliberately separate:
+
+- `hit_probability` is the calibrated estimate that the selected outcome wins.
+  The raw model is shrunk toward the de-vigged market using only that family's
+  earlier settled outcomes; a new or weak family therefore stays close to the
+  market instead of manufacturing confidence.
+- `confidence_score` (0-100) measures whether that probability is trustworthy.
+  It combines source-specific data quality, family scorecard maturity, and the
+  family's Brier-score advantage over the market.
+
+Research value flags require at least 55% calibrated hit probability, odds from
+1.30 to 2.25, at least four percentage points of edge, and positive expected
+value. Formal recommendations are stricter: at least 58% hit probability,
+70/100 formula confidence, and 65/100 source quality. For aces and double
+faults, source quality comes from each player's available serve-count history;
+for derived games/set markets it comes from the match feature snapshot. Props
+outside these limits remain priced and settled for calibration, but cannot be
+recommended.
+
+Headline recommendations are player-level only. Match-total aces/games remain
+on the research scorecard but cannot graduate into `VALIDATED_SINGLE` or a
+formal combo. Paper ROI always uses flat 1u stakes so competing formulas remain
+comparable. A family that eventually graduates uses a formula-confidence-
+haircut tenth-Kelly stake, rounded to 0.5u and capped at 2u for a single or 1u
+for a two-leg combo.
+
+The embedded ace calibration curves are frozen on history strictly before
+2026-05-10, the first available evaluation slate. Rebuild them with
+`scripts/build_ace_calibration.py --before YYYY-MM-DD` whenever validating a
+new historical window, so holdout results never leak into the probability
+curve.
+
 ## Quick Start
 
 ```bash
@@ -57,6 +89,7 @@ python -m tennis_wc.cli fetch-closing-odds --date 2026-05-08
 python -m tennis_wc.cli settle-bets --date 2026-05-08
 python -m tennis_wc.cli backtest --start 2026-05-08 --end 2026-05-08
 python -m tennis_wc.cli fetch-event-odds --event-id SPORTSBET_URL_OR_EVENT_ID --match-id 1
+PYTHONPATH=src .venv/bin/python scripts/replay_prop_strategy.py --through 2026-08-01
 python -m pytest
 ```
 

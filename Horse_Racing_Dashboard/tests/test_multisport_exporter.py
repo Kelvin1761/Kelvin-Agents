@@ -109,10 +109,12 @@ class MultiSportExporterTests(unittest.TestCase):
             self.assertEqual(single["odds_status"], "sportsbet_extracted")
             self.assertEqual(single["metrics"]["model_probability"], 0.62)
             self.assertEqual(single["metrics"]["expected_value"], 0.116)
+            self.assertEqual(single["metrics"]["stake_units"], 1.5)
             self.assertEqual(single["outcome"], "pending")
             self.assertEqual(combo["odds"], 3.42)
             self.assertEqual(len(combo["legs"]), 2)
             self.assertEqual(combo["legs"][1]["selection"], "Under 18.5")
+            self.assertEqual(combo["metrics"]["stake_units"], 1.0)
             self.assertEqual(snapshot["strategy"]["status"], "VALIDATED_SINGLE")
             self.assertEqual(snapshot["strategy"]["enabled_families"], ["player_aces"])
             self.assertEqual(snapshot["coverage"]["fixtures_found"], 1)
@@ -187,6 +189,32 @@ class MultiSportExporterTests(unittest.TestCase):
             )
             match_ten = next(row for row in singles if row["context"]["match_id"] == 10)
             self.assertEqual(match_ten["selection"], "Over 8.5")
+
+    def test_tennis_strategy_state_excludes_future_settlements(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "tennis.db"
+            self._create_tennis_database(db_path)
+            connection = sqlite3.connect(db_path)
+            connection.executemany(
+                """
+                INSERT INTO prop_tracker VALUES (
+                    ?, 10, '2026-07-26', 'Future A vs B',
+                    'total_otto_virtanen_aces_7_5', 7.5, 'Over 7.5', 'over',
+                    1.80, 0.10, 0.60, 0.20, 0.01, -0.64, 1.0, 1,
+                    'WON', 0.80
+                )
+                """,
+                [(3000 + index,) for index in range(120)],
+            )
+            connection.commit()
+            connection.close()
+
+            snapshot = export_tennis_snapshot(db_path, target_date="2026-07-25")
+
+            assert snapshot["strategy"]["enabled_families"] == ["player_aces"]
+            assert snapshot["strategy"]["families"]["player_aces"][
+                "scorecard_settled"
+            ] == 120
 
     @staticmethod
     def _create_tennis_database(path):
@@ -344,6 +372,8 @@ class MultiSportExporterTests(unittest.TestCase):
                 "line": 7.5,
                 "odds": 1.8,
                 "confidence": 62,
+                "confidence_score": 82,
+                "hit_probability": 0.62,
                 "edge": 0.06,
                 "data_quality": 0.91,
             },
@@ -357,6 +387,8 @@ class MultiSportExporterTests(unittest.TestCase):
                 "line": 18.5,
                 "odds": 1.9,
                 "confidence": 60,
+                "confidence_score": 80,
+                "hit_probability": 0.60,
                 "edge": 0.05,
                 "data_quality": 0.92,
             },

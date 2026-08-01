@@ -9,7 +9,12 @@ from tennis_wc.props.ace_model import TwoWayProp
 _MIN_HISTORY = 10
 _MARKET_SHRINK = 0.35
 _MIN_EDGE = 0.04
+_MIN_VALUE_ODDS = 1.30
+_MAX_VALUE_ODDS = 2.25
+_MIN_VALUE_PROBABILITY = 0.55
 _GAME_HANDICAP_RAW_SHRINK = 0.65
+_PLAYER_GAMES_MEAN_BIAS = 0.75
+_PLAYER_GAMES_SD = 4.50
 
 
 @dataclass(frozen=True)
@@ -175,14 +180,24 @@ def price_count_two_way(
     profile: CountProfile,
     *,
     temper: float = 0.0,
+    model_weight: float | None = None,
 ) -> TwoWayProp | None:
     if profile.n < _MIN_HISTORY or over_odds <= 1 or under_odds <= 1:
         return None
     raw_over = _empirical_over(line, profile.values)
-    strength = min(0.95, max(0.0, float(temper or 0)))
-    tempered = 0.5 + (raw_over - 0.5) * (1 - strength)
     fair_over = _devig(over_odds, under_odds)
-    blended_over = (1 - _MARKET_SHRINK) * tempered + _MARKET_SHRINK * fair_over
+    if model_weight is None:
+        strength = min(0.95, max(0.0, float(temper or 0)))
+        tempered = 0.5 + (raw_over - 0.5) * (1 - strength)
+        blended_over = (
+            (1 - _MARKET_SHRINK) * tempered + _MARKET_SHRINK * fair_over
+        )
+    else:
+        from tennis_wc.props.calibration import blend_with_market
+        weight = max(0.0, min(1.0, float(model_weight)))
+        strength = 1.0 - weight
+        blended_over = blend_with_market(raw_over, fair_over, weight)
+        tempered = blended_over
     candidates = {
         "over": (blended_over, fair_over, over_odds),
         "under": (1 - blended_over, 1 - fair_over, under_odds),
@@ -200,7 +215,9 @@ def price_count_two_way(
             (candidate == "over" and raw_over > fair_over)
             or (candidate == "under" and raw_over < fair_over)
         )
-        if raw_supports and candidate_edge >= _MIN_EDGE and candidate_ev > 0:
+        if (raw_supports and candidate_edge >= _MIN_EDGE and candidate_ev > 0
+                and prob >= _MIN_VALUE_PROBABILITY
+                and _MIN_VALUE_ODDS <= odds <= _MAX_VALUE_ODDS):
             side, edge, ev, value_odds, blended = (
                 candidate, candidate_edge, candidate_ev, odds, prob
             )
@@ -234,12 +251,20 @@ def player_games_over_probability(
     """Research estimate for a player's full-match games won.
 
     A 540-result local calibration estimated game share as
-    ``0.4187 + 0.1465 * P(match win)``.  Dispersion is intentionally wide.
+    ``0.4187 + 0.1465 * P(match win)``.  A later time split found that the
+    first 109 live scorecard outcomes under-predicted the mean by 0.75 games
+    and had 4.40-game residual dispersion.  Pre-registering +0.75 and a rounded
+    4.50 SD improved the next 16 outcomes' Brier from 0.3306 to 0.2954.  It
+    still trails the market, so the family reliability weight can suppress its
+    betting edge while retaining the better-calibrated hit probability.
     """
     share = max(0.34, min(0.66, 0.4187 + 0.1465 * player_match_probability))
-    mean = max(1.0, expected_total_games * share)
-    sd = 3.6
-    cdf = 0.5 * (1 + math.erf(((line + 0.5) - mean) / (sd * math.sqrt(2))))
+    mean = max(1.0, expected_total_games * share + _PLAYER_GAMES_MEAN_BIAS)
+    cdf = 0.5 * (
+        1 + math.erf(
+            ((line + 0.5) - mean) / (_PLAYER_GAMES_SD * math.sqrt(2))
+        )
+    )
     return max(0.03, min(0.97, 1 - cdf)), round(mean, 3)
 
 
@@ -305,14 +330,24 @@ def price_probability_two_way(
     raw_yes: float,
     *,
     temper: float = 0.0,
+    model_weight: float | None = None,
     factors: dict | None = None,
 ) -> BinaryProp | None:
     if yes_odds <= 1 or no_odds <= 1:
         return None
-    strength = min(0.95, max(0.0, float(temper or 0)))
-    tempered = 0.5 + (raw_yes - 0.5) * (1 - strength)
     fair_yes = _devig(yes_odds, no_odds)
-    blended_yes = (1 - _MARKET_SHRINK) * tempered + _MARKET_SHRINK * fair_yes
+    if model_weight is None:
+        strength = min(0.95, max(0.0, float(temper or 0)))
+        tempered = 0.5 + (raw_yes - 0.5) * (1 - strength)
+        blended_yes = (
+            (1 - _MARKET_SHRINK) * tempered + _MARKET_SHRINK * fair_yes
+        )
+    else:
+        from tennis_wc.props.calibration import blend_with_market
+        weight = max(0.0, min(1.0, float(model_weight)))
+        strength = 1.0 - weight
+        blended_yes = blend_with_market(raw_yes, fair_yes, weight)
+        tempered = blended_yes
     candidates = {
         "yes": (blended_yes, fair_yes, yes_odds),
         "no": (1 - blended_yes, 1 - fair_yes, no_odds),
@@ -330,7 +365,9 @@ def price_probability_two_way(
             (candidate == "yes" and raw_yes > fair_yes)
             or (candidate == "no" and raw_yes < fair_yes)
         )
-        if raw_supports and candidate_edge >= _MIN_EDGE and candidate_ev > 0:
+        if (raw_supports and candidate_edge >= _MIN_EDGE and candidate_ev > 0
+                and prob >= _MIN_VALUE_PROBABILITY
+                and _MIN_VALUE_ODDS <= odds <= _MAX_VALUE_ODDS):
             side, edge, ev, value_odds, blended = (
                 candidate, candidate_edge, candidate_ev, odds, prob
             )
@@ -355,14 +392,22 @@ def price_head_to_head(
     raw_a: float,
     *,
     temper: float = 0.0,
+    model_weight: float | None = None,
     factors: dict | None = None,
 ) -> HeadToHeadProp | None:
     if a_odds <= 1 or b_odds <= 1:
         return None
-    strength = min(0.95, max(0.0, float(temper or 0)))
-    tempered = 0.5 + (raw_a - 0.5) * (1-strength)
     fair_a = _devig(a_odds, b_odds)
-    blended_a = (1-_MARKET_SHRINK)*tempered + _MARKET_SHRINK*fair_a
+    if model_weight is None:
+        strength = min(0.95, max(0.0, float(temper or 0)))
+        tempered = 0.5 + (raw_a - 0.5) * (1-strength)
+        blended_a = (1-_MARKET_SHRINK)*tempered + _MARKET_SHRINK*fair_a
+    else:
+        from tennis_wc.props.calibration import blend_with_market
+        weight = max(0.0, min(1.0, float(model_weight)))
+        strength = 1.0 - weight
+        blended_a = blend_with_market(raw_a, fair_a, weight)
+        tempered = blended_a
     candidates = (
         (player_a_id, player_a_name, a_odds, raw_a, blended_a, fair_a),
         (player_b_id, player_b_name, b_odds, 1-raw_a, 1-blended_a, 1-fair_a),
@@ -376,7 +421,9 @@ def price_head_to_head(
     for pid, name, odds, raw, prob, fair in candidates:
         candidate_edge = prob-fair
         candidate_ev = prob*odds-1
-        if raw > fair and candidate_edge >= _MIN_EDGE and candidate_ev > 0:
+        if (raw > fair and candidate_edge >= _MIN_EDGE and candidate_ev > 0
+                and prob >= _MIN_VALUE_PROBABILITY
+                and _MIN_VALUE_ODDS <= odds <= _MAX_VALUE_ODDS):
             value_pid, value_name, value_odds = pid, name, odds
             edge, ev, blended = candidate_edge, candidate_ev, prob
             break
@@ -404,6 +451,7 @@ def price_spread_two_way(
     predicted_margin: float,
     *,
     temper: float = 0.0,
+    model_weight: float | None = None,
     factors: dict | None = None,
 ) -> SpreadProp | None:
     """Price a complementary two-player handicap market.
@@ -418,11 +466,20 @@ def price_spread_two_way(
         or abs(abs(float(a_handicap)) % 1.0 - 0.5) > 1e-9
     ):
         return None
-    strength = min(0.95, max(0.0, float(temper or 0)))
     raw_a = max(0.001, min(0.999, float(raw_a_cover)))
-    tempered_a = 0.5 + (raw_a - 0.5) * (1 - strength)
     fair_a = _devig(a_odds, b_odds)
-    blended_a = (1 - _MARKET_SHRINK) * tempered_a + _MARKET_SHRINK * fair_a
+    if model_weight is None:
+        strength = min(0.95, max(0.0, float(temper or 0)))
+        tempered_a = 0.5 + (raw_a - 0.5) * (1 - strength)
+        blended_a = (
+            (1 - _MARKET_SHRINK) * tempered_a + _MARKET_SHRINK * fair_a
+        )
+    else:
+        from tennis_wc.props.calibration import blend_with_market
+        weight = max(0.0, min(1.0, float(model_weight)))
+        strength = 1.0 - weight
+        blended_a = blend_with_market(raw_a, fair_a, weight)
+        tempered_a = blended_a
     candidates = (
         (
             player_a_id, player_a_name, float(a_handicap), a_odds,
@@ -443,7 +500,9 @@ def price_spread_two_way(
     for pid, name, handicap, odds, raw, prob, fair in candidates:
         candidate_edge = prob - fair
         candidate_ev = prob * odds - 1
-        if raw > fair and candidate_edge >= _MIN_EDGE and candidate_ev > 0:
+        if (raw > fair and candidate_edge >= _MIN_EDGE and candidate_ev > 0
+                and prob >= _MIN_VALUE_PROBABILITY
+                and _MIN_VALUE_ODDS <= odds <= _MAX_VALUE_ODDS):
             value_pid, value_name = pid, name
             value_handicap, value_odds = handicap, odds
             edge, ev, blended = candidate_edge, candidate_ev, prob
@@ -486,6 +545,7 @@ def price_exact_set_score(
     player_a_match_probability: float,
     *,
     temper: float = 0.0,
+    model_weight: float | None = None,
     factors: dict | None = None,
 ) -> ExactSetScoreProp | None:
     """Price the four mutually exclusive BO3 exact-match-score outcomes."""
@@ -506,15 +566,25 @@ def price_exact_set_score(
     fair = {key: (1/odds[key])/inverse_sum for key in required}
     distribution = outcome_distribution(float(player_a_match_probability))
     raw = {key: float(distribution[key]) for key in required}
-    strength = min(0.95, max(0.0, float(temper or 0)))
-    tempered = {
-        key: 0.25 + (raw[key]-0.25)*(1-strength)
-        for key in required
-    }
-    blended = {
-        key: (1-_MARKET_SHRINK)*tempered[key] + _MARKET_SHRINK*fair[key]
-        for key in required
-    }
+    if model_weight is None:
+        strength = min(0.95, max(0.0, float(temper or 0)))
+        tempered = {
+            key: 0.25 + (raw[key]-0.25)*(1-strength)
+            for key in required
+        }
+        blended = {
+            key: (1-_MARKET_SHRINK)*tempered[key] + _MARKET_SHRINK*fair[key]
+            for key in required
+        }
+    else:
+        from tennis_wc.props.calibration import blend_with_market
+        weight = max(0.0, min(1.0, float(model_weight)))
+        strength = 1.0 - weight
+        blended = {
+            key: blend_with_market(raw[key], fair[key], weight)
+            for key in required
+        }
+        tempered = dict(blended)
     metadata = {
         "a20": (player_a_id, player_a_name, 0),
         "a21": (player_a_id, player_a_name, 1),
@@ -526,7 +596,11 @@ def price_exact_set_score(
         player_id, player_name, sets_lost = metadata[key]
         edge = blended[key]-fair[key]
         ev = blended[key]*odds[key]-1
-        is_value = raw[key] > fair[key] and edge >= _MIN_EDGE and ev > 0
+        is_value = (
+            raw[key] > fair[key] and edge >= _MIN_EDGE and ev > 0
+            and blended[key] >= _MIN_VALUE_PROBABILITY
+            and _MIN_VALUE_ODDS <= odds[key] <= _MAX_VALUE_ODDS
+        )
         selections.append(
             ExactSetScoreSelection(
                 player_id=player_id,

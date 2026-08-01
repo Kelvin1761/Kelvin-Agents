@@ -35,6 +35,7 @@ def test_research_prop_combos_exclude_high_odds_and_same_match_duplicates():
         return {
             "id": identifier,
             "match_id": match_id,
+            "market_key": f"total_player_{identifier}_aces_7_5",
             "prob": 0.62,
             "odds": odds,
             "data_quality": 0.90,
@@ -48,6 +49,7 @@ def test_research_prop_combos_exclude_high_odds_and_same_match_duplicates():
             leg("same-match-weaker", 1, 0.08),
             leg("b", 2, 0.09),
             leg("high-odds", 3, 0.20, odds=2.6),
+            leg("match-total", 4, 0.20) | {"market_key": "total_aces_18_5"},
         ]
     )
     assert len(combos) == 1

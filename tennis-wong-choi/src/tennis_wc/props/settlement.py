@@ -385,7 +385,8 @@ def settle_props(conn) -> dict:
 # --------------------------------------------------------------------------- #
 # Review 1: segmented ROI
 # --------------------------------------------------------------------------- #
-def prop_roi_report(conn, value_only: bool = True) -> dict:
+def prop_roi_report(conn, value_only: bool = True,
+                    as_of_date: str | None = None) -> dict:
     """Realised ROI over settled BET props, split into decision-useful segments.
 
     Besides market family and side, report odds, confidence, tour, surface and
@@ -395,6 +396,10 @@ def prop_roi_report(conn, value_only: bool = True) -> dict:
     where = "result_status IN ('WON','LOST') AND stake_units > 0"
     if value_only:
         where += " AND is_value = 1"
+    params: list = []
+    if as_of_date:
+        where += " AND p.match_date < ?"
+        params.append(as_of_date)
     rows = conn.execute(
         f"""
         WITH quality AS (
@@ -417,6 +422,7 @@ def prop_roi_report(conn, value_only: bool = True) -> dict:
         WHERE p.{where}
         ORDER BY p.match_date, p.id
         """
+        , tuple(params)
     ).fetchall()
 
     def agg(rs):
@@ -457,12 +463,13 @@ def prop_roi_report(conn, value_only: bool = True) -> dict:
     def quality_band(value) -> str:
         if value is None:
             return "UNKNOWN"
-        quality = float(value)
+        from tennis_wc.props.strategy import normalise_data_quality
+        quality = normalise_data_quality(value)
         if quality < 0.60:
             return "<60%"
-        if quality < 0.80:
-            return "60-79%"
-        return "80%+"
+        if quality < 0.65:
+            return "60-64%"
+        return "65%+"
 
     by_side, by_family, by_odds, by_probability = {}, {}, {}, {}
     by_tour, by_surface, by_quality = {}, {}, {}
@@ -473,24 +480,71 @@ def prop_roi_report(conn, value_only: bool = True) -> dict:
         by_probability.setdefault(probability_band(r["blended_prob"]), []).append(r)
         by_tour.setdefault(str(r["tour"] or "UNKNOWN").upper(), []).append(r)
         by_surface.setdefault(str(r["surface"] or "UNKNOWN").upper(), []).append(r)
-        by_quality.setdefault(quality_band(r["data_quality_score"]), []).append(r)
 
     # Gate evidence must match the bets the live strategy is actually allowed
     # to place.  In particular, research longshots above 2.25 cannot make a
     # family look profitable and thereby graduate lower-odds recommendations.
     from tennis_wc.props import strategy
 
+    def live_quality(row) -> float:
+        market_family = family(row["market_key"])
+        if market_family not in {
+            "player_aces", "match_total_aces", "player_double_faults"
+        }:
+            return strategy.normalise_data_quality(row["data_quality_score"])
+        match = conn.execute(
+            "SELECT player_a_id,player_b_id FROM matches WHERE id=?",
+            (row["match_id"],),
+        ).fetchone()
+        if not match:
+            return 0.0
+        if market_family == "match_total_aces":
+            player_ids = (match["player_a_id"], match["player_b_id"])
+            column = "ace_count"
+        elif market_family == "player_aces":
+            subject = row["subject_player_id"]
+            opponent = (
+                match["player_b_id"]
+                if subject == match["player_a_id"] else match["player_a_id"]
+            )
+            player_ids = (subject, opponent)
+            column = "ace_count"
+        else:
+            player_ids = (row["subject_player_id"],)
+            column = "double_fault_count"
+        counts = [
+            conn.execute(
+                f"SELECT COUNT(*) FROM (SELECT 1 FROM player_match_history "
+                f"WHERE player_id=? AND match_date<? AND {column} IS NOT NULL "
+                "ORDER BY match_date DESC LIMIT 15)",
+                (player_id, row["match_date"]),
+            ).fetchone()[0]
+            for player_id in player_ids if player_id is not None
+        ]
+        return min(counts, default=0) / 15.0
+
+    for row in rows:
+        by_quality.setdefault(quality_band(live_quality(row)), []).append(row)
+
     formal_profile_rows = [
         row for row in rows
         if strategy.MIN_LEG_PROBABILITY <= float(row["blended_prob"] or 0) <= 1.0
         and strategy.MIN_LEG_ODDS <= float(row["decimal_odds"] or 0) <= strategy.MAX_LEG_ODDS
-        and float(row["data_quality_score"] or 0) >= strategy.MIN_DATA_QUALITY
+        and live_quality(row) >= strategy.MIN_DATA_QUALITY
         and float(row["edge"] or 0) > 0
         and float(row["ev"] or 0) > 0
     ]
     formal_by_family: dict[str, list] = {}
     for row in formal_profile_rows:
         formal_by_family.setdefault(family(row["market_key"]), []).append(row)
+    player_prop_rows = [
+        row for row in rows
+        if family(row["market_key"]) in strategy.RECOMMENDABLE_PLAYER_FAMILIES
+    ]
+    formal_player_prop_rows = [
+        row for row in formal_profile_rows
+        if family(row["market_key"]) in strategy.RECOMMENDABLE_PLAYER_FAMILIES
+    ]
 
     running = peak = max_drawdown = 0.0
     for row in rows:
@@ -505,6 +559,8 @@ def prop_roi_report(conn, value_only: bool = True) -> dict:
             k: agg(v) for k, v in formal_by_family.items()
         },
         "formal_profile": agg(formal_profile_rows),
+        "player_prop_overall": agg(player_prop_rows),
+        "formal_player_prop_profile": agg(formal_player_prop_rows),
         "by_odds_band": {k: agg(v) for k, v in by_odds.items()},
         "by_probability_band": {k: agg(v) for k, v in by_probability.items()},
         "by_tour": {k: agg(v) for k, v in by_tour.items()},
@@ -517,7 +573,8 @@ def prop_roi_report(conn, value_only: bool = True) -> dict:
 # --------------------------------------------------------------------------- #
 # Review 2: model-vs-market scorecard (needs only outcomes, not bets)
 # --------------------------------------------------------------------------- #
-def model_vs_market_scorecard(conn, use_raw: bool = True) -> dict:
+def model_vs_market_scorecard(conn, use_raw: bool = True,
+                              as_of_date: str | None = None) -> dict:
     """On every settled prop, compare the MODEL's probability of the recorded
     side vs the MARKET's de-vigged probability, via Brier + log-loss. Lower is
     better. If the model beats the market, our edge is real; if the market wins,
@@ -533,20 +590,24 @@ def model_vs_market_scorecard(conn, use_raw: bool = True) -> dict:
     silently mixed in. Pass use_raw=False for the legacy tempered view.
     """
     column = "model_prob_raw" if use_raw else "model_prob"
+    date_clause = " AND p.match_date < ?" if as_of_date else ""
+    params = (as_of_date,) if as_of_date else ()
     rows = conn.execute(
         f"SELECT p.match_id, p.{column} AS prob, p.market_prob_fair, p.result_status, "
         "p.market_key FROM prop_tracker p JOIN matches m ON m.id=p.match_id "
         f"WHERE p.result_status IN ('WON','LOST') AND p.{column} IS NOT NULL "
         "AND p.market_prob_fair IS NOT NULL AND p.side='over' "
         "AND (p.prop_scope!='player_first_set' "
-        "OR p.subject_player_id=m.player_a_id)"
+        "OR p.subject_player_id=m.player_a_id)" + date_clause,
+        params,
     ).fetchall()
     legacy_only = conn.execute(
         "SELECT COUNT(*) FROM prop_tracker p JOIN matches m ON m.id=p.match_id "
         "WHERE p.result_status IN ('WON','LOST') "
         "AND p.model_prob_raw IS NULL AND p.model_prob IS NOT NULL "
         "AND p.side='over' AND (p.prop_scope!='player_first_set' "
-        "OR p.subject_player_id=m.player_a_id)"
+        "OR p.subject_player_id=m.player_a_id)" + date_clause,
+        params,
     ).fetchone()[0]
     n = len(rows)
     if not n:

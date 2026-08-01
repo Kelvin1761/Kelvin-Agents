@@ -1381,6 +1381,15 @@ def _confidence_label(prob: float | None) -> str:
     return "低"
 
 
+def _reliability_label(score: int | float | None) -> str:
+    value = float(score or 0)
+    if value >= 80:
+        return "高"
+    if value >= 70:
+        return "中"
+    return "低"
+
+
 def _recommended_picks(prop: dict | None) -> dict:
     """Assemble evidence-gated prop picks without legacy category fallbacks."""
     from tennis_wc.props import strategy
@@ -1400,6 +1409,13 @@ def _recommended_picks(prop: dict | None) -> dict:
         match_id = int(leg["match_id"])
         if match_id in selected_matches:
             continue
+        leg = dict(leg)
+        leg["confidence_score"] = leg.get(
+            "confidence_score"
+        ) or strategy.confidence_score(leg, gate)
+        leg["stake_units"] = strategy.formal_stake_units(
+            leg["prob"], leg["odds"], leg["confidence_score"]
+        )
         selected_singles.append(leg)
         selected_matches.add(match_id)
         if len(selected_singles) == 2:
@@ -1413,7 +1429,13 @@ def _recommended_picks(prop: dict | None) -> dict:
         and all(leg["id"] in allowed_ids for leg in combo["legs"])
     ]
     if combos:
-        picks["validated_2_leg"] = combos[0]
+        combo = dict(combos[0])
+        combo["stake_units"] = strategy.formal_stake_units(
+            combo["prob"], combo["odds"],
+            min(float(leg.get("confidence_score") or 0) for leg in combo["legs"]),
+            combo=True,
+        )
+        picks["validated_2_leg"] = combo
     return picks
 
 
@@ -1473,22 +1495,23 @@ def _recommended_bets_lines(
 
     for i, v in enumerate(picks.get("validated_singles") or [], start=1):
         title = "### 注 1｜✅ VALIDATED_SINGLE" if i == 1 else "### 注 1b｜✅ VALIDATED_SINGLE"
-        label = _confidence_label(v["prob"])
+        label = _reliability_label(v.get("confidence_score"))
         cap_note = ""
         if label == "高" and sc_n < _PROP_CONFIDENCE_CAP_N:
             label = "中"
             cap_note = f"；記分卡未夠 {_PROP_CONFIDENCE_CAP_N} 條前最高只畀「中」"
-        temper_note = (prop or {}).get("ev_note") or "EV 未有 temper 資訊"
+        temper_note = (prop or {}).get("ev_note") or "EV 未有 family reliability 資訊"
         blocks.append(
             [
                 title,
                 f"- 選擇：{v['desc']}（{v['match_label']}）",
                 "- 狀態：VALIDATED_SINGLE（已通過 family 樣本、模型對市場及 ROI 三重驗證）",
-                f"- 賠率：{_fmt(v['odds'])}｜注碼：1u（細注試）",
-                f"- 信心：{label}（模型 {_pct(v['prob'])}；{_CONFIDENCE_SCALE_NOTE}{cap_note}）",
+                f"- 賠率：{_fmt(v['odds'])}｜建議注碼：{_fmt(v.get('stake_units'))}u（可信度折扣 tenth-Kelly；上限 2u）",
+                f"- 校準命中概率：{_pct(v['prob'])}",
+                f"- 公式可信度：{label}（{v.get('confidence_score', 0)}/100；資料質素、family 樣本及模型對市場表現{cap_note}）",
                 f"- 信心理據：①{sc_note}②{temper_note}③edge {_pct(v['edge'], signed=True)}／EV {_pct(v['ev'], signed=True)} 係精確去水兼向市場收縮後先計，唔係 raw 模型自吹",
                 f"- 點解落：{_prop_value_reason(v)}",
-                "- 主要風險：即使過咗驗證，短期波動仍然大；只用固定 1u，唔追輸。",
+                "- 主要風險：即使過咗驗證，短期波動仍然大；注碼已按公式可信度折扣，唔追輸。",
             ]
         )
 
@@ -1500,7 +1523,7 @@ def _recommended_bets_lines(
                 "### 注 2｜✅ VALIDATED_2_LEG（跨場 Prop）",
                 *[f"- 腳 {j}：{lg['desc']}（{lg.get('match_label') or ''}）" for j, lg in enumerate(legs, start=1)],
                 "- 狀態：VALIDATED_2_LEG；只准兩腳、唔同場、組合 EV ≥3%；三腳仍留喺研究區",
-                f"- 合併賠率：{_fmt(round(two_leg['odds'], 2))}｜注碼：1u（只限細注）",
+                f"- 合併賠率：{_fmt(round(two_leg['odds'], 2))}｜建議注碼：{_fmt(two_leg.get('stake_units'))}u（組合上限 1u）",
                 f"- 信心：低（串命中 {_pct(two_leg['prob'])}——兩腳結構本質係低過單腳命中）",
                 f"- 信心理據：①每條腳獨立通過 edge 關（跨場減少直接相關）②{sc_note}③EV {_pct(two_leg['ev'], signed=True)} 為正但波動較大",
                 "- 點解落：每條腳獨立有 edge，跨場減少直接相關；唔以『總賠率過 2』作入場理由",
@@ -2055,7 +2078,8 @@ def render_banker_report(match_date: str, rows: list[dict]) -> str:
         "## 🎯 策略重心：Player Props",
         "",
         "回測結論：match-winner 15,299 注樣本錄得 −5.4% 至 −32% ROI，edge 越大反而越差，唔再做投注主線。",
-        "主打 = 下面嘅 🎾 Prop 單注 + 跨場兩腳 Prop；match-winner 只作分析 context。",
+        "主打 = 下面嘅 🎾 Player Prop 單注 + 跨場兩腳 Player Prop；match-winner 只作分析 context。",
+        "Match-total markets 只保留做研究記分卡，唔會升級成正式推薦。",
         "正式策略只用三個狀態：VALIDATED_SINGLE、VALIDATED_2_LEG、RESEARCH_ONLY。",
         "",
     ]
@@ -2298,6 +2322,27 @@ def _chalk_combo_lines(rows: list[dict]) -> list[str]:
     return lines
 
 
+def _prop_source_quality(family: str, carrier, fallback) -> float:
+    """Return quality for the data the family model actually consumes."""
+    from tennis_wc.props.strategy import normalise_data_quality
+
+    factors = getattr(carrier, "factors", {}) or {}
+    if family == "match_total_aces":
+        samples = [factors.get("a_history_n"), factors.get("b_history_n")]
+    elif family == "player_aces":
+        samples = [
+            factors.get("subject_history_n"), factors.get("opponent_history_n")
+        ]
+    elif family == "player_double_faults":
+        samples = [factors.get("history_n")]
+    else:
+        return normalise_data_quality(fallback)
+    valid = [float(value) for value in samples if value is not None]
+    if len(valid) != len(samples) or not valid:
+        return 0.0
+    return min(1.0, min(valid) / 15.0)
+
+
 def _ace_prop_data(match_date: str) -> dict:
     """Price the day's props ONCE and share the result between the merged daily
     report (🎯 recommendations + reference board) and the legacy banker report.
@@ -2312,7 +2357,14 @@ def _ace_prop_data(match_date: str) -> dict:
         conn = get_connection()
         settle_props(conn)  # grade anything now settleable before we review
         boards = price_ace_props_for_date(conn, match_date, log=True)
-        ev_note = calibration.strength_note(calibration.current_strength(conn), conn)
+        profiles = [
+            calibration.family_reliability(conn, family, as_of_date=match_date)
+            for family in sorted(strategy.SUPPORTED_FAMILIES)
+        ]
+        ev_note = "逐 family、只用賽前舊結果估權重：" + "；".join(
+            f"{profile.family} {profile.model_weight:.0%}(n={profile.settled})"
+            for profile in profiles
+        )
     except Exception as exc:
         return {"error": str(exc), "boards": [], "value_legs": [], "combos": [],
                 "scorecard": None, "roi": None, "ev_note": None, "strategy": None}
@@ -2363,7 +2415,10 @@ def _ace_prop_data(match_date: str) -> dict:
                         "side": tw.value_side,
                         "odds": tw.value_odds,
                         "prob": tw.blended_prob,
-                        "data_quality": quality_by_match.get(int(tw.match_id), 0.0),
+                        "data_quality": _prop_source_quality(
+                            family, tw,
+                            quality_by_match.get(int(tw.match_id), 0.0),
+                        ),
                         "edge": tw.edge,
                         "ev": tw.ev,
                         "tw": tw,
@@ -2498,9 +2553,14 @@ def _ace_prop_data(match_date: str) -> dict:
                     }
                 )
     try:
-        scorecard = model_vs_market_scorecard(conn)
-        roi = prop_roi_report(conn)
+        scorecard = model_vs_market_scorecard(conn, as_of_date=match_date)
+        roi = prop_roi_report(conn, as_of_date=match_date)
         strategy_state = strategy.recommendation_gate(scorecard, roi)
+        for leg in value_legs:
+            leg["hit_probability"] = leg.get("prob")
+            leg["confidence_score"] = strategy.confidence_score(
+                leg, strategy_state
+            )
     except Exception:
         scorecard = roi = strategy_state = None
     return {"error": None, "boards": boards, "value_legs": value_legs,
@@ -2521,9 +2581,12 @@ def _prop_combos(value_legs: list[dict]) -> list[dict]:
     for leg in value_legs:
         try:
             eligible = (
-                strategy.MIN_LEG_PROBABILITY <= float(leg["prob"]) <= 1.0
+                strategy.family_for_market(leg.get("market_key") or "")
+                in strategy.RECOMMENDABLE_PLAYER_FAMILIES
+                and strategy.MIN_LEG_PROBABILITY <= float(leg["prob"]) <= 1.0
                 and strategy.MIN_LEG_ODDS <= float(leg["odds"]) <= strategy.MAX_LEG_ODDS
-                and float(leg["data_quality"]) >= strategy.MIN_DATA_QUALITY
+                and strategy.normalise_data_quality(leg["data_quality"])
+                >= strategy.MIN_DATA_QUALITY
                 and float(leg.get("edge") or 0) > 0
                 and float(leg.get("ev") or 0) > 0
             )
@@ -2572,6 +2635,8 @@ def _tracked_prop_combo(combo: dict) -> dict:
                 "odds": leg["odds"],
                 "edge": leg["edge"],
                 "confidence": round(float(leg["prob"]) * 100),
+                "confidence_score": leg.get("confidence_score"),
+                "hit_probability": leg.get("hit_probability", leg.get("prob")),
                 "data_quality": leg.get("data_quality"),
             }
         )
@@ -2598,7 +2663,7 @@ def _ace_prop_lines(match_date: str) -> list[str]:
         "新 family 一律由 RESEARCH_ONLY 開始，逐 family 累積結算、Brier 同 ROI，過閘先升級。",
         "ℹ️ WTA aces 暫時只定價不下注；Win-a-Set／Player Games 可由正式比分結算。",
         "⚠ ROI 未驗證：每條記入 prop_tracker、賽後自動結算；睇『模型 vs 市場記分卡』知邊個啱（比 ROI 快）。",
-        f"🔧 {data['ev_note']}（模型未夠數據前把機率向 50% 收，避免高估 EV；夠數據會自動放鬆或收緊）。",
+        f"🔧 {data['ev_note']}（命中概率沿 raw 模型→去水市場收縮；唔再向 50% 拉，避免反向製造假 edge）。",
         "",
     ]
     val_picks: list[str] = []
@@ -2824,15 +2889,26 @@ def _prop_review_lines(sc: dict, roi: dict, strategy_state: dict | None = None) 
                     f"  {family}: {s['settled']} 注 命中 {_pct(s.get('hit_rate'))} "
                     f"ROI {_pct(s.get('roi'), signed=True)}"
                 )
-        formal = roi.get("formal_profile") or {}
+        player_props = roi.get("player_prop_overall") or {}
+        if player_props.get("settled"):
+            lines.append(
+                f"Player-prop research ROI：{player_props['settled']} 注、"
+                f"命中 {_pct(player_props.get('hit_rate'))}、"
+                f"ROI {_pct(player_props.get('roi'), signed=True)}"
+            )
+        formal = roi.get("formal_player_prop_profile") or {}
         if formal.get("settled"):
             lines.append(
-                f"正式 profile ROI（P≥58%｜odds 1.30–2.25｜quality≥80%）："
+                f"正式 player-prop profile ROI（P≥58%｜odds 1.30–2.25｜quality≥65/100）："
                 f"{formal['settled']} 注、命中 {_pct(formal.get('hit_rate'))}、"
                 f"ROI {_pct(formal.get('roi'), signed=True)}"
             )
+            from tennis_wc.props import strategy as prop_strategy
             for family, stats in (roi.get("by_family_formal_profile") or {}).items():
-                if stats.get("settled"):
+                if (
+                    family in prop_strategy.RECOMMENDABLE_PLAYER_FAMILIES
+                    and stats.get("settled")
+                ):
                     lines.append(
                         f"  {family}: {stats['settled']} 注 "
                         f"ROI {_pct(stats.get('roi'), signed=True)}"

@@ -14,6 +14,7 @@ from tennis_wc.props import ace_model
 from tennis_wc.props import games_model
 from tennis_wc.props import player_model
 from tennis_wc.props import registry
+from tennis_wc.props import strategy
 from tennis_wc.props.settlement import record_prop
 from tennis_wc.modelling import set_distribution
 
@@ -96,6 +97,28 @@ def _strip_value(tw: "ace_model.TwoWayProp") -> "ace_model.TwoWayProp":
     tw.edge = 0.0
     tw.ev = min(float(tw.ev or 0.0), 0.0)
     return tw
+
+
+def _strip_structured_value(prop):
+    """Keep a priced row for scorekeeping but remove its paper-bet signal."""
+    if hasattr(prop, "value_side"):
+        prop.value_side = None
+        prop.value_odds = None
+    if hasattr(prop, "value_player_id"):
+        prop.value_player_id = None
+        prop.value_name = None
+        prop.value_odds = None
+        if hasattr(prop, "value_handicap"):
+            prop.value_handicap = None
+    if hasattr(prop, "edge"):
+        prop.edge = 0.0
+    if hasattr(prop, "ev"):
+        prop.ev = min(float(prop.ev or 0.0), 0.0)
+    for selection in getattr(prop, "selections", []) or []:
+        selection.is_value = False
+        selection.edge = 0.0
+        selection.ev = min(float(selection.ev or 0.0), 0.0)
+    return prop
 
 
 def _rows_for_date(conn, match_date: str):
@@ -449,7 +472,14 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
     two_way = _two_way_odds(rows)
     yes_no = _yes_no_odds(rows)
     prob_map = _match_prob_map(conn, match_date)
-    temper = calibration.current_strength(conn)  # keeps EV honest until validated
+    reliability: dict[str, calibration.FamilyReliability] = {}
+
+    def model_weight(family: str) -> float:
+        if family not in reliability:
+            reliability[family] = calibration.family_reliability(
+                conn, family, as_of_date=match_date
+            )
+        return reliability[family].model_weight
     rows_by_match: dict[int, list] = {}
     for row in rows:
         rows_by_match.setdefault(int(row["match_id"]), []).append(row)
@@ -480,6 +510,14 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                 match_mean = ace_model.predict_match_ace_mean(a, b)
         label = f"{meta['a_name']} vs {meta['b_name']}"
         board = AcePropBoard(match_id=mid, match_label=label, predicted_match_mean=match_mean)
+        quality_row = conn.execute(
+            "SELECT MIN(data_quality_score) FROM feature_snapshots WHERE match_id=?",
+            (mid,),
+        ).fetchone()
+        feature_quality = strategy.normalise_data_quality(
+            quality_row[0] if quality_row else None
+        )
+        derived_quality_ok = feature_quality >= strategy.MIN_DATA_QUALITY
         # v2 serve-dominance input for the games model (walk-forward safe).
         hold_sum = games_model.combined_hold(
             conn, meta["player_a_id"], meta["player_b_id"], meta["match_date"])
@@ -488,7 +526,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
             board.ladder_legs = ace_model.price_ace_legs(
                 conn, mid, meta["player_a_id"], meta["player_b_id"],
                 meta["match_date"], meta["surface"], ladder[mid])
-            if not _aces_gradeable(meta["tour"]):
+            if not _aces_gradeable(meta["tour"]) or min(a.n, b.n) < 10:
                 for lg in board.ladder_legs:
                     lg.is_value = False
             board.anchor = ace_model.anchor_leg(board.ladder_legs)
@@ -502,9 +540,11 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                     continue
                 tw = ace_model.price_two_way(mid, mk, "match", line, od["over"], od["under"],
                                              match_mean, ace_model.match_curve_for_surface(meta["surface"]),
-                                             temper=temper)
+                                             factors={"a_history_n": a.n, "b_history_n": b.n},
+                                             model_weight=model_weight(family))
                 if tw:
-                    if not _aces_gradeable(meta["tour"]):
+                    if (not _aces_gradeable(meta["tour"])
+                            or min(a.n, b.n) < 10):
                         tw = _strip_value(tw)
                     board.match_ou.append(tw)
                     if log:
@@ -520,9 +560,12 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                 pmean = ace_model.predict_player_ace_mean(subj, opp)
                 tw = ace_model.price_two_way(mid, mk, pname, line, od["over"], od["under"],
                                              pmean, ace_model.player_curve_for_surface(meta["surface"]),
-                                             temper=temper)
+                                             factors={"subject_history_n": subj.n,
+                                                      "opponent_history_n": opp.n},
+                                             model_weight=model_weight(family))
                 if tw:
-                    if not _aces_gradeable(meta["tour"]):
+                    if (not _aces_gradeable(meta["tour"])
+                            or min(subj.n, opp.n) < 10):
                         tw = _strip_value(tw)
                     board.player_ou.append(tw)
                     if log:
@@ -538,7 +581,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                 tw = player_model.price_count_two_way(
                     mid, f"player_double_faults_{pid}_{line:g}", pname, line,
                     od["over"], od["under"], profile,
-                    temper=temper,
+                    model_weight=model_weight(family),
                 )
                 if tw:
                     board.double_fault_ou.append(tw)
@@ -566,9 +609,11 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                     od["over"], od["under"], player_mean,
                     [(line / player_mean, raw_over), (line / player_mean + 0.001, raw_over)],
                     factors={"match_probability": p_side, "total_games_mean": total_mean},
-                    within_range_ratio=9.0, temper=temper,
+                    within_range_ratio=9.0, model_weight=model_weight(family),
                 )
                 if tw:
+                    if not derived_quality_ok:
+                        tw = _strip_value(tw)
                     # price_two_way recalculates at the same ratio, so raw_over
                     # remains the explicit player-games research estimate.
                     board.player_games_ou.append(tw)
@@ -583,7 +628,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
             ):
                 tw = games_model.price_games_two_way(
                     mid, mk, line, od["over"], od["under"], prob_map.get(mid), best_of=3,
-                    temper=temper, hold_sum=hold_sum)
+                    hold_sum=hold_sum, model_weight=model_weight(family))
                 if tw:
                     if not _games_bettable():
                         tw = _strip_value(tw)
@@ -604,10 +649,13 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
             raw_yes = set_distribution.win_at_least_one_set_probability(p_side)
             binary = player_model.price_probability_two_way(
                 mid, f"player_win_a_set_{pid}", pname,
-                od["yes"], od["no"], raw_yes, temper=temper,
+                od["yes"], od["no"], raw_yes,
+                model_weight=model_weight(family),
                 factors={"match_probability": p_side},
             )
             if binary:
+                if not derived_quality_ok:
+                    binary = _strip_structured_value(binary)
                 board.win_a_set.append(binary)
                 if log:
                     _log_binary(conn, match_date, label, binary, pid)
@@ -618,9 +666,12 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
             prop = player_model.price_head_to_head(
                 mid, mk, meta["player_a_id"], meta["a_name"],
                 meta["player_b_id"], meta["b_name"], od["a"], od["b"], raw_a,
-                temper=temper, factors={"match_probability_a": prob_map[mid]},
+                model_weight=model_weight("first_set_winner"),
+                factors={"match_probability_a": prob_map[mid]},
             )
             if prop:
+                if not derived_quality_ok:
+                    prop = _strip_structured_value(prop)
                 board.first_set_winner.append(prop)
                 if log:
                     _log_head_to_head(conn, match_date, label, prop)
@@ -629,9 +680,12 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
             prop = player_model.price_exact_set_score(
                 mid, "player_exact_set_score", meta["player_a_id"], meta["a_name"],
                 meta["player_b_id"], meta["b_name"], exact_odds, prob_map[mid],
-                temper=temper, factors={"match_probability_a": prob_map[mid]},
+                model_weight=model_weight("player_exact_set_score"),
+                factors={"match_probability_a": prob_map[mid]},
             )
             if prop:
+                if not derived_quality_ok:
+                    prop = _strip_structured_value(prop)
                 board.exact_set_score.append(prop)
                 if log:
                     _log_exact_set_score(conn, match_date, label, prop)
@@ -654,7 +708,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                 meta["player_b_id"], meta["b_name"],
                 od["a"]["handicap"], od["b"]["handicap"],
                 od["a"]["odds"], od["b"]["odds"], raw_a_cover,
-                margin_mean, temper=temper,
+                margin_mean, model_weight=model_weight("player_game_handicap"),
                 factors={
                     "match_probability_a": prob_map[mid],
                     "expected_total_games": total_mean,
@@ -662,6 +716,8 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                 },
             )
             if prop:
+                if not derived_quality_ok:
+                    prop = _strip_structured_value(prop)
                 board.game_handicap.append(prop)
                 if log:
                     _log_spread(conn, match_date, label, prop, "player_game_margin")
@@ -679,13 +735,15 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                 meta["player_b_id"], meta["b_name"],
                 od["a"]["handicap"], od["b"]["handicap"],
                 od["a"]["odds"], od["b"]["odds"], raw_a_cover,
-                margin_mean, temper=temper,
+                margin_mean, model_weight=model_weight("player_set_handicap"),
                 factors={
                     "match_probability_a": prob_map[mid],
                     "source_market": od["market_name"],
                 },
             )
             if prop:
+                if not derived_quality_ok:
+                    prop = _strip_structured_value(prop)
                 board.set_handicap.append(prop)
                 if log:
                     _log_spread(conn, match_date, label, prop, "player_set_margin")

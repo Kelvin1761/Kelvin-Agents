@@ -582,7 +582,114 @@ def _tennis_prop_family(market_key: Any) -> str:
     return key
 
 
-def _tennis_strategy_state(connection: sqlite3.Connection) -> Dict[str, Any]:
+def _normalise_tennis_quality(value: Any) -> float:
+    quality = _safe_float(value) or 0.0
+    if quality > 1.0:
+        quality /= 100.0
+    return max(0.0, min(1.0, quality))
+
+
+def _tennis_confidence_score(data_quality: Any, family_stats: Dict[str, Any]) -> int:
+    quality = _normalise_tennis_quality(data_quality)
+    evidence = min(
+        1.0, float(family_stats.get("scorecard_settled") or 0) / 120.0
+    )
+    try:
+        advantage = float(family_stats["market_brier"]) - float(
+            family_stats["model_brier"]
+        )
+        skill = max(0.0, min(1.0, 0.5 + advantage / 0.04))
+    except (KeyError, TypeError, ValueError):
+        skill = 0.25
+    return round(100 * (0.45 * quality + 0.35 * evidence + 0.20 * skill))
+
+
+def _tennis_stake_units(
+    probability: Any, odds: Any, confidence_score: Any, *, combo: bool = False
+) -> float:
+    """Mirror Tennis' confidence-haircut tenth-Kelly display stake."""
+    p = _safe_float(probability) or 0.0
+    price = _safe_float(odds) or 0.0
+    reliability = max(
+        0.0, min(1.0, (_safe_float(confidence_score) or 0.0) / 100.0)
+    )
+    if not 0 < p < 1 or price <= 1 or reliability < 0.70:
+        return 0.0
+    full_kelly = (p * price - 1.0) / (price - 1.0)
+    if full_kelly <= 0:
+        return 0.0
+    cap = 1.0 if combo else 2.0
+    units = min(cap, full_kelly * 0.10 * 100.0 * reliability)
+    units = max(0.5, units)
+    return min(cap, round(units / 0.5) * 0.5)
+
+
+def _tennis_source_quality(
+    connection: sqlite3.Connection, row: Dict[str, Any]
+) -> float:
+    """Return the evidence quality of the model that priced this prop.
+
+    Aces and double-fault models are built from serve-count history, so a
+    general match feature score is neither necessary nor sufficient for those
+    families.  Older dashboard fixtures/databases do not carry the newer
+    subject-player fields; they retain the general-quality fallback instead of
+    failing the export.
+    """
+    general = _normalise_tennis_quality(row.get("data_quality_score"))
+    family = _tennis_prop_family(row.get("market_key"))
+    if family not in {
+        "player_aces", "match_total_aces", "player_double_faults"
+    } or not _table_exists(connection, "player_match_history"):
+        return general
+    match_id = row.get("match_id")
+    match_date = row.get("match_date")
+    if match_id is None or not match_date:
+        return general
+    match = connection.execute(
+        "SELECT player_a_id, player_b_id FROM matches WHERE id = ?",
+        (match_id,),
+    ).fetchone()
+    if not match:
+        return general
+    subject = row.get("subject_player_id")
+    if family == "match_total_aces":
+        player_ids = (match["player_a_id"], match["player_b_id"])
+        column = "ace_count"
+    elif family == "player_aces" and subject is not None:
+        opponent = (
+            match["player_b_id"]
+            if subject == match["player_a_id"] else match["player_a_id"]
+        )
+        player_ids = (subject, opponent)
+        column = "ace_count"
+    elif family == "player_double_faults" and subject is not None:
+        player_ids = (subject,)
+        column = "double_fault_count"
+    else:
+        return general
+    history_columns = {
+        item["name"]
+        for item in connection.execute(
+            "PRAGMA table_info(player_match_history)"
+        ).fetchall()
+    }
+    if column not in history_columns:
+        return general
+    counts = [
+        connection.execute(
+            f"SELECT COUNT(*) FROM (SELECT 1 FROM player_match_history "
+            f"WHERE player_id = ? AND match_date < ? AND {column} IS NOT NULL "
+            "ORDER BY match_date DESC LIMIT 15)",
+            (player_id, match_date),
+        ).fetchone()[0]
+        for player_id in player_ids if player_id is not None
+    ]
+    return min(counts, default=0) / 15.0
+
+
+def _tennis_strategy_state(
+    connection: sqlite3.Connection, as_of_date: Optional[str] = None
+) -> Dict[str, Any]:
     """Mirror the pipeline's pre-registered prop evidence gate for display."""
     if not _table_exists(connection, "prop_tracker"):
         return {
@@ -600,6 +707,8 @@ def _tennis_strategy_state(connection: sqlite3.Connection) -> Dict[str, Any]:
             " AND (p.prop_scope!='player_first_set' "
             "OR p.subject_player_id=m.player_a_id)"
         )
+    score_date_clause = "AND p.match_date < ?" if as_of_date else ""
+    score_params = (as_of_date,) if as_of_date else ()
     score_rows = connection.execute(
         f"""
         SELECT p.match_id, p.market_key, p.model_prob_raw, p.market_prob_fair, p.result_status
@@ -608,12 +717,27 @@ def _tennis_strategy_state(connection: sqlite3.Connection) -> Dict[str, Any]:
           AND p.model_prob_raw IS NOT NULL
           AND p.market_prob_fair IS NOT NULL
           {canonical_clause}
-        """
+          {score_date_clause}
+        """,
+        score_params,
     ).fetchall()
     raw_n = len(score_rows)
+    subject_sql = (
+        "subject_player_id"
+        if "subject_player_id" in prop_columns else "NULL AS subject_player_id"
+    )
+    family_date_clause = (
+        "AND prop_tracker.match_date < ?" if as_of_date else ""
+    )
+    family_params = (as_of_date,) if as_of_date else ()
     family_rows = connection.execute(
-        """
-        SELECT market_key, result_status, stake_units, profit_loss_units
+        f"""
+        SELECT prop_tracker.match_id, prop_tracker.match_date, market_key,
+               result_status, stake_units, profit_loss_units,
+               {subject_sql},
+               (SELECT MIN(fs.data_quality_score)
+                FROM feature_snapshots fs
+                WHERE fs.match_id = prop_tracker.match_id) AS data_quality_score
         FROM prop_tracker
         WHERE result_status IN ('WON','LOST')
           AND stake_units > 0
@@ -622,13 +746,15 @@ def _tennis_strategy_state(connection: sqlite3.Connection) -> Dict[str, Any]:
           AND decimal_odds BETWEEN 1.30 AND 2.25
           AND edge > 0
           AND ev > 0
-          AND (SELECT MIN(fs.data_quality_score)
-               FROM feature_snapshots fs
-               WHERE fs.match_id = prop_tracker.match_id) >= 0.80
-        """
+          {family_date_clause}
+        """,
+        family_params,
     ).fetchall()
     families: Dict[str, Dict[str, float]] = {}
     for row in family_rows:
+        item = dict(row)
+        if _tennis_source_quality(connection, item) < 0.65:
+            continue
         bucket = families.setdefault(
             _tennis_prop_family(row["market_key"]),
             {"settled": 0, "staked": 0.0, "pnl": 0.0},
@@ -643,6 +769,7 @@ def _tennis_strategy_state(connection: sqlite3.Connection) -> Dict[str, Any]:
         "player_game_handicap", "player_set_handicap",
         "player_exact_set_score",
     )
+    recommendable_player_families = set(supported) - {"match_total_aces"}
     family_scores: Dict[str, list] = {}
     for row in score_rows:
         family_scores.setdefault(_tennis_prop_family(row["market_key"]), []).append(row)
@@ -672,8 +799,10 @@ def _tennis_strategy_state(connection: sqlite3.Connection) -> Dict[str, Any]:
         stats["scorecard_settled"] = score_count
         stats["model_brier"] = model_brier
         stats["market_brier"] = market_brier
+        stats["recommendable_player_prop"] = family in recommendable_player_families
         if (
-            score_count >= 120
+            family in recommendable_player_families
+            and score_count >= 120
             and model_brier is not None
             and market_brier is not None
             and model_brier <= market_brier - 0.005
@@ -703,12 +832,21 @@ def _export_tennis_singles(
         or not _table_exists(connection, "feature_snapshots")
     ):
         return []
+    prop_columns = {
+        row["name"]
+        for row in connection.execute("PRAGMA table_info(prop_tracker)").fetchall()
+    }
+    subject_sql = (
+        "p.subject_player_id"
+        if "subject_player_id" in prop_columns else "NULL AS subject_player_id"
+    )
     rows = connection.execute(
-        """
+        f"""
         SELECT
             p.id, p.match_id, p.market_key, p.selection, p.side, p.line,
             p.decimal_odds, p.blended_prob, p.market_prob_fair, p.edge, p.ev,
             p.result_status, p.profit_loss_units, p.match_label,
+            {subject_sql},
             (SELECT MIN(fs.data_quality_score)
              FROM feature_snapshots fs
              WHERE fs.match_id = p.match_id) AS data_quality_score,
@@ -725,9 +863,6 @@ def _export_tennis_singles(
           AND p.result_status = 'PENDING'
           AND p.blended_prob >= 0.58
           AND p.decimal_odds BETWEEN 1.30 AND 2.25
-          AND (SELECT MIN(fs.data_quality_score)
-               FROM feature_snapshots fs
-               WHERE fs.match_id = p.match_id) >= 0.80
         ORDER BY p.ev DESC, p.id
         """,
         (analysis_date,),
@@ -738,6 +873,9 @@ def _export_tennis_singles(
         item = dict(row)
         family = _tennis_prop_family(item.get("market_key"))
         if family not in enabled:
+            continue
+        source_quality = _tennis_source_quality(connection, item)
+        if source_quality < 0.65:
             continue
         match_id = int(item["match_id"])
         if match_id in selected_matches:
@@ -750,6 +888,10 @@ def _export_tennis_singles(
         outcome = _tennis_outcome(item.get("result_status"))
         model_probability = _safe_float(item.get("blended_prob"))
         odds = _safe_float(item.get("decimal_odds"))
+        family_stats = (strategy.get("families") or {}).get(family) or {}
+        confidence_score = _tennis_confidence_score(
+            source_quality, family_stats
+        )
         recommendations.append(
             {
                 "id": f"tennis:prop:{item['id']}",
@@ -765,17 +907,22 @@ def _export_tennis_singles(
                 "legs": [],
                 "metrics": {
                     "model_probability": model_probability,
+                    "hit_probability": model_probability,
                     "market_fair_probability": _safe_float(item.get("market_prob_fair")),
                     "edge": _safe_float(item.get("edge")),
                     "expected_value": _safe_float(item.get("ev")),
-                    "data_quality": _safe_float(item.get("data_quality_score")),
-                    "confidence": round(float(model_probability or 0) * 100),
+                    "data_quality": source_quality,
+                    "confidence": confidence_score,
+                    "confidence_score": confidence_score,
+                    "stake_units": _tennis_stake_units(
+                        model_probability, odds, confidence_score
+                    ),
                     "profit_loss_units": _safe_float(item.get("profit_loss_units")),
                 },
                 "insight": f"{family} · evidence gate validated",
                 "risk": "固定 1u；模型即使已驗證仍有短期波動。",
                 "decision": "BET",
-                "confidence": round(float(model_probability or 0) * 100),
+                "confidence": confidence_score,
                 "outcome": outcome,
                 "actual": (
                     "待賽果"
@@ -808,6 +955,8 @@ def _normalise_tennis_leg(leg: Dict[str, Any]) -> Dict[str, Any]:
         "line": leg.get("line"),
         "odds": _safe_float(leg.get("odds")),
         "confidence": leg.get("confidence"),
+        "confidence_score": leg.get("confidence_score"),
+        "hit_probability": leg.get("hit_probability"),
         "edge": _safe_float(leg.get("edge")),
         "data_quality": _safe_float(leg.get("data_quality")),
     }
@@ -852,7 +1001,8 @@ def _export_tennis_combos(
             or float(leg.get("odds") or 0) < 1.30
             or float(leg.get("odds") or 0) > 2.25
             or float(leg.get("confidence") or 0) < 58
-            or float(leg.get("data_quality") or 0) < 0.80
+            or float(leg.get("confidence_score") or 0) < 70
+            or _normalise_tennis_quality(leg.get("data_quality")) < 0.65
             for leg in raw_legs
         ):
             continue
@@ -864,6 +1014,9 @@ def _export_tennis_combos(
         )
         if joint_ev < 0.03:
             continue
+        combo_confidence = min(
+            float(leg.get("confidence_score") or 0) for leg in raw_legs
+        )
         outcome = _tennis_outcome(item.get("result_status"))
         selection = " + ".join(leg["selection"] for leg in legs if leg["selection"])
         recommendations.append(
@@ -881,9 +1034,14 @@ def _export_tennis_combos(
                 "legs": legs,
                 "metrics": {
                     "model_probability": _safe_float(joint_probability),
+                    "hit_probability": _safe_float(joint_probability),
+                    "confidence_score": combo_confidence,
                     "edge": _safe_float(item.get("adjusted_edge")),
                     "expected_value": _safe_float(joint_ev),
-                    "stake_units": _safe_float(item.get("stake_units")),
+                    "stake_units": _tennis_stake_units(
+                        joint_probability, item.get("combo_odds"),
+                        combo_confidence, combo=True,
+                    ),
                     "profit_loss_units": _safe_float(item.get("profit_loss_units")),
                 },
                 "insight": "兩腳跨場 prop · evidence gate validated",
@@ -929,7 +1087,7 @@ def export_tennis_snapshot(db_path: Path, target_date: Optional[str] = None) -> 
                 "unavailable",
                 ["no_eligible_tennis_date"],
             )
-        strategy = _tennis_strategy_state(connection)
+        strategy = _tennis_strategy_state(connection, as_of_date=analysis_date)
         recommendations = _export_tennis_singles(connection, analysis_date, strategy)
         recommendations.extend(_export_tennis_combos(connection, analysis_date, strategy))
         coverage = _tennis_coverage(connection, analysis_date)
