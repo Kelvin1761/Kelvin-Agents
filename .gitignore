@@ -111,3 +111,6 @@ scratch/*.bak
 scratch/au_reflector_*/
 scratch/pf_backfill_staging/
 scratch/warwick_farm_good4_counterfactual/
+
+# Sportsbet 抓取 HTML cache（大檔、可重建）
+.agents/skills/au_racing/.sportsbet_cache/
