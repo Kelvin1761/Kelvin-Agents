@@ -1,14 +1,10 @@
-"""Daily ace-prop pricing entry point.
+"""Daily evidence-gated tennis prop pricing entry point.
 
-Prices three ace market families off the soft book (Sportsbet) for a date:
-  * total_aces_in_the_match  -> one-way 'N+' ladder (legacy, flat de-vig)
-  * total_aces_<X>_5         -> MATCH total O/U (clean two-way de-vig)
-  * total_<player>_aces_<X>_5 -> single-PLAYER O/U (truest NBA prop)
-
-Every priced two-way market is logged to prop_tracker: the OVER side always
-(so the model-vs-market scorecard has data regardless of whether we bet), plus
-the VALUE side (over or under) when the model flags edge. Under is where the
-model tends to see value (it thinks aces come in below the book's line)."""
+The Sportsbet feed is treated as a market inventory.  Supported ace, player
+count, set-outcome and player-handicap families are priced and logged, but a
+new family remains ``RESEARCH_ONLY`` until its own scorecard and ROI evidence
+passes the strategy gate.
+"""
 from __future__ import annotations
 
 import re
@@ -16,7 +12,10 @@ from dataclasses import dataclass, field
 
 from tennis_wc.props import ace_model
 from tennis_wc.props import games_model
+from tennis_wc.props import player_model
+from tennis_wc.props import registry
 from tennis_wc.props.settlement import record_prop
+from tennis_wc.modelling import set_distribution
 
 _LADDER_MARKET = "total_aces_in_the_match"
 _MATCH_OU = re.compile(r"^total_aces_\d+_5$")
@@ -28,10 +27,17 @@ _MATCH_GAMES_OU = re.compile(r"^total_match_games_\d+_5$")
 class AcePropBoard:
     match_id: int
     match_label: str
-    predicted_match_mean: float
+    predicted_match_mean: float | None
     ladder_legs: list = field(default_factory=list)     # PricedAceLeg (over-only N+)
     match_ou: list = field(default_factory=list)        # TwoWayProp (aces)
     player_ou: list = field(default_factory=list)        # TwoWayProp (player aces)
+    double_fault_ou: list = field(default_factory=list)  # TwoWayProp
+    player_games_ou: list = field(default_factory=list)  # TwoWayProp
+    win_a_set: list = field(default_factory=list)        # BinaryProp
+    first_set_winner: list = field(default_factory=list) # HeadToHeadProp
+    game_handicap: list = field(default_factory=list)    # SpreadProp
+    set_handicap: list = field(default_factory=list)     # SpreadProp
+    exact_set_score: list = field(default_factory=list)  # ExactSetScoreProp
     games_ou: list = field(default_factory=list)        # TwoWayProp (total match games)
     predicted_games: float | None = None
     anchor: object | None = None
@@ -98,8 +104,16 @@ def _rows_for_date(conn, match_date: str):
         SELECT mo.match_id, mo.market_key, mo.market_name, mo.selection_name,
                mo.line, mo.odds, mo.id
         FROM market_odds_snapshots mo JOIN matches m ON m.id = mo.match_id
-        WHERE m.match_date = ? AND (mo.market_key = ? OR mo.market_key LIKE 'total_%aces_%'
-                                    OR mo.market_key LIKE 'total_match_games_%')
+        WHERE m.match_date = ? AND (
+            mo.market_key = ?
+            OR lower(mo.market_name) LIKE '%aces%'
+            OR lower(mo.market_name) LIKE '%double fault%'
+            OR lower(mo.market_name) LIKE '%total games%'
+            OR lower(mo.market_name) LIKE '%win at least %set%'
+            OR lower(mo.market_name) IN ('set 1 winner', 'first set winner', '1st set winner')
+            OR mo.market_key IN ('game_handicap', 'set_handicap')
+            OR (mo.market_key = 'set_betting' AND lower(mo.market_name) = 'set betting')
+        )
         ORDER BY mo.id ASC
         """,
         (match_date, _LADDER_MARKET),
@@ -107,20 +121,22 @@ def _rows_for_date(conn, match_date: str):
 
 
 def _match_prob_map(conn, match_date: str) -> dict:
-    """Latest model match-win probability per match (for games competitiveness)."""
+    """Latest player-A win probability per match."""
     rows = conn.execute(
         """
-        SELECT p.match_id, p.model_probability
+        SELECT p.match_id,
+               CASE WHEN p.selection_player_id = m.player_a_id
+                    THEN p.model_probability ELSE 1.0 - p.model_probability END AS p_a
         FROM predictions p JOIN matches m ON m.id = p.match_id
         WHERE m.match_date = ? AND p.id IN (SELECT MAX(id) FROM predictions GROUP BY match_id)
         """,
         (match_date,),
     ).fetchall()
-    return {r["match_id"]: r["model_probability"] for r in rows if r["model_probability"] is not None}
+    return {r["match_id"]: r["p_a"] for r in rows if r["p_a"] is not None}
 
 
 def _two_way_odds(rows):
-    """Group two-way O/U rows -> {(match_id, market_key, line): {'over':o, 'under':o, 'name':mn}}."""
+    """Group two-way O/U rows without merging two named-player markets."""
     ou: dict = {}
     for r in rows:
         name = str(r["selection_name"] or "")
@@ -130,9 +146,97 @@ def _two_way_odds(rows):
         side = "over" if low.startswith("over") else ("under" if low.startswith("under") else None)
         if side is None:
             continue
-        key = (r["match_id"], r["market_key"], float(r["line"]))
+        key = (r["match_id"], r["market_key"], r["market_name"], float(r["line"]))
         ou.setdefault(key, {"market_name": r["market_name"]})[side] = float(r["odds"])  # later id wins
     return ou
+
+
+def _yes_no_odds(rows):
+    out: dict = {}
+    for r in rows:
+        tokens = str(r["selection_name"] or "").lower().split()
+        if not tokens or tokens[-1] not in {"yes", "no"}:
+            continue
+        key = (r["match_id"], r["market_key"], r["market_name"])
+        out.setdefault(key, {"market_name": r["market_name"]})[tokens[-1]] = float(r["odds"])
+    return out
+
+
+def _head_to_head_odds(rows, meta):
+    out: dict = {}
+    a_norm, b_norm = _norm(meta["a_name"]), _norm(meta["b_name"])
+    for row in rows:
+        if registry.family_for_market(row["market_key"], row["market_name"]) != "first_set_winner":
+            continue
+        selection = _norm(row["selection_name"])
+        side = "a" if selection == a_norm else ("b" if selection == b_norm else None)
+        if side is None:
+            continue
+        key = (row["match_id"], row["market_key"], row["market_name"])
+        out.setdefault(key, {})[side] = float(row["odds"])
+    return out
+
+
+def _spread_odds(rows, meta, family: str):
+    """Group complementary player handicap selections.
+
+    Only half-lines with explicit player names are accepted.  This excludes
+    three-way integer handicaps and set-specific game handicaps, both of which
+    need push/conditional settlement rules that do not belong in this contract.
+    """
+    out: dict = {}
+    a_norm, b_norm = _norm(meta["a_name"]), _norm(meta["b_name"])
+    for row in rows:
+        if registry.family_for_market(row["market_key"], row["market_name"]) != family:
+            continue
+        if row["line"] is None:
+            continue
+        handicap = float(row["line"])
+        if abs(abs(handicap) % 1.0 - 0.5) > 1e-9:
+            continue
+        raw_selection = str(row["selection_name"] or "")
+        player_text = re.sub(r"\s*\([+-]?\d+(?:\.\d+)?\)\s*$", "", raw_selection)
+        selection = _norm(player_text)
+        side = "a" if selection == a_norm else ("b" if selection == b_norm else None)
+        if side is None:
+            continue
+        key = (row["match_id"], family, abs(handicap))
+        bucket = out.setdefault(key, {"market_name": row["market_name"]})
+        bucket["market_name"] = row["market_name"]
+        bucket[side] = {
+            "odds": float(row["odds"]),
+            "handicap": handicap,
+        }
+    return {
+        key: value
+        for key, value in out.items()
+        if "a" in value
+        and "b" in value
+        and abs(value["a"]["handicap"] + value["b"]["handicap"]) < 1e-9
+    }
+
+
+def _exact_set_score_odds(rows, meta):
+    """Return complete four-way BO3 Set Betting markets for one fixture."""
+    out: dict = {}
+    a_norm, b_norm = _norm(meta["a_name"]), _norm(meta["b_name"])
+    for row in rows:
+        if registry.family_for_market(row["market_key"], row["market_name"]) != "player_exact_set_score":
+            continue
+        parsed = re.match(r"^(.*?)\s+2-([01])$", str(row["selection_name"] or "").strip())
+        if not parsed:
+            continue
+        player = _norm(parsed.group(1))
+        side = "a" if player == a_norm else ("b" if player == b_norm else None)
+        if side is None:
+            continue
+        code = f"{side}2{parsed.group(2)}"
+        out.setdefault(row["match_id"], {})[code] = float(row["odds"])
+    return {
+        match_id: odds
+        for match_id, odds in out.items()
+        if set(odds) == {"a20", "a21", "b20", "b21"}
+    }
 
 
 def _ladder_odds(rows):
@@ -157,6 +261,26 @@ def _resolve_player(market_name: str, meta) -> tuple[int | None, str]:
         return meta["player_a_id"], meta["a_name"]
     if who and (who in b or b in who):
         return meta["player_b_id"], meta["b_name"]
+    return None, ""
+
+
+def _resolve_named_player(market_name: str, family: str, meta) -> tuple[int | None, str]:
+    patterns = {
+        "player_aces": r"(?:total\s+)?(.*?)\s+aces(?:\s+\d|$)",
+        "player_double_faults": r"(?:total\s+)?(.*?)\s+double faults?(?:\s+\d|$)",
+        "player_total_games": r"^(.*?)\s+total games(?:\s+\d|$)",
+        "player_win_a_set": r"^(.*?)\s+to win at least (?:one|1) set",
+    }
+    match = re.search(patterns.get(family, r"$^"), market_name.strip(), re.I)
+    who = _norm(match.group(1)) if match else ""
+    if not who:
+        return None, ""
+    for pid_key, name_key in (
+        ("player_a_id", "a_name"), ("player_b_id", "b_name")
+    ):
+        candidate = _norm(meta[name_key])
+        if who in candidate or candidate in who:
+            return meta[pid_key], meta[name_key]
     return None, ""
 
 
@@ -195,31 +319,172 @@ def _log_two_way(conn, match_date, label, tw: "ace_model.TwoWayProp",
                     stake_units=1.0, is_value=True)
 
 
+def _log_binary(conn, match_date, label, binary, subject_player_id):
+    yes_is_value = binary.value_side == "yes"
+    record_prop(
+        conn, match_id=binary.match_id, match_date=match_date, match_label=label,
+        market_key=binary.market_key, line=0.5, selection="Yes", side="over",
+        prop_scope="player_win_set", subject_player_id=subject_player_id,
+        decimal_odds=binary.yes_odds, model_prob=binary.tempered_prob_yes,
+        model_prob_raw=binary.model_prob_yes,
+        temper_strength=binary.temper_strength,
+        market_prob_fair=binary.fair_prob_yes,
+        blended_prob=binary.blended_prob if yes_is_value else binary.tempered_prob_yes,
+        edge=binary.edge if yes_is_value else 0.0,
+        ev=binary.ev if yes_is_value else 0.0, predicted_mean=binary.model_prob_yes,
+        stake_units=1.0 if yes_is_value else 0.0, is_value=yes_is_value,
+    )
+    if binary.value_side == "no":
+        record_prop(
+            conn, match_id=binary.match_id, match_date=match_date, match_label=label,
+            market_key=binary.market_key, line=0.5, selection="No", side="under",
+            prop_scope="player_win_set", subject_player_id=subject_player_id,
+            decimal_odds=binary.no_odds, model_prob=round(1-binary.tempered_prob_yes, 4),
+            model_prob_raw=round(1-binary.model_prob_yes, 4),
+            temper_strength=binary.temper_strength,
+            market_prob_fair=round(1-binary.fair_prob_yes, 4),
+            blended_prob=binary.blended_prob, edge=binary.edge, ev=binary.ev,
+            predicted_mean=binary.model_prob_yes, stake_units=1.0, is_value=True,
+        )
+
+
+def _log_head_to_head(conn, match_date, label, prop):
+    a_value = prop.value_player_id == prop.player_a_id
+    record_prop(
+        conn, match_id=prop.match_id, match_date=match_date, match_label=label,
+        market_key=f"first_set_winner_{prop.player_a_id}", line=0.5,
+        selection=prop.player_a_name, side="over", prop_scope="player_first_set",
+        subject_player_id=prop.player_a_id, decimal_odds=prop.a_odds,
+        model_prob=prop.tempered_prob_a, model_prob_raw=prop.model_prob_a,
+        temper_strength=prop.temper_strength, market_prob_fair=prop.fair_prob_a,
+        blended_prob=prop.blended_prob if a_value else prop.tempered_prob_a,
+        edge=prop.edge if a_value else 0.0, ev=prop.ev if a_value else 0.0,
+        predicted_mean=prop.model_prob_a, stake_units=1.0 if a_value else 0.0,
+        is_value=a_value,
+    )
+    if prop.value_player_id == prop.player_b_id:
+        record_prop(
+            conn, match_id=prop.match_id, match_date=match_date, match_label=label,
+            market_key=f"first_set_winner_{prop.player_b_id}", line=0.5,
+            selection=prop.player_b_name, side="over",
+            prop_scope="player_first_set", subject_player_id=prop.player_b_id,
+            decimal_odds=prop.b_odds, model_prob=round(1-prop.tempered_prob_a, 4),
+            model_prob_raw=round(1-prop.model_prob_a, 4),
+            temper_strength=prop.temper_strength,
+            market_prob_fair=round(1-prop.fair_prob_a, 4),
+            blended_prob=prop.blended_prob, edge=prop.edge, ev=prop.ev,
+            predicted_mean=round(1-prop.model_prob_a, 4), stake_units=1.0,
+            is_value=True,
+        )
+
+
+def _log_spread(conn, match_date, label, prop, scope: str):
+    """Log player-A cover canonically and player-B only when it is value.
+
+    Both rows settle against player A's raw margin.  Player A covers when the
+    margin is over ``-a_handicap``; player B covers on the complementary under.
+    This keeps exactly one odds-blind scorecard observation per market.
+    """
+    threshold = -float(prop.a_handicap)
+    a_value = prop.value_player_id == prop.player_a_id
+    record_prop(
+        conn, match_id=prop.match_id, match_date=match_date, match_label=label,
+        market_key=prop.market_key, line=threshold,
+        selection=f"{prop.player_a_name} ({prop.a_handicap:+g})", side="over",
+        prop_scope=scope, subject_player_id=prop.player_a_id,
+        decimal_odds=prop.a_odds, model_prob=prop.tempered_prob_a_cover,
+        model_prob_raw=prop.model_prob_a_cover,
+        temper_strength=prop.temper_strength,
+        market_prob_fair=prop.fair_prob_a_cover,
+        blended_prob=prop.blended_prob if a_value else prop.tempered_prob_a_cover,
+        edge=prop.edge if a_value else 0.0, ev=prop.ev if a_value else 0.0,
+        predicted_mean=prop.predicted_margin,
+        stake_units=1.0 if a_value else 0.0, is_value=a_value,
+    )
+    if prop.value_player_id == prop.player_b_id:
+        record_prop(
+            conn, match_id=prop.match_id, match_date=match_date, match_label=label,
+            market_key=prop.market_key, line=threshold,
+            selection=f"{prop.player_b_name} ({prop.b_handicap:+g})", side="under",
+            prop_scope=scope, subject_player_id=prop.player_a_id,
+            decimal_odds=prop.b_odds,
+            model_prob=round(1-prop.tempered_prob_a_cover, 4),
+            model_prob_raw=round(1-prop.model_prob_a_cover, 4),
+            temper_strength=prop.temper_strength,
+            market_prob_fair=round(1-prop.fair_prob_a_cover, 4),
+            blended_prob=prop.blended_prob, edge=prop.edge, ev=prop.ev,
+            predicted_mean=prop.predicted_margin, stake_units=1.0, is_value=True,
+        )
+
+
+def _log_exact_set_score(conn, match_date, label, prop):
+    """Log all four mutually exclusive outcomes for multiclass scorekeeping."""
+    for selection in prop.selections:
+        record_prop(
+            conn, match_id=prop.match_id, match_date=match_date, match_label=label,
+            market_key=(
+                f"player_exact_set_score_{selection.player_id}_"
+                f"{selection.sets_lost}"
+            ),
+            line=0.5,
+            selection=f"{selection.player_name} 2-{selection.sets_lost}",
+            side="over", prop_scope="player_exact_set_score",
+            subject_player_id=selection.player_id,
+            decimal_odds=selection.odds, model_prob=selection.tempered_prob,
+            model_prob_raw=selection.model_prob,
+            temper_strength=prop.temper_strength,
+            market_prob_fair=selection.fair_prob,
+            blended_prob=selection.blended_prob,
+            edge=selection.edge, ev=selection.ev,
+            predicted_mean=selection.model_prob,
+            stake_units=1.0 if selection.is_value else 0.0,
+            is_value=selection.is_value,
+        )
+
+
 def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[AcePropBoard]:
     from tennis_wc.props import calibration
     rows = _rows_for_date(conn, match_date)
     ladder = _ladder_odds(rows)
     two_way = _two_way_odds(rows)
+    yes_no = _yes_no_odds(rows)
     prob_map = _match_prob_map(conn, match_date)
     temper = calibration.current_strength(conn)  # keeps EV honest until validated
-    match_ids = {r["match_id"] for r in rows}
+    rows_by_match: dict[int, list] = {}
+    for row in rows:
+        rows_by_match.setdefault(int(row["match_id"]), []).append(row)
+    match_ids = set(rows_by_match)
     boards: list[AcePropBoard] = []
     for mid in match_ids:
         meta = _match_meta(conn, mid)
         if not meta:
             continue
-        a = ace_model.player_ace_profile(conn, meta["player_a_id"], meta["match_date"], meta["surface"])
-        b = ace_model.player_ace_profile(conn, meta["player_b_id"], meta["match_date"], meta["surface"])
-        if a.n < ace_model._MIN_HISTORY or b.n < ace_model._MIN_HISTORY:
-            continue
-        match_mean = ace_model.predict_match_ace_mean(a, b)
+        if "/" in str(meta["a_name"] or "") or "/" in str(meta["b_name"] or ""):
+            continue  # current player-prop models are singles-only
+        match_rows = rows_by_match[mid]
+        ace_rows = [
+            row for row in match_rows
+            if registry.family_for_market(row["market_key"], row["market_name"])
+            in {"player_aces", "match_total_aces"}
+        ]
+        a = b = None
+        match_mean = None
+        if ace_rows or mid in ladder:
+            a = ace_model.player_ace_profile(
+                conn, meta["player_a_id"], meta["match_date"], meta["surface"]
+            )
+            b = ace_model.player_ace_profile(
+                conn, meta["player_b_id"], meta["match_date"], meta["surface"]
+            )
+            if a.n >= ace_model._MIN_HISTORY and b.n >= ace_model._MIN_HISTORY:
+                match_mean = ace_model.predict_match_ace_mean(a, b)
         label = f"{meta['a_name']} vs {meta['b_name']}"
         board = AcePropBoard(match_id=mid, match_label=label, predicted_match_mean=match_mean)
         # v2 serve-dominance input for the games model (walk-forward safe).
         hold_sum = games_model.combined_hold(
             conn, meta["player_a_id"], meta["player_b_id"], meta["match_date"])
         # legacy N+ ladder
-        if mid in ladder:
+        if mid in ladder and match_mean is not None:
             board.ladder_legs = ace_model.price_ace_legs(
                 conn, mid, meta["player_a_id"], meta["player_b_id"],
                 meta["match_date"], meta["surface"], ladder[mid])
@@ -228,10 +493,13 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                     lg.is_value = False
             board.anchor = ace_model.anchor_leg(board.ladder_legs)
         # two-way markets
-        for (m_id, mk, line), od in two_way.items():
+        for (m_id, mk, market_name, line), od in two_way.items():
             if m_id != mid or "over" not in od or "under" not in od:
                 continue
-            if _MATCH_OU.match(mk):
+            family = registry.family_for_market(mk, market_name)
+            if family == "match_total_aces":
+                if match_mean is None:
+                    continue
                 tw = ace_model.price_two_way(mid, mk, "match", line, od["over"], od["under"],
                                              match_mean, ace_model.match_curve_for_surface(meta["surface"]),
                                              temper=temper)
@@ -241,8 +509,10 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                     board.match_ou.append(tw)
                     if log:
                         _log_two_way(conn, match_date, label, tw, "match", None)
-            elif _PLAYER_OU.match(mk):
-                pid, pname = _resolve_player(od["market_name"], meta)
+            elif family == "player_aces":
+                if a is None or b is None or match_mean is None:
+                    continue
+                pid, pname = _resolve_named_player(market_name, family, meta)
                 if pid is None:
                     continue
                 subj = a if pid == meta["player_a_id"] else b
@@ -257,7 +527,60 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                     board.player_ou.append(tw)
                     if log:
                         _log_two_way(conn, match_date, label, tw, "player", pid)
-            elif _MATCH_GAMES_OU.match(mk):
+            elif family == "player_double_faults":
+                pid, pname = _resolve_named_player(market_name, family, meta)
+                if pid is None:
+                    continue
+                profile = player_model.count_profile(
+                    conn, pid, meta["match_date"], "double_fault_count",
+                    surface=meta["surface"],
+                )
+                tw = player_model.price_count_two_way(
+                    mid, f"player_double_faults_{pid}_{line:g}", pname, line,
+                    od["over"], od["under"], profile,
+                    temper=temper,
+                )
+                if tw:
+                    board.double_fault_ou.append(tw)
+                    if log:
+                        _log_two_way(
+                            conn, match_date, label, tw, "player_double_faults", pid
+                        )
+            elif family == "player_total_games":
+                pid, pname = _resolve_named_player(market_name, family, meta)
+                if pid is None or prob_map.get(mid) is None:
+                    continue
+                p_side = prob_map[mid] if pid == meta["player_a_id"] else 1-prob_map[mid]
+                total_mean = games_model.predict_total_games(
+                    prob_map[mid], best_of=3, hold_sum=hold_sum
+                )
+                if total_mean is None:
+                    continue
+                raw_over, player_mean = player_model.player_games_over_probability(
+                    line, total_mean, p_side
+                )
+                # Reuse the generic two-way carrier; a one-point synthetic curve
+                # avoids pretending the ace calibration applies to games.
+                tw = ace_model.price_two_way(
+                    mid, f"player_total_games_{pid}_{line:g}", pname, line,
+                    od["over"], od["under"], player_mean,
+                    [(line / player_mean, raw_over), (line / player_mean + 0.001, raw_over)],
+                    factors={"match_probability": p_side, "total_games_mean": total_mean},
+                    within_range_ratio=9.0, temper=temper,
+                )
+                if tw:
+                    # price_two_way recalculates at the same ratio, so raw_over
+                    # remains the explicit player-games research estimate.
+                    board.player_games_ou.append(tw)
+                    if log:
+                        _log_two_way(conn, match_date, label, tw, "player_games", pid)
+            elif (
+                family == "match_total_games"
+                and "set " not in market_name.lower()
+                and "1st set" not in market_name.lower()
+                and "2nd set" not in market_name.lower()
+                and "3rd set" not in market_name.lower()
+            ):
                 tw = games_model.price_games_two_way(
                     mid, mk, line, od["over"], od["under"], prob_map.get(mid), best_of=3,
                     temper=temper, hold_sum=hold_sum)
@@ -268,6 +591,104 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                     board.games_ou.append(tw)
                     if log:
                         _log_two_way(conn, match_date, label, tw, "match_games", None)
+        for (m_id, mk, market_name), od in yes_no.items():
+            if m_id != mid or "yes" not in od or "no" not in od:
+                continue
+            family = registry.family_for_market(mk, market_name)
+            if family != "player_win_a_set" or prob_map.get(mid) is None:
+                continue
+            pid, pname = _resolve_named_player(market_name, family, meta)
+            if pid is None:
+                continue
+            p_side = prob_map[mid] if pid == meta["player_a_id"] else 1-prob_map[mid]
+            raw_yes = set_distribution.win_at_least_one_set_probability(p_side)
+            binary = player_model.price_probability_two_way(
+                mid, f"player_win_a_set_{pid}", pname,
+                od["yes"], od["no"], raw_yes, temper=temper,
+                factors={"match_probability": p_side},
+            )
+            if binary:
+                board.win_a_set.append(binary)
+                if log:
+                    _log_binary(conn, match_date, label, binary, pid)
+        for (m_id, mk, _market_name), od in _head_to_head_odds(match_rows, meta).items():
+            if m_id != mid or "a" not in od or "b" not in od or prob_map.get(mid) is None:
+                continue
+            raw_a = set_distribution.first_set_win_probability(prob_map[mid])
+            prop = player_model.price_head_to_head(
+                mid, mk, meta["player_a_id"], meta["a_name"],
+                meta["player_b_id"], meta["b_name"], od["a"], od["b"], raw_a,
+                temper=temper, factors={"match_probability_a": prob_map[mid]},
+            )
+            if prop:
+                board.first_set_winner.append(prop)
+                if log:
+                    _log_head_to_head(conn, match_date, label, prop)
+        exact_odds = _exact_set_score_odds(match_rows, meta).get(mid)
+        if exact_odds and prob_map.get(mid) is not None:
+            prop = player_model.price_exact_set_score(
+                mid, "player_exact_set_score", meta["player_a_id"], meta["a_name"],
+                meta["player_b_id"], meta["b_name"], exact_odds, prob_map[mid],
+                temper=temper, factors={"match_probability_a": prob_map[mid]},
+            )
+            if prop:
+                board.exact_set_score.append(prop)
+                if log:
+                    _log_exact_set_score(conn, match_date, label, prop)
+        for (m_id, _family, abs_line), od in _spread_odds(
+            match_rows, meta, "player_game_handicap"
+        ).items():
+            if m_id != mid or prob_map.get(mid) is None:
+                continue
+            total_mean = games_model.predict_total_games(
+                prob_map[mid], best_of=3, hold_sum=hold_sum
+            )
+            if total_mean is None:
+                continue
+            raw_a_cover, margin_mean = player_model.game_handicap_cover_probability(
+                od["a"]["handicap"], total_mean, prob_map[mid]
+            )
+            prop = player_model.price_spread_two_way(
+                mid, f"player_game_handicap_{abs_line:g}",
+                meta["player_a_id"], meta["a_name"],
+                meta["player_b_id"], meta["b_name"],
+                od["a"]["handicap"], od["b"]["handicap"],
+                od["a"]["odds"], od["b"]["odds"], raw_a_cover,
+                margin_mean, temper=temper,
+                factors={
+                    "match_probability_a": prob_map[mid],
+                    "expected_total_games": total_mean,
+                    "source_market": od["market_name"],
+                },
+            )
+            if prop:
+                board.game_handicap.append(prop)
+                if log:
+                    _log_spread(conn, match_date, label, prop, "player_game_margin")
+        for (m_id, _family, abs_line), od in _spread_odds(
+            match_rows, meta, "player_set_handicap"
+        ).items():
+            if m_id != mid or prob_map.get(mid) is None:
+                continue
+            raw_a_cover, margin_mean = player_model.set_handicap_cover_probability(
+                od["a"]["handicap"], prob_map[mid]
+            )
+            prop = player_model.price_spread_two_way(
+                mid, f"player_set_handicap_{abs_line:g}",
+                meta["player_a_id"], meta["a_name"],
+                meta["player_b_id"], meta["b_name"],
+                od["a"]["handicap"], od["b"]["handicap"],
+                od["a"]["odds"], od["b"]["odds"], raw_a_cover,
+                margin_mean, temper=temper,
+                factors={
+                    "match_probability_a": prob_map[mid],
+                    "source_market": od["market_name"],
+                },
+            )
+            if prop:
+                board.set_handicap.append(prop)
+                if log:
+                    _log_spread(conn, match_date, label, prop, "player_set_margin")
         # log legacy ladder value legs + anchor (over-only)
         if log and board.ladder_legs:
             for lg in board.ladder_legs:
@@ -283,9 +704,27 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True) -> list[Ac
                             market_prob_fair=lg.market_prob_fair, blended_prob=lg.blended_prob,
                             edge=lg.edge, ev=lg.ev, predicted_mean=lg.predicted_mean,
                             stake_units=1.0 if lg.is_value else 0.0, is_value=lg.is_value)
-        if board.ladder_legs or board.match_ou or board.player_ou or board.games_ou:
+        if (
+            board.ladder_legs or board.match_ou or board.player_ou
+            or board.double_fault_ou or board.player_games_ou
+            or board.win_a_set or board.first_set_winner
+            or board.game_handicap or board.set_handicap
+            or board.exact_set_score or board.games_ou
+        ):
             boards.append(board)
     if log:
         conn.commit()
-    boards.sort(key=lambda x: -sum(1 for t in (x.match_ou + x.player_ou + x.games_ou) if t.value_side))
+    boards.sort(
+        key=lambda x: -sum(
+            1 for t in (
+                x.match_ou + x.player_ou + x.double_fault_ou
+                + x.player_games_ou + x.win_a_set
+                + x.first_set_winner + x.game_handicap
+                + x.set_handicap + x.exact_set_score + x.games_ou
+            ) if (
+                getattr(t, "value_side", None)
+                or getattr(t, "value_player_id", None) is not None
+            )
+        )
+    )
     return boards

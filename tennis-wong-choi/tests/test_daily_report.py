@@ -3,6 +3,57 @@ from __future__ import annotations
 import json
 
 
+def test_validated_singles_keep_only_one_prop_per_match():
+    from tennis_wc.reports.daily_report import _recommended_picks
+
+    def leg(identifier, match_id, ev):
+        return {
+            "id": identifier,
+            "match_id": match_id,
+            "market_key": f"total_player_{identifier}_aces_5_5",
+            "prob": 0.62,
+            "data_quality": 0.90,
+            "odds": 1.80,
+            "edge": 0.07,
+            "ev": ev,
+        }
+
+    picks = _recommended_picks(
+        {
+            "strategy": {"enabled_families": ["player_aces"]},
+            "value_legs": [leg("a", 1, 0.15), leg("b", 1, 0.14), leg("c", 2, 0.10)],
+            "combos": [],
+        }
+    )
+    assert [row["id"] for row in picks["validated_singles"]] == ["a", "c"]
+
+
+def test_research_prop_combos_exclude_high_odds_and_same_match_duplicates():
+    from tennis_wc.reports.daily_report import _prop_combos
+
+    def leg(identifier, match_id, ev, odds=1.8):
+        return {
+            "id": identifier,
+            "match_id": match_id,
+            "prob": 0.62,
+            "odds": odds,
+            "data_quality": 0.90,
+            "edge": 0.06,
+            "ev": ev,
+        }
+
+    combos = _prop_combos(
+        [
+            leg("a", 1, 0.10),
+            leg("same-match-weaker", 1, 0.08),
+            leg("b", 2, 0.09),
+            leg("high-odds", 3, 0.20, odds=2.6),
+        ]
+    )
+    assert len(combos) == 1
+    assert {row["id"] for row in combos[0]["legs"]} == {"a", "b"}
+
+
 def _banker_row(
     match_id: int,
     selection_name: str,
@@ -254,7 +305,7 @@ def test_sportsbet_round_label_from_event_text():
     assert sportsbet_round_label(None, None) == "UNKNOWN"
 
 
-def test_render_banker_report_uses_nba_style_four_tiers_and_positive_ev(tmp_path, monkeypatch):
+def test_render_banker_report_cancels_old_categories(tmp_path, monkeypatch):
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
@@ -272,14 +323,11 @@ def test_render_banker_report_uses_nba_style_four_tiers_and_positive_ev(tmp_path
 
     report = render_banker_report("2026-06-03", rows)
 
-    # 4d7110f demoted the value/high tiers: the headline is now the prop-first
-    # strategy banner, but the four tier sections still render (reference-only).
     assert "策略重心：Player Props" in report
-    assert "組合1 穩膽" in report
-    assert "組合X 火藥庫" in report
-    # The combo must be reported with a +EV figure and a half-Kelly stake.
-    assert "組合 EV：+" in report
-    assert "Player One" in report and "Player Two" in report
+    assert "VALIDATED_SINGLE、VALIDATED_2_LEG、RESEARCH_ONLY" in report
+    assert "組合1 穩膽" not in report
+    assert "組合X 火藥庫" not in report
+    assert "Player One" not in report and "Player Two" not in report
 
 
 def test_chalk_combo_dicts_builds_disjoint_tracked_chains():
@@ -381,7 +429,7 @@ def test_render_banker_report_excludes_untrusted_prop_legs(tmp_path, monkeypatch
     report = render_banker_report("2026-06-03", [prop])
 
     assert "Aces Over 2.5" not in report
-    assert "無合格單腳" in report
+    assert "RESEARCH_ONLY" in report
 
 
 def test_render_banker_report_empty_when_no_trustworthy_legs(tmp_path, monkeypatch):
@@ -394,7 +442,7 @@ def test_render_banker_report_empty_when_no_trustworthy_legs(tmp_path, monkeypat
     init_db()  # empty DB -> no authoritative match-winner BET legs
     report = render_banker_report("2026-06-03", [])
 
-    assert "無合格單腳" in report
+    assert "RESEARCH_ONLY" in report
 
 
 def test_opened_markets_produce_trial_combos(tmp_path, monkeypatch):
@@ -435,9 +483,9 @@ def test_opened_markets_produce_trial_combos(tmp_path, monkeypatch):
     ]
     report = render_banker_report("2026-06-03", rows)
 
-    # The opened (unvalidated) markets must surface as TRIAL combos, clearly flagged.
-    assert "試注組合（未驗證市場" in report
-    assert "Player Set One" in report
+    # General derived markets can no longer bypass the dedicated prop tracker.
+    assert "RESEARCH_ONLY" in report
+    assert "Player Set One" not in report
 
 
 def test_stable_value_history_requires_sample_hit_rate_roi_and_clv(tmp_path, monkeypatch):

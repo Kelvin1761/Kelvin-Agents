@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 
 from tennis_wc.features.common import utc_now
 
@@ -68,6 +69,117 @@ def actual_player_aces(conn, match_id: int, player_id: int) -> float | None:
     return _history_aces(conn, match_id, player_id)
 
 
+def actual_player_double_faults(conn, match_id: int, player_id: int) -> float | None:
+    value = _actual_player_score_value(conn, match_id, player_id, "double_faults")
+    return value if value is not None else _history_count(
+        conn, match_id, player_id, "double_fault_count"
+    )
+
+
+def actual_player_games(conn, match_id: int, player_id: int) -> float | None:
+    return _actual_player_score_value(conn, match_id, player_id, "games")
+
+
+def actual_player_sets(conn, match_id: int, player_id: int) -> float | None:
+    return _actual_player_score_value(conn, match_id, player_id, "sets")
+
+
+def actual_player_margin(
+    conn, match_id: int, player_id: int, field: str
+) -> float | None:
+    """Actual named-player margin over the opponent for games or sets."""
+    if field not in {"games", "sets"}:
+        raise ValueError(f"unsupported margin field: {field}")
+    meta = conn.execute(
+        "SELECT player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)
+    ).fetchone()
+    if not meta or player_id not in {meta["player_a_id"], meta["player_b_id"]}:
+        return None
+    opponent_id = (
+        meta["player_b_id"] if player_id == meta["player_a_id"] else meta["player_a_id"]
+    )
+    player_value = _actual_player_score_value(conn, match_id, player_id, field)
+    opponent_value = _actual_player_score_value(conn, match_id, opponent_id, field)
+    if player_value is None or opponent_value is None:
+        return None
+    return player_value - opponent_value
+
+
+def actual_player_exact_set_score(
+    conn, match_id: int, player_id: int, sets_lost: int
+) -> float | None:
+    """Binary outcome for a named player winning a completed BO3 match 2-x."""
+    if sets_lost not in {0, 1}:
+        return None
+    meta = conn.execute(
+        "SELECT player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)
+    ).fetchone()
+    if not meta or player_id not in {meta["player_a_id"], meta["player_b_id"]}:
+        return None
+    opponent_id = (
+        meta["player_b_id"] if player_id == meta["player_a_id"] else meta["player_a_id"]
+    )
+    won_sets = actual_player_sets(conn, match_id, player_id)
+    lost_sets = actual_player_sets(conn, match_id, opponent_id)
+    if won_sets is None or lost_sets is None:
+        return None
+    return 1.0 if int(won_sets) == 2 and int(lost_sets) == sets_lost else 0.0
+
+
+def actual_player_first_set_win(conn, match_id: int, player_id: int) -> float | None:
+    meta = conn.execute(
+        "SELECT player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)
+    ).fetchone()
+    row = conn.execute(
+        "SELECT score_json FROM match_results WHERE match_id = ? ORDER BY id DESC LIMIT 1",
+        (match_id,),
+    ).fetchone()
+    if not meta or not row or not row["score_json"]:
+        return None
+    try:
+        score = json.loads(row["score_json"])
+        sets = score.get("sets")
+        if not isinstance(sets, list) or not sets:
+            return None
+        a_games = sets[0].get("player_a_games")
+        b_games = sets[0].get("player_b_games")
+        if a_games is None or b_games is None or int(a_games) == int(b_games):
+            return None
+        a_won = int(a_games) > int(b_games)
+        if player_id == meta["player_a_id"]:
+            return 1.0 if a_won else 0.0
+        if player_id == meta["player_b_id"]:
+            return 0.0 if a_won else 1.0
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+    return None
+
+
+def _actual_player_score_value(
+    conn, match_id: int, player_id: int, field: str
+) -> float | None:
+    meta = conn.execute(
+        "SELECT player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)
+    ).fetchone()
+    row = conn.execute(
+        "SELECT score_json FROM match_results WHERE match_id = ? ORDER BY id DESC LIMIT 1",
+        (match_id,),
+    ).fetchone()
+    if not meta or not row or not row["score_json"]:
+        return None
+    try:
+        score = json.loads(row["score_json"])
+        if player_id == meta["player_a_id"]:
+            value = score.get(f"player_a_{field}")
+        elif player_id == meta["player_b_id"]:
+            value = score.get(f"player_b_{field}")
+        else:
+            return None
+        return float(value) if value is not None else None
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+
+
 def actual_total_games(conn, match_id: int) -> float | None:
     """Actual total match games from match_results.score_json (a+b games)."""
     row = conn.execute(
@@ -93,6 +205,12 @@ def _history_aces(conn, match_id: int, player_id: int) -> float | None:
     opponent within [-16d, +2d] pins the row to this specific match; the same
     pairing recurring inside one window is rare enough to accept (closest date
     wins)."""
+    return _history_count(conn, match_id, player_id, "ace_count")
+
+
+def _history_count(conn, match_id: int, player_id: int, column: str) -> float | None:
+    if column not in {"ace_count", "double_fault_count"}:
+        raise ValueError(f"unsupported history count: {column}")
     meta = conn.execute(
         "SELECT match_date, player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)
     ).fetchone()
@@ -109,15 +227,15 @@ def _history_aces(conn, match_id: int, player_id: int) -> float | None:
         return None
     row = conn.execute(
         """
-        SELECT ace_count FROM player_match_history
-        WHERE player_id = ? AND opponent_id = ? AND ace_count IS NOT NULL
+        SELECT {column} AS value FROM player_match_history
+        WHERE player_id = ? AND opponent_id = ? AND {column} IS NOT NULL
           AND match_date BETWEEN date(?, '-16 days') AND date(?, '+2 days')
         ORDER BY ABS(julianday(match_date) - julianday(?))
         LIMIT 1
-        """,
+        """.format(column=column),
         (player_id, opponent_id, day, day, day),
     ).fetchone()
-    return float(row["ace_count"]) if row else None
+    return float(row["value"]) if row else None
 
 
 def record_prop(conn, *, match_id: int, match_date: str, match_label: str,
@@ -173,6 +291,33 @@ def _actual_for(conn, p) -> float | None:
     scope = p["prop_scope"] or "match"
     if scope == "match_games":
         return actual_total_games(conn, p["match_id"])
+    if scope == "player_games":
+        return actual_player_games(conn, p["match_id"], p["subject_player_id"])
+    if scope == "player_win_set":
+        return actual_player_sets(conn, p["match_id"], p["subject_player_id"])
+    if scope == "player_first_set":
+        return actual_player_first_set_win(
+            conn, p["match_id"], p["subject_player_id"]
+        )
+    if scope == "player_double_faults":
+        return actual_player_double_faults(
+            conn, p["match_id"], p["subject_player_id"]
+        )
+    if scope == "player_game_margin":
+        return actual_player_margin(
+            conn, p["match_id"], p["subject_player_id"], "games"
+        )
+    if scope == "player_set_margin":
+        return actual_player_margin(
+            conn, p["match_id"], p["subject_player_id"], "sets"
+        )
+    if scope == "player_exact_set_score":
+        parsed = re.search(r"\b2-([01])\s*$", str(p["selection"] or ""))
+        if not parsed:
+            return None
+        return actual_player_exact_set_score(
+            conn, p["match_id"], p["subject_player_id"], int(parsed.group(1))
+        )
     if scope == "match":
         return actual_total_aces(conn, p["match_id"])
     return actual_player_aces(conn, p["match_id"], p["subject_player_id"])
@@ -252,6 +397,11 @@ def prop_roi_report(conn, value_only: bool = True) -> dict:
         where += " AND is_value = 1"
     rows = conn.execute(
         f"""
+        WITH quality AS (
+            SELECT match_id, MIN(data_quality_score) AS data_quality_score
+            FROM feature_snapshots
+            GROUP BY match_id
+        )
         SELECT p.*,
                m.tour,
                COALESCE(
@@ -260,11 +410,10 @@ def prop_roi_report(conn, value_only: bool = True) -> dict:
                     ORDER BY tl.id DESC LIMIT 1),
                    'UNKNOWN'
                ) AS surface,
-               (SELECT MIN(fs.data_quality_score)
-                FROM feature_snapshots fs
-                WHERE fs.match_id = p.match_id) AS data_quality_score
+               quality.data_quality_score
         FROM prop_tracker p
         LEFT JOIN matches m ON m.id = p.match_id
+        LEFT JOIN quality ON quality.match_id = p.match_id
         WHERE p.{where}
         ORDER BY p.match_date, p.id
         """
@@ -282,13 +431,8 @@ def prop_roi_report(conn, value_only: bool = True) -> dict:
                 "roi": round(pnl / staked, 4) if staked else None}
 
     def family(mk: str) -> str:
-        if mk.startswith("total_match_games"):
-            return "match_total_games"
-        if mk.startswith("total_aces") or mk == "total_aces_in_the_match":
-            return "match_total_aces"
-        if "_aces" in mk:
-            return "player_aces"
-        return mk
+        from tennis_wc.props.registry import family_for_market
+        return family_for_market(mk)
 
     def odds_band(value) -> str:
         odds = float(value or 0)
@@ -331,6 +475,23 @@ def prop_roi_report(conn, value_only: bool = True) -> dict:
         by_surface.setdefault(str(r["surface"] or "UNKNOWN").upper(), []).append(r)
         by_quality.setdefault(quality_band(r["data_quality_score"]), []).append(r)
 
+    # Gate evidence must match the bets the live strategy is actually allowed
+    # to place.  In particular, research longshots above 2.25 cannot make a
+    # family look profitable and thereby graduate lower-odds recommendations.
+    from tennis_wc.props import strategy
+
+    formal_profile_rows = [
+        row for row in rows
+        if strategy.MIN_LEG_PROBABILITY <= float(row["blended_prob"] or 0) <= 1.0
+        and strategy.MIN_LEG_ODDS <= float(row["decimal_odds"] or 0) <= strategy.MAX_LEG_ODDS
+        and float(row["data_quality_score"] or 0) >= strategy.MIN_DATA_QUALITY
+        and float(row["edge"] or 0) > 0
+        and float(row["ev"] or 0) > 0
+    ]
+    formal_by_family: dict[str, list] = {}
+    for row in formal_profile_rows:
+        formal_by_family.setdefault(family(row["market_key"]), []).append(row)
+
     running = peak = max_drawdown = 0.0
     for row in rows:
         running += float(row["profit_loss_units"] or 0)
@@ -340,6 +501,10 @@ def prop_roi_report(conn, value_only: bool = True) -> dict:
         "overall": agg(rows),
         "by_side": {k: agg(v) for k, v in by_side.items()},
         "by_family": {k: agg(v) for k, v in by_family.items()},
+        "by_family_formal_profile": {
+            k: agg(v) for k, v in formal_by_family.items()
+        },
+        "formal_profile": agg(formal_profile_rows),
         "by_odds_band": {k: agg(v) for k, v in by_odds.items()},
         "by_probability_band": {k: agg(v) for k, v in by_probability.items()},
         "by_tour": {k: agg(v) for k, v in by_tour.items()},
@@ -369,13 +534,19 @@ def model_vs_market_scorecard(conn, use_raw: bool = True) -> dict:
     """
     column = "model_prob_raw" if use_raw else "model_prob"
     rows = conn.execute(
-        f"SELECT {column} AS prob, market_prob_fair, result_status FROM prop_tracker "
-        f"WHERE result_status IN ('WON','LOST') AND {column} IS NOT NULL "
-        "AND market_prob_fair IS NOT NULL"
+        f"SELECT p.match_id, p.{column} AS prob, p.market_prob_fair, p.result_status, "
+        "p.market_key FROM prop_tracker p JOIN matches m ON m.id=p.match_id "
+        f"WHERE p.result_status IN ('WON','LOST') AND p.{column} IS NOT NULL "
+        "AND p.market_prob_fair IS NOT NULL AND p.side='over' "
+        "AND (p.prop_scope!='player_first_set' "
+        "OR p.subject_player_id=m.player_a_id)"
     ).fetchall()
     legacy_only = conn.execute(
-        "SELECT COUNT(*) FROM prop_tracker WHERE result_status IN ('WON','LOST') "
-        "AND model_prob_raw IS NULL AND model_prob IS NOT NULL"
+        "SELECT COUNT(*) FROM prop_tracker p JOIN matches m ON m.id=p.match_id "
+        "WHERE p.result_status IN ('WON','LOST') "
+        "AND p.model_prob_raw IS NULL AND p.model_prob IS NOT NULL "
+        "AND p.side='over' AND (p.prop_scope!='player_first_set' "
+        "OR p.subject_player_id=m.player_a_id)"
     ).fetchone()[0]
     n = len(rows)
     if not n:
@@ -387,30 +558,59 @@ def model_vs_market_scorecard(conn, use_raw: bool = True) -> dict:
     def clamp(p):
         return min(1 - 1e-9, max(1e-9, p))
 
-    m_brier = mk_brier = m_ll = mk_ll = 0.0
-    cal = {}
-    for r in rows:
-        y = 1.0 if r["result_status"] == "WON" else 0.0
-        mp, kp = clamp(r["prob"]), clamp(r["market_prob_fair"])
-        m_brier += (mp - y) ** 2
-        mk_brier += (kp - y) ** 2
-        m_ll += -(y * math.log(mp) + (1 - y) * math.log(1 - mp))
-        mk_ll += -(y * math.log(kp) + (1 - y) * math.log(1 - kp))
-        b = round(mp * 10) / 10
-        cal.setdefault(b, [0.0, 0, 0])
-        cal[b][0] += mp; cal[b][1] += int(y); cal[b][2] += 1
-    model = {"brier": round(m_brier / n, 4), "log_loss": round(m_ll / n, 4)}
-    market = {"brier": round(mk_brier / n, 4), "log_loss": round(mk_ll / n, 4)}
+    def metrics(sample):
+        m_brier = mk_brier = m_ll = mk_ll = 0.0
+        cal = {}
+        for r in sample:
+            y = 1.0 if r["result_status"] == "WON" else 0.0
+            mp, kp = clamp(r["prob"]), clamp(r["market_prob_fair"])
+            m_brier += (mp - y) ** 2
+            mk_brier += (kp - y) ** 2
+            m_ll += -(y * math.log(mp) + (1 - y) * math.log(1 - mp))
+            mk_ll += -(y * math.log(kp) + (1 - y) * math.log(1 - kp))
+            b = round(mp * 10) / 10
+            cal.setdefault(b, [0.0, 0, 0])
+            cal[b][0] += mp; cal[b][1] += int(y); cal[b][2] += 1
+        size = len(sample)
+        model_stats = {
+            "brier": round(m_brier / size, 4),
+            "log_loss": round(m_ll / size, 4),
+        }
+        market_stats = {
+            "brier": round(mk_brier / size, 4),
+            "log_loss": round(mk_ll / size, 4),
+        }
+        calibration = [
+            {"pred": round(s / c, 3), "realised": round(w / c, 3), "n": c}
+            for _b, (s, w, c) in sorted(cal.items()) if c >= 5
+        ]
+        return model_stats, market_stats, calibration
+
+    model, market, calibration = metrics(rows)
     if model["brier"] < market["brier"] - 0.005:
         verdict = "MODEL beats market (edge plausibly real) — keep validating"
     elif market["brier"] < model["brier"] - 0.005:
         verdict = "MARKET beats model (model is the weak link, like match-winner)"
     else:
         verdict = "model ≈ market (no clear edge either way)"
-    calibration = [
-        {"pred": round(s / c, 3), "realised": round(w / c, 3), "n": c}
-        for b, (s, w, c) in sorted(cal.items()) if c >= 5
-    ]
+    from tennis_wc.props.registry import family_for_market
+    grouped = {}
+    for row in rows:
+        grouped.setdefault(family_for_market(row["market_key"]), []).append(row)
+    by_family = {}
+    for family, sample in grouped.items():
+        family_model, family_market, _ = metrics(sample)
+        settled = (
+            len({int(row["match_id"]) for row in sample})
+            if family == "player_exact_set_score"
+            else len(sample)
+        )
+        by_family[family] = {
+            "settled": settled,
+            "model": family_model,
+            "market": family_market,
+        }
     return {"settled": n, "model": model, "market": market, "verdict": verdict,
             "calibration": calibration, "graded_on": column,
-            "legacy_rows_excluded": legacy_only if use_raw else 0}
+            "legacy_rows_excluded": legacy_only if use_raw else 0,
+            "by_family": by_family}

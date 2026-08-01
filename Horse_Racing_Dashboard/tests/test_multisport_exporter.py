@@ -113,7 +113,7 @@ class MultiSportExporterTests(unittest.TestCase):
             self.assertEqual(combo["odds"], 3.42)
             self.assertEqual(len(combo["legs"]), 2)
             self.assertEqual(combo["legs"][1]["selection"], "Under 18.5")
-            self.assertEqual(snapshot["strategy"]["status"], "VALIDATED")
+            self.assertEqual(snapshot["strategy"]["status"], "VALIDATED_SINGLE")
             self.assertEqual(snapshot["strategy"]["enabled_families"], ["player_aces"])
             self.assertEqual(snapshot["coverage"]["fixtures_found"], 1)
             self.assertEqual(snapshot["coverage"]["sportsbet_priced_matches"], 1)
@@ -151,6 +151,42 @@ class MultiSportExporterTests(unittest.TestCase):
 
         self.assertIn("duplicate_recommendation_id:duplicate", errors)
         self.assertIn("missing_live_odds:duplicate", errors)
+
+    def test_tennis_dashboard_limits_validated_singles_to_one_per_match(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "tennis.db"
+            self._create_tennis_database(db_path)
+            connection = sqlite3.connect(db_path)
+            connection.execute(
+                "INSERT INTO matches VALUES (11,'2026-07-25','ATP','R16',1,1,2)"
+            )
+            connection.execute("INSERT INTO feature_snapshots VALUES (71,11,0.93)")
+            # Stronger same-match prop must replace, not sit beside, the
+            # existing match-10 recommendation.
+            connection.execute(
+                "INSERT INTO prop_tracker VALUES "
+                "(1001,10,'2026-07-25','A vs B','total_a_aces_8_5',8.5,"
+                "'Over 8.5','over',1.9,0.70,0.52,0.64,0.08,0.216,1,1,'PENDING',NULL)"
+            )
+            connection.execute(
+                "INSERT INTO prop_tracker VALUES "
+                "(1002,11,'2026-07-25','A vs B','total_b_aces_6_5',6.5,"
+                "'Over 6.5','over',1.8,0.68,0.54,0.61,0.07,0.098,1,1,'PENDING',NULL)"
+            )
+            connection.commit()
+            connection.close()
+
+            snapshot = export_tennis_snapshot(db_path, target_date="2026-07-25")
+            singles = [
+                row for row in snapshot["recommendations"]
+                if row["bet_type"] == "single"
+            ]
+            self.assertEqual(len(singles), 2)
+            self.assertEqual(
+                {row["context"]["match_id"] for row in singles}, {10, 11}
+            )
+            match_ten = next(row for row in singles if row["context"]["match_id"] == 10)
+            self.assertEqual(match_ten["selection"], "Over 8.5")
 
     @staticmethod
     def _create_tennis_database(path):

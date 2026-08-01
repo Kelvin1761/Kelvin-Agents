@@ -4,7 +4,8 @@ The dashboard must not calculate betting recommendations in the browser.  This
 module only normalises artifacts already produced by the domain pipelines:
 
 * NBA: validated Sportsbet JSON + deterministic Full Analysis markdown.
-* Tennis: ``market_predictions`` / ``combo_tracker`` rows in tennis_wc.db.
+* Tennis: evidence-gated ``prop_tracker`` / ``combo_tracker`` rows in
+  tennis_wc.db.
 
 If the evidence pair is incomplete, the exporter returns a blocked snapshot
 instead of inventing a line, odds, probability, or recommendation.
@@ -558,6 +559,20 @@ def _tennis_outcome(status: Any) -> str:
 
 def _tennis_prop_family(market_key: Any) -> str:
     key = str(market_key or "")
+    if key.startswith("player_double_faults_"):
+        return "player_double_faults"
+    if key.startswith("player_total_games_"):
+        return "player_total_games"
+    if key.startswith("player_win_a_set_"):
+        return "player_win_a_set"
+    if key.startswith("first_set_winner_"):
+        return "first_set_winner"
+    if key.startswith("player_game_handicap_"):
+        return "player_game_handicap"
+    if key.startswith("player_set_handicap_"):
+        return "player_set_handicap"
+    if key.startswith("player_exact_set_score_"):
+        return "player_exact_set_score"
     if key.startswith("total_match_games"):
         return "match_total_games"
     if key.startswith("total_aces") or key == "total_aces_in_the_match":
@@ -576,27 +591,26 @@ def _tennis_strategy_state(connection: sqlite3.Connection) -> Dict[str, Any]:
             "raw_scorecard_settled": 0,
             "reason": "prop_tracker unavailable",
         }
-    score = connection.execute(
+    prop_columns = {
+        row["name"] for row in connection.execute("PRAGMA table_info(prop_tracker)").fetchall()
+    }
+    canonical_clause = "AND p.side='over'" if "side" in prop_columns else ""
+    if {"prop_scope", "subject_player_id"} <= prop_columns:
+        canonical_clause += (
+            " AND (p.prop_scope!='player_first_set' "
+            "OR p.subject_player_id=m.player_a_id)"
+        )
+    score_rows = connection.execute(
+        f"""
+        SELECT p.match_id, p.market_key, p.model_prob_raw, p.market_prob_fair, p.result_status
+        FROM prop_tracker p JOIN matches m ON m.id=p.match_id
+        WHERE p.result_status IN ('WON','LOST')
+          AND p.model_prob_raw IS NOT NULL
+          AND p.market_prob_fair IS NOT NULL
+          {canonical_clause}
         """
-        SELECT COUNT(*) AS settled,
-               AVG((model_prob_raw - CASE WHEN result_status = 'WON' THEN 1.0 ELSE 0.0 END)
-                   * (model_prob_raw - CASE WHEN result_status = 'WON' THEN 1.0 ELSE 0.0 END)) AS model_brier,
-               AVG((market_prob_fair - CASE WHEN result_status = 'WON' THEN 1.0 ELSE 0.0 END)
-                   * (market_prob_fair - CASE WHEN result_status = 'WON' THEN 1.0 ELSE 0.0 END)) AS market_brier
-        FROM prop_tracker
-        WHERE result_status IN ('WON','LOST')
-          AND model_prob_raw IS NOT NULL
-          AND market_prob_fair IS NOT NULL
-        """
-    ).fetchone()
-    raw_n = int(score["settled"] or 0)
-    model_brier = _safe_float(score["model_brier"])
-    market_brier = _safe_float(score["market_brier"])
-    model_beats_market = (
-        model_brier is not None
-        and market_brier is not None
-        and model_brier <= market_brier - 0.005
-    )
+    ).fetchall()
+    raw_n = len(score_rows)
     family_rows = connection.execute(
         """
         SELECT market_key, result_status, stake_units, profit_loss_units
@@ -604,6 +618,13 @@ def _tennis_strategy_state(connection: sqlite3.Connection) -> Dict[str, Any]:
         WHERE result_status IN ('WON','LOST')
           AND stake_units > 0
           AND is_value = 1
+          AND blended_prob >= 0.58
+          AND decimal_odds BETWEEN 1.30 AND 2.25
+          AND edge > 0
+          AND ev > 0
+          AND (SELECT MIN(fs.data_quality_score)
+               FROM feature_snapshots fs
+               WHERE fs.match_id = prop_tracker.match_id) >= 0.80
         """
     ).fetchall()
     families: Dict[str, Dict[str, float]] = {}
@@ -616,24 +637,55 @@ def _tennis_strategy_state(connection: sqlite3.Connection) -> Dict[str, Any]:
         bucket["staked"] += float(row["stake_units"] or 0)
         bucket["pnl"] += float(row["profit_loss_units"] or 0)
     enabled = []
-    for family in ("match_total_aces", "player_aces"):
-        stats = families.get(family) or {}
+    supported = (
+        "match_total_aces", "player_aces", "player_double_faults",
+        "player_total_games", "player_win_a_set", "first_set_winner",
+        "player_game_handicap", "player_set_handicap",
+        "player_exact_set_score",
+    )
+    family_scores: Dict[str, list] = {}
+    for row in score_rows:
+        family_scores.setdefault(_tennis_prop_family(row["market_key"]), []).append(row)
+    for family in supported:
+        stats = families.setdefault(
+            family, {"settled": 0, "staked": 0.0, "pnl": 0.0}
+        )
         staked = float(stats.get("staked") or 0)
         stats["roi"] = float(stats.get("pnl") or 0) / staked if staked else None
+        score_sample = family_scores.get(family) or []
+        if score_sample:
+            model_brier = sum(
+                (float(row["model_prob_raw"]) - (1 if row["result_status"] == "WON" else 0)) ** 2
+                for row in score_sample
+            ) / len(score_sample)
+            market_brier = sum(
+                (float(row["market_prob_fair"]) - (1 if row["result_status"] == "WON" else 0)) ** 2
+                for row in score_sample
+            ) / len(score_sample)
+        else:
+            model_brier = market_brier = None
+        score_count = (
+            len({int(row["match_id"]) for row in score_sample})
+            if family == "player_exact_set_score"
+            else len(score_sample)
+        )
+        stats["scorecard_settled"] = score_count
+        stats["model_brier"] = model_brier
+        stats["market_brier"] = market_brier
         if (
-            raw_n >= 120
-            and model_beats_market
+            score_count >= 120
+            and model_brier is not None
+            and market_brier is not None
+            and model_brier <= market_brier - 0.005
             and int(stats.get("settled") or 0) >= 50
             and stats["roi"] is not None
             and stats["roi"] > 0
         ):
             enabled.append(family)
     return {
-        "status": "VALIDATED" if enabled else "RESEARCH_ONLY",
+        "status": "VALIDATED_SINGLE" if enabled else "RESEARCH_ONLY",
         "enabled_families": enabled,
         "raw_scorecard_settled": raw_n,
-        "model_brier": model_brier,
-        "market_brier": market_brier,
         "families": families,
         "reason": None if enabled else "minimum evidence gate not met",
     }
@@ -681,10 +733,14 @@ def _export_tennis_singles(
         (analysis_date,),
     ).fetchall()
     recommendations = []
+    selected_matches: set[int] = set()
     for row in rows:
         item = dict(row)
         family = _tennis_prop_family(item.get("market_key"))
         if family not in enabled:
+            continue
+        match_id = int(item["match_id"])
+        if match_id in selected_matches:
             continue
         event_name = f"{item.get('player_a') or '?'} vs {item.get('player_b') or '?'}"
         line = item.get("line")
@@ -737,6 +793,9 @@ def _export_tennis_singles(
                 },
             }
         )
+        selected_matches.add(match_id)
+        if len(recommendations) == 2:
+            break
     return recommendations
 
 
@@ -771,8 +830,8 @@ def _export_tennis_combos(
         WHERE match_date = ?
           AND tier = 'PROP_2_LEG_TRIAL'
           AND result_status = 'PENDING'
-          AND combo_odds >= 2.0
-        ORDER BY recorded_at, combo_key
+        ORDER BY ((adjusted_confidence / 100.0) * combo_odds - 1.0) DESC,
+                 recorded_at, combo_key
         """,
         (analysis_date,),
     ).fetchall()
@@ -784,7 +843,9 @@ def _export_tennis_combos(
         except (TypeError, ValueError):
             raw_legs = []
         legs = [_normalise_tennis_leg(leg) for leg in raw_legs if isinstance(leg, dict)]
-        if not legs:
+        if len(legs) != 2 or len(raw_legs) != 2:
+            continue
+        if len({leg.get("match_id") for leg in raw_legs}) != 2:
             continue
         if any(
             _tennis_prop_family(leg.get("market_key")) not in enabled
@@ -795,6 +856,14 @@ def _export_tennis_combos(
             for leg in raw_legs
         ):
             continue
+        joint_probability = _product(
+            float(leg.get("confidence") or 0) / 100 for leg in raw_legs
+        )
+        joint_ev = (
+            float(joint_probability or 0) * float(item.get("combo_odds") or 0) - 1
+        )
+        if joint_ev < 0.03:
+            continue
         outcome = _tennis_outcome(item.get("result_status"))
         selection = " + ".join(leg["selection"] for leg in legs if leg["selection"])
         recommendations.append(
@@ -803,7 +872,7 @@ def _export_tennis_combos(
                 "sport": "tennis",
                 "category": "validated_prop_combo",
                 "event_date": item["match_date"],
-                "event_name": f"{len(legs)}-match Combo · {item.get('tier') or ''}".strip(),
+                "event_name": "2-match Combo · VALIDATED_2_LEG",
                 "market": "Tennis Multi",
                 "selection": selection,
                 "odds": _safe_float(item.get("combo_odds")),
@@ -811,12 +880,9 @@ def _export_tennis_combos(
                 "bet_type": "combo",
                 "legs": legs,
                 "metrics": {
-                    "model_probability": (
-                        _safe_float(item.get("adjusted_confidence") / 100)
-                        if item.get("adjusted_confidence") is not None
-                        else None
-                    ),
+                    "model_probability": _safe_float(joint_probability),
                     "edge": _safe_float(item.get("adjusted_edge")),
+                    "expected_value": _safe_float(joint_ev),
                     "stake_units": _safe_float(item.get("stake_units")),
                     "profit_loss_units": _safe_float(item.get("profit_loss_units")),
                 },
@@ -831,6 +897,7 @@ def _export_tennis_combos(
                 "validation_status": "valid",
             }
         )
+        break
     return recommendations
 
 

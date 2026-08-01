@@ -273,9 +273,13 @@ def price_two_way(match_id: int, market_key: str, scope: str, line: float,
     edge_over = blended_over - fair_over
     edge_under = blended_under - fair_under
     side, s_odds, s_edge, s_ev, s_blend = None, None, 0.0, min(ev_over, ev_under), blended_over
-    if edge_over >= _MIN_EDGE and ev_over > 0:
+    # A risk haircut must never CREATE an opinion in the opposite direction.
+    # Tempering toward 50% can otherwise cross the market price and turn a raw
+    # model "over" lean into a fabricated "under" edge (or vice versa).
+    raw_edge_over = model_over - fair_over
+    if raw_edge_over > 0 and edge_over >= _MIN_EDGE and ev_over > 0:
         side, s_odds, s_edge, s_ev, s_blend = "over", over_odds, edge_over, ev_over, blended_over
-    elif edge_under >= _MIN_EDGE and ev_under > 0:
+    elif raw_edge_over < 0 and edge_under >= _MIN_EDGE and ev_under > 0:
         side, s_odds, s_edge, s_ev, s_blend = "under", under_odds, edge_under, ev_under, blended_under
     return TwoWayProp(
         match_id=match_id, market_key=market_key, scope=scope, line=line,

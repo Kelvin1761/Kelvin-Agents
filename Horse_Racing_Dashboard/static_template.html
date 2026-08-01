@@ -1763,9 +1763,20 @@ function renderSportsHistory(sport) {
   const snapshot = sportsFeedSnapshot(sport);
   const coverage = sport === 'tennis' ? snapshot?.coverage : null;
   const strategy = sport === 'tennis' ? snapshot?.strategy : null;
+  const tennisFamilyLabels = {
+    match_total_aces: 'Match Total Aces',
+    player_aces: 'Player Aces',
+    player_double_faults: 'Player Double Faults',
+    player_total_games: 'Player Total Games',
+    player_win_a_set: 'Player Win ≥1 Set',
+    first_set_winner: 'Set 1 Winner',
+    player_game_handicap: 'Player Game Handicap',
+    player_set_handicap: 'Player Set Handicap',
+    player_exact_set_score: 'Player Exact Set Score',
+  };
   const familyProgress = strategy?.families
     ? Object.entries(strategy.families)
-        .map(([name, stats]) => `${name} ${Number(stats?.scorecard_settled || 0)}/120`)
+        .map(([name, stats]) => `${tennisFamilyLabels[name] || name} ${Number(stats?.scorecard_settled || 0)}/120`)
         .join(' · ')
     : '';
   const strategyValidated = strategy?.status === 'VALIDATED_SINGLE' || strategy?.status === 'VALIDATED_2_LEG';
@@ -1773,7 +1784,7 @@ function renderSportsHistory(sport) {
     ? `<div class="sports-notice"><span>${strategyValidated ? '✅' : '🧪'}</span><span>
         Prop 策略：${esc(strategy.status || 'RESEARCH_ONLY')} ·
         ${strategyValidated ? '已通過正式推薦閘' : '逐 family 研究追蹤，暫停正式推薦'} ·
-        已驗證分類 ${esc((strategy.enabled_families || []).join('、') || '未有')}。<br>
+        已驗證分類 ${esc((strategy.enabled_families || []).map(name => tennisFamilyLabels[name] || name).join('、') || '未有')}。<br>
         Family 記分卡：${esc(familyProgress || '未有已結算樣本')}。
       </span></div>`
     : '';
