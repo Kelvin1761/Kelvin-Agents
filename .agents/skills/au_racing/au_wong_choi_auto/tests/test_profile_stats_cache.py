@@ -128,3 +128,74 @@ class TestRefreshGuards:
         monkeypatch.setattr(ps, "_extract_stats", explode)
         out = ps.refresh([("jockey", "James Mcdonald")], path=path, verbose=False)
         assert out == data
+
+
+class TestFetchPriority:
+    """`max_profiles` 令排隊次序 = 優先權。
+
+    一個馬場有 60–95 個不重複騎練，但一次抽取只補得幾十個。以前排序係
+    「邊個喺 Race 1 先出現」，所以一個得一隻馬嘅見習騎師可以霸咗 Ciaron Maher
+    （逐場都有馬）個位 —— 實測 12 個馬場，缺失名單每一場都有佢。
+    """
+
+    def test_busiest_person_goes_first(self):
+        wanted = ([("jockey", "a-rookie", "A Rookie")]
+                  + [("trainer", "ciaron-maher", "Ciaron Maher")] * 9
+                  + [("jockey", "tommy-berry", "Tommy Berry")] * 4)
+        assert [t[2] for t in ps.stale_slugs(wanted, {}, ttl_days=21)] == [
+            "Ciaron Maher", "Tommy Berry", "A Rookie"]
+
+    def test_name_based_path_prioritises_too(self):
+        wanted = [("jockey", "One Ride")] + [("trainer", "Busy Stable")] * 5
+        assert ps.stale_keys(wanted, {}, ttl_days=21)[0][2] == "Busy Stable"
+
+    def test_fresh_entries_drop_out_without_disturbing_order(self, cache):
+        data, _ = cache
+        wanted = ([("jockey", "james-mcdonald", "James Mcdonald")] * 20
+                  + [("jockey", "brand-new", "Brand New")] * 2)
+        assert [t[2] for t in ps.stale_slugs(wanted, data, ttl_days=21)] == ["Brand New"]
+
+
+class TestJunkNamesNeverBurnASlot:
+    """`Unknown` 真係出現喺 payload 入面。抓佢一定 404，但一樣食掉一個名額。"""
+
+    @pytest.mark.parametrize("junk", ["Unknown", "", "  ", "N/A", "-", "TBA"])
+    def test_placeholder_is_skipped(self, junk):
+        assert ps.stale_slugs([("jockey", ps.slugify(junk), junk)], {}, ttl_days=21) == []
+
+    def test_junk_does_not_crowd_out_real_people(self):
+        wanted = [("jockey", "unknown", "Unknown")] * 30 + [("jockey", "real-one", "Real One")]
+        assert [t[2] for t in ps.stale_slugs(wanted, {}, ttl_days=21)] == ["Real One"]
+
+
+class TestNameAliasKeys:
+    """抽取器用 payload 真 slug 存，但引擎手上只有顯示名，查嘅係 slugify(顯示名)。
+
+    兩者唔一定一樣（`Braith Nock A` 存喺 `braith-nock`），咁就會「抓到咗但用唔到」。
+    ⚠️ 呢個同 `name_mismatch` 係兩件唔同嘅事，唔好合埋 —— 見下面最後一個測試。
+    """
+
+    def test_alias_makes_name_lookup_work(self):
+        data = {"jockey|braith-nock": {
+            "name": "Braith Nock A", "fetched_at": stamp(1),
+            "name_mismatch": False, "stats": {"placePercentage": 30}}}
+        assert ps.lookup(data, "jockey", "Braith Nock A") is None, "未修之前應該查唔到"
+        data["jockey|braith-nock-a"] = dict(data["jockey|braith-nock"],
+                                            alias_of="jockey|braith-nock")
+        assert ps.lookup(data, "jockey", "Braith Nock A")["placePercentage"] == 30
+
+    def test_alias_is_not_refetched(self):
+        data = {"trainer|p-moody-katherine-coleman": {
+            "name": "P Moody & Katherine Coleman", "fetched_at": stamp(1),
+            "alias_of": "trainer|peter-moody-katherine-coleman", "stats": {"roi": -3}}}
+        assert ps.stale_keys([("trainer", "P Moody & Katherine Coleman")],
+                             data, ttl_days=21) == []
+
+    def test_alias_is_a_different_problem_from_name_mismatch(self):
+        """`name_mismatch` 問「抓返嚟係咪同一個人」—— 呢兩個係，所以 False 係啱。
+        別名問「人名查唔查得返」。實測 150 個記錄有 2 個 name_mismatch=False
+        但引擎查唔到，就係因為當初把兩者當成同一件事。"""
+        entry = {"name": "Braith Nock A", "fetched_at": stamp(1),
+                 "name_mismatch": False, "stats": {"winPercentage": 9}}
+        assert entry["name_mismatch"] is False
+        assert ps.slugify(entry["name"]) != "braith-nock"

@@ -84,22 +84,39 @@ def _is_fresh(entry: dict, ttl_days: int) -> bool:
     return (datetime.now(timezone.utc) - fetched).days < ttl_days
 
 
+# 佔位／未知人名 —— 抓佢哋一定 404，但一樣會食掉一個 max_profiles 名額。
+JUNK_NAMES = {"", "unknown", "n/a", "na", "tbа", "tba", "-", "vacant"}
+
+
+def _is_junk(name) -> bool:
+    return str(name or "").strip().lower() in JUNK_NAMES
+
+
+def _prioritise(triples):
+    """按出現次數（＝當日策騎／派馬數）由多到少排。
+
+    ⚠️ 呢個好緊要。`max_profiles` 一場只補得幾十個，而一個馬場有 60–95 個
+    不重複騎練，所以**次序決定咗邊個攞到名額**。以前係「邊個喺 Race 1 先出現」，
+    即係一個得一隻馬嘅見習騎師可以霸咗 Ciaron Maher（全澳最大馬房、逐場都有馬）
+    個位。實測 12 個馬場：練馬師覆蓋率得 33–59%，而缺失名單每一場都有 Ciaron Maher。
+
+    `wanted` 由抽取器逐匹馬 append，所以重複次數本身就係權重，唔使另外傳。
+    """
+    counts = {}
+    order = []
+    for kind, slug, name in triples:
+        key = (kind, slug)
+        if key not in counts:
+            counts[key] = 0
+            order.append((kind, slug, name))
+        counts[key] += 1
+    return sorted(order, key=lambda t: -counts[(t[0], t[1])])
+
+
 def stale_keys(wanted, cache: dict, ttl_days: int = DEFAULT_TTL_DAYS):
-    """`wanted` = [(kind, name)]；回傳需要抓嘅 (kind, slug, name)，已去重。"""
-    out, seen = [], set()
-    for kind, name in wanted:
-        slug = slugify(name)
-        if not slug:
-            continue
-        key = f"{kind}|{slug}"
-        if key in seen:
-            continue
-        seen.add(key)
-        entry = cache.get(key)
-        if entry and _is_fresh(entry, ttl_days):
-            continue
-        out.append((kind, slug, name))
-    return out
+    """`wanted` = [(kind, name)]；回傳需要抓嘅 (kind, slug, name)，按重要性排序。"""
+    return stale_slugs([(kind, slugify(name), name) for kind, name in wanted],
+                       cache, ttl_days)
 
 
 def _extract_stats(page, html: str, tmp: Path):
@@ -134,16 +151,15 @@ def _extract_stats(page, html: str, tmp: Path):
 
 def stale_slugs(triples, cache: dict, ttl_days: int = DEFAULT_TTL_DAYS):
     """同 `stale_keys` 一樣，但收 (kind, slug, name) —— slug 由 Racenet payload
-    直接嚟，比人名推導可靠（`jockey.slug` / `trainer.slug` 每場都有）。"""
-    out, seen = [], set()
-    for kind, slug, name in triples:
-        if not slug:
-            continue
-        key = f"{kind}|{slug}"
-        if key in seen:
-            continue
-        seen.add(key)
-        entry = cache.get(key)
+    直接嚟，比人名推導可靠（`jockey.slug` / `trainer.slug` 每場都有）。
+
+    輸出按出現次數排序（見 `_prioritise`），因為 `max_profiles` 令次序等於優先權。
+    """
+    wanted = [(kind, slug, name) for kind, slug, name in triples
+              if slug and not _is_junk(name) and not _is_junk(slug)]
+    out = []
+    for kind, slug, name in _prioritise(wanted):
+        entry = cache.get(f"{kind}|{slug}")
         if entry and _is_fresh(entry, ttl_days):
             continue
         out.append((kind, slug, name))
@@ -203,13 +219,25 @@ def refresh(wanted, *, ttl_days=DEFAULT_TTL_DAYS, delay=DEFAULT_DELAY,
             got_name, stats = _extract_stats(page, html, tmp)
             if not stats:
                 continue
-            cache[f"{kind}|{slug}"] = {
+            record = {
                 "name": got_name or name,
                 "stats": stats,
                 "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                 # 返回名同要求名唔夾 = slug 推導撞錯人，標出嚟唔好靜靜當啱
                 "name_mismatch": bool(got_name and slugify(got_name) != slug),
             }
+            cache[f"{kind}|{slug}"] = record
+            # 別名 key：抽取器用 payload 嘅真 slug 存，但評分引擎手上只有顯示名，
+            # 所以佢查嘅係 `slugify(顯示名)`。兩者唔一定一樣 ——
+            #   Braith Nock A               → 存 braith-nock，引擎查 braith-nock-a
+            #   P Moody & Katherine Coleman → 存 peter-moody-katherine-coleman
+            # 咁就變成「抓到咗數據但用唔到」。實測 150 個記錄有 2 個中招。
+            # ⚠️ 呢個同 `name_mismatch` 係兩件事：嗰個問「抓返嚟係咪同一個人」
+            # （呢兩個係，所以正確咁 False）；呢度問「人名查唔查得返出嚟」。
+            for alias_name in {name, got_name or ""}:
+                alias = slugify(alias_name)
+                if alias and alias != slug:
+                    cache[f"{kind}|{alias}"] = dict(record, alias_of=f"{kind}|{slug}")
             path.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
             ok += 1
     finally:
@@ -227,3 +255,109 @@ def lookup(cache: dict, kind: str, name: str):
     if not entry or entry.get("name_mismatch"):
         return None
     return entry.get("stats")
+
+
+# ── 獨立補數工具 ────────────────────────────────────────────────────────────
+# 淨係靠抽取時補數係唔夠嘅：一個馬場有 60–95 個不重複騎練，但 `max_profiles`
+# 一次得幾十個，所以覆蓋率長期停喺騎師 50–70% / 練馬師 33–59%。呢個 CLI 令
+# 兩次抽取之間都可以慢慢追，唔使加重任何一次抽取嘅負載。
+
+def people_in_meetings(meeting_dirs, verbose=True):
+    """由 Logic.json 抽 (kind, slug, name)，逐匹馬一個 entry（重複＝權重）。"""
+    out = []
+    for md in meeting_dirs:
+        try:
+            paths = sorted(md.glob("Race_*_Logic.json"))
+        except OSError:
+            continue
+        for lp in paths:
+            try:
+                data = json.loads(lp.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            for horse in (data.get("horses") or {}).values():
+                if not isinstance(horse, dict):
+                    continue
+                for kind in ("jockey", "trainer"):
+                    name = (horse.get(kind) or "").strip()
+                    if name and not _is_junk(name):
+                        out.append((kind, slugify(name), name))
+        if verbose:
+            print(f"   掃完 {md.name}（累計 {len(out)} 個人次）")
+    return out
+
+
+def _live_meeting_dirs():
+    from wongchoi_paths import AU_RACING
+
+    root = Path(AU_RACING)
+    return [p for p in sorted(root.iterdir()) if p.is_dir() and p.name != "Archive"]
+
+
+def _main():
+    import argparse
+
+    ap = argparse.ArgumentParser(description="Racenet 騎練 profile cache 維護")
+    ap.add_argument("cmd", choices=("status", "backfill", "repair-aliases"))
+    ap.add_argument("--limit", type=int, default=10,
+                    help="今次最多抓幾多個（預設 10，刻意細 —— Racenet 脆弱）")
+    ap.add_argument("--delay", type=float, default=DEFAULT_DELAY)
+    ap.add_argument("--retries", type=int, default=DEFAULT_RETRIES)
+    ap.add_argument("--ttl-days", type=int, default=DEFAULT_TTL_DAYS)
+    ap.add_argument("--names", nargs="*", metavar="kind:Name",
+                    help='唔掃 meeting，直接指定，例如 trainer:"Ciaron Maher"')
+    args = ap.parse_args()
+
+    cache = load_cache()
+
+    if args.cmd == "repair-aliases":
+        # 補返舊記錄嘅人名別名（唔使上網）。新抓嘅由 `refresh` 自動寫。
+        added = 0
+        for key, entry in list(cache.items()):
+            if not isinstance(entry, dict) or entry.get("alias_of"):
+                continue
+            kind, _, slug = key.partition("|")
+            alias = slugify(entry.get("name") or "")
+            if alias and alias != slug and f"{kind}|{alias}" not in cache:
+                cache[f"{kind}|{alias}"] = dict(entry, alias_of=key)
+                print(f"   + {kind}|{alias}  →  {key}   ({entry.get('name')})")
+                added += 1
+        if added:
+            cache_path().write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
+        print(f"補咗 {added} 個別名，cache 共 {len(cache)} 個 key")
+        return
+
+    if args.names:
+        wanted = []
+        for item in args.names:
+            kind, _, name = item.partition(":")
+            wanted.append((kind.strip(), slugify(name), name.strip()))
+    else:
+        wanted = people_in_meetings(_live_meeting_dirs())
+
+    todo = stale_slugs(wanted, cache, args.ttl_days)
+    counts = {}
+    for kind, slug, _ in wanted:
+        counts[(kind, slug)] = counts.get((kind, slug), 0) + 1
+    distinct = len(counts)
+    have = distinct - len(todo)
+    print(f"\ncache {len(cache)} 個記錄；掃到 {distinct} 個不重複騎練，"
+          f"已有夠新嘅 {have}（{100 * have / max(1, distinct):.0f}%），仲差 {len(todo)}")
+    if todo:
+        print("\n最值得補嘅（按出賽次數排）：")
+        for kind, slug, name in todo[:15]:
+            print(f"   {counts[(kind, slug)]:>3} 次  {kind:8} {name}")
+
+    if args.cmd == "status" or not todo:
+        return
+    print(f"\n開始補數，今次上限 {args.limit} 個，每個請求隔 {args.delay:g} 秒……")
+    refresh(todo, ttl_days=args.ttl_days, delay=args.delay, retries=args.retries,
+            max_profiles=args.limit, exact_slugs=True)
+
+
+if __name__ == "__main__":
+    import sys as _sys
+
+    # `wongchoi_paths` 住喺 repo 根 —— 由 .agents/skills/au_racing/ 上返三層。
+    _sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    _main()
