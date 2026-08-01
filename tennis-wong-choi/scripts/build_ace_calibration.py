@@ -4,15 +4,20 @@ Emits MATCH_ACE_CURVE and PLAYER_ACE_CURVE embedded in tennis_wc.props.ace_model
 Re-run after a large history backfill and paste the printed curves back in.
 
     PYTHONPATH=src .venv/bin/python scripts/build_ace_calibration.py
+    PYTHONPATH=src .venv/bin/python scripts/build_ace_calibration.py \
+        --before 2026-05-10
 
 Method (matches the model exactly): walk forward in date order using only prior
 matches per player. MATCH curve pairs both sides (-winner/-loser share a base id)
 and predicts the match total-ace mean; PLAYER curve predicts a single player's
 aces. Both blend overall+surface serve rate with the opponent's conceded-aces,
 then bucket ratio = line/predicted against the realised P(aces >= line).
+Use ``--before`` whenever the curves will be evaluated on a later historical
+window; otherwise the curve itself would leak holdout outcomes.
 """
 from __future__ import annotations
 
+import argparse
 from collections import defaultdict, deque
 
 from tennis_wc.database.db import get_connection
@@ -56,13 +61,23 @@ def _print_surface_curves(name: str, recs_by_surface, lines, min_bin, lo, hi) ->
     print("}")
 
 
-def build_curve() -> list[tuple[float, float]]:
-    conn = get_connection()
-    rows = conn.execute(
-        "SELECT provider_match_id, player_id, opponent_id, match_date, surface, ace_count "
-        "FROM player_match_history WHERE ace_count IS NOT NULL "
-        "ORDER BY match_date ASC, provider_match_id ASC"
+def _ace_rows(conn, before: str | None):
+    where = "WHERE ace_count IS NOT NULL"
+    params: tuple = ()
+    if before:
+        where += " AND match_date < ?"
+        params = (before,)
+    return conn.execute(
+        "SELECT provider_match_id, player_id, opponent_id, match_date, surface, "
+        f"ace_count FROM player_match_history {where} "
+        "ORDER BY match_date ASC, provider_match_id ASC",
+        params,
     ).fetchall()
+
+
+def build_curve(before: str | None = None) -> list[tuple[float, float]]:
+    conn = get_connection()
+    rows = _ace_rows(conn, before)
     by_match = defaultdict(list)
     for r in rows:
         by_match[_base_id(r["provider_match_id"])].append(r)
@@ -108,20 +123,17 @@ def build_curve() -> list[tuple[float, float]]:
             bins[b][1] += 1
     curve = [(b, round(w / n, 4)) for b, (w, n) in sorted(bins.items())
              if n >= 200 and 0.3 <= b <= 1.6]
-    print(f"# built from {len(recs)} paired matches")
+    cutoff_note = f" strictly before {before}" if before else ""
+    print(f"# built from {len(recs)} paired matches{cutoff_note}")
     print("MATCH_ACE_CURVE =", curve)
     _print_surface_curves("MATCH_ACE_CURVE_BY_SURFACE", recs_by_surface, list(range(1, 26)), 200, 0.3, 1.6)
     return curve
 
 
-def build_player_curve() -> list[tuple[float, float]]:
+def build_player_curve(before: str | None = None) -> list[tuple[float, float]]:
     """Single-player ace curve (each history row is one player's match)."""
     conn = get_connection()
-    rows = conn.execute(
-        "SELECT provider_match_id, player_id, opponent_id, match_date, surface, ace_count "
-        "FROM player_match_history WHERE ace_count IS NOT NULL "
-        "ORDER BY match_date ASC, provider_match_id ASC"
-    ).fetchall()
+    rows = _ace_rows(conn, before)
     opp_aces = defaultdict(dict)
     for r in rows:
         opp_aces[_base_id(r["provider_match_id"])][r["player_id"]] = r["ace_count"]
@@ -162,12 +174,19 @@ def build_player_curve() -> list[tuple[float, float]]:
             bins[b][1] += 1
     curve = [(b, round(w / n, 4)) for b, (w, n) in sorted(bins.items())
              if n >= 200 and 0.3 <= b <= 1.8]
-    print(f"# built from {len(recs)} player-matches")
+    cutoff_note = f" strictly before {before}" if before else ""
+    print(f"# built from {len(recs)} player-matches{cutoff_note}")
     print("PLAYER_ACE_CURVE =", curve)
     _print_surface_curves("PLAYER_ACE_CURVE_BY_SURFACE", recs_by_surface, [x + 0.5 for x in range(0, 20)], 200, 0.3, 1.8)
     return curve
 
 
 if __name__ == "__main__":
-    build_curve()
-    build_player_curve()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--before",
+        help="fit only rows strictly before YYYY-MM-DD (required for holdout audits)",
+    )
+    args = parser.parse_args()
+    build_curve(args.before)
+    build_player_curve(args.before)

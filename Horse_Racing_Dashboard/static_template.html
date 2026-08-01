@@ -1605,12 +1605,14 @@ function sportsMetricLabels(item, sport) {
     if (metrics.minutes != null) rows.push(`實際 ${metrics.minutes} MIN`);
   } else {
     if (metrics.clv != null) rows.push(`CLV ${Number(metrics.clv) >= 0 ? '+' : ''}${pct(metrics.clv)}`);
-    if (metrics.model_probability != null) rows.push(`模型概率 ${pct(metrics.model_probability)}`);
+    if (metrics.hit_probability != null) rows.push(`校準命中 ${pct(metrics.hit_probability)}`);
+    else if (metrics.model_probability != null) rows.push(`模型概率 ${pct(metrics.model_probability)}`);
     if (metrics.market_fair_probability != null) rows.push(`市場 fair ${pct(metrics.market_fair_probability)}`);
     if (metrics.edge != null) rows.push(`Edge +${pct(metrics.edge)}`);
     if (metrics.expected_value != null) rows.push(`EV +${pct(metrics.expected_value)}`);
     if (metrics.minimum_acceptable_odds != null) rows.push(`最低可接受 ${Number(metrics.minimum_acceptable_odds).toFixed(2)}`);
-    if (metrics.confidence != null) rows.push(`信心 ${Number(metrics.confidence).toFixed(0)}%`);
+    if (metrics.confidence_score != null) rows.push(`公式可信度 ${Number(metrics.confidence_score).toFixed(0)}/100`);
+    else if (metrics.confidence != null) rows.push(`信心 ${Number(metrics.confidence).toFixed(0)}%`);
   }
   return rows;
 }

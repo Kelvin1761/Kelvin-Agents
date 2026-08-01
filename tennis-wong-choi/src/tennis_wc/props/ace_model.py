@@ -26,25 +26,26 @@ from dataclasses import dataclass, field
 # Monotonic by construction; we linearly interpolate and clamp to the ends.
 # Regenerate with scripts/build_ace_calibration.py if the history grows a lot.
 # --------------------------------------------------------------------------- #
-# MATCH total aces (both players combined). Fit on 64,210 paired matches
-# (Sackmann + TML challenger/quali/main; regenerated 2026-07-12).
-MATCH_ACE_CURVE: list[tuple[float, float]] = [(0.3, 0.9524), (0.35, 0.9325), (0.4, 0.9141), (0.45, 0.8869), (0.5, 0.8568), (0.55, 0.8265), (0.6, 0.7874), (0.65, 0.7546), (0.7, 0.7149), (0.75, 0.6784), (0.8, 0.6354), (0.85, 0.5933), (0.9, 0.5553), (0.95, 0.5197), (1.0, 0.4743), (1.05, 0.4425), (1.1, 0.4059), (1.15, 0.3716), (1.2, 0.3387), (1.25, 0.3101), (1.3, 0.2839), (1.35, 0.2552), (1.4, 0.2329), (1.45, 0.21), (1.5, 0.1897), (1.55, 0.1737), (1.6, 0.1549)]
-# SINGLE player's aces. Fit on 137,017 player-matches. Flatter than the match
+# MATCH total aces (both players combined). Frozen strictly before the first
+# evaluation slate (2026-05-10): 62,683 paired matches.
+MATCH_ACE_CURVE: list[tuple[float, float]] = [(0.3, 0.9545), (0.35, 0.9359), (0.4, 0.9155), (0.45, 0.8894), (0.5, 0.8613), (0.55, 0.8333), (0.6, 0.791), (0.65, 0.7584), (0.7, 0.723), (0.75, 0.6822), (0.8, 0.6422), (0.85, 0.6002), (0.9, 0.5579), (0.95, 0.523), (1.0, 0.4803), (1.05, 0.4443), (1.1, 0.4109), (1.15, 0.3726), (1.2, 0.3424), (1.25, 0.3112), (1.3, 0.2812), (1.35, 0.2569), (1.4, 0.232), (1.45, 0.2103), (1.5, 0.1877), (1.55, 0.1721), (1.6, 0.1549)]
+# SINGLE player's aces. Frozen on the same cutoff: 133,372 player-matches.
+# Flatter than the match
 # curve -- individual ace counts are more dispersed relative to their mean.
-PLAYER_ACE_CURVE: list[tuple[float, float]] = [(0.3, 0.8603), (0.35, 0.8367), (0.4, 0.8141), (0.45, 0.7825), (0.5, 0.7534), (0.55, 0.7229), (0.6, 0.6903), (0.65, 0.6578), (0.7, 0.6231), (0.75, 0.5899), (0.8, 0.5587), (0.85, 0.5298), (0.9, 0.4984), (0.95, 0.4634), (1.0, 0.4345), (1.05, 0.4068), (1.1, 0.3822), (1.15, 0.3549), (1.2, 0.3332), (1.25, 0.3), (1.3, 0.2833), (1.35, 0.2613), (1.4, 0.2413), (1.45, 0.2224), (1.5, 0.1998), (1.55, 0.1888), (1.6, 0.1748), (1.65, 0.1553), (1.7, 0.1423), (1.75, 0.1345), (1.8, 0.1214)]
+PLAYER_ACE_CURVE: list[tuple[float, float]] = [(0.3, 0.8622), (0.35, 0.8399), (0.4, 0.813), (0.45, 0.7859), (0.5, 0.7564), (0.55, 0.7279), (0.6, 0.6921), (0.65, 0.6592), (0.7, 0.6268), (0.75, 0.5965), (0.8, 0.5643), (0.85, 0.5317), (0.9, 0.502), (0.95, 0.469), (1.0, 0.4402), (1.05, 0.4096), (1.1, 0.3866), (1.15, 0.3576), (1.2, 0.3321), (1.25, 0.3067), (1.3, 0.2843), (1.35, 0.2603), (1.4, 0.2457), (1.45, 0.222), (1.5, 0.2008), (1.55, 0.1871), (1.6, 0.171), (1.65, 0.1612), (1.7, 0.1407), (1.75, 0.1305), (1.8, 0.1198)]
 # Per-surface curves (holdout-validated 2026-07-12: beat the global curve on
 # EVERY surface for both scopes -- match Brier 0.10706->0.10487, player
 # 0.08756->0.08638; biggest gains on clay/grass where all-surface averaging
 # distorts most). Fall back to the global curve when a surface is unknown.
 MATCH_ACE_CURVE_BY_SURFACE: dict[str, list[tuple[float, float]]] = {
-    "hard": [(0.3, 0.9666), (0.35, 0.951), (0.4, 0.9344), (0.45, 0.9117), (0.5, 0.8843), (0.55, 0.8558), (0.6, 0.8191), (0.65, 0.7868), (0.7, 0.7495), (0.75, 0.712), (0.8, 0.6707), (0.85, 0.6262), (0.9, 0.586), (0.95, 0.5451), (1.0, 0.5032), (1.05, 0.4683), (1.1, 0.4291), (1.15, 0.3951), (1.2, 0.3552), (1.25, 0.3306), (1.3, 0.2983), (1.35, 0.2709), (1.4, 0.2458), (1.45, 0.2251), (1.5, 0.2002), (1.55, 0.1869), (1.6, 0.1639)],
-    "clay": [(0.3, 0.919), (0.35, 0.8886), (0.4, 0.8629), (0.45, 0.8242), (0.5, 0.7861), (0.55, 0.7498), (0.6, 0.7008), (0.65, 0.6656), (0.7, 0.617), (0.75, 0.5806), (0.8, 0.5307), (0.85, 0.4905), (0.9, 0.4545), (0.95, 0.4292), (1.0, 0.3745), (1.05, 0.3504), (1.1, 0.3171), (1.15, 0.2858), (1.2, 0.2631), (1.25, 0.2306), (1.3, 0.217), (1.35, 0.189), (1.4, 0.1738), (1.45, 0.1531), (1.5, 0.1382), (1.55, 0.125), (1.6, 0.1137)],
-    "grass": [(0.3, 0.9854), (0.35, 0.9795), (0.4, 0.9746), (0.45, 0.9634), (0.5, 0.9438), (0.55, 0.9304), (0.6, 0.9111), (0.65, 0.8872), (0.7, 0.8677), (0.75, 0.8361), (0.8, 0.8075), (0.85, 0.7801), (0.9, 0.7476), (0.95, 0.7126), (1.0, 0.6802), (1.05, 0.6325), (1.1, 0.6134), (1.15, 0.5677), (1.2, 0.5365), (1.25, 0.5066), (1.3, 0.4662), (1.35, 0.4345), (1.4, 0.3988), (1.45, 0.3619), (1.5, 0.3578), (1.55, 0.3066), (1.6, 0.2897)],
+    "hard": [(0.3, 0.9657), (0.35, 0.9492), (0.4, 0.9319), (0.45, 0.9105), (0.5, 0.8823), (0.55, 0.8543), (0.6, 0.8166), (0.65, 0.785), (0.7, 0.7494), (0.75, 0.7063), (0.8, 0.6698), (0.85, 0.6221), (0.9, 0.5835), (0.95, 0.5424), (1.0, 0.5004), (1.05, 0.4621), (1.1, 0.4274), (1.15, 0.3895), (1.2, 0.3533), (1.25, 0.3246), (1.3, 0.2913), (1.35, 0.2683), (1.4, 0.2407), (1.45, 0.2203), (1.5, 0.1927), (1.55, 0.1783), (1.6, 0.1607)],
+    "clay": [(0.3, 0.9251), (0.35, 0.9013), (0.4, 0.8714), (0.45, 0.8334), (0.5, 0.8019), (0.55, 0.7732), (0.6, 0.7143), (0.65, 0.6809), (0.7, 0.6452), (0.75, 0.5989), (0.8, 0.5572), (0.85, 0.5199), (0.9, 0.4724), (0.95, 0.4481), (1.0, 0.4007), (1.05, 0.3752), (1.1, 0.3421), (1.15, 0.303), (1.2, 0.2877), (1.25, 0.2502), (1.3, 0.2335), (1.35, 0.2086), (1.4, 0.187), (1.45, 0.1686), (1.5, 0.1531), (1.55, 0.1414), (1.6, 0.123)],
+    "grass": [(0.3, 0.9858), (0.35, 0.9748), (0.4, 0.9644), (0.45, 0.9555), (0.5, 0.9337), (0.55, 0.9147), (0.6, 0.9056), (0.65, 0.8657), (0.7, 0.8325), (0.75, 0.8293), (0.8, 0.7792), (0.85, 0.7459), (0.9, 0.7161), (0.95, 0.679), (1.0, 0.6444), (1.05, 0.5914), (1.1, 0.5671), (1.15, 0.5287), (1.2, 0.4926), (1.25, 0.4599), (1.3, 0.4064), (1.35, 0.38), (1.4, 0.3656), (1.45, 0.3241), (1.5, 0.3078), (1.55, 0.2711), (1.6, 0.2672)],
 }
 PLAYER_ACE_CURVE_BY_SURFACE: dict[str, list[tuple[float, float]]] = {
-    "hard": [(0.3, 0.8876), (0.35, 0.867), (0.4, 0.8452), (0.45, 0.8122), (0.5, 0.7826), (0.55, 0.7571), (0.6, 0.7225), (0.65, 0.6894), (0.7, 0.6543), (0.75, 0.6219), (0.8, 0.5912), (0.85, 0.5583), (0.9, 0.525), (0.95, 0.489), (1.0, 0.4635), (1.05, 0.4274), (1.1, 0.4057), (1.15, 0.3724), (1.2, 0.3498), (1.25, 0.318), (1.3, 0.297), (1.35, 0.2748), (1.4, 0.2536), (1.45, 0.2305), (1.5, 0.2072), (1.55, 0.1965), (1.6, 0.1801), (1.65, 0.1621), (1.7, 0.1448), (1.75, 0.1408), (1.8, 0.1242)],
-    "clay": [(0.3, 0.7899), (0.35, 0.7584), (0.4, 0.7324), (0.45, 0.7022), (0.5, 0.6707), (0.55, 0.6324), (0.6, 0.5968), (0.65, 0.568), (0.7, 0.5323), (0.75, 0.4922), (0.8, 0.4602), (0.85, 0.4408), (0.9, 0.4117), (0.95, 0.3745), (1.0, 0.3471), (1.05, 0.3284), (1.1, 0.2995), (1.15, 0.2817), (1.2, 0.2646), (1.25, 0.2354), (1.3, 0.2191), (1.35, 0.1984), (1.4, 0.1908), (1.45, 0.1742), (1.5, 0.1559), (1.55, 0.1427), (1.6, 0.136), (1.65, 0.1171), (1.7, 0.1124), (1.75, 0.1001), (1.8, 0.0944)],
-    "grass": [(0.3, 0.9258), (0.35, 0.9215), (0.4, 0.9096), (0.45, 0.8899), (0.5, 0.8738), (0.55, 0.8397), (0.6, 0.8293), (0.65, 0.7902), (0.7, 0.7669), (0.75, 0.7465), (0.8, 0.7229), (0.85, 0.6748), (0.9, 0.6574), (0.95, 0.6417), (1.0, 0.5784), (1.05, 0.5752), (1.1, 0.5447), (1.15, 0.5225), (1.2, 0.4939), (1.25, 0.4323), (1.3, 0.4323), (1.35, 0.4204), (1.4, 0.3609), (1.45, 0.36), (1.5, 0.3293), (1.55, 0.3252), (1.6, 0.2997), (1.65, 0.2633), (1.7, 0.2547), (1.75, 0.2354), (1.8, 0.2174)],
+    "hard": [(0.3, 0.8869), (0.35, 0.8624), (0.4, 0.8404), (0.45, 0.8109), (0.5, 0.7822), (0.55, 0.7553), (0.6, 0.7191), (0.65, 0.6882), (0.7, 0.6505), (0.75, 0.6215), (0.8, 0.5918), (0.85, 0.5566), (0.9, 0.5249), (0.95, 0.4919), (1.0, 0.4579), (1.05, 0.426), (1.1, 0.405), (1.15, 0.3729), (1.2, 0.3447), (1.25, 0.3181), (1.3, 0.2954), (1.35, 0.2674), (1.4, 0.2554), (1.45, 0.2274), (1.5, 0.2063), (1.55, 0.1916), (1.6, 0.1748), (1.65, 0.164), (1.7, 0.1419), (1.75, 0.1341), (1.8, 0.1227)],
+    "clay": [(0.3, 0.7909), (0.35, 0.7742), (0.4, 0.7388), (0.45, 0.7133), (0.5, 0.6808), (0.55, 0.6501), (0.6, 0.6108), (0.65, 0.5726), (0.7, 0.5502), (0.75, 0.5179), (0.8, 0.4772), (0.85, 0.4527), (0.9, 0.4243), (0.95, 0.3953), (1.0, 0.373), (1.05, 0.3473), (1.1, 0.3194), (1.15, 0.2959), (1.2, 0.2792), (1.25, 0.2558), (1.3, 0.2355), (1.35, 0.2154), (1.4, 0.2037), (1.45, 0.1854), (1.5, 0.1671), (1.55, 0.1549), (1.6, 0.1426), (1.65, 0.1353), (1.7, 0.1202), (1.75, 0.106), (1.8, 0.0992)],
+    "grass": [(0.3, 0.9249), (0.35, 0.9152), (0.4, 0.8888), (0.45, 0.8787), (0.5, 0.8571), (0.55, 0.8231), (0.6, 0.805), (0.65, 0.7794), (0.7, 0.7452), (0.75, 0.7167), (0.8, 0.6982), (0.85, 0.6461), (0.9, 0.6358), (0.95, 0.5912), (1.0, 0.571), (1.05, 0.5343), (1.1, 0.5086), (1.15, 0.4813), (1.2, 0.4503), (1.25, 0.4187), (1.3, 0.3981), (1.35, 0.3881), (1.4, 0.3397), (1.45, 0.3274), (1.5, 0.297), (1.55, 0.2859), (1.6, 0.2562), (1.65, 0.2468), (1.7, 0.2216), (1.75, 0.2068), (1.8, 0.1859)],
 }
 
 
@@ -65,12 +66,18 @@ CALIBRATION_CURVE = MATCH_ACE_CURVE
 
 _LAST_N = 15            # recency window for the ace profile
 _MIN_HISTORY = 5        # both players need >= this many prior ace matches to price
-_SURFACE_WEIGHT = 0.30  # weight of surface-specific mean vs overall
-_CONCEDE_WEIGHT = 0.25  # weight of opponent's conceded-aces vs raw serve rate
+# Odds-blind walk-forward sweep on three recent cutoffs (2024/2025/2026,
+# 65,814/40,639/16,329 player-matches) selected the same pair.  The previous
+# 0.30/0.25 weights had higher holdout mean-squared error on every cutoff.
+_SURFACE_WEIGHT = 0.60  # surface-specific mean vs overall
+_CONCEDE_WEIGHT = 0.30  # opponent's conceded-aces vs raw serve rate
 _MARKET_SHRINK = 0.25   # blend model P toward de-vigged market P (conservative)
 _MARKET_VIG_DIVISOR = 1.06  # approx Sportsbet ace-ladder hold; de-vig each rung
 _ANCHOR_TARGET_PROB = 0.70  # NBA-style: highest line still >= this hit prob
 _MIN_EDGE = 0.04        # min (model - market_fair) to flag a value prop
+_MIN_VALUE_ODDS = 1.30
+_MAX_VALUE_ODDS = 2.25
+_MIN_VALUE_PROBABILITY = 0.55
 _GLOBAL_ACE_FALLBACK = 5.0  # per-player mean if a side is thin (rarely used)
 # HARD line cap: only price rungs whose line is within the calibration range of
 # the predicted mean. Beyond ~1.25x the mean the curve is EXTRAPOLATING and the
@@ -245,7 +252,8 @@ def price_two_way(match_id: int, market_key: str, scope: str, line: float,
                   over_odds: float, under_odds: float, predicted_mean: float,
                   curve: list[tuple[float, float]], factors: dict | None = None,
                   within_range_ratio: float = _MAX_LINE_RATIO,
-                  temper: float = 0.0) -> TwoWayProp | None:
+                  temper: float = 0.0,
+                  model_weight: float | None = None) -> TwoWayProp | None:
     """Price an Over/Under ace market. Exact two-way de-vig (Over+Under),
     calibrated model P(over), shrink toward market, pick the +EV value side.
     Refuses lines outside the calibration range (fake-edge protection). `temper`
@@ -260,12 +268,24 @@ def price_two_way(match_id: int, market_key: str, scope: str, line: float,
     # pulled toward 0.5, while the temper strength was itself derived from that
     # scorecard. Keeping the two apart breaks that loop.
     model_over = interp_prob_over(line, predicted_mean, curve)
-    strength = min(0.95, max(0.0, temper)) if temper else 0.0
-    tempered_over = 0.5 + (model_over - 0.5) * (1.0 - strength)
     imp_over, imp_under = 1.0 / over_odds, 1.0 / under_odds
     overround = imp_over + imp_under
     fair_over = imp_over / overround
-    blended_over = (1 - _MARKET_SHRINK) * tempered_over + _MARKET_SHRINK * fair_over
+    if model_weight is None:
+        # Backward-compatible research path for callers/tests that explicitly
+        # supply the old coin-flip temper.
+        strength = min(0.95, max(0.0, temper)) if temper else 0.0
+        tempered_over = 0.5 + (model_over - 0.5) * (1.0 - strength)
+        blended_over = (
+            (1 - _MARKET_SHRINK) * tempered_over
+            + _MARKET_SHRINK * fair_over
+        )
+    else:
+        from tennis_wc.props.calibration import blend_with_market
+        weight = max(0.0, min(1.0, float(model_weight)))
+        strength = 1.0 - weight
+        blended_over = blend_with_market(model_over, fair_over, weight)
+        tempered_over = blended_over
     blended_under = 1.0 - blended_over
     ev_over = blended_over * over_odds - 1.0
     ev_under = blended_under * under_odds - 1.0
@@ -277,9 +297,13 @@ def price_two_way(match_id: int, market_key: str, scope: str, line: float,
     # Tempering toward 50% can otherwise cross the market price and turn a raw
     # model "over" lean into a fabricated "under" edge (or vice versa).
     raw_edge_over = model_over - fair_over
-    if raw_edge_over > 0 and edge_over >= _MIN_EDGE and ev_over > 0:
+    if (raw_edge_over > 0 and edge_over >= _MIN_EDGE and ev_over > 0
+            and blended_over >= _MIN_VALUE_PROBABILITY
+            and _MIN_VALUE_ODDS <= over_odds <= _MAX_VALUE_ODDS):
         side, s_odds, s_edge, s_ev, s_blend = "over", over_odds, edge_over, ev_over, blended_over
-    elif raw_edge_over < 0 and edge_under >= _MIN_EDGE and ev_under > 0:
+    elif (raw_edge_over < 0 and edge_under >= _MIN_EDGE and ev_under > 0
+          and blended_under >= _MIN_VALUE_PROBABILITY
+          and _MIN_VALUE_ODDS <= under_odds <= _MAX_VALUE_ODDS):
         side, s_odds, s_edge, s_ev, s_blend = "under", under_odds, edge_under, ev_under, blended_under
     return TwoWayProp(
         match_id=match_id, market_key=market_key, scope=scope, line=line,
@@ -348,7 +372,9 @@ def price_ace_legs(conn, match_id: int, player_a_id: int, player_b_id: int,
             match_id=match_id, line=line, decimal_odds=round(odds, 3),
             model_prob=round(model_p, 4), market_prob_fair=round(market_fair, 4),
             blended_prob=round(blended, 4), edge=round(edge, 4), ev=round(ev, 4),
-            is_value=(edge >= _MIN_EDGE and ev > 0),
+            is_value=(edge >= _MIN_EDGE and ev > 0
+                      and blended >= _MIN_VALUE_PROBABILITY
+                      and _MIN_VALUE_ODDS <= odds <= _MAX_VALUE_ODDS),
             predicted_mean=pred_mean,
             factors={
                 "a_serve": a.serve_estimate, "b_serve": b.serve_estimate,

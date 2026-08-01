@@ -181,6 +181,50 @@ def test_prop_gate_uses_live_eligible_roi_not_high_odds_research_roi():
     assert gate["family_states"]["player_aces"]["roi"] == -0.04
 
 
+def test_match_total_aces_stays_research_even_if_historical_gate_passes():
+    from tennis_wc.props import strategy
+
+    gate = strategy.recommendation_gate(
+        {
+            "settled": 150,
+            "by_family": {
+                "match_total_aces": {
+                    "settled": 130,
+                    "model": {"brier": 0.17},
+                    "market": {"brier": 0.19},
+                }
+            },
+        },
+        {
+            "by_family_formal_profile": {
+                "match_total_aces": {"settled": 60, "roi": 0.10}
+            }
+        },
+    )
+
+    assert gate["status"] == "RESEARCH_ONLY"
+    assert gate["enabled_families"] == []
+    assert gate["family_states"]["match_total_aces"]["enabled"] is False
+    assert (
+        gate["family_states"]["match_total_aces"]["recommendable_player_prop"]
+        is False
+    )
+
+
+def test_formal_prop_stake_is_confidence_haircut_tenth_kelly_with_caps():
+    from tennis_wc.props import strategy
+
+    low_confidence = strategy.formal_stake_units(0.62, 1.80, 69)
+    normal = strategy.formal_stake_units(0.62, 1.80, 80)
+    capped_single = strategy.formal_stake_units(0.80, 2.00, 95)
+    capped_combo = strategy.formal_stake_units(0.55, 2.20, 85, combo=True)
+
+    assert low_confidence == 0.0
+    assert normal == 1.0
+    assert capped_single == 2.0
+    assert capped_combo == 1.0
+
+
 def test_prop_registry_classifies_expanded_player_markets():
     from tennis_wc.props.registry import family_for_market
 
@@ -505,6 +549,152 @@ def test_current_strength_defaults_conservative_when_few_settled(tmp_path, monke
     assert calibration.current_strength(get_connection()) == calibration.DEFAULT_STRENGTH
 
 
+def test_market_blend_never_crosses_or_invents_opposite_edge():
+    from tennis_wc.props import calibration
+
+    assert calibration.blend_with_market(0.80, 0.55, 0.40) == 0.65
+    assert calibration.blend_with_market(0.20, 0.45, 0.40) == 0.35
+    priced = ace_model.price_two_way(
+        1, "total_aces_9_5", "match", 9.5, 1.90, 1.90, 13.0,
+        ace_model.MATCH_ACE_CURVE, model_weight=0.0,
+    )
+    assert priced is not None
+    assert priced.blended_prob == priced.fair_prob_over
+    assert priced.value_side is None
+
+
+def test_family_reliability_is_quality_filtered_and_as_of_safe(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import calibration, settlement
+
+    init_db()
+    conn = get_connection()
+    _seed_player(conn, 1, "A"); _seed_player(conn, 2, "B")
+    for index in range(21):
+        match_id = index + 1
+        date = f"2026-01-{match_id:02d}"
+        _seed_match(conn, match_id, 1, 2, date=date)
+        conn.execute(
+            "INSERT INTO feature_snapshots "
+            "(match_id,player_id,feature_set_version,features_json,"
+            "provenance_json,data_quality_score,created_at) "
+            "VALUES (?,?,?, '{}','{}',65,'now')",
+            (match_id, 1, "test"),
+        )
+        settlement.record_prop(
+            conn, match_id=match_id, match_date=date, match_label="A vs B",
+            market_key="player_win_a_set_1", line=0.5, selection="Yes",
+            side="over", prop_scope="player_win_set", subject_player_id=1,
+            decimal_odds=1.9, model_prob=0.7, model_prob_raw=0.7,
+            temper_strength=0.0, market_prob_fair=0.5, blended_prob=0.6,
+            edge=0.1, ev=0.14, predicted_mean=0.7, stake_units=1.0,
+            is_value=True,
+        )
+        conn.execute(
+            "UPDATE prop_tracker SET result_status='WON',profit_loss_units=.9 "
+            "WHERE match_id=?", (match_id,),
+        )
+    _seed_match(conn, 99, 1, 2, date="2026-03-01")
+    conn.execute(
+        "INSERT INTO feature_snapshots "
+        "(match_id,player_id,feature_set_version,features_json,provenance_json,"
+        "data_quality_score,created_at) VALUES (99,1,'test','{}','{}',65,'now')"
+    )
+    settlement.record_prop(
+        conn, match_id=99, match_date="2026-03-01", match_label="A vs B",
+        market_key="player_win_a_set_1", line=0.5, selection="Yes",
+        side="over", prop_scope="player_win_set", subject_player_id=1,
+        decimal_odds=1.9, model_prob=0.9, model_prob_raw=0.9,
+        temper_strength=0.0, market_prob_fair=0.5, blended_prob=0.7,
+        edge=0.2, ev=0.33, predicted_mean=0.9, stake_units=1.0,
+        is_value=True,
+    )
+    conn.execute(
+        "UPDATE prop_tracker SET result_status='LOST',profit_loss_units=-1 "
+        "WHERE match_id=99"
+    )
+    conn.commit()
+
+    profile = calibration.family_reliability(
+        conn, "player_win_a_set", as_of_date="2026-02-01"
+    )
+    assert profile.settled == 21
+    assert profile.raw_weight == 1.0
+    assert 0 < profile.model_weight < profile.raw_weight
+
+
+def test_ace_reliability_uses_prematch_serve_history_not_match_quality(
+    tmp_path, monkeypatch
+):
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import calibration, settlement
+
+    init_db()
+    conn = get_connection()
+    for player_id, name in ((1, "A"), (2, "B"), (3, "C"), (4, "D")):
+        _seed_player(conn, player_id, name)
+    _seed_history(conn, 1, 2, 10, 8)
+    _seed_history(conn, 2, 1, 10, 5)
+    for match_id, player_a, player_b, quality in (
+        (1, 1, 2, 0),
+        (2, 3, 4, 100),
+    ):
+        _seed_match(conn, match_id, player_a, player_b, date="2026-02-01")
+        conn.execute(
+            "INSERT INTO feature_snapshots "
+            "(match_id,player_id,feature_set_version,features_json,"
+            "provenance_json,data_quality_score,created_at) "
+            "VALUES (?,?,'test','{}','{}',?,'now')",
+            (match_id, player_a, quality),
+        )
+        settlement.record_prop(
+            conn, match_id=match_id, match_date="2026-02-01",
+            match_label="test", market_key=f"total_player_{player_a}_aces_7_5",
+            line=7.5, selection="Over 7.5", side="over",
+            prop_scope="player", subject_player_id=player_a,
+            decimal_odds=1.9, model_prob=0.65, model_prob_raw=0.65,
+            temper_strength=0.0, market_prob_fair=0.52, blended_prob=0.55,
+            edge=0.03, ev=0.045, predicted_mean=8.0, stake_units=0.0,
+            is_value=False,
+        )
+        conn.execute(
+            "UPDATE prop_tracker SET result_status='WON' WHERE match_id=?",
+            (match_id,),
+        )
+    conn.commit()
+
+    profile = calibration.family_reliability(
+        conn, "player_aces", as_of_date="2026-03-01"
+    )
+    assert profile.settled == 1
+
+
+def test_confidence_score_is_not_hit_probability_and_normalises_quality():
+    from tennis_wc.props import strategy
+
+    gate = {
+        "enabled_families": ["player_aces"],
+        "family_states": {
+            "player_aces": {
+                "scorecard_settled": 120,
+                "model_brier": 0.19,
+                "market_brier": 0.21,
+            }
+        },
+    }
+    leg = {"market_key": "total_alex_aces_7_5", "data_quality": 65,
+           "prob": 0.90}
+    score = strategy.confidence_score(leg, gate)
+    assert score == strategy.confidence_score(leg | {"data_quality": 0.65}, gate)
+    assert score != 90
+
+
 def test_predict_total_games_more_for_close_matches():
     from tennis_wc.props import games_model
     close = games_model.predict_total_games(0.5, best_of=3)   # coin-flip
@@ -721,7 +911,7 @@ def test_wta_ace_props_never_flag_value():
 
     tw = ace_model.price_two_way(
         1, "total_aces_9_5", "match", 9.5,
-        over_odds=2.4, under_odds=1.55, predicted_mean=12.0,
+        over_odds=2.2, under_odds=1.6, predicted_mean=12.0,
         curve=ace_model.MATCH_ACE_CURVE,
     )
     assert tw is not None and tw.value_side is not None  # a clear value side exists
@@ -730,6 +920,35 @@ def test_wta_ace_props_never_flag_value():
     assert stripped.value_odds is None
     assert stripped.edge == 0.0
     assert stripped.ev <= 0.0
+
+
+def test_high_odds_props_are_priced_but_never_flagged_as_value():
+    tw = ace_model.price_two_way(
+        1, "total_aces_9_5", "match", 9.5,
+        over_odds=2.40, under_odds=1.55, predicted_mean=12.0,
+        curve=ace_model.MATCH_ACE_CURVE,
+    )
+    assert tw is not None
+    assert tw.value_side is None
+    assert tw.value_odds is None
+
+
+def test_prop_edge_below_minimum_hit_probability_stays_research_only():
+    from tennis_wc.props.player_model import price_probability_two_way
+
+    below = price_probability_two_way(
+        1, "player_win_a_set_a", "player_match", 2.25, 1.60,
+        raw_yes=0.65, model_weight=0.50,
+    )
+    above = price_probability_two_way(
+        1, "player_win_a_set_a", "player_match", 2.25, 1.60,
+        raw_yes=0.75, model_weight=0.50,
+    )
+
+    assert below is not None and below.blended_prob < 0.55
+    assert below.value_side is None
+    assert above is not None and above.blended_prob >= 0.55
+    assert above.value_side == "yes"
 
 
 def test_surface_curves_present_and_fallback():

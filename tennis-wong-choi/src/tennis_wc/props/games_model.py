@@ -102,7 +102,8 @@ def price_games_two_way(match_id: int, market_key: str, line: float,
                         over_odds: float, under_odds: float,
                         match_prob: float | None, best_of: int = 3,
                         temper: float = 0.0,
-                        hold_sum: float | None = None) -> TwoWayProp | None:
+                        hold_sum: float | None = None,
+                        model_weight: float | None = None) -> TwoWayProp | None:
     pred = predict_total_games(match_prob, best_of, hold_sum=hold_sum)
     if pred is None:
         return None
@@ -110,4 +111,5 @@ def price_games_two_way(match_id: int, market_key: str, line: float,
                          under_odds, pred, GAMES_CURVE,
                          factors={"match_prob": match_prob, "best_of": best_of,
                                   "hold_sum": hold_sum},
-                         within_range_ratio=_GAMES_LINE_RATIO, temper=temper)
+                         within_range_ratio=_GAMES_LINE_RATIO, temper=temper,
+                         model_weight=model_weight)
