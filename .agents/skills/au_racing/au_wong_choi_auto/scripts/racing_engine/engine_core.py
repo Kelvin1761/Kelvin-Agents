@@ -1605,6 +1605,10 @@ class RacingEngine:
               f"（收縮後 {shrunk * 100:.0f}%、基準 {self._TRAINER_LY_NORM * 100:.0f}%）")
         return round(delta, 2), ev
 
+    # 「完全冇人馬配搭紀錄」嘅點位（見 `_jockey_horse_fit_score` 尾部註釋）。
+    # 唔係中性 60 —— 嗰批馬實測前三率 21.7%，低過樣本平均 28.3%。
+    _JT_FIT_NO_EVIDENCE = 58.0
+
     def _jockey_horse_fit_score(self):
         jockey = self._clean_identity(self.horse_data.get("jockey"))
         trainer = self._clean_identity(self.horse_data.get("trainer"))
@@ -1725,6 +1729,25 @@ class RacingEngine:
             notes.append(f"見習減磅可幫手化解負磅壓力（原負磅{weight:.1f}kg，不入分）")
         if trainer in {"", "Unknown"}:
             notes.append("馬房資料不完整")
+
+        # 「完全冇人馬配搭證據」唔係中性（2026-08-01）。實測 713 場 / 7,547 匹：
+        #     高過 60（有正面配搭證據）  n=5,301  前三率 30.0%
+        #     低過 60（被扣分）          n=  838  前三率 28.6%
+        #     恰好 60（冇任何證據）      n=1,408  前三率 **21.7%**  ← 樣本平均 28.3%
+        # 即係排序反咗：被扣分嗰批實際好過冇證據嗰批，但分數排喺佢下面。
+        # 「冇配搭紀錄」係一個真訊號（新／陌生騎師、輕出賽馬），唔係缺數據。
+        #
+        # ⚠️ 呢個同 `sectional_score` 個案**方向相反** —— 嗰邊「冇 PI 數據」前三率
+        # 30.1% 高過平均，所以要由 35.8 抬去 60。所以「60 = 冇證據」唔可以當通則
+        # 照搬，每個 leaf 都要睇返自己嘅 cohort 實測。
+        #
+        # 點位掃過 58/56/54/52：只有 58 喺 holdout 完全唔傷（每個指標剛好 0.00），
+        # dev champ +0.50、winT3 +0.33、compet +0.33、blowout −0.16、good_pos −0.17。
+        # 再低（54/52）dev gold +2 但 holdout gold −1、good_pos −0.94 → 唔採用。
+        if not adjustments:
+            score = self._JT_FIT_NO_EVIDENCE
+            notes.append("並無任何人馬配搭紀錄（新配搭／輕出賽馬），按實測低於中性處理")
+
         self.jt_fit_detail = {
             "base": round(base_score, 2),
             "final": round(clip_score(score), 2),
