@@ -249,6 +249,80 @@ def probe(parsed, label=""):
     return c
 
 
+# ── 寫成 Racenet 格式（drop-in）─────────────────────────────────────────────
+# 下游（inject_fact_anchors → Facts.md → engine）食嘅係 Racenet crawler 嗰套文字
+# 格式，所以呢度要逐個欄位對返齊，唔可以自創格式。已核實嘅解析點：
+#   ` starters:N`                 → 馬群大細（form_score 百分位化靠佢）
+#   ` PF[Last600: X ...]`         → 段速實速（X 係**同基準嘅差值**，唔係原始秒數）
+#   `Nth@800m Nth@400m`           → 定位（settling position）
+#   `(LY: 288:53-39-35)`          → 騎練去年 starts:1st-2nd-3rd
+_POS_ORD = {"1st": 1, "2nd": 2, "3rd": 3}
+
+
+def _ord_to_int(text):
+    if not text:
+        return None
+    if text in _POS_ORD:
+        return _POS_ORD[text]
+    m = re.match(r"(\d+)", str(text))
+    return int(m.group(1)) if m else None
+
+
+def _l600_delta(raw_seconds, track, distance_m):
+    """Sportsbet 畀原始 600m 秒數，但下游要嘅係**同場地標準嘅差值**。
+
+    用引擎自己嗰張標準表換算，咁 live 同重跑 archive 先係同一把尺。
+    攞唔到標準就回 None —— 寧可唔寫，唔好寫個假 delta 落去。
+    """
+    if raw_seconds is None or not track or not distance_m:
+        return None
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent
+                               / "au_wong_choi_auto" / "scripts" / "racing_engine"))
+        from engine_core import _lookup_standard_l600
+    except Exception:  # noqa: BLE001 — 抽取唔應該因為 import 死
+        return None
+    std = _lookup_standard_l600(track, int(distance_m))
+    if not std:
+        return None
+    return round(float(raw_seconds) - float(std), 3)
+
+
+def run_line(run):
+    """砌一條 Racenet 格式嘅往績行。"""
+    h = run.get("header") or {}
+    track = (h.get("track") or "").strip()
+    dist = h.get("dist")
+    cond = (h.get("going") or "").strip()
+    parts = [f"{track} R{h.get('race','?')} {h.get('date','')} {dist or '?'}m cond:{cond}"]
+    parts.append(f"{(run.get('jockey') or '').strip()} ({run.get('barrier','?')})"
+                 f" {run.get('weight','?')}kg")
+    if run.get("sp"):
+        parts.append(f"Flucs:$- ${run['sp']}")
+    pos = []
+    if run.get("p800"):
+        pos.append(f"{run['p800']}@800m")
+    if run.get("p400"):
+        pos.append(f"{run['p400']}@400m")
+    tail = " ".join(pos) + "."
+    if run.get("margin"):
+        tail += f" margin:{run['margin']}L"
+    if run.get("field"):
+        tail += f" starters:{run['field']}"
+    delta = _l600_delta(run.get("l600"), track, dist)
+    if delta is not None:
+        tail += f" PF[Last600: {delta}]"
+    line = " ".join(parts) + " " + tail
+    opp = run.get("opponents") or []
+    def fmt(o, i):
+        if i >= len(opp):
+            return f"{i+1}-"
+        x = opp[i]
+        s = f"{i+1}-{x['name']} ({x['wt']}kg)"
+        return s + (f" {x['mgn']}L" if x.get("mgn") else "")
+    return line, ", ".join(fmt(opp, i) for i in range(3))
+
+
 def main():
     ap = argparse.ArgumentParser(description="Sportsbet AU 賽馬表格抓取")
     ap.add_argument("--race-url", help="完整賽事頁 URL")
