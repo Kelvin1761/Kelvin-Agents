@@ -14,6 +14,8 @@ def test_weekly_review_renders_on_empty_db(tmp_path, monkeypatch):
     assert "每週檢討" in report
     assert "一眼睇晒" in report
     assert "衍生市場畢業進度" in report
+    assert "Player Prop 主線升降級（Reflector）" in report
+    assert "EARLY_MAIN" in report
     assert "決策提示" in report
     # Empty DB -> nothing graduated, nothing to raise stakes on.
     assert "未有衍生市場畢業" in report

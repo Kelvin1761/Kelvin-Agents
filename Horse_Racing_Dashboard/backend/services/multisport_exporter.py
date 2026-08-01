@@ -605,7 +605,12 @@ def _tennis_confidence_score(data_quality: Any, family_stats: Dict[str, Any]) ->
 
 
 def _tennis_stake_units(
-    probability: Any, odds: Any, confidence_score: Any, *, combo: bool = False
+    probability: Any,
+    odds: Any,
+    confidence_score: Any,
+    *,
+    combo: bool = False,
+    early: bool = False,
 ) -> float:
     """Mirror Tennis' confidence-haircut tenth-Kelly display stake."""
     p = _safe_float(probability) or 0.0
@@ -618,7 +623,7 @@ def _tennis_stake_units(
     full_kelly = (p * price - 1.0) / (price - 1.0)
     if full_kelly <= 0:
         return 0.0
-    cap = 1.0 if combo else 2.0
+    cap = 0.5 if early else 1.0 if combo else 2.0
     units = min(cap, full_kelly * 0.10 * 100.0 * reliability)
     units = max(0.5, units)
     return min(cap, round(units / 0.5) * 0.5)
@@ -763,6 +768,8 @@ def _tennis_strategy_state(
         bucket["staked"] += float(row["stake_units"] or 0)
         bucket["pnl"] += float(row["profit_loss_units"] or 0)
     enabled = []
+    validated = []
+    early_main = []
     supported = (
         "match_total_aces", "player_aces", "player_double_faults",
         "player_total_games", "player_win_a_set", "first_set_winner",
@@ -800,7 +807,7 @@ def _tennis_strategy_state(
         stats["model_brier"] = model_brier
         stats["market_brier"] = market_brier
         stats["recommendable_player_prop"] = family in recommendable_player_families
-        if (
+        qualified = (
             family in recommendable_player_families
             and score_count >= 120
             and model_brier is not None
@@ -809,11 +816,41 @@ def _tennis_strategy_state(
             and int(stats.get("settled") or 0) >= 50
             and stats["roi"] is not None
             and stats["roi"] > 0
-        ):
+        )
+        early_qualified = (
+            not qualified
+            and family in recommendable_player_families
+            and score_count >= 50
+            and model_brier is not None
+            and market_brier is not None
+            and model_brier <= market_brier - 0.005
+            and int(stats.get("settled") or 0) >= 3
+            and stats["roi"] is not None
+            and stats["roi"] > 0
+        )
+        stats["tier"] = (
+            "VALIDATED" if qualified
+            else "EARLY_MAIN" if early_qualified
+            else "RESEARCH_ONLY"
+        )
+        stats["enabled"] = qualified or early_qualified
+        stats["validated"] = qualified
+        stats["early_main"] = early_qualified
+        if qualified or early_qualified:
             enabled.append(family)
+        if qualified:
+            validated.append(family)
+        elif early_qualified:
+            early_main.append(family)
     return {
-        "status": "VALIDATED_SINGLE" if enabled else "RESEARCH_ONLY",
+        "status": (
+            "VALIDATED_SINGLE" if validated
+            else "EARLY_MAIN" if early_main
+            else "RESEARCH_ONLY"
+        ),
         "enabled_families": enabled,
+        "validated_families": validated,
+        "early_main_families": early_main,
         "raw_scorecard_settled": raw_n,
         "families": families,
         "reason": None if enabled else "minimum evidence gate not met",
@@ -889,6 +926,7 @@ def _export_tennis_singles(
         model_probability = _safe_float(item.get("blended_prob"))
         odds = _safe_float(item.get("decimal_odds"))
         family_stats = (strategy.get("families") or {}).get(family) or {}
+        early = family_stats.get("tier") == "EARLY_MAIN"
         confidence_score = _tennis_confidence_score(
             source_quality, family_stats
         )
@@ -896,7 +934,7 @@ def _export_tennis_singles(
             {
                 "id": f"tennis:prop:{item['id']}",
                 "sport": "tennis",
-                "category": "validated_prop",
+                "category": "early_main_prop" if early else "validated_prop",
                 "event_date": item["match_date"],
                 "event_name": event_name,
                 "market": item.get("market_key"),
@@ -915,12 +953,18 @@ def _export_tennis_singles(
                     "confidence": confidence_score,
                     "confidence_score": confidence_score,
                     "stake_units": _tennis_stake_units(
-                        model_probability, odds, confidence_score
+                        model_probability, odds, confidence_score, early=early
                     ),
                     "profit_loss_units": _safe_float(item.get("profit_loss_units")),
                 },
-                "insight": f"{family} · evidence gate validated",
-                "risk": "固定 1u；模型即使已驗證仍有短期波動。",
+                "insight": (
+                    f"{family} · EARLY_MAIN early profitable trend"
+                    if early else f"{family} · evidence gate validated"
+                ),
+                "risk": (
+                    "早期樣本有限；每注上限 0.5u，ROI 或模型優勢轉負即降級。"
+                    if early else "模型即使已驗證仍有短期波動。"
+                ),
                 "decision": "BET",
                 "confidence": confidence_score,
                 "outcome": outcome,
@@ -1017,15 +1061,27 @@ def _export_tennis_combos(
         combo_confidence = min(
             float(leg.get("confidence_score") or 0) for leg in raw_legs
         )
+        combo_early = any(
+            ((strategy.get("families") or {}).get(
+                _tennis_prop_family(leg.get("market_key"))
+            ) or {}).get("tier") == "EARLY_MAIN"
+            for leg in raw_legs
+        )
         outcome = _tennis_outcome(item.get("result_status"))
         selection = " + ".join(leg["selection"] for leg in legs if leg["selection"])
         recommendations.append(
             {
                 "id": f"tennis:combo:{item['combo_key']}",
                 "sport": "tennis",
-                "category": "validated_prop_combo",
+                "category": (
+                    "early_main_prop_combo" if combo_early
+                    else "validated_prop_combo"
+                ),
                 "event_date": item["match_date"],
-                "event_name": "2-match Combo · VALIDATED_2_LEG",
+                "event_name": (
+                    "2-match Combo · EARLY_MAIN_2_LEG" if combo_early
+                    else "2-match Combo · VALIDATED_2_LEG"
+                ),
                 "market": "Tennis Multi",
                 "selection": selection,
                 "odds": _safe_float(item.get("combo_odds")),
@@ -1040,12 +1096,21 @@ def _export_tennis_combos(
                     "expected_value": _safe_float(joint_ev),
                     "stake_units": _tennis_stake_units(
                         joint_probability, item.get("combo_odds"),
-                        combo_confidence, combo=True,
+                        combo_confidence, combo=True, early=combo_early,
                     ),
                     "profit_loss_units": _safe_float(item.get("profit_loss_units")),
                 },
-                "insight": "兩腳跨場 prop · evidence gate validated",
-                "risk": "組合注要逐腳結算；任何一腳落空會令整注落空。",
+                "insight": (
+                    "兩腳跨場 player prop · EARLY_MAIN early trend"
+                    if combo_early else
+                    "兩腳跨場 player prop · evidence gate validated"
+                ),
+                "risk": (
+                    "早期兩腳組合上限 0.5u；任何一腳落空會令整注落空，"
+                    "ROI 或模型優勢轉負即降級。"
+                    if combo_early else
+                    "組合注要逐腳結算；任何一腳落空會令整注落空。"
+                ),
                 "decision": "BET",
                 "confidence": item.get("adjusted_confidence"),
                 "outcome": outcome,

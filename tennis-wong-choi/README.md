@@ -25,19 +25,26 @@ The system refuses LLM-generated statistics. Numeric features must be backed by 
 
 ## Active Betting Strategy
 
-The active report uses only three recommendation states:
+The active report uses a two-stage main card plus research:
 
+- `EARLY_MAIN_SINGLE` / `EARLY_MAIN_2_LEG`
 - `VALIDATED_SINGLE`
 - `VALIDATED_2_LEG`
 - `RESEARCH_ONLY`
 
 The old Banker / Value / High-Odds categories are retired. Edge and expected
-value remain numeric requirements, not bet categories. New prop families are
-priced and paper-settled first; each family needs 120 raw scorecard outcomes,
-50 settled paper bets, a model Brier score at least 0.005 better than the
-de-vigged market, and positive ROI before it may be recommended. A formal combo
-is exactly two qualified props from different matches with positive joint EV;
-there is no arbitrary requirement for total odds to exceed 2.00.
+value remain numeric requirements, not bet categories. New player-prop families
+are priced and paper-settled first. In this early product stage, a family may
+enter the reversible `EARLY_MAIN` card after 50 raw scorecard outcomes and 3
+eligible paper bets when its model Brier is at least 0.005 better than the
+de-vigged market and its eligible-profile ROI is positive. `EARLY_MAIN` is an
+early trend, not full validation: every single or two-leg combo is capped at
+0.5u and automatically drops back to `RESEARCH_ONLY` if ROI or the model's
+market advantage turns non-positive. Full `VALIDATED` status still requires
+120 scorecard outcomes and 50 eligible settled paper bets under the same skill
+and ROI tests. A formal combo is exactly two qualified player props from
+different matches with positive joint EV; there is no arbitrary requirement
+for total odds to exceed 2.00.
 
 Prop probabilities and formula confidence are deliberately separate:
 
@@ -63,7 +70,8 @@ on the research scorecard but cannot graduate into `VALIDATED_SINGLE` or a
 formal combo. Paper ROI always uses flat 1u stakes so competing formulas remain
 comparable. A family that eventually graduates uses a formula-confidence-
 haircut tenth-Kelly stake, rounded to 0.5u and capped at 2u for a single or 1u
-for a two-leg combo.
+for a two-leg combo. The weekly Tennis Reflector reports every family's current
+`EARLY_MAIN` / `VALIDATED` / `RESEARCH_ONLY` tier and the evidence behind it.
 
 The embedded ace calibration curves are frozen on history strictly before
 2026-05-10, the first available evaluation slate. Rebuild them with

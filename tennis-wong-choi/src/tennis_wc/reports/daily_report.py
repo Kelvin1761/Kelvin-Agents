@@ -1413,8 +1413,13 @@ def _recommended_picks(prop: dict | None) -> dict:
         leg["confidence_score"] = leg.get(
             "confidence_score"
         ) or strategy.confidence_score(leg, gate)
+        family_state = (gate.get("family_states") or {}).get(
+            strategy.family_for_market(leg.get("market_key") or "")
+        ) or {}
+        early = family_state.get("tier") == "EARLY_MAIN"
+        leg["strategy_tier"] = "EARLY_MAIN_SINGLE" if early else "VALIDATED_SINGLE"
         leg["stake_units"] = strategy.formal_stake_units(
-            leg["prob"], leg["odds"], leg["confidence_score"]
+            leg["prob"], leg["odds"], leg["confidence_score"], early=early
         )
         selected_singles.append(leg)
         selected_matches.add(match_id)
@@ -1430,10 +1435,20 @@ def _recommended_picks(prop: dict | None) -> dict:
     ]
     if combos:
         combo = dict(combos[0])
+        combo_early = any(
+            ((gate.get("family_states") or {}).get(
+                strategy.family_for_market(leg.get("market_key") or "")
+            ) or {}).get("tier") == "EARLY_MAIN"
+            for leg in combo["legs"]
+        )
+        combo["strategy_tier"] = (
+            "EARLY_MAIN_2_LEG" if combo_early else "VALIDATED_2_LEG"
+        )
         combo["stake_units"] = strategy.formal_stake_units(
             combo["prob"], combo["odds"],
             min(float(leg.get("confidence_score") or 0) for leg in combo["legs"]),
             combo=True,
+            early=combo_early,
         )
         picks["validated_2_leg"] = combo
     return picks
@@ -1494,7 +1509,9 @@ def _recommended_bets_lines(
     sc_note, sc_n = _scorecard_note(prop)
 
     for i, v in enumerate(picks.get("validated_singles") or [], start=1):
-        title = "### 注 1｜✅ VALIDATED_SINGLE" if i == 1 else "### 注 1b｜✅ VALIDATED_SINGLE"
+        early = v.get("strategy_tier") == "EARLY_MAIN_SINGLE"
+        badge = "🟠 EARLY_MAIN_SINGLE" if early else "✅ VALIDATED_SINGLE"
+        title = f"### 注 1｜{badge}" if i == 1 else f"### 注 1b｜{badge}"
         label = _reliability_label(v.get("confidence_score"))
         cap_note = ""
         if label == "高" and sc_n < _PROP_CONFIDENCE_CAP_N:
@@ -1505,25 +1522,42 @@ def _recommended_bets_lines(
             [
                 title,
                 f"- 選擇：{v['desc']}（{v['match_label']}）",
-                "- 狀態：VALIDATED_SINGLE（已通過 family 樣本、模型對市場及 ROI 三重驗證）",
-                f"- 賠率：{_fmt(v['odds'])}｜建議注碼：{_fmt(v.get('stake_units'))}u（可信度折扣 tenth-Kelly；上限 2u）",
+                (
+                    "- 狀態：EARLY_MAIN_SINGLE（模型已勝市場、早期 paper ROI 為正；未達完整驗證樣本）"
+                    if early else
+                    "- 狀態：VALIDATED_SINGLE（已通過 family 樣本、模型對市場及 ROI 三重驗證）"
+                ),
+                f"- 賠率：{_fmt(v['odds'])}｜建議注碼：{_fmt(v.get('stake_units'))}u（{'早期主線上限 0.5u' if early else '可信度折扣 tenth-Kelly；上限 2u'}）",
                 f"- 校準命中概率：{_pct(v['prob'])}",
                 f"- 公式可信度：{label}（{v.get('confidence_score', 0)}/100；資料質素、family 樣本及模型對市場表現{cap_note}）",
                 f"- 信心理據：①{sc_note}②{temper_note}③edge {_pct(v['edge'], signed=True)}／EV {_pct(v['ev'], signed=True)} 係精確去水兼向市場收縮後先計，唔係 raw 模型自吹",
                 f"- 點解落：{_prop_value_reason(v)}",
-                "- 主要風險：即使過咗驗證，短期波動仍然大；注碼已按公式可信度折扣，唔追輸。",
+                (
+                    "- 主要風險：早期樣本細，正 ROI 可以快速反轉；固定最多 0.5u，唔追輸。"
+                    if early else
+                    "- 主要風險：即使過咗驗證，短期波動仍然大；注碼已按公式可信度折扣，唔追輸。"
+                ),
             ]
         )
 
     two_leg = picks.get("validated_2_leg")
     if two_leg:
         legs = two_leg["legs"]
+        early_combo = two_leg.get("strategy_tier") == "EARLY_MAIN_2_LEG"
         blocks.append(
             [
-                "### 注 2｜✅ VALIDATED_2_LEG（跨場 Prop）",
+                (
+                    "### 注 2｜🟠 EARLY_MAIN_2_LEG（跨場 Player Prop）"
+                    if early_combo else
+                    "### 注 2｜✅ VALIDATED_2_LEG（跨場 Player Prop）"
+                ),
                 *[f"- 腳 {j}：{lg['desc']}（{lg.get('match_label') or ''}）" for j, lg in enumerate(legs, start=1)],
-                "- 狀態：VALIDATED_2_LEG；只准兩腳、唔同場、組合 EV ≥3%；三腳仍留喺研究區",
-                f"- 合併賠率：{_fmt(round(two_leg['odds'], 2))}｜建議注碼：{_fmt(two_leg.get('stake_units'))}u（組合上限 1u）",
+                (
+                    "- 狀態：EARLY_MAIN_2_LEG；早期正趨勢兩腳、唔同場、組合 EV ≥3%；三腳仍留研究區"
+                    if early_combo else
+                    "- 狀態：VALIDATED_2_LEG；只准兩腳、唔同場、組合 EV ≥3%；三腳仍留喺研究區"
+                ),
+                f"- 合併賠率：{_fmt(round(two_leg['odds'], 2))}｜建議注碼：{_fmt(two_leg.get('stake_units'))}u（{'早期組合上限 0.5u' if early_combo else '組合上限 1u'}）",
                 f"- 信心：低（串命中 {_pct(two_leg['prob'])}——兩腳結構本質係低過單腳命中）",
                 f"- 信心理據：①每條腳獨立通過 edge 關（跨場減少直接相關）②{sc_note}③EV {_pct(two_leg['ev'], signed=True)} 為正但波動較大",
                 "- 點解落：每條腳獨立有 edge，跨場減少直接相關；唔以『總賠率過 2』作入場理由",
@@ -2080,7 +2114,7 @@ def render_banker_report(match_date: str, rows: list[dict]) -> str:
         "回測結論：match-winner 15,299 注樣本錄得 −5.4% 至 −32% ROI，edge 越大反而越差，唔再做投注主線。",
         "主打 = 下面嘅 🎾 Player Prop 單注 + 跨場兩腳 Player Prop；match-winner 只作分析 context。",
         "Match-total markets 只保留做研究記分卡，唔會升級成正式推薦。",
-        "正式策略只用三個狀態：VALIDATED_SINGLE、VALIDATED_2_LEG、RESEARCH_ONLY。",
+        "策略狀態：EARLY_MAIN_SINGLE／EARLY_MAIN_2_LEG 可提早小注；VALIDATED 代表完整畢業；其餘 RESEARCH_ONLY。",
         "",
     ]
     # PRIMARY: player props + prop parlays + live scorecard.
@@ -2844,6 +2878,14 @@ def _prop_review_lines(sc: dict, roi: dict, strategy_state: dict | None = None) 
     if strategy_state.get("status") == "VALIDATED_SINGLE":
         enabled = "、".join(strategy_state.get("enabled_families") or [])
         lines.extend([f"策略狀態：✅ VALIDATED_SINGLE（{enabled}）", ""])
+    elif strategy_state.get("status") == "EARLY_MAIN":
+        enabled = "、".join(strategy_state.get("early_main_families") or [])
+        warnings = "；".join(strategy_state.get("warnings") or [])
+        lines.extend([
+            f"策略狀態：🟠 EARLY_MAIN（{enabled}）",
+            f"- {warnings}",
+            "",
+        ])
     elif strategy_state:
         reasons = "；".join(strategy_state.get("reasons") or [])
         lines.extend([f"策略狀態：🧪 RESEARCH_ONLY（{reasons}）", ""])

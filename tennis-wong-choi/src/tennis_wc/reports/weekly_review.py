@@ -1,4 +1,4 @@
-"""Weekly validation review — one decision page across every shadow-tracked line.
+"""Tennis Reflector — one weekly decision page across every tracked line.
 
 The daily report tells you what to (maybe) bet TODAY. This tells you, across
 the whole validation history, WHICH structures are actually earning their keep
@@ -7,12 +7,15 @@ bettable. It is read-only reporting over the existing trackers — it composes
 the same summary functions the daily report and settlement use, so the numbers
 always agree.
 
-Decision rule surfaced at the bottom (matches _market_upgrade_gate):
+Decision rules surfaced at the bottom:
   - a derived market graduates at >= 20 settled + ROI >= 0 (CLV is NOT a gate:
     stored closing odds are contaminated with in-play prices -- see
     daily_report._market_upgrade_gate);
-  - props/chalk are judged on the model-vs-market scorecard + realised ROI,
-    but stakes stay flat until ~150-200 settled legs (small-sample caution).
+  - player props can enter reversible EARLY_MAIN at 50 scorecard outcomes +
+    three eligible paper bets when the model beats market Brier by 0.005 and
+    eligible-profile ROI is positive; early bets stay capped at 0.5u;
+  - full VALIDATED status still requires 120 scorecard outcomes + 50 eligible
+    paper bets under the same skill and ROI tests.
 """
 from __future__ import annotations
 
@@ -20,6 +23,7 @@ from pathlib import Path
 
 from tennis_wc.betting.ledger import combo_tracker_summary, tier_roi_summary
 from tennis_wc.database.db import get_connection
+from tennis_wc.props import strategy
 from tennis_wc.props.settlement import model_vs_market_scorecard, prop_roi_report
 from tennis_wc.reports.daily_report import (
     _market_validation_history,
@@ -27,11 +31,6 @@ from tennis_wc.reports.daily_report import (
     _settlement_supported_market_keys,
     analysis_output_dir,
 )
-
-# Enough settled legs before we would trust a prop/chalk ROI enough to move off
-# flat stakes (pro-practice small-sample guard; see the formula-review memo).
-_STAKE_CONFIDENCE_MIN_SETTLED = 150
-
 
 def _pct(value: float | None, *, signed: bool = False) -> str:
     if value is None:
@@ -48,6 +47,30 @@ def _prop_family_lines(roi: dict) -> list[str]:
         lines.append(
             f"  - {family}: {agg['settled']} 結算｜命中 {_pct(agg.get('hit_rate'))}"
             f"｜ROI {_pct(agg.get('roi'), signed=True)}（注 {agg.get('staked')}u）"
+        )
+    return lines
+
+
+def _strategy_family_lines(strategy_state: dict) -> list[str]:
+    """Render the exact evidence state used by the daily recommendation gate."""
+    lines: list[str] = []
+    for family, state in sorted((strategy_state.get("family_states") or {}).items()):
+        if not state.get("recommendable_player_prop"):
+            continue
+        if not state.get("scorecard_settled") and not state.get("settled"):
+            continue
+        badge = {
+            "VALIDATED": "✅",
+            "EARLY_MAIN": "🟠",
+            "RESEARCH_ONLY": "🧪",
+        }.get(state.get("tier"), "🧪")
+        lines.append(
+            f"- {badge} {family}: {state.get('tier')}｜scorecard "
+            f"{state.get('scorecard_settled', 0)}｜eligible paper "
+            f"{state.get('settled', 0)}｜Brier "
+            f"{state.get('model_brier', '—')} vs market "
+            f"{state.get('market_brier', '—')}｜ROI "
+            f"{_pct(state.get('roi'), signed=True)}"
         )
     return lines
 
@@ -93,12 +116,14 @@ def _chalk_chain_stats() -> dict:
 
 def weekly_review_data(as_of_date: str) -> dict:
     conn = get_connection()
-    scorecard = model_vs_market_scorecard(conn)
-    prop_roi = prop_roi_report(conn, value_only=True)
+    scorecard = model_vs_market_scorecard(conn, as_of_date=as_of_date)
+    prop_roi = prop_roi_report(conn, value_only=True, as_of_date=as_of_date)
+    prop_strategy = strategy.recommendation_gate(scorecard, prop_roi)
     return {
         "as_of": as_of_date,
         "scorecard": scorecard,
         "prop_roi": prop_roi,
+        "prop_strategy": prop_strategy,
         "derived_markets": _derived_market_rows(),
         "chalk": _chalk_chain_stats(),
         "tier_roi": tier_roi_summary(),
@@ -109,13 +134,14 @@ def render_weekly_review(as_of_date: str) -> str:
     data = weekly_review_data(as_of_date)
     sc = data["scorecard"]
     prop = data["prop_roi"]["overall"]
+    prop_strategy = data["prop_strategy"]
     chalk = data["chalk"]
 
     lines = [
         "🎾 Tennis Wong Choi 每週檢討（驗證進度）",
         f"截至：{as_of_date}",
         "",
-        "睇呢頁決定：邊條線儲夠證據好加注／開真注，邊條要繼續平注驗證。全部係影子追蹤嘅真結算數字。",
+        "睇呢頁決定：邊個 player-prop family 可以提早升做主線、邊個要自動降級；player-prop 升降級只用截至日期之前嘅結算。",
         "",
         "## 📊 一眼睇晒：邊條線贏緊",
         "",
@@ -129,6 +155,14 @@ def render_weekly_review(as_of_date: str) -> str:
         )
     else:
         lines.append("- 🎾 Prop value：未有有注碼結算（多數 value 邊未賽完）")
+    if prop_strategy.get("status") == "EARLY_MAIN":
+        names = "、".join(prop_strategy.get("early_main_families") or [])
+        lines.append(f"- 🟠 主線狀態：EARLY_MAIN（{names}；每注上限 0.5u）")
+    elif prop_strategy.get("status") == "VALIDATED_SINGLE":
+        names = "、".join(prop_strategy.get("validated_families") or [])
+        lines.append(f"- ✅ 主線狀態：VALIDATED（{names}）")
+    else:
+        lines.append("- 🧪 主線狀態：RESEARCH_ONLY（未有 player-prop family 過早期門檻）")
     # Chalk chains
     if chalk["settled"]:
         lines.append(
@@ -154,6 +188,16 @@ def render_weekly_review(as_of_date: str) -> str:
     if fam_lines:
         lines += ["", "分家庭 ROI（有注碼 value 注）："] + fam_lines
 
+    lines += ["", "## 🚦 Player Prop 主線升降級（Reflector）", ""]
+    strategy_lines = _strategy_family_lines(prop_strategy)
+    if strategy_lines:
+        lines += strategy_lines
+    else:
+        lines.append("- 未有 player-prop family 累積到可評估樣本。")
+    lines.append("- EARLY_MAIN：50 scorecard + 3 eligible paper bets + 模型 Brier 領先至少 0.005 + ROI > 0；上限 0.5u。")
+    lines.append("- VALIDATED：120 scorecard + 50 eligible paper bets，同樣要模型領先及 ROI > 0。")
+    lines.append("- 自動降級：eligible ROI ≤ 0 或模型不再領先市場，立即回到 RESEARCH_ONLY。")
+
     # Derived-market graduation
     lines += ["", "## 🎓 衍生市場畢業進度（≥20 結算 ＋ ROI≥0 先可落）", ""]
     lines.append("⚠️ CLV 已停用做門檻：儲存嘅「收盤價」有部分係開賽後（in-play）抓到，")
@@ -171,16 +215,18 @@ def render_weekly_review(as_of_date: str) -> str:
     # Decision hints
     lines += ["", "## ⚙️ 決策提示", ""]
     hints: list[str] = []
-    if prop.get("settled", 0) >= _STAKE_CONFIDENCE_MIN_SETTLED and (prop.get("roi") or 0) > 0 \
-            and sc.get("settled") and sc["model"]["brier"] < sc["market"]["brier"]:
+    if prop_strategy.get("status") == "VALIDATED_SINGLE":
         hints.append(
-            f"✅ Prop value 已儲夠 {prop['settled']} 條結算、ROI 正、模型贏記分卡 —— 可以考慮由平注升做小注 Kelly。"
+            "✅ 有 player-prop family 已完整 VALIDATED；按可信度折扣 tenth-Kelly，單注最多 2u、兩腳最多 1u。"
+        )
+    elif prop_strategy.get("status") == "EARLY_MAIN":
+        names = "、".join(prop_strategy.get("early_main_families") or [])
+        hints.append(
+            f"🟠 {names} 呈現可盈利早期趨勢，升做主線小注；每注固定最多 0.5u，逐週重跑升降級。"
         )
     else:
-        need = max(0, _STAKE_CONFIDENCE_MIN_SETTLED - prop.get("settled", 0))
         hints.append(
-            f"⏳ Prop 繼續平注驗證：距離「考慮加注」門檻仲差約 {need} 條結算"
-            f"（同時要模型贏返記分卡）。"
+            "⏳ 未有 player-prop family 過 EARLY_MAIN 門檻；繼續 paper settle，唔輸出正式主線注。"
         )
     for r in validated:
         hints.append(f"✅ {r['market']} 已畢業，可以做組合腳；但單獨落注前睇埋 ROI 樣本大細。")

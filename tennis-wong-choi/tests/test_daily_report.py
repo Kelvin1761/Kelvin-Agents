@@ -28,6 +28,58 @@ def test_validated_singles_keep_only_one_prop_per_match():
     assert [row["id"] for row in picks["validated_singles"]] == ["a", "c"]
 
 
+def test_early_main_singles_and_combo_are_capped_at_half_unit():
+    from tennis_wc.reports.daily_report import _recommended_picks
+
+    family_state = {
+        "enabled": True,
+        "tier": "EARLY_MAIN",
+        "scorecard_settled": 58,
+        "model_brier": 0.2371,
+        "market_brier": 0.2512,
+    }
+
+    def leg(identifier, match_id):
+        return {
+            "id": identifier,
+            "match_id": match_id,
+            "market_key": f"total_player_{identifier}_aces_7_5",
+            "prob": 0.62,
+            "data_quality": 0.92,
+            "odds": 1.80,
+            "edge": 0.07,
+            "ev": 0.116,
+            "confidence_score": 77,
+        }
+
+    a, b = leg("a", 1), leg("b", 2)
+    picks = _recommended_picks(
+        {
+            "strategy": {
+                "enabled_families": ["player_aces"],
+                "family_states": {"player_aces": family_state},
+            },
+            "value_legs": [a, b],
+            "combos": [
+                {
+                    "legs": [a, b],
+                    "prob": 0.62 * 0.62,
+                    "odds": 1.80 * 1.80,
+                    "ev": 0.245,
+                }
+            ],
+        }
+    )
+
+    assert all(
+        row["strategy_tier"] == "EARLY_MAIN_SINGLE"
+        and row["stake_units"] == 0.5
+        for row in picks["validated_singles"]
+    )
+    assert picks["validated_2_leg"]["strategy_tier"] == "EARLY_MAIN_2_LEG"
+    assert picks["validated_2_leg"]["stake_units"] == 0.5
+
+
 def test_research_prop_combos_exclude_high_odds_and_same_match_duplicates():
     from tennis_wc.reports.daily_report import _prop_combos
 
@@ -326,7 +378,8 @@ def test_render_banker_report_cancels_old_categories(tmp_path, monkeypatch):
     report = render_banker_report("2026-06-03", rows)
 
     assert "策略重心：Player Props" in report
-    assert "VALIDATED_SINGLE、VALIDATED_2_LEG、RESEARCH_ONLY" in report
+    assert "EARLY_MAIN_SINGLE／EARLY_MAIN_2_LEG" in report
+    assert "VALIDATED 代表完整畢業" in report
     assert "組合1 穩膽" not in report
     assert "組合X 火藥庫" not in report
     assert "Player One" not in report and "Player Two" not in report

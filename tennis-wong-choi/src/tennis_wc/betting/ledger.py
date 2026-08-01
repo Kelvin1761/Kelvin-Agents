@@ -1446,6 +1446,8 @@ def _combo_leg_payload(leg: dict) -> dict:
         "odds": leg.get("odds"),
         "edge": leg.get("edge"),
         "confidence": leg.get("confidence"),
+        "confidence_score": leg.get("confidence_score"),
+        "hit_probability": leg.get("hit_probability"),
         "data_quality": leg.get("data_quality"),
     }
 

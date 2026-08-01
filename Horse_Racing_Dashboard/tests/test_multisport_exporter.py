@@ -216,6 +216,36 @@ class MultiSportExporterTests(unittest.TestCase):
                 "scorecard_settled"
             ] == 120
 
+    def test_tennis_dashboard_promotes_early_main_with_half_unit_cap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "tennis.db"
+            self._create_tennis_database(db_path)
+            connection = sqlite3.connect(db_path)
+            connection.execute(
+                "DELETE FROM prop_tracker WHERE id >= 2055 AND id < 3000"
+            )
+            connection.commit()
+            connection.close()
+
+            snapshot = export_tennis_snapshot(db_path, target_date="2026-07-25")
+
+            self.assertEqual(snapshot["strategy"]["status"], "EARLY_MAIN")
+            self.assertEqual(
+                snapshot["strategy"]["early_main_families"], ["player_aces"]
+            )
+            single = next(
+                row for row in snapshot["recommendations"]
+                if row["bet_type"] == "single"
+            )
+            combo = next(
+                row for row in snapshot["recommendations"]
+                if row["bet_type"] == "combo"
+            )
+            self.assertEqual(single["category"], "early_main_prop")
+            self.assertEqual(single["metrics"]["stake_units"], 0.5)
+            self.assertEqual(combo["category"], "early_main_prop_combo")
+            self.assertEqual(combo["metrics"]["stake_units"], 0.5)
+
     @staticmethod
     def _create_tennis_database(path):
         connection = sqlite3.connect(path)

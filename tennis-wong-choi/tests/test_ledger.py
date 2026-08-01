@@ -26,6 +26,25 @@ def test_tier_roi_empty(tmp_path, monkeypatch):
     assert summary["tracker_by_tier"] == []
 
 
+def test_combo_tracker_payload_preserves_probability_reliability_fields():
+    from tennis_wc.betting.ledger import _combo_leg_payload
+
+    payload = _combo_leg_payload(
+        {
+            "id": "prop-1",
+            "match_id": 1,
+            "confidence": 62,
+            "confidence_score": 77,
+            "hit_probability": 0.62,
+            "data_quality": 0.92,
+        }
+    )
+
+    assert payload["confidence"] == 62
+    assert payload["confidence_score"] == 77
+    assert payload["hit_probability"] == 0.62
+
+
 def test_settle_first_set_winner_market():
     from tennis_wc.betting.ledger import _settle_market_leg
 

@@ -157,6 +157,61 @@ def test_prop_strategy_enables_only_proven_family_and_filters_longshots():
     assert not strategy.leg_is_formal_candidate(base | {"odds": 2.30}, gate)
 
 
+def test_player_aces_can_enter_reversible_early_main_on_profitable_trend():
+    from tennis_wc.props import strategy
+
+    gate = strategy.recommendation_gate(
+        {
+            "settled": 58,
+            "by_family": {
+                "player_aces": {
+                    "settled": 58,
+                    "model": {"brier": 0.2371},
+                    "market": {"brier": 0.2512},
+                }
+            },
+        },
+        {
+            "by_family_formal_profile": {
+                "player_aces": {"settled": 3, "roi": 0.14}
+            }
+        },
+    )
+
+    assert gate["status"] == "EARLY_MAIN"
+    assert gate["enabled_families"] == ["player_aces"]
+    assert gate["validated_families"] == []
+    assert gate["early_main_families"] == ["player_aces"]
+    assert gate["family_states"]["player_aces"]["tier"] == "EARLY_MAIN"
+    assert gate["warnings"]
+
+
+def test_early_main_auto_downgrades_when_eligible_roi_turns_negative():
+    from tennis_wc.props import strategy
+
+    score = {
+        "settled": 58,
+        "by_family": {
+            "player_aces": {
+                "settled": 58,
+                "model": {"brier": 0.2371},
+                "market": {"brier": 0.2512},
+            }
+        },
+    }
+    roi = {
+        "by_family_formal_profile": {
+            "player_aces": {"settled": 4, "roi": -0.01}
+        }
+    }
+
+    gate = strategy.recommendation_gate(score, roi)
+
+    assert gate["status"] == "RESEARCH_ONLY"
+    assert gate["enabled_families"] == []
+    assert gate["family_states"]["player_aces"]["tier"] == "RESEARCH_ONLY"
+
+
 def test_prop_gate_uses_live_eligible_roi_not_high_odds_research_roi():
     from tennis_wc.props import strategy
 
@@ -218,11 +273,13 @@ def test_formal_prop_stake_is_confidence_haircut_tenth_kelly_with_caps():
     normal = strategy.formal_stake_units(0.62, 1.80, 80)
     capped_single = strategy.formal_stake_units(0.80, 2.00, 95)
     capped_combo = strategy.formal_stake_units(0.55, 2.20, 85, combo=True)
+    capped_early = strategy.formal_stake_units(0.80, 2.00, 95, early=True)
 
     assert low_confidence == 0.0
     assert normal == 1.0
     assert capped_single == 2.0
     assert capped_combo == 1.0
+    assert capped_early == 0.5
 
 
 def test_prop_registry_classifies_expanded_player_markets():
