@@ -116,6 +116,7 @@ RE_RUN = re.compile(
     r"(?:\s+(?P<margin>[\d.]+)L)?"
     r".*?Jockey\s+(?P<jockey>[^,]+?),\s*Barrier\s+(?P<barrier>\d+),"
     r"\s*Weight\s+(?P<weight>[\d.]+)kg(?:\s+(?P<sp>[\d.]+))?", re.S)
+RE_PRIZE = re.compile(r"\(of\s*\$([\d,]+)\)")
 RE_INRUN = re.compile(r"In running\s+800m\s+(?P<p800>\w+),\s*400m\s+(?P<p400>\w+)")
 RE_SECT = re.compile(r"Sectionals\s+600m\s+(?P<l600>[\d.]+)s")
 # ⚠️ 場地係寫成 "Flemington ( Soft ) 20/06/2026"（括號入面有空格），
@@ -188,8 +189,10 @@ def parse_race(html):
         ir = RE_INRUN.search(seg)
         sc = RE_SECT.search(seg)
         opps = [o.groupdict() for o in RE_OPP.finditer(seg)][:3]
+        pz = RE_PRIZE.search(seg)
         runs.append({**m.groupdict(),
                      "header": hdr,
+                     "prize": pz.group(1) if pz else None,
                      "p800": ir.group("p800") if ir else None,
                      "p400": ir.group("p400") if ir else None,
                      "l600": sc.group("l600") if sc else None,
@@ -294,7 +297,16 @@ def run_line(run):
     track = (h.get("track") or "").strip()
     dist = h.get("dist")
     cond = (h.get("going") or "").strip()
-    parts = [f"{track} R{h.get('race','?')} {h.get('date','')} {dist or '?'}m cond:{cond}"]
+    # ⚠️ 下游 `inject_fact_anchors.race_simple` 要
+    #     `^場地 R\d+ YYYY-MM-DD \d+m cond:\S+ \$[0-9,]+`
+    # Sportsbet 出 DD/MM/YYYY，而且賽事獎金唔喺同一行。兩者任何一樣唔啱，
+    # 成條往績行會被靜靜丟棄（Facts 會報「數據不足」而唔會報錯）。
+    d = h.get("date", "")
+    m = re.fullmatch(r"(\d{2})/(\d{2})/(\d{4})", d)
+    if m:
+        d = f"{m.group(3)}-{m.group(2)}-{m.group(1)}"
+    prize = re.sub(r"[^\d]", "", run.get("prize") or "") or "0"
+    parts = [f"{track} R{h.get('race','?')} {d} {dist or '?'}m cond:{cond} ${prize}"]
     parts.append(f"{(run.get('jockey') or '').strip()} ({run.get('barrier','?')})"
                  f" {run.get('weight','?')}kg")
     if run.get("sp"):
