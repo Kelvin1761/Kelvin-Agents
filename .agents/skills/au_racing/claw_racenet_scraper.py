@@ -44,7 +44,9 @@ def process_selections(nuxt_data, f_rc, f_fg):
         'prize': event_data.get('racePrizeMoney', event_data.get('prizeMoney', 0)) or 0,
         'weather': 'Unknown',
         'track_condition': 'Unknown',
-        'track_rating': ''
+        'track_rating': '',
+        # 騎練 profile 更新用：由 payload 直接攞準確 slug，唔靠人名推導。
+        'people': [],
     }
     
     weather_obj = event_data.get('weather')
@@ -131,6 +133,10 @@ def process_selections(nuxt_data, f_rc, f_fg):
         win_pct = stats.get('winPercentage', 0) or 0
         plc_pct = stats.get('placePercentage', 0) or 0
         
+        for _role, _obj in (("jockey", sel.get('jockey')), ("trainer", sel.get('trainer'))):
+            if isinstance(_obj, dict) and _obj.get('slug'):
+                meta['people'].append((_role, _obj['slug'], _obj.get('name') or ''))
+
         last_race = ""
         runs = sel.get('forms', []) or []
         if runs:
@@ -207,7 +213,16 @@ def process_selections(nuxt_data, f_rc, f_fg):
             
             run_margin = pr.get('margin')
             run_margin_str = f" margin:{run_margin}L" if run_margin is not None else ""
-            
+
+            # 馬群大細（2026-07-31）：`eventStarters` 一直喺每個 form run 上面 —— 上面
+            # 砌 Racecard 嘅 "Last: 4/6 …" 就係用佢 —— 但逐場 run line 從來冇寫出嚟，
+            # 所以 Facts 賽績表冇「馬群」，`_form_score` 只可以用絕對名次評分：
+            # 「6 匹跑第 4」同「16 匹跑第 4」都拿 base 60。5,066 場有真實馬群大細嘅
+            # run 量到 21.5% base 評錯、11.0% 錯 ≥20 分（最大 cohort 係大場第 6+
+            # 被當成細場跑最後）。寫出嚟先有得做百分位正規化。
+            run_starters = pr.get('eventStarters')
+            run_starters_str = f" starters:{run_starters}" if run_starters else ""
+
             hc = pr.get('handicapRating')
             hc_str = f" HC:{hc}" if hc is not None else ""
             
@@ -225,7 +240,7 @@ def process_selections(nuxt_data, f_rc, f_fg):
                         clean_pf = loose_pf.group(0).replace(' .', ',').strip()
                         pf_str = f" PF[{clean_pf}]"
             
-            f_fg.write(f"{track}{trial_str} R{race_num_run} {date} {dist}m cond:{cond} ${money:,} {p_jock} ({bar}) {wt}kg {run_flucs} {win_time} {positions.strip()}.{run_margin_str}{hc_str}{pf_str}\n")
+            f_fg.write(f"{track}{trial_str} R{race_num_run} {date} {dist}m cond:{cond} ${money:,} {p_jock} ({bar}) {wt}kg {run_flucs} {win_time} {positions.strip()}.{run_margin_str}{run_starters_str}{hc_str}{pf_str}\n")
             f_fg.write(f"{win_str}, {sec_str}, {thi_str}\n")
             if r_idx == 0 and pf_str:
                 print(f"    [PF DEBUG] Extracted PF for Run 0: {pf_str}")
@@ -273,6 +288,8 @@ def main():
     parser.add_argument("--slug", type=str, required=True, help="Meeting slug (e.g. 'sandown-lakeside-20260406')")
     parser.add_argument("--races", type=int, required=True, help="Number of races to extract")
     parser.add_argument("--slugs", type=str, default="", help="Comma separated list of slugs")
+    parser.add_argument("--skip-profile-stats", action="store_true",
+                        help="唔更新騎師／練馬師 profile 統計 cache")
     args = parser.parse_args()
 
     output_dir = os.path.join(BASE_DIR, f"{args.date} {args.venue} Race 1-{args.races}")
@@ -284,6 +301,7 @@ def main():
     first_meta = None
     rail = "Unknown"
     event_slugs = []
+    all_people = []   # (kind, slug, name) —— 全 meeting 出現過嘅騎師／練馬師
     
     with open(index_file, 'w', encoding='utf-8') as f_idx:
         f_idx.write(f"# AU Wong Choi Formguide Index\n")
@@ -297,8 +315,18 @@ def main():
                 event_slugs = args.slugs.split(',')
                 print(f"Using provided slugs: {event_slugs}")
             else:
-                # Fallback logic
-                initial_data = extract_race(args.slug, 1, args.date, args.venue, page, slug_override="race-1")
+                # Slug 解析（2026-08-01 加重試）：Racenet 係機率性 403（實測 ~50-60%），
+                # 慢速冇幫助、只有重試先穿。單次失敗就跌落 fallback 係之前
+                # silent-corruption 嘅起點，所以呢度先重試幾次。
+                initial_data = None
+                for attempt in range(1, 5):
+                    initial_data = extract_race(args.slug, 1, args.date, args.venue, page, slug_override="race-1")
+                    if initial_data:
+                        break
+                    if attempt < 4:
+                        wait = 5 * attempt
+                        print(f"  Slug 解析第 {attempt} 次失敗，{wait}s 後重試…")
+                        time.sleep(wait)
                 if initial_data:
                     apollo = initial_data.get('apollo', {}).get('horseClient', {})
                     meeting_key = next((k for k in apollo.keys() if k.startswith("Meeting:")), None)
@@ -312,7 +340,7 @@ def main():
                                 slug = seo.get('eventSlug')
                                 if slug:
                                     event_slugs.append(slug)
-                                
+
                 if not event_slugs:
                     print("Fetching exact slugs from overview page...")
                     try:
@@ -338,11 +366,35 @@ def main():
                         else:
                             raise Exception("No slugs found in html")
                     except Exception as e:
-                        print(f"Fallback to generic race-X slugs because {e}")
-                        event_slugs = [f"race-{i}" for i in range(1, args.races + 1)]
-                
-            for i, genuine_slug in enumerate(event_slugs[:args.races]):
-                race_num = i + 1
+                        # ⛔ 2026-08-01：舊版喺呢度跌落 `race-{i}` 通用 slug。
+                        # 實測（Flemington 2026-08-01）：`eventSlug=race-3` 回傳嘅係
+                        # **第 1 場**（2520m），而真正 R3 係 2000m —— 即係通用 slug
+                        # 唔係 Racenet 認得嘅格式，佢一律 serve 第 1 場。
+                        # 結果係「將第 1 場資料寫入每一場檔案，仲標住係第 N 場」，
+                        # 屬靜默資料損壞，比抽唔到更危險。寧願失敗，唔好污染。
+                        raise SystemExit(
+                            f"❌ 無法解析 {args.slug} 嘅 event slug（{e}）。\n"
+                            f"   唔會用通用 race-N slug 代替 —— 實測佢會一律回傳第 1 場，\n"
+                            f"   令每一場檔案都寫入同一場資料。請稍後重試。"
+                        )
+
+            # Slug → 場次號一致性檢查（2026-08-01）：真 slug 通常以 `-race-N` 結尾。
+            # 用佢自己嘅場次號做檔名，而唔係用列表位置 —— 列表次序唔可靠，
+            # 位置對映會令第 5 場寫入第 3 場。
+            numbered = []
+            for slug in event_slugs:
+                m = re.search(r"race-(\d+)\s*$", str(slug))
+                numbered.append((int(m.group(1)) if m else None, slug))
+            if any(num is None for num, _ in numbered):
+                bad = [s for num, s in numbered if num is None]
+                raise SystemExit(
+                    f"❌ 有 slug 認唔到場次號：{bad}\n"
+                    f"   停止，避免按列表位置錯配場次。"
+                )
+            numbered.sort(key=lambda item: item[0])
+            wanted = [item for item in numbered if item[0] <= args.races]
+
+            for race_num, genuine_slug in wanted:
                 rc_file = os.path.join(output_dir, f"{mm_dd} Race {race_num} Racecard.md")
                 fg_file = os.path.join(output_dir, f"{mm_dd} Race {race_num} Formguide.md")
                 
@@ -415,7 +467,9 @@ def main():
                     f_fg.write(f"{header_line}\n")
                     f_fg.write(f"Track: {track_cond} | Weather: {weather} | Rail: {rail}\n{'='*60}\n")
                     
-                    process_selections(nuxt_data, f_rc, f_fg)
+                    _m = process_selections(nuxt_data, f_rc, f_fg)
+                    if _m:
+                        all_people.extend(_m.get('people') or [])
                     
                 # Active logic
                 sels = event_data.get('selections', [])
@@ -435,6 +489,21 @@ def main():
             f_sum.write(f"Rails: {rail}\n")
             
     print(f"\n✅ All Done! Saved to: {output_dir}")
+
+    # 騎練 profile 統計（2026-08-01）：formguide payload 帶住準確 `jockey.slug` /
+    # `trainer.slug`，所以喺抽取尾聲順手補一補共享 cache，令評分用到嘅
+    # winPercentage / placePercentage / ROI 唔會過時 —— 唔使自己養一個會舊嘅資料庫。
+    #
+    # 只補 cache 內冇或者過咗 TTL 嘅人，加上每場硬上限，所以跑熟之後
+    # 每個 meeting 通常得幾個要抓。Racenet 脆弱，失敗一律非致命。
+    if all_people and not args.skip_profile_stats:
+        try:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            import au_profile_stats
+
+            au_profile_stats.refresh(all_people, exact_slugs=True)
+        except Exception as exc:  # noqa: BLE001 — 絕不可以令抽取失敗
+            print(f"   ⚠️ 騎練 profile 更新略過（{type(exc).__name__}: {exc}）")
 
 if __name__ == '__main__':
     main()

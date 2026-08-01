@@ -35,7 +35,7 @@ from au_archive_calibrator import (
 )
 from au_auto_orchestrator import _build_field_summary
 from eval_metrics import race_metrics, summarize_races
-from engine_core import RacingEngine
+from engine_core import RacingEngine, backfill_pf_metrics
 from io_utils import write_json_atomic, write_text_atomic
 from scoring import (
     CLASS_MICRO_WEIGHTS,
@@ -233,6 +233,9 @@ def score_variant(
     include_details: bool = False,
 ) -> list[dict]:
     race_context = copy.deepcopy(logic["race_analysis"])
+    # Mirror the live orchestrator: fill historical PF before the field summary,
+    # otherwise every backtest scores 段速實速 blind on pre-2026-05 meetings.
+    backfill_pf_metrics(logic, logic_path)
     race_context["field_summary"] = _build_field_summary(logic["horses"])
     race_context["field_horse_names"] = [
         horse.get("horse_name")

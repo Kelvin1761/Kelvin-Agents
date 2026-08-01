@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 
 from scoring import clip_score, score_band
-from matrix_mapper import MATRIX_FORMULAS
+from matrix_mapper import MATRIX_DISPLAY_GAINS, MATRIX_FORMULAS
 
 
 ABILITY_LABEL = "綜合戰力分"
@@ -366,14 +366,29 @@ def _band_label(score):
 
 
 def _matrix_composition_line(key, auto):
-    """顯示維度分點計出嚟：sub分 × 權重 ＋ … ＝ 維度分。直接答到『點解係呢個分』。"""
+    """顯示維度分點計出嚟：sub分 × 權重 ＋ … ＝ 原始分 → 統一尺 ＝ 維度分。
+
+    2026-08-01：維度分多咗一步「統一尺」（MATRIX_DISPLAY_GAINS）。呢一步一定要
+    寫出嚟 —— 否則會出現「形勢分 53 ×100% ＝ 32.6」呢種自己打自己嘅算式，比原本
+    嘅問題更差。gain = 1 嘅維度照舊唔顯示呢一步。
+    """
     comps = MATRIX_FORMULAS.get(key)
     if not comps:
         return ""
     fs = auto.get("feature_scores", {})
     parts = [f"{_component_label(key, n)} {clip_score(fs.get(n, 60)):.0f} ×{w*100:.0f}%" for n, w in comps]
+    raw = 60.0 + sum(
+        (clip_score(fs.get(n, 60)) - 60.0) * w for n, w in comps
+    )
+    raw = clip_score(raw)
     total = float(auto.get("matrix_scores", {}).get(key, 60))
-    return " ＋ ".join(parts) + f" ＝ {total:.1f}"
+    line = " ＋ ".join(parts) + f" ＝ {raw:.1f}"
+    gain = MATRIX_DISPLAY_GAINS.get(key, 1.0)
+    if abs(gain - 1.0) > 0.005:
+        line += (f" → 統一尺（60 為中性，偏離 ×{gain:.2f}）＝ {total:.1f}")
+    elif abs(total - raw) > 0.05:
+        line += f" ＝ {total:.1f}"
+    return line
 
 
 def _clean_subscore_note(note):
@@ -494,12 +509,12 @@ def _pace_perf_detail_lines(auto, name):
         # 冇 PI 嘅馬壓縮做一行（唔好逐行印 ＋0，讀落似壞咗）：「有冇數據」本身
         # 係四度驗證過嘅排名訊號（移除/中性化都蝕），呢度直接講明機制。
         if not d.get("has_pi"):
-            base = float(d.get("base") or 35.8)
-            return [f"缺 L400 PI 紀錄 → 維持基礎分 {base:.1f}。"
-                    "有 PI 紀錄兼末段升位嘅馬先攞到加分——「有冇數據」本身係驗證過嘅訊號，唔係漏計"]
+            base = float(d.get("base") or 60.0)
+            return [f"缺 L400 PI 紀錄 → 維持中性 {base:.1f} 分。"
+                    "有 PI 紀錄兼末段升位嘅馬先攞到加分；查唔到唔等於跑得差，所以中性而唔係扣分"]
         lines = []
         if d.get("base") is not None:
-            lines.append(f"基礎分 {float(d['base']):.1f}")
+            lines.append(f"中性基礎分 {float(d['base']):.1f}（冇證據＝中性，唔係扣分）")
         for a in d.get("items") or []:
             delta = float(a["delta"])
             ev = f" ← {a['evidence']}" if a.get("evidence") else ""
@@ -1428,7 +1443,11 @@ def _seven_d_matrix_digest_lines(auto: dict) -> list[str]:
                 note = _clean_subscore_note(c.get("note", ""))
                 cl = c.get("label", "")
                 cv = _as_float(c.get("score", 60), 60)
-                out.append(f"- {cl} {cv:.0f}" + (f" ← {note}" if note else ""))
+                # 權重 = 0 嘅 component 要標明，唔好同真·計分項排到一模一樣。
+                # 「級數分 60、負磅分 60」排喺 Rating 分隔籬，讀者會以為成個維度
+                # 都係死 60 分噪音，其實嗰兩項根本冇入分。
+                tag = "" if c.get("in_ranking", True) else "（參考·不入排名）"
+                out.append(f"- {cl} {cv:.0f}{tag}" + (f" ← {note}" if note else ""))
         else:
             # 單 leaf 維度（如場地適性）— 用判讀短句
             txt = str(rb.get("text") or "").strip()

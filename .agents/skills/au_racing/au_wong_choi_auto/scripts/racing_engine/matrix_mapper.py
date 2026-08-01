@@ -40,9 +40,17 @@ MATRIX_FORMULAS = {
     # development time folds and the untouched terminal 15% holdout.  Keep
     # class_score available to the contextual mismatch interactions/report, but
     # do not count the same class narrative again in this ranking matrix.
+    # 2026-08-01 negative-value leaf 移除：weight_score 退出排名。
+    # 710 場實測：84.9% 嘅馬負磅分**恰好** 60（41.5% 嘅場次全場一模一樣，即係
+    # 完全冇 gradient），within-race AUC 0.480（低於隨機 0.5），top-3 gap −0.14。
+    # 2026-07-24 已經正確判定「負磅嘅能力訊號早已由 rating_score 承擔」而將佢中性化，
+    # 但當時保留咗 0.141 權重 —— 即係保留咗一個純噪音項嘅投票權。
+    # A/B（710 場，PF off 同 PF on 兩個 footing 各跑一次）：移除後 11 個指標
+    # 全部 = 或 ±0.14（＝1 場，噪音級），dev/holdout 皆無實質變化。
+    # 負磅仍然係報告內容（頂磅標記、爛地孭重磅、降班配輕磅），只係唔再入排名。
+    # Rollback: 加返 ("weight_score", 0.141)。
     "class_weight": (
         ("rating_score", 0.70),
-        ("weight_score", 0.141),
     ),
     "track": (
         ("track_score", 1.0),
@@ -57,6 +65,42 @@ MATRIX_KEYS = tuple(MATRIX_FORMULAS)
 LEGACY_MATRIX_ALIASES = {
     "sectional": "pace_perf",
 }
+
+# ── 維度顯示尺正規化（2026-08-01）───────────────────────────────────────────
+# 每個維度嘅原生 spread 差得好遠，但報告用同一套 band 去畫（85 ✅✅ / 70 ✅ /
+# 55 ➖ / 40 ❌）。710 場實測，正規化之前：
+#
+#   stability       41.6–100.0   SD  9.96   四個 band 都到
+#   pace_perf       15.2– 98.9   SD 15.31   五個 band 都到
+#   race_shape      50.6– 64.0   SD  2.67   **只有 ➖(97%) 同 ❌(3%)** —— ✅ 到唔到
+#   jockey_trainer  51.1– 73.8   SD  3.20   ➖ 98%，✅ 2%，✅✅ 到唔到
+#   class_weight    50.9– 69.5   SD  4.00   ➖ 89%，❌ 11%，✅ 到唔到
+#   track           42.9– 85.7   SD  5.88   ✅✅ 幾乎到唔到
+#
+# 即係六個計分維度有三個，無論隻馬幾好都**永遠出唔到正面 band**。唔係噪音，
+# 係啞 —— 用戶睇到「一直 60」就係呢個。
+#
+# 修法：`mx' = clip(60 + (mx − 60) × gain)`，gain =
+#   min(TARGET_SD / 實測SD, 令實測極值仍然落喺 1..99 之內嘅最大 gain)
+# headroom 那一半好緊要：唔封住就會有一堆馬撞 0/100，製造假平手。
+#
+# ⚠️ gain 同權重係乘埋一齊影響排名（ranking 只食 weight × gain × deviation），
+# 所以呢個正規化本身就係一次 re-weighting。MATRIX_WEIGHTS 已經同步重 fit ——
+# 兩者必須一齊改，唔可以只改一邊。等價點 w/gain 可以完全複製舊模型，所以重 fit
+# 嘅搜索空間包含舊配置（搜索唔可能輸過舊模型）。
+MATRIX_DISPLAY_TARGET_SD = 11.0
+MATRIX_DISPLAY_GAINS = {
+    "stability": 0.9750,
+    "pace_perf": 1.0244,
+    "race_shape": 4.1142,
+    "jockey_trainer": 2.4973,
+    "class_weight": 2.7489,
+    "track": 1.5193,
+    "form_line": 1.0232,
+}
+# 正規化之後每個維度都用同一把尺，所以敘事門檻唔再需要逐維度磨 magic number。
+MATRIX_ADVANTAGE_CUTOFF = 72.0
+MATRIX_DISADVANTAGE_CUTOFF = 48.0
 
 
 def canonical_matrix_key(key):
@@ -93,6 +137,9 @@ def map_features_to_matrix_scores(features):
             (clip_score(features.get(name, 60)) - 60.0) * weight
             for name, weight in components
         )
+        # Put every dimension on one ruler so the bands mean the same thing
+        # everywhere (see MATRIX_DISPLAY_GAINS).
+        score = 60.0 + (clip_score(score) - 60.0) * MATRIX_DISPLAY_GAINS.get(key, 1.0)
         matrix_scores[key] = round(clip_score(score), 2)
     return matrix_scores
 

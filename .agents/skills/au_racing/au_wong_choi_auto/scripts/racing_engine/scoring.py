@@ -42,7 +42,20 @@ REPORT_ONLY_FEATURE_KEYS = (
 # track 影響 0.06367 + track 維度 0.06076 = 0.12443；draw 影響 0.21222×0.70=0.14855）。
 # 拆乾淨：race_shape 變純 draw @0.14855、track 收晒全部 @0.12443。兩者相加同舊
 # (0.21222+0.06076) 一樣 → 逐匹 rank-identical。其餘維度不變。
-MATRIX_WEIGHTS = {"stability":0.29928,"pace_perf":0.18831,"race_shape":0.14855,"jockey_trainer":0.19408,"class_weight":0.04535,"track":0.12443,"form_line":0.000}
+# 2026-08-01 維度尺正規化配套權重（見 matrix_mapper.MATRIX_DISPLAY_GAINS）。
+# 排名只食 weight × gain × deviation，所以維度顯示尺一 stretch，權重就必須同步
+# 除返個 gain，否則等於偷偷 re-weight。呢組數 = 舊權重 ÷ gain，再歸一化到總和 1。
+# 每個維度嘅有效影響力比率都係同一個常數 1.4225（唔係「差唔多」，係逐個一模一樣）
+# → 場內排名基本相同（710 場實測 625 場逐匹一致，餘下 85 場係 gain>1 撞 0/100
+# clip 造成，指標影響淨計輕微正面：gold ＝、pass ＝、champ +0.56、mrr +0.38、
+# ndcg +0.18、good_pos +0.28、winT3 −0.14、t3prec −0.09），ability spread 放大 1.4225 倍。
+# 舊值（gain 全部 = 1 時使用）：
+#   stability 0.29928 / pace_perf 0.18831 / race_shape 0.14855
+#   jockey_trainer 0.19408 / class_weight 0.04535 / track 0.12443 / form_line 0.0
+# 順帶好處：正規化之後七個維度 spread 拉平，所以呢組權重第一次真正等於「影響力
+# 佔比」。舊組唔係 —— 實測 race_shape 名義佔 15.1% 權重但只出 4.9% 影響力
+# （ratio 0.32），stability 名義 29.9% 卻出 48%。
+MATRIX_WEIGHTS = {"stability":0.43664,"pace_perf":0.26149,"race_shape":0.05136,"jockey_trainer":0.11055,"class_weight":0.02347,"track":0.11650,"form_line":0.000}
 
 # ── Wet-form 7D feature (gated to Soft/Heavy races) ──
 # A horse's career wet-going place record IS predictive of box-trifecta on wet
@@ -54,10 +67,17 @@ MATRIX_WEIGHTS = {"stability":0.29928,"pace_perf":0.18831,"race_shape":0.14855,"
 # Walk-forward validated (held-out, expanding window): Soft box-trifecta
 # 14.4% → 16.6% at scale 12 (robust plateau 6–12; Heavy unaffected). The going
 # record is densely populated (92.7% of runners have ≥1 wet start).
-WET_FORM_FEATURE_SCALE = 12.0   # points of ability per (shrunk_wet_place_rate − prior)
+# 2026-08-01：scale/clamp 一齊 ×1.4225 —— 呢個 overlay 係**直接加落 ability 分**，
+# 唔經維度矩陣，所以維度尺正規化令 ability 嘅 spread 放大 1.4225 倍之後，如果 overlay
+# 唔跟住放大，佢喺濕地賽嘅相對影響力就會靜靜雞縮水 1.4225 倍。
+# 實測（710 場，只 toggle 正規化）：唔跟 scale → 71 場排名有變，其中 **70 場係濕地**；
+# 跟住 ×1.4225 → 709/710 逐匹一致（剩低 1 場係 matrix_scores 2dp 四捨五入）。
+# 即係濕地 overlay 嘅原始校準（Soft box-trifecta 14.4%→16.6% @ scale 12）完整保留。
+# Rollback: 12.0 / 5.0（配 gain 全部 = 1）。
+WET_FORM_FEATURE_SCALE = 17.07  # 原 12.0 ×1.4225；points of ability per (shrunk_wet_place_rate − prior)
 WET_FORM_SHRINK_A = 4.0         # pseudo-count for place-rate shrinkage toward prior
 WET_FORM_PRIOR = 0.5            # global career wet place-rate (~0.496 measured)
-WET_FORM_MAX_ABS = 5.0          # clamp the feature to a sane ±range
+WET_FORM_MAX_ABS = 7.11         # 原 5.0 ×1.4225；clamp the feature to a sane ±range
 
 
 def _parse_wet_record(going_stats_line):
@@ -127,15 +147,31 @@ CONSISTENCY_MICRO_WEIGHTS = {
 #   ML search 殘骸）；三個修法測齊，「完全移除」最好（GGP +2）兼 timing 上游斷供後本身已啞。
 # - peak_pi_bonus / trend_up / trend_down REMOVED — ablation 全指標零變化（純惰性）。
 # - realization / forgiveness / pi tiers / l600 峰值 KEPT — 移除有實測損失。
+#
+# 2026-08-01 中性化（710 場 A/B）：base 由 35.8 改 60.0，其餘每項 ×0.753864
+# （= 40 / (28.1+15.07+9.89)，令最高路徑仍然剛好 100 分）。
+# 原因：呢個 leaf 係純加分累加器 —— 冇任何負項，「冇 PI 數據」同「PI 顯示冇後勁」
+# 都係 add(0.0)，於是 38.1% 嘅馬停留喺 base 35.8，喺 60 為中性嘅顯示尺上讀成
+# ❌❌「段速偏弱」。實際上「冇 PI 數據」嗰 1,391 匹 top-3 率 30.1%，*高過* 全樣本
+# 平均 —— 拿最差嘅分數去表達「查唔到」係錯嘅。用戶亦直接踩到呢個矛盾：
+# 段速實速分顯示「近3場快過基準 1.54 秒」而 段速分 只有 39。PF 有數據嘅馬當中
+# 16.7% 中招（PF≥70 但 段速分 ≤45）。
+# A/B（710 場，dev 575 / holdout 135）：gold 37→39、t3prec +0.23、mrr +0.13，
+# dev t3prec +0.29、holdout champ +0.74 / mrr +0.26 / ndcg +0.14，無指標實質倒退。
+# 同日測過「PI 有紀錄但零增益」額外扣分（−4/−8 兩檔）：dev 升但 holdout
+# ndcg −0.34/−0.46、crec −0.58/−0.73 → 兩檔都 REJECT，只採用中性化。
+# Rollback: base 35.8 + 上述每項 ÷0.753864（即回復下面註釋嘅原值）。
+# 每項取兩位小數（同其他 micro family 一致）：最高路徑 60 + 21.18 + 11.36 + 7.46
+# = 100.00，剛好用盡 0-100 尺而唔會撞 clip（撞 clip 會製造假平手）。
 SECTIONAL_MICRO_WEIGHTS = {
-    "base": 35.8,
-    "pi_extreme_bonus": 28.1,
-    "pi_excellent_bonus": 20.0,
-    "pi_pass_bonus": 3.64,
-    "l600_extreme_bonus": 15.07,
-    "l600_excellent_bonus": 3.64,
-    "realization_bonus": 6.64,
-    "forgiveness_bonus": 9.89
+    "base": 60.0,                    # 原 35.8
+    "pi_extreme_bonus": 21.18,       # 原 28.1
+    "pi_excellent_bonus": 15.08,     # 原 20.0
+    "pi_pass_bonus": 2.74,           # 原 3.64
+    "l600_extreme_bonus": 11.36,     # 原 15.07
+    "l600_excellent_bonus": 2.74,    # 原 3.64
+    "realization_bonus": 5.01,       # 原 6.64
+    "forgiveness_bonus": 7.46        # 原 9.89
 }
 
 TRACK_MICRO_WEIGHTS = {
@@ -181,8 +217,18 @@ FORMLINE_MICRO_WEIGHTS = {
     "headwinner_bonus": 1.8
 }
 
+# 2026-08-01 中性化（710 場 A/B）：base 由 55.7 改 60.0。
+# 「檔位形勢」＝ pace_map_score ×1.0，所以 leaf 嘅尺就係維度嘅尺。舊 base 55.7 加上
+# 修正上限 +4.05 → 全庫最高只得 59.75，即係**60 係天花板而唔係中性**：14.4% 嘅馬
+# 卡喺 59.75，0.0% 曾經高過 60，32.3% 落喺 ❌ 帶。一個永遠只會講「中性或差」、
+# 但拿住第二大權重（0.14855）嘅維度，用戶讀落自然覺得「一直 60、純噪音」。
+# base 移到 60 之後範圍變 50.6–64.05，好檔位終於讀得出「有利」。
+# 純常數平移 → 場內排名逐匹不變（710 場 11 個指標、dev/holdout/5 folds 全部完全相同）。
+# 同日測過對稱化 cap（±5/±6/±7/±9.43）：dev 同 holdout 方向互相矛盾、無一個持續贏
+# → 全部 REJECT，保留實測擬合出嚟嘅不對稱 cap。
+# Rollback: base 55.7。
 PACE_MICRO_WEIGHTS = {
-    "base": 55.7,
+    "base": 60.0,               # 原 55.7
     "modifier_cap_max": 4.05,
     "modifier_cap_min": -9.43,
     "modifier_multiplier": 1.1

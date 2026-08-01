@@ -394,6 +394,11 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
         hc_match = re.search(r'HC:(\d+)', header_line)
         race_margin = float(margin_match.group(1)) if margin_match else None
         race_hc = int(hc_match.group(1)) if hc_match else None
+        # 馬群大細（2026-07-31）：crawler 由今日起寫 ` starters:N`。冇咗佢，賽績表
+        # 只有絕對名次，`_form_score` 就會「6 匹跑第 4」同「16 匹跑第 4」一律當 base 60。
+        # 5,066 場有真實馬群大細嘅 run 量到 21.5% base 評錯、11.0% 錯 ≥20 分。
+        starters_match = re.search(r'starters:(\d+)', header_line)
+        race_starters = int(starters_match.group(1)) if starters_match else None
 
         # Extract PuntingForm advanced metrics from PF[...] block
         pf_match = re.search(r'PF\[(.+?)\]', header_line)
@@ -505,6 +510,7 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
             'jockey': jockey, 'weight': weight, 'barrier': race_barrier, 'prize': prize_str,
             'race_time': race_time, 'last_flucs': last_flucs,
             'margin': race_margin, 'hc': race_hc,
+            'starters': race_starters,
             'pos_1200': pos_1200, 'pos_800': pos_800,
             'pos_400': pos_400, 'settled': settled,
             'finish_pos': finish_pos, 'pos_source': pos_source,
@@ -1825,8 +1831,13 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
         f"；共 {real_count} 正式 + {trial_count} 試閘，嚴禁修改數值):**"
     )
     # Table header
-    lines.append("| # | 類型 | 日期 | 場地 | 路程 | 場地狀況 | 檔位 | 名次 | 班次 | 跑位軌跡 | PI | 段速 | 早段步速 | L600/RT | 走位跑法 | 走位消耗 | 備註 | 寬恕認定 |")
-    lines.append("|---|------|------|------|------|---------|------|------|------|---------|-----|------|---------|---------|---------|---------|------|----------|")
+    # 獎金（2026-07-31）追加做**最後一欄**：引擎同 renderer 全部用位置索引讀
+    # cols[1..17]，追加 cols[18] 唔會令任何欄位位移，舊 Facts 檔亦照樣 parse。
+    # 用途：`_form_score` 個 class_mult 一直係全場統一常數（entry["class"] 呢個 key
+    # 由來冇存在過），即係近績分完全冇班次調整。賽績表個「班次」欄 85% 係 fallback
+    # "Maiden/SW"，但獎金喺 Formguide 每行都有，85,010 個 run 100% 密度。
+    lines.append("| # | 類型 | 日期 | 場地 | 路程 | 場地狀況 | 檔位 | 名次 | 班次 | 跑位軌跡 | PI | 段速 | 早段步速 | L600/RT | 走位跑法 | 走位消耗 | 備註 | 寬恕認定 | 獎金 |")
+    lines.append("|---|------|------|------|------|---------|------|------|------|---------|-----|------|---------|---------|---------|---------|------|----------|------|")
 
     for idx, entry in enumerate(display_entries):
         if entry['is_trial']:
@@ -1839,6 +1850,13 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
         cond = entry['condition'] if entry['condition'] != 'None' else '-'
         
         finish_str = str(entry['finish_pos']) if entry['finish_pos'] is not None else '-'
+        # 馬群大細嵌入「名次」格（2026-07-31）：寫成 `4/6` 而唔係加一個新欄位，
+        # 因為 `_record_entries` / renderer 全部用位置索引讀 cols[7..17]，加欄會全部位移。
+        # 所有下游 consumer 都用 `parse_float()` 抓頭一個數字（→ 4）或純顯示，
+        # 所以 `4/6 (-12.0L)` 對舊 code 完全向後兼容，只係多咗馬群資訊。
+        if (not entry['is_trial'] and entry.get('starters')
+                and entry['finish_pos'] is not None):
+            finish_str += f"/{entry['starters']}"
         if not entry['is_trial'] and entry.get('margin') is not None:
             # Show margin in brackets if > 0, otherwise just position
             if entry['margin'] > 0:
@@ -1903,10 +1921,13 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
         else:
             pf_l600_rt_str = '-'
 
+        # 獎金：`prize` 由 crawler 嘅 `$40,000` 抽出，做班次代理（見表頭註釋）
+        prize_str = str(entry.get('prize') or '').strip() or '-'
+
         lines.append(
             f"| {idx+1} | {tag} | {entry['date']} | {venue_short} | "
             f"{entry['distance']} | {cond} | {entry.get('barrier') or '-'} | {finish_str} | {class_ch} | "
-            f"{pos_str} | {pi_str} | {sect_q} | {pf_erp} | {pf_l600_rt_str} | {run_style_text} | {consumption} | {notes} | [需判定] |"
+            f"{pos_str} | {pi_str} | {sect_q} | {pf_erp} | {pf_l600_rt_str} | {run_style_text} | {consumption} | {notes} | [需判定] | {prize_str} |"
         )
 
     # Output is already complete, no omitted string needed here

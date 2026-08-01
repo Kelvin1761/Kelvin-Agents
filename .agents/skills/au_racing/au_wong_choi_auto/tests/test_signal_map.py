@@ -74,7 +74,7 @@ class SignalMapTests(unittest.TestCase):
             "pace_figure_score", "sectional_score", "trial_score",
             "jockey_score", "trainer_score", "jockey_horse_fit_score",
             "pace_map_score",
-            "rating_score", "weight_score",
+            "rating_score",  # weight_score retired 2026-08-01 (AUC 0.480)
             "track_score",
             "formline_score",  # form_line dim exists but its weight is 0.0
         }
@@ -87,6 +87,18 @@ class SignalMapTests(unittest.TestCase):
         )
         high = map_features_to_matrix_scores(
             {"class_score": 95, "rating_score": 70, "weight_score": 55}
+        )
+        self.assertEqual(low["class_weight"], high["class_weight"])
+
+    def test_weight_score_is_context_only_not_a_direct_matrix_leaf(self) -> None:
+        # Retired from ranking 2026-08-01: 84.9% of runners scored exactly 60,
+        # 41.5% of races had zero within-race spread, within-race AUC 0.480.
+        # 負磅 stays in the report as context; it must not move the score.
+        low = map_features_to_matrix_scores(
+            {"weight_score": 20, "rating_score": 70, "class_score": 55}
+        )
+        high = map_features_to_matrix_scores(
+            {"weight_score": 95, "rating_score": 70, "class_score": 55}
         )
         self.assertEqual(low["class_weight"], high["class_weight"])
 
@@ -166,7 +178,15 @@ class SignalMapTests(unittest.TestCase):
         self.assertEqual(coverage["coverage_pct"], 100.0)
         self.assertEqual(coverage["missing_features"], [])
 
-    def test_missing_non_neutral_feature_is_still_missing(self) -> None:
+    def test_neutral_scored_missing_feature_is_still_reported_missing(self) -> None:
+        """A neutral score must never be allowed to hide a data gap.
+
+        Until 2026-08-01 sectional_score answered "no PI data" with 35.8 — the
+        bottom of the display scale — so the gap was visible only because the
+        number looked bad. Now absence of evidence scores a neutral 60, which
+        makes this the load-bearing guarantee: the coverage report, not the
+        score, is what tells the reader the evidence is missing.
+        """
         auto = _analyze()
         self.assertEqual(
             auto["feature_evidence_state"]["sectional_score"],
@@ -176,7 +196,7 @@ class SignalMapTests(unittest.TestCase):
             "sectional_score",
             auto["data_coverage"]["missing_features"],
         )
-        self.assertNotEqual(auto["feature_scores"]["sectional_score"], 60.0)
+        self.assertEqual(auto["feature_scores"]["sectional_score"], 60.0)
 
 
 if __name__ == "__main__":

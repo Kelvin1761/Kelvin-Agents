@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import statistics
 import sys
 from pathlib import Path
 
@@ -16,8 +17,14 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 sys.path.append(str(SCRIPT_DIR / "racing_engine"))
 
-from engine_core import RacingEngine, enrich_logic_from_facts
+from engine_core import (
+    RacingEngine,
+    backfill_pf_metrics,
+    enrich_logic_from_facts,
+    horse_prize_level,
+)
 from io_utils import write_json_atomic as _write_json_atomic
+from io_utils import write_text_atomic as _atomic_write_text
 from renderer import ensure_verdict, render_meeting_csv, validate_report_text, write_race_outputs
 from validation import validate_engine_scripts, validate_logic_data
 
@@ -107,6 +114,9 @@ def process_logic_file(
     if "race_analysis" not in logic_data:
         logic_data["race_analysis"] = {}
     race_context = logic_data["race_analysis"]
+    # Before the field summary: 段速實速 is field-relative, so PF has to be
+    # complete for the whole race or not counted at all.
+    backfill_pf_metrics(logic_data, facts_path)
     race_context["field_summary"] = _build_field_summary(logic_data.get("horses", {}))
     # Today's runner names so the engine can flag 賽績線 head-to-head rematches.
     race_context["field_horse_names"] = [
@@ -250,6 +260,9 @@ def _logic_sort_key(path: Path):
 def _build_field_summary(horses):
     weights = []
     ratings = []
+    # 班次代理（2026-07-31）：逐匹馬近仗獎金水平嘅場內中位數，供 `_form_score`
+    # 做場內相對班次調整。同下面 pf_fields 嘅場內 mean/stdev 同一個 pattern。
+    prize_levels = []
     pf_fields = {
         "race_time_diff": [],
         "l800_delta": [],
@@ -272,6 +285,9 @@ def _build_field_summary(horses):
             rating = None
         if rating is not None:
             ratings.append(rating)
+        level = horse_prize_level((horse.get("_data") or {}).get("facts_section"))
+        if level is not None:
+            prize_levels.append(level)
         pf_agg = ((horse.get("_data") or {}).get("pf_metrics") or {}).get("pf_aggregates") or {}
         for key, values in pf_fields.items():
             value = pf_agg.get(f"{key}_avg")
@@ -295,6 +311,21 @@ def _build_field_summary(horses):
         "min_weight": min(weights) if weights else 0.0,
         "max_weight": max(weights) if weights else 0.0,
         "avg_weight": (sum(weights) / len(weights)) if weights else 0.0,
+        # Spread of the handicapper's own ability ranking. Used only where the
+        # official rating is absent (`_rating_score` proxy) — see that method.
+        "weighted_count": len(weights),
+        "weight_stdev": (
+            (
+                sum(
+                    (value - (sum(weights) / len(weights))) ** 2
+                    for value in weights
+                )
+                / len(weights)
+            )
+            ** 0.5
+            if len(weights) >= 2
+            else 0.0
+        ),
         "rated_count": len(ratings),
         "min_rating": min(ratings) if ratings else 0.0,
         "max_rating": max(ratings) if ratings else 0.0,
@@ -316,6 +347,12 @@ def _build_field_summary(horses):
         summary[f"{key}_field_count"] = len(values)
         summary[f"{key}_field_mean"] = mean
         summary[f"{key}_field_stdev"] = stdev
+    # 用中位數而唔係平均：獎金 log10 分佈有長尾（一匹跑過 Group 1 嘅馬會拉高平均，
+    # 令全場其他馬齊齊被扣分）。少於 4 匹有數據就唔提供 —— 樣本太細嘅「場內中位」
+    # 冇意義，`_form_score` 會自動跳過班次調整。
+    if len(prize_levels) >= 4:
+        summary["prize_level_field_count"] = len(prize_levels)
+        summary["prize_level_field_median"] = statistics.median(prize_levels)
     return summary
 
 
