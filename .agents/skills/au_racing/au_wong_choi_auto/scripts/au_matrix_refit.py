@@ -405,6 +405,7 @@ def cmd_compare(ds, args):
 
 
 def main():
+    global DIMS
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=("verify", "gains", "refit", "compare", "walkforward"))
     ap.add_argument("--data", required=True,
@@ -419,7 +420,11 @@ def main():
     ap.add_argument("--wf-start", type=int, default=250)
     ap.add_argument("--wf-window", type=int, default=92)
     ap.add_argument("--wet-scale", type=float, default=1.0)
+    ap.add_argument("--with-form-line", action="store_true",
+                    help="把出廠權重 0 嘅 form_line（賽績線）維度加返入搜索空間")
     args = ap.parse_args()
+    if args.with_form_line and "form_line" not in DIMS:
+        DIMS = DIMS + ("form_line",)
     set_objective(args.obj)
     ds = Dataset(Path(args.data))
     print(f"dataset {args.data}  races {len(ds.races)}  runners {ds.n}  obj={args.obj} {OBJ_KEYS}")
