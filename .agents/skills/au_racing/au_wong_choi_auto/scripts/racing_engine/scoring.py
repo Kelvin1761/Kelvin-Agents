@@ -55,7 +55,39 @@ REPORT_ONLY_FEATURE_KEYS = (
 # 順帶好處：正規化之後七個維度 spread 拉平，所以呢組權重第一次真正等於「影響力
 # 佔比」。舊組唔係 —— 實測 race_shape 名義佔 15.1% 權重但只出 4.9% 影響力
 # （ratio 0.32），stability 名義 29.9% 卻出 48%。
-MATRIX_WEIGHTS = {"stability":0.43664,"pace_perf":0.26149,"race_shape":0.05136,"jockey_trainer":0.11055,"class_weight":0.02347,"track":0.11650,"form_line":0.000}
+#
+# ── 2026-08-01（較後）：真正嘅重新配權 ────────────────────────────────────────
+# ⚠️ 上面嗰次正規化係**刻意 rank-neutral** 嘅（weight × gain 保持常數 1.4225×）。
+# 呢一次唔係 —— 呢次係一次經 A/B 驗證、**刻意改變排名**嘅重新配權。
+#
+# 點解而家先做：0.43664 嗰組係喺 jockey/trainer 兩個 leaf 被重寫**之前** fit 嘅。
+# 統一上名率 + 人馬配搭「無紀錄」點位落地之後，jockey_trainer 維度嘅原生 SD
+# 由 3.20 闊到 4.09（+28%），舊權重係 fit 落一個已經唔存在嘅分佈。
+#
+# 做法（`au_matrix_refit.py`，配 `au_dump_engine_leaves.py` 出 dataset）：ability 對 leaf 分係線性嘅，所以一份評好分嘅
+# dataset 就可以離線評估任何權重組合 —— 先用 `verify` 證明 replica 同真引擎逐匹
+# 一致（7,547 匹 max|Δ| 0.0082，純 2dp 捨入），先至信搜索結果。3,000 條隨機權重
+# 向量，dev 606 場揀，dev 內部 5 個時間 fold 做閘（要過 4/5），未碰過嘅 107 場
+# holdout 完全唔參與揀參數。
+#
+# **取閘後候選嘅逐維度中位數（共識），唔取 argmax。** argmax 係教科書級 overfit：
+# 實測 argmax 喺 dev 靚好多（good_pos +3.80、winT3 +4.13）但喺 holdout 爆炸
+# （pass_any1 −5.61、good_any2 −4.67、t3prec −3.74）。共識就冇呢個問題。
+#
+# 呢組數係四個 random seed 各自共識之後再取中位數。收斂度極高 —— 四個 seed、
+# 三個唔同目標函數（均衡／只計上名／只計贏馬）、PF on 同 off 兩個 footing，
+# 加上另一條工作線一套完全獨立嘅實作，**八次搜索冇一次例外**都指向同一個方向：
+# stability ↓、pace_perf ↓、jockey_trainer ↑、class_weight ↑、race_shape ↑、track 持平。
+#
+# 實測（713 場全樣本，vs 舊權重）：**11 個指標全部改善** —— gold +0.42、
+# good_pos +1.54、good_any2 +0.14、pass_any1 +1.68、champ +0.98、winT3 +2.52、
+# t3prec +0.75、mrr +1.22、blowout −1.40、compet +1.82、ndcg5 +1.32。
+# 未碰過嘅 holdout：winT3 +2.80、ndcg5 +1.85、champ +1.87、mrr +1.81、compet +0.93、
+# good_any2 +0.93，倒退淨係 pass_any1 −0.93 同 blowout +0.93（各自 = 1 場）。
+# 舊值（2026-08-01 正規化配套，rank-neutral 嗰組）：
+#   stability 0.43664 / pace_perf 0.26149 / race_shape 0.05136
+#   jockey_trainer 0.11055 / class_weight 0.02347 / track 0.11650 / form_line 0.0
+MATRIX_WEIGHTS = {"stability":0.35364,"pace_perf":0.22416,"race_shape":0.07948,"jockey_trainer":0.17251,"class_weight":0.06375,"track":0.10646,"form_line":0.000}
 
 # ── Wet-form 7D feature (gated to Soft/Heavy races) ──
 # A horse's career wet-going place record IS predictive of box-trifecta on wet
@@ -73,11 +105,17 @@ MATRIX_WEIGHTS = {"stability":0.43664,"pace_perf":0.26149,"race_shape":0.05136,"
 # 實測（710 場，只 toggle 正規化）：唔跟 scale → 71 場排名有變，其中 **70 場係濕地**；
 # 跟住 ×1.4225 → 709/710 逐匹一致（剩低 1 場係 matrix_scores 2dp 四捨五入）。
 # 即係濕地 overlay 嘅原始校準（Soft box-trifecta 14.4%→16.6% @ scale 12）完整保留。
+# 2026-08-01（較後）：矩陣重新配權令場內 pure_7d SD 由 5.1211 收窄到 4.7702，
+# 所以 overlay 要再 ×0.9315 先至維持返同一個相對影響力。呢個係**推導出嚟嘅**
+# 係數（SD 比例），唔係搵返嚟嘅參數 —— 唔跟就等於靜靜雞畀濕地 overlay 加咗 7.4%
+# 話事權。累積係數 1.4225 × 0.9315 = 1.3251。
+# 實測確認佢冇害：holdout champ 由 +0.00 變 +1.87、mrr +0.73 → +1.81、
+# t3prec −0.31 → 0.00，dev 完全一樣。
 # Rollback: 12.0 / 5.0（配 gain 全部 = 1）。
-WET_FORM_FEATURE_SCALE = 17.07  # 原 12.0 ×1.4225；points of ability per (shrunk_wet_place_rate − prior)
+WET_FORM_FEATURE_SCALE = 15.90  # 原 12.0 ×1.4225×0.9315；points of ability per (shrunk_wet_place_rate − prior)
 WET_FORM_SHRINK_A = 4.0         # pseudo-count for place-rate shrinkage toward prior
 WET_FORM_PRIOR = 0.5            # global career wet place-rate (~0.496 measured)
-WET_FORM_MAX_ABS = 7.11         # 原 5.0 ×1.4225；clamp the feature to a sane ±range
+WET_FORM_MAX_ABS = 6.62         # 原 5.0 ×1.4225×0.9315；clamp the feature to a sane ±range
 
 
 def _parse_wet_record(going_stats_line):
@@ -261,6 +299,14 @@ FIT_MICRO_WEIGHTS = {
     "signal_best_jockey_bonus": 3.85
 }
 
+# 2026-08-01（較後）矩陣重新配權之後嘅實測分佈（7,547 匹）：
+#   之前  max 88.0  mean 64.59   A+ 11 / A 45 / A− 157 / B+ 584
+#   之後  max 84.5  mean 64.03   A+  2 / A 20 / A− 101 / B+ 429
+# 頂端**刻意**變窄咗：新權重攤得更平均，所以「每個維度都出色」自然更罕見。
+# 呢個係想要嘅行為 —— 整場重新配權嘅起因就係 Benbulben 嗰類「一兩個維度谷高、
+# 其餘平平」嘅馬被評得太高。唔好見到 A+ 少咗就落手調呢組門檻：一調就等於把
+# 舊模型嘅過度自信搬返出嚟。真係要調，先重新量度分佈，再改埋呢段註釋。
+# 評級純粹係報告用字，冇任何選馬／落注邏輯讀佢（只有 validation.py 做一致性檢查）。
 GRADE_THRESHOLDS = ((96,"S+"),(92,"S"),(88,"S-"),(84,"A+"),(80,"A"),(76,"A-"),(72,"B+"),(68,"B"),(64,"B-"),(60,"C+"),(56,"C"),(52,"C-"),(48,"D"),(0,"E"))
 
 def clip_score(value, default=60.0):

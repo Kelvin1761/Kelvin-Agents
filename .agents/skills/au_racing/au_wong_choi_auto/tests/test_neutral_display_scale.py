@@ -159,14 +159,27 @@ class TestDimensionScaleAndWeightsStayInLockstep:
         "form_line": 0.0,
     }
 
-    def test_effective_influence_ratio_is_one_constant(self):
-        """weight × gain 相對舊權重必須係**同一個**常數 —— 咁排名才會不變。
+    # 2026-08-01 正規化配套嘅 rank-neutral 權重（= 舊權重 ÷ gain，歸一化）。
+    # 已經**唔再係出廠值** —— 之後有一次刻意嘅重新配權（見下面）。
+    RANK_NEUTRAL_WEIGHTS = {
+        "stability": 0.43664, "pace_perf": 0.26149, "race_shape": 0.05136,
+        "jockey_trainer": 0.11055, "class_weight": 0.02347, "track": 0.11650,
+        "form_line": 0.0,
+    }
 
-        唔係「差唔多」：如果各維度嘅比率唔同，就等於偷偷 re-weight 咗，
-        而個 re-weight 從來冇經過任何 A/B。
+    def test_the_normalisation_itself_was_rank_neutral(self):
+        """歷史不變量：**尺正規化嗰一步**冇偷偷 re-weight 過。
+
+        排名只食 weight × gain × deviation。正規化把每個維度嘅顯示尺 stretch 咗，
+        所以配套權重必須 ÷ 返個 gain，令 weight × gain 相對舊權重係**同一個**
+        常數（1.4225，逐個一模一樣，唔係「差唔多」）。
+
+        呢個測試釘住嗰一步嘅正確性，用嘅係當時嗰組權重 —— **唔係**用現行
+        `MATRIX_WEIGHTS`。現行嗰組係之後經 A/B 刻意改過排名嘅，見
+        `test_current_weights_are_a_deliberate_refit_not_a_rescale`。
         """
         ratios = [
-            MATRIX_WEIGHTS[dim] * MATRIX_DISPLAY_GAINS[dim] / old
+            self.RANK_NEUTRAL_WEIGHTS[dim] * MATRIX_DISPLAY_GAINS[dim] / old
             for dim, old in self.PRE_NORMALISATION_WEIGHTS.items()
             if old
         ]
@@ -175,21 +188,42 @@ class TestDimensionScaleAndWeightsStayInLockstep:
             "re-weighted the matrix"
         )
 
+    def test_current_weights_are_a_deliberate_refit_not_a_rescale(self):
+        """現行權重**唔應該**再係 rank-neutral —— 佢係一次經驗證嘅重新配權。
+
+        2026-08-01（較後）：3,000 條隨機權重、dev 606 場、5 個時間 fold 閘、
+        取閘後候選嘅逐維度中位數。713 場全樣本 11 個指標全部改善。
+
+        呢個測試存在嘅意義係防止有人「修正」返去 rank-neutral 嗰組（睇落似
+        一致，實際係倒退）。如果將來真係要回滾，連埋呢個測試一齊改，
+        唔好淨係改 MATRIX_WEIGHTS。
+        """
+        assert MATRIX_WEIGHTS != self.RANK_NEUTRAL_WEIGHTS
+        # 重新配權嘅方向：人騎／練馬師 ↑、狀態穩定性 ↓ —— 八次獨立搜索一致
+        assert MATRIX_WEIGHTS["jockey_trainer"] > self.RANK_NEUTRAL_WEIGHTS["jockey_trainer"]
+        assert MATRIX_WEIGHTS["stability"] < self.RANK_NEUTRAL_WEIGHTS["stability"]
+
     def test_weights_sum_to_one(self):
         """Σw ≠ 1 會令 ability 唔再係 0-100 尺（每個維度都 60-centred）。"""
         assert sum(MATRIX_WEIGHTS.values()) == pytest.approx(1.0, abs=1e-4)
 
     def test_wet_overlay_tracks_the_ability_spread(self):
         """濕地 overlay 直接加落 ability 分，唔經矩陣 —— ability spread 一變，
-        overlay 唔跟就會靜靜雞縮水。實測唔跟 → 71 場排名有變，其中 70 場係濕地。"""
-        ratios = [
-            MATRIX_WEIGHTS[dim] * MATRIX_DISPLAY_GAINS[dim] / old
-            for dim, old in self.PRE_NORMALISATION_WEIGHTS.items()
-            if old
-        ]
-        k = sum(ratios) / len(ratios)
-        assert WET_FORM_FEATURE_SCALE == pytest.approx(12.0 * k, rel=0.01)
-        assert WET_FORM_MAX_ABS == pytest.approx(5.0 * k, rel=0.01)
+        overlay 唔跟就會靜靜雞縮水／發脹。實測唔跟 → 71 場排名有變，其中 70 場係濕地。
+
+        累積係數 = 1.4225（維度尺正規化令 spread 放大）× 0.9315（重新配權令
+        場內 pure_7d SD 由 5.1211 收窄到 4.7702）。兩個都係**量度出嚟**嘅比例，
+        唔係搵返嚟嘅參數。
+        """
+        cumulative = 1.4225 * 0.9315
+        assert WET_FORM_FEATURE_SCALE == pytest.approx(12.0 * cumulative, rel=0.01)
+        assert WET_FORM_MAX_ABS == pytest.approx(5.0 * cumulative, rel=0.01)
+
+    def test_overlay_scale_and_clamp_moved_together(self):
+        """scale 同 clamp 一定要同一個係數 —— 淨係郁一邊會改變 overlay 嘅形狀，
+        而唔係佢嘅大細，咁就唔再係原本校準過嗰個 feature。"""
+        assert WET_FORM_FEATURE_SCALE / 12.0 == pytest.approx(
+            WET_FORM_MAX_ABS / 5.0, rel=0.005)
 
     def test_gains_never_drive_dimensions_into_the_clip(self):
         """撞 0/100 會製造假平手。實測正規化後 0/52,710 個維度值撞 clip。"""
