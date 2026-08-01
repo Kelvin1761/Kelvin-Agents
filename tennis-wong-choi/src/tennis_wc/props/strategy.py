@@ -9,6 +9,12 @@ from __future__ import annotations
 
 MIN_RAW_SCORECARD = 120
 MIN_FAMILY_SETTLED = 50
+# Early-stage accelerator: a genuine player-prop family may reach the main card
+# before full validation when probability skill is already visible on a useful
+# scorecard and its first live-profile paper bets are profitable.  It remains a
+# distinct, reversible tier with a hard half-unit cap.
+EARLY_MIN_RAW_SCORECARD = 50
+EARLY_MIN_FAMILY_SETTLED = 3
 MIN_LEG_PROBABILITY = 0.58
 # feature_snapshots stores a 0-100 score in production (the existing hard
 # no-bet contract is 65), while a few older tests/exports use 0-1.  Keep the
@@ -21,6 +27,7 @@ MIN_COMBO_EV = 0.03
 MIN_CONFIDENCE_SCORE = 70
 MAX_SINGLE_STAKE_UNITS = 2.0
 MAX_COMBO_STAKE_UNITS = 1.0
+MAX_EARLY_STAKE_UNITS = 0.5
 STAKE_ROUND_UNITS = 0.5
 SUPPORTED_FAMILIES = {
     "player_aces",
@@ -85,13 +92,15 @@ def formal_stake_units(
     formula_confidence: float,
     *,
     combo: bool = False,
+    early: bool = False,
 ) -> float:
-    """Confidence-haircut tenth-Kelly stake for a validated recommendation.
+    """Confidence-haircut tenth-Kelly stake for an enabled recommendation.
 
     Research scorekeeping remains flat 1u so formula comparisons are fair.
     Once a family clears the evidence gate, this sizes the displayed bet using
     the calibrated hit probability, then discounts it by formula reliability.
-    Singles are capped at 2u and higher-variance two-leg combos at 1u.
+    Singles are capped at 2u and higher-variance two-leg combos at 1u.  The
+    reversible EARLY_MAIN tier is capped at 0.5u for either structure.
     """
     try:
         p = float(probability)
@@ -106,9 +115,12 @@ def formal_stake_units(
     if full_kelly <= 0:
         return 0.0
     units = full_kelly * 0.10 * 100.0 * reliability
-    cap = MAX_COMBO_STAKE_UNITS if combo else MAX_SINGLE_STAKE_UNITS
+    cap = (
+        MAX_EARLY_STAKE_UNITS
+        if early else MAX_COMBO_STAKE_UNITS if combo else MAX_SINGLE_STAKE_UNITS
+    )
     units = min(cap, units)
-    # A validated positive-EV bet can use a half-unit probe, but rounding must
+    # An enabled positive-EV bet can use a half-unit probe, but rounding must
     # never lift it above the risk cap.
     units = max(STAKE_ROUND_UNITS, units)
     units = round(units / STAKE_ROUND_UNITS) * STAKE_ROUND_UNITS
@@ -118,14 +130,16 @@ def formal_stake_units(
 def recommendation_gate(scorecard: dict | None, roi: dict | None) -> dict:
     """Return an auditable strategy state and the families allowed to bet.
 
-    Formal recommendations require:
+    Fully validated recommendations require:
       * enough odds-blind model outcomes;
       * model Brier beating market Brier by a small fixed margin;
       * enough settled bets in the specific market family; and
       * positive realised family ROI.
 
-    Until all four pass, signals stay on the observation board and may still be
-    tracked for research, but they cannot reach the headline betting card.
+    A player-level family can enter the reversible EARLY_MAIN tier at 50
+    scorecard outcomes and three live-profile paper bets when the same Brier
+    advantage and positive ROI tests pass.  It is automatically removed from
+    the main card whenever either advantage disappears.
     """
     scorecard = scorecard or {}
     roi = roi or {}
@@ -133,6 +147,8 @@ def recommendation_gate(scorecard: dict | None, roi: dict | None) -> dict:
     reasons: list[str] = []
 
     enabled: list[str] = []
+    validated: list[str] = []
+    early_main: list[str] = []
     family_states: dict[str, dict] = {}
     # Prefer ROI from the exact live-eligible profile.  The fallback preserves
     # compatibility with old stored/test summaries that predate segmentation.
@@ -163,33 +179,69 @@ def recommendation_gate(scorecard: dict | None, roi: dict | None) -> dict:
             and family_roi is not None
             and float(family_roi) > 0
         )
+        early_qualified = (
+            not qualified
+            and family in RECOMMENDABLE_PLAYER_FAMILIES
+            and score_settled >= EARLY_MIN_RAW_SCORECARD
+            and model_beats_market
+            and roi_settled >= EARLY_MIN_FAMILY_SETTLED
+            and family_roi is not None
+            and float(family_roi) > 0
+        )
+        tier = (
+            "VALIDATED" if qualified
+            else "EARLY_MAIN" if early_qualified
+            else "RESEARCH_ONLY"
+        )
         family_states[family] = {
-            "enabled": qualified,
+            "enabled": qualified or early_qualified,
+            "tier": tier,
+            "validated": qualified,
+            "early_main": early_qualified,
             "recommendable_player_prop": family in RECOMMENDABLE_PLAYER_FAMILIES,
             "settled": roi_settled,
             "scorecard_settled": score_settled,
             "roi": family_roi,
             "minimum_settled": MIN_FAMILY_SETTLED,
             "minimum_scorecard": MIN_RAW_SCORECARD,
+            "early_minimum_settled": EARLY_MIN_FAMILY_SETTLED,
+            "early_minimum_scorecard": EARLY_MIN_RAW_SCORECARD,
             "model_beats_market": model_beats_market,
             "model_brier": (family_score.get("model") or {}).get("brier"),
             "market_brier": (family_score.get("market") or {}).get("brier"),
         }
-        if qualified:
+        if qualified or early_qualified:
             enabled.append(family)
+        if qualified:
+            validated.append(family)
+        elif early_qualified:
+            early_main.append(family)
 
+    warnings: list[str] = []
+    if early_main:
+        warnings.append(
+            "EARLY_MAIN 只代表早期正趨勢：每注上限 0.5u；"
+            "ROI 或模型對市場優勢轉負會自動降回 RESEARCH_ONLY"
+        )
     if not enabled:
         reasons.append(
             "未有 player-prop family 同時達到 family 級記分卡、"
             f"{MIN_FAMILY_SETTLED} 注已結算兼正 ROI"
         )
     return {
-        "status": "VALIDATED_SINGLE" if enabled else "RESEARCH_ONLY",
+        "status": (
+            "VALIDATED_SINGLE" if validated
+            else "EARLY_MAIN" if early_main
+            else "RESEARCH_ONLY"
+        ),
         "recommendations_enabled": bool(enabled),
         "enabled_families": enabled,
+        "validated_families": validated,
+        "early_main_families": early_main,
         "family_states": family_states,
         "raw_scorecard_settled": raw_n,
         "reasons": reasons,
+        "warnings": warnings,
     }
 
 
