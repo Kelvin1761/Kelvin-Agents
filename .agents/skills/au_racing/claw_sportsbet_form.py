@@ -323,6 +323,160 @@ def run_line(run):
     return line, ", ".join(fmt(opp, i) for i in range(3))
 
 
+_STAT_KEYS = ("Prizemoney", "Ave $", "Win Range", "Win", "Place", "Career", "12 months",
+              "Jockey", "Turf", "Synthetic", "1st Up", "2nd Up", "3rd Up", "Distance",
+              "Track", "Trk/Dist", "Firm", "Good", "Soft", "Heavy")
+
+
+def parse_runner_blocks(html):
+    """逐匹馬嘅統計區塊。Sportsbet 用 label 行 + value 行交替，所以掃 label→下一個非空行。
+
+    ⚠️ `Jockey` 呢個 key 喺呢度係**人馬配搭往績**（`5: 3-1-0` = 呢位騎師策騎過呢隻馬
+    5 次、3 冠 1 亞），唔係騎師本人往績。佢正正係 `jockey_horse_fit_score` 缺嘅嘢。
+    """
+    txt = to_text(html)
+    lines = [l for l in txt.splitlines()]
+    ne = [(i, l) for i, l in enumerate(lines) if l.strip()]
+    blocks, cur = [], None
+    for k, (i, l) in enumerate(ne):
+        # ⚠️ 馬名／檔位／`T` 係**各自一行**，唔係 "Name (barrier)" 一行；
+        #    而且會有 HTML 註釋殘骸（`Silent Shares -->`）。實測靠一行 regex 會 0 命中。
+        if (k + 2 < len(ne)
+                and re.fullmatch(r"[A-Z][A-Za-z'’\-. ()]+", l) and not l.endswith("-->")
+                and re.fullmatch(r"\(\d+\)", ne[k + 1][1])
+                and ne[k + 2][1] == "T"):
+            cur = {"name": l.strip(), "barrier": int(ne[k + 1][1].strip("()")),
+                   "stats": {}, "_start": i}
+            blocks.append(cur)
+            continue
+        if cur is not None and l in _STAT_KEYS and k + 1 < len(ne):
+            cur["stats"].setdefault(l, ne[k + 1][1])
+        if cur is not None:
+            cur["_end"] = i
+        if cur is not None and "_start" not in cur:
+            cur["_start"] = i
+    # 往績要歸返俾對應嗰匹馬：用區塊嘅行號範圍切原文，再喺切片入面 parse
+    full = "\n".join(lines)
+    offsets, pos = [], 0
+    for l in lines:
+        offsets.append(pos)
+        pos += len(l) + 1
+    for b in blocks:
+        s = offsets[b.get("_start", 0)]
+        e = offsets[min(b.get("_end", len(lines) - 1) + 1, len(lines) - 1)]
+        b["runs"] = parse_race(full[s:e])["runs"] if e > s else []
+    return blocks
+
+
+def write_meeting(races, out_dir, date_str, venue, verbose=True):
+    """寫 Racenet 格式嘅 meeting 檔。`races` = [(race_no, parsed, blocks)]。
+
+    格式**唔可以自創** —— 下游 `inject_fact_anchors` 同引擎逐行 regex 食佢。
+    對照 `claw_racenet_scraper.py` 147–252 行。
+    """
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    mm_dd = date_str[5:]
+    idx = [f"# AU Wong Choi Formguide Index\n", f"Meeting: {venue} {date_str}\n"]
+    for race_no, p, blocks in races:
+        meta = p["meta"]
+        cond = meta.get("track_condition", "Unknown")
+        dist = meta.get("distance", "?")
+        hdr = f"{venue} Race {race_no} - {dist}m"
+        by_name = {b["name"].lower(): b for b in blocks}
+        rc_path = out / f"{mm_dd} Race {race_no} Racecard.md"
+        fg_path = out / f"{mm_dd} Race {race_no} Formguide.md"
+        with open(rc_path, "w", encoding="utf-8") as f_rc, \
+                open(fg_path, "w", encoding="utf-8") as f_fg:
+            for f in (f_rc, f_fg):
+                f.write(f"{hdr}\n")
+                f.write(f"Track: {cond} | Weather: {meta.get('weather','Unknown')} "
+                        f"| Rail: {meta.get('rail','')}\n{'='*60}\n")
+            for num in sorted(p["overview"]):
+                ov = p["overview"][num]
+                name = ov.get("name", "?")
+                blk = by_name.get(name.lower(), {})
+                st = blk.get("stats", {})
+                bar = blk.get("barrier", "?")
+                if ov.get("scratched"):
+                    f_rc.write(f"{num}. {name} - status:Scratched\n")
+                    f_fg.write(f"{num}. {name} - status:Scratched\n\n")
+                    continue
+                f_rc.write(f"{num}. {name} ({bar})\n")
+                f_rc.write(f"Trainer: {ov.get('trainer','')} | Jockey: {ov.get('jockey','')} "
+                           f"| Weight: {st.get('Weight','?')} | Age: {ov.get('age_sex','')} "
+                           f"| Rating: {ov.get('rating','')}\n")
+                f_rc.write(f"Career: {ov.get('career','')} | Win: {ov.get('win_pct','')} "
+                           f"| Place: {ov.get('place_pct','')}\n" + "-" * 40 + "\n")
+                f_fg.write(f"[{num}] {name} ({bar})\n")
+                f_fg.write(f"{ov.get('age_sex','')} | Sire: | Dam: \n")
+                f_fg.write(f"Flucs:$- ${ov.get('fixed_win','-')}\n")
+                f_fg.write(f"T: {ov.get('trainer','')} (LY: {st.get('_trainer_ly','-')}) "
+                           f"| J: {ov.get('jockey','')} (LY: {st.get('_jockey_ly','-')})\n\n")
+                f_fg.write(f"{'Career:':<10} {st.get('Career','-'):<15} "
+                           f"{'Last 10:':<10} {ov.get('last6','-'):<15} "
+                           f"{'Prize:':<10} {st.get('Prizemoney','-'):<15}\n")
+                f_fg.write(f"{'Win %:':<10} {ov.get('win_pct','-'):<15} "
+                           f"{'Place %:':<10} {ov.get('place_pct','-'):<15} "
+                           f"{'ROI:':<10} {'-':<15}\n\n")
+                f_fg.write(f"{'Track:':<10} {st.get('Track','-'):<15} "
+                           f"{'Distance:':<10} {st.get('Distance','-'):<15} "
+                           f"{'Trk/Dist:':<10} {st.get('Trk/Dist','-'):<15}\n")
+                f_fg.write(f"{'Firm:':<10} {st.get('Firm','-'):<15} "
+                           f"{'Good:':<10} {st.get('Good','-'):<15} "
+                           f"{'Soft:':<10} {st.get('Soft','-'):<15}\n")
+                f_fg.write(f"{'Heavy:':<10} {st.get('Heavy','-'):<15} "
+                           f"{'Synth:':<10} {st.get('Synthetic','-'):<15} "
+                           f"{'Class:':<10} {'-':<15}\n\n")
+                f_fg.write(f"{'1st Up:':<10} {st.get('1st Up','-'):<15} "
+                           f"{'2nd Up:':<10} {st.get('2nd Up','-'):<15} "
+                           f"{'3rd Up:':<10} {st.get('3rd Up','-'):<15}\n")
+                f_fg.write(f"{'Season:':<10} {'-':<15} "
+                           f"{'12 Month:':<10} {st.get('12 months','-'):<15} "
+                           f"{'Fav:':<10} {'-':<15}\n\n")
+                for run in blk.get("runs", []):
+                    a, b = run_line(run)
+                    f_fg.write(a + "\n" + b + "\n")
+                    f_fg.write("Video: \nNote: \nStewards: \n\n")
+                f_fg.write("=" * 60 + "\n\n")
+        idx.append(f"- Race {race_no}: {dist}m — {rc_path.name} / {fg_path.name}\n")
+        if verbose:
+            print(f"   ✅ R{race_no}: {len(p['overview'])} 匹 → {fg_path.name}")
+    (out / f"{mm_dd} Formguide_Index.md").write_text("".join(idx), encoding="utf-8")
+    (out / "Meeting_Summary.md").write_text(
+        f"# {venue} {date_str}\n\n{len(races)} races extracted from Sportsbet.\n",
+        encoding="utf-8")
+
+
+def discover_meetings(fetcher, country="Australia"):
+    """由 sportsbet.com.au 賽馬 API 攞今日賽事。
+
+    ⚠️ 唔可以行 sportsbetform 首頁 —— 佢對 curl_cffi 403（CloudFront 只擋 root）。
+    """
+    url = ("https://www.sportsbet.com.au/apigw/sportsbook-racing/Sportsbook/Racing/"
+           "NextEvents?racingFilters=HR_DOMESTIC&groupByFilters=true")
+    try:
+        r = fetcher.session.get(url, timeout=30)
+        data = r.json() if r.status_code == 200 else None
+    except Exception:  # noqa: BLE001
+        return []
+    if not data:
+        return []
+    found = []
+
+    def walk(o):
+        if isinstance(o, dict):
+            if o.get("id") and o.get("competitionName") and o.get("raceNumber"):
+                found.append(o)
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    walk(data)
+    return [e for e in found if not country or e.get("country") == country]
+
+
 def main():
     ap = argparse.ArgumentParser(description="Sportsbet AU 賽馬表格抓取")
     ap.add_argument("--race-url", help="完整賽事頁 URL")
