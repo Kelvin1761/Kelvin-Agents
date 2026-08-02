@@ -20,6 +20,7 @@ import json
 import re
 import sys
 import unicodedata
+from statistics import pstdev
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -53,7 +54,7 @@ def _wps(txt):
     return int(m.group(1)), f(m.group(2)), f(m.group(3)), f(m.group(4))
 
 
-def runner_features(block, today_dist):
+def runner_features(block, today_dist, horse_name=""):
     """一匹馬 → {特徵名: 值}。攞唔到就唔放，唔會用 0 頂替。"""
     def field(label):
         m = re.search(rf"{re.escape(label)}\s+(.+?)(?:\s{{2,}}|$)", block, re.M)
@@ -112,6 +113,51 @@ def runner_features(block, today_dist):
             out["up_place_rate"] = (rec[1] + rec[2] + rec[3]) / rec[0]
             out["up_index"] = -float(min(up, 4))
 
+    # ── 由**我哋自己過濾過嘅賽前往績行**砌，唔用網站嘅總結欄位 ──────────
+    # 呢個係 `WinRange` 洩漏嘅正解：唔好用網站賽後先寫嘅總結，改為由我哋
+    # 已經隔走賽後行嘅往績自己數 —— **構造上就唔可能中毒**。
+    # Kelvin 提出嘅門檻：喺呢個路程要有**兩次以上**經驗先計，咁「今日第一次
+    # 喺呢個路程贏」嗰批自然入唔到（佢哋賽前喺呢個路程係零次）。
+    #
+    # ⚠️ 逐行拆，唔好砌一條大 regex。試過用一條帶多個 optional group 嘅
+    # pattern，lazy 量詞會令每個 optional group 都跳過，成組特徵靜靜咁全部
+    # 攞唔到值 —— 表面「冇呢個特徵」，其實係 regex 壞咗。
+    lines = block.splitlines()
+    runs = []
+    for i, ln in enumerate(lines):
+        m = re.match(r"^(\S.*?)\sR\d+\s(\d{4}-\d{2}-\d{2})\s+(\d+)m\s+cond:", ln)
+        if not m:
+            continue
+        l6 = re.search(r"PF\[L600 Delta:\s*(-?[\d.]+)\]", ln)
+        opp = lines[i + 1] if i + 1 < len(lines) else ""
+        placed = bool(re.match(r"^([123])-", opp) and
+                      re.search(rf"[123]-{re.escape(horse_name)}\b", opp))
+        runs.append({"dist": int(m.group(3)),
+                     "l600": float(l6.group(1)) if l6 else None,
+                     "trial": "**(TRIAL)**" in m.group(1),
+                     "placed": placed})
+    official = [r for r in runs if not r["trial"]]
+
+    if today_dist and official:
+        near = [r for r in official if abs(r["dist"] - today_dist) <= 100]
+        if len(near) >= 2:                       # ← 兩次以上先計
+            out["dist_place_rate"] = sum(1 for r in near if r["placed"]) / len(near)
+            out["dist_places"] = float(sum(1 for r in near if r["placed"]))
+
+    # ── 段速時間：現行 pace_figure 用**平均** L600 delta，呢度試其他讀法 ──
+    d6 = [r["l600"] for r in official if r["l600"] is not None]
+    if len(d6) >= 2:
+        out["l600_best"] = -min(d6)              # 細 = 快，取負令大 = 好
+        out["l600_mean"] = -sum(d6) / len(d6)    # 對照組（≈ 現行 pace_figure）
+        out["l600_consistency"] = -pstdev(d6)
+    if len(d6) >= 3:
+        out["l600_trend"] = -((sum(d6[:2]) / 2) - (sum(d6[2:]) / len(d6[2:])))
+    if today_dist:
+        nd = [r["l600"] for r in official
+              if r["l600"] is not None and abs(r["dist"] - today_dist) <= 100]
+        if nd:
+            out["l600_at_distance"] = -min(nd)
+
     # 起步定位：由往績行嘅 `Nth@Settled` 同 `starters:N` 算習慣位置。
     # 一定要除以馬群大細 —— 16 匹跑第 5 同 6 匹跑第 5 唔同。
     fr = []
@@ -164,7 +210,7 @@ def main():
                 pos = actual.get(norm(m.group(2)))
                 if pos is None:
                     continue
-                feats.append((runner_features(text[m.start():end], dist), pos <= 3))
+                feats.append((runner_features(text[m.start():end], dist, m.group(2)), pos <= 3))
             keys = {k for f, _ in feats for k in f}
             for k in keys:
                 pairs = [(f[k], p) for f, p in feats if k in f]

@@ -78,7 +78,7 @@ def build_races(scored_root, min_depth=4.0):
                 if not row or pos is None:
                     continue
                 runners.append((key, float(row["final_rank_score"]),
-                                runner_features(text[m.start():end], dist), pos))
+                                runner_features(text[m.start():end], dist, m.group(2)), pos))
             if len(runners) >= 4:
                 out.append((meta["date"], runners))
     return out
