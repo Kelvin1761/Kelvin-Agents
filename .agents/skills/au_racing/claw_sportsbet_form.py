@@ -405,7 +405,12 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True):
         meta = p["meta"]
         cond = meta.get("track_condition", "Unknown")
         dist = meta.get("distance", "?")
-        hdr = f"{venue} Race {race_no} - {dist}m"
+        # ⚠️ 標題**一定要**係 `RACE N -- XXXm | class`（行首大寫 RACE）。
+        # `inject_fact_anchors` 用 `^RACE\s+\d+\s*[—–-]\s*(\d{3,5})m` 抽路程，
+        # 個 regex 只食**單個**破折號，所以 `RACE 4 -- 1410m`（兩個 hyphen）一樣唔得。
+        hdr = f"RACE {race_no} — {dist}m"
+        if meta.get("race_class"):
+            hdr += f" | {meta['race_class']}"
         by_name = {b["name"].lower(): b for b in blocks}
         rc_path = out / f"{mm_dd} Race {race_no} Racecard.md"
         fg_path = out / f"{mm_dd} Race {race_no} Formguide.md"
