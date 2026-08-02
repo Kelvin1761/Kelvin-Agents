@@ -1,31 +1,33 @@
 #!/usr/bin/env python3
-"""用 Sportsbet 重抽歷史馬場 —— 補返 Racenet 從來冇畀過嘅欄位。
+"""用 Sportsbet 重抽歷史馬場。
 
 點解值得重抽：archive 而家 480/713 場**完全冇**段速實速數據，賽績線 88.5% 冇對手線。
-Sportsbet 同一批場次有 ~92–96%。同一引擎同一權重，九場 Flemington 換咗數據源之後
-Miss 由 3 場變 0 場、前三精準 41% → 67%。
+Sportsbet 同一批場次寫得到，而且帶埋馬群大細、起步定位同 600m 段速。
 
-⚠️ 發現途徑（呢個係關鍵）：sportsbetform **首頁 403**，所以歷史 meetingId 唔可以
-   靠索引頁攞。但 **puntcdn 嘅 PDF 完全通**（實測 200、1.4MB），而檔名本身就編碼晒：
+⚠️ **唔好引用舊嗰個「Miss 3→0、前三精準 41%→67%」。** 嗰個係賽後洩漏量出嚟嘅
+   （見 `6c02caa`）。濾走洩漏之後，同頭馬有關嘅優勢完全消失。重抽嘅理由係
+   **覆蓋率**，唔係已證實嘅準確度提升 —— 幅度要等呢次重抽做完先講得。
 
-       //puntcdn.com/form-guides-sportsbet/20260801_flemington_446234.pdf
-                                            ^日期     ^馬場      ^meetingId
+⚠️ 呢個腳本會**丟走**任何日期喺場次當日或之後嘅往績（`write_meeting` 做），
+   因為歷史場次一定係事後抓，唔隔就會逐場食自己嘅賽果。每個馬場都會印
+   `丟走賽後 N` —— 呢個數係 tripwire，長期見到 0 就要懷疑 filter 壞咗。
 
-   而且 puntcdn 係另一個 host，唔受 sportsbetform 嘅 rate limit 影響。
+meetingId 由 `data/sb_archive_meeting_ids.json` 嚟（94 個場次 / 836 場，
+2025-08-02 → 2026-08-01），已經由 `/{YYYY-MM-DD}/` 索引頁解晒 —— 見
+`load_meeting_ids()`。
 
 ⚠️ Rate limit 係真嘅、而且突然：約十個急促請求之後，一個啱啱通到嘅頁面就開始 403。
    所以呢個腳本：
      * 預設每個請求隔 12 秒（比日常抓取保守）
      * 撞到拒絕就指數退避
      * **每次抓到就落 cache** —— 中斷之後重跑會由斷點續，唔會重打
+     * 每個馬場抽完即刻寫檔；已經有 `Meeting_Summary.md` 嘅會跳過
      * `--max-meetings` 限制單次跑幾多個馬場，方便分批做
 
 用法：
-    # 睇下邊啲 archive 場次搵到對應嘅 Sportsbet meetingId（唔會抓賽事頁）
     python3 sb_backfill_archive.py --plan
-
-    # 分批重抽（建議一次三兩個馬場，跑完再跑）
     python3 sb_backfill_archive.py --run --max-meetings 2 --out-root /tmp/sb_archive
+    python3 sb_backfill_archive.py --run --only Flemington --max-meetings 99
 """
 from __future__ import annotations
 
@@ -73,77 +75,111 @@ def archive_meetings():
     return out
 
 
-def find_meeting_id(fetcher, yyyymmdd, track_name):
-    """由 puntcdn PDF 檔名反查 meetingId。
+MEETING_IDS = Path(__file__).resolve().parent / "data" / "sb_archive_meeting_ids.json"
 
-    冇索引可以查，所以用**已知格式 + HEAD 探測**：檔名係
-    `{date}_{track_slug}_{meetingId}.pdf`，而 meetingId 我哋唔知 —— 所以呢個函數
-    只可以喺已知 ID 時做驗證。真正嘅 ID 發現要行 sportsbet.com.au 嘅
-    NextEvents API（當日）或者由用戶提供。歷史場次冇公開索引係已知限制。
+
+def load_meeting_ids(path=MEETING_IDS):
+    """已解好嘅 {archive 目錄名: {date, slug, meetingId, races}}。
+
+    ⚠️ 之前呢度寫住「歷史 meetingId 冇公開索引可以反查」。**嗰句係錯嘅。**
+    網站首頁「Previous Form Guides」個日曆行 `/{YYYY-MM-DD}/`，嗰版列晒當日
+    每個馬場嘅 puntcdn PDF（檔名帶 meetingId）同每一場嘅賽事連結。widget 寫住
+    淨係準揀 14 日內，但個限制淨係喺 widget，直接開 URL 至少返到一年前。
+    當初搵唔到，係因為只試過 API 同 sitemap，冇睇網站自己個日曆。
+
+    索引版 curl_cffi 一樣 403（同首頁），所以發現行瀏覽器、抽取行 curl_cffi。
+    parse 用 `claw_sportsbet_form.parse_date_index()`。
     """
-    slug = TRACK_SLUG.get(track_name)
-    if not slug:
-        return None, f"未知馬場 slug：{track_name}"
-    return None, (f"需要 meetingId —— puntcdn 檔名格式 "
-                  f"{yyyymmdd}_{slug}_<meetingId>.pdf，但冇公開索引可以反查。"
-                  f"當日場次用 NextEvents API；歷史場次要人手提供 ID。")
+    import json
+    try:
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        print(f"❌ 讀唔到 meetingId 對應表 {path}：{exc}")
+        return {}
 
 
 def backfill(mapping, out_root, delay=12.0, max_meetings=3, verbose=True):
-    """`mapping` = [(meeting_dir, date_str, venue, meeting_id, [race_ids])]。"""
-    f = SportsbetFormFetcher(delay=delay, verbose=verbose)
-    done = 0
-    for meeting_dir, date_str, venue, mid, race_ids in mapping[:max_meetings]:
-        out = Path(out_root) / meeting_dir.name
-        races = []
+    """`mapping` = [(dir_name, date_str, venue, meeting_id, [race_ids])]。
+
+    每個馬場抽完即刻寫檔 + 更新馬匹索引，所以中途斷咗，已完成嗰啲唔會蝕。
+    抓過嘅頁面全部落 cache，重跑係由斷點續，唔會重打。
+    """
+    import sb_horse_index
+
+    f = SportsbetFormFetcher(delay=delay, verbose=False)
+    done = skipped = 0
+    for dir_name, date_str, venue, mid, race_ids in mapping[:max_meetings]:
+        out = Path(out_root) / dir_name
+        if (out / "Meeting_Summary.md").exists():
+            skipped += 1
+            continue
+        races, blocks, missing = [], [], 0
         for rid in race_ids:
             html = f.get(f"{BASE}/{mid}/{rid}/")
             if not html:
-                print(f"   ⚠️ {meeting_dir.name} race {rid} 攞唔到，跳過")
+                missing += 1
                 continue
             pr = parse_race(html)
-            races.append((pr["meta"].get("race_number", len(races) + 1), pr,
-                          parse_runner_blocks(html)))
-        if races:
-            write_meeting(races, out, date_str, venue, verbose=verbose)
-            done += 1
-            print(f"   ✅ {meeting_dir.name}: {len(races)} 場 → {out}")
+            blk = parse_runner_blocks(html)
+            # ⚠️ 場次一定要由頁面攞。raceId 唔跟場次遞增，用 enumerate 會洗牌。
+            rno = pr["meta"].get("race_number")
+            if rno is None:
+                print(f"   ⚠️ {dir_name} {rid}：讀唔到場次號，跳過")
+                continue
+            races.append((rno, pr, blk))
+            blocks += blk
+        if not races:
+            print(f"   ❌ {dir_name}：一場都攞唔到（可能撞 rate limit）")
+            continue
+        races.sort(key=lambda x: x[0])
+        stats = write_meeting(races, out, date_str, venue, verbose=False)
+        idx = sb_horse_index.update(blocks)
+        done += 1
+        flag = f"  ⚠️ 缺 {missing} 場" if missing else ""
+        print(f"   ✅ {dir_name}: {len(races)} 場、往績 {stats['kept']} 條"
+              f"（丟走賽後 {stats['dropped']}）、索引 {idx['index_size']:,} 匹{flag}",
+              flush=True)
+    if skipped:
+        print(f"   ⏭️ 已經有嘅跳過 {skipped} 個")
     return done
 
 
 def main():
     ap = argparse.ArgumentParser(description="用 Sportsbet 重抽歷史馬場")
-    ap.add_argument("--plan", action="store_true", help="只列 archive 場次同 slug 對應")
+    ap.add_argument("--plan", action="store_true", help="只列 archive 場次同已解 meetingId")
     ap.add_argument("--run", action="store_true")
     ap.add_argument("--out-root", default="/tmp/sb_archive")
     ap.add_argument("--delay", type=float, default=12.0)
     ap.add_argument("--max-meetings", type=int, default=3)
-    ap.add_argument("--mapping", help="JSON: [[dir, date, venue, meetingId, [raceIds]]]")
+    ap.add_argument("--mapping", help="自訂 JSON；預設用 data/sb_archive_meeting_ids.json")
+    ap.add_argument("--only", help="淨係做名入面含呢個字嘅場次（例如 Flemington）")
     args = ap.parse_args()
 
+    ids = load_meeting_ids(args.mapping or MEETING_IDS)
+    if not ids:
+        return 1
+    rows = sorted(ids.items(), key=lambda kv: kv[1]["date"])
+    if args.only:
+        rows = [r for r in rows if args.only.lower() in r[0].lower()]
+
     if args.plan or not args.run:
-        ms = archive_meetings()
-        known = [m for m in ms if m[2] in TRACK_SLUG]
-        print(f"archive 有 {len(ms)} 個場次，其中 {len(known)} 個馬場 slug 已知\n")
-        print(f"{'目錄':46}{'日期':>10}  puntcdn 檔名（缺 meetingId）")
-        for p, d, t in known[:15]:
-            print(f"{p.name[:44]:46}{d:>10}  {d}_{TRACK_SLUG[t]}_<id>.pdf")
-        miss = sorted({t for _, _, t in ms if t not in TRACK_SLUG})
-        if miss:
-            print(f"\n未有 slug 對應（要加入 TRACK_SLUG）：{miss}")
-        print("\n⚠️ 歷史 meetingId 冇公開索引可以反查 —— sportsbetform 首頁 403。"
-              "\n   當日場次可以行 NextEvents API；歷史場次要人手提供 ID，"
-              "\n   再用 --mapping 餵入。呢個係已知限制，唔係未寫。")
+        races = sum(len(v["races"]) for _, v in rows)
+        print(f"{len(rows)} 個場次 / {races} 場，"
+              f"{rows[0][1]['date']} → {rows[-1][1]['date']}\n")
+        print(f"{'目錄':46}{'meetingId':>11}{'場數':>6}")
+        for name, v in rows[:20]:
+            print(f"{name[:44]:46}{v['meetingId']:>11}{len(v['races']):>6}")
+        if len(rows) > 20:
+            print(f"... 仲有 {len(rows)-20} 個")
+        print(f"\n預計請求 {races} 個 × {args.delay:.0f}s ≈ "
+              f"{races*args.delay/3600:.1f} 小時（cache 命中唔計）")
         return 0
 
-    if not args.mapping:
-        print("❌ --run 要 --mapping（見 --plan 嘅說明）")
-        return 1
-    import json
-    raw = json.loads(Path(args.mapping).read_text())
-    mapping = [(Path(d), dt, v, mid, rids) for d, dt, v, mid, rids in raw]
+    mapping = [(name, v["date"],
+                v["slug"].replace("_", " ").title(), v["meetingId"], v["races"])
+               for name, v in rows]
     n = backfill(mapping, args.out_root, args.delay, args.max_meetings)
-    print(f"完成 {n} 個馬場")
+    print(f"完成 {n} 個馬場 → {args.out_root}")
     return 0
 
 
