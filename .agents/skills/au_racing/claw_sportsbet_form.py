@@ -154,6 +154,11 @@ def parse_overview(html):
         rec = dict(zip(cols, cells[1:]))
         rec["jockey"] = re.sub(r"\s*\([^)]*\)\s*$", "", rec.get("jockey", "")).strip()
         rec["scratched"] = "scr" in str(rec.get("fixed_win", "")).lower()
+        # ⚠️ 表尾嗰格係**投注掣**（文字 "W"），唔係賠率 —— 賠率由 JS 填，
+        # static HTML 攞唔到。之前照抄就寫咗 `Flucs:$- $W` 落 Formguide。
+        # 真賠率要行 sportsbet.com.au 嘅 Markets API（winPrice / placePrice）。
+        if not re.fullmatch(r"\$?\d+(?:\.\d+)?", str(rec.get("fixed_win", "")).strip()):
+            rec["fixed_win"] = "-"
         out[num] = rec
     return out
 
@@ -359,6 +364,12 @@ def parse_runner_blocks(html):
                 and ne[k + 2][1] == "T"):
             cur = {"name": l.strip(), "barrier": int(ne[k + 1][1].strip("()")),
                    "stats": {}, "_start": i}
+            # 負磅：`W` 標籤之後嗰行（例 `61.5kg`）。Racecard 要佢，
+            # 唔攞就會寫成 `Weight: ?`。
+            for j in range(k + 3, min(k + 12, len(ne))):
+                if ne[j][1] == "W" and j + 1 < len(ne) and re.fullmatch(r"[\d.]+kg", ne[j + 1][1]):
+                    cur["stats"]["Weight"] = ne[j + 1][1]
+                    break
             blocks.append(cur)
             continue
         if cur is not None and l in _STAT_KEYS and k + 1 < len(ne):
