@@ -211,11 +211,13 @@ class TestDimensionScaleAndWeightsStayInLockstep:
         """濕地 overlay 直接加落 ability 分，唔經矩陣 —— ability spread 一變，
         overlay 唔跟就會靜靜雞縮水／發脹。實測唔跟 → 71 場排名有變，其中 70 場係濕地。
 
-        累積係數 = 1.4225（維度尺正規化令 spread 放大）× 0.9315（重新配權令
-        場內 pure_7d SD 由 5.1211 收窄到 4.7702）。兩個都係**量度出嚟**嘅比例，
-        唔係搵返嚟嘅參數。
+        累積係數 = 1.4225（維度尺正規化令 spread 放大）
+                 × 0.9315（2026-08-01 重配權，場內 pure_7d SD 5.1211→4.7702）
+                 × 0.8471（2026-08-03 Sportsbet 重配權，SD 4.4085→3.7344）
+        全部都係**量度出嚟**嘅比例，唔係搵返嚟嘅參數。每次動 MATRIX_WEIGHTS
+        都要重新量 SD 再乘上去 —— 呢個測試就係逼你唔好漏。
         """
-        cumulative = 1.4225 * 0.9315
+        cumulative = 1.4225 * 0.9315 * 0.8471
         assert WET_FORM_FEATURE_SCALE == pytest.approx(12.0 * cumulative, rel=0.01)
         assert WET_FORM_MAX_ABS == pytest.approx(5.0 * cumulative, rel=0.01)
 

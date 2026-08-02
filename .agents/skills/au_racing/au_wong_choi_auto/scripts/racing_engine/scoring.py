@@ -87,7 +87,15 @@ REPORT_ONLY_FEATURE_KEYS = (
 # 舊值（2026-08-01 正規化配套，rank-neutral 嗰組）：
 #   stability 0.43664 / pace_perf 0.26149 / race_shape 0.05136
 #   jockey_trainer 0.11055 / class_weight 0.02347 / track 0.11650 / form_line 0.0
-MATRIX_WEIGHTS = {"stability":0.35364,"pace_perf":0.22416,"race_shape":0.07948,"jockey_trainer":0.17251,"class_weight":0.06375,"track":0.10646,"form_line":0.000}
+# 2026-08-03：Sportsbet 語料重新配權（604 場 / 6,228 匹，2026-01-24→08-01）。
+# 換源之後 leaf 分佈真係變咗（`pace_figure` 覆蓋 50%→96%、`sectional` 98%→34%），
+# 舊權重係喺舊分佈上 fit 嘅。直接證據：補完騎練 LY token 之後 `jockey_score`
+# 場內 AUC 0.565→0.589，但排名反而跌（首選=頭馬 141→134）—— leaf 好咗，配權冇跟住。
+# 取 975 條過閘候選嘅逐維度中位數（共識），**唔取 argmax**：argmax 喺 holdout
+# gold −3.30 / champ −5.49，又一次重現教科書 overfit。
+# walkforward 5/5 窗口全勝；全樣本 604 場 11/11 指標改善（winT3 +3.97、
+# any2 +2.81、t3prec +1.55、gold +1.32）。
+MATRIX_WEIGHTS = {"stability":0.38232,"pace_perf":0.14407,"race_shape":0.11502,"jockey_trainer":0.19149,"class_weight":0.07337,"track":0.09373,"form_line":0.000}
 
 # ── Wet-form 7D feature (gated to Soft/Heavy races) ──
 # A horse's career wet-going place record IS predictive of box-trifecta on wet
@@ -109,13 +117,17 @@ MATRIX_WEIGHTS = {"stability":0.35364,"pace_perf":0.22416,"race_shape":0.07948,"
 # 所以 overlay 要再 ×0.9315 先至維持返同一個相對影響力。呢個係**推導出嚟嘅**
 # 係數（SD 比例），唔係搵返嚟嘅參數 —— 唔跟就等於靜靜雞畀濕地 overlay 加咗 7.4%
 # 話事權。累積係數 1.4225 × 0.9315 = 1.3251。
+# 2026-08-03：Sportsbet 重配權令場內 pure_7d SD 由 4.4085 收窄到 3.7344，
+# 所以 overlay 再乘 ×0.8471（= 3.7344/4.4085）。**呢個係量出嚟嘅比例，唔係
+# fit 出嚟嘅參數** —— overlay 直接加落 ability，唔跟住收窄就會靜靜咁放大
+# 佢喺濕地賽嘅相對話事權。
 # 實測確認佢冇害：holdout champ 由 +0.00 變 +1.87、mrr +0.73 → +1.81、
 # t3prec −0.31 → 0.00，dev 完全一樣。
 # Rollback: 12.0 / 5.0（配 gain 全部 = 1）。
-WET_FORM_FEATURE_SCALE = 15.90  # 原 12.0 ×1.4225×0.9315；points of ability per (shrunk_wet_place_rate − prior)
+WET_FORM_FEATURE_SCALE = 13.47  # 15.90 ×0.8471（2026-08-03 重配權）；points of ability per (shrunk_wet_place_rate − prior)
 WET_FORM_SHRINK_A = 4.0         # pseudo-count for place-rate shrinkage toward prior
 WET_FORM_PRIOR = 0.5            # global career wet place-rate (~0.496 measured)
-WET_FORM_MAX_ABS = 6.62         # 原 5.0 ×1.4225×0.9315；clamp the feature to a sane ±range
+WET_FORM_MAX_ABS = 5.61         # 6.62 ×0.8471（2026-08-03 重配權）；clamp the feature to a sane ±range
 
 
 def _parse_wet_record(going_stats_line):
