@@ -197,6 +197,48 @@ def parse_overview(html):
     return out
 
 
+RE_PERSON = re.compile(r'href="/(Jockey|Trainer)/(\d+)/"[^>]*>([^<]{2,60})<')
+
+
+def parse_people(html):
+    """賽事頁 → {(kind, 正規化名): person_id}。
+
+    連結文字係**截短**咗嘅（`Ben, Will & Jd ...`、`Daniel Stackhou...`），
+    仲會帶埋後綴（`Emily Pozman  (a-3)`）。所以配對要用**前綴**，唔可以要求
+    全等 —— 總覽表出全名，連結出短名。
+    """
+    out = {}
+    for kind, pid, raw in RE_PERSON.findall(html):
+        name = re.sub(r"\s*\([^)]*\)\s*$", "", raw).strip().rstrip(".").strip()
+        if name:
+            out.setdefault((kind, _people_key(name)), pid)
+    return out
+
+
+def _people_key(name):
+    return re.sub(r"[^a-z0-9]", "", (name or "").lower())
+
+
+def _match_person(people, kind, name, min_len=6):
+    """總覽表嘅全名 → person_id。連結文字截短過，所以做前綴比對。"""
+    key = _people_key(name)
+    if not key:
+        return None
+    hit = people.get((kind, key))
+    if hit:
+        return hit
+    # ⚠️ 前綴比對**兩邊**都要夠長。只限制候選長度嘅話，一個 "C" 之類嘅殘缺名
+    # 會前綴配中 "ciaronmaher" —— 配錯人比冇數據更差，因為佢會靜靜咁畀
+    # 另一個練馬師嘅往績當咗自己嘅。
+    if len(key) < min_len:
+        return None
+    matches = {pid for (k, cand), pid in people.items()
+               if k == kind and len(cand) >= min_len
+               and (key.startswith(cand) or cand.startswith(key))}
+    # 撞正多過一個就唔猜 —— 寧可冇數據
+    return matches.pop() if len(matches) == 1 else None
+
+
 def parse_race(html):
     """由賽事頁 HTML 抽出 meta + 逐匹馬 + 逐場往績。"""
     txt = to_text(html)
@@ -223,6 +265,8 @@ def parse_race(html):
         meta["distance"] = int(m.group(1))
 
     overview = parse_overview(html)
+    # 名 → ID 對應，寫 meeting 檔嗰陣攞騎練統計用
+    meta["people_by_name"] = parse_people(html)
     # 騎練 profile ID 直接喺賽事頁 —— 冇 slug 要猜（Racenet 就係死喺呢度兩次）。
     people = [(k, pid) for k, pid in
               re.findall(r'href="/(Jockey|Trainer)/(\d+)/"', html)]
@@ -497,7 +541,17 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
     idx = [f"# AU Wong Choi Formguide Index\n", f"Meeting: {venue} {date_str}\n"]
     speedmaps = speedmaps or {}
     odds = odds or {}
-    kept = dropped = 0
+    kept = dropped = ly_hit = ly_miss = 0
+    # ⚠️ `_trainer_ly` / `_jockey_ly` 一直**有人讀、冇人寫** —— write_meeting 用
+    # `st.get('_trainer_ly','-')`，但成個 repo 冇一個地方 set 佢，所以每匹馬都出
+    # `(LY: -)`。引擎個 `(LY: N:w-p-s)` token 就係騎練往績嘅入口，冇咗佢
+    # `jockey_score` 得 63%（現有源 99%）、`trainer_score` 51%。
+    # 抓一千幾個個人頁但唔接呢條線，等於抓完擺喺度。
+    try:
+        import sb_people_stats
+        _people_cache = sb_people_stats.load_cache()
+    except Exception:  # noqa: BLE001 — 攞唔到統計唔應該炸咗寫檔
+        sb_people_stats, _people_cache = None, {}
     for race_no, p, blocks in races:
         meta = p["meta"]
         sm = speedmaps.get(race_no) or {}
@@ -538,8 +592,19 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
                 f_fg.write(f"[{num}] {name} ({bar})\n")
                 f_fg.write(f"{ov.get('age_sex','')} | Sire: | Dam: \n")
                 f_fg.write(f"Flucs:$- ${ov.get('fixed_win','-')}\n")
-                f_fg.write(f"T: {ov.get('trainer','')} (LY: {st.get('_trainer_ly','-')}) "
-                           f"| J: {ov.get('jockey','')} (LY: {st.get('_jockey_ly','-')})\n\n")
+                def _ly(kind, person_name):
+                    nonlocal ly_hit, ly_miss
+                    pid = _match_person(meta.get("people_by_name") or {}, kind,
+                                        person_name)
+                    entry = _people_cache.get(f"{kind.lower()}|{pid}") if pid else None
+                    tok = (entry or {}).get("ly") or "-"
+                    if tok != "-":
+                        ly_hit += 1
+                    else:
+                        ly_miss += 1
+                    return tok
+                f_fg.write(f"T: {ov.get('trainer','')} (LY: {_ly('Trainer', ov.get('trainer',''))}) "
+                           f"| J: {ov.get('jockey','')} (LY: {_ly('Jockey', ov.get('jockey',''))})\n\n")
                 f_fg.write(f"{'Career:':<10} {st.get('Career','-'):<15} "
                            f"{'Last 10:':<10} {ov.get('last6','-'):<15} "
                            f"{'Prize:':<10} {st.get('Prizemoney','-'):<15}\n")
@@ -597,11 +662,12 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
     (out / f"{mm_dd} Formguide_Index.md").write_text("".join(idx), encoding="utf-8")
     (out / "Meeting_Summary.md").write_text(
         f"# {venue} {date_str}\n\n{len(races)} races extracted from Sportsbet.\n"
-        f"Form runs kept: {kept}; dropped as on/after {date_str}: {dropped}\n",
+        f"Form runs kept: {kept}; dropped as on/after {date_str}: {dropped}\n"
+        f"Jockey/trainer LY tokens filled: {ly_hit}; missing: {ly_miss}\n",
         encoding="utf-8")
     if verbose:
         print(f"   往績行：保留 {kept}，因為喺 {date_str} 當日或之後而丟棄 {dropped}")
-    return {"kept": kept, "dropped": dropped}
+    return {"kept": kept, "dropped": dropped, "ly_hit": ly_hit, "ly_miss": ly_miss}
 
 
 RE_SPEED = re.compile(r"^\s*(\d{1,2})\s*$")

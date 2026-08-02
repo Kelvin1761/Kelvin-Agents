@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import re
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -70,6 +71,27 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", "2")
             self.end_headers()
             self.wfile.write(b"ok")
+            return
+        if path == "/people":
+            # 騎練個人頁，**按出現次數排序**。頻率極度傾斜（中位數 4 次，
+            # 最高 932 次），所以頭 100 個已經覆蓋 65% 出現次數、頭 400 個 92%。
+            # 排好序之後，中途幾時停都係「用嗰段時間攞到最好嘅覆蓋」。
+            import collections
+            import json as _json
+            ids = collections.Counter()
+            for f in Path(CACHE_DIR).glob("*.html"):
+                for kind, pid in re.findall(r'href="/(Jockey|Trainer)/(\d+)/"',
+                                            f.read_text(errors="replace")):
+                    ids[(kind, pid)] += 1
+            jobs = [[k, i] for (k, i), _ in ids.most_common()
+                    if not cache_path(f"{BASE}/{k}/{i}/").exists()]
+            body = _json.dumps(jobs).encode()
+            self.send_response(200)
+            self._cors()
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
             return
         if path != "/jobs":
             self.send_response(404)
