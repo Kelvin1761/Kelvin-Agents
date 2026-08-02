@@ -98,7 +98,8 @@ def load_meeting_ids(path=MEETING_IDS):
         return {}
 
 
-def backfill(mapping, out_root, delay=12.0, max_meetings=3, verbose=True):
+def backfill(mapping, out_root, delay=12.0, max_meetings=3, verbose=True,
+             cache_only=False):
     """`mapping` = [(dir_name, date_str, venue, meeting_id, [race_ids])]。
 
     每個馬場抽完即刻寫檔 + 更新馬匹索引，所以中途斷咗，已完成嗰啲唔會蝕。
@@ -107,7 +108,7 @@ def backfill(mapping, out_root, delay=12.0, max_meetings=3, verbose=True):
     import sb_horse_index
 
     f = SportsbetFormFetcher(delay=delay, verbose=False)
-    done = skipped = 0
+    done = skipped = missing_pages = 0
     for dir_name, date_str, venue, mid, race_ids in mapping[:max_meetings]:
         out = Path(out_root) / dir_name
         if (out / "Meeting_Summary.md").exists():
@@ -115,7 +116,14 @@ def backfill(mapping, out_root, delay=12.0, max_meetings=3, verbose=True):
             continue
         races, blocks, missing = [], [], 0
         for rid in race_ids:
-            html = f.get(f"{BASE}/{mid}/{rid}/")
+            url = f"{BASE}/{mid}/{rid}/"
+            # ⚠️ cache-only：抽取階段行瀏覽器，呢度就唔應該再出網。冇咗呢個閘，
+            # 一個抽漏咗嘅版就會用 `--delay 0` 去打一個啱啱擋過我哋嘅網站。
+            if cache_only and not f._cache_path(url).exists():
+                missing_pages += 1
+                missing += 1
+                continue
+            html = f.get(url)
             if not html:
                 missing += 1
                 continue
@@ -141,6 +149,8 @@ def backfill(mapping, out_root, delay=12.0, max_meetings=3, verbose=True):
               flush=True)
     if skipped:
         print(f"   ⏭️ 已經有嘅跳過 {skipped} 個")
+    if missing_pages:
+        print(f"   ⚠️ {missing_pages} 版唔喺 cache，cache-only 之下跳過（未抽到）")
     return done
 
 
@@ -153,6 +163,8 @@ def main():
     ap.add_argument("--max-meetings", type=int, default=3)
     ap.add_argument("--mapping", help="自訂 JSON；預設用 data/sb_archive_meeting_ids.json")
     ap.add_argument("--only", help="淨係做名入面含呢個字嘅場次（例如 Flemington）")
+    ap.add_argument("--cache-only", action="store_true",
+                    help="只讀 cache，一個網絡請求都唔出（抽取行瀏覽器嗰陣用）")
     args = ap.parse_args()
 
     ids = load_meeting_ids(args.mapping or MEETING_IDS)
@@ -178,7 +190,8 @@ def main():
     mapping = [(name, v["date"],
                 v["slug"].replace("_", " ").title(), v["meetingId"], v["races"])
                for name, v in rows]
-    n = backfill(mapping, args.out_root, args.delay, args.max_meetings)
+    n = backfill(mapping, args.out_root, args.delay, args.max_meetings,
+                 cache_only=args.cache_only)
     print(f"完成 {n} 個馬場 → {args.out_root}")
     return 0
 

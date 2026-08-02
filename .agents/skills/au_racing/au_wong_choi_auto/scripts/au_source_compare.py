@@ -76,6 +76,35 @@ def results_from_cache(meeting):
     return out
 
 
+def form_depth(meeting):
+    """每匹馬平均保留到幾多仗**賽前**往績。
+
+    ⚠️ 呢個係歷史重抽最硬嘅限制，而且係單調隨年齡衰減。Sportsbet 每匹馬只出
+    最近十幾仗，所以場次愈舊，嗰十幾仗入面愈多係**賽後**跑嘅，時點過濾之後
+    剩返嘅賽前往績就愈少：
+
+        2026-08 → 8.8 仗/匹      2026-02 → 4.8
+        2026-04 → 6.0            2025-08 → 1.6
+
+    1.6 仗嘅馬，近績趨勢／PI 平均／段速聚合／班次變化全部算唔出。所以舊場次
+    重抽返嚟**唔會**好過現有 archive —— 現有嗰批係當時賽前抓嘅，深度完整。
+    唔分開睇嘅話，「Sportsbet 差啲」其實只係「我哋手上往績少咗」。
+    """
+    from claw_sportsbet_form import (BASE, SportsbetFormFetcher,
+                                     parse_runner_blocks, run_date)
+    f = SportsbetFormFetcher(delay=0.0, verbose=False)
+    kept = horses = 0
+    for rid in meeting["races"]:
+        url = f"{BASE}/{meeting['meetingId']}/{rid}/"
+        if not f._cache_path(url).exists():
+            continue
+        for blk in parse_runner_blocks(f.get(url)):
+            horses += 1
+            kept += sum(1 for r in blk.get("runs", [])
+                        if run_date(r) and run_date(r) < meeting["date"])
+    return (kept / horses) if horses else 0.0
+
+
 def picks_from_meeting(meeting_dir):
     """Meeting_Auto_Scoring.csv → {race_no: [norm_name 由第一位排落去]}。"""
     p = Path(meeting_dir) / "Meeting_Auto_Scoring.csv"
@@ -126,12 +155,16 @@ def main():
     ap.add_argument("--old", help="現有 archive root（唔畀就只評 new）")
     ap.add_argument("--only", help="淨係做名入面含呢個字嘅場次")
     ap.add_argument("--json", help="把逐場結果寫落呢個檔")
+    ap.add_argument("--min-depth", type=float, default=4.0,
+                    help="每匹馬最少幾多仗賽前往績先當可比（預設 4）")
     args = ap.parse_args()
 
     from sb_backfill_archive import load_meeting_ids
 
     ids = load_meeting_ids()
-    per_meeting, agg = [], {"new": [], "old": []}
+    per_meeting = []
+    agg = {"new": [], "old": []}          # 深度足夠
+    thin = {"new": [], "old": []}         # 深度唔夠，分開報
     for name, meta in sorted(ids.items(), key=lambda kv: kv[1]["date"]):
         if args.only and args.only.lower() not in name.lower():
             continue
@@ -155,26 +188,40 @@ def main():
             print(f"⚠️ {name}：new {len(new_rows)} 場 / old {len(old_rows)} 場，"
                   f"只取頭 {common} 場")
             new_rows, old_rows = new_rows[:common], old_rows[:common]
-        agg["new"] += new_rows
-        agg["old"] += old_rows
+        depth = form_depth(meta)
+        bucket = agg if depth >= args.min_depth else thin
+        bucket["new"] += new_rows
+        bucket["old"] += old_rows
         per_meeting.append({"meeting": name, "races": len(new_rows),
+                            "form_depth": round(depth, 2),
                             "new": report(name, new_rows),
                             "old": report(name, old_rows) if old_rows else None})
 
-    print(f"\n{'':30}{'Sportsbet':>12}{'現有源':>12}")
-    n, o = report("new", agg["new"]), report("old", agg["old"])
-    if not n:
-        print("冇任何可評場次 —— 先跑 sb_backfill_archive.py --run")
-        return 1
+    def block(title, pair):
+        print(f"\n{title}")
+        print(f"{'':30}{'Sportsbet':>12}{'現有源':>12}")
+        n_, o_ = report("new", pair["new"]), report("old", pair["old"])
+        if not n_:
+            print("  （冇場次）")
+            return None, None
+        for k, lab in labels:
+            ov_ = f"{o_[k]:>12}" if o_ else f"{'-':>12}"
+            print(f"{lab:30}{n_[k]:>12}{ov_}")
+        ov_ = f"{o_['t3prec']:>11.1%}" if o_ else f"{'-':>12}"
+        print(f"{'前三精準':30}{n_['t3prec']:>11.1%}{ov_}")
+        return n_, o_
+
     labels = [("races", "場次"), ("gold", "Gold 3/3"),
               ("good_positional", "Good 位置"), ("good_any2", "Good any2"),
               ("pass_any1", "Pass any1"), ("miss", "Miss"),
               ("champion", "首選=頭馬"), ("winner_in_top3", "頭馬入前三")]
-    for k, lab in labels:
-        ov = f"{o[k]:>12}" if o else f"{'-':>12}"
-        print(f"{lab:30}{n[k]:>12}{ov}")
-    ov = f"{o['t3prec']:>11.1%}" if o else f"{'-':>12}"
-    print(f"{'前三精準':30}{n['t3prec']:>11.1%}{ov}")
+    n, o = block(f"■ 往績深度 ≥{args.min_depth} 仗/匹（可比）", agg)
+    if thin["new"]:
+        block(f"■ 往績深度 <{args.min_depth} 仗/匹 —— Sportsbet 手上往績太少，"
+              f"呢度嘅差距量緊數據量唔係數據源", thin)
+    if not n:
+        print("冇任何可評場次 —— 先跑 sb_backfill_archive.py --run")
+        return 1
 
     races = n["races"]
     if races < 60:
