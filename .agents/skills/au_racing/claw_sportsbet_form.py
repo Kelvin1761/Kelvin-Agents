@@ -461,7 +461,16 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True):
                            f"{'3rd Up:':<10} {st.get('3rd Up','-'):<15}\n")
                 f_fg.write(f"{'Season:':<10} {'-':<15} "
                            f"{'12 Month:':<10} {st.get('12 months','-'):<15} "
-                           f"{'Fav:':<10} {'-':<15}\n\n")
+                           f"{'Fav:':<10} {'-':<15}\n")
+                # Sportsbet 獨有／之前冇寫出嚟嘅欄位。純新增行，唔會撞到既有 regex。
+                # `Days` = 距上仗日數（久休訊號）；`Ave $` = 平均獎金（班次代理）；
+                # `J/H` = 人馬配搭往績（`jockey_horse_fit_score` 缺咗嘅嘢）。
+                f_fg.write(f"{'Days:':<10} {ov.get('days','-') or '-':<15} "
+                           f"{'Ave $:':<10} {ov.get('ave_prize','-'):<15} "
+                           f"{'J/H:':<10} {st.get('Jockey','-'):<15}\n")
+                f_fg.write(f"{'WinRange:':<10} {st.get('Win Range','-'):<15} "
+                           f"{'Turf:':<10} {st.get('Turf','-'):<15} "
+                           f"{'12moRec:':<10} {st.get('12 months','-'):<15}\n\n")
                 for run in blk.get("runs", []):
                     a, b = run_line(run)
                     f_fg.write(a + "\n" + b + "\n")
