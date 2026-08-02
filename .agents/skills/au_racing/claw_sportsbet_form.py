@@ -111,11 +111,21 @@ def to_text(html):
     return "\n".join(re.sub(r"[ \t]+", " ", l).strip() for l in t.splitlines())
 
 
+# ⚠️ 檔位同負磅**兩樣都可以冇**。試閘寫成
+#     `Finished 2/8 (of 0), Jockey Thomas Stockdale, Weight kg`
+# —— 完全冇 `Barrier N,`，而 `Weight kg` 中間冇數字。舊 regex 兩樣都要求，
+# 所以呢類**一段都 match 唔到**：Flemington R5 頁面有 160 段 `Finished x/y`，
+# 只 parse 到 109 段，**漏咗 51 段（32%）**，而且全部係試閘。
+# 呢個就係 `trial_score` 追唔到現有數據源嘅主因。
+# 冇檔位／負磅嘅時候留 None —— 現有源都係寫 `(None) Nonekg`，格式對得上。
 RE_RUN = re.compile(
     r"Finished\s+(?P<pos>\d+)\s*/\s*(?P<field>\d+)"
     r"(?:\s+(?P<margin>[\d.]+)L)?"
-    r".*?Jockey\s+(?P<jockey>[^,]+?),\s*Barrier\s+(?P<barrier>\d+),"
-    r"\s*Weight\s+(?P<weight>[\d.]+)kg(?:\s+(?P<sp>[\d.]+))?", re.S)
+    r".*?Jockey\s+(?P<jockey>[^,]+?)"
+    r"(?:,\s*Barrier\s+(?P<barrier>\d+))?"
+    # ⚠️ SP 後面唔可以跟字母。負磅冇數字嘅時候，下一個 token 係 `1st Kyle …`，
+    # 而 `[\d.]+` 會食咗個 "1" 當 SP —— 試閘變咗 `Flucs:$- $1`。
+    r",\s*Weight\s*(?P<weight>[\d.]+)?kg(?:\s+(?P<sp>\d+(?:\.\d+)?)(?![\w.]))?", re.S)
 # ⚠️ 試閘寫 `(of 0)` —— **冇 `$` 號**。舊 regex 要求 `$`，所以試閘 match 唔到，
 # 跟住喺較闊嘅視窗度撈到隔籬**正式賽**嘅獎金：試閘顯示 $175,000，班次判斷即刻錯。
 RE_PRIZE = re.compile(r"\(of\s*\$?([\d,]+)\)")
@@ -145,8 +155,11 @@ RE_HDR = re.compile(
 # 認到就唔會計入 PI／近績趨勢，但仍然入到試閘分。
 TRIAL_MARKER = "**(TRIAL)**"
 RE_TRIAL = re.compile(r"Barrier\s*Trial|Jump\s*Out", re.I)
+# ⚠️ 試閘唔публ負磅，寫 `1st Rivkin (Mollie Fitzgerald n/a)`。舊 regex 硬要
+# `NN.Nkg`，所以**試閘嘅頭三名全部攞唔到** —— 而嗰個正正係試閘最有價值嘅嘢。
 RE_OPP = re.compile(r"(?P<ord>1st|2nd|3rd)\s+(?P<name>[A-Z][A-Za-z'\- ]+?)\s*"
-                    r"\((?P<jockey>[^)]*?)\s(?P<wt>[\d.]+)kg\)(?:\s*(?P<mgn>[\d.]+)L)?")
+                    r"\((?P<jockey>[^)]*?)\s(?:(?P<wt>[\d.]+)kg|n/a)\)"
+                    r"(?:\s*(?P<mgn>[\d.]+)L)?")
 RE_STAT = re.compile(r"(?P<k>1st Up|2nd Up|3rd Up|Distance|Track|Trk/Dist|Firm|Good|Soft|"
                      r"Heavy|Synthetic|Turf|Career|Jockey|12 months)\s+(?P<v>\d+:\s*[\d\-]+)")
 

@@ -26,11 +26,13 @@ sys.path.insert(0, str(AU_RACING))
 from claw_sportsbet_form import parse_race, run_line  # noqa: E402
 
 # 照 Sportsbet 真實排版：header → Finished → 頭三名，逐仗接落去。
+# 逐字照 Sportsbet 真實排版：試閘**冇 Barrier**、`Weight kg` 冇數字、
+# 對手嘅負磅寫 `n/a`。三樣都曾經令成類試閘 parse 唔到。
 TRIAL = ("Wyong ( ) 23/12/2025 Race 7 1000m OPEN-BT Barrier Trial "
-         "Finished 1/5 (of 0), Jockey Mollie Fitzgerald, Barrier 4, Weight 57.0kg "
+         "Finished 1/5 (of 0), Jockey Mollie Fitzgerald, Weight kg "
          "Sectionals 600m 35.560s "
-         "1st Rivkin (Mollie Fitzgerald 57.0kg) Winning Time 1:01.540 "
-         "2nd Zelestial (J Duggan 57.0kg) 0.37L 3rd Oui Flourish (R Jones 57.0kg) 0.85L ")
+         "1st Rivkin (Mollie Fitzgerald n/a) Winning Time 1:01.540 "
+         "2nd Zelestial (J Duggan n/a) 0.37L 3rd Oui Flourish (R Jones n/a) 0.85L ")
 REAL = ("Dubbo ( Good ) 03/05/2026 Race 5 1100m BM82 "
         "Finished 2/13 0.43L $5,050 (of $27,000), Jockey Reece Jones, "
         "Barrier 10, Weight 57.0kg 5.50 "
@@ -67,6 +69,31 @@ class TrialParsingTest(unittest.TestCase):
     def test_the_trial_label_does_not_leak_into_the_track_name(self):
         line, _ = run_line(_runs(TRIAL)[0])
         self.assertTrue(line.startswith("Wyong "), line[:60])
+
+
+class OptionalFieldsTest(unittest.TestCase):
+    """試閘冇檔位、冇負磅、對手冇負磅 —— 三樣都唔可以令成段 parse 唔到。"""
+
+    def test_a_run_with_no_barrier_or_weight_still_parses(self):
+        runs = _runs(TRIAL)
+        self.assertEqual(len(runs), 1, "冇檔位／負磅 → 成段被丟")
+        self.assertIsNone(runs[0]["barrier"])
+        self.assertIsNone(runs[0]["weight"])
+
+    def test_sp_is_not_scraped_out_of_the_word_first(self):
+        # `Weight kg 1st Rivkin …` —— `[\d.]+` 會食咗個 "1" 當 SP，出 `Flucs:$- $1`
+        self.assertIsNone(_runs(TRIAL)[0]["sp"])
+
+    def test_trial_placegetters_survive_the_n_a_weight(self):
+        """呢個就係試閘最有價值嘅嘢：邊三隻跑頭三、爭幾多。"""
+        opp = _runs(TRIAL)[0]["opponents"]
+        self.assertEqual([o["name"].strip() for o in opp],
+                         ["Rivkin", "Zelestial", "Oui Flourish"])
+        self.assertEqual(opp[1]["mgn"], "0.37")
+
+    def test_a_real_run_still_reads_barrier_weight_and_sp(self):
+        r = _runs(REAL)[0]
+        self.assertEqual((r["barrier"], r["weight"], r["sp"]), ("10", "57.0", "5.50"))
 
 
 class ScanWindowTest(unittest.TestCase):
