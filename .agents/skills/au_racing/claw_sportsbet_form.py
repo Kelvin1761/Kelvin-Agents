@@ -400,7 +400,8 @@ def parse_runner_blocks(html):
     return blocks
 
 
-def write_meeting(races, out_dir, date_str, venue, verbose=True):
+def write_meeting(races, out_dir, date_str, venue, verbose=True,
+                  speedmaps=None, odds=None):
     """寫 Racenet 格式嘅 meeting 檔。`races` = [(race_no, parsed, blocks)]。
 
     格式**唔可以自創** —— 下游 `inject_fact_anchors` 同引擎逐行 regex 食佢。
@@ -410,8 +411,12 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True):
     out.mkdir(parents=True, exist_ok=True)
     mm_dd = date_str[5:]
     idx = [f"# AU Wong Choi Formguide Index\n", f"Meeting: {venue} {date_str}\n"]
+    speedmaps = speedmaps or {}
+    odds = odds or {}
     for race_no, p, blocks in races:
         meta = p["meta"]
+        sm = speedmaps.get(race_no) or {}
+        od = odds.get(race_no) or {}
         cond = meta.get("track_condition", "Unknown")
         dist = meta.get("distance", "?")
         # ⚠️ 標題**一定要**係 `RACE N -- XXXm | class`（行首大寫 RACE）。
@@ -479,7 +484,13 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True):
                            f"{'J/H:':<10} {st.get('Jockey','-'):<15}\n")
                 f_fg.write(f"{'WinRange:':<10} {st.get('Win Range','-'):<15} "
                            f"{'Turf:':<10} {st.get('Turf','-'):<15} "
-                           f"{'12moRec:':<10} {st.get('12 months','-'):<15}\n\n")
+                           f"{'12moRec:':<10} {st.get('12 months','-'):<15}\n")
+                # Sportsbet 獨有：官方預測定位序（Speedmap）同 win/place 賠率。
+                # 兩樣都係新增行，唔會撞到既有 regex；暫時冇 leaf 讀，留住備用。
+                w, pl = od.get(num, (None, None))
+                f_fg.write(f"{'SpeedPos:':<10} {str(sm.get(num,'-')):<15} "
+                           f"{'WinOdds:':<10} {str(w or '-'):<15} "
+                           f"{'PlcOdds:':<10} {str(pl or '-'):<15}\n\n")
                 for run in blk.get("runs", []):
                     a, b = run_line(run)
                     f_fg.write(a + "\n" + b + "\n")
@@ -492,6 +503,66 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True):
     (out / "Meeting_Summary.md").write_text(
         f"# {venue} {date_str}\n\n{len(races)} races extracted from Sportsbet.\n",
         encoding="utf-8")
+
+
+RE_SPEED = re.compile(r"^\s*(\d{1,2})\s*$")
+
+
+def parse_speedmap(html):
+    """`?view=Speedmap` → {馬號: 預測定位序}（1 = 最前）。
+
+    ⚠️ 佢**唔係圖** —— 零 SVG/canvas，純 DOM 文字。版面係
+        Barriers ... Finish post
+        11    10. Salizou      ← 左邊係檔位，右邊 `馬號. 馬名`
+    我哋要嘅係**由後到前嘅列表次序**（表頭寫明 "Predicted settling positions
+    after start"），所以由上到下 enumerate 就係定位序。
+    """
+    txt = to_text(html)
+    order, seen = [], set()
+    started = False
+    for line in txt.splitlines():
+        l = line.strip()
+        if "Predicted settling" in l or "Speed Map" in l:
+            started = True
+            continue
+        if not started:
+            continue
+        m = re.match(r"^(\d{1,2})\.\s+(.+)$", l)
+        if m and m.group(1) not in seen:
+            seen.add(m.group(1))
+            order.append(int(m.group(1)))
+        if "Replay speed map" in l or "Weather" in l:
+            break
+    return {n: i + 1 for i, n in enumerate(order)}
+
+
+def fetch_odds(fetcher, event_id):
+    """Sportsbet Markets API → {馬號: (winPrice, placePrice)}。
+
+    ⚠️ 賠率**唔喺** sportsbetform 嘅 static HTML（嗰格係投注掣，價錢由 JS 填），
+    所以一定要行呢個 API。
+    """
+    url = ("https://www.sportsbet.com.au/apigw/sportsbook-racing/Sportsbook/"
+           f"Racing/Events/{event_id}/Markets")
+    try:
+        r = fetcher.session.get(url, timeout=30)
+        data = r.json() if r.status_code == 200 else None
+    except Exception:  # noqa: BLE001
+        return {}
+    out = {}
+
+    def walk(o):
+        if isinstance(o, dict):
+            num = o.get("runnerNumber") or o.get("competitorNumber")
+            if num and (o.get("winPrice") or o.get("placePrice")):
+                out[int(num)] = (o.get("winPrice"), o.get("placePrice"))
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    walk(data or {})
+    return out
 
 
 def discover_meetings(fetcher, country="Australia"):
