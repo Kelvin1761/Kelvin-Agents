@@ -164,7 +164,20 @@ def runner_features(block, today_dist, horse_name="", today_jockey=""):
         tl = [r["l600"] for r in trials if r["l600"] is not None]
         if tl:
             out["trial_l600_best"] = -min(tl)
+            out["trial_l600_mean"] = -sum(tl) / len(tl)
         out["trial_placed"] = float(sum(1 for r in trials if r["placed"]))
+        # Kelvin：試閘嘅**時間同路程**應該重要過名次。
+        # 名次淨係話你贏咗嗰班對手，時間話你跑得幾快 —— 而試閘對手質素差好遠。
+        near_t = [r["l600"] for r in trials
+                  if r["l600"] is not None and today_dist
+                  and abs(r["dist"] - today_dist) <= 200]
+        if near_t:
+            out["trial_l600_at_dist"] = -min(near_t)
+        # 試閘路程同今日差幾遠（短途試閘講唔到長途能力）
+        if today_dist:
+            out["trial_dist_gap"] = -min(abs(r["dist"] - today_dist) for r in trials)
+        # 最近一次試閘幾耐之前（用往績行嘅相對位置做代理）
+        out["trial_count"] = float(len(trials))
     out["_career_runs"] = float(len(official))   # 分組用，唔係特徵
 
     # ── 段速時間：現行 pace_figure 用**平均** L600 delta，呢度試其他讀法 ──
