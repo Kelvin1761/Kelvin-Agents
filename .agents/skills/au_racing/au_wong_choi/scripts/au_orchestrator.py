@@ -136,8 +136,25 @@ def _default_race_workers() -> int:
         return 3
 
 
+SPORTSBET_EXTRACTOR = (PROJECT_ROOT / ".agents" / "skills" / "au_racing"
+                       / "claw_sportsbet_form.py")
+
+
 def _extract_meeting(url: str) -> Path:
+    # 2026-08-02：Racenet 三條 transport 全封（profile 403、results 202 攔截頁、
+    # Playwright 202），所以 sportsbetform URL 行新抓取器。同一組 9 場 Flemington
+    # 實測，換數據源之後 Miss 由 3 場變 0 場、前三精準 41% → 67%。
+    if "sportsbetform" in url:
+        print("🚀 Extracting AU meeting data via Sportsbet...")
+        _run([PYTHON, str(SPORTSBET_EXTRACTOR), "--race-url", url, "--probe"])
+        meeting_dir = _get_target_dir_from_url(url)
+        if not meeting_dir or not meeting_dir.exists():
+            raise FileNotFoundError(
+                "Sportsbet 抽取要 --meeting-url/--races/--out-dir，"
+                "單靠 URL 推唔出馬場目錄。見 claw_sportsbet_form.py。")
+        return meeting_dir
     print("🚀 Extracting AU meeting data via Race Extractor...")
+    print("⚠️ Racenet 由 2026-08-02 起全面封鎖，呢條路預期會失敗 —— 改用 Sportsbet。")
     _run([PYTHON, str(EXTRACTOR), url, "all"])
     meeting_dir = _get_target_dir_from_url(url)
     if not meeting_dir or not meeting_dir.exists():

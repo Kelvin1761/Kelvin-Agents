@@ -523,7 +523,32 @@ def main():
     ap.add_argument("--delay", type=float, default=DEFAULT_DELAY)
     ap.add_argument("--no-cache", action="store_true")
     ap.add_argument("--dump-text", help="把純文字寫去呢個路徑（debug 用）")
+    ap.add_argument("--meeting-url", help="馬場首頁 URL（/{meetingId}/{raceId}/ 任何一場都得）")
+    ap.add_argument("--races", help="逗號分隔嘅 raceId 清單")
+    ap.add_argument("--out-dir", help="寫 Racecard/Formguide 落邊")
+    ap.add_argument("--date", help="YYYY-MM-DD")
+    ap.add_argument("--venue", help="馬場名")
     args = ap.parse_args()
+
+    # 成個馬場模式
+    if args.meeting_url and args.races and args.out_dir:
+        f = SportsbetFormFetcher(delay=args.delay, use_cache=not args.no_cache)
+        mid = re.search(r"/(\d+)/", args.meeting_url)
+        mid = mid.group(1) if mid else args.meeting
+        out = []
+        for i, rid in enumerate(args.races.split(","), 1):
+            html = f.get(f"{BASE}/{mid}/{rid.strip()}/")
+            if not html:
+                print(f"   ⚠️ R{i} 攞唔到，跳過")
+                continue
+            pr = parse_race(html)
+            out.append((pr["meta"].get("race_number", i), pr, parse_runner_blocks(html)))
+        if not out:
+            print("❌ 一場都攞唔到")
+            return 1
+        write_meeting(out, args.out_dir, args.date or "2026-01-01",
+                      args.venue or (out[0][1]["meta"].get("venue") or "Unknown"))
+        return 0
 
     if args.race_url:
         url = args.race_url
