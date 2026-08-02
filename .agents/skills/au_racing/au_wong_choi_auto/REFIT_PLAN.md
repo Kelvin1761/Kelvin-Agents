@@ -81,7 +81,29 @@ argmax 對照組（**冇 ship**）：holdout gold −3.30、champ −5.49、mrr 
 * 兩個要一齊郁嘅：**wet overlay**（直接加落 ability，要跟 ability 散佈）同
   **grade thresholds**（純報告文字，唔好為咗好睇而回調）。
 
-## 一齊放入搜索空間嘅候選新維度
+## 候選新維度 —— 測完（2026-08-03）
+
+**當加數項全部唔過閘，但當維度就唔同** —— `au_feature_ab.py` 試 `ability + k·z`
+（其他維度權重不變），`au_candidate_dimension.py` 試真正加維度（新維度攞 w，
+其餘縮到 1−w）。兩者數學唔同，結論唔同。
+
+| 候選 | 場內 AUC | additive | 做維度 |
+|---|---|---|---|
+| `ave_prize` | 0.613 | ❌ 3/5 | ✅ **w=0.05**：dev 4/5、holdout t3prec +1.47 / winT3 +3.30 / champ +1.10 |
+| `dist_place_rate` | 0.588 | ❌ 2/5 | ⚠️ w=0.08：holdout t3prec +2.56 但 **winT3 −1.10**，而 dev winT3 本身係 0.00 |
+| `jh_pre_place_rate` | 0.568 | 未試 | 未試（覆蓋薄）|
+
+⚠️ **揀權重嘅方式決定結論。** 第一次用 dev-argmax（w=0.18），holdout 出
+champ −4.40、good_pos −5.49；改用保守 w=0.05 三個主指標全正。**同一個特徵。**
+呢個就係「共識唔取 argmax」喺特徵層嘅同一課。
+
+⚠️ `ave_prize` 觸發咗「holdout 升幅大過 dev」警報 → 照規矩人手覆驗：69 匹首戰馬
+今日跑咗（有啲贏咗）仍然 `Prize $0`。**乾淨。** 警報係故意嘈過頭。
+
+**要 ship `ave_prize` 需要真正改引擎**（由 `Ave $` 砌一個 field-relative leaf、
+入 `MATRIX_FORMULAS`、調 `MATRIX_WEIGHTS`），唔係淨改一個數。
+
+## （舊）一齊放入搜索空間嘅候選新維度
 
 呢兩個**單獨有訊號但加落去冇改善**（fold 閘過唔到）。加唔到 ≠ 喺一個重新
 分配過嘅權重下加唔到 —— 所以放入 refit 嘅搜索空間，唔好當加數項。
@@ -95,7 +117,21 @@ argmax 對照組（**冇 ship**）：holdout gold −3.30、champ −5.49、mrr 
 兩個都**由我哋自己過濾過嘅賽前往績行**砌，唔用網站總結欄位 —— 構造上唔會中毒。
 實作喺 `au_unused_field_power.runner_features()`。
 
-## 順便要處理嘅：三個喺 0.5 以下嘅現有 leaf
+## 三個 0.5 以下嘅 leaf —— 測完，**剷唔得**（2026-08-03）
+
+| 變體 | holdout |
+|---|---|
+| 剷 sectional | t3prec −2.56、winT3 −3.30 |
+| 剷 track 維度 | t3prec −0.73、winT3 −3.30（**dev 睇落 3↑/0↓**）|
+| 兩個都剷 | t3prec −3.30、winT3 **−6.59** |
+
+線性組合入面負相關唔一定係淨噪音。refit 已經畀咗校準版答案：`pace_perf` −36%
+（唔係 0）。工具：`au_unhealthy_leaf_test.py`。
+
+⚠️ 更正：**`weight_score` 根本唔喺 `MATRIX_FORMULAS` 入面**，佢個 0.463 一分錢
+都唔使畀。`track_score` 先係大件事 —— 佢**就係成個 `track` 維度**（9.4% 權重）。
+
+## （舊）順便要處理嘅：三個喺 0.5 以下嘅現有 leaf
 
     track_score      0.487
     sectional_score  0.469
