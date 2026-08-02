@@ -116,7 +116,9 @@ RE_RUN = re.compile(
     r"(?:\s+(?P<margin>[\d.]+)L)?"
     r".*?Jockey\s+(?P<jockey>[^,]+?),\s*Barrier\s+(?P<barrier>\d+),"
     r"\s*Weight\s+(?P<weight>[\d.]+)kg(?:\s+(?P<sp>[\d.]+))?", re.S)
-RE_PRIZE = re.compile(r"\(of\s*\$([\d,]+)\)")
+# ⚠️ 試閘寫 `(of 0)` —— **冇 `$` 號**。舊 regex 要求 `$`，所以試閘 match 唔到，
+# 跟住喺較闊嘅視窗度撈到隔籬**正式賽**嘅獎金：試閘顯示 $175,000，班次判斷即刻錯。
+RE_PRIZE = re.compile(r"\(of\s*\$?([\d,]+)\)")
 # ⚠️ Sportsbet 出兩種寫法，`Settled` 嗰截係**可有可無**：
 #     In running Settled 11th, 800m 11th, 400m 11th   ← 33.8%
 #     In running 800m 5th, 400m 3rd                   ← 22.6%
@@ -130,9 +132,19 @@ RE_INRUN = re.compile(r"In running\s+(?:Settled\s+(?P<settled>\w+),\s*)?"
 RE_SECT = re.compile(r"Sectionals\s+600m\s+(?P<l600>[\d.]+)s")
 # ⚠️ 場地係寫成 "Flemington ( Soft ) 20/06/2026"（括號入面有空格），
 # 唔容許空格就成條 header 都 match 唔到（實測覆蓋率會由 92% 跌到 0%）。
+# ⚠️ 場地可以係**空**：試閘寫成 `Southside Cranbourne ( ) 13/04/2026 Race 2 800m
+# Jump Out - H8 Barrier Trial` —— 括號入面乜都冇。舊 regex 要求最少一個字母，
+# 所以**成類試閘都 match 唔到 header**，跟住喺 `run_line` 靜靜咁被丟。
+# 實測：Flemington R5 109 段往績有 26 段（24%）冇 header，`trial_score` 只得 7%
+# 有證據，而現有數據源有 54%。呢個係同 `Settled`、`L600 Delta` 一模一樣嘅
+# 失敗模式 —— **regex 收得太緊，靜靜咁掉走一整類數據**，第三次。
 RE_HDR = re.compile(
-    r"(?P<track>[A-Z][A-Za-z' \-]+?)\s*\(\s*(?P<going>[A-Za-z]+(?:\s*\d+)?)\s*\)\s*"
+    r"(?P<track>[A-Z][A-Za-z' \-]+?)\s*\(\s*(?P<going>[A-Za-z]*(?:\s*\d+)?)\s*\)\s*"
     r"(?P<date>\d{2}/\d{2}/\d{4})\s*Race\s*(?P<race>\d+)\s*(?P<dist>\d{3,4})m\s*(?P<cls>[^|]{0,40})")
+# 下游用 `**(TRIAL)**` 認試閘（`inject_fact_anchors.TRIAL_MARKER`），
+# 認到就唔會計入 PI／近績趨勢，但仍然入到試閘分。
+TRIAL_MARKER = "**(TRIAL)**"
+RE_TRIAL = re.compile(r"Barrier\s*Trial|Jump\s*Out", re.I)
 RE_OPP = re.compile(r"(?P<ord>1st|2nd|3rd)\s+(?P<name>[A-Z][A-Za-z'\- ]+?)\s*"
                     r"\((?P<jockey>[^)]*?)\s(?P<wt>[\d.]+)kg\)(?:\s*(?P<mgn>[\d.]+)L)?")
 RE_STAT = re.compile(r"(?P<k>1st Up|2nd Up|3rd Up|Distance|Track|Trk/Dist|Firm|Good|Soft|"
@@ -210,8 +222,15 @@ def parse_race(html):
 
     # 逐場往績：由 "Finished x/y" 錨定，向後掃同一段落
     runs = []
-    for m in RE_RUN.finditer(flat):
-        seg = flat[m.start(): m.start() + 900]
+    starts = [m.start() for m in RE_RUN.finditer(flat)]
+    for i, m in enumerate(RE_RUN.finditer(flat)):
+        # ⚠️ 每段一定要**截到下一仗開始為止**。之前寫死 +900 字元，於是隔籬仗嘅
+        # 獎金／走位／段速／對手會漏過嚟：試閘（獎金應該係 `(of 0)`）攞咗隔籬
+        # 正式賽嘅 $175,000，而 `Barrier Trial` 四個字漏過嚟仲會令一場 14 匹嘅
+        # 正式賽被標成試閘。呢個同 `Settled`、`L600 Delta`、試閘 header 係
+        # 同一個病：**掃描範圍冇界，就會靜靜咁撈錯數據**。
+        nxt = starts[i + 1] if i + 1 < len(starts) else len(flat)
+        seg = flat[m.start(): min(nxt, m.start() + 900)]
         hdr = None
         back = flat[max(0, m.start() - 260): m.start()]
         hm = None
@@ -222,9 +241,18 @@ def parse_race(html):
         ir = RE_INRUN.search(seg)
         sc = RE_SECT.search(seg)
         opps = [o.groupdict() for o in RE_OPP.finditer(seg)][:3]
-        pz = RE_PRIZE.search(seg)
+        # 獎金一定喺 `Finished x/y … (of $N), Jockey …` 之間，即係 RE_RUN
+        # 個 match 範圍以內。掃闊過呢個範圍就會撈到下一仗嘅獎金。
+        pz = RE_PRIZE.search(flat[m.start():m.end()])
+        # 試閘**只**睇 header 個 class 欄（例如 `OPEN-BT Barrier Trial`）。
+        # ⚠️ 唔好掃成段文字 —— 試過掃 seg[:320]，結果隔籬段嘅 "Barrier Trial"
+        # 漏過嚟，把一場 14 匹、負 15.85L 嘅正式 Caulfield 賽事標成試閘。
+        # 試閘獎金寫成 `(of 0)`，係第二個獨立訊號。
+        cls_txt = (hdr or {}).get("cls") or ""
+        is_trial = bool(RE_TRIAL.search(cls_txt)) or (pz and pz.group(1) == "0")
         runs.append({**m.groupdict(),
                      "header": hdr,
+                     "is_trial": is_trial,
                      "prize": pz.group(1) if pz else None,
                      "p800": ir.group("p800") if ir else None,
                      "p400": ir.group("p400") if ir else None,
@@ -338,7 +366,9 @@ def run_date(run):
 def run_line(run):
     """砌一條 Racenet 格式嘅往績行。"""
     h = run.get("header") or {}
-    track = (h.get("track") or "").strip()
+    # `Barrier Trial Apiam Bendigo` —— header regex 個 track group 會連前面
+    # 嗰句 "Barrier Trial" 一齊食咗，落到賽事名度就變咗個唔存在嘅馬場。
+    track = RE_TRIAL.sub("", (h.get("track") or "")).strip()
     dist = h.get("dist")
     cond = (h.get("going") or "").strip()
     # ⚠️ 下游 `inject_fact_anchors.race_simple` 要
@@ -347,7 +377,9 @@ def run_line(run):
     # 成條往績行會被靜靜丟棄（Facts 會報「數據不足」而唔會報錯）。
     d = run_date(run)
     prize = re.sub(r"[^\d]", "", run.get("prize") or "") or "0"
-    parts = [f"{track} R{h.get('race','?')} {d} {dist or '?'}m cond:{cond} ${prize}"]
+    # 現有數據源寫 `Southside Cranbourne **(TRIAL)** R8 ...`，下游照住認。
+    label = f"{track} {TRIAL_MARKER}" if run.get("is_trial") else track
+    parts = [f"{label} R{h.get('race','?')} {d} {dist or '?'}m cond:{cond or 'None'} ${prize}"]
     parts.append(f"{(run.get('jockey') or '').strip()} ({run.get('barrier','?')})"
                  f" {run.get('weight','?')}kg")
     if run.get("sp"):
