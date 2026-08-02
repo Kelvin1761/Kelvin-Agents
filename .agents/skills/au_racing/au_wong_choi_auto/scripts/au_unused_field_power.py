@@ -77,17 +77,40 @@ def runner_features(block, today_dist):
     # 一個要記得開嘅安全掣，等於冇。
     if False:  # noqa: SIM108 — 見上面，故意封死
         pass
-    wr = re.search(r"WinRange:\s*(\d+)m\s*-\s*(\d+)m", block)
-    if wr and today_dist:
-        lo, hi = int(wr.group(1)), int(wr.group(2))
-        out["in_win_range"] = 1.0 if lo <= today_dist <= hi else 0.0
-        # 離自己勝出範圍幾遠（0 = 範圍內）
-        out["dist_outside_range"] = -float(
-            0 if lo <= today_dist <= hi else min(abs(today_dist - lo),
-                                                 abs(today_dist - hi)))
+    # ⚠️ **`WinRange` 包含今日嗰仗 —— 唔可以用喺歷史語料。**
+    # 實測 41 匹「今日贏、賽前從未喺呢個距離贏過」嘅馬，今日嘅路程**逐匹都
+    # 啱啱好係 WinRange 嘅端點**：Zetheros 1425m 贏 → `1400m - 1425m`；
+    # Shultzy 2440m 贏 → `1600m - 2440m`；De Bergerac 1100m 贏 → `1100m - 1247m`。
+    # 即係「今日路程喺勝出範圍內」有一大部分係「因為佢今日贏咗」。
+    #
+    # 呢個係第二個**通過晒所有統計閘**嘅洩漏特徵：dev/holdout 分割、5 fold 全過、
+    # holdout winner_in_top3 **+17.58pp**。統計紀律防 overfit，**唔防洩漏** ——
+    # 一個含住答案嘅特徵，喺任何切法之下都會穩定地贏。
+    # 唯一嘅訊號係 holdout 升幅**大過** dev（+17.58 vs +6.63）：真特徵通常反過嚟。
     sp = _num(field("SpeedPos:"))
     if sp is not None:
         out["speedmap_pos"] = -sp                    # 細 = 前，取負令「大 = 好」
+
+    # 「第幾次出爭」× 對應嘅 1st/2nd/3rd Up 往績。
+    # 單獨睇 `1st Up 9: 1-3-3` 冇意義 —— 要今日**真係** 1st up 先啱用。
+    # 所以由賽前往績行嘅日期間距推今日係第幾次出爭：≥60 日當一個 spell。
+    dates = sorted((d for d in re.findall(r"\sR\d+\s(\d{4}-\d{2}-\d{2})\s", block)),
+                   reverse=True)
+    if dates and days is not None:
+        up = 1 if days >= 60 else None
+        if up is None:
+            up = 1
+            for i in range(len(dates) - 1):
+                a = [int(x) for x in dates[i].split("-")]
+                b = [int(x) for x in dates[i + 1].split("-")]
+                gap = (a[0]-b[0])*365 + (a[1]-b[1])*30 + (a[2]-b[2])
+                if gap >= 60:
+                    break
+                up += 1
+        rec = _wps(field(f"{min(up,3)}{'st' if up==1 else 'nd' if up==2 else 'rd'} Up:"))
+        if rec and rec[0] >= 2:
+            out["up_place_rate"] = (rec[1] + rec[2] + rec[3]) / rec[0]
+            out["up_index"] = -float(min(up, 4))
 
     # 起步定位：由往績行嘅 `Nth@Settled` 同 `starters:N` 算習慣位置。
     # 一定要除以馬群大細 —— 16 匹跑第 5 同 6 匹跑第 5 唔同。
