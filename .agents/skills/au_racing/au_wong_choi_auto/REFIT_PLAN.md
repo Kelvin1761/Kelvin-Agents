@@ -114,6 +114,23 @@ dev 睇落靚（winT3 +3.31、champ +1.17），holdout 反轉 —— 典型 over
 * 兩個要一齊郁嘅：**wet overlay**（直接加落 ability，要跟 ability 散佈）同
   **grade thresholds**（純報告文字，唔好為咗好睇而回調）。
 
+## ⚠️ `ave_prize` 過咗閘，但**建議唔好而家 ship**
+
+理由唔係佢差，係個 holdout 已經唔乾淨：
+
+嗰 91 場 holdout 今日已經被睇過**四次** —— v1 refit、候選維度測試（兩個特徵、
+多個權重）、反向 leaf 測試（三個變體）、v2 refit。每睇一次，佢作為「未碰過」
+嘅價值就少一截。一個 dev +0.65 / w=0.05 嘅邊際結果，唔應該靠一個已經被
+反覆查詢嘅 holdout 落決定。
+
+而且今日兩個獨立訊號都指向同一件事：
+* v2 refit（更好數據）dev 靚、holdout 反轉 → 呢個語料已經榨到盡
+* 今日所有**真**收益都嚟自修好入到 leaf 嘅數據，唔係嚟自調權重
+
+**建議**：`ave_prize` 留住做**下一批新場次**嘅第一個測試對象 —— 嗰陣個
+holdout 係真.未碰過。實作要改引擎（由 `Ave $` 砌 field-relative leaf、
+入 `MATRIX_FORMULAS`、調 `MATRIX_WEIGHTS`），唔係改個數字。
+
 ## 候選新維度 —— 測完（2026-08-03）
 
 **當加數項全部唔過閘，但當維度就唔同** —— `au_feature_ab.py` 試 `ability + k·z`
