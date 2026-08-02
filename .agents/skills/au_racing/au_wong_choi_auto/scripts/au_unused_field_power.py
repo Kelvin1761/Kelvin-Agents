@@ -54,7 +54,7 @@ def _wps(txt):
     return int(m.group(1)), f(m.group(2)), f(m.group(3)), f(m.group(4))
 
 
-def runner_features(block, today_dist, horse_name=""):
+def runner_features(block, today_dist, horse_name="", today_jockey=""):
     """一匹馬 → {特徵名: 值}。攞唔到就唔放，唔會用 0 頂替。"""
     def field(label):
         m = re.search(rf"{re.escape(label)}\s+(.+?)(?:\s{{2,}}|$)", block, re.M)
@@ -132,9 +132,11 @@ def runner_features(block, today_dist, horse_name=""):
         opp = lines[i + 1] if i + 1 < len(lines) else ""
         placed = bool(re.match(r"^([123])-", opp) and
                       re.search(rf"[123]-{re.escape(horse_name)}\b", opp))
+        jk = re.search(r"\$[\d,]+\s+(.+?)\s+\(", ln)
         runs.append({"dist": int(m.group(3)),
                      "l600": float(l6.group(1)) if l6 else None,
                      "trial": "**(TRIAL)**" in m.group(1),
+                     "jockey": (jk.group(1) if jk else ""),
                      "placed": placed})
     official = [r for r in runs if not r["trial"]]
 
@@ -143,6 +145,27 @@ def runner_features(block, today_dist, horse_name=""):
         if len(near) >= 2:                       # ← 兩次以上先計
             out["dist_place_rate"] = sum(1 for r in near if r["placed"]) / len(near)
             out["dist_places"] = float(sum(1 for r in near if r["placed"]))
+
+    # ── 人馬配搭：由**我哋自己嘅往績行**數，唔用網站個 `J/H` ──────────────
+    # 網站個 `J/H` 包含今日嗰仗（見 au_unused_field_power 上面嘅註）。加個
+    # 「至少兩次」門檻**唔會**解決問題 —— 五次入面仍然有一次係今日。要真正
+    # 乾淨，就要同 `dist_place_rate` 一樣，由已經隔走賽後行嘅往績自己數。
+    if today_jockey:
+        jl = today_jockey.split()[-1].lower()
+        mine = [r for r in official if jl and jl in r["jockey"].lower()]
+        if len(mine) >= 2:                       # Kelvin 提出嘅門檻
+            out["jh_pre_place_rate"] = sum(1 for r in mine if r["placed"]) / len(mine)
+
+    # ── 試閘：只喺**淺資歷**馬身上有意義？ ────────────────────────────────
+    # Kelvin 嘅假設：5 仗以上嘅馬，正式賽成績同段速已經講晒，試閘係噪音；
+    # 淺資歷馬先要靠試閘。呢度分開兩組量，睇個假設成唔成立。
+    trials = [r for r in runs if r["trial"]]
+    if trials:
+        tl = [r["l600"] for r in trials if r["l600"] is not None]
+        if tl:
+            out["trial_l600_best"] = -min(tl)
+        out["trial_placed"] = float(sum(1 for r in trials if r["placed"]))
+    out["_career_runs"] = float(len(official))   # 分組用，唔係特徵
 
     # ── 段速時間：現行 pace_figure 用**平均** L600 delta，呢度試其他讀法 ──
     d6 = [r["l600"] for r in official if r["l600"] is not None]
@@ -210,7 +233,11 @@ def main():
                 pos = actual.get(norm(m.group(2)))
                 if pos is None:
                     continue
-                feats.append((runner_features(text[m.start():end], dist, m.group(2)), pos <= 3))
+                blk = text[m.start():end]
+                jm = re.search(r"\|\s*J:\s*([^(\n|]+)", blk)
+                feats.append((runner_features(blk, dist, m.group(2),
+                                              (jm.group(1).strip() if jm else "")),
+                              pos <= 3))
             keys = {k for f, _ in feats for k in f}
             for k in keys:
                 pairs = [(f[k], p) for f, p in feats if k in f]
