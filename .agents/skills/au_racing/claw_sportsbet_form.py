@@ -179,6 +179,15 @@ def parse_race(html):
         meta["distance"] = int(m.group(1))
 
     overview = parse_overview(html)
+    # 騎練 profile ID 直接喺賽事頁 —— 冇 slug 要猜（Racenet 就係死喺呢度兩次）。
+    people = [(k, pid) for k, pid in
+              re.findall(r'href="/(Jockey|Trainer)/(\d+)/"', html)]
+    seen_p, meta["people"] = set(), []
+    for k, pid in people:
+        if (k, pid) in seen_p:
+            continue
+        seen_p.add((k, pid))
+        meta["people"].append((k, pid))
 
     # 逐場往績：由 "Finished x/y" 錨定，向後掃同一段落
     runs = []
@@ -548,6 +557,16 @@ def main():
             return 1
         write_meeting(out, args.out_dir, args.date or "2026-01-01",
                       args.venue or (out[0][1]["meta"].get("venue") or "Unknown"))
+        # 逐場攞新鮮騎練統計。ID 由賽事頁直接嚟，所以唔會撞錯人；
+        # `sb_people_stats` 有 TTL cache，跑熟之後每場只補幾個。失敗非致命。
+        try:
+            import sb_people_stats
+            ppl = [(k, pid, "") for _, pr, _ in out
+                   for k, pid in (pr["meta"].get("people") or [])]
+            if ppl:
+                sb_people_stats.refresh(ppl, fetcher=f)
+        except Exception as exc:  # noqa: BLE001 — 統計攞唔到唔應該炸咗抽取
+            print(f"   ⚠️ 騎練統計略過（{type(exc).__name__}: {exc}）")
         return 0
 
     if args.race_url:
