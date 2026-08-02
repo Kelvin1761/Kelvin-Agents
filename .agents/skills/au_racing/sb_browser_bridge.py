@@ -21,7 +21,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import sys
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -49,12 +49,29 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):                          # noqa: N802
-        """`/jobs` → 仲未落 cache 嘅 [meetingId, raceId]。
+        """`/jobs` → 仲未落 cache 嘅 [meetingId, raceId]；`/wait?ms=` → 慢慢先答。
 
         由 bridge 出 job list（而唔係喺瀏覽器度貼 836 個 ID）有兩個好處：
         cache 已經有嘅自動唔會再攞，而且中途斷咗重新攞一次 `/jobs` 就係續跑。
+
+        ⚠️ `/wait` 存在嘅原因：**Chrome 會 throttle 背景 tab 嘅 `setTimeout`**
+        （clamp 到大約一分鐘一次）。我哋設 18–25 秒，實際變成每版 ~100 秒，
+        822 版即係 23 個鐘。改成 await 一個慢慢先回應嘅請求，個 timer 唔喺
+        瀏覽器度，就唔會被 throttle —— 節奏返返我哋自己揀嗰個。
         """
-        if urlparse(self.path).path != "/jobs":
+        path = urlparse(self.path).path
+        if path == "/wait":
+            import time
+            q = parse_qs(urlparse(self.path).query)
+            ms = min(int((q.get("ms") or ["20000"])[0]), 120000)
+            time.sleep(ms / 1000.0)
+            self.send_response(200)
+            self._cors()
+            self.send_header("Content-Length", "2")
+            self.end_headers()
+            self.wfile.write(b"ok")
+            return
+        if path != "/jobs":
             self.send_response(404)
             self._cors()
             self.end_headers()
@@ -110,7 +127,8 @@ def serve(port):
     n0 = len(list(Path(CACHE_DIR).glob("*.html"))) if Path(CACHE_DIR).exists() else 0
     print(f"bridge 聽緊 http://127.0.0.1:{port}  →  {CACHE_DIR}")
     print(f"cache 而家有 {n0} 版。Ctrl-C 收工。")
-    HTTPServer(("127.0.0.1", port), Handler).serve_forever()
+    # threading：`/wait` 會瞓住，單線程會連 POST 都塞住
+    ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
 
 
 def main():
