@@ -153,8 +153,20 @@ def _extract_meeting(url: str) -> Path:
                 "Sportsbet 抽取要 --meeting-url/--races/--out-dir，"
                 "單靠 URL 推唔出馬場目錄。見 claw_sportsbet_form.py。")
         return meeting_dir
-    print("🚀 Extracting AU meeting data via Race Extractor...")
-    print("⚠️ Racenet 由 2026-08-02 起全面封鎖，呢條路預期會失敗 —— 改用 Sportsbet。")
+    # Racenet 由 2026-08-02 起三條 transport 全封（profile 403、results 202 攔截頁、
+    # Playwright 202）。留住呢條路只會靜靜咁失敗，所以直接停低同講清楚點做。
+    # 要暫時行返舊路（例如 Racenet 解封）就 set WC_ALLOW_RACENET=1。
+    if os.environ.get("WC_ALLOW_RACENET") != "1":
+        raise SystemExit(
+            "❌ Racenet 已停用（2026-08-02 起全面封鎖），AU Wong Choi 已轉用 Sportsbet。\n"
+            "   抽取請用：\n"
+            "     python3 .agents/skills/au_racing/claw_sportsbet_form.py \\\n"
+            "       --meeting-url https://www.sportsbetform.com.au/<meetingId>/<raceId>/ \\\n"
+            "       --races <raceId,raceId,...> --out-dir '<meeting dir>' \\\n"
+            "       --date YYYY-MM-DD --venue '<track>'\n"
+            "   然後把 meeting 目錄餵返呢個 orchestrator。\n"
+            "   （真係要行舊 Racenet 路：WC_ALLOW_RACENET=1）")
+    print("🚀 Extracting AU meeting data via Race Extractor (Racenet, 已停用)...")
     _run([PYTHON, str(EXTRACTOR), url, "all"])
     meeting_dir = _get_target_dir_from_url(url)
     if not meeting_dir or not meeting_dir.exists():
