@@ -117,7 +117,16 @@ RE_RUN = re.compile(
     r".*?Jockey\s+(?P<jockey>[^,]+?),\s*Barrier\s+(?P<barrier>\d+),"
     r"\s*Weight\s+(?P<weight>[\d.]+)kg(?:\s+(?P<sp>[\d.]+))?", re.S)
 RE_PRIZE = re.compile(r"\(of\s*\$([\d,]+)\)")
-RE_INRUN = re.compile(r"In running\s+800m\s+(?P<p800>\w+),\s*400m\s+(?P<p400>\w+)")
+# ⚠️ Sportsbet 出兩種寫法，`Settled` 嗰截係**可有可無**：
+#     In running Settled 11th, 800m 11th, 400m 11th   ← 33.8%
+#     In running 800m 5th, 400m 3rd                   ← 22.6%
+# 舊 regex 硬食 `In running 800m`，所以第一種**一條都 match 唔到** ——
+# 走位覆蓋率由應有嘅 56.4% 跌到 22.6%，而且 `Settled` 成個掉咗。
+# 掉咗 Settled 嘅代價唔止走位：`inject_fact_anchors` 嘅 PI = Settled − Finish，
+# 冇 Settled 就冇 PI，`_sectional_breakdown().has_pi` 永遠 False，
+# 段速分全場中性 60（實測 evidence 0% vs 現有數據源 45%）。
+RE_INRUN = re.compile(r"In running\s+(?:Settled\s+(?P<settled>\w+),\s*)?"
+                      r"800m\s+(?P<p800>\w+),\s*400m\s+(?P<p400>\w+)")
 RE_SECT = re.compile(r"Sectionals\s+600m\s+(?P<l600>[\d.]+)s")
 # ⚠️ 場地係寫成 "Flemington ( Soft ) 20/06/2026"（括號入面有空格），
 # 唔容許空格就成條 header 都 match 唔到（實測覆蓋率會由 92% 跌到 0%）。
@@ -171,9 +180,19 @@ def parse_race(html):
     m = re.search(r"Track:\s*([A-Za-z]+\s*\d*)", flat)
     if m:
         meta["track_condition"] = m.group(1).strip()
-    m = re.search(r"^\s*([A-Z][A-Za-z' \-]+?)\s+Race\s+(\d+)\s*-\s*(\d{2}:\d{2})", txt, re.M)
+    # ⚠️ 場地同場次一定要由頁面攞 —— **唔可以**靠呼叫者嘅 raceId 次序推。
+    # raceId 唔跟場次遞增（實測 2026-08-01 Flemington：3393737=R7、3393739=R9、
+    # 3394294=R6、3394295=R8），所以「照 raceId 排序當場次」會將 R6–R9 錯配。
+    # 之前呢度個 regex 要求 `Race 7 - 14:30` 嘅開跑時間，但賽後頁面得
+    # `Flemington Race 7`，所以成個 meta（venue / race_number）長期係 None，
+    # 靜靜跌返落 enumerate 次序。開跑時間變成可有可無。
+    m = re.search(r"<title>\s*([A-Z][A-Za-z' \-]+?)\s+Race\s+(\d+)\s*</title>", html) \
+        or re.search(r"^\s*([A-Z][A-Za-z' \-]+?)\s+Race\s+(\d+)\s*$", txt, re.M)
     if m:
-        meta.update(venue=m.group(1).strip(), race_number=int(m.group(2)), start=m.group(3))
+        meta.update(venue=m.group(1).strip(), race_number=int(m.group(2)))
+    m = re.search(r"Race\s+\d+\s*-\s*(\d{2}:\d{2})", txt)
+    if m:
+        meta["start"] = m.group(1)
     m = re.search(r"(\d{3,4})m\s", flat)
     if m:
         meta["distance"] = int(m.group(1))
@@ -209,6 +228,7 @@ def parse_race(html):
                      "prize": pz.group(1) if pz else None,
                      "p800": ir.group("p800") if ir else None,
                      "p400": ir.group("p400") if ir else None,
+                     "settled": ir.group("settled") if ir else None,
                      "l600": sc.group("l600") if sc else None,
                      "opponents": opps})
     return {"meta": meta, "overview": overview, "runs": runs, "text": txt}
@@ -305,6 +325,16 @@ def _l600_delta(raw_seconds, track, distance_m):
     return round(float(raw_seconds) - float(std), 3)
 
 
+def run_date(run):
+    """往績行嘅日期，正規化做 YYYY-MM-DD（攞唔到就回 ""）。
+
+    Sportsbet 出 DD/MM/YYYY，下游 regex 要 YYYY-MM-DD。
+    """
+    d = ((run.get("header") or {}).get("date") or "").strip()
+    m = re.fullmatch(r"(\d{2})/(\d{2})/(\d{4})", d)
+    return f"{m.group(3)}-{m.group(2)}-{m.group(1)}" if m else d
+
+
 def run_line(run):
     """砌一條 Racenet 格式嘅往績行。"""
     h = run.get("header") or {}
@@ -315,10 +345,7 @@ def run_line(run):
     #     `^場地 R\d+ YYYY-MM-DD \d+m cond:\S+ \$[0-9,]+`
     # Sportsbet 出 DD/MM/YYYY，而且賽事獎金唔喺同一行。兩者任何一樣唔啱，
     # 成條往績行會被靜靜丟棄（Facts 會報「數據不足」而唔會報錯）。
-    d = h.get("date", "")
-    m = re.fullmatch(r"(\d{2})/(\d{2})/(\d{4})", d)
-    if m:
-        d = f"{m.group(3)}-{m.group(2)}-{m.group(1)}"
+    d = run_date(run)
     prize = re.sub(r"[^\d]", "", run.get("prize") or "") or "0"
     parts = [f"{track} R{h.get('race','?')} {d} {dist or '?'}m cond:{cond} ${prize}"]
     parts.append(f"{(run.get('jockey') or '').strip()} ({run.get('barrier','?')})"
@@ -330,6 +357,10 @@ def run_line(run):
         pos.append(f"{run['p800']}@800m")
     if run.get("p400"):
         pos.append(f"{run['p400']}@400m")
+    # `Nth@Settled` 一定要寫喺最後、同其他走位同一行 —— `inject_fact_anchors`
+    # 用 `(\d+)\w+@Settled` 喺成個 race_block 度搵，而 PI = Settled − Finish。
+    if run.get("settled"):
+        pos.append(f"{run['settled']}@Settled")
     tail = " ".join(pos) + "."
     if run.get("margin"):
         tail += f" margin:{run['margin']}L"
@@ -337,7 +368,15 @@ def run_line(run):
         tail += f" starters:{run['field']}"
     delta = _l600_delta(run.get("l600"), track, dist)
     if delta is not None:
-        tail += f" PF[Last600: {delta}]"
+        # ⚠️ 個 key **一定要**係 `L600 Delta:`，唔係 `Last600:`。
+        # `_pace_figure_score` 讀 `pf_aggregates['l600_delta_avg']`，而佢淨係由
+        # `L600 Delta:` 嚟（engine_core `_parse_pf_token`）。`Last600:` 會去咗
+        # `l600_time`，冇任何 leaf 讀 —— 所以寫錯 key 唔會報錯，只會令段速實速
+        # 全場中性 60。實測：2026-08-01 Flemington 九場，PF 寫咗 96% 嘅往績行，
+        # 但 pace_figure_score 嘅 evidence 係 **0%**、SD 0.00。
+        # 而且 `Last600:` 喺 live Formguide 係 PuntingForm 評分（29–93），
+        # 唔係秒差 —— 借佢個名擺個 delta 落去係兩把唔同嘅尺。
+        tail += f" PF[L600 Delta: {delta}]"
     line = " ".join(parts) + " " + tail
     opp = run.get("opponents") or []
     def fmt(o, i):
@@ -413,6 +452,7 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
     idx = [f"# AU Wong Choi Formguide Index\n", f"Meeting: {venue} {date_str}\n"]
     speedmaps = speedmaps or {}
     odds = odds or {}
+    kept = dropped = 0
     for race_no, p, blocks in races:
         meta = p["meta"]
         sm = speedmaps.get(race_no) or {}
@@ -492,17 +532,31 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
                            f"{'WinOdds:':<10} {str(w or '-'):<15} "
                            f"{'PlcOdds:':<10} {str(pl or '-'):<15}\n\n")
                 for run in blk.get("runs", []):
+                    # ⚠️ 時點正確性 —— 呢個 filter 唔可以拆。Sportsbet 嘅表格頁係
+                    # **賽後**先抓到，所以每匹馬嘅往績第一行就係我哋要預測嗰場，
+                    # 連名次、負距、頭馬名同 600m 段速都齊。留住佢等於將答案餵返
+                    # 落 form_score / 段速實速 / 賽績線 / 定位，backtest 會靚到假。
+                    # 實測：2026-08-01 Flemington 520 條往績有 89 條（17.1%）
+                    # 係當日或之後，而且係**最近一行**，即係近績加權最重嗰行。
+                    if run_date(run) >= date_str:
+                        dropped += 1
+                        continue
                     a, b = run_line(run)
                     f_fg.write(a + "\n" + b + "\n")
                     f_fg.write("Video: \nNote: \nStewards: \n\n")
+                    kept += 1
                 f_fg.write("=" * 60 + "\n\n")
         idx.append(f"- Race {race_no}: {dist}m — {rc_path.name} / {fg_path.name}\n")
         if verbose:
             print(f"   ✅ R{race_no}: {len(p['overview'])} 匹 → {fg_path.name}")
     (out / f"{mm_dd} Formguide_Index.md").write_text("".join(idx), encoding="utf-8")
     (out / "Meeting_Summary.md").write_text(
-        f"# {venue} {date_str}\n\n{len(races)} races extracted from Sportsbet.\n",
+        f"# {venue} {date_str}\n\n{len(races)} races extracted from Sportsbet.\n"
+        f"Form runs kept: {kept}; dropped as on/after {date_str}: {dropped}\n",
         encoding="utf-8")
+    if verbose:
+        print(f"   往績行：保留 {kept}，因為喺 {date_str} 當日或之後而丟棄 {dropped}")
+    return {"kept": kept, "dropped": dropped}
 
 
 RE_SPEED = re.compile(r"^\s*(\d{1,2})\s*$")
@@ -562,6 +616,39 @@ def fetch_odds(fetcher, event_id):
             for v in o:
                 walk(v)
     walk(data or {})
+    return out
+
+
+def parse_date_index(html):
+    """`/{YYYY-MM-DD}/` 嗰版 → {slug: {"meetingId", "races": [...]}}。
+
+    **呢個就係歷史 meetingId 嘅索引**，之前以為冇。首頁「Previous Form Guides」
+    嘅日曆 widget 就係行呢條路（`document.location = '/'+date+'/'`）。widget 本身
+    設咗 `setStartDate(-14)`，但**個限制淨係喺 widget 度** —— 直接開 URL
+    實測返到一年前（2025-08-02，23 個馬場、185 場）。
+
+    每個馬場嘅 meetingId 由 puntcdn 檔名嚟：
+        //puntcdn.com/form-guides-sportsbet/20260725_caulfield_445618.pdf
+                                            ^日期      ^slug      ^meetingId
+    同版仲有齊 `/{meetingId}/{raceId}/` 嘅賽事連結，所以 raceId 都唔使猜。
+
+    ⚠️ **呢版 curl_cffi 攞唔到（403）**，同首頁一樣 —— CloudFront 淨係擋
+    index/root，唔擋 `/{meetingId}/{raceId}/`。所以發現要行瀏覽器（每個日期
+    一版），抽取先行 curl_cffi。呢個函數只做 parse，唔負責攞頁。
+    已抽好嘅結果放喺 `data/sb_archive_meeting_ids.json`（94 個場次 / 836 場）。
+    """
+    out = {}
+    for m in re.finditer(
+            r"form-guides-sportsbet/(\d{8})_([a-z0-9_]+?)_(\d+)(?:_[A-Za-z]+)?\.pdf", html):
+        out.setdefault(m.group(2), {"date": m.group(1), "meetingId": m.group(3),
+                                    "races": []})
+    by_mid = {v["meetingId"]: v for v in out.values()}
+    for m in re.finditer(r'href="/(\d{5,7})/(\d{5,9})/"', html):
+        entry = by_mid.get(m.group(1))
+        if entry is not None and m.group(2) not in entry["races"]:
+            entry["races"].append(m.group(2))
+    for v in out.values():
+        v["races"].sort()
     return out
 
 
@@ -628,6 +715,15 @@ def main():
             return 1
         write_meeting(out, args.out_dir, args.date or "2026-01-01",
                       args.venue or (out[0][1]["meta"].get("venue") or "Unknown"))
+        # 馬匹往績索引：抽取嘅副產品，賽績線靠佢查對手後續走勢。
+        # 每個 runner block 已經帶埋成個往績清單，所以呢度**唔會多打一個請求**。
+        try:
+            import sb_horse_index
+            stats = sb_horse_index.update([b for _, _, bl in out for b in bl])
+            print(f"   📇 馬匹索引 +{stats['runs_added']} 條往績"
+                  f"（共 {stats['index_size']:,} 匹）")
+        except Exception as exc:  # noqa: BLE001 — 索引失敗唔應該炸咗抽取
+            print(f"   ⚠️ 馬匹索引略過（{type(exc).__name__}: {exc}）")
         # 逐場攞新鮮騎練統計。ID 由賽事頁直接嚟，所以唔會撞錯人；
         # `sb_people_stats` 有 TTL cache，跑熟之後每場只補幾個。失敗非致命。
         try:
