@@ -307,10 +307,13 @@ PACE_MICRO_WEIGHTS = {
 # 所以剷走佢哋**唔係性能改善**，係簡化：少四個手調參數、少一個硬寫馬房名
 # （`"Waller" in trainer` +5.52），而量度證明冇代價。
 #
-# ⚠️ 唔好因為呢個歸零而以為「trainer 評分已經修好」。同一批數據用一條更簡單
-# 嘅公式（收縮去**個人生涯**而唔係全國基準）場內 AUC 係 0.615，而引擎現行
-# `trainer_score` 係 0.571 —— 嗰 4.4pp 唔喺 adjustment，喺 base 公式，
-# 係另一個未解決嘅改動。
+# ⚠️ 一個要更正嘅早前講法：我曾經寫住「簡單公式 0.615 vs 引擎 0.571，
+# base 公式蝕咗 4.4pp」。**嗰個係跨語料比較，錯嘅。** 0.571 係喺 LY 只填 81%
+# 嘅語料量，0.615 係喺 96.8% 嘅語料量。喺**同一個語料**量返：
+#     trainer_score 0.605  vs  簡單公式 0.615   → 差 1.0pp
+#     jockey_score  0.600  vs  簡單公式 0.599   → 差 0.001
+# 即係引擎個 base 公式其實冇問題，兩個 prior（練馬師 0.3946、騎師 0.3564）
+# 亦校準得準（實測中位數 0.3909 / 0.3598）。
 TRAINER_MICRO_WEIGHTS = {"waller_debut_bonus": 0.0,
                          "track_high_vol_high_place_bonus": 0.0,
                          "track_med_vol_high_place_bonus": 0.0,
