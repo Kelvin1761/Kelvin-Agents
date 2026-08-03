@@ -30,7 +30,7 @@ AU_RACING = SCRIPT_DIR.parents[1]
 sys.path.insert(0, str(AU_RACING))
 sys.path.insert(0, str(AU_RACING.parent / "shared_racing"))
 
-from eval_metrics import race_metrics, summarize_races  # noqa: E402
+from eval_metrics import exclusive_label, race_metrics, summarize_races  # noqa: E402
 
 KEYS = ("gold", "good_positional", "good_any2", "pass_any1", "champion",
         "winner_in_top3")
@@ -146,6 +146,15 @@ def report(label, rows):
     slots = sum(min(3, len(r["picks"])) for r in rows)
     out = {k: s[k] for k in KEYS}
     out.update(races=n, miss=n - s["pass_any1"], t3prec=hits / slots if slots else 0.0)
+    # 互斥標籤（Gold / Good / Pass / 1 Hit / Miss，加起嚟等於場數）。
+    # ⚠️ `KEYS` 入面嗰幾個係**累積**嘅（gold ⊂ good_positional ⊂ any2 ⊂ any1），
+    # 當百分比直接讀會重複計。`race_metrics` 已經算好互斥標籤，直接數就得 ——
+    # 唔使自己由 hits／top2 重新推（我試過，推錯咗）。
+    lab = {}
+    for row in rows:
+        k = row["exclusive_label"]
+        lab[k] = lab.get(k, 0) + 1
+    out["labels"] = lab
     return out
 
 
@@ -209,6 +218,15 @@ def main():
             print(f"{lab:30}{n_[k]:>12}{ov_}")
         ov_ = f"{o_['t3prec']:>11.1%}" if o_ else f"{'-':>12}"
         print(f"{'前三精準':30}{n_['t3prec']:>11.1%}{ov_}")
+        # 互斥標籤 —— 呢個先係可以直接當百分比讀嘅
+        print(f"{'  ── 互斥標籤（%）':30}")
+        rn = n_.get("races") or 1
+        ro = (o_.get("races") or 1) if o_ else 1
+        for k in ("Gold", "Good", "Pass", "1 Hit", "Miss"):
+            a = n_.get("labels", {}).get(k, 0)
+            b = o_.get("labels", {}).get(k, 0) if o_ else None
+            bs = f"{100*b/ro:>11.1f}%" if b is not None else f"{'-':>12}"
+            print(f"{'  ' + k:30}{100*a/rn:>11.1f}%{bs}")
         return n_, o_
 
     labels = [("races", "場次"), ("gold", "Gold 3/3"),
