@@ -43,6 +43,7 @@ from scoring import (
     FIT_MICRO_WEIGHTS,
     PACE_MICRO_WEIGHTS,
     SECTIONAL_MICRO_WEIGHTS,
+    TRIAL_MICRO_WEIGHTS,
     TRACK_MICRO_WEIGHTS,
 )
 
@@ -55,6 +56,7 @@ from scoring import (
 # 一個剷得嘅。「預期惰性」同「量過係惰性」係兩件事。
 MICRO_FAMILIES = {
     "class": CLASS_MICRO_WEIGHTS,
+    "trial": TRIAL_MICRO_WEIGHTS,
     "consistency": CONSISTENCY_MICRO_WEIGHTS,
     "sectional": SECTIONAL_MICRO_WEIGHTS,
     "track": TRACK_MICRO_WEIGHTS,

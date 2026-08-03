@@ -124,10 +124,14 @@ MATRIX_WEIGHTS = {"stability":0.38232,"pace_perf":0.14407,"race_shape":0.11502,"
 # 實測確認佢冇害：holdout champ 由 +0.00 變 +1.87、mrr +0.73 → +1.81、
 # t3prec −0.31 → 0.00，dev 完全一樣。
 # Rollback: 12.0 / 5.0（配 gain 全部 = 1）。
-WET_FORM_FEATURE_SCALE = 13.47  # 15.90 ×0.8471（2026-08-03 重配權）；points of ability per (shrunk_wet_place_rate − prior)
+# 2026-08-04 lockstep：`jockey_trainer` 內部重配之後 ability 散佈 ×1.0329，
+# 所以濕地 overlay 要跟住郁同一個比例，否則佢喺新散佈之下嘅相對影響力會靜靜咁縮。
+# 呢個係 derived ratio，唔係 fit 出嚟嘅值 —— 唔可以獨立調。
+# 舊值 13.47 / 5.61（= 15.90 / 6.62 × 0.8471）。
+WET_FORM_FEATURE_SCALE = 13.91  # 15.90 ×0.8471（2026-08-03 重配權）；points of ability per (shrunk_wet_place_rate − prior)
 WET_FORM_SHRINK_A = 4.0         # pseudo-count for place-rate shrinkage toward prior
 WET_FORM_PRIOR = 0.5            # global career wet place-rate (~0.496 measured)
-WET_FORM_MAX_ABS = 5.61         # 6.62 ×0.8471（2026-08-03 重配權）；clamp the feature to a sane ±range
+WET_FORM_MAX_ABS = 5.79         # 6.62 ×0.8471（2026-08-03 重配權）；clamp the feature to a sane ±range
 
 
 def _parse_wet_record(going_stats_line):
@@ -185,7 +189,14 @@ CONSISTENCY_MICRO_WEIGHTS = {
     # 寬恕背景改為報告純顯示解讀，唔再入分。
     # margin_trend_bonus 2026-07-10 新增（用戶提出，HK 亦有用）：近2仗平均輸距 vs 之前
     # 改善/惡化 ≥2L → ±3。A/B：全檔 GGP +1、A窗 +1、winT3 +0.6pp，無指標倒退。
-    "margin_trend_bonus": 3.0,
+    # 2026-08-04 拆成兩邊。原本一個 `margin_trend_bonus` 同時做 +改善 / −惡化，
+    # 即係强制對稱。718 場實測兩邊完全唔對稱：
+    #     輸距趨勢惡化  n=1,165  超額 **−6.2pp**   ← 真訊號
+    #     輸距趨勢改善  n=  956  超額 **−0.1pp**   ← 冇訊號
+    # 「跑得越嚟越差」預測得到，「跑得越嚟越好」預測唔到。一個共用數字冇得
+    # 表達呢件事，所以拆開。改善側嘅實際數值由 A/B 決定，唔係由對稱決定。
+    "margin_trend_up_bonus": 3.0,
+    "margin_trend_down_pen": -3.0,
     "run_style_bonus": 5.2,
     "pi_stable_bonus": 5.71,
     "repeat_bonus": 2.7,
@@ -306,6 +317,34 @@ PACE_MICRO_WEIGHTS = {
 #   逐項 ablation 全指標零變化（惰性），改為 display-only notes。
 # - 0 權重死支（debut_top_trainer/young_top_jt/latest_upgrade/jockey_downgrade_vs_best）刪除。
 # - KEPT（有實測損失）：trial（−11 GGP if removed）、current（−6）、signal（−5）、latest pens。
+# 2026-08-04 新增。`_trial_score` 之前**完全冇** named weight dict —— 全部係
+# 函數入面嘅 inline literal（`add(2, …)`、`add(4, …)`、`add(good * 9, …)`）。
+# 後果係佢從來冇入過 `au_runtime_micro_ablation.py` 嘅 MICRO_FAMILIES，
+# 即係試閘呢個 leaf 七個手調數字從來冇被 ablate 過。
+#
+# 718 場逐項審計（`au_adjustment_audit.py`）：
+#     試閘前三獎勵      n=4,801  +1.5   一致
+#     最近試閘頭馬      n=1,977  +4.6   一致，最強
+#     試閘密度高兼交代穩  n=  939  +1.3   一致
+#     最近試閘前三      n=2,824  −0.7   方向相反但幅度細
+#     初出馬備戰        n=  360  −1.4   方向相反但幅度細
+TRIAL_MICRO_WEIGHTS = {
+    "no_trial_debut_base": 58.0,
+    "no_trial_base": 60.0,
+    "base": 56.0,
+    "top3_mult": 9.0,
+    "debut_prep_bonus": 4.0,
+    "debut_maiden_bonus": 2.0,
+    "latest_win_bonus": 4.0,
+    "latest_win_maiden_bonus": 2.0,
+    "latest_top3_bonus": 2.0,
+    "latest_top3_maiden_bonus": 1.0,
+    "density_bonus": 2.0,
+    "density_maiden_bonus": 3.0,
+    "fast_trial_bonus": 4.0,
+    "mid_trial_bonus": 2.0,
+}
+
 FIT_MICRO_WEIGHTS = {
     "trial_ok_bonus": 3.38,
     "trial_ok_top_jt_bonus": 1.0,

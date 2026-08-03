@@ -41,18 +41,27 @@ from au_runtime_micro_ablation import (discover_logic_files,  # noqa: E402
 from au_archive_calibrator import detect_meeting_date, load_historical_results  # noqa: E402
 from engine_core import RacingEngine, backfill_pf_metrics  # noqa: E402
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
-from scoring import FIT_MICRO_WEIGHTS  # noqa: E402
+from scoring import (CONSISTENCY_MICRO_WEIGHTS, FIT_MICRO_WEIGHTS,  # noqa: E402
+                     TRIAL_MICRO_WEIGHTS)
 
-W = FIT_MICRO_WEIGHTS
-LEAVE, SAME, DOWN = ("leave_proven_jockey_pen", "signal_same_jockey_bonus",
-                     "latest_downgrade_pen")
+W, C, T = FIT_MICRO_WEIGHTS, CONSISTENCY_MICRO_WEIGHTS, TRIAL_MICRO_WEIGHTS
+
+# 逐項審計（718 場）搵出嘅「大覆蓋、零訊號」項 —— 剷佢哋係為咗乾淨，
+# 前提係唔蝕。每個都要過四道閘。
+NO_SIGNAL = [
+    (C, "repeat_bonus", 0.0),        # n=2,897  超額 −0.8（加分但方向反）
+    (C, "no_repeat_pen", 0.0),       # n=  268  超額 +2.6（扣分但方向反）
+    (C, "margin_trend_up_bonus", 0.0),  # n=  956  超額 −0.1（惡化側 −6.2 保留）
+    (T, "latest_top3_bonus", 0.0),   # n=2,824  超額 −0.7
+    (W, "signal_trial_rider_bonus", 0.0),  # n=773  超額 +0.1
+]
 
 VARIANTS = [
     ("現行", []),
-    ("三項歸零", [(W, LEAVE, 0.0), (W, SAME, 0.0), (W, DOWN, 0.0)]),
-    ("只歸零最大嗰項", [(W, LEAVE, 0.0)]),
-    ("三項反符號", [(W, LEAVE, 2.98), (W, SAME, -2.0), (W, DOWN, 4.11)]),
-    ("反符號但減半", [(W, LEAVE, 1.49), (W, SAME, -1.0), (W, DOWN, 2.06)]),
+    ("剷零訊號項（5 個）", NO_SIGNAL),
+    ("只單邊化輸距趨勢", [(C, "margin_trend_up_bonus", 0.0)]),
+    ("只剷 repeat 配對", [(C, "repeat_bonus", 0.0), (C, "no_repeat_pen", 0.0)]),
+    ("剷零訊號項 + 試閘前三", NO_SIGNAL + [(T, "latest_top3_maiden_bonus", 0.0)]),
 ]
 
 KEYS = ("gold", "good_positional", "good_any2", "champion", "winner_in_top3")

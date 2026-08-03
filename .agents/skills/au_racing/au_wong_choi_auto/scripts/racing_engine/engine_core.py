@@ -36,6 +36,7 @@ from scoring import (
     CLASS_MICRO_WEIGHTS,
     CONSISTENCY_MICRO_WEIGHTS,
     SECTIONAL_MICRO_WEIGHTS,
+    TRIAL_MICRO_WEIGHTS,
     TRACK_MICRO_WEIGHTS,
     PACE_MICRO_WEIGHTS,
     FIT_MICRO_WEIGHTS,
@@ -830,14 +831,17 @@ class RacingEngine:
         starts = self._career_starts()
         is_maiden = self._is_maiden_race()
         if not trial_places:
-            base = 58 if starts == 0 else 60
+            tw = TRIAL_MICRO_WEIGHTS
+            base = (tw.get("no_trial_debut_base", 58.0) if starts == 0
+                    else tw.get("no_trial_base", 60.0))
             detail["base"] = base
             detail["final"] = base
             detail["note"] = "無試閘紀錄，按保守中性處理"
             return base, "試閘訊號有限，試閘分保守處理。", "trial_table"
         good = sum(1 for place in trial_places[:3] if place <= 3)
-        score = 56
-        detail["base"] = 56
+        tw = TRIAL_MICRO_WEIGHTS
+        score = tw.get("base", 56.0)
+        detail["base"] = score
 
         def add(delta, factor, evidence=""):
             nonlocal score
@@ -846,35 +850,36 @@ class RacingEngine:
                                           "factor": factor, "evidence": evidence})
 
         if good:
-            add(good * 9, "試閘前三獎勵", f"近3次試閘{good}次前三（每次 +9）")
+            add(good * tw.get("top3_mult", 9.0), "試閘前三獎勵",
+                f"近3次試閘{good}次前三（每次 +{tw.get('top3_mult', 9.0):.0f}）")
         trial_count = int(parse_float(self.data.get("trial_count")) or len(trial_places))
         latest_trial = trial_places[0] if trial_places else None
         if starts == 0:
-            add(4, "初出馬備戰", "未出賽，試閘係主要備戰證據")
+            add(tw.get("debut_prep_bonus", 4.0), "初出馬備戰", "未出賽，試閘係主要備戰證據")
             if is_maiden:
-                add(2, "新馬賽初出加碼", "")
+                add(tw.get("debut_maiden_bonus", 2.0), "新馬賽初出加碼", "")
                 self.reason_codes.append("maiden_debut_trial_boost")
         if latest_trial == 1:
-            add(4, "最近試閘頭馬", "最近一課試閘勝出")
+            add(tw.get("latest_win_bonus", 4.0), "最近試閘頭馬", "最近一課試閘勝出")
             if is_maiden:
-                add(2, "新馬賽加碼", "")
+                add(tw.get("latest_win_maiden_bonus", 2.0), "新馬賽加碼", "")
         elif latest_trial is not None and latest_trial <= 3:
-            add(2, "最近試閘前三", f"最近一課試閘第{int(latest_trial)}")
+            add(tw.get("latest_top3_bonus", 2.0), "最近試閘前三", f"最近一課試閘第{int(latest_trial)}")
             if is_maiden:
-                add(1, "新馬賽加碼", "")
+                add(tw.get("latest_top3_maiden_bonus", 1.0), "新馬賽加碼", "")
         if trial_count >= 4 and safe_ratio(good, max(1, min(3, trial_count))) >= 0.66:
-            add(2, "試閘密度高兼交代穩", f"共{trial_count}次試閘，前列比例高")
+            add(tw.get("density_bonus", 2.0), "試閘密度高兼交代穩", f"共{trial_count}次試閘，前列比例高")
             if is_maiden and trial_count >= 6 and safe_ratio(good, trial_count) >= 0.6:
-                add(3, "新馬賽密集備戰加碼", "")
+                add(tw.get("density_maiden_bonus", 3.0), "新馬賽密集備戰加碼", "")
                 self.reason_codes.append("maiden_trial_density_boost")
         # Maiden: trial speed as direct signal
         if is_maiden:
             tw_trial = self.data.get("timing_trial_600m_avg_speed")
             if tw_trial and tw_trial >= 17.5:
-                add(4, "試閘時間快", f"試閘 L600 平均 {tw_trial:.2f} m/s（≥17.5 屬快）")
+                add(tw.get("fast_trial_bonus", 4.0), "試閘時間快", f"試閘 L600 平均 {tw_trial:.2f} m/s（≥17.5 屬快）")
                 self.reason_codes.append("maiden_fast_trial_speed")
             elif tw_trial and tw_trial >= 17.0:
-                add(2, "試閘時間中上", f"試閘 L600 平均 {tw_trial:.2f} m/s")
+                add(tw.get("mid_trial_bonus", 2.0), "試閘時間中上", f"試閘 L600 平均 {tw_trial:.2f} m/s")
         # Trial video qualitative signals (from trial comments)
         trial_signals = self.data.get("trial_video_signals") or {}
         if trial_signals:
@@ -3967,13 +3972,12 @@ class RacingEngine:
             recent_margin = sum(margins[:2]) / 2
             older_margin = sum(margins[2:]) / len(margins[2:])
             improvement = recent_margin - older_margin
-            mt = w.get("margin_trend_bonus", 3.0)
             if improvement >= 2.0:
-                add(mt, "輸距趨勢改善",
+                add(w.get("margin_trend_up_bonus", 3.0), "輸距趨勢改善",
                     f"近2仗平均輸距較之前收窄 {improvement:.1f}L")
                 notes.append("輸距趨勢改善")
             elif improvement <= -2.0:
-                add(-mt, "輸距趨勢惡化",
+                add(w.get("margin_trend_down_pen", -3.0), "輸距趨勢惡化",
                     f"近2仗平均輸距較之前擴大 {abs(improvement):.1f}L")
                 notes.append("輸距趨勢惡化")
 

@@ -26,10 +26,32 @@ MATRIX_FORMULAS = {
     "race_shape": (
         ("pace_map_score", 1.0),
     ),
+    # 2026-08-04 內部重配（`au_inner_weights.py`）。舊值 jockey .28 / trainer .20 /
+    # jockey_horse_fit **.52** —— 即係判別力最弱嗰個 leaf 攞咗過半內部權重：
+    #     jockey_score 0.600 · trainer_score 0.605 · jockey_horse_fit_score **0.532**
+    # 而 jockey_horse_fit 逐段實際表現係**非單調**嘅（52–56 帶 +14.2pp、58–60 帶
+    # −7.5pp、60–62 帶 +8.2pp）—— 佢唔係弱，係亂，因為入面三個「騎師連續性」
+    # 手調項符號同結果相反（見 `au_adjustment_audit.py`）。
+    #
+    # 五條獨立證據支持減佢權重：
+    #   1. leaf AUC 最低（0.532 vs 同維度 0.600 / 0.605）
+    #   2. 逐段實際表現非單調（健康 leaf 例如 form_score 係完全單調嘅）
+    #   3. SD 對照組：候選贏「保持現行分配、只放大維度權重」4↑/0↓
+    #   4. ability 場內 AUC：dev +0.0047 [+0.0005,+0.0087]、
+    #      holdout +0.0117 [+0.0046,+0.0197]，頭 5 位配對 holdout +0.0150 ✅
+    #   5. 場數指標 dev 同 holdout 全部正
+    #
+    # ⚠️ walk-forward 只有 3/5，而我一度因此 REJECT 佢。後來校準過條閘：
+    # 40 個**確定中性**嘅擾動之下，三道閘全過嘅係 **0/40**，walk-forward 5/5
+    # 只有 5/40。即係嗰道閘假陽性率係 0（好），但同時細幅度嘅真改動大機會
+    # 過唔到。用佢做唯一裁判會系統性拒絕所有細改善。
+    #
+    # Rollback: jockey .28 / trainer .20 / jockey_horse_fit .52，
+    #           同時 WET_FORM_FEATURE_SCALE 13.47 / MAX_ABS 5.61。
     "jockey_trainer": (
-        ("jockey_score", 0.28),
-        ("trainer_score", 0.20),
-        ("jockey_horse_fit_score", 0.52),
+        ("jockey_score", 0.333333),
+        ("trainer_score", 0.285714),
+        ("jockey_horse_fit_score", 0.380952),
     ),
     # rating_score up-weighted 0.15 -> 0.70 (2026-06-29): official handicap rating
     # is the one run-style-independent ability signal that lifts box4 OOS. Combined
