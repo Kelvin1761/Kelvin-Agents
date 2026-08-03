@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
 """把一個 leaf 換成另一個算法，量最終排名指標。
 
-點解需要：`au_leaf_power.py` 量到一個**簡單收縮上名率**（0.615）好過引擎個
-`trainer_score`（0.571），濕地更加係 0.629 vs 0.571。但「單獨 AUC 高」唔等於
-「換咗之後排名會好」—— 個 leaf 喺矩陣入面同其他 leaf 混，可能重疊。所以要
-真真正正換咗佢再量排名。
+點解需要：`au_leaf_power.py` 量到一個**簡單收縮上名率**好過引擎個
+`trainer_score`。但「單獨 AUC 高」唔等於「換咗之後排名會好」—— 個 leaf 喺
+矩陣入面同其他 leaf 混，可能重疊。所以要真真正正換咗佢再量排名。
 
-引擎個 `_trainer_score` 係 base（統一上名率）+ 一層 micro adjustment
-（場館成績、Waller 首戰…）。呢個測試等於問：**淨用 base、剷走 adjustment，
-會唔會更好？**
+⚠️ **AUC 差距係 1.0pp，唔係 4.4pp。** 呢個 docstring 以前寫住
+「簡單公式 0.615 vs 引擎 0.571」，而嗰個係**跨語料比較** —— 0.571 喺 LY 只填
+81% 嘅語料量，0.615 喺 96.8% 嘅語料量。同一語料量返：trainer 0.605 vs 0.615
+（1.0pp）、jockey 0.600 vs 0.599（0.001）。所以呢個測試問嘅係一個**邊際**改善，
+唔係修一個壞掉嘅 leaf。
 
-紀律同其他測試一樣：dev 85% / holdout 15% 依時間切，dev 內 5 fold 閘。
+紀律：dev 85% / holdout 15% 依時間切、dev 內 5 fold 閘、**加 walk-forward 5 窗**。
+walk-forward 係後來加嘅，因為同日 `au_inner_weights.py` 出現過一個
+dev 升 + holdout 升 + SD 對照過 + AUC 支持嘅候選，逐窗一睇就散（3/5）——
+喺同一批數據上切出嚟嘅幾個檢查會一齊錯。
+
+`--cache` 把 build 結果寫落 JSON。build 要 parse 全部 cached 賽事頁（~15 分鐘），
+而調閘門唔應該每次都等嗰十五分鐘。
 """
 from __future__ import annotations
 
@@ -144,9 +151,18 @@ def main():
     ap.add_argument("--scored", required=True)
     ap.add_argument("--holdout", type=float, default=0.15)
     ap.add_argument("--folds", type=int, default=5)
+    ap.add_argument("--cache", help="build 結果嘅 JSON；有就讀，冇就寫")
     args = ap.parse_args()
 
-    races = build(args.scored)
+    cache = Path(args.cache) if args.cache else None
+    if cache and cache.exists():
+        races = [[(n, f, w, p, s) for n, f, w, p, s in r]
+                 for r in json.loads(cache.read_text())]
+        print(f"（由 {cache.name} 讀返 {len(races)} 場）")
+    else:
+        races = build(args.scored)
+        if cache:
+            cache.write_text(json.dumps(races))
     cut = int(len(races) * (1 - args.holdout))
     dev, hold = races[:cut], races[cut:]
     print(f"{len(races)} 場（dev {len(dev)} / holdout {len(hold)}）\n")
@@ -177,6 +193,26 @@ def main():
                 for k in ('gold','good_positional','good_any2','champion','winner_in_top3','t3prec'))
                 + f"{passed:>9}")
         print()
+
+    # ── walk-forward：5 個依時間嘅窗，逐窗都唔准退步 ─────────────────────
+    # dev/holdout 同 5-fold 都係喺同一次切割上做，所以佢哋會一齊被同一個
+    # 時期特性騙倒。walk-forward 換一個切法再問一次。
+    print("===== walk-forward（5 窗，依時間）=====")
+    wn = len(races) // 5
+    print(f"{'':20}" + "".join(f"{i + 1:>10}" for i in range(5)) + f"{'過閘':>8}")
+    for label, swap in variants:
+        cells, ok = [], 0
+        for i in range(5):
+            seg = races[i * wn:(i + 1) * wn] if i < 4 else races[i * wn:]
+            b, c = evaluate(seg), evaluate(seg, swap)
+            if not b or not c:
+                cells.append("     n/a")
+                continue
+            good = (c["t3prec"] - b["t3prec"] >= -0.01
+                    and c["winner_in_top3"] - b["winner_in_top3"] >= -0.01)
+            ok += good
+            cells.append(f"{c['t3prec'] - b['t3prec']:>+9.2f}" + ("✅" if good else "❌"))
+        print(f"{label:20}" + "".join(f"{c:>10}" for c in cells) + f"{ok:>6}/5")
     return 0
 
 

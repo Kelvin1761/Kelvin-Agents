@@ -12,7 +12,7 @@ version: 6.0.0
 
 而家嘅 live path：
 
-1. Racenet extraction
+1. Sportsbet extraction
 2. `Facts.md` generation
 3. deterministic `Race_X_Logic.json` build
 4. deterministic auto scoring / ranking
@@ -22,7 +22,7 @@ version: 6.0.0
 
 ## 唯一入口
 
-收到 Racenet URL、meeting folder、或現成 `Race_X_Logic.json` 後，唯一正確入口係：
+收到 Sportsbet form URL、meeting folder、或現成 `Race_X_Logic.json` 後，唯一正確入口係：
 
 ```bash
 python3 .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "<URL或資料夾>"
@@ -58,7 +58,7 @@ Resolver 認得 `08-01` / `8-1` / `2026-08-01` / `20260801`，馬場名做大小
 ⚠️ **多過一個 match 佢會 exit 1 並列晒出嚟，唔會亂猜** —— 撞錯馬場好過靜靜咁分析錯。
 遇到就把個 list 畀用戶揀，唔好自己挑一個。
 
-⚠️ 覆盤要賽果。`--results-url` 已經冇用（Racenet 三條 transport 全封），賽果由
+⚠️ 覆盤要賽果。`--results-url` 已經冇用（唯一來源係 Sportsbet cache），賽果由
 Sportsbet 攞 —— 見 `claw_sportsbet_form.py`。
 
 ## ⚠️ 抽取一定要行瀏覽器（curl_cffi 而家 403）
@@ -119,7 +119,7 @@ Sportsbet 攞 —— 見 `claw_sportsbet_form.py`。
 - 一句話（例：`08-01 rosehill gardens`）— 經 `au_meeting_resolver.py`
 - 已存在 meeting folder
 - 現成 `Race_X_Logic.json`
-- ~~Racenet form-guide URL~~ — Racenet 已全面封鎖，改用 Sportsbet
+- ~~Racenet form-guide URL~~ — Racenet 2026-08-02 全面封鎖，相關腳本 2026-08-04 已由 repo 剷走；只用 Sportsbet
 
 ## Expected Outputs
 
@@ -140,7 +140,6 @@ Sportsbet 攞 —— 見 `claw_sportsbet_form.py`。
 
 ## Related Components
 
-- `au_race_extractor`
 - `.agents/scripts/inject_fact_anchors.py`
 - `au_wong_choi_auto/scripts/build_au_logic.py`
 - `au_wong_choi_auto/scripts/au_auto_orchestrator.py`

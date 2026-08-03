@@ -33,3 +33,22 @@ trail in `race_analysis.going_refresh`.
 - Do not inject LLM placeholders
 - Do not depend on `[FILL]` fields for live ranking
 - Ranking uses deterministic `ability_score` + AU micro tie-break rules
+
+
+## Gold / Good 定義（2026-08-04 改）
+
+Kelvin 定嘅追逐目標係 **Gold + Good**，而 Gold 嘅意思改咗：
+
+    Gold        實際前三**全部**落喺模型頭四揀之內   ← 捕捉率，新
+    gold_strict 模型頭三揀全部上名                    ← 舊定義，保留做歷史對照
+    Good 位置   模型第一同第二揀都上名                （冇改）
+
+新 Gold 係舊 Gold 嘅**超集**，所以任何一場舊 Gold 一定仍然係 Gold。
+604 場 Sportsbet 語料：Gold 5.0% → 14.7%。
+
+點解改：舊定義答嘅係「頭三格排得幾整齊」，而 Kelvin 要問嘅係
+「三隻上名馬有冇一隻走漏」。一隻上名馬排喺第 4 位係捉到咗，
+唔應該同一隻排喺第 9 位嘅同分。
+
+⚠️ 任何引用歷史 Gold 數字嘅地方要講清楚用邊個定義 —— 兩者差近三倍。
+`eval_metrics.race_metrics` 兩個都出，`summarize_races` 兩個都數。
