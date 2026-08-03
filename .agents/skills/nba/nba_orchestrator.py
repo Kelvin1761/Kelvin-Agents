@@ -47,6 +47,11 @@ GENERATE_REPORTS = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "generat
 VALIDATE_OUTPUT = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "validate_nba_output.py")
 VALIDATE_SCHEMA = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "validate_json_schema.py")
 GENERATE_SGM = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "generate_nba_sgm_reports.py")
+SHARED_HOOK_DIR = os.path.join(
+    WORKSPACE_ROOT, ".agents", "skills", "shared_racing", "post_success_hooks", "scripts"
+)
+sys.path.insert(0, SHARED_HOOK_DIR)
+from cloudflare_deploy_hook import run_post_success_cloudflare_deploy
 
 ESPN_TO_STANDARD = {
     "GS": "GSW",
@@ -220,12 +225,14 @@ def write_state(target_dir: str, game_tags: list, phase: str):
 
 # ─── NEXT_CMD Auto-Loop (AU Pattern) ────────────────────────────────────
 
-def _next_cmd(date_str: str, extra_args: str = ""):
+def _next_cmd(date_str: str, extra_args: str = "", skip_cloudflare_deploy: bool = False):
     """Print machine-readable re-run command for LLM auto-execution."""
     rel_path = os.path.relpath(os.path.abspath(__file__), WORKSPACE_ROOT)
     cmd = f"{PYTHON} {rel_path} --date {date_str} --auto"
     if extra_args:
         cmd += f" {extra_args}"
+    if skip_cloudflare_deploy:
+        cmd += " --skip-cloudflare-deploy"
     print(f"\nNEXT_CMD: {cmd}")
 
 
@@ -236,6 +243,23 @@ def _count_fill_residuals(target_dir: str) -> int:
         with open(md, "r", encoding="utf-8") as f:
             count += f.read().count("[FILL]")
     return count
+
+
+def _pipeline_release_action(
+    *,
+    passed: bool,
+    failed: bool,
+    fill_count: int,
+    sgm_exists: bool,
+) -> str:
+    """Return the only safe next action after an NBA pipeline run."""
+    if failed or not passed:
+        return "blocked"
+    if fill_count > 0:
+        return "fill"
+    if not sgm_exists:
+        return "compile"
+    return "deploy"
 
 
 # ─── Per-Game Pipeline ──────────────────────────────────────────────────
@@ -392,6 +416,8 @@ def main():
                              "生成嘅報告標記為 DEBUG_ONLY_DO_NOT_BET。")
     parser.add_argument("--legacy", action="store_true",
                         help="使用舊版 10-Factor 引擎（預設為 ML RandomForest）")
+    parser.add_argument("--skip-cloudflare-deploy", action="store_true",
+                        help="完成分析後唔更新 Cloudflare Dashboard。")
     args = parser.parse_args()
 
     if not args.date:
@@ -468,8 +494,27 @@ def main():
     if args.compile_only:
         game_tags = [g["tag"] for g in games]
         if os.path.exists(GENERATE_SGM):
-            run_script(GENERATE_SGM, ["--dir", target_dir], label="SGM Master Report")
-            write_state(target_dir, game_tags, "compile_complete")
+            compile_ok = run_script(GENERATE_SGM, ["--dir", target_dir], label="SGM Master Report")
+            release_action = _pipeline_release_action(
+                passed=compile_ok,
+                failed=not compile_ok,
+                fill_count=_count_fill_residuals(target_dir),
+                sgm_exists=os.path.exists(
+                    os.path.join(target_dir, "NBA_All_SGM_Report.txt")
+                ),
+            )
+            if release_action == "deploy":
+                write_state(target_dir, game_tags, "compile_complete")
+                run_post_success_cloudflare_deploy(
+                    source="NBA Wong Choi",
+                    target_dir=target_dir,
+                    skip=args.skip_cloudflare_deploy,
+                )
+            else:
+                print(
+                    f"⛔ Compile-only 未達發布條件（{release_action}），"
+                    "Cloudflare Dashboard 唔會更新。"
+                )
         else:
             print(f"❌ 找不到 SGM 報告生成器: {GENERATE_SGM}")
         sys.exit(0)
@@ -510,12 +555,23 @@ def main():
         print(f"❌ 失敗: {len(results['failed'])} 場 — {results['failed']}")
 
     # ── SGM + Banker Report ──
+    sgm_ok = False
     if results["passed"] and os.path.exists(GENERATE_SGM):
         print(f"\n📋 生成 Master SGM + Banker 報告...")
-        run_script(GENERATE_SGM, ["--dir", target_dir], label="SGM Master Report")
+        sgm_ok = run_script(
+            GENERATE_SGM,
+            ["--dir", target_dir],
+            label="SGM Master Report",
+        )
 
     # ── State persistence ──
-    write_state(target_dir, [g["tag"] for g in games], "pipeline_complete")
+    write_state(
+        target_dir,
+        [g["tag"] for g in games],
+        "pipeline_partial"
+        if results["failed"] or not sgm_ok
+        else "pipeline_complete",
+    )
 
     # ── Status ──
     print_status(target_dir, [g["tag"] for g in games])
@@ -525,22 +581,36 @@ def main():
         print(f"\n⚠️ {len(results['failed'])} 場失敗。修復後可重跑。")
 
     fill_count = _count_fill_residuals(target_dir)
-    if fill_count > 0:
+    release_action = _pipeline_release_action(
+        passed=bool(results["passed"]),
+        failed=bool(results["failed"]) or not sgm_ok,
+        fill_count=fill_count,
+        sgm_exists=os.path.exists(os.path.join(target_dir, "NBA_All_SGM_Report.txt")),
+    )
+    if release_action == "blocked":
+        print(
+            "\n⛔ NBA 分析未完整通過，Cloudflare Dashboard 唔會更新。"
+            "請先修復失敗場次再重跑。"
+        )
+    elif release_action == "fill":
         # Phase 2: LLM needs to fill [FILL] fields
         print(f"\n📋 [Phase 2] 有 {fill_count} 個 [FILL] 需要 LLM 填寫。")
         print(f"  👉 讀取每份 Game_*_Full_Analysis.md 並填寫 [FILL] 欄位")
         print(f"  🔒 嚴禁修改 Python 預填嘅數學數據")
         print(f"  完成後重新執行 orchestrator:")
-        _next_cmd(args.date, "--compile-only")
-    elif results["passed"] and not os.path.exists(
-        os.path.join(target_dir, "NBA_All_SGM_Report.txt")
-    ):
+        _next_cmd(args.date, "--compile-only", args.skip_cloudflare_deploy)
+    elif release_action == "compile":
         # Phase 3: Compile needed
         print(f"\n📋 所有報告已完成，需要編譯 SGM 匯總。")
-        _next_cmd(args.date, "--compile-only")
-    else:
+        _next_cmd(args.date, "--compile-only", args.skip_cloudflare_deploy)
+    elif release_action == "deploy":
         # Pipeline fully complete — no NEXT_CMD
         print(f"\n🎉 Pipeline 完全完成！無需進一步操作。")
+        run_post_success_cloudflare_deploy(
+            source="NBA Wong Choi",
+            target_dir=target_dir,
+            skip=args.skip_cloudflare_deploy,
+        )
 
     print(f"\n🎯 [Orchestrator V3.1] Pipeline 完成！")
     print(f"所有報告位於: {target_dir}")
