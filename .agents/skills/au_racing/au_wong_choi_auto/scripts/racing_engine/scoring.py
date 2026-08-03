@@ -317,7 +317,12 @@ FIT_MICRO_WEIGHTS = {
     "current_trial_mult": 3.8,
     "latest_downgrade_pen": -4.11,
     "leave_proven_jockey_pen": -2.98,
-    "signal_best_jockey_bonus": 3.85
+    "signal_best_jockey_bonus": 3.85,
+    # 2026-08-04：以下三項本來係函數入面硬寫嘅 `add(2, …)`。提升成有名參數，
+    # 因為一個 ablation 掃唔到嘅魔術數字比一個調得太多嘅參數更難升級。
+    "signal_same_jockey_bonus": 2.0,
+    "signal_trial_rider_bonus": 2.0,
+    "signal_reunite_bonus": 2.0,
 }
 
 # 2026-08-01（較後）矩陣重新配權之後嘅實測分佈（7,547 匹）：

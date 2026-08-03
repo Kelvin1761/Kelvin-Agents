@@ -1707,11 +1707,14 @@ class RacingEngine:
                 # 因此保留準確描述，唔用未泛化嘅大額微調入分。
                 notes.append(f"{jockey_change_signal}（評級變化只作背景，不入分）")
             elif "沿用上仗騎師" in jockey_change_signal:
-                add(2, "沿用上仗騎師，部署連貫", jockey_change_signal)
+                add(FIT_MICRO_WEIGHTS.get("signal_same_jockey_bonus", 2.0),
+                    "沿用上仗騎師，部署連貫", jockey_change_signal)
             elif "試閘手接手" in jockey_change_signal:
-                add(2, "試閘手接手，備戰線完整", jockey_change_signal)
+                add(FIT_MICRO_WEIGHTS.get("signal_trial_rider_bonus", 2.0),
+                    "試閘手接手，備戰線完整", jockey_change_signal)
             elif "回配" in jockey_change_signal:
-                add(2, "回配熟手騎師", jockey_change_signal)
+                add(FIT_MICRO_WEIGHTS.get("signal_reunite_bonus", 2.0),
+                    "回配熟手騎師", jockey_change_signal)
         # 雜項硬編碼調整 family 2026-07-11 退出計分（display-only）：成族 ablation
         # 全指標零變化。有意思嘅背景（減磅/週期/首仗二出往績）保留做 note。
         if status_cycle in {"First-up", "久休復出"} and stage_stats["first_up"]["places"] > 0:
