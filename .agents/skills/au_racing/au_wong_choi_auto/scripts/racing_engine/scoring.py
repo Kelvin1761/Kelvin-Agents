@@ -300,7 +300,21 @@ PACE_MICRO_WEIGHTS = {
     "modifier_cap_min": -9.43,
     "modifier_multiplier": 1.1
 }
-TRAINER_MICRO_WEIGHTS = {"waller_debut_bonus": 0.0, "track_high_vol_high_place_bonus": 0.0, "track_med_vol_high_place_bonus": 0.0, "track_med_vol_med_place_bonus": 0.0}
+# 2026-08-04：四個 micro adjustment 全部歸零。**實測係惰性嘅** —— 604 場配對
+# 對比，只有 3–5 場結果有變，前三命中格數 800 vs 799（+1），Miss 152 vs 152
+# 完全一樣，冇一個指標顯著（winner_in_top3 p=0.25，方向仲係輕微偏向保留）。
+#
+# 所以剷走佢哋**唔係性能改善**，係簡化：少四個手調參數、少一個硬寫馬房名
+# （`"Waller" in trainer` +5.52），而量度證明冇代價。
+#
+# ⚠️ 唔好因為呢個歸零而以為「trainer 評分已經修好」。同一批數據用一條更簡單
+# 嘅公式（收縮去**個人生涯**而唔係全國基準）場內 AUC 係 0.615，而引擎現行
+# `trainer_score` 係 0.571 —— 嗰 4.4pp 唔喺 adjustment，喺 base 公式，
+# 係另一個未解決嘅改動。
+TRAINER_MICRO_WEIGHTS = {"waller_debut_bonus": 0.0,
+                         "track_high_vol_high_place_bonus": 0.0,
+                         "track_med_vol_high_place_bonus": 0.0,
+                         "track_med_vol_med_place_bonus": 0.0}
 
 # 2026-07-11 大剪裁（702場 A/B）：
 # - 「歷來最佳配搭」family REMOVED — best_formal_mult 被 ML 推成負數（沿用最佳配搭
