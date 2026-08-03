@@ -148,3 +148,26 @@ def test_scheduled_analysis_leaves_tracker_sync_and_deploy_to_run_daily(monkeypa
 
     assert calls == [("run-daily", "--date", "2026-07-29")]
     assert any("dashboard" in line and "deployed" in line for line in logs)
+
+
+def test_run_cli_logs_captured_output_before_raising(monkeypatch):
+    logs = []
+
+    class FailedCommand:
+        stdout = "dashboard build traceback"
+        returncode = 1
+
+        def check_returncode(self):
+            raise subprocess.CalledProcessError(self.returncode, ["run-daily"], output=self.stdout)
+
+    monkeypatch.setattr(scheduler.subprocess, "run", lambda *args, **kwargs: FailedCommand())
+    monkeypatch.setattr(scheduler, "log", logs.append)
+
+    try:
+        scheduler.run_cli("run-daily", "--date", "2026-08-02")
+    except subprocess.CalledProcessError:
+        pass
+    else:
+        raise AssertionError("failed child command must still propagate its exit status")
+
+    assert logs[-1] == "dashboard build traceback"

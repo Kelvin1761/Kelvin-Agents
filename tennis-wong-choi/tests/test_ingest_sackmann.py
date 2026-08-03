@@ -26,6 +26,33 @@ def test_numeric_parsers_tolerate_dirty_tml_cells():
     assert _int_or_none(None) is None
 
 
+def test_low_tier_history_skips_rows_with_missing_provider_identity():
+    from tennis_wc.ingestion.ingest_sackmann import _has_valid_player_identities, _ingest_rows
+
+    invalid_row = {
+        "winner_id": "",
+        "winner_name": "Jordan Lee",
+        "loser_id": "12345",
+        "loser_name": "Valid Player",
+    }
+    assert not _has_valid_player_identities(invalid_row)
+    assert _ingest_rows("ATP", [invalid_row], raw_id=1) == {
+        "matches": 0,
+        "player_rows": 0,
+        "ranking_rows": 0,
+        "skipped_duplicates": 0,
+        "skipped_invalid_identities": 1,
+    }
+    assert _has_valid_player_identities(
+        {
+            "winner_id": "67890",
+            "winner_name": "Jordan Lee",
+            "loser_id": "12345",
+            "loser_name": "Valid Player",
+        }
+    )
+
+
 def test_elo_builder_consumes_both_history_providers():
     from tennis_wc.ingestion.ingest_sackmann import HISTORY_PROVIDERS
 

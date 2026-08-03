@@ -286,11 +286,12 @@ def run_cli(*args: str) -> str:
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        check=True,
+        check=False,
     )
     output = completed.stdout.strip()
     if output:
         log(output)
+    completed.check_returncode()
     return output
 
 

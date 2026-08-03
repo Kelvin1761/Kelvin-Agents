@@ -7,7 +7,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from tennis_wc.database.db import get_connection
-from tennis_wc.ingestion.entity_mapping import get_or_create_player, upsert_tournament
+from tennis_wc.ingestion.entity_mapping import get_or_create_player, upsert_tournament, valid_player_identity
 from tennis_wc.ingestion.raw_response_store import store_raw_response, utc_now
 
 
@@ -47,7 +47,14 @@ def ingest_sackmann_history(start_year: int, end_year: int, tours: list[str] | N
     player per match.
     """
     wanted_tours = tours or ["ATP", "WTA"]
-    imported = {"files": 0, "matches": 0, "player_rows": 0, "ranking_rows": 0, "errors": []}
+    imported = {
+        "files": 0,
+        "matches": 0,
+        "player_rows": 0,
+        "ranking_rows": 0,
+        "skipped_invalid_identities": 0,
+        "errors": [],
+    }
     for tour in wanted_tours:
         for year in range(start_year, end_year + 1):
             url = BASE_URLS[tour].format(year=year)
@@ -72,6 +79,7 @@ def ingest_sackmann_history(start_year: int, end_year: int, tours: list[str] | N
             imported["matches"] += stats["matches"]
             imported["player_rows"] += stats["player_rows"]
             imported["ranking_rows"] += stats["ranking_rows"]
+            imported["skipped_invalid_identities"] += stats["skipped_invalid_identities"]
     return imported
 
 
@@ -91,7 +99,15 @@ def ingest_tml_low_tier_history(start_year: int, end_year: int, include_quali: b
     double-counted matches enter the Elo pool.
     """
     kinds = ["CHALLENGER"] + (["ATP_QUALI"] if include_quali else []) + ["ATP_MAIN"]
-    imported = {"files": 0, "matches": 0, "player_rows": 0, "ranking_rows": 0, "skipped_duplicates": 0, "errors": []}
+    imported = {
+        "files": 0,
+        "matches": 0,
+        "player_rows": 0,
+        "ranking_rows": 0,
+        "skipped_duplicates": 0,
+        "skipped_invalid_identities": 0,
+        "errors": [],
+    }
     for kind in kinds:
         for year in range(start_year, end_year + 1):
             url = TML_LOW_TIER_URLS[kind].format(year=year)
@@ -123,6 +139,7 @@ def ingest_tml_low_tier_history(start_year: int, end_year: int, include_quali: b
             imported["player_rows"] += stats["player_rows"]
             imported["ranking_rows"] += stats["ranking_rows"]
             imported["skipped_duplicates"] += stats.get("skipped_duplicates", 0)
+            imported["skipped_invalid_identities"] += stats["skipped_invalid_identities"]
     return imported
 
 
@@ -134,8 +151,17 @@ def _ingest_rows(
     dedup_against_provider: str | None = None,
 ) -> dict[str, int]:
     now = utc_now()
-    stats = {"matches": 0, "player_rows": 0, "ranking_rows": 0, "skipped_duplicates": 0}
+    stats = {
+        "matches": 0,
+        "player_rows": 0,
+        "ranking_rows": 0,
+        "skipped_duplicates": 0,
+        "skipped_invalid_identities": 0,
+    }
     for row in rows:
+        if not _has_valid_player_identities(row):
+            stats["skipped_invalid_identities"] += 1
+            continue
         match_date = _parse_tourney_date(row.get("tourney_date"))
         if not match_date:
             continue
@@ -174,6 +200,14 @@ def _ingest_rows(
         stats["matches"] += 1
         stats["player_rows"] += 2
     return stats
+
+
+def _has_valid_player_identities(row: dict) -> bool:
+    """Reject malformed history rows without aborting the whole provider file."""
+    return valid_player_identity(row.get("winner_id"), row.get("winner_name")) and valid_player_identity(
+        row.get("loser_id"),
+        row.get("loser_name"),
+    )
 
 
 def _history_pair_exists(provider: str, winner_id: int, loser_id: int, match_date: str) -> bool:
