@@ -194,6 +194,44 @@ def runner_features(block, today_dist, horse_name="", today_jockey=""):
         if nd:
             out["l600_at_distance"] = -min(nd)
 
+    # PI 嘅替代品：Settled 只有 26% 覆蓋，但 400m 走位有 74%。
+    # `inject_fact_anchors` 已經算咗 l400_pi = pos_400 − finish（18 處），
+    # 但**引擎一個字都冇讀**。呢度先量佢有冇訊號，再講改唔改。
+    # 名次由對手線推（自己出現喺 1-/2-/3- 就係上名），冇對手線就冇 finish。
+    pi400, pi800 = [], []
+    for i, ln in enumerate(lines):
+        if not re.match(r"^(\S.*?)\sR\d+\s\d{4}-\d{2}-\d{2}\s+\d+m\s+cond:", ln):
+            continue
+        if "**(TRIAL)**" in ln:
+            continue
+        opp = lines[i + 1] if i + 1 < len(lines) else ""
+        fin = None
+        for m2 in re.finditer(r"([123])-([A-Za-z][^(,]*)", opp):
+            if horse_name and horse_name.lower() in m2.group(2).strip().lower():
+                fin = int(m2.group(1))
+                break
+        if fin is None:
+            continue
+        m4 = re.search(r"(\d+)\w*@400m", ln)
+        m8 = re.search(r"(\d+)\w*@800m", ln)
+        if m4:
+            pi400.append(int(m4.group(1)) - fin)
+        if m8:
+            pi800.append(int(m8.group(1)) - fin)
+    if pi400:
+        out["l400_pi_mean"] = sum(pi400) / len(pi400)     # 正數 = 追前
+    if pi800:
+        out["l800_pi_mean"] = sum(pi800) / len(pi800)
+
+    # Kelvin：試閘名次 + 時間**合併**試下
+    if trials:
+        tl2 = [r["l600"] for r in trials if r["l600"] is not None]
+        if tl2:
+            # 名次（上名數）同時間（最好 L600 delta）各佔一半，都先場內標準化唔到，
+            # 所以用簡單相加：上名數 − 最好 delta（細 = 快）
+            out["trial_rank_plus_time"] = (
+                sum(1 for r in trials if r["placed"]) - min(tl2))
+
     # 起步定位：由往績行嘅 `Nth@Settled` 同 `starters:N` 算習慣位置。
     # 一定要除以馬群大細 —— 16 匹跑第 5 同 6 匹跑第 5 唔同。
     fr = []
