@@ -48,20 +48,32 @@ W, C, T = FIT_MICRO_WEIGHTS, CONSISTENCY_MICRO_WEIGHTS, TRIAL_MICRO_WEIGHTS
 
 # 逐項審計（718 場）搵出嘅「大覆蓋、零訊號」項 —— 剷佢哋係為咗乾淨，
 # 前提係唔蝕。每個都要過四道閘。
-NO_SIGNAL = [
-    (C, "repeat_bonus", 0.0),        # n=2,897  超額 −0.8（加分但方向反）
-    (C, "no_repeat_pen", 0.0),       # n=  268  超額 +2.6（扣分但方向反）
-    (C, "margin_trend_up_bonus", 0.0),  # n=  956  超額 −0.1（惡化側 −6.2 保留）
-    (T, "latest_top3_bonus", 0.0),   # n=2,824  超額 −0.7
-    (W, "signal_trial_rider_bonus", 0.0),  # n=773  超額 +0.1
-]
+# `au_continuity_conditional.py`（718 場）嘅**條件化**效果 —— 對照組係
+# 「行到同一個分岔點但冇觸發」嘅馬，唔係全體：
+#
+#   leave_proven_jockey_pen   觸發 +4.8 vs 對照 **−6.8**  →  效果 **+11.7pp**
+#   latest_downgrade_pen      觸發 +5.5 vs 對照  +2.1  →  效果  **+3.4pp**
+#   signal_same_jockey_bonus  觸發 −3.7 vs 對照  +0.9  →  效果  **−4.6pp**
+#
+# 對照組揭示咗真正機制：同一個分岔點之下，唯一分別係**上仗騎師同呢匹馬嘅
+# 上名率**。≥50% 嘅今日跑 +4.8、<50% 嘅跑 −6.8。即係嗰個數字量緊**呢匹馬
+# 嘅質素**，唔係「配搭連續性」。變數揀啱、符號錯、個名令人讀錯。
+#
+# ⚠️ 幅度**唔跟**實測超額。用結果擬合幅度就係之前三次 overfit 嘅做法。
+# 呢度只採用實測嘅**符號**，幅度保留原本嘅絕對值（或者更保守），再用 AUC 驗。
+LEAVE, DOWN, SAME = "leave_proven_jockey_pen", "latest_downgrade_pen", "signal_same_jockey_bonus"
+
+MULT = "latest_jockey_record_mult"
+# 連續分級項取代兩個單邊門檻 —— 所以啟用佢嗰陣要同時關掉舊嗰兩個，否則重複計。
+def graded(m):
+    return [(W, MULT, m), (W, LEAVE, 0.0), (W, DOWN, 0.0)]
 
 VARIANTS = [
     ("現行", []),
-    ("剷零訊號項（5 個）", NO_SIGNAL),
-    ("只單邊化輸距趨勢", [(C, "margin_trend_up_bonus", 0.0)]),
-    ("只剷 repeat 配對", [(C, "repeat_bonus", 0.0), (C, "no_repeat_pen", 0.0)]),
-    ("剷零訊號項 + 試閘前三", NO_SIGNAL + [(T, "latest_top3_maiden_bonus", 0.0)]),
+    ("分級項 mult=4", graded(4.0)),
+    ("分級項 mult=8", graded(8.0)),
+    ("分級項 mult=12", graded(12.0)),
+    ("分級項 mult=8 + 反 SAME", graded(8.0) + [(W, SAME, -2.0)]),
 ]
 
 KEYS = ("gold", "good_positional", "good_any2", "champion", "winner_in_top3")
@@ -85,6 +97,49 @@ def score_race(logic, rows, path, patches):
                              facts_path=path).analyze_horse()
             out.append((float(r["ability_score"]), src["horse_number"], src["actual_pos"]))
     return out
+
+
+def auc_pairs(scored_races, top_only=False, K=5):
+    """→ 逐場 (concordant, comparable)。場數指標喺 718 場之下功效唔夠 ——
+    校準過：40 個確定中性嘅改動，三道閘全過 0/40。場內 AUC 用晒每一對比較。"""
+    out = []
+    for race in scored_races:
+        ranked = sorted(race, key=lambda x: (-x[0], x[1]))
+        rank = {r[1]: i + 1 for i, r in enumerate(ranked)}
+        c = n = 0
+        for a in race:
+            for b in race:
+                if not (a[2] <= 3 and b[2] > 3):
+                    continue
+                if top_only and rank[a[1]] > K and rank[b[1]] > K:
+                    continue
+                n += 1
+                c += 1.0 if a[0] > b[0] else (0.5 if a[0] == b[0] else 0.0)
+        out.append((c, n))
+    return out
+
+
+def auc_of(pairs, lo=0, hi=None):
+    seg = pairs[lo:hi]
+    n = sum(x[1] for x in seg)
+    return (sum(x[0] for x in seg) / n) if n else float("nan")
+
+
+def boot_ci(base, cand, lo, hi, seed=7):
+    """配對 bootstrap，**按場**重抽 —— 同場比較唔獨立，按對重抽會低估區間。"""
+    import random
+    rng = random.Random(seed)
+    m = hi - lo
+    ds = []
+    for _ in range(2000):
+        idx = [lo + rng.randrange(m) for _ in range(m)]
+        nb = sum(base[i][1] for i in idx)
+        nc = sum(cand[i][1] for i in idx)
+        if nb and nc:
+            ds.append(sum(cand[i][0] for i in idx) / nc
+                      - sum(base[i][0] for i in idx) / nb)
+    ds.sort()
+    return ds[len(ds) // 40], ds[-len(ds) // 40]
 
 
 def metrics(scored_races):
@@ -156,7 +211,23 @@ def main():
                           "winner_in_top3", "t3prec")))
         print()
 
-    print("===== 閘門 =====")
+    print("===== ability 場內 AUC（配對 bootstrap 95% 區間）=====")
+    for label, top in (("全場配對", False), (f"頭 5 位配對", True)):
+        b = auc_pairs(scored["現行"], top)
+        print(f"\n── {label} ──  現行 dev {auc_of(b,0,cut):.4f} · "
+              f"holdout {auc_of(b,cut,n):.4f}")
+        print(f"{'':22}{'dev Δ':>10}{'dev 95% CI':>24}{'hold Δ':>10}{'hold 95% CI':>24}")
+        for name, _ in VARIANTS[1:]:
+            c = auc_pairs(scored[name], top)
+            dd = auc_of(c, 0, cut) - auc_of(b, 0, cut)
+            hd = auc_of(c, cut, n) - auc_of(b, cut, n)
+            dl, dh = boot_ci(b, c, 0, cut)
+            hl, hh = boot_ci(b, c, cut, n)
+            f = lambda l, h: f"[{l:+.4f}, {h:+.4f}]" + ("✅" if l > 0 else ("❌" if h < 0 else "·"))
+            print(f"{name:22}{dd:>+10.4f}{f(dl,dh):>26}{hd:>+10.4f}{f(hl,hh):>26}")
+    print()
+
+    print("===== 閘門（已知功效不足，只作參考）=====")
     print(f"{'':18}{'dev 5-fold':>12}{'walk-forward':>14}{'holdout 守門':>14}")
     for name, _ in VARIANTS[1:]:
         f_ok = 0

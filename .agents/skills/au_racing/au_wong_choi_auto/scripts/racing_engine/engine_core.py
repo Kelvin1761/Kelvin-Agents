@@ -1685,6 +1685,18 @@ class RacingEngine:
         # GGP +2／A窗 +1／B窗平 → 移除係贏。歷來最佳配搭資料仍喺數據錨點顯示。
         if best_formal_jockey and best_formal_rides > 0 and current_vs_best:
             notes.append(current_vs_best)
+        # 上仗騎師同此駒嘅往績 —— 連續分級項（2026-08-04）。
+        # 呢個唔限於「換咗騎師」：`lo_rate` 量緊嘅係**呢匹馬喺最近嗰位騎師手上
+        # 交到幾多**，而唔係配搭連續性。條件化量度話呢個變數單調預測，
+        # 而舊嗰兩個門檻項只碰單邊。mult = 0 即係唔啟用。
+        _lo_mult = FIT_MICRO_WEIGHTS.get("latest_jockey_record_mult", 0.0)
+        if _lo_mult and latest_official_rides > 0:
+            _cap = FIT_MICRO_WEIGHTS.get("latest_jockey_record_cap", 5.0)
+            _d = max(-_cap, min(_cap, _lo_mult * (latest_official_place_rate - 0.457)))
+            if _d:
+                add(_d, "上仗騎師對此駒往績",
+                    f"{latest_official_jockey or '上仗騎師'}策此駒 {latest_official_rides} 次、"
+                    f"上名率 {latest_official_place_rate * 100:.0f}%（全體平均 46%）")
         if latest_official_jockey and latest_official_jockey != jockey and latest_official_rides > 0:
             # latest_upgrade_bonus 權重已被 ML 歸零 — 死支刪除（2026-07-11），
             # 免報告出現「有講冇分」嘅因子。

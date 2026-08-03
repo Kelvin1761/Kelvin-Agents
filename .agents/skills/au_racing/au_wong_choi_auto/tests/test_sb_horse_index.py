@@ -109,3 +109,66 @@ class InjectorWiringTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OpponentDerivedRecordsTests(unittest.TestCase):
+    """對手名單砌出嚟嘅記錄（2026-08-04）。
+
+    呢批記錄令對手命中由 12.8% 升到 99.9%，零額外請求。但佢哋有**系統性偏差**
+    —— 只喺對手入前三嗰陣先見到佢 —— 所以一定要標記 `partial`，
+    否則下游算上名率會永遠得出 100%，每隻對手都變「中組」以上。
+    """
+
+    def _blocks(self):
+        return [{
+            "name": "Our Runner",
+            "runs": [{
+                "pos": "6", "field": "8",
+                "header": {"track": "Flemington", "date": "06/03/2026", "race": "7"},
+                "opponents": [
+                    {"ord": "1st", "name": "Emery"},
+                    {"ord": "2nd", "name": "Beaumista"},
+                    {"ord": "3rd", "name": "Gogmagog"},
+                ],
+            }],
+        }]
+
+    def test_opponents_become_dated_run_records(self):
+        idx = {}
+        stats = IDX.update(self._blocks(), index=idx, save_now=False)
+        self.assertEqual(stats["opponent_runs_added"], 3)
+        self.assertIn("emery", idx)
+        run = idx["emery"]["runs"][0]
+        self.assertEqual(run["finish"], 1)
+        self.assertEqual(run["date"], "2026-03-06")
+        self.assertEqual(run["venue"], "Flemington")
+
+    def test_opponent_records_are_marked_partial(self):
+        """冇呢個 flag，下游就會把「見到佢入前三 3 次」當成「出賽 3 次全部上名」。"""
+        idx = {}
+        IDX.update(self._blocks(), index=idx, save_now=False)
+        self.assertTrue(all(r.get("partial") for r in idx["emery"]["runs"]))
+        self.assertFalse(idx["our-runner"]["runs"][0].get("partial"))
+
+    def test_a_complete_record_replaces_the_partial_one(self):
+        """同一場如果之後抓到嗰匹馬自己嘅 runner block，要升級 —— 唔可以留住
+        個 partial 版，否則佢個真實名次（可能係第 8）永遠見唔到。"""
+        idx = {}
+        IDX.update(self._blocks(), index=idx, save_now=False)
+        self.assertTrue(idx["emery"]["runs"][0]["partial"])
+        IDX.update([{
+            "name": "Emery",
+            "runs": [{"pos": "1", "field": "8",
+                      "header": {"track": "Flemington", "date": "06/03/2026", "race": "7"},
+                      "opponents": []}],
+        }], index=idx, save_now=False)
+        runs = idx["emery"]["runs"]
+        self.assertEqual(len(runs), 1, "同一場唔應該有兩條記錄")
+        self.assertFalse(runs[0].get("partial"))
+
+    def test_opponents_can_be_switched_off(self):
+        idx = {}
+        stats = IDX.update(self._blocks(), index=idx, save_now=False,
+                                      opponents=False)
+        self.assertEqual(stats["opponent_runs_added"], 0)
+        self.assertNotIn("emery", idx)

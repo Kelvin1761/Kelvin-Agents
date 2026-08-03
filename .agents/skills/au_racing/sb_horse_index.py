@@ -98,30 +98,94 @@ def save(index: dict, path=DEFAULT_INDEX) -> None:
     tmp.replace(p)          # atomic —— 中途死唔會留半個索引
 
 
-def update(blocks, index=None, path=DEFAULT_INDEX, save_now=True) -> dict:
+_ORD = {"1st": 1, "2nd": 2, "3rd": 3}
+
+
+def _opponent_records(run):
+    """由一條往績行嘅對手名單砌記錄 —— **零額外請求**。
+
+    往績行「Newcastle R7 2026-03-06 … / 1-Emery, 2-Beaumista, 3-Gogmagog」
+    同時話咗我哋知 Emery 喺嗰日嗰個馬場贏咗。即係每一條往績行都係三隻**對手**
+    嘅 run 記錄，而唔止係嗰匹馬自己嘅。
+
+    ⚠️ **呢啲記錄係有系統性偏差嘅** —— 我哋只會喺對手入到前三嗰陣見到佢。
+    佢跑第八嗰次係隱形嘅。所以標記 `partial: True`：
+      * `future_wins` / `future_places` 用得，因為我哋見到佢**全部**前三。
+      * `future_runs`（做分母算上名率）**用唔得** —— 會永遠得出 100%。
+    消費者要按 `partial` 分開處理，見 `inject_fact_anchors.compute_form_lines_via_api`。
+    """
+    from claw_sportsbet_form import run_date
+
+    h = run.get("header") or {}
+    date = run_date(run)
+    venue = (h.get("track") or "").strip()
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date or ""):
+        return
+    try:
+        starters = int(run["field"]) if run.get("field") else None
+    except (TypeError, ValueError):
+        starters = None
+    for o in run.get("opponents") or []:
+        finish = _ORD.get(o.get("ord"))
+        name = (o.get("name") or "").strip()
+        if not finish or not name:
+            continue
+        yield name, {"date": date, "date_full": date, "venue": venue,
+                     "finish": finish, "starters": starters, "is_placed": True,
+                     "class": infer_class(venue), "partial": True}
+
+
+def _merge(entry, rec):
+    """(date, venue) 去重。完整記錄永遠蓋過 partial 記錄。"""
+    key = (rec["date"], rec["venue"])
+    for i, r in enumerate(entry["runs"]):
+        if (r["date"], r["venue"]) == key:
+            if r.get("partial") and not rec.get("partial"):
+                entry["runs"][i] = rec       # 升級：見到完整嗰版就換走
+                return True
+            return False
+    entry["runs"].append(rec)
+    return True
+
+
+def update(blocks, index=None, path=DEFAULT_INDEX, save_now=True,
+           opponents=True) -> dict:
     """把一場（或一個馬場）嘅 runner blocks 併入索引。回傳統計。
 
     同一匹馬喺多場出現會逐次補；用 (date, venue) 做 key 去重，所以重跑係冪等。
+
+    `opponents=True` 額外由每條往績行嘅對手名單砌記錄。實測呢個係最大嘅
+    覆蓋來源：836 個 Formguide 引用咗 **15,713 隻**唯一對手，而由 runner
+    block 砌嘅索引只有 5,583 隻 —— 即係只命中 12.8%。對手記錄唔使多打一個
+    請求就補到餘下嗰批。
     """
     index = load(path) if index is None else index
-    horses = added = 0
+    horses = added = opp_added = 0
     for blk in blocks or []:
         slug = build_slug(blk.get("name"))
         if not slug:
             continue
         horses += 1
         entry = index.setdefault(slug, {"name": blk.get("name"), "runs": []})
-        seen = {(r["date"], r["venue"]) for r in entry["runs"]}
         for run in blk.get("runs", []):
             rec = _run_record(run)
-            if rec and (rec["date"], rec["venue"]) not in seen:
-                seen.add((rec["date"], rec["venue"]))
-                entry["runs"].append(rec)
+            if rec and _merge(entry, rec):
                 added += 1
+            if not opponents:
+                continue
+            for oname, orec in _opponent_records(run):
+                oslug = build_slug(oname)
+                if not oslug:
+                    continue
+                oentry = index.setdefault(oslug, {"name": oname, "runs": []})
+                if _merge(oentry, orec):
+                    opp_added += 1
+    for entry in index.values():
         entry["runs"].sort(key=lambda r: r["date"], reverse=True)
     if save_now:
         save(index, path)
-    return {"horses": horses, "runs_added": added, "index_size": len(index)}
+    return {"horses": horses, "runs_added": added,
+            "opponent_runs_added": opp_added, "index_size": len(index)}
 
 
 def lookup(names, path=DEFAULT_INDEX, as_of="") -> dict:

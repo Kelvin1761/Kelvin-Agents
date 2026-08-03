@@ -751,26 +751,38 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
         slug = _to_slug(q['opp_name'])
         opp_data = profile_data.get(slug, {})
         
+        # ⚠️ 索引有兩種記錄，唔可以混住數（2026-08-04）：
+        #   完整記錄  —— 由 runner block 嚟，嗰匹馬每一仗都見到（包括跑第八）
+        #   partial   —— 由**對手名單**嚟，只喺佢入前三嗰陣先見到
+        # partial 令覆蓋由 12.8% 升到 99.9%，但佢對「出賽次數」係有偏差嘅：
+        # 淨計 partial 嘅話 future_places / future_runs 永遠 = 100%，
+        # 於是每隻對手都變「中組」以上。
+        #
+        # 所以：**勝出同上名次數兩種記錄都數**（我哋見到佢全部前三，冇漏），
+        # 但**上名率嘅分母只用完整記錄**。冇完整記錄就唔算率，改為只按勝出分層。
         future_wins = 0
-        future_places = 0  # Top-3 finishes
-        future_runs = 0
+        future_places = 0        # Top-3 finishes（兩種記錄都算）
+        future_runs = 0          # 顯示用：見到嘅將來出賽（含 partial）
+        future_runs_complete = 0 # 上名率分母：只計完整記錄
         future_venues = set()
-        
+
         if 'runs' in opp_data:
-            runs = opp_data['runs']
-            for r in runs:
+            for r in opp_data['runs']:
                 try:
                     r_dt = datetime.strptime(r['date'], '%Y-%m-%d')
-                    if q['date_dt'] and r_dt > q['date_dt']:
-                        future_runs += 1
-                        if r.get('venue'):
-                            future_venues.add(r['venue'])
-                        finish = r.get('finish')
-                        if finish == 1:
-                            future_wins += 1
-                        if finish is not None and 1 <= finish <= 3:
-                            future_places += 1
-                except:
+                    if not (q['date_dt'] and r_dt > q['date_dt']):
+                        continue
+                    future_runs += 1
+                    if not r.get('partial'):
+                        future_runs_complete += 1
+                    if r.get('venue'):
+                        future_venues.add(r['venue'])
+                    finish = r.get('finish')
+                    if finish == 1:
+                        future_wins += 1
+                    if finish is not None and 1 <= finish <= 3:
+                        future_places += 1
+                except Exception:
                     pass
         
         # Infer class from venues (AU-specific heuristic)
@@ -796,21 +808,40 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
         elif future_runs == 0:
             perf_str = "未有出賽"
         else:
-            perf_str = f"出 {future_runs} 次: {future_wins} 勝"
             total_valid += 1
-            place_rate = future_places / future_runs if future_runs > 0 else 0
-            
+            # 只有 partial 記錄嗰陣「出 N 次」係錯嘅講法 —— 我哋只見到佢入前三
+            # 嗰幾次。講真話，唔好講到似完整往績。
+            if future_runs_complete:
+                perf_str = f"出 {future_runs} 次: {future_wins} 勝"
+            else:
+                perf_str = f"見前三 {future_places} 次: {future_wins} 勝"
+
             if future_wins >= 2 or (future_wins >= 1 and class_str == 'Metro'):
                 strength_lbl = "✅✅ 超強組"
                 strong_score += 2
             elif future_wins >= 1:
                 strength_lbl = "✅ 強組"
                 strong_score += 1
-            elif place_rate >= 0.4:
+            elif future_runs_complete:
+                # 有完整記錄先算得上名率
+                place_rate = future_places / future_runs_complete
+                if place_rate >= 0.4:
+                    strength_lbl = "⚠️ 中組"
+                    strong_score += 0.5
+                else:
+                    strength_lbl = "❌ 弱組"
+            elif future_places:
+                # 只有 partial：見到佢入過前三但冇贏。呢個係正面證據，
+                # 但**唔可以**當「上名率高」—— 佢跑輸嗰啲仗我哋見唔到。
                 strength_lbl = "⚠️ 中組"
                 strong_score += 0.5
             else:
-                strength_lbl = "❌ 弱組"
+                # 只有 partial 而且冇見過佢入前三 → 冇證據，唔係「弱」。
+                # 判佢弱就係把「我哋見唔到」當成「佢差」，
+                # 而呢個 repo 已經因為同一個錯誤改過兩個 leaf 嘅零點。
+                perf_str = "未見前三"
+                strength_lbl = "-"
+                total_valid -= 1
         
         # Build table row — show race details only on first opponent row per race
         is_first_opp = (q['race_idx'] != prev_race_idx)
