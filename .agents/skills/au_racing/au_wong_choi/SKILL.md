@@ -61,6 +61,35 @@ Resolver 認得 `08-01` / `8-1` / `2026-08-01` / `20260801`，馬場名做大小
 ⚠️ 覆盤要賽果。`--results-url` 已經冇用（Racenet 三條 transport 全封），賽果由
 Sportsbet 攞 —— 見 `claw_sportsbet_form.py`。
 
+## ⚠️ 抽取一定要行瀏覽器（curl_cffi 而家 403）
+
+`curl_cffi` 對 sportsbetform **全面 403**，包括曾經成功抓過嘅賽事頁。所以
+**唔可以**直接靠 `claw_sportsbet_form.py` 出網 —— 佢會靜靜咁攞唔到，然後 Facts
+報「數據不足」。正確分工係：
+
+    抓頁面 → 瀏覽器（每版 15–20 秒）
+    parse／評分 → Python，全程 cache-only、零請求
+
+步驟：
+
+1. 開 bridge：`python3 .agents/skills/au_racing/sb_browser_bridge.py --port 8787`
+2. **發現場次**（唔使用戶貼 link）：瀏覽器開 `https://www.sportsbetform.com.au/{YYYY-MM-DD}/`
+   —— 嗰版列晒當日每個場次嘅 puntcdn PDF（檔名帶 meetingId）同每一場嘅
+   `/{meetingId}/{raceId}/` 連結。索引頁 curl_cffi 一樣 403，一定要瀏覽器。
+3. 喺瀏覽器度逐版 `fetch()` 賽事頁，POST 上 bridge（bridge 會用同一條
+   sha1(url) cache path 寫落 `.sportsbet_cache/`）。
+   **節奏放喺 bridge 嘅 `/wait?ms=` —— 背景 tab 嘅 `setTimeout` 會俾 Chrome
+   clamp 到一分鐘一次，設 18 秒會變 100 秒。**
+   撞到任何非 200 就停，唔好 retry 撞落去。
+4. 騎練個人頁（`/Jockey/{id}/`、`/Trainer/{id}/`）同樣經瀏覽器落 cache，
+   然後 `sb_people_stats.refresh(..., cache_only=True)` 讀返。
+   ⚠️ 唔用 `cache_only` 就會出網然後失敗，`(LY:)` 全部變 `-`，
+   `jockey_score` / `trainer_score` 由 99%/95% 跌到 63%/51%。
+5. 之後 `au_orchestrator.py <DIR> --auto --skip-cloudflare-deploy` 全程離線。
+
+⚠️ **`--skip-cloudflare-deploy` 唔可以漏** —— orchestrator 收尾會自動 deploy，
+而個 hook 會重發**現時 live 嘅 snapshot**，唔係你啱啱分析嗰個場次。
+
 ## Supported Inputs
 
 - 一句話（例：`08-01 rosehill gardens`）— 經 `au_meeting_resolver.py`
