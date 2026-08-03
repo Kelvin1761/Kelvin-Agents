@@ -1,0 +1,256 @@
+{
+  "races": 713,
+  "date_source": {
+    "facts": 6932,
+    "none": 321,
+    "field": 294
+  },
+  "top_pick": {
+    "ALL": {
+      "n": 713,
+      "win_pct": 23.8,
+      "top3_pct": 49.9,
+      "bottom_third_pct": 19.6,
+      "avg_pos": 4.31,
+      "avg_sp": 7.5
+    },
+    "a_0-45d": {
+      "n": 570,
+      "win_pct": 23.2,
+      "top3_pct": 49.8,
+      "bottom_third_pct": 18.1,
+      "avg_pos": 4.29,
+      "avg_sp": 6.8
+    },
+    "b_46-90d": {
+      "n": 26,
+      "win_pct": 34.6,
+      "top3_pct": 50.0,
+      "bottom_third_pct": 19.2,
+      "avg_pos": 3.96,
+      "avg_sp": 7.3
+    },
+    "c_91-180d": {
+      "n": 91,
+      "win_pct": 26.4,
+      "top3_pct": 50.5,
+      "bottom_third_pct": 28.6,
+      "avg_pos": 4.52,
+      "avg_sp": 9.6
+    },
+    "d_181-365d": {
+      "n": 15,
+      "win_pct": 13.3,
+      "top3_pct": 46.7,
+      "bottom_third_pct": 26.7,
+      "avg_pos": 4.47,
+      "avg_sp": 17.4
+    },
+    "e_365d+": {
+      "n": 3,
+      "win_pct": 0.0,
+      "top3_pct": 0.0,
+      "bottom_third_pct": 66.7,
+      "avg_pos": 8.67,
+      "avg_sp": 35.0
+    },
+    "z_unknown": {
+      "n": 8,
+      "win_pct": 37.5,
+      "top3_pct": 75.0,
+      "bottom_third_pct": 0.0,
+      "avg_pos": 2.5,
+      "avg_sp": 5.6
+    }
+  },
+  "all_runners": {
+    "a_0-45d": {
+      "n": 5919,
+      "top3_pct": 28.6
+    },
+    "b_46-90d": {
+      "n": 247,
+      "top3_pct": 27.5
+    },
+    "c_91-180d": {
+      "n": 773,
+      "top3_pct": 26.5
+    },
+    "d_181-365d": {
+      "n": 256,
+      "top3_pct": 24.6
+    },
+    "e_365d+": {
+      "n": 31,
+      "top3_pct": 19.4
+    },
+    "z_unknown": {
+      "n": 321,
+      "top3_pct": 31.8
+    }
+  },
+  "long_layoff_top_picks": [
+    {
+      "meeting": "2026-06-27 Rosehill Gardens Race 1-10",
+      "race": 3,
+      "horse": "Gilette",
+      "spell_days": 395,
+      "pos": 9,
+      "field": 12,
+      "sp": 15.0
+    },
+    {
+      "meeting": "2026-05-23 Randwick Race 1-10",
+      "race": 6,
+      "horse": "Pier Pressure",
+      "spell_days": 385,
+      "pos": 13,
+      "field": 15,
+      "sp": 81.0
+    },
+    {
+      "meeting": "2026-04-15 Warwick Farm Race 1-8",
+      "race": 5,
+      "horse": "Rimbaud",
+      "spell_days": 379,
+      "pos": 4,
+      "field": 9,
+      "sp": 9.0
+    },
+    {
+      "meeting": "2026-05-27 Doomben Race 1-8",
+      "race": 6,
+      "horse": "Set To Shine",
+      "spell_days": 333,
+      "pos": 5,
+      "field": 9,
+      "sp": 6.5
+    },
+    {
+      "meeting": "2026-05-08 Pakenham Race 1-8",
+      "race": 2,
+      "horse": "Just Swift",
+      "spell_days": 257,
+      "pos": 2,
+      "field": 9,
+      "sp": 3.3
+    },
+    {
+      "meeting": "2026-01-24 Randwick Race 1-10",
+      "race": 8,
+      "horse": "Matcha Latte",
+      "spell_days": 245,
+      "pos": 3,
+      "field": 9,
+      "sp": 6.5
+    },
+    {
+      "meeting": "2026-06-06 Randwick Race 1-10",
+      "race": 8,
+      "horse": "General Salute",
+      "spell_days": 224,
+      "pos": 2,
+      "field": 11,
+      "sp": 3.8
+    },
+    {
+      "meeting": "2026-03-28 Flemington",
+      "race": 7,
+      "horse": "Noonday Gun",
+      "spell_days": 223,
+      "pos": 10,
+      "field": 12,
+      "sp": 91.0
+    },
+    {
+      "meeting": "2025-12-20 Randwick Race 1-10",
+      "race": 8,
+      "horse": "Know Thyself",
+      "spell_days": 218,
+      "pos": 1,
+      "field": 13,
+      "sp": 11.0
+    },
+    {
+      "meeting": "2025-10-04 Flemington Race 1-10",
+      "race": 6,
+      "horse": "Tentyris",
+      "spell_days": 210,
+      "pos": 3,
+      "field": 9,
+      "sp": 7.5
+    },
+    {
+      "meeting": "2026-04-08 Sale Race 1-8",
+      "race": 4,
+      "horse": "Bark",
+      "spell_days": 209,
+      "pos": 5,
+      "field": 6,
+      "sp": 6.0
+    },
+    {
+      "meeting": "2026-02-28 Randwick Race 1-10",
+      "race": 2,
+      "horse": "Sir Franklin",
+      "spell_days": 201,
+      "pos": 4,
+      "field": 15,
+      "sp": 12.0
+    },
+    {
+      "meeting": "2026-04-29 Caulfield Heath Race 1-8",
+      "race": 6,
+      "horse": "Per Sempre",
+      "spell_days": 199,
+      "pos": 2,
+      "field": 11,
+      "sp": 41.0
+    },
+    {
+      "meeting": "2026-01-17 Flemington Race 1-10",
+      "race": 10,
+      "horse": "Buccleuch",
+      "spell_days": 196,
+      "pos": 6,
+      "field": 10,
+      "sp": 6.5
+    },
+    {
+      "meeting": "2026-06-20 Randwick Race 1-10",
+      "race": 3,
+      "horse": "Celebrity",
+      "spell_days": 188,
+      "pos": 8,
+      "field": 10,
+      "sp": 18.0
+    },
+    {
+      "meeting": "2026-01-10 Flemington Race 1-10",
+      "race": 9,
+      "horse": "Inexorable",
+      "spell_days": 187,
+      "pos": 9,
+      "field": 12,
+      "sp": 26.0
+    },
+    {
+      "meeting": "2025-09-13 Flemington Race 1-10",
+      "race": 9,
+      "horse": "Marble Arch",
+      "spell_days": 182,
+      "pos": 6,
+      "field": 13,
+      "sp": 18.0
+    },
+    {
+      "meeting": "2026-02-14 Randwick Race 1-10",
+      "race": 2,
+      "horse": "Mal Coupe",
+      "spell_days": 182,
+      "pos": 1,
+      "field": 12,
+      "sp": 3.4
+    }
+  ]
+}

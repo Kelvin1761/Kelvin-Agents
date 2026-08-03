@@ -1,0 +1,293 @@
+{
+  "method": {
+    "full_archive": true,
+    "development_cv": "leave-one-meeting-out",
+    "full_field_linear_formula": true,
+    "micro_tiebreak": false,
+    "blind_swap": false,
+    "outcome_features_in_score": false
+  },
+  "coverage": {
+    "meetings": 25,
+    "races": 245,
+    "runners": 3054
+  },
+  "selected_regularization": 0.5,
+  "cv": {
+    "0.5": {
+      "mean_validation_pairwise_loss": 0.657185,
+      "weight_sd": {
+        "published_prior": 0.006695,
+        "stability": 0.006949,
+        "trainer_signal": 0.006038,
+        "class_rating_experience": 0.005233,
+        "speed_engine": 0.00738,
+        "recent_mean_finish": 0.004915
+      }
+    },
+    "1.0": {
+      "mean_validation_pairwise_loss": 0.708327,
+      "weight_sd": {
+        "published_prior": 0.004002,
+        "stability": 0.003964,
+        "trainer_signal": 0.003541,
+        "class_rating_experience": 0.003448,
+        "speed_engine": 0.004078,
+        "recent_mean_finish": 0.003271
+      }
+    },
+    "2.0": {
+      "mean_validation_pairwise_loss": 0.74451,
+      "weight_sd": {
+        "published_prior": 0.002175,
+        "stability": 0.002148,
+        "trainer_signal": 0.00191,
+        "class_rating_experience": 0.001986,
+        "speed_engine": 0.00216,
+        "recent_mean_finish": 0.001899
+      }
+    },
+    "4.0": {
+      "mean_validation_pairwise_loss": 0.765815,
+      "weight_sd": {
+        "published_prior": 0.001129,
+        "stability": 0.001113,
+        "trainer_signal": 0.000995,
+        "class_rating_experience": 0.001041,
+        "speed_engine": 0.001117,
+        "recent_mean_finish": 0.00103
+      }
+    },
+    "8.0": {
+      "mean_validation_pairwise_loss": 0.77733,
+      "weight_sd": {
+        "published_prior": 0.000584,
+        "stability": 0.000597,
+        "trainer_signal": 0.000489,
+        "class_rating_experience": 0.000513,
+        "speed_engine": 0.00056,
+        "recent_mean_finish": 0.000518
+      }
+    }
+  },
+  "features": [
+    "published_prior",
+    "stability",
+    "trainer_signal",
+    "class_rating_experience",
+    "speed_engine",
+    "recent_mean_finish"
+  ],
+  "weights": {
+    "published_prior": 0.693999,
+    "stability": 0.074249,
+    "trainer_signal": 0.051628,
+    "class_rating_experience": 0.028931,
+    "speed_engine": 0.070827,
+    "recent_mean_finish": 0.080366
+  },
+  "results": {
+    "archive_development": {
+      "baseline": {
+        "races": 88,
+        "zero_hit": 21,
+        "one_hit": 40,
+        "two_hit": 27,
+        "top2_total_hits": 94,
+        "top3_capture_at5": 0.640152,
+        "top3_all_within_top5": 0.215909,
+        "competitive_recall_at5": 0.573864,
+        "ndcg_at5": 0.544845,
+        "winner_in_top5": 0.659091,
+        "mrr": 0.464607
+      },
+      "candidate": {
+        "races": 88,
+        "zero_hit": 21,
+        "one_hit": 40,
+        "two_hit": 27,
+        "top2_total_hits": 94,
+        "top3_capture_at5": 0.640152,
+        "top3_all_within_top5": 0.204545,
+        "competitive_recall_at5": 0.576705,
+        "ndcg_at5": 0.549509,
+        "winner_in_top5": 0.659091,
+        "mrr": 0.467845
+      },
+      "delta": {
+        "zero_hit": 0,
+        "one_hit": 0,
+        "two_hit": 0,
+        "top2_total_hits": 0,
+        "top3_capture_at5": 0.0,
+        "top3_all_within_top5": -0.011364,
+        "competitive_recall_at5": 0.002841,
+        "ndcg_at5": 0.004664,
+        "winner_in_top5": 0.0,
+        "mrr": 0.003238
+      }
+    },
+    "archive_temporal_holdout": {
+      "baseline": {
+        "races": 39,
+        "zero_hit": 12,
+        "one_hit": 20,
+        "two_hit": 7,
+        "top2_total_hits": 34,
+        "top3_capture_at5": 0.581197,
+        "top3_all_within_top5": 0.179487,
+        "competitive_recall_at5": 0.546581,
+        "ndcg_at5": 0.483552,
+        "winner_in_top5": 0.615385,
+        "mrr": 0.422039
+      },
+      "candidate": {
+        "races": 39,
+        "zero_hit": 12,
+        "one_hit": 20,
+        "two_hit": 7,
+        "top2_total_hits": 34,
+        "top3_capture_at5": 0.606838,
+        "top3_all_within_top5": 0.230769,
+        "competitive_recall_at5": 0.538889,
+        "ndcg_at5": 0.484474,
+        "winner_in_top5": 0.615385,
+        "mrr": 0.415486
+      },
+      "delta": {
+        "zero_hit": 0,
+        "one_hit": 0,
+        "two_hit": 0,
+        "top2_total_hits": 0,
+        "top3_capture_at5": 0.025641,
+        "top3_all_within_top5": 0.051282,
+        "competitive_recall_at5": -0.007692,
+        "ndcg_at5": 0.000922,
+        "winner_in_top5": 0.0,
+        "mrr": -0.006553
+      }
+    },
+    "independent_recent": {
+      "baseline": {
+        "races": 109,
+        "zero_hit": 37,
+        "one_hit": 56,
+        "two_hit": 16,
+        "top2_total_hits": 88,
+        "top3_capture_at5": 0.605505,
+        "top3_all_within_top5": 0.183486,
+        "competitive_recall_at5": 0.567431,
+        "ndcg_at5": 0.490128,
+        "winner_in_top5": 0.688073,
+        "mrr": 0.40634
+      },
+      "candidate": {
+        "races": 109,
+        "zero_hit": 35,
+        "one_hit": 58,
+        "two_hit": 16,
+        "top2_total_hits": 90,
+        "top3_capture_at5": 0.611621,
+        "top3_all_within_top5": 0.174312,
+        "competitive_recall_at5": 0.573853,
+        "ndcg_at5": 0.494004,
+        "winner_in_top5": 0.697248,
+        "mrr": 0.402998
+      },
+      "delta": {
+        "zero_hit": -2,
+        "one_hit": 2,
+        "two_hit": 0,
+        "top2_total_hits": 2,
+        "top3_capture_at5": 0.006116,
+        "top3_all_within_top5": -0.009174,
+        "competitive_recall_at5": 0.006422,
+        "ndcg_at5": 0.003876,
+        "winner_in_top5": 0.009175,
+        "mrr": -0.003342
+      }
+    },
+    "external_2026_07_15": {
+      "baseline": {
+        "races": 9,
+        "zero_hit": 5,
+        "one_hit": 1,
+        "two_hit": 3,
+        "top2_total_hits": 7,
+        "top3_capture_at5": 0.555556,
+        "top3_all_within_top5": 0.111111,
+        "competitive_recall_at5": 0.555556,
+        "ndcg_at5": 0.446284,
+        "winner_in_top5": 0.666667,
+        "mrr": 0.306614
+      },
+      "candidate": {
+        "races": 9,
+        "zero_hit": 5,
+        "one_hit": 2,
+        "two_hit": 2,
+        "top2_total_hits": 6,
+        "top3_capture_at5": 0.555556,
+        "top3_all_within_top5": 0.111111,
+        "competitive_recall_at5": 0.555556,
+        "ndcg_at5": 0.427188,
+        "winner_in_top5": 0.666667,
+        "mrr": 0.251058
+      },
+      "delta": {
+        "zero_hit": 0,
+        "one_hit": 1,
+        "two_hit": -1,
+        "top2_total_hits": -1,
+        "top3_capture_at5": 0.0,
+        "top3_all_within_top5": 0.0,
+        "competitive_recall_at5": 0.0,
+        "ndcg_at5": -0.019096,
+        "winner_in_top5": 0.0,
+        "mrr": -0.055556
+      }
+    },
+    "all": {
+      "baseline": {
+        "races": 245,
+        "zero_hit": 75,
+        "one_hit": 117,
+        "two_hit": 53,
+        "top2_total_hits": 223,
+        "top3_capture_at5": 0.612245,
+        "top3_all_within_top5": 0.191837,
+        "competitive_recall_at5": 0.565986,
+        "ndcg_at5": 0.507124,
+        "winner_in_top5": 0.665306,
+        "mrr": 0.426104
+      },
+      "candidate": {
+        "races": 245,
+        "zero_hit": 73,
+        "one_hit": 120,
+        "two_hit": 52,
+        "top2_total_hits": 224,
+        "top3_capture_at5": 0.619048,
+        "top3_all_within_top5": 0.191837,
+        "competitive_recall_at5": 0.568639,
+        "ndcg_at5": 0.509969,
+        "winner_in_top5": 0.669388,
+        "mrr": 0.422697
+      },
+      "delta": {
+        "zero_hit": -2,
+        "one_hit": 3,
+        "two_hit": -1,
+        "top2_total_hits": 1,
+        "top3_capture_at5": 0.006803,
+        "top3_all_within_top5": 0.0,
+        "competitive_recall_at5": 0.002653,
+        "ndcg_at5": 0.002845,
+        "winner_in_top5": 0.004082,
+        "mrr": -0.003407
+      }
+    }
+  },
+  "passes": false,
+  "recommendation": "HOLD"
+}

@@ -28,7 +28,9 @@ HKJC_EXTRACTOR_SCRIPTS = PROJECT_ROOT / ".agents" / "skills" / "hkjc_racing" / "
 #     python3 .agents/skills/au_racing/sb_results.py --meeting-dir "<meeting dir>"
 # 佢由 Sportsbet cache 生成，零網絡請求。呢個常數留住只係為咗 fallback 時
 # 大聲失敗，唔係一條預期走嘅路。
-AU_RESULTS_EXTRACTOR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "claw_racenet_results.py"
+# AU 賽果由 Sportsbet cache 生成，唔出網。以前呢度指向 `claw_racenet_results.py`
+# —— Racenet 全封之後嗰條路只會靜靜咁失敗，而且已經連檔都剷咗。
+AU_RESULTS_EXTRACTOR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "sb_results.py"
 HKJC_RESULTS_EXTRACTOR = HKJC_EXTRACTOR_SCRIPTS / "fast_extract_results.py"
 
 

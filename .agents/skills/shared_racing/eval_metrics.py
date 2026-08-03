@@ -75,14 +75,18 @@ def _ndcg_at_k(
     return dcg(observed) / ideal_score if ideal_score > 0 else 0.0
 
 
-def exclusive_label(top3_hits: int, top2_hits: int) -> str:
+def exclusive_label(top3_hits: int, top2_hits: int, gold: bool | None = None) -> str:
     """Mutually exclusive reflector label.
 
     Mirrors `performance_label_from_rows` in
     `.agents/skills/shared_racing/race_reflector/scripts/unified_reflector_core.py`:
     a race whose only hit is the model's 3rd pick counts as Miss, not 1 Hit.
+
+    `gold` lets the caller pass the capture-at-4 definition (see `race_metrics`).
+    Left None it falls back to the strict 3-of-3 reading, so callers that only
+    have hit counts — the HKJC reflector among them — keep their old labels.
     """
-    if top3_hits == 3:
+    if gold if gold is not None else (top3_hits == 3):
         return "Gold"
     if top2_hits == 2:
         return "Good"
@@ -185,6 +189,9 @@ def race_metrics(
         else None
     )
 
+    top3_all_within_top4_flag = (
+        top3_capture_at4_count == actual_top3_count if actual_top3_count else None
+    )
     return {
         "picks": picks,
         "hits": hits,
@@ -194,9 +201,7 @@ def race_metrics(
         "top3_capture_at5_count": top3_capture_at5_count,
         "top3_capture_at4": top3_capture_at4,
         "top3_capture_at5": top3_capture_at5,
-        "top3_all_within_top4": (
-            top3_capture_at4_count == actual_top3_count if actual_top3_count else None
-        ),
+        "top3_all_within_top4": top3_all_within_top4_flag,
         "top3_all_within_top5": (
             top3_capture_at5_count == actual_top3_count if actual_top3_count else None
         ),
@@ -226,7 +231,21 @@ def race_metrics(
         "competitive_precision_at5": competitive_precision_at5,
         "ndcg_at5": ndcg_at5,
         # cumulative KPIs
-        "gold": hits == 3,
+        #
+        # ⚠️ 2026-08-03：`gold` 由「頭三揀全部上名」(hits == 3) 改成
+        # **「實際前三全部落喺模型頭四揀之內」**。Kelvin 要追嘅係捕捉率 ——
+        # 三隻上名馬有冇一隻走漏，而唔係頭三格有幾整齊。
+        #
+        # 新定義係舊定義嘅**超集**（hits == 3 ⟹ 三隻都喺頭三揀 ⟹ 喺頭四揀），
+        # 所以任何一場舊 Gold 一定仍然係 Gold，數字只會升唔會跌。
+        # 舊定義保留成 `gold_strict`，因為之前所有紀錄都係用佢量嘅，
+        # 要同歷史對得上就要有得攞返。
+        #
+        # 分母陷阱：`top3_all_within_top4` 喺冇賽果（`actual_top3_count == 0`）
+        # 嗰陣係 None 而唔係 False。呢度 `bool()` 落去會靜靜當 Miss，
+        # 所以 `summarize_races` 要同其他 competitiveness 指標一樣只計有值嘅場次。
+        "gold": bool(top3_all_within_top4_flag),
+        "gold_strict": hits == 3,
         "good_positional": len(picks) >= 2 and picks[0] in actual_set and picks[1] in actual_set,
         "good_any2": hits >= 2,
         "pass_any1": hits >= 1,
@@ -238,7 +257,8 @@ def race_metrics(
         "winner_rank": winner_rank,
         "reciprocal_rank": (1.0 / winner_rank) if winner_rank else 0.0,
         # exclusive reflector label
-        "exclusive_label": exclusive_label(hits, top2_hits),
+        "exclusive_label": exclusive_label(hits, top2_hits,
+                                           gold=top3_all_within_top4_flag),
     }
 
 
@@ -248,6 +268,7 @@ def summarize_races(race_rows: Sequence[Mapping[str, Any]]) -> dict:
     denominator = max(1, races)
     counts = {
         "gold": sum(bool(row["gold"]) for row in race_rows),
+        "gold_strict": sum(bool(row.get("gold_strict")) for row in race_rows),
         "good_positional": sum(bool(row["good_positional"]) for row in race_rows),
         "good_any2": sum(bool(row["good_any2"]) for row in race_rows),
         "pass_any1": sum(bool(row["pass_any1"]) for row in race_rows),

@@ -1,0 +1,32 @@
+⚠️  GOING REFRESH Race_1_Logic.json: stored 'Soft 5' → official 'Good 4' (family change — wet/soft handling recomputed)
+⚠️  GOING REFRESH Race_2_Logic.json: stored 'Soft 5' → official 'Good 4' (family change — wet/soft handling recomputed)
+⚠️  GOING REFRESH Race_3_Logic.json: stored 'Soft 5' → official 'Good 4' (family change — wet/soft handling recomputed)
+⚠️  GOING REFRESH Race_4_Logic.json: stored 'Soft 5' → official 'Good 4' (family change — wet/soft handling recomputed)
+⚠️  GOING REFRESH Race_5_Logic.json: stored 'Soft 5' → official 'Good 4' (family change — wet/soft handling recomputed)
+⚠️  GOING REFRESH Race_6_Logic.json: stored 'Soft 5' → official 'Good 4' (family change — wet/soft handling recomputed)
+⚠️  GOING REFRESH Race_7_Logic.json: stored 'Soft 5' → official 'Good 4' (family change — wet/soft handling recomputed)
+⚠️  GOING REFRESH Race_8_Logic.json: stored 'Soft 5' → official 'Good 4' (family change — wet/soft handling recomputed)
+⚠️  GOING REFRESH Race_9_Logic.json: stored 'Soft 5' → official 'Good 4' (family change — wet/soft handling recomputed)
+⚠️  GOING REFRESH Race_10_Logic.json: stored 'Soft 5' → official 'Good 4' (family change — wet/soft handling recomputed)
+✅ Auto analysis written: Race_1_Auto_Analysis.md
+✅ Auto scoring written: Race_1_Auto_Scoring.csv
+✅ Auto analysis written: Race_2_Auto_Analysis.md
+✅ Auto scoring written: Race_2_Auto_Scoring.csv
+✅ Auto analysis written: Race_3_Auto_Analysis.md
+✅ Auto scoring written: Race_3_Auto_Scoring.csv
+✅ Auto analysis written: Race_4_Auto_Analysis.md
+✅ Auto scoring written: Race_4_Auto_Scoring.csv
+✅ Auto analysis written: Race_5_Auto_Analysis.md
+✅ Auto scoring written: Race_5_Auto_Scoring.csv
+✅ Auto analysis written: Race_6_Auto_Analysis.md
+✅ Auto scoring written: Race_6_Auto_Scoring.csv
+✅ Auto analysis written: Race_7_Auto_Analysis.md
+✅ Auto scoring written: Race_7_Auto_Scoring.csv
+✅ Auto analysis written: Race_8_Auto_Analysis.md
+✅ Auto scoring written: Race_8_Auto_Scoring.csv
+✅ Auto analysis written: Race_9_Auto_Analysis.md
+✅ Auto scoring written: Race_9_Auto_Scoring.csv
+✅ Auto analysis written: Race_10_Auto_Analysis.md
+✅ Auto scoring written: Race_10_Auto_Scoring.csv
+✅ Meeting_Auto_Scoring.csv updated
+✅ Going refresh applied to 10 races (10 changed, 10 family changes)

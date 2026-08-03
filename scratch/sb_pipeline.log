@@ -1,0 +1,213 @@
+   🗺️ 自動步速圖: 極慢 (FACTS_SPEED_MODEL_V4)
+   🗺️ 自動步速圖: 極慢 (FACTS_SPEED_MODEL_V4)
+   🗺️ 自動步速圖: 極慢 (FACTS_SPEED_MODEL_V4)
+   🗺️ 自動步速圖: 極慢 (FACTS_SPEED_MODEL_V4)
+   🗺️ 自動步速圖: 極慢 (FACTS_SPEED_MODEL_V4)
+   🗺️ 自動步速圖: 極慢 (FACTS_SPEED_MODEL_V4)
+   🗺️ 自動步速圖: 極慢 (FACTS_SPEED_MODEL_V4)
+   🗺️ 自動步速圖: 極慢 (FACTS_SPEED_MODEL_V4)
+   🗺️ 自動步速圖: 極慢 (FACTS_SPEED_MODEL_V4)
+====================================================================
+🏇 AU Wong Choi — Full Python Mainline
+====================================================================
+📁 Meeting Dir: /private/tmp/sbtest/2026-08-01 Flemington Race 1-9
+⚙️ Race-level workers: 3
+🧩 Generating Facts for Race 1...
+🧩 Generating Facts for Race 2...
+🧩 Generating Facts for Race 3...
+🧩 Generating Facts for Race 4...
+🧩 Generating Facts for Race 5...
+🧩 Generating Facts for Race 6...
+🧩 Generating Facts for Race 7...
+🧩 Generating Facts for Race 8...
+🧩 Generating Facts for Race 9...
+⚙️ Running 9 task(s) with 3 worker(s)
+
+========================================================================
+Generate Facts — Race 3
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/scripts/inject_fact_anchors.py /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 3 Racecard.md /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 3 Formguide.md --max-display 5 --venue Flemington --distance 2000
+========================================================================
+📌 V2 完整賽績檔案 — 8 匹馬 [Racecard+Formguide (8 匹已豐富)] | 今仗距離: 2000m
+✅ 已寫入 → /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 3 Facts.md
+
+========================================================================
+Generate Facts — Race 1
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/scripts/inject_fact_anchors.py /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 1 Racecard.md /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 1 Formguide.md --max-display 5 --venue Flemington --distance 2520
+========================================================================
+📌 V2 完整賽績檔案 — 7 匹馬 [Racecard+Formguide (7 匹已豐富)] | 今仗距離: 2520m
+✅ 已寫入 → /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 1 Facts.md
+
+========================================================================
+Generate Facts — Race 2
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/scripts/inject_fact_anchors.py /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 2 Racecard.md /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 2 Formguide.md --max-display 5 --venue Flemington --distance 1000
+========================================================================
+📌 V2 完整賽績檔案 — 10 匹馬 [Racecard+Formguide (10 匹已豐富)] | 今仗距離: 1000m
+✅ 已寫入 → /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 2 Facts.md
+
+========================================================================
+Generate Facts — Race 5
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/scripts/inject_fact_anchors.py /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 5 Racecard.md /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 5 Formguide.md --max-display 5 --venue Flemington --distance 1410
+========================================================================
+📌 V2 完整賽績檔案 — 11 匹馬 [Racecard+Formguide (11 匹已豐富)] | 今仗距離: 1410m
+✅ 已寫入 → /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 5 Facts.md
+
+========================================================================
+Generate Facts — Race 4
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/scripts/inject_fact_anchors.py /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 4 Racecard.md /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 4 Formguide.md --max-display 5 --venue Flemington --distance 1410
+========================================================================
+📌 V2 完整賽績檔案 — 14 匹馬 [Racecard+Formguide (14 匹已豐富)] | 今仗距離: 1410m
+✅ 已寫入 → /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 4 Facts.md
+
+========================================================================
+Generate Facts — Race 6
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/scripts/inject_fact_anchors.py /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 6 Racecard.md /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 6 Formguide.md --max-display 5 --venue Flemington --distance 1620
+========================================================================
+📌 V2 完整賽績檔案 — 14 匹馬 [Racecard+Formguide (14 匹已豐富)] | 今仗距離: 1620m
+✅ 已寫入 → /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 6 Facts.md
+
+========================================================================
+Generate Facts — Race 7
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/scripts/inject_fact_anchors.py /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 7 Racecard.md /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 7 Formguide.md --max-display 5 --venue Flemington --distance 1200
+========================================================================
+📌 V2 完整賽績檔案 — 8 匹馬 [Racecard+Formguide (8 匹已豐富)] | 今仗距離: 1200m
+✅ 已寫入 → /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 7 Facts.md
+
+========================================================================
+Generate Facts — Race 8
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/scripts/inject_fact_anchors.py /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 8 Racecard.md /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 8 Formguide.md --max-display 5 --venue Flemington --distance 1410
+========================================================================
+📌 V2 完整賽績檔案 — 6 匹馬 [Racecard+Formguide (6 匹已豐富)] | 今仗距離: 1410m
+✅ 已寫入 → /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 8 Facts.md
+
+========================================================================
+Generate Facts — Race 9
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/scripts/inject_fact_anchors.py /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 9 Racecard.md /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 9 Formguide.md --max-display 5 --venue Flemington --distance 1100
+========================================================================
+📌 V2 完整賽績檔案 — 11 匹馬 [Racecard+Formguide (11 匹已豐富)] | 今仗距離: 1100m
+✅ 已寫入 → /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 9 Facts.md
+🧠 Building deterministic Logic for Race 1...
+🧠 Building deterministic Logic for Race 2...
+🧠 Building deterministic Logic for Race 3...
+🧠 Building deterministic Logic for Race 4...
+🧠 Building deterministic Logic for Race 5...
+🧠 Building deterministic Logic for Race 6...
+🧠 Building deterministic Logic for Race 7...
+🧠 Building deterministic Logic for Race 8...
+🧠 Building deterministic Logic for Race 9...
+⚙️ Running 9 task(s) with 3 worker(s)
+
+========================================================================
+Build deterministic Logic — Race 2
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 2 Facts.md --output /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/Race_2_Logic.json
+========================================================================
+✅ Logic built: /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/Race_2_Logic.json
+
+========================================================================
+Build deterministic Logic — Race 1
+✅ Auto analysis written: Race_1_Auto_Analysis.md
+✅ Auto scoring written: Race_1_Auto_Scoring.csv
+✅ Auto analysis written: Race_2_Auto_Analysis.md
+✅ Auto scoring written: Race_2_Auto_Scoring.csv
+✅ Auto analysis written: Race_3_Auto_Analysis.md
+✅ Auto scoring written: Race_3_Auto_Scoring.csv
+✅ Auto analysis written: Race_4_Auto_Analysis.md
+✅ Auto scoring written: Race_4_Auto_Scoring.csv
+✅ Auto analysis written: Race_5_Auto_Analysis.md
+✅ Auto scoring written: Race_5_Auto_Scoring.csv
+✅ Auto analysis written: Race_6_Auto_Analysis.md
+✅ Auto scoring written: Race_6_Auto_Scoring.csv
+✅ Auto analysis written: Race_7_Auto_Analysis.md
+✅ Auto scoring written: Race_7_Auto_Scoring.csv
+✅ Auto analysis written: Race_8_Auto_Analysis.md
+✅ Auto scoring written: Race_8_Auto_Scoring.csv
+✅ Auto analysis written: Race_9_Auto_Analysis.md
+✅ Auto scoring written: Race_9_Auto_Scoring.csv
+✅ Meeting_Auto_Scoring.csv updated
+🔄 第一步：產生最新版本嘅 Dashboard / Race Analysis Snapshot...
+   Live snapshot refreshed: 10.0 MB
+✅ Active-meeting dashboard generated: index.html
+   Active meetings only: 3
+   2026-08-01 Flemington: 103/103 silk rows · source 2026-08-01 Flemington Race 1-9
+   2026-08-01 Rosehill Gardens: 119/119 silk rows · source 2026-08-01 Rosehill Gardens Race 1-10
+   2026-07-15 HappyValley: 107/107 silk rows · source 2026-07-15_HappyValley
+📦 第二步：Cloudflare deploy bundle 已準備完成（本地 staging：/var/folders/h1/br6y1s5j0nb07gfb5rjqxk6r0000gn/T//wongchoi_deploy.81QnFo）
+   - HTML: index.html
+   - Data: dashboard-data.json
+   - Manifest: deploy-manifest.json
+   - PWA assets: pwa/ → dist 根目錄（6 個檔案）
+   - Pages Functions: functions/（已複製到本地 staging）
+☁️ 第三步：推送上 Cloudflare Pages...
+   - Pages Project: wongchoi-dashboard
+   - Account ID: 19103981a47a85f1b9ad9f6f6a463f31
+   ℹ️ 未設 CLOUDFLARE_API_TOKEN；將依賴本機 wrangler login session
+   - Wrangler CWD: /var/folders/h1/br6y1s5j0nb07gfb5rjqxk6r0000gn/T//wongchoi_deploy.81QnFo (本地 staging，內有 wrangler.toml KV + functions/)
+   - Commit Hash: manual-20260802031725
+
+ ⛅️ wrangler 4.86.0
+───────────────────
+✨ Compiled Worker successfully
+Uploading... (6/9)
+Uploading... (7/9)
+Uploading... (8/9)
+Uploading... (9/9)
+✨ Success! Uploaded 3 files (6 already uploaded) (6.09 sec)
+
+✨ Uploading Functions bundle
+🌎 Deploying...
+✨ Deployment complete! Take a peek over at https://6060aab9.wongchoi-dashboard.pages.dev
+🎉 發佈完成！Cloudflare 版本已更新 HKJC + AU race analysis snapshot。
+🧾 第四步：檢查 NBA／Tennis 已驗證賽果並冪等結算...
+{"total": 344, "tennis": 344, "nba": 0}
+{"success": true, "applied": 0, "skipped": 344}
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 1 Facts.md --output /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/Race_1_Logic.json
+========================================================================
+✅ Logic built: /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/Race_1_Logic.json
+
+========================================================================
+Build deterministic Logic — Race 3
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 3 Facts.md --output /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/Race_3_Logic.json
+========================================================================
+✅ Logic built: /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/Race_3_Logic.json
+
+========================================================================
+Build deterministic Logic — Race 5
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 5 Facts.md --output /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/Race_5_Logic.json
+========================================================================
+✅ Logic built: /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/Race_5_Logic.json
+
+========================================================================
+Build deterministic Logic — Race 6
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 6 Facts.md --output /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/Race_6_Logic.json
+========================================================================
+✅ Logic built: /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/Race_6_Logic.json
+
+========================================================================
+Build deterministic Logic — Race 4
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 4 Facts.md --output /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/Race_4_Logic.json
+========================================================================
+✅ Logic built: /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/Race_4_Logic.json
+
+========================================================================
+Build deterministic Logic — Race 7
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 7 Facts.md --output /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/Race_7_Logic.json
+========================================================================
+✅ Logic built: /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/Race_7_Logic.json
+
+========================================================================
+Build deterministic Logic — Race 8
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 8 Facts.md --output /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/Race_8_Logic.json
+========================================================================
+✅ Logic built: /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/Race_8_Logic.json
+
+========================================================================
+Build deterministic Logic — Race 9
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/08-01 Race 9 Facts.md --output /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/Race_9_Logic.json
+========================================================================
+✅ Logic built: /private/tmp/sbtest/2026-08-01 Flemington Race 1-9/Race_9_Logic.json
+====================================================================
+☁️ Post-Success Cloudflare Deploy — AU Wong Choi [/private/tmp/sbtest/2026-08-01 Flemington Race 1-9]
+====================================================================
+✅ Cloudflare deploy finished for AU Wong Choi
+====================================================================
+✅ AU full-Python pipeline complete
+====================================================================

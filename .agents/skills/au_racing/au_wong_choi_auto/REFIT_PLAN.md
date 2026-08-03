@@ -205,6 +205,48 @@ champ −4.40、good_pos −5.49；改用保守 w=0.05 三個主指標全正。*
 （首戰馬今日贏咗仍然顯示 `0: 0-0-0` / `$0`），`J/H` / `Win Range` 賽後。
 **逐個欄位驗，唔可以整版通過。**
 
+## 2026-08-04 —— 維度**內部**權重審查（#3，全部 REJECT）
+
+第一次查 `MATRIX_FORMULAS` 入面每個維度內部嗰組 leaf 權重。`au_matrix_refit.py`
+一直只調維度之間嘅 `MATRIX_WEIGHTS`，內部從來冇搜過。harness：
+`au_inner_weights.py`（604 場、dev 513 / holdout 91 依時間切、5 fold 閘、
+consensus 唔係 argmax、主指標 Gold + Good位、守門 t3prec + winT3）。
+
+只有三個維度真正有得調（`race_shape` / `track` 單 leaf ×1.0，`class_weight`
+單 leaf ×0.70，`form_line` 維度權重 0.000）：
+
+| 維度 | 現行 | consensus | dev+holdout | SD 對照 | walk-forward |
+|---|---|---|---|---|---|
+| `stability` | form .60 / cons .40 | .65 / .35 | 全部升 | ✅ 過 4↑/0↓ | **5/5** |
+| `jockey_trainer` | j .28 / t .20 / fit .52 | .333/.286/.381 | 全部升 | ✅ 過 2↑/0↓ | **3/5** ❌ |
+| `pace_perf` | pf .759 / sec .194 / tr .047 | — | 冇候選過閘 | — | — |
+
+**三個全部冇 ship。** 逐個講點解：
+
+* **`pace_perf`** —— 231 個候選冇一個過 dev + 5 fold。現行比例守得住。
+  （順帶答返一個舊問題：`sectional_score` AUC 0.469 反向，但佢個 0.194
+  內部權重**係啱嘅** —— 搜索試過搬走佢，冇一個變體贏。）
+
+* **`jockey_trainer`** —— 呢個係我事前認為最可疑嗰個：`jockey_horse_fit_score`
+  攞過半內部權重（0.52）但場內 AUC 只有 0.532，而同維度 jockey 0.600 /
+  trainer 0.605。搜索**確認**咗方向（fit 0.52 → 0.381），dev 同 holdout
+  兩邊全部升（holdout Gold +1.10 / any2 +2.20 / t3prec +1.47，冇一個跌），
+  而且過埋 SD 對照組。**但 walk-forward 只有 3/5**（窗 2 winT3 −0.83、
+  窗 4 winT3 −1.67）。保守版 0.30/0.24/0.46 亦只有 4/5。
+  已 ship 嘅維度重配權當時係 5/5，唔可以為呢個降低同一條閘。
+
+* **`stability`** —— form .60 → .65 **過咗**預先聲明嗰條閘（wf 5/5、SD 對照
+  4↑/0↓、holdout 冇跌），全樣本 Gold +0.50 / Good位 +0.33 / winT3 +0.83 /
+  t3prec +0.28。仍然唔 ship，兩個原因：
+  1. **champion −0.50**，而且加 champion 做守門之後 wf 跌到 3/5（窗 4 −2.50）。
+  2. 掃一掃鄰近值：`0.62 → 5/5`、`0.63 → 4/5`、`0.65 → 5/5`、`0.68 → 4/5`、
+     `0.70 → 4/5`。**相鄰值 pass/fail 跳來跳去** —— 呢個係平面加噪音嘅特徵，
+     唔係一個有 gradient 嘅最優點。幅度本身亦只係 604 場之中 1–5 場。
+
+⚠️ **留返嘅教訓**：`jockey_trainer` 嗰個結果最值得記住 —— dev 升、holdout 升、
+SD 對照過、AUC 亦支持個方向，四樣都指向同一邊，但逐窗一睇就散。
+「多個獨立檢查同意」唔等於「穩」，如果嗰幾個檢查都係喺同一批數據上切出嚟。
+
 ## ⚠️ 更正：「trainer 評分蝕 4.4pp」係錯嘅（2026-08-04）
 
 我曾經報「簡單收縮上名率 0.615 vs 引擎 `trainer_score` 0.571，差 4.4pp」。

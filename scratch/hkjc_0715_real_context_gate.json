@@ -1,0 +1,1232 @@
+{
+  "coverage": {
+    "runners": 106,
+    "total": 107
+  },
+  "candidates": {
+    "baseline": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "top3_all_within_top5": 0.3333333333333333,
+      "ndcg_at5": 0.471644187053055,
+      "winner_in_top5": 0.7777777777777778
+    },
+    "l400_0.05": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "top3_all_within_top5": 0.3333333333333333,
+      "ndcg_at5": 0.4738091389337109,
+      "winner_in_top5": 0.7777777777777778,
+      "rank3_to_top2_rescues": 0,
+      "harmful_top2_replacements": 0,
+      "changed_races": []
+    },
+    "l400_0.10": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "top3_all_within_top5": 0.3333333333333333,
+      "ndcg_at5": 0.4623757348211151,
+      "winner_in_top5": 0.7777777777777778,
+      "rank3_to_top2_rescues": 0,
+      "harmful_top2_replacements": 0,
+      "changed_races": [
+        {
+          "race": 5,
+          "before": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          },
+          "after": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              },
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          }
+        }
+      ]
+    },
+    "l400_0.15": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "top3_all_within_top5": 0.3333333333333333,
+      "ndcg_at5": 0.4609324335673446,
+      "winner_in_top5": 0.7777777777777778,
+      "rank3_to_top2_rescues": 0,
+      "harmful_top2_replacements": 0,
+      "changed_races": [
+        {
+          "race": 5,
+          "before": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          },
+          "after": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              },
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          }
+        }
+      ]
+    },
+    "l400_0.20": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "top3_all_within_top5": 0.3333333333333333,
+      "ndcg_at5": 0.4587954261990773,
+      "winner_in_top5": 0.7777777777777778,
+      "rank3_to_top2_rescues": 1,
+      "harmful_top2_replacements": 0,
+      "changed_races": [
+        {
+          "race": 5,
+          "before": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          },
+          "after": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              },
+              {
+                "horse": 1,
+                "name": "葳莉非凡",
+                "finish": 3
+              }
+            ],
+            "rank3": {
+              "horse": 9,
+              "name": "大才",
+              "finish": 2
+            }
+          }
+        }
+      ]
+    },
+    "l400_0.25": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "top3_all_within_top5": 0.3333333333333333,
+      "ndcg_at5": 0.4587954261990773,
+      "winner_in_top5": 0.7777777777777778,
+      "rank3_to_top2_rescues": 1,
+      "harmful_top2_replacements": 0,
+      "changed_races": [
+        {
+          "race": 5,
+          "before": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          },
+          "after": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              },
+              {
+                "horse": 1,
+                "name": "葳莉非凡",
+                "finish": 3
+              }
+            ],
+            "rank3": {
+              "horse": 9,
+              "name": "大才",
+              "finish": 2
+            }
+          }
+        }
+      ]
+    },
+    "l400_0.30": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "top3_all_within_top5": 0.3333333333333333,
+      "ndcg_at5": 0.4587954261990773,
+      "winner_in_top5": 0.7777777777777778,
+      "rank3_to_top2_rescues": 1,
+      "harmful_top2_replacements": 0,
+      "changed_races": [
+        {
+          "race": 5,
+          "before": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          },
+          "after": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              },
+              {
+                "horse": 1,
+                "name": "葳莉非凡",
+                "finish": 3
+              }
+            ],
+            "rank3": {
+              "horse": 9,
+              "name": "大才",
+              "finish": 2
+            }
+          }
+        },
+        {
+          "race": 6,
+          "before": {
+            "top2_hits": 0,
+            "top5_capture": 0.3333333333333333,
+            "top2": [
+              {
+                "horse": 5,
+                "name": "日馳千里",
+                "finish": 9
+              },
+              {
+                "horse": 7,
+                "name": "升升雙息",
+                "finish": 10
+              }
+            ],
+            "rank3": {
+              "horse": 2,
+              "name": "添開心",
+              "finish": 7
+            }
+          },
+          "after": {
+            "top2_hits": 0,
+            "top5_capture": 0.3333333333333333,
+            "top2": [
+              {
+                "horse": 7,
+                "name": "升升雙息",
+                "finish": 10
+              },
+              {
+                "horse": 5,
+                "name": "日馳千里",
+                "finish": 9
+              }
+            ],
+            "rank3": {
+              "horse": 2,
+              "name": "添開心",
+              "finish": 7
+            }
+          }
+        }
+      ]
+    },
+    "total_0.05": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "top3_all_within_top5": 0.3333333333333333,
+      "ndcg_at5": 0.4581972319460589,
+      "winner_in_top5": 0.7777777777777778,
+      "rank3_to_top2_rescues": 0,
+      "harmful_top2_replacements": 0,
+      "changed_races": [
+        {
+          "race": 5,
+          "before": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          },
+          "after": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              },
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          }
+        }
+      ]
+    },
+    "total_0.10": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "top3_all_within_top5": 0.3333333333333333,
+      "ndcg_at5": 0.4554712986652847,
+      "winner_in_top5": 0.7777777777777778,
+      "rank3_to_top2_rescues": 1,
+      "harmful_top2_replacements": 0,
+      "changed_races": [
+        {
+          "race": 5,
+          "before": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          },
+          "after": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              },
+              {
+                "horse": 1,
+                "name": "葳莉非凡",
+                "finish": 3
+              }
+            ],
+            "rank3": {
+              "horse": 9,
+              "name": "大才",
+              "finish": 2
+            }
+          }
+        }
+      ]
+    },
+    "total_0.15": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "top3_all_within_top5": 0.3333333333333333,
+      "ndcg_at5": 0.4666466591270656,
+      "winner_in_top5": 0.7777777777777778,
+      "rank3_to_top2_rescues": 1,
+      "harmful_top2_replacements": 0,
+      "changed_races": [
+        {
+          "race": 5,
+          "before": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          },
+          "after": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 1,
+                "name": "葳莉非凡",
+                "finish": 3
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 9,
+              "name": "大才",
+              "finish": 2
+            }
+          }
+        }
+      ]
+    },
+    "total_0.20": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "top3_all_within_top5": 0.3333333333333333,
+      "ndcg_at5": 0.4666466591270656,
+      "winner_in_top5": 0.7777777777777778,
+      "rank3_to_top2_rescues": 1,
+      "harmful_top2_replacements": 0,
+      "changed_races": [
+        {
+          "race": 5,
+          "before": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          },
+          "after": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 1,
+                "name": "葳莉非凡",
+                "finish": 3
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 9,
+              "name": "大才",
+              "finish": 2
+            }
+          }
+        }
+      ]
+    },
+    "total_0.25": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "top3_all_within_top5": 0.3333333333333333,
+      "ndcg_at5": 0.4666466591270656,
+      "winner_in_top5": 0.7777777777777778,
+      "rank3_to_top2_rescues": 1,
+      "harmful_top2_replacements": 0,
+      "changed_races": [
+        {
+          "race": 5,
+          "before": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          },
+          "after": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 1,
+                "name": "葳莉非凡",
+                "finish": 3
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 9,
+              "name": "大才",
+              "finish": 2
+            }
+          }
+        },
+        {
+          "race": 6,
+          "before": {
+            "top2_hits": 0,
+            "top5_capture": 0.3333333333333333,
+            "top2": [
+              {
+                "horse": 5,
+                "name": "日馳千里",
+                "finish": 9
+              },
+              {
+                "horse": 7,
+                "name": "升升雙息",
+                "finish": 10
+              }
+            ],
+            "rank3": {
+              "horse": 2,
+              "name": "添開心",
+              "finish": 7
+            }
+          },
+          "after": {
+            "top2_hits": 0,
+            "top5_capture": 0.3333333333333333,
+            "top2": [
+              {
+                "horse": 7,
+                "name": "升升雙息",
+                "finish": 10
+              },
+              {
+                "horse": 5,
+                "name": "日馳千里",
+                "finish": 9
+              }
+            ],
+            "rank3": {
+              "horse": 2,
+              "name": "添開心",
+              "finish": 7
+            }
+          }
+        }
+      ]
+    },
+    "total_0.30": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.5925925925925926,
+      "top3_all_within_top5": 0.2222222222222222,
+      "ndcg_at5": 0.44185577391270076,
+      "winner_in_top5": 0.6666666666666666,
+      "rank3_to_top2_rescues": 1,
+      "harmful_top2_replacements": 0,
+      "changed_races": [
+        {
+          "race": 5,
+          "before": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          },
+          "after": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 1,
+                "name": "葳莉非凡",
+                "finish": 3
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 9,
+              "name": "大才",
+              "finish": 2
+            }
+          }
+        },
+        {
+          "race": 6,
+          "before": {
+            "top2_hits": 0,
+            "top5_capture": 0.3333333333333333,
+            "top2": [
+              {
+                "horse": 5,
+                "name": "日馳千里",
+                "finish": 9
+              },
+              {
+                "horse": 7,
+                "name": "升升雙息",
+                "finish": 10
+              }
+            ],
+            "rank3": {
+              "horse": 2,
+              "name": "添開心",
+              "finish": 7
+            }
+          },
+          "after": {
+            "top2_hits": 0,
+            "top5_capture": 0.3333333333333333,
+            "top2": [
+              {
+                "horse": 7,
+                "name": "升升雙息",
+                "finish": 10
+              },
+              {
+                "horse": 5,
+                "name": "日馳千里",
+                "finish": 9
+              }
+            ],
+            "rank3": {
+              "horse": 6,
+              "name": "時時開心",
+              "finish": 1
+            }
+          }
+        }
+      ]
+    },
+    "combo_0.05": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "top3_all_within_top5": 0.3333333333333333,
+      "ndcg_at5": 0.471644187053055,
+      "winner_in_top5": 0.7777777777777778,
+      "rank3_to_top2_rescues": 0,
+      "harmful_top2_replacements": 0,
+      "changed_races": []
+    },
+    "combo_0.10": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "top3_all_within_top5": 0.3333333333333333,
+      "ndcg_at5": 0.4576362505459406,
+      "winner_in_top5": 0.7777777777777778,
+      "rank3_to_top2_rescues": 1,
+      "harmful_top2_replacements": 0,
+      "changed_races": [
+        {
+          "race": 5,
+          "before": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          },
+          "after": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              },
+              {
+                "horse": 1,
+                "name": "葳莉非凡",
+                "finish": 3
+              }
+            ],
+            "rank3": {
+              "horse": 9,
+              "name": "大才",
+              "finish": 2
+            }
+          }
+        }
+      ]
+    },
+    "combo_0.15": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "top3_all_within_top5": 0.3333333333333333,
+      "ndcg_at5": 0.4596498015403408,
+      "winner_in_top5": 0.7777777777777778,
+      "rank3_to_top2_rescues": 1,
+      "harmful_top2_replacements": 0,
+      "changed_races": [
+        {
+          "race": 5,
+          "before": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          },
+          "after": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              },
+              {
+                "horse": 1,
+                "name": "葳莉非凡",
+                "finish": 3
+              }
+            ],
+            "rank3": {
+              "horse": 9,
+              "name": "大才",
+              "finish": 2
+            }
+          }
+        }
+      ]
+    },
+    "combo_0.20": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "top3_all_within_top5": 0.3333333333333333,
+      "ndcg_at5": 0.46506218124198057,
+      "winner_in_top5": 0.7777777777777778,
+      "rank3_to_top2_rescues": 1,
+      "harmful_top2_replacements": 0,
+      "changed_races": [
+        {
+          "race": 5,
+          "before": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          },
+          "after": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              },
+              {
+                "horse": 1,
+                "name": "葳莉非凡",
+                "finish": 3
+              }
+            ],
+            "rank3": {
+              "horse": 9,
+              "name": "大才",
+              "finish": 2
+            }
+          }
+        }
+      ]
+    },
+    "combo_0.25": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "top3_all_within_top5": 0.3333333333333333,
+      "ndcg_at5": 0.4652902818410449,
+      "winner_in_top5": 0.7777777777777778,
+      "rank3_to_top2_rescues": 1,
+      "harmful_top2_replacements": 0,
+      "changed_races": [
+        {
+          "race": 5,
+          "before": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          },
+          "after": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              },
+              {
+                "horse": 1,
+                "name": "葳莉非凡",
+                "finish": 3
+              }
+            ],
+            "rank3": {
+              "horse": 9,
+              "name": "大才",
+              "finish": 2
+            }
+          }
+        },
+        {
+          "race": 6,
+          "before": {
+            "top2_hits": 0,
+            "top5_capture": 0.3333333333333333,
+            "top2": [
+              {
+                "horse": 5,
+                "name": "日馳千里",
+                "finish": 9
+              },
+              {
+                "horse": 7,
+                "name": "升升雙息",
+                "finish": 10
+              }
+            ],
+            "rank3": {
+              "horse": 2,
+              "name": "添開心",
+              "finish": 7
+            }
+          },
+          "after": {
+            "top2_hits": 0,
+            "top5_capture": 0.3333333333333333,
+            "top2": [
+              {
+                "horse": 7,
+                "name": "升升雙息",
+                "finish": 10
+              },
+              {
+                "horse": 5,
+                "name": "日馳千里",
+                "finish": 9
+              }
+            ],
+            "rank3": {
+              "horse": 2,
+              "name": "添開心",
+              "finish": 7
+            }
+          }
+        }
+      ]
+    },
+    "combo_0.30": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "top3_all_within_top5": 0.3333333333333333,
+      "ndcg_at5": 0.4638469805872743,
+      "winner_in_top5": 0.7777777777777778,
+      "rank3_to_top2_rescues": 1,
+      "harmful_top2_replacements": 0,
+      "changed_races": [
+        {
+          "race": 5,
+          "before": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 9,
+                "name": "大才",
+                "finish": 2
+              },
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              }
+            ],
+            "rank3": {
+              "horse": 1,
+              "name": "葳莉非凡",
+              "finish": 3
+            }
+          },
+          "after": {
+            "top2_hits": 1,
+            "top5_capture": 0.6666666666666666,
+            "top2": [
+              {
+                "horse": 6,
+                "name": "盛勢威楓",
+                "finish": 7
+              },
+              {
+                "horse": 1,
+                "name": "葳莉非凡",
+                "finish": 3
+              }
+            ],
+            "rank3": {
+              "horse": 9,
+              "name": "大才",
+              "finish": 2
+            }
+          }
+        },
+        {
+          "race": 6,
+          "before": {
+            "top2_hits": 0,
+            "top5_capture": 0.3333333333333333,
+            "top2": [
+              {
+                "horse": 5,
+                "name": "日馳千里",
+                "finish": 9
+              },
+              {
+                "horse": 7,
+                "name": "升升雙息",
+                "finish": 10
+              }
+            ],
+            "rank3": {
+              "horse": 2,
+              "name": "添開心",
+              "finish": 7
+            }
+          },
+          "after": {
+            "top2_hits": 0,
+            "top5_capture": 0.3333333333333333,
+            "top2": [
+              {
+                "horse": 7,
+                "name": "升升雙息",
+                "finish": 10
+              },
+              {
+                "horse": 5,
+                "name": "日馳千里",
+                "finish": 9
+              }
+            ],
+            "rank3": {
+              "horse": 2,
+              "name": "添開心",
+              "finish": 7
+            }
+          }
+        }
+      ]
+    }
+  }
+}

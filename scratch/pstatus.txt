@@ -1,0 +1,108 @@
+   掃完 2025-08-02 Flemington Race 1-9（累計 198 個人次）
+   掃完 2025-08-09 Randwick Race 1-10（累計 461 個人次）
+   掃完 2025-08-23 Randwick Race 1-10（累計 661 個人次）
+   掃完 2025-09-06 Randwick Race 1-10（累計 865 個人次）
+   掃完 2025-09-13 Flemington Race 1-10（累計 1067 個人次）
+   掃完 2025-09-21 Flemington Race 1-8（累計 1229 個人次）
+   掃完 2025-10-02 Newcastle Race 1-8（累計 1229 個人次）
+   掃完 2025-10-04 Flemington Race 1-10（累計 1475 個人次）
+   掃完 2025-10-04 Randwick Race 1-10（累計 1717 個人次）
+   掃完 2025-10-25 Randwick Race 1-10（累計 1821 個人次）
+   掃完 2025-11-01 Flemington Race 1-9（累計 2029 個人次）
+   掃完 2025-11-01 Randwick Race 1-10（累計 2281 個人次）
+   掃完 2025-11-04 Flemington Race 1-10（累計 2567 個人次）
+   掃完 2025-11-04 Randwick Race 1-10（累計 2773 個人次）
+   掃完 2025-11-06 Flemington Race 1-9（累計 2997 個人次）
+   掃完 2025-11-08 Flemington Race 1-9（累計 3195 個人次）
+   掃完 2025-12-13 Randwick Race 1-10（累計 3437 個人次）
+   掃完 2025-12-20 Randwick Race 1-10（累計 3647 個人次）
+   掃完 2025-12-26 Randwick Race 1-8（累計 3809 個人次）
+   掃完 2025-12-27 Randwick Race 1-10（累計 4017 個人次）
+   掃完 2025-12-31 Flemington Race 1-8（累計 4205 個人次）
+   掃完 2026-01-03 Randwick Race 1-10（累計 4427 個人次）
+   掃完 2026-01-10 Flemington Race 1-10（累計 4633 個人次）
+   掃完 2026-01-17 Flemington Race 1-10（累計 4837 個人次）
+   掃完 2026-01-24 Randwick Race 1-10（累計 5031 個人次）
+   掃完 2026-02-07 Randwick Race 1-10（累計 5265 個人次）
+   掃完 2026-02-14 Flemington Race 1-10（累計 5447 個人次）
+   掃完 2026-02-14 Randwick Race 1-10（累計 5647 個人次）
+   掃完 2026-02-28 Flemington Race 1-10（累計 5845 個人次）
+   掃完 2026-02-28 Randwick Race 1-10（累計 6065 個人次）
+   掃完 2026-03-07 Flemington Race 1-10（累計 6251 個人次）
+   掃完 2026-03-07 Randwick Race 1-10（累計 6447 個人次）
+   掃完 2026-03-28 Flemington（累計 6655 個人次）
+   掃完 2026-03-28 Rosehill Gardens Race 1-10（累計 6879 個人次）
+   掃完 2026-04-01 Warwick Farm Race 1-8（累計 7025 個人次）
+   掃完 2026-04-02 Gosford Race 1-7（累計 7137 個人次）
+   掃完 2026-04-03 Ballarat Race 1-8（累計 7319 個人次）
+   掃完 2026-04-04 Randwick Race 1-10（累計 7602 個人次）
+   掃完 2026-04-06 Rosehill Gardens Race 1-8（累計 7746 個人次）
+   掃完 2026-04-06 Sandown Lakeside Race 1-8（累計 7894 個人次）
+   掃完 2026-04-08 Sale Race 1-8（累計 7894 個人次）
+   掃完 2026-04-10 Cranbourne Race 1-8（累計 7894 個人次）
+   掃完 2026-04-11 Randwick Race 1-10（累計 8114 個人次）
+   掃完 2026-04-14 Hawkesbury Race 1-7（累計 8283 個人次）
+   掃完 2026-04-15 Warwick Farm Race 1-8（累計 8427 個人次）
+   掃完 2026-04-16 Pakenham Race 1-8（累計 8574 個人次）
+   掃完 2026-04-17 Cranbourne Race 1-8（累計 8720 個人次）
+   掃完 2026-04-18 Randwick（累計 9004 個人次）
+   掃完 2026-04-22 Canterbury Race 1-8（累計 9134 個人次）
+   掃完 2026-04-23 Pakenham Race 1-8（累計 9276 個人次）
+   掃完 2026-04-24 Cranbourne Race 1-7（累計 9372 個人次）
+   掃完 2026-04-25 Flemington Race 1-8（累計 9576 個人次）
+   掃完 2026-04-25 Randwick Race 1-8（累計 9787 個人次）
+   掃完 2026-04-29 Caulfield Heath Race 1-8（累計 9931 個人次）
+   掃完 2026-05-06 Warwick Farm Race 1-7（累計 10061 個人次）
+   掃完 2026-05-08 Pakenham Race 1-8（累計 10259 個人次）
+   掃完 2026-05-22 Geelong Race 1-8（累計 10451 個人次）
+   掃完 2026-05-22 Gold Coast Race 1-8（累計 10633 個人次）
+   掃完 2026-05-23 Doomben Race 1-9（累計 10855 個人次）
+   掃完 2026-05-23 Randwick Race 1-10（累計 11119 個人次）
+   掃完 2026-05-24 Ballarat Race 1-8（累計 11283 個人次）
+   掃完 2026-05-27 Canterbury Race 1-6（累計 11383 個人次）
+   掃完 2026-05-27 Caulfield Heath Race 1-8（累計 11541 個人次）
+   掃完 2026-05-27 Doomben Race 1-8（累計 11713 個人次）
+   掃完 2026-05-30 Caulfield Race 1-9（累計 11875 個人次）
+   掃完 2026-05-30 Eagle Farm Race 1-9（累計 12147 個人次）
+   掃完 2026-05-30 Rosehill Gardens Race 1-10（累計 12375 個人次）
+   掃完 2026-05-31 Sandown Lakeside Race 1-8（累計 12517 個人次）
+   掃完 2026-06-06 Eagle Farm Race 1-9（累計 12771 個人次）
+   掃完 2026-06-06 Randwick Race 1-10（累計 13057 個人次）
+   掃完 2026-06-08 Canterbury Race 1-8（累計 13217 個人次）
+   掃完 2026-06-10 Kensington Race 1-7（累計 13358 個人次）
+   掃完 2026-06-10 Sale Race 1-8（累計 13502 個人次）
+   掃完 2026-06-13 Eagle Farm Race 1-9（累計 13766 個人次）
+   掃完 2026-06-19 Geelong Race 1-8（累計 13936 個人次）
+   掃完 2026-06-20 Flemington Race 1-9（累計 14185 個人次）
+   掃完 2026-06-20 Randwick Race 1-10（累計 14479 個人次）
+   掃完 2026-06-27 Caulfield Race 1-9（累計 14730 個人次）
+   掃完 2026-06-27 Eagle Farm Race 1-9（累計 14955 個人次）
+   掃完 2026-06-27 Rosehill Gardens Race 1-10（累計 15232 個人次）
+   掃完 2026-07-01 Sandown Lakeside Race 1-8（累計 15406 個人次）
+   掃完 2026-07-03 Ballarat Synthetic Race 1-9（累計 15604 個人次）
+   掃完 2026-07-03 Moe Race 1-8（累計 15754 個人次）
+   掃完 2026-07-08 Sandown Lakeside Race 1-8（累計 15934 個人次）
+   掃完 2026-07-12 Sunshine Coast Race 1-8（累計 16118 個人次）
+   掃完 2026-08-01 Flemington Race 1-9（累計 16319 個人次）
+   掃完 2026-08-01 Rosehill Gardens Race 1-10（累計 16556 個人次）
+   掃完 AU_Backfill_Results（累計 16556 個人次）
+   掃完 Official_Free_Data（累計 16556 個人次）
+
+cache 150 個記錄；掃到 1033 個不重複騎練，已有夠新嘅 150（15%），仲差 883
+
+最值得補嘅（按出賽次數排）：
+   451 次  trainer  Ciaron Maher
+   206 次  jockey   Jason Collett
+   174 次  jockey   Dylan Gibbons
+   169 次  jockey   Nash Rawiller
+   136 次  jockey   Daniel Stackhouse
+   135 次  jockey   Kerrin McEvoy
+   126 次  jockey   Siena Grima
+   123 次  jockey   Jamie Mott
+   123 次  jockey   Regan Bayliss
+   121 次  jockey   Jamie Melham
+   107 次  trainer  Peter Snowden
+   105 次  trainer  Michael Freedman
+   104 次  jockey   Declan Bates
+   101 次  jockey   Beau Mertens
+    87 次  jockey   Mark Zahra

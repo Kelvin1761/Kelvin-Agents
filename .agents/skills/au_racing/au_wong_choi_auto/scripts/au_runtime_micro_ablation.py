@@ -44,17 +44,21 @@ from scoring import (
     PACE_MICRO_WEIGHTS,
     SECTIONAL_MICRO_WEIGHTS,
     TRACK_MICRO_WEIGHTS,
-    TRAINER_MICRO_WEIGHTS,
 )
 
 
+# 2026-08-04：`form_line` 同 `trainer` 兩族已經由 `scoring.py` 剷走 ——
+# 呢個工具喺 718 場上量到佢哋**改動場次 0**，即係從未觸發，所以剷得。
+# 剩返六族全部量過有代價（詳見 `scoring.py` 嘅審查表），唔可以順手剷。
+#
+# ⚠️ `form_line` 以前唔喺呢個表 —— 即係佢從未被 ablate 過，而佢正正係其中
+# 一個剷得嘅。「預期惰性」同「量過係惰性」係兩件事。
 MICRO_FAMILIES = {
     "class": CLASS_MICRO_WEIGHTS,
     "consistency": CONSISTENCY_MICRO_WEIGHTS,
     "sectional": SECTIONAL_MICRO_WEIGHTS,
     "track": TRACK_MICRO_WEIGHTS,
     "pace": PACE_MICRO_WEIGHTS,
-    "trainer": TRAINER_MICRO_WEIGHTS,
     "jockey_horse_fit": FIT_MICRO_WEIGHTS,
 }
 

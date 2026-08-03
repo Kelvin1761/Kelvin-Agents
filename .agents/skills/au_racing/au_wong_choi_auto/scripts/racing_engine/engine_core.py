@@ -37,9 +37,7 @@ from scoring import (
     CONSISTENCY_MICRO_WEIGHTS,
     SECTIONAL_MICRO_WEIGHTS,
     TRACK_MICRO_WEIGHTS,
-    FORMLINE_MICRO_WEIGHTS,
     PACE_MICRO_WEIGHTS,
-    TRAINER_MICRO_WEIGHTS,
     FIT_MICRO_WEIGHTS,
     clip_score,
     compute_grade,
@@ -249,46 +247,6 @@ def _load_draw_bias_matrix():
         else:
             DRAW_BIAS_MATRIX_CACHE = {}
     return DRAW_BIAS_MATRIX_CACHE
-
-_PROFILE_STATS_CACHE = None
-
-
-def _load_profile_stats():
-    """Racenet 騎練 profile 統計（`AU_Profile_Stats_Cache.json`），由
-    `au_racing/au_profile_stats.py` 喺抽取時維護。缺檔／壞檔一律當空，唔可以令評分死。"""
-    global _PROFILE_STATS_CACHE
-    if _PROFILE_STATS_CACHE is not None:
-        return _PROFILE_STATS_CACHE
-    _PROFILE_STATS_CACHE = {}
-    try:
-        # engine_core.py → racing_engine → scripts → au_wong_choi_auto → au_racing
-        sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
-        import au_profile_stats
-
-        _PROFILE_STATS_CACHE = au_profile_stats.load_cache() or {}
-    except Exception:  # noqa: BLE001 — 評分絕不可以因為呢個而失敗
-        _PROFILE_STATS_CACHE = {}
-    return _PROFILE_STATS_CACHE
-
-
-def _profile_slug(name) -> str:
-    """Racenet profile slug 規則。本地實作而唔係喺熱路徑 import sibling module ——
-    sys.path 只喺 `_load_profile_stats` 加，而佢喺 cache 已載入時會 short-circuit，
-    咁 lookup 就會靜靜咁 import 失敗然後當「冇數據」。"""
-    text = unicodedata.normalize("NFKD", str(name or "")).encode("ascii", "ignore").decode()
-    text = text.lower().replace("&", " ").replace("'", "")
-    return re.sub(r"[^a-z0-9]+", "-", text).strip("-")
-
-
-def _profile_stats_lookup(kind: str, name: str):
-    """按人名查 profile 統計；slug 撞錯人嘅記錄唔會回傳（寧可冇數據唔要錯數據）。"""
-    cache = _load_profile_stats()
-    if not cache or not name:
-        return None
-    entry = cache.get(f"{kind}|{_profile_slug(name)}")
-    if not entry or entry.get("name_mismatch"):
-        return None
-    return entry.get("stats")
 
 
 def _load_named_rating_stats():
@@ -1393,26 +1351,18 @@ class RacingEngine:
     _PLACE_RATE_MIN_RUNS = 10
 
     def _unified_place_rate(self, kind: str):
-        """(places, runs, source)：Racenet 生涯優先，否則去年官方。冇就 None。
+        """(places, runs, source)：騎練上名率，來源一律係 Sportsbet 個人頁。
 
-        ⚠️ 2026-08-04 實測：`AU_Profile_Stats_Cache.json` 152 個人物入面
-        **冇一個** `totalRuns >= _PLACE_RATE_MIN_RUNS`，所以 "profile"（Racenet）
-        呢條路實際上從來唔會行到 —— 604 場分析檔「Racenet 生涯」出現 0 次、
-        「去年官方」（Sportsbet）34,766 次。即係騎練評分事實上 100% 靠 Sportsbet。
+        以前呢度有一個 Racenet 生涯分支排喺前面。2026-08-04 實測佢**從來冇行到**
+        ——`AU_Profile_Stats_Cache.json` 152 個人物冇一個夠
+        `_PLACE_RATE_MIN_RUNS`，604 場分析檔「Racenet 生涯」出現 0 次、
+        「去年官方」（Sportsbet）34,766 次。Racenet 亦已全封，個 cache 永遠
+        refresh 唔到，所以整條分支連同 `au_profile_stats` 一併剷走。
 
-        ⚠️ **唔好為咗提高覆蓋率而降低 `_PLACE_RATE_MIN_RUNS`。** 一降就會令
-        Racenet 那批（永遠 refresh 唔到，Racenet 全封）蓋過新鮮嘅 Sportsbet
-        數據，而且兩者係唔同尺（Racenet 係生涯、Sportsbet 係 12 個月）——
-        同一個 leaf 兩把尺，正正係今個 session 反覆踩到嘅坑。
-        要提高覆蓋就補 Sportsbet 個人頁（見 `sb_people_stats.py`）。
+        ⚠️ 要提高覆蓋就補 Sportsbet 個人頁（`sb_people_stats.py`），
+        **唔好**降低 `_PLACE_RATE_MIN_RUNS` —— 門檻係擋樣本太細嘅人物，
+        唔係擋來源。
         """
-        name = self._clean_identity(self.horse_data.get(kind))
-        stats = _profile_stats_lookup(kind, name) if name else None
-        if stats:
-            runs = parse_float(stats.get("totalRuns"))
-            pct = parse_float(stats.get("placePercentage"))
-            if runs and runs >= self._PLACE_RATE_MIN_RUNS and pct is not None:
-                return pct / 100.0 * runs, runs, "profile"
         ly = self.data.get(f"{kind}_ly") or {}
         runs = parse_float(ly.get("rides"))
         if runs and runs >= self._PLACE_RATE_MIN_RUNS:
@@ -1428,7 +1378,7 @@ class RacingEngine:
         prior = self._PLACE_RATE_PRIOR[kind]
         shrunk = (places + self._PLACE_RATE_K * prior) / (runs + self._PLACE_RATE_K)
         score = clip_score(60.0 + (shrunk - prior) * self._PLACE_RATE_SPREAD)
-        label = "Racenet 生涯" if source == "profile" else "去年官方"
+        label = "去年官方"
         return score, (f"{label} {int(runs)} 場、上名 {int(places)} 次"
                        f"（原始 {places / runs * 100:.0f}%，收縮後 {shrunk * 100:.0f}%，"
                        f"全國基準 {prior * 100:.0f}%）"), source
@@ -1571,21 +1521,30 @@ class RacingEngine:
                 # 統一上名率接手咗 base 就唔可以寫「資料庫無記錄，中性起步」——
                 # base 唔係中性起步，係由上名率算出嚟。敘述真實。
                 detail["base_label"] = "資料庫無記錄，中性起步"
-        if "Waller" in trainer and self._career_starts() == 0:
-            add(TRAINER_MICRO_WEIGHTS.get("waller_debut_bonus", 4.0), "初出馬由 Waller 系統部署", "")
-            self.reason_codes.append("waller_debut_positive")
+        # 2026-08-04：`TRAINER_MICRO_WEIGHTS` 整族剷走。
+        #
+        # 剷走之前量過 —— 呢個係條件，唔係假設。718 場 runtime ablation：
+        # **改動場次 0、排名改動場次 0**，dev 同 holdout 兩邊 Gold / Good位 /
+        # any2 / winT3 / 前三精準全部 ±0.00，5/5 fold 非退步。即係佢哋喺現行
+        # 門檻之下從來冇觸發過。
+        #
+        # 順帶剷走嘅 `"Waller" in trainer` 硬寫馬房名：初出馬 +bonus 呢個條件
+        # 除咗係手調之外，仲係一個會過期嘅事實（馬房會變）。佢個 reason code
+        # `waller_debut_positive` 全 repo 冇任何消費者，所以一併走。
+        #
+        # ⚠️ 下面三個場館觀察保留成 **display-only**（`add(0.0, …)`）——
+        # 同 2026-07-11 combo/misc 大剪裁一樣嘅處理。佢哋唔再入排名，但
+        # 「馬房同場館 N 次、上名率 X%」對讀報告嘅人係真資訊，剷走等於
+        # 為咗 tidy 一個權重表而扔走一段有內容嘅敘述。
         track_stats = self._trainer_track_stats()
         track_ev = (f"馬房同場館 {int(track_stats.get('runs', 0))} 次、"
                     f"上名率 {track_stats.get('place_rate', 0.0) * 100:.0f}%")
         if track_stats.get("runs", 0) >= 20 and track_stats.get("place_rate", 0.0) >= 0.44:
-            add(TRAINER_MICRO_WEIGHTS.get("track_high_vol_high_place_bonus", 7.0),
-                "今場場館高密度高上名", track_ev)
+            add(0.0, "今場場館高密度高上名", track_ev)
         elif track_stats.get("runs", 0) >= 12 and track_stats.get("place_rate", 0.0) >= 0.40:
-            add(TRAINER_MICRO_WEIGHTS.get("track_med_vol_high_place_bonus", 5.0),
-                "今場場館穩定上名", track_ev)
+            add(0.0, "今場場館穩定上名", track_ev)
         elif track_stats.get("runs", 0) >= 8 and track_stats.get("place_rate", 0.0) >= 0.32:
-            add(TRAINER_MICRO_WEIGHTS.get("track_med_vol_med_place_bonus", 3.0),
-                "今場場館有基本對位", track_ev)
+            add(0.0, "今場場館有基本對位", track_ev)
         detail["final"] = round(clip_score(score), 2)
         note = "；".join(notes) if notes else f"{trainer or '練馬師資料'} 反映馬房部署基礎"
         return score, f"{note}，練馬師分 {clip_score(score):.1f}。", "trainer_name+trainer_track_stats"
@@ -3882,7 +3841,6 @@ class RacingEngine:
         # 唔再讀文字標題。有證據先至用級別表。下面嘅 bonus 項本身都係證據性嘅
         # （對手其後贏出／升班／頭馬交手），所以照計，令「得少少證據」嘅馬
         # 仍然可以離開 60。
-        w = FORMLINE_MICRO_WEIGHTS
         _support, valid_rows = self._formline_support_summary()
         if valid_rows <= 0:
             signal = "unknown"
@@ -3890,16 +3848,16 @@ class RacingEngine:
         else:
             signal = self._formline_signal()
             mapping = {
-                "elite": w.get("elite_base", 78.0),
-                "strong": w.get("strong_base", 72.0),
-                "medium_strong": w.get("med_strong_base", 68.0),
-                "medium": w.get("med_base", 64.0),
-                "medium_weak": w.get("med_weak_base", 56.0),
-                "weak": w.get("weak_base", 50.0),
-                "neutral": w.get("neutral_base", 58.0),
-                "unknown": w.get("unknown_base", 58.0),
+                "elite": 82.5,
+                "strong": 72.0,
+                "medium_strong": 66.0,
+                "medium": 62.0,
+                "medium_weak": 57.0,
+                "weak": 53.0,
+                "neutral": 58.0,
+                "unknown": 60.0,
             }
-            score = mapping.get(signal, w.get("unknown_base", 58.0))
+            score = mapping.get(signal, 60.0)
 
         future_win_hits = self._formline_future_wins()
         strong_hits = self._formline_strong_opponents()
@@ -3907,17 +3865,17 @@ class RacingEngine:
         headwinner = self._formline_headwinner()
 
         if future_win_hits:
-            score += min(6, future_win_hits * w.get("future_win_bonus", 3.0))
+            score += min(6, future_win_hits * 5.9)
         if strong_hits:
-            score += min(4, strong_hits * w.get("strong_opp_bonus", 2.0))
+            score += min(4, strong_hits * 3.3)
         if followups["higher"] > 0:
-            score += min(4, followups["higher"] * w.get("followup_higher_bonus", 2.0))
+            score += min(4, followups["higher"] * 2.4)
         if followups["same"] >= 2:
-            score += w.get("followup_same_bonus", 2.0)
+            score += 1.2
         if followups["lower"] >= 3 and followups["higher"] == 0:
-            score += w.get("followup_lower_pen", -2.0)
+            score += -3.6
         if headwinner and any(token in headwinner for token in ("頭馬", "亞軍")):
-            score += w.get("headwinner_bonus", 2.0)
+            score += 1.8
 
         row_strength_text = " ".join(str(row.get("strength") or "") for row in self._formline_rows())
         has_strong_row = any(token in row_strength_text for token in ("強組", "超強組", "極強組"))
@@ -3925,9 +3883,9 @@ class RacingEngine:
         has_weak_row = "弱組" in row_strength_text
         text = str(self.data.get("formline_line") or "")
         if has_strong_row:
-            score = max(score, w.get("med_strong_base", 68.0))
+            score = max(score, 66.0)
         elif has_weak_row and not has_medium_row:
-            score = min(score, w.get("med_weak_base", 56.0) - 2.0)
+            score = min(score, 57.0 - 2.0)
         if ("無資料" in text or "未有出賽" in text) and not self._formline_rows():
             score = min(score, 60.0)
 

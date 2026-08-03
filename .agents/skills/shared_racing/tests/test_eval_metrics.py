@@ -125,11 +125,15 @@ class AuParityTests(unittest.TestCase):
         ]
 
     def test_metrics_for_races_matches_canonical(self) -> None:
+        # ⚠️ Gold is capture-at-4 since 2026-08-03: all three placegetters inside
+        # the model's top FOUR picks. Races 2 and 3 place a runner at model rank 4,
+        # so they are Gold now and were not before. The strict 3-of-3 reading is
+        # still asserted below as `gold_strict`, which is what the old numbers used.
         races = [
-            self._race({1: 1, 2: 2, 3: 3}),  # Gold
-            self._race({1: 1, 2: 2, 4: 3}),  # positional Good
-            self._race({1: 1, 3: 2, 4: 3}),  # any-2 Good only
-            self._race({3: 1, 4: 2, 5: 3}),  # pick-3-only hit → exclusive Miss
+            self._race({1: 1, 2: 2, 3: 3}),  # Gold + gold_strict
+            self._race({1: 1, 2: 2, 4: 3}),  # Gold (3rd placegetter at rank 4)
+            self._race({1: 1, 3: 2, 4: 3}),  # Gold, but only any-2 on the top three
+            self._race({3: 1, 4: 2, 5: 3}),  # placegetter at rank 5 → not Gold
             self._race({4: 1, 5: 2}),        # miss for top-3 picks
         ]
         # HKJC and AU both have a top-level module named ``matrix_mapper``.
@@ -150,14 +154,40 @@ class AuParityTests(unittest.TestCase):
         )
         metrics = json.loads(completed.stdout)
         self.assertEqual(metrics["races"], 5)
-        self.assertEqual(metrics["gold"], 1)
+        self.assertEqual(metrics["gold"], 3)             # capture-at-4
+        self.assertEqual(metrics["gold_strict"], 1)      # legacy 3-of-3
         self.assertEqual(metrics["good"], 3)  # any-2 (cumulative)
         self.assertEqual(metrics["good_positional"], 2)  # Gold + positional Good
         self.assertEqual(metrics["pass"], 4)
         self.assertEqual(
             metrics["exclusive_labels"],
-            {"Gold": 1, "Good": 1, "Pass": 1, "1 Hit": 0, "Miss": 2},
+            {"Gold": 3, "Good": 0, "Pass": 0, "1 Hit": 0, "Miss": 2},
         )
+
+    def test_gold_is_capture_at_four_and_strict_gold_is_kept(self) -> None:
+        """The two Gold readings must stay separable, and new ⊇ old.
+
+        A race where the third placegetter is the model's 4th pick is the whole
+        point of the change: nothing was missed, so it should not be graded the
+        same as a race that dropped a placegetter outside the top four.
+        """
+        from eval_metrics import race_metrics
+
+        at4 = race_metrics([1, 2, 3, 4], {1, 2, 4}, winner=1,
+                           actual_pos={1: 1, 2: 2, 4: 3, 3: 5}, field_size=5)
+        self.assertTrue(at4["gold"])
+        self.assertFalse(at4["gold_strict"])
+        self.assertEqual(at4["exclusive_label"], "Gold")
+
+        at5 = race_metrics([1, 2, 3, 4, 5], {1, 2, 5}, winner=1,
+                          actual_pos={1: 1, 2: 2, 5: 3, 3: 4, 4: 6}, field_size=6)
+        self.assertFalse(at5["gold"])          # placegetter sits at rank 5
+        self.assertTrue(at5["top3_all_within_top5"])
+        self.assertEqual(at5["exclusive_label"], "Good")
+
+        perfect = race_metrics([1, 2, 3], {1, 2, 3}, winner=1,
+                               actual_pos={1: 1, 2: 2, 3: 3}, field_size=8)
+        self.assertTrue(perfect["gold"] and perfect["gold_strict"])
 
     def test_reflector_label_parity(self) -> None:
         from unified_reflector_core import performance_label_from_rows

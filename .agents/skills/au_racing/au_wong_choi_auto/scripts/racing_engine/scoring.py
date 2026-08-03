@@ -247,26 +247,6 @@ TRACK_MICRO_WEIGHTS = {
     "heavy_poor_pen": -5.94
 }
 
-# 2026-07-11 單調化修：原本 med_base 68.3 > strong 66.4 > med_strong 61.8（「中等對手」
-# 基礎分竟高過「強對手」——form_line 權重=0 冇 gradient，ML search 留低嘅噪音）。
-# 呢個維度純顯示（唔入排名），修正只為報告數字自洽：頂級 > 強 > 中強 > 中 > 中弱 > 弱。
-FORMLINE_MICRO_WEIGHTS = {
-    "elite_base": 82.5,
-    "strong_base": 72.0,
-    "med_strong_base": 66.0,
-    "med_base": 62.0,
-    "med_weak_base": 57.0,
-    "weak_base": 53.0,
-    "neutral_base": 58.0,
-    "unknown_base": 60.0,
-    "future_win_bonus": 5.9,
-    "strong_opp_bonus": 3.3,
-    "followup_higher_bonus": 2.4,
-    "followup_same_bonus": 1.2,
-    "followup_lower_pen": -3.6,
-    "headwinner_bonus": 1.8
-}
-
 # 2026-08-01 中性化（710 場 A/B）：base 由 55.7 改 60.0。
 # 「檔位形勢」＝ pace_map_score ×1.0，所以 leaf 嘅尺就係維度嘅尺。舊 base 55.7 加上
 # 修正上限 +4.05 → 全庫最高只得 59.75，即係**60 係天花板而唔係中性**：14.4% 嘅馬
@@ -300,25 +280,25 @@ PACE_MICRO_WEIGHTS = {
     "modifier_cap_min": -9.43,
     "modifier_multiplier": 1.1
 }
-# 2026-08-04：四個 micro adjustment 全部歸零。**實測係惰性嘅** —— 604 場配對
-# 對比，只有 3–5 場結果有變，前三命中格數 800 vs 799（+1），Miss 152 vs 152
-# 完全一樣，冇一個指標顯著（winner_in_top3 p=0.25，方向仲係輕微偏向保留）。
+# ── micro adjustment 家族審查（2026-08-04，718 場 runtime ablation）──────
 #
-# 所以剷走佢哋**唔係性能改善**，係簡化：少四個手調參數、少一個硬寫馬房名
-# （`"Waller" in trainer` +5.52），而量度證明冇代價。
+# 目標係「剷走唔會蝕嘅就全部剷」。逐個家族 ablate 之後，**八個家族只有兩個
+# 符合條件**，所以呢度只剷咗兩個：
 #
-# ⚠️ 一個要更正嘅早前講法：我曾經寫住「簡單公式 0.615 vs 引擎 0.571，
-# base 公式蝕咗 4.4pp」。**嗰個係跨語料比較，錯嘅。** 0.571 係喺 LY 只填 81%
-# 嘅語料量，0.615 係喺 96.8% 嘅語料量。喺**同一個語料**量返：
-#     trainer_score 0.605  vs  簡單公式 0.615   → 差 1.0pp
-#     jockey_score  0.600  vs  簡單公式 0.599   → 差 0.001
-# 即係引擎個 base 公式其實冇問題，兩個 prior（練馬師 0.3946、騎師 0.3564）
-# 亦校準得準（實測中位數 0.3909 / 0.3598）。
-TRAINER_MICRO_WEIGHTS = {"waller_debut_bonus": 0.0,
-                         "track_high_vol_high_place_bonus": 0.0,
-                         "track_med_vol_high_place_bonus": 0.0,
-                         "track_med_vol_med_place_bonus": 0.0}
-
+#   ✅ form_line        改動場次 0（所屬維度 MATRIX_WEIGHTS = 0.000）→ 已剷，常數內聯
+#   ✅ trainer          改動場次 0（門檻從未觸發）           → 已剷
+#   ❌ track            hold Good位 −0.68，3/5 fold
+#   ❌ class            hold Good位 −2.04，3/5 fold
+#   ❌ consistency      dev Good位 −0.70，3/5 fold
+#   ❌ sectional        hold Good位 −2.72，3/5 fold
+#   ❌ jockey_horse_fit dev Good位 −1.05、hold winT3 −4.08，2/5 fold
+#   ❌ pace             dev Gold −1.05 / Good位 −0.88 / winT3 −2.28，1/5 fold
+#
+# ⚠️ **「全部一齊剷」實測係輸嘅** —— dev Gold −0.35 / Good位 −0.88 / winT3 −1.75，
+# holdout Gold −1.36 / Good位 −2.72 / winT3 −5.44，2/5 fold。所以剩返嗰六族
+# 唔可以當「手調噪音」剷。佢哋睇落似手調，但量度話佢哋喺出力。
+#
+# 重跑：au_runtime_micro_ablation.py --archive-root <scored> --results-csv <sb_results.csv>
 # 2026-07-11 大剪裁（702場 A/B）：
 # - 「歷來最佳配搭」family REMOVED — best_formal_mult 被 ML 推成負數（沿用最佳配搭
 #   反而扣分，語義反轉 bug）；成族移除 GGP +2／A窗 +1／B窗平。

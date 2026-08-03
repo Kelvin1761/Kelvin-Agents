@@ -1,0 +1,20 @@
+
+========================================================================
+🔍 Extract AU Results
+/Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/claw_racenet_results.py --url https://www.racenet.com.au/results/horse-racing/rosehill-gardens-20260801/all-races --output_dir /Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing/2026-08-01 Rosehill Gardens Race 1-10 --json
+========================================================================
+🔍 Fetching: https://www.racenet.com.au/results/horse-racing/rosehill-gardens-20260801/all-races
+⚠️ Racenet results: curl_cffi chrome136 returned HTML without __NUXT__
+⚠️ Racenet results: curl_cffi chrome131 blocked with HTTP 403
+⚠️ Racenet results: Playwright live browser blocked with HTTP 202
+❌ Racenet results fetch blocked for https://www.racenet.com.au/results/horse-racing/rosehill-gardens-20260801/all-races
+Observed transport failures:
+  - Racenet results: curl_cffi chrome131 blocked with HTTP 403
+  - Racenet results: Playwright live browser blocked with HTTP 202
+Suggested recovery:
+  1. Open Racenet once in regular Chrome on this Mac to establish a fresh human session.
+  2. Retry with `RACENET_USE_LOCAL_CHROME=1 RACENET_HEADLESS=0` (Ensures your real cookies are used).
+  3. If you have a Proxy, use `RACENET_PROXIES='http://host:port'`.
+  4. If needed, retry with specific profile: `RACENET_USER_DATA_DIR='/Users/imac/Library/Application Support/Google/Chrome' RACENET_PROFILE_DIR='Default'`.
+  5. If Racenet still returns CloudFront 403, change your IP via Mobile Hotspot or VPN.
+

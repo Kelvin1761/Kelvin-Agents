@@ -39,13 +39,11 @@ from subprocess_pool import bounded_workers, run_labeled_commands
 from wongchoi_paths import AU_RACING
 
 PYTHON = sys.executable
-EXTRACTOR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_race_extractor" / "scripts" / "extractor.py"
 FACTS_INJECTOR = PROJECT_ROOT / ".agents" / "scripts" / "inject_fact_anchors.py"
 AUTO_LOGIC = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "build_au_logic.py"
 AUTO_ORCH = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "au_auto_orchestrator.py"
 TEMP_ROOT = PROJECT_ROOT / "_temporary_files"
 TEMP_FILE_PATTERNS = (
-    "racenet_temp_*.html",
     "latest_results.html",
     "temp_results.html",
     "test_results*.html",
@@ -141,9 +139,13 @@ SPORTSBET_EXTRACTOR = (PROJECT_ROOT / ".agents" / "skills" / "au_racing"
 
 
 def _extract_meeting(url: str) -> Path:
-    # 2026-08-02：Racenet 三條 transport 全封（profile 403、results 202 攔截頁、
-    # Playwright 202），所以 sportsbetform URL 行新抓取器。同一組 9 場 Flemington
-    # 實測，換數據源之後 Miss 由 3 場變 0 場、前三精準 41% → 67%。
+    # AU 抽取只有一條路：Sportsbet。Racenet 三條 transport 2026-08-02 全封
+    # （profile 403、results 202 攔截頁、Playwright 202），而 2026-08-04 連
+    # extractor、transport、profile scraper 一併剷走，所以呢度冇 fallback ——
+    # 唔係 sportsbetform 嘅 URL 直接停低。
+    #
+    # ⚠️ 以前有個 `WC_ALLOW_RACENET=1` 逃生門。剷咗係因為佢已經冇嘢可以行到：
+    # 目標腳本唔存在，set 咗只會換一個更難讀嘅 ImportError。
     if "sportsbetform" in url:
         print("🚀 Extracting AU meeting data via Sportsbet...")
         _run([PYTHON, str(SPORTSBET_EXTRACTOR), "--race-url", url, "--probe"])
@@ -153,25 +155,16 @@ def _extract_meeting(url: str) -> Path:
                 "Sportsbet 抽取要 --meeting-url/--races/--out-dir，"
                 "單靠 URL 推唔出馬場目錄。見 claw_sportsbet_form.py。")
         return meeting_dir
-    # Racenet 由 2026-08-02 起三條 transport 全封（profile 403、results 202 攔截頁、
-    # Playwright 202）。留住呢條路只會靜靜咁失敗，所以直接停低同講清楚點做。
-    # 要暫時行返舊路（例如 Racenet 解封）就 set WC_ALLOW_RACENET=1。
-    if os.environ.get("WC_ALLOW_RACENET") != "1":
-        raise SystemExit(
-            "❌ Racenet 已停用（2026-08-02 起全面封鎖），AU Wong Choi 已轉用 Sportsbet。\n"
-            "   抽取請用：\n"
-            "     python3 .agents/skills/au_racing/claw_sportsbet_form.py \\\n"
-            "       --meeting-url https://www.sportsbetform.com.au/<meetingId>/<raceId>/ \\\n"
-            "       --races <raceId,raceId,...> --out-dir '<meeting dir>' \\\n"
-            "       --date YYYY-MM-DD --venue '<track>'\n"
-            "   然後把 meeting 目錄餵返呢個 orchestrator。\n"
-            "   （真係要行舊 Racenet 路：WC_ALLOW_RACENET=1）")
-    print("🚀 Extracting AU meeting data via Race Extractor (Racenet, 已停用)...")
-    _run([PYTHON, str(EXTRACTOR), url, "all"])
-    meeting_dir = _get_target_dir_from_url(url)
-    if not meeting_dir or not meeting_dir.exists():
-        raise FileNotFoundError(f"Cannot locate extracted meeting directory for URL: {url}")
-    return meeting_dir
+    raise SystemExit(
+        f"❌ 唔識抽呢個 URL：{url}\n"
+        "   AU Wong Choi 只用 Sportsbet（Racenet 2026-08-02 全封，"
+        "相關腳本 2026-08-04 已剷走）。\n"
+        "   抽取請用：\n"
+        "     python3 .agents/skills/au_racing/claw_sportsbet_form.py \\\n"
+        "       --meeting-url https://www.sportsbetform.com.au/<meetingId>/<raceId>/ \\\n"
+        "       --races <raceId,raceId,...> --out-dir '<meeting dir>' \\\n"
+        "       --date YYYY-MM-DD --venue '<track>'\n"
+        "   然後把 meeting 目錄餵返呢個 orchestrator。")
 
 
 def _get_target_dir_from_url(url: str) -> Path | None:

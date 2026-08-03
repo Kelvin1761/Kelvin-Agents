@@ -631,21 +631,12 @@ def compute_class_change(current_prize: int, prev_prize: int) -> str:
 
 import subprocess
 
-# Path to claw_profile_scraper.py (resolved relative to this script)
-_CLAW_SCRAPER_PATH = str(_SCRIPT_DIR.parent / 'skills' / 'au_racing' / 'claw_profile_scraper.py')
-# 賽績線查對手後續走勢。`claw_profile_scraper.py` 係 Racenet，而 Racenet 已經全封
-# （每個名都回 {"error": "HTTP 202"}），實測 307/307 條對手行「查冊失敗」，賽績線
-# 全場坐 60。`sb_horse_index.py` 由我哋自己抓過嘅 runner block 砌索引，離線、零請求，
-# 輸出格式一樣，所以係 drop-in。有索引就用索引，冇就跌返落舊路。
+# 賽績線查對手後續走勢。以前呢度 shell out 去 `claw_profile_scraper.py`（Racenet），
+# 而 Racenet 全封之後每個名都回 {"error": "HTTP 202"} —— 實測 307/307 條對手行
+# 「查冊失敗」，賽績線全場坐 60。`sb_horse_index.py` 由我哋自己抓過嘅 runner block
+# 砌索引，離線、零請求，輸出格式逐個 key 一樣。Racenet 那條 fallback 已經剷走：
+# 佢唯一嘅作用係喺索引未砌好嗰陣靜靜咁失敗，而唔係話畀我哋知索引未砌好。
 _SB_INDEX_PATH = str(_SCRIPT_DIR.parent / 'skills' / 'au_racing' / 'sb_horse_index.py')
-
-
-def _opponent_lookup_script() -> str:
-    """揀邊個腳本查對手 —— 索引有嘢就用索引。"""
-    index_json = Path(_SB_INDEX_PATH).with_name('.sb_horse_index.json')
-    if Path(_SB_INDEX_PATH).exists() and index_json.exists():
-        return _SB_INDEX_PATH
-    return _CLAW_SCRAPER_PATH
 
 
 # ⚠️ 賽績線嘅時點閘。`compute_form_lines_via_api` 數「對手喺**呢條往績行之後**有冇
@@ -716,21 +707,18 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
     if not queries:
         return {'table_lines': [], 'rating': '無資料', 'stats': 'N/A'}
     
-    # 2. Fetch profiles via claw_profile_scraper.py
+    # 2. 查對手 —— `sb_horse_index.py`，離線索引
     unique_names = list(set(q['opp_name'] for q in queries))
     profile_data = {}
     scraper_available = True
     
     if unique_names:
-        # Try absolute path first, then fallback to relative
-        scraper_path = _opponent_lookup_script()
-        if not Path(scraper_path).exists():
-            # Fallback to relative path from CWD
-            scraper_path = '../.agents/skills/au_racing/claw_profile_scraper.py'
-        
+        scraper_path = _SB_INDEX_PATH
         _python_cmd = "python3" if shutil.which("python3") else "python"
         cmd = [_python_cmd, scraper_path, "--names", ",".join(unique_names)]
-        if _AS_OF and scraper_path == _SB_INDEX_PATH:
+        # `--as-of` 係時點閘，唔係優化。以前佢 conditional 喺「用緊索引」之上，
+        # 而家只有一條路，所以無條件加 —— 冇 as-of 就等於畀對手當日成績漏入去。
+        if _AS_OF:
             cmd += ["--as-of", _AS_OF]
         try:
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
@@ -740,7 +728,7 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
                 print(f"  [FormLines] scraper exit code {res.returncode}: {res.stderr[:200]}", file=sys.stderr)
                 scraper_available = False
         except FileNotFoundError:
-            print(f"  [FormLines] claw_profile_scraper.py not found at {scraper_path}", file=sys.stderr)
+            print(f"  [FormLines] sb_horse_index.py not found at {scraper_path}", file=sys.stderr)
             scraper_available = False
         except subprocess.TimeoutExpired:
             print(f"  [FormLines] scraper timeout (90s)", file=sys.stderr)
