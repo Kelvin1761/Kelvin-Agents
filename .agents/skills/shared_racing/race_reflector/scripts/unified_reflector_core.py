@@ -21,6 +21,13 @@ SHARED_ROOT = Path(__file__).resolve().parent
 AU_REFLECTOR_SCRIPTS = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_reflector" / "scripts"
 HKJC_REFLECTOR_SCRIPTS = PROJECT_ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_reflector" / "scripts"
 HKJC_EXTRACTOR_SCRIPTS = PROJECT_ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_race_extractor" / "scripts"
+# ⚠️ AU 賽果**唔應該**行到呢個 extractor —— 佢係 Racenet，而 Racenet 已全封
+# （2026-08-02 起 profile 403 / results 202 / Playwright 202）。正路係喺 meeting
+# 目錄放一個 `Race_Results_Reflector.md`，`find_existing_results_file()` 會先搵到
+# 佢，就唔會 call 任何 extractor、亦唔需要 results URL。用：
+#     python3 .agents/skills/au_racing/sb_results.py --meeting-dir "<meeting dir>"
+# 佢由 Sportsbet cache 生成，零網絡請求。呢個常數留住只係為咗 fallback 時
+# 大聲失敗，唔係一條預期走嘅路。
 AU_RESULTS_EXTRACTOR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "claw_racenet_results.py"
 HKJC_RESULTS_EXTRACTOR = HKJC_EXTRACTOR_SCRIPTS / "fast_extract_results.py"
 

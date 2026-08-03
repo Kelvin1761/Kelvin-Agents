@@ -151,13 +151,11 @@ def main():
     # timing_600m_* 原始 writer 已失傳、上游 06-19 起斷供；呢步由每場 /sectionals
     # 頁重建（真 L600 時間，最近5場語義）。網絡步驟：被封/失敗只會 skip，
     # 引擎對 missing timing 有中性處理，唔會影響後面 orchestrator。
-    timing_script = AU_AUTO_SCRIPTS / "au_sectionals_timing_enrich.py"
-    if timing_script.exists() and logic_count > 0:
-        ok = run_step(python, [str(timing_script), str(meeting_dir)],
-                      "Sectionals timing 補完", timeout=600)
-        summary["steps"]["timing_enrich"] = {"status": "PASS" if ok else "WARN"}
-    else:
-        summary["steps"]["timing_enrich"] = {"status": "SKIP"}
+    # 2026-08-04：拆走 `au_sectionals_timing_enrich.py` —— 佢由 racenet 攞 600m
+    # 段速，而 Racenet 已全封，所以呢步只會靜靜咁 skip。而家 Sportsbet 嘅往績行
+    # 本身就帶 `PF[L600 Delta: X]`（實測 87% 覆蓋），段速由抽取階段就入到，
+    # 唔需要另一個網絡步驟補。
+    summary["steps"]["timing_enrich"] = {"status": "N/A (Sportsbet 往績行已帶 L600)"}
 
     # Step 3.6: free official trial / jump-out readiness evidence.  The
     # collector routes from each trial's venue (NSW/QLD/VIC/SA/WA/TAS), not
