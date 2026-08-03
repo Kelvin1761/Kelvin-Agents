@@ -205,6 +205,37 @@ champ −4.40、good_pos −5.49；改用保守 w=0.05 三個主指標全正。*
 （首戰馬今日贏咗仍然顯示 `0: 0-0-0` / `$0`），`J/H` / `Win Range` 賽後。
 **逐個欄位驗，唔可以整版通過。**
 
+## 2026-08-04 —— 騎練 leaf 替換：REJECT（連同一個要更正嘅講法）
+
+`au_leaf_substitute.py` 換走引擎個 `trainer_score` / `jockey_score`，用一條
+簡單收縮上名率頂上。加咗 walk-forward 之後，三個變體全部唔過閘：
+
+| 變體 | dev Gold/Good位 | holdout Gold/Good位 | 5-fold | walk-forward |
+|---|---|---|---|---|
+| 換 `trainer_score` | +1.75 / −0.19 | **−1.10 / −1.10** | 5/5 | **4/5** |
+| 換 `jockey_score` | +0.58 / −0.39 | −1.10 / +0.00（winT3 −2.20）| 5/5 | 4/5 |
+| 兩個都換 | +1.36 / −0.78 | −1.10 / −1.10 | 5/5 | 4/5 |
+
+⚠️ **要更正嘅講法**：我曾經報「換 trainer_score：dev 5/5、holdout t3prec +1.47 /
+winT3 +1.10，**冇一個跌**」。最後半句係錯嘅 —— holdout `good_positional`
+係 **−1.10**，而嗰個欄同 Gold 改定義完全無關，即係當時就已經跌咗，我漏睇咗。
+加上 walk-forward 只有 4/5（窗 4 t3prec −0.56），呢個改動冇資格 ship。
+
+**騎練呢個維度到此為止查完。** 五個方向全部量過，冇一個係可以落實嘅改善：
+
+| 方向 | 結果 |
+|---|---|
+| by-going 分項（Good/Soft/Heavy 分開）| 差過 12 個月總計，濕地都係 |
+| micro adjustment（場館、Waller 首戰）| 718 場改動 0 —— 惰性，已剷 |
+| base 公式 vs 簡單收縮上名率 | 差 1.0pp（唔係我之前講嘅 4.4pp）|
+| prior 校準 | 練馬師 .3946 vs 實測中位數 .3909；騎師 .3564 vs .3598 —— 準 |
+| leaf 替換 A/B | holdout Gold 同 Good 都跌，walk-forward 4/5 → REJECT |
+| 內部權重（jockey .28 / trainer .20 / fit .52）| walk-forward 3/5 → REJECT（見下）|
+
+**真正嘅改善係補齊數據，唔係改公式。** LY 線由 81% 填到 96.8% 之後
+`jockey_score` 0.565 → 0.600、`trainer_score` 0.544 → 0.605、
+`ability_score` 0.641 → **0.656**。呢個已經 ship 咗。
+
 ## 2026-08-04 —— 維度**內部**權重審查（#3，全部 REJECT）
 
 第一次查 `MATRIX_FORMULAS` 入面每個維度內部嗰組 leaf 權重。`au_matrix_refit.py`
