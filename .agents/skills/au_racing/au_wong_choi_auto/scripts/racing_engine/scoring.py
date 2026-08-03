@@ -300,12 +300,7 @@ PACE_MICRO_WEIGHTS = {
     "modifier_cap_min": -9.43,
     "modifier_multiplier": 1.1
 }
-TRAINER_MICRO_WEIGHTS = {
-    "waller_debut_bonus": 5.52,
-    "track_high_vol_high_place_bonus": 10.96,
-    "track_med_vol_high_place_bonus": 4.29,
-    "track_med_vol_med_place_bonus": 1.44
-}
+TRAINER_MICRO_WEIGHTS = {"waller_debut_bonus": 0.0, "track_high_vol_high_place_bonus": 0.0, "track_med_vol_high_place_bonus": 0.0, "track_med_vol_med_place_bonus": 0.0}
 
 # 2026-07-11 大剪裁（702場 A/B）：
 # - 「歷來最佳配搭」family REMOVED — best_formal_mult 被 ML 推成負數（沿用最佳配搭

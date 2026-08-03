@@ -1393,7 +1393,19 @@ class RacingEngine:
     _PLACE_RATE_MIN_RUNS = 10
 
     def _unified_place_rate(self, kind: str):
-        """(places, runs, source)：Racenet 生涯優先，否則去年官方。冇就 None。"""
+        """(places, runs, source)：Racenet 生涯優先，否則去年官方。冇就 None。
+
+        ⚠️ 2026-08-04 實測：`AU_Profile_Stats_Cache.json` 152 個人物入面
+        **冇一個** `totalRuns >= _PLACE_RATE_MIN_RUNS`，所以 "profile"（Racenet）
+        呢條路實際上從來唔會行到 —— 604 場分析檔「Racenet 生涯」出現 0 次、
+        「去年官方」（Sportsbet）34,766 次。即係騎練評分事實上 100% 靠 Sportsbet。
+
+        ⚠️ **唔好為咗提高覆蓋率而降低 `_PLACE_RATE_MIN_RUNS`。** 一降就會令
+        Racenet 那批（永遠 refresh 唔到，Racenet 全封）蓋過新鮮嘅 Sportsbet
+        數據，而且兩者係唔同尺（Racenet 係生涯、Sportsbet 係 12 個月）——
+        同一個 leaf 兩把尺，正正係今個 session 反覆踩到嘅坑。
+        要提高覆蓋就補 Sportsbet 個人頁（見 `sb_people_stats.py`）。
+        """
         name = self._clean_identity(self.horse_data.get(kind))
         stats = _profile_stats_lookup(kind, name) if name else None
         if stats:
