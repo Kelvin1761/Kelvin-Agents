@@ -95,10 +95,17 @@ def ly_token(stats):
 
 
 def refresh(people, fetcher=None, ttl_days=TTL_DAYS, max_people=40, path=None,
-            verbose=True):
+            verbose=True, cache_only=False):
     """`people` = [(kind, person_id, name)]，kind 係 'Jockey' / 'Trainer'。
 
     ID 由賽事頁直接嚟，所以**唔會撞錯人**。失敗一律非致命。
+
+    `cache_only=True`：只讀已經落 cache 嘅個人頁，一個網絡請求都唔出。
+    ⚠️ 點解需要呢個模式：curl_cffi 會俾 sportsbetform 403，所以 live 抽取
+    嗰陣呢個 refresh 其實成功唔到 —— 靜靜咁失敗，然後 `(LY:)` 全部係 `-`。
+    實測 2026-08-04 Warwick（鄉郊場）：cache 由大城市場次砌，只填到 107/214。
+    正路係**抽取階段行瀏覽器把個人頁落 cache，呢度 cache-only 讀返** ——
+    同賽事頁一樣嘅分工。冇咗呢個 flag，唯一選擇係出網然後失敗。
     """
     path = Path(path) if path else cache_path()
     cache = load_cache(path)
@@ -117,7 +124,10 @@ def refresh(people, fetcher=None, ttl_days=TTL_DAYS, max_people=40, path=None,
               f"今次抓 {min(len(todo), max_people)}")
     ok = 0
     for kind, pid, name, key in todo[:max_people]:
-        html = f.get(f"{BASE}/{kind}/{pid}/")
+        url = f"{BASE}/{kind}/{pid}/"
+        if cache_only and not f._cache_path(url).exists():
+            continue
+        html = f.get(url)
         if not html:
             continue
         stats = parse_person(html)
