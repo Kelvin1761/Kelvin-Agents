@@ -10,7 +10,12 @@ from form import FormScorer
 from jockey import JockeyScorer
 from speed import SpeedScorer
 from trainer import TrainerScorer
-from live_priors import TrainerSignalPriors, prior_source_manifest
+from live_priors import (
+    TrainerSignalPriors,
+    empty_trainer_signal_priors,
+    prior_source_manifest,
+    temporal_source_is_safe,
+)
 from matrix_mapper import (
     MATRIX_FORMULAS,
     map_features_to_matrix,
@@ -33,11 +38,20 @@ def scoring_run_contract():
         "version": SCORING_CONTRACT_VERSION,
         "standard_matrix_weights": dict(MATRIX_WEIGHTS),
         "matrix_formulas": matrix_formula_manifest(),
+        "dimension_evidence_blends": {
+            "normalized_sectional_to_sectional": (
+                scoring.SECTIONAL_NORMALIZED_MATRIX_BLEND
+            ),
+        },
         "grade_thresholds": [
             {"minimum": minimum, "grade": grade}
             for minimum, grade in scoring.GRADE_THRESHOLDS
         ],
         "prior_sources": prior_source_manifest(),
+        "prior_temporal_contract": {
+            "historical": "matching_point_in_time_required",
+            "live_or_future": "latest_materialized_snapshot_allowed",
+        },
     }
 
 
@@ -123,6 +137,9 @@ class RacingEngine:
             matrix_scores["horse_health"] = legacy_health
             self.provenance["horse_health_slot"] = "legacy risk_score + weight_score + confidence_score mapping"
         matrix_scores["sectional"] = self._apply_finish_time_trend(matrix_scores["sectional"])
+        matrix_scores["sectional"] = self._apply_normalized_sectional(
+            matrix_scores["sectional"]
+        )
         matrix = map_features_to_matrix(feature_scores)
         matrix["trainer_signal"] = score_band(matrix_scores["trainer_signal"])
         matrix["horse_health"] = score_band(matrix_scores["horse_health"])
@@ -666,6 +683,20 @@ class RacingEngine:
     def _ability_score(self, matrix_scores):
         return sum(matrix_scores[key] * weight for key, weight in MATRIX_WEIGHTS.items())
 
+    def _apply_normalized_sectional(self, base_score, *, record=True):
+        evidence = parse_float(self._value("sectional_normalized_score"))
+        if evidence is None:
+            return round(clip_score(base_score), 2)
+        alpha = scoring.SECTIONAL_NORMALIZED_MATRIX_BLEND
+        score = (1.0 - alpha) * float(base_score) + alpha * evidence
+        if record:
+            self.reason_codes.append("normalized_sectional_evidence")
+            self.provenance["normalized_sectional_matrix"] = (
+                "course-distance-class reference sectional deltas; "
+                "full-field relative score; recency-weighted and sample-shrunk"
+            )
+        return round(clip_score(score), 2)
+
     def build_shadow_profile(self, profile_name, base_auto=None):
         if profile_name not in SUPPORTED_SHADOW_PROFILES:
             return None
@@ -693,6 +724,10 @@ class RacingEngine:
         saved_reason_codes = self.reason_codes
         self.reason_codes = list(saved_reason_codes)
         matrix_scores["sectional"] = self._apply_finish_time_trend(matrix_scores["sectional"])
+        matrix_scores["sectional"] = self._apply_normalized_sectional(
+            matrix_scores["sectional"],
+            record=False,
+        )
         self.reason_codes = saved_reason_codes
         ability_score = round(self._ability_score(matrix_scores), 2)
         base_ability = float(auto.get("ability_score", ability_score))
@@ -986,6 +1021,11 @@ class RacingEngine:
             "jockey_final": round(clip_score(updated.get("jockey_score", 60.0)), 2),
             "trainer_base": round(trainer_base, 2),
             "trainer_final": round(clip_score(updated.get("trainer_score", 60.0)), 2),
+            "prior_temporal_mode": str(
+                getattr(prior_stack, "temporal_mode", "unknown") or "unknown"
+            ),
+            "prior_as_of_date": getattr(prior_stack, "as_of_date", None),
+            "requested_as_of_date": self.race_context.get("race_date"),
             "adjustments": adjustments,
         }
 
@@ -1301,6 +1341,11 @@ class RacingEngine:
         global _TRAINER_SIGNAL_PRIORS
         if _TRAINER_SIGNAL_PRIORS is None:
             _TRAINER_SIGNAL_PRIORS = TrainerSignalPriors()
+        if not temporal_source_is_safe(
+            _TRAINER_SIGNAL_PRIORS,
+            self.race_context.get("race_date"),
+        ):
+            return empty_trainer_signal_priors()
         return _TRAINER_SIGNAL_PRIORS
 
     def _append_note(self, base_note, extra_note):
@@ -2643,7 +2688,20 @@ class RacingEngine:
             going = "；場地無補強"
         else:
             going = "；場地中性"
-        return f"{speed}{going}{self._score_close(score)}"
+        normalized_score = parse_float(self._value("sectional_normalized_score"))
+        normalized_reliability = parse_float(
+            self._value("sectional_normalized_reliability")
+        )
+        normalized = ""
+        if normalized_score is not None and normalized_reliability is not None:
+            if normalized_score >= 66:
+                label = "班程標準化段速較場內對手強"
+            elif normalized_score < 56:
+                label = "班程標準化段速較場內對手弱"
+            else:
+                label = "班程標準化段速接近場內中位"
+            normalized = f"；{label}（可靠度{normalized_reliability:.2f}）"
+        return f"{speed}{going}{normalized}{self._score_close(score)}"
 
     def _describe_race_shape_matrix(self, score, features, evidence):
         barrier = self.horse_data.get("barrier") or self.horse_data.get("draw") or "N/A"
@@ -2768,7 +2826,21 @@ class RacingEngine:
             weight = "；負磅可控"
         else:
             weight = "；負磅偏重"
-        return f"{move_txt}{class_text}{weight}{self._score_close(score)}"
+        peak_gap = parse_float(self._value("rating_peak_gap"))
+        reliability = parse_float(self._value("rating_near_peak_reliability"))
+        rating_text = ""
+        if peak_gap is not None and reliability is not None:
+            if peak_gap >= -1:
+                rating_position = "現評仍貼近近期評分高位"
+            elif peak_gap >= -4:
+                rating_position = f"現評較近期高位低{abs(peak_gap):.0f}分"
+            else:
+                rating_position = f"現評已離近期高位{abs(peak_gap):.0f}分"
+            rating_text = f"；{rating_position}（可靠度{reliability:.2f}）"
+        return (
+            f"{move_txt}{class_text}{weight}{rating_text}"
+            f"{self._score_close(score)}"
+        )
 
     def _draw_verdict_signal(self):
         text = self._clean(self._value("draw_verdict") or "")

@@ -696,6 +696,17 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
             ("頭馬距離趨勢", data.get("margin_trend"), 180),
         )
     if key == "sectional":
+        normalized = _join_nonempty(
+            f"L400差={data.get('sectional_normalized_l400_delta')}s"
+            if data.get("sectional_normalized_l400_delta") is not None else "",
+            f"全程差={data.get('sectional_normalized_total_delta')}s"
+            if data.get("sectional_normalized_total_delta") is not None else "",
+            f"樣本={data.get('sectional_normalized_samples')}"
+            if data.get("sectional_normalized_samples") else "",
+            f"可靠度={data.get('sectional_normalized_reliability')}"
+            if data.get("sectional_normalized_reliability") is not None else "",
+            sep=", ",
+        )
         return _compact_fact_lines(
             ("引擎分佈", data.get("engine_type"), 220),
             ("最佳路程", data.get("best_distance"), 160),
@@ -704,6 +715,7 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
             ("能量走勢（最舊 → 最新）", _chronological_series(data.get("energy_trend")), 260),
             ("時間偏差走勢（最舊 → 最新）", _chronological_series(data.get("finish_time_adj")), 260),
             ("步速修正判讀", data.get("finish_time_adj_level"), 220),
+            ("班程標準化段速", normalized, 220),
         )
     if key == "race_shape":
         draw_running = _join_nonempty(
@@ -755,6 +767,19 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
         )
         return _compact_fact_lines(
             ("班次 / 評分背景", record, 220),
+            (
+                "近期評分高位",
+                _join_nonempty(
+                    f"高位={data.get('rating_recent_peak')}"
+                    if data.get("rating_recent_peak") is not None else "",
+                    f"現評差={data.get('rating_peak_gap')}"
+                    if data.get("rating_peak_gap") is not None else "",
+                    f"可靠度={data.get('rating_near_peak_reliability')}"
+                    if data.get("rating_near_peak_reliability") is not None else "",
+                    sep=", ",
+                ),
+                140,
+            ),
             ("場地轉換", data.get("venue_transfer"), 80),
         )
     return []

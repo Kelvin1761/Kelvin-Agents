@@ -24,11 +24,17 @@ import extract_trackwork
 from matrix_mapper import map_features_to_matrix_scores
 from scoring import MATRIX_WEIGHTS, compute_grade
 from engine_core import RacingEngine, scoring_run_contract
-from hkjc_auto_orchestrator import HKJCAutoOrchestrator, _apply_sip_enhancements, _parse_racecard_meta
+from hkjc_auto_orchestrator import (
+    HKJCAutoOrchestrator,
+    _apply_sip_enhancements,
+    _enrich_relative_high_quality_scores,
+    _parse_racecard_meta,
+)
 from renderer import _chronological_series, ensure_verdict, render_race_markdown, validate_report_text
 from features.jockey import JockeyScorer
 from features.speed import SpeedScorer
 from features.trainer import TrainerScorer
+import engine_core
 import live_priors
 
 
@@ -94,6 +100,49 @@ def _logic() -> dict:
 
 
 class AutoOutputTests(unittest.TestCase):
+    def test_high_quality_rating_score_is_relative_reliable_and_evidence_only(self) -> None:
+        horses = {
+            "1": {
+                "_data": {
+                    "current_rating": 60,
+                    "rating_series": [60, 58, 56, 54],
+                    "sectional_normalized_l400_delta": -0.4,
+                    "sectional_normalized_total_delta": -0.7,
+                    "sectional_normalized_samples": 4,
+                },
+            },
+            "2": {
+                "_data": {
+                    "current_rating": 50,
+                    "rating_series": [60, 58, 56, 54],
+                    "sectional_normalized_l400_delta": 0.8,
+                    "sectional_normalized_total_delta": 1.2,
+                    "sectional_normalized_samples": 2,
+                },
+            },
+            "3": {"_data": {"rating_series": [55, 54, 53]}},
+        }
+        _enrich_relative_high_quality_scores(horses)
+        first = horses["1"]["_data"]
+        second = horses["2"]["_data"]
+        missing = horses["3"]["_data"]
+        self.assertGreater(
+            first["rating_near_peak_score"],
+            second["rating_near_peak_score"],
+        )
+        self.assertGreater(
+            first["sectional_normalized_score"],
+            second["sectional_normalized_score"],
+        )
+        self.assertNotIn("rating_near_peak_score", missing)
+        engine = RacingEngine(horses["1"], {})
+        expected = 0.95 * 70.0 + 0.05 * first["sectional_normalized_score"]
+        self.assertAlmostEqual(
+            engine._apply_normalized_sectional(70.0),
+            expected,
+            places=2,
+        )
+
     def test_sip_is_applied_independently_to_mainline_and_shadow(self) -> None:
         horses = {
             "1": {
@@ -474,6 +523,72 @@ class AutoOutputTests(unittest.TestCase):
         self.assertEqual(JockeyScorer({"jockey": "PURTON"}, {}).compute()[0], 85.0)
         # 完全未知 → 中性 60
         self.assertEqual(JockeyScorer({"jockey": "無名氏測試"}, {}).compute()[0], 60.0)
+
+    def test_historical_jockey_rating_requires_matching_point_in_time_source(self) -> None:
+        class FixtureRatings:
+            def __init__(self, temporal_mode, as_of_date):
+                self.temporal_mode = temporal_mode
+                self.as_of_date = as_of_date
+
+            @staticmethod
+            def lookup(group, name):
+                if (group, name) == ("jockey", "測試騎師"):
+                    return {
+                        "score": 90.0,
+                        "starts": 100,
+                        "win_rate": 25.0,
+                        "place_rate": 55.0,
+                    }
+                return None
+
+        static = FixtureRatings("latest_season_snapshot", None)
+        with mock.patch.object(live_priors, "_JT_RATINGS", static):
+            score, _ = JockeyScorer(
+                {"jockey": "測試騎師"},
+                {"race_date": "2026-01-01"},
+            ).compute()
+        self.assertEqual(score, 60.0)
+
+        point_in_time = FixtureRatings("point_in_time", "2026-01-01")
+        with mock.patch.object(live_priors, "_JT_RATINGS", point_in_time):
+            score, reason = JockeyScorer(
+                {"jockey": "測試騎師"},
+                {"race_date": "2026-01-01"},
+            ).compute()
+        self.assertEqual(score, 90.0)
+        self.assertIn("實績評分", reason)
+
+    def test_historical_trainer_signal_priors_require_matching_point_in_time_source(self) -> None:
+        class FixturePriors:
+            def __init__(self, temporal_mode, as_of_date):
+                self.temporal_mode = temporal_mode
+                self.as_of_date = as_of_date
+                self.combo = {("測試騎師", "測試練馬師"): {"starts": 100}}
+                self.jockey_distance = {("測試騎師", "1650"): {"starts": 100}}
+                self.trainer_distance = {("測試練馬師", "1650"): {"starts": 100}}
+                self.jockey_change = {}
+
+        engine = RacingEngine({}, {"race_date": "2026-01-01", "distance": "1650"})
+        static = FixturePriors("latest_season_snapshot", None)
+        with mock.patch.object(engine_core, "_TRAINER_SIGNAL_PRIORS", static):
+            guarded = engine._trainer_signal_priors()
+        self.assertEqual(guarded.temporal_mode, "historical_guard_neutral")
+        self.assertEqual(guarded.combo, {})
+        self.assertEqual(guarded.jockey_distance, {})
+
+        point_in_time = FixturePriors("point_in_time", "2026-01-01")
+        with mock.patch.object(engine_core, "_TRAINER_SIGNAL_PRIORS", point_in_time):
+            accepted = engine._trainer_signal_priors()
+        self.assertIs(accepted, point_in_time)
+
+    def test_scoring_contract_declares_prior_temporal_policy(self) -> None:
+        self.assertEqual(
+            scoring_run_contract()["prior_temporal_contract"],
+            {
+                "historical": "matching_point_in_time_required",
+                "live_or_future": "latest_materialized_snapshot_allowed",
+            },
+        )
 
     def test_grade_uses_displayed_ability_boundary(self) -> None:
         self.assertEqual(compute_grade(60.0), "C+")

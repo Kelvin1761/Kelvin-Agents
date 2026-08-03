@@ -24,8 +24,8 @@ import re
 import json
 import time
 import argparse
-from datetime import datetime
-from typing import Optional
+from datetime import date, datetime
+from typing import Optional, Union
 
 import requests
 from bs4 import BeautifulSoup
@@ -217,8 +217,30 @@ def scrape_race_result(result_url: str, timeout: int = 15) -> list[dict]:
 
 # ── Form Lines Computation ───────────────────────────────────────────────
 
+def _parse_as_of_date(value: Optional[Union[str, date, datetime]]) -> Optional[datetime]:
+    """Normalize a pre-race cutoff to midnight.
+
+    The cutoff is exclusive: a meeting on 2026-07-15 may only use results
+    dated before 2026-07-15.
+    """
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        return value.replace(hour=0, minute=0, second=0, microsecond=0)
+    if isinstance(value, date):
+        return datetime.combine(value, datetime.min.time())
+    text = str(value).strip()
+    for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
+    raise ValueError(f"Unsupported as_of_date: {value!r}")
+
+
 def compute_form_lines(entries: list[dict], max_races: int = 5,
-                       rate_limit: float = 0.5) -> dict:
+                       rate_limit: float = 0.5,
+                       as_of_date: Optional[Union[str, date, datetime]] = None) -> dict:
     """Compute form lines (賽績線) for a horse.
     
     For each of the horse's recent races:
@@ -231,6 +253,8 @@ def compute_form_lines(entries: list[dict], max_races: int = 5,
         entries: Horse profile entries (from scrape_horse_profile)
         max_races: Max number of races to check (default 5)
         rate_limit: Seconds between HTTP requests
+        as_of_date: Exclusive pre-race cutoff. When supplied, both the
+            target horse races and opponent follow-up races must precede it.
         
     Returns: {
         'table_lines': ['| 1 | 01/03/26 | ST R2 | 8 (-2½L) | 超拍檔 (頭馬) | 出 2 次: 1 勝 | ✅ 強組 |', ...],
@@ -240,8 +264,11 @@ def compute_form_lines(entries: list[dict], max_races: int = 5,
     }
     """
     queries = []
+    cutoff_dt = _parse_as_of_date(as_of_date)
     
-    for entry in entries[:max_races]:
+    for entry_idx, entry in enumerate(entries):
+        if len(queries) >= max_races:
+            break
         race_link = entry.get('race_link', '')
         if not race_link:
             continue
@@ -251,9 +278,9 @@ def compute_form_lines(entries: list[dict], max_races: int = 5,
             continue
         
         # Extract race info from link
-        date_m = re.search(r'racedate=(\d{4}/\d{2}/\d{2})', race_link)
-        rno_m = re.search(r'RaceNo=(\d+)', race_link)
-        rc_m = re.search(r'Racecourse=(\w+)', race_link)
+        date_m = re.search(r'racedate=(\d{4}/\d{2}/\d{2})', race_link, re.I)
+        rno_m = re.search(r'RaceNo=(\d+)', race_link, re.I)
+        rc_m = re.search(r'Racecourse=(\w+)', race_link, re.I)
         
         race_date = date_m.group(1) if date_m else ''
         race_no = int(rno_m.group(1)) if rno_m else 0
@@ -264,12 +291,14 @@ def compute_form_lines(entries: list[dict], max_races: int = 5,
             race_dt = datetime.strptime(race_date, '%Y/%m/%d')
         except (ValueError, AttributeError):
             continue
+        if cutoff_dt is not None and race_dt >= cutoff_dt:
+            continue
         
         # Short venue code
         venue_short = {'ST': '田', 'HV': '谷'}.get(racecourse, racecourse)
         
         queries.append({
-            'entry_idx': entries.index(entry),
+            'entry_idx': entry_idx,
             'date_str': entry.get('date', ''),
             'race_date': race_date,
             'race_dt': race_dt,
@@ -353,7 +382,7 @@ def compute_form_lines(entries: list[dict], max_races: int = 5,
                     if not opp_date: continue
                     try:
                         opp_dt = datetime.strptime(opp_date, '%Y/%m/%d')
-                        if opp_dt > q['race_dt']:
+                        if opp_dt > q['race_dt'] and (cutoff_dt is None or opp_dt < cutoff_dt):
                             future_runs += 1
                             cls_raw = str(opp_entry.get('class_grade', '')).upper()
                             if cls_raw:
@@ -451,6 +480,10 @@ def main():
     parser = argparse.ArgumentParser(description='HKJC Form Lines (賽績線) Engine')
     parser.add_argument('--horse-id', required=True, help='HKJC Horse ID (e.g. HK_2024_K416)')
     parser.add_argument('--max-races', type=int, default=5, help='Max races to check')
+    parser.add_argument(
+        '--as-of-date',
+        help='Exclusive pre-race cutoff (YYYY-MM-DD); prevents archive lookahead',
+    )
     parser.add_argument('--json', action='store_true', help='Output as JSON')
     
     args = parser.parse_args()
@@ -467,7 +500,11 @@ def main():
     
     # Step 2: Compute form lines
     print(f"Computing form lines (max {args.max_races} races)...", file=sys.stderr)
-    form_lines = compute_form_lines(profile['entries'], max_races=args.max_races)
+    form_lines = compute_form_lines(
+        profile['entries'],
+        max_races=args.max_races,
+        as_of_date=args.as_of_date,
+    )
     
     print(f"Result: {form_lines['rating']} ({form_lines['stats']})", file=sys.stderr)
     

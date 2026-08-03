@@ -7,6 +7,7 @@ from scoring import (
     FEATURE_KEYS,
     GRADE_THRESHOLDS,
     MATRIX_WEIGHTS,
+    SECTIONAL_NORMALIZED_MATRIX_BLEND,
     SCORING_CONTRACT_VERSION,
     compute_grade,
 )
@@ -63,6 +64,17 @@ def validate_logic_data(logic_data: dict) -> list[str]:
             errors.append("SCHEMA-006 run contract standard weights mismatch")
         if contract.get("matrix_formulas") != matrix_formula_manifest():
             errors.append("SCHEMA-009 run contract matrix formulas mismatch")
+        expected_blends = {
+            "normalized_sectional_to_sectional": SECTIONAL_NORMALIZED_MATRIX_BLEND,
+        }
+        if contract.get("dimension_evidence_blends") != expected_blends:
+            errors.append("SCHEMA-011 run contract evidence blends mismatch")
+        expected_temporal_contract = {
+            "historical": "matching_point_in_time_required",
+            "live_or_future": "latest_materialized_snapshot_allowed",
+        }
+        if contract.get("prior_temporal_contract") != expected_temporal_contract:
+            errors.append("SCHEMA-013 run contract prior temporal policy mismatch")
         expected_thresholds = [
             {"minimum": minimum, "grade": grade}
             for minimum, grade in GRADE_THRESHOLDS

@@ -48,10 +48,14 @@ def _cached_file_args(path):
 
 
 def extract_race_header(facts_content):
-    """Extract race-level info (venue, distance, class) from Facts.md header."""
+    """Extract race-level venue/surface/course/distance/class from Facts."""
     result = {}
     m = re.search(r'場地:\s*(.+?)\s*\|', facts_content)
     if m: result['venue'] = m.group(1).strip()
+    m = re.search(r'跑道:\s*(.+?)\s*\|', facts_content)
+    if m: result['track'] = m.group(1).strip()
+    m = re.search(r'賽道:\s*(.+?)\s*\|', facts_content)
+    if m: result['course'] = m.group(1).strip()
     m = re.search(r'距離:\s*(.+?)\s*\|', facts_content)
     if m: result['distance'] = m.group(1).strip()
     m = re.search(r'班次:\s*(.+?)(?:\n|$)', facts_content)
@@ -262,7 +266,16 @@ def parse_trends(block):
     if m: result['gear'] = m.group(1).strip()
 
     m = re.search(r'\*\*評分變動:\*\*\s*(.+?)$', block, re.MULTILINE)
-    if m: result['rating_trend'] = m.group(1).strip()
+    if m:
+        result['rating_trend'] = m.group(1).strip()
+        rating_series = []
+        for token in result['rating_trend'].split('→'):
+            clean = token.strip()
+            if not re.fullmatch(r'\d+(?:\.\d+)?', clean):
+                break
+            rating_series.append(float(clean))
+        if rating_series:
+            result['rating_series'] = rating_series
 
     m = re.search(r'走位 PI:\*\*\s*(.+?)$', block, re.MULTILINE)
     if m: result['position_pi'] = m.group(1).strip()
@@ -271,6 +284,77 @@ def parse_trends(block):
     if m: result['formline_strength'] = m.group(1).strip()
 
     return result
+
+
+def parse_normalized_sectionals(block):
+    """Parse class/course-normalized sectional deltas from the Facts table.
+
+    Deltas are already computed against HKJC reference sectionals by the facts
+    injector. Lower values are faster. The aggregate is recency-weighted and
+    retains its sample count so the scorer can shrink sparse evidence.
+    """
+    lines = block.splitlines()
+    title_idx = next(
+        (idx for idx, line in enumerate(lines) if '全段速剖面' in line),
+        None,
+    )
+    if title_idx is None:
+        return {}
+
+    header = []
+    header_idx = None
+    for idx in range(title_idx + 1, min(len(lines), title_idx + 8)):
+        if lines[idx].lstrip().startswith('|') and 'Δ1' in lines[idx]:
+            header = [cell.strip() for cell in lines[idx].strip().strip('|').split('|')]
+            header_idx = idx
+            break
+    if header_idx is None:
+        return {}
+
+    delta_indices = [idx for idx, label in enumerate(header) if re.fullmatch(r'Δ\d+', label)]
+    if not delta_indices:
+        return {}
+
+    samples = []
+    for line in lines[header_idx + 2:]:
+        if not line.lstrip().startswith('|'):
+            if samples:
+                break
+            continue
+        cells = [cell.strip() for cell in line.strip().strip('|').split('|')]
+        if len(cells) < len(header) or not cells[0].isdigit():
+            continue
+        deltas = []
+        for idx in delta_indices:
+            try:
+                deltas.append(float(cells[idx]))
+            except (IndexError, TypeError, ValueError):
+                continue
+        if not deltas:
+            continue
+        samples.append({
+            'date': cells[1] if len(cells) > 1 else '',
+            'distance': cells[2] if len(cells) > 2 else '',
+            'l400_delta': deltas[-1],
+            'total_delta': sum(deltas),
+        })
+
+    if not samples:
+        return {}
+    weights = [0.85 ** idx for idx in range(len(samples))]
+    weight_sum = sum(weights)
+    return {
+        'sectional_normalized_l400_delta': round(
+            sum(row['l400_delta'] * weight for row, weight in zip(samples, weights)) / weight_sum,
+            3,
+        ),
+        'sectional_normalized_total_delta': round(
+            sum(row['total_delta'] * weight for row, weight in zip(samples, weights)) / weight_sum,
+            3,
+        ),
+        'sectional_normalized_samples': len(samples),
+        'sectional_normalized_series': samples,
+    }
 
 
 def parse_formline_table(block):
@@ -1561,6 +1645,10 @@ def build_skeleton(
             'finish_time_block': ft_str,
             'finish_time_adj': ft_adj_str,
             'finish_time_adj_level': ft_adj_level,
+            'sectional_normalized_l400_delta': data.get('sectional_normalized_l400_delta'),
+            'sectional_normalized_total_delta': data.get('sectional_normalized_total_delta'),
+            'sectional_normalized_samples': data.get('sectional_normalized_samples', 0),
+            'sectional_normalized_series': data.get('sectional_normalized_series', []),
 
             # ── 形勢與走位 (race_shape) ──
             'position_window': position_window_str,
@@ -1596,6 +1684,7 @@ def build_skeleton(
             'total_starts': starts,
             'total_wins': wins,
             'rating_trend': rating_trend,
+            'rating_series': data.get('rating_series', []),
             'weight_carried': weight,
             'venue_transfer': vt_str,
         },
@@ -1667,7 +1756,8 @@ def build_horse_skeleton_from_facts(
     summary = parse_summary(block)
     recent = parse_recent_race(block)
     trends = parse_trends(block)
-    horse_data = {**header, **summary, **recent, **trends}
+    normalized_sectionals = parse_normalized_sectionals(block)
+    horse_data = {**header, **summary, **recent, **trends, **normalized_sectionals}
     trackwork = load_trackwork_for_horse(
         facts_path, race_num, horse_num, horse_name=horse_data.get('name')
     )
@@ -1694,6 +1784,8 @@ def build_full_logic_from_facts(facts_content, facts_path, race_num, horse_nums)
             'race_class': race_header.get('race_class', ''),
             'distance': race_header.get('distance', ''),
             'venue': race_header.get('venue', ''),
+            'track': race_header.get('track', ''),
+            'course': race_header.get('course', ''),
             'speed_map': {},
         },
         'horses': {},
@@ -1804,6 +1896,8 @@ def main():
                 'race_class': race_header.get('race_class', ''),
                 'distance': race_header.get('distance', ''),
                 'venue': race_header.get('venue', ''),
+                'track': race_header.get('track', ''),
+                'course': race_header.get('course', ''),
                 'speed_map': {},
             },
             'horses': {},

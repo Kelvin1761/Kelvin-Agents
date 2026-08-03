@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
@@ -8,6 +9,61 @@ ROOT = Path(__file__).resolve().parents[6]
 import sys as _sys; _sys.path.insert(0, str(ROOT))
 from wongchoi_paths import HK_RACING, is_materialized_file
 STATS_ROOT = HK_RACING / "HKJC_Race_Results_Database" / "comprehensive_stats"
+
+
+def _parse_as_of_date(value) -> date | None:
+    text = str(value or "").strip().replace("/", "-")
+    if not text:
+        return None
+    try:
+        return date.fromisoformat(text[:10])
+    except ValueError:
+        return None
+
+
+def temporal_source_is_safe(source, as_of_date=None) -> bool:
+    """Reject current/full-season priors when replaying a historical race.
+
+    Live/current-date scoring may use the latest materialized pre-race files.
+    Historical scoring requires an explicitly injected point-in-time source
+    whose cutoff matches that meeting date.
+    """
+    requested = _parse_as_of_date(as_of_date)
+    if requested is None or requested >= date.today():
+        return True
+    mode = str(getattr(source, "temporal_mode", "") or "")
+    source_date = _parse_as_of_date(getattr(source, "as_of_date", None))
+    return mode == "point_in_time" and source_date == requested
+
+
+class EmptyRatings:
+    temporal_mode = "historical_guard_neutral"
+    as_of_date = None
+
+    @staticmethod
+    def lookup(group: str, raw_name: str):
+        del group, raw_name
+        return None
+
+
+class EmptyTrainerSignalPriors:
+    temporal_mode = "historical_guard_neutral"
+    as_of_date = None
+
+    def __init__(self) -> None:
+        self.combo = {}
+        self.jockey_distance = {}
+        self.trainer_distance = {}
+        self.jockey_change = {}
+
+
+_EMPTY_RATINGS = EmptyRatings()
+_EMPTY_TRAINER_SIGNAL_PRIORS = EmptyTrainerSignalPriors()
+
+
+def empty_trainer_signal_priors() -> EmptyTrainerSignalPriors:
+    """Return the shared neutral object used by the historical-date guard."""
+    return _EMPTY_TRAINER_SIGNAL_PRIORS
 
 GENERAL_PRIOR_FILES = {
     "combo": [
@@ -127,6 +183,8 @@ class JockeyTrainerRatings:
     """{name: {score, starts, win_rate, place_rate}}，EB shrink 連續評分。"""
 
     def __init__(self) -> None:
+        self.temporal_mode = "latest_season_snapshot"
+        self.as_of_date = None
         self.jockey = self._build("jockey")
         self.trainer = self._build("trainer")
 
@@ -189,15 +247,19 @@ class JockeyTrainerRatings:
 _JT_RATINGS: JockeyTrainerRatings | None = None
 
 
-def get_jt_ratings() -> JockeyTrainerRatings:
+def get_jt_ratings(as_of_date=None):
     global _JT_RATINGS
     if _JT_RATINGS is None:
         _JT_RATINGS = JockeyTrainerRatings()
+    if not temporal_source_is_safe(_JT_RATINGS, as_of_date):
+        return _EMPTY_RATINGS
     return _JT_RATINGS
 
 
 class TrainerSignalPriors:
     def __init__(self) -> None:
+        self.temporal_mode = "latest_season_snapshot"
+        self.as_of_date = None
         self.combo = self._load_grouped(GENERAL_PRIOR_FILES["combo"], ["Jockey", "Trainer"])
         self.jockey_distance = self._load_grouped(GENERAL_PRIOR_FILES["jockey_distance"], ["Jockey", "Distance"])
         self.trainer_distance = self._load_grouped(GENERAL_PRIOR_FILES["trainer_distance"], ["Trainer", "Distance"])

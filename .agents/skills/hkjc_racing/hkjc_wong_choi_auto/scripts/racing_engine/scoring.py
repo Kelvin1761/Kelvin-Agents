@@ -6,7 +6,7 @@ racing_engine/scoring.py — Core Scoring Framework
 from abc import ABC, abstractmethod
 
 
-SCORING_CONTRACT_VERSION = "HKJC_7D_CONTRACT_2026_07_30_CORE_BALANCE"
+SCORING_CONTRACT_VERSION = "HKJC_7D_CONTRACT_2026_08_01_NORMALIZED_SECTIONAL"
 import re
 
 
@@ -34,6 +34,11 @@ MATRIX_WEIGHTS = {
     "horse_health": 0.0378,
     "form_line": 0.0749,
 }
+
+# Frozen pre-race archive gate (244 races): this small evidence-only blend
+# improved temporal holdout, harmed no archive race, and left the independent
+# 2026-07-15 card unchanged.
+SECTIONAL_NORMALIZED_MATRIX_BLEND = 0.05
 
 # Compatibility export for older research scripts.  It is intentionally the
 # same formula: production no longer has a debut-only outer-weight branch.

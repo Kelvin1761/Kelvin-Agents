@@ -146,9 +146,9 @@ def _meeting_date_for_logic(logic_path, race_context):
 
 
 def _enrich_profile_history(horses, *, as_of_date=None):
-    """Inject DISPLAY-ONLY multi-season fields from the horse profile page:
+    """Inject point-in-time multi-season fields from the horse profile page:
     近三季 per-class average finish, season-start + 近三季 high/low rating, and a
-    近6仗 running-style breakdown. Never raises; never touches scoring inputs."""
+    近6仗 running-style breakdown. Never raises."""
     scrape_horse_profile = _get_profile_scraper()
     if scrape_horse_profile is None:
         return
@@ -195,6 +195,28 @@ def _enrich_profile_history(horses, *, as_of_date=None):
         if ratings:
             data["rating_high_3s"] = max(ratings)
             data["rating_low_3s"] = min(ratings)
+        history = []
+        for entry in ents[:12]:
+            history.append({
+                "date": entry.get("date") or entry.get("race_date_full") or "",
+                "rating": entry.get("rating") if isinstance(entry.get("rating"), int) else None,
+                "class_grade": str(entry.get("class_grade") or "").strip(),
+                "distance": entry.get("distance") if isinstance(entry.get("distance"), int) else None,
+                "placing": entry.get("placing") if isinstance(entry.get("placing"), int) else None,
+            })
+        if history:
+            data["rating_class_history"] = history
+            data["rating_history_samples"] = sum(
+                1 for row in history if isinstance(row.get("rating"), int) and row["rating"] > 0
+            )
+            recent_ratings = [
+                row["rating"] for row in history[:6]
+                if isinstance(row.get("rating"), int) and row["rating"] > 0
+            ]
+            if len(recent_ratings) >= 2:
+                # Positive means the official rating has risen from the older
+                # observation to the most recent pre-race observation.
+                data["rating_delta_recent"] = recent_ratings[0] - recent_ratings[-1]
         if seasons:
             cur = [e["rating"] for e in ents
                    if _profile_season_key(e.get("date")) == seasons[0]
@@ -228,6 +250,120 @@ def _enrich_profile_history(horses, *, as_of_date=None):
                     f"今仗轉用騎師{declared}（曾策此駒{len(prior)}次{win_txt}{style_txt}）")
             else:
                 data["jockey_change_note"] = f"今仗轉用騎師{declared}（與此駒首次合作）"
+
+
+def _safe_float(value):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number == number else None
+
+
+def _relative_field_scores(values, *, higher_is_better):
+    """Map full-field evidence to a 45–75 competitiveness band."""
+    if len(values) < 2:
+        return {horse_num: 60.0 for horse_num in values}
+    output = {}
+    for horse_num, value in values.items():
+        others = [
+            other_value
+            for other_horse, other_value in values.items()
+            if other_horse != horse_num
+        ]
+        worse = sum(
+            other_value < value if higher_is_better else other_value > value
+            for other_value in others
+        )
+        ties = sum(other_value == value for other_value in others)
+        output[horse_num] = 45.0 + 30.0 * (worse + 0.5 * ties) / len(others)
+    return output
+
+
+def _enrich_relative_high_quality_scores(horses):
+    """Build evidence-only rating and normalized-sectional field scores.
+
+    Missing evidence leaves the score absent, so it cannot drag an existing
+    matrix dimension toward a neutral default.
+    """
+    rating_gaps = {}
+    rating_samples = {}
+    l400_values = {}
+    total_values = {}
+    sectional_samples = {}
+
+    for horse_num, horse_obj in horses.items():
+        if not isinstance(horse_obj, dict):
+            continue
+        data = horse_obj.setdefault("_data", {})
+        if not isinstance(data, dict):
+            continue
+        current_rating = _safe_float(data.get("current_rating"))
+        profile_history = data.get("rating_class_history")
+        if isinstance(profile_history, list):
+            recent_ratings = [
+                _safe_float(row.get("rating"))
+                for row in profile_history[:6]
+                if isinstance(row, dict)
+            ]
+            recent_ratings = [value for value in recent_ratings if value is not None]
+        else:
+            recent_ratings = []
+        if not recent_ratings:
+            source_series = data.get("rating_series")
+            if isinstance(source_series, list):
+                recent_ratings = [
+                    value
+                    for value in (_safe_float(item) for item in source_series[:6])
+                    if value is not None
+                ]
+        if current_rating is not None and recent_ratings:
+            rating_gaps[str(horse_num)] = current_rating - max(recent_ratings)
+            rating_samples[str(horse_num)] = len(recent_ratings)
+            data["rating_recent_peak"] = max(recent_ratings)
+            data["rating_peak_gap"] = rating_gaps[str(horse_num)]
+
+        l400 = _safe_float(data.get("sectional_normalized_l400_delta"))
+        total = _safe_float(data.get("sectional_normalized_total_delta"))
+        samples = _safe_float(data.get("sectional_normalized_samples")) or 0.0
+        if samples > 0:
+            sectional_samples[str(horse_num)] = samples
+            if l400 is not None:
+                l400_values[str(horse_num)] = l400
+            if total is not None:
+                total_values[str(horse_num)] = total
+
+    rating_relative = _relative_field_scores(rating_gaps, higher_is_better=True)
+    for horse_num, relative_score in rating_relative.items():
+        reliability = rating_samples[horse_num] / (rating_samples[horse_num] + 2.0)
+        data = horses[horse_num]["_data"]
+        data["rating_near_peak_reliability"] = round(reliability, 4)
+        data["rating_near_peak_score"] = round(
+            60.0 + reliability * (relative_score - 60.0),
+            4,
+        )
+
+    l400_relative = _relative_field_scores(l400_values, higher_is_better=False)
+    total_relative = _relative_field_scores(total_values, higher_is_better=False)
+    for horse_num in set(l400_relative) | set(total_relative):
+        reliability = sectional_samples[horse_num] / (
+            sectional_samples[horse_num] + 2.0
+        )
+        available = []
+        if horse_num in l400_relative:
+            available.append((l400_relative[horse_num], 0.6))
+        if horse_num in total_relative:
+            available.append((total_relative[horse_num], 0.4))
+        total_weight = sum(weight for _, weight in available)
+        relative_score = sum(
+            score * weight for score, weight in available
+        ) / total_weight
+        data = horses[horse_num]["_data"]
+        data["sectional_normalized_reliability"] = round(reliability, 4)
+        data["sectional_normalized_score"] = round(
+            60.0 + reliability * (relative_score - 60.0),
+            4,
+        )
 
 
 CLASS_RANK_MAP = {
@@ -804,6 +940,7 @@ class HKJCAutoOrchestrator:
                 horses,
                 as_of_date=meeting_date,
             )
+            _enrich_relative_high_quality_scores(horses)
         formline_summaries = _load_formline_opponent_summaries(race_file, race_context, horses)
         for h_num, summary in formline_summaries.items():
             horse_obj = horses.get(h_num)
