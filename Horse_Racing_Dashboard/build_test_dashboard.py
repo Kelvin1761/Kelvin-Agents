@@ -52,40 +52,72 @@ def _normalise_venue(value):
     return "".join(ch for ch in str(value).lower() if ch.isalnum())
 
 
-def _find_metadata_folder(meeting):
-    root = HK_RACING if meeting["region"] == "hkjc" else AU_RACING
+def _find_metadata_folder(meeting, root=None):
+    root = root if root is not None else (HK_RACING if meeting["region"] == "hkjc" else AU_RACING)
     wanted_date = meeting["date"]
     wanted_venue = _normalise_venue(meeting["venue"])
     candidates = []
-    for folder in root.iterdir():
-        if not folder.is_dir() or not folder.name.startswith(wanted_date):
-            continue
-        if wanted_venue in _normalise_venue(folder.name):
-            candidates.append(folder)
-    return sorted(candidates, key=lambda path: path.stat().st_mtime_ns, reverse=True)[0] if candidates else None
+    try:
+        for folder in root.iterdir():
+            if not folder.is_dir() or not folder.name.startswith(wanted_date):
+                continue
+            if wanted_venue in _normalise_venue(folder.name):
+                candidates.append(folder)
+        folder = sorted(candidates, key=lambda path: path.stat().st_mtime_ns, reverse=True)[0] if candidates else None
+        return folder, ""
+    except OSError as exc:
+        warning = (
+            "Race metadata overlay unavailable; preserved metadata from the live snapshot "
+            f"({root}: {type(exc).__name__}: {exc})"
+        )
+        return None, warning
 
 
-def _is_archived_au_meeting(meeting):
+def _archived_au_folders(archive_root=None):
+    """Return readable AU archive folders, or a warning when access is denied.
+
+    The live snapshot is already the published race-data authority.  Archive
+    filtering is a local cleanup overlay, so an unreadable Google Drive mount
+    must not prevent unrelated NBA/Tennis feed refreshes.  In that case we
+    preserve the currently published race set and surface a build warning.
+    """
+    archive_root = archive_root if archive_root is not None else AU_RACING / "Archive"
+    if not archive_root.is_dir():
+        return [], ""
+    try:
+        return [folder for folder in archive_root.iterdir() if folder.is_dir()], ""
+    except OSError as exc:
+        warning = (
+            "AU archive filter unavailable; preserved the current live race snapshot "
+            f"({archive_root}: {type(exc).__name__}: {exc})"
+        )
+        return None, warning
+
+
+def _is_archived_au_meeting(meeting, archive_folders):
     """Return whether an AU meeting has been deliberately archived locally."""
     if meeting.get("region") != "au":
-        return False
-    archive_root = AU_RACING / "Archive"
-    if not archive_root.is_dir():
         return False
     wanted_date = meeting["date"]
     wanted_venue = _normalise_venue(meeting["venue"])
     return any(
-        folder.is_dir()
-        and folder.name.startswith(wanted_date)
+        folder.name.startswith(wanted_date)
         and wanted_venue in _normalise_venue(folder.name)
-        for folder in archive_root.iterdir()
+        for folder in archive_folders
     )
 
 
-def _remove_archived_au_meetings(data):
-    archived = [item for item in data.get("meetings", []) if _is_archived_au_meeting(item)]
+def _remove_archived_au_meetings(data, archive_root=None):
+    archive_folders, warning = _archived_au_folders(archive_root)
+    if archive_folders is None:
+        return [], warning
+    archived = [
+        item
+        for item in data.get("meetings", [])
+        if _is_archived_au_meeting(item, archive_folders)
+    ]
     if not archived:
-        return []
+        return [], warning
     archived_keys = {f"{item['date']}|{item['venue']}" for item in archived}
     data["meetings"] = [
         item for item in data["meetings"]
@@ -99,7 +131,7 @@ def _remove_archived_au_meetings(data):
         key: value for key, value in data.get("consensus", {}).items()
         if not any(key.startswith(f"{meeting_key}|") for meeting_key in archived_keys)
     }
-    return archived
+    return archived, warning
 
 
 def build(
@@ -110,11 +142,14 @@ def build(
     overlay_metadata=True,
 ):
     data = json.loads(Path(base_snapshot).read_text(encoding="utf-8"))
-    archived = _remove_archived_au_meetings(data)
+    archived, archive_warning = _remove_archived_au_meetings(data)
     coverage = []
+    build_warnings = [archive_warning] if archive_warning else []
     if overlay_metadata:
         for item in data.get("meetings", []):
-            folder = _find_metadata_folder(item)
+            folder, metadata_warning = _find_metadata_folder(item)
+            if metadata_warning and metadata_warning not in build_warnings:
+                build_warnings.append(metadata_warning)
             if not folder:
                 coverage.append((item, None, None))
                 continue
@@ -130,6 +165,8 @@ def build(
             coverage.append((item, folder, counts))
 
     data["meta"] = _build_snapshot_meta(data)
+    if build_warnings:
+        data["meta"]["build_warnings"] = build_warnings
 
     output_path = Path(output_html)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -140,6 +177,8 @@ def build(
         _write_json(Path(output_manifest), data["meta"])
     print(f"✅ Active-meeting dashboard generated: {output_path.name}")
     print(f"   Active meetings only: {len(data.get('meetings', []))}")
+    for warning in build_warnings:
+        print(f"   ⚠️ {warning}")
     for item in archived:
         print(f"   {item['date']} {item['venue']}: excluded (archived)")
     for item, folder, counts in coverage:
