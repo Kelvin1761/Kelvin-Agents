@@ -136,6 +136,9 @@ def race_counts(races, formulas=None, weights=None):
         matrix_mapper.MATRIX_FORMULAS = saved
 
 
+RACES_PROBE = []
+
+
 def build_candidates():
     """每個候選 = (名, 舊結論, formulas 或 None, weights 或 None)。"""
     F = matrix_mapper.MATRIX_FORMULAS
@@ -167,6 +170,19 @@ def build_candidates():
                 {**F, "stability": (("form_score", 0.65), ("consistency_score", 0.35))},
                 None))
 
+    # ── `lo_record_score`：上仗騎師同此駒嘅往績，做獨立維度 ───────────────
+    # 點解要做獨立維度而唔係塞返入 `jockey_horse_fit`：`jockey_trainer` 0.19149
+    # × 內部 0.381 = **有效權重 0.073**，所以一個 ±4 分嘅 leaf 內調整落到
+    # ability 只剩 ±0.29 分 —— 而 `form_score` 有效權重 0.229、範圍 50 分。
+    # 個訊號係真嘅（喺 form_score 分層之內仲有 +11.8 / +4.9 / +8.8 / +4.1pp，
+    # 即係佢**唔係**近績代理），但之前放咗喺一個太細嘅位，所以量唔到。
+    if RACES_PROBE and any("lo_record_score" in row["features"]
+                           for r in RACES_PROBE for row in r["rows"]):
+        for w in (0.03, 0.05, 0.08, 0.12, 0.16):
+            out.append((f"lo_record 做維度 w={w:.2f}", "新候選（今日量到）",
+                        {**F, "_lo": (("lo_record_score", 1.0),)},
+                        renorm({**W, "_lo": w})))
+
     # ── 從未入排名嘅 leaf：值唔值返嚟？ ──────────────────────────────────
     # class_score / distance_score / weight_score 都係以前被移除嘅。
     # 用一個新維度、細權重接返入去（同 au_candidate_dimension 一樣嘅做法）。
@@ -190,6 +206,7 @@ def main():
     args = ap.parse_args()
 
     races = json.loads(Path(args.data).read_text())["races"]
+    RACES_PROBE[:] = races[:5]
     n = len(races)
     cut = int(n * (1 - args.holdout))
     cands = [c for c in build_candidates()
