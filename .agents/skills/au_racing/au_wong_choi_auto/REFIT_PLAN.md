@@ -839,3 +839,28 @@ Sportsbet Speedmap：**100% 覆蓋**，已驗證係賽前預測（人手驗一�
     而今日六次同款結局話我知大機會邊際）
 
 成本：836 場 × 1 個瀏覽器請求，9 秒節奏 ≈ 2 個鐘。
+
+### 步速圖到底入唔入分？—— 三條路，三條都死
+
+| 路徑 | 狀態 |
+|---|---|
+| `_pace_bias_adjustment`（`_pace_map_score` 內，±4 分）| **預設 OFF**，要 `WC_PACE_BIAS=1` |
+| 就算開咗 | **68.7% 嘅馬跌落 `mid_pack`，修正 = 0.0**；9.7% 場次全場都 mid_pack |
+| `run_style_bonus`（5.2，consistency）| **718 場 0 次觸發** |
+
+其餘（`_run_style_brief` / `_predicted_style` / `_describe_race_shape_matrix` /
+`_data_readout`）全部係**顯示**。
+
+根本原因同上面一樣：冇片段評語 → 每匹馬默認「守中(低)」→ 倒晒入 `mid_pack`。
+`speed_map` 個結構 100% 有值，但 `leaders` 只有 11.3% 場次非空、
+`pressers` 32.3%、`closers` 49.7%，而 `mid_pack` 100%（佢係傾倒位）。
+
+**呢個令 Speedmap 嘅理據強咗**：評分機器已經寫好，`_pace_bias_adjustment`
+讀嘅正正係 `leaders / on_pace / pressers / mid_pack / closers`，同 Sportsbet
+Speedmap 出嘅結構一樣。佢而家惰性唔係公式錯，係輸入冇證據。
+
+⚠️ 但唔可以就咁講「當年 A/B 失敗係因為輸入差」。關佢嗰個 A/B（336 場、
+Good 39.58%→38.39%、Gold 10→14）跑喺**某個時期**嘅數據，我未查到係咪
+Racenet 年代（嗰陣有片段評語）。**可以講嘅係**：今日嘅數據令佢結構性惰性
+（68.7% 拿 0.0），所以嗰個 A/B 結果講唔到佢喺真分組之下會點。
+要落實就要用 Speedmap 餵返個結構再重跑 A/B。
