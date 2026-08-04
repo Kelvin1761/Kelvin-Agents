@@ -209,3 +209,42 @@ class OpponentFollowupStringTests(unittest.TestCase):
         for text in ("未見前三", "查冊失敗", "查冊不可用", "未有出賽"):
             with self.subTest(text=text):
                 self.assertIsNone(RE_OPP_FOLLOWUP.search(text))
+
+
+class LiveBootstrapTests(unittest.TestCase):
+    """live 場次要自己搞掂賽績線，唔可以靠我哋部機上面嗰份歷史索引。
+
+    `.sb_horse_index.json` 係 gitignore 嘅本機檔（14MB）。喺一部乾淨機、
+    或者第一次跑嗰陣，佢係空嘅。所以「抽一個場次之後賽績線查唔查到」
+    係一個真實嘅 live 問題，唔係理論問題。
+
+    實測（2026-08-01 Flemington，116 匹、1,546 隻要查嘅對手）：
+        只索引跑手本身   → 命中 7.5%
+        連對手名單一齊索引 → 命中 **100%**
+    """
+
+    def test_a_single_meeting_indexes_the_opponents_it_will_ask_about(self):
+        """抽取當刻就要把往績行入面嘅對手一併入索引 —— 因為跟住嗰步
+        （`inject_fact_anchors`）就係攞嗰批名去查。"""
+        blocks = [{
+            "name": "Today Runner",
+            "runs": [{
+                "pos": "5", "field": "9",
+                "header": {"track": "Randwick", "date": "10/05/2026", "race": "3"},
+                "opponents": [{"ord": "1st", "name": "Later Winner"},
+                              {"ord": "2nd", "name": "Second Horse"}],
+            }],
+        }]
+        idx = {}
+        IDX.update(blocks, index=idx, save_now=False)
+        # 跑手本身 + 兩隻對手
+        self.assertEqual(len(idx), 3)
+        for slug in ("today-runner", "later-winner", "second-horse"):
+            self.assertIn(slug, idx, f"{slug} 應該喺索引")
+
+    def test_opponents_default_to_on(self):
+        """live 抽取（`claw_sportsbet_form`）call `update()` 冇畀 kwarg，
+        所以預設一定要係開。關咗就等於賽績線靜靜咁退回 7.5% 命中。"""
+        import inspect
+        sig = inspect.signature(IDX.update)
+        self.assertIs(sig.parameters["opponents"].default, True)
