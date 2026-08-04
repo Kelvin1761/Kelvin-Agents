@@ -288,6 +288,18 @@ def _load_named_rating_stats():
 HORSE_BLOCK_RE = HORSE_HEADER_RE
 
 
+# 對手後續走勢字串有兩種寫法（2026-08-04 起）：
+#     「出 N 次: M 勝」    —— 對手有完整往績記錄
+#     「見前三 N 次: M 勝」 —— 只由對手名單推導（partial），我哋只見到佢入前三
+# 兩者嘅**勝出次數都係準嘅**（我哋見到佢全部前三），所以讀「M 勝」嗰陣兩種都要接。
+# 分開兩個寫法係為咗唔好講大話 —— partial 嗰批唔知佢總共出過幾多次。
+#
+# ⚠️ 呢個常數存在嘅原因：加咗第二種寫法之後，四處獨立嘅 regex 一齊變成
+# 只認第一種，即係新增嗰批對手會**靜靜咁**被當成「冇後續」。
+# 呢個 repo 已經有五次同款缺陷（見 `scraper-silent-drop-failure-mode`）。
+RE_OPP_FOLLOWUP = re.compile(r"(?:出|見前三)\s*\d+\s*次:\s*(\d+)\s*勝")
+
+
 class RacingEngine:
     def __init__(self, horse_data, race_context, facts_section="", facts_path=None):
         self.horse_data = horse_data
@@ -2086,7 +2098,7 @@ class RacingEngine:
             failed = 0
             for row in rows:
                 nr = str(row.get("next_result", ""))
-                m = re.search(r"出\s*\d+\s*次:\s*(\d+)\s*勝", nr)
+                m = RE_OPP_FOLLOWUP.search(nr)
                 if m and int(m.group(1)) > 0:
                     wins += 1
                 if "查冊失敗" in nr:
@@ -3248,7 +3260,7 @@ class RacingEngine:
         wins = 0
         for row in rows:
             result = row.get("next_result", "")
-            match = re.search(r"出\s*\d+\s*次:\s*(\d+)\s*勝", result)
+            match = RE_OPP_FOLLOWUP.search(result)
             if match and int(match.group(1)) > 0:
                 wins += 1
         if wins == 0:
@@ -3808,8 +3820,8 @@ class RacingEngine:
         rows = self._formline_rows()
         return sum(
             1 for row in rows
-            if re.search(r"出\s*\d+\s*次:\s*(\d+)\s*勝", row.get("next_result", ""))
-            and int(re.search(r"出\s*\d+\s*次:\s*(\d+)\s*勝", row.get("next_result", "")).group(1)) > 0
+            if (m := RE_OPP_FOLLOWUP.search(row.get("next_result", "")))
+            and int(m.group(1)) > 0
         )
 
     def _formline_strong_opponents(self):

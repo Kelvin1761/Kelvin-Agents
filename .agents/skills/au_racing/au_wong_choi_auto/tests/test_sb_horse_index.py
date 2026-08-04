@@ -172,3 +172,40 @@ class OpponentDerivedRecordsTests(unittest.TestCase):
                                       opponents=False)
         self.assertEqual(stats["opponent_runs_added"], 0)
         self.assertNotIn("emery", idx)
+
+
+class OpponentFollowupStringTests(unittest.TestCase):
+    """對手後續走勢字串有兩種寫法，四處 regex 一定要兩種都認。
+
+    2026-08-04 加咗「見前三 N 次」呢個寫法畀 partial 記錄用（因為講「出 N 次」
+    對只由對手名單推導出嚟嘅記錄係講大話）。加嗰陣四處獨立 regex 一齊變成
+    只認舊寫法 —— 即係新增嗰 12,737 隻對手會**靜靜咁**被當成「冇後續走勢」。
+    呢個 repo 已經有五次同款缺陷，所以釘死佢。
+    """
+
+    def test_both_wordings_yield_the_win_count(self):
+        import sys as _sys
+        from pathlib import Path as _P
+        _sys.path.insert(0, str(_P(__file__).resolve().parents[1]
+                                / "scripts" / "racing_engine"))
+        from engine_core import RE_OPP_FOLLOWUP
+
+        for text, expected in (("出 3 次: 1 勝", "1"),
+                               ("見前三 2 次: 2 勝", "2"),
+                               ("出 10 次: 0 勝", "0")):
+            with self.subTest(text=text):
+                m = RE_OPP_FOLLOWUP.search(text)
+                self.assertIsNotNone(m, f"讀唔到「{text}」")
+                self.assertEqual(m.group(1), expected)
+
+    def test_no_evidence_wordings_do_not_match(self):
+        """「未見前三」同「查冊失敗」都唔可以當成 0 勝 —— 冇證據唔係壞成績。"""
+        import sys as _sys
+        from pathlib import Path as _P
+        _sys.path.insert(0, str(_P(__file__).resolve().parents[1]
+                                / "scripts" / "racing_engine"))
+        from engine_core import RE_OPP_FOLLOWUP
+
+        for text in ("未見前三", "查冊失敗", "查冊不可用", "未有出賽"):
+            with self.subTest(text=text):
+                self.assertIsNone(RE_OPP_FOLLOWUP.search(text))
