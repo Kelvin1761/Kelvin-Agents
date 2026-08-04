@@ -71,6 +71,12 @@ class SportsbetFormFetcher:
             if self.verbose:
                 print(f"   （cache）{url}")
             return cp.read_text(encoding="utf-8")
+        # ⚠️ 重試只係為咗 rate limit（見上面第 2 點：連續請求之後一個啱啱通到嘅
+        # 頁面會突然 403，退避之後就通）。但一個**從來未通過**嘅 URL 回 403，
+        # 嗰個係拒絕，唔係暫時性 —— 重試落去只係喺人哋明講唔畀嘅時候再敲三次門。
+        # 分辨方法：同一個 (status, 長度) 連續出現兩次 = 穩定攔截頁，唔係 rate
+        # limit（rate limit 退避之後行為會變）。見到就即刻停，唔燒埋剩低嘅嘗試。
+        seen = None
         for attempt in range(1, self.retries + 1):
             wait = self.delay - (time.time() - self._last_request)
             if wait > 0:
@@ -88,9 +94,16 @@ class SportsbetFormFetcher:
                 if self.verbose:
                     print(f"   ✅ {len(r.text):,} bytes  {url}")
                 return r.text
+            sig = (r.status_code, len(r.text))
             if self.verbose:
                 print(f"   ⚠️ HTTP {r.status_code} len={len(r.text)} "
                       f"({attempt}/{self.retries}) {url}")
+            if sig == seen:
+                if self.verbose:
+                    print(f"   ⛔ 同一個 HTTP {sig[0]}／長度 {sig[1]} 連續兩次 —— "
+                          f"當係拒絕而唔係 rate limit，停低唔再試")
+                return None
+            seen = sig
             # 撞到 rate limit 就退避得更耐，唔好死𠝹爛𠝹
             self.delay = min(self.delay * 1.8, 60.0)
         return None

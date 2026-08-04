@@ -125,3 +125,49 @@ class RaceIdentityTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RefusalIsNotRetriedTests(unittest.TestCase):
+    """一個穩定嘅攔截頁唔可以當 rate limit 嚟重試。
+
+    2026-08-04：試抽 `?view=Speedmap` 攞到三個 HTTP 403，**長度完全一樣（919）**。
+    Rate limit 退避之後行為會變；長度逐次一樣就係同一版攔截頁。條 fetcher 當時
+    分唔開，所以喺人哋明講唔畀嘅時候再敲多兩次門 —— 而「非 200 就停低、
+    唔重試」正正係抽取紀律嘅第一條。
+    """
+
+    def _fetcher(self, responses):
+        import claw_sportsbet_form as C
+
+        class _R:
+            def __init__(self, code, text):
+                self.status_code, self.text = code, text
+
+        class _S:
+            def __init__(self):
+                self.calls = 0
+
+            def get(self, url, timeout=None):
+                r = responses[min(self.calls, len(responses) - 1)]
+                self.calls += 1
+                return _R(*r)
+
+        f = C.SportsbetFormFetcher(delay=0.0, verbose=False,
+                                   cache_dir=Path(tempfile.mkdtemp()))
+        f.session = _S()
+        return f
+
+    def test_identical_refusal_twice_stops_immediately(self):
+        f = self._fetcher([(403, "x" * 919)])
+        self.assertIsNone(f.get("https://example.test/blocked/"))
+        self.assertEqual(f.session.calls, 2, "第二次見到同一個攔截頁就要停")
+
+    def test_a_varying_failure_still_uses_its_retries(self):
+        """長度變化 = 可能係 rate limit／半截回應，嗰個先值得退避重試。"""
+        f = self._fetcher([(403, "x" * 900), (429, "y" * 40), (503, "z" * 12)])
+        self.assertIsNone(f.get("https://example.test/flaky/"))
+        self.assertEqual(f.session.calls, 3)
+
+    def test_success_after_a_transient_failure_is_kept(self):
+        f = self._fetcher([(429, "y" * 40), (200, "o" * 6000)])
+        self.assertEqual(len(f.get("https://example.test/ok/") or ""), 6000)
