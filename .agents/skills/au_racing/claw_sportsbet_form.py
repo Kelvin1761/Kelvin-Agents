@@ -737,31 +737,39 @@ RE_SPEED = re.compile(r"^\s*(\d{1,2})\s*$")
 
 
 def parse_speedmap(html):
-    """`?view=Speedmap` → {馬號: 預測定位序}（1 = 最前）。
+    """`?view=Speedmap` → {馬號: 預測定位序}（**1 = 最前，貼欄／領放**）。
 
-    ⚠️ 佢**唔係圖** —— 零 SVG/canvas，純 DOM 文字。版面係
-        Barriers ... Finish post
-        11    10. Salizou      ← 左邊係檔位，右邊 `馬號. 馬名`
-    我哋要嘅係**由後到前嘅列表次序**（表頭寫明 "Predicted settling positions
-    after start"），所以由上到下 enumerate 就係定位序。
+    ⚠️ 佢**唔係圖** —— 零 SVG/canvas，純 DOM 文字。版面係：
+
+        Finish post  13 3. Smokin' Romans  12 5. Freedom Rally  …  1 4. Brayden Star
+                     ^^ **行號**，由大到細列出
+
+    ⚠️⚠️ **行號唔等於出現次序，而呢度曾經搞錯咗。** 舊版用 `enumerate` 攞
+    出現次序，即係第一個列出（行號 13 = **最後**嗰個位置）被當成 1 = 最前。
+    整個映射反晒。實測（58 場）：用出現次序同實際 800m 走位嘅相關係
+    **ρ = −0.180**，方向係錯嘅。
+
+    所以要讀行首嗰個數字。`Finish post` 之後每個 `<行號> <馬號>. <馬名>`，
+    行號細 = 貼近 finish post 嗰邊 = 前置。
+
+    ⚠️ 呢個係**預測**，唔係實際走位 —— 對過一場 10/10 匹都有 800m 走位嘅
+    賽事，Spearman ρ = +0.697（實際走位會係 1.000）。冇洩漏。
     """
     txt = to_text(html)
-    order, seen = [], set()
-    started = False
-    for line in txt.splitlines():
-        l = line.strip()
-        if "Predicted settling" in l or "Speed Map" in l:
-            started = True
-            continue
-        if not started:
-            continue
-        m = re.match(r"^(\d{1,2})\.\s+(.+)$", l)
-        if m and m.group(1) not in seen:
-            seen.add(m.group(1))
-            order.append(int(m.group(1)))
-        if "Replay speed map" in l or "Weather" in l:
-            break
-    return {n: i + 1 for i, n in enumerate(order)}
+    i = txt.find("Finish post")
+    if i < 0:
+        return {}
+    seg = txt[i + len("Finish post"):]
+    for stop in ("Replay speed map", "Weather", "Track Details"):
+        j = seg.find(stop)
+        if j >= 0:
+            seg = seg[:j]
+    out = {}
+    # `<行號> <馬號>. <馬名>` —— 兩個數字之間可以有空白或者換行
+    for m in re.finditer(r"(?<![\d.])(\d{1,2})\s+(\d{1,2})\.\s", seg):
+        row, num = int(m.group(1)), int(m.group(2))
+        out.setdefault(num, row)
+    return out
 
 
 def fetch_odds(fetcher, event_id):

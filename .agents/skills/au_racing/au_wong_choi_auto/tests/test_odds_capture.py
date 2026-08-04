@@ -90,3 +90,39 @@ class OddsStayOutOfScoringTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SpeedmapRowNumberTests(unittest.TestCase):
+    """Speedmap 讀嘅係**行號**，唔係出現次序 —— 呢兩樣係反嘅。
+
+    2026-08-04：舊版用 `enumerate` 攞出現次序。但版面由**大行號**先列出
+    （`Finish post 13 3.Smokin' Romans … 1 4.Brayden Star`），所以第一個列出
+    嘅係「最後嗰個位置」，被當成 1 = 最前。整個映射反晒。
+
+    實測 58 場：用出現次序同實際 800m 走位嘅相關係 **ρ = −0.180**（方向錯），
+    改讀行號之後係 **+0.235**。一個靜靜咁出錯而數字睇落好合理嘅 bug。
+    """
+
+    RAW = ("<div>Speed Map</div><div>Predicted settling positions after start</div>"
+           "<div>Barriers</div><div>Finish post</div>"
+           "<div>13</div><div>3. Smokin' Romans (NZL)</div>"
+           "<div>12</div><div>5. Freedom Rally</div>"
+           "<div>2</div><div>9. Thedoctoroflove</div>"
+           "<div>1</div><div>4. Brayden Star (GBR)</div>"
+           "<div>Replay speed map</div><div>Weather</div>")
+
+    def test_row_number_becomes_the_position(self):
+        got = C.parse_speedmap(self.RAW)
+        self.assertEqual(got[4], 1, "行 1 嘅馬 4 應該係最前")
+        self.assertEqual(got[9], 2)
+        self.assertEqual(got[5], 12)
+        self.assertEqual(got[3], 13, "行 13 嘅馬 3 應該係最後")
+
+    def test_appearance_order_would_have_been_backwards(self):
+        """釘死方向：第一個列出嘅馬**唔可以**得到最細嘅位置序。"""
+        got = C.parse_speedmap(self.RAW)
+        self.assertGreater(got[3], got[4],
+                           "第一個列出（馬 3）喺後面，唔可以排喺馬 4 前面")
+
+    def test_a_page_without_the_map_yields_nothing(self):
+        self.assertEqual(C.parse_speedmap("<div>Full Form</div>"), {})
