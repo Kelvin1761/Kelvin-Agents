@@ -719,6 +719,26 @@ def fetch_odds(fetcher, event_id):
 
     ⚠️ 賠率**唔喺** sportsbetform 嘅 static HTML（嗰格係投注掣，價錢由 JS 填），
     所以一定要行呢個 API。
+
+    ⚠️⚠️ **呢個函數由寫低嗰日起從未被呼叫過（2026-08-04 查證）。**
+    全 repo 零個呼叫點，兩個 `write_meeting()` 呼叫都冇傳 `odds=`，
+    所以每一行都寫 `WinOdds: -  PlcOdds: -`。而且個 `event_id` 參數
+    **冇任何來源** —— 賽事頁上得個 sportsbetform 嘅 raceId（`data-event`），
+    唔係 sportsbet.com.au 嘅 event id，所以就算想叫都接唔到。
+
+    實測（2026-08-04，一場未跑嘅賽事）：
+        瀏覽器      span.ppodds.fixed-win → 15.00 / 31.00 / 21.00
+        curl_cffi   同一版，24 個 fixed-win container **全部空**
+        parse_race  fixed_win 0/15 有值
+
+    即係**過去同未來賽事都冇賠率**：賽後頁拆走咗，賽前頁靠 JS 填。
+    要攞就要行瀏覽器（`sb_browser_bridge.py` 已經有），或者搵到 OddsAgent
+    實際打嗰個 endpoint。`place` 賠率仲要多一步 —— `parse_race` 嘅 overview
+    連讀都冇讀（欄位只有 `fixed_win`）。
+
+    ⚠️ 值唔值得做：市場（SP 排序）場內 AUC **0.7393** vs 我哋 0.6530，
+    所以賠率係目前為止最有價值嘅可加數據。但 2026-08-04 實測，任何有意義
+    嘅市場權重都令我哋變成市場複述而唔係獨立分析 —— 見 `REFIT_PLAN.md`。
     """
     url = ("https://www.sportsbet.com.au/apigw/sportsbook-racing/Sportsbook/"
            f"Racing/Events/{event_id}/Markets")
