@@ -155,3 +155,42 @@ Sportsbet 攞 —— 見 `claw_sportsbet_form.py`。
 
 - 舊 output 對照
 - 手動考古比對
+
+
+## 賠率抓取（2026-08-04 起）
+
+**每次抽取都要記錄 win + place 賠率。** 唔係做分析 —— 係做 dashboard 預填
+同將來策略。
+
+⚠️ **一定要行瀏覽器。** 賠率數字由 `OddsAgent.min.js` 執行時填，
+curl_cffi 攞到嘅 `<span class="ppodds">` 係**空**嘅。實測同一條 URL：
+
+    瀏覽器      15.00 / 31.00 / 21.00
+    curl_cffi   24 個 container 全部空，parse_race fixed_win 0/15
+
+所以 live 場次抽取要經 `sb_browser_bridge.py`：
+
+```bash
+python3 .agents/skills/au_racing/sb_browser_bridge.py --port 8787
+```
+
+然後喺瀏覽器（已登入 sportsbetform）逐版攞、POST 上 bridge。之後
+`claw_sportsbet_form.py` 全程 cache 命中，`parse_odds_html` 就有嘢出。
+
+輸出：每個場次一個 **`Odds.json`**，**追加**快照（唔覆蓋）——
+
+```json
+{"venue": "...", "date": "...", "snapshots": [
+  {"captured_at": "2026-08-04T22:31:05+10:00",
+   "races": {"1": {"1": {"Sportsbet-FixedWin": 15.0,
+                         "Sportsbet-FixedPlace": 3.6}}}}]}
+```
+
+賠率會郁，所以一連串快照先睇得出市場點變。同一日抽幾次就有幾個快照。
+
+⚠️⚠️ **賠率唔准入評分。** 呢個係產品定位決定，唔係技術限制：
+市場（按 SP 排序）場內 AUC **0.7393**，我哋 **0.6530** —— 賠率一入分就會
+主導成個模型，令 AU Wong Choi 由獨立分析變成市場複述。所以佢特登寫做一個
+獨立 JSON，唔碰 `*Facts.md` 同 Logic 嘅 `_data`（引擎只讀嗰兩樣）。
+`test_odds_capture.py` 有一條測試掃 `engine_core.py`，見到 `Odds.json` /
+`FixedWin` / `FixedPlace` 就會紅。

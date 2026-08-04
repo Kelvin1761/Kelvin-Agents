@@ -280,6 +280,9 @@ def parse_race(html):
     overview = parse_overview(html)
     # 名 → ID 對應，寫 meeting 檔嗰陣攞騎練統計用
     meta["people_by_name"] = parse_people(html)
+    # 賠率：瀏覽器攞返嚟嘅頁面先會有值（curl_cffi 攞到空格），賽後頁冇。
+    # 攞唔到就係空 dict，唔會炸。
+    meta["odds"] = parse_odds_html(html)
     # 騎練 profile ID 直接喺賽事頁 —— 冇 slug 要猜（Racenet 就係死喺呢度兩次）。
     people = [(k, pid) for k, pid in
               re.findall(r'href="/(Jockey|Trainer)/(\d+)/"', html)]
@@ -568,7 +571,10 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
     for race_no, p, blocks in races:
         meta = p["meta"]
         sm = speedmaps.get(race_no) or {}
-        od = odds.get(race_no) or {}
+        # 賠率優先用頁面 parse 到嗰批（瀏覽器路徑），caller 傳入嘅做後備。
+        page_odds = meta.get("odds") or {}
+        od = {n: (v.get("Sportsbet-FixedWin"), v.get("Sportsbet-FixedPlace"))
+              for n, v in page_odds.items()} or (odds.get(race_no) or {})
         cond = meta.get("track_condition", "Unknown")
         dist = meta.get("distance", "?")
         # ⚠️ 標題**一定要**係 `RACE N -- XXXm | class`（行首大寫 RACE）。
@@ -678,9 +684,53 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
         f"Form runs kept: {kept}; dropped as on/after {date_str}: {dropped}\n"
         f"Jockey/trainer LY tokens filled: {ly_hit}; missing: {ly_miss}\n",
         encoding="utf-8")
+    snap = _write_odds_snapshot(races, out, date_str, venue)
     if verbose:
         print(f"   往績行：保留 {kept}，因為喺 {date_str} 當日或之後而丟棄 {dropped}")
-    return {"kept": kept, "dropped": dropped, "ly_hit": ly_hit, "ly_miss": ly_miss}
+        if snap:
+            print(f"   💰 賠率快照：{snap} 匹 → Odds.json")
+        else:
+            print("   💰 賠率：0 匹（賽後頁冇賠率；賽前頁要行瀏覽器）")
+    return {"kept": kept, "dropped": dropped, "ly_hit": ly_hit,
+            "ly_miss": ly_miss, "odds": snap}
+
+
+def _write_odds_snapshot(races, out, date_str, venue):
+    """把賠率寫落 `Odds.json`（**追加快照**，唔覆蓋）。→ 今次寫咗幾多匹。
+
+    ⚠️ **呢個檔唔入分析。** Kelvin 2026-08-04 講明賠率係做 dashboard 預填同
+    將來策略用，唔做評分輸入。所以特登寫做一個獨立 JSON 而唔係塞入 Facts/
+    Formguide 嘅評分路徑 —— 引擎讀 `*Facts.md` 同 Logic 嘅 `_data`，
+    唔會掃呢個檔。`test_odds_capture.py` 有一條測試釘住呢件事。
+    ⚠️ 而且：市場排序場內 AUC 0.7393 vs 我哋 0.6530，所以佢**一入分就會主導**
+    ——「唔入分析」呢個決定要靠檔案位置守住，唔可以靠記性。
+
+    ⚠️ **追加而唔覆蓋**：賠率會郁，一個時間點嘅快照對 dashboard 有用，
+    但一連串快照先睇得出市場點變。每次抽取都加一個帶時間戳嘅快照。
+    """
+    import datetime
+    import json as _json
+
+    snap = {}
+    for race_no, p, _blocks in races:
+        od = (p["meta"].get("odds") or {})
+        if od:
+            snap[str(race_no)] = {str(n): v for n, v in sorted(od.items())}
+    if not snap:
+        return 0
+    path = out / "Odds.json"
+    try:
+        doc = _json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(doc, dict) or "snapshots" not in doc:
+            raise ValueError
+    except (OSError, ValueError):
+        doc = {"venue": venue, "date": date_str, "snapshots": []}
+    doc["snapshots"].append({
+        "captured_at": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+        "races": snap,
+    })
+    path.write_text(_json.dumps(doc, ensure_ascii=False, indent=1), encoding="utf-8")
+    return sum(len(v) for v in snap.values())
 
 
 RE_SPEED = re.compile(r"^\s*(\d{1,2})\s*$")
@@ -760,6 +810,40 @@ def fetch_odds(fetcher, event_id):
             for v in o:
                 walk(v)
     walk(data or {})
+    return out
+
+
+# ── 賠率 ────────────────────────────────────────────────────────────────────
+# `<span class="ppodds fixed-win" data-key="32526112-Sportsbet-FixedWin">15.00</span>`
+# win 格喺 `td[data-number="01"]` 入面（有馬號），place 格喺另一個結構（冇馬號），
+# 但兩者 `data-key` 共用同一個 runnerId，所以用 runnerId 對返馬號。
+RE_ODD = re.compile(
+    r'<span[^>]*class="ppodds[^"]*"[^>]*data-key="(?P<rid>\d+)-(?P<kind>[\w-]+)"[^>]*>'
+    r'\s*(?P<val>[^<]*?)\s*</span>')
+RE_ODD_TD = re.compile(
+    r'<td[^>]*data-number="(?P<num>\d+)"[^>]*>.*?data-key="(?P<rid>\d+)-', re.S)
+
+
+def parse_odds_html(html):
+    """賽事頁 HTML → {馬號: {盤口: 賠率}}。
+
+    ⚠️ **curl_cffi 攞到嘅係空格。** 啲數字由 `OddsAgent.min.js` 執行時填，
+    所以呢個 parser 只有喺**瀏覽器攞返嚟嘅頁面**（經 `sb_browser_bridge.py`）
+    先有嘢出。實測同一條 URL：瀏覽器 15.00/31.00/21.00，curl_cffi 24 個
+    container 全部空。
+
+    ⚠️ 賽後頁冇賠率（拆咗），所以呢個只對**未跑**嘅賽事有意義。
+    """
+    num_by_rid = {m.group("rid"): int(m.group("num"))
+                  for m in RE_ODD_TD.finditer(html)}
+    out = {}
+    for m in RE_ODD.finditer(html):
+        num = num_by_rid.get(m.group("rid"))
+        val = m.group("val").strip()
+        # TopTote 未開盤嗰陣係 "W"/"P" 佔位字，唔係賠率
+        if num is None or not re.fullmatch(r"\d+(?:\.\d+)?", val):
+            continue
+        out.setdefault(num, {})[m.group("kind")] = float(val)
     return out
 
 
