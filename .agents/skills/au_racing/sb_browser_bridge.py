@@ -102,13 +102,20 @@ class Handler(BaseHTTPRequestHandler):
         from sb_backfill_archive import load_meeting_ids
         q = parse_qs(urlparse(self.path).query)
         only = (q.get("only") or [""])[0].lower()
+        # `?view=Speedmap` → 出未落 cache 嘅 **Speedmap** 版。
+        # ⚠️ Speedmap 只喺**賽事頁已經抓過**嘅場次先有意義（要對返跑手），
+        # 所以呢度加多一個條件：賽事頁要已經 cache。
+        view = (q.get("view") or [""])[0]
+        suffix = f"?view={view}" if view else ""
         jobs = []
         for name, v in sorted(load_meeting_ids().items(), key=lambda kv: kv[1]["date"]):
             if only and only not in name.lower():
                 continue
             for rid in v["races"]:
-                url = f"{BASE}/{v['meetingId']}/{rid}/"
-                if not cache_path(url).exists():
+                base_url = f"{BASE}/{v['meetingId']}/{rid}/"
+                if suffix and not cache_path(base_url).exists():
+                    continue          # 賽事頁都未抓，Speedmap 攞返嚟冇用
+                if not cache_path(base_url + suffix).exists():
                     jobs.append([v["meetingId"], rid])
         body = json.dumps(jobs).encode()
         self.send_response(200)
