@@ -684,3 +684,58 @@ Kelvin 問可唔可以用新尺重測 `in_win_range`。**唔可以，而且要�
   ⚠️ 抽之前要注意兩樣：836 場 × 1 view = 836 次額外請求；
   而且賽後嘅 Speedmap 好可能顯示**實際**跑位而唔係預測（同 last6 同款）。
   **先抽一場試水**再決定。
+
+## 2026-08-04（夜）—— `ave_prize` 升級 `class_score`：REJECT
+
+`class_weight` = `rating_score` × 0.70（單 leaf + 收縮）。`ave_prize`
+（平均獎金 = 總獎金 ÷ 出賽次數）100% 覆蓋、單獨場內 AUC **0.603**、
+引擎**零行**讀佢，睇落係最抵手嘅候選。
+
+七個變體（加入 class_weight 四個比例、完全取代 rating、獨立維度兩個權重）：
+
+| 變體 | 全場 dev | 全場 hold | Gold | Good位 |
+|---|---|---|---|---|
+| rating .20 + ave_prize .50 | **+0.0048 ✅** | −0.0016 · | **−1.11** | +0.42 |
+| ave_prize 取代 rating | **+0.0061 ✅** | −0.0029 · | **−1.25** | +0.84 |
+| 獨立維度 w=0.08 | **+0.0039 ✅** | +0.0012 · | −0.28 | +0.14 |
+
+**dev 顯著、holdout 全部跨 0，而 dev 贏最多嗰兩個 Gold 跌最勁。** 典型 dev 過擬合。
+
+原因同今日另外五次一樣：`rating_score` 已經係「呢匹馬跑咩級數」，
+`ave_prize` 講緊同一件事。**單獨 AUC 高 ≠ 有增量。**
+
+## 2026-08-04（夜）—— Speedmap：驗證通過，係真預測
+
+`?view=Speedmap` curl_cffi 403，但**瀏覽器通**。頁面內容：
+
+    Speed Map —— Predicted settling positions after start
+    Rail Position: Out 10m Entire Circuit
+    10 5.The Troubleshooter · 9 2.Rebel Tuesday · … · 1 10.Superbec
+    天氣 15° clear · Wind N 18kph · Humidity 57%
+    直路 448m · 周長 2313m
+
+⚠️ **冇當佢寫住「Predicted」就信。** 攞一場 10/10 匹都有 800m 走位嘅賽事對返：
+
+    Spearman ρ（預測 vs 實際 800m 走位）= **+0.697**
+
+高但**唔係 1.000**，個別馬差到 4 個位（Relinquishing 預測 8 實際 4）。
+如果係實際走位就會係 1.000。**確認係賽前預測，冇洩漏。**
+
+順帶：rail position、天氣、風速、直路長度我哋而家完全冇。
+
+抽取：60 場樣本（跨 2025-08 → 2026-07），瀏覽器 + bridge，每場 9 秒，
+非 200 即停。先驗證佢好過我哋自己個 `pace_map_score` 先值得抽 836 場。
+
+## 2026-08-04（夜）—— 晨操：唔追，三個理由
+
+1. **冇系統化公開來源。** 歷史上印喺報紙／*Sportsman*，冇搵到結構化 feed。
+   ⚠️ 呢度同香港唔同 —— HKJC **官方** publish 晨操同試閘，澳洲冇對應嘅嘢，
+   所以「HK 有所以 AU 都應該有」呢個類比唔成立。
+2. **連澳洲自己嘅博彩寫手都質疑佢嘅預測力**（Practical Punting：最快嘅晨操
+   有時出頭馬，但更多時候快操嘅馬跑輸）。
+3. punters.com.au 同 racing.com 兩個站我嘅工具都 fetch 唔到，核實唔到內容。
+
+**搵到嘅替代品**：`sectionaltimes.com.au`（Punting Form）有每 200m 分段時間、
+覆蓋大部分 TAB 賽事、**由 2012-10 起**。13 年檔案。但我哋已經有 PF L600 delta
+（82% 覆蓋）而 `sectional_score` 單獨 AUC 得 0.469 —— 大機會又係重疊。
+記低，唔係優先。
