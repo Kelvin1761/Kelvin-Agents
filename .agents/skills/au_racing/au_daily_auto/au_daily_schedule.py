@@ -1543,7 +1543,7 @@ def snapshot_signature(payload: dict) -> dict:
 
 
 def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
-                   drop_keys: list[str] | None = None) -> Path:
+                   drop_keys: list[str] | None = None) -> tuple[Path, list[str]]:
     """由 live snapshot 剪走已歸檔場次，再串連合併每個場次 → 最終 JSON。
 
     ⚠️ `generate_static.py` 一次只食一個 `--au-meeting-dir`，所以第二個場次嘅
@@ -1557,6 +1557,28 @@ def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
     WORK_DIR.mkdir(parents=True, exist_ok=True)
     base = download_live_snapshot(runlog, WORK_DIR / "live-dashboard-data.json")
     current = base
+    # ⚠️ 唔可以只信「今次 run 歸檔咗乜」。早更傳嘅係空名單，所以晚更歸檔完但發佈
+    # 失敗之後，早更會把已歸檔場次原封不動再發佈一次，而佢自己嘅驗證仲會話冇問題
+    # （expect_absent 係空）。真憑據係**本機 folder 而家喺 Archive/ 邊**，所以由
+    # 即將發佈嗰份 snapshot 直接推導 —— 邊個 mode 發佈都一樣會自我修復。
+    drops = list(drop_keys or [])
+    if current is not None:
+        try:
+            payload = json.loads(current.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            payload = {}
+        for item in payload.get("meetings") or []:
+            if (item.get("region") or "").upper() != "AU":
+                continue  # HKJC 場次冇 AU folder，唔好當佢已歸檔
+            key = f"{item.get('date')}|{item.get('venue')}"
+            if key in drops:
+                continue
+            folder = find_meeting_dir(item.get("date"), item.get("venue"))
+            if folder is not None and folder.parent == ARCHIVE_ROOT:
+                drops.append(key)
+                runlog.warn(f"{key} 已經歸檔但仲喺 dashboard —— 由發佈前 snapshot "
+                            f"推導出嚟，今次剪走")
+    drop_keys = drops
     if drop_keys and current is not None:
         pruned = WORK_DIR / "pruned.json"
         cmd = [sys.executable, GENERATE_STATIC,
@@ -1590,7 +1612,7 @@ def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
                     snapshot=out_json.name)
     if current is None:
         raise TemporaryFailure("冇 base snapshot 又冇場次可以合併")
-    return current
+    return current, drop_keys
 
 
 def validate_snapshot(runlog: RunLog, snapshot: Path,
@@ -1737,7 +1759,7 @@ def step_dashboard(runlog: RunLog, meeting_dirs: list[Path],
                 archived=len(archived_names))
     expect_absent = [archive_dashboard_key(name) for name in archived_names]
 
-    snapshot = build_snapshot(runlog, meeting_dirs, expect_absent)
+    snapshot, expect_absent = build_snapshot(runlog, meeting_dirs, expect_absent)
     validation = validate_snapshot(runlog, snapshot, expect_absent)
     if not validation["ok"]:
         runlog.error("dashboard", "驗證唔過 —— 唔發佈")
@@ -1749,8 +1771,11 @@ def step_dashboard(runlog: RunLog, meeting_dirs: list[Path],
 
     # ⚠️ 今次真係改過嘢（新分析／重評分／歸檔）就一定要發佈，唔好行 no-change
     # 捷徑。指紋已經食排名，但「我哋知自己改過」係更硬嘅證據。
+    # ⚠️ 要用 expect_absent（已含自動推導出嚟嘅剪走），唔係 archived_names。
+    # 一個「只需要剪走」嘅早更 run，archived_names 係空，會走 no-change 捷徑，
+    # 於是永遠修復唔到一份髒 snapshot。
     changed_this_run = bool(runlog.data["races_added"] or runlog.data["races_updated"]
-                            or archived_names)
+                            or archived_names or expect_absent)
     # Idempotency：build 出嚟同 live 一模一樣就唔發佈，免得每晚都出一個新版本。
     live = WORK_DIR / "live-dashboard-data.json"
     if live.exists() and not changed_this_run:

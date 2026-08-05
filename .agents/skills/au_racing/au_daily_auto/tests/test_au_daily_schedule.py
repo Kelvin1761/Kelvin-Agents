@@ -10,10 +10,12 @@
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -430,3 +432,80 @@ class TestFetchPacing(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestStaleArchivedPrune(unittest.TestCase):
+    """已歸檔嘅場次一定要離開發佈用嘅 snapshot，唔理係邊個 mode 發佈。
+
+    2026-08-05／08-06：晚更歸檔咗 5 個場次，但合併路徑只會加場次，所以發佈前驗證
+    見到已歸檔場次仲喺 snapshot，正確咁拒絕發佈 —— Cloudflare 停咗兩晚。而早更傳
+    嘅 archived_names 係空，所以早更唔單止修復唔到，仲會把已歸檔場次原封不動再發
+    佈，而佢自己嘅驗證唔會投訴。所以剪走名單要由**本機 folder 喺唔喺 Archive/**
+    推導，唔可以只信「今次 run 歸檔咗乜」。
+    """
+
+    def _run(self, tmp, meetings, archived_venues, passed_drops=()):
+        tmp = Path(tmp)
+        base = tmp / "live-dashboard-data.json"
+        base.write_text(json.dumps({"meetings": meetings}), encoding="utf-8")
+        archive_root = tmp / "Archive"
+        live_root = tmp / "AU_Racing"
+        archive_root.mkdir()
+        live_root.mkdir()
+
+        def fake_find(day, venue):
+            if venue == "HappyValley":
+                return None  # HKJC 場次冇 AU folder
+            root = archive_root if venue in archived_venues else live_root
+            folder = root / f"{day} {venue}"
+            folder.mkdir(exist_ok=True)
+            return folder
+
+        calls = []
+
+        def fake_run_cmd(cmd, **kw):
+            calls.append(cmd)
+            out = Path(cmd[cmd.index("--output-json") + 1])
+            out.write_text(json.dumps({"meetings": []}), encoding="utf-8")
+            return 0, ""
+
+        runlog = S.RunLog("evening", S.date(2026, 8, 5), tmp / "run.json")
+        with contextlib.ExitStack() as stack:
+            for name, value in (("WORK_DIR", tmp), ("ARCHIVE_ROOT", archive_root),
+                                ("find_meeting_dir", fake_find),
+                                ("run_cmd", fake_run_cmd),
+                                ("download_live_snapshot", lambda *a, **k: base)):
+                stack.enter_context(unittest.mock.patch.object(S, name, value))
+            _, drops = S.build_snapshot(runlog, [], list(passed_drops))
+        return drops, calls
+
+    def test_archived_meeting_is_dropped_even_when_the_run_archived_nothing(self):
+        meetings = [{"date": "2026-08-05", "venue": "Belmont", "region": "AU"},
+                    {"date": "2026-08-05", "venue": "Cranbourne", "region": "AU"}]
+        with tempfile.TemporaryDirectory() as tmp:
+            drops, calls = self._run(tmp, meetings, {"Belmont"})
+        self.assertEqual(drops, ["2026-08-05|Belmont"])
+        self.assertIn("--drop-meeting", calls[0])
+        self.assertIn("2026-08-05|Belmont", calls[0])
+        self.assertNotIn("2026-08-05|Cranbourne", calls[0])
+
+    def test_hkjc_meeting_is_never_dropped_for_having_no_au_folder(self):
+        meetings = [{"date": "2026-07-15", "venue": "HappyValley", "region": "HK"}]
+        with tempfile.TemporaryDirectory() as tmp:
+            drops, calls = self._run(tmp, meetings, set())
+        self.assertEqual(drops, [])
+        self.assertEqual(calls, [])
+
+    def test_no_duplicate_when_the_run_already_reported_it(self):
+        meetings = [{"date": "2026-08-05", "venue": "Belmont", "region": "AU"}]
+        with tempfile.TemporaryDirectory() as tmp:
+            drops, _ = self._run(tmp, meetings, {"Belmont"},
+                                 passed_drops=["2026-08-05|Belmont"])
+        self.assertEqual(drops, ["2026-08-05|Belmont"])
+
+    def test_active_meeting_is_left_alone(self):
+        meetings = [{"date": "2026-08-06", "venue": "Gosford", "region": "AU"}]
+        with tempfile.TemporaryDirectory() as tmp:
+            drops, calls = self._run(tmp, meetings, set())
+        self.assertEqual(drops, [])
+        self.assertEqual(calls, [])
