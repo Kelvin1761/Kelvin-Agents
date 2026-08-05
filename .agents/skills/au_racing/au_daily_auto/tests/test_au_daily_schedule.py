@@ -10,7 +10,9 @@
 from __future__ import annotations
 
 import contextlib
+import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -18,6 +20,19 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
 import au_daily_schedule as S  # noqa: E402
+
+
+def setUpModule():
+    """把測試嘅 log 引去 tmp。冇呢個嘅話 `log()` 會寫入生產
+    `logs/au_daily_schedule.log` —— 實測污染過一個正在跑嘅晚更 run。"""
+    global _LOG_TMP
+    _LOG_TMP = tempfile.TemporaryDirectory()
+    os.environ["WC_AU_SCHED_LOG_DIR"] = _LOG_TMP.name
+
+
+def tearDownModule():
+    os.environ.pop("WC_AU_SCHED_LOG_DIR", None)
+    _LOG_TMP.cleanup()
 
 
 class TestGoing(unittest.TestCase):

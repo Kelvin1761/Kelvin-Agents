@@ -190,10 +190,15 @@ def compact(payload: object) -> str:
 
 
 def log(message: str) -> None:
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    # ⚠️ 目的地喺 call 嗰刻讀 env，唔係 import 嗰刻。2026-08-05 實測：跑 pytest
+    # 嗰陣，測試嘅 `where="test 第 3 場"`、`$ /usr/bin/true` 全部寫入生產
+    # log，插咗入一個 live 晚更 run 中間。run state JSON 有隔離（path 由 caller
+    # 傳入），得呢個共用 log 冇 —— 而 log 就係明早唯一嘅診斷來源。
+    log_dir = Path(os.environ.get("WC_AU_SCHED_LOG_DIR") or LOG_DIR)
+    log_dir.mkdir(parents=True, exist_ok=True)
     line = f"[{stamp()}] {message}"
     print(line, flush=True)
-    with (LOG_DIR / "au_daily_schedule.log").open("a", encoding="utf-8") as fh:
+    with (log_dir / "au_daily_schedule.log").open("a", encoding="utf-8") as fh:
         fh.write(line + "\n")
 
 
