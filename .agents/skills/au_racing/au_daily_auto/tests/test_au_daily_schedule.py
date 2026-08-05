@@ -509,3 +509,38 @@ class TestStaleArchivedPrune(unittest.TestCase):
             drops, calls = self._run(tmp, meetings, set())
         self.assertEqual(drops, [])
         self.assertEqual(calls, [])
+
+
+class TestResultsGiveUp(unittest.TestCase):
+    """一個永遠等唔到賽果嘅場次要有終點。
+
+    2026-08-05 Cranbourne 腰斷（同一版索引頁上其他五個場次各有 8 個開跑時間，
+    佢係 8 個橫線）。冇年齡上限嘅話佢會每晚重抽 8 版賽果頁、永遠 pending_results、
+    永遠留喺 dashboard。上限用日數而唔用「索引頁冇開跑時間」——後者實測會假陽性。
+    """
+
+    def _folder(self, day):
+        return Path(f"/tmp/{day} Cranbourne Race 1-8")
+
+    def test_same_day_and_next_day_still_wait(self):
+        # 實測 Sportsbet 當晚就寫入賽果，所以呢兩日一定唔可以放棄。
+        self.assertIsNone(S.results_overdue(self._folder("2026-08-05"),
+                                            S.date(2026, 8, 5)))
+        self.assertIsNone(S.results_overdue(self._folder("2026-08-05"),
+                                            S.date(2026, 8, 6)))
+        self.assertIsNone(S.results_overdue(self._folder("2026-08-05"),
+                                            S.date(2026, 8, 7)))
+
+    def test_gives_up_once_past_the_bound(self):
+        self.assertEqual(S.results_overdue(self._folder("2026-08-05"),
+                                           S.date(2026, 8, 8)), 3)
+        self.assertEqual(S.results_overdue(self._folder("2026-08-05"),
+                                           S.date(2026, 8, 20)), 15)
+
+    def test_future_meeting_is_never_overdue(self):
+        self.assertIsNone(S.results_overdue(self._folder("2026-08-09"),
+                                            S.date(2026, 8, 6)))
+
+    def test_unparseable_folder_name_never_triggers_archiving(self):
+        self.assertIsNone(S.results_overdue(Path("/tmp/not-a-date Cranbourne"),
+                                            S.date(2026, 8, 20)))

@@ -699,7 +699,8 @@ def step_review_archive(runlog: RunLog, review_day: date, *,
 
     for folder in candidates:
         try:
-            outcome = review_one_meeting(runlog, folder, no_archive=no_archive)
+            outcome = review_one_meeting(runlog, folder, no_archive=no_archive,
+                                         today=review_day)
         except TemporaryFailure as exc:
             # 一個場次暫時失敗唔應該停晒其他場次。
             runlog.meeting(folder.name, "temporary_failure", detail=str(exc))
@@ -717,8 +718,41 @@ def step_review_archive(runlog: RunLog, review_day: date, *,
     return archived
 
 
+# 賽果最多等幾日。實測 Sportsbet 係當晚就把賽果寫入馬匹往績（08-05 五個場次
+# 22:24 已經齊），所以兩日係四倍緩衝。過咗就當「永遠唔會有」——取消／改期嘅場次
+# 冇呢個上限會每晚白抽一次賽果頁、永遠 pending_results、永遠霸住 dashboard。
+# ⚠️ 呢度故意唔靠索引頁「冇開跑時間」做取消偵測：實測嗰個訊號唔可靠（導覽同頁腳
+# 項目一律 parse 成 0 場、`Murray Bridge` 同 `Mt Isa` 配對唔到、隔日索引頁根本冇
+# 馬場行）。用一個會假陽性嘅訊號去決定移除場次，代價太大。
+RESULTS_GIVE_UP_DAYS = 2
+
+
+def results_overdue(folder: Path, today: date) -> int | None:
+    """賽日過咗幾日（超過上限先回數字，否則 None）。"""
+    try:
+        day = datetime.strptime(folder.name[:10], "%Y-%m-%d").date()
+    except ValueError:
+        return None
+    age = (today - day).days
+    return age if age > RESULTS_GIVE_UP_DAYS else None
+
+
+def archive_meeting(runlog: RunLog, folder: Path, races: list) -> dict:
+    """搬入 Archive/。撞名唔覆蓋 —— 留返俾人手決定。"""
+    destination = ARCHIVE_ROOT / folder.name
+    if destination.exists():
+        runlog.meeting(folder.name, "archive_conflict",
+                       detail=f"Archive 已經有 {destination.name}")
+        return {"races": races}
+    ARCHIVE_ROOT.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(folder), str(destination))
+    runlog.meeting(folder.name, "archived", races=races)
+    return {"archived": True, "races": races}
+
+
 def review_one_meeting(runlog: RunLog, folder: Path, *,
-                       no_archive: bool = False) -> dict:
+                       no_archive: bool = False,
+                       today: date | None = None) -> dict:
     expected = race_numbers(folder)
     key = mapping_key_for(folder)
     if not key:
@@ -758,7 +792,18 @@ def review_one_meeting(runlog: RunLog, folder: Path, *,
             runlog.step("results-refresh", "done", meeting=folder.name,
                         had_before=len(covered), expected=len(expected), **refresh)
             built = build_results_file(runlog, folder, key)
+        overdue = results_overdue(folder, today or date.today())
         if not built.get("ok"):
+            if overdue is not None:
+                # 等夠日子都冇賽果 —— 當係取消／改期。搬入 Archive/ 令佢離開
+                # dashboard 同停止每晚重抽。Archive/ 唔係刪除，要覆盤可以搬返出嚟。
+                runlog.warn(f"{folder.name}：賽日過咗 {overdue} 日仍然冇任何賽果，"
+                            f"當係取消／改期 —— 歸檔（唔會有覆盤報告）")
+                runlog.meeting(folder.name, "archived_unresolved",
+                               days_overdue=overdue, expected_races=len(expected))
+                if no_archive:
+                    return {"races": expected}
+                return archive_meeting(runlog, folder, expected)
             runlog.meeting(folder.name, "pending_results",
                            reason=built.get("detail", "賽果生成失敗"),
                            expected_races=len(expected))
@@ -766,6 +811,15 @@ def review_one_meeting(runlog: RunLog, folder: Path, *,
         found = built["races_with_results"]
         if len(found) < len(expected):
             # 唔齊唔歸檔。可能係腰斷／改期／賽果未出，全部要人手睇。
+            if overdue is not None:
+                runlog.warn(f"{folder.name}：賽日過咗 {overdue} 日，賽果仍然只有 "
+                            f"{len(found)}/{len(expected)} 場 —— 歸檔，唔再等")
+                runlog.meeting(folder.name, "archived_unresolved",
+                               days_overdue=overdue, races_with_results=found,
+                               missing=sorted(set(expected) - set(found)))
+                if no_archive:
+                    return {"races": expected}
+                return archive_meeting(runlog, folder, expected)
             runlog.meeting(folder.name, "partial_results",
                            expected_races=expected, races_with_results=found,
                            missing=sorted(set(expected) - set(found)))
@@ -783,16 +837,7 @@ def review_one_meeting(runlog: RunLog, folder: Path, *,
         runlog.meeting(folder.name, "reviewed_not_archived", races=expected)
         return {"races": expected}
 
-    destination = ARCHIVE_ROOT / folder.name
-    if destination.exists():
-        # 已經有同名 archive entry：唔覆蓋、唔重複，記低等人手睇。
-        runlog.meeting(folder.name, "archive_conflict",
-                       detail=f"Archive 已經有 {destination.name}")
-        return {"races": expected}
-    ARCHIVE_ROOT.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(folder), str(destination))
-    runlog.meeting(folder.name, "archived", races=expected)
-    return {"archived": True, "races": expected}
+    return archive_meeting(runlog, folder, expected)
 
 
 # ── 步驟 2：分析下一個賽日 ─────────────────────────────────────────────────
