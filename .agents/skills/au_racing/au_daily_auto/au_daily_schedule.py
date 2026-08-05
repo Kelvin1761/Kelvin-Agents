@@ -270,6 +270,19 @@ def run_cmd(cmd: list[str], *, cwd: Path | None = None, timeout: int = 3600,
     # 攞唔到嘢，仲會延長封鎖。呢個 env 令 `SportsbetFormFetcher` cache miss
     # 直接回 None，冇任何腳本可以繞過。
     merged["WC_SB_CACHE_ONLY"] = "1"
+    # 晚更把 people TTL 設 0，令 `sb_people_stats.refresh` 用啱啱重抽嘅個人頁
+    # 更新 cache（cache-only 之下唔會出網，所以呢個純粹係「唔跳過已有 entry」）。
+    merged.setdefault("WC_SB_PEOPLE_TTL_DAYS", os.environ.get(
+        "WC_SB_PEOPLE_TTL_DAYS", "21"))
+    # ⚠️ 一定要 export repo root。`sb_people_stats.cache_path()` 要
+    # `from wongchoi_paths import AU_RACING`（AU_RACING 搬去本機之後就更加要），
+    # 而 claw 係用 cwd=au_racing 跑，repo root 唔喺 sys.path。缺咗呢個
+    # `write_meeting` 個 `except Exception` 會靜靜食咗 ModuleNotFoundError，
+    # `_people_cache` 變空，1,064 個 `(LY:)` token 全部寫成 `-`（2026-08-05 實測）。
+    existing = merged.get("PYTHONPATH", "")
+    root = str(PROJECT_ROOT)
+    if root not in existing.split(os.pathsep):
+        merged["PYTHONPATH"] = f"{root}{os.pathsep}{existing}" if existing else root
     if env:
         merged.update(env)
     try:
@@ -305,7 +318,10 @@ def browser(runlog: RunLog):
         # 任何一版有效索引頁都做得到起點，成本係每個 run 多一個請求。
         runlog.browser_session = BrowserFetcher(
             delay=fetch_delay(),
-            origin_url=f"{BASE}/{runlog.data['review_day']}/",
+            # 兩個候選：覆盤日索引頁，同今日索引頁。落唔到第一個唔應該令成個
+            # run 報廢（起始頁係單點失敗位）。
+            origin_candidates=[f"{BASE}/{runlog.data['review_day']}/",
+                               f"{BASE}/{local_today().isoformat()}/"],
             log=lambda message: log(f"   {message}"))
     return runlog.browser_session
 
@@ -905,7 +921,8 @@ def warm_race_pages(runlog: RunLog, meeting_id: str, race_ids: list[str],
 
 
 def warm_people_pages(runlog: RunLog, race_ids: list[str], meeting_id: str,
-                      label: str, limit: int | None = None) -> dict:
+                      label: str, limit: int | None = None,
+                      force: bool = False) -> dict:
     """由已 cache 嘅賽事頁抽騎師／練馬師 ID，逐個把個人頁落 cache。
 
     ⚠️ 冇呢一步，`write_meeting` 之後嗰個 `sb_people_stats.refresh` 讀唔到個人頁，
@@ -917,9 +934,9 @@ def warm_people_pages(runlog: RunLog, race_ids: list[str], meeting_id: str,
     from sb_browser_fetch import cache_path
     if limit is None:
         try:
-            limit = int(os.environ.get("WC_AU_PEOPLE_PER_MEETING", "20"))
+            limit = int(os.environ.get("WC_AU_PEOPLE_PER_MEETING", "40"))
         except ValueError:
-            limit = 20
+            limit = 40
 
     wanted: list[str] = []
     for race_id in race_ids:
@@ -929,7 +946,9 @@ def warm_people_pages(runlog: RunLog, race_ids: list[str], meeting_id: str,
         for kind, pid in re.findall(r'href="/(Jockey|Trainer)/(\d+)/"',
                                     page.read_text(encoding="utf-8", errors="replace")):
             url = f"{BASE}/{kind}/{pid}/"
-            if url not in wanted and not cache_path(url).exists():
+            # `force`（晚更）連已 cache 嘅都重抽 —— 「去年官方」係滾動 12 個月
+            # 紀錄，賽季中段會變，21 日 TTL 之下最多滯後 3 個星期。
+            if url not in wanted and (force or not cache_path(url).exists()):
                 wanted.append(url)
 
     if not wanted:
@@ -943,13 +962,45 @@ def warm_people_pages(runlog: RunLog, race_ids: list[str], meeting_id: str,
     for url in todo:
         if runlog.site_refusing:
             break
-        if fetch_page(runlog, url, where=f"{label} 個人頁"):
+        if fetch_page(runlog, url, force=force, where=f"{label} 個人頁"):
             fetched += 1
         else:
             break
     runlog.step("warm-people", "ok" if fetched == len(todo) else "partial",
                 meeting=label, needed=len(wanted), fetched=fetched)
     return {"needed": len(wanted), "fetched": fetched}
+
+
+def apply_ra_ratings(runlog: RunLog, folder: Path, day: str, venue: str) -> dict:
+    """由 Racing Australia 補官方讓磅分入 Racecard，跟住落 Facts/Logic 就有值。
+
+    ⚠️ 一定要喺 claw 之後、`au_orchestrator` 之前跑 —— claw 寫 Racecard（Sportsbet
+    個 rating 欄實測 1,321 匹 **0%** 有值，所以全部寫 `Rating: -`），orchestrator
+    再由 Racecard 砌 Facts/Logic。喺中間補返個數字，成條下游自動接上。
+
+    ⚠️ RA 行 curl_cffi（實測 200），**唔經** `BrowserFetcher`，亦唔用 Sportsbet
+    個 cache —— 兩個來源完全分離，所以 RA 唔會食 Sportsbet 嘅 rate budget，
+    而 `WC_SB_CACHE_ONLY=1` 亦唔會擋住佢。
+
+    失敗一律非致命：補唔到就照用 fallback（實測 fallback AUC 0.587 vs 官方 0.591）。
+    """
+    try:
+        sys.path.insert(0, str(AU_SKILL))
+        import ra_fields
+        result = ra_fields.apply_to_meeting(
+            folder, day, venue, ra_fields.Fetcher(delay=6.0, verbose=False))
+    except Exception as exc:  # noqa: BLE001
+        runlog.warn(f"{folder.name}: RA 讓磅分補唔到（{type(exc).__name__}: {exc}）"
+                    f"—— 照用 fallback")
+        return {"ok": False}
+    if not result.get("ok"):
+        runlog.warn(f"{folder.name}: RA 冇呢個場次（{result.get('reason')}）—— 照用 fallback")
+        return result
+    runlog.step("ra-ratings", "ok", meeting=folder.name,
+                filled=result["filled"],
+                no_official=result["no_official_rating"],
+                ra_venue=result["ra_venue"])
+    return result
 
 
 def meeting_is_complete(have: list, scored: list, expected: int) -> bool:
@@ -1005,7 +1056,11 @@ def analyse_one_meeting(runlog: RunLog, day: str, plan: dict) -> tuple:
                         f"照分析攞到嗰啲，餘下等下一輪／下一次排程補")
         # 個人頁一定要喺 claw 之前落 cache —— claw 跑 `WC_SB_CACHE_ONLY=1`，
         # 唔會（亦唔可以）自己出網補。
-        warm_people_pages(runlog, ready, plan["meetingId"], f"{day} {venue}")
+        # ⚠️ 晚更 `force=True`：每個場次都重抽騎練統計（Kelvin 2026-08-05 決定）。
+        # 晚更有十二個鐘，一個場次 90–100 個人物 × 25 秒 ≈ 40 分鐘，做得到；
+        # 早更（10:00 → 最早一場 11:44）唔得，所以早更路徑唔會 force。
+        warm_people_pages(runlog, ready, plan["meetingId"], f"{day} {venue}",
+                          force=True)
         rc, out = run_cmd([sys.executable, CLAW,
                            "--meeting-url", f"https://www.sportsbetform.com.au/"
                                             f"{plan['meetingId']}/{ready[0]}/",
@@ -1017,6 +1072,8 @@ def analyse_one_meeting(runlog: RunLog, day: str, plan: dict) -> tuple:
         if rc != 0 or not (folder / "Meeting_Summary.md").exists():
             raise TemporaryFailure(
                 f"抽取未完成（rc={rc}）：{out.splitlines()[-1] if out else '冇輸出'}")
+        # 官方讓磅分：Sportsbet 冇，RA 有。一定要喺落 Facts/Logic 之前補。
+        apply_ra_ratings(runlog, folder, day, venue)
 
     ensure_mapping(runlog, folder.name, day, plan["slug"], plan["meetingId"], races)
 
@@ -1246,6 +1303,69 @@ def diff_race_state(stored: dict[int, dict], live: dict[int, dict]) -> dict:
     return changes
 
 
+#: 會改變**出賽名單／每匹馬資料**嘅變動 —— 呢啲唔可以只重算分數。
+FIELD_LEVEL_CHANGES = ("scratchings", "emergencies_in", "barriers", "jockeys",
+                       "field_size")
+
+
+def venue_from_folder(folder_name: str) -> str:
+    return re.sub(r"\s+Race\s+[\d\-]+$", "", folder_name[11:]).strip()
+
+
+def rebuild_meeting_from_cache(runlog: RunLog, folder: Path, key: str,
+                               going: str) -> bool:
+    """由**已重抓嘅** cache 頁重寫 Racecard/Formguide，再重建 Facts/Logic/評分。
+
+    ⚠️ 點解唔可以只跑 `au_auto_orchestrator`（純重評分）：佢由現有
+    `Race_N_Logic.json` 重算，而 Logic 係由通宵寫嘅 Racecard 砌出嚟 —— 一隻通宵
+    之後才退出嘅馬仍然喺 Logic 裡面，於是照樣入榜。2026-08-05 實測：Canterbury
+    7 場偵測到 24 隻退出馬，全部照樣排名，R2 #6 Blenheim Girl 仲排第二。
+    退出馬要靠 `write_meeting` 寫 `status:Scratched`，落一層 pipeline 才會剔走。
+
+    全程 cache-only（`run_cmd` 強制 `WC_SB_CACHE_ONLY=1`），零網絡請求 ——
+    頁面係覆核嗰下已經 force-refresh 過嘅。
+    """
+    meta = load_mapping().get(key)
+    if not meta:
+        runlog.warn(f"{folder.name}: 對應表冇，重建唔到（只可以重評分）")
+        return False
+    venue = venue_from_folder(folder.name)
+    # 順手補少量個人頁。⚠️ 早更窗口窄（10:00 開工、最早一場約 11:44），所以呢度
+    # 用一個**細**限額（`WC_AU_PEOPLE_PER_REBUILD`，預設 10）而唔係晚更嗰個 40 ——
+    # 補齊係晚更嘅工作，佢有十二個鐘。鄉郊場（Belmont / Hobart / Murray Bridge）
+    # 嘅 `(LY:)` 靠幾晚累積收斂，唔會一次填滿。
+    try:
+        per_rebuild = int(os.environ.get("WC_AU_PEOPLE_PER_REBUILD", "10"))
+    except ValueError:
+        per_rebuild = 10
+    if per_rebuild > 0:
+        warm_people_pages(runlog, meta["races"], meta["meetingId"], folder.name,
+                          limit=per_rebuild)
+    rc, out = run_cmd([sys.executable, CLAW,
+                       "--meeting-url", f"https://www.sportsbetform.com.au/"
+                                        f"{meta['meetingId']}/{meta['races'][0]}/",
+                       "--races", ",".join(meta["races"]),
+                       "--out-dir", str(folder),
+                       "--date", meta["date"], "--venue", venue,
+                       "--delay", str(fetch_delay())],
+                      cwd=AU_SKILL, timeout=3600)
+    if rc != 0:
+        runlog.warn(f"{folder.name}: 重寫 Racecard 失敗（rc={rc}）："
+                    f"{out.splitlines()[-1] if out else '冇輸出'}")
+        return False
+    # claw 重寫咗 Racecard，所以 RA 讓磅分要再補一次（唔補就會退回 fallback）。
+    apply_ra_ratings(runlog, folder, meta["date"], venue)
+    cmd = [sys.executable, AU_ORCH, str(folder), "--auto",
+           "--skip-cloudflare-deploy", "--race-workers", "1"]
+    if going:
+        cmd += ["--going", going]
+    rc, out = run_cmd(cmd, timeout=10800)
+    if rc != 0:
+        runlog.warn(f"{folder.name}: 重建分析 rc={rc}："
+                    f"{out.splitlines()[-1] if out else '冇輸出'}")
+    return True
+
+
 def refresh_one_meeting(runlog: RunLog, folder: Path, api: dict) -> bool:
     stored = stored_race_state(folder)
     if not stored:
@@ -1285,22 +1405,39 @@ def refresh_one_meeting(runlog: RunLog, folder: Path, api: dict) -> bool:
         runlog.meeting(folder.name, "unchanged", races=len(stored))
         return False
 
-    # 有實質變動 → 重新評分。`au_auto_orchestrator` 會重算 ability_score /
-    # 排名 / 信心，並且把 going refresh 寫落 race_analysis.going_refresh。
-    cmd = [sys.executable, AU_AUTO_ORCH, str(folder)]
-    if going:
-        cmd += ["--going", going]
-    rc, out = run_cmd(cmd, timeout=7200)
-    if rc != 0:
-        raise TemporaryFailure(
-            f"重新評分失敗（rc={rc}）：{out.splitlines()[-1] if out else '冇輸出'}")
+    # ⚠️ 兩條唔同嘅路，睇變動係邊一層：
+    #   出賽名單／每匹馬資料變（退出馬、後備入替、換檔、換騎師）→ 一定要由 cache
+    #     頁**重寫 Racecard**再落 Facts/Logic，因為退出馬係喺 Racecard 寫
+    #     `status:Scratched` 嗰層剔走嘅。只重評分會令退出馬照樣入榜。
+    #   只係場地狀況變 → `au_auto_orchestrator` 純重評分就夠，快好多。
+    field_changed = sorted({field for delta in changes.values()
+                            for field in delta if field in FIELD_LEVEL_CHANGES})
+    if field_changed:
+        runlog.step("rebuild", "field-level-change", meeting=folder.name,
+                    fields=field_changed,
+                    detail="重寫 Racecard → Facts → Logic → 評分（cache-only）")
+        if not rebuild_meeting_from_cache(runlog, folder, mapping_key_for(folder) or "",
+                                          going):
+            raise TemporaryFailure("重建出賽名單失敗")
+        reason = f"field-level change: {', '.join(field_changed)}"
+    else:
+        cmd = [sys.executable, AU_AUTO_ORCH, str(folder)]
+        if going:
+            cmd += ["--going", going]
+        rc, out = run_cmd(cmd, timeout=7200)
+        if rc != 0:
+            raise TemporaryFailure(
+                f"重新評分失敗（rc={rc}）：{out.splitlines()[-1] if out else '冇輸出'}")
+        reason = "going change only"
+
     runlog.meeting(folder.name, "rescored", races=sorted(changes),
-                   going=going or None)
+                   going=going or None, rebuilt=bool(field_changed))
     runlog.data["races_updated"].append(
-        {"meeting": folder.name, "races": sorted(changes), "going": going or None})
+        {"meeting": folder.name, "races": sorted(changes), "going": going or None,
+         "rebuilt_field": bool(field_changed)})
     runlog.data["analysis_changes"].append(
         {"meeting": folder.name, "going_applied": going or None,
-         "reason": "material change detected",
+         "reason": reason,
          "changes": {str(k): v for k, v in changes.items()}})
     return True
 

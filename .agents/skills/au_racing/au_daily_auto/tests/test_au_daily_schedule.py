@@ -273,6 +273,96 @@ class TestBrowserOnlyInvariants(unittest.TestCase):
         self.assertEqual(captured.get("WC_SB_CACHE_ONLY"), "1")
 
 
+class TestScratchingsMustRebuildTheField(unittest.TestCase):
+    """退出馬唔可以只靠重評分 —— 一定要重寫 Racecard 再落 Facts/Logic。
+
+    2026-08-05 實測：早更偵測到 Canterbury 7 場共 24 隻退出馬，但只跑
+    `au_auto_orchestrator`（由現有 Logic 重算），於是 R2 #6 Blenheim Girl 退出咗
+    仍然排第二。退出馬係喺 `write_meeting` 寫 `status:Scratched` 嗰層剔走嘅。
+    """
+
+    def test_field_level_fields_are_classified(self):
+        for field in ("scratchings", "emergencies_in", "barriers", "jockeys",
+                      "field_size"):
+            self.assertIn(field, S.FIELD_LEVEL_CHANGES, field)
+        # 只係場地變就唔應該觸發成套重建（貴好多）。
+        self.assertNotIn("going", S.FIELD_LEVEL_CHANGES)
+
+    def test_refresh_rebuilds_on_field_change_and_rescores_on_going_only(self):
+        import inspect
+        src = inspect.getsource(S.refresh_one_meeting)
+        self.assertIn("FIELD_LEVEL_CHANGES", src)
+        self.assertIn("rebuild_meeting_from_cache", src)
+        # 只有 going 變嗰條路仍然行純重評分。
+        self.assertIn("AU_AUTO_ORCH", src)
+
+    def test_rebuild_rewrites_racecard_before_rebuilding_logic(self):
+        import inspect
+        src = inspect.getsource(S.rebuild_meeting_from_cache)
+        claw_at = src.index("CLAW")
+        orch_at = src.index("AU_ORCH")
+        self.assertLess(claw_at, orch_at,
+                        "一定要先重寫 Racecard，再重建 Facts/Logic")
+
+    def test_venue_from_folder(self):
+        self.assertEqual(S.venue_from_folder("2026-08-05 Murray Bridge Race 1-8"),
+                         "Murray Bridge")
+        self.assertEqual(S.venue_from_folder("2026-03-28 Flemington"), "Flemington")
+
+
+class TestResultsRefreshDecision(unittest.TestCase):
+    """「要唔要重抓賽果頁」一定要睇覆蓋率，唔可以睇「賽果檔存唔存在」。
+
+    半份賽果檔（晚更跑嗰陣最後一場仲未跑完）會令舊寫法之後每次都跳過重抓、
+    由同一份舊 cache 重建同一份半份賽果 —— 場次永遠 partial_results、永遠唔會
+    歸檔、永遠留喺 dashboard。
+    """
+
+    def _review_source(self):
+        import inspect
+        return inspect.getsource(S.review_one_meeting)
+
+    def test_does_not_gate_refresh_on_file_existence(self):
+        src = self._review_source()
+        self.assertNotIn("if not results.exists():\n            refresh", src)
+
+    def test_refresh_is_gated_on_coverage(self):
+        src = self._review_source()
+        self.assertIn("len(covered) < len(expected)", src)
+        # 重抓之後一定要再 build 一次，否則覆蓋率永遠唔會更新。
+        after = src.split("len(covered) < len(expected)", 1)[1]
+        self.assertIn("refresh_result_pages", after)
+        self.assertIn("build_results_file", after)
+
+
+class TestBrowserFetchesRenderedDom(unittest.TestCase):
+    """一定要 cache render 後嘅 DOM，唔可以係 raw body。
+
+    賠率由 `OddsAgent.min.js` 填，raw body 永遠冇 —— 所以 2026-08-05 之前每個
+    Formguide 都寫 `Flucs:$- $-`。實測 raw vs rendered 對所有其他 parser 輸出
+    完全一致，所以呢個切換零代價。
+    """
+
+    def test_get_uses_goto_and_waits_for_render(self):
+        import inspect
+        sys.path.insert(0, str(HERE.parents[1]))
+        from sb_browser_fetch import BrowserFetcher
+        src = inspect.getsource(BrowserFetcher.get)
+        self.assertIn("page.goto", src)
+        self.assertIn("render_wait_ms", src)
+        self.assertIn("page.content()", src)
+        # in-page fetch 已經退役 —— 佢攞 raw body，冇賠率。
+        self.assertNotIn("_FETCH_JS", src)
+
+    def test_origin_page_no_longer_required(self):
+        # `goto` 唔受同源限制，所以舊嗰個「同源起始頁」機制冇用咗，
+        # 亦順手省咗每個 run 一個請求。舊 caller 傳 origin_* 唔應該炸。
+        from sb_browser_fetch import BrowserFetcher
+        bf = BrowserFetcher(origin_url="https://example.invalid/",
+                            origin_candidates=["https://example.invalid/x/"])
+        self.assertFalse(hasattr(bf, "origin_candidates"))
+
+
 class TestPartialMeetingResumes(unittest.TestCase):
     """半份抽取一定要當「未做完」，否則餘下嘅場次永遠冇人補。"""
 

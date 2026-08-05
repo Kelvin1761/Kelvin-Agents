@@ -124,10 +124,14 @@ root。直接跑 `.py` 都得（`.wongchoi_au_data_root` / `.wongchoi_au_mirror_
 
 ### 為咩要 rounds
 
-實測（2026-08-05）：sportsbetform 一個冷卻窗大約**只夠抽一個場次**，之後就 403。
-所以 gate 一 trip 就放棄餘下場次，對一個 22:00 job 嚟講太早收工 —— 由 22:00 到早更
-10:00 有十二個鐘，等一陣再續係免費嘅。每輪之間 circuit breaker 會 reset，已經抽好
-嘅場次全部 cache 命中，所以續跑唔會重打任何一版。連續兩輪零進展就當真封鎖收工。
+⚠️ **改行真瀏覽器之後，rounds 應該極少會觸發** —— 呢個機制係 curl_cffi 年代嘅產物：
+嗰陣一個冷卻窗大約**只夠抽一個場次**，之後就 403。改行 headed 真 Chrome 之後實測
+連續幾十版零拒絕，所以 rounds 而家係安全網而唔係常態路徑。留住佢，因為個站幾時
+變都唔知，而由 22:00 到早更 10:00 有十二個鐘，等一陣再續係免費嘅。
+
+每輪之間 circuit breaker 會 reset，已經抽好嘅場次全部 cache 命中，所以續跑唔會重打
+任何一版。連續三輪**零增長**就當真封鎖收工（要數「真係多咗場次」，唔係「冇拋
+exception」—— 一個零增長嘅半份場次會令計數永遠歸零）。
 
 節奏由 `WC_AU_FETCH_DELAY`（秒）控制，預設 25，**硬下限 12**（低過就會被拉返上去）。
 
@@ -179,10 +183,23 @@ Exit code：`0` 完全成功 · `75` 部分／暫時性失敗（下一次排程�
 | `skipped_already_analysed` | 場數已到齊而且評齊（重跑安全，零請求） |
 | `skipped_already_archived` | folder 已經喺 `Archive/` |
 | `pending_extraction` | 一場都抽唔到（網站拒絕）—— 下一輪／下次排程再試 |
-| `rescored` | 早更發現實質變動，已重新評分 |
+| `rescored` | 早更發現實質變動，已重新評分（`rebuilt: true` = 連出賽名單一齊重建）|
 | `unchanged` | 早更覆核冇實質變動，**故意唔改** |
 | `refresh_deferred` | 早更攞唔到最新頁面 —— 分析保持原狀（唔會用半份資料改分） |
 | `failed` | 非預期錯誤，log 有 exception |
+
+⚠️ **退出馬唔可以只靠重評分。** 早更有兩條路，睇變動係邊一層：
+
+| 變動 | 做法 |
+|---|---|
+| 退出馬／後備入替／換檔／換騎師／馬匹數（`FIELD_LEVEL_CHANGES`）| 由 cache 頁**重寫 Racecard** → Facts → Logic → 評分（`rebuild_meeting_from_cache()`，全程 cache-only 零請求）|
+| 只係場地狀況變 | `au_auto_orchestrator --going` 純重評分（快好多）|
+
+點解：退出馬係喺 `write_meeting` 寫 `status:Scratched` 嗰層剔走嘅，`au_auto_orchestrator`
+由現有 `Logic.json` 重算，而 Logic 係通宵嘅 Racecard 砌出嚟 —— 一隻通宵之後才退出嘅馬
+仍然喺 Logic 裡面，於是照樣入榜。2026-08-05 實測：Canterbury 7 場偵測到 24 隻退出馬
+全部照樣排名，R2 #6 Blenheim Girl 退出咗仲排第二（Kelvin 睇 dashboard 發現）。修好後
+6 個場次共 97 隻退出馬，dashboard 上 0 隻殘留。有回歸測試。
 
 ⚠️ **「做完」唔可以只睇 `Meeting_Summary.md` 存在。** 2026-08-05 實測：Hobart 抽到
 第 1 場就俾個站拒絕，`Meeting_Summary.md` 已經寫落去，於是下一次 run 當佢做完，
@@ -287,6 +304,16 @@ python3 .agents/skills/au_racing/sb_browser_fetch.py 2026-08-06
   於是舊 signature 話「冇變」，把早更成果扣咗喺本機。修法兩重：signature 加入
   逐場 `top_picks` / grade / confidence 指紋，加上「今次 run 真係改過嘢就一定發佈」。
 - **唔怕資料唔齊**：冇賽果／賽果唔齊一律唔歸檔，各自記狀態。
+  ⚠️ 「要唔要重抓賽果頁」睇**覆蓋率**，唔係睇「賽果檔存唔存在」。半份賽果檔
+  （晚更跑嗰陣最後一場仲未跑完）會令舊寫法之後每次都跳過重抓、由同一份舊 cache
+  重建同一份半份賽果 —— 場次永遠 `partial_results`、永遠唔會歸檔。有回歸測試。
+- **起始頁有後備**：真 Chrome 要落一版同源頁先可以 `fetch()`，落唔到就一版都攞唔到。
+  所以收兩個候選（覆盤日索引頁、今日索引頁）逐個試。`/` 根目錄唔可以做後備 ——
+  CloudFront 擋 root。
+- **個人頁會分晚累積**：一個場次大約需要 **91** 個騎練個人頁，而
+  `sb_people_stats.refresh` 每次只轉換 40 個入 people cache，所以
+  `WC_AU_PEOPLE_PER_MEETING` 預設 40（對得住嗰個轉換率）。頭幾晚 `(LY:)` 會部分
+  填充，之後靠 TTL cache 收斂。想一晚填滿就調高呢個 env。
 - **單場失敗唔會拖死其他場**：逐個場次 try/except，狀態逐個記。
 - **retry**：live snapshot 3 次、發佈 3 次（遞增退避）、發佈後核實 poll 6 次
   （production alias 有大約一分鐘 edge cache 延遲，一次讀到舊 snapshot 唔算失敗）。

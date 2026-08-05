@@ -25,6 +25,14 @@
     <string>evening</string>
   </array>
 
+  <!-- 晚更每個場次重抽騎練統計（Kelvin 2026-08-05）。TTL 0 = 唔跳過已有 entry。
+       早更唔設，維持 21 日 cache（10:00 開工、最早一場約 11:44，窗口唔夠）。 -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>WC_SB_PEOPLE_TTL_DAYS</key>
+    <string>0</string>
+  </dict>
+
   <key>WorkingDirectory</key>
   <string>__PROJECT_ROOT__</string>
 
