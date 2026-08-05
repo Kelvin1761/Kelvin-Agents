@@ -16,7 +16,12 @@ FEATURE_LABELS = {
     "form_score": "近績分",
     "trial_score": "試閘分",
     "sectional_score": "段速分",
-    "pace_map_score": "形勢分",
+    # 2026-08-05 改名：`pace_map_score` 量嘅**純粹係檔位統計**（例：「檔位 3
+    # （內檔）據 Canterbury 1550m 統計勝率 18.8%（基準 16.7%）」），完全冇「形勢／
+    # 走位」內容 —— 2026-07-11 已經把借用嘅 track_score 歸還「場地適性」，令佢變成
+    # 純檔位。叫「形勢分」而維度又叫「檔位形勢」，讀者會以為係兩個訊號、或者以為
+    # 檔位被計兩次（Kelvin 就係咁問）。一個訊號一個名。
+    "pace_map_score": "檔位分",
     "jockey_score": "騎師分",
     "trainer_score": "練馬師分",
     "jockey_horse_fit_score": "人馬配搭分",
@@ -703,7 +708,8 @@ def _render_horse_section(horse_num, horse, auto):
         score = float(auto.get("matrix_scores", {}).get(key, 60))
         reason_bundle = auto.get("matrix_reasoning", {}).get(key, {})
         lines.append("")
-        lines.append(f"##### {label}：{score:.1f} 分　{_band_label(score)}")
+        lines.append(f"##### {label}：{score:.1f} 分　{_band_label(score)}"
+                     + ("　（參考·不入排名）" if key in _zero_weight_dimensions() else ""))
         comp = _matrix_composition_line(key, auto)
         if comp:
             lines.append(f"  - **評分構成：** {comp}")
@@ -1431,22 +1437,42 @@ def _seven_d_matrix_digest_lines(auto: dict) -> list[str]:
     if not reasoning:
         return []
     out = ["**逐維一覽：**", ""]
+    zero_dims = _zero_weight_dimensions()
+    leaf_owner = _ranking_leaf_owner()
     for key, label in MATRIX_LABELS.items():
         rb = reasoning.get(key)
         if not isinstance(rb, dict):
             continue
         score = _as_float(mscores.get(key, rb.get("score", 60)), 60)
-        out.append(f"**{label}：{score:.1f} 分　{_band_label(score)}**")
+        dim_tag = "　（參考·不入排名）" if key in zero_dims else ""
+        out.append(f"**{label}：{score:.1f} 分　{_band_label(score)}**{dim_tag}")
         comps = rb.get("components") or []
         if comps:
             for c in comps:
                 note = _clean_subscore_note(c.get("note", ""))
                 cl = c.get("label", "")
                 cv = _as_float(c.get("score", 60), 60)
+                # 同一個 leaf 唔印兩次 —— 只喺佢真正入排名嗰個維度下面出。
+                leaf = c.get("key") or c.get("name")
+                if leaf and key in zero_dims and leaf_owner.get(leaf, key) != key:
+                    continue
                 # 權重 = 0 嘅 component 要標明，唔好同真·計分項排到一模一樣。
                 # 「級數分 60、負磅分 60」排喺 Rating 分隔籬，讀者會以為成個維度
                 # 都係死 60 分噪音，其實嗰兩項根本冇入分。
-                tag = "" if c.get("in_ranking", True) else "（參考·不入排名）"
+                in_rank = c.get("in_ranking", True)
+                # ⚠️ 已經完全退出矩陣嘅葉唔喺「逐維一覽」出現。呢一段係
+                # dashboard 嘅資料來源（`parser_au.py` 逐行 parse 佢），所以喺
+                # 呢度剷走就等於 dashboard 唔會再顯示。
+                # 而家屬於呢類：段速分（2026-08-05 退出，AUC 0.525）、
+                # 負磅分（2026-08-01 退出，AUC 0.467）。
+                # 呢一段嘅契約係「解釋個分點嚟」—— 一個唔計分嘅數字放喺度只會
+                # 令人以為佢有影響。深層拆解仍然保留佢哋做參考。
+                leaf_key = c.get("key") or c.get("name")
+                if leaf_key and leaf_key not in _MATRIX_LEAVES:
+                    continue
+                if not in_rank and abs(cv - 60.0) < 0.05:
+                    continue
+                tag = "" if in_rank else "（參考·不入排名）"
                 out.append(f"- {cl} {cv:.0f}{tag}" + (f" ← {note}" if note else ""))
         else:
             # 單 leaf 維度（如場地適性）— 用判讀短句
@@ -1455,6 +1481,37 @@ def _seven_d_matrix_digest_lines(auto: dict) -> list[str]:
                 out.append(f"- {txt}")
         out.append("")
     return out
+
+
+#: 現時仍然喺矩陣公式入面嘅所有葉。退出咗嘅葉唔應該喺「逐維一覽」出現。
+_MATRIX_LEAVES = {leaf for comps in MATRIX_FORMULAS.values() for leaf, _w in comps}
+
+
+def _zero_weight_dimensions() -> set:
+    """MATRIX_WEIGHTS 係 0 嘅維度 —— 佢哋唔入排名，報告一定要講明。
+
+    ⚠️ 2026-08-05：`form_line` 權重係 0.0000，但佢照樣以「賽績線：60.2 分 ➖ 中性」
+    嘅樣出現，而佢入面有 `form_score`（0.22）—— 於是**近績分同一個數字喺同一匹馬
+    嘅拆解出現兩次**（一次喺「狀態與穩定性」，一次喺「賽績線」），讀者會以為
+    近績被計咗兩次。Kelvin 就係咁發現嘅。
+    """
+    try:
+        from scoring import MATRIX_WEIGHTS
+    except Exception:  # noqa: BLE001 — 攞唔到權重就當全部入排名，唔好靜靜咁隱藏
+        return set()
+    return {k for k, w in MATRIX_WEIGHTS.items() if not w}
+
+
+def _ranking_leaf_owner() -> dict:
+    """leaf → 第一個**有權重**而且包住佢嘅維度。用嚟避免同一個 leaf 印兩次。"""
+    zero = _zero_weight_dimensions()
+    owner = {}
+    for dim, comps in MATRIX_FORMULAS.items():
+        if dim in zero:
+            continue
+        for leaf, _w in comps:
+            owner.setdefault(leaf, dim)
+    return owner
 
 
 def _data_readout_lines(auto: dict) -> list[str]:

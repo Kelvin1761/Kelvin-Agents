@@ -167,6 +167,16 @@ class TestDimensionScaleAndWeightsStayInLockstep:
         "form_line": 0.0,
     }
 
+    # 2026-08-01 嗰一刻嘅 gain 快照。⚠️ 一定要釘死，唔可以讀 `MATRIX_DISPLAY_GAINS`
+    # —— 呢個測試核對嘅係一個**歷史**不變量，而 gain 之後係會（合法地）再變嘅。
+    # 2026-08-05 段速分退出 pace_perf，raw SD 9.14 → 10.67，gain 跟住 1.0244 →
+    # 0.9909；讀 live 值就會令一個歷史不變量被一個正當改動弄斷。
+    NORMALISATION_GAINS = {
+        "stability": 0.975, "pace_perf": 1.0244, "race_shape": 4.1142,
+        "jockey_trainer": 2.4973, "class_weight": 2.7489, "track": 1.5193,
+        "form_line": 1.0232,
+    }
+
     def test_the_normalisation_itself_was_rank_neutral(self):
         """歷史不變量：**尺正規化嗰一步**冇偷偷 re-weight 過。
 
@@ -179,7 +189,7 @@ class TestDimensionScaleAndWeightsStayInLockstep:
         `test_current_weights_are_a_deliberate_refit_not_a_rescale`。
         """
         ratios = [
-            self.RANK_NEUTRAL_WEIGHTS[dim] * MATRIX_DISPLAY_GAINS[dim] / old
+            self.RANK_NEUTRAL_WEIGHTS[dim] * self.NORMALISATION_GAINS[dim] / old
             for dim, old in self.PRE_NORMALISATION_WEIGHTS.items()
             if old
         ]

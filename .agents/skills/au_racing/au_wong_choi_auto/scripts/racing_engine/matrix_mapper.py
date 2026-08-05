@@ -14,10 +14,29 @@ MATRIX_FORMULAS = {
     # 完全一致（702場 A/B 驗證 GGP/champ/box4 全部相同）。內部權重 sweep（p.85/.90/
     # 1.0、s.25）全部兩窗唔贏 → 呢個折算比例就係局部最優。
     # Rollback: 拆返 "sectional":(sec .805, trial .195) w=0.04535 + "pace_figure" w=0.14296。
+    # 2026-08-05 `sectional_score` 退出排名。實測（725 場，剔走中性 60）：
+    #   段速分場內 AUC **0.525** —— 接近噪音（0.500 = 冇資訊）
+    #   **即使有 L400 PI 數據都只有 0.532**（696 場 / 12,151 對）
+    # 即係佢弱唔係因為缺數據（21.0% 缺 PI），係個 leaf 本身冇判別力。所以
+    # 「補 PI 覆蓋率」幫唔到 —— 呢個同 [[au-pf-coverage-unlock-needs-refit]]
+    # 嗰次「覆蓋率升三倍但輸」係同一個道理。
+    #
+    # 孤立 A/B（713 場，移除 + 等價權重換算，**冇** re-fit，所以量到嘅係移除本身）：
+    #   全樣本  6 升 / 4 跌      dev  6 升 / 4 跌      holdout  7 升 / 1 跌
+    # holdout 107 場，1 場 = 0.93pp，所以全部差異都係 1–2 場級數 → **打和**，
+    # 帶輕微正向。移除嘅實際收益係簡化：少一個 leaf，同時報告唔再出
+    # 「缺 L400 PI 數據，段速分維持中性」嗰句噪音（21% 嘅馬會見到）。
+    #
+    # ⚠️ 唔可以引用「移除 + re-fit = 10 升 / 1 跌」做理由 —— 對照組（**保留**段速分、
+    # 同一個 seed 重 fit）都係 10 升 / 1 跌，幅度相近。即係嗰個大收益屬於 re-fit，
+    # 唔屬於移除。re-fit 係獨立議題，要自己過 walk-forward。
+    #
+    # Rollback: pace_figure .759174 / sectional .193864 / trial .046962，
+    #           MATRIX_DISPLAY_GAINS["pace_perf"] 1.0244，
+    #           MATRIX_WEIGHTS 回舊值（見下面 scoring.py 註）。
     "pace_perf": (
-        ("pace_figure_score", 0.759174),
-        ("sectional_score", 0.193864),
-        ("trial_score", 0.046962),
+        ("pace_figure_score", 0.941744),
+        ("trial_score", 0.058256),
     ),
     # 2026-07-11: 檔位形勢 淨化為純檔位/走位（pace_map 100%）。原本借用嘅 30%
     # track_score 已全數歸還「場地適性」維度 —— 消除跨維度重複，track_score 而家
@@ -113,7 +132,9 @@ LEGACY_MATRIX_ALIASES = {
 MATRIX_DISPLAY_TARGET_SD = 11.0
 MATRIX_DISPLAY_GAINS = {
     "stability": 0.9750,
-    "pace_perf": 1.0244,
+    # 2026-08-05：段速分退出之後 pace_perf raw SD 由 9.14 升到 10.67，
+    # 所以 gain 要跟住降（TARGET_SD / 實測SD）。gain 同權重一定要一齊改。
+    "pace_perf": 0.9909,
     "race_shape": 4.1142,
     "jockey_trainer": 2.4973,
     "class_weight": 2.7489,

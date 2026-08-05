@@ -1357,7 +1357,23 @@ class RacingEngine:
     # A/B（713 場，dev 606 / 未碰過 holdout 107，spread 140）：
     #   練馬師：dev Gold +1、champ +1.16、any2 +0.33、compet +0.83；holdout Gold −1、good_pos +0.94
     #   兩邊　：dev 大致平；holdout good_pos +0.94、champ +0.93、winT3 +1.87、mrr +0.01
-    _PLACE_RATE_PRIOR = {"jockey": 0.3564, "trainer": 0.3946}
+    # 2026-08-05 練馬師 prior 修正 0.3946 → 0.3673。
+    # prior 嘅定義係「令分數分佈中心落喺 60」，所以要用**逐 runner 平均上名率**，
+    # 唔係池化 Σ上名/Σ場次（大馬房出賽量會主導池化值）。713 場、≥10 場門檻實測：
+    #                 逐 runner 平均   池化      舊 prior   分數平均   >60 比例
+    #   練馬師           36.73%      38.84%     39.46%      56.2      40.1%   ← 錯
+    #   騎師             35.62%      36.28%     35.64%      60.0      49.2%   ← 本來就對
+    # 騎師 prior 一直等於逐 runner 平均，校準完美；練馬師嗰個高咗 2.73pp
+    # （≈3.8 分），於是每個練馬師都被判低於中性，Chris Waller（2,736 場、
+    # 39.14% 上名）都只得 59.6。
+    #
+    # ⚠️ 呢個唔止係「顯示偏低」。改 prior 對**有數據**嘅馬係一個場內常數平移
+    # （唔影響排名），但**冇數據**嘅馬釘死喺中性 60 —— 舊 prior 之下佢哋等於
+    # 排喺「平均練馬師」（56.2）之上，即係「唔知」贏「普通」。呢個正正係
+    # [[au-neutral-point-is-per-leaf]] 講嘅病。
+    #
+    # Rollback: {"jockey": 0.3564, "trainer": 0.3946}
+    _PLACE_RATE_PRIOR = {"jockey": 0.3564, "trainer": 0.3673}
     _PLACE_RATE_K = 20.0
     _PLACE_RATE_SPREAD = 140.0
     # 薄樣本下限：沿用 `_trainer_empirical_base` 已經 A/B 調校過嘅 10 場門檻
@@ -1386,19 +1402,100 @@ class RacingEngine:
             return float(parse_float(ly.get("places")) or 0.0), runs, "ly"
         return None
 
+    # ── 2026-08-05 指標更換（`WC_AU_PEOPLE_METRIC` 控制，預設 `measured`）──
+    # 713 場、場內 AUC 實測邊個訊號真正預測上名（0.500 = 冇資訊）：
+    #   騎師 勝率     0.5943  ← 最強
+    #   騎師 上名率   0.5885     （舊做法）
+    #   騎師 總冠軍   0.5501
+    #   騎師 出賽量   0.5011     （純噪音）
+    #   練馬師 總冠軍 0.5740  ← 最強
+    #   練馬師 上名率 0.5699     （舊做法）
+    #   練馬師 出賽量 0.5678
+    #   練馬師 勝率   0.5598
+    # 所以騎師改用**勝率**，練馬師改用**總冠軍**（log1p 之後 z-score）。
+    # 總冠軍係 volume × quality 嘅合成，所以大馬房（Chris Waller）唔會再被
+    # 「每匹馬上名率」攤薄 —— 呢個亦係 Kelvin 講「Waller 應該最高分」嘅點。
+    #
+    # ⚠️ 兩個新指標嘅 spread 都特意校到令**語料庫 dataset** 嘅 leaf SD 等於舊值
+    # （騎師 9.04、練馬師 8.48），咁 A/B 量到嘅係**訊號**而唔係尺度改變。
+    # 第一次校準用咗 Logic 存檔嘅 SD（6.70/5.57），但 dataset 係用現行引擎重算
+    # 嘅，兩者唔同 —— 結果候選 SD 細咗三成，等於偷偷減咗 jockey_trainer 嘅影響力。
+    # `WC_AU_PEOPLE_METRIC=place` 可以還原舊行為做對照。
+    _JOCKEY_WIN_PRIOR = 0.1271        # 713 場逐 runner 平均勝率
+    _JOCKEY_WIN_SPREAD = 247.0        # 令 dataset SD ≈ 9.04（同舊指標一致）
+    _TRAINER_LOGWINS_MEAN = 3.887     # log1p(去年冠軍) 平均
+    _TRAINER_LOGWINS_SD = 1.365
+    _TRAINER_LOGWINS_SPREAD = 6.26    # 每單位 log1p → 分；令 dataset SD ≈ 8.48
+    # `WC_AU_PEOPLE_METRIC=trainer_win`：練馬師改用**勝率**（同騎師一致）。
+    # 713 場逐 runner 平均勝率 13.14%、SD 4.15pp；spread 校到令 dataset SD ≈ 8.48。
+    _TRAINER_WIN_PRIOR = 0.1314
+    _TRAINER_WIN_SPREAD = 204.3
+
+    def _people_metric_mode(self):
+        import os
+        return os.environ.get("WC_AU_PEOPLE_METRIC", "measured")
+
     def _place_rate_score(self, kind: str):
-        """統一上名率 → 60-中性分。回傳 (score, note) 或 None。"""
+        """騎練基礎分 → 60-中性。回傳 (score, evidence, source) 或 None。"""
         found = self._unified_place_rate(kind)
         if not found:
             return None
         places, runs, source = found
+        ly = self.data.get(f"{kind}_ly") or {}
+        wins = parse_float(ly.get("wins"))
+        mode = self._people_metric_mode()
+
+        # 預設（`measured`）：**只有騎師**換用勝率。練馬師留返上名率 ——
+        # 每個以冠軍數為基礎嘅練馬師變體都用 gold 換 champ，而 gold 係 Kelvin
+        # 嘅追逐目標，所以唔可以靜靜咁換。`WC_AU_PEOPLE_METRIC=wins` 可以開
+        # 練馬師嘅「上名率 + log 冠軍各半」變體（實測見下面註）。
+        if mode == "trainer_win" and kind == "trainer" and wins is not None:
+            prior = self._TRAINER_WIN_PRIOR
+            shrunk = (wins + self._PLACE_RATE_K * prior) / (runs + self._PLACE_RATE_K)
+            score = clip_score(60.0 + (shrunk - prior) * self._TRAINER_WIN_SPREAD)
+            return score, (f"去年官方 {int(runs)} 場、{int(wins)} 冠"
+                           f"（勝率 {wins / runs * 100:.0f}%，收縮後 "
+                           f"{shrunk * 100:.0f}%，全國基準 {prior * 100:.0f}%）"), source
+
+        if mode not in ("place",) and wins is not None and (
+                kind == "jockey" or mode == "wins"):
+            if kind == "jockey":
+                prior = self._JOCKEY_WIN_PRIOR
+                shrunk = (wins + self._PLACE_RATE_K * prior) / (runs + self._PLACE_RATE_K)
+                score = clip_score(60.0 + (shrunk - prior) * self._JOCKEY_WIN_SPREAD)
+                return score, (f"去年官方 {int(runs)} 場、{int(wins)} 冠"
+                               f"（勝率 {wins / runs * 100:.0f}%，收縮後 "
+                               f"{shrunk * 100:.0f}%，全國基準 {prior * 100:.0f}%）"), source
+            # 練馬師：上名率（效率）同 log 總冠軍（規模×質素）**各半混合**。
+            # ⚠️ 唔可以純用總冠軍。實測：一個 60 場、40% 上名率、10 冠嘅細馬房，
+            # 純總冠軍之下由高於中性跌到 50.7 —— 因為平均 runner 嘅馬房去年約
+            # 48 冠，所以純冠軍數係系統性偏向大馬房。混合保住細馬房嘅效率訊號，
+            # 同時令 Chris Waller 唔再被「每匹馬上名率」攤薄。
+            # 先例：讓磅分 fallback 亦係「級數 0.5787 + 負磅 0.5769 → 混合 0.6078」，
+            # 兩個互補訊號混合贏過任何一邊單獨用。
+            import math
+            prior = self._PLACE_RATE_PRIOR[kind]
+            shrunk = (places + self._PLACE_RATE_K * prior) / (runs + self._PLACE_RATE_K)
+            rate_part = 60.0 + (shrunk - prior) * self._PLACE_RATE_SPREAD
+            lw = math.log1p(float(wins))
+            wins_part = 60.0 + (lw - self._TRAINER_LOGWINS_MEAN) * self._TRAINER_LOGWINS_SPREAD
+            score = clip_score(0.5 * rate_part + 0.5 * wins_part)
+            return score, (f"去年官方 {int(runs)} 場、{int(wins)} 冠 {int(places)} 上名"
+                           f"（上名率 {places / runs * 100:.0f}%，收縮後 {shrunk * 100:.0f}%；"
+                           f"冠軍數全國第 {self._logwins_pct(lw):.0f} 百分位）"), source
+
         prior = self._PLACE_RATE_PRIOR[kind]
         shrunk = (places + self._PLACE_RATE_K * prior) / (runs + self._PLACE_RATE_K)
         score = clip_score(60.0 + (shrunk - prior) * self._PLACE_RATE_SPREAD)
-        label = "去年官方"
-        return score, (f"{label} {int(runs)} 場、上名 {int(places)} 次"
+        return score, (f"去年官方 {int(runs)} 場、上名 {int(places)} 次"
                        f"（原始 {places / runs * 100:.0f}%，收縮後 {shrunk * 100:.0f}%，"
                        f"全國基準 {prior * 100:.0f}%）"), source
+
+    def _logwins_pct(self, lw: float) -> float:
+        """log1p(冠軍) → 大約百分位（用常態近似，純粹為咗個說明好讀）。"""
+        import math
+        z = (lw - self._TRAINER_LOGWINS_MEAN) / (self._TRAINER_LOGWINS_SD or 1.0)
+        return 100.0 * 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))
 
     def _jockey_ly_score(self):
         ly = self.data.get("jockey_ly") or {}
@@ -1514,7 +1611,12 @@ class RacingEngine:
             # Tier 仍然值得顯示（分析師分級），所以降做 note。
             if unified is None:
                 detail["base_label"] = tier_text
-            notes.append(tier_note)
+                notes.append(tier_note)
+            # ⚠️ 2026-08-05：統一上名率做 base 嗰陣**唔再**寫 Tier 標籤入 note。
+            # 舊行為令 Chris Waller 個 one-liner 讀成「Tier 1 精英馬房，練馬師分
+            # 59.6」——一個唔再驅動分數嘅遺留標籤，配一個同佢矛盾嘅數字。
+            # Kelvin 明確要求剷走，改出真實統計行（見下面 note 組成）。
+            # tier 仍然留喺 `_trainer_rating_profile`，將來想用就有，只係唔顯示。
         else:
             # EMPIRICAL FILL 2026-07-25: the curated ratings CSV lists only ~57
             # trainers, so ~39% of runners previously fell through to a flat
@@ -1563,8 +1665,15 @@ class RacingEngine:
         elif track_stats.get("runs", 0) >= 8 and track_stats.get("place_rate", 0.0) >= 0.32:
             add(0.0, "今場場館有基本對位", track_ev)
         detail["final"] = round(clip_score(score), 2)
-        note = "；".join(notes) if notes else f"{trainer or '練馬師資料'} 反映馬房部署基礎"
-        return score, f"{note}，練馬師分 {clip_score(score):.1f}。", "trainer_name+trainer_track_stats"
+        # 說明以**實際統計**為主（同騎師分同一個格式），tier 標籤唔再出現。
+        # 「反映馬房部署基礎」只留返真正冇任何數據嗰批 —— 嗰句本身冇資訊，
+        # 但至少冇講錯數字點嚟。
+        head = f"{trainer} {base_evidence}" if (trainer and base_evidence) else \
+            (base_evidence or "；".join(notes) or
+             f"{trainer or '練馬師資料'} 未有官方記錄")
+        if base_evidence and notes:
+            head += "；" + "；".join(notes)
+        return score, f"{head}，練馬師分 {clip_score(score):.1f}。", "trainer_name+trainer_track_stats"
 
     # Field-wide AU last-year place rate (~30% of runners place). Trainers are
     # scored relative to this norm; SHRINK_K keeps thin samples near neutral.
@@ -2253,7 +2362,7 @@ class RacingEngine:
             "trial_score": "試閘分",
             "sectional_score": "段速分",
             "pace_figure_score": "段速實速分",
-            "pace_map_score": "形勢分",
+            "pace_map_score": "檔位分",
             "jockey_score": "騎師分",
             "trainer_score": "練馬師分",
             "jockey_horse_fit_score": "人馬配搭分",

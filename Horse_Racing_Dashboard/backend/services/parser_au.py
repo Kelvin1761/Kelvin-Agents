@@ -26,6 +26,7 @@ def _parse_data_readout(block: str) -> Optional[list]:
     if not section_m:
         return None
     rows = []
+    dim_row = None          # 最近一個維度標題行，用嚟累加 sub-score 摘要
     for raw in section_m.group(1).splitlines():
         line = raw.strip()
         if not line or line.startswith('**逐維一覽'):
@@ -56,15 +57,28 @@ def _parse_data_readout(block: str) -> Optional[list]:
         # per-dimension header: '**<維度>：<score> 分　<band> <word>**'
         m = re.match(r'^\*\*(.+?)[：:]\s*([\d.]+)\s*分\s*([✅➖⚠️❌]+)\s*(.*)\*\*$', line)
         if m:
+            # ⚠️ `reason` 一開始係空，跟住由下面嘅 sub-score 填返 —— 唔填嘅話
+            # dashboard 只會見到「級數與負重 54.4 分 · 偏弱」而下面乜都冇，
+            # 用戶睇唔到個分點嚟（Kelvin 2026-08-05 提出）。
             rows.append({'band': m.group(3).strip(), 'label': m.group(1).strip(),
-                         'value': f"{m.group(2)} 分", 'trend': m.group(4).strip(), 'reason': ''})
+                         'value': f"{m.group(2)} 分", 'trend': m.group(4).strip(),
+                         'reason': ''})
+            dim_row = rows[-1]
             continue
 
         # per-dimension sub-score: '- <sub-label> <score> ← <note>'
         m = re.match(r'^-\s*(.+?)\s+([\d.]+)\s*(?:←\s*(.*))?$', line)
         if m:
-            rows.append({'band': '·', 'label': m.group(1).strip(),
-                         'value': m.group(2), 'trend': '', 'reason': (m.group(3) or '').strip()})
+            label, value = m.group(1).strip(), m.group(2)
+            note = (m.group(3) or '').strip()
+            rows.append({'band': '·', 'label': label, 'value': value,
+                         'trend': '', 'reason': note})
+            # 同時把「<sub-label> <score>：<note 頭一句>」累加落所屬維度標題，
+            # 令維度層面自己就答得到「點解係呢個分」。
+            if dim_row is not None:
+                head = note.split('；')[0].strip() if note else ''
+                bit = f"{label} {value}" + (f"：{head}" if head else "")
+                dim_row['reason'] = (dim_row['reason'] + '；' + bit).lstrip('；')
             continue
 
     return rows or None

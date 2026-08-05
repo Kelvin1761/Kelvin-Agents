@@ -95,7 +95,13 @@ REPORT_ONLY_FEATURE_KEYS = (
 # gold −3.30 / champ −5.49，又一次重現教科書 overfit。
 # walkforward 5/5 窗口全勝；全樣本 604 場 11/11 指標改善（winT3 +3.97、
 # any2 +2.81、t3prec +1.55、gold +1.32）。
-MATRIX_WEIGHTS = {"stability":0.38232,"pace_perf":0.14407,"race_shape":0.11502,"jockey_trainer":0.19149,"class_weight":0.07337,"track":0.09373,"form_line":0.000}
+# 2026-08-05：段速分退出 pace_perf，pace_perf gain 1.0244 → 0.9909，所以權重要
+# 除返個 gain 比例，令排名影響力保持不變（等價換算，唔係偷偷 re-weight）。
+# ⚠️ 呢組係「等價權重」而唔係重 fit 出嚟嘅最優 —— 重 fit 係獨立議題（對照組
+# 顯示 re-fit 本身就贏 10/1，同移除段速分無關），要自己過 walk-forward。
+# Rollback: {"stability":0.38232,"pace_perf":0.14407,"race_shape":0.11502,
+#            "jockey_trainer":0.19149,"class_weight":0.07337,"track":0.09373,"form_line":0.000}
+MATRIX_WEIGHTS = {"stability":0.37398,"pace_perf":0.14569,"race_shape":0.11280,"jockey_trainer":0.20414,"class_weight":0.07170,"track":0.09169,"form_line":0.000}
 
 # ── Wet-form 7D feature (gated to Soft/Heavy races) ──
 # A horse's career wet-going place record IS predictive of box-trifecta on wet
