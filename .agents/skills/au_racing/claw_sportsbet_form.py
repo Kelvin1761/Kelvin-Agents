@@ -47,17 +47,26 @@ DEFAULT_RETRIES = 3
 CACHE_DIR = Path(os.environ.get("WC_SB_CACHE", "")) if os.environ.get("WC_SB_CACHE") \
     else Path(__file__).resolve().parent / ".sportsbet_cache"
 
+# ⚠️ `WC_SB_CACHE_ONLY=1` = **呢個 process 一個 sportsbetform 請求都唔准出**。
+# 2026-08-05 實測：curl_cffi 同 headless Chrome 都俾個站 403，只有 headed 真 Chrome
+# 通（見 `sb_browser_fetch.py` 個表）。所以現役分工係「攞頁面行真瀏覽器、parse 同
+# 寫檔行 Python」。冇咗呢個總開關，任何一段 Python（例如 write_meeting 之後嗰個
+# `sb_people_stats.refresh`）都會靜靜咁去敲一次已經明講唔得嘅門 —— 唔止攞唔到，
+# 仲會延長封鎖。開咗之後 cache miss 直接回 None，由 caller 決定點做。
+CACHE_ONLY = os.environ.get("WC_SB_CACHE_ONLY") == "1"
+
 
 # ── 抓取 ────────────────────────────────────────────────────────────────────
 class SportsbetFormFetcher:
     def __init__(self, delay=DEFAULT_DELAY, retries=DEFAULT_RETRIES, cache_dir=CACHE_DIR,
-                 use_cache=True, verbose=True):
+                 use_cache=True, verbose=True, cache_only=None):
         self.session = requests.Session(impersonate="chrome120")
         self.delay = delay
         self.retries = retries
         self.cache_dir = Path(cache_dir)
         self.use_cache = use_cache
         self.verbose = verbose
+        self.cache_only = CACHE_ONLY if cache_only is None else cache_only
         self._last_request = 0.0
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -71,6 +80,11 @@ class SportsbetFormFetcher:
             if self.verbose:
                 print(f"   （cache）{url}")
             return cp.read_text(encoding="utf-8")
+        if self.cache_only:
+            # 唔出網。攞頁面係真瀏覽器嘅工作（`sb_browser_fetch.py`）。
+            if self.verbose:
+                print(f"   ⏭️ cache-only，唔出網：{url}")
+            return None
         # ⚠️ 重試只係為咗 rate limit（見上面第 2 點：連續請求之後一個啱啱通到嘅
         # 頁面會突然 403，退避之後就通）。但一個**從來未通過**嘅 URL 回 403，
         # 嗰個係拒絕，唔係暫時性 —— 重試落去只係喺人哋明講唔畀嘅時候再敲三次門。
@@ -967,7 +981,11 @@ def main():
             ppl = [(k, pid, "") for _, pr, _ in out
                    for k, pid in (pr["meta"].get("people") or [])]
             if ppl:
-                sb_people_stats.refresh(ppl, fetcher=f)
+                # `cache_only` 一定要傳落去 —— `refresh()` 個 docstring 講得好白：
+                # live 抽取階段 curl_cffi 會 403，於是呢個 refresh 靜靜咁失敗，
+                # `(LY:)` 全部變 `-`，jockey/trainer 覆蓋率由 99%/95% 跌到 63%/51%。
+                # 正路係抽取階段行瀏覽器把個人頁落 cache，呢度 cache-only 讀返。
+                sb_people_stats.refresh(ppl, fetcher=f, cache_only=CACHE_ONLY)
         except Exception as exc:  # noqa: BLE001 — 統計攞唔到唔應該炸咗抽取
             print(f"   ⚠️ 騎練統計略過（{type(exc).__name__}: {exc}）")
         return 0

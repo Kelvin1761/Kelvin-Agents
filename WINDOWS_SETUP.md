@@ -50,6 +50,15 @@ AU 評分要讀兩個 CSV（`AU_Historical_Raw_Race_Results.csv` 851 KB、
    G:\My Drive\Antigravity Shared\Antigravity
    ```
    （寫入 `.wongchoi_data_root`，唔會入 git，所以兩部機各自設。）
+5. **唔好**設 `WONGCHOI_AU_DATA_ROOT` / `.wongchoi_au_data_root`。呢個 AU-only
+   覆寫係 Mac 專用（Mac 嘅 launchd 冇 CloudStorage 權限，所以 AU 樹搬落本機硬碟）。
+   Windows 唔設就自動跌返 Drive 路徑，行為同以前一樣。
+
+⚠️ 由 2026-08-05 起，Mac 嘅 AU source of truth 係本機硬碟，Drive 邊靠 Mac 每次跑完之後
+鏡像返（launchd 底下都做得，實測寫 CloudStorage 係容許嘅）。但個 step 係 best-effort，
+而且只鏡像「今次動過嘅場次」，所以 Windows 睇到嘅 `AU_Racing` 仍然**有機會落後**。做 AU
+分析／backtest 之前，睇一睇最新場次夾嘅日期夠唔夠新；Mac 嗰邊嘅 run log 有 `[mirror]`
+一行講咗抄咗幾多檔。
 
 隨時可以自己驗：
 

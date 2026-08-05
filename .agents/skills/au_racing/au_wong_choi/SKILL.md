@@ -61,11 +61,32 @@ Resolver 認得 `08-01` / `8-1` / `2026-08-01` / `20260801`，馬場名做大小
 ⚠️ 覆盤要賽果。`--results-url` 已經冇用（唯一來源係 Sportsbet cache），賽果由
 Sportsbet 攞 —— 見 `claw_sportsbet_form.py`。
 
-## ⚠️ 抽取一定要行瀏覽器（curl_cffi 而家 403）
+## 排程自動化（2026-08-05 起）
 
-`curl_cffi` 對 sportsbetform **全面 403**，包括曾經成功抓過嘅賽事頁。所以
-**唔可以**直接靠 `claw_sportsbet_form.py` 出網 —— 佢會靜靜咁攞唔到，然後 Facts
-報「數據不足」。正確分工係：
+日常運作已經自動化，唔使人手逐個場次做：
+
+```bash
+.agents/skills/au_racing/au_daily_auto/install_macos_launchd.sh --status
+python3 .agents/skills/au_racing/au_daily_auto/au_daily_schedule.py --mode evening
+python3 .agents/skills/au_racing/au_daily_auto/au_daily_schedule.py --mode morning
+```
+
+兩個 launchd job（22:00 覆盤+歸檔+分析下一賽日+發佈、10:00 場地／退出馬覆核）。
+詳情同陷阱見 `au_daily_auto/README.md`。⚠️ 歸檔準則係「**而家喺 live dashboard 上**」
+—— `AU_Racing` 根目錄同時係 backtest 語料庫，「日期 <= 今日就歸檔」會刪走語料庫。
+
+## ⚠️ 抽取節奏（2026-08-05 實測修正）
+
+以前呢段寫「`curl_cffi` 對 sportsbetform **全面 403**，包括賽事頁」。**實測唔係咁**：
+
+| 路徑 | curl_cffi | Playwright headless | 真瀏覽器 |
+|---|---|---|---|
+| `/{YYYY-MM-DD}/` 索引頁 | 403（被 rate limit 之後） | 403 | ✅ |
+| `/{meetingId}/{raceId}/` 賽事頁 | ✅ 200（235KB） | — | ✅ |
+
+即係 **CloudFront 只擋 index/root**。所以：**發現行瀏覽器一次，抽取行 Python**。
+另外實測到嘅節奏現實：**一個冷卻窗大約只夠抽一個場次**（約 8 版），之後又 403；
+一支太密嘅探針（200 之後一秒再打）就足以觸發。所以：
 
     抓頁面 → 瀏覽器（每版 15–20 秒）
     parse／評分 → Python，全程 cache-only、零請求

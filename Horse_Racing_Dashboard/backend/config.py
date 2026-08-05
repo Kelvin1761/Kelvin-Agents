@@ -15,7 +15,12 @@ PROJECT_ROOT = Path(
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from wongchoi_paths import AU_RACING, HK_RACING, HORSE_RACE_ANALYSIS
+from wongchoi_paths import (
+    AU_RACING,
+    HK_RACING,
+    HORSE_RACE_ANALYSIS,
+    au_racing_is_relocated,
+)
 
 # Kept for code that needs project assets such as skills and ROI summaries.
 ANTIGRAVITY_ROOT = PROJECT_ROOT
@@ -24,6 +29,13 @@ ANTIGRAVITY_ROOT = PROJECT_ROOT
 ANALYSIS_ROOT = HORSE_RACE_ANALYSIS
 HKJC_ANALYSIS_ROOT = HK_RACING
 AU_ANALYSIS_ROOT = AU_RACING
+
+# AU can live outside HORSE_RACE_ANALYSIS (it moved to local disk so the launchd
+# pipeline is not blocked by CloudStorage TCC). Watching ANALYSIS_ROOT alone
+# would then silently stop noticing AU reports, so watchers take this list.
+WATCH_ROOTS = [ANALYSIS_ROOT]
+if au_racing_is_relocated():
+    WATCH_ROOTS.append(AU_ANALYSIS_ROOT)
 
 # Skills directories
 HKJC_SKILLS = ANTIGRAVITY_ROOT / ".agents" / "skills" / "hkjc_racing"

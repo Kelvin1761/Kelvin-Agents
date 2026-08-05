@@ -21,9 +21,12 @@ DASHBOARD_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = DASHBOARD_DIR.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-from wongchoi_paths import HORSE_RACE_ANALYSIS
+from wongchoi_paths import AU_RACING, HORSE_RACE_ANALYSIS, au_racing_is_relocated
 
 ANALYSIS_ROOT = HORSE_RACE_ANALYSIS
+# AU moved to local disk (CloudStorage is unreadable from launchd), so it is no
+# longer a child of HORSE_RACE_ANALYSIS and needs watching in its own right.
+WATCH_ROOTS = [ANALYSIS_ROOT] + ([AU_RACING] if au_racing_is_relocated() else [])
 GENERATE_SCRIPT = DASHBOARD_DIR / "build_test_dashboard.py"
 PID_FILE = DASHBOARD_DIR / "logs" / "auto_regenerate.pid"
 
@@ -117,15 +120,27 @@ def main():
     signal.signal(signal.SIGTERM, cleanup_pid)
     signal.signal(signal.SIGINT, cleanup_pid)
 
-    watch_path = str(ANALYSIS_ROOT)
-    logger.info(f"Watching: {watch_path}")
     logger.info("Will regenerate Open Dashboard.html when analysis files change")
 
     # Generate once on startup to ensure dashboard is current
     regenerate()
 
     observer = Observer()
-    observer.schedule(AnalysisFileHandler(), watch_path, recursive=True)
+    handler = AnalysisFileHandler()
+    watched = []
+    for root in WATCH_ROOTS:
+        try:
+            observer.schedule(handler, str(root), recursive=True)
+            watched.append(str(root))
+        except OSError as exc:
+            # An unmounted/unreadable Drive root must not stop us watching the
+            # local AU root, which is the one that actually changes daily.
+            logger.error(f"Cannot watch {root}: {exc}")
+    if not watched:
+        logger.error("No watchable analysis roots; exiting")
+        cleanup_pid()
+        return
+    logger.info(f"Watching: {', '.join(watched)}")
     observer.daemon = True
     observer.start()
 

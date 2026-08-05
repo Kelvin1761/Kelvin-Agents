@@ -69,6 +69,9 @@ Horse_Racing_Dashboard/.wrangler/tmp/
 Horse_Racing_Dashboard/.wrangler/
 Horse_Racing_Dashboard/.cloudflare_dist/
 Horse_Racing_Dashboard/logs/
+# AU 每日排程：run log 同 dashboard 合併中間檔，逐日生成，唔入版本控制
+.agents/skills/au_racing/au_daily_auto/logs/
+.agents/skills/au_racing/au_daily_auto/work/
 Horse_Racing_Dashboard/frontend/dist/
 Horse_Racing_Dashboard/Open Dashboard.html
 Horse_Racing_Dashboard/CURRENT_URL.txt
@@ -89,6 +92,11 @@ NBA_ML_Dataset/
 
 # Machine-specific data location for wongchoi_paths.py (set per machine)
 .wongchoi_data_root
+# AU-only override. On the Mac this points at local disk: a launchd-spawned
+# process has no CloudStorage access, so the AU tree cannot live on Drive.
+.wongchoi_au_data_root
+# Drive folder the AU reports are mirrored back into after each run.
+.wongchoi_au_mirror_root
 
 # stats rebuild backups
 **/comprehensive_stats/**/*.bak

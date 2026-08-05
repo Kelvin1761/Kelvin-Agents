@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.antigravity.au-wong-choi.evening</string>
+
+  <!-- 22:00 本機 wall clock。本機時區係 Australia/Sydney，所以等於悉尼 22:00，
+       而且 launchd 跟 wall clock，DST 轉換自動跟。runner 開工會核對時區，唔對
+       就喺 run log 大聲警告。
+       Mac 喺 22:00 睡著嘅話，launchd 會喺睡醒之後補跑一次（呢個係
+       StartCalendarInterval 嘅預設行為，唔使額外 key）。 -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>22</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>__SCRIPT_DIR__/run_au_daily_schedule.sh</string>
+    <string>evening</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__PROJECT_ROOT__</string>
+
+  <key>StandardOutPath</key>
+  <string>__SCRIPT_DIR__/logs/launchd.evening.stdout.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>__SCRIPT_DIR__/logs/launchd.evening.stderr.log</string>
+
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

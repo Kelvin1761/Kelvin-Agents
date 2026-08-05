@@ -16,7 +16,7 @@ from dataclasses import asdict
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[5]
 import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
-from wongchoi_paths import AU_RACING, HORSE_RACE_ANALYSIS
+from wongchoi_paths import AU_RACING
 sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "racing_engine"))
@@ -369,7 +369,10 @@ def run_review(base_dir: pathlib.Path, mode: str = "rendered") -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description="Review AU current live deterministic weighting baseline")
-    parser.add_argument("--base-dir", default=str(HORSE_RACE_ANALYSIS))
+    # `find_au_meetings` iterdir()s this looking for meeting folders, so it has to
+    # be the AU root itself — HORSE_RACE_ANALYSIS only contains AU_Racing/HK_Racing
+    # and matched zero meetings. AU_RACING is also the relocatable one now.
+    parser.add_argument("--base-dir", default=str(AU_RACING))
     parser.add_argument("--mode", choices=("rendered", "recomputed"), default="rendered")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()

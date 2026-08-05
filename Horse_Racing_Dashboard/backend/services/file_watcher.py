@@ -57,7 +57,9 @@ class FileWatcher:
     def __init__(self, on_change_callback):
         self.observer = Observer()
         self.handler = AnalysisFileHandler(on_change_callback)
-        self.watch_path = str(config.ANALYSIS_ROOT)
+        # More than one root once AU lives on local disk and HK stays on Drive.
+        self.watch_paths = [str(p) for p in config.WATCH_ROOTS]
+        self.watch_path = self.watch_paths[0]  # kept for the status payload shape
         self._running = False
         self.last_updated = time.time()
         self._original_callback = on_change_callback
@@ -75,16 +77,23 @@ class FileWatcher:
         # Re-wire handler to use our wrapper
         self.handler.on_change = self._on_change
         
+        scheduled = []
+        for path in self.watch_paths:
+            try:
+                self.observer.schedule(self.handler, path, recursive=True)
+                scheduled.append(path)
+            except Exception as e:
+                # One unreachable root (an unmounted Drive) must not cost us the
+                # others — the local AU root is the one that changes daily.
+                logger.error(f"Failed to watch {path}: {e}")
+        if not scheduled:
+            logger.error("File watcher started no roots; dashboard will not auto-refresh")
+            return
         try:
-            self.observer.schedule(
-                self.handler, 
-                self.watch_path, 
-                recursive=True
-            )
             self.observer.daemon = True
             self.observer.start()
             self._running = True
-            logger.info(f"File watcher started on {self.watch_path}")
+            logger.info(f"File watcher started on {', '.join(scheduled)}")
         except Exception as e:
             logger.error(f"Failed to start file watcher: {e}")
     
@@ -101,5 +110,6 @@ class FileWatcher:
         return {
             "watching": self._running,
             "watch_path": self.watch_path,
+            "watch_paths": self.watch_paths,
             "last_updated": self.last_updated,
         }

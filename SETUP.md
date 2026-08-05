@@ -146,6 +146,47 @@ Set-Content .wongchoi_data_root "G:\我的雲端硬碟\Antigravity Shared\Antigr
 
 驗證：`python3 wongchoi_paths.py` —— 應該見到每個資料夾 `(exists)`。
 
+### 2.2 AU 分析樹：本機硬碟（2026-08-05 搬遷）
+
+`AU_Racing` **唔再**住 Google Drive。launchd spawn 出嚟嘅 process 係另一個 TCC
+context，完全冇 CloudStorage 權限 —— `AU_RACING.iterdir()` 直接 raise
+`PermissionError: [Errno 1] Operation not permitted`，每次每日排程一開工就死。
+（Tennis 2026-07-14 為同一個原因搬過。）
+
+所以 `AU_RACING` 可以獨立覆寫，同 DATA_ROOT 一樣嘅次序：
+
+1. 環境變數 `WONGCHOI_AU_DATA_ROOT`
+2. repo root 嘅 `.wongchoi_au_data_root` 檔（一行路徑，唔入 git）
+3. 都冇就用 `<DATA_ROOT>/Wong Choi Horse Race Analysis/AU_Racing`（舊行為）
+
+```bash
+# macOS（本機硬碟＝source of truth）
+echo "$HOME/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing" > .wongchoi_au_data_root
+# 鏡像返 Drive（同一套次序：WONGCHOI_AU_MIRROR_ROOT 或者呢個檔）
+echo "$(cat .wongchoi_data_root)/Wong Choi Horse Race Analysis/AU_Racing" > .wongchoi_au_mirror_root
+```
+
+`WONGCHOI_AU_MIRROR_ROOT` 係另一半：引擎讀寫本機，跑完之後把動過嘅場次夾同兩個歷史
+CSV 鏡像返 Drive，令 Kelvin 同 Windows 機仍然喺原本位置睇到分析。
+
+**launchd 對 CloudStorage 嘅權限係一半一半**（2026-08-05 連續探測三次，結果一致）：
+
+| 操作 | launchd |
+|---|---|
+| `iterdir()` | ❌ `PermissionError` errno 1 |
+| 讀檔內容 | ❌ `PermissionError` errno 1 |
+| `stat()` | ✅ |
+| 寫檔＋刪檔 | ✅ |
+
+所以：引擎（要列目錄、讀檔）喺 Drive 上面跑唔到，但鏡像（只 stat ＋ 寫）跑得到。
+亦即係話 **`.is_dir()` / `.exists()` 唔可以當可讀性探測** —— 佢哋係 stat，喺一條讀都
+讀唔到嘅路徑上面照樣返 True。要試就試真嘅操作。
+
+只覆寫 AU、唔搬 HK/NBA/tennis 係故意嘅：Drive 上面其餘幾棵樹絕大部分係未下載嘅
+placeholder，搬佢哋等於要逐個檔即時下載幾萬次，而且冇一個係 launchd 底下跑。
+
+Windows 唔設呢兩個變數就得 —— `AU_RACING` 自動跌返 Drive 路徑，行為同以前一樣。
+
 ## 3. Create A Virtual Environment
 
 ### macOS
