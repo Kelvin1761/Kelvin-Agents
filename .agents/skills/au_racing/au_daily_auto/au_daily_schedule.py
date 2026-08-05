@@ -1542,15 +1542,36 @@ def snapshot_signature(payload: dict) -> dict:
     }
 
 
-def build_snapshot(runlog: RunLog, meeting_dirs: list[Path]) -> Path:
-    """由 live snapshot 串連合併每個場次 → 最終 JSON。
+def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
+                   drop_keys: list[str] | None = None) -> Path:
+    """由 live snapshot 剪走已歸檔場次，再串連合併每個場次 → 最終 JSON。
 
     ⚠️ `generate_static.py` 一次只食一個 `--au-meeting-dir`，所以第二個場次嘅
     `--base-snapshot` 一定要係第一個嘅輸出，唔係 live cache（會掉咗第一個）。
+
+    ⚠️ 剪走一定要喺合併之前做，而且要真做。2026-08-05／08-06 兩個 run 都係
+    喺呢一步之後撞牆：歸檔搬走咗 folder，但合併路徑只會**加**場次，於是發佈前
+    驗證見到已歸檔場次仲喺 snapshot，正確咁拒絕發佈 —— Cloudflare 連續兩晚
+    停喺舊版本，而 4 個新分析好嘅場次一直發佈唔上去。
     """
     WORK_DIR.mkdir(parents=True, exist_ok=True)
     base = download_live_snapshot(runlog, WORK_DIR / "live-dashboard-data.json")
     current = base
+    if drop_keys and current is not None:
+        pruned = WORK_DIR / "pruned.json"
+        cmd = [sys.executable, GENERATE_STATIC,
+               "--base-snapshot", str(current),
+               "--output-json", str(pruned),
+               "--output-html", str(WORK_DIR / "pruned.html")]
+        for key in drop_keys:
+            cmd += ["--drop-meeting", key]
+        rc, out = run_cmd(cmd, cwd=DASHBOARD_DIR, timeout=3600)
+        if rc != 0 or not pruned.exists():
+            raise TemporaryFailure(
+                f"剪走已歸檔場次失敗（rc={rc}）："
+                f"{out.splitlines()[-1] if out else '冇輸出'}")
+        current = pruned
+        runlog.step("dashboard-prune", "ok", dropped=drop_keys)
     for i, folder in enumerate(meeting_dirs, 1):
         out_json = WORK_DIR / f"merge-{i:02d}.json"
         cmd = [sys.executable, GENERATE_STATIC,
@@ -1716,7 +1737,7 @@ def step_dashboard(runlog: RunLog, meeting_dirs: list[Path],
                 archived=len(archived_names))
     expect_absent = [archive_dashboard_key(name) for name in archived_names]
 
-    snapshot = build_snapshot(runlog, meeting_dirs)
+    snapshot = build_snapshot(runlog, meeting_dirs, expect_absent)
     validation = validate_snapshot(runlog, snapshot, expect_absent)
     if not validation["ok"]:
         runlog.error("dashboard", "驗證唔過 —— 唔發佈")

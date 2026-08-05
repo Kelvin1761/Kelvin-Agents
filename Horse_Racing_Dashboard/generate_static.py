@@ -352,6 +352,37 @@ def collect_incremental_au_data(base_snapshot_path, meeting_dir):
     return data
 
 
+def drop_au_meetings(base_snapshot_path, keys):
+    """Remove meetings from a published snapshot by `date|venue` key.
+
+    The incremental path can only add or replace a meeting, so before this
+    existed nothing could ever leave a published snapshot. Archiving a meeting
+    moved its folder out of AU_RACING and the scheduler then refused to publish,
+    because its own pre-publish check saw the archived meeting still listed --
+    correctly. Every evening run from 2026-08-05 failed at that gate.
+
+    Consensus keys are `{meeting_key}|...`, so they go by prefix.
+    """
+    base_snapshot_path = Path(base_snapshot_path)
+    data = json.loads(base_snapshot_path.read_text(encoding="utf-8"))
+    wanted = set(keys)
+    kept_meetings = [
+        item for item in data.get("meetings", [])
+        if f"{item.get('date')}|{item.get('venue')}" not in wanted
+    ]
+    removed = len(data.get("meetings", [])) - len(kept_meetings)
+    data["meetings"] = kept_meetings
+    data["races"] = {k: v for k, v in data.get("races", {}).items() if k not in wanted}
+    data["consensus"] = {
+        k: v for k, v in data.get("consensus", {}).items()
+        if not any(k == w or k.startswith(f"{w}|") for w in wanted)
+    }
+    data.setdefault("roi", {})
+    data["meta"] = _build_snapshot_meta(data)
+    print(f"   Dropped {removed} archived meeting(s); {len(data['meetings'])} remain")
+    return data
+
+
 def collect_all_data(cache_path=DEFAULT_CACHE_PATH):
     """Collect all meetings, reusing parsed entries when their source files are unchanged."""
     meetings = discover_meetings()
@@ -481,20 +512,38 @@ def parse_args():
         default="",
         help="AU meeting folder to merge into --base-snapshot.",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--drop-meeting",
+        action="append",
+        default=[],
+        metavar="DATE|VENUE",
+        help="Remove this meeting from --base-snapshot (repeatable). Used after "
+             "a meeting is archived; without it nothing can leave the snapshot.",
+    )
+    return parser.parse_args(), parser
 
 
 def main():
-    args = parse_args()
+    args, parser = parse_args()
     print("🏇 Generating static dashboard...")
     print("   Scanning for meetings...")
-    if bool(args.base_snapshot) != bool(args.au_meeting_dir):
-        parser.error("--base-snapshot and --au-meeting-dir must be used together")
-    data = (
-        collect_incremental_au_data(args.base_snapshot, args.au_meeting_dir)
-        if args.base_snapshot
-        else collect_all_data(args.cache_path)
-    )
+    # ⚠️ `parser` 以前唔喺 scope，所以呢個 guard 一觸發就 NameError 而唔係一個
+    # 講得明嘅用法錯誤。
+    if args.au_meeting_dir and not args.base_snapshot:
+        parser.error("--au-meeting-dir requires --base-snapshot")
+    if args.drop_meeting and not args.base_snapshot:
+        parser.error("--drop-meeting requires --base-snapshot")
+    if args.base_snapshot and not (args.au_meeting_dir or args.drop_meeting):
+        parser.error("--base-snapshot needs --au-meeting-dir or --drop-meeting")
+    if args.base_snapshot and args.au_meeting_dir and args.drop_meeting:
+        parser.error("--drop-meeting and --au-meeting-dir are separate passes; "
+                     "run the drop first, then merge from its output")
+    if args.drop_meeting:
+        data = drop_au_meetings(args.base_snapshot, args.drop_meeting)
+    elif args.base_snapshot:
+        data = collect_incremental_au_data(args.base_snapshot, args.au_meeting_dir)
+    else:
+        data = collect_all_data(args.cache_path)
     
     meeting_count = len(data["meetings"])
     race_count = sum(
