@@ -88,6 +88,42 @@ class OddsStayOutOfScoringTests(unittest.TestCase):
                              "市場 AUC 0.7393 vs 我哋 0.6530，入咗分就會主導")
 
 
+
+# ⚠️ 上面嗰個 fixture 係**假設**嘅 markup：class 喺 data-key 之前、值係 span 嘅
+# 直接文字、冇 data-odds。佢一直通過，而 parser 喺真實頁面回 0 匹 —— 每個
+# Formguide 都寫 `Flucs:$- $-`，冇人察覺。所以再加一個用**真實**markup 嘅 case：
+# 屬性次序倒轉、值包喺 <a> 裡面、有 data-odds、而位置賠率嗰批 span 唔喺
+# 有 data-number 嘅 <td> 內（靠 market id 接返）。
+REAL_WIN = ('<td class="td80 awinprice " data-number="0{n}" data-sort="0{n}">'
+            '<span data-event="3397175" data-key="{rid}-Sportsbet-FixedWin"'
+            ' data-decimals="2" class="ppodds fixed-win" data-odds="{w}">'
+            '<a class="oc-table-link">{w}0</a></span></td>')
+REAL_PLACE = ('<span class="ppodds fixed-place" data-decimals="2"'
+              ' data-key="{rid}-Sportsbet-FixedPlace" data-event="3397175"'
+              ' data-odds="{p}"><a class="oc-table-link">{p}</a></span>')
+
+
+class RealMarkupTests(unittest.TestCase):
+    """由 2026-08-05 真實頁面抄落嚟嘅 markup 形狀。"""
+
+    def _html(self):
+        rows = [(1, "32540936", "2", "1.25"), (2, "32540937", "21", "4.2")]
+        return ("<table>"
+                + "".join(REAL_WIN.format(n=n, rid=r, w=w) for n, r, w, _ in rows)
+                + "</table><div>"
+                + "".join(REAL_PLACE.format(rid=r, p=p) for _, r, _, p in rows)
+                + "</div>")
+
+    def test_attribute_order_and_nested_anchor(self):
+        got = C.parse_odds_html(self._html())
+        self.assertEqual(got[1]["Sportsbet-FixedWin"], 2.0)
+        self.assertEqual(got[2]["Sportsbet-FixedWin"], 21.0)
+
+    def test_place_outside_the_numbered_cell_joins_by_market_id(self):
+        got = C.parse_odds_html(self._html())
+        self.assertEqual(got[1]["Sportsbet-FixedPlace"], 1.25)
+        self.assertEqual(got[2]["Sportsbet-FixedPlace"], 4.2)
+
 if __name__ == "__main__":
     unittest.main()
 

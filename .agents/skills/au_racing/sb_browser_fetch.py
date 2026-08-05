@@ -23,12 +23,16 @@ Headed 真 Chrome 係「用個站本來 serve 緊嘅方式去讀」，上面嗰�
 ⚠️ 一定要 headed，所以要有 active GUI login session（鎖住螢幕冇問題，登出就唔得），
 而且每次跑會彈一個 Chrome 窗。呢個係 browser-only 換返嚟嘅代價。
 
-做法：開一次 persistent context → navigate 去**同源**一版（索引頁）→ 之後逐個 URL
-喺 page 裏面 `fetch()` 攞 raw HTML。要 raw HTML 而唔係 `page.content()`：下游全部
-parser 都係食原始 markup 嘅 regex，serialize 過嘅 DOM 未必對得上。
+做法：開一次 persistent context，之後逐個 URL `page.goto()` → 等 JS 填完 →
+`page.content()` 攞**render 後**嘅 DOM 落 cache。
+
+⚠️ 一定要 render 後嘅 DOM，唔可以用 in-page `fetch()` 攞 raw body：賠率由
+`OddsAgent.min.js` 填，raw body 永遠冇（所以 2026-08-05 之前每個 Formguide 都寫
+`Flucs:$- $-`）。實測 raw vs rendered 對所有其他 parser 輸出**完全一致**
+（同一版 19 匹、142 條往績、8 個 coverage 指標全部相同），所以呢個切換零代價。
 
 用法：
-    with BrowserFetcher(delay=25, origin_url=f"{BASE}/2026-08-05/") as bf:
+    with BrowserFetcher(delay=25) as bf:
         html = bf.get(f"{BASE}/446508/3396067/")          # cache 有就唔出網
         html = bf.get(url, force=True)                    # 賽後重抓，覆蓋 cache
         if bf.stop_reason: ...                            # 個站拒絕過
@@ -49,16 +53,6 @@ DEFAULT_PROFILE = Path(os.environ.get("WC_SB_BROWSER_PROFILE", "")) \
     if os.environ.get("WC_SB_BROWSER_PROFILE") \
     else Path.home() / ".cache" / "wongchoi" / "sb_chrome_profile"
 
-# 喺 page 裏面攞 raw body。回 [status, text] —— 唔喺 JS 度做判斷，交返 Python。
-_FETCH_JS = """
-async (url) => {
-  const r = await fetch(url, { credentials: 'include' });
-  const t = await r.text();
-  return [r.status, t];
-}
-"""
-
-
 class BrowserRefused(RuntimeError):
     """個站明確拒絕（非 200 或者攔截頁）。唔應該重試。"""
 
@@ -70,11 +64,13 @@ def cache_path(url: str) -> Path:
 
 
 class BrowserFetcher:
-    def __init__(self, delay: float = 25.0, origin_url: str | None = None,
-                 profile_dir: Path | None = None, verbose: bool = True,
-                 log=None):
+    def __init__(self, delay: float = 25.0, profile_dir: Path | None = None,
+                 verbose: bool = True, log=None, render_wait_ms: int = 5000,
+                 **_ignored):
+        # `**_ignored` 收走舊 caller 傳嘅 origin_url / origin_candidates ——
+        # `goto` 唔受同源限制，所以起始頁機制已經冇用（以前係為咗 in-page fetch）。
         self.delay = max(float(delay), 12.0)
-        self.origin_url = origin_url or f"{BASE}/"
+        self.render_wait_ms = int(render_wait_ms)
         self.profile_dir = Path(profile_dir or DEFAULT_PROFILE)
         self.verbose = verbose
         self.log = log or (lambda m: print(f"   {m}", flush=True))
@@ -111,26 +107,46 @@ class BrowserFetcher:
             viewport={"width": 1280, "height": 900},
             args=["--window-size=1280,900"])
 
+    def _profile_in_use(self) -> bool:
+        """有另一個**活住**嘅 process 用住同一個 profile？"""
+        import subprocess
+        try:
+            done = subprocess.run(["pgrep", "-f", str(self.profile_dir)],
+                                  capture_output=True, text=True, timeout=20)
+        except Exception:  # noqa: BLE001
+            return False
+        import os
+        others = [int(x) for x in (done.stdout or "").split() if x.isdigit()
+                  and int(x) != os.getpid()]
+        return bool(others)
+
     def _clear_stale_profile_lock(self) -> bool:
         """上一次 run 硬死留低嘅 Chrome 會鎖住 profile，下次點都開唔到。
 
-        只殺**用我哋自己個 profile 目錄**嘅 process（路徑獨一無二），唔會碰
-        Kelvin 自己嗰個 Chrome。冇呢一步，一次硬死就會令之後每晚都靜靜咁失敗。
+        ⚠️ **只可以殺已經冇 process 揸住嘅 profile。** 2026-08-05 實測：呢個
+        function 原本無條件 `pkill -f <profile>`，於是一個 ad-hoc 抓取一開，就
+        殺咗背景個人頁 backfill 嗰個 Chrome（兩者共用同一個 profile），backfill
+        做到 40/207 就死。而家：有活住嘅兄弟就唔殺，改用臨時 profile 讓路。
         """
         import subprocess
+        if self._profile_in_use():
+            self.log("⚠️ 另一個 process 用住同一個 profile —— 唔殺佢，改用臨時 profile")
+            import tempfile
+            self.profile_dir = Path(tempfile.mkdtemp(prefix="sb_chrome_"))
+            return True
         try:
             done = subprocess.run(["pkill", "-f", str(self.profile_dir)],
                                   capture_output=True, timeout=20)
         except Exception:  # noqa: BLE001
             return False
-        killed = done.returncode == 0
-        if killed:
+        if done.returncode == 0:
             self.log(f"🧹 清走上次留低嘅 Chrome（profile {self.profile_dir.name}）")
             time.sleep(3)
-        return killed
+            return True
+        return False
 
     def _ensure_page(self):
-        """開瀏覽器 + 落一版同源頁。同源係 `fetch()` 嘅前提。"""
+        """開瀏覽器。⚠️ 唔再需要「同源起始頁」—— `goto` 唔受同源限制。"""
         if self._page is not None:
             return self._page
         from playwright.sync_api import sync_playwright
@@ -147,17 +163,6 @@ class BrowserFetcher:
         self._page = self._ctx.new_page()
         if self.verbose:
             self.log(f"🌐 真 Chrome 已開（profile {self.profile_dir}）")
-        self._pace()
-        response = self._page.goto(self.origin_url, timeout=90000,
-                                   wait_until="domcontentloaded")
-        self.requests_made += 1
-        self._last_request = time.time()
-        status = response.status if response else None
-        if status != 200:
-            self.stop_reason = f"同源起始頁 HTTP {status}：{self.origin_url}"
-            raise BrowserRefused(self.stop_reason)
-        if self.verbose:
-            self.log(f"✅ 同源起始頁 {self.origin_url}")
         return self._page
 
     def _pace(self) -> None:
@@ -193,9 +198,18 @@ class BrowserFetcher:
 
         self._pace()
         try:
-            status, text = page.evaluate(_FETCH_JS, url)
+            response = page.goto(url, timeout=90000, wait_until="domcontentloaded")
+            status = response.status if response else None
+            if status == 200:
+                # 等 `OddsAgent.min.js` 填賠率。⚠️ 一定要 render 後嘅 DOM 而唔係
+                # raw body：賠率由 JS 填，raw body 永遠冇（2026-08-05 前一直
+                # `Flucs:$- $-`）。實測 raw vs rendered 對所有其他 parser 輸出
+                # **完全一致**（19 匹、142 條往績、8 個 coverage 指標全部相同），
+                # 所以呢個切換唔會蝕任何嘢。
+                page.wait_for_timeout(self.render_wait_ms)
+            text = page.content()
         except Exception as exc:  # noqa: BLE001
-            self.stop_reason = f"page.fetch 失敗（{type(exc).__name__}: {exc}）"
+            self.stop_reason = f"page.goto 失敗（{type(exc).__name__}: {exc}）"
             self.log(f"⛔ {self.stop_reason}")
             return None
         finally:
@@ -227,7 +241,7 @@ def main() -> int:
     ap.add_argument("--delay", type=float, default=25.0)
     args = ap.parse_args()
     url = f"{BASE}/{args.day}/"
-    with BrowserFetcher(delay=args.delay, origin_url=url) as bf:
+    with BrowserFetcher(delay=args.delay) as bf:
         html = bf.get(url, force=True)
     if not html:
         print(f"❌ {bf.stop_reason}")

@@ -20,6 +20,7 @@ Sportsbet 冇呢兩個問題：
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -29,7 +30,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from claw_sportsbet_form import BASE, SportsbetFormFetcher, to_text  # noqa: E402
 
 CACHE_NAME = "AU_Sportsbet_People_Cache.json"
-TTL_DAYS = 21
+# ⚠️ TTL 可以由 env 覆寫。2026-08-05：晚更（22:00，有十二個鐘）設 0 令每個場次都
+# 重抽騎練統計；早更（10:00，最早一場約 11:44）維持 21 日 cache。
+# 點解要 refresh：呢個係「去年官方」滾動 12 個月紀錄，賽季中段會變。21 日 TTL
+# 之下一個 8 月大爆發嘅騎師，我哋仲用 7 月中嘅數字，最多滯後 3 個星期。
+# 成本：一個場次約 90–100 個人物 × 節奏（20 秒）≈ 30–35 分鐘，晚更做得到。
+TTL_DAYS = int(os.environ.get("WC_SB_PEOPLE_TTL_DAYS", "21"))
 # 個人頁嘅統計表逐行係：標籤 Starts 1st 2nd 3rd Win% Place% AvgOdds ROI
 RE_ROW = re.compile(
     r"^(?P<label>[A-Za-z0-9$,+\- ]+?)\s+(?P<starts>\d+)\s+(?P<w>[\d\-]+)\s+"
@@ -39,6 +45,15 @@ WANT = {"Career", "12 Months", "Last 10", "Last 100",
 
 
 def cache_path():
+    # ⚠️ 自己頂返 repo root 落 sys.path。呢個 module 會俾 cwd=au_racing 嘅
+    # process import（`claw_sportsbet_form.py` 就係），嗰陣 repo root 唔喺
+    # sys.path，`import wongchoi_paths` 會 ModuleNotFoundError。而 caller
+    # (`write_meeting`) 係用 `except Exception` 包住，於是靜靜咁當「冇統計」，
+    # 1,064 個 `(LY:)` token 全部寫成 `-`（2026-08-05 實測）。
+    import sys
+    root = str(Path(__file__).resolve().parents[3])
+    if root not in sys.path:
+        sys.path.insert(0, root)
     from wongchoi_paths import AU_RACING
 
     return Path(AU_RACING) / CACHE_NAME

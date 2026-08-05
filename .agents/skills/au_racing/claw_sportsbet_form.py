@@ -227,6 +227,35 @@ def parse_overview(html):
 RE_PERSON = re.compile(r'href="/(Jockey|Trainer)/(\d+)/"[^>]*>([^<]{2,60})<')
 
 
+RE_SILK_SEL = re.compile(
+    r'<img[^>]+src="(?P<u>[^"]*images\.puntcdn\.com/silks/[^"]+\.svg[^"]*)"'
+    r'.*?class="runner-number"[^>]*>\s*(?P<num>\d+)', re.I | re.S)
+
+
+def parse_silks(html):
+    """賽事頁 → {馬號: 綵衣 SVG URL}。
+
+    ⚠️ 2026-08-05 查證：綵衣**唔喺跑馬表**。Sportsbet 個表格冇綵衣欄，綵衣只出現喺
+    「Selections:」（貼士推介）區塊，每個 `<span class="selection-runner">` 入面
+    一個 `<img …puntcdn.com/silks/…svg>` 加一個 `<span class="runner-number">N</span>`。
+    即係**只有被推介嘅幾匹**有綵衣，唔係全場 —— Racenet 年代係全場都有，所以
+    遷移之後 888 匹實測 `silk_url` 0/888。
+
+    dashboard 本身已經識呢個格式（`race_display_metadata.AU_SILK_URL_RE`），佢讀
+    Racecard 嘅 `Silk: <url>` 行，所以有幾多就顯示幾多。要全場綵衣要另一個來源
+    （sportsbet.com.au 投注站 markets API，或者 punters.com.au）。
+
+    URL 係 protocol-relative（`//…`），要補 `https:` 否則過唔到 dashboard 個 regex。
+    """
+    out = {}
+    for m in RE_SILK_SEL.finditer(html):
+        url = m.group("u").strip()
+        if url.startswith("//"):
+            url = "https:" + url
+        out.setdefault(int(m.group("num")), url)
+    return out
+
+
 def parse_people(html):
     """賽事頁 → {(kind, 正規化名): person_id}。
 
@@ -297,6 +326,8 @@ def parse_race(html):
     # 賠率：瀏覽器攞返嚟嘅頁面先會有值（curl_cffi 攞到空格），賽後頁冇。
     # 攞唔到就係空 dict，唔會炸。
     meta["odds"] = parse_odds_html(html)
+    # 綵衣：dashboard 靠 Racecard 個 `Silk:` 行顯示（見 parse_silks 註）。
+    meta["silks"] = parse_silks(html)
     # 騎練 profile ID 直接喺賽事頁 —— 冇 slug 要猜（Racenet 就係死喺呢度兩次）。
     people = [(k, pid) for k, pid in
               re.findall(r'href="/(Jockey|Trainer)/(\d+)/"', html)]
@@ -580,8 +611,17 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
     try:
         import sb_people_stats
         _people_cache = sb_people_stats.load_cache()
-    except Exception:  # noqa: BLE001 — 攞唔到統計唔應該炸咗寫檔
+    except Exception as exc:  # noqa: BLE001 — 攞唔到統計唔應該炸咗寫檔
+        # ⚠️ 一定要出聲。呢個 except 曾經靜靜食咗一個 `ModuleNotFoundError:
+        # wongchoi_paths`（claw 用 cwd=au_racing 跑，repo root 唔喺 sys.path），
+        # 結果 `_people_cache` 空，1,064 個 `(LY:)` 全部寫成 `-`，而
+        # jockey_score / trainer_score 照樣出數（有 fallback），所以錶面完全睇唔出。
+        print(f"   ⚠️ 攞唔到騎練統計（{type(exc).__name__}: {exc}）—— "
+              f"(LY:) 會全部空，jockey/trainer 評分會跌落 fallback")
         sb_people_stats, _people_cache = None, {}
+    else:
+        if not _people_cache:
+            print("   ⚠️ 騎練統計 cache 係空 —— (LY:) 會全部空")
     for race_no, p, blocks in races:
         meta = p["meta"]
         sm = speedmaps.get(race_no) or {}
@@ -621,7 +661,17 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
                            f"| Weight: {st.get('Weight','?')} | Age: {ov.get('age_sex','')} "
                            f"| Rating: {ov.get('rating','')}\n")
                 f_rc.write(f"Career: {ov.get('career','')} | Win: {ov.get('win_pct','')} "
-                           f"| Place: {ov.get('place_pct','')}\n" + "-" * 40 + "\n")
+                           f"| Place: {ov.get('place_pct','')}\n")
+                # ⚠️ `Silk:` 一定要寫喺 meta 區塊**之後**。`build_au_logic` 用
+                # `lines[index+1]` 讀 meta 行然後 `index += 2` —— 插喺馬名同
+                # `Trainer:` 之間會令成個 meta 行 parse 唔到，官方讓磅分靜靜咁
+                # 消失（2026-08-05 實測：有綵衣嘅 4 個場次 rating 由 86% 跌到 40%，
+                # 冇綵衣嘅 2 個正常）。dashboard 個 `parse_au_racecard_silks`
+                # 只要求「馬名行之後、下一個馬名行之前」，所以擺呢度一樣讀得到。
+                silk = (meta.get("silks") or {}).get(num)
+                if silk:
+                    f_rc.write(f"Silk: {silk}\n")
+                f_rc.write("-" * 40 + "\n")
                 f_fg.write(f"[{num}] {name} ({bar})\n")
                 f_fg.write(f"{ov.get('age_sex','')} | Sire: | Dam: \n")
                 f_fg.write(f"Flucs:$- ${ov.get('fixed_win','-')}\n")
@@ -839,6 +889,12 @@ def fetch_odds(fetcher, event_id):
 # `<span class="ppodds fixed-win" data-key="32526112-Sportsbet-FixedWin">15.00</span>`
 # win 格喺 `td[data-number="01"]` 入面（有馬號），place 格喺另一個結構（冇馬號），
 # 但兩者 `data-key` 共用同一個 runnerId，所以用 runnerId 對返馬號。
+# 以 `<td>` 為範圍砌「market id → 馬號」對應表。⚠️ 唔可以要求 `<tr>` 包住 ——
+# 真實頁面有，但測試 fixture 係裸 `<td>`，而且個站唔同 section 嘅表結構唔一致。
+RE_ODD_ROW = re.compile(r"<td\b[^>]*\bdata-number=[^>]*>.*?</td>", re.I | re.S)
+RE_ODD_NUM = re.compile(r'\bdata-number="(?P<num>\d+)"', re.I)
+RE_ODD_SPAN = re.compile(r'<span(?P<attrs>[^>]*\bclass="[^"]*\bppodds\b[^"]*"[^>]*)>', re.I)
+
 RE_ODD = re.compile(
     r'<span[^>]*class="ppodds[^"]*"[^>]*data-key="(?P<rid>\d+)-(?P<kind>[\w-]+)"[^>]*>'
     r'\s*(?P<val>[^<]*?)\s*</span>')
@@ -856,16 +912,52 @@ def parse_odds_html(html):
 
     ⚠️ 賽後頁冇賠率（拆咗），所以呢個只對**未跑**嘅賽事有意義。
     """
-    num_by_rid = {m.group("rid"): int(m.group("num"))
-                  for m in RE_ODD_TD.finditer(html)}
+    # ⚠️ 2026-08-05 修好。原本嘅架構（用 market id 做錨點）係對嘅，錯喺兩個
+    # regex 細節，結果由頭到尾攞到 0 匹：
+    #   1. 舊 regex 要求 `class="ppodds"` 出現喺 `data-key` **之前**，但實際屬性
+    #      次序係 `data-event` → `data-key` → `data-decimals` → `class`（而且唔同
+    #      section 嘅次序仲唔一樣）。
+    #   2. 舊 regex 用 `(?P<val>[^<]*?)` 當賠率係 span 嘅直接文字，但實際係包喺
+    #      `<a class="oc-table-link">21.00</a>` 裡面，`[^<]` 跨唔過個 tag。
+    #      個 span 有 `data-odds="21"` —— 乾淨數字，比讀文字穩健。
+    #
+    # 錨點一定要用 **market id**（`data-key` 個 `-` 之前嗰截），唔可以用「最近一個
+    # `<td data-number>`」：位置賠率同勝出賠率共用同一個 market id，但位置賠率嗰批
+    # span 唔喺有 `data-number` 嘅表裡面（實測向後 3,000 字元都冇 data-number）。
+    # 用 market id 兩批都接得返。
+    num_by_mid = {}
+    for row in RE_ODD_ROW.finditer(html):
+        block = row.group(0)
+        num_m = RE_ODD_NUM.search(block)
+        if not num_m:
+            continue
+        num = int(num_m.group("num"))
+        for span in RE_ODD_SPAN.finditer(block):
+            mid = re.search(r'data-key="(?P<mid>\d+)-', span.group("attrs") or "")
+            if mid:
+                num_by_mid.setdefault(mid.group("mid"), num)
+
     out = {}
-    for m in RE_ODD.finditer(html):
-        num = num_by_rid.get(m.group("rid"))
-        val = m.group("val").strip()
-        # TopTote 未開盤嗰陣係 "W"/"P" 佔位字，唔係賠率
+    for span in RE_ODD_SPAN.finditer(html):
+        attrs = span.group("attrs") or ""
+        key = re.search(r'data-key="(?P<mid>\d+)-(?P<kind>[\w-]+)"', attrs)
+        if not key:
+            continue
+        num = num_by_mid.get(key.group("mid"))
+        raw = re.search(r'data-odds="(?P<val>[^"]*)"', attrs)
+        if raw:
+            val = raw.group("val").strip()
+        else:
+            # 冇 `data-odds` 就讀 span 內嘅第一個數字（可能包喺 `<a>` 裡面）。
+            # 兩種形狀都要食得：個站唔同 section 嘅 markup 唔一致，而且將來會變。
+            tail = html[span.end():span.end() + 400]
+            inner = tail.split("</span>", 1)[0]
+            text = re.sub(r"<[^>]*>", "", inner).strip()
+            val = text
+        # 未開盤嗰陣係空字串或者 "W"/"P" 佔位字，唔係賠率
         if num is None or not re.fullmatch(r"\d+(?:\.\d+)?", val):
             continue
-        out.setdefault(num, {})[m.group("kind")] = float(val)
+        out.setdefault(num, {})[key.group("kind")] = float(val)
     return out
 
 
