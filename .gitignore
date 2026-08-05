@@ -72,6 +72,8 @@ Horse_Racing_Dashboard/logs/
 # AU 每日排程：run log 同 dashboard 合併中間檔，逐日生成，唔入版本控制
 .agents/skills/au_racing/au_daily_auto/logs/
 .agents/skills/au_racing/au_daily_auto/work/
+# Racing Australia FreeFields 頁面 cache（逐日生成，同 Sportsbet cache 一樣唔入版本控制）
+.agents/skills/au_racing/.ra_cache/
 Horse_Racing_Dashboard/frontend/dist/
 Horse_Racing_Dashboard/Open Dashboard.html
 Horse_Racing_Dashboard/CURRENT_URL.txt
