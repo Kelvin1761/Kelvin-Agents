@@ -44,10 +44,19 @@ class TestVenueMatch(unittest.TestCase):
         # 索引頁用縮寫，API 出全名。
         self.assertEqual(S.match_venue("murray_bdge", self.AU), "Murray Bridge")
 
+    def test_abbreviations_on_either_side_still_match(self):
+        # 2026-08-06 實測：索引頁出 `mount_isa`，API 出 `Mt Isa` —— 三步配對全部
+        # 唔中，一個真澳洲場次被當海外剔走，靜靜咁冇分析。
+        self.assertEqual(S.match_venue("mount_isa", ["Mt Isa", "Gosford"]), "Mt Isa")
+        self.assertEqual(S.match_venue("mt_isa", ["Mount Isa"]), "Mount Isa")
+        self.assertEqual(S.match_venue("saint_arnaud", ["St Arnaud"]), "St Arnaud")
+
     def test_overseas_meetings_are_rejected(self):
         # 2026-08-05 索引頁 12 個場次，一半係英國／愛爾蘭／南非／加拿大。
+        # 2026-08-06 索引頁嗰批：kempton / newmarket / sligo / vaal / yarmouth
         for slug in ("lingfield", "pontefract", "roscommon", "kenilworth",
-                     "brighton", "assiniboia_downs"):
+                     "brighton", "assiniboia_downs", "kempton", "newmarket",
+                     "sligo", "vaal", "yarmouth"):
             self.assertIsNone(S.match_venue(slug, self.AU), slug)
 
     def test_ambiguous_prefix_is_not_guessed(self):

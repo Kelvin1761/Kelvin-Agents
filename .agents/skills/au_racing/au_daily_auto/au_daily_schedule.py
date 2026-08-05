@@ -221,21 +221,37 @@ def venue_from_slug(slug: str) -> str:
     return slug.replace("_", " ").title()
 
 
+#: 兩邊會用唔同寫法嘅字。⚠️ 2026-08-06 實測：索引頁出 `mount_isa`、API 出
+#: `Mt Isa` —— 兩邊正規化之後係 `mountisa` vs `mtisa`，相等、前綴、第一個 token
+#: 三步全部配唔到，於是 Mt Isa 被當**海外場次剔走**，一個真澳洲場次靜靜咁冇分析。
+#: 展開成同一個寫法先比。
+_VENUE_ALIASES = (("mount", "mt"), ("saint", "st"), ("port", "pt"))
+
+
+def _venue_key(name: str) -> str:
+    """正規化 + 展開常見縮寫，令 `mount_isa` 同 `Mt Isa` 對得上。"""
+    key = normalise(name)
+    for long, short in _VENUE_ALIASES:
+        if key.startswith(long):
+            key = short + key[len(long):]
+    return key
+
+
 def match_venue(slug: str, api_venues: list[str]) -> str | None:
     """索引頁嘅 slug → API 個馬場名。配唔到回 None。
 
-    ⚠️ 唔可以要求逐字相等。索引頁用縮寫（`murray_bdge`），API 出全名
-    （`Murray Bridge`）。所以：先試正規化相等 → 前綴 → 第一個 token 相等而且
-    只得一個候選。三步都配唔到就當配唔到 —— **配錯馬場比冇數據差**，因為
-    會拉錯一個馬場嘅場地狀況入去評分。
+    ⚠️ 唔可以要求逐字相等。索引頁用縮寫（`murray_bdge`、`mount_isa`），API 出
+    全名或者另一個縮寫（`Murray Bridge`、`Mt Isa`）。所以：先展開縮寫再試相等 →
+    前綴 → 第一個 token 相等而且只得一個候選。三步都配唔到就當配唔到 ——
+    **配錯馬場比冇數據差**，因為會拉錯一個馬場嘅場地狀況入去評分。
     """
-    want = normalise(slug)
-    exact = [v for v in api_venues if normalise(v) == want]
+    want = _venue_key(slug)
+    exact = [v for v in api_venues if _venue_key(v) == want]
     if exact:
         return exact[0]
     prefix = [v for v in api_venues
-              if len(want) >= 6 and len(normalise(v)) >= 6
-              and (normalise(v).startswith(want) or want.startswith(normalise(v)))]
+              if len(want) >= 6 and len(_venue_key(v)) >= 6
+              and (_venue_key(v).startswith(want) or want.startswith(_venue_key(v)))]
     if len(prefix) == 1:
         return prefix[0]
     head = slug.split("_")[0].lower()
