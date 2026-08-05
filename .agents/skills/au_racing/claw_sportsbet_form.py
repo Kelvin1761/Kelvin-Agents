@@ -228,18 +228,26 @@ RE_PERSON = re.compile(r'href="/(Jockey|Trainer)/(\d+)/"[^>]*>([^<]{2,60})<')
 
 
 RE_SILK_SEL = re.compile(
-    r'<img[^>]+src="(?P<u>[^"]*images\.puntcdn\.com/silks/[^"]+\.svg[^"]*)"'
-    r'.*?class="runner-number"[^>]*>\s*(?P<num>\d+)', re.I | re.S)
+    # ⚠️ 兩個容器都要中：`selection-runner`（只有貼士推介嗰幾匹）同 `runner-silks`
+    # （接近全場）。兩者嘅馬號 span 都帶後綴 —— `runner-number active`、
+    # `runner-number bordered active`。舊 pattern 寫死 `class="runner-number"`，要求
+    # 緊接一個收引號，於是**一個都唔中**：2026-08-06 五個場次實測 0/380 匹有綵衣，
+    # 而每版頁面其實有 12 個綵衣 URL。改成收後綴，同時貼住結構 match（img 之後
+    # 緊接馬號 span）而唔用萬用 `.*?`，免得一個冇馬號嘅 img 配到下一匹馬身上。
+    r'<img[^>]+src="(?P<u>[^"]*images\.puntcdn\.com/silks/[^"]+\.svg[^"]*)"[^>]*>'
+    r'\s*<span class="runner-number[^"]*"[^>]*>\s*(?P<num>\d+)', re.I)
 
 
 def parse_silks(html):
     """賽事頁 → {馬號: 綵衣 SVG URL}。
 
-    ⚠️ 2026-08-05 查證：綵衣**唔喺跑馬表**。Sportsbet 個表格冇綵衣欄，綵衣只出現喺
-    「Selections:」（貼士推介）區塊，每個 `<span class="selection-runner">` 入面
-    一個 `<img …puntcdn.com/silks/…svg>` 加一個 `<span class="runner-number">N</span>`。
-    即係**只有被推介嘅幾匹**有綵衣，唔係全場 —— Racenet 年代係全場都有，所以
-    遷移之後 888 匹實測 `silk_url` 0/888。
+    ⚠️ 綵衣**唔喺跑馬表**。Sportsbet 個表格冇綵衣欄，綵衣出現喺兩個地方：
+      * `<span class="selection-runner">` —— 「Selections:」貼士推介，只有幾匹；
+      * `<div class="runner-silks">`      —— 接近全場。
+    兩者都係 `<img …puntcdn.com/silks/…svg>` 加一個 `<span class="runner-number …">N`。
+    2026-08-06 實測（08-06 三個場次、賽前頁）覆蓋 34–42%，唔係 100% —— 有啲場次
+    嗰個區塊冇渲染出嚟。賽果重抽會覆蓋 cache，而賽後頁完全冇綵衣，所以已歸檔嘅
+    場次會變 0%（Canterbury 08-05 實測）。
 
     dashboard 本身已經識呢個格式（`race_display_metadata.AU_SILK_URL_RE`），佢讀
     Racecard 嘅 `Silk: <url>` 行，所以有幾多就顯示幾多。要全場綵衣要另一個來源
