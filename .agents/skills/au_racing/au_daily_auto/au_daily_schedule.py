@@ -152,7 +152,10 @@ class RunLog:
         if self.site_refusing:
             return
         self.site_refusing = True
-        self.warn(f"個站喺 {where} 明確拒絕（穩定非 200）—— 今次 run 唔再出網攞頁，"
+        # ⚠️ 唔可以講死「非 200」。呢個閘接受任何 `stop_reason`，而 2026-08-08
+        # 嗰次係我哋自己個 Chrome 死咗 —— 個站由頭到尾冇回過一個非 200，但條
+        # 訊息叫我（同 Kelvin）去查 Sportsbet 嘅封鎖，查錯咗方向。理由照抄。
+        self.warn(f"攞唔到頁，喺 {where} 停低 —— 今次 run 唔再出網攞頁，"
                   f"餘下嘅場次記做 pending，下一次排程再試")
         self.data["steps"].append({"step": "site-gate", "status": "tripped",
                                    "at": stamp(), "where": where})

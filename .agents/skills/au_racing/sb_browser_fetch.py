@@ -145,6 +145,36 @@ class BrowserFetcher:
             return True
         return False
 
+    # 瀏覽器自己死咗嘅特徵。⚠️ 呢啲**唔係個站拒絕** —— page/context 冚咗、
+    # renderer crash、CDP 連線斷。2026-08-08 實測：Chrome 開足 15 分鐘之後
+    # page 死咗，個 fetcher 記成「個站明確拒絕（穩定非 200）」，circuit breaker
+    # 於是放棄埋餘下五個場次、退避 38 分鐘、最後成個賽日流失。個站由頭到尾
+    # 冇回過一個非 200。對瀏覽器死亡嘅正確應對係重開，唔係收工。
+    _BROWSER_DEATH = ("targetclosed", "has been closed", "target crashed",
+                      "browser has been closed", "connection closed",
+                      "websocket", "pipe closed")
+    _BROWSER_RETRIES = 2
+
+    @classmethod
+    def _is_browser_death(cls, exc) -> bool:
+        blob = f"{type(exc).__name__} {exc}".lower()
+        return any(sig in blob for sig in cls._BROWSER_DEATH)
+
+    def _recycle(self) -> None:
+        """冚咗個 page/context/playwright，令下次 `_ensure_page` 重開。"""
+        for obj in (self._page, self._ctx):
+            try:
+                if obj is not None:
+                    obj.close()
+            except Exception:  # noqa: BLE001
+                pass
+        try:
+            if self._pw is not None:
+                self._pw.stop()
+        except Exception:  # noqa: BLE001
+            pass
+        self._page = self._ctx = self._pw = None
+
     def _ensure_page(self):
         """開瀏覽器。⚠️ 唔再需要「同源起始頁」—— `goto` 唔受同源限制。"""
         if self._page is not None:
@@ -187,18 +217,39 @@ class BrowserFetcher:
         if not url.startswith(BASE):
             raise ValueError(f"只可以攞 {BASE} 嘅頁：{url}")
 
-        try:
-            page = self._ensure_page()
-        except BrowserRefused:
-            return None
-        except Exception as exc:  # noqa: BLE001 — 開唔到瀏覽器 = 今次做唔到
-            self.stop_reason = f"開唔到真 Chrome（{type(exc).__name__}: {exc}）"
-            self.log(f"⛔ {self.stop_reason}")
-            return None
+        attempt = 0
+        while True:
+            try:
+                page = self._ensure_page()
+            except BrowserRefused:
+                return None
+            except Exception as exc:  # noqa: BLE001 — 開唔到瀏覽器 = 今次做唔到
+                self.stop_reason = f"開唔到真 Chrome（{type(exc).__name__}: {exc}）"
+                self.log(f"⛔ {self.stop_reason}")
+                return None
 
-        self._pace()
+            self._pace()
+            try:
+                response = page.goto(url, timeout=90000,
+                                     wait_until="domcontentloaded")
+                break
+            except Exception as exc:  # noqa: BLE001
+                self.requests_made += 1
+                self._last_request = time.time()
+                if self._is_browser_death(exc) and attempt < self._BROWSER_RETRIES:
+                    attempt += 1
+                    self.log(f"♻️ 瀏覽器死咗（{type(exc).__name__}）—— 重開再試 "
+                             f"{attempt}/{self._BROWSER_RETRIES}：{url}")
+                    self._recycle()
+                    time.sleep(5)
+                    continue
+                # 重開之後仲死，或者根本唔係瀏覽器死亡（例如 timeout）。
+                kind = "瀏覽器重開 %d 次之後仲係死" % attempt if attempt else "page.goto 失敗"
+                self.stop_reason = f"{kind}（{type(exc).__name__}: {exc}）"
+                self.log(f"⛔ {self.stop_reason}")
+                return None
+
         try:
-            response = page.goto(url, timeout=90000, wait_until="domcontentloaded")
             status = response.status if response else None
             if status == 200:
                 # 等 `OddsAgent.min.js` 填賠率。⚠️ 一定要 render 後嘅 DOM 而唔係
@@ -209,7 +260,7 @@ class BrowserFetcher:
                 page.wait_for_timeout(self.render_wait_ms)
             text = page.content()
         except Exception as exc:  # noqa: BLE001
-            self.stop_reason = f"page.goto 失敗（{type(exc).__name__}: {exc}）"
+            self.stop_reason = f"讀唔到內容（{type(exc).__name__}: {exc}）"
             self.log(f"⛔ {self.stop_reason}")
             return None
         finally:

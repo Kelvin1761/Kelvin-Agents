@@ -16,6 +16,24 @@ from source_alignment import normalize_going
 
 
 class RuntimeAuditParityTests(unittest.TestCase):
+    def test_discovery_includes_scheduler_archive_subdirectory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            live = root / "2026-08-08 Randwick Race 1-1"
+            archived = root / "Archive" / "2026-08-07 Seymour Race 1-1"
+            live.mkdir(parents=True)
+            archived.mkdir(parents=True)
+            (live / "Race_1_Logic.json").write_text("{}", encoding="utf-8")
+            (archived / "Race_1_Logic.json").write_text("{}", encoding="utf-8")
+
+            materialized, placeholders = R.discover_logic_files(root)
+
+        self.assertEqual(placeholders, [])
+        self.assertEqual(
+            {path.parent.name for path in materialized},
+            {live.name, archived.name},
+        )
+
     def test_archive_temperature_pollution_is_canonicalised(self) -> None:
         self.assertEqual(normalize_going("Synthetic 8"), "Synthetic")
         self.assertEqual(normalize_going("Good 25"), "Good")

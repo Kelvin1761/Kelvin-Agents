@@ -134,9 +134,14 @@ def patched_weights(patches: list[tuple[dict, str, float]]):
 
 
 def discover_logic_files(archive_root: Path) -> tuple[list[Path], list[Path]]:
+    # Completed meetings are moved under ``Archive/`` by the daily scheduler.
+    # A one-level glob silently dropped every archived meeting from all runtime
+    # audits, so discovery must follow the meeting files rather than assume one
+    # fixed directory depth.
     files = sorted(
-        archive_root.glob("*/Race_*_Logic.json"),
+        archive_root.rglob("Race_*_Logic.json"),
         key=lambda path: (
+            str(path.parent.relative_to(archive_root)),
             path.parent.name,
             parse_int(path.stem, 999),
         ),

@@ -299,7 +299,11 @@ def choose_track_rows(rows, meeting_track: str):
 
 
 def iter_logic_rows(archive_root: Path, historical_results):
-    for meeting_dir in sorted(path for path in archive_root.iterdir() if path.is_dir()):
+    meeting_dirs = sorted(
+        {path.parent for path in archive_root.rglob("Race_*_Logic.json")},
+        key=lambda path: str(path.relative_to(archive_root)),
+    )
+    for meeting_dir in meeting_dirs:
         logic_files = sorted(meeting_dir.glob("Race_*_Logic.json"), key=lambda p: parse_int(p.stem.split("_")[1], 999))
         if not logic_files:
             continue
