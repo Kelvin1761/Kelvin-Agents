@@ -471,12 +471,55 @@ def generate_html(data):
     return html
 
 
+def _slim_for_transport(payload):
+    """Drop per-horse fields that are verbatim duplicates of another field.
+
+    Cloudflare Pages refuses any single file over 25 MiB. On 2026-08-07 the
+    snapshot reached 32.5 MiB (nine Saturday meetings, 75 races) and the deploy
+    failed three times, so a full night of analysis never reached the dashboard
+    and the next morning's run could not recover it -- its recovery path only
+    looks at meetings already published.
+
+    `core_analysis` is a section extracted out of `raw_text` and then stored
+    again beside it: measured across 1,067 horses in ten meetings, every single
+    one was a substring of that horse's `raw_text` (HKJC carries none at all).
+    Dropping it takes the snapshot from 28.1 MiB to 19.1 MiB. The frontend still
+    shows the text -- both renderers derive their sections from `raw_text` when
+    it is present.
+
+    The substring is re-checked per horse rather than assumed, so a horse whose
+    `core_analysis` is NOT contained in its `raw_text` keeps the field and
+    nothing is lost.
+    """
+    if not isinstance(payload, dict) or "races" not in payload:
+        return payload, 0
+    dropped = 0
+    for entry in (payload.get("races") or {}).values():
+        for races in (entry.get("races_by_analyst") or {}).values():
+            for race in races:
+                for horse in race.get("horses") or []:
+                    core = (horse.get("core_analysis") or "").strip()
+                    if core and core in (horse.get("raw_text") or ""):
+                        horse.pop("core_analysis")
+                        dropped += 1
+    return payload, dropped
+
+
 def _write_json(path: Path, payload):
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2, default=str),
-        encoding="utf-8",
-    )
+    payload, dropped = _slim_for_transport(payload)
+    # ⚠️ No indent, compact separators. Pretty-printing this snapshot cost
+    # 4 MiB of pure whitespace against a 25 MiB hard limit.
+    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"),
+                      default=str)
+    path.write_text(body, encoding="utf-8")
+    size_mib = len(body.encode("utf-8")) / (1024 * 1024)
+    if dropped:
+        print(f"   Slimmed {dropped} duplicate core_analysis fields")
+    if "races" in (payload if isinstance(payload, dict) else {}):
+        print(f"   Snapshot size: {size_mib:.1f} MiB (Cloudflare Pages limit 25)")
+        if size_mib > 24:
+            print("   ⚠️ 逼近 25 MiB 上限 —— 再大就會被 Cloudflare 拒收")
 
 
 def parse_args():

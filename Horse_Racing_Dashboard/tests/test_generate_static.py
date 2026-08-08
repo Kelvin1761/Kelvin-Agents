@@ -115,3 +115,57 @@ class GenerateStaticTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SlimForTransportTests(unittest.TestCase):
+    """Cloudflare Pages 硬性拒收任何超過 25 MiB 嘅單一檔案。
+
+    2026-08-07：snapshot 32.5 MiB（九個星期六場次、75 場），deploy 連試三次都被拒，
+    於是一整晚嘅分析永遠上唔到 dashboard，而第二朝嘅 run 亦救唔到 —— 佢只覆核
+    「已經發佈」嘅場次。體積唔係美觀問題，係一個會靜靜咁食掉一日分析嘅上限。
+    """
+
+    def _payload(self, core, raw):
+        return {"races": {"k": {"races_by_analyst": {"K": [
+            {"horses": [{"core_analysis": core, "raw_text": raw}]}]}}}}
+
+    def _horse(self, payload):
+        return payload["races"]["k"]["races_by_analyst"]["K"][0]["horses"][0]
+
+    def test_duplicate_core_analysis_is_dropped(self):
+        out, dropped = generate_static._slim_for_transport(
+            self._payload("🧠 核心分析\n- 好狀態", "### No.1\n🧠 核心分析\n- 好狀態\n更多"))
+        self.assertEqual(dropped, 1)
+        self.assertNotIn("core_analysis", self._horse(out))
+        # 內容冇消失 —— 前端由 raw_text 拆返 section。
+        self.assertIn("核心分析", self._horse(out)["raw_text"])
+
+    def test_core_analysis_not_inside_raw_text_is_kept(self):
+        # 逐匹重新檢查，唔係盲剷：唔係子串就一定要留返，否則就係真丟數據。
+        out, dropped = generate_static._slim_for_transport(
+            self._payload("獨立寫嘅分析", "### No.1\n完全唔同嘅內容"))
+        self.assertEqual(dropped, 0)
+        self.assertEqual(self._horse(out)["core_analysis"], "獨立寫嘅分析")
+
+    def test_horse_without_core_analysis_is_untouched(self):
+        # HKJC 場次一匹都冇 core_analysis（實測 107/107）。
+        out, dropped = generate_static._slim_for_transport(
+            self._payload("", "### No.1\nHKJC 格式"))
+        self.assertEqual(dropped, 0)
+
+    def test_non_snapshot_payloads_pass_through(self):
+        # deploy manifest 都行同一個 writer，唔可以當佢係 snapshot。
+        manifest = {"files": ["a", "b"]}
+        out, dropped = generate_static._slim_for_transport(manifest)
+        self.assertIs(out, manifest)
+        self.assertEqual(dropped, 0)
+
+    def test_written_snapshot_is_compact_not_pretty(self):
+        # indent=2 喺呢個檔案上係 4 MiB 純空白，對住一個 25 MiB 上限。
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "snap.json"
+            generate_static._write_json(out, self._payload("a", "xax"))
+            body = out.read_text(encoding="utf-8")
+        self.assertNotIn("\n", body)        # 冇 indent 換行
+        self.assertNotIn('": ', body)       # key 同 value 之間冇空格
+        self.assertIn('"races":{', body)    # 緊湊分隔符
