@@ -1587,6 +1587,37 @@ def snapshot_signature(payload: dict) -> dict:
     }
 
 
+def unpublished_local_meetings(payload: dict, already: list[Path],
+                              today: date) -> list[Path]:
+    """本機已經分析好、但即將發佈嗰份 snapshot 冇嘅場次（今日或之後）。
+
+    ⚠️ 兩個 mode 嘅合併名單都係由「dashboard 上有乜」推導，所以一次發佈失敗
+    **永遠冇人再試**：場次分析齊咗、就喺本機、但之後每個 run 都報「冇嘢做」。
+    2026-08-07 實測：deploy 撞到 Cloudflare 25 MiB 上限連續失敗三次，九個已分析
+    嘅場次消失兩日，期間 08-08 早更講 `refresh-active/nothing-to-do`。
+    所以「要發佈乜」唔可以問 dashboard —— 要問本機有乜分析好而 dashboard 未有。
+    """
+    published = {f"{m.get('date')}|{m.get('venue')}"
+                 for m in (payload.get("meetings") or [])}
+    have = {f.name for f in already}
+    out: list[Path] = []
+    for folder in live_meeting_dirs():
+        if folder.name in have:
+            continue
+        try:
+            day = datetime.strptime(folder.name[:10], "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if day < today:
+            continue  # 過去嘅場次交俾覆盤／歸檔，唔喺呢度硬塞返上去
+        if archive_dashboard_key(folder.name) in published:
+            continue  # 已經發佈過，要更新係早更覆核嘅責任
+        if not list(folder.glob("Race_*_Auto_Analysis.md")):
+            continue  # 淨係抽咗頁未評分 —— 唔算分析好
+        out.append(folder)
+    return out
+
+
 def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
                    drop_keys: list[str] | None = None) -> tuple[Path, list[str]]:
     """由 live snapshot 剪走已歸檔場次，再串連合併每個場次 → 最終 JSON。
@@ -1623,6 +1654,13 @@ def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
                 drops.append(key)
                 runlog.warn(f"{key} 已經歸檔但仲喺 dashboard —— 由發佈前 snapshot "
                             f"推導出嚟，今次剪走")
+        # 反方向：本機分析好但 snapshot 冇嘅場次要補上去。上一晚發佈失敗嘅話，
+        # 冇呢步就永遠冇人再發佈嗰批分析。
+        missed = unpublished_local_meetings(payload, meeting_dirs, date.today())
+        if missed:
+            runlog.warn(f"本機有 {len(missed)} 個已分析場次未發佈（大概上一次發佈"
+                        f"失敗）—— 今次補發：{[f.name for f in missed]}")
+            meeting_dirs = list(meeting_dirs) + missed
     drop_keys = drops
     if drop_keys and current is not None:
         pruned = WORK_DIR / "pruned.json"

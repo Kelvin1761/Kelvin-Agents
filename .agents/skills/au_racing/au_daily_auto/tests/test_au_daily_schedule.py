@@ -474,6 +474,8 @@ class TestStaleArchivedPrune(unittest.TestCase):
             for name, value in (("WORK_DIR", tmp), ("ARCHIVE_ROOT", archive_root),
                                 ("find_meeting_dir", fake_find),
                                 ("run_cmd", fake_run_cmd),
+                                # 剪走同補發喺同一步，呢批 case 只驗剪走。
+                                ("live_meeting_dirs", lambda: []),
                                 ("download_live_snapshot", lambda *a, **k: base)):
                 stack.enter_context(unittest.mock.patch.object(S, name, value))
             _, drops = S.build_snapshot(runlog, [], list(passed_drops))
@@ -544,3 +546,70 @@ class TestResultsGiveUp(unittest.TestCase):
     def test_unparseable_folder_name_never_triggers_archiving(self):
         self.assertIsNone(S.results_overdue(Path("/tmp/not-a-date Cranbourne"),
                                             S.date(2026, 8, 20)))
+
+
+class TestUnpublishedRecovery(unittest.TestCase):
+    """發佈失敗之後，下一個 run 一定要救得返。
+
+    2026-08-07 晚更把九個 08-08 場次分析齊、剪走、合併、驗證通過，之後 deploy 撞到
+    Cloudflare 25 MiB 上限失敗三次。因為兩個 mode 嘅合併名單都由「dashboard 上有乜」
+    推導，之後每個 run 都見唔到嗰九個場次 —— 08-08 早更直接報 nothing-to-do，
+    賽馬日就咁消失咗兩日。所以要問本機，唔可以問 dashboard。
+    """
+
+    def _tree(self, tmp, names, scored=True):
+        root = Path(tmp) / "AU_Racing"
+        root.mkdir(parents=True)
+        for n in names:
+            d = root / n
+            d.mkdir()
+            if scored:
+                (d / "Race_1_Auto_Analysis.md").write_text("x", encoding="utf-8")
+        return root
+
+    def _run(self, tmp, names, published, today, already=(), scored=True):
+        root = self._tree(tmp, names, scored)
+        payload = {"meetings": [{"date": k.split("|")[0], "venue": k.split("|")[1]}
+                                for k in published]}
+        with unittest.mock.patch.object(
+                S, "live_meeting_dirs", lambda: sorted(root.iterdir())):
+            return S.unpublished_local_meetings(
+                payload, [root / n for n in already], today)
+
+    def test_analysed_but_never_published_is_picked_up(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, ["2026-08-08 Randwick Race 1-10"], [],
+                            S.date(2026, 8, 8))
+        self.assertEqual([f.name for f in got], ["2026-08-08 Randwick Race 1-10"])
+
+    def test_already_published_is_left_to_the_refresh_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, ["2026-08-08 Randwick Race 1-10"],
+                            ["2026-08-08|Randwick"], S.date(2026, 8, 8))
+        self.assertEqual(got, [])
+
+    def test_already_in_this_runs_merge_list_is_not_duplicated(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, ["2026-08-08 Randwick Race 1-10"], [],
+                            S.date(2026, 8, 8),
+                            already=["2026-08-08 Randwick Race 1-10"])
+        self.assertEqual(got, [])
+
+    def test_past_meetings_are_left_to_review_and_archive(self):
+        # 過去嘅場次唔可以由呢度硬塞返上 dashboard —— 佢哋應該被覆盤同歸檔。
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, ["2026-08-05 Cranbourne Race 1-8"], [],
+                            S.date(2026, 8, 8))
+        self.assertEqual(got, [])
+
+    def test_extracted_but_unscored_is_not_treated_as_analysed(self):
+        # 得賽事頁、未評分嘅場次發佈上去會係一個空殼。
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, ["2026-08-09 Gosford Race 1-8"], [],
+                            S.date(2026, 8, 8), scored=False)
+        self.assertEqual(got, [])
+
+    def test_a_folder_whose_name_is_not_a_date_is_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, ["Archive_scratch"], [], S.date(2026, 8, 8))
+        self.assertEqual(got, [])
