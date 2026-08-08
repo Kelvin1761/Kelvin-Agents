@@ -3,7 +3,7 @@
 
 點解要有呢個檔。到 2026-08-04 為止，同一個問題（「呢個改動好唔好？」）散落喺
 七八個 harness、每個各有一套指標同閘門：dev / holdout / 5-fold / walk-forward /
-全樣本 / Gold / gold_strict / Good位 / any2 / any1 / champion / winT3 / t3prec /
+全樣本 / Gold / gold_strict / Good位 / Pass / champion / winT3 / t3prec /
 場內 AUC（全場）/ 場內 AUC（頭 5 位）。**冇一份文件講過邊把先算數**，
 結果係同一個候選喺唔同 harness 之下可以得出相反結論，而我自己就試過幾次
 攞住唔同 harness 嘅數字互相比較（跨語料、跨基準），得出錯嘅結論。
@@ -71,8 +71,7 @@ CONTEXT_KEYS = (
     "gold",
     "gold_strict",
     "good_positional",
-    "good_any2",
-    "pass_any1",
+    "pass",
     "champion",
     "winner_in_top3",
     "winner_in_top5",

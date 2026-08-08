@@ -684,3 +684,49 @@ class TestReviewBackfill(unittest.TestCase):
             got = self._run(tmp, spec, S.date(2026, 8, 8))
         # 08-05 啱啱喺 3 日窗內，08-04 出界。
         self.assertEqual(got, ["2026-08-05|X", "2026-08-08|X"])
+
+
+class TestFillTodayTarget(unittest.TestCase):
+    """一晚俾個站拒絕，唔可以等於嗰個賽日永久流失。
+
+    2026-08-08 晚更：08-09 六個場次抽到一個，其餘五個 pending_extraction。晚更聽日
+    嘅目標係 08-10，早更淨係覆核已發佈嘅場次 —— 所以嗰五個場次冇任何後續步驟會
+    再碰。log 寫住「下一次排程再試」，但實際上冇人再試。
+    """
+
+    def _target(self, review_day, by_day, target_day=None):
+        seen = {}
+
+        def fake_index(runlog, day):
+            seen["target"] = day
+            raise S.TemporaryFailure("停喺呢度就夠 —— 我哋只驗揀咗邊日")
+
+        runlog = unittest.mock.MagicMock()
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(unittest.mock.patch.object(
+                S, "api_next_events", lambda *a, **k: object()))
+            stack.enter_context(unittest.mock.patch.object(
+                S, "events_by_day", lambda *a, **k: by_day))
+            stack.enter_context(unittest.mock.patch.object(
+                S, "fetch_date_index", fake_index))
+            with self.assertRaises(S.TemporaryFailure):
+                S.step_analyse_next_day(runlog, review_day, target_day=target_day)
+        return seen["target"]
+
+    def test_evening_still_picks_the_next_race_day(self):
+        got = self._target(S.date(2026, 8, 8),
+                           {"2026-08-09": {"Wagga": {}}, "2026-08-10": {"X": {}}})
+        self.assertEqual(got, "2026-08-09")
+
+    def test_explicit_target_wins_even_though_it_is_not_in_the_future(self):
+        # 早更補完當日 —— 呢個賽日永遠唔會喺 `> review_day` 嗰個篩選裡面。
+        got = self._target(S.date(2026, 8, 9),
+                           {"2026-08-09": {"Wagga": {}}, "2026-08-10": {"X": {}}},
+                           target_day="2026-08-09")
+        self.assertEqual(got, "2026-08-09")
+
+    def test_explicit_target_is_used_even_if_the_api_lists_nothing_for_it(self):
+        # API 冇當日資料唔應該令佢靜靜咁跳去第二日。
+        got = self._target(S.date(2026, 8, 9), {"2026-08-10": {"X": {}}},
+                           target_day="2026-08-09")
+        self.assertEqual(got, "2026-08-09")

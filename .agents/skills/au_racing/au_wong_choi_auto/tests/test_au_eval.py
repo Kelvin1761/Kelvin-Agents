@@ -102,7 +102,9 @@ class VerdictRuleTests(unittest.TestCase):
         self.assertIn("gold", counts)
         self.assertIn("gold_strict", counts)
         self.assertIn("good_positional", counts)
-        self.assertIn("pass_any1", counts)
+        self.assertIn("pass", counts)
+        self.assertNotIn("good_any2", counts)
+        self.assertNotIn("pass_any1", counts)
 
     def test_top_k_region_is_what_decides(self):
         """判決欄位一定要係頭 K 位嗰個，唔係全場 —— 深位排序對 Gold/Good 冇影響。"""

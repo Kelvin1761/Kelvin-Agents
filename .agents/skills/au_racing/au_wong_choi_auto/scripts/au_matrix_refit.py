@@ -17,7 +17,7 @@
 
 呢個工具取代咗 `au_matrix_weight_search.py` / `au_clean_7d_weight_search.py` /
 `au_weight_improvement_search.py` —— 嗰幾個係 coordinate descent／argmax，實測
-會 overfit（dev good_pos +3.80 但 holdout pass_any1 −5.61）。要改權重就用呢個。
+會 overfit（dev good_pos +3.80 但 holdout 舊 any-one 指標 −5.61）。要改權重就用呢個。
 
 用法：
     python3 au_dump_engine_leaves.py --out /tmp/leaves.json      # 建 dataset
@@ -56,17 +56,17 @@ HOLDOUT = 0.15
 FOLDS = 5
 # form_line 出廠權重 0（退役維度），搜索空間同另一條線一致，維持 6 個維度。
 DIMS = ("stability", "pace_perf", "race_shape", "jockey_trainer", "class_weight", "track")
-KEYS = ("gold", "good_pos", "any2", "pass1", "champ", "winT3", "t3prec", "mrr",
+KEYS = ("gold", "good_pos", "pass", "champ", "winT3", "t3prec", "mrr",
         "blowout", "compet", "ndcg5")
 # 目標函數：九項 pp 指標嘅平均（blowout 反號）。刻意同時涵蓋
-# 上名（good_pos / pass1 / t3prec）、贏馬（champ / winT3 / mrr）同排序質素
+# 上名（good_pos / pass / t3prec）、贏馬（champ / winT3 / mrr）同排序質素
 # （gold / ndcg5 / blowout），唔畀搜索用上名覆蓋率去買贏馬命中率。
 OBJ_PRESETS = {
     # 均衡（預設）：上名、贏馬、排序質素各佔一份，唔畀搜索用一邊買另一邊
-    "balanced": ("gold", "good_pos", "pass1", "champ", "winT3", "t3prec", "mrr",
+    "balanced": ("gold", "good_pos", "pass", "champ", "winT3", "t3prec", "mrr",
                  "ndcg5", "blowout"),
     # 只計上名（本 project 嘅 KPI）
-    "place": ("good_pos", "any2", "pass1", "t3prec"),
+    "place": ("gold", "good_pos", "pass", "t3prec"),
     # 只計贏馬
     "win": ("champ", "winT3", "mrr"),
 }
@@ -170,7 +170,7 @@ class Dataset:
 def digest(s):
     r, c = s["rates"], s["competitiveness"]
     return {"gold": 100 * r["gold"], "good_pos": 100 * r["good_positional"],
-            "any2": 100 * r["good_any2"], "pass1": 100 * r["pass_any1"],
+            "pass": 100 * r["pass"],
             "champ": 100 * r["champion"], "winT3": 100 * r["winner_in_top3"],
             "t3prec": 100 * s["top3_precision"], "mrr": 100 * s["mrr"],
             "blowout": 100 * c["top_pick_blowout"]["rate"],

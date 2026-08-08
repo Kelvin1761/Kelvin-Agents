@@ -2,12 +2,12 @@
 """Canonical ranking-evaluation metrics shared by the AU and HKJC Wong Choi engines.
 
 One ruler for every backtest, calibration, and reflector report. Historically the
-repo carried at least four different "Good" definitions:
+repo carried at least four different "Good" definitions. AU now exposes one
+positional Good and one cumulative Pass:
 
 - positional Good  — model picks 1 and 2 both finish in the actual top 3
                      (HKJC walk-forward `good`, AU full-archive rescore `Good`);
-- any-2 Good       — any 2 of the model top 3 finish in the actual top 3
-                     (AU cached walk-forward `good`, cumulative, includes Gold);
+- Pass             — any 2 of the model top 3 finish in the actual top 3;
 - exclusive labels — Gold / Good / Pass / 1 Hit / Miss, mutually exclusive
                      (unified race reflector meeting reports);
 - assorted ad-hoc percentages derived from the above on different samples.
@@ -247,6 +247,10 @@ def race_metrics(
         "gold": bool(top3_all_within_top4_flag),
         "gold_strict": hits == 3,
         "good_positional": len(picks) >= 2 and picks[0] in actual_set and picks[1] in actual_set,
+        "pass": hits >= 2,
+        "any1": hits >= 1,
+        # Compatibility aliases for archived HKJC/AU research scripts. New AU
+        # reports must use ``pass`` and must not surface these retired labels.
         "good_any2": hits >= 2,
         "pass_any1": hits >= 1,
         "champion": bool(picks) and picks[0] in winners,
@@ -270,6 +274,8 @@ def summarize_races(race_rows: Sequence[Mapping[str, Any]]) -> dict:
         "gold": sum(bool(row["gold"]) for row in race_rows),
         "gold_strict": sum(bool(row.get("gold_strict")) for row in race_rows),
         "good_positional": sum(bool(row["good_positional"]) for row in race_rows),
+        "pass": sum(bool(row["pass"]) for row in race_rows),
+        "any1": sum(bool(row["any1"]) for row in race_rows),
         "good_any2": sum(bool(row["good_any2"]) for row in race_rows),
         "pass_any1": sum(bool(row["pass_any1"]) for row in race_rows),
         "champion": sum(bool(row["champion"]) for row in race_rows),

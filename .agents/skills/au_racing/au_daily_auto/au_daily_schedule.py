@@ -897,17 +897,27 @@ def review_one_meeting(runlog: RunLog, folder: Path, *,
 # ── 步驟 2：分析下一個賽日 ─────────────────────────────────────────────────
 def step_analyse_next_day(runlog: RunLog, review_day: date, *,
                           max_meetings: int = 0, rounds: int = 1,
-                          round_gap: int = 900) -> list[Path]:
-    """發現 → 抽取 → 分析下一個可用賽日嘅所有場次。回新分析好嘅目錄。"""
+                          round_gap: int = 900,
+                          target_day: str | None = None) -> list[Path]:
+    """發現 → 抽取 → 分析一個賽日嘅所有場次。回新分析好嘅目錄。
+
+    `target_day` 唔畀就揀下一個可用賽日（晚更）。畀嘅話就做嗰日 —— 早更用嚟
+    **補完當日賽日**。⚠️ 冇呢條路嘅話，一晚俾個站拒絕就等於嗰個賽日永久流失：
+    晚更聽日嘅目標係再下一日，早更又淨係覆核已發佈嘅場次。2026-08-08 實測：
+    六個 08-09 場次抽到一個，其餘五個 pending，冇任何後續步驟會再碰佢哋。
+    """
     runlog.step("analyse-next-day", "start")
     events = api_next_events(runlog)
     by_day = events_by_day(events)
-    future = sorted(d for d in by_day if date.fromisoformat(d) > review_day)
-    if future:
-        target = future[0]
+    if target_day:
+        target = target_day
     else:
-        target = (review_day + timedelta(days=1)).isoformat()
-        runlog.warn(f"NextEvents 冇下一個賽日資料，退回 {target}")
+        future = sorted(d for d in by_day if date.fromisoformat(d) > review_day)
+        if future:
+            target = future[0]
+        else:
+            target = (review_day + timedelta(days=1)).isoformat()
+            runlog.warn(f"NextEvents 冇下一個賽日資料，退回 {target}")
 
     api_venues = by_day.get(target, {})
     index = fetch_date_index(runlog, target)
@@ -2084,6 +2094,25 @@ def run_morning(runlog: RunLog, args, today: date) -> int:
                                           round_gap=args.round_gap)
         except TemporaryFailure as exc:
             runlog.error("refresh-active", f"暫時性：{exc}")
+            temporary = True
+
+    # 補完當日賽日。晚更俾個站拒絕之後，呢個係唯一會再試嘅地方。已經齊嘅場次
+    # 會即刻 `skipped_already_analysed`，所以冇新嘢做嗰陣成本近乎零。
+    if not args.skip_analysis and not args.skip_refresh:
+        try:
+            filled = step_analyse_next_day(runlog, today,
+                                           max_meetings=args.max_meetings,
+                                           rounds=args.rounds,
+                                           round_gap=args.round_gap,
+                                           target_day=today.isoformat())
+            for folder in filled:
+                if folder not in updated:
+                    updated.append(folder)
+        except TemporaryFailure as exc:
+            # 今日冇賽事、索引頁攞唔到 —— 都唔應該令早更失敗。
+            runlog.step("fill-today", "skipped", detail=str(exc))
+        except Exception as exc:  # noqa: BLE001
+            runlog.error("fill-today", f"{type(exc).__name__}: {exc}")
             temporary = True
 
     ok = step_dashboard(runlog, updated, [], skip_deploy=args.skip_deploy)
