@@ -32,6 +32,7 @@ FEATURE_LABELS = {
     "track_score": "場地分",
     "formline_score": "賽績線分",
     "consistency_score": "穩定性分",
+    "performance_quality_score": "表現質素分",
     "health_score": "備戰完整度分",
     "confidence_score": "信心分",
     "pace_figure_score": "段速實速分",

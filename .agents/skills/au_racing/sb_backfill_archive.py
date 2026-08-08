@@ -98,6 +98,30 @@ def load_meeting_ids(path=MEETING_IDS):
         return {}
 
 
+def scored_meeting_index(root: str | Path) -> dict[str, Path]:
+    """Index scored meeting folders below ``root``, including ``Archive/``.
+
+    Research scripts used to assume every meeting was an immediate child of
+    the AU root.  Once completed meetings were moved under ``Archive/``, that
+    silently turned full-history audits into stale partial-history audits.
+    Centralising the recursive lookup keeps every offline evaluator aligned.
+    Duplicate folder names are refused because choosing one silently could mix
+    two different snapshots of the same meeting.
+    """
+    root_path = Path(root).expanduser().resolve()
+    indexed: dict[str, Path] = {}
+    for scoring_path in sorted(root_path.rglob("Meeting_Auto_Scoring.csv")):
+        meeting_dir = scoring_path.parent
+        existing = indexed.get(meeting_dir.name)
+        if existing is not None and existing != meeting_dir:
+            raise RuntimeError(
+                f"duplicate scored meeting folder {meeting_dir.name!r}: "
+                f"{existing} and {meeting_dir}"
+            )
+        indexed[meeting_dir.name] = meeting_dir
+    return indexed
+
+
 def backfill(mapping, out_root, delay=12.0, max_meetings=3, verbose=True,
              cache_only=False):
     """`mapping` = [(dir_name, date_str, venue, meeting_id, [race_ids])]。

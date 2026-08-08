@@ -730,3 +730,53 @@ class TestFillTodayTarget(unittest.TestCase):
         got = self._target(S.date(2026, 8, 9), {"2026-08-10": {"X": {}}},
                            target_day="2026-08-09")
         self.assertEqual(got, "2026-08-09")
+
+
+class TestLiveSnapshotCacheBusting(unittest.TestCase):
+    """讀 live snapshot 一定要繞開 CDN cache。
+
+    2026-08-09 實測：deploy 成功之後即刻讀，連續兩次都攞到上一版
+    （`verify_live` 報 stale=True，第三次先追上）。`verify_live` 有 poll 頂得住，
+    但同一個下載 function 亦係**下一份發佈嘅底** —— 攞到舊底就會砌一份少咗場次
+    嘅新 snapshot 出去，而且冇任何嘢會投訴。
+    """
+
+    def _capture(self, tmp):
+        seen = []
+
+        class _Resp:
+            def __enter__(self_inner): return self_inner
+            def __exit__(self_inner, *a): return False
+            def read(self_inner): return b'{"meetings": []}'
+
+        def fake_urlopen(request, timeout=None):
+            seen.append(request)
+            return _Resp()
+
+        runlog = unittest.mock.MagicMock()
+        with unittest.mock.patch.object(S.urllib.request, "urlopen", fake_urlopen):
+            S.download_live_snapshot(runlog, Path(tmp) / "live.json")
+        return seen
+
+    def test_url_carries_a_cache_buster(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            seen = self._capture(tmp)
+        self.assertEqual(len(seen), 1)
+        self.assertIn("?cb=", seen[0].full_url)
+
+    def test_no_cache_headers_are_sent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            seen = self._capture(tmp)
+        headers = {k.lower(): v for k, v in seen[0].headers.items()}
+        self.assertIn("no-cache", headers.get("cache-control", ""))
+        self.assertEqual(headers.get("Pragma".lower()), "no-cache")
+
+    def test_successive_calls_use_different_cache_busters(self):
+        # verify_live 嘅 poll 靠每次一條新 URL 先真係問到新嘢；重用同一條
+        # 等於再攞返同一個 edge cache entry，poll 幾多次都冇用。
+        with tempfile.TemporaryDirectory() as tmp:
+            first = self._capture(tmp)[0].full_url
+            for _ in range(200000):
+                pass
+            second = self._capture(tmp)[0].full_url
+        self.assertNotEqual(first, second)

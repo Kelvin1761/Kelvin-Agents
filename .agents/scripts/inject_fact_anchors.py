@@ -244,8 +244,12 @@ def parse_racecard(filepath: str) -> list[dict]:
         if 'Scratched' in horse_block or 'status:Scratched' in horse_block:
             continue
 
-        career_match = re.search(r'Career:\s*(\S+)', block)
-        career = career_match.group(1) if career_match else 'N/A'
+        career_match = re.search(
+            r'Career:\s*([^\n|]+?)(?=\s*\|\s*Win:|$)',
+            block,
+            re.MULTILINE,
+        )
+        career = career_match.group(1).strip() if career_match else 'N/A'
 
         last10_match = re.search(r'Last 10:\s*(\S+)', block)
         last10_raw = last10_match.group(1) if last10_match else 'None'
@@ -1831,18 +1835,24 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
             f" @ {horse['last_venue']} {horse['last_dist']}{trial_tag}"
         )
     else:
-        lines.append("  - 上仗結果: N/A (初出馬)")
+        has_official_form = any(not entry.get('is_trial') for entry in entries)
+        if has_official_form:
+            lines.append("  - 上仗結果: Racecard 未提供（已有正式賽績，唔當初出）")
+        else:
+            lines.append("  - 上仗結果: N/A (初出馬)")
 
     lines.append(f"  - 生涯: {horse['career']}")
     # Career tag classification (V2.2): only zero-start horses are debut.
     career_starts = 0
     career_raw = horse.get('career', 'N/A')
     if career_raw and career_raw != 'N/A':
-        _cm = re.match(r'(\d+):', career_raw)
+        _cm = re.match(r'\s*(\d+)\s*(?::|$)', career_raw)
         if _cm:
             career_starts = int(_cm.group(1))
     if career_starts == 0:
         _ctag = 'DEBUT'
+    elif career_starts <= 5:
+        _ctag = 'EARLY_CAREER'
     else:
         _ctag = 'ESTABLISHED'
     lines.append(f"  - 生涯標記: `{_ctag}` (生涯 {career_starts} 場)")

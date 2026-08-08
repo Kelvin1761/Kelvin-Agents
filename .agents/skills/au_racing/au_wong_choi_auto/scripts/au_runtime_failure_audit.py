@@ -51,6 +51,35 @@ def present(value) -> bool:
     return value not in (None, "", "N/A", "Unknown", 0, "0", [], {})
 
 
+def raw_pre_race_snapshot(raw_horse: dict) -> dict:
+    """Return research inputs only; never copy joined result/SP fields."""
+    raw_data = raw_horse.get("_data")
+    raw_data = raw_data if isinstance(raw_data, dict) else {}
+    pf_metrics = raw_data.get("pf_metrics")
+    pf_aggregates = (
+        pf_metrics.get("pf_aggregates")
+        if isinstance(pf_metrics, dict)
+        else {}
+    )
+    return {
+        "barrier": raw_horse.get("barrier"),
+        "weight": raw_horse.get("weight"),
+        "rating": raw_horse.get("rating"),
+        # The live pace leaf uses only l600_delta_avg today.  Preserve the
+        # other filtered pre-race aggregates so structural alternatives can
+        # be evaluated without touching result-bearing data.
+        "pf_aggregates": pf_aggregates or {},
+        "class_move": raw_horse.get("class_move") or raw_data.get("class_move"),
+        # Pre-race partnership history for structural jockey/horse-fit research.
+        # These counts come from dated Formguide runs strictly before the target
+        # race; they are not the mutable Sportsbet J/H overview summary.
+        "current_jockey_formal_rides": raw_data.get("current_jockey_formal_rides"),
+        "current_jockey_formal_places": raw_data.get("current_jockey_formal_places"),
+        "current_jockey_formal_wins": raw_data.get("current_jockey_formal_wins"),
+        **{key: raw_data.get(key) for key in HIGH_POTENTIAL_UNUSED},
+    }
+
+
 def race_metadata(logic_path: Path, logic: dict) -> dict:
     analysis = logic.get("race_analysis") or {}
     meeting = analysis.get("meeting_intelligence") or {}
@@ -658,22 +687,8 @@ def main() -> int:
             dataset_rows = []
             for row in scored:
                 raw_horse = raw_lookup[int(row["horse_number"])]
-                raw_data = raw_horse.get("_data")
-                raw_data = raw_data if isinstance(raw_data, dict) else {}
                 dataset_row = dict(row)
-                dataset_row["raw_pre_race"] = {
-                    "barrier": raw_horse.get("barrier"),
-                    "weight": raw_horse.get("weight"),
-                    "rating": raw_horse.get("rating"),
-                    "class_move": (
-                        raw_horse.get("class_move")
-                        or raw_data.get("class_move")
-                    ),
-                    **{
-                        key: raw_data.get(key)
-                        for key in HIGH_POTENTIAL_UNUSED
-                    },
-                }
+                dataset_row["raw_pre_race"] = raw_pre_race_snapshot(raw_horse)
                 dataset_rows.append(dataset_row)
             dataset_races.append(
                 {

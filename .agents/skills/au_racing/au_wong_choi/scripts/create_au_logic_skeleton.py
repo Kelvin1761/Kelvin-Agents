@@ -198,16 +198,16 @@ def parse_career_info(block):
     explicit_tag = m.group(1) if m else ''
 
     for pat in [
-        r'生涯:\s*(\d+)\s*:',
-        r'Career[：:]\s*(\d+)\s*:',
-        r'Career\s+(\d+)\s*:',
+        r'生涯:\s*(\d+)\s*(?::|$)',
+        r'Career[：:]\s*(\d+)\s*(?::|$)',
+        r'Career\s+(\d+)\s*(?::|$)',
     ]:
         m = re.search(pat, block, re.IGNORECASE)
         if m:
             career_starts = int(m.group(1))
             break
 
-    if explicit_tag:
+    if career_starts == 0 and explicit_tag == 'IMPORTED_DEBUT':
         career_tag = explicit_tag
     elif career_starts == 0:
         career_tag = 'DEBUT'

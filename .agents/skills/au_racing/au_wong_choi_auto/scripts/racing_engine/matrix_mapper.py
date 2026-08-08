@@ -6,7 +6,7 @@ from scoring import clip_score, score_band
 MATRIX_FORMULAS = {
     "stability": (
         ("form_score", 0.60),
-        ("consistency_score", 0.40),
+        ("performance_quality_score", 0.40),
     ),
     # 段速表現 (2026-07-10): 段速與引擎 (sectional 0.04535 = 0.805 sec + 0.195 trial)
     # 同 段速實速 (pace_figure 0.14296) 合併為一個維度，總權重 0.18831。內部權重

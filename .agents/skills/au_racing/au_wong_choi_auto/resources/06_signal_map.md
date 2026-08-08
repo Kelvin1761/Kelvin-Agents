@@ -1,4 +1,4 @@
-# AU Wong Choi — Verified Signal Map (2026-08-01)
+# AU Wong Choi — Verified Signal Map (2026-08-09)
 
 > 用途：日後升級/重建時知道邊啲嘢真係影響排名、邊啲純顯示、邊啲係死碼。
 > 呢張地圖由 `tests/test_signal_map.py` 鎖定 — ability 方程有任何隱藏改動
@@ -7,26 +7,29 @@
 ## 排名方程（唯一真相）
 
 ```
-ability_score = Σ MATRIX_WEIGHTS[d] × mx[d]   (七維，form_line 權重 = 0.0)
+ability_score = Σ MATRIX_WEIGHTS[d] × mx[d]   (六個排名維度；form_line 只顯示)
               + wet_form_feature(今日場地, 地狀分拆線)
 排序 = ability_score 降序；同分先按馬號穩定排序
 ```
 
 ## 特徵分類（分離度 = 2026-07-17 修復後審計）
 
-### A. 直接影響矩陣排名（12 個 + 1 overlay）
+### A. 直接影響矩陣排名（10 個 + 1 overlay）
 
 | 維度（權重） | 輸入特徵（內部權重） | 分離度 |
 |---|---|---|
-| stability (0.299) | form 0.60 / consistency 0.40 | 3.32 / 4.18 |
-| pace_perf (0.188) | pace_figure 0.759 / sectional 0.194 / trial 0.047 | 6.49* / 1.41 / 2.25 |
-| jockey_trainer (0.194) | jockey 0.28 / trainer 0.20 / fit 0.52 | 1.61 / 1.22 / 0.47 |
-| race_shape (0.149) | pace_map 1.0（內含檔位 bias＋收縮） | 0.52 |
-| class_weight (0.045) | rating 0.70；class／weight 只作 context | 1.73 |
-| track (0.124) | track_score 1.0 | 0.64 |
+| stability (0.32920) | form 0.60 / performance_quality 0.40 | 完整 margin＋prize＋starters 有數據先啟動；否則逐匹沿用 consistency |
+| pace_perf (0.10559) | pace_figure 0.941744 / trial 0.058256 | sectional 已退出排名 |
+| jockey_trainer (0.22957) | jockey 0.333333 / trainer 0.285714 / fit 0.380952 | 現役三葉 |
+| race_shape (0.13485) | pace_map 1.0（檔位 bias＋收縮） | 現役單葉 |
+| class_weight (0.12042) | rating 0.70；class／weight 只作 context | official rating 主軸 |
+| track (0.08037) | track_score 1.0 | 現役單葉 |
 | overlay | wet_form_feature（只喺濕地非零） | Heavy +4 g2 / Soft −3 gp |
 
-*pace_figure 有覆蓋先至 6.49（Formguide 覆蓋 33%，見下面「PF 覆蓋」一節）。
+`performance_quality` = 近四場可比較正式賽嘅 recency-weighted
+`-min(20, beaten_margin) + 4 × log10(prize / 50000)`，再做場內 z-score。
+最少兩場完整 run、全場最少三匹有完整數據先啟動；同日／未來 run 一律截斷。
+詳細驗證見 `15_performance_quality_matrix_upgrade_20260809.md`。
 
 ### A2. 顯示尺度（2026-08-01）—— 每個 leaf 嘅 60 必須真係中性
 
@@ -181,6 +184,19 @@ weighted average 代數完全相同，亦容許退役 leaf 回到真正中性而
 α 0.3–0.7 全部 ≈0.607（闊平台，唔係尖峰）→ 採用 0.5。實現見
 `_handicap_weight_proxy`：只喺讓磅賽生效（WFA／定磅賽負磅由年齡性別決定，
 冇能力訊號，直接拒用），場內負磅標準差 < 0.3kg 亦拒用（讓磅官根本冇分開過）。
+
+### A4. Career identity 同 research population（2026-08-09）
+
+Sportsbet Racecard 嘅 career 格式係 `Career: 45 : 5-7-7`。Facts parser 曾經只截到
+`45`，而 Logic parser 又要求數字後面即刻有冒號，令 947 runners 被錯標 DEBUT；
+945 匹其實已有正式賽績。現時 Racecard 會保留完整 record，而 Facts／builder／
+runtime 都接受完整同 integer-only legacy 格式。呢個 correctness fix 對 805 場
+Gold／Good／Pass 等場數指標全部 0.00pp；唔列作 performance gain。
+
+所有 Sportsbet research tools 必須經 `sb_backfill_archive.scored_meeting_index()`
+讀 scored meetings；直接 `root / meeting_name` 會漏晒 `Archive/`。Mutable career
+overview（J/H、WinRange、Ave $、1st/2nd/3rd-up outcome record）唔可以用 post-race
+archive 驗證預測力；候選能力訊號只准由 target date 之前嘅 run rows 重建。
 
 ### B. 純顯示層（改咗唔影響排名 — 剪嘅時候要保留報告內容）
 

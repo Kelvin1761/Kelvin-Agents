@@ -39,15 +39,16 @@ KEYS = ("gold", "good_positional", "pass", "champion", "winner_in_top3")
 
 def build_races(scored_root, min_depth=4.0):
     """→ [(date, [(name, base_score, feats, placed, pos)], field_size)]，按日期排。"""
-    from sb_backfill_archive import load_meeting_ids
+    from sb_backfill_archive import load_meeting_ids, scored_meeting_index
 
+    meeting_dirs = scored_meeting_index(scored_root)
     cj = Path(scored_root).parent / "source_compare.json"
     depth = ({d["meeting"]: d.get("form_depth", 0)
               for d in json.loads(cj.read_text())} if cj.exists() else {})
     out = []
     for name, meta in sorted(load_meeting_ids().items(), key=lambda kv: kv[1]["date"]):
-        mdir = Path(scored_root) / name
-        if not (mdir / "Meeting_Auto_Scoring.csv").exists():
+        mdir = meeting_dirs.get(name)
+        if mdir is None:
             continue
         if min_depth and depth.get(name, 0) < min_depth:
             continue
@@ -133,7 +134,7 @@ def main():
     ap = argparse.ArgumentParser(description="候選特徵混入排名分嘅 isolated A/B")
     ap.add_argument("--scored", required=True)
     ap.add_argument("--features", required=True,
-                    help="逗號分隔，例如 ave_prize,in_win_range")
+                    help="逗號分隔，例如 dist_place_rate,jh_pre_place_rate")
     ap.add_argument("--min-depth", type=float, default=4.0)
     ap.add_argument("--holdout", type=float, default=0.15)
     ap.add_argument("--folds", type=int, default=5)

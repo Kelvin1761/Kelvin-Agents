@@ -465,7 +465,7 @@ def probe(parsed, label=""):
 # 下游（inject_fact_anchors → Facts.md → engine）食嘅係 Racenet crawler 嗰套文字
 # 格式，所以呢度要逐個欄位對返齊，唔可以自創格式。已核實嘅解析點：
 #   ` starters:N`                 → 馬群大細（form_score 百分位化靠佢）
-#   ` PF[Last600: X ...]`         → 段速實速（X 係**同基準嘅差值**，唔係原始秒數）
+#   ` PF[L600 Delta: X ...]`      → 段速實速（X 係**同基準嘅差值**，唔係原始秒數）
 #   `Nth@800m Nth@400m`           → 定位（settling position）
 #   `(LY: 288:53-39-35)`          → 騎練去年 starts:1st-2nd-3rd
 _POS_ORD = {"1st": 1, "2nd": 2, "3rd": 3}
@@ -553,8 +553,9 @@ def run_line(run):
         # `l600_time`，冇任何 leaf 讀 —— 所以寫錯 key 唔會報錯，只會令段速實速
         # 全場中性 60。實測：2026-08-01 Flemington 九場，PF 寫咗 96% 嘅往績行，
         # 但 pace_figure_score 嘅 evidence 係 **0%**、SD 0.00。
-        # 而且 `Last600:` 喺 live Formguide 係 PuntingForm 評分（29–93），
-        # 唔係秒差 —— 借佢個名擺個 delta 落去係兩把唔同嘅尺。
+        # 而且 Racenet PF 嘅 `Last600:` 係跑到「剩 600m」嗰刻嘅累積時間；
+        # `Runner Time - Last600` 先係真正末段 600。Sportsbet `l600` 就直接係
+        # 末段 600 秒數。借同一個 key 擺 benchmark delta 會混合三把尺。
         tail += f" PF[L600 Delta: {delta}]"
     line = " ".join(parts) + " " + tail
     opp = run.get("opponents") or []

@@ -51,8 +51,8 @@ class PfTokenContractTest(unittest.TestCase):
                              "delta 冇入到 l600_delta —— 段速實速會全場中性 60")
 
     def test_does_not_park_a_delta_under_the_rating_key(self):
-        # `Last600:` 喺 live Formguide 係 PuntingForm 評分（29–93），唔係秒差。
-        # 借佢個名擺個 delta 落去，等於將兩把尺溝埋。
+        # Racenet PF `Last600:` 係跑到剩 600m 嘅累積時間；Sportsbet 呢度
+        # 畀嘅係真正末段 600 秒數。兩者都唔係 benchmark delta，唔可以借名。
         token = self._token(_run())
         self.assertIsNone(_parse_pf_token(token)["l600_time"])
 

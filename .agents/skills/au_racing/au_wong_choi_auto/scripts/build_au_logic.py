@@ -124,7 +124,7 @@ def _load_racecard_profiles(facts_path: Path, race_number: int) -> dict[str, dic
 
 def _extract_career_starts(block: str) -> int:
     line = _capture(block, r"生涯: ([^\n]+)")
-    match = re.match(r"(\d+):", line or "")
+    match = re.match(r"\s*(\d+)\s*(?::|$)", line or "")
     return int(match.group(1)) if match else 0
 
 

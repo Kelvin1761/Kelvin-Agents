@@ -8,7 +8,11 @@ ENGINE = SCRIPTS / "racing_engine"
 sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, str(ENGINE))
 
-from au_runtime_failure_audit import PRIMARY_MATRIX_KEYS, analyze_race
+from au_runtime_failure_audit import (
+    PRIMARY_MATRIX_KEYS,
+    analyze_race,
+    raw_pre_race_snapshot,
+)
 
 
 def _row(number: int, score: float, actual_pos: int) -> dict:
@@ -31,6 +35,35 @@ def _row(number: int, score: float, actual_pos: int) -> dict:
 
 
 class RuntimeFailureAuditTests(unittest.TestCase):
+    def test_raw_snapshot_keeps_pf_inputs_but_never_outcomes(self):
+        snapshot = raw_pre_race_snapshot(
+            {
+                "barrier": 4,
+                "rating": 72,
+                "actual_pos": 1,
+                "result_sp_label": 5.5,
+                "_data": {
+                    "pf_metrics": {
+                        "pf_aggregates": {
+                            "l600_delta_avg": -0.42,
+                            "race_time_diff_avg": -0.31,
+                        },
+                    },
+                    "recent_shape_entropy": 0.5,
+                    "current_jockey_formal_rides": 4,
+                    "current_jockey_formal_places": 2,
+                    "current_jockey_formal_wins": 1,
+                },
+            }
+        )
+        self.assertEqual(snapshot["pf_aggregates"]["l600_delta_avg"], -0.42)
+        self.assertEqual(snapshot["pf_aggregates"]["race_time_diff_avg"], -0.31)
+        self.assertEqual(snapshot["current_jockey_formal_rides"], 4)
+        self.assertEqual(snapshot["current_jockey_formal_places"], 2)
+        self.assertEqual(snapshot["current_jockey_formal_wins"], 1)
+        self.assertNotIn("actual_pos", snapshot)
+        self.assertNotIn("result_sp_label", snapshot)
+
     def test_failure_cohorts_and_score_compression(self):
         race = [
             _row(1, 66.0, 6),

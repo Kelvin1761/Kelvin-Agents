@@ -5,8 +5,9 @@
 **額外加**上去，其他維度嘅權重冇動。真正加一個維度係**攤薄**其他維度：
 新維度攞 w，其餘按比例縮到 (1−w)。兩者數學上唔同，結論可以唔同。
 
-`ave_prize`（場內 AUC 0.613，同 `class_score` 相關得 +0.001）同
-`dist_place_rate`（0.588）兩個都係 additive 試過唔過閘。呢度用維度形式再試。
+歷史 scan 只准用賽前逐行往績重建嘅候選，例如 `dist_place_rate` 同
+`jh_pre_place_rate`。Sportsbet career overview 會賽後刷新，唔准用嚟驗證。
+呢度用新維度形式測真正嘅 incremental value。
 
 紀律同 refit 一樣：dev 85% / holdout 15% 依時間切，dev 內 5 fold 閘，
 holdout 唔參與揀 w。
@@ -39,15 +40,16 @@ KEYS = ("gold", "good_positional", "pass", "champion", "winner_in_top3")
 
 
 def build(scored_root, feature, min_depth=4.0):
-    from sb_backfill_archive import load_meeting_ids
+    from sb_backfill_archive import load_meeting_ids, scored_meeting_index
 
+    meeting_dirs = scored_meeting_index(scored_root)
     cj = Path(scored_root).parent / "source_compare.json"
     depth = ({d["meeting"]: d.get("form_depth", 0)
               for d in json.loads(cj.read_text())} if cj.exists() else {})
     out = []
     for name, meta in sorted(load_meeting_ids().items(), key=lambda kv: kv[1]["date"]):
-        md = Path(scored_root) / name
-        if not (md / "Meeting_Auto_Scoring.csv").exists():
+        md = meeting_dirs.get(name)
+        if md is None:
             continue
         if min_depth and depth.get(name, 0) < min_depth:
             continue
@@ -140,11 +142,12 @@ def main():
     ap.add_argument("--scored", required=True)
     ap.add_argument("--feature", required=True)
     ap.add_argument("--ws", default="0.03,0.05,0.08,0.12,0.18")
+    ap.add_argument("--min-depth", type=float, default=4.0)
     ap.add_argument("--holdout", type=float, default=0.15)
     ap.add_argument("--folds", type=int, default=5)
     args = ap.parse_args()
 
-    races = build(args.scored, args.feature)
+    races = build(args.scored, args.feature, args.min_depth)
     cut = int(len(races) * (1 - args.holdout))
     dev, hold = races[:cut], races[cut:]
     have = sum(1 for r in races for x in r if x["x"] is not None)

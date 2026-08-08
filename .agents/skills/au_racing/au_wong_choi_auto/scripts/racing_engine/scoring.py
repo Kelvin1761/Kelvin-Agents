@@ -7,18 +7,18 @@ FEATURE_KEYS = (
     "form_score", "trial_score", "sectional_score", "pace_map_score",
     "jockey_score", "trainer_score", "jockey_horse_fit_score", "class_score",
     "rating_score", "weight_score", "distance_score", "track_score",
-    "formline_score", "consistency_score", "health_score", "confidence_score",
-    "pace_figure_score",
+    "formline_score", "consistency_score", "performance_quality_score",
+    "health_score", "confidence_score", "pace_figure_score",
 )
 ABILITY_FEATURE_KEYS = (
-    "form_score", "consistency_score", "pace_figure_score",
+    "form_score", "performance_quality_score", "pace_figure_score",
     "trial_score", "pace_map_score", "jockey_score", "trainer_score",
     "jockey_horse_fit_score", "class_score", "rating_score",
     "track_score",
 )
 REPORT_ONLY_FEATURE_KEYS = (
     "sectional_score", "weight_score", "distance_score", "formline_score",
-    "health_score", "confidence_score",
+    "consistency_score", "health_score", "confidence_score",
 )
 
 # pace_figure = 8th dimension: field-relative L600-vs-benchmark ("實測段速") from

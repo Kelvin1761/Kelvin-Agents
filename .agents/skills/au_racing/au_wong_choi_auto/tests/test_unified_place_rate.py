@@ -128,5 +128,6 @@ class TestNarrativeTruth:
 
     def test_evidence_states_sample_and_baseline(self):
         eng = engine(jockey="Star Rider", jockey_ly={"rides": 800, "places": 400})
-        _score, note, _src = eng._jockey_score()
+        _score, note, src = eng._jockey_score()
         assert "800 場" in note and "全國基準" in note
+        assert eng._feature_evidence_state("jockey_score", src) == "observed"

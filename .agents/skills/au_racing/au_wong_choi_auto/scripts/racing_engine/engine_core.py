@@ -384,6 +384,23 @@ class RacingEngine:
                 cd["adjustments"].append({"delta": -4.0, "factor": "[環境] 場地未明收回",
                                           "evidence": "穩定度偏高但場地分未達中性"})
                 cd["final"] = round(clip_score(feature_scores["consistency_score"]), 2)
+        # Complete class-adjusted margin evidence replaces the old consistency
+        # leaf inside the stability matrix.  Where that evidence is unavailable,
+        # copy the already-context-adjusted consistency score exactly so legacy
+        # and thin-data races remain rank-identical.
+        if self.provenance.get("performance_quality_score") == "consistency_fallback":
+            feature_scores["performance_quality_score"] = feature_scores.get(
+                "consistency_score",
+                60,
+            )
+            feature_notes["performance_quality_score"] = (
+                "未有最少兩場同時包含輸距、獎金及出馬數嘅完整近績；"
+                f"沿用跑法穩定性 {feature_scores['performance_quality_score']:.1f} 分。"
+            )
+            detail = getattr(self, "performance_quality_detail", {}) or {}
+            detail["final"] = round(feature_scores["performance_quality_score"], 2)
+            detail["fallback"] = "consistency_score"
+            self.performance_quality_detail = detail
         jt_fit = feature_scores.get("jockey_horse_fit_score", 60)
         if jt_fit >= 72 and cs < 58:
             feature_scores["jockey_horse_fit_score"] = jt_fit - 3
@@ -487,6 +504,7 @@ class RacingEngine:
             "stability_detail": {
                 "form": getattr(self, "form_detail", {}) or {},
                 "consistency": getattr(self, "consistency_detail", {}) or {},
+                "performance_quality": getattr(self, "performance_quality_detail", {}) or {},
             },
             "pace_perf_detail": {
                 "pace": getattr(self, "pace_figure_detail", {}) or {},
@@ -547,7 +565,11 @@ class RacingEngine:
         if name == "pace_map_score":
             return "observed" if parse_float(self.horse_data.get("barrier")) is not None else "fallback"
         if name == "jockey_score":
-            return "observed" if source in {"jockey_ly_stats", "jockey_rating_db"} else "fallback"
+            return "observed" if source in {
+                "unified_place_rate",
+                "jockey_ly_stats",
+                "jockey_rating_db",
+            } else "fallback"
         if name == "trainer_score":
             detail = getattr(self, "trainer_detail", {}) or {}
             has_stats = bool(detail.get("ly_line") or detail.get("adjustments"))
@@ -571,6 +593,12 @@ class RacingEngine:
             return "observed" if detail.get("notes") else "fallback"
         if name == "consistency_score":
             return "derived" if self._official_entries() else "fallback"
+        if name == "performance_quality_score":
+            return (
+                "observed"
+                if source == "class_adjusted_margin_field_relative"
+                else "fallback"
+            )
         if name == "pace_figure_score":
             return "observed" if source == "pf_l600_delta_field_relative" else "missing"
         if name == "distance_score":
@@ -1899,7 +1927,7 @@ class RacingEngine:
                 feature_scores,
                 feature_notes,
                 "form_score",
-                "consistency_score",
+                "performance_quality_score",
             ),
             "pace_perf": self._reason_bundle(
                 "pace_perf",
@@ -2056,9 +2084,13 @@ class RacingEngine:
         else:
             opener = "正式近績樣本有限，穩定性主要靠試閘同備戰資料判斷。"
             
-        if feature_scores["form_score"] >= 72 and feature_scores["consistency_score"] >= 68:
+        quality_score = feature_scores.get(
+            "performance_quality_score",
+            feature_scores.get("consistency_score", 60),
+        )
+        if feature_scores["form_score"] >= 72 and quality_score >= 68:
             assessment = "連仗交出接近表現證明戰鬥力企穩，唔係單靠一場偶發水準撐起，具備堅實嘅爭勝底氣。"
-        elif feature_scores["form_score"] <= 58 or feature_scores["consistency_score"] <= 58:
+        elif feature_scores["form_score"] <= 58 or quality_score <= 58:
             assessment = "近態未算企得好穩，評分上仍然要留低少少問號。"
         else:
             assessment = "近況有啲底，但未到可以完全放膽追捧嘅絕對穩定期。"
@@ -2374,6 +2406,7 @@ class RacingEngine:
             "track_score": "場地分",
             "formline_score": "賽績線分",
             "consistency_score": "穩定性分",
+            "performance_quality_score": "表現質素分",
             "health_score": "健康分",
             "confidence_score": "信心分",
         }.get(key, key)
@@ -4137,6 +4170,44 @@ class RacingEngine:
         note_str = "；".join(notes) if notes else "未見特別跑法或表現穩定特徵"
         return score, f"{note_str}。跑法穩定性 {clip_score(score):.1f} 分。", "run_style+sectional_trend+repeatability"
 
+    def _performance_quality_score(self):
+        if os.environ.get("WC_DISABLE_AU_PERFORMANCE_QUALITY") == "1":
+            self.performance_quality_detail = {"disabled": True, "final": None}
+            return 60.0, "表現質素分已停用，稍後沿用跑法穩定性分。", "consistency_fallback"
+        raw = parse_float(self.data.get("performance_quality_raw"))
+        summary = self.race_context.get("field_summary") or {}
+        count = int(parse_float(summary.get("performance_quality_field_count")) or 0)
+        field_mean = parse_float(summary.get("performance_quality_field_mean"))
+        field_stdev = parse_float(summary.get("performance_quality_field_stdev"))
+        run_count = int(parse_float(self.data.get("performance_quality_run_count")) or 0)
+        self.performance_quality_detail = {
+            "raw": raw,
+            "run_count": run_count,
+            "field_count": count,
+            "field_mean": field_mean,
+            "field_stdev": field_stdev,
+            "final": None,
+        }
+        if (
+            raw is None
+            or run_count < 2
+            or count < 3
+            or field_mean is None
+            or field_stdev is None
+            or field_stdev <= 0
+        ):
+            return 60.0, "完整表現質素樣本不足，稍後沿用跑法穩定性分。", "consistency_fallback"
+        z_score = (raw - field_mean) / field_stdev
+        score = clip_score(60.0 + 20.0 * z_score)
+        self.performance_quality_detail.update(
+            {"z_score": round(z_score, 4), "final": round(score, 2)}
+        )
+        return (
+            score,
+            f"近 {run_count} 場按輸距及賽事獎金級別校正，場內標準分 {score:.1f}。",
+            "class_adjusted_margin_field_relative",
+        )
+
     def _confidence_score(self):
         anchors = 0
         for value in (
@@ -4476,6 +4547,9 @@ def _pf_str(pattern: str, text: str):
 
 def _parse_pf_token(token: str) -> dict:
     return {
+        # Historical field name kept for cache compatibility.  Racenet PF
+        # `Last600` is elapsed time at the 600m-to-go marker, not the final
+        # 600m split; final split = Runner Time - Last600.
         "l600_time": _pf_num(r"Last600:\s*([-\d.]+)", token),
         "runner_time": _pf_num(r"Runner Time:\s*([-\d.]+)", token),
         "race_time_diff": _pf_num(r"Race Time:\s*([-\d.]+)", token),
@@ -4576,6 +4650,47 @@ def _parse_formguide_pf_metrics(
             "pf_aggregates": _pf_aggregates(runs, "racenet_formguide_cfb"),
         }
     return output
+
+
+def _validate_formguide_horse_alignment(
+    text: str,
+    horses: dict,
+    *,
+    source: str,
+) -> None:
+    """Refuse cross-race/cross-horse Formguide payloads before enrichment.
+
+    Extra Formguide runners are allowed (late scratchings can remove a runner
+    from Logic), but every Logic runner must have the same number/name pair.
+    """
+    headers = list(_FG_HORSE_HDR_RE.finditer(text or ""))
+    if not headers:
+        return
+    by_number: dict[str, str] = {}
+    duplicate_numbers = []
+    for header in headers:
+        number = header.group(1)
+        if number in by_number:
+            duplicate_numbers.append(number)
+        by_number[number] = header.group(2).strip()
+    errors = []
+    if duplicate_numbers:
+        errors.append(f"duplicate Formguide horse numbers {sorted(set(duplicate_numbers))}")
+    for number, horse in horses.items():
+        key = str(number)
+        if key not in by_number:
+            errors.append(f"Logic runner #{key} absent from Formguide")
+            continue
+        logic_name = _normalize_horse_name((horse or {}).get("horse_name"))
+        formguide_name = _normalize_horse_name(by_number[key])
+        if logic_name != formguide_name:
+            errors.append(
+                f"#{key} Logic={logic_name or '?'} Formguide={formguide_name or '?'}"
+            )
+    if errors:
+        raise ValueError(
+            f"FORMGUIDE ALIGNMENT FAILED in {source}: " + "; ".join(errors)
+        )
 
 
 def _load_pf_backfill(archive_root: Path) -> dict:
@@ -4813,7 +4928,11 @@ def _extract_race_meta(
 
 def _extract_career_starts(block: str) -> int:
     line = _capture(block, r"生涯: ([^\n]+)")
-    match = re.match(r"(\d+):", line or "")
+    # Sportsbet Racecard writes ``Career: 45 : 5-7-7``.  The old Racecard
+    # parser captured only the first token (``45``), while this parser required
+    # a colon immediately after it.  That made established horses DEBUT even
+    # though the same Facts block contained many official runs.
+    match = re.match(r"\s*(\d+)\s*(?::|$)", line or "")
     return int(match.group(1)) if match else 0
 
 
@@ -4878,6 +4997,11 @@ def enrich_logic_from_facts(
     race_number = _extract_first_int(str(race_analysis.get("race_number") or facts_path.name), r"(\d+)")
     racecard_profiles = _load_racecard_profiles(facts_path, race_number)
     formguide_text = _formguide_text(facts_path)
+    _validate_formguide_horse_alignment(
+        formguide_text,
+        logic_data.get("horses") or {},
+        source=facts_path.name.replace("Facts", "Formguide"),
+    )
     formguide_digests = _load_formguide_digests(facts_path, race_number)
     pf_by_horse = _merge_pf_sources(
         _parse_formguide_pf_metrics(
@@ -4943,6 +5067,19 @@ def enrich_logic_from_facts(
         data = horse.setdefault("_data", {})
         data.pop("eem_summary", None)
         data.pop("eem_style", None)
+        # A matching Formguide section is an atomic, horse-number keyed source
+        # of truth.  Old Logic snapshots were produced before the multi-race
+        # scraper identity fix and can contain another race's sire, jockey
+        # history, splits and running-position digest under this horse number.
+        # Fill-if-missing preserved that cross-horse payload forever.  Replace
+        # every digest key together (including meaningful zero/False/empty
+        # values); preserve the old payload only when no matching section was
+        # parsed at all.
+        if formguide:
+            data.update(formguide)
+        for key in ("jockey_ly", "trainer_ly"):
+            if key in jt_ly:
+                data[key] = jt_ly[key]
         _merge_prefer_clean(horse, "horse_name", section.get("horse_name"))
         _merge_prefer_clean(horse, "jockey", section.get("jockey"))
         _merge_prefer_clean(horse, "trainer", section.get("trainer"))
@@ -4958,13 +5095,16 @@ def enrich_logic_from_facts(
         )
         if racecard_profile.get("horse_rating") is not None:
             data["horse_rating"] = racecard_profile["horse_rating"]
-        _merge_data_value(
-            data,
-            "pf_metrics",
-            pf_by_horse.get(str(horse_num)),
-        )
-        _merge_data_value(data, "jockey_ly", jt_ly.get("jockey_ly"))
-        _merge_data_value(data, "trainer_ly", jt_ly.get("trainer_ly"))
+        # PF is derived from the matching Formguide (or the point-in-time
+        # historical cache), so it must be refreshed as one atomic payload.
+        # Older Logic snapshots already contain the pre-source/pre-split PF
+        # schema; a generic fill-if-missing merge kept that stale payload and
+        # silently ignored newly parsed splits on every archive re-score.
+        # Preserve the existing value only when neither current source has a
+        # matching runner.
+        fresh_pf = pf_by_horse.get(str(horse_num))
+        if fresh_pf:
+            data["pf_metrics"] = fresh_pf
         _merge_data_value(data, "last10_raw", section.get("last10_raw"))
         _merge_data_value(data, "recent_form", section.get("recent_form"))
         _merge_data_value(data, "career_record_line", section.get("career_line"))
@@ -4986,14 +5126,6 @@ def enrich_logic_from_facts(
         _merge_data_value(data, "track_stats_line", section.get("track_stats_line"))
         _merge_data_value(data, "going_stats_line", section.get("going_stats_line"))
         _merge_data_value(data, "stage_stats_line", section.get("stage_stats_line"))
-        _merge_data_value(data, "timing_600m_avg_speed", formguide.get("timing_600m_avg_speed"))
-        _merge_data_value(data, "timing_600m_recent_speed", formguide.get("timing_600m_recent_speed"))
-        _merge_data_value(data, "timing_600m_trend", formguide.get("timing_600m_trend"))
-        _merge_data_value(data, "timing_600m_best_speed", formguide.get("timing_600m_best_speed"))
-        _merge_data_value(data, "timing_l600_entries_count", formguide.get("timing_l600_entries_count"))
-        _merge_data_value(data, "timing_speed_variance", formguide.get("timing_speed_variance"))
-        _merge_data_value(data, "trial_video_signals", formguide.get("trial_video_signals"))
-        _merge_data_value(data, "timing_trial_600m_avg_speed", formguide.get("timing_trial_600m_avg_speed"))
         # The Facts file is the source of truth for the per-horse facts_section.
         # Older Logic files carry a stale pre-realignment blob that the modern
         # feature parsers (賽績線 / 試閘 / L400 / 近況) cannot read, so a
@@ -5008,51 +5140,6 @@ def enrich_logic_from_facts(
             _merge_data_value(data, "facts_section", facts_section)
         _merge_data_value(data, "last_finish_line", section.get("last_finish_line"))
         _merge_data_value(data, "warning_line", section.get("warning_line"))
-        _merge_data_value(data, "sire_line", formguide.get("sire_line"))
-        _merge_data_value(data, "current_market_line", formguide.get("current_market_line"))
-        _merge_data_value(data, "current_market_first", formguide.get("current_market_first"))
-        _merge_data_value(data, "current_market_last", formguide.get("current_market_last"))
-        _merge_data_value(data, "current_market_low", formguide.get("current_market_low"))
-        _merge_data_value(data, "current_market_trend", formguide.get("current_market_trend"))
-        _merge_data_value(data, "gear_line", formguide.get("gear_line"))
-        _merge_data_value(data, "has_blinkers", formguide.get("has_blinkers"))
-        _merge_data_value(data, "gear_changes", formguide.get("gear_changes"))
-        _merge_data_value(data, "latest_official_date", formguide.get("latest_official_date"))
-        _merge_data_value(data, "latest_official_jockey", formguide.get("latest_official_jockey"))
-        _merge_data_value(data, "latest_official_last_flucs", formguide.get("latest_official_last_flucs"))
-        _merge_data_value(data, "latest_official_market_trend", formguide.get("latest_official_market_trend"))
-        _merge_data_value(data, "latest_official_jockey_formal_rides", formguide.get("latest_official_jockey_formal_rides"))
-        _merge_data_value(data, "latest_official_jockey_formal_places", formguide.get("latest_official_jockey_formal_places"))
-        _merge_data_value(data, "latest_official_jockey_formal_wins", formguide.get("latest_official_jockey_formal_wins"))
-        _merge_data_value(data, "latest_trial_jockey", formguide.get("latest_trial_jockey"))
-        _merge_data_value(data, "current_jockey_formal_rides", formguide.get("current_jockey_formal_rides"))
-        _merge_data_value(data, "current_jockey_formal_places", formguide.get("current_jockey_formal_places"))
-        _merge_data_value(data, "current_jockey_formal_wins", formguide.get("current_jockey_formal_wins"))
-        _merge_data_value(data, "current_jockey_trial_rides", formguide.get("current_jockey_trial_rides"))
-        _merge_data_value(data, "current_jockey_trial_top3", formguide.get("current_jockey_trial_top3"))
-        _merge_data_value(data, "current_jockey_history_line", formguide.get("current_jockey_history_line"))
-        _merge_data_value(data, "best_formal_jockey", formguide.get("best_formal_jockey"))
-        _merge_data_value(data, "best_formal_jockey_rides", formguide.get("best_formal_jockey_rides"))
-        _merge_data_value(data, "best_formal_jockey_places", formguide.get("best_formal_jockey_places"))
-        _merge_data_value(data, "best_formal_jockey_wins", formguide.get("best_formal_jockey_wins"))
-        _merge_data_value(data, "best_jockey_history_line", formguide.get("best_jockey_history_line"))
-        _merge_data_value(data, "current_vs_best_jockey_line", formguide.get("current_vs_best_jockey_line"))
-        _merge_data_value(data, "known_jockeys_line", formguide.get("known_jockeys_line"))
-        _merge_data_value(data, "jockey_change_signal", formguide.get("jockey_change_signal"))
-        _merge_data_value(data, "official_market_support_count", formguide.get("official_market_support_count"))
-        _merge_data_value(data, "official_market_miss_count", formguide.get("official_market_miss_count"))
-        _merge_data_value(data, "recent_settled_pattern_line", formguide.get("recent_settled_pattern_line"))
-        _merge_data_value(data, "recent_400_pattern_line", formguide.get("recent_400_pattern_line"))
-        _merge_data_value(data, "recent_shape_consensus", formguide.get("recent_shape_consensus"))
-        _merge_data_value(data, "recent_shape_entropy", formguide.get("recent_shape_entropy"))
-        _merge_data_value(data, "recent_shape_consensus_count", formguide.get("recent_shape_consensus_count"))
-        _merge_data_value(data, "recent_shape_front_count", formguide.get("recent_shape_front_count"))
-        _merge_data_value(data, "recent_shape_mid_count", formguide.get("recent_shape_mid_count"))
-        _merge_data_value(data, "recent_shape_back_count", formguide.get("recent_shape_back_count"))
-        _merge_data_value(data, "recent_shape_inside_count", formguide.get("recent_shape_inside_count"))
-        _merge_data_value(data, "recent_shape_wide_no_cover_count", formguide.get("recent_shape_wide_no_cover_count"))
-        _merge_data_value(data, "recent_shape_early_work_count", formguide.get("recent_shape_early_work_count"))
-        _merge_data_value(data, "recent_shape_summary_line", formguide.get("recent_shape_summary_line"))
         if not str(data.get("current_jockey_history_line") or "").strip():
             current_jockey = _clean_identity(horse.get("jockey"))
             best_jockey = _clean_identity(data.get("best_formal_jockey"))
@@ -5377,13 +5464,19 @@ def _load_formguide_digests(facts_path: Path, race_number: int = 0) -> dict[str,
     if not formguide_path or not formguide_path.exists():
         return {}
     text = formguide_path.read_text(encoding="utf-8")
+    date_match = re.search(r"(\d{4}-\d{2}-\d{2})", facts_path.parent.name)
+    meeting_date = date_match.group(1) if date_match else ""
     sections = list(re.finditer(r"^\[(\d+)\]\s+(.+?) \((\d+)\)\s*$", text, re.M))
     output: dict[str, dict] = {}
     for idx, match in enumerate(sections):
         start = match.start()
         end = sections[idx + 1].start() if idx + 1 < len(sections) else len(text)
         section = text[start:end]
-        output[match.group(1)] = _summarize_formguide_section(section, match.group(2).strip())
+        output[match.group(1)] = _summarize_formguide_section(
+            section,
+            match.group(2).strip(),
+            meeting_date=meeting_date,
+        )
     return output
 
 
@@ -5421,7 +5514,12 @@ def _parse_trial_video_signals(trial_entries: list[dict]) -> dict:
     return signals
 
 
-def _summarize_formguide_section(section: str, horse_name: str) -> dict:
+def _summarize_formguide_section(
+    section: str,
+    horse_name: str,
+    *,
+    meeting_date: str = "",
+) -> dict:
     current_jockey = _capture(section, r"\|\s*J:\s*([^(\n|]+)")
     sire_line = _capture(section, r"Sire:\s*([^|]+)")
     current_market_line = _capture(section, r"^Flucs:\s*(.+)$")
@@ -5436,6 +5534,10 @@ def _summarize_formguide_section(section: str, horse_name: str) -> dict:
     timing_summary = _build_timing_summary(official_entries, trial_entries)
     trial_video_signals = _parse_trial_video_signals(trial_entries)
     recent_shape = _summarize_recent_shape(official_entries)
+    performance_quality = _performance_quality_digest(
+        official_entries,
+        meeting_date=meeting_date,
+    )
 
     jockey_stats: dict[str, dict] = {}
     for entry in entries:
@@ -5540,6 +5642,61 @@ def _summarize_formguide_section(section: str, horse_name: str) -> dict:
         "timing_l600_entries_count": timing_summary["l600_entries_count"],
         "timing_speed_variance": timing_summary.get("speed_variance"),
         "timing_trial_600m_avg_speed": timing_summary.get("trial_600m_avg_speed"),
+        "performance_quality_raw": performance_quality.get("raw"),
+        "performance_quality_run_count": performance_quality.get("run_count", 0),
+        "performance_quality_source": performance_quality.get("source", ""),
+    }
+
+
+_PERFORMANCE_QUALITY_RECENCY_WEIGHTS = (1.0, 0.8, 0.6, 0.4)
+_PERFORMANCE_QUALITY_CLASS_CREDIT = 4.0
+_PERFORMANCE_QUALITY_REFERENCE_PRIZE = 50000.0
+
+
+def _performance_quality_digest(
+    official_entries: list[dict],
+    *,
+    meeting_date: str = "",
+) -> dict:
+    """Summarize demonstrated performance against race strength.
+
+    The source gate is deliberately structural rather than date-based: a run
+    must carry beaten margin, purse and starter count.  That is the complete
+    current Sportsbet schema; partial legacy rows cannot silently enter the
+    ranking.  At least two comparable runs are required.  Archived pages may
+    be refreshed after racing, so same-day/future rows are censored too.
+    """
+    values = []
+    for entry in official_entries:
+        run_date = str(entry.get("date") or "")
+        if meeting_date and (not run_date or run_date >= meeting_date):
+            continue
+        margin = parse_float(entry.get("margin"))
+        prize = parse_float(entry.get("prize"))
+        starters = parse_float(entry.get("starters"))
+        if (
+            margin is None
+            or entry.get("margin_source") != "header"
+            or prize is None
+            or prize <= 0
+            or not starters
+        ):
+            continue
+        values.append(
+            -min(20.0, abs(margin))
+            + _PERFORMANCE_QUALITY_CLASS_CREDIT
+            * math.log10(prize / _PERFORMANCE_QUALITY_REFERENCE_PRIZE)
+        )
+        if len(values) == len(_PERFORMANCE_QUALITY_RECENCY_WEIGHTS):
+            break
+    if len(values) < 2:
+        return {}
+    weights = _PERFORMANCE_QUALITY_RECENCY_WEIGHTS[: len(values)]
+    raw = sum(value * weight for value, weight in zip(values, weights)) / sum(weights)
+    return {
+        "raw": round(raw, 6),
+        "run_count": len(values),
+        "source": "class_adjusted_margin_complete_formguide",
     }
 
 
@@ -5621,6 +5778,7 @@ def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
         block = section[start:end]
         header = block.splitlines()[0] if block.splitlines() else ""
         prize_str = match.group(6).replace(",", "")
+        prize = int(prize_str)
         is_trial = "**(TRIAL)**" in header or prize_str == "0"
         jockey_match = re.search(r"\$[0-9,]+\s+(.+?)\s+\((\d+|None)\)\s+(\S+kg|Nonekg)", header)
         jockey = jockey_match.group(1).strip() if jockey_match else ""
@@ -5631,13 +5789,19 @@ def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
         result_line = result_line_match.group(1).strip() if result_line_match else ""
         finish_pos = None
         margin = None
+        margin_source = ""
+        header_margin = re.search(r"\bmargin:([-+]?\d+(?:\.\d+)?)L?\b", header, re.I)
+        if header_margin:
+            margin = float(header_margin.group(1))
+            margin_source = "header"
         if result_line and hn_clean:
             for pos_m in re.finditer(r"(\d+)-([^(]+)\s*\(([^)]+)\)(?:\s+(\d+\.?\d*)L)?", result_line):
                 name_in_result = pos_m.group(2).strip().lower()
                 if hn_clean[:6] in name_in_result or name_in_result[:6] in hn_clean:
                     finish_pos = int(pos_m.group(1))
-                    if pos_m.group(4):
+                    if margin is None and pos_m.group(4):
                         margin = float(pos_m.group(4))
+                        margin_source = "result_line"
                     break
         note = _capture(block, r"^Note:\s*(.+)$")
         stewards = _capture(block, r"^Stewards:\s*(.+)$")
@@ -5650,11 +5814,16 @@ def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
         entries.append({
             "date": match.group(3),
             "is_trial": is_trial,
+            "prize": prize,
+            "starters": int(starters_match.group(1)) if (
+                starters_match := re.search(r"\bstarters:(\d+)\b", header, re.I)
+            ) else None,
             "jockey": jockey,
             "flucs": flucs,
             "last_flucs": fluc_values[-1] if fluc_values else "",
             "finish_pos": finish_pos,
             "margin": margin,
+            "margin_source": margin_source,
             "settled_pos": _parse_running_position(header, "Settled"),
             "pos_400": _parse_running_position(header, "400m"),
             "pos_800": _parse_running_position(header, "800m"),

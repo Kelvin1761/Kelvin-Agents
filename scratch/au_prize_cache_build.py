@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+import argparse
 from collections import Counter
 from pathlib import Path
 
@@ -72,46 +73,60 @@ def parse_formguide(text):
     return out
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path(__file__).resolve().parent / "au_prize_cache.json",
+        help="cache JSON destination (default: scratch/au_prize_cache.json)",
+    )
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
     out = {}
     meetings = races = 0
     prize_hist = Counter()
     totals = Counter()
-    for folder in sorted(p for p in ARCHIVE_ROOT.iterdir() if p.is_dir()):
-        guides = sorted(folder.glob("*Formguide.md"))
-        if not guides:
+    # Completed meetings live under ``Archive/``.  Iterating only immediate
+    # children silently dropped every archived meeting and made the cache look
+    # current while stopping at the last unarchived date.
+    guides = sorted(ARCHIVE_ROOT.rglob("*Formguide.md"))
+    meetings = len({guide.parent.resolve() for guide in guides})
+    for guide in guides:
+        folder = guide.parent
+        m = re.search(r"Race\s+(\d+)\s+Formguide", guide.name)
+        if not m:
             continue
-        meetings += 1
-        for guide in guides:
-            m = re.search(r"Race\s+(\d+)\s+Formguide", guide.name)
-            if not m:
-                continue
-            race_no = int(m.group(1))
-            try:
-                text = guide.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                continue
-            parsed = parse_formguide(text)
-            if not parsed:
-                continue
-            races += 1
-            for horse_no, rec in parsed.items():
-                key = f"{folder.name}|{race_no}|{horse_no}"
-                out[key] = rec
-                for run in rec["runs"]:
-                    if run["is_trial"]:
-                        continue
-                    totals["official"] += 1
-                    totals["prize"] += 1
-                    if run["margin"] is not None:
-                        totals["margin"] += 1
-                    if run["starters"]:
-                        totals["starters"] += 1
-                    if run["hc"]:
-                        totals["hc"] += 1
-                    prize_hist[min(run["prize"] // 25000, 20)] += 1
+        race_no = int(m.group(1))
+        try:
+            text = guide.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        parsed = parse_formguide(text)
+        if not parsed:
+            continue
+        races += 1
+        for horse_no, rec in parsed.items():
+            key = f"{folder.name}|{race_no}|{horse_no}"
+            out[key] = rec
+            for run in rec["runs"]:
+                if run["is_trial"]:
+                    continue
+                totals["official"] += 1
+                totals["prize"] += 1
+                if run["margin"] is not None:
+                    totals["margin"] += 1
+                if run["starters"]:
+                    totals["starters"] += 1
+                if run["hc"]:
+                    totals["hc"] += 1
+                prize_hist[min(run["prize"] // 25000, 20)] += 1
 
-    dest = Path(__file__).resolve().parent / "au_prize_cache.json"
+    dest = args.output.expanduser().resolve()
+    dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(out), encoding="utf-8")
     off = max(1, totals["official"])
     print(f"meetings {meetings}  races {races}  horse-blocks {len(out)}")

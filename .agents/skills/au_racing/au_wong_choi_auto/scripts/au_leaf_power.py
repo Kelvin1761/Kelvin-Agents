@@ -98,7 +98,7 @@ def main():
                     help="連冇證據嘅中性 60 一齊計")
     args = ap.parse_args()
 
-    from sb_backfill_archive import load_meeting_ids
+    from sb_backfill_archive import load_meeting_ids, scored_meeting_index
 
     depth = {}
     cmp_json = Path(args.scored).parent / "source_compare.json"
@@ -107,12 +107,14 @@ def main():
                  for d in json.loads(cmp_json.read_text())}
 
     ids = load_meeting_ids()
+    meeting_dirs = scored_meeting_index(args.scored)
     acc = {}          # leaf → [concordant, comparable, scored_runners]
     races = 0
     for name, meta in sorted(ids.items(), key=lambda kv: kv[1]["date"]):
-        p = Path(args.scored) / name / "Meeting_Auto_Scoring.csv"
-        if not p.exists():
+        meeting_dir = meeting_dirs.get(name)
+        if meeting_dir is None:
             continue
+        p = meeting_dir / "Meeting_Auto_Scoring.csv"
         if args.min_depth and depth.get(name, 0) < args.min_depth:
             continue
         res = results_for(meta)

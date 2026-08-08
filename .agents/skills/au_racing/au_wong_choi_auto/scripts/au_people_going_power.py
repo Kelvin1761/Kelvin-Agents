@@ -67,7 +67,7 @@ def main():
 
     from claw_sportsbet_form import (BASE, SportsbetFormFetcher, _match_person,
                                      parse_race)
-    from sb_backfill_archive import load_meeting_ids
+    from sb_backfill_archive import load_meeting_ids, scored_meeting_index
     import sb_people_stats
 
     cache = sb_people_stats.load_cache()
@@ -75,14 +75,16 @@ def main():
     depth = ({d["meeting"]: d.get("form_depth", 0)
               for d in json.loads(cj.read_text())} if cj.exists() else {})
     f = SportsbetFormFetcher(delay=0.0, verbose=False)
+    meeting_dirs = scored_meeting_index(args.scored)
 
     acc = {}
     wet_acc = {}
     races = 0
     for name, meta in sorted(load_meeting_ids().items(), key=lambda kv: kv[1]["date"]):
-        p = Path(args.scored) / name / "Meeting_Auto_Scoring.csv"
-        if not p.exists() or (args.min_depth and depth.get(name, 0) < args.min_depth):
+        meeting_dir = meeting_dirs.get(name)
+        if meeting_dir is None or (args.min_depth and depth.get(name, 0) < args.min_depth):
             continue
+        p = meeting_dir / "Meeting_Auto_Scoring.csv"
         res = results_for(meta)
         if not res:
             continue

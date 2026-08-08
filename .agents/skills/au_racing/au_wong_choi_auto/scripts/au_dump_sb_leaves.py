@@ -45,17 +45,19 @@ def main():
     ap.add_argument("--min-depth", type=float, default=4.0)
     args = ap.parse_args()
 
-    from sb_backfill_archive import load_meeting_ids
+    from sb_backfill_archive import load_meeting_ids, scored_meeting_index
 
     cj = Path(args.scored).parent / "source_compare.json"
     depth = ({d["meeting"]: d.get("form_depth", 0)
               for d in json.loads(cj.read_text())} if cj.exists() else {})
 
+    meeting_dirs = scored_meeting_index(args.scored)
     races_out, runners, pf_ok, skipped_thin = [], 0, 0, 0
     for name, meta in sorted(load_meeting_ids().items(), key=lambda kv: kv[1]["date"]):
-        p = Path(args.scored) / name / "Meeting_Auto_Scoring.csv"
-        if not p.exists():
+        meeting_dir = meeting_dirs.get(name)
+        if meeting_dir is None:
             continue
+        p = meeting_dir / "Meeting_Auto_Scoring.csv"
         if args.min_depth and depth.get(name, 0) < args.min_depth:
             skipped_thin += 1
             continue

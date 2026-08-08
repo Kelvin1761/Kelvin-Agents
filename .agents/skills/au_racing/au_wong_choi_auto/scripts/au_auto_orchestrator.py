@@ -266,6 +266,7 @@ def _logic_sort_key(path: Path):
 def _build_field_summary(horses):
     weights = []
     ratings = []
+    performance_quality = []
     # 班次代理（2026-07-31）：逐匹馬近仗獎金水平嘅場內中位數，供 `_form_score`
     # 做場內相對班次調整。同下面 pf_fields 嘅場內 mean/stdev 同一個 pattern。
     prize_levels = []
@@ -294,6 +295,14 @@ def _build_field_summary(horses):
         level = horse_prize_level((horse.get("_data") or {}).get("facts_section"))
         if level is not None:
             prize_levels.append(level)
+        try:
+            quality = float(
+                (horse.get("_data") or {}).get("performance_quality_raw")
+            )
+        except (TypeError, ValueError):
+            quality = None
+        if quality is not None:
+            performance_quality.append(quality)
         pf_agg = ((horse.get("_data") or {}).get("pf_metrics") or {}).get("pf_aggregates") or {}
         for key, values in pf_fields.items():
             value = pf_agg.get(f"{key}_avg")
@@ -353,6 +362,22 @@ def _build_field_summary(horses):
         summary[f"{key}_field_count"] = len(values)
         summary[f"{key}_field_mean"] = mean
         summary[f"{key}_field_stdev"] = stdev
+    quality_mean = (
+        sum(performance_quality) / len(performance_quality)
+        if performance_quality
+        else 0.0
+    )
+    summary["performance_quality_field_count"] = len(performance_quality)
+    summary["performance_quality_field_mean"] = quality_mean
+    summary["performance_quality_field_stdev"] = (
+        (
+            sum((value - quality_mean) ** 2 for value in performance_quality)
+            / len(performance_quality)
+        )
+        ** 0.5
+        if len(performance_quality) >= 2
+        else 0.0
+    )
     # 用中位數而唔係平均：獎金 log10 分佈有長尾（一匹跑過 Group 1 嘅馬會拉高平均，
     # 令全場其他馬齊齊被扣分）。少於 4 匹有數據就唔提供 —— 樣本太細嘅「場內中位」
     # 冇意義，`_form_score` 會自動跳過班次調整。

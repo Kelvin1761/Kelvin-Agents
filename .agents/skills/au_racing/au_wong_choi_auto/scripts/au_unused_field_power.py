@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """抽咗但**冇任何 leaf 讀**嘅欄位，逐個量場內判別力。
 
-Sportsbet 帶咗一批欄位入嚟，寫咗落賽事檔但暫時零 leaf 讀：`Days`（距上仗）、
-`Ave $`（平均獎金）、`J/H`（人馬配搭往績）、`WinRange`（勝出距離範圍）、
-`SpeedPos`（官方預測定位）。加上往績行入面新攞到嘅 `@Settled`（起步定位）。
+Sportsbet 帶咗一批欄位入嚟，寫咗落賽事檔但暫時零 leaf 讀；不過 career overview
+會賽後刷新，所以歷史研究只量 `Days`、`SpeedPos` 同由日期已截斷往績行重建嘅
+路程／人馬／試閘／段速／定位訊號。`Ave $`、J/H、WinRange、up-record outcome
+summary 一律封鎖。加上往績行入面新攞到嘅 `@Settled`（起步定位）。
 
 用同一把尺量：**場內 AUC**，平手當一半，同 `au_leaf_power.py` 一致，所以個數
 可以直接同現有 leaf 比。冇呢個對照，「0.54 好唔好」係答唔到嘅。
@@ -45,15 +46,6 @@ def _num(txt):
     return float(m.group(0).replace(",", "")) if m else None
 
 
-def _wps(txt):
-    """`14: 5-0-4` → (starts, w, p, s)。"""
-    m = re.match(r"\s*(\d+):\s*([\d-]+)-([\d-]+)-([\d-]+)", txt or "")
-    if not m:
-        return None
-    f = lambda x: 0 if x == "-" else int(x)          # noqa: E731
-    return int(m.group(1)), f(m.group(2)), f(m.group(3)), f(m.group(4))
-
-
 def runner_features(block, today_dist, horse_name="", today_jockey=""):
     """一匹馬 → {特徵名: 值}。攞唔到就唔放，唔會用 0 頂替。"""
     def field(label):
@@ -64,9 +56,12 @@ def runner_features(block, today_dist, horse_name="", today_jockey=""):
     days = _num(field("Days:"))
     if days is not None:
         out["days_since_last"] = days
-    ave = _num(field("Ave $:"))
-    if ave:
-        out["ave_prize"] = ave
+    # Outcome-derived overview summaries are forbidden in historical research.
+    # Sportsbet has been proven to refresh J/H and WinRange with the target race;
+    # Ave $ and the 1st/2nd/3rd-up records are built from the same mutable career
+    # overview and can therefore contain the answer too.  Live pre-race display
+    # may safely show them, but a post-race archive cannot validate them.  Build
+    # candidate signals only from the dated run rows censored before race day.
     # ⚠️ **`J/H`（人馬配搭）唔可以喺歷史語料度用 —— 佢包含今日嗰仗。**
     # 實測 2026-08-01 Flemington R5：Silent Shares 顯示 `1: 0-0-1`，而 Emily
     # Pozman **賽前策騎過佢 0 次**，佢今日跑第三。嗰個「1 次 1 季」就係今日。
@@ -108,10 +103,7 @@ def runner_features(block, today_dist, horse_name="", today_jockey=""):
                 if gap >= 60:
                     break
                 up += 1
-        rec = _wps(field(f"{min(up,3)}{'st' if up==1 else 'nd' if up==2 else 'rd'} Up:"))
-        if rec and rec[0] >= 2:
-            out["up_place_rate"] = (rec[1] + rec[2] + rec[3]) / rec[0]
-            out["up_index"] = -float(min(up, 4))
+        out["up_index"] = -float(min(up, 4))
 
     # ── 由**我哋自己過濾過嘅賽前往績行**砌，唔用網站嘅總結欄位 ──────────
     # 呢個係 `WinRange` 洩漏嘅正解：唔好用網站賽後先寫嘅總結，改為由我哋
@@ -250,17 +242,18 @@ def main():
     ap.add_argument("--min-depth", type=float, default=4.0)
     args = ap.parse_args()
 
-    from sb_backfill_archive import load_meeting_ids
+    from sb_backfill_archive import load_meeting_ids, scored_meeting_index
 
     depth = {}
+    meeting_dirs = scored_meeting_index(args.scored)
     cj = Path(args.scored).parent / "source_compare.json"
     if cj.exists():
         depth = {d["meeting"]: d.get("form_depth", 0) for d in json.loads(cj.read_text())}
 
     acc, races = {}, 0
     for name, meta in sorted(load_meeting_ids().items(), key=lambda kv: kv[1]["date"]):
-        mdir = Path(args.scored) / name
-        if not (mdir / "Meeting_Auto_Scoring.csv").exists():
+        mdir = meeting_dirs.get(name)
+        if mdir is None:
             continue
         if args.min_depth and depth.get(name, 0) < args.min_depth:
             continue

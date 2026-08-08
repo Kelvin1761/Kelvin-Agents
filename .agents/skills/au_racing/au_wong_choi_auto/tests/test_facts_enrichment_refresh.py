@@ -8,12 +8,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[5]
 SCRIPTS = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"
+SHARED_SCRIPTS = ROOT / ".agents" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SHARED_SCRIPTS))
 
 from au_auto_orchestrator import _facts_path_for_logic
 import build_au_logic
-from engine_core import enrich_logic_from_facts
+from engine_core import enrich_logic_from_facts, _extract_career_starts
+from inject_fact_anchors import parse_racecard
 
 MODERN_FACTS = "\n".join(
     [
@@ -65,6 +68,40 @@ class FactsPathGlobTests(unittest.TestCase):
 
 
 class BuilderEnricherParityTests(unittest.TestCase):
+    def test_integer_only_sportsbet_career_is_not_debut(self) -> None:
+        facts = "\n".join(
+            [
+                "### 馬匹 #4 Example Star (檔位 2)",
+                "  - 生涯: 45",
+                "  - 生涯標記: `DEBUT` (生涯 0 場)",
+            ]
+        )
+        self.assertEqual(_extract_career_starts(facts), 45)
+        self.assertEqual(build_au_logic._extract_career_starts(facts), 45)
+        self.assertEqual(build_au_logic._extract_career_tag(facts), "ESTABLISHED")
+
+    def test_sportsbet_racecard_keeps_full_career_record(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            racecard = Path(tmp) / "Racecard.md"
+            racecard.write_text(
+                "\n".join(
+                    [
+                        "RACE 1 — 1400m",
+                        "1. Example Star (3)",
+                        (
+                            "Trainer: T Smith | Jockey: J Doe | Weight: 58.0kg | "
+                            "Age: 5yoG | Rating: 70"
+                        ),
+                        "Career: 45 : 5-7-7 | Win: 11% | Place: 42%",
+                        "----------------------------------------",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            horses = parse_racecard(str(racecard))
+
+        self.assertEqual(horses[0]["career"], "45 : 5-7-7")
+
     def test_canonical_builder_is_enrichment_idempotent(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             facts_path = Path(tmp) / "11-01 Race 3 Facts.md"
@@ -158,6 +195,114 @@ class FactsSectionRefreshTests(unittest.TestCase):
         meeting = enriched["race_analysis"]["meeting_intelligence"]
         self.assertEqual(meeting["venue"], "Warwick Farm")
         self.assertNotIn("tmp", meeting["venue"].lower())
+
+    def test_stale_pf_payload_is_replaced_by_matching_formguide(self) -> None:
+        logic = {
+            "race_analysis": {"race_number": 3},
+            "horses": {
+                "7": {
+                    "horse_name": "Example Star",
+                    "_data": {
+                        "pf_metrics": {
+                            "pf_aggregates": {
+                                "l600_delta_avg": 9.99,
+                                "pf_run_count": 1,
+                            }
+                        }
+                    },
+                }
+            },
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            facts_path = folder / "11-01 Race 3 Facts.md"
+            facts_path.write_text(MODERN_FACTS, encoding="utf-8")
+            formguide_path = folder / "11-01 Race 3 Formguide.md"
+            formguide_path.write_text(
+                "\n".join(
+                    [
+                        "[7] Example Star (4)",
+                        (
+                            "Randwick R5 2026-10-01 1400m "
+                            "PF[Runner Time: 84.20 Last600: 49.50 "
+                            "L600 Delta: -1.25 Early Runner Pace: Moderate. "
+                            "Early Race Pace: Fast.]"
+                        ),
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            enriched = enrich_logic_from_facts(logic, facts_path)
+
+        pf = enriched["horses"]["7"]["_data"]["pf_metrics"]
+        self.assertEqual(pf["pf_aggregates"]["source"], "racenet_formguide_cfb")
+        self.assertEqual(pf["pf_aggregates"]["l600_delta_avg"], -1.25)
+        self.assertEqual(pf["pf_aggregates"]["runner_time_avg"], 84.2)
+
+    def test_stale_cross_horse_formguide_digest_is_replaced_atomically(self) -> None:
+        logic = {
+            "race_analysis": {"race_number": 3},
+            "horses": {
+                "7": {
+                    "horse_name": "Example Star",
+                    "_data": {
+                        "sire_line": "Wrong Horse Sire",
+                        "latest_official_jockey": "Wrong Rider",
+                        "has_blinkers": True,
+                        "current_jockey_formal_rides": 99,
+                    },
+                }
+            },
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            facts_path = folder / "11-01 Race 3 Facts.md"
+            facts_path.write_text(MODERN_FACTS, encoding="utf-8")
+            formguide_path = folder / "11-01 Race 3 Formguide.md"
+            formguide_path.write_text(
+                "\n".join(
+                    [
+                        "[7] Example Star (4)",
+                        "3yoG BAY | Sire: Correct Sire | Dam: Test Dam",
+                        "T: T Smith (LY: 100:10-20-15) | J: J Doe (LY: 80:8-12-10)",
+                        "Randwick R5 2026-10-01 1400m cond:4 $60,000 J Doe (4) 58kg Flucs:$5 $6 01:23.500 2nd@800m 2nd@400m 2nd@Settled.",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            enriched = enrich_logic_from_facts(logic, facts_path)
+
+        data = enriched["horses"]["7"]["_data"]
+        self.assertEqual(data["sire_line"], "Correct Sire")
+        self.assertEqual(data["latest_official_jockey"], "J Doe")
+        self.assertFalse(data["has_blinkers"])
+        self.assertEqual(data["current_jockey_formal_rides"], 1)
+
+    def test_cross_horse_formguide_identity_is_rejected_before_refresh(self) -> None:
+        logic = {
+            "race_analysis": {"race_number": 3},
+            "horses": {
+                "7": {
+                    "horse_name": "Example Star",
+                    "_data": {"sire_line": "Existing Correct Sire"},
+                }
+            },
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            facts_path = folder / "11-01 Race 3 Facts.md"
+            facts_path.write_text(MODERN_FACTS, encoding="utf-8")
+            (folder / "11-01 Race 3 Formguide.md").write_text(
+                "\n".join(
+                    [
+                        "[7] Different Horse (4)",
+                        "3yoG BAY | Sire: Wrong Sire | Dam: Wrong Dam",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "FORMGUIDE ALIGNMENT FAILED"):
+                enrich_logic_from_facts(logic, facts_path)
 
 
 if __name__ == "__main__":

@@ -1577,8 +1577,20 @@ def refresh_one_meeting(runlog: RunLog, folder: Path, api: dict) -> bool:
 
 # ── 步驟 4：dashboard 驗證 + 發佈 ──────────────────────────────────────────
 def download_live_snapshot(runlog: RunLog, dest: Path) -> Path | None:
+    """攞而家 live 嗰份 snapshot。**一定要繞開 CDN cache。**
+
+    ⚠️ 唔繞嘅話會攞到舊副本，而呢個檔係下一份發佈嘅**底**。2026-08-09 實測：
+    deploy 完成之後即刻讀，連續兩次都攞到上一版（`verify_live` 報 stale=True，
+    第三次先追上）。`verify_live` 有重試頂得住，但呢個 function 冇 —— 攞到咩就
+    當咩，然後成份新 snapshot 就砌喺一個過時嘅底上面，可以靜靜咁整跌上一個 run
+    啱啱發佈嘅場次。加 cache-buster + no-cache header，兩者都要：query string 令
+    edge 當佢係新 key，header 令中間任何 proxy 唔好回舊嘢。
+    """
+    url = f"{LIVE_SNAPSHOT_URL}?cb={int(time.time() * 1000)}"
     request = urllib.request.Request(
-        LIVE_SNAPSHOT_URL, headers={"User-Agent": "WongChoi-AUDaily/1.0"})
+        url, headers={"User-Agent": "WongChoi-AUDaily/1.0",
+                      "Cache-Control": "no-cache, max-age=0",
+                      "Pragma": "no-cache"})
     for attempt in range(1, 4):
         try:
             with urllib.request.urlopen(request, timeout=60) as response:
@@ -1590,6 +1602,11 @@ def download_live_snapshot(runlog: RunLog, dest: Path) -> Path | None:
         except Exception as exc:  # noqa: BLE001
             runlog.retry("live-snapshot", attempt, f"{type(exc).__name__}: {exc}")
             time.sleep(5 * attempt)
+            # ⚠️ 重試要換一條新 cb。同一條 URL 重試等於再問 edge 攞返同一個
+            # cache entry —— `verify_live` 嘅 poll 靠呢度先真係問到新嘢。
+            request = urllib.request.Request(
+                f"{LIVE_SNAPSHOT_URL}?cb={int(time.time() * 1000)}",
+                headers=dict(request.headers))
     runlog.warn("攞唔到 live snapshot；build 會由 deploy.sh 自己下載")
     return None
 
