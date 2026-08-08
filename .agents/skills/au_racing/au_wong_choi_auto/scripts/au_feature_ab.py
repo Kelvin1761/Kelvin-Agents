@@ -34,8 +34,7 @@ from au_unused_field_power import (RE_HDR_DIST, RE_RUNNER,  # noqa: E402
                                    runner_features)
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
 
-KEYS = ("gold", "good_positional", "good_any2", "pass_any1", "champion",
-        "winner_in_top3")
+KEYS = ("gold", "good_positional", "pass", "champion", "winner_in_top3")
 
 
 def build_races(scored_root, min_depth=4.0):

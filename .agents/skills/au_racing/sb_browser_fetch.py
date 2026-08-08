@@ -76,6 +76,7 @@ class BrowserFetcher:
         self.log = log or (lambda m: print(f"   {m}", flush=True))
         self.requests_made = 0
         self.stop_reason: str | None = None
+        self._since_launch = 0
         self._pw = None
         self._ctx = None
         self._page = None
@@ -154,6 +155,14 @@ class BrowserFetcher:
                       "browser has been closed", "connection closed",
                       "websocket", "pipe closed")
     _BROWSER_RETRIES = 2
+    # 抽夠幾多版就主動重開一次。⚠️ 呢個係預防，唔係反應。2026-08-08 實測：部機
+    # 得 8 GB 實體記憶體、swap 7,168 MB 入面用咗 5,721 MB，而 Chrome 一個 crash
+    # 報告都冇 —— 即係唔係佢自己炸，係喺記憶體壓力下個 target 俾系統收走。
+    # 兩次死亡分別喺開機後約 30 版同約 64 版，所以 25 版封頂留足緩衝。
+    # 重開得 8 秒，相對 25 版 × 25 秒嘅節奏成本可以忽略。
+    # ⚠️ 刻意唔郁 launch flag（`--disable-gpu`、關圖片之類）：呢個站 200 vs 403
+    # 完全取決於似唔似真瀏覽器，慳嗰幾十 MB 唔值得賭個 fingerprint。
+    _RECYCLE_EVERY = int(os.environ.get("WC_SB_RECYCLE_EVERY", "25"))
 
     @classmethod
     def _is_browser_death(cls, exc) -> bool:
@@ -174,6 +183,7 @@ class BrowserFetcher:
         except Exception:  # noqa: BLE001
             pass
         self._page = self._ctx = self._pw = None
+        self._since_launch = 0
 
     def _ensure_page(self):
         """開瀏覽器。⚠️ 唔再需要「同源起始頁」—— `goto` 唔受同源限制。"""
@@ -216,6 +226,10 @@ class BrowserFetcher:
             return None
         if not url.startswith(BASE):
             raise ValueError(f"只可以攞 {BASE} 嘅頁：{url}")
+
+        if self._page is not None and self._since_launch >= self._RECYCLE_EVERY:
+            self.log(f"♻️ 抽咗 {self._since_launch} 版 —— 主動重開瀏覽器封頂記憶體")
+            self._recycle()
 
         attempt = 0
         while True:
@@ -265,6 +279,7 @@ class BrowserFetcher:
             return None
         finally:
             self.requests_made += 1
+            self._since_launch += 1
             self._last_request = time.time()
 
         if status != 200:

@@ -102,10 +102,22 @@ REPORT_ONLY_FEATURE_KEYS = (
 # 顯示 re-fit 本身就贏 10/1，同移除段速分無關），要自己過 walk-forward。
 # Rollback: {"stability":0.38232,"pace_perf":0.14407,"race_shape":0.11502,
 #            "jockey_trainer":0.19149,"class_weight":0.07337,"track":0.09373,"form_line":0.000}
+# 2026-08-08：修正 runtime audit 漏讀 scheduler `Archive/` 之後，用完整 805 場／
+# 8,249 匹 current-runtime 語料重新 fit。目標以 Gold、Good位、新 Pass（Top 3
+# 任兩匹上名）為核心，但仍守 champion / winner@3 / NDCG。每個 expanding
+# walk-forward window 只用之前日期 fit，5/5 未見未來窗口 objective 全勝；跨窗口
+# 共識喺完整日期 terminal holdout 嘅頭 5 配對 AUC +0.0134，95% paired-bootstrap
+# CI [+0.0025,+0.0244]。全樣本 Gold +1.49pp、Good +3.23pp、Pass +2.61pp。
+#
+# 方向喺每個訓練窗一致：stability / pace / track 減少，jockey-trainer / class /
+# race-shape 增加。採用五個 expanding-window 共識嘅逐維度中位數，唔用任何一次
+# dev argmax。Rollback：
+#   {"stability":0.37398,"pace_perf":0.14569,"race_shape":0.11280,
+#    "jockey_trainer":0.20414,"class_weight":0.07170,"track":0.09169}
 # Ranking registry contains ranking dimensions only. ``form_line`` remains a
 # useful report matrix in ``matrix_mapper`` but its long-retired 0.000 entry no
 # longer pretends to be a seventh vote in the model.
-MATRIX_WEIGHTS = {"stability":0.37398,"pace_perf":0.14569,"race_shape":0.11280,"jockey_trainer":0.20414,"class_weight":0.07170,"track":0.09169}
+MATRIX_WEIGHTS = {"stability":0.32920,"pace_perf":0.10559,"race_shape":0.13485,"jockey_trainer":0.22957,"class_weight":0.12042,"track":0.08037}
 
 # ── Wet-form 7D feature (gated to Soft/Heavy races) ──
 # A horse's career wet-going place record IS predictive of box-trifecta on wet
@@ -137,11 +149,14 @@ MATRIX_WEIGHTS = {"stability":0.37398,"pace_perf":0.14569,"race_shape":0.11280,"
 # 2026-08-04 lockstep：`jockey_trainer` 內部重配之後 ability 散佈 ×1.0329，
 # 所以濕地 overlay 要跟住郁同一個比例，否則佢喺新散佈之下嘅相對影響力會靜靜咁縮。
 # 呢個係 derived ratio，唔係 fit 出嚟嘅值 —— 唔可以獨立調。
-# 舊值 13.47 / 5.61（= 15.90 / 6.62 × 0.8471）。
-WET_FORM_FEATURE_SCALE = 13.91  # 15.90 ×0.8471（2026-08-03 重配權）；points of ability per (shrunk_wet_place_rate − prior)
+# 2026-08-08：完整 805 場矩陣重配後 pure-ability 場內 RMS SD 係舊配置
+# 0.94790 倍，wet overlay 同步乘 0.94790，保持原本相對影響力。候選用呢個
+# lockstep 比例重驗後頭 5 holdout AUC CI 仍全正。
+# 舊值 13.91 / 5.79。
+WET_FORM_FEATURE_SCALE = 13.19  # 13.91 ×0.94790；points of ability per (shrunk_wet_place_rate − prior)
 WET_FORM_SHRINK_A = 4.0         # pseudo-count for place-rate shrinkage toward prior
 WET_FORM_PRIOR = 0.5            # global career wet place-rate (~0.496 measured)
-WET_FORM_MAX_ABS = 5.79         # 6.62 ×0.8471（2026-08-03 重配權）；clamp the feature to a sane ±range
+WET_FORM_MAX_ABS = 5.49         # 5.79 ×0.94790；clamp the feature to a sane ±range
 
 
 def _parse_wet_record(going_stats_line):

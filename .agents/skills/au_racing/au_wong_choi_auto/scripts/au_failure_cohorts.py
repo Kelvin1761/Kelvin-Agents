@@ -155,7 +155,7 @@ def cohort_table(races: list[list[dict]], min_races: int) -> list[dict]:
                     "races": n,
                     "underpowered": n < min_races,
                     "good_positional_rate": metrics["good_positional"] / n,
-                    "good_any2_rate": metrics["good"] / n,
+                    "pass_rate": metrics["pass"] / n,
                     "winner_in_top3": metrics["winner_in_top3"],
                     "top3_precision": metrics["top3_precision"],
                     "miss_rate": metrics["miss"] / n,
@@ -247,14 +247,14 @@ def main() -> int:
         "",
         "## Ranked cohort table (worst Top3-precision delta first)",
         "",
-        "| Slice | Cohort | Races | Good pos. | Good any-2 | W-in-T3 | Top3 prec | Miss | ΔGood pos. | ΔW-in-T3 | ΔTop3 | ΔMiss |",
+        "| Slice | Cohort | Races | Good pos. | Pass | W-in-T3 | Top3 prec | Miss | ΔGood pos. | ΔW-in-T3 | ΔTop3 | ΔMiss |",
         "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for row in table:
         marker = " *(underpowered)*" if row["underpowered"] else ""
         lines.append(
             f"| {row['slice']} | {row['cohort']}{marker} | {row['races']} | "
-            f"{fmt_pct(row['good_positional_rate'])} | {fmt_pct(row['good_any2_rate'])} | "
+            f"{fmt_pct(row['good_positional_rate'])} | {fmt_pct(row['pass_rate'])} | "
             f"{fmt_pct(row['winner_in_top3'])} | {fmt_pct(row['top3_precision'])} | "
             f"{fmt_pct(row['miss_rate'])} | {fmt_pct(row['delta_good_positional'])} | "
             f"{fmt_pct(row['delta_winner_in_top3'])} | {fmt_pct(row['delta_top3_precision'])} | "

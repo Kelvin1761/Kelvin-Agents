@@ -76,7 +76,7 @@ VARIANTS = [
     ("分級項 mult=8 + 反 SAME", graded(8.0) + [(W, SAME, -2.0)]),
 ]
 
-KEYS = ("gold", "good_positional", "good_any2", "champion", "winner_in_top3")
+KEYS = ("gold", "good_positional", "pass", "champion", "winner_in_top3")
 PRIORITY = ("gold", "good_positional")
 GUARD = ("t3prec", "winner_in_top3")
 
@@ -207,7 +207,7 @@ def main():
             c = metrics(scored[name][lo:hi])
             print(f"{name:18}" + "".join(
                 f"{c[k] - b[k]:>+8.2f}" if k != "good_positional" else f"{c[k] - b[k]:>+9.2f}"
-                for k in ("gold", "good_positional", "good_any2", "champion",
+                for k in ("gold", "good_positional", "pass", "champion",
                           "winner_in_top3", "t3prec")))
         print()
 

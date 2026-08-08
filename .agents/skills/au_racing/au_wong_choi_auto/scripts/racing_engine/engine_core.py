@@ -5874,8 +5874,15 @@ def _load_meeting_intelligence(facts_path: Path, race_number: int = 0) -> dict:
     else:
         intelligence = {}
     fallback = _meeting_context_from_extractor_files(facts_path, race_number)
+    # Extractor/Racecard context is the later official snapshot.  A MIP may
+    # have been generated the evening before (for example Randwick was Soft 6
+    # in the package but Soft 7 in the racecard).  Prefer every meaningful
+    # current value; keep MIP data only where the extractor says Unknown/blank.
     for key, value in fallback.items():
-        if value and not intelligence.get(key):
+        if key == "source":
+            continue
+        clean = str(value or "").strip()
+        if clean and clean.lower() not in {"unknown", "n/a", "none", "-"}:
             intelligence[key] = value
     if fallback:
         intelligence["source"] = _merge_sources(intelligence.get("source"), fallback.get("source"))
@@ -5970,23 +5977,132 @@ def _context_completeness(meeting_intelligence: dict, track_profile: dict) -> di
     }
 
 
+def _mip_plain_text(text: str) -> str:
+    """Remove Markdown decoration without changing section/line structure."""
+    return str(text or "").replace("**", "").replace("`", "")
+
+
+def _mip_field(text: str, *labels: str) -> str:
+    """Read a colon field from a line or an inline ``Date | Venue`` header."""
+    plain = _mip_plain_text(text)
+    for label in labels:
+        match = re.search(
+            rf"(?mi)(?:^|\|)\s*[-*>]?\s*(?:{label})\s*[:：]\s*([^|\n]+)",
+            plain,
+        )
+        if match:
+            return match.group(1).strip().strip(" -*_|")
+    return ""
+
+
+def _mip_section_value(text: str, heading: str) -> str:
+    """Return the first content line under a matching Markdown H2 heading."""
+    plain = _mip_plain_text(text)
+    match = re.search(
+        rf"(?ims)^##[^\n]*(?:{heading})[^\n]*\n(.*?)(?=^##|\Z)",
+        plain,
+    )
+    if not match:
+        return ""
+    for raw in match.group(1).splitlines():
+        value = raw.strip().strip(" -*_|")
+        if not value:
+            continue
+        value = re.sub(r"^\[[A-Z_ ]+\]\s*", "", value)
+        return value.strip()
+    return ""
+
+
 def _parse_meeting_intelligence(text: str, fallback_venue: str = "") -> dict:
-    venue_match = re.search(r"Venue:\s*([^\n]+)", text)
-    date_match = re.search(r"Date:\s*([^\n]+)", text)
-    weather_block = _section_text(text, "## Weather / 天氣狀況", "## Track Condition / 場地狀況")
-    track_block = _section_text(text, "## Track Condition / 場地狀況", "## Track Bias / 賽道偏差預測")
-    bias_block = _section_text(text, "## Track Bias / 賽道偏差預測", "## Sources / 資料來源")
-    source_block = _section_text(text, "## Sources / 資料來源")
-    going_match = re.search(r"Track condition extracted:\s*([^\n.]+)", track_block)
-    rail_match = re.search(r"Rail position .*?:\s*([^\n.]+)", track_block)
+    """Parse every Meeting Intelligence Package format used in the archive.
+
+    The archive contains three real schemas: the original English bilingual
+    sections, an inline bold ``Date | Venue`` header with Chinese sections,
+    and the current bullet-list generator.  The old parser only understood the
+    first one, so Markdown ``**`` leaked into venue identity and 33 races lost
+    a known going to ``Unknown`` during runtime refresh.
+    """
+    plain = _mip_plain_text(text)
+    venue = _mip_field(
+        plain,
+        r"Venue",
+        r"賽場",
+        r"賽道\s*\(Track\)",
+    ) or str(fallback_venue or "").strip()
+    date = _mip_field(plain, r"Date", r"日期")
+    date_match = re.search(r"\d{4}-\d{2}-\d{2}", date or plain)
+    date = date_match.group(0) if date_match else ""
+
+    weather_block = _section_text(
+        plain, "## Weather / 天氣狀況", "## Track Condition / 場地狀況"
+    )
+    track_block = _section_text(
+        plain, "## Track Condition / 場地狀況", "## Track Bias / 賽道偏差預測"
+    )
+    bias_block = _section_text(
+        plain, "## Track Bias / 賽道偏差預測", "## Sources / 資料來源"
+    )
+    source_block = _section_text(plain, "## Sources / 資料來源")
+
+    going = _mip_field(
+        plain,
+        r"場地狀況\s*\(Track Condition\)",
+        r"跑道狀況\s*\(Track Condition\)",
+        r"Condition\s*\(跑道\)",
+        r"場地",
+    )
+    if not going:
+        going_match = re.search(r"(?mi)^Track condition extracted:\s*([^\n.]+)", plain)
+        going = going_match.group(1).strip() if going_match else ""
+    if not going:
+        going = _mip_section_value(plain, r"官方掛牌\s*\(Official Going\)")
+    if not going:
+        going = _mip_section_value(plain, r"預測掛牌\s*\(Predicted Going\)")
+    english_going = re.search(
+        r"\b(Firm|Good|Soft|Heavy|Synthetic|Slow)\s*\d*",
+        going,
+        re.I,
+    )
+    if english_going:
+        going = english_going.group(0).strip()
+
+    rail = _mip_field(
+        plain,
+        r"移欄\s*\(Rail\)",
+        r"移欄\s*\(Rail Position\)",
+        r"Rails?\s*\(欄位\)",
+    )
+    if not rail:
+        rail_match = re.search(r"(?mi)^Rail position .*?:\s*([^\n.]+)", plain)
+        rail = rail_match.group(1).strip() if rail_match else ""
+    if not rail:
+        rail = _mip_section_value(plain, r"欄位\s*\(Rail Position\)")
+
+    weather = _mip_field(plain, r"天氣\s*\(Weather\)", r"Weather")
+    if not weather:
+        weather = _mip_section_value(plain, r"天氣\s*\(Weather\)")
+    if not weather:
+        weather = _compact_text(weather_block)
+
+    bias = _mip_field(plain, r"Bias")
+    if not bias:
+        bias = _mip_field(plain, r"偏差")
+    if not bias:
+        bias = _mip_section_value(
+            plain,
+            r"跑道偏差\s*\(Track Bias\)|Track Bias.*偏差",
+        )
+    if not bias:
+        bias = _compact_text(bias_block)
+
     return {
-        "venue": (venue_match.group(1).strip() if venue_match else fallback_venue).strip(),
-        "date": date_match.group(1).strip() if date_match else "",
-        "weather_summary": _compact_text(weather_block),
-        "track_summary": _compact_text(track_block),
-        "going": going_match.group(1).strip() if going_match else "",
-        "rail_position": rail_match.group(1).strip() if rail_match else "",
-        "bias_summary": _compact_text(bias_block),
+        "venue": venue,
+        "date": date,
+        "weather_summary": weather,
+        "track_summary": _compact_text(track_block) or going,
+        "going": going,
+        "rail_position": rail,
+        "bias_summary": bias,
         "source": _compact_text(source_block),
     }
 

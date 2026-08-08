@@ -1,5 +1,9 @@
 # AU Wong Choi full-code reset audit — 2026-08-08
 
+> 呢份係同日第一階段 623 場 audit 記錄；`Archive/` discovery 修正同 805 場
+> matrix 升級見 `11_gold_good_matrix_optimization_20260808.md`。Metric 命名亦已更新：
+> 原 `Good any-2` 正式改名做 `Pass`，舊 any-one Pass 已退出現役報告。
+
 Baseline：`099c718`（Claude 大改後版本）。所有比較固定同一份 Sportsbet result truth，
 唔混用舊 Racenet corpus。
 
@@ -40,8 +44,7 @@ Baseline：`099c718`（Claude 大改後版本）。所有比較固定同一份 S
 | Gold（actual Top 3 全在 model Top 4） | 15.09% | 16.37% | 9.48% |
 | Gold strict（model Top 3 全上名） | 6.26% | 6.31% | 6.03% |
 | Good（model Pick 1 + Pick 2 都上名） | 21.19% | 22.68% | 14.66% |
-| Good any-2 | 43.02% | 44.18% | 37.93% |
-| Pass（model Top 3 至少一匹上名） | 88.60% | 89.15% | 86.21% |
+| Pass（model Top 3 任兩匹上名） | 43.02% | 44.18% | 37.93% |
 | Champion（首選頭馬） | 23.92% | 23.47% | 25.86% |
 | Winner in Top 3 | 56.18% | 55.82% | 57.76% |
 | Winner in Top 5 | 75.92% | 75.94% | 75.86% |
@@ -55,8 +58,7 @@ canonicalize，`Synthetic 8` 同 `Soft 5 (Turf)` 不再拆成假 cohort。
 |---|---:|---:|---:|
 | Gold | 14.45% | 15.09% | +0.64pp |
 | Good positional | 20.22% | 21.19% | +0.96pp |
-| Good any-2 | 41.73% | 43.02% | +1.28pp |
-| Pass | 87.32% | 88.60% | +1.28pp |
+| Pass（model Top 3 任兩匹上名） | 41.73% | 43.02% | +1.28pp |
 | Winner in Top 3 | 53.93% | 56.18% | +2.25pp |
 | Winner in Top 5 | 72.07% | 75.92% | +3.85pp |
 | NDCG@5 | 52.74% | 55.39% | +2.65pp |

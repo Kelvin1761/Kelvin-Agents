@@ -31,9 +31,10 @@ class ExclusiveLabelTests(unittest.TestCase):
 
 
 class RaceMetricsTests(unittest.TestCase):
-    def test_positional_vs_any2_good_diverge(self) -> None:
-        # Picks 1 and 3 hit: any-2 Good yes, positional Good no.
+    def test_positional_good_and_pass_diverge(self) -> None:
+        # Picks 1 and 3 hit: Pass yes, positional Good no.
         row = race_metrics([7, 2, 5], [7, 5, 9], winner=9)
+        self.assertTrue(row["pass"])
         self.assertTrue(row["good_any2"])
         self.assertFalse(row["good_positional"])
         self.assertEqual(row["exclusive_label"], "Pass")
@@ -66,6 +67,8 @@ class RaceMetricsTests(unittest.TestCase):
         self.assertEqual(summary["races"], 5)
         self.assertEqual(summary["counts"]["gold"], 1)
         self.assertEqual(summary["counts"]["good_positional"], 2)  # Gold + Good
+        self.assertEqual(summary["counts"]["pass"], 3)  # Gold + Good + Pass
+        self.assertEqual(summary["counts"]["any1"], 4)
         self.assertEqual(summary["counts"]["good_any2"], 3)  # Gold + Good + Pass
         self.assertEqual(summary["counts"]["pass_any1"], 4)
         self.assertEqual(
@@ -156,9 +159,9 @@ class AuParityTests(unittest.TestCase):
         self.assertEqual(metrics["races"], 5)
         self.assertEqual(metrics["gold"], 3)             # capture-at-4
         self.assertEqual(metrics["gold_strict"], 1)      # legacy 3-of-3
-        self.assertEqual(metrics["good"], 3)  # any-2 (cumulative)
-        self.assertEqual(metrics["good_positional"], 2)  # Gold + positional Good
-        self.assertEqual(metrics["pass"], 4)
+        self.assertEqual(metrics["good"], 2)  # model Top 2 both placed
+        self.assertEqual(metrics["good_positional"], 2)
+        self.assertEqual(metrics["pass"], 3)  # any 2 of model Top 3 placed
         self.assertEqual(
             metrics["exclusive_labels"],
             {"Gold": 3, "Good": 0, "Pass": 0, "1 Hit": 0, "Miss": 2},

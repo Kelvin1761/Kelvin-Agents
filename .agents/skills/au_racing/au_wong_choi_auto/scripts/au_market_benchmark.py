@@ -70,15 +70,15 @@ def grade(rows_by_race, order_key):
     c = summarize_races(out)["counts"]
     n = len(out)
     return n, {k: 100.0 * c[k] / n for k in
-               ("gold", "gold_strict", "good_positional", "good_any2",
-                "pass_any1", "champion", "winner_in_top3")}
+               ("gold", "gold_strict", "good_positional", "pass",
+                "champion", "winner_in_top3")}
 
 
 n, mkt = grade(by_race, lambda x: x[2])
 print(f"── 市場（按 SP 排序）── {n} 場")
-print(f"{'':16}{'Gold':>8}{'Good位':>9}{'any2':>8}{'any1':>8}{'首選=頭馬':>11}{'winT3':>8}")
+print(f"{'':16}{'Gold':>8}{'Good位':>9}{'Pass':>8}{'首選=頭馬':>11}{'winT3':>8}")
 print(f"{'市場':16}" + "".join(f"{mkt[k]:>8.1f}" if k != "good_positional" else f"{mkt[k]:>9.1f}"
-      for k in ("gold", "good_positional", "good_any2", "pass_any1",
+      for k in ("gold", "good_positional", "pass",
                 "champion", "winner_in_top3")))
 
 # 我哋（同一批場次入面能對上嘅）
@@ -103,13 +103,13 @@ for r in leaves:
 c = summarize_races(rows)["counts"]
 nn = len(rows)
 ours = {k: 100.0 * c[k] / nn for k in
-        ("gold", "gold_strict", "good_positional", "good_any2",
-         "pass_any1", "champion", "winner_in_top3")}
+        ("gold", "gold_strict", "good_positional", "pass",
+         "champion", "winner_in_top3")}
 print(f"{'AU Wong Choi':16}" + "".join(f"{ours[k]:>8.1f}" if k != "good_positional" else f"{ours[k]:>9.1f}"
-      for k in ("gold", "good_positional", "good_any2", "pass_any1",
+      for k in ("gold", "good_positional", "pass",
                 "champion", "winner_in_top3")) + f"   ({nn} 場)")
 print(f"{'差距':16}" + "".join(f"{ours[k]-mkt[k]:>+8.1f}" if k != "good_positional" else f"{ours[k]-mkt[k]:>+9.1f}"
-      for k in ("gold", "good_positional", "good_any2", "pass_any1",
+      for k in ("gold", "good_positional", "pass",
                 "champion", "winner_in_top3")))
 print(f"\n目標：Gold 20.0 · Good位 30.0")
 print(f"我哋距離目標：Gold {20.0-ours['gold']:+.1f} · Good位 {30.0-ours['good_positional']:+.1f}")

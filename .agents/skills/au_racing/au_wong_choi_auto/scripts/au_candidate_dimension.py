@@ -35,8 +35,7 @@ from eval_metrics import race_metrics, summarize_races  # noqa: E402
 from matrix_mapper import map_features_to_matrix_scores  # noqa: E402
 from scoring import MATRIX_WEIGHTS  # noqa: E402
 
-KEYS = ("gold", "good_positional", "good_any2", "pass_any1", "champion",
-        "winner_in_top3")
+KEYS = ("gold", "good_positional", "pass", "champion", "winner_in_top3")
 
 
 def build(scored_root, feature, min_depth=4.0):

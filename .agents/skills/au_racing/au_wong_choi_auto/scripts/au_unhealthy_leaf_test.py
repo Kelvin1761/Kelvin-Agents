@@ -31,8 +31,7 @@ import matrix_mapper  # noqa: E402
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
 from scoring import MATRIX_WEIGHTS  # noqa: E402
 
-KEYS = ("gold", "good_positional", "good_any2", "pass_any1", "champion",
-        "winner_in_top3")
+KEYS = ("gold", "good_positional", "pass", "champion", "winner_in_top3")
 
 
 def renorm(d):
@@ -82,7 +81,7 @@ def show(label, cand, base):
     up = sum(1 for k in ("t3prec", "winner_in_top3", "champion") if d[k] > 0.001)
     dn = sum(1 for k in ("t3prec", "winner_in_top3", "champion") if d[k] < -0.001)
     print(f"{label:34}" + "".join(f"{d[k]:>+9.2f}" for k in
-                                  ("gold", "good_positional", "good_any2",
+                                  ("gold", "good_positional", "pass",
                                    "champion", "winner_in_top3", "t3prec"))
           + f"   主指標 {up}↑/{dn}↓")
 

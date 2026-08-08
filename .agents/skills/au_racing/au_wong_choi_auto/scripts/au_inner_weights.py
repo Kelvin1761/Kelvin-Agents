@@ -48,8 +48,7 @@ import matrix_mapper  # noqa: E402
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
 from scoring import MATRIX_WEIGHTS  # noqa: E402
 
-KEYS = ("gold", "good_positional", "good_any2", "pass_any1", "champion",
-        "winner_in_top3")
+KEYS = ("gold", "good_positional", "pass", "champion", "winner_in_top3")
 # Kelvin 2026-08-03：Gold + Good 係要追嘅。t3prec / winT3 做守門 ——
 # 唔准為咗 Gold 而蝕咗整體命中。
 PRIORITY = ("gold", "good_positional")
@@ -111,6 +110,30 @@ def patch(dim, weights_tuple):
     return out
 
 
+def normalise_races(payload):
+    """Accept compact leaves and the richer current-runtime audit snapshot."""
+    races = []
+    for race in payload["races"]:
+        metadata = race.get("metadata") or {}
+        rows = []
+        for row in race["rows"]:
+            rows.append({
+                **row,
+                "name": row.get("name", row.get("horse_name", "")),
+                "n": row.get("n", row.get("horse_number", 999)),
+                "pos": row.get("pos", row.get("actual_pos")),
+                "features": row.get("features", row.get("feature_scores", {})),
+                "wet": row.get("wet", row.get("wet_form_feature", 0.0)),
+            })
+        races.append({
+            **race,
+            "date": race.get("date", metadata.get("date")),
+            "field": int(race.get("field") or metadata.get("field_size") or len(rows)),
+            "rows": rows,
+        })
+    return races
+
+
 def simplex(leaves, step, total=1.0):
     """所有加埋等於 `total` 嘅權重組合（`step` 粒度）。"""
     n = len(leaves)
@@ -142,7 +165,7 @@ def main():
     ap.add_argument("--json", help="把 consensus 寫落呢個檔")
     args = ap.parse_args()
 
-    races = json.loads(Path(args.data).read_text())["races"]
+    races = normalise_races(json.loads(Path(args.data).read_text()))
     cut = int(len(races) * (1 - args.holdout))
     dev, hold = races[:cut], races[cut:]
     fold = len(dev) // args.folds
@@ -205,11 +228,11 @@ def main():
         print("   " + " / ".join(f"{k.replace('_score','')} {w:.3f}" for k, w in cons))
         print(f"   維度 SD {base_sd:.2f} → {sd:.2f}（{rel:+.1%}）" +
               ("  ⚠️ 超出容差，唔可以當純內部權重效果讀" if abs(rel) > args.sd_tol else ""))
-        print(f"   {'':10}{'Gold':>9}{'Good位':>9}{'any2':>8}{'champ':>8}{'winT3':>8}{'t3prec':>9}")
+        print(f"   {'':10}{'Gold':>9}{'Good位':>9}{'Pass':>8}{'champ':>8}{'winT3':>8}{'t3prec':>9}")
         for nm, c, b in (("dev", cd, base_dev), ("holdout", ch, base_hold)):
             print(f"   {nm:10}" + "".join(
-                f"{c[k] - b[k]:>+9.2f}" if k != "good_any2" else f"{c[k] - b[k]:>+8.2f}"
-                for k in ("gold", "good_positional", "good_any2", "champion",
+                f"{c[k] - b[k]:>+9.2f}" if k != "pass" else f"{c[k] - b[k]:>+8.2f}"
+                for k in ("gold", "good_positional", "pass", "champion",
                           "winner_in_top3", "t3prec")))
         hold_ok = all(ch[k] - base_hold[k] >= -0.001 for k in GUARD)
         print(f"   holdout 守門：{'✅ 冇跌' if hold_ok else '❌ 有跌 —— 唔 ship'}")
@@ -237,8 +260,8 @@ def main():
             print(f"   ── SD 對照組（現行分配，維度權重 ×{1 + rel:.3f}）──")
             for nm, c, b in (("dev", kd, base_dev), ("holdout", kh, base_hold)):
                 print(f"   {nm:10}" + "".join(
-                    f"{c[k] - b[k]:>+9.2f}" if k != "good_any2" else f"{c[k] - b[k]:>+8.2f}"
-                    for k in ("gold", "good_positional", "good_any2", "champion",
+                    f"{c[k] - b[k]:>+9.2f}" if k != "pass" else f"{c[k] - b[k]:>+8.2f}"
+                    for k in ("gold", "good_positional", "pass", "champion",
                               "winner_in_top3", "t3prec")))
             beats = sum(1 for k in PRIORITY + GUARD if cd[k] - kd[k] > 0.001)
             loses = sum(1 for k in PRIORITY + GUARD if cd[k] - kd[k] < -0.001)

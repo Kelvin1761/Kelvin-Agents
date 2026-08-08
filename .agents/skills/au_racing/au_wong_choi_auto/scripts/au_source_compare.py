@@ -32,8 +32,7 @@ sys.path.insert(0, str(AU_RACING.parent / "shared_racing"))
 
 from eval_metrics import exclusive_label, race_metrics, summarize_races  # noqa: E402
 
-KEYS = ("gold", "good_positional", "good_any2", "pass_any1", "champion",
-        "winner_in_top3")
+KEYS = ("gold", "good_positional", "pass", "champion", "winner_in_top3")
 
 
 def norm(name):
@@ -145,11 +144,10 @@ def report(label, rows):
     hits = sum(r["hits"] for r in rows)
     slots = sum(min(3, len(r["picks"])) for r in rows)
     out = {k: s[k] for k in KEYS}
-    out.update(races=n, miss=n - s["pass_any1"], t3prec=hits / slots if slots else 0.0)
+    out.update(races=n, t3prec=hits / slots if slots else 0.0)
     # 互斥標籤（Gold / Good / Pass / 1 Hit / Miss，加起嚟等於場數）。
-    # ⚠️ `KEYS` 入面嗰幾個係**累積**嘅（gold ⊂ good_positional ⊂ any2 ⊂ any1），
-    # 當百分比直接讀會重複計。`race_metrics` 已經算好互斥標籤，直接數就得 ——
-    # 唔使自己由 hits／top2 重新推（我試過，推錯咗）。
+    # `KEYS` 係累積 KPI，而且 Gold 係 capture-at-4，唔可以由 Pass / Good
+    # 簡單相減推出互斥分類。`race_metrics` 已經算好互斥標籤，直接數就得。
     lab = {}
     for row in rows:
         k = row["exclusive_label"]
@@ -229,9 +227,9 @@ def main():
             print(f"{'  ' + k:30}{100*a/rn:>11.1f}%{bs}")
         return n_, o_
 
-    labels = [("races", "場次"), ("gold", "Gold 3/3"),
-              ("good_positional", "Good 位置"), ("good_any2", "Good any2"),
-              ("pass_any1", "Pass any1"), ("miss", "Miss"),
+    labels = [("races", "場次"), ("gold", "Gold Top4 包辦前三"),
+              ("good_positional", "Good Top2 兩馬上名"),
+              ("pass", "Pass Top3 任二上名"),
               ("champion", "首選=頭馬"), ("winner_in_top3", "頭馬入前三")]
     n, o = block(f"■ 往績深度 ≥{args.min_depth} 仗/匹（可比）", agg)
     if thin["new"]:

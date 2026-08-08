@@ -26,7 +26,9 @@ from source_alignment import (
 )
 from engine_core import (
     _extract_race_meta as _canonical_extract_race_meta,
+    _load_meeting_intelligence as _canonical_load_meeting_intelligence,
     _load_track_profile as _canonical_load_track_profile,
+    _parse_meeting_intelligence as _canonical_parse_meeting_intelligence,
     _parse_speed_map as _canonical_parse_speed_map,
     _venue_from_folder_name as _canonical_venue_from_folder_name,
     build_logic_from_facts as _canonical_build_logic_from_facts,
@@ -307,22 +309,8 @@ def _normalize_speed_map_text(text: str) -> str:
 
 
 def _load_meeting_intelligence(facts_path: Path, race_number: int = 0) -> dict:
-    meeting_path = facts_path.parent / "_Meeting_Intelligence_Package.md"
-    if meeting_path.exists():
-        text = meeting_path.read_text(encoding="utf-8")
-        intelligence = _parse_meeting_intelligence(
-            text,
-            _venue_from_folder_name(facts_path.parent.name),
-        )
-    else:
-        intelligence = {}
-    fallback = _meeting_context_from_extractor_files(facts_path, race_number)
-    for key, value in fallback.items():
-        if value and not intelligence.get(key):
-            intelligence[key] = value
-    if fallback:
-        intelligence["source"] = _merge_sources(intelligence.get("source"), fallback.get("source"))
-    return intelligence
+    """Compatibility wrapper around the single canonical context loader."""
+    return _canonical_load_meeting_intelligence(facts_path, race_number)
 
 
 def _meeting_context_from_extractor_files(facts_path: Path, race_number: int = 0) -> dict:
@@ -408,24 +396,8 @@ def _context_completeness(meeting_intelligence: dict, track_profile: dict) -> di
 
 
 def _parse_meeting_intelligence(text: str, fallback_venue: str = "") -> dict:
-    venue_match = re.search(r"Venue:\s*([^\n]+)", text)
-    date_match = re.search(r"Date:\s*([^\n]+)", text)
-    weather_block = _section_text(text, "## Weather / 天氣狀況", "## Track Condition / 場地狀況")
-    track_block = _section_text(text, "## Track Condition / 場地狀況", "## Track Bias / 賽道偏差預測")
-    bias_block = _section_text(text, "## Track Bias / 賽道偏差預測", "## Sources / 資料來源")
-    source_block = _section_text(text, "## Sources / 資料來源")
-    going_match = re.search(r"Track condition extracted:\s*([^\n.]+)", track_block)
-    rail_match = re.search(r"Rail position .*?:\s*([^\n.]+)", track_block)
-    return {
-        "venue": (venue_match.group(1).strip() if venue_match else fallback_venue).strip(),
-        "date": date_match.group(1).strip() if date_match else "",
-        "weather_summary": _compact_text(weather_block),
-        "track_summary": _compact_text(track_block),
-        "going": going_match.group(1).strip() if going_match else "",
-        "rail_position": rail_match.group(1).strip() if rail_match else "",
-        "bias_summary": _compact_text(bias_block),
-        "source": _compact_text(source_block),
-    }
+    """Compatibility wrapper around the single canonical package parser."""
+    return _canonical_parse_meeting_intelligence(text, fallback_venue)
 
 
 def _load_track_profile(venue: str, distance_m: int = 0) -> dict:

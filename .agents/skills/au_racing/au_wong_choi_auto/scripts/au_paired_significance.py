@@ -32,8 +32,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from au_leaf_power import norm, results_for  # noqa: E402
 
-METRICS = ("winner_in_top3", "good_any2", "good_positional", "champion",
-           "pass_any1", "gold")
+METRICS = ("winner_in_top3", "pass", "good_positional", "champion", "gold")
 
 
 def outcomes(picks, actual):
@@ -45,11 +44,11 @@ def outcomes(picks, actual):
     hits = sum(1 for h in t3 if h in top3)
     return {
         "winner_in_top3": win in t3,
-        "good_any2": hits >= 2,
+        "pass": hits >= 2,
         "good_positional": len(picks) >= 2 and picks[0] in top3 and picks[1] in top3,
         "champion": bool(picks) and picks[0] == win,
-        "pass_any1": hits >= 1,
-        "gold": hits == 3,
+        # Canonical AU Gold: every actual top-three horse is captured by model Top 4.
+        "gold": top3.issubset(set(picks[:4])),
         "_hits": hits,
     }
 

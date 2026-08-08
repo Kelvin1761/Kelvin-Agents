@@ -77,5 +77,37 @@ class RecycleTests(unittest.TestCase):
         self.assertIsNone(bf._page)
 
 
+class ProactiveRecycleTests(unittest.TestCase):
+    """重開得返嚟係好事，但唔死一開始更好。
+
+    2026-08-08 兩次死亡分別喺開機後約 30 版同約 64 版，而部機得 8 GB 實體記憶體、
+    swap 用咗 5,721/7,168 MB，Chrome 一個 crash 報告都冇 —— 即係俾系統喺記憶體
+    壓力下收走。所以抽夠一定版數就自己重開，唔等佢死。
+    """
+
+    def _fetcher(self):
+        bf = BrowserFetcher.__new__(BrowserFetcher)
+        bf._page = object()
+        bf._ctx = bf._pw = None
+        bf._since_launch = 0
+        bf.log = lambda *a, **k: None
+        return bf
+
+    def test_counter_resets_on_recycle(self):
+        bf = self._fetcher()
+        bf._since_launch = 99
+        bf._recycle()
+        self.assertEqual(bf._since_launch, 0)
+        self.assertIsNone(bf._page)
+
+    def test_threshold_is_a_positive_bound(self):
+        # 0 或者負數會令每一版都重開，慢到抽唔完一個場次。
+        self.assertGreater(BrowserFetcher._RECYCLE_EVERY, 0)
+
+    def test_threshold_is_below_the_observed_death_points(self):
+        # 實測死亡點約 30 同約 64 版 —— 封頂一定要喺兩者之下先有預防作用。
+        self.assertLess(BrowserFetcher._RECYCLE_EVERY, 30)
+
+
 if __name__ == "__main__":
     unittest.main()

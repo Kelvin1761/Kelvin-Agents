@@ -103,7 +103,7 @@ def metrics(races: list[list[dict]], weights: dict[str, float]) -> dict:
         "champion": counts["champion"],
         "gold": counts["gold"],
         "good": counts["good_positional"],
-        "pass": counts["good_any2"],
+        "pass": counts["pass"],
         "top3_all_within_top4": competitiveness["top3_all_within_top4"]["count"],
         "winner_top3": counts["winner_in_top3"],
         "winner_top5": winner_top5,

@@ -412,9 +412,8 @@ def metrics_for_races(races: list[list[dict]], score_key: str = "_score") -> dic
         "gold": counts["gold"],
         # 舊定義（頭三揀全部上名）。新 `gold` 係捕捉率，見 eval_metrics.race_metrics。
         "gold_strict": counts["gold_strict"],
-        # legacy cumulative keys: good = any 2 of top 3 hit, pass = any hit
-        "good": counts["good_any2"],
-        "pass": counts["pass_any1"],
+        "good": counts["good_positional"],
+        "pass": counts["pass"],
         "miss": summary["hit_distribution"]["0hit"],
         "one_hit": summary["hit_distribution"]["1hit"],
         "top3_precision": summary["top3_precision"],
