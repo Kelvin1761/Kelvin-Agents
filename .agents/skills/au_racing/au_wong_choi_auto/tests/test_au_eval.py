@@ -41,6 +41,16 @@ def score(row):
 
 
 class VerdictRuleTests(unittest.TestCase):
+    def test_date_partition_never_splits_one_meeting_day(self):
+        races = [
+            {"date": date, "rows": []}
+            for date in ("2026-01-01", "2026-01-01", "2026-01-02",
+                         "2026-01-03", "2026-01-03")
+        ]
+        dev, holdout = au_eval.date_partitions(races, holdout=0.34)
+        self.assertEqual(dev, [0, 1])
+        self.assertEqual(holdout, [2, 3, 4])
+
     def test_a_real_improvement_ships(self):
         """候選比基準多一個真訊號 → 應該過。"""
         races = _races(sep=0.0)
@@ -82,6 +92,17 @@ class VerdictRuleTests(unittest.TestCase):
         self.assertFalse(v.ship)
         self.assertIn("跨 0", v.reason)
         self.assertIsInstance(v.counts, dict)
+
+    def test_counts_include_every_current_and_legacy_metric(self):
+        counts = au_eval._counts(_races(10, sep=1.0), score)
+        self.assertEqual(
+            set(au_eval.CONTEXT_KEYS) | {"t3prec"},
+            set(counts),
+        )
+        self.assertIn("gold", counts)
+        self.assertIn("gold_strict", counts)
+        self.assertIn("good_positional", counts)
+        self.assertIn("pass_any1", counts)
 
     def test_top_k_region_is_what_decides(self):
         """判決欄位一定要係頭 K 位嗰個，唔係全場 —— 深位排序對 Gold/Good 冇影響。"""

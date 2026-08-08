@@ -56,7 +56,7 @@ TEMP_FILE_PATTERNS = (
 
 def main():
     parser = argparse.ArgumentParser(description="AU Wong Choi Full Python Orchestrator")
-    parser.add_argument("target", help="Racenet URL, meeting directory, or Race_X_Logic.json")
+    parser.add_argument("target", help="SportsbetForm URL, meeting directory, or Race_X_Logic.json")
     parser.add_argument("--auto", action="store_true", help="Compatibility flag")
     parser.add_argument("--autopilot", action="store_true", help="Compatibility flag")
     parser.add_argument("--keep-temp", action="store_true", help="Keep temporary files after completion")
@@ -136,6 +136,10 @@ def _default_race_workers() -> int:
 
 SPORTSBET_EXTRACTOR = (PROJECT_ROOT / ".agents" / "skills" / "au_racing"
                        / "claw_sportsbet_form.py")
+SPORTSBET_MEETING_IDS = (
+    PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "data"
+    / "sb_archive_meeting_ids.json"
+)
 
 
 def _extract_meeting(url: str) -> Path:
@@ -147,13 +151,25 @@ def _extract_meeting(url: str) -> Path:
     # ⚠️ 以前有個 `WC_ALLOW_RACENET=1` 逃生門。剷咗係因為佢已經冇嘢可以行到：
     # 目標腳本唔存在，set 咗只會換一個更難讀嘅 ImportError。
     if "sportsbetform" in url:
+        dir_name, meeting = _sportsbet_meeting_spec(url)
+        meeting_dir = AU_RACING / dir_name
         print("🚀 Extracting AU meeting data via Sportsbet...")
-        _run([PYTHON, str(SPORTSBET_EXTRACTOR), "--race-url", url, "--probe"])
-        meeting_dir = _get_target_dir_from_url(url)
-        if not meeting_dir or not meeting_dir.exists():
-            raise FileNotFoundError(
-                "Sportsbet 抽取要 --meeting-url/--races/--out-dir，"
-                "單靠 URL 推唔出馬場目錄。見 claw_sportsbet_form.py。")
+        _run([
+            PYTHON,
+            str(SPORTSBET_EXTRACTOR),
+            "--meeting-url",
+            url,
+            "--races",
+            ",".join(str(race_id) for race_id in meeting["races"]),
+            "--out-dir",
+            str(meeting_dir),
+            "--date",
+            str(meeting["date"]),
+            "--venue",
+            _venue_from_meeting(dir_name),
+        ])
+        if not meeting_dir.exists():
+            raise FileNotFoundError(f"Sportsbet extractor did not create {meeting_dir}")
         return meeting_dir
     raise SystemExit(
         f"❌ 唔識抽呢個 URL：{url}\n"
@@ -167,37 +183,47 @@ def _extract_meeting(url: str) -> Path:
         "   然後把 meeting 目錄餵返呢個 orchestrator。")
 
 
-def _get_target_dir_from_url(url: str) -> Path | None:
-    match = re.search(r"form-guide/horse-racing/([^/]+)-(\d{8})", url)
+def _sportsbet_meeting_spec(
+    url: str,
+    mapping_path: Path | None = None,
+) -> tuple[str, dict]:
+    """Resolve one Sportsbet race URL to the complete tracked meeting.
+
+    A race URL contains only meetingId/raceId.  The tracked date index is the
+    authoritative source for the date, venue, full race list and output folder;
+    guessing those values would re-introduce race-order/data-alignment errors.
+    """
+    mapping_path = mapping_path or SPORTSBET_MEETING_IDS
+    match = re.search(r"sportsbetform\.com\.au/(\d+)/(\d+)(?:/|$)", url, re.I)
     if not match:
-        return None
-    venue = match.group(1).replace("-", " ").title()
-    date_str = match.group(2)
-    formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
-    candidates = []
-    for path in AU_RACING.iterdir():
-        if not path.is_dir():
-            continue
-        if path.name.startswith(f"{formatted_date} {venue}") or path.name.startswith(f"{formatted_date}_{venue}_Race_"):
-            candidates.append(path)
-    if not candidates:
-        return None
-    return max(candidates, key=_meeting_candidate_score)
-
-
-def _meeting_candidate_score(path: Path) -> tuple[int, int, int]:
-    relevant = 0
-    total = 0
-    for child in path.iterdir():
-        total += 1
-        if child.is_file() and (
-            child.name.endswith("Racecard.md")
-            or child.name.endswith("Formguide.md")
-            or child.name.endswith("Facts.md")
-            or child.name.startswith("Race_")
-        ):
-            relevant += 1
-    return relevant, total, path.stat().st_mtime_ns
+        raise ValueError(f"Invalid SportsbetForm race URL: {url}")
+    meeting_id, race_id = match.groups()
+    try:
+        mapping = json.loads(mapping_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Cannot read Sportsbet meeting index {mapping_path}: {exc}") from exc
+    matches = [
+        (name, meta)
+        for name, meta in mapping.items()
+        if str(meta.get("meetingId")) == meeting_id
+    ]
+    if len(matches) != 1:
+        raise ValueError(
+            f"Sportsbet meetingId {meeting_id} is not uniquely tracked in {mapping_path}; "
+            "run the daily discovery first."
+        )
+    dir_name, meeting = matches[0]
+    race_ids = {str(value) for value in meeting.get("races", [])}
+    if race_id not in race_ids:
+        raise ValueError(
+            f"Sportsbet raceId {race_id} is not listed under meetingId {meeting_id}; "
+            "refresh the daily meeting index before extraction."
+        )
+    required = {"date", "races"}
+    missing = sorted(key for key in required if not meeting.get(key))
+    if missing:
+        raise ValueError(f"Incomplete Sportsbet meeting index for {dir_name}: {missing}")
+    return dir_name, meeting
 
 
 def _ensure_facts(meeting_dir: Path, workers: int = 1) -> None:
@@ -262,7 +288,7 @@ def _find_facts_file(meeting_dir: Path, race_num: int) -> Path | None:
         f"*Race_{race_num}_Facts.md",
         f"*Race {race_num} Facts.md",
     ):
-        matches = sorted(meeting_dir.glob(pattern))
+        matches = sorted(path for path in meeting_dir.glob(pattern) if path.is_file())
         if matches:
             return matches[0]
     return None

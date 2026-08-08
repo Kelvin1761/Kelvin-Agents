@@ -107,4 +107,4 @@ class TestStillOutOfTheRanking:
         """重建咗都唔代表要畀權重。3,000 條隨機 7 維權重向量，共識仍然係 0.0
         —— 因為 82.3% 嘅馬而家喺中性打平手，場內冇 gradient。
         真係想佢有用，要嘅係**更多對手線數據**，唔係再改分數映射。"""
-        assert MATRIX_WEIGHTS.get("form_line", 0.0) == 0.0
+        assert "form_line" not in MATRIX_WEIGHTS

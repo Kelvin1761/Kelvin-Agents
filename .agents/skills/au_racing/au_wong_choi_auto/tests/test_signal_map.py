@@ -108,10 +108,12 @@ class SignalMapTests(unittest.TestCase):
     def test_form_line_weight_is_still_zero(self) -> None:
         # If someone re-enables form_line, the signal map + gate evidence must
         # be revisited (see 06_signal_map.md section C).
-        self.assertEqual(MATRIX_WEIGHTS.get("form_line", 0.0), 0.0)
+        self.assertNotIn("form_line", MATRIX_WEIGHTS)
 
-    def test_matrix_schema_matches_live_weights(self) -> None:
-        self.assertEqual(tuple(MATRIX_WEIGHTS), MATRIX_KEYS)
+    def test_matrix_schema_separates_ranking_and_report_only_dimensions(self) -> None:
+        self.assertEqual(set(MATRIX_KEYS) - set(MATRIX_WEIGHTS), {"form_line"})
+        self.assertEqual(tuple(key for key in MATRIX_KEYS if key in MATRIX_WEIGHTS),
+                         tuple(MATRIX_WEIGHTS))
 
     def test_legacy_sectional_matrix_is_read_as_pace_perf(self) -> None:
         legacy = {"stability": 61.0, "sectional": 72.5}
@@ -155,6 +157,8 @@ class SignalMapTests(unittest.TestCase):
         self.assertEqual(
             set(REPORT_ONLY_FEATURE_KEYS),
             {
+                "sectional_score",
+                "weight_score",
                 "distance_score",
                 "formline_score",
                 "health_score",
@@ -181,25 +185,22 @@ class SignalMapTests(unittest.TestCase):
         self.assertEqual(coverage["coverage_pct"], 100.0)
         self.assertEqual(coverage["missing_features"], [])
 
-    def test_neutral_scored_missing_feature_is_still_reported_missing(self) -> None:
+    def test_neutral_active_feature_is_still_reported_missing(self) -> None:
         """A neutral score must never be allowed to hide a data gap.
 
-        Until 2026-08-01 sectional_score answered "no PI data" with 35.8 — the
-        bottom of the display scale — so the gap was visible only because the
-        number looked bad. Now absence of evidence scores a neutral 60, which
-        makes this the load-bearing guarantee: the coverage report, not the
-        score, is what tells the reader the evidence is missing.
+        A neutral ranking leaf must not hide a data gap. Retired/report-only
+        leaves are deliberately outside this coverage denominator.
         """
         auto = _analyze()
         self.assertEqual(
-            auto["feature_evidence_state"]["sectional_score"],
+            auto["feature_evidence_state"]["pace_figure_score"],
             "missing",
         )
         self.assertIn(
-            "sectional_score",
+            "pace_figure_score",
             auto["data_coverage"]["missing_features"],
         )
-        self.assertEqual(auto["feature_scores"]["sectional_score"], 60.0)
+        self.assertEqual(auto["feature_scores"]["pace_figure_score"], 60.0)
 
 
 if __name__ == "__main__":

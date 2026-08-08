@@ -89,10 +89,13 @@ class Dataset:
 
     def __init__(self, path: Path):
         races = json.loads(path.read_text(encoding="utf-8"))["races"]
-        self.races = races
+        # Accept both the compact leaves dump and the richer current-runtime
+        # audit snapshot.  Keeping one evaluator removes a recurring source of
+        # stale-schema crashes and cross-corpus metric comparisons.
+        self.races = [self._normalise_race(race) for race in races]
         self.slices, self.rows = [], []
         start = 0
-        for race in races:
+        for race in self.races:
             n = len(race["rows"])
             self.slices.append((start, start + n))
             start += n
@@ -110,6 +113,30 @@ class Dataset:
                     np.array([float(r["features"].get(leaf, 60.0)) for r in self.rows]),
                     0.0, 100.0) - w * 60.0
             self.raw[key] = np.clip(acc, 0.0, 100.0)
+
+    @staticmethod
+    def _normalise_race(race):
+        metadata = race.get("metadata") or {}
+        field_size = race.get("field") or metadata.get("field_size")
+        rows = []
+        for row in race["rows"]:
+            rows.append({
+                **row,
+                "n": row.get("n", row.get("horse_number")),
+                "name": row.get("name", row.get("horse_name", "")),
+                "pos": row.get("pos", row.get("actual_pos")),
+                "sp": row.get("sp", row.get("result_sp_label")),
+                "features": row.get("features", row.get("feature_scores", {})),
+                "wet": row.get("wet", row.get("wet_form_feature", 0.0)),
+                "ability": row.get("ability", row.get("score")),
+            })
+        return {
+            **race,
+            "date": race.get("date", metadata.get("date")),
+            "race": race.get("race", metadata.get("race_number")),
+            "field": int(field_size or len(rows)),
+            "rows": rows,
+        }
 
     def dim_matrix(self, gains):
         """食完 gain、clip、2dp 之後嘅維度分 —— 只要 gain 唔變就可以重用。"""
@@ -305,7 +332,6 @@ def cmd_walkforward(ds, args):
     pooled = {k: statistics.median(r[3][k] for r in rows) for k in DIMS}
     total = sum(pooled.values())
     pooled = {k: round(v / total, 5) for k, v in pooled.items()}
-    pooled["form_line"] = 0.0
     print("跨窗口共識（逐維度中位數）：" + json.dumps(pooled))
     (HERE / "au_refit_walkforward.json").write_text(json.dumps(pooled), encoding="utf-8")
 
@@ -358,7 +384,6 @@ def cmd_refit(ds, args):
     consensus = {k: statistics.median(v[i] for v, _ in gated) for i, k in enumerate(DIMS)}
     total = sum(consensus.values())
     consensus = {k: round(v / total, 5) for k, v in consensus.items()}
-    consensus["form_line"] = 0.0
     print(f"\n共識權重（{len(gated)} 條過閘候選嘅逐維度中位數，睇 holdout 之前已經定死）：")
     print(json.dumps(consensus))
     (HERE / "au_refit_consensus.json").write_text(json.dumps(consensus), encoding="utf-8")
@@ -366,7 +391,6 @@ def cmd_refit(ds, args):
     # 對照 argmax，示範點解要取中位數
     best = max(gated, key=lambda vc: obj_of(dict(zip(DIMS, vc[0])), 0, split))[0]
     argmax = {k: round(v, 5) for k, v in zip(DIMS, best)}
-    argmax["form_line"] = 0.0
     (HERE / "au_refit_argmax.json").write_text(json.dumps(argmax), encoding="utf-8")
     print(f"argmax 權重（只作對照，唔會 ship）：{json.dumps(argmax)}")
 

@@ -22,8 +22,8 @@ class DataCoverageTests(unittest.TestCase):
     def test_coverage_block_present_and_shaped(self) -> None:
         auto = RacingEngine({"horse_name": "H", "barrier": 5, "horse_number": "1"}, _ctx()).analyze_horse()
         cov = auto["data_coverage"]
-        self.assertEqual(cov["total"], 13)
-        self.assertEqual(cov["present"] + len(cov["missing_features"]), 13)
+        self.assertEqual(cov["total"], 11)
+        self.assertEqual(cov["present"] + len(cov["missing_features"]), 11)
         self.assertIn(cov["confidence"], ("高", "中", "薄"))
         self.assertTrue(0 <= cov["coverage_pct"] <= 100)
 

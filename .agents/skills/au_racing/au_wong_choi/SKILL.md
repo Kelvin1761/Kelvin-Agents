@@ -28,6 +28,10 @@ version: 6.0.0
 python3 .agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py "<URL或資料夾>"
 ```
 
+Sportsbet 單場 URL 會用 `data/sb_archive_meeting_ids.json` 解出完整 meeting 日期、
+場地同 race IDs；如果 meetingId 未入 index，要先行 daily discovery，唔可以靠 raceId
+次序估場次。
+
 如果環境冇 `python3`，可改用：
 
 ```bash

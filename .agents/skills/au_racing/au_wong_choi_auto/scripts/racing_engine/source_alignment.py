@@ -24,6 +24,34 @@ RACECARD_META_RE = re.compile(
 RAW_HORSE_HEADER_RE = re.compile(r"^### 馬匹 #(\d+)\b", re.M)
 
 
+def normalize_going(value: object) -> str:
+    """Canonical Australian going; discard suffixes and impossible grades.
+
+    Older flattened Sportsbet pages joined the adjacent temperature to the
+    surface (for example ``Synthetic`` + ``8°C`` → ``Synthetic 8``).  Keeping
+    the valid family is safer than treating that temperature as a track grade.
+    """
+    text = str(value or "").strip()
+    match = re.match(
+        r"(Firm|Good|Soft|Heavy|Synthetic|Slow)\s*\(?\s*(\d+)?",
+        text,
+        re.I,
+    )
+    if not match:
+        return text
+    family = match.group(1).title()
+    grade = int(match.group(2)) if match.group(2) else None
+    valid = {
+        "Firm": {1, 2},
+        "Good": {3, 4},
+        "Soft": {5, 6, 7},
+        "Heavy": {8, 9, 10},
+    }
+    if grade is None or grade not in valid.get(family, set()):
+        return family
+    return f"{family} {grade}"
+
+
 def clean_identity(value: object) -> str:
     text = str(value or "").strip()
     if not text:

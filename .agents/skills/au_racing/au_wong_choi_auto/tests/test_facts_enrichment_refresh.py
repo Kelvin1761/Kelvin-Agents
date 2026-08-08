@@ -53,6 +53,16 @@ class FactsPathGlobTests(unittest.TestCase):
             (folder / "11-01 Race 10 Facts.md").write_text("x", encoding="utf-8")
             self.assertIsNone(_facts_path_for_logic(logic, 1))
 
+    def test_ignores_directory_named_like_facts_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            logic = folder / "Race_1_Logic.json"
+            logic.write_text("{}", encoding="utf-8")
+            (folder / "Race_1_Facts.md").mkdir()
+            real_facts = folder / "05-08 Race 1 Facts.md"
+            real_facts.write_text("x", encoding="utf-8")
+            self.assertEqual(_facts_path_for_logic(logic, 1), real_facts)
+
 
 class BuilderEnricherParityTests(unittest.TestCase):
     def test_canonical_builder_is_enrichment_idempotent(self) -> None:

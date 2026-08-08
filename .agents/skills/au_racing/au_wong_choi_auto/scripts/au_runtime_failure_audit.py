@@ -35,6 +35,7 @@ from au_runtime_micro_ablation import (
     aligned_race,
     discover_logic_files,
     iter_aligned_races,
+    prepare_logic_for_scoring,
     score_variant,
 )
 from io_utils import write_json_atomic, write_text_atomic
@@ -621,8 +622,14 @@ def main() -> int:
             rejections[aligned[1]] += 1
             continue
         logic, aligned_rows = aligned
+        prepared_logic, facts_path = prepare_logic_for_scoring(logic, logic_path)
         for source in aligned_rows:
-            data = source["horse"].get("_data")
+            prepared_horse = (
+                prepared_logic["horses"].get(str(source["horse_number"]))
+                or prepared_logic["horses"].get(source["horse_number"])
+                or source["horse"]
+            )
+            data = prepared_horse.get("_data")
             data = data if isinstance(data, dict) else {}
             total_horses += 1
             for field in LOADED_DATA_FIELDS:
@@ -634,12 +641,18 @@ def main() -> int:
             logic_path,
             [],
             include_details=True,
+            prepared_logic=prepared_logic,
+            facts_path=facts_path,
         )
-        metadata = race_metadata(logic_path, logic)
+        metadata = race_metadata(logic_path, prepared_logic)
         records.append(analyze_race(metadata, scored))
         if args.dataset_json:
             raw_lookup = {
-                int(source["horse_number"]): source["horse"]
+                int(source["horse_number"]): (
+                    prepared_logic["horses"].get(str(source["horse_number"]))
+                    or prepared_logic["horses"].get(source["horse_number"])
+                    or source["horse"]
+                )
                 for source in aligned_rows
             }
             dataset_rows = []

@@ -20,6 +20,7 @@ from au_runtime_micro_ablation import (
     select_indices,
 )
 from io_utils import write_json_atomic, write_text_atomic
+from matrix_mapper import MATRIX_DISPLAY_GAINS
 from scoring import MATRIX_WEIGHTS, clip_score
 
 
@@ -56,6 +57,16 @@ def neutral_formula(components: tuple[tuple[float, float], ...]) -> float:
     return clip_score(
         60.0 + sum((float(value) - 60.0) * weight for value, weight in components)
     )
+
+
+def displayed_formula(
+    matrix_key: str,
+    components: tuple[tuple[float, float], ...],
+) -> float:
+    """Apply the live matrix display scale after the neutral formula."""
+    raw = neutral_formula(components)
+    gain = MATRIX_DISPLAY_GAINS.get(matrix_key, 1.0)
+    return round(clip_score(60.0 + (raw - 60.0) * gain), 2)
 
 
 def architecture_score(row: dict, variant: str) -> float:
@@ -98,7 +109,7 @@ def architecture_score(row: dict, variant: str) -> float:
         )
 
     if class_components is not None:
-        new_class = neutral_formula(class_components)
+        new_class = displayed_formula("class_weight", class_components)
         score += MATRIX_WEIGHTS["class_weight"] * (new_class - old_class)
 
     transfers = {
@@ -128,7 +139,7 @@ def architecture_score(row: dict, variant: str) -> float:
             float(matrices["race_shape"]) - 60.0
         )
         if variant == "drop_weight_plus_track_shape_02":
-            new_class = neutral_formula(((rating, 0.70),))
+            new_class = displayed_formula("class_weight", ((rating, 0.70),))
             score += MATRIX_WEIGHTS["class_weight"] * (
                 new_class - old_class
             )
@@ -142,7 +153,8 @@ def architecture_score(row: dict, variant: str) -> float:
         )
         score += MATRIX_WEIGHTS["track"] * (threshold_track - track)
         if variant == "threshold_track_plus_distance_high":
-            new_class = neutral_formula(
+            new_class = displayed_formula(
+                "class_weight",
                 ((rating, 0.70), (distance_high, 0.30))
             )
             score += MATRIX_WEIGHTS["class_weight"] * (

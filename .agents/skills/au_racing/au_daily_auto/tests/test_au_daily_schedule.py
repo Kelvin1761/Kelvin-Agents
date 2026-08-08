@@ -43,6 +43,8 @@ class TestGoing(unittest.TestCase):
         self.assertEqual(S.normalise_going("Good 4"), "Good 4")
         self.assertEqual(S.normalise_going("heavy10"), "Heavy 10")
         self.assertEqual(S.normalise_going("Synthetic"), "Synthetic")
+        self.assertEqual(S.normalise_going("Good 25"), "Good")
+        self.assertEqual(S.normalise_going("Good 29°C"), "Good")
 
     def test_rubbish_is_empty_not_guessed(self):
         # 認唔到就要回空，唔可以亂猜 —— 落一個錯 going 落去評分，比冇 going 差。
@@ -613,3 +615,72 @@ class TestUnpublishedRecovery(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             got = self._run(tmp, ["Archive_scratch"], [], S.date(2026, 8, 8))
         self.assertEqual(got, [])
+
+
+class TestReviewBackfill(unittest.TestCase):
+    """發佈失敗嘅場次亦要收得到賽果。
+
+    覆盤名單本來淨係問 dashboard，理由係「錯過一晚，場次仍然掛喺 dashboard」。
+    2026-08-07 deploy 撞到 Cloudflare 上限失敗，九個 08-08 場次從來冇上過
+    dashboard —— 於是佢哋冇發佈、冇賽果、冇歸檔，三樣一次過靜咗。
+
+    ⚠️ 呢個補漏最大嘅風險係反方向：`AU_Racing` 根目錄同時係 backtest 語料庫，
+    一個掃得太闊嘅規則會把 93 個歷史場次搬入 Archive/，即係由每個 backtest
+    消失。所以下面每一道收窄都要有測試釘住。
+    """
+
+    def _root(self, tmp, spec):
+        root = Path(tmp)
+        for name, (scored, reviewed) in spec.items():
+            d = root / name
+            d.mkdir()
+            if scored:
+                (d / "Race_1_Auto_Analysis.md").write_text("x", encoding="utf-8")
+            if reviewed:
+                (d / f"{name}_Reflector_Report.md").write_text("x", encoding="utf-8")
+        return root
+
+    def _run(self, tmp, spec, review_day):
+        root = self._root(tmp, spec)
+        with unittest.mock.patch.object(
+                S, "live_meeting_dirs", lambda: sorted(root.iterdir())):
+            return [m["key"] for m in S.unreviewed_local_meetings(review_day)]
+
+    def test_picks_up_a_run_meeting_that_never_reached_the_dashboard(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, {"2026-08-08 Randwick Race 1-10": (True, False)},
+                            S.date(2026, 8, 8))
+        self.assertEqual(got, ["2026-08-08|Randwick"])
+
+    def test_old_corpus_meetings_are_never_swept_in(self):
+        # 呢個就係個 docstring 警告嘅災難：搬走語料庫。
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, {"2026-03-28 Flemington Race 1-9": (True, False),
+                                  "2026-06-01 Randwick Race 1-8": (True, False)},
+                            S.date(2026, 8, 8))
+        self.assertEqual(got, [])
+
+    def test_future_meeting_is_not_due_for_review(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, {"2026-08-09 Wagga Race 1-8": (True, False)},
+                            S.date(2026, 8, 8))
+        self.assertEqual(got, [])
+
+    def test_already_reviewed_meeting_is_not_repeated(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, {"2026-08-08 Randwick Race 1-10": (True, True)},
+                            S.date(2026, 8, 8))
+        self.assertEqual(got, [])
+
+    def test_unscored_folder_is_not_a_meeting_we_analysed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, {"2026-08-08 Randwick Race 1-10": (False, False)},
+                            S.date(2026, 8, 8))
+        self.assertEqual(got, [])
+
+    def test_backfill_window_edges(self):
+        spec = {f"2026-08-0{d} X Race 1-8": (True, False) for d in (4, 5, 8)}
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, spec, S.date(2026, 8, 8))
+        # 08-05 啱啱喺 3 日窗內，08-04 出界。
+        self.assertEqual(got, ["2026-08-05|X", "2026-08-08|X"])

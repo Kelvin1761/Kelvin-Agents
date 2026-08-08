@@ -278,7 +278,19 @@ def normalise_going(raw: object) -> str:
     word = m.group(1).title()
     if word not in {"Good", "Soft", "Heavy", "Firm", "Synthetic", "Slow"}:
         return ""
-    return f"{word} {m.group(2)}" if m.group(2) else word
+    grade = int(m.group(2)) if m.group(2) else None
+    valid_grades = {
+        "Firm": {1, 2},
+        "Good": {3, 4},
+        "Soft": {5, 6, 7},
+        "Heavy": {8, 9, 10},
+    }
+    # Invalid numbers are commonly the adjacent temperature after flattened
+    # HTML (``Track: Good`` + ``25°C``).  Keep the proven surface family but do
+    # not publish a fictitious grade.
+    if grade is not None and grade not in valid_grades.get(word, set()):
+        return word
+    return f"{word} {grade}" if grade is not None else word
 
 
 def run_cmd(cmd: list[str], *, cwd: Path | None = None, timeout: int = 3600,
@@ -646,6 +658,41 @@ def corpus_meeting_days() -> set[str] | None:
         signal_module.signal(signal_module.SIGALRM, previous)
 
 
+# 補漏覆盤只回溯幾多日。收得緊係刻意：`AU_Racing` 根目錄同時係 backtest 語料庫
+# （93 個場次），一個「掃晒舊場次」嘅規則會靜靜咁把成個語料庫搬入 Archive/。
+REVIEW_BACKFILL_DAYS = 3
+
+
+def unreviewed_local_meetings(review_day: date) -> list[dict]:
+    """本機分析好、已經跑完、但 dashboard 從來冇過嘅場次。
+
+    ⚠️ 覆盤名單本來淨係問 dashboard，理由係「錯過一晚，場次仍然掛喺 dashboard，
+    下一晚照樣執行」。呢個前提喺**發佈失敗**嗰刻就唔成立：場次從來冇上過
+    dashboard，所以永遠唔會排入覆盤。2026-08-07 實測：九個 08-08 場次分析齊咗，
+    deploy 撞到 Cloudflare 25 MiB 上限失敗，於是佢哋既冇發佈、亦冇收過賽果、
+    亦冇歸檔 —— 三樣嘢一次過靜咗。
+
+    四道收窄，缺一不可：跑完咗、近 REVIEW_BACKFILL_DAYS 日、我哋真係評過分、
+    未有覆盤報告。之後照樣行語料庫 guard。
+    """
+    out: list[dict] = []
+    for folder in live_meeting_dirs():
+        try:
+            day = datetime.strptime(folder.name[:10], "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if not (review_day - timedelta(days=REVIEW_BACKFILL_DAYS) <= day <= review_day):
+            continue
+        if not list(folder.glob("Race_*_Auto_Analysis.md")):
+            continue
+        if (folder / f"{folder.name}_Reflector_Report.md").exists():
+            continue
+        key = archive_dashboard_key(folder.name)
+        out.append({"key": key, "date": key.split("|")[0],
+                    "venue": key.split("|")[1]})
+    return out
+
+
 def step_review_archive(runlog: RunLog, review_day: date, *,
                         no_archive: bool = False) -> list[str]:
     """覆盤 + 歸檔 **dashboard 上** 已跑完嘅場次。
@@ -667,6 +714,13 @@ def step_review_archive(runlog: RunLog, review_day: date, *,
 
     due = [m for m in on_dashboard
            if m["date"] and date.fromisoformat(m["date"]) <= review_day]
+    seen = {m["key"] for m in due}
+    missed = [m for m in unreviewed_local_meetings(review_day)
+              if m["key"] not in seen]
+    if missed:
+        runlog.warn(f"本機有 {len(missed)} 個已分析場次跑完咗但 dashboard 從來冇過"
+                    f"（大概發佈失敗）—— 一併覆盤：{[m['key'] for m in missed]}")
+        due += missed
     runlog.step("review-archive", "dashboard-scan",
                 au_on_dashboard=[m["key"] for m in on_dashboard],
                 due=[m["key"] for m in due])

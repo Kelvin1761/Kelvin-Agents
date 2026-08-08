@@ -308,9 +308,30 @@ def parse_race(html):
     txt = to_text(html)
     flat = re.sub(r"\s+", " ", txt)
     meta = {}
-    m = re.search(r"Track:\s*([A-Za-z]+\s*\d*)", flat)
+    # The temperature is the next sibling on SportsbetForm.  Flattening the
+    # page used to turn ``Track: Good`` + ``25°C`` into the impossible going
+    # ``Good 25``.  Read only the condition word and an optional *valid*
+    # Australian track grade; the scheduler can still add a fresher official
+    # grade later.
+    m = re.search(
+        r"Track:\s*(Firm|Good|Soft|Heavy|Synthetic|Slow)\b\s*\(?\s*(\d{1,2})?",
+        flat,
+        re.I,
+    )
     if m:
-        meta["track_condition"] = m.group(1).strip()
+        family = m.group(1).title()
+        grade = int(m.group(2)) if m.group(2) else None
+        valid = {
+            "Firm": {1, 2},
+            "Good": {3, 4},
+            "Soft": {5, 6, 7},
+            "Heavy": {8, 9, 10},
+        }
+        meta["track_condition"] = (
+            f"{family} {grade}"
+            if grade is not None and grade in valid.get(family, set())
+            else family
+        )
     # ⚠️ 場地同場次一定要由頁面攞 —— **唔可以**靠呼叫者嘅 raceId 次序推。
     # raceId 唔跟場次遞增（實測 2026-08-01 Flemington：3393737=R7、3393739=R9、
     # 3394294=R6、3394295=R8），所以「照 raceId 排序當場次」會將 R6–R9 錯配。

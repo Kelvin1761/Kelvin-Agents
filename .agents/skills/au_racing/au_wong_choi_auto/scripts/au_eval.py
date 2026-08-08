@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import random
 import sys
 from dataclasses import dataclass, field
@@ -66,13 +67,38 @@ from scoring import MATRIX_WEIGHTS  # noqa: E402
 TOP_K = 5           # 決定 Gold（頭四揀）／Good位 嘅區域，留一格緩衝
 HOLDOUT = 0.15      # 依時間切，holdout 唔准睇住調
 BOOT = 2000
-CONTEXT_KEYS = ("gold", "good_positional", "good_any2", "champion",
-                "winner_in_top3")
+CONTEXT_KEYS = (
+    "gold",
+    "gold_strict",
+    "good_positional",
+    "good_any2",
+    "pass_any1",
+    "champion",
+    "winner_in_top3",
+    "winner_in_top5",
+)
 
 
 def load_races(path):
-    """讀 leaves dump（`{"races":[{"rows":[{features,wet,pos}]}]}`）。"""
-    return json.loads(Path(path).read_text())["races"]
+    """Read either compact leaves or the current-runtime audit snapshot."""
+    source = json.loads(Path(path).read_text())["races"]
+    races = []
+    for race in source:
+        metadata = race.get("metadata") or {}
+        rows = []
+        for row in race["rows"]:
+            rows.append({
+                **row,
+                "features": row.get("features", row.get("feature_scores", {})),
+                "wet": row.get("wet", row.get("wet_form_feature", 0.0)),
+                "pos": row.get("pos", row.get("actual_pos")),
+            })
+        races.append({
+            **race,
+            "date": race.get("date", metadata.get("date")),
+            "rows": rows,
+        })
+    return races
 
 
 def default_scorer(row):
@@ -107,13 +133,20 @@ def _auc(pairs, lo=0, hi=None):
     return (sum(x[0] for x in seg) / n) if n else float("nan")
 
 
-def _boot_ci(base, cand, lo, hi, seed=7):
+def _auc_indices(pairs, indices):
+    selected = [pairs[index] for index in indices]
+    n = sum(row[1] for row in selected)
+    return (sum(row[0] for row in selected) / n) if n else float("nan")
+
+
+def _boot_ci(base, cand, indices, seed=7):
     """配對 bootstrap，**按場**重抽。"""
     rng = random.Random(seed)
-    m = hi - lo
+    indices = list(indices)
+    m = len(indices)
     ds = []
     for _ in range(BOOT):
-        idx = [lo + rng.randrange(m) for _ in range(m)]
+        idx = [indices[rng.randrange(m)] for _ in range(m)]
         nb = sum(base[i][1] for i in idx)
         nc = sum(cand[i][1] for i in idx)
         if nb and nc:
@@ -121,6 +154,21 @@ def _boot_ci(base, cand, lo, hi, seed=7):
                       - sum(base[i][0] for i in idx) / nb)
     ds.sort()
     return ds[len(ds) // 40], ds[-len(ds) // 40]
+
+
+def date_partitions(races, holdout=HOLDOUT):
+    """Whole-date dev/holdout split; never cut a meeting day in half."""
+    dates = [race.get("date") for race in races]
+    if dates and all(dates):
+        unique = sorted(set(dates))
+        holdout_date_count = max(1, math.ceil(len(unique) * holdout))
+        holdout_dates = set(unique[-holdout_date_count:])
+        dev = [index for index, date in enumerate(dates) if date not in holdout_dates]
+        terminal = [index for index, date in enumerate(dates) if date in holdout_dates]
+        if dev and terminal:
+            return dev, terminal
+    cut = int(len(races) * (1 - holdout))
+    return list(range(cut)), list(range(cut, len(races)))
 
 
 def _counts(races, scorer):
@@ -189,16 +237,16 @@ def compare(races, base_scorer=None, cand_scorer=None, *, label="候選",
     """
     base_scorer = base_scorer or default_scorer
     n = len(races)
-    cut = int(n * (1 - holdout))
+    dev_indices, holdout_indices = date_partitions(races, holdout)
     bt, ct = _pairs(races, base_scorer, True), _pairs(races, cand_scorer, True)
     ba, ca = _pairs(races, base_scorer, False), _pairs(races, cand_scorer, False)
 
-    td = _auc(ct, 0, cut) - _auc(bt, 0, cut)
-    th = _auc(ct, cut, n) - _auc(bt, cut, n)
-    tci = _boot_ci(bt, ct, cut, n)
-    ad = _auc(ca, 0, cut) - _auc(ba, 0, cut)
-    ah = _auc(ca, cut, n) - _auc(ba, cut, n)
-    aci = _boot_ci(ba, ca, cut, n)
+    td = _auc_indices(ct, dev_indices) - _auc_indices(bt, dev_indices)
+    th = _auc_indices(ct, holdout_indices) - _auc_indices(bt, holdout_indices)
+    tci = _boot_ci(bt, ct, holdout_indices)
+    ad = _auc_indices(ca, dev_indices) - _auc_indices(ba, dev_indices)
+    ah = _auc_indices(ca, holdout_indices) - _auc_indices(ba, holdout_indices)
+    aci = _boot_ci(ba, ca, holdout_indices)
 
     if tci[0] > 0 and td >= 0:
         ship, why = True, f"holdout 頭 {TOP_K} 位區間唔過 0，dev 唔係負"
@@ -227,11 +275,30 @@ def main():
     races = load_races(args.data)
     print(f"{len(races)} 場 · 判決 = 頭 {TOP_K} 位配對 AUC 嘅 holdout 區間\n")
     if not args.swap_leaf:
-        b = _pairs(races, default_scorer, True)
+        top = _pairs(races, default_scorer, True)
+        all_field = _pairs(races, default_scorer, False)
         n = len(races)
-        cut = int(n * (1 - args.holdout))
-        print(f"現行基準：頭 {TOP_K} 位 AUC  dev {_auc(b,0,cut):.4f} · "
-              f"holdout {_auc(b,cut,n):.4f}")
+        dev_indices, holdout_indices = date_partitions(races, args.holdout)
+        print(
+            f"現行基準：頭 {TOP_K} 位 AUC  all {_auc(top):.4f} · "
+            f"dev {_auc_indices(top,dev_indices):.4f} · "
+            f"holdout {_auc_indices(top,holdout_indices):.4f}"
+        )
+        print(
+            f"現行基準：全場 AUC       all {_auc(all_field):.4f} · "
+            f"dev {_auc_indices(all_field,dev_indices):.4f} · "
+            f"holdout {_auc_indices(all_field,holdout_indices):.4f}"
+        )
+        for label, sample in (
+            ("all", races),
+            ("dev", [races[index] for index in dev_indices]),
+            ("holdout", [races[index] for index in holdout_indices]),
+        ):
+            counts = _counts(sample, default_scorer)
+            print(
+                f"場數指標 {label:<7} "
+                + " · ".join(f"{key} {value:.2f}%" for key, value in counts.items())
+            )
         return 0
     for spec in args.swap_leaf:
         leaf, _, val = spec.partition("=")

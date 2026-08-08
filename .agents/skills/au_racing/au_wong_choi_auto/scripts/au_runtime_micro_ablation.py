@@ -33,16 +33,15 @@ from au_archive_calibrator import (
     normalize_horse_name,
     parse_int,
 )
-from au_auto_orchestrator import _build_field_summary
+from au_auto_orchestrator import _build_field_summary, _facts_path_for_logic
 from eval_metrics import race_metrics, summarize_races
-from engine_core import RacingEngine, backfill_pf_metrics
+from engine_core import RacingEngine, backfill_pf_metrics, enrich_logic_from_facts
 from io_utils import write_json_atomic, write_text_atomic
 from scoring import (
     CLASS_MICRO_WEIGHTS,
     CONSISTENCY_MICRO_WEIGHTS,
     FIT_MICRO_WEIGHTS,
     PACE_MICRO_WEIGHTS,
-    SECTIONAL_MICRO_WEIGHTS,
     TRIAL_MICRO_WEIGHTS,
     TRACK_MICRO_WEIGHTS,
 )
@@ -58,7 +57,6 @@ MICRO_FAMILIES = {
     "class": CLASS_MICRO_WEIGHTS,
     "trial": TRIAL_MICRO_WEIGHTS,
     "consistency": CONSISTENCY_MICRO_WEIGHTS,
-    "sectional": SECTIONAL_MICRO_WEIGHTS,
     "track": TRACK_MICRO_WEIGHTS,
     "pace": PACE_MICRO_WEIGHTS,
     "jockey_horse_fit": FIT_MICRO_WEIGHTS,
@@ -230,6 +228,24 @@ def iter_aligned_races(
             yield queued_path, future.result()
 
 
+def prepare_logic_for_scoring(logic: dict, logic_path: Path) -> tuple[dict, Path | None]:
+    """Build the same pre-score snapshot used by the live auto orchestrator.
+
+    Archive Logic is only an intermediate snapshot.  The live path refreshes it
+    from the matching Facts/Formguide before PF backfill and field-relative
+    scoring.  Runtime audits must do the same or they silently evaluate stale
+    going, form and sectional evidence.
+    """
+    prepared = copy.deepcopy(logic)
+    analysis = prepared.get("race_analysis") or {}
+    race_number = analysis.get("race_number") or parse_int(logic_path.stem)
+    facts_path = _facts_path_for_logic(logic_path, race_number)
+    if facts_path is not None:
+        enrich_logic_from_facts(prepared, facts_path)
+    backfill_pf_metrics(prepared, facts_path)
+    return prepared, facts_path
+
+
 def score_variant(
     logic: dict,
     aligned: list[dict],
@@ -237,28 +253,35 @@ def score_variant(
     patches: list[tuple[dict, str, float]],
     *,
     include_details: bool = False,
+    prepared_logic: dict | None = None,
+    facts_path: Path | None = None,
 ) -> list[dict]:
-    race_context = copy.deepcopy(logic["race_analysis"])
-    # Mirror the live orchestrator: fill historical PF before the field summary,
-    # otherwise every backtest scores 段速實速 blind on pre-2026-05 meetings.
-    backfill_pf_metrics(logic, logic_path)
-    race_context["field_summary"] = _build_field_summary(logic["horses"])
+    if prepared_logic is None:
+        prepared_logic, facts_path = prepare_logic_for_scoring(logic, logic_path)
+    race_context = copy.deepcopy(prepared_logic["race_analysis"])
+    race_context["field_summary"] = _build_field_summary(prepared_logic["horses"])
     race_context["field_horse_names"] = [
         horse.get("horse_name")
-        for horse in logic["horses"].values()
+        for horse in prepared_logic["horses"].values()
         if isinstance(horse, dict) and horse.get("horse_name")
     ]
     scores = []
     with patched_weights(patches):
         for source in aligned:
-            horse = dict(source["horse"])
+            horse_number = source["horse_number"]
+            prepared_horse = (
+                prepared_logic["horses"].get(str(horse_number))
+                or prepared_logic["horses"].get(horse_number)
+                or source["horse"]
+            )
+            horse = dict(prepared_horse)
             horse.setdefault("horse_number", source["horse_number"])
             data = horse.get("_data") if isinstance(horse.get("_data"), dict) else {}
             result = RacingEngine(
                 horse,
                 race_context,
                 facts_section=data.get("facts_section", ""),
-                facts_path=logic_path,
+                facts_path=facts_path,
             ).analyze_horse()
             row = {
                 "horse_number": source["horse_number"],
@@ -627,10 +650,18 @@ def main() -> int:
             rejections[reason] = rejections.get(reason, 0) + 1
             continue
         logic, race_rows = aligned
+        prepared_logic, facts_path = prepare_logic_for_scoring(logic, logic_path)
         race_dates.append(detect_meeting_date(logic_path.parent))
         for name, patches in variants:
             scored[name].append(
-                score_variant(logic, race_rows, logic_path, patches)
+                score_variant(
+                    logic,
+                    race_rows,
+                    logic_path,
+                    patches,
+                    prepared_logic=prepared_logic,
+                    facts_path=facts_path,
+                )
             )
         if index == 1 or index % 25 == 0:
             print(f"Scored {index}/{len(files)} Logic races", flush=True)

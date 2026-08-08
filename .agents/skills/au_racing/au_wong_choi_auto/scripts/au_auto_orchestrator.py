@@ -243,7 +243,13 @@ def _facts_path_for_logic(logic_path: Path, race_number):
     # Archive meetings name Facts files "MM-DD Race N Facts.md" (spaces), live
     # tooling uses "Race_N_Facts.md" (underscores) — accept both.
     for pattern in (f"*Race_{safe_race_num}_Facts.md", f"*Race {safe_race_num} Facts.md"):
-        matches = sorted(logic_path.parent.glob(pattern))
+        # A malformed archive can contain a directory whose name ends in
+        # ``Facts.md`` (for example a run-log directory).  ``exists()`` is not
+        # enough: passing that directory to the enricher raises
+        # IsADirectoryError and aborts the whole meeting.
+        matches = sorted(
+            path for path in logic_path.parent.glob(pattern) if path.is_file()
+        )
         if matches:
             return matches[0]
     return None

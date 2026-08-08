@@ -24,6 +24,7 @@ from source_alignment import (
     RACECARD_HORSE_RE,
     RACECARD_META_RE,
     clean_identity as _clean_identity,
+    normalize_going,
     normalize_horse_name as _normalize_horse_name,
     race_source_candidates,
     validate_facts_horse_alignment,
@@ -5878,6 +5879,8 @@ def _load_meeting_intelligence(facts_path: Path, race_number: int = 0) -> dict:
             intelligence[key] = value
     if fallback:
         intelligence["source"] = _merge_sources(intelligence.get("source"), fallback.get("source"))
+    if intelligence.get("going"):
+        intelligence["going"] = normalize_going(intelligence["going"])
     return intelligence
 
 
@@ -5918,6 +5921,7 @@ def _meeting_context_from_extractor_files(facts_path: Path, race_number: int = 0
             sources.append(racecards[0].name)
 
     if context["going"]:
+        context["going"] = normalize_going(context["going"])
         context["track_summary"] = context["going"]
     context["source"] = " + ".join(dict.fromkeys(sources + (["folder_name"] if context["venue"] else [])))
     return {key: value for key, value in context.items() if value}

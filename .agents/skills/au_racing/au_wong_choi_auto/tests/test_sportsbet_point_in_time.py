@@ -110,6 +110,7 @@ class RaceIdentityTest(unittest.TestCase):
         meta = parse_race(self.HTML)["meta"]
         self.assertEqual(meta.get("race_number"), 7)
         self.assertEqual(meta.get("venue"), "Flemington")
+        self.assertEqual(meta.get("track_condition"), "Good 4")
 
     def test_start_time_is_optional(self):
         # 賽後頁面冇開跑時間；佢缺席唔可以令 race_number 變 None。
@@ -121,6 +122,12 @@ class RaceIdentityTest(unittest.TestCase):
         meta = parse_race(html)["meta"]
         self.assertEqual(meta.get("race_number"), 7)
         self.assertEqual(meta.get("start"), "14:30")
+
+    def test_temperature_is_not_mistaken_for_track_grade(self):
+        html = ("<html><head><title>Alice Springs Race 1</title></head><body>"
+                "<span>Track: Good</span><span>25°C</span><div>1100m </div>"
+                "</body></html>")
+        self.assertEqual(parse_race(html)["meta"]["track_condition"], "Good")
 
 
 if __name__ == "__main__":

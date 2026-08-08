@@ -51,7 +51,10 @@ def _horse_id(row: dict) -> tuple[int, str]:
 
 
 def _matrix_total(matrix: dict) -> float:
-    return sum(float(matrix.get(key, 60.0)) * MATRIX_WEIGHTS[key] for key in MATRIX_KEYS)
+    return sum(
+        float(matrix.get(key, 60.0)) * weight
+        for key, weight in MATRIX_WEIGHTS.items()
+    )
 
 
 def _map_with_formulas(features: dict, formulas: dict) -> dict:
@@ -95,7 +98,7 @@ def score_rows(
             else:
                 matrix = {
                     key: 60.0 if key in neutral_matrices else float(row.get(f"mx_{key}", 60.0))
-                    for key in MATRIX_KEYS
+                    for key in MATRIX_WEIGHTS
                 }
                 score = _matrix_total(matrix)
                 score += float(row.get("wet_form_feature", 0.0))
@@ -279,7 +282,7 @@ def build_audit(races: list[list[dict]], holdout_fraction: float = 0.15) -> dict
         ("archived_production", "production", ""),
         ("recomposed_pre_clean", "recomposed", ""),
         ("signal_cleaned", "signal_cleaned", ""),
-        *[(f"drop_matrix:{key}", "matrix", key) for key in MATRIX_KEYS],
+        *[(f"drop_matrix:{key}", "matrix", key) for key in MATRIX_WEIGHTS],
         *[(f"drop_leaf:{key}", "leaf", key) for key in AUDIT_LEAVES],
         (
             "drop_group:class_and_weight",
