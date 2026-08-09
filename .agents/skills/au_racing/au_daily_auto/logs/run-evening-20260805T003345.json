@@ -1,0 +1,217 @@
+{
+  "task_name": "au-wong-choi-evening",
+  "mode": "evening",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-04",
+  "started_at": "2026-08-05T00:33:45+10:00",
+  "completed_at": null,
+  "status": "running",
+  "duration_seconds": null,
+  "steps": [
+    {
+      "step": "review-archive",
+      "status": "start",
+      "at": "2026-08-05T00:33:45+10:00",
+      "review_day": "2026-08-04"
+    },
+    {
+      "step": "review-archive",
+      "status": "dashboard-scan",
+      "at": "2026-08-05T00:33:45+10:00",
+      "au_on_dashboard": [
+        "2026-08-05|Belmont",
+        "2026-08-05|Canterbury"
+      ],
+      "due": []
+    },
+    {
+      "step": "review-archive",
+      "status": "nothing-to-do",
+      "at": "2026-08-05T00:33:45+10:00"
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "start",
+      "at": "2026-08-05T00:33:45+10:00"
+    },
+    {
+      "step": "discover",
+      "status": "ok",
+      "at": "2026-08-05T00:33:46+10:00",
+      "race_day": "2026-08-05",
+      "index_meetings": 12,
+      "api_venues": [
+        "Belmont",
+        "Canterbury",
+        "Cranbourne",
+        "Doomben",
+        "Hobart",
+        "Murray Bridge"
+      ]
+    },
+    {
+      "step": "discover",
+      "status": "non-au-excluded",
+      "at": "2026-08-05T00:33:46+10:00",
+      "meetings": [
+        "assiniboia_downs",
+        "brighton",
+        "kenilworth",
+        "lingfield",
+        "pontefract",
+        "roscommon"
+      ],
+      "reason": "API 澳洲名單冇呢啲馬場"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-05T00:36:48+10:00",
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "races": 8
+    },
+    {
+      "step": "site-gate",
+      "status": "tripped",
+      "at": "2026-08-05T00:37:47+10:00",
+      "where": "2026-08-05 Doomben 第 1 場（raceId=3396084）"
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "cooldown",
+      "at": "2026-08-05T00:37:47+10:00",
+      "round_no": 2,
+      "sleep_seconds": 600,
+      "waiting_for": [
+        "Doomben",
+        "Hobart",
+        "Murray Bridge"
+      ]
+    },
+    {
+      "step": "site-gate",
+      "status": "tripped",
+      "at": "2026-08-05T00:48:33+10:00",
+      "where": "2026-08-05 Doomben 第 1 場（raceId=3396084）"
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "cooldown",
+      "at": "2026-08-05T00:48:33+10:00",
+      "round_no": 3,
+      "sleep_seconds": 600,
+      "waiting_for": [
+        "Doomben",
+        "Hobart",
+        "Murray Bridge"
+      ]
+    }
+  ],
+  "meetings_processed": [
+    {
+      "meeting": "2026-08-05 Belmont Race 1-8",
+      "status": "skipped_already_analysed",
+      "at": "2026-08-05T00:33:46+10:00",
+      "races": 8
+    },
+    {
+      "meeting": "2026-08-05 Canterbury Race 1-7",
+      "status": "skipped_already_analysed",
+      "at": "2026-08-05T00:33:46+10:00",
+      "races": 7
+    },
+    {
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "status": "analysed",
+      "at": "2026-08-05T00:37:02+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "going": "Soft 6"
+    },
+    {
+      "meeting": "2026-08-05 Doomben",
+      "status": "pending_extraction",
+      "at": "2026-08-05T00:37:47+10:00",
+      "detail": "一場賽事頁都攞唔到（個站拒絕）",
+      "round_no": 1
+    },
+    {
+      "meeting": "2026-08-05 Hobart",
+      "status": "pending_extraction",
+      "at": "2026-08-05T00:37:47+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 1
+    },
+    {
+      "meeting": "2026-08-05 Murray Bridge",
+      "status": "pending_extraction",
+      "at": "2026-08-05T00:37:47+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 1
+    },
+    {
+      "meeting": "2026-08-05 Doomben",
+      "status": "pending_extraction",
+      "at": "2026-08-05T00:48:33+10:00",
+      "detail": "一場賽事頁都攞唔到（個站拒絕）",
+      "round_no": 2
+    },
+    {
+      "meeting": "2026-08-05 Hobart",
+      "status": "pending_extraction",
+      "at": "2026-08-05T00:48:33+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 2
+    },
+    {
+      "meeting": "2026-08-05 Murray Bridge",
+      "status": "pending_extraction",
+      "at": "2026-08-05T00:48:33+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 2
+    }
+  ],
+  "races_archived": [],
+  "races_added": [
+    {
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "going": "Soft 6"
+    }
+  ],
+  "races_updated": [],
+  "scratchings_detected": [],
+  "track_changes_detected": [],
+  "analysis_changes": [],
+  "dashboard_validation": null,
+  "cloudflare_deployment": null,
+  "errors": [],
+  "warnings": [
+    {
+      "at": "2026-08-05T00:37:47+10:00",
+      "message": "個站喺 2026-08-05 Doomben 第 1 場（raceId=3396084） 明確拒絕（穩定非 200）—— 今次 run 唔再出網攞頁，餘下嘅場次記做 pending，下一次排程再試"
+    },
+    {
+      "at": "2026-08-05T00:48:33+10:00",
+      "message": "個站喺 2026-08-05 Doomben 第 1 場（raceId=3396084） 明確拒絕（穩定非 200）—— 今次 run 唔再出網攞頁，餘下嘅場次記做 pending，下一次排程再試"
+    }
+  ],
+  "retries": []
+}

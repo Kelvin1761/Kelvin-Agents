@@ -1,0 +1,37 @@
+[catchup] 主 run 收工 2026-08-06 00:04，補跑 evening 執 Mt Isa
+[2026-08-06T00:04:33+10:00] === AU Wong Choi evening run · day=2026-08-06 · fetch delay=25.0s ===
+[2026-08-06T00:04:33+10:00] [preflight] ok {"archive_readable":true,"au_meeting_folders":93,"au_root":"/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing","mirror":"/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing"}
+[2026-08-06T00:04:33+10:00] [review-archive] start {"review_day":"2026-08-06"}
+[2026-08-06T00:04:34+10:00] [review-archive] dashboard-scan {"au_on_dashboard":["2026-08-05|Belmont","2026-08-05|Canterbury","2026-08-05|Cranbourne","2026-08-05|Doomben","2026-08-05|Hobart","2026-08-05|Murray Bridge"],"due":["2026-08-05|Belmont","2026-08-05|Canterbury","2026-08-05|Cranbourne","2026-08-05|Doomben","2026-08-05|Hobart","2026-08-05|Murray Bridge"]}
+[2026-08-06T00:04:34+10:00]    · 2026-08-05 Belmont Race 1-8: already_archived
+[2026-08-06T00:04:34+10:00]    · 2026-08-05 Canterbury Race 1-7: already_archived
+[2026-08-06T00:04:34+10:00]    · 2026-08-05 Doomben Race 1-8: already_archived
+[2026-08-06T00:04:34+10:00]    · 2026-08-05 Hobart Race 1-9: already_archived
+[2026-08-06T00:04:34+10:00]    · 2026-08-05 Murray Bridge Race 1-8: already_archived
+[2026-08-06T00:04:38+10:00]    🌐 真 Chrome 已開（profile /Users/imac/.cache/wongchoi/sb_chrome_profile）
+[2026-08-06T00:04:44+10:00]    ✅ 195,120 bytes  https://www.sportsbetform.com.au/446511/3396104/
+[2026-08-06T00:05:15+10:00]    ✅ 365,338 bytes  https://www.sportsbetform.com.au/446511/3396105/
+[2026-08-06T00:05:45+10:00]    ✅ 312,344 bytes  https://www.sportsbetform.com.au/446511/3396106/
+[2026-08-06T00:06:16+10:00]    ✅ 365,007 bytes  https://www.sportsbetform.com.au/446511/3396107/
+[2026-08-06T00:06:47+10:00]    ✅ 286,831 bytes  https://www.sportsbetform.com.au/446511/3396108/
+[2026-08-06T00:07:17+10:00]    ✅ 318,856 bytes  https://www.sportsbetform.com.au/446511/3396109/
+[2026-08-06T00:07:48+10:00]    ✅ 316,510 bytes  https://www.sportsbetform.com.au/446511/3396110/
+[2026-08-06T00:08:19+10:00]    ✅ 443,231 bytes  https://www.sportsbetform.com.au/446511/3396111/
+[2026-08-06T00:08:19+10:00] [results-refresh] done {"expected":8,"failed":0,"had_before":0,"meeting":"2026-08-05 Cranbourne Race 1-8","refreshed":8}
+[2026-08-06T00:08:19+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/sb_results.py --meeting 2026-08-05 Cranbourne Race 1-8 --meeting-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-05 Cranbourne Race 1-8
+[2026-08-06T00:08:21+10:00]    | ❌ cache 冇任何賽果 —— 呢個場次未抽過，或者仲未跑
+[2026-08-06T00:08:21+10:00]    · 2026-08-05 Cranbourne Race 1-8: pending_results {"expected_races":8,"reason":"❌ cache 冇任何賽果 —— 呢個場次未抽過，或者仲未跑"}
+[2026-08-06T00:08:21+10:00] [review-archive] done {"archived":5,"candidates":1}
+[2026-08-06T00:08:21+10:00] [analyse-next-day] start
+[2026-08-06T00:08:21+10:00] ⚠️  NextEvents 冇下一個賽日資料，退回 2026-08-07
+[2026-08-06T00:08:50+10:00]    ✅ 65,176 bytes  https://www.sportsbetform.com.au/2026-08-07/
+[2026-08-06T00:08:50+10:00] [discover] ok {"api_venues":[],"index_meetings":15,"race_day":"2026-08-07"}
+[2026-08-06T00:08:50+10:00] ❌ [analyse-next-day] 暫時性：2026-08-07 攞唔到 API 澳洲場次名單 —— 唔可以由索引頁分辨澳洲同海外，今次唔分析（索引頁有 15 個場次）
+[2026-08-06T00:08:50+10:00] [dashboard] start {"archived":5,"merge":0}
+[2026-08-06T00:08:51+10:00] [dashboard-validate] failed {"meetings":7,"problems":1}
+[2026-08-06T00:08:51+10:00] ❌ [dashboard-validate] 已歸檔但仲喺 dashboard：['2026-08-05|Belmont', '2026-08-05|Canterbury', '2026-08-05|Doomben', '2026-08-05|Hobart', '2026-08-05|Murray Bridge']
+[2026-08-06T00:08:51+10:00] ❌ [dashboard] 驗證唔過 —— 唔發佈
+[2026-08-06T00:08:51+10:00] [mirror] ok {"copied":0,"failed":0,"root":"/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing"}
+[2026-08-06T00:08:51+10:00] [browser] closed {"requests_made":9,"stop_reason":null}
+[2026-08-06T00:08:51+10:00] [outcome] needs-attention {"statuses":["pending_results"]}
+[2026-08-06T00:08:51+10:00] === run failed in 258.1s → run-evening-20260806T000433.json ===

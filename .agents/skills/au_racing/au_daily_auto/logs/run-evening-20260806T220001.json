@@ -1,0 +1,765 @@
+{
+  "task_name": "au-wong-choi-evening",
+  "mode": "evening",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-06",
+  "started_at": "2026-08-06T22:00:01+10:00",
+  "completed_at": "2026-08-07T00:26:48+10:00",
+  "status": "ok",
+  "duration_seconds": 8807.3,
+  "steps": [
+    {
+      "step": "preflight",
+      "status": "ok",
+      "at": "2026-08-06T22:00:01+10:00",
+      "au_meeting_folders": 94,
+      "au_root": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing",
+      "mirror": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing",
+      "archive_readable": true
+    },
+    {
+      "step": "review-archive",
+      "status": "start",
+      "at": "2026-08-06T22:00:01+10:00",
+      "review_day": "2026-08-06"
+    },
+    {
+      "step": "review-archive",
+      "status": "dashboard-scan",
+      "at": "2026-08-06T22:00:04+10:00",
+      "au_on_dashboard": [
+        "2026-08-06|Ballarat Synthetic",
+        "2026-08-06|Gosford",
+        "2026-08-06|Moree",
+        "2026-08-06|Mt Isa",
+        "2026-08-06|Northam",
+        "2026-08-05|Cranbourne"
+      ],
+      "due": [
+        "2026-08-06|Ballarat Synthetic",
+        "2026-08-06|Gosford",
+        "2026-08-06|Moree",
+        "2026-08-06|Mt Isa",
+        "2026-08-06|Northam",
+        "2026-08-05|Cranbourne"
+      ]
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-06T22:03:54+10:00",
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "had_before": 0,
+      "expected": 8,
+      "refreshed": 8,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-06T22:08:01+10:00",
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "had_before": 0,
+      "expected": 8,
+      "refreshed": 8,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-06T22:11:37+10:00",
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "had_before": 0,
+      "expected": 7,
+      "refreshed": 7,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-06T22:15:12+10:00",
+      "meeting": "2026-08-06 Mt Isa Race 1-7",
+      "had_before": 0,
+      "expected": 7,
+      "refreshed": 7,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-06T22:19:19+10:00",
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "had_before": 0,
+      "expected": 8,
+      "refreshed": 8,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-06T22:23:27+10:00",
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "had_before": 0,
+      "expected": 8,
+      "refreshed": 8,
+      "failed": 0
+    },
+    {
+      "step": "review-archive",
+      "status": "done",
+      "at": "2026-08-06T22:23:28+10:00",
+      "archived": 5,
+      "candidates": 6
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "start",
+      "at": "2026-08-06T22:23:28+10:00"
+    },
+    {
+      "step": "discover",
+      "status": "ok",
+      "at": "2026-08-06T22:23:29+10:00",
+      "race_day": "2026-08-07",
+      "index_meetings": 15,
+      "api_venues": [
+        "Canberra",
+        "Coffs Harbour",
+        "Ipswich",
+        "Mount Gambier",
+        "Seymour"
+      ]
+    },
+    {
+      "step": "discover",
+      "status": "non-au-excluded",
+      "at": "2026-08-06T22:23:29+10:00",
+      "meetings": [
+        "brighton",
+        "chepstow",
+        "fairview",
+        "leopardstown",
+        "musselburgh",
+        "sandown",
+        "sligo",
+        "southwell",
+        "thirsk",
+        "woodbine"
+      ],
+      "reason": "API 澳洲名單冇呢啲馬場"
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-06T22:47:40+10:00",
+      "meeting": "2026-08-07 Canberra",
+      "needed": 50,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-06T22:47:44+10:00",
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "filled": 41,
+      "no_official": 21,
+      "ra_venue": "Canberra Acton"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-06T22:47:44+10:00",
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "races": 7
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-06T23:12:26+10:00",
+      "meeting": "2026-08-07 Coffs Harbour",
+      "needed": 74,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-06T23:12:31+10:00",
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "filled": 72,
+      "no_official": 26,
+      "ra_venue": "Coffs Harbour"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-06T23:12:31+10:00",
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "races": 8
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-06T23:36:41+10:00",
+      "meeting": "2026-08-07 Ipswich",
+      "needed": 103,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-06T23:36:46+10:00",
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "filled": 71,
+      "no_official": 15,
+      "ra_venue": "Ipswich"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-06T23:36:46+10:00",
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "races": 7
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-07T00:00:51+10:00",
+      "meeting": "2026-08-07 Mount Gambier",
+      "needed": 68,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-07T00:00:57+10:00",
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "filled": 56,
+      "no_official": 23,
+      "ra_venue": "Mount Gambier"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-07T00:00:57+10:00",
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "races": 7
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-07T00:25:47+10:00",
+      "meeting": "2026-08-07 Seymour",
+      "needed": 119,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-07T00:25:52+10:00",
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "filled": 75,
+      "no_official": 48,
+      "ra_venue": "bet365 Seymour"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-07T00:25:52+10:00",
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "races": 8
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "done",
+      "at": "2026-08-07T00:26:09+10:00",
+      "race_day": "2026-08-07",
+      "planned": 5,
+      "analysed": 5,
+      "pending": 0
+    },
+    {
+      "step": "dashboard",
+      "status": "start",
+      "at": "2026-08-07T00:26:09+10:00",
+      "merge": 5,
+      "archived": 5
+    },
+    {
+      "step": "dashboard-prune",
+      "status": "ok",
+      "at": "2026-08-07T00:26:12+10:00",
+      "dropped": [
+        "2026-08-06|Ballarat Synthetic",
+        "2026-08-06|Gosford",
+        "2026-08-06|Moree",
+        "2026-08-06|Mt Isa",
+        "2026-08-06|Northam"
+      ]
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-07T00:26:13+10:00",
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "snapshot": "merge-01.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-07T00:26:13+10:00",
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "snapshot": "merge-02.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-07T00:26:14+10:00",
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "snapshot": "merge-03.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-07T00:26:14+10:00",
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "snapshot": "merge-04.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-07T00:26:15+10:00",
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "snapshot": "merge-05.json"
+    },
+    {
+      "step": "dashboard-validate",
+      "status": "ok",
+      "at": "2026-08-07T00:26:15+10:00",
+      "meetings": 7,
+      "problems": 0
+    },
+    {
+      "step": "verify-live",
+      "status": "ok",
+      "at": "2026-08-07T00:26:47+10:00",
+      "generated_at": "2026-08-07T00:26:16",
+      "meetings": [
+        "2026-08-07|Canberra",
+        "2026-08-07|Coffs Harbour",
+        "2026-08-07|Ipswich",
+        "2026-08-07|Mount Gambier",
+        "2026-08-07|Seymour",
+        "2026-08-05|Cranbourne",
+        "2026-07-15|HappyValley"
+      ]
+    },
+    {
+      "step": "mirror",
+      "status": "ok",
+      "at": "2026-08-07T00:26:47+10:00",
+      "copied": 241,
+      "failed": 0,
+      "root": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing"
+    },
+    {
+      "step": "browser",
+      "status": "closed",
+      "at": "2026-08-07T00:26:47+10:00",
+      "requests_made": 283,
+      "stop_reason": null
+    },
+    {
+      "step": "outcome",
+      "status": "needs-attention",
+      "at": "2026-08-07T00:26:48+10:00",
+      "statuses": [
+        "pending_results"
+      ]
+    }
+  ],
+  "meetings_processed": [
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "status": "archived",
+      "at": "2026-08-06T22:03:56+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "status": "archived",
+      "at": "2026-08-06T22:08:03+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "status": "archived",
+      "at": "2026-08-06T22:11:39+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Mt Isa Race 1-7",
+      "status": "archived",
+      "at": "2026-08-06T22:15:13+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "status": "archived",
+      "at": "2026-08-06T22:19:20+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "status": "pending_results",
+      "at": "2026-08-06T22:23:28+10:00",
+      "reason": "❌ cache 冇任何賽果 —— 呢個場次未抽過，或者仲未跑",
+      "expected_races": 8
+    },
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "status": "analysed",
+      "at": "2026-08-06T22:47:53+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "expected": 7,
+      "going": "Good 3"
+    },
+    {
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "status": "analysed",
+      "at": "2026-08-06T23:12:46+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected": 8,
+      "going": "Soft 7"
+    },
+    {
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "status": "analysed",
+      "at": "2026-08-06T23:36:59+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "expected": 7,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "status": "analysed",
+      "at": "2026-08-07T00:01:07+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "expected": 7,
+      "going": "Heavy 9"
+    },
+    {
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "status": "analysed",
+      "at": "2026-08-07T00:26:09+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected": 8,
+      "going": "Soft 7"
+    }
+  ],
+  "races_archived": [
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Mt Isa Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    }
+  ],
+  "races_added": [
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "expected_races": 7,
+      "complete": true,
+      "going": "Good 3"
+    },
+    {
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected_races": 8,
+      "complete": true,
+      "going": "Soft 7"
+    },
+    {
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "expected_races": 7,
+      "complete": true,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "expected_races": 7,
+      "complete": true,
+      "going": "Heavy 9"
+    },
+    {
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected_races": 8,
+      "complete": true,
+      "going": "Soft 7"
+    }
+  ],
+  "races_updated": [],
+  "scratchings_detected": [],
+  "track_changes_detected": [],
+  "analysis_changes": [],
+  "dashboard_validation": {
+    "ok": true,
+    "problems": [],
+    "meetings": [
+      "2026-08-07|Canberra",
+      "2026-08-07|Coffs Harbour",
+      "2026-08-07|Ipswich",
+      "2026-08-07|Mount Gambier",
+      "2026-08-07|Seymour",
+      "2026-08-05|Cranbourne",
+      "2026-07-15|HappyValley"
+    ],
+    "race_counts": {
+      "2026-08-07|Canberra": 7,
+      "2026-08-07|Coffs Harbour": 8,
+      "2026-08-07|Ipswich": 7,
+      "2026-08-07|Mount Gambier": 7,
+      "2026-08-07|Seymour": 8,
+      "2026-08-05|Cranbourne": 8,
+      "2026-07-15|HappyValley": 9
+    },
+    "snapshot": "/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-05.json"
+  },
+  "cloudflare_deployment": {
+    "ok": true,
+    "attempts": 1,
+    "active_meetings": 7,
+    "deployment_url": "https://96d7e6d7.wongchoi-dashboard.pages.dev",
+    "production_url": "https://wongchoi-dashboard.pages.dev",
+    "commit": "manual-20260806142621",
+    "completed_at": "2026-08-07T00:26:44+10:00",
+    "verified": {
+      "attempt": 1,
+      "generated_at": "2026-08-07T00:26:16",
+      "meetings": [
+        "2026-08-07|Canberra",
+        "2026-08-07|Coffs Harbour",
+        "2026-08-07|Ipswich",
+        "2026-08-07|Mount Gambier",
+        "2026-08-07|Seymour",
+        "2026-08-05|Cranbourne",
+        "2026-07-15|HappyValley"
+      ],
+      "missing": [],
+      "still_present": [],
+      "stale": false,
+      "ok": true
+    }
+  },
+  "errors": [],
+  "warnings": [
+    {
+      "at": "2026-08-06T22:27:03+10:00",
+      "message": "2026-08-07 Canberra: 個人頁今次只補 40/50，餘下 10 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-06T22:51:48+10:00",
+      "message": "2026-08-07 Coffs Harbour: 個人頁今次只補 40/74，餘下 34 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-06T23:16:04+10:00",
+      "message": "2026-08-07 Ipswich: 個人頁今次只補 40/103，餘下 63 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-06T23:40:18+10:00",
+      "message": "2026-08-07 Mount Gambier: 個人頁今次只補 40/68，餘下 28 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-07T00:04:59+10:00",
+      "message": "2026-08-07 Seymour: 個人頁今次只補 40/119，餘下 79 個下次補（TTL cache 會累積）"
+    }
+  ],
+  "retries": []
+}

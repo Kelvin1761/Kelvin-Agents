@@ -1,0 +1,1337 @@
+{
+  "task_name": "au-wong-choi-morning",
+  "mode": "morning",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-06",
+  "started_at": "2026-08-06T10:00:02+10:00",
+  "completed_at": "2026-08-06T10:35:53+10:00",
+  "status": "ok",
+  "duration_seconds": 2151.1,
+  "steps": [
+    {
+      "step": "preflight",
+      "status": "ok",
+      "at": "2026-08-06T10:00:02+10:00",
+      "au_meeting_folders": 94,
+      "au_root": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing",
+      "mirror": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing",
+      "archive_readable": true
+    },
+    {
+      "step": "refresh-active",
+      "status": "start",
+      "at": "2026-08-06T10:00:02+10:00"
+    },
+    {
+      "step": "refresh-active",
+      "status": "dashboard-scan",
+      "at": "2026-08-06T10:00:06+10:00",
+      "au_on_dashboard": [
+        "2026-08-06|Ballarat Synthetic",
+        "2026-08-06|Gosford",
+        "2026-08-06|Moree",
+        "2026-08-06|Mt Isa",
+        "2026-08-06|Northam",
+        "2026-08-05|Cranbourne"
+      ],
+      "to_check": [
+        "2026-08-06 Ballarat Synthetic Race 1-8",
+        "2026-08-06 Gosford Race 1-8",
+        "2026-08-06 Moree Race 1-7",
+        "2026-08-06 Mt Isa Race 1-7",
+        "2026-08-06 Northam Race 1-8"
+      ]
+    },
+    {
+      "step": "rebuild",
+      "status": "field-level-change",
+      "at": "2026-08-06T10:03:55+10:00",
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "fields": [
+        "field_size",
+        "jockeys",
+        "scratchings"
+      ],
+      "detail": "重寫 Racecard → Facts → Logic → 評分（cache-only）"
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-06T10:05:57+10:00",
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "needed": 4,
+      "fetched": 4
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-06T10:05:59+10:00",
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "filled": 41,
+      "no_official": 38,
+      "ra_venue": "Sportsbet-Ballarat Synthetic"
+    },
+    {
+      "step": "rebuild",
+      "status": "field-level-change",
+      "at": "2026-08-06T10:10:02+10:00",
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "fields": [
+        "field_size",
+        "jockeys",
+        "scratchings"
+      ],
+      "detail": "重寫 Racecard → Facts → Logic → 評分（cache-only）"
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-06T10:13:36+10:00",
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "needed": 7,
+      "fetched": 7
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-06T10:13:39+10:00",
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "filled": 28,
+      "no_official": 28,
+      "ra_venue": "Gosford"
+    },
+    {
+      "step": "rebuild",
+      "status": "field-level-change",
+      "at": "2026-08-06T10:17:10+10:00",
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "fields": [
+        "field_size",
+        "jockeys",
+        "scratchings"
+      ],
+      "detail": "重寫 Racecard → Facts → Logic → 評分（cache-only）"
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-06T10:22:16+10:00",
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "needed": 10,
+      "fetched": 10
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-06T10:22:18+10:00",
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "filled": 50,
+      "no_official": 26,
+      "ra_venue": "Moree"
+    },
+    {
+      "step": "rebuild",
+      "status": "field-level-change",
+      "at": "2026-08-06T10:25:51+10:00",
+      "meeting": "2026-08-06 Mt Isa Race 1-7",
+      "fields": [
+        "field_size",
+        "scratchings"
+      ],
+      "detail": "重寫 Racecard → Facts → Logic → 評分（cache-only）"
+    },
+    {
+      "step": "rebuild",
+      "status": "field-level-change",
+      "at": "2026-08-06T10:29:55+10:00",
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "fields": [
+        "jockeys"
+      ],
+      "detail": "重寫 Racecard → Facts → Logic → 評分（cache-only）"
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-06T10:35:03+10:00",
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "needed": 16,
+      "fetched": 10
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-06T10:35:05+10:00",
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "filled": 61,
+      "no_official": 23,
+      "ra_venue": "Northam"
+    },
+    {
+      "step": "refresh-active",
+      "status": "done",
+      "at": "2026-08-06T10:35:15+10:00",
+      "checked": 5,
+      "updated": 5,
+      "pending": 0
+    },
+    {
+      "step": "dashboard",
+      "status": "start",
+      "at": "2026-08-06T10:35:15+10:00",
+      "merge": 5,
+      "archived": 0
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-06T10:35:19+10:00",
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "snapshot": "merge-01.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-06T10:35:20+10:00",
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "snapshot": "merge-02.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-06T10:35:20+10:00",
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "snapshot": "merge-03.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-06T10:35:21+10:00",
+      "meeting": "2026-08-06 Mt Isa Race 1-7",
+      "snapshot": "merge-04.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-06T10:35:22+10:00",
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "snapshot": "merge-05.json"
+    },
+    {
+      "step": "dashboard-validate",
+      "status": "ok",
+      "at": "2026-08-06T10:35:22+10:00",
+      "meetings": 7,
+      "problems": 0
+    },
+    {
+      "step": "verify-live",
+      "status": "ok",
+      "at": "2026-08-06T10:35:52+10:00",
+      "generated_at": "2026-08-06T10:35:22",
+      "meetings": [
+        "2026-08-06|Ballarat Synthetic",
+        "2026-08-06|Gosford",
+        "2026-08-06|Moree",
+        "2026-08-06|Mt Isa",
+        "2026-08-06|Northam",
+        "2026-08-05|Cranbourne",
+        "2026-07-15|HappyValley"
+      ]
+    },
+    {
+      "step": "mirror",
+      "status": "partial",
+      "at": "2026-08-06T10:35:52+10:00",
+      "copied": 202,
+      "failed": 46,
+      "root": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing"
+    },
+    {
+      "step": "browser",
+      "status": "closed",
+      "at": "2026-08-06T10:35:52+10:00",
+      "requests_made": 69,
+      "stop_reason": null
+    }
+  ],
+  "meetings_processed": [
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "status": "rescored",
+      "at": "2026-08-06T10:06:09+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "going": "Good 3",
+      "rebuilt": true
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "status": "rescored",
+      "at": "2026-08-06T10:13:47+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "going": "Good 4",
+      "rebuilt": true
+    },
+    {
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "status": "rescored",
+      "at": "2026-08-06T10:22:30+10:00",
+      "races": [
+        1,
+        2,
+        4,
+        6,
+        7
+      ],
+      "going": "Good 4",
+      "rebuilt": true
+    },
+    {
+      "meeting": "2026-08-06 Mt Isa Race 1-7",
+      "status": "rescored",
+      "at": "2026-08-06T10:26:02+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "going": "Good",
+      "rebuilt": true
+    },
+    {
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "status": "rescored",
+      "at": "2026-08-06T10:35:15+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "going": "Soft 5",
+      "rebuilt": true
+    }
+  ],
+  "races_archived": [],
+  "races_added": [],
+  "races_updated": [
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "going": "Good 3",
+      "rebuilt_field": true
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "going": "Good 4",
+      "rebuilt_field": true
+    },
+    {
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "races": [
+        1,
+        2,
+        4,
+        6,
+        7
+      ],
+      "going": "Good 4",
+      "rebuilt_field": true
+    },
+    {
+      "meeting": "2026-08-06 Mt Isa Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "going": "Good",
+      "rebuilt_field": true
+    },
+    {
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "going": "Soft 5",
+      "rebuilt_field": true
+    }
+  ],
+  "scratchings_detected": [
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "race": 3,
+      "scratched": [
+        "3",
+        "7"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "race": 4,
+      "scratched": [
+        "1",
+        "13",
+        "16"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "race": 7,
+      "scratched": [
+        "6"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "race": 8,
+      "scratched": [
+        "10"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "race": 1,
+      "scratched": [
+        "4"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "race": 2,
+      "scratched": [
+        "2",
+        "3",
+        "8"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "race": 3,
+      "scratched": [
+        "4",
+        "7"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "race": 4,
+      "scratched": [
+        "11",
+        "2",
+        "5",
+        "7",
+        "9"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "race": 6,
+      "scratched": [
+        "11",
+        "14",
+        "3",
+        "4",
+        "5"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "race": 7,
+      "scratched": [
+        "5",
+        "8",
+        "9"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "race": 8,
+      "scratched": [
+        "10",
+        "11",
+        "14",
+        "3"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "race": 1,
+      "scratched": [
+        "7"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "race": 2,
+      "scratched": [
+        "9"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "race": 4,
+      "scratched": [
+        "8"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "race": 6,
+      "scratched": [
+        "7"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "race": 7,
+      "scratched": [
+        "8"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-06 Mt Isa Race 1-7",
+      "race": 7,
+      "scratched": [
+        "11",
+        "12",
+        "9"
+      ],
+      "emergencies_in": []
+    }
+  ],
+  "track_changes_detected": [
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "race": 1,
+      "change": [
+        "Good 3",
+        "Synthetic 8"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "race": 2,
+      "change": [
+        "Good 3",
+        "Synthetic 8"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "race": 3,
+      "change": [
+        "Good 3",
+        "Synthetic 8"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "race": 4,
+      "change": [
+        "Good 3",
+        "Synthetic 8"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "race": 5,
+      "change": [
+        "Good 3",
+        "Synthetic 8"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "race": 6,
+      "change": [
+        "Good 3",
+        "Synthetic 8"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "race": 7,
+      "change": [
+        "Good 3",
+        "Synthetic 8"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "race": 8,
+      "change": [
+        "Good 3",
+        "Synthetic 8"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "race": 1,
+      "change": [
+        "Soft 5",
+        "Good 4"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "race": 2,
+      "change": [
+        "Soft 5",
+        "Good 4"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "race": 3,
+      "change": [
+        "Soft 5",
+        "Good 4"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "race": 4,
+      "change": [
+        "Soft 5",
+        "Good 4"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "race": 5,
+      "change": [
+        "Soft 5",
+        "Good 4"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "race": 6,
+      "change": [
+        "Soft 5",
+        "Good 4"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "race": 7,
+      "change": [
+        "Soft 5",
+        "Good 4"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "race": 8,
+      "change": [
+        "Soft 5",
+        "Good 4"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "race": "meeting",
+      "change": [
+        [
+          "Soft 5"
+        ],
+        "Good 4"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Mt Isa Race 1-7",
+      "race": 1,
+      "change": [
+        "Good 3",
+        "Good 29"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Mt Isa Race 1-7",
+      "race": 2,
+      "change": [
+        "Good 3",
+        "Good 29"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Mt Isa Race 1-7",
+      "race": 3,
+      "change": [
+        "Good 3",
+        "Good 29"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Mt Isa Race 1-7",
+      "race": 4,
+      "change": [
+        "Good 3",
+        "Good 29"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Mt Isa Race 1-7",
+      "race": 5,
+      "change": [
+        "Good 3",
+        "Good 29"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Mt Isa Race 1-7",
+      "race": 6,
+      "change": [
+        "Good 3",
+        "Good 29"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Mt Isa Race 1-7",
+      "race": 7,
+      "change": [
+        "Good 3",
+        "Good 29"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Mt Isa Race 1-7",
+      "race": "meeting",
+      "change": [
+        [
+          "Good 3"
+        ],
+        "Good"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "race": 1,
+      "change": [
+        "Soft 5",
+        "Good 4"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "race": 2,
+      "change": [
+        "Soft 5",
+        "Good 4"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "race": 3,
+      "change": [
+        "Soft 5",
+        "Good 4"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "race": 4,
+      "change": [
+        "Soft 5",
+        "Good 4"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "race": 5,
+      "change": [
+        "Soft 5",
+        "Good 4"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "race": 6,
+      "change": [
+        "Soft 5",
+        "Good 4"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "race": 7,
+      "change": [
+        "Soft 5",
+        "Good 4"
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "race": 8,
+      "change": [
+        "Soft 5",
+        "Good 4"
+      ]
+    }
+  ],
+  "analysis_changes": [
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "going_applied": "Good 3",
+      "reason": "field-level change: field_size, jockeys, scratchings",
+      "changes": {
+        "1": {
+          "going": [
+            "Good 3",
+            "Synthetic 8"
+          ]
+        },
+        "2": {
+          "going": [
+            "Good 3",
+            "Synthetic 8"
+          ]
+        },
+        "3": {
+          "going": [
+            "Good 3",
+            "Synthetic 8"
+          ],
+          "scratchings": [
+            "3",
+            "7"
+          ],
+          "field_size": [
+            12,
+            10
+          ]
+        },
+        "4": {
+          "going": [
+            "Good 3",
+            "Synthetic 8"
+          ],
+          "scratchings": [
+            "1",
+            "13",
+            "16"
+          ],
+          "jockeys": {
+            "15": [
+              "",
+              "Declan Bates"
+            ]
+          },
+          "field_size": [
+            13,
+            10
+          ]
+        },
+        "5": {
+          "going": [
+            "Good 3",
+            "Synthetic 8"
+          ]
+        },
+        "6": {
+          "going": [
+            "Good 3",
+            "Synthetic 8"
+          ]
+        },
+        "7": {
+          "going": [
+            "Good 3",
+            "Synthetic 8"
+          ],
+          "scratchings": [
+            "6"
+          ],
+          "field_size": [
+            12,
+            11
+          ]
+        },
+        "8": {
+          "going": [
+            "Good 3",
+            "Synthetic 8"
+          ],
+          "scratchings": [
+            "10"
+          ],
+          "field_size": [
+            12,
+            11
+          ]
+        }
+      }
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "going_applied": "Good 4",
+      "reason": "field-level change: field_size, jockeys, scratchings",
+      "changes": {
+        "1": {
+          "going": [
+            "Soft 5",
+            "Good 4"
+          ],
+          "scratchings": [
+            "4"
+          ],
+          "field_size": [
+            7,
+            6
+          ]
+        },
+        "2": {
+          "going": [
+            "Soft 5",
+            "Good 4"
+          ],
+          "scratchings": [
+            "2",
+            "3",
+            "8"
+          ],
+          "field_size": [
+            7,
+            4
+          ]
+        },
+        "3": {
+          "going": [
+            "Soft 5",
+            "Good 4"
+          ],
+          "scratchings": [
+            "4",
+            "7"
+          ],
+          "field_size": [
+            7,
+            5
+          ]
+        },
+        "4": {
+          "going": [
+            "Soft 5",
+            "Good 4"
+          ],
+          "scratchings": [
+            "11",
+            "2",
+            "5",
+            "7",
+            "9"
+          ],
+          "field_size": [
+            12,
+            7
+          ]
+        },
+        "5": {
+          "going": [
+            "Soft 5",
+            "Good 4"
+          ]
+        },
+        "6": {
+          "going": [
+            "Soft 5",
+            "Good 4"
+          ],
+          "scratchings": [
+            "11",
+            "14",
+            "3",
+            "4",
+            "5"
+          ],
+          "jockeys": {
+            "9": [
+              "Chad Lever",
+              "Jean Van Overmeire"
+            ]
+          },
+          "field_size": [
+            15,
+            10
+          ]
+        },
+        "7": {
+          "going": [
+            "Soft 5",
+            "Good 4"
+          ],
+          "scratchings": [
+            "5",
+            "8",
+            "9"
+          ],
+          "field_size": [
+            11,
+            8
+          ]
+        },
+        "8": {
+          "going": [
+            "Soft 5",
+            "Good 4"
+          ],
+          "scratchings": [
+            "10",
+            "11",
+            "14",
+            "3"
+          ],
+          "field_size": [
+            13,
+            9
+          ]
+        }
+      }
+    },
+    {
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "going_applied": "Good 4",
+      "reason": "field-level change: field_size, jockeys, scratchings",
+      "changes": {
+        "1": {
+          "scratchings": [
+            "7"
+          ],
+          "field_size": [
+            7,
+            6
+          ]
+        },
+        "2": {
+          "scratchings": [
+            "9"
+          ],
+          "jockeys": {
+            "2": [
+              "Kody Nestor",
+              "Clayton Gallagher"
+            ]
+          },
+          "field_size": [
+            11,
+            10
+          ]
+        },
+        "4": {
+          "scratchings": [
+            "8"
+          ],
+          "field_size": [
+            14,
+            13
+          ]
+        },
+        "6": {
+          "scratchings": [
+            "7"
+          ],
+          "field_size": [
+            12,
+            11
+          ]
+        },
+        "7": {
+          "scratchings": [
+            "8"
+          ],
+          "jockeys": {
+            "9": [
+              "Kody Nestor",
+              "Jake Pracey-holmes"
+            ]
+          },
+          "field_size": [
+            14,
+            13
+          ]
+        }
+      }
+    },
+    {
+      "meeting": "2026-08-06 Mt Isa Race 1-7",
+      "going_applied": "Good",
+      "reason": "field-level change: field_size, scratchings",
+      "changes": {
+        "1": {
+          "going": [
+            "Good 3",
+            "Good 29"
+          ]
+        },
+        "2": {
+          "going": [
+            "Good 3",
+            "Good 29"
+          ]
+        },
+        "3": {
+          "going": [
+            "Good 3",
+            "Good 29"
+          ]
+        },
+        "4": {
+          "going": [
+            "Good 3",
+            "Good 29"
+          ]
+        },
+        "5": {
+          "going": [
+            "Good 3",
+            "Good 29"
+          ]
+        },
+        "6": {
+          "going": [
+            "Good 3",
+            "Good 29"
+          ]
+        },
+        "7": {
+          "going": [
+            "Good 3",
+            "Good 29"
+          ],
+          "scratchings": [
+            "11",
+            "12",
+            "9"
+          ],
+          "field_size": [
+            12,
+            9
+          ]
+        }
+      }
+    },
+    {
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "going_applied": "Soft 5",
+      "reason": "field-level change: jockeys",
+      "changes": {
+        "1": {
+          "going": [
+            "Soft 5",
+            "Good 4"
+          ],
+          "jockeys": {
+            "5": [
+              "Chris Parnham",
+              "Steven Parnham"
+            ]
+          }
+        },
+        "2": {
+          "going": [
+            "Soft 5",
+            "Good 4"
+          ],
+          "jockeys": {
+            "7": [
+              "Chris Parnham",
+              "Tash Faithfull"
+            ]
+          }
+        },
+        "3": {
+          "going": [
+            "Soft 5",
+            "Good 4"
+          ],
+          "jockeys": {
+            "11": [
+              "Chris Parnham",
+              "Holly Nottle"
+            ]
+          }
+        },
+        "4": {
+          "going": [
+            "Soft 5",
+            "Good 4"
+          ]
+        },
+        "5": {
+          "going": [
+            "Soft 5",
+            "Good 4"
+          ],
+          "jockeys": {
+            "1": [
+              "Chris Parnham",
+              "Holly Watson"
+            ]
+          }
+        },
+        "6": {
+          "going": [
+            "Soft 5",
+            "Good 4"
+          ]
+        },
+        "7": {
+          "going": [
+            "Soft 5",
+            "Good 4"
+          ]
+        },
+        "8": {
+          "going": [
+            "Soft 5",
+            "Good 4"
+          ],
+          "jockeys": {
+            "1": [
+              "Chris Parnham",
+              "Clint Johnston-porter"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "dashboard_validation": {
+    "ok": true,
+    "problems": [],
+    "meetings": [
+      "2026-08-06|Ballarat Synthetic",
+      "2026-08-06|Gosford",
+      "2026-08-06|Moree",
+      "2026-08-06|Mt Isa",
+      "2026-08-06|Northam",
+      "2026-08-05|Cranbourne",
+      "2026-07-15|HappyValley"
+    ],
+    "race_counts": {
+      "2026-08-06|Ballarat Synthetic": 8,
+      "2026-08-06|Gosford": 8,
+      "2026-08-06|Moree": 7,
+      "2026-08-06|Mt Isa": 7,
+      "2026-08-06|Northam": 8,
+      "2026-08-05|Cranbourne": 8,
+      "2026-07-15|HappyValley": 9
+    },
+    "snapshot": "/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-05.json"
+  },
+  "cloudflare_deployment": {
+    "ok": true,
+    "attempts": 1,
+    "active_meetings": 7,
+    "deployment_url": "https://d28b02af.wongchoi-dashboard.pages.dev",
+    "production_url": "https://wongchoi-dashboard.pages.dev",
+    "commit": "manual-20260806003527",
+    "completed_at": "2026-08-06T10:35:49+10:00",
+    "verified": {
+      "attempt": 1,
+      "generated_at": "2026-08-06T10:35:22",
+      "meetings": [
+        "2026-08-06|Ballarat Synthetic",
+        "2026-08-06|Gosford",
+        "2026-08-06|Moree",
+        "2026-08-06|Mt Isa",
+        "2026-08-06|Northam",
+        "2026-08-05|Cranbourne",
+        "2026-07-15|HappyValley"
+      ],
+      "missing": [],
+      "still_present": [],
+      "stale": false,
+      "ok": true
+    }
+  },
+  "errors": [],
+  "warnings": [
+    {
+      "at": "2026-08-06T10:25:53+10:00",
+      "message": "2026-08-06 Mt Isa Race 1-7: RA 冇呢個場次（RA 冇 2026-08-06 Mt Isa）—— 照用 fallback"
+    },
+    {
+      "at": "2026-08-06T10:29:55+10:00",
+      "message": "2026-08-06 Northam Race 1-8: 個人頁今次只補 10/16，餘下 6 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-06T10:35:52+10:00",
+      "message": "鏡像有 46 個檔寫唔入 /Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing"
+    }
+  ],
+  "retries": []
+}

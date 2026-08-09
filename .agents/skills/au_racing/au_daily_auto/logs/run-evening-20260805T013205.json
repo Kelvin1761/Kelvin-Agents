@@ -1,0 +1,219 @@
+{
+  "task_name": "au-wong-choi-evening",
+  "mode": "evening",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-04",
+  "started_at": "2026-08-05T01:32:05+10:00",
+  "completed_at": "2026-08-05T01:32:14+10:00",
+  "status": "ok",
+  "duration_seconds": 8.9,
+  "steps": [
+    {
+      "step": "preflight",
+      "status": "ok",
+      "at": "2026-08-05T01:32:05+10:00",
+      "au_meeting_folders": 94,
+      "archive_readable": true
+    },
+    {
+      "step": "review-archive",
+      "status": "start",
+      "at": "2026-08-05T01:32:05+10:00",
+      "review_day": "2026-08-04"
+    },
+    {
+      "step": "review-archive",
+      "status": "dashboard-scan",
+      "at": "2026-08-05T01:32:06+10:00",
+      "au_on_dashboard": [
+        "2026-08-05|Belmont",
+        "2026-08-05|Canterbury",
+        "2026-08-05|Cranbourne",
+        "2026-08-05|Doomben",
+        "2026-08-05|Hobart",
+        "2026-08-05|Murray Bridge"
+      ],
+      "due": []
+    },
+    {
+      "step": "review-archive",
+      "status": "nothing-to-do",
+      "at": "2026-08-05T01:32:06+10:00"
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "start",
+      "at": "2026-08-05T01:32:06+10:00"
+    },
+    {
+      "step": "discover",
+      "status": "ok",
+      "at": "2026-08-05T01:32:07+10:00",
+      "race_day": "2026-08-05",
+      "index_meetings": 12,
+      "api_venues": [
+        "Belmont",
+        "Canterbury",
+        "Cranbourne",
+        "Doomben",
+        "Hobart",
+        "Murray Bridge"
+      ]
+    },
+    {
+      "step": "discover",
+      "status": "non-au-excluded",
+      "at": "2026-08-05T01:32:07+10:00",
+      "meetings": [
+        "assiniboia_downs",
+        "brighton",
+        "kenilworth",
+        "lingfield",
+        "pontefract",
+        "roscommon"
+      ],
+      "reason": "API 澳洲名單冇呢啲馬場"
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "done",
+      "at": "2026-08-05T01:32:07+10:00",
+      "race_day": "2026-08-05",
+      "planned": 6,
+      "analysed": 6,
+      "pending": 0
+    },
+    {
+      "step": "dashboard",
+      "status": "start",
+      "at": "2026-08-05T01:32:07+10:00",
+      "merge": 6,
+      "archived": 0
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-05T01:32:10+10:00",
+      "meeting": "2026-08-05 Belmont Race 1-8",
+      "snapshot": "merge-01.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-05T01:32:10+10:00",
+      "meeting": "2026-08-05 Canterbury Race 1-7",
+      "snapshot": "merge-02.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-05T01:32:11+10:00",
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "snapshot": "merge-03.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-05T01:32:12+10:00",
+      "meeting": "2026-08-05 Doomben Race 1-8",
+      "snapshot": "merge-04.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-05T01:32:13+10:00",
+      "meeting": "2026-08-05 Hobart Race 1-9",
+      "snapshot": "merge-05.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-05T01:32:14+10:00",
+      "meeting": "2026-08-05 Murray Bridge Race 1-8",
+      "snapshot": "merge-06.json"
+    },
+    {
+      "step": "dashboard-validate",
+      "status": "ok",
+      "at": "2026-08-05T01:32:14+10:00",
+      "meetings": 7,
+      "problems": 0
+    },
+    {
+      "step": "dashboard",
+      "status": "deploy-skipped-by-flag",
+      "at": "2026-08-05T01:32:14+10:00"
+    }
+  ],
+  "meetings_processed": [
+    {
+      "meeting": "2026-08-05 Belmont Race 1-8",
+      "status": "skipped_already_analysed",
+      "at": "2026-08-05T01:32:07+10:00",
+      "races": 8
+    },
+    {
+      "meeting": "2026-08-05 Canterbury Race 1-7",
+      "status": "skipped_already_analysed",
+      "at": "2026-08-05T01:32:07+10:00",
+      "races": 7
+    },
+    {
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "status": "skipped_already_analysed",
+      "at": "2026-08-05T01:32:07+10:00",
+      "races": 8
+    },
+    {
+      "meeting": "2026-08-05 Doomben Race 1-8",
+      "status": "skipped_already_analysed",
+      "at": "2026-08-05T01:32:07+10:00",
+      "races": 8
+    },
+    {
+      "meeting": "2026-08-05 Hobart Race 1-9",
+      "status": "skipped_already_analysed",
+      "at": "2026-08-05T01:32:07+10:00",
+      "races": 9
+    },
+    {
+      "meeting": "2026-08-05 Murray Bridge Race 1-8",
+      "status": "skipped_already_analysed",
+      "at": "2026-08-05T01:32:07+10:00",
+      "races": 8
+    }
+  ],
+  "races_archived": [],
+  "races_added": [],
+  "races_updated": [],
+  "scratchings_detected": [],
+  "track_changes_detected": [],
+  "analysis_changes": [],
+  "dashboard_validation": {
+    "ok": true,
+    "problems": [],
+    "meetings": [
+      "2026-08-05|Belmont",
+      "2026-08-05|Canterbury",
+      "2026-08-05|Cranbourne",
+      "2026-08-05|Doomben",
+      "2026-08-05|Hobart",
+      "2026-08-05|Murray Bridge",
+      "2026-07-15|HappyValley"
+    ],
+    "race_counts": {
+      "2026-08-05|Belmont": 8,
+      "2026-08-05|Canterbury": 7,
+      "2026-08-05|Cranbourne": 8,
+      "2026-08-05|Doomben": 8,
+      "2026-08-05|Hobart": 9,
+      "2026-08-05|Murray Bridge": 8,
+      "2026-07-15|HappyValley": 9
+    },
+    "snapshot": "/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-06.json"
+  },
+  "cloudflare_deployment": null,
+  "errors": [],
+  "warnings": [],
+  "retries": []
+}

@@ -1,0 +1,218 @@
+{
+  "task_name": "au-wong-choi-evening",
+  "mode": "evening",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-04",
+  "started_at": "2026-08-05T00:57:42+10:00",
+  "completed_at": null,
+  "status": "running",
+  "duration_seconds": null,
+  "steps": [
+    {
+      "step": "review-archive",
+      "status": "start",
+      "at": "2026-08-05T00:57:42+10:00",
+      "review_day": "2026-08-04"
+    },
+    {
+      "step": "review-archive",
+      "status": "dashboard-scan",
+      "at": "2026-08-05T00:57:43+10:00",
+      "au_on_dashboard": [
+        "2026-08-05|Belmont",
+        "2026-08-05|Canterbury"
+      ],
+      "due": []
+    },
+    {
+      "step": "review-archive",
+      "status": "nothing-to-do",
+      "at": "2026-08-05T00:57:43+10:00"
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "start",
+      "at": "2026-08-05T00:57:43+10:00"
+    },
+    {
+      "step": "discover",
+      "status": "ok",
+      "at": "2026-08-05T00:57:43+10:00",
+      "race_day": "2026-08-05",
+      "index_meetings": 12,
+      "api_venues": [
+        "Belmont",
+        "Canterbury",
+        "Cranbourne",
+        "Doomben",
+        "Hobart",
+        "Murray Bridge"
+      ]
+    },
+    {
+      "step": "discover",
+      "status": "non-au-excluded",
+      "at": "2026-08-05T00:57:43+10:00",
+      "meetings": [
+        "assiniboia_downs",
+        "brighton",
+        "kenilworth",
+        "lingfield",
+        "pontefract",
+        "roscommon"
+      ],
+      "reason": "API 澳洲名單冇呢啲馬場"
+    },
+    {
+      "step": "site-gate",
+      "status": "tripped",
+      "at": "2026-08-05T00:58:28+10:00",
+      "where": "2026-08-05 Hobart 第 2 場（raceId=3396069）"
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "cooldown",
+      "at": "2026-08-05T00:58:31+10:00",
+      "round_no": 2,
+      "sleep_seconds": 600,
+      "dry_rounds": 0,
+      "waiting_for": [
+        "Hobart",
+        "Murray Bridge"
+      ]
+    },
+    {
+      "step": "site-gate",
+      "status": "tripped",
+      "at": "2026-08-05T01:09:16+10:00",
+      "where": "2026-08-05 Hobart 第 2 場（raceId=3396069）"
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "cooldown",
+      "at": "2026-08-05T01:09:18+10:00",
+      "round_no": 3,
+      "sleep_seconds": 600,
+      "dry_rounds": 0,
+      "waiting_for": [
+        "Hobart",
+        "Murray Bridge"
+      ]
+    }
+  ],
+  "meetings_processed": [
+    {
+      "meeting": "2026-08-05 Belmont Race 1-8",
+      "status": "skipped_already_analysed",
+      "at": "2026-08-05T00:57:43+10:00",
+      "races": 8
+    },
+    {
+      "meeting": "2026-08-05 Canterbury Race 1-7",
+      "status": "skipped_already_analysed",
+      "at": "2026-08-05T00:57:43+10:00",
+      "races": 7
+    },
+    {
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "status": "skipped_already_analysed",
+      "at": "2026-08-05T00:57:43+10:00",
+      "races": 8
+    },
+    {
+      "meeting": "2026-08-05 Doomben Race 1-8",
+      "status": "skipped_already_analysed",
+      "at": "2026-08-05T00:57:43+10:00",
+      "races": 8
+    },
+    {
+      "meeting": "2026-08-05 Hobart Race 1-9",
+      "status": "analysed_partial",
+      "at": "2026-08-05T00:58:31+10:00",
+      "races": [
+        1
+      ],
+      "expected": 9,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-05 Murray Bridge",
+      "status": "pending_extraction",
+      "at": "2026-08-05T00:58:31+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 1
+    },
+    {
+      "meeting": "2026-08-05 Hobart Race 1-9",
+      "status": "analysed_partial",
+      "at": "2026-08-05T01:09:18+10:00",
+      "races": [
+        1
+      ],
+      "expected": 9,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-05 Murray Bridge",
+      "status": "pending_extraction",
+      "at": "2026-08-05T01:09:18+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 2
+    }
+  ],
+  "races_archived": [],
+  "races_added": [
+    {
+      "meeting": "2026-08-05 Hobart Race 1-9",
+      "races": [
+        1
+      ],
+      "expected_races": 9,
+      "complete": false,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-05 Hobart Race 1-9",
+      "races": [
+        1
+      ],
+      "expected_races": 9,
+      "complete": false,
+      "going": "Soft 5"
+    }
+  ],
+  "races_updated": [],
+  "scratchings_detected": [],
+  "track_changes_detected": [],
+  "analysis_changes": [],
+  "dashboard_validation": null,
+  "cloudflare_deployment": null,
+  "errors": [],
+  "warnings": [
+    {
+      "at": "2026-08-05T00:58:28+10:00",
+      "message": "個站喺 2026-08-05 Hobart 第 2 場（raceId=3396069） 明確拒絕（穩定非 200）—— 今次 run 唔再出網攞頁，餘下嘅場次記做 pending，下一次排程再試"
+    },
+    {
+      "at": "2026-08-05T00:58:28+10:00",
+      "message": "2026-08-05 Hobart: 攞到 1/9 場就停手，照分析攞到嗰啲，餘下等下一輪／下一次排程補"
+    },
+    {
+      "at": "2026-08-05T00:58:29+10:00",
+      "message": "2026-08-05 Hobart Race 1-9: 索引話 9 場，而家有 1 場 [1] —— 照評分，未齊嘅下一輪補"
+    },
+    {
+      "at": "2026-08-05T01:09:16+10:00",
+      "message": "個站喺 2026-08-05 Hobart 第 2 場（raceId=3396069） 明確拒絕（穩定非 200）—— 今次 run 唔再出網攞頁，餘下嘅場次記做 pending，下一次排程再試"
+    },
+    {
+      "at": "2026-08-05T01:09:16+10:00",
+      "message": "2026-08-05 Hobart: 攞到 1/9 場就停手，照分析攞到嗰啲，餘下等下一輪／下一次排程補"
+    },
+    {
+      "at": "2026-08-05T01:09:17+10:00",
+      "message": "2026-08-05 Hobart Race 1-9: 索引話 9 場，而家有 1 場 [1] —— 照評分，未齊嘅下一輪補"
+    }
+  ],
+  "retries": []
+}

@@ -1,0 +1,1163 @@
+{
+  "task_name": "au-wong-choi-evening",
+  "mode": "evening",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-04",
+  "started_at": "2026-08-04T23:43:34+10:00",
+  "completed_at": null,
+  "status": "running",
+  "duration_seconds": null,
+  "steps": [
+    {
+      "step": "review-archive",
+      "status": "start",
+      "at": "2026-08-04T23:43:34+10:00",
+      "review_day": "2026-08-04"
+    },
+    {
+      "step": "review-archive",
+      "status": "backlog-detected",
+      "at": "2026-08-04T23:43:34+10:00",
+      "meetings": [
+        "2025-08-02 Flemington Race 1-9",
+        "2025-08-09 Randwick Race 1-10",
+        "2025-08-23 Randwick Race 1-10",
+        "2025-09-06 Randwick Race 1-10",
+        "2025-09-13 Flemington Race 1-10",
+        "2025-09-21 Flemington Race 1-8",
+        "2025-10-02 Newcastle Race 1-8",
+        "2025-10-04 Flemington Race 1-10",
+        "2025-10-04 Randwick Race 1-10",
+        "2025-10-25 Randwick Race 1-10",
+        "2025-11-01 Flemington Race 1-9",
+        "2025-11-01 Randwick Race 1-10",
+        "2025-11-04 Flemington Race 1-10",
+        "2025-11-04 Randwick Race 1-10",
+        "2025-11-06 Flemington Race 1-9",
+        "2025-11-08 Flemington Race 1-9",
+        "2025-12-13 Randwick Race 1-10",
+        "2025-12-20 Randwick Race 1-10",
+        "2025-12-26 Randwick Race 1-8",
+        "2025-12-27 Randwick Race 1-10",
+        "2025-12-31 Flemington Race 1-8",
+        "2026-01-03 Randwick Race 1-10",
+        "2026-01-10 Flemington Race 1-10",
+        "2026-01-17 Flemington Race 1-10",
+        "2026-01-24 Randwick Race 1-10",
+        "2026-02-07 Randwick Race 1-10",
+        "2026-02-14 Flemington Race 1-10",
+        "2026-02-14 Randwick Race 1-10",
+        "2026-02-28 Flemington Race 1-10",
+        "2026-02-28 Randwick Race 1-10",
+        "2026-03-07 Flemington Race 1-10",
+        "2026-03-07 Randwick Race 1-10",
+        "2026-03-28 Flemington",
+        "2026-03-28 Rosehill Gardens Race 1-10",
+        "2026-04-01 Warwick Farm Race 1-8",
+        "2026-04-02 Gosford Race 1-7",
+        "2026-04-03 Ballarat Race 1-8",
+        "2026-04-04 Randwick Race 1-10",
+        "2026-04-06 Rosehill Gardens Race 1-8",
+        "2026-04-06 Sandown Lakeside Race 1-8",
+        "2026-04-08 Sale Race 1-8",
+        "2026-04-10 Cranbourne Race 1-8",
+        "2026-04-11 Randwick Race 1-10",
+        "2026-04-14 Hawkesbury Race 1-7",
+        "2026-04-15 Warwick Farm Race 1-8",
+        "2026-04-16 Pakenham Race 1-8",
+        "2026-04-17 Cranbourne Race 1-8",
+        "2026-04-18 Randwick",
+        "2026-04-22 Canterbury Race 1-8",
+        "2026-04-23 Pakenham Race 1-8",
+        "2026-04-24 Cranbourne Race 1-7",
+        "2026-04-25 Flemington Race 1-8",
+        "2026-04-25 Randwick Race 1-8",
+        "2026-04-29 Caulfield Heath Race 1-8",
+        "2026-05-06 Warwick Farm Race 1-7",
+        "2026-05-08 Pakenham Race 1-8",
+        "2026-05-22 Geelong Race 1-8",
+        "2026-05-22 Gold Coast Race 1-8",
+        "2026-05-23 Doomben Race 1-9",
+        "2026-05-23 Randwick Race 1-10",
+        "2026-05-24 Ballarat Race 1-8",
+        "2026-05-27 Canterbury Race 1-6",
+        "2026-05-27 Caulfield Heath Race 1-8",
+        "2026-05-27 Doomben Race 1-8",
+        "2026-05-30 Caulfield Race 1-9",
+        "2026-05-30 Eagle Farm Race 1-9",
+        "2026-05-30 Rosehill Gardens Race 1-10",
+        "2026-05-31 Sandown Lakeside Race 1-8",
+        "2026-06-06 Eagle Farm Race 1-9",
+        "2026-06-06 Randwick Race 1-10",
+        "2026-06-08 Canterbury Race 1-8",
+        "2026-06-10 Kensington Race 1-7",
+        "2026-06-10 Sale Race 1-8",
+        "2026-06-13 Eagle Farm Race 1-9",
+        "2026-06-19 Geelong Race 1-8",
+        "2026-06-20 Flemington Race 1-9",
+        "2026-06-20 Randwick Race 1-10",
+        "2026-06-27 Caulfield Race 1-9",
+        "2026-06-27 Eagle Farm Race 1-9",
+        "2026-06-27 Rosehill Gardens Race 1-10",
+        "2026-07-01 Sandown Lakeside Race 1-8",
+        "2026-07-03 Ballarat Synthetic Race 1-9",
+        "2026-07-03 Moe Race 1-8",
+        "2026-07-08 Sandown Lakeside Race 1-8",
+        "2026-07-12 Sunshine Coast Race 1-8"
+      ]
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-04T23:45:06+10:00",
+      "meeting": "2025-10-02 Newcastle Race 1-8",
+      "refreshed": 0,
+      "failed": 1
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-04T23:52:39+10:00",
+      "meeting": "2026-03-28 Rosehill Gardens Race 1-10",
+      "refreshed": 10,
+      "failed": 0
+    }
+  ],
+  "meetings_processed": [
+    {
+      "meeting": "2025-08-02 Flemington Race 1-9",
+      "status": "archived",
+      "at": "2026-08-04T23:43:40+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2025-08-09 Randwick Race 1-10",
+      "status": "pending_results",
+      "at": "2026-08-04T23:43:42+10:00",
+      "reason": "❌ cache 冇任何賽果 —— 呢個場次未抽過，或者仲未跑",
+      "expected_races": 10
+    },
+    {
+      "meeting": "2025-08-23 Randwick Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:43:51+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2025-09-06 Randwick Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:44:05+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2025-09-13 Flemington Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:44:15+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2025-09-21 Flemington Race 1-8",
+      "status": "archived",
+      "at": "2026-08-04T23:44:21+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2025-10-02 Newcastle Race 1-8",
+      "status": "reflection_failed",
+      "at": "2026-08-04T23:45:08+10:00",
+      "detail": "❌ reflector_auto_stats 失敗: No races with picks found"
+    },
+    {
+      "meeting": "2025-10-04 Flemington Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:45:13+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2025-10-04 Randwick Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:45:20+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2025-10-25 Randwick Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:45:27+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "meeting": "2025-11-01 Flemington Race 1-9",
+      "status": "archived",
+      "at": "2026-08-04T23:45:34+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2025-11-01 Randwick Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:45:42+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2025-11-04 Flemington Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:45:50+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2025-11-04 Randwick Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:45:57+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2025-11-06 Flemington Race 1-9",
+      "status": "archived",
+      "at": "2026-08-04T23:46:04+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2025-11-08 Flemington Race 1-9",
+      "status": "archived",
+      "at": "2026-08-04T23:46:26+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2025-12-13 Randwick Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:46:34+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2025-12-20 Randwick Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:46:40+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2025-12-26 Randwick Race 1-8",
+      "status": "archived",
+      "at": "2026-08-04T23:46:46+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2025-12-27 Randwick Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:46:53+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2025-12-31 Flemington Race 1-8",
+      "status": "archived",
+      "at": "2026-08-04T23:47:01+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-01-03 Randwick Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:47:09+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-01-10 Flemington Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:47:16+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-01-17 Flemington Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:47:22+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-01-24 Randwick Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:47:38+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-02-07 Randwick Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:47:45+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-02-14 Flemington Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:47:51+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-02-14 Randwick Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:47:59+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-02-28 Flemington Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:48:06+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-02-28 Randwick Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:48:13+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-03-07 Flemington Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:48:20+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-03-07 Randwick Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:48:29+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-03-28 Flemington",
+      "status": "archived",
+      "at": "2026-08-04T23:48:48+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-03-28 Rosehill Gardens Race 1-10",
+      "status": "archived",
+      "at": "2026-08-04T23:52:43+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-04-01 Warwick Farm Race 1-8",
+      "status": "archived",
+      "at": "2026-08-04T23:52:52+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    }
+  ],
+  "races_archived": [
+    {
+      "meeting": "2025-08-02 Flemington Race 1-9",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2025-08-23 Randwick Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2025-09-06 Randwick Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2025-09-13 Flemington Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2025-09-21 Flemington Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2025-10-04 Flemington Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2025-10-04 Randwick Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2025-10-25 Randwick Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "meeting": "2025-11-01 Flemington Race 1-9",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2025-11-01 Randwick Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2025-11-04 Flemington Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2025-11-04 Randwick Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2025-11-06 Flemington Race 1-9",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2025-11-08 Flemington Race 1-9",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2025-12-13 Randwick Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2025-12-20 Randwick Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2025-12-26 Randwick Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2025-12-27 Randwick Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2025-12-31 Flemington Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-01-03 Randwick Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-01-10 Flemington Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-01-17 Flemington Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-01-24 Randwick Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-02-07 Randwick Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-02-14 Flemington Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-02-14 Randwick Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-02-28 Flemington Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-02-28 Randwick Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-03-07 Flemington Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-03-07 Randwick Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-03-28 Flemington",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-03-28 Rosehill Gardens Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    }
+  ],
+  "races_added": [],
+  "races_updated": [],
+  "scratchings_detected": [],
+  "track_changes_detected": [],
+  "analysis_changes": [],
+  "dashboard_validation": null,
+  "cloudflare_deployment": null,
+  "errors": [],
+  "warnings": [
+    {
+      "at": "2026-08-04T23:45:06+10:00",
+      "message": "2025-10-02 Newcastle Race 1-8: 賽果頁重抓失敗（race_id=2563968），停止重抓"
+    }
+  ],
+  "retries": []
+}

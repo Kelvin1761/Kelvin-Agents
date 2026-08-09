@@ -1,0 +1,1274 @@
+{
+  "task_name": "au-wong-choi-morning",
+  "mode": "morning",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-07",
+  "started_at": "2026-08-07T10:00:02+10:00",
+  "completed_at": "2026-08-07T10:41:35+10:00",
+  "status": "ok",
+  "duration_seconds": 2492.6,
+  "steps": [
+    {
+      "step": "preflight",
+      "status": "ok",
+      "at": "2026-08-07T10:00:02+10:00",
+      "au_meeting_folders": 94,
+      "au_root": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing",
+      "mirror": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing",
+      "archive_readable": true
+    },
+    {
+      "step": "refresh-active",
+      "status": "start",
+      "at": "2026-08-07T10:00:02+10:00"
+    },
+    {
+      "step": "refresh-active",
+      "status": "dashboard-scan",
+      "at": "2026-08-07T10:00:06+10:00",
+      "au_on_dashboard": [
+        "2026-08-07|Canberra",
+        "2026-08-07|Coffs Harbour",
+        "2026-08-07|Ipswich",
+        "2026-08-07|Mount Gambier",
+        "2026-08-07|Seymour",
+        "2026-08-05|Cranbourne"
+      ],
+      "to_check": [
+        "2026-08-07 Canberra Race 1-7",
+        "2026-08-07 Coffs Harbour Race 1-8",
+        "2026-08-07 Ipswich Race 1-7",
+        "2026-08-07 Mount Gambier Race 1-7",
+        "2026-08-07 Seymour Race 1-8"
+      ]
+    },
+    {
+      "step": "rebuild",
+      "status": "field-level-change",
+      "at": "2026-08-07T10:03:27+10:00",
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "fields": [
+        "field_size",
+        "scratchings"
+      ],
+      "detail": "重寫 Racecard → Facts → Logic → 評分（cache-only）"
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-07T10:04:28+10:00",
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "needed": 2,
+      "fetched": 2
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-07T10:04:30+10:00",
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "filled": 34,
+      "no_official": 19,
+      "ra_venue": "Canberra Acton"
+    },
+    {
+      "step": "rebuild",
+      "status": "field-level-change",
+      "at": "2026-08-07T10:08:33+10:00",
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "fields": [
+        "field_size",
+        "jockeys",
+        "scratchings"
+      ],
+      "detail": "重寫 Racecard → Facts → Logic → 評分（cache-only）"
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-07T10:13:39+10:00",
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "needed": 10,
+      "fetched": 10
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-07T10:13:42+10:00",
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "filled": 66,
+      "no_official": 25,
+      "ra_venue": "Coffs Harbour"
+    },
+    {
+      "step": "rebuild",
+      "status": "field-level-change",
+      "at": "2026-08-07T10:17:15+10:00",
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "fields": [
+        "field_size",
+        "jockeys",
+        "scratchings"
+      ],
+      "detail": "重寫 Racecard → Facts → Logic → 評分（cache-only）"
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-07T10:22:21+10:00",
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "needed": 16,
+      "fetched": 10
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-07T10:22:24+10:00",
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "filled": 63,
+      "no_official": 12,
+      "ra_venue": "Ipswich"
+    },
+    {
+      "step": "rebuild",
+      "status": "field-level-change",
+      "at": "2026-08-07T10:25:57+10:00",
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "fields": [
+        "field_size",
+        "jockeys",
+        "scratchings"
+      ],
+      "detail": "重寫 Racecard → Facts → Logic → 評分（cache-only）"
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-07T10:31:03+10:00",
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "needed": 11,
+      "fetched": 10
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-07T10:31:06+10:00",
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "filled": 47,
+      "no_official": 18,
+      "ra_venue": "Mount Gambier"
+    },
+    {
+      "step": "rebuild",
+      "status": "field-level-change",
+      "at": "2026-08-07T10:35:11+10:00",
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "fields": [
+        "field_size",
+        "jockeys",
+        "scratchings"
+      ],
+      "detail": "重寫 Racecard → Facts → Logic → 評分（cache-only）"
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-07T10:40:17+10:00",
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "needed": 10,
+      "fetched": 10
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-07T10:40:20+10:00",
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "filled": 62,
+      "no_official": 39,
+      "ra_venue": "bet365 Seymour"
+    },
+    {
+      "step": "refresh-active",
+      "status": "done",
+      "at": "2026-08-07T10:40:34+10:00",
+      "checked": 5,
+      "updated": 5,
+      "pending": 0
+    },
+    {
+      "step": "dashboard",
+      "status": "start",
+      "at": "2026-08-07T10:40:34+10:00",
+      "merge": 5,
+      "archived": 0
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-07T10:40:38+10:00",
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "snapshot": "merge-01.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-07T10:40:39+10:00",
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "snapshot": "merge-02.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-07T10:40:39+10:00",
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "snapshot": "merge-03.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-07T10:40:40+10:00",
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "snapshot": "merge-04.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-07T10:40:41+10:00",
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "snapshot": "merge-05.json"
+    },
+    {
+      "step": "dashboard-validate",
+      "status": "ok",
+      "at": "2026-08-07T10:40:41+10:00",
+      "meetings": 7,
+      "problems": 0
+    },
+    {
+      "step": "verify-live",
+      "status": "ok",
+      "at": "2026-08-07T10:41:33+10:00",
+      "generated_at": "2026-08-07T10:40:42",
+      "meetings": [
+        "2026-08-07|Canberra",
+        "2026-08-07|Coffs Harbour",
+        "2026-08-07|Ipswich",
+        "2026-08-07|Mount Gambier",
+        "2026-08-07|Seymour",
+        "2026-08-05|Cranbourne",
+        "2026-07-15|HappyValley"
+      ]
+    },
+    {
+      "step": "mirror",
+      "status": "ok",
+      "at": "2026-08-07T10:41:34+10:00",
+      "copied": 242,
+      "failed": 0,
+      "root": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing"
+    },
+    {
+      "step": "browser",
+      "status": "closed",
+      "at": "2026-08-07T10:41:34+10:00",
+      "requests_made": 79,
+      "stop_reason": null
+    }
+  ],
+  "meetings_processed": [
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "status": "rescored",
+      "at": "2026-08-07T10:04:38+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "going": "Good 3",
+      "rebuilt": true
+    },
+    {
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "status": "rescored",
+      "at": "2026-08-07T10:13:56+10:00",
+      "races": [
+        1,
+        2,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "going": "Soft 7",
+      "rebuilt": true
+    },
+    {
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "status": "rescored",
+      "at": "2026-08-07T10:22:36+10:00",
+      "races": [
+        2,
+        4,
+        6,
+        7
+      ],
+      "going": "Soft 5",
+      "rebuilt": true
+    },
+    {
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "status": "rescored",
+      "at": "2026-08-07T10:31:15+10:00",
+      "races": [
+        1,
+        2,
+        4,
+        5,
+        6,
+        7
+      ],
+      "going": "Heavy 9",
+      "rebuilt": true
+    },
+    {
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "status": "rescored",
+      "at": "2026-08-07T10:40:34+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "going": "Soft 7",
+      "rebuilt": true
+    }
+  ],
+  "races_archived": [],
+  "races_added": [],
+  "races_updated": [
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "going": "Good 3",
+      "rebuilt_field": true
+    },
+    {
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "races": [
+        1,
+        2,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "going": "Soft 7",
+      "rebuilt_field": true
+    },
+    {
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "races": [
+        2,
+        4,
+        6,
+        7
+      ],
+      "going": "Soft 5",
+      "rebuilt_field": true
+    },
+    {
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "races": [
+        1,
+        2,
+        4,
+        5,
+        6,
+        7
+      ],
+      "going": "Heavy 9",
+      "rebuilt_field": true
+    },
+    {
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "going": "Soft 7",
+      "rebuilt_field": true
+    }
+  ],
+  "scratchings_detected": [
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "race": 1,
+      "scratched": [
+        "3",
+        "7"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "race": 2,
+      "scratched": [
+        "3",
+        "5"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "race": 4,
+      "scratched": [
+        "7"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "race": 5,
+      "scratched": [
+        "1",
+        "6"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "race": 6,
+      "scratched": [
+        "7",
+        "8"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "race": 2,
+      "scratched": [
+        "3"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "race": 4,
+      "scratched": [
+        "6"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "race": 5,
+      "scratched": [
+        "2",
+        "9"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "race": 7,
+      "scratched": [
+        "2"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "race": 8,
+      "scratched": [
+        "16",
+        "17"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "race": 2,
+      "scratched": [
+        "14",
+        "20",
+        "4"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "race": 4,
+      "scratched": [
+        "8"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "race": 6,
+      "scratched": [
+        "14",
+        "2",
+        "20",
+        "4",
+        "7"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "race": 7,
+      "scratched": [
+        "2",
+        "22"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "race": 1,
+      "scratched": [
+        "10",
+        "11",
+        "12"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "race": 2,
+      "scratched": [
+        "3",
+        "6"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "race": 4,
+      "scratched": [
+        "7"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "race": 5,
+      "scratched": [
+        "10",
+        "3"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "race": 6,
+      "scratched": [
+        "12",
+        "13",
+        "14",
+        "15"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "race": 7,
+      "scratched": [
+        "14",
+        "15"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "race": 1,
+      "scratched": [
+        "3",
+        "9"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "race": 2,
+      "scratched": [
+        "12",
+        "16",
+        "17",
+        "19",
+        "20"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "race": 3,
+      "scratched": [
+        "11",
+        "12"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "race": 4,
+      "scratched": [
+        "13"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "race": 5,
+      "scratched": [
+        "15",
+        "19",
+        "8"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "race": 6,
+      "scratched": [
+        "14"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "race": 7,
+      "scratched": [
+        "12"
+      ],
+      "emergencies_in": []
+    },
+    {
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "race": 8,
+      "scratched": [
+        "1",
+        "10",
+        "14",
+        "15",
+        "16",
+        "17",
+        "2"
+      ],
+      "emergencies_in": []
+    }
+  ],
+  "track_changes_detected": [
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "race": 1,
+      "change": [
+        "Good 3",
+        "Synthetic 7"
+      ]
+    },
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "race": 2,
+      "change": [
+        "Good 3",
+        "Synthetic 7"
+      ]
+    },
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "race": 3,
+      "change": [
+        "Good 3",
+        "Synthetic 7"
+      ]
+    },
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "race": 4,
+      "change": [
+        "Good 3",
+        "Synthetic 7"
+      ]
+    },
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "race": 5,
+      "change": [
+        "Good 3",
+        "Synthetic 7"
+      ]
+    },
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "race": 6,
+      "change": [
+        "Good 3",
+        "Synthetic 8"
+      ]
+    },
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "race": 7,
+      "change": [
+        "Good 3",
+        "Synthetic 7"
+      ]
+    }
+  ],
+  "analysis_changes": [
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "going_applied": "Good 3",
+      "reason": "field-level change: field_size, scratchings",
+      "changes": {
+        "1": {
+          "going": [
+            "Good 3",
+            "Synthetic 7"
+          ],
+          "scratchings": [
+            "3",
+            "7"
+          ],
+          "field_size": [
+            7,
+            5
+          ]
+        },
+        "2": {
+          "going": [
+            "Good 3",
+            "Synthetic 7"
+          ],
+          "scratchings": [
+            "3",
+            "5"
+          ],
+          "field_size": [
+            9,
+            7
+          ]
+        },
+        "3": {
+          "going": [
+            "Good 3",
+            "Synthetic 7"
+          ]
+        },
+        "4": {
+          "going": [
+            "Good 3",
+            "Synthetic 7"
+          ],
+          "scratchings": [
+            "7"
+          ],
+          "field_size": [
+            11,
+            10
+          ]
+        },
+        "5": {
+          "going": [
+            "Good 3",
+            "Synthetic 7"
+          ],
+          "scratchings": [
+            "1",
+            "6"
+          ],
+          "field_size": [
+            10,
+            8
+          ]
+        },
+        "6": {
+          "going": [
+            "Good 3",
+            "Synthetic 8"
+          ],
+          "scratchings": [
+            "7",
+            "8"
+          ],
+          "field_size": [
+            7,
+            5
+          ]
+        },
+        "7": {
+          "going": [
+            "Good 3",
+            "Synthetic 7"
+          ]
+        }
+      }
+    },
+    {
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "going_applied": "Soft 7",
+      "reason": "field-level change: field_size, jockeys, scratchings",
+      "changes": {
+        "1": {
+          "jockeys": {
+            "12": [
+              "Siena Grima A",
+              "Siena Grima"
+            ]
+          }
+        },
+        "2": {
+          "scratchings": [
+            "3"
+          ],
+          "field_size": [
+            15,
+            14
+          ]
+        },
+        "4": {
+          "scratchings": [
+            "6"
+          ],
+          "jockeys": {
+            "5": [
+              "Courtney Bellamy A",
+              "Courtney Bellamy"
+            ]
+          },
+          "field_size": [
+            13,
+            12
+          ]
+        },
+        "5": {
+          "scratchings": [
+            "2",
+            "9"
+          ],
+          "field_size": [
+            10,
+            8
+          ]
+        },
+        "6": {
+          "jockeys": {
+            "17": [
+              "",
+              "Adin Thompson"
+            ],
+            "20": [
+              "",
+              "Adam Farragher"
+            ]
+          }
+        },
+        "7": {
+          "scratchings": [
+            "2"
+          ],
+          "jockeys": {
+            "12": [
+              "Siena Grima A",
+              "Siena Grima"
+            ]
+          },
+          "field_size": [
+            13,
+            12
+          ]
+        },
+        "8": {
+          "scratchings": [
+            "16",
+            "17"
+          ],
+          "jockeys": {
+            "15": [
+              "Courtney Bellamy A",
+              "Courtney Bellamy"
+            ]
+          },
+          "field_size": [
+            16,
+            14
+          ]
+        }
+      }
+    },
+    {
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "going_applied": "Soft 5",
+      "reason": "field-level change: field_size, jockeys, scratchings",
+      "changes": {
+        "2": {
+          "scratchings": [
+            "14",
+            "20",
+            "4"
+          ],
+          "jockeys": {
+            "18": [
+              "",
+              "Micheal Hellyer"
+            ]
+          },
+          "field_size": [
+            15,
+            12
+          ]
+        },
+        "4": {
+          "scratchings": [
+            "8"
+          ],
+          "field_size": [
+            14,
+            13
+          ]
+        },
+        "6": {
+          "scratchings": [
+            "14",
+            "2",
+            "20",
+            "4",
+            "7"
+          ],
+          "field_size": [
+            14,
+            9
+          ]
+        },
+        "7": {
+          "scratchings": [
+            "2",
+            "22"
+          ],
+          "field_size": [
+            14,
+            12
+          ]
+        }
+      }
+    },
+    {
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "going_applied": "Heavy 9",
+      "reason": "field-level change: field_size, jockeys, scratchings",
+      "changes": {
+        "1": {
+          "scratchings": [
+            "10",
+            "11",
+            "12"
+          ],
+          "jockeys": {
+            "3": [
+              "Jackson Murphy",
+              "Kate Walters"
+            ]
+          },
+          "field_size": [
+            11,
+            8
+          ]
+        },
+        "2": {
+          "scratchings": [
+            "3",
+            "6"
+          ],
+          "field_size": [
+            12,
+            10
+          ]
+        },
+        "4": {
+          "scratchings": [
+            "7"
+          ],
+          "field_size": [
+            9,
+            8
+          ]
+        },
+        "5": {
+          "scratchings": [
+            "10",
+            "3"
+          ],
+          "jockeys": {
+            "12": [
+              "",
+              "Sarah Field"
+            ]
+          },
+          "field_size": [
+            11,
+            9
+          ]
+        },
+        "6": {
+          "scratchings": [
+            "12",
+            "13",
+            "14",
+            "15"
+          ],
+          "jockeys": {
+            "3": [
+              "Teagan Voorham",
+              "Tom Madden"
+            ]
+          },
+          "field_size": [
+            15,
+            11
+          ]
+        },
+        "7": {
+          "scratchings": [
+            "14",
+            "15"
+          ],
+          "jockeys": {
+            "1": [
+              "Teagan Voorham",
+              "Melissa Julius"
+            ],
+            "2": [
+              "Jackson Murphy",
+              "Jack Hill"
+            ]
+          },
+          "field_size": [
+            13,
+            11
+          ]
+        }
+      }
+    },
+    {
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "going_applied": "Soft 7",
+      "reason": "field-level change: field_size, jockeys, scratchings",
+      "changes": {
+        "1": {
+          "scratchings": [
+            "3",
+            "9"
+          ],
+          "jockeys": {
+            "19": [
+              "",
+              "Daniel Stackhouse"
+            ],
+            "20": [
+              "",
+              "Hayley Spitse"
+            ]
+          },
+          "field_size": [
+            16,
+            14
+          ]
+        },
+        "2": {
+          "scratchings": [
+            "12",
+            "16",
+            "17",
+            "19",
+            "20"
+          ],
+          "field_size": [
+            19,
+            14
+          ]
+        },
+        "3": {
+          "scratchings": [
+            "11",
+            "12"
+          ],
+          "field_size": [
+            13,
+            11
+          ]
+        },
+        "4": {
+          "scratchings": [
+            "13"
+          ],
+          "field_size": [
+            13,
+            12
+          ]
+        },
+        "5": {
+          "scratchings": [
+            "15",
+            "19",
+            "8"
+          ],
+          "jockeys": {
+            "20": [
+              "",
+              "Brittany Button"
+            ]
+          },
+          "field_size": [
+            17,
+            14
+          ]
+        },
+        "6": {
+          "scratchings": [
+            "14"
+          ],
+          "field_size": [
+            13,
+            12
+          ]
+        },
+        "7": {
+          "scratchings": [
+            "12"
+          ],
+          "jockeys": {
+            "15": [
+              "Teo Nugent",
+              "Brittany Button"
+            ]
+          },
+          "field_size": [
+            14,
+            13
+          ]
+        },
+        "8": {
+          "scratchings": [
+            "1",
+            "10",
+            "14",
+            "15",
+            "16",
+            "17",
+            "2"
+          ],
+          "jockeys": {
+            "19": [
+              "",
+              "Emily Pozman"
+            ],
+            "20": [
+              "",
+              "Jett Stanley"
+            ]
+          },
+          "field_size": [
+            18,
+            11
+          ]
+        }
+      }
+    }
+  ],
+  "dashboard_validation": {
+    "ok": true,
+    "problems": [],
+    "meetings": [
+      "2026-08-07|Canberra",
+      "2026-08-07|Coffs Harbour",
+      "2026-08-07|Ipswich",
+      "2026-08-07|Mount Gambier",
+      "2026-08-07|Seymour",
+      "2026-08-05|Cranbourne",
+      "2026-07-15|HappyValley"
+    ],
+    "race_counts": {
+      "2026-08-07|Canberra": 7,
+      "2026-08-07|Coffs Harbour": 8,
+      "2026-08-07|Ipswich": 7,
+      "2026-08-07|Mount Gambier": 7,
+      "2026-08-07|Seymour": 8,
+      "2026-08-05|Cranbourne": 8,
+      "2026-07-15|HappyValley": 9
+    },
+    "snapshot": "/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-05.json"
+  },
+  "cloudflare_deployment": {
+    "ok": true,
+    "attempts": 1,
+    "active_meetings": 7,
+    "deployment_url": "https://391696ae.wongchoi-dashboard.pages.dev",
+    "production_url": "https://wongchoi-dashboard.pages.dev",
+    "commit": "manual-20260807004047",
+    "completed_at": "2026-08-07T10:41:09+10:00",
+    "verified": {
+      "attempt": 2,
+      "generated_at": "2026-08-07T10:40:42",
+      "meetings": [
+        "2026-08-07|Canberra",
+        "2026-08-07|Coffs Harbour",
+        "2026-08-07|Ipswich",
+        "2026-08-07|Mount Gambier",
+        "2026-08-07|Seymour",
+        "2026-08-05|Cranbourne",
+        "2026-07-15|HappyValley"
+      ],
+      "missing": [],
+      "still_present": [],
+      "stale": false,
+      "ok": true
+    }
+  },
+  "errors": [],
+  "warnings": [
+    {
+      "at": "2026-08-07T10:17:15+10:00",
+      "message": "2026-08-07 Ipswich Race 1-7: 個人頁今次只補 10/16，餘下 6 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-07T10:25:57+10:00",
+      "message": "2026-08-07 Mount Gambier Race 1-7: 個人頁今次只補 10/11，餘下 1 個下次補（TTL cache 會累積）"
+    }
+  ],
+  "retries": [
+    {
+      "at": "2026-08-07T10:41:10+10:00",
+      "what": "verify-live",
+      "attempt": 1,
+      "reason": "missing=[] still_present=[] stale=True"
+    }
+  ]
+}

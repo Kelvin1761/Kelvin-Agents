@@ -1,0 +1,238 @@
+{
+  "task_name": "au-wong-choi-evening",
+  "mode": "evening",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-04",
+  "started_at": "2026-08-05T00:28:03+10:00",
+  "completed_at": "2026-08-05T00:32:05+10:00",
+  "status": "ok",
+  "duration_seconds": 242.2,
+  "steps": [
+    {
+      "step": "review-archive",
+      "status": "start",
+      "at": "2026-08-05T00:28:03+10:00",
+      "review_day": "2026-08-04"
+    },
+    {
+      "step": "review-archive",
+      "status": "dashboard-scan",
+      "at": "2026-08-05T00:28:03+10:00",
+      "au_on_dashboard": [
+        "2026-08-05|Belmont"
+      ],
+      "due": []
+    },
+    {
+      "step": "review-archive",
+      "status": "nothing-to-do",
+      "at": "2026-08-05T00:28:03+10:00"
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "start",
+      "at": "2026-08-05T00:28:03+10:00"
+    },
+    {
+      "step": "discover",
+      "status": "ok",
+      "at": "2026-08-05T00:28:03+10:00",
+      "race_day": "2026-08-05",
+      "index_meetings": 12,
+      "api_venues": [
+        "Belmont",
+        "Canterbury",
+        "Cranbourne",
+        "Doomben",
+        "Hobart",
+        "Murray Bridge"
+      ]
+    },
+    {
+      "step": "discover",
+      "status": "non-au-excluded",
+      "at": "2026-08-05T00:28:04+10:00",
+      "meetings": [
+        "assiniboia_downs",
+        "brighton",
+        "kenilworth",
+        "lingfield",
+        "pontefract",
+        "roscommon"
+      ],
+      "reason": "API 澳洲名單冇呢啲馬場"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-05T00:30:39+10:00",
+      "meeting": "2026-08-05 Canterbury Race 1-7",
+      "races": 7
+    },
+    {
+      "step": "site-gate",
+      "status": "tripped",
+      "at": "2026-08-05T00:31:37+10:00",
+      "where": "2026-08-05 Cranbourne 第 1 場（raceId=3396104）"
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "done",
+      "at": "2026-08-05T00:31:37+10:00",
+      "race_day": "2026-08-05",
+      "planned": 6,
+      "analysed": 2
+    },
+    {
+      "step": "dashboard",
+      "status": "start",
+      "at": "2026-08-05T00:31:37+10:00",
+      "merge": 2,
+      "archived": 0
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-05T00:31:39+10:00",
+      "meeting": "2026-08-05 Belmont Race 1-8",
+      "snapshot": "merge-01.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-05T00:31:40+10:00",
+      "meeting": "2026-08-05 Canterbury Race 1-7",
+      "snapshot": "merge-02.json"
+    },
+    {
+      "step": "dashboard-validate",
+      "status": "ok",
+      "at": "2026-08-05T00:31:40+10:00",
+      "meetings": 3,
+      "problems": 0
+    },
+    {
+      "step": "verify-live",
+      "status": "ok",
+      "at": "2026-08-05T00:32:05+10:00",
+      "generated_at": "2026-08-05T00:31:40",
+      "meetings": [
+        "2026-08-05|Belmont",
+        "2026-08-05|Canterbury",
+        "2026-07-15|HappyValley"
+      ]
+    }
+  ],
+  "meetings_processed": [
+    {
+      "meeting": "2026-08-05 Belmont Race 1-8",
+      "status": "skipped_already_analysed",
+      "at": "2026-08-05T00:28:04+10:00",
+      "races": 8
+    },
+    {
+      "meeting": "2026-08-05 Canterbury Race 1-7",
+      "status": "analysed",
+      "at": "2026-08-05T00:30:52+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-05 Cranbourne",
+      "status": "pending_extraction",
+      "at": "2026-08-05T00:31:37+10:00",
+      "detail": "一場賽事頁都攞唔到（個站拒絕）"
+    },
+    {
+      "meeting": "2026-08-05 Doomben",
+      "status": "pending_extraction",
+      "at": "2026-08-05T00:31:37+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門"
+    },
+    {
+      "meeting": "2026-08-05 Hobart",
+      "status": "pending_extraction",
+      "at": "2026-08-05T00:31:37+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門"
+    },
+    {
+      "meeting": "2026-08-05 Murray Bridge",
+      "status": "pending_extraction",
+      "at": "2026-08-05T00:31:37+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門"
+    }
+  ],
+  "races_archived": [],
+  "races_added": [
+    {
+      "meeting": "2026-08-05 Canterbury Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "going": "Soft 5"
+    }
+  ],
+  "races_updated": [],
+  "scratchings_detected": [],
+  "track_changes_detected": [],
+  "analysis_changes": [],
+  "dashboard_validation": {
+    "ok": true,
+    "problems": [],
+    "meetings": [
+      "2026-08-05|Belmont",
+      "2026-08-05|Canterbury",
+      "2026-07-15|HappyValley"
+    ],
+    "race_counts": {
+      "2026-08-05|Belmont": 8,
+      "2026-08-05|Canterbury": 7,
+      "2026-07-15|HappyValley": 9
+    },
+    "snapshot": "/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-02.json"
+  },
+  "cloudflare_deployment": {
+    "ok": true,
+    "attempts": 1,
+    "active_meetings": 3,
+    "deployment_url": "https://7608130a.wongchoi-dashboard.pages.dev",
+    "production_url": "https://wongchoi-dashboard.pages.dev",
+    "commit": "manual-20260804143144",
+    "completed_at": "2026-08-05T00:32:01+10:00",
+    "verified": {
+      "attempt": 1,
+      "generated_at": "2026-08-05T00:31:40",
+      "meetings": [
+        "2026-08-05|Belmont",
+        "2026-08-05|Canterbury",
+        "2026-07-15|HappyValley"
+      ],
+      "missing": [],
+      "still_present": [],
+      "stale": false,
+      "ok": true
+    }
+  },
+  "errors": [],
+  "warnings": [
+    {
+      "at": "2026-08-05T00:31:37+10:00",
+      "message": "個站喺 2026-08-05 Cranbourne 第 1 場（raceId=3396104） 明確拒絕（穩定非 200）—— 今次 run 唔再出網攞頁，餘下嘅場次記做 pending，下一次排程再試"
+    }
+  ],
+  "retries": []
+}

@@ -1,0 +1,672 @@
+{
+  "task_name": "au-wong-choi-evening",
+  "mode": "evening",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-05",
+  "started_at": "2026-08-05T22:00:06+10:00",
+  "completed_at": "2026-08-06T00:04:08+10:00",
+  "status": "failed",
+  "duration_seconds": 7442.7,
+  "steps": [
+    {
+      "step": "preflight",
+      "status": "ok",
+      "at": "2026-08-05T22:00:06+10:00",
+      "au_meeting_folders": 94,
+      "au_root": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing",
+      "mirror": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing",
+      "archive_readable": true
+    },
+    {
+      "step": "review-archive",
+      "status": "start",
+      "at": "2026-08-05T22:00:06+10:00",
+      "review_day": "2026-08-05"
+    },
+    {
+      "step": "review-archive",
+      "status": "dashboard-scan",
+      "at": "2026-08-05T22:00:08+10:00",
+      "au_on_dashboard": [
+        "2026-08-05|Belmont",
+        "2026-08-05|Canterbury",
+        "2026-08-05|Cranbourne",
+        "2026-08-05|Doomben",
+        "2026-08-05|Hobart",
+        "2026-08-05|Murray Bridge"
+      ],
+      "due": [
+        "2026-08-05|Belmont",
+        "2026-08-05|Canterbury",
+        "2026-08-05|Cranbourne",
+        "2026-08-05|Doomben",
+        "2026-08-05|Hobart",
+        "2026-08-05|Murray Bridge"
+      ]
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-05T22:04:00+10:00",
+      "meeting": "2026-08-05 Belmont Race 1-8",
+      "had_before": 0,
+      "expected": 8,
+      "refreshed": 8,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-05T22:07:36+10:00",
+      "meeting": "2026-08-05 Canterbury Race 1-7",
+      "had_before": 0,
+      "expected": 7,
+      "refreshed": 7,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-05T22:11:43+10:00",
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "had_before": 0,
+      "expected": 8,
+      "refreshed": 8,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-05T22:15:48+10:00",
+      "meeting": "2026-08-05 Doomben Race 1-8",
+      "had_before": 0,
+      "expected": 8,
+      "refreshed": 8,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-05T22:20:25+10:00",
+      "meeting": "2026-08-05 Hobart Race 1-9",
+      "had_before": 0,
+      "expected": 9,
+      "refreshed": 9,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-05T22:24:28+10:00",
+      "meeting": "2026-08-05 Murray Bridge Race 1-8",
+      "had_before": 0,
+      "expected": 8,
+      "refreshed": 8,
+      "failed": 0
+    },
+    {
+      "step": "review-archive",
+      "status": "done",
+      "at": "2026-08-05T22:24:30+10:00",
+      "archived": 5,
+      "candidates": 6
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "start",
+      "at": "2026-08-05T22:24:30+10:00"
+    },
+    {
+      "step": "discover",
+      "status": "ok",
+      "at": "2026-08-05T22:24:59+10:00",
+      "race_day": "2026-08-06",
+      "index_meetings": 12,
+      "api_venues": [
+        "Ballarat Synthetic",
+        "Gosford",
+        "Moree",
+        "Mt Isa",
+        "Northam"
+      ]
+    },
+    {
+      "step": "discover",
+      "status": "non-au-excluded",
+      "at": "2026-08-05T22:24:59+10:00",
+      "meetings": [
+        "assiniboia_downs",
+        "brighton",
+        "kempton",
+        "mount_isa",
+        "newmarket",
+        "sligo",
+        "vaal",
+        "yarmouth"
+      ],
+      "reason": "API 澳洲名單冇呢啲馬場"
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-05T22:49:58+10:00",
+      "meeting": "2026-08-06 Ballarat Synthetic",
+      "needed": 81,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-05T22:50:03+10:00",
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "filled": 43,
+      "no_official": 43,
+      "ra_venue": "Sportsbet-Ballarat Synthetic"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-05T22:50:03+10:00",
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "races": 8
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-05T23:14:57+10:00",
+      "meeting": "2026-08-06 Gosford",
+      "needed": 86,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-05T23:15:02+10:00",
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "filled": 38,
+      "no_official": 41,
+      "ra_venue": "Gosford"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-05T23:15:02+10:00",
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "races": 8
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-05T23:39:03+10:00",
+      "meeting": "2026-08-06 Moree",
+      "needed": 54,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-05T23:39:08+10:00",
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "filled": 53,
+      "no_official": 28,
+      "ra_venue": "Moree"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-05T23:39:08+10:00",
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "races": 7
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-06T00:03:47+10:00",
+      "meeting": "2026-08-06 Northam",
+      "needed": 77,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-06T00:03:51+10:00",
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "filled": 61,
+      "no_official": 23,
+      "ra_venue": "Northam"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-06T00:03:51+10:00",
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "races": 8
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "done",
+      "at": "2026-08-06T00:04:01+10:00",
+      "race_day": "2026-08-06",
+      "planned": 4,
+      "analysed": 4,
+      "pending": 0
+    },
+    {
+      "step": "dashboard",
+      "status": "start",
+      "at": "2026-08-06T00:04:01+10:00",
+      "merge": 4,
+      "archived": 5
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-06T00:04:05+10:00",
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "snapshot": "merge-01.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-06T00:04:05+10:00",
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "snapshot": "merge-02.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-06T00:04:06+10:00",
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "snapshot": "merge-03.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-06T00:04:07+10:00",
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "snapshot": "merge-04.json"
+    },
+    {
+      "step": "dashboard-validate",
+      "status": "failed",
+      "at": "2026-08-06T00:04:07+10:00",
+      "meetings": 11,
+      "problems": 1
+    },
+    {
+      "step": "mirror",
+      "status": "ok",
+      "at": "2026-08-06T00:04:08+10:00",
+      "copied": 202,
+      "failed": 0,
+      "root": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing"
+    },
+    {
+      "step": "browser",
+      "status": "closed",
+      "at": "2026-08-06T00:04:08+10:00",
+      "requests_made": 240,
+      "stop_reason": null
+    },
+    {
+      "step": "outcome",
+      "status": "needs-attention",
+      "at": "2026-08-06T00:04:08+10:00",
+      "statuses": [
+        "pending_results"
+      ]
+    }
+  ],
+  "meetings_processed": [
+    {
+      "meeting": "2026-08-05 Belmont Race 1-8",
+      "status": "archived",
+      "at": "2026-08-05T22:04:02+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-05 Canterbury Race 1-7",
+      "status": "archived",
+      "at": "2026-08-05T22:07:38+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "status": "pending_results",
+      "at": "2026-08-05T22:11:44+10:00",
+      "reason": "❌ cache 冇任何賽果 —— 呢個場次未抽過，或者仲未跑",
+      "expected_races": 8
+    },
+    {
+      "meeting": "2026-08-05 Doomben Race 1-8",
+      "status": "archived",
+      "at": "2026-08-05T22:15:50+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-05 Hobart Race 1-9",
+      "status": "archived",
+      "at": "2026-08-05T22:20:27+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2026-08-05 Murray Bridge Race 1-8",
+      "status": "archived",
+      "at": "2026-08-05T22:24:30+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "status": "analysed",
+      "at": "2026-08-05T22:50:13+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected": 8,
+      "going": "Good 3"
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "status": "analysed",
+      "at": "2026-08-05T23:15:12+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected": 8,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "status": "analysed",
+      "at": "2026-08-05T23:39:20+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "expected": 7,
+      "going": "Good 4"
+    },
+    {
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "status": "analysed",
+      "at": "2026-08-06T00:04:01+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected": 8,
+      "going": "Soft 5"
+    }
+  ],
+  "races_archived": [
+    {
+      "meeting": "2026-08-05 Belmont Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-05 Canterbury Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "meeting": "2026-08-05 Doomben Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-05 Hobart Race 1-9",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2026-08-05 Murray Bridge Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    }
+  ],
+  "races_added": [
+    {
+      "meeting": "2026-08-06 Ballarat Synthetic Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected_races": 8,
+      "complete": true,
+      "going": "Good 3"
+    },
+    {
+      "meeting": "2026-08-06 Gosford Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected_races": 8,
+      "complete": true,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-06 Moree Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "expected_races": 7,
+      "complete": true,
+      "going": "Good 4"
+    },
+    {
+      "meeting": "2026-08-06 Northam Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected_races": 8,
+      "complete": true,
+      "going": "Soft 5"
+    }
+  ],
+  "races_updated": [],
+  "scratchings_detected": [],
+  "track_changes_detected": [],
+  "analysis_changes": [],
+  "dashboard_validation": {
+    "ok": false,
+    "problems": [
+      "已歸檔但仲喺 dashboard：['2026-08-05|Belmont', '2026-08-05|Canterbury', '2026-08-05|Doomben', '2026-08-05|Hobart', '2026-08-05|Murray Bridge']"
+    ],
+    "meetings": [
+      "2026-08-06|Ballarat Synthetic",
+      "2026-08-06|Gosford",
+      "2026-08-06|Moree",
+      "2026-08-06|Northam",
+      "2026-08-05|Belmont",
+      "2026-08-05|Canterbury",
+      "2026-08-05|Cranbourne",
+      "2026-08-05|Doomben",
+      "2026-08-05|Hobart",
+      "2026-08-05|Murray Bridge",
+      "2026-07-15|HappyValley"
+    ],
+    "race_counts": {
+      "2026-08-06|Ballarat Synthetic": 8,
+      "2026-08-06|Gosford": 8,
+      "2026-08-06|Moree": 7,
+      "2026-08-06|Northam": 8,
+      "2026-08-05|Belmont": 8,
+      "2026-08-05|Canterbury": 7,
+      "2026-08-05|Cranbourne": 8,
+      "2026-08-05|Doomben": 8,
+      "2026-08-05|Hobart": 9,
+      "2026-08-05|Murray Bridge": 8,
+      "2026-07-15|HappyValley": 9
+    },
+    "snapshot": "/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-04.json"
+  },
+  "cloudflare_deployment": null,
+  "errors": [
+    {
+      "at": "2026-08-06T00:04:07+10:00",
+      "step": "dashboard-validate",
+      "message": "已歸檔但仲喺 dashboard：['2026-08-05|Belmont', '2026-08-05|Canterbury', '2026-08-05|Doomben', '2026-08-05|Hobart', '2026-08-05|Murray Bridge']"
+    },
+    {
+      "at": "2026-08-06T00:04:07+10:00",
+      "step": "dashboard",
+      "message": "驗證唔過 —— 唔發佈"
+    }
+  ],
+  "warnings": [
+    {
+      "at": "2026-08-05T22:29:15+10:00",
+      "message": "2026-08-06 Ballarat Synthetic: 個人頁今次只補 40/81，餘下 41 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-05T22:54:02+10:00",
+      "message": "2026-08-06 Gosford: 個人頁今次只補 40/86，餘下 46 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-05T23:18:32+10:00",
+      "message": "2026-08-06 Moree: 個人頁今次只補 40/54，餘下 14 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-05T23:43:08+10:00",
+      "message": "2026-08-06 Northam: 個人頁今次只補 40/77，餘下 37 個下次補（TTL cache 會累積）"
+    }
+  ],
+  "retries": []
+}

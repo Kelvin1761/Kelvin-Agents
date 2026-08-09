@@ -1,0 +1,1044 @@
+{
+  "task_name": "au-wong-choi-evening",
+  "mode": "evening",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-07",
+  "started_at": "2026-08-07T22:00:02+10:00",
+  "completed_at": "2026-08-08T01:59:37+10:00",
+  "status": "failed",
+  "duration_seconds": 14375.6,
+  "steps": [
+    {
+      "step": "preflight",
+      "status": "ok",
+      "at": "2026-08-07T22:00:02+10:00",
+      "au_meeting_folders": 94,
+      "au_root": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing",
+      "mirror": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing",
+      "archive_readable": true
+    },
+    {
+      "step": "review-archive",
+      "status": "start",
+      "at": "2026-08-07T22:00:02+10:00",
+      "review_day": "2026-08-07"
+    },
+    {
+      "step": "review-archive",
+      "status": "dashboard-scan",
+      "at": "2026-08-07T22:00:04+10:00",
+      "au_on_dashboard": [
+        "2026-08-07|Canberra",
+        "2026-08-07|Coffs Harbour",
+        "2026-08-07|Ipswich",
+        "2026-08-07|Mount Gambier",
+        "2026-08-07|Seymour",
+        "2026-08-05|Cranbourne"
+      ],
+      "due": [
+        "2026-08-07|Canberra",
+        "2026-08-07|Coffs Harbour",
+        "2026-08-07|Ipswich",
+        "2026-08-07|Mount Gambier",
+        "2026-08-07|Seymour",
+        "2026-08-05|Cranbourne"
+      ]
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-07T22:03:25+10:00",
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "had_before": 0,
+      "expected": 7,
+      "refreshed": 7,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-07T22:07:32+10:00",
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "had_before": 0,
+      "expected": 8,
+      "refreshed": 8,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-07T22:11:09+10:00",
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "had_before": 0,
+      "expected": 7,
+      "refreshed": 7,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-07T22:14:44+10:00",
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "had_before": 0,
+      "expected": 7,
+      "refreshed": 7,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-07T22:18:51+10:00",
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "had_before": 0,
+      "expected": 8,
+      "refreshed": 8,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-07T22:22:59+10:00",
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "had_before": 0,
+      "expected": 8,
+      "refreshed": 8,
+      "failed": 0
+    },
+    {
+      "step": "review-archive",
+      "status": "done",
+      "at": "2026-08-07T22:23:01+10:00",
+      "archived": 5,
+      "candidates": 6
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "start",
+      "at": "2026-08-07T22:23:01+10:00"
+    },
+    {
+      "step": "discover",
+      "status": "ok",
+      "at": "2026-08-07T22:23:30+10:00",
+      "race_day": "2026-08-08",
+      "index_meetings": 20,
+      "api_venues": [
+        "Alice Springs",
+        "Casino",
+        "Caulfield Heath",
+        "Eagle Farm",
+        "Kembla Grange",
+        "Mildura",
+        "Morphettville",
+        "Randwick",
+        "Townsville"
+      ]
+    },
+    {
+      "step": "discover",
+      "status": "non-au-excluded",
+      "at": "2026-08-07T22:23:30+10:00",
+      "meetings": [
+        "ascot",
+        "belmont",
+        "gowran_park",
+        "greyville",
+        "haydock",
+        "newmarket",
+        "redcar",
+        "toowoomba",
+        "turffontein",
+        "wexford",
+        "woodbine"
+      ],
+      "reason": "API 澳洲名單冇呢啲馬場"
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-07T22:36:18+10:00",
+      "meeting": "2026-08-08 Alice Springs",
+      "needed": 18,
+      "fetched": 18
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-07T22:36:20+10:00",
+      "meeting": "2026-08-08 Alice Springs Race 1-7",
+      "races": 7
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-07T23:01:01+10:00",
+      "meeting": "2026-08-08 Casino",
+      "needed": 73,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-07T23:01:07+10:00",
+      "meeting": "2026-08-08 Casino Race 1-8",
+      "filled": 81,
+      "no_official": 26,
+      "ra_venue": "Casino"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-07T23:01:07+10:00",
+      "meeting": "2026-08-08 Casino Race 1-8",
+      "races": 8
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-07T23:26:25+10:00",
+      "meeting": "2026-08-08 Caulfield Heath",
+      "needed": 94,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-07T23:26:30+10:00",
+      "meeting": "2026-08-08 Caulfield Heath Race 1-9",
+      "filled": 100,
+      "no_official": 0,
+      "ra_venue": "Caulfield Heath"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-07T23:26:30+10:00",
+      "meeting": "2026-08-08 Caulfield Heath Race 1-9",
+      "races": 9
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-07T23:51:42+10:00",
+      "meeting": "2026-08-08 Eagle Farm",
+      "needed": 87,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-07T23:51:48+10:00",
+      "meeting": "2026-08-08 Eagle Farm Race 1-9",
+      "filled": 105,
+      "no_official": 0,
+      "ra_venue": "Eagle Farm"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-07T23:51:48+10:00",
+      "meeting": "2026-08-08 Eagle Farm Race 1-9",
+      "races": 9
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-08T00:16:34+10:00",
+      "meeting": "2026-08-08 Kembla Grange",
+      "needed": 73,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-08T00:16:39+10:00",
+      "meeting": "2026-08-08 Kembla Grange Race 1-8",
+      "filled": 35,
+      "no_official": 50,
+      "ra_venue": "Kembla Grange"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-08T00:16:39+10:00",
+      "meeting": "2026-08-08 Kembla Grange Race 1-8",
+      "races": 8
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-08T00:40:42+10:00",
+      "meeting": "2026-08-08 Mildura",
+      "needed": 55,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-08T00:40:47+10:00",
+      "meeting": "2026-08-08 Mildura Race 1-7",
+      "filled": 40,
+      "no_official": 24,
+      "ra_venue": "bet365 Mildura"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-08T00:40:47+10:00",
+      "meeting": "2026-08-08 Mildura Race 1-7",
+      "races": 7
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-08T01:05:55+10:00",
+      "meeting": "2026-08-08 Morphettville",
+      "needed": 88,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-08T01:06:01+10:00",
+      "meeting": "2026-08-08 Morphettville Race 1-9",
+      "filled": 99,
+      "no_official": 0,
+      "ra_venue": "Morphettville"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-08T01:06:01+10:00",
+      "meeting": "2026-08-08 Morphettville Race 1-9",
+      "races": 9
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-08T01:31:45+10:00",
+      "meeting": "2026-08-08 Randwick",
+      "needed": 90,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-08T01:31:52+10:00",
+      "meeting": "2026-08-08 Randwick Race 1-10",
+      "filled": 108,
+      "no_official": 0,
+      "ra_venue": "Royal Randwick"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-08T01:31:52+10:00",
+      "meeting": "2026-08-08 Randwick Race 1-10",
+      "races": 10
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-08T01:56:31+10:00",
+      "meeting": "2026-08-08 Townsville",
+      "needed": 80,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-08T01:56:37+10:00",
+      "meeting": "2026-08-08 Townsville Race 1-8",
+      "filled": 129,
+      "no_official": 17,
+      "ra_venue": "Townsville"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-08T01:56:37+10:00",
+      "meeting": "2026-08-08 Townsville Race 1-8",
+      "races": 8
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "done",
+      "at": "2026-08-08T01:57:02+10:00",
+      "race_day": "2026-08-08",
+      "planned": 9,
+      "analysed": 9,
+      "pending": 0
+    },
+    {
+      "step": "dashboard",
+      "status": "start",
+      "at": "2026-08-08T01:57:02+10:00",
+      "merge": 9,
+      "archived": 5
+    },
+    {
+      "step": "dashboard-prune",
+      "status": "ok",
+      "at": "2026-08-08T01:57:05+10:00",
+      "dropped": [
+        "2026-08-07|Canberra",
+        "2026-08-07|Coffs Harbour",
+        "2026-08-07|Ipswich",
+        "2026-08-07|Mount Gambier",
+        "2026-08-07|Seymour"
+      ]
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-08T01:57:05+10:00",
+      "meeting": "2026-08-08 Alice Springs Race 1-7",
+      "snapshot": "merge-01.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-08T01:57:06+10:00",
+      "meeting": "2026-08-08 Casino Race 1-8",
+      "snapshot": "merge-02.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-08T01:57:07+10:00",
+      "meeting": "2026-08-08 Caulfield Heath Race 1-9",
+      "snapshot": "merge-03.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-08T01:57:08+10:00",
+      "meeting": "2026-08-08 Eagle Farm Race 1-9",
+      "snapshot": "merge-04.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-08T01:57:09+10:00",
+      "meeting": "2026-08-08 Kembla Grange Race 1-8",
+      "snapshot": "merge-05.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-08T01:57:09+10:00",
+      "meeting": "2026-08-08 Mildura Race 1-7",
+      "snapshot": "merge-06.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-08T01:57:10+10:00",
+      "meeting": "2026-08-08 Morphettville Race 1-9",
+      "snapshot": "merge-07.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-08T01:57:11+10:00",
+      "meeting": "2026-08-08 Randwick Race 1-10",
+      "snapshot": "merge-08.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-08T01:57:12+10:00",
+      "meeting": "2026-08-08 Townsville Race 1-8",
+      "snapshot": "merge-09.json"
+    },
+    {
+      "step": "dashboard-validate",
+      "status": "ok",
+      "at": "2026-08-08T01:57:12+10:00",
+      "meetings": 11,
+      "problems": 0
+    },
+    {
+      "step": "mirror",
+      "status": "ok",
+      "at": "2026-08-08T01:59:36+10:00",
+      "copied": 485,
+      "failed": 0,
+      "root": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing"
+    },
+    {
+      "step": "browser",
+      "status": "closed",
+      "at": "2026-08-08T01:59:36+10:00",
+      "requests_made": 459,
+      "stop_reason": null
+    },
+    {
+      "step": "outcome",
+      "status": "needs-attention",
+      "at": "2026-08-08T01:59:37+10:00",
+      "statuses": [
+        "pending_results"
+      ]
+    }
+  ],
+  "meetings_processed": [
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "status": "archived",
+      "at": "2026-08-07T22:03:26+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "status": "archived",
+      "at": "2026-08-07T22:07:33+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "status": "archived",
+      "at": "2026-08-07T22:11:11+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "status": "archived",
+      "at": "2026-08-07T22:14:46+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "status": "archived",
+      "at": "2026-08-07T22:19:00+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "status": "pending_results",
+      "at": "2026-08-07T22:23:01+10:00",
+      "reason": "❌ cache 冇任何賽果 —— 呢個場次未抽過，或者仲未跑",
+      "expected_races": 8
+    },
+    {
+      "meeting": "2026-08-08 Alice Springs Race 1-7",
+      "status": "analysed",
+      "at": "2026-08-07T22:36:28+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "expected": 7,
+      "going": null
+    },
+    {
+      "meeting": "2026-08-08 Casino Race 1-8",
+      "status": "analysed",
+      "at": "2026-08-07T23:01:22+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected": 8,
+      "going": "Soft 6"
+    },
+    {
+      "meeting": "2026-08-08 Caulfield Heath Race 1-9",
+      "status": "analysed",
+      "at": "2026-08-07T23:26:48+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "expected": 9,
+      "going": "Soft 7"
+    },
+    {
+      "meeting": "2026-08-08 Eagle Farm Race 1-9",
+      "status": "analysed",
+      "at": "2026-08-07T23:52:08+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "expected": 9,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-08 Kembla Grange Race 1-8",
+      "status": "analysed",
+      "at": "2026-08-08T00:16:50+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected": 8,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-08 Mildura Race 1-7",
+      "status": "analysed",
+      "at": "2026-08-08T00:40:57+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "expected": 7,
+      "going": "Good 4"
+    },
+    {
+      "meeting": "2026-08-08 Morphettville Race 1-9",
+      "status": "analysed",
+      "at": "2026-08-08T01:06:18+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "expected": 9,
+      "going": "Soft 6"
+    },
+    {
+      "meeting": "2026-08-08 Randwick Race 1-10",
+      "status": "analysed",
+      "at": "2026-08-08T01:32:11+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "expected": 10,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-08 Townsville Race 1-8",
+      "status": "analysed",
+      "at": "2026-08-08T01:57:02+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected": 8,
+      "going": "Soft 5"
+    }
+  ],
+  "races_archived": [
+    {
+      "meeting": "2026-08-07 Canberra Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "meeting": "2026-08-07 Coffs Harbour Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-07 Ipswich Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "meeting": "2026-08-07 Mount Gambier Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "meeting": "2026-08-07 Seymour Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    }
+  ],
+  "races_added": [
+    {
+      "meeting": "2026-08-08 Alice Springs Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "expected_races": 7,
+      "complete": true,
+      "going": null
+    },
+    {
+      "meeting": "2026-08-08 Casino Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected_races": 8,
+      "complete": true,
+      "going": "Soft 6"
+    },
+    {
+      "meeting": "2026-08-08 Caulfield Heath Race 1-9",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "expected_races": 9,
+      "complete": true,
+      "going": "Soft 7"
+    },
+    {
+      "meeting": "2026-08-08 Eagle Farm Race 1-9",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "expected_races": 9,
+      "complete": true,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-08 Kembla Grange Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected_races": 8,
+      "complete": true,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-08 Mildura Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "expected_races": 7,
+      "complete": true,
+      "going": "Good 4"
+    },
+    {
+      "meeting": "2026-08-08 Morphettville Race 1-9",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "expected_races": 9,
+      "complete": true,
+      "going": "Soft 6"
+    },
+    {
+      "meeting": "2026-08-08 Randwick Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "expected_races": 10,
+      "complete": true,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-08 Townsville Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected_races": 8,
+      "complete": true,
+      "going": "Soft 5"
+    }
+  ],
+  "races_updated": [],
+  "scratchings_detected": [],
+  "track_changes_detected": [],
+  "analysis_changes": [],
+  "dashboard_validation": {
+    "ok": true,
+    "problems": [],
+    "meetings": [
+      "2026-08-08|Alice Springs",
+      "2026-08-08|Casino",
+      "2026-08-08|Caulfield Heath",
+      "2026-08-08|Eagle Farm",
+      "2026-08-08|Kembla Grange",
+      "2026-08-08|Mildura",
+      "2026-08-08|Morphettville",
+      "2026-08-08|Randwick",
+      "2026-08-08|Townsville",
+      "2026-08-05|Cranbourne",
+      "2026-07-15|HappyValley"
+    ],
+    "race_counts": {
+      "2026-08-08|Alice Springs": 7,
+      "2026-08-08|Casino": 8,
+      "2026-08-08|Caulfield Heath": 9,
+      "2026-08-08|Eagle Farm": 9,
+      "2026-08-08|Kembla Grange": 8,
+      "2026-08-08|Mildura": 7,
+      "2026-08-08|Morphettville": 9,
+      "2026-08-08|Randwick": 10,
+      "2026-08-08|Townsville": 8,
+      "2026-08-05|Cranbourne": 8,
+      "2026-07-15|HappyValley": 9
+    },
+    "snapshot": "/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-09.json"
+  },
+  "cloudflare_deployment": {
+    "ok": false,
+    "attempts": 3,
+    "detail": "🪵  Logs were written to \"/Users/imac/Library/Preferences/.wrangler/logs/wrangler-2026-08-07_15-58-34_085.log\""
+  },
+  "errors": [
+    {
+      "at": "2026-08-08T01:59:35+10:00",
+      "step": "dashboard",
+      "message": "發佈失敗：🪵  Logs were written to \"/Users/imac/Library/Preferences/.wrangler/logs/wrangler-2026-08-07_15-58-34_085.log\""
+    }
+  ],
+  "warnings": [
+    {
+      "at": "2026-08-07T22:36:20+10:00",
+      "message": "2026-08-08 Alice Springs Race 1-7: RA 冇呢個場次（RA 冇 2026-08-08 Alice Springs）—— 照用 fallback"
+    },
+    {
+      "at": "2026-08-07T22:36:20+10:00",
+      "message": "2026-08-08 Alice Springs Race 1-7: 冇官方場地狀況，用 Logic 內嘅值評分"
+    },
+    {
+      "at": "2026-08-07T22:40:28+10:00",
+      "message": "2026-08-08 Casino: 個人頁今次只補 40/73，餘下 33 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-07T23:05:37+10:00",
+      "message": "2026-08-08 Caulfield Heath: 個人頁今次只補 40/94，餘下 54 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-07T23:30:58+10:00",
+      "message": "2026-08-08 Eagle Farm: 個人頁今次只補 40/87，餘下 47 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-07T23:55:50+10:00",
+      "message": "2026-08-08 Kembla Grange: 個人頁今次只補 40/73，餘下 33 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-08T00:20:12+10:00",
+      "message": "2026-08-08 Mildura: 個人頁今次只補 40/55，餘下 15 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-08T00:45:22+10:00",
+      "message": "2026-08-08 Morphettville: 個人頁今次只補 40/88，餘下 48 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-08T01:11:00+10:00",
+      "message": "2026-08-08 Randwick: 個人頁今次只補 40/90，餘下 50 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-08T01:35:57+10:00",
+      "message": "2026-08-08 Townsville: 個人頁今次只補 40/80，餘下 40 個下次補（TTL cache 會累積）"
+    }
+  ],
+  "retries": [
+    {
+      "at": "2026-08-08T01:57:21+10:00",
+      "what": "deploy",
+      "attempt": 1,
+      "reason": "🪵  Logs were written to \"/Users/imac/Library/Preferences/.wrangler/logs/wrangler-2026-08-07_15-57-19_815.log\""
+    },
+    {
+      "at": "2026-08-08T01:57:48+10:00",
+      "what": "deploy",
+      "attempt": 2,
+      "reason": "🪵  Logs were written to \"/Users/imac/Library/Preferences/.wrangler/logs/wrangler-2026-08-07_15-57-47_283.log\""
+    },
+    {
+      "at": "2026-08-08T01:58:35+10:00",
+      "what": "deploy",
+      "attempt": 3,
+      "reason": "🪵  Logs were written to \"/Users/imac/Library/Preferences/.wrangler/logs/wrangler-2026-08-07_15-58-34_085.log\""
+    }
+  ]
+}

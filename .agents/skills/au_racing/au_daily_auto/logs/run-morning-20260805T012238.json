@@ -1,0 +1,130 @@
+{
+  "task_name": "au-wong-choi-morning",
+  "mode": "morning",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-05",
+  "started_at": "2026-08-05T01:22:38+10:00",
+  "completed_at": "2026-08-05T01:23:26+10:00",
+  "status": "ok",
+  "duration_seconds": 48.4,
+  "steps": [
+    {
+      "step": "refresh-active",
+      "status": "start",
+      "at": "2026-08-05T01:22:38+10:00"
+    },
+    {
+      "step": "refresh-active",
+      "status": "dashboard-scan",
+      "at": "2026-08-05T01:22:39+10:00",
+      "au_on_dashboard": [
+        "2026-08-05|Belmont",
+        "2026-08-05|Canterbury",
+        "2026-08-05|Cranbourne",
+        "2026-08-05|Doomben",
+        "2026-08-05|Hobart",
+        "2026-08-05|Murray Bridge"
+      ],
+      "to_check": [
+        "2026-08-05 Belmont Race 1-8"
+      ]
+    },
+    {
+      "step": "site-gate",
+      "status": "tripped",
+      "at": "2026-08-05T01:23:25+10:00",
+      "where": "2026-08-05 Belmont Race 1-8 覆核重抓（raceId=3397175）"
+    },
+    {
+      "step": "refresh-active",
+      "status": "still-pending",
+      "at": "2026-08-05T01:23:25+10:00",
+      "meetings": [
+        "2026-08-05 Belmont Race 1-8"
+      ],
+      "detail": "呢啲場次今次覆核唔到，分析保持原狀"
+    },
+    {
+      "step": "refresh-active",
+      "status": "done",
+      "at": "2026-08-05T01:23:25+10:00",
+      "checked": 1,
+      "updated": 0,
+      "pending": 1
+    },
+    {
+      "step": "dashboard",
+      "status": "start",
+      "at": "2026-08-05T01:23:25+10:00",
+      "merge": 0,
+      "archived": 0
+    },
+    {
+      "step": "dashboard-validate",
+      "status": "ok",
+      "at": "2026-08-05T01:23:26+10:00",
+      "meetings": 7,
+      "problems": 0
+    },
+    {
+      "step": "dashboard",
+      "status": "deploy-skipped-no-change",
+      "at": "2026-08-05T01:23:26+10:00"
+    }
+  ],
+  "meetings_processed": [
+    {
+      "meeting": "2026-08-05 Belmont Race 1-8",
+      "status": "refresh_deferred",
+      "at": "2026-08-05T01:23:25+10:00",
+      "detail": "重抓賽事頁失敗（race_id=3397175），停止重抓",
+      "round_no": 1
+    }
+  ],
+  "races_archived": [],
+  "races_added": [],
+  "races_updated": [],
+  "scratchings_detected": [],
+  "track_changes_detected": [],
+  "analysis_changes": [],
+  "dashboard_validation": {
+    "ok": true,
+    "problems": [],
+    "meetings": [
+      "2026-08-05|Belmont",
+      "2026-08-05|Canterbury",
+      "2026-08-05|Cranbourne",
+      "2026-08-05|Doomben",
+      "2026-08-05|Hobart",
+      "2026-08-05|Murray Bridge",
+      "2026-07-15|HappyValley"
+    ],
+    "race_counts": {
+      "2026-08-05|Belmont": 8,
+      "2026-08-05|Canterbury": 7,
+      "2026-08-05|Cranbourne": 8,
+      "2026-08-05|Doomben": 8,
+      "2026-08-05|Hobart": 9,
+      "2026-08-05|Murray Bridge": 8,
+      "2026-07-15|HappyValley": 9
+    },
+    "snapshot": "/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/live-dashboard-data.json"
+  },
+  "cloudflare_deployment": {
+    "ok": true,
+    "skipped": "no-change",
+    "production_url": "https://wongchoi-dashboard.pages.dev"
+  },
+  "errors": [],
+  "warnings": [
+    {
+      "at": "2026-08-05T01:22:39+10:00",
+      "message": "--max-meetings=1：今次唔覆核 ['2026-08-05 Canterbury Race 1-7', '2026-08-05 Cranbourne Race 1-8', '2026-08-05 Doomben Race 1-8', '2026-08-05 Hobart Race 1-9', '2026-08-05 Murray Bridge Race 1-8']（唔係靜靜咁截，記低喺 log）"
+    },
+    {
+      "at": "2026-08-05T01:23:25+10:00",
+      "message": "個站喺 2026-08-05 Belmont Race 1-8 覆核重抓（raceId=3397175） 明確拒絕（穩定非 200）—— 今次 run 唔再出網攞頁，餘下嘅場次記做 pending，下一次排程再試"
+    }
+  ],
+  "retries": []
+}

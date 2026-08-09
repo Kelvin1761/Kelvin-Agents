@@ -1,0 +1,29 @@
+{
+  "task_name": "au-wong-choi-morning",
+  "mode": "morning",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-05",
+  "started_at": "2026-08-05T01:30:37+10:00",
+  "completed_at": "2026-08-05T01:30:37+10:00",
+  "status": "failed",
+  "duration_seconds": 0.1,
+  "steps": [],
+  "meetings_processed": [],
+  "races_archived": [],
+  "races_added": [],
+  "races_updated": [],
+  "scratchings_detected": [],
+  "track_changes_detected": [],
+  "analysis_changes": [],
+  "dashboard_validation": null,
+  "cloudflare_deployment": null,
+  "errors": [
+    {
+      "at": "2026-08-05T01:30:37+10:00",
+      "step": "preflight",
+      "message": "讀唔到 AU_Racing（PermissionError: [Errno 1] Operation not permitted: '/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing'）—— launchd 個 context 多數係未有 Full Disk Access。分析同歸檔全部做唔到。"
+    }
+  ],
+  "warnings": [],
+  "retries": []
+}

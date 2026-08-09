@@ -1,0 +1,930 @@
+{
+  "task_name": "au-wong-choi-evening",
+  "mode": "evening",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-08",
+  "started_at": "2026-08-08T23:34:48+10:00",
+  "completed_at": "2026-08-09T02:13:32+10:00",
+  "status": "ok",
+  "duration_seconds": 9523.4,
+  "steps": [
+    {
+      "step": "preflight",
+      "status": "ok",
+      "at": "2026-08-08T23:34:48+10:00",
+      "au_meeting_folders": 98,
+      "au_root": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing",
+      "mirror": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing",
+      "archive_readable": true
+    },
+    {
+      "step": "review-archive",
+      "status": "start",
+      "at": "2026-08-08T23:34:48+10:00",
+      "review_day": "2026-08-08"
+    },
+    {
+      "step": "review-archive",
+      "status": "dashboard-scan",
+      "at": "2026-08-08T23:34:49+10:00",
+      "au_on_dashboard": [
+        "2026-08-09|Ballarat Synthetic"
+      ],
+      "due": [
+        "2026-08-08|Alice Springs",
+        "2026-08-08|Casino",
+        "2026-08-08|Caulfield Heath",
+        "2026-08-08|Eagle Farm",
+        "2026-08-08|Kembla Grange",
+        "2026-08-08|Mildura",
+        "2026-08-08|Morphettville",
+        "2026-08-08|Randwick",
+        "2026-08-08|Townsville"
+      ]
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-08T23:38:02+10:00",
+      "meeting": "2026-08-08 Alice Springs Race 1-7",
+      "had_before": 0,
+      "expected": 7,
+      "refreshed": 7,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-08T23:42:10+10:00",
+      "meeting": "2026-08-08 Casino Race 1-8",
+      "had_before": 0,
+      "expected": 8,
+      "refreshed": 8,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-08T23:46:42+10:00",
+      "meeting": "2026-08-08 Caulfield Heath Race 1-9",
+      "had_before": 0,
+      "expected": 9,
+      "refreshed": 9,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-08T23:51:18+10:00",
+      "meeting": "2026-08-08 Eagle Farm Race 1-9",
+      "had_before": 0,
+      "expected": 9,
+      "refreshed": 9,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-08T23:55:24+10:00",
+      "meeting": "2026-08-08 Kembla Grange Race 1-8",
+      "had_before": 0,
+      "expected": 8,
+      "refreshed": 8,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-08T23:58:59+10:00",
+      "meeting": "2026-08-08 Mildura Race 1-7",
+      "had_before": 0,
+      "expected": 7,
+      "refreshed": 7,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-09T00:03:36+10:00",
+      "meeting": "2026-08-08 Morphettville Race 1-9",
+      "had_before": 0,
+      "expected": 9,
+      "refreshed": 9,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-09T00:09:08+10:00",
+      "meeting": "2026-08-08 Randwick Race 1-10",
+      "had_before": 0,
+      "expected": 10,
+      "refreshed": 10,
+      "failed": 0
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-09T00:13:17+10:00",
+      "meeting": "2026-08-08 Townsville Race 1-8",
+      "had_before": 0,
+      "expected": 8,
+      "refreshed": 8,
+      "failed": 0
+    },
+    {
+      "step": "review-archive",
+      "status": "done",
+      "at": "2026-08-09T00:13:20+10:00",
+      "archived": 9,
+      "candidates": 9
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "start",
+      "at": "2026-08-09T00:13:20+10:00"
+    },
+    {
+      "step": "discover",
+      "status": "ok",
+      "at": "2026-08-09T00:13:20+10:00",
+      "race_day": "2026-08-09",
+      "index_meetings": 15,
+      "api_venues": [
+        "Ballarat Synthetic",
+        "Casterton",
+        "Kalgoorlie",
+        "Muswellbrook",
+        "Sunshine Coast",
+        "Wagga"
+      ]
+    },
+    {
+      "step": "discover",
+      "status": "non-au-excluded",
+      "at": "2026-08-09T00:13:20+10:00",
+      "meetings": [
+        "ayr",
+        "chepstow",
+        "curragh",
+        "downpatrick",
+        "kilbeggan",
+        "leicester",
+        "lingfield",
+        "scottsville",
+        "woodbine"
+      ],
+      "reason": "API 澳洲名單冇呢啲馬場"
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-09T00:37:18+10:00",
+      "meeting": "2026-08-09 Casterton",
+      "needed": 54,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-09T00:37:24+10:00",
+      "meeting": "2026-08-09 Casterton Race 1-7",
+      "filled": 34,
+      "no_official": 22,
+      "ra_venue": "Casterton"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-09T00:37:24+10:00",
+      "meeting": "2026-08-09 Casterton Race 1-7",
+      "races": 7
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-09T00:58:21+10:00",
+      "meeting": "2026-08-09 Kalgoorlie",
+      "needed": 33,
+      "fetched": 33
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-09T00:58:26+10:00",
+      "meeting": "2026-08-09 Kalgoorlie Race 1-8",
+      "filled": 76,
+      "no_official": 6,
+      "ra_venue": "Kalgoorlie"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-09T00:58:26+10:00",
+      "meeting": "2026-08-09 Kalgoorlie Race 1-8",
+      "races": 8
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-09T01:22:42+10:00",
+      "meeting": "2026-08-09 Muswellbrook",
+      "needed": 66,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-09T01:22:47+10:00",
+      "meeting": "2026-08-09 Muswellbrook Race 1-7",
+      "filled": 31,
+      "no_official": 25,
+      "ra_venue": "Muswellbrook"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-09T01:22:47+10:00",
+      "meeting": "2026-08-09 Muswellbrook Race 1-7",
+      "races": 7
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-09T01:47:24+10:00",
+      "meeting": "2026-08-09 Sunshine Coast",
+      "needed": 80,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-09T01:47:28+10:00",
+      "meeting": "2026-08-09 Sunshine Coast Race 1-8",
+      "filled": 53,
+      "no_official": 17,
+      "ra_venue": "Sunshine Coast"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-09T01:47:28+10:00",
+      "meeting": "2026-08-09 Sunshine Coast Race 1-8",
+      "races": 8
+    },
+    {
+      "step": "warm-people",
+      "status": "ok",
+      "at": "2026-08-09T02:11:35+10:00",
+      "meeting": "2026-08-09 Wagga",
+      "needed": 70,
+      "fetched": 40
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-09T02:11:38+10:00",
+      "meeting": "2026-08-09 Wagga Race 1-7",
+      "filled": 48,
+      "no_official": 27,
+      "ra_venue": "Wagga"
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-09T02:11:38+10:00",
+      "meeting": "2026-08-09 Wagga Race 1-7",
+      "races": 7
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "done",
+      "at": "2026-08-09T02:11:54+10:00",
+      "race_day": "2026-08-09",
+      "planned": 6,
+      "analysed": 6,
+      "pending": 0
+    },
+    {
+      "step": "dashboard",
+      "status": "start",
+      "at": "2026-08-09T02:11:54+10:00",
+      "merge": 6,
+      "archived": 9
+    },
+    {
+      "step": "dashboard-prune",
+      "status": "ok",
+      "at": "2026-08-09T02:11:56+10:00",
+      "dropped": [
+        "2026-08-08|Alice Springs",
+        "2026-08-08|Casino",
+        "2026-08-08|Caulfield Heath",
+        "2026-08-08|Eagle Farm",
+        "2026-08-08|Kembla Grange",
+        "2026-08-08|Mildura",
+        "2026-08-08|Morphettville",
+        "2026-08-08|Randwick",
+        "2026-08-08|Townsville"
+      ]
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-09T02:11:57+10:00",
+      "meeting": "2026-08-09 Ballarat Synthetic Race 1-8",
+      "snapshot": "merge-01.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-09T02:11:57+10:00",
+      "meeting": "2026-08-09 Casterton Race 1-7",
+      "snapshot": "merge-02.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-09T02:11:57+10:00",
+      "meeting": "2026-08-09 Kalgoorlie Race 1-8",
+      "snapshot": "merge-03.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-09T02:11:58+10:00",
+      "meeting": "2026-08-09 Muswellbrook Race 1-7",
+      "snapshot": "merge-04.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-09T02:11:59+10:00",
+      "meeting": "2026-08-09 Sunshine Coast Race 1-8",
+      "snapshot": "merge-05.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-09T02:11:59+10:00",
+      "meeting": "2026-08-09 Wagga Race 1-7",
+      "snapshot": "merge-06.json"
+    },
+    {
+      "step": "dashboard-validate",
+      "status": "ok",
+      "at": "2026-08-09T02:11:59+10:00",
+      "meetings": 7,
+      "problems": 0
+    },
+    {
+      "step": "verify-live",
+      "status": "ok",
+      "at": "2026-08-09T02:13:29+10:00",
+      "generated_at": "2026-08-09T02:12:16",
+      "meetings": [
+        "2026-08-09|Ballarat Synthetic",
+        "2026-08-09|Casterton",
+        "2026-08-09|Kalgoorlie",
+        "2026-08-09|Muswellbrook",
+        "2026-08-09|Sunshine Coast",
+        "2026-08-09|Wagga",
+        "2026-07-15|HappyValley"
+      ]
+    },
+    {
+      "step": "mirror",
+      "status": "ok",
+      "at": "2026-08-09T02:13:30+10:00",
+      "copied": 242,
+      "failed": 0,
+      "root": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing"
+    },
+    {
+      "step": "browser",
+      "status": "closed",
+      "at": "2026-08-09T02:13:30+10:00",
+      "requests_made": 306,
+      "stop_reason": null
+    }
+  ],
+  "meetings_processed": [
+    {
+      "meeting": "2026-08-08 Alice Springs Race 1-7",
+      "status": "archived",
+      "at": "2026-08-08T23:38:03+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "meeting": "2026-08-08 Casino Race 1-8",
+      "status": "archived",
+      "at": "2026-08-08T23:42:12+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-08 Caulfield Heath Race 1-9",
+      "status": "archived",
+      "at": "2026-08-08T23:46:44+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2026-08-08 Eagle Farm Race 1-9",
+      "status": "archived",
+      "at": "2026-08-08T23:51:21+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2026-08-08 Kembla Grange Race 1-8",
+      "status": "archived",
+      "at": "2026-08-08T23:55:26+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-08 Mildura Race 1-7",
+      "status": "archived",
+      "at": "2026-08-08T23:59:01+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "meeting": "2026-08-08 Morphettville Race 1-9",
+      "status": "archived",
+      "at": "2026-08-09T00:03:38+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2026-08-08 Randwick Race 1-10",
+      "status": "archived",
+      "at": "2026-08-09T00:09:11+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-08-08 Townsville Race 1-8",
+      "status": "archived",
+      "at": "2026-08-09T00:13:20+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-09 Ballarat Synthetic Race 1-8",
+      "status": "skipped_already_analysed",
+      "at": "2026-08-09T00:13:20+10:00",
+      "races": 8
+    },
+    {
+      "meeting": "2026-08-09 Casterton Race 1-7",
+      "status": "analysed",
+      "at": "2026-08-09T00:37:33+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "expected": 7,
+      "going": "Soft 6"
+    },
+    {
+      "meeting": "2026-08-09 Kalgoorlie Race 1-8",
+      "status": "analysed",
+      "at": "2026-08-09T00:58:40+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected": 8,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-09 Muswellbrook Race 1-7",
+      "status": "analysed",
+      "at": "2026-08-09T01:22:56+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "expected": 7,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-09 Sunshine Coast Race 1-8",
+      "status": "analysed",
+      "at": "2026-08-09T01:47:41+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected": 8,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-09 Wagga Race 1-7",
+      "status": "analysed",
+      "at": "2026-08-09T02:11:54+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "expected": 7,
+      "going": "Soft 6"
+    }
+  ],
+  "races_archived": [
+    {
+      "meeting": "2026-08-08 Alice Springs Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "meeting": "2026-08-08 Casino Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-08 Caulfield Heath Race 1-9",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2026-08-08 Eagle Farm Race 1-9",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2026-08-08 Kembla Grange Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-08 Mildura Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "meeting": "2026-08-08 Morphettville Race 1-9",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "meeting": "2026-08-08 Randwick Race 1-10",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    {
+      "meeting": "2026-08-08 Townsville Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    }
+  ],
+  "races_added": [
+    {
+      "meeting": "2026-08-09 Casterton Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "expected_races": 7,
+      "complete": true,
+      "going": "Soft 6"
+    },
+    {
+      "meeting": "2026-08-09 Kalgoorlie Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected_races": 8,
+      "complete": true,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-09 Muswellbrook Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "expected_races": 7,
+      "complete": true,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-09 Sunshine Coast Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected_races": 8,
+      "complete": true,
+      "going": "Soft 5"
+    },
+    {
+      "meeting": "2026-08-09 Wagga Race 1-7",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "expected_races": 7,
+      "complete": true,
+      "going": "Soft 6"
+    }
+  ],
+  "races_updated": [],
+  "scratchings_detected": [],
+  "track_changes_detected": [],
+  "analysis_changes": [],
+  "dashboard_validation": {
+    "ok": true,
+    "problems": [],
+    "meetings": [
+      "2026-08-09|Ballarat Synthetic",
+      "2026-08-09|Casterton",
+      "2026-08-09|Kalgoorlie",
+      "2026-08-09|Muswellbrook",
+      "2026-08-09|Sunshine Coast",
+      "2026-08-09|Wagga",
+      "2026-07-15|HappyValley"
+    ],
+    "race_counts": {
+      "2026-08-09|Ballarat Synthetic": 8,
+      "2026-08-09|Casterton": 7,
+      "2026-08-09|Kalgoorlie": 8,
+      "2026-08-09|Muswellbrook": 7,
+      "2026-08-09|Sunshine Coast": 8,
+      "2026-08-09|Wagga": 7,
+      "2026-07-15|HappyValley": 9
+    },
+    "snapshot": "/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-06.json"
+  },
+  "cloudflare_deployment": {
+    "ok": true,
+    "attempts": 1,
+    "active_meetings": 7,
+    "deployment_url": "https://a4664dd2.wongchoi-dashboard.pages.dev",
+    "production_url": "https://wongchoi-dashboard.pages.dev",
+    "commit": "manual-20260808161222",
+    "completed_at": "2026-08-09T02:12:48+10:00",
+    "verified": {
+      "attempt": 3,
+      "generated_at": "2026-08-09T02:12:16",
+      "meetings": [
+        "2026-08-09|Ballarat Synthetic",
+        "2026-08-09|Casterton",
+        "2026-08-09|Kalgoorlie",
+        "2026-08-09|Muswellbrook",
+        "2026-08-09|Sunshine Coast",
+        "2026-08-09|Wagga",
+        "2026-07-15|HappyValley"
+      ],
+      "missing": [],
+      "still_present": [],
+      "stale": false,
+      "ok": true
+    }
+  },
+  "errors": [],
+  "warnings": [
+    {
+      "at": "2026-08-08T23:34:49+10:00",
+      "message": "本機有 9 個已分析場次跑完咗但 dashboard 從來冇過（大概發佈失敗）—— 一併覆盤：['2026-08-08|Alice Springs', '2026-08-08|Casino', '2026-08-08|Caulfield Heath', '2026-08-08|Eagle Farm', '2026-08-08|Kembla Grange', '2026-08-08|Mildura', '2026-08-08|Morphettville', '2026-08-08|Randwick', '2026-08-08|Townsville']"
+    },
+    {
+      "at": "2026-08-09T00:16:54+10:00",
+      "message": "2026-08-09 Casterton: 個人頁今次只補 40/54，餘下 14 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-09T01:01:58+10:00",
+      "message": "2026-08-09 Muswellbrook: 個人頁今次只補 40/66，餘下 26 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-09T01:26:51+10:00",
+      "message": "2026-08-09 Sunshine Coast: 個人頁今次只補 40/80，餘下 40 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-09T01:51:01+10:00",
+      "message": "2026-08-09 Wagga: 個人頁今次只補 40/70，餘下 30 個下次補（TTL cache 會累積）"
+    }
+  ],
+  "retries": [
+    {
+      "at": "2026-08-09T02:12:48+10:00",
+      "what": "verify-live",
+      "attempt": 1,
+      "reason": "missing=['2026-08-09|Casterton', '2026-08-09|Kalgoorlie', '2026-08-09|Muswellbrook', '2026-08-09|Sunshine Coast', '2026-08-09|Wagga'] still_present=[] stale=True"
+    },
+    {
+      "at": "2026-08-09T02:13:09+10:00",
+      "what": "verify-live",
+      "attempt": 2,
+      "reason": "missing=['2026-08-09|Casterton', '2026-08-09|Kalgoorlie', '2026-08-09|Muswellbrook', '2026-08-09|Sunshine Coast', '2026-08-09|Wagga'] still_present=[] stale=True"
+    }
+  ]
+}

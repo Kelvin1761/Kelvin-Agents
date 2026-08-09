@@ -1,0 +1,950 @@
+[2026-08-08T23:34:48+10:00] === AU Wong Choi evening run · day=2026-08-08 · fetch delay=25.0s ===
+[2026-08-08T23:34:48+10:00] [preflight] ok {"archive_readable":true,"au_meeting_folders":98,"au_root":"/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing","mirror":"/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing"}
+[2026-08-08T23:34:48+10:00] [review-archive] start {"review_day":"2026-08-08"}
+[2026-08-08T23:34:49+10:00] ⚠️  本機有 9 個已分析場次跑完咗但 dashboard 從來冇過（大概發佈失敗）—— 一併覆盤：['2026-08-08|Alice Springs', '2026-08-08|Casino', '2026-08-08|Caulfield Heath', '2026-08-08|Eagle Farm', '2026-08-08|Kembla Grange', '2026-08-08|Mildura', '2026-08-08|Morphettville', '2026-08-08|Randwick', '2026-08-08|Townsville']
+[2026-08-08T23:34:49+10:00] [review-archive] dashboard-scan {"au_on_dashboard":["2026-08-09|Ballarat Synthetic"],"due":["2026-08-08|Alice Springs","2026-08-08|Casino","2026-08-08|Caulfield Heath","2026-08-08|Eagle Farm","2026-08-08|Kembla Grange","2026-08-08|Mildura","2026-08-08|Morphettville","2026-08-08|Randwick","2026-08-08|Townsville"]}
+[2026-08-08T23:34:53+10:00]    🌐 真 Chrome 已開（profile /Users/imac/.cache/wongchoi/sb_chrome_profile）
+[2026-08-08T23:34:59+10:00]    ✅ 207,397 bytes  https://www.sportsbetform.com.au/446824/3398527/
+[2026-08-08T23:35:29+10:00]    ✅ 177,947 bytes  https://www.sportsbetform.com.au/446824/3398528/
+[2026-08-08T23:36:00+10:00]    ✅ 206,487 bytes  https://www.sportsbetform.com.au/446824/3398529/
+[2026-08-08T23:36:30+10:00]    ✅ 206,693 bytes  https://www.sportsbetform.com.au/446824/3398530/
+[2026-08-08T23:37:01+10:00]    ✅ 181,944 bytes  https://www.sportsbetform.com.au/446824/3398531/
+[2026-08-08T23:37:32+10:00]    ✅ 183,106 bytes  https://www.sportsbetform.com.au/446824/3400300/
+[2026-08-08T23:38:02+10:00]    ✅ 160,624 bytes  https://www.sportsbetform.com.au/446824/3400301/
+[2026-08-08T23:38:02+10:00] [results-refresh] done {"expected":7,"failed":0,"had_before":0,"meeting":"2026-08-08 Alice Springs Race 1-7","refreshed":7}
+[2026-08-08T23:38:02+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/sb_results.py --meeting 2026-08-08 Alice Springs Race 1-7 --meeting-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Alice Springs Race 1-7
+[2026-08-08T23:38:03+10:00]    | ✅ 7 場賽果 → /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Alice Springs Race 1-7/Race_Results_Reflector.md
+[2026-08-08T23:38:03+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Alice Springs Race 1-7 --skip-backtest
+[2026-08-08T23:38:03+10:00]    | ✅ Using meeting dir: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Alice Springs Race 1-7
+[2026-08-08T23:38:03+10:00]    | ✅ Using results file: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Alice Springs Race 1-7/Race_Results_Reflector.md
+[2026-08-08T23:38:03+10:00]    | ✅ Unified reflector report written: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Alice Springs Race 1-7/2026-08-08 Alice Springs Race 1-7_Reflector_Report.md
+[2026-08-08T23:38:03+10:00]    | 
+[2026-08-08T23:38:03+10:00]    | 🏁 AU unified reflector complete
+[2026-08-08T23:38:03+10:00]    | - Meeting: 2026-08-08 Alice Springs Race 1-7
+[2026-08-08T23:38:03+10:00]    | - Results: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Alice Springs Race 1-7/Race_Results_Reflector.md
+[2026-08-08T23:38:03+10:00]    | - Report: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Alice Springs Race 1-7/2026-08-08 Alice Springs Race 1-7_Reflector_Report.md
+[2026-08-08T23:38:03+10:00]    · 2026-08-08 Alice Springs Race 1-7: archived {"races":[1,2,3,4,5,6,7]}
+[2026-08-08T23:38:33+10:00]    ✅ 319,790 bytes  https://www.sportsbetform.com.au/446841/3398680/
+[2026-08-08T23:39:04+10:00]    ✅ 363,008 bytes  https://www.sportsbetform.com.au/446841/3398685/
+[2026-08-08T23:39:35+10:00]    ✅ 412,627 bytes  https://www.sportsbetform.com.au/446841/3398688/
+[2026-08-08T23:40:06+10:00]    ✅ 363,689 bytes  https://www.sportsbetform.com.au/446841/3398691/
+[2026-08-08T23:40:36+10:00]    ✅ 342,959 bytes  https://www.sportsbetform.com.au/446841/3398693/
+[2026-08-08T23:41:08+10:00]    ✅ 365,280 bytes  https://www.sportsbetform.com.au/446841/3398694/
+[2026-08-08T23:41:39+10:00]    ✅ 499,838 bytes  https://www.sportsbetform.com.au/446841/3398695/
+[2026-08-08T23:42:10+10:00]    ✅ 476,878 bytes  https://www.sportsbetform.com.au/446841/3400858/
+[2026-08-08T23:42:10+10:00] [results-refresh] done {"expected":8,"failed":0,"had_before":0,"meeting":"2026-08-08 Casino Race 1-8","refreshed":8}
+[2026-08-08T23:42:10+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/sb_results.py --meeting 2026-08-08 Casino Race 1-8 --meeting-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Casino Race 1-8
+[2026-08-08T23:42:12+10:00]    | ✅ 8 場賽果 → /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Casino Race 1-8/Race_Results_Reflector.md
+[2026-08-08T23:42:12+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Casino Race 1-8 --skip-backtest
+[2026-08-08T23:42:12+10:00]    | ✅ Using meeting dir: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Casino Race 1-8
+[2026-08-08T23:42:12+10:00]    | ✅ Using results file: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Casino Race 1-8/Race_Results_Reflector.md
+[2026-08-08T23:42:12+10:00]    | ✅ Unified reflector report written: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Casino Race 1-8/2026-08-08 Casino Race 1-8_Reflector_Report.md
+[2026-08-08T23:42:12+10:00]    | 
+[2026-08-08T23:42:12+10:00]    | 🏁 AU unified reflector complete
+[2026-08-08T23:42:12+10:00]    | - Meeting: 2026-08-08 Casino Race 1-8
+[2026-08-08T23:42:12+10:00]    | - Results: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Casino Race 1-8/Race_Results_Reflector.md
+[2026-08-08T23:42:12+10:00]    | - Report: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Casino Race 1-8/2026-08-08 Casino Race 1-8_Reflector_Report.md
+[2026-08-08T23:42:12+10:00]    · 2026-08-08 Casino Race 1-8: archived {"races":[1,2,3,4,5,6,7,8]}
+[2026-08-08T23:42:40+10:00]    ✅ 245,667 bytes  https://www.sportsbetform.com.au/446846/3398743/
+[2026-08-08T23:43:10+10:00]    ✅ 408,065 bytes  https://www.sportsbetform.com.au/446846/3398745/
+[2026-08-08T23:43:41+10:00]    ✅ 229,095 bytes  https://www.sportsbetform.com.au/446846/3398747/
+[2026-08-08T23:44:11+10:00]    ✅ 321,429 bytes  https://www.sportsbetform.com.au/446846/3398749/
+[2026-08-08T23:44:41+10:00]    ✅ 387,508 bytes  https://www.sportsbetform.com.au/446846/3398750/
+[2026-08-08T23:45:11+10:00]    ✅ 275,215 bytes  https://www.sportsbetform.com.au/446846/3398751/
+[2026-08-08T23:45:42+10:00]    ✅ 342,917 bytes  https://www.sportsbetform.com.au/446846/3398753/
+[2026-08-08T23:46:12+10:00]    ✅ 318,708 bytes  https://www.sportsbetform.com.au/446846/3398754/
+[2026-08-08T23:46:42+10:00]    ✅ 410,107 bytes  https://www.sportsbetform.com.au/446846/3399349/
+[2026-08-08T23:46:42+10:00] [results-refresh] done {"expected":9,"failed":0,"had_before":0,"meeting":"2026-08-08 Caulfield Heath Race 1-9","refreshed":9}
+[2026-08-08T23:46:42+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/sb_results.py --meeting 2026-08-08 Caulfield Heath Race 1-9 --meeting-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Caulfield Heath Race 1-9
+[2026-08-08T23:46:44+10:00]    | ✅ 9 場賽果 → /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Caulfield Heath Race 1-9/Race_Results_Reflector.md
+[2026-08-08T23:46:44+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Caulfield Heath Race 1-9 --skip-backtest
+[2026-08-08T23:46:44+10:00]    | ✅ Using meeting dir: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Caulfield Heath Race 1-9
+[2026-08-08T23:46:44+10:00]    | ✅ Using results file: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Caulfield Heath Race 1-9/Race_Results_Reflector.md
+[2026-08-08T23:46:44+10:00]    | ✅ Unified reflector report written: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Caulfield Heath Race 1-9/2026-08-08 Caulfield Heath Race 1-9_Reflector_Report.md
+[2026-08-08T23:46:44+10:00]    | 
+[2026-08-08T23:46:44+10:00]    | 🏁 AU unified reflector complete
+[2026-08-08T23:46:44+10:00]    | - Meeting: 2026-08-08 Caulfield Heath Race 1-9
+[2026-08-08T23:46:44+10:00]    | - Results: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Caulfield Heath Race 1-9/Race_Results_Reflector.md
+[2026-08-08T23:46:44+10:00]    | - Report: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Caulfield Heath Race 1-9/2026-08-08 Caulfield Heath Race 1-9_Reflector_Report.md
+[2026-08-08T23:46:44+10:00]    · 2026-08-08 Caulfield Heath Race 1-9: archived {"races":[1,2,3,4,5,6,7,8,9]}
+[2026-08-08T23:47:12+10:00]    ✅ 343,223 bytes  https://www.sportsbetform.com.au/446832/3398618/
+[2026-08-08T23:47:43+10:00]    ✅ 343,435 bytes  https://www.sportsbetform.com.au/446832/3398619/
+[2026-08-08T23:48:14+10:00]    ✅ 433,849 bytes  https://www.sportsbetform.com.au/446832/3398620/
+[2026-08-08T23:48:44+10:00]    ✅ 237,071 bytes  https://www.sportsbetform.com.au/446832/3398623/
+[2026-08-08T23:49:15+10:00]    ✅ 431,454 bytes  https://www.sportsbetform.com.au/446832/3398624/
+[2026-08-08T23:49:47+10:00]    ✅ 521,662 bytes  https://www.sportsbetform.com.au/446832/3398627/
+[2026-08-08T23:50:17+10:00]    ✅ 366,505 bytes  https://www.sportsbetform.com.au/446832/3398630/
+[2026-08-08T23:50:48+10:00]    ✅ 299,316 bytes  https://www.sportsbetform.com.au/446832/3398633/
+[2026-08-08T23:51:18+10:00]    ✅ 411,133 bytes  https://www.sportsbetform.com.au/446832/3398637/
+[2026-08-08T23:51:18+10:00] [results-refresh] done {"expected":9,"failed":0,"had_before":0,"meeting":"2026-08-08 Eagle Farm Race 1-9","refreshed":9}
+[2026-08-08T23:51:18+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/sb_results.py --meeting 2026-08-08 Eagle Farm Race 1-9 --meeting-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Eagle Farm Race 1-9
+[2026-08-08T23:51:21+10:00]    | ✅ 9 場賽果 → /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Eagle Farm Race 1-9/Race_Results_Reflector.md
+[2026-08-08T23:51:21+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Eagle Farm Race 1-9 --skip-backtest
+[2026-08-08T23:51:21+10:00]    | ✅ Using meeting dir: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Eagle Farm Race 1-9
+[2026-08-08T23:51:21+10:00]    | ✅ Using results file: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Eagle Farm Race 1-9/Race_Results_Reflector.md
+[2026-08-08T23:51:21+10:00]    | ✅ Unified reflector report written: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Eagle Farm Race 1-9/2026-08-08 Eagle Farm Race 1-9_Reflector_Report.md
+[2026-08-08T23:51:21+10:00]    | 
+[2026-08-08T23:51:21+10:00]    | 🏁 AU unified reflector complete
+[2026-08-08T23:51:21+10:00]    | - Meeting: 2026-08-08 Eagle Farm Race 1-9
+[2026-08-08T23:51:21+10:00]    | - Results: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Eagle Farm Race 1-9/Race_Results_Reflector.md
+[2026-08-08T23:51:21+10:00]    | - Report: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Eagle Farm Race 1-9/2026-08-08 Eagle Farm Race 1-9_Reflector_Report.md
+[2026-08-08T23:51:21+10:00]    · 2026-08-08 Eagle Farm Race 1-9: archived {"races":[1,2,3,4,5,6,7,8,9]}
+[2026-08-08T23:51:49+10:00]    ✅ 221,038 bytes  https://www.sportsbetform.com.au/446833/3398621/
+[2026-08-08T23:52:20+10:00]    ✅ 302,284 bytes  https://www.sportsbetform.com.au/446833/3398625/
+[2026-08-08T23:52:50+10:00]    ✅ 230,319 bytes  https://www.sportsbetform.com.au/446833/3398628/
+[2026-08-08T23:53:21+10:00]    ✅ 232,261 bytes  https://www.sportsbetform.com.au/446833/3398631/
+[2026-08-08T23:53:52+10:00]    ✅ 348,677 bytes  https://www.sportsbetform.com.au/446833/3398635/
+[2026-08-08T23:54:23+10:00]    ✅ 262,193 bytes  https://www.sportsbetform.com.au/446833/3398636/
+[2026-08-08T23:54:53+10:00]    ✅ 321,199 bytes  https://www.sportsbetform.com.au/446833/3398639/
+[2026-08-08T23:55:24+10:00]    ✅ 298,287 bytes  https://www.sportsbetform.com.au/446833/3398641/
+[2026-08-08T23:55:24+10:00] [results-refresh] done {"expected":8,"failed":0,"had_before":0,"meeting":"2026-08-08 Kembla Grange Race 1-8","refreshed":8}
+[2026-08-08T23:55:24+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/sb_results.py --meeting 2026-08-08 Kembla Grange Race 1-8 --meeting-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Kembla Grange Race 1-8
+[2026-08-08T23:55:26+10:00]    | ✅ 8 場賽果 → /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Kembla Grange Race 1-8/Race_Results_Reflector.md
+[2026-08-08T23:55:26+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Kembla Grange Race 1-8 --skip-backtest
+[2026-08-08T23:55:26+10:00]    | ✅ Using meeting dir: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Kembla Grange Race 1-8
+[2026-08-08T23:55:26+10:00]    | ✅ Using results file: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Kembla Grange Race 1-8/Race_Results_Reflector.md
+[2026-08-08T23:55:26+10:00]    | ✅ Unified reflector report written: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Kembla Grange Race 1-8/2026-08-08 Kembla Grange Race 1-8_Reflector_Report.md
+[2026-08-08T23:55:26+10:00]    | 
+[2026-08-08T23:55:26+10:00]    | 🏁 AU unified reflector complete
+[2026-08-08T23:55:26+10:00]    | - Meeting: 2026-08-08 Kembla Grange Race 1-8
+[2026-08-08T23:55:26+10:00]    | - Results: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Kembla Grange Race 1-8/Race_Results_Reflector.md
+[2026-08-08T23:55:26+10:00]    | - Report: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Kembla Grange Race 1-8/2026-08-08 Kembla Grange Race 1-8_Reflector_Report.md
+[2026-08-08T23:55:26+10:00]    · 2026-08-08 Kembla Grange Race 1-8: archived {"races":[1,2,3,4,5,6,7,8]}
+[2026-08-08T23:55:55+10:00]    ✅ 202,247 bytes  https://www.sportsbetform.com.au/446848/3398759/
+[2026-08-08T23:56:26+10:00]    ✅ 267,345 bytes  https://www.sportsbetform.com.au/446848/3398760/
+[2026-08-08T23:56:56+10:00]    ✅ 251,116 bytes  https://www.sportsbetform.com.au/446848/3398762/
+[2026-08-08T23:57:27+10:00]    ✅ 228,657 bytes  https://www.sportsbetform.com.au/446848/3398763/
+[2026-08-08T23:57:57+10:00]    ✅ 297,417 bytes  https://www.sportsbetform.com.au/446848/3398765/
+[2026-08-08T23:58:28+10:00]    ✅ 365,466 bytes  https://www.sportsbetform.com.au/446848/3398768/
+[2026-08-08T23:58:59+10:00]    ✅ 296,726 bytes  https://www.sportsbetform.com.au/446848/3398769/
+[2026-08-08T23:58:59+10:00] [results-refresh] done {"expected":7,"failed":0,"had_before":0,"meeting":"2026-08-08 Mildura Race 1-7","refreshed":7}
+[2026-08-08T23:58:59+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/sb_results.py --meeting 2026-08-08 Mildura Race 1-7 --meeting-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Mildura Race 1-7
+[2026-08-08T23:59:01+10:00]    | ✅ 7 場賽果 → /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Mildura Race 1-7/Race_Results_Reflector.md
+[2026-08-08T23:59:01+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Mildura Race 1-7 --skip-backtest
+[2026-08-08T23:59:01+10:00]    | ✅ Using meeting dir: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Mildura Race 1-7
+[2026-08-08T23:59:01+10:00]    | ✅ Using results file: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Mildura Race 1-7/Race_Results_Reflector.md
+[2026-08-08T23:59:01+10:00]    | ✅ Unified reflector report written: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Mildura Race 1-7/2026-08-08 Mildura Race 1-7_Reflector_Report.md
+[2026-08-08T23:59:01+10:00]    | 
+[2026-08-08T23:59:01+10:00]    | 🏁 AU unified reflector complete
+[2026-08-08T23:59:01+10:00]    | - Meeting: 2026-08-08 Mildura Race 1-7
+[2026-08-08T23:59:01+10:00]    | - Results: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Mildura Race 1-7/Race_Results_Reflector.md
+[2026-08-08T23:59:01+10:00]    | - Report: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Mildura Race 1-7/2026-08-08 Mildura Race 1-7_Reflector_Report.md
+[2026-08-08T23:59:01+10:00]    · 2026-08-08 Mildura Race 1-7: archived {"races":[1,2,3,4,5,6,7]}
+[2026-08-08T23:59:29+10:00]    ✅ 171,278 bytes  https://www.sportsbetform.com.au/446851/3398780/
+[2026-08-09T00:00:00+10:00]    ✅ 231,933 bytes  https://www.sportsbetform.com.au/446851/3398782/
+[2026-08-09T00:00:31+10:00]    ✅ 343,428 bytes  https://www.sportsbetform.com.au/446851/3398784/
+[2026-08-09T00:01:02+10:00]    ✅ 365,368 bytes  https://www.sportsbetform.com.au/446851/3398786/
+[2026-08-09T00:01:33+10:00]    ✅ 341,866 bytes  https://www.sportsbetform.com.au/446851/3398788/
+[2026-08-09T00:02:03+10:00]    ✅ 298,203 bytes  https://www.sportsbetform.com.au/446851/3398790/
+[2026-08-09T00:02:34+10:00]    ✅ 344,221 bytes  https://www.sportsbetform.com.au/446851/3398791/
+[2026-08-09T00:03:05+10:00]    ✅ 341,400 bytes  https://www.sportsbetform.com.au/446851/3398792/
+[2026-08-09T00:03:36+10:00]    ✅ 389,322 bytes  https://www.sportsbetform.com.au/446851/3398793/
+[2026-08-09T00:03:36+10:00] [results-refresh] done {"expected":9,"failed":0,"had_before":0,"meeting":"2026-08-08 Morphettville Race 1-9","refreshed":9}
+[2026-08-09T00:03:36+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/sb_results.py --meeting 2026-08-08 Morphettville Race 1-9 --meeting-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Morphettville Race 1-9
+[2026-08-09T00:03:37+10:00]    | ✅ 9 場賽果 → /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Morphettville Race 1-9/Race_Results_Reflector.md
+[2026-08-09T00:03:37+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Morphettville Race 1-9 --skip-backtest
+[2026-08-09T00:03:38+10:00]    | ✅ Using meeting dir: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Morphettville Race 1-9
+[2026-08-09T00:03:38+10:00]    | ✅ Using results file: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Morphettville Race 1-9/Race_Results_Reflector.md
+[2026-08-09T00:03:38+10:00]    | ✅ Unified reflector report written: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Morphettville Race 1-9/2026-08-08 Morphettville Race 1-9_Reflector_Report.md
+[2026-08-09T00:03:38+10:00]    | 
+[2026-08-09T00:03:38+10:00]    | 🏁 AU unified reflector complete
+[2026-08-09T00:03:38+10:00]    | - Meeting: 2026-08-08 Morphettville Race 1-9
+[2026-08-09T00:03:38+10:00]    | - Results: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Morphettville Race 1-9/Race_Results_Reflector.md
+[2026-08-09T00:03:38+10:00]    | - Report: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Morphettville Race 1-9/2026-08-08 Morphettville Race 1-9_Reflector_Report.md
+[2026-08-09T00:03:38+10:00]    · 2026-08-08 Morphettville Race 1-9: archived {"races":[1,2,3,4,5,6,7,8,9]}
+[2026-08-09T00:04:06+10:00]    ✅ 335,570 bytes  https://www.sportsbetform.com.au/446836/3398645/
+[2026-08-09T00:04:37+10:00]    ✅ 444,843 bytes  https://www.sportsbetform.com.au/446836/3398647/
+[2026-08-09T00:05:08+10:00]    ✅ 297,957 bytes  https://www.sportsbetform.com.au/446836/3398653/
+[2026-08-09T00:05:39+10:00]    ✅ 366,131 bytes  https://www.sportsbetform.com.au/446836/3398656/
+[2026-08-09T00:06:10+10:00]    ✅ 389,192 bytes  https://www.sportsbetform.com.au/446836/3398662/
+[2026-08-09T00:06:35+10:00]    ♻️ 瀏覽器死咗（TargetClosedError）—— 重開再試 1/2：https://www.sportsbetform.com.au/446836/3398669/
+[2026-08-09T00:06:43+10:00]    🌐 真 Chrome 已開（profile /Users/imac/.cache/wongchoi/sb_chrome_profile）
+[2026-08-09T00:07:05+10:00]    ✅ 342,616 bytes  https://www.sportsbetform.com.au/446836/3398669/
+[2026-08-09T00:07:36+10:00]    ✅ 343,740 bytes  https://www.sportsbetform.com.au/446836/3398673/
+[2026-08-09T00:08:07+10:00]    ✅ 252,476 bytes  https://www.sportsbetform.com.au/446836/3399384/
+[2026-08-09T00:08:38+10:00]    ✅ 300,013 bytes  https://www.sportsbetform.com.au/446836/3399390/
+[2026-08-09T00:09:08+10:00]    ✅ 231,451 bytes  https://www.sportsbetform.com.au/446836/3399395/
+[2026-08-09T00:09:08+10:00] [results-refresh] done {"expected":10,"failed":0,"had_before":0,"meeting":"2026-08-08 Randwick Race 1-10","refreshed":10}
+[2026-08-09T00:09:08+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/sb_results.py --meeting 2026-08-08 Randwick Race 1-10 --meeting-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Randwick Race 1-10
+[2026-08-09T00:09:10+10:00]    | ✅ 10 場賽果 → /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Randwick Race 1-10/Race_Results_Reflector.md
+[2026-08-09T00:09:10+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Randwick Race 1-10 --skip-backtest
+[2026-08-09T00:09:11+10:00]    | ✅ Using meeting dir: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Randwick Race 1-10
+[2026-08-09T00:09:11+10:00]    | ✅ Using results file: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Randwick Race 1-10/Race_Results_Reflector.md
+[2026-08-09T00:09:11+10:00]    | ✅ Unified reflector report written: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Randwick Race 1-10/2026-08-08 Randwick Race 1-10_Reflector_Report.md
+[2026-08-09T00:09:11+10:00]    | 
+[2026-08-09T00:09:11+10:00]    | 🏁 AU unified reflector complete
+[2026-08-09T00:09:11+10:00]    | - Meeting: 2026-08-08 Randwick Race 1-10
+[2026-08-09T00:09:11+10:00]    | - Results: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Randwick Race 1-10/Race_Results_Reflector.md
+[2026-08-09T00:09:11+10:00]    | - Report: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Randwick Race 1-10/2026-08-08 Randwick Race 1-10_Reflector_Report.md
+[2026-08-09T00:09:11+10:00]    · 2026-08-08 Randwick Race 1-10: archived {"races":[1,2,3,4,5,6,7,8,9,10]}
+[2026-08-09T00:09:39+10:00]    ✅ 380,363 bytes  https://www.sportsbetform.com.au/446838/3398657/
+[2026-08-09T00:10:10+10:00]    ✅ 432,275 bytes  https://www.sportsbetform.com.au/446838/3398661/
+[2026-08-09T00:10:41+10:00]    ✅ 478,608 bytes  https://www.sportsbetform.com.au/446838/3398664/
+[2026-08-09T00:11:12+10:00]    ✅ 501,925 bytes  https://www.sportsbetform.com.au/446838/3398667/
+[2026-08-09T00:11:43+10:00]    ✅ 490,830 bytes  https://www.sportsbetform.com.au/446838/3398671/
+[2026-08-09T00:12:14+10:00]    ✅ 501,342 bytes  https://www.sportsbetform.com.au/446838/3398675/
+[2026-08-09T00:12:45+10:00]    ✅ 520,518 bytes  https://www.sportsbetform.com.au/446838/3398678/
+[2026-08-09T00:13:17+10:00]    ✅ 586,924 bytes  https://www.sportsbetform.com.au/446838/3398682/
+[2026-08-09T00:13:17+10:00] [results-refresh] done {"expected":8,"failed":0,"had_before":0,"meeting":"2026-08-08 Townsville Race 1-8","refreshed":8}
+[2026-08-09T00:13:17+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/sb_results.py --meeting 2026-08-08 Townsville Race 1-8 --meeting-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Townsville Race 1-8
+[2026-08-09T00:13:20+10:00]    | ✅ 8 場賽果 → /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Townsville Race 1-8/Race_Results_Reflector.md
+[2026-08-09T00:13:20+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Townsville Race 1-8 --skip-backtest
+[2026-08-09T00:13:20+10:00]    | ✅ Using meeting dir: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Townsville Race 1-8
+[2026-08-09T00:13:20+10:00]    | ✅ Using results file: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Townsville Race 1-8/Race_Results_Reflector.md
+[2026-08-09T00:13:20+10:00]    | ✅ Unified reflector report written: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Townsville Race 1-8/2026-08-08 Townsville Race 1-8_Reflector_Report.md
+[2026-08-09T00:13:20+10:00]    | 
+[2026-08-09T00:13:20+10:00]    | 🏁 AU unified reflector complete
+[2026-08-09T00:13:20+10:00]    | - Meeting: 2026-08-08 Townsville Race 1-8
+[2026-08-09T00:13:20+10:00]    | - Results: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Townsville Race 1-8/Race_Results_Reflector.md
+[2026-08-09T00:13:20+10:00]    | - Report: /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-08 Townsville Race 1-8/2026-08-08 Townsville Race 1-8_Reflector_Report.md
+[2026-08-09T00:13:20+10:00]    · 2026-08-08 Townsville Race 1-8: archived {"races":[1,2,3,4,5,6,7,8]}
+[2026-08-09T00:13:20+10:00] [review-archive] done {"archived":9,"candidates":9}
+[2026-08-09T00:13:20+10:00] [analyse-next-day] start
+[2026-08-09T00:13:20+10:00]    （cache）https://www.sportsbetform.com.au/2026-08-09/
+[2026-08-09T00:13:20+10:00] [discover] ok {"api_venues":["Ballarat Synthetic","Casterton","Kalgoorlie","Muswellbrook","Sunshine Coast","Wagga"],"index_meetings":15,"race_day":"2026-08-09"}
+[2026-08-09T00:13:20+10:00] [discover] non-au-excluded {"meetings":["ayr","chepstow","curragh","downpatrick","kilbeggan","leicester","lingfield","scottsville","woodbine"],"reason":"API 澳洲名單冇呢啲馬場"}
+[2026-08-09T00:13:20+10:00]    · 2026-08-09 Ballarat Synthetic Race 1-8: skipped_already_analysed {"races":8}
+[2026-08-09T00:13:48+10:00]    ✅ 277,274 bytes  https://www.sportsbetform.com.au/446944/3399538/
+[2026-08-09T00:14:19+10:00]    ✅ 163,947 bytes  https://www.sportsbetform.com.au/446944/3399539/
+[2026-08-09T00:14:50+10:00]    ✅ 187,325 bytes  https://www.sportsbetform.com.au/446944/3399540/
+[2026-08-09T00:15:21+10:00]    ✅ 186,233 bytes  https://www.sportsbetform.com.au/446944/3399541/
+[2026-08-09T00:15:53+10:00]    ✅ 335,747 bytes  https://www.sportsbetform.com.au/446944/3399542/
+[2026-08-09T00:16:24+10:00]    ✅ 254,273 bytes  https://www.sportsbetform.com.au/446944/3399543/
+[2026-08-09T00:16:54+10:00]    ✅ 277,504 bytes  https://www.sportsbetform.com.au/446944/3399544/
+[2026-08-09T00:16:54+10:00] ⚠️  2026-08-09 Casterton: 個人頁今次只補 40/54，餘下 14 個下次補（TTL cache 會累積）
+[2026-08-09T00:17:25+10:00]    ✅ 31,254 bytes  https://www.sportsbetform.com.au/Trainer/774/
+[2026-08-09T00:17:55+10:00]    ✅ 21,539 bytes  https://www.sportsbetform.com.au/Jockey/804674/
+[2026-08-09T00:18:26+10:00]    ✅ 30,758 bytes  https://www.sportsbetform.com.au/Trainer/2489/
+[2026-08-09T00:18:56+10:00]    ✅ 32,612 bytes  https://www.sportsbetform.com.au/Jockey/2020/
+[2026-08-09T00:19:27+10:00]    ✅ 40,587 bytes  https://www.sportsbetform.com.au/Trainer/15367/
+[2026-08-09T00:19:57+10:00]    ✅ 31,931 bytes  https://www.sportsbetform.com.au/Jockey/1860/
+[2026-08-09T00:20:28+10:00]    ✅ 40,262 bytes  https://www.sportsbetform.com.au/Trainer/14536/
+[2026-08-09T00:20:58+10:00]    ✅ 8,408 bytes  https://www.sportsbetform.com.au/Jockey/805164/
+[2026-08-09T00:21:29+10:00]    ✅ 37,840 bytes  https://www.sportsbetform.com.au/Trainer/6146/
+[2026-08-09T00:21:59+10:00]    ✅ 28,013 bytes  https://www.sportsbetform.com.au/Jockey/15824/
+[2026-08-09T00:22:30+10:00]    ✅ 39,092 bytes  https://www.sportsbetform.com.au/Trainer/3419/
+[2026-08-09T00:23:01+10:00]    ✅ 35,795 bytes  https://www.sportsbetform.com.au/Jockey/2583/
+[2026-08-09T00:23:32+10:00]    ✅ 41,144 bytes  https://www.sportsbetform.com.au/Trainer/9230/
+[2026-08-09T00:24:02+10:00]    ✅ 32,187 bytes  https://www.sportsbetform.com.au/Jockey/772348/
+[2026-08-09T00:24:33+10:00]    ✅ 34,651 bytes  https://www.sportsbetform.com.au/Jockey/16833/
+[2026-08-09T00:25:03+10:00]    ✅ 32,030 bytes  https://www.sportsbetform.com.au/Trainer/50403/
+[2026-08-09T00:25:33+10:00]    ✅ 32,477 bytes  https://www.sportsbetform.com.au/Jockey/771420/
+[2026-08-09T00:26:04+10:00]    ✅ 38,702 bytes  https://www.sportsbetform.com.au/Trainer/6224/
+[2026-08-09T00:26:35+10:00]    ✅ 40,745 bytes  https://www.sportsbetform.com.au/Jockey/14742/
+[2026-08-09T00:27:06+10:00]    ✅ 39,807 bytes  https://www.sportsbetform.com.au/Trainer/15641/
+[2026-08-09T00:27:37+10:00]    ✅ 37,031 bytes  https://www.sportsbetform.com.au/Trainer/758/
+[2026-08-09T00:28:07+10:00]    ✅ 42,349 bytes  https://www.sportsbetform.com.au/Trainer/5221/
+[2026-08-09T00:28:37+10:00]    ✅ 38,205 bytes  https://www.sportsbetform.com.au/Trainer/20789/
+[2026-08-09T00:29:08+10:00]    ✅ 41,260 bytes  https://www.sportsbetform.com.au/Trainer/6251/
+[2026-08-09T00:29:39+10:00]    ✅ 37,265 bytes  https://www.sportsbetform.com.au/Trainer/5171/
+[2026-08-09T00:30:10+10:00]    ✅ 35,779 bytes  https://www.sportsbetform.com.au/Jockey/1973/
+[2026-08-09T00:30:41+10:00]    ✅ 36,759 bytes  https://www.sportsbetform.com.au/Trainer/23172/
+[2026-08-09T00:31:12+10:00]    ✅ 41,044 bytes  https://www.sportsbetform.com.au/Trainer/1829/
+[2026-08-09T00:31:42+10:00]    ✅ 35,905 bytes  https://www.sportsbetform.com.au/Trainer/20213/
+[2026-08-09T00:32:13+10:00]    ✅ 33,691 bytes  https://www.sportsbetform.com.au/Trainer/14126/
+[2026-08-09T00:32:43+10:00]    ✅ 25,749 bytes  https://www.sportsbetform.com.au/Jockey/3455/
+[2026-08-09T00:33:14+10:00]    ✅ 34,266 bytes  https://www.sportsbetform.com.au/Trainer/1931/
+[2026-08-09T00:33:44+10:00]    ✅ 29,389 bytes  https://www.sportsbetform.com.au/Jockey/36655/
+[2026-08-09T00:34:15+10:00]    ✅ 36,028 bytes  https://www.sportsbetform.com.au/Trainer/15207/
+[2026-08-09T00:34:46+10:00]    ✅ 39,568 bytes  https://www.sportsbetform.com.au/Trainer/15922/
+[2026-08-09T00:35:16+10:00]    ✅ 34,941 bytes  https://www.sportsbetform.com.au/Trainer/14833/
+[2026-08-09T00:35:47+10:00]    ✅ 37,265 bytes  https://www.sportsbetform.com.au/Trainer/21168/
+[2026-08-09T00:36:17+10:00]    ✅ 27,982 bytes  https://www.sportsbetform.com.au/Jockey/782466/
+[2026-08-09T00:36:48+10:00]    ✅ 37,943 bytes  https://www.sportsbetform.com.au/Trainer/6451/
+[2026-08-09T00:37:18+10:00]    ✅ 34,396 bytes  https://www.sportsbetform.com.au/Trainer/6533/
+[2026-08-09T00:37:18+10:00] [warm-people] ok {"fetched":40,"meeting":"2026-08-09 Casterton","needed":54}
+[2026-08-09T00:37:18+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/claw_sportsbet_form.py --meeting-url https://www.sportsbetform.com.au/446944/3399538/ --races 3399538,3399539,3399540,3399541,3399542,3399543,3399544 --out-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Casterton Race 1-7 --date 2026-08-09 --venue Casterton --delay 25.0
+[2026-08-09T00:37:20+10:00]    | （cache）https://www.sportsbetform.com.au/446944/3399538/
+[2026-08-09T00:37:20+10:00]    |    （cache）https://www.sportsbetform.com.au/446944/3399539/
+[2026-08-09T00:37:20+10:00]    |    （cache）https://www.sportsbetform.com.au/446944/3399540/
+[2026-08-09T00:37:20+10:00]    |    （cache）https://www.sportsbetform.com.au/446944/3399541/
+[2026-08-09T00:37:20+10:00]    |    （cache）https://www.sportsbetform.com.au/446944/3399542/
+[2026-08-09T00:37:20+10:00]    |    （cache）https://www.sportsbetform.com.au/446944/3399543/
+[2026-08-09T00:37:20+10:00]    |    （cache）https://www.sportsbetform.com.au/446944/3399544/
+[2026-08-09T00:37:20+10:00]    |    ✅ R1: 10 匹 → 08-09 Race 1 Formguide.md
+[2026-08-09T00:37:20+10:00]    |    ✅ R2: 5 匹 → 08-09 Race 2 Formguide.md
+[2026-08-09T00:37:20+10:00]    |    ✅ R3: 6 匹 → 08-09 Race 3 Formguide.md
+[2026-08-09T00:37:20+10:00]    |    ✅ R4: 6 匹 → 08-09 Race 4 Formguide.md
+[2026-08-09T00:37:20+10:00]    |    ✅ R5: 14 匹 → 08-09 Race 5 Formguide.md
+[2026-08-09T00:37:20+10:00]    |    ✅ R6: 9 匹 → 08-09 Race 6 Formguide.md
+[2026-08-09T00:37:20+10:00]    |    ✅ R7: 10 匹 → 08-09 Race 7 Formguide.md
+[2026-08-09T00:37:20+10:00]    |    往績行：保留 530，因為喺 2026-08-09 當日或之後而丟棄 0
+[2026-08-09T00:37:20+10:00]    |    💰 賠率快照：56 匹 → Odds.json
+[2026-08-09T00:37:20+10:00]    |    📇 馬匹索引 +344 條往績（共 23,466 匹）
+[2026-08-09T00:37:20+10:00]    |    騎練統計：54 個人物，需要補 13，今次抓 13
+[2026-08-09T00:37:20+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/774/
+[2026-08-09T00:37:20+10:00]    |    （cache）https://www.sportsbetform.com.au/Jockey/804674/
+[2026-08-09T00:37:20+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/2489/
+[2026-08-09T00:37:20+10:00]    |    （cache）https://www.sportsbetform.com.au/Jockey/1860/
+[2026-08-09T00:37:20+10:00]    |    （cache）https://www.sportsbetform.com.au/Jockey/805164/
+[2026-08-09T00:37:20+10:00]    |    （cache）https://www.sportsbetform.com.au/Jockey/1973/
+[2026-08-09T00:37:20+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/14126/
+[2026-08-09T00:37:20+10:00]    |    （cache）https://www.sportsbetform.com.au/Jockey/3455/
+[2026-08-09T00:37:20+10:00]    |    （cache）https://www.sportsbetform.com.au/Jockey/782466/
+[2026-08-09T00:37:20+10:00]    |    騎練統計：成功 8，cache 共 1643
+[2026-08-09T00:37:24+10:00] [ra-ratings] ok {"filled":34,"meeting":"2026-08-09 Casterton Race 1-7","no_official":22,"ra_venue":"Casterton"}
+[2026-08-09T00:37:24+10:00] [mapping-update] ok {"meeting":"2026-08-09 Casterton Race 1-7","races":7}
+[2026-08-09T00:37:24+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Casterton Race 1-7 --auto --skip-cloudflare-deploy --race-workers 1 --going Soft 6
+[2026-08-09T00:37:33+10:00]    | 🧠 Building deterministic Logic for Race 7...
+[2026-08-09T00:37:33+10:00]    | 
+[2026-08-09T00:37:33+10:00]    | ========================================================================
+[2026-08-09T00:37:33+10:00]    | Build deterministic Logic — Race 1
+[2026-08-09T00:37:33+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Casterton Race 1-7/08-09 Race 1 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Casterton Race 1-7/Race_1_Logic.json
+[2026-08-09T00:37:33+10:00]    | ========================================================================
+[2026-08-09T00:37:33+10:00]    | 
+[2026-08-09T00:37:33+10:00]    | ========================================================================
+[2026-08-09T00:37:33+10:00]    | Build deterministic Logic — Race 2
+[2026-08-09T00:37:33+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Casterton Race 1-7/08-09 Race 2 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Casterton Race 1-7/Race_2_Logic.json
+[2026-08-09T00:37:33+10:00]    | ========================================================================
+[2026-08-09T00:37:33+10:00]    | 
+[2026-08-09T00:37:33+10:00]    | ========================================================================
+[2026-08-09T00:37:33+10:00]    | Build deterministic Logic — Race 3
+[2026-08-09T00:37:33+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Casterton Race 1-7/08-09 Race 3 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Casterton Race 1-7/Race_3_Logic.json
+[2026-08-09T00:37:33+10:00]    | ========================================================================
+[2026-08-09T00:37:33+10:00]    | 
+[2026-08-09T00:37:33+10:00]    | ========================================================================
+[2026-08-09T00:37:33+10:00]    | Build deterministic Logic — Race 4
+[2026-08-09T00:37:33+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Casterton Race 1-7/08-09 Race 4 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Casterton Race 1-7/Race_4_Logic.json
+[2026-08-09T00:37:33+10:00]    | ========================================================================
+[2026-08-09T00:37:33+10:00]    | 
+[2026-08-09T00:37:33+10:00]    | ========================================================================
+[2026-08-09T00:37:33+10:00]    | Build deterministic Logic — Race 5
+[2026-08-09T00:37:33+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Casterton Race 1-7/08-09 Race 5 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Casterton Race 1-7/Race_5_Logic.json
+[2026-08-09T00:37:33+10:00]    | ========================================================================
+[2026-08-09T00:37:33+10:00]    | 
+[2026-08-09T00:37:33+10:00]    | ========================================================================
+[2026-08-09T00:37:33+10:00]    | Build deterministic Logic — Race 6
+[2026-08-09T00:37:33+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Casterton Race 1-7/08-09 Race 6 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Casterton Race 1-7/Race_6_Logic.json
+[2026-08-09T00:37:33+10:00]    | ========================================================================
+[2026-08-09T00:37:33+10:00]    | 
+[2026-08-09T00:37:33+10:00]    | ========================================================================
+[2026-08-09T00:37:33+10:00]    | Build deterministic Logic — Race 7
+[2026-08-09T00:37:33+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Casterton Race 1-7/08-09 Race 7 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Casterton Race 1-7/Race_7_Logic.json
+[2026-08-09T00:37:33+10:00]    | ========================================================================
+[2026-08-09T00:37:33+10:00]    | ⏭️ Cloudflare deploy skipped for AU Wong Choi (--skip-cloudflare-deploy)
+[2026-08-09T00:37:33+10:00]    | ====================================================================
+[2026-08-09T00:37:33+10:00]    | ✅ AU full-Python pipeline complete
+[2026-08-09T00:37:33+10:00]    | ====================================================================
+[2026-08-09T00:37:33+10:00]    · 2026-08-09 Casterton Race 1-7: analysed {"expected":7,"going":"Soft 6","races":[1,2,3,4,5,6,7]}
+[2026-08-09T00:37:49+10:00]    ✅ 188,060 bytes  https://www.sportsbetform.com.au/446959/3399665/
+[2026-08-09T00:38:20+10:00]    ✅ 233,878 bytes  https://www.sportsbetform.com.au/446959/3399666/
+[2026-08-09T00:38:51+10:00]    ✅ 318,906 bytes  https://www.sportsbetform.com.au/446959/3399668/
+[2026-08-09T00:39:22+10:00]    ✅ 234,041 bytes  https://www.sportsbetform.com.au/446959/3399670/
+[2026-08-09T00:39:52+10:00]    ✅ 256,470 bytes  https://www.sportsbetform.com.au/446959/3399672/
+[2026-08-09T00:40:23+10:00]    ✅ 211,667 bytes  https://www.sportsbetform.com.au/446959/3399674/
+[2026-08-09T00:40:54+10:00]    ✅ 366,457 bytes  https://www.sportsbetform.com.au/446959/3399676/
+[2026-08-09T00:41:25+10:00]    ✅ 436,608 bytes  https://www.sportsbetform.com.au/446959/3399677/
+[2026-08-09T00:41:56+10:00]    ✅ 33,642 bytes  https://www.sportsbetform.com.au/Trainer/6225/
+[2026-08-09T00:42:26+10:00]    ✅ 39,315 bytes  https://www.sportsbetform.com.au/Jockey/16026/
+[2026-08-09T00:42:58+10:00]    ✅ 39,340 bytes  https://www.sportsbetform.com.au/Trainer/1183/
+[2026-08-09T00:43:29+10:00]    ✅ 40,844 bytes  https://www.sportsbetform.com.au/Jockey/7946/
+[2026-08-09T00:44:01+10:00]    ✅ 40,115 bytes  https://www.sportsbetform.com.au/Jockey/2650/
+[2026-08-09T00:44:31+10:00]    ✅ 36,584 bytes  https://www.sportsbetform.com.au/Trainer/2524/
+[2026-08-09T00:45:03+10:00]    ✅ 39,662 bytes  https://www.sportsbetform.com.au/Jockey/2627/
+[2026-08-09T00:45:33+10:00]    ✅ 24,308 bytes  https://www.sportsbetform.com.au/Jockey/803093/
+[2026-08-09T00:46:03+10:00]    ✅ 36,743 bytes  https://www.sportsbetform.com.au/Trainer/1131/
+[2026-08-09T00:46:34+10:00]    ✅ 37,452 bytes  https://www.sportsbetform.com.au/Jockey/2633/
+[2026-08-09T00:47:05+10:00]    ✅ 28,830 bytes  https://www.sportsbetform.com.au/Trainer/25096/
+[2026-08-09T00:47:36+10:00]    ✅ 38,029 bytes  https://www.sportsbetform.com.au/Jockey/16535/
+[2026-08-09T00:48:07+10:00]    ✅ 35,403 bytes  https://www.sportsbetform.com.au/Trainer/15306/
+[2026-08-09T00:48:38+10:00]    ✅ 38,847 bytes  https://www.sportsbetform.com.au/Jockey/7316/
+[2026-08-09T00:49:09+10:00]    ✅ 36,567 bytes  https://www.sportsbetform.com.au/Jockey/391239/
+[2026-08-09T00:49:39+10:00]    ✅ 38,837 bytes  https://www.sportsbetform.com.au/Jockey/15175/
+[2026-08-09T00:50:10+10:00]    ✅ 33,496 bytes  https://www.sportsbetform.com.au/Trainer/5012/
+[2026-08-09T00:50:41+10:00]    ✅ 39,265 bytes  https://www.sportsbetform.com.au/Jockey/1983/
+[2026-08-09T00:51:12+10:00]    ✅ 31,453 bytes  https://www.sportsbetform.com.au/Trainer/1208/
+[2026-08-09T00:51:42+10:00]    ✅ 37,167 bytes  https://www.sportsbetform.com.au/Trainer/1198/
+[2026-08-09T00:52:13+10:00]    ✅ 36,594 bytes  https://www.sportsbetform.com.au/Jockey/780977/
+[2026-08-09T00:52:44+10:00]    ✅ 31,868 bytes  https://www.sportsbetform.com.au/Jockey/804615/
+[2026-08-09T00:53:15+10:00]    ✅ 41,132 bytes  https://www.sportsbetform.com.au/Trainer/4214/
+[2026-08-09T00:53:46+10:00]    ✅ 33,475 bytes  https://www.sportsbetform.com.au/Trainer/1203/
+[2026-08-09T00:54:17+10:00]    ✅ 32,501 bytes  https://www.sportsbetform.com.au/Trainer/1209/
+[2026-08-09T00:54:47+10:00]    ✅ 33,959 bytes  https://www.sportsbetform.com.au/Jockey/780975/
+[2026-08-09T00:55:18+10:00]    ✅ 33,398 bytes  https://www.sportsbetform.com.au/Trainer/14879/
+[2026-08-09T00:55:48+10:00]    ✅ 34,891 bytes  https://www.sportsbetform.com.au/Trainer/15420/
+[2026-08-09T00:56:19+10:00]    ✅ 26,663 bytes  https://www.sportsbetform.com.au/Jockey/803037/
+[2026-08-09T00:56:49+10:00]    ✅ 34,080 bytes  https://www.sportsbetform.com.au/Trainer/1214/
+[2026-08-09T00:57:20+10:00]    ✅ 36,401 bytes  https://www.sportsbetform.com.au/Trainer/16084/
+[2026-08-09T00:57:51+10:00]    ✅ 32,121 bytes  https://www.sportsbetform.com.au/Trainer/1202/
+[2026-08-09T00:58:21+10:00]    ✅ 22,856 bytes  https://www.sportsbetform.com.au/Trainer/83344/
+[2026-08-09T00:58:21+10:00] [warm-people] ok {"fetched":33,"meeting":"2026-08-09 Kalgoorlie","needed":33}
+[2026-08-09T00:58:21+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/claw_sportsbet_form.py --meeting-url https://www.sportsbetform.com.au/446959/3399665/ --races 3399665,3399666,3399668,3399670,3399672,3399674,3399676,3399677 --out-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Kalgoorlie Race 1-8 --date 2026-08-09 --venue Kalgoorlie --delay 25.0
+[2026-08-09T00:58:24+10:00]    | （cache）https://www.sportsbetform.com.au/446959/3399665/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/446959/3399666/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/446959/3399668/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/446959/3399670/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/446959/3399672/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/446959/3399674/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/446959/3399676/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/446959/3399677/
+[2026-08-09T00:58:24+10:00]    |    ✅ R1: 6 匹 → 08-09 Race 1 Formguide.md
+[2026-08-09T00:58:24+10:00]    |    ✅ R2: 8 匹 → 08-09 Race 2 Formguide.md
+[2026-08-09T00:58:24+10:00]    |    ✅ R3: 13 匹 → 08-09 Race 3 Formguide.md
+[2026-08-09T00:58:24+10:00]    |    ✅ R4: 8 匹 → 08-09 Race 4 Formguide.md
+[2026-08-09T00:58:24+10:00]    |    ✅ R5: 9 匹 → 08-09 Race 5 Formguide.md
+[2026-08-09T00:58:24+10:00]    |    ✅ R6: 7 匹 → 08-09 Race 6 Formguide.md
+[2026-08-09T00:58:24+10:00]    |    ✅ R7: 14 匹 → 08-09 Race 7 Formguide.md
+[2026-08-09T00:58:24+10:00]    |    ✅ R8: 17 匹 → 08-09 Race 8 Formguide.md
+[2026-08-09T00:58:24+10:00]    |    往績行：保留 800，因為喺 2026-08-09 當日或之後而丟棄 0
+[2026-08-09T00:58:24+10:00]    |    💰 賠率快照：82 匹 → Odds.json
+[2026-08-09T00:58:24+10:00]    |    📇 馬匹索引 +790 條往績（共 23,689 匹）
+[2026-08-09T00:58:24+10:00]    |    騎練統計：33 個人物，需要補 19，今次抓 19
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/6225/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/1183/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/2524/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Jockey/2627/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Jockey/803093/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/1131/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Jockey/2633/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/25096/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/15306/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/5012/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/1208/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/1198/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/1203/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/1209/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/14879/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/15420/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/1214/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/1202/
+[2026-08-09T00:58:24+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/83344/
+[2026-08-09T00:58:24+10:00]    |    騎練統計：成功 19，cache 共 1662
+[2026-08-09T00:58:26+10:00] [ra-ratings] ok {"filled":76,"meeting":"2026-08-09 Kalgoorlie Race 1-8","no_official":6,"ra_venue":"Kalgoorlie"}
+[2026-08-09T00:58:26+10:00] [mapping-update] ok {"meeting":"2026-08-09 Kalgoorlie Race 1-8","races":8}
+[2026-08-09T00:58:26+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Kalgoorlie Race 1-8 --auto --skip-cloudflare-deploy --race-workers 1 --going Soft 5
+[2026-08-09T00:58:40+10:00]    | ========================================================================
+[2026-08-09T00:58:40+10:00]    | 
+[2026-08-09T00:58:40+10:00]    | ========================================================================
+[2026-08-09T00:58:40+10:00]    | Build deterministic Logic — Race 2
+[2026-08-09T00:58:40+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Kalgoorlie Race 1-8/08-09 Race 2 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Kalgoorlie Race 1-8/Race_2_Logic.json
+[2026-08-09T00:58:40+10:00]    | ========================================================================
+[2026-08-09T00:58:40+10:00]    | 
+[2026-08-09T00:58:40+10:00]    | ========================================================================
+[2026-08-09T00:58:40+10:00]    | Build deterministic Logic — Race 3
+[2026-08-09T00:58:40+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Kalgoorlie Race 1-8/08-09 Race 3 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Kalgoorlie Race 1-8/Race_3_Logic.json
+[2026-08-09T00:58:40+10:00]    | ========================================================================
+[2026-08-09T00:58:40+10:00]    | 
+[2026-08-09T00:58:40+10:00]    | ========================================================================
+[2026-08-09T00:58:40+10:00]    | Build deterministic Logic — Race 4
+[2026-08-09T00:58:40+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Kalgoorlie Race 1-8/08-09 Race 4 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Kalgoorlie Race 1-8/Race_4_Logic.json
+[2026-08-09T00:58:40+10:00]    | ========================================================================
+[2026-08-09T00:58:40+10:00]    | 
+[2026-08-09T00:58:40+10:00]    | ========================================================================
+[2026-08-09T00:58:40+10:00]    | Build deterministic Logic — Race 5
+[2026-08-09T00:58:40+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Kalgoorlie Race 1-8/08-09 Race 5 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Kalgoorlie Race 1-8/Race_5_Logic.json
+[2026-08-09T00:58:40+10:00]    | ========================================================================
+[2026-08-09T00:58:40+10:00]    | 
+[2026-08-09T00:58:40+10:00]    | ========================================================================
+[2026-08-09T00:58:40+10:00]    | Build deterministic Logic — Race 6
+[2026-08-09T00:58:40+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Kalgoorlie Race 1-8/08-09 Race 6 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Kalgoorlie Race 1-8/Race_6_Logic.json
+[2026-08-09T00:58:40+10:00]    | ========================================================================
+[2026-08-09T00:58:40+10:00]    | 
+[2026-08-09T00:58:40+10:00]    | ========================================================================
+[2026-08-09T00:58:40+10:00]    | Build deterministic Logic — Race 7
+[2026-08-09T00:58:40+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Kalgoorlie Race 1-8/08-09 Race 7 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Kalgoorlie Race 1-8/Race_7_Logic.json
+[2026-08-09T00:58:40+10:00]    | ========================================================================
+[2026-08-09T00:58:40+10:00]    | 
+[2026-08-09T00:58:40+10:00]    | ========================================================================
+[2026-08-09T00:58:40+10:00]    | Build deterministic Logic — Race 8
+[2026-08-09T00:58:40+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Kalgoorlie Race 1-8/08-09 Race 8 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Kalgoorlie Race 1-8/Race_8_Logic.json
+[2026-08-09T00:58:40+10:00]    | ========================================================================
+[2026-08-09T00:58:40+10:00]    | ⏭️ Cloudflare deploy skipped for AU Wong Choi (--skip-cloudflare-deploy)
+[2026-08-09T00:58:40+10:00]    | ====================================================================
+[2026-08-09T00:58:40+10:00]    | ✅ AU full-Python pipeline complete
+[2026-08-09T00:58:40+10:00]    | ====================================================================
+[2026-08-09T00:58:40+10:00]    · 2026-08-09 Kalgoorlie Race 1-8: analysed {"expected":8,"going":"Soft 5","races":[1,2,3,4,5,6,7,8]}
+[2026-08-09T00:58:52+10:00]    ✅ 197,202 bytes  https://www.sportsbetform.com.au/446927/3399383/
+[2026-08-09T00:59:23+10:00]    ✅ 197,987 bytes  https://www.sportsbetform.com.au/446927/3399385/
+[2026-08-09T00:59:54+10:00]    ✅ 191,540 bytes  https://www.sportsbetform.com.au/446927/3399388/
+[2026-08-09T01:00:26+10:00]    ✅ 233,739 bytes  https://www.sportsbetform.com.au/446927/3399392/
+[2026-08-09T01:00:56+10:00]    ✅ 264,312 bytes  https://www.sportsbetform.com.au/446927/3399396/
+[2026-08-09T01:01:27+10:00]    ✅ 278,166 bytes  https://www.sportsbetform.com.au/446927/3399399/
+[2026-08-09T01:01:58+10:00]    ✅ 300,181 bytes  https://www.sportsbetform.com.au/446927/3399403/
+[2026-08-09T01:01:58+10:00] ⚠️  2026-08-09 Muswellbrook: 個人頁今次只補 40/66，餘下 26 個下次補（TTL cache 會累積）
+[2026-08-09T01:02:28+10:00]    ✅ 36,875 bytes  https://www.sportsbetform.com.au/Trainer/485/
+[2026-08-09T01:03:02+10:00]    ✅ 40,430 bytes  https://www.sportsbetform.com.au/Jockey/555/
+[2026-08-09T01:03:32+10:00]    ✅ 38,217 bytes  https://www.sportsbetform.com.au/Trainer/80028/
+[2026-08-09T01:04:04+10:00]    ✅ 40,102 bytes  https://www.sportsbetform.com.au/Jockey/1056/
+[2026-08-09T01:04:37+10:00]    ✅ 43,316 bytes  https://www.sportsbetform.com.au/Trainer/528/
+[2026-08-09T01:05:08+10:00]    ✅ 42,718 bytes  https://www.sportsbetform.com.au/Jockey/3407/
+[2026-08-09T01:05:39+10:00]    ✅ 37,379 bytes  https://www.sportsbetform.com.au/Trainer/448/
+[2026-08-09T01:06:11+10:00]    ✅ 40,113 bytes  https://www.sportsbetform.com.au/Jockey/11548/
+[2026-08-09T01:06:41+10:00]    ✅ 42,773 bytes  https://www.sportsbetform.com.au/Trainer/80365/
+[2026-08-09T01:07:12+10:00]    ✅ 38,730 bytes  https://www.sportsbetform.com.au/Jockey/18109/
+[2026-08-09T01:07:42+10:00]    ✅ 36,418 bytes  https://www.sportsbetform.com.au/Jockey/63057/
+[2026-08-09T01:08:13+10:00]    ✅ 36,351 bytes  https://www.sportsbetform.com.au/Trainer/15332/
+[2026-08-09T01:08:44+10:00]    ✅ 37,597 bytes  https://www.sportsbetform.com.au/Jockey/8511/
+[2026-08-09T01:09:17+10:00]    ✅ 38,277 bytes  https://www.sportsbetform.com.au/Jockey/270334/
+[2026-08-09T01:09:48+10:00]    ✅ 36,847 bytes  https://www.sportsbetform.com.au/Trainer/15118/
+[2026-08-09T01:10:18+10:00]    ✅ 32,969 bytes  https://www.sportsbetform.com.au/Trainer/4686/
+[2026-08-09T01:10:49+10:00]    ✅ 36,999 bytes  https://www.sportsbetform.com.au/Trainer/14298/
+[2026-08-09T01:11:20+10:00]    ✅ 41,429 bytes  https://www.sportsbetform.com.au/Jockey/3053/
+[2026-08-09T01:11:52+10:00]    ✅ 39,820 bytes  https://www.sportsbetform.com.au/Trainer/458/
+[2026-08-09T01:12:23+10:00]    ✅ 39,643 bytes  https://www.sportsbetform.com.au/Jockey/20582/
+[2026-08-09T01:12:56+10:00]    ✅ 40,030 bytes  https://www.sportsbetform.com.au/Jockey/2640/
+[2026-08-09T01:13:27+10:00]    ✅ 37,735 bytes  https://www.sportsbetform.com.au/Trainer/14655/
+[2026-08-09T01:13:57+10:00]    ✅ 38,519 bytes  https://www.sportsbetform.com.au/Jockey/12835/
+[2026-08-09T01:14:28+10:00]    ✅ 35,093 bytes  https://www.sportsbetform.com.au/Trainer/25156/
+[2026-08-09T01:14:58+10:00]    ✅ 35,440 bytes  https://www.sportsbetform.com.au/Trainer/14585/
+[2026-08-09T01:15:29+10:00]    ✅ 39,809 bytes  https://www.sportsbetform.com.au/Jockey/40/
+[2026-08-09T01:16:00+10:00]    ✅ 38,449 bytes  https://www.sportsbetform.com.au/Trainer/1082/
+[2026-08-09T01:16:30+10:00]    ✅ 36,628 bytes  https://www.sportsbetform.com.au/Trainer/1754/
+[2026-08-09T01:17:02+10:00]    ✅ 39,697 bytes  https://www.sportsbetform.com.au/Jockey/80/
+[2026-08-09T01:17:33+10:00]    ✅ 39,509 bytes  https://www.sportsbetform.com.au/Trainer/1487/
+[2026-08-09T01:18:04+10:00]    ✅ 38,667 bytes  https://www.sportsbetform.com.au/Trainer/15849/
+[2026-08-09T01:18:34+10:00]    ✅ 39,974 bytes  https://www.sportsbetform.com.au/Trainer/15274/
+[2026-08-09T01:19:05+10:00]    ✅ 40,555 bytes  https://www.sportsbetform.com.au/Trainer/3619/
+[2026-08-09T01:19:36+10:00]    ✅ 38,104 bytes  https://www.sportsbetform.com.au/Jockey/24765/
+[2026-08-09T01:20:09+10:00]    ✅ 43,668 bytes  https://www.sportsbetform.com.au/Trainer/408/
+[2026-08-09T01:20:40+10:00]    ✅ 36,338 bytes  https://www.sportsbetform.com.au/Trainer/1755/
+[2026-08-09T01:21:11+10:00]    ✅ 38,555 bytes  https://www.sportsbetform.com.au/Jockey/2544/
+[2026-08-09T01:21:41+10:00]    ✅ 35,698 bytes  https://www.sportsbetform.com.au/Trainer/9351/
+[2026-08-09T01:22:12+10:00]    ✅ 35,484 bytes  https://www.sportsbetform.com.au/Trainer/13678/
+[2026-08-09T01:22:42+10:00]    ✅ 39,164 bytes  https://www.sportsbetform.com.au/Trainer/363/
+[2026-08-09T01:22:42+10:00] [warm-people] ok {"fetched":40,"meeting":"2026-08-09 Muswellbrook","needed":66}
+[2026-08-09T01:22:42+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/claw_sportsbet_form.py --meeting-url https://www.sportsbetform.com.au/446927/3399383/ --races 3399383,3399385,3399388,3399392,3399396,3399399,3399403 --out-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Muswellbrook Race 1-7 --date 2026-08-09 --venue Muswellbrook --delay 25.0
+[2026-08-09T01:22:44+10:00]    | （cache）https://www.sportsbetform.com.au/446927/3399383/
+[2026-08-09T01:22:44+10:00]    |    （cache）https://www.sportsbetform.com.au/446927/3399385/
+[2026-08-09T01:22:44+10:00]    |    （cache）https://www.sportsbetform.com.au/446927/3399388/
+[2026-08-09T01:22:44+10:00]    |    （cache）https://www.sportsbetform.com.au/446927/3399392/
+[2026-08-09T01:22:44+10:00]    |    （cache）https://www.sportsbetform.com.au/446927/3399396/
+[2026-08-09T01:22:44+10:00]    |    （cache）https://www.sportsbetform.com.au/446927/3399399/
+[2026-08-09T01:22:44+10:00]    |    （cache）https://www.sportsbetform.com.au/446927/3399403/
+[2026-08-09T01:22:44+10:00]    |    ✅ R1: 8 匹 → 08-09 Race 1 Formguide.md
+[2026-08-09T01:22:44+10:00]    |    ✅ R2: 8 匹 → 08-09 Race 2 Formguide.md
+[2026-08-09T01:22:44+10:00]    |    ✅ R3: 9 匹 → 08-09 Race 3 Formguide.md
+[2026-08-09T01:22:44+10:00]    |    ✅ R4: 8 匹 → 08-09 Race 4 Formguide.md
+[2026-08-09T01:22:44+10:00]    |    ✅ R5: 10 匹 → 08-09 Race 5 Formguide.md
+[2026-08-09T01:22:44+10:00]    |    ✅ R6: 10 匹 → 08-09 Race 6 Formguide.md
+[2026-08-09T01:22:44+10:00]    |    ✅ R7: 11 匹 → 08-09 Race 7 Formguide.md
+[2026-08-09T01:22:44+10:00]    |    往績行：保留 461，因為喺 2026-08-09 當日或之後而丟棄 0
+[2026-08-09T01:22:44+10:00]    |    💰 賠率快照：56 匹 → Odds.json
+[2026-08-09T01:22:44+10:00]    |    📇 馬匹索引 +388 條往績（共 23,769 匹）
+[2026-08-09T01:22:44+10:00]    |    騎練統計：66 個人物，需要補 6，今次抓 6
+[2026-08-09T01:22:44+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/4686/
+[2026-08-09T01:22:44+10:00]    |    （cache）https://www.sportsbetform.com.au/Jockey/2544/
+[2026-08-09T01:22:44+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/13678/
+[2026-08-09T01:22:44+10:00]    |    騎練統計：成功 3，cache 共 1665
+[2026-08-09T01:22:47+10:00] [ra-ratings] ok {"filled":31,"meeting":"2026-08-09 Muswellbrook Race 1-7","no_official":25,"ra_venue":"Muswellbrook"}
+[2026-08-09T01:22:47+10:00] [mapping-update] ok {"meeting":"2026-08-09 Muswellbrook Race 1-7","races":7}
+[2026-08-09T01:22:47+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Muswellbrook Race 1-7 --auto --skip-cloudflare-deploy --race-workers 1 --going Soft 5
+[2026-08-09T01:22:56+10:00]    | 🧠 Building deterministic Logic for Race 7...
+[2026-08-09T01:22:56+10:00]    | 
+[2026-08-09T01:22:56+10:00]    | ========================================================================
+[2026-08-09T01:22:56+10:00]    | Build deterministic Logic — Race 1
+[2026-08-09T01:22:56+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Muswellbrook Race 1-7/08-09 Race 1 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Muswellbrook Race 1-7/Race_1_Logic.json
+[2026-08-09T01:22:56+10:00]    | ========================================================================
+[2026-08-09T01:22:56+10:00]    | 
+[2026-08-09T01:22:56+10:00]    | ========================================================================
+[2026-08-09T01:22:56+10:00]    | Build deterministic Logic — Race 2
+[2026-08-09T01:22:56+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Muswellbrook Race 1-7/08-09 Race 2 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Muswellbrook Race 1-7/Race_2_Logic.json
+[2026-08-09T01:22:56+10:00]    | ========================================================================
+[2026-08-09T01:22:56+10:00]    | 
+[2026-08-09T01:22:56+10:00]    | ========================================================================
+[2026-08-09T01:22:56+10:00]    | Build deterministic Logic — Race 3
+[2026-08-09T01:22:56+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Muswellbrook Race 1-7/08-09 Race 3 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Muswellbrook Race 1-7/Race_3_Logic.json
+[2026-08-09T01:22:56+10:00]    | ========================================================================
+[2026-08-09T01:22:56+10:00]    | 
+[2026-08-09T01:22:56+10:00]    | ========================================================================
+[2026-08-09T01:22:56+10:00]    | Build deterministic Logic — Race 4
+[2026-08-09T01:22:56+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Muswellbrook Race 1-7/08-09 Race 4 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Muswellbrook Race 1-7/Race_4_Logic.json
+[2026-08-09T01:22:56+10:00]    | ========================================================================
+[2026-08-09T01:22:56+10:00]    | 
+[2026-08-09T01:22:56+10:00]    | ========================================================================
+[2026-08-09T01:22:56+10:00]    | Build deterministic Logic — Race 5
+[2026-08-09T01:22:56+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Muswellbrook Race 1-7/08-09 Race 5 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Muswellbrook Race 1-7/Race_5_Logic.json
+[2026-08-09T01:22:56+10:00]    | ========================================================================
+[2026-08-09T01:22:56+10:00]    | 
+[2026-08-09T01:22:56+10:00]    | ========================================================================
+[2026-08-09T01:22:56+10:00]    | Build deterministic Logic — Race 6
+[2026-08-09T01:22:56+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Muswellbrook Race 1-7/08-09 Race 6 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Muswellbrook Race 1-7/Race_6_Logic.json
+[2026-08-09T01:22:56+10:00]    | ========================================================================
+[2026-08-09T01:22:56+10:00]    | 
+[2026-08-09T01:22:56+10:00]    | ========================================================================
+[2026-08-09T01:22:56+10:00]    | Build deterministic Logic — Race 7
+[2026-08-09T01:22:56+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Muswellbrook Race 1-7/08-09 Race 7 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Muswellbrook Race 1-7/Race_7_Logic.json
+[2026-08-09T01:22:56+10:00]    | ========================================================================
+[2026-08-09T01:22:56+10:00]    | ⏭️ Cloudflare deploy skipped for AU Wong Choi (--skip-cloudflare-deploy)
+[2026-08-09T01:22:56+10:00]    | ====================================================================
+[2026-08-09T01:22:56+10:00]    | ✅ AU full-Python pipeline complete
+[2026-08-09T01:22:56+10:00]    | ====================================================================
+[2026-08-09T01:22:56+10:00]    · 2026-08-09 Muswellbrook Race 1-7: analysed {"expected":7,"going":"Soft 5","races":[1,2,3,4,5,6,7]}
+[2026-08-09T01:23:14+10:00]    ✅ 203,605 bytes  https://www.sportsbetform.com.au/446928/3399386/
+[2026-08-09T01:23:44+10:00]    ✅ 228,314 bytes  https://www.sportsbetform.com.au/446928/3399387/
+[2026-08-09T01:24:15+10:00]    ✅ 234,862 bytes  https://www.sportsbetform.com.au/446928/3399391/
+[2026-08-09T01:24:46+10:00]    ✅ 297,896 bytes  https://www.sportsbetform.com.au/446928/3399393/
+[2026-08-09T01:25:17+10:00]    ✅ 252,834 bytes  https://www.sportsbetform.com.au/446928/3399397/
+[2026-08-09T01:25:48+10:00]    ✅ 343,518 bytes  https://www.sportsbetform.com.au/446928/3399400/
+[2026-08-09T01:26:19+10:00]    ✅ 387,885 bytes  https://www.sportsbetform.com.au/446928/3399405/
+[2026-08-09T01:26:51+10:00]    ✅ 396,689 bytes  https://www.sportsbetform.com.au/446928/3399407/
+[2026-08-09T01:26:51+10:00] ⚠️  2026-08-09 Sunshine Coast: 個人頁今次只補 40/80，餘下 40 個下次補（TTL cache 會累積）
+[2026-08-09T01:27:21+10:00]    ✅ 40,198 bytes  https://www.sportsbetform.com.au/Trainer/15937/
+[2026-08-09T01:27:53+10:00]    ✅ 39,056 bytes  https://www.sportsbetform.com.au/Jockey/7403/
+[2026-08-09T01:28:24+10:00]    ✅ 41,707 bytes  https://www.sportsbetform.com.au/Trainer/4/
+[2026-08-09T01:28:54+10:00]    ✅ 38,519 bytes  https://www.sportsbetform.com.au/Jockey/715262/
+[2026-08-09T01:29:26+10:00]    ✅ 41,153 bytes  https://www.sportsbetform.com.au/Jockey/1493/
+[2026-08-09T01:29:56+10:00]    ✅ 35,567 bytes  https://www.sportsbetform.com.au/Trainer/1653/
+[2026-08-09T01:30:27+10:00]    ✅ 39,097 bytes  https://www.sportsbetform.com.au/Jockey/17531/
+[2026-08-09T01:30:57+10:00]    ✅ 37,524 bytes  https://www.sportsbetform.com.au/Trainer/74/
+[2026-08-09T01:31:28+10:00]    ✅ 34,967 bytes  https://www.sportsbetform.com.au/Jockey/76922/
+[2026-08-09T01:31:58+10:00]    ✅ 36,784 bytes  https://www.sportsbetform.com.au/Trainer/15279/
+[2026-08-09T01:32:29+10:00]    ✅ 38,664 bytes  https://www.sportsbetform.com.au/Jockey/17615/
+[2026-08-09T01:32:59+10:00]    ✅ 39,234 bytes  https://www.sportsbetform.com.au/Trainer/24363/
+[2026-08-09T01:33:30+10:00]    ✅ 39,685 bytes  https://www.sportsbetform.com.au/Jockey/9553/
+[2026-08-09T01:34:01+10:00]    ✅ 40,103 bytes  https://www.sportsbetform.com.au/Trainer/5240/
+[2026-08-09T01:34:33+10:00]    ✅ 42,065 bytes  https://www.sportsbetform.com.au/Jockey/3277/
+[2026-08-09T01:35:04+10:00]    ✅ 41,141 bytes  https://www.sportsbetform.com.au/Trainer/146/
+[2026-08-09T01:35:35+10:00]    ✅ 36,415 bytes  https://www.sportsbetform.com.au/Jockey/2273/
+[2026-08-09T01:36:05+10:00]    ✅ 41,030 bytes  https://www.sportsbetform.com.au/Trainer/16042/
+[2026-08-09T01:36:37+10:00]    ✅ 43,908 bytes  https://www.sportsbetform.com.au/Jockey/2143/
+[2026-08-09T01:37:08+10:00]    ✅ 40,974 bytes  https://www.sportsbetform.com.au/Jockey/6932/
+[2026-08-09T01:37:40+10:00]    ✅ 44,024 bytes  https://www.sportsbetform.com.au/Trainer/51/
+[2026-08-09T01:38:11+10:00]    ✅ 41,309 bytes  https://www.sportsbetform.com.au/Jockey/23624/
+[2026-08-09T01:38:41+10:00]    ✅ 34,955 bytes  https://www.sportsbetform.com.au/Trainer/78011/
+[2026-08-09T01:39:13+10:00]    ✅ 39,627 bytes  https://www.sportsbetform.com.au/Jockey/2383/
+[2026-08-09T01:39:44+10:00]    ✅ 39,199 bytes  https://www.sportsbetform.com.au/Trainer/256/
+[2026-08-09T01:40:15+10:00]    ✅ 41,252 bytes  https://www.sportsbetform.com.au/Jockey/6871/
+[2026-08-09T01:40:45+10:00]    ✅ 39,001 bytes  https://www.sportsbetform.com.au/Trainer/14602/
+[2026-08-09T01:41:16+10:00]    ✅ 40,815 bytes  https://www.sportsbetform.com.au/Jockey/1041/
+[2026-08-09T01:41:47+10:00]    ✅ 41,024 bytes  https://www.sportsbetform.com.au/Trainer/220/
+[2026-08-09T01:42:18+10:00]    ✅ 33,085 bytes  https://www.sportsbetform.com.au/Trainer/222/
+[2026-08-09T01:42:48+10:00]    ✅ 38,866 bytes  https://www.sportsbetform.com.au/Jockey/762038/
+[2026-08-09T01:43:19+10:00]    ✅ 31,307 bytes  https://www.sportsbetform.com.au/Trainer/80340/
+[2026-08-09T01:43:49+10:00]    ✅ 37,461 bytes  https://www.sportsbetform.com.au/Jockey/370903/
+[2026-08-09T01:44:20+10:00]    ✅ 43,119 bytes  https://www.sportsbetform.com.au/Trainer/15068/
+[2026-08-09T01:44:52+10:00]    ✅ 42,764 bytes  https://www.sportsbetform.com.au/Jockey/14093/
+[2026-08-09T01:45:22+10:00]    ✅ 38,050 bytes  https://www.sportsbetform.com.au/Trainer/16077/
+[2026-08-09T01:45:52+10:00]    ✅ 33,567 bytes  https://www.sportsbetform.com.au/Jockey/15141/
+[2026-08-09T01:46:23+10:00]    ✅ 41,372 bytes  https://www.sportsbetform.com.au/Trainer/3963/
+[2026-08-09T01:46:53+10:00]    ✅ 42,773 bytes  https://www.sportsbetform.com.au/Trainer/80365/
+[2026-08-09T01:47:24+10:00]    ✅ 40,941 bytes  https://www.sportsbetform.com.au/Trainer/84/
+[2026-08-09T01:47:24+10:00] [warm-people] ok {"fetched":40,"meeting":"2026-08-09 Sunshine Coast","needed":80}
+[2026-08-09T01:47:24+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/claw_sportsbet_form.py --meeting-url https://www.sportsbetform.com.au/446928/3399386/ --races 3399386,3399387,3399391,3399393,3399397,3399400,3399405,3399407 --out-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Sunshine Coast Race 1-8 --date 2026-08-09 --venue Sunshine Coast --delay 25.0
+[2026-08-09T01:47:27+10:00]    | （cache）https://www.sportsbetform.com.au/446928/3399386/
+[2026-08-09T01:47:27+10:00]    |    （cache）https://www.sportsbetform.com.au/446928/3399387/
+[2026-08-09T01:47:27+10:00]    |    （cache）https://www.sportsbetform.com.au/446928/3399391/
+[2026-08-09T01:47:27+10:00]    |    （cache）https://www.sportsbetform.com.au/446928/3399393/
+[2026-08-09T01:47:27+10:00]    |    （cache）https://www.sportsbetform.com.au/446928/3399397/
+[2026-08-09T01:47:27+10:00]    |    （cache）https://www.sportsbetform.com.au/446928/3399400/
+[2026-08-09T01:47:27+10:00]    |    （cache）https://www.sportsbetform.com.au/446928/3399405/
+[2026-08-09T01:47:27+10:00]    |    （cache）https://www.sportsbetform.com.au/446928/3399407/
+[2026-08-09T01:47:27+10:00]    |    ✅ R1: 9 匹 → 08-09 Race 1 Formguide.md
+[2026-08-09T01:47:27+10:00]    |    ✅ R2: 8 匹 → 08-09 Race 2 Formguide.md
+[2026-08-09T01:47:27+10:00]    |    ✅ R3: 8 匹 → 08-09 Race 3 Formguide.md
+[2026-08-09T01:47:27+10:00]    |    ✅ R4: 11 匹 → 08-09 Race 4 Formguide.md
+[2026-08-09T01:47:27+10:00]    |    ✅ R5: 15 匹 → 08-09 Race 5 Formguide.md
+[2026-08-09T01:47:27+10:00]    |    ✅ R6: 13 匹 → 08-09 Race 6 Formguide.md
+[2026-08-09T01:47:27+10:00]    |    ✅ R7: 15 匹 → 08-09 Race 7 Formguide.md
+[2026-08-09T01:47:27+10:00]    |    ✅ R8: 16 匹 → 08-09 Race 8 Formguide.md
+[2026-08-09T01:47:27+10:00]    |    往績行：保留 600，因為喺 2026-08-09 當日或之後而丟棄 0
+[2026-08-09T01:47:27+10:00]    |    💰 賠率快照：70 匹 → Odds.json
+[2026-08-09T01:47:27+10:00]    |    📇 馬匹索引 +502 條往績（共 23,851 匹）
+[2026-08-09T01:47:27+10:00]    |    騎練統計：80 個人物，需要補 6，今次抓 6
+[2026-08-09T01:47:27+10:00]    |    （cache）https://www.sportsbetform.com.au/Jockey/17615/
+[2026-08-09T01:47:27+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/256/
+[2026-08-09T01:47:27+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/80340/
+[2026-08-09T01:47:27+10:00]    |    （cache）https://www.sportsbetform.com.au/Jockey/15141/
+[2026-08-09T01:47:27+10:00]    |    騎練統計：成功 4，cache 共 1669
+[2026-08-09T01:47:28+10:00] [ra-ratings] ok {"filled":53,"meeting":"2026-08-09 Sunshine Coast Race 1-8","no_official":17,"ra_venue":"Sunshine Coast"}
+[2026-08-09T01:47:28+10:00] [mapping-update] ok {"meeting":"2026-08-09 Sunshine Coast Race 1-8","races":8}
+[2026-08-09T01:47:28+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Sunshine Coast Race 1-8 --auto --skip-cloudflare-deploy --race-workers 1 --going Soft 5
+[2026-08-09T01:47:41+10:00]    | ========================================================================
+[2026-08-09T01:47:41+10:00]    | 
+[2026-08-09T01:47:41+10:00]    | ========================================================================
+[2026-08-09T01:47:41+10:00]    | Build deterministic Logic — Race 2
+[2026-08-09T01:47:41+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Sunshine Coast Race 1-8/08-09 Race 2 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Sunshine Coast Race 1-8/Race_2_Logic.json
+[2026-08-09T01:47:41+10:00]    | ========================================================================
+[2026-08-09T01:47:41+10:00]    | 
+[2026-08-09T01:47:41+10:00]    | ========================================================================
+[2026-08-09T01:47:41+10:00]    | Build deterministic Logic — Race 3
+[2026-08-09T01:47:41+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Sunshine Coast Race 1-8/08-09 Race 3 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Sunshine Coast Race 1-8/Race_3_Logic.json
+[2026-08-09T01:47:41+10:00]    | ========================================================================
+[2026-08-09T01:47:41+10:00]    | 
+[2026-08-09T01:47:41+10:00]    | ========================================================================
+[2026-08-09T01:47:41+10:00]    | Build deterministic Logic — Race 4
+[2026-08-09T01:47:41+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Sunshine Coast Race 1-8/08-09 Race 4 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Sunshine Coast Race 1-8/Race_4_Logic.json
+[2026-08-09T01:47:41+10:00]    | ========================================================================
+[2026-08-09T01:47:41+10:00]    | 
+[2026-08-09T01:47:41+10:00]    | ========================================================================
+[2026-08-09T01:47:41+10:00]    | Build deterministic Logic — Race 5
+[2026-08-09T01:47:41+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Sunshine Coast Race 1-8/08-09 Race 5 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Sunshine Coast Race 1-8/Race_5_Logic.json
+[2026-08-09T01:47:41+10:00]    | ========================================================================
+[2026-08-09T01:47:41+10:00]    | 
+[2026-08-09T01:47:41+10:00]    | ========================================================================
+[2026-08-09T01:47:41+10:00]    | Build deterministic Logic — Race 6
+[2026-08-09T01:47:41+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Sunshine Coast Race 1-8/08-09 Race 6 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Sunshine Coast Race 1-8/Race_6_Logic.json
+[2026-08-09T01:47:41+10:00]    | ========================================================================
+[2026-08-09T01:47:41+10:00]    | 
+[2026-08-09T01:47:41+10:00]    | ========================================================================
+[2026-08-09T01:47:41+10:00]    | Build deterministic Logic — Race 7
+[2026-08-09T01:47:41+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Sunshine Coast Race 1-8/08-09 Race 7 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Sunshine Coast Race 1-8/Race_7_Logic.json
+[2026-08-09T01:47:41+10:00]    | ========================================================================
+[2026-08-09T01:47:41+10:00]    | 
+[2026-08-09T01:47:41+10:00]    | ========================================================================
+[2026-08-09T01:47:41+10:00]    | Build deterministic Logic — Race 8
+[2026-08-09T01:47:41+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Sunshine Coast Race 1-8/08-09 Race 8 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Sunshine Coast Race 1-8/Race_8_Logic.json
+[2026-08-09T01:47:41+10:00]    | ========================================================================
+[2026-08-09T01:47:41+10:00]    | ⏭️ Cloudflare deploy skipped for AU Wong Choi (--skip-cloudflare-deploy)
+[2026-08-09T01:47:41+10:00]    | ====================================================================
+[2026-08-09T01:47:41+10:00]    | ✅ AU full-Python pipeline complete
+[2026-08-09T01:47:41+10:00]    | ====================================================================
+[2026-08-09T01:47:41+10:00]    · 2026-08-09 Sunshine Coast Race 1-8: analysed {"expected":8,"going":"Soft 5","races":[1,2,3,4,5,6,7,8]}
+[2026-08-09T01:47:55+10:00]    ✅ 236,340 bytes  https://www.sportsbetform.com.au/446929/3399389/
+[2026-08-09T01:48:26+10:00]    ✅ 233,078 bytes  https://www.sportsbetform.com.au/446929/3399394/
+[2026-08-09T01:48:57+10:00]    ✅ 233,379 bytes  https://www.sportsbetform.com.au/446929/3399398/
+[2026-08-09T01:49:28+10:00]    ✅ 378,301 bytes  https://www.sportsbetform.com.au/446929/3399401/
+[2026-08-09T01:49:59+10:00]    ✅ 370,679 bytes  https://www.sportsbetform.com.au/446929/3399404/
+[2026-08-09T01:50:30+10:00]    ✅ 308,570 bytes  https://www.sportsbetform.com.au/446929/3399408/
+[2026-08-09T01:51:01+10:00]    ✅ 314,276 bytes  https://www.sportsbetform.com.au/446929/3399410/
+[2026-08-09T01:51:01+10:00] ⚠️  2026-08-09 Wagga: 個人頁今次只補 40/70，餘下 30 個下次補（TTL cache 會累積）
+[2026-08-09T01:51:32+10:00]    ✅ 40,153 bytes  https://www.sportsbetform.com.au/Trainer/642/
+[2026-08-09T01:52:03+10:00]    ✅ 35,944 bytes  https://www.sportsbetform.com.au/Jockey/3522/
+[2026-08-09T01:52:34+10:00]    ✅ 42,407 bytes  https://www.sportsbetform.com.au/Trainer/520/
+[2026-08-09T01:53:05+10:00]    ✅ 39,551 bytes  https://www.sportsbetform.com.au/Jockey/16043/
+[2026-08-09T01:53:36+10:00]    ✅ 42,379 bytes  https://www.sportsbetform.com.au/Trainer/5294/
+[2026-08-09T01:54:07+10:00]    ✅ 41,709 bytes  https://www.sportsbetform.com.au/Trainer/334/
+[2026-08-09T01:54:37+10:00]    ✅ 40,198 bytes  https://www.sportsbetform.com.au/Jockey/22936/
+[2026-08-09T01:55:08+10:00]    ✅ 36,187 bytes  https://www.sportsbetform.com.au/Trainer/2463/
+[2026-08-09T01:55:39+10:00]    ✅ 39,202 bytes  https://www.sportsbetform.com.au/Jockey/7938/
+[2026-08-09T01:56:09+10:00]    ✅ 37,683 bytes  https://www.sportsbetform.com.au/Trainer/8389/
+[2026-08-09T01:56:41+10:00]    ✅ 40,718 bytes  https://www.sportsbetform.com.au/Jockey/2205/
+[2026-08-09T01:57:11+10:00]    ✅ 36,505 bytes  https://www.sportsbetform.com.au/Trainer/641/
+[2026-08-09T01:57:41+10:00]    ✅ 34,275 bytes  https://www.sportsbetform.com.au/Jockey/20468/
+[2026-08-09T01:58:12+10:00]    ✅ 39,782 bytes  https://www.sportsbetform.com.au/Trainer/9226/
+[2026-08-09T01:58:43+10:00]    ✅ 40,921 bytes  https://www.sportsbetform.com.au/Jockey/17418/
+[2026-08-09T01:59:14+10:00]    ✅ 40,651 bytes  https://www.sportsbetform.com.au/Trainer/4650/
+[2026-08-09T01:59:45+10:00]    ✅ 41,636 bytes  https://www.sportsbetform.com.au/Jockey/9569/
+[2026-08-09T02:00:15+10:00]    ✅ 38,636 bytes  https://www.sportsbetform.com.au/Trainer/3997/
+[2026-08-09T02:00:46+10:00]    ✅ 36,791 bytes  https://www.sportsbetform.com.au/Jockey/762071/
+[2026-08-09T02:01:17+10:00]    ✅ 39,646 bytes  https://www.sportsbetform.com.au/Trainer/14785/
+[2026-08-09T02:01:48+10:00]    ✅ 41,092 bytes  https://www.sportsbetform.com.au/Jockey/7678/
+[2026-08-09T02:02:19+10:00]    ✅ 38,033 bytes  https://www.sportsbetform.com.au/Trainer/659/
+[2026-08-09T02:02:49+10:00]    ✅ 37,049 bytes  https://www.sportsbetform.com.au/Jockey/181141/
+[2026-08-09T02:03:19+10:00]    ✅ 38,713 bytes  https://www.sportsbetform.com.au/Trainer/637/
+[2026-08-09T02:03:51+10:00]    ✅ 41,341 bytes  https://www.sportsbetform.com.au/Jockey/14123/
+[2026-08-09T02:04:21+10:00]    ✅ 39,135 bytes  https://www.sportsbetform.com.au/Trainer/13747/
+[2026-08-09T02:04:54+10:00]    ✅ 40,420 bytes  https://www.sportsbetform.com.au/Jockey/712/
+[2026-08-09T02:05:25+10:00]    ✅ 35,009 bytes  https://www.sportsbetform.com.au/Jockey/181003/
+[2026-08-09T02:05:55+10:00]    ✅ 37,703 bytes  https://www.sportsbetform.com.au/Trainer/426/
+[2026-08-09T02:06:26+10:00]    ✅ 39,726 bytes  https://www.sportsbetform.com.au/Trainer/7554/
+[2026-08-09T02:06:56+10:00]    ✅ 35,499 bytes  https://www.sportsbetform.com.au/Trainer/3860/
+[2026-08-09T02:07:28+10:00]    ✅ 40,689 bytes  https://www.sportsbetform.com.au/Jockey/2163/
+[2026-08-09T02:07:58+10:00]    ✅ 39,853 bytes  https://www.sportsbetform.com.au/Trainer/13763/
+[2026-08-09T02:08:29+10:00]    ✅ 36,296 bytes  https://www.sportsbetform.com.au/Jockey/772288/
+[2026-08-09T02:09:00+10:00]    ✅ 38,923 bytes  https://www.sportsbetform.com.au/Trainer/9288/
+[2026-08-09T02:09:30+10:00]    ✅ 37,841 bytes  https://www.sportsbetform.com.au/Trainer/619/
+[2026-08-09T02:10:02+10:00]    ✅ 40,652 bytes  https://www.sportsbetform.com.au/Jockey/2551/
+[2026-08-09T02:10:32+10:00]    ✅ 35,829 bytes  https://www.sportsbetform.com.au/Trainer/1712/
+[2026-08-09T02:11:04+10:00]    ✅ 40,713 bytes  https://www.sportsbetform.com.au/Jockey/991/
+[2026-08-09T02:11:35+10:00]    ✅ 39,105 bytes  https://www.sportsbetform.com.au/Trainer/16060/
+[2026-08-09T02:11:35+10:00] [warm-people] ok {"fetched":40,"meeting":"2026-08-09 Wagga","needed":70}
+[2026-08-09T02:11:35+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/claw_sportsbet_form.py --meeting-url https://www.sportsbetform.com.au/446929/3399389/ --races 3399389,3399394,3399398,3399401,3399404,3399408,3399410 --out-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Wagga Race 1-7 --date 2026-08-09 --venue Wagga --delay 25.0
+[2026-08-09T02:11:37+10:00]    | （cache）https://www.sportsbetform.com.au/446929/3399389/
+[2026-08-09T02:11:37+10:00]    |    （cache）https://www.sportsbetform.com.au/446929/3399394/
+[2026-08-09T02:11:37+10:00]    |    （cache）https://www.sportsbetform.com.au/446929/3399398/
+[2026-08-09T02:11:37+10:00]    |    （cache）https://www.sportsbetform.com.au/446929/3399401/
+[2026-08-09T02:11:37+10:00]    |    （cache）https://www.sportsbetform.com.au/446929/3399404/
+[2026-08-09T02:11:37+10:00]    |    （cache）https://www.sportsbetform.com.au/446929/3399408/
+[2026-08-09T02:11:37+10:00]    |    （cache）https://www.sportsbetform.com.au/446929/3399410/
+[2026-08-09T02:11:37+10:00]    |    ✅ R1: 12 匹 → 08-09 Race 1 Formguide.md
+[2026-08-09T02:11:37+10:00]    |    ✅ R2: 8 匹 → 08-09 Race 2 Formguide.md
+[2026-08-09T02:11:37+10:00]    |    ✅ R3: 8 匹 → 08-09 Race 3 Formguide.md
+[2026-08-09T02:11:37+10:00]    |    ✅ R4: 15 匹 → 08-09 Race 4 Formguide.md
+[2026-08-09T02:11:37+10:00]    |    ✅ R5: 17 匹 → 08-09 Race 5 Formguide.md
+[2026-08-09T02:11:37+10:00]    |    ✅ R6: 15 匹 → 08-09 Race 6 Formguide.md
+[2026-08-09T02:11:37+10:00]    |    ✅ R7: 12 匹 → 08-09 Race 7 Formguide.md
+[2026-08-09T02:11:37+10:00]    |    往績行：保留 620，因為喺 2026-08-09 當日或之後而丟棄 0
+[2026-08-09T02:11:37+10:00]    |    💰 賠率快照：75 匹 → Odds.json
+[2026-08-09T02:11:37+10:00]    |    📇 馬匹索引 +519 條往績（共 23,948 匹）
+[2026-08-09T02:11:37+10:00]    |    騎練統計：70 個人物，需要補 15，今次抓 15
+[2026-08-09T02:11:37+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/2463/
+[2026-08-09T02:11:37+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/8389/
+[2026-08-09T02:11:37+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/641/
+[2026-08-09T02:11:37+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/426/
+[2026-08-09T02:11:37+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/3860/
+[2026-08-09T02:11:37+10:00]    |    （cache）https://www.sportsbetform.com.au/Trainer/1712/
+[2026-08-09T02:11:37+10:00]    |    騎練統計：成功 6，cache 共 1675
+[2026-08-09T02:11:38+10:00] [ra-ratings] ok {"filled":48,"meeting":"2026-08-09 Wagga Race 1-7","no_official":27,"ra_venue":"Wagga"}
+[2026-08-09T02:11:38+10:00] [mapping-update] ok {"meeting":"2026-08-09 Wagga Race 1-7","races":7}
+[2026-08-09T02:11:38+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi/scripts/au_orchestrator.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Wagga Race 1-7 --auto --skip-cloudflare-deploy --race-workers 1 --going Soft 6
+[2026-08-09T02:11:54+10:00]    | 🧠 Building deterministic Logic for Race 7...
+[2026-08-09T02:11:54+10:00]    | 
+[2026-08-09T02:11:54+10:00]    | ========================================================================
+[2026-08-09T02:11:54+10:00]    | Build deterministic Logic — Race 1
+[2026-08-09T02:11:54+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Wagga Race 1-7/08-09 Race 1 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Wagga Race 1-7/Race_1_Logic.json
+[2026-08-09T02:11:54+10:00]    | ========================================================================
+[2026-08-09T02:11:54+10:00]    | 
+[2026-08-09T02:11:54+10:00]    | ========================================================================
+[2026-08-09T02:11:54+10:00]    | Build deterministic Logic — Race 2
+[2026-08-09T02:11:54+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Wagga Race 1-7/08-09 Race 2 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Wagga Race 1-7/Race_2_Logic.json
+[2026-08-09T02:11:54+10:00]    | ========================================================================
+[2026-08-09T02:11:54+10:00]    | 
+[2026-08-09T02:11:54+10:00]    | ========================================================================
+[2026-08-09T02:11:54+10:00]    | Build deterministic Logic — Race 3
+[2026-08-09T02:11:54+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Wagga Race 1-7/08-09 Race 3 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Wagga Race 1-7/Race_3_Logic.json
+[2026-08-09T02:11:54+10:00]    | ========================================================================
+[2026-08-09T02:11:54+10:00]    | 
+[2026-08-09T02:11:54+10:00]    | ========================================================================
+[2026-08-09T02:11:54+10:00]    | Build deterministic Logic — Race 4
+[2026-08-09T02:11:54+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Wagga Race 1-7/08-09 Race 4 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Wagga Race 1-7/Race_4_Logic.json
+[2026-08-09T02:11:54+10:00]    | ========================================================================
+[2026-08-09T02:11:54+10:00]    | 
+[2026-08-09T02:11:54+10:00]    | ========================================================================
+[2026-08-09T02:11:54+10:00]    | Build deterministic Logic — Race 5
+[2026-08-09T02:11:54+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Wagga Race 1-7/08-09 Race 5 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Wagga Race 1-7/Race_5_Logic.json
+[2026-08-09T02:11:54+10:00]    | ========================================================================
+[2026-08-09T02:11:54+10:00]    | 
+[2026-08-09T02:11:54+10:00]    | ========================================================================
+[2026-08-09T02:11:54+10:00]    | Build deterministic Logic — Race 6
+[2026-08-09T02:11:54+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Wagga Race 1-7/08-09 Race 6 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Wagga Race 1-7/Race_6_Logic.json
+[2026-08-09T02:11:54+10:00]    | ========================================================================
+[2026-08-09T02:11:54+10:00]    | 
+[2026-08-09T02:11:54+10:00]    | ========================================================================
+[2026-08-09T02:11:54+10:00]    | Build deterministic Logic — Race 7
+[2026-08-09T02:11:54+10:00]    | /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Wagga Race 1-7/08-09 Race 7 Facts.md --output /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Wagga Race 1-7/Race_7_Logic.json
+[2026-08-09T02:11:54+10:00]    | ========================================================================
+[2026-08-09T02:11:54+10:00]    | ⏭️ Cloudflare deploy skipped for AU Wong Choi (--skip-cloudflare-deploy)
+[2026-08-09T02:11:54+10:00]    | ====================================================================
+[2026-08-09T02:11:54+10:00]    | ✅ AU full-Python pipeline complete
+[2026-08-09T02:11:54+10:00]    | ====================================================================
+[2026-08-09T02:11:54+10:00]    · 2026-08-09 Wagga Race 1-7: analysed {"expected":7,"going":"Soft 6","races":[1,2,3,4,5,6,7]}
+[2026-08-09T02:11:54+10:00] [analyse-next-day] done {"analysed":6,"pending":0,"planned":6,"race_day":"2026-08-09"}
+[2026-08-09T02:11:54+10:00] [dashboard] start {"archived":9,"merge":6}
+[2026-08-09T02:11:54+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/Horse_Racing_Dashboard/generate_static.py --base-snapshot /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/live-dashboard-data.json --output-json /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/pruned.json --output-html /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/pruned.html --drop-meeting 2026-08-08|Alice Springs --drop-meeting 2026-08-08|Casino --drop-meeting 2026-08-08|Caulfield Heath --drop-meeting 2026-08-08|Eagle Farm --drop-meeting 2026-08-08|Kembla Grange --drop-meeting 2026-08-08|Mildura --drop-meeting 2026-08-08|Morphettville --drop-meeting 2026-08-08|Randwick --drop-meeting 2026-08-08|Townsville
+[2026-08-09T02:11:56+10:00]    | 🏇 Generating static dashboard...
+[2026-08-09T02:11:56+10:00]    |    Scanning for meetings...
+[2026-08-09T02:11:56+10:00]    |    Dropped 0 archived meeting(s); 2 remain
+[2026-08-09T02:11:56+10:00]    |    Found 2 meetings, 17 race analyses
+[2026-08-09T02:11:56+10:00]    |    Building HTML...
+[2026-08-09T02:11:56+10:00]    |    Snapshot size: 3.5 MiB (Cloudflare Pages limit 25)
+[2026-08-09T02:11:56+10:00]    |    Snapshot JSON written: pruned.json
+[2026-08-09T02:11:56+10:00]    | ✅ Dashboard generated: pruned.html (3948 KB)
+[2026-08-09T02:11:56+10:00]    |    Region coverage: HKJC 1 meetings · AU 1 meetings
+[2026-08-09T02:11:56+10:00]    |    Just double-click to open — no server needed!
+[2026-08-09T02:11:56+10:00] [dashboard-prune] ok {"dropped":["2026-08-08|Alice Springs","2026-08-08|Casino","2026-08-08|Caulfield Heath","2026-08-08|Eagle Farm","2026-08-08|Kembla Grange","2026-08-08|Mildura","2026-08-08|Morphettville","2026-08-08|Randwick","2026-08-08|Townsville"]}
+[2026-08-09T02:11:56+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/Horse_Racing_Dashboard/generate_static.py --au-meeting-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Ballarat Synthetic Race 1-8 --output-json /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-01.json --output-html /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-01.html --base-snapshot /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/pruned.json
+[2026-08-09T02:11:57+10:00]    | 🏇 Generating static dashboard...
+[2026-08-09T02:11:57+10:00]    |    Scanning for meetings...
+[2026-08-09T02:11:57+10:00]    |    Incremental snapshot: refreshed 2026-08-09 Ballarat Synthetic
+[2026-08-09T02:11:57+10:00]    |    Found 2 meetings, 17 race analyses
+[2026-08-09T02:11:57+10:00]    |    Building HTML...
+[2026-08-09T02:11:57+10:00]    |    Slimmed 83 duplicate core_analysis fields
+[2026-08-09T02:11:57+10:00]    |    Snapshot size: 3.5 MiB (Cloudflare Pages limit 25)
+[2026-08-09T02:11:57+10:00]    |    Snapshot JSON written: merge-01.json
+[2026-08-09T02:11:57+10:00]    | ✅ Dashboard generated: merge-01.html (4723 KB)
+[2026-08-09T02:11:57+10:00]    |    Region coverage: HKJC 1 meetings · AU 1 meetings
+[2026-08-09T02:11:57+10:00]    |    Just double-click to open — no server needed!
+[2026-08-09T02:11:57+10:00] [dashboard-merge] ok {"meeting":"2026-08-09 Ballarat Synthetic Race 1-8","snapshot":"merge-01.json"}
+[2026-08-09T02:11:57+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/Horse_Racing_Dashboard/generate_static.py --au-meeting-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Casterton Race 1-7 --output-json /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-02.json --output-html /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-02.html --base-snapshot /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-01.json
+[2026-08-09T02:11:57+10:00]    | 🏇 Generating static dashboard...
+[2026-08-09T02:11:57+10:00]    |    Scanning for meetings...
+[2026-08-09T02:11:57+10:00]    |    Incremental snapshot: refreshed 2026-08-09 Casterton
+[2026-08-09T02:11:57+10:00]    |    Found 3 meetings, 24 race analyses
+[2026-08-09T02:11:57+10:00]    |    Building HTML...
+[2026-08-09T02:11:57+10:00]    |    Slimmed 56 duplicate core_analysis fields
+[2026-08-09T02:11:57+10:00]    |    Snapshot size: 4.5 MiB (Cloudflare Pages limit 25)
+[2026-08-09T02:11:57+10:00]    |    Snapshot JSON written: merge-02.json
+[2026-08-09T02:11:57+10:00]    | ✅ Dashboard generated: merge-02.html (5536 KB)
+[2026-08-09T02:11:57+10:00]    |    Region coverage: HKJC 1 meetings · AU 2 meetings
+[2026-08-09T02:11:57+10:00]    |    Just double-click to open — no server needed!
+[2026-08-09T02:11:57+10:00] [dashboard-merge] ok {"meeting":"2026-08-09 Casterton Race 1-7","snapshot":"merge-02.json"}
+[2026-08-09T02:11:57+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/Horse_Racing_Dashboard/generate_static.py --au-meeting-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Kalgoorlie Race 1-8 --output-json /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-03.json --output-html /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-03.html --base-snapshot /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-02.json
+[2026-08-09T02:11:57+10:00]    | 🏇 Generating static dashboard...
+[2026-08-09T02:11:57+10:00]    |    Scanning for meetings...
+[2026-08-09T02:11:57+10:00]    |    Incremental snapshot: refreshed 2026-08-09 Kalgoorlie
+[2026-08-09T02:11:57+10:00]    |    Found 4 meetings, 32 race analyses
+[2026-08-09T02:11:57+10:00]    |    Building HTML...
+[2026-08-09T02:11:57+10:00]    |    Slimmed 82 duplicate core_analysis fields
+[2026-08-09T02:11:57+10:00]    |    Snapshot size: 5.9 MiB (Cloudflare Pages limit 25)
+[2026-08-09T02:11:57+10:00]    |    Snapshot JSON written: merge-03.json
+[2026-08-09T02:11:57+10:00]    | ✅ Dashboard generated: merge-03.html (7275 KB)
+[2026-08-09T02:11:57+10:00]    |    Region coverage: HKJC 1 meetings · AU 3 meetings
+[2026-08-09T02:11:57+10:00]    |    Just double-click to open — no server needed!
+[2026-08-09T02:11:57+10:00] [dashboard-merge] ok {"meeting":"2026-08-09 Kalgoorlie Race 1-8","snapshot":"merge-03.json"}
+[2026-08-09T02:11:57+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/Horse_Racing_Dashboard/generate_static.py --au-meeting-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Muswellbrook Race 1-7 --output-json /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-04.json --output-html /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-04.html --base-snapshot /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-03.json
+[2026-08-09T02:11:58+10:00]    | 🏇 Generating static dashboard...
+[2026-08-09T02:11:58+10:00]    |    Scanning for meetings...
+[2026-08-09T02:11:58+10:00]    |    Incremental snapshot: refreshed 2026-08-09 Muswellbrook
+[2026-08-09T02:11:58+10:00]    |    Found 5 meetings, 39 race analyses
+[2026-08-09T02:11:58+10:00]    |    Building HTML...
+[2026-08-09T02:11:58+10:00]    |    Slimmed 56 duplicate core_analysis fields
+[2026-08-09T02:11:58+10:00]    |    Snapshot size: 6.9 MiB (Cloudflare Pages limit 25)
+[2026-08-09T02:11:58+10:00]    |    Snapshot JSON written: merge-04.json
+[2026-08-09T02:11:58+10:00]    | ✅ Dashboard generated: merge-04.html (8088 KB)
+[2026-08-09T02:11:58+10:00]    |    Region coverage: HKJC 1 meetings · AU 4 meetings
+[2026-08-09T02:11:58+10:00]    |    Just double-click to open — no server needed!
+[2026-08-09T02:11:58+10:00] [dashboard-merge] ok {"meeting":"2026-08-09 Muswellbrook Race 1-7","snapshot":"merge-04.json"}
+[2026-08-09T02:11:58+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/Horse_Racing_Dashboard/generate_static.py --au-meeting-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Sunshine Coast Race 1-8 --output-json /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-05.json --output-html /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-05.html --base-snapshot /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-04.json
+[2026-08-09T02:11:59+10:00]    | 🏇 Generating static dashboard...
+[2026-08-09T02:11:59+10:00]    |    Scanning for meetings...
+[2026-08-09T02:11:59+10:00]    |    Incremental snapshot: refreshed 2026-08-09 Sunshine Coast
+[2026-08-09T02:11:59+10:00]    |    Found 6 meetings, 47 race analyses
+[2026-08-09T02:11:59+10:00]    |    Building HTML...
+[2026-08-09T02:11:59+10:00]    |    Slimmed 70 duplicate core_analysis fields
+[2026-08-09T02:11:59+10:00]    |    Snapshot size: 8.2 MiB (Cloudflare Pages limit 25)
+[2026-08-09T02:11:59+10:00]    |    Snapshot JSON written: merge-05.json
+[2026-08-09T02:11:59+10:00]    | ✅ Dashboard generated: merge-05.html (9548 KB)
+[2026-08-09T02:11:59+10:00]    |    Region coverage: HKJC 1 meetings · AU 5 meetings
+[2026-08-09T02:11:59+10:00]    |    Just double-click to open — no server needed!
+[2026-08-09T02:11:59+10:00] [dashboard-merge] ok {"meeting":"2026-08-09 Sunshine Coast Race 1-8","snapshot":"merge-05.json"}
+[2026-08-09T02:11:59+10:00] $ /Library/Developer/CommandLineTools/usr/bin/python3 /Users/imac/Antigravity-repo/Horse_Racing_Dashboard/generate_static.py --au-meeting-dir /Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-08-09 Wagga Race 1-7 --output-json /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-06.json --output-html /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-06.html --base-snapshot /Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-05.json
+[2026-08-09T02:11:59+10:00]    | 🏇 Generating static dashboard...
+[2026-08-09T02:11:59+10:00]    |    Scanning for meetings...
+[2026-08-09T02:11:59+10:00]    |    Incremental snapshot: refreshed 2026-08-09 Wagga
+[2026-08-09T02:11:59+10:00]    |    Found 7 meetings, 54 race analyses
+[2026-08-09T02:11:59+10:00]    |    Building HTML...
+[2026-08-09T02:11:59+10:00]    |    Slimmed 75 duplicate core_analysis fields
+[2026-08-09T02:11:59+10:00]    |    Snapshot size: 9.6 MiB (Cloudflare Pages limit 25)
+[2026-08-09T02:11:59+10:00]    |    Snapshot JSON written: merge-06.json
+[2026-08-09T02:11:59+10:00]    | ✅ Dashboard generated: merge-06.html (10992 KB)
+[2026-08-09T02:11:59+10:00]    |    Region coverage: HKJC 1 meetings · AU 6 meetings
+[2026-08-09T02:11:59+10:00]    |    Just double-click to open — no server needed!
+[2026-08-09T02:11:59+10:00] [dashboard-merge] ok {"meeting":"2026-08-09 Wagga Race 1-7","snapshot":"merge-06.json"}
+[2026-08-09T02:11:59+10:00] [dashboard-validate] ok {"meetings":7,"problems":0}
+[2026-08-09T02:11:59+10:00] $ /bin/bash /Users/imac/Antigravity-repo/Horse_Racing_Dashboard/deploy.sh
+[2026-08-09T02:12:48+10:00]    | 🔄 第一步：產生最新版本嘅 Dashboard / Race Analysis Snapshot...
+[2026-08-09T02:12:48+10:00]    |    Snapshot size: 9.6 MiB (Cloudflare Pages limit 25)
+[2026-08-09T02:12:48+10:00]    | ✅ Active-meeting dashboard generated: index.html
+[2026-08-09T02:12:48+10:00]    |    Active meetings only: 7
+[2026-08-09T02:12:48+10:00]    |    2026-08-09 Ballarat Synthetic: 0/83 silk rows · source 2026-08-09 Ballarat Synthetic Race 1-8
+[2026-08-09T02:12:48+10:00]    |    2026-08-09 Casterton: 26/56 silk rows · source 2026-08-09 Casterton Race 1-7
+[2026-08-09T02:12:48+10:00]    |    2026-08-09 Kalgoorlie: 32/82 silk rows · source 2026-08-09 Kalgoorlie Race 1-8
+[2026-08-09T02:12:48+10:00]    |    2026-08-09 Muswellbrook: 26/56 silk rows · source 2026-08-09 Muswellbrook Race 1-7
+[2026-08-09T02:12:48+10:00]    |    2026-08-09 Sunshine Coast: 25/70 silk rows · source 2026-08-09 Sunshine Coast Race 1-8
+[2026-08-09T02:12:48+10:00]    |    2026-08-09 Wagga: 26/75 silk rows · source 2026-08-09 Wagga Race 1-7
+[2026-08-09T02:12:48+10:00]    |    2026-07-15 HappyValley: 107/107 silk rows · source 2026-07-15_HappyValley
+[2026-08-09T02:12:48+10:00]    | 📦 第二步：Cloudflare deploy bundle 已準備完成（本地 staging：/var/folders/h1/br6y1s5j0nb07gfb5rjqxk6r0000gn/T//wongchoi_deploy.e1Riqv）
+[2026-08-09T02:12:48+10:00]    |    - HTML: index.html
+[2026-08-09T02:12:48+10:00]    |    - Data: dashboard-data.json
+[2026-08-09T02:12:48+10:00]    |    - Manifest: deploy-manifest.json
+[2026-08-09T02:12:48+10:00]    |    - PWA assets: pwa/ → dist 根目錄（6 個檔案）
+[2026-08-09T02:12:48+10:00]    |    - Pages Functions: functions/（已複製到本地 staging）
+[2026-08-09T02:12:48+10:00]    | ☁️ 第三步：推送上 Cloudflare Pages...
+[2026-08-09T02:12:48+10:00]    |    - Pages Project: wongchoi-dashboard
+[2026-08-09T02:12:48+10:00]    |    - Account ID: 19103981a47a85f1b9ad9f6f6a463f31
+[2026-08-09T02:12:48+10:00]    |    ℹ️ 未設 CLOUDFLARE_API_TOKEN；將依賴本機 wrangler login session
+[2026-08-09T02:12:48+10:00]    |    - Wrangler CWD: /var/folders/h1/br6y1s5j0nb07gfb5rjqxk6r0000gn/T//wongchoi_deploy.e1Riqv (本地 staging，內有 wrangler.toml KV + functions/)
+[2026-08-09T02:12:48+10:00]    |    - Commit Hash: manual-20260808161222
+[2026-08-09T02:12:48+10:00]    | 
+[2026-08-09T02:12:48+10:00]    |  ⛅️ wrangler 4.86.0
+[2026-08-09T02:12:48+10:00]    | ───────────────────
+[2026-08-09T02:12:48+10:00]    | ✨ Compiled Worker successfully
+[2026-08-09T02:12:48+10:00]    | Uploading... (6/9)
+[2026-08-09T02:12:48+10:00]    | Uploading... (7/9)
+[2026-08-09T02:12:48+10:00]    | Uploading... (8/9)
+[2026-08-09T02:12:48+10:00]    | Uploading... (9/9)
+[2026-08-09T02:12:48+10:00]    | ✨ Success! Uploaded 3 files (6 already uploaded) (7.13 sec)
+[2026-08-09T02:12:48+10:00]    | 
+[2026-08-09T02:12:48+10:00]    | ✨ Uploading Functions bundle
+[2026-08-09T02:12:48+10:00]    | 🌎 Deploying...
+[2026-08-09T02:12:48+10:00]    | ✨ Deployment complete! Take a peek over at https://a4664dd2.wongchoi-dashboard.pages.dev
+[2026-08-09T02:12:48+10:00]    | 🎉 發佈完成！Cloudflare 版本已更新 HKJC + AU race analysis snapshot。
+[2026-08-09T02:12:48+10:00]    | 🧾 第四步：檢查 NBA／Tennis 已驗證賽果並冪等結算...
+[2026-08-09T02:12:48+10:00]    | {"total": 388, "tennis": 388, "nba": 0}
+[2026-08-09T02:12:48+10:00]    | {"success": true, "applied": 0, "skipped": 388}
+[2026-08-09T02:12:48+10:00] 🔁 retry verify-live (1): missing=['2026-08-09|Casterton', '2026-08-09|Kalgoorlie', '2026-08-09|Muswellbrook', '2026-08-09|Sunshine Coast', '2026-08-09|Wagga'] still_present=[] stale=True
+[2026-08-09T02:13:09+10:00] 🔁 retry verify-live (2): missing=['2026-08-09|Casterton', '2026-08-09|Kalgoorlie', '2026-08-09|Muswellbrook', '2026-08-09|Sunshine Coast', '2026-08-09|Wagga'] still_present=[] stale=True
+[2026-08-09T02:13:29+10:00] [verify-live] ok {"generated_at":"2026-08-09T02:12:16","meetings":["2026-08-09|Ballarat Synthetic","2026-08-09|Casterton","2026-08-09|Kalgoorlie","2026-08-09|Muswellbrook","2026-08-09|Sunshine Coast","2026-08-09|Wagga","2026-07-15|HappyValley"]}
+[2026-08-09T02:13:30+10:00] [mirror] ok {"copied":242,"failed":0,"root":"/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing"}
+[2026-08-09T02:13:30+10:00] [browser] closed {"requests_made":306,"stop_reason":null}
+[2026-08-09T02:13:32+10:00] === run ok in 9523.4s → run-evening-20260808T233448.json ===

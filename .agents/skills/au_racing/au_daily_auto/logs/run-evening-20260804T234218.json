@@ -1,0 +1,53 @@
+{
+  "task_name": "au-wong-choi-evening",
+  "mode": "evening",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-04",
+  "started_at": "2026-08-04T23:42:18+10:00",
+  "completed_at": "2026-08-04T23:42:19+10:00",
+  "status": "ok",
+  "duration_seconds": 0.3,
+  "steps": [
+    {
+      "step": "dashboard",
+      "status": "start",
+      "at": "2026-08-04T23:42:18+10:00",
+      "merge": 0,
+      "archived": 0
+    },
+    {
+      "step": "dashboard-validate",
+      "status": "ok",
+      "at": "2026-08-04T23:42:19+10:00",
+      "meetings": 1,
+      "problems": 0
+    },
+    {
+      "step": "dashboard",
+      "status": "deploy-skipped-by-flag",
+      "at": "2026-08-04T23:42:19+10:00"
+    }
+  ],
+  "meetings_processed": [],
+  "races_archived": [],
+  "races_added": [],
+  "races_updated": [],
+  "scratchings_detected": [],
+  "track_changes_detected": [],
+  "analysis_changes": [],
+  "dashboard_validation": {
+    "ok": true,
+    "problems": [],
+    "meetings": [
+      "2026-07-15|HappyValley"
+    ],
+    "race_counts": {
+      "2026-07-15|HappyValley": 9
+    },
+    "snapshot": "/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/live-dashboard-data.json"
+  },
+  "cloudflare_deployment": null,
+  "errors": [],
+  "warnings": [],
+  "retries": []
+}

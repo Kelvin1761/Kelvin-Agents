@@ -1,0 +1,205 @@
+{
+  "task_name": "au-wong-choi-evening",
+  "mode": "evening",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-06",
+  "started_at": "2026-08-06T00:04:33+10:00",
+  "completed_at": "2026-08-06T00:08:51+10:00",
+  "status": "failed",
+  "duration_seconds": 258.1,
+  "steps": [
+    {
+      "step": "preflight",
+      "status": "ok",
+      "at": "2026-08-06T00:04:33+10:00",
+      "au_meeting_folders": 93,
+      "au_root": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing",
+      "mirror": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing",
+      "archive_readable": true
+    },
+    {
+      "step": "review-archive",
+      "status": "start",
+      "at": "2026-08-06T00:04:33+10:00",
+      "review_day": "2026-08-06"
+    },
+    {
+      "step": "review-archive",
+      "status": "dashboard-scan",
+      "at": "2026-08-06T00:04:34+10:00",
+      "au_on_dashboard": [
+        "2026-08-05|Belmont",
+        "2026-08-05|Canterbury",
+        "2026-08-05|Cranbourne",
+        "2026-08-05|Doomben",
+        "2026-08-05|Hobart",
+        "2026-08-05|Murray Bridge"
+      ],
+      "due": [
+        "2026-08-05|Belmont",
+        "2026-08-05|Canterbury",
+        "2026-08-05|Cranbourne",
+        "2026-08-05|Doomben",
+        "2026-08-05|Hobart",
+        "2026-08-05|Murray Bridge"
+      ]
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-06T00:08:19+10:00",
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "had_before": 0,
+      "expected": 8,
+      "refreshed": 8,
+      "failed": 0
+    },
+    {
+      "step": "review-archive",
+      "status": "done",
+      "at": "2026-08-06T00:08:21+10:00",
+      "archived": 5,
+      "candidates": 1
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "start",
+      "at": "2026-08-06T00:08:21+10:00"
+    },
+    {
+      "step": "discover",
+      "status": "ok",
+      "at": "2026-08-06T00:08:50+10:00",
+      "race_day": "2026-08-07",
+      "index_meetings": 15,
+      "api_venues": []
+    },
+    {
+      "step": "dashboard",
+      "status": "start",
+      "at": "2026-08-06T00:08:50+10:00",
+      "merge": 0,
+      "archived": 5
+    },
+    {
+      "step": "dashboard-validate",
+      "status": "failed",
+      "at": "2026-08-06T00:08:51+10:00",
+      "meetings": 7,
+      "problems": 1
+    },
+    {
+      "step": "mirror",
+      "status": "ok",
+      "at": "2026-08-06T00:08:51+10:00",
+      "copied": 0,
+      "failed": 0,
+      "root": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing"
+    },
+    {
+      "step": "browser",
+      "status": "closed",
+      "at": "2026-08-06T00:08:51+10:00",
+      "requests_made": 9,
+      "stop_reason": null
+    },
+    {
+      "step": "outcome",
+      "status": "needs-attention",
+      "at": "2026-08-06T00:08:51+10:00",
+      "statuses": [
+        "pending_results"
+      ]
+    }
+  ],
+  "meetings_processed": [
+    {
+      "meeting": "2026-08-05 Belmont Race 1-8",
+      "status": "already_archived",
+      "at": "2026-08-06T00:04:34+10:00"
+    },
+    {
+      "meeting": "2026-08-05 Canterbury Race 1-7",
+      "status": "already_archived",
+      "at": "2026-08-06T00:04:34+10:00"
+    },
+    {
+      "meeting": "2026-08-05 Doomben Race 1-8",
+      "status": "already_archived",
+      "at": "2026-08-06T00:04:34+10:00"
+    },
+    {
+      "meeting": "2026-08-05 Hobart Race 1-9",
+      "status": "already_archived",
+      "at": "2026-08-06T00:04:34+10:00"
+    },
+    {
+      "meeting": "2026-08-05 Murray Bridge Race 1-8",
+      "status": "already_archived",
+      "at": "2026-08-06T00:04:34+10:00"
+    },
+    {
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "status": "pending_results",
+      "at": "2026-08-06T00:08:21+10:00",
+      "reason": "❌ cache 冇任何賽果 —— 呢個場次未抽過，或者仲未跑",
+      "expected_races": 8
+    }
+  ],
+  "races_archived": [],
+  "races_added": [],
+  "races_updated": [],
+  "scratchings_detected": [],
+  "track_changes_detected": [],
+  "analysis_changes": [],
+  "dashboard_validation": {
+    "ok": false,
+    "problems": [
+      "已歸檔但仲喺 dashboard：['2026-08-05|Belmont', '2026-08-05|Canterbury', '2026-08-05|Doomben', '2026-08-05|Hobart', '2026-08-05|Murray Bridge']"
+    ],
+    "meetings": [
+      "2026-08-05|Belmont",
+      "2026-08-05|Canterbury",
+      "2026-08-05|Cranbourne",
+      "2026-08-05|Doomben",
+      "2026-08-05|Hobart",
+      "2026-08-05|Murray Bridge",
+      "2026-07-15|HappyValley"
+    ],
+    "race_counts": {
+      "2026-08-05|Belmont": 8,
+      "2026-08-05|Canterbury": 7,
+      "2026-08-05|Cranbourne": 8,
+      "2026-08-05|Doomben": 8,
+      "2026-08-05|Hobart": 9,
+      "2026-08-05|Murray Bridge": 8,
+      "2026-07-15|HappyValley": 9
+    },
+    "snapshot": "/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/live-dashboard-data.json"
+  },
+  "cloudflare_deployment": null,
+  "errors": [
+    {
+      "at": "2026-08-06T00:08:50+10:00",
+      "step": "analyse-next-day",
+      "message": "暫時性：2026-08-07 攞唔到 API 澳洲場次名單 —— 唔可以由索引頁分辨澳洲同海外，今次唔分析（索引頁有 15 個場次）"
+    },
+    {
+      "at": "2026-08-06T00:08:51+10:00",
+      "step": "dashboard-validate",
+      "message": "已歸檔但仲喺 dashboard：['2026-08-05|Belmont', '2026-08-05|Canterbury', '2026-08-05|Doomben', '2026-08-05|Hobart', '2026-08-05|Murray Bridge']"
+    },
+    {
+      "at": "2026-08-06T00:08:51+10:00",
+      "step": "dashboard",
+      "message": "驗證唔過 —— 唔發佈"
+    }
+  ],
+  "warnings": [
+    {
+      "at": "2026-08-06T00:08:21+10:00",
+      "message": "NextEvents 冇下一個賽日資料，退回 2026-08-07"
+    }
+  ],
+  "retries": []
+}

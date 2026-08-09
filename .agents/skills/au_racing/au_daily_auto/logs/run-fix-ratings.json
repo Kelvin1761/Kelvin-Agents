@@ -1,0 +1,78 @@
+{
+  "task_name": "au-wong-choi-fix-ratings",
+  "mode": "fix-ratings",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-05",
+  "started_at": "2026-08-05T17:47:01+10:00",
+  "completed_at": "2026-08-05T17:47:06+10:00",
+  "status": "ok",
+  "duration_seconds": 4.6,
+  "steps": [
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-05T17:47:02+10:00",
+      "meeting": "2026-08-05 Belmont Race 1-8",
+      "filled": 0,
+      "no_official": 11,
+      "ra_venue": "Belmont"
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-05T17:47:02+10:00",
+      "meeting": "2026-08-05 Canterbury Race 1-7",
+      "filled": 0,
+      "no_official": 4,
+      "ra_venue": "Canterbury Park"
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-05T17:47:03+10:00",
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "filled": 0,
+      "no_official": 42,
+      "ra_venue": "Southside Cranbourne"
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-05T17:47:04+10:00",
+      "meeting": "2026-08-05 Doomben Race 1-8",
+      "filled": 0,
+      "no_official": 12,
+      "ra_venue": "Doomben"
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-05T17:47:04+10:00",
+      "meeting": "2026-08-05 Hobart Race 1-9",
+      "filled": 0,
+      "no_official": 19,
+      "ra_venue": "Hobart"
+    },
+    {
+      "step": "ra-ratings",
+      "status": "ok",
+      "at": "2026-08-05T17:47:05+10:00",
+      "meeting": "2026-08-05 Murray Bridge Race 1-8",
+      "filled": 0,
+      "no_official": 29,
+      "ra_venue": "Thomas Farms RC Murray Bridge"
+    }
+  ],
+  "meetings_processed": [],
+  "races_archived": [],
+  "races_added": [],
+  "races_updated": [],
+  "scratchings_detected": [],
+  "track_changes_detected": [],
+  "analysis_changes": [],
+  "dashboard_validation": null,
+  "cloudflare_deployment": null,
+  "errors": [],
+  "warnings": [],
+  "retries": []
+}

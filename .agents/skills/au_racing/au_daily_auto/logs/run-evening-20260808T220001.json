@@ -1,0 +1,549 @@
+{
+  "task_name": "au-wong-choi-evening",
+  "mode": "evening",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-08",
+  "started_at": "2026-08-08T22:00:01+10:00",
+  "completed_at": "2026-08-08T23:33:24+10:00",
+  "status": "partial",
+  "duration_seconds": 5603.0,
+  "steps": [
+    {
+      "step": "preflight",
+      "status": "ok",
+      "at": "2026-08-08T22:00:01+10:00",
+      "au_meeting_folders": 98,
+      "au_root": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing",
+      "mirror": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing",
+      "archive_readable": true
+    },
+    {
+      "step": "review-archive",
+      "status": "start",
+      "at": "2026-08-08T22:00:01+10:00",
+      "review_day": "2026-08-08"
+    },
+    {
+      "step": "review-archive",
+      "status": "dashboard-scan",
+      "at": "2026-08-08T22:00:03+10:00",
+      "au_on_dashboard": [
+        "2026-08-05|Cranbourne"
+      ],
+      "due": [
+        "2026-08-05|Cranbourne"
+      ]
+    },
+    {
+      "step": "results-refresh",
+      "status": "done",
+      "at": "2026-08-08T22:03:58+10:00",
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "had_before": 0,
+      "expected": 8,
+      "refreshed": 8,
+      "failed": 0
+    },
+    {
+      "step": "review-archive",
+      "status": "done",
+      "at": "2026-08-08T22:04:00+10:00",
+      "archived": 1,
+      "candidates": 1
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "start",
+      "at": "2026-08-08T22:04:00+10:00"
+    },
+    {
+      "step": "discover",
+      "status": "ok",
+      "at": "2026-08-08T22:04:29+10:00",
+      "race_day": "2026-08-09",
+      "index_meetings": 15,
+      "api_venues": [
+        "Ballarat Synthetic",
+        "Casterton",
+        "Kalgoorlie",
+        "Muswellbrook",
+        "Sunshine Coast",
+        "Wagga"
+      ]
+    },
+    {
+      "step": "discover",
+      "status": "non-au-excluded",
+      "at": "2026-08-08T22:04:29+10:00",
+      "meetings": [
+        "ayr",
+        "chepstow",
+        "curragh",
+        "downpatrick",
+        "kilbeggan",
+        "leicester",
+        "lingfield",
+        "scottsville",
+        "woodbine"
+      ],
+      "reason": "API 澳洲名單冇呢啲馬場"
+    },
+    {
+      "step": "site-gate",
+      "status": "tripped",
+      "at": "2026-08-08T22:15:12+10:00",
+      "where": "2026-08-09 Ballarat Synthetic 個人頁（page.goto 失敗（TargetClosedError: Page.goto: Target page, context or browser has been closed））"
+    },
+    {
+      "step": "warm-people",
+      "status": "partial",
+      "at": "2026-08-08T22:15:12+10:00",
+      "meeting": "2026-08-09 Ballarat Synthetic",
+      "needed": 83,
+      "fetched": 12
+    },
+    {
+      "step": "mapping-update",
+      "status": "ok",
+      "at": "2026-08-08T22:15:18+10:00",
+      "meeting": "2026-08-09 Ballarat Synthetic Race 1-8",
+      "races": 8
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "cooldown",
+      "at": "2026-08-08T22:15:32+10:00",
+      "round_no": 2,
+      "sleep_seconds": 900,
+      "dry_rounds": 0,
+      "waiting_for": [
+        "Casterton",
+        "Kalgoorlie",
+        "Muswellbrook",
+        "Sunshine Coast",
+        "Wagga"
+      ]
+    },
+    {
+      "step": "site-gate",
+      "status": "tripped",
+      "at": "2026-08-08T22:30:32+10:00",
+      "where": "2026-08-09 Casterton 第 1 場（raceId=3399538）（page.goto 失敗（TargetClosedError: Page.goto: Target page, context or browser has been closed））"
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "cooldown",
+      "at": "2026-08-08T22:30:32+10:00",
+      "round_no": 3,
+      "sleep_seconds": 1440,
+      "dry_rounds": 1,
+      "waiting_for": [
+        "Casterton",
+        "Kalgoorlie",
+        "Muswellbrook",
+        "Sunshine Coast",
+        "Wagga"
+      ]
+    },
+    {
+      "step": "site-gate",
+      "status": "tripped",
+      "at": "2026-08-08T22:54:32+10:00",
+      "where": "2026-08-09 Casterton 第 1 場（raceId=3399538）（page.goto 失敗（TargetClosedError: Page.goto: Target page, context or browser has been closed））"
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "cooldown",
+      "at": "2026-08-08T22:54:32+10:00",
+      "round_no": 4,
+      "sleep_seconds": 2304,
+      "dry_rounds": 2,
+      "waiting_for": [
+        "Casterton",
+        "Kalgoorlie",
+        "Muswellbrook",
+        "Sunshine Coast",
+        "Wagga"
+      ]
+    },
+    {
+      "step": "site-gate",
+      "status": "tripped",
+      "at": "2026-08-08T23:32:56+10:00",
+      "where": "2026-08-09 Casterton 第 1 場（raceId=3399538）（page.goto 失敗（TargetClosedError: Page.goto: Target page, context or browser has been closed））"
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "still-pending",
+      "at": "2026-08-08T23:32:56+10:00",
+      "meetings": [
+        "Casterton",
+        "Kalgoorlie",
+        "Muswellbrook",
+        "Sunshine Coast",
+        "Wagga"
+      ],
+      "detail": "下一次排程會續，已抽嘅場次全部 cache 命中唔會重打"
+    },
+    {
+      "step": "analyse-next-day",
+      "status": "done",
+      "at": "2026-08-08T23:32:57+10:00",
+      "race_day": "2026-08-09",
+      "planned": 6,
+      "analysed": 1,
+      "pending": 5
+    },
+    {
+      "step": "dashboard",
+      "status": "start",
+      "at": "2026-08-08T23:32:57+10:00",
+      "merge": 1,
+      "archived": 1
+    },
+    {
+      "step": "dashboard-prune",
+      "status": "ok",
+      "at": "2026-08-08T23:33:00+10:00",
+      "dropped": [
+        "2026-08-05|Cranbourne"
+      ]
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-08T23:33:00+10:00",
+      "meeting": "2026-08-09 Ballarat Synthetic Race 1-8",
+      "snapshot": "merge-01.json"
+    },
+    {
+      "step": "dashboard-validate",
+      "status": "ok",
+      "at": "2026-08-08T23:33:00+10:00",
+      "meetings": 2,
+      "problems": 0
+    },
+    {
+      "step": "verify-live",
+      "status": "ok",
+      "at": "2026-08-08T23:33:22+10:00",
+      "generated_at": "2026-08-08T23:33:01",
+      "meetings": [
+        "2026-08-09|Ballarat Synthetic",
+        "2026-07-15|HappyValley"
+      ]
+    },
+    {
+      "step": "mirror",
+      "status": "ok",
+      "at": "2026-08-08T23:33:22+10:00",
+      "copied": 52,
+      "failed": 0,
+      "root": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing"
+    },
+    {
+      "step": "browser",
+      "status": "closed",
+      "at": "2026-08-08T23:33:22+10:00",
+      "requests_made": 30,
+      "stop_reason": "page.goto 失敗（TargetClosedError: Page.goto: Target page, context or browser has been closed）"
+    },
+    {
+      "step": "outcome",
+      "status": "partial",
+      "at": "2026-08-08T23:33:24+10:00",
+      "retryable": [
+        "pending_extraction"
+      ],
+      "detail": "下一次排程會接住做"
+    }
+  ],
+  "meetings_processed": [
+    {
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "status": "archived_unresolved",
+      "at": "2026-08-08T22:04:00+10:00",
+      "days_overdue": 3,
+      "expected_races": 8
+    },
+    {
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "status": "archived",
+      "at": "2026-08-08T22:04:00+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "meeting": "2026-08-09 Ballarat Synthetic Race 1-8",
+      "status": "analysed",
+      "at": "2026-08-08T22:15:32+10:00",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected": 8,
+      "going": "Good 3"
+    },
+    {
+      "meeting": "2026-08-09 Casterton",
+      "status": "pending_extraction",
+      "at": "2026-08-08T22:15:32+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 1
+    },
+    {
+      "meeting": "2026-08-09 Kalgoorlie",
+      "status": "pending_extraction",
+      "at": "2026-08-08T22:15:32+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 1
+    },
+    {
+      "meeting": "2026-08-09 Muswellbrook",
+      "status": "pending_extraction",
+      "at": "2026-08-08T22:15:32+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 1
+    },
+    {
+      "meeting": "2026-08-09 Sunshine Coast",
+      "status": "pending_extraction",
+      "at": "2026-08-08T22:15:32+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 1
+    },
+    {
+      "meeting": "2026-08-09 Wagga",
+      "status": "pending_extraction",
+      "at": "2026-08-08T22:15:32+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 1
+    },
+    {
+      "meeting": "2026-08-09 Casterton",
+      "status": "pending_extraction",
+      "at": "2026-08-08T22:30:32+10:00",
+      "detail": "一場賽事頁都攞唔到（個站拒絕）",
+      "round_no": 2
+    },
+    {
+      "meeting": "2026-08-09 Kalgoorlie",
+      "status": "pending_extraction",
+      "at": "2026-08-08T22:30:32+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 2
+    },
+    {
+      "meeting": "2026-08-09 Muswellbrook",
+      "status": "pending_extraction",
+      "at": "2026-08-08T22:30:32+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 2
+    },
+    {
+      "meeting": "2026-08-09 Sunshine Coast",
+      "status": "pending_extraction",
+      "at": "2026-08-08T22:30:32+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 2
+    },
+    {
+      "meeting": "2026-08-09 Wagga",
+      "status": "pending_extraction",
+      "at": "2026-08-08T22:30:32+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 2
+    },
+    {
+      "meeting": "2026-08-09 Casterton",
+      "status": "pending_extraction",
+      "at": "2026-08-08T22:54:32+10:00",
+      "detail": "一場賽事頁都攞唔到（個站拒絕）",
+      "round_no": 3
+    },
+    {
+      "meeting": "2026-08-09 Kalgoorlie",
+      "status": "pending_extraction",
+      "at": "2026-08-08T22:54:32+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 3
+    },
+    {
+      "meeting": "2026-08-09 Muswellbrook",
+      "status": "pending_extraction",
+      "at": "2026-08-08T22:54:32+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 3
+    },
+    {
+      "meeting": "2026-08-09 Sunshine Coast",
+      "status": "pending_extraction",
+      "at": "2026-08-08T22:54:32+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 3
+    },
+    {
+      "meeting": "2026-08-09 Wagga",
+      "status": "pending_extraction",
+      "at": "2026-08-08T22:54:32+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 3
+    },
+    {
+      "meeting": "2026-08-09 Casterton",
+      "status": "pending_extraction",
+      "at": "2026-08-08T23:32:56+10:00",
+      "detail": "一場賽事頁都攞唔到（個站拒絕）",
+      "round_no": 4
+    },
+    {
+      "meeting": "2026-08-09 Kalgoorlie",
+      "status": "pending_extraction",
+      "at": "2026-08-08T23:32:56+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 4
+    },
+    {
+      "meeting": "2026-08-09 Muswellbrook",
+      "status": "pending_extraction",
+      "at": "2026-08-08T23:32:56+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 4
+    },
+    {
+      "meeting": "2026-08-09 Sunshine Coast",
+      "status": "pending_extraction",
+      "at": "2026-08-08T23:32:56+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 4
+    },
+    {
+      "meeting": "2026-08-09 Wagga",
+      "status": "pending_extraction",
+      "at": "2026-08-08T23:32:56+10:00",
+      "detail": "個站今次 run 已經明確拒絕，唔再敲門",
+      "round_no": 4
+    }
+  ],
+  "races_archived": [
+    {
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    }
+  ],
+  "races_added": [
+    {
+      "meeting": "2026-08-09 Ballarat Synthetic Race 1-8",
+      "races": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "expected_races": 8,
+      "complete": true,
+      "going": "Good 3"
+    }
+  ],
+  "races_updated": [],
+  "scratchings_detected": [],
+  "track_changes_detected": [],
+  "analysis_changes": [],
+  "dashboard_validation": {
+    "ok": true,
+    "problems": [],
+    "meetings": [
+      "2026-08-09|Ballarat Synthetic",
+      "2026-07-15|HappyValley"
+    ],
+    "race_counts": {
+      "2026-08-09|Ballarat Synthetic": 8,
+      "2026-07-15|HappyValley": 9
+    },
+    "snapshot": "/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-01.json"
+  },
+  "cloudflare_deployment": {
+    "ok": true,
+    "attempts": 1,
+    "active_meetings": 2,
+    "deployment_url": "https://8a5b54b6.wongchoi-dashboard.pages.dev",
+    "production_url": "https://wongchoi-dashboard.pages.dev",
+    "commit": "manual-20260808133305",
+    "completed_at": "2026-08-08T23:33:20+10:00",
+    "verified": {
+      "attempt": 1,
+      "generated_at": "2026-08-08T23:33:01",
+      "meetings": [
+        "2026-08-09|Ballarat Synthetic",
+        "2026-07-15|HappyValley"
+      ],
+      "missing": [],
+      "still_present": [],
+      "stale": false,
+      "ok": true
+    }
+  },
+  "errors": [],
+  "warnings": [
+    {
+      "at": "2026-08-08T22:04:00+10:00",
+      "message": "2026-08-05 Cranbourne Race 1-8：賽日過咗 3 日仍然冇任何賽果，當係取消／改期 —— 歸檔（唔會有覆盤報告）"
+    },
+    {
+      "at": "2026-08-08T22:08:37+10:00",
+      "message": "2026-08-09 Ballarat Synthetic: 個人頁今次只補 40/83，餘下 43 個下次補（TTL cache 會累積）"
+    },
+    {
+      "at": "2026-08-08T22:15:12+10:00",
+      "message": "個站喺 2026-08-09 Ballarat Synthetic 個人頁（page.goto 失敗（TargetClosedError: Page.goto: Target page, context or browser has been closed）） 明確拒絕（穩定非 200）—— 今次 run 唔再出網攞頁，餘下嘅場次記做 pending，下一次排程再試"
+    },
+    {
+      "at": "2026-08-08T22:15:18+10:00",
+      "message": "2026-08-09 Ballarat Synthetic Race 1-8: RA 冇呢個場次（RA 冇 2026-08-09 Ballarat Synthetic）—— 照用 fallback"
+    },
+    {
+      "at": "2026-08-08T22:30:32+10:00",
+      "message": "個站喺 2026-08-09 Casterton 第 1 場（raceId=3399538）（page.goto 失敗（TargetClosedError: Page.goto: Target page, context or browser has been closed）） 明確拒絕（穩定非 200）—— 今次 run 唔再出網攞頁，餘下嘅場次記做 pending，下一次排程再試"
+    },
+    {
+      "at": "2026-08-08T22:54:32+10:00",
+      "message": "個站喺 2026-08-09 Casterton 第 1 場（raceId=3399538）（page.goto 失敗（TargetClosedError: Page.goto: Target page, context or browser has been closed）） 明確拒絕（穩定非 200）—— 今次 run 唔再出網攞頁，餘下嘅場次記做 pending，下一次排程再試"
+    },
+    {
+      "at": "2026-08-08T23:32:56+10:00",
+      "message": "個站喺 2026-08-09 Casterton 第 1 場（raceId=3399538）（page.goto 失敗（TargetClosedError: Page.goto: Target page, context or browser has been closed）） 明確拒絕（穩定非 200）—— 今次 run 唔再出網攞頁，餘下嘅場次記做 pending，下一次排程再試"
+    },
+    {
+      "at": "2026-08-08T23:32:56+10:00",
+      "message": "連續 3 輪零進展 —— 當係真封鎖唔係冷卻，停止今晚嘅抽取，餘下交下一次排程"
+    }
+  ],
+  "retries": []
+}

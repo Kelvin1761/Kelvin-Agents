@@ -1,0 +1,59 @@
+{
+  "task_name": "au-wong-choi-morning",
+  "mode": "morning",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-05",
+  "started_at": "2026-08-05T11:15:12+10:00",
+  "completed_at": null,
+  "status": "running",
+  "duration_seconds": null,
+  "steps": [
+    {
+      "step": "preflight",
+      "status": "ok",
+      "at": "2026-08-05T11:15:12+10:00",
+      "au_meeting_folders": 94,
+      "au_root": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing",
+      "mirror": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing",
+      "archive_readable": true
+    },
+    {
+      "step": "refresh-active",
+      "status": "start",
+      "at": "2026-08-05T11:15:12+10:00"
+    },
+    {
+      "step": "refresh-active",
+      "status": "dashboard-scan",
+      "at": "2026-08-05T11:15:13+10:00",
+      "au_on_dashboard": [
+        "2026-08-05|Belmont",
+        "2026-08-05|Canterbury",
+        "2026-08-05|Cranbourne",
+        "2026-08-05|Doomben",
+        "2026-08-05|Hobart",
+        "2026-08-05|Murray Bridge"
+      ],
+      "to_check": [
+        "2026-08-05 Belmont Race 1-8",
+        "2026-08-05 Canterbury Race 1-7",
+        "2026-08-05 Cranbourne Race 1-8",
+        "2026-08-05 Doomben Race 1-8",
+        "2026-08-05 Hobart Race 1-9",
+        "2026-08-05 Murray Bridge Race 1-8"
+      ]
+    }
+  ],
+  "meetings_processed": [],
+  "races_archived": [],
+  "races_added": [],
+  "races_updated": [],
+  "scratchings_detected": [],
+  "track_changes_detected": [],
+  "analysis_changes": [],
+  "dashboard_validation": null,
+  "cloudflare_deployment": null,
+  "errors": [],
+  "warnings": [],
+  "retries": []
+}

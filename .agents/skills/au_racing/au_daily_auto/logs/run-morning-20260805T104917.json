@@ -1,0 +1,137 @@
+{
+  "task_name": "au-wong-choi-morning",
+  "mode": "morning",
+  "timezone": "Australia/Sydney",
+  "review_day": "2026-08-05",
+  "started_at": "2026-08-05T10:49:17+10:00",
+  "completed_at": "2026-08-05T10:49:25+10:00",
+  "status": "ok",
+  "duration_seconds": 8.7,
+  "steps": [
+    {
+      "step": "preflight",
+      "status": "ok",
+      "at": "2026-08-05T10:49:17+10:00",
+      "au_meeting_folders": 94,
+      "au_root": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing",
+      "mirror": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing",
+      "archive_readable": true
+    },
+    {
+      "step": "refresh-active",
+      "status": "skipped-by-flag",
+      "at": "2026-08-05T10:49:17+10:00",
+      "rebuilding": [
+        "2026-08-05 Belmont Race 1-8",
+        "2026-08-05 Canterbury Race 1-7",
+        "2026-08-05 Cranbourne Race 1-8",
+        "2026-08-05 Doomben Race 1-8",
+        "2026-08-05 Hobart Race 1-9",
+        "2026-08-05 Murray Bridge Race 1-8"
+      ]
+    },
+    {
+      "step": "dashboard",
+      "status": "start",
+      "at": "2026-08-05T10:49:17+10:00",
+      "merge": 6,
+      "archived": 0
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-05T10:49:20+10:00",
+      "meeting": "2026-08-05 Belmont Race 1-8",
+      "snapshot": "merge-01.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-05T10:49:21+10:00",
+      "meeting": "2026-08-05 Canterbury Race 1-7",
+      "snapshot": "merge-02.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-05T10:49:22+10:00",
+      "meeting": "2026-08-05 Cranbourne Race 1-8",
+      "snapshot": "merge-03.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-05T10:49:23+10:00",
+      "meeting": "2026-08-05 Doomben Race 1-8",
+      "snapshot": "merge-04.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-05T10:49:24+10:00",
+      "meeting": "2026-08-05 Hobart Race 1-9",
+      "snapshot": "merge-05.json"
+    },
+    {
+      "step": "dashboard-merge",
+      "status": "ok",
+      "at": "2026-08-05T10:49:25+10:00",
+      "meeting": "2026-08-05 Murray Bridge Race 1-8",
+      "snapshot": "merge-06.json"
+    },
+    {
+      "step": "dashboard-validate",
+      "status": "ok",
+      "at": "2026-08-05T10:49:25+10:00",
+      "meetings": 7,
+      "problems": 0
+    },
+    {
+      "step": "dashboard",
+      "status": "deploy-skipped-by-flag",
+      "at": "2026-08-05T10:49:25+10:00"
+    },
+    {
+      "step": "mirror",
+      "status": "ok",
+      "at": "2026-08-05T10:49:25+10:00",
+      "copied": 0,
+      "failed": 0,
+      "root": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing"
+    }
+  ],
+  "meetings_processed": [],
+  "races_archived": [],
+  "races_added": [],
+  "races_updated": [],
+  "scratchings_detected": [],
+  "track_changes_detected": [],
+  "analysis_changes": [],
+  "dashboard_validation": {
+    "ok": true,
+    "problems": [],
+    "meetings": [
+      "2026-08-05|Belmont",
+      "2026-08-05|Canterbury",
+      "2026-08-05|Cranbourne",
+      "2026-08-05|Doomben",
+      "2026-08-05|Hobart",
+      "2026-08-05|Murray Bridge",
+      "2026-07-15|HappyValley"
+    ],
+    "race_counts": {
+      "2026-08-05|Belmont": 8,
+      "2026-08-05|Canterbury": 7,
+      "2026-08-05|Cranbourne": 8,
+      "2026-08-05|Doomben": 8,
+      "2026-08-05|Hobart": 9,
+      "2026-08-05|Murray Bridge": 8,
+      "2026-07-15|HappyValley": 9
+    },
+    "snapshot": "/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_daily_auto/work/merge-06.json"
+  },
+  "cloudflare_deployment": null,
+  "errors": [],
+  "warnings": [],
+  "retries": []
+}
