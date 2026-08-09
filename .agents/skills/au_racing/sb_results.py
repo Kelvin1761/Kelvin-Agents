@@ -16,8 +16,8 @@ Racenet 那條路就永遠唔會行到。
 全程讀 cache，零網絡請求。
 
 用法：
-    python3 sb_results.py --meeting "2026-08-01 Flemington Race 1-9"
-    python3 sb_results.py --meeting-dir "<路徑>"      # 寫落嗰個目錄
+    python3 sb_results.py --meeting "2026-08-01 Flemington Race 1-9"  # 寫落 AU archive 同名目錄
+    python3 sb_results.py --meeting-dir "<路徑>"                      # 寫落嗰個目錄
 """
 from __future__ import annotations
 
@@ -86,6 +86,26 @@ def render(venue, date, races):
     return "\n".join(lines)
 
 
+def resolve_dest_dir(key, meeting_dir_arg):
+    """→ (目錄, 錯誤訊息)。`--meeting-dir` 話事；冇就喺 AU archive 搵返 `key`。
+
+    以前呢度係 `Path(meeting_dir or key)` —— 淨係俾 `--meeting` 嘅時候，個
+    relative key 會喺 **CWD** 開一個新目錄出嚟，然後 ✅ 咁報成功；但 reflector
+    永遠喺 archive 度搵賽果，自然搵唔到。寧願大聲失敗，都唔好寫落一個冇人會
+    讀嘅位。
+    """
+    if meeting_dir_arg:
+        return Path(meeting_dir_arg).expanduser(), None
+
+    from sb_backfill_archive import archive_meetings
+
+    for path, _date, _track in archive_meetings():
+        if path.name == key:
+            return path, None
+    return None, (f"AU archive 搵唔到 meeting 目錄 `{key}`；"
+                  "如果個目錄唔喺 archive，請用 --meeting-dir 指明")
+
+
 def main():
     ap = argparse.ArgumentParser(description="由 cache 生成覆盤賽果檔")
     ap.add_argument("--meeting", help="對應表嘅 key，例如「2026-08-01 Flemington Race 1-9」")
@@ -115,7 +135,11 @@ def main():
 
     meta = ids[key]
     venue = meta["slug"].replace("_", " ").title()
-    dest = Path(args.meeting_dir or key) / "Race_Results_Reflector.md"
+    dest_dir, err = resolve_dest_dir(key, args.meeting_dir)
+    if dest_dir is None:
+        print(f"❌ {err}")
+        return 1
+    dest = dest_dir / "Race_Results_Reflector.md"
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(render(venue, meta["date"], races), encoding="utf-8")
     print(f"✅ {len(races)} 場賽果 → {dest}")

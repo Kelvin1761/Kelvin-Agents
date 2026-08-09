@@ -12,13 +12,22 @@ ag_kit_skills:
 ## Current Main Entry
 
 ```bash
-python3 .agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py <meeting_dir>
+python3 .agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py <meeting_dir> --skip-backtest
 ```
+
+**一句就夠** —— 賽果唔使人手預先生成，orchestrator 搵唔到會自己由 Sportsbet cache 補（見下面第 2 點）。
+
+> [!CAUTION]
+> **喺 Mac 上一定要 `--skip-backtest`。** 唔加嘅話 archive backtest 會行勻 AU archive
+> 每一個 `Facts.md`，而啲檔喺 Google Drive CloudStorage 上面 —— 個 process 會喺 0% CPU
+> 度**無限期吊死**（實測喺 `2025-12-27 Randwick Race 1-10/12-27 Race 2 Facts.md` 卡死
+> 超過 20 分鐘）。**唔好當佢係「行緊、等耐啲」** —— 佢唔會完。
+> 詳見 memory `au-drive-content-reads-stall`。
 
 可用參數以 `--help` 為準，目前包括：
 
 - `results_file`
-- `--results-url`
+- `--results-url` —— **AU 已無效**，Racenet 全封；傳咗只會 warn 一句然後略過
 - `--race`
 - `--report-path`
 - `--force-extract`
@@ -30,7 +39,9 @@ python3 .agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.
 現役 orchestrator 會按實際情況自動處理：
 
 1. resolve AU meeting directory
-2. 找現成 results file；AU 未有就跑 `sb_results.py` 由 Sportsbet cache 生成（零網絡請求）
+2. 找現成 results file；AU 未有就**自動** shell out 去 `sb_results.py`，由 Sportsbet cache
+   生成 `Race_Results_Reflector.md`（零網絡請求）。cache 冇嗰場就大聲失敗，叫你先跑
+   `sb_backfill_archive.py` 補 cache
 3. 用 shared unified reflector core 做 meeting-level stats、prediction vs result compare、incident analysis
 4. 如未 `--skip-backtest`，再跑 AU archive backtests / shadow diagnostics
 5. 生成 final markdown report，同可選 JSON summary
@@ -52,6 +63,9 @@ python3 .agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.
 
 - 主入口係 Python unified wrapper，唔應再假設要跟舊式 AU reflector prompt chain。
 - `--skip-backtest` 只會略過 archive backtests；單 meeting 覆盤報告仍然會生成。
+- 想單獨生成賽果（唔行覆盤）先用得着 `sb_results.py`。淨係俾 `--meeting` 嘅時候，
+  佢會喺 AU archive（連 `Archive/` 子目錄）搵返同名 meeting 目錄；搵唔到就報錯，
+  **唔會**喺 CWD 開個新目錄扮成功。要寫去 archive 以外就用 `--meeting-dir`。
 - 如果文檔同 script 行為唔一致，以 `au_reflector_orchestrator.py --help` 同 shared unified core 為準。
 
 ## Related Components

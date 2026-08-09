@@ -21,15 +21,11 @@ SHARED_ROOT = Path(__file__).resolve().parent
 AU_REFLECTOR_SCRIPTS = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_reflector" / "scripts"
 HKJC_REFLECTOR_SCRIPTS = PROJECT_ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_reflector" / "scripts"
 HKJC_EXTRACTOR_SCRIPTS = PROJECT_ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_race_extractor" / "scripts"
-# ⚠️ AU 賽果**唔應該**行到呢個 extractor —— 佢係 Racenet，而 Racenet 已全封
-# （2026-08-02 起 profile 403 / results 202 / Playwright 202）。正路係喺 meeting
-# 目錄放一個 `Race_Results_Reflector.md`，`find_existing_results_file()` 會先搵到
-# 佢，就唔會 call 任何 extractor、亦唔需要 results URL。用：
-#     python3 .agents/skills/au_racing/sb_results.py --meeting-dir "<meeting dir>"
-# 佢由 Sportsbet cache 生成，零網絡請求。呢個常數留住只係為咗 fallback 時
-# 大聲失敗，唔係一條預期走嘅路。
-# AU 賽果由 Sportsbet cache 生成，唔出網。以前呢度指向 `claw_racenet_results.py`
-# —— Racenet 全封之後嗰條路只會靜靜咁失敗，而且已經連檔都剷咗。
+# AU 賽果由 Sportsbet cache 生成，零網絡請求。以前呢度指向
+# `claw_racenet_results.py` —— Racenet 全封之後（2026-08-02 起 profile 403 /
+# results 202 / Playwright 202）嗰條路只會靜靜咁失敗，而且已經連檔都剷咗。
+# `ensure_results_file()` 會喺 meeting 目錄搵唔到現成賽果嘅時候自動 call 佢，
+# 所以 AU 覆盤唔再需要 results URL，亦唔使人手行多一句。
 AU_RESULTS_EXTRACTOR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "sb_results.py"
 HKJC_RESULTS_EXTRACTOR = HKJC_EXTRACTOR_SCRIPTS / "fast_extract_results.py"
 
@@ -278,23 +274,25 @@ def ensure_results_file(platform: str, meeting_dir: Path, results_url: str | Non
         if existing and existing.exists():
             return existing.resolve()
 
-    if not results_url:
-        raise SystemExit(f"❌ {DOMAIN_LABELS[platform]} 未找到現成賽果，而且未提供 results URL。")
-
     if platform == "au":
+        # AU 賽果由 Sportsbet cache 生成，零網絡請求，所以**唔需要** results URL。
+        # 舊路係 Racenet（全封），而且 flag 都對唔上：`sb_results.py` 收
+        # `--meeting-dir`，唔收 `--url / --output_dir / --json`。
+        if results_url:
+            print("⚠️ AU 唔再用 results URL（Racenet 已全封）；今次由 Sportsbet cache 生成，--results-url 略過。")
         run_logged_command(
             [
                 sys.executable,
                 str(AU_RESULTS_EXTRACTOR),
-                "--url",
-                results_url,
-                "--output_dir",
+                "--meeting-dir",
                 str(meeting_dir),
-                "--json",
             ],
-            "Extract AU Results",
+            "Generate AU Results From Sportsbet Cache",
+            ok_codes=(0, 1),
         )
     else:
+        if not results_url:
+            raise SystemExit(f"❌ {DOMAIN_LABELS[platform]} 未找到現成賽果，而且未提供 results URL。")
         race_date, venue = infer_hkjc_date_and_venue(meeting_dir, results_url)
         output_json = meeting_dir / f"{race_date}_{venue}_全日賽果.json"
         run_logged_command(
@@ -313,6 +311,11 @@ def ensure_results_file(platform: str, meeting_dir: Path, results_url: str | Non
 
     extracted = find_existing_results_file(platform, meeting_dir)
     if not extracted:
+        if platform == "au":
+            raise SystemExit(
+                "❌ AU: Sportsbet cache 生成唔到賽果 —— 呢個場次未抽過，或者仲未跑。\n"
+                "   先跑 `.agents/skills/au_racing/sb_backfill_archive.py` 補 cache，再重試。"
+            )
         raise SystemExit(f"❌ {DOMAIN_LABELS[platform]} 賽果擷取完成後仍然找不到輸出檔。")
     return extracted.resolve()
 
