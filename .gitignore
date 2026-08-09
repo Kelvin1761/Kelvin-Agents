@@ -105,3 +105,10 @@ Wong Choi Tennis Analysis/
 # `git add <目錄>` 就把 22 個中間檔（747,309 行）掃咗入去。
 .agents/skills/au_racing/au_daily_auto/logs/
 .agents/skills/au_racing/au_daily_auto/work/
+
+# 呢三個喺排程 checkout 入面係 symlink（指返共用 repo 嘅 cache）。原本嘅
+# pattern 有尾斜線，只配對目錄，配唔到 symlink，於是 `git status` 成日有雜訊、
+# 亦有機會俾一個 `git add` 掃咗入去。
+.agents/skills/au_racing/.sportsbet_cache
+.agents/skills/au_racing/.ra_cache
+.agents/skills/au_racing/.sb_horse_index.json
