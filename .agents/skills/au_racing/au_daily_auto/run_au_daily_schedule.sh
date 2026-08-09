@@ -39,6 +39,14 @@ done
 PATH="/usr/local/bin:/opt/homebrew/bin:$PATH:/usr/bin:/bin:/usr/sbin:/sbin"
 export PATH
 
+# 通知設定。⚠️ 住喺 repo 外面，所以永遠唔會意外 commit 咗個 token 出去。
+# 內容例：
+#   export WC_NOTIFY_TELEGRAM_TOKEN=123456:AA...
+#   export WC_NOTIFY_TELEGRAM_CHAT=123456789
+#   export WC_NOTIFY_ONLY_PROBLEMS=1        # 想淨係出事先出聲就解除註解
+NOTIFY_ENV="$HOME/.wongchoi_notify.env"
+[ -f "$NOTIFY_ENV" ] && source "$NOTIFY_ENV"
+
 cd "$PROJECT_ROOT" || exit 1
 
 # ── 追上最新模型 ────────────────────────────────────────────────────────────

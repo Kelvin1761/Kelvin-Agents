@@ -8,11 +8,17 @@ log 入面寫得清清楚楚，但冇人會去睇 log，所以兩日之後先由
 
 支援兩個出口，兩個都係純 HTTPS POST，所以喺 launchd 底下一樣行得：
 
-  WC_NOTIFY_NTFY_TOPIC   ntfy.sh 嘅 topic 名。**唔使開戶口**：裝 ntfy app、
-                         訂閱同一個 topic 就收到。topic 名等於密碼，改個估唔到嘅。
+  WC_NOTIFY_TELEGRAM_TOKEN + WC_NOTIFY_TELEGRAM_CHAT
+                         Telegram bot。最簡單嗰個：@BotFather 開個 bot 免費、即時、
+                         唔使商業帳號、唔使中間商。
+  WC_NOTIFY_NTFY_TOPIC   ntfy.sh 嘅 topic 名。連 bot 都唔使開，但 topic 名就係
+                         唯一嘅保護 —— 改個估唔到嘅。
   WC_NOTIFY_WEBHOOK      任何收 JSON 嘅 URL。WhatsApp 要行呢條 —— Twilio /
                          Zapier / Make 嗰邊接住再轉去 WhatsApp（WhatsApp 官方
                          API 一定要有商業帳號，冇得直接 POST）。
+
+⚠️ token 由 env 讀，**唔會寫入版本控制、亦唔應該貼入對話**。runner 會 source
+`~/.wongchoi_notify.env`（gitignore 唔到嘅位置，喺 repo 外面），你自己開嗰個檔。
 
   WC_NOTIFY_ONLY_PROBLEMS=1  只喺 partial / failed 至出聲。
 
@@ -96,6 +102,19 @@ def send(run: dict) -> list[str]:
 
     title, body = summarise(run)
     out = []
+    tg_token = os.environ.get("WC_NOTIFY_TELEGRAM_TOKEN")
+    tg_chat = os.environ.get("WC_NOTIFY_TELEGRAM_CHAT")
+    if tg_token and tg_chat:
+        # 純文字，唔用 Markdown —— 場次名同錯誤訊息入面嘅 `_`、`*`、`[` 會令
+        # Telegram 嘅 Markdown parser 直接拒收成條訊息，變成靜靜咁冇通知。
+        payload = json.dumps({"chat_id": tg_chat,
+                              "text": f"{title}\n\n{body}",
+                              "disable_web_page_preview": True}).encode("utf-8")
+        err = post(f"https://api.telegram.org/bot{tg_token}/sendMessage",
+                   payload, {"Content-Type": "application/json"})
+        out.append(f"telegram: {'ok' if err is None else err}")
+    elif tg_token or tg_chat:
+        out.append("telegram: 只設咗一半（token 同 chat id 兩樣都要）")
     topic = os.environ.get("WC_NOTIFY_NTFY_TOPIC")
     if topic:
         err = post(f"https://ntfy.sh/{topic}", body.encode("utf-8"),
@@ -130,7 +149,7 @@ def main() -> int:
         run = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
     title, body = summarise(run)
     print(title); print(body); print()
-    print("送出：", send(run) or "冇配置任何出口（設 WC_NOTIFY_NTFY_TOPIC 或 WC_NOTIFY_WEBHOOK）")
+    print("送出：", send(run) or "冇配置任何出口 —— 睇 au_notify_setup.sh")
     return 0
 
 

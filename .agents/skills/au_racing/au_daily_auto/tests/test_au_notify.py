@@ -7,8 +7,10 @@
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
+import unittest.mock
 import unittest
 from pathlib import Path
 
@@ -69,10 +71,41 @@ class SummaryTests(unittest.TestCase):
 
 
 class SendTests(unittest.TestCase):
+    KEYS = ("WC_NOTIFY_NTFY_TOPIC", "WC_NOTIFY_WEBHOOK", "WC_NOTIFY_ONLY_PROBLEMS",
+            "WC_NOTIFY_TELEGRAM_TOKEN", "WC_NOTIFY_TELEGRAM_CHAT")
+
     def setUp(self):
-        for k in ("WC_NOTIFY_NTFY_TOPIC", "WC_NOTIFY_WEBHOOK",
-                  "WC_NOTIFY_ONLY_PROBLEMS"):
+        for k in self.KEYS:
             os.environ.pop(k, None)
+
+    def tearDown(self):
+        for k in self.KEYS:
+            os.environ.pop(k, None)
+
+    def test_telegram_needs_both_halves(self):
+        # 只設 token 唔設 chat id 係一個容易犯又完全靜音嘅錯 —— 要講出嚟。
+        os.environ["WC_NOTIFY_TELEGRAM_TOKEN"] = "t"
+        self.assertEqual(N.send(run()), ["telegram: 只設咗一半（token 同 chat id 兩樣都要）"])
+
+    def test_telegram_sends_plain_text_not_markdown(self):
+        # 場次名同錯誤訊息帶住 `_` `*` `[`，行 Markdown 嘅話 Telegram 會拒收成條
+        # 訊息 —— 即係最需要通知嗰陣反而收唔到。
+        sent = {}
+
+        def fake_post(url, data, headers):
+            sent["url"] = url
+            sent["payload"] = json.loads(data.decode("utf-8"))
+            return None
+
+        os.environ["WC_NOTIFY_TELEGRAM_TOKEN"] = "tok"
+        os.environ["WC_NOTIFY_TELEGRAM_CHAT"] = "42"
+        with unittest.mock.patch.object(N, "post", fake_post):
+            N.send(run(status="failed", cloudflare_deployment={
+                "ok": False, "detail": "file_too_big [25 MiB] *limit*"}))
+        self.assertIn("/bottok/sendMessage", sent["url"])
+        self.assertEqual(sent["payload"]["chat_id"], "42")
+        self.assertNotIn("parse_mode", sent["payload"])
+        self.assertIn("25 MiB", sent["payload"]["text"])
 
     def test_no_configuration_sends_nothing(self):
         # 唔可以默默把場次資料送去一個冇人揀過嘅第三方服務。
