@@ -2244,6 +2244,22 @@ def run_morning(runlog: RunLog, args, today: date) -> int:
             runlog.error("refresh-active", f"暫時性：{exc}")
             temporary = True
 
+    # 收拾尋日仲未覆盤嘅場次。⚠️ 唔少場次嘅賽果係隔夜先出：晚更 22:00 跑嗰陣，
+    # 尾段賽事仲未跑完（2026-08-09 Ballarat Synthetic 八場只抽到四場、Wagga 一場
+    # 都冇），於是唔齊唔歸檔 —— 完全正確。但早更本來明確唔掂已跑完嘅場次，
+    # 交畀晚更，所以佢哋要等到今晚 22:00 先離開 dashboard，喺個板上留足十二個鐘。
+    # 而家早更順手收拾佢哋：賽果隔夜已經出咗，一收到就覆盤、歸檔、剪走。
+    if not args.skip_review:
+        try:
+            done = step_review_archive(runlog, today - timedelta(days=1))
+            if done:
+                push_reflection(runlog, done)
+        except TemporaryFailure as exc:
+            runlog.step("morning-review", "deferred", detail=str(exc))
+        except Exception as exc:  # noqa: BLE001
+            runlog.error("morning-review", f"{type(exc).__name__}: {exc}")
+            temporary = True
+
     # 補完當日賽日。晚更俾個站拒絕之後，呢個係唯一會再試嘅地方。已經齊嘅場次
     # 會即刻 `skipped_already_analysed`，所以冇新嘢做嗰陣成本近乎零。
     if not args.skip_analysis and not args.skip_refresh:
