@@ -62,7 +62,15 @@ def _candidate_files(files: list[dict], wanted_dates: set[str]) -> list[dict]:
 
 def _is_live_candidate(name: str) -> bool:
     lower = name.lower()
-    return lower in {"ongoing_tourneys.csv", "challenger_ongoing_tourneys.csv"}
+    # wta_ongoing_tourneys.csv was published all along and simply never read,
+    # so in-progress WTA tournaments had no live result feed at all -- the
+    # yearly WTA file only lands once an event is over.  Nothing errored; the
+    # rows just never arrived.
+    return lower in {
+        "ongoing_tourneys.csv",
+        "challenger_ongoing_tourneys.csv",
+        "wta_ongoing_tourneys.csv",
+    }
 
 
 def _is_year_candidate(name: str, year: str) -> bool:

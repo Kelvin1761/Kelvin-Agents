@@ -616,8 +616,20 @@ def test_market_blend_never_crosses_or_invents_opposite_edge():
         ace_model.MATCH_ACE_CURVE, model_weight=0.0,
     )
     assert priced is not None
+    # A zero model weight shrinks the staking probability all the way to the
+    # market, but selection reads the odds-blind model, so the prop is still a
+    # candidate -- on the side the raw model actually favours, never the other.
     assert priced.blended_prob == priced.fair_prob_over
-    assert priced.value_side is None
+    assert priced.model_prob_over > priced.fair_prob_over
+    assert priced.value_side == "over"
+
+    mirrored = ace_model.price_two_way(
+        1, "total_aces_9_5", "match", 9.5, 1.90, 1.90, 8.0,
+        ace_model.MATCH_ACE_CURVE, model_weight=0.0,
+    )
+    assert mirrored is not None
+    assert mirrored.model_prob_over < mirrored.fair_prob_over
+    assert mirrored.value_side == "under"
 
 
 def test_family_reliability_is_quality_filtered_and_as_of_safe(tmp_path, monkeypatch):
@@ -990,22 +1002,35 @@ def test_high_odds_props_are_priced_but_never_flagged_as_value():
     assert tw.value_odds is None
 
 
-def test_prop_edge_below_minimum_hit_probability_stays_research_only():
-    from tennis_wc.props.player_model import price_probability_two_way
+def test_probability_floor_is_per_family_not_global():
+    """The hit-probability floor is a sizing limit, not a selection one.
 
-    below = price_probability_two_way(
+    `player_win_a_set` is priced on underdogs: a 0.55 floor and the old 2.25
+    ceiling excluded, by construction, the only segment that has made money
+    (odds >= 2.20 returned +16.2% over 165 settled bets, while the 1.60-1.89
+    band inside the old limits returned -16.2%).  Families without a registered
+    profile keep the conservative default.
+    """
+    from tennis_wc.props.player_model import price_probability_two_way
+    from tennis_wc.props.registry import value_profile
+
+    assert value_profile("player_win_a_set_a").min_probability == 0.0
+    assert value_profile("player_total_games_a").min_probability == 0.58
+
+    underdog = price_probability_two_way(
         1, "player_win_a_set_a", "player_match", 2.25, 1.60,
         raw_yes=0.65, model_weight=0.50,
     )
-    above = price_probability_two_way(
-        1, "player_win_a_set_a", "player_match", 2.25, 1.60,
-        raw_yes=0.75, model_weight=0.50,
-    )
+    assert underdog is not None and underdog.blended_prob < 0.55
+    assert underdog.value_side == "yes"
 
-    assert below is not None and below.blended_prob < 0.55
-    assert below.value_side is None
-    assert above is not None and above.blended_prob >= 0.55
-    assert above.value_side == "yes"
+    # A family on the default profile still refuses prices beyond its ceiling.
+    beyond_ceiling = price_probability_two_way(
+        1, "player_total_games_a", "player_match", 3.00, 1.40,
+        raw_yes=0.65, model_weight=0.50,
+    )
+    assert beyond_ceiling is not None
+    assert beyond_ceiling.value_side is None
 
 
 def test_surface_curves_present_and_fallback():
@@ -1157,3 +1182,103 @@ def test_scorecard_excludes_legacy_rows_instead_of_mixing(tmp_path, monkeypatch)
     sc = settlement.model_vs_market_scorecard(conn, use_raw=True)
     assert sc["settled"] == 1, "legacy row must not be graded as raw"
     assert sc["legacy_rows_excluded"] == 1
+
+
+def _gate_payloads(*, roi, settled, scorecard_n, loss_probability,
+                   model_brier=0.30, market_brier=0.20, drawdown=-1.0):
+    """Scorecard + ROI payloads for one family, shaped as the gate reads them."""
+    scorecard = {
+        "settled": scorecard_n,
+        "by_family": {
+            "player_aces": {
+                "settled": scorecard_n,
+                "model": {"brier": model_brier},
+                "market": {"brier": market_brier},
+            }
+        },
+    }
+    roi_payload = {
+        "by_family_formal_profile": {
+            "player_aces": {
+                "settled": settled,
+                "roi": roi,
+                "loss_probability": loss_probability,
+                "max_drawdown_units": drawdown,
+            }
+        }
+    }
+    return scorecard, roi_payload
+
+
+def test_family_graduates_on_credible_profit_without_beating_market_brier():
+    """Profit is the graduation test; calibration skill is only one route to it.
+
+    Requiring the Brier win first meant 0 of 9 families could ever graduate,
+    so the card printed "no bet" while several families were profitable.
+    """
+    from tennis_wc.props.strategy import recommendation_gate
+
+    scorecard, roi = _gate_payloads(
+        roi=0.12, settled=60, scorecard_n=200, loss_probability=0.04,
+        model_brier=0.30, market_brier=0.20,  # model clearly WORSE than market
+    )
+    gate = recommendation_gate(scorecard, roi)
+
+    state = gate["family_states"]["player_aces"]
+    assert state["model_beats_market"] is False
+    assert state["credible_profit"] is True
+    assert state["tier"] == "VALIDATED"
+    assert gate["status"] == "VALIDATED_SINGLE"
+
+
+def test_profit_that_does_not_survive_resampling_is_refused():
+    from tennis_wc.props.strategy import recommendation_gate
+
+    scorecard, roi = _gate_payloads(
+        roi=0.12, settled=60, scorecard_n=200, loss_probability=0.42,
+    )
+    gate = recommendation_gate(scorecard, roi)
+
+    assert gate["family_states"]["player_aces"]["tier"] == "RESEARCH_ONLY"
+    assert gate["status"] == "RESEARCH_ONLY"
+
+
+def test_drawdown_breach_demotes_a_profitable_family():
+    from tennis_wc.props.strategy import recommendation_gate, MAX_FAMILY_DRAWDOWN_UNITS
+
+    scorecard, roi = _gate_payloads(
+        roi=0.20, settled=80, scorecard_n=300, loss_probability=0.01,
+        drawdown=MAX_FAMILY_DRAWDOWN_UNITS - 1.0,
+    )
+    gate = recommendation_gate(scorecard, roi)
+
+    assert gate["family_states"]["player_aces"]["tier"] == "RESEARCH_ONLY"
+
+
+def test_brier_route_still_graduates_a_sample_too_small_to_resample():
+    from tennis_wc.props.strategy import recommendation_gate
+
+    scorecard, roi = _gate_payloads(
+        roi=0.28, settled=4, scorecard_n=65, loss_probability=None,
+        model_brier=0.2380, market_brier=0.2480,
+    )
+    gate = recommendation_gate(scorecard, roi)
+
+    state = gate["family_states"]["player_aces"]
+    assert state["model_beats_market"] is True
+    assert state["tier"] == "EARLY_MAIN"
+
+
+def test_bootstrap_refuses_to_score_a_tiny_sample():
+    from tennis_wc.props.settlement import (
+        MIN_BOOTSTRAP_SAMPLE,
+        bootstrap_loss_probability,
+        running_drawdown,
+    )
+
+    winners = [(0.9, 1.0)] * (MIN_BOOTSTRAP_SAMPLE - 1)
+    assert bootstrap_loss_probability(winners) is None
+    assert bootstrap_loss_probability(winners + [(0.9, 1.0)]) == 0.0
+    assert bootstrap_loss_probability([(-1.0, 1.0)] * MIN_BOOTSTRAP_SAMPLE) == 1.0
+    # Drawdown is peak-to-trough on the settled order, not the final balance.
+    assert running_drawdown([(1.0, 1.0), (-3.0, 1.0), (5.0, 1.0)]) == -3.0

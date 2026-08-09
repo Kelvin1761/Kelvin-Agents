@@ -9,6 +9,18 @@ from __future__ import annotations
 
 MIN_RAW_SCORECARD = 120
 MIN_FAMILY_SETTLED = 50
+# Full-stake graduation asks whether the family MAKES MONEY, not whether its
+# probabilities are better calibrated than the market's.  Those are different
+# questions: a family can price worse than the book overall and still profit on
+# the slice it actually bets, and requiring the Brier win first meant no family
+# could ever graduate -- 0 of 9 cleared it, so the card read "no bet" for two
+# months while several families were quietly profitable.  Beating the market on
+# Brier is kept as an ALTERNATIVE route, not a precondition.
+MAX_LOSS_PROBABILITY = 0.10
+# Bankroll protection is part of the contract, not a report footnote: a family
+# whose settled equity curve has already dug this deep is demoted regardless of
+# its headline ROI.
+MAX_FAMILY_DRAWDOWN_UNITS = -25.0
 # Early-stage accelerator: a genuine player-prop family may reach the main card
 # before full validation when probability skill is already visible on a useful
 # scorecard and its first live-profile paper bets are profitable.  It remains a
@@ -171,22 +183,40 @@ def recommendation_gate(scorecard: dict | None, roi: dict | None) -> dict:
             )
         except (KeyError, TypeError, ValueError):
             model_beats_market = False
+        loss_probability = stats.get("loss_probability")
+        drawdown = stats.get("max_drawdown_units")
+        profitable = family_roi is not None and float(family_roi) > 0
+        within_drawdown = (
+            drawdown is None or float(drawdown) > MAX_FAMILY_DRAWDOWN_UNITS
+        )
+        # Two independent ways to earn full stakes, either of which is evidence
+        # the profit is not a streak: the realised ROI survives resampling, or
+        # the odds-blind model genuinely prices better than the book.  Payloads
+        # written before loss_probability existed fall back to the Brier route.
+        credible_profit = (
+            loss_probability is not None
+            and float(loss_probability) <= MAX_LOSS_PROBABILITY
+        )
         qualified = (
             family in RECOMMENDABLE_PLAYER_FAMILIES
             and score_settled >= MIN_RAW_SCORECARD
-            and model_beats_market
             and roi_settled >= MIN_FAMILY_SETTLED
-            and family_roi is not None
-            and float(family_roi) > 0
+            and profitable
+            and within_drawdown
+            and (credible_profit or model_beats_market)
         )
+        # The early tier is a reversible half-unit probe, so it is allowed to
+        # run on a sample too small to resample.  It still needs a reason to
+        # believe the model: without enough bets to test the profit, the Brier
+        # advantage has to carry it.
         early_qualified = (
             not qualified
             and family in RECOMMENDABLE_PLAYER_FAMILIES
             and score_settled >= EARLY_MIN_RAW_SCORECARD
-            and model_beats_market
             and roi_settled >= EARLY_MIN_FAMILY_SETTLED
-            and family_roi is not None
-            and float(family_roi) > 0
+            and profitable
+            and within_drawdown
+            and (credible_profit or model_beats_market)
         )
         tier = (
             "VALIDATED" if qualified
@@ -209,6 +239,11 @@ def recommendation_gate(scorecard: dict | None, roi: dict | None) -> dict:
             "model_beats_market": model_beats_market,
             "model_brier": (family_score.get("model") or {}).get("brier"),
             "market_brier": (family_score.get("market") or {}).get("brier"),
+            "loss_probability": loss_probability,
+            "credible_profit": credible_profit,
+            "max_drawdown_units": drawdown,
+            "maximum_drawdown_units": MAX_FAMILY_DRAWDOWN_UNITS,
+            "maximum_loss_probability": MAX_LOSS_PROBABILITY,
         }
         if qualified or early_qualified:
             enabled.append(family)
@@ -227,6 +262,8 @@ def recommendation_gate(scorecard: dict | None, roi: dict | None) -> dict:
         reasons.append(
             "未有 player-prop family 同時達到 family 級記分卡、"
             f"{MIN_FAMILY_SETTLED} 注已結算兼正 ROI"
+            f"（正 ROI 仲要通過重抽檢定 P(ROI≤0)≤{MAX_LOSS_PROBABILITY:.0%}"
+            "，或者模型 Brier 贏市場）"
         )
     return {
         "status": (

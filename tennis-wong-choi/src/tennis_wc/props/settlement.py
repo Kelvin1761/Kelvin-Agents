@@ -24,9 +24,65 @@ import re
 from tennis_wc.features.common import utc_now
 
 
+# A match can carry more than one result row (an ordinary import plus a
+# resolver fallback), and the resolvers can only supply a winner when their
+# source has no scoreline.  Newest-wins would let such a winner-only row shadow
+# a complete one and silently un-settle games/sets props, so prefer any row
+# that actually has a scoreline and only then fall back to the newest.
+_BEST_SCORE_ROW_SQL = (
+    "SELECT score_json FROM match_results WHERE match_id = ? "
+    "ORDER BY (json_extract(score_json, '$.player_a_games') IS NOT NULL "
+    "OR json_extract(score_json, '$.player_a_sets') IS NOT NULL) DESC, "
+    "id DESC LIMIT 1"
+)
+
+
+BOOTSTRAP_RESAMPLES = 2000
+# Fixed seed: the gate must not open or close because a resample came out
+# differently between two runs on identical data.
+BOOTSTRAP_SEED = 20260809
+MIN_BOOTSTRAP_SAMPLE = 20
+
+
+def bootstrap_loss_probability(samples: list[tuple[float, float]]) -> float | None:
+    """Resampled probability that a family's true ROI is <= 0.
+
+    Below ``MIN_BOOTSTRAP_SAMPLE`` bets this returns None rather than a number:
+    a bootstrap of eight results reports the confidence of eight results, and
+    dressing that up as a probability is how a lucky streak graduates.
+    """
+    usable = [(pnl, stake) for pnl, stake in samples if stake]
+    if len(usable) < MIN_BOOTSTRAP_SAMPLE:
+        return None
+    import random
+
+    rng = random.Random(BOOTSTRAP_SEED)
+    size = len(usable)
+    losing = 0
+    for _ in range(BOOTSTRAP_RESAMPLES):
+        pnl = staked = 0.0
+        for _ in range(size):
+            sample_pnl, sample_stake = usable[rng.randrange(size)]
+            pnl += sample_pnl
+            staked += sample_stake
+        if not staked or pnl / staked <= 0:
+            losing += 1
+    return round(losing / BOOTSTRAP_RESAMPLES, 4)
+
+
+def running_drawdown(samples: list[tuple[float, float]]) -> float:
+    """Worst peak-to-trough dip of the settled equity curve, in units."""
+    equity = peak = worst = 0.0
+    for pnl, _stake in samples:
+        equity += pnl
+        peak = max(peak, equity)
+        worst = min(worst, equity - peak)
+    return round(worst, 3)
+
+
 def actual_total_aces(conn, match_id: int) -> float | None:
     row = conn.execute(
-        "SELECT score_json FROM match_results WHERE match_id = ? ORDER BY id DESC LIMIT 1",
+        _BEST_SCORE_ROW_SQL,
         (match_id,),
     ).fetchone()
     if row and row["score_json"]:
@@ -54,7 +110,7 @@ def actual_player_aces(conn, match_id: int, player_id: int) -> float | None:
     ).fetchone()
     if meta:
         row = conn.execute(
-            "SELECT score_json FROM match_results WHERE match_id = ? ORDER BY id DESC LIMIT 1",
+            _BEST_SCORE_ROW_SQL,
             (match_id,),
         ).fetchone()
         if row and row["score_json"]:
@@ -131,7 +187,7 @@ def actual_player_first_set_win(conn, match_id: int, player_id: int) -> float | 
         "SELECT player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)
     ).fetchone()
     row = conn.execute(
-        "SELECT score_json FROM match_results WHERE match_id = ? ORDER BY id DESC LIMIT 1",
+        _BEST_SCORE_ROW_SQL,
         (match_id,),
     ).fetchone()
     if not meta or not row or not row["score_json"]:
@@ -162,7 +218,7 @@ def _actual_player_score_value(
         "SELECT player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)
     ).fetchone()
     row = conn.execute(
-        "SELECT score_json FROM match_results WHERE match_id = ? ORDER BY id DESC LIMIT 1",
+        _BEST_SCORE_ROW_SQL,
         (match_id,),
     ).fetchone()
     if not meta or not row or not row["score_json"]:
@@ -183,7 +239,7 @@ def _actual_player_score_value(
 def actual_total_games(conn, match_id: int) -> float | None:
     """Actual total match games from match_results.score_json (a+b games)."""
     row = conn.execute(
-        "SELECT score_json FROM match_results WHERE match_id = ? ORDER BY id DESC LIMIT 1",
+        _BEST_SCORE_ROW_SQL,
         (match_id,),
     ).fetchone()
     if row and row["score_json"]:
@@ -428,13 +484,22 @@ def prop_roi_report(conn, value_only: bool = True,
     def agg(rs):
         n = len(rs)
         if not n:
-            return {"settled": 0, "wins": 0, "hit_rate": None, "staked": 0.0, "pnl": 0.0, "roi": None}
+            return {"settled": 0, "wins": 0, "hit_rate": None, "staked": 0.0,
+                    "pnl": 0.0, "roi": None, "loss_probability": None,
+                    "max_drawdown_units": 0.0}
         wins = sum(1 for r in rs if r["result_status"] == "WON")
         staked = sum((r["stake_units"] or 0.0) for r in rs)
         pnl = sum((r["profit_loss_units"] or 0.0) for r in rs)
+        samples = [((r["profit_loss_units"] or 0.0), (r["stake_units"] or 0.0)) for r in rs]
         return {"settled": n, "wins": wins, "hit_rate": round(wins / n, 4),
                 "staked": round(staked, 2), "pnl": round(pnl, 3),
-                "roi": round(pnl / staked, 4) if staked else None}
+                "roi": round(pnl / staked, 4) if staked else None,
+                # A realised ROI is a point estimate off a small sample; the
+                # gate needs to know how much of that is luck, so carry the
+                # resampled probability that the true ROI is <= 0 and the worst
+                # equity dip alongside it.
+                "loss_probability": bootstrap_loss_probability(samples),
+                "max_drawdown_units": running_drawdown(samples)}
 
     def family(mk: str) -> str:
         from tennis_wc.props.registry import family_for_market

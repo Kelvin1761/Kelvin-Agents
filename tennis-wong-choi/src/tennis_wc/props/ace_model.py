@@ -19,6 +19,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from tennis_wc.props.registry import (
+    DEFAULT_VALUE_PROFILE,
+    is_value_selection,
+    value_profile,
+)
+
 # --------------------------------------------------------------------------- #
 # Empirical calibration curve: ratio = line / predicted_mean -> P(total >= line)
 # Fit on player_match_history (Sackmann + TML challenger/quali/main),
@@ -74,10 +80,8 @@ _CONCEDE_WEIGHT = 0.30  # opponent's conceded-aces vs raw serve rate
 _MARKET_SHRINK = 0.25   # blend model P toward de-vigged market P (conservative)
 _MARKET_VIG_DIVISOR = 1.06  # approx Sportsbet ace-ladder hold; de-vig each rung
 _ANCHOR_TARGET_PROB = 0.70  # NBA-style: highest line still >= this hit prob
-_MIN_EDGE = 0.04        # min (model - market_fair) to flag a value prop
-_MIN_VALUE_ODDS = 1.30
-_MAX_VALUE_ODDS = 2.25
-_MIN_VALUE_PROBABILITY = 0.55
+# Value limits now live in tennis_wc.props.registry.VALUE_PROFILES so the pricer
+# and the evidence gate read one definition; see is_value_selection there.
 _GLOBAL_ACE_FALLBACK = 5.0  # per-player mean if a side is thin (rarely used)
 # HARD line cap: only price rungs whose line is within the calibration range of
 # the predicted mean. Beyond ~1.25x the mean the curve is EXTRAPOLATING and the
@@ -293,18 +297,18 @@ def price_two_way(match_id: int, market_key: str, scope: str, line: float,
     edge_over = blended_over - fair_over
     edge_under = blended_under - fair_under
     side, s_odds, s_edge, s_ev, s_blend = None, None, 0.0, min(ev_over, ev_under), blended_over
-    # A risk haircut must never CREATE an opinion in the opposite direction.
-    # Tempering toward 50% can otherwise cross the market price and turn a raw
-    # model "over" lean into a fabricated "under" edge (or vice versa).
-    raw_edge_over = model_over - fair_over
-    if (raw_edge_over > 0 and edge_over >= _MIN_EDGE and ev_over > 0
-            and blended_over >= _MIN_VALUE_PROBABILITY
-            and _MIN_VALUE_ODDS <= over_odds <= _MAX_VALUE_ODDS):
-        side, s_odds, s_edge, s_ev, s_blend = "over", over_odds, edge_over, ev_over, blended_over
-    elif (raw_edge_over < 0 and edge_under >= _MIN_EDGE and ev_under > 0
-          and blended_under >= _MIN_VALUE_PROBABILITY
-          and _MIN_VALUE_ODDS <= under_odds <= _MAX_VALUE_ODDS):
-        side, s_odds, s_edge, s_ev, s_blend = "under", under_odds, edge_under, ev_under, blended_under
+    # A risk haircut must never CREATE an opinion in the opposite direction, and
+    # it must not decide the selection either: `is_value_selection` reads the
+    # odds-blind model, while the blended probability below still sets edge, EV
+    # and stake.
+    profile = value_profile(market_key)
+    if is_value_selection(model_over, fair_over, over_odds, profile):
+        side, s_odds, s_blend = "over", over_odds, blended_over
+        s_edge, s_ev = model_over - fair_over, model_over * over_odds - 1.0
+    elif is_value_selection(1.0 - model_over, fair_under, under_odds, profile):
+        side, s_odds, s_blend = "under", under_odds, blended_under
+        model_under = 1.0 - model_over
+        s_edge, s_ev = model_under - fair_under, model_under * under_odds - 1.0
     return TwoWayProp(
         match_id=match_id, market_key=market_key, scope=scope, line=line,
         over_odds=round(over_odds, 3), under_odds=round(under_odds, 3),
@@ -366,15 +370,16 @@ def price_ace_legs(conn, match_id: int, player_a_id: int, player_b_id: int,
         model_p = interp_prob_over(line, pred_mean)
         market_fair = _devig(1.0 / odds)
         blended = (1 - _MARKET_SHRINK) * model_p + _MARKET_SHRINK * market_fair
-        edge = blended - market_fair
-        ev = blended * odds - 1.0
+        is_value = is_value_selection(
+            model_p, market_fair, odds, DEFAULT_VALUE_PROFILE
+        )
+        edge = (model_p if is_value else blended) - market_fair
+        ev = (model_p if is_value else blended) * odds - 1.0
         legs.append(PricedAceLeg(
             match_id=match_id, line=line, decimal_odds=round(odds, 3),
             model_prob=round(model_p, 4), market_prob_fair=round(market_fair, 4),
             blended_prob=round(blended, 4), edge=round(edge, 4), ev=round(ev, 4),
-            is_value=(edge >= _MIN_EDGE and ev > 0
-                      and blended >= _MIN_VALUE_PROBABILITY
-                      and _MIN_VALUE_ODDS <= odds <= _MAX_VALUE_ODDS),
+            is_value=is_value,
             predicted_mean=pred_mean,
             factors={
                 "a_serve": a.serve_estimate, "b_serve": b.serve_estimate,

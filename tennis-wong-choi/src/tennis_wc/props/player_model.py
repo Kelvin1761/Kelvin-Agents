@@ -5,13 +5,10 @@ from dataclasses import dataclass
 import math
 
 from tennis_wc.props.ace_model import TwoWayProp
+from tennis_wc.props.registry import is_value_selection, value_profile
 
 _MIN_HISTORY = 10
 _MARKET_SHRINK = 0.35
-_MIN_EDGE = 0.04
-_MIN_VALUE_ODDS = 1.30
-_MAX_VALUE_ODDS = 2.25
-_MIN_VALUE_PROBABILITY = 0.55
 _GAME_HANDICAP_RAW_SHRINK = 0.65
 _PLAYER_GAMES_MEAN_BIAS = 0.75
 _PLAYER_GAMES_SD = 4.50
@@ -198,28 +195,21 @@ def price_count_two_way(
         strength = 1.0 - weight
         blended_over = blend_with_market(raw_over, fair_over, weight)
         tempered = blended_over
+    profile = value_profile(market_key)
     candidates = {
-        "over": (blended_over, fair_over, over_odds),
-        "under": (1 - blended_over, 1 - fair_over, under_odds),
+        "over": (raw_over, blended_over, fair_over, over_odds),
+        "under": (1 - raw_over, 1 - blended_over, 1 - fair_over, under_odds),
     }
     side = None
     edge = 0.0
-    ev = min(prob * odds - 1 for prob, _fair, odds in candidates.values())
+    ev = min(prob * odds - 1 for _raw, prob, _fair, odds in candidates.values())
     value_odds = None
     blended = blended_over
     for candidate in ("over", "under"):
-        prob, fair, odds = candidates[candidate]
-        candidate_edge = prob - fair
-        candidate_ev = prob * odds - 1
-        raw_supports = (
-            (candidate == "over" and raw_over > fair_over)
-            or (candidate == "under" and raw_over < fair_over)
-        )
-        if (raw_supports and candidate_edge >= _MIN_EDGE and candidate_ev > 0
-                and prob >= _MIN_VALUE_PROBABILITY
-                and _MIN_VALUE_ODDS <= odds <= _MAX_VALUE_ODDS):
+        raw, prob, fair, odds = candidates[candidate]
+        if is_value_selection(raw, fair, odds, profile):
             side, edge, ev, value_odds, blended = (
-                candidate, candidate_edge, candidate_ev, odds, prob
+                candidate, raw - fair, raw * odds - 1, odds, prob
             )
             break
     return TwoWayProp(
@@ -348,28 +338,21 @@ def price_probability_two_way(
         strength = 1.0 - weight
         blended_yes = blend_with_market(raw_yes, fair_yes, weight)
         tempered = blended_yes
+    profile = value_profile(market_key)
     candidates = {
-        "yes": (blended_yes, fair_yes, yes_odds),
-        "no": (1 - blended_yes, 1 - fair_yes, no_odds),
+        "yes": (raw_yes, blended_yes, fair_yes, yes_odds),
+        "no": (1 - raw_yes, 1 - blended_yes, 1 - fair_yes, no_odds),
     }
     side = None
     edge = 0.0
-    ev = min(prob * odds - 1 for prob, _fair, odds in candidates.values())
+    ev = min(prob * odds - 1 for _raw, prob, _fair, odds in candidates.values())
     value_odds = None
     blended = blended_yes
     for candidate in ("yes", "no"):
-        prob, fair, odds = candidates[candidate]
-        candidate_edge = prob - fair
-        candidate_ev = prob * odds - 1
-        raw_supports = (
-            (candidate == "yes" and raw_yes > fair_yes)
-            or (candidate == "no" and raw_yes < fair_yes)
-        )
-        if (raw_supports and candidate_edge >= _MIN_EDGE and candidate_ev > 0
-                and prob >= _MIN_VALUE_PROBABILITY
-                and _MIN_VALUE_ODDS <= odds <= _MAX_VALUE_ODDS):
+        raw, prob, fair, odds = candidates[candidate]
+        if is_value_selection(raw, fair, odds, profile):
             side, edge, ev, value_odds, blended = (
-                candidate, candidate_edge, candidate_ev, odds, prob
+                candidate, raw - fair, raw * odds - 1, odds, prob
             )
             break
     return BinaryProp(
@@ -412,6 +395,7 @@ def price_head_to_head(
         (player_a_id, player_a_name, a_odds, raw_a, blended_a, fair_a),
         (player_b_id, player_b_name, b_odds, 1-raw_a, 1-blended_a, 1-fair_a),
     )
+    profile = value_profile(market_key)
     value_pid = None
     value_name = None
     value_odds = None
@@ -419,13 +403,9 @@ def price_head_to_head(
     ev = min(prob*odds-1 for _pid, _name, odds, _raw, prob, _fair in candidates)
     blended = blended_a
     for pid, name, odds, raw, prob, fair in candidates:
-        candidate_edge = prob-fair
-        candidate_ev = prob*odds-1
-        if (raw > fair and candidate_edge >= _MIN_EDGE and candidate_ev > 0
-                and prob >= _MIN_VALUE_PROBABILITY
-                and _MIN_VALUE_ODDS <= odds <= _MAX_VALUE_ODDS):
+        if is_value_selection(raw, fair, odds, profile):
             value_pid, value_name, value_odds = pid, name, odds
-            edge, ev, blended = candidate_edge, candidate_ev, prob
+            edge, ev, blended = raw-fair, raw*odds-1, prob
             break
     return HeadToHeadProp(
         match_id, market_key, player_a_id, player_a_name, player_b_id,
@@ -490,6 +470,7 @@ def price_spread_two_way(
             1 - raw_a, 1 - blended_a, 1 - fair_a,
         ),
     )
+    profile = value_profile(market_key)
     value_pid = None
     value_name = None
     value_handicap = None
@@ -498,14 +479,10 @@ def price_spread_two_way(
     ev = min(prob * odds - 1 for _pid, _name, _h, odds, _raw, prob, _fair in candidates)
     blended = blended_a
     for pid, name, handicap, odds, raw, prob, fair in candidates:
-        candidate_edge = prob - fair
-        candidate_ev = prob * odds - 1
-        if (raw > fair and candidate_edge >= _MIN_EDGE and candidate_ev > 0
-                and prob >= _MIN_VALUE_PROBABILITY
-                and _MIN_VALUE_ODDS <= odds <= _MAX_VALUE_ODDS):
+        if is_value_selection(raw, fair, odds, profile):
             value_pid, value_name = pid, name
             value_handicap, value_odds = handicap, odds
-            edge, ev, blended = candidate_edge, candidate_ev, prob
+            edge, ev, blended = raw - fair, raw * odds - 1, prob
             break
     return SpreadProp(
         match_id=match_id,
@@ -591,16 +568,17 @@ def price_exact_set_score(
         "b20": (player_b_id, player_b_name, 0),
         "b21": (player_b_id, player_b_name, 1),
     }
+    profile = value_profile(market_key)
     selections = []
     for key in required:
         player_id, player_name, sets_lost = metadata[key]
-        edge = blended[key]-fair[key]
-        ev = blended[key]*odds[key]-1
-        is_value = (
-            raw[key] > fair[key] and edge >= _MIN_EDGE and ev > 0
-            and blended[key] >= _MIN_VALUE_PROBABILITY
-            and _MIN_VALUE_ODDS <= odds[key] <= _MAX_VALUE_ODDS
+        is_value = is_value_selection(
+            raw[key], fair[key], odds[key], profile
         )
+        # Selected legs are recorded on the basis they were selected on (the
+        # odds-blind model); unselected ones keep the conservative blended view.
+        edge = (raw[key] if is_value else blended[key]) - fair[key]
+        ev = (raw[key] if is_value else blended[key]) * odds[key] - 1
         selections.append(
             ExactSetScoreSelection(
                 player_id=player_id,

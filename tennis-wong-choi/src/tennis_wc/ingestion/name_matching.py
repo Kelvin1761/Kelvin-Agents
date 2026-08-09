@@ -14,7 +14,23 @@ def normalise_player_name(name: str | None) -> str:
     ascii_name = unicodedata.normalize("NFKD", raw).encode("ascii", "ignore").decode("ascii")
     ascii_name = re.sub(r"[^a-z0-9\s.-]", " ", ascii_name)
     ascii_name = ascii_name.replace(".", " ")
-    return re.sub(r"\s+", " ", ascii_name).strip()
+    ascii_name = re.sub(r"\s+", " ", ascii_name).strip()
+    return _surname_initial_to_given_first(ascii_name)
+
+
+def _surname_initial_to_given_first(name: str) -> str:
+    """Rewrite the "Glushkova D." scoreboard convention as "d glushkova".
+
+    Result boards for the lower tiers print surname first with the given name
+    abbreviated, which puts the surname in the FIRST token and breaks every
+    comparison below (they all read the last token as the surname).  Only a
+    trailing single-letter token triggers this; real surnames are never one
+    letter, and "Last, First" is already handled above.
+    """
+    tokens = name.split()
+    if len(tokens) >= 2 and len(tokens[-1]) == 1:
+        return " ".join([tokens[-1], *tokens[:-1]])
+    return name
 
 
 def same_player_name(left: str | None, right: str | None) -> bool:

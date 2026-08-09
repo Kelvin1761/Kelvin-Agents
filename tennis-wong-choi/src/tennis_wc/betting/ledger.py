@@ -319,6 +319,16 @@ def fetch_results_for_date(match_date: str) -> dict:
         tennis_my_life = ingest_tennismylife_results(match_date)
     except Exception as exc:
         tennis_my_life = {"error": str(exc), "results_imported": 0}
+    # ITF / UTR / Challenger: no other wired source publishes them, so without
+    # this every prop on those tiers stays PENDING and never becomes evidence.
+    try:
+        from tennis_wc.ingestion.ingest_tennisexplorer import (
+            ingest_tennisexplorer_results,
+        )
+
+        tennis_explorer = ingest_tennisexplorer_results(match_date)
+    except Exception as exc:
+        tennis_explorer = {"error": str(exc), "imported": 0}
     return {
         "provider": getattr(provider, "provider_name", "unknown"),
         "rows_seen": len(target_rows),
@@ -331,6 +341,7 @@ def fetch_results_for_date(match_date: str) -> dict:
         "error": provider_error,
         "resolver": resolver,
         "tennismylife": tennis_my_life,
+        "tennisexplorer": tennis_explorer,
     }
 
 
@@ -1926,6 +1937,9 @@ def _resolve_pending_from_provider_rows(match_date: str, rows: list[dict], provi
             continue
         winner_name = match["player_a_name"] if best_direction == "direct" else match["player_b_name"]
         loser_name = match["player_b_name"] if best_direction == "direct" else match["player_a_name"]
+        # Same scoreline parser the ordinary import uses, so a resolved match
+        # can settle games/sets props and not just the match winner.
+        scoreline_json = _result_score_json(best_row, dict(match))
         imported += _insert_resolved_result_from_names(
             dict(match),
             winner_name,
@@ -1937,6 +1951,7 @@ def _resolve_pending_from_provider_rows(match_date: str, rows: list[dict], provi
                 "provider_match_date": best_row.get("match_date"),
                 "provider_match_id": best_row.get("id"),
             },
+            json.loads(scoreline_json) if scoreline_json else None,
         )
     return imported
 
@@ -2005,13 +2020,28 @@ def _pending_result_matches(match_date: str) -> list[dict]:
             JOIN players pa ON pa.id = m.player_a_id
             JOIN players pb ON pb.id = m.player_b_id
             WHERE m.match_date = ?
+              -- A winner-only row must not lock the match out of later
+              -- resolution: the prop settlers need games/sets, so a result
+              -- without a scoreline is unfinished work, not done work.
               AND NOT EXISTS (
-                  SELECT 1 FROM match_results r WHERE r.match_id = m.id
+                  SELECT 1 FROM match_results r
+                  WHERE r.match_id = m.id
+                    AND (
+                        json_extract(r.score_json, '$.player_a_games') IS NOT NULL
+                        OR json_extract(r.score_json, '$.player_a_sets') IS NOT NULL
+                    )
               )
               AND (
                   EXISTS (SELECT 1 FROM clv_tracker c WHERE c.match_id = m.id AND c.result_status = 'PENDING')
                   OR EXISTS (SELECT 1 FROM combo_tracker co WHERE co.match_id = m.id AND co.result_status = 'PENDING')
                   OR EXISTS (SELECT 1 FROM bet_ledger b WHERE b.match_id = m.id AND b.status = 'PENDING')
+                  -- prop_tracker was missing here, so a match carrying only
+                  -- props never became eligible for result resolution at all.
+                  -- Props are priced on Sportsbet fixtures, which the ordinary
+                  -- result import barely covers (38 of 842 matches), and the
+                  -- backlog simply never cleared: 1,972 ITF/UTR props sat at 0%
+                  -- settled while the evidence gate waited for them.
+                  OR EXISTS (SELECT 1 FROM prop_tracker p WHERE p.match_id = m.id AND p.result_status = 'PENDING')
               )
             """,
             (match_date,),
@@ -2025,13 +2055,25 @@ def _insert_resolved_result_from_names(
     loser_name: str | None,
     source_provider: str,
     score_payload: dict,
+    scoreline: dict | None = None,
 ) -> int:
+    """Record a resolved result, with the scoreline when the source carries one.
+
+    A winner alone settles nothing on the prop side: every games/sets/first-set
+    settler in :mod:`tennis_wc.props.settlement` reads ``player_a_games``,
+    ``player_a_sets`` or ``sets`` out of ``score_json``.  The resolver used to
+    write provenance only, so a match it "resolved" still left its props
+    PENDING for ever.  ``scoreline`` must already be oriented to this match's
+    player_a/player_b (``_result_score_json`` does that by name).
+    """
     score, direction = match_pair_score(winner_name, loser_name, match["player_a_name"], match["player_b_name"])
     if score < MIN_RESULT_MATCH_SCORE or direction not in {"direct", "swapped"}:
         return 0
     winner_player_id = match["player_a_id"] if direction == "direct" else match["player_b_id"]
     now = utc_now()
     payload = score_payload | {"resolver_pair_score": round(score, 4)}
+    if scoreline:
+        payload = scoreline | payload
     with get_connection() as conn:
         conn.execute(
             """

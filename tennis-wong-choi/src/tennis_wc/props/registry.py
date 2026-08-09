@@ -136,6 +136,89 @@ def family_for_market(market_key: str, market_name: str = "") -> str:
     return key
 
 
+@dataclass(frozen=True)
+class ValueProfile:
+    """Pre-registered per-family limits for turning a priced prop into a bet.
+
+    One definition, read by both the pricing layer (which decides *whether* a
+    prop is a value selection) and :mod:`tennis_wc.props.strategy` /
+    :mod:`tennis_wc.props.settlement` (which decide whether the family may bet
+    and score the evidence).  Keeping them in one place is not tidiness: when
+    the pricing limits and the gate's ``formal_profile`` disagreed, the gate
+    demanded 50 settled bets inside a window the pricer never produced, so six
+    of eight families sat permanently at 0/50.
+
+    ``min_edge`` is applied to the ODDS-BLIND model edge, not the
+    market-blended one.  ``min_probability`` is a sizing/gate floor only --
+    applying it to selection is what excluded the underdog segment.
+    """
+    min_edge: float = 0.04
+    min_odds: float = 1.30
+    max_odds: float = 2.25
+    min_probability: float = 0.58
+
+
+# `player_win_a_set` and `player_game_handicap` are priced on underdogs, so a
+# 2.25 ceiling and a 0.58 probability floor are mutually contradictory with
+# betting them at all: a 6.0 shot is a 16.7% chance by construction.  Measured
+# 2026-08-09 over 329 settled paper bets, the >=2.20 band returned +16.2%
+# (n=165) while the 1.60-1.89 band inside the old ceiling returned -16.2%
+# (n=87), i.e. the global limits kept the losing half and discarded the rest.
+_UNDERDOG_PROFILE = ValueProfile(max_odds=6.0, min_probability=0.0)
+
+VALUE_PROFILES: dict[str, ValueProfile] = {
+    "player_win_a_set": _UNDERDOG_PROFILE,
+    "player_game_handicap": _UNDERDOG_PROFILE,
+}
+
+DEFAULT_VALUE_PROFILE = ValueProfile()
+
+# Live recommendations are limited to tours whose results actually reach the
+# database.  ITF/UTR props are priced and paper-tracked but settle at 0%, so
+# they cannot yet carry evidence for or against a bet.
+LIVE_TOURS: frozenset[str] = frozenset({"ATP", "WTA"})
+
+
+def value_profile(market_key: str, market_name: str = "") -> ValueProfile:
+    """Return the pre-registered value limits for a market's family."""
+    return VALUE_PROFILES.get(
+        family_for_market(market_key, market_name), DEFAULT_VALUE_PROFILE
+    )
+
+
+def value_profile_for_family(family: str) -> ValueProfile:
+    return VALUE_PROFILES.get(str(family or ""), DEFAULT_VALUE_PROFILE)
+
+
+def is_value_selection(
+    raw_probability: float,
+    fair_probability: float,
+    odds: float,
+    profile: ValueProfile,
+) -> bool:
+    """Select on the odds-blind model; the market blend only sizes the bet.
+
+    The blended probability is ``market + w*(raw - market)``, so measuring the
+    edge on it multiplies every edge by ``w`` -- 0.23 for ``player_win_a_set``
+    in August 2026 -- and a 0.04 minimum silently becomes 0.17.  When this
+    landed on 2026-08-01 the value count fell from 472 to 42 and the daily
+    report went quiet, while the raw model's disagreement with the market
+    actually grew (0.10 -> 0.11).  The blend still decides *how much*; it no
+    longer decides *whether*.
+    """
+    try:
+        raw = float(raw_probability)
+        fair = float(fair_probability)
+        price = float(odds)
+    except (TypeError, ValueError):
+        return False
+    return (
+        raw - fair >= profile.min_edge
+        and raw * price - 1.0 > 0
+        and profile.min_odds <= price <= profile.max_odds
+    )
+
+
 def family_metadata(key: str) -> PropFamily | None:
     return FAMILIES.get(str(key or ""))
 
