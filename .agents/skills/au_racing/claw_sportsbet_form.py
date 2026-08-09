@@ -11,7 +11,7 @@ Playwright 202）。Sportsbet 用返我哋一直用嗰套 `curl_cffi` chrome120 
 就攞到，而且**帶埋三樣 Racenet 從來冇畀過我哋嘅數據**：
 
     In running 800m/400m   逐場定位  ← 「settling position」，實測值 14–20pp 前三
-    Sectionals 600m        逐場末段  ← pace_figure 而家 480/713 場零覆蓋
+    Sectionals 600m        往績賽事末段環境（race-level，唔係逐駒末段）
     每場往績嘅 1st/2nd/3rd  具名對手  ← 賽績線嘅 88.5% 缺口
 
 架構（照 `nba_data_extractor/scripts/claw_sportsbet_odds.py` 嗰套）：
@@ -227,7 +227,7 @@ def parse_overview(html):
 RE_PERSON = re.compile(r'href="/(Jockey|Trainer)/(\d+)/"[^>]*>([^<]{2,60})<')
 
 
-RE_SILK_SEL = re.compile(
+RE_SILK_IMAGE_THEN_NUMBER = re.compile(
     # ⚠️ 兩個容器都要中：`selection-runner`（只有貼士推介嗰幾匹）同 `runner-silks`
     # （接近全場）。兩者嘅馬號 span 都帶後綴 —— `runner-number active`、
     # `runner-number bordered active`。舊 pattern 寫死 `class="runner-number"`，要求
@@ -236,6 +236,16 @@ RE_SILK_SEL = re.compile(
     # 緊接馬號 span）而唔用萬用 `.*?`，免得一個冇馬號嘅 img 配到下一匹馬身上。
     r'<img[^>]+src="(?P<u>[^"]*images\.puntcdn\.com/silks/[^"]+\.svg[^"]*)"[^>]*>'
     r'\s*<span class="runner-number[^"]*"[^>]*>\s*(?P<num>\d+)', re.I)
+
+# Current Sportsbet markup places the runner number immediately before its
+# `runner-silks` container.  Keep both exact sibling orders: a broad cross-row
+# wildcard can silently attach an orphan image to the following horse.
+RE_SILK_NUMBER_THEN_IMAGE = re.compile(
+    r'<(?:div|span) class="runner-number[^"]*"[^>]*>\s*(?P<num>\d+)\s*</(?:div|span)>'
+    r'\s*<div class="runner-silks[^"]*"[^>]*>\s*'
+    r'<img[^>]+src="(?P<u>[^"]*images\.puntcdn\.com/silks/[^"]+\.svg[^"]*)"[^>]*>',
+    re.I,
+)
 
 
 def parse_silks(html):
@@ -256,11 +266,12 @@ def parse_silks(html):
     URL 係 protocol-relative（`//…`），要補 `https:` 否則過唔到 dashboard 個 regex。
     """
     out = {}
-    for m in RE_SILK_SEL.finditer(html):
-        url = m.group("u").strip()
-        if url.startswith("//"):
-            url = "https:" + url
-        out.setdefault(int(m.group("num")), url)
+    for pattern in (RE_SILK_IMAGE_THEN_NUMBER, RE_SILK_NUMBER_THEN_IMAGE):
+        for match in pattern.finditer(html):
+            url = match.group("u").strip()
+            if url.startswith("//"):
+                url = "https:" + url
+            out.setdefault(int(match.group("num")), url)
     return out
 
 
@@ -439,7 +450,7 @@ def probe(parsed, label=""):
         print("  ❌ 解析唔到任何往績"); return c
     print(f"  出賽馬 {c['runners']}   往績場數 {c['runs']}")
     rows = [("In running 800m/400m（定位）", c["in_running_pct"], "settling position"),
-            ("Sectionals 600m（末段）", c["sectional_600_pct"], "pace_figure"),
+            ("Sectionals 600m（賽事末段環境）", c["sectional_600_pct"], "pace_figure"),
             ("對手線 至少一個", c["opponent_lines_pct"], "賽績線"),
             ("對手線 完整前三", c["opponent_full_top3_pct"], "賽績線"),
             ("賽事 header（場地/班次/路程）", c["header_pct"], ""),
@@ -461,11 +472,12 @@ def probe(parsed, label=""):
     return c
 
 
-# ── 寫成 Racenet 格式（drop-in）─────────────────────────────────────────────
-# 下游（inject_fact_anchors → Facts.md → engine）食嘅係 Racenet crawler 嗰套文字
-# 格式，所以呢度要逐個欄位對返齊，唔可以自創格式。已核實嘅解析點：
+# ── 寫成現役 Formguide compatibility contract ─────────────────────────────
+# 下游（inject_fact_anchors → Facts.md → engine）仍食歷史兼容文字 contract，
+# 所以呢度要逐個欄位對返齊，唔可以自創格式。呢個係 schema compatibility，
+# 唔代表 runtime 仍依賴舊網站。已核實嘅解析點：
 #   ` starters:N`                 → 馬群大細（form_score 百分位化靠佢）
-#   ` PF[L600 Delta: X ...]`      → 段速實速（X 係**同基準嘅差值**，唔係原始秒數）
+#   ` PF[L600 Delta: X ...]`      → 往績賽事末段環境（X 係**同基準嘅差值**）
 #   `Nth@800m Nth@400m`           → 定位（settling position）
 #   `(LY: 288:53-39-35)`          → 騎練去年 starts:1st-2nd-3rd
 _POS_ORD = {"1st": 1, "2nd": 2, "3rd": 3}
@@ -481,10 +493,13 @@ def _ord_to_int(text):
 
 
 def _l600_delta(raw_seconds, track, distance_m):
-    """Sportsbet 畀原始 600m 秒數，但下游要嘅係**同場地標準嘅差值**。
+    """Sportsbet 畀 race-level 600m 秒數，轉成同場地標準嘅差值。
 
     用引擎自己嗰張標準表換算，咁 live 同重跑 archive 先係同一把尺。
     攞唔到標準就回 None —— 寧可唔寫，唔好寫個假 delta 落去。
+
+    同一歷史場次嘅值會喺每匹 runner block 重覆；佢描述賽事末段環境，
+    唔係該駒自己嘅個體 split。內部 key 為兼容舊 Logic 保留不變。
     """
     if raw_seconds is None or not track or not distance_m:
         return None
@@ -511,7 +526,7 @@ def run_date(run):
 
 
 def run_line(run):
-    """砌一條 Racenet 格式嘅往績行。"""
+    """砌一條下游兼容嘅 Sportsbet 往績行。"""
     h = run.get("header") or {}
     # `Barrier Trial Apiam Bendigo` —— header regex 個 track group 會連前面
     # 嗰句 "Barrier Trial" 一齊食咗，落到賽事名度就變咗個唔存在嘅馬場。
@@ -550,13 +565,17 @@ def run_line(run):
         # ⚠️ 個 key **一定要**係 `L600 Delta:`，唔係 `Last600:`。
         # `_pace_figure_score` 讀 `pf_aggregates['l600_delta_avg']`，而佢淨係由
         # `L600 Delta:` 嚟（engine_core `_parse_pf_token`）。`Last600:` 會去咗
-        # `l600_time`，冇任何 leaf 讀 —— 所以寫錯 key 唔會報錯，只會令段速實速
+        # `l600_time`，冇任何 leaf 讀 —— 所以寫錯 key 唔會報錯，只會令 L600 環境分
         # 全場中性 60。實測：2026-08-01 Flemington 九場，PF 寫咗 96% 嘅往績行，
         # 但 pace_figure_score 嘅 evidence 係 **0%**、SD 0.00。
         # 而且 Racenet PF 嘅 `Last600:` 係跑到「剩 600m」嗰刻嘅累積時間；
-        # `Runner Time - Last600` 先係真正末段 600。Sportsbet `l600` 就直接係
-        # 末段 600 秒數。借同一個 key 擺 benchmark delta 會混合三把尺。
-        tail += f" PF[L600 Delta: {delta}]"
+        # `Runner Time - Last600` 先係真正末段 600。Sportsbet `l600` 係嗰場
+        # 賽事 race-level 末段 600 秒數；報告唔可以再話係本駒個體末段。
+        # Source marker is part of the token contract.  Without it the engine
+        # cannot distinguish Sportsbet's race-level sectional context from
+        # Racenet's runner-level benchmark deltas after both are serialized to
+        # the legacy `L600 Delta` key.
+        tail += f" PF[Source: sportsbet_race_context L600 Delta: {delta}]"
     line = " ".join(parts) + " " + tail
     opp = run.get("opponents") or []
     def fmt(o, i):
@@ -621,7 +640,7 @@ def parse_runner_blocks(html):
 
 def write_meeting(races, out_dir, date_str, venue, verbose=True,
                   speedmaps=None, odds=None):
-    """寫 Racenet 格式嘅 meeting 檔。`races` = [(race_no, parsed, blocks)]。
+    """寫下游兼容嘅 Sportsbet meeting 檔。`races` = [(race_no, parsed, blocks)]。
 
     格式**唔可以自創** —— 下游 `inject_fact_anchors` 同引擎逐行 regex 食佢。
     對照 `claw_racenet_scraper.py` 147–252 行。
@@ -758,7 +777,7 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
                     # ⚠️ 時點正確性 —— 呢個 filter 唔可以拆。Sportsbet 嘅表格頁係
                     # **賽後**先抓到，所以每匹馬嘅往績第一行就係我哋要預測嗰場，
                     # 連名次、負距、頭馬名同 600m 段速都齊。留住佢等於將答案餵返
-                    # 落 form_score / 段速實速 / 賽績線 / 定位，backtest 會靚到假。
+                    # 落 form_score / L600 環境 / 賽績線 / 定位，backtest 會靚到假。
                     # 實測：2026-08-01 Flemington 520 條往績有 89 條（17.1%）
                     # 係當日或之後，而且係**最近一行**，即係近績加權最重嗰行。
                     if run_date(run) >= date_str:

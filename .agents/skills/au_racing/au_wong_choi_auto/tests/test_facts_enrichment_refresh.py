@@ -15,8 +15,13 @@ sys.path.insert(0, str(SHARED_SCRIPTS))
 
 from au_auto_orchestrator import _facts_path_for_logic
 import build_au_logic
-from engine_core import enrich_logic_from_facts, _extract_career_starts
-from inject_fact_anchors import parse_racecard
+from engine_core import RacingEngine, enrich_logic_from_facts, _extract_career_starts
+from inject_fact_anchors import (
+    _enrich_stats_from_formguide,
+    _history_kind_label,
+    parse_formguide_for_horse,
+    parse_racecard,
+)
 
 MODERN_FACTS = "\n".join(
     [
@@ -68,6 +73,99 @@ class FactsPathGlobTests(unittest.TestCase):
 
 
 class BuilderEnricherParityTests(unittest.TestCase):
+    def test_formguide_dossier_censors_target_and_future_runs(self) -> None:
+        formguide = "\n".join(
+            [
+                "[4] Example Star (12)",
+                "Randwick R5 2026-08-09 1400m cond:Good $100,000 J Doe (4) 58kg margin:0 HC:80",
+                "1-Example Star (4)",
+                "Rosehill R3 2026-08-01 1400m cond:Good $80,000 J Doe (3) 58kg margin:1.2 HC:78",
+                "1-Rival (2) 2-Example Star (3) 1.2L",
+            ]
+        )
+        rows = parse_formguide_for_horse(
+            formguide,
+            4,
+            "Example Star",
+            [1, 2],
+            as_of="2026-08-09",
+        )
+        self.assertEqual([row["date"] for row in rows], ["2026-08-01"])
+
+    def test_historical_hc_is_not_rendered_as_race_class(self) -> None:
+        self.assertEqual(_history_kind_label({"is_trial": False, "hc": 106}), "HC106")
+        self.assertEqual(_history_kind_label({"is_trial": False, "hc": None}), "正式")
+        self.assertEqual(_history_kind_label({"is_trial": True, "hc": 106}), "試閘")
+
+    def test_engine_keeps_historical_hc_as_rating_evidence(self) -> None:
+        facts = "\n".join(
+            [
+                "| # | 類型／歷史HC | 日期 | 場地 | 路程 | 場地狀況 | 檔位 | 名次 | 班次 | 跑位軌跡 |",
+                "|---|---|---|---|---|---|---|---|---|---|",
+                "| 1 | HC106 | 2026-05-16 | Doomben R5 | 1600m | 7 | 9 | 4 | = | S4→F4 |",
+            ]
+        )
+        engine = RacingEngine.__new__(RacingEngine)
+        engine.facts_section = facts
+        engine._record_entry_cache = None
+        rows = engine._record_entries()
+        self.assertEqual(rows[0]["kind"], "HC106")
+        self.assertEqual(rows[0]["historical_rating"], 106.0)
+
+    def test_formguide_record_enrichment_keeps_complete_sportsbet_values(self) -> None:
+        horse = {"num": 4}
+        formguide = "\n".join(
+            [
+                "[4] Example Star (12)",
+                "Career:    45: 5-7-7       Last 10: 656587",
+                "Track:     1: 0-0-0        Distance: 27: 3-5-4       Trk/Dist: 0: 0-0-0",
+                "Firm:      0: 0-0-0        Good: 18: 3-2-2       Soft: 20: 1-4-4",
+                "Heavy:     7: 1-1-1",
+                "1st Up:    9: 2-1-1        2nd Up: 7: 1-1-2",
+                "Randwick R5 2026-07-01 1400m cond:Good",
+            ]
+        )
+
+        _enrich_stats_from_formguide(formguide, horse)
+
+        self.assertEqual(horse["track_stats"], "1:0-0-0")
+        self.assertEqual(horse["dist_stats"], "27:3-5-4")
+        self.assertEqual(horse["trkdist_stats"], "0:0-0-0")
+        self.assertEqual(horse["good_stats"], "18:3-2-2")
+        self.assertEqual(horse["soft_stats"], "20:1-4-4")
+        self.assertEqual(horse["heavy_stats"], "7:1-1-1")
+        self.assertEqual(horse["first_up"], "9:2-1-1")
+        self.assertEqual(horse["second_up"], "7:1-1-2")
+
+    def test_partial_record_is_missing_instead_of_cross_contaminating(self) -> None:
+        horse = {"num": 4}
+        formguide = "\n".join(
+            [
+                "[4] Example Star (12)",
+                "Track: 1: Distance: 27: 3-5-4 Trk/Dist: 0: 0-0-0",
+                "Randwick R5 2026-07-01 1400m cond:Good",
+            ]
+        )
+
+        _enrich_stats_from_formguide(formguide, horse)
+
+        self.assertEqual(horse["track_stats"], "N/A")
+        self.assertEqual(horse["dist_stats"], "27:3-5-4")
+
+    def test_engine_record_segments_are_field_aligned(self) -> None:
+        engine = RacingEngine.__new__(RacingEngine)
+        engine.data = {
+            "track_stats_line": "1: | 同程: 27: | 同場同程: 0:",
+            "going_stats_line": "18:3-2-2 | 軟地: 20:1-4-4 | 重地: 7:1-1-1",
+        }
+
+        self.assertEqual(engine._same_track_stats()["places"], 0)
+        going = engine._going_stats()
+        self.assertEqual(going["好地"]["starts"], 0)
+        self.assertEqual(going["好地"]["places"], 0)
+        self.assertEqual(going["軟地"]["places"], 9)
+        self.assertEqual(going["重地"]["places"], 3)
+
     def test_integer_only_sportsbet_career_is_not_debut(self) -> None:
         facts = "\n".join(
             [
@@ -101,6 +199,42 @@ class BuilderEnricherParityTests(unittest.TestCase):
             horses = parse_racecard(str(racecard))
 
         self.assertEqual(horses[0]["career"], "45 : 5-7-7")
+
+    def test_racecard_restores_people_missing_from_legacy_facts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            facts_path = folder / "11-01 Race 3 Facts.md"
+            facts_path.write_text(
+                "## Race 3\n### 馬匹 #7 Example Star (檔位 4)\n",
+                encoding="utf-8",
+            )
+            (folder / "11-01 Race 3 Racecard.md").write_text(
+                "\n".join(
+                    [
+                        "RACE 3 — 1400m | Maiden",
+                        "7. Example Star (4)",
+                        "Trainer: T Smith | Jockey: J Doe | Weight: 58.0kg | Age: 5yoG | Rating: 70",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            logic = {
+                "race_analysis": {"race_number": 3},
+                "horses": {
+                    "7": {
+                        "horse_name": "Example Star",
+                        "jockey": "",
+                        "trainer": "",
+                        "_data": {},
+                    }
+                },
+            }
+            enriched = enrich_logic_from_facts(logic, facts_path)
+
+        horse = enriched["horses"]["7"]
+        self.assertEqual(horse["jockey"], "J Doe")
+        self.assertEqual(horse["trainer"], "T Smith")
+        self.assertEqual(horse["rating"], 70.0)
 
     def test_canonical_builder_is_enrichment_idempotent(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

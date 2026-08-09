@@ -158,6 +158,7 @@ class SignalMapTests(unittest.TestCase):
             set(REPORT_ONLY_FEATURE_KEYS),
             {
                 "sectional_score",
+                "class_score",
                 "weight_score",
                 "distance_score",
                 "formline_score",

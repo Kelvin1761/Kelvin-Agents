@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, '.')
 
-from services.parser_au import parse_au_analysis
+from services.parser_au import _parse_data_readout, parse_au_analysis
 from services.parser_hkjc import parse_hkjc_analysis
 from services.meeting_detector import discover_meetings, load_meeting_races
 import config
@@ -102,6 +102,31 @@ def test_au_auto_parser_ballarat():
     )
 
     return True
+
+
+def test_au_preview_groups_leaf_scores_under_their_matrix_category():
+    block = """#### 📊 數據判讀
+
+**逐維一覽：**
+
+**騎練訊號：65.4 分　➖ 中性**
+- 騎師分 50 ← 去年官方勝率
+- 練馬師分 75 ← 去年官方上名率
+- 人馬配搭分 64 ← 曾合作三次
+
+**場地與地況適性：59.1 分　➖ 中性**
+- 同場／地況往績分 59 ← 同場及地況往績
+
+#### ⏱️ 近績解構
+"""
+    rows = _parse_data_readout(block)
+    labels = [row["label"] for row in rows]
+    assert labels == ["騎練訊號", "場地與地況適性"]
+    people = rows[0]
+    assert "騎師分 50" in people["reason"]
+    assert "練馬師分 75" in people["reason"]
+    assert "人馬配搭分 64" in people["reason"]
+    assert "同場／地況往績分 59" in rows[1]["reason"]
 
 
 def test_au_meeting_loader_ballarat():

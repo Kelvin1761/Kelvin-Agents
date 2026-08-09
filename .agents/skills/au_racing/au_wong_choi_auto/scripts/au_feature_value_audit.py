@@ -5,15 +5,57 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import sys
+from collections import defaultdict
 from pathlib import Path
-from statistics import mean
+from statistics import mean, median, pstdev
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
 
 from io_utils import write_json_atomic, write_text_atomic
-from scoring import FEATURE_KEYS
+from scoring import ABILITY_FEATURE_KEYS, FEATURE_KEYS, REPORT_ONLY_FEATURE_KEYS
+
+
+def going_family(value: str) -> str:
+    text = str(value or "").lower()
+    if "heavy" in text:
+        return "Heavy"
+    if "soft" in text:
+        return "Soft"
+    if "synthetic" in text:
+        return "Synthetic"
+    if "good" in text or "firm" in text:
+        return "Good/Firm"
+    return "Unknown"
+
+
+def class_family(value: str) -> str:
+    text = str(value or "").upper()
+    if re.search(r"\b(G1|G2|G3|GROUP|LISTED|LR)\b", text):
+        return "Stakes/Listed"
+    if "MAIDEN" in text or "MDN" in text:
+        return "Maiden"
+    if "BM" in text or "BENCHMARK" in text:
+        return "Benchmark"
+    if "CLASS" in text or re.search(r"\bCL\s*\d", text):
+        return "Class"
+    return "Other"
+
+
+def cohort_key(metadata: dict, slice_name: str) -> str:
+    if slice_name == "going":
+        return going_family(metadata.get("going"))
+    if slice_name == "distance":
+        distance = int(metadata.get("distance") or 0)
+        return "<=1200m" if distance <= 1200 else ("1300-1600m" if distance <= 1600 else "1700m+")
+    if slice_name == "field_size":
+        size = int(metadata.get("field_size") or 0)
+        return "<=8" if size <= 8 else ("9-12" if size <= 12 else "13+")
+    if slice_name == "class":
+        return class_family(metadata.get("race_class"))
+    return str(metadata.get("track") or "Unknown")
 
 
 def within_race_auc(
@@ -107,6 +149,15 @@ def build_audit(dataset: dict) -> dict:
                 "mean_actual_top3": mean(positives),
                 "mean_non_top3": mean(negatives),
                 "mean_gap": mean(positives) - mean(negatives),
+                "mean": mean(values),
+                "median": median(values),
+                "stddev": pstdev(values),
+                "min": min(values),
+                "max": max(values),
+                "exact_60_rate": sum(abs(value - 60.0) < 1e-9 for value in values)
+                / len(values),
+                "band_58_62_rate": sum(58.0 <= value <= 62.0 for value in values)
+                / len(values),
                 "neutral_rate_abs_lt_0_5": sum(
                     abs(value - 60.0) < 0.5 for value in values
                 )
@@ -132,6 +183,19 @@ def build_audit(dataset: dict) -> dict:
                 state in {"missing", "fallback"} for state in evidence
             )
         features[key]["missing_or_fallback_rate"] /= len(evidence)
+        features[key]["role"] = (
+            "ranking" if key in ABILITY_FEATURE_KEYS else "report_only"
+        )
+        full_auc = features[key]["within_race_auc_all"]
+        terminal_auc = features[key]["within_race_auc_terminal"]
+        if full_auc is not None and terminal_auc is not None and full_auc < 0.5 and terminal_auc < 0.5:
+            features[key]["status"] = (
+                "inverse_active" if key in ABILITY_FEATURE_KEYS else "inverse_report_only"
+            )
+        elif full_auc is not None and full_auc < 0.52:
+            features[key]["status"] = "weak"
+        else:
+            features[key]["status"] = "healthy"
 
     correlations = []
     for index, left in enumerate(FEATURE_KEYS):
@@ -152,15 +216,34 @@ def build_audit(dataset: dict) -> dict:
                     }
                 )
     correlations.sort(key=lambda row: abs(row["correlation"]), reverse=True)
+    matrices = signal_rows(tuple(rows[0]["matrix_scores"]), "matrix_scores")
+    cohort_auc = {}
+    for slice_name in ("going", "distance", "field_size", "class", "track"):
+        groups = defaultdict(list)
+        for race in races:
+            groups[cohort_key(race["metadata"], slice_name)].append(race)
+        cohort_auc[slice_name] = {}
+        for label, members in sorted(groups.items()):
+            if len(members) < 20:
+                continue
+            cohort_auc[slice_name][label] = {
+                "races": len(members),
+                "features": {
+                    key: within_race_auc(members, key, "feature_scores")
+                    for key in FEATURE_KEYS
+                },
+                "matrices": {
+                    key: within_race_auc(members, key, "matrix_scores")
+                    for key in rows[0]["matrix_scores"]
+                },
+            }
     return {
         "design": dataset["design"],
         "fold_races": [len(fold) for fold in folds],
         "terminal_races": len(holdout),
         "features": features,
-        "matrices": signal_rows(
-            tuple(rows[0]["matrix_scores"]),
-            "matrix_scores",
-        ),
+        "matrices": matrices,
+        "cohort_auc": cohort_auc,
         "high_correlations_abs_ge_0_55": correlations,
     }
 
@@ -173,8 +256,8 @@ def render_markdown(audit: dict) -> str:
         f"- Development time folds: {audit['fold_races']}",
         f"- Terminal holdout: {audit['terminal_races']} races",
         "",
-        "| Feature | AUC all | AUC folds | AUC terminal | Top3 gap | Neutral <0.5 | Missing/fallback |",
-        "|---|---:|---|---:|---:|---:|---:|",
+        "| Feature | Role/status | Mean/median | SD | Range | =60 | 58-62 | Missing/fallback | AUC all/terminal |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
     ordered = sorted(
         audit["features"].items(),
@@ -182,15 +265,14 @@ def render_markdown(audit: dict) -> str:
         reverse=True,
     )
     for key, row in ordered:
-        folds = "/".join(
-            "n/a" if value is None else f"{value:.3f}"
-            for value in row["within_race_auc_folds"]
-        )
         lines.append(
-            f"| {key} | {row['within_race_auc_all']:.3f} | {folds} | "
-            f"{row['within_race_auc_terminal']:.3f} | {row['mean_gap']:+.2f} | "
-            f"{row['neutral_rate_abs_lt_0_5'] * 100:.1f}% | "
-            f"{row['missing_or_fallback_rate'] * 100:.1f}% |"
+            f"| {key} | {row['role']} / {row['status']} | "
+            f"{row['mean']:.1f}/{row['median']:.1f} | {row['stddev']:.1f} | "
+            f"{row['min']:.1f}-{row['max']:.1f} | "
+            f"{row['exact_60_rate'] * 100:.1f}% | "
+            f"{row['band_58_62_rate'] * 100:.1f}% | "
+            f"{row['missing_or_fallback_rate'] * 100:.1f}% | "
+            f"{row['within_race_auc_all']:.3f}/{row['within_race_auc_terminal']:.3f} |"
         )
     lines.extend(["", "## Strong correlations", ""])
     for row in audit["high_correlations_abs_ge_0_55"]:
@@ -220,6 +302,23 @@ def render_markdown(audit: dict) -> str:
             f"| {key} | {row['within_race_auc_all']:.3f} | {folds} | "
             f"{row['within_race_auc_terminal']:.3f} | {row['mean_gap']:+.2f} |"
         )
+    lines.extend(["", "## Matrix AUC by cohort", ""])
+    active_matrices = [key for key in audit["matrices"] if key != "form_line"]
+    for slice_name, cohorts in audit["cohort_auc"].items():
+        lines.extend([
+            f"### {slice_name}",
+            "",
+            "| Cohort | Races | " + " | ".join(active_matrices) + " |",
+            "|---|---:|" + "---:|" * len(active_matrices),
+        ])
+        for label, row in cohorts.items():
+            values = " | ".join(
+                "n/a" if row["matrices"].get(key) is None
+                else f"{row['matrices'][key]:.3f}"
+                for key in active_matrices
+            )
+            lines.append(f"| {label} | {row['races']} | {values} |")
+        lines.append("")
     return "\n".join(lines) + "\n"
 
 

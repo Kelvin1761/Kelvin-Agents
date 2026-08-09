@@ -3,7 +3,7 @@
 背景：`run_line()` 本來寫 `PF[Last600: X]`。`_parse_pf_token` 的確識讀
 `Last600:`，但佢入嘅係 `l600_time` —— **冇任何 leaf 讀呢個 key**。
 `_pace_figure_score` 讀嘅係 `pf_aggregates['l600_delta_avg']`，只由
-`L600 Delta:` 嚟。所以個 key 寫錯唔會報錯，只會令段速實速全場中性 60：
+`L600 Delta:` 嚟。所以個 key 寫錯唔會報錯，只會令 L600 環境分全場中性 60：
 2026-08-01 Flemington 九場，96% 往績行有 PF，`pace_figure_score` evidence
 0%、SD 0.00。呢個 test 就係封死呢條靜靜壞嘅路。
 """
@@ -22,7 +22,11 @@ sys.path.insert(0, str(AU_RACING))
 sys.path.insert(0, str(ENGINE))
 
 from claw_sportsbet_form import parse_race, run_line  # noqa: E402
-from engine_core import _parse_pf_token  # noqa: E402
+from engine_core import (  # noqa: E402
+    RacingEngine,
+    _parse_formguide_pf_metrics,
+    _parse_pf_token,
+)
 
 PF_TOKEN = re.compile(r"PF\[([^\]]*)\]")
 
@@ -49,6 +53,7 @@ class PfTokenContractTest(unittest.TestCase):
         parsed = _parse_pf_token(token)
         self.assertIsNotNone(parsed["l600_delta"],
                              "delta 冇入到 l600_delta —— 段速實速會全場中性 60")
+        self.assertEqual(parsed["source"], "sportsbet_race_context")
 
     def test_does_not_park_a_delta_under_the_rating_key(self):
         # Racenet PF `Last600:` 係跑到剩 600m 嘅累積時間；Sportsbet 呢度
@@ -64,6 +69,103 @@ class PfTokenContractTest(unittest.TestCase):
 
     def test_no_sectional_means_no_pf_token(self):
         self.assertIsNone(self._token(_run(None)))
+
+    def test_sportsbet_race_sectional_is_not_described_as_individual_speed(self):
+        engine = RacingEngine(
+            {
+                "horse_name": "Context Runner",
+                "_data": {
+                    "pf_metrics": {
+                        "pf_aggregates": {
+                            "pf_run_count": 3,
+                            "l600_delta_avg": -0.5,
+                            "source": "sportsbet_race_context",
+                        }
+                    }
+                },
+            },
+            {
+                "field_summary": {
+                    "l600_delta_field_count": 5,
+                    "l600_delta_field_mean": 0.0,
+                    "l600_delta_field_stdev": 0.5,
+                }
+            },
+        )
+        _score, note, _source = engine._pace_figure_score()
+        self.assertIn("所在賽事", note)
+        self.assertIn("race-level", note)
+
+    def test_legacy_sportsbet_formguide_fingerprint_restores_source(self):
+        text = """RACE 1 — 1200m
+[1] Context Runner (2)
+WinOdds: 4.20
+Somewhere R1 2026-07-01 1200m PF[L600 Delta: -0.4]
+"""
+        parsed = _parse_formguide_pf_metrics(
+            Path("Race 1 Facts.md"),
+            formguide_text=text,
+        )
+        self.assertEqual(
+            parsed["1"]["pf_aggregates"]["source"],
+            "sportsbet_race_context",
+        )
+
+    def test_pf_parser_censors_target_and_future_rows(self):
+        text = """RACE 1 — 1200m
+[1] Context Runner (2)
+Somewhere R1 2026-08-09 1200m PF[L600 Delta: -9.0]
+Somewhere R1 2026-08-01 1200m PF[L600 Delta: -0.4]
+"""
+        parsed = _parse_formguide_pf_metrics(
+            Path("Race 1 Facts.md"),
+            formguide_text=text,
+            target_date="2026-08-09",
+        )
+        aggregates = parsed["1"]["pf_aggregates"]
+        self.assertEqual(aggregates["pf_run_count"], 1)
+        self.assertEqual(aggregates["l600_delta_avg"], -0.4)
+        self.assertEqual(parsed["1"]["pf_runs"][0]["run_date"], "2026-08-01")
+        self.assertEqual(parsed["1"]["pf_runs"][0]["distance"], 1200)
+
+    def test_pf_parser_rejects_undated_evidence_when_target_is_known(self):
+        text = """RACE 1 — 1200m
+[1] Context Runner (2)
+Unknown historical row PF[L600 Delta: -9.0]
+"""
+        parsed = _parse_formguide_pf_metrics(
+            Path("Race 1 Facts.md"),
+            formguide_text=text,
+            target_date="2026-08-09",
+        )
+        self.assertEqual(parsed["1"]["pf_aggregates"].get("pf_run_count", 0), 0)
+
+    def test_racenet_runner_benchmark_keeps_individual_semantics(self):
+        engine = RacingEngine(
+            {
+                "horse_name": "Benchmark Runner",
+                "_data": {
+                    "pf_metrics": {
+                        "pf_aggregates": {
+                            "pf_run_count": 3,
+                            "l600_delta_avg": -0.5,
+                            "source": "racenet_formguide_cfb",
+                        }
+                    }
+                },
+            },
+            {
+                "field_summary": {
+                    "l600_delta_field_count": 5,
+                    "l600_delta_field_mean": 0.0,
+                    "l600_delta_field_stdev": 0.5,
+                }
+            },
+        )
+        _score, note, _source = engine._pace_figure_score()
+        self.assertIn("逐駒", note)
+        self.assertIn("個體 benchmark", note)
+        self.assertNotIn("race-level", note)
 
 
 class InRunningContractTest(unittest.TestCase):

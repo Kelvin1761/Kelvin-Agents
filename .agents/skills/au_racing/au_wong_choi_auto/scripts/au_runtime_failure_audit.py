@@ -65,6 +65,8 @@ def raw_pre_race_snapshot(raw_horse: dict) -> dict:
         "barrier": raw_horse.get("barrier"),
         "weight": raw_horse.get("weight"),
         "rating": raw_horse.get("rating"),
+        "jockey": raw_horse.get("jockey"),
+        "trainer": raw_horse.get("trainer"),
         # The live pace leaf uses only l600_delta_avg today.  Preserve the
         # other filtered pre-race aggregates so structural alternatives can
         # be evaluated without touching result-bearing data.
@@ -76,6 +78,10 @@ def raw_pre_race_snapshot(raw_horse: dict) -> dict:
         "current_jockey_formal_rides": raw_data.get("current_jockey_formal_rides"),
         "current_jockey_formal_places": raw_data.get("current_jockey_formal_places"),
         "current_jockey_formal_wins": raw_data.get("current_jockey_formal_wins"),
+        "jockey_ly": raw_data.get("jockey_ly") or {},
+        "trainer_ly": raw_data.get("trainer_ly") or {},
+        "track_stats_line": raw_data.get("track_stats_line"),
+        "going_stats_line": raw_data.get("going_stats_line"),
         **{key: raw_data.get(key) for key in HIGH_POTENTIAL_UNUSED},
     }
 
@@ -509,7 +515,7 @@ def summarize(
                 "field_size",
             )
         },
-        "racenet_field_coverage": {
+        "sportsbet_pipeline_field_coverage": {
             field: {
                 "available": field_available[field],
                 "available_rate": field_available[field] / max(1, total_horses),
@@ -743,6 +749,7 @@ def main() -> int:
                         "feature_scores",
                         "matrix_scores",
                         "feature_evidence_state",
+                        "score_provenance",
                         "raw_pre_race",
                         "speed_map",
                     ],

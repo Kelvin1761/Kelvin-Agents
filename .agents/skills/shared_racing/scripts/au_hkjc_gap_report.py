@@ -3,8 +3,8 @@
 
 Evaluates the stored production rankings (`python_auto.ability_score`) of every
 archived race on both sides through `shared_racing/eval_metrics`, then reports
-every Good definition side by side with bootstrap confidence intervals and
-going / venue / field-size context.
+the current Gold / Good / Pass contract with bootstrap confidence intervals
+and going / venue / field-size context.
 
 Usage:
     python3 .agents/skills/shared_racing/scripts/au_hkjc_gap_report.py \
@@ -134,7 +134,13 @@ def field_band(field: int) -> str:
 
 
 def summarize(records: list[dict]) -> dict:
-    return summarize_races([record["eval"] for record in records])
+    summary = summarize_races([record["eval"] for record in records])
+    # Compatibility aliases may remain inside eval_metrics for archived callers,
+    # but current reports and JSON must not expose the retired ruler.
+    for section in ("counts", "rates"):
+        for key in ("good_any2", "pass_any1"):
+            summary[section].pop(key, None)
+    return summary
 
 
 def bootstrap_rate(records: list[dict], key: str, iterations: int, rng: random.Random) -> tuple[float, float]:
@@ -167,16 +173,15 @@ def kpi_row(name: str, summary: dict) -> str:
     return (
         f"| {name} | {summary['races']} | {summary['counts']['gold']} ({pct(rates['gold'])}) | "
         f"{summary['counts']['good_positional']} ({pct(rates['good_positional'])}) | "
-        f"{summary['counts']['good_any2']} ({pct(rates['good_any2'])}) | "
-        f"{summary['counts']['pass_any1']} ({pct(rates['pass_any1'])}) | "
+        f"{summary['counts']['pass']} ({pct(rates['pass'])}) | "
         f"{pct(rates['champion'])} | {pct(rates['winner_in_top3'])} | "
         f"{summary['top3_precision'] * 100:.1f}% | {summary['mrr']:.3f} |"
     )
 
 
 KPI_HEADER = (
-    "| Sample | Races | Gold | Good (positional) | Good (any-2) | Pass (any hit) | Top1 win | W-in-Top3 | Top3 prec | MRR |\n"
-    "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"
+    "| Sample | Races | Gold | Good | Pass | Top1 win | W-in-Top3 | Top3 prec | MRR |\n"
+    "|---|---:|---:|---:|---:|---:|---:|---:|---:|"
 )
 
 
@@ -240,7 +245,7 @@ def main() -> int:
         _group(hk, lambda r: field_band(r["field"])).items())}
 
     cis = {}
-    for key in ("good_positional", "good_any2", "winner_in_top3", "champion"):
+    for key in ("gold", "good_positional", "pass", "winner_in_top3", "champion"):
         cis[key] = {
             "au": bootstrap_rate(au, key, args.bootstrap, rng),
             "hk": bootstrap_rate(hk, key, args.bootstrap, rng),
@@ -257,7 +262,7 @@ def main() -> int:
         f"# AU vs HKJC Wong Choi — Canonical Gap Report ({args.report_date})",
         "",
         "> Both engines evaluated with `shared_racing/eval_metrics` on stored production",
-        "> rankings (`python_auto.ability_score`). Every Good definition reported explicitly.",
+        "> rankings (`python_auto.ability_score`) using the current Gold / Good / Pass contract.",
         "",
         "## Samples",
         "",
@@ -318,10 +323,9 @@ def main() -> int:
         "",
         "## Reading guide",
         "",
-        "- **Good (positional)** = model picks 1 and 2 both in the actual top 3 — the definition behind",
-        "  both the AU \"17.9%\" figure and the HKJC calibration doc's 24/91=26.4%.",
-        "- **Good (any-2)** = any 2 of the model top 3 in the actual top 3 (cumulative, includes Gold) —",
-        "  the AU cached walk-forward's historical `good`.",
+        "- **Gold** = all of the actual top 3 are contained in the model top 4.",
+        "- **Good** = model picks 1 and 2 both finish in the actual top 3.",
+        "- **Pass** = any 2 of the model top 3 finish in the actual top 3.",
         "- Exclusive reflector labels (Gold/Good/Pass/1 Hit/Miss) remain available per race in the JSON output.",
         "",
     ]
@@ -344,7 +348,8 @@ def main() -> int:
         "races": [
             {**{k: record[k] for k in ("domain", "date", "meeting", "venue", "going", "field")},
              "race_id": list(record["race_id"]),
-             "eval": {k: v for k, v in record["eval"].items() if k != "picks"}}
+             "eval": {k: v for k, v in record["eval"].items()
+                      if k not in {"picks", "good_any2", "pass_any1"}}}
             for record in au + hk
         ],
     }

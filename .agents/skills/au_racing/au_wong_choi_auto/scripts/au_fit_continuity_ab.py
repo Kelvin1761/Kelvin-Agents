@@ -197,7 +197,7 @@ def main():
     base = {k: metrics(v) for k, v in
             (("all", scored["現行"]), ("dev", scored["現行"][:cut]),
              ("hold", scored["現行"][cut:]))}
-    hdr = (f"{'':18}{'Gold':>8}{'Good位':>9}{'any2':>8}{'champ':>8}"
+    hdr = (f"{'':18}{'Gold':>8}{'Good':>9}{'Pass':>8}{'champ':>8}"
            f"{'winT3':>8}{'t3prec':>9}")
     for seg, lo, hi in (("全樣本", 0, n), ("dev", 0, cut), ("holdout（未碰）", cut, n)):
         b = metrics(scored["現行"][lo:hi])

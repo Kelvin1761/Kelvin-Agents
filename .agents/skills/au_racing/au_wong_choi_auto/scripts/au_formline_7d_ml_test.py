@@ -31,6 +31,7 @@ from au_auto_orchestrator import _build_field_summary  # noqa: E402
 from engine_core import RacingEngine  # noqa: E402
 from matrix_mapper import matrix_score  # noqa: E402
 from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_metric_contract import ranked_performance  # noqa: E402
 
 
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Formline_7D_ML_Test.md"
@@ -76,25 +77,18 @@ def metrics(races: list[list[dict]], weights: dict[str, float]) -> dict:
     for race in races:
         order = ranked(race, weights)
         top3 = order[:3]
-        top4 = order[:4]
         top5 = order[:5]
-        hits = sum(1 for row in top3 if int(row["actual_pos"]) <= 3)
-        top2_hits = sum(1 for row in order[:2] if int(row["actual_pos"]) <= 3)
+        performance = ranked_performance(order)
+        hits = int(performance["hits"])
         bucket["races"] += 1
         bucket[f"{hits}hit"] += 1
         bucket["top3_places"] += hits
         bucket["top3_slots"] += len(top3)
         bucket["winner_top5"] += 1 if any(int(row["actual_pos"]) == 1 for row in top5) else 0
-        bucket["gold"] += 1 if hits == 3 else 0
-        bucket["good"] += 1 if top2_hits == 2 else 0
-        bucket["pass"] += 1 if hits >= 2 else 0
-        actual_top3_count = sum(
-            int(row["actual_pos"]) <= 3 for row in order
-        )
-        top4_hits = sum(int(row["actual_pos"]) <= 3 for row in top4)
-        bucket["top3_all_within_top4"] += (
-            1 if actual_top3_count > 0 and top4_hits == actual_top3_count else 0
-        )
+        bucket["gold"] += int(performance["gold"])
+        bucket["good"] += int(performance["good_positional"])
+        bucket["pass"] += int(performance["pass"])
+        bucket["top3_all_within_top4"] += int(performance["gold"])
     races_n = bucket["races"] or 1
     slots = bucket["top3_slots"] or 1
     return {

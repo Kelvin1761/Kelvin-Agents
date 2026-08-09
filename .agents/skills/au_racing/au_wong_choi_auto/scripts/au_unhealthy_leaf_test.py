@@ -2,8 +2,9 @@
 """量度弱 standalone matrix 維度有冇真正 marginal value。
 
 單一維度 AUC 接近 0.5 唔代表放入多維線性組合後冇價值，所以唔可以見弱就剷。
-現役 ranking 已經移除 `sectional_score` 同 `weight_score`；呢個工具只測仍在排名嘅
-`track`／`race_shape`，並使用 canonical runtime loader 同完整賽日 holdout。
+現役 ranking 已經移除 `sectional_score` 同 `weight_score`；呢個工具測仍在排名嘅
+弱維度，亦可以將語意受質疑嘅 leaf 中性化，使用 canonical runtime loader 同完整
+賽日 holdout。
 """
 from __future__ import annotations
 
@@ -29,12 +30,14 @@ def renorm(d):
     return {k: v / s for k, v in d.items()} if s else d
 
 
-def evaluate(races, weights):
+def evaluate(races, weights, feature_overrides=None):
     rows = []
     for r in races:
         scored = []
         for row_index, row in enumerate(r["rows"]):
-            m = matrix_mapper.map_features_to_matrix_scores(row["features"])
+            features = dict(row["features"])
+            features.update(feature_overrides or {})
+            m = matrix_mapper.map_features_to_matrix_scores(features)
             ability = sum(m.get(k, 60.0) * w for k, w in weights.items()) + row["wet"]
             identity = row.get("name") or row.get("horse_name") or row_index
             scored.append((ability, identity, row["pos"]))
@@ -91,17 +94,19 @@ def main():
     })
 
     variants = [
-        ("剷 track 維度", no_track),
-        ("剷 race_shape 維度", no_shape),
-        ("兩個弱維度都剷", no_both),
+        ("剷 track 維度", no_track, None),
+        ("剷 race_shape 維度", no_shape, None),
+        ("兩個弱維度都剷", no_both, None),
+        ("中性化 pace_figure leaf", MATRIX_WEIGHTS, {"pace_figure_score": 60.0}),
+        ("剷 pace_perf 維度", renorm({k: v for k, v in MATRIX_WEIGHTS.items() if k != "pace_perf"}), None),
     ]
     hdr = f"{'':34}{'gold':>9}{'good_pos':>9}{'pass':>9}{'champ':>9}{'winT3':>9}{'t3prec':>9}"
     for name, sub in (("dev", dev), ("holdout（未碰）", hold)):
         base = evaluate(sub, MATRIX_WEIGHTS)
         print(f"\n===== {name}（{len(sub)} 場）=====")
         print(hdr)
-        for label, weights in variants:
-            show(label, evaluate(sub, weights), base)
+        for label, weights, overrides in variants:
+            show(label, evaluate(sub, weights, overrides), base)
     return 0
 
 

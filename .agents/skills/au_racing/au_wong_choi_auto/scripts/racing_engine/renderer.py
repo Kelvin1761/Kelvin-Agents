@@ -29,27 +29,27 @@ FEATURE_LABELS = {
     "rating_score": "Rating 分",
     "weight_score": "負磅分",
     "distance_score": "路程分",
-    "track_score": "場地分",
+    "track_score": "同場／地況往績分",
     "formline_score": "賽績線分",
     "consistency_score": "穩定性分",
     "performance_quality_score": "表現質素分",
     "health_score": "備戰完整度分",
     "confidence_score": "信心分",
-    "pace_figure_score": "段速實速分",
+    "pace_figure_score": "L600 環境分",
 }
 
 MATRIX_LABELS = {
     "stability": "狀態與穩定性",
-    # 2026-07-10: 段速與引擎 + 段速實速 合併為 段速表現（實測L600主軸＋PI＋試閘）
-    "pace_perf": "段速表現",
+    # 內部 key 為兼容舊 Logic 保留；Sportsbet L600 係 race-level 環境，唔係逐駒 split。
+    "pace_perf": "速度考驗背景",
     "race_shape": "檔位形勢",
     "jockey_trainer": "騎練訊號",
     "class_weight": "級數與負重",
-    "track": "場地適性",
+    "track": "場地與地況適性",
     "form_line": "賽績線",
 }
 
-# 2026-07-11：track_score 已去重，只喺「場地適性」維度出現。「檔位形勢」而家係
+# 2026-07-11：track_score 已去重，只喺「場地與地況適性」維度出現。「檔位形勢」而家係
 # 純檔位/走位，冇再借用 track_score，所以呢個跨維度別名表清空。
 MATRIX_COMPONENT_LABELS = {}
 
@@ -123,7 +123,7 @@ def ensure_verdict(logic_data: dict) -> dict:
             "post_rank_order": post_rank_order,
             "changed": pre_rank_order != post_rank_order,
             "reason": (
-                "Official ranking equals the clean 7D ability score; "
+                "Official ranking equals the clean six-dimension ability score; "
                 "report-only evidence does not rerank horses."
             ),
         },
@@ -315,7 +315,7 @@ def _decision_trace_text(verdict) -> str:
         return "未有 trace"
     if trace.get("changed"):
         return "⚠️ 排名前後次序有變，請查 decision trace"
-    return "Clean 7D 排名前後一致（冇後置 rerank）"
+    return "Clean 六維排名次序一致（冇後置 rerank）"
 
 
 def _panorama(race, verdict, horses):
@@ -330,7 +330,7 @@ def _panorama(race, verdict, horses):
         "| 項目 | 內容 |",
         "|:---|:---|",
         f"| 賽事格局 | Race {race_number} / {distance} / {race_class} |",
-        "| **賽事類型** | **`[AU Wong Choi Auto Python 7D]`** |",
+        "| **賽事類型** | **`[AU Wong Choi Auto Python 六維排名]`** |",
         f"| 出馬數 | {len(horses)} |",
         f"| 跑道偏差 | {track_bias} |",
         f"| 信心分層 | {_confidence_tier_text(verdict)} |",
@@ -476,7 +476,7 @@ def _stability_detail_lines(auto, name):
 
 
 def _pace_perf_detail_lines(auto, name):
-    """段速表現三個 sub 分嘅完整組件（人話版，唔用統計行話）。
+    """速度考驗背景三個 sub 分嘅完整組件（人話版，唔用統計行話）。
     段速分四個組件永遠列晒（冇觸發都寫明點解 0 分）。"""
     sd = auto.get("pace_perf_detail")
     if not isinstance(sd, dict):
@@ -485,7 +485,7 @@ def _pace_perf_detail_lines(auto, name):
         d = sd.get("pace") or {}
         state = d.get("state")
         if state == "no_pf":
-            return ["無實測段速數據（PF 未覆蓋近績）→ 中性 60 分，此組件唔影響排名"]
+            return ["無往績賽事 L600 環境數據 → 中性 60 分，此組件唔影響排名"]
         if state == "no_spread":
             return ["同場有實測數據嘅馬太少 → 中性 60 分"]
         if state == "ok":
@@ -506,8 +506,8 @@ def _pace_perf_detail_lines(auto, name):
             else:
                 rank_word = "屬全場最慢嗰批"
             return [
-                f"本駒平均{vs_bench(d.get('value'))}；今場有數據對手平均{vs_bench(d.get('mean'))}",
-                f"全場對比：{rank_word} → {_as_float(d.get('final'), 60):.1f} 分（60 為中性）",
+                f"本駒近績所處賽事平均{vs_bench(d.get('value'))}；今場其他馬近績環境平均{vs_bench(d.get('mean'))}",
+                f"環境對比：{rank_word} → {_as_float(d.get('final'), 60):.1f} 分（60 為中性；唔係個體末段）",
             ]
         return []
     if name == "sectional_score":
@@ -561,7 +561,7 @@ def _race_shape_detail_lines(auto, name):
         d = sd.get("track") or {}
         lines = []
         if d.get("base") is not None:
-            lines.append(f"基礎分 {float(d['base']):.1f}（同「場地適性」維度共用同一場地往績分）")
+            lines.append(f"基礎分 {float(d['base']):.1f}（同「場地與地況適性」維度共用同一場地往績分）")
         for n in d.get("notes") or []:
             lines.append(str(n))
         if d.get("final") is not None and d.get("notes"):
@@ -571,7 +571,7 @@ def _race_shape_detail_lines(auto, name):
 
 
 def _track_dim_detail_lines(auto, name):
-    """場地適性維度 sub 分（track_score）嘅完整組件（人話）。"""
+    """場地與地況適性維度 sub 分（track_score）嘅完整組件（人話）。"""
     if name != "track_score":
         return []
     d = (auto.get("race_shape_detail") or {}).get("track") or {}
@@ -581,7 +581,7 @@ def _track_dim_detail_lines(auto, name):
     for n in d.get("notes") or []:
         lines.append(str(n))
     if d.get("final") is not None and d.get("notes"):
-        lines.append(f"場地分 ＝ {float(d['final']):.1f}")
+        lines.append(f"同場／地況往績分 ＝ {float(d['final']):.1f}")
     return lines
 
 
@@ -684,7 +684,7 @@ def _render_horse_section(horse_num, horse, auto):
     ]
     if grade_summary:
         lines.extend([
-            "#### 🔢 評分總覽（7D 加權計算 · Python Auto 引擎）",
+            "#### 🔢 評分總覽（六維排名加權 · Python Auto 引擎）",
             "",
             grade_summary,
             "",
@@ -702,7 +702,7 @@ def _render_horse_section(horse_num, horse, auto):
         "#### 🧠 核心分析",
         f"- {_render_core_logic(horse, auto)}",
         "",
-        "#### 📊 7D 評分矩陣逐項拆解",
+        "#### 📊 六維排名矩陣＋參考維度逐項拆解",
         "> 每個維度：**評分構成**（點計出個分）→ 每個 sub分嘅來源 → **實證調整** → **判讀** → **數據**。",
     ])
     for key, label in MATRIX_LABELS.items():
@@ -849,7 +849,7 @@ def _render_verdict(verdict, horses, race=None):
     lines.extend([
         "## [第四部分] 分析盲區(緊隨第三部分)",
         "",
-        "- ranking 以 `ability_score`（綜合戰力分）排序；`base_7d_score` 只作 7D 基礎分解釋。",
+        "- ranking 以 `ability_score`（綜合戰力分）排序；`base_7d_score` 係兼容舊檔名，只作六維排名基礎分解釋。",
         "- 單一評分：`綜合戰力分` = `ability_score` = `final_rank_score` = `pure_7d_score`（乾地）或 `pure_7d_score + wet_form_feature`（濕地）；已退役所有 report-only 微調。",
         "- Rank 4-6 danger watchlist 只係提醒候選，不會交換 Top3 或 Top4 排名。",
         "- 初出馬若正式賽績空白，會較依賴試閘、馬房、走位結構與路程投影，信心不會無上限放大。",
@@ -1385,7 +1385,7 @@ def _horse_positioning(horse: dict, auto: dict) -> str:
 
 
 def _seven_d_summary_lines(auto: dict) -> list[str]:
-    """7D 矩陣一覽 digest：支柱／最弱環節／數據信心／總評，放喺數據判讀最頂。"""
+    """六維排名矩陣 digest；function name retained for compatibility."""
     gt = auto.get("grade_transparency") or {}
     rows = [r for r in (gt.get("rows") or []) if isinstance(r, dict)]
     if not rows:
@@ -1408,7 +1408,7 @@ def _seven_d_summary_lines(auto: dict) -> list[str]:
     prov = auto.get("score_provenance") or {}
     gaps = []
     if str(prov.get("pace_figure_score", "")) in ("missing_neutral", "no_spread"):
-        gaps.append("段速實速（PF 未覆蓋）")
+        gaps.append("L600 賽事環境（PF 未覆蓋）")
     if str(prov.get("rating_score", "")) in ("missing_neutral", "class_proxy"):
         gaps.append("官方 Rating（處女/未評分）")
     conf = f"{len(live) - len(gaps)}/{len(live)} 維度有實測數據" + (
@@ -1420,7 +1420,7 @@ def _seven_d_summary_lines(auto: dict) -> list[str]:
     lines = [
         "#### 📊 數據判讀",
         "",
-        f"- 🧭 **7D 綜合**：綜合戰力分 {ability:.1f}｜Grade {grade}｜排名 {rank}",
+        f"- 🧭 **六維排名綜合**：綜合戰力分 {ability:.1f}｜Grade {grade}｜排名 {rank}",
         f"- 🟢 **主要支柱**：{pillars}（佔分最重）",
     ]
     if weak_txt:
@@ -1431,8 +1431,7 @@ def _seven_d_summary_lines(auto: dict) -> list[str]:
 
 
 def _seven_d_matrix_digest_lines(auto: dict) -> list[str]:
-    """逐維一覽：每個 7D 維度一個標題行（分＋band）＋各 sub 分要點，分行易讀。
-    緊湊版——深層 derivation 留喺下面『7D 評分矩陣逐項拆解』。"""
+    """逐維一覽：六個排名維度加 report-only reference dimensions。"""
     reasoning = auto.get("matrix_reasoning") or {}
     mscores = auto.get("matrix_scores") or {}
     if not reasoning:
@@ -1489,7 +1488,7 @@ _MATRIX_LEAVES = {leaf for comps in MATRIX_FORMULAS.values() for leaf, _w in com
 
 
 def _zero_weight_dimensions() -> set:
-    """MATRIX_WEIGHTS 係 0 嘅維度 —— 佢哋唔入排名，報告一定要講明。
+    """Return report dimensions absent from (or zeroed in) ranking weights。
 
     ⚠️ 2026-08-05：`form_line` 權重係 0.0000，但佢照樣以「賽績線：60.2 分 ➖ 中性」
     嘅樣出現，而佢入面有 `form_score`（0.22）—— 於是**近績分同一個數字喺同一匹馬
@@ -1500,7 +1499,9 @@ def _zero_weight_dimensions() -> set:
         from scoring import MATRIX_WEIGHTS
     except Exception:  # noqa: BLE001 — 攞唔到權重就當全部入排名，唔好靜靜咁隱藏
         return set()
-    return {k for k, w in MATRIX_WEIGHTS.items() if not w}
+    return (
+        set(MATRIX_FORMULAS) - set(MATRIX_WEIGHTS)
+    ) | {k for k, w in MATRIX_WEIGHTS.items() if not w}
 
 
 def _ranking_leaf_owner() -> dict:
@@ -1516,8 +1517,8 @@ def _ranking_leaf_owner() -> dict:
 
 
 def _data_readout_lines(auto: dict) -> list[str]:
-    """Render the structured 數據判讀 block (AU): 7D 綜合 digest → 逐維一覽。
-    原始數據錨點已移除（2026-07-11，用戶要求）—— 原始事實已散落各 7D 維度嘅
+    """Render the structured 數據判讀 block: six ranking dimensions + references。
+    原始數據錨點已移除（2026-07-11，用戶要求）—— 原始事實已散落各維度嘅
     『數據』錨點，唔需要喺呢度重覆一次。"""
     summary = _seven_d_summary_lines(auto)
     digest = _seven_d_matrix_digest_lines(auto)
@@ -1530,8 +1531,8 @@ def _data_readout_lines(auto: dict) -> list[str]:
 
 
 def _render_core_logic(horse: dict, auto: dict) -> str:
-    # 核心分析 = 一句七維 framing（最強/最弱維度）+ 一句定位結論。
-    # 跑法／戰術劇本只喺「檔位形勢」7D 維度出一次，呢度唔再覆述，避免廢話。
+    # 核心分析 = 一句六維排名 framing（最強/最弱維度）+ 一句定位結論。
+    # 跑法／戰術劇本只喺「檔位形勢」維度出一次，呢度唔再覆述，避免廢話。
     base = _humanize_text(str(auto.get("core_logic") or "").strip())
     positioning = _horse_positioning(horse, auto)
     risk = _risk_summary(auto)

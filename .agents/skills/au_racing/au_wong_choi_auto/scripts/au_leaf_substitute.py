@@ -175,7 +175,7 @@ def main():
     for nm, sub in (("dev", dev), ("holdout（未碰）", hold)):
         base = evaluate(sub)
         print(f"===== {nm} =====")
-        print(f"{'':20}{'gold':>8}{'good_pos':>10}{'any2':>8}{'champ':>8}{'winT3':>8}{'t3prec':>9}{'過閘':>8}")
+        print(f"{'':20}{'gold':>8}{'good':>10}{'pass':>8}{'champ':>8}{'winT3':>8}{'t3prec':>9}{'過閘':>8}")
         for label, swap in variants:
             c = evaluate(sub, swap)
             d = {k: c[k] - base[k] for k in list(KEYS) + ["t3prec"]}

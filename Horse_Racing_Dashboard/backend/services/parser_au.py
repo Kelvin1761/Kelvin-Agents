@@ -66,19 +66,24 @@ def _parse_data_readout(block: str) -> Optional[list]:
             dim_row = rows[-1]
             continue
 
-        # per-dimension sub-score: '- <sub-label> <score> ← <note>'
+        # Per-dimension sub-score: keep it inside the parent category's reason.
+        # The full analysis already exposes every component. Rendering each leaf
+        # as another preview card made 騎練訊號 + 騎師/練馬師/人馬配搭 and
+        # 場地與地況適性 + 同場／地況往績分 look like separate votes even though they are a
+        # parent/child calculation. One concept now appears once in the preview.
         m = re.match(r'^-\s*(.+?)\s+([\d.]+)\s*(?:←\s*(.*))?$', line)
         if m:
             label, value = m.group(1).strip(), m.group(2)
             note = (m.group(3) or '').strip()
-            rows.append({'band': '·', 'label': label, 'value': value,
-                         'trend': '', 'reason': note})
-            # 同時把「<sub-label> <score>：<note 頭一句>」累加落所屬維度標題，
-            # 令維度層面自己就答得到「點解係呢個分」。
             if dim_row is not None:
                 head = note.split('；')[0].strip() if note else ''
                 bit = f"{label} {value}" + (f"：{head}" if head else "")
                 dim_row['reason'] = (dim_row['reason'] + '；' + bit).lstrip('；')
+            else:
+                # Legacy documents may expose a standalone leaf without a
+                # parent dimension; do not silently discard genuine content.
+                rows.append({'band': '·', 'label': label, 'value': value,
+                             'trend': '', 'reason': note})
             continue
 
     return rows or None

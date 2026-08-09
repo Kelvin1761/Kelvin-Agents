@@ -26,6 +26,7 @@ from au_archive_calibrator import (  # noqa: E402
     normalize_horse_name,
     parse_int,
 )
+from au_metric_contract import ranked_performance  # noqa: E402
 
 
 def meeting_track(meeting_dir: Path) -> str:
@@ -114,14 +115,15 @@ def main() -> int:
                 continue
             races_eval += 1
             ranked = sorted(joined, key=lambda j: (-j["ability"], j["num"]))
-            hits = sum(1 for j in ranked[:3] if j["pos"] <= 3)
+            performance = ranked_performance(ranked, horse_key="num", position_key="pos")
+            hits = int(performance["hits"])
             bucket[f"{hits}hit"] += 1
             bucket["top3_hits"] += hits
-            bucket["winner_in_top3"] += 1 if any(j["pos"] == 1 for j in ranked[:3]) else 0
-            bucket["top1_win"] += 1 if ranked[0]["pos"] == 1 else 0
-            bucket["gold"] += 1 if hits == 3 else 0
-            bucket["good"] += 1 if hits >= 2 else 0
-            bucket["pass"] += 1 if hits >= 1 else 0
+            bucket["winner_in_top3"] += int(performance["winner_in_top3"])
+            bucket["top1_win"] += int(performance["champion"])
+            bucket["gold"] += int(performance["gold"])
+            bucket["good"] += int(performance["good_positional"])
+            bucket["pass"] += int(performance["pass"])
 
     n = max(1, races_eval)
     print("\n" + "=" * 64)
@@ -139,9 +141,9 @@ def main() -> int:
     print("=" * 64)
     print(f"BASELINE (ability_score ranking)  —  {races_eval} eval races")
     print("=" * 64)
-    print(f"Gold (3/3) : {bucket['gold']:>4}  ({bucket['gold']/n*100:5.2f}%)")
-    print(f"Good (>=2) : {bucket['good']:>4}  ({bucket['good']/n*100:5.2f}%)")
-    print(f"Pass (>=1) : {bucket['pass']:>4}  ({bucket['pass']/n*100:5.2f}%)")
+    print(f"Gold (actual Top3 in model Top4): {bucket['gold']:>4}  ({bucket['gold']/n*100:5.2f}%)")
+    print(f"Good (model #1 and #2 placed)   : {bucket['good']:>4}  ({bucket['good']/n*100:5.2f}%)")
+    print(f"Pass (any 2 of model Top3)      : {bucket['pass']:>4}  ({bucket['pass']/n*100:5.2f}%)")
     print(f"Miss (0)   : {bucket['0hit']:>4}  ({bucket['0hit']/n*100:5.2f}%)")
     print(f"Top3 prec  : {bucket['top3_hits']/(3*n)*100:5.2f}%")
     print(f"Win-in-T3  : {bucket['winner_in_top3']/n*100:5.2f}%")

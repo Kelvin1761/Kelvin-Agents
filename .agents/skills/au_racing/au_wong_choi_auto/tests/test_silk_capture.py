@@ -37,6 +37,14 @@ RUNNER_SILKS_BLOCK = '''<div class="runner-silks">
 <span class="runner-number bordered">8</span>
 </div>'''
 
+# 2026-08-09 Ballarat 真頁面：馬號改到綵衣圖片前面。
+NUMBER_FIRST_RUNNER_BLOCK = '''<div class="runner-summary clearfix">
+<div class="runner-number bordered active">1</div>
+<div class="runner-silks">
+<img src="//images.puntcdn.com/silks/svg/019cc30a-c4ac-7548-b492-540510074ae0_1.svg">
+</div>
+</div>'''
+
 
 class SilkCaptureTests(unittest.TestCase):
     def test_tipped_runners_block(self):
@@ -47,6 +55,11 @@ class SilkCaptureTests(unittest.TestCase):
         # `bordered active` 同 `bordered` —— 舊 pattern 兩個都唔中。
         got = C.parse_silks(RUNNER_SILKS_BLOCK)
         self.assertEqual(sorted(got), [7, 8])
+
+    def test_current_number_before_image_markup(self):
+        got = C.parse_silks(NUMBER_FIRST_RUNNER_BLOCK)
+        self.assertEqual(sorted(got), [1])
+        self.assertTrue(got[1].endswith("019cc30a-c4ac-7548-b492-540510074ae0_1.svg"))
 
     def test_both_blocks_on_one_page(self):
         got = C.parse_silks(SELECTIONS_BLOCK + "\n" + RUNNER_SILKS_BLOCK)

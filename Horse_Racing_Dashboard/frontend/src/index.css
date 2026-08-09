@@ -923,6 +923,19 @@ a:hover {
   background: #e2e8f0;
 }
 
+.data-readout__group + .data-readout__group {
+  margin-top: 12px;
+}
+
+.data-readout__group-title {
+  margin: 0 0 6px;
+  color: #475569;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .data-readout__item {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr);

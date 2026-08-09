@@ -74,11 +74,11 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
         expected = sum(float(matrix_scores.get(key, 60)) * weight for key, weight in MATRIX_WEIGHTS.items())
         expected_score = float(base_7d if base_7d is not None else ability)
         if abs(expected_score - expected) > 0.06:
-            errors.append(f"SCORE-002 horse {horse_num} clean 7D mismatch: {expected_score:.2f} != {expected:.2f}")
-        # ability_score = pure 7D + wet_form_feature (0 on dry going, folded in on Soft/Heavy)
+            errors.append(f"SCORE-002 horse {horse_num} clean six-dimension mismatch: {expected_score:.2f} != {expected:.2f}")
+        # Legacy pure_7d field = six ranking dimensions; wet form is gated separately.
         wet_feat = float(auto.get("wet_form_feature", 0) or 0)
         if abs(float(ability) - (expected + wet_feat)) > 0.06:
-            errors.append(f"SCORE-004 horse {horse_num} ability != clean 7D + wet_form: {float(ability):.2f} != {expected + wet_feat:.2f}")
+            errors.append(f"SCORE-004 horse {horse_num} ability != clean six-dimension + wet_form: {float(ability):.2f} != {expected + wet_feat:.2f}")
         if auto.get("grade") != compute_grade(float(ability)):
             errors.append(f"SCORE-003 horse {horse_num} grade mismatch")
     if len(str(auto.get("core_logic", "")).strip()) < 40:

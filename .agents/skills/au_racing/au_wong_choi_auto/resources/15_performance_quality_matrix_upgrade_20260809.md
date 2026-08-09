@@ -109,6 +109,6 @@ Current-schema bootstrap CI：**[+0.02231, +0.06395]**。
 
 - production true-engine materialization：805 races／8,249 runners；
 - performance-quality + signal-map focused tests：21 passed；
-- AU auto + AU daily + shared + scripts tests：438 passed；
+- AU auto + AU daily + shared + scripts tests：444 passed；
 - fallback-only rank changes：0；
 - no odds input；same-day/future run censor locked by tests。

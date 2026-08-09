@@ -13,16 +13,16 @@ FEATURE_KEYS = (
 ABILITY_FEATURE_KEYS = (
     "form_score", "performance_quality_score", "pace_figure_score",
     "trial_score", "pace_map_score", "jockey_score", "trainer_score",
-    "jockey_horse_fit_score", "class_score", "rating_score",
-    "track_score",
+    "jockey_horse_fit_score", "rating_score", "track_score",
 )
 REPORT_ONLY_FEATURE_KEYS = (
-    "sectional_score", "weight_score", "distance_score", "formline_score",
-    "consistency_score", "health_score", "confidence_score",
+    "sectional_score", "class_score", "weight_score", "distance_score",
+    "formline_score", "consistency_score", "health_score", "confidence_score",
 )
 
-# pace_figure = 8th dimension: field-relative L600-vs-benchmark ("實測段速") from
-# racenet PuntingForm (AUC 0.60 vs old text-sectional 0.545). Neutral 60 where PF
+# pace_figure = legacy key for field-relative L600-vs-benchmark context. Racenet
+# can contain runner timing; Sportsbet `Sectionals 600m` is race-level and must
+# not be described as an individual split. Neutral 60 where PF
 # data absent → rank-neutral on no-PF races.
 # 2026-07-03 段速 restructure ("swap"): the MEASURED pace figure is now the primary
 # 段速 signal (0.143) and the old text-PI sectional dimension is demoted to 0.045 —

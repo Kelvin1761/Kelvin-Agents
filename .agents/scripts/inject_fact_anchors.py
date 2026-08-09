@@ -315,8 +315,20 @@ def _enrich_stats_from_formguide(fg_text: str, horse: dict):
     header = section[:first_race.start()] if first_race else section[:500]
 
     def _extract(key):
-        m = re.search(rf'{key}:\s*(\S+)', header)
-        return m.group(1) if m else 'N/A'
+        # Sportsbet serialises record values with an internal space, for example
+        # ``Track: 1: 0-0-0``.  The old ``\S+`` stopped at that space and wrote
+        # only ``1:`` into Facts.md.  On the compound Facts line the engine could
+        # then read the following Distance starts as Track wins.  Require the
+        # complete starts:wins-seconds-thirds record and normalise it at this
+        # schema boundary; a partial token is missing evidence, never a record.
+        m = re.search(
+            rf'{re.escape(key)}:\s*'
+            r'(\d+\s*:\s*\d+\s*-\s*\d+\s*-\s*\d+)',
+            header,
+        )
+        if not m:
+            return 'N/A'
+        return re.sub(r'\s+', '', m.group(1))
 
     horse['track_stats'] = _extract('Track')
     horse['dist_stats'] = _extract('Distance')
@@ -331,7 +343,8 @@ def _enrich_stats_from_formguide(fg_text: str, horse: dict):
 # ── Formguide Parsing ─────────────────────────────────────────────────────
 
 def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
-                               decoded_positions: list[int]) -> list[dict]:
+                               decoded_positions: list[int], *,
+                               as_of: str = "") -> list[dict]:
     """Extract up to MAX_REAL_RACES_IN_DOSSIER real race entries (plus trials)
     from Formguide for a single horse.
 
@@ -355,6 +368,7 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
 
     all_entries = []
     non_trial_idx = 0  # Index into decoded_positions (skips trials)
+    point_in_time = as_of or _AS_OF
 
     for rm in race_simple.finditer(section):
         venue = rm.group(1).strip()
@@ -370,6 +384,14 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
             is_trial = is_trial_venue(venue, distance)
         if not is_trial and prize_str == '0':
             is_trial = True
+
+        # A post-race refresh can expose the target race (or a later run) in the
+        # same Formguide. Dossier evidence is strictly pre-race: censor it once
+        # here so every downstream consumer shares the same time boundary.
+        if point_in_time and date >= point_in_time:
+            if not is_trial:
+                non_trial_idx += 1
+            continue
 
         # Get the full block
         block_end_match = race_simple.search(section, rm.end())
@@ -1806,6 +1828,20 @@ def _format_notes(video, note, stewards):
     raw = '; '.join(note_parts) if note_parts else '-'
     return raw
 
+
+def _history_kind_label(entry: dict) -> str:
+    """Label one historical row without confusing horse HC with race class.
+
+    Racenet's ``HC`` value is the runner's handicap rating for that run.  It is
+    not a BM race grade, and a missing HC does not imply a maiden/set-weights
+    race.  Keep the existing table column position for downstream parsers while
+    making the evidence semantics explicit.
+    """
+    if entry.get("is_trial"):
+        return "試閘"
+    hc = entry.get("hc")
+    return f"HC{hc}" if hc is not None else "正式"
+
 def generate_full_block(horse: dict, today_dist_m: int = 0,
                         max_display: int = 5) -> str:
     """Generate the complete fact anchor + dossier block for one horse.
@@ -1896,16 +1932,11 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
     # 用途：`_form_score` 個 class_mult 一直係全場統一常數（entry["class"] 呢個 key
     # 由來冇存在過），即係近績分完全冇班次調整。賽績表個「班次」欄 85% 係 fallback
     # "Maiden/SW"，但獎金喺 Formguide 每行都有，85,010 個 run 100% 密度。
-    lines.append("| # | 類型 | 日期 | 場地 | 路程 | 場地狀況 | 檔位 | 名次 | 班次 | 跑位軌跡 | PI | 段速 | 早段步速 | L600/RT | 走位跑法 | 走位消耗 | 備註 | 寬恕認定 | 獎金 |")
+    lines.append("| # | 類型／歷史HC | 日期 | 場地 | 路程 | 場地狀況 | 檔位 | 名次 | 班次 | 跑位軌跡 | PI | 段速 | 早段步速 | L600/RT | 走位跑法 | 走位消耗 | 備註 | 寬恕認定 | 獎金 |")
     lines.append("|---|------|------|------|------|---------|------|------|------|---------|-----|------|---------|---------|---------|---------|------|----------|------|")
 
     for idx, entry in enumerate(display_entries):
-        if entry['is_trial']:
-            tag = '試閘'
-        elif entry.get('hc'):
-            tag = f"BM{entry['hc']}"
-        else:
-            tag = 'Maiden/SW'
+        tag = _history_kind_label(entry)
 
         cond = entry['condition'] if entry['condition'] != 'None' else '-'
         

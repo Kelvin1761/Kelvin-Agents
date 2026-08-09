@@ -11,7 +11,7 @@ Integrated into au_orchestrator.py State 1 to auto-generate
 _Meeting_Intelligence_Package.md with real weather data + predictions.
 
 Pipeline:
-  1. Claw Code (curl_cffi + Playwright) → extract Racenet weather/track
+  1. Sportsbet meeting cache → official track condition
   2. Open-Meteo API → hourly forecast (rain, wind, humidity, temp)
   3. Track Profiles JSON → drainage/surface analysis
   4. Prediction Engine → early/late race track condition shift
@@ -336,7 +336,7 @@ def generate_mip(target_dir, venue, date_str, track_data, forecast, track_profil
         bias_conclusion = "公平 (Fair) — 略為偏向守好位 (On-pace)"
 
     content = f"""# 🏟️ 賽事天氣與場地情報 (Meeting Intelligence Package)
-> 🤖 由 `generate_meeting_intel.py` 自動生成 | 數據源: Racenet + Open-Meteo
+> 🤖 由 `generate_meeting_intel.py` 自動生成 | 數據源: Sportsbet + Open-Meteo
 
 ## 📍 賽場基本資訊
 - **賽場**: {venue}

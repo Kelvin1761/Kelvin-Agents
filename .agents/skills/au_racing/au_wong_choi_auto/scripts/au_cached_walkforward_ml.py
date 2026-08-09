@@ -547,8 +547,7 @@ def score_baseline(races: list[list[dict]], score_source: str) -> list[list[dict
 
 def fmt_metrics(metrics: dict) -> str:
     return (
-        f"{metrics['gold']} Gold / {metrics['good_positional']} Good-pos / "
-        f"{metrics['good']} Any2 / {metrics['pass']} Any1 / "
+        f"{metrics['gold']} Gold / {metrics['good']} Good / {metrics['pass']} Pass / "
         f"{metrics['one_hit']} 1H / {metrics['miss']} Miss / "
         f"T3-in-T4 {metrics['top3_all_within_top4']} / "
         f"Top3 {metrics['top3_precision'] * 100:.1f}% / "

@@ -58,6 +58,19 @@ class TrainerEmpiricalFillTests(unittest.TestCase):
         for ly in ({"rides": 5, "wins": 2, "places": 1}, {"rides": 0}, {}):
             self.assertAlmostEqual(_score(self.UNLISTED, ly), 60.0, places=1)
 
+    def test_thin_official_record_is_not_described_as_missing(self) -> None:
+        horse = {
+            "horse_name": "Patriot Wolf",
+            "horse_number": "6",
+            "trainer": "Brian Lawlor",
+            "_data": {"trainer_ly": {"rides": 6, "wins": 0, "places": 0}},
+        }
+        score, note, _source = RacingEngine(horse, _ctx())._trainer_score()
+        self.assertEqual(score, 60.0)
+        self.assertIn("去年官方僅 6 場", note)
+        self.assertIn("未達 10 場可信門檻", note)
+        self.assertNotIn("未有官方記錄", note)
+
     def test_fill_is_bounded_and_tempered_by_magnitude(self) -> None:
         eng = RacingEngine({"horse_name": "T", "horse_number": "1", "trainer": self.UNLISTED}, _ctx())
         extreme = eng._trainer_empirical_base({"rides": 400, "wins": 200, "places": 150})

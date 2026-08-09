@@ -195,9 +195,10 @@ class AuParityTests(unittest.TestCase):
     def test_reflector_label_parity(self) -> None:
         from unified_reflector_core import performance_label_from_rows
 
-        model_top3 = [{"horse_no": 1}, {"horse_no": 2}, {"horse_no": 3}]
+        model_top4 = [{"horse_no": 1}, {"horse_no": 2}, {"horse_no": 3}, {"horse_no": 4}]
         cases = [
             ([1, 2, 3], "Gold"),
+            ([1, 3, 4], "Gold"),
             ([1, 2, 9], "Good"),
             ([1, 3, 9], "Pass"),
             ([2, 8, 9], "1 Hit"),
@@ -206,8 +207,8 @@ class AuParityTests(unittest.TestCase):
         ]
         for actual, expected in cases:
             actual_rows = [{"horse_no": horse} for horse in actual]
-            self.assertEqual(performance_label_from_rows(model_top3, actual_rows), expected)
-            canonical = race_metrics([1, 2, 3], actual, winner=actual[0])
+            self.assertEqual(performance_label_from_rows(model_top4, actual_rows), expected)
+            canonical = race_metrics([1, 2, 3, 4], actual, winner=actual[0])
             self.assertEqual(canonical["exclusive_label"], expected)
 
 

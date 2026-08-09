@@ -483,17 +483,18 @@ def load_prediction_rows(meeting_dir: Path, platform: str) -> dict[int, list[dic
     return dict(by_race)
 
 
-def performance_label_from_rows(model_top3: list[dict[str, Any]], actual_top3: list[dict[str, Any]]) -> str:
+def performance_label_from_rows(model_picks: list[dict[str, Any]], actual_top3: list[dict[str, Any]]) -> str:
     # Delegates to the canonical shared ruler so reflector labels can never
     # drift from backtest/calibration labels.
     _add_sys_path(SHARED_ROOT.parents[1])
     from eval_metrics import exclusive_label
 
     actual_set = {row["horse_no"] for row in actual_top3}
-    pick_nums = [row["horse_no"] for row in model_top3[:3]]
-    top3_hits = sum(1 for horse_no in pick_nums if horse_no in actual_set)
+    pick_nums = [row["horse_no"] for row in model_picks]
+    top3_hits = sum(1 for horse_no in pick_nums[:3] if horse_no in actual_set)
     top2_hits = sum(1 for horse_no in pick_nums[:2] if horse_no in actual_set)
-    return exclusive_label(top3_hits, top2_hits)
+    gold = bool(actual_set) and actual_set.issubset(set(pick_nums[:4]))
+    return exclusive_label(top3_hits, top2_hits, gold=gold)
 
 
 def label_rank(label: str) -> int:
@@ -735,7 +736,7 @@ def build_race_performances(
             row for row in actual_top3_view if row["horse_no"] not in top5_nums
         ]
 
-        label = performance_label_from_rows(model_top3, actual_top3_view)
+        label = performance_label_from_rows(model_top5[:4], actual_top3_view)
         incident_text = structured_results.get(race_num, {}).get("incident_report", "")
         incident_analysis = analyse_race_incidents(platform, model_top3, actual_top3_view, incident_text)
         missed_horses = [
@@ -838,7 +839,7 @@ def extract_au_race_labels(details: list[dict[str, Any]]) -> dict[str, str]:
         for race in meeting.get("races_detail", []):
             key = f"{meeting_name} / R{race.get('race_num')}"
             label = performance_label_from_rows(
-                [{"horse_no": pick[1]} for pick in race.get("top_picks", [])[:3]],
+                [{"horse_no": pick[1]} for pick in race.get("top_picks", [])[:4]],
                 [{"horse_no": row[1]} for row in race.get("actual_top3", [])[:3]],
             )
             labels[key] = label
@@ -851,9 +852,9 @@ def extract_hkjc_race_labels(race_records: list[dict[str, Any]], model_name: str
         model = (record.get("models") or {}).get(model_name)
         if not model:
             continue
-        top3 = [{"horse_no": horse_no} for horse_no in model.get("picks", [])[:3]]
+        top4 = [{"horse_no": horse_no} for horse_no in model.get("picks", [])[:4]]
         actual_top3 = [{"horse_no": horse_no} for horse_no, _pos in sorted((record.get("actual_pos") or {}).items(), key=lambda item: item[1])[:3]]
-        label = performance_label_from_rows(top3, actual_top3)
+        label = performance_label_from_rows(top4, actual_top3)
         labels[f"{Path(record.get('meeting', '')).name} / R{record.get('race')}"] = label
     return labels
 

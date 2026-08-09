@@ -19,7 +19,7 @@ ability_score = Σ MATRIX_WEIGHTS[d] × mx[d]   (六個排名維度；form_line 
 | 維度（權重） | 輸入特徵（內部權重） | 分離度 |
 |---|---|---|
 | stability (0.32920) | form 0.60 / performance_quality 0.40 | 完整 margin＋prize＋starters 有數據先啟動；否則逐匹沿用 consistency |
-| pace_perf (0.10559) | pace_figure 0.941744 / trial 0.058256 | sectional 已退出排名 |
+| pace_perf (0.10559；顯示：速度考驗背景) | L600 benchmark/context 0.941744 / trial 0.058256 | Racenet 係逐駒 benchmark；Sportsbet 係 race-level context；sectional 已退出排名 |
 | jockey_trainer (0.22957) | jockey 0.333333 / trainer 0.285714 / fit 0.380952 | 現役三葉 |
 | race_shape (0.13485) | pace_map 1.0（檔位 bias＋收縮） | 現役單葉 |
 | class_weight (0.12042) | rating 0.70；class／weight 只作 context | official rating 主軸 |

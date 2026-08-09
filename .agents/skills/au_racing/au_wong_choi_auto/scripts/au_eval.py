@@ -48,6 +48,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import asdict
 import json
 import math
 import random
@@ -104,6 +105,36 @@ def default_scorer(row):
     """現行引擎：ability = Σ 維度分 × 權重 + 濕地 overlay。"""
     m = matrix_mapper.map_features_to_matrix_scores(row["features"])
     return sum(m.get(k, 60.0) * w for k, w in MATRIX_WEIGHTS.items()) + row["wet"]
+
+
+def configured_scorer(*, weights=None, wet_scale=1.0, leaf_overrides=None):
+    """Build one candidate scorer without inventing another evaluation path.
+
+    Research tools may search on development data, but every final candidate
+    comes through this function and :func:`compare`, so date partitioning,
+    metrics and the paired bootstrap stay identical.
+    """
+    weights = dict(weights or MATRIX_WEIGHTS)
+    leaf_overrides = dict(leaf_overrides or {})
+    total = sum(float(weights.get(key, 0.0)) for key in MATRIX_WEIGHTS)
+    if total <= 0:
+        raise ValueError("Matrix weights must have a positive total.")
+    normalised = {
+        key: float(weights.get(key, 0.0)) / total
+        for key in MATRIX_WEIGHTS
+    }
+
+    def scorer(row):
+        features = dict(row["features"])
+        features.update(leaf_overrides)
+        matrices = matrix_mapper.map_features_to_matrix_scores(features)
+        return (
+            sum(matrices.get(key, 60.0) * weight
+                for key, weight in normalised.items())
+            + float(row["wet"] or 0.0) * float(wet_scale)
+        )
+
+    return scorer
 
 
 def _pairs(races, scorer, top_only):
@@ -180,8 +211,10 @@ def _counts(races, scorer):
         win = next((h for h, p in pos.items() if p == 1), None)
         if len(t3) < 3 or win is None:
             continue
+        metadata = r.get("metadata") or {}
+        field_size = int(r.get("field") or metadata.get("field_size") or len(pos))
         rows.append(race_metrics([t[1] for t in sc], t3, winner=win,
-                                 actual_pos=pos, field_size=max(pos.values())))
+                                 actual_pos=pos, field_size=field_size))
     if not rows:
         return {}
     c = summarize_races(rows)["counts"]
@@ -228,6 +261,48 @@ class Verdict:
         return "\n".join(lines)
 
 
+def verdict_dict(verdict):
+    """JSON-safe public representation used by all companion audits."""
+    output = asdict(verdict)
+    output["top_hold_ci"] = list(verdict.top_hold_ci)
+    output["all_hold_ci"] = list(verdict.all_hold_ci)
+    return output
+
+
+def baseline_report(races, holdout=HOLDOUT, scorer=None):
+    """Return the one canonical baseline report for all/dev/terminal data."""
+    scorer = scorer or default_scorer
+    top = _pairs(races, scorer, True)
+    all_field = _pairs(races, scorer, False)
+    dev_indices, terminal_indices = date_partitions(races, holdout)
+    return {
+        "design": {
+            "races": len(races),
+            "development_races": len(dev_indices),
+            "terminal_holdout_races": len(terminal_indices),
+            "holdout_fraction_by_whole_date": holdout,
+            "top_k": TOP_K,
+            "promotion_rule": (
+                "top-k paired within-race AUC: development delta >= 0 and "
+                "terminal whole-race bootstrap 95% CI lower bound > 0"
+            ),
+        },
+        "auc": {
+            "top_k_all": _auc(top),
+            "top_k_development": _auc_indices(top, dev_indices),
+            "top_k_terminal": _auc_indices(top, terminal_indices),
+            "all_field_all": _auc(all_field),
+            "all_field_development": _auc_indices(all_field, dev_indices),
+            "all_field_terminal": _auc_indices(all_field, terminal_indices),
+        },
+        "metrics": {
+            "all": _counts(races, scorer),
+            "development": _counts([races[index] for index in dev_indices], scorer),
+            "terminal": _counts([races[index] for index in terminal_indices], scorer),
+        },
+    }
+
+
 def compare(races, base_scorer=None, cand_scorer=None, *, label="候選",
             holdout=HOLDOUT, with_counts=True):
     """一個候選 vs 基準。→ `Verdict`。
@@ -269,49 +344,82 @@ def main():
     ap.add_argument("--swap-leaf", action="append", default=[],
                     help="LEAF=VALUE，把某個 leaf 設成常數（用嚟量佢貢獻）")
     ap.add_argument("--holdout", type=float, default=HOLDOUT)
+    ap.add_argument("--matrix-weights",
+                    help="JSON weight candidate; generated elsewhere, judged only here")
+    ap.add_argument("--wet-scale", type=float,
+                    help="Candidate multiplier for the existing wet overlay")
+    ap.add_argument("--output-json", help="Write the canonical report/verdicts")
     args = ap.parse_args()
 
     races = load_races(args.data)
     print(f"{len(races)} 場 · 判決 = 頭 {TOP_K} 位配對 AUC 嘅 holdout 區間\n")
-    if not args.swap_leaf:
-        top = _pairs(races, default_scorer, True)
-        all_field = _pairs(races, default_scorer, False)
-        n = len(races)
-        dev_indices, holdout_indices = date_partitions(races, args.holdout)
+    report = {"baseline": baseline_report(races, args.holdout), "verdicts": []}
+    has_candidate = bool(args.swap_leaf or args.matrix_weights or args.wet_scale is not None)
+    if not has_candidate:
+        base = report["baseline"]
+        auc = base["auc"]
         print(
-            f"現行基準：頭 {TOP_K} 位 AUC  all {_auc(top):.4f} · "
-            f"dev {_auc_indices(top,dev_indices):.4f} · "
-            f"holdout {_auc_indices(top,holdout_indices):.4f}"
+            f"現行基準：頭 {TOP_K} 位 AUC  all {auc['top_k_all']:.4f} · "
+            f"dev {auc['top_k_development']:.4f} · "
+            f"holdout {auc['top_k_terminal']:.4f}"
         )
         print(
-            f"現行基準：全場 AUC       all {_auc(all_field):.4f} · "
-            f"dev {_auc_indices(all_field,dev_indices):.4f} · "
-            f"holdout {_auc_indices(all_field,holdout_indices):.4f}"
+            f"現行基準：全場 AUC       all {auc['all_field_all']:.4f} · "
+            f"dev {auc['all_field_development']:.4f} · "
+            f"holdout {auc['all_field_terminal']:.4f}"
         )
-        for label, sample in (
-            ("all", races),
-            ("dev", [races[index] for index in dev_indices]),
-            ("holdout", [races[index] for index in holdout_indices]),
-        ):
-            counts = _counts(sample, default_scorer)
+        for label, counts in base["metrics"].items():
             print(
                 f"場數指標 {label:<7} "
                 + " · ".join(f"{key} {value:.2f}%" for key, value in counts.items())
+            )
+        if args.output_json:
+            Path(args.output_json).write_text(
+                json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
             )
         return 0
     for spec in args.swap_leaf:
         leaf, _, val = spec.partition("=")
         v = float(val)
-
-        def cand(row, _leaf=leaf, _v=v):
-            f = dict(row["features"])
-            f[_leaf] = _v
-            m = matrix_mapper.map_features_to_matrix_scores(f)
-            return sum(m.get(k, 60.0) * w for k, w in MATRIX_WEIGHTS.items()) + row["wet"]
-
-        print(compare(races, default_scorer, cand,
-                      label=f"{leaf} 設成常數 {v:g}", holdout=args.holdout))
+        verdict = compare(
+            races,
+            default_scorer,
+            configured_scorer(leaf_overrides={leaf: v}),
+            label=f"{leaf} 設成常數 {v:g}",
+            holdout=args.holdout,
+        )
+        report["verdicts"].append(verdict_dict(verdict))
+        print(verdict)
         print()
+    if args.matrix_weights:
+        weights = json.loads(Path(args.matrix_weights).read_text(encoding="utf-8"))
+        verdict = compare(
+            races,
+            default_scorer,
+            configured_scorer(weights=weights),
+            label=f"matrix weights: {Path(args.matrix_weights).name}",
+            holdout=args.holdout,
+        )
+        report["verdicts"].append(verdict_dict(verdict))
+        print(verdict)
+        print()
+    if args.wet_scale is not None:
+        verdict = compare(
+            races,
+            default_scorer,
+            configured_scorer(wet_scale=args.wet_scale),
+            label=f"wet overlay ×{args.wet_scale:g}",
+            holdout=args.holdout,
+        )
+        report["verdicts"].append(verdict_dict(verdict))
+        print(verdict)
+        print()
+    if args.output_json:
+        Path(args.output_json).write_text(
+            json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
     return 0
 
 

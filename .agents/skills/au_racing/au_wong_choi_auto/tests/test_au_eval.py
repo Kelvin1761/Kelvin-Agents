@@ -116,6 +116,31 @@ class VerdictRuleTests(unittest.TestCase):
         self.assertEqual(au_eval.TOP_K, 5)
         self.assertIn(f"頭 {au_eval.TOP_K} 位", str(v))
 
+    def test_configured_scorer_normalises_candidate_weights(self):
+        row = {
+            "features": {"form_score": 80.0},
+            "wet": 2.0,
+        }
+        once = au_eval.configured_scorer(
+            weights={key: value for key, value in au_eval.MATRIX_WEIGHTS.items()},
+            wet_scale=0.5,
+        )(row)
+        twice = au_eval.configured_scorer(
+            weights={key: value * 2 for key, value in au_eval.MATRIX_WEIGHTS.items()},
+            wet_scale=0.5,
+        )(row)
+        self.assertAlmostEqual(once, twice)
+
+    def test_baseline_report_uses_whole_date_partition(self):
+        races = _races(20, sep=1.0)
+        for index, race in enumerate(races):
+            race["date"] = f"2026-01-{index // 2 + 1:02d}"
+            race["metadata"] = {"field_size": 8}
+        report = au_eval.baseline_report(races, holdout=0.2, scorer=score)
+        self.assertEqual(report["design"]["development_races"], 16)
+        self.assertEqual(report["design"]["terminal_holdout_races"], 4)
+        self.assertIn("top_k_terminal", report["auc"])
+
 
 if __name__ == "__main__":
     unittest.main()

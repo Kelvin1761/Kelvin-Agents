@@ -150,7 +150,7 @@ def enrich_hkjc_display_metadata(meeting, all_races):
 
 
 def parse_au_racecard_silks(path):
-    """Return ``(race_number, {horse_number: silk_url})`` from Racenet markdown."""
+    """Return ``(race_number, {horse_number: silk_url})`` from Sportsbet Racecard markdown."""
     try:
         text = Path(path).read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
@@ -176,7 +176,7 @@ def parse_au_racecard_silks(path):
 
 
 def enrich_au_display_metadata(meeting, all_races):
-    """Attach Racenet colours to all parsed AU analyst rows."""
+    """Attach Sportsbet silk images to all parsed AU analyst rows."""
     silk_map = _load_au_silk_map(meeting)
     for races in all_races.values():
         for race in races:

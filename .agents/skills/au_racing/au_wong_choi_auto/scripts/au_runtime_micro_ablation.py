@@ -302,6 +302,7 @@ def score_variant(
                         "feature_scores": result["feature_scores"],
                         "wet_form_feature": result["wet_form_feature"],
                         "feature_evidence_state": result["feature_evidence_state"],
+                        "score_provenance": result.get("score_provenance", {}),
                         "data_coverage": result["data_coverage"],
                         "reason_codes": result["reason_codes"],
                         "risk_flags": result["risk_flags"],

@@ -44,6 +44,29 @@ class PerformanceQualityTests(unittest.TestCase):
             digest["performance_quality_source"],
             "class_adjusted_margin_complete_formguide",
         )
+        self.assertEqual(
+            digest["performance_quality_runs"],
+            [
+                {
+                    "date": "2026-07-20",
+                    "finish_pos": 2,
+                    "margin": 2.0,
+                    "prize": 150000.0,
+                    "starters": 10,
+                    "distance": 1400,
+                    "quality": round(first, 6),
+                },
+                {
+                    "date": "2026-07-01",
+                    "finish_pos": 2,
+                    "margin": 1.0,
+                    "prize": 50000.0,
+                    "starters": 10,
+                    "distance": 1400,
+                    "quality": -1.0,
+                },
+            ],
+        )
 
     def test_same_day_run_is_excluded_from_pre_race_digest(self) -> None:
         historical = _run("2026-07-20", 50000, 2.0) + _run("2026-07-01", 50000, 4.0)
@@ -62,6 +85,18 @@ class PerformanceQualityTests(unittest.TestCase):
         self.assertEqual(
             censored["performance_quality_raw"],
             base["performance_quality_raw"],
+        )
+        self.assertEqual(
+            censored["performance_quality_runs"],
+            base["performance_quality_runs"],
+        )
+        self.assertEqual(
+            censored["latest_official_date"],
+            base["latest_official_date"],
+        )
+        self.assertEqual(
+            censored["recent_shape_summary_line"],
+            base["recent_shape_summary_line"],
         )
 
     def test_partial_legacy_rows_do_not_enter_ranking(self) -> None:

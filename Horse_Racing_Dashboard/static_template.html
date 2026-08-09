@@ -3081,12 +3081,34 @@ function renderDataReadoutItem(row) {
   </div>`;
 }
 
+function dataReadoutGroup(row) {
+  const label = String(row?.label || '');
+  if (/六維排名綜合|主要支柱|最弱環節|數據信心/.test(label)) return '模型摘要';
+  if (/騎練|騎師|練馬師|人馬配搭/.test(label)) return '騎練';
+  if (/狀態|穩定|近績|賽績線|試閘|備戰|健康|信心/.test(label)) return '狀態與賽績';
+  if (/場地|地況|L600|速度考驗|段速/.test(label)) return '場地與環境';
+  if (/檔位|步速|跑法|形勢|走位/.test(label)) return '賽事形勢';
+  if (/級數|Rating|評分|負磅|路程|距離|班次/.test(label)) return '能力與級數';
+  return '其他資料';
+}
+
 function renderDataReadout(rows) {
   const source = Array.isArray(rows) ? rows.filter(Boolean) : [];
   if (!source.length) return '';
+  const order = ['模型摘要', '騎練', '狀態與賽績', '場地與環境', '賽事形勢', '能力與級數', '其他資料'];
+  const grouped = new Map();
+  source.forEach(row => {
+    const group = dataReadoutGroup(row);
+    if (!grouped.has(group)) grouped.set(group, []);
+    grouped.get(group).push(row);
+  });
   let html = '<div class="data-readout data-readout--complete">';
   html += `<div class="data-readout__header"><div class="data-readout__title">📊 數據判讀</div><div class="data-readout__summary">${esc(dataReadoutSummary(source))}</div></div>`;
-  html += `<div class="data-readout__grid">${source.map(renderDataReadoutItem).join('')}</div>`;
+  order.forEach(group => {
+    const items = grouped.get(group);
+    if (!items?.length) return;
+    html += `<section class="data-readout__group"><div class="data-readout__group-title">${esc(group)}</div><div class="data-readout__grid">${items.map(renderDataReadoutItem).join('')}</div></section>`;
+  });
   html += '</div>';
   return html;
 }

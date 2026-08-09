@@ -7,6 +7,7 @@ from copy import deepcopy
 from au_archive_calibrator import ARCHIVE_ROOT, HISTORICAL_RESULTS_CSV, iter_logic_rows, load_historical_results, parse_float
 from au_zero_hit_race_audit import field_size_bucket, race_class_bucket
 from racing_engine.matrix_mapper import matrix_score
+from au_metric_contract import ranked_performance
 
 
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Formguide_Signal_Backtest.md"
@@ -68,25 +69,25 @@ def annotate_base(rows: list[dict]) -> list[dict]:
 
 
 def eval_ranked(ranked: list[dict], out: dict) -> None:
+    performance = ranked_performance(ranked)
     top3 = ranked[:3]
     top5 = ranked[:5]
-    hits = sum(1 for row in top3 if int(row["actual_pos"]) <= 3)
-    top2_hits = sum(1 for row in ranked[:2] if int(row["actual_pos"]) <= 3)
+    hits = int(performance["hits"])
     out["races"] += 1
     out["top3_places"] += hits
     out["top3_slots"] += len(top3)
     out["hit_distribution"][hits] += 1
-    if top3 and int(top3[0]["actual_pos"]) == 1:
+    if performance["champion"]:
         out["champion"] += 1
-    if any(int(row["actual_pos"]) == 1 for row in top3):
+    if performance["winner_in_top3"]:
         out["winner_top3"] += 1
     if any(int(row["actual_pos"]) == 1 for row in top5):
         out["winner_top5"] += 1
-    if hits == 3:
+    if performance["gold"]:
         out["gold"] += 1
-    if top2_hits == 2:
+    if performance["good_positional"]:
         out["good"] += 1
-    if hits >= 2:
+    if performance["pass"]:
         out["pass"] += 1
 
 

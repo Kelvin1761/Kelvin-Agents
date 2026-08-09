@@ -189,8 +189,8 @@ def evaluate_candidate(name: str, races: list[list[dict]], baseline_scorer, cand
 
 def fmt(metrics: dict) -> str:
     return (
-        f"{metrics['races']} races; {metrics['gold']} Gold / {metrics['good']} Good-any2 "
-        f"({metrics['good_positional']} Good-pos) / {metrics['pass']} Pass / {metrics['miss']} Miss; "
+        f"{metrics['races']} races; {metrics['gold']} Gold / {metrics['good']} Good / "
+        f"{metrics['pass']} Pass / {metrics['one_hit']} 1 Hit / {metrics['miss']} Miss; "
         f"T3-in-T4 {metrics['top3_all_within_top4']}; "
         f"Top3 {metrics['top3_precision'] * 100:.1f}%; W-in-T3 {metrics['winner_in_top3'] * 100:.1f}%; "
         f"Top1 {metrics['top1_win'] * 100:.1f}%"

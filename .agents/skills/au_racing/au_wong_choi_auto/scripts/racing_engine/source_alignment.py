@@ -18,8 +18,9 @@ HORSE_HEADER_RE = re.compile(
 )
 RACECARD_HORSE_RE = re.compile(r"^\d+\.\s+(.+?)\s+\((\d+)\)$")
 RACECARD_META_RE = re.compile(
-    r"^Trainer:\s.*?\|\sJockey:\s.*?\|\sWeight:\s*([0-9.]+)"
-    r"(?:kg)?(?:\s*\([^|]*\))?\s*\|\sAge:\s.*?\|\sRating:\s*([0-9.]+)?"
+    r"^Trainer:\s*(?P<trainer>.*?)\s*\|\s*Jockey:\s*(?P<jockey>.*?)\s*\|\s*"
+    r"Weight:\s*(?P<weight>[0-9.]+)(?:kg)?(?:\s*\([^|]*\))?\s*\|\s*"
+    r"Age:\s*.*?\s*\|\s*Rating:\s*(?P<rating>[0-9.]+)?"
 )
 RAW_HORSE_HEADER_RE = re.compile(r"^### 馬匹 #(\d+)\b", re.M)
 
