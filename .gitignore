@@ -112,3 +112,8 @@ Wong Choi Tennis Analysis/
 .agents/skills/au_racing/.sportsbet_cache
 .agents/skills/au_racing/.ra_cache
 .agents/skills/au_racing/.sb_horse_index.json
+
+# 每部機自己嘅資料根設定，唔入版本控制
+.wongchoi_au_data_root
+.wongchoi_au_mirror_root
+.wongchoi_data_root
