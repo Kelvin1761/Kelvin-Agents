@@ -1426,6 +1426,8 @@ def _recommended_picks(prop: dict | None) -> dict:
         if len(selected_singles) == 2:
             break
     picks["validated_singles"] = selected_singles
+    if not selected_singles:
+        picks["blocked_by"] = _closest_blocked_legs(prop.get("value_legs") or [], gate)
     allowed_ids = {leg["id"] for leg in value_legs}
     combos = [
         combo for combo in (prop.get("combos") or [])
@@ -1452,6 +1454,66 @@ def _recommended_picks(prop: dict | None) -> dict:
         )
         picks["validated_2_leg"] = combo
     return picks
+
+
+def _closest_blocked_legs(value_legs: list[dict], gate: dict, limit: int = 3) -> list[dict]:
+    """Name the single limit that stopped each of the nearest misses.
+
+    An empty card is a legitimate output, which is exactly why it hid a broken
+    pipeline for two months: nothing errored, the report printed "no bet" every
+    day, and no number said whether a bet could physically have come out. This
+    turns that silence into a line you can act on.
+    """
+    from tennis_wc.props import strategy
+    from tennis_wc.props.registry import value_profile_for_family
+
+    enabled = set(gate.get("enabled_families") or [])
+    blocked = []
+    for leg in value_legs:
+        family = strategy.family_for_market(leg.get("market_key") or "")
+        if family not in enabled:
+            continue
+        profile = value_profile_for_family(family)
+        try:
+            probability = float(leg["prob"])
+            odds = float(leg["odds"])
+            quality = strategy.normalise_data_quality(leg["data_quality"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        confidence = strategy.confidence_score(leg, gate)
+        # (label, shortfall) -- shortfall is how far off the limit it landed,
+        # so the nearest miss sorts first and a threshold worth revisiting is
+        # obvious rather than inferred.
+        checks = []
+        if probability < profile.min_probability:
+            checks.append((f"命中率 {probability:.3f} < {profile.min_probability:.2f}",
+                           profile.min_probability - probability))
+        if odds < profile.min_odds:
+            checks.append((f"賠率 {odds:g} < {profile.min_odds:g}", profile.min_odds - odds))
+        if odds > profile.max_odds:
+            checks.append((f"賠率 {odds:g} > {profile.max_odds:g}", odds - profile.max_odds))
+        if quality < strategy.MIN_DATA_QUALITY:
+            checks.append((f"資料質素 {quality:.2f} < {strategy.MIN_DATA_QUALITY:.2f}",
+                           strategy.MIN_DATA_QUALITY - quality))
+        if confidence < strategy.MIN_CONFIDENCE_SCORE:
+            checks.append((f"信心 {confidence} < {strategy.MIN_CONFIDENCE_SCORE}",
+                           (strategy.MIN_CONFIDENCE_SCORE - confidence) / 100.0))
+        if float(leg.get("edge") or 0) <= 0:
+            checks.append(("edge ≤ 0", 1.0))
+        if float(leg.get("ev") or 0) <= 0:
+            checks.append(("EV ≤ 0", 1.0))
+        if not checks:
+            continue
+        blocked.append({
+            "family": family,
+            "desc": leg.get("desc") or leg.get("market_name") or family,
+            "match_label": leg.get("match_label"),
+            "reasons": [label for label, _ in checks],
+            "shortfall": min(gap for _, gap in checks),
+            "blocking_count": len(checks),
+        })
+    blocked.sort(key=lambda item: (item["blocking_count"], item["shortfall"]))
+    return blocked[:limit]
 
 
 def _chalk_parlay_stats(pick: list[dict]) -> tuple[float, float, float]:
@@ -1581,6 +1643,16 @@ def _recommended_bets_lines(
         ]
         if gate_reason:
             conclusion.append(f"驗證閘：{gate_reason}。")
+        blocked = (picks or {}).get("blocked_by") or []
+        if blocked:
+            conclusion.append(
+                "🔍 閘已開，係今日張飛差少少 —— 最接近嘅幾條同差咩："
+            )
+            for item in blocked:
+                where = f"（{item['match_label']}）" if item.get("match_label") else ""
+                conclusion.append(
+                    f"   · {item['desc']}{where}：{'、'.join(item['reasons'])}"
+                )
     else:
         n = len(blocks)
         conclusion = [f"今日結論：✅ 有 {n} 組已通過驗證嘅 prop 選擇（固定 1u；先睇風險）。"]
