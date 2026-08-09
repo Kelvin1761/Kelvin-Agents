@@ -780,3 +780,99 @@ class TestLiveSnapshotCacheBusting(unittest.TestCase):
                 pass
             second = self._capture(tmp)[0].full_url
         self.assertNotEqual(first, second)
+
+
+class TestShrinkToFit(unittest.TestCase):
+    """體積超標係唯一一個補救路徑救唔到嘅失敗 —— 佢每晚都會重複。
+
+    2026-08-07：九個星期六場次令 snapshot 去到 32.5 MiB，Cloudflare 連拒三次。
+    瘦身之後 19.1 MiB，即係大約 11–12 個場次會再撞。剪走已跑完場次讓路，
+    當日賽事一匹都唔剪 —— 人真係要睇嘅係當日。
+    """
+
+    def _run(self, tmp, meetings, size_mib, today=None):
+        snap = Path(tmp) / "snap.json"
+        body = json.dumps({"meetings": meetings})
+        snap.write_text(body + " " * max(0, int(size_mib * 1048576) - len(body)),
+                        encoding="utf-8")
+        calls = []
+
+        def fake_run_cmd(cmd, **kw):
+            calls.append(cmd)
+            Path(cmd[cmd.index("--output-json") + 1]).write_text("{}", encoding="utf-8")
+            return 0, ""
+
+        runlog = unittest.mock.MagicMock()
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(unittest.mock.patch.object(S, "WORK_DIR", Path(tmp)))
+            stack.enter_context(unittest.mock.patch.object(S, "run_cmd", fake_run_cmd))
+            S.shrink_to_fit(runlog, snap, today or S.date(2026, 8, 9))
+        return calls, runlog
+
+    def test_a_snapshot_under_the_limit_is_untouched(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            calls, _ = self._run(tmp, [{"date": "2026-08-08", "venue": "X",
+                                        "region": "AU"}], size_mib=1)
+        self.assertEqual(calls, [])
+
+    def test_past_meetings_give_way_when_over_the_limit(self):
+        meetings = [{"date": "2026-08-07", "venue": "Old", "region": "AU"},
+                    {"date": "2026-08-09", "venue": "Today", "region": "AU"}]
+        with tempfile.TemporaryDirectory() as tmp:
+            calls, _ = self._run(tmp, meetings, size_mib=26)
+        self.assertEqual(len(calls), 1)
+        self.assertIn("2026-08-07|Old", calls[0])
+        # 當日賽事係人真係要睇嗰啲 —— 幾大都唔剪。
+        self.assertNotIn("2026-08-09|Today", calls[0])
+
+    def test_hkjc_meetings_are_never_dropped_by_the_au_flow(self):
+        meetings = [{"date": "2026-07-15", "venue": "HappyValley", "region": "hkjc"},
+                    {"date": "2026-08-09", "venue": "Today", "region": "AU"}]
+        with tempfile.TemporaryDirectory() as tmp:
+            calls, runlog = self._run(tmp, meetings, size_mib=26)
+        self.assertEqual(calls, [])
+        self.assertTrue(runlog.error.called)
+
+    def test_nothing_to_drop_is_a_loud_error_not_a_silent_truncation(self):
+        meetings = [{"date": "2026-08-09", "venue": "Today", "region": "AU"}]
+        with tempfile.TemporaryDirectory() as tmp:
+            calls, runlog = self._run(tmp, meetings, size_mib=26)
+        self.assertEqual(calls, [])
+        self.assertTrue(runlog.error.called)
+
+
+class TestCodeVersion(unittest.TestCase):
+    """要答得到「呢份分析係邊個版本嘅模型出嘅」。
+
+    2026-08-09 實測：我 commit 完幾分鐘，同一個工作區已經俾另一個 session 換咗去
+    `fix/tennis-…` 分支。排程執行嘅係工作區當時嘅狀態 —— 分支同未 commit 嘅改動
+    全部照跑，冇任何釘死嘅 ref。嗰次啱啱好仍然含住所有 AU 修正，但係彩數。
+    模型一路喺度改，所以版本一定要留低喺 run log。
+    """
+
+    def test_modified_engine_file_is_reported(self):
+        got = S.engine_dirty_from_status(
+            " M .agents/skills/au_racing/au_wong_choi_auto/scripts/racing_engine/scoring.py")
+        self.assertEqual(len(got), 1)
+
+    def test_untracked_files_are_not_engine_drift(self):
+        # 未追蹤、冇人 import 嘅新 script 唔會改變評分。當佢係 drift 嘅話，
+        # 每晚都會有警告，跟住就冇人再信。
+        self.assertEqual(S.engine_dirty_from_status(
+            "?? .agents/skills/au_racing/au_wong_choi_auto/scripts/new_probe.py"), [])
+
+    def test_cache_dirs_are_not_engine_drift(self):
+        self.assertEqual(S.engine_dirty_from_status(
+            "?? .agents/skills/au_racing/.sportsbet_cache/"), [])
+
+    def test_changes_outside_the_engine_are_ignored(self):
+        self.assertEqual(S.engine_dirty_from_status(" M tennis-wong-choi/foo.py"), [])
+
+    def test_deleted_and_added_engine_files_both_count(self):
+        got = S.engine_dirty_from_status(
+            "D  .agents/skills/au_racing/sb_browser_fetch.py\n"
+            "A  Horse_Racing_Dashboard/generate_static.py")
+        self.assertEqual(len(got), 2)
+
+    def test_empty_status_is_a_clean_tree(self):
+        self.assertEqual(S.engine_dirty_from_status(""), [])

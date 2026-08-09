@@ -99,3 +99,9 @@ NBA_ML_Dataset/
 Wong Choi Horse Race Analysis/
 Wong Choi NBA Analysis/
 Wong Choi Tennis Analysis/
+
+# AU 每日排程：run log 同 dashboard 合併中間檔，逐日生成，唔入版本控制
+# ⚠️ 呢兩條規則喺 codex 加過但冇跟到入 main，於是 2026-08-09 一個
+# `git add <目錄>` 就把 22 個中間檔（747,309 行）掃咗入去。
+.agents/skills/au_racing/au_daily_auto/logs/
+.agents/skills/au_racing/au_daily_auto/work/

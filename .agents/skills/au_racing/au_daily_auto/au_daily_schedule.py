@@ -1782,6 +1782,58 @@ def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
     return current, drop_keys
 
 
+# Cloudflare Pages 硬性拒收超過 25 MiB 嘅單一檔案。喺 24 就收手，留一格緩衝。
+MAX_SNAPSHOT_MIB = 24.0
+
+
+def shrink_to_fit(runlog: RunLog, snapshot: Path, today: date) -> Path:
+    """太大就讓路：剪走已經跑完嘅 AU 場次，保住當日賽事一定發佈得出。
+
+    ⚠️ 呢個係唯一一個「今晚嘅補救路徑救唔到」嘅失敗。2026-08-07 九個星期六場次
+    令 snapshot 去到 32.5 MiB，deploy 連續三次被拒 —— 而體積唔會自己縮，所以佢
+    每晚都會用同一個方式失敗。瘦身之後 19.1 MiB，即係大約 11–12 個場次會再撞牆。
+
+    讓路次序係刻意嘅：已經跑完嘅場次等緊覆盤，佢哋喺 dashboard 上嘅價值最低，
+    而且本機正本一直都喺度；當日／將來嘅賽事係人真係要睇嗰啲，一匹都唔剪。
+    HKJC 場次唔屬於 AU 流程，亦唔剪。剪晒都仲超標就大聲報錯 —— 冇聲咁截係更差。
+    """
+    size = snapshot.stat().st_size / 1048576
+    if size <= MAX_SNAPSHOT_MIB:
+        return snapshot
+    try:
+        payload = json.loads(snapshot.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return snapshot
+    past = [f"{m.get('date')}|{m.get('venue')}" for m in payload.get("meetings") or []
+            if (m.get("region") or "").upper() == "AU"
+            and (m.get("date") or "9999-12-31") < today.isoformat()]
+    if not past:
+        runlog.error("dashboard",
+                     f"snapshot {size:.1f} MiB 超過 {MAX_SNAPSHOT_MIB} MiB，但冇"
+                     f"已跑完嘅場次可以讓路 —— 全部都係當日或將來賽事，唔會剪")
+        return snapshot
+    runlog.warn(f"snapshot {size:.1f} MiB 超過 {MAX_SNAPSHOT_MIB} MiB —— 剪走 "
+                f"{len(past)} 個已跑完場次讓路（本機正本冇動）：{past}")
+    out = WORK_DIR / "shrunk.json"
+    cmd = [sys.executable, GENERATE_STATIC,
+           "--base-snapshot", str(snapshot), "--output-json", str(out),
+           "--output-html", str(WORK_DIR / "shrunk.html")]
+    for key in past:
+        cmd += ["--drop-meeting", key]
+    rc, _ = run_cmd(cmd, cwd=DASHBOARD_DIR, timeout=3600)
+    if rc != 0 or not out.exists():
+        runlog.error("dashboard", "縮細 snapshot 失敗 —— 照用原本嗰份")
+        return snapshot
+    after = out.stat().st_size / 1048576
+    runlog.step("dashboard-shrink", "ok", before_mib=round(size, 1),
+                after_mib=round(after, 1), dropped=past)
+    if after > MAX_SNAPSHOT_MIB:
+        runlog.error("dashboard",
+                     f"剪走所有已跑完場次之後仲有 {after:.1f} MiB —— "
+                     f"單日賽事本身已經超標，要縮細每匹馬嘅 payload")
+    return out
+
+
 def validate_snapshot(runlog: RunLog, snapshot: Path,
                       expect_absent: list[str]) -> dict:
     """發佈前驗證。任何一項 fail → 唔發佈。"""
@@ -1927,6 +1979,7 @@ def step_dashboard(runlog: RunLog, meeting_dirs: list[Path],
     expect_absent = [archive_dashboard_key(name) for name in archived_names]
 
     snapshot, expect_absent = build_snapshot(runlog, meeting_dirs, expect_absent)
+    snapshot = shrink_to_fit(runlog, snapshot, date.today())
     validation = validate_snapshot(runlog, snapshot, expect_absent)
     if not validation["ok"]:
         runlog.error("dashboard", "驗證唔過 —— 唔發佈")
@@ -1973,6 +2026,10 @@ def step_dashboard(runlog: RunLog, meeting_dirs: list[Path],
     return bool(verified.get("ok"))
 
 
+# 連續幾多個檔寫唔入就收手。環境唔畀寫嘅話，試 248 次同試 8 次結果一樣。
+MIRROR_FAIL_STREAK = 8
+
+
 def step_mirror_reports(runlog: RunLog, meeting_dirs: list[Path]) -> None:
     """把今次動過嘅場次夾鏡像返 Google Drive（`WONGCHOI_AU_MIRROR_ROOT`）。
 
@@ -2002,9 +2059,21 @@ def step_mirror_reports(runlog: RunLog, meeting_dirs: list[Path]) -> None:
         runlog.step("mirror", "skipped-unwritable", reason=type(exc).__name__)
         return
 
+    # ⚠️ 寫探測喺**根目錄**成功唔代表寫得入**子目錄**。2026-08-09 launchd 實測：
+    # 探測過關，跟住 248 個檔全部失敗，而同一段 code 由 Terminal 跑就 242 個全部
+    # 成功 —— 即係 launchd 嘅 CloudStorage 權限比探測到嘅窄。舊寫法 `except
+    # OSError: failed += 1` 把真原因吞咗，所以份 log 淨係識講「248 個失敗」，
+    # 睇極都唔知點解。而家：記低第一個真錯誤，而且連續失敗到一定數量就收手 ——
+    # 環境唔畀寫嘅話，試 248 次同試 8 次結果一樣，但後者唔會嘈足一版。
     copied = failed = 0
+    first_error: str | None = None
+    streak = 0
     for src in [AU_RACING / n for n in MIRRORED_ROOT_FILES] + list(meeting_dirs):
+        if streak >= MIRROR_FAIL_STREAK:
+            break
         for item in ([src] if src.is_file() else sorted(src.rglob("*"))):
+            if streak >= MIRROR_FAIL_STREAK:
+                break
             if not item.is_file() or item.name == ".DS_Store":
                 continue
             dst = AU_RACING_MIRROR / item.relative_to(AU_RACING)
@@ -2017,13 +2086,23 @@ def step_mirror_reports(runlog: RunLog, meeting_dirs: list[Path]) -> None:
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(item, dst)
                 copied += 1
-            except OSError:
+                streak = 0
+            except OSError as exc:
                 failed += 1
+                streak += 1
+                if first_error is None:
+                    first_error = f"{type(exc).__name__}: {exc}"
 
+    gave_up = streak >= MIRROR_FAIL_STREAK
     runlog.step("mirror", "ok" if not failed else "partial",
-                copied=copied, failed=failed, root=str(AU_RACING_MIRROR))
+                copied=copied, failed=failed, gave_up=gave_up or None,
+                first_error=first_error, root=str(AU_RACING_MIRROR))
     if failed:
-        runlog.warn(f"鏡像有 {failed} 個檔寫唔入 {AU_RACING_MIRROR}")
+        runlog.warn(
+            f"鏡像寫唔入（{failed} 個檔"
+            + (f"，連續失敗 {MIRROR_FAIL_STREAK} 次所以收手" if gave_up else "")
+            + f"）：{first_error} —— Drive 邊會停留喺舊版本，"
+            f"本機正本同 Cloudflare 發佈唔受影響")
 
 
 def archive_dashboard_key(folder_name: str) -> str:
@@ -2159,6 +2238,62 @@ def single_run_lock():
         handle.close()
 
 
+# 引擎相關嘅路徑。工作區呢幾個位一 dirty，跑出嚟嘅分數就唔係任何一個 commit
+# 代表嘅版本 —— 呢個要講出嚟，唔可以扮唔知。
+ENGINE_PATHS = (
+    ".agents/skills/au_racing/au_wong_choi_auto/scripts",
+    ".agents/skills/au_racing",
+    "Horse_Racing_Dashboard/generate_static.py",
+)
+
+
+def engine_dirty_from_status(porcelain: str) -> list[str]:
+    """`git status --porcelain` → 引擎入面相對 commit 改咗嘅已追蹤檔案。
+
+    ⚠️ 只計已追蹤而且改咗嘅（`??` 係未追蹤，唔計）。一個未追蹤、冇人 import
+    嘅新 script 唔會改變評分；cache 目錄更加唔會。冇呢個收窄嘅話每晚都會報
+    「引擎 dirty」，跟住就冇人再信呢個警告。
+    """
+    out = set()
+    for line in (porcelain or "").splitlines():
+        if line.startswith("??") or len(line) < 4:
+            continue
+        path = line[3:].strip()
+        if any(path.startswith(prefix) for prefix in ENGINE_PATHS):
+            out.add(path)
+    return sorted(out)
+
+
+def code_version() -> dict:
+    """排程實際跑緊邊個版本嘅模型。
+
+    ⚠️ 排程執行嘅係工作區當時嘅狀態，唔係任何一個釘死嘅 ref —— 分支、未 commit
+    嘅改動全部照跑。2026-08-09 實測：我啱啱 commit 完，幾分鐘後同一個工作區已經
+    俾另一個 session 換咗去 `fix/tennis-…` 分支。嗰次啱啱好仍然含住所有 AU 修正，
+    但嗰個係彩數唔係保證。模型一直喺度改，所以「呢份分析係邊個版本出嘅」一定要
+    留低喺 run log，否則之後對唔返賬。
+    """
+    import subprocess
+
+    def git(*args):
+        try:
+            out = subprocess.run(["git", *args], cwd=str(PROJECT_ROOT), timeout=30,
+                                 capture_output=True, text=True)
+            return out.stdout.strip() if out.returncode == 0 else None
+        except Exception:  # noqa: BLE001
+            return None
+
+    dirty = git("status", "--porcelain") or ""
+    # ⚠️ 只計**已追蹤而且相對 commit 改咗**嘅檔（`??` 係未追蹤，唔計）。一個未
+    # 追蹤、冇人 import 嘅新 script 唔會改變評分；cache 目錄更加唔會。冇呢個收窄
+    # 嘅話每晚都會報「引擎 dirty」，警告就冇人再信。
+    engine_dirty = engine_dirty_from_status(dirty)
+    return {"commit": (git("rev-parse", "--short", "HEAD") or "?"),
+            "branch": (git("rev-parse", "--abbrev-ref", "HEAD") or "?"),
+            "dirty_files": len(dirty.splitlines()),
+            "engine_dirty": engine_dirty or None}
+
+
 def check_data_root(runlog: RunLog) -> bool:
     """AU 資料根 preflight。
 
@@ -2186,10 +2321,18 @@ def check_data_root(runlog: RunLog) -> bool:
     if on_cloud:
         runlog.warn(f"AU_RACING 住喺 CloudStorage（{AU_RACING}）—— 今次讀得到，但"
                     f"launchd 嘅 context 通常讀唔到。應該指去本機硬碟。")
+    version = code_version()
+    runlog.data["code_version"] = version
     runlog.step("preflight", "ok", au_meeting_folders=len(names),
                 au_root=str(AU_RACING),
                 mirror=str(AU_RACING_MIRROR) if AU_RACING_MIRROR else None,
-                archive_readable=(ARCHIVE_ROOT / ".").is_dir())
+                archive_readable=(ARCHIVE_ROOT / ".").is_dir(),
+                **version)
+    if version["engine_dirty"]:
+        runlog.warn(
+            f"引擎有 {len(version['engine_dirty'])} 個未 commit 嘅檔 —— 今次評分"
+            f"唔對應任何一個 commit，之後對唔返賬："
+            f"{version['engine_dirty'][:6]}")
     return True
 
 
