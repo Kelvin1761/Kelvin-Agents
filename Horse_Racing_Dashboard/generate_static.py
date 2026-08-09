@@ -556,6 +556,14 @@ def parse_args():
         help="AU meeting folder to merge into --base-snapshot.",
     )
     parser.add_argument(
+        "--from-snapshot",
+        default="",
+        help="Render HTML/JSON from an already-built snapshot without rescanning "
+             "local meeting folders. The scheduler builds its snapshot first; "
+             "rescanning would both discard that work and require reading HK "
+             "meetings from Google Drive, which launchd cannot do.",
+    )
+    parser.add_argument(
         "--drop-meeting",
         action="append",
         default=[],
@@ -572,6 +580,10 @@ def main():
     print("   Scanning for meetings...")
     # ⚠️ `parser` 以前唔喺 scope，所以呢個 guard 一觸發就 NameError 而唔係一個
     # 講得明嘅用法錯誤。
+    if args.from_snapshot and (args.base_snapshot or args.au_meeting_dir
+                               or args.drop_meeting):
+        parser.error("--from-snapshot renders an existing snapshot; it cannot be "
+                     "combined with the incremental-merge flags")
     if args.au_meeting_dir and not args.base_snapshot:
         parser.error("--au-meeting-dir requires --base-snapshot")
     if args.drop_meeting and not args.base_snapshot:
@@ -581,7 +593,13 @@ def main():
     if args.base_snapshot and args.au_meeting_dir and args.drop_meeting:
         parser.error("--drop-meeting and --au-meeting-dir are separate passes; "
                      "run the drop first, then merge from its output")
-    if args.drop_meeting:
+    if args.from_snapshot:
+        data = json.loads(Path(args.from_snapshot).read_text(encoding="utf-8"))
+        data.setdefault("roi", {})
+        data["meta"] = _build_snapshot_meta(data)
+        print(f"   Rendering from prebuilt snapshot: "
+              f"{len(data.get('meetings') or [])} meetings")
+    elif args.drop_meeting:
         data = drop_au_meetings(args.base_snapshot, args.drop_meeting)
     elif args.base_snapshot:
         data = collect_incremental_au_data(args.base_snapshot, args.au_meeting_dir)

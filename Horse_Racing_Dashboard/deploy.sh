@@ -49,10 +49,27 @@ fi
 rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
 
-"$PYTHON_BIN" generate_static.py \
-    --output-html "$HTML_OUT" \
-    --output-json "$JSON_OUT" \
-    --output-manifest "$MANIFEST_OUT"
+# ⚠️ 排程已經砌好一份 snapshot（剪走已歸檔場次、瘦身、驗證過），會經
+# WC_DASHBOARD_BASE_SNAPSHOT 傳入。以前呢個變數**由頭到尾冇人用**，於是 deploy
+# 掉咗嗰份唔要、自己由零重掃一次 —— 兩個後果：
+#   1. 排程嘅剪走／體積保護只係部分生效，因為最終發佈嗰份唔係佢砌嗰份；
+#   2. 全量重掃要 iterdir Google Drive 上嘅 HK_Racing，而 launchd 冇 CloudStorage
+#      權限。2026-08-09 晚更就係死喺呢度：四個 08-10 場次分析齊、剪走、合併、
+#      驗證全過，最後 `PermissionError: … /HK_Racing` 發佈唔到，成日賽事冇上線。
+# 有得用就直接用，唔好再掃一次。
+if [ -n "${WC_DASHBOARD_BASE_SNAPSHOT:-}" ] && [ -f "${WC_DASHBOARD_BASE_SNAPSHOT}" ]; then
+    echo "   📦 用排程砌好嘅 snapshot：${WC_DASHBOARD_BASE_SNAPSHOT}"
+    "$PYTHON_BIN" generate_static.py \
+        --from-snapshot "$WC_DASHBOARD_BASE_SNAPSHOT" \
+        --output-html "$HTML_OUT" \
+        --output-json "$JSON_OUT" \
+        --output-manifest "$MANIFEST_OUT"
+else
+    "$PYTHON_BIN" generate_static.py \
+        --output-html "$HTML_OUT" \
+        --output-json "$JSON_OUT" \
+        --output-manifest "$MANIFEST_OUT"
+fi
 
 if [ ! -f "$HTML_OUT" ]; then
     echo "❌ 錯誤：找不到 $HTML_OUT，請確認生成是否成功！"
