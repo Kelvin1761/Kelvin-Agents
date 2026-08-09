@@ -174,6 +174,20 @@ class RunLog:
         self.flush()
         log(f"=== run {status} in {self.data['duration_seconds']}s "
             f"→ {self.path.name} ===")
+        self.notify()
+
+    def notify(self) -> None:
+        """把結果推去手機。⚠️ 通知失敗唔可以令 run 失敗 —— 嘢已經做完，
+        通知只係報告。所以成段包住，最多喺 log 講一句。"""
+        try:
+            sys.path.insert(0, str(HERE))
+            import au_notify
+
+            sent = au_notify.send(self.data)
+            if sent:
+                log(f"[notify] {'; '.join(sent)}")
+        except Exception as exc:  # noqa: BLE001
+            log(f"[notify] 送唔出（{type(exc).__name__}: {exc}）—— run 結果不受影響")
 
     def flush(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
