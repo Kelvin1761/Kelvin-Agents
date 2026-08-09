@@ -839,3 +839,40 @@ class TestShrinkToFit(unittest.TestCase):
             calls, runlog = self._run(tmp, meetings, size_mib=26)
         self.assertEqual(calls, [])
         self.assertTrue(runlog.error.called)
+
+
+class TestCodeVersion(unittest.TestCase):
+    """要答得到「呢份分析係邊個版本嘅模型出嘅」。
+
+    2026-08-09 實測：我 commit 完幾分鐘，同一個工作區已經俾另一個 session 換咗去
+    `fix/tennis-…` 分支。排程執行嘅係工作區當時嘅狀態 —— 分支同未 commit 嘅改動
+    全部照跑，冇任何釘死嘅 ref。嗰次啱啱好仍然含住所有 AU 修正，但係彩數。
+    模型一路喺度改，所以版本一定要留低喺 run log。
+    """
+
+    def test_modified_engine_file_is_reported(self):
+        got = S.engine_dirty_from_status(
+            " M .agents/skills/au_racing/au_wong_choi_auto/scripts/racing_engine/scoring.py")
+        self.assertEqual(len(got), 1)
+
+    def test_untracked_files_are_not_engine_drift(self):
+        # 未追蹤、冇人 import 嘅新 script 唔會改變評分。當佢係 drift 嘅話，
+        # 每晚都會有警告，跟住就冇人再信。
+        self.assertEqual(S.engine_dirty_from_status(
+            "?? .agents/skills/au_racing/au_wong_choi_auto/scripts/new_probe.py"), [])
+
+    def test_cache_dirs_are_not_engine_drift(self):
+        self.assertEqual(S.engine_dirty_from_status(
+            "?? .agents/skills/au_racing/.sportsbet_cache/"), [])
+
+    def test_changes_outside_the_engine_are_ignored(self):
+        self.assertEqual(S.engine_dirty_from_status(" M tennis-wong-choi/foo.py"), [])
+
+    def test_deleted_and_added_engine_files_both_count(self):
+        got = S.engine_dirty_from_status(
+            "D  .agents/skills/au_racing/sb_browser_fetch.py\n"
+            "A  Horse_Racing_Dashboard/generate_static.py")
+        self.assertEqual(len(got), 2)
+
+    def test_empty_status_is_a_clean_tree(self):
+        self.assertEqual(S.engine_dirty_from_status(""), [])

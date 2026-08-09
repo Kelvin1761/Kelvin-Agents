@@ -2238,6 +2238,62 @@ def single_run_lock():
         handle.close()
 
 
+# 引擎相關嘅路徑。工作區呢幾個位一 dirty，跑出嚟嘅分數就唔係任何一個 commit
+# 代表嘅版本 —— 呢個要講出嚟，唔可以扮唔知。
+ENGINE_PATHS = (
+    ".agents/skills/au_racing/au_wong_choi_auto/scripts",
+    ".agents/skills/au_racing",
+    "Horse_Racing_Dashboard/generate_static.py",
+)
+
+
+def engine_dirty_from_status(porcelain: str) -> list[str]:
+    """`git status --porcelain` → 引擎入面相對 commit 改咗嘅已追蹤檔案。
+
+    ⚠️ 只計已追蹤而且改咗嘅（`??` 係未追蹤，唔計）。一個未追蹤、冇人 import
+    嘅新 script 唔會改變評分；cache 目錄更加唔會。冇呢個收窄嘅話每晚都會報
+    「引擎 dirty」，跟住就冇人再信呢個警告。
+    """
+    out = set()
+    for line in (porcelain or "").splitlines():
+        if line.startswith("??") or len(line) < 4:
+            continue
+        path = line[3:].strip()
+        if any(path.startswith(prefix) for prefix in ENGINE_PATHS):
+            out.add(path)
+    return sorted(out)
+
+
+def code_version() -> dict:
+    """排程實際跑緊邊個版本嘅模型。
+
+    ⚠️ 排程執行嘅係工作區當時嘅狀態，唔係任何一個釘死嘅 ref —— 分支、未 commit
+    嘅改動全部照跑。2026-08-09 實測：我啱啱 commit 完，幾分鐘後同一個工作區已經
+    俾另一個 session 換咗去 `fix/tennis-…` 分支。嗰次啱啱好仍然含住所有 AU 修正，
+    但嗰個係彩數唔係保證。模型一直喺度改，所以「呢份分析係邊個版本出嘅」一定要
+    留低喺 run log，否則之後對唔返賬。
+    """
+    import subprocess
+
+    def git(*args):
+        try:
+            out = subprocess.run(["git", *args], cwd=str(PROJECT_ROOT), timeout=30,
+                                 capture_output=True, text=True)
+            return out.stdout.strip() if out.returncode == 0 else None
+        except Exception:  # noqa: BLE001
+            return None
+
+    dirty = git("status", "--porcelain") or ""
+    # ⚠️ 只計**已追蹤而且相對 commit 改咗**嘅檔（`??` 係未追蹤，唔計）。一個未
+    # 追蹤、冇人 import 嘅新 script 唔會改變評分；cache 目錄更加唔會。冇呢個收窄
+    # 嘅話每晚都會報「引擎 dirty」，警告就冇人再信。
+    engine_dirty = engine_dirty_from_status(dirty)
+    return {"commit": (git("rev-parse", "--short", "HEAD") or "?"),
+            "branch": (git("rev-parse", "--abbrev-ref", "HEAD") or "?"),
+            "dirty_files": len(dirty.splitlines()),
+            "engine_dirty": engine_dirty or None}
+
+
 def check_data_root(runlog: RunLog) -> bool:
     """AU 資料根 preflight。
 
@@ -2265,10 +2321,18 @@ def check_data_root(runlog: RunLog) -> bool:
     if on_cloud:
         runlog.warn(f"AU_RACING 住喺 CloudStorage（{AU_RACING}）—— 今次讀得到，但"
                     f"launchd 嘅 context 通常讀唔到。應該指去本機硬碟。")
+    version = code_version()
+    runlog.data["code_version"] = version
     runlog.step("preflight", "ok", au_meeting_folders=len(names),
                 au_root=str(AU_RACING),
                 mirror=str(AU_RACING_MIRROR) if AU_RACING_MIRROR else None,
-                archive_readable=(ARCHIVE_ROOT / ".").is_dir())
+                archive_readable=(ARCHIVE_ROOT / ".").is_dir(),
+                **version)
+    if version["engine_dirty"]:
+        runlog.warn(
+            f"引擎有 {len(version['engine_dirty'])} 個未 commit 嘅檔 —— 今次評分"
+            f"唔對應任何一個 commit，之後對唔返賬："
+            f"{version['engine_dirty'][:6]}")
     return True
 
 
