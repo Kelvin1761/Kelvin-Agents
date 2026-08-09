@@ -29,10 +29,14 @@ LOG_DIR = HERE / "logs"
 OFFSET_FILE = LOG_DIR / "telegram_offset.json"
 TIMEOUT = 25
 HELP = ("我識嘅嘢：\n"
-        "/status  最近幾個 run 點\n"
-        "/today   今日／下一個賽日發佈咗乜\n"
-        "/perf    最近一個賽日嘅 Gold／Good 表現\n"
-        "/help    呢個")
+        "/picks           今日邊幾個馬場\n"
+        "/picks dubbo     嗰個馬場逐場頭三揀 + 賽前賠率\n"
+        "/status          最近幾個 run 點\n"
+        "/today           live dashboard 而家有乜\n"
+        "/perf            最近一個賽日嘅 Gold／Good\n"
+        "/week            近七日走勢\n"
+        "/health          即刻做一次體檢\n"
+        "/help            呢個")
 
 
 def api(method: str, **params):
@@ -80,14 +84,9 @@ def cmd_status() -> str:
 
 
 def cmd_today() -> str:
-    try:
-        import urllib.request as u
-        url = ("https://wongchoi-dashboard.pages.dev/dashboard-data.json"
-               f"?cb={int(datetime.now().timestamp())}")
-        with u.urlopen(url, timeout=TIMEOUT) as r:
-            d = json.load(r)
-    except Exception as exc:  # noqa: BLE001
-        return f"攞唔到 live dashboard（{type(exc).__name__}）"
+    d = _live()
+    if d is None:
+        return "攞唔到 live dashboard"
     lines = [f"live 更新時間 {(d.get('meta') or {}).get('generated_at', '?')[:16]}"]
     for m in d.get("meetings") or []:
         key = f"{m.get('date')}|{m.get('venue')}"
@@ -128,8 +127,147 @@ def cmd_perf() -> str:
     return head + "\n" + "\n".join(rows)
 
 
+
+
+def _live() -> dict | None:
+    """攞 live dashboard。⚠️ 兩樣缺一不可：
+
+    * **User-Agent** —— Cloudflare 對 urllib 預設嗰個 UA 回 403。體檢嗰邊一直有設
+      所以行得，呢度冇設就成日攞唔到，而 `except` 把 403 吞埋，表面上淨係見到
+      「攞唔到 live dashboard」，睇極都唔知係俾人擋咗。
+    * **cache-buster** —— 唔加就會讀到 edge 舊副本，啱啱發佈完會顯示成未發佈。
+    """
+    url = ("https://wongchoi-dashboard.pages.dev/dashboard-data.json"
+           f"?cb={int(datetime.now().timestamp()*1000)}")
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "WongChoi-Bot/1.0",
+        "Cache-Control": "no-cache, max-age=0", "Pragma": "no-cache"})
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+            return json.load(r)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _odds(day: str, venue: str, race_no: int) -> dict[int, tuple[str, str]]:
+    """{馬號: (贏賠, 位賠)}，由本機 Formguide 讀。⚠️ 係**分析嗰陣**捕捉嘅市場價，
+    唔係開跑價 —— 所以標「賽前」，唔可以扮成 SP。"""
+    from wongchoi_paths import AU_RACING  # noqa: PLC0415
+
+    root = Path(AU_RACING)
+    for base in (root, root / "Archive"):
+        for d in base.glob(f"{day} {venue}*"):
+            fg = next(iter(d.glob(f"*Race {race_no} Formguide.md")), None)
+            if not fg:
+                continue
+            body = fg.read_text(errors="replace")
+            starts = [(m.start(), int(m.group(1)))
+                      for m in re.finditer(r"^\[(\d+)\]\s", body, re.M)]
+            out = {}
+            for i, (pos, num) in enumerate(starts):
+                end = starts[i + 1][0] if i + 1 < len(starts) else len(body)
+                m = re.search(r"WinOdds:\s*([\d.]+|-)\s+PlcOdds:\s*([\d.]+|-)",
+                              body[pos:end])
+                if m:
+                    out[num] = (m.group(1), m.group(2))
+            return out
+    return {}
+
+
+def cmd_picks(arg: str = "") -> str:
+    d = _live()
+    if not d:
+        return "攞唔到 live dashboard"
+    today = datetime.now().strftime("%Y-%m-%d")
+    ms = [m for m in d.get("meetings") or [] if m.get("date") >= today]
+    if not ms:
+        ms = d.get("meetings") or []
+    if not arg:
+        lines = ["揀一個馬場，例：/picks dubbo", ""]
+        for m in ms:
+            key = f"{m['date']}|{m['venue']}"
+            n = len(next(iter((d["races"].get(key, {}).get("races_by_analyst")
+                               or {}).values()), []))
+            lines.append(f"· {m['date']} {m['venue']} — {n} 場")
+        return "\n".join(lines)
+
+    want = re.sub(r"[^a-z]", "", arg.lower())
+    hit = next((m for m in ms
+                if want in re.sub(r"[^a-z]", "", m["venue"].lower())), None)
+    if not hit:
+        return f"搵唔到「{arg[:20]}」。而家有：" + "、".join(m["venue"] for m in ms)
+    key = f"{hit['date']}|{hit['venue']}"
+    races = next(iter((d["races"].get(key, {}).get("races_by_analyst")
+                       or {}).values()), [])
+    lines = [f"🏇 {hit['date']} {hit['venue']} · {len(races)} 場", ""]
+    for r in sorted(races, key=lambda x: x.get("race_number") or 0):
+        rno = r.get("race_number")
+        od = _odds(hit["date"], hit["venue"], rno)
+        head = f"R{rno}" + (f" {r.get('distance')}" if r.get("distance") else "")
+        lines.append(head)
+        for p in (r.get("top_picks") or [])[:3]:
+            num = p.get("horse_number")
+            w, pl = od.get(num, ("", ""))
+            price = f"  賽前 贏${w} 位${pl}" if w and w != "-" else ""
+            lines.append(f"  {PICKMARK.get(p.get('rank'), '·')}{p.get('horse_name')}"
+                         f" ({p.get('grade') or '?'}){price}")
+    return "\n".join(lines)
+
+
+def cmd_health() -> str:
+    import subprocess
+    try:
+        r = subprocess.run(["/usr/bin/python3", str(HERE / "au_healthcheck.py")],
+                           capture_output=True, text=True, timeout=900)
+        d = json.loads(r.stdout.split("\n通知")[0])
+    except Exception as exc:  # noqa: BLE001
+        return f"體檢行唔到：{type(exc).__name__}: {exc}"
+    state = d.get("state")
+    if state == "ok":
+        return "✅ 體檢正常 —— 今日場次全部上線：" + "、".join(d.get("live") or [])
+    if state == "in-progress":
+        return "⏳ 而家有排程 run 跑緊，發佈係最後一步 —— 遲啲再查"
+    return f"⚠️ 體檢：{state}\n缺：" + "、".join(d.get("missing") or [])
+
+
+def cmd_week() -> str:
+    """近七日逐日 Gold／Good 走勢。"""
+    from wongchoi_paths import AU_RACING  # noqa: PLC0415
+
+    days: dict[str, dict] = {}
+    for rep in (Path(AU_RACING) / "Archive").glob("*/*_Reflector_Report.md"):
+        day = rep.parent.name[:10]
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", day):
+            continue
+        b = rep.read_text(errors="replace")
+        n = len(re.findall(r"^- Performance label", b, re.M))
+        if not n:
+            continue
+        acc = days.setdefault(day, {"races": 0, "Gold": 0, "Good": 0})
+        acc["races"] += n
+        for k in ("Gold", "Good"):
+            m = re.search(rf"^- {k}: (\d+)$", b, re.M)
+            acc[k] += int(m.group(1)) if m else 0
+    if not days:
+        return "仲未有覆盤報告"
+    lines = ["📈 近期逐日表現（Gold = 前三全喺頭四揀）", ""]
+    for day in sorted(days)[-7:]:
+        a = days[day]
+        g = 100 * a["Gold"] / max(a["races"], 1)
+        bar = "█" * round(g / 5)
+        lines.append(f"{day}  {a['races']:>3}場  Gold {a['Gold']:>2} ({g:>4.0f}%) "
+                     f"Good {a['Good']:>2}  {bar}")
+    return "\n".join(lines)
+
+
+PICKMARK = {1: "①", 2: "②", 3: "③"}
+
 COMMANDS = {"/status": cmd_status, "/today": cmd_today, "/perf": cmd_perf,
+            "/health": cmd_health, "/week": cmd_week,
             "/help": lambda: HELP, "/start": lambda: HELP}
+# 收參數嘅指令要另外列 —— 白名單仍然係逐個字對，參數只當文字用嚟配對馬場名，
+# 永遠唔會變成路徑或者指令。
+COMMANDS_WITH_ARG = {"/picks": cmd_picks}
 
 
 def load_offset() -> int:
@@ -161,10 +299,17 @@ def main() -> int:
             # 唔識嘅人：唔覆、唔留手尾。覆一句「你唔准」等於話畀人知隻 bot 存在。
             continue
         # ⚠️ 逐個字對白名單。訊息內容永遠唔會變成路徑、參數或者指令。
-        word = (msg.get("text") or "").strip().split()[:1]
-        fn = COMMANDS.get(word[0].lower()) if word else None
+        parts = (msg.get("text") or "").strip().split()
+        head = parts[0].lower() if parts else ""
+        fn = COMMANDS.get(head)
+        fn_arg = COMMANDS_WITH_ARG.get(head)
         try:
-            reply = fn() if fn else f"唔識「{(msg.get('text') or '')[:30]}」\n\n{HELP}"
+            if fn:
+                reply = fn()
+            elif fn_arg:
+                reply = fn_arg(" ".join(parts[1:])[:40])
+            else:
+                reply = f"唔識「{(msg.get('text') or '')[:30]}」\n\n{HELP}"
         except Exception as exc:  # noqa: BLE001
             reply = f"行嗰陣出錯：{type(exc).__name__}: {exc}"
         api("sendMessage", chat_id=chat_id, text=reply[:3900],
