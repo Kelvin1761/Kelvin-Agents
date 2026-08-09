@@ -156,17 +156,23 @@ RE_RUN = re.compile(
 # ⚠️ 試閘寫 `(of 0)` —— **冇 `$` 號**。舊 regex 要求 `$`，所以試閘 match 唔到，
 # 跟住喺較闊嘅視窗度撈到隔籬**正式賽**嘅獎金：試閘顯示 $175,000，班次判斷即刻錯。
 RE_PRIZE = re.compile(r"\(of\s*\$?([\d,]+)\)")
-# ⚠️ Sportsbet 出兩種寫法，`Settled` 嗰截係**可有可無**：
-#     In running Settled 11th, 800m 11th, 400m 11th   ← 33.8%
-#     In running 800m 5th, 400m 3rd                   ← 22.6%
-# 舊 regex 硬食 `In running 800m`，所以第一種**一條都 match 唔到** ——
-# 走位覆蓋率由應有嘅 56.4% 跌到 22.6%，而且 `Settled` 成個掉咗。
-# 掉咗 Settled 嘅代價唔止走位：`inject_fact_anchors` 嘅 PI = Settled − Finish，
-# 冇 Settled 就冇 PI，`_sectional_breakdown().has_pi` 永遠 False，
-# 段速分全場中性 60（實測 evidence 0% vs 現有數據源 45%）。
-RE_INRUN = re.compile(r"In running\s+(?:Settled\s+(?P<settled>\w+),\s*)?"
-                      r"800m\s+(?P<p800>\w+),\s*400m\s+(?P<p400>\w+)")
+# Sportsbet 嘅 checkpoint 不但可有可無，仲會因路程多少而改變：
+#     Settled 3rd, 1200m 3rd, 800m 5th, 400m 7th
+#     Settled 8th, 800m 7th, 400m 5th
+#     400m 2nd
+# 舊 regex 要求 Settled 之後立即係 800m，一有 1200m 就將**整段**掉咗；
+# 只有 400m 嘅短程寫法亦同樣掉咗。先围住 `In running` body，再獨立
+# parse 每個 checkpoint，唔再用一條收得太緊嘅 regex 綁死整個 schema。
+RE_INRUN = re.compile(
+    r"In running\s+(?P<body>.*?)(?=\s+Sectionals\b|$)",
+    re.I,
+)
+RE_INRUN_POS = re.compile(
+    r"(?P<marker>Settled|\d{3,4}m)\s+(?P<pos>\d+(?:st|nd|rd|th))",
+    re.I,
+)
 RE_SECT = re.compile(r"Sectionals\s+600m\s+(?P<l600>[\d.]+)s")
+RE_WINNING_TIME = re.compile(r"Winning Time\s+(?P<time>\d{1,2}:\d{2}\.\d{3})", re.I)
 # ⚠️ 場地係寫成 "Flemington ( Soft ) 20/06/2026"（括號入面有空格），
 # 唔容許空格就成條 header 都 match 唔到（實測覆蓋率會由 92% 跌到 0%）。
 # ⚠️ 場地可以係**空**：試閘寫成 `Southside Cranbourne ( ) 13/04/2026 Race 2 800m
@@ -189,6 +195,23 @@ RE_OPP = re.compile(r"(?P<ord>1st|2nd|3rd)\s+(?P<name>[A-Z][A-Za-z'\- ]+?)\s*"
                     r"(?:\s*(?P<mgn>[\d.]+)L)?")
 RE_STAT = re.compile(r"(?P<k>1st Up|2nd Up|3rd Up|Distance|Track|Trk/Dist|Firm|Good|Soft|"
                      r"Heavy|Synthetic|Turf|Career|Jockey|12 months)\s+(?P<v>\d+:\s*[\d\-]+)")
+
+
+def _parse_in_running(text):
+    """將 Sportsbet 不定長 checkpoint 轉成穩定 key。
+
+    同一段偶然重覆 marker 時取第一個；一個 marker 壞了亦唔會影響其他
+    marker，避免再出現「一格不合格、整行消失」。
+    """
+    match = RE_INRUN.search(str(text or ""))
+    if not match:
+        return {}
+    positions = {}
+    for pos_match in RE_INRUN_POS.finditer(match.group("body")):
+        marker = pos_match.group("marker").lower()
+        key = "settled" if marker == "settled" else f"p{marker[:-1]}"
+        positions.setdefault(key, pos_match.group("pos"))
+    return positions
 
 
 def parse_overview(html):
@@ -356,9 +379,24 @@ def parse_race(html):
     m = re.search(r"Race\s+\d+\s*-\s*(\d{2}:\d{2})", txt)
     if m:
         meta["start"] = m.group(1)
+    # 賽事名同路程喺 `eventname` 內，呢個錨定比全頁第一個
+    # `NNNNm` 安全（頁面同時有其他場次連結同大量歷史路程）。
+    event = re.search(
+        r'<div\s+class="eventname"[^>]*>.*?'
+        r'<span[^>]*(?:title="(?P<title>[^"]*)")?[^>]*>'
+        r'\s*(?P<distance>\d{3,4})m\s+(?P<label>.*?)</span>',
+        html,
+        re.I | re.S,
+    )
+    if event:
+        meta["distance"] = int(event.group("distance"))
+        race_class = re.sub(r"<[^>]+>", " ", event.group("title") or event.group("label") or "")
+        race_class = re.sub(r"\s+", " ", race_class).strip().rstrip(".")
+        if race_class:
+            meta["race_class"] = race_class
     m = re.search(r"(\d{3,4})m\s", flat)
     if m:
-        meta["distance"] = int(m.group(1))
+        meta.setdefault("distance", int(m.group(1)))
 
     overview = parse_overview(html)
     # 名 → ID 對應，寫 meeting 檔嗰陣攞騎練統計用
@@ -396,8 +434,9 @@ def parse_race(html):
             pass                      # 取最接近 Finished 嗰個 header
         if hm:
             hdr = hm.groupdict()
-        ir = RE_INRUN.search(seg)
+        in_running = _parse_in_running(seg)
         sc = RE_SECT.search(seg)
+        winning_time = RE_WINNING_TIME.search(seg)
         opps = [o.groupdict() for o in RE_OPP.finditer(seg)][:3]
         # 獎金一定喺 `Finished x/y … (of $N), Jockey …` 之間，即係 RE_RUN
         # 個 match 範圍以內。掃闊過呢個範圍就會撈到下一仗嘅獎金。
@@ -409,13 +448,23 @@ def parse_race(html):
         cls_txt = (hdr or {}).get("cls") or ""
         is_trial = bool(RE_TRIAL.search(cls_txt)) or (pz and pz.group(1) == "0")
         runs.append({**m.groupdict(),
+                     # Sportsbet 頭馬嘅 `Finished 1/N` 寫法不會印 `0L`。
+                     # 但頭馬輸距就係 0；留 None 會令 complete-form
+                     # Performance Quality 反而丟掉所有贏馬往績。
+                     "margin": m.group("margin") or (
+                         "0" if m.group("pos") == "1" else None
+                     ),
                      "header": hdr,
                      "is_trial": is_trial,
                      "prize": pz.group(1) if pz else None,
-                     "p800": ir.group("p800") if ir else None,
-                     "p400": ir.group("p400") if ir else None,
-                     "settled": ir.group("settled") if ir else None,
+                     "p1200": in_running.get("p1200"),
+                     "p800": in_running.get("p800"),
+                     "p400": in_running.get("p400"),
+                     "settled": in_running.get("settled"),
                      "l600": sc.group("l600") if sc else None,
+                     "winning_time": (
+                         winning_time.group("time") if winning_time else None
+                     ),
                      "opponents": opps})
     return {"meta": meta, "overview": overview, "runs": runs, "text": txt}
 
@@ -431,8 +480,16 @@ def coverage(parsed):
     return {
         "runners": len(parsed["overview"]),
         "runs": n,
-        "in_running_pct": pct("p800"),
+        "in_running_pct": 100.0 * sum(
+            1 for r in runs
+            if any(r.get(key) for key in ("settled", "p1200", "p800", "p400"))
+        ) / n,
+        "settled_pct": pct("settled"),
+        "position_1200_pct": pct("p1200"),
+        "position_800_pct": pct("p800"),
+        "position_400_pct": pct("p400"),
         "sectional_600_pct": pct("l600"),
+        "winning_time_pct": pct("winning_time"),
         "opponent_lines_pct": 100.0 * sum(1 for r in runs if len(r["opponents"]) >= 1) / n,
         "opponent_full_top3_pct": 100.0 * sum(1 for r in runs if len(r["opponents"]) >= 3) / n,
         "header_pct": pct("header"),
@@ -449,7 +506,9 @@ def probe(parsed, label=""):
     if not c.get("runs"):
         print("  ❌ 解析唔到任何往績"); return c
     print(f"  出賽馬 {c['runners']}   往績場數 {c['runs']}")
-    rows = [("In running 800m/400m（定位）", c["in_running_pct"], "settling position"),
+    rows = [("In running 任一 checkpoint（定位）", c["in_running_pct"], "settling position"),
+            ("Settled / 1200m / 800m / 400m", c["settled_pct"], "Settled coverage"),
+            ("歷史賽事 Winning Time", c["winning_time_pct"], "time research"),
             ("Sectionals 600m（賽事末段環境）", c["sectional_600_pct"], "pace_figure"),
             ("對手線 至少一個", c["opponent_lines_pct"], "賽績線"),
             ("對手線 完整前三", c["opponent_full_top3_pct"], "賽績線"),
@@ -465,7 +524,8 @@ def probe(parsed, label=""):
               f"{h.get('dist','?')}m {h.get('cls','')[:24]}")
         print(f"        名次 {ex['pos']}/{ex['field']}  輸距 {ex.get('margin')}L  "
               f"檔 {ex['barrier']}  負磅 {ex['weight']}kg  SP {ex.get('sp')}")
-        print(f"        定位 800m {ex['p800']} → 400m {ex['p400']}   末段 600m {ex['l600']}s")
+        print(f"        定位 1200m {ex.get('p1200') or '-'} → 800m {ex['p800']} "
+              f"→ 400m {ex['p400']}   末段 600m {ex['l600']}s")
         for o in ex["opponents"]:
             print(f"        {o['ord']} {o['name']} ({o['jockey']} {o['wt']}kg)"
                   + (f" {o['mgn']}L" if o.get("mgn") else ""))
@@ -547,6 +607,8 @@ def run_line(run):
     if run.get("sp"):
         parts.append(f"Flucs:$- ${run['sp']}")
     pos = []
+    if run.get("p1200"):
+        pos.append(f"{run['p1200']}@1200m")
     if run.get("p800"):
         pos.append(f"{run['p800']}@800m")
     if run.get("p400"):
@@ -560,6 +622,11 @@ def run_line(run):
         tail += f" margin:{run['margin']}L"
     if run.get("field"):
         tail += f" starters:{run['field']}"
+    # 呢個係同場 race-level winning time，唔係本駒 runner time。
+    # 先完整 transport，交由 point-in-time 研究程式做 track/distance/going
+    # normalization；絕對唔喺呢度直接當成個體速度加分。
+    if run.get("winning_time"):
+        tail += f" WinningTime:{run['winning_time']}"
     delta = _l600_delta(run.get("l600"), track, dist)
     if delta is not None:
         # ⚠️ 個 key **一定要**係 `L600 Delta:`，唔係 `Last600:`。
@@ -592,7 +659,7 @@ _STAT_KEYS = ("Prizemoney", "Ave $", "Win Range", "Win", "Place", "Career", "12 
               "Track", "Trk/Dist", "Firm", "Good", "Soft", "Heavy")
 
 
-def parse_runner_blocks(html):
+def parse_runner_blocks(html, *, include_runs=True):
     """逐匹馬嘅統計區塊。Sportsbet 用 label 行 + value 行交替，所以掃 label→下一個非空行。
 
     ⚠️ `Jockey` 呢個 key 喺呢度係**人馬配搭往績**（`5: 3-1-0` = 呢位騎師策騎過呢隻馬
@@ -610,7 +677,7 @@ def parse_runner_blocks(html):
                 and re.fullmatch(r"\(\d+\)", ne[k + 1][1])
                 and ne[k + 2][1] == "T"):
             cur = {"name": l.strip(), "barrier": int(ne[k + 1][1].strip("()")),
-                   "stats": {}, "_start": i}
+                   "stats": {}, "profile": {}, "_start": i}
             # 負磅：`W` 標籤之後嗰行（例 `61.5kg`）。Racecard 要佢，
             # 唔攞就會寫成 `Weight: ?`。
             for j in range(k + 3, min(k + 12, len(ne))):
@@ -622,6 +689,30 @@ def parse_runner_blocks(html):
         if cur is not None and l in _STAT_KEYS and k + 1 < len(ne):
             cur["stats"].setdefault(l, ne[k + 1][1])
         if cur is not None:
+            # Sportsbet 將血統／識別資料放喺 runner-stats 頭兩行，gear
+            # 放喺 table 前面。以前 parser 只掃 record label，所以明明 raw
+            # HTML 全部有齊，Formguide 仍然寫成空 `Sire: | Dam:`。
+            # 同一行可以有多個 label，用 lookahead 分開，唔讓 Breeder
+            # 食埋 Colours。
+            for profile_match in re.finditer(
+                r"(?P<label>Foaled|Sire|Dam|Breeder|Colours|Gear Changes):\s*"
+                r"(?P<value>.*?)(?=\s+(?:Foaled|Sire|Dam|Breeder|Colours|Gear Changes):|$)",
+                l,
+                re.I,
+            ):
+                key = profile_match.group("label").lower().replace(" ", "_")
+                value = profile_match.group("value").strip().rstrip(".")
+                if value:
+                    cur["profile"].setdefault(key, value)
+            # 真實 HTML 通常將 `<strong>Gear Changes:</strong>` 同
+            # `<span class="comment">...</span>` 分開兩行；`to_text` 會保留
+            # 個 newline。label-only 行要明確食下一個 non-empty value。
+            if (l.strip().lower() == "gear changes:" and k + 1 < len(ne)
+                    and not re.match(r"^[A-Za-z ]+:\s*$", ne[k + 1][1])):
+                cur["profile"].setdefault(
+                    "gear_changes", ne[k + 1][1].strip().rstrip(".")
+                )
+        if cur is not None:
             cur["_end"] = i
         if cur is not None and "_start" not in cur:
             cur["_start"] = i
@@ -632,6 +723,9 @@ def parse_runner_blocks(html):
         offsets.append(pos)
         pos += len(l) + 1
     for b in blocks:
+        if not include_runs:
+            b["runs"] = []
+            continue
         s = offsets[b.get("_start", 0)]
         e = offsets[min(b.get("_end", len(lines) - 1) + 1, len(lines) - 1)]
         b["runs"] = parse_race(full[s:e])["runs"] if e > s else []
@@ -700,6 +794,7 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
                 name = ov.get("name", "?")
                 blk = by_name.get(name.lower(), {})
                 st = blk.get("stats", {})
+                profile = blk.get("profile", {})
                 bar = blk.get("barrier", "?")
                 if ov.get("scratched"):
                     f_rc.write(f"{num}. {name} - status:Scratched\n")
@@ -722,7 +817,20 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
                     f_rc.write(f"Silk: {silk}\n")
                 f_rc.write("-" * 40 + "\n")
                 f_fg.write(f"[{num}] {name} ({bar})\n")
-                f_fg.write(f"{ov.get('age_sex','')} | Sire: | Dam: \n")
+                f_fg.write(
+                    f"{ov.get('age_sex','')} | Sire: {profile.get('sire','')} "
+                    f"| Dam: {profile.get('dam','')}\n"
+                )
+                f_fg.write(
+                    f"Foaled: {profile.get('foaled','-')} | "
+                    f"Breeder: {profile.get('breeder','-')} | "
+                    f"Colours: {profile.get('colours','-')}\n"
+                )
+                # Gear 係賽前公開資料，但「任何 gear change = 加分」冇有
+                # 能力根據。先用 Sportsbet-specific key 完整保留做 review，
+                # 唔喂入現有 `Gear:` health-score regex，等過 canonical gate 先入分。
+                if profile.get("gear_changes"):
+                    f_fg.write(f"SportsbetGear: Changes: {profile['gear_changes']}\n")
                 f_fg.write(f"Flucs:$- ${ov.get('fixed_win','-')}\n")
                 def _ly(kind, person_name):
                     nonlocal ly_hit, ly_miss

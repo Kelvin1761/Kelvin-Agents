@@ -5888,7 +5888,10 @@ def _build_timing_summary(official_entries: list[dict], trial_entries: list[dict
 
 
 def _parse_time_to_seconds(text: str) -> float | None:
-    match = re.search(r"(\d{2}):(\d{2})\.(\d{3})", text)
+    # 賽馬時間大部分係 `1:09.230`；舊 regex 硬要兩位分鐘，
+    # 只會識 `01:09.230`，令 Sportsbet `Winning Time 1:52.590`、亦即
+    # 幾乎所有正式賽事時間都靜靜地變 None。
+    match = re.search(r"(?<!\d)(\d{1,2}):(\d{2})\.(\d{3})(?!\d)", text)
     if not match:
         return None
     return int(match.group(1)) * 60 + int(match.group(2)) + int(match.group(3)) / 1000.0
@@ -5963,6 +5966,7 @@ def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
             "margin": margin,
             "margin_source": margin_source,
             "settled_pos": _parse_running_position(header, "Settled"),
+            "pos_1200": _parse_running_position(header, "1200m"),
             "pos_400": _parse_running_position(header, "400m"),
             "pos_800": _parse_running_position(header, "800m"),
             "winner_time_seconds": winner_time,

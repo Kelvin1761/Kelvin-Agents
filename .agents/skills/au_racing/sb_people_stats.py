@@ -21,13 +21,12 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from claw_sportsbet_form import BASE, SportsbetFormFetcher, to_text  # noqa: E402
+from claw_sportsbet_form import BASE, SportsbetFormFetcher  # noqa: E402
 
 CACHE_NAME = "AU_Sportsbet_People_Cache.json"
 # ⚠️ TTL 可以由 env 覆寫。2026-08-05：晚更（22:00，有十二個鐘）設 0 令每個場次都
@@ -36,12 +35,64 @@ CACHE_NAME = "AU_Sportsbet_People_Cache.json"
 # 之下一個 8 月大爆發嘅騎師，我哋仲用 7 月中嘅數字，最多滯後 3 個星期。
 # 成本：一個場次約 90–100 個人物 × 節奏（20 秒）≈ 30–35 分鐘，晚更做得到。
 TTL_DAYS = int(os.environ.get("WC_SB_PEOPLE_TTL_DAYS", "21"))
-# 個人頁嘅統計表逐行係：標籤 Starts 1st 2nd 3rd Win% Place% AvgOdds ROI
-RE_ROW = re.compile(
-    r"^(?P<label>[A-Za-z0-9$,+\- ]+?)\s+(?P<starts>\d+)\s+(?P<w>[\d\-]+)\s+"
-    r"(?P<p>[\d\-]+)\s+(?P<s>[\d\-]+)\s+(?P<win>[\d.]+)%\s+(?P<place>[\d.]+)%", re.M)
-WANT = {"Career", "12 Months", "Last 10", "Last 100",
-        "Good", "Soft", "Heavy", "Firm", "Turf", "Synthetic"}
+def _stat_number(text, *, integer=False):
+    value = str(text or "").strip().replace(",", "").replace("$", "").replace("%", "")
+    if value in {"", "-"}:
+        return 0 if integer else None
+    try:
+        return int(float(value)) if integer else float(value)
+    except ValueError:
+        return 0 if integer else None
+
+
+def parse_person_tables(html):
+    """保留個人頁所有 table context，不再將同名 label 壓平。
+
+    結構：`{section: {window: {label: stats}}}`，例如
+    `Track Conditions -> Last 12 Months -> Soft`。這使 Distance / Barrier /
+    Field Size 等之後可以在有 captured_at 的 forward snapshot 上驗證，
+    而不會把 Career 與 Last 12 Months 的 `Good` 混為同一格。
+    """
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        return {}
+    soup = BeautifulSoup(html, "lxml")
+    output = {}
+    for table in soup.find_all("table"):
+        title_cell = table.select_one("thead th.title")
+        if title_cell is None:
+            continue
+        subtitle_node = title_cell.select_one(".subtitle")
+        subtitle = subtitle_node.get_text(" ", strip=True) if subtitle_node else ""
+        if subtitle_node:
+            subtitle_node.extract()
+        section = title_cell.get_text(" ", strip=True)
+        if not section:
+            continue
+        window = subtitle or "default"
+        rows = output.setdefault(section, {}).setdefault(window, {})
+        for tr in table.select("tbody tr"):
+            label_cell = tr.select_one("td.title")
+            if label_cell is None:
+                continue
+            label = label_cell.get_text(" ", strip=True)
+            if not label:
+                continue
+            def cell(css):
+                node = tr.select_one(css)
+                return node.get_text(" ", strip=True) if node else ""
+            rows[label] = {
+                "starts": _stat_number(cell("td.starts"), integer=True),
+                "1st": _stat_number(cell("td.wins"), integer=True),
+                "2nd": _stat_number(cell("td.seconds"), integer=True),
+                "3rd": _stat_number(cell("td.thirds"), integer=True),
+                "win_pct": _stat_number(cell("td.win-rate")),
+                "place_pct": _stat_number(cell("td.place-rate")),
+                "avg_win_odds": _stat_number(cell("td.avg-win-odds")),
+                "roi_pct": _stat_number(cell("td.roi")),
+            }
+    return output
 
 
 def cache_path():
@@ -85,20 +136,41 @@ def parse_person(html):
     同一個標籤（例 `Good`）喺「Career」同「Last 12 Months」兩張表都出現，
     所以只收**第一次**（生涯），唔好畀後面嗰張覆蓋。
     """
-    txt = to_text(html)
-    # tab 分隔嘅表格喺 to_text 之後變成空白分隔，統一成單空格先 match
-    flat = "\n".join(re.sub(r"\s+", " ", l).strip() for l in txt.splitlines())
+    tables = parse_person_tables(html)
     out = {}
-    for m in RE_ROW.finditer(flat):
-        label = m.group("label").strip()
-        if label not in WANT or label in out:
-            continue
-        num = lambda k: (0 if m.group(k) == "-" else int(m.group(k)))  # noqa: E731
-        out[label] = {"starts": int(m.group("starts")), "1st": num("w"),
-                      "2nd": num("p"), "3rd": num("s"),
-                      "win_pct": float(m.group("win")),
-                      "place_pct": float(m.group("place"))}
+    overall = (tables.get("Overall Stats") or {}).get("default") or {}
+    for label in ("Career", "12 Months", "Last 10", "Last 100"):
+        if label in overall:
+            out[label] = overall[label]
+    for section in ("Track Conditions", "Track Types"):
+        career = (tables.get(section) or {}).get("Career") or {}
+        for label in ("Good", "Soft", "Heavy", "Firm", "Turf", "Synthetic"):
+            if label in career:
+                out[label] = career[label]
     return out
+
+
+def snapshot_path(path=None):
+    base = Path(path) if path else cache_path()
+    return base.with_name("AU_Sportsbet_People_Snapshots.jsonl")
+
+
+def append_snapshot(path, *, key, name, kind, person_id, fetched_at,
+                    stats, contextual_stats):
+    """追加 point-in-time snapshot；永不覆蓋舊快照。"""
+    record = {
+        "captured_at": fetched_at,
+        "key": key,
+        "name": name,
+        "kind": kind,
+        "id": str(person_id),
+        "stats": stats,
+        "contextual_stats": contextual_stats,
+    }
+    snapshot = snapshot_path(path)
+    snapshot.parent.mkdir(parents=True, exist_ok=True)
+    with snapshot.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n")
 
 
 def ly_token(stats):
@@ -146,12 +218,24 @@ def refresh(people, fetcher=None, ttl_days=TTL_DAYS, max_people=40, path=None,
         if not html:
             continue
         stats = parse_person(html)
+        contextual_stats = parse_person_tables(html)
         if not stats:
             continue
+        fetched_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
         cache[key] = {"name": name, "id": str(pid), "kind": kind.lower(),
-                      "stats": stats, "ly": ly_token(stats),
-                      "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+                      "stats": stats, "contextual_stats": contextual_stats,
+                      "ly": ly_token(stats), "fetched_at": fetched_at}
         path.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
+        append_snapshot(
+            path,
+            key=key,
+            name=name,
+            kind=kind.lower(),
+            person_id=pid,
+            fetched_at=fetched_at,
+            stats=stats,
+            contextual_stats=contextual_stats,
+        )
         ok += 1
     if verbose:
         print(f"   騎練統計：成功 {ok}，cache 共 {len(cache)}")
