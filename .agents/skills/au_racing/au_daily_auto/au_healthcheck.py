@@ -87,7 +87,40 @@ def heal() -> tuple[bool, str]:
         return False, f"{type(exc).__name__}: {exc}"
 
 
+def run_in_progress() -> bool:
+    """而家有冇排程 run 跑緊。
+
+    ⚠️ 冇呢個判斷嘅話，任何排喺個 run 完成之前嘅體檢都**必然**報「冇上線」——
+    因為發佈本身就係最後一步 —— 跟住去補發佈，俾把鎖擋住，再send一條假警報。
+    假警報係最快令人開始無視通知嘅嘢，而下一次真出事就係嗰個習慣害死你。
+
+    用嗰把共用鎖做判斷，唔數 process：鎖住喺資料根，兩個 checkout 共用，而且
+    正正就係「有人喺度郁緊呢批資料」嘅權威訊號。
+    """
+    import fcntl
+
+    from wongchoi_paths import AU_RACING
+
+    lock = Path(AU_RACING) / ".au_daily_schedule.lock"
+    try:
+        handle = lock.open("w")
+    except OSError:
+        return False
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return True
+    else:
+        fcntl.flock(handle, fcntl.LOCK_UN)
+        return False
+    finally:
+        handle.close()
+
+
 def check(day: str) -> dict:
+    if run_in_progress():
+        return {"state": "in-progress",
+                "detail": "而家有排程 run 跑緊 —— 發佈係最後一步，仲未到"}
     live = live_meetings()
     expect = au_venues_today(day)
     scored = local_scored(day)
@@ -121,6 +154,9 @@ def main() -> int:
             print("通知送唔出:", exc)
 
     if res["state"] == "ok":
+        return 0
+    if res["state"] == "in-progress":
+        # 唔出聲。跑緊唔係問題，而為咗「有嘢報」而報就係製造雜訊。
         return 0
     if res["state"] == "unknown":
         notify(f"⚠️ AU 體檢 {day}\n讀唔到 live dashboard —— 未能核實今日賽事有冇上線")

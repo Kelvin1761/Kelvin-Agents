@@ -27,7 +27,28 @@ VENUES = {"Dubbo", "Kilcoy", "Nowra", "Pakenham Synthetic"}
 def patched(live, expect, scored):
     return unittest.mock.patch.multiple(
         H, live_meetings=lambda: live, au_venues_today=lambda day: expect,
-        local_scored=lambda day: scored)
+        local_scored=lambda day: scored, run_in_progress=lambda: False)
+
+
+class InProgressTests(unittest.TestCase):
+    """個 run 跑緊嘅時候唔可以報「冇上線」。
+
+    實測五次真實晚更：22:00 開工，收工由 23:33 到 01:59，中位數 00:30。任何排喺
+    完成之前嘅體檢都會撞正個 run —— 而發佈係最後一步，所以佢**必然**見到「今日
+    場次冇喺 live」，跟住去補發佈、俾鎖擋住、send 一條假警報。
+    """
+
+    def test_a_running_job_is_not_a_failure(self):
+        with unittest.mock.patch.object(H, "run_in_progress", lambda: True):
+            self.assertEqual(H.check(DAY)["state"], "in-progress")
+
+    def test_in_progress_short_circuits_before_touching_the_network(self):
+        called = []
+        with unittest.mock.patch.multiple(
+                H, run_in_progress=lambda: True,
+                live_meetings=lambda: called.append("live")):
+            H.check(DAY)
+        self.assertEqual(called, [])
 
 
 class HealthcheckTests(unittest.TestCase):
