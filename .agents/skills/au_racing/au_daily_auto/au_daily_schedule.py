@@ -2223,8 +2223,16 @@ def run_morning(runlog: RunLog, args, today: date) -> int:
 @contextlib.contextmanager
 def single_run_lock():
     """兩個 mode 共用一把鎖 —— 佢哋都會動同一批目錄同同一個 dashboard。"""
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    handle = (LOG_DIR / "au_daily_schedule.lock").open("w")
+    # ⚠️ 把鎖放喺**資料根**，唔可以放喺 checkout 入面。2026-08-09 排程搬咗去自己
+    # 一個 worktree，如果鎖跟住 checkout 走，排程同一個由主 repo 手動開嘅 run 就
+    # 各攞各鎖、同時郁同一批 folder、同一個 Chrome profile、同一個 dashboard ——
+    # 正正係當初加鎖要防嗰件事。資料根係兩邊唯一共用嘅嘢。
+    lock_path = Path(AU_RACING) / ".au_daily_schedule.lock"
+    try:
+        handle = lock_path.open("w")
+    except OSError:
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        handle = (LOG_DIR / "au_daily_schedule.lock").open("w")
     try:
         fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
