@@ -876,3 +876,55 @@ class TestCodeVersion(unittest.TestCase):
 
     def test_empty_status_is_a_clean_tree(self):
         self.assertEqual(S.engine_dirty_from_status(""), [])
+
+
+class TestReflectionPush(unittest.TestCase):
+    """覆盤推送只可以喺真係覆盤過嘢嗰陣出。
+
+    每晚重推同一份舊摘要，最快令人開始無視通知 —— 而下一次真出事就係嗰個習慣
+    害死你。賽日亦要由歸檔到嘅 folder 名推導：補漏覆盤可以一次過執返幾日前嘅
+    場次，嗰陣 review_day 唔等於嗰批場次嘅賽日。
+    """
+
+    def _push(self, archived, build=lambda day: f"摘要 {day}"):
+        runlog = unittest.mock.MagicMock()
+        pushed = []
+        fake_notify = unittest.mock.MagicMock()
+        fake_notify.push = lambda text: (pushed.append(text), ["telegram: ok"])[1]
+        fake_reflect = unittest.mock.MagicMock()
+        fake_reflect.build = build
+        with unittest.mock.patch.dict(sys.modules, {"au_notify": fake_notify,
+                                                    "au_reflect_notify": fake_reflect}):
+            S.push_reflection(runlog, archived)
+        return pushed, runlog
+
+    def test_pushes_once_per_race_day_that_was_archived(self):
+        pushed, _ = self._push(["2026-08-09 Wagga Race 1-7",
+                                "2026-08-09 Casterton Race 1-7"])
+        self.assertEqual(pushed, ["摘要 2026-08-09"])
+
+    def test_a_backfill_covering_two_days_pushes_both(self):
+        pushed, _ = self._push(["2026-08-08 Randwick Race 1-10",
+                                "2026-08-09 Wagga Race 1-7"])
+        self.assertEqual(pushed, ["摘要 2026-08-08", "摘要 2026-08-09"])
+
+    def test_nothing_archived_sends_nothing(self):
+        pushed, _ = self._push([])
+        self.assertEqual(pushed, [])
+
+    def test_a_day_with_no_report_yet_is_skipped_quietly(self):
+        pushed, _ = self._push(["2026-08-09 Wagga Race 1-7"], build=lambda d: None)
+        self.assertEqual(pushed, [])
+
+    def test_a_push_failure_never_fails_the_run(self):
+        def boom(day):
+            raise RuntimeError("telegram down")
+
+        pushed, runlog = self._push(["2026-08-09 Wagga Race 1-7"], build=boom)
+        self.assertEqual(pushed, [])
+        runlog.step.assert_called()
+        self.assertEqual(runlog.step.call_args[0][1], "failed")
+
+    def test_folder_names_without_a_date_are_ignored(self):
+        pushed, _ = self._push(["Archive_scratch"])
+        self.assertEqual(pushed, [])

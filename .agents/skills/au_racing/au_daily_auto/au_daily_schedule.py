@@ -2159,6 +2159,39 @@ def finish_run(runlog: RunLog, dashboard_ok: bool, hard_temporary: bool) -> int:
     return EXIT_OK
 
 
+def push_reflection(runlog: RunLog, archived: list[str]) -> None:
+    """今次 run 有覆盤過嘅賽日，推一段逐個馬場嘅表現去手機。
+
+    ⚠️ 只喺**今次真係歸檔過嘢**先推。唔係嘅話每晚都會重推同一份舊摘要，跟住你
+    就會開始無視啲通知 —— 而下一次真出事嗰陣就係嗰個習慣害死你。
+
+    賽日由歸檔到嘅 folder 名推導，唔用 `review_day`：補漏覆盤可以一次過執返幾日
+    前嘅場次，嗰陣 review_day 唔等於嗰批場次嘅賽日。
+    """
+    days = sorted({name[:10] for name in archived if re.match(r"^\d{4}-\d{2}-\d{2}", name)})
+    if not days:
+        return
+    try:
+        sys.path.insert(0, str(HERE))
+        import au_notify
+        import au_reflect_notify
+    except Exception as exc:  # noqa: BLE001
+        log(f"[reflect-push] import 失敗（{type(exc).__name__}: {exc}）")
+        return
+    for day in days:
+        try:
+            text = au_reflect_notify.build(day)
+            if not text:
+                continue
+            sent = au_notify.push(text)
+            runlog.step("reflect-push", "ok" if sent else "no-outlet", day=day,
+                        detail="; ".join(sent) or None)
+        except Exception as exc:  # noqa: BLE001
+            # 推送失敗唔可以令 run 失敗 —— 覆盤已經做完，呢個只係報告。
+            runlog.step("reflect-push", "failed", day=day,
+                        detail=f"{type(exc).__name__}: {exc}")
+
+
 def run_evening(runlog: RunLog, args, review_day: date) -> int:
     archived: list[str] = []
     analysed: list[Path] = []
@@ -2171,6 +2204,8 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
         except TemporaryFailure as exc:
             runlog.error("review-archive", f"暫時性：{exc}")
             temporary = True
+        if archived:
+            push_reflection(runlog, archived)
     if not args.skip_analysis:
         try:
             analysed = step_analyse_next_day(runlog, review_day,
