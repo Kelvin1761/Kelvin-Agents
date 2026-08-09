@@ -41,4 +41,23 @@ export PATH
 
 cd "$PROJECT_ROOT" || exit 1
 
+# ── 追上最新模型 ────────────────────────────────────────────────────────────
+# ⚠️ 呢個 checkout 專屬排程，冇人喺度改嘢，所以 fast-forward 係安全嘅。
+# 點解要有：2026-08-09 實測，共用嗰個 repo 喺我 commit 完幾分鐘之後已經俾另一個
+# session 換咗去 tennis 分支。嗰次啱啱好仍然含住所有 AU 修正 —— 但一條舊分支就
+# 會靜靜咁用舊模型評分，而冇任何嘢會投訴。
+#
+# `sb_archive_meeting_ids.json` 係已追蹤但又會俾 run 寫入，所以 ff 之前先還原佢，
+# 否則 merge 會拒絕。內容係由索引頁推導返嚟嘅，掉咗唔會錯，只係要再derive一次。
+if [ -z "${WC_AU_NO_SELF_UPDATE:-}" ]; then
+  git fetch --quiet origin 2>/dev/null || print -r -- "⚠️ git fetch 失敗 —— 用現有版本繼續" >&2
+  git checkout --quiet -- .agents/skills/au_racing/data/sb_archive_meeting_ids.json 2>/dev/null || true
+  if git merge --ff-only --quiet origin/main 2>/dev/null; then
+    :
+  else
+    print -r -- "⚠️ fast-forward 唔到 origin/main —— 用現有版本繼續（唔會強制覆蓋）" >&2
+  fi
+  print -r -- "▶ 版本 $(git rev-parse --short HEAD) ($(git rev-parse --abbrev-ref HEAD))"
+fi
+
 exec /usr/bin/python3 "$SCRIPT_DIR/au_daily_schedule.py" --mode "$MODE" "$@"
