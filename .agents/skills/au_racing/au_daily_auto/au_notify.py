@@ -94,6 +94,24 @@ def post(url: str, data: bytes, headers: dict) -> str | None:
         return f"{type(exc).__name__}: {exc}"
 
 
+def push(text: str, title: str = "🏇 AU 覆盤") -> list[str]:
+    """直接推一段自訂文字（覆盤用），行同一批出口。"""
+    out = []
+    tok, chat = (os.environ.get("WC_NOTIFY_TELEGRAM_TOKEN"),
+                 os.environ.get("WC_NOTIFY_TELEGRAM_CHAT"))
+    if tok and chat:
+        err = post(f"https://api.telegram.org/bot{tok}/sendMessage",
+                   json.dumps({"chat_id": chat, "text": text[:3900],
+                               "disable_web_page_preview": True}).encode("utf-8"),
+                   {"Content-Type": "application/json"})
+        out.append(f"telegram: {'ok' if err is None else err}")
+    topic = os.environ.get("WC_NOTIFY_NTFY_TOPIC")
+    if topic:
+        err = post(f"https://ntfy.sh/{topic}", text.encode("utf-8"), {})
+        out.append(f"ntfy: {'ok' if err is None else err}")
+    return out
+
+
 def send(run: dict) -> list[str]:
     """回一串「邊個出口點樣」嘅描述。冇配置就回空。"""
     status = run.get("status") or "?"
