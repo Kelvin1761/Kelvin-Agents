@@ -27,6 +27,8 @@ MAX_FAMILY_DRAWDOWN_UNITS = -25.0
 # distinct, reversible tier with a hard half-unit cap.
 EARLY_MIN_RAW_SCORECARD = 50
 EARLY_MIN_FAMILY_SETTLED = 3
+# Superseded by registry.VALUE_PROFILES (kept: older stored payloads and the
+# reports still read these as the default family's limits).
 MIN_LEG_PROBABILITY = 0.58
 # feature_snapshots stores a 0-100 score in production (the existing hard
 # no-bet contract is 65), while a few older tests/exports use 0-1.  Keep the
@@ -283,9 +285,19 @@ def recommendation_gate(scorecard: dict | None, roi: dict | None) -> dict:
 
 
 def leg_is_formal_candidate(leg: dict, gate: dict) -> bool:
-    """Apply fixed per-leg limits after the evidence gate has passed."""
-    if family_for_market(leg.get("market_key") or "") not in set(gate.get("enabled_families") or []):
+    """Apply the family's registered per-leg limits after the gate has passed.
+
+    The limits come from ``registry.VALUE_PROFILES`` -- the same definition the
+    pricer selects on.  They used to be duplicated as module constants here,
+    which is how the gate ended up demanding 50 settled bets inside a window
+    the pricer never produced.
+    """
+    from tennis_wc.props.registry import value_profile_for_family
+
+    family = family_for_market(leg.get("market_key") or "")
+    if family not in set(gate.get("enabled_families") or []):
         return False
+    profile = value_profile_for_family(family)
     try:
         probability = float(leg["prob"])
         odds = float(leg["odds"])
@@ -293,9 +305,9 @@ def leg_is_formal_candidate(leg: dict, gate: dict) -> bool:
     except (KeyError, TypeError, ValueError):
         return False
     return (
-        MIN_LEG_PROBABILITY <= probability <= 1.0
+        profile.min_probability <= probability <= 1.0
         and data_quality >= MIN_DATA_QUALITY
-        and MIN_LEG_ODDS <= odds <= MAX_LEG_ODDS
+        and profile.min_odds <= odds <= profile.max_odds
         and float(leg.get("edge") or 0) > 0
         and float(leg.get("ev") or 0) > 0
         and confidence_score(leg, gate) >= MIN_CONFIDENCE_SCORE

@@ -43,64 +43,96 @@ def main() -> int:
         "--through",
         help="include market dates up to YYYY-MM-DD (default: latest stored date)",
     )
+    parser.add_argument(
+        "--rebuild-source-tracker",
+        action="store_true",
+        help=(
+            "WRITE the replay into --source-db instead of a throwaway clone. "
+            "The existing prop_tracker is copied to prop_tracker_pre_rebuild "
+            "first. Use when the stored tracker was written by pricing code "
+            "that no longer exists, so the evidence gate is reading rows the "
+            "current model never produced."
+        ),
+    )
     args = parser.parse_args()
     source = args.source_db.expanduser().resolve()
     if not source.is_file():
         parser.error(f"database not found: {source}")
 
+    if args.rebuild_source_tracker:
+        return _run_replay(source, args.through, rebuild=True)
+
     with tempfile.TemporaryDirectory(prefix="tennis-prop-replay-") as tmp:
         clone = Path(tmp) / "replay.db"
         _backup_database(source, clone)
-        os.environ["DATABASE_URL"] = f"sqlite:///{clone}"
+        return _run_replay(clone, args.through, rebuild=False, source_label=source)
 
-        # Import after DATABASE_URL is pinned to the disposable clone.
-        from tennis_wc.database.db import get_connection
-        from tennis_wc.props.daily import price_ace_props_for_date
-        from tennis_wc.props.settlement import (
-            model_vs_market_scorecard,
-            prop_roi_report,
-            settle_props,
+
+def _run_replay(database: Path, through, rebuild: bool, source_label=None) -> int:
+    os.environ["DATABASE_URL"] = f"sqlite:///{database}"
+
+    # Import after DATABASE_URL is pinned to the database being replayed.
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props.daily import price_ace_props_for_date
+    from tennis_wc.props.settlement import (
+        model_vs_market_scorecard,
+        prop_roi_report,
+        settle_props,
+    )
+    from tennis_wc.props.strategy import recommendation_gate
+
+    conn = get_connection()
+    archived = None
+    if rebuild:
+        # Keep what the daily card actually published.  The replay answers
+        # "what would today's model have said", which is the right evidence
+        # base, but it is not a record of what was recommended at the time.
+        conn.execute("DROP TABLE IF EXISTS prop_tracker_pre_rebuild")
+        conn.execute(
+            "CREATE TABLE prop_tracker_pre_rebuild AS SELECT * FROM prop_tracker"
         )
-        from tennis_wc.props.strategy import recommendation_gate
+        archived = conn.execute(
+            "SELECT COUNT(*) FROM prop_tracker_pre_rebuild"
+        ).fetchone()[0]
+    conn.execute("DELETE FROM prop_tracker")
+    conn.commit()
+    date_params: tuple = ()
+    date_clause = ""
+    if through:
+        date_clause = "AND m.match_date <= ?"
+        date_params = (through,)
+    dates = [
+        row[0]
+        for row in conn.execute(
+            f"""
+            SELECT DISTINCT m.match_date
+            FROM market_odds_snapshots mo
+            JOIN matches m ON m.id = mo.match_id
+            WHERE 1=1 {date_clause}
+            ORDER BY m.match_date
+            """,
+            date_params,
+        ).fetchall()
+    ]
+    for match_date in dates:
+        price_ace_props_for_date(conn, match_date, log=True)
+        settle_props(conn)
 
-        conn = get_connection()
-        conn.execute("DELETE FROM prop_tracker")
-        conn.commit()
-        date_params: tuple = ()
-        date_clause = ""
-        if args.through:
-            date_clause = "AND m.match_date <= ?"
-            date_params = (args.through,)
-        dates = [
-            row[0]
-            for row in conn.execute(
-                f"""
-                SELECT DISTINCT m.match_date
-                FROM market_odds_snapshots mo
-                JOIN matches m ON m.id = mo.match_id
-                WHERE 1=1 {date_clause}
-                ORDER BY m.match_date
-                """,
-                date_params,
-            ).fetchall()
-        ]
-        for match_date in dates:
-            price_ace_props_for_date(conn, match_date, log=True)
-            settle_props(conn)
-
-        scorecard = model_vs_market_scorecard(conn)
-        roi = prop_roi_report(conn)
-        payload = {
-            "source_db": str(source),
-            "first_date": dates[0] if dates else None,
-            "last_date": dates[-1] if dates else None,
-            "dates_replayed": len(dates),
-            "scorecard": scorecard,
-            "roi": roi,
-            "strategy": recommendation_gate(scorecard, roi),
-        }
-        print(json.dumps(payload, ensure_ascii=False, indent=2))
-        conn.close()
+    scorecard = model_vs_market_scorecard(conn)
+    roi = prop_roi_report(conn)
+    payload = {
+        "source_db": str(source_label or database),
+        "rebuilt_source_tracker": rebuild,
+        "archived_rows": archived,
+        "first_date": dates[0] if dates else None,
+        "last_date": dates[-1] if dates else None,
+        "dates_replayed": len(dates),
+        "scorecard": scorecard,
+        "roi": roi,
+        "strategy": recommendation_gate(scorecard, roi),
+    }
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    conn.close()
     return 0
 
 

@@ -173,10 +173,10 @@ VALUE_PROFILES: dict[str, ValueProfile] = {
 
 DEFAULT_VALUE_PROFILE = ValueProfile()
 
-# Live recommendations are limited to tours whose results actually reach the
-# database.  ITF/UTR props are priced and paper-tracked but settle at 0%, so
-# they cannot yet carry evidence for or against a bet.
-LIVE_TOURS: frozenset[str] = frozenset({"ATP", "WTA"})
+# There is deliberately no tour restriction on recommendations.  One was
+# planned while ITF and UTR results never arrived, but with those tiers now
+# settling at ~95% they carry evidence like any other, and the per-family
+# profit gate is the thing that decides what may be bet.
 
 
 def value_profile(market_key: str, market_name: str = "") -> ValueProfile:
