@@ -109,5 +109,52 @@ class ReflectNotifyTests(unittest.TestCase):
             self.assertIsNone(R.meeting_lines(d))
 
 
+class PlacesPaidTests(unittest.TestCase):
+    """派幾多個位睇出馬數 —— 唔係一律頭三。
+
+    澳洲規則：8 匹或以上派三個位、5 至 7 匹派兩個位、4 匹或以下淨係贏。所以喺一場
+    七匹嘅賽事跑第三根本冇入位。2026-08-09 實測：30 場入面 10 場係短爪，當佢哋
+    一律派三位就報大咗 5 個命中，命中率由 57% 虛報成 65%。
+    """
+
+    def test_the_australian_thresholds(self):
+        self.assertEqual(R.places_paid(12), 3)
+        self.assertEqual(R.places_paid(8), 3)
+        self.assertEqual(R.places_paid(7), 2)   # 分界線
+        self.assertEqual(R.places_paid(5), 2)
+        self.assertEqual(R.places_paid(4), 1)   # 冇位置池
+
+    def test_unknown_field_size_falls_back_to_three(self):
+        # 數唔到就跟返舊行為。憑空猜一個細數會令命中率虛高 —— 寧願保守。
+        self.assertEqual(R.places_paid(None), 3)
+        self.assertEqual(R.places_paid(0), 3)
+
+    def test_third_in_a_short_field_is_not_a_place(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = meeting(tmp)
+            # R1 得 6 匹 → 只派兩位，而 #6 Strasbelle 跑第三。
+            (d / "Race_1_Auto_Analysis.md").write_text(
+                "| 出馬數 | 6 |", encoding="utf-8")
+            text, c = R.meeting_lines(d)
+        self.assertIn("⟨6匹·2位⟩", text)
+        self.assertNotIn("Strasbelle", text)
+
+    def test_a_short_field_race_is_marked_so_the_reader_can_see_why(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = meeting(tmp)
+            (d / "Race_1_Auto_Analysis.md").write_text(
+                "| 出馬數 | 7 |", encoding="utf-8")
+            text, _ = R.meeting_lines(d)
+        self.assertIn("⟨7匹·2位⟩", text)
+
+    def test_full_field_races_carry_no_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = meeting(tmp)
+            (d / "Race_1_Auto_Analysis.md").write_text(
+                "| 出馬數 | 10 |", encoding="utf-8")
+            text, _ = R.meeting_lines(d)
+        self.assertNotIn("位⟩", text)
+
+
 if __name__ == "__main__":
     unittest.main()

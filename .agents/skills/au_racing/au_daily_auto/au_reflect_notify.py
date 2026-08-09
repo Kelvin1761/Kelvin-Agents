@@ -29,6 +29,36 @@ POS = {1: "冠軍", 2: "亞軍", 3: "季軍"}
 PICK = {1: "①", 2: "②"}
 
 
+RE_FIELD = re.compile(r"\| 出馬數 \| (\d+) \|")
+
+
+def places_paid(field: int | None) -> int:
+    """一場派幾多個位。⚠️ 唔係一律頭三。
+
+    澳洲派彩規則：8 匹或以上派三個位、5 至 7 匹派兩個位、4 匹或以下淨係贏
+    （冇位置池）。所以喺一場七匹嘅賽事跑第三**根本冇入位** —— 當佢中咗就係
+    報大咗自己。2026-08-09 Muswellbrook 七場入面就有兩場係短爪（6 匹同 7 匹）。
+
+    `出馬數` 已經係扣走退出馬之後嘅數（實測同 Racecard 逐場對得上），所以直接用。
+    數唔到就當三個位 —— 寧願跟返舊行為，都好過憑空猜一個細數令命中率虛高。
+    """
+    if not field:
+        return 3
+    if field >= 8:
+        return 3
+    if field >= 5:
+        return 2
+    return 1
+
+
+def field_size(folder: Path, race_no: int) -> int | None:
+    f = next(iter(folder.glob(f"Race_{race_no}_Auto_Analysis.md")), None)
+    if not f:
+        return None
+    m = RE_FIELD.search(f.read_text(errors="replace"))
+    return int(m.group(1)) if m else None
+
+
 def place_odds(folder: Path, race_no: int) -> dict[int, str]:
     """{馬號: 賽前位賠}。Formguide 用 `[馬號] 馬名 (檔位)` 做每匹馬嘅起點。"""
     hits = list(folder.glob(f"*Race {race_no} Formguide.md"))
@@ -75,9 +105,13 @@ def meeting_lines(folder: Path) -> tuple[str, dict] | None:
         picks = [(int(n), nm.strip()) for n, nm in RE_HORSE.findall(m3.group(1))][:2]
         actual = {int(n): int(p) for p, n, _ in RE_ACT_ONE.findall(ma.group(1))}
         po = place_odds(folder, rno)
+        fs = field_size(folder, rno)
+        pays = places_paid(fs)
         top2_tot += len(picks)
         for idx, (num, name) in enumerate(picks, start=1):
-            if num not in actual:
+            pos = actual.get(num)
+            # ⚠️ 入位 = 名次喺派彩範圍內，唔係一律頭三。
+            if pos is None or pos > pays:
                 continue
             top2_hit += 1
             win = sp.get(rno, {}).get(num)
@@ -86,8 +120,9 @@ def meeting_lines(folder: Path) -> tuple[str, dict] | None:
                 bits.append(f"贏${win}")
             if po.get(num):
                 bits.append(f"位${po[num]}")
-            hits.append(f"R{rno} {PICK[idx]}{name} {POS.get(actual[num], '')}"
-                        + (f"  {' · '.join(bits)}" if bits else ""))
+            tag = f"  ⟨{fs}匹·{pays}位⟩" if pays != 3 else ""
+            hits.append(f"R{rno} {PICK[idx]}{name} {POS.get(pos, '')}"
+                        + (f"  {' · '.join(bits)}" if bits else "") + tag)
     venue = folder.name[11:].rsplit(" Race", 1)[0]
     # ⚠️ 五個 label 全部要出。之前漏咗 `1 Hit`，於是 Casterton 七場只顯示到五場 ——
     # 一個加唔埋嘅數字會令人懷疑成份報告。
@@ -96,7 +131,7 @@ def meeting_lines(folder: Path) -> tuple[str, dict] | None:
             f"Gold {counts.get('Gold', 0)} · Good {counts.get('Good', 0)} · "
             f"Pass {counts.get('Pass', 0)} · 一中 {counts.get('1 Hit', 0)} · "
             f"落空 {counts.get('Miss', 0)}\n"
-            f"頭兩揀入前三 {top2_hit}/{top2_tot}（{pct:.0f}%）")
+            f"頭兩揀入位 {top2_hit}/{top2_tot}（{pct:.0f}%）")
     text = head + ("\n" + "\n".join(hits) if hits else "\n（頭兩揀今場冇入前三）")
     return text, {"races": len(labels), "top2_hit": top2_hit, "top2_tot": top2_tot,
                   **counts}
@@ -127,7 +162,7 @@ def build(day: str) -> str | None:
             f"Gold {gold}（{100*gold/max(races,1):.0f}%）· Good {tot.get('Good',0)} "
             f"· Pass {tot.get('Pass',0)} · 一中 {tot.get('1 Hit',0)} "
             f"· 落空 {tot.get('Miss',0)}\n"
-            f"頭兩揀入前三 {tot.get('top2_hit',0)}/{tot.get('top2_tot',0)}"
+            f"頭兩揀入位 {tot.get('top2_hit',0)}/{tot.get('top2_tot',0)}"
             f"（{100*tot.get('top2_hit',0)/max(tot.get('top2_tot',1),1):.0f}%）")
     return head + "\n\n" + "\n\n".join(blocks)
 
