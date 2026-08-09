@@ -19,7 +19,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="AU reflector orchestrator (unified workflow wrapper)")
     parser.add_argument("meeting_dir", help="AU meeting directory")
     parser.add_argument("results_file", nargs="?", help="Optional existing results file")
-    parser.add_argument("--results-url", help="Optional AU results URL for extraction")
+    parser.add_argument(
+        "--results-url",
+        help="Deprecated AU compatibility flag; ignored in favour of Sportsbet cache",
+    )
     parser.add_argument("--race", dest="races", action="append", type=int, help="Reflect only specific race numbers")
     parser.add_argument("--report-path", help="Optional output path for markdown report")
     parser.add_argument("--force-extract", action="store_true", help="Force extraction even if results already exist")
