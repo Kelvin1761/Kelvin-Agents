@@ -33,6 +33,7 @@ from au_target_gap_report import (
     condition_bucket,
     field_size_bucket,
 )
+from au_metric_contract import ranked_performance
 
 # Use the orchestrator's field summary so the engine sees the same rated_count /
 # l600 keys as live scoring (the old local builder only set count/weights,
@@ -106,26 +107,23 @@ def main():
                 result = engine.analyze_horse()
                 new_rank = float(result.get("rank_score") or result.get("ability_score") or 0)
 
-                old_horses.append({"score": old_rank, "actual": actual_pos})
-                new_horses.append({"score": new_rank, "actual": actual_pos})
+                horse_number = parse_int(hnum, 999)
+                old_horses.append({"horse_number": horse_number, "score": old_rank, "actual": actual_pos})
+                new_horses.append({"horse_number": horse_number, "score": new_rank, "actual": actual_pos})
 
             if len(old_horses) < 4:
                 continue
             total += 1
 
             # Evaluate old
-            old_ranked = sorted(old_horses, key=lambda h: (-h["score"],))
-            old_top3 = old_ranked[:3]
-            old_top2 = old_ranked[:2]
-            old_hits3 = sum(1 for h in old_top3 if h["actual"] <= 3)
-            old_hits2 = sum(1 for h in old_top2 if h["actual"] <= 3)
+            old_ranked = sorted(old_horses, key=lambda h: (-h["score"], h["horse_number"]))
+            old_performance = ranked_performance(old_ranked, position_key="actual")
+            old_hits3 = int(old_performance["hits"])
 
             # Evaluate new
-            new_ranked = sorted(new_horses, key=lambda h: (-h["score"],))
-            new_top3 = new_ranked[:3]
-            new_top2 = new_ranked[:2]
-            new_hits3 = sum(1 for h in new_top3 if h["actual"] <= 3)
-            new_hits2 = sum(1 for h in new_top2 if h["actual"] <= 3)
+            new_ranked = sorted(new_horses, key=lambda h: (-h["score"], h["horse_number"]))
+            new_performance = ranked_performance(new_ranked, position_key="actual")
+            new_hits3 = int(new_performance["hits"])
 
             for (ov, nv, ch, nh, b) in [
                 (overall_old, overall_new, old_hits3, new_hits3, None),
@@ -134,16 +132,16 @@ def main():
                 ov["places"] += ch; nv["places"] += nh
                 ov["slots"] += 3; nv["slots"] += 3
                 ov["hits"][ch] += 1; nv["hits"][nh] += 1
-                if ch == 3: ov["gold"] += 1
-                if nh == 3: nv["gold"] += 1
-                if old_hits2 == 2: ov["good"] += 1
-                if new_hits2 == 2: nv["good"] += 1
-                if ch >= 2: ov["pass_"] += 1
-                if nh >= 2: nv["pass_"] += 1
-                if old_ranked[0]["actual"] == 1: ov["champion"] += 1
-                if new_ranked[0]["actual"] == 1: nv["champion"] += 1
-                if any(h["actual"] == 1 for h in old_top3): ov["winner_top3"] += 1
-                if any(h["actual"] == 1 for h in new_top3): nv["winner_top3"] += 1
+                ov["gold"] += int(old_performance["gold"])
+                nv["gold"] += int(new_performance["gold"])
+                ov["good"] += int(old_performance["good_positional"])
+                nv["good"] += int(new_performance["good_positional"])
+                ov["pass_"] += int(old_performance["pass"])
+                nv["pass_"] += int(new_performance["pass"])
+                ov["champion"] += int(old_performance["champion"])
+                nv["champion"] += int(new_performance["champion"])
+                ov["winner_top3"] += int(old_performance["winner_in_top3"])
+                nv["winner_top3"] += int(new_performance["winner_in_top3"])
 
             # Per-condition
             for cb, ov_d, nv_d in [(cond_bucket, cond_old[cond_bucket], cond_new[cond_bucket]),
@@ -151,13 +149,13 @@ def main():
                                      (type_bucket, type_old[type_bucket], type_new[type_bucket])]:
                 ov_d["races"] += 1; nv_d["races"] += 1
                 ov_d["hits"][old_hits3] += 1; nv_d["hits"][new_hits3] += 1
-                if old_hits3 == 3: ov_d["gold"] += 1
-                if new_hits3 == 3: nv_d["gold"] += 1
-                if old_hits3 >= 2: ov_d["pass_"] += 1
-                if new_hits3 >= 2: nv_d["pass_"] += 1
+                ov_d["gold"] += int(old_performance["gold"])
+                nv_d["gold"] += int(new_performance["gold"])
+                ov_d["pass_"] += int(old_performance["pass"])
+                nv_d["pass_"] += int(new_performance["pass"])
                 if "champion" in ov_d:
-                    if old_ranked[0]["actual"] == 1: ov_d["champion"] += 1
-                    if new_ranked[0]["actual"] == 1: nv_d["champion"] += 1
+                    ov_d["champion"] += int(old_performance["champion"])
+                    nv_d["champion"] += int(new_performance["champion"])
 
     # ── Report ──
     def pct(part, whole):
@@ -181,7 +179,7 @@ def main():
         print(f"  {label:<30} | Old: {oval:>6} | New: {nval:>6} | Δ: {delta:>8}")
 
     print("═══ OVERALL ═══")
-    print_row("Gold (3/3)", overall_old, overall_new, "gold")
+    print_row("Gold (actual Top3 in Top4)", overall_old, overall_new, "gold")
     print_row("Good (Top1+2 in Top3)", overall_old, overall_new, "good")
     print_row("Pass (≥2 in Top3)", overall_old, overall_new, "pass_")
     print_row("Champion (Top1 wins)", overall_old, overall_new, "champion")

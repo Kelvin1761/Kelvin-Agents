@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from matrix_mapper import MATRIX_KEYS
 from scoring import FEATURE_KEYS, MATRIX_WEIGHTS, compute_grade
-
-
-MATRIX_KEYS = tuple(MATRIX_WEIGHTS.keys())
+from source_alignment import normalize_horse_name
 
 
 def validate_engine_scripts(script_root: Path) -> list[str]:
@@ -22,7 +21,29 @@ def validate_engine_scripts(script_root: Path) -> list[str]:
 def validate_logic_data(logic_data: dict) -> list[str]:
     errors = []
     horses = logic_data.get("horses", {})
+    if not isinstance(horses, dict) or not horses:
+        return ["SCHEMA-000 horses must be a non-empty object"]
+    normalized_names: dict[str, str] = {}
     for horse_num, horse in horses.items():
+        if not isinstance(horse, dict):
+            errors.append(f"SCHEMA-004 horse {horse_num} must be an object")
+            continue
+        declared_number = horse.get("horse_number")
+        if declared_number is not None and str(declared_number) != str(horse_num):
+            errors.append(
+                f"ALIGN-001 horse key {horse_num} disagrees with horse_number "
+                f"{declared_number}"
+            )
+        name_key = normalize_horse_name(horse.get("horse_name"))
+        if not name_key:
+            errors.append(f"ALIGN-002 horse {horse_num} has no usable name")
+        elif name_key in normalized_names:
+            errors.append(
+                f"ALIGN-003 duplicate horse name for {normalized_names[name_key]} "
+                f"and {horse_num}"
+            )
+        else:
+            normalized_names[name_key] = str(horse_num)
         auto = horse.get("python_auto")
         if not isinstance(auto, dict):
             errors.append(f"SCHEMA-001 horse {horse_num} missing python_auto")
@@ -31,6 +52,8 @@ def validate_logic_data(logic_data: dict) -> list[str]:
     verdict = logic_data.get("python_auto_verdict")
     if not isinstance(verdict, dict):
         errors.append("VERDICT-001 missing python_auto_verdict")
+    elif len(verdict.get("ranking") or []) != len(horses):
+        errors.append("VERDICT-002 ranking count does not match horse count")
     return errors
 
 
@@ -51,11 +74,11 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
         expected = sum(float(matrix_scores.get(key, 60)) * weight for key, weight in MATRIX_WEIGHTS.items())
         expected_score = float(base_7d if base_7d is not None else ability)
         if abs(expected_score - expected) > 0.06:
-            errors.append(f"SCORE-002 horse {horse_num} clean 7D mismatch: {expected_score:.2f} != {expected:.2f}")
-        # ability_score = pure 7D + wet_form_feature (0 on dry going, folded in on Soft/Heavy)
+            errors.append(f"SCORE-002 horse {horse_num} clean six-dimension mismatch: {expected_score:.2f} != {expected:.2f}")
+        # Legacy pure_7d field = six ranking dimensions; wet form is gated separately.
         wet_feat = float(auto.get("wet_form_feature", 0) or 0)
         if abs(float(ability) - (expected + wet_feat)) > 0.06:
-            errors.append(f"SCORE-004 horse {horse_num} ability != clean 7D + wet_form: {float(ability):.2f} != {expected + wet_feat:.2f}")
+            errors.append(f"SCORE-004 horse {horse_num} ability != clean six-dimension + wet_form: {float(ability):.2f} != {expected + wet_feat:.2f}")
         if auto.get("grade") != compute_grade(float(ability)):
             errors.append(f"SCORE-003 horse {horse_num} grade mismatch")
     if len(str(auto.get("core_logic", "")).strip()) < 40:

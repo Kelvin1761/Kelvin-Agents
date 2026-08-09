@@ -52,6 +52,13 @@ def test(name, condition, detail=""):
             print(f"     → {detail}")
 
 
+# This module is a standalone script (`python test_nba_pipeline.py`), not a
+# pytest suite. `test` above is a hand-rolled assertion helper — without this
+# flag pytest collects it as a test case and errors with "fixture 'name' not
+# found", which shows up as a phantom failure in run_tests.sh / run_tests.ps1.
+test.__test__ = False
+
+
 def section(name):
     print(f"\n{'─'*50}")
     print(f"📋 {name}")

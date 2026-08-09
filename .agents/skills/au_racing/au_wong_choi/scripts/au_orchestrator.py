@@ -18,21 +18,32 @@ SKILL_DIR = SCRIPT_DIR.parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 SHARED_SCRIPTS = PROJECT_ROOT / ".agents" / "scripts"
 SHARED_HOOK_DIR = PROJECT_ROOT / ".agents" / "skills" / "shared_racing" / "post_success_hooks" / "scripts"
+AUTO_ENGINE_DIR = (
+    PROJECT_ROOT
+    / ".agents"
+    / "skills"
+    / "au_racing"
+    / "au_wong_choi_auto"
+    / "scripts"
+    / "racing_engine"
+)
 
 sys.path.insert(0, str(SHARED_SCRIPTS))
 sys.path.insert(0, str(SHARED_HOOK_DIR))
+sys.path.insert(0, str(AUTO_ENGINE_DIR))
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from cloudflare_deploy_hook import run_post_success_cloudflare_deploy
+from source_alignment import validate_facts_horse_alignment, venue_from_meeting_name
 from subprocess_pool import bounded_workers, run_labeled_commands
+from wongchoi_paths import AU_RACING
 
 PYTHON = sys.executable
-EXTRACTOR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_race_extractor" / "scripts" / "extractor.py"
 FACTS_INJECTOR = PROJECT_ROOT / ".agents" / "scripts" / "inject_fact_anchors.py"
 AUTO_LOGIC = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "build_au_logic.py"
 AUTO_ORCH = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "au_auto_orchestrator.py"
 TEMP_ROOT = PROJECT_ROOT / "_temporary_files"
 TEMP_FILE_PATTERNS = (
-    "racenet_temp_*.html",
     "latest_results.html",
     "temp_results.html",
     "test_results*.html",
@@ -45,7 +56,7 @@ TEMP_FILE_PATTERNS = (
 
 def main():
     parser = argparse.ArgumentParser(description="AU Wong Choi Full Python Orchestrator")
-    parser.add_argument("target", help="Racenet URL, meeting directory, or Race_X_Logic.json")
+    parser.add_argument("target", help="SportsbetForm URL, meeting directory, or Race_X_Logic.json")
     parser.add_argument("--auto", action="store_true", help="Compatibility flag")
     parser.add_argument("--autopilot", action="store_true", help="Compatibility flag")
     parser.add_argument("--keep-temp", action="store_true", help="Keep temporary files after completion")
@@ -53,6 +64,10 @@ def main():
     parser.add_argument("--batch-cloudflare-deploy", action="store_true", help="Queue dashboard deploy for a later batch flush")
     parser.add_argument("--flush-cloudflare-deploy", action="store_true", help="Flush any queued dashboard deploy after this run")
     parser.add_argument("--race-workers", type=int, default=_default_race_workers(), help="Race-level Facts/Logic workers")
+    parser.add_argument(
+        "--going",
+        help="Official current track condition (e.g. 'Good 4'); overrides stored meeting data",
+    )
     args = parser.parse_args()
 
     target = args.target.strip()
@@ -65,7 +80,8 @@ def main():
             meeting_dir = Path(target).resolve()
             if meeting_dir.is_file():
                 cleanup_target = meeting_dir.parent
-                _run([PYTHON, str(AUTO_ORCH), str(meeting_dir)])
+                official_going = _resolve_official_going(meeting_dir.parent, args.going)
+                _run(_auto_command(meeting_dir, official_going))
                 run_post_success_cloudflare_deploy(
                     source="AU Wong Choi",
                     target_dir=meeting_dir.parent,
@@ -88,7 +104,8 @@ def main():
         print(f"⚙️ Race-level workers: {race_workers}")
         _ensure_facts(meeting_dir, race_workers)
         _ensure_logic(meeting_dir, race_workers)
-        _run([PYTHON, str(AUTO_ORCH), str(meeting_dir)])
+        official_going = _resolve_official_going(meeting_dir, args.going)
+        _run(_auto_command(meeting_dir, official_going))
         run_post_success_cloudflare_deploy(
             source="AU Wong Choi",
             target_dir=meeting_dir,
@@ -117,46 +134,96 @@ def _default_race_workers() -> int:
         return 3
 
 
+SPORTSBET_EXTRACTOR = (PROJECT_ROOT / ".agents" / "skills" / "au_racing"
+                       / "claw_sportsbet_form.py")
+SPORTSBET_MEETING_IDS = (
+    PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "data"
+    / "sb_archive_meeting_ids.json"
+)
+
+
 def _extract_meeting(url: str) -> Path:
-    print("🚀 Extracting AU meeting data via Race Extractor...")
-    _run([PYTHON, str(EXTRACTOR), url, "all"])
-    meeting_dir = _get_target_dir_from_url(url)
-    if not meeting_dir or not meeting_dir.exists():
-        raise FileNotFoundError(f"Cannot locate extracted meeting directory for URL: {url}")
-    return meeting_dir
+    # AU 抽取只有一條路：Sportsbet。Racenet 三條 transport 2026-08-02 全封
+    # （profile 403、results 202 攔截頁、Playwright 202），而 2026-08-04 連
+    # extractor、transport、profile scraper 一併剷走，所以呢度冇 fallback ——
+    # 唔係 sportsbetform 嘅 URL 直接停低。
+    #
+    # ⚠️ 以前有個 `WC_ALLOW_RACENET=1` 逃生門。剷咗係因為佢已經冇嘢可以行到：
+    # 目標腳本唔存在，set 咗只會換一個更難讀嘅 ImportError。
+    if "sportsbetform" in url:
+        dir_name, meeting = _sportsbet_meeting_spec(url)
+        meeting_dir = AU_RACING / dir_name
+        print("🚀 Extracting AU meeting data via Sportsbet...")
+        _run([
+            PYTHON,
+            str(SPORTSBET_EXTRACTOR),
+            "--meeting-url",
+            url,
+            "--races",
+            ",".join(str(race_id) for race_id in meeting["races"]),
+            "--out-dir",
+            str(meeting_dir),
+            "--date",
+            str(meeting["date"]),
+            "--venue",
+            _venue_from_meeting(dir_name),
+        ])
+        if not meeting_dir.exists():
+            raise FileNotFoundError(f"Sportsbet extractor did not create {meeting_dir}")
+        return meeting_dir
+    raise SystemExit(
+        f"❌ 唔識抽呢個 URL：{url}\n"
+        "   AU Wong Choi 只用 Sportsbet（Racenet 2026-08-02 全封，"
+        "相關腳本 2026-08-04 已剷走）。\n"
+        "   抽取請用：\n"
+        "     python3 .agents/skills/au_racing/claw_sportsbet_form.py \\\n"
+        "       --meeting-url https://www.sportsbetform.com.au/<meetingId>/<raceId>/ \\\n"
+        "       --races <raceId,raceId,...> --out-dir '<meeting dir>' \\\n"
+        "       --date YYYY-MM-DD --venue '<track>'\n"
+        "   然後把 meeting 目錄餵返呢個 orchestrator。")
 
 
-def _get_target_dir_from_url(url: str) -> Path | None:
-    match = re.search(r"form-guide/horse-racing/([^/]+)-(\d{8})", url)
+def _sportsbet_meeting_spec(
+    url: str,
+    mapping_path: Path | None = None,
+) -> tuple[str, dict]:
+    """Resolve one Sportsbet race URL to the complete tracked meeting.
+
+    A race URL contains only meetingId/raceId.  The tracked date index is the
+    authoritative source for the date, venue, full race list and output folder;
+    guessing those values would re-introduce race-order/data-alignment errors.
+    """
+    mapping_path = mapping_path or SPORTSBET_MEETING_IDS
+    match = re.search(r"sportsbetform\.com\.au/(\d+)/(\d+)(?:/|$)", url, re.I)
     if not match:
-        return None
-    venue = match.group(1).replace("-", " ").title()
-    date_str = match.group(2)
-    formatted_date = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
-    candidates = []
-    for path in PROJECT_ROOT.iterdir():
-        if not path.is_dir():
-            continue
-        if path.name.startswith(f"{formatted_date} {venue}") or path.name.startswith(f"{formatted_date}_{venue}_Race_"):
-            candidates.append(path)
-    if not candidates:
-        return None
-    return max(candidates, key=_meeting_candidate_score)
-
-
-def _meeting_candidate_score(path: Path) -> tuple[int, int, int]:
-    relevant = 0
-    total = 0
-    for child in path.iterdir():
-        total += 1
-        if child.is_file() and (
-            child.name.endswith("Racecard.md")
-            or child.name.endswith("Formguide.md")
-            or child.name.endswith("Facts.md")
-            or child.name.startswith("Race_")
-        ):
-            relevant += 1
-    return relevant, total, path.stat().st_mtime_ns
+        raise ValueError(f"Invalid SportsbetForm race URL: {url}")
+    meeting_id, race_id = match.groups()
+    try:
+        mapping = json.loads(mapping_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Cannot read Sportsbet meeting index {mapping_path}: {exc}") from exc
+    matches = [
+        (name, meta)
+        for name, meta in mapping.items()
+        if str(meta.get("meetingId")) == meeting_id
+    ]
+    if len(matches) != 1:
+        raise ValueError(
+            f"Sportsbet meetingId {meeting_id} is not uniquely tracked in {mapping_path}; "
+            "run the daily discovery first."
+        )
+    dir_name, meeting = matches[0]
+    race_ids = {str(value) for value in meeting.get("races", [])}
+    if race_id not in race_ids:
+        raise ValueError(
+            f"Sportsbet raceId {race_id} is not listed under meetingId {meeting_id}; "
+            "refresh the daily meeting index before extraction."
+        )
+    required = {"date", "races"}
+    missing = sorted(key for key in required if not meeting.get(key))
+    if missing:
+        raise ValueError(f"Incomplete Sportsbet meeting index for {dir_name}: {missing}")
+    return dir_name, meeting
 
 
 def _ensure_facts(meeting_dir: Path, workers: int = 1) -> None:
@@ -172,9 +239,12 @@ def _ensure_facts(meeting_dir: Path, workers: int = 1) -> None:
         formguide = _matching_formguide(formguides, race_num)
         if not formguide:
             raise FileNotFoundError(f"Missing Formguide for Race {race_num} in {meeting_dir}")
-        facts_candidates = sorted(meeting_dir.glob(f"*Race_{race_num}_Facts.md"))
-        facts_path = facts_candidates[0] if facts_candidates else None
-        if facts_path and not _is_output_stale(facts_path, racecard, formguide):
+        facts_path = _find_facts_file(meeting_dir, race_num)
+        if (
+            facts_path
+            and _facts_has_horses(facts_path)
+            and not _is_output_stale(facts_path, racecard, formguide)
+        ):
             continue
         venue = _venue_from_meeting(meeting_dir.name)
         distance = _distance_for_race(racecard, formguide)
@@ -213,27 +283,53 @@ def _matching_formguide(formguides: list[Path], race_num: int) -> Path | None:
     return None
 
 
+def _find_facts_file(meeting_dir: Path, race_num: int) -> Path | None:
+    for pattern in (
+        f"*Race_{race_num}_Facts.md",
+        f"*Race {race_num} Facts.md",
+    ):
+        matches = sorted(path for path in meeting_dir.glob(pattern) if path.is_file())
+        if matches:
+            return matches[0]
+    return None
+
+
+def _facts_has_horses(facts_path: Path) -> bool:
+    try:
+        text = facts_path.read_text(encoding="utf-8")
+        return bool(validate_facts_horse_alignment(text, source=facts_path.name))
+    except (OSError, UnicodeError, ValueError):
+        return False
+
+
 def _race_num_from_name(name: str) -> int | None:
     match = re.search(r"Race[ _](\d+)", name)
     return int(match.group(1)) if match else None
 
 
 def _venue_from_meeting(meeting_name: str) -> str:
-    # Remove date prefix: "2025-01-15_Randwick_Race_1_1200m" → "Randwick_Race_1_1200m"
-    name = re.sub(r"^\d{4}-\d{2}-\d{2}[_\s-]*", "", meeting_name).strip()
-    if "_" in name:
-        # Take first word before any underscore followed by "Race" or number
-        parts = name.split("_")
-        venue_parts = []
-        for p in parts:
-            if re.match(r"^race\s*\d+", p, re.I) or re.match(r"^\d+", p):
-                break
-            venue_parts.append(p)
-        if venue_parts:
-            return " ".join(venue_parts)
-        return parts[0]
-    parts = name.split()
-    return " ".join(parts[1:-3]) if len(parts) > 3 and "Race" in name else name
+    return venue_from_meeting_name(meeting_name)
+
+
+def _resolve_official_going(meeting_dir: Path, override: str | None) -> str | None:
+    if override and override.strip():
+        return override.strip()
+    summary_path = meeting_dir / "Meeting_Summary.md"
+    if not summary_path.exists():
+        return None
+    match = re.search(
+        r"^Track Condition:\s*([^\n]+)",
+        summary_path.read_text(encoding="utf-8"),
+        re.M,
+    )
+    return match.group(1).strip() if match else None
+
+
+def _auto_command(target: Path, official_going: str | None) -> list[str]:
+    command = [PYTHON, str(AUTO_ORCH), str(target)]
+    if official_going:
+        command.extend(["--going", official_going])
+    return command
 
 
 def _distance_for_race(racecard: Path, formguide: Path | None) -> int | None:

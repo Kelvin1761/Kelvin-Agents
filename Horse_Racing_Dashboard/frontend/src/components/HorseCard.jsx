@@ -21,7 +21,8 @@ export default function HorseCard({ horse, topPickRank, primaryCondition }) {
     horse.form_line ||
     horse.horse_profile ||
     horse.core_analysis ||
-    horse.conclusion;
+    horse.conclusion ||
+    horse.rating_matrix?.dimensions?.length > 0;
 
   return (
     <div
@@ -85,6 +86,9 @@ export default function HorseCard({ horse, topPickRank, primaryCondition }) {
           </div>
           <div>
             <div className="horse-card__name">{horse.horse_name}</div>
+            {horse.horse_name_en && (
+              <div className="horse-card__name-en">{horse.horse_name_en}</div>
+            )}
             <div className="horse-card__meta">
               {horse.jockey && <span>🏇 {horse.jockey}</span>}
               {horse.trainer && <span> · 🏠 {horse.trainer}</span>}
@@ -422,14 +426,6 @@ export default function HorseCard({ horse, topPickRank, primaryCondition }) {
           )}
         </div>
 
-        {/* 3.3a — Rating matrix: table-format display */}
-        {horse.rating_matrix && horse.rating_matrix.dimensions?.length > 0 && (
-          <div className="horse-card__section">
-            <div className="horse-card__section-title">📊 評級矩陣</div>
-            <RatingMatrixTable matrix={horse.rating_matrix} />
-          </div>
-        )}
-
         {/* Expanded: Structured analysis sections (single layer) */}
         {expanded && hasAnalysis && (
           <div className="analysis-sections">
@@ -457,7 +453,7 @@ export default function HorseCard({ horse, topPickRank, primaryCondition }) {
                   <AnalysisSection
                     icon="📋"
                     title="寬恕檔案"
-                    colorTheme="purple"
+                    colorTheme="emerald"
                     content={horse.forgiveness_file}
                   />
                 )}
@@ -493,6 +489,12 @@ export default function HorseCard({ horse, topPickRank, primaryCondition }) {
                     {formatAnalysis(horse.conclusion)}
                   </div>
                 )}
+                {horse.rating_matrix?.dimensions?.length > 0 && (
+                  <div className="horse-card__section">
+                    <div className="horse-card__section-title">📊 評級矩陣</div>
+                    <RatingMatrixTable matrix={horse.rating_matrix} />
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -501,7 +503,9 @@ export default function HorseCard({ horse, topPickRank, primaryCondition }) {
 
       {hasAnalysis && (
         <button
+          type="button"
           className="horse-card__expand-btn"
+          aria-expanded={expanded}
           onClick={() => setExpanded(!expanded)}
         >
           {expanded ? "收起分析 ▲" : "展開完整分析 ▼"}
@@ -618,7 +622,7 @@ function StructuredAnalysisRenderer({ text }) {
   const sectionPatterns = [
     { pattern: /(?:🔬|段速法醫|Speed Forensics|Sectional)/i, icon: "🔬", title: "段速法醫", theme: "blue" },
     { pattern: /(?:⚡|EEM|能量引擎|Energy Engine)/i, icon: "⚡", title: "EEM 能量引擎", theme: "amber" },
-    { pattern: /(?:📋|寬恕檔案|Forgiveness|可|修正)/i, icon: "📋", title: "寬恕檔案", theme: "purple" },
+    { pattern: /(?:📋|寬恕檔案|Forgiveness|可|修正)/i, icon: "📋", title: "寬恕檔案", theme: "emerald" },
     { pattern: /(?:🔗|賽績線|Form Line|近績)/i, icon: "🔗", title: "賽績線", theme: "slate" },
     { pattern: /(?:🐴|馬匹剖析|Horse Profile|馬匹資料)/i, icon: "🐴", title: "馬匹剖析", theme: "slate" },
     { pattern: /(?:🧠|核心分析|Core Analysis|核心邏輯)/i, icon: "🧠", title: "核心分析", theme: "blue" },

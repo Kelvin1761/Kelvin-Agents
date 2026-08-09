@@ -8,6 +8,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[6]
 import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
 from wongchoi_paths import AU_RACING
 CSV_PATH = str(AU_RACING / "AU_Historical_Raw_Race_Results.csv")
+# Racenet results backfill (scratch/au_results_backfill_driver.py) — same schema.
+# Every backfill batch densifies the draw matrix; the engine's n/(n+25)
+# shrinkage then automatically trusts the venue cells more as they grow.
+BACKFILL_CSV_PATH = str(AU_RACING / "AU_Backfill_Race_Results.csv")
 OUTPUT_JSON = str(Path(__file__).resolve().parent / "au_draw_bias_matrix.json")
 
 def get_bucket(barrier):
@@ -54,9 +58,13 @@ def main():
 
     # 1. Read all rows and determine field sizes
     races = collections.defaultdict(list)
-    with open(CSV_PATH, 'r', encoding='utf-8-sig') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
+    source_rows = []
+    for csv_path in (CSV_PATH, BACKFILL_CSV_PATH):
+        if Path(csv_path).exists():
+            with open(csv_path, 'r', encoding='utf-8-sig') as f:
+                source_rows.extend(csv.DictReader(f))
+    if source_rows:
+        for row in source_rows:
             date = row.get("Date", "").strip()
             track = row.get("Track", "").strip().title()
             race_num = row.get("Race", "").strip()

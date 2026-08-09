@@ -2,25 +2,44 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 import os
 import re
 import sys
+import unicodedata
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
-from matrix_mapper import map_features_to_matrix, map_features_to_matrix_scores
+from matrix_mapper import (
+    MATRIX_ADVANTAGE_CUTOFF,
+    MATRIX_DISADVANTAGE_CUTOFF,
+    MATRIX_FORMULAS,
+    canonical_matrix_key,
+    map_features_to_matrix,
+    map_features_to_matrix_scores,
+)
+from source_alignment import (
+    HORSE_HEADER_RE,
+    RACECARD_HORSE_RE,
+    RACECARD_META_RE,
+    clean_identity as _clean_identity,
+    normalize_going,
+    normalize_horse_name as _normalize_horse_name,
+    race_source_candidates,
+    validate_facts_horse_alignment,
+    venue_from_meeting_name,
+)
 from scoring import (
+    ABILITY_FEATURE_KEYS,
     FEATURE_KEYS,
     MATRIX_WEIGHTS,
     CLASS_MICRO_WEIGHTS,
     CONSISTENCY_MICRO_WEIGHTS,
     SECTIONAL_MICRO_WEIGHTS,
+    TRIAL_MICRO_WEIGHTS,
     TRACK_MICRO_WEIGHTS,
-    FORMLINE_MICRO_WEIGHTS,
     PACE_MICRO_WEIGHTS,
-    JOCKEY_MICRO_WEIGHTS,
-    TRAINER_MICRO_WEIGHTS,
     FIT_MICRO_WEIGHTS,
     clip_score,
     compute_grade,
@@ -32,13 +51,9 @@ from scoring import (
     wet_form_feature,
 )
 
-_PROJECT_ROOT = Path(__file__).resolve().parents[6]
-import sys as _sys; _sys.path.insert(0, str(_PROJECT_ROOT))
-from wongchoi_paths import AU_RACING as _AU_RACING
 TRACK_RESOURCE_DIR = Path(__file__).resolve().parents[3] / "au_horse_analyst" / "resources"
 AUTO_RESOURCE_DIR = Path(__file__).resolve().parents[2] / "resources"
-ARCHIVE_AU_DIR = _AU_RACING
-JOCKEY_TRAINER_COMBO_STATS_PATH = ARCHIVE_AU_DIR / "AU_Jockey_Trainer_Combo_Stats.csv"
+JOCKEY_TRAINER_COMBO_STATS_PATH = AUTO_RESOURCE_DIR / "AU_Jockey_Trainer_Combo_Stats.csv"
 JOCKEY_RATINGS_PATH = AUTO_RESOURCE_DIR / "AU_Jockey_Ratings.csv"
 TRAINER_RATINGS_PATH = AUTO_RESOURCE_DIR / "AU_Trainer_Ratings.csv"
 TRACK_PROFILE_CACHE: dict[tuple[str, int], dict] = {}
@@ -48,6 +63,9 @@ JOCKEY_RATINGS_CACHE: dict[str, dict] | None = None
 TRAINER_RATINGS_CACHE: dict[str, dict] | None = None
 DRAW_BIAS_MATRIX_CACHE: dict | None = None
 DRAW_BIAS_MATRIX_PATH = Path(__file__).resolve().parent / "au_draw_bias_matrix.json"
+# Historical PF sectionals live beside the archive, newest cache first.
+PF_BACKFILL_FILENAMES = ("AU_PF_Historical_Backfill_Cache_2026-07-13.json",)
+_PF_BACKFILL_CACHE: dict | None = None
 
 # Standard 600m times (seconds) per track/distance-bin, computed from archive data
 _STANDARD_600M = {
@@ -173,32 +191,43 @@ def _load_jockey_trainer_combo_stats():
 
     combo_cache: dict[tuple[str, str, str], dict] = {}
     trainer_cache: dict[tuple[str, str], dict] = {}
-    if JOCKEY_TRAINER_COMBO_STATS_PATH.exists():
-        with JOCKEY_TRAINER_COMBO_STATS_PATH.open("r", encoding="utf-8-sig") as handle:
-            reader = csv.DictReader(handle)
-            for row in reader:
-                track = _normalize_identity_text(row.get("Track")).lower()
-                jockey = _normalize_identity_text(row.get("Jockey")).lower()
-                trainer = _normalize_identity_text(row.get("Trainer")).lower()
-                if not track or not trainer:
-                    continue
-                runs = int(parse_float(row.get("Total Runs")) or 0)
-                wins = int(parse_float(row.get("Wins")) or 0)
-                places = int(parse_float(row.get("Places (Top 3)")) or 0)
-                win_rate = (wins / runs) if runs else 0.0
-                place_rate = (places / runs) if runs else 0.0
-                if jockey:
-                    combo_cache[(track, jockey, trainer)] = {
-                        "runs": runs,
-                        "wins": wins,
-                        "places": places,
-                        "win_rate": win_rate,
-                        "place_rate": place_rate,
-                    }
-                trainer_bucket = trainer_cache.setdefault((track, trainer), {"runs": 0, "wins": 0, "places": 0})
-                trainer_bucket["runs"] += runs
-                trainer_bucket["wins"] += wins
-                trainer_bucket["places"] += places
+    # Optional enrichment is bundled with the engine. Keeping this small snapshot
+    # out of the Drive archive avoids placeholder timeouts and makes each scoring
+    # run reproducible/offline. Failure still degrades to empty cached lookups.
+    try:
+        available = JOCKEY_TRAINER_COMBO_STATS_PATH.exists()
+    except OSError:
+        available = False
+    if available:
+        try:
+            with JOCKEY_TRAINER_COMBO_STATS_PATH.open("r", encoding="utf-8-sig") as handle:
+                reader = csv.DictReader(handle)
+                for row in reader:
+                    track = _normalize_identity_text(row.get("Track")).lower()
+                    jockey = _normalize_identity_text(row.get("Jockey")).lower()
+                    trainer = _normalize_identity_text(row.get("Trainer")).lower()
+                    if not track or not trainer:
+                        continue
+                    runs = int(parse_float(row.get("Total Runs")) or 0)
+                    wins = int(parse_float(row.get("Wins")) or 0)
+                    places = int(parse_float(row.get("Places (Top 3)")) or 0)
+                    win_rate = (wins / runs) if runs else 0.0
+                    place_rate = (places / runs) if runs else 0.0
+                    if jockey:
+                        combo_cache[(track, jockey, trainer)] = {
+                            "runs": runs,
+                            "wins": wins,
+                            "places": places,
+                            "win_rate": win_rate,
+                            "place_rate": place_rate,
+                        }
+                    trainer_bucket = trainer_cache.setdefault((track, trainer), {"runs": 0, "wins": 0, "places": 0})
+                    trainer_bucket["runs"] += runs
+                    trainer_bucket["wins"] += wins
+                    trainer_bucket["places"] += places
+        except OSError as exc:
+            print(f"⚠️  J/T combo stats unavailable ({type(exc).__name__}) — scoring without them")
+            combo_cache, trainer_cache = {}, {}
     for stats in trainer_cache.values():
         runs = stats["runs"] or 0
         stats["win_rate"] = (stats["wins"] / runs) if runs else 0.0
@@ -221,6 +250,7 @@ def _load_draw_bias_matrix():
             DRAW_BIAS_MATRIX_CACHE = {}
     return DRAW_BIAS_MATRIX_CACHE
 
+
 def _load_named_rating_stats():
     global JOCKEY_RATINGS_CACHE, TRAINER_RATINGS_CACHE
     if JOCKEY_RATINGS_CACHE is not None and TRAINER_RATINGS_CACHE is not None:
@@ -233,11 +263,14 @@ def _load_named_rating_stats():
         with path.open("r", encoding="utf-8-sig", newline="") as handle:
             reader = csv.DictReader(handle)
             for row in reader:
+                base_score = parse_float(row.get("base_score"))
                 payload = {
                     "name": _normalize_identity_text(row.get("name")),
                     "canonical_name": _normalize_identity_text(row.get("canonical_name")),
                     "tier": _normalize_identity_text(row.get("tier")),
-                    "base_score": float(parse_float(row.get("base_score")) or 60),
+                    "base_score": float(
+                        60 if base_score is None else base_score
+                    ),
                     "confidence": _normalize_identity_text(row.get("confidence")),
                     "source": _normalize_identity_text(row.get("source")),
                     "notes": _normalize_identity_text(row.get("notes")),
@@ -253,24 +286,19 @@ def _load_named_rating_stats():
     return JOCKEY_RATINGS_CACHE, TRAINER_RATINGS_CACHE
 
 
-# BUGFIX 2026-07-03: ported the fixed header/meta regexes from build_au_logic —
-# the enrich path still used the pre-fix versions, so a horse with 負重: 未知/N/A
-# was silently dropped (its record rows bled into the previous horse's block and
-# its facts features collapsed to neutral), and an unrated horse failed the whole
-# racecard meta line. Groups keep the same order (num/name/barrier/jockey/trainer/
-# weight); rating group(2) is now optional.
-FIELD_TRAILER_RE = re.compile(r"\s*\|\s*負重:\s*(?:[0-9.]+kg|未知|N/A|-)\s*$")
-HORSE_BLOCK_RE = re.compile(
-    r"^### 馬匹 #(\d+) (.+?) \(檔位 (\d+)\)"
-    r"(?:\s*\| 騎師: ([^|]+?))?"
-    r"(?:\s*\| 練馬師: ([^|\n\r]+?))?"
-    r"(?:\s*\| 負重: (?:([0-9.]+)kg|未知|N/A|-))?$",
-    re.M,
-)
-RACECARD_HORSE_RE = re.compile(r"^\d+\.\s+(.+?)\s+\((\d+)\)$")
-RACECARD_META_RE = re.compile(
-    r"^Trainer:\s.*?\|\sJockey:\s.*?\|\sWeight:\s*([0-9.]+)(?:kg)?(?:\s*\([^|]*\))?\s*\|\sAge:\s.*?\|\sRating:\s*([0-9.]+)?"
-)
+HORSE_BLOCK_RE = HORSE_HEADER_RE
+
+
+# 對手後續走勢字串有兩種寫法（2026-08-04 起）：
+#     「出 N 次: M 勝」    —— 對手有完整往績記錄
+#     「見前三 N 次: M 勝」 —— 只由對手名單推導（partial），我哋只見到佢入前三
+# 兩者嘅**勝出次數都係準嘅**（我哋見到佢全部前三），所以讀「M 勝」嗰陣兩種都要接。
+# 分開兩個寫法係為咗唔好講大話 —— partial 嗰批唔知佢總共出過幾多次。
+#
+# ⚠️ 呢個常數存在嘅原因：加咗第二種寫法之後，四處獨立嘅 regex 一齊變成
+# 只認第一種，即係新增嗰批對手會**靜靜咁**被當成「冇後續」。
+# 呢個 repo 已經有五次同款缺陷（見 `scraper-silent-drop-failure-mode`）。
+RE_OPP_FOLLOWUP = re.compile(r"(?:出|見前三)\s*\d+\s*次:\s*(\d+)\s*勝")
 
 
 class RacingEngine:
@@ -283,6 +311,7 @@ class RacingEngine:
         self.reason_codes = []
         self.risk_flags = []
         self.provenance = {}
+        self.evidence_state = {}
         # 人馬配搭分逐項調整紀錄（因子、加減分、原始數據）— 供報告完整追溯
         self.jt_fit_detail = None
         self._record_entry_cache = None
@@ -294,9 +323,28 @@ class RacingEngine:
         self._latest_l600_rt_cache = None
         self._sectional_breakdown_cache = None
         self._formguide_shape_cache = None
+        self._pf_metrics_cache = None
         self.horse_data["horse_name"] = self._clean_identity(self.horse_data.get("horse_name"))
         self.horse_data["jockey"] = self._clean_identity(self.horse_data.get("jockey"))
         self.horse_data["trainer"] = self._clean_identity(self.horse_data.get("trainer"))
+
+    def _pf_metrics(self):
+        """Historical L600 evidence carried by this runner's form rows.
+
+        Populated by enrichment, or by `backfill_pf_metrics` for archive Logic
+        files built before the PF scraper existed. Both write `_data`, so the
+        field-relative stats in `field_summary` and the per-runner score always
+        see the same set of runs.
+
+        Racenet can supply runner-level timing, but Sportsbet `Sectionals 600m`
+        is race-level and repeats across runners from the same historical race.
+        The shared legacy key is therefore L600 context, not guaranteed
+        individual sectional speed.
+        """
+        if self._pf_metrics_cache is None:
+            metrics = self.data.get("pf_metrics")
+            self._pf_metrics_cache = metrics if isinstance(metrics, dict) else {}
+        return self._pf_metrics_cache
 
     def _speed_map(self):
         speed_map = self.race_context.get("speed_map")
@@ -315,32 +363,7 @@ class RacingEngine:
         return ""
 
     def analyze_horse(self):
-        feature_scores = {}
-        feature_notes = {}
-
-        for name, func in {
-            "form_score": self._form_score,
-            "trial_score": self._trial_score,
-            "sectional_score": self._sectional_score,
-            "pace_map_score": self._pace_map_score,
-            "jockey_score": self._jockey_score,
-            "trainer_score": self._trainer_score,
-            "jockey_horse_fit_score": self._jockey_horse_fit_score,
-            "class_score": self._class_score,
-            "rating_score": self._rating_score,
-            "weight_score": self._weight_score,
-            "distance_score": self._distance_score,
-            "track_score": self._track_score,
-            "formline_score": self._formline_score,
-            "consistency_score": self._consistency_score,
-            "health_score": self._health_score,
-            "confidence_score": self._confidence_score,
-            "pace_figure_score": self._pace_figure_score,
-        }.items():
-            score, note, source = func()
-            feature_scores[name] = clip_score(score)
-            feature_notes[name] = note
-            self.provenance[name] = source
+        feature_scores, feature_notes = self._score_features()
 
         for key in FEATURE_KEYS:
             feature_scores[key] = clip_score(feature_scores.get(key, 60))
@@ -352,10 +375,37 @@ class RacingEngine:
         ts = feature_scores.get("track_score", 60)
         if feature_scores.get("form_score", 60) >= 72 and cs < 60:
             feature_scores["form_score"] = feature_scores["form_score"] - 4
-            feature_notes["form_score"] = feature_notes.get("form_score", "") + "；[環境] 級數偏弱，亢奮已輕度收回"
+            feature_notes["form_score"] = feature_notes.get("form_score", "") + "；級數偏弱，近績分小收 −4"
+            fd = getattr(self, "form_detail", None)
+            if isinstance(fd, dict):
+                fd["bonus"].append({"delta": -4.0, "factor": "[環境] 級數偏弱收回",
+                                    "evidence": "近績分亢奮但級數分偏弱"})
+                fd["final"] = round(clip_score(feature_scores["form_score"]), 2)
         if feature_scores.get("consistency_score", 60) >= 72 and ts < 60:
             feature_scores["consistency_score"] = feature_scores["consistency_score"] - 4
-            feature_notes["consistency_score"] = feature_notes.get("consistency_score", "") + "；[環境] 場地未明，穩定度已輕度收回"
+            feature_notes["consistency_score"] = feature_notes.get("consistency_score", "") + "；場地未明，穩定性分小收 −4"
+            cd = getattr(self, "consistency_detail", None)
+            if isinstance(cd, dict):
+                cd["adjustments"].append({"delta": -4.0, "factor": "[環境] 場地未明收回",
+                                          "evidence": "穩定度偏高但場地分未達中性"})
+                cd["final"] = round(clip_score(feature_scores["consistency_score"]), 2)
+        # Complete class-adjusted margin evidence replaces the old consistency
+        # leaf inside the stability matrix.  Where that evidence is unavailable,
+        # copy the already-context-adjusted consistency score exactly so legacy
+        # and thin-data races remain rank-identical.
+        if self.provenance.get("performance_quality_score") == "consistency_fallback":
+            feature_scores["performance_quality_score"] = feature_scores.get(
+                "consistency_score",
+                60,
+            )
+            feature_notes["performance_quality_score"] = (
+                "未有最少兩場同時包含輸距、獎金及出馬數嘅完整近績；"
+                f"沿用跑法穩定性 {feature_scores['performance_quality_score']:.1f} 分。"
+            )
+            detail = getattr(self, "performance_quality_detail", {}) or {}
+            detail["final"] = round(feature_scores["performance_quality_score"], 2)
+            detail["fallback"] = "consistency_score"
+            self.performance_quality_detail = detail
         jt_fit = feature_scores.get("jockey_horse_fit_score", 60)
         if jt_fit >= 72 and cs < 58:
             feature_scores["jockey_horse_fit_score"] = jt_fit - 3
@@ -423,6 +473,7 @@ class RacingEngine:
         ability_score = round(pure_7d_score + wet_form_feat, 4)
         grade = compute_grade(ability_score)
 
+        data_coverage = self._data_coverage()
         matrix_reasoning = self._matrix_reasoning(matrix_scores, feature_scores, feature_notes)
         advantages = self._advantages(feature_scores, matrix_scores)
         disadvantages = self._disadvantages(feature_scores, matrix_scores)
@@ -445,6 +496,7 @@ class RacingEngine:
             },
             "matrix": matrix,
             "matrix_scores": matrix_scores,
+            "data_coverage": data_coverage,
             "matrix_reasoning": matrix_reasoning,
             "feature_scores": {key: round(feature_scores[key], 2) for key in FEATURE_KEYS},
             "feature_notes": {key: feature_notes.get(key, "") for key in FEATURE_KEYS},
@@ -454,10 +506,140 @@ class RacingEngine:
             "disadvantages": disadvantages,
             "grade_transparency": grade_transparency,
             "jt_fit_detail": self.jt_fit_detail,
+            "stability_detail": {
+                "form": getattr(self, "form_detail", {}) or {},
+                "consistency": getattr(self, "consistency_detail", {}) or {},
+                "performance_quality": getattr(self, "performance_quality_detail", {}) or {},
+            },
+            "pace_perf_detail": {
+                "pace": getattr(self, "pace_figure_detail", {}) or {},
+                "sectional": {k: self._sectional_breakdown().get(k)
+                              for k in ("base", "items", "score", "has_pi")},
+                "trial": getattr(self, "trial_detail", {}) or {},
+            },
+            "jt_signal_detail": {
+                "jockey": getattr(self, "jockey_detail", {}) or {},
+                "trainer": getattr(self, "trainer_detail", {}) or {},
+            },
+            "race_shape_detail": {
+                "pace_map": getattr(self, "pace_map_detail", {}) or {},
+                "track": getattr(self, "track_detail", {}) or {},
+            },
+            "class_weight_detail": {
+                "class": getattr(self, "class_detail", {}) or {},
+                "rating": getattr(self, "rating_detail", {}) or {},
+                "weight": getattr(self, "weight_detail", {}) or {},
+            },
             "formline_rows": self._formline_rows(),
             "reason_codes": sorted(set(self.reason_codes)),
             "risk_flags": sorted(set(self.risk_flags)),
             "score_provenance": self.provenance,
+            "feature_evidence_state": self.evidence_state,
+        }
+
+    def _score_features(self):
+        feature_scores = {}
+        feature_notes = {}
+        for name in FEATURE_KEYS:
+            score, note, source = getattr(self, f"_{name}")()
+            feature_scores[name] = clip_score(score)
+            feature_notes[name] = note
+            self.provenance[name] = source
+            self.evidence_state[name] = self._feature_evidence_state(name, source)
+        return feature_scores, feature_notes
+
+    # Ability-feeding features (per matrix_mapper). formline is weight-0 so it is
+    # excluded from the coverage that reflects the actual ranking evidence.
+    _COVERAGE_FEATURES = ABILITY_FEATURE_KEYS
+
+    def _feature_evidence_state(self, name, source):
+        """Classify evidence independently from the numeric score.
+
+        A real observation can legitimately score exactly 60, while several
+        no-data fallbacks intentionally use non-60 priors. Numeric equality is
+        therefore not a valid completeness test.
+        """
+        if source in {"missing_neutral", "disabled_neutral"}:
+            return "missing"
+        if name == "form_score":
+            return "observed" if (getattr(self, "form_detail", {}) or {}).get("rows") else "fallback"
+        if name == "trial_score":
+            return "observed" if self._trial_places() else "fallback"
+        if name == "sectional_score":
+            return "observed" if self._sectional_breakdown().get("has_pi") else "missing"
+        if name == "pace_map_score":
+            return "observed" if parse_float(self.horse_data.get("barrier")) is not None else "fallback"
+        if name == "jockey_score":
+            return "observed" if source in {
+                "unified_place_rate",
+                "jockey_ly_stats",
+                "jockey_rating_db",
+            } else "fallback"
+        if name == "trainer_score":
+            detail = getattr(self, "trainer_detail", {}) or {}
+            has_stats = bool(detail.get("ly_line") or detail.get("adjustments"))
+            known_tier = "資料庫無記錄" not in str(detail.get("base_label") or "")
+            return "observed" if has_stats or known_tier else "fallback"
+        if name == "jockey_horse_fit_score":
+            detail = self.jt_fit_detail or {}
+            return "derived" if detail.get("adjustments") else "fallback"
+        if name == "class_score":
+            has_class_evidence = bool(
+                self._official_entries()
+                or str(self.data.get("class_move") or "").strip()
+            )
+            return "derived" if has_class_evidence else "fallback"
+        if name == "rating_score":
+            return "observed" if source == "racecard_rating+field_relative" else "fallback"
+        if name == "weight_score":
+            return "observed"
+        if name == "track_score":
+            detail = getattr(self, "track_detail", {}) or {}
+            return "observed" if detail.get("notes") else "fallback"
+        if name == "consistency_score":
+            return "derived" if self._official_entries() else "fallback"
+        if name == "performance_quality_score":
+            return (
+                "observed"
+                if source == "class_adjusted_margin_field_relative"
+                else "fallback"
+            )
+        if name == "pace_figure_score":
+            return "observed" if source == "pf_l600_delta_field_relative" else "missing"
+        if name == "distance_score":
+            return "derived" if self._official_entries() else "fallback"
+        if name == "formline_score":
+            return "derived" if self._formline_rows() else "fallback"
+        if name == "confidence_score":
+            return "derived"
+        return "observed"
+
+    def _data_coverage(self):
+        """Fraction of ranking features backed by observed or derived evidence."""
+        missing = [
+            key
+            for key in self._COVERAGE_FEATURES
+            if self.evidence_state.get(key, "missing") not in {"observed", "derived"}
+        ]
+        total = len(self._COVERAGE_FEATURES)
+        present = total - len(missing)
+        pct = round(100.0 * present / total, 1)
+        if pct >= 75:
+            label = "高"        # confident: most features real
+        elif pct >= 50:
+            label = "中"
+        else:
+            label = "薄"        # thin: score rests on few real signals
+        return {
+            "coverage_pct": pct,
+            "present": present,
+            "total": total,
+            "confidence": label,
+            "missing_features": missing,
+            "feature_states": {
+                key: self.evidence_state.get(key, "missing")
+                for key in self._COVERAGE_FEATURES
+            },
         }
 
     def _get_class_tier(self, text):
@@ -480,121 +662,265 @@ class RacingEngine:
 
     def _form_score(self):
         starts = self._career_starts()
+        detail = {"rows": [], "avg": None, "bonus": [], "final": None, "note": ""}
+        self.form_detail = detail
         if starts == 0:
             self.reason_codes.append("debut_form_neutral")
+            detail["note"] = "初出馬無正式賽績，按保守 60 分處理"
+            detail["final"] = 60.0
             return 60, "初出馬無正式賽績，近績分按保守 60 分處理。", "career_tag"
-            
+
         entries = self._official_entries()
         if not entries:
+            detail["note"] = "缺乏正式賽績（賽績表未有可用場次），按中性 60 分處理"
+            detail["final"] = 60.0
             return 60, "缺乏正式賽績，近績分按 60 分處理。", "career_tag"
 
         today_class = self.race_context.get("race_class", "")
         today_tier = self._get_class_tier(today_class)
-        
+
         total_weighted_score = 0.0
         total_applied_weights = 0.0
         notes = []
-        
+
         for i, entry in enumerate(entries[:4]):
             place = parse_float(entry.get("placing"))
             if place is None:
                 continue
-                
-            if place == 1: base_pts = 100
+
+            # 名次 → base。有馬群大細時改用**場內百分位**（2026-07-31，用戶提出）：
+            # 絕對名次唔理馬群，令「6 匹跑第 4」同「16 匹跑第 4」一律 base 60。
+            # 5,066 場有真實馬群大細嘅 run 量到 21.5% base 評錯、11.0% 錯 ≥20 分，
+            # 最大 cohort 係大場第 6+ 被當成細場跑最後（8.9%，應由 40 升到 60）。
+            # 公式同 `shared_racing/eval_metrics.py` 嘅 top_pick_pct 一致：
+            #   pct = (place − 1) / (field − 1)     0.0 = 頭馬，1.0 = 最後
+            # 門檻由現行階梯反推 12 匹標準場（2/12→.09、3/12→.18、5/12→.36）。
+            # A/B（713 場，覆蓋 33%）：dev Gold 34→36、any2 +0.82、winT3 +0.66、
+            # 頭號推介跌落尾三分一 −0.82pp；holdout 競爭力 −1.87/+2.81，
+            # 前三命中類指標動 1–2 場。冇馬群大細（舊 meeting）→ 完全沿用絕對名次。
+            field_size = entry.get("field_size")
+            if field_size and field_size >= 2 and place <= field_size:
+                pct = (place - 1) / (field_size - 1)
+                if pct <= 0.0: base_pts = 100
+                elif pct <= 0.12: base_pts = 85
+                elif pct <= 0.25: base_pts = 75
+                elif pct <= 0.50: base_pts = 60
+                else: base_pts = 40
+            elif place == 1: base_pts = 100
             elif place == 2: base_pts = 85
             elif place == 3: base_pts = 75
             elif place <= 5: base_pts = 60
             else: base_pts = 40
-            
+
             if i == 0: decay = 1.0
             elif i == 1: decay = 0.8
             elif i == 2: decay = 0.6
             else: decay = 0.4
-            
+
             entry_tier = self._get_class_tier(entry.get("class", ""))
             delta = today_tier - entry_tier
-            
+
             if delta >= 2: class_mult = 1.2
             elif delta == 1: class_mult = 1.1
             elif delta == 0: class_mult = 1.0
             elif delta == -1: class_mult = 0.85
             else: class_mult = 0.7
-            
+
             race_score = base_pts * class_mult
             total_weighted_score += race_score * decay
             total_applied_weights += decay
-            
-            if place <= 5:
-                if class_mult > 1.0:
-                    notes.append(f"曾於較強班次入前五(降班優勢 x{class_mult})")
-                elif class_mult < 1.0:
-                    notes.append(f"曾於較弱班次入前五(升班折扣 x{class_mult})")
-        
+            # cols[1] 係 row kind／歷史 horse HC，唔係 race class。Racenet `HC`
+            # 曾經被錯寫成 `BMxx`，而缺 HC 又被錯寫成 `Maiden/SW`；兩者都會令
+            # 解說將馬匹 rating 誤當賽事班次。新 Facts 會寫 `HCxx`／`正式`。
+            # 呢欄只作證據顯示，唔參與 class multiplier。
+            kind_text = str(entry.get("kind") or "").strip()
+            cls = kind_text if kind_text.startswith("HC") else ""
+            detail["rows"].append({
+                "idx": i + 1,
+                "place": int(place),
+                "cls": cls,
+                "base": base_pts,
+                "mult": class_mult,
+                "decay": decay,
+                # 持久化馬群大細，令 replay / shadow test 唔使再由 Facts 反推
+                "field_size": field_size,
+                "historical_rating": entry.get("historical_rating"),
+            })
+
+        # 「近績被抬高」風險旗（2026-07-31，用戶提出嘅 Benbulben 型個案）：
+        # 計分近仗睇落名次唔差（舊階梯 base ≥60），但實際係場內後半段位置
+        # 或者輸一大截。archive 量化（2,139 個前三推介）：
+        #   clean     n=2,077  勝 17.5%  前三 44.8%  跌落尾三分一 22.8%  平均 SP 10.2
+        #   flattered n=   62  勝  9.7%  前三 41.9%  跌落尾三分一 40.3%  平均 SP 13.1
+        # 效應大（尾三分一率差 17.5pp）但只佔 2.9% —— 八個全局計分修正全部 A/B 失敗
+        # （見 2026-07-31 覆盤報告第 9 節），所以呢個只做**標示**，唔入分。
+        # 門檻用**實際採用嘅 base**（唔係舊階梯）：馬群大細正規化會將「大場第 6」
+        # 由 40 升到 60，而嗰場如果同時輸一大截，就正正係最需要標示嘅一場。
+        # 用舊階梯做門檻會反而漏咗佢。
+        flattered = heavy_defeats = 0
+        for row, entry in zip(detail["rows"], entries[:4]):
+            fs = row.get("field_size")
+            back_half = bool(fs and fs >= 2
+                             and (int(row["place"]) - 1) / (fs - 1) > 0.5)
+            beaten = re.search(r"\(([-+]?\d+(?:\.\d+)?)L\)",
+                               str(entry.get("placing") or ""))
+            big_margin = bool(beaten and abs(float(beaten.group(1))) > 5.0)
+            if big_margin:
+                heavy_defeats += 1
+            # 「被抬高」= 實際採用嘅 base 仍然 ≥60，但證據話居後 / 大敗。
+            if int(row["base"]) >= 60 and (back_half or big_margin):
+                flattered += 1
+        detail["flattered_runs"] = flattered
+        detail["heavy_defeat_runs"] = heavy_defeats
+        if flattered:
+            self.risk_flags.append("form_flattered")
+            notes.append(f"{flattered} 場計分近仗名次好睇但實際居後/大敗（標示，不入分）")
+        if heavy_defeats:
+            notes.append(f"{heavy_defeats} 場計分近仗輸超過 5 個馬位（標示，不入分）")
+
         if total_applied_weights > 0:
             avg_score = total_weighted_score / total_applied_weights
         else:
             avg_score = 60
-            
+
         score = min(100.0, max(0.0, avg_score))
-        
+        detail["avg"] = round(score, 2)
+
         if self._is_maiden_race():
-            trial_count = int(parse_float(self.data.get("trial_count")) or 0)
-            trial_top3 = int(parse_float(self.data.get("trial_top3_count")) or 0)
-            if trial_count >= 4 and trial_top3 >= 3:
+            # 2026-07-10：新馬補充由「試閘名次」改為「試閘 L600 時間」（用戶提出）。
+            # A/B：時間版全檔 GGP +1、A窗 +1（good +0.7pp）、無指標倒退；名次版無增益，
+            # 兩者取大亦無增益 → 淨用時間。門檻沿用 _trial_score 嘅 17.5/17.0 m/s。
+            trial_speed = parse_float(self.data.get("timing_trial_600m_avg_speed"))
+            if trial_speed and trial_speed >= 17.5:
                 score += 5
-                self.reason_codes.append("maiden_trial_form_proxy")
-                notes.append("試閘成績優異作賽績參考")
-            elif trial_count >= 3 and trial_top3 >= 2:
+                self.reason_codes.append("maiden_trial_time_proxy")
+                notes.append("試閘時間快，作近績補充參考")
+                detail["bonus"].append({"delta": 5.0, "factor": "新馬試閘時間補充",
+                                        "evidence": f"試閘 L600 平均速度 {trial_speed:.2f} m/s（≥17.5 屬快）"})
+            elif trial_speed and trial_speed >= 17.0:
                 score += 3
-        
-        # 冇特別備註時，按實際分數帶方向講，唔好 85 分都寫「近績一般」自相矛盾
-        if notes:
-            note_str = "；".join(list(dict.fromkeys(notes)))
-        elif score >= 75:
-            note_str = "近仗名次加權後屬偏強"
-        elif score <= 52:
-            note_str = "近仗名次加權後偏弱"
+                detail["bonus"].append({"delta": 3.0, "factor": "新馬試閘時間補充",
+                                        "evidence": f"試閘 L600 平均速度 {trial_speed:.2f} m/s（≥17.0 屬中上）"})
+
+        # 劣績中性回歸（2026-07-10）：診斷證實偏弱近績被罰過盡（<55帶 1仗馬實際前三率
+        # 24.6% 反高過 3-4仗馬 21.8%），偏強分係真訊號唔收（反向變體 A/B 反證會蝕）。
+        # 60 分以下向中性收縮 ×n/(n+2)，樣本越少收越多。
+        # A/B（702場）：全檔案 GGP +4、A窗 +1、B窗 +1、box4 淨 +2 場，無窗口倒退。
+        scored_n = len(detail["rows"])
+        if scored_n and score < 60.0:
+            shrunk = 60.0 + (score - 60.0) * (scored_n / (scored_n + 2.0))
+            detail["bonus"].append({
+                "delta": round(shrunk - score, 2),
+                "factor": "劣績中性回歸",
+                "evidence": f"{scored_n}場計分樣本，偏弱分向中性收縮（×{scored_n}/{scored_n + 2}）",
+            })
+            notes.append("偏弱近績已按樣本量向中性回歸")
+            score = shrunk
+
+        # 班次調整（2026-07-31，用戶提出「狀態與穩定性要真正反映實力」）：
+        # 原本 `class_mult` 係全場統一常數（見上面 entry["class"] 註釋），即係近績分
+        # 完全唔理一匹馬嘅前列成績係喺乜班次做出嚟。用獎金做班次代理補上。
+        #
+        # 場內相對（同對手比）而唔係絕對值 —— 排名只喺場內比較，而且唔受今仗獎金
+        # 缺失影響。場內中位數由 `field_summary.prize_level_field_median` 提供
+        # （同 pace_figure 拿 l600_delta_field_mean 同一個 pattern）。
+        # A/B（713 場）K=10：dev 全部指標變好或平，holdout 冇任何指標變差。
+        # ⚠️ 一定要喺「劣績中性回歸」**之後**施加 —— A/B 驗證嘅版本係加喺最終
+        # 近績分上面。放喺回歸之前會令回歸把班次調整一併damp（偏弱分 ×n/(n+2)），
+        # 咁就同驗證過嘅公式唔同。
+        field = self._field_summary() or {}
+        field_median = parse_float(field.get("prize_level_field_median"))
+        own_level = horse_prize_level(self.facts_section)
+        if field_median is not None and own_level is not None:
+            class_adj = CLASS_PRIZE_K * (own_level - field_median)
+            if abs(class_adj) >= 0.05:
+                score = clip_score(score + class_adj)
+                detail["bonus"].append({
+                    "delta": round(class_adj, 2),
+                    "factor": "班次水平調整",
+                    "evidence": (
+                        f"近仗獎金水平 log10 {own_level:.2f} vs 全場中位 "
+                        f"{field_median:.2f}（{'高' if class_adj > 0 else '低'}"
+                        f"{abs(own_level - field_median):.2f}）"
+                    ),
+                })
+                notes.append("已按近仗班次水平（獎金）校正"
+                             if class_adj > 0 else "近仗班次水平（獎金）偏低已扣減")
+
+        detail["final"] = round(clip_score(score), 2)
+        # 表達（2026-07-12 用戶要求）：近績序列行先，方向語精簡（強/偏強/中/偏弱）。
+        final = clip_score(score)
+        seq = str(self.data.get("recent_form") or self.horse_data.get("recent_form") or "").strip()
+        seq_txt = f"近績 {seq}" if seq else "近績"
+        if final >= 80:
+            direction = "加權後強"
+        elif final >= 70:
+            direction = "加權後偏強"
+        elif final > 52:
+            direction = "加權後中性"
         else:
-            note_str = "近仗名次加權後屬中性"
-        return score, f"採用班次及時間加權平均計算法，{note_str}。近績分 {clip_score(score):.1f}。", "recent_form+class_weighted"
+            direction = "加權後偏弱"
+        # 撇走冗長套話，只留精簡方向 + 真班次備註
+        note_str = "；".join([f"{seq_txt}，{direction}"] + list(dict.fromkeys(notes)))
+        return score, f"{note_str}。近績分 {final:.1f}。", "recent_form+class_weighted"
 
 
     def _trial_score(self):
+        detail = {"base": None, "adjustments": [], "final": None, "note": ""}
+        self.trial_detail = detail
         trial_places = self._trial_places()
         starts = self._career_starts()
         is_maiden = self._is_maiden_race()
         if not trial_places:
-            return 58 if starts == 0 else 60, "試閘訊號有限，試閘分保守處理。", "trial_table"
+            tw = TRIAL_MICRO_WEIGHTS
+            base = (tw.get("no_trial_debut_base", 58.0) if starts == 0
+                    else tw.get("no_trial_base", 60.0))
+            detail["base"] = base
+            detail["final"] = base
+            detail["note"] = "無試閘紀錄，按保守中性處理"
+            return base, "試閘訊號有限，試閘分保守處理。", "trial_table"
         good = sum(1 for place in trial_places[:3] if place <= 3)
-        score = 56 + good * 9
+        tw = TRIAL_MICRO_WEIGHTS
+        score = tw.get("base", 56.0)
+        detail["base"] = score
+
+        def add(delta, factor, evidence=""):
+            nonlocal score
+            score += delta
+            detail["adjustments"].append({"delta": round(float(delta), 2),
+                                          "factor": factor, "evidence": evidence})
+
+        if good:
+            add(good * tw.get("top3_mult", 9.0), "試閘前三獎勵",
+                f"近3次試閘{good}次前三（每次 +{tw.get('top3_mult', 9.0):.0f}）")
         trial_count = int(parse_float(self.data.get("trial_count")) or len(trial_places))
         latest_trial = trial_places[0] if trial_places else None
         if starts == 0:
-            score += 4
+            add(tw.get("debut_prep_bonus", 4.0), "初出馬備戰", "未出賽，試閘係主要備戰證據")
             if is_maiden:
-                score += 2
+                add(tw.get("debut_maiden_bonus", 2.0), "新馬賽初出加碼", "")
                 self.reason_codes.append("maiden_debut_trial_boost")
         if latest_trial == 1:
-            score += 4
+            add(tw.get("latest_win_bonus", 4.0), "最近試閘頭馬", "最近一課試閘勝出")
             if is_maiden:
-                score += 2
+                add(tw.get("latest_win_maiden_bonus", 2.0), "新馬賽加碼", "")
         elif latest_trial is not None and latest_trial <= 3:
-            score += 2
+            add(tw.get("latest_top3_bonus", 2.0), "最近試閘前三", f"最近一課試閘第{int(latest_trial)}")
             if is_maiden:
-                score += 1
+                add(tw.get("latest_top3_maiden_bonus", 1.0), "新馬賽加碼", "")
         if trial_count >= 4 and safe_ratio(good, max(1, min(3, trial_count))) >= 0.66:
-            score += 2
+            add(tw.get("density_bonus", 2.0), "試閘密度高兼交代穩", f"共{trial_count}次試閘，前列比例高")
             if is_maiden and trial_count >= 6 and safe_ratio(good, trial_count) >= 0.6:
-                score += 3
+                add(tw.get("density_maiden_bonus", 3.0), "新馬賽密集備戰加碼", "")
                 self.reason_codes.append("maiden_trial_density_boost")
         # Maiden: trial speed as direct signal
         if is_maiden:
             tw_trial = self.data.get("timing_trial_600m_avg_speed")
             if tw_trial and tw_trial >= 17.5:
-                score += 4
+                add(tw.get("fast_trial_bonus", 4.0), "試閘時間快", f"試閘 L600 平均 {tw_trial:.2f} m/s（≥17.5 屬快）")
                 self.reason_codes.append("maiden_fast_trial_speed")
             elif tw_trial and tw_trial >= 17.0:
-                score += 2
+                add(tw.get("mid_trial_bonus", 2.0), "試閘時間中上", f"試閘 L600 平均 {tw_trial:.2f} m/s")
         # Trial video qualitative signals (from trial comments)
         trial_signals = self.data.get("trial_video_signals") or {}
         if trial_signals:
@@ -605,26 +931,45 @@ class RacingEngine:
             improving = trial_signals.get("improving", 0)
             full_test = trial_signals.get("full_test", 0)
             if restrained >= 1:
-                score += 4 if starts == 0 or is_maiden else 2
+                add(4 if starts == 0 or is_maiden else 2, "試閘被拑制", "留力行完，仲有貨賣")
                 self.reason_codes.append("trial_restrained_signal")
             if competitive >= 2:
-                score += 4
+                add(4, "試閘有爭勝", "多課試閘見爭勝心")
             elif competitive >= 1:
-                score += 2
+                add(2, "試閘有爭勝", "")
             if led >= 2 and competitive >= 1:
-                score += 3
+                add(3, "帶放兼有爭勝", "")
                 self.reason_codes.append("trial_led_competitive")
             elif led >= 1 and competitive >= 1:
-                score += 1
+                add(1, "帶放兼有爭勝", "")
             if improving >= 1:
-                score += 2
+                add(2, "試閘走勢改善", "")
             if weakened >= 2:
-                score -= 4
+                add(-4, "試閘轉弱", "多課試閘尾段乏力")
             elif weakened >= 1:
-                score -= 2
+                add(-2, "試閘轉弱", "")
             if full_test >= 2 and competitive == 0:
-                score -= 3
+                add(-3, "盡試冇料", "多課全力試但未見競爭力")
+        detail["final"] = round(clip_score(score), 2)
         return score, f"近試閘前 3 名次 {trial_places[:3]}，有 {good} 次前列，並按最近一課/試閘密度修正，試閘分 {clip_score(score):.1f}。", "trial_table"
+
+    def _run_was_competitive(self, entry, max_lengths=3.0):
+        """嗰場係唔係真係有競爭力（唔係大敗 / 唔係場內後半）。
+
+        兩個條件都係「知道就判、唔知就唔判死」，避免因為缺數據而丟訊號：
+          * 有馬群大細 → 場內百分位必須 ≤ 0.5
+          * 有輸距     → 輸距必須 ≤ max_lengths
+        兩樣都唔知 → 當有競爭力（保守，行為同修改前一致）。
+        """
+        place = parse_float(entry.get("placing"))
+        field = entry.get("field_size")
+        if field and field >= 2 and place and place >= 1:
+            if (place - 1) / (field - 1) > 0.5:
+                return False
+        beaten = re.search(r"\(([-+]?\d+(?:\.\d+)?)L\)", str(entry.get("placing") or ""))
+        if beaten and abs(float(beaten.group(1))) > max_lengths:
+            return False
+        return True
 
     def _sectional_breakdown(self):
         if self._sectional_breakdown_cache is not None:
@@ -636,93 +981,153 @@ class RacingEngine:
         forgiveness_count = self._forgiveness_count()
 
         w = SECTIONAL_MICRO_WEIGHTS
-        total_score = w.get("base", 40.0)
-        notes = [f"基礎分 {total_score} 分"]
+        # ⚠️ 呢個 leaf 係**純加分累加器**：base 60 + 只有正項，所以最低就係 60。
+        # 咁樣「有 PI 數據但段速平平」同「完全冇 PI 數據」攞一模一樣嘅分 ——
+        # 睇落似個要修嘅單邊尺。**試過三次，三次都輸。唔好試第四次。**
+        #
+        # 713 場場內量度（已修正馬群大細，數字＝相對該批期望前三率嘅超額）：
+        #     恰好 60（冇 PI 數據）   n=2877   −1.4
+        #     有 PI，60–65           n= 607   **−2.4**   ← 差過「冇數據」
+        #     有 PI，65–70           n=1121   −1.0
+        #     有 PI，70–80 / 80–90   n=2624   +1.2 / +1.7
+        #     有 PI，90–100          n= 318   **+6.9**
+        # 排序的確倒轉咗，但幅度得 1.0pp（對比 `jockey_horse_fit` 當初嗰個
+        # 6.6pp 就改得成）。實測代價大過收益：
+        #   2026-08-01（另一線）「有 PI 但零增益」扣 −4 / −8 → holdout ndcg
+        #     −0.34 / −0.46、crec −0.58 / −0.73，兩檔 REJECT。
+        #   2026-08-02（本線）整批有數據嘅起點下移 3 / 6 / 9 分再按比例放大加分
+        #     （頂位仍然剛好 100）→ holdout champ −0.93 / −0.93 / **−1.87**、
+        #     mrr −0.67 / −0.67 / −1.14、ndcg −0.29 / −0.45 / −0.54。**單調越改越差。**
+        #
+        # 點解會咁：PI 係「追前幅度」，同跑法糾纏 —— 領放到底嘅馬天生冇追前幅度
+        # 可言，罰低 PI 等於罰前領型馬，而前領型馬贏開。所以 champ 同 mrr 首當其衝。
+        # 要真係救呢 1pp，要先令段速量度**與跑法無關**（例如同位置對應嘅期望
+        # 收放比），唔係喺分數層搬點位。
+        base = w.get("base", 40.0)
+        total_score = base
+        notes = [f"基礎分 {base} 分"]
+        items = []
 
-        # 1. Average PI (Max 25)
+        def add(delta, factor, evidence=""):
+            """delta=0 都照入 items — 每個組件永遠有一行，用戶先睇到全貌。"""
+            nonlocal total_score
+            total_score += delta
+            items.append({"delta": round(delta, 2), "factor": factor, "evidence": evidence})
+            if delta:
+                notes.append(f"{factor} ({delta:+.2f})")
+
+        # 1. Average PI (定位→終點位置增益)
+        # 競爭力封頂（2026-07-31，用戶提出）：原本逐場收 PI 然後平均，完全唔理嗰場
+        # 跑成點。Benbulben 拿 +20「位置增益優秀」，而嗰個 +5 係定位第 11、終點第 6、
+        # 輸 9.05L、賽事節奏 V Slow 嘅一場 —— Racenet 自己評語係
+        # "Passed a few plodders late."。喺爬行賽事由最後追過幾隻慢馬唔係後勁證據。
+        #
+        # 做法：非競爭場次嘅正 PI 封到 0，但**仍然計入分母** —— 早期版本直接剔走整場，
+        # 結果連負 PI（失位）嘅弱勢證據都被抹走，有啲馬平均 PI 反而升，係設計錯誤。
+        #
+        # A/B（713 場）：holdout 冇任何指標變差，winT3 +0.94、t3prec +0.63、
+        # compet +0.94；dev 基本平（Gold −1）。受影響 7.0% 馬匹，平均 −13.17 分。
         pi_from_entries = []
+        capped_runs = 0
         for entry in entries:
             pi_val = parse_float(entry.get("pi"))
-            if pi_val is not None:
-                pi_from_entries.append(pi_val)
+            if pi_val is None:
+                continue
+            if pi_val > 0 and not self._run_was_competitive(entry):
+                pi_val = 0.0
+                capped_runs += 1
+            pi_from_entries.append(pi_val)
 
         if not pi_from_entries:
-            tw_trial = self.data.get("timing_trial_600m_avg_speed")
-            if tw_trial and tw_trial > 0:
-                trial_l600 = 600.0 / tw_trial
-                if trial_l600 <= 33.5:
-                    total_score += w.get("trial_extreme_bonus", 40.0)
-                    notes.append(f"初出/無紀錄馬: 試閘 L600 ({trial_l600:.1f}s) 極速補償 (+{w.get('trial_extreme_bonus', 40.0)})")
-                elif trial_l600 <= 34.0:
-                    total_score += w.get("trial_excellent_bonus", 25.0)
-                    notes.append(f"初出/無紀錄馬: 試閘 L600 ({trial_l600:.1f}s) 優秀補償 (+{w.get('trial_excellent_bonus', 25.0)})")
-                elif trial_l600 <= 34.8:
-                    total_score += w.get("trial_pass_bonus", 10.0)
-                    notes.append(f"初出/無紀錄馬: 試閘 L600 ({trial_l600:.1f}s) 合格補償 (+{w.get('trial_pass_bonus', 10.0)})")
-                else:
-                    notes.append(f"初出/無紀錄馬: 試閘 L600 ({trial_l600:.1f}s) 偏慢 (0)")
-            else:
-                notes.append("缺乏正式 L400 數據及試閘時間 (0)")
+            # 2026-07-10：無 PI 時嘅試閘時間補償 REMOVED — 舊 bonus 非單調（最快 +0、
+            # 較慢 +3.97，ML search 殘骸），三個修法 A/B「完全移除」最好（GGP +2）。
+            # 試閘證據由試閘分（同維度 leaf）獨力承擔。
+            add(0.0, "位置增益（PI）", "缺 L400 PI 數據 — 呢匹馬近仗冇官方 PI 紀錄")
+            add(0.0, "末段速度（L600）", "缺 PI 時不參與評分")
+            add(0.0, "增益兌現", "不適用（無 PI 數據）")
+            notes.append("缺 L400 PI 數據，段速證據薄，維持基礎分")
         else:
-            recent_pi = sum(pi_from_entries[:2]) / len(pi_from_entries[:2]) if len(pi_from_entries) >= 1 else pi_from_entries[0]
             avg_pi = sum(pi_from_entries) / len(pi_from_entries)
-            max_pi = max(pi_from_entries)
+            n_pi = len(pi_from_entries)
+            capped_note = (f"（其中 {capped_runs} 場大敗/居後，追前不予計功）"
+                           if capped_runs else "")
 
             if avg_pi >= 4.0:
-                total_score += w.get("pi_extreme_bonus", 25.0)
-                notes.append(f"平均 L400 PI 極佳 (+{w.get('pi_extreme_bonus', 25.0)})")
+                add(w.get("pi_extreme_bonus", 25.0), "位置增益（PI）極佳",
+                    f"近{n_pi}仗末段平均追前 {avg_pi:.1f} 個位（≥4 屬頂級後勁）{capped_note}")
             elif avg_pi >= 2.0:
-                total_score += w.get("pi_excellent_bonus", 15.0)
-                notes.append(f"平均 L400 PI 優秀 (+{w.get('pi_excellent_bonus', 15.0)})")
+                add(w.get("pi_excellent_bonus", 15.0), "位置增益（PI）優秀",
+                    f"近{n_pi}仗末段平均追前 {avg_pi:.1f} 個位{capped_note}")
             elif avg_pi >= 0.0:
-                total_score += w.get("pi_pass_bonus", 5.0)
-                notes.append(f"平均 L400 PI 達標 (+{w.get('pi_pass_bonus', 5.0)})")
+                add(w.get("pi_pass_bonus", 5.0), "位置增益（PI）達標",
+                    f"近{n_pi}仗末段平均 {avg_pi:+.1f} 個位（冇失地）{capped_note}")
             else:
-                notes.append("平均 L400 PI 為負，缺乏後勁 (0)")
+                add(0.0, "位置增益（PI）",
+                    f"近{n_pi}仗末段平均俾人過 {abs(avg_pi):.1f} 個位——缺乏後勁{capped_note}")
 
-            # 2. Distance-Adjusted L600 Peak (Max 15)
-            tw_best = self.data.get("timing_600m_best_speed")
-            if tw_best and tw_best > 0:
-                best_l600 = 600.0 / tw_best
-                race_dist = self._distance_from_text(self.race_context.get("distance", ""))
+            # 2. Distance-Adjusted L600
+            # 口徑修正（2026-07-31）：原本用 `timing_600m_best_speed` —— 即係**生涯
+            # 最大值** —— 去同今仗路程嘅場地標準比。一次快段速就變成永久資歷，
+            # 而唔係「而家有幾快」。實測 best/avg 中位數 1.035、P99 1.101，
+            # 26.7% 嘅馬 best 高出自己平均 ≥5%（Benbulben 1.110，P99 以上）。
+            #
+            # 693 場逐場排名對實際名次嘅 Spearman ρ（唔需要場地標準，直接比口徑）：
+            #   L600 平均            ρ 0.057  Q1−Q5 7.8pp
+            #   L600 最近            ρ 0.045  Q1−Q5 5.5pp
+            #   L600 最快封頂 avg×1.05 ρ 0.035  Q1−Q5 5.8pp
+            #   L600 生涯最快（原本）  ρ 0.023  Q1−Q5 4.8pp  ← 四個之中最差
+            # 平均值嘅預測力係生涯最快嘅 2.5 倍，所以改用平均。
+            # Rollback: 將 `timing_600m_avg_speed` 換返 `timing_600m_best_speed`。
+            tw_typical = self.data.get("timing_600m_avg_speed")
+            if tw_typical and tw_typical > 0:
+                typical_l600 = 600.0 / tw_typical
+                # 防禦（2026-07-11）：可信 L600 帶 31-42s（舊 writer 分佈 31.4-41.9）。
+                # 帶外＝上游污染（曾出過「快過標準 9 秒」假象），唔採用。
+                if not (31.0 <= typical_l600 <= 42.0):
+                    add(0.0, "末段速度（L600）",
+                        f"時間數據異常（{typical_l600:.2f}s 超出可信範圍），唔採用")
+                    race_dist = None
+                else:
+                    race_dist = self._distance_from_text(self.race_context.get("distance", ""))
                 if race_dist and race_dist >= 600:
                     std_l600 = _lookup_standard_l600(self._current_venue_name(), race_dist)
                     if std_l600 and std_l600 > 0:
-                        delta = best_l600 - std_l600
+                        delta = typical_l600 - std_l600
                         if delta <= -0.6:
-                            total_score += w.get("l600_extreme_bonus", 15.0)
-                            notes.append(f"最佳 L600 ({best_l600:.2f}s vs 標準 {std_l600:.2f}s) 突破路程極限 (+{w.get('l600_extreme_bonus', 15.0)})")
+                            add(w.get("l600_extreme_bonus", 15.0), "末段速度（L600）破標準",
+                                f"平均 {typical_l600:.2f}s，快過場地標準 {std_l600:.2f}s 成 {abs(delta):.2f}s")
                         elif delta <= -0.3:
-                            total_score += w.get("l600_excellent_bonus", 5.0)
-                            notes.append(f"最佳 L600 ({best_l600:.2f}s) 達該路程優秀級別 (+{w.get('l600_excellent_bonus', 5.0)})")
+                            add(w.get("l600_excellent_bonus", 5.0), "末段速度（L600）優秀",
+                                f"平均 {typical_l600:.2f}s，快過場地標準 {abs(delta):.2f}s")
                         else:
-                            notes.append(f"最佳 L600 ({best_l600:.2f}s) 未見路程極速優勢 (0)")
+                            add(0.0, "末段速度（L600）",
+                                f"平均 {typical_l600:.2f}s，未快過場地標準（{std_l600:.2f}s）")
+                    else:
+                        add(0.0, "末段速度（L600）", "此場地/路程無標準時間可比")
+            else:
+                add(0.0, "末段速度（L600）", "缺 L600 時間數據")
 
-            # 3. Trend & Peak PI (Max 10)
-            if max_pi >= 6.0:
-                total_score += w.get("peak_pi_bonus", 5.0)
-                notes.append(f"生涯曾交出頂峰級別 PI 爆發 (+{w.get('peak_pi_bonus', 5.0)})")
-            if recent_pi > avg_pi + 2.0:
-                total_score += w.get("trend_up_bonus", 5.0)
-                notes.append(f"近期 PI 呈現強烈上升軌 (+{w.get('trend_up_bonus', 5.0)})")
-            elif recent_pi < avg_pi - 3.0:
-                total_score = max(0, total_score + w.get("trend_down_pen", -10.0))
-                notes.append(f"近期 PI 嚴重退步 ({w.get('trend_down_pen', -10.0)})")
+            # peak_pi / PI trend 項 2026-07-10 REMOVED — ablation 全指標零變化（惰性噪音）。
 
-            # 4. Realization & Forgiveness (Max 10)
+            # 3. Realization & Forgiveness
             if avg_pi > 0 and recent_top4 > 0:
-                total_score += w.get("realization_bonus", 10.0)
-                notes.append(f"高 PI 成功兌現為前列成績 (+{w.get('realization_bonus', 10.0)})")
+                add(w.get("realization_bonus", 10.0), "增益兌現",
+                    f"近3仗有{recent_top4}次前四——追位真係換到名次")
             elif avg_pi > 2.0 and forgiveness_count >= 1:
-                total_score += w.get("forgiveness_bonus", 5.0)
-                notes.append(f"高 PI 未兌現但有受阻/寬恕背景 (+{w.get('forgiveness_bonus', 5.0)})")
+                add(w.get("forgiveness_bonus", 5.0), "增益未兌現但有寬恕",
+                    "有受阻/蝕位背景，追位未反映在名次")
+            else:
+                add(0.0, "增益兌現", "PI 未達門檻或近仗未入前四")
 
         total_score = min(100.0, max(0.0, total_score))
-        
+
         self._sectional_breakdown_cache = {
             "score": total_score,
+            "base": base,
+            "items": items,
+            "has_pi": bool(pi_from_entries),
             "notes": "；".join(notes) if notes else "-",
-            "label": "Base 40 + PI/L600 累加"
+            "label": "中性 60 + PI/L600 累加",
         }
         return self._sectional_breakdown_cache
     def _sectional_score(self):
@@ -737,11 +1142,17 @@ class RacingEngine:
         breakdown = self._sectional_breakdown()
         score = breakdown["score"]
         notes = []
-        notes.append(
-            "段速以 L400 PI 同 L600 段速峰值為基礎，由零分起計"
-        )
-        if breakdown.get("notes") and breakdown["notes"] != "-":
-            notes.append(breakdown["notes"])
+        # 短判語行先（逐項計法喺 pace_perf_detail 攤開，唔使喺度重覆）
+        # 2026-08-01：base 移到中性 60 之後，「冇證據」同「有證據但唔靚」必須分開講。
+        # 舊寫法 score>=60 → 「證據正面」，而中性化後 60 正正就係「查唔到」，會講反。
+        if not breakdown.get("has_pi"):
+            notes.append("缺 L400 PI 數據，段速分維持中性")
+        elif score >= 75:
+            notes.append("PI 位置增益證據正面")
+        elif score > 60.5:
+            notes.append("PI 證據一般")
+        else:
+            notes.append("有 PI 紀錄但未見末段增益")
         if entries and latest_flags["positive"] and latest_place is not None and latest_place <= 4:
             notes.append("上仗直路受阻/蝕位，裸名次未完全反映輸出")
         if "← 今仗 ❌" in target_line:
@@ -762,6 +1173,8 @@ class RacingEngine:
         barrier = parse_float(self.horse_data.get("barrier"))
         score = w.get("base", 60.0)
         notes = []
+        detail = {"base": round(float(score), 1), "lines": []}
+        self.pace_map_detail = detail
         if barrier is not None:
             if barrier <= 4:
                 bucket = "inside"
@@ -813,33 +1226,44 @@ class RacingEngine:
                 stats = matrix.get("global_general", {}).get(f_cat, {}).get(bucket, {})
                 source_level = f"全澳 {f_cat} 總體"
 
+            bucket_zh = {"inside": "內檔", "middle": "中檔", "outside": "外檔", "wide": "大外檔"}.get(bucket, bucket)
             if stats and stats.get("sample_size", 0) > 0:
                 win_rate = stats.get("win_rate", expected_wr)
-                modifier = (win_rate - expected_wr) * 100 * w.get("modifier_multiplier", 1.0)
-                # Dampen the modifier slightly to avoid over-punishing wide draws in tiny samples
-                modifier = max(w.get("modifier_cap_min", -6.0), min(w.get("modifier_cap_max", 6.0), modifier))
+                raw_modifier = (win_rate - expected_wr) * 100 * w.get("modifier_multiplier", 1.0)
+                # Empirical-Bayes 收縮（2026-07-17）：細樣本 cell（例如 Rosehill 1200m
+                # 內檔 n=16 錄得 0 勝）純隨機都好常見，之前直接食 cap_min 一巴 −9.4。
+                # 修正按樣本量 n/(n+k) 收縮向 0：n=16 → 39%、n=112 → 82%、n=1499 → 98%。
+                # 710 場 walk-forward 驗證聚合非倒退（scratch/au_draw_bias_fix_test.py）。
+                shrink_k = w.get("shrinkage_k", 25.0)
+                n_samples = stats.get("sample_size", 0)
+                raw_modifier *= n_samples / (n_samples + shrink_k)
+                # 對稱化：勝率統計嘅波幅（尤其細樣本）用 cap 收窄，避免單一檔位被過度加減。
+                cap_min, cap_max = w.get("modifier_cap_min", -6.0), w.get("modifier_cap_max", 6.0)
+                modifier = max(cap_min, min(cap_max, raw_modifier))
                 score += modifier
                 # 內部 bucket/f_cat 係 lookup key（"inside"/"field_1_8" 等），唔應該直
-                # 接印出嚟畀人睇 —— 之前呢句會將英文 key 貼硬入中文句子。呢度加返中文
-                # 顯示名，內部 lookup 邏輯（matrix keys）完全冇改。
-                bucket_zh = {"inside": "內檔", "middle": "中檔", "outside": "外檔", "wide": "大外檔"}.get(bucket, bucket)
+                # 接印出嚟畀人睇 —— 呢度加返中文顯示名，內部 lookup 邏輯完全冇改。
                 source_level_zh = re.sub(r"field_(\d+)_(\d+|plus)",
                                           lambda m: (f"{m.group(1)}-{m.group(2)}騎陣容" if m.group(2) != "plus"
                                                      else f"{m.group(1)}騎以上陣容"),
                                           source_level)
+                n_samp = int(stats.get("sample_size", 0))
+                detail["lines"] = [
+                    f"檔位 {int(barrier)}（{bucket_zh}）→ {source_level_zh}：歷史勝率 {win_rate * 100:.0f}%，"
+                    f"場均基準 {expected_wr * 100:.0f}%（{n_samp} 場樣本，樣本收縮係數 {n_samples / (n_samples + shrink_k):.2f}）",
+                    f"勝率差 → 檔位修正 {modifier:+.1f} 分" + (
+                        f"（原始 {raw_modifier:+.1f}，因樣本波幅封頂於 {modifier:+.1f}）"
+                        if abs(raw_modifier - modifier) > 0.05 else ""),
+                ]
                 notes.append(f"檔位 {int(barrier)}（{bucket_zh}）據 {source_level_zh} 統計勝率為 {win_rate*100:.1f}%（基準 {expected_wr*100:.1f}%）")
                 if modifier > 2:
                     notes.append("排位具統計優勢")
                 elif modifier < -2:
                     notes.append("排位具統計劣勢")
             else:
-                # Absolute fallback if matrix fails completely
-                if barrier >= 12:
-                    score += w.get("fallback_wide_pen", -4.0)
-                    notes.append("排位外檔，無統計數據參考")
-                elif barrier <= 4:
-                    score += w.get("fallback_inside_bonus", 2.0)
-                    notes.append("排位內檔，無統計數據參考")
+                # 冇統計就維持中性；舊內檔/外檔硬編碼 fallback 喺 710 場、
+                # 5 folds 同 terminal holdout 全部 0-score，唔再以猜測代替數據。
+                detail["lines"] = [f"檔位 {int(barrier)}（{bucket_zh}）無足夠統計數據 → 維持中性基礎分"]
 
         # ── Pace-bias term (uses already-parsed speed_map roles + predicted_pace) ──
         # Racing prior (the model's own collapse_point rule): a slow/controlled tempo
@@ -851,7 +1275,9 @@ class RacingEngine:
         if abs(pace_adj) >= 0.01:
             score += pace_adj
             notes.append(pace_note)
+            detail["lines"].append(f"步速形勢修正 {pace_adj:+.1f}")
 
+        detail["final"] = round(clip_score(score), 2)
         return score, "；".join(notes) + f"。檔位分 {clip_score(score):.1f}。" if notes else "檔位中性，分數不變。", "barrier+empirical_bias+pace_role"
 
     def _pace_bias_adjustment(self):
@@ -932,74 +1358,413 @@ class RacingEngine:
             }
         return mapping.get(str(tier or "").strip(), "中性級別")
 
+    # LY（去年官方全季）收縮參數：prior=archive 池化騎師上名率（702場實測 0.365 —
+    # 唔好用 0.30 直覺值，會全體抬高）、k=收縮樣本、spread=映射斜率。
+    # A/B（2026-07-11，702場，修正 regex 後真數據）：LY 全面取代 curated DB → A窗蝕
+    # （96 vs 100）；「DB 命中用 DB、冇先用 LY 補」@prior .365/s100 = GGP 475→478、
+    # A窗 100、B窗 37→40，champ +0.9pp、box4 +0.5pp，全指標零倒退，同時擊敗
+    # 「非 DB 歸中性」(476) → LY 普及層（鄉村/新面孔騎師）有真訊號。
+    _JOCKEY_LY_PRIOR = 0.365
+    _JOCKEY_LY_K = 20.0
+    _JOCKEY_LY_SPREAD = 100.0
+
+    # ── 統一上名率（2026-08-01，用戶提出）──────────────────────────────
+    # 舊做法：jockey_score 優先用**自己 DB 嘅 tier**（build_comprehensive_stats，
+    # 由 63 日 archive 推導），LY 只做 fallback；trainer_ly 更加完全冇入分。
+    # 即係主力靠一個薄 DB。
+    #
+    # Racenet profile 頁有全庫、實時嘅 placePercentage（生涯），而
+    # `*_ly` 本身就係「場數 / 冠亞季」—— 兩者量緊同一樣嘢（上名率），
+    # 只係生涯 vs 去年。所以砌一個統一特徵：有 profile 用生涯（樣本大、穩），
+    # 冇就用 LY，兩者用**同一個 prior 同同一條收縮公式** → 同一把標尺、100% 覆蓋。
+    #
+    # ⚠️ 一定要統一標尺：只用 profile 嘅話覆蓋率得 64%/57%，同一場入面部分馬
+    # 換咗新標尺、部分冇，場內比較就唔一致 —— 實測嗰個版本 dev Gold −3。
+    # 要靠純 profile 做到全覆蓋要 1,041 個 profile（≈3,100 個請求），唔值得。
+    #
+    # prior 由 713 場池化實測（唔好用直覺值，用錯會全體平移）。
+    # A/B（713 場，dev 606 / 未碰過 holdout 107，spread 140）：
+    #   練馬師：dev Gold +1、champ +1.16、any2 +0.33、compet +0.83；holdout Gold −1、good_pos +0.94
+    #   兩邊　：dev 大致平；holdout good_pos +0.94、champ +0.93、winT3 +1.87、mrr +0.01
+    # 2026-08-05 練馬師 prior 修正 0.3946 → 0.3673。
+    # prior 嘅定義係「令分數分佈中心落喺 60」，所以要用**逐 runner 平均上名率**，
+    # 唔係池化 Σ上名/Σ場次（大馬房出賽量會主導池化值）。713 場、≥10 場門檻實測：
+    #                 逐 runner 平均   池化      舊 prior   分數平均   >60 比例
+    #   練馬師           36.73%      38.84%     39.46%      56.2      40.1%   ← 錯
+    #   騎師             35.62%      36.28%     35.64%      60.0      49.2%   ← 本來就對
+    # 騎師 prior 一直等於逐 runner 平均，校準完美；練馬師嗰個高咗 2.73pp
+    # （≈3.8 分），於是每個練馬師都被判低於中性，Chris Waller（2,736 場、
+    # 39.14% 上名）都只得 59.6。
+    #
+    # ⚠️ 呢個唔止係「顯示偏低」。改 prior 對**有數據**嘅馬係一個場內常數平移
+    # （唔影響排名），但**冇數據**嘅馬釘死喺中性 60 —— 舊 prior 之下佢哋等於
+    # 排喺「平均練馬師」（56.2）之上，即係「唔知」贏「普通」。呢個正正係
+    # [[au-neutral-point-is-per-leaf]] 講嘅病。
+    #
+    # Rollback: {"jockey": 0.3564, "trainer": 0.3946}
+    _PLACE_RATE_PRIOR = {"jockey": 0.3564, "trainer": 0.3673}
+    _PLACE_RATE_K = 20.0
+    _PLACE_RATE_SPREAD = 140.0
+    # 薄樣本下限：沿用 `_trainer_empirical_base` 已經 A/B 調校過嘅 10 場門檻
+    # ——「10 場以下講唔到嘢」。少過呢個數就唔用統一上名率，跌返落原本嘅
+    # DB tier / empirical fill 路徑（嗰邊有自己嘅溫和化同 cap）。
+    # 少咗呢個 guard 會令一個 5 場 1 上名嘅練馬師由中性 60 變 54.6，
+    # 即係用噪音製造訊號 —— test_trainer_empirical_fill 正正鎖住呢個行為。
+    _PLACE_RATE_MIN_RUNS = 10
+
+    def _unified_place_rate(self, kind: str):
+        """(places, runs, source)：騎練上名率，來源一律係 Sportsbet 個人頁。
+
+        以前呢度有一個 Racenet 生涯分支排喺前面。2026-08-04 實測佢**從來冇行到**
+        ——`AU_Profile_Stats_Cache.json` 152 個人物冇一個夠
+        `_PLACE_RATE_MIN_RUNS`，604 場分析檔「Racenet 生涯」出現 0 次、
+        「去年官方」（Sportsbet）34,766 次。Racenet 亦已全封，個 cache 永遠
+        refresh 唔到，所以整條分支連同 `au_profile_stats` 一併剷走。
+
+        ⚠️ 要提高覆蓋就補 Sportsbet 個人頁（`sb_people_stats.py`），
+        **唔好**降低 `_PLACE_RATE_MIN_RUNS` —— 門檻係擋樣本太細嘅人物，
+        唔係擋來源。
+        """
+        ly = self.data.get(f"{kind}_ly") or {}
+        runs = parse_float(ly.get("rides"))
+        if runs and runs >= self._PLACE_RATE_MIN_RUNS:
+            return float(parse_float(ly.get("places")) or 0.0), runs, "ly"
+        return None
+
+    # ── 2026-08-05 指標更換（`WC_AU_PEOPLE_METRIC` 控制，預設 `measured`）──
+    # 713 場、場內 AUC 實測邊個訊號真正預測上名（0.500 = 冇資訊）：
+    #   騎師 勝率     0.5943  ← 最強
+    #   騎師 上名率   0.5885     （舊做法）
+    #   騎師 總冠軍   0.5501
+    #   騎師 出賽量   0.5011     （純噪音）
+    #   練馬師 總冠軍 0.5740  ← 最強
+    #   練馬師 上名率 0.5699     （舊做法）
+    #   練馬師 出賽量 0.5678
+    #   練馬師 勝率   0.5598
+    # 所以騎師改用**勝率**，練馬師改用**總冠軍**（log1p 之後 z-score）。
+    # 總冠軍係 volume × quality 嘅合成，所以大馬房（Chris Waller）唔會再被
+    # 「每匹馬上名率」攤薄 —— 呢個亦係 Kelvin 講「Waller 應該最高分」嘅點。
+    #
+    # ⚠️ 兩個新指標嘅 spread 都特意校到令**語料庫 dataset** 嘅 leaf SD 等於舊值
+    # （騎師 9.04、練馬師 8.48），咁 A/B 量到嘅係**訊號**而唔係尺度改變。
+    # 第一次校準用咗 Logic 存檔嘅 SD（6.70/5.57），但 dataset 係用現行引擎重算
+    # 嘅，兩者唔同 —— 結果候選 SD 細咗三成，等於偷偷減咗 jockey_trainer 嘅影響力。
+    # `WC_AU_PEOPLE_METRIC=place` 可以還原舊行為做對照。
+    _JOCKEY_WIN_PRIOR = 0.1271        # 713 場逐 runner 平均勝率
+    _JOCKEY_WIN_SPREAD = 247.0        # 令 dataset SD ≈ 9.04（同舊指標一致）
+    _TRAINER_LOGWINS_MEAN = 3.887     # log1p(去年冠軍) 平均
+    _TRAINER_LOGWINS_SD = 1.365
+    _TRAINER_LOGWINS_SPREAD = 6.26    # 每單位 log1p → 分；令 dataset SD ≈ 8.48
+    # `WC_AU_PEOPLE_METRIC=trainer_win`：練馬師改用**勝率**（同騎師一致）。
+    # 713 場逐 runner 平均勝率 13.14%、SD 4.15pp；spread 校到令 dataset SD ≈ 8.48。
+    _TRAINER_WIN_PRIOR = 0.1314
+    _TRAINER_WIN_SPREAD = 204.3
+
+    def _people_metric_mode(self):
+        import os
+        return os.environ.get("WC_AU_PEOPLE_METRIC", "measured")
+
+    def _place_rate_score(self, kind: str):
+        """騎練基礎分 → 60-中性。回傳 (score, evidence, source) 或 None。"""
+        found = self._unified_place_rate(kind)
+        if not found:
+            return None
+        places, runs, source = found
+        ly = self.data.get(f"{kind}_ly") or {}
+        wins = parse_float(ly.get("wins"))
+        mode = self._people_metric_mode()
+
+        # 預設（`measured`）：**只有騎師**換用勝率。練馬師留返上名率 ——
+        # 每個以冠軍數為基礎嘅練馬師變體都用 gold 換 champ，而 gold 係 Kelvin
+        # 嘅追逐目標，所以唔可以靜靜咁換。`WC_AU_PEOPLE_METRIC=wins` 可以開
+        # 練馬師嘅「上名率 + log 冠軍各半」變體（實測見下面註）。
+        if mode == "trainer_win" and kind == "trainer" and wins is not None:
+            prior = self._TRAINER_WIN_PRIOR
+            shrunk = (wins + self._PLACE_RATE_K * prior) / (runs + self._PLACE_RATE_K)
+            score = clip_score(60.0 + (shrunk - prior) * self._TRAINER_WIN_SPREAD)
+            return score, (f"去年官方 {int(runs)} 場、{int(wins)} 冠"
+                           f"（勝率 {wins / runs * 100:.0f}%，收縮後 "
+                           f"{shrunk * 100:.0f}%，全國基準 {prior * 100:.0f}%）"), source
+
+        if mode not in ("place",) and wins is not None and (
+                kind == "jockey" or mode == "wins"):
+            if kind == "jockey":
+                prior = self._JOCKEY_WIN_PRIOR
+                shrunk = (wins + self._PLACE_RATE_K * prior) / (runs + self._PLACE_RATE_K)
+                score = clip_score(60.0 + (shrunk - prior) * self._JOCKEY_WIN_SPREAD)
+                return score, (f"去年官方 {int(runs)} 場、{int(wins)} 冠"
+                               f"（勝率 {wins / runs * 100:.0f}%，收縮後 "
+                               f"{shrunk * 100:.0f}%，全國基準 {prior * 100:.0f}%）"), source
+            # 練馬師：上名率（效率）同 log 總冠軍（規模×質素）**各半混合**。
+            # ⚠️ 唔可以純用總冠軍。實測：一個 60 場、40% 上名率、10 冠嘅細馬房，
+            # 純總冠軍之下由高於中性跌到 50.7 —— 因為平均 runner 嘅馬房去年約
+            # 48 冠，所以純冠軍數係系統性偏向大馬房。混合保住細馬房嘅效率訊號，
+            # 同時令 Chris Waller 唔再被「每匹馬上名率」攤薄。
+            # 先例：讓磅分 fallback 亦係「級數 0.5787 + 負磅 0.5769 → 混合 0.6078」，
+            # 兩個互補訊號混合贏過任何一邊單獨用。
+            import math
+            prior = self._PLACE_RATE_PRIOR[kind]
+            shrunk = (places + self._PLACE_RATE_K * prior) / (runs + self._PLACE_RATE_K)
+            rate_part = 60.0 + (shrunk - prior) * self._PLACE_RATE_SPREAD
+            lw = math.log1p(float(wins))
+            wins_part = 60.0 + (lw - self._TRAINER_LOGWINS_MEAN) * self._TRAINER_LOGWINS_SPREAD
+            score = clip_score(0.5 * rate_part + 0.5 * wins_part)
+            return score, (f"去年官方 {int(runs)} 場、{int(wins)} 冠 {int(places)} 上名"
+                           f"（上名率 {places / runs * 100:.0f}%，收縮後 {shrunk * 100:.0f}%；"
+                           f"冠軍數全國第 {self._logwins_pct(lw):.0f} 百分位）"), source
+
+        prior = self._PLACE_RATE_PRIOR[kind]
+        shrunk = (places + self._PLACE_RATE_K * prior) / (runs + self._PLACE_RATE_K)
+        score = clip_score(60.0 + (shrunk - prior) * self._PLACE_RATE_SPREAD)
+        return score, (f"去年官方 {int(runs)} 場、上名 {int(places)} 次"
+                       f"（原始 {places / runs * 100:.0f}%，收縮後 {shrunk * 100:.0f}%，"
+                       f"全國基準 {prior * 100:.0f}%）"), source
+
+    def _logwins_pct(self, lw: float) -> float:
+        """log1p(冠軍) → 大約百分位（用常態近似，純粹為咗個說明好讀）。"""
+        import math
+        z = (lw - self._TRAINER_LOGWINS_MEAN) / (self._TRAINER_LOGWINS_SD or 1.0)
+        return 100.0 * 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))
+
+    def _jockey_ly_score(self):
+        ly = self.data.get("jockey_ly") or {}
+        rides = parse_float(ly.get("rides"))
+        if not rides or rides <= 0:
+            return None
+        places = float(parse_float(ly.get("places")) or 0)
+        rate = (places + self._JOCKEY_LY_K * self._JOCKEY_LY_PRIOR) / (rides + self._JOCKEY_LY_K)
+        score = clip_score(60.0 + (rate - self._JOCKEY_LY_PRIOR) * self._JOCKEY_LY_SPREAD)
+        return score, rate, int(rides), places
+
     def _jockey_score(self):
         jockey = self._clean_identity(self.horse_data.get("jockey"))
+        detail = {"lines": [], "source": ""}
+        self.jockey_detail = detail
+
+        # 統一上名率優先（2026-08-01）—— 取代舊嘅「薄 DB tier 優先、LY 做 fallback」。
+        # 見 `_place_rate_score` 註釋：Sportsbet LY 統計用同一把標尺建立高覆蓋。
+        unified = self._place_rate_score("jockey")
+        if unified is not None:
+            score, evidence, _source = unified
+            detail["source"] = "unified_place_rate"
+            detail["lines"] = [evidence,
+                               f"高過基準加分、低過扣分 → {clip_score(score):.1f} 分（60 為中性）"]
+            return score, f"{jockey} {evidence}，騎師分 {clip_score(score):.1f}。", "unified_place_rate"
+
         rating = self._jockey_rating_profile(jockey)
         if rating:
             score = rating["base_score"]
             tier_text = self._rating_tier_text(rating.get("tier"), "jockey")
-            note = f"{jockey} 按 AU 騎師資料庫列作 {tier_text}"
+            note = f"{jockey} · {tier_text}"
             if rating.get("confidence") == "provisional":
                 note += "（暫定補名）"
+            detail["source"] = "db"
+            detail["lines"] = [f"{tier_text} → {clip_score(score):.0f} 分"]
+            jly = self.data.get("jockey_ly") or {}
+            if jly.get("rides"):
+                rides = int(jly["rides"]); places = int(jly.get("places") or 0); wins = int(jly.get("wins") or 0)
+                detail["lines"].append(
+                    f"去年官方：{rides} 騎、{wins} 冠 {places} 上名"
+                    f"（勝率 {wins / rides * 100:.0f}%、上名率 {places / rides * 100:.0f}%）")
             return score, f"{note}，騎師分 {clip_score(score):.1f}。", "jockey_rating_db"
 
+        # 普及覆蓋層（2026-07-11）：DB 冇名（尤其鄉村/外州騎師）用 LY 官方全季統計，
+        # 上名率經樣本收縮 — 細樣本鄉村好成績會被拉返向平均，唔會亂畀高分。
+        ly = self._jockey_ly_score()
+        if ly is not None:
+            score, rate, rides, places = ly
+            raw_rate = places / rides if rides else 0
+            detail["source"] = "ly"
+            detail["lines"] = [
+                f"去年官方全季：{rides} 騎、上名 {int(places)} 次（原始上名率 {raw_rate * 100:.0f}%）",
+                f"樣本收縮（樣本越少越拉向基準）後 {rate * 100:.0f}%，全國基準 {self._JOCKEY_LY_PRIOR * 100:.0f}%",
+                f"高過基準加分、低過扣分 → {clip_score(score):.1f} 分（60 為中性）",
+            ]
+            return score, (f"{jockey} 去年官方 {rides} 騎、上名 {int(places)} 次"
+                           f"（收縮後上名率 {rate * 100:.0f}%，全國基準 {self._JOCKEY_LY_PRIOR * 100:.0f}%），"
+                           f"騎師分 {clip_score(score):.1f}。"), "jockey_ly_stats"
+
+        # DB 同官方去年統計都冇資料時維持中性。舊硬編碼名單 fallback
+        # 喺 445 場 runtime ablation（development、terminal、5 folds）
+        # 全部精確零影響，亦會令同一騎師因缺失資料而得到不一致待遇。
         score = 60
-        elite_tokens = (
-            "McDonald", "Rawiller", "Pike", "Allen", "King", "Melham",
-            "Collett", "Berry", "Clark", "Hyeronimus", "Schiller", "Lloyd",
-            "Shinn", "Zahra", "Lane", "Bowman", "Kah", "Prebble", "Parr"
-        )
-        solid_tokens = ("McEvoy", "Layt", "Bayliss", "Moore", "Roper", "Costin", "Bullock", "Gibbons", "Jones")
-        if any(token in jockey for token in elite_tokens):
-            score += JOCKEY_MICRO_WEIGHTS.get("elite_bonus", 12.0)
-            return score, f"{jockey} 屬高階騎師，騎師分 {clip_score(score):.1f}。", "jockey_name_fallback"
-        if any(token in jockey for token in solid_tokens):
-            score += JOCKEY_MICRO_WEIGHTS.get("solid_bonus", 6.0)
-            return score, f"{jockey} 屬有基本把握嘅一級半騎師，騎師分 {clip_score(score):.1f}。", "jockey_name_fallback"
-        if "(a)" in jockey or "Fitzgerald" in jockey:
-            score += JOCKEY_MICRO_WEIGHTS.get("apprentice_fresh_bonus", 2.0)
-            return score, f"{jockey} 有減磅/新鮮手感因素，騎師分 {clip_score(score):.1f}。", "jockey_name_fallback"
-        return score, f"{jockey or '騎師資料'} 屬中性配置，騎師分 {clip_score(score):.1f}。", "jockey_name_fallback"
+        detail["source"] = "neutral"
+        detail["lines"] = ["資料庫／官方統計均無記錄 → 中性 60 分"]
+        return score, f"{jockey or '騎師資料'} 屬中性配置，騎師分 {clip_score(score):.1f}。", "jockey_missing_neutral"
 
     def _trainer_score(self):
         trainer = self._clean_identity(self.horse_data.get("trainer"))
+        # 統一上名率做基礎分（2026-08-01）—— 舊做法係薄 DB tier 做 base，而
+        # `trainer_ly` 更加完全冇入分（淨係顯示）。而家 Sportsbet LY 直接做主來源。
+        # 之後嘅 micro adjustment（場館成績、Waller 首戰…）照舊疊喺上面。
+        unified = self._place_rate_score("trainer")
+        # `_TRAINER_LY_MAGNITUDE = 0` 一直係「關掉所有去年記錄影響」嘅 A/B 開關。
+        # 統一上名率令 LY 由「fill delta」變成「base」，如果唔喺度都尊重個開關，
+        # 將來有人 toggle 佢做 A/B 就會攞到誤導結果。
+        if unified is not None and unified[2] == "ly" and not self._TRAINER_LY_MAGNITUDE:
+            unified = None
         rating = self._trainer_rating_profile(trainer)
-        score = rating["base_score"] if rating else 60
+        if unified is not None:
+            score, base_evidence, _source = unified
+            base_label = "統一上名率"
+        else:
+            score = rating["base_score"] if rating else 60
+            base_label = ""
+            base_evidence = ""
+        detail = {"base": round(float(score), 1), "base_label": base_label,
+                  "adjustments": [], "final": None, "ly_line": "",
+                  "base_evidence": base_evidence}
+        self.trainer_detail = detail
+        tly = self.data.get("trainer_ly") or {}
+        thin_sample_evidence = ""
+        if tly.get("rides"):
+            _r = int(tly["rides"]); _p = int(tly.get("places") or 0); _w = int(tly.get("wins") or 0)
+            detail["ly_line"] = (f"去年官方：{_r} 場、{_w} 冠 {_p} 上名"
+                                 f"（勝率 {_w / _r * 100:.0f}%、上名率 {_p / _r * 100:.0f}%）")
+            if _r < self._PLACE_RATE_MIN_RUNS and unified is None and rating is None:
+                thin_sample_evidence = (
+                    f"去年官方僅 {_r} 場、{_w} 冠 {_p} 上名，"
+                    f"未達 {self._PLACE_RATE_MIN_RUNS} 場可信門檻，按中性處理"
+                )
         notes = []
+
+        def add(delta, factor, evidence=""):
+            nonlocal score
+            score += delta
+            detail["adjustments"].append({"delta": round(float(delta), 2),
+                                          "factor": factor, "evidence": evidence})
+            notes.append(factor)
+
         if rating:
             tier_text = self._rating_tier_text(rating.get("tier"), "trainer")
-            tier_note = f"馬房按 AU 練馬師資料庫列作 {tier_text}"
+            tier_note = tier_text
             if rating.get("confidence") == "provisional":
                 tier_note += "（暫定補名）"
-            notes.append(tier_note)
+            # 敘述真實：base 由邊度嚟就寫邊度。統一上名率接手咗 base 之後，
+            # 再寫「Tier 1 精英馬房」做 base_label 就係講錯數字點嚟。
+            # Tier 仍然值得顯示（分析師分級），所以降做 note。
+            if unified is None:
+                detail["base_label"] = tier_text
+                notes.append(tier_note)
+            # ⚠️ 2026-08-05：統一上名率做 base 嗰陣**唔再**寫 Tier 標籤入 note。
+            # 舊行為令 Chris Waller 個 one-liner 讀成「Tier 1 精英馬房，練馬師分
+            # 59.6」——一個唔再驅動分數嘅遺留標籤，配一個同佢矛盾嘅數字。
+            # Kelvin 明確要求剷走，改出真實統計行（見下面 note 組成）。
+            # tier 仍然留喺 `_trainer_rating_profile`，將來想用就有，只係唔顯示。
         else:
-            strong_tokens = (
-                "Waller", "Maher", "Waterhouse", "Bott", "Hayes", "Baker",
-                "Freedman", "Price", "Payne", "Pride", "Snowden", "Charlton",
-                "Hawkes", "O'Shea", "Conners", "Cummings", "Gollan", "Lees", "Neasham", "Moody"
-            )
-            if any(token in trainer for token in strong_tokens):
-                score += TRAINER_MICRO_WEIGHTS.get("elite_bonus", 12.0)
-                notes.append("馬房屬全國強勢班底")
-        if "Waller" in trainer and self._career_starts() == 0:
-            score += TRAINER_MICRO_WEIGHTS.get("waller_debut_bonus", 4.0)
-            self.reason_codes.append("waller_debut_positive")
-            notes.append("初出馬由 Waller 系統部署")
+            # EMPIRICAL FILL 2026-07-25: the curated ratings CSV lists only ~57
+            # trainers, so ~39% of runners previously fell through to a flat
+            # neutral 60 — the biggest coverage hole in the matrix. The engine
+            # already carries trainer_ly (last-year official rides/wins/places)
+            # but used it only for narrative. Unlisted trainers are now scored
+            # from their OWN last-year place rate, empirical-Bayes shrunk toward
+            # the field norm so thin samples stay neutral.
+            # Magnitude is _TRAINER_LY_MAGNITUDE below, tuned by isolated A/B
+            # (score once, recompute ability with the fill toggled) over 708
+            # archive races + split-half stability.
+            # 統一上名率已經食咗同一個 LY 訊號做 base，再加呢個 fill 就係
+            # **雙重計算**（2026-08-01 整合時踩過呢個坑，由
+            # test_magnitude_zero_disables_the_fill_cleanly 捉返）。
+            empirical = None if unified is not None else self._trainer_empirical_base(tly)
+            if empirical is not None:
+                base_delta, ev = empirical
+                add(base_delta, "去年實證班底水準", ev)
+                detail["base_label"] = f"名單外，改用去年實證（{ev}）"
+            elif unified is None:
+                # 有 Sportsbet 官方紀錄但樣本薄，唔可以誤寫成「未有官方記錄」。
+                # 呢個係 confidence gate，唔係 name/ID mapping failure。
+                detail["base_label"] = (
+                    thin_sample_evidence or "Sportsbet 官方統計未有可用記錄，中性起步"
+                )
+        # 2026-08-04：`TRAINER_MICRO_WEIGHTS` 整族剷走。
+        #
+        # 剷走之前量過 —— 呢個係條件，唔係假設。718 場 runtime ablation：
+        # **改動場次 0、排名改動場次 0**，dev 同 holdout 兩邊 Gold / Good位 /
+        # any2 / winT3 / 前三精準全部 ±0.00，5/5 fold 非退步。即係佢哋喺現行
+        # 門檻之下從來冇觸發過。
+        #
+        # 順帶剷走嘅 `"Waller" in trainer` 硬寫馬房名：初出馬 +bonus 呢個條件
+        # 除咗係手調之外，仲係一個會過期嘅事實（馬房會變）。佢個 reason code
+        # `waller_debut_positive` 全 repo 冇任何消費者，所以一併走。
+        #
+        # ⚠️ 下面三個場館觀察保留成 **display-only**（`add(0.0, …)`）——
+        # 同 2026-07-11 combo/misc 大剪裁一樣嘅處理。佢哋唔再入排名，但
+        # 「馬房同場館 N 次、上名率 X%」對讀報告嘅人係真資訊，剷走等於
+        # 為咗 tidy 一個權重表而扔走一段有內容嘅敘述。
         track_stats = self._trainer_track_stats()
+        track_ev = (f"馬房同場館 {int(track_stats.get('runs', 0))} 次、"
+                    f"上名率 {track_stats.get('place_rate', 0.0) * 100:.0f}%")
         if track_stats.get("runs", 0) >= 20 and track_stats.get("place_rate", 0.0) >= 0.44:
-            score += TRAINER_MICRO_WEIGHTS.get("track_high_vol_high_place_bonus", 7.0)
-            notes.append("馬房喺今場場館屬高密度高上名輸出")
+            add(0.0, "今場場館高密度高上名", track_ev)
         elif track_stats.get("runs", 0) >= 12 and track_stats.get("place_rate", 0.0) >= 0.40:
-            score += TRAINER_MICRO_WEIGHTS.get("track_med_vol_high_place_bonus", 5.0)
-            notes.append("馬房喺今場場館有穩定上名輸出")
+            add(0.0, "今場場館穩定上名", track_ev)
         elif track_stats.get("runs", 0) >= 8 and track_stats.get("place_rate", 0.0) >= 0.32:
-            score += TRAINER_MICRO_WEIGHTS.get("track_med_vol_med_place_bonus", 3.0)
-            notes.append("馬房喺今場場館有基本對位")
-        elif track_stats.get("runs", 0) >= 8 and track_stats.get("place_rate", 0.0) < 0.18:
-            score += TRAINER_MICRO_WEIGHTS.get("track_low_place_pen", -2.0)
-            notes.append("馬房近場館樣本未見明顯承托")
-        note = "；".join(notes) if notes else f"{trainer or '練馬師資料'} 反映馬房部署基礎"
-        return score, f"{note}，練馬師分 {clip_score(score):.1f}。", "trainer_name+trainer_track_stats"
+            add(0.0, "今場場館有基本對位", track_ev)
+        detail["final"] = round(clip_score(score), 2)
+        # 說明以**實際統計**為主（同騎師分同一個格式），tier 標籤唔再出現。
+        # 「反映馬房部署基礎」只留返真正冇任何數據嗰批 —— 嗰句本身冇資訊，
+        # 但至少冇講錯數字點嚟。
+        head = f"{trainer} {base_evidence}" if (trainer and base_evidence) else \
+            (base_evidence or
+             (f"{trainer} {thin_sample_evidence}" if trainer and thin_sample_evidence else "") or
+             "；".join(notes) or
+             f"{trainer or '練馬師資料'} Sportsbet 官方統計未有可用記錄")
+        if base_evidence and notes:
+            head += "；" + "；".join(notes)
+        return score, f"{head}，練馬師分 {clip_score(score):.1f}。", "trainer_name+trainer_track_stats"
+
+    # Field-wide AU last-year place rate (~30% of runners place). Trainers are
+    # scored relative to this norm; SHRINK_K keeps thin samples near neutral.
+    _TRAINER_LY_NORM = 0.30
+    _TRAINER_LY_SHRINK_K = 40.0
+    _TRAINER_LY_SCALE = 34.0   # score points per unit of place-rate deviation
+    _TRAINER_LY_CAP = 9.0      # bounded either way; never dominates the feature
+    # Overall magnitude multiplier (0 = fill disabled, 1 = raw scale above).
+    # Tuned by ISOLATED A/B on 708 archive races (3,314/7,521 runners = 44%
+    # affected; identical scoring run, only this multiplier toggled):
+    #   0.00  any-2 277 (39.1%) | winner-in-top3 51.7% | top-pick-wins 22.6%
+    #   0.25  any-2 281 (39.7%) | winner-in-top3 51.6% | top-pick-wins 22.6%
+    #   1.00  any-2 281 (39.7%) | winner-in-top3 50.8% | top-pick-wins 22.3%
+    #   2.00  any-2 283 (40.0%) | winner-in-top3 50.3% | top-pick-wins 21.8%
+    # Full magnitude buys any-2 races by shaving winner-finding; 0.25 keeps the
+    # any-2 gain (+4 races, +2/+2 across both halves) at no measurable cost to
+    # winner-finding, and every unlisted trainer still carries a real score
+    # instead of a silent neutral 60. Confidence gating (|delta| thresholds) and
+    # positive-only variants were also tested and recovered nothing.
+    _TRAINER_LY_MAGNITUDE = 0.25
+
+    def _trainer_empirical_base(self, tly):
+        """(delta, evidence) from a trainer's own last-year record, or None.
+
+        Only fires for trainers absent from the curated ratings CSV, so it fills
+        the coverage hole without overriding analyst tiers.
+        """
+        try:
+            rides = int(tly.get("rides") or 0)
+            places = int(tly.get("places") or 0)
+        except (TypeError, ValueError):
+            return None
+        if rides < 10:
+            return None  # too thin to say anything
+        # `places` is already wins + seconds + thirds (see build_au_logic).
+        # Adding wins again inflated every trainer's official place rate.
+        place_rate = places / rides if places else 0.0
+        shrunk = (place_rate * rides + self._TRAINER_LY_NORM * self._TRAINER_LY_SHRINK_K) / (
+            rides + self._TRAINER_LY_SHRINK_K)
+        raw = (shrunk - self._TRAINER_LY_NORM) * self._TRAINER_LY_SCALE
+        raw = max(-self._TRAINER_LY_CAP, min(self._TRAINER_LY_CAP, raw))
+        # Floor is checked on the raw deviation, not the scaled one, so lowering
+        # the magnitude tempers the fill without silently shrinking coverage.
+        if not self._TRAINER_LY_MAGNITUDE or abs(raw) < 0.05:
+            return None  # magnitude 0 = fill disabled; tiny raw = nothing to say
+        delta = raw * self._TRAINER_LY_MAGNITUDE
+        ev = (f"去年 {rides} 場、上名率 {place_rate * 100:.0f}%"
+              f"（收縮後 {shrunk * 100:.0f}%、基準 {self._TRAINER_LY_NORM * 100:.0f}%）")
+        return round(delta, 2), ev
+
+    # 「完全冇人馬配搭紀錄」嘅點位（見 `_jockey_horse_fit_score` 尾部註釋）。
+    # 唔係中性 60 —— 嗰批馬實測前三率 21.7%，低過樣本平均 28.3%。
+    _JT_FIT_NO_EVIDENCE = 58.0
 
     def _jockey_horse_fit_score(self):
         jockey = self._clean_identity(self.horse_data.get("jockey"))
@@ -1049,12 +1814,8 @@ class RacingEngine:
                     "evidence": str(evidence or "").strip(),
                 })
 
-        if self._career_starts() == 0 and top_trainer:
-            add(FIT_MICRO_WEIGHTS.get("debut_top_trainer_bonus", 8.0), "初出馬由強勢馬房部署",
-                f"{trainer}屬 AU 資料庫頂級馬房")
-        if self._career_starts() <= 5 and top_jockey and top_trainer:
-            add(FIT_MICRO_WEIGHTS.get("young_top_jt_bonus", 6.0), "輕賽齡馬配頂級騎練",
-                f"生涯{self._career_starts()}仗即配 {jockey}×{trainer}")
+        # debut_top_trainer / young_top_jt 權重已被 ML 歸零 — 死支 2026-07-11 刪除，
+        # 免報告出「有講冇分」嘅因子。
         if trial_count >= 2 and trial_top3 >= 2:
             add(FIT_MICRO_WEIGHTS.get("trial_ok_bonus", 4.0), "試閘交代密度足夠",
                 f"近期試閘{trial_count}課、{trial_top3}課入前三")
@@ -1062,7 +1823,10 @@ class RacingEngine:
                 add(FIT_MICRO_WEIGHTS.get("trial_ok_top_jt_bonus", 2.0), "備戰同騎練配置方向一致",
                     "試閘密度足夠且配頂級騎/練")
         if current_formal_rides > 0:
-            add(min(FIT_MICRO_WEIGHTS.get("current_formal_cap", 6.0), current_formal_places * FIT_MICRO_WEIGHTS.get("current_formal_mult", 2.0) + current_formal_wins * FIT_MICRO_WEIGHTS.get("current_formal_mult", 2.0)),
+            # formal_places is W+2nd+3rd (see _summarize_formguide_section).
+            # Adding formal_wins again double-counts every win and inflates the
+            # same jockey/horse partnership signal.
+            add(min(FIT_MICRO_WEIGHTS.get("current_formal_cap", 6.0), current_formal_places * FIT_MICRO_WEIGHTS.get("current_formal_mult", 2.0)),
                 f"現役騎師曾策騎此駒 {current_formal_rides} 次正式賽",
                 f"{jockey}策此駒{current_formal_rides}次：{current_formal_wins}勝{current_formal_places}上名")
             if current_formal_places * 2 >= max(1, current_formal_rides):
@@ -1075,81 +1839,94 @@ class RacingEngine:
             add(min(FIT_MICRO_WEIGHTS.get("current_trial_cap", 4.0), current_trial_top3 * FIT_MICRO_WEIGHTS.get("current_trial_mult", 2.0)),
                 "現役騎師已透過試閘熟習此駒",
                 f"{jockey}試閘策此駒{current_trial_rides}次、{current_trial_top3}次入前三")
-        if best_formal_jockey and best_formal_rides > 0:
-            if jockey == best_formal_jockey:
-                add(min(FIT_MICRO_WEIGHTS.get("best_formal_cap", 6.0), best_formal_places * FIT_MICRO_WEIGHTS.get("best_formal_mult", 2.0) + best_formal_wins * FIT_MICRO_WEIGHTS.get("best_formal_mult", 2.0)),
-                    "今場沿用歷來最佳正式賽配搭",
-                    f"{best_formal_jockey}：{best_formal_rides}騎{best_formal_wins}勝{best_formal_places}上名")
-            elif current_formal_rides == 0 and best_formal_places > 0:
-                if self._jockey_rank_value(jockey) >= self._jockey_rank_value(best_formal_jockey):
-                    add(FIT_MICRO_WEIGHTS.get("jockey_upgrade_vs_best_bonus", 2.0), "雖未沿用歷來最佳配搭，但換上同級或更強騎師",
-                        f"今場{jockey} vs 歷來最佳{best_formal_jockey}")
-                else:
-                    add(FIT_MICRO_WEIGHTS.get("jockey_downgrade_vs_best_pen", -4.0), "今場未沿用歷來較合拍騎師",
-                        f"歷來最佳配搭為{best_formal_jockey}（{best_formal_rides}騎{best_formal_places}上名）")
-            elif current_vs_best:
-                notes.append(current_vs_best)
+        # 「歷來最佳配搭」family 2026-07-11 退出計分：best_formal_mult 被 ML search 推成
+        # 負數（−0.06 — 沿用最佳配搭反而扣分，語義反轉 bug），成族 ablation 移除後
+        # GGP +2／A窗 +1／B窗平 → 移除係贏。歷來最佳配搭資料仍喺數據錨點顯示。
+        if best_formal_jockey and best_formal_rides > 0 and current_vs_best:
+            notes.append(current_vs_best)
+        # 上仗騎師同此駒嘅往績 —— 連續分級項（2026-08-04）。
+        # 呢個唔限於「換咗騎師」：`lo_rate` 量緊嘅係**呢匹馬喺最近嗰位騎師手上
+        # 交到幾多**，而唔係配搭連續性。條件化量度話呢個變數單調預測，
+        # 而舊嗰兩個門檻項只碰單邊。mult = 0 即係唔啟用。
+        _lo_mult = FIT_MICRO_WEIGHTS.get("latest_jockey_record_mult", 0.0)
+        if _lo_mult and latest_official_rides > 0:
+            _cap = FIT_MICRO_WEIGHTS.get("latest_jockey_record_cap", 5.0)
+            _d = max(-_cap, min(_cap, _lo_mult * (latest_official_place_rate - 0.457)))
+            if _d:
+                add(_d, "上仗騎師對此駒往績",
+                    f"{latest_official_jockey or '上仗騎師'}策此駒 {latest_official_rides} 次、"
+                    f"上名率 {latest_official_place_rate * 100:.0f}%（全體平均 46%）")
         if latest_official_jockey and latest_official_jockey != jockey and latest_official_rides > 0:
-            if current_formal_rides > 0 and current_place_rate > latest_official_place_rate + 0.20:
-                add(FIT_MICRO_WEIGHTS.get("latest_upgrade_bonus", 4.0), "今場接手騎師對此駒往績勝過上仗騎師",
-                    f"今場騎師上名率{current_place_rate * 100:.0f}% vs 上仗{latest_official_jockey} {latest_official_place_rate * 100:.0f}%")
-            elif current_formal_rides == 0 and latest_official_place_rate >= 0.50:
+            # latest_upgrade_bonus 權重已被 ML 歸零 — 死支刪除（2026-07-11），
+            # 免報告出現「有講冇分」嘅因子。
+            if current_formal_rides == 0 and latest_official_place_rate >= 0.50:
                 add(FIT_MICRO_WEIGHTS.get("leave_proven_jockey_pen", -4.0), "今場離開上仗已證明配搭",
                     f"上仗{latest_official_jockey}對此駒上名率{latest_official_place_rate * 100:.0f}%")
             elif current_formal_rides > 0 and latest_official_place_rate > current_place_rate + 0.20:
                 add(FIT_MICRO_WEIGHTS.get("latest_downgrade_pen", -3.0), "今場騎師對此駒往績未及上仗騎師",
                     f"今場上名率{current_place_rate * 100:.0f}% vs 上仗{latest_official_jockey} {latest_official_place_rate * 100:.0f}%")
+        # 同場館騎練組合 family 2026-07-11 退出計分（display-only）：成族逐項 ablation
+        # 全指標零變化（觸發率太低/幅度太細）— 統計照喺 note 同錨點交代，唔再入分。
         combo_evidence = (f"{jockey}×{trainer}同場館{int(combo_stats.get('runs', 0))}次，"
                           f"上名率{combo_stats.get('place_rate', 0.0) * 100:.0f}%、勝率{combo_stats.get('win_rate', 0.0) * 100:.0f}%")
         if combo_stats.get("runs", 0) >= 5:
             if combo_stats.get("place_rate", 0.0) >= 0.45:
-                add(FIT_MICRO_WEIGHTS.get("combo_high_vol_high_place_bonus", 6.0), "今場場館騎練組合已有穩定上名輸出", combo_evidence)
-            elif combo_stats.get("place_rate", 0.0) >= 0.33:
-                add(FIT_MICRO_WEIGHTS.get("combo_med_place_bonus", 3.0), "今場場館騎練組合有基本對位", combo_evidence)
+                notes.append(f"今場場館騎練組合已有穩定上名輸出（{combo_evidence}，不入分）")
             elif combo_stats.get("place_rate", 0.0) < 0.15:
-                add(FIT_MICRO_WEIGHTS.get("combo_low_place_pen", -2.0), "今場場館騎練組合過往交代偏淡", combo_evidence)
-            if combo_stats.get("win_rate", 0.0) >= 0.18:
-                add(FIT_MICRO_WEIGHTS.get("combo_win_bonus", 1.0), "同場騎練組合有直接贏馬紀錄", combo_evidence)
-            if current_formal_rides == 0 and combo_stats.get("place_rate", 0.0) >= 0.33:
-                add(FIT_MICRO_WEIGHTS.get("combo_no_ride_good_place_bonus", 2.0), "雖未曾策此駒，但同場騎練拍檔成熟", combo_evidence)
-        elif trainer_track_stats.get("runs", 0) >= 10 and top_jockey and trainer_track_stats.get("place_rate", 0.0) >= 0.35:
-            add(FIT_MICRO_WEIGHTS.get("trainer_track_top_jockey_bonus", 2.0), "馬房場館對位配上強手，部署可信度提高",
-                f"馬房同場館{int(trainer_track_stats.get('runs', 0))}次、上名率{trainer_track_stats.get('place_rate', 0.0) * 100:.0f}%，配頂級騎師")
+                notes.append(f"今場場館騎練組合過往交代偏淡（{combo_evidence}，不入分）")
         if jockey_change_signal:
             if "沿用歷來最佳配搭" in jockey_change_signal:
                 add(FIT_MICRO_WEIGHTS.get("signal_best_jockey_bonus", 4.0), "沿用歷來最佳人馬配搭", jockey_change_signal)
-            elif "較強騎師" in jockey_change_signal:
-                add(FIT_MICRO_WEIGHTS.get("signal_upgrade_bonus", 5.0), "今場屬升級換騎", jockey_change_signal)
-            elif "換下較高級騎師" in jockey_change_signal:
-                add(FIT_MICRO_WEIGHTS.get("signal_downgrade_pen", -4.0), "今場屬降級換騎", jockey_change_signal)
+            elif "較強騎師" in jockey_change_signal or "換下較高級騎師" in jockey_change_signal:
+                # 之前 generic Facts signal 令呢兩支永遠行唔到。修正 alignment 後
+                # 710 場測試會改 286 場排名，但 folds/terminal 方向互相衝突；
+                # 因此保留準確描述，唔用未泛化嘅大額微調入分。
+                notes.append(f"{jockey_change_signal}（評級變化只作背景，不入分）")
             elif "沿用上仗騎師" in jockey_change_signal:
-                add(2, "沿用上仗騎師，部署連貫", jockey_change_signal)
+                add(FIT_MICRO_WEIGHTS.get("signal_same_jockey_bonus", 2.0),
+                    "沿用上仗騎師，部署連貫", jockey_change_signal)
             elif "試閘手接手" in jockey_change_signal:
-                add(2, "試閘手接手，備戰線完整", jockey_change_signal)
+                add(FIT_MICRO_WEIGHTS.get("signal_trial_rider_bonus", 2.0),
+                    "試閘手接手，備戰線完整", jockey_change_signal)
             elif "回配" in jockey_change_signal:
-                add(2, "回配熟手騎師", jockey_change_signal)
+                add(FIT_MICRO_WEIGHTS.get("signal_reunite_bonus", 2.0),
+                    "回配熟手騎師", jockey_change_signal)
+        # 雜項硬編碼調整 family 2026-07-11 退出計分（display-only）：成族 ablation
+        # 全指標零變化。有意思嘅背景（減磅/週期/首仗二出往績）保留做 note。
         if status_cycle in {"First-up", "久休復出"} and stage_stats["first_up"]["places"] > 0:
-            add(2, "過往首仗上陣有基本交代",
-                f"首仗上陣往績{stage_stats['first_up'].get('runs', '')}次{stage_stats['first_up']['places']}上名")
+            notes.append(f"過往首仗上陣有基本交代（{stage_stats['first_up'].get('runs', '')}次{stage_stats['first_up']['places']}上名，不入分）")
         if status_cycle in {"Second-up", "二出"} and stage_stats["second_up"]["places"] > 0:
-            add(2, "二出歷史有承接",
-                f"二出往績{stage_stats['second_up'].get('runs', '')}次{stage_stats['second_up']['places']}上名")
+            notes.append(f"二出歷史有承接（{stage_stats['second_up'].get('runs', '')}次{stage_stats['second_up']['places']}上名，不入分）")
         if "(a)" in jockey and weight and weight >= 58:
-            add(4, "減磅可幫手化解負磅壓力", f"見習減磅騎師，原負磅{weight:.1f}kg")
-        if status_cycle in {"Third-up", "第三仗", "二出", "Second-up"} and top_jockey:
-            add(2, "狀態週期配合好手接管", f"{status_cycle}配 Tier 1 騎師{jockey}")
-        if trainer_track_stats.get("runs", 0) >= 20 and trainer_track_stats.get("win_rate", 0.0) >= 0.12 and combo_stats.get("runs", 0) == 0:
-            add(2, "即使人馬未深配，馬房同場館專精度仍有承托",
-                f"馬房同場館{int(trainer_track_stats.get('runs', 0))}次、勝率{trainer_track_stats.get('win_rate', 0.0) * 100:.0f}%")
+            notes.append(f"見習減磅可幫手化解負磅壓力（原負磅{weight:.1f}kg，不入分）")
         if trainer in {"", "Unknown"}:
-            add(-5, "馬房資料不完整", "練馬師欄缺資料")
+            notes.append("馬房資料不完整")
+
+        # 「完全冇人馬配搭證據」唔係中性（2026-08-01）。實測 713 場 / 7,547 匹：
+        #     高過 60（有正面配搭證據）  n=5,301  前三率 30.0%
+        #     低過 60（被扣分）          n=  838  前三率 28.6%
+        #     恰好 60（冇任何證據）      n=1,408  前三率 **21.7%**  ← 樣本平均 28.3%
+        # 即係排序反咗：被扣分嗰批實際好過冇證據嗰批，但分數排喺佢下面。
+        # 「冇配搭紀錄」係一個真訊號（新／陌生騎師、輕出賽馬），唔係缺數據。
+        #
+        # ⚠️ 呢個同 `sectional_score` 個案**方向相反** —— 嗰邊「冇 PI 數據」前三率
+        # 30.1% 高過平均，所以要由 35.8 抬去 60。所以「60 = 冇證據」唔可以當通則
+        # 照搬，每個 leaf 都要睇返自己嘅 cohort 實測。
+        #
+        # 點位掃過 58/56/54/52：只有 58 喺 holdout 完全唔傷（每個指標剛好 0.00），
+        # dev champ +0.50、winT3 +0.33、compet +0.33、blowout −0.16、good_pos −0.17。
+        # 再低（54/52）dev gold +2 但 holdout gold −1、good_pos −0.94 → 唔採用。
+        if not adjustments:
+            score = self._JT_FIT_NO_EVIDENCE
+            notes.append("並無任何人馬配搭紀錄（新配搭／輕出賽馬），按實測低於中性處理")
+
         self.jt_fit_detail = {
             "base": round(base_score, 2),
             "final": round(clip_score(score), 2),
             "adjustments": adjustments,
         }
-        note = "；".join(notes) if notes else "暫未見特別鮮明嘅人馬部署加成"
-        return score, f"{note}，並結合步速統計、人馬往績、試閘連貫性、同場配搭往績消化後，人馬配合評為 {clip_score(score):.1f} 分。", "jockey_trainer_fit+stage_stats+trial_continuity+formguide_jockey_history+track_combo_stats"
+        note = "；".join(notes) if notes else "未見特別人馬部署訊號"
+        return score, f"{note}。人馬配搭分 {clip_score(score):.1f}。", "jockey_trainer_fit+stage_stats+trial_continuity+formguide_jockey_history+track_combo_stats"
 
     def _matrix_reasoning(self, matrix_scores, feature_scores, feature_notes):
         return {
@@ -1159,16 +1936,16 @@ class RacingEngine:
                 feature_scores,
                 feature_notes,
                 "form_score",
-                "consistency_score",
+                "performance_quality_score",
             ),
-            "sectional": self._reason_bundle(
-                "sectional",
-                matrix_scores["sectional"],
+            "pace_perf": self._reason_bundle(
+                "pace_perf",
+                matrix_scores.get("pace_perf", 60),
                 feature_scores,
                 feature_notes,
+                "pace_figure_score",
                 "sectional_score",
                 "trial_score",
-                "distance_score",
             ),
             "race_shape": self._reason_bundle(
                 "race_shape",
@@ -1176,7 +1953,6 @@ class RacingEngine:
                 feature_scores,
                 feature_notes,
                 "pace_map_score",
-                "track_score",
             ),
             "jockey_trainer": self._reason_bundle(
                 "jockey_trainer",
@@ -1211,17 +1987,17 @@ class RacingEngine:
                 "formline_score",
                 "form_score",
             ),
-            "pace_figure": self._reason_bundle(
-                "pace_figure",
-                matrix_scores.get("pace_figure", 60),
-                feature_scores,
-                feature_notes,
-                "pace_figure_score",
-            ),
         }
 
     def _reason_bundle(self, key, score, feature_scores, feature_notes, *component_keys):
         label = self._matrix_label(key)
+        # 有啲 component 係純 context（矩陣公式內權重 = 0）—— 例如 級數分（2026-07-29
+        # 退出）同 負磅分（2026-08-01 退出）。之前佢哋同真·計分項排一齊、格式一模
+        # 一樣，讀者見到「級數分 60、負磅分 60」就自然當成「呢個維度全部都係 60，
+        # 純噪音」。標明出嚼，維度分數點嚟先睇得明。
+        scoring_leaves = {
+            name for name, _weight in MATRIX_FORMULAS.get(canonical_matrix_key(key), ())
+        }
         return {
             "label": label,
             "score": round(clip_score(score), 2),
@@ -1233,6 +2009,7 @@ class RacingEngine:
                     "label": self._feature_label(component_key),
                     "score": round(feature_scores.get(component_key, 60), 2),
                     "note": str(feature_notes.get(component_key, "")).strip(),
+                    "in_ranking": component_key in scoring_leaves,
                 }
                 for component_key in component_keys
             ],
@@ -1242,7 +2019,7 @@ class RacingEngine:
     def _describe_matrix(self, key, score, feature_scores):
         describers = {
             "stability": self._describe_stability_matrix,
-            "sectional": self._describe_sectional_matrix,
+            "pace_perf": self._describe_pace_perf_matrix,
             "race_shape": self._describe_race_shape_matrix,
             "jockey_trainer": self._describe_jockey_trainer_matrix,
             "class_weight": self._describe_class_weight_matrix,
@@ -1252,21 +2029,59 @@ class RacingEngine:
         describer = describers.get(key)
         if describer:
             return describer(score, feature_scores)
-        if key == "pace_figure":
-            return self._describe_pace_figure_matrix(score, feature_scores)
         return self._matrix_summary(key, score)
 
-    def _describe_pace_figure_matrix(self, score, feature_scores):
-        """實測L600（PuntingForm）——全場相對速度證據，唔係模板投射。"""
-        if score >= 80:
-            return "實測 L600 快過場均一截（場內相對 z 值高），係呢匹馬最實在嘅速度證據——賽日只要唔行壞位，末段一定有波幅。"
-        if score >= 68:
-            return "實測 L600 快過場均，實測速度面有正面支持，可以撐起中上判斷。"
-        if score <= 45:
-            return "實測 L600 明顯慢過場均——實測速度證據偏負面，除非場面大亂，難靠速度取勝。"
-        if score <= 56:
-            return "實測 L600 略慢過場均，速度證據偏淡，要靠形勢或級數補足。"
-        return "實測 L600 同場均接近，速度面冇著數亦冇明顯蝕底。"
+    def _describe_pace_perf_matrix(self, score, feature_scores):
+        """Source-aware L600 evidence plus runner-level PI interpretation."""
+        pace = feature_scores.get("pace_figure_score", 60)
+        sec = feature_scores.get("sectional_score", 60)
+        pd = getattr(self, "pace_figure_detail", {}) or {}
+        pf_source = str(pd.get("source") or "unknown")
+        individual_pf = pf_source.startswith("racenet_")
+        has_pf = pd.get("state") == "ok"
+        has_pi = bool(self._sectional_breakdown().get("has_pi"))
+
+        if has_pf and individual_pf and pace >= 72:
+            verdict = "逐駒 L600 benchmark 快過場均，個體速度證據偏強。"
+        elif has_pf and individual_pf and pace <= 48:
+            verdict = "逐駒 L600 benchmark 明顯慢過場均，個體速度證據偏弱。"
+        elif has_pf and individual_pf:
+            verdict = "逐駒 L600 benchmark 接近場均，個體速度證據中性。"
+        elif has_pf and pace >= 72:
+            verdict = "往績所處賽事末段環境快過場均——反映過往速度考驗，唔等於本駒個體末段。"
+        elif has_pf and pace <= 48:
+            verdict = "往績賽事末段環境明顯慢過場均，速度考驗旁證偏弱。"
+        elif has_pf and pace <= 56:
+            verdict = "往績賽事末段環境略慢過場均，速度考驗旁證冇著數。"
+        elif has_pf:
+            verdict = "往績賽事末段環境貼近場均，呢項旁證中性。"
+        elif has_pi:
+            verdict = "冇 L600 環境數據，只有 PI 位置增益作旁證，呢一格參考價值有限。"
+        else:
+            verdict = "段速證據不足，呢一格唔好過份解讀。"
+
+        # 門檻對應段速分階梯（60 = 冇增益證據、75 = PI 優秀、81 = PI 極佳），
+        # 2026-08-01 中性化之後重新對位（舊尺 45/55/60 喺新尺永遠唔會觸發）。
+        cross = ""
+        if has_pf and has_pi:
+            if individual_pf and pace >= 68 and sec >= 75:
+                cross = "逐駒 benchmark 同 PI 升位方向一致，個體速度證據較完整。"
+            elif individual_pf and pace >= 68:
+                cross = "逐駒 benchmark 偏快但 PI 平平，速度有數據、兌現度仍要保守。"
+            elif individual_pf and sec >= 75:
+                cross = "PI 升位靚但逐駒 benchmark 未見優勢，後勁證據未完全一致。"
+            elif pace >= 68 and sec >= 75:
+                cross = "快末段賽事背景下仍有 PI 升位，個體後勁旁證較完整。"
+            elif pace >= 68 and sec <= 63:
+                cross = "只係往績賽事末段快、PI 升位平平，唔可以當成本駒自己快。"
+            elif pace < 56 and sec >= 75:
+                cross = "PI 升位靚但往績賽事末段環境偏慢，位置增益要保守解讀。"
+
+        evidence_name = "逐駒 benchmark" if individual_pf else "L600 環境"
+        conf = (f"強（{evidence_name} {int(pd.get('runs') or 0)} 場）" if has_pf
+                else "中（只有 PI 位置增益）" if has_pi
+                else "弱（只餘試閘／無數據）")
+        return " ".join(x for x in (verdict, cross, f"速度背景證據信心：{conf}。") if x)
 
     def _describe_stability_matrix(self, score, feature_scores):
         recent = str(self.data.get("recent_form") or self.horse_data.get("recent_form") or "").strip()
@@ -1292,9 +2107,13 @@ class RacingEngine:
         else:
             opener = "正式近績樣本有限，穩定性主要靠試閘同備戰資料判斷。"
             
-        if feature_scores["form_score"] >= 72 and feature_scores["consistency_score"] >= 68:
+        quality_score = feature_scores.get(
+            "performance_quality_score",
+            feature_scores.get("consistency_score", 60),
+        )
+        if feature_scores["form_score"] >= 72 and quality_score >= 68:
             assessment = "連仗交出接近表現證明戰鬥力企穩，唔係單靠一場偶發水準撐起，具備堅實嘅爭勝底氣。"
-        elif feature_scores["form_score"] <= 58 or feature_scores["consistency_score"] <= 58:
+        elif feature_scores["form_score"] <= 58 or quality_score <= 58:
             assessment = "近態未算企得好穩，評分上仍然要留低少少問號。"
         else:
             assessment = "近況有啲底，但未到可以完全放膽追捧嘅絕對穩定期。"
@@ -1308,213 +2127,115 @@ class RacingEngine:
             
         return " ".join(part for part in (opener, assessment) if part)
 
-    def _describe_sectional_matrix(self, score, feature_scores):
-        engine = self._engine_distance_brief()
-        breakdown = self._sectional_breakdown()
-        trial_text = self._trial_summary_text()
-        pf_text = self._latest_l600_rt_brief()
-        latest_note = self._latest_official_note_brief()
-
-        # 分支要睇 sectional_score 本身（distance_score 已喺2026-06-29退出呢個維度）
-        if feature_scores["sectional_score"] >= 72:
-            opener = "末段爆發力有實質數據支持，段速係今場real武器。"
-        elif feature_scores["sectional_score"] <= 45:
-            opener = "段速分接近觸底——多數係缺 L400 數據所致，未必等於慢，真正分辨力睇下面實測 L600。"
-        elif feature_scores["sectional_score"] <= 56:
-            opener = "段速指標未算硬淨，末段難靠單一爆發取勝，要形勢配合。"
-        else:
-            opener = "段速線有一定素材，但仍需路程性能同試閘走勢進一步確認。"
-
-        middle_bits = []
-        if engine:
-            middle_bits.append(f"{engine}。")
-        # 只講走勢方向，唔再喺判讀度重印成串 PI（PI 數列已在資料錨點出一次）。
-        trends = self._sectional_trends()
-        pi_trend = self._clean_trend_label(trends.get("pi_trend") or trends.get("l400_trend"))
-        if pi_trend and pi_trend != "未明":
-            middle_bits.append(f"近段 PI 走勢{pi_trend}。")
-        if pf_text:
-            middle_bits.append(f"近期 PF 指標為 {pf_text}。")
-        if trial_text:
-            middle_bits.append(f"試閘走勢：{trial_text}。")
-        if latest_note:
-            middle_bits.append(f"上仗備註：{latest_note}。")
-            
-        return " ".join(part for part in (opener, " ".join(bit for bit in middle_bits if bit)) if part)
-
     def _describe_race_shape_matrix(self, score, feature_scores):
-        style_conf = self._style_confidence() or "未明"
-        style = self._running_style() or self._tactical_position_text() or "跑法未明"
-        # 「守中 / 守中」呢類兩邊一樣嘅組合，收埋做一個
+        """短而狠：檔位一句定調 → 場地紀錄一句 → 一句形勢結論。
+        逐項計法喺評分構成 detail 攤開，判讀唔覆述。"""
+        style = self._running_style() or self._tactical_position_text() or ""
         style_parts = [p.strip() for p in str(style).split("/")]
         if len(style_parts) > 1 and len(set(style_parts)) == 1:
             style = style_parts[0]
         barrier = self.horse_data.get("barrier")
-        geometry_fit = self._track_fit_brief()
-        shape_brief = self._recent_settled_pattern_brief()
+        pm = feature_scores["pace_map_score"]
 
-        opener = f"排 {barrier} 檔配合預期「{style}」跑法"
-        if shape_brief:
-            opener += f"（近仗 settled pattern 顯示 {shape_brief}），"
+        # 門檻同 `_pace_map_score` 內部嘅 ±2 分修正判定對齊（2026-08-01 base 移到 60
+        # 之後重新對位）。舊門檻 pm >= 68 喺舊尺（上限 59.75）永遠唔會成立 ——
+        # 「檔位著數」呢句判語從來冇出過，正係用戶覺得呢一格淨係識講中性/差嘅原因。
+        if pm >= 62:
+            draw_v = f"排 {barrier} 檔據場地統計係著數位"
+        elif pm <= 58:
+            draw_v = f"排 {barrier} 檔據場地統計偏蝕，走位容錯較低"
         else:
-            opener += "，"
-            
-        if feature_scores["pace_map_score"] >= 68:
-            assessment = "預期走位劇本與檔位結構高度脗合，走位成本唔會太蝕，形勢屬主動一方。"
-        elif feature_scores["pace_map_score"] <= 56:
-            assessment = "形勢相對被動。要發揮最高水準，極度依賴出閘落位順利及直路及時望空，走位容錯率較低。"
-        else:
-            assessment = f"形勢未算惡劣，但亦未見明顯場面紅利；跑法信心屬 {style_conf}。"
-            
-        parts = [opener + assessment]
-        if geometry_fit:
-            parts.append(f"賽道幾何配套：{geometry_fit}。")
-        # 戰術劇本只喺資料錨點出一次（已標明係模板），判讀唔再覆述。
-        return " ".join(parts)
+            draw_v = f"排 {barrier} 檔屬中性"
+        if style:
+            draw_v += f"，預期「{style}」跑法"
+        return draw_v + "。"
 
     def _describe_jockey_trainer_matrix(self, score, feature_scores):
         jockey = self._clean_identity(self.horse_data.get("jockey")) or "騎師資料未明"
         trainer = self._clean_identity(self.horse_data.get("trainer")) or "練馬師資料未明"
-        trial_text = self._trial_summary_text()
-        status = self._status_cycle_display() or "狀態週期未明"
-        history = self._current_jockey_history_brief()
-        best_history = self._best_jockey_history_brief()
-        current_vs_best = self._current_vs_best_jockey_brief()
-        change_signal = self._jockey_change_signal()
-        latest_official = self._latest_official_jockey_brief()
-        track_combo = self._track_combo_brief()
-        trainer_track = self._trainer_track_brief()
-        
-        combo = f"由 {jockey} 配 {trainer}"
-        if status and "未明" not in status:
-            combo += f"，目前處於 {status} 階段"
-        if trial_text:
-            combo += f"，備戰方面 {trial_text}。"
+
+        # 判讀短而狠（2026-07-11 Phase C）：一句定調 → 最強訊號/主要扣分各一句，
+        # 唔重覆逐項明細（明細喺評分構成 detail 攤開）。
+        fit = feature_scores["jockey_horse_fit_score"]
+        j_s = feature_scores["jockey_score"]
+        t_s = feature_scores["trainer_score"]
+        adjs = (self.jt_fit_detail or {}).get("adjustments") or []
+        top_pos = max((a for a in adjs if a.get("delta", 0) > 0),
+                      key=lambda a: a["delta"], default=None)
+        top_neg = min((a for a in adjs if a.get("delta", 0) < 0),
+                      key=lambda a: a["delta"], default=None)
+        combo = f"由 {jockey} 配 {trainer}。"
+        if fit >= 74:
+            assessment = "騎練部署積極，人馬熟習度同備戰方向一致——有出擊意圖嘅配置。"
+        elif fit <= 55 or (top_neg and top_neg.get("delta", 0) <= -3):
+            assessment = "人馬部署有保留位，注碼上唔好當佢係主動出擊。"
+        elif j_s >= 68 and t_s >= 66:
+            assessment = "騎練有牌面，但同呢匹馬未見專屬默契。"
+        elif j_s <= 58 and t_s <= 58:
+            assessment = "騎練牌面平平，呢一格幫唔到手，要靠馬匹自己交代。"
         else:
-            combo += "。"
-            
-        if feature_scores["jockey_horse_fit_score"] >= 74:
-            assessment = "今次唔單止係強勢騎練組合，連備戰方向同人馬熟習度都高度一致，出擊意圖明顯。"
-        elif feature_scores["jockey_score"] <= 60 and feature_scores["trainer_score"] <= 60:
-            assessment = "人馬配置未見特別主動訊號，屬中性觀望格局，要靠馬匹自己交代。"
-        else:
-            assessment = "人馬合作有一定底子，具備基本承托力，但仍未去到最強烈嘅搏殺配搭。"
-        detail_obj = self.jt_fit_detail or {}
-        adjs = detail_obj.get("adjustments") or []
-        pos_f = [a["factor"] for a in adjs if a.get("delta", 0) > 0]
-        neg_f = [a["factor"] for a in adjs if a.get("delta", 0) < 0]
-        if pos_f or neg_f:
-            bits = []
-            if pos_f:
-                bits.append("實證加分來自：" + "、".join(pos_f[:3]))
-            if neg_f:
-                bits.append("扣分來自：" + "、".join(neg_f[:2]))
-            assessment += "（" + "；".join(bits) + "，逐項明細見上方評分構成。）"
-            
-        details = []
-        if history:
-            details.append(f"歷來配套：{history}。")
-        if best_history and best_history != history:
-            details.append(f"最佳配搭：{best_history}。")
-        if current_vs_best:
-            details.append(f"{current_vs_best}。")
-        if change_signal:
-            details.append(f"換騎訊號：「{change_signal}」。")
-        if track_combo:
-            details.append(f"同場樣本：{track_combo}。")
-        if trainer_track:
-            details.append(f"馬房場館履歷：{trainer_track}。")
-            
-        return " ".join(part for part in (combo, assessment, " ".join(details)) if part)
+            assessment = "人馬配置中性，未見明顯部署訊號。"
+        if top_pos:
+            assessment += f" 最強訊號：{top_pos['factor']}（{top_pos['delta']:+.1f}）。"
+        if top_neg:
+            assessment += f" 主要扣分：{top_neg['factor']}（{top_neg['delta']:+.1f}）。"
+        # 歷來配套/最佳配搭/換騎/同場樣本等原始證據已喺數據錨點逐行列出，判讀唔重覆。
+        return " ".join(part for part in (combo, assessment) if part)
 
     def _describe_class_weight_matrix(self, score, feature_scores):
+        """短而狠：今場班次/負磅一句定調 → 一句能力對位結論。
+        逐項計法（含 rating 缺失代理）喺評分構成 detail 攤開。"""
         class_move = self._class_move_display()
-        horse_rating = self._horse_rating()
-        rating_brief = self._field_rating_brief()
         weight = parse_float(self.horse_data.get("weight"))
-        career = str(self.data.get("career_record_line") or "").strip()
-        latest_formal = self._latest_record_summary("正式")
         race_class = self._race_class_text()
-        latest_rt = self._latest_l600_rt_brief()
-        field_weight = self._field_weight_brief()
-        
-        parts = [f"今仗出戰 {race_class}"]
-        if weight is not None:
-            parts.append(f"負 {weight:.1f}kg")
-        if class_move and class_move != "平磅":
-            parts.append(f"（{class_move}）")
-        opener = " ".join(parts) + "。"
-        if class_move and "降班" in class_move:
-            opener += " 降班出擊，對手深度理論上淺咗，係實際著數。"
-        elif class_move and "升班" in class_move:
-            opener += " 升班挑戰，過往交代要打個折先好直接搬過嚟。"
-        if horse_rating is not None:
-            opener += f" 官方 rating 為 {horse_rating:.1f}。"
-            
-        if (
-            feature_scores["class_score"] >= 68
-            and feature_scores["rating_score"] >= 66
-            and feature_scores["weight_score"] >= 68
-        ):
-            assessment = "班次門檻、官方 rating 對位同負磅壓力都屬舒適範圍，外在條件整體順手。"
-        elif (
-            feature_scores["class_score"] <= 56
-            or feature_scores["rating_score"] <= 56
-            or feature_scores["weight_score"] <= 56
-        ):
-            assessment = "班次、rating 對位或負磅其中一邊門檻偏高，發揮空間受限，講求自身實力超水準兌現。"
-        else:
-            assessment = "班次、rating 對位同負磅條件大致合理，未見明顯阻力，但亦未去到全面甜頭。"
-            
-        details = []
-        if rating_brief:
-            details.append(f"{rating_brief}。")
-        if field_weight:
-            details.append(field_weight if field_weight.endswith("。") else f"{field_weight}。")
-        if latest_rt:
-            details.append(f"最近 PF 指標為 {latest_rt}。")
-        if career:
-            details.append(f"生涯背景：{career}。")
-        # 最近正式賽果已喺「數據」錨點原文列出，判讀唔再重覆成行賽果字串
+        cs = feature_scores["class_score"]
+        rs = feature_scores["rating_score"]
+        ws = feature_scores["weight_score"]
 
-        return " ".join(part for part in (opener, assessment, " ".join(details)) if part)
+        head = f"今仗 {race_class}"
+        if weight is not None:
+            head += f"，負 {weight:.1f}kg"
+        if class_move and "降班" in class_move:
+            head += "，降班係實際著數"
+        elif class_move and "升班" in class_move:
+            head += "，升班挑戰要打折睇"
+        head += "。"
+
+        # 呢個維度嘅排名分**只由 rating_score 驅動**（2026-08-01：weight_score 因
+        # AUC 0.480 退出排名；class_score 早於 2026-07-29 退出）。判語照住實際
+        # gradient 講，唔好再用 ws >= 68 呢類永遠唔會成立嘅門檻（負磅分上限 63）。
+        if rs >= 66:
+            verdict = "官方讓磅分對位高過場均，能力面有實質支持。"
+        elif rs <= 54:
+            verdict = "官方讓磅分對位低過場均，能力面要靠其他維度補。"
+        else:
+            verdict = "能力對位貼近場均，未見明顯阻力亦未見甜頭。"
+        context = []
+        if cs <= 56:
+            context.append(f"級數分 {cs:.0f} 偏低")
+        elif cs >= 65:
+            context.append(f"級數分 {cs:.0f} 偏高")
+        if ws <= 57:
+            context.append(f"負磅分 {ws:.0f}（爛地重磅／升班高磅）")
+        elif ws >= 63:
+            context.append(f"負磅分 {ws:.0f}（降班配輕磅）")
+        if context:
+            verdict += f" 參考（不入排名）：{'、'.join(context)}。"
+        return head + " " + verdict
 
     def _describe_track_matrix(self, score, feature_scores):
-        going = self._today_going() or "掛牌未明"
-        track_stats = self._same_track_stats()
-        track_context = self._track_context()
-        going_bucket = track_context.get("going_bucket", "")
-        going_sample = self._going_stats().get(going_bucket, {})
+        """短而狠：場地/地狀適應一句定調 ＋（濕地）風險一句。逐項計法喺評分構成攤開。"""
+        ts = feature_scores["track_score"]
         wet_state = self._wet_state()
-        
-        if feature_scores["track_score"] >= 72:
-            opener = "同場及掛牌紀錄有堅實數據支持，場地性能絕對唔會成為絆腳石。"
-        elif feature_scores["track_score"] <= 56:
-            opener = "場地性能未算企穩，發揮可能打折扣，需保守看待。"
+        if ts >= 70:
+            verdict = "同場/今日地狀有實績支持，場地唔會成為絆腳石。"
+        elif ts <= 54:
+            verdict = "場地/地狀往績未見支持，發揮要打折睇。"
         else:
-            opener = "場地適應力具備基礎支持，應可應付今日地狀。"
-            
-        details = []
-        if track_stats["starts"] > 0:
-            if track_stats["places"] > 0:
-                details.append("同場已有上名或勝出紀錄。")
-            elif track_stats["starts"] >= 2:
-                details.append("同場已有多次經驗，但成績暫未見突破。")
-            
-        if going != "掛牌未明":
-            # 同一維度其他句子已用「重地/軟地」講地狀，呢度亦跟返呢個講法，唔好一時中一時英文。
-            going_zh = re.sub(r"\b(Good|Soft|Heavy)\b",
-                               lambda m: {"Good": "好地", "Soft": "軟地", "Heavy": "重地"}[m.group(1)],
-                               going, flags=re.I)
-            if going_sample.get("starts", 0) > 0 and going_sample.get("places", 0) > 0:
-                details.append(f"今場{going_zh}掛牌屬射程範圍。")
-            elif going_sample.get("starts", 0) >= 2:
-                details.append(f"今場{going_zh}掛牌暫未見突出成績。")
-
+            verdict = "場地適應有基礎，應付到今日地狀。"
         if wet_state in {"soft7plus", "heavy"} and not self._has_verified_wet_place():
-            details.append("缺乏爛地實績證明，場地風險偏高。")
-            
-        return " ".join(part for part in (opener, " ".join(details)) if part)
+            verdict += " 但爛地實績未經驗證，轉場風險高。"
+        return verdict
 
     def _describe_form_line_matrix(self, score, feature_scores):
         formline = self._formline_level() or "賽績線摘要未明"
@@ -1522,12 +2243,14 @@ class RacingEngine:
         headwinner = self._formline_headwinner()
         followup = self._formline_followup_brief()
 
+        # 純參考維度：權重 0，唔入綜合戰力分／排名（已 ML 驗證無上位訊號）。
+        tag = "（僅供參考，不計入排名）"
         if feature_scores["formline_score"] >= 72:
-            assessment = f"賽績線屬「{formline}」級別，對手線有強勁承接——過往交手嘅對手唔係弱腳，往績搬到落今場。"
+            assessment = f"賽績線屬「{formline}」級別，對手線有強勁承接{tag}。"
         elif feature_scores["formline_score"] <= 56:
-            assessment = f"賽績線級別評為「{formline}」，對手後續支持力弱——就算之前跑得唔差，對手成色未經證實，宜保守看待。"
+            assessment = f"賽績線級別評為「{formline}」，對手後續支持力弱{tag}。"
         else:
-            assessment = f"賽績線屬「{formline}」級別，對手線有一定參考價值，但未算深厚。"
+            assessment = f"賽績線屬「{formline}」級別，對手線有一定參考價值{tag}。"
 
         # 兌現度（franking）一句總結：對手其後有冇再贏，係條線可唔可信嘅關鍵
         all_rows = self._formline_rows()
@@ -1540,7 +2263,7 @@ class RacingEngine:
             failed = 0
             for row in rows:
                 nr = str(row.get("next_result", ""))
-                m = re.search(r"出\s*\d+\s*次:\s*(\d+)\s*勝", nr)
+                m = RE_OPP_FOLLOWUP.search(nr)
                 if m and int(m.group(1)) > 0:
                     wins += 1
                 if "查冊失敗" in nr:
@@ -1594,16 +2317,17 @@ class RacingEngine:
                 ("最近正式賽果", self._latest_record_summary("正式")),
                 ("試閘交代", self._trial_summary_text()),
             )
-        if key == "sectional":
-            # AU 無 numeric L400 PI，段速分多數觸底 35.8（一致偏弱）；已驗證段速對排名
-            # 影響極低，所以呢度只作識別用，並去掉重覆 PI 列印（PI 走勢一條就夠）。
+        if key == "pace_perf":
+            pf_agg = (self._pf_metrics() or {}).get("pf_aggregates") or {}
+            l600d = pf_agg.get("l600_delta_avg")
+            pf_line = (f"對基準差 {float(l600d):+.2f}s（{int(pf_agg.get('pf_run_count') or 0)} 場樣本，負數=快過基準）"
+                       if l600d is not None else "")
+            # 逐項計法已喺評分構成 detail 攤開，錨點只留原始證據
             return self._anchor_lines(
-                ("累積段速總分", f"{self._sectional_breakdown()['score']:.1f} / 100"),
-                ("計分明細", self._sectional_breakdown()['notes']),
-                ("近段速度 L600（識別用·未入排名）", self._l600_speed_brief()),
+                ("實測 L600（主訊號）", pf_line),
                 ("近段 PI 走勢", self._sectional_trend_brief()),
+                ("L600 原速（識別用·未入排名）", self._l600_speed_brief()),
                 ("試閘交代", self._trial_summary_text()),
-                ("說明", "段速分多數觸底（AU 無 numeric L400 PI），故各馬得分相近；真正可分辨嘅係上面 L600 原始速度。已驗證段速對排名影響極低，此分只作識別跑法，唔反映勝算"),
             )
         if key == "race_shape":
             # 跑法資訊合併成一條（標籤＋信心），唔再分開出 跑法信心／style evidence／預計走法；
@@ -1675,15 +2399,17 @@ class RacingEngine:
     def _matrix_label(self, key):
         return {
             "stability": "狀態與穩定性",
+            "pace_perf": "速度考驗背景",
+            # 舊 key 保留畀歷史 Logic 檔顯示
             "sectional": "段速與引擎",
+            "pace_figure": "往績賽事 L600 環境",
             "race_shape": "檔位形勢",
             "jockey_trainer": "騎練訊號",
             "class_level": "級數門檻",
             "weight_pressure": "負磅壓力",
             "class_weight": "級數與負重",
-            "track": "場地適性",
+            "track": "場地與地況適性",
             "form_line": "賽績線",
-            "pace_figure": "段速實速（實測L600）",
         }.get(key, key)
 
     def _feature_label(self, key):
@@ -1691,7 +2417,8 @@ class RacingEngine:
             "form_score": "近績分",
             "trial_score": "試閘分",
             "sectional_score": "段速分",
-            "pace_map_score": "形勢分",
+            "pace_figure_score": "L600 環境分",
+            "pace_map_score": "檔位分",
             "jockey_score": "騎師分",
             "trainer_score": "練馬師分",
             "jockey_horse_fit_score": "人馬配搭分",
@@ -1699,9 +2426,10 @@ class RacingEngine:
             "rating_score": "Rating 分",
             "weight_score": "負磅分",
             "distance_score": "路程分",
-            "track_score": "場地分",
+            "track_score": "同場／地況往績分",
             "formline_score": "賽績線分",
             "consistency_score": "穩定性分",
+            "performance_quality_score": "表現質素分",
             "health_score": "健康分",
             "confidence_score": "信心分",
         }.get(key, key)
@@ -1717,22 +2445,18 @@ class RacingEngine:
         return f"{label} 暫時只算中性參考"
 
     def _au_grade_computation_transparency(self, matrix_scores, matrix_bands, feature_scores, base_7d_score, ability_score, grade):
-        """AU version: Generate computation walkthrough for the 7D matrix."""
-        roles = {
-            "stability": ("狀態與穩定性", "半核心"),
-            "sectional": ("段速與引擎", "核心"),
-            "race_shape": ("檔位形勢", "半核心"),
-            "jockey_trainer": ("騎練訊號", "半核心"),
-            "class_weight": ("級數與負重", "輔助"),
-            "track": ("場地適性", "輔助"),
-            "form_line": ("賽績線", "輔助"),
-            "pace_figure": ("段速實速（實測L600）", "輔助"),
-        }
-        dims = [(key, *roles.get(key, (key, "輔助")), float(MATRIX_WEIGHTS.get(key, 0.0))) for key in MATRIX_WEIGHTS]
+        """Generate the six-dimension ranking walkthrough.
+
+        ``base_7d_score`` is retained as a legacy archive field name.  The live
+        ranking registry has six dimensions; ``form_line`` is report-only.
+        """
+        # 舊「核心/半核心/輔助」角色標籤已死（同實際權重脫節，輸出表亦唔再印）；
+        # 直接用 _matrix_label ＋ 實際權重，權重百分比先係唯一真相。
+        dims = [(key, self._matrix_label(key), float(MATRIX_WEIGHTS.get(key, 0.0))) for key in MATRIX_WEIGHTS]
         rows = []
         lines = []
         weighted_sum = 0.0
-        for key, label, role, weight in dims:
+        for key, label, weight in dims:
             raw_score = float(matrix_scores.get(key, 60))
             band = matrix_bands.get(key, "➖")
             contribution = round(raw_score * weight, 2)
@@ -1748,16 +2472,16 @@ class RacingEngine:
         ])
         summary = (
             f"{table}\n\n"
-            f"**→ 官方 7D clean ranking score = {base_7d_score:.2f} 分；綜合戰力分 = {ability_score:.2f} 分 → Grade = [{grade}]**"
+            f"**→ 官方六維 clean ranking score = {base_7d_score:.2f} 分；綜合戰力分 = {ability_score:.2f} 分 → Grade = [{grade}]**"
         )
-        # 有計但唔直接入 7D 公式嘅分數 — 一併展示，唔收埋
+        # 有計但唔直接入六維公式嘅分數 — 一併展示，唔收埋
         ref_bits = []
         for ref_key, ref_label in (("distance_score", "路程分"), ("health_score", "備戰完整度分"), ("confidence_score", "信心分")):
             val = feature_scores.get(ref_key)
             if isinstance(val, (int, float)):
                 ref_bits.append(f"{ref_label} {float(val):.1f}")
         if ref_bits:
-            summary += "\n**📎 參考分（不直接入7D公式）：** " + "、".join(ref_bits)
+            summary += "\n**📎 參考分（不直接入六維公式）：** " + "、".join(ref_bits)
         if self.risk_flags:
             flag_descriptions = []
             for flag in sorted(set(self.risk_flags)):
@@ -1780,11 +2504,7 @@ class RacingEngine:
         return mapping.get(flag, flag)
 
     def _clean_identity(self, value):
-        text = str(value or "").strip()
-        if not text:
-            return ""
-        text = FIELD_TRAILER_RE.sub("", text)
-        return text.strip(" |")
+        return _clean_identity(value)
 
     def _career_starts(self):
         value = parse_float(self.horse_data.get("career_race_starts"))
@@ -1868,13 +2588,22 @@ class RacingEngine:
             clean = clean.replace(src, dst)
         return clean
 
+    # 名單統一（2026-07-11，Bug B）：以 rating DB tier 為唯一真相，token 名單只做
+    # DB 冇名時嘅 fallback。舊四套獨立名單互相矛盾（Craig Williams/Damian Lane 喺
+    # DB 係 T1 但舊 _is_top_jockey 唔認）。
     def _is_top_jockey(self, jockey: str) -> bool:
+        rating = self._jockey_rating_profile(jockey)
+        if rating:
+            return str(rating.get("tier")) == "T1"
         return any(
             token in jockey
             for token in ("McDonald", "Rawiller", "Berry", "Clark", "Hyeronimus", "Schiller", "Lloyd", "King", "Collett")
         )
 
     def _is_top_trainer(self, trainer: str) -> bool:
+        rating = self._trainer_rating_profile(trainer)
+        if rating:
+            return str(rating.get("tier")) == "T1"
         return any(
             token in trainer
             for token in ("Waller", "Maher", "Waterhouse", "Bott", "Pride", "Snowden", "Freedman", "Hawkes", "Charlton")
@@ -1924,6 +2653,12 @@ class RacingEngine:
         for cols in _record_rows(self.facts_section):
             entries.append({
                 "kind": cols[1],
+                # New Facts use HCnn.  Legacy BMnn is deliberately not coerced:
+                # handwritten/older rows can genuinely mean a BM race class, so
+                # guessing would recreate the same semantic contamination.
+                "historical_rating": parse_float(
+                    re.sub(r"^HC", "", cols[1], flags=re.I)
+                ) if re.fullmatch(r"HC\d+(?:\.\d+)?", cols[1], re.I) else None,
                 "date": cols[2],
                 "venue": cols[3],
                 "distance": cols[4],
@@ -1941,6 +2676,11 @@ class RacingEngine:
                 "notes": cols[16] if len(cols) > 16 else "",
                 "forgiveness": cols[17] if len(cols) > 17 else "",
                 "is_trial": "試閘" in cols[1],
+                # 馬群大細（2026-07-31）：名次格由 `4 (-12.0L)` 變 `4/6 (-12.0L)`。
+                # 舊 meeting 冇 `/N`，`field_size` 就係 None，行為完全不變。
+                "field_size": _parse_field_size(cols[7]),
+                # 獎金（2026-07-31）：追加喺最後一欄，舊 Facts 冇 → None。
+                "prize": _parse_prize(cols[18]) if len(cols) > 18 else None,
             })
         self._record_entry_cache = entries
         return entries
@@ -2187,6 +2927,10 @@ class RacingEngine:
 
     def _jockey_rank_value(self, jockey: str) -> int:
         name = self._clean_identity(jockey)
+        # 統一以 rating DB tier 行先（2026-07-11），token 名單降級做 fallback
+        rating = self._jockey_rating_profile(name)
+        if rating:
+            return {"T1": 3, "T2": 2, "T3": 1}.get(str(rating.get("tier")), 0)
         if self._is_top_jockey(name):
             return 3
         if any(token in name for token in ("McEvoy", "Layt", "Bayliss", "Moore", "Roper", "Costin", "Parr", "Dolan", "Schiller")):
@@ -2197,7 +2941,20 @@ class RacingEngine:
 
     def _jockey_change_signal(self):
         signal = str(self.data.get("jockey_change_signal") or "").strip()
-        if signal:
+        # Facts builder can only compare this horse's historical combinations;
+        # its generic "由 X 轉配 Y" / "回配 Y" text does not know the global
+        # jockey tiers.  Returning it immediately made the tier upgrade and
+        # downgrade branches below unreachable across the 710-race archive.
+        # Keep genuinely specific facts, but enrich generic changes here where
+        # the ratings DB is available.
+        specific_markers = (
+            "沿用歷來最佳配搭",
+            "沿用上仗騎師",
+            "試閘手接手",
+            "較合拍騎師",
+            "離開已證明配搭",
+        )
+        if signal and any(marker in signal for marker in specific_markers):
             return signal
         current = self._clean_identity(self.horse_data.get("jockey"))
         latest_official = self._latest_official_jockey()
@@ -2222,8 +2979,8 @@ class RacingEngine:
                 return f"由 {latest_official} 換下較高級騎師"
             if self._current_jockey_formal_rides() > 0:
                 return f"回配 {current}"
-            return f"由 {latest_official} 轉配 {current}"
-        return ""
+            return signal or f"由 {latest_official} 轉配 {current}"
+        return signal
 
     def _sire_line(self):
         return str(self.data.get("sire_line") or "").strip()
@@ -2270,7 +3027,13 @@ class RacingEngine:
         return rows
 
     def _same_track_stats(self):
-        return self._parse_record_stats(self.data.get("track_stats_line") or "")
+        # ``track_stats_line`` is a compound Facts row:
+        #   1:0-0-0 | 同程: 27:3-5-4 | 同場同程: 0:0-0-0
+        # Parse the first segment only.  Older Sportsbet Facts truncated the
+        # first record to ``1:``; feeding the whole row to ``parse_record_line``
+        # turned the next segment's 27 starts into 27 same-track wins.
+        text = str(self.data.get("track_stats_line") or "")
+        return self._parse_record_stats(text.split("|", 1)[0].strip())
 
     def _going_stats(self):
         return self._parse_going_stats(self.data.get("going_stats_line") or "")
@@ -2366,6 +3129,11 @@ class RacingEngine:
         return {"starts": 0, "wins": 0, "seconds": 0, "thirds": 0, "places": 0}
 
     def _parse_going_stats(self, text):
+        # Keep the established ranking contract: the leading Good segment is
+        # report evidence, while explicit Soft/Heavy records drive going fit.
+        # Activating the previously stripped Good segment was separately A/B
+        # tested and failed the terminal performance gate, so a data-alignment
+        # fix must not silently introduce that new scoring rule.
         output = {}
         for label in ("好地", "軟地", "重地"):
             match = re.search(rf"{label}:\s*([^|]+)", text)
@@ -2434,9 +3202,6 @@ class RacingEngine:
     def _has_verified_wet_place(self):
         stats = self._going_stats()
         return any(stats[label]["places"] > 0 for label in ("軟地", "重地"))
-
-    def _pace_confidence(self):
-        return str(self._speed_map_field("pace_confidence") or "").strip()
 
     def _style_confidence(self):
         return str(self.data.get("style_confidence_line") or self._speed_map_field("style_confidence") or "").strip()
@@ -2659,27 +3424,6 @@ class RacingEngine:
             return f"{jockey} / {trainer}"
         return jockey or trainer
 
-    def _engine_distance_brief(self):
-        line = str(self.data.get("engine_line") or "").strip()
-        if not line:
-            return ""
-        engine_match = re.search(r"引擎:\s*([^|]+)", line)
-        distance_match = re.search(r"今仗\s+([0-9]+m)\s+\(([^)]+)\):\s*([^|]+)", line)
-        confidence_match = re.search(r"信心:\s*([^|]+)", line)
-        parts = []
-        if engine_match:
-            engine_raw = engine_match.group(1).strip()
-            # engine_raw 通常係「Type A/B (混合型)」— 內部代碼 + 已有嘅中文譯名同時存在；
-            # 淨係留中文譯名，內部代碼對用戶冇意思。冇括號就照用原文（已經係中文）。
-            zh_match = re.search(r"（([^）]+)）|\(([^)]+)\)", engine_raw)
-            engine_label = (zh_match.group(1) or zh_match.group(2)) if zh_match else engine_raw
-            parts.append(f"引擎輪廓 {engine_label}")
-        if distance_match:
-            parts.append(f"今次 {distance_match.group(1)} 以上 {distance_match.group(2).strip()} 系列作投射")
-        if confidence_match:
-            parts.append(f"路程信心 {confidence_match.group(1).strip()}")
-        return "；".join(parts) if parts else line
-
     @staticmethod
     def _clean_trend_label(raw):
         # 顯示用：剝走 bleed 入趨勢標籤嘅 L400 子句 / 重覆「→ 趨勢:」，scoring cache 不受影響。
@@ -2703,7 +3447,7 @@ class RacingEngine:
         wins = 0
         for row in rows:
             result = row.get("next_result", "")
-            match = re.search(r"出\s*\d+\s*次:\s*(\d+)\s*勝", result)
+            match = RE_OPP_FOLLOWUP.search(result)
             if match and int(match.group(1)) > 0:
                 wins += 1
         if wins == 0:
@@ -2858,6 +3602,8 @@ class RacingEngine:
         w = CLASS_MICRO_WEIGHTS
         score = 60.0
         notes = []
+        cdetail = {"base": 60.0, "notes": [], "final": None}
+        self.class_detail = cdetail
 
         if career_starts == 0:
             score = w.get("career0_base", 56.0)
@@ -2886,11 +3632,6 @@ class RacingEngine:
         if "降班" in class_move:
             score += w.get("class_drop_bonus", 6.0)
             notes.append("班次有回落")
-        elif "大幅升班" in class_move or "升班" in class_move:
-            score += w.get("class_up_pen", -4.0)
-            notes.append("今場對手層次轉強")
-
-
         if current_tier == "metro" and latest_tier == "provincial":
             if latest_rt is not None and latest_rt >= 68:
                 notes.append("省賽轉都會，但 RT 證明夠跑都會區")
@@ -2898,14 +3639,8 @@ class RacingEngine:
                 score += w.get("metro_prov_pen", -3.0)
                 notes.append("省賽轉都會，鄉鎮賽績含金量成疑")
 
-        if latest_rt is not None:
-            if latest_rt >= 68:
-                score += w.get("rt_high_bonus", 4.0)
-                notes.append("最新 RT rating 顯示具備能力")
-            elif latest_rt <= 58:
-                score += w.get("rt_low_pen", -4.0)
-                notes.append("最新 RT rating 偏低")
-
+        cdetail["notes"] = list(notes)
+        cdetail["final"] = round(clip_score(score), 2)
         note_text = "；".join(notes) if notes else "班次資料未見鮮明傾向"
         return clip_score(score), f"{note_text}，級數分 {clip_score(score):.1f}。", "class_move+record_table+formline_followups"
 
@@ -2913,8 +3648,46 @@ class RacingEngine:
         rating = self._horse_rating()
         field = self._field_summary()
         rated_count = int(field.get("rated_count") or 0)
+        rdetail = {"lines": [], "source": ""}
+        self.rating_detail = rdetail
         if rating is None or rated_count < 2:
-            return 60, "官方 rating 或同場 rating 樣本不足，Rating 分中性處理。", "missing_neutral"
+            # 處女/未評分馬（全場多數冇官方讓磅分）：唔好死中性 60 令成 70% 塌陷，
+            # 改為借用級數分做代理（班次/升降/RT 仍有能力訊號）。
+            # A/B（2026-07-11）：A窗 100→101、gold 微升、其餘持平、無倒退。
+            #
+            # 2026-08-01 加入場內負磅代理：呢 27% 嘅馬正正就係「讓磅官點睇」完全
+            # 冇入過模型嘅一批 —— 官方 rating 冇，而負磅（讓磅賽由能力定磅）就係
+            # 讓磅官唯一嘅公開判斷。負磅嘅能力訊號平時同 rating 重複（所以
+            # weight_score 已退出排名），但喺 rating 缺失嗰度佢完全唔重複。
+            # 實測（710 場，2,230 對 within-race pair，只計呢個 fallback 子集）：
+            #   級數分單獨      AUC 0.5787
+            #   場內負磅單獨    AUC 0.5769
+            #   兩者 50/50 混合 AUC 0.6078   ← α 0.3–0.7 全部 ≈0.607，闊平台唔係尖峰
+            # 兩個訊號互補而唔係疊加，所以混合贏過任何一邊單獨用。
+            class_proxy = clip_score(self._class_score()[0])
+            weight_proxy, weight_line = self._handicap_weight_proxy()
+            if weight_proxy is None:
+                score = class_proxy
+                rdetail["source"] = "proxy"
+                rdetail["lines"] = [
+                    "呢場多數馬未有官方讓磅分（處女／未評分賽事常見）",
+                    f"改以級數分 {class_proxy:.1f} 作能力代理（唔死當中性）",
+                ]
+                note = (f"未有足夠官方讓磅分（多見於處女賽），"
+                        f"改以級數分 {class_proxy:.1f} 作能力代理。")
+                return score, note, "class_proxy"
+            score = clip_score(0.5 * class_proxy + 0.5 * weight_proxy)
+            rdetail["source"] = "proxy_class_weight"
+            rdetail["lines"] = [
+                "呢場多數馬未有官方讓磅分（處女／未評分賽事常見）",
+                f"級數分代理 {class_proxy:.1f}",
+                weight_line,
+                f"兩者各半合成能力代理 {score:.1f}（60 為中性）",
+            ]
+            note = (f"未有足夠官方讓磅分（多見於處女賽），改以級數分 "
+                    f"{class_proxy:.1f} ＋ 場內負磅代理 {weight_proxy:.1f} "
+                    f"各半合成 {score:.1f}。")
+            return score, note, "class_weight_proxy"
 
         avg_rating = parse_float(field.get("avg_rating"))
         stdev = parse_float(field.get("rating_stdev")) or 0.0
@@ -2963,28 +3736,99 @@ class RacingEngine:
             notes.append("處女馬 rating 波動較大，只作保守參考")
 
         score = clip_score(60.0 + adjustment)
+        rdetail["source"] = "official"
+        vs = ("高過場均" if adjustment > 0.5 else "低過場均" if adjustment < -0.5 else "同場均接近")
+        rdetail["lines"] = [
+            f"官方讓磅分 {rating:.1f}"
+            + (f"，場均 {avg_rating:.1f}" if avg_rating is not None else ""),
+            f"{vs} → 對位修正 {adjustment:+.1f} 分（60 為中性）",
+        ]
         return score, f"{'；'.join(notes)}，Rating 分 {score:.1f}。", "racecard_rating+field_relative"
 
+    def _handicap_weight_proxy(self):
+        """(score, human line) for 「讓磅官點睇本駒」, or (None, "") when unusable.
+
+        Only meaningful in a HANDICAP: there weight is assigned by ability, so a
+        field-relative weight z-score is the handicapper's own ranking. In a
+        weight-for-age / set-weights race weight comes from age and sex instead,
+        so it carries no ability signal and is refused. Same z×6 scale and ±12
+        cap as the official-rating path, so both sources land on one ruler.
+        """
+        if self._is_wfa_or_sw_race():
+            return None, ""
+        weight = parse_float(self.horse_data.get("weight"))
+        field = self._field_summary()
+        avg_weight = parse_float(field.get("avg_weight"))
+        stdev = parse_float(field.get("weight_stdev")) or 0.0
+        counted = int(field.get("weighted_count") or 0)
+        # < 0.3kg spread means the handicapper barely separated the field
+        # (common in maidens); a z-score off that is noise amplification.
+        if weight is None or not avg_weight or counted < 4 or stdev < 0.3:
+            return None, ""
+        z_value = (weight - avg_weight) / stdev
+        adjustment = max(-12.0, min(12.0, z_value * 6.0))
+        score = clip_score(60.0 + adjustment)
+        direction = "重過" if z_value > 0 else "輕過"
+        line = (f"場內負磅代理 {score:.1f}：負 {weight:.1f}kg，{direction}場均 "
+                f"{abs(weight - avg_weight):.1f}kg（讓磅賽由能力定磅，"
+                f"頂磅＝讓磅官評為能力最高）")
+        return score, line
+
     def _pace_figure_score(self):
-        """8th dimension 實測段速: field-relative racenet L600-vs-benchmark.
+        """L600 context: field-relative historical-race L600-vs-benchmark.
+
+        Sportsbet values are race-level and identical for runners from the same
+        historical race. They describe speed tests faced, not the horse's own
+        individual sectional.
         Lower l600_delta (faster than the race benchmark) → higher score. Neutral
         60 when the runner has no PF data or the field has <3 with data (→ this
-        dimension is rank-neutral on no-PF races). scale 20 / weight 0.05 reproduce
-        the validated backtest config. See scoring.MATRIX_WEIGHTS note."""
-        pf_agg = (self.data.get("pf_metrics") or {}).get("pf_aggregates") or {}
+        component is rank-neutral on no-PF races). scale 20 reproduces the
+        validated backtest config. See scoring.MATRIX_WEIGHTS note."""
+        pf_agg = (self._pf_metrics() or {}).get("pf_aggregates") or {}
+        source = str(pf_agg.get("source") or "unknown")
+        detail = {"value": None, "mean": None, "stdev": None, "z": None,
+                  "runs": int(pf_agg.get("pf_run_count") or 0), "final": 60.0, "state": ""}
+        detail["source"] = source
+        self.pace_figure_detail = detail
         value = pf_agg.get("l600_delta_avg")
         field = self._field_summary()
         count = int(field.get("l600_delta_field_count") or 0)
         if value is None or count < 3:
-            return 60, "無實測段速數據（racenet PuntingForm 未覆蓋此馬近績），段速實速分中性 60。", "missing_neutral"
+            detail["state"] = "no_pf"
+            return 60, "無往績賽事 L600 環境數據，L600 環境分中性 60。", "missing_neutral"
         mean = parse_float(field.get("l600_delta_field_mean"))
         stdev = parse_float(field.get("l600_delta_field_stdev")) or 0.0
         if mean is None or stdev <= 0.0:
-            return 60, "同場實測段速無有效分散，段速實速分中性處理。", "no_spread"
+            detail["state"] = "no_spread"
+            return 60, "同場 L600 環境數據無有效分散，L600 環境分中性處理。", "no_spread"
         z = (float(value) - mean) / stdev
         score = clip_score(60 - z * 20.0)  # faster-than-benchmark (negative delta/z) → higher
-        note = (f"實測 L600 對基準差 {float(value):+.2f}s（場均 {mean:+.2f}s），"
-                f"場內 z={z:+.2f} → 段速實速分 {score:.1f}（愈快愈高）。")
+        detail.update({"value": round(float(value), 2), "mean": round(mean, 2),
+                       "stdev": round(stdev, 2), "z": round(z, 2),
+                       "final": round(score, 1), "state": "ok"})
+        # ⚠️ 個分係 **場內相對**（60 − z×20，z 對全場平均），但舊 note 只講絕對值
+        # 「快過賽事基準 X 秒」，於是會出現「快過基準 0.94 秒 → 45.4 分」呢種
+        # 睇落自相矛盾嘅句子（2026-08-01 Rosehill R5 Horizons 實例）。分數係啱嘅
+        # ——嗰場全場都快，佢排第 7 —— 錯嘅係冇講埋同場點比。所以 note 要寫埋
+        # 場均同差距，否則一個正確嘅數字會令人以為引擎壞咗。
+        direction = "快過" if float(value) < 0 else "慢過"
+        field_dir = "快過" if mean < 0 else "慢過"
+        gap = float(value) - mean          # >0 = 慢過場均（l600_delta 越細越快）
+        rel = "慢過" if gap > 0 else "快過"
+        if source == "sportsbet_race_context":
+            note = (f"近{detail['runs']}場所在賽事嘅 L600 平均{direction}基準 "
+                    f"{abs(float(value)):.2f} 秒；同場平均{field_dir}基準 {abs(mean):.2f} 秒，"
+                    f"即係其往績速度環境{rel}今場馬匹平均 {abs(gap):.2f} 秒；"
+                    "Sportsbet 數值係 race-level，唔係本駒個體 split，"
+                    f"L600 環境分 {score:.1f}。")
+        elif source.startswith("racenet_"):
+            note = (f"近{detail['runs']}場逐駒 L600 benchmark 平均{direction}基準 "
+                    f"{abs(float(value)):.2f} 秒；同場平均{field_dir}基準 {abs(mean):.2f} 秒，"
+                    f"即係本駒個體 benchmark {rel}場均 {abs(gap):.2f} 秒；"
+                    f"L600 環境分 {score:.1f}。")
+        else:
+            note = (f"近{detail['runs']}場 L600 平均{direction}基準 {abs(float(value)):.2f} 秒；"
+                    f"來源語意未明，唔當作逐駒實測；L600 環境分 {score:.1f}。")
         return score, note, "pf_l600_delta_field_relative"
 
     def _is_wfa_or_sw_race(self):
@@ -2993,40 +3837,54 @@ class RacingEngine:
 
     def _weight_score(self):
         weight = parse_float(self.horse_data.get("weight"))
+        wdetail = {"base": 62.0, "weight": None, "notes": [], "final": None}
+        self.weight_detail = wdetail
         if weight is None:
+            wdetail["final"] = 60.0
             return 60, "負磅資料不足，負磅分中性處理。", "missing_neutral"
-        
-        score = 62
+
+        # DIRECTION FIX 2026-07-24 (dead-weight/inversion audit): the old logic
+        # rewarded light weight (score 68) and penalised topweight (56) on the
+        # physics intuition "less to carry = faster". In AU HANDICAPS that is
+        # backwards — the handicapper assigns weight BY ABILITY, so topweights
+        # are the better horses. Empirically light-weighted horses finish top-3
+        # 23.2% vs topweights 34.3% (710-race archive). The old narrative
+        # ("負輕磅有明顯優勢") was therefore factually wrong. The ability signal in
+        # weight is already carried by rating_score, so weight_score stays NEUTRAL
+        # by default and only applies the genuinely orthogonal situational nudges
+        # (real burden in wet going; class-move weight relief). Ranking impact is
+        # a validated wash (Δgp/g2/miss 0, 5/5 folds) — this is a correctness /
+        # narrative-truth fix, not a performance claim.
+        score = 60
+        wdetail["weight"] = round(float(weight), 1)
         notes = []
         wet_state = self._wet_state()
         class_move = self._class_move_display()
         is_wfa_or_sw = self._is_wfa_or_sw_race()
 
         if is_wfa_or_sw:
-            notes.append("定磅賽事不計讓磅劣勢")
+            notes.append("定磅賽事，負磅中性")
         else:
-            if weight <= 54.5:
-                score = 68
-                notes.append("負輕磅有明顯優勢")
-            elif weight >= 60.0:
-                score = 56
+            if weight >= 60.0:
+                # topweight = handicapper rates it best; flag for context, no penalty
                 self.risk_flags.append("top_weight")
-                notes.append("頂磅環境要自己讓人")
+                notes.append("頂磅：讓磅官評為本場能力最高之列")
 
+            # genuine physics burden: heavy weight in wet/heavy going is a real drag
             if wet_state in {"soft7plus", "heavy"} and weight >= 59.0:
                 score -= 4
-                notes.append("爛地加重磅消耗顯著")
+                notes.append("爛地孭重磅，體能消耗顯著")
 
+            # class-move weight relief is a real, rating-independent angle
             if "降班" in class_move and weight <= 56.5:
                 score += 3
-                notes.append("降班配輕磅，外在門檻大幅下降")
+                notes.append("降班配輕磅，實際任務下降")
             elif "升班" in class_move and weight >= 58.0:
                 score -= 3
                 notes.append("升班兼高負磅，雙重打擊")
-            elif "升班" in class_move and weight <= 54.0:
-                score += 1
-                notes.append("升班配輕磅，有助彌補級數差距")
 
+        wdetail["notes"] = list(notes)
+        wdetail["final"] = round(clip_score(score), 2)
         note_text = "；".join(notes) if notes else f"今場負磅 {weight:.1f}kg"
         return clip_score(score), f"{note_text}，負磅分 {clip_score(score):.1f}。", "weight+wet_track+class_move"
 
@@ -3092,6 +3950,8 @@ class RacingEngine:
         w = TRACK_MICRO_WEIGHTS
         score = w.get("base", 60.0)
         notes = []
+        tdetail = {"base": round(float(score), 1), "final": None}
+        self.track_detail = tdetail
 
         if track_stats["places"] > 0:
             score += min(9, track_stats["places"] * w.get("same_track_place_bonus", 3.0) + track_stats["wins"] * w.get("same_track_win_bonus", 2.0))
@@ -3100,6 +3960,12 @@ class RacingEngine:
             score += w.get("same_track_poor_pen1", -3.0)
             notes.append("同場已有多次出賽但仍未交到成績")
         elif track_stats["starts"] > 0 and track_stats["places"] == 0:
+            # 2026-08-02：試過加重呢個罰分（−0.81 → −2.0 / −3.0 / −4.5）。
+            # cohort 實測的確話「1 戰零上名」超額 −2.6 而唔係 −0.81 應有嘅輕微，
+            # 但 A/B **全部唔過關**：holdout 三檔都係逐項 0.00，dev 喺 −3.0/−4.5
+            # 見 pass1 −0.66/−0.50、winT3 −0.50/−0.33、mrr −0.27/−0.28。
+            # 即係嗰 −2.6 已經由其他 leaf（近績、穩定性）講咗，喺呢度再罰一次
+            # 係重複計算。保留 −0.81。
             score += w.get("same_track_poor_pen2", -2.0)
             notes.append("有同場出賽紀錄但仍未交到成績")
 
@@ -3134,19 +4000,31 @@ class RacingEngine:
                      notes.append("重地多次出賽全無表現，適應力有疑慮")
                      self.risk_flags.append("poor_heavy_performance")
             
-            wet_bloodline = self._wet_bloodline_signal()
-            if wet_bloodline == "正面" and not self._has_verified_wet_place():
-                score += w.get("wet_bloodline_bonus", 3.0)
-                notes.append("缺乏濕地實績，但血統輪廓顯示適合爛地")
-
-        return clip_score(score), f"{'；'.join(notes) if notes else '場地資料未見鮮明優劣'}。場地分 {clip_score(score):.1f}。", "track_stats+going_stats+wet_track"
+        # 場地／地狀往績記錄行先（用戶要求）：一眼睇到同場、好/軟/重地實績
+        rec_bits = []
+        same = re.match(r"\s*(\d+:\d+-\d+-\d+)", str(self.data.get("track_stats_line") or ""))
+        if same and same.group(1) != "0:0-0-0":
+            rec_bits.append(f"同場 {same.group(1)}")
+        gsl = str(self.data.get("going_stats_line") or "")
+        gm = re.match(r"\s*(\d+:\d+-\d+-\d+)", gsl)
+        if gm and gm.group(1) != "0:0-0-0":
+            rec_bits.append(f"好地 {gm.group(1)}")
+        for lab, key in (("軟地", "軟地"), ("重地", "重地")):
+            mm = re.search(rf"{key}:\s*(\d+:\d+-\d+-\d+)", gsl)
+            if mm and mm.group(1) != "0:0-0-0":
+                rec_bits.append(f"{lab} {mm.group(1)}")
+        rec_prefix = ("；".join(rec_bits) + "；") if rec_bits else ""
+        tdetail["final"] = round(clip_score(score), 2)
+        tdetail["notes"] = ([f"往績 {' / '.join(rec_bits)}"] if rec_bits else []) + list(notes)
+        body = f"{rec_prefix}{'；'.join(notes) if notes else '場地資料未見鮮明優劣'}"
+        return clip_score(score), f"{body}。場地分 {clip_score(score):.1f}。", "track_stats+going_stats+wet_track"
 
     def _formline_future_wins(self):
         rows = self._formline_rows()
         return sum(
             1 for row in rows
-            if re.search(r"出\s*\d+\s*次:\s*(\d+)\s*勝", row.get("next_result", ""))
-            and int(re.search(r"出\s*\d+\s*次:\s*(\d+)\s*勝", row.get("next_result", "")).group(1)) > 0
+            if (m := RE_OPP_FOLLOWUP.search(row.get("next_result", "")))
+            and int(m.group(1)) > 0
         )
 
     def _formline_strong_opponents(self):
@@ -3180,37 +4058,59 @@ class RacingEngine:
         return "neutral"
 
     def _formline_score(self):
-        signal = self._formline_signal()
-        w = FORMLINE_MICRO_WEIGHTS
-        mapping = {
-            "elite": w.get("elite_base", 78.0),
-            "strong": w.get("strong_base", 72.0),
-            "medium_strong": w.get("med_strong_base", 68.0),
-            "medium": w.get("med_base", 64.0),
-            "medium_weak": w.get("med_weak_base", 56.0),
-            "weak": w.get("weak_base", 50.0),
-            "neutral": w.get("neutral_base", 58.0),
-            "unknown": w.get("unknown_base", 58.0),
-        }
-        score = mapping.get(signal, w.get("unknown_base", 58.0))
-        
+        # ── 2026-08-02 重建：冇對手線就唔好扮有 ────────────────────────────
+        # 舊行為：`_formline_signal()` 喺**冇任何對手線**嘅時候，會去 parse
+        # `formline_line` 個文字標題（「強」「極強」…）當作級別。實測 713 場：
+        #     valid=0（冇任何對手強度證據）  6,682 匹 **88.5%**
+        #         分數 平均 75.76 中位 78.0 範圍 57.0–89.5
+        #         場內超額前三率 **+0.0** ← 完全等於隨機
+        #     valid>=1（有對手線）             865 匹  11.5%  範圍 53.0–100.0
+        # 即係八成半嘅馬帶住一個 32 分闊嘅**純噪音**分佈，而且 79.9% 全樣本
+        # 「冇證據但攞到 >70 分」。個 leaf 場內 ρ 得 0.011（12 個 leaf 最差）
+        # 就係咁嚟 —— 唔係缺數據，係冇數據嗰批被派咗高分，蓋過咗有數據嗰批。
+        #
+        # ⚠️ 呢個唔止影響排名（form_line 權重本身係 0）。報告會照樣同用戶講
+        # 「賽績線強」，而背後乜證據都冇 —— 就算永遠唔畀權重都要修。
+        #
+        # 新行為：冇對手強度證據 → 直接坐 60（該批實測超額 +0.0，中性就係啱），
+        # 唔再讀文字標題。有證據先至用級別表。下面嘅 bonus 項本身都係證據性嘅
+        # （對手其後贏出／升班／頭馬交手），所以照計，令「得少少證據」嘅馬
+        # 仍然可以離開 60。
+        _support, valid_rows = self._formline_support_summary()
+        if valid_rows <= 0:
+            signal = "unknown"
+            score = 60.0
+        else:
+            signal = self._formline_signal()
+            mapping = {
+                "elite": 82.5,
+                "strong": 72.0,
+                "medium_strong": 66.0,
+                "medium": 62.0,
+                "medium_weak": 57.0,
+                "weak": 53.0,
+                "neutral": 58.0,
+                "unknown": 60.0,
+            }
+            score = mapping.get(signal, 60.0)
+
         future_win_hits = self._formline_future_wins()
         strong_hits = self._formline_strong_opponents()
         followups = self._formline_followup_counts()
         headwinner = self._formline_headwinner()
 
         if future_win_hits:
-            score += min(6, future_win_hits * w.get("future_win_bonus", 3.0))
+            score += min(6, future_win_hits * 5.9)
         if strong_hits:
-            score += min(4, strong_hits * w.get("strong_opp_bonus", 2.0))
+            score += min(4, strong_hits * 3.3)
         if followups["higher"] > 0:
-            score += min(4, followups["higher"] * w.get("followup_higher_bonus", 2.0))
+            score += min(4, followups["higher"] * 2.4)
         if followups["same"] >= 2:
-            score += w.get("followup_same_bonus", 2.0)
+            score += 1.2
         if followups["lower"] >= 3 and followups["higher"] == 0:
-            score += w.get("followup_lower_pen", -2.0)
+            score += -3.6
         if headwinner and any(token in headwinner for token in ("頭馬", "亞軍")):
-            score += w.get("headwinner_bonus", 2.0)
+            score += 1.8
 
         row_strength_text = " ".join(str(row.get("strength") or "") for row in self._formline_rows())
         has_strong_row = any(token in row_strength_text for token in ("強組", "超強組", "極強組"))
@@ -3218,9 +4118,9 @@ class RacingEngine:
         has_weak_row = "弱組" in row_strength_text
         text = str(self.data.get("formline_line") or "")
         if has_strong_row:
-            score = max(score, w.get("med_strong_base", 68.0))
+            score = max(score, 66.0)
         elif has_weak_row and not has_medium_row:
-            score = min(score, w.get("med_weak_base", 56.0) - 2.0)
+            score = min(score, 57.0 - 2.0)
         if ("無資料" in text or "未有出賽" in text) and not self._formline_rows():
             score = min(score, 60.0)
 
@@ -3248,40 +4148,128 @@ class RacingEngine:
     def _consistency_score(self):
         w = CONSISTENCY_MICRO_WEIGHTS
         starts = self._career_starts()
+        detail = {"base": None, "base_label": "基礎分", "adjustments": [],
+                  "display_notes": [], "final": None}
+        self.consistency_detail = detail
         if starts == 0:
-            return w.get("career0_base", 58.0), "初出馬以備戰完整度代替穩定樣本，跑法穩定性 58 分。", "career_tag"
-            
+            base0 = w.get("career0_base", 58.0)
+            detail["base"] = round(base0, 2)
+            detail["base_label"] = "初出馬固定分（以備戰完整度代替穩定樣本）"
+            detail["final"] = round(clip_score(base0), 2)
+            return base0, f"初出馬以備戰完整度代替穩定樣本，跑法穩定性 {clip_score(base0):.1f} 分。", "career_tag"
+
         score = w.get("base", 58.0)
+        detail["base"] = round(score, 2)
         notes = []
-        
+
+        def add(delta, factor, evidence=""):
+            nonlocal score
+            score += delta
+            detail["adjustments"].append({"delta": round(delta, 2),
+                                          "factor": factor, "evidence": evidence})
+
         recent = parse_recent_finishes(self.data.get("recent_form"))
         if recent:
-            places = sum(1 for x in recent[:6] if x <= 3)
-            poor = sum(1 for x in recent[:6] if x >= 8)
-            score += (places * w.get("recent_place_bonus", 7.0)) + (poor * w.get("recent_poor_pen", -5.0))
+            window = recent[:6]
+            places = sum(1 for x in window if x <= 3)
+            poor = sum(1 for x in window if x >= 8)
+            if places:
+                add(places * w.get("recent_place_bonus", 7.0), "近績前三獎勵",
+                    f"近{len(window)}仗{places}次前三（每次 {w.get('recent_place_bonus', 7.0):+.2f}）")
+            if poor:
+                add(poor * w.get("recent_poor_pen", -5.0), "大敗懲罰",
+                    f"近{len(window)}仗{poor}次第八或以後（每次 {w.get('recent_poor_pen', -5.0):+.2f}）")
             notes.append(f"近仗有{places}次前三、{poor}次大敗")
-            
+
+            # 寬恕補償已退出計分（2026-07-10 A/B：移除對排名零影響，box4 微升）；
+            # 寬恕背景改為純顯示解讀，唔再入分。
             if poor >= 2 and self._forgiveness_count() >= 2:
-                score += w.get("forgiveness_bonus", 4.0)
-                notes.append("大敗場次多具寬恕理由")
-        
+                detail["display_notes"].append("大敗場次多具寬恕理由（顯示參考，不入分）")
+                notes.append("大敗場次多具寬恕理由（不入分）")
+
+        # 輸距趨勢（2026-07-10 新增，用戶提出、HK 引擎亦有同類 credit）：
+        # 近 2 仗平均輸距 vs 之前場次，改善/惡化 ≥2L → ±3。
+        # A/B：全檔 GGP +1、A窗 +1、winT3 +0.6pp，無指標倒退；放近績側反而蝕（已反證）。
+        margins = []
+        for entry in self._official_entries()[:4]:
+            m = re.search(r"\(([-+]?\d+(?:\.\d+)?)L\)", str(entry.get("placing") or ""))
+            if m:
+                margins.append(float(m.group(1)))
+        if len(margins) >= 3:
+            recent_margin = sum(margins[:2]) / 2
+            older_margin = sum(margins[2:]) / len(margins[2:])
+            improvement = recent_margin - older_margin
+            if improvement >= 2.0:
+                add(w.get("margin_trend_up_bonus", 3.0), "輸距趨勢改善",
+                    f"近2仗平均輸距較之前收窄 {improvement:.1f}L")
+                notes.append("輸距趨勢改善")
+            elif improvement <= -2.0:
+                add(w.get("margin_trend_down_pen", -3.0), "輸距趨勢惡化",
+                    f"近2仗平均輸距較之前擴大 {abs(improvement):.1f}L")
+                notes.append("輸距趨勢惡化")
+
         run_styles = [entry.get("run_style", "") for entry in self._official_entries()[:4] if entry.get("run_style") and entry.get("run_style") != "-"]
-        if run_styles and len(set(run_styles)) == 1:
-            score += w.get("run_style_bonus", 3.0)
+        # 樣本閘：得 1 場有跑法記錄唔構成「連貫」，要 ≥2 場全一致先畀分
+        # （2026-07-10 A/B：全檔案 GGP +2、A窗 +1、B窗 +1、冠軍 +0.3pp，無指標倒退）
+        if len(run_styles) >= 2 and len(set(run_styles)) == 1:
+            add(w.get("run_style_bonus", 3.0), "跑法連貫獎勵",
+                f"近{len(run_styles)}場正式賽跑法全部一致")
             notes.append("近期跑法連貫")
-            
+
         if "穩定" in self._sectional_trends().get("pi_trend", ""):
-            score += w.get("pi_stable_bonus", 2.0)
-            
+            add(w.get("pi_stable_bonus", 2.0), "PI 走勢穩定獎勵", "段速 PI 趨勢呈穩定")
+
         repeatability = self._repeatability_brief()
         if "重覆前列交代" in repeatability or "直接對位" in repeatability:
-            score += w.get("repeat_bonus", 2.0)
+            add(w.get("repeat_bonus", 2.0), "重複交代獎勵", repeatability)
             notes.append("派彩/對位具重複性")
         elif "未形成穩定交代" in repeatability:
-            score += w.get("no_repeat_pen", -1.0)
-            
+            add(w.get("no_repeat_pen", -1.0), "未形成穩定交代", repeatability)
+
+        detail["final"] = round(clip_score(score), 2)
         note_str = "；".join(notes) if notes else "未見特別跑法或表現穩定特徵"
-        return score, f"{note_str}。跑法穩定性 {clip_score(score):.1f} 分。", "run_style+sectional_trend+forgiveness+repeatability"
+        return score, f"{note_str}。跑法穩定性 {clip_score(score):.1f} 分。", "run_style+sectional_trend+repeatability"
+
+    def _performance_quality_score(self):
+        if os.environ.get("WC_DISABLE_AU_PERFORMANCE_QUALITY") == "1":
+            self.performance_quality_detail = {"disabled": True, "final": None}
+            return 60.0, "表現質素分已停用，稍後沿用跑法穩定性分。", "consistency_fallback"
+        raw = parse_float(self.data.get("performance_quality_raw"))
+        summary = self.race_context.get("field_summary") or {}
+        count = int(parse_float(summary.get("performance_quality_field_count")) or 0)
+        field_mean = parse_float(summary.get("performance_quality_field_mean"))
+        field_stdev = parse_float(summary.get("performance_quality_field_stdev"))
+        run_count = int(parse_float(self.data.get("performance_quality_run_count")) or 0)
+        run_evidence = self.data.get("performance_quality_runs")
+        run_evidence = run_evidence if isinstance(run_evidence, list) else []
+        self.performance_quality_detail = {
+            "raw": raw,
+            "run_count": run_count,
+            "runs": run_evidence,
+            "field_count": count,
+            "field_mean": field_mean,
+            "field_stdev": field_stdev,
+            "final": None,
+        }
+        if (
+            raw is None
+            or run_count < 2
+            or count < 3
+            or field_mean is None
+            or field_stdev is None
+            or field_stdev <= 0
+        ):
+            return 60.0, "完整表現質素樣本不足，稍後沿用跑法穩定性分。", "consistency_fallback"
+        z_score = (raw - field_mean) / field_stdev
+        score = clip_score(60.0 + 20.0 * z_score)
+        self.performance_quality_detail.update(
+            {"z_score": round(z_score, 4), "final": round(score, 2)}
+        )
+        return (
+            score,
+            f"近 {run_count} 場按輸距及賽事獎金級別校正，場內標準分 {score:.1f}。",
+            "class_adjusted_margin_field_relative",
+        )
 
     def _confidence_score(self):
         anchors = 0
@@ -3377,22 +4365,27 @@ class RacingEngine:
         return score, f"{note}。備戰完整度分 {clip_score(score):.1f}。", "warnings+spell+gear"
 
     def _advantages(self, feature_scores, matrix_scores):
+        # 2026-08-01：門檻統一到 MATRIX_ADVANTAGE_CUTOFF。維度尺正規化之前，
+        # 每個維度嘅 spread 差幾倍，所以呢啲 magic number 各自係對住唔同尺磨出嚟
+        # ——`jockey_trainer >= 72`（舊上限 73.8）同 `class_weight >= 68`（舊上限
+        # 69.5）實際上幾乎永遠唔會 fire。而家七個維度同一把尺，一個門檻就夠。
+        cut = MATRIX_ADVANTAGE_CUTOFF
         items = []
-        if matrix_scores["sectional"] >= 72:
+        if matrix_scores.get("pace_perf", 60) >= cut:
             if feature_scores["distance_score"] >= 72:
-                items.append("段速表現同路程配套對得上，唔係靠空想投射")
+                items.append("曾應付較快末段賽事環境，路程配套亦有支持")
             else:
-                items.append("段速底子唔差，末段輸出有條件交到貨")
-        if matrix_scores["jockey_trainer"] >= 72:
+                items.append("往績速度考驗背景唔差，但唔當成本駒個體末段實測")
+        if matrix_scores["jockey_trainer"] >= cut:
             trainer = self._clean_identity(self.horse_data.get("trainer")) or "馬房"
             items.append(f"{trainer} 呢邊嘅部署訊號偏正面，人馬配搭有基本支持")
-        if matrix_scores["track"] >= 70:
+        if matrix_scores["track"] >= cut:
             items.append("場地或場館適性有實際證據，唔係紙上談兵")
-        if matrix_scores["stability"] >= 70:
+        if matrix_scores["stability"] >= cut:
             items.append("近期交代密度夠，狀態線唔算飄")
-        # BUGFIX 2026-07-03: matrix key is class_weight — the old class_level /
-        # weight_pressure keys never exist, so this bullet could never fire.
-        if matrix_scores.get("class_weight", 60) >= 68:
+        if matrix_scores.get("race_shape", 60) >= cut:
+            items.append("檔位同步速形勢配腳，走位有本錢")
+        if matrix_scores.get("class_weight", 60) >= cut:
             items.append("班次同負磅未見吃力，發揮門檻唔高")
         if self._forgiveness_count() >= 2:
             items.append("近仗至少有一兩場蝕位或受阻，紙面名次可能低估真身")
@@ -3403,15 +4396,21 @@ class RacingEngine:
         return items[:3] or ["整體結構平均，未見特別爆點，但亦唔算有明顯穿崩位"]
 
     def _disadvantages(self, feature_scores, matrix_scores):
+        # 門檻同 _advantages 一樣統一（見該處註釋）。
+        cut = MATRIX_DISADVANTAGE_CUTOFF
         items = []
-        if matrix_scores["race_shape"] <= 55:
+        if matrix_scores["race_shape"] <= cut:
             items.append("步速配腳未算理想，走位成本可能會先食蝕")
-        if matrix_scores.get("class_weight", 60) <= 55:
+        if matrix_scores.get("class_weight", 60) <= cut:
             items.append("班次或負磅面前仍有壓力，容錯空間唔大")
-        if matrix_scores["track"] <= 55:
+        if matrix_scores["track"] <= cut:
             items.append("場地適性仍未有清楚支持，轉場條件未必幫到手")
-        if matrix_scores["form_line"] <= 55:
-            items.append("賽績線含金量一般，對手後續未能幫手抬高可信度")
+        if matrix_scores.get("pace_perf", 60) <= cut:
+            items.append("段速實證偏弱，靠速度取勝嘅路唔通")
+        if matrix_scores["stability"] <= cut:
+            items.append("近況同穩定性都唔靚，狀態線飄")
+        # 賽績線維度權重=0（純顯示、唔入排名），唔應該出現喺「主要風險」結論
+        # 誤導用戶以為佢有份計分。2026-07-11 移除。
         if feature_scores["confidence_score"] <= 52:
             items.append("可用證據鏈未算完整，臨場變數自然會放大")
         if self._career_starts() == 0:
@@ -3530,14 +4529,21 @@ class RacingEngine:
         return rows
 
     def _core_logic(self, feature_scores, matrix_scores, advantages, disadvantages):
-        """Data-grounded verdict: a concrete 七維 framing sentence, then the actual
+        """Data-grounded verdict: six ranking dimensions, then actual
         strengths and concerns (reusing the already-specific advantages/disadvantages).
         Drops the generic '做主軸 / 保留型 / 走勢未算鮮明' filler."""
         name = self.horse_data.get("horse_name", "此駒")
-        ordered = sorted(matrix_scores.items(), key=lambda kv: kv[1], reverse=True)
+        # ``matrix_scores`` also carries report-only ``form_line`` for archive and
+        # renderer compatibility.  It must never be described as the strongest or
+        # weakest *ranking* dimension now that the live registry is six-dimensional.
+        ordered = sorted(
+            ((key, matrix_scores.get(key, 60.0)) for key in MATRIX_WEIGHTS),
+            key=lambda kv: kv[1],
+            reverse=True,
+        )
         top_dim = self._matrix_label(ordered[0][0])
         low_dim = self._matrix_label(ordered[-1][0])
-        sents = [f"{name}今場七維評分以{top_dim}（{ordered[0][1]:.0f}）最強、{low_dim}（{ordered[-1][1]:.0f}）最弱。"]
+        sents = [f"{name}今場六個排名維度以{top_dim}（{ordered[0][1]:.0f}）最強、{low_dim}（{ordered[-1][1]:.0f}）最弱。"]
         real_adv = [a for a in (advantages or []) if "整體結構平均" not in a]
         real_dis = [d for d in (disadvantages or []) if "主要變數仍然係臨場步速" not in d]
         if real_adv:
@@ -3584,15 +4590,547 @@ class RacingEngine:
         return int(match.group(1)) if match else 0
 
 
-def enrich_logic_from_facts(logic_data: dict, facts_path: Path) -> dict:
+_PF_TOKEN_RE = re.compile(r"PF\[(.+?)\]")
+_FG_HORSE_HDR_RE = re.compile(
+    r"^\[(\d+)\]\s+(.+?)\s+\((\d+)\)\s*$",
+    re.M,
+)
+_FG_JT_LY_RE = re.compile(
+    r"(?:^|\|)\s*(T|J):\s*([^(|\n]+?)\s*"
+    r"\(LY:\s*(\d+):(\d+)-(\d+)-(\d+)\)",
+    re.M,
+)
+
+
+def _pf_num(pattern: str, text: str):
+    match = re.search(pattern, text)
+    try:
+        return float(match.group(1)) if match else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _pf_str(pattern: str, text: str):
+    match = re.search(pattern, text)
+    return match.group(1).strip() if match else None
+
+
+def _parse_pf_token(token: str) -> dict:
+    return {
+        "source": _pf_str(r"Source:\s*([A-Za-z0-9_-]+)", token),
+        # Historical field name kept for cache compatibility.  Racenet PF
+        # `Last600` is elapsed time at the 600m-to-go marker, not the final
+        # 600m split; final split = Runner Time - Last600.
+        "l600_time": _pf_num(r"Last600:\s*([-\d.]+)", token),
+        "runner_time": _pf_num(r"Runner Time:\s*([-\d.]+)", token),
+        "race_time_diff": _pf_num(r"Race Time:\s*([-\d.]+)", token),
+        "l800_delta": _pf_num(r"L800 Delta:\s*([-\d.]+)", token),
+        "l600_delta": _pf_num(r"L600 Delta:\s*([-\d.]+)", token),
+        "l400_delta": _pf_num(r"L400 Delta:\s*([-\d.]+)", token),
+        "l200_delta": _pf_num(r"L200 Delta:\s*([-\d.]+)", token),
+        "tempo_qrank": _pf_num(r"Tempo QRank:\s*([-\d.]+)", token),
+        "rt_rating": _pf_num(r"RT Rating:\s*([-\d.]+)", token),
+        "early_runner_pace": _pf_str(
+            r"Early Runner Pace:\s*([^.]+)\.",
+            token,
+        ),
+        "early_race_pace": _pf_str(
+            r"Early Race Pace:\s*([^.]+)\.",
+            token,
+        ),
+    }
+
+
+def _formguide_text(facts_path: Path) -> str:
+    formguide = facts_path.with_name(
+        facts_path.name.replace("Facts", "Formguide")
+    )
+    if not formguide.exists():
+        return ""
+    try:
+        return formguide.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+
+_PF_SPLIT_KEYS = (
+    "race_time_diff",
+    "l800_delta",
+    "l600_delta",
+    "l400_delta",
+    "l200_delta",
+    "runner_time",
+    "l600_time",
+)
+
+
+def _pf_aggregates(runs: list[dict], source: str) -> dict:
+    """Field-relative PF/L600 inputs. One code path for every PF source
+    (live formguide tokens and the historical backfill) so a re-scored archive
+    race and a live race are scored by the same arithmetic."""
+    if not runs:
+        return {}
+
+    def values(key):
+        return [run[key] for run in runs if run.get(key) is not None]
+
+    aggregates: dict = {}
+    for key in _PF_SPLIT_KEYS:
+        samples = values(key)
+        if samples:
+            aggregates[f"{key}_avg"] = round(sum(samples) / len(samples), 3)
+            aggregates[f"{key}_best"] = round(min(samples), 3)
+    tempo = values("tempo_qrank")
+    if tempo:
+        aggregates["tempo_qrank_avg"] = round(sum(tempo) / len(tempo), 4)
+    ratings = values("rt_rating")
+    if ratings:
+        aggregates["rt_rating_avg"] = round(sum(ratings) / len(ratings), 3)
+        aggregates["rt_rating_best"] = round(max(ratings), 3)
+    aggregates["latest_early_runner_pace"] = runs[0].get("early_runner_pace")
+    aggregates["latest_early_race_pace"] = runs[0].get("early_race_pace")
+    aggregates["pf_run_count"] = len(runs)
+    aggregates["source"] = source
+    aggregates["value_counts"] = {
+        key: len(values(key)) for key in _PF_SPLIT_KEYS
+    }
+    return aggregates
+
+
+def _parse_formguide_pf_metrics(
+    facts_path: Path,
+    *,
+    formguide_text: str | None = None,
+    target_date: str = "",
+) -> dict:
+    text = _formguide_text(facts_path) if formguide_text is None else formguide_text
+    if not text:
+        return {}
+    if not target_date:
+        date_match = re.search(r"(\d{4}-\d{2}-\d{2})", facts_path.parent.name)
+        target_date = date_match.group(1) if date_match else ""
+    output: dict = {}
+    headers = list(_FG_HORSE_HDR_RE.finditer(text))
+    for index, header in enumerate(headers):
+        body = text[
+            header.end():
+            headers[index + 1].start() if index + 1 < len(headers) else len(text)
+        ]
+        runs = []
+        for line in body.splitlines():
+            run_date_match = re.search(r"\b(\d{4}-\d{2}-\d{2})\b", line)
+            run_date = run_date_match.group(1) if run_date_match else ""
+            distance_match = re.search(r"\b(\d{3,4})m\b", line, re.I)
+            run_distance = int(distance_match.group(1)) if distance_match else None
+            # With a known meeting date, undated PF evidence cannot prove it is
+            # pre-race and therefore stays out of ranking.
+            if target_date and (not run_date or run_date >= target_date):
+                continue
+            for token in _PF_TOKEN_RE.findall(line):
+                parsed = _parse_pf_token(token)
+                if run_date:
+                    parsed["run_date"] = run_date
+                if run_distance:
+                    parsed["distance"] = run_distance
+                runs.append(parsed)
+        marked_sources = {
+            str(run.get("source"))
+            for run in runs
+            if run.get("source")
+        }
+        if marked_sources == {"sportsbet_race_context"}:
+            source = "sportsbet_race_context"
+        elif marked_sources:
+            source = "mixed_formguide_pf"
+        elif "WinOdds:" in text:
+            # Compatibility for Sportsbet Formguides written before the
+            # explicit PF token source marker was introduced.
+            source = "sportsbet_race_context"
+        else:
+            source = "racenet_formguide_cfb"
+        output[header.group(1)] = {
+            "pf_runs": runs,
+            "pf_aggregates": _pf_aggregates(runs, source),
+        }
+    return output
+
+
+def _validate_formguide_horse_alignment(
+    text: str,
+    horses: dict,
+    *,
+    source: str,
+) -> None:
+    """Refuse cross-race/cross-horse Formguide payloads before enrichment.
+
+    Extra Formguide runners are allowed (late scratchings can remove a runner
+    from Logic), but every Logic runner must have the same number/name pair.
+    """
+    headers = list(_FG_HORSE_HDR_RE.finditer(text or ""))
+    if not headers:
+        return
+    by_number: dict[str, str] = {}
+    duplicate_numbers = []
+    for header in headers:
+        number = header.group(1)
+        if number in by_number:
+            duplicate_numbers.append(number)
+        by_number[number] = header.group(2).strip()
+    errors = []
+    if duplicate_numbers:
+        errors.append(f"duplicate Formguide horse numbers {sorted(set(duplicate_numbers))}")
+    for number, horse in horses.items():
+        key = str(number)
+        if key not in by_number:
+            errors.append(f"Logic runner #{key} absent from Formguide")
+            continue
+        logic_name = _normalize_horse_name((horse or {}).get("horse_name"))
+        formguide_name = _normalize_horse_name(by_number[key])
+        if logic_name != formguide_name:
+            errors.append(
+                f"#{key} Logic={logic_name or '?'} Formguide={formguide_name or '?'}"
+            )
+    if errors:
+        raise ValueError(
+            f"FORMGUIDE ALIGNMENT FAILED in {source}: " + "; ".join(errors)
+        )
+
+
+def _load_pf_backfill(archive_root: Path) -> dict:
+    """Historical racenet PuntingForm sectionals for archive meetings.
+
+    Live meetings carry PF inside their own Formguide (`PF[...]` tokens), but
+    the scraper only started emitting them around 2026-05 — every earlier
+    Formguide has none. The legacy `pace_figure_score` L600 signal was a useful
+    leaf (within-race AUC 0.596 where covered, vs 0.615 for the best comparator)
+    yet it fell back to a neutral 60 on 67% of archive
+    runners, so two thirds of every backtest scored the pace dimension blind.
+
+    The backfill cache closes that: 82 meetings / 728 races / 7,738 runners,
+    built pre-race-only with zero leakage rejections. Runs are re-filtered
+    against the meeting date on read anyway — a cache is not a licence to skip
+    the point-in-time check.
+    """
+    global _PF_BACKFILL_CACHE
+    if _PF_BACKFILL_CACHE is not None:
+        return _PF_BACKFILL_CACHE
+    _PF_BACKFILL_CACHE = {}
+    for name in PF_BACKFILL_FILENAMES:
+        path = archive_root / name
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        meetings = payload.get("meetings")
+        if isinstance(meetings, dict):
+            _PF_BACKFILL_CACHE = meetings
+            break
+    return _PF_BACKFILL_CACHE
+
+
+def _pf_backfill_for_race(facts_path: Path, race_number: int | None) -> dict:
+    """{horse_number: {"pf_runs": [...], "pf_aggregates": {...}}} for one race."""
+    meeting_dir = facts_path.parent
+    meetings = _load_pf_backfill(meeting_dir.parent)
+    meeting = meetings.get(meeting_dir.name)
+    if not isinstance(meeting, dict) or not race_number:
+        return {}
+    races = meeting.get("races")
+    race = races.get(str(race_number)) if isinstance(races, dict) else None
+    if not isinstance(race, dict):
+        return {}
+    target_date = str(meeting.get("target_date") or "")
+    output: dict = {}
+    for horse_number, entry in race.items():
+        if not isinstance(entry, dict):
+            continue
+        runs = [
+            run
+            for run in (entry.get("runs") or [])
+            if isinstance(run, dict)
+            # point-in-time: a run on or after race day cannot inform it
+            and (not target_date or str(run.get("run_date") or "") < target_date)
+        ]
+        if not runs:
+            continue
+        output[str(horse_number)] = {
+            "pf_runs": runs,
+            "pf_aggregates": _pf_aggregates(runs, "racenet_pf_historical_backfill"),
+        }
+    return output
+
+
+def _merge_pf_sources(formguide_pf: dict, backfill_pf: dict) -> dict:
+    """Formguide PF wins; backfill only fills runners it left empty."""
+    if not backfill_pf:
+        return formguide_pf
+    merged = dict(formguide_pf)
+    for horse_number, entry in backfill_pf.items():
+        existing = merged.get(horse_number) or {}
+        if not (existing.get("pf_aggregates") or {}).get("pf_run_count"):
+            merged[horse_number] = entry
+    return merged
+
+
+def backfill_pf_metrics(logic_data: dict, facts_path: Path | None) -> int:
+    """Fill `_data["pf_metrics"]` from the historical PF cache where it is absent.
+
+    MUST run before the race's `field_summary` is built: the L600 signal is a
+    field-relative z-score, so a runner's own PF runs are useless unless the
+    rest of the field was loaded from the same source. Returns the number of
+    runners filled. No-op for live meetings, whose Formguide already carries PF.
+
+    OFF BY DEFAULT — opt in with WC_PF_BACKFILL=1. 2026-08-01, 710 races:
+    the backfill lifts PF coverage 32.8% → 94.3% and the backfilled data is
+    genuinely predictive (within-race AUC 0.572 on pre-2026-05 meetings vs
+    0.599 on live-Formguide meetings, both above every leaf except 近績/穩定),
+    yet switching it on makes the model WORSE at the shipped weights:
+    gold 37→34, champ −1.55, t3prec −0.94, mrr −0.93, ndcg −0.83
+    (good_pos +0.71, winT3 +0.42, blowout −0.98 the only gains).
+    A pace_perf matrix-weight sweep under full coverage (0.06/0.09/0.12/0.15/
+    0.24/0.30 vs the shipped 0.18831) does not recover it — every level loses
+    gold, best case 0.15 is gold −1 with t3prec −0.19 — and neither does
+    dropping the text-PI leaf so 段速表現 is pure PF (gold =, good_pos −1.27).
+    Read: 0.18831 was fitted while this leaf sat inert on two thirds of
+    runners, so un-blinding it over-weights pace against better-calibrated
+    signals. Unlocking the coverage needs a full matrix re-fit under full
+    coverage, not a coverage flip. Kept wired (not deleted) because the cache
+    had already sat unread on disk for three weeks once.
+
+    ── 2026-08-01（同日稍後）喺合併後配置下覆核：**維持 OFF。** ──
+    合併咗另一條線嘅改動（馬群大細百分位 base、PI 競爭力封頂、L600 改用平均、
+    獎金班次調整、統一上名率取代 jockey/trainer 分）之後重測。
+
+    中途一度以為結論反轉（量到 dev gold 25→28、good_pos +2.97），**嗰個係錯嘅**：
+    量度時自己用 `MATRIX_FORMULAS` 砌維度再乘 `MATRIX_WEIGHTS`，**漏咗
+    `MATRIX_DISPLAY_GAINS`**。權重數字 2026-08-01 改過，但 w×gain 相對舊權重
+    係同一個常數 1.4225（即係排名影響力冇變）—— 唔套 gain 就等於用緊一組
+    根本唔存在嘅權重。一定要行 `map_features_to_matrix_scores`。
+
+    改正後（713 場，dev 606 / 未碰過 holdout 107）：
+      dev      gold +1、good_pos +0.66、winT3 +0.50、blowout −0.99、compet +0.66
+               但 **champ −1.65、good_any2 −0.82**、t3prec −0.22、mrr/ndcg −0.01
+      holdout  全部 0.00（嗰批 meeting 本身已有 live PF，backfill 無作用）
+      只計生效嘅 466 場：champ −2.15、any2 −1.08、t3prec −0.28
+    即係上面原本嘅判斷喺 leaf 重新居中 + 顯示尺正規化之後**仍然成立**。
+
+    亦喺全覆蓋下做過七維權重重新配權（5-fold 閘，候選要每個 fold 都唔差過現狀）：
+    搵唔到任何改進。冇 fold 閘嘅純 dev 擬合會俾出 dev +3.28 / holdout −2.04
+    （good_any2 −6.54）—— 典型過擬合，唔可信。
+    """
+    if not facts_path or os.environ.get("WC_PF_BACKFILL", "0") != "1":
+        return 0
+    horses = logic_data.get("horses")
+    if not isinstance(horses, dict):
+        return 0
+    missing = [
+        number
+        for number, horse in horses.items()
+        if isinstance(horse, dict)
+        and not (
+            ((horse.get("_data") or {}).get("pf_metrics") or {}).get("pf_aggregates") or {}
+        ).get("pf_run_count")
+    ]
+    if not missing:
+        return 0
+    race_number = _extract_first_int(
+        str((logic_data.get("race_analysis") or {}).get("race_number") or ""),
+        r"(\d+)",
+    ) or _extract_first_int(Path(facts_path).name, r"Race[_ ]*(\d+)")
+    backfill = _pf_backfill_for_race(Path(facts_path), race_number)
+    if not backfill:
+        return 0
+    filled = 0
+    for number in missing:
+        entry = backfill.get(str(number))
+        if not entry:
+            continue
+        horses[number].setdefault("_data", {})["pf_metrics"] = entry
+        filled += 1
+    return filled
+
+
+def _parse_formguide_jt_ly(
+    facts_path: Path,
+    *,
+    formguide_text: str | None = None,
+) -> dict:
+    text = _formguide_text(facts_path) if formguide_text is None else formguide_text
+    if not text:
+        return {}
+    output: dict = {}
+    headers = list(_FG_HORSE_HDR_RE.finditer(text))
+    for index, header in enumerate(headers):
+        body = text[
+            header.end():
+            headers[index + 1].start() if index + 1 < len(headers) else len(text)
+        ]
+        record: dict = {}
+        for match in _FG_JT_LY_RE.finditer(body):
+            kind = "trainer_ly" if match.group(1) == "T" else "jockey_ly"
+            if kind in record:
+                continue
+            wins = int(match.group(4))
+            seconds = int(match.group(5))
+            thirds = int(match.group(6))
+            record[kind] = {
+                "name": match.group(2).strip(),
+                "rides": int(match.group(3)),
+                "wins": wins,
+                "places": wins + seconds + thirds,
+            }
+        if record:
+            output[header.group(1)] = record
+    return output
+
+
+def _extract_race_number(filename: str, text: str) -> int:
+    match = re.search(r"Race[ _](\d+)", filename)
+    if match:
+        return int(match.group(1))
+    match = re.search(r"# .*Race\s+(\d+)", text)
+    return int(match.group(1)) if match else 1
+
+
+def _extract_race_meta(
+    facts_path: Path,
+    text: str,
+) -> tuple[str, str, int]:
+    race_number = _extract_race_number(facts_path.name, text)
+    distance_match = re.search(r"今仗距離:\s*([0-9]+m)", text)
+    distance = distance_match.group(1) if distance_match else ""
+    racecards = race_source_candidates(
+        facts_path.parent,
+        race_number,
+        "Racecard",
+    )
+    race_class = ""
+    prize = 0
+    if racecards:
+        lines = racecards[0].read_text(encoding="utf-8").splitlines()
+        if not lines:
+            raise ValueError(
+                f"Race {race_number} Racecard is empty: {racecards[0].name}"
+            )
+        header = lines[0]
+        class_match = re.search(
+            r"\d+m\s*\|\s*([^|$]+?)(?:\s*\||\s*$)",
+            header,
+        )
+        if class_match:
+            race_class = class_match.group(1).strip()
+        prize_match = re.search(r"\$\s*([0-9,]+)", header)
+        if prize_match:
+            prize = int(prize_match.group(1).replace(",", ""))
+        if not distance:
+            distance_match = re.search(r"[—–-]\s*(\d{3,5}m)", header)
+            if distance_match:
+                distance = distance_match.group(1)
+    return race_class, distance, prize
+
+
+def _extract_career_starts(block: str) -> int:
+    line = _capture(block, r"生涯: ([^\n]+)")
+    # Sportsbet Racecard writes ``Career: 45 : 5-7-7``.  The old Racecard
+    # parser captured only the first token (``45``), while this parser required
+    # a colon immediately after it.  That made established horses DEBUT even
+    # though the same Facts block contained many official runs.
+    match = re.match(r"\s*(\d+)\s*(?::|$)", line or "")
+    return int(match.group(1)) if match else 0
+
+
+def _extract_career_tag(block: str) -> str:
+    starts = _extract_career_starts(block)
+    if starts == 0:
+        return "DEBUT"
+    if starts <= 5:
+        return "EARLY_CAREER"
+    return "ESTABLISHED"
+
+
+def build_logic_from_facts(facts_path: Path) -> dict:
+    """Build one canonical Logic object through the enrichment parser."""
     text = facts_path.read_text(encoding="utf-8")
+    race_number = _extract_race_number(facts_path.name, text)
+    race_class, distance, prize = _extract_race_meta(facts_path, text)
+    matches = validate_facts_horse_alignment(
+        text,
+        source=facts_path.name,
+    )
+    logic = {
+        "race_analysis": {
+            "race_number": race_number,
+            "race_class": race_class,
+            "distance": distance,
+            "prize": prize,
+        },
+        "horses": {},
+    }
+    for match in matches:
+        horse_number = match.group(1)
+        logic["horses"][horse_number] = {
+            "horse_name": _clean_identity(match.group(2)),
+            "barrier": int(match.group(3)),
+            "jockey": _clean_identity(match.group(4)),
+            "trainer": _clean_identity(match.group(5)),
+            "weight": parse_float(match.group(6)),
+            "_data": {},
+        }
+    return enrich_logic_from_facts(
+        logic,
+        facts_path,
+        facts_text=text,
+    )
+
+
+def enrich_logic_from_facts(
+    logic_data: dict,
+    facts_path: Path,
+    *,
+    facts_text: str | None = None,
+) -> dict:
+    text = (
+        facts_path.read_text(encoding="utf-8")
+        if facts_text is None
+        else facts_text
+    )
     race_analysis = logic_data.setdefault("race_analysis", {})
     speed_map = race_analysis.setdefault("speed_map", {})
     auto_speed_map = _parse_speed_map(text)
     race_number = _extract_first_int(str(race_analysis.get("race_number") or facts_path.name), r"(\d+)")
     racecard_profiles = _load_racecard_profiles(facts_path, race_number)
+    formguide_text = _formguide_text(facts_path)
+    _validate_formguide_horse_alignment(
+        formguide_text,
+        logic_data.get("horses") or {},
+        source=facts_path.name.replace("Facts", "Formguide"),
+    )
     formguide_digests = _load_formguide_digests(facts_path, race_number)
-    meeting_intelligence = _load_meeting_intelligence(facts_path, race_number)
+    pf_by_horse = _merge_pf_sources(
+        _parse_formguide_pf_metrics(
+            facts_path,
+            formguide_text=formguide_text,
+        ),
+        _pf_backfill_for_race(facts_path, race_number),
+    )
+    jt_ly_by_horse = _parse_formguide_jt_ly(
+        facts_path,
+        formguide_text=formguide_text,
+    )
+    existing_meeting = race_analysis.get("meeting_intelligence")
+    existing_meeting = existing_meeting if isinstance(existing_meeting, dict) else {}
+    fresh_meeting = _load_meeting_intelligence(facts_path, race_number)
+    # Facts/extractor context is fresher, but may be deliberately run from a
+    # temporary work directory whose name is not a meeting identity. Preserve
+    # existing non-empty context when the fresh source cannot prove a value.
+    meeting_intelligence = dict(existing_meeting)
+    for key, value in fresh_meeting.items():
+        if value:
+            meeting_intelligence[key] = value
+    meeting_intelligence["source"] = _merge_sources(
+        existing_meeting.get("source"),
+        fresh_meeting.get("source"),
+    )
     track_profile = _load_track_profile(
         meeting_intelligence.get("venue", ""),
         _distance_to_int(race_analysis.get("distance") or ""),
@@ -3615,6 +5153,11 @@ def enrich_logic_from_facts(logic_data: dict, facts_path: Path) -> dict:
     if meeting_intelligence.get("bias_summary"):
         race_analysis["track_bias"] = meeting_intelligence["bias_summary"]
 
+    validate_facts_horse_alignment(
+        text,
+        logic_horse_keys=logic_data.get("horses", {}).keys(),
+        source=facts_path.name,
+    )
     sections = _parse_horse_sections(text)
     for horse_num, horse in logic_data.get("horses", {}).items():
         section = sections.get(str(horse_num), {})
@@ -3622,21 +5165,57 @@ def enrich_logic_from_facts(logic_data: dict, facts_path: Path) -> dict:
             _normalize_horse_name(section.get("horse_name") or horse.get("horse_name"))
         ) or {}
         formguide = formguide_digests.get(str(horse_num), {})
+        jt_ly = jt_ly_by_horse.get(str(horse_num), {})
         facts_section = section.get("raw_text", "")
         data = horse.setdefault("_data", {})
         data.pop("eem_summary", None)
         data.pop("eem_style", None)
+        # A matching Formguide section is an atomic, horse-number keyed source
+        # of truth.  Old Logic snapshots were produced before the multi-race
+        # scraper identity fix and can contain another race's sire, jockey
+        # history, splits and running-position digest under this horse number.
+        # Fill-if-missing preserved that cross-horse payload forever.  Replace
+        # every digest key together (including meaningful zero/False/empty
+        # values); preserve the old payload only when no matching section was
+        # parsed at all.
+        if formguide:
+            data.update(formguide)
+        for key in ("jockey_ly", "trainer_ly"):
+            if key in jt_ly:
+                data[key] = jt_ly[key]
         _merge_prefer_clean(horse, "horse_name", section.get("horse_name"))
         _merge_prefer_clean(horse, "jockey", section.get("jockey"))
         _merge_prefer_clean(horse, "trainer", section.get("trainer"))
-        _merge_if_missing(horse, "rating", racecard_profile.get("horse_rating"))
-        _merge_if_missing(horse, "weight", section.get("weight"))
-        _merge_if_missing(horse, "barrier", section.get("barrier"))
+        # Early Sportsbet-migration Facts headers did not yet carry trainer or
+        # jockey even though the matching Racecard did.  Leaving the stale
+        # Logic blanks in place made the score consume correctly linked LY
+        # statistics while the analysis displayed ``騎師: - / 練馬師: -`` and
+        # disabled name-dependent J/H checks.  Racecard identity is keyed by
+        # horse name and is therefore the safe fallback for those archives.
+        _merge_prefer_clean(horse, "jockey", racecard_profile.get("jockey"))
+        _merge_prefer_clean(horse, "trainer", racecard_profile.get("trainer"))
+        if racecard_profile.get("horse_rating") is not None:
+            horse["rating"] = racecard_profile["horse_rating"]
+        if section.get("weight") is not None:
+            horse["weight"] = section["weight"]
+        if section.get("barrier") is not None:
+            horse["barrier"] = section["barrier"]
         horse["tactical_plan"] = _build_tactical_plan(
             int(section.get("barrier") or horse.get("barrier") or 0),
             facts_section,
         )
-        _merge_data_value(data, "horse_rating", racecard_profile.get("horse_rating"))
+        if racecard_profile.get("horse_rating") is not None:
+            data["horse_rating"] = racecard_profile["horse_rating"]
+        # PF is derived from the matching Formguide (or the point-in-time
+        # historical cache), so it must be refreshed as one atomic payload.
+        # Older Logic snapshots already contain the pre-source/pre-split PF
+        # schema; a generic fill-if-missing merge kept that stale payload and
+        # silently ignored newly parsed splits on every archive re-score.
+        # Preserve the existing value only when neither current source has a
+        # matching runner.
+        fresh_pf = pf_by_horse.get(str(horse_num))
+        if fresh_pf:
+            data["pf_metrics"] = fresh_pf
         _merge_data_value(data, "last10_raw", section.get("last10_raw"))
         _merge_data_value(data, "recent_form", section.get("recent_form"))
         _merge_data_value(data, "career_record_line", section.get("career_line"))
@@ -3658,62 +5237,20 @@ def enrich_logic_from_facts(logic_data: dict, facts_path: Path) -> dict:
         _merge_data_value(data, "track_stats_line", section.get("track_stats_line"))
         _merge_data_value(data, "going_stats_line", section.get("going_stats_line"))
         _merge_data_value(data, "stage_stats_line", section.get("stage_stats_line"))
-        _merge_data_value(data, "timing_600m_avg_speed", formguide.get("timing_600m_avg_speed"))
-        _merge_data_value(data, "timing_600m_recent_speed", formguide.get("timing_600m_recent_speed"))
-        _merge_data_value(data, "timing_600m_trend", formguide.get("timing_600m_trend"))
-        _merge_data_value(data, "timing_600m_best_speed", formguide.get("timing_600m_best_speed"))
-        _merge_data_value(data, "timing_l600_entries_count", formguide.get("timing_l600_entries_count"))
-        _merge_data_value(data, "timing_speed_variance", formguide.get("timing_speed_variance"))
-        _merge_data_value(data, "trial_video_signals", formguide.get("trial_video_signals"))
-        _merge_data_value(data, "timing_trial_600m_avg_speed", formguide.get("timing_trial_600m_avg_speed"))
-        _merge_data_value(data, "facts_section", facts_section)
+        # The Facts file is the source of truth for the per-horse facts_section.
+        # Older Logic files carry a stale pre-realignment blob that the modern
+        # feature parsers (賽績線 / 試閘 / L400 / 近況) cannot read, so a
+        # fill-if-missing merge would leave form/trial/health blind forever.
+        if facts_section:
+            data["facts_section"] = facts_section
+            horse["career_race_starts"] = _extract_career_starts(
+                facts_section
+            )
+            horse["career_tag"] = _extract_career_tag(facts_section)
+        else:
+            _merge_data_value(data, "facts_section", facts_section)
         _merge_data_value(data, "last_finish_line", section.get("last_finish_line"))
         _merge_data_value(data, "warning_line", section.get("warning_line"))
-        _merge_data_value(data, "sire_line", formguide.get("sire_line"))
-        _merge_data_value(data, "current_market_line", formguide.get("current_market_line"))
-        _merge_data_value(data, "current_market_first", formguide.get("current_market_first"))
-        _merge_data_value(data, "current_market_last", formguide.get("current_market_last"))
-        _merge_data_value(data, "current_market_low", formguide.get("current_market_low"))
-        _merge_data_value(data, "current_market_trend", formguide.get("current_market_trend"))
-        _merge_data_value(data, "gear_line", formguide.get("gear_line"))
-        _merge_data_value(data, "has_blinkers", formguide.get("has_blinkers"))
-        _merge_data_value(data, "gear_changes", formguide.get("gear_changes"))
-        _merge_data_value(data, "latest_official_date", formguide.get("latest_official_date"))
-        _merge_data_value(data, "latest_official_jockey", formguide.get("latest_official_jockey"))
-        _merge_data_value(data, "latest_official_last_flucs", formguide.get("latest_official_last_flucs"))
-        _merge_data_value(data, "latest_official_market_trend", formguide.get("latest_official_market_trend"))
-        _merge_data_value(data, "latest_official_jockey_formal_rides", formguide.get("latest_official_jockey_formal_rides"))
-        _merge_data_value(data, "latest_official_jockey_formal_places", formguide.get("latest_official_jockey_formal_places"))
-        _merge_data_value(data, "latest_official_jockey_formal_wins", formguide.get("latest_official_jockey_formal_wins"))
-        _merge_data_value(data, "latest_trial_jockey", formguide.get("latest_trial_jockey"))
-        _merge_data_value(data, "current_jockey_formal_rides", formguide.get("current_jockey_formal_rides"))
-        _merge_data_value(data, "current_jockey_formal_places", formguide.get("current_jockey_formal_places"))
-        _merge_data_value(data, "current_jockey_formal_wins", formguide.get("current_jockey_formal_wins"))
-        _merge_data_value(data, "current_jockey_trial_rides", formguide.get("current_jockey_trial_rides"))
-        _merge_data_value(data, "current_jockey_trial_top3", formguide.get("current_jockey_trial_top3"))
-        _merge_data_value(data, "current_jockey_history_line", formguide.get("current_jockey_history_line"))
-        _merge_data_value(data, "best_formal_jockey", formguide.get("best_formal_jockey"))
-        _merge_data_value(data, "best_formal_jockey_rides", formguide.get("best_formal_jockey_rides"))
-        _merge_data_value(data, "best_formal_jockey_places", formguide.get("best_formal_jockey_places"))
-        _merge_data_value(data, "best_formal_jockey_wins", formguide.get("best_formal_jockey_wins"))
-        _merge_data_value(data, "best_jockey_history_line", formguide.get("best_jockey_history_line"))
-        _merge_data_value(data, "current_vs_best_jockey_line", formguide.get("current_vs_best_jockey_line"))
-        _merge_data_value(data, "known_jockeys_line", formguide.get("known_jockeys_line"))
-        _merge_data_value(data, "jockey_change_signal", formguide.get("jockey_change_signal"))
-        _merge_data_value(data, "official_market_support_count", formguide.get("official_market_support_count"))
-        _merge_data_value(data, "official_market_miss_count", formguide.get("official_market_miss_count"))
-        _merge_data_value(data, "recent_settled_pattern_line", formguide.get("recent_settled_pattern_line"))
-        _merge_data_value(data, "recent_400_pattern_line", formguide.get("recent_400_pattern_line"))
-        _merge_data_value(data, "recent_shape_consensus", formguide.get("recent_shape_consensus"))
-        _merge_data_value(data, "recent_shape_entropy", formguide.get("recent_shape_entropy"))
-        _merge_data_value(data, "recent_shape_consensus_count", formguide.get("recent_shape_consensus_count"))
-        _merge_data_value(data, "recent_shape_front_count", formguide.get("recent_shape_front_count"))
-        _merge_data_value(data, "recent_shape_mid_count", formguide.get("recent_shape_mid_count"))
-        _merge_data_value(data, "recent_shape_back_count", formguide.get("recent_shape_back_count"))
-        _merge_data_value(data, "recent_shape_inside_count", formguide.get("recent_shape_inside_count"))
-        _merge_data_value(data, "recent_shape_wide_no_cover_count", formguide.get("recent_shape_wide_no_cover_count"))
-        _merge_data_value(data, "recent_shape_early_work_count", formguide.get("recent_shape_early_work_count"))
-        _merge_data_value(data, "recent_shape_summary_line", formguide.get("recent_shape_summary_line"))
         if not str(data.get("current_jockey_history_line") or "").strip():
             current_jockey = _clean_identity(horse.get("jockey"))
             best_jockey = _clean_identity(data.get("best_formal_jockey"))
@@ -3764,7 +5301,7 @@ def _parse_speed_map(text: str) -> dict:
         return match.group(1).strip() if match else ""
     return {
         "predicted_pace": field("predicted_pace"),
-        "expected_pace": field("predicted_pace"),
+        "expected_pace": field("expected_pace") or field("predicted_pace"),
         "pace_confidence": field("pace_confidence"),
         "style_confidence": field("style_confidence"),
         "leaders": _parse_num_list(field("leaders")),
@@ -3841,12 +5378,79 @@ def _record_rows(block: str) -> list[list[str]]:
     rows = []
     for line in block.splitlines():
         text = line.strip()
-        if not text.startswith("|") or "| 類型 |" in text or "|---" in text:
+        if not text.startswith("|") or "|---" in text:
             continue
         cols = [col.strip() for col in text.strip("|").split("|")]
+        # Header wording can evolve (e.g. 類型 → 類型／歷史HC); identify it by
+        # the stable ordinal marker instead of matching a translated label.
+        if not cols or cols[0] == "#":
+            continue
         if len(cols) >= 10:
             rows.append(cols)
     return rows
+
+
+def _parse_field_size(placing_cell) -> int | None:
+    """賽績表「名次」格嘅馬群大細：`4/6 (-12.0L)` → 6；`4 (-12.0L)` → None。
+
+    2026-07-31 起 crawler 寫 ` starters:N`，fact-anchor writer 就會嵌成 `名次/馬群`。
+    舊 meeting 冇 `/N` → 回 None，所有用到嘅地方都要當「唔知」處理而唔係當 0。
+    """
+    match = re.match(r"^\s*(\d+)\s*/\s*(\d+)", str(placing_cell or ""))
+    if not match:
+        return None
+    place, field = int(match.group(1)), int(match.group(2))
+    # 名次 0 或大過馬群 = 上游污染。名次 0 特別危險：百分位會變負數，
+    # 令一匹馬拿到「頭馬」base 100。一律唔採用。
+    if field < 2 or place < 1 or place > field:
+        return None
+    return field
+
+
+def _parse_prize(cell) -> int | None:
+    """賽績表「獎金」格 → 整數（`$40,000` / `40000` → 40000）。冇值 → None。"""
+    digits = re.sub(r"[^\d]", "", str(cell or ""))
+    if not digits:
+        return None
+    value = int(digits)
+    # 帶外＝上游污染。AU 最細鄉下賽約 $8k，最大 Group 1 約 $10M。
+    return value if 1000 <= value <= 20_000_000 else None
+
+
+# 班次代理：獎金。`_form_score` 個 class_mult 一直係全場統一常數
+# （`entry["class"]` 呢個 key 由來冇存在過），即係近績分完全冇班次調整 ——
+# 一匹馬喺 $27k 鄉下 Maiden 入前列同另一匹喺 $500k 都會賽入前列，同分。
+# 賽績表個「班次」欄 85% 係 fallback "Maiden/SW"（`hc` 缺失）用唔到，
+# 但獎金 85,010 個 run 100% 密度，單獨場內 ρ = 0.105、Q1−Q5 10.1pp。
+CLASS_PRIZE_DECAY = (1.0, 0.8, 0.6, 0.4)   # 同 _form_score 嘅 decay 一致
+# K：每 1.0 log10(獎金) 偏離場內中位數換幾多近績分。A/B（713 場）K=10：
+# dev 全部指標變好或平（Gold +2、good_pos +1.32、winT3 +1.65、blowout −1.32）；
+# holdout 冇任何指標變差（Gold +1、any2 +0.94、t3prec +0.63、blowout −1.87）。
+# K=30 dev 更好（Gold +4）但 holdout champ −1.87 / winT3 −0.93 → 唔採用。
+CLASS_PRIZE_K = 10.0
+
+
+def horse_prize_level(facts_section) -> float | None:
+    """decay 加權嘅 log10(近 4 場正式仗獎金)。冇獎金數據 → None。
+
+    Module-level 係為咗令 orchestrator 嘅 `_build_field_summary` 可以喺唔重複
+    parse 賽績表嘅情況下算場內中位數（同 pace_figure 拿 l600_delta_field_mean
+    同一個 pattern）。
+    """
+    levels = []
+    for cols in _record_rows(facts_section or ""):
+        if "試閘" in cols[1]:
+            continue
+        prize = _parse_prize(cols[18]) if len(cols) > 18 else None
+        if prize:
+            levels.append(prize)
+    if not levels:
+        return None
+    num = den = 0.0
+    for prize, weight in zip(levels[:4], CLASS_PRIZE_DECAY):
+        num += math.log10(prize) * weight
+        den += weight
+    return (num / den) if den else None
 
 
 def _count_trial_rows(block: str) -> int:
@@ -3975,13 +5579,19 @@ def _load_formguide_digests(facts_path: Path, race_number: int = 0) -> dict[str,
     if not formguide_path or not formguide_path.exists():
         return {}
     text = formguide_path.read_text(encoding="utf-8")
+    date_match = re.search(r"(\d{4}-\d{2}-\d{2})", facts_path.parent.name)
+    meeting_date = date_match.group(1) if date_match else ""
     sections = list(re.finditer(r"^\[(\d+)\]\s+(.+?) \((\d+)\)\s*$", text, re.M))
     output: dict[str, dict] = {}
     for idx, match in enumerate(sections):
         start = match.start()
         end = sections[idx + 1].start() if idx + 1 < len(sections) else len(text)
         section = text[start:end]
-        output[match.group(1)] = _summarize_formguide_section(section, match.group(2).strip())
+        output[match.group(1)] = _summarize_formguide_section(
+            section,
+            match.group(2).strip(),
+            meeting_date=meeting_date,
+        )
     return output
 
 
@@ -4019,7 +5629,12 @@ def _parse_trial_video_signals(trial_entries: list[dict]) -> dict:
     return signals
 
 
-def _summarize_formguide_section(section: str, horse_name: str) -> dict:
+def _summarize_formguide_section(
+    section: str,
+    horse_name: str,
+    *,
+    meeting_date: str = "",
+) -> dict:
     current_jockey = _capture(section, r"\|\s*J:\s*([^(\n|]+)")
     sire_line = _capture(section, r"Sire:\s*([^|]+)")
     current_market_line = _capture(section, r"^Flucs:\s*(.+)$")
@@ -4027,6 +5642,14 @@ def _summarize_formguide_section(section: str, horse_name: str) -> dict:
     gear_line = _capture(section, r"^Gear:\s*(.+)$")
     gear_changes = _capture(gear_line, r"Changes:\s*(.+)$") if gear_line else ""
     entries = _parse_formguide_entries(section, horse_name)
+    # Apply one point-in-time boundary to every digest consumer. Previously
+    # only Performance Quality censored post-target rows, while jockey history,
+    # recent shape and timing summaries could ingest a refreshed target result.
+    if meeting_date:
+        entries = [
+            entry for entry in entries
+            if str(entry.get("date") or "") < meeting_date
+        ]
     official_entries = [entry for entry in entries if not entry["is_trial"]]
     trial_entries = [entry for entry in entries if entry["is_trial"]]
     latest_official = official_entries[0] if official_entries else {}
@@ -4034,6 +5657,10 @@ def _summarize_formguide_section(section: str, horse_name: str) -> dict:
     timing_summary = _build_timing_summary(official_entries, trial_entries)
     trial_video_signals = _parse_trial_video_signals(trial_entries)
     recent_shape = _summarize_recent_shape(official_entries)
+    performance_quality = _performance_quality_digest(
+        official_entries,
+        meeting_date=meeting_date,
+    )
 
     jockey_stats: dict[str, dict] = {}
     for entry in entries:
@@ -4138,6 +5765,75 @@ def _summarize_formguide_section(section: str, horse_name: str) -> dict:
         "timing_l600_entries_count": timing_summary["l600_entries_count"],
         "timing_speed_variance": timing_summary.get("speed_variance"),
         "timing_trial_600m_avg_speed": timing_summary.get("trial_600m_avg_speed"),
+        "performance_quality_raw": performance_quality.get("raw"),
+        "performance_quality_run_count": performance_quality.get("run_count", 0),
+        "performance_quality_source": performance_quality.get("source", ""),
+        # Research/audit evidence only.  Persist the exact point-in-time rows
+        # behind the digest so future forward tests do not have to reconstruct
+        # finish position or margin semantics from refreshed archive pages.
+        "performance_quality_runs": performance_quality.get("runs", []),
+    }
+
+
+_PERFORMANCE_QUALITY_RECENCY_WEIGHTS = (1.0, 0.8, 0.6, 0.4)
+_PERFORMANCE_QUALITY_CLASS_CREDIT = 4.0
+_PERFORMANCE_QUALITY_REFERENCE_PRIZE = 50000.0
+
+
+def _performance_quality_digest(
+    official_entries: list[dict],
+    *,
+    meeting_date: str = "",
+) -> dict:
+    """Summarize demonstrated performance against race strength.
+
+    The source gate is deliberately structural rather than date-based: a run
+    must carry beaten margin, purse and starter count.  That is the complete
+    current Sportsbet schema; partial legacy rows cannot silently enter the
+    ranking.  At least two comparable runs are required.  Archived pages may
+    be refreshed after racing, so same-day/future rows are censored too.
+    """
+    evidence = []
+    for entry in official_entries:
+        run_date = str(entry.get("date") or "")
+        if meeting_date and (not run_date or run_date >= meeting_date):
+            continue
+        margin = parse_float(entry.get("margin"))
+        prize = parse_float(entry.get("prize"))
+        starters = parse_float(entry.get("starters"))
+        if (
+            margin is None
+            or entry.get("margin_source") != "header"
+            or prize is None
+            or prize <= 0
+            or not starters
+        ):
+            continue
+        quality = (
+            -min(20.0, abs(margin))
+            + _PERFORMANCE_QUALITY_CLASS_CREDIT
+            * math.log10(prize / _PERFORMANCE_QUALITY_REFERENCE_PRIZE)
+        )
+        evidence.append({
+            "date": run_date,
+            "finish_pos": entry.get("finish_pos"),
+            "margin": round(float(margin), 4),
+            "prize": round(float(prize), 2),
+            "starters": int(starters),
+            "distance": entry.get("distance"),
+            "quality": round(quality, 6),
+        })
+        if len(evidence) == len(_PERFORMANCE_QUALITY_RECENCY_WEIGHTS):
+            break
+    if len(evidence) < 2:
+        return {}
+    weights = _PERFORMANCE_QUALITY_RECENCY_WEIGHTS[: len(evidence)]
+    raw = sum(row["quality"] * weight for row, weight in zip(evidence, weights)) / sum(weights)
+    return {
+        "raw": round(raw, 6),
+        "run_count": len(evidence),
+        "source": "class_adjusted_margin_complete_formguide",
+        "runs": evidence,
     }
 
 
@@ -4219,6 +5915,7 @@ def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
         block = section[start:end]
         header = block.splitlines()[0] if block.splitlines() else ""
         prize_str = match.group(6).replace(",", "")
+        prize = int(prize_str)
         is_trial = "**(TRIAL)**" in header or prize_str == "0"
         jockey_match = re.search(r"\$[0-9,]+\s+(.+?)\s+\((\d+|None)\)\s+(\S+kg|Nonekg)", header)
         jockey = jockey_match.group(1).strip() if jockey_match else ""
@@ -4229,13 +5926,19 @@ def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
         result_line = result_line_match.group(1).strip() if result_line_match else ""
         finish_pos = None
         margin = None
+        margin_source = ""
+        header_margin = re.search(r"\bmargin:([-+]?\d+(?:\.\d+)?)L?\b", header, re.I)
+        if header_margin:
+            margin = float(header_margin.group(1))
+            margin_source = "header"
         if result_line and hn_clean:
             for pos_m in re.finditer(r"(\d+)-([^(]+)\s*\(([^)]+)\)(?:\s+(\d+\.?\d*)L)?", result_line):
                 name_in_result = pos_m.group(2).strip().lower()
                 if hn_clean[:6] in name_in_result or name_in_result[:6] in hn_clean:
                     finish_pos = int(pos_m.group(1))
-                    if pos_m.group(4):
+                    if margin is None and pos_m.group(4):
                         margin = float(pos_m.group(4))
+                        margin_source = "result_line"
                     break
         note = _capture(block, r"^Note:\s*(.+)$")
         stewards = _capture(block, r"^Stewards:\s*(.+)$")
@@ -4247,12 +5950,18 @@ def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
             l600_split = _parse_time_to_seconds(l600_match.group(1))
         entries.append({
             "date": match.group(3),
+            "distance": int(match.group(4)[:-1]),
             "is_trial": is_trial,
+            "prize": prize,
+            "starters": int(starters_match.group(1)) if (
+                starters_match := re.search(r"\bstarters:(\d+)\b", header, re.I)
+            ) else None,
             "jockey": jockey,
             "flucs": flucs,
             "last_flucs": fluc_values[-1] if fluc_values else "",
             "finish_pos": finish_pos,
             "margin": margin,
+            "margin_source": margin_source,
             "settled_pos": _parse_running_position(header, "Settled"),
             "pos_400": _parse_running_position(header, "400m"),
             "pos_800": _parse_running_position(header, "800m"),
@@ -4465,15 +6174,27 @@ def _normalize_speed_map_text(text: str) -> str:
 def _load_meeting_intelligence(facts_path: Path, race_number: int = 0) -> dict:
     meeting_path = facts_path.parent / "_Meeting_Intelligence_Package.md"
     if meeting_path.exists():
-        intelligence = _parse_meeting_intelligence(meeting_path.read_text(encoding="utf-8"), facts_path.parent.name)
+        intelligence = _parse_meeting_intelligence(
+            meeting_path.read_text(encoding="utf-8"),
+            _venue_from_folder_name(facts_path.parent.name),
+        )
     else:
         intelligence = {}
     fallback = _meeting_context_from_extractor_files(facts_path, race_number)
+    # Extractor/Racecard context is the later official snapshot.  A MIP may
+    # have been generated the evening before (for example Randwick was Soft 6
+    # in the package but Soft 7 in the racecard).  Prefer every meaningful
+    # current value; keep MIP data only where the extractor says Unknown/blank.
     for key, value in fallback.items():
-        if value and not intelligence.get(key):
+        if key == "source":
+            continue
+        clean = str(value or "").strip()
+        if clean and clean.lower() not in {"unknown", "n/a", "none", "-"}:
             intelligence[key] = value
     if fallback:
         intelligence["source"] = _merge_sources(intelligence.get("source"), fallback.get("source"))
+    if intelligence.get("going"):
+        intelligence["going"] = normalize_going(intelligence["going"])
     return intelligence
 
 
@@ -4503,7 +6224,7 @@ def _meeting_context_from_extractor_files(facts_path: Path, race_number: int = 0
         sources.append("Meeting_Summary.md")
 
     race_number = race_number or _extract_first_int(facts_path.name, r"Race[ _](\d+)")
-    racecards = sorted(folder.glob(f"*Race {race_number} Racecard.md"))
+    racecards = race_source_candidates(folder, race_number, "Racecard")
     if racecards:
         racecard = racecards[0].read_text(encoding="utf-8")
         meta_line = _first_line_matching(racecard, r"^Track:")
@@ -4514,16 +6235,19 @@ def _meeting_context_from_extractor_files(facts_path: Path, race_number: int = 0
             sources.append(racecards[0].name)
 
     if context["going"]:
+        context["going"] = normalize_going(context["going"])
         context["track_summary"] = context["going"]
     context["source"] = " + ".join(dict.fromkeys(sources + (["folder_name"] if context["venue"] else [])))
     return {key: value for key, value in context.items() if value}
 
 
 def _venue_from_folder_name(name: str) -> str:
-    value = re.sub(r"^\d{4}-\d{2}-\d{2}[_\s-]*", "", str(name or "")).strip()
-    value = re.sub(r"\bRace\s*\d+.*$", "", value, flags=re.I).strip(" _-")
-    value = value.replace("_", " ").strip()
-    return value
+    # Folder-name fallback is only trustworthy when it carries the documented
+    # YYYY-MM-DD meeting prefix. Arbitrary temp names such as "local" must not
+    # silently become a venue and overwrite a valid Logic context.
+    if not re.match(r"^\d{4}-\d{2}-\d{2}(?:[_\s-]|$)", str(name or "")):
+        return ""
+    return venue_from_meeting_name(name)
 
 
 def _first_line_matching(text: str, pattern: str) -> str:
@@ -4560,23 +6284,132 @@ def _context_completeness(meeting_intelligence: dict, track_profile: dict) -> di
     }
 
 
+def _mip_plain_text(text: str) -> str:
+    """Remove Markdown decoration without changing section/line structure."""
+    return str(text or "").replace("**", "").replace("`", "")
+
+
+def _mip_field(text: str, *labels: str) -> str:
+    """Read a colon field from a line or an inline ``Date | Venue`` header."""
+    plain = _mip_plain_text(text)
+    for label in labels:
+        match = re.search(
+            rf"(?mi)(?:^|\|)\s*[-*>]?\s*(?:{label})\s*[:：]\s*([^|\n]+)",
+            plain,
+        )
+        if match:
+            return match.group(1).strip().strip(" -*_|")
+    return ""
+
+
+def _mip_section_value(text: str, heading: str) -> str:
+    """Return the first content line under a matching Markdown H2 heading."""
+    plain = _mip_plain_text(text)
+    match = re.search(
+        rf"(?ims)^##[^\n]*(?:{heading})[^\n]*\n(.*?)(?=^##|\Z)",
+        plain,
+    )
+    if not match:
+        return ""
+    for raw in match.group(1).splitlines():
+        value = raw.strip().strip(" -*_|")
+        if not value:
+            continue
+        value = re.sub(r"^\[[A-Z_ ]+\]\s*", "", value)
+        return value.strip()
+    return ""
+
+
 def _parse_meeting_intelligence(text: str, fallback_venue: str = "") -> dict:
-    venue_match = re.search(r"Venue:\s*([^\n]+)", text)
-    date_match = re.search(r"Date:\s*([^\n]+)", text)
-    weather_block = _section_text(text, "## Weather / 天氣狀況", "## Track Condition / 場地狀況")
-    track_block = _section_text(text, "## Track Condition / 場地狀況", "## Track Bias / 賽道偏差預測")
-    bias_block = _section_text(text, "## Track Bias / 賽道偏差預測", "## Sources / 資料來源")
-    source_block = _section_text(text, "## Sources / 資料來源")
-    going_match = re.search(r"Track condition extracted:\s*([^\n.]+)", track_block)
-    rail_match = re.search(r"Rail position .*?:\s*([^\n.]+)", track_block)
+    """Parse every Meeting Intelligence Package format used in the archive.
+
+    The archive contains three real schemas: the original English bilingual
+    sections, an inline bold ``Date | Venue`` header with Chinese sections,
+    and the current bullet-list generator.  The old parser only understood the
+    first one, so Markdown ``**`` leaked into venue identity and 33 races lost
+    a known going to ``Unknown`` during runtime refresh.
+    """
+    plain = _mip_plain_text(text)
+    venue = _mip_field(
+        plain,
+        r"Venue",
+        r"賽場",
+        r"賽道\s*\(Track\)",
+    ) or str(fallback_venue or "").strip()
+    date = _mip_field(plain, r"Date", r"日期")
+    date_match = re.search(r"\d{4}-\d{2}-\d{2}", date or plain)
+    date = date_match.group(0) if date_match else ""
+
+    weather_block = _section_text(
+        plain, "## Weather / 天氣狀況", "## Track Condition / 場地狀況"
+    )
+    track_block = _section_text(
+        plain, "## Track Condition / 場地狀況", "## Track Bias / 賽道偏差預測"
+    )
+    bias_block = _section_text(
+        plain, "## Track Bias / 賽道偏差預測", "## Sources / 資料來源"
+    )
+    source_block = _section_text(plain, "## Sources / 資料來源")
+
+    going = _mip_field(
+        plain,
+        r"場地狀況\s*\(Track Condition\)",
+        r"跑道狀況\s*\(Track Condition\)",
+        r"Condition\s*\(跑道\)",
+        r"場地",
+    )
+    if not going:
+        going_match = re.search(r"(?mi)^Track condition extracted:\s*([^\n.]+)", plain)
+        going = going_match.group(1).strip() if going_match else ""
+    if not going:
+        going = _mip_section_value(plain, r"官方掛牌\s*\(Official Going\)")
+    if not going:
+        going = _mip_section_value(plain, r"預測掛牌\s*\(Predicted Going\)")
+    english_going = re.search(
+        r"\b(Firm|Good|Soft|Heavy|Synthetic|Slow)\s*\d*",
+        going,
+        re.I,
+    )
+    if english_going:
+        going = english_going.group(0).strip()
+
+    rail = _mip_field(
+        plain,
+        r"移欄\s*\(Rail\)",
+        r"移欄\s*\(Rail Position\)",
+        r"Rails?\s*\(欄位\)",
+    )
+    if not rail:
+        rail_match = re.search(r"(?mi)^Rail position .*?:\s*([^\n.]+)", plain)
+        rail = rail_match.group(1).strip() if rail_match else ""
+    if not rail:
+        rail = _mip_section_value(plain, r"欄位\s*\(Rail Position\)")
+
+    weather = _mip_field(plain, r"天氣\s*\(Weather\)", r"Weather")
+    if not weather:
+        weather = _mip_section_value(plain, r"天氣\s*\(Weather\)")
+    if not weather:
+        weather = _compact_text(weather_block)
+
+    bias = _mip_field(plain, r"Bias")
+    if not bias:
+        bias = _mip_field(plain, r"偏差")
+    if not bias:
+        bias = _mip_section_value(
+            plain,
+            r"跑道偏差\s*\(Track Bias\)|Track Bias.*偏差",
+        )
+    if not bias:
+        bias = _compact_text(bias_block)
+
     return {
-        "venue": (venue_match.group(1).strip() if venue_match else fallback_venue).strip(),
-        "date": date_match.group(1).strip() if date_match else "",
-        "weather_summary": _compact_text(weather_block),
-        "track_summary": _compact_text(track_block),
-        "going": going_match.group(1).strip() if going_match else "",
-        "rail_position": rail_match.group(1).strip() if rail_match else "",
-        "bias_summary": _compact_text(bias_block),
+        "venue": venue,
+        "date": date,
+        "weather_summary": weather,
+        "track_summary": _compact_text(track_block) or going,
+        "going": going,
+        "rail_position": rail,
+        "bias_summary": bias,
         "source": _compact_text(source_block),
     }
 
@@ -4696,26 +6529,14 @@ def _extract_first_int(text: str, pattern: str) -> int:
     return int(match.group(1)) if match else 0
 
 
-def _clean_identity(value):
-    text = str(value or "").strip()
-    if not text:
-        return ""
-    text = FIELD_TRAILER_RE.sub("", text)
-    return text.strip(" |")
-
-
 def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", str(text or "").lower())
-
-
-def _normalize_horse_name(name: str) -> str:
-    return _slug(re.sub(r"\s*\([^)]*\)", "", str(name or "")))
 
 
 def _load_racecard_profiles(facts_path: Path, race_number: int) -> dict[str, dict]:
     if race_number <= 0:
         return {}
-    candidates = sorted(facts_path.parent.glob(f"*Race {race_number} Racecard.md"))
+    candidates = race_source_candidates(facts_path.parent, race_number, "Racecard")
     if not candidates:
         return {}
     lines = candidates[0].read_text(encoding="utf-8").splitlines()
@@ -4731,8 +6552,13 @@ def _load_racecard_profiles(facts_path: Path, race_number: int) -> dict[str, dic
             horse_name = _clean_identity(horse_match.group(1))
             profiles[_normalize_horse_name(horse_name)] = {
                 # rating group is optional (unrated horses) — keep the weight either way
-                "horse_rating": float(meta_match.group(2)) if meta_match.group(2) else None,
-                "declared_weight": float(meta_match.group(1)),
+                "horse_rating": (
+                    float(meta_match.group("rating"))
+                    if meta_match.group("rating") else None
+                ),
+                "declared_weight": float(meta_match.group("weight")),
+                "jockey": _clean_identity(meta_match.group("jockey")),
+                "trainer": _clean_identity(meta_match.group("trainer")),
             }
         index += 2
     return profiles

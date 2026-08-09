@@ -1,0 +1,743 @@
+{
+  "method": {
+    "fixed_candidates_no_grid_search": true,
+    "preserves_debut_formula": true,
+    "uses_rank_score": false,
+    "uses_micro_tiebreak": false,
+    "uses_blind_swap": false,
+    "uses_odds_market_pace": false,
+    "candidate_sectional_source": "speed_only",
+    "race_shape_weight": "frozen at baseline; not optimized in Step 6",
+    "archive_split": "first 70% meetings development; last 30% temporal holdout"
+  },
+  "candidates": {
+    "baseline_pure_matrix": {
+      "label": "現行純矩陣基準",
+      "sectional_source": "sectional",
+      "weights": {
+        "sectional": 0.1849,
+        "trainer_signal": 0.2209,
+        "stability": 0.0919,
+        "race_shape": 0.256,
+        "class_advantage": 0.1335,
+        "horse_health": 0.0378,
+        "form_line": 0.0749
+      },
+      "note": "只作比較；stored sectional含going。"
+    },
+    "speed_only_substitution": {
+      "label": "純段速直接替換",
+      "sectional_source": "speed_only",
+      "weights": {
+        "sectional": 0.1849,
+        "trainer_signal": 0.2209,
+        "stability": 0.0919,
+        "race_shape": 0.256,
+        "class_advantage": 0.1335,
+        "horse_health": 0.0378,
+        "form_line": 0.0749
+      },
+      "note": "只將sectional輸入改為speed-only，其餘權重不變。"
+    },
+    "speed_stability_shift": {
+      "label": "純段速＋穩定性小幅增權",
+      "sectional_source": "speed_only",
+      "weights": {
+        "sectional": 0.1849,
+        "trainer_signal": 0.2209,
+        "stability": 0.1447,
+        "race_shape": 0.256,
+        "class_advantage": 0.1335,
+        "horse_health": 0.01,
+        "form_line": 0.0499
+      },
+      "note": "由弱健康及弱賽績線合共轉5.28%去穩定性；race-shape權重凍結。"
+    },
+    "speed_balanced_context": {
+      "label": "純段速＋穩定性／級數平衡",
+      "sectional_source": "speed_only",
+      "weights": {
+        "sectional": 0.1849,
+        "trainer_signal": 0.2209,
+        "stability": 0.12,
+        "race_shape": 0.256,
+        "class_advantage": 0.1581,
+        "horse_health": 0.01,
+        "form_line": 0.05
+      },
+      "note": "由健康／賽績線轉5.27%，分配去穩定性及級數；race-shape權重凍結。"
+    },
+    "speed_distance_5pct": {
+      "label": "純段速＋5%路程context",
+      "sectional_source": "speed_only",
+      "weights": {
+        "sectional": 0.1849,
+        "trainer_signal": 0.2209,
+        "stability": 0.0919,
+        "race_shape": 0.256,
+        "class_advantage": 0.1335,
+        "horse_health": 0.01,
+        "form_line": 0.0527,
+        "distance_context": 0.05
+      },
+      "note": "由健康／賽績線轉5%去路程context；race-shape權重凍結。"
+    }
+  },
+  "results": {
+    "all": {
+      "baseline_pure_matrix": {
+        "races": 245,
+        "top3_auc": 0.689,
+        "top2_hit_distribution": {
+          "0": 72,
+          "1": 121,
+          "2": 52
+        },
+        "total_top2_hits": 225,
+        "hits_per_race": 0.9184,
+        "winner_top2": 95,
+        "winner_top2_rate": 38.8,
+        "top2_set_changes": 0,
+        "hit_helped": 0,
+        "hit_harmed": 0,
+        "winner_helped": 0,
+        "winner_harmed": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 0,
+        "one_to_zero": 0,
+        "two_to_lower": 0
+      },
+      "speed_only_substitution": {
+        "races": 245,
+        "top3_auc": 0.6913,
+        "top2_hit_distribution": {
+          "0": 70,
+          "1": 119,
+          "2": 56
+        },
+        "total_top2_hits": 231,
+        "hits_per_race": 0.9429,
+        "winner_top2": 98,
+        "winner_top2_rate": 40.0,
+        "top2_set_changes": 34,
+        "hit_helped": 12,
+        "hit_harmed": 6,
+        "winner_helped": 6,
+        "winner_harmed": 3,
+        "zero_to_positive": 5,
+        "one_to_two": 7,
+        "one_to_zero": 3,
+        "two_to_lower": 3
+      },
+      "speed_stability_shift": {
+        "races": 245,
+        "top3_auc": 0.6979,
+        "top2_hit_distribution": {
+          "0": 66,
+          "1": 121,
+          "2": 58
+        },
+        "total_top2_hits": 237,
+        "hits_per_race": 0.9673,
+        "winner_top2": 96,
+        "winner_top2_rate": 39.2,
+        "top2_set_changes": 52,
+        "hit_helped": 20,
+        "hit_harmed": 8,
+        "winner_helped": 8,
+        "winner_harmed": 7,
+        "zero_to_positive": 11,
+        "one_to_two": 9,
+        "one_to_zero": 5,
+        "two_to_lower": 3
+      },
+      "speed_balanced_context": {
+        "races": 245,
+        "top3_auc": 0.6963,
+        "top2_hit_distribution": {
+          "0": 68,
+          "1": 121,
+          "2": 56
+        },
+        "total_top2_hits": 233,
+        "hits_per_race": 0.951,
+        "winner_top2": 96,
+        "winner_top2_rate": 39.2,
+        "top2_set_changes": 38,
+        "hit_helped": 14,
+        "hit_harmed": 6,
+        "winner_helped": 5,
+        "winner_harmed": 4,
+        "zero_to_positive": 8,
+        "one_to_two": 6,
+        "one_to_zero": 4,
+        "two_to_lower": 2
+      },
+      "speed_distance_5pct": {
+        "races": 245,
+        "top3_auc": 0.6928,
+        "top2_hit_distribution": {
+          "0": 70,
+          "1": 119,
+          "2": 56
+        },
+        "total_top2_hits": 231,
+        "hits_per_race": 0.9429,
+        "winner_top2": 100,
+        "winner_top2_rate": 40.8,
+        "top2_set_changes": 43,
+        "hit_helped": 15,
+        "hit_harmed": 9,
+        "winner_helped": 8,
+        "winner_harmed": 3,
+        "zero_to_positive": 8,
+        "one_to_two": 7,
+        "one_to_zero": 6,
+        "two_to_lower": 3
+      }
+    },
+    "archive_development": {
+      "baseline_pure_matrix": {
+        "races": 88,
+        "top3_auc": 0.7171,
+        "top2_hit_distribution": {
+          "0": 17,
+          "1": 45,
+          "2": 26
+        },
+        "total_top2_hits": 97,
+        "hits_per_race": 1.1023,
+        "winner_top2": 41,
+        "winner_top2_rate": 46.6,
+        "top2_set_changes": 0,
+        "hit_helped": 0,
+        "hit_harmed": 0,
+        "winner_helped": 0,
+        "winner_harmed": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 0,
+        "one_to_zero": 0,
+        "two_to_lower": 0
+      },
+      "speed_only_substitution": {
+        "races": 88,
+        "top3_auc": 0.7199,
+        "top2_hit_distribution": {
+          "0": 17,
+          "1": 46,
+          "2": 25
+        },
+        "total_top2_hits": 96,
+        "hits_per_race": 1.0909,
+        "winner_top2": 41,
+        "winner_top2_rate": 46.6,
+        "top2_set_changes": 2,
+        "hit_helped": 0,
+        "hit_harmed": 1,
+        "winner_helped": 0,
+        "winner_harmed": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 0,
+        "one_to_zero": 0,
+        "two_to_lower": 1
+      },
+      "speed_stability_shift": {
+        "races": 88,
+        "top3_auc": 0.7236,
+        "top2_hit_distribution": {
+          "0": 16,
+          "1": 46,
+          "2": 26
+        },
+        "total_top2_hits": 98,
+        "hits_per_race": 1.1136,
+        "winner_top2": 40,
+        "winner_top2_rate": 45.5,
+        "top2_set_changes": 17,
+        "hit_helped": 4,
+        "hit_harmed": 3,
+        "winner_helped": 1,
+        "winner_harmed": 2,
+        "zero_to_positive": 3,
+        "one_to_two": 1,
+        "one_to_zero": 2,
+        "two_to_lower": 1
+      },
+      "speed_balanced_context": {
+        "races": 88,
+        "top3_auc": 0.7216,
+        "top2_hit_distribution": {
+          "0": 17,
+          "1": 45,
+          "2": 26
+        },
+        "total_top2_hits": 97,
+        "hits_per_race": 1.1023,
+        "winner_top2": 40,
+        "winner_top2_rate": 45.5,
+        "top2_set_changes": 9,
+        "hit_helped": 2,
+        "hit_harmed": 2,
+        "winner_helped": 0,
+        "winner_harmed": 1,
+        "zero_to_positive": 1,
+        "one_to_two": 1,
+        "one_to_zero": 1,
+        "two_to_lower": 1
+      },
+      "speed_distance_5pct": {
+        "races": 88,
+        "top3_auc": 0.7187,
+        "top2_hit_distribution": {
+          "0": 20,
+          "1": 42,
+          "2": 26
+        },
+        "total_top2_hits": 94,
+        "hits_per_race": 1.0682,
+        "winner_top2": 42,
+        "winner_top2_rate": 47.7,
+        "top2_set_changes": 8,
+        "hit_helped": 1,
+        "hit_harmed": 4,
+        "winner_helped": 1,
+        "winner_harmed": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 1,
+        "one_to_zero": 3,
+        "two_to_lower": 1
+      }
+    },
+    "archive_temporal_holdout": {
+      "baseline_pure_matrix": {
+        "races": 39,
+        "top3_auc": 0.6847,
+        "top2_hit_distribution": {
+          "0": 12,
+          "1": 20,
+          "2": 7
+        },
+        "total_top2_hits": 34,
+        "hits_per_race": 0.8718,
+        "winner_top2": 15,
+        "winner_top2_rate": 38.5,
+        "top2_set_changes": 0,
+        "hit_helped": 0,
+        "hit_harmed": 0,
+        "winner_helped": 0,
+        "winner_harmed": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 0,
+        "one_to_zero": 0,
+        "two_to_lower": 0
+      },
+      "speed_only_substitution": {
+        "races": 39,
+        "top3_auc": 0.6838,
+        "top2_hit_distribution": {
+          "0": 13,
+          "1": 18,
+          "2": 8
+        },
+        "total_top2_hits": 34,
+        "hits_per_race": 0.8718,
+        "winner_top2": 14,
+        "winner_top2_rate": 35.9,
+        "top2_set_changes": 7,
+        "hit_helped": 1,
+        "hit_harmed": 1,
+        "winner_helped": 0,
+        "winner_harmed": 1,
+        "zero_to_positive": 0,
+        "one_to_two": 1,
+        "one_to_zero": 1,
+        "two_to_lower": 0
+      },
+      "speed_stability_shift": {
+        "races": 39,
+        "top3_auc": 0.6973,
+        "top2_hit_distribution": {
+          "0": 13,
+          "1": 17,
+          "2": 9
+        },
+        "total_top2_hits": 35,
+        "hits_per_race": 0.8974,
+        "winner_top2": 15,
+        "winner_top2_rate": 38.5,
+        "top2_set_changes": 9,
+        "hit_helped": 3,
+        "hit_harmed": 2,
+        "winner_helped": 1,
+        "winner_harmed": 1,
+        "zero_to_positive": 1,
+        "one_to_two": 2,
+        "one_to_zero": 2,
+        "two_to_lower": 0
+      },
+      "speed_balanced_context": {
+        "races": 39,
+        "top3_auc": 0.6964,
+        "top2_hit_distribution": {
+          "0": 13,
+          "1": 18,
+          "2": 8
+        },
+        "total_top2_hits": 34,
+        "hits_per_race": 0.8718,
+        "winner_top2": 15,
+        "winner_top2_rate": 38.5,
+        "top2_set_changes": 7,
+        "hit_helped": 2,
+        "hit_harmed": 2,
+        "winner_helped": 1,
+        "winner_harmed": 1,
+        "zero_to_positive": 1,
+        "one_to_two": 1,
+        "one_to_zero": 2,
+        "two_to_lower": 0
+      },
+      "speed_distance_5pct": {
+        "races": 39,
+        "top3_auc": 0.6793,
+        "top2_hit_distribution": {
+          "0": 13,
+          "1": 19,
+          "2": 7
+        },
+        "total_top2_hits": 33,
+        "hits_per_race": 0.8462,
+        "winner_top2": 15,
+        "winner_top2_rate": 38.5,
+        "top2_set_changes": 6,
+        "hit_helped": 1,
+        "hit_harmed": 2,
+        "winner_helped": 1,
+        "winner_harmed": 1,
+        "zero_to_positive": 1,
+        "one_to_two": 0,
+        "one_to_zero": 2,
+        "two_to_lower": 0
+      }
+    },
+    "independent_recent": {
+      "baseline_pure_matrix": {
+        "races": 109,
+        "top3_auc": 0.6744,
+        "top2_hit_distribution": {
+          "0": 39,
+          "1": 54,
+          "2": 16
+        },
+        "total_top2_hits": 86,
+        "hits_per_race": 0.789,
+        "winner_top2": 37,
+        "winner_top2_rate": 33.9,
+        "top2_set_changes": 0,
+        "hit_helped": 0,
+        "hit_harmed": 0,
+        "winner_helped": 0,
+        "winner_harmed": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 0,
+        "one_to_zero": 0,
+        "two_to_lower": 0
+      },
+      "speed_only_substitution": {
+        "races": 109,
+        "top3_auc": 0.6776,
+        "top2_hit_distribution": {
+          "0": 35,
+          "1": 54,
+          "2": 20
+        },
+        "total_top2_hits": 94,
+        "hits_per_race": 0.8624,
+        "winner_top2": 42,
+        "winner_top2_rate": 38.5,
+        "top2_set_changes": 23,
+        "hit_helped": 11,
+        "hit_harmed": 3,
+        "winner_helped": 6,
+        "winner_harmed": 1,
+        "zero_to_positive": 5,
+        "one_to_two": 6,
+        "one_to_zero": 1,
+        "two_to_lower": 2
+      },
+      "speed_stability_shift": {
+        "races": 109,
+        "top3_auc": 0.6846,
+        "top2_hit_distribution": {
+          "0": 32,
+          "1": 57,
+          "2": 20
+        },
+        "total_top2_hits": 97,
+        "hits_per_race": 0.8899,
+        "winner_top2": 40,
+        "winner_top2_rate": 36.7,
+        "top2_set_changes": 22,
+        "hit_helped": 12,
+        "hit_harmed": 1,
+        "winner_helped": 6,
+        "winner_harmed": 3,
+        "zero_to_positive": 7,
+        "one_to_two": 5,
+        "one_to_zero": 0,
+        "two_to_lower": 1
+      },
+      "speed_balanced_context": {
+        "races": 109,
+        "top3_auc": 0.6837,
+        "top2_hit_distribution": {
+          "0": 33,
+          "1": 57,
+          "2": 19
+        },
+        "total_top2_hits": 95,
+        "hits_per_race": 0.8716,
+        "winner_top2": 40,
+        "winner_top2_rate": 36.7,
+        "top2_set_changes": 20,
+        "hit_helped": 10,
+        "hit_harmed": 1,
+        "winner_helped": 4,
+        "winner_harmed": 1,
+        "zero_to_positive": 6,
+        "one_to_two": 4,
+        "one_to_zero": 0,
+        "two_to_lower": 1
+      },
+      "speed_distance_5pct": {
+        "races": 109,
+        "top3_auc": 0.6824,
+        "top2_hit_distribution": {
+          "0": 33,
+          "1": 56,
+          "2": 20
+        },
+        "total_top2_hits": 96,
+        "hits_per_race": 0.8807,
+        "winner_top2": 41,
+        "winner_top2_rate": 37.6,
+        "top2_set_changes": 26,
+        "hit_helped": 13,
+        "hit_harmed": 3,
+        "winner_helped": 6,
+        "winner_harmed": 2,
+        "zero_to_positive": 7,
+        "one_to_two": 6,
+        "one_to_zero": 1,
+        "two_to_lower": 2
+      }
+    },
+    "external_2026_07_15": {
+      "baseline_pure_matrix": {
+        "races": 9,
+        "top3_auc": 0.6083,
+        "top2_hit_distribution": {
+          "0": 4,
+          "1": 2,
+          "2": 3
+        },
+        "total_top2_hits": 8,
+        "hits_per_race": 0.8889,
+        "winner_top2": 2,
+        "winner_top2_rate": 22.2,
+        "top2_set_changes": 0,
+        "hit_helped": 0,
+        "hit_harmed": 0,
+        "winner_helped": 0,
+        "winner_harmed": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 0,
+        "one_to_zero": 0,
+        "two_to_lower": 0
+      },
+      "speed_only_substitution": {
+        "races": 9,
+        "top3_auc": 0.6083,
+        "top2_hit_distribution": {
+          "0": 5,
+          "1": 1,
+          "2": 3
+        },
+        "total_top2_hits": 7,
+        "hits_per_race": 0.7778,
+        "winner_top2": 1,
+        "winner_top2_rate": 11.1,
+        "top2_set_changes": 2,
+        "hit_helped": 0,
+        "hit_harmed": 1,
+        "winner_helped": 0,
+        "winner_harmed": 1,
+        "zero_to_positive": 0,
+        "one_to_two": 0,
+        "one_to_zero": 1,
+        "two_to_lower": 0
+      },
+      "speed_stability_shift": {
+        "races": 9,
+        "top3_auc": 0.6083,
+        "top2_hit_distribution": {
+          "0": 5,
+          "1": 1,
+          "2": 3
+        },
+        "total_top2_hits": 7,
+        "hits_per_race": 0.7778,
+        "winner_top2": 1,
+        "winner_top2_rate": 11.1,
+        "top2_set_changes": 4,
+        "hit_helped": 1,
+        "hit_harmed": 2,
+        "winner_helped": 0,
+        "winner_harmed": 1,
+        "zero_to_positive": 0,
+        "one_to_two": 1,
+        "one_to_zero": 1,
+        "two_to_lower": 1
+      },
+      "speed_balanced_context": {
+        "races": 9,
+        "top3_auc": 0.6,
+        "top2_hit_distribution": {
+          "0": 5,
+          "1": 1,
+          "2": 3
+        },
+        "total_top2_hits": 7,
+        "hits_per_race": 0.7778,
+        "winner_top2": 1,
+        "winner_top2_rate": 11.1,
+        "top2_set_changes": 2,
+        "hit_helped": 0,
+        "hit_harmed": 1,
+        "winner_helped": 0,
+        "winner_harmed": 1,
+        "zero_to_positive": 0,
+        "one_to_two": 0,
+        "one_to_zero": 1,
+        "two_to_lower": 0
+      },
+      "speed_distance_5pct": {
+        "races": 9,
+        "top3_auc": 0.6208,
+        "top2_hit_distribution": {
+          "0": 4,
+          "1": 2,
+          "2": 3
+        },
+        "total_top2_hits": 8,
+        "hits_per_race": 0.8889,
+        "winner_top2": 2,
+        "winner_top2_rate": 22.2,
+        "top2_set_changes": 3,
+        "hit_helped": 0,
+        "hit_harmed": 0,
+        "winner_helped": 0,
+        "winner_harmed": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 0,
+        "one_to_zero": 0,
+        "two_to_lower": 0
+      }
+    }
+  },
+  "advancement_gate": {
+    "speed_only_substitution": {
+      "advances_to_step7": false,
+      "checks": {
+        "archive_development": {
+          "top2_hit_delta": -1,
+          "winner_top2_delta": 0,
+          "zero_hit_delta": 0,
+          "non_negative": false
+        },
+        "archive_temporal_holdout": {
+          "top2_hit_delta": 0,
+          "winner_top2_delta": -1,
+          "zero_hit_delta": 1,
+          "non_negative": false
+        },
+        "independent_recent": {
+          "top2_hit_delta": 8,
+          "winner_top2_delta": 5,
+          "zero_hit_delta": -4,
+          "non_negative": true
+        }
+      }
+    },
+    "speed_stability_shift": {
+      "advances_to_step7": false,
+      "checks": {
+        "archive_development": {
+          "top2_hit_delta": 1,
+          "winner_top2_delta": -1,
+          "zero_hit_delta": -1,
+          "non_negative": false
+        },
+        "archive_temporal_holdout": {
+          "top2_hit_delta": 1,
+          "winner_top2_delta": 0,
+          "zero_hit_delta": 1,
+          "non_negative": false
+        },
+        "independent_recent": {
+          "top2_hit_delta": 11,
+          "winner_top2_delta": 3,
+          "zero_hit_delta": -7,
+          "non_negative": true
+        }
+      }
+    },
+    "speed_balanced_context": {
+      "advances_to_step7": false,
+      "checks": {
+        "archive_development": {
+          "top2_hit_delta": 0,
+          "winner_top2_delta": -1,
+          "zero_hit_delta": 0,
+          "non_negative": false
+        },
+        "archive_temporal_holdout": {
+          "top2_hit_delta": 0,
+          "winner_top2_delta": 0,
+          "zero_hit_delta": 1,
+          "non_negative": false
+        },
+        "independent_recent": {
+          "top2_hit_delta": 9,
+          "winner_top2_delta": 3,
+          "zero_hit_delta": -6,
+          "non_negative": true
+        }
+      }
+    },
+    "speed_distance_5pct": {
+      "advances_to_step7": false,
+      "checks": {
+        "archive_development": {
+          "top2_hit_delta": -3,
+          "winner_top2_delta": 1,
+          "zero_hit_delta": 3,
+          "non_negative": false
+        },
+        "archive_temporal_holdout": {
+          "top2_hit_delta": -1,
+          "winner_top2_delta": 0,
+          "zero_hit_delta": 1,
+          "non_negative": false
+        },
+        "independent_recent": {
+          "top2_hit_delta": 10,
+          "winner_top2_delta": 4,
+          "zero_hit_delta": -6,
+          "non_negative": true
+        }
+      }
+    }
+  },
+  "errors": []
+}

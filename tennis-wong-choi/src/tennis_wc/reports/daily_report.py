@@ -3,6 +3,8 @@ from __future__ import annotations
 from itertools import combinations
 import json
 import math
+import os
+import re
 from pathlib import Path
 
 from tennis_wc.betting import combos as combo_engine
@@ -13,8 +15,9 @@ from tennis_wc.betting.staking import kelly_stake_units
 from tennis_wc.config import get_settings
 from tennis_wc.database.db import get_connection
 from tennis_wc.features.common import utc_now
-from tennis_wc.features.market import implied_probability, remove_vig_two_way
+from tennis_wc.features.market import implied_probability
 from tennis_wc.modelling import market_models
+from tennis_wc.modelling import set_distribution
 from tennis_wc.ingestion.sportsbet_fixture_mapping import sportsbet_competition_meta
 
 
@@ -88,20 +91,41 @@ def latest_predictions_for_date(match_date: str) -> list[dict]:
 
 
 def analysis_output_dir(match_date: str) -> Path:
+    # The engine now lives on local disk (repo migrated off Google Drive) but
+    # Kelvin reads reports from the Drive folders. TENNIS_ANALYSIS_OUTPUT_ROOT
+    # points there; fall back to the repo root when it is unset or the Drive
+    # mount is not available (report still generated, just locally).
+    override = os.environ.get("TENNIS_ANALYSIS_OUTPUT_ROOT")
+    if override:
+        root = Path(override)
+        try:
+            if root.is_dir():
+                return root / f"{match_date} Tennis Analysis"
+        except OSError:
+            pass
     return PROJECT_ROOT / f"{match_date} Tennis Analysis"
 
 
 def generate_daily_report(match_date: str, output_dir: str | Path | None = None) -> Path:
+    """Write the ONE betting report (Tennis_Daily_Report.txt) plus the raw-data
+    appendix (Tennis_Market_Odds.txt). The old separate banker/combo report is
+    merged into the daily report; `render_banker_report` remains callable for
+    the legacy full combo detail but is no longer written to disk."""
     rows = latest_predictions_for_date(match_date)
     source_status = source_status_for_date(match_date)
     unanalysed = unanalysed_sportsbet_rows(match_date)
     output_dir = Path(output_dir) if output_dir is not None else analysis_output_dir(match_date)
     output_path = output_dir / "Tennis_Daily_Report.txt"
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(render_daily_report(match_date, rows, source_status, unanalysed), encoding="utf-8")
+    # Refresh reference-market predictions before rendering so diagnostics and
+    # the non-actionable match-winner appendix use the same snapshot.
     refresh_market_predictions(match_date, rows)
+    market_rows = banker_market_predictions_for_date(match_date)
+    output_path.write_text(
+        render_daily_report(match_date, rows, source_status, unanalysed, market_rows),
+        encoding="utf-8",
+    )
     export_market_odds_report(match_date, output_dir)
-    export_banker_report(match_date, output_dir, banker_market_predictions_for_date(match_date))
     # Grade any now-settleable ace props (live-validation of the prop engine).
     try:
         from tennis_wc.props.settlement import settle_props
@@ -112,14 +136,16 @@ def generate_daily_report(match_date: str, output_dir: str | Path | None = None)
 
 
 def export_banker_report(match_date: str, output_dir: str | Path | None = None, rows: list[dict] | None = None) -> Path:
+    """Compatibility export for the old filename.
+
+    The rendered content follows the current player-prop-only contract; it is
+    no longer generated as a separate artifact by the daily workflow.
+    """
     output_dir = Path(output_dir) if output_dir is not None else analysis_output_dir(match_date)
     output_path = output_dir / f"{_report_date_prefix(match_date)} Tennis Banker Report.txt"
-    legacy_path = output_dir / "Tennis_Banker_Report.txt"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     rows = rows if rows is not None else banker_market_predictions_for_date(match_date)
-    content = render_banker_report(match_date, rows)
-    output_path.write_text(content, encoding="utf-8")
-    legacy_path.write_text(content, encoding="utf-8")
+    output_path.write_text(render_banker_report(match_date, rows), encoding="utf-8")
     return output_path
 
 
@@ -316,6 +342,28 @@ def unanalysed_sportsbet_rows(match_date: str) -> list[dict]:
     return unanalysed
 
 
+def _market_selection_side(row: dict) -> str | None:
+    """selection_side oriented to the matches-table player order. The stored
+    snapshot side can be mirror-flipped when the scrape listed the players in
+    the opposite order to the fixture match row, so recompute from the joined
+    DB player names (same normalise-and-contains rule as ingestion) and only
+    fall back to the stored value when neither name matches."""
+    selection = _side_norm(row.get("selection_name"))
+    player_a = _side_norm(row.get("player_a_name"))
+    player_b = _side_norm(row.get("player_b_name"))
+    if player_a and player_a in selection:
+        return "player_a"
+    if player_b and player_b in selection:
+        return "player_b"
+    if selection in {"over", "under"}:
+        return selection
+    return row.get("selection_side")
+
+
+def _side_norm(value: object) -> str:
+    return "".join(ch for ch in str(value or "").lower() if ch.isalnum())
+
+
 def refresh_market_predictions(match_date: str, rows: list[dict] | None = None) -> None:
     _ensure_market_predictions_table()
     rows = rows if rows is not None else latest_predictions_for_date(match_date)
@@ -354,7 +402,7 @@ def refresh_market_predictions(match_date: str, rows: list[dict] | None = None) 
                         row["market_key"],
                         row["market_name"],
                         row["selection_name"],
-                        row["selection_side"],
+                        _market_selection_side(row),
                         row["line"],
                         row["odds"],
                         prediction["model_status"],
@@ -476,11 +524,18 @@ def _group_market_rows(rows: list[dict]) -> dict[tuple, list[dict]]:
 
 
 def _no_vig_probabilities(rows: list[dict]) -> dict[int, float]:
-    if len(rows) != 2:
+    """Proportional de-vig across a group of mutually exclusive selections.
+
+    Was 2-way only, which left every multiway market (e.g. full-match Set
+    Betting: 4 outcomes) with no fair price -> edge None -> never shadow
+    tracked. For 2 selections this is identical to remove_vig_two_way."""
+    if len(rows) < 2:
         return {}
     implied = [implied_probability(float(row["odds"])) for row in rows]
-    no_vig = remove_vig_two_way(implied[0], implied[1])
-    return {int(rows[0]["id"]): no_vig[0], int(rows[1]["id"]): no_vig[1]}
+    total = sum(implied)
+    if total <= 0:
+        return {}
+    return {int(row["id"]): imp / total for row, imp in zip(rows, implied)}
 
 
 def _price_market_selection(row: dict, prediction_row: dict | None, no_vig_probability: float | None) -> dict:
@@ -662,17 +717,23 @@ def _derived_market_probability(row: dict, prediction_row: dict, no_vig_probabil
         side = _selection_side_for_market_row(row)
         if side in {"player_a", "player_b"}:
             base = p_a if side == "player_a" else p_b
-            return {"probability": _clamp_probability(0.5 + (base - 0.5) * 0.78), "reason": "derived_set_winner_from_match_model"}
+            # Empirical set-distribution table (68,876 BO3 matches) replaced the
+            # old hand-picked 0.78 compression — holdout Brier win (2026-07-12).
+            return {"probability": _clamp_probability(set_distribution.first_set_win_probability(base)), "reason": "derived_set_winner_from_set_distribution"}
 
     if _is_to_win_at_least_one_set_market(key, name):
         side = _selection_side_for_market_row(row)
         is_yes = _selection_is_yes_no(selection)
         if side in {"player_a", "player_b"} and is_yes is not None:
             base = p_a if side == "player_a" else p_b
-            probability = _win_at_least_one_set_probability(base)
+            probability = set_distribution.win_at_least_one_set_probability(base)
             if not is_yes:
                 probability = 1 - probability
-            return {"probability": _clamp_probability(probability), "reason": "derived_at_least_one_set_from_match_model"}
+            return {"probability": _clamp_probability(probability), "reason": "derived_at_least_one_set_from_set_distribution"}
+
+    set_betting = _set_betting_probability(row, p_a, p_b)
+    if set_betting is not None:
+        return set_betting
 
     if key == "game_handicap":
         side = _selection_side_for_market_row(row)
@@ -717,8 +778,18 @@ def _derived_market_probability(row: dict, prediction_row: dict, no_vig_probabil
                 return {"probability": _clamp_probability(probability), "reason": reason}
 
     if key in {"total_sets", "both_players_to_win_a_set_yes_no"} or "both players to win a set" in name:
-        competitiveness = 1 - abs(p_a - p_b)
         line_value = float(line) if line is not None else 2.5
+        if line_value < 3.5:
+            # BO3: P(over 2.5 sets) = P(goes three) from the empirical set
+            # distribution — the old competitiveness heuristic said up to 62%
+            # three-setters for coin-flips; reality is ~38% (straight sets are
+            # far more common than independence or the heuristic assumed).
+            over_probability = _clamp_probability(set_distribution.three_sets_probability(p_a), 0.05, 0.60)
+            is_yes_or_over = _selection_is_yes_or_over(selection)
+            if is_yes_or_over is not None:
+                probability = over_probability if is_yes_or_over else 1 - over_probability
+                return {"probability": _clamp_probability(probability), "reason": "derived_total_sets_from_set_distribution"}
+        competitiveness = 1 - abs(p_a - p_b)
         if line_value >= 4.5:
             over_probability = _clamp_probability(0.06 + competitiveness * 0.22, 0.04, 0.34)
         elif line_value >= 3.5:
@@ -855,10 +926,39 @@ def _is_to_win_at_least_one_set_market(market_key: str, market_name: str) -> boo
     return "to win at least one set" in text or "to win at least 1 set" in text
 
 
-def _win_at_least_one_set_probability(match_win_probability: float) -> float:
-    if match_win_probability >= 0.5:
-        return _clamp_probability(0.72 + (match_win_probability - 0.5) * 0.45, 0.55, 0.92)
-    return _clamp_probability(0.34 + match_win_probability * 0.46, 0.18, 0.62)
+# NOTE: the old hand-picked _win_at_least_one_set_probability heuristic was
+# replaced by set_distribution.win_at_least_one_set_probability (2026-07-12).
+
+_SET_BETTING_SCORE_RE = re.compile(r"\s+2-([01])\s*$")
+
+
+def _set_betting_probability(row: dict, p_a: float, p_b: float) -> dict | None:
+    """Full-match Set Betting (correct set score, BO3): '<Player> 2-0'/'2-1'.
+
+    Priced from the empirical set-outcome distribution. Returns None for the
+    other selections sharing the set_betting key (per-set correct GAME scores,
+    BO5 3-x selections) — those stay unpriced/unrecorded."""
+    if str(row.get("market_name") or "").strip().lower() != "set betting":
+        return None
+    selection = str(row.get("selection_name") or "")
+    m = _SET_BETTING_SCORE_RE.search(selection)
+    if not m:
+        return None
+    sets_lost = int(m.group(1))
+    name = selection[: m.start()].strip()
+    if _same_name(name, str(row.get("player_a_name") or "")):
+        p_side = p_a
+    elif _same_name(name, str(row.get("player_b_name") or "")):
+        p_side = p_b
+    else:
+        return None
+    probability = set_distribution.set_score_probability(p_side, sets_lost)
+    if probability is None:
+        return None
+    return {
+        "probability": _clamp_probability(probability, 0.02, 0.90),
+        "reason": "derived_set_betting_from_set_distribution",
+    }
 
 
 def _banker_tier(probability: float, edge: float, odds: float, confidence: int, model_status: str) -> str:
@@ -913,7 +1013,17 @@ def _market_upgrade_gate(market_key: str, model_status: str) -> dict:
             "tier": "MARKET_TRIAL",
             "reason": "settlement_supported_sample_building",
         }
-    if (history["avg_clv"] or 0) <= 0 or (history["roi"] or 0) < 0:
+    # CLV is NOT part of this gate: our stored "closing odds" are the last
+    # Sportsbet scrape, and an audit on 2026-07-25 showed that scrape often lands
+    # AFTER the match is under way, so the field is contaminated with in-play
+    # prices. Examples: took @4.65 -> "close" @1.17 (CLV +297%), took @4.35 ->
+    # @1.19 (+266%). Those are not line moves, they are live prices on a match
+    # already being won. Only 44 of 388 rows even had a non-zero CLV, and the
+    # non-zero ones are exactly the corrupted ones, which inflated
+    # HIGH_ODDS_VALUE to a fake avg_clv +32.8%. Gating on that would let a
+    # market graduate on an artifact. ROI on settled shadow picks is the gate
+    # until closing-odds capture is fixed (must be a pre-off price).
+    if (history["roi"] or 0) < 0:
         return {
             "banker_allowed": False,
             "core_allowed": False,
@@ -929,7 +1039,11 @@ def _market_upgrade_gate(market_key: str, model_status: str) -> dict:
 
 
 def _settlement_supported_market_keys() -> set[str]:
-    return {"total_sets", "both_players_to_win_a_set_yes_no", "set_handicap", "game_handicap", "total_games", "to_win_1st_set", "winner_related"}
+    # set_betting: only full-match "Set Betting" rows are ever PRICED (the
+    # per-set correct-game-score rows sharing the key get no model probability,
+    # so they never enter the shadow tracker), and those settle from
+    # score_json set counts.
+    return {"total_sets", "both_players_to_win_a_set_yes_no", "set_handicap", "game_handicap", "total_games", "to_win_1st_set", "winner_related", "set_betting"}
 
 
 def _total_games_set_index(market_name: str) -> int | None:
@@ -1169,94 +1283,64 @@ def _mode_status_line(run_mode: str | None) -> str:
     return "- Mode：未知（report 找唔到今次 run 嘅 mode 記錄）"
 
 
-def render_daily_report(match_date: str, rows: list[dict], source_status: dict | None = None, unanalysed: list[dict] | None = None) -> str:
+def render_daily_report(
+    match_date: str,
+    rows: list[dict],
+    source_status: dict | None = None,
+    unanalysed: list[dict] | None = None,
+    market_rows: list[dict] | None = None,
+) -> str:
+    """The ONE daily betting report, mobile-first: recommended bets (with type
+    label, confidence, why, risk) on the first screen; per-bet scoring next;
+    reference material and data status at the bottom. Merges the old daily +
+    banker reports; the demoted model-edge combo tiers are no longer written."""
     bets = [row for row in rows if row["decision"] == "BET"]
     watchlist = [row for row in rows if row["decision"] == "WATCHLIST"]
     no_bets = [row for row in rows if row["decision"] == "NO_BET"]
     source_status = source_status or {}
     unanalysed = unanalysed or []
+    market_rows = market_rows or []
+    run_errors = source_status.get("latest_run_errors") or []
+    sportsbet_rows = source_status.get("sportsbet_odds_rows")
+    data_unavailable = bool(run_errors) or (
+        sportsbet_rows is not None and int(sportsbet_rows or 0) == 0
+    )
+
+    prop = _ace_prop_data(match_date)
+
     lines = [
-        "Tennis Wong Choi 每日分析報告",
+        "🎾 Tennis Wong Choi 每日投注報告",
         f"日期：{match_date}",
         "",
-        f"已分析賽事：{len(rows)}",
-        f"建議投注：{len(bets)}",
-        f"觀察名單：{len(watchlist)}",
-        f"不下注：{len(no_bets)}",
-        f"未能進入分析賽事：{len(unanalysed)}",
-        "",
-        "## 數據源狀態",
-        "",
-        f"- Sportsbet odds rows：{source_status.get('sportsbet_odds_rows', 0)}",
-        f"- 已配對 / 已建 provisional fixture：{source_status.get('sportsbet_linked_rows', 0)}",
-        f"- Sportsbet 最新抓取時間：{source_status.get('sportsbet_latest_fetch') or 'N/A'}",
-        "- Bankroll：100u virtual bankroll；1 unit = $1；注碼用 tenth-Kelly，1u 起跳、最大 5u",
-        _mode_status_line(source_status.get("run_mode")),
-        f"- Tennis fixture source：{source_status.get('bsd_fixture_status') or 'N/A'}",
-        f"- Fixture 補齊策略：{source_status.get('fixture_note') or 'N/A'}",
-        f"- Ranking refresh：{source_status.get('ranking_source_note') or 'N/A'}",
-        f"- 歷史數據 / Elo：{source_status.get('history_source') or 'N/A'}",
-        f"- 多市場 odds：{source_status.get('market_odds_note') or 'N/A'}",
-        "",
     ]
-    metadata_gap_lines = _metadata_gap_summary_lines(rows)
-    if metadata_gap_lines:
-        lines.extend(["## 資料缺口摘要", "", *metadata_gap_lines, ""])
-    run_errors = source_status.get("latest_run_errors") or []
     if run_errors:
         lines.extend(
             [
-                "## 今次 full run 警告",
+                "⚠️ 今次 live 數據抓取未完整成功 —— 以下建議只可作 pipeline 檢查，唔好照落注：",
+                *[
+                    f"- {_source_label(str(error.get('source')))}：{_source_error_label(str(error.get('error')))}"
+                    for error in run_errors
+                ],
                 "",
-                "今次 live API refresh 未完整成功；以下報告只可作 debug / pipeline 檢查，唔應作真實下注清單。",
             ]
         )
-        for error in run_errors:
-            lines.append(f"- {_source_label(str(error.get('source')))}：{_source_error_label(str(error.get('error')))}")
-        lines.append("")
-    lines.extend(
-        [
-            "## 下注候選一覽",
-            "",
-            *_bet_summary_lines(bets),
-            "",
-            "## 下注詳情（只列 BET）",
-            "",
-            "說明：模型勝率＝有效因素喺 logit 空間以 Elo 為骨幹合併；注碼＝tenth-Kelly（1u 起跳、最大 5u）。",
-            "",
-        ]
-    )
-    if not bets:
-        lines.extend(["暫時未有通過所有 hard rule 嘅 BET。", ""])
-    for idx, row in enumerate(bets, start=1):
-        payload = json.loads(row["pricing_json"])
-        pricing = payload["pricing"]
-        filter_result = payload["filter"]
-        match_label = _match_label(row)
+    picks = {} if data_unavailable else _recommended_picks(prop)
+    lines.extend(_recommended_bets_lines(picks, bets, prop, data_unavailable=data_unavailable))
+    lines.extend(_bet_breakdown_lines(picks))
+    if prop and not prop.get("error"):
         lines.extend(
-            [
-                f"### BET {idx}｜{match_label}",
-                "",
-                f"賽事：{_display_label(row['tournament_name'])}（ID {row['match_id']}）",
-                *_match_context_report_lines(row),
-                f"市場：Match Winner｜選擇：{_display_label(row['selection_name'])}",
-                f"現價 {_fmt(row['current_market_odds'])}（最低可接受 {_fmt(row['minimum_acceptable_odds'])}）｜模型勝率 {_pct(row['model_probability'])}｜公平價 {_fmt(row['fair_odds'])}",
-                f"去水市場勝率 {_pct(row['no_vig_market_probability'])}｜Edge {_pct(row['edge'], signed=True)}｜信心 {row['confidence']}｜風險 {row['risk']}",
-                f"建議注碼：{_stake_label(row['stake_units'], row['decision'])}",
-                "",
-                "分析：",
-            ]
+            _prop_review_lines(
+                prop.get("scorecard") or {},
+                prop.get("roi") or {},
+                prop.get("strategy") or {},
+            )
         )
-        components = pricing.get("model", {}).get("components", [])
-        lines.extend(_model_explanation_lines(row, pricing, components))
-        red_flags = _report_red_flags(filter_result)
-        if red_flags:
-            lines.append("紅旗：" + "；".join(red_flags))
-        lines.extend(["", ""])
+    lines.extend(_reference_singles_lines(bets))
+    lines.extend(_reference_prop_board_lines(prop))
 
     # Watchlist: one compact line each (no full cards).
     if watchlist:
-        lines.extend(["## 觀察名單", ""])
+        lines.extend(["## 📎 觀察名單", ""])
         for row in watchlist:
             lines.append(
                 f"- {_display_label(row['selection_name'])}｜{_match_label(row)}｜現價 {_fmt(row['current_market_odds'])}｜"
@@ -1264,7 +1348,7 @@ def render_daily_report(match_date: str, rows: list[dict], source_status: dict |
             )
         lines.append("")
 
-    # NO_BET: a single collapsed count + a compact table, not 90+ full cards.
+    # NO_BET: a single collapsed count + a compact reason breakdown.
     if no_bets:
         lines.extend(_no_bet_summary_lines(no_bets))
 
@@ -1275,22 +1359,539 @@ def render_daily_report(match_date: str, rows: list[dict], source_status: dict |
             if row.get("event_url"):
                 lines.append(f"  URL：{row['event_url']}")
         lines.append("")
+
+    lines.extend(_data_status_lines(source_status, rows, bets, watchlist, no_bets,
+                                    unanalysed, match_date))
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _match_context_report_lines(row: dict) -> list[str]:
-    lines: list[str] = []
-    missing: list[str] = []
-    context_fields = (
-        ("級別", row.get("level")),
-        ("圈數", row.get("round")),
-        ("場地", row.get("surface")),
+# --------------------------------------------------------------------------- #
+# 🎯 Recommended bets: the first screen.  The active recommendation contract
+# contains only evidence-gated player-prop singles and two-leg cross-match prop
+# combinations.  Everything else is reference or RESEARCH_ONLY material.
+# --------------------------------------------------------------------------- #
+
+
+def _confidence_label(prob: float | None) -> str:
+    p = float(prob or 0)
+    if p >= 0.70:
+        return "高"
+    if p >= 0.55:
+        return "中"
+    return "低"
+
+
+def _reliability_label(score: int | float | None) -> str:
+    value = float(score or 0)
+    if value >= 80:
+        return "高"
+    if value >= 70:
+        return "中"
+    return "低"
+
+
+def _recommended_picks(prop: dict | None) -> dict:
+    """Assemble evidence-gated prop picks without legacy category fallbacks."""
+    from tennis_wc.props import strategy
+
+    prop = prop or {}
+    picks: dict = {"validated_singles": [], "validated_2_leg": None}
+    gate = prop.get("strategy") or {}
+    value_legs = [
+        leg for leg in (prop.get("value_legs") or [])
+        if strategy.leg_is_formal_candidate(leg, gate)
+    ]
+    # Do not disguise correlated same-match exposure as two independent
+    # singles. Keep the strongest qualified prop per fixture, max two fixtures.
+    selected_singles: list[dict] = []
+    selected_matches: set[int] = set()
+    for leg in sorted(value_legs, key=lambda v: -v["ev"]):
+        match_id = int(leg["match_id"])
+        if match_id in selected_matches:
+            continue
+        leg = dict(leg)
+        leg["confidence_score"] = leg.get(
+            "confidence_score"
+        ) or strategy.confidence_score(leg, gate)
+        family_state = (gate.get("family_states") or {}).get(
+            strategy.family_for_market(leg.get("market_key") or "")
+        ) or {}
+        early = family_state.get("tier") == "EARLY_MAIN"
+        leg["strategy_tier"] = "EARLY_MAIN_SINGLE" if early else "VALIDATED_SINGLE"
+        leg["stake_units"] = strategy.formal_stake_units(
+            leg["prob"], leg["odds"], leg["confidence_score"], early=early
+        )
+        selected_singles.append(leg)
+        selected_matches.add(match_id)
+        if len(selected_singles) == 2:
+            break
+    picks["validated_singles"] = selected_singles
+    allowed_ids = {leg["id"] for leg in value_legs}
+    combos = [
+        combo for combo in (prop.get("combos") or [])
+        if len(combo["legs"]) == strategy.MAX_FORMAL_COMBO_LEGS
+        and float(combo["ev"]) >= strategy.MIN_COMBO_EV
+        and all(leg["id"] in allowed_ids for leg in combo["legs"])
+    ]
+    if combos:
+        combo = dict(combos[0])
+        combo_early = any(
+            ((gate.get("family_states") or {}).get(
+                strategy.family_for_market(leg.get("market_key") or "")
+            ) or {}).get("tier") == "EARLY_MAIN"
+            for leg in combo["legs"]
+        )
+        combo["strategy_tier"] = (
+            "EARLY_MAIN_2_LEG" if combo_early else "VALIDATED_2_LEG"
+        )
+        combo["stake_units"] = strategy.formal_stake_units(
+            combo["prob"], combo["odds"],
+            min(float(leg.get("confidence_score") or 0) for leg in combo["legs"]),
+            combo=True,
+            early=combo_early,
+        )
+        picks["validated_2_leg"] = combo
+    return picks
+
+
+def _chalk_parlay_stats(pick: list[dict]) -> tuple[float, float, float]:
+    odds = prob = mkt = 1.0
+    for r in pick:
+        odds *= float(r["odds"])
+        prob *= float(r["model_probability"])
+        mkt *= float(r.get("no_vig_market_probability") or r["model_probability"])
+    return odds, prob, mkt
+
+
+def _scorecard_note(prop: dict | None) -> tuple[str, int]:
+    """Human-readable state of the live model-vs-market scorecard + settled n.
+    Feeds the 信心理據 lines so the confidence grade is traceable to evidence."""
+    scorecard = (prop or {}).get("scorecard") or {}
+    n = int(scorecard.get("settled") or 0)
+    if not n:
+        # Distinguish "brand new" from "we have history but it is not raw-comparable".
+        # The scorecard now grades model_prob_raw; rows written before 2026-07-25
+        # only stored the tempered value, so they are excluded rather than mixed.
+        legacy = int(scorecard.get("legacy_rows_excluded") or 0)
+        if legacy:
+            return (f"記分卡重建中：舊 {legacy} 條只存過 temper 後機率（唔可比），"
+                    "原始模型記分卡由今日起累積", 0)
+        return ("記分卡未有已結算 prop —— 模型準唔準暫時零證據", 0)
+    model = scorecard.get("model") or {}
+    market = scorecard.get("market") or {}
+    try:
+        model_winning = float(model.get("brier")) < float(market.get("brier"))
+    except (TypeError, ValueError):
+        model_winning = False
+    verdict = "模型暫時贏市場" if model_winning else "市場贏緊（要小心）"
+    return (
+        f"記分卡 {n} 條已結算：模型 Brier {model.get('brier')} vs 市場 {market.get('brier')}（{verdict}）",
+        n,
     )
-    for label, value in context_fields:
-        if _is_confirmed_context_value(value):
-            lines.append(f"{label}：{_display_label(value)}")
-        else:
-            missing.append(label)
+
+
+_CONFIDENCE_SCALE_NOTE = "≥70%＝高、55–70%＝中、<55%＝低"
+
+# Below this many settled props, a value-prop confidence grade is capped at 中:
+# the model may look right so far, but the evidence base is too thin for 高.
+_PROP_CONFIDENCE_CAP_N = 30
+
+
+def _recommended_bets_lines(
+    picks: dict,
+    bets: list[dict],
+    prop: dict | None = None,
+    *,
+    data_unavailable: bool = False,
+) -> list[str]:
+    lines = ["## 🎯 今日落注建議（先睇呢度）", ""]
+    blocks: list[list[str]] = []
+    sc_note, sc_n = _scorecard_note(prop)
+
+    for i, v in enumerate(picks.get("validated_singles") or [], start=1):
+        early = v.get("strategy_tier") == "EARLY_MAIN_SINGLE"
+        badge = "🟠 EARLY_MAIN_SINGLE" if early else "✅ VALIDATED_SINGLE"
+        title = f"### 注 1｜{badge}" if i == 1 else f"### 注 1b｜{badge}"
+        label = _reliability_label(v.get("confidence_score"))
+        cap_note = ""
+        if label == "高" and sc_n < _PROP_CONFIDENCE_CAP_N:
+            label = "中"
+            cap_note = f"；記分卡未夠 {_PROP_CONFIDENCE_CAP_N} 條前最高只畀「中」"
+        temper_note = (prop or {}).get("ev_note") or "EV 未有 family reliability 資訊"
+        blocks.append(
+            [
+                title,
+                f"- 選擇：{v['desc']}（{v['match_label']}）",
+                (
+                    "- 狀態：EARLY_MAIN_SINGLE（模型已勝市場、早期 paper ROI 為正；未達完整驗證樣本）"
+                    if early else
+                    "- 狀態：VALIDATED_SINGLE（已通過 family 樣本、模型對市場及 ROI 三重驗證）"
+                ),
+                f"- 賠率：{_fmt(v['odds'])}｜建議注碼：{_fmt(v.get('stake_units'))}u（{'早期主線上限 0.5u' if early else '可信度折扣 tenth-Kelly；上限 2u'}）",
+                f"- 校準命中概率：{_pct(v['prob'])}",
+                f"- 公式可信度：{label}（{v.get('confidence_score', 0)}/100；資料質素、family 樣本及模型對市場表現{cap_note}）",
+                f"- 信心理據：①{sc_note}②{temper_note}③edge {_pct(v['edge'], signed=True)}／EV {_pct(v['ev'], signed=True)} 係精確去水兼向市場收縮後先計，唔係 raw 模型自吹",
+                f"- 點解落：{_prop_value_reason(v)}",
+                (
+                    "- 主要風險：早期樣本細，正 ROI 可以快速反轉；固定最多 0.5u，唔追輸。"
+                    if early else
+                    "- 主要風險：即使過咗驗證，短期波動仍然大；注碼已按公式可信度折扣，唔追輸。"
+                ),
+            ]
+        )
+
+    two_leg = picks.get("validated_2_leg")
+    if two_leg:
+        legs = two_leg["legs"]
+        early_combo = two_leg.get("strategy_tier") == "EARLY_MAIN_2_LEG"
+        blocks.append(
+            [
+                (
+                    "### 注 2｜🟠 EARLY_MAIN_2_LEG（跨場 Player Prop）"
+                    if early_combo else
+                    "### 注 2｜✅ VALIDATED_2_LEG（跨場 Player Prop）"
+                ),
+                *[f"- 腳 {j}：{lg['desc']}（{lg.get('match_label') or ''}）" for j, lg in enumerate(legs, start=1)],
+                (
+                    "- 狀態：EARLY_MAIN_2_LEG；早期正趨勢兩腳、唔同場、組合 EV ≥3%；三腳仍留研究區"
+                    if early_combo else
+                    "- 狀態：VALIDATED_2_LEG；只准兩腳、唔同場、組合 EV ≥3%；三腳仍留喺研究區"
+                ),
+                f"- 合併賠率：{_fmt(round(two_leg['odds'], 2))}｜建議注碼：{_fmt(two_leg.get('stake_units'))}u（{'早期組合上限 0.5u' if early_combo else '組合上限 1u'}）",
+                f"- 信心：低（串命中 {_pct(two_leg['prob'])}——兩腳結構本質係低過單腳命中）",
+                f"- 信心理據：①每條腳獨立通過 edge 關（跨場減少直接相關）②{sc_note}③EV {_pct(two_leg['ev'], signed=True)} 為正但波動較大",
+                "- 點解落：每條腳獨立有 edge，跨場減少直接相關；唔以『總賠率過 2』作入場理由",
+                "- 主要風險：中率低、輸多贏少係常態；每條腳都未經長期驗證，注碼一定要細",
+            ]
+        )
+
+    # Conclusion line FIRST (after the header), then the blocks.
+    conclusion: list[str]
+    if data_unavailable:
+        conclusion = [
+            "今日結論：⚠️ 資料未就緒，唔可以判斷今日有冇投注機會。",
+            "（Sportsbet／賽程／多市場資料未通過完整性檢查；等下一輪同日 refresh，唔好照落注。）",
+        ]
+    elif not blocks:
+        gate = (prop or {}).get("strategy") or {}
+        gate_reason = "；".join(gate.get("reasons") or [])
+        conclusion = [
+            "今日結論：❌ 今日無清晰好注，建議唔落。",
+            "（正式推薦只做已驗證 tennis props；研究訊號只留喺觀察板，唔會升級為正式推薦。）",
+        ]
+        if gate_reason:
+            conclusion.append(f"驗證閘：{gate_reason}。")
+    else:
+        n = len(blocks)
+        conclusion = [f"今日結論：✅ 有 {n} 組已通過驗證嘅 prop 選擇（固定 1u；先睇風險）。"]
+    lines.extend(conclusion + [""])
+    for block in blocks:
+        lines.extend(block + [""])
+    if bets:
+        lines.extend(
+            [
+                f"❌ 跳過：Match-winner 模型 edge 單（今日 {len(bets)} 隻）—— 回測 15,299 注證實長期蝕"
+                "（−5% 起、edge 越大蝕越多），唔跟；詳情喺下面參考區。",
+                "",
+            ]
+        )
+    return lines
+
+
+def _prop_value_reason(v: dict) -> str:
+    tw = v.get("tw")
+    if tw is None:
+        return "模型同市場兩邊定價後，呢邊有正 EV"
+    if hasattr(tw, "model_prob_yes"):
+        return (
+            f"模型 P(Yes) {_pct(tw.model_prob_yes)} vs 市場 fair "
+            f"{_pct(tw.fair_prob_yes)}；只將去水後差距當 edge"
+        )
+    if hasattr(tw, "model_prob_a_cover"):
+        return (
+            f"保守 margin model 同兩邊去水 handicap 盤比較後，"
+            f"{tw.value_name} ({tw.value_handicap:+g}) 仍有 "
+            f"{_pct(tw.edge, signed=True)} edge"
+        )
+    if hasattr(tw, "model_prob_a"):
+        return (
+            f"Set 1 empirical model 同兩邊去水盤比較後，"
+            f"{tw.value_name} 仍有 {_pct(tw.edge, signed=True)} edge"
+        )
+    if hasattr(tw, "sets_lost"):
+        return (
+            f"BO3 empirical exact-score model {_pct(tw.model_prob)} vs "
+            f"四項盤去水市場 {_pct(tw.fair_prob)}；"
+            f"edge {_pct(tw.edge, signed=True)}"
+        )
+    direction = "少過" if v["side"] == "under" else "多過"
+    return (
+        f"模型預測{v['kind_label']} ≈ {tw.predicted_mean}，明顯{direction}條線 {tw.line}；"
+        f"市場 fair P(over) {_pct(tw.fair_prob_over)} vs 模型 {_pct(tw.model_prob_over)}，差距就係 value"
+    )
+
+
+def _bet_breakdown_lines(picks: dict) -> list[str]:
+    """Explain only the two active evidence-gated recommendation states."""
+    singles = picks.get("validated_singles") or []
+    two_leg = picks.get("validated_2_leg")
+    if not singles and not two_leg:
+        return []
+    lines = ["## 📋 每注理據＋評分", ""]
+    for i, v in enumerate(singles, start=1):
+        label = "注 1" if i == 1 else "注 1b"
+        lines.extend(
+            [
+                f"### {label} 拆解｜{v['desc']}",
+                f"- Family：{v.get('family') or v.get('kind_label')}｜模型命中 {_pct(v['prob'])}",
+                f"- Odds {_fmt(v['odds'])}｜Edge {_pct(v['edge'], signed=True)}｜EV {_pct(v['ev'], signed=True)}",
+                f"- Data quality：{_pct(v.get('data_quality'))}",
+                f"→ {_prop_value_reason(v)}。",
+                "",
+            ]
+        )
+    if two_leg:
+        lines.append(f"### 注 2 拆解｜VALIDATED_2_LEG")
+        for lg in two_leg["legs"]:
+            lines.append(f"- {lg['desc']}｜單腳命中 {_pct(lg['prob'])}")
+        lines.extend(
+            [
+                f"- 跨場命中連乘 {_pct(two_leg['prob'])}｜賠率 {_fmt(round(two_leg['odds'], 2))}｜EV {_pct(two_leg['ev'], signed=True)}",
+                "→ 入場理由係兩腳各自通過證據閘同組合 EV，而唔係總賠率門檻。",
+                "",
+            ]
+        )
+    return lines
+
+
+def _chalk_leg_breakdown_lines(r: dict, factor_map: dict[int, dict[str, float]]) -> list[str]:
+    # Orient by NAME first: market_predictions.selection_side is not reliable
+    # (observed 'player_a' on a player-b selection), and a flipped side turns
+    # every factor into its mirror image.
+    selection = str(r.get("selection_name") or "")
+    if _same_name(selection, str(r.get("player_a_name") or "")):
+        side = "player_a"
+    elif _same_name(selection, str(r.get("player_b_name") or "")):
+        side = "player_b"
+    else:
+        side = r.get("selection_side") if r.get("selection_side") in ("player_a", "player_b") else "player_a"
+    factors = factor_map.get(int(r["match_id"])) or {}
+    scored: list[tuple[str, float]] = []
+    for name, player_a_prob in factors.items():
+        try:
+            p = float(player_a_prob)
+        except (TypeError, ValueError):
+            continue
+        scored.append((name, p if side == "player_a" else 1.0 - p))
+    supports = [f"{_component_label(n)} {_pct(p)}" for n, p in sorted(scored, key=lambda x: -x[1]) if p > 0.55][:4]
+    concerns = [f"{_component_label(n)} {_pct(p)}" for n, p in sorted(scored, key=lambda x: x[1]) if p < 0.45][:3]
+    out = [
+        f"- {_display_label(r['selection_name'])} @ {_fmt(r['odds'])}（{_match_label(r)}）｜"
+        f"模型 {_pct(r['model_probability'])}｜市場去水 {_pct(r.get('no_vig_market_probability'))}"
+    ]
+    if supports:
+        out.append(f"  ➕ 強項：{'、'.join(supports)}")
+    if concerns:
+        out.append(f"  ➖ 弱位：{'、'.join(concerns)}")
+    if not supports and not concerns:
+        out.append("  （分項接近中性；呢隻腳嘅依據係市場大熱本身，唔係模型評分）")
+    return out
+
+
+def _single_bet_breakdown_lines(row: dict) -> list[str]:
+    """Factor breakdown for one singles prediction row (uses its pricing_json)."""
+    try:
+        payload = json.loads(row["pricing_json"])
+        components = payload.get("pricing", {}).get("model", {}).get("components", [])
+        filter_result = payload.get("filter", {})
+    except (TypeError, ValueError, KeyError):
+        components, filter_result = [], {}
+    is_player_a = _same_name(str(row.get("selection_name") or ""), str(row.get("player_a_name") or ""))
+    selection_side = "player_a" if is_player_a else "player_b"
+    supportive = _component_summary(components, selection_side, True)
+    cautious = _component_summary(components, selection_side, False)
+    out = [
+        f"- {_display_label(row['selection_name'])} @ {_fmt(row['current_market_odds'])}（{_match_label(row)}）｜"
+        f"模型 {_pct(row['model_probability'])} vs 市場去水 {_pct(row['no_vig_market_probability'])}"
+    ]
+    if supportive:
+        out.append(f"  ➕ 強項：{supportive}")
+    if cautious:
+        out.append(f"  ➖ 弱位：{cautious}")
+    red_flags = _report_red_flags(filter_result)
+    if red_flags:
+        out.append(f"  🚩 {'；'.join(red_flags[:2])}")
+    return out
+
+
+def _compact_context(row: dict) -> str:
+    parts = [
+        _display_label(value)
+        for value in (row.get("level"), row.get("surface"), row.get("round"))
+        if _is_confirmed_context_value(value)
+    ]
+    return "｜".join(parts)
+
+
+def _reference_singles_lines(bets: list[dict]) -> list[str]:
+    """Compact reference list of the model-edge match-winner singles. Replaces
+    the old 17 full cards (each with the same boilerplate lines repeated).
+    Honest framing: the backtest says this pool bleeds, so it is reference,
+    not a recommendation."""
+    lines = [
+        "## 📎 參考：Match-winner 模型 edge 單（唔係建議）",
+        "",
+        "回測（15,299 注 walk-forward vs 收盤）：呢類「模型話有 edge」嘅單長期 −5~−10%，edge 越大蝕越多；"
+        "假 edge 位（edge≥20%／賠率≥5.0）已自動 NO_BET。堅持要跟：只可平注細注，賠率跌穿「最低可接受」即棄。",
+        "注碼＝tenth-Kelly（1u 起跳、最大 5u）；模型勝率以 Elo 為骨幹，其他有效因素喺 logit 空間微調。",
+        "",
+    ]
+    if not bets:
+        lines.extend(["今日無通過 hard rule 嘅模型 edge 單。", ""])
+        return lines
+    for idx, row in enumerate(bets, start=1):
+        try:
+            payload = json.loads(row["pricing_json"])
+            components = payload.get("pricing", {}).get("model", {}).get("components", [])
+            filter_result = payload.get("filter", {})
+        except (TypeError, ValueError, KeyError):
+            components, filter_result = [], {}
+        is_player_a = _same_name(str(row.get("selection_name") or ""), str(row.get("player_a_name") or ""))
+        selection_side = "player_a" if is_player_a else "player_b"
+        context = _compact_context(row)
+        context_suffix = f"｜{context}" if context else ""
+        lines.append(f"{idx}. {_display_label(row['selection_name'])} @ {_fmt(row['current_market_odds'])}（{_match_label(row)}）{context_suffix}")
+        lines.append(
+            f"   模型 {_pct(row['model_probability'])} vs 市場 {_pct(row['no_vig_market_probability'])}"
+            f"（edge {_pct(row['edge'], signed=True)}）｜最低可接受 {_fmt(row['minimum_acceptable_odds'])}｜"
+            f"注碼 {_stake_label(row['stake_units'], row['decision'])}｜信心 {row['confidence']}"
+        )
+        detail_parts = []
+        supportive = _component_summary(components, selection_side, True)
+        cautious = _component_summary(components, selection_side, False)
+        if supportive:
+            detail_parts.append(f"➕ {supportive}")
+        if cautious:
+            detail_parts.append(f"➖ {cautious}")
+        red_flags = _report_red_flags(filter_result)
+        if red_flags:
+            detail_parts.append(f"🚩 {'；'.join(red_flags[:2])}")
+        if detail_parts:
+            lines.append("   " + "  ".join(detail_parts))
+    lines.append("")
+    return lines
+
+
+def _reference_prop_board_lines(prop: dict | None) -> list[str]:
+    """All priced prop markets per match, including O/U and binary markets."""
+    if not prop:
+        return []
+    if prop.get("error"):
+        return ["## 📎 參考：Prop 盤面", "", f"（Prop 引擎今日無法產生：{prop['error']}）", ""]
+    boards = prop.get("boards") or []
+    if not boards:
+        return []
+    lines = [
+        "## 📎 參考：Prop 盤面（全部可定價市場）",
+        "",
+        "Sportsbet player-prop 盤逐 family 定價；🧪 只代表研究模型見到 edge，未過 evidence gate 仍係 RESEARCH_ONLY。",
+    ]
+    if prop.get("ev_note"):
+        lines.append(f"🔧 {prop['ev_note']}")
+    lines.append("")
+    throwaway: list[str] = []
+    for bd in boards:
+        header = f"### {bd.match_label}"
+        if bd.predicted_match_mean is not None:
+            header += f"｜預測 aces ≈ {bd.predicted_match_mean}"
+        if bd.predicted_games:
+            header += f"｜預測總局數 ≈ {bd.predicted_games}"
+        segment = [header]
+        for tw in bd.match_ou:
+            segment.append(_two_way_line("全場aces", tw, throwaway))
+        for tw in bd.player_ou:
+            segment.append(_two_way_line(f"{tw.scope} aces", tw, throwaway))
+        for tw in bd.double_fault_ou:
+            segment.append(_two_way_line(f"{tw.scope} double faults", tw, throwaway))
+        for tw in bd.player_games_ou:
+            segment.append(_two_way_line(f"{tw.scope} total games", tw, throwaway))
+        for binary in bd.win_a_set:
+            segment.append(_binary_line(f"{binary.scope} win ≥1 set", binary, throwaway))
+        for prop in bd.first_set_winner:
+            segment.append(_head_to_head_line(prop, throwaway))
+        for prop in bd.game_handicap:
+            segment.append(_spread_line("Game Handicap", prop, throwaway))
+        for prop in bd.set_handicap:
+            segment.append(_spread_line("Set Handicap", prop, throwaway))
+        for prop in bd.exact_set_score:
+            segment.extend(_exact_set_score_lines(prop, throwaway))
+        for tw in bd.games_ou:
+            segment.append(_two_way_line("總局數", tw, throwaway))
+        if bd.anchor:
+            anchor = bd.anchor
+            segment.append(
+                f"- N+ 高命中 anchor：{int(anchor.line)}+ @ {_fmt(anchor.decimal_odds)}（命中 {_pct(anchor.blended_prob)}）— 唔代表 +EV"
+            )
+        if len(segment) > 1:
+            lines.extend(segment + [""])
+    if len(lines) <= 5:
+        return []
+    return lines
+
+
+def _feature_coverage_lines(match_date: str) -> list[str]:
+    """Surface Sportsbet-priced matches that never reached the model.
+
+    Previously invisible: the report showed "已分析 38 場" while 60 matches had
+    Sportsbet odds, and the 22 missing ones (an entire ATP 500) were mentioned
+    nowhere. A silent drop reads as "nothing to bet" instead of "we never looked".
+    """
+    try:
+        from tennis_wc.features.feature_builder import feature_build_coverage
+        cov = feature_build_coverage(match_date)
+    except Exception:
+        return []
+    missing = int(cov.get("missing_features") or 0)
+    if not missing:
+        return [f"- 建模覆蓋：{cov.get('with_features', 0)}/{cov.get('singles_candidates', 0)} 場有賠率單打已入模型（無缺口）"]
+    lines = [
+        f"- ⚠️ 建模覆蓋缺口：{missing} 場有 Sportsbet 賠率但未入模型"
+        f"（單打候選 {cov.get('singles_candidates', 0)}｜已建模 {cov.get('with_features', 0)}"
+        f"｜已定價 {cov.get('with_predictions', 0)}｜雙打已排除 {cov.get('doubles_excluded', 0)}）",
+        "     呢啲場冇出現喺上面任何一段 —— 唔係「冇注可落」，係「從未睇過」。缺口按賽事：",
+    ]
+    for name, n in list(cov.get("missing_by_tournament", {}).items())[:6]:
+        lines.append(f"       · {name}：{n} 場")
+    return lines
+
+
+def _data_status_lines(
+    source_status: dict,
+    rows: list[dict],
+    bets: list[dict],
+    watchlist: list[dict],
+    no_bets: list[dict],
+    unanalysed: list[dict],
+    match_date: str | None = None,
+) -> list[str]:
+    lines = [
+        "## ⚙️ 數據狀態（收尾參考）",
+        "",
+        f"- 已分析 {len(rows)} 場｜模型 edge 單 {len(bets)}｜觀察 {len(watchlist)}｜不下注 {len(no_bets)}｜未能分析 {len(unanalysed)}",
+        *( _feature_coverage_lines(match_date) if match_date else [] ),
+        f"- Sportsbet odds rows：{source_status.get('sportsbet_odds_rows', 0)}（已配對 {source_status.get('sportsbet_linked_rows', 0)}）｜最新抓取：{source_status.get('sportsbet_latest_fetch') or 'N/A'}",
+        "- Bankroll：100u virtual bankroll；1 unit = $1；注碼用 tenth-Kelly，1u 起跳、最大 5u",
+        _mode_status_line(source_status.get("run_mode")),
+        f"- Tennis fixture source：{source_status.get('bsd_fixture_status') or 'N/A'}",
+        f"- Fixture 補齊策略：{source_status.get('fixture_note') or 'N/A'}",
+        f"- Ranking refresh：{source_status.get('ranking_source_note') or 'N/A'}",
+        f"- 歷史數據 / Elo：{source_status.get('history_source') or 'N/A'}",
+        f"- 多市場 odds：{source_status.get('market_odds_note') or 'N/A'}",
+    ]
+    metadata_gap_lines = _metadata_gap_summary_lines(rows)
+    if metadata_gap_lines:
+        lines.extend(["", "資料缺口：", *metadata_gap_lines])
+    lines.append("")
     return lines
 
 
@@ -1324,7 +1925,15 @@ def _metadata_gap_summary_lines(rows: list[dict]) -> list[str]:
 
 
 _TIER_BLURB = {
-    combo_engine.TIER_BANKER: ("組合1 穩膽", "高命中、賠率 ~2.0-3.6；最穩主線。"),
+    # 穩膽 tier retired from the model-edge combo engine (Phase 3, 2026-07-12):
+    # its odds/hit band was unsatisfiable for favourites and model-edge parlays
+    # backtest negative anyway. The 穩膽 slot is the chalk chain section above
+    # (穩膽大熱串), which is tracked and settles in combo_tracker.
+    combo_engine.TIER_BANKER: (
+        "組合1 穩膽",
+        "呢欄已由「🎯 穩膽大熱串」取代（見上面）——市場大熱 ≤1.20 平注串，唔靠模型 edge；"
+        "模型 edge 組合經回測證實砌唔出高命中低賠組合。",
+    ),
     combo_engine.TIER_VALUE: ("組合2 價值膽（僅供參考）", "命中中等、賠率 ~2.5-5.5。"),
     combo_engine.TIER_HIGH: ("組合3 高倍率（僅供參考）", "長賠 5+。"),
     combo_engine.TIER_BOMB: ("組合X 火藥庫（僅供參考）", "穩腳 + 高 edge 爆冷腳，長賠。"),
@@ -1491,94 +2100,33 @@ def _build_trial_combos(match_date: str, rows: list[dict]) -> list[dict]:
 
 
 def render_banker_report(match_date: str, rows: list[dict]) -> str:
-    result, legs = _build_combo_tiers(match_date, rows)
-    tiers = result["tiers"]
-    total = sum(len(section) for section in tiers.values())
-    combo_min_odds = min(_TIER_ODDS_FLOORS) if legs else None
+    """Compatibility export for the legacy banker-report filename.
 
-    market_keys = {str(r.get("market_key") or "") for r in rows}
-    # STRATEGY (2026-07-04): player props are the primary play. A 15,299-bet
-    # backtest showed the match-winner model's edge is anti-predictive at real
-    # odds (value −5.4% / high −32%), so match-winner is NO LONGER a standalone
-    # value bet -- it is used only as a STABLE combo leg (short-priced favourites
-    # in the 大熱串, or a strong-fav anchor). Props lead; match-winner is reference.
+    ``rows`` stays in the signature for existing CLI callers, but active output
+    is player-prop only.
+    """
     lines = [
-        "Tennis Wong Choi 每日 Banker / Combo Report",
+        "Tennis Wong Choi 每日 Player Prop Strategy Report",
         f"日期：{match_date}",
         "",
-        "## 🎯 策略重心：Player Props（match-winner 只作穩定組合腳）",
+        "## 🎯 策略重心：Player Props",
         "",
-        "回測結論：match-winner 模型 edge 係反指標（價值 −5.4%、高倍率 −32%，edge 越大越蝕），唔再做主打。",
-        "主打 = 下面嘅 🎾 Prop + 🎯 Prop 串（唯一喺記分卡贏緊市場嘅結構）。",
-        "match-winner 淨係喺『穩膽大熱串』（市場大熱 ≤1.20）或做強熱 anchor 先用，只作穩定組合腳，唔再單獨當 value 落。",
+        "回測結論：match-winner 15,299 注樣本錄得 −5.4% 至 −32% ROI，edge 越大反而越差，唔再做投注主線。",
+        "主打 = 下面嘅 🎾 Player Prop 單注 + 跨場兩腳 Player Prop；match-winner 只作分析 context。",
+        "Match-total markets 只保留做研究記分卡，唔會升級成正式推薦。",
+        "策略狀態：EARLY_MAIN_SINGLE／EARLY_MAIN_2_LEG 可提早小注；VALIDATED 代表完整畢業；其餘 RESEARCH_ONLY。",
         "",
     ]
     # PRIMARY: player props + prop parlays + live scorecard.
     lines.extend(_ace_prop_lines(match_date))
-    # Stable match-winner legs: chalk favourites (≤1.20) parlayed -- the one
-    # match-winner structure that does not bleed. This is "match-winner as a
-    # stable combo leg" in practice.
-    lines.extend(_chalk_combo_lines(rows))
-    # ---- reference zone: match-winner edge combos (demoted, backtest-negative) ----
-    lines.extend([
-        "────────── 以下：match-winner 參考區（回測長期蝕，只作組合腳 / 觀察，唔建議單獨追）──────────",
-        "",
-    ])
-    if legs:
-        lines.extend(_anchor_single_lines(legs))
-        lines.extend(_slate_concentration_lines(legs, result))
-    if market_keys and market_keys <= {"match_winner", ""}:
-        lines.extend(
-            [
-                "⚠️ 今日只抓到 match-winner 賠率，未有多市場數據（總局數 / 讓局 / 贏盤等）。",
-                "   多市場 enrichment 未跑或失敗 → 組合只可來自 match-winner，試注組合會冇。",
-                "   要有更多組合，請喺 live 模式跑 `run-daily`（會自動 enrich-event-markets），唔好用 --mvp-snapshot。",
-                "",
-            ]
-        )
-    if total == 0:
-        if legs:
-            # We have qualifying picks but no combo cleared a tier band. The most
-            # common reason: the legs are short-priced favourites whose combined
-            # odds fall below the combo floor (~1.9) — i.e. worth betting as
-            # singles, not as a parlay. Say so and surface the singles.
-            lines.append(
-                f"今日有 {len(legs)} 個合格單腳，但夾唔出抵砌嘅組合"
-                f"（可砌嘅 +EV 組合得 {result['candidate_count']} 個，合併賠率多數低過組合下限 {combo_min_odds}，"
-                "即係兩隻大熱夾埋都唔夠賠率，倒不如當單注落）。"
-            )
-            lines.extend(["", *_qualifying_singles_lines(legs)])
-        else:
-            lines.append("今日無合格單腳（冇 match-winner BET、亦無已驗證市場），亦無組合；建議唔落。")
-    else:
-        for tier in combo_engine._TIER_ORDER:
-            section = tiers.get(tier) or []
-            title, blurb = _TIER_BLURB[tier]
-            lines.extend([f"## {title}", "", blurb, ""])
-            if tier in _DEMOTED_TIERS:
-                lines.extend([_DEMOTED_TIER_WARNING, ""])
-            if not section:
-                lines.extend(["（今日無合資格組合）", ""])
-                continue
-            for idx, combo in enumerate(section, start=1):
-                lines.extend(_render_combo_card(combo, idx))
-        # Also surface any qualifying single that didn't end up in a shown combo.
-        lines.extend(_qualifying_singles_lines(legs))
-
-    # Trial combos from the opened (modelled-but-unvalidated) markets.
-    trial = _build_trial_combos(match_date, rows)
-    if trial:
-        lines.extend(
-            [
-                "## 試注組合（未驗證市場）",
-                "",
-                "以下組合含「已建模但未經結算驗證」嘅市場（總局數 / 讓局 / 贏盤等）。模型未證實長期 +EV，"
-                "宜當試注；落注前自己用即時盤口同判斷再核。",
-                "",
-            ]
-        )
-        for idx, combo in enumerate(trial, start=1):
-            lines.extend(_render_combo_card(combo, idx, trial=True))
+    lines.extend(
+        [
+            "## Match-winner 參考",
+            "",
+            "Match-winner 唔會進入正式單注或組合；只保留作賽事方向、player-prop context。",
+            "",
+        ]
+    )
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -1669,6 +2217,13 @@ _CHALK_MAX_ODDS = 1.20
 _CHALK_MIN_MODEL_PROB = 0.52
 _CHALK_MIN_CONFIDENCE = 65
 _CHALK_FLAT_STAKE_U = 1.0
+# The chalk backtest (tennis-data seasons) covers TOUR-LEVEL events only. Now
+# that Phase 2 lets ITF/Challenger matches score above the quality floor, keep
+# them out of the chalk chains until their own tracker record proves the
+# favourite-longshot edge exists down there too.
+_CHALK_EXCLUDED_COMPETITION_RE = re.compile(
+    r"\b(challenger|itf|futures|utr|doubles)\b", re.IGNORECASE
+)
 
 
 def _chalk_combo_legs(rows: list[dict]) -> list[dict]:
@@ -1676,6 +2231,8 @@ def _chalk_combo_legs(rows: list[dict]) -> list[dict]:
     best: dict[int, dict] = {}
     for r in rows:
         if str(r.get("market_key") or "") != "match_winner":
+            continue
+        if _CHALK_EXCLUDED_COMPETITION_RE.search(str(r.get("tournament_name") or "")):
             continue
         odds, mp = r.get("odds"), r.get("model_probability")
         if odds is None or mp is None:
@@ -1688,6 +2245,64 @@ def _chalk_combo_legs(rows: list[dict]) -> list[dict]:
         if mid not in best or float(mp) > float(best[mid]["model_probability"]):
             best[mid] = r
     return list(best.values())
+
+
+def _chalk_combo_dicts(rows: list[dict]) -> list[dict]:
+    """Deployable DISJOINT chalk chains for the combo tracker（tier 穩膽大熱串）.
+
+    The report section shows ranked (overlapping) candidate parlays; the
+    tracker records only the greedy disjoint chains — 3-leg first, then a
+    2-leg from the remainder — matching the structure the backtest validated,
+    at the flat stake. This gives the headline 穩膽 recommendation a settled
+    track record instead of being report-only."""
+    legs = _chalk_combo_legs(rows)
+    if len(legs) < 2:
+        return []
+    legs.sort(key=lambda r: -float(r["model_probability"]))
+    chains: list[list[dict]] = []
+    i = 0
+    while len(legs) - i >= 3:
+        chains.append(legs[i : i + 3])
+        i += 3
+    if len(legs) - i == 2:
+        chains.append(legs[i : i + 2])
+    out: list[dict] = []
+    for grp in chains:
+        odds = hit = 1.0
+        leg_dicts: list[dict] = []
+        for r in grp:
+            odds *= float(r["odds"])
+            hit *= float(r["model_probability"])
+            leg_dicts.append(
+                {
+                    "id": r.get("id"),
+                    "match_id": r.get("match_id"),
+                    "match_label": r.get("match_label"),
+                    "market_key": r.get("market_key"),
+                    "market_name": r.get("market_name"),
+                    "selection_name": r.get("selection_name"),
+                    "selection_side": r.get("selection_side"),
+                    "line": r.get("line"),
+                    "tier": "穩膽大熱串",
+                    "odds": r.get("odds"),
+                    "edge": r.get("edge"),
+                    "confidence": r.get("confidence"),
+                }
+            )
+        out.append(
+            {
+                "legs": leg_dicts,
+                "tier": "穩膽大熱串",
+                "combo_odds": round(odds, 4),
+                "adjusted_hit_probability": round(hit, 4),
+                "average_edge": None,
+                "adjusted_edge": None,
+                "min_confidence": min(int(r.get("confidence") or 0) for r in grp),
+                "adjusted_confidence": min(int(r.get("confidence") or 0) for r in grp),
+                "stake_units": _CHALK_FLAT_STAKE_U,
+            }
+        )
+    return out
 
 
 def _chalk_combo_lines(rows: list[dict]) -> list[str]:
@@ -1741,127 +2356,554 @@ def _chalk_combo_lines(rows: list[dict]) -> list[str]:
     return lines
 
 
-def _ace_prop_lines(match_date: str) -> list[str]:
-    """NBA-style player-prop section: match-total AND single-player ACES on the
-    soft Sportsbet book, priced by the calibrated ace model. Two-way markets are
-    de-vigged exactly and BOTH sides priced, so we can back the UNDER (fade) where
-    the model sees value. Honest by design: +EV flagged only within the calibrated
-    range (never longshot extrapolation), ROI stated as unverified, and a live
-    model-vs-market scorecard shows who is actually right as results settle."""
+def _prop_source_quality(family: str, carrier, fallback) -> float:
+    """Return quality for the data the family model actually consumes."""
+    from tennis_wc.props.strategy import normalise_data_quality
+
+    factors = getattr(carrier, "factors", {}) or {}
+    if family == "match_total_aces":
+        samples = [factors.get("a_history_n"), factors.get("b_history_n")]
+    elif family == "player_aces":
+        samples = [
+            factors.get("subject_history_n"), factors.get("opponent_history_n")
+        ]
+    elif family == "player_double_faults":
+        samples = [factors.get("history_n")]
+    else:
+        return normalise_data_quality(fallback)
+    valid = [float(value) for value in samples if value is not None]
+    if len(valid) != len(samples) or not valid:
+        return 0.0
+    return min(1.0, min(valid) / 15.0)
+
+
+def _ace_prop_data(match_date: str) -> dict:
+    """Price the day's props ONCE and share the result between the merged daily
+    report (🎯 recommendations + reference board) and the legacy banker report.
+    Returns {'error': ...} instead of raising — the prop engine is experimental
+    and must never break the report."""
     try:
         from tennis_wc.props.daily import price_ace_props_for_date
         from tennis_wc.props.settlement import (
             settle_props, prop_roi_report, model_vs_market_scorecard,
         )
-        from tennis_wc.props import calibration
+        from tennis_wc.props import calibration, strategy
         conn = get_connection()
         settle_props(conn)  # grade anything now settleable before we review
         boards = price_ace_props_for_date(conn, match_date, log=True)
-        _ev_note = calibration.strength_note(calibration.current_strength(conn), conn)
-    except Exception as exc:  # never let an experimental section break the report
-        return ["## 🎾 球員 Prop：Aces（實驗中）", "", f"（Prop 引擎今日無法產生：{exc}）", ""]
+        profiles = [
+            calibration.family_reliability(conn, family, as_of_date=match_date)
+            for family in sorted(strategy.SUPPORTED_FAMILIES)
+        ]
+        ev_note = "逐 family、只用賽前舊結果估權重：" + "；".join(
+            f"{profile.family} {profile.model_weight:.0%}(n={profile.settled})"
+            for profile in profiles
+        )
+    except Exception as exc:
+        return {"error": str(exc), "boards": [], "value_legs": [], "combos": [],
+                "scorecard": None, "roi": None, "ev_note": None, "strategy": None}
+    value_legs: list[dict] = []
+    quality_by_match = {
+        int(row["match_id"]): float(row["data_quality"])
+        for row in conn.execute(
+            """
+            SELECT fs.match_id, MIN(fs.data_quality_score) AS data_quality
+            FROM feature_snapshots fs
+            JOIN matches m ON m.id = fs.match_id
+            WHERE m.match_date = ?
+            GROUP BY fs.match_id
+            """,
+            (match_date,),
+        ).fetchall()
+        if row["data_quality"] is not None
+    }
+    for bd in boards:
+        families = (
+            ("全場 aces", "match_total_aces", bd.match_ou),
+            ("player aces", "player_aces", bd.player_ou),
+            ("player double faults", "player_double_faults", bd.double_fault_ou),
+            ("player total games", "player_total_games", bd.player_games_ou),
+            ("全場總局數", "match_total_games", bd.games_ou),
+        )
+        for kind_label, family, tws in families:
+            for tw in tws:
+                if not tw.value_side:
+                    continue
+                scope_label = (
+                    f"{tw.scope} {kind_label.split(' ', 1)[-1]}"
+                    if family.startswith("player_") else kind_label
+                )
+                value_legs.append(
+                    {
+                        "id": f"prop:{tw.match_id}:{tw.market_key}:{tw.value_side}:{tw.line:g}",
+                        "match_id": tw.match_id,
+                        "match_label": bd.match_label,
+                        "desc": f"{scope_label} {tw.value_side.upper()} {tw.line} @ {_fmt(tw.value_odds)}",
+                        "kind_label": family,
+                        "family": family,
+                        "market_key": tw.market_key,
+                        "market_name": scope_label,
+                        "selection_name": f"{tw.value_side.title()} {tw.line:g}",
+                        "selection_side": None,
+                        "line": tw.line,
+                        "side": tw.value_side,
+                        "odds": tw.value_odds,
+                        "prob": tw.blended_prob,
+                        "data_quality": _prop_source_quality(
+                            family, tw,
+                            quality_by_match.get(int(tw.match_id), 0.0),
+                        ),
+                        "edge": tw.edge,
+                        "ev": tw.ev,
+                        "tw": tw,
+                    }
+                )
+        for binary in bd.win_a_set:
+            if not binary.value_side:
+                continue
+            value_legs.append(
+                {
+                    "id": f"prop:{binary.match_id}:{binary.market_key}:{binary.value_side}",
+                    "match_id": binary.match_id,
+                    "match_label": bd.match_label,
+                    "desc": (
+                        f"{binary.scope} Win ≥1 Set {binary.value_side.upper()} "
+                        f"@ {_fmt(binary.value_odds)}"
+                    ),
+                    "kind_label": "player_win_a_set",
+                    "family": "player_win_a_set",
+                    "market_key": binary.market_key,
+                    "market_name": f"{binary.scope} To Win At Least One Set",
+                    "selection_name": binary.value_side.title(),
+                    "selection_side": None,
+                    "line": 0.5,
+                    "side": "over" if binary.value_side == "yes" else "under",
+                    "odds": binary.value_odds,
+                    "prob": binary.blended_prob,
+                    "data_quality": quality_by_match.get(int(binary.match_id), 0.0),
+                    "edge": binary.edge,
+                    "ev": binary.ev,
+                    "tw": binary,
+                }
+            )
+        for prop in bd.first_set_winner:
+            if prop.value_player_id is None:
+                continue
+            value_legs.append(
+                {
+                    "id": f"prop:{prop.match_id}:first_set_winner:{prop.value_player_id}",
+                    "match_id": prop.match_id,
+                    "match_label": bd.match_label,
+                    "desc": f"{prop.value_name} Set 1 Winner @ {_fmt(prop.value_odds)}",
+                    "kind_label": "first_set_winner",
+                    "family": "first_set_winner",
+                    "market_key": f"first_set_winner_{prop.value_player_id}",
+                    "market_name": "Set 1 Winner",
+                    "selection_name": prop.value_name,
+                    "selection_side": None,
+                    "line": 0.5,
+                    "side": "over",
+                    "odds": prop.value_odds,
+                    "prob": prop.blended_prob,
+                    "data_quality": quality_by_match.get(int(prop.match_id), 0.0),
+                    "edge": prop.edge,
+                    "ev": prop.ev,
+                    "tw": prop,
+                }
+            )
+        for family, market_label, spreads in (
+            ("player_game_handicap", "Game Handicap", bd.game_handicap),
+            ("player_set_handicap", "Set Handicap", bd.set_handicap),
+        ):
+            for prop in spreads:
+                if prop.value_player_id is None:
+                    continue
+                value_is_a = prop.value_player_id == prop.player_a_id
+                value_legs.append(
+                    {
+                        "id": (
+                            f"prop:{prop.match_id}:{prop.market_key}:"
+                            f"{prop.value_player_id}:{prop.value_handicap:g}"
+                        ),
+                        "match_id": prop.match_id,
+                        "match_label": bd.match_label,
+                        "desc": (
+                            f"{prop.value_name} {market_label} "
+                            f"({prop.value_handicap:+g}) @ {_fmt(prop.value_odds)}"
+                        ),
+                        "kind_label": family,
+                        "family": family,
+                        "market_key": prop.market_key,
+                        "market_name": market_label,
+                        "selection_name": (
+                            f"{prop.value_name} ({prop.value_handicap:+g})"
+                        ),
+                        "selection_side": None,
+                        "line": prop.value_handicap,
+                        "side": "over" if value_is_a else "under",
+                        "odds": prop.value_odds,
+                        "prob": prop.blended_prob,
+                        "data_quality": quality_by_match.get(int(prop.match_id), 0.0),
+                        "edge": prop.edge,
+                        "ev": prop.ev,
+                        "tw": prop,
+                    }
+                )
+        for prop in bd.exact_set_score:
+            for selection in prop.selections:
+                if not selection.is_value:
+                    continue
+                value_legs.append(
+                    {
+                        "id": (
+                            f"prop:{prop.match_id}:player_exact_set_score:"
+                            f"{selection.player_id}:{selection.sets_lost}"
+                        ),
+                        "match_id": prop.match_id,
+                        "match_label": bd.match_label,
+                        "desc": (
+                            f"{selection.player_name} Exact Set Score "
+                            f"2-{selection.sets_lost} @ {_fmt(selection.odds)}"
+                        ),
+                        "kind_label": "player_exact_set_score",
+                        "family": "player_exact_set_score",
+                        "market_key": (
+                            f"player_exact_set_score_{selection.player_id}_"
+                            f"{selection.sets_lost}"
+                        ),
+                        "market_name": "Exact Set Score",
+                        "selection_name": (
+                            f"{selection.player_name} 2-{selection.sets_lost}"
+                        ),
+                        "selection_side": None,
+                        "line": float(selection.sets_lost),
+                        "side": "over",
+                        "odds": selection.odds,
+                        "prob": selection.blended_prob,
+                        "data_quality": quality_by_match.get(int(prop.match_id), 0.0),
+                        "edge": selection.edge,
+                        "ev": selection.ev,
+                        "tw": selection,
+                    }
+                )
+    try:
+        scorecard = model_vs_market_scorecard(conn, as_of_date=match_date)
+        roi = prop_roi_report(conn, as_of_date=match_date)
+        strategy_state = strategy.recommendation_gate(scorecard, roi)
+        for leg in value_legs:
+            leg["hit_probability"] = leg.get("prob")
+            leg["confidence_score"] = strategy.confidence_score(
+                leg, strategy_state
+            )
+    except Exception:
+        scorecard = roi = strategy_state = None
+    return {"error": None, "boards": boards, "value_legs": value_legs,
+            "combos": _prop_combos(value_legs), "scorecard": scorecard,
+            "roi": roi, "ev_note": ev_note, "strategy": strategy_state}
+
+
+def _prop_combos(value_legs: list[dict]) -> list[dict]:
+    """Build research combos from the same profile a formal leg may use.
+
+    Family evidence is deliberately not required here (these are paper combos),
+    but longshots, low-quality/low-probability legs and duplicate exposure to
+    one fixture are removed before the combinatorial step.
+    """
+    from tennis_wc.props import strategy
+
+    best_by_match: dict[int, dict] = {}
+    for leg in value_legs:
+        try:
+            eligible = (
+                strategy.family_for_market(leg.get("market_key") or "")
+                in strategy.RECOMMENDABLE_PLAYER_FAMILIES
+                and strategy.MIN_LEG_PROBABILITY <= float(leg["prob"]) <= 1.0
+                and strategy.MIN_LEG_ODDS <= float(leg["odds"]) <= strategy.MAX_LEG_ODDS
+                and strategy.normalise_data_quality(leg["data_quality"])
+                >= strategy.MIN_DATA_QUALITY
+                and float(leg.get("edge") or 0) > 0
+                and float(leg.get("ev") or 0) > 0
+            )
+        except (KeyError, TypeError, ValueError):
+            eligible = False
+        if not eligible:
+            continue
+        match_id = int(leg["match_id"])
+        incumbent = best_by_match.get(match_id)
+        if incumbent is None or float(leg["ev"]) > float(incumbent["ev"]):
+            best_by_match[match_id] = leg
+    value_legs = list(best_by_match.values())
+    combos: list[dict] = []
+    n = len(value_legs)
+    for size in (2, 3):
+        for idx in combinations(range(n), size):
+            legs = [value_legs[i] for i in idx]
+            if len({lg["match_id"] for lg in legs}) != size:
+                continue  # same-match legs correlate; skip
+            odds = prob = 1.0
+            for lg in legs:
+                odds *= lg["odds"]
+                prob *= lg["prob"]
+            combos.append({"ev": prob * odds - 1.0, "prob": prob, "odds": odds, "legs": legs})
+    combos.sort(key=lambda c: -c["ev"])
+    return combos
+
+
+def _tracked_prop_combo(combo: dict) -> dict:
+    """Convert a research prop combo into the common combo-tracker shape."""
+    size = len(combo["legs"])
+    tier = f"PROP_{size}_LEG_TRIAL"
+    legs = []
+    for leg in combo["legs"]:
+        legs.append(
+            {
+                "id": leg["id"],
+                "match_id": leg["match_id"],
+                "match_label": leg["match_label"],
+                "market_key": leg["market_key"],
+                "market_name": leg["market_name"],
+                "selection_name": leg["selection_name"],
+                "selection_side": leg.get("selection_side"),
+                "line": leg["line"],
+                "tier": tier,
+                "odds": leg["odds"],
+                "edge": leg["edge"],
+                "confidence": round(float(leg["prob"]) * 100),
+                "confidence_score": leg.get("confidence_score"),
+                "hit_probability": leg.get("hit_probability", leg.get("prob")),
+                "data_quality": leg.get("data_quality"),
+            }
+        )
+    return {
+        "legs": legs,
+        "tier": tier,
+        "combo_odds": combo["odds"],
+        "adjusted_confidence": round(float(combo["prob"]) * 100),
+        "adjusted_edge": sum(float(leg["edge"]) for leg in combo["legs"]) / size,
+        "stake_units": 1.0,
+    }
+
+
+def _ace_prop_lines(match_date: str) -> list[str]:
+    """Legacy banker-report prop section (board + value picks + parlays +
+    review), rendered off the shared `_ace_prop_data`."""
+    data = _ace_prop_data(match_date)
+    if data.get("error"):
+        return ["## 🎾 Player Props", "", f"（Prop 引擎今日無法產生：{data['error']}）", ""]
     lines = [
-        "## 🎾 球員 Prop：Aces（NBA 式 soft-market，實驗中・上線驗證緊）",
+        "## 🎾 Player Props 全市場板",
         "",
-        "學 NBA 打 prop：只用 soft book（Sportsbet），模型經歷史校準（P(over) 係實測頻率）。",
-        "兩邊盤（Over/Under X.5）已精確去水，兩邊都定價 → 可以夾 under（模型認為 aces 會少過條線嗰邊）。",
-        "⚠ ROI 未驗證：ace 結算 overlap 得約 16 場。已剔走超出校準範圍嘅長賠（>1.25× 預測均值 = 外推假 edge）。",
-        "每條記入 prop_tracker、賽後自動結算；睇下面『模型 vs 市場記分卡』知邊個啱（比 ROI 快）。",
-        f"🔧 {_ev_note}（模型未夠數據前把機率向 50% 收，避免高估 EV；夠數據會自動放鬆或收緊）。",
+        "涵蓋：Player Aces、Double Faults、Player Total Games、Win At Least 1 Set、Set 1 Winner、Game Handicap、Set Handicap、Exact Set Score；有盤先定價。",
+        "新 family 一律由 RESEARCH_ONLY 開始，逐 family 累積結算、Brier 同 ROI，過閘先升級。",
+        "ℹ️ WTA aces 暫時只定價不下注；Win-a-Set／Player Games 可由正式比分結算。",
+        "⚠ ROI 未驗證：每條記入 prop_tracker、賽後自動結算；睇『模型 vs 市場記分卡』知邊個啱（比 ROI 快）。",
+        f"🔧 {data['ev_note']}（命中概率沿 raw 模型→去水市場收縮；唔再向 50% 拉，避免反向製造假 edge）。",
         "",
     ]
     val_picks: list[str] = []
-    value_legs: list[dict] = []
-    for bd in boards:
-        hdr = f"### {bd.match_label}｜預測 aces ≈ {bd.predicted_match_mean}"
+    for bd in data["boards"]:
+        hdr = f"### {bd.match_label}"
+        if bd.predicted_match_mean is not None:
+            hdr += f"｜預測 aces ≈ {bd.predicted_match_mean}"
         if bd.predicted_games:
             hdr += f"｜預測總局數 ≈ {bd.predicted_games}"
         seg = [hdr]
         for tw in bd.match_ou:
-            seg.append(_two_way_line("全場aces", tw, val_picks, value_legs))
+            seg.append(_two_way_line("全場aces", tw, val_picks))
         for tw in bd.player_ou:
-            seg.append(_two_way_line(f"{tw.scope} aces", tw, val_picks, value_legs))
+            seg.append(_two_way_line(f"{tw.scope} aces", tw, val_picks))
+        for tw in bd.double_fault_ou:
+            seg.append(_two_way_line(f"{tw.scope} double faults", tw, val_picks))
+        for tw in bd.player_games_ou:
+            seg.append(_two_way_line(f"{tw.scope} total games", tw, val_picks))
+        for binary in bd.win_a_set:
+            seg.append(_binary_line(f"{binary.scope} win ≥1 set", binary, val_picks))
+        for prop in bd.first_set_winner:
+            seg.append(_head_to_head_line(prop, val_picks))
+        for prop in bd.game_handicap:
+            seg.append(_spread_line("Game Handicap", prop, val_picks))
+        for prop in bd.set_handicap:
+            seg.append(_spread_line("Set Handicap", prop, val_picks))
+        for prop in bd.exact_set_score:
+            seg.extend(_exact_set_score_lines(prop, val_picks))
         for tw in bd.games_ou:
-            seg.append(_two_way_line("總局數", tw, val_picks, value_legs))
+            seg.append(_two_way_line("總局數", tw, val_picks))
         if bd.anchor:
             a = bd.anchor
             seg.append(f"- N+ 高命中 anchor：{int(a.line)}+ @ {_fmt(a.decimal_odds)}（命中 {_pct(a.blended_prob)}）— 唔代表 +EV")
         if len(seg) > 1:
             lines.extend(seg + [""])
     if val_picks:
-        lines.extend(["### ✅ 今日模型認為有 value 嘅 prop（未證實，細注試 + 格價）", "", *val_picks, ""])
+        lines.extend([
+            "### 🧪 RESEARCH_ONLY 訊號（paper 1u，唔落真注）",
+            "",
+            *val_picks,
+            "",
+        ])
     else:
         lines.extend(["今日冇 prop 過到 value 關（soft book 主線都定得緊）。唔好硬追；等記分卡儲夠數據。", ""])
-    # Prop parlays (NBA banker structure): different-match legs are independent, so
-    # +EV compounds. Surfaced so combinations can be tested during validation.
-    lines.extend(_prop_combo_lines(value_legs))
-    # ---- Review block: scorecard + segmented ROI (live validation) ----
-    try:
-        sc = model_vs_market_scorecard(conn)
-        roi = prop_roi_report(conn)
-        lines.extend(_prop_review_lines(sc, roi))
-    except Exception:
-        pass
+    lines.extend(_prop_combo_lines(data["combos"]))
+    if data.get("scorecard") is not None:
+        lines.extend(
+            _prop_review_lines(
+                data["scorecard"],
+                data.get("roi") or {},
+                data.get("strategy") or {},
+            )
+        )
     return lines
 
 
-def _two_way_line(scope_label: str, tw, val_picks: list[str], value_legs: list[dict] | None = None) -> str:
-    """Render one Over/Under prop; record value picks (for the ✅ list and combos)."""
+def _binary_line(scope_label: str, binary, val_picks: list[str]) -> str:
+    base = (
+        f"- {scope_label}：Yes @ {_fmt(binary.yes_odds)} / No @ {_fmt(binary.no_odds)}"
+        f"｜模型 P(Yes) {_pct(binary.model_prob_yes)}｜市場fair {_pct(binary.fair_prob_yes)}"
+    )
+    if binary.value_side:
+        desc = f"{scope_label} {binary.value_side.upper()} @ {_fmt(binary.value_odds)}"
+        val_picks.append(
+            f"- {desc}（模型 {_pct(binary.blended_prob)} / "
+            f"edge {_pct(binary.edge, signed=True)}）"
+        )
+        return (
+            base + f"  🧪 {binary.value_side.upper()} @ {_fmt(binary.value_odds)}"
+            f"｜edge {_pct(binary.edge, signed=True)}｜EV {_pct(binary.ev, signed=True)}"
+        )
+    return base
+
+
+def _head_to_head_line(prop, val_picks: list[str]) -> str:
+    base = (
+        f"- Set 1 Winner：{prop.player_a_name} @ {_fmt(prop.a_odds)} / "
+        f"{prop.player_b_name} @ {_fmt(prop.b_odds)}"
+        f"｜模型 P({prop.player_a_name}) {_pct(prop.model_prob_a)}"
+        f"｜市場fair {_pct(prop.fair_prob_a)}"
+    )
+    if prop.value_player_id is not None:
+        desc = f"{prop.value_name} Set 1 Winner @ {_fmt(prop.value_odds)}"
+        val_picks.append(
+            f"- {desc}（模型 {_pct(prop.blended_prob)} / "
+            f"edge {_pct(prop.edge, signed=True)}）"
+        )
+        return (
+            base + f"  🧪 {prop.value_name} @ {_fmt(prop.value_odds)}"
+            f"｜edge {_pct(prop.edge, signed=True)}｜EV {_pct(prop.ev, signed=True)}"
+        )
+    return base
+
+
+def _spread_line(scope_label: str, prop, val_picks: list[str]) -> str:
+    base = (
+        f"- {scope_label}：{prop.player_a_name} ({prop.a_handicap:+g}) "
+        f"@ {_fmt(prop.a_odds)} / {prop.player_b_name} ({prop.b_handicap:+g}) "
+        f"@ {_fmt(prop.b_odds)}｜模型 P({prop.player_a_name} cover) "
+        f"{_pct(prop.model_prob_a_cover)}｜市場fair {_pct(prop.fair_prob_a_cover)}"
+    )
+    if prop.value_player_id is not None:
+        desc = (
+            f"{prop.value_name} {scope_label} ({prop.value_handicap:+g}) "
+            f"@ {_fmt(prop.value_odds)}"
+        )
+        val_picks.append(
+            f"- {desc}（模型 {_pct(prop.blended_prob)} / "
+            f"edge {_pct(prop.edge, signed=True)}）"
+        )
+        return (
+            base + f"  🧪 {prop.value_name} ({prop.value_handicap:+g}) "
+            f"@ {_fmt(prop.value_odds)}｜edge {_pct(prop.edge, signed=True)}"
+            f"｜EV {_pct(prop.ev, signed=True)}"
+        )
+    return base
+
+
+def _exact_set_score_lines(prop, val_picks: list[str]) -> list[str]:
+    lines = ["- Exact Set Score（四項去水；概率總和 100%）："]
+    for selection in prop.selections:
+        desc = f"{selection.player_name} 2-{selection.sets_lost}"
+        line = (
+            f"  · {desc} @ {_fmt(selection.odds)}｜模型 "
+            f"{_pct(selection.model_prob)}｜市場fair {_pct(selection.fair_prob)}"
+        )
+        if selection.is_value:
+            line += (
+                f"  🧪 edge {_pct(selection.edge, signed=True)}"
+                f"｜EV {_pct(selection.ev, signed=True)}"
+            )
+            val_picks.append(
+                f"- {desc} @ {_fmt(selection.odds)}（模型 "
+                f"{_pct(selection.blended_prob)} / "
+                f"edge {_pct(selection.edge, signed=True)}）"
+            )
+        lines.append(line)
+    return lines
+
+
+def _two_way_line(scope_label: str, tw, val_picks: list[str]) -> str:
+    """Render one Over/Under prop; record value picks (for the ✅ list)."""
     base = (f"- {scope_label} O/U {tw.line}：Over @ {_fmt(tw.over_odds)} / Under @ {_fmt(tw.under_odds)}"
             f"｜模型 P(over) {_pct(tw.model_prob_over)}｜市場fair {_pct(tw.fair_prob_over)}")
     if tw.value_side:
-        tag = f"  ✅ {('大' if tw.value_side=='over' else '細')}({tw.value_side}) @ {_fmt(tw.value_odds)}｜edge {_pct(tw.edge, signed=True)}｜EV {_pct(tw.ev, signed=True)}"
+        tag = f"  🧪 {('大' if tw.value_side=='over' else '細')}({tw.value_side}) @ {_fmt(tw.value_odds)}｜edge {_pct(tw.edge, signed=True)}｜EV {_pct(tw.ev, signed=True)}"
         desc = f"{scope_label} {tw.value_side.upper()} {tw.line} @ {_fmt(tw.value_odds)}"
         val_picks.append(f"- {desc}（模型 {_pct(tw.blended_prob)} / edge {_pct(tw.edge, signed=True)}）")
-        if value_legs is not None:
-            value_legs.append({"match_id": tw.match_id, "desc": desc,
-                               "odds": tw.value_odds, "prob": tw.blended_prob})
         return base + tag
     return base
 
 
-def _prop_combo_lines(value_legs: list[dict]) -> list[str]:
-    """NBA-style prop parlays: combine +EV value legs from DIFFERENT matches
-    (independent -> joint prob = product, no correlation haircut). Flat 1u. These
-    are the combinations to test during validation."""
-    lines = ["## 🎯 Prop 串（NBA banker 式・唔同場獨立相乘）", ""]
-    if len(value_legs) < 2:
-        lines.extend(["今日 value prop 唔夠 2 條（唔同場）夾唔到串；有得夾會喺度顯示。", ""])
+def _prop_combo_lines(combos: list[dict]) -> list[str]:
+    """Render research prop parlays (already built by `_prop_combos`)."""
+    lines = ["## 🧪 Prop 串研究板（唔係正式投注建議）", ""]
+    if not combos:
+        lines.extend(["今日 value prop 唔夠 2 條唔同場嘅腳，夾唔到獨立串；有得夾會喺度顯示。", ""])
         return lines
     lines.extend([
-        "原理：唔同場嘅 prop 互相獨立 → 命中率相乘、賠率相乘、+EV 疊加（同 NBA banker 一樣）。",
-        "⚠ 每條 leg 都係未證實嘅 value；平注細試、逐條格價。同場嘅腳唔夾（會相關）。",
+        "兩腳同三腳會分開追蹤；只夾唔同場，避免明顯同場相關性。",
+        "⚠ 呢區只係 paper tracking。未過樣本閘前，模型 EV 唔等於可落注優勢。",
         "",
     ])
-    combos: list[tuple] = []
-    n = len(value_legs)
-    for size in (2, 3):
-        for idx in combinations(range(n), size):
-            legs = [value_legs[i] for i in idx]
-            if len({lg["match_id"] for lg in legs}) != size:
-                continue  # different matches only
-            odds = prob = 1.0
-            for lg in legs:
-                odds *= lg["odds"]; prob *= lg["prob"]
-            ev = prob * odds - 1.0
-            combos.append((ev, prob, odds, legs))
-    if not combos:
-        lines.extend(["今日 value prop 全部同場，夾唔到獨立串。", ""])
-        return lines
-    combos.sort(key=lambda c: -c[0])
-    for i, (ev, prob, odds, legs) in enumerate(combos[:5], 1):
-        lines.append(f"### 串 {i}｜{len(legs)} 腳｜Odds {_fmt(round(odds,2))}｜命中 {_pct(prob)}｜EV {_pct(ev, signed=True)}｜1u")
-        for lg in legs:
+    for i, combo in enumerate(combos[:5], 1):
+        lines.append(
+            f"### 串 {i}｜{len(combo['legs'])} 腳｜Odds {_fmt(round(combo['odds'], 2))}｜"
+            f"命中 {_pct(combo['prob'])}｜EV {_pct(combo['ev'], signed=True)}｜paper 1u"
+        )
+        for lg in combo["legs"]:
             lines.append(f"- {lg['desc']}")
         lines.append("")
     return lines
 
 
-def _prop_review_lines(sc: dict, roi: dict) -> list[str]:
+def _prop_review_lines(sc: dict, roi: dict, strategy_state: dict | None = None) -> list[str]:
     lines = ["## 📊 Prop 結果檢討（上線驗證）", ""]
+    strategy_state = strategy_state or {}
+    if strategy_state.get("status") == "VALIDATED_SINGLE":
+        enabled = "、".join(strategy_state.get("enabled_families") or [])
+        lines.extend([f"策略狀態：✅ VALIDATED_SINGLE（{enabled}）", ""])
+    elif strategy_state.get("status") == "EARLY_MAIN":
+        enabled = "、".join(strategy_state.get("early_main_families") or [])
+        warnings = "；".join(strategy_state.get("warnings") or [])
+        lines.extend([
+            f"策略狀態：🟠 EARLY_MAIN（{enabled}）",
+            f"- {warnings}",
+            "",
+        ])
+    elif strategy_state:
+        reasons = "；".join(strategy_state.get("reasons") or [])
+        lines.extend([f"策略狀態：🧪 RESEARCH_ONLY（{reasons}）", ""])
     n = sc.get("settled", 0)
     if not n:
-        lines.extend(["模型 vs 市場記分卡：暫無已結算 prop（跑多幾日 run-daily 就會有）。", ""])
+        legacy = int(sc.get("legacy_rows_excluded") or 0)
+        if legacy:
+            lines.extend([
+                f"模型 vs 市場記分卡：重建中（原始模型 0 條，舊 {legacy} 條已排除）。",
+                "",
+                f"⚠️ 之前嗰 {legacy} 條記分卡評嘅係 **temper 之後** 嘅機率（向 50% 拉過 15%），",
+                "   而 temper 強度又係由同一張記分卡揀出嚟 —— 循環，量度唔到原始模型實力。",
+                "   由 2026-07-25 起，raw（odds-blind）同 staking 機率分開記錄，記分卡只評 raw。",
+                "   舊資料唔可比，所以排除而唔係混入。要重新累積約 120 條才有判斷力。",
+                "",
+            ])
+        else:
+            lines.extend(["模型 vs 市場記分卡：暫無已結算 prop（跑多幾日 run-daily 就會有）。", ""])
     else:
         m, k = sc["model"], sc["market"]
         lines.extend([
@@ -1878,10 +2920,48 @@ def _prop_review_lines(sc: dict, roi: dict) -> list[str]:
             lines.append("")
     o = roi.get("overall", {})
     if o.get("settled"):
-        lines.append(f"已結算注 ROI：{o['settled']} 注、命中 {_pct(o.get('hit_rate'))}、ROI {_pct(o.get('roi'), signed=True)}（純參考，樣本細）")
-        for side, s in (roi.get("by_side") or {}).items():
+        lines.append(
+            f"全部 research paper ROI：{o['settled']} 注、命中 {_pct(o.get('hit_rate'))}、"
+            f"ROI {_pct(o.get('roi'), signed=True)}、最大回撤 {roi.get('max_drawdown_units', 0):g}u"
+            "（未過閘只作研究）"
+        )
+        for family, s in (roi.get("by_family") or {}).items():
             if s.get("settled"):
-                lines.append(f"  {side}: {s['settled']} 注 命中 {_pct(s.get('hit_rate'))} ROI {_pct(s.get('roi'), signed=True)}")
+                lines.append(
+                    f"  {family}: {s['settled']} 注 命中 {_pct(s.get('hit_rate'))} "
+                    f"ROI {_pct(s.get('roi'), signed=True)}"
+                )
+        player_props = roi.get("player_prop_overall") or {}
+        if player_props.get("settled"):
+            lines.append(
+                f"Player-prop research ROI：{player_props['settled']} 注、"
+                f"命中 {_pct(player_props.get('hit_rate'))}、"
+                f"ROI {_pct(player_props.get('roi'), signed=True)}"
+            )
+        formal = roi.get("formal_player_prop_profile") or {}
+        if formal.get("settled"):
+            lines.append(
+                f"正式 player-prop profile ROI（P≥58%｜odds 1.30–2.25｜quality≥65/100）："
+                f"{formal['settled']} 注、命中 {_pct(formal.get('hit_rate'))}、"
+                f"ROI {_pct(formal.get('roi'), signed=True)}"
+            )
+            from tennis_wc.props import strategy as prop_strategy
+            for family, stats in (roi.get("by_family_formal_profile") or {}).items():
+                if (
+                    family in prop_strategy.RECOMMENDABLE_PLAYER_FAMILIES
+                    and stats.get("settled")
+                ):
+                    lines.append(
+                        f"  {family}: {stats['settled']} 注 "
+                        f"ROI {_pct(stats.get('roi'), signed=True)}"
+                    )
+        odds_summary = "｜".join(
+            f"{band} n={stats['settled']} ROI {_pct(stats.get('roi'), signed=True)}"
+            for band, stats in (roi.get("by_odds_band") or {}).items()
+            if stats.get("settled")
+        )
+        if odds_summary:
+            lines.append(f"  賠率分段：{odds_summary}")
         lines.append("")
     else:
         lines.extend(["已結算注 ROI：暫無（value 注仲未有結果）。", ""])
@@ -1943,13 +3023,12 @@ def _combo_leg_factor_line(leg: Leg) -> str:
 
 
 def banker_combinations_for_date(match_date: str) -> list[dict]:
-    rows = banker_market_predictions_for_date(match_date)
-    result, _legs = _build_combo_tiers(match_date, rows)
-    out: list[dict] = []
-    for tier in combo_engine._TIER_ORDER:
-        for combo in result["tiers"].get(tier) or []:
-            out.append(_combo_to_legacy_dict(combo, tier))
-    return out
+    """Return only positive-EV cross-match prop research structures."""
+    prop = _ace_prop_data(match_date)
+    return [
+        _tracked_prop_combo(combo) for combo in (prop.get("combos") or [])
+        if float(combo.get("ev") or 0) > 0
+    ]
 
 
 def _combo_to_legacy_dict(combo: dict, tier: str) -> dict:
@@ -3649,30 +4728,6 @@ def _tier_label(tier: str) -> str:
     return labels.get(tier, tier or "未分層")
 
 
-def _bet_summary_lines(bets: list[dict]) -> list[str]:
-    if not bets:
-        return ["暫時未有通過所有 hard rule 嘅 BET。"]
-    lines = [
-        "| 選擇 | 賽事 | 現時賠率 | 最低可接受 | 模型勝率 | Edge | 注碼 | 風險 |",
-        "|---|---:|---:|---:|---:|---:|---:|---|",
-    ]
-    for row in bets:
-        lines.append(
-            "| "
-            f"{row['selection_name']} | "
-            f"{_match_label(row)} | "
-            f"{_fmt(row['current_market_odds'])} | "
-            f"{_fmt(row['minimum_acceptable_odds'])} | "
-            f"{_pct(row['model_probability'])} | "
-            f"{_pct(row['edge'], signed=True)} | "
-            f"{_stake_label(row['stake_units'], row['decision'])} | "
-            f"{row['risk']} |"
-        )
-    lines.append("")
-    lines.append("只可喺現時賠率仍然高過「最低可接受」時先考慮；跌穿即 NO_BET。")
-    return lines
-
-
 def _no_bet_summary_lines(no_bets: list[dict]) -> list[str]:
     """Collapse NO_BET matches into a count + compact reason breakdown + a
     short table — instead of printing a full ~30-line card for every match
@@ -3838,33 +4893,6 @@ def _same_name(left: str, right: str) -> bool:
     return " ".join(left.lower().split()) == " ".join(right.lower().split())
 
 
-def _model_explanation_lines(row: dict, pricing: dict, components: list[dict]) -> list[str]:
-    active_components = [component for component in components if component.get("active", True)]
-    if not active_components:
-        active_components = components
-    selected_probability = float(row["model_probability"] or 0)
-    is_player_a = _same_name(str(row.get("selection_name") or ""), str(row.get("player_a_name") or ""))
-    selection_side = "player_a" if is_player_a else "player_b"
-    selection = _display_label(row.get("selection_name"))
-    market_probability = float(row.get("no_vig_market_probability") or 0)
-    edge = float(row.get("edge") or 0)
-    margin = selected_probability - market_probability
-    supportive = _component_summary(active_components, selection_side, True)
-    cautious = _component_summary(active_components, selection_side, False)
-    lines = [
-        f"- 揀 {selection} 主要因為市場只當佢約有 {_pct(market_probability)} 勝算，但模型評到 {_pct(selected_probability)}，中間多出 {_pct(margin, signed=True)}；即係現時賠率比模型認為嘅公平價偏高。",
-    ]
-    if supportive:
-        lines.append(f"- 支持因素：{supportive}。")
-    if cautious:
-        lines.append(f"- 保留位：{cautious}。")
-    lines.append(f"- 下注門檻：現價 {_fmt(row.get('current_market_odds'))} 要高過最低可接受賠率 {_fmt(row.get('minimum_acceptable_odds'))}；跌穿就唔應追。")
-    if edge < 0.1:
-        lines.append("- 但優勢唔算厚，若賠率稍跌穿門檻就應該放棄。")
-    lines.append("- 模型勝率以 Elo 為骨幹，喺 logit 空間加入其他有效因素微調；中性（0.5）或資料不足嘅項目唔會拉低信號。")
-    return lines
-
-
 def _selection_component_probability(component: dict, selection_side: str) -> float:
     probability = float(component.get("probability") or 0.5)
     if selection_side == "player_b":
@@ -3902,7 +4930,6 @@ def _component_label(name: str) -> str:
         "round_performance_edge": "相同圈數表現",
         "big_match_edge": "大賽抗壓表現",
         "fatigue_edge": "體能因素",
-        "injury_penalty": "傷患風險",
         "pressure_edge": "壓力位表現",
         "head_to_head_edge": "H2H 對戰",
     }

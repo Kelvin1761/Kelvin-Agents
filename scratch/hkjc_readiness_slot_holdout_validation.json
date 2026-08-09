@@ -1,0 +1,565 @@
+{
+  "method": {
+    "candidate": "readiness_slot_only",
+    "frozen_candidate_file": "/Users/imac/Antigravity-repo/scratch/hkjc_uncertainty_slot_candidates.csv",
+    "frozen_candidate_sha256": "abd6eb2805a95e287670716d5cd4330fb1423782261050db2dbe2d618759a0b7",
+    "formula_changes_after_development": false,
+    "validation_splits": [
+      "archive_temporal_holdout",
+      "independent_recent",
+      "external_2026_07_15"
+    ],
+    "formal_auto_changed": false
+  },
+  "split_results": {
+    "archive_development": {
+      "baseline": {
+        "races": 88,
+        "distribution": {
+          "0": 21,
+          "1": 40,
+          "2": 27
+        },
+        "total_top2_hits": 94,
+        "winner_top2": 39
+      },
+      "candidate": {
+        "races": 88,
+        "distribution": {
+          "0": 18,
+          "1": 43,
+          "2": 27
+        },
+        "total_top2_hits": 97,
+        "winner_top2": 41
+      },
+      "comparison": {
+        "top2_set_changes": 14,
+        "hit_helped": 6,
+        "hit_harmed": 3,
+        "zero_to_positive": 5,
+        "one_to_two": 1,
+        "one_to_zero": 2,
+        "winner_helped": 3,
+        "winner_harmed": 1,
+        "rank3_promotions": 14,
+        "effective_rank3_rescues": 7,
+        "harmful_rank3_promotions": 3,
+        "rank3_rescue_net": 4
+      },
+      "gate": {
+        "passes": true,
+        "zero_hit_delta": -3,
+        "top2_hit_delta": 3,
+        "winner_top2_delta": 2
+      },
+      "tie_stats": {
+        "races": 88,
+        "boundary_ties": 0,
+        "boundary_tie_rate": 0.0
+      }
+    },
+    "archive_temporal_holdout": {
+      "baseline": {
+        "races": 39,
+        "distribution": {
+          "0": 12,
+          "1": 20,
+          "2": 7
+        },
+        "total_top2_hits": 34,
+        "winner_top2": 15
+      },
+      "candidate": {
+        "races": 39,
+        "distribution": {
+          "0": 12,
+          "1": 19,
+          "2": 8
+        },
+        "total_top2_hits": 35,
+        "winner_top2": 16
+      },
+      "comparison": {
+        "top2_set_changes": 5,
+        "hit_helped": 1,
+        "hit_harmed": 0,
+        "zero_to_positive": 0,
+        "one_to_two": 1,
+        "one_to_zero": 0,
+        "winner_helped": 1,
+        "winner_harmed": 0,
+        "rank3_promotions": 5,
+        "effective_rank3_rescues": 1,
+        "harmful_rank3_promotions": 0,
+        "rank3_rescue_net": 1
+      },
+      "gate": {
+        "passes": true,
+        "zero_hit_delta": 0,
+        "top2_hit_delta": 1,
+        "winner_top2_delta": 1
+      },
+      "tie_stats": {
+        "races": 39,
+        "boundary_ties": 0,
+        "boundary_tie_rate": 0.0
+      }
+    },
+    "independent_recent": {
+      "baseline": {
+        "races": 109,
+        "distribution": {
+          "0": 37,
+          "1": 56,
+          "2": 16
+        },
+        "total_top2_hits": 88,
+        "winner_top2": 37
+      },
+      "candidate": {
+        "races": 109,
+        "distribution": {
+          "0": 37,
+          "1": 56,
+          "2": 16
+        },
+        "total_top2_hits": 88,
+        "winner_top2": 38
+      },
+      "comparison": {
+        "top2_set_changes": 12,
+        "hit_helped": 2,
+        "hit_harmed": 2,
+        "zero_to_positive": 2,
+        "one_to_two": 0,
+        "one_to_zero": 2,
+        "winner_helped": 2,
+        "winner_harmed": 1,
+        "rank3_promotions": 11,
+        "effective_rank3_rescues": 1,
+        "harmful_rank3_promotions": 2,
+        "rank3_rescue_net": -1
+      },
+      "gate": {
+        "passes": true,
+        "zero_hit_delta": 0,
+        "top2_hit_delta": 0,
+        "winner_top2_delta": 1
+      },
+      "tie_stats": {
+        "races": 109,
+        "boundary_ties": 0,
+        "boundary_tie_rate": 0.0
+      }
+    },
+    "external_2026_07_15": {
+      "baseline": {
+        "races": 9,
+        "distribution": {
+          "0": 5,
+          "1": 1,
+          "2": 3
+        },
+        "total_top2_hits": 7,
+        "winner_top2": 1
+      },
+      "candidate": {
+        "races": 9,
+        "distribution": {
+          "0": 4,
+          "1": 2,
+          "2": 3
+        },
+        "total_top2_hits": 8,
+        "winner_top2": 2
+      },
+      "comparison": {
+        "top2_set_changes": 1,
+        "hit_helped": 1,
+        "hit_harmed": 0,
+        "zero_to_positive": 1,
+        "one_to_two": 0,
+        "one_to_zero": 0,
+        "winner_helped": 1,
+        "winner_harmed": 0,
+        "rank3_promotions": 1,
+        "effective_rank3_rescues": 1,
+        "harmful_rank3_promotions": 0,
+        "rank3_rescue_net": 1
+      },
+      "gate": {
+        "passes": true,
+        "zero_hit_delta": -1,
+        "top2_hit_delta": 1,
+        "winner_top2_delta": 1
+      },
+      "tie_stats": {
+        "races": 9,
+        "boundary_ties": 0,
+        "boundary_tie_rate": 0.0
+      }
+    }
+  },
+  "combined_validation": {
+    "baseline": {
+      "races": 157,
+      "distribution": {
+        "0": 54,
+        "1": 77,
+        "2": 26
+      },
+      "total_top2_hits": 129,
+      "winner_top2": 53
+    },
+    "candidate": {
+      "races": 157,
+      "distribution": {
+        "0": 53,
+        "1": 77,
+        "2": 27
+      },
+      "total_top2_hits": 131,
+      "winner_top2": 56
+    },
+    "comparison": {
+      "top2_set_changes": 18,
+      "hit_helped": 4,
+      "hit_harmed": 2,
+      "zero_to_positive": 3,
+      "one_to_two": 1,
+      "one_to_zero": 2,
+      "winner_helped": 4,
+      "winner_harmed": 1,
+      "rank3_promotions": 17,
+      "effective_rank3_rescues": 3,
+      "harmful_rank3_promotions": 2,
+      "rank3_rescue_net": 1
+    },
+    "gate": {
+      "passes": true,
+      "zero_hit_delta": -1,
+      "top2_hit_delta": 2,
+      "winner_top2_delta": 3
+    },
+    "tie_stats": {
+      "races": 157,
+      "boundary_ties": 0,
+      "boundary_tie_rate": 0.0
+    }
+  },
+  "meeting_profiles": {
+    "archive_temporal_holdout": [
+      {
+        "meeting": "2026-05-13_HappyValley",
+        "races": 9,
+        "baseline_zero": 2,
+        "candidate_zero": 2,
+        "zero_delta": 0,
+        "hit_delta": 0,
+        "winner_delta": 0,
+        "top2_changes": 0,
+        "rank3_rescue_net": 0,
+        "non_harm": true
+      },
+      {
+        "meeting": "2026-05-17_ShaTin",
+        "races": 11,
+        "baseline_zero": 3,
+        "candidate_zero": 3,
+        "zero_delta": 0,
+        "hit_delta": 1,
+        "winner_delta": 1,
+        "top2_changes": 3,
+        "rank3_rescue_net": 1,
+        "non_harm": true
+      },
+      {
+        "meeting": "2026-05-20_HappyValley",
+        "races": 9,
+        "baseline_zero": 2,
+        "candidate_zero": 2,
+        "zero_delta": 0,
+        "hit_delta": 0,
+        "winner_delta": 0,
+        "top2_changes": 0,
+        "rank3_rescue_net": 0,
+        "non_harm": true
+      },
+      {
+        "meeting": "2026-05-24_ShaTin",
+        "races": 10,
+        "baseline_zero": 5,
+        "candidate_zero": 5,
+        "zero_delta": 0,
+        "hit_delta": 0,
+        "winner_delta": 0,
+        "top2_changes": 2,
+        "rank3_rescue_net": 0,
+        "non_harm": true
+      }
+    ],
+    "independent_recent": [
+      {
+        "meeting": "2026-05-27_HappyValley",
+        "races": 8,
+        "baseline_zero": 3,
+        "candidate_zero": 3,
+        "zero_delta": 0,
+        "hit_delta": 0,
+        "winner_delta": 0,
+        "top2_changes": 1,
+        "rank3_rescue_net": 0,
+        "non_harm": true
+      },
+      {
+        "meeting": "2026-06-03_HappyValley",
+        "races": 8,
+        "baseline_zero": 1,
+        "candidate_zero": 1,
+        "zero_delta": 0,
+        "hit_delta": 0,
+        "winner_delta": 0,
+        "top2_changes": 1,
+        "rank3_rescue_net": 0,
+        "non_harm": true
+      },
+      {
+        "meeting": "2026-06-07_ShaTin",
+        "races": 9,
+        "baseline_zero": 3,
+        "candidate_zero": 3,
+        "zero_delta": 0,
+        "hit_delta": 0,
+        "winner_delta": 0,
+        "top2_changes": 0,
+        "rank3_rescue_net": 0,
+        "non_harm": true
+      },
+      {
+        "meeting": "2026-06-10_HappyValley",
+        "races": 9,
+        "baseline_zero": 5,
+        "candidate_zero": 5,
+        "zero_delta": 0,
+        "hit_delta": 0,
+        "winner_delta": 0,
+        "top2_changes": 0,
+        "rank3_rescue_net": 0,
+        "non_harm": true
+      },
+      {
+        "meeting": "2026-06-13_ShaTin",
+        "races": 11,
+        "baseline_zero": 4,
+        "candidate_zero": 4,
+        "zero_delta": 0,
+        "hit_delta": 0,
+        "winner_delta": 0,
+        "top2_changes": 1,
+        "rank3_rescue_net": 0,
+        "non_harm": true
+      },
+      {
+        "meeting": "2026-06-21_ShaTin",
+        "races": 11,
+        "baseline_zero": 5,
+        "candidate_zero": 4,
+        "zero_delta": -1,
+        "hit_delta": 1,
+        "winner_delta": 0,
+        "top2_changes": 2,
+        "rank3_rescue_net": 0,
+        "non_harm": true
+      },
+      {
+        "meeting": "2026-06-27_ShaTin",
+        "races": 11,
+        "baseline_zero": 5,
+        "candidate_zero": 5,
+        "zero_delta": 0,
+        "hit_delta": 0,
+        "winner_delta": 1,
+        "top2_changes": 1,
+        "rank3_rescue_net": 0,
+        "non_harm": true
+      },
+      {
+        "meeting": "2026-07-01_ShaTin",
+        "races": 11,
+        "baseline_zero": 2,
+        "candidate_zero": 2,
+        "zero_delta": 0,
+        "hit_delta": 0,
+        "winner_delta": 0,
+        "top2_changes": 0,
+        "rank3_rescue_net": 0,
+        "non_harm": true
+      },
+      {
+        "meeting": "2026-07-04_ShaTin",
+        "races": 11,
+        "baseline_zero": 1,
+        "candidate_zero": 0,
+        "zero_delta": -1,
+        "hit_delta": 1,
+        "winner_delta": 1,
+        "top2_changes": 1,
+        "rank3_rescue_net": 1,
+        "non_harm": true
+      },
+      {
+        "meeting": "2026-07-08_HappyValley",
+        "races": 9,
+        "baseline_zero": 4,
+        "candidate_zero": 5,
+        "zero_delta": 1,
+        "hit_delta": -1,
+        "winner_delta": -1,
+        "top2_changes": 3,
+        "rank3_rescue_net": -1,
+        "non_harm": false
+      },
+      {
+        "meeting": "2026-07-12_ShaTin",
+        "races": 11,
+        "baseline_zero": 4,
+        "candidate_zero": 5,
+        "zero_delta": 1,
+        "hit_delta": -1,
+        "winner_delta": 0,
+        "top2_changes": 2,
+        "rank3_rescue_net": -1,
+        "non_harm": false
+      }
+    ],
+    "external_2026_07_15": [
+      {
+        "meeting": "2026-07-15_HappyValley",
+        "races": 9,
+        "baseline_zero": 5,
+        "candidate_zero": 4,
+        "zero_delta": -1,
+        "hit_delta": 1,
+        "winner_delta": 1,
+        "top2_changes": 1,
+        "rank3_rescue_net": 1,
+        "non_harm": true
+      }
+    ]
+  },
+  "venue_results": {
+    "HappyValley": {
+      "baseline": {
+        "races": 61,
+        "distribution": {
+          "0": 22,
+          "1": 28,
+          "2": 11
+        },
+        "total_top2_hits": 50,
+        "winner_top2": 22
+      },
+      "candidate": {
+        "races": 61,
+        "distribution": {
+          "0": 22,
+          "1": 28,
+          "2": 11
+        },
+        "total_top2_hits": 50,
+        "winner_top2": 22
+      },
+      "comparison": {
+        "top2_set_changes": 6,
+        "hit_helped": 1,
+        "hit_harmed": 1,
+        "zero_to_positive": 1,
+        "one_to_two": 0,
+        "one_to_zero": 1,
+        "winner_helped": 1,
+        "winner_harmed": 1,
+        "rank3_promotions": 6,
+        "effective_rank3_rescues": 1,
+        "harmful_rank3_promotions": 1,
+        "rank3_rescue_net": 0
+      },
+      "gate": {
+        "passes": true,
+        "zero_hit_delta": 0,
+        "top2_hit_delta": 0,
+        "winner_top2_delta": 0
+      }
+    },
+    "ShaTin": {
+      "baseline": {
+        "races": 96,
+        "distribution": {
+          "0": 32,
+          "1": 49,
+          "2": 15
+        },
+        "total_top2_hits": 79,
+        "winner_top2": 31
+      },
+      "candidate": {
+        "races": 96,
+        "distribution": {
+          "0": 31,
+          "1": 49,
+          "2": 16
+        },
+        "total_top2_hits": 81,
+        "winner_top2": 34
+      },
+      "comparison": {
+        "top2_set_changes": 12,
+        "hit_helped": 3,
+        "hit_harmed": 1,
+        "zero_to_positive": 2,
+        "one_to_two": 1,
+        "one_to_zero": 1,
+        "winner_helped": 3,
+        "winner_harmed": 0,
+        "rank3_promotions": 11,
+        "effective_rank3_rescues": 2,
+        "harmful_rank3_promotions": 1,
+        "rank3_rescue_net": 1
+      },
+      "gate": {
+        "passes": true,
+        "zero_hit_delta": -1,
+        "top2_hit_delta": 2,
+        "winner_top2_delta": 3
+      }
+    }
+  },
+  "final_gate": {
+    "all_segments_non_harm": true,
+    "segment_gates": {
+      "archive_temporal_holdout": {
+        "passes": true,
+        "zero_hit_delta": 0,
+        "top2_hit_delta": 1,
+        "winner_top2_delta": 1
+      },
+      "independent_recent": {
+        "passes": true,
+        "zero_hit_delta": 0,
+        "top2_hit_delta": 0,
+        "winner_top2_delta": 1
+      },
+      "external_2026_07_15": {
+        "passes": true,
+        "zero_hit_delta": -1,
+        "top2_hit_delta": 1,
+        "winner_top2_delta": 1
+      }
+    },
+    "combined_common": true,
+    "combined_signal_path": "LOWER_ZERO_HIT",
+    "advances_to_auto_shadow": true,
+    "decision": "ADVANCE_TO_AUTO_SHADOW"
+  },
+  "validation_errors": []
+}

@@ -1,0 +1,13347 @@
+[
+{
+"date": "2025-10-18",
+"venue": "Randwick",
+"runs": 444
+},
+{
+"date": "2025-10-11",
+"venue": "Rosehill Gardens",
+"runs": 369
+},
+{
+"date": "2025-08-30",
+"venue": "Caulfield",
+"runs": 336
+},
+{
+"date": "2025-04-12",
+"venue": "Randwick",
+"runs": 311
+},
+{
+"date": "2025-09-27",
+"venue": "Rosehill Gardens",
+"runs": 311
+},
+{
+"date": "2025-08-30",
+"venue": "Rosehill Gardens",
+"runs": 304
+},
+{
+"date": "2025-07-19",
+"venue": "Rosehill Gardens",
+"runs": 287
+},
+{
+"date": "2025-04-05",
+"venue": "Randwick",
+"runs": 287
+},
+{
+"date": "2025-09-20",
+"venue": "Caulfield",
+"runs": 286
+},
+{
+"date": "2025-11-22",
+"venue": "Kembla Grange",
+"runs": 285
+},
+{
+"date": "2026-03-21",
+"venue": "Rosehill Gardens",
+"runs": 282
+},
+{
+"date": "2025-09-13",
+"venue": "Rosehill Gardens",
+"runs": 280
+},
+{
+"date": "2025-11-29",
+"venue": "Rosehill Gardens",
+"runs": 278
+},
+{
+"date": "2025-10-18",
+"venue": "Caulfield",
+"runs": 274
+},
+{
+"date": "2025-06-21",
+"venue": "Randwick",
+"runs": 271
+},
+{
+"date": "2025-12-07",
+"venue": "Rosehill Gardens",
+"runs": 271
+},
+{
+"date": "2025-10-11",
+"venue": "Caulfield",
+"runs": 268
+},
+{
+"date": "2025-03-22",
+"venue": "Rosehill Gardens",
+"runs": 264
+},
+{
+"date": "2026-02-21",
+"venue": "Rosehill Gardens",
+"runs": 264
+},
+{
+"date": "2025-07-12",
+"venue": "Randwick",
+"runs": 257
+},
+{
+"date": "2026-05-09",
+"venue": "Gold Coast",
+"runs": 256
+},
+{
+"date": "2025-04-01",
+"venue": "Rosehill Gardens",
+"runs": 255
+},
+{
+"date": "2025-07-05",
+"venue": "Rosehill Gardens",
+"runs": 253
+},
+{
+"date": "2025-04-19",
+"venue": "Randwick",
+"runs": 253
+},
+{
+"date": "2026-03-14",
+"venue": "Rosehill Gardens",
+"runs": 248
+},
+{
+"date": "2026-05-16",
+"venue": "Scone",
+"runs": 244
+},
+{
+"date": "2025-08-16",
+"venue": "Rosehill Gardens",
+"runs": 242
+},
+{
+"date": "2025-07-26",
+"venue": "Randwick",
+"runs": 238
+},
+{
+"date": "2025-11-15",
+"venue": "Newcastle",
+"runs": 238
+},
+{
+"date": "2026-05-16",
+"venue": "Doomben",
+"runs": 236
+},
+{
+"date": "2026-05-09",
+"venue": "Gosford",
+"runs": 234
+},
+{
+"date": "2025-06-07",
+"venue": "Randwick",
+"runs": 231
+},
+{
+"date": "2025-10-15",
+"venue": "Caulfield",
+"runs": 219
+},
+{
+"date": "2025-03-01",
+"venue": "Randwick",
+"runs": 217
+},
+{
+"date": "2025-10-25",
+"venue": "Moonee Valley",
+"runs": 212
+},
+{
+"date": "2025-12-13",
+"venue": "Pakenham",
+"runs": 210
+},
+{
+"date": "2025-06-14",
+"venue": "Rosehill Gardens",
+"runs": 209
+},
+{
+"date": "2025-06-07",
+"venue": "Eagle Farm",
+"runs": 209
+},
+{
+"date": "2025-03-15",
+"venue": "Rosehill Gardens",
+"runs": 207
+},
+{
+"date": "2025-03-08",
+"venue": "Randwick",
+"runs": 206
+},
+{
+"date": "2025-06-28",
+"venue": "Rosehill Gardens",
+"runs": 204
+},
+{
+"date": "2025-08-02",
+"venue": "Rosehill Gardens",
+"runs": 202
+},
+{
+"date": "2025-11-15",
+"venue": "Caulfield",
+"runs": 202
+},
+{
+"date": "2025-05-10",
+"venue": "Gosford",
+"runs": 201
+},
+{
+"date": "2026-01-17",
+"venue": "Rosehill Gardens",
+"runs": 201
+},
+{
+"date": "2026-05-02",
+"venue": "Hawkesbury",
+"runs": 200
+},
+{
+"date": "2025-07-19",
+"venue": "Flemington",
+"runs": 199
+},
+{
+"date": "2025-11-08",
+"venue": "Rosehill Gardens",
+"runs": 197
+},
+{
+"date": "2025-08-16",
+"venue": "Caulfield",
+"runs": 196
+},
+{
+"date": "2025-05-31",
+"venue": "Rosehill Gardens",
+"runs": 194
+},
+{
+"date": "2025-05-17",
+"venue": "Scone",
+"runs": 190
+},
+{
+"date": "2025-03-01",
+"venue": "Flemington",
+"runs": 180
+},
+{
+"date": "2025-09-26",
+"venue": "Moonee Valley",
+"runs": 180
+},
+{
+"date": "2026-01-10",
+"venue": "Wyong",
+"runs": 180
+},
+{
+"date": "2026-01-31",
+"venue": "Rosehill Gardens",
+"runs": 178
+},
+{
+"date": "2025-05-24",
+"venue": "Randwick",
+"runs": 176
+},
+{
+"date": "2025-02-08",
+"venue": "Randwick",
+"runs": 175
+},
+{
+"date": "2025-12-27",
+"venue": "Cranbourne",
+"runs": 174
+},
+{
+"date": "2025-03-29",
+"venue": "Flemington",
+"runs": 173
+},
+{
+"date": "2025-05-24",
+"venue": "Doomben",
+"runs": 171
+},
+{
+"date": "2025-06-21",
+"venue": "Flemington",
+"runs": 170
+},
+{
+"date": "2026-01-17",
+"venue": "Gold Coast",
+"runs": 170
+},
+{
+"date": "2025-02-15",
+"venue": "Randwick",
+"runs": 169
+},
+{
+"date": "2026-03-14",
+"venue": "Caulfield",
+"runs": 169
+},
+{
+"date": "2025-03-08",
+"venue": "Flemington",
+"runs": 168
+},
+{
+"date": "2026-04-25",
+"venue": "Eagle Farm",
+"runs": 168
+},
+{
+"date": "2025-09-27",
+"venue": "Sandown Hillside",
+"runs": 167
+},
+{
+"date": "2025-09-19",
+"venue": "Newcastle",
+"runs": 167
+},
+{
+"date": "2025-07-12",
+"venue": "Caulfield",
+"runs": 166
+},
+{
+"date": "2025-04-26",
+"venue": "Randwick",
+"runs": 165
+},
+{
+"date": "2025-06-14",
+"venue": "Eagle Farm",
+"runs": 165
+},
+{
+"date": "2025-05-03",
+"venue": "Hawkesbury",
+"runs": 164
+},
+{
+"date": "2025-08-09",
+"venue": "Moonee Valley",
+"runs": 164
+},
+{
+"date": "2026-03-18",
+"venue": "Wyong",
+"runs": 164
+},
+{
+"date": "2026-02-21",
+"venue": "Caulfield",
+"runs": 164
+},
+{
+"date": "2025-09-06",
+"venue": "Moonee Valley",
+"runs": 163
+},
+{
+"date": "2025-07-05",
+"venue": "Flemington",
+"runs": 161
+},
+{
+"date": "2025-08-23",
+"venue": "Moonee Valley",
+"runs": 160
+},
+{
+"date": "2026-02-07",
+"venue": "Caulfield",
+"runs": 158
+},
+{
+"date": "2025-05-17",
+"venue": "Flemington",
+"runs": 155
+},
+{
+"date": "2025-06-14",
+"venue": "Sandown Hillside",
+"runs": 154
+},
+{
+"date": "2025-07-26",
+"venue": "Caulfield",
+"runs": 153
+},
+{
+"date": "2025-12-06",
+"venue": "Ballarat",
+"runs": 152
+},
+{
+"date": "2026-01-03",
+"venue": "Geelong",
+"runs": 151
+},
+{
+"date": "2025-02-22",
+"venue": "Caulfield",
+"runs": 150
+},
+{
+"date": "2025-02-15",
+"venue": "Flemington",
+"runs": 148
+},
+{
+"date": "2026-03-25",
+"venue": "Kensington",
+"runs": 148
+},
+{
+"date": "2026-03-11",
+"venue": "Warwick Farm",
+"runs": 146
+},
+{
+"date": "2025-04-05",
+"venue": "Caulfield",
+"runs": 144
+},
+{
+"date": "2025-02-22",
+"venue": "Rosehill Gardens",
+"runs": 142
+},
+{
+"date": "2026-05-09",
+"venue": "Caulfield",
+"runs": 142
+},
+{
+"date": "2025-04-26",
+"venue": "Morphettville",
+"runs": 140
+},
+{
+"date": "2024-11-05",
+"venue": "Flemington",
+"runs": 140
+},
+{
+"date": "2026-03-08",
+"venue": "Canberra",
+"runs": 138
+},
+{
+"date": "2024-11-23",
+"venue": "Kembla Grange",
+"runs": 136
+},
+{
+"date": "2025-11-22",
+"venue": "Cranbourne",
+"runs": 136
+},
+{
+"date": "2026-04-11",
+"venue": "Caulfield",
+"runs": 136
+},
+{
+"date": "2024-12-14",
+"venue": "Randwick",
+"runs": 134
+},
+{
+"date": "2026-01-10",
+"venue": "Gold Coast",
+"runs": 134
+},
+{
+"date": "2025-11-29",
+"venue": "Caulfield",
+"runs": 132
+},
+{
+"date": "2026-05-02",
+"venue": "Eagle Farm",
+"runs": 132
+},
+{
+"date": "2025-03-22",
+"venue": "Moonee Valley",
+"runs": 129
+},
+{
+"date": "2025-10-15",
+"venue": "Warwick Farm",
+"runs": 128
+},
+{
+"date": "2025-12-20",
+"venue": "Caulfield Heath",
+"runs": 128
+},
+{
+"date": "2026-04-04",
+"venue": "Caulfield",
+"runs": 128
+},
+{
+"date": "2025-02-01",
+"venue": "Rosehill Gardens",
+"runs": 127
+},
+{
+"date": "2025-05-24",
+"venue": "Sandown Hillside",
+"runs": 126
+},
+{
+"date": "2025-10-24",
+"venue": "Moonee Valley",
+"runs": 124
+},
+{
+"date": "2024-10-05",
+"venue": "Randwick",
+"runs": 122
+},
+{
+"date": "2025-10-23",
+"venue": "Geelong",
+"runs": 120
+},
+{
+"date": "2025-12-12",
+"venue": "Canterbury",
+"runs": 120
+},
+{
+"date": "2025-12-26",
+"venue": "Sandown Lakeside",
+"runs": 119
+},
+{
+"date": "2026-05-06",
+"venue": "Warrnambool",
+"runs": 118
+},
+{
+"date": "2026-05-02",
+"venue": "Bendigo",
+"runs": 118
+},
+{
+"date": "2026-05-07",
+"venue": "Warrnambool",
+"runs": 118
+},
+{
+"date": "2026-01-24",
+"venue": "Caulfield",
+"runs": 117
+},
+{
+"date": "2024-10-19",
+"venue": "Randwick",
+"runs": 115
+},
+{
+"date": "2025-01-25",
+"venue": "Randwick",
+"runs": 115
+},
+{
+"date": "2025-10-08",
+"venue": "Kensington",
+"runs": 115
+},
+{
+"date": "2025-06-07",
+"venue": "Flemington",
+"runs": 114
+},
+{
+"date": "2025-06-28",
+"venue": "Caulfield",
+"runs": 114
+},
+{
+"date": "2026-05-13",
+"venue": "Kensington",
+"runs": 112
+},
+{
+"date": "2026-06-06",
+"venue": "Flemington",
+"runs": 112
+},
+{
+"date": "2025-04-12",
+"venue": "Bendigo",
+"runs": 111
+},
+{
+"date": "2026-03-06",
+"venue": "Pakenham",
+"runs": 111
+},
+{
+"date": "2025-02-08",
+"venue": "Caulfield",
+"runs": 110
+},
+{
+"date": "2025-09-03",
+"venue": "Warwick Farm",
+"runs": 110
+},
+{
+"date": "2025-10-29",
+"venue": "Bendigo",
+"runs": 110
+},
+{
+"date": "2026-04-18",
+"venue": "Eagle Farm",
+"runs": 110
+},
+{
+"date": "2025-05-17",
+"venue": "Doomben",
+"runs": 109
+},
+{
+"date": "2026-04-27",
+"venue": "Kensington",
+"runs": 108
+},
+{
+"date": "2025-05-10",
+"venue": "Caulfield",
+"runs": 107
+},
+{
+"date": "2025-09-03",
+"venue": "Sandown Hillside",
+"runs": 106
+},
+{
+"date": "2026-03-04",
+"venue": "Warwick Farm",
+"runs": 106
+},
+{
+"date": "2026-01-31",
+"venue": "Caulfield",
+"runs": 106
+},
+{
+"date": "2026-03-21",
+"venue": "Caulfield",
+"runs": 106
+},
+{
+"date": "2026-05-05",
+"venue": "Warrnambool",
+"runs": 106
+},
+{
+"date": "2025-03-15",
+"venue": "Caulfield",
+"runs": 104
+},
+{
+"date": "2025-01-18",
+"venue": "Rosehill Gardens",
+"runs": 104
+},
+{
+"date": "2026-03-18",
+"venue": "Caulfield Heath",
+"runs": 104
+},
+{
+"date": "2025-09-24",
+"venue": "Warwick Farm",
+"runs": 104
+},
+{
+"date": "2026-05-23",
+"venue": "Sandown Hillside",
+"runs": 104
+},
+{
+"date": "2024-11-30",
+"venue": "Rosehill Gardens",
+"runs": 103
+},
+{
+"date": "2025-05-31",
+"venue": "Caulfield",
+"runs": 102
+},
+{
+"date": "2025-05-03",
+"venue": "Caulfield",
+"runs": 101
+},
+{
+"date": "2025-10-12",
+"venue": "Seymour",
+"runs": 101
+},
+{
+"date": "2024-11-09",
+"venue": "Rosehill Gardens",
+"runs": 100
+},
+{
+"date": "2026-03-25",
+"venue": "Sandown Lakeside",
+"runs": 100
+},
+{
+"date": "2024-11-16",
+"venue": "Caulfield",
+"runs": 99
+},
+{
+"date": "2025-05-10",
+"venue": "Gold Coast",
+"runs": 99
+},
+{
+"date": "2025-04-19",
+"venue": "Mornington",
+"runs": 98
+},
+{
+"date": "2025-09-17",
+"venue": "Canterbury",
+"runs": 98
+},
+{
+"date": "2025-10-22",
+"venue": "Warwick Farm",
+"runs": 98
+},
+{
+"date": "2026-04-08",
+"venue": "Hawkesbury",
+"runs": 98
+},
+{
+"date": "2026-05-16",
+"venue": "Flemington",
+"runs": 98
+},
+{
+"date": "2025-09-24",
+"venue": "Sandown Hillside",
+"runs": 97
+},
+{
+"date": "2026-01-03",
+"venue": "Eagle Farm",
+"runs": 96
+},
+{
+"date": "2026-04-18",
+"venue": "Mornington",
+"runs": 96
+},
+{
+"date": "2025-10-06",
+"venue": "Warwick Farm",
+"runs": 95
+},
+{
+"date": "2025-01-17",
+"venue": "Gold Coast",
+"runs": 94
+},
+{
+"date": "2026-03-13",
+"venue": "Kembla Grange",
+"runs": 94
+},
+{
+"date": "2025-08-13",
+"venue": "Kensington",
+"runs": 92
+},
+{
+"date": "2026-04-15",
+"venue": "Sandown Lakeside",
+"runs": 92
+},
+{
+"date": "2024-09-28",
+"venue": "Rosehill Gardens",
+"runs": 90
+},
+{
+"date": "2025-05-10",
+"venue": "Morphettville",
+"runs": 90
+},
+{
+"date": "2025-07-30",
+"venue": "Sandown Hillside",
+"runs": 90
+},
+{
+"date": "2026-02-13",
+"venue": "Canterbury",
+"runs": 90
+},
+{
+"date": "2025-11-12",
+"venue": "Rosehill Gardens",
+"runs": 90
+},
+{
+"date": "2025-07-02",
+"venue": "Sandown Lakeside",
+"runs": 89
+},
+{
+"date": "2025-09-05",
+"venue": "Wyong",
+"runs": 89
+},
+{
+"date": "2025-10-01",
+"venue": "Rosehill Gardens",
+"runs": 89
+},
+{
+"date": "2025-11-14",
+"venue": "Canterbury",
+"runs": 88
+},
+{
+"date": "2026-03-12",
+"venue": "Pakenham",
+"runs": 88
+},
+{
+"date": "2026-03-21",
+"venue": "Kembla Grange",
+"runs": 88
+},
+{
+"date": "2025-01-11",
+"venue": "Wyong",
+"runs": 87
+},
+{
+"date": "2024-09-21",
+"venue": "Randwick",
+"runs": 87
+},
+{
+"date": "2025-08-27",
+"venue": "Sandown Hillside",
+"runs": 87
+},
+{
+"date": "2026-02-04",
+"venue": "Warwick Farm",
+"runs": 87
+},
+{
+"date": "2025-09-10",
+"venue": "Sandown Hillside",
+"runs": 87
+},
+{
+"date": "2024-12-28",
+"venue": "Randwick",
+"runs": 86
+},
+{
+"date": "2026-03-13",
+"venue": "Cranbourne",
+"runs": 86
+},
+{
+"date": "2026-03-11",
+"venue": "Sandown Hillside",
+"runs": 86
+},
+{
+"date": "2026-05-20",
+"venue": "Warwick Farm",
+"runs": 86
+},
+{
+"date": "2024-11-02",
+"venue": "Rosehill Gardens",
+"runs": 85
+},
+{
+"date": "2024-11-02",
+"venue": "Flemington",
+"runs": 84
+},
+{
+"date": "2025-08-13",
+"venue": "Sandown Lakeside",
+"runs": 84
+},
+{
+"date": "2026-06-13",
+"venue": "Rosehill Gardens",
+"runs": 84
+},
+{
+"date": "2025-06-28",
+"venue": "Eagle Farm",
+"runs": 83
+},
+{
+"date": "2024-12-21",
+"venue": "Randwick",
+"runs": 82
+},
+{
+"date": "2025-05-16",
+"venue": "Scone",
+"runs": 82
+},
+{
+"date": "2026-03-20",
+"venue": "Albury",
+"runs": 82
+},
+{
+"date": "2026-02-27",
+"venue": "Canterbury",
+"runs": 82
+},
+{
+"date": "2025-04-16",
+"venue": "Warwick Farm",
+"runs": 81
+},
+{
+"date": "2025-05-03",
+"venue": "Eagle Farm",
+"runs": 81
+},
+{
+"date": "2025-07-16",
+"venue": "Sandown Hillside",
+"runs": 80
+},
+{
+"date": "2025-07-09",
+"venue": "Canterbury",
+"runs": 80
+},
+{
+"date": "2026-02-20",
+"venue": "Canterbury",
+"runs": 80
+},
+{
+"date": "2025-08-20",
+"venue": "Sandown Lakeside",
+"runs": 80
+},
+{
+"date": "2026-03-14",
+"venue": "Gold Coast",
+"runs": 80
+},
+{
+"date": "2026-06-13",
+"venue": "Sandown Hillside",
+"runs": 80
+},
+{
+"date": "2024-10-26",
+"venue": "Randwick",
+"runs": 79
+},
+{
+"date": "2025-04-25",
+"venue": "Flemington",
+"runs": 79
+},
+{
+"date": "2024-11-30",
+"venue": "Caulfield",
+"runs": 79
+},
+{
+"date": "2024-11-09",
+"venue": "Flemington",
+"runs": 78
+},
+{
+"date": "2025-07-23",
+"venue": "Canterbury",
+"runs": 78
+},
+{
+"date": "2025-12-05",
+"venue": "Kensington",
+"runs": 78
+},
+{
+"date": "2026-05-10",
+"venue": "Ballarat",
+"runs": 78
+},
+{
+"date": "2025-04-09",
+"venue": "Hawkesbury",
+"runs": 77
+},
+{
+"date": "2024-09-07",
+"venue": "Randwick",
+"runs": 76
+},
+{
+"date": "2025-07-02",
+"venue": "Warwick Farm",
+"runs": 76
+},
+{
+"date": "2025-09-26",
+"venue": "Benalla",
+"runs": 76
+},
+{
+"date": "2025-10-17",
+"venue": "Pakenham",
+"runs": 76
+},
+{
+"date": "2026-02-25",
+"venue": "Rosehill Gardens",
+"runs": 76
+},
+{
+"date": "2026-05-15",
+"venue": "Scone",
+"runs": 76
+},
+{
+"date": "2024-10-12",
+"venue": "Rosehill Gardens",
+"runs": 75
+},
+{
+"date": "2024-11-05",
+"venue": "Randwick",
+"runs": 75
+},
+{
+"date": "2025-10-29",
+"venue": "Rosehill Gardens",
+"runs": 75
+},
+{
+"date": "2025-11-28",
+"venue": "Canterbury",
+"runs": 75
+},
+{
+"date": "2024-10-05",
+"venue": "Flemington",
+"runs": 74
+},
+{
+"date": "2025-12-10",
+"venue": "Sandown Lakeside",
+"runs": 74
+},
+{
+"date": "2025-12-20",
+"venue": "Eagle Farm",
+"runs": 74
+},
+{
+"date": "2026-02-27",
+"venue": "Cranbourne",
+"runs": 74
+},
+{
+"date": "2026-04-11",
+"venue": "Doomben",
+"runs": 74
+},
+{
+"date": "2024-10-12",
+"venue": "Caulfield",
+"runs": 73
+},
+{
+"date": "2025-06-18",
+"venue": "Sandown Hillside",
+"runs": 73
+},
+{
+"date": "2026-03-31",
+"venue": "Newcastle",
+"runs": 73
+},
+{
+"date": "2025-03-26",
+"venue": "Kensington",
+"runs": 72
+},
+{
+"date": "2025-08-17",
+"venue": "Wyong",
+"runs": 72
+},
+{
+"date": "2025-12-06",
+"venue": "Doomben",
+"runs": 72
+},
+{
+"date": "2025-11-19",
+"venue": "Canterbury",
+"runs": 72
+},
+{
+"date": "2026-03-26",
+"venue": "Pakenham",
+"runs": 72
+},
+{
+"date": "2026-04-02",
+"venue": "Pakenham",
+"runs": 72
+},
+{
+"date": "2024-12-21",
+"venue": "Pakenham",
+"runs": 71
+},
+{
+"date": "2025-08-24",
+"venue": "Goulburn",
+"runs": 71
+},
+{
+"date": "2025-06-25",
+"venue": "Kensington",
+"runs": 70
+},
+{
+"date": "2026-02-25",
+"venue": "Sandown Hillside",
+"runs": 70
+},
+{
+"date": "2026-03-27",
+"venue": "Bendigo",
+"runs": 70
+},
+{
+"date": "2025-11-12",
+"venue": "Caulfield Heath",
+"runs": 70
+},
+{
+"date": "2026-03-07",
+"venue": "Hawkesbury",
+"runs": 70
+},
+{
+"date": "2026-03-29",
+"venue": "Sale",
+"runs": 70
+},
+{
+"date": "2026-04-01",
+"venue": "Geelong",
+"runs": 70
+},
+{
+"date": "2026-04-04",
+"venue": "Eagle Farm",
+"runs": 70
+},
+{
+"date": "2026-04-22",
+"venue": "Geelong",
+"runs": 70
+},
+{
+"date": "2026-06-08",
+"venue": "Mornington",
+"runs": 70
+},
+{
+"date": "2024-10-19",
+"venue": "Caulfield",
+"runs": 69
+},
+{
+"date": "2025-05-14",
+"venue": "Kensington",
+"runs": 69
+},
+{
+"date": "2025-09-07",
+"venue": "Bendigo",
+"runs": 69
+},
+{
+"date": "2025-02-01",
+"venue": "Sandown Lakeside",
+"runs": 68
+},
+{
+"date": "2025-05-21",
+"venue": "Sandown Hillside",
+"runs": 68
+},
+{
+"date": "2025-01-25",
+"venue": "Sandown Lakeside",
+"runs": 68
+},
+{
+"date": "2025-07-09",
+"venue": "Sandown Lakeside",
+"runs": 68
+},
+{
+"date": "2025-03-09",
+"venue": "Canberra",
+"runs": 68
+},
+{
+"date": "2025-03-28",
+"venue": "Muswellbrook",
+"runs": 68
+},
+{
+"date": "2025-03-13",
+"venue": "Kensington",
+"runs": 68
+},
+{
+"date": "2026-02-18",
+"venue": "Warwick Farm",
+"runs": 68
+},
+{
+"date": "2026-03-26",
+"venue": "Hawkesbury",
+"runs": 68
+},
+{
+"date": "2026-04-03",
+"venue": "Cranbourne",
+"runs": 68
+},
+{
+"date": "2024-11-07",
+"venue": "Flemington",
+"runs": 67
+},
+{
+"date": "2025-05-02",
+"venue": "Wagga",
+"runs": 67
+},
+{
+"date": "2025-12-03",
+"venue": "Warwick Farm",
+"runs": 67
+},
+{
+"date": "2025-03-14",
+"venue": "Kembla Grange",
+"runs": 66
+},
+{
+"date": "2025-04-25",
+"venue": "Kensington",
+"runs": 66
+},
+{
+"date": "2025-12-19",
+"venue": "Canterbury",
+"runs": 66
+},
+{
+"date": "2026-02-12",
+"venue": "Pakenham",
+"runs": 66
+},
+{
+"date": "2026-03-06",
+"venue": "Newcastle",
+"runs": 66
+},
+{
+"date": "2026-03-27",
+"venue": "Muswellbrook",
+"runs": 66
+},
+{
+"date": "2025-04-02",
+"venue": "Warwick Farm",
+"runs": 65
+},
+{
+"date": "2025-07-30",
+"venue": "Warwick Farm",
+"runs": 65
+},
+{
+"date": "2025-10-10",
+"venue": "Cranbourne",
+"runs": 65
+},
+{
+"date": "2025-12-17",
+"venue": "Warwick Farm",
+"runs": 65
+},
+{
+"date": "2025-12-28",
+"venue": "Gosford",
+"runs": 65
+},
+{
+"date": "2025-01-11",
+"venue": "Flemington",
+"runs": 64
+},
+{
+"date": "2025-07-23",
+"venue": "Sandown Hillside",
+"runs": 64
+},
+{
+"date": "2025-12-07",
+"venue": "Werribee",
+"runs": 64
+},
+{
+"date": "2025-12-13",
+"venue": "Eagle Farm",
+"runs": 64
+},
+{
+"date": "2026-03-20",
+"venue": "Ballarat",
+"runs": 64
+},
+{
+"date": "2026-03-19",
+"venue": "Pakenham",
+"runs": 64
+},
+{
+"date": "2026-03-28",
+"venue": "Doomben",
+"runs": 64
+},
+{
+"date": "2025-02-28",
+"venue": "Canterbury",
+"runs": 63
+},
+{
+"date": "2025-08-27",
+"venue": "Kensington",
+"runs": 63
+},
+{
+"date": "2024-11-16",
+"venue": "Newcastle",
+"runs": 62
+},
+{
+"date": "2025-07-16",
+"venue": "Kensington",
+"runs": 62
+},
+{
+"date": "2025-06-09",
+"venue": "Canterbury",
+"runs": 62
+},
+{
+"date": "2025-08-20",
+"venue": "Warwick Farm",
+"runs": 62
+},
+{
+"date": "2025-11-08",
+"venue": "Hawkesbury",
+"runs": 62
+},
+{
+"date": "2025-12-05",
+"venue": "Cranbourne",
+"runs": 62
+},
+{
+"date": "2026-03-20",
+"venue": "Scone",
+"runs": 62
+},
+{
+"date": "2026-05-13",
+"venue": "Ipswich",
+"runs": 62
+},
+{
+"date": "2026-04-25",
+"venue": "Morphettville",
+"runs": 62
+},
+{
+"date": "2026-05-13",
+"venue": "Bendigo",
+"runs": 62
+},
+{
+"date": "2024-12-07",
+"venue": "Ballarat",
+"runs": 61
+},
+{
+"date": "2025-04-26",
+"venue": "Moonee Valley",
+"runs": 60
+},
+{
+"date": "2025-04-21",
+"venue": "Canterbury",
+"runs": 60
+},
+{
+"date": "2025-02-19",
+"venue": "Warwick Farm",
+"runs": 60
+},
+{
+"date": "2026-03-14",
+"venue": "Gosford",
+"runs": 60
+},
+{
+"date": "2026-01-21",
+"venue": "Kensington",
+"runs": 60
+},
+{
+"date": "2026-05-09",
+"venue": "Ararat",
+"runs": 60
+},
+{
+"date": "2025-01-18",
+"venue": "Flemington",
+"runs": 59
+},
+{
+"date": "2025-03-08",
+"venue": "Ellerslie",
+"runs": 59
+},
+{
+"date": "2025-10-26",
+"venue": "Sale",
+"runs": 59
+},
+{
+"date": "2025-01-04",
+"venue": "Randwick",
+"runs": 58
+},
+{
+"date": "2025-09-19",
+"venue": "Ballarat",
+"runs": 58
+},
+{
+"date": "2025-09-18",
+"venue": "Kembla Grange",
+"runs": 58
+},
+{
+"date": "2026-02-18",
+"venue": "Caulfield Heath",
+"runs": 58
+},
+{
+"date": "2026-03-04",
+"venue": "Caulfield Heath",
+"runs": 58
+},
+{
+"date": "2026-05-15",
+"venue": "Pakenham",
+"runs": 58
+},
+{
+"date": "2025-05-31",
+"venue": "Eagle Farm",
+"runs": 57
+},
+{
+"date": "2025-04-30",
+"venue": "Canterbury",
+"runs": 57
+},
+{
+"date": "2025-12-27",
+"venue": "Eagle Farm",
+"runs": 57
+},
+{
+"date": "2025-05-21",
+"venue": "Warwick Farm",
+"runs": 56
+},
+{
+"date": "2026-03-15",
+"venue": "Yarra Valley",
+"runs": 56
+},
+{
+"date": "2026-05-06",
+"venue": "Eagle Farm",
+"runs": 56
+},
+{
+"date": "2025-06-01",
+"venue": "Sandown Lakeside",
+"runs": 55
+},
+{
+"date": "2024-12-07",
+"venue": "Rosehill Gardens",
+"runs": 55
+},
+{
+"date": "2025-10-08",
+"venue": "Sale",
+"runs": 55
+},
+{
+"date": "2025-12-03",
+"venue": "Caulfield Heath",
+"runs": 55
+},
+{
+"date": "2025-04-12",
+"venue": "Morphettville",
+"runs": 54
+},
+{
+"date": "2025-08-06",
+"venue": "Canterbury",
+"runs": 54
+},
+{
+"date": "2025-04-19",
+"venue": "Kembla Grange",
+"runs": 54
+},
+{
+"date": "2025-09-25",
+"venue": "Hawkesbury",
+"runs": 54
+},
+{
+"date": "2025-12-12",
+"venue": "Geelong",
+"runs": 54
+},
+{
+"date": "2025-11-16",
+"venue": "Moe",
+"runs": 54
+},
+{
+"date": "2026-01-01",
+"venue": "Canterbury",
+"runs": 54
+},
+{
+"date": "2026-03-10",
+"venue": "Ballarat",
+"runs": 54
+},
+{
+"date": "2026-04-10",
+"venue": "Geelong",
+"runs": 54
+},
+{
+"date": "2026-05-09",
+"venue": "Kembla Grange",
+"runs": 54
+},
+{
+"date": "2025-06-04",
+"venue": "Sandown Lakeside",
+"runs": 53
+},
+{
+"date": "2025-06-04",
+"venue": "Warwick Farm",
+"runs": 53
+},
+{
+"date": "2024-09-14",
+"venue": "Rosehill Gardens",
+"runs": 52
+},
+{
+"date": "2025-06-04",
+"venue": "Doomben",
+"runs": 52
+},
+{
+"date": "2025-11-28",
+"venue": "Pakenham",
+"runs": 52
+},
+{
+"date": "2026-03-27",
+"venue": "Cranbourne",
+"runs": 52
+},
+{
+"date": "2026-04-18",
+"venue": "Gold Coast",
+"runs": 52
+},
+{
+"date": "2024-12-14",
+"venue": "Caulfield Heath",
+"runs": 51
+},
+{
+"date": "2024-12-26",
+"venue": "Randwick",
+"runs": 51
+},
+{
+"date": "2025-07-03",
+"venue": "Hawkesbury",
+"runs": 51
+},
+{
+"date": "2025-05-06",
+"venue": "Kembla Grange",
+"runs": 51
+},
+{
+"date": "2026-01-30",
+"venue": "Canterbury",
+"runs": 51
+},
+{
+"date": "2025-10-01",
+"venue": "Sandown Hillside",
+"runs": 51
+},
+{
+"date": "2025-12-12",
+"venue": "Cranbourne",
+"runs": 51
+},
+{
+"date": "2024-09-14",
+"venue": "Flemington",
+"runs": 50
+},
+{
+"date": "2024-10-26",
+"venue": "Moonee Valley",
+"runs": 50
+},
+{
+"date": "2025-06-03",
+"venue": "Kembla Grange",
+"runs": 50
+},
+{
+"date": "2025-09-10",
+"venue": "Canterbury",
+"runs": 50
+},
+{
+"date": "2026-03-20",
+"venue": "Cranbourne",
+"runs": 50
+},
+{
+"date": "2025-06-20",
+"venue": "Geelong",
+"runs": 50
+},
+{
+"date": "2025-09-14",
+"venue": "Sale",
+"runs": 50
+},
+{
+"date": "2025-11-27",
+"venue": "Hawkesbury",
+"runs": 50
+},
+{
+"date": "2026-01-23",
+"venue": "Canterbury",
+"runs": 50
+},
+{
+"date": "2026-01-30",
+"venue": "Cranbourne",
+"runs": 50
+},
+{
+"date": "2026-03-08",
+"venue": "Muswellbrook",
+"runs": 50
+},
+{
+"date": "2026-03-28",
+"venue": "Wyong",
+"runs": 50
+},
+{
+"date": "2025-06-09",
+"venue": "Mornington",
+"runs": 49
+},
+{
+"date": "2025-05-07",
+"venue": "Warwick Farm",
+"runs": 49
+},
+{
+"date": "2025-03-20",
+"venue": "Newcastle",
+"runs": 49
+},
+{
+"date": "2025-06-11",
+"venue": "Kensington",
+"runs": 49
+},
+{
+"date": "2026-02-04",
+"venue": "Sandown Hillside",
+"runs": 49
+},
+{
+"date": "2025-08-30",
+"venue": "Kembla Grange",
+"runs": 48
+},
+{
+"date": "2025-08-10",
+"venue": "Echuca",
+"runs": 48
+},
+{
+"date": "2026-03-01",
+"venue": "Sale",
+"runs": 48
+},
+{
+"date": "2025-09-11",
+"venue": "Seymour",
+"runs": 48
+},
+{
+"date": "2025-10-18",
+"venue": "Newcastle",
+"runs": 48
+},
+{
+"date": "2025-11-14",
+"venue": "Gundagai",
+"runs": 48
+},
+{
+"date": "2026-03-17",
+"venue": "Hawkesbury",
+"runs": 48
+},
+{
+"date": "2026-04-09",
+"venue": "Pakenham",
+"runs": 48
+},
+{
+"date": "2026-04-30",
+"venue": "Ballarat",
+"runs": 48
+},
+{
+"date": "2026-05-09",
+"venue": "Ipswich",
+"runs": 48
+},
+{
+"date": "2026-05-20",
+"venue": "Caulfield Heath",
+"runs": 48
+},
+{
+"date": "2026-06-03",
+"venue": "Sandown Lakeside",
+"runs": 48
+},
+{
+"date": "2026-06-17",
+"venue": "Caulfield Heath",
+"runs": 48
+},
+{
+"date": "2024-08-24",
+"venue": "Randwick",
+"runs": 47
+},
+{
+"date": "2024-09-21",
+"venue": "Caulfield",
+"runs": 47
+},
+{
+"date": "2024-11-23",
+"venue": "Cranbourne",
+"runs": 47
+},
+{
+"date": "2025-01-31",
+"venue": "Canterbury",
+"runs": 47
+},
+{
+"date": "2026-01-26",
+"venue": "Warwick Farm",
+"runs": 47
+},
+{
+"date": "2025-09-27",
+"venue": "Kembla Grange",
+"runs": 47
+},
+{
+"date": "2025-10-03",
+"venue": "Moonee Valley",
+"runs": 47
+},
+{
+"date": "2025-11-05",
+"venue": "Kyneton",
+"runs": 47
+},
+{
+"date": "2025-11-26",
+"venue": "Geelong",
+"runs": 47
+},
+{
+"date": "2026-01-07",
+"venue": "Warwick Farm",
+"runs": 47
+},
+{
+"date": "2026-01-28",
+"venue": "Sandown Hillside",
+"runs": 47
+},
+{
+"date": "2026-02-09",
+"venue": "Caulfield Heath",
+"runs": 47
+},
+{
+"date": "2025-01-04",
+"venue": "Sunshine Coast",
+"runs": 46
+},
+{
+"date": "2024-10-25",
+"venue": "Moonee Valley",
+"runs": 46
+},
+{
+"date": "2025-07-20",
+"venue": "Hawkesbury",
+"runs": 46
+},
+{
+"date": "2025-08-31",
+"venue": "Wyong",
+"runs": 46
+},
+{
+"date": "2025-11-30",
+"venue": "Newcastle",
+"runs": 46
+},
+{
+"date": "2025-11-23",
+"venue": "Canberra",
+"runs": 46
+},
+{
+"date": "2026-01-16",
+"venue": "Canterbury",
+"runs": 46
+},
+{
+"date": "2026-03-05",
+"venue": "Pakenham",
+"runs": 46
+},
+{
+"date": "2026-03-22",
+"venue": "Bairnsdale",
+"runs": 46
+},
+{
+"date": "2026-04-24",
+"venue": "Werribee",
+"runs": 46
+},
+{
+"date": "2026-05-09",
+"venue": "Morphettville",
+"runs": 46
+},
+{
+"date": "2025-04-29",
+"venue": "Warrnambool",
+"runs": 45
+},
+{
+"date": "2025-01-27",
+"venue": "Warwick Farm",
+"runs": 45
+},
+{
+"date": "2025-06-18",
+"venue": "Canterbury",
+"runs": 45
+},
+{
+"date": "2024-08-31",
+"venue": "Rosehill Gardens",
+"runs": 45
+},
+{
+"date": "2025-08-15",
+"venue": "Seymour",
+"runs": 45
+},
+{
+"date": "2025-11-07",
+"venue": "Pakenham",
+"runs": 45
+},
+{
+"date": "2026-05-22",
+"venue": "Pakenham",
+"runs": 45
+},
+{
+"date": "2025-01-04",
+"venue": "Geelong",
+"runs": 44
+},
+{
+"date": "2025-03-05",
+"venue": "Warwick Farm",
+"runs": 44
+},
+{
+"date": "2025-08-29",
+"venue": "Pakenham Synthetic",
+"runs": 44
+},
+{
+"date": "2025-10-19",
+"venue": "Horsham",
+"runs": 44
+},
+{
+"date": "2025-11-27",
+"venue": "Mornington",
+"runs": 44
+},
+{
+"date": "2026-01-24",
+"venue": "Sunshine Coast",
+"runs": 44
+},
+{
+"date": "2026-01-14",
+"venue": "Kensington",
+"runs": 44
+},
+{
+"date": "2026-02-19",
+"venue": "Pakenham",
+"runs": 44
+},
+{
+"date": "2026-02-28",
+"venue": "Eagle Farm",
+"runs": 44
+},
+{
+"date": "2026-04-26",
+"venue": "Seymour",
+"runs": 44
+},
+{
+"date": "2026-05-01",
+"venue": "Geelong",
+"runs": 44
+},
+{
+"date": "2026-05-01",
+"venue": "Wagga",
+"runs": 44
+},
+{
+"date": "2026-06-03",
+"venue": "Warwick Farm",
+"runs": 44
+},
+{
+"date": "2026-05-29",
+"venue": "Pakenham",
+"runs": 44
+},
+{
+"date": "2026-06-07",
+"venue": "Swan Hill",
+"runs": 44
+},
+{
+"date": "2026-06-06",
+"venue": "Swan Hill",
+"runs": 44
+},
+{
+"date": "2025-01-01",
+"venue": "Flemington",
+"runs": 43
+},
+{
+"date": "2025-02-21",
+"venue": "Canterbury",
+"runs": 43
+},
+{
+"date": "2025-02-26",
+"venue": "Rosehill Gardens",
+"runs": 43
+},
+{
+"date": "2026-01-29",
+"venue": "Pakenham",
+"runs": 43
+},
+{
+"date": "2025-10-24",
+"venue": "Ballarat",
+"runs": 43
+},
+{
+"date": "2025-11-02",
+"venue": "Mornington",
+"runs": 43
+},
+{
+"date": "2025-11-11",
+"venue": "Gosford",
+"runs": 43
+},
+{
+"date": "2025-11-19",
+"venue": "Caulfield Heath",
+"runs": 43
+},
+{
+"date": "2026-01-24",
+"venue": "Newcastle",
+"runs": 43
+},
+{
+"date": "2025-04-18",
+"venue": "Echuca",
+"runs": 42
+},
+{
+"date": "2025-06-21",
+"venue": "Ipswich",
+"runs": 42
+},
+{
+"date": "2025-04-17",
+"venue": "Albury",
+"runs": 42
+},
+{
+"date": "2025-04-09",
+"venue": "Sandown Lakeside",
+"runs": 42
+},
+{
+"date": "2026-02-20",
+"venue": "Seymour",
+"runs": 42
+},
+{
+"date": "2025-10-05",
+"venue": "Bendigo",
+"runs": 42
+},
+{
+"date": "2026-02-01",
+"venue": "Sale",
+"runs": 42
+},
+{
+"date": "2026-02-22",
+"venue": "Ballarat",
+"runs": 42
+},
+{
+"date": "2026-05-10",
+"venue": "Sunshine Coast",
+"runs": 42
+},
+{
+"date": "2026-04-30",
+"venue": "Wagga",
+"runs": 42
+},
+{
+"date": "2026-05-19",
+"venue": "Newcastle",
+"runs": 42
+},
+{
+"date": "2026-06-05",
+"venue": "Swan Hill",
+"runs": 42
+},
+{
+"date": "2025-09-05",
+"venue": "Mornington",
+"runs": 41
+},
+{
+"date": "2025-12-11",
+"venue": "Kembla Grange",
+"runs": 41
+},
+{
+"date": "2025-12-28",
+"venue": "Seymour",
+"runs": 41
+},
+{
+"date": "2025-11-30",
+"venue": "Warrnambool",
+"runs": 41
+},
+{
+"date": "2025-07-17",
+"venue": "Cranbourne",
+"runs": 40
+},
+{
+"date": "2025-03-22",
+"venue": "Kembla Grange",
+"runs": 40
+},
+{
+"date": "2025-07-26",
+"venue": "Kembla Grange",
+"runs": 40
+},
+{
+"date": "2025-08-06",
+"venue": "Sandown Lakeside",
+"runs": 40
+},
+{
+"date": "2026-03-12",
+"venue": "Newcastle",
+"runs": 40
+},
+{
+"date": "2026-02-13",
+"venue": "Cranbourne",
+"runs": 40
+},
+{
+"date": "2025-09-28",
+"venue": "Mornington",
+"runs": 40
+},
+{
+"date": "2025-11-22",
+"venue": "Sunshine Coast",
+"runs": 40
+},
+{
+"date": "2026-01-23",
+"venue": "Pakenham",
+"runs": 40
+},
+{
+"date": "2026-02-19",
+"venue": "Hawkesbury",
+"runs": 40
+},
+{
+"date": "2026-03-09",
+"venue": "Warrnambool",
+"runs": 40
+},
+{
+"date": "2026-03-13",
+"venue": "Kyneton",
+"runs": 40
+},
+{
+"date": "2026-03-22",
+"venue": "Geelong",
+"runs": 40
+},
+{
+"date": "2026-04-15",
+"venue": "Doomben",
+"runs": 40
+},
+{
+"date": "2024-12-28",
+"venue": "Eagle Farm",
+"runs": 39
+},
+{
+"date": "2025-03-10",
+"venue": "Morphettville",
+"runs": 39
+},
+{
+"date": "2025-04-15",
+"venue": "Kembla Grange",
+"runs": 39
+},
+{
+"date": "2025-09-17",
+"venue": "Bendigo",
+"runs": 39
+},
+{
+"date": "2025-09-20",
+"venue": "Newcastle",
+"runs": 39
+},
+{
+"date": "2025-09-12",
+"venue": "Geelong",
+"runs": 39
+},
+{
+"date": "2025-10-16",
+"venue": "Hawkesbury",
+"runs": 39
+},
+{
+"date": "2025-10-04",
+"venue": "Kembla Grange",
+"runs": 39
+},
+{
+"date": "2025-10-11",
+"venue": "Hamilton",
+"runs": 39
+},
+{
+"date": "2025-11-29",
+"venue": "Doomben",
+"runs": 39
+},
+{
+"date": "2026-01-09",
+"venue": "Pakenham",
+"runs": 39
+},
+{
+"date": "2026-02-20",
+"venue": "Cranbourne",
+"runs": 39
+},
+{
+"date": "2026-02-27",
+"venue": "Kyneton",
+"runs": 39
+},
+{
+"date": "2025-07-05",
+"venue": "Sunshine Coast",
+"runs": 38
+},
+{
+"date": "2025-02-20",
+"venue": "Hawkesbury",
+"runs": 38
+},
+{
+"date": "2025-10-09",
+"venue": "Hawkesbury",
+"runs": 38
+},
+{
+"date": "2025-05-03",
+"venue": "Morphettville",
+"runs": 38
+},
+{
+"date": "2025-08-08",
+"venue": "Geelong",
+"runs": 38
+},
+{
+"date": "2025-08-31",
+"venue": "Seymour",
+"runs": 38
+},
+{
+"date": "2025-05-08",
+"venue": "Pakenham",
+"runs": 38
+},
+{
+"date": "2025-08-29",
+"venue": "Gosford",
+"runs": 38
+},
+{
+"date": "2025-10-03",
+"venue": "Moruya",
+"runs": 38
+},
+{
+"date": "2025-12-10",
+"venue": "Wyong",
+"runs": 38
+},
+{
+"date": "2025-12-11",
+"venue": "Kyneton",
+"runs": 38
+},
+{
+"date": "2026-02-07",
+"venue": "Kembla Grange",
+"runs": 38
+},
+{
+"date": "2026-02-17",
+"venue": "Kembla Grange",
+"runs": 38
+},
+{
+"date": "2026-02-26",
+"venue": "Pakenham",
+"runs": 38
+},
+{
+"date": "2026-03-01",
+"venue": "Sapphire Coast",
+"runs": 38
+},
+{
+"date": "2026-04-11",
+"venue": "Newcastle",
+"runs": 38
+},
+{
+"date": "2026-04-12",
+"venue": "Terang",
+"runs": 38
+},
+{
+"date": "2026-05-05",
+"venue": "Rockhampton",
+"runs": 38
+},
+{
+"date": "2026-05-17",
+"venue": "Sale",
+"runs": 38
+},
+{
+"date": "2026-06-13",
+"venue": "Bendigo",
+"runs": 38
+},
+{
+"date": "2025-02-21",
+"venue": "Moonee Valley",
+"runs": 37
+},
+{
+"date": "2025-03-19",
+"venue": "Wyong",
+"runs": 37
+},
+{
+"date": "2025-02-14",
+"venue": "Canterbury",
+"runs": 37
+},
+{
+"date": "2025-04-03",
+"venue": "Wyong",
+"runs": 37
+},
+{
+"date": "2025-04-05",
+"venue": "Hawkesbury",
+"runs": 37
+},
+{
+"date": "2025-10-13",
+"venue": "Kembla Grange",
+"runs": 37
+},
+{
+"date": "2025-12-14",
+"venue": "Hawkesbury",
+"runs": 37
+},
+{
+"date": "2026-01-05",
+"venue": "Moruya",
+"runs": 37
+},
+{
+"date": "2026-01-15",
+"venue": "Seymour",
+"runs": 37
+},
+{
+"date": "2026-05-28",
+"venue": "Moe",
+"runs": 37
+},
+{
+"date": "2024-10-23",
+"venue": "Geelong",
+"runs": 36
+},
+{
+"date": "2025-05-01",
+"venue": "Warrnambool",
+"runs": 36
+},
+{
+"date": "2024-09-27",
+"venue": "Moonee Valley",
+"runs": 36
+},
+{
+"date": "2025-03-26",
+"venue": "Sandown Hillside",
+"runs": 36
+},
+{
+"date": "2025-01-29",
+"venue": "Sandown Lakeside",
+"runs": 36
+},
+{
+"date": "2026-03-03",
+"venue": "Kembla Grange",
+"runs": 36
+},
+{
+"date": "2025-08-03",
+"venue": "Sandown Lakeside",
+"runs": 36
+},
+{
+"date": "2025-10-02",
+"venue": "Geelong",
+"runs": 36
+},
+{
+"date": "2025-10-02",
+"venue": "Newcastle",
+"runs": 36
+},
+{
+"date": "2025-11-23",
+"venue": "Kilmore",
+"runs": 36
+},
+{
+"date": "2025-12-19",
+"venue": "Cranbourne",
+"runs": 36
+},
+{
+"date": "2025-11-14",
+"venue": "Geelong",
+"runs": 36
+},
+{
+"date": "2026-04-05",
+"venue": "Mornington",
+"runs": 36
+},
+{
+"date": "2026-05-03",
+"venue": "Sale",
+"runs": 36
+},
+{
+"date": "2026-04-29",
+"venue": "Ipswich",
+"runs": 36
+},
+{
+"date": "2026-04-29",
+"venue": "Kembla Grange",
+"runs": 36
+},
+{
+"date": "2026-06-20",
+"venue": "Donald",
+"runs": 36
+},
+{
+"date": "2024-09-07",
+"venue": "Moonee Valley",
+"runs": 35
+},
+{
+"date": "2024-10-16",
+"venue": "Warwick Farm",
+"runs": 35
+},
+{
+"date": "2025-02-05",
+"venue": "Sandown Lakeside",
+"runs": 35
+},
+{
+"date": "2025-02-05",
+"venue": "Warwick Farm",
+"runs": 35
+},
+{
+"date": "2025-05-28",
+"venue": "Canterbury",
+"runs": 35
+},
+{
+"date": "2025-07-17",
+"venue": "Kembla Grange",
+"runs": 35
+},
+{
+"date": "2024-12-06",
+"venue": "Kensington",
+"runs": 35
+},
+{
+"date": "2025-05-17",
+"venue": "Kembla Grange",
+"runs": 35
+},
+{
+"date": "2025-09-06",
+"venue": "Hawkesbury",
+"runs": 35
+},
+{
+"date": "2025-09-06",
+"venue": "Doomben",
+"runs": 35
+},
+{
+"date": "2026-01-03",
+"venue": "Kembla Grange",
+"runs": 35
+},
+{
+"date": "2026-04-19",
+"venue": "Sale",
+"runs": 35
+},
+{
+"date": "2025-03-19",
+"venue": "Sandown Hillside",
+"runs": 34
+},
+{
+"date": "2025-07-15",
+"venue": "Newcastle",
+"runs": 34
+},
+{
+"date": "2025-07-13",
+"venue": "Bendigo",
+"runs": 34
+},
+{
+"date": "2025-03-08",
+"venue": "Hawkesbury",
+"runs": 34
+},
+{
+"date": "2025-01-01",
+"venue": "Canterbury",
+"runs": 34
+},
+{
+"date": "2025-05-01",
+"venue": "Wagga",
+"runs": 34
+},
+{
+"date": "2025-08-23",
+"venue": "Morphettville Parks",
+"runs": 34
+},
+{
+"date": "2025-09-28",
+"venue": "Dubbo",
+"runs": 34
+},
+{
+"date": "2025-10-04",
+"venue": "Murtoa",
+"runs": 34
+},
+{
+"date": "2025-11-08",
+"venue": "Eagle Farm",
+"runs": 34
+},
+{
+"date": "2025-10-31",
+"venue": "Cranbourne",
+"runs": 34
+},
+{
+"date": "2026-01-08",
+"venue": "Sandown Lakeside",
+"runs": 34
+},
+{
+"date": "2026-02-28",
+"venue": "Wangaratta",
+"runs": 34
+},
+{
+"date": "2026-04-05",
+"venue": "Stawell",
+"runs": 34
+},
+{
+"date": "2026-01-23",
+"venue": "Gold Coast",
+"runs": 34
+},
+{
+"date": "2026-04-27",
+"venue": "Horsham",
+"runs": 34
+},
+{
+"date": "2026-04-08",
+"venue": "Eagle Farm",
+"runs": 34
+},
+{
+"date": "2026-04-22",
+"venue": "Doomben",
+"runs": 34
+},
+{
+"date": "2026-05-16",
+"venue": "Kembla Grange",
+"runs": 34
+},
+{
+"date": "2026-06-18",
+"venue": "Moe",
+"runs": 34
+},
+{
+"date": "2024-04-06",
+"venue": "Randwick",
+"runs": 33
+},
+{
+"date": "2024-08-10",
+"venue": "Randwick",
+"runs": 33
+},
+{
+"date": "2024-06-29",
+"venue": "Rosehill Gardens",
+"runs": 33
+},
+{
+"date": "2025-04-23",
+"venue": "Geelong",
+"runs": 33
+},
+{
+"date": "2025-02-28",
+"venue": "Moonee Valley",
+"runs": 33
+},
+{
+"date": "2025-06-28",
+"venue": "Newcastle",
+"runs": 33
+},
+{
+"date": "2025-03-15",
+"venue": "Gosford",
+"runs": 33
+},
+{
+"date": "2025-06-17",
+"venue": "Hawkesbury",
+"runs": 33
+},
+{
+"date": "2025-06-22",
+"venue": "Cranbourne",
+"runs": 33
+},
+{
+"date": "2025-04-26",
+"venue": "Eagle Farm",
+"runs": 33
+},
+{
+"date": "2025-08-14",
+"venue": "Bendigo",
+"runs": 33
+},
+{
+"date": "2025-12-14",
+"venue": "Moe",
+"runs": 33
+},
+{
+"date": "2025-11-28",
+"venue": "Wodonga",
+"runs": 33
+},
+{
+"date": "2024-03-30",
+"venue": "Rosehill Gardens",
+"runs": 32
+},
+{
+"date": "2024-03-23",
+"venue": "Rosehill Gardens",
+"runs": 32
+},
+{
+"date": "2025-03-07",
+"venue": "Moonee Valley",
+"runs": 32
+},
+{
+"date": "2024-07-20",
+"venue": "Rosehill Gardens",
+"runs": 32
+},
+{
+"date": "2024-04-20",
+"venue": "Randwick",
+"runs": 32
+},
+{
+"date": "2025-01-17",
+"venue": "Canterbury",
+"runs": 32
+},
+{
+"date": "2024-06-01",
+"venue": "Eagle Farm",
+"runs": 32
+},
+{
+"date": "2025-08-22",
+"venue": "Geelong",
+"runs": 32
+},
+{
+"date": "2025-09-14",
+"venue": "Bathurst",
+"runs": 32
+},
+{
+"date": "2025-10-12",
+"venue": "Coonamble",
+"runs": 32
+},
+{
+"date": "2025-10-13",
+"venue": "Scone",
+"runs": 32
+},
+{
+"date": "2025-12-14",
+"venue": "Nowra",
+"runs": 32
+},
+{
+"date": "2025-12-17",
+"venue": "Mornington",
+"runs": 32
+},
+{
+"date": "2025-12-31",
+"venue": "Warrnambool",
+"runs": 32
+},
+{
+"date": "2026-03-09",
+"venue": "Morphettville",
+"runs": 32
+},
+{
+"date": "2026-03-08",
+"venue": "Echuca",
+"runs": 32
+},
+{
+"date": "2026-02-22",
+"venue": "Moe",
+"runs": 32
+},
+{
+"date": "2026-01-22",
+"venue": "Cranbourne",
+"runs": 32
+},
+{
+"date": "2026-03-14",
+"venue": "Geelong",
+"runs": 32
+},
+{
+"date": "2026-03-22",
+"venue": "Goulburn",
+"runs": 32
+},
+{
+"date": "2026-03-24",
+"venue": "Yarra Valley",
+"runs": 32
+},
+{
+"date": "2026-04-18",
+"venue": "Kembla Grange",
+"runs": 32
+},
+{
+"date": "2026-05-17",
+"venue": "Casterton",
+"runs": 32
+},
+{
+"date": "2026-06-21",
+"venue": "Cranbourne",
+"runs": 32
+},
+{
+"date": "2025-04-30",
+"venue": "Warrnambool",
+"runs": 31
+},
+{
+"date": "2025-06-06",
+"venue": "Swan Hill",
+"runs": 31
+},
+{
+"date": "2024-08-17",
+"venue": "Rosehill Gardens",
+"runs": 31
+},
+{
+"date": "2025-08-12",
+"venue": "Hawkesbury",
+"runs": 31
+},
+{
+"date": "2025-09-25",
+"venue": "Geelong",
+"runs": 31
+},
+{
+"date": "2025-10-14",
+"venue": "Ballarat",
+"runs": 31
+},
+{
+"date": "2025-10-24",
+"venue": "Scone",
+"runs": 31
+},
+{
+"date": "2025-10-11",
+"venue": "Eagle Farm",
+"runs": 31
+},
+{
+"date": "2025-10-28",
+"venue": "Hawkesbury",
+"runs": 31
+},
+{
+"date": "2024-08-10",
+"venue": "Moonee Valley",
+"runs": 30
+},
+{
+"date": "2024-12-28",
+"venue": "Moonee Valley",
+"runs": 30
+},
+{
+"date": "2025-04-02",
+"venue": "Ballarat",
+"runs": 30
+},
+{
+"date": "2025-06-08",
+"venue": "Swan Hill",
+"runs": 30
+},
+{
+"date": "2025-06-12",
+"venue": "Sale",
+"runs": 30
+},
+{
+"date": "2024-11-20",
+"venue": "Caulfield Heath",
+"runs": 30
+},
+{
+"date": "2025-07-20",
+"venue": "Seymour",
+"runs": 30
+},
+{
+"date": "2025-03-21",
+"venue": "Scone",
+"runs": 30
+},
+{
+"date": "2025-08-17",
+"venue": "Sale",
+"runs": 30
+},
+{
+"date": "2025-07-14",
+"venue": "Pakenham Synthetic",
+"runs": 30
+},
+{
+"date": "2025-10-10",
+"venue": "Port Macquarie",
+"runs": 30
+},
+{
+"date": "2025-10-23",
+"venue": "Hawkesbury",
+"runs": 30
+},
+{
+"date": "2026-02-07",
+"venue": "Doomben",
+"runs": 30
+},
+{
+"date": "2026-02-24",
+"venue": "Kembla Grange",
+"runs": 30
+},
+{
+"date": "2026-04-04",
+"venue": "Wyong",
+"runs": 30
+},
+{
+"date": "2026-04-09",
+"venue": "Gosford",
+"runs": 30
+},
+{
+"date": "2026-04-11",
+"venue": "Werribee",
+"runs": 30
+},
+{
+"date": "2026-04-13",
+"venue": "Seymour",
+"runs": 30
+},
+{
+"date": "2026-04-24",
+"venue": "Tamworth",
+"runs": 30
+},
+{
+"date": "2026-05-14",
+"venue": "Werribee",
+"runs": 30
+},
+{
+"date": "2026-04-19",
+"venue": "Terang",
+"runs": 30
+},
+{
+"date": "2026-04-25",
+"venue": "Sunshine Coast",
+"runs": 30
+},
+{
+"date": "2026-05-21",
+"venue": "Seymour",
+"runs": 30
+},
+{
+"date": "2024-10-16",
+"venue": "Caulfield",
+"runs": 29
+},
+{
+"date": "2024-08-31",
+"venue": "Caulfield",
+"runs": 29
+},
+{
+"date": "2025-05-29",
+"venue": "Pakenham",
+"runs": 29
+},
+{
+"date": "2025-03-01",
+"venue": "Newcastle",
+"runs": 29
+},
+{
+"date": "2025-06-24",
+"venue": "Wyong",
+"runs": 29
+},
+{
+"date": "2024-11-20",
+"venue": "Canterbury",
+"runs": 29
+},
+{
+"date": "2025-06-08",
+"venue": "Wyong",
+"runs": 29
+},
+{
+"date": "2025-08-23",
+"venue": "Eagle Farm",
+"runs": 29
+},
+{
+"date": "2025-06-07",
+"venue": "Newcastle",
+"runs": 29
+},
+{
+"date": "2025-09-11",
+"venue": "Hawkesbury",
+"runs": 29
+},
+{
+"date": "2025-11-30",
+"venue": "Traralgon",
+"runs": 29
+},
+{
+"date": "2026-02-01",
+"venue": "Sapphire Coast",
+"runs": 29
+},
+{
+"date": "2026-02-14",
+"venue": "Newcastle",
+"runs": 29
+},
+{
+"date": "2026-02-11",
+"venue": "Sale",
+"runs": 29
+},
+{
+"date": "2024-12-18",
+"venue": "Caulfield Heath",
+"runs": 28
+},
+{
+"date": "2025-01-24",
+"venue": "Moonee Valley",
+"runs": 28
+},
+{
+"date": "2024-12-13",
+"venue": "Canterbury",
+"runs": 28
+},
+{
+"date": "2025-06-26",
+"venue": "Hawkesbury",
+"runs": 28
+},
+{
+"date": "2025-08-11",
+"venue": "Goulburn",
+"runs": 28
+},
+{
+"date": "2026-01-22",
+"venue": "Kembla Grange",
+"runs": 28
+},
+{
+"date": "2025-12-26",
+"venue": "Sunshine Coast",
+"runs": 28
+},
+{
+"date": "2026-01-21",
+"venue": "Sportsbet Sandown Hillside",
+"runs": 28
+},
+{
+"date": "2026-02-20",
+"venue": "Terang",
+"runs": 28
+},
+{
+"date": "2026-03-21",
+"venue": "Echuca",
+"runs": 28
+},
+{
+"date": "2026-03-08",
+"venue": "Stony Creek",
+"runs": 28
+},
+{
+"date": "2026-04-03",
+"venue": "Canberra",
+"runs": 28
+},
+{
+"date": "2026-04-11",
+"venue": "Morphettville",
+"runs": 28
+},
+{
+"date": "2026-05-01",
+"venue": "Pakenham",
+"runs": 28
+},
+{
+"date": "2026-04-28",
+"venue": "Mornington",
+"runs": 28
+},
+{
+"date": "2026-05-15",
+"venue": "Kilmore",
+"runs": 28
+},
+{
+"date": "2026-05-12",
+"venue": "Moe",
+"runs": 28
+},
+{
+"date": "2026-05-21",
+"venue": "Ipswich",
+"runs": 28
+},
+{
+"date": "2026-05-21",
+"venue": "Hawkesbury",
+"runs": 28
+},
+{
+"date": "2026-06-01",
+"venue": "Kilmore",
+"runs": 28
+},
+{
+"date": "2026-06-11",
+"venue": "Seymour",
+"runs": 28
+},
+{
+"date": "2026-05-24",
+"venue": "Mildura",
+"runs": 28
+},
+{
+"date": "2024-08-24",
+"venue": "Moonee Valley",
+"runs": 27
+},
+{
+"date": "2025-05-25",
+"venue": "Ballarat",
+"runs": 27
+},
+{
+"date": "2025-02-22",
+"venue": "Morphettville",
+"runs": 27
+},
+{
+"date": "2024-12-31",
+"venue": "Wyong",
+"runs": 27
+},
+{
+"date": "2025-04-21",
+"venue": "Sandown Lakeside",
+"runs": 27
+},
+{
+"date": "2025-06-12",
+"venue": "Gosford",
+"runs": 27
+},
+{
+"date": "2025-05-27",
+"venue": "Hawkesbury",
+"runs": 27
+},
+{
+"date": "2025-05-22",
+"venue": "Pakenham",
+"runs": 27
+},
+{
+"date": "2025-12-18",
+"venue": "Seymour",
+"runs": 27
+},
+{
+"date": "2025-12-24",
+"venue": "Wagga",
+"runs": 27
+},
+{
+"date": "2025-10-31",
+"venue": "Kilmore",
+"runs": 27
+},
+{
+"date": "2026-01-02",
+"venue": "Terang",
+"runs": 27
+},
+{
+"date": "2026-02-06",
+"venue": "Cranbourne",
+"runs": 27
+},
+{
+"date": "2026-02-05",
+"venue": "Pakenham",
+"runs": 27
+},
+{
+"date": "2026-02-28",
+"venue": "Newcastle",
+"runs": 27
+},
+{
+"date": "2026-04-23",
+"venue": "Newcastle",
+"runs": 27
+},
+{
+"date": "2024-07-06",
+"venue": "Flemington",
+"runs": 26
+},
+{
+"date": "2024-08-03",
+"venue": "Rosehill Gardens",
+"runs": 26
+},
+{
+"date": "2024-12-04",
+"venue": "Caulfield Heath",
+"runs": 26
+},
+{
+"date": "2025-02-26",
+"venue": "Sandown Hillside",
+"runs": 26
+},
+{
+"date": "2024-07-27",
+"venue": "Randwick",
+"runs": 26
+},
+{
+"date": "2025-02-07",
+"venue": "Canterbury",
+"runs": 26
+},
+{
+"date": "2025-07-25",
+"venue": "Geelong",
+"runs": 26
+},
+{
+"date": "2025-07-26",
+"venue": "Morphettville",
+"runs": 26
+},
+{
+"date": "2025-10-07",
+"venue": "Goulburn",
+"runs": 26
+},
+{
+"date": "2025-10-04",
+"venue": "Doomben",
+"runs": 26
+},
+{
+"date": "2025-11-18",
+"venue": "Scone",
+"runs": 26
+},
+{
+"date": "2025-10-30",
+"venue": "Wyong",
+"runs": 26
+},
+{
+"date": "2025-11-01",
+"venue": "Newcastle",
+"runs": 26
+},
+{
+"date": "2025-11-20",
+"venue": "Ballarat",
+"runs": 26
+},
+{
+"date": "2025-11-09",
+"venue": "Ararat",
+"runs": 26
+},
+{
+"date": "2025-11-08",
+"venue": "Geelong",
+"runs": 26
+},
+{
+"date": "2026-01-31",
+"venue": "Eagle Farm",
+"runs": 26
+},
+{
+"date": "2026-02-14",
+"venue": "Eagle Farm",
+"runs": 26
+},
+{
+"date": "2026-02-21",
+"venue": "Morphettville",
+"runs": 26
+},
+{
+"date": "2026-02-10",
+"venue": "Wyong",
+"runs": 26
+},
+{
+"date": "2026-02-10",
+"venue": "Kyneton",
+"runs": 26
+},
+{
+"date": "2026-02-26",
+"venue": "Wyong",
+"runs": 26
+},
+{
+"date": "2026-03-26",
+"venue": "Warrnambool",
+"runs": 26
+},
+{
+"date": "2026-02-03",
+"venue": "Seymour",
+"runs": 26
+},
+{
+"date": "2026-04-21",
+"venue": "Swan Hill",
+"runs": 26
+},
+{
+"date": "2026-04-23",
+"venue": "Kyneton",
+"runs": 26
+},
+{
+"date": "2026-05-04",
+"venue": "Kilmore",
+"runs": 26
+},
+{
+"date": "2026-03-27",
+"venue": "Toowoomba",
+"runs": 26
+},
+{
+"date": "2026-02-21",
+"venue": "Doomben",
+"runs": 26
+},
+{
+"date": "2026-05-05",
+"venue": "Illawarra Grange",
+"runs": 26
+},
+{
+"date": "2026-05-07",
+"venue": "Wyong",
+"runs": 26
+},
+{
+"date": "2026-05-02",
+"venue": "Newcastle",
+"runs": 26
+},
+{
+"date": "2026-06-03",
+"venue": "Doomben",
+"runs": 26
+},
+{
+"date": "2026-06-09",
+"venue": "Donald",
+"runs": 26
+},
+{
+"date": "2026-06-07",
+"venue": "Casterton",
+"runs": 26
+},
+{
+"date": "2026-05-26",
+"venue": "Hamilton",
+"runs": 26
+},
+{
+"date": "2026-06-16",
+"venue": "Ballarat Synthetic",
+"runs": 26
+},
+{
+"date": "2025-05-14",
+"venue": "Bendigo",
+"runs": 25
+},
+{
+"date": "2025-02-23",
+"venue": "Ballarat",
+"runs": 25
+},
+{
+"date": "2025-07-11",
+"venue": "Scone",
+"runs": 25
+},
+{
+"date": "2025-07-19",
+"venue": "Gosford",
+"runs": 25
+},
+{
+"date": "2025-04-19",
+"venue": "Eagle Farm",
+"runs": 25
+},
+{
+"date": "2024-11-29",
+"venue": "Canterbury",
+"runs": 25
+},
+{
+"date": "2024-12-18",
+"venue": "Warwick Farm",
+"runs": 25
+},
+{
+"date": "2025-04-12",
+"venue": "Newcastle",
+"runs": 25
+},
+{
+"date": "2025-05-31",
+"venue": "Kembla Grange",
+"runs": 25
+},
+{
+"date": "2025-07-17",
+"venue": "Grafton",
+"runs": 25
+},
+{
+"date": "2025-09-13",
+"venue": "Morphettville",
+"runs": 25
+},
+{
+"date": "2025-07-24",
+"venue": "Wyong",
+"runs": 25
+},
+{
+"date": "2025-09-19",
+"venue": "Canberra",
+"runs": 25
+},
+{
+"date": "2025-10-17",
+"venue": "Taree",
+"runs": 25
+},
+{
+"date": "2025-04-24",
+"venue": "Pakenham",
+"runs": 25
+},
+{
+"date": "2025-11-04",
+"venue": "Kembla Grange",
+"runs": 25
+},
+{
+"date": "2025-11-26",
+"venue": "Wyong",
+"runs": 25
+},
+{
+"date": "2025-12-13",
+"venue": "Beaumont",
+"runs": 25
+},
+{
+"date": "2026-01-10",
+"venue": "Cranbourne",
+"runs": 25
+},
+{
+"date": "2026-05-11",
+"venue": "Echuca",
+"runs": 25
+},
+{
+"date": "2024-07-20",
+"venue": "Flemington",
+"runs": 24
+},
+{
+"date": "2025-07-12",
+"venue": "Murray Bdge",
+"runs": 24
+},
+{
+"date": "2024-12-05",
+"venue": "Geelong",
+"runs": 24
+},
+{
+"date": "2025-01-08",
+"venue": "Warwick Farm",
+"runs": 24
+},
+{
+"date": "2025-02-02",
+"venue": "Sapphire Coast",
+"runs": 24
+},
+{
+"date": "2024-07-06",
+"venue": "Randwick",
+"runs": 24
+},
+{
+"date": "2024-08-21",
+"venue": "Warwick Farm",
+"runs": 24
+},
+{
+"date": "2025-07-12",
+"venue": "Newcastle",
+"runs": 24
+},
+{
+"date": "2025-03-07",
+"venue": "Newcastle",
+"runs": 24
+},
+{
+"date": "2025-02-22",
+"venue": "Ellerslie",
+"runs": 24
+},
+{
+"date": "2025-02-08",
+"venue": "Kembla Grange",
+"runs": 24
+},
+{
+"date": "2025-06-29",
+"venue": "Ballarat",
+"runs": 24
+},
+{
+"date": "2025-02-27",
+"venue": "Pakenham",
+"runs": 24
+},
+{
+"date": "2025-03-12",
+"venue": "Sandown Hillside",
+"runs": 24
+},
+{
+"date": "2025-09-25",
+"venue": "Goulburn",
+"runs": 24
+},
+{
+"date": "2025-06-19",
+"venue": "Gosford",
+"runs": 24
+},
+{
+"date": "2025-09-18",
+"venue": "Mornington",
+"runs": 24
+},
+{
+"date": "2025-10-25",
+"venue": "Kembla Grange",
+"runs": 24
+},
+{
+"date": "2025-10-06",
+"venue": "Ballarat",
+"runs": 24
+},
+{
+"date": "2025-10-30",
+"venue": "Warrnambool",
+"runs": 24
+},
+{
+"date": "2025-12-05",
+"venue": "Mudgee",
+"runs": 24
+},
+{
+"date": "2025-11-21",
+"venue": "Pakenham",
+"runs": 24
+},
+{
+"date": "2026-01-26",
+"venue": "Geelong",
+"runs": 24
+},
+{
+"date": "2026-02-05",
+"venue": "Gosford",
+"runs": 24
+},
+{
+"date": "2026-02-08",
+"venue": "Hobart",
+"runs": 24
+},
+{
+"date": "2026-03-03",
+"venue": "Ararat",
+"runs": 24
+},
+{
+"date": "2026-03-17",
+"venue": "Terang",
+"runs": 24
+},
+{
+"date": "2026-03-31",
+"venue": "Kilmore",
+"runs": 24
+},
+{
+"date": "2026-03-06",
+"venue": "Kilmore",
+"runs": 24
+},
+{
+"date": "2026-03-21",
+"venue": "Eagle Farm",
+"runs": 24
+},
+{
+"date": "2026-03-30",
+"venue": "Ararat",
+"runs": 24
+},
+{
+"date": "2026-04-12",
+"venue": "Swan Hill",
+"runs": 24
+},
+{
+"date": "2026-04-18",
+"venue": "Kilmore",
+"runs": 24
+},
+{
+"date": "2026-04-04",
+"venue": "Warracknabeal",
+"runs": 24
+},
+{
+"date": "2026-04-10",
+"venue": "Gold Coast",
+"runs": 24
+},
+{
+"date": "2026-05-04",
+"venue": "Ipswich",
+"runs": 24
+},
+{
+"date": "2026-03-07",
+"venue": "Eagle Farm",
+"runs": 24
+},
+{
+"date": "2026-05-14",
+"venue": "Hawkesbury",
+"runs": 24
+},
+{
+"date": "2026-05-25",
+"venue": "Mornington",
+"runs": 24
+},
+{
+"date": "2026-05-29",
+"venue": "Bendigo",
+"runs": 24
+},
+{
+"date": "2026-06-07",
+"venue": "Sunshine Coast",
+"runs": 24
+},
+{
+"date": "2026-06-21",
+"venue": "Sunshine Coast",
+"runs": 24
+},
+{
+"date": "2026-06-17",
+"venue": "Canterbury",
+"runs": 24
+},
+{
+"date": "2026-06-15",
+"venue": "Pakenham Synthetic",
+"runs": 24
+},
+{
+"date": "2026-06-23",
+"venue": "Echuca",
+"runs": 24
+},
+{
+"date": "2025-07-11",
+"venue": "Geelong",
+"runs": 23
+},
+{
+"date": "2025-03-09",
+"venue": "Tamworth",
+"runs": 23
+},
+{
+"date": "2024-09-04",
+"venue": "Warwick Farm",
+"runs": 23
+},
+{
+"date": "2025-08-01",
+"venue": "Coffs Harbour",
+"runs": 23
+},
+{
+"date": "2025-03-23",
+"venue": "Goulburn",
+"runs": 23
+},
+{
+"date": "2025-10-27",
+"venue": "Wangaratta",
+"runs": 23
+},
+{
+"date": "2025-05-23",
+"venue": "Cranbourne",
+"runs": 23
+},
+{
+"date": "2025-08-30",
+"venue": "Eagle Farm",
+"runs": 23
+},
+{
+"date": "2025-06-30",
+"venue": "Pakenham Synthetic",
+"runs": 23
+},
+{
+"date": "2025-11-01",
+"venue": "Morphettville",
+"runs": 23
+},
+{
+"date": "2026-01-04",
+"venue": "Stawell",
+"runs": 23
+},
+{
+"date": "2026-01-01",
+"venue": "Mornington",
+"runs": 23
+},
+{
+"date": "2026-01-16",
+"venue": "Pakenham",
+"runs": 23
+},
+{
+"date": "2024-12-26",
+"venue": "Caulfield Heath",
+"runs": 22
+},
+{
+"date": "2024-05-18",
+"venue": "Flemington",
+"runs": 22
+},
+{
+"date": "2025-05-18",
+"venue": "Casterton",
+"runs": 22
+},
+{
+"date": "2024-03-30",
+"venue": "Flemington",
+"runs": 22
+},
+{
+"date": "2025-03-01",
+"venue": "Wangaratta",
+"runs": 22
+},
+{
+"date": "2025-07-13",
+"venue": "Narrandera",
+"runs": 22
+},
+{
+"date": "2024-09-25",
+"venue": "Warwick Farm",
+"runs": 22
+},
+{
+"date": "2025-07-06",
+"venue": "Sale",
+"runs": 22
+},
+{
+"date": "2025-05-15",
+"venue": "Hawkesbury",
+"runs": 22
+},
+{
+"date": "2025-07-16",
+"venue": "Grafton",
+"runs": 22
+},
+{
+"date": "2025-07-05",
+"venue": "Wyong",
+"runs": 22
+},
+{
+"date": "2025-05-30",
+"venue": "Bendigo",
+"runs": 22
+},
+{
+"date": "2026-02-11",
+"venue": "Gosford",
+"runs": 22
+},
+{
+"date": "2025-04-26",
+"venue": "Newcastle",
+"runs": 22
+},
+{
+"date": "2025-06-05",
+"venue": "Geelong",
+"runs": 22
+},
+{
+"date": "2025-03-18",
+"venue": "Bendigo",
+"runs": 22
+},
+{
+"date": "2025-08-25",
+"venue": "Pakenham Synthetic",
+"runs": 22
+},
+{
+"date": "2025-09-13",
+"venue": "Kembla Grange",
+"runs": 22
+},
+{
+"date": "2025-10-16",
+"venue": "Goulburn",
+"runs": 22
+},
+{
+"date": "2025-10-22",
+"venue": "Geelong",
+"runs": 22
+},
+{
+"date": "2025-05-10",
+"venue": "Kembla Grange",
+"runs": 22
+},
+{
+"date": "2025-11-06",
+"venue": "Gosford",
+"runs": 22
+},
+{
+"date": "2025-09-29",
+"venue": "Kilmore",
+"runs": 22
+},
+{
+"date": "2026-01-01",
+"venue": "Sunshine Coast",
+"runs": 22
+},
+{
+"date": "2026-01-20",
+"venue": "Geelong",
+"runs": 22
+},
+{
+"date": "2026-04-04",
+"venue": "Kerang",
+"runs": 22
+},
+{
+"date": "2026-04-14",
+"venue": "Donald",
+"runs": 22
+},
+{
+"date": "2026-03-28",
+"venue": "Morphettville",
+"runs": 22
+},
+{
+"date": "2026-04-25",
+"venue": "Moe",
+"runs": 22
+},
+{
+"date": "2026-04-19",
+"venue": "Sunshine Coast",
+"runs": 22
+},
+{
+"date": "2026-05-08",
+"venue": "Canberra",
+"runs": 22
+},
+{
+"date": "2026-05-23",
+"venue": "Newcastle",
+"runs": 22
+},
+{
+"date": "2026-05-24",
+"venue": "Sunshine Coast",
+"runs": 22
+},
+{
+"date": "2026-06-12",
+"venue": "Ballarat",
+"runs": 22
+},
+{
+"date": "2026-06-12",
+"venue": "Bairnsdale",
+"runs": 22
+},
+{
+"date": "2026-06-24",
+"venue": "Warwick Farm",
+"runs": 22
+},
+{
+"date": "2024-09-28",
+"venue": "Sandown Hillside",
+"runs": 21
+},
+{
+"date": "2025-06-28",
+"venue": "Morphettville Parks",
+"runs": 21
+},
+{
+"date": "2024-11-15",
+"venue": "Canterbury",
+"runs": 21
+},
+{
+"date": "2025-06-26",
+"venue": "Bendigo",
+"runs": 21
+},
+{
+"date": "2025-01-15",
+"venue": "Kensington",
+"runs": 21
+},
+{
+"date": "2025-04-25",
+"venue": "Gosford",
+"runs": 21
+},
+{
+"date": "2024-05-18",
+"venue": "Doomben",
+"runs": 21
+},
+{
+"date": "2025-05-07",
+"venue": "Caulfield Heath",
+"runs": 21
+},
+{
+"date": "2025-07-12",
+"venue": "Doomben",
+"runs": 21
+},
+{
+"date": "2025-01-22",
+"venue": "Kensington",
+"runs": 21
+},
+{
+"date": "2024-06-15",
+"venue": "Eagle Farm",
+"runs": 21
+},
+{
+"date": "2025-08-07",
+"venue": "Kembla Grange",
+"runs": 21
+},
+{
+"date": "2025-03-20",
+"venue": "Albury",
+"runs": 21
+},
+{
+"date": "2025-02-27",
+"venue": "Wyong",
+"runs": 21
+},
+{
+"date": "2025-06-21",
+"venue": "Kembla Grange",
+"runs": 21
+},
+{
+"date": "2025-12-12",
+"venue": "Doomben",
+"runs": 21
+},
+{
+"date": "2025-07-28",
+"venue": "Pakenham Synthetic",
+"runs": 21
+},
+{
+"date": "2025-10-18",
+"venue": "Morphettville",
+"runs": 21
+},
+{
+"date": "2025-08-01",
+"venue": "Cranbourne",
+"runs": 21
+},
+{
+"date": "2025-10-24",
+"venue": "Canberra",
+"runs": 21
+},
+{
+"date": "2025-04-03",
+"venue": "Pakenham",
+"runs": 21
+},
+{
+"date": "2025-11-15",
+"venue": "Kembla Grange",
+"runs": 21
+},
+{
+"date": "2025-11-13",
+"venue": "Seymour",
+"runs": 21
+},
+{
+"date": "2025-11-03",
+"venue": "Ballarat",
+"runs": 21
+},
+{
+"date": "2026-01-27",
+"venue": "Goulburn",
+"runs": 21
+},
+{
+"date": "2026-02-06",
+"venue": "Colac",
+"runs": 21
+},
+{
+"date": "2026-02-15",
+"venue": "Stony Creek",
+"runs": 21
+},
+{
+"date": "2025-02-07",
+"venue": "Moonee Valley",
+"runs": 20
+},
+{
+"date": "2024-07-13",
+"venue": "Randwick",
+"runs": 20
+},
+{
+"date": "2024-04-13",
+"venue": "Randwick",
+"runs": 20
+},
+{
+"date": "2024-10-02",
+"venue": "Rosehill Gardens",
+"runs": 20
+},
+{
+"date": "2025-05-04",
+"venue": "Sale",
+"runs": 20
+},
+{
+"date": "2024-10-30",
+"venue": "Kensington",
+"runs": 20
+},
+{
+"date": "2025-07-19",
+"venue": "Eagle Farm",
+"runs": 20
+},
+{
+"date": "2024-12-21",
+"venue": "Eagle Farm",
+"runs": 20
+},
+{
+"date": "2025-01-04",
+"venue": "Kembla Grange",
+"runs": 20
+},
+{
+"date": "2024-03-16",
+"venue": "Rosehill Gardens",
+"runs": 20
+},
+{
+"date": "2025-02-12",
+"venue": "Hawkesbury",
+"runs": 20
+},
+{
+"date": "2025-08-09",
+"venue": "Newcastle",
+"runs": 20
+},
+{
+"date": "2025-02-23",
+"venue": "Nowra",
+"runs": 20
+},
+{
+"date": "2025-04-10",
+"venue": "Pakenham",
+"runs": 20
+},
+{
+"date": "2025-01-08",
+"venue": "Mornington",
+"runs": 20
+},
+{
+"date": "2025-09-06",
+"venue": "Morphettville Parks",
+"runs": 20
+},
+{
+"date": "2025-03-25",
+"venue": "Ballarat",
+"runs": 20
+},
+{
+"date": "2025-10-07",
+"venue": "Newcastle",
+"runs": 20
+},
+{
+"date": "2025-10-16",
+"venue": "Warrnambool",
+"runs": 20
+},
+{
+"date": "2025-10-11",
+"venue": "Murray Bdge",
+"runs": 20
+},
+{
+"date": "2025-08-16",
+"venue": "Doomben",
+"runs": 20
+},
+{
+"date": "2025-09-30",
+"venue": "Tamworth",
+"runs": 20
+},
+{
+"date": "2025-11-28",
+"venue": "Queanbeyan",
+"runs": 20
+},
+{
+"date": "2025-12-18",
+"venue": "Gosford",
+"runs": 20
+},
+{
+"date": "2026-01-25",
+"venue": "Moe",
+"runs": 20
+},
+{
+"date": "2025-12-19",
+"venue": "Gold Coast",
+"runs": 20
+},
+{
+"date": "2026-02-25",
+"venue": "Launceston",
+"runs": 20
+},
+{
+"date": "2026-02-14",
+"venue": "Ballarat",
+"runs": 20
+},
+{
+"date": "2026-01-31",
+"venue": "Newcastle",
+"runs": 20
+},
+{
+"date": "2026-02-21",
+"venue": "Yarra Valley",
+"runs": 20
+},
+{
+"date": "2026-02-17",
+"venue": "Werribee",
+"runs": 20
+},
+{
+"date": "2026-04-07",
+"venue": "Hamilton",
+"runs": 20
+},
+{
+"date": "2026-04-19",
+"venue": "Wagga",
+"runs": 20
+},
+{
+"date": "2026-04-16",
+"venue": "Wyong",
+"runs": 20
+},
+{
+"date": "2026-05-03",
+"venue": "Wangaratta",
+"runs": 20
+},
+{
+"date": "2026-05-18",
+"venue": "Stawell",
+"runs": 20
+},
+{
+"date": "2026-05-16",
+"venue": "Aquis Park Gold Coast Poly",
+"runs": 20
+},
+{
+"date": "2026-05-19",
+"venue": "Horsham",
+"runs": 20
+},
+{
+"date": "2026-05-23",
+"venue": "Echuca",
+"runs": 20
+},
+{
+"date": "2026-06-04",
+"venue": "Geelong",
+"runs": 20
+},
+{
+"date": "2026-05-30",
+"venue": "Werribee",
+"runs": 20
+},
+{
+"date": "2026-07-01",
+"venue": "Kensington",
+"runs": 20
+},
+{
+"date": "2024-06-08",
+"venue": "Flemington",
+"runs": 19
+},
+{
+"date": "2025-07-18",
+"venue": "Mildura",
+"runs": 19
+},
+{
+"date": "2024-10-30",
+"venue": "Bendigo",
+"runs": 19
+},
+{
+"date": "2024-10-07",
+"venue": "Warwick Farm",
+"runs": 19
+},
+{
+"date": "2025-05-31",
+"venue": "Morphettville",
+"runs": 19
+},
+{
+"date": "2025-06-14",
+"venue": "Murray Bdge",
+"runs": 19
+},
+{
+"date": "2025-04-04",
+"venue": "Cranbourne",
+"runs": 19
+},
+{
+"date": "2024-05-18",
+"venue": "Scone",
+"runs": 19
+},
+{
+"date": "2024-08-14",
+"venue": "Kensington",
+"runs": 19
+},
+{
+"date": "2024-06-08",
+"venue": "Randwick",
+"runs": 19
+},
+{
+"date": "2025-07-06",
+"venue": "Grafton",
+"runs": 19
+},
+{
+"date": "2024-11-05",
+"venue": "Kembla Grange",
+"runs": 19
+},
+{
+"date": "2024-05-11",
+"venue": "Sunshine Coast",
+"runs": 19
+},
+{
+"date": "2025-06-13",
+"venue": "Goulburn",
+"runs": 19
+},
+{
+"date": "2025-08-26",
+"venue": "Newcastle",
+"runs": 19
+},
+{
+"date": "2025-08-28",
+"venue": "Bendigo",
+"runs": 19
+},
+{
+"date": "2025-08-07",
+"venue": "Ballarat Synthetic",
+"runs": 19
+},
+{
+"date": "2025-08-24",
+"venue": "Moe",
+"runs": 19
+},
+{
+"date": "2025-09-15",
+"venue": "Muswellbrook",
+"runs": 19
+},
+{
+"date": "2025-08-23",
+"venue": "Newcastle",
+"runs": 19
+},
+{
+"date": "2025-09-16",
+"venue": "Wodonga",
+"runs": 19
+},
+{
+"date": "2025-07-31",
+"venue": "Sale",
+"runs": 19
+},
+{
+"date": "2025-12-04",
+"venue": "Gosford",
+"runs": 19
+},
+{
+"date": "2025-10-13",
+"venue": "Kilmore",
+"runs": 19
+},
+{
+"date": "2025-12-23",
+"venue": "Mornington",
+"runs": 19
+},
+{
+"date": "2025-11-10",
+"venue": "Mornington",
+"runs": 19
+},
+{
+"date": "2026-02-09",
+"venue": "Orange",
+"runs": 19
+},
+{
+"date": "2026-01-08",
+"venue": "Sale",
+"runs": 19
+},
+{
+"date": "2025-09-23",
+"venue": "Moe",
+"runs": 19
+},
+{
+"date": "2024-12-07",
+"venue": "Eagle Farm",
+"runs": 18
+},
+{
+"date": "2024-10-13",
+"venue": "Seymour",
+"runs": 18
+},
+{
+"date": "2024-08-03",
+"venue": "Flemington",
+"runs": 18
+},
+{
+"date": "2024-11-06",
+"venue": "Kyneton",
+"runs": 18
+},
+{
+"date": "2024-05-25",
+"venue": "Randwick",
+"runs": 18
+},
+{
+"date": "2025-03-09",
+"venue": "Echuca",
+"runs": 18
+},
+{
+"date": "2024-10-09",
+"venue": "Kensington",
+"runs": 18
+},
+{
+"date": "2024-12-15",
+"venue": "Nowra",
+"runs": 18
+},
+{
+"date": "2025-05-22",
+"venue": "Goulburn",
+"runs": 18
+},
+{
+"date": "2025-02-10",
+"venue": "Beaumont",
+"runs": 18
+},
+{
+"date": "2024-09-18",
+"venue": "Canterbury",
+"runs": 18
+},
+{
+"date": "2024-07-13",
+"venue": "Caulfield",
+"runs": 18
+},
+{
+"date": "2024-09-12",
+"venue": "Hawkesbury",
+"runs": 18
+},
+{
+"date": "2025-08-10",
+"venue": "Dubbo",
+"runs": 18
+},
+{
+"date": "2025-04-17",
+"venue": "Wyong",
+"runs": 18
+},
+{
+"date": "2025-02-01",
+"venue": "Newcastle",
+"runs": 18
+},
+{
+"date": "2025-07-05",
+"venue": "Wangaratta",
+"runs": 18
+},
+{
+"date": "2025-10-23",
+"venue": "Mornington",
+"runs": 18
+},
+{
+"date": "2026-03-15",
+"venue": "Swan Hill",
+"runs": 18
+},
+{
+"date": "2026-01-31",
+"venue": "Kyneton",
+"runs": 18
+},
+{
+"date": "2025-06-23",
+"venue": "Pakenham Synthetic",
+"runs": 18
+},
+{
+"date": "2025-10-19",
+"venue": "Nowra",
+"runs": 18
+},
+{
+"date": "2025-09-09",
+"venue": "Warrnambool",
+"runs": 18
+},
+{
+"date": "2025-10-20",
+"venue": "Echuca",
+"runs": 18
+},
+{
+"date": "2025-04-01",
+"venue": "Geelong",
+"runs": 18
+},
+{
+"date": "2025-11-20",
+"venue": "Newcastle",
+"runs": 18
+},
+{
+"date": "2025-11-15",
+"venue": "Doomben",
+"runs": 18
+},
+{
+"date": "2026-01-03",
+"venue": "Cranbourne",
+"runs": 18
+},
+{
+"date": "2026-03-19",
+"venue": "Albury",
+"runs": 18
+},
+{
+"date": "2026-02-20",
+"venue": "Canberra",
+"runs": 18
+},
+{
+"date": "2026-01-24",
+"venue": "Ellerslie",
+"runs": 18
+},
+{
+"date": "2026-01-15",
+"venue": "Beaumont",
+"runs": 18
+},
+{
+"date": "2026-02-21",
+"venue": "Wyong",
+"runs": 18
+},
+{
+"date": "2026-03-23",
+"venue": "Beaumont",
+"runs": 18
+},
+{
+"date": "2026-04-05",
+"venue": "Mudgee",
+"runs": 18
+},
+{
+"date": "2026-03-28",
+"venue": "Kyneton",
+"runs": 18
+},
+{
+"date": "2026-04-16",
+"venue": "Echuca",
+"runs": 18
+},
+{
+"date": "2026-05-02",
+"venue": "Morphettville",
+"runs": 18
+},
+{
+"date": "2026-04-04",
+"venue": "Gold Coast",
+"runs": 18
+},
+{
+"date": "2026-03-04",
+"venue": "Doomben",
+"runs": 18
+},
+{
+"date": "2026-03-07",
+"venue": "Gold Coast",
+"runs": 18
+},
+{
+"date": "2026-05-17",
+"venue": "Sunshine Coast Poly",
+"runs": 18
+},
+{
+"date": "2026-04-12",
+"venue": "Sunshine Coast",
+"runs": 18
+},
+{
+"date": "2026-05-24",
+"venue": "Gunnedah",
+"runs": 18
+},
+{
+"date": "2026-06-02",
+"venue": "Kembla Grange",
+"runs": 18
+},
+{
+"date": "2026-05-22",
+"venue": "Mount Gambier",
+"runs": 18
+},
+{
+"date": "2026-06-21",
+"venue": "Ballarat Synthetic",
+"runs": 18
+},
+{
+"date": "2025-01-18",
+"venue": "Trentham",
+"runs": 17
+},
+{
+"date": "2024-08-17",
+"venue": "Caulfield",
+"runs": 17
+},
+{
+"date": "2024-06-15",
+"venue": "Sandown Hillside",
+"runs": 17
+},
+{
+"date": "2024-09-18",
+"venue": "Sandown Hillside",
+"runs": 17
+},
+{
+"date": "2025-02-07",
+"venue": "Colac",
+"runs": 17
+},
+{
+"date": "2025-04-16",
+"venue": "Caulfield Heath",
+"runs": 17
+},
+{
+"date": "2025-03-14",
+"venue": "Cranbourne",
+"runs": 17
+},
+{
+"date": "2025-05-15",
+"venue": "Pakenham",
+"runs": 17
+},
+{
+"date": "2025-04-11",
+"venue": "Orange",
+"runs": 17
+},
+{
+"date": "2024-10-23",
+"venue": "Warwick Farm",
+"runs": 17
+},
+{
+"date": "2025-02-13",
+"venue": "Wyong",
+"runs": 17
+},
+{
+"date": "2025-04-13",
+"venue": "Wagga",
+"runs": 17
+},
+{
+"date": "2025-03-18",
+"venue": "Hawkesbury",
+"runs": 17
+},
+{
+"date": "2025-04-05",
+"venue": "Eagle Farm",
+"runs": 17
+},
+{
+"date": "2025-04-23",
+"venue": "Newcastle",
+"runs": 17
+},
+{
+"date": "2025-05-26",
+"venue": "Bathurst",
+"runs": 17
+},
+{
+"date": "2025-08-03",
+"venue": "Forbes",
+"runs": 17
+},
+{
+"date": "2025-02-21",
+"venue": "Canberra",
+"runs": 17
+},
+{
+"date": "2025-08-01",
+"venue": "Kembla Grange",
+"runs": 17
+},
+{
+"date": "2025-08-19",
+"venue": "Scone",
+"runs": 17
+},
+{
+"date": "2025-03-20",
+"venue": "Pakenham",
+"runs": 17
+},
+{
+"date": "2025-02-13",
+"venue": "Pakenham",
+"runs": 17
+},
+{
+"date": "2025-03-22",
+"venue": "Trentham",
+"runs": 17
+},
+{
+"date": "2025-05-02",
+"venue": "Cranbourne",
+"runs": 17
+},
+{
+"date": "2025-08-18",
+"venue": "Pakenham Synthetic",
+"runs": 17
+},
+{
+"date": "2025-10-09",
+"venue": "Kyneton",
+"runs": 17
+},
+{
+"date": "2025-11-22",
+"venue": "Gosford",
+"runs": 17
+},
+{
+"date": "2025-11-16",
+"venue": "Wyong",
+"runs": 17
+},
+{
+"date": "2025-11-02",
+"venue": "Nowra",
+"runs": 17
+},
+{
+"date": "2025-12-07",
+"venue": "Hawkesbury",
+"runs": 17
+},
+{
+"date": "2025-12-14",
+"venue": "Tatura",
+"runs": 17
+},
+{
+"date": "2025-12-22",
+"venue": "Wangaratta",
+"runs": 17
+},
+{
+"date": "2025-12-20",
+"venue": "Murray Bdge",
+"runs": 17
+},
+{
+"date": "2025-12-29",
+"venue": "Yarra Valley",
+"runs": 17
+},
+{
+"date": "2026-01-13",
+"venue": "Yarra Valley",
+"runs": 17
+},
+{
+"date": "2026-02-02",
+"venue": "Beaumont",
+"runs": 17
+},
+{
+"date": "2026-01-14",
+"venue": "Geelong",
+"runs": 17
+},
+{
+"date": "2026-02-07",
+"venue": "Yarra Valley",
+"runs": 17
+},
+{
+"date": "2025-12-30",
+"venue": "Stony Creek",
+"runs": 17
+},
+{
+"date": "2025-03-29",
+"venue": "Morphettville",
+"runs": 16
+},
+{
+"date": "2024-09-22",
+"venue": "Flemington",
+"runs": 16
+},
+{
+"date": "2024-11-13",
+"venue": "Bendigo",
+"runs": 16
+},
+{
+"date": "2024-11-28",
+"venue": "Caulfield Heath",
+"runs": 16
+},
+{
+"date": "2025-02-19",
+"venue": "Sandown Lakeside",
+"runs": 16
+},
+{
+"date": "2024-06-26",
+"venue": "Warwick Farm",
+"runs": 16
+},
+{
+"date": "2025-06-14",
+"venue": "Newcastle",
+"runs": 16
+},
+{
+"date": "2025-05-23",
+"venue": "Gold Coast",
+"runs": 16
+},
+{
+"date": "2024-05-25",
+"venue": "Doomben",
+"runs": 16
+},
+{
+"date": "2025-08-17",
+"venue": "Moruya",
+"runs": 16
+},
+{
+"date": "2025-03-07",
+"venue": "Ballarat",
+"runs": 16
+},
+{
+"date": "2023-11-11",
+"venue": "Flemington",
+"runs": 16
+},
+{
+"date": "2025-01-01",
+"venue": "Ellerslie",
+"runs": 16
+},
+{
+"date": "2025-02-10",
+"venue": "Caulfield Heath",
+"runs": 16
+},
+{
+"date": "2025-04-13",
+"venue": "Terang",
+"runs": 16
+},
+{
+"date": "2025-07-24",
+"venue": "Warrnambool",
+"runs": 16
+},
+{
+"date": "2025-04-24",
+"venue": "Tamworth",
+"runs": 16
+},
+{
+"date": "2025-09-05",
+"venue": "Canberra",
+"runs": 16
+},
+{
+"date": "2025-10-18",
+"venue": "Bendigo",
+"runs": 16
+},
+{
+"date": "2025-05-09",
+"venue": "Cranbourne",
+"runs": 16
+},
+{
+"date": "2025-08-16",
+"venue": "Morphettville Parks",
+"runs": 16
+},
+{
+"date": "2025-11-25",
+"venue": "Tamworth",
+"runs": 16
+},
+{
+"date": "2025-12-05",
+"venue": "Canberra",
+"runs": 16
+},
+{
+"date": "2025-12-06",
+"venue": "Beaumont",
+"runs": 16
+},
+{
+"date": "2025-12-19",
+"venue": "Goulburn",
+"runs": 16
+},
+{
+"date": "2025-12-21",
+"venue": "Moruya",
+"runs": 16
+},
+{
+"date": "2025-11-22",
+"venue": "Tatura",
+"runs": 16
+},
+{
+"date": "2025-11-22",
+"venue": "Ascot",
+"runs": 16
+},
+{
+"date": "2025-12-31",
+"venue": "Gosford",
+"runs": 16
+},
+{
+"date": "2026-01-29",
+"venue": "Scone",
+"runs": 16
+},
+{
+"date": "2026-01-31",
+"venue": "Morphettville",
+"runs": 16
+},
+{
+"date": "2026-02-06",
+"venue": "Canberra",
+"runs": 16
+},
+{
+"date": "2025-09-08",
+"venue": "Tatura",
+"runs": 16
+},
+{
+"date": "2026-01-28",
+"venue": "Kembla Grange",
+"runs": 16
+},
+{
+"date": "2025-12-31",
+"venue": "Nowra",
+"runs": 16
+},
+{
+"date": "2026-02-24",
+"venue": "Scone",
+"runs": 16
+},
+{
+"date": "2025-11-04",
+"venue": "Echuca",
+"runs": 16
+},
+{
+"date": "2026-03-18",
+"venue": "Doomben",
+"runs": 16
+},
+{
+"date": "2026-04-17",
+"venue": "Stawell",
+"runs": 16
+},
+{
+"date": "2026-02-21",
+"venue": "Gold Coast",
+"runs": 16
+},
+{
+"date": "2026-04-16",
+"venue": "Ipswich",
+"runs": 16
+},
+{
+"date": "2026-03-29",
+"venue": "Sunshine Coast",
+"runs": 16
+},
+{
+"date": "2026-03-11",
+"venue": "Doomben",
+"runs": 16
+},
+{
+"date": "2026-05-02",
+"venue": "Aquis Park Gold Coast Poly",
+"runs": 16
+},
+{
+"date": "2026-05-02",
+"venue": "Donald",
+"runs": 16
+},
+{
+"date": "2026-04-20",
+"venue": "Muswellbrook",
+"runs": 16
+},
+{
+"date": "2026-04-30",
+"venue": "Wyong",
+"runs": 16
+},
+{
+"date": "2026-05-29",
+"venue": "Sunshine Coast Poly",
+"runs": 16
+},
+{
+"date": "2026-06-06",
+"venue": "Newcastle",
+"runs": 16
+},
+{
+"date": "2026-06-14",
+"venue": "Wangaratta",
+"runs": 16
+},
+{
+"date": "2026-06-25",
+"venue": "Ipswich",
+"runs": 16
+},
+{
+"date": "2024-02-24",
+"venue": "Rosehill Gardens",
+"runs": 15
+},
+{
+"date": "2024-05-11",
+"venue": "Morphettville",
+"runs": 15
+},
+{
+"date": "2024-04-25",
+"venue": "Flemington",
+"runs": 15
+},
+{
+"date": "2024-05-04",
+"venue": "Hawkesbury",
+"runs": 15
+},
+{
+"date": "2024-06-15",
+"venue": "Rosehill Gardens",
+"runs": 15
+},
+{
+"date": "2025-04-27",
+"venue": "Ballarat",
+"runs": 15
+},
+{
+"date": "2025-02-14",
+"venue": "Moonee Valley",
+"runs": 15
+},
+{
+"date": "2025-06-22",
+"venue": "Wagga",
+"runs": 15
+},
+{
+"date": "2025-01-22",
+"venue": "Mornington",
+"runs": 15
+},
+{
+"date": "2024-11-01",
+"venue": "Moonee Valley",
+"runs": 15
+},
+{
+"date": "2024-09-11",
+"venue": "Sale",
+"runs": 15
+},
+{
+"date": "2025-05-20",
+"venue": "Tamworth",
+"runs": 15
+},
+{
+"date": "2025-02-28",
+"venue": "Goulburn",
+"runs": 15
+},
+{
+"date": "2025-03-12",
+"venue": "Wyong",
+"runs": 15
+},
+{
+"date": "2024-10-17",
+"venue": "Hawkesbury",
+"runs": 15
+},
+{
+"date": "2024-11-28",
+"venue": "Hawkesbury",
+"runs": 15
+},
+{
+"date": "2025-06-01",
+"venue": "Muswellbrook",
+"runs": 15
+},
+{
+"date": "2025-02-20",
+"venue": "Pakenham",
+"runs": 15
+},
+{
+"date": "2025-05-06",
+"venue": "Bendigo",
+"runs": 15
+},
+{
+"date": "2026-01-07",
+"venue": "Eagle Farm",
+"runs": 15
+},
+{
+"date": "2025-04-05",
+"venue": "Morphettville Parks",
+"runs": 15
+},
+{
+"date": "2025-07-27",
+"venue": "Ballarat Synthetic",
+"runs": 15
+},
+{
+"date": "2025-03-13",
+"venue": "Pakenham",
+"runs": 15
+},
+{
+"date": "2025-08-30",
+"venue": "Morphettville",
+"runs": 15
+},
+{
+"date": "2025-08-02",
+"venue": "Murray Bdge",
+"runs": 15
+},
+{
+"date": "2025-07-07",
+"venue": "Pakenham Synthetic",
+"runs": 15
+},
+{
+"date": "2025-06-10",
+"venue": "Seymour",
+"runs": 15
+},
+{
+"date": "2025-05-03",
+"venue": "Newcastle",
+"runs": 15
+},
+{
+"date": "2025-09-20",
+"venue": "Gold Coast",
+"runs": 15
+},
+{
+"date": "2025-03-15",
+"venue": "Eagle Farm",
+"runs": 15
+},
+{
+"date": "2025-10-25",
+"venue": "Doomben",
+"runs": 15
+},
+{
+"date": "2025-10-19",
+"venue": "Moe",
+"runs": 15
+},
+{
+"date": "2026-02-08",
+"venue": "Wangaratta",
+"runs": 15
+},
+{
+"date": "2024-06-22",
+"venue": "Flemington",
+"runs": 14
+},
+{
+"date": "2024-04-06",
+"venue": "Caulfield",
+"runs": 14
+},
+{
+"date": "2024-09-20",
+"venue": "Newcastle",
+"runs": 14
+},
+{
+"date": "2024-11-07",
+"venue": "Hawkesbury",
+"runs": 14
+},
+{
+"date": "2024-11-13",
+"venue": "Rosehill Gardens",
+"runs": 14
+},
+{
+"date": "2025-04-17",
+"venue": "Pakenham",
+"runs": 14
+},
+{
+"date": "2024-11-22",
+"venue": "Moonee Valley",
+"runs": 14
+},
+{
+"date": "2024-09-08",
+"venue": "Bendigo",
+"runs": 14
+},
+{
+"date": "2025-02-26",
+"venue": "Launceston",
+"runs": 14
+},
+{
+"date": "2025-01-30",
+"venue": "Pakenham",
+"runs": 14
+},
+{
+"date": "2024-12-01",
+"venue": "Newcastle",
+"runs": 14
+},
+{
+"date": "2025-01-06",
+"venue": "Moruya",
+"runs": 14
+},
+{
+"date": "2025-05-26",
+"venue": "Newcastle",
+"runs": 14
+},
+{
+"date": "2024-11-23",
+"venue": "Wyong",
+"runs": 14
+},
+{
+"date": "2025-04-12",
+"venue": "Doomben",
+"runs": 14
+},
+{
+"date": "2024-12-04",
+"venue": "Warwick Farm",
+"runs": 14
+},
+{
+"date": "2025-05-02",
+"venue": "Muswellbrook",
+"runs": 14
+},
+{
+"date": "2024-12-14",
+"venue": "Eagle Farm",
+"runs": 14
+},
+{
+"date": "2024-08-22",
+"venue": "Hawkesbury",
+"runs": 14
+},
+{
+"date": "2025-01-28",
+"venue": "Goulburn",
+"runs": 14
+},
+{
+"date": "2025-01-25",
+"venue": "Newcastle",
+"runs": 14
+},
+{
+"date": "2025-08-07",
+"venue": "Tamworth",
+"runs": 14
+},
+{
+"date": "2025-04-26",
+"venue": "Ascot",
+"runs": 14
+},
+{
+"date": "2024-12-19",
+"venue": "Seymour",
+"runs": 14
+},
+{
+"date": "2024-12-28",
+"venue": "Cranbourne",
+"runs": 14
+},
+{
+"date": "2025-02-08",
+"venue": "Morphettville",
+"runs": 14
+},
+{
+"date": "2025-09-26",
+"venue": "Scone",
+"runs": 14
+},
+{
+"date": "2025-09-02",
+"venue": "Scone",
+"runs": 14
+},
+{
+"date": "2025-10-06",
+"venue": "Muswellbrook",
+"runs": 14
+},
+{
+"date": "2025-07-10",
+"venue": "Gosford",
+"runs": 14
+},
+{
+"date": "2025-09-08",
+"venue": "Tamworth",
+"runs": 14
+},
+{
+"date": "2025-10-10",
+"venue": "Canberra",
+"runs": 14
+},
+{
+"date": "2025-06-19",
+"venue": "Moe",
+"runs": 14
+},
+{
+"date": "2025-03-28",
+"venue": "Cranbourne",
+"runs": 14
+},
+{
+"date": "2025-05-08",
+"venue": "Wyong",
+"runs": 14
+},
+{
+"date": "2025-05-28",
+"venue": "Sale",
+"runs": 14
+},
+{
+"date": "2025-12-19",
+"venue": "Yarra Valley",
+"runs": 14
+},
+{
+"date": "2025-12-16",
+"venue": "Terang",
+"runs": 14
+},
+{
+"date": "2025-12-13",
+"venue": "Ascot",
+"runs": 14
+},
+{
+"date": "2025-12-05",
+"venue": "Mornington",
+"runs": 14
+},
+{
+"date": "2025-12-13",
+"venue": "Stawell",
+"runs": 14
+},
+{
+"date": "2026-01-11",
+"venue": "Warrnambool",
+"runs": 14
+},
+{
+"date": "2026-01-09",
+"venue": "Gosford",
+"runs": 14
+},
+{
+"date": "2026-02-08",
+"venue": "Nowra",
+"runs": 14
+},
+{
+"date": "2026-03-07",
+"venue": "Ellerslie",
+"runs": 14
+},
+{
+"date": "2026-03-13",
+"venue": "Armidale",
+"runs": 14
+},
+{
+"date": "2026-03-10",
+"venue": "Goulburn",
+"runs": 14
+},
+{
+"date": "2026-03-14",
+"venue": "Morphettville Parks",
+"runs": 14
+},
+{
+"date": "2026-02-06",
+"venue": "Hobart",
+"runs": 14
+},
+{
+"date": "2026-03-22",
+"venue": "Mount Gambier",
+"runs": 14
+},
+{
+"date": "2025-12-20",
+"venue": "Colac",
+"runs": 14
+},
+{
+"date": "2026-03-15",
+"venue": "Dubbo",
+"runs": 14
+},
+{
+"date": "2026-02-24",
+"venue": "Horsham",
+"runs": 14
+},
+{
+"date": "2026-02-13",
+"venue": "Kilmore",
+"runs": 14
+},
+{
+"date": "2026-04-20",
+"venue": "Wodonga",
+"runs": 14
+},
+{
+"date": "2026-05-10",
+"venue": "Mornington",
+"runs": 14
+},
+{
+"date": "2026-04-12",
+"venue": "Gundagai",
+"runs": 14
+},
+{
+"date": "2026-04-01",
+"venue": "Doomben",
+"runs": 14
+},
+{
+"date": "2026-04-23",
+"venue": "Ipswich",
+"runs": 14
+},
+{
+"date": "2026-05-07",
+"venue": "Goulburn",
+"runs": 14
+},
+{
+"date": "2026-04-17",
+"venue": "Canberra",
+"runs": 14
+},
+{
+"date": "2026-03-29",
+"venue": "Avoca",
+"runs": 14
+},
+{
+"date": "2026-06-10",
+"venue": "Mount Gambier",
+"runs": 14
+},
+{
+"date": "2026-06-20",
+"venue": "Ipswich",
+"runs": 14
+},
+{
+"date": "2026-06-14",
+"venue": "Sunshine Coast",
+"runs": 14
+},
+{
+"date": "2026-06-20",
+"venue": "Gold Coast",
+"runs": 14
+},
+{
+"date": "2026-06-24",
+"venue": "Doomben",
+"runs": 14
+},
+{
+"date": "2026-06-04",
+"venue": "Ipswich",
+"runs": 14
+},
+{
+"date": "2024-05-04",
+"venue": "Caulfield",
+"runs": 13
+},
+{
+"date": "2024-04-27",
+"venue": "Rosehill Gardens",
+"runs": 13
+},
+{
+"date": "2024-09-11",
+"venue": "Kensington",
+"runs": 13
+},
+{
+"date": "2025-03-05",
+"venue": "Sandown Hillside",
+"runs": 13
+},
+{
+"date": "2024-03-23",
+"venue": "Moonee Valley",
+"runs": 13
+},
+{
+"date": "2025-06-14",
+"venue": "Bendigo",
+"runs": 13
+},
+{
+"date": "2023-10-07",
+"venue": "Flemington",
+"runs": 13
+},
+{
+"date": "2025-03-06",
+"venue": "Pakenham",
+"runs": 13
+},
+{
+"date": "2024-11-14",
+"venue": "Ballarat",
+"runs": 13
+},
+{
+"date": "2024-08-07",
+"venue": "Canterbury",
+"runs": 13
+},
+{
+"date": "2024-02-10",
+"venue": "Randwick",
+"runs": 13
+},
+{
+"date": "2025-01-29",
+"venue": "Kembla Grange",
+"runs": 13
+},
+{
+"date": "2025-07-13",
+"venue": "Grafton",
+"runs": 13
+},
+{
+"date": "2025-06-27",
+"venue": "Moruya",
+"runs": 13
+},
+{
+"date": "2024-12-12",
+"venue": "Kembla Grange",
+"runs": 13
+},
+{
+"date": "2025-08-02",
+"venue": "Eagle Farm",
+"runs": 13
+},
+{
+"date": "2025-04-25",
+"venue": "Bathurst",
+"runs": 13
+},
+{
+"date": "2024-06-29",
+"venue": "Caulfield",
+"runs": 13
+},
+{
+"date": "2024-10-05",
+"venue": "ParisLongchamp",
+"runs": 13
+},
+{
+"date": "2025-06-02",
+"venue": "Pakenham Synthetic",
+"runs": 13
+},
+{
+"date": "2025-09-12",
+"venue": "Tuncurry",
+"runs": 13
+},
+{
+"date": "2025-09-16",
+"venue": "Moruya",
+"runs": 13
+},
+{
+"date": "2025-09-29",
+"venue": "Wagga",
+"runs": 13
+},
+{
+"date": "2025-10-12",
+"venue": "Queanbeyan",
+"runs": 13
+},
+{
+"date": "2025-07-06",
+"venue": "Warrnambool",
+"runs": 13
+},
+{
+"date": "2025-09-30",
+"venue": "Tatura",
+"runs": 13
+},
+{
+"date": "2025-10-27",
+"venue": "Beaumont",
+"runs": 13
+},
+{
+"date": "2025-11-17",
+"venue": "Nowra",
+"runs": 13
+},
+{
+"date": "2025-11-04",
+"venue": "Canberra",
+"runs": 13
+},
+{
+"date": "2025-05-20",
+"venue": "Kilmore",
+"runs": 13
+},
+{
+"date": "2025-11-14",
+"venue": "Pakenham",
+"runs": 13
+},
+{
+"date": "2025-05-16",
+"venue": "Cranbourne",
+"runs": 13
+},
+{
+"date": "2025-11-18",
+"venue": "Kyneton",
+"runs": 13
+},
+{
+"date": "2025-11-16",
+"venue": "Donald",
+"runs": 13
+},
+{
+"date": "2026-06-20",
+"venue": "Kilcoy",
+"runs": 13
+},
+{
+"date": "2024-11-29",
+"venue": "Moonee Valley",
+"runs": 12
+},
+{
+"date": "2025-04-11",
+"venue": "Geelong",
+"runs": 12
+},
+{
+"date": "2024-10-27",
+"venue": "Sale",
+"runs": 12
+},
+{
+"date": "2025-01-18",
+"venue": "Cranbourne",
+"runs": 12
+},
+{
+"date": "2025-05-24",
+"venue": "Murray Bdge",
+"runs": 12
+},
+{
+"date": "2024-07-10",
+"venue": "Warwick Farm",
+"runs": 12
+},
+{
+"date": "2024-06-19",
+"venue": "Canterbury",
+"runs": 12
+},
+{
+"date": "2025-02-24",
+"venue": "Grafton",
+"runs": 12
+},
+{
+"date": "2025-07-02",
+"venue": "Eagle Farm",
+"runs": 12
+},
+{
+"date": "2025-04-24",
+"venue": "Albury",
+"runs": 12
+},
+{
+"date": "2025-02-22",
+"venue": "Gosford",
+"runs": 12
+},
+{
+"date": "2024-06-08",
+"venue": "Eagle Farm",
+"runs": 12
+},
+{
+"date": "2024-11-15",
+"venue": "Gundagai",
+"runs": 12
+},
+{
+"date": "2024-11-09",
+"venue": "Doomben",
+"runs": 12
+},
+{
+"date": "2024-10-12",
+"venue": "Eagle Farm",
+"runs": 12
+},
+{
+"date": "2025-02-15",
+"venue": "Newcastle",
+"runs": 12
+},
+{
+"date": "2024-06-20",
+"venue": "Royal Ascot",
+"runs": 12
+},
+{
+"date": "2025-08-15",
+"venue": "Tamworth",
+"runs": 12
+},
+{
+"date": "2025-02-28",
+"venue": "Orange",
+"runs": 12
+},
+{
+"date": "2024-12-29",
+"venue": "Seymour",
+"runs": 12
+},
+{
+"date": "2024-12-11",
+"venue": "Wyong",
+"runs": 12
+},
+{
+"date": "2025-08-12",
+"venue": "Bairnsdale",
+"runs": 12
+},
+{
+"date": "2025-09-20",
+"venue": "Morphettville Parks",
+"runs": 12
+},
+{
+"date": "2025-09-12",
+"venue": "Goulburn",
+"runs": 12
+},
+{
+"date": "2025-04-08",
+"venue": "Goulburn",
+"runs": 12
+},
+{
+"date": "2025-04-19",
+"venue": "Oakbank",
+"runs": 12
+},
+{
+"date": "2025-06-25",
+"venue": "Sale",
+"runs": 12
+},
+{
+"date": "2025-10-20",
+"venue": "Muswellbrook",
+"runs": 12
+},
+{
+"date": "2025-11-01",
+"venue": "Dubbo",
+"runs": 12
+},
+{
+"date": "2025-11-02",
+"venue": "Muswellbrook",
+"runs": 12
+},
+{
+"date": "2025-10-18",
+"venue": "Gold Coast",
+"runs": 12
+},
+{
+"date": "2025-11-07",
+"venue": "Albury",
+"runs": 12
+},
+{
+"date": "2025-11-01",
+"venue": "Traralgon",
+"runs": 12
+},
+{
+"date": "2025-12-31",
+"venue": "Echuca",
+"runs": 12
+},
+{
+"date": "2026-01-01",
+"venue": "Burrumbeet",
+"runs": 12
+},
+{
+"date": "2025-12-15",
+"venue": "Werribee",
+"runs": 12
+},
+{
+"date": "2026-01-10",
+"venue": "Kembla Grange",
+"runs": 12
+},
+{
+"date": "2025-11-01",
+"venue": "Eagle Farm",
+"runs": 12
+},
+{
+"date": "2026-01-01",
+"venue": "Ascot",
+"runs": 12
+},
+{
+"date": "2025-12-06",
+"venue": "Ascot",
+"runs": 12
+},
+{
+"date": "2026-01-17",
+"venue": "Camperdown",
+"runs": 12
+},
+{
+"date": "2026-02-13",
+"venue": "Tamworth",
+"runs": 12
+},
+{
+"date": "2026-02-22",
+"venue": "Nowra",
+"runs": 12
+},
+{
+"date": "2026-02-09",
+"venue": "Muswellbrook",
+"runs": 12
+},
+{
+"date": "2026-02-22",
+"venue": "Port Macquarie",
+"runs": 12
+},
+{
+"date": "2026-02-21",
+"venue": "Ellerslie",
+"runs": 12
+},
+{
+"date": "2026-03-24",
+"venue": "Port Macquarie",
+"runs": 12
+},
+{
+"date": "2026-03-06",
+"venue": "Dubbo",
+"runs": 12
+},
+{
+"date": "2025-12-06",
+"venue": "Wangaratta",
+"runs": 12
+},
+{
+"date": "2026-02-04",
+"venue": "Eagle Farm",
+"runs": 12
+},
+{
+"date": "2026-03-07",
+"venue": "Towong",
+"runs": 12
+},
+{
+"date": "2026-04-18",
+"venue": "Morphettville Parks",
+"runs": 12
+},
+{
+"date": "2026-04-14",
+"venue": "Ballina",
+"runs": 12
+},
+{
+"date": "2026-03-25",
+"venue": "Eagle Farm",
+"runs": 12
+},
+{
+"date": "2026-05-01",
+"venue": "Sunshine Coast Poly",
+"runs": 12
+},
+{
+"date": "2026-05-09",
+"venue": "Toowoomba",
+"runs": 12
+},
+{
+"date": "2026-04-10",
+"venue": "Gatton",
+"runs": 12
+},
+{
+"date": "2026-01-17",
+"venue": "Doomben",
+"runs": 12
+},
+{
+"date": "2026-02-25",
+"venue": "Doomben",
+"runs": 12
+},
+{
+"date": "2026-04-05",
+"venue": "Sunshine Coast",
+"runs": 12
+},
+{
+"date": "2026-05-01",
+"venue": "Muswellbrook",
+"runs": 12
+},
+{
+"date": "2026-04-27",
+"venue": "Goulburn",
+"runs": 12
+},
+{
+"date": "2026-05-24",
+"venue": "Nowra",
+"runs": 12
+},
+{
+"date": "2026-05-30",
+"venue": "Morphettville",
+"runs": 12
+},
+{
+"date": "2026-06-24",
+"venue": "Ballarat Synthetic",
+"runs": 12
+},
+{
+"date": "2026-06-25",
+"venue": "Bendigo",
+"runs": 12
+},
+{
+"date": "2026-06-14",
+"venue": "Warrnambool",
+"runs": 12
+},
+{
+"date": "2026-07-03",
+"venue": "Ipswich",
+"runs": 12
+},
+{
+"date": "2026-06-26",
+"venue": "Beaudesert",
+"runs": 12
+},
+{
+"date": "2023-11-07",
+"venue": "Flemington",
+"runs": 11
+},
+{
+"date": "2024-06-01",
+"venue": "Caulfield",
+"runs": 11
+},
+{
+"date": "2024-03-02",
+"venue": "Flemington",
+"runs": 11
+},
+{
+"date": "2024-09-27",
+"venue": "Benalla",
+"runs": 11
+},
+{
+"date": "2024-07-03",
+"venue": "Sandown Hillside",
+"runs": 11
+},
+{
+"date": "2025-01-25",
+"venue": "Morphettville",
+"runs": 11
+},
+{
+"date": "2024-06-01",
+"venue": "Rosehill Gardens",
+"runs": 11
+},
+{
+"date": "2025-01-24",
+"venue": "Port Macquarie",
+"runs": 11
+},
+{
+"date": "2025-02-25",
+"venue": "Taree",
+"runs": 11
+},
+{
+"date": "2025-06-17",
+"venue": "Nowra",
+"runs": 11
+},
+{
+"date": "2025-07-22",
+"venue": "Taree",
+"runs": 11
+},
+{
+"date": "2025-03-15",
+"venue": "Gold Coast",
+"runs": 11
+},
+{
+"date": "2025-02-22",
+"venue": "Doomben",
+"runs": 11
+},
+{
+"date": "2025-01-24",
+"venue": "Gold Coast",
+"runs": 11
+},
+{
+"date": "2024-08-28",
+"venue": "Canterbury",
+"runs": 11
+},
+{
+"date": "2025-03-04",
+"venue": "Kembla Grange",
+"runs": 11
+},
+{
+"date": "2025-07-26",
+"venue": "Doomben",
+"runs": 11
+},
+{
+"date": "2025-01-02",
+"venue": "Muswellbrook",
+"runs": 11
+},
+{
+"date": "2024-10-24",
+"venue": "Hawkesbury",
+"runs": 11
+},
+{
+"date": "2024-01-06",
+"venue": "Randwick",
+"runs": 11
+},
+{
+"date": "2025-02-25",
+"venue": "Kembla Grange",
+"runs": 11
+},
+{
+"date": "2024-03-09",
+"venue": "Ellerslie",
+"runs": 11
+},
+{
+"date": "2024-11-24",
+"venue": "Kilmore",
+"runs": 11
+},
+{
+"date": "2024-09-06",
+"venue": "Wyong",
+"runs": 11
+},
+{
+"date": "2024-12-28",
+"venue": "Kembla Grange",
+"runs": 11
+},
+{
+"date": "2025-07-27",
+"venue": "Sapphire Coast",
+"runs": 11
+},
+{
+"date": "2024-12-19",
+"venue": "Beaumont",
+"runs": 11
+},
+{
+"date": "2024-07-31",
+"venue": "Sandown Hillside",
+"runs": 11
+},
+{
+"date": "2025-02-11",
+"venue": "Kilmore",
+"runs": 11
+},
+{
+"date": "2025-08-28",
+"venue": "Wagga",
+"runs": 11
+},
+{
+"date": "2025-02-15",
+"venue": "Bendigo",
+"runs": 11
+},
+{
+"date": "2025-05-13",
+"venue": "Moe",
+"runs": 11
+},
+{
+"date": "2025-01-31",
+"venue": "Moonee Valley",
+"runs": 11
+},
+{
+"date": "2025-09-15",
+"venue": "Hamilton",
+"runs": 11
+},
+{
+"date": "2025-10-18",
+"venue": "Wagga Riverside",
+"runs": 11
+},
+{
+"date": "2025-05-23",
+"venue": "Geelong",
+"runs": 11
+},
+{
+"date": "2025-02-18",
+"venue": "Newcastle",
+"runs": 11
+},
+{
+"date": "2024-09-14",
+"venue": "Morphettville",
+"runs": 11
+},
+{
+"date": "2025-01-10",
+"venue": "Pakenham",
+"runs": 11
+},
+{
+"date": "2025-10-17",
+"venue": "Bathurst",
+"runs": 11
+},
+{
+"date": "2025-09-14",
+"venue": "Kilmore",
+"runs": 11
+},
+{
+"date": "2025-09-22",
+"venue": "Warrnambool",
+"runs": 11
+},
+{
+"date": "2025-11-15",
+"venue": "Morphettville Parks",
+"runs": 11
+},
+{
+"date": "2025-11-15",
+"venue": "Dunkeld",
+"runs": 11
+},
+{
+"date": "2025-09-02",
+"venue": "Benalla",
+"runs": 11
+},
+{
+"date": "2026-01-18",
+"venue": "Stony Creek",
+"runs": 11
+},
+{
+"date": "2025-09-27",
+"venue": "Toowoomba",
+"runs": 11
+},
+{
+"date": "2024-02-24",
+"venue": "Caulfield",
+"runs": 10
+},
+{
+"date": "2025-01-11",
+"venue": "Murray Bdge",
+"runs": 10
+},
+{
+"date": "2024-05-11",
+"venue": "Caulfield",
+"runs": 10
+},
+{
+"date": "2024-09-26",
+"venue": "Geelong",
+"runs": 10
+},
+{
+"date": "2024-10-09",
+"venue": "Sale",
+"runs": 10
+},
+{
+"date": "2025-01-16",
+"venue": "Seymour",
+"runs": 10
+},
+{
+"date": "2024-09-04",
+"venue": "Sandown Hillside",
+"runs": 10
+},
+{
+"date": "2025-05-18",
+"venue": "Sale",
+"runs": 10
+},
+{
+"date": "2025-01-15",
+"venue": "Geelong",
+"runs": 10
+},
+{
+"date": "2025-05-30",
+"venue": "Cranbourne",
+"runs": 10
+},
+{
+"date": "2024-08-29",
+"venue": "Bendigo",
+"runs": 10
+},
+{
+"date": "2025-01-26",
+"venue": "Wyong",
+"runs": 10
+},
+{
+"date": "2025-06-24",
+"venue": "Port Macquarie",
+"runs": 10
+},
+{
+"date": "2025-05-13",
+"venue": "Taree",
+"runs": 10
+},
+{
+"date": "2024-02-17",
+"venue": "Randwick",
+"runs": 10
+},
+{
+"date": "2025-01-25",
+"venue": "Sunshine Coast",
+"runs": 10
+},
+{
+"date": "2024-10-31",
+"venue": "Wyong",
+"runs": 10
+},
+{
+"date": "2025-05-07",
+"venue": "Eagle Farm",
+"runs": 10
+},
+{
+"date": "2024-11-27",
+"venue": "Newcastle",
+"runs": 10
+},
+{
+"date": "2025-01-21",
+"venue": "Newcastle",
+"runs": 10
+},
+{
+"date": "2024-12-26",
+"venue": "Beaumont",
+"runs": 10
+},
+{
+"date": "2023-09-09",
+"venue": "Leopardstown",
+"runs": 10
+},
+{
+"date": "2024-09-15",
+"venue": "Curragh",
+"runs": 10
+},
+{
+"date": "2024-05-17",
+"venue": "Scone",
+"runs": 10
+},
+{
+"date": "2024-07-11",
+"venue": "Newmarket",
+"runs": 10
+},
+{
+"date": "2024-04-26",
+"venue": "Sandown",
+"runs": 10
+},
+{
+"date": "2025-06-20",
+"venue": "Canberra Acton",
+"runs": 10
+},
+{
+"date": "2025-07-24",
+"venue": "Corowa",
+"runs": 10
+},
+{
+"date": "2025-02-09",
+"venue": "Nowra",
+"runs": 10
+},
+{
+"date": "2025-02-17",
+"venue": "Scone",
+"runs": 10
+},
+{
+"date": "2025-04-02",
+"venue": "Canberra",
+"runs": 10
+},
+{
+"date": "2025-02-16",
+"venue": "Dubbo",
+"runs": 10
+},
+{
+"date": "2025-03-16",
+"venue": "Coonamble",
+"runs": 10
+},
+{
+"date": "2024-05-08",
+"venue": "Warwick Farm",
+"runs": 10
+},
+{
+"date": "2025-05-21",
+"venue": "Ipswich",
+"runs": 10
+},
+{
+"date": "2025-05-04",
+"venue": "Rockhampton",
+"runs": 10
+},
+{
+"date": "2023-10-28",
+"venue": "Moonee Valley",
+"runs": 10
+},
+{
+"date": "2025-01-28",
+"venue": "Geelong",
+"runs": 10
+},
+{
+"date": "2025-05-01",
+"venue": "Wyong",
+"runs": 10
+},
+{
+"date": "2025-02-06",
+"venue": "Pakenham",
+"runs": 10
+},
+{
+"date": "2025-08-30",
+"venue": "Warracknabeal",
+"runs": 10
+},
+{
+"date": "2025-05-17",
+"venue": "Morphettville Parks",
+"runs": 10
+},
+{
+"date": "2025-08-24",
+"venue": "Swan Hill",
+"runs": 10
+},
+{
+"date": "2025-02-09",
+"venue": "Bendigo",
+"runs": 10
+},
+{
+"date": "2024-11-16",
+"venue": "Kembla Grange",
+"runs": 10
+},
+{
+"date": "2025-02-07",
+"venue": "Canberra",
+"runs": 10
+},
+{
+"date": "2025-10-05",
+"venue": "Cootamundra",
+"runs": 10
+},
+{
+"date": "2024-10-12",
+"venue": "Kembla Grange",
+"runs": 10
+},
+{
+"date": "2025-01-25",
+"venue": "Ellerslie",
+"runs": 10
+},
+{
+"date": "2025-08-26",
+"venue": "Ballarat Synthetic",
+"runs": 10
+},
+{
+"date": "2025-10-04",
+"venue": "Morphettville",
+"runs": 10
+},
+{
+"date": "2025-09-22",
+"venue": "Grafton",
+"runs": 10
+},
+{
+"date": "2025-09-26",
+"venue": "Lismore",
+"runs": 10
+},
+{
+"date": "2025-04-20",
+"venue": "Nowra",
+"runs": 10
+},
+{
+"date": "2025-09-26",
+"venue": "Coleraine",
+"runs": 10
+},
+{
+"date": "2025-08-17",
+"venue": "Ballarat",
+"runs": 10
+},
+{
+"date": "2025-05-11",
+"venue": "Ballarat",
+"runs": 10
+},
+{
+"date": "2025-10-18",
+"venue": "Eagle Farm",
+"runs": 10
+},
+{
+"date": "2025-04-04",
+"venue": "Sapphire Coast",
+"runs": 10
+},
+{
+"date": "2025-04-01",
+"venue": "Doomben",
+"runs": 10
+},
+{
+"date": "2025-03-21",
+"venue": "Cranbourne",
+"runs": 10
+},
+{
+"date": "2025-05-09",
+"venue": "Geelong",
+"runs": 10
+},
+{
+"date": "2025-06-06",
+"venue": "Dubbo",
+"runs": 10
+},
+{
+"date": "2025-05-08",
+"venue": "Goulburn",
+"runs": 10
+},
+{
+"date": "2025-11-28",
+"venue": "Muswellbrook",
+"runs": 10
+},
+{
+"date": "2025-11-04",
+"venue": "Eagle Farm",
+"runs": 10
+},
+{
+"date": "2025-06-13",
+"venue": "Muswellbrook",
+"runs": 10
+},
+{
+"date": "2025-12-08",
+"venue": "Tuncurry",
+"runs": 10
+},
+{
+"date": "2025-11-09",
+"venue": "Armidale",
+"runs": 10
+},
+{
+"date": "2025-10-26",
+"venue": "Coonabarabran",
+"runs": 10
+},
+{
+"date": "2025-11-28",
+"venue": "Sunshine Coast",
+"runs": 10
+},
+{
+"date": "2025-06-15",
+"venue": "Coonamble",
+"runs": 10
+},
+{
+"date": "2025-12-13",
+"venue": "Gawler",
+"runs": 10
+},
+{
+"date": "2025-11-01",
+"venue": "Ascot",
+"runs": 10
+},
+{
+"date": "2026-01-04",
+"venue": "Wodonga",
+"runs": 10
+},
+{
+"date": "2026-01-04",
+"venue": "Gilgandra",
+"runs": 10
+},
+{
+"date": "2025-12-26",
+"venue": "Beaumont",
+"runs": 10
+},
+{
+"date": "2025-11-29",
+"venue": "Ascot",
+"runs": 10
+},
+{
+"date": "2026-01-24",
+"venue": "Great Western",
+"runs": 10
+},
+{
+"date": "2026-01-01",
+"venue": "Inverell",
+"runs": 10
+},
+{
+"date": "2026-02-06",
+"venue": "Walcha",
+"runs": 10
+},
+{
+"date": "2026-01-06",
+"venue": "Orange",
+"runs": 10
+},
+{
+"date": "2026-02-12",
+"venue": "Goulburn",
+"runs": 10
+},
+{
+"date": "2026-02-07",
+"venue": "Te Rapa",
+"runs": 10
+},
+{
+"date": "2026-01-01",
+"venue": "Ellerslie",
+"runs": 10
+},
+{
+"date": "2025-12-20",
+"venue": "Sunshine Coast",
+"runs": 10
+},
+{
+"date": "2026-03-25",
+"venue": "Canberra",
+"runs": 10
+},
+{
+"date": "2026-02-28",
+"venue": "Wagga",
+"runs": 10
+},
+{
+"date": "2025-11-14",
+"venue": "Sunshine Coast",
+"runs": 10
+},
+{
+"date": "2025-10-12",
+"venue": "Bairnsdale",
+"runs": 10
+},
+{
+"date": "2025-12-21",
+"venue": "Sale",
+"runs": 10
+},
+{
+"date": "2026-03-30",
+"venue": "Sapphire Coast",
+"runs": 10
+},
+{
+"date": "2026-04-13",
+"venue": "Scone",
+"runs": 10
+},
+{
+"date": "2026-02-08",
+"venue": "Ararat",
+"runs": 10
+},
+{
+"date": "2026-05-16",
+"venue": "Wodonga",
+"runs": 10
+},
+{
+"date": "2025-12-06",
+"venue": "Gold Coast",
+"runs": 10
+},
+{
+"date": "2026-04-24",
+"venue": "Rockhampton",
+"runs": 10
+},
+{
+"date": "2026-04-26",
+"venue": "Gatton",
+"runs": 10
+},
+{
+"date": "2025-12-05",
+"venue": "Sunshine Coast",
+"runs": 10
+},
+{
+"date": "2025-12-03",
+"venue": "Ipswich",
+"runs": 10
+},
+{
+"date": "2026-04-25",
+"venue": "Bathurst",
+"runs": 10
+},
+{
+"date": "2026-05-15",
+"venue": "Albury",
+"runs": 10
+},
+{
+"date": "2026-05-12",
+"venue": "Bathurst",
+"runs": 10
+},
+{
+"date": "2026-06-06",
+"venue": "Morphettville Parks",
+"runs": 10
+},
+{
+"date": "2026-06-06",
+"venue": "Gold Coast",
+"runs": 10
+},
+{
+"date": "2026-05-23",
+"venue": "Nanango",
+"runs": 10
+},
+{
+"date": "2026-05-23",
+"venue": "Beaudesert",
+"runs": 10
+},
+{
+"date": "2026-06-12",
+"venue": "Muswellbrook",
+"runs": 10
+},
+{
+"date": "2026-06-20",
+"venue": "Morphettville",
+"runs": 10
+},
+{
+"date": "2026-06-13",
+"venue": "Narrandera",
+"runs": 10
+},
+{
+"date": "2026-07-01",
+"venue": "Eagle Farm",
+"runs": 10
+},
+{
+"date": "2024-07-27",
+"venue": "Caulfield",
+"runs": 9
+},
+{
+"date": "2024-04-13",
+"venue": "Bendigo",
+"runs": 9
+},
+{
+"date": "2024-11-17",
+"venue": "Donald",
+"runs": 9
+},
+{
+"date": "2024-08-28",
+"venue": "Sandown Hillside",
+"runs": 9
+},
+{
+"date": "2025-03-15",
+"venue": "Geelong",
+"runs": 9
+},
+{
+"date": "2024-12-13",
+"venue": "Moonee Valley",
+"runs": 9
+},
+{
+"date": "2024-04-17",
+"venue": "Canterbury",
+"runs": 9
+},
+{
+"date": "2024-10-18",
+"venue": "Pakenham",
+"runs": 9
+},
+{
+"date": "2024-10-24",
+"venue": "Ballarat",
+"runs": 9
+},
+{
+"date": "2025-02-23",
+"venue": "Mudgee",
+"runs": 9
+},
+{
+"date": "2024-10-01",
+"venue": "Newcastle",
+"runs": 9
+},
+{
+"date": "2024-07-17",
+"venue": "Kensington",
+"runs": 9
+},
+{
+"date": "2024-10-26",
+"venue": "Morphettville",
+"runs": 9
+},
+{
+"date": "2025-02-17",
+"venue": "Wagga",
+"runs": 9
+},
+{
+"date": "2024-12-20",
+"venue": "Goulburn",
+"runs": 9
+},
+{
+"date": "2024-10-10",
+"venue": "Hawkesbury",
+"runs": 9
+},
+{
+"date": "2024-06-05",
+"venue": "Warwick Farm",
+"runs": 9
+},
+{
+"date": "2025-01-10",
+"venue": "Orange",
+"runs": 9
+},
+{
+"date": "2024-11-21",
+"venue": "Hawkesbury",
+"runs": 9
+},
+{
+"date": "2024-12-13",
+"venue": "Canberra",
+"runs": 9
+},
+{
+"date": "2024-06-21",
+"venue": "Royal Ascot",
+"runs": 9
+},
+{
+"date": "2024-08-25",
+"venue": "Goulburn",
+"runs": 9
+},
+{
+"date": "2025-02-15",
+"venue": "Eagle Farm",
+"runs": 9
+},
+{
+"date": "2025-07-27",
+"venue": "Muswellbrook",
+"runs": 9
+},
+{
+"date": "2025-06-23",
+"venue": "Scone",
+"runs": 9
+},
+{
+"date": "2024-10-07",
+"venue": "Muswellbrook",
+"runs": 9
+},
+{
+"date": "2025-04-28",
+"venue": "Goulburn",
+"runs": 9
+},
+{
+"date": "2025-08-14",
+"venue": "Newcastle",
+"runs": 9
+},
+{
+"date": "2025-03-14",
+"venue": "Muswellbrook",
+"runs": 9
+},
+{
+"date": "2025-04-28",
+"venue": "Mornington",
+"runs": 9
+},
+{
+"date": "2025-05-29",
+"venue": "Gosford",
+"runs": 9
+},
+{
+"date": "2025-04-01",
+"venue": "Newcastle",
+"runs": 9
+},
+{
+"date": "2025-06-15",
+"venue": "Port Macquarie",
+"runs": 9
+},
+{
+"date": "2025-04-27",
+"venue": "Port Macquarie",
+"runs": 9
+},
+{
+"date": "2024-09-07",
+"venue": "Hawkesbury",
+"runs": 9
+},
+{
+"date": "2025-03-23",
+"venue": "Bairnsdale",
+"runs": 9
+},
+{
+"date": "2025-03-10",
+"venue": "Warrnambool",
+"runs": 9
+},
+{
+"date": "2025-05-25",
+"venue": "Sha Tin",
+"runs": 9
+},
+{
+"date": "2025-02-08",
+"venue": "Te Rapa",
+"runs": 9
+},
+{
+"date": "2025-09-01",
+"venue": "Ballarat Synthetic",
+"runs": 9
+},
+{
+"date": "2025-01-17",
+"venue": "Pakenham",
+"runs": 9
+},
+{
+"date": "2025-09-10",
+"venue": "Balaklava",
+"runs": 9
+},
+{
+"date": "2025-03-27",
+"venue": "Pakenham",
+"runs": 9
+},
+{
+"date": "2024-10-12",
+"venue": "Murray Bdge",
+"runs": 9
+},
+{
+"date": "2025-04-18",
+"venue": "Canberra",
+"runs": 9
+},
+{
+"date": "2025-05-30",
+"venue": "Goulburn",
+"runs": 9
+},
+{
+"date": "2025-08-11",
+"venue": "Ballarat Synthetic",
+"runs": 9
+},
+{
+"date": "2025-01-26",
+"venue": "Wagga",
+"runs": 9
+},
+{
+"date": "2025-09-27",
+"venue": "Morphettville Parks",
+"runs": 9
+},
+{
+"date": "2025-03-08",
+"venue": "Murray Bdge",
+"runs": 9
+},
+{
+"date": "2025-09-04",
+"venue": "Moe",
+"runs": 9
+},
+{
+"date": "2025-10-18",
+"venue": "Avoca",
+"runs": 9
+},
+{
+"date": "2025-03-31",
+"venue": "Yarra Valley",
+"runs": 9
+},
+{
+"date": "2025-07-21",
+"venue": "Bairnsdale",
+"runs": 9
+},
+{
+"date": "2025-02-12",
+"venue": "Seymour",
+"runs": 9
+},
+{
+"date": "2025-11-03",
+"venue": "Corowa",
+"runs": 9
+},
+{
+"date": "2025-10-31",
+"venue": "Wagga",
+"runs": 9
+},
+{
+"date": "2025-11-25",
+"venue": "Ararat",
+"runs": 9
+},
+{
+"date": "2025-12-20",
+"venue": "Wyong",
+"runs": 9
+},
+{
+"date": "2026-01-12",
+"venue": "Dubbo",
+"runs": 9
+},
+{
+"date": "2026-02-02",
+"venue": "Dubbo",
+"runs": 9
+},
+{
+"date": "2026-01-18",
+"venue": "Cowra",
+"runs": 9
+},
+{
+"date": "2024-10-20",
+"venue": "Leopardstown",
+"runs": 9
+},
+{
+"date": "2025-12-07",
+"venue": "Stony Creek",
+"runs": 9
+},
+{
+"date": "2026-04-12",
+"venue": "Wellington",
+"runs": 9
+},
+{
+"date": "2026-01-26",
+"venue": "Wagga",
+"runs": 9
+},
+{
+"date": "2026-03-26",
+"venue": "Ipswich",
+"runs": 9
+},
+{
+"date": "2026-06-30",
+"venue": "Kilcoy",
+"runs": 9
+},
+{
+"date": "2023-06-24",
+"venue": "Royal Ascot",
+"runs": 8
+},
+{
+"date": "2024-05-25",
+"venue": "Sandown Hillside",
+"runs": 8
+},
+{
+"date": "2024-08-31",
+"venue": "Morphettville",
+"runs": 8
+},
+{
+"date": "2024-01-01",
+"venue": "Flemington",
+"runs": 8
+},
+{
+"date": "2024-11-27",
+"venue": "Doomben",
+"runs": 8
+},
+{
+"date": "2024-03-09",
+"venue": "Flemington",
+"runs": 8
+},
+{
+"date": "2024-05-30",
+"venue": "Hawkesbury",
+"runs": 8
+},
+{
+"date": "2024-05-04",
+"venue": "Morphettville",
+"runs": 8
+},
+{
+"date": "2024-11-27",
+"venue": "Geelong",
+"runs": 8
+},
+{
+"date": "2024-05-11",
+"venue": "Newcastle",
+"runs": 8
+},
+{
+"date": "2024-07-03",
+"venue": "Canterbury",
+"runs": 8
+},
+{
+"date": "2024-10-19",
+"venue": "Newcastle",
+"runs": 8
+},
+{
+"date": "2024-03-27",
+"venue": "Kensington",
+"runs": 8
+},
+{
+"date": "2024-11-02",
+"venue": "Newcastle",
+"runs": 8
+},
+{
+"date": "2024-11-30",
+"venue": "Morphettville Parks",
+"runs": 8
+},
+{
+"date": "2024-10-11",
+"venue": "Port Macquarie",
+"runs": 8
+},
+{
+"date": "2024-12-30",
+"venue": "Orange",
+"runs": 8
+},
+{
+"date": "2025-01-13",
+"venue": "Muswellbrook",
+"runs": 8
+},
+{
+"date": "2025-02-13",
+"venue": "Sapphire Coast",
+"runs": 8
+},
+{
+"date": "2025-01-14",
+"venue": "Dubbo",
+"runs": 8
+},
+{
+"date": "2025-02-08",
+"venue": "Doomben",
+"runs": 8
+},
+{
+"date": "2024-06-10",
+"venue": "Canterbury",
+"runs": 8
+},
+{
+"date": "2024-11-26",
+"venue": "Tamworth",
+"runs": 8
+},
+{
+"date": "2024-11-16",
+"venue": "Sunshine Coast",
+"runs": 8
+},
+{
+"date": "2024-04-01",
+"venue": "Warwick Farm",
+"runs": 8
+},
+{
+"date": "2024-12-20",
+"venue": "Canterbury",
+"runs": 8
+},
+{
+"date": "2024-06-29",
+"venue": "Eagle Farm",
+"runs": 8
+},
+{
+"date": "2025-06-10",
+"venue": "Scone",
+"runs": 8
+},
+{
+"date": "2025-05-18",
+"venue": "Sapphire Coast",
+"runs": 8
+},
+{
+"date": "2024-10-26",
+"venue": "Kembla Grange",
+"runs": 8
+},
+{
+"date": "2024-10-06",
+"venue": "ParisLongchamp",
+"runs": 8
+},
+{
+"date": "2024-09-15",
+"venue": "ParisLongchamp",
+"runs": 8
+},
+{
+"date": "2025-03-07",
+"venue": "Dubbo",
+"runs": 8
+},
+{
+"date": "2025-01-31",
+"venue": "Bathurst",
+"runs": 8
+},
+{
+"date": "2024-09-21",
+"venue": "Newcastle",
+"runs": 8
+},
+{
+"date": "2024-10-06",
+"venue": "Bendigo",
+"runs": 8
+},
+{
+"date": "2024-12-08",
+"venue": "Sha Tin",
+"runs": 8
+},
+{
+"date": "2025-03-01",
+"venue": "Wagga",
+"runs": 8
+},
+{
+"date": "2025-01-09",
+"venue": "Sale",
+"runs": 8
+},
+{
+"date": "2026-01-25",
+"venue": "Wyong",
+"runs": 8
+},
+{
+"date": "2025-08-09",
+"venue": "Morphettville",
+"runs": 8
+},
+{
+"date": "2025-01-05",
+"venue": "Mornington",
+"runs": 8
+},
+{
+"date": "2025-08-02",
+"venue": "Hamilton",
+"runs": 8
+},
+{
+"date": "2024-11-08",
+"venue": "Pakenham",
+"runs": 8
+},
+{
+"date": "2024-06-11",
+"venue": "Sale",
+"runs": 8
+},
+{
+"date": "2024-03-24",
+"venue": "Sha Tin",
+"runs": 8
+},
+{
+"date": "2025-07-04",
+"venue": "Canberra Acton",
+"runs": 8
+},
+{
+"date": "2025-09-15",
+"venue": "Corowa",
+"runs": 8
+},
+{
+"date": "2025-08-23",
+"venue": "Wangaratta",
+"runs": 8
+},
+{
+"date": "2025-08-05",
+"venue": "Wodonga",
+"runs": 8
+},
+{
+"date": "2025-04-01",
+"venue": "Tamworth",
+"runs": 8
+},
+{
+"date": "2025-08-23",
+"venue": "York",
+"runs": 8
+},
+{
+"date": "2024-12-07",
+"venue": "Gold Coast",
+"runs": 8
+},
+{
+"date": "2025-08-02",
+"venue": "Goodwood",
+"runs": 8
+},
+{
+"date": "2024-09-01",
+"venue": "ParisLongchamp",
+"runs": 8
+},
+{
+"date": "2025-09-13",
+"venue": "Donald",
+"runs": 8
+},
+{
+"date": "2025-10-28",
+"venue": "Swan Hill",
+"runs": 8
+},
+{
+"date": "2025-02-26",
+"venue": "Doomben",
+"runs": 8
+},
+{
+"date": "2025-04-14",
+"venue": "Scone",
+"runs": 8
+},
+{
+"date": "2025-05-07",
+"venue": "Ellerslie",
+"runs": 8
+},
+{
+"date": "2025-10-04",
+"venue": "Gunbower",
+"runs": 8
+},
+{
+"date": "2024-10-02",
+"venue": "Cranbourne",
+"runs": 8
+},
+{
+"date": "2025-07-08",
+"venue": "Ballarat Synthetic",
+"runs": 8
+},
+{
+"date": "2025-12-11",
+"venue": "Scone",
+"runs": 8
+},
+{
+"date": "2025-12-06",
+"venue": "Morphettville Parks",
+"runs": 8
+},
+{
+"date": "2025-07-29",
+"venue": "Swan Hill",
+"runs": 8
+},
+{
+"date": "2025-11-22",
+"venue": "Morphettville",
+"runs": 8
+},
+{
+"date": "2025-11-24",
+"venue": "Albury",
+"runs": 8
+},
+{
+"date": "2025-03-30",
+"venue": "Sale",
+"runs": 8
+},
+{
+"date": "2025-11-15",
+"venue": "Ascot",
+"runs": 8
+},
+{
+"date": "2026-01-03",
+"venue": "Trentham",
+"runs": 8
+},
+{
+"date": "2024-10-01",
+"venue": "Sha Tin",
+"runs": 8
+},
+{
+"date": "2026-01-10",
+"venue": "Murray Bdge",
+"runs": 8
+},
+{
+"date": "2026-01-15",
+"venue": "Wagga",
+"runs": 8
+},
+{
+"date": "2026-01-11",
+"venue": "Nowra",
+"runs": 8
+},
+{
+"date": "2026-01-21",
+"venue": "Sandown Hillside",
+"runs": 8
+},
+{
+"date": "2025-12-23",
+"venue": "Bathurst",
+"runs": 8
+},
+{
+"date": "2026-02-16",
+"venue": "Beaumont",
+"runs": 8
+},
+{
+"date": "2026-01-12",
+"venue": "Taree",
+"runs": 8
+},
+{
+"date": "2026-02-21",
+"venue": "Tuncurry",
+"runs": 8
+},
+{
+"date": "2026-03-10",
+"venue": "Taree",
+"runs": 8
+},
+{
+"date": "2025-06-29",
+"venue": "Curragh",
+"runs": 8
+},
+{
+"date": "2025-09-13",
+"venue": "Doomben",
+"runs": 8
+},
+{
+"date": "2026-03-02",
+"venue": "Tamworth",
+"runs": 8
+},
+{
+"date": "2025-07-04",
+"venue": "Ballarat Synthetic",
+"runs": 8
+},
+{
+"date": "2026-02-20",
+"venue": "Launceston",
+"runs": 8
+},
+{
+"date": "2025-07-12",
+"venue": "Warracknabeal",
+"runs": 8
+},
+{
+"date": "2026-03-28",
+"venue": "Healesville",
+"runs": 8
+},
+{
+"date": "2026-03-07",
+"venue": "Murray Bdge",
+"runs": 8
+},
+{
+"date": "2026-02-26",
+"venue": "Ipswich",
+"runs": 8
+},
+{
+"date": "2026-03-01",
+"venue": "Colac",
+"runs": 8
+},
+{
+"date": "2026-02-14",
+"venue": "Morphettville Parks",
+"runs": 8
+},
+{
+"date": "2026-03-29",
+"venue": "Wagga",
+"runs": 8
+},
+{
+"date": "2026-04-06",
+"venue": "Muswellbrook",
+"runs": 8
+},
+{
+"date": "2025-12-27",
+"venue": "Kerang",
+"runs": 8
+},
+{
+"date": "2026-03-13",
+"venue": "Mount Gambier",
+"runs": 8
+},
+{
+"date": "2026-04-04",
+"venue": "Oakbank",
+"runs": 8
+},
+{
+"date": "2026-04-17",
+"venue": "Orange",
+"runs": 8
+},
+{
+"date": "2026-05-11",
+"venue": "Corowa",
+"runs": 8
+},
+{
+"date": "2026-02-22",
+"venue": "Sunshine Coast",
+"runs": 8
+},
+{
+"date": "2025-11-19",
+"venue": "Doomben",
+"runs": 8
+},
+{
+"date": "2026-03-06",
+"venue": "Sunshine Coast",
+"runs": 8
+},
+{
+"date": "2026-03-21",
+"venue": "Gold Coast",
+"runs": 8
+},
+{
+"date": "2026-02-28",
+"venue": "Gold Coast",
+"runs": 8
+},
+{
+"date": "2025-11-30",
+"venue": "Sunshine Coast",
+"runs": 8
+},
+{
+"date": "2026-01-29",
+"venue": "Doomben",
+"runs": 8
+},
+{
+"date": "2026-04-25",
+"venue": "Te Rapa",
+"runs": 8
+},
+{
+"date": "2026-03-09",
+"venue": "Cowra",
+"runs": 8
+},
+{
+"date": "2026-05-07",
+"venue": "Warwick",
+"runs": 8
+},
+{
+"date": "2026-01-16",
+"venue": "Sunshine Coast",
+"runs": 8
+},
+{
+"date": "2026-02-13",
+"venue": "Sunshine Coast",
+"runs": 8
+},
+{
+"date": "2025-10-29",
+"venue": "Doomben",
+"runs": 8
+},
+{
+"date": "2026-05-30",
+"venue": "Illawarra Grange",
+"runs": 8
+},
+{
+"date": "2026-05-26",
+"venue": "Albury",
+"runs": 8
+},
+{
+"date": "2026-04-25",
+"venue": "Gosford",
+"runs": 8
+},
+{
+"date": "2026-05-22",
+"venue": "Canberra Acton",
+"runs": 8
+},
+{
+"date": "2026-01-06",
+"venue": "Colac",
+"runs": 8
+},
+{
+"date": "2026-06-08",
+"venue": "Murwillumbah",
+"runs": 8
+},
+{
+"date": "2026-05-31",
+"venue": "Scone",
+"runs": 8
+},
+{
+"date": "2026-04-10",
+"venue": "Tamworth",
+"runs": 8
+},
+{
+"date": "2026-06-13",
+"venue": "Gold Coast",
+"runs": 8
+},
+{
+"date": "2026-06-06",
+"venue": "Toowoomba",
+"runs": 8
+},
+{
+"date": "2026-04-18",
+"venue": "Thangool",
+"runs": 8
+},
+{
+"date": "2026-05-02",
+"venue": "Jandowae",
+"runs": 8
+},
+{
+"date": "2026-05-16",
+"venue": "Chinchilla",
+"runs": 8
+},
+{
+"date": "2026-05-01",
+"venue": "Bordertown",
+"runs": 8
+},
+{
+"date": "2026-06-20",
+"venue": "Toowoomba",
+"runs": 8
+},
+{
+"date": "2026-07-04",
+"venue": "Wyong",
+"runs": 8
+},
+{
+"date": "2024-01-27",
+"venue": "Randwick",
+"runs": 7
+},
+{
+"date": "2024-04-27",
+"venue": "Caulfield",
+"runs": 7
+},
+{
+"date": "2023-10-27",
+"venue": "Moonee Valley",
+"runs": 7
+},
+{
+"date": "2024-12-07",
+"venue": "Ascot",
+"runs": 7
+},
+{
+"date": "2024-11-23",
+"venue": "Ascot",
+"runs": 7
+},
+{
+"date": "2024-04-17",
+"venue": "Caulfield Heath",
+"runs": 7
+},
+{
+"date": "2024-12-26",
+"venue": "Ellerslie",
+"runs": 7
+},
+{
+"date": "2024-06-10",
+"venue": "Mornington",
+"runs": 7
+},
+{
+"date": "2024-04-20",
+"venue": "Mornington",
+"runs": 7
+},
+{
+"date": "2025-04-24",
+"venue": "Bendigo",
+"runs": 7
+},
+{
+"date": "2024-10-17",
+"venue": "Ballarat",
+"runs": 7
+},
+{
+"date": "2025-03-20",
+"venue": "Kyneton",
+"runs": 7
+},
+{
+"date": "2024-12-06",
+"venue": "Moonee Valley",
+"runs": 7
+},
+{
+"date": "2025-03-21",
+"venue": "Terang",
+"runs": 7
+},
+{
+"date": "2025-05-02",
+"venue": "Wangaratta",
+"runs": 7
+},
+{
+"date": "2024-09-25",
+"venue": "Bendigo",
+"runs": 7
+},
+{
+"date": "2024-08-14",
+"venue": "Sandown Lakeside",
+"runs": 7
+},
+{
+"date": "2024-12-01",
+"venue": "Warrnambool",
+"runs": 7
+},
+{
+"date": "2025-04-11",
+"venue": "Port Macquarie",
+"runs": 7
+},
+{
+"date": "2024-06-26",
+"venue": "Doomben",
+"runs": 7
+},
+{
+"date": "2025-02-11",
+"venue": "Goulburn",
+"runs": 7
+},
+{
+"date": "2025-01-31",
+"venue": "Taree",
+"runs": 7
+},
+{
+"date": "2025-01-30",
+"venue": "Scone",
+"runs": 7
+},
+{
+"date": "2024-09-29",
+"venue": "Dubbo",
+"runs": 7
+},
+{
+"date": "2025-01-10",
+"venue": "Newcastle",
+"runs": 7
+},
+{
+"date": "2024-11-12",
+"venue": "Hawkesbury",
+"runs": 7
+},
+{
+"date": "2024-11-24",
+"venue": "Canberra",
+"runs": 7
+},
+{
+"date": "2024-12-15",
+"venue": "Hawkesbury",
+"runs": 7
+},
+{
+"date": "2024-11-09",
+"venue": "Wyong",
+"runs": 7
+},
+{
+"date": "2025-05-09",
+"venue": "Canberra",
+"runs": 7
+},
+{
+"date": "2023-04-01",
+"venue": "Randwick",
+"runs": 7
+},
+{
+"date": "2024-09-29",
+"venue": "Curragh",
+"runs": 7
+},
+{
+"date": "2024-04-26",
+"venue": "Sandown Park",
+"runs": 7
+},
+{
+"date": "2024-06-12",
+"venue": "Kensington",
+"runs": 7
+},
+{
+"date": "2024-09-07",
+"venue": "Haydock",
+"runs": 7
+},
+{
+"date": "2024-03-02",
+"venue": "Randwick",
+"runs": 7
+},
+{
+"date": "2024-07-17",
+"venue": "Sandown Lakeside",
+"runs": 7
+},
+{
+"date": "2024-09-13",
+"venue": "Goulburn",
+"runs": 7
+},
+{
+"date": "2025-03-11",
+"venue": "Goulburn",
+"runs": 7
+},
+{
+"date": "2025-06-29",
+"venue": "Coffs Harbour",
+"runs": 7
+},
+{
+"date": "2025-08-05",
+"venue": "Moruya",
+"runs": 7
+},
+{
+"date": "2025-01-19",
+"venue": "Port Macquarie",
+"runs": 7
+},
+{
+"date": "2024-08-29",
+"venue": "Newcastle",
+"runs": 7
+},
+{
+"date": "2024-12-07",
+"venue": "Newcastle",
+"runs": 7
+},
+{
+"date": "2025-06-08",
+"venue": "Sapphire Coast",
+"runs": 7
+},
+{
+"date": "2025-07-08",
+"venue": "Muswellbrook",
+"runs": 7
+},
+{
+"date": "2024-03-09",
+"venue": "Randwick",
+"runs": 7
+},
+{
+"date": "2024-07-14",
+"venue": "ParisLongchamp",
+"runs": 7
+},
+{
+"date": "2025-04-16",
+"venue": "Doomben",
+"runs": 7
+},
+{
+"date": "2024-09-10",
+"venue": "Muswellbrook",
+"runs": 7
+},
+{
+"date": "2024-12-06",
+"venue": "Mudgee",
+"runs": 7
+},
+{
+"date": "2025-02-03",
+"venue": "Dubbo",
+"runs": 7
+},
+{
+"date": "2025-04-12",
+"venue": "Ascot",
+"runs": 7
+},
+{
+"date": "2024-10-03",
+"venue": "Kembla Grange",
+"runs": 7
+},
+{
+"date": "2024-09-28",
+"venue": "Kembla Grange",
+"runs": 7
+},
+{
+"date": "2025-02-01",
+"venue": "Ellerslie",
+"runs": 7
+},
+{
+"date": "2025-08-09",
+"venue": "Te Rapa",
+"runs": 7
+},
+{
+"date": "2024-10-18",
+"venue": "Moe",
+"runs": 7
+},
+{
+"date": "2024-12-15",
+"venue": "Bendigo",
+"runs": 7
+},
+{
+"date": "2025-03-02",
+"venue": "Trentham",
+"runs": 7
+},
+{
+"date": "2024-03-13",
+"venue": "Caulfield Heath",
+"runs": 7
+},
+{
+"date": "2024-03-27",
+"venue": "Sandown Lakeside",
+"runs": 7
+},
+{
+"date": "2025-01-26",
+"venue": "Moe",
+"runs": 7
+},
+{
+"date": "2024-06-22",
+"venue": "Royal Ascot",
+"runs": 7
+},
+{
+"date": "2024-12-28",
+"venue": "Morphettville",
+"runs": 7
+},
+{
+"date": "2025-08-20",
+"venue": "Ipswich",
+"runs": 7
+},
+{
+"date": "2025-04-06",
+"venue": "Gundagai",
+"runs": 7
+},
+{
+"date": "2025-08-29",
+"venue": "Tamworth",
+"runs": 7
+},
+{
+"date": "2025-03-30",
+"venue": "Wagga",
+"runs": 7
+},
+{
+"date": "2025-09-17",
+"venue": "Doomben",
+"runs": 7
+},
+{
+"date": "2024-03-08",
+"venue": "Newcastle",
+"runs": 7
+},
+{
+"date": "2025-08-08",
+"venue": "Canberra Acton",
+"runs": 7
+},
+{
+"date": "2025-10-24",
+"venue": "Gawler",
+"runs": 7
+},
+{
+"date": "2025-10-25",
+"venue": "Morphettville",
+"runs": 7
+},
+{
+"date": "2025-06-03",
+"venue": "Echuca",
+"runs": 7
+},
+{
+"date": "2025-05-23",
+"venue": "Inverell",
+"runs": 7
+},
+{
+"date": "2025-04-20",
+"venue": "Sale",
+"runs": 7
+},
+{
+"date": "2024-06-27",
+"venue": "Bendigo",
+"runs": 7
+},
+{
+"date": "2025-10-11",
+"venue": "Albury",
+"runs": 7
+},
+{
+"date": "2025-04-26",
+"venue": "Te Rapa",
+"runs": 7
+},
+{
+"date": "2025-11-16",
+"venue": "Wellington",
+"runs": 7
+},
+{
+"date": "2025-03-27",
+"venue": "Gosford",
+"runs": 7
+},
+{
+"date": "2025-08-09",
+"venue": "Eagle Farm",
+"runs": 7
+},
+{
+"date": "2025-05-13",
+"venue": "Wellington",
+"runs": 7
+},
+{
+"date": "2024-06-08",
+"venue": "Sha Tin",
+"runs": 7
+},
+{
+"date": "2025-02-16",
+"venue": "Benalla",
+"runs": 7
+},
+{
+"date": "2025-06-11",
+"venue": "Ballarat Synthetic",
+"runs": 7
+},
+{
+"date": "2025-03-01",
+"venue": "Eagle Farm",
+"runs": 7
+},
+{
+"date": "2025-07-11",
+"venue": "Moruya",
+"runs": 7
+},
+{
+"date": "2025-11-08",
+"venue": "Morphettville Parks",
+"runs": 7
+},
+{
+"date": "2025-11-11",
+"venue": "Warrnambool",
+"runs": 7
+},
+{
+"date": "2025-11-07",
+"venue": "Hamilton",
+"runs": 7
+},
+{
+"date": "2025-03-02",
+"venue": "Bendigo",
+"runs": 7
+},
+{
+"date": "2026-01-02",
+"venue": "Taree",
+"runs": 7
+},
+{
+"date": "2025-10-03",
+"venue": "Warrnambool",
+"runs": 7
+},
+{
+"date": "2025-07-01",
+"venue": "Ballarat Synthetic",
+"runs": 7
+},
+{
+"date": "2026-04-06",
+"venue": "Ipswich",
+"runs": 7
+},
+{
+"date": "2024-03-03",
+"venue": "Moruya",
+"runs": 6
+},
+{
+"date": "2024-07-14",
+"venue": "Sunshine Coast",
+"runs": 6
+},
+{
+"date": "2024-03-20",
+"venue": "Sandown Hillside",
+"runs": 6
+},
+{
+"date": "2023-08-26",
+"venue": "York",
+"runs": 6
+},
+{
+"date": "2024-10-04",
+"venue": "Moonee Valley",
+"runs": 6
+},
+{
+"date": "2024-05-02",
+"venue": "Warrnambool",
+"runs": 6
+},
+{
+"date": "2024-09-28",
+"venue": "Morphettville Parks",
+"runs": 6
+},
+{
+"date": "2025-04-07",
+"venue": "Donald",
+"runs": 6
+},
+{
+"date": "2024-09-01",
+"venue": "Geelong",
+"runs": 6
+},
+{
+"date": "2024-12-08",
+"venue": "Werribee",
+"runs": 6
+},
+{
+"date": "2024-06-26",
+"venue": "Sale",
+"runs": 6
+},
+{
+"date": "2024-11-03",
+"venue": "Mornington",
+"runs": 6
+},
+{
+"date": "2024-05-04",
+"venue": "Eagle Farm",
+"runs": 6
+},
+{
+"date": "2025-02-07",
+"venue": "Hobart",
+"runs": 6
+},
+{
+"date": "2024-12-12",
+"venue": "Caulfield Heath",
+"runs": 6
+},
+{
+"date": "2024-08-09",
+"venue": "Geelong",
+"runs": 6
+},
+{
+"date": "2024-09-21",
+"venue": "Wagga",
+"runs": 6
+},
+{
+"date": "2025-06-20",
+"venue": "Coffs Harbour",
+"runs": 6
+},
+{
+"date": "2024-12-13",
+"venue": "Murwillumbah",
+"runs": 6
+},
+{
+"date": "2024-11-25",
+"venue": "Grafton",
+"runs": 6
+},
+{
+"date": "2025-07-21",
+"venue": "Moruya",
+"runs": 6
+},
+{
+"date": "2025-04-15",
+"venue": "Armidale",
+"runs": 6
+},
+{
+"date": "2024-09-21",
+"venue": "Gold Coast",
+"runs": 6
+},
+{
+"date": "2024-04-03",
+"venue": "Newcastle",
+"runs": 6
+},
+{
+"date": "2024-09-01",
+"venue": "Wyong",
+"runs": 6
+},
+{
+"date": "2024-11-05",
+"venue": "Eagle Farm",
+"runs": 6
+},
+{
+"date": "2024-07-27",
+"venue": "Kembla Grange",
+"runs": 6
+},
+{
+"date": "2025-02-06",
+"venue": "Scone",
+"runs": 6
+},
+{
+"date": "2023-12-14",
+"venue": "Kembla Grange",
+"runs": 6
+},
+{
+"date": "2024-12-21",
+"venue": "Wyong",
+"runs": 6
+},
+{
+"date": "2024-12-14",
+"venue": "Newcastle",
+"runs": 6
+},
+{
+"date": "2023-07-02",
+"venue": "Curragh",
+"runs": 6
+},
+{
+"date": "2024-10-04",
+"venue": "Ascot",
+"runs": 6
+},
+{
+"date": "2025-07-15",
+"venue": "Warren",
+"runs": 6
+},
+{
+"date": "2025-02-09",
+"venue": "Taree",
+"runs": 6
+},
+{
+"date": "2025-01-28",
+"venue": "Armidale",
+"runs": 6
+},
+{
+"date": "2024-07-14",
+"venue": "Grafton",
+"runs": 6
+},
+{
+"date": "2024-11-03",
+"venue": "Del Mar",
+"runs": 6
+},
+{
+"date": "2024-04-25",
+"venue": "Kensington",
+"runs": 6
+},
+{
+"date": "2025-08-15",
+"venue": "Taree",
+"runs": 6
+},
+{
+"date": "2025-03-23",
+"venue": "Orange",
+"runs": 6
+},
+{
+"date": "2025-07-06",
+"venue": "Mudgee",
+"runs": 6
+},
+{
+"date": "2025-07-07",
+"venue": "Wagga",
+"runs": 6
+},
+{
+"date": "2025-06-19",
+"venue": "Bathurst",
+"runs": 6
+},
+{
+"date": "2024-06-30",
+"venue": "Saint-Cloud",
+"runs": 6
+},
+{
+"date": "2024-07-20",
+"venue": "Hamilton",
+"runs": 6
+},
+{
+"date": "2024-11-30",
+"venue": "Ascot",
+"runs": 6
+},
+{
+"date": "2024-09-08",
+"venue": "ParisLongchamp",
+"runs": 6
+},
+{
+"date": "2025-04-27",
+"venue": "Sha Tin",
+"runs": 6
+},
+{
+"date": "2023-09-16",
+"venue": "Flemington",
+"runs": 6
+},
+{
+"date": "2025-05-04",
+"venue": "Sha Tin",
+"runs": 6
+},
+{
+"date": "2025-04-20",
+"venue": "Sha Tin",
+"runs": 6
+},
+{
+"date": "2024-02-16",
+"venue": "Canterbury",
+"runs": 6
+},
+{
+"date": "2024-11-15",
+"venue": "Moonee Valley",
+"runs": 6
+},
+{
+"date": "2025-03-01",
+"venue": "Morphettville Parks",
+"runs": 6
+},
+{
+"date": "2024-11-15",
+"venue": "Seymour",
+"runs": 6
+},
+{
+"date": "2025-04-15",
+"venue": "Seymour",
+"runs": 6
+},
+{
+"date": "2025-07-19",
+"venue": "Morphettville Parks",
+"runs": 6
+},
+{
+"date": "2025-07-05",
+"venue": "Gawler",
+"runs": 6
+},
+{
+"date": "2025-04-27",
+"venue": "Seymour",
+"runs": 6
+},
+{
+"date": "2024-12-20",
+"venue": "Yarra Valley",
+"runs": 6
+},
+{
+"date": "2025-01-04",
+"venue": "Trentham",
+"runs": 6
+},
+{
+"date": "2024-05-18",
+"venue": "Newbury",
+"runs": 6
+},
+{
+"date": "2024-10-30",
+"venue": "Te Aroha",
+"runs": 6
+},
+{
+"date": "2024-09-29",
+"venue": "Mornington",
+"runs": 6
+},
+{
+"date": "2025-04-05",
+"venue": "Ascot",
+"runs": 6
+},
+{
+"date": "2024-06-22",
+"venue": "Ipswich",
+"runs": 6
+},
+{
+"date": "2024-12-22",
+"venue": "Sha Tin",
+"runs": 6
+},
+{
+"date": "2024-12-08",
+"venue": "Te Aroha",
+"runs": 6
+},
+{
+"date": "2025-04-05",
+"venue": "Ellerslie",
+"runs": 6
+},
+{
+"date": "2024-10-28",
+"venue": "Galway",
+"runs": 6
+},
+{
+"date": "2025-06-05",
+"venue": "Wagga",
+"runs": 6
+},
+{
+"date": "2025-08-25",
+"venue": "Scone",
+"runs": 6
+},
+{
+"date": "2025-09-20",
+"venue": "Wagga Riverside",
+"runs": 6
+},
+{
+"date": "2024-12-20",
+"venue": "Gold Coast",
+"runs": 6
+},
+{
+"date": "2025-09-01",
+"venue": "Port Macquarie",
+"runs": 6
+},
+{
+"date": "2025-06-18",
+"venue": "Doomben",
+"runs": 6
+},
+{
+"date": "2025-10-14",
+"venue": "Armidale",
+"runs": 6
+},
+{
+"date": "2025-05-18",
+"venue": "Parkes",
+"runs": 6
+},
+{
+"date": "2025-09-06",
+"venue": "Gold Coast",
+"runs": 6
+},
+{
+"date": "2025-03-16",
+"venue": "Sunshine Coast",
+"runs": 6
+},
+{
+"date": "2025-09-14",
+"venue": "Curragh",
+"runs": 6
+},
+{
+"date": "2025-07-12",
+"venue": "York",
+"runs": 6
+},
+{
+"date": "2025-05-07",
+"venue": "Chester",
+"runs": 6
+},
+{
+"date": "2025-02-09",
+"venue": "Hobart",
+"runs": 6
+},
+{
+"date": "2025-09-21",
+"venue": "Sunshine Coast",
+"runs": 6
+},
+{
+"date": "2025-07-10",
+"venue": "Dubbo",
+"runs": 6
+},
+{
+"date": "2025-02-01",
+"venue": "Doomben",
+"runs": 6
+},
+{
+"date": "2025-01-17",
+"venue": "Ballina",
+"runs": 6
+},
+{
+"date": "2025-02-21",
+"venue": "Quirindi",
+"runs": 6
+},
+{
+"date": "2024-12-20",
+"venue": "Cranbourne",
+"runs": 6
+},
+{
+"date": "2025-06-05",
+"venue": "Taree",
+"runs": 6
+},
+{
+"date": "2024-08-15",
+"venue": "Newcastle",
+"runs": 6
+},
+{
+"date": "2025-05-25",
+"venue": "Ellerslie",
+"runs": 6
+},
+{
+"date": "2025-06-30",
+"venue": "Taree",
+"runs": 6
+},
+{
+"date": "2025-05-05",
+"venue": "Gunnedah",
+"runs": 6
+},
+{
+"date": "2025-10-22",
+"venue": "Eagle Farm",
+"runs": 6
+},
+{
+"date": "2025-11-09",
+"venue": "Warren",
+"runs": 6
+},
+{
+"date": "2024-11-30",
+"venue": "Doomben",
+"runs": 6
+},
+{
+"date": "2025-05-25",
+"venue": "Gunnedah",
+"runs": 6
+},
+{
+"date": "2025-12-02",
+"venue": "Scone",
+"runs": 6
+},
+{
+"date": "2025-09-09",
+"venue": "Queanbeyan",
+"runs": 6
+},
+{
+"date": "2025-11-11",
+"venue": "Queanbeyan",
+"runs": 6
+},
+{
+"date": "2025-10-27",
+"venue": "Queanbeyan",
+"runs": 6
+},
+{
+"date": "2025-09-04",
+"venue": "Coffs Harbour",
+"runs": 6
+},
+{
+"date": "2024-11-21",
+"venue": "Moe",
+"runs": 6
+},
+{
+"date": "2025-06-13",
+"venue": "Ballarat Synthetic",
+"runs": 6
+},
+{
+"date": "2025-11-28",
+"venue": "Mount Gambier",
+"runs": 6
+},
+{
+"date": "2025-12-22",
+"venue": "Tamworth",
+"runs": 6
+},
+{
+"date": "2025-08-13",
+"venue": "Eagle Farm",
+"runs": 6
+},
+{
+"date": "2025-12-13",
+"venue": "Albury",
+"runs": 6
+},
+{
+"date": "2025-12-06",
+"venue": "Albury",
+"runs": 6
+},
+{
+"date": "2025-12-12",
+"venue": "Canberra",
+"runs": 6
+},
+{
+"date": "2026-01-04",
+"venue": "Lismore",
+"runs": 6
+},
+{
+"date": "2025-12-12",
+"venue": "Murwillumbah",
+"runs": 6
+},
+{
+"date": "2026-01-06",
+"venue": "Port Macquarie",
+"runs": 6
+},
+{
+"date": "2024-07-04",
+"venue": "Happy Valley",
+"runs": 6
+},
+{
+"date": "2025-08-21",
+"venue": "Warrnambool",
+"runs": 6
+},
+{
+"date": "2026-01-31",
+"venue": "Ipswich",
+"runs": 6
+},
+{
+"date": "2026-01-23",
+"venue": "Moruya",
+"runs": 6
+},
+{
+"date": "2026-02-07",
+"venue": "Morphettville",
+"runs": 6
+},
+{
+"date": "2026-02-08",
+"venue": "Port Macquarie",
+"runs": 6
+},
+{
+"date": "2026-01-22",
+"venue": "Tamworth",
+"runs": 6
+},
+{
+"date": "2025-12-16",
+"venue": "Beaumont",
+"runs": 6
+},
+{
+"date": "2024-10-13",
+"venue": "Naas",
+"runs": 6
+},
+{
+"date": "2026-02-13",
+"venue": "Taree",
+"runs": 6
+},
+{
+"date": "2025-04-13",
+"venue": "Pakenham",
+"runs": 6
+},
+{
+"date": "2025-07-27",
+"venue": "Casterton",
+"runs": 6
+},
+{
+"date": "2025-10-19",
+"venue": "ParisLongchamp",
+"runs": 6
+},
+{
+"date": "2025-09-07",
+"venue": "Baden-Baden",
+"runs": 6
+},
+{
+"date": "2026-03-01",
+"venue": "Coffs Harbour",
+"runs": 6
+},
+{
+"date": "2025-11-12",
+"venue": "Eagle Farm",
+"runs": 6
+},
+{
+"date": "2026-02-23",
+"venue": "Tamworth",
+"runs": 6
+},
+{
+"date": "2026-02-21",
+"venue": "Mudgee",
+"runs": 6
+},
+{
+"date": "2026-02-27",
+"venue": "Goulburn",
+"runs": 6
+},
+{
+"date": "2025-07-22",
+"venue": "Ballarat Synthetic",
+"runs": 6
+},
+{
+"date": "2025-08-10",
+"venue": "Coleraine",
+"runs": 6
+},
+{
+"date": "2026-01-24",
+"venue": "Yea",
+"runs": 6
+},
+{
+"date": "2026-02-01",
+"venue": "Werribee",
+"runs": 6
+},
+{
+"date": "2026-02-15",
+"venue": "Coffs Harbour",
+"runs": 6
+},
+{
+"date": "2026-02-16",
+"venue": "Wagga",
+"runs": 6
+},
+{
+"date": "2026-01-13",
+"venue": "Muswellbrook",
+"runs": 6
+},
+{
+"date": "2026-03-12",
+"venue": "Wagga",
+"runs": 6
+},
+{
+"date": "2026-02-28",
+"venue": "Morphettville Parks",
+"runs": 6
+},
+{
+"date": "2026-03-28",
+"venue": "Carrathool",
+"runs": 6
+},
+{
+"date": "2025-11-04",
+"venue": "Wangaratta",
+"runs": 6
+},
+{
+"date": "2026-04-05",
+"venue": "Nowra",
+"runs": 6
+},
+{
+"date": "2025-10-25",
+"venue": "St Arnaud",
+"runs": 6
+},
+{
+"date": "2026-01-26",
+"venue": "Hanging Rock",
+"runs": 6
+},
+{
+"date": "2026-03-09",
+"venue": "Coffs Harbour",
+"runs": 6
+},
+{
+"date": "2026-01-17",
+"venue": "Trentham",
+"runs": 6
+},
+{
+"date": "2026-03-01",
+"venue": "Trentham",
+"runs": 6
+},
+{
+"date": "2026-03-21",
+"venue": "Morphettville Parks",
+"runs": 6
+},
+{
+"date": "2026-02-04",
+"venue": "Murray Bdge",
+"runs": 6
+},
+{
+"date": "2025-09-26",
+"venue": "Newmarket",
+"runs": 6
+},
+{
+"date": "2026-02-23",
+"venue": "Albury",
+"runs": 6
+},
+{
+"date": "2026-02-11",
+"venue": "Doomben",
+"runs": 6
+},
+{
+"date": "2026-01-03",
+"venue": "Ipswich",
+"runs": 6
+},
+{
+"date": "2026-04-28",
+"venue": "Warwick",
+"runs": 6
+},
+{
+"date": "2026-02-28",
+"venue": "Toowoomba",
+"runs": 6
+},
+{
+"date": "2026-02-20",
+"venue": "Ipswich",
+"runs": 6
+},
+{
+"date": "2026-04-27",
+"venue": "Thangool",
+"runs": 6
+},
+{
+"date": "2026-04-24",
+"venue": "Coffs Harbour",
+"runs": 6
+},
+{
+"date": "2026-03-03",
+"venue": "Dalby",
+"runs": 6
+},
+{
+"date": "2026-05-10",
+"venue": "Mudgee",
+"runs": 6
+},
+{
+"date": "2026-05-17",
+"venue": "Parkes",
+"runs": 6
+},
+{
+"date": "2026-05-05",
+"venue": "Taree",
+"runs": 6
+},
+{
+"date": "2026-05-16",
+"venue": "Grafton",
+"runs": 6
+},
+{
+"date": "2025-10-16",
+"venue": "Gatton",
+"runs": 6
+},
+{
+"date": "2025-09-25",
+"venue": "Gatton",
+"runs": 6
+},
+{
+"date": "2025-12-06",
+"venue": "Toowoomba",
+"runs": 6
+},
+{
+"date": "2026-01-16",
+"venue": "Ballina",
+"runs": 6
+},
+{
+"date": "2026-02-21",
+"venue": "Otaki",
+"runs": 6
+},
+{
+"date": "2026-04-19",
+"venue": "Grafton",
+"runs": 6
+},
+{
+"date": "2026-05-03",
+"venue": "Dubbo",
+"runs": 6
+},
+{
+"date": "2026-05-30",
+"venue": "Ipswich",
+"runs": 6
+},
+{
+"date": "2026-04-15",
+"venue": "Balaklava",
+"runs": 6
+},
+{
+"date": "2026-01-14",
+"venue": "Doomben",
+"runs": 6
+},
+{
+"date": "2026-05-16",
+"venue": "Morphettville Parks",
+"runs": 6
+},
+{
+"date": "2026-05-23",
+"venue": "Murray Bdge",
+"runs": 6
+},
+{
+"date": "2026-06-05",
+"venue": "Taree",
+"runs": 6
+},
+{
+"date": "2026-06-07",
+"venue": "Wyong",
+"runs": 6
+},
+{
+"date": "2026-05-18",
+"venue": "Port Macquarie",
+"runs": 6
+},
+{
+"date": "2026-06-16",
+"venue": "Albury",
+"runs": 6
+},
+{
+"date": "2026-06-13",
+"venue": "Toowoomba",
+"runs": 6
+},
+{
+"date": "2026-06-06",
+"venue": "Cunnamulla",
+"runs": 6
+},
+{
+"date": "2026-04-18",
+"venue": "Goondiwindi",
+"runs": 6
+},
+{
+"date": "2026-06-11",
+"venue": "Mackay",
+"runs": 6
+},
+{
+"date": "2026-05-30",
+"venue": "Bowen",
+"runs": 6
+},
+{
+"date": "2026-06-06",
+"venue": "Gympie",
+"runs": 6
+},
+{
+"date": "2026-06-15",
+"venue": "Nowra",
+"runs": 6
+},
+{
+"date": "2026-06-19",
+"venue": "Moruya",
+"runs": 6
+},
+{
+"date": "2026-06-13",
+"venue": "Newcastle",
+"runs": 6
+},
+{
+"date": "2026-06-01",
+"venue": "Corowa",
+"runs": 6
+},
+{
+"date": "2026-06-22",
+"venue": "Pakenham Synthetic",
+"runs": 6
+},
+{
+"date": "2026-06-28",
+"venue": "Bordertown",
+"runs": 6
+},
+{
+"date": "2026-06-19",
+"venue": "Rockhampton",
+"runs": 6
+},
+{
+"date": "2026-05-23",
+"venue": "Toowoomba",
+"runs": 6
+},
+{
+"date": "2026-07-02",
+"venue": "Hawkesbury",
+"runs": 6
+},
+{
+"date": "2026-06-20",
+"venue": "Kembla Grange",
+"runs": 6
+},
+{
+"date": "2024-06-24",
+"venue": "Ascot",
+"runs": 5
+},
+{
+"date": "2023-05-11",
+"venue": "Chester",
+"runs": 5
+},
+{
+"date": "2024-02-03",
+"venue": "Rosehill Gardens",
+"runs": 5
+},
+{
+"date": "2024-07-04",
+"venue": "Sale",
+"runs": 5
+},
+{
+"date": "2024-12-27",
+"venue": "Mornington",
+"runs": 5
+},
+{
+"date": "2024-06-11",
+"venue": "Scone",
+"runs": 5
+},
+{
+"date": "2024-09-07",
+"venue": "Morphettville Parks",
+"runs": 5
+},
+{
+"date": "2024-12-03",
+"venue": "Bendigo",
+"runs": 5
+},
+{
+"date": "2024-08-23",
+"venue": "Geelong",
+"runs": 5
+},
+{
+"date": "2024-08-04",
+"venue": "Forbes",
+"runs": 5
+},
+{
+"date": "2025-02-16",
+"venue": "Port Macquarie",
+"runs": 5
+},
+{
+"date": "2024-07-18",
+"venue": "Grafton",
+"runs": 5
+},
+{
+"date": "2025-06-16",
+"venue": "Albury",
+"runs": 5
+},
+{
+"date": "2025-06-29",
+"venue": "Dubbo",
+"runs": 5
+},
+{
+"date": "2024-06-18",
+"venue": "Hawkesbury",
+"runs": 5
+},
+{
+"date": "2023-09-23",
+"venue": "Rosehill Gardens",
+"runs": 5
+},
+{
+"date": "2024-07-31",
+"venue": "Warwick Farm",
+"runs": 5
+},
+{
+"date": "2024-10-26",
+"venue": "Doomben",
+"runs": 5
+},
+{
+"date": "2024-05-25",
+"venue": "Haydock",
+"runs": 5
+},
+{
+"date": "2024-08-17",
+"venue": "Newbury",
+"runs": 5
+},
+{
+"date": "2024-07-13",
+"venue": "Doomben",
+"runs": 5
+},
+{
+"date": "2024-09-26",
+"venue": "Goulburn",
+"runs": 5
+},
+{
+"date": "2025-08-08",
+"venue": "Port Macquarie",
+"runs": 5
+},
+{
+"date": "2025-03-17",
+"venue": "Taree",
+"runs": 5
+},
+{
+"date": "2025-01-20",
+"venue": "Gunnedah",
+"runs": 5
+},
+{
+"date": "2024-09-15",
+"venue": "Woodbine",
+"runs": 5
+},
+{
+"date": "2025-08-04",
+"venue": "Wagga Riverside",
+"runs": 5
+},
+{
+"date": "2024-09-28",
+"venue": "Toowoomba",
+"runs": 5
+},
+{
+"date": "2024-08-23",
+"venue": "York",
+"runs": 5
+},
+{
+"date": "2024-07-13",
+"venue": "Longchamp",
+"runs": 5
+},
+{
+"date": "2024-06-16",
+"venue": "Chantilly",
+"runs": 5
+},
+{
+"date": "2023-10-14",
+"venue": "Randwick",
+"runs": 5
+},
+{
+"date": "2024-12-23",
+"venue": "Tamworth",
+"runs": 5
+},
+{
+"date": "2024-11-19",
+"venue": "Scone",
+"runs": 5
+},
+{
+"date": "2024-05-07",
+"venue": "Saint-Cloud",
+"runs": 5
+},
+{
+"date": "2024-12-10",
+"venue": "Quirindi",
+"runs": 5
+},
+{
+"date": "2024-05-03",
+"venue": "Newmarket",
+"runs": 5
+},
+{
+"date": "2024-03-08",
+"venue": "Moonee Valley",
+"runs": 5
+},
+{
+"date": "2024-02-24",
+"venue": "Otaki",
+"runs": 5
+},
+{
+"date": "2024-05-01",
+"venue": "Warrnambool",
+"runs": 5
+},
+{
+"date": "2024-04-21",
+"venue": "Wagga",
+"runs": 5
+},
+{
+"date": "2024-12-17",
+"venue": "Moe",
+"runs": 5
+},
+{
+"date": "2025-03-30",
+"venue": "Sha Tin",
+"runs": 5
+},
+{
+"date": "2025-01-19",
+"venue": "Mornington",
+"runs": 5
+},
+{
+"date": "2025-02-23",
+"venue": "Moe",
+"runs": 5
+},
+{
+"date": "2024-05-23",
+"venue": "Pakenham",
+"runs": 5
+},
+{
+"date": "2025-05-15",
+"venue": "Wangaratta",
+"runs": 5
+},
+{
+"date": "2024-04-30",
+"venue": "Warrnambool",
+"runs": 5
+},
+{
+"date": "2024-10-11",
+"venue": "Newmarket",
+"runs": 5
+},
+{
+"date": "2024-04-27",
+"venue": "Morphettville",
+"runs": 5
+},
+{
+"date": "2025-09-20",
+"venue": "Ellerslie",
+"runs": 5
+},
+{
+"date": "2024-03-28",
+"venue": "Chantilly",
+"runs": 5
+},
+{
+"date": "2024-04-18",
+"venue": "Pakenham",
+"runs": 5
+},
+{
+"date": "2025-08-10",
+"venue": "Hobart",
+"runs": 5
+},
+{
+"date": "2024-11-20",
+"venue": "Happy Valley",
+"runs": 5
+},
+{
+"date": "2024-05-05",
+"venue": "Sha Tin",
+"runs": 5
+},
+{
+"date": "2025-04-12",
+"venue": "Trentham",
+"runs": 5
+},
+{
+"date": "2025-01-16",
+"venue": "Te Rapa",
+"runs": 5
+},
+{
+"date": "2024-10-10",
+"venue": "Thurles",
+"runs": 5
+},
+{
+"date": "2025-09-02",
+"venue": "Nowra",
+"runs": 5
+},
+{
+"date": "2025-04-22",
+"venue": "Queanbeyan",
+"runs": 5
+},
+{
+"date": "2025-02-24",
+"venue": "Albury",
+"runs": 5
+},
+{
+"date": "2025-04-12",
+"venue": "Dubbo",
+"runs": 5
+},
+{
+"date": "2024-10-25",
+"venue": "Scone",
+"runs": 5
+},
+{
+"date": "2024-10-13",
+"venue": "Coonamble",
+"runs": 5
+},
+{
+"date": "2024-08-04",
+"venue": "Sandown Lakeside",
+"runs": 5
+},
+{
+"date": "2025-11-01",
+"venue": "Mortlake",
+"runs": 5
+},
+{
+"date": "2024-11-01",
+"venue": "Kilmore",
+"runs": 5
+},
+{
+"date": "2024-10-14",
+"venue": "Bairnsdale",
+"runs": 5
+},
+{
+"date": "2025-07-20",
+"venue": "Hamilton",
+"runs": 5
+},
+{
+"date": "2025-06-15",
+"venue": "Terang",
+"runs": 5
+},
+{
+"date": "2024-12-06",
+"venue": "Canberra",
+"runs": 5
+},
+{
+"date": "2025-03-15",
+"venue": "Morphettville Parks",
+"runs": 5
+},
+{
+"date": "2025-04-12",
+"venue": "Werribee",
+"runs": 5
+},
+{
+"date": "2025-08-08",
+"venue": "Mount Gambier",
+"runs": 5
+},
+{
+"date": "2025-09-06",
+"venue": "Mildura",
+"runs": 5
+},
+{
+"date": "2025-06-27",
+"venue": "Warracknabeal",
+"runs": 5
+},
+{
+"date": "2025-03-23",
+"venue": "Geelong",
+"runs": 5
+},
+{
+"date": "2024-09-20",
+"venue": "Ballarat",
+"runs": 5
+},
+{
+"date": "2025-08-04",
+"venue": "Ballarat Synthetic",
+"runs": 5
+},
+{
+"date": "2025-06-08",
+"venue": "Sunshine Coast",
+"runs": 5
+},
+{
+"date": "2024-12-20",
+"venue": "Matamata",
+"runs": 5
+},
+{
+"date": "2025-10-03",
+"venue": "Dubbo",
+"runs": 5
+},
+{
+"date": "2025-06-11",
+"venue": "Doomben",
+"runs": 5
+},
+{
+"date": "2025-05-05",
+"venue": "Kilmore",
+"runs": 5
+},
+{
+"date": "2024-09-15",
+"venue": "Bathurst",
+"runs": 5
+},
+{
+"date": "2025-12-15",
+"venue": "Orange",
+"runs": 5
+},
+{
+"date": "2025-07-21",
+"venue": "Bathurst",
+"runs": 5
+},
+{
+"date": "2025-04-29",
+"venue": "Narromine",
+"runs": 5
+},
+{
+"date": "2025-03-08",
+"venue": "Edenhope",
+"runs": 5
+},
+{
+"date": "2025-06-22",
+"venue": "Echuca",
+"runs": 5
+},
+{
+"date": "2025-06-21",
+"venue": "Morphettville",
+"runs": 5
+},
+{
+"date": "2024-10-21",
+"venue": "Warrnambool",
+"runs": 5
+},
+{
+"date": "2025-02-01",
+"venue": "Kyneton",
+"runs": 5
+},
+{
+"date": "2025-11-29",
+"venue": "Morphettville Parks",
+"runs": 5
+},
+{
+"date": "2024-12-31",
+"venue": "Echuca",
+"runs": 5
+},
+{
+"date": "2025-12-09",
+"venue": "Wagga",
+"runs": 5
+},
+{
+"date": "2025-01-18",
+"venue": "Murray Bdge",
+"runs": 5
+},
+{
+"date": "2025-10-18",
+"venue": "Ascot",
+"runs": 5
+},
+{
+"date": "2025-12-26",
+"venue": "Nhill",
+"runs": 5
+},
+{
+"date": "2025-06-27",
+"venue": "Ballarat Synthetic",
+"runs": 5
+},
+{
+"date": "2024-12-07",
+"venue": "Wangaratta",
+"runs": 5
+},
+{
+"date": "2025-12-28",
+"venue": "Canberra",
+"runs": 5
+},
+{
+"date": "2024-04-24",
+"venue": "Happy Valley",
+"runs": 5
+},
+{
+"date": "2025-10-26",
+"venue": "Port Macquarie",
+"runs": 5
+},
+{
+"date": "2024-03-13",
+"venue": "Kensington",
+"runs": 5
+},
+{
+"date": "2025-06-07",
+"venue": "Swan Hill",
+"runs": 5
+},
+{
+"date": "2026-02-15",
+"venue": "Dubbo",
+"runs": 5
+},
+{
+"date": "2025-07-28",
+"venue": "Kempsey",
+"runs": 5
+},
+{
+"date": "2024-06-07",
+"venue": "Leopardstown",
+"runs": 5
+},
+{
+"date": "2025-08-22",
+"venue": "Canberra Acton",
+"runs": 5
+},
+{
+"date": "2025-05-16",
+"venue": "Werribee",
+"runs": 5
+},
+{
+"date": "2025-03-31",
+"venue": "Leopardstown",
+"runs": 5
+},
+{
+"date": "2025-12-06",
+"venue": "Pukekohe Park",
+"runs": 5
+},
+{
+"date": "2025-11-13",
+"venue": "Port Macquarie",
+"runs": 5
+},
+{
+"date": "2025-12-02",
+"venue": "Donald",
+"runs": 5
+},
+{
+"date": "2026-01-17",
+"venue": "Cranbourne",
+"runs": 5
+},
+{
+"date": "2025-10-09",
+"venue": "Orange",
+"runs": 5
+},
+{
+"date": "2026-03-07",
+"venue": "Corowa",
+"runs": 5
+},
+{
+"date": "2026-01-18",
+"venue": "Wangaratta",
+"runs": 5
+},
+{
+"date": "2025-12-01",
+"venue": "Sapphire Coast",
+"runs": 5
+},
+{
+"date": "2025-11-22",
+"venue": "Penshurst",
+"runs": 5
+},
+{
+"date": "2026-01-12",
+"venue": "Werribee",
+"runs": 5
+},
+{
+"date": "2026-05-17",
+"venue": "Queanbeyan",
+"runs": 5
+},
+{
+"date": "2022-06-17",
+"venue": "Royal Ascot",
+"runs": 4
+},
+{
+"date": "2024-02-23",
+"venue": "Canterbury",
+"runs": 4
+},
+{
+"date": "2024-11-12",
+"venue": "Mornington",
+"runs": 4
+},
+{
+"date": "2024-11-28",
+"venue": "Otaki",
+"runs": 4
+},
+{
+"date": "2024-12-21",
+"venue": "Murray Bdge",
+"runs": 4
+},
+{
+"date": "2024-08-17",
+"venue": "Morphettville Parks",
+"runs": 4
+},
+{
+"date": "2024-07-26",
+"venue": "Geelong",
+"runs": 4
+},
+{
+"date": "2025-01-12",
+"venue": "Warrnambool",
+"runs": 4
+},
+{
+"date": "2024-10-11",
+"venue": "Cranbourne",
+"runs": 4
+},
+{
+"date": "2024-11-02",
+"venue": "Eagle Farm",
+"runs": 4
+},
+{
+"date": "2024-08-17",
+"venue": "Kembla Grange",
+"runs": 4
+},
+{
+"date": "2024-09-05",
+"venue": "Cranbourne",
+"runs": 4
+},
+{
+"date": "2024-12-22",
+"venue": "Sale",
+"runs": 4
+},
+{
+"date": "2024-11-29",
+"venue": "Wodonga",
+"runs": 4
+},
+{
+"date": "2024-07-24",
+"venue": "Sandown Hillside",
+"runs": 4
+},
+{
+"date": "2025-04-08",
+"venue": "Sale",
+"runs": 4
+},
+{
+"date": "2025-07-26",
+"venue": "Murtoa",
+"runs": 4
+},
+{
+"date": "2024-02-17",
+"venue": "Flemington",
+"runs": 4
+},
+{
+"date": "2024-06-22",
+"venue": "Morphettville",
+"runs": 4
+},
+{
+"date": "2024-04-06",
+"venue": "Morphettville Parks",
+"runs": 4
+},
+{
+"date": "2023-12-16",
+"venue": "Caulfield",
+"runs": 4
+},
+{
+"date": "2025-01-23",
+"venue": "Pakenham",
+"runs": 4
+},
+{
+"date": "2025-01-04",
+"venue": "Cranbourne",
+"runs": 4
+},
+{
+"date": "2024-10-25",
+"venue": "Mornington",
+"runs": 4
+},
+{
+"date": "2025-01-01",
+"venue": "Mornington",
+"runs": 4
+},
+{
+"date": "2024-05-18",
+"venue": "Kembla Grange",
+"runs": 4
+},
+{
+"date": "2024-01-20",
+"venue": "Kembla Grange",
+"runs": 4
+},
+{
+"date": "2022-11-19",
+"venue": "Kembla Grange",
+"runs": 4
+},
+{
+"date": "2024-01-06",
+"venue": "Gold Coast",
+"runs": 4
+},
+{
+"date": "2024-08-30",
+"venue": "Scone",
+"runs": 4
+},
+{
+"date": "2024-08-13",
+"venue": "Hawkesbury",
+"runs": 4
+},
+{
+"date": "2024-07-20",
+"venue": "Wyong",
+"runs": 4
+},
+{
+"date": "2024-07-24",
+"venue": "Canterbury",
+"runs": 4
+},
+{
+"date": "2024-08-26",
+"venue": "Wagga",
+"runs": 4
+},
+{
+"date": "2025-07-22",
+"venue": "Moree",
+"runs": 4
+},
+{
+"date": "2024-11-17",
+"venue": "Taree",
+"runs": 4
+},
+{
+"date": "2025-01-03",
+"venue": "Port Macquarie",
+"runs": 4
+},
+{
+"date": "2024-11-14",
+"venue": "Port Macquarie",
+"runs": 4
+},
+{
+"date": "2024-12-14",
+"venue": "Albury",
+"runs": 4
+},
+{
+"date": "2024-03-02",
+"venue": "Newcastle",
+"runs": 4
+},
+{
+"date": "2024-07-22",
+"venue": "Wagga",
+"runs": 4
+},
+{
+"date": "2024-04-14",
+"venue": "Wellington",
+"runs": 4
+},
+{
+"date": "2025-07-20",
+"venue": "Grafton",
+"runs": 4
+},
+{
+"date": "2025-06-07",
+"venue": "Gold Coast",
+"runs": 4
+},
+{
+"date": "2024-04-27",
+"venue": "Eagle Farm",
+"runs": 4
+},
+{
+"date": "2023-09-09",
+"venue": "Rosehill Gardens",
+"runs": 4
+},
+{
+"date": "2023-08-26",
+"venue": "Rosehill Gardens",
+"runs": 4
+},
+{
+"date": "2024-08-03",
+"venue": "Doomben",
+"runs": 4
+},
+{
+"date": "2025-03-22",
+"venue": "Eagle Farm",
+"runs": 4
+},
+{
+"date": "2025-06-06",
+"venue": "Ipswich",
+"runs": 4
+},
+{
+"date": "2024-08-04",
+"venue": "Wyong",
+"runs": 4
+},
+{
+"date": "2024-07-18",
+"venue": "Kembla Grange",
+"runs": 4
+},
+{
+"date": "2024-07-12",
+"venue": "Scone",
+"runs": 4
+},
+{
+"date": "2024-08-01",
+"venue": "Hawkesbury",
+"runs": 4
+},
+{
+"date": "2024-12-08",
+"venue": "Hawkesbury",
+"runs": 4
+},
+{
+"date": "2023-10-25",
+"venue": "Geelong",
+"runs": 4
+},
+{
+"date": "2023-06-20",
+"venue": "Royal Ascot",
+"runs": 4
+},
+{
+"date": "2024-05-19",
+"venue": "Italy",
+"runs": 4
+},
+{
+"date": "2024-05-19",
+"venue": "Capannelle",
+"runs": 4
+},
+{
+"date": "2024-04-27",
+"venue": "Haydock",
+"runs": 4
+},
+{
+"date": "2024-07-27",
+"venue": "Doomben",
+"runs": 4
+},
+{
+"date": "2025-08-12",
+"venue": "Muswellbrook",
+"runs": 4
+},
+{
+"date": "2024-04-26",
+"venue": "Tamworth",
+"runs": 4
+},
+{
+"date": "2025-01-07",
+"venue": "Taree",
+"runs": 4
+},
+{
+"date": "2024-09-24",
+"venue": "Woodbine",
+"runs": 4
+},
+{
+"date": "2023-12-09",
+"venue": "Kembla Grange",
+"runs": 4
+},
+{
+"date": "2024-07-13",
+"venue": "Newcastle",
+"runs": 4
+},
+{
+"date": "2025-07-29",
+"venue": "Wellington",
+"runs": 4
+},
+{
+"date": "2025-03-03",
+"venue": "Bathurst",
+"runs": 4
+},
+{
+"date": "2024-11-01",
+"venue": "Wagga",
+"runs": 4
+},
+{
+"date": "2025-01-17",
+"venue": "Moruya",
+"runs": 4
+},
+{
+"date": "2024-03-08",
+"venue": "Chantilly",
+"runs": 4
+},
+{
+"date": "2024-03-10",
+"venue": "Canberra",
+"runs": 4
+},
+{
+"date": "2024-10-05",
+"venue": "Doomben",
+"runs": 4
+},
+{
+"date": "2024-10-12",
+"venue": "Ascot",
+"runs": 4
+},
+{
+"date": "2025-05-03",
+"venue": "Sunshine Coast",
+"runs": 4
+},
+{
+"date": "2024-12-26",
+"venue": "Quirindi",
+"runs": 4
+},
+{
+"date": "2025-03-10",
+"venue": "Cowra",
+"runs": 4
+},
+{
+"date": "2024-02-21",
+"venue": "Hawkesbury",
+"runs": 4
+},
+{
+"date": "2024-08-01",
+"venue": "Goodwood",
+"runs": 4
+},
+{
+"date": "2024-10-21",
+"venue": "Deauville",
+"runs": 4
+},
+{
+"date": "2024-09-12",
+"venue": "ParisLongchamp",
+"runs": 4
+},
+{
+"date": "2024-08-22",
+"venue": "Sale",
+"runs": 4
+},
+{
+"date": "2024-02-10",
+"venue": "Te Rapa",
+"runs": 4
+},
+{
+"date": "2023-09-09",
+"venue": "Moonee Valley",
+"runs": 4
+},
+{
+"date": "2024-08-12",
+"venue": "Pakenham Synthetic",
+"runs": 4
+},
+{
+"date": "2024-09-15",
+"venue": "Seymour",
+"runs": 4
+},
+{
+"date": "2024-06-29",
+"venue": "Morphettville Parks",
+"runs": 4
+},
+{
+"date": "2024-04-16",
+"venue": "Ballarat",
+"runs": 4
+},
+{
+"date": "2024-12-21",
+"venue": "Werribee",
+"runs": 4
+},
+{
+"date": "2024-12-21",
+"venue": "Trentham",
+"runs": 4
+},
+{
+"date": "2024-12-07",
+"venue": "Trentham",
+"runs": 4
+},
+{
+"date": "2024-02-03",
+"venue": "Caulfield",
+"runs": 4
+},
+{
+"date": "2025-04-21",
+"venue": "Waverley",
+"runs": 4
+},
+{
+"date": "2024-07-29",
+"venue": "Pakenham Synthetic",
+"runs": 4
+},
+{
+"date": "2025-04-09",
+"venue": "Ipswich",
+"runs": 4
+},
+{
+"date": "2025-05-26",
+"venue": "Mornington",
+"runs": 4
+},
+{
+"date": "2025-06-21",
+"venue": "Donald",
+"runs": 4
+},
+{
+"date": "2024-09-24",
+"venue": "Listowel",
+"runs": 4
+},
+{
+"date": "2024-04-13",
+"venue": "Morphettville",
+"runs": 4
+},
+{
+"date": "2024-02-14",
+"venue": "Ballarat",
+"runs": 4
+},
+{
+"date": "2024-10-31",
+"venue": "Warrnambool",
+"runs": 4
+},
+{
+"date": "2025-08-30",
+"venue": "Wanganui",
+"runs": 4
+},
+{
+"date": "2024-06-30",
+"venue": "Chantilly",
+"runs": 4
+},
+{
+"date": "2024-04-26",
+"venue": "Chantilly",
+"runs": 4
+},
+{
+"date": "2024-08-01",
+"venue": "Cranbourne",
+"runs": 4
+},
+{
+"date": "2024-12-14",
+"venue": "Te Rapa",
+"runs": 4
+},
+{
+"date": "2024-06-09",
+"venue": "Sunshine Coast",
+"runs": 4
+},
+{
+"date": "2024-10-27",
+"venue": "Happy Valley",
+"runs": 4
+},
+{
+"date": "2024-09-22",
+"venue": "Sha Tin",
+"runs": 4
+},
+{
+"date": "2024-09-08",
+"venue": "Sha Tin",
+"runs": 4
+},
+{
+"date": "2025-08-31",
+"venue": "Te Aroha",
+"runs": 4
+},
+{
+"date": "2025-05-24",
+"venue": "Wodonga",
+"runs": 4
+},
+{
+"date": "2025-02-14",
+"venue": "Tamworth",
+"runs": 4
+},
+{
+"date": "2025-03-25",
+"venue": "Taree",
+"runs": 4
+},
+{
+"date": "2023-08-15",
+"venue": "Deauville",
+"runs": 4
+},
+{
+"date": "2022-11-05",
+"venue": "Keeneland",
+"runs": 4
+},
+{
+"date": "2025-06-07",
+"venue": "Townsville",
+"runs": 4
+},
+{
+"date": "2025-04-22",
+"venue": "Rockhampton",
+"runs": 4
+},
+{
+"date": "2025-04-11",
+"venue": "Rockhampton",
+"runs": 4
+},
+{
+"date": "2025-05-10",
+"venue": "Tokyo",
+"runs": 4
+},
+{
+"date": "2024-01-31",
+"venue": "Kensington",
+"runs": 4
+},
+{
+"date": "2024-12-24",
+"venue": "Wagga Riverside",
+"runs": 4
+},
+{
+"date": "2025-10-08",
+"venue": "Doomben",
+"runs": 4
+},
+{
+"date": "2025-08-28",
+"venue": "Murwillumbah",
+"runs": 4
+},
+{
+"date": "2025-09-14",
+"venue": "Coffs Harbour",
+"runs": 4
+},
+{
+"date": "2025-06-02",
+"venue": "Corowa",
+"runs": 4
+},
+{
+"date": "2025-05-19",
+"venue": "Corowa",
+"runs": 4
+},
+{
+"date": "2024-08-24",
+"venue": "York",
+"runs": 4
+},
+{
+"date": "2024-08-15",
+"venue": "Deauville",
+"runs": 4
+},
+{
+"date": "2025-02-06",
+"venue": "Tauherenikau",
+"runs": 4
+},
+{
+"date": "2025-01-20",
+"venue": "Wanganui",
+"runs": 4
+},
+{
+"date": "2024-03-15",
+"venue": "Pakenham",
+"runs": 4
+},
+{
+"date": "2025-07-10",
+"venue": "Newmarket",
+"runs": 4
+},
+{
+"date": "2025-06-21",
+"venue": "Royal Ascot",
+"runs": 4
+},
+{
+"date": "2025-05-03",
+"venue": "Newmarket",
+"runs": 4
+},
+{
+"date": "2025-09-27",
+"venue": "Te Rapa",
+"runs": 4
+},
+{
+"date": "2024-12-31",
+"venue": "Nowra",
+"runs": 4
+},
+{
+"date": "2025-05-23",
+"venue": "Canberra Acton",
+"runs": 4
+},
+{
+"date": "2025-04-26",
+"venue": "Canberra",
+"runs": 4
+},
+{
+"date": "2024-11-09",
+"venue": "Riccarton Park",
+"runs": 4
+},
+{
+"date": "2025-09-23",
+"venue": "Leeton",
+"runs": 4
+},
+{
+"date": "2025-03-29",
+"venue": "Nakayama",
+"runs": 4
+},
+{
+"date": "2024-08-31",
+"venue": "Kembla Grange",
+"runs": 4
+},
+{
+"date": "2025-04-27",
+"venue": "ParisLongchamp",
+"runs": 4
+},
+{
+"date": "2025-02-22",
+"venue": "Riyadh Turf",
+"runs": 4
+},
+{
+"date": "2024-11-30",
+"venue": "Nakayama",
+"runs": 4
+},
+{
+"date": "2025-06-17",
+"venue": "Royal Ascot",
+"runs": 4
+},
+{
+"date": "2025-07-05",
+"venue": "Hamburg",
+"runs": 4
+},
+{
+"date": "2025-06-07",
+"venue": "Saratoga",
+"runs": 4
+},
+{
+"date": "2025-06-06",
+"venue": "Saratoga",
+"runs": 4
+},
+{
+"date": "2025-08-16",
+"venue": "Newbury",
+"runs": 4
+},
+{
+"date": "2025-06-18",
+"venue": "Royal Ascot",
+"runs": 4
+},
+{
+"date": "2024-10-05",
+"venue": "Newmarket",
+"runs": 4
+},
+{
+"date": "2025-05-31",
+"venue": "Down Royal",
+"runs": 4
+},
+{
+"date": "2025-03-12",
+"venue": "Strathalbyn",
+"runs": 4
+},
+{
+"date": "2025-05-25",
+"venue": "Mount Gambier",
+"runs": 4
+},
+{
+"date": "2025-04-30",
+"venue": "Murray Bdge",
+"runs": 4
+},
+{
+"date": "2025-09-28",
+"venue": "Swan Hill",
+"runs": 4
+},
+{
+"date": "2025-03-12",
+"venue": "Eagle Farm",
+"runs": 4
+},
+{
+"date": "2025-03-31",
+"venue": "Wellington",
+"runs": 4
+},
+{
+"date": "2025-03-19",
+"venue": "Doomben",
+"runs": 4
+},
+{
+"date": "2025-01-23",
+"venue": "Tamworth",
+"runs": 4
+},
+{
+"date": "2024-10-19",
+"venue": "Eagle Farm",
+"runs": 4
+},
+{
+"date": "2025-05-10",
+"venue": "Ararat",
+"runs": 4
+},
+{
+"date": "2024-10-30",
+"venue": "Doomben",
+"runs": 4
+},
+{
+"date": "2024-10-10",
+"venue": "Mornington",
+"runs": 4
+},
+{
+"date": "2025-08-04",
+"venue": "Darwin",
+"runs": 4
+},
+{
+"date": "2025-07-12",
+"venue": "Darwin",
+"runs": 4
+},
+{
+"date": "2025-01-24",
+"venue": "Kilmore",
+"runs": 4
+},
+{
+"date": "2025-07-11",
+"venue": "Moe",
+"runs": 4
+},
+{
+"date": "2025-10-25",
+"venue": "Albury",
+"runs": 4
+},
+{
+"date": "2022-09-10",
+"venue": "Leopardstown",
+"runs": 4
+},
+{
+"date": "2024-05-08",
+"venue": "Sandown Hillside",
+"runs": 4
+},
+{
+"date": "2025-08-16",
+"venue": "Warracknabeal",
+"runs": 4
+},
+{
+"date": "2024-12-18",
+"venue": "Scone",
+"runs": 4
+},
+{
+"date": "2025-03-26",
+"venue": "Canberra",
+"runs": 4
+},
+{
+"date": "2025-09-20",
+"venue": "Eagle Farm",
+"runs": 4
+},
+{
+"date": "2024-09-07",
+"venue": "Doomben",
+"runs": 4
+},
+{
+"date": "2025-11-24",
+"venue": "Wellington",
+"runs": 4
+},
+{
+"date": "2025-10-25",
+"venue": "Armidale",
+"runs": 4
+},
+{
+"date": "2025-12-07",
+"venue": "Armidale",
+"runs": 4
+},
+{
+"date": "2025-09-07",
+"venue": "Mudgee",
+"runs": 4
+},
+{
+"date": "2025-12-04",
+"venue": "Coffs Harbour",
+"runs": 4
+},
+{
+"date": "2025-09-24",
+"venue": "Eagle Farm",
+"runs": 4
+},
+{
+"date": "2025-01-11",
+"venue": "Gold Coast",
+"runs": 4
+},
+{
+"date": "2025-08-23",
+"venue": "Cairns",
+"runs": 4
+},
+{
+"date": "2025-08-09",
+"venue": "Townsville",
+"runs": 4
+},
+{
+"date": "2025-11-08",
+"venue": "Goulburn",
+"runs": 4
+},
+{
+"date": "2024-03-03",
+"venue": "Sha Tin",
+"runs": 4
+},
+{
+"date": "2024-11-15",
+"venue": "Mount Gambier",
+"runs": 4
+},
+{
+"date": "2025-05-31",
+"venue": "Werribee",
+"runs": 4
+},
+{
+"date": "2025-06-07",
+"venue": "Morphettville Parks",
+"runs": 4
+},
+{
+"date": "2025-05-22",
+"venue": "Ballarat Synthetic",
+"runs": 4
+},
+{
+"date": "2025-05-19",
+"venue": "Horsham",
+"runs": 4
+},
+{
+"date": "2025-10-25",
+"venue": "Balranald",
+"runs": 4
+},
+{
+"date": "2025-04-11",
+"venue": "Cranbourne",
+"runs": 4
+},
+{
+"date": "2025-11-29",
+"venue": "Wagga",
+"runs": 4
+},
+{
+"date": "2025-02-21",
+"venue": "Kilmore",
+"runs": 4
+},
+{
+"date": "2025-12-23",
+"venue": "Taree",
+"runs": 4
+},
+{
+"date": "2024-05-12",
+"venue": "Mudgee",
+"runs": 4
+},
+{
+"date": "2024-11-17",
+"venue": "Geelong",
+"runs": 4
+},
+{
+"date": "2025-12-03",
+"venue": "Balaklava",
+"runs": 4
+},
+{
+"date": "2024-11-30",
+"venue": "Ellerslie",
+"runs": 4
+},
+{
+"date": "2025-07-15",
+"venue": "Ballarat Synthetic",
+"runs": 4
+},
+{
+"date": "2025-11-15",
+"venue": "Gundagai",
+"runs": 4
+},
+{
+"date": "2025-12-21",
+"venue": "Horsham",
+"runs": 4
+},
+{
+"date": "2024-12-06",
+"venue": "Moe",
+"runs": 4
+},
+{
+"date": "2026-01-11",
+"venue": "Coffs Harbour",
+"runs": 4
+},
+{
+"date": "2025-12-20",
+"venue": "Trentham",
+"runs": 4
+},
+{
+"date": "2024-04-07",
+"venue": "Sha Tin",
+"runs": 4
+},
+{
+"date": "2026-01-24",
+"venue": "Parkes",
+"runs": 4
+},
+{
+"date": "2025-03-28",
+"venue": "Warrnambool",
+"runs": 4
+},
+{
+"date": "2024-08-25",
+"venue": "Ballarat",
+"runs": 4
+},
+{
+"date": "2025-12-29",
+"venue": "Sapphire Coast",
+"runs": 4
+},
+{
+"date": "2026-01-31",
+"venue": "Sapphire Coast",
+"runs": 4
+},
+{
+"date": "2025-12-20",
+"venue": "Ascot",
+"runs": 4
+},
+{
+"date": "2024-04-17",
+"venue": "Newmarket",
+"runs": 4
+},
+{
+"date": "2025-08-18",
+"venue": "Bathurst",
+"runs": 4
+},
+{
+"date": "2026-02-17",
+"venue": "Queanbeyan",
+"runs": 4
+},
+{
+"date": "2025-06-19",
+"venue": "Royal Ascot",
+"runs": 4
+},
+{
+"date": "2025-03-22",
+"venue": "Ascot",
+"runs": 4
+},
+{
+"date": "2025-04-19",
+"venue": "Ascot",
+"runs": 4
+},
+{
+"date": "2026-02-08",
+"venue": "Naracoorte",
+"runs": 4
+},
+{
+"date": "2026-01-18",
+"venue": "Hobart",
+"runs": 4
+},
+{
+"date": "2024-02-28",
+"venue": "Sandown Hillside",
+"runs": 4
+},
+{
+"date": "2025-10-08",
+"venue": "Aquis Park Gold Coast Poly",
+"runs": 4
+},
+{
+"date": "2025-05-05",
+"venue": "Curragh",
+"runs": 4
+},
+{
+"date": "2025-09-20",
+"venue": "Ayr",
+"runs": 4
+},
+{
+"date": "2025-08-24",
+"venue": "Windsor",
+"runs": 4
+},
+{
+"date": "2025-07-04",
+"venue": "Sandown Park",
+"runs": 4
+},
+{
+"date": "2024-09-21",
+"venue": "Ayr",
+"runs": 4
+},
+{
+"date": "2025-12-18",
+"venue": "Kempton",
+"runs": 4
+},
+{
+"date": "2025-11-29",
+"venue": "Southwell",
+"runs": 4
+},
+{
+"date": "2025-12-20",
+"venue": "Te Rapa",
+"runs": 4
+},
+{
+"date": "2025-10-04",
+"venue": "Ascot",
+"runs": 4
+},
+{
+"date": "2025-07-31",
+"venue": "Goodwood",
+"runs": 4
+},
+{
+"date": "2025-05-24",
+"venue": "Goodwood",
+"runs": 4
+},
+{
+"date": "2025-08-22",
+"venue": "York",
+"runs": 4
+},
+{
+"date": "2025-06-25",
+"venue": "Salisbury",
+"runs": 4
+},
+{
+"date": "2024-10-12",
+"venue": "Ashburton",
+"runs": 4
+},
+{
+"date": "2026-01-30",
+"venue": "Taree",
+"runs": 4
+},
+{
+"date": "2026-03-30",
+"venue": "Grafton",
+"runs": 4
+},
+{
+"date": "2025-02-23",
+"venue": "Balaklava",
+"runs": 4
+},
+{
+"date": "2024-12-07",
+"venue": "Colac",
+"runs": 4
+},
+{
+"date": "2025-06-29",
+"venue": "Casterton",
+"runs": 4
+},
+{
+"date": "2024-11-02",
+"venue": "Traralgon",
+"runs": 4
+},
+{
+"date": "2026-01-17",
+"venue": "Murray Bdge",
+"runs": 4
+},
+{
+"date": "2026-01-23",
+"venue": "Port Macquarie",
+"runs": 4
+},
+{
+"date": "2025-12-19",
+"venue": "Lismore",
+"runs": 4
+},
+{
+"date": "2025-10-30",
+"venue": "Sapphire Coast",
+"runs": 4
+},
+{
+"date": "2025-11-21",
+"venue": "Orange",
+"runs": 4
+},
+{
+"date": "2026-02-28",
+"venue": "Woolamai",
+"runs": 4
+},
+{
+"date": "2025-06-28",
+"venue": "Wodonga",
+"runs": 4
+},
+{
+"date": "2025-12-26",
+"venue": "Drouin",
+"runs": 4
+},
+{
+"date": "2025-09-27",
+"venue": "Jerilderie",
+"runs": 4
+},
+{
+"date": "2025-06-17",
+"venue": "Ballarat Synthetic",
+"runs": 4
+},
+{
+"date": "2025-10-25",
+"venue": "Riccarton Park",
+"runs": 4
+},
+{
+"date": "2025-10-09",
+"venue": "Timaru",
+"runs": 4
+},
+{
+"date": "2025-06-27",
+"venue": "Tamworth",
+"runs": 4
+},
+{
+"date": "2025-09-14",
+"venue": "Sunshine Coast",
+"runs": 4
+},
+{
+"date": "2026-03-28",
+"venue": "Port Macquarie",
+"runs": 4
+},
+{
+"date": "2026-02-03",
+"venue": "Grafton",
+"runs": 4
+},
+{
+"date": "2024-08-28",
+"venue": "Sunshine Coast",
+"runs": 4
+},
+{
+"date": "2025-05-04",
+"venue": "Sligo",
+"runs": 4
+},
+{
+"date": "2025-04-19",
+"venue": "Cork",
+"runs": 4
+},
+{
+"date": "2026-02-05",
+"venue": "Albury",
+"runs": 4
+},
+{
+"date": "2025-09-11",
+"venue": "Bunbury",
+"runs": 4
+},
+{
+"date": "2026-01-31",
+"venue": "Tumbarumba",
+"runs": 4
+},
+{
+"date": "2026-03-22",
+"venue": "Orange",
+"runs": 4
+},
+{
+"date": "2026-03-29",
+"venue": "Armidale",
+"runs": 4
+},
+{
+"date": "2026-03-28",
+"venue": "Trentham",
+"runs": 4
+},
+{
+"date": "2024-10-17",
+"venue": "Curragh",
+"runs": 4
+},
+{
+"date": "2025-09-02",
+"venue": "Roscommon",
+"runs": 4
+},
+{
+"date": "2026-01-23",
+"venue": "Launceston",
+"runs": 4
+},
+{
+"date": "2025-05-24",
+"venue": "Curragh",
+"runs": 4
+},
+{
+"date": "2025-08-14",
+"venue": "Gowran Park",
+"runs": 4
+},
+{
+"date": "2025-07-26",
+"venue": "Cork",
+"runs": 4
+},
+{
+"date": "2025-06-20",
+"venue": "Royal Ascot",
+"runs": 4
+},
+{
+"date": "2025-10-02",
+"venue": "Kempton",
+"runs": 4
+},
+{
+"date": "2025-07-18",
+"venue": "Haydock",
+"runs": 4
+},
+{
+"date": "2026-04-21",
+"venue": "Queanbeyan",
+"runs": 4
+},
+{
+"date": "2025-11-04",
+"venue": "Bairnsdale",
+"runs": 4
+},
+{
+"date": "2026-03-07",
+"venue": "Edenhope",
+"runs": 4
+},
+{
+"date": "2026-04-18",
+"venue": "Yea",
+"runs": 4
+},
+{
+"date": "2026-02-08",
+"venue": "Sunshine Coast",
+"runs": 4
+},
+{
+"date": "2026-04-25",
+"venue": "Beaudesert",
+"runs": 4
+},
+{
+"date": "2025-12-27",
+"venue": "Gold Coast",
+"runs": 4
+},
+{
+"date": "2025-11-15",
+"venue": "Gold Coast",
+"runs": 4
+},
+{
+"date": "2026-01-02",
+"venue": "Kilcoy",
+"runs": 4
+},
+{
+"date": "2025-11-09",
+"venue": "Sunshine Coast",
+"runs": 4
+},
+{
+"date": "2026-03-20",
+"venue": "Ipswich",
+"runs": 4
+},
+{
+"date": "2026-03-14",
+"venue": "Ipswich",
+"runs": 4
+},
+{
+"date": "2026-04-07",
+"venue": "Grafton",
+"runs": 4
+},
+{
+"date": "2025-12-05",
+"venue": "Gatton",
+"runs": 4
+},
+{
+"date": "2025-11-06",
+"venue": "Ipswich",
+"runs": 4
+},
+{
+"date": "2025-10-15",
+"venue": "Doomben",
+"runs": 4
+},
+{
+"date": "2026-02-18",
+"venue": "Eagle Farm",
+"runs": 4
+},
+{
+"date": "2025-11-22",
+"venue": "Gold Coast",
+"runs": 4
+},
+{
+"date": "2025-11-01",
+"venue": "Gold Coast",
+"runs": 4
+},
+{
+"date": "2026-03-06",
+"venue": "Ipswich",
+"runs": 4
+},
+{
+"date": "2025-10-31",
+"venue": "Ipswich",
+"runs": 4
+},
+{
+"date": "2025-11-13",
+"venue": "Ipswich",
+"runs": 4
+},
+{
+"date": "2026-03-28",
+"venue": "Aquis Park Gold Coast Poly",
+"runs": 4
+},
+{
+"date": "2026-03-23",
+"venue": "Ballina",
+"runs": 4
+},
+{
+"date": "2026-04-25",
+"venue": "Dalby",
+"runs": 4
+},
+{
+"date": "2026-03-21",
+"venue": "Dalby",
+"runs": 4
+},
+{
+"date": "2025-10-10",
+"venue": "Sunshine Coast",
+"runs": 4
+},
+{
+"date": "2025-09-13",
+"venue": "Toowoomba",
+"runs": 4
+},
+{
+"date": "2025-12-14",
+"venue": "Sunshine Coast",
+"runs": 4
+},
+{
+"date": "2025-10-12",
+"venue": "Goodwood",
+"runs": 4
+},
+{
+"date": "2026-02-15",
+"venue": "Waipukurau",
+"runs": 4
+},
+{
+"date": "2025-12-14",
+"venue": "Bordertown",
+"runs": 4
+},
+{
+"date": "2026-02-01",
+"venue": "Sunshine Coast",
+"runs": 4
+},
+{
+"date": "2026-05-12",
+"venue": "Taree",
+"runs": 4
+},
+{
+"date": "2026-04-25",
+"venue": "Kempsey",
+"runs": 4
+},
+{
+"date": "2025-12-17",
+"venue": "Ipswich",
+"runs": 4
+},
+{
+"date": "2026-01-11",
+"venue": "Sunshine Coast",
+"runs": 4
+},
+{
+"date": "2026-02-24",
+"venue": "Rockhampton",
+"runs": 4
+},
+{
+"date": "2026-04-18",
+"venue": "Ellerslie",
+"runs": 4
+},
+{
+"date": "2026-04-04",
+"venue": "Ellerslie",
+"runs": 4
+},
+{
+"date": "2026-03-20",
+"venue": "Pukekohe Park",
+"runs": 4
+},
+{
+"date": "2026-05-09",
+"venue": "Waverley",
+"runs": 4
+},
+{
+"date": "2026-04-06",
+"venue": "Wanganui",
+"runs": 4
+},
+{
+"date": "2026-01-10",
+"venue": "Kumara",
+"runs": 4
+},
+{
+"date": "2026-03-14",
+"venue": "Tauranga",
+"runs": 4
+},
+{
+"date": "2025-11-30",
+"venue": "Grafton",
+"runs": 4
+},
+{
+"date": "2026-05-10",
+"venue": "Moruya",
+"runs": 4
+},
+{
+"date": "2026-04-19",
+"venue": "Naracoorte",
+"runs": 4
+},
+{
+"date": "2026-04-13",
+"venue": "Sapphire Coast",
+"runs": 4
+},
+{
+"date": "2026-05-22",
+"venue": "Inverell",
+"runs": 4
+},
+{
+"date": "2026-05-30",
+"venue": "Canberra Acton",
+"runs": 4
+},
+{
+"date": "2026-05-02",
+"venue": "Boorowa",
+"runs": 4
+},
+{
+"date": "2026-06-13",
+"venue": "Warwick",
+"runs": 4
+},
+{
+"date": "2026-06-11",
+"venue": "Gosford",
+"runs": 4
+},
+{
+"date": "2026-05-10",
+"venue": "Longreach",
+"runs": 4
+},
+{
+"date": "2026-03-28",
+"venue": "Roma",
+"runs": 4
+},
+{
+"date": "2026-03-02",
+"venue": "Thangool",
+"runs": 4
+},
+{
+"date": "2026-05-21",
+"venue": "Rockhampton",
+"runs": 4
+},
+{
+"date": "2026-05-09",
+"venue": "Quilpie",
+"runs": 4
+},
+{
+"date": "2026-04-04",
+"venue": "Flinton",
+"runs": 4
+},
+{
+"date": "2026-06-06",
+"venue": "Longreach",
+"runs": 4
+},
+{
+"date": "2026-05-16",
+"venue": "Home Hill",
+"runs": 4
+},
+{
+"date": "2026-05-16",
+"venue": "Emerald",
+"runs": 4
+},
+{
+"date": "2026-04-25",
+"venue": "Wondai",
+"runs": 4
+},
+{
+"date": "2026-05-09",
+"venue": "Gordonvale",
+"runs": 4
+},
+{
+"date": "2026-03-07",
+"venue": "Esk",
+"runs": 4
+},
+{
+"date": "2026-05-02",
+"venue": "Mount Garnet",
+"runs": 4
+},
+{
+"date": "2026-06-14",
+"venue": "Balaklava",
+"runs": 4
+},
+{
+"date": "2026-05-06",
+"venue": "Murray Bdge",
+"runs": 4
+},
+{
+"date": "2026-06-30",
+"venue": "Ballarat Synthetic",
+"runs": 4
+},
+{
+"date": "2025-08-31",
+"venue": "Casterton",
+"runs": 4
+},
+{
+"date": "2026-06-26",
+"venue": "Ballarat Synthetic",
+"runs": 4
+},
+{
+"date": "2026-06-07",
+"venue": "Port Augusta",
+"runs": 4
+},
+{
+"date": "2026-05-20",
+"venue": "Balaklava",
+"runs": 4
+},
+{
+"date": "2026-06-27",
+"venue": "Wodonga",
+"runs": 4
+},
+{
+"date": "2026-04-29",
+"venue": "Strathalbyn",
+"runs": 4
+},
+{
+"date": "2026-06-29",
+"venue": "Pakenham Synthetic",
+"runs": 4
+},
+{
+"date": "2026-06-28",
+"venue": "Sale",
+"runs": 4
+},
+{
+"date": "2026-06-17",
+"venue": "Doomben",
+"runs": 4
+},
+{
+"date": "2026-06-27",
+"venue": "Gatton",
+"runs": 4
+},
+{
+"date": "2026-06-27",
+"venue": "Newcastle",
+"runs": 4
+},
+{
+"date": "2026-06-18",
+"venue": "Gosford",
+"runs": 4
+},
+{
+"date": "2026-06-23",
+"venue": "Hawkesbury",
+"runs": 4
+},
+{
+"date": "2026-07-10",
+"venue": "Moruya",
+"runs": 4
+},
+{
+"date": "2022-11-03",
+"venue": "Flemington",
+"runs": 3
+},
+{
+"date": "2025-01-01",
+"venue": "Ascot",
+"runs": 3
+},
+{
+"date": "2024-05-11",
+"venue": "Ascot",
+"runs": 3
+},
+{
+"date": "2022-06-04",
+"venue": "Epsom Downs",
+"runs": 3
+},
+{
+"date": "2023-09-09",
+"venue": "Haydock",
+"runs": 3
+},
+{
+"date": "2024-04-01",
+"venue": "Sandown Lakeside",
+"runs": 3
+},
+{
+"date": "2024-06-23",
+"venue": "Lyon-Parilly",
+"runs": 3
+},
+{
+"date": "2024-01-03",
+"venue": "Seymour",
+"runs": 3
+},
+{
+"date": "2024-05-15",
+"venue": "Sandown Hillside",
+"runs": 3
+},
+{
+"date": "2024-12-14",
+"venue": "Gawler",
+"runs": 3
+},
+{
+"date": "2023-12-06",
+"venue": "Sandown Lakeside",
+"runs": 3
+},
+{
+"date": "2024-12-31",
+"venue": "Warrnambool",
+"runs": 3
+},
+{
+"date": "2024-04-21",
+"venue": "Bendigo",
+"runs": 3
+},
+{
+"date": "2023-12-02",
+"venue": "Caulfield",
+"runs": 3
+},
+{
+"date": "2024-08-21",
+"venue": "Sandown Lakeside",
+"runs": 3
+},
+{
+"date": "2023-11-01",
+"venue": "Bendigo",
+"runs": 3
+},
+{
+"date": "2024-06-09",
+"venue": "Swan Hill",
+"runs": 3
+},
+{
+"date": "2024-10-12",
+"venue": "Hamilton",
+"runs": 3
+},
+{
+"date": "2024-09-23",
+"venue": "Warrnambool",
+"runs": 3
+},
+{
+"date": "2024-10-20",
+"venue": "Horsham",
+"runs": 3
+},
+{
+"date": "2024-04-12",
+"venue": "Cranbourne",
+"runs": 3
+},
+{
+"date": "2024-12-07",
+"venue": "Morphettville Parks",
+"runs": 3
+},
+{
+"date": "2025-01-01",
+"venue": "Burrumbeet",
+"runs": 3
+},
+{
+"date": "2024-07-25",
+"venue": "Bendigo",
+"runs": 3
+},
+{
+"date": "2025-05-04",
+"venue": "Dubbo",
+"runs": 3
+},
+{
+"date": "2023-02-11",
+"venue": "Randwick",
+"runs": 3
+},
+{
+"date": "2023-01-14",
+"venue": "Rosehill Gardens",
+"runs": 3
+},
+{
+"date": "2024-09-19",
+"venue": "Cranbourne",
+"runs": 3
+},
+{
+"date": "2024-06-22",
+"venue": "Newcastle",
+"runs": 3
+},
+{
+"date": "2024-12-16",
+"venue": "Kempsey",
+"runs": 3
+},
+{
+"date": "2024-12-03",
+"venue": "Taree",
+"runs": 3
+},
+{
+"date": "2024-02-13",
+"venue": "Hawkesbury",
+"runs": 3
+},
+{
+"date": "2024-09-24",
+"venue": "Taree",
+"runs": 3
+},
+{
+"date": "2025-01-09",
+"venue": "Wagga",
+"runs": 3
+},
+{
+"date": "2024-06-21",
+"venue": "Goulburn",
+"runs": 3
+},
+{
+"date": "2024-12-09",
+"venue": "Dubbo",
+"runs": 3
+},
+{
+"date": "2024-08-23",
+"venue": "Ipswich",
+"runs": 3
+},
+{
+"date": "2024-02-29",
+"venue": "Kembla Grange",
+"runs": 3
+},
+{
+"date": "2023-10-28",
+"venue": "Randwick",
+"runs": 3
+},
+{
+"date": "2024-10-05",
+"venue": "Newcastle",
+"runs": 3
+},
+{
+"date": "2024-06-29",
+"venue": "Newcastle",
+"runs": 3
+},
+{
+"date": "2025-04-20",
+"venue": "Sunshine Coast",
+"runs": 3
+},
+{
+"date": "2024-10-09",
+"venue": "Doomben",
+"runs": 3
+},
+{
+"date": "2024-08-08",
+"venue": "Newcastle",
+"runs": 3
+},
+{
+"date": "2024-05-29",
+"venue": "Canterbury",
+"runs": 3
+},
+{
+"date": "2023-07-15",
+"venue": "York",
+"runs": 3
+},
+{
+"date": "2023-07-15",
+"venue": "ParisLongchamp",
+"runs": 3
+},
+{
+"date": "2024-02-17",
+"venue": "Ellerslie",
+"runs": 3
+},
+{
+"date": "2024-01-13",
+"venue": "Gold Coast",
+"runs": 3
+},
+{
+"date": "2023-10-14",
+"venue": "York",
+"runs": 3
+},
+{
+"date": "2023-09-14",
+"venue": "Doncaster",
+"runs": 3
+},
+{
+"date": "2024-07-28",
+"venue": "Salisbury",
+"runs": 3
+},
+{
+"date": "2024-11-29",
+"venue": "Queanbeyan",
+"runs": 3
+},
+{
+"date": "2024-10-18",
+"venue": "Canberra",
+"runs": 3
+},
+{
+"date": "2024-01-20",
+"venue": "Rosehill Gardens",
+"runs": 3
+},
+{
+"date": "2024-05-10",
+"venue": "Tamworth",
+"runs": 3
+},
+{
+"date": "2024-10-04",
+"venue": "Moruya",
+"runs": 3
+},
+{
+"date": "2024-10-21",
+"venue": "Muswellbrook",
+"runs": 3
+},
+{
+"date": "2024-08-11",
+"venue": "Woodbine",
+"runs": 3
+},
+{
+"date": "2024-06-25",
+"venue": "Ballinrobe",
+"runs": 3
+},
+{
+"date": "2024-07-11",
+"venue": "Bendigo",
+"runs": 3
+},
+{
+"date": "2025-05-12",
+"venue": "Quirindi",
+"runs": 3
+},
+{
+"date": "2025-03-24",
+"venue": "Beaumont",
+"runs": 3
+},
+{
+"date": "2024-05-15",
+"venue": "Kensington",
+"runs": 3
+},
+{
+"date": "2023-09-22",
+"venue": "Goulburn",
+"runs": 3
+},
+{
+"date": "2024-04-27",
+"venue": "Kembla Grange",
+"runs": 3
+},
+{
+"date": "2024-05-11",
+"venue": "Chantilly",
+"runs": 3
+},
+{
+"date": "2024-04-07",
+"venue": "ParisLongchamp",
+"runs": 3
+},
+{
+"date": "2024-04-26",
+"venue": "Moruya",
+"runs": 3
+},
+{
+"date": "2024-07-29",
+"venue": "Muswellbrook",
+"runs": 3
+},
+{
+"date": "2024-06-28",
+"venue": "Tamworth",
+"runs": 3
+},
+{
+"date": "2025-06-07",
+"venue": "Parkes",
+"runs": 3
+},
+{
+"date": "2024-07-25",
+"venue": "Wyong",
+"runs": 3
+},
+{
+"date": "2024-10-18",
+"venue": "Taree",
+"runs": 3
+},
+{
+"date": "2025-01-27",
+"venue": "Grafton",
+"runs": 3
+},
+{
+"date": "2024-10-26",
+"venue": "Newbury",
+"runs": 3
+},
+{
+"date": "2024-10-05",
+"venue": "Ascot",
+"runs": 3
+},
+{
+"date": "2024-09-07",
+"venue": "Kempton",
+"runs": 3
+},
+{
+"date": "2024-06-01",
+"venue": "Epsom Downs",
+"runs": 3
+},
+{
+"date": "2024-05-16",
+"venue": "York",
+"runs": 3
+},
+{
+"date": "2024-08-02",
+"venue": "Coffs Harbour",
+"runs": 3
+},
+{
+"date": "2024-02-17",
+"venue": "Newcastle",
+"runs": 3
+},
+{
+"date": "2025-03-15",
+"venue": "Ascot",
+"runs": 3
+},
+{
+"date": "2025-03-01",
+"venue": "Ascot",
+"runs": 3
+},
+{
+"date": "2024-11-16",
+"venue": "Ascot",
+"runs": 3
+},
+{
+"date": "2024-10-26",
+"venue": "Ascot",
+"runs": 3
+},
+{
+"date": "2024-07-22",
+"venue": "Seymour",
+"runs": 3
+},
+{
+"date": "2024-04-20",
+"venue": "Kembla Grange",
+"runs": 3
+},
+{
+"date": "2024-03-23",
+"venue": "Kembla Grange",
+"runs": 3
+},
+{
+"date": "2024-07-16",
+"venue": "Newcastle",
+"runs": 3
+},
+{
+"date": "2024-09-14",
+"venue": "Kembla Grange",
+"runs": 3
+},
+{
+"date": "2024-07-10",
+"venue": "Canberra Acton",
+"runs": 3
+},
+{
+"date": "2024-08-10",
+"venue": "Kembla Grange",
+"runs": 3
+},
+{
+"date": "2024-07-12",
+"venue": "Newmarket",
+"runs": 3
+},
+{
+"date": "2024-12-12",
+"venue": "Ellerslie",
+"runs": 3
+},
+{
+"date": "2024-06-28",
+"venue": "Ballarat Synthetic",
+"runs": 3
+},
+{
+"date": "2024-08-12",
+"venue": "Clairefontaine",
+"runs": 3
+},
+{
+"date": "2025-01-18",
+"venue": "Camperdown",
+"runs": 3
+},
+{
+"date": "2024-02-29",
+"venue": "Pakenham",
+"runs": 3
+},
+{
+"date": "2023-09-23",
+"venue": "Caulfield",
+"runs": 3
+},
+{
+"date": "2023-03-11",
+"venue": "Flemington",
+"runs": 3
+},
+{
+"date": "2023-02-25",
+"venue": "Sandown Lakeside",
+"runs": 3
+},
+{
+"date": "2023-01-26",
+"venue": "Sandown Hillside",
+"runs": 3
+},
+{
+"date": "2024-05-19",
+"venue": "Naas",
+"runs": 3
+},
+{
+"date": "2024-03-21",
+"venue": "Newcastle",
+"runs": 3
+},
+{
+"date": "2024-05-19",
+"venue": "Casterton",
+"runs": 3
+},
+{
+"date": "2025-03-09",
+"venue": "Sha Tin",
+"runs": 3
+},
+{
+"date": "2025-02-09",
+"venue": "Sha Tin",
+"runs": 3
+},
+{
+"date": "2025-01-26",
+"venue": "Sha Tin",
+"runs": 3
+},
+{
+"date": "2025-01-12",
+"venue": "Sha Tin",
+"runs": 3
+},
+{
+"date": "2024-03-16",
+"venue": "Caulfield",
+"runs": 3
+},
+{
+"date": "2025-06-27",
+"venue": "Bordertown",
+"runs": 3
+},
+{
+"date": "2024-11-10",
+"venue": "Ararat",
+"runs": 3
+},
+{
+"date": "2024-03-06",
+"venue": "Sandown Hillside",
+"runs": 3
+},
+{
+"date": "2024-08-15",
+"venue": "Gowran Park",
+"runs": 3
+},
+{
+"date": "2024-12-13",
+"venue": "Cranbourne",
+"runs": 3
+},
+{
+"date": "2025-02-15",
+"venue": "Matamata",
+"runs": 3
+},
+{
+"date": "2024-02-11",
+"venue": "Deauville",
+"runs": 3
+},
+{
+"date": "2024-08-03",
+"venue": "Goodwood",
+"runs": 3
+},
+{
+"date": "2024-05-25",
+"venue": "York",
+"runs": 3
+},
+{
+"date": "2025-01-12",
+"venue": "Ellerslie",
+"runs": 3
+},
+{
+"date": "2024-10-12",
+"venue": "Te Rapa",
+"runs": 3
+},
+{
+"date": "2024-09-12",
+"venue": "Warrnambool",
+"runs": 3
+},
+{
+"date": "2023-12-20",
+"venue": "Flemington",
+"runs": 3
+},
+{
+"date": "2025-02-02",
+"venue": "Mount Gambier",
+"runs": 3
+},
+{
+"date": "2024-12-22",
+"venue": "Horsham",
+"runs": 3
+},
+{
+"date": "2024-12-15",
+"venue": "Hobart",
+"runs": 3
+},
+{
+"date": "2024-11-23",
+"venue": "Morphettville",
+"runs": 3
+},
+{
+"date": "2023-11-07",
+"venue": "Randwick",
+"runs": 3
+},
+{
+"date": "2024-11-09",
+"venue": "Te Rapa",
+"runs": 3
+},
+{
+"date": "2024-06-03",
+"venue": "Te Aroha",
+"runs": 3
+},
+{
+"date": "2025-02-07",
+"venue": "Tauranga",
+"runs": 3
+},
+{
+"date": "2024-12-28",
+"venue": "Arawa Park",
+"runs": 3
+},
+{
+"date": "2024-11-19",
+"venue": "Arawa Park",
+"runs": 3
+},
+{
+"date": "2024-11-29",
+"venue": "Muswellbrook",
+"runs": 3
+},
+{
+"date": "2024-12-28",
+"venue": "Corowa",
+"runs": 3
+},
+{
+"date": "2024-12-22",
+"venue": "Taree",
+"runs": 3
+},
+{
+"date": "2025-01-11",
+"venue": "Cranbourne",
+"runs": 3
+},
+{
+"date": "2024-12-29",
+"venue": "Port Macquarie",
+"runs": 3
+},
+{
+"date": "2022-11-04",
+"venue": "Keeneland",
+"runs": 3
+},
+{
+"date": "2022-09-17",
+"venue": "Chantilly",
+"runs": 3
+},
+{
+"date": "2025-09-07",
+"venue": "Gundagai",
+"runs": 3
+},
+{
+"date": "2025-07-08",
+"venue": "Goulburn",
+"runs": 3
+},
+{
+"date": "2024-01-27",
+"venue": "Ellerslie",
+"runs": 3
+},
+{
+"date": "2024-05-22",
+"venue": "Warwick Farm",
+"runs": 3
+},
+{
+"date": "2024-07-02",
+"venue": "Scone",
+"runs": 3
+},
+{
+"date": "2025-07-25",
+"venue": "Canberra Acton",
+"runs": 3
+},
+{
+"date": "2024-10-11",
+"venue": "Canberra",
+"runs": 3
+},
+{
+"date": "2024-08-24",
+"venue": "Doomben",
+"runs": 3
+},
+{
+"date": "2024-05-02",
+"venue": "Wagga",
+"runs": 3
+},
+{
+"date": "2025-01-03",
+"venue": "Wagga",
+"runs": 3
+},
+{
+"date": "2024-12-11",
+"venue": "Tauherenikau",
+"runs": 3
+},
+{
+"date": "2025-09-03",
+"venue": "Ruakaka",
+"runs": 3
+},
+{
+"date": "2025-05-10",
+"venue": "Trentham",
+"runs": 3
+},
+{
+"date": "2024-10-02",
+"venue": "Matamata",
+"runs": 3
+},
+{
+"date": "2024-08-17",
+"venue": "Ruakaka",
+"runs": 3
+},
+{
+"date": "2024-11-22",
+"venue": "Bong Bong",
+"runs": 3
+},
+{
+"date": "2025-05-25",
+"venue": "ParisLongchamp",
+"runs": 3
+},
+{
+"date": "2025-03-02",
+"venue": "Meydan",
+"runs": 3
+},
+{
+"date": "2024-11-09",
+"venue": "Morphettville Parks",
+"runs": 3
+},
+{
+"date": "2024-10-26",
+"venue": "St Arnaud",
+"runs": 3
+},
+{
+"date": "2025-03-26",
+"venue": "Strathalbyn",
+"runs": 3
+},
+{
+"date": "2025-04-25",
+"venue": "Moe",
+"runs": 3
+},
+{
+"date": "2025-02-14",
+"venue": "Terang",
+"runs": 3
+},
+{
+"date": "2024-07-07",
+"venue": "Hamburg",
+"runs": 3
+},
+{
+"date": "2025-03-29",
+"venue": "Trentham",
+"runs": 3
+},
+{
+"date": "2025-10-07",
+"venue": "Mildura",
+"runs": 3
+},
+{
+"date": "2025-08-10",
+"venue": "Wagga",
+"runs": 3
+},
+{
+"date": "2025-06-16",
+"venue": "Tamworth",
+"runs": 3
+},
+{
+"date": "2025-04-11",
+"venue": "Gold Coast",
+"runs": 3
+},
+{
+"date": "2024-07-10",
+"venue": "Eagle Farm",
+"runs": 3
+},
+{
+"date": "2025-03-04",
+"venue": "Scone",
+"runs": 3
+},
+{
+"date": "2025-02-07",
+"venue": "Walcha",
+"runs": 3
+},
+{
+"date": "2025-04-23",
+"venue": "Doomben",
+"runs": 3
+},
+{
+"date": "2024-02-27",
+"venue": "Bendigo",
+"runs": 3
+},
+{
+"date": "2025-06-06",
+"venue": "Canberra Acton",
+"runs": 3
+},
+{
+"date": "2025-09-28",
+"venue": "Port Macquarie",
+"runs": 3
+},
+{
+"date": "2025-01-20",
+"venue": "Albury",
+"runs": 3
+},
+{
+"date": "2025-07-18",
+"venue": "Tamworth",
+"runs": 3
+},
+{
+"date": "2025-06-28",
+"venue": "Darwin",
+"runs": 3
+},
+{
+"date": "2024-12-27",
+"venue": "Hobart",
+"runs": 3
+},
+{
+"date": "2025-02-21",
+"venue": "Launceston",
+"runs": 3
+},
+{
+"date": "2025-03-22",
+"venue": "Benalla",
+"runs": 3
+},
+{
+"date": "2025-01-01",
+"venue": "Terang",
+"runs": 3
+},
+{
+"date": "2025-03-15",
+"venue": "Tauranga",
+"runs": 3
+},
+{
+"date": "2025-08-19",
+"venue": "Ballarat Synthetic",
+"runs": 3
+},
+{
+"date": "2025-07-19",
+"venue": "Mildura",
+"runs": 3
+},
+{
+"date": "2024-01-17",
+"venue": "Kensington",
+"runs": 3
+},
+{
+"date": "2024-05-26",
+"venue": "Dusseldorf",
+"runs": 3
+},
+{
+"date": "2024-04-24",
+"venue": "Newcastle",
+"runs": 3
+},
+{
+"date": "2025-05-11",
+"venue": "Mudgee",
+"runs": 3
+},
+{
+"date": "2025-07-04",
+"venue": "Tamworth",
+"runs": 3
+},
+{
+"date": "2024-04-02",
+"venue": "Taree",
+"runs": 3
+},
+{
+"date": "2025-03-22",
+"venue": "Narrandera",
+"runs": 3
+},
+{
+"date": "2025-03-01",
+"venue": "Yass",
+"runs": 3
+},
+{
+"date": "2024-10-31",
+"venue": "Sapphire Coast",
+"runs": 3
+},
+{
+"date": "2025-09-01",
+"venue": "Wellington",
+"runs": 3
+},
+{
+"date": "2025-08-24",
+"venue": "Narromine",
+"runs": 3
+},
+{
+"date": "2025-04-07",
+"venue": "Tuncurry",
+"runs": 3
+},
+{
+"date": "2025-12-15",
+"venue": "Kempsey",
+"runs": 3
+},
+{
+"date": "2025-01-06",
+"venue": "Tamworth",
+"runs": 3
+},
+{
+"date": "2025-05-14",
+"venue": "Ipswich",
+"runs": 3
+},
+{
+"date": "2024-08-18",
+"venue": "Wyong",
+"runs": 3
+},
+{
+"date": "2024-10-26",
+"venue": "Dundalk",
+"runs": 3
+},
+{
+"date": "2024-08-01",
+"venue": "Galway",
+"runs": 3
+},
+{
+"date": "2025-07-03",
+"venue": "Ipswich",
+"runs": 3
+},
+{
+"date": "2024-07-16",
+"venue": "Vichy",
+"runs": 3
+},
+{
+"date": "2024-08-03",
+"venue": "Galway",
+"runs": 3
+},
+{
+"date": "2024-08-25",
+"venue": "Pakenham Synthetic",
+"runs": 3
+},
+{
+"date": "2025-02-01",
+"venue": "Morphettville Parks",
+"runs": 3
+},
+{
+"date": "2024-09-12",
+"venue": "Bunbury",
+"runs": 3
+},
+{
+"date": "2024-10-03",
+"venue": "Ballarat",
+"runs": 3
+},
+{
+"date": "2025-01-04",
+"venue": "Murray Bdge",
+"runs": 3
+},
+{
+"date": "2025-03-09",
+"venue": "Stony Creek",
+"runs": 3
+},
+{
+"date": "2024-10-19",
+"venue": "Bendigo",
+"runs": 3
+},
+{
+"date": "2024-02-07",
+"venue": "Warwick Farm",
+"runs": 3
+},
+{
+"date": "2025-11-04",
+"venue": "Muswellbrook",
+"runs": 3
+},
+{
+"date": "2025-04-05",
+"venue": "Taree",
+"runs": 3
+},
+{
+"date": "2024-12-26",
+"venue": "Morphettville Parks",
+"runs": 3
+},
+{
+"date": "2024-09-23",
+"venue": "Listowel",
+"runs": 3
+},
+{
+"date": "2024-10-05",
+"venue": "Singapore",
+"runs": 3
+},
+{
+"date": "2025-04-10",
+"venue": "Kyneton",
+"runs": 3
+},
+{
+"date": "2025-05-03",
+"venue": "Donald",
+"runs": 3
+},
+{
+"date": "2023-10-22",
+"venue": "Saint-Cloud",
+"runs": 3
+},
+{
+"date": "2023-05-27",
+"venue": "Randwick",
+"runs": 3
+},
+{
+"date": "2024-09-03",
+"venue": "Newcastle",
+"runs": 3
+},
+{
+"date": "2023-10-29",
+"venue": "Happy Valley",
+"runs": 3
+},
+{
+"date": "2025-02-14",
+"venue": "Pukekura Raceway",
+"runs": 3
+},
+{
+"date": "2024-10-05",
+"venue": "Gold Coast",
+"runs": 3
+},
+{
+"date": "2025-01-31",
+"venue": "Werribee",
+"runs": 3
+},
+{
+"date": "2024-03-24",
+"venue": "Bairnsdale",
+"runs": 3
+},
+{
+"date": "2026-01-17",
+"venue": "Tuncurry",
+"runs": 3
+},
+{
+"date": "2026-01-01",
+"venue": "Port Macquarie",
+"runs": 3
+},
+{
+"date": "2025-11-29",
+"venue": "Kempsey",
+"runs": 3
+},
+{
+"date": "2024-09-26",
+"venue": "Pontefract",
+"runs": 3
+},
+{
+"date": "2024-07-27",
+"venue": "Clairefontaine",
+"runs": 3
+},
+{
+"date": "2024-07-03",
+"venue": "Nantes",
+"runs": 3
+},
+{
+"date": "2024-03-25",
+"venue": "Naas",
+"runs": 3
+},
+{
+"date": "2025-12-27",
+"venue": "Morphettville",
+"runs": 3
+},
+{
+"date": "2024-07-25",
+"venue": "Sandown",
+"runs": 3
+},
+{
+"date": "2026-01-25",
+"venue": "Mount Gambier",
+"runs": 3
+},
+{
+"date": "2025-04-17",
+"venue": "Matamata",
+"runs": 3
+},
+{
+"date": "2025-04-25",
+"venue": "Sandown",
+"runs": 3
+},
+{
+"date": "2025-05-16",
+"venue": "Newbury",
+"runs": 3
+},
+{
+"date": "2025-12-01",
+"venue": "Taree",
+"runs": 3
+},
+{
+"date": "2025-11-23",
+"venue": "Taree",
+"runs": 3
+},
+{
+"date": "2025-10-26",
+"venue": "Sunshine Coast",
+"runs": 3
+},
+{
+"date": "2025-05-25",
+"venue": "Sunshine Coast",
+"runs": 3
+},
+{
+"date": "2024-05-29",
+"venue": "Sale",
+"runs": 3
+},
+{
+"date": "2025-07-20",
+"venue": "Sunshine Coast",
+"runs": 3
+},
+{
+"date": "2025-05-27",
+"venue": "Seymour",
+"runs": 3
+},
+{
+"date": "2024-12-12",
+"venue": "Kyneton",
+"runs": 3
+},
+{
+"date": "2025-12-13",
+"venue": "Healesville",
+"runs": 3
+},
+{
+"date": "2025-09-23",
+"venue": "Taree",
+"runs": 3
+},
+{
+"date": "2025-11-30",
+"venue": "Otaki",
+"runs": 3
+},
+{
+"date": "2025-08-17",
+"venue": "Sunshine Coast",
+"runs": 3
+},
+{
+"date": "2025-03-14",
+"venue": "Kilmore",
+"runs": 3
+},
+{
+"date": "2024-08-10",
+"venue": "Sunshine Coast",
+"runs": 3
+},
+{
+"date": "2023-11-24",
+"venue": "Canterbury",
+"runs": 3
+},
+{
+"date": "2025-12-13",
+"venue": "Moulamein",
+"runs": 3
+},
+{
+"date": "2025-09-20",
+"venue": "Echuca",
+"runs": 3
+},
+{
+"date": "2025-12-21",
+"venue": "Mount Gambier",
+"runs": 3
+},
+{
+"date": "2025-11-04",
+"venue": "Ellerslie",
+"runs": 3
+},
+{
+"date": "2025-11-22",
+"venue": "Hay",
+"runs": 3
+},
+{
+"date": "2024-11-19",
+"venue": "Bairnsdale",
+"runs": 3
+},
+{
+"date": "2025-11-23",
+"venue": "Swan Hill",
+"runs": 3
+},
+{
+"date": "2026-04-23",
+"venue": "Albury",
+"runs": 3
+},
+{
+"date": "2026-04-22",
+"venue": "Murray Bdge",
+"runs": 3
+},
+{
+"date": "2026-01-22",
+"venue": "Warwick",
+"runs": 3
+},
+{
+"date": "2025-12-19",
+"venue": "Kilcoy",
+"runs": 3
+}
+]

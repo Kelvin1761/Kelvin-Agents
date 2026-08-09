@@ -13,6 +13,7 @@ import argparse
 import json
 import math
 import re
+from copy import deepcopy
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,7 @@ from hkjc_results_db import get_comprehensive_stats_root
 from review_auto_weighting import (
     CURRENT_MATRIX_FORMULAS,
     CURRENT_MATRIX_WEIGHTS,
+    RacingEngine,
     _normalize_distance,
     _normalize_venue,
     build_results_index,
@@ -84,6 +86,30 @@ def _coerce_int(value: object) -> int | None:
     return int(round(number))
 
 
+def _is_foreign_runner(horse: dict[str, Any]) -> int:
+    """Identify a visitor with real overseas form and no Hong Kong starts."""
+    data = horse.get("_data") if isinstance(horse.get("_data"), dict) else {}
+    rows = data.get("pdf_overseas_races") or horse.get("pdf_overseas_races") or []
+    real_overseas = any(
+        isinstance(row, dict)
+        and any(
+            str(row.get(key, "-")).strip() not in ("-", "", "N/A", "--")
+            for key in ("class_level", "rank", "time", "margin")
+        )
+        for row in rows
+    )
+    if not real_overseas:
+        return 0
+    raw_hk_starts = horse.get("hk_starts")
+    if raw_hk_starts in (None, ""):
+        raw_hk_starts = data.get("hk_starts")
+    hk_starts = _coerce_float(raw_hk_starts)
+    if hk_starts is not None:
+        return int(hk_starts <= 0)
+    hk_form = str(horse.get("last_6_finishes") or data.get("last_6_finishes") or "").strip()
+    return int(not any(character.isdigit() for character in hk_form))
+
+
 def _distance_token(value: object) -> str:
     text = _normalize_distance(value)
     match = re.search(r"(\d{3,4})", text)
@@ -92,27 +118,55 @@ def _distance_token(value: object) -> str:
 
 def _race_class_number(value: object) -> int | None:
     text = str(value or "").strip()
-    match = re.search(r"(\d+)", text)
+    chinese = re.search(r"(?:第)?([一二三四五])(?:班|級賽)", text)
+    if chinese:
+        return {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5}[chinese.group(1)]
+    match = re.search(r"(?:CLASS|GROUP|GRADE|C|G)\s*([1-5])", text, re.I)
+    if not match and re.fullmatch(r"[1-5]", text):
+        match = re.fullmatch(r"([1-5])", text)
     if not match:
         return None
     return int(match.group(1))
 
 
 def _race_class_label(value: object) -> str:
+    text = str(value or "").strip()
     num = _race_class_number(value)
-    return f"Class {num}" if num is not None else "Unknown"
+    if num is None:
+        upper = text.upper()
+        if "新馬" in text or upper in {"GR", "GRIFFIN"}:
+            return "Griffin"
+        if "上市" in text or "表列" in text or "LISTED" in upper or upper == "LR":
+            return "Listed"
+        return "Unknown"
+    if "級賽" in text or re.search(r"(?:GROUP|GRADE|^G)\s*[1-3]", text, re.I):
+        return f"Group {num}"
+    return f"Class {num}"
 
 
-def _normalize_track(value: object) -> str:
-    text = str(value or "").strip().upper()
+def _choose_race_class(*values: object) -> str:
+    """Prefer the first parseable class and skip placeholders/misaligned text."""
+    for value in values:
+        text = str(value or "").strip()
+        if _race_class_label(text) != "Unknown":
+            return text
+    return ""
+
+
+def _normalize_track(value: object, venue: object = "") -> str:
+    text = f"{value or ''} {venue or ''}".strip().upper()
     if any(token in text for token in ("泥", "AWT", "DIRT", "ALL WEATHER")):
         return "AWT"
     return "Turf"
 
 
 def _normalize_course(value: object) -> str:
-    text = str(value or "").replace("賽道", "").strip()
-    return text or "Unknown"
+    text = str(value or "").upper().replace("賽道", "").strip()
+    text = re.sub(r"\s+", "", text)
+    if text in {"AWT", "全天候", "泥地"}:
+        return "AWT"
+    match = re.fullmatch(r"([ABC](?:\+\d+)?)", text)
+    return match.group(1) if match else "Unknown"
 
 
 def _horse_id_from_name(value: object) -> str:
@@ -223,7 +277,13 @@ def _load_racecard_snapshot(meeting_dir: str, race_num: int) -> dict[str, Any]:
     if not candidates:
         return {"race_info": {}, "horses": {}}
 
-    content = candidates[0].read_text(encoding="utf-8")
+    try:
+        content = candidates[0].read_text(encoding="utf-8")
+    except OSError:
+        # Racecard markdown enriches optional metadata only.  A cloud-backed
+        # archive can time out while hydrating this file; the Logic snapshot
+        # remains sufficient for scoring and the rebuild must continue.
+        return {"race_info": {}, "horses": {}}
     race_info = {
         "venue": _line_value(content, "地點"),
         "track": _line_value(content, "場地"),
@@ -624,12 +684,21 @@ def build_rows(meeting_roots: list[Path], results_roots: list[Path]) -> tuple[pd
             racecard_info = racecard_snapshot.get("race_info") or {}
             racecard_horses = racecard_snapshot.get("horses") or {}
             venue = _normalize_venue(race_context.get("venue") or racecard_info.get("venue") or meeting_venue)
-            track = _normalize_track(race_context.get("track") or race_context.get("surface") or racecard_info.get("track"))
+            track = _normalize_track(
+                race_context.get("track")
+                or race_context.get("surface")
+                or racecard_info.get("track"),
+                venue,
+            )
             course = _normalize_course(racecard_info.get("course"))
             distance_token = _distance_token(race_context.get("distance"))
             distance_num = _coerce_int(distance_token)
-            race_class_num = _race_class_number(race_context.get("race_class"))
-            race_class_label = _race_class_label(race_context.get("race_class") or racecard_info.get("race_class"))
+            race_class = _choose_race_class(
+                race_context.get("race_class"),
+                racecard_info.get("race_class"),
+            )
+            race_class_num = _race_class_number(race_class)
+            race_class_label = _race_class_label(race_class)
             horses = logic.get("horses") or {}
             field_size = len(horses)
             if not horses:
@@ -647,9 +716,18 @@ def build_rows(meeting_roots: list[Path], results_roots: list[Path]) -> tuple[pd
                 if finish_pos is None:
                     continue
 
-                feature_scores = compute_full_feature_scores(horse, race_context)
-                matrix_scores = compute_matrix_scores(feature_scores, CURRENT_MATRIX_FORMULAS)
-                ability = compute_ability(matrix_scores, CURRENT_MATRIX_WEIGHTS)
+                # Persist the exact live payload.  Rebuilding ability from the
+                # feature map alone misses matrix-level context applied inside
+                # RacingEngine (for example finish-time trend), which can make
+                # an archive gate evaluate a ranking that is not production.
+                live_auto = RacingEngine(deepcopy(horse), dict(race_context)).analyze_horse()
+                feature_scores = dict(live_auto.get("feature_scores") or {})
+                feature_scores.update(live_auto.get("derived_feature_scores") or {})
+                matrix_scores = {
+                    key: float(value)
+                    for key, value in (live_auto.get("matrix_scores") or {}).items()
+                }
+                ability = float(live_auto["ability_score"])
                 last_finishes = _parse_last_finishes(horse.get("last_6_finishes"))
                 horse_data = horse.get("_data") or {}
                 racecard_horse = racecard_horses.get(horse_num) or {}
@@ -669,7 +747,7 @@ def build_rows(meeting_roots: list[Path], results_roots: list[Path]) -> tuple[pd
                     "course": course,
                     "distance": distance_token,
                     "distance_num": distance_num,
-                    "race_class": str(race_context.get("race_class") or ""),
+                    "race_class": race_class,
                     "race_class_label": race_class_label,
                     "race_class_num": race_class_num,
                     "field_size": field_size,
@@ -693,6 +771,7 @@ def build_rows(meeting_roots: list[Path], results_roots: list[Path]) -> tuple[pd
                     "hk_starts": _coerce_float(horse.get("hk_starts")),
                     "is_debut": int(bool(horse.get("is_debut") or horse.get("debut_runner") or horse.get("career_tag") == "DEBUT")),
                     "is_import": int(bool(horse.get("is_import"))),
+                    "is_foreign_runner": _is_foreign_runner(horse),
                     "current_live_recomputed_ability": ability,
                     "card_age": _coerce_float(racecard_horse.get("age")),
                     "card_rating": _coerce_float(racecard_horse.get("rating")),

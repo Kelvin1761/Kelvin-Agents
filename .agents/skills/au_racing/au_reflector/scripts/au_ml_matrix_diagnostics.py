@@ -21,6 +21,7 @@ sys.path.append(str(AUTO_SCRIPT_DIR / "racing_engine"))
 
 from matrix_mapper import MATRIX_FORMULAS  # noqa: E402
 from scoring import MATRIX_WEIGHTS, clip_score  # noqa: E402
+from au_metric_contract import ranked_performance  # noqa: E402
 
 
 ARCHIVE_ROOT = AU_RACING
@@ -363,23 +364,21 @@ def evaluate_races(races: list[dict], score_builder) -> dict:
                 }
             )
         ranked = sorted(scored, key=lambda row: (-row["score"], row["horse_number"]))
-        top3 = ranked[:3]
-        top2 = ranked[:2]
-        hits_top3 = sum(1 for horse in top3 if horse["actual_pos"] <= 3)
-        hits_top2 = sum(1 for horse in top2 if horse["actual_pos"] <= 3)
+        performance = ranked_performance(ranked)
+        hits_top3 = int(performance["hits"])
         bucket["races"] += 1
         bucket["top3_places"] += hits_top3
         bucket["top3_slots"] += 3
         bucket["hit_distribution"][hits_top3] += 1
-        if ranked[0]["actual_pos"] == 1:
+        if performance["champion"]:
             bucket["champion"] += 1
-        if any(horse["actual_pos"] == 1 for horse in top3):
+        if performance["winner_in_top3"]:
             bucket["winner_in_top3"] += 1
-        if hits_top3 == 3:
+        if performance["gold"]:
             bucket["gold"] += 1
-        if hits_top2 == 2:
+        if performance["good_positional"]:
             bucket["good"] += 1
-        if hits_top3 >= 2:
+        if performance["pass"]:
             bucket["minimum"] += 1
     return bucket
 

@@ -11,26 +11,81 @@ from typing import Optional
 
 def _parse_data_readout(block: str) -> Optional[list]:
     """Parse the '📊 數據判讀' markdown block into structured rows for the UI.
-    Each line: '- <band> **<label>**<value> — <trend>（<reason>）'."""
+
+    Supports the 2026-07-11 upgraded format (7D 綜合 digest + 逐維一覽) AND the
+    legacy raw-anchor format. UI renders each row as {band} {label} {value/trend}
+    with reason as tooltip, and prints the band string verbatim (any emoji OK).
+    New-format line shapes:
+      - <emoji> **<label>**：<value>              (7D 綜合 summary bullets)
+      **<維度>：<score> 分　<band> <word>**        (per-dimension header)
+      - <sub-label> <score> ← <note>              (per-dimension sub-score)
+    Legacy:
+      - <band> **<label>** <value> — <trend>（<reason>）
+    """
     section_m = re.search(r'數據判讀\s*\n+(.*?)(?:\n#### |\n## |\Z)', block, re.DOTALL)
     if not section_m:
         return None
     rows = []
-    for line in section_m.group(1).splitlines():
-        line = line.strip()
-        m = re.match(r'^-\s*(✅|➖|⚠️)\s*\*\*(.+?)\*\*\s*(.*)$', line)
-        if not m:
+    dim_row = None          # 最近一個維度標題行，用嚟累加 sub-score 摘要
+    for raw in section_m.group(1).splitlines():
+        line = raw.strip()
+        if not line or line.startswith('**逐維一覽'):
             continue
-        band, label, rest = m.group(1), m.group(2).strip(), m.group(3).strip()
-        reason = ''
-        rm = re.search(r'（(.+?)）\s*$', rest)
-        if rm:
-            reason = rm.group(1).strip()
-            rest = rest[:rm.start()].strip()
-        value, trend = rest, ''
-        if '—' in rest:
-            value, trend = [p.strip() for p in rest.split('—', 1)]
-        rows.append({'band': band, 'label': label, 'value': value, 'trend': trend, 'reason': reason})
+
+        # legacy raw-anchor: '- <band> **<label>** <rest>'
+        m = re.match(r'^-\s*(✅|➖|⚠️)\s*\*\*(.+?)\*\*\s*(.*)$', line)
+        if m:
+            band, label, rest = m.group(1), m.group(2).strip(), m.group(3).strip()
+            reason = ''
+            rm = re.search(r'（(.+?)）\s*$', rest)
+            if rm:
+                reason = rm.group(1).strip()
+                rest = rest[:rm.start()].strip()
+            value, trend = rest, ''
+            if '—' in rest:
+                value, trend = [p.strip() for p in rest.split('—', 1)]
+            rows.append({'band': band, 'label': label, 'value': value, 'trend': trend, 'reason': reason})
+            continue
+
+        # 7D 綜合 summary bullet: '- <emoji> **<label>**：<value>'
+        m = re.match(r'^-\s*(\S+)\s*\*\*(.+?)\*\*[：:]\s*(.*)$', line)
+        if m:
+            rows.append({'band': m.group(1).strip(), 'label': m.group(2).strip(),
+                         'value': m.group(3).strip(), 'trend': '', 'reason': ''})
+            continue
+
+        # per-dimension header: '**<維度>：<score> 分　<band> <word>**'
+        m = re.match(r'^\*\*(.+?)[：:]\s*([\d.]+)\s*分\s*([✅➖⚠️❌]+)\s*(.*)\*\*$', line)
+        if m:
+            # ⚠️ `reason` 一開始係空，跟住由下面嘅 sub-score 填返 —— 唔填嘅話
+            # dashboard 只會見到「級數與負重 54.4 分 · 偏弱」而下面乜都冇，
+            # 用戶睇唔到個分點嚟（Kelvin 2026-08-05 提出）。
+            rows.append({'band': m.group(3).strip(), 'label': m.group(1).strip(),
+                         'value': f"{m.group(2)} 分", 'trend': m.group(4).strip(),
+                         'reason': ''})
+            dim_row = rows[-1]
+            continue
+
+        # Per-dimension sub-score: keep it inside the parent category's reason.
+        # The full analysis already exposes every component. Rendering each leaf
+        # as another preview card made 騎練訊號 + 騎師/練馬師/人馬配搭 and
+        # 場地與地況適性 + 同場／地況往績分 look like separate votes even though they are a
+        # parent/child calculation. One concept now appears once in the preview.
+        m = re.match(r'^-\s*(.+?)\s+([\d.]+)\s*(?:←\s*(.*))?$', line)
+        if m:
+            label, value = m.group(1).strip(), m.group(2)
+            note = (m.group(3) or '').strip()
+            if dim_row is not None:
+                head = note.split('；')[0].strip() if note else ''
+                bit = f"{label} {value}" + (f"：{head}" if head else "")
+                dim_row['reason'] = (dim_row['reason'] + '；' + bit).lstrip('；')
+            else:
+                # Legacy documents may expose a standalone leaf without a
+                # parent dimension; do not silently discard genuine content.
+                rows.append({'band': '·', 'label': label, 'value': value,
+                             'trend': '', 'reason': note})
+            continue
+
     return rows or None
 
 from models.race import (
@@ -783,14 +838,32 @@ def parse_mc_results_json(filepath: str) -> list['MonteCarloPick']:
     results = data.get('results', {})
     pi_breakdown = data.get('power_index_breakdown', {})
     concordance = data.get('concordance', {})
+    # Older MC archives used an integer concordance score instead of the
+    # current object schema.  They still contain valid simulation results, so
+    # treat the missing rank lists as optional rather than aborting a full
+    # dashboard build.
+    if not isinstance(concordance, dict):
+        concordance = {}
     logic_top4 = concordance.get('logic_top4', [])
     mc_top4 = concordance.get('mc_top4', [])
+
+    if not isinstance(results, dict):
+        return []
+    if not isinstance(logic_top4, list):
+        logic_top4 = []
+    if not isinstance(mc_top4, list):
+        mc_top4 = []
     
     if not results:
         return []
     
     # Sort by win_pct descending
-    sorted_horses = sorted(results.items(), key=lambda x: x[1].get('win_pct', 0), reverse=True)
+    valid_results = {
+        horse_name: stats
+        for horse_name, stats in results.items()
+        if isinstance(stats, dict)
+    }
+    sorted_horses = sorted(valid_results.items(), key=lambda x: x[1].get('win_pct', 0), reverse=True)
     
     picks = []
     for rank, (horse_name, stats) in enumerate(sorted_horses, 1):

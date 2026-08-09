@@ -14,6 +14,36 @@ Two roots, deliberately separated so code and data can live in different places
 Each machine sets its own DATA_ROOT (macOS -> its Google Drive path, Windows ->
 its Google Drive path), so the engines run unchanged on either OS.
 
+AU_RACING is additionally relocatable on its own (WONGCHOI_AU_DATA_ROOT /
+.wongchoi_au_data_root). 2026-08-05: the AU tree moved to local disk on the Mac
+because a launchd-spawned process is a different TCC context from Terminal and
+cannot read CloudStorage — `AU_RACING.iterdir()` raised `PermissionError:
+Operation not permitted` and every scheduled run died in preflight. Tennis solved
+the same problem on 2026-07-14 by running from local disk.
+
+Measured 2026-08-05, three identical launchd probes on the Drive AU path — the
+permissions are partial, not all-or-nothing:
+
+    iterdir()      PermissionError (errno 1)
+    read_bytes()   PermissionError (errno 1)
+    stat()         OK
+    write+unlink   OK
+
+So `.is_dir()` / `.exists()` are USELESS as reachability probes from a scheduled
+context: they are stat() calls and succeed on a path the same process cannot
+list or read. Probe by attempting the real operation.
+
+WONGCHOI_AU_MIRROR_ROOT is the other half of the split: the engine reads and
+writes local disk, then copies reports back to the Drive folder so Kelvin keeps
+reading analysis where he always has. That mirror only stats and writes, which is
+exactly the half of the API launchd is allowed, so it works from the scheduler
+too. It stays best-effort regardless — a mirror failure must never fail a run
+whose analysis already succeeded.
+
+Overriding only AU keeps HK / NBA / tennis on Drive: their files there are mostly
+un-materialized placeholders, so relocating them would mean forcing tens of
+thousands of on-demand downloads for no gain (nothing else runs under launchd).
+
 Usage from any script:
     import sys; sys.path.insert(0, str(PROJECT_ROOT))   # PROJECT_ROOT already known
     from wongchoi_paths import DATA_ROOT, HORSE_RACE_ANALYSIS, new_analysis_dir
@@ -21,33 +51,81 @@ Usage from any script:
 from __future__ import annotations
 
 import os
+import stat as stat_module
 from pathlib import Path
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent
 
 
-def _resolve_data_root() -> Path:
-    env = os.environ.get("WONGCHOI_DATA_ROOT")
+def is_materialized_file(path: Path) -> bool:
+    """True only when a regular file has local bytes, not a cloud placeholder."""
+    try:
+        info = Path(path).stat()
+    except OSError:
+        return False
+    blocks = getattr(info, "st_blocks", None)
+    return (
+        stat_module.S_ISREG(info.st_mode)
+        and info.st_size > 0
+        and not (blocks == 0 and info.st_size > 0)
+    )
+
+
+def _resolve_root(env_var: str, cfg_name: str, default: Path) -> Path:
+    """env var, then a one-line <PROJECT_ROOT>/<cfg_name> file, then `default`.
+
+    The file read is guarded: on a checkout whose PROJECT_ROOT is itself on
+    cloud storage, `is_file()` can raise rather than return False.
+    """
+    env = os.environ.get(env_var)
     if env and env.strip():
-        return Path(env).expanduser()
-    cfg = PROJECT_ROOT / ".wongchoi_data_root"
-    if cfg.is_file():
-        line = cfg.read_text(encoding="utf-8").strip()
-        if line:
-            return Path(line).expanduser()
-    return PROJECT_ROOT
+        return Path(env.strip()).expanduser()
+    cfg = PROJECT_ROOT / cfg_name
+    try:
+        if cfg.is_file():
+            line = cfg.read_text(encoding="utf-8").strip()
+            if line:
+                return Path(line).expanduser()
+    except OSError:
+        pass
+    return default
 
 
-DATA_ROOT: Path = _resolve_data_root()
+DATA_ROOT: Path = _resolve_root("WONGCHOI_DATA_ROOT", ".wongchoi_data_root", PROJECT_ROOT)
 
 # --- Per-sport analysis homes (new naming) ----------------------------------
 HORSE_RACE_ANALYSIS: Path = DATA_ROOT / "Wong Choi Horse Race Analysis"
 NBA_ANALYSIS: Path = DATA_ROOT / "Wong Choi NBA Analysis"
 TENNIS_ANALYSIS: Path = DATA_ROOT / "Wong Choi Tennis Analysis"
 
-# Internal sub-structure preserved from the old Archive_Race_Analysis layout
-AU_RACING: Path = HORSE_RACE_ANALYSIS / "AU_Racing"
+# Internal sub-structure preserved from the old Archive_Race_Analysis layout.
+# AU is separately relocatable so the launchd-driven AU pipeline can run entirely
+# off local disk while HK stays on Drive — see the module docstring.
+AU_RACING: Path = _resolve_root(
+    "WONGCHOI_AU_DATA_ROOT", ".wongchoi_au_data_root", HORSE_RACE_ANALYSIS / "AU_Racing"
+)
 HK_RACING: Path = HORSE_RACE_ANALYSIS / "HK_Racing"
+
+# Where to copy AU reports after a run so the Drive folder does not silently go
+# stale once AU_RACING lives on local disk. None = no mirroring configured.
+# Resolved like the roots above (env var, then dotfile) so a run started straight
+# from `au_daily_schedule.py` mirrors too, not only one launched via
+# run_au_daily_schedule.sh — otherwise manual runs would be the ones that skip it.
+_AU_MIRROR_UNSET = Path("__wongchoi_au_mirror_unset__")
+_au_mirror = _resolve_root(
+    "WONGCHOI_AU_MIRROR_ROOT", ".wongchoi_au_mirror_root", _AU_MIRROR_UNSET
+)
+AU_RACING_MIRROR: Path | None = None if _au_mirror == _AU_MIRROR_UNSET else _au_mirror
+
+
+def au_racing_is_relocated() -> bool:
+    """True when AU_RACING has been moved out from under HORSE_RACE_ANALYSIS.
+
+    Callers that walk HORSE_RACE_ANALYSIS (dashboard file watchers) need to know
+    to watch the AU root as a second location.
+    """
+    return AU_RACING.parent != HORSE_RACE_ANALYSIS
+
 
 # NBA raw ML dataset (name unchanged by the rename, just relocated under DATA_ROOT)
 NBA_ML_DATASET: Path = DATA_ROOT / "NBA_ML_Dataset"
@@ -82,10 +160,91 @@ def new_analysis_dir(sport: str, label: str) -> Path:
     return d
 
 
+# --- Files the engines hard-depend on (not in git — they live on DATA_ROOT) --
+# Used by the bootstrap preflight so a new machine finds out NOW, rather than
+# mid-scoring-run, that its Google Drive folder is not actually synced.
+REQUIRED_DATA_FILES = {
+    # AU: read by racing_engine/au_draw_bias_calculator.py
+    "AU draw bias (historical)": AU_RACING / "AU_Historical_Raw_Race_Results.csv",
+    "AU draw bias (backfill)": AU_RACING / "AU_Backfill_Race_Results.csv",
+}
+
+
+def check_data_root() -> list[str]:
+    """Return a list of human-readable problems with the resolved DATA_ROOT.
+
+    Empty list means everything the engines need is reachable. Each check is
+    wrapped because a cloud-storage root can raise (not just return False) —
+    macOS revoking CloudStorage access raises PermissionError from .exists().
+
+    An unreachable DATA_ROOT no longer short-circuits the per-file checks: AU may
+    have been moved out from under it (WONGCHOI_AU_DATA_ROOT), so "Drive is not
+    readable in this context" and "the AU engine cannot run" are now separate
+    facts and both are worth reporting.
+    """
+    problems: list[str] = []
+
+    try:
+        reachable, err = DATA_ROOT.is_dir(), None
+    except OSError as exc:
+        reachable, err = False, exc
+    if err is not None:
+        problems.append(f"DATA_ROOT is not readable ({err.__class__.__name__}): {DATA_ROOT}")
+    elif not reachable:
+        problems.append(
+            f"DATA_ROOT does not exist: {DATA_ROOT}\n"
+            "     Fix: set it in .wongchoi_data_root (one line) or the "
+            "WONGCHOI_DATA_ROOT env var.\n"
+            "     On Windows this is usually your Google Drive path, e.g.\n"
+            '       G:\\My Drive\\Antigravity Shared\\Antigravity'
+        )
+
+    for label, path in REQUIRED_DATA_FILES.items():
+        try:
+            if not path.is_file():
+                problems.append(f"missing [{label}]: {path}")
+        except OSError as exc:
+            problems.append(f"unreadable [{label}] ({exc.__class__.__name__}): {path}")
+
+    return problems
+
+
 if __name__ == "__main__":
     print("PROJECT_ROOT        :", PROJECT_ROOT)
-    print("DATA_ROOT           :", DATA_ROOT, "(exists)" if DATA_ROOT.is_dir() else "(MISSING)")
+    try:
+        _dr_state = "(exists)" if DATA_ROOT.is_dir() else "(MISSING)"
+    except OSError as _exc:
+        # A launchd/cron context has no CloudStorage access at all — .is_dir()
+        # raises here rather than returning False. Report it, do not traceback.
+        _dr_state = f"(UNREADABLE: {_exc.__class__.__name__})"
+    print("DATA_ROOT           :", DATA_ROOT, _dr_state)
     for name in ("HORSE_RACE_ANALYSIS", "NBA_ANALYSIS", "TENNIS_ANALYSIS",
                  "AU_RACING", "HK_RACING", "NBA_ML_DATASET"):
         p = globals()[name]
-        print(f"{name:20}:", p, "(exists)" if p.is_dir() else "(missing)")
+        try:
+            state = "(exists)" if p.is_dir() else "(missing)"
+        except OSError as exc:
+            state = f"(UNREADABLE: {exc.__class__.__name__})"
+        note = ""
+        if name == "AU_RACING" and au_racing_is_relocated():
+            note = "  <- relocated off DATA_ROOT"
+        print(f"{name:20}:", p, state + note)
+
+    print(f"{'AU_RACING_MIRROR':20}:",
+          AU_RACING_MIRROR if AU_RACING_MIRROR is not None else "(not configured)")
+
+    print()
+    issues = check_data_root()
+    if not issues:
+        print("Data preflight     : OK — all required engine data files reachable.")
+    else:
+        print(f"Data preflight     : {len(issues)} PROBLEM(S)")
+        for item in issues:
+            print("  -", item)
+        print()
+        print("  HKJC scoring can fall back to neutral/tier ratings when cloud priors")
+        print("  are unavailable; materialize the HKJC statistics files for the")
+        print("  calibrated continuous jockey/trainer and combination priors.")
+        print("  AU scoring needs the files above — they are gitignored and live")
+        print("  on Google Drive. Install Google Drive Desktop, sign in, and set")
+        print("  the 'Antigravity Shared' folder to 'Available offline'.")

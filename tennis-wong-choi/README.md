@@ -1,6 +1,6 @@
 # Tennis Wong Choi
 
-API-only tennis pricing engine for ATP/WTA match-winner analysis.
+Python tennis pricing engine for ATP/WTA match and player-prop analysis.
 
 This MVP implements Stage 1-5:
 
@@ -14,10 +14,70 @@ This MVP implements Stage 1-5:
 - Weighted probability pricing
 - Fair odds, no-vig market probability, edge, minimum acceptable odds
 - Bet filter and stake sizing
+- Extensible player-prop registry and settlement for player aces, double
+  faults, player games won, player to win at least one set, first-set winner,
+  full-match game handicap, set handicap, and BO3 exact set score
+- Per-family model-vs-market scorecards and evidence-gated recommendations
 - Data-grounded deterministic agent reviews
 - CLI and unit tests
 
 The system refuses LLM-generated statistics. Numeric features must be backed by provenance from an API response or stored API snapshot.
+
+## Active Betting Strategy
+
+The active report uses a two-stage main card plus research:
+
+- `EARLY_MAIN_SINGLE` / `EARLY_MAIN_2_LEG`
+- `VALIDATED_SINGLE`
+- `VALIDATED_2_LEG`
+- `RESEARCH_ONLY`
+
+The old Banker / Value / High-Odds categories are retired. Edge and expected
+value remain numeric requirements, not bet categories. New player-prop families
+are priced and paper-settled first. In this early product stage, a family may
+enter the reversible `EARLY_MAIN` card after 50 raw scorecard outcomes and 3
+eligible paper bets when its model Brier is at least 0.005 better than the
+de-vigged market and its eligible-profile ROI is positive. `EARLY_MAIN` is an
+early trend, not full validation: every single or two-leg combo is capped at
+0.5u and automatically drops back to `RESEARCH_ONLY` if ROI or the model's
+market advantage turns non-positive. Full `VALIDATED` status still requires
+120 scorecard outcomes and 50 eligible settled paper bets under the same skill
+and ROI tests. A formal combo is exactly two qualified player props from
+different matches with positive joint EV; there is no arbitrary requirement
+for total odds to exceed 2.00.
+
+Prop probabilities and formula confidence are deliberately separate:
+
+- `hit_probability` is the calibrated estimate that the selected outcome wins.
+  The raw model is shrunk toward the de-vigged market using only that family's
+  earlier settled outcomes; a new or weak family therefore stays close to the
+  market instead of manufacturing confidence.
+- `confidence_score` (0-100) measures whether that probability is trustworthy.
+  It combines source-specific data quality, family scorecard maturity, and the
+  family's Brier-score advantage over the market.
+
+Research value flags require at least 55% calibrated hit probability, odds from
+1.30 to 2.25, at least four percentage points of edge, and positive expected
+value. Formal recommendations are stricter: at least 58% hit probability,
+70/100 formula confidence, and 65/100 source quality. For aces and double
+faults, source quality comes from each player's available serve-count history;
+for derived games/set markets it comes from the match feature snapshot. Props
+outside these limits remain priced and settled for calibration, but cannot be
+recommended.
+
+Headline recommendations are player-level only. Match-total aces/games remain
+on the research scorecard but cannot graduate into `VALIDATED_SINGLE` or a
+formal combo. Paper ROI always uses flat 1u stakes so competing formulas remain
+comparable. A family that eventually graduates uses a formula-confidence-
+haircut tenth-Kelly stake, rounded to 0.5u and capped at 2u for a single or 1u
+for a two-leg combo. The weekly Tennis Reflector reports every family's current
+`EARLY_MAIN` / `VALIDATED` / `RESEARCH_ONLY` tier and the evidence behind it.
+
+The embedded ace calibration curves are frozen on history strictly before
+2026-05-10, the first available evaluation slate. Rebuild them with
+`scripts/build_ace_calibration.py --before YYYY-MM-DD` whenever validating a
+new historical window, so holdout results never leak into the probability
+curve.
 
 ## Quick Start
 
@@ -37,6 +97,7 @@ python -m tennis_wc.cli fetch-closing-odds --date 2026-05-08
 python -m tennis_wc.cli settle-bets --date 2026-05-08
 python -m tennis_wc.cli backtest --start 2026-05-08 --end 2026-05-08
 python -m tennis_wc.cli fetch-event-odds --event-id SPORTSBET_URL_OR_EVENT_ID --match-id 1
+PYTHONPATH=src .venv/bin/python scripts/replay_prop_strategy.py --through 2026-08-01
 python -m pytest
 ```
 

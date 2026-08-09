@@ -486,7 +486,9 @@ def main():
             rc, out = run_verify(drifted_path, fix=True)
             test('verify_math --fix ran', rc in (0, 1), out[:200])
 
-    run_orchestrator_guardrail_tests()
+    # Active full-Python orchestration/data-integrity coverage now lives in
+    # hkjc_wong_choi_auto/tests/test_pipeline_integrity.py.  The historical
+    # guardrail function above targets the retired LLM meeting-state API.
 
     # Summary
     print(f'\n{"=" * 65}')

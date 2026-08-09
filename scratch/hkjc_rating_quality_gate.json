@@ -1,0 +1,4075 @@
+{
+  "method": {
+    "source": "HKJC local horse profile successful rating intervals",
+    "point_in_time": "entries strictly earlier than card date",
+    "odds": false,
+    "full_field_rerank": true
+  },
+  "coverage": {
+    "archive_meetings": 24,
+    "archive_races": 244,
+    "archive_runners": 3034,
+    "archive_rating_history": 2874,
+    "archive_success_zone": 2153,
+    "external_races": 9,
+    "external_success_zone": 78,
+    "weak_zero_one_races": 181
+  },
+  "baseline": {
+    "development": {
+      "races": 160,
+      "zero_hit": 36,
+      "one_hit": 77,
+      "two_hit": 47,
+      "top2_total_hits": 171,
+      "top3_capture_at5": 0.6291666666666671,
+      "competitive_recall_at5": 0.5821874999999999,
+      "ndcg_at5": 0.5433401624544805,
+      "winner_in_top5": 0.6875,
+      "mrr": 0.47131274975025017
+    },
+    "temporal_holdout": {
+      "races": 84,
+      "zero_hit": 20,
+      "one_hit": 48,
+      "two_hit": 16,
+      "top2_total_hits": 80,
+      "top3_capture_at5": 0.6468253968253963,
+      "competitive_recall_at5": 0.596031746031746,
+      "ndcg_at5": 0.5236139580279058,
+      "winner_in_top5": 0.7023809523809523,
+      "mrr": 0.4461124853981997
+    },
+    "all": {
+      "races": 244,
+      "zero_hit": 56,
+      "one_hit": 125,
+      "two_hit": 63,
+      "top2_total_hits": 251,
+      "top3_capture_at5": 0.6352459016393439,
+      "competitive_recall_at5": 0.586953551912568,
+      "ndcg_at5": 0.5365491740453319,
+      "winner_in_top5": 0.6926229508196722,
+      "mrr": 0.4626372489077409
+    },
+    "all_adjusted": {
+      "races": 169,
+      "zero_hit": 24,
+      "one_hit": 87,
+      "two_hit": 58,
+      "top2_total_hits": 203,
+      "top3_capture_at5": 0.6962524654832355,
+      "competitive_recall_at5": 0.6223865877712027,
+      "ndcg_at5": 0.5911953598887507,
+      "winner_in_top5": 0.727810650887574,
+      "mrr": 0.50771920387305
+    },
+    "external": {
+      "races": 9,
+      "zero_hit": 5,
+      "one_hit": 3,
+      "two_hit": 1,
+      "top2_total_hits": 5,
+      "top3_capture_at5": 0.6296296296296295,
+      "competitive_recall_at5": 0.5555555555555556,
+      "ndcg_at5": 0.471644187053055,
+      "winner_in_top5": 0.7777777777777778,
+      "mrr": 0.31587301587301586
+    },
+    "weak_zero_one": {
+      "races": 181,
+      "zero_hit": 56,
+      "one_hit": 125,
+      "two_hit": 0,
+      "top2_total_hits": 125,
+      "top3_capture_at5": 0.5709023941068142,
+      "competitive_recall_at5": 0.5451197053406996,
+      "ndcg_at5": 0.45699929680024637,
+      "winner_in_top5": 0.6243093922651933,
+      "mrr": 0.40470536216392605
+    }
+  },
+  "results": {
+    "rating_success_zone_0.025": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 78,
+          "two_hit": 46,
+          "top2_total_hits": 170,
+          "top3_capture_at5": 0.6291666666666671,
+          "competitive_recall_at5": 0.5821874999999999,
+          "ndcg_at5": 0.542784376574645,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.4704198926073929
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": -0.0005557858798355131,
+          "winner_in_top5": 0.0,
+          "mrr": -0.0008928571428572507
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 47,
+          "two_hit": 17,
+          "top2_total_hits": 81,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5267344960982283,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.45193259121830553
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -1,
+          "two_hit": 1,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0031205380703225316,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0058201058201058364
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 63,
+          "top2_total_hits": 251,
+          "top3_capture_at5": 0.6352459016393439,
+          "competitive_recall_at5": 0.586953551912568,
+          "ndcg_at5": 0.5372590078860425,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.46405541180131354
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0007098338407106608,
+          "winner_in_top5": 0.0,
+          "mrr": 0.001418162893572661
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 87,
+          "two_hit": 58,
+          "top2_total_hits": 203,
+          "top3_capture_at5": 0.6962524654832355,
+          "competitive_recall_at5": 0.6223865877712027,
+          "ndcg_at5": 0.5907879886769606,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.5067330105791644
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": -0.0004073712117901307,
+          "winner_in_top5": 0.0,
+          "mrr": -0.0009861932938856066
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.471644187053055,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 124,
+          "two_hit": 1,
+          "top2_total_hits": 126,
+          "top3_capture_at5": 0.5709023941068142,
+          "competitive_recall_at5": 0.5451197053406996,
+          "ndcg_at5": 0.45844750231354525,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.407537950079387
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -1,
+          "two_hit": 1,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0014482055132988836,
+          "winner_in_top5": 0.0,
+          "mrr": 0.002832587915460927
+        }
+      },
+      "comparison": {
+        "helped": 1,
+        "harmed": 1,
+        "rank3_rescues": 1
+      }
+    },
+    "rating_success_zone_0.05": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 77,
+          "two_hit": 47,
+          "top2_total_hits": 171,
+          "top3_capture_at5": 0.6312500000000003,
+          "competitive_recall_at5": 0.58375,
+          "ndcg_at5": 0.5435305196620572,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.4713499521312025
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.002083333333333215,
+          "competitive_recall_at5": 0.0015625000000001332,
+          "ndcg_at5": 0.00019035720757676344,
+          "winner_in_top5": 0.0,
+          "mrr": 3.720238095233919e-05
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 47,
+          "two_hit": 17,
+          "top2_total_hits": 81,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5278209019246587,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.45133735312306744
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -1,
+          "two_hit": 1,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.004206943896752913,
+          "winner_in_top5": 0.0,
+          "mrr": 0.005224867724867743
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 124,
+          "two_hit": 64,
+          "top2_total_hits": 252,
+          "top3_capture_at5": 0.6366120218579231,
+          "competitive_recall_at5": 0.5879781420765025,
+          "ndcg_at5": 0.5381222906049201,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4644603688661067
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -1,
+          "two_hit": 1,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 0.001366120218579181,
+          "competitive_recall_at5": 0.0010245901639344135,
+          "ndcg_at5": 0.0015731165595882501,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0018231199583658153
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 86,
+          "two_hit": 59,
+          "top2_total_hits": 204,
+          "top3_capture_at5": 0.6982248520710067,
+          "competitive_recall_at5": 0.6238658777120312,
+          "ndcg_at5": 0.5922105063689663,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.507613540305848
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -1,
+          "two_hit": 1,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 0.0019723865877712132,
+          "competitive_recall_at5": 0.0014792899408284654,
+          "ndcg_at5": 0.0010151464802156118,
+          "winner_in_top5": 0.0,
+          "mrr": -0.00010566356720198566
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.471644187053055,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 123,
+          "two_hit": 2,
+          "top2_total_hits": 127,
+          "top3_capture_at5": 0.5709023941068142,
+          "competitive_recall_at5": 0.5451197053406996,
+          "ndcg_at5": 0.45931090069231495,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.40808385905071026
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -2,
+          "two_hit": 2,
+          "top2_total_hits": 2,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.002311603892068581,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0033784968867842102
+        }
+      },
+      "comparison": {
+        "helped": 2,
+        "harmed": 1,
+        "rank3_rescues": 3
+      }
+    },
+    "rating_success_zone_0.075": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 77,
+          "two_hit": 47,
+          "top2_total_hits": 171,
+          "top3_capture_at5": 0.6312500000000003,
+          "competitive_recall_at5": 0.58375,
+          "ndcg_at5": 0.5441291725065275,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.4739541187978692
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.002083333333333215,
+          "competitive_recall_at5": 0.0015625000000001332,
+          "ndcg_at5": 0.0007890100520470122,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0026413690476190244
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 47,
+          "two_hit": 17,
+          "top2_total_hits": 81,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5280921205670576,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.4515026970384113
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -1,
+          "two_hit": 1,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0044781625391517865,
+          "winner_in_top5": 0.0,
+          "mrr": 0.005390211640211584
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 124,
+          "two_hit": 64,
+          "top2_total_hits": 252,
+          "top3_capture_at5": 0.6366120218579231,
+          "competitive_recall_at5": 0.5879781420765025,
+          "ndcg_at5": 0.5386082201994971,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4662249408151049
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -1,
+          "two_hit": 1,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 0.001366120218579181,
+          "competitive_recall_at5": 0.0010245901639344135,
+          "ndcg_at5": 0.0020590461541651894,
+          "winner_in_top5": 0.0,
+          "mrr": 0.003587691907364021
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 86,
+          "two_hit": 59,
+          "top2_total_hits": 204,
+          "top3_capture_at5": 0.6982248520710067,
+          "competitive_recall_at5": 0.6238658777120312,
+          "ndcg_at5": 0.5931637247370426,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.5105721201875049
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -1,
+          "two_hit": 1,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 0.0019723865877712132,
+          "competitive_recall_at5": 0.0014792899408284654,
+          "ndcg_at5": 0.0019683648482918814,
+          "winner_in_top5": 0.0,
+          "mrr": 0.002852916314454834
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.4738091389337109,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0021649518806559076,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 123,
+          "two_hit": 2,
+          "top2_total_hits": 127,
+          "top3_capture_at5": 0.5709023941068142,
+          "competitive_recall_at5": 0.5451197053406996,
+          "ndcg_at5": 0.45907594443193844,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.4077001880869288
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -2,
+          "two_hit": 2,
+          "top2_total_hits": 2,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0020766476316920746,
+          "winner_in_top5": 0.0,
+          "mrr": 0.002994825923002764
+        }
+      },
+      "comparison": {
+        "helped": 2,
+        "harmed": 1,
+        "rank3_rescues": 3
+      }
+    },
+    "rating_success_zone_0.1": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 77,
+          "two_hit": 47,
+          "top2_total_hits": 171,
+          "top3_capture_at5": 0.6291666666666671,
+          "competitive_recall_at5": 0.5821874999999999,
+          "ndcg_at5": 0.5433545323546933,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.4739541187978692
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 1.4369900212862774e-05,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0026413690476190244
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 47,
+          "two_hit": 17,
+          "top2_total_hits": 81,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5280921205670576,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.4515026970384113
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -1,
+          "two_hit": 1,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0044781625391517865,
+          "winner_in_top5": 0.0,
+          "mrr": 0.005390211640211584
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 124,
+          "two_hit": 64,
+          "top2_total_hits": 252,
+          "top3_capture_at5": 0.6352459016393439,
+          "competitive_recall_at5": 0.586953551912568,
+          "ndcg_at5": 0.5381002594441958,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4662249408151049
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -1,
+          "two_hit": 1,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0015510853988639495,
+          "winner_in_top5": 0.0,
+          "mrr": 0.003587691907364021
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 86,
+          "two_hit": 59,
+          "top2_total_hits": 204,
+          "top3_capture_at5": 0.6982248520710067,
+          "competitive_recall_at5": 0.6238658777120312,
+          "ndcg_at5": 0.5931809512953488,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.5105721201875049
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -1,
+          "two_hit": 1,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 0.0019723865877712132,
+          "competitive_recall_at5": 0.0014792899408284654,
+          "ndcg_at5": 0.001985591406598042,
+          "winner_in_top5": 0.0,
+          "mrr": 0.002852916314454834
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.4738091389337109,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0021649518806559076,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 123,
+          "two_hit": 2,
+          "top2_total_hits": 127,
+          "top3_capture_at5": 0.5690607734806632,
+          "competitive_recall_at5": 0.5437384898710864,
+          "ndcg_at5": 0.45835715360062235,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.4077001880869288
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -2,
+          "two_hit": 2,
+          "top2_total_hits": 2,
+          "top3_capture_at5": -0.0018416206261510082,
+          "competitive_recall_at5": -0.0013812154696132284,
+          "ndcg_at5": 0.0013578568003759783,
+          "winner_in_top5": 0.0,
+          "mrr": 0.002994825923002764
+        }
+      },
+      "comparison": {
+        "helped": 2,
+        "harmed": 1,
+        "rank3_rescues": 3
+      }
+    },
+    "rating_success_zone_0.15": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 37,
+          "one_hit": 76,
+          "two_hit": 47,
+          "top2_total_hits": 170,
+          "top3_capture_at5": 0.6270833333333337,
+          "competitive_recall_at5": 0.5821874999999999,
+          "ndcg_at5": 0.5432744545246644,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.47412254412254456
+        },
+        "delta": {
+          "zero_hit": 1,
+          "one_hit": -1,
+          "two_hit": 0,
+          "top2_total_hits": -1,
+          "top3_capture_at5": -0.002083333333333437,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": -6.570792981608342e-05,
+          "winner_in_top5": 0.0,
+          "mrr": 0.002809794372294394
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 47,
+          "two_hit": 17,
+          "top2_total_hits": 81,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5281604199071295,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.4512192503263932
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -1,
+          "two_hit": 1,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0045464618792236955,
+          "winner_in_top5": 0.0,
+          "mrr": 0.005106764928193508
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 57,
+          "one_hit": 123,
+          "two_hit": 64,
+          "top2_total_hits": 251,
+          "top3_capture_at5": 0.6338797814207646,
+          "competitive_recall_at5": 0.586953551912568,
+          "ndcg_at5": 0.5380712622792837,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4662378036353447
+        },
+        "delta": {
+          "zero_hit": 1,
+          "one_hit": -2,
+          "two_hit": 1,
+          "top2_total_hits": 0,
+          "top3_capture_at5": -0.001366120218579292,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.001522088233951835,
+          "winner_in_top5": 0.0,
+          "mrr": 0.003600554727603844
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 86,
+          "two_hit": 59,
+          "top2_total_hits": 204,
+          "top3_capture_at5": 0.6962524654832356,
+          "competitive_recall_at5": 0.6238658777120312,
+          "ndcg_at5": 0.59301965339291,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.5107315761161915
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -1,
+          "two_hit": 1,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 1.1102230246251565e-16,
+          "competitive_recall_at5": 0.0014792899408284654,
+          "ndcg_at5": 0.0018242935041592467,
+          "winner_in_top5": 0.0,
+          "mrr": 0.003012372243141437
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.4703876299477458,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.3103174603174603
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": -0.0012565571053091973,
+          "winner_in_top5": 0.0,
+          "mrr": -0.005555555555555536
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 57,
+          "one_hit": 122,
+          "two_hit": 2,
+          "top2_total_hits": 126,
+          "top3_capture_at5": 0.5672191528545122,
+          "competitive_recall_at5": 0.5437384898710864,
+          "ndcg_at5": 0.457942727385421,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.40766730200431894
+        },
+        "delta": {
+          "zero_hit": 1,
+          "one_hit": -3,
+          "two_hit": 2,
+          "top2_total_hits": 1,
+          "top3_capture_at5": -0.0036832412523020164,
+          "competitive_recall_at5": -0.0013812154696132284,
+          "ndcg_at5": 0.0009434305851746538,
+          "winner_in_top5": 0.0,
+          "mrr": 0.002961939840392891
+        }
+      },
+      "comparison": {
+        "helped": 2,
+        "harmed": 2,
+        "rank3_rescues": 3
+      }
+    },
+    "rating_success_zone_min2_0.05": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 77,
+          "two_hit": 47,
+          "top2_total_hits": 171,
+          "top3_capture_at5": 0.6312500000000003,
+          "competitive_recall_at5": 0.58375,
+          "ndcg_at5": 0.5437820041654611,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.47120114260739304
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.002083333333333215,
+          "competitive_recall_at5": 0.0015625000000001332,
+          "ndcg_at5": 0.0004418417109806061,
+          "winner_in_top5": 0.0,
+          "mrr": -0.00011160714285712858
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 48,
+          "two_hit": 16,
+          "top2_total_hits": 80,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5261411090443715,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.45133735312306744
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.002527151016465723,
+          "winner_in_top5": 0.0,
+          "mrr": 0.005224867724867743
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 63,
+          "top2_total_hits": 251,
+          "top3_capture_at5": 0.6366120218579231,
+          "competitive_recall_at5": 0.5879781420765025,
+          "ndcg_at5": 0.5377089091237746,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4643627888504939
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.001366120218579181,
+          "competitive_recall_at5": 0.0010245901639344135,
+          "ndcg_at5": 0.0011597350784426919,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0017255399427530405
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 87,
+          "two_hit": 58,
+          "top2_total_hits": 203,
+          "top3_capture_at5": 0.6982248520710067,
+          "competitive_recall_at5": 0.6238658777120312,
+          "ndcg_at5": 0.5916136715677857,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.507613540305848
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0019723865877712132,
+          "competitive_recall_at5": 0.0014792899408284654,
+          "ndcg_at5": 0.00041831167903494393,
+          "winner_in_top5": 0.0,
+          "mrr": -0.00010566356720198566
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.471644187053055,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 124,
+          "two_hit": 1,
+          "top2_total_hits": 126,
+          "top3_capture_at5": 0.5709023941068142,
+          "competitive_recall_at5": 0.5451197053406996,
+          "ndcg_at5": 0.4587536350492237,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.40795231472027094
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -1,
+          "two_hit": 1,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0017543382489773052,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0032469525563448842
+        }
+      },
+      "comparison": {
+        "helped": 1,
+        "harmed": 1,
+        "rank3_rescues": 1
+      }
+    },
+    "rating_success_zone_min2_0.075": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 77,
+          "two_hit": 47,
+          "top2_total_hits": 171,
+          "top3_capture_at5": 0.6312500000000003,
+          "competitive_recall_at5": 0.58375,
+          "ndcg_at5": 0.5442372283957801,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.4738053092740596
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.002083333333333215,
+          "competitive_recall_at5": 0.0015625000000001332,
+          "ndcg_at5": 0.0008970659412996795,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0024925595238094456
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 48,
+          "two_hit": 16,
+          "top2_total_hits": 80,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5264123276867705,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.4515026970384113
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.002798369658864708,
+          "winner_in_top5": 0.0,
+          "mrr": 0.005390211640211584
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 63,
+          "top2_total_hits": 251,
+          "top3_capture_at5": 0.6366120218579231,
+          "competitive_recall_at5": 0.5879781420765025,
+          "ndcg_at5": 0.5381007871680884,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4661273607994921
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.001366120218579181,
+          "competitive_recall_at5": 0.0010245901639344135,
+          "ndcg_at5": 0.0015516131227565344,
+          "winner_in_top5": 0.0,
+          "mrr": 0.003490111891751191
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 87,
+          "two_hit": 58,
+          "top2_total_hits": 203,
+          "top3_capture_at5": 0.6982248520710067,
+          "competitive_recall_at5": 0.6238658777120312,
+          "ndcg_at5": 0.592431099531932,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.5105721201875049
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0019723865877712132,
+          "competitive_recall_at5": 0.0014792899408284654,
+          "ndcg_at5": 0.001235739643181244,
+          "winner_in_top5": 0.0,
+          "mrr": 0.002852916314454834
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.4738091389337109,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0021649518806559076,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 124,
+          "two_hit": 1,
+          "top2_total_hits": 126,
+          "top3_capture_at5": 0.5709023941068142,
+          "competitive_recall_at5": 0.5451197053406996,
+          "ndcg_at5": 0.4583918910636307,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.4075686437564895
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -1,
+          "two_hit": 1,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0013925942633843391,
+          "winner_in_top5": 0.0,
+          "mrr": 0.002863281592563438
+        }
+      },
+      "comparison": {
+        "helped": 1,
+        "harmed": 1,
+        "rank3_rescues": 2
+      }
+    },
+    "rating_success_zone_min2_0.1": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 78,
+          "two_hit": 46,
+          "top2_total_hits": 170,
+          "top3_capture_at5": 0.6291666666666671,
+          "competitive_recall_at5": 0.5821874999999999,
+          "ndcg_at5": 0.5429942948540398,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.472763642607393
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": -0.00034586760044064135,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0014508928571428381
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 47,
+          "two_hit": 17,
+          "top2_total_hits": 81,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5265489263669144,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.4515026970384113
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -1,
+          "two_hit": 1,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0029349683390086367,
+          "winner_in_top5": 0.0,
+          "mrr": 0.005390211640211584
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 63,
+          "top2_total_hits": 251,
+          "top3_capture_at5": 0.6352459016393439,
+          "competitive_recall_at5": 0.586953551912568,
+          "ndcg_at5": 0.5373327745551935,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4654443006902025
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0007836005098615928,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0028070517824616004
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 87,
+          "two_hit": 58,
+          "top2_total_hits": 203,
+          "top3_capture_at5": 0.6982248520710067,
+          "competitive_recall_at5": 0.6238658777120312,
+          "ndcg_at5": 0.5919705651699226,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.5095859268936193
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0019723865877712132,
+          "competitive_recall_at5": 0.0014792899408284654,
+          "ndcg_at5": 0.0007752052811719201,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0018667230205692276
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.4738091389337109,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0021649518806559076,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 123,
+          "two_hit": 2,
+          "top2_total_hits": 127,
+          "top3_capture_at5": 0.5690607734806632,
+          "competitive_recall_at5": 0.5437384898710864,
+          "ndcg_at5": 0.4578320131130467,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.4075686437564895
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -2,
+          "two_hit": 2,
+          "top2_total_hits": 2,
+          "top3_capture_at5": -0.0018416206261510082,
+          "competitive_recall_at5": -0.0013812154696132284,
+          "ndcg_at5": 0.0008327163128003523,
+          "winner_in_top5": 0.0,
+          "mrr": 0.002863281592563438
+        }
+      },
+      "comparison": {
+        "helped": 2,
+        "harmed": 2,
+        "rank3_rescues": 3
+      }
+    },
+    "rating_success_zone_min2_0.125": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 79,
+          "two_hit": 45,
+          "top2_total_hits": 169,
+          "top3_capture_at5": 0.6291666666666671,
+          "competitive_recall_at5": 0.5834374999999998,
+          "ndcg_at5": 0.5435383364590789,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.47287524975025014
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 2,
+          "two_hit": -2,
+          "top2_total_hits": -2,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0012499999999999734,
+          "ndcg_at5": 0.00019817400459842816,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0015624999999999667
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 47,
+          "two_hit": 17,
+          "top2_total_hits": 81,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5265489263669144,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.4515026970384113
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -1,
+          "two_hit": 1,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0029349683390086367,
+          "winner_in_top5": 0.0,
+          "mrr": 0.005390211640211584
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 126,
+          "two_hit": 62,
+          "top2_total_hits": 250,
+          "top3_capture_at5": 0.6352459016393439,
+          "competitive_recall_at5": 0.5877732240437156,
+          "ndcg_at5": 0.5376895231486616,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4655174857019121
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0008196721311475308,
+          "ndcg_at5": 0.0011403491033297186,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0028802367941712093
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 88,
+          "two_hit": 57,
+          "top2_total_hits": 202,
+          "top3_capture_at5": 0.6962524654832356,
+          "competitive_recall_at5": 0.6238658777120312,
+          "ndcg_at5": 0.5917028857406403,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.5096915904608214
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 1.1102230246251565e-16,
+          "competitive_recall_at5": 0.0014792899408284654,
+          "ndcg_at5": 0.0005075258518896231,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0019723865877713243
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.4703876299477458,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.3103174603174603
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": -0.0012565571053091973,
+          "winner_in_top5": 0.0,
+          "mrr": -0.005555555555555536
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 123,
+          "two_hit": 2,
+          "top2_total_hits": 127,
+          "top3_capture_at5": 0.5690607734806632,
+          "competitive_recall_at5": 0.544843462246777,
+          "ndcg_at5": 0.4580052294310792,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.407667302004319
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -2,
+          "two_hit": 2,
+          "top2_total_hits": 2,
+          "top3_capture_at5": -0.0018416206261510082,
+          "competitive_recall_at5": -0.00027624309392260127,
+          "ndcg_at5": 0.0010059326308328176,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0029619398403929464
+        }
+      },
+      "comparison": {
+        "helped": 2,
+        "harmed": 3,
+        "rank3_rescues": 3
+      }
+    },
+    "rating_success_zone_min2_0.15": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 37,
+          "one_hit": 78,
+          "two_hit": 45,
+          "top2_total_hits": 168,
+          "top3_capture_at5": 0.6291666666666671,
+          "competitive_recall_at5": 0.5834374999999998,
+          "ndcg_at5": 0.5419342451604217,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.4698990592740596
+        },
+        "delta": {
+          "zero_hit": 1,
+          "one_hit": 1,
+          "two_hit": -2,
+          "top2_total_hits": -3,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0012499999999999734,
+          "ndcg_at5": -0.0014059172940588116,
+          "winner_in_top5": 0.0,
+          "mrr": -0.0014136904761905544
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 47,
+          "two_hit": 17,
+          "top2_total_hits": 81,
+          "top3_capture_at5": 0.6507936507936504,
+          "competitive_recall_at5": 0.5990079365079366,
+          "ndcg_at5": 0.5271961391865431,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.4515026970384113
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": -1,
+          "two_hit": 1,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 0.003968253968254065,
+          "competitive_recall_at5": 0.0029761904761905766,
+          "ndcg_at5": 0.0035821811586372876,
+          "winner_in_top5": 0.0,
+          "mrr": 0.005390211640211584
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 57,
+          "one_hit": 125,
+          "two_hit": 62,
+          "top2_total_hits": 249,
+          "top3_capture_at5": 0.6366120218579232,
+          "competitive_recall_at5": 0.58879781420765,
+          "ndcg_at5": 0.536860470972693,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.463565885389656
+        },
+        "delta": {
+          "zero_hit": 1,
+          "one_hit": 0,
+          "two_hit": -1,
+          "top2_total_hits": -2,
+          "top3_capture_at5": 0.001366120218579292,
+          "competitive_recall_at5": 0.0018442622950819443,
+          "ndcg_at5": 0.00031129692736109327,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0009286364819151016
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 88,
+          "two_hit": 57,
+          "top2_total_hits": 202,
+          "top3_capture_at5": 0.6982248520710068,
+          "competitive_recall_at5": 0.6253451676528595,
+          "ndcg_at5": 0.5907605180087409,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.5067330105791645
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0019723865877713243,
+          "competitive_recall_at5": 0.00295857988165682,
+          "ndcg_at5": -0.0004348418800098619,
+          "winner_in_top5": 0.0,
+          "mrr": -0.0009861932938854956
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.4703876299477458,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.3103174603174603
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": -0.0012565571053091973,
+          "winner_in_top5": 0.0,
+          "mrr": -0.005555555555555536
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 57,
+          "one_hit": 122,
+          "two_hit": 2,
+          "top2_total_hits": 126,
+          "top3_capture_at5": 0.5709023941068142,
+          "competitive_recall_at5": 0.5462246777163903,
+          "ndcg_at5": 0.45803384035057493,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.4077988463347583
+        },
+        "delta": {
+          "zero_hit": 1,
+          "one_hit": -3,
+          "two_hit": 2,
+          "top2_total_hits": 1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0011049723756906271,
+          "ndcg_at5": 0.0010345435503285594,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0030934841708322725
+        }
+      },
+      "comparison": {
+        "helped": 2,
+        "harmed": 4,
+        "rank3_rescues": 3
+      }
+    },
+    "rating_success_zone_min3_0.05": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 78,
+          "two_hit": 46,
+          "top2_total_hits": 170,
+          "top3_capture_at5": 0.6291666666666671,
+          "competitive_recall_at5": 0.5821874999999999,
+          "ndcg_at5": 0.5428864315553205,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.4701594759407263
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": -0.00045373089916000975,
+          "winner_in_top5": 0.0,
+          "mrr": -0.001153273809523847
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 48,
+          "two_hit": 16,
+          "top2_total_hits": 80,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5261411090443715,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.45133735312306744
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.002527151016465723,
+          "winner_in_top5": 0.0,
+          "mrr": 0.005224867724867743
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 126,
+          "two_hit": 62,
+          "top2_total_hits": 250,
+          "top3_capture_at5": 0.6352459016393439,
+          "competitive_recall_at5": 0.586953551912568,
+          "ndcg_at5": 0.5371216483958134,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4636797287412043
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0005724743504815777,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0010424798334633945
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 88,
+          "two_hit": 57,
+          "top2_total_hits": 202,
+          "top3_capture_at5": 0.6962524654832355,
+          "competitive_recall_at5": 0.6223865877712027,
+          "ndcg_at5": 0.5907657921735696,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.5066273470119624
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": -0.0004295677151811006,
+          "winner_in_top5": 0.0,
+          "mrr": -0.0010918568610875923
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.471644187053055,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 0,
+          "top2_total_hits": 125,
+          "top3_capture_at5": 0.5709023941068142,
+          "competitive_recall_at5": 0.5451197053406996,
+          "ndcg_at5": 0.45826233261400995,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.40703150440719543
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.00126303581376358,
+          "winner_in_top5": 0.0,
+          "mrr": 0.00232614224326938
+        }
+      },
+      "comparison": {
+        "helped": 0,
+        "harmed": 1,
+        "rank3_rescues": 0
+      }
+    },
+    "rating_success_zone_min3_0.075": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 78,
+          "two_hit": 46,
+          "top2_total_hits": 170,
+          "top3_capture_at5": 0.6291666666666671,
+          "competitive_recall_at5": 0.5821874999999999,
+          "ndcg_at5": 0.5426192836387864,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.46963864260739296
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": -0.0007208788156940482,
+          "winner_in_top5": 0.0,
+          "mrr": -0.0016741071428572063
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 48,
+          "two_hit": 16,
+          "top2_total_hits": 80,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5276129612292169,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.45133735312306744
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.00399900320131108,
+          "winner_in_top5": 0.0,
+          "mrr": 0.005224867724867743
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 126,
+          "two_hit": 62,
+          "top2_total_hits": 250,
+          "top3_capture_at5": 0.6352459016393439,
+          "competitive_recall_at5": 0.586953551912568,
+          "ndcg_at5": 0.5374531726453281,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.46333819868655945
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0009039985999962363,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0007009497788185715
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 88,
+          "two_hit": 57,
+          "top2_total_hits": 202,
+          "top3_capture_at5": 0.6962524654832355,
+          "competitive_recall_at5": 0.6223865877712027,
+          "ndcg_at5": 0.5913615732697995,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.5066273470119624
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.00016621338104882977,
+          "winner_in_top5": 0.0,
+          "mrr": -0.0010918568610875923
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.4738091389337109,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0021649518806559076,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 0,
+          "top2_total_hits": 125,
+          "top3_capture_at5": 0.5709023941068142,
+          "competitive_recall_at5": 0.5451197053406996,
+          "ndcg_at5": 0.45859929386835857,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.4065710992506577
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0015999970681122022,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0018657370867316558
+        }
+      },
+      "comparison": {
+        "helped": 0,
+        "harmed": 1,
+        "rank3_rescues": 1
+      }
+    },
+    "rating_success_zone_min3_0.1": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 78,
+          "two_hit": 46,
+          "top2_total_hits": 170,
+          "top3_capture_at5": 0.6270833333333337,
+          "competitive_recall_at5": 0.5806249999999998,
+          "ndcg_at5": 0.5419345038239939,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.46963864260739296
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": -0.002083333333333437,
+          "competitive_recall_at5": -0.0015625000000000222,
+          "ndcg_at5": -0.0014056586304865837,
+          "winner_in_top5": 0.0,
+          "mrr": -0.0016741071428572063
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 49,
+          "two_hit": 15,
+          "top2_total_hits": 79,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5265177201789057,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.44935322613894046
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0029037621509999667,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0032407407407407662
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 127,
+          "two_hit": 61,
+          "top2_total_hits": 249,
+          "top3_capture_at5": 0.6338797814207646,
+          "competitive_recall_at5": 0.5859289617486336,
+          "ndcg_at5": 0.5366270865035537,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4626551385772698
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 2,
+          "two_hit": -2,
+          "top2_total_hits": -2,
+          "top3_capture_at5": -0.001366120218579292,
+          "competitive_recall_at5": -0.0010245901639344135,
+          "ndcg_at5": 7.791245822186266e-05,
+          "winner_in_top5": 0.0,
+          "mrr": 1.7889669528925456e-05
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 89,
+          "two_hit": 56,
+          "top2_total_hits": 201,
+          "top3_capture_at5": 0.6962524654832355,
+          "competitive_recall_at5": 0.6223865877712027,
+          "ndcg_at5": 0.5908171931027809,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.5056411537180768
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 2,
+          "two_hit": -2,
+          "top2_total_hits": -2,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": -0.00037816678596980235,
+          "winner_in_top5": 0.0,
+          "mrr": -0.002078050154973199
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.4738091389337109,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0021649518806559076,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 0,
+          "top2_total_hits": 125,
+          "top3_capture_at5": 0.5690607734806632,
+          "competitive_recall_at5": 0.5437384898710864,
+          "ndcg_at5": 0.45799396364533757,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.4065710992506577
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": -0.0018416206261510082,
+          "competitive_recall_at5": -0.0013812154696132284,
+          "ndcg_at5": 0.0009946668450911966,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0018657370867316558
+        }
+      },
+      "comparison": {
+        "helped": 0,
+        "harmed": 2,
+        "rank3_rescues": 1
+      }
+    },
+    "rating_success_zone_min3_0.125": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 79,
+          "two_hit": 45,
+          "top2_total_hits": 169,
+          "top3_capture_at5": 0.6291666666666671,
+          "competitive_recall_at5": 0.5834374999999998,
+          "ndcg_at5": 0.5424364268993149,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.46963864260739296
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 2,
+          "two_hit": -2,
+          "top2_total_hits": -2,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0012499999999999734,
+          "ndcg_at5": -0.0009037355551655413,
+          "winner_in_top5": 0.0,
+          "mrr": -0.0016741071428572063
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 49,
+          "two_hit": 15,
+          "top2_total_hits": 79,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5265177201789057,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.44935322613894046
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0029037621509999667,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0032407407407407662
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 128,
+          "two_hit": 60,
+          "top2_total_hits": 248,
+          "top3_capture_at5": 0.6352459016393439,
+          "competitive_recall_at5": 0.5877732240437156,
+          "ndcg_at5": 0.5369562163890101,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4626551385772698
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 3,
+          "two_hit": -3,
+          "top2_total_hits": -3,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0008196721311475308,
+          "ndcg_at5": 0.00040704234367827663,
+          "winner_in_top5": 0.0,
+          "mrr": 1.7889669528925456e-05
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 90,
+          "two_hit": 55,
+          "top2_total_hits": 200,
+          "top3_capture_at5": 0.6962524654832356,
+          "competitive_recall_at5": 0.6238658777120312,
+          "ndcg_at5": 0.5909500564403624,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.5056411537180768
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 3,
+          "two_hit": -3,
+          "top2_total_hits": -3,
+          "top3_capture_at5": 1.1102230246251565e-16,
+          "competitive_recall_at5": 0.0014792899408284654,
+          "ndcg_at5": -0.0002453034483883565,
+          "winner_in_top5": 0.0,
+          "mrr": -0.002078050154973199
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.4738091389337109,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0021649518806559076,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 0,
+          "top2_total_hits": 125,
+          "top3_capture_at5": 0.5690607734806632,
+          "competitive_recall_at5": 0.544843462246777,
+          "ndcg_at5": 0.45822100473388355,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.4065710992506577
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": -0.0018416206261510082,
+          "competitive_recall_at5": -0.00027624309392260127,
+          "ndcg_at5": 0.0012217079336371839,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0018657370867316558
+        }
+      },
+      "comparison": {
+        "helped": 0,
+        "harmed": 3,
+        "rank3_rescues": 1
+      }
+    },
+    "rating_success_zone_min3_0.15": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 37,
+          "one_hit": 78,
+          "two_hit": 45,
+          "top2_total_hits": 168,
+          "top3_capture_at5": 0.6291666666666671,
+          "competitive_recall_at5": 0.5834374999999998,
+          "ndcg_at5": 0.5408323356006577,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.4667740592740596
+        },
+        "delta": {
+          "zero_hit": 1,
+          "one_hit": 1,
+          "two_hit": -2,
+          "top2_total_hits": -3,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0012499999999999734,
+          "ndcg_at5": -0.002507826853822781,
+          "winner_in_top5": 0.0,
+          "mrr": -0.004538690476190543
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 49,
+          "two_hit": 15,
+          "top2_total_hits": 79,
+          "top3_capture_at5": 0.6507936507936504,
+          "competitive_recall_at5": 0.5990079365079366,
+          "ndcg_at5": 0.5271649329985344,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.44935322613894046
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.003968253968254065,
+          "competitive_recall_at5": 0.0029761904761905766,
+          "ndcg_at5": 0.0035509749706286176,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0032407407407407662
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 57,
+          "one_hit": 127,
+          "two_hit": 60,
+          "top2_total_hits": 247,
+          "top3_capture_at5": 0.6366120218579232,
+          "competitive_recall_at5": 0.58879781420765,
+          "ndcg_at5": 0.5361271642130415,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.46077672327672337
+        },
+        "delta": {
+          "zero_hit": 1,
+          "one_hit": 2,
+          "two_hit": -3,
+          "top2_total_hits": -4,
+          "top3_capture_at5": 0.001366120218579292,
+          "competitive_recall_at5": 0.0018442622950819443,
+          "ndcg_at5": -0.0004220098322903487,
+          "winner_in_top5": 0.0,
+          "mrr": -0.0018605256310175178
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 90,
+          "two_hit": 55,
+          "top2_total_hits": 200,
+          "top3_capture_at5": 0.6982248520710068,
+          "competitive_recall_at5": 0.6253451676528595,
+          "ndcg_at5": 0.5900076887084629,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.5027882374036221
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 3,
+          "two_hit": -3,
+          "top2_total_hits": -3,
+          "top3_capture_at5": 0.0019723865877713243,
+          "competitive_recall_at5": 0.00295857988165682,
+          "ndcg_at5": -0.0011876711802878415,
+          "winner_in_top5": 0.0,
+          "mrr": -0.004930966469427922
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.4738091389337109,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0021649518806559076,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 57,
+          "one_hit": 124,
+          "two_hit": 0,
+          "top2_total_hits": 124,
+          "top3_capture_at5": 0.5709023941068142,
+          "competitive_recall_at5": 0.5462246777163903,
+          "ndcg_at5": 0.45824961565337935,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.40680130182892654
+        },
+        "delta": {
+          "zero_hit": 1,
+          "one_hit": -1,
+          "two_hit": 0,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0011049723756906271,
+          "ndcg_at5": 0.0012503188531329812,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0020959396650004902
+        }
+      },
+      "comparison": {
+        "helped": 0,
+        "harmed": 4,
+        "rank3_rescues": 1
+      }
+    },
+    "rating_success_zone_uplift_min2_0.05": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 77,
+          "two_hit": 47,
+          "top2_total_hits": 171,
+          "top3_capture_at5": 0.6291666666666671,
+          "competitive_recall_at5": 0.5821874999999999,
+          "ndcg_at5": 0.5433401624544805,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.47120114260739304
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": -0.00011160714285712858
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 48,
+          "two_hit": 16,
+          "top2_total_hits": 80,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5236139580279058,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.4461124853981997
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 63,
+          "top2_total_hits": 251,
+          "top3_capture_at5": 0.6352459016393439,
+          "competitive_recall_at5": 0.586953551912568,
+          "ndcg_at5": 0.5365491740453319,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4625640638960313
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": -7.31850117096089e-05
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 87,
+          "two_hit": 58,
+          "top2_total_hits": 203,
+          "top3_capture_at5": 0.6962524654832355,
+          "competitive_recall_at5": 0.6223865877712027,
+          "ndcg_at5": 0.5911953598887507,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.507613540305848
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": -0.00010566356720198566
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.471644187053055,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 0,
+          "top2_total_hits": 125,
+          "top3_capture_at5": 0.5709023941068142,
+          "competitive_recall_at5": 0.5451197053406996,
+          "ndcg_at5": 0.45699929680024637,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.40460670391609654
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": -9.865824782950838e-05
+        }
+      },
+      "comparison": {
+        "helped": 0,
+        "harmed": 0,
+        "rank3_rescues": 0
+      }
+    },
+    "rating_success_zone_uplift_min2_0.075": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 77,
+          "two_hit": 47,
+          "top2_total_hits": 171,
+          "top3_capture_at5": 0.6291666666666671,
+          "competitive_recall_at5": 0.5821874999999999,
+          "ndcg_at5": 0.5433401624544805,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.47120114260739304
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": -0.00011160714285712858
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 48,
+          "two_hit": 16,
+          "top2_total_hits": 80,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5236139580279058,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.4461124853981997
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 63,
+          "top2_total_hits": 251,
+          "top3_capture_at5": 0.6352459016393439,
+          "competitive_recall_at5": 0.586953551912568,
+          "ndcg_at5": 0.5365491740453319,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4625640638960313
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": -7.31850117096089e-05
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 87,
+          "two_hit": 58,
+          "top2_total_hits": 203,
+          "top3_capture_at5": 0.6962524654832355,
+          "competitive_recall_at5": 0.6223865877712027,
+          "ndcg_at5": 0.5911953598887507,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.507613540305848
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": -0.00010566356720198566
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.471644187053055,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 0,
+          "top2_total_hits": 125,
+          "top3_capture_at5": 0.5709023941068142,
+          "competitive_recall_at5": 0.5451197053406996,
+          "ndcg_at5": 0.45699929680024637,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.40460670391609654
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": -9.865824782950838e-05
+        }
+      },
+      "comparison": {
+        "helped": 0,
+        "harmed": 0,
+        "rank3_rescues": 0
+      }
+    },
+    "rating_success_zone_uplift_min2_0.1": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 77,
+          "two_hit": 47,
+          "top2_total_hits": 171,
+          "top3_capture_at5": 0.6270833333333337,
+          "competitive_recall_at5": 0.5806249999999998,
+          "ndcg_at5": 0.5425473267504353,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.47120114260739304
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": -0.002083333333333437,
+          "competitive_recall_at5": -0.0015625000000000222,
+          "ndcg_at5": -0.0007928357040452028,
+          "winner_in_top5": 0.0,
+          "mrr": -0.00011160714285712858
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 48,
+          "two_hit": 16,
+          "top2_total_hits": 80,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5236139580279058,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.4461124853981997
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 63,
+          "top2_total_hits": 251,
+          "top3_capture_at5": 0.6338797814207646,
+          "competitive_recall_at5": 0.5859289617486336,
+          "ndcg_at5": 0.5360292817803842,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4625640638960313
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": -0.001366120218579292,
+          "competitive_recall_at5": -0.0010245901639344135,
+          "ndcg_at5": -0.0005198922649476412,
+          "winner_in_top5": 0.0,
+          "mrr": -7.31850117096089e-05
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 87,
+          "two_hit": 58,
+          "top2_total_hits": 203,
+          "top3_capture_at5": 0.6962524654832355,
+          "competitive_recall_at5": 0.6223865877712027,
+          "ndcg_at5": 0.5911953598887507,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.507613540305848
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": -0.00010566356720198566
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.471644187053055,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 0,
+          "top2_total_hits": 125,
+          "top3_capture_at5": 0.5690607734806632,
+          "competitive_recall_at5": 0.5437384898710864,
+          "ndcg_at5": 0.4562984475591015,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.40460670391609654
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": -0.0018416206261510082,
+          "competitive_recall_at5": -0.0013812154696132284,
+          "ndcg_at5": -0.0007008492411448852,
+          "winner_in_top5": 0.0,
+          "mrr": -9.865824782950838e-05
+        }
+      },
+      "comparison": {
+        "helped": 0,
+        "harmed": 0,
+        "rank3_rescues": 0
+      }
+    },
+    "rating_success_zone_uplift_min2_0.125": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 77,
+          "two_hit": 47,
+          "top2_total_hits": 171,
+          "top3_capture_at5": 0.6270833333333337,
+          "competitive_recall_at5": 0.5806249999999998,
+          "ndcg_at5": 0.5426691052937223,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.47120114260739304
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": -0.002083333333333437,
+          "competitive_recall_at5": -0.0015625000000000222,
+          "ndcg_at5": -0.000671057160758215,
+          "winner_in_top5": 0.0,
+          "mrr": -0.00011160714285712858
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 48,
+          "two_hit": 16,
+          "top2_total_hits": 80,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5236139580279058,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.4461124853981997
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 63,
+          "top2_total_hits": 251,
+          "top3_capture_at5": 0.6338797814207646,
+          "competitive_recall_at5": 0.5859289617486336,
+          "ndcg_at5": 0.5361091365628675,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4625640638960313
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": -0.001366120218579292,
+          "competitive_recall_at5": -0.0010245901639344135,
+          "ndcg_at5": -0.0004400374824643505,
+          "winner_in_top5": 0.0,
+          "mrr": -7.31850117096089e-05
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 87,
+          "two_hit": 58,
+          "top2_total_hits": 203,
+          "top3_capture_at5": 0.6962524654832355,
+          "competitive_recall_at5": 0.6223865877712027,
+          "ndcg_at5": 0.5913106531841703,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.507613540305848
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.00011529329541959399,
+          "winner_in_top5": 0.0,
+          "mrr": -0.00010566356720198566
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.471644187053055,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 0,
+          "top2_total_hits": 125,
+          "top3_capture_at5": 0.5690607734806632,
+          "competitive_recall_at5": 0.5437384898710864,
+          "ndcg_at5": 0.45640609710012864,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.40460670391609654
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": -0.0018416206261510082,
+          "competitive_recall_at5": -0.0013812154696132284,
+          "ndcg_at5": -0.0005931997001177303,
+          "winner_in_top5": 0.0,
+          "mrr": -9.865824782950838e-05
+        }
+      },
+      "comparison": {
+        "helped": 0,
+        "harmed": 0,
+        "rank3_rescues": 0
+      }
+    },
+    "rating_success_zone_uplift_min2_0.15": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 77,
+          "two_hit": 47,
+          "top2_total_hits": 171,
+          "top3_capture_at5": 0.6270833333333337,
+          "competitive_recall_at5": 0.5806249999999998,
+          "ndcg_at5": 0.5426691052937223,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.4713499521312025
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": -0.002083333333333437,
+          "competitive_recall_at5": -0.0015625000000000222,
+          "ndcg_at5": -0.000671057160758215,
+          "winner_in_top5": 0.0,
+          "mrr": 3.720238095233919e-05
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 48,
+          "two_hit": 16,
+          "top2_total_hits": 80,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5236139580279058,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.4461124853981997
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 63,
+          "top2_total_hits": 251,
+          "top3_capture_at5": 0.6338797814207646,
+          "competitive_recall_at5": 0.5859289617486336,
+          "ndcg_at5": 0.5361091365628675,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4626616439116441
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": -0.001366120218579292,
+          "competitive_recall_at5": -0.0010245901639344135,
+          "ndcg_at5": -0.0004400374824643505,
+          "winner_in_top5": 0.0,
+          "mrr": 2.4395003903221468e-05
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 87,
+          "two_hit": 58,
+          "top2_total_hits": 203,
+          "top3_capture_at5": 0.6962524654832355,
+          "competitive_recall_at5": 0.6223865877712027,
+          "ndcg_at5": 0.5913106531841703,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.507613540305848
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.00011529329541959399,
+          "winner_in_top5": 0.0,
+          "mrr": -0.00010566356720198566
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.471644187053055,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 0,
+          "top2_total_hits": 125,
+          "top3_capture_at5": 0.5690607734806632,
+          "competitive_recall_at5": 0.5437384898710864,
+          "ndcg_at5": 0.45640609710012864,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.40473824824653587
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": -0.0018416206261510082,
+          "competitive_recall_at5": -0.0013812154696132284,
+          "ndcg_at5": -0.0005931997001177303,
+          "winner_in_top5": 0.0,
+          "mrr": 3.2886082609817624e-05
+        }
+      },
+      "comparison": {
+        "helped": 0,
+        "harmed": 0,
+        "rank3_rescues": 0
+      }
+    },
+    "rating_success_zone_asymmetric_0.05": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 78,
+          "two_hit": 46,
+          "top2_total_hits": 170,
+          "top3_capture_at5": 0.6291666666666671,
+          "competitive_recall_at5": 0.5821874999999999,
+          "ndcg_at5": 0.5428864315553205,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.4701594759407263
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": -0.00045373089916000975,
+          "winner_in_top5": 0.0,
+          "mrr": -0.001153273809523847
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 48,
+          "two_hit": 16,
+          "top2_total_hits": 80,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5261411090443715,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.45133735312306744
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.002527151016465723,
+          "winner_in_top5": 0.0,
+          "mrr": 0.005224867724867743
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 126,
+          "two_hit": 62,
+          "top2_total_hits": 250,
+          "top3_capture_at5": 0.6352459016393439,
+          "competitive_recall_at5": 0.586953551912568,
+          "ndcg_at5": 0.5371216483958134,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4636797287412043
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0005724743504815777,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0010424798334633945
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 88,
+          "two_hit": 57,
+          "top2_total_hits": 202,
+          "top3_capture_at5": 0.6962524654832355,
+          "competitive_recall_at5": 0.6223865877712027,
+          "ndcg_at5": 0.5907657921735696,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.5066273470119624
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": -0.0004295677151811006,
+          "winner_in_top5": 0.0,
+          "mrr": -0.0010918568610875923
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.471644187053055,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 0,
+          "top2_total_hits": 125,
+          "top3_capture_at5": 0.5709023941068142,
+          "competitive_recall_at5": 0.5451197053406996,
+          "ndcg_at5": 0.45826233261400995,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.40703150440719543
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.00126303581376358,
+          "winner_in_top5": 0.0,
+          "mrr": 0.00232614224326938
+        }
+      },
+      "comparison": {
+        "helped": 0,
+        "harmed": 1,
+        "rank3_rescues": 0
+      }
+    },
+    "rating_success_zone_asymmetric_0.075": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 78,
+          "two_hit": 46,
+          "top2_total_hits": 170,
+          "top3_capture_at5": 0.6291666666666671,
+          "competitive_recall_at5": 0.5821874999999999,
+          "ndcg_at5": 0.5426192836387864,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.46963864260739296
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": -0.0007208788156940482,
+          "winner_in_top5": 0.0,
+          "mrr": -0.0016741071428572063
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 48,
+          "two_hit": 16,
+          "top2_total_hits": 80,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5276129612292169,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.45133735312306744
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.00399900320131108,
+          "winner_in_top5": 0.0,
+          "mrr": 0.005224867724867743
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 126,
+          "two_hit": 62,
+          "top2_total_hits": 250,
+          "top3_capture_at5": 0.6352459016393439,
+          "competitive_recall_at5": 0.586953551912568,
+          "ndcg_at5": 0.5374531726453281,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.46333819868655945
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0009039985999962363,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0007009497788185715
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 88,
+          "two_hit": 57,
+          "top2_total_hits": 202,
+          "top3_capture_at5": 0.6962524654832355,
+          "competitive_recall_at5": 0.6223865877712027,
+          "ndcg_at5": 0.5913615732697995,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.5066273470119624
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.00016621338104882977,
+          "winner_in_top5": 0.0,
+          "mrr": -0.0010918568610875923
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.4738091389337109,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0021649518806559076,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 0,
+          "top2_total_hits": 125,
+          "top3_capture_at5": 0.5709023941068142,
+          "competitive_recall_at5": 0.5451197053406996,
+          "ndcg_at5": 0.45859929386835857,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.4065710992506577
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0015999970681122022,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0018657370867316558
+        }
+      },
+      "comparison": {
+        "helped": 0,
+        "harmed": 1,
+        "rank3_rescues": 1
+      }
+    },
+    "rating_success_zone_asymmetric_0.1": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 78,
+          "two_hit": 46,
+          "top2_total_hits": 170,
+          "top3_capture_at5": 0.6270833333333337,
+          "competitive_recall_at5": 0.5806249999999998,
+          "ndcg_at5": 0.5419345038239939,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.46963864260739296
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": -0.002083333333333437,
+          "competitive_recall_at5": -0.0015625000000000222,
+          "ndcg_at5": -0.0014056586304865837,
+          "winner_in_top5": 0.0,
+          "mrr": -0.0016741071428572063
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 49,
+          "two_hit": 15,
+          "top2_total_hits": 79,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5265177201789057,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.44935322613894046
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0029037621509999667,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0032407407407407662
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 127,
+          "two_hit": 61,
+          "top2_total_hits": 249,
+          "top3_capture_at5": 0.6338797814207646,
+          "competitive_recall_at5": 0.5859289617486336,
+          "ndcg_at5": 0.5366270865035537,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4626551385772698
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 2,
+          "two_hit": -2,
+          "top2_total_hits": -2,
+          "top3_capture_at5": -0.001366120218579292,
+          "competitive_recall_at5": -0.0010245901639344135,
+          "ndcg_at5": 7.791245822186266e-05,
+          "winner_in_top5": 0.0,
+          "mrr": 1.7889669528925456e-05
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 89,
+          "two_hit": 56,
+          "top2_total_hits": 201,
+          "top3_capture_at5": 0.6962524654832355,
+          "competitive_recall_at5": 0.6223865877712027,
+          "ndcg_at5": 0.5908171931027809,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.5056411537180768
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 2,
+          "two_hit": -2,
+          "top2_total_hits": -2,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": -0.00037816678596980235,
+          "winner_in_top5": 0.0,
+          "mrr": -0.002078050154973199
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.4738091389337109,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0021649518806559076,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 0,
+          "top2_total_hits": 125,
+          "top3_capture_at5": 0.5690607734806632,
+          "competitive_recall_at5": 0.5437384898710864,
+          "ndcg_at5": 0.45799396364533757,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.4065710992506577
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": -0.0018416206261510082,
+          "competitive_recall_at5": -0.0013812154696132284,
+          "ndcg_at5": 0.0009946668450911966,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0018657370867316558
+        }
+      },
+      "comparison": {
+        "helped": 0,
+        "harmed": 2,
+        "rank3_rescues": 1
+      }
+    },
+    "rating_success_zone_asymmetric_0.125": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 36,
+          "one_hit": 79,
+          "two_hit": 45,
+          "top2_total_hits": 169,
+          "top3_capture_at5": 0.6291666666666671,
+          "competitive_recall_at5": 0.5834374999999998,
+          "ndcg_at5": 0.5428407294548893,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.46963864260739296
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 2,
+          "two_hit": -2,
+          "top2_total_hits": -2,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0012499999999999734,
+          "ndcg_at5": -0.0004994329995912095,
+          "winner_in_top5": 0.0,
+          "mrr": -0.0016741071428572063
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 49,
+          "two_hit": 15,
+          "top2_total_hits": 79,
+          "top3_capture_at5": 0.6468253968253963,
+          "competitive_recall_at5": 0.596031746031746,
+          "ndcg_at5": 0.5265177201789057,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.44935322613894046
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0029037621509999667,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0032407407407407662
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 56,
+          "one_hit": 128,
+          "two_hit": 60,
+          "top2_total_hits": 248,
+          "top3_capture_at5": 0.6352459016393439,
+          "competitive_recall_at5": 0.5877732240437156,
+          "ndcg_at5": 0.537221332818895,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.4626551385772698
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 3,
+          "two_hit": -3,
+          "top2_total_hits": -3,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0008196721311475308,
+          "ndcg_at5": 0.0006721587735630807,
+          "winner_in_top5": 0.0,
+          "mrr": 1.7889669528925456e-05
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 90,
+          "two_hit": 55,
+          "top2_total_hits": 200,
+          "top3_capture_at5": 0.6962524654832356,
+          "competitive_recall_at5": 0.6238658777120312,
+          "ndcg_at5": 0.5909500564403624,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.5056411537180768
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 3,
+          "two_hit": -3,
+          "top2_total_hits": -3,
+          "top3_capture_at5": 1.1102230246251565e-16,
+          "competitive_recall_at5": 0.0014792899408284654,
+          "ndcg_at5": -0.0002453034483883565,
+          "winner_in_top5": 0.0,
+          "mrr": -0.002078050154973199
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.4738091389337109,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0021649518806559076,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 56,
+          "one_hit": 125,
+          "two_hit": 0,
+          "top2_total_hits": 125,
+          "top3_capture_at5": 0.5690607734806632,
+          "competitive_recall_at5": 0.544843462246777,
+          "ndcg_at5": 0.45822100473388355,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.4065710992506577
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": -0.0018416206261510082,
+          "competitive_recall_at5": -0.00027624309392260127,
+          "ndcg_at5": 0.0012217079336371839,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0018657370867316558
+        }
+      },
+      "comparison": {
+        "helped": 0,
+        "harmed": 3,
+        "rank3_rescues": 1
+      }
+    },
+    "rating_success_zone_asymmetric_0.15": {
+      "development": {
+        "candidate": {
+          "races": 160,
+          "zero_hit": 37,
+          "one_hit": 78,
+          "two_hit": 45,
+          "top2_total_hits": 168,
+          "top3_capture_at5": 0.6291666666666671,
+          "competitive_recall_at5": 0.5834374999999998,
+          "ndcg_at5": 0.541236638156232,
+          "winner_in_top5": 0.6875,
+          "mrr": 0.4667740592740596
+        },
+        "delta": {
+          "zero_hit": 1,
+          "one_hit": 1,
+          "two_hit": -2,
+          "top2_total_hits": -3,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0012499999999999734,
+          "ndcg_at5": -0.0021035242982484492,
+          "winner_in_top5": 0.0,
+          "mrr": -0.004538690476190543
+        }
+      },
+      "temporal_holdout": {
+        "candidate": {
+          "races": 84,
+          "zero_hit": 20,
+          "one_hit": 49,
+          "two_hit": 15,
+          "top2_total_hits": 79,
+          "top3_capture_at5": 0.6507936507936504,
+          "competitive_recall_at5": 0.5990079365079366,
+          "ndcg_at5": 0.5271649329985344,
+          "winner_in_top5": 0.7023809523809523,
+          "mrr": 0.44935322613894046
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 1,
+          "two_hit": -1,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.003968253968254065,
+          "competitive_recall_at5": 0.0029761904761905766,
+          "ndcg_at5": 0.0035509749706286176,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0032407407407407662
+        }
+      },
+      "all": {
+        "candidate": {
+          "races": 244,
+          "zero_hit": 57,
+          "one_hit": 127,
+          "two_hit": 60,
+          "top2_total_hits": 247,
+          "top3_capture_at5": 0.6366120218579232,
+          "competitive_recall_at5": 0.58879781420765,
+          "ndcg_at5": 0.5363922806429263,
+          "winner_in_top5": 0.6926229508196722,
+          "mrr": 0.46077672327672337
+        },
+        "delta": {
+          "zero_hit": 1,
+          "one_hit": 2,
+          "two_hit": -3,
+          "top2_total_hits": -4,
+          "top3_capture_at5": 0.001366120218579292,
+          "competitive_recall_at5": 0.0018442622950819443,
+          "ndcg_at5": -0.0001568934024055446,
+          "winner_in_top5": 0.0,
+          "mrr": -0.0018605256310175178
+        }
+      },
+      "all_adjusted": {
+        "candidate": {
+          "races": 169,
+          "zero_hit": 24,
+          "one_hit": 90,
+          "two_hit": 55,
+          "top2_total_hits": 200,
+          "top3_capture_at5": 0.6982248520710068,
+          "competitive_recall_at5": 0.6253451676528595,
+          "ndcg_at5": 0.5900076887084629,
+          "winner_in_top5": 0.727810650887574,
+          "mrr": 0.5027882374036221
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 3,
+          "two_hit": -3,
+          "top2_total_hits": -3,
+          "top3_capture_at5": 0.0019723865877713243,
+          "competitive_recall_at5": 0.00295857988165682,
+          "ndcg_at5": -0.0011876711802878415,
+          "winner_in_top5": 0.0,
+          "mrr": -0.004930966469427922
+        }
+      },
+      "external": {
+        "candidate": {
+          "races": 9,
+          "zero_hit": 5,
+          "one_hit": 3,
+          "two_hit": 1,
+          "top2_total_hits": 5,
+          "top3_capture_at5": 0.6296296296296295,
+          "competitive_recall_at5": 0.5555555555555556,
+          "ndcg_at5": 0.4738091389337109,
+          "winner_in_top5": 0.7777777777777778,
+          "mrr": 0.31587301587301586
+        },
+        "delta": {
+          "zero_hit": 0,
+          "one_hit": 0,
+          "two_hit": 0,
+          "top2_total_hits": 0,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0,
+          "ndcg_at5": 0.0021649518806559076,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0
+        }
+      },
+      "weak_zero_one": {
+        "candidate": {
+          "races": 181,
+          "zero_hit": 57,
+          "one_hit": 124,
+          "two_hit": 0,
+          "top2_total_hits": 124,
+          "top3_capture_at5": 0.5709023941068142,
+          "competitive_recall_at5": 0.5462246777163903,
+          "ndcg_at5": 0.45824961565337935,
+          "winner_in_top5": 0.6243093922651933,
+          "mrr": 0.40680130182892654
+        },
+        "delta": {
+          "zero_hit": 1,
+          "one_hit": -1,
+          "two_hit": 0,
+          "top2_total_hits": -1,
+          "top3_capture_at5": 0.0,
+          "competitive_recall_at5": 0.0011049723756906271,
+          "ndcg_at5": 0.0012503188531329812,
+          "winner_in_top5": 0.0,
+          "mrr": 0.0020959396650004902
+        }
+      },
+      "comparison": {
+        "helped": 0,
+        "harmed": 4,
+        "rank3_rescues": 1
+      }
+    }
+  },
+  "ranked_candidates": [
+    "rating_success_zone_0.1",
+    "rating_success_zone_0.075",
+    "rating_success_zone_0.15",
+    "rating_success_zone_0.05",
+    "rating_success_zone_min2_0.1",
+    "rating_success_zone_min2_0.125",
+    "rating_success_zone_0.025",
+    "rating_success_zone_min2_0.15",
+    "rating_success_zone_min2_0.075",
+    "rating_success_zone_min2_0.05",
+    "rating_success_zone_min3_0.075",
+    "rating_success_zone_asymmetric_0.075",
+    "rating_success_zone_uplift_min2_0.125",
+    "rating_success_zone_uplift_min2_0.15",
+    "rating_success_zone_uplift_min2_0.05",
+    "rating_success_zone_uplift_min2_0.075",
+    "rating_success_zone_uplift_min2_0.1",
+    "rating_success_zone_min3_0.05",
+    "rating_success_zone_asymmetric_0.05",
+    "rating_success_zone_min3_0.125",
+    "rating_success_zone_asymmetric_0.125",
+    "rating_success_zone_min3_0.1",
+    "rating_success_zone_asymmetric_0.1",
+    "rating_success_zone_min3_0.15",
+    "rating_success_zone_asymmetric_0.15"
+  ],
+  "gates": {
+    "rating_success_zone_0.025": false,
+    "rating_success_zone_0.05": false,
+    "rating_success_zone_0.075": false,
+    "rating_success_zone_0.1": false,
+    "rating_success_zone_0.15": false,
+    "rating_success_zone_min2_0.05": false,
+    "rating_success_zone_min2_0.075": false,
+    "rating_success_zone_min2_0.1": false,
+    "rating_success_zone_min2_0.125": false,
+    "rating_success_zone_min2_0.15": false,
+    "rating_success_zone_min3_0.05": false,
+    "rating_success_zone_min3_0.075": false,
+    "rating_success_zone_min3_0.1": false,
+    "rating_success_zone_min3_0.125": false,
+    "rating_success_zone_min3_0.15": false,
+    "rating_success_zone_uplift_min2_0.05": false,
+    "rating_success_zone_uplift_min2_0.075": false,
+    "rating_success_zone_uplift_min2_0.1": false,
+    "rating_success_zone_uplift_min2_0.125": false,
+    "rating_success_zone_uplift_min2_0.15": false,
+    "rating_success_zone_asymmetric_0.05": false,
+    "rating_success_zone_asymmetric_0.075": false,
+    "rating_success_zone_asymmetric_0.1": false,
+    "rating_success_zone_asymmetric_0.125": false,
+    "rating_success_zone_asymmetric_0.15": false
+  },
+  "passing_candidates": [],
+  "recommendation": "HOLD_ALL"
+}

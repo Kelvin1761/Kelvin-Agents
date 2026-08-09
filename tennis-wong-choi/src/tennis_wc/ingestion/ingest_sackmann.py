@@ -7,7 +7,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from tennis_wc.database.db import get_connection
-from tennis_wc.ingestion.entity_mapping import get_or_create_player, upsert_tournament
+from tennis_wc.ingestion.entity_mapping import get_or_create_player, upsert_tournament, valid_player_identity
 from tennis_wc.ingestion.raw_response_store import store_raw_response, utc_now
 
 
@@ -16,6 +16,25 @@ BASE_URLS = {
     "ATP": "https://raw.githubusercontent.com/JeffSackmann/tennis_atp/master/atp_matches_{year}.csv",
     "WTA": "https://raw.githubusercontent.com/JeffSackmann/tennis_wta/master/wta_matches_{year}.csv",
 }
+
+# TennisMyLife serves live-updated ATP Challenger and tour-qualifying season
+# files in the exact Sackmann column layout (incl. serve stats), so the same
+# ingestion path applies. This is the low-tier history source that lets the
+# model price Challenger players (Phase 2b; Sackmann's own qual_chall files
+# were unreachable). ATP only — TML carries no WTA/ITF data.
+TML_PROVIDER_NAME = "tennismylife_history"
+TML_LOW_TIER_URLS = {
+    "CHALLENGER": "https://stats.tennismylife.org/data/{year}_challenger.csv",
+    "ATP_QUALI": "https://stats.tennismylife.org/data/atp_quali/{year}_atp_quali.csv",
+    # ATP tour-level main draws. OVERLAPS the Sackmann backbone, so these rows
+    # are inserted only when no jeff_sackmann row exists for the same player
+    # pair on the same tourney_date (cross-provider dedup) — this keeps tour
+    # history FRESH after the last Sackmann pull (frozen 2026-06-02; github
+    # unreachable) without double-counting matches in Elo/feature stats.
+    "ATP_MAIN": "https://stats.tennismylife.org/data/{year}.csv",
+}
+# Elo must consume both history backbones; elo_builder imports this.
+HISTORY_PROVIDERS = (PROVIDER_NAME, TML_PROVIDER_NAME)
 
 
 def ingest_sackmann_history(start_year: int, end_year: int, tours: list[str] | None = None) -> dict:
@@ -28,7 +47,14 @@ def ingest_sackmann_history(start_year: int, end_year: int, tours: list[str] | N
     player per match.
     """
     wanted_tours = tours or ["ATP", "WTA"]
-    imported = {"files": 0, "matches": 0, "player_rows": 0, "ranking_rows": 0, "errors": []}
+    imported = {
+        "files": 0,
+        "matches": 0,
+        "player_rows": 0,
+        "ranking_rows": 0,
+        "skipped_invalid_identities": 0,
+        "errors": [],
+    }
     for tour in wanted_tours:
         for year in range(start_year, end_year + 1):
             url = BASE_URLS[tour].format(year=year)
@@ -53,6 +79,7 @@ def ingest_sackmann_history(start_year: int, end_year: int, tours: list[str] | N
             imported["matches"] += stats["matches"]
             imported["player_rows"] += stats["player_rows"]
             imported["ranking_rows"] += stats["ranking_rows"]
+            imported["skipped_invalid_identities"] += stats["skipped_invalid_identities"]
     return imported
 
 
@@ -63,15 +90,83 @@ def _download_csv(url: str) -> list[dict]:
     return list(csv.DictReader(StringIO(text)))
 
 
-def _ingest_rows(tour: str, rows: list[dict], raw_id: int) -> dict[str, int]:
+def ingest_tml_low_tier_history(start_year: int, end_year: int, include_quali: bool = True) -> dict:
+    """Import TennisMyLife ATP Challenger (and tour-qualifying) season CSVs.
+
+    Same column layout as Sackmann, stored under provider
+    'tennismylife_history' so provenance stays honest. Disjoint from the
+    Sackmann backbone (that covers tour-level main draws only), so no
+    double-counted matches enter the Elo pool.
+    """
+    kinds = ["CHALLENGER"] + (["ATP_QUALI"] if include_quali else []) + ["ATP_MAIN"]
+    imported = {
+        "files": 0,
+        "matches": 0,
+        "player_rows": 0,
+        "ranking_rows": 0,
+        "skipped_duplicates": 0,
+        "skipped_invalid_identities": 0,
+        "errors": [],
+    }
+    for kind in kinds:
+        for year in range(start_year, end_year + 1):
+            url = TML_LOW_TIER_URLS[kind].format(year=year)
+            try:
+                rows = _download_csv(url)
+            except HTTPError as exc:
+                if exc.code == 404:
+                    imported["errors"].append({"kind": kind, "year": year, "error": "csv_not_found"})
+                    continue
+                raise
+            raw_id = store_raw_response(
+                TML_PROVIDER_NAME,
+                url,
+                {"kind": kind, "year": year},
+                rows,
+                200,
+                "match_history",
+                f"{kind}-{year}",
+            )
+            stats = _ingest_rows(
+                "ATP",
+                rows,
+                raw_id,
+                provider=TML_PROVIDER_NAME,
+                dedup_against_provider=PROVIDER_NAME if kind == "ATP_MAIN" else None,
+            )
+            imported["files"] += 1
+            imported["matches"] += stats["matches"]
+            imported["player_rows"] += stats["player_rows"]
+            imported["ranking_rows"] += stats["ranking_rows"]
+            imported["skipped_duplicates"] += stats.get("skipped_duplicates", 0)
+            imported["skipped_invalid_identities"] += stats["skipped_invalid_identities"]
+    return imported
+
+
+def _ingest_rows(
+    tour: str,
+    rows: list[dict],
+    raw_id: int,
+    provider: str = PROVIDER_NAME,
+    dedup_against_provider: str | None = None,
+) -> dict[str, int]:
     now = utc_now()
-    stats = {"matches": 0, "player_rows": 0, "ranking_rows": 0}
+    stats = {
+        "matches": 0,
+        "player_rows": 0,
+        "ranking_rows": 0,
+        "skipped_duplicates": 0,
+        "skipped_invalid_identities": 0,
+    }
     for row in rows:
+        if not _has_valid_player_identities(row):
+            stats["skipped_invalid_identities"] += 1
+            continue
         match_date = _parse_tourney_date(row.get("tourney_date"))
         if not match_date:
             continue
         tournament_id = upsert_tournament(
-            PROVIDER_NAME,
+            provider,
             row["tourney_id"],
             row.get("tourney_name") or row["tourney_id"],
             tour,
@@ -81,7 +176,7 @@ def _ingest_rows(tour: str, rows: list[dict], raw_id: int) -> dict[str, int]:
             None,
         )
         winner_id = get_or_create_player(
-            PROVIDER_NAME,
+            provider,
             str(row["winner_id"]),
             row.get("winner_name") or f"Player {row['winner_id']}",
             tour,
@@ -89,22 +184,56 @@ def _ingest_rows(tour: str, rows: list[dict], raw_id: int) -> dict[str, int]:
             current_rank=_int_or_none(row.get("winner_rank")),
         )
         loser_id = get_or_create_player(
-            PROVIDER_NAME,
+            provider,
             str(row["loser_id"]),
             row.get("loser_name") or f"Player {row['loser_id']}",
             tour,
             raw_id,
             current_rank=_int_or_none(row.get("loser_rank")),
         )
-        stats["ranking_rows"] += _upsert_rank(winner_id, match_date, tour, row.get("winner_rank"), row.get("winner_rank_points"), raw_id, now)
-        stats["ranking_rows"] += _upsert_rank(loser_id, match_date, tour, row.get("loser_rank"), row.get("loser_rank_points"), raw_id, now)
-        _insert_history_pair(tour, row, raw_id, winner_id, loser_id, match_date, now)
+        stats["ranking_rows"] += _upsert_rank(winner_id, match_date, tour, row.get("winner_rank"), row.get("winner_rank_points"), raw_id, now, provider)
+        stats["ranking_rows"] += _upsert_rank(loser_id, match_date, tour, row.get("loser_rank"), row.get("loser_rank_points"), raw_id, now, provider)
+        if dedup_against_provider and _history_pair_exists(dedup_against_provider, winner_id, loser_id, match_date):
+            stats["skipped_duplicates"] += 1
+            continue
+        _insert_history_pair(tour, row, raw_id, winner_id, loser_id, match_date, now, provider)
         stats["matches"] += 1
         stats["player_rows"] += 2
     return stats
 
 
-def _insert_history_pair(tour: str, row: dict, raw_id: int, winner_id: int, loser_id: int, match_date: str, now: str) -> None:
+def _has_valid_player_identities(row: dict) -> bool:
+    """Reject malformed history rows without aborting the whole provider file."""
+    return valid_player_identity(row.get("winner_id"), row.get("winner_name")) and valid_player_identity(
+        row.get("loser_id"),
+        row.get("loser_name"),
+    )
+
+
+def _history_pair_exists(provider: str, winner_id: int, loser_id: int, match_date: str) -> bool:
+    """True when another provider already recorded this player pair NEARBY —
+    cross-provider dedup so overlapping season files never double-count a
+    match in Elo/feature stats. The window is ±10 days (not exact-date)
+    because the two sources use different date conventions: Sackmann stamps
+    every match with the tournament START date, TML main files carry the
+    actual per-day match date (verified: AO 2026 = 13 distinct TML dates vs 1
+    Sackmann date; exact-date dedup let 1,027 tour matches through twice).
+    A genuinely repeated pairing within 10 days is far rarer than the
+    double-count this prevents."""
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT 1 FROM player_match_history
+            WHERE source_provider = ? AND player_id = ? AND opponent_id = ?
+              AND match_date BETWEEN date(?, '-10 days') AND date(?, '+10 days')
+            LIMIT 1
+            """,
+            (provider, winner_id, loser_id, match_date, match_date),
+        ).fetchone()
+    return row is not None
+
+
+def _insert_history_pair(tour: str, row: dict, raw_id: int, winner_id: int, loser_id: int, match_date: str, now: str, provider: str = PROVIDER_NAME) -> None:
     tournament_level = _normalise_level(tour, row.get("tourney_level"))
     surface = _normalise_surface(row.get("surface"))
     match_format = f"BO{row.get('best_of') or 3}"
@@ -196,14 +325,14 @@ def _insert_history_pair(tour: str, row: dict, raw_id: int, winner_id: int, lose
                     _bool_to_int(payload["deciding_set_won"]),
                     _bool_to_int(payload["lost_first_set"]),
                     _bool_to_int(payload["comeback_after_losing_first_set"]),
-                    PROVIDER_NAME,
+                    provider,
                     raw_id,
                     now,
                 ),
             )
 
 
-def _upsert_rank(player_id: int, ranking_date: str, tour: str, rank: str | None, points: str | None, raw_id: int, now: str) -> int:
+def _upsert_rank(player_id: int, ranking_date: str, tour: str, rank: str | None, points: str | None, raw_id: int, now: str, provider: str = PROVIDER_NAME) -> int:
     parsed_rank = _int_or_none(rank)
     if parsed_rank is None:
         return 0
@@ -220,7 +349,7 @@ def _upsert_rank(player_id: int, ranking_date: str, tour: str, rank: str | None,
                 ranking_points = excluded.ranking_points,
                 raw_response_id = excluded.raw_response_id
             """,
-            (player_id, ranking_date, tour, parsed_rank, _int_or_none(points), PROVIDER_NAME, raw_id, now),
+            (player_id, ranking_date, tour, parsed_rank, _int_or_none(points), provider, raw_id, now),
         )
     return 1
 
@@ -276,19 +405,34 @@ def _normalise_level(tour: str, value: str | None) -> str:
         return f"{tour}_FINALS"
     if raw == "M":
         return "ATP_1000" if tour == "ATP" else "WTA_1000"
+    if raw == "C":
+        # Challenger circuit (TML low-tier files; matches the level the
+        # competition-name heuristic resolves for live Sportsbet fixtures).
+        return "CHALLENGER"
+    if raw in {"250", "500", "1000"}:
+        # TML qualifying files carry the parent tour event's numeric level.
+        return f"{tour}_{raw}"
     return "UNKNOWN"
 
 
 def _int_or_none(value: str | None) -> int | None:
     if value in {None, ""}:
         return None
-    return int(float(value))
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        # Dirty cells appear in the TML files (e.g. "2s" in a stat column) —
+        # treat as missing rather than aborting the whole season file.
+        return None
 
 
 def _float_or_none(value: str | None) -> float | None:
     if value in {None, ""}:
         return None
-    return float(value)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _safe_rate(numerator: float | None, denominator: float | None) -> float | None:

@@ -3,6 +3,111 @@ from __future__ import annotations
 import json
 
 
+def test_validated_singles_keep_only_one_prop_per_match():
+    from tennis_wc.reports.daily_report import _recommended_picks
+
+    def leg(identifier, match_id, ev):
+        return {
+            "id": identifier,
+            "match_id": match_id,
+            "market_key": f"total_player_{identifier}_aces_5_5",
+            "prob": 0.62,
+            "data_quality": 0.90,
+            "odds": 1.80,
+            "edge": 0.07,
+            "ev": ev,
+        }
+
+    picks = _recommended_picks(
+        {
+            "strategy": {"enabled_families": ["player_aces"]},
+            "value_legs": [leg("a", 1, 0.15), leg("b", 1, 0.14), leg("c", 2, 0.10)],
+            "combos": [],
+        }
+    )
+    assert [row["id"] for row in picks["validated_singles"]] == ["a", "c"]
+
+
+def test_early_main_singles_and_combo_are_capped_at_half_unit():
+    from tennis_wc.reports.daily_report import _recommended_picks
+
+    family_state = {
+        "enabled": True,
+        "tier": "EARLY_MAIN",
+        "scorecard_settled": 58,
+        "model_brier": 0.2371,
+        "market_brier": 0.2512,
+    }
+
+    def leg(identifier, match_id):
+        return {
+            "id": identifier,
+            "match_id": match_id,
+            "market_key": f"total_player_{identifier}_aces_7_5",
+            "prob": 0.62,
+            "data_quality": 0.92,
+            "odds": 1.80,
+            "edge": 0.07,
+            "ev": 0.116,
+            "confidence_score": 77,
+        }
+
+    a, b = leg("a", 1), leg("b", 2)
+    picks = _recommended_picks(
+        {
+            "strategy": {
+                "enabled_families": ["player_aces"],
+                "family_states": {"player_aces": family_state},
+            },
+            "value_legs": [a, b],
+            "combos": [
+                {
+                    "legs": [a, b],
+                    "prob": 0.62 * 0.62,
+                    "odds": 1.80 * 1.80,
+                    "ev": 0.245,
+                }
+            ],
+        }
+    )
+
+    assert all(
+        row["strategy_tier"] == "EARLY_MAIN_SINGLE"
+        and row["stake_units"] == 0.5
+        for row in picks["validated_singles"]
+    )
+    assert picks["validated_2_leg"]["strategy_tier"] == "EARLY_MAIN_2_LEG"
+    assert picks["validated_2_leg"]["stake_units"] == 0.5
+
+
+def test_research_prop_combos_exclude_high_odds_and_same_match_duplicates():
+    from tennis_wc.reports.daily_report import _prop_combos
+
+    def leg(identifier, match_id, ev, odds=1.8):
+        return {
+            "id": identifier,
+            "match_id": match_id,
+            "market_key": f"total_player_{identifier}_aces_7_5",
+            "prob": 0.62,
+            "odds": odds,
+            "data_quality": 0.90,
+            "edge": 0.06,
+            "ev": ev,
+        }
+
+    combos = _prop_combos(
+        [
+            leg("a", 1, 0.10),
+            leg("same-match-weaker", 1, 0.08),
+            leg("b", 2, 0.09),
+            leg("high-odds", 3, 0.20, odds=2.6),
+            leg("match-total", 4, 0.20) | {"market_key": "total_aces_18_5"},
+        ]
+    )
+    assert len(combos) == 1
+    assert {row["id"] for row in combos[0]["legs"]} == {"a", "b"}
+
+
 def _banker_row(
     match_id: int,
     selection_name: str,
@@ -112,7 +217,7 @@ def _high_odds_value_row(
     }
 
 
-def test_render_daily_report_includes_match_context_and_explanation():
+def test_render_daily_report_mobile_first_structure():
     from tennis_wc.reports.daily_report import render_daily_report
 
     rows = [
@@ -154,15 +259,65 @@ def test_render_daily_report_includes_match_context_and_explanation():
 
     report = render_daily_report("2026-05-10", rows, {}, [])
 
+    # The recommended-bets summary must come first, before any detail.
+    assert "## 🎯 今日落注建議" in report
+    assert report.index("🎯 今日落注建議") < report.index("數據狀態")
+    # A model favourite without a validated price edge is reference-only.  The
+    # report must never relabel it as a fallback "穩膽".
+    assert "今日最穩單注" not in report
+    assert "今日結論：❌ 今日無清晰好注" in report
+    assert "正式推薦只做已驗證 tennis props" in report
+    # Model-edge singles are demoted to reference with the backtest warning.
+    assert "❌ 跳過：Match-winner 模型 edge 單" in report
+    assert "📎 參考：Match-winner 模型 edge 單" in report
+    assert "1. Karolina Pliskova @ 1.92" in report
+    # Scoring breakdown shows supports (player-b side flips 0.35 -> 65%).
+    assert "➕" in report
+    # The old per-card boilerplate must be gone.
+    assert "### BET 1｜" not in report
+    assert "模型勝率以 Elo 為骨幹，喺 logit 空間加入其他有效因素微調" not in report
+    # Bankroll/staking conventions still stated once.
     assert "1 unit = $1" in report
     assert "tenth-Kelly" in report
-    assert "### BET 1｜Opponent Player vs Karolina Pliskova" in report
-    assert "建議注碼：1u ($1.00)" in report
-    assert "分析：" in report
-    assert "支持因素：" in report
-    assert "logit 空間" in report
-    assert "分項拆解：" not in report
-    assert "對手：Opponent Player" not in report
+
+
+def test_render_daily_report_honest_when_no_bets(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+
+    # Isolate from the live DB: without this, real prop/value rows leak into
+    # the "empty slate" scenario and the headline is no longer ❌.
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.reports.daily_report import render_daily_report
+
+    init_db()
+    report = render_daily_report("2026-05-10", [], {}, [])
+
+    assert "今日結論：❌ 今日無清晰好注，建議唔落" in report
+    assert "今日無通過 hard rule 嘅模型 edge 單" in report
+
+
+def test_render_daily_report_marks_zero_live_odds_as_data_unavailable(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.reports.daily_report import render_daily_report
+
+    init_db()
+    report = render_daily_report(
+        "2026-05-10",
+        [],
+        {
+            "run_mode": "live_full",
+            "sportsbet_odds_rows": 0,
+            "latest_run_errors": [],
+        },
+        [],
+    )
+
+    assert "資料未就緒，唔可以判斷今日有冇投注機會" in report
+    assert "今日無清晰好注" not in report
 
 
 def test_derived_at_least_one_set_market_uses_yes_no_selection():
@@ -191,7 +346,7 @@ def test_derived_at_least_one_set_market_uses_yes_no_selection():
     yes = _derived_market_probability(row, prediction, None)
     no = _derived_market_probability(row | {"selection_name": "Player A No"}, prediction, None)
 
-    assert yes["reason"] == "derived_at_least_one_set_from_match_model"
+    assert yes["reason"] == "derived_at_least_one_set_from_set_distribution"
     assert yes["probability"] > 0.7
     assert round(yes["probability"] + no["probability"], 6) == 1.0
 
@@ -204,9 +359,14 @@ def test_sportsbet_round_label_from_event_text():
     assert sportsbet_round_label(None, None) == "UNKNOWN"
 
 
-def test_render_banker_report_uses_nba_style_four_tiers_and_positive_ev():
+def test_render_banker_report_cancels_old_categories(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
     from tennis_wc.reports.daily_report import render_banker_report
 
+    init_db()
     # Two trustworthy match-winner BETs in different matches -> one +EV combo.
     rows = [
         _market_banker_row(1, "Player One", 1.84, edge=0.13, confidence=85),
@@ -217,12 +377,92 @@ def test_render_banker_report_uses_nba_style_four_tiers_and_positive_ev():
 
     report = render_banker_report("2026-06-03", rows)
 
-    assert "NBA Wong Choi 式四線" in report
-    assert "組合1 穩膽" in report
-    assert "組合X 火藥庫" in report
-    # The combo must be reported with a +EV figure and a half-Kelly stake.
-    assert "組合 EV：+" in report
-    assert "Player One" in report and "Player Two" in report
+    assert "策略重心：Player Props" in report
+    assert "EARLY_MAIN_SINGLE／EARLY_MAIN_2_LEG" in report
+    assert "VALIDATED 代表完整畢業" in report
+    assert "組合1 穩膽" not in report
+    assert "組合X 火藥庫" not in report
+    assert "Player One" not in report and "Player Two" not in report
+
+
+def test_chalk_combo_dicts_builds_disjoint_tracked_chains():
+    from tennis_wc.reports.daily_report import _chalk_combo_dicts
+
+    def chalk_row(match_id: int, name: str, odds: float, prob: float) -> dict:
+        row = _market_banker_row(match_id, name, odds, confidence=80)
+        row["model_probability"] = prob
+        return row
+
+    rows = [
+        chalk_row(1, "Fav One", 1.10, 0.90),
+        chalk_row(2, "Fav Two", 1.15, 0.85),
+        chalk_row(3, "Fav Three", 1.18, 0.80),
+        chalk_row(4, "Fav Four", 1.20, 0.75),
+        chalk_row(5, "Fav Five", 1.19, 0.70),
+        # Non-qualifiers must be excluded: odds above cap / low model prob.
+        chalk_row(6, "Too Long", 1.40, 0.90),
+        chalk_row(7, "No Opinion", 1.10, 0.50),
+    ]
+
+    combos = _chalk_combo_dicts(rows)
+
+    # 5 qualifying legs -> one 3-leg chain + one 2-leg chain, disjoint.
+    assert [len(c["legs"]) for c in combos] == [3, 2]
+    assert all(c["tier"] == "穩膽大熱串" for c in combos)
+    assert all(c["stake_units"] == 1.0 for c in combos)
+    seen: set[str] = set()
+    for combo in combos:
+        for leg in combo["legs"]:
+            assert leg["selection_name"] not in seen
+            seen.add(leg["selection_name"])
+    assert "Too Long" not in seen and "No Opinion" not in seen
+    # Strongest three favourites form the first chain.
+    assert {leg["selection_name"] for leg in combos[0]["legs"]} == {"Fav One", "Fav Two", "Fav Three"}
+
+
+def test_tracked_prop_combo_keeps_each_leg_match_and_market_identity():
+    from tennis_wc.reports.daily_report import _tracked_prop_combo
+
+    combo = {
+        "odds": 3.42,
+        "prob": 0.39,
+        "ev": 0.3338,
+        "legs": [
+            {
+                "id": "prop:11:total_alex_aces_7_5:over:7.5",
+                "match_id": 11,
+                "match_label": "Alex vs Bob",
+                "market_key": "total_alex_aces_7_5",
+                "market_name": "Total Alex Aces",
+                "selection_name": "Over 7.5",
+                "selection_side": None,
+                "line": 7.5,
+                "odds": 1.80,
+                "prob": 0.65,
+                "edge": 0.06,
+            },
+            {
+                "id": "prop:22:total_aces_18_5:under:18.5",
+                "match_id": 22,
+                "match_label": "Carl vs Dan",
+                "market_key": "total_aces_18_5",
+                "market_name": "Total Aces in the Match",
+                "selection_name": "Under 18.5",
+                "selection_side": None,
+                "line": 18.5,
+                "odds": 1.90,
+                "prob": 0.60,
+                "edge": 0.05,
+            },
+        ],
+    }
+
+    tracked = _tracked_prop_combo(combo)
+
+    assert tracked["tier"] == "PROP_2_LEG_TRIAL"
+    assert [leg["match_id"] for leg in tracked["legs"]] == [11, 22]
+    assert tracked["legs"][0]["market_name"] == "Total Alex Aces"
+    assert tracked["combo_odds"] == 3.42
 
 
 def test_render_banker_report_excludes_untrusted_prop_legs(tmp_path, monkeypatch):
@@ -244,7 +484,7 @@ def test_render_banker_report_excludes_untrusted_prop_legs(tmp_path, monkeypatch
     report = render_banker_report("2026-06-03", [prop])
 
     assert "Aces Over 2.5" not in report
-    assert "無合格單腳" in report
+    assert "RESEARCH_ONLY" in report
 
 
 def test_render_banker_report_empty_when_no_trustworthy_legs(tmp_path, monkeypatch):
@@ -257,11 +497,17 @@ def test_render_banker_report_empty_when_no_trustworthy_legs(tmp_path, monkeypat
     init_db()  # empty DB -> no authoritative match-winner BET legs
     report = render_banker_report("2026-06-03", [])
 
-    assert "無合格單腳" in report
+    assert "RESEARCH_ONLY" in report
 
 
-def test_opened_markets_produce_trial_combos():
+def test_opened_markets_produce_trial_combos(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
     from tennis_wc.reports.daily_report import render_banker_report
+
+    init_db()
 
     def derived_leg(match_id, selection, odds, edge):
         return {
@@ -292,9 +538,9 @@ def test_opened_markets_produce_trial_combos():
     ]
     report = render_banker_report("2026-06-03", rows)
 
-    # The opened (unvalidated) markets must surface as TRIAL combos, clearly flagged.
-    assert "試注組合（未驗證市場" in report
-    assert "Player Set One" in report
+    # General derived markets can no longer bypass the dedicated prop tracker.
+    assert "RESEARCH_ONLY" in report
+    assert "Player Set One" not in report
 
 
 def test_stable_value_history_requires_sample_hit_rate_roi_and_clv(tmp_path, monkeypatch):
@@ -385,3 +631,77 @@ def test_calibration_safety_margin_for_overconfident_bucket(tmp_path, monkeypatc
             )
 
     assert banker_probability_safety_margin(0.68) > 0
+
+
+# --------------------------------------------------------------------------- #
+# Calibration haircut must actually bite (2026-07-25)
+# --------------------------------------------------------------------------- #
+def _seed_tracker(conn, prob, wins, losses, tier="VALUE_BANKER"):
+    n = 0
+    for status, count in (("WON", wins), ("LOST", losses)):
+        for _ in range(count):
+            n += 1
+            conn.execute(
+                """INSERT INTO clv_tracker
+                   (recommendation_type, source_id, match_id, match_date, selection_name,
+                    market_key, market_name, tier, model_probability, odds_taken,
+                    result_status, recorded_at, updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                ("prediction", n, n, "2026-07-01", f"P{n}", "match_winner",
+                 "Match Betting", tier, prob, 2.0, status, "now", "now"),
+            )
+    conn.commit()
+
+
+def test_overconfident_bucket_haircut_blocks_banker(tmp_path, monkeypatch):
+    """A bucket that forecasts 87% but wins 60% must be cut hard enough to fail
+    the banker gates. The old rule capped the haircut at 0.10, which left 0.877
+    -> 0.777 and still cleared CORE_BANKER (>=0.68) on a bucket losing 40%."""
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.reports import calibration_report as cr
+
+    init_db()
+
+    with get_connection() as conn:
+        _seed_tracker(conn, 0.88, wins=18, losses=12)   # forecast 88%, actual 60%
+
+    haircut = cr.banker_probability_safety_margin(0.88)
+    assert haircut > 0.10, f"haircut must exceed the old 0.10 cap, got {haircut}"
+    assert 0.88 - haircut < 0.68, "effective prob must fail the CORE_BANKER gate"
+
+
+def test_underconfident_bucket_gets_no_bonus(tmp_path, monkeypatch):
+    """We never inflate a probability -- that would manufacture bankers."""
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.reports import calibration_report as cr
+
+    init_db()
+
+    with get_connection() as conn:
+        _seed_tracker(conn, 0.52, wins=25, losses=8)    # forecast 52%, actual 76%
+
+    assert cr.banker_probability_safety_margin(0.52) == 0.0
+
+
+def test_thin_bucket_is_shrunk_not_trusted(tmp_path, monkeypatch):
+    """Small samples must not swing the gate on their own."""
+    from conftest import configure_test_db
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.reports import calibration_report as cr
+
+    init_db()
+
+    with get_connection() as conn:
+        _seed_tracker(conn, 0.72, wins=2, losses=10)    # forecast 72%, actual 17%
+
+    haircut = cr.banker_probability_safety_margin(0.72)
+    raw_error = 0.72 - (2 / 12)
+    assert 0 < haircut < raw_error, "thin bucket must be shrunk toward 0"

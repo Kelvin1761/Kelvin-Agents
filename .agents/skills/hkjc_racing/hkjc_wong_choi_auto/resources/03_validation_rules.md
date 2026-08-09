@@ -8,7 +8,7 @@ Validation fails if output contains:
 - `[FILL]`
 - score outside 0-100
 - ability formula mismatch
-- rank or top4 not sorted by live verdict order (`rank_score`, with `ability_score` as secondary key; live includes draw micro tie-break when #3/#4 are within the trigger gap)
+- rank or top4 not sorted by `ability_score` descending (horse number is the deterministic exact-tie key; there is no live micro tie-break or safety swap)
 - grade threshold mismatch
 - empty core logic
 - forbidden generic phrases

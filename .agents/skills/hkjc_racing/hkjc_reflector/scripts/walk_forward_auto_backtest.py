@@ -20,6 +20,10 @@ os.environ.setdefault("PYTHONUTF8", "1")
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
+_PROJECT_ROOT = Path(__file__).resolve().parents[5]
+sys.path.insert(0, str(_PROJECT_ROOT / ".agents" / "skills" / "shared_racing"))
+from eval_metrics import race_metrics  # noqa: E402
+
 
 OLD_MATRIX_WEIGHTS = {
     "sectional": 0.23,
@@ -41,37 +45,24 @@ OLD_MATRIX_FORMULAS = {
     "class_advantage": (("class_score", 0.70), ("distance_score", 0.30)),
 }
 
-# The "new" model mirrors live PRODUCTION. To prevent the weights drifting out of
-# sync with the engine (the original bug — they were stale and never-deployed),
-# import them straight from the engine's single source of truth. Falls back to a
-# pinned copy only if the engine package can't be located.
+# The "new" model mirrors live PRODUCTION and therefore imports from the single
+# source of truth.  Fail closed if that source is unavailable; a stale fallback
+# can silently turn a calibration run into a test of a model that is not live.
 #
-# WARNING: the recompute path below can only use the 12 persisted feature_scores.
-# Production's form_line uses formline_strength_score / margin_trend_score and
-# stability uses trackwork_trend_score — these sub-features are NOT persisted, so
-# the recompute CANNOT reproduce production form_line/stability exactly. For a
-# faithful production backtest, trust the "prod" column, which ranks by the
-# persisted python_auto.ability_score directly.
+# NOTE on recompute fidelity: production form_line/stability/race_shape depend on
+# derived sub-features (formline_strength_score, margin_trend_score,
+# trackwork_trend_score, race_shape_context_score). Since commit d28a9e8 the engine
+# persists them in python_auto.derived_feature_scores and score_meeting() merges
+# them into the recompute features. Meetings scored by OLDER engine versions lack
+# that block — there the recompute falls back to neutral-60 / draw_score and CANNOT
+# reproduce production form_line/stability/race_shape exactly. Post-matrix
+# adjustments (trainer_signal v3, health_only_v2, finish-time trend) are likewise
+# not re-applied. For a faithful production backtest, trust the "prod" column,
+# which ranks by the persisted python_auto.ability_score directly.
 _ENGINE = Path(__file__).resolve().parents[2] / "hkjc_wong_choi_auto" / "scripts" / "racing_engine"
-try:
-    sys.path.insert(0, str(_ENGINE))
-    from scoring import MATRIX_WEIGHTS as NEW_MATRIX_WEIGHTS  # type: ignore
-    from matrix_mapper import MATRIX_FORMULAS as NEW_MATRIX_FORMULAS  # type: ignore
-except Exception:  # pragma: no cover - fallback to pinned production snapshot
-    NEW_MATRIX_WEIGHTS = {
-        "sectional": 0.1922, "trainer_signal": 0.2296, "stability": 0.0955,
-        "race_shape": 0.2661, "class_advantage": 0.1387, "horse_health": 0.0,
-        "form_line": 0.0778,
-    }
-    NEW_MATRIX_FORMULAS = {
-        "stability": (("form_score", 0.50), ("consistency_score", 0.40), ("trackwork_trend_score", 0.10)),
-        "sectional": (("speed_score", 0.65), ("track_going_score", 0.35)),
-        "race_shape": (("draw_score", 1.00),),
-        "trainer_signal": (("jockey_score", 0.55), ("trainer_score", 0.45)),
-        "horse_health": (("risk_score", 0.55), ("weight_score", 0.35), ("confidence_score", 0.10)),
-        "form_line": (("formline_strength_score", 0.70), ("margin_trend_score", 0.30)),
-        "class_advantage": (("class_score", 0.75), ("weight_score", 0.25)),
-    }
+sys.path.insert(0, str(_ENGINE))
+from scoring import MATRIX_WEIGHTS as NEW_MATRIX_WEIGHTS  # type: ignore
+from matrix_mapper import MATRIX_FORMULAS as NEW_MATRIX_FORMULAS  # type: ignore
 
 
 def clip_score(value: object, default: float = 60.0) -> float:
@@ -140,6 +131,12 @@ def score_meeting(meeting_dir: Path) -> dict:
             features = auto.get("feature_scores", {})
             if not features:
                 continue
+            # Merge persisted derived sub-features (formline_strength, margin_trend,
+            # trackwork_trend, race_shape_context, ...) so the recompute matches the
+            # production matrix formulas where the engine version persisted them.
+            derived = auto.get("derived_feature_scores")
+            if isinstance(derived, dict):
+                features = {**features, **derived}
             scored.append({
                 "horse_num": horse_num,
                 "old": compute_ability(features, OLD_MATRIX_FORMULAS, OLD_MATRIX_WEIGHTS),
@@ -148,7 +145,9 @@ def score_meeting(meeting_dir: Path) -> dict:
                 "prod": clip_score(auto.get("ability_score", 60.0)),
             })
         if scored:
-            races.append(evaluate_race(race_num, scored, actual[race_num]))
+            race_eval = evaluate_race(race_num, scored, actual[race_num])
+            race_eval["field"] = len(scored)
+            races.append(race_eval)
 
     return {
         "meeting": str(meeting_dir),
@@ -173,24 +172,22 @@ def evaluate_race(race_num: int, scored: list[dict], actual_pos: dict[int, int])
 def evaluate_model(scored: list[dict], actual_pos: dict[int, int], actual_top3: list[int], key: str) -> dict:
     # Deterministic tie-break: higher score first, then lower horse number.
     picks = [item["horse_num"] for item in sorted(scored, key=lambda item: (-item[key], item["horse_num"]))[:4]]
-    actual_set = set(actual_top3)
-    hits = sum(1 for horse in picks[:3] if horse in actual_set)
-    winner = actual_top3[0] if actual_top3 else None
-    order_issue = False
-    if len(picks) >= 4:
-        order_issue = min(actual_pos.get(picks[2], 99), actual_pos.get(picks[3], 99)) < min(
-            actual_pos.get(picks[0], 99), actual_pos.get(picks[1], 99)
-        )
+    canonical = race_metrics(picks, actual_top3, actual_pos=actual_pos)
     return {
         "picks": picks,
-        "hits": hits,
-        "gold": hits == 3,
-        "good": len(picks) >= 2 and picks[0] in actual_set and picks[1] in actual_set,
-        "min_threshold": hits >= 2,
-        "single": hits >= 1,
-        "champion": bool(picks and picks[0] == winner),
-        "top3_has_champion": winner in set(picks[:3]),
-        "order_issue": order_issue,
+        "hits": canonical["hits"],
+        "gold": canonical["gold"],
+        # legacy HKJC "good" is the positional definition (picks 1+2 both in top 3)
+        "good": canonical["good_positional"],
+        "min_threshold": canonical["good_any2"],
+        "single": canonical["pass_any1"],
+        "champion": canonical["champion"],
+        "top3_has_champion": canonical["winner_in_top3"],
+        "order_issue": canonical["order_issue"],
+        # canonical additions (same ruler as AU reports)
+        "good_any2": canonical["good_any2"],
+        "exclusive_label": canonical["exclusive_label"],
+        "mrr": canonical["reciprocal_rank"],
     }
 
 
@@ -207,6 +204,7 @@ def summarize(races: list[dict]) -> dict:
             "champion": sum(r[key]["champion"] for r in races),
             "top3_has_champion": sum(r[key]["top3_has_champion"] for r in races),
             "order_issue": sum(r[key]["order_issue"] for r in races),
+            "good_any2": sum(r[key].get("good_any2", False) for r in races),
         }
     return summary
 

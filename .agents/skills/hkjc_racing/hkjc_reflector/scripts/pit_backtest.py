@@ -147,8 +147,10 @@ def build_change(sub: pd.DataFrame) -> dict:
 
 
 class _Ratings:
-    def __init__(self, jockey, trainer):
+    def __init__(self, jockey, trainer, as_of_date):
         self.jockey, self.trainer = jockey, trainer
+        self.temporal_mode = "point_in_time"
+        self.as_of_date = as_of_date
 
     def lookup(self, group, raw_name):
         table = self.jockey if group == "jockey" else self.trainer
@@ -164,18 +166,25 @@ class _Ratings:
 
 
 class _Priors:
-    def __init__(self, combo, jd, td, change):
+    def __init__(self, combo, jd, td, change, as_of_date):
         self.combo, self.jockey_distance, self.trainer_distance, self.jockey_change = combo, jd, td, change
+        self.temporal_mode = "point_in_time"
+        self.as_of_date = as_of_date
 
 
 def inject_as_of(all_rows: pd.DataFrame, meeting_date: str):
     sub = all_rows[all_rows["Date"] < meeting_date]
-    live_priors._JT_RATINGS = _Ratings(build_ratings(sub, "jockey"), build_ratings(sub, "trainer"))
+    live_priors._JT_RATINGS = _Ratings(
+        build_ratings(sub, "jockey"),
+        build_ratings(sub, "trainer"),
+        meeting_date,
+    )
     engine_core._TRAINER_SIGNAL_PRIORS = _Priors(
         _grouped_priors(sub, ["Jockey", "Trainer"]),
         _grouped_priors(sub, ["Jockey", "Distance"]),
         _grouped_priors(sub, ["Trainer", "Distance"]),
         build_change(sub),
+        meeting_date,
     )
     return len(sub)
 
@@ -195,7 +204,10 @@ def main() -> int:
     # 強制 combo 行 as-of（archive 有注入 jockey_trainer_combo_prior，會蓋過 as-of）
     RacingEngine._jockey_trainer_prior = lambda self: None
 
-    all_rows = load_all_rows()
+    try:
+        all_rows = load_all_rows()
+    except (OSError, RuntimeError) as exc:
+        raise SystemExit(f"PIT source preflight failed: {exc}") from exc
     print(f"raw rows: {len(all_rows)}  date range {all_rows['Date'].min()}→{all_rows['Date'].max()}")
 
     all_races, errors, skipped = [], [], []

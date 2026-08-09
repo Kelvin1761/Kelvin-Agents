@@ -1,0 +1,603 @@
+{
+  "method": {
+    "outcome_blind": true,
+    "uses_finish_labels": false,
+    "uses_original_rank_or_score": false,
+    "calculates_weighted_ability": false,
+    "calculates_ranking": false,
+    "missing_is_neutral_60": true,
+    "public_12_feature_schema_unchanged": true
+  },
+  "formula_contract": {
+    "global": {
+      "neutral": 60.0,
+      "shrinkage": "score = 60 + reliability * (raw_score - 60)",
+      "relative_scale": "within-race percentile mapped to 50–70; ties averaged",
+      "no_evidence": "score=60, reliability=0",
+      "score_range": "0–100",
+      "reliability_range": "0–1"
+    },
+    "speed_engine": {
+      "inputs": [
+        "raw_l400"
+      ],
+      "formula": "70% existing L400 domain bands + 30% within-race lower-is-better percentile; then reliability 0.65",
+      "excluded": [
+        "going",
+        "raw_finish_time_adj due development coverage 19.6%",
+        "trackwork sectional",
+        "distance bonus"
+      ],
+      "cold_horse": "missing L400 remains neutral 60, not penalized"
+    },
+    "stability": {
+      "inputs": [
+        "last6_runs",
+        "last6_mean_finish",
+        "last6_best_finish",
+        "last6_worst_finish",
+        "last6_top3_count"
+      ],
+      "formula": "50% mean-finish relative + 35% top3-rate relative + 15% finish-range relative; reliability=min(runs/4,1)",
+      "excluded": [
+        "form-line opponent strength",
+        "trackwork",
+        "margin narrative"
+      ],
+      "cold_horse": "zero prior runs remains neutral 60"
+    },
+    "distance_context": {
+      "inputs": [
+        "same_distance_starts",
+        "same_distance_wins",
+        "same_distance_seconds",
+        "same_distance_thirds",
+        "same_venue_distance_starts",
+        "same_venue_distance_wins",
+        "same_venue_distance_seconds",
+        "same_venue_distance_thirds",
+        "prior_class_distance_place_rate"
+      ],
+      "formula": "same-distance place rate blended 65/35 with same-venue-distance when present; 4-run Bayesian shrink to class-distance prior, then within-race relative",
+      "excluded": [
+        "draw",
+        "barrier",
+        "going",
+        "pace",
+        "run style"
+      ],
+      "cold_horse": "untried distance remains neutral instead of negative"
+    },
+    "class_weight": {
+      "inputs": [
+        "card_rating",
+        "weight_carried",
+        "starts"
+      ],
+      "formula": "75% higher-rating within-race relative + 25% lower-weight relative; reliability from rating/weight availability and min(starts/4,1)",
+      "excluded": [
+        "distance evidence",
+        "weight duplicated in readiness"
+      ],
+      "cold_horse": "missing rating/weight component is omitted and weights renormalized"
+    },
+    "trainer_signal": {
+      "inputs": [
+        "prior_combo_starts",
+        "prior_combo_place_rate",
+        "prior_jockey_cd_starts",
+        "prior_jockey_cd_place_rate",
+        "prior_trainer_cd_starts",
+        "prior_trainer_cd_place_rate",
+        "prior_class_distance_place_rate"
+      ],
+      "formula": "combo/jockey-CD/trainer-CD weights 35/35/30; each place-rate delta vs class-distance baseline shrunk n/(n+20); 10-point place-rate delta maps to 8 score points",
+      "excluded": [
+        "ROI",
+        "market",
+        "confidence as positive edge",
+        "draw prior",
+        "run-style prior"
+      ],
+      "cold_horse": "unmapped or zero-sample prior remains neutral"
+    },
+    "readiness_risk": {
+      "inputs": [
+        "days_since_last",
+        "raw_weight_trend_span"
+      ],
+      "formula": "structured rest/weight-span domain bands around neutral 60; reliability is available inputs / 2",
+      "excluded": [
+        "weight carried",
+        "confidence coverage as ability",
+        "trackwork amount due development coverage 35.8%",
+        "narrative medical flags"
+      ],
+      "cold_horse": "unknown readiness remains neutral"
+    },
+    "form_line": {
+      "inputs": [
+        "raw_formline_higher_win_count",
+        "raw_formline_same_win_count",
+        "raw_formline_lower_win_count"
+      ],
+      "formula": "opponent strength=(3*higher + same - lower)/total; raw=60+6*strength; reliability=total/(total+3)",
+      "excluded": [
+        "same-distance evidence",
+        "recent finishing positions",
+        "margin trend"
+      ],
+      "cold_horse": "no opponent follow-up evidence remains neutral"
+    }
+  },
+  "distributions": {
+    "overall": {
+      "speed_engine": {
+        "rows": 3054,
+        "mean": 60.5832,
+        "stdev": 2.5476,
+        "minimum": 55.4838,
+        "maximum": 65.8721,
+        "neutral_60_rate": 15.6,
+        "mean_reliability": 0.5515,
+        "low_reliability_rate": 15.2
+      },
+      "stability": {
+        "rows": 3054,
+        "mean": 60.1748,
+        "stdev": 4.4654,
+        "minimum": 50.8,
+        "maximum": 70.0,
+        "neutral_60_rate": 7.1,
+        "mean_reliability": 0.863,
+        "low_reliability_rate": 6.9
+      },
+      "distance_context": {
+        "rows": 3054,
+        "mean": 59.9703,
+        "stdev": 0.8736,
+        "minimum": 54.0,
+        "maximum": 63.3333,
+        "neutral_60_rate": 81.0,
+        "mean_reliability": 0.0542,
+        "low_reliability_rate": 94.3
+      },
+      "class_weight": {
+        "rows": 3054,
+        "mean": 59.9984,
+        "stdev": 3.2391,
+        "minimum": 52.5,
+        "maximum": 69.5833,
+        "neutral_60_rate": 3.4,
+        "mean_reliability": 0.9671,
+        "low_reliability_rate": 0.0
+      },
+      "trainer_signal": {
+        "rows": 3054,
+        "mean": 60.7189,
+        "stdev": 4.2446,
+        "minimum": 47.7423,
+        "maximum": 79.691,
+        "neutral_60_rate": 1.7,
+        "mean_reliability": 0.6172,
+        "low_reliability_rate": 3.7
+      },
+      "readiness_risk": {
+        "rows": 3054,
+        "mean": 60.8132,
+        "stdev": 1.9591,
+        "minimum": 53.0,
+        "maximum": 65.0,
+        "neutral_60_rate": 14.1,
+        "mean_reliability": 0.7086,
+        "low_reliability_rate": 2.6
+      },
+      "form_line": {
+        "rows": 3054,
+        "mean": 64.4525,
+        "stdev": 3.7424,
+        "minimum": 57.0,
+        "maximum": 73.8462,
+        "neutral_60_rate": 24.3,
+        "mean_reliability": 0.3784,
+        "low_reliability_rate": 22.4
+      }
+    },
+    "archive_development": {
+      "speed_engine": {
+        "rows": 1093,
+        "mean": 60.756,
+        "stdev": 2.1164,
+        "minimum": 55.4838,
+        "maximum": 65.8721,
+        "neutral_60_rate": 35.5,
+        "mean_reliability": 0.4204,
+        "low_reliability_rate": 35.3
+      },
+      "stability": {
+        "rows": 1093,
+        "mean": 60.1849,
+        "stdev": 4.2688,
+        "minimum": 50.9615,
+        "maximum": 70.0,
+        "neutral_60_rate": 12.5,
+        "mean_reliability": 0.8028,
+        "low_reliability_rate": 12.4
+      },
+      "distance_context": {
+        "rows": 1093,
+        "mean": 59.9722,
+        "stdev": 0.8818,
+        "minimum": 54.0,
+        "maximum": 63.3333,
+        "neutral_60_rate": 82.2,
+        "mean_reliability": 0.0534,
+        "low_reliability_rate": 93.8
+      },
+      "class_weight": {
+        "rows": 1093,
+        "mean": 60.0034,
+        "stdev": 3.1903,
+        "minimum": 52.5,
+        "maximum": 69.5833,
+        "neutral_60_rate": 4.7,
+        "mean_reliability": 0.9374,
+        "low_reliability_rate": 0.0
+      },
+      "trainer_signal": {
+        "rows": 1093,
+        "mean": 60.6621,
+        "stdev": 4.3596,
+        "minimum": 49.3023,
+        "maximum": 79.691,
+        "neutral_60_rate": 2.9,
+        "mean_reliability": 0.6014,
+        "low_reliability_rate": 5.2
+      },
+      "readiness_risk": {
+        "rows": 1093,
+        "mean": 60.5746,
+        "stdev": 1.2623,
+        "minimum": 53.0,
+        "maximum": 65.0,
+        "neutral_60_rate": 15.6,
+        "mean_reliability": 0.5366,
+        "low_reliability_rate": 7.3
+      },
+      "form_line": {
+        "rows": 1093,
+        "mean": 64.2917,
+        "stdev": 3.8005,
+        "minimum": 57.0,
+        "maximum": 73.8462,
+        "neutral_60_rate": 26.1,
+        "mean_reliability": 0.3673,
+        "low_reliability_rate": 23.5
+      }
+    },
+    "archive_temporal_holdout": {
+      "speed_engine": {
+        "rows": 487,
+        "mean": 60.3739,
+        "stdev": 2.697,
+        "minimum": 55.4838,
+        "maximum": 65.8721,
+        "neutral_60_rate": 4.3,
+        "mean_reliability": 0.626,
+        "low_reliability_rate": 3.7
+      },
+      "stability": {
+        "rows": 487,
+        "mean": 60.1691,
+        "stdev": 4.5904,
+        "minimum": 50.9,
+        "maximum": 70.0,
+        "neutral_60_rate": 4.1,
+        "mean_reliability": 0.8948,
+        "low_reliability_rate": 3.7
+      },
+      "distance_context": {
+        "rows": 487,
+        "mean": 59.9788,
+        "stdev": 0.856,
+        "minimum": 55.7143,
+        "maximum": 63.3333,
+        "neutral_60_rate": 80.9,
+        "mean_reliability": 0.0546,
+        "low_reliability_rate": 94.7
+      },
+      "class_weight": {
+        "rows": 487,
+        "mean": 59.9998,
+        "stdev": 3.2854,
+        "minimum": 52.5,
+        "maximum": 68.0769,
+        "neutral_60_rate": 2.5,
+        "mean_reliability": 0.9868,
+        "low_reliability_rate": 0.0
+      },
+      "trainer_signal": {
+        "rows": 487,
+        "mean": 61.2454,
+        "stdev": 3.8434,
+        "minimum": 52.6204,
+        "maximum": 77.3897,
+        "neutral_60_rate": 0.6,
+        "mean_reliability": 0.6192,
+        "low_reliability_rate": 2.7
+      },
+      "readiness_risk": {
+        "rows": 487,
+        "mean": 60.8552,
+        "stdev": 2.3099,
+        "minimum": 53.0,
+        "maximum": 65.0,
+        "neutral_60_rate": 15.6,
+        "mean_reliability": 0.8162,
+        "low_reliability_rate": 0.0
+      },
+      "form_line": {
+        "rows": 487,
+        "mean": 64.2108,
+        "stdev": 3.9076,
+        "minimum": 57.3333,
+        "maximum": 72.6,
+        "neutral_60_rate": 33.7,
+        "mean_reliability": 0.3313,
+        "low_reliability_rate": 32.2
+      }
+    },
+    "external_2026_07_15": {
+      "speed_engine": {
+        "rows": 107,
+        "mean": 60.558,
+        "stdev": 2.8519,
+        "minimum": 55.4838,
+        "maximum": 65.8721,
+        "neutral_60_rate": 1.9,
+        "mean_reliability": 0.6439,
+        "low_reliability_rate": 0.9
+      },
+      "stability": {
+        "rows": 107,
+        "mean": 60.1175,
+        "stdev": 4.5516,
+        "minimum": 51.75,
+        "maximum": 69.65,
+        "neutral_60_rate": 0.9,
+        "mean_reliability": 0.9463,
+        "low_reliability_rate": 0.9
+      },
+      "distance_context": {
+        "rows": 107,
+        "mean": 59.983,
+        "stdev": 0.7818,
+        "minimum": 56.6667,
+        "maximum": 62.0,
+        "neutral_60_rate": 80.4,
+        "mean_reliability": 0.0517,
+        "low_reliability_rate": 96.3
+      },
+      "class_weight": {
+        "rows": 107,
+        "mean": 59.9902,
+        "stdev": 3.192,
+        "minimum": 54.0909,
+        "maximum": 65.4545,
+        "neutral_60_rate": 0.9,
+        "mean_reliability": 0.9971,
+        "low_reliability_rate": 0.0
+      },
+      "trainer_signal": {
+        "rows": 107,
+        "mean": 60.347,
+        "stdev": 3.0644,
+        "minimum": 52.6489,
+        "maximum": 70.8277,
+        "neutral_60_rate": 0.0,
+        "mean_reliability": 0.6524,
+        "low_reliability_rate": 0.9
+      },
+      "readiness_risk": {
+        "rows": 107,
+        "mean": 61.1028,
+        "stdev": 2.2116,
+        "minimum": 53.0,
+        "maximum": 65.0,
+        "neutral_60_rate": 12.1,
+        "mean_reliability": 0.8084,
+        "low_reliability_rate": 0.0
+      },
+      "form_line": {
+        "rows": 107,
+        "mean": 65.4597,
+        "stdev": 2.8547,
+        "minimum": 59.0,
+        "maximum": 72.0,
+        "neutral_60_rate": 6.5,
+        "mean_reliability": 0.4851,
+        "low_reliability_rate": 4.7
+      }
+    },
+    "independent_recent": {
+      "speed_engine": {
+        "rows": 1367,
+        "mean": 60.5216,
+        "stdev": 2.7654,
+        "minimum": 55.4838,
+        "maximum": 65.8721,
+        "neutral_60_rate": 4.8,
+        "mean_reliability": 0.6224,
+        "low_reliability_rate": 4.2
+      },
+      "stability": {
+        "rows": 1367,
+        "mean": 60.1731,
+        "stdev": 4.5661,
+        "minimum": 50.8,
+        "maximum": 70.0,
+        "neutral_60_rate": 4.4,
+        "mean_reliability": 0.8932,
+        "low_reliability_rate": 4.2
+      },
+      "distance_context": {
+        "rows": 1367,
+        "mean": 59.9647,
+        "stdev": 0.88,
+        "minimum": 55.0,
+        "maximum": 63.3333,
+        "neutral_60_rate": 80.2,
+        "mean_reliability": 0.0549,
+        "low_reliability_rate": 94.5
+      },
+      "class_weight": {
+        "rows": 1367,
+        "mean": 59.9945,
+        "stdev": 3.2648,
+        "minimum": 53.1818,
+        "maximum": 68.4615,
+        "neutral_60_rate": 2.9,
+        "mean_reliability": 0.9815,
+        "low_reliability_rate": 0.0
+      },
+      "trainer_signal": {
+        "rows": 1367,
+        "mean": 60.6058,
+        "stdev": 4.3511,
+        "minimum": 47.7423,
+        "maximum": 79.691,
+        "neutral_60_rate": 1.2,
+        "mean_reliability": 0.6264,
+        "low_reliability_rate": 3.1
+      },
+      "readiness_risk": {
+        "rows": 1367,
+        "mean": 60.9663,
+        "stdev": 2.2228,
+        "minimum": 53.0,
+        "maximum": 65.0,
+        "neutral_60_rate": 12.7,
+        "mean_reliability": 0.7999,
+        "low_reliability_rate": 0.0
+      },
+      "form_line": {
+        "rows": 1367,
+        "mean": 64.5884,
+        "stdev": 3.6776,
+        "minimum": 57.0,
+        "maximum": 73.0909,
+        "neutral_60_rate": 20.8,
+        "mean_reliability": 0.3958,
+        "low_reliability_rate": 19.5
+      }
+    }
+  },
+  "dimension_correlations": [
+    {
+      "left": "stability",
+      "right": "trainer_signal",
+      "correlation": 0.2084
+    },
+    {
+      "left": "speed_engine",
+      "right": "stability",
+      "correlation": 0.1822
+    },
+    {
+      "left": "stability",
+      "right": "class_weight",
+      "correlation": 0.1563
+    },
+    {
+      "left": "class_weight",
+      "right": "trainer_signal",
+      "correlation": 0.1504
+    },
+    {
+      "left": "class_weight",
+      "right": "form_line",
+      "correlation": 0.1437
+    },
+    {
+      "left": "speed_engine",
+      "right": "trainer_signal",
+      "correlation": 0.1077
+    },
+    {
+      "left": "stability",
+      "right": "form_line",
+      "correlation": -0.1026
+    },
+    {
+      "left": "distance_context",
+      "right": "form_line",
+      "correlation": 0.0683
+    },
+    {
+      "left": "speed_engine",
+      "right": "class_weight",
+      "correlation": 0.0658
+    },
+    {
+      "left": "stability",
+      "right": "distance_context",
+      "correlation": -0.0633
+    },
+    {
+      "left": "distance_context",
+      "right": "trainer_signal",
+      "correlation": -0.0435
+    },
+    {
+      "left": "speed_engine",
+      "right": "readiness_risk",
+      "correlation": -0.0368
+    },
+    {
+      "left": "stability",
+      "right": "readiness_risk",
+      "correlation": 0.0324
+    },
+    {
+      "left": "distance_context",
+      "right": "readiness_risk",
+      "correlation": 0.0214
+    },
+    {
+      "left": "readiness_risk",
+      "right": "form_line",
+      "correlation": -0.02
+    },
+    {
+      "left": "class_weight",
+      "right": "readiness_risk",
+      "correlation": 0.0198
+    },
+    {
+      "left": "speed_engine",
+      "right": "distance_context",
+      "correlation": -0.0196
+    },
+    {
+      "left": "trainer_signal",
+      "right": "readiness_risk",
+      "correlation": -0.017
+    },
+    {
+      "left": "distance_context",
+      "right": "class_weight",
+      "correlation": -0.0093
+    },
+    {
+      "left": "speed_engine",
+      "right": "form_line",
+      "correlation": 0.0057
+    },
+    {
+      "left": "trainer_signal",
+      "right": "form_line",
+      "correlation": 0.0005
+    }
+  ],
+  "validation_errors": []
+}

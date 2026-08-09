@@ -1,0 +1,508 @@
+{
+  "method": {
+    "candidate_definitions": {
+      "readiness_slot_only": {
+        "readiness_slot": true,
+        "trainer_shrink": false,
+        "hypothesis": "以重建readiness-risk取代現行health槽，其餘dimension及官方outer weights不變。"
+      },
+      "trainer_reliability_shrink_only": {
+        "readiness_slot": false,
+        "trainer_shrink": true,
+        "hypothesis": "保留現行trainer分，但按既有pre-race證據可靠度向中性60收縮。"
+      },
+      "readiness_plus_trainer_shrink": {
+        "readiness_slot": true,
+        "trainer_shrink": true,
+        "hypothesis": "合併readiness health-slot重建與trainer可靠度收縮，無額外互動項。"
+      }
+    },
+    "official_outer_weights": {
+      "sectional": 0.1849,
+      "trainer_signal": 0.2209,
+      "stability": 0.0919,
+      "race_shape": 0.256,
+      "class_advantage": 0.1335,
+      "horse_health": 0.0378,
+      "form_line": 0.0749
+    },
+    "official_debut_outer_weights": {
+      "trainer_signal": 0.3,
+      "horse_health": 0.3,
+      "race_shape": 0.2,
+      "stability": 0.15,
+      "class_advantage": 0.05
+    },
+    "trainer_shrink_formula": "60 + reliability_trainer_signal * (current_trainer_signal - 60)",
+    "weight_or_threshold_search": false,
+    "formal_auto_changed": false
+  },
+  "original_baseline": {
+    "races": 88,
+    "distribution": {
+      "0": 21,
+      "1": 40,
+      "2": 27
+    },
+    "total_top2_hits": 94,
+    "winner_top2": 39
+  },
+  "pure_scaffold_baseline": {
+    "races": 88,
+    "distribution": {
+      "0": 17,
+      "1": 45,
+      "2": 26
+    },
+    "total_top2_hits": 97,
+    "winner_top2": 41
+  },
+  "candidate_metrics": {
+    "readiness_slot_only": {
+      "races": 88,
+      "distribution": {
+        "0": 18,
+        "1": 43,
+        "2": 27
+      },
+      "total_top2_hits": 97,
+      "winner_top2": 41
+    },
+    "trainer_reliability_shrink_only": {
+      "races": 88,
+      "distribution": {
+        "0": 21,
+        "1": 43,
+        "2": 24
+      },
+      "total_top2_hits": 91,
+      "winner_top2": 37
+    },
+    "readiness_plus_trainer_shrink": {
+      "races": 88,
+      "distribution": {
+        "0": 21,
+        "1": 42,
+        "2": 25
+      },
+      "total_top2_hits": 92,
+      "winner_top2": 37
+    }
+  },
+  "comparisons_to_original": {
+    "readiness_slot_only": {
+      "top2_set_changes": 14,
+      "hit_helped": 6,
+      "hit_harmed": 3,
+      "zero_to_positive": 5,
+      "one_to_two": 1,
+      "one_to_zero": 2,
+      "winner_helped": 3,
+      "winner_harmed": 1,
+      "rank3_promotions": 14,
+      "effective_rank3_rescues": 7,
+      "harmful_rank3_promotions": 3,
+      "rank3_rescue_net": 4
+    },
+    "trainer_reliability_shrink_only": {
+      "top2_set_changes": 29,
+      "hit_helped": 7,
+      "hit_harmed": 10,
+      "zero_to_positive": 4,
+      "one_to_two": 3,
+      "one_to_zero": 4,
+      "winner_helped": 3,
+      "winner_harmed": 5,
+      "rank3_promotions": 23,
+      "effective_rank3_rescues": 6,
+      "harmful_rank3_promotions": 7,
+      "rank3_rescue_net": -1
+    },
+    "readiness_plus_trainer_shrink": {
+      "top2_set_changes": 31,
+      "hit_helped": 8,
+      "hit_harmed": 10,
+      "zero_to_positive": 4,
+      "one_to_two": 4,
+      "one_to_zero": 4,
+      "winner_helped": 3,
+      "winner_harmed": 5,
+      "rank3_promotions": 23,
+      "effective_rank3_rescues": 6,
+      "harmful_rank3_promotions": 7,
+      "rank3_rescue_net": -1
+    }
+  },
+  "comparisons_to_pure_scaffold": {
+    "readiness_slot_only": {
+      "top2_set_changes": 4,
+      "hit_helped": 1,
+      "hit_harmed": 1,
+      "zero_to_positive": 0,
+      "one_to_two": 1,
+      "one_to_zero": 1,
+      "winner_helped": 0,
+      "winner_harmed": 0,
+      "rank3_promotions": 4,
+      "effective_rank3_rescues": 1,
+      "harmful_rank3_promotions": 1,
+      "rank3_rescue_net": 0
+    },
+    "trainer_reliability_shrink_only": {
+      "top2_set_changes": 25,
+      "hit_helped": 4,
+      "hit_harmed": 10,
+      "zero_to_positive": 1,
+      "one_to_two": 3,
+      "one_to_zero": 5,
+      "winner_helped": 0,
+      "winner_harmed": 4,
+      "rank3_promotions": 17,
+      "effective_rank3_rescues": 2,
+      "harmful_rank3_promotions": 6,
+      "rank3_rescue_net": -4
+    },
+    "readiness_plus_trainer_shrink": {
+      "top2_set_changes": 27,
+      "hit_helped": 5,
+      "hit_harmed": 10,
+      "zero_to_positive": 1,
+      "one_to_two": 4,
+      "one_to_zero": 5,
+      "winner_helped": 0,
+      "winner_harmed": 4,
+      "rank3_promotions": 17,
+      "effective_rank3_rescues": 2,
+      "harmful_rank3_promotions": 6,
+      "rank3_rescue_net": -4
+    }
+  },
+  "tie_stats": {
+    "pure_scaffold": {
+      "all_races": 245,
+      "all_boundary_ties": 0,
+      "all_boundary_tie_rate": 0.0,
+      "development_races": 88,
+      "development_boundary_ties": 0,
+      "development_boundary_tie_rate": 0.0
+    },
+    "readiness_slot_only": {
+      "all_races": 245,
+      "all_boundary_ties": 0,
+      "all_boundary_tie_rate": 0.0,
+      "development_races": 88,
+      "development_boundary_ties": 0,
+      "development_boundary_tie_rate": 0.0
+    },
+    "trainer_reliability_shrink_only": {
+      "all_races": 245,
+      "all_boundary_ties": 0,
+      "all_boundary_tie_rate": 0.0,
+      "development_races": 88,
+      "development_boundary_ties": 0,
+      "development_boundary_tie_rate": 0.0
+    },
+    "readiness_plus_trainer_shrink": {
+      "all_races": 245,
+      "all_boundary_ties": 0,
+      "all_boundary_tie_rate": 0.0,
+      "development_races": 88,
+      "development_boundary_ties": 0,
+      "development_boundary_tie_rate": 0.0
+    }
+  },
+  "development_gates": {
+    "readiness_slot_only": {
+      "advances_to_step6": true,
+      "path": "LOWER_ZERO_HIT",
+      "common_no_harm": true,
+      "zero_hit_delta": -3,
+      "top2_hit_delta": 3,
+      "winner_top2_delta": 2,
+      "rank3_rescue_net": 4
+    },
+    "trainer_reliability_shrink_only": {
+      "advances_to_step6": false,
+      "path": "FAIL",
+      "common_no_harm": false,
+      "zero_hit_delta": 0,
+      "top2_hit_delta": -3,
+      "winner_top2_delta": -2,
+      "rank3_rescue_net": -1
+    },
+    "readiness_plus_trainer_shrink": {
+      "advances_to_step6": false,
+      "path": "FAIL",
+      "common_no_harm": false,
+      "zero_hit_delta": 0,
+      "top2_hit_delta": -2,
+      "winner_top2_delta": -2,
+      "rank3_rescue_net": -1
+    }
+  },
+  "development_profiles": {
+    "readiness_slot_only": {
+      "changed_races": 14,
+      "debut_involved_changed_races": 1,
+      "debut_involved_helped_races": 0,
+      "debut_involved_harmed_races": 0,
+      "hit_days_positive_equal_negative": [
+        4,
+        4,
+        1
+      ],
+      "winner_days_positive_equal_negative": [
+        2,
+        6,
+        1
+      ],
+      "zero_days_better_equal_worse": [
+        3,
+        6,
+        0
+      ],
+      "per_meeting": [
+        {
+          "meeting": "2026-04-12_ShaTin",
+          "races": 10,
+          "hit_delta": 1,
+          "winner_delta": 0,
+          "zero_delta": -1
+        },
+        {
+          "meeting": "2026-04-15_HappyValley",
+          "races": 9,
+          "hit_delta": 1,
+          "winner_delta": 2,
+          "zero_delta": -1
+        },
+        {
+          "meeting": "2026-04-19_ShaTin",
+          "races": 10,
+          "hit_delta": -1,
+          "winner_delta": -1,
+          "zero_delta": 0
+        },
+        {
+          "meeting": "2026-04-22_HappyValley",
+          "races": 8,
+          "hit_delta": 1,
+          "winner_delta": 0,
+          "zero_delta": 0
+        },
+        {
+          "meeting": "2026-04-26_ShaTin",
+          "races": 11,
+          "hit_delta": 0,
+          "winner_delta": 1,
+          "zero_delta": 0
+        },
+        {
+          "meeting": "2026-04-29_HappyValley",
+          "races": 9,
+          "hit_delta": 1,
+          "winner_delta": 0,
+          "zero_delta": -1
+        },
+        {
+          "meeting": "2026-05-03_ShaTin",
+          "races": 11,
+          "hit_delta": 0,
+          "winner_delta": 0,
+          "zero_delta": 0
+        },
+        {
+          "meeting": "2026-05-06_ShaTin",
+          "races": 9,
+          "hit_delta": 0,
+          "winner_delta": 0,
+          "zero_delta": 0
+        },
+        {
+          "meeting": "2026-05-09_ShaTin",
+          "races": 11,
+          "hit_delta": 0,
+          "winner_delta": 0,
+          "zero_delta": 0
+        }
+      ]
+    },
+    "trainer_reliability_shrink_only": {
+      "changed_races": 29,
+      "debut_involved_changed_races": 0,
+      "debut_involved_helped_races": 0,
+      "debut_involved_harmed_races": 0,
+      "hit_days_positive_equal_negative": [
+        3,
+        4,
+        2
+      ],
+      "winner_days_positive_equal_negative": [
+        2,
+        4,
+        3
+      ],
+      "zero_days_better_equal_worse": [
+        3,
+        4,
+        2
+      ],
+      "per_meeting": [
+        {
+          "meeting": "2026-04-12_ShaTin",
+          "races": 10,
+          "hit_delta": 1,
+          "winner_delta": 0,
+          "zero_delta": -1
+        },
+        {
+          "meeting": "2026-04-15_HappyValley",
+          "races": 9,
+          "hit_delta": 0,
+          "winner_delta": 1,
+          "zero_delta": 0
+        },
+        {
+          "meeting": "2026-04-19_ShaTin",
+          "races": 10,
+          "hit_delta": -4,
+          "winner_delta": -2,
+          "zero_delta": 2
+        },
+        {
+          "meeting": "2026-04-22_HappyValley",
+          "races": 8,
+          "hit_delta": 0,
+          "winner_delta": 0,
+          "zero_delta": 0
+        },
+        {
+          "meeting": "2026-04-26_ShaTin",
+          "races": 11,
+          "hit_delta": 1,
+          "winner_delta": 1,
+          "zero_delta": -1
+        },
+        {
+          "meeting": "2026-04-29_HappyValley",
+          "races": 9,
+          "hit_delta": 0,
+          "winner_delta": -1,
+          "zero_delta": -1
+        },
+        {
+          "meeting": "2026-05-03_ShaTin",
+          "races": 11,
+          "hit_delta": 0,
+          "winner_delta": 0,
+          "zero_delta": 0
+        },
+        {
+          "meeting": "2026-05-06_ShaTin",
+          "races": 9,
+          "hit_delta": -2,
+          "winner_delta": -1,
+          "zero_delta": 0
+        },
+        {
+          "meeting": "2026-05-09_ShaTin",
+          "races": 11,
+          "hit_delta": 1,
+          "winner_delta": 0,
+          "zero_delta": 1
+        }
+      ]
+    },
+    "readiness_plus_trainer_shrink": {
+      "changed_races": 31,
+      "debut_involved_changed_races": 2,
+      "debut_involved_helped_races": 1,
+      "debut_involved_harmed_races": 0,
+      "hit_days_positive_equal_negative": [
+        3,
+        4,
+        2
+      ],
+      "winner_days_positive_equal_negative": [
+        2,
+        4,
+        3
+      ],
+      "zero_days_better_equal_worse": [
+        3,
+        4,
+        2
+      ],
+      "per_meeting": [
+        {
+          "meeting": "2026-04-12_ShaTin",
+          "races": 10,
+          "hit_delta": 1,
+          "winner_delta": 0,
+          "zero_delta": -1
+        },
+        {
+          "meeting": "2026-04-15_HappyValley",
+          "races": 9,
+          "hit_delta": 0,
+          "winner_delta": 1,
+          "zero_delta": 0
+        },
+        {
+          "meeting": "2026-04-19_ShaTin",
+          "races": 10,
+          "hit_delta": -4,
+          "winner_delta": -2,
+          "zero_delta": 2
+        },
+        {
+          "meeting": "2026-04-22_HappyValley",
+          "races": 8,
+          "hit_delta": 0,
+          "winner_delta": 0,
+          "zero_delta": 0
+        },
+        {
+          "meeting": "2026-04-26_ShaTin",
+          "races": 11,
+          "hit_delta": 1,
+          "winner_delta": 1,
+          "zero_delta": -1
+        },
+        {
+          "meeting": "2026-04-29_HappyValley",
+          "races": 9,
+          "hit_delta": 0,
+          "winner_delta": -1,
+          "zero_delta": -1
+        },
+        {
+          "meeting": "2026-05-03_ShaTin",
+          "races": 11,
+          "hit_delta": 0,
+          "winner_delta": 0,
+          "zero_delta": 0
+        },
+        {
+          "meeting": "2026-05-06_ShaTin",
+          "races": 9,
+          "hit_delta": -2,
+          "winner_delta": -1,
+          "zero_delta": 0
+        },
+        {
+          "meeting": "2026-05-09_ShaTin",
+          "races": 11,
+          "hit_delta": 2,
+          "winner_delta": 0,
+          "zero_delta": 1
+        }
+      ]
+    }
+  },
+  "advancing_to_step6": [
+    "readiness_slot_only"
+  ],
+  "matrix_load_errors": [],
+  "validation_errors": []
+}

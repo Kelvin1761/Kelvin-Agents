@@ -35,6 +35,7 @@ from au_archive_calibrator import (  # noqa: E402
     parse_int,
 )
 from scoring import MATRIX_WEIGHTS as LIVE  # noqa: E402
+from au_metric_contract import ranked_performance  # noqa: E402
 
 KEYS = list(MATRIX_KEYS)  # stability, sectional, race_shape, jockey_trainer, class_weight, track, form_line
 
@@ -99,16 +100,16 @@ def metrics(races: list[dict], w: dict) -> dict:
     b = Counter()
     for race in races:
         ranked = score(race, w)
-        top3 = ranked[:3]
-        hits = sum(1 for h in top3 if h["pos"] <= 3)
+        performance = ranked_performance(ranked, horse_key="num", position_key="pos")
+        hits = int(performance["hits"])
         b["n"] += 1
         b["top3_hits"] += hits
-        b["gold"] += 1 if hits == 3 else 0
-        b["good"] += 1 if hits >= 2 else 0
-        b["pass"] += 1 if hits >= 1 else 0
+        b["gold"] += int(performance["gold"])
+        b["good"] += int(performance["good_positional"])
+        b["pass"] += int(performance["pass"])
         b["miss"] += 1 if hits == 0 else 0
-        b["win_t3"] += 1 if any(h["pos"] == 1 for h in top3) else 0
-        b["top2_both"] += 1 if all(h["pos"] <= 3 for h in ranked[:2]) else 0
+        b["win_t3"] += int(performance["winner_in_top3"])
+        b["top2_both"] += int(performance["good_positional"])
     n = max(1, b["n"])
     return {
         "n": b["n"], "gold": b["gold"], "good": b["good"], "pass": b["pass"], "miss": b["miss"],

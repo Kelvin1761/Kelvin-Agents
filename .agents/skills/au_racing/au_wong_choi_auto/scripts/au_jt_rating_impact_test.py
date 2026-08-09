@@ -12,18 +12,18 @@ import engine_core  # noqa: E402
 from engine_core import RacingEngine  # noqa: E402
 
 sys.path.append(str(SCRIPT_DIR))
-from au_target_gap_report import (  # noqa: E402
+from au_archive_calibrator import (  # noqa: E402
     ARCHIVE_ROOT,
     HISTORICAL_RESULTS_CSV,
     choose_track_rows,
-    condition_bucket,
     detect_meeting_date,
     detect_meeting_track,
-    field_size_bucket,
     load_historical_results,
     normalize_horse_name,
     parse_int,
 )
+from au_target_gap_report import condition_bucket, field_size_bucket  # noqa: E402
+from au_metric_contract import ranked_performance  # noqa: E402
 
 
 def build_field_summary(horses: dict) -> dict:
@@ -110,10 +110,8 @@ def evaluate_archive(use_named_db: bool):
                     continue
                 total += 1
                 ranked = sorted(scored, key=lambda item: (-item["score"], item["horse_number"]))
-                top3 = ranked[:3]
-                top2 = ranked[:2]
-                hits3 = sum(1 for item in top3 if item["actual"] <= 3)
-                hits2 = sum(1 for item in top2 if item["actual"] <= 3)
+                performance = ranked_performance(ranked, position_key="actual")
+                hits3 = int(performance["hits"])
                 cond = condition_bucket(rows[0].get("condition", ""))
                 field = field_size_bucket(len(rows))
                 for bucket in (overall, by_condition[cond], by_field[field]):
@@ -121,15 +119,15 @@ def evaluate_archive(use_named_db: bool):
                     bucket["places"] += hits3
                     bucket["slots"] += 3
                     bucket["hits"][hits3] += 1
-                    if hits3 == 3:
+                    if performance["gold"]:
                         bucket["gold"] += 1
-                    if hits2 == 2:
+                    if performance["good_positional"]:
                         bucket["good"] += 1
-                    if hits3 >= 2:
+                    if performance["pass"]:
                         bucket["pass_"] += 1
-                    if ranked[0]["actual"] == 1:
+                    if performance["champion"]:
                         bucket["champion"] += 1
-                    if any(item["actual"] == 1 for item in top3):
+                    if performance["winner_in_top3"]:
                         bucket["winner_top3"] += 1
     finally:
         engine_core._load_named_rating_stats = original_loader
@@ -156,7 +154,7 @@ def main():
     print(f"AU JT RATING DB IMPACT TEST — {total} races")
     print(f"{'=' * 72}")
     print("\n═══ OVERALL ═══")
-    print_comparison("Gold (3/3)", off, on, "gold")
+    print_comparison("Gold (actual Top3 in Top4)", off, on, "gold")
     print_comparison("Good (Top2 hit)", off, on, "good")
     print_comparison("Pass (>=2 in Top3)", off, on, "pass_")
     print_comparison("Champion", off, on, "champion")

@@ -106,14 +106,14 @@ class MockTennisProvider(TennisProvider):
     def fetch_rankings(self, tour: str, date: str | None = None) -> list[dict]:
         ranking_date = date or "2026-05-08"
         return [
-            {"player_id": "mock-a", "tour": tour, "ranking_date": ranking_date, "rank": 18, "ranking_points": 2310},
-            {"player_id": "mock-b", "tour": tour, "ranking_date": ranking_date, "rank": 42, "ranking_points": 1180},
-            {"player_id": "mock-c", "tour": tour, "ranking_date": ranking_date, "rank": 9, "ranking_points": 3980},
-            {"player_id": "mock-d", "tour": tour, "ranking_date": ranking_date, "rank": 76, "ranking_points": 770},
-            {"player_id": "mock-a", "tour": tour, "ranking_date": "2025-05-01", "rank": 24, "ranking_points": 1900},
-            {"player_id": "mock-b", "tour": tour, "ranking_date": "2025-05-01", "rank": 55, "ranking_points": 950},
-            {"player_id": "mock-c", "tour": tour, "ranking_date": "2025-05-01", "rank": 12, "ranking_points": 3100},
-            {"player_id": "mock-d", "tour": tour, "ranking_date": "2025-05-01", "rank": 88, "ranking_points": 620},
+            {"player_id": "mock-a", "player_name": PLAYERS["mock-a"]["name"], "tour": tour, "ranking_date": ranking_date, "rank": 18, "ranking_points": 2310},
+            {"player_id": "mock-b", "player_name": PLAYERS["mock-b"]["name"], "tour": tour, "ranking_date": ranking_date, "rank": 42, "ranking_points": 1180},
+            {"player_id": "mock-c", "player_name": PLAYERS["mock-c"]["name"], "tour": tour, "ranking_date": ranking_date, "rank": 9, "ranking_points": 3980},
+            {"player_id": "mock-d", "player_name": PLAYERS["mock-d"]["name"], "tour": tour, "ranking_date": ranking_date, "rank": 76, "ranking_points": 770},
+            {"player_id": "mock-a", "player_name": PLAYERS["mock-a"]["name"], "tour": tour, "ranking_date": "2025-05-01", "rank": 24, "ranking_points": 1900},
+            {"player_id": "mock-b", "player_name": PLAYERS["mock-b"]["name"], "tour": tour, "ranking_date": "2025-05-01", "rank": 55, "ranking_points": 950},
+            {"player_id": "mock-c", "player_name": PLAYERS["mock-c"]["name"], "tour": tour, "ranking_date": "2025-05-01", "rank": 12, "ranking_points": 3100},
+            {"player_id": "mock-d", "player_name": PLAYERS["mock-d"]["name"], "tour": tour, "ranking_date": "2025-05-01", "rank": 88, "ranking_points": 620},
         ]
 
     def fetch_tournaments(self, start_date: str, end_date: str) -> list[dict]:

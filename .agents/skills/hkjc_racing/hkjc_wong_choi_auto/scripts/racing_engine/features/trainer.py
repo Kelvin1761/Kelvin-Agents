@@ -6,7 +6,11 @@ from features.jockey import real_overseas_rows
 class TrainerScorer(BaseScorer):
     def compute(self):
         from features.jockey import continuous_rating
-        rated = continuous_rating("trainer", self.horse_data.get("trainer", ""))
+        rated = continuous_rating(
+            "trainer",
+            self.horse_data.get("trainer", ""),
+            as_of_date=(self.race_context or {}).get("race_date"),
+        )
         if rated is not None:
             self.score, self.reason = rated
             return self.score, self.reason

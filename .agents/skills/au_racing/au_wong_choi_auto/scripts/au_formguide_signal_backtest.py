@@ -6,6 +6,8 @@ from copy import deepcopy
 
 from au_archive_calibrator import ARCHIVE_ROOT, HISTORICAL_RESULTS_CSV, iter_logic_rows, load_historical_results, parse_float
 from au_zero_hit_race_audit import field_size_bucket, race_class_bucket
+from racing_engine.matrix_mapper import matrix_score
+from au_metric_contract import ranked_performance
 
 
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Formguide_Signal_Backtest.md"
@@ -43,7 +45,7 @@ def data_text(row: dict, key: str) -> str:
 
 
 def matrix(row: dict, key: str, default: float = 60.0) -> float:
-    return float((row.get("matrix_scores") or {}).get(key, default) or default)
+    return matrix_score(row.get("matrix_scores"), key, default)
 
 
 def feature(row: dict, key: str, default: float = 60.0) -> float:
@@ -67,25 +69,25 @@ def annotate_base(rows: list[dict]) -> list[dict]:
 
 
 def eval_ranked(ranked: list[dict], out: dict) -> None:
+    performance = ranked_performance(ranked)
     top3 = ranked[:3]
     top5 = ranked[:5]
-    hits = sum(1 for row in top3 if int(row["actual_pos"]) <= 3)
-    top2_hits = sum(1 for row in ranked[:2] if int(row["actual_pos"]) <= 3)
+    hits = int(performance["hits"])
     out["races"] += 1
     out["top3_places"] += hits
     out["top3_slots"] += len(top3)
     out["hit_distribution"][hits] += 1
-    if top3 and int(top3[0]["actual_pos"]) == 1:
+    if performance["champion"]:
         out["champion"] += 1
-    if any(int(row["actual_pos"]) == 1 for row in top3):
+    if performance["winner_in_top3"]:
         out["winner_top3"] += 1
     if any(int(row["actual_pos"]) == 1 for row in top5):
         out["winner_top5"] += 1
-    if hits == 3:
+    if performance["gold"]:
         out["gold"] += 1
-    if top2_hits == 2:
+    if performance["good_positional"]:
         out["good"] += 1
-    if hits >= 2:
+    if performance["pass"]:
         out["pass"] += 1
 
 
@@ -232,7 +234,7 @@ def gear_score(row: dict) -> tuple[float, list[str]]:
 def top3_risk(row: dict, *, use_market: bool) -> tuple[float, list[str]]:
     reasons = []
     score = 0.0
-    weak_engine = matrix(row, "sectional") < 58.0 and matrix(row, "race_shape") < 58.0
+    weak_engine = matrix(row, "pace_perf") < 58.0 and matrix(row, "race_shape") < 58.0
     weak_support = matrix(row, "track") < 60.0 and matrix(row, "class_weight") < 60.0
     if weak_engine:
         score += 0.9

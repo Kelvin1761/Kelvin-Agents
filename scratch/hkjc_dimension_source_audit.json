@@ -1,0 +1,2212 @@
+{
+  "method": {
+    "uses_results_for_formula_design": false,
+    "result_use": "strict population membership only",
+    "public_feature_schema_changes": false,
+    "excluded_rebuild_inputs": [
+      "going",
+      "draw",
+      "odds",
+      "market",
+      "pace",
+      "micro_tiebreak"
+    ]
+  },
+  "coverage": {
+    "meetings": 25,
+    "races": 245,
+    "horses": 3054,
+    "debut_horses": 99,
+    "by_dataset": {
+      "archive": 1580,
+      "independent_recent": 1367,
+      "external_2026_07_15": 107
+    }
+  },
+  "source_contract": {
+    "stability": {
+      "formula": "form_score 50% + consistency_score 40% + trackwork_trend_score 10%",
+      "post_adjustment": "feature context may replace consistency_score before mapping",
+      "contamination": "form與consistency同樣大量源自近期賽績，可能重複計分",
+      "decision": "REBUILD_DISTINCT"
+    },
+    "sectional": {
+      "formula": "speed_score 65% + track_going_score 35%",
+      "post_adjustment": "finish-time trend nudge after matrix mapping",
+      "contamination": "track_going_score屬已排除going；同時有post-matrix時間修正",
+      "decision": "REBUILD_SPEED_ONLY_WITH_RELIABILITY"
+    },
+    "race_shape": {
+      "formula": "race_shape_context_score 100%",
+      "post_adjustment": "Sha Tin: draw 55% + draw-position fit 25% + trip consumption 20%; other venue: draw + context delta",
+      "contamination": "draw係主要基底，屬重建排除項；位置訊號亦同draw文字混合",
+      "decision": "REPLACE_WITH_DRAW_FREE_CONTEXT"
+    },
+    "trainer_signal": {
+      "formula": "jockey_score 55% + trainer_score 45%",
+      "post_adjustment": "trainer-signal V3 priors after matrix mapping",
+      "contamination": "prior樣本量未直接成為統一可靠度收縮",
+      "decision": "KEEP_CORE_ADD_RELIABILITY"
+    },
+    "horse_health": {
+      "formula": "risk_score 55% + weight_score 35% + confidence_score 10%",
+      "post_adjustment": "health-only V2 after matrix mapping",
+      "contamination": "weight同class重複；confidence係資料覆蓋卻被當正向能力分",
+      "decision": "REBUILD_READINESS_RISK_ONLY"
+    },
+    "form_line": {
+      "formula": "formline_strength_score 100%",
+      "post_adjustment": "none after mapping",
+      "contamination": "離散bucket且對手後續樣本量未做統一收縮；margin trend已排除避免同stability重複",
+      "decision": "KEEP_MEANING_ADD_RELIABILITY"
+    },
+    "class_advantage": {
+      "formula": "class_score 75% + weight_score 25%",
+      "post_adjustment": "none after mapping",
+      "contamination": "weight同horse_health重複；distance_score及same-distance signal仍在矩陣外",
+      "decision": "REBUILD_CLASS_WEIGHT_AND_SEPARATE_DISTANCE"
+    }
+  },
+  "signal_stats": {
+    "overall": {
+      "form_score": {
+        "signal": "form_score",
+        "rows": 3054,
+        "mean": 55.132,
+        "stdev": 13.014,
+        "minimum": 40.0,
+        "maximum": 100.0,
+        "neutral_60": 239,
+        "neutral_60_rate": 7.8,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "speed_score": {
+        "signal": "speed_score",
+        "rows": 3054,
+        "mean": 61.252,
+        "stdev": 7.868,
+        "minimum": 38.62,
+        "maximum": 84.63,
+        "neutral_60": 930,
+        "neutral_60_rate": 30.5,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "class_score": {
+        "signal": "class_score",
+        "rows": 3054,
+        "mean": 65.479,
+        "stdev": 7.225,
+        "minimum": 52.45,
+        "maximum": 77.51,
+        "neutral_60": 295,
+        "neutral_60_rate": 9.7,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "jockey_score": {
+        "signal": "jockey_score",
+        "rows": 3054,
+        "mean": 69.913,
+        "stdev": 9.924,
+        "minimum": 49.88,
+        "maximum": 94.2,
+        "neutral_60": 320,
+        "neutral_60_rate": 10.5,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "trainer_score": {
+        "signal": "trainer_score",
+        "rows": 3054,
+        "mean": 69.663,
+        "stdev": 8.243,
+        "minimum": 56.39,
+        "maximum": 87.0,
+        "neutral_60": 491,
+        "neutral_60_rate": 16.1,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "draw_score": {
+        "signal": "draw_score",
+        "rows": 3054,
+        "mean": 63.877,
+        "stdev": 8.292,
+        "minimum": 49.06,
+        "maximum": 77.45,
+        "neutral_60": 0,
+        "neutral_60_rate": 0.0,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "distance_score": {
+        "signal": "distance_score",
+        "rows": 3054,
+        "mean": 63.598,
+        "stdev": 6.751,
+        "minimum": 54.0,
+        "maximum": 72.0,
+        "neutral_60": 743,
+        "neutral_60_rate": 24.3,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 251,
+        "recent_missing_neutral_rate": 17.0
+      },
+      "track_going_score": {
+        "signal": "track_going_score",
+        "rows": 3054,
+        "mean": 60.181,
+        "stdev": 1.494,
+        "minimum": 58.0,
+        "maximum": 66.0,
+        "neutral_60": 2662,
+        "neutral_60_rate": 87.2,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 1294,
+        "recent_missing_neutral_rate": 87.8
+      },
+      "weight_score": {
+        "signal": "weight_score",
+        "rows": 3054,
+        "mean": 63.612,
+        "stdev": 5.434,
+        "minimum": 50.0,
+        "maximum": 74.0,
+        "neutral_60": 132,
+        "neutral_60_rate": 4.3,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "consistency_score": {
+        "signal": "consistency_score",
+        "rows": 3054,
+        "mean": 58.357,
+        "stdev": 12.035,
+        "minimum": 27.0,
+        "maximum": 100.0,
+        "neutral_60": 209,
+        "neutral_60_rate": 6.8,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 3,
+        "recent_missing_neutral_rate": 0.2
+      },
+      "risk_score": {
+        "signal": "risk_score",
+        "rows": 3054,
+        "mean": 68.226,
+        "stdev": 4.459,
+        "minimum": 50.0,
+        "maximum": 76.5,
+        "neutral_60": 33,
+        "neutral_60_rate": 1.1,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "confidence_score": {
+        "signal": "confidence_score",
+        "rows": 3054,
+        "mean": 77.185,
+        "stdev": 8.985,
+        "minimum": 46.23,
+        "maximum": 83.0,
+        "neutral_60": 3,
+        "neutral_60_rate": 0.1,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "formline_strength_score": {
+        "signal": "formline_strength_score",
+        "rows": 3054,
+        "mean": 76.288,
+        "stdev": 12.887,
+        "minimum": 58.0,
+        "maximum": 96.0,
+        "neutral_60": 859,
+        "neutral_60_rate": 28.1,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "margin_trend_score": {
+        "signal": "margin_trend_score",
+        "rows": 3054,
+        "mean": 60.392,
+        "stdev": 7.839,
+        "minimum": 48.0,
+        "maximum": 76.0,
+        "neutral_60": 2099,
+        "neutral_60_rate": 68.7,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "same_distance_signal_score": {
+        "signal": "same_distance_signal_score",
+        "rows": 3054,
+        "mean": 61.755,
+        "stdev": 6.966,
+        "minimum": 54.0,
+        "maximum": 72.0,
+        "neutral_60": 1079,
+        "neutral_60_rate": 35.3,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "trackwork_trend_score": {
+        "signal": "trackwork_trend_score",
+        "rows": 3054,
+        "mean": 61.346,
+        "stdev": 7.599,
+        "minimum": 48.09,
+        "maximum": 76.75,
+        "neutral_60": 1430,
+        "neutral_60_rate": 46.8,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "race_shape_context_score": {
+        "signal": "race_shape_context_score",
+        "rows": 3054,
+        "mean": 63.5,
+        "stdev": 7.882,
+        "minimum": 39.06,
+        "maximum": 82.0,
+        "neutral_60": 2,
+        "neutral_60_rate": 0.1,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_stability": {
+        "signal": "matrix_stability",
+        "rows": 3054,
+        "mean": 57.133,
+        "stdev": 10.693,
+        "minimum": 35.854,
+        "maximum": 96.0,
+        "neutral_60": 117,
+        "neutral_60_rate": 3.8,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_sectional": {
+        "signal": "matrix_sectional",
+        "rows": 3054,
+        "mean": 60.428,
+        "stdev": 6.199,
+        "minimum": 33.62,
+        "maximum": 81.45,
+        "neutral_60": 906,
+        "neutral_60_rate": 29.7,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_race_shape": {
+        "signal": "matrix_race_shape",
+        "rows": 3054,
+        "mean": 63.5,
+        "stdev": 7.882,
+        "minimum": 39.06,
+        "maximum": 82.0,
+        "neutral_60": 2,
+        "neutral_60_rate": 0.1,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_trainer_signal": {
+        "signal": "matrix_trainer_signal",
+        "rows": 3054,
+        "mean": 69.788,
+        "stdev": 7.726,
+        "minimum": 51.86,
+        "maximum": 89.52,
+        "neutral_60": 125,
+        "neutral_60_rate": 4.1,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_horse_health": {
+        "signal": "matrix_horse_health",
+        "rows": 3054,
+        "mean": 67.379,
+        "stdev": 3.606,
+        "minimum": 55.72,
+        "maximum": 74.88,
+        "neutral_60": 0,
+        "neutral_60_rate": 0.0,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_form_line": {
+        "signal": "matrix_form_line",
+        "rows": 3054,
+        "mean": 75.628,
+        "stdev": 9.006,
+        "minimum": 58.6,
+        "maximum": 96.0,
+        "neutral_60": 314,
+        "neutral_60_rate": 10.3,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_class_advantage": {
+        "signal": "matrix_class_advantage",
+        "rows": 3054,
+        "mean": 65.012,
+        "stdev": 5.433,
+        "minimum": 52.84,
+        "maximum": 76.632,
+        "neutral_60": 7,
+        "neutral_60_rate": 0.2,
+        "recent_provenance_rows": 1474,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      }
+    },
+    "archive": {
+      "form_score": {
+        "signal": "form_score",
+        "rows": 1580,
+        "mean": 55.49,
+        "stdev": 13.249,
+        "minimum": 40.0,
+        "maximum": 100.0,
+        "neutral_60": 169,
+        "neutral_60_rate": 10.7,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "speed_score": {
+        "signal": "speed_score",
+        "rows": 1580,
+        "mean": 61.153,
+        "stdev": 6.319,
+        "minimum": 38.62,
+        "maximum": 84.63,
+        "neutral_60": 875,
+        "neutral_60_rate": 55.4,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "class_score": {
+        "signal": "class_score",
+        "rows": 1580,
+        "mean": 64.57,
+        "stdev": 7.099,
+        "minimum": 52.45,
+        "maximum": 77.51,
+        "neutral_60": 217,
+        "neutral_60_rate": 13.7,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "jockey_score": {
+        "signal": "jockey_score",
+        "rows": 1580,
+        "mean": 70.207,
+        "stdev": 10.271,
+        "minimum": 51.4,
+        "maximum": 94.2,
+        "neutral_60": 226,
+        "neutral_60_rate": 14.3,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "trainer_score": {
+        "signal": "trainer_score",
+        "rows": 1580,
+        "mean": 69.823,
+        "stdev": 8.543,
+        "minimum": 57.6,
+        "maximum": 85.0,
+        "neutral_60": 352,
+        "neutral_60_rate": 22.3,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "draw_score": {
+        "signal": "draw_score",
+        "rows": 1580,
+        "mean": 64.276,
+        "stdev": 7.939,
+        "minimum": 49.06,
+        "maximum": 75.0,
+        "neutral_60": 0,
+        "neutral_60_rate": 0.0,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "distance_score": {
+        "signal": "distance_score",
+        "rows": 1580,
+        "mean": 62.844,
+        "stdev": 6.586,
+        "minimum": 54.0,
+        "maximum": 72.0,
+        "neutral_60": 492,
+        "neutral_60_rate": 31.1,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "track_going_score": {
+        "signal": "track_going_score",
+        "rows": 1580,
+        "mean": 60.284,
+        "stdev": 1.632,
+        "minimum": 58.0,
+        "maximum": 66.0,
+        "neutral_60": 1368,
+        "neutral_60_rate": 86.6,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "weight_score": {
+        "signal": "weight_score",
+        "rows": 1580,
+        "mean": 63.628,
+        "stdev": 5.37,
+        "minimum": 50.0,
+        "maximum": 74.0,
+        "neutral_60": 47,
+        "neutral_60_rate": 3.0,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "consistency_score": {
+        "signal": "consistency_score",
+        "rows": 1580,
+        "mean": 58.371,
+        "stdev": 13.065,
+        "minimum": 27.0,
+        "maximum": 100.0,
+        "neutral_60": 205,
+        "neutral_60_rate": 13.0,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "risk_score": {
+        "signal": "risk_score",
+        "rows": 1580,
+        "mean": 66.516,
+        "stdev": 4.043,
+        "minimum": 50.5,
+        "maximum": 76.5,
+        "neutral_60": 27,
+        "neutral_60_rate": 1.7,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "confidence_score": {
+        "signal": "confidence_score",
+        "rows": 1580,
+        "mean": 72.51,
+        "stdev": 9.853,
+        "minimum": 46.23,
+        "maximum": 83.0,
+        "neutral_60": 3,
+        "neutral_60_rate": 0.2,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "formline_strength_score": {
+        "signal": "formline_strength_score",
+        "rows": 1580,
+        "mean": 79.42,
+        "stdev": 11.236,
+        "minimum": 58.0,
+        "maximum": 96.0,
+        "neutral_60": 124,
+        "neutral_60_rate": 7.8,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "margin_trend_score": {
+        "signal": "margin_trend_score",
+        "rows": 1580,
+        "mean": 60.656,
+        "stdev": 7.582,
+        "minimum": 48.0,
+        "maximum": 76.0,
+        "neutral_60": 1125,
+        "neutral_60_rate": 71.2,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "same_distance_signal_score": {
+        "signal": "same_distance_signal_score",
+        "rows": 1580,
+        "mean": 62.268,
+        "stdev": 7.704,
+        "minimum": 54.0,
+        "maximum": 72.0,
+        "neutral_60": 320,
+        "neutral_60_rate": 20.3,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "trackwork_trend_score": {
+        "signal": "trackwork_trend_score",
+        "rows": 1580,
+        "mean": 60.392,
+        "stdev": 7.365,
+        "minimum": 48.09,
+        "maximum": 76.75,
+        "neutral_60": 704,
+        "neutral_60_rate": 44.6,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "race_shape_context_score": {
+        "signal": "race_shape_context_score",
+        "rows": 1580,
+        "mean": 64.276,
+        "stdev": 7.939,
+        "minimum": 49.06,
+        "maximum": 75.0,
+        "neutral_60": 0,
+        "neutral_60_rate": 0.0,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "matrix_stability": {
+        "signal": "matrix_stability",
+        "rows": 1580,
+        "mean": 57.133,
+        "stdev": 11.171,
+        "minimum": 35.854,
+        "maximum": 96.0,
+        "neutral_60": 117,
+        "neutral_60_rate": 7.4,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "matrix_sectional": {
+        "signal": "matrix_sectional",
+        "rows": 1580,
+        "mean": 60.848,
+        "stdev": 4.151,
+        "minimum": 45.728,
+        "maximum": 76.01,
+        "neutral_60": 862,
+        "neutral_60_rate": 54.6,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "matrix_race_shape": {
+        "signal": "matrix_race_shape",
+        "rows": 1580,
+        "mean": 64.276,
+        "stdev": 7.939,
+        "minimum": 49.06,
+        "maximum": 75.0,
+        "neutral_60": 0,
+        "neutral_60_rate": 0.0,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "matrix_trainer_signal": {
+        "signal": "matrix_trainer_signal",
+        "rows": 1580,
+        "mean": 70.034,
+        "stdev": 7.594,
+        "minimum": 54.865,
+        "maximum": 89.07,
+        "neutral_60": 81,
+        "neutral_60_rate": 5.1,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "matrix_horse_health": {
+        "signal": "matrix_horse_health",
+        "rows": 1580,
+        "mean": 66.104,
+        "stdev": 3.491,
+        "minimum": 57.525,
+        "maximum": 74.875,
+        "neutral_60": 0,
+        "neutral_60_rate": 0.0,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "matrix_form_line": {
+        "signal": "matrix_form_line",
+        "rows": 1580,
+        "mean": 73.79,
+        "stdev": 8.25,
+        "minimum": 58.6,
+        "maximum": 90.0,
+        "neutral_60": 124,
+        "neutral_60_rate": 7.8,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      },
+      "matrix_class_advantage": {
+        "signal": "matrix_class_advantage",
+        "rows": 1580,
+        "mean": 64.334,
+        "stdev": 5.403,
+        "minimum": 54.337,
+        "maximum": 76.632,
+        "neutral_60": 3,
+        "neutral_60_rate": 0.2,
+        "recent_provenance_rows": 0,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": null
+      }
+    },
+    "external_2026_07_15": {
+      "form_score": {
+        "signal": "form_score",
+        "rows": 107,
+        "mean": 52.9,
+        "stdev": 11.632,
+        "minimum": 40.0,
+        "maximum": 83.2,
+        "neutral_60": 1,
+        "neutral_60_rate": 0.9,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "speed_score": {
+        "signal": "speed_score",
+        "rows": 107,
+        "mean": 61.281,
+        "stdev": 9.504,
+        "minimum": 39.12,
+        "maximum": 81.45,
+        "neutral_60": 1,
+        "neutral_60_rate": 0.9,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "class_score": {
+        "signal": "class_score",
+        "rows": 107,
+        "mean": 62.04,
+        "stdev": 6.158,
+        "minimum": 52.45,
+        "maximum": 70.39,
+        "neutral_60": 1,
+        "neutral_60_rate": 0.9,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "jockey_score": {
+        "signal": "jockey_score",
+        "rows": 107,
+        "mean": 60.908,
+        "stdev": 6.507,
+        "minimum": 49.88,
+        "maximum": 84.04,
+        "neutral_60": 0,
+        "neutral_60_rate": 0.0,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "trainer_score": {
+        "signal": "trainer_score",
+        "rows": 107,
+        "mean": 61.513,
+        "stdev": 2.974,
+        "minimum": 56.39,
+        "maximum": 68.04,
+        "neutral_60": 0,
+        "neutral_60_rate": 0.0,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "draw_score": {
+        "signal": "draw_score",
+        "rows": 107,
+        "mean": 63.15,
+        "stdev": 10.646,
+        "minimum": 49.06,
+        "maximum": 75.0,
+        "neutral_60": 0,
+        "neutral_60_rate": 0.0,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "distance_score": {
+        "signal": "distance_score",
+        "rows": 107,
+        "mean": 64.075,
+        "stdev": 6.825,
+        "minimum": 54.0,
+        "maximum": 72.0,
+        "neutral_60": 21,
+        "neutral_60_rate": 19.6,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 21,
+        "recent_missing_neutral_rate": 19.6
+      },
+      "track_going_score": {
+        "signal": "track_going_score",
+        "rows": 107,
+        "mean": 60.0,
+        "stdev": 0.0,
+        "minimum": 60.0,
+        "maximum": 60.0,
+        "neutral_60": 107,
+        "neutral_60_rate": 100.0,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 107,
+        "recent_missing_neutral_rate": 100.0
+      },
+      "weight_score": {
+        "signal": "weight_score",
+        "rows": 107,
+        "mean": 62.953,
+        "stdev": 5.593,
+        "minimum": 50.0,
+        "maximum": 74.0,
+        "neutral_60": 10,
+        "neutral_60_rate": 9.3,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "consistency_score": {
+        "signal": "consistency_score",
+        "rows": 107,
+        "mean": 57.526,
+        "stdev": 9.674,
+        "minimum": 38.41,
+        "maximum": 76.87,
+        "neutral_60": 0,
+        "neutral_60_rate": 0.0,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "risk_score": {
+        "signal": "risk_score",
+        "rows": 107,
+        "mean": 69.888,
+        "stdev": 4.926,
+        "minimum": 50.0,
+        "maximum": 76.0,
+        "neutral_60": 1,
+        "neutral_60_rate": 0.9,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "confidence_score": {
+        "signal": "confidence_score",
+        "rows": 107,
+        "mean": 82.815,
+        "stdev": 1.902,
+        "minimum": 63.23,
+        "maximum": 83.0,
+        "neutral_60": 0,
+        "neutral_60_rate": 0.0,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "formline_strength_score": {
+        "signal": "formline_strength_score",
+        "rows": 107,
+        "mean": 81.645,
+        "stdev": 12.128,
+        "minimum": 60.0,
+        "maximum": 96.0,
+        "neutral_60": 21,
+        "neutral_60_rate": 19.6,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "margin_trend_score": {
+        "signal": "margin_trend_score",
+        "rows": 107,
+        "mean": 60.224,
+        "stdev": 11.084,
+        "minimum": 48.0,
+        "maximum": 76.0,
+        "neutral_60": 39,
+        "neutral_60_rate": 36.4,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "same_distance_signal_score": {
+        "signal": "same_distance_signal_score",
+        "rows": 107,
+        "mean": 62.075,
+        "stdev": 8.302,
+        "minimum": 54.0,
+        "maximum": 72.0,
+        "neutral_60": 5,
+        "neutral_60_rate": 4.7,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "trackwork_trend_score": {
+        "signal": "trackwork_trend_score",
+        "rows": 107,
+        "mean": 65.155,
+        "stdev": 9.349,
+        "minimum": 48.74,
+        "maximum": 76.2,
+        "neutral_60": 14,
+        "neutral_60_rate": 13.1,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "race_shape_context_score": {
+        "signal": "race_shape_context_score",
+        "rows": 107,
+        "mean": 62.507,
+        "stdev": 12.708,
+        "minimum": 39.06,
+        "maximum": 82.0,
+        "neutral_60": 1,
+        "neutral_60_rate": 0.9,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_stability": {
+        "signal": "matrix_stability",
+        "rows": 107,
+        "mean": 55.976,
+        "stdev": 9.404,
+        "minimum": 40.49,
+        "maximum": 79.59,
+        "neutral_60": 0,
+        "neutral_60_rate": 0.0,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_sectional": {
+        "signal": "matrix_sectional",
+        "rows": 107,
+        "mean": 59.225,
+        "stdev": 10.789,
+        "minimum": 34.12,
+        "maximum": 81.45,
+        "neutral_60": 1,
+        "neutral_60_rate": 0.9,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_race_shape": {
+        "signal": "matrix_race_shape",
+        "rows": 107,
+        "mean": 62.507,
+        "stdev": 12.708,
+        "minimum": 39.06,
+        "maximum": 82.0,
+        "neutral_60": 1,
+        "neutral_60_rate": 0.9,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_trainer_signal": {
+        "signal": "matrix_trainer_signal",
+        "rows": 107,
+        "mean": 60.956,
+        "stdev": 4.523,
+        "minimum": 51.86,
+        "maximum": 75.59,
+        "neutral_60": 0,
+        "neutral_60_rate": 0.0,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_horse_health": {
+        "signal": "matrix_horse_health",
+        "rows": 107,
+        "mean": 67.19,
+        "stdev": 3.723,
+        "minimum": 56.17,
+        "maximum": 73.67,
+        "neutral_60": 0,
+        "neutral_60_rate": 0.0,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_form_line": {
+        "signal": "matrix_form_line",
+        "rows": 107,
+        "mean": 81.645,
+        "stdev": 12.128,
+        "minimum": 60.0,
+        "maximum": 96.0,
+        "neutral_60": 21,
+        "neutral_60_rate": 19.6,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_class_advantage": {
+        "signal": "matrix_class_advantage",
+        "rows": 107,
+        "mean": 62.269,
+        "stdev": 4.515,
+        "minimum": 54.0,
+        "maximum": 70.29,
+        "neutral_60": 1,
+        "neutral_60_rate": 0.9,
+        "recent_provenance_rows": 107,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      }
+    },
+    "independent_recent": {
+      "form_score": {
+        "signal": "form_score",
+        "rows": 1367,
+        "mean": 54.892,
+        "stdev": 12.819,
+        "minimum": 40.0,
+        "maximum": 100.0,
+        "neutral_60": 69,
+        "neutral_60_rate": 5.0,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "speed_score": {
+        "signal": "speed_score",
+        "rows": 1367,
+        "mean": 61.366,
+        "stdev": 9.224,
+        "minimum": 38.62,
+        "maximum": 84.63,
+        "neutral_60": 54,
+        "neutral_60_rate": 4.0,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "class_score": {
+        "signal": "class_score",
+        "rows": 1367,
+        "mean": 66.799,
+        "stdev": 7.196,
+        "minimum": 52.45,
+        "maximum": 77.51,
+        "neutral_60": 77,
+        "neutral_60_rate": 5.6,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "jockey_score": {
+        "signal": "jockey_score",
+        "rows": 1367,
+        "mean": 70.279,
+        "stdev": 9.391,
+        "minimum": 50.53,
+        "maximum": 94.2,
+        "neutral_60": 94,
+        "neutral_60_rate": 6.9,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "trainer_score": {
+        "signal": "trainer_score",
+        "rows": 1367,
+        "mean": 70.116,
+        "stdev": 7.83,
+        "minimum": 56.39,
+        "maximum": 87.0,
+        "neutral_60": 139,
+        "neutral_60_rate": 10.2,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "draw_score": {
+        "signal": "draw_score",
+        "rows": 1367,
+        "mean": 63.473,
+        "stdev": 8.457,
+        "minimum": 49.06,
+        "maximum": 77.45,
+        "neutral_60": 0,
+        "neutral_60_rate": 0.0,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "distance_score": {
+        "signal": "distance_score",
+        "rows": 1367,
+        "mean": 64.432,
+        "stdev": 6.832,
+        "minimum": 54.0,
+        "maximum": 72.0,
+        "neutral_60": 230,
+        "neutral_60_rate": 16.8,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 230,
+        "recent_missing_neutral_rate": 16.8
+      },
+      "track_going_score": {
+        "signal": "track_going_score",
+        "rows": 1367,
+        "mean": 60.076,
+        "stdev": 1.371,
+        "minimum": 58.0,
+        "maximum": 66.0,
+        "neutral_60": 1187,
+        "neutral_60_rate": 86.8,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 1187,
+        "recent_missing_neutral_rate": 86.8
+      },
+      "weight_score": {
+        "signal": "weight_score",
+        "rows": 1367,
+        "mean": 63.646,
+        "stdev": 5.492,
+        "minimum": 50.0,
+        "maximum": 74.0,
+        "neutral_60": 75,
+        "neutral_60_rate": 5.5,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "consistency_score": {
+        "signal": "consistency_score",
+        "rows": 1367,
+        "mean": 58.406,
+        "stdev": 10.903,
+        "minimum": 29.77,
+        "maximum": 81.96,
+        "neutral_60": 4,
+        "neutral_60_rate": 0.3,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 3,
+        "recent_missing_neutral_rate": 0.2
+      },
+      "risk_score": {
+        "signal": "risk_score",
+        "rows": 1367,
+        "mean": 70.073,
+        "stdev": 4.077,
+        "minimum": 50.0,
+        "maximum": 76.5,
+        "neutral_60": 5,
+        "neutral_60_rate": 0.4,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "confidence_score": {
+        "signal": "confidence_score",
+        "rows": 1367,
+        "mean": 82.147,
+        "stdev": 3.938,
+        "minimum": 58.23,
+        "maximum": 83.0,
+        "neutral_60": 0,
+        "neutral_60_rate": 0.0,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "formline_strength_score": {
+        "signal": "formline_strength_score",
+        "rows": 1367,
+        "mean": 72.249,
+        "stdev": 13.553,
+        "minimum": 60.0,
+        "maximum": 96.0,
+        "neutral_60": 714,
+        "neutral_60_rate": 52.2,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "margin_trend_score": {
+        "signal": "margin_trend_score",
+        "rows": 1367,
+        "mean": 60.099,
+        "stdev": 7.814,
+        "minimum": 48.0,
+        "maximum": 76.0,
+        "neutral_60": 935,
+        "neutral_60_rate": 68.4,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "same_distance_signal_score": {
+        "signal": "same_distance_signal_score",
+        "rows": 1367,
+        "mean": 61.137,
+        "stdev": 5.807,
+        "minimum": 54.0,
+        "maximum": 72.0,
+        "neutral_60": 754,
+        "neutral_60_rate": 55.2,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "trackwork_trend_score": {
+        "signal": "trackwork_trend_score",
+        "rows": 1367,
+        "mean": 62.151,
+        "stdev": 7.526,
+        "minimum": 48.24,
+        "maximum": 76.15,
+        "neutral_60": 712,
+        "neutral_60_rate": 52.1,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "race_shape_context_score": {
+        "signal": "race_shape_context_score",
+        "rows": 1367,
+        "mean": 62.682,
+        "stdev": 7.202,
+        "minimum": 39.06,
+        "maximum": 82.0,
+        "neutral_60": 1,
+        "neutral_60_rate": 0.1,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_stability": {
+        "signal": "matrix_stability",
+        "rows": 1367,
+        "mean": 57.224,
+        "stdev": 10.206,
+        "minimum": 37.32,
+        "maximum": 87.84,
+        "neutral_60": 0,
+        "neutral_60_rate": 0.0,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_sectional": {
+        "signal": "matrix_sectional",
+        "rows": 1367,
+        "mean": 60.036,
+        "stdev": 7.506,
+        "minimum": 33.62,
+        "maximum": 80.63,
+        "neutral_60": 43,
+        "neutral_60_rate": 3.1,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_race_shape": {
+        "signal": "matrix_race_shape",
+        "rows": 1367,
+        "mean": 62.682,
+        "stdev": 7.202,
+        "minimum": 39.06,
+        "maximum": 82.0,
+        "neutral_60": 1,
+        "neutral_60_rate": 0.1,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_trainer_signal": {
+        "signal": "matrix_trainer_signal",
+        "rows": 1367,
+        "mean": 70.196,
+        "stdev": 7.665,
+        "minimum": 53.17,
+        "maximum": 89.52,
+        "neutral_60": 44,
+        "neutral_60_rate": 3.2,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_horse_health": {
+        "signal": "matrix_horse_health",
+        "rows": 1367,
+        "mean": 68.868,
+        "stdev": 3.129,
+        "minimum": 55.72,
+        "maximum": 74.88,
+        "neutral_60": 0,
+        "neutral_60_rate": 0.0,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_form_line": {
+        "signal": "matrix_form_line",
+        "rows": 1367,
+        "mean": 77.281,
+        "stdev": 9.031,
+        "minimum": 60.0,
+        "maximum": 96.0,
+        "neutral_60": 169,
+        "neutral_60_rate": 12.4,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      },
+      "matrix_class_advantage": {
+        "signal": "matrix_class_advantage",
+        "rows": 1367,
+        "mean": 66.011,
+        "stdev": 5.337,
+        "minimum": 52.84,
+        "maximum": 76.63,
+        "neutral_60": 3,
+        "neutral_60_rate": 0.2,
+        "recent_provenance_rows": 1367,
+        "recent_missing_neutral": 0,
+        "recent_missing_neutral_rate": 0.0
+      }
+    }
+  },
+  "provenance_recent": {
+    "form_score": {
+      "last_6_finishes": 1474
+    },
+    "speed_score": {
+      "race_sectional_context": 1474
+    },
+    "class_score": {
+      "career_context": 1419,
+      "career_tag": 55
+    },
+    "jockey_score": {
+      "th01_trainer_context": 1194,
+      "jockey": 280
+    },
+    "trainer_score": {
+      "th01_trainer_context": 1194,
+      "trainer": 280
+    },
+    "draw_score": {
+      "barrier": 1474
+    },
+    "distance_score": {
+      "best_distance": 1040,
+      "missing_neutral": 251,
+      "season_stats": 128,
+      "career_tag": 55
+    },
+    "track_going_score": {
+      "missing_neutral": 1294,
+      "course_record": 122,
+      "draw_verdict": 58
+    },
+    "weight_score": {
+      "weight_carried": 1474
+    },
+    "consistency_score": {
+      "cx01_consistency_context": 1416,
+      "trackwork_digest": 55,
+      "missing_neutral": 3
+    },
+    "risk_score": {
+      "th01_health_context": 1474
+    },
+    "confidence_score": {
+      "data_coverage": 1474
+    },
+    "formline_strength_score": {
+      "formline_strength": 1474
+    },
+    "margin_trend_score": {
+      "margin_trend": 1474
+    },
+    "same_distance_signal_score": {
+      "season_stats_line": 1109,
+      "best_distance": 365
+    },
+    "trackwork_trend_score": {
+      "trackwork_digest": 1474
+    },
+    "race_shape_context_score": {
+      "race_shape_context": 932,
+      "not_persisted": 542
+    }
+  },
+  "correlations": [
+    {
+      "left": "draw_score",
+      "right": "race_shape_context_score",
+      "correlation": 0.9564,
+      "absolute": 0.9564
+    },
+    {
+      "left": "form_score",
+      "right": "consistency_score",
+      "correlation": 0.7664,
+      "absolute": 0.7664
+    },
+    {
+      "left": "risk_score",
+      "right": "confidence_score",
+      "correlation": 0.5839,
+      "absolute": 0.5839
+    },
+    {
+      "left": "class_score",
+      "right": "same_distance_signal_score",
+      "correlation": 0.5576,
+      "absolute": 0.5576
+    },
+    {
+      "left": "class_score",
+      "right": "distance_score",
+      "correlation": 0.5326,
+      "absolute": 0.5326
+    },
+    {
+      "left": "form_score",
+      "right": "class_score",
+      "correlation": 0.5239,
+      "absolute": 0.5239
+    },
+    {
+      "left": "speed_score",
+      "right": "consistency_score",
+      "correlation": 0.5015,
+      "absolute": 0.5015
+    },
+    {
+      "left": "distance_score",
+      "right": "same_distance_signal_score",
+      "correlation": 0.4996,
+      "absolute": 0.4996
+    },
+    {
+      "left": "class_score",
+      "right": "consistency_score",
+      "correlation": 0.4599,
+      "absolute": 0.4599
+    },
+    {
+      "left": "form_score",
+      "right": "speed_score",
+      "correlation": 0.4101,
+      "absolute": 0.4101
+    },
+    {
+      "left": "jockey_score",
+      "right": "trainer_score",
+      "correlation": 0.3911,
+      "absolute": 0.3911
+    },
+    {
+      "left": "class_score",
+      "right": "confidence_score",
+      "correlation": 0.3733,
+      "absolute": 0.3733
+    },
+    {
+      "left": "form_score",
+      "right": "same_distance_signal_score",
+      "correlation": 0.3645,
+      "absolute": 0.3645
+    },
+    {
+      "left": "consistency_score",
+      "right": "same_distance_signal_score",
+      "correlation": 0.3553,
+      "absolute": 0.3553
+    },
+    {
+      "left": "speed_score",
+      "right": "margin_trend_score",
+      "correlation": 0.3499,
+      "absolute": 0.3499
+    },
+    {
+      "left": "class_score",
+      "right": "jockey_score",
+      "correlation": 0.2903,
+      "absolute": 0.2903
+    },
+    {
+      "left": "form_score",
+      "right": "distance_score",
+      "correlation": 0.2876,
+      "absolute": 0.2876
+    },
+    {
+      "left": "form_score",
+      "right": "jockey_score",
+      "correlation": 0.2855,
+      "absolute": 0.2855
+    },
+    {
+      "left": "distance_score",
+      "right": "confidence_score",
+      "correlation": 0.2808,
+      "absolute": 0.2808
+    },
+    {
+      "left": "jockey_score",
+      "right": "consistency_score",
+      "correlation": 0.2665,
+      "absolute": 0.2665
+    },
+    {
+      "left": "speed_score",
+      "right": "class_score",
+      "correlation": 0.2653,
+      "absolute": 0.2653
+    },
+    {
+      "left": "distance_score",
+      "right": "consistency_score",
+      "correlation": 0.2562,
+      "absolute": 0.2562
+    },
+    {
+      "left": "consistency_score",
+      "right": "margin_trend_score",
+      "correlation": 0.2515,
+      "absolute": 0.2515
+    },
+    {
+      "left": "class_score",
+      "right": "risk_score",
+      "correlation": 0.2503,
+      "absolute": 0.2503
+    },
+    {
+      "left": "class_score",
+      "right": "trainer_score",
+      "correlation": 0.2017,
+      "absolute": 0.2017
+    },
+    {
+      "left": "speed_score",
+      "right": "distance_score",
+      "correlation": 0.1991,
+      "absolute": 0.1991
+    },
+    {
+      "left": "trainer_score",
+      "right": "formline_strength_score",
+      "correlation": -0.1966,
+      "absolute": 0.1966
+    },
+    {
+      "left": "speed_score",
+      "right": "same_distance_signal_score",
+      "correlation": 0.1939,
+      "absolute": 0.1939
+    },
+    {
+      "left": "jockey_score",
+      "right": "weight_score",
+      "correlation": -0.17,
+      "absolute": 0.17
+    },
+    {
+      "left": "draw_score",
+      "right": "track_going_score",
+      "correlation": 0.1697,
+      "absolute": 0.1697
+    },
+    {
+      "left": "distance_score",
+      "right": "risk_score",
+      "correlation": 0.1668,
+      "absolute": 0.1668
+    },
+    {
+      "left": "speed_score",
+      "right": "jockey_score",
+      "correlation": 0.1642,
+      "absolute": 0.1642
+    },
+    {
+      "left": "formline_strength_score",
+      "right": "same_distance_signal_score",
+      "correlation": 0.1627,
+      "absolute": 0.1627
+    },
+    {
+      "left": "track_going_score",
+      "right": "race_shape_context_score",
+      "correlation": 0.1589,
+      "absolute": 0.1589
+    },
+    {
+      "left": "confidence_score",
+      "right": "formline_strength_score",
+      "correlation": 0.1554,
+      "absolute": 0.1554
+    },
+    {
+      "left": "form_score",
+      "right": "trainer_score",
+      "correlation": 0.1472,
+      "absolute": 0.1472
+    },
+    {
+      "left": "distance_score",
+      "right": "formline_strength_score",
+      "correlation": 0.1396,
+      "absolute": 0.1396
+    },
+    {
+      "left": "jockey_score",
+      "right": "distance_score",
+      "correlation": 0.1341,
+      "absolute": 0.1341
+    },
+    {
+      "left": "jockey_score",
+      "right": "same_distance_signal_score",
+      "correlation": 0.1284,
+      "absolute": 0.1284
+    },
+    {
+      "left": "jockey_score",
+      "right": "formline_strength_score",
+      "correlation": -0.1271,
+      "absolute": 0.1271
+    },
+    {
+      "left": "risk_score",
+      "right": "trackwork_trend_score",
+      "correlation": 0.1257,
+      "absolute": 0.1257
+    },
+    {
+      "left": "trainer_score",
+      "right": "consistency_score",
+      "correlation": 0.1254,
+      "absolute": 0.1254
+    },
+    {
+      "left": "class_score",
+      "right": "weight_score",
+      "correlation": -0.1146,
+      "absolute": 0.1146
+    },
+    {
+      "left": "speed_score",
+      "right": "confidence_score",
+      "correlation": 0.1045,
+      "absolute": 0.1045
+    },
+    {
+      "left": "formline_strength_score",
+      "right": "trackwork_trend_score",
+      "correlation": 0.1038,
+      "absolute": 0.1038
+    },
+    {
+      "left": "form_score",
+      "right": "weight_score",
+      "correlation": -0.0991,
+      "absolute": 0.0991
+    },
+    {
+      "left": "speed_score",
+      "right": "risk_score",
+      "correlation": 0.0904,
+      "absolute": 0.0904
+    },
+    {
+      "left": "trainer_score",
+      "right": "weight_score",
+      "correlation": -0.0884,
+      "absolute": 0.0884
+    },
+    {
+      "left": "weight_score",
+      "right": "same_distance_signal_score",
+      "correlation": -0.0755,
+      "absolute": 0.0755
+    },
+    {
+      "left": "track_going_score",
+      "right": "confidence_score",
+      "correlation": 0.0754,
+      "absolute": 0.0754
+    },
+    {
+      "left": "class_score",
+      "right": "formline_strength_score",
+      "correlation": 0.0676,
+      "absolute": 0.0676
+    },
+    {
+      "left": "distance_score",
+      "right": "weight_score",
+      "correlation": -0.0673,
+      "absolute": 0.0673
+    },
+    {
+      "left": "trainer_score",
+      "right": "distance_score",
+      "correlation": 0.0665,
+      "absolute": 0.0665
+    },
+    {
+      "left": "formline_strength_score",
+      "right": "race_shape_context_score",
+      "correlation": -0.0664,
+      "absolute": 0.0664
+    },
+    {
+      "left": "class_score",
+      "right": "track_going_score",
+      "correlation": 0.0659,
+      "absolute": 0.0659
+    },
+    {
+      "left": "consistency_score",
+      "right": "risk_score",
+      "correlation": 0.0647,
+      "absolute": 0.0647
+    },
+    {
+      "left": "speed_score",
+      "right": "trainer_score",
+      "correlation": 0.0622,
+      "absolute": 0.0622
+    },
+    {
+      "left": "weight_score",
+      "right": "consistency_score",
+      "correlation": -0.0616,
+      "absolute": 0.0616
+    },
+    {
+      "left": "draw_score",
+      "right": "formline_strength_score",
+      "correlation": -0.0614,
+      "absolute": 0.0614
+    },
+    {
+      "left": "form_score",
+      "right": "confidence_score",
+      "correlation": -0.0608,
+      "absolute": 0.0608
+    },
+    {
+      "left": "jockey_score",
+      "right": "race_shape_context_score",
+      "correlation": 0.0583,
+      "absolute": 0.0583
+    },
+    {
+      "left": "trackwork_trend_score",
+      "right": "race_shape_context_score",
+      "correlation": -0.0581,
+      "absolute": 0.0581
+    },
+    {
+      "left": "form_score",
+      "right": "margin_trend_score",
+      "correlation": 0.0564,
+      "absolute": 0.0564
+    },
+    {
+      "left": "trainer_score",
+      "right": "risk_score",
+      "correlation": 0.0564,
+      "absolute": 0.0564
+    },
+    {
+      "left": "speed_score",
+      "right": "formline_strength_score",
+      "correlation": 0.0549,
+      "absolute": 0.0549
+    },
+    {
+      "left": "speed_score",
+      "right": "weight_score",
+      "correlation": -0.0547,
+      "absolute": 0.0547
+    },
+    {
+      "left": "trainer_score",
+      "right": "confidence_score",
+      "correlation": 0.0499,
+      "absolute": 0.0499
+    },
+    {
+      "left": "jockey_score",
+      "right": "trackwork_trend_score",
+      "correlation": -0.0483,
+      "absolute": 0.0483
+    },
+    {
+      "left": "jockey_score",
+      "right": "risk_score",
+      "correlation": 0.0482,
+      "absolute": 0.0482
+    },
+    {
+      "left": "trainer_score",
+      "right": "trackwork_trend_score",
+      "correlation": -0.0467,
+      "absolute": 0.0467
+    },
+    {
+      "left": "consistency_score",
+      "right": "race_shape_context_score",
+      "correlation": 0.0454,
+      "absolute": 0.0454
+    },
+    {
+      "left": "jockey_score",
+      "right": "draw_score",
+      "correlation": 0.0453,
+      "absolute": 0.0453
+    },
+    {
+      "left": "trainer_score",
+      "right": "race_shape_context_score",
+      "correlation": 0.0437,
+      "absolute": 0.0437
+    },
+    {
+      "left": "confidence_score",
+      "right": "trackwork_trend_score",
+      "correlation": 0.0435,
+      "absolute": 0.0435
+    },
+    {
+      "left": "form_score",
+      "right": "race_shape_context_score",
+      "correlation": 0.0425,
+      "absolute": 0.0425
+    },
+    {
+      "left": "draw_score",
+      "right": "consistency_score",
+      "correlation": 0.0415,
+      "absolute": 0.0415
+    },
+    {
+      "left": "form_score",
+      "right": "draw_score",
+      "correlation": 0.0412,
+      "absolute": 0.0412
+    },
+    {
+      "left": "track_going_score",
+      "right": "formline_strength_score",
+      "correlation": 0.04,
+      "absolute": 0.04
+    },
+    {
+      "left": "draw_score",
+      "right": "trackwork_trend_score",
+      "correlation": -0.0387,
+      "absolute": 0.0387
+    },
+    {
+      "left": "draw_score",
+      "right": "distance_score",
+      "correlation": 0.0356,
+      "absolute": 0.0356
+    },
+    {
+      "left": "consistency_score",
+      "right": "formline_strength_score",
+      "correlation": -0.035,
+      "absolute": 0.035
+    },
+    {
+      "left": "form_score",
+      "right": "risk_score",
+      "correlation": 0.0329,
+      "absolute": 0.0329
+    },
+    {
+      "left": "confidence_score",
+      "right": "margin_trend_score",
+      "correlation": 0.0328,
+      "absolute": 0.0328
+    },
+    {
+      "left": "distance_score",
+      "right": "race_shape_context_score",
+      "correlation": 0.0328,
+      "absolute": 0.0328
+    },
+    {
+      "left": "class_score",
+      "right": "draw_score",
+      "correlation": 0.0327,
+      "absolute": 0.0327
+    },
+    {
+      "left": "distance_score",
+      "right": "margin_trend_score",
+      "correlation": 0.0327,
+      "absolute": 0.0327
+    },
+    {
+      "left": "form_score",
+      "right": "formline_strength_score",
+      "correlation": -0.0326,
+      "absolute": 0.0326
+    },
+    {
+      "left": "weight_score",
+      "right": "formline_strength_score",
+      "correlation": -0.0324,
+      "absolute": 0.0324
+    },
+    {
+      "left": "trainer_score",
+      "right": "draw_score",
+      "correlation": 0.0322,
+      "absolute": 0.0322
+    },
+    {
+      "left": "trainer_score",
+      "right": "track_going_score",
+      "correlation": 0.0314,
+      "absolute": 0.0314
+    },
+    {
+      "left": "risk_score",
+      "right": "race_shape_context_score",
+      "correlation": -0.0309,
+      "absolute": 0.0309
+    },
+    {
+      "left": "confidence_score",
+      "right": "race_shape_context_score",
+      "correlation": -0.0304,
+      "absolute": 0.0304
+    },
+    {
+      "left": "track_going_score",
+      "right": "same_distance_signal_score",
+      "correlation": 0.0304,
+      "absolute": 0.0304
+    },
+    {
+      "left": "confidence_score",
+      "right": "same_distance_signal_score",
+      "correlation": 0.0295,
+      "absolute": 0.0295
+    },
+    {
+      "left": "margin_trend_score",
+      "right": "trackwork_trend_score",
+      "correlation": -0.029,
+      "absolute": 0.029
+    },
+    {
+      "left": "class_score",
+      "right": "race_shape_context_score",
+      "correlation": 0.0273,
+      "absolute": 0.0273
+    },
+    {
+      "left": "risk_score",
+      "right": "margin_trend_score",
+      "correlation": 0.0272,
+      "absolute": 0.0272
+    },
+    {
+      "left": "consistency_score",
+      "right": "confidence_score",
+      "correlation": -0.027,
+      "absolute": 0.027
+    },
+    {
+      "left": "track_going_score",
+      "right": "risk_score",
+      "correlation": 0.026,
+      "absolute": 0.026
+    },
+    {
+      "left": "distance_score",
+      "right": "track_going_score",
+      "correlation": 0.0255,
+      "absolute": 0.0255
+    },
+    {
+      "left": "risk_score",
+      "right": "same_distance_signal_score",
+      "correlation": 0.0253,
+      "absolute": 0.0253
+    },
+    {
+      "left": "speed_score",
+      "right": "trackwork_trend_score",
+      "correlation": -0.0225,
+      "absolute": 0.0225
+    },
+    {
+      "left": "track_going_score",
+      "right": "weight_score",
+      "correlation": -0.0204,
+      "absolute": 0.0204
+    },
+    {
+      "left": "weight_score",
+      "right": "race_shape_context_score",
+      "correlation": -0.0198,
+      "absolute": 0.0198
+    },
+    {
+      "left": "margin_trend_score",
+      "right": "same_distance_signal_score",
+      "correlation": 0.0178,
+      "absolute": 0.0178
+    },
+    {
+      "left": "jockey_score",
+      "right": "margin_trend_score",
+      "correlation": 0.0177,
+      "absolute": 0.0177
+    },
+    {
+      "left": "draw_score",
+      "right": "weight_score",
+      "correlation": -0.0174,
+      "absolute": 0.0174
+    },
+    {
+      "left": "track_going_score",
+      "right": "margin_trend_score",
+      "correlation": 0.0168,
+      "absolute": 0.0168
+    },
+    {
+      "left": "jockey_score",
+      "right": "confidence_score",
+      "correlation": 0.0166,
+      "absolute": 0.0166
+    },
+    {
+      "left": "margin_trend_score",
+      "right": "race_shape_context_score",
+      "correlation": 0.0156,
+      "absolute": 0.0156
+    },
+    {
+      "left": "weight_score",
+      "right": "confidence_score",
+      "correlation": -0.0117,
+      "absolute": 0.0117
+    },
+    {
+      "left": "track_going_score",
+      "right": "trackwork_trend_score",
+      "correlation": -0.0112,
+      "absolute": 0.0112
+    },
+    {
+      "left": "speed_score",
+      "right": "race_shape_context_score",
+      "correlation": 0.0105,
+      "absolute": 0.0105
+    },
+    {
+      "left": "trainer_score",
+      "right": "margin_trend_score",
+      "correlation": 0.0103,
+      "absolute": 0.0103
+    },
+    {
+      "left": "trainer_score",
+      "right": "same_distance_signal_score",
+      "correlation": 0.0102,
+      "absolute": 0.0102
+    },
+    {
+      "left": "same_distance_signal_score",
+      "right": "trackwork_trend_score",
+      "correlation": -0.0097,
+      "absolute": 0.0097
+    },
+    {
+      "left": "formline_strength_score",
+      "right": "margin_trend_score",
+      "correlation": 0.0084,
+      "absolute": 0.0084
+    },
+    {
+      "left": "draw_score",
+      "right": "same_distance_signal_score",
+      "correlation": 0.0069,
+      "absolute": 0.0069
+    },
+    {
+      "left": "draw_score",
+      "right": "risk_score",
+      "correlation": -0.0067,
+      "absolute": 0.0067
+    },
+    {
+      "left": "draw_score",
+      "right": "confidence_score",
+      "correlation": -0.0064,
+      "absolute": 0.0064
+    },
+    {
+      "left": "risk_score",
+      "right": "formline_strength_score",
+      "correlation": -0.0064,
+      "absolute": 0.0064
+    },
+    {
+      "left": "draw_score",
+      "right": "margin_trend_score",
+      "correlation": 0.0063,
+      "absolute": 0.0063
+    },
+    {
+      "left": "weight_score",
+      "right": "margin_trend_score",
+      "correlation": -0.0063,
+      "absolute": 0.0063
+    },
+    {
+      "left": "consistency_score",
+      "right": "trackwork_trend_score",
+      "correlation": 0.006,
+      "absolute": 0.006
+    },
+    {
+      "left": "class_score",
+      "right": "margin_trend_score",
+      "correlation": -0.0051,
+      "absolute": 0.0051
+    },
+    {
+      "left": "class_score",
+      "right": "trackwork_trend_score",
+      "correlation": -0.0043,
+      "absolute": 0.0043
+    },
+    {
+      "left": "form_score",
+      "right": "trackwork_trend_score",
+      "correlation": -0.0041,
+      "absolute": 0.0041
+    },
+    {
+      "left": "jockey_score",
+      "right": "track_going_score",
+      "correlation": 0.0038,
+      "absolute": 0.0038
+    },
+    {
+      "left": "speed_score",
+      "right": "draw_score",
+      "correlation": 0.0038,
+      "absolute": 0.0038
+    },
+    {
+      "left": "form_score",
+      "right": "track_going_score",
+      "correlation": 0.0027,
+      "absolute": 0.0027
+    },
+    {
+      "left": "same_distance_signal_score",
+      "right": "race_shape_context_score",
+      "correlation": 0.0017,
+      "absolute": 0.0017
+    },
+    {
+      "left": "weight_score",
+      "right": "trackwork_trend_score",
+      "correlation": -0.0016,
+      "absolute": 0.0016
+    },
+    {
+      "left": "speed_score",
+      "right": "track_going_score",
+      "correlation": 0.0015,
+      "absolute": 0.0015
+    },
+    {
+      "left": "weight_score",
+      "right": "risk_score",
+      "correlation": -0.0012,
+      "absolute": 0.0012
+    },
+    {
+      "left": "track_going_score",
+      "right": "consistency_score",
+      "correlation": -0.001,
+      "absolute": 0.001
+    },
+    {
+      "left": "distance_score",
+      "right": "trackwork_trend_score",
+      "correlation": 0.0006,
+      "absolute": 0.0006
+    }
+  ],
+  "errors": []
+}

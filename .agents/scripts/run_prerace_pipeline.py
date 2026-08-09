@@ -157,6 +157,11 @@ def step3_inject_facts(meeting_dir: Path, workers: int = 1) -> list:
 
     print(f"\n📂 Found {len(formguides)} formguide(s) in {meeting_dir.name}")
 
+    meeting_date = ""
+    meeting_date_match = re.match(r"(\d{4}-\d{2}-\d{2})", meeting_dir.name)
+    if meeting_date_match:
+        meeting_date = meeting_date_match.group(1)
+
     tasks = []
     for fg in formguides:
         # Extract race number from filename
@@ -172,6 +177,8 @@ def step3_inject_facts(meeting_dir: Path, workers: int = 1) -> list:
 
         # Build inject command args
         inject_args = [str(fg), "--output", str(out_path)]
+        if meeting_date:
+            inject_args.extend(["--race-date", meeting_date])
         if race_num > 0:
             inject_args.extend(["--race-num", str(race_num)])
 

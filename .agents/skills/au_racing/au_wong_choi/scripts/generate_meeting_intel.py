@@ -11,14 +11,14 @@ Integrated into au_orchestrator.py State 1 to auto-generate
 _Meeting_Intelligence_Package.md with real weather data + predictions.
 
 Pipeline:
-  1. Claw Code (curl_cffi + Playwright) → extract Racenet weather/track
+  1. Sportsbet meeting cache → official track condition
   2. Open-Meteo API → hourly forecast (rain, wind, humidity, temp)
   3. Track Profiles JSON → drainage/surface analysis
   4. Prediction Engine → early/late race track condition shift
   5. Output → _Meeting_Intelligence_Package.md
 
 Usage:
-  python3 generate_meeting_intel.py --url <racenet_overview_url> --target-dir <path>
+  python3 generate_meeting_intel.py --meeting "<對應表 key>" --target-dir <path>
   python3 generate_meeting_intel.py --url <url> --target-dir <path> --venue Pakenham
 """
 import argparse
@@ -78,96 +78,52 @@ def parse_track_rating(condition_str):
     return 4, 'Good'  # default
 
 # ─────────────────────────────────────────────
-# Step 1: Extract Racenet weather via Claw Code
+# Step 1: 場地狀況／天氣 —— 由 Sportsbet cache 讀
 # ─────────────────────────────────────────────
-def extract_racenet_weather(url):
-    """Use curl_cffi + Playwright to get weather/track from Racenet overview page."""
+def extract_track_conditions(meeting_key=None, race_url=None):
+    """由 Sportsbet 賽事頁攞場地狀況。→ dict 或 None。
+
+    以前呢度用 curl_cffi + Playwright 抓 Racenet overview 頁。Racenet
+    2026-08-02 起全封，所以嗰條路只會回 None，然後 `parse_condition` 靜靜咁
+    當「Good 4」—— **一個錯得好貴嘅默認值**，因為呢個語料 52% 係軟地或重地，
+    而濕地 overlay 係按場地狀況施加嘅。一個永遠講「好地」嘅來源比冇來源更差。
+
+    而家場地狀況由抽取賽卡嗰一刻同一份 HTML 嚟（`parse_race` 已經出
+    `track_condition`），所以：零額外請求、同評分用嘅係同一個數字。
+
+    ⚠️ 攞唔到就回 None，唔會估。上游要自己決定係停低定係要求 `--going`。
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     try:
-        from curl_cffi import requests as cffi_requests
-        from playwright.sync_api import sync_playwright
+        from claw_sportsbet_form import (BASE, SportsbetFormFetcher, parse_race)
+        from sb_backfill_archive import load_meeting_ids
     except ImportError as e:
-        print(f"  ⚠️ Claw Code dependencies missing ({e}), skipping Racenet extraction")
+        print(f"  ⚠️ Sportsbet 模組載入失敗（{e}）")
         return None
 
-    print(f"  📡 [Claw Code] Fetching Racenet overview...")
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-    }
-    try:
-        resp = cffi_requests.get(url, impersonate="chrome120", headers=headers, timeout=30)
-        resp.raise_for_status()
-    except Exception as e:
-        print(f"  ❌ Racenet fetch failed: {e}")
-        return None
+    f = SportsbetFormFetcher(delay=0.0, verbose=False)
+    urls = []
+    if race_url:
+        urls = [race_url]
+    elif meeting_key:
+        meta = load_meeting_ids().get(meeting_key)
+        if not meta:
+            print(f"  ⚠️ 對應表冇 `{meeting_key}`")
+            return None
+        urls = [f"{BASE}/{meta['meetingId']}/{rid}/" for rid in meta["races"]]
+    for url in urls:
+        if not f._cache_path(url).exists():
+            continue                      # 只讀 cache，絕不出網
+        meta = parse_race(f.get(url))["meta"]
+        cond = meta.get("track_condition")
+        if cond:
+            return {"track_condition": cond, "weather": meta.get("weather", "Unknown"),
+                    "rail": meta.get("rail", "Unknown"),
+                    "track_surface": meta.get("surface", ""), "detail": {}}
+    print("  ⚠️ cache 冇場地狀況 —— 唔會估，回 None")
+    return None
 
-    with tempfile.NamedTemporaryFile(
-        "w",
-        suffix=".html",
-        prefix="_mip_temp_",
-        delete=False,
-        encoding="utf-8",
-        dir=os.getcwd(),
-    ) as handle:
-        handle.write(resp.text)
-        temp_html = handle.name
-
-    try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
-            page.goto(f"file://{temp_html}", wait_until="domcontentloaded")
-            nuxt = page.evaluate("() => window.__NUXT__")
-            browser.close()
-    except Exception as e:
-        print(f"  ❌ Playwright hydration failed: {e}")
-        return None
-    finally:
-        if os.path.exists(temp_html):
-            os.remove(temp_html)
-
-    apollo = nuxt.get('apollo', {}).get('defaultClient', nuxt.get('apollo', {}).get('horseClient', {}))
-    result = {'weather': 'Unknown', 'track_condition': 'Unknown', 'detail': {}}
-
-    # Extract weather
-    for key, val in apollo.items():
-        if key.endswith('.weather') and key.startswith('$Event:') and isinstance(val, dict):
-            cond = val.get('condition', '')
-            temp = val.get('temperature', '')
-            if cond:
-                result['weather'] = f"{cond.title()} {temp}°C" if temp else cond.title()
-                result['detail'] = {
-                    'condition': cond,
-                    'temperature': temp,
-                    'feelsLike': val.get('feelsLike', ''),
-                    'wind': val.get('wind', ''),
-                    'humidity': val.get('humidity', ''),
-                    'icon': val.get('conditionIcon', ''),
-                }
-                print(f"  ✅ Weather: {result['weather']} | {val.get('wind','')} | {val.get('humidity','')}")
-            break
-
-    # Extract track condition
-    for key, val in apollo.items():
-        if key.endswith('.trackCondition') and key.startswith('$Event:') and isinstance(val, dict):
-            overall = val.get('overall', '')
-            rating = val.get('rating', '')
-            surface = val.get('surface', '')
-            if overall:
-                result['track_condition'] = f"{overall} {rating}".strip()
-                result['track_rating'] = rating
-                result['track_surface'] = surface
-                print(f"  ✅ Track: {overall} {rating} ({surface})")
-            break
-
-    # Extract rail from Meeting
-    for key, val in apollo.items():
-        if key.startswith('Meeting:') and isinstance(val, dict):
-            rail = val.get('railPosition', '')
-            if rail:
-                result['rail'] = rail
-                break
-
-    return result
 
 # ─────────────────────────────────────────
 # Step 2: Fetch Open-Meteo hourly forecast
@@ -353,15 +309,15 @@ def predict_track_shift(current_rating_num, forecast, track_profile, race_times=
 # ─────────────────────────────────────────
 # Step 5: Generate MIP file
 # ─────────────────────────────────────────
-def generate_mip(target_dir, venue, date_str, racenet_data, forecast, track_profile, prediction):
+def generate_mip(target_dir, venue, date_str, track_data, forecast, track_profile, prediction):
     """Write _Meeting_Intelligence_Package.md with all data."""
     mip_path = os.path.join(target_dir, '_Meeting_Intelligence_Package.md')
 
-    current_track = racenet_data.get('track_condition', 'Unknown') if racenet_data else 'Unknown'
-    weather_str = racenet_data.get('weather', 'Unknown') if racenet_data else 'Unknown'
-    rail = racenet_data.get('rail', 'Unknown') if racenet_data else 'Unknown'
-    detail = racenet_data.get('detail', {}) if racenet_data else {}
-    surface = racenet_data.get('track_surface', '') if racenet_data else ''
+    current_track = track_data.get('track_condition', 'Unknown') if track_data else 'Unknown'
+    weather_str = track_data.get('weather', 'Unknown') if track_data else 'Unknown'
+    rail = track_data.get('rail', 'Unknown') if track_data else 'Unknown'
+    detail = track_data.get('detail', {}) if track_data else {}
+    surface = track_data.get('track_surface', '') if track_data else ''
 
     profile_str = (track_profile or {}).get('profile', 'Unknown')
     drainage_str = (track_profile or {}).get('drainage', 'Unknown')
@@ -380,7 +336,7 @@ def generate_mip(target_dir, venue, date_str, racenet_data, forecast, track_prof
         bias_conclusion = "公平 (Fair) — 略為偏向守好位 (On-pace)"
 
     content = f"""# 🏟️ 賽事天氣與場地情報 (Meeting Intelligence Package)
-> 🤖 由 `generate_meeting_intel.py` 自動生成 | 數據源: Racenet + Open-Meteo
+> 🤖 由 `generate_meeting_intel.py` 自動生成 | 數據源: Sportsbet + Open-Meteo
 
 ## 📍 賽場基本資訊
 - **賽場**: {venue}
@@ -466,11 +422,12 @@ def run(url, target_dir, venue=None, date_str=None):
     print(f"  📅 Date: {date_str}")
     print(f"  📂 Target: {target_dir}\n")
 
-    # Step 1: Racenet extraction
-    print("─── Step 1: Racenet Weather Extraction (Claw Code) ───")
-    racenet_data = extract_racenet_weather(url)
-    if not racenet_data or racenet_data.get('track_condition') == 'Unknown':
-        print("  ⚠️ Racenet data unavailable, will use Open-Meteo only")
+    # Step 1: 場地狀況 —— Sportsbet cache
+    print("─── Step 1: 場地狀況（Sportsbet cache，零請求）───")
+    meeting_key = args.meeting or (Path(target_dir).name if target_dir else None)
+    track_data = extract_track_conditions(meeting_key=meeting_key)
+    if not track_data or track_data.get('track_condition') == 'Unknown':
+        print("  ⚠️ cache 冇場地狀況，只用 Open-Meteo 預測")
 
     # Step 2: Open-Meteo forecast
     print("\n─── Step 2: Open-Meteo Hourly Forecast ───")
@@ -482,9 +439,15 @@ def run(url, target_dir, venue=None, date_str=None):
 
     # Step 4: Prediction
     print("\n─── Step 4: Track Condition Prediction Engine ───")
+    # ⚠️ 呢個默認值以前係靜靜咁用嘅。Racenet 一封，`extract_racenet_weather`
+    # 永遠回 None，於是每個場次都當「Good 4」—— 而語料 52% 係軟地／重地。
+    # 而家攞唔到就講出嚟，因為濕地 overlay 就係靠呢個數字。
     current_num = 4  # default Good 4
-    if racenet_data and racenet_data.get('track_condition') != 'Unknown':
-        current_num, _ = parse_track_rating(racenet_data['track_condition'])
+    if track_data and track_data.get('track_condition') != 'Unknown':
+        current_num, _ = parse_track_rating(track_data['track_condition'])
+    else:
+        print("  ⚠️ 用緊默認 Good 4 —— 呢個係一個假設，唔係量到嘅。"
+              "live 場次請確認 `--going`。")
     prediction = predict_track_shift(current_num, forecast, track_profile)
     early_label = RATING_LABELS.get(prediction['early'], f"Rating {prediction['early']}")
     late_label = RATING_LABELS.get(prediction['late'], f"Rating {prediction['late']}")
@@ -495,14 +458,18 @@ def run(url, target_dir, venue=None, date_str=None):
 
     # Step 5: Generate MIP
     print("\n─── Step 5: Generate _Meeting_Intelligence_Package.md ───")
-    mip_path = generate_mip(target_dir, venue, date_str, racenet_data, forecast, track_profile, prediction)
+    mip_path = generate_mip(target_dir, venue, date_str, track_data, forecast, track_profile, prediction)
 
     return mip_path
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Generate Meeting Intelligence Package")
-    parser.add_argument('--url', required=True, help='Racenet overview URL')
+    # `--url` 由必填變選填：佢以前係 Racenet overview 頁，而家只用嚟推
+    # venue/date。場地狀況改由 `--meeting` 對住 Sportsbet cache 讀。
+    parser.add_argument('--url', default='', help='（選填）只用嚟推 venue/date')
+    parser.add_argument('--meeting', default=None,
+                        help='場次對應表 key，例如「2026-08-01 Flemington Race 1-9」')
     parser.add_argument('--target-dir', required=True, help='Output directory')
     parser.add_argument('--venue', default=None, help='Venue name (auto-detected from URL)')
     parser.add_argument('--date', default=None, help='Date string YYYY-MM-DD')

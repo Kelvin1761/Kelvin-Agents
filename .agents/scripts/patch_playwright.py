@@ -4,9 +4,6 @@ from pathlib import Path
 import re
 
 files = [
-    '.agents/skills/au_racing/claw_racenet_results.py',
-    '.agents/skills/au_racing/claw_racenet_scraper.py',
-    '.agents/skills/au_racing/claw_profile_scraper.py',
     '.agents/skills/au_racing/au_wong_choi/scripts/generate_meeting_intel.py'
 ]
 

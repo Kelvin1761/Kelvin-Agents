@@ -1,0 +1,36 @@
+dataset scratch/au_leaves_v2_pf.json  races 713  runners 7547
+races 713  dev 606  holdout 107  folds [121, 121, 122, 121, 121]
+gains  = {"stability": 0.975, "pace_perf": 1.0244, "race_shape": 4.1142, "jockey_trainer": 2.4973, "class_weight": 2.7489, "track": 1.5193}
+基準權重 = {"stability": 0.43664, "pace_perf": 0.26149, "race_shape": 0.05136, "jockey_trainer": 0.11055, "class_weight": 0.02347, "track": 0.1165}
+
+基準 dev OBJ = 34.3386   逐 fold = ['33.656', '34.564', '35.809', '36.082', '31.569']
+
+3000 條隨機權重：1179 條贏 dev，其中 515 條再過 4/5 fold 閘
+
+共識權重（515 條過閘候選嘅逐維度中位數，睇 holdout 之前已經定死）：
+{"stability": 0.39112, "pace_perf": 0.15338, "race_shape": 0.09771, "jockey_trainer": 0.17309, "class_weight": 0.07439, "track": 0.11031, "form_line": 0.0}
+argmax 權重（只作對照，唔會 ship）：{"stability": 0.28218, "pace_perf": 0.08101, "race_shape": 0.16643, "jockey_trainer": 0.21061, "class_weight": 0.18889, "track": 0.07088, "form_line": 0.0}
+
+===== 共識：dev (606 場) =====
+                  gold    good_pos        any2       pass1       champ       winT3      t3prec         mrr     blowout      compet       ndcg5
+baseline          5.12       20.63       41.25       87.95       21.95       52.48       44.77       43.14       19.80       56.77       52.82
+candidate         6.27       21.95       41.09       88.61       23.60       54.46       45.32       44.87       18.65       57.92       54.33
+delta            +1.16       +1.32       -0.17       +0.66       +1.65       +1.98       +0.55       +1.73       -1.16       +1.16       +1.51
+
+===== 共識：holdout (107 場，未碰過) =====
+                  gold    good_pos        any2       pass1       champ       winT3      t3prec         mrr     blowout      compet       ndcg5
+baseline          5.61       15.89       40.19       85.98       24.30       54.21       43.93       44.44       15.89       57.94       51.12
+candidate         5.61       14.95       35.51       84.11       23.36       55.14       41.74       44.42       16.82       57.94       52.45
+delta            +0.00       -0.93       -4.67       -1.87       -0.93       +0.93       -2.18       -0.01       +0.93       +0.00       +1.33
+
+===== argmax：dev (606 場) =====
+                  gold    good_pos        any2       pass1       champ       winT3      t3prec         mrr     blowout      compet       ndcg5
+baseline          5.12       20.63       41.25       87.95       21.95       52.48       44.77       43.14       19.80       56.77       52.82
+candidate         5.45       23.10       48.35       90.26       25.91       57.92       48.02       46.75       18.98       61.39       56.04
+delta            +0.33       +2.48       +7.10       +2.31       +3.96       +5.45       +3.25       +3.61       -0.83       +4.62       +3.22
+
+===== argmax：holdout (107 場，未碰過) =====
+                  gold    good_pos        any2       pass1       champ       winT3      t3prec         mrr     blowout      compet       ndcg5
+baseline          5.61       15.89       40.19       85.98       24.30       54.21       43.93       44.44       15.89       57.94       51.12
+candidate         2.80       16.82       36.45       80.37       26.17       57.01       39.88       46.88       16.82       57.94       53.82
+delta            -2.80       +0.93       -3.74       -5.61       +1.87       +2.80       -4.05       +2.45       +0.93       +0.00       +2.70

@@ -36,7 +36,7 @@ Specialist AI personas for different domains.
 | ------------------------ | -------------------------- | -------------------------------------------------------- |
 | `orchestrator`           | Multi-agent coordination   | parallel-agents, behavioral-modes                        |
 | `project-planner`        | Discovery, task planning   | brainstorming, plan-writing, architecture                |
-| `frontend-specialist`    | Web UI/UX                  | frontend-design, react-best-practices, tailwind-patterns |
+| `frontend-specialist`    | Web UI/UX                  | frontend-design, react-best-practices, web-design-guidelines |
 | `backend-specialist`     | API, business logic        | api-patterns, nodejs-best-practices, database-design     |
 | `database-architect`     | Schema, SQL                | database-design, prisma-expert                           |
 | `devops-engineer`        | CI/CD, Docker              | deployment-procedures, docker-expert                     |
@@ -62,7 +62,6 @@ Modular knowledge domains that agents can load on-demand. based on task context.
 | ----------------------- | --------------------------------------------------------------------- |
 | `react-best-practices`  | React & Next.js performance optimization (Vercel - 57 rules)          |
 | `web-design-guidelines` | Web UI audit - 100+ rules for accessibility, UX, performance (Vercel) |
-| `tailwind-patterns`     | Tailwind CSS v4 utilities                                             |
 | `frontend-design`       | UI/UX patterns, design systems                                        |
 | `ui-ux-pro-max`         | 50 styles, 21 palettes, 50 fonts                                      |
 

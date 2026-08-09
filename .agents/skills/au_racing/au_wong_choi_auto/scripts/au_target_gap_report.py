@@ -11,13 +11,14 @@ from au_archive_calibrator import (
     load_historical_results,
     parse_int,
 )
+from au_metric_contract import ranked_performance
 
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Auto_Target_Gap_Report.md"
 
 TARGETS = {
     "gold_rate": 0.30,
     "good_rate": 0.40,
-    "minimum_rate": 0.60,
+    "pass_rate": 0.60,
     "top3_place_precision": 0.80,
 }
 
@@ -67,7 +68,7 @@ def new_bucket():
         "champion": 0,
         "gold": 0,
         "good": 0,
-        "minimum": 0,
+        "pass": 0,
         "winner_in_top3": 0,
         "top3_places": 0,
         "top3_slots": 0,
@@ -116,10 +117,8 @@ def collect_metrics():
 
     for race in iter_ability_races():
         ranked = sorted(race["horses"], key=lambda row: (-row["score"], row["horse_number"]))
-        top3 = ranked[:3]
-        top2 = ranked[:2]
-        hits_top3 = sum(1 for row in top3 if row["actual_pos"] <= 3)
-        hits_top2 = sum(1 for row in top2 if row["actual_pos"] <= 3)
+        performance = ranked_performance(ranked)
+        hits_top3 = int(performance["hits"])
 
         groups = (
             overall,
@@ -132,16 +131,16 @@ def collect_metrics():
             bucket["top3_places"] += hits_top3
             bucket["top3_slots"] += 3
             bucket["hit_distribution"][hits_top3] += 1
-            if ranked[0]["actual_pos"] == 1:
+            if performance["champion"]:
                 bucket["champion"] += 1
-            if any(row["actual_pos"] == 1 for row in top3):
+            if performance["winner_in_top3"]:
                 bucket["winner_in_top3"] += 1
-            if hits_top3 == 3:
+            if performance["gold"]:
                 bucket["gold"] += 1
-            if hits_top2 == 2:
+            if performance["good_positional"]:
                 bucket["good"] += 1
-            if hits_top3 >= 2:
-                bucket["minimum"] += 1
+            if performance["pass"]:
+                bucket["pass"] += 1
 
     return overall, by_condition, by_race_class, by_field_size
 
@@ -156,11 +155,11 @@ def summarize_bucket(name: str, bucket: dict) -> dict:
         "winner_in_top3_rate": rate(bucket["winner_in_top3"], races),
         "gold_rate": rate(bucket["gold"], races),
         "good_rate": rate(bucket["good"], races),
-        "minimum_rate": rate(bucket["minimum"], races),
+        "pass_rate": rate(bucket["pass"], races),
         "top3_place_precision": rate(bucket["top3_places"], top3_slots),
         "gold_gap": gap_count(TARGETS["gold_rate"], bucket["gold"], races),
         "good_gap": gap_count(TARGETS["good_rate"], bucket["good"], races),
-        "minimum_gap": gap_count(TARGETS["minimum_rate"], bucket["minimum"], races),
+        "pass_gap": gap_count(TARGETS["pass_rate"], bucket["pass"], races),
         "top3_slot_gap": gap_count(TARGETS["top3_place_precision"], bucket["top3_places"], top3_slots),
         "zero_hit_races": bucket["hit_distribution"][0],
         "one_hit_races": bucket["hit_distribution"][1],
@@ -176,15 +175,15 @@ def render_table(rows: list[dict]) -> list[str]:
     ]
     for row in rows:
         lines.append(
-            "| {name} | {races} | {gold} | {gold_gap} | {good} | {good_gap} | {minimum} | {minimum_gap} | {top3} | {slot_gap} | {top1} | {winner_top3} | {zero} | {one} | {two} | {three} |".format(
+            "| {name} | {races} | {gold} | {gold_gap} | {good} | {good_gap} | {pass_rate} | {pass_gap} | {top3} | {slot_gap} | {top1} | {winner_top3} | {zero} | {one} | {two} | {three} |".format(
                 name=row["name"],
                 races=row["races"],
                 gold=pct(row["gold_rate"]),
                 gold_gap=row["gold_gap"],
                 good=pct(row["good_rate"]),
                 good_gap=row["good_gap"],
-                minimum=pct(row["minimum_rate"]),
-                minimum_gap=row["minimum_gap"],
+                pass_rate=pct(row["pass_rate"]),
+                pass_gap=row["pass_gap"],
                 top3=pct(row["top3_place_precision"]),
                 slot_gap=row["top3_slot_gap"],
                 top1=pct(row["champion_rate"]),
@@ -204,16 +203,16 @@ def build_report(overall: dict, by_condition: dict, by_race_class: dict, by_fiel
     class_rows = [summarize_bucket(name, bucket) for name, bucket in sorted(by_race_class.items())]
     field_rows = [summarize_bucket(name, bucket) for name, bucket in sorted(by_field_size.items())]
 
-    biggest_condition_gap = max(condition_rows, key=lambda row: row["minimum_gap"]) if condition_rows else None
-    biggest_class_gap = max(class_rows, key=lambda row: row["minimum_gap"]) if class_rows else None
-    biggest_field_gap = max(field_rows, key=lambda row: row["minimum_gap"]) if field_rows else None
+    biggest_condition_gap = max(condition_rows, key=lambda row: row["pass_gap"]) if condition_rows else None
+    biggest_class_gap = max(class_rows, key=lambda row: row["pass_gap"]) if class_rows else None
+    biggest_field_gap = max(field_rows, key=lambda row: row["pass_gap"]) if field_rows else None
 
     lines = [
         "# AU Auto Target Gap Report",
         "",
         "## Target Standard",
         "",
-        "- Gold: Top 3 picks 全部跑入實際前三，目標 >= 30%",
+        "- Gold: 實際前三全部落入模型 Top 4，目標 >= 30%",
         "- Good: Top 1 + Top 2 picks 同時跑入實際前三，目標 >= 40%",
         "- Pass: Top 3 picks 至少 2 匹跑入實際前三，目標 >= 60%",
         "- Top 3 Place Precision: Top 3 picks 單入位率，目標 >= 80%",
@@ -223,7 +222,7 @@ def build_report(overall: dict, by_condition: dict, by_race_class: dict, by_fiel
         f"- Races: **{overall_row['races']}**",
         f"- Gold: **{pct(overall_row['gold_rate'])}**  | gap to target: **+{overall_row['gold_gap']} races**",
         f"- Good: **{pct(overall_row['good_rate'])}**  | gap to target: **+{overall_row['good_gap']} races**",
-        f"- Pass: **{pct(overall_row['minimum_rate'])}**  | gap to target: **+{overall_row['minimum_gap']} races**",
+        f"- Pass: **{pct(overall_row['pass_rate'])}**  | gap to target: **+{overall_row['pass_gap']} races**",
         f"- Top 3 Place Precision: **{pct(overall_row['top3_place_precision'])}**  | gap to target: **+{overall_row['top3_slot_gap']} placing hits**",
         f"- Top 1 Hit Rate: **{pct(overall_row['champion_rate'])}**",
         f"- Top 3 Contains Winner: **{pct(overall_row['winner_in_top3_rate'])}**",
@@ -251,9 +250,9 @@ def build_report(overall: dict, by_condition: dict, by_race_class: dict, by_fiel
         "",
         "## What The Archive Is Saying",
         "",
-        f"- 最大 condition gap 來自 **{biggest_condition_gap['name']}**：Pass 尚差 **{biggest_condition_gap['minimum_gap']} races**。" if biggest_condition_gap else "- N/A",
-        f"- 最大 class gap 來自 **{biggest_class_gap['name']}**：Pass 尚差 **{biggest_class_gap['minimum_gap']} races**。" if biggest_class_gap else "- N/A",
-        f"- 最大 field-size gap 來自 **{biggest_field_gap['name']}**：Pass 尚差 **{biggest_field_gap['minimum_gap']} races**。" if biggest_field_gap else "- N/A",
+        f"- 最大 condition gap 來自 **{biggest_condition_gap['name']}**：Pass 尚差 **{biggest_condition_gap['pass_gap']} races**。" if biggest_condition_gap else "- N/A",
+        f"- 最大 class gap 來自 **{biggest_class_gap['name']}**：Pass 尚差 **{biggest_class_gap['pass_gap']} races**。" if biggest_class_gap else "- N/A",
+        f"- 最大 field-size gap 來自 **{biggest_field_gap['name']}**：Pass 尚差 **{biggest_field_gap['pass_gap']} races**。" if biggest_field_gap else "- N/A",
         "- 目前最重要唔係再追 Top 1，而係先將 `0-hit / 1-hit` race 壓低。",
         "- 如果要上 Gold/Good/Pass 標準，模型核心任務應明確定義為：`提升 place-hit density`，而唔係單純拉高冠軍命中率。",
     ]

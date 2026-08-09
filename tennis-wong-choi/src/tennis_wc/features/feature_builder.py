@@ -22,6 +22,10 @@ FEATURE_SET_VERSION = "stage3.v1"
 RELIABLE_TOURNAMENT_METADATA_SOURCES = {
     "curated_tournament_metadata",
     "tennisdata_tournament_index",
+    # Level/tour parsed from unambiguous circuit markers in Sportsbet's own
+    # competition names ("... Challenger", "ITF ...", "UTR", "125K"). Level is
+    # trustworthy; it never claims a surface (stored as NULL).
+    "competition_name_heuristic",
     "bsd_tennis",
     "espn",
     "statsperform",
@@ -395,12 +399,14 @@ def build_feature_snapshots_for_date(match_date: str) -> list[dict]:
     return [build_match_feature_snapshot(int(row["id"])) for row in rows]
 
 
-def build_sportsbet_feature_snapshots_for_date(match_date: str) -> list[dict]:
-    with get_connection() as conn:
-        rows = conn.execute(
+def _sportsbet_priced_matches(conn, match_date: str) -> list[dict]:
+    return [
+        dict(row)
+        for row in conn.execute(
             """
-            SELECT DISTINCT m.id
+            SELECT DISTINCT m.id, t.name AS tournament_name
             FROM matches m
+            JOIN tournaments t ON t.id = m.tournament_id
             JOIN odds_snapshots o ON o.match_id = m.id
             WHERE m.match_date = ?
               AND o.source_provider = 'sportsbet'
@@ -408,4 +414,148 @@ def build_sportsbet_feature_snapshots_for_date(match_date: str) -> list[dict]:
             """,
             (match_date,),
         ).fetchall()
-    return [build_match_feature_snapshot(int(row["id"])) for row in rows]
+    ]
+
+
+def build_sportsbet_feature_snapshots_for_date(
+    match_date: str, skipped: list[dict] | None = None
+) -> list[dict]:
+    """Build snapshots for every Sportsbet-priced SINGLES match on a date.
+
+    Each match is isolated: a match that cannot be assembled is recorded and
+    skipped, never allowed to end the loop. This used to be a bare list
+    comprehension, so the FIRST match whose tournament metadata was missing
+    raised out of the whole call and silently dropped every remaining match for
+    that date -- with no error surfaced anywhere, the report just showed a
+    smaller "已分析" count. Pass `skipped` to collect the per-match reasons.
+    """
+    from tennis_wc.ingestion.confirmed_metadata import is_doubles_competition
+
+    with get_connection() as conn:
+        rows = _sportsbet_priced_matches(conn, match_date)
+
+    log = skipped if skipped is not None else []
+    snapshots: list[dict] = []
+    for row in rows:
+        match_id = int(row["id"])
+        # Doubles events must never enter the singles pipeline: the "players" are
+        # pair labels with no Elo/history, so every downstream read is junk (130
+        # doubles matches had produced 257 junk predictions before this filter).
+        if is_doubles_competition(row["tournament_name"]):
+            log.append({"match_id": match_id, "tournament": row["tournament_name"],
+                        "reason": "doubles_competition"})
+            continue
+        try:
+            snapshots.append(build_match_feature_snapshot(match_id))
+        except Exception as exc:  # one bad match must not blind us to the rest
+            log.append({"match_id": match_id, "tournament": row["tournament_name"],
+                        "reason": f"{type(exc).__name__}: {exc}"})
+    return snapshots
+
+
+def odds_coverage_for_date(match_date: str) -> dict:
+    """How much of the day's fixture list Sportsbet has actually priced.
+
+    A run can look healthy while pricing almost nothing. The 20:00 scheduled job
+    analyses TOMORROW, and Sportsbet has not opened most of tomorrow's book at
+    that hour, so on 2026-07-29 the report was built from 2 priced matches out of
+    102 fixtures (2%) and still counted as a successful run -- the retry gate only
+    fired on "zero matches" or "all snapshots invalid". Exposing the ratio lets
+    the scheduler tell "quiet betting day" apart from "the book was not open yet".
+    """
+    with get_connection() as conn:
+        fixtures = conn.execute(
+            """
+            SELECT COUNT(*) FROM (
+                SELECT DISTINCT
+                    m.tour,
+                    CASE
+                        WHEN lower(pa.name) <= lower(pb.name)
+                        THEN lower(pa.name) || '|' || lower(pb.name)
+                        ELSE lower(pb.name) || '|' || lower(pa.name)
+                    END AS player_pair
+                FROM matches m
+                JOIN players pa ON pa.id = m.player_a_id
+                JOIN players pb ON pb.id = m.player_b_id
+                WHERE m.match_date = ?
+                  AND m.player_a_id != m.player_b_id
+                  AND lower(trim(pa.name)) NOT IN ('unknown player', 'unknown', 'tbd', 'none', 'null', '')
+                  AND lower(trim(pb.name)) NOT IN ('unknown player', 'unknown', 'tbd', 'none', 'null', '')
+            )
+            """,
+            (match_date,),
+        ).fetchone()[0]
+        priced = conn.execute(
+            """
+            SELECT COUNT(DISTINCT o.match_id) FROM odds_snapshots o
+            JOIN matches m ON m.id = o.match_id
+            WHERE m.match_date = ? AND o.source_provider = 'sportsbet'
+            """,
+            (match_date,),
+        ).fetchone()[0]
+        latest = conn.execute(
+            """
+            SELECT MAX(o.fetched_at) FROM odds_snapshots o
+            JOIN matches m ON m.id = o.match_id
+            WHERE m.match_date = ? AND o.source_provider = 'sportsbet'
+            """,
+            (match_date,),
+        ).fetchone()[0]
+    return {
+        "fixtures": int(fixtures or 0),
+        "priced_matches": int(priced or 0),
+        "priced_ratio": round((priced or 0) / fixtures, 4) if fixtures else None,
+        "latest_scrape": latest,
+    }
+
+
+def feature_build_coverage(match_date: str) -> dict:
+    """Read-only: how many Sportsbet-priced matches actually reached the model.
+
+    Exists because the gap was invisible. On 2026-07-25 the report said "已分析 38
+    場" while 60 matches had Sportsbet odds -- including all 22 of an ATP 500
+    (Washington), which produced 2 feature snapshots and 0 predictions. Nothing
+    in any output mentioned the other 20 matches. This surfaces the drop so it
+    can never be silent again.
+    """
+    from tennis_wc.ingestion.confirmed_metadata import is_doubles_competition
+
+    with get_connection() as conn:
+        rows = _sportsbet_priced_matches(conn, match_date)
+        with_features = {
+            int(r["match_id"])
+            for r in conn.execute(
+                """
+                SELECT DISTINCT f.match_id FROM feature_snapshots f
+                JOIN matches m ON m.id = f.match_id WHERE m.match_date = ?
+                """,
+                (match_date,),
+            ).fetchall()
+        }
+        with_predictions = {
+            int(r["match_id"])
+            for r in conn.execute(
+                """
+                SELECT DISTINCT p.match_id FROM predictions p
+                JOIN matches m ON m.id = p.match_id WHERE m.match_date = ?
+                """,
+                (match_date,),
+            ).fetchall()
+        }
+    singles = [r for r in rows if not is_doubles_competition(r["tournament_name"])]
+    missing = [r for r in singles if int(r["id"]) not in with_features]
+    by_tournament: dict[str, int] = {}
+    for row in missing:
+        name = str(row["tournament_name"] or "unknown")
+        by_tournament[name] = by_tournament.get(name, 0) + 1
+    return {
+        "priced_matches": len(rows),
+        "singles_candidates": len(singles),
+        "doubles_excluded": len(rows) - len(singles),
+        "with_features": sum(1 for r in singles if int(r["id"]) in with_features),
+        "with_predictions": sum(1 for r in singles if int(r["id"]) in with_predictions),
+        "missing_features": len(missing),
+        "missing_by_tournament": dict(
+            sorted(by_tournament.items(), key=lambda kv: -kv[1])
+        ),
+    }

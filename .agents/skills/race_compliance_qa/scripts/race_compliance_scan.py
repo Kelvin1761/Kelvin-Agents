@@ -96,9 +96,69 @@ def parse_analysis_top4(text: str) -> list[str]:
     return [num for _, num in picks]
 
 
+# Field aliases across the results-JSON dialects we have to read. The
+# `finish_position` / `competitor_number` spelling is the archive dialect (see
+# parse_result_json) — every real AU Race_Results_*.json uses it.
+_POS_KEYS = ('pos', 'position', 'rank', 'finish_position')
+_HORSE_NO_KEYS = ('horse_no', 'horse_number', 'num', 'competitor_number')
+_NAME_KEYS = ('horse_name', 'name')
+
+
+def _first_present(item: dict, keys: tuple[str, ...]) -> Any:
+    for key in keys:
+        value = item.get(key)
+        if value is not None and value != '':
+            return value
+    return None
+
+
+def parse_result_rows(items: Any) -> list[tuple[int, int, str]]:
+    """Parse one race's finisher rows into sorted (pos, horse_no, name)."""
+    rows: list[tuple[int, int, str]] = []
+    for item in items if isinstance(items, list) else []:
+        if not isinstance(item, dict):
+            continue
+        # Scratched runners carry finish_position -1 in the archive dialect, and
+        # parse_int() digit-scrapes that to 1 — which would invent a phantom
+        # winner. Drop them before parsing, and belt-and-braces reject pos <= 0.
+        if item.get('is_scratched'):
+            continue
+        pos = parse_int(_first_present(item, _POS_KEYS))
+        horse_no = parse_int(_first_present(item, _HORSE_NO_KEYS))
+        if pos is None or horse_no is None or pos <= 0:
+            continue
+        name = str(_first_present(item, _NAME_KEYS) or '').strip()
+        rows.append((pos, horse_no, name))
+    return sorted(rows, key=lambda row: row[0])
+
+
 def parse_result_json(data: Any) -> dict[int, list[tuple[int, int, str]]]:
     if isinstance(data, dict) and isinstance(data.get('races'), dict):
         data = data['races']
+
+    # Archive dialect:
+    #   {"meeting": {...}, "events": {"1": {...}}, "results": {"1": [row, ...]}}
+    # i.e. a top-level `results` MAPPING of race number -> finisher list. All 35
+    # real AU Race_Results_*.json files (4401 rows) use this shape — note some
+    # meeting folders nest a second copy of the same folder name, so search
+    # recursively if you re-audit this. The generic
+    # walk below cannot read it — it treats "meeting"/"events"/"results" as race
+    # keys, finds no race number in them, and returns {}. That made
+    # check_results_json() emit RESULT-002 ("did not yield race/position/horse
+    # number rows") for every genuine results file. Handle it first.
+    if isinstance(data, dict) and isinstance(data.get('results'), dict):
+        parsed_archive: dict[int, list[tuple[int, int, str]]] = {}
+        for key, items in data['results'].items():
+            race_no = parse_int(key)
+            rows = parse_result_rows(items)
+            if race_no is not None and rows:
+                parsed_archive[race_no] = rows
+        # Only claim the archive shape if it actually produced rows; otherwise
+        # fall through so an unrelated dict that happens to have a `results`
+        # key still gets the generic treatment.
+        if parsed_archive:
+            return parsed_archive
+
     if isinstance(data, list):
         iterable = enumerate(data, start=1)
     elif isinstance(data, dict):
@@ -111,18 +171,9 @@ def parse_result_json(data: Any) -> dict[int, list[tuple[int, int, str]]]:
         if not isinstance(race_data, dict):
             continue
         race_no = parse_int(race_data.get('race_no', key))
-        rows = []
-        for item in race_data.get('results', []):
-            if not isinstance(item, dict):
-                continue
-            pos = parse_int(item.get('pos') or item.get('position') or item.get('rank'))
-            horse_no = parse_int(item.get('horse_no') or item.get('horse_number') or item.get('num'))
-            if pos is None or horse_no is None:
-                continue
-            name = str(item.get('horse_name') or item.get('name') or '').strip()
-            rows.append((pos, horse_no, name))
+        rows = parse_result_rows(race_data.get('results', []))
         if race_no is not None and rows:
-            parsed[race_no] = sorted(rows, key=lambda row: row[0])
+            parsed[race_no] = rows
     return parsed
 
 

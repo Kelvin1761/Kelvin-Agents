@@ -1,0 +1,13 @@
+{
+  "source": "Google Drive AU_Racing/AU_Jockey_Trainer_Combo_Stats.csv",
+  "google_drive_file_id": "1Kx4ZBPAm1qT8i2_qpNwhOoD5wASdjkdg",
+  "source_modified_utc": "2026-05-14T05:43:06.248Z",
+  "snapshot_created_utc": "2026-07-29",
+  "normalization": "UTF-8 without BOM; LF line endings; row values unchanged",
+  "data_rows": 165,
+  "tracks": [
+    "Flemington",
+    "Randwick"
+  ],
+  "sha256": "cacff33c066e3a4627a8cbdf7024a3e139d193645af3b8e35fed010aa86acb3e"
+}

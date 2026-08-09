@@ -6,12 +6,12 @@ from tennis_wc.config import get_settings
 BET_BANDS = {"SMALL_BET", "STANDARD_BET", "STRONG_BET"}
 
 # Risk multipliers applied to the half-Kelly stake (compounding).
+# (injury_B/injury_C removed 2026-07-12: no injury data source exists, so the
+# bet filter never emitted those adjustments — dead entries.)
 _RISK_MULTIPLIERS = {
-    "injury_B": 0.75,
     "low_sample": 0.75,
     "stale_but_acceptable": 0.75,
     "rank_seed_elo": 0.5,
-    "injury_C": 0.5,
 }
 
 

@@ -34,7 +34,7 @@ ELSE:
 2. **Memory MCP** — `@modelcontextprotocol/server-memory` (Knowledge Graph 記憶)
 
 **Browser/MCP Policy（統一規則）**:
-- Racenet 數據抽取、賽果抽取、Formguide 讀取：只准使用 Python/curl_cffi/本地 Playwright 腳本（例如 `au_race_extractor`、`claw_racenet_results.py`），嚴禁 `browser_subagent`、MCP Playwright、`read_browser_page`。
+- 數據抽取、賽果、Formguide：來源只有 Sportsbet。抽取用 `claw_sportsbet_form.py`（curl_cffi，被拒就經 `sb_browser_bridge.py` 行瀏覽器），賽果用 `sb_results.py`（讀 cache，零請求）。Racenet 相關腳本已剷走。
 - 非抽取類、人工輔助瀏覽場景：只有當明確不是 pipeline 數據來源，而且 Python/URL 方案不可用時，先可以由人手決定是否使用瀏覽器工具。
 
 檢查方法:嘗試呼叫 `list_tables`(SQLite) 或 `read_graph`(Memory)。若失敗，提供修改 `mcp_config.json` 的指引，並告訴用戶雖然 Step 8 (數據庫寫入/記憶寫入) 無法使用，但 Step 1-7 分析仍可繼續。

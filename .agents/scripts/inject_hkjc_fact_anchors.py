@@ -36,6 +36,44 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
+
+def _profile_entry_datetime(entry: dict) -> Optional[datetime]:
+    """Return the official result date carried by a horse-profile row."""
+    for value, formats in (
+        (entry.get('race_date_full'), ('%Y/%m/%d', '%Y-%m-%d')),
+        (entry.get('date'), ('%d/%m/%y', '%d/%m/%Y', '%Y-%m-%d')),
+    ):
+        text = str(value or '').strip()
+        for fmt in formats:
+            try:
+                return datetime.strptime(text, fmt)
+            except ValueError:
+                continue
+    return None
+
+
+def filter_profile_as_of(profile: dict, race_date: str) -> dict:
+    """Return a copy containing only information available before race_date."""
+    if not profile or not race_date:
+        return profile
+    try:
+        cutoff = datetime.strptime(race_date, '%Y-%m-%d')
+    except ValueError as exc:
+        raise ValueError(f'Invalid --race-date {race_date!r}; expected YYYY-MM-DD') from exc
+    filtered = dict(profile)
+    entries = [
+        entry
+        for entry in profile.get('entries', [])
+        if (entry_dt := _profile_entry_datetime(entry)) is not None and entry_dt < cutoff
+    ]
+    filtered['entries'] = entries
+    # The profile header reflects the current trainer. For archive replay, the
+    # last pre-race row is the point-in-time authority.
+    if entries and entries[0].get('trainer'):
+        filtered['trainer'] = entries[0]['trainer']
+    return filtered
+
+
 # Import scraper for enriched data
 try:
     from scrape_hkjc_horse_profile import (
@@ -96,17 +134,27 @@ def get_reference_sections(venue: str, distance: int, race_class: str) -> dict:
         return {}
     classes = dists[dkey]
     # Map class
+    raw_class = str(race_class or '').strip()
     cmap = {'第一班': 'C1', '第二班': 'C2', '第三班': 'C3', '第四班': 'C4',
             '第五班': 'C5', '一級賽': 'G', '二級賽': 'G', '三級賽': 'G',
-            '分級賽': 'G', '新馬賽': 'GR', 'C1': 'C1', 'C2': 'C2',
-            'C3': 'C3', 'C4': 'C4', 'C5': 'C5', 'G': 'G', 'GR': 'GR'}
-    ckey = cmap.get(race_class, race_class)
-    if ckey not in classes:
-        # Fallback
-        for fb in ['C4', 'C3', 'C5', 'C2', 'C1', 'G']:
-            if fb in classes:
-                ckey = fb
-                break
+            '分級賽': 'G', '新馬賽': 'GR', '新馬': 'GR',
+            'C1': 'C1', 'C2': 'C2', 'C3': 'C3', 'C4': 'C4', 'C5': 'C5',
+            'G': 'G', 'GR': 'GR'}
+    ckey = cmap.get(raw_class)
+    if ckey is None:
+        class_match = re.search(r'(?:CLASS|C)\s*([1-5])', raw_class, re.I)
+        group_match = re.search(r'(?:GROUP|GRADE|G)\s*[123]', raw_class, re.I)
+        digit_match = re.fullmatch(r'[1-5]', raw_class)
+        if class_match:
+            ckey = f'C{class_match.group(1)}'
+        elif group_match:
+            ckey = 'G'
+        elif digit_match:
+            ckey = f'C{raw_class}'
+        else:
+            ckey = raw_class
+    # Do not silently borrow another class's par. Missing reference evidence
+    # is safer than a falsely precise normalized split.
     if ckey not in classes:
         return {}
     return classes[ckey]
@@ -1762,12 +1810,15 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     lines.append(f"📊 **段速趨勢:**")
     
     if trends['l400_values']:
-        l400_str = '→'.join(f"{v:.2f}" for v in trends['l400_values'])
-        lines.append(f"  L400: {l400_str} → 趨勢: {trends['l400_trend']}")
+        # Internal race arrays stay newest-first because the scoring logic relies on
+        # that order.  Human-facing timelines are reversed so an arrow always reads
+        # naturally from older evidence towards the latest run.
+        l400_str = '→'.join(f"{v:.2f}" for v in reversed(trends['l400_values']))
+        lines.append(f"  L400: （最舊 → 最新）{l400_str} → 趨勢: {trends['l400_trend']}")
     
     if trends['energy_values']:
-        e_str = '→'.join(str(v) for v in trends['energy_values'])
-        lines.append(f"  能量: {e_str} → 趨勢: {trends['energy_trend']}")
+        e_str = '→'.join(str(v) for v in reversed(trends['energy_values']))
+        lines.append(f"  能量: （最舊 → 最新）{e_str} → 趨勢: {trends['energy_trend']}")
     
     # === 完成時間偏差趨勢 [SIP-P2c] ===
     ft_deviations = []
@@ -1810,7 +1861,7 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     if len(ft_deviations) >= 2:
         lines.append(f"")
         lines.append(f"📊 **完成時間偏差趨勢 [SIP-P2c] (vs HKJC 標準):**")
-        dev_str = '→'.join(f"{v:+.2f}s" for v in ft_deviations)
+        dev_str = '→'.join(f"{v:+.2f}s" for v in reversed(ft_deviations))
         # Trend analysis
         if len(ft_deviations) >= 3:
             recent_avg = sum(ft_deviations[:len(ft_deviations)//2]) / max(len(ft_deviations)//2, 1)
@@ -1839,13 +1890,14 @@ def generate_horse_block(horse: dict, today_venue: str = '',
             ft_level = '⚠️ 略慢於標準'
         else:
             ft_level = '❌ 明顯慢於標準'
-        lines.append(f"  偏差: {dev_str} → 趨勢: {ft_trend}")
+        lines.append(f"  偏差: （最舊 → 最新）{dev_str} → 趨勢: {ft_trend}")
         lines.append(f"  水平: {ft_level} (近 {min(len(ft_deviations), 3)} 仗平均偏差: {avg_dev:+.2f}s)")
         lines.append(f"  含金量: {ft_reading}")
         # V5.1: Pace-adjusted deviation (subtracts race pace factor)
         if len(adj_deviations) >= 2:
             adj_str_parts = []
-            for j, ad in enumerate(adj_deviations):
+            for j in range(len(adj_deviations) - 1, -1, -1):
+                ad = adj_deviations[j]
                 pl = pace_labels[j] if j < len(pace_labels) else ''
                 if pl in ('極慢', '偏慢', '偏快'):
                     adj_str_parts.append(f"{ad:+.2f}s[{pl}]")
@@ -1861,7 +1913,7 @@ def generate_horse_block(horse: dict, today_venue: str = '',
                 adj_level = '⚠️ 步速修正後仍偏慢'
             else:
                 adj_level = '❌ 步速修正後明顯落後'
-            lines.append(f"  🔧 步速修正偏差: {adj_str}")
+            lines.append(f"  🔧 步速修正偏差: （最舊 → 最新）{adj_str}")
             lines.append(f"  🔧 修正水平: {adj_level} (近 {min(len(adj_deviations), 3)} 仗修正平均: {avg_adj:+.2f}s)")
             lines.append(f"  💡 修正方法: 扣除全場頭馬偏差(步速因子) — [極慢/偏慢]場次嘅原始偏差會被折扣")
     
@@ -2133,8 +2185,8 @@ def generate_horse_block(horse: dict, today_venue: str = '',
 
 
 def extract_race_context(text: str) -> dict:
-    """Extract race venue, distance, class from the overview line ONLY."""
-    ctx = {'venue': '', 'distance': 0, 'class': 'C4'}
+    """Extract race venue/surface/course/distance/class from overview only."""
+    ctx = {'venue': '', 'surface': '', 'course': '', 'distance': 0, 'class': 'C4'}
     
     # Only search the overview line, not the entire file
     overview_match = re.search(r'賽事日期.*?/\s*場次.*?/\s*跑道.*?:\s*(.+?)$', text, re.MULTILINE)
@@ -2150,6 +2202,20 @@ def extract_race_context(text: str) -> dict:
         ctx['venue'] = '跑馬地'
     elif '沙田' in overview:
         ctx['venue'] = '沙田'
+
+    if '全天候' in overview or 'AWT' in overview or '泥地' in overview:
+        ctx['surface'] = 'AWT'
+    elif '草地' in overview or re.search(r'\bTURF\b', overview, re.I):
+        ctx['surface'] = 'Turf'
+
+    course_match = re.search(
+        r'(?:跑道|賽道)\s*[:：-]?\s*([ABC](?:\+\d+)?)(?![A-Z0-9])|'
+        r'([ABC](?:\+\d+)?)(?![A-Z0-9])\s*(?:跑道|賽道)',
+        overview,
+        re.I,
+    )
+    if course_match:
+        ctx['course'] = (course_match.group(1) or course_match.group(2)).upper()
     
     # Distance
     dm = re.search(r'(\d{3,4})米', overview)
@@ -2182,6 +2248,7 @@ def main():
     if len(sys.argv) < 2:
         print("Usage: python3 inject_hkjc_fact_anchors.py <Formguide.txt> "
               "[--venue ST|HV] [--distance 1200] [--class 4] "
+              "[--race-date YYYY-MM-DD] "
               "[--horse-ids 'HK_2024_K416,...'] [--output Facts.md]")
         sys.exit(1)
     
@@ -2196,6 +2263,7 @@ def main():
     class_override = ''
     horse_ids_str = ''
     output_path = ''
+    race_date = ''
     race_num = 0  # For draw stats matching
     enable_form_lines = True  # Re-enabled: User requested to keep Form Lines
     
@@ -2222,6 +2290,9 @@ def main():
         elif args[i] == '--race-num' and i + 1 < len(args):
             race_num = int(args[i + 1])
             i += 2
+        elif args[i] == '--race-date' and i + 1 < len(args):
+            race_date = args[i + 1].strip()
+            i += 2
         elif args[i] == '--form-lines':
             enable_form_lines = True
             i += 1
@@ -2243,6 +2314,8 @@ def main():
     ctx = extract_race_context(text)
     
     today_venue = venue_override or ctx['venue']
+    today_surface = ctx.get('surface') or ('AWT' if 'AWT' in today_venue else 'Turf')
+    today_course = ctx.get('course') or 'Unknown'
     today_dist = dist_override or ctx['distance']
     race_class = class_override or ctx['class']
     
@@ -2253,7 +2326,11 @@ def main():
         horse_id_list = [h['brand_no'] for h in data['horses'] if h.get('brand_no')]
     
     print(f"📌 V2 HKJC 完整賽績檔案 — {len(data['horses'])} 匹馬", file=sys.stderr)
-    print(f"   場地: {today_venue} | 距離: {today_dist}m | 班次: {race_class}", file=sys.stderr)
+    print(
+        f"   場地: {today_venue} | 跑道: {today_surface} | 賽道: {today_course} | "
+        f"距離: {today_dist}m | 班次: {race_class}",
+        file=sys.stderr,
+    )
     if horse_id_list:
         print(f"   馬匹頁面: {len(horse_id_list)} 匹 (SSR enrichment)", file=sys.stderr)
     elif HAS_SCRAPER:
@@ -2282,13 +2359,18 @@ def main():
             try:
                 profile = scrape_horse_profile(hid)
                 if not profile.get('error'):
+                    profile = filter_profile_as_of(profile, race_date)
                     profiles[horse_num] = profile
                     print(f"     ✅ {profile['name']}: {len(profile['entries'])} entries", file=sys.stderr)
                     
                     # Compute form lines if enabled
                     if enable_form_lines and HAS_FORM_LINES:
                         print(f"     🔗 Computing form lines...", file=sys.stderr)
-                        fl = compute_form_lines(profile['entries'], max_races=5)
+                        fl = compute_form_lines(
+                            profile['entries'],
+                            max_races=5,
+                            as_of_date=race_date or None,
+                        )
                         form_lines_map[horse_num] = fl
                         print(f"     🔗 {fl['rating']} ({fl['stats']})", file=sys.stderr)
                 else:
@@ -2301,7 +2383,10 @@ def main():
     # Generate output
     output_lines = []
     output_lines.append(f"# 📌 V2 HKJC 完整賽績檔案 — {len(data['horses'])} 匹馬")
-    output_lines.append(f"場地: {today_venue} | 距離: {today_dist}m | 班次: {race_class}")
+    output_lines.append(
+        f"場地: {today_venue} | 跑道: {today_surface} | 賽道: {today_course} | "
+        f"距離: {today_dist}m | 班次: {race_class}"
+    )
     if profiles:
         output_lines.append(f"馬匹頁面數據: {len(profiles)} 匹已豐富 (頭馬距離/體重/配備/評分/走位)")
     if form_lines_map:

@@ -1,0 +1,4275 @@
+{
+  "meeting": "2026-07-15_HappyValley",
+  "source": "Google Drive pre-race Facts snapshots created 2026-07-14",
+  "races": {
+    "1": {
+      "1": {
+        "horse_name": "摘星聲升",
+        "sectional_normalized_l400_delta": 0.666,
+        "sectional_normalized_total_delta": 1.677,
+        "sectional_normalized_samples": 5,
+        "sectional_normalized_series": [
+          {
+            "date": "31/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.02,
+            "total_delta": 0.52
+          },
+          {
+            "date": "09/05/2026",
+            "distance": "1200",
+            "l400_delta": 1.55,
+            "total_delta": 3.4
+          },
+          {
+            "date": "19/04/2026",
+            "distance": "1000",
+            "l400_delta": 0.27,
+            "total_delta": 0.76
+          },
+          {
+            "date": "05/07/2025",
+            "distance": "1200",
+            "l400_delta": 1.33,
+            "total_delta": 2.78
+          },
+          {
+            "date": "14/06/2025",
+            "distance": "1000",
+            "l400_delta": 0.31,
+            "total_delta": 1.06
+          }
+        ]
+      },
+      "2": {
+        "horse_name": "勇者無敵",
+        "sectional_normalized_l400_delta": 0.167,
+        "sectional_normalized_total_delta": 0.607,
+        "sectional_normalized_samples": 5,
+        "sectional_normalized_series": [
+          {
+            "date": "03/06/2026",
+            "distance": "1650",
+            "l400_delta": -0.82,
+            "total_delta": 0.45
+          },
+          {
+            "date": "06/05/2026",
+            "distance": "1200",
+            "l400_delta": 1.24,
+            "total_delta": 1.86
+          },
+          {
+            "date": "19/04/2026",
+            "distance": "1200",
+            "l400_delta": 0.53,
+            "total_delta": 0.69
+          },
+          {
+            "date": "01/04/2026",
+            "distance": "1200",
+            "l400_delta": 0.13,
+            "total_delta": -0.23
+          },
+          {
+            "date": "08/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.15,
+            "total_delta": -0.26
+          }
+        ]
+      },
+      "3": {
+        "horse_name": "川河型駒",
+        "sectional_normalized_l400_delta": -0.238,
+        "sectional_normalized_total_delta": 0.379,
+        "sectional_normalized_samples": 2,
+        "sectional_normalized_series": [
+          {
+            "date": "13/06/2026",
+            "distance": "1200",
+            "l400_delta": 0.29,
+            "total_delta": 0.48
+          },
+          {
+            "date": "11/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.86,
+            "total_delta": 0.26
+          }
+        ]
+      },
+      "4": {
+        "horse_name": "多利神駒",
+        "sectional_normalized_l400_delta": -0.034,
+        "sectional_normalized_total_delta": 0.547,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "10/06/2026",
+            "distance": "1650",
+            "l400_delta": -0.75,
+            "total_delta": 0.91
+          },
+          {
+            "date": "20/05/2026",
+            "distance": "1650",
+            "l400_delta": 0.32,
+            "total_delta": 0.35
+          },
+          {
+            "date": "22/04/2026",
+            "distance": "1650",
+            "l400_delta": -0.67,
+            "total_delta": 0.5
+          },
+          {
+            "date": "25/03/2026",
+            "distance": "1650",
+            "l400_delta": -0.15,
+            "total_delta": -0.08
+          },
+          {
+            "date": "11/01/2026",
+            "distance": "1800",
+            "l400_delta": 1.74,
+            "total_delta": 0.99
+          },
+          {
+            "date": "23/12/2025",
+            "distance": "1650",
+            "l400_delta": 0.01,
+            "total_delta": 0.53
+          }
+        ]
+      },
+      "5": {
+        "horse_name": "駟跑得",
+        "sectional_normalized_l400_delta": -0.388,
+        "sectional_normalized_total_delta": 0.091,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "03/06/2026",
+            "distance": "1650",
+            "l400_delta": -0.36,
+            "total_delta": -0.91
+          },
+          {
+            "date": "13/05/2026",
+            "distance": "1650",
+            "l400_delta": -0.46,
+            "total_delta": -0.24
+          },
+          {
+            "date": "12/04/2026",
+            "distance": "1400",
+            "l400_delta": -0.41,
+            "total_delta": 1.37
+          },
+          {
+            "date": "11/03/2026",
+            "distance": "1650",
+            "l400_delta": -0.67,
+            "total_delta": 0.85
+          },
+          {
+            "date": "11/02/2026",
+            "distance": "1650",
+            "l400_delta": -0.64,
+            "total_delta": 0.06
+          },
+          {
+            "date": "28/01/2026",
+            "distance": "1650",
+            "l400_delta": 0.41,
+            "total_delta": -0.12
+          }
+        ]
+      },
+      "6": {
+        "horse_name": "極速滿貫",
+        "sectional_normalized_l400_delta": -0.076,
+        "sectional_normalized_total_delta": 0.857,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "10/06/2026",
+            "distance": "1650",
+            "l400_delta": -0.63,
+            "total_delta": 0.75
+          },
+          {
+            "date": "20/05/2026",
+            "distance": "1650",
+            "l400_delta": 0.19,
+            "total_delta": 0.51
+          },
+          {
+            "date": "13/05/2026",
+            "distance": "1650",
+            "l400_delta": 0.61,
+            "total_delta": 1.52
+          },
+          {
+            "date": "22/04/2026",
+            "distance": "1650",
+            "l400_delta": -0.75,
+            "total_delta": 1.22
+          },
+          {
+            "date": "15/04/2026",
+            "distance": "1650",
+            "l400_delta": 0.27,
+            "total_delta": 0.28
+          },
+          {
+            "date": "25/03/2026",
+            "distance": "1650",
+            "l400_delta": 0.07,
+            "total_delta": 0.86
+          }
+        ]
+      },
+      "7": {
+        "horse_name": "怪獸波士",
+        "sectional_normalized_l400_delta": 0.353,
+        "sectional_normalized_total_delta": 1.016,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "08/07/2026",
+            "distance": "1650",
+            "l400_delta": 0.23,
+            "total_delta": 0.09
+          },
+          {
+            "date": "10/06/2026",
+            "distance": "1650",
+            "l400_delta": -1.07,
+            "total_delta": -0.05
+          },
+          {
+            "date": "17/05/2026",
+            "distance": "1200",
+            "l400_delta": 2.71,
+            "total_delta": 3.93
+          },
+          {
+            "date": "08/04/2026",
+            "distance": "1000",
+            "l400_delta": -0.67,
+            "total_delta": 0.55
+          },
+          {
+            "date": "25/03/2026",
+            "distance": "1200",
+            "l400_delta": 1.26,
+            "total_delta": 1.16
+          },
+          {
+            "date": "04/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.13,
+            "total_delta": 0.88
+          }
+        ]
+      },
+      "8": {
+        "horse_name": "悠悠乾坤",
+        "sectional_normalized_l400_delta": 1.039,
+        "sectional_normalized_total_delta": 1.865,
+        "sectional_normalized_samples": 3,
+        "sectional_normalized_series": [
+          {
+            "date": "07/06/2026",
+            "distance": "1800",
+            "l400_delta": 0.41,
+            "total_delta": 1.78
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "1800",
+            "l400_delta": 1.03,
+            "total_delta": 2.07
+          },
+          {
+            "date": "15/11/2025",
+            "distance": "1800",
+            "l400_delta": 1.92,
+            "total_delta": 1.74
+          }
+        ]
+      },
+      "9": {
+        "horse_name": "架勢奇爸",
+        "sectional_normalized_l400_delta": 0.364,
+        "sectional_normalized_total_delta": 0.658,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/05/2026",
+            "distance": "2200",
+            "l400_delta": 1.28,
+            "total_delta": 0.47
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "1800",
+            "l400_delta": -0.06,
+            "total_delta": 1.42
+          },
+          {
+            "date": "25/03/2026",
+            "distance": "2200",
+            "l400_delta": -0.13,
+            "total_delta": 0.3
+          },
+          {
+            "date": "04/03/2026",
+            "distance": "1800",
+            "l400_delta": -0.21,
+            "total_delta": 0.5
+          },
+          {
+            "date": "11/01/2026",
+            "distance": "1800",
+            "l400_delta": 1.07,
+            "total_delta": 0.88
+          },
+          {
+            "date": "23/12/2025",
+            "distance": "1650",
+            "l400_delta": -0.12,
+            "total_delta": 0.16
+          }
+        ]
+      },
+      "10": {
+        "horse_name": "幸運福星",
+        "sectional_normalized_l400_delta": 0.655,
+        "sectional_normalized_total_delta": 0.485,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "01/07/2026",
+            "distance": "1600",
+            "l400_delta": 0.71,
+            "total_delta": -0.45
+          },
+          {
+            "date": "10/06/2026",
+            "distance": "1800",
+            "l400_delta": -0.95,
+            "total_delta": 1.33
+          },
+          {
+            "date": "22/04/2026",
+            "distance": "1650",
+            "l400_delta": 1.49,
+            "total_delta": 0.56
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1650",
+            "l400_delta": 2.44,
+            "total_delta": 1.07
+          },
+          {
+            "date": "28/01/2026",
+            "distance": "1650",
+            "l400_delta": 0.04,
+            "total_delta": 0.02
+          },
+          {
+            "date": "14/01/2026",
+            "distance": "1650",
+            "l400_delta": 0.5,
+            "total_delta": 0.59
+          }
+        ]
+      },
+      "11": {
+        "horse_name": "電訊驕陽",
+        "sectional_normalized_l400_delta": 0.542,
+        "sectional_normalized_total_delta": -0.056,
+        "sectional_normalized_samples": 5,
+        "sectional_normalized_series": [
+          {
+            "date": "24/06/2026",
+            "distance": "2200",
+            "l400_delta": 0.79,
+            "total_delta": 0.23
+          },
+          {
+            "date": "03/06/2026",
+            "distance": "1650",
+            "l400_delta": -0.58,
+            "total_delta": -1.01
+          },
+          {
+            "date": "13/05/2026",
+            "distance": "1650",
+            "l400_delta": -0.01,
+            "total_delta": -0.15
+          },
+          {
+            "date": "22/04/2026",
+            "distance": "1650",
+            "l400_delta": 2.34,
+            "total_delta": 1.57
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1650",
+            "l400_delta": 0.54,
+            "total_delta": -0.83
+          }
+        ]
+      },
+      "12": {
+        "horse_name": "勁爽",
+        "sectional_normalized_l400_delta": 0.276,
+        "sectional_normalized_total_delta": -0.046,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "01/07/2026",
+            "distance": "1600",
+            "l400_delta": 0.37,
+            "total_delta": -0.55
+          },
+          {
+            "date": "24/05/2026",
+            "distance": "1600",
+            "l400_delta": -0.32,
+            "total_delta": 0.15
+          },
+          {
+            "date": "15/04/2026",
+            "distance": "1650",
+            "l400_delta": 0.58,
+            "total_delta": 0.59
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1650",
+            "l400_delta": 0.21,
+            "total_delta": -0.96
+          },
+          {
+            "date": "28/01/2026",
+            "distance": "1650",
+            "l400_delta": 0.61,
+            "total_delta": 0.03
+          },
+          {
+            "date": "10/12/2025",
+            "distance": "1650",
+            "l400_delta": 0.41,
+            "total_delta": 0.85
+          }
+        ]
+      }
+    },
+    "2": {
+      "1": {
+        "horse_name": "紅愛舍",
+        "sectional_normalized_l400_delta": -0.159,
+        "sectional_normalized_total_delta": 0.533,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.12,
+            "total_delta": 0.74
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "1200",
+            "l400_delta": 0.12,
+            "total_delta": 0.33
+          },
+          {
+            "date": "08/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.54,
+            "total_delta": 0.36
+          },
+          {
+            "date": "01/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.16,
+            "total_delta": 1.22
+          },
+          {
+            "date": "11/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.3,
+            "total_delta": 0.05
+          },
+          {
+            "date": "04/01/2026",
+            "distance": "1200",
+            "l400_delta": -0.53,
+            "total_delta": 0.35
+          }
+        ]
+      },
+      "2": {
+        "horse_name": "紅錢到",
+        "sectional_normalized_l400_delta": 0.168,
+        "sectional_normalized_total_delta": 0.003,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "10/06/2026",
+            "distance": "1000",
+            "l400_delta": -0.09,
+            "total_delta": -0.24
+          },
+          {
+            "date": "20/05/2026",
+            "distance": "1000",
+            "l400_delta": -0.1,
+            "total_delta": -0.15
+          },
+          {
+            "date": "22/04/2026",
+            "distance": "1200",
+            "l400_delta": 0.25,
+            "total_delta": 0.44
+          },
+          {
+            "date": "11/03/2026",
+            "distance": "1200",
+            "l400_delta": 0.27,
+            "total_delta": 0.32
+          },
+          {
+            "date": "14/01/2026",
+            "distance": "1200",
+            "l400_delta": 0.64,
+            "total_delta": -0.06
+          },
+          {
+            "date": "23/12/2025",
+            "distance": "1200",
+            "l400_delta": 0.43,
+            "total_delta": -0.23
+          }
+        ]
+      },
+      "3": {
+        "horse_name": "好運多彩",
+        "sectional_normalized_l400_delta": null,
+        "sectional_normalized_total_delta": null,
+        "sectional_normalized_samples": 0,
+        "sectional_normalized_series": []
+      },
+      "4": {
+        "horse_name": "團結戰靈",
+        "sectional_normalized_l400_delta": -0.645,
+        "sectional_normalized_total_delta": 0.506,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.82,
+            "total_delta": 0
+          },
+          {
+            "date": "24/05/2026",
+            "distance": "1200",
+            "l400_delta": -1.04,
+            "total_delta": 0.24
+          },
+          {
+            "date": "03/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.29,
+            "total_delta": 1.61
+          },
+          {
+            "date": "15/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.72,
+            "total_delta": 0.78
+          },
+          {
+            "date": "25/03/2026",
+            "distance": "1200",
+            "l400_delta": 0.07,
+            "total_delta": 0.08
+          },
+          {
+            "date": "04/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.81,
+            "total_delta": 0.48
+          }
+        ]
+      },
+      "5": {
+        "horse_name": "友聲友色",
+        "sectional_normalized_l400_delta": 1.281,
+        "sectional_normalized_total_delta": 1.362,
+        "sectional_normalized_samples": 2,
+        "sectional_normalized_series": [
+          {
+            "date": "18/01/2026",
+            "distance": "1200",
+            "l400_delta": 1.07,
+            "total_delta": 1.22
+          },
+          {
+            "date": "27/12/2025",
+            "distance": "1200",
+            "l400_delta": 1.53,
+            "total_delta": 1.53
+          }
+        ]
+      },
+      "6": {
+        "horse_name": "勝利君子",
+        "sectional_normalized_l400_delta": 0.762,
+        "sectional_normalized_total_delta": 1.765,
+        "sectional_normalized_samples": 2,
+        "sectional_normalized_series": [
+          {
+            "date": "20/12/2025",
+            "distance": "1200",
+            "l400_delta": 1.8,
+            "total_delta": 2.73
+          },
+          {
+            "date": "03/12/2025",
+            "distance": "1200",
+            "l400_delta": -0.46,
+            "total_delta": 0.63
+          }
+        ]
+      },
+      "7": {
+        "horse_name": "三強",
+        "sectional_normalized_l400_delta": 0.033,
+        "sectional_normalized_total_delta": 0.374,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "24/06/2026",
+            "distance": "1200",
+            "l400_delta": 0.31,
+            "total_delta": 0.66
+          },
+          {
+            "date": "03/06/2026",
+            "distance": "1200",
+            "l400_delta": 0.18,
+            "total_delta": 0.26
+          },
+          {
+            "date": "20/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.6,
+            "total_delta": 0.64
+          },
+          {
+            "date": "08/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.46,
+            "total_delta": 0.24
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.88,
+            "total_delta": -0.32
+          },
+          {
+            "date": "19/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.04,
+            "total_delta": 0.52
+          }
+        ]
+      },
+      "8": {
+        "horse_name": "金駒永騰",
+        "sectional_normalized_l400_delta": 0.815,
+        "sectional_normalized_total_delta": 0.974,
+        "sectional_normalized_samples": 5,
+        "sectional_normalized_series": [
+          {
+            "date": "01/07/2026",
+            "distance": "1400",
+            "l400_delta": 1.55,
+            "total_delta": 0.48
+          },
+          {
+            "date": "21/06/2026",
+            "distance": "1600",
+            "l400_delta": 0.26,
+            "total_delta": 1.22
+          },
+          {
+            "date": "20/05/2026",
+            "distance": "1650",
+            "l400_delta": 0.17,
+            "total_delta": 0.96
+          },
+          {
+            "date": "11/01/2026",
+            "distance": "1800",
+            "l400_delta": 2.28,
+            "total_delta": 1.97
+          },
+          {
+            "date": "17/12/2025",
+            "distance": "1800",
+            "l400_delta": -0.52,
+            "total_delta": 0.37
+          }
+        ]
+      },
+      "9": {
+        "horse_name": "天下寵兒",
+        "sectional_normalized_l400_delta": -0.214,
+        "sectional_normalized_total_delta": 0.086,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "03/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.75,
+            "total_delta": -0.59
+          },
+          {
+            "date": "27/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.29,
+            "total_delta": -0.01
+          },
+          {
+            "date": "22/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.21,
+            "total_delta": 0.54
+          },
+          {
+            "date": "25/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.39,
+            "total_delta": 0.34
+          },
+          {
+            "date": "08/03/2026",
+            "distance": "1000",
+            "l400_delta": 0.26,
+            "total_delta": 0.58
+          },
+          {
+            "date": "04/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.29,
+            "total_delta": 0.12
+          }
+        ]
+      },
+      "10": {
+        "horse_name": "星威心得",
+        "sectional_normalized_l400_delta": 0.101,
+        "sectional_normalized_total_delta": 0.719,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "10/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.29,
+            "total_delta": 0.4
+          },
+          {
+            "date": "20/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.21,
+            "total_delta": 1.21
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "1200",
+            "l400_delta": 0.8,
+            "total_delta": 0.73
+          },
+          {
+            "date": "01/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.01,
+            "total_delta": 0.34
+          },
+          {
+            "date": "25/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.25,
+            "total_delta": 0.68
+          },
+          {
+            "date": "11/03/2026",
+            "distance": "1200",
+            "l400_delta": 0.2,
+            "total_delta": 1.05
+          }
+        ]
+      },
+      "11": {
+        "horse_name": "良駒好友",
+        "sectional_normalized_l400_delta": -0.114,
+        "sectional_normalized_total_delta": 0.259,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "10/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.07,
+            "total_delta": -0.05
+          },
+          {
+            "date": "27/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.24,
+            "total_delta": 0.6
+          },
+          {
+            "date": "13/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.18,
+            "total_delta": 0.34
+          },
+          {
+            "date": "22/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.23,
+            "total_delta": 0.59
+          },
+          {
+            "date": "01/04/2026",
+            "distance": "1200",
+            "l400_delta": 0.19,
+            "total_delta": 0.03
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.65,
+            "total_delta": -0.02
+          }
+        ]
+      },
+      "12": {
+        "horse_name": "精益大師",
+        "sectional_normalized_l400_delta": 0.552,
+        "sectional_normalized_total_delta": 0.509,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "24/06/2026",
+            "distance": "1200",
+            "l400_delta": 1.09,
+            "total_delta": 0.68
+          },
+          {
+            "date": "27/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.42,
+            "total_delta": 0.34
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "1200",
+            "l400_delta": 1.16,
+            "total_delta": 0.78
+          },
+          {
+            "date": "11/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.63,
+            "total_delta": 0.37
+          },
+          {
+            "date": "11/02/2026",
+            "distance": "1000",
+            "l400_delta": -0.1,
+            "total_delta": 0.31
+          },
+          {
+            "date": "18/01/2026",
+            "distance": "1200",
+            "l400_delta": 1.01,
+            "total_delta": 0.43
+          }
+        ]
+      }
+    },
+    "3": {
+      "1": {
+        "horse_name": "香港神駒",
+        "sectional_normalized_l400_delta": -0.058,
+        "sectional_normalized_total_delta": 0.142,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/05/2026",
+            "distance": "1650",
+            "l400_delta": 0.32,
+            "total_delta": 0.31
+          },
+          {
+            "date": "13/05/2026",
+            "distance": "1650",
+            "l400_delta": 0.19,
+            "total_delta": 0.62
+          },
+          {
+            "date": "15/04/2026",
+            "distance": "1800",
+            "l400_delta": -0.58,
+            "total_delta": -0.35
+          },
+          {
+            "date": "25/03/2026",
+            "distance": "1650",
+            "l400_delta": -0.11,
+            "total_delta": -0.1
+          },
+          {
+            "date": "11/03/2026",
+            "distance": "1650",
+            "l400_delta": -0.13,
+            "total_delta": -0.11
+          },
+          {
+            "date": "11/02/2026",
+            "distance": "1650",
+            "l400_delta": -0.38,
+            "total_delta": 0.28
+          }
+        ]
+      },
+      "2": {
+        "horse_name": "領航天子",
+        "sectional_normalized_l400_delta": -0.373,
+        "sectional_normalized_total_delta": -0.157,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "08/07/2026",
+            "distance": "1650",
+            "l400_delta": -0.27,
+            "total_delta": 0.03
+          },
+          {
+            "date": "24/06/2026",
+            "distance": "1650",
+            "l400_delta": 0,
+            "total_delta": 0.49
+          },
+          {
+            "date": "03/06/2026",
+            "distance": "1650",
+            "l400_delta": -0.99,
+            "total_delta": -0.52
+          },
+          {
+            "date": "20/05/2026",
+            "distance": "1650",
+            "l400_delta": -0.27,
+            "total_delta": 0.15
+          },
+          {
+            "date": "08/10/2025",
+            "distance": "1650",
+            "l400_delta": -0.42,
+            "total_delta": -1.34
+          },
+          {
+            "date": "10/09/2025",
+            "distance": "1650",
+            "l400_delta": -0.4,
+            "total_delta": -0.26
+          }
+        ]
+      },
+      "3": {
+        "horse_name": "風火恆雲",
+        "sectional_normalized_l400_delta": 0.02,
+        "sectional_normalized_total_delta": 0.105,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/06/2026",
+            "distance": "2000",
+            "l400_delta": -0.44,
+            "total_delta": 0.3
+          },
+          {
+            "date": "31/05/2026",
+            "distance": "2000",
+            "l400_delta": -0.28,
+            "total_delta": -0.59
+          },
+          {
+            "date": "03/05/2026",
+            "distance": "1800",
+            "l400_delta": 1.21,
+            "total_delta": 2.33
+          },
+          {
+            "date": "29/03/2026",
+            "distance": "2000",
+            "l400_delta": 0.2,
+            "total_delta": -1.37
+          },
+          {
+            "date": "01/03/2026",
+            "distance": "1800",
+            "l400_delta": -0.3,
+            "total_delta": 0.06
+          },
+          {
+            "date": "11/01/2026",
+            "distance": "1800",
+            "l400_delta": -0.18,
+            "total_delta": -0.53
+          }
+        ]
+      },
+      "4": {
+        "horse_name": "浪漫老撾",
+        "sectional_normalized_l400_delta": 0.084,
+        "sectional_normalized_total_delta": 0.442,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "13/06/2026",
+            "distance": "1400",
+            "l400_delta": -0.29,
+            "total_delta": 1.01
+          },
+          {
+            "date": "27/05/2026",
+            "distance": "1650",
+            "l400_delta": 0.25,
+            "total_delta": -0.32
+          },
+          {
+            "date": "13/05/2026",
+            "distance": "1650",
+            "l400_delta": 0.66,
+            "total_delta": 0.48
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "1650",
+            "l400_delta": 0.66,
+            "total_delta": 1.36
+          },
+          {
+            "date": "15/04/2026",
+            "distance": "1800",
+            "l400_delta": -0.27,
+            "total_delta": -0.24
+          },
+          {
+            "date": "11/03/2026",
+            "distance": "1650",
+            "l400_delta": -0.71,
+            "total_delta": 0.09
+          }
+        ]
+      },
+      "5": {
+        "horse_name": "八駿笑昇",
+        "sectional_normalized_l400_delta": -0.119,
+        "sectional_normalized_total_delta": 0.663,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "13/06/2026",
+            "distance": "1800",
+            "l400_delta": -0.77,
+            "total_delta": 1.95
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "2200",
+            "l400_delta": 0.79,
+            "total_delta": 1.02
+          },
+          {
+            "date": "29/03/2026",
+            "distance": "2000",
+            "l400_delta": 0.36,
+            "total_delta": -0.97
+          },
+          {
+            "date": "04/03/2026",
+            "distance": "2200",
+            "l400_delta": -0.22,
+            "total_delta": 0.35
+          },
+          {
+            "date": "14/02/2026",
+            "distance": "1800",
+            "l400_delta": -0.71,
+            "total_delta": -0.05
+          },
+          {
+            "date": "21/01/2026",
+            "distance": "1800",
+            "l400_delta": -0.34,
+            "total_delta": 1.01
+          }
+        ]
+      },
+      "6": {
+        "horse_name": "步風雷",
+        "sectional_normalized_l400_delta": 1.011,
+        "sectional_normalized_total_delta": 1.036,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "24/06/2026",
+            "distance": "1650",
+            "l400_delta": -0.05,
+            "total_delta": 1.15
+          },
+          {
+            "date": "03/05/2026",
+            "distance": "1800",
+            "l400_delta": 3.09,
+            "total_delta": 4.45
+          },
+          {
+            "date": "29/03/2026",
+            "distance": "2000",
+            "l400_delta": 2.68,
+            "total_delta": 0.63
+          },
+          {
+            "date": "01/03/2026",
+            "distance": "1800",
+            "l400_delta": -0.32,
+            "total_delta": -0.52
+          },
+          {
+            "date": "04/02/2026",
+            "distance": "1800",
+            "l400_delta": -0.34,
+            "total_delta": -1.16
+          },
+          {
+            "date": "07/01/2026",
+            "distance": "1800",
+            "l400_delta": 0.13,
+            "total_delta": -0.36
+          }
+        ]
+      },
+      "7": {
+        "horse_name": "勁步速",
+        "sectional_normalized_l400_delta": 0.537,
+        "sectional_normalized_total_delta": 0.785,
+        "sectional_normalized_samples": 5,
+        "sectional_normalized_series": [
+          {
+            "date": "27/06/2026",
+            "distance": "2000",
+            "l400_delta": 2.21,
+            "total_delta": 2.15
+          },
+          {
+            "date": "10/06/2026",
+            "distance": "1650",
+            "l400_delta": 0.58,
+            "total_delta": 0.04
+          },
+          {
+            "date": "28/06/2025",
+            "distance": "2000",
+            "l400_delta": -0.53,
+            "total_delta": 0.2
+          },
+          {
+            "date": "11/06/2025",
+            "distance": "1650",
+            "l400_delta": -1.01,
+            "total_delta": 0.45
+          },
+          {
+            "date": "25/05/2025",
+            "distance": "2000",
+            "l400_delta": 0.56,
+            "total_delta": 0.59
+          }
+        ]
+      },
+      "8": {
+        "horse_name": "風起雲湧",
+        "sectional_normalized_l400_delta": 0.483,
+        "sectional_normalized_total_delta": 1.192,
+        "sectional_normalized_samples": 5,
+        "sectional_normalized_series": [
+          {
+            "date": "04/07/2026",
+            "distance": "1800",
+            "l400_delta": 0.62,
+            "total_delta": 0.54
+          },
+          {
+            "date": "07/06/2026",
+            "distance": "1800",
+            "l400_delta": 0.16,
+            "total_delta": 0.93
+          },
+          {
+            "date": "06/05/2026",
+            "distance": "1800",
+            "l400_delta": 1.31,
+            "total_delta": 1.78
+          },
+          {
+            "date": "19/04/2026",
+            "distance": "1800",
+            "l400_delta": 0.4,
+            "total_delta": 2.23
+          },
+          {
+            "date": "01/04/2026",
+            "distance": "1800",
+            "l400_delta": -0.3,
+            "total_delta": 0.83
+          }
+        ]
+      },
+      "9": {
+        "horse_name": "大千氣象",
+        "sectional_normalized_l400_delta": -0.353,
+        "sectional_normalized_total_delta": 0.215,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "24/06/2026",
+            "distance": "1650",
+            "l400_delta": -0.4,
+            "total_delta": 0.57
+          },
+          {
+            "date": "10/06/2026",
+            "distance": "1650",
+            "l400_delta": -1.37,
+            "total_delta": 0.13
+          },
+          {
+            "date": "13/05/2026",
+            "distance": "1650",
+            "l400_delta": 0.11,
+            "total_delta": 0.13
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "2200",
+            "l400_delta": 0.69,
+            "total_delta": 0.52
+          },
+          {
+            "date": "15/04/2026",
+            "distance": "1800",
+            "l400_delta": -0.42,
+            "total_delta": -0.27
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1800",
+            "l400_delta": -0.42,
+            "total_delta": -0.14
+          }
+        ]
+      },
+      "10": {
+        "horse_name": "家樂寶駒",
+        "sectional_normalized_l400_delta": 0.011,
+        "sectional_normalized_total_delta": 1.544,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "10/06/2026",
+            "distance": "1800",
+            "l400_delta": -1.54,
+            "total_delta": 0.82
+          },
+          {
+            "date": "31/05/2026",
+            "distance": "2000",
+            "l400_delta": -0.82,
+            "total_delta": -0.41
+          },
+          {
+            "date": "17/05/2026",
+            "distance": "1800",
+            "l400_delta": 1.42,
+            "total_delta": 2.78
+          },
+          {
+            "date": "03/05/2026",
+            "distance": "1800",
+            "l400_delta": 2.94,
+            "total_delta": 4.42
+          },
+          {
+            "date": "06/04/2026",
+            "distance": "1600",
+            "l400_delta": -0.66,
+            "total_delta": 1.95
+          },
+          {
+            "date": "18/01/2026",
+            "distance": "1600",
+            "l400_delta": -0.46,
+            "total_delta": 0.45
+          }
+        ]
+      },
+      "11": {
+        "horse_name": "北海盜",
+        "sectional_normalized_l400_delta": 0.133,
+        "sectional_normalized_total_delta": 0.917,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "24/06/2026",
+            "distance": "1650",
+            "l400_delta": 0.15,
+            "total_delta": 0.36
+          },
+          {
+            "date": "07/06/2026",
+            "distance": "1800",
+            "l400_delta": 0.66,
+            "total_delta": 1.75
+          },
+          {
+            "date": "20/05/2026",
+            "distance": "1650",
+            "l400_delta": 0.06,
+            "total_delta": -0.15
+          },
+          {
+            "date": "01/04/2026",
+            "distance": "1800",
+            "l400_delta": 0.15,
+            "total_delta": 1.44
+          },
+          {
+            "date": "25/03/2026",
+            "distance": "1650",
+            "l400_delta": -0.03,
+            "total_delta": 0.64
+          },
+          {
+            "date": "04/03/2026",
+            "distance": "1650",
+            "l400_delta": -0.63,
+            "total_delta": 1.92
+          }
+        ]
+      },
+      "12": {
+        "horse_name": "蜜蜜送",
+        "sectional_normalized_l400_delta": 0.062,
+        "sectional_normalized_total_delta": 0.009,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/06/2026",
+            "distance": "2000",
+            "l400_delta": -0.16,
+            "total_delta": -0.3
+          },
+          {
+            "date": "31/05/2026",
+            "distance": "2000",
+            "l400_delta": 0.34,
+            "total_delta": -0.53
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "2200",
+            "l400_delta": 0.44,
+            "total_delta": 0.07
+          },
+          {
+            "date": "15/04/2026",
+            "distance": "1800",
+            "l400_delta": -0.52,
+            "total_delta": 0.07
+          },
+          {
+            "date": "01/04/2026",
+            "distance": "1800",
+            "l400_delta": 0.42,
+            "total_delta": 1.43
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1800",
+            "l400_delta": -0.2,
+            "total_delta": -0.12
+          }
+        ]
+      }
+    },
+    "4": {
+      "1": {
+        "horse_name": "深心星",
+        "sectional_normalized_l400_delta": 0.096,
+        "sectional_normalized_total_delta": 0.267,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "21/06/2026",
+            "distance": "1600",
+            "l400_delta": -0.16,
+            "total_delta": 0.4
+          },
+          {
+            "date": "13/06/2026",
+            "distance": "1400",
+            "l400_delta": 0.25,
+            "total_delta": 0.62
+          },
+          {
+            "date": "07/06/2026",
+            "distance": "1200",
+            "l400_delta": 0.02,
+            "total_delta": 0.49
+          },
+          {
+            "date": "23/03/2025",
+            "distance": "1400",
+            "l400_delta": 0.12,
+            "total_delta": -0.57
+          },
+          {
+            "date": "31/01/2025",
+            "distance": "1400",
+            "l400_delta": 0.45,
+            "total_delta": 0.59
+          },
+          {
+            "date": "05/01/2025",
+            "distance": "1400",
+            "l400_delta": 0.05,
+            "total_delta": -0.29
+          }
+        ]
+      },
+      "2": {
+        "horse_name": "大學生",
+        "sectional_normalized_l400_delta": 0.389,
+        "sectional_normalized_total_delta": 0.336,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "24/06/2026",
+            "distance": "1650",
+            "l400_delta": 0.97,
+            "total_delta": 0.7
+          },
+          {
+            "date": "20/05/2026",
+            "distance": "1650",
+            "l400_delta": 1.25,
+            "total_delta": 0.25
+          },
+          {
+            "date": "11/01/2026",
+            "distance": "1400",
+            "l400_delta": -0.75,
+            "total_delta": 0.84
+          },
+          {
+            "date": "10/12/2025",
+            "distance": "1650",
+            "l400_delta": 0.01,
+            "total_delta": 0.75
+          },
+          {
+            "date": "05/11/2025",
+            "distance": "1650",
+            "l400_delta": 0.1,
+            "total_delta": -0.83
+          },
+          {
+            "date": "22/10/2025",
+            "distance": "1650",
+            "l400_delta": 0.15,
+            "total_delta": -0.34
+          }
+        ]
+      },
+      "3": {
+        "horse_name": "光年程祥",
+        "sectional_normalized_l400_delta": -0.109,
+        "sectional_normalized_total_delta": 0.161,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/06/2026",
+            "distance": "1400",
+            "l400_delta": -0.98,
+            "total_delta": 0.07
+          },
+          {
+            "date": "06/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.96,
+            "total_delta": 1.21
+          },
+          {
+            "date": "19/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.49,
+            "total_delta": -0.33
+          },
+          {
+            "date": "01/04/2026",
+            "distance": "1200",
+            "l400_delta": 0.1,
+            "total_delta": -0.06
+          },
+          {
+            "date": "15/03/2026",
+            "distance": "1400",
+            "l400_delta": 0.4,
+            "total_delta": 0
+          },
+          {
+            "date": "14/02/2026",
+            "distance": "1400",
+            "l400_delta": -0.46,
+            "total_delta": -0.35
+          }
+        ]
+      },
+      "4": {
+        "horse_name": "先到先得",
+        "sectional_normalized_l400_delta": -0.618,
+        "sectional_normalized_total_delta": 0.183,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "24/06/2026",
+            "distance": "1650",
+            "l400_delta": -0.38,
+            "total_delta": 0.35
+          },
+          {
+            "date": "03/06/2026",
+            "distance": "1650",
+            "l400_delta": -1.07,
+            "total_delta": 0
+          },
+          {
+            "date": "13/05/2026",
+            "distance": "1650",
+            "l400_delta": -0.51,
+            "total_delta": 0.12
+          },
+          {
+            "date": "15/04/2026",
+            "distance": "1650",
+            "l400_delta": -0.33,
+            "total_delta": -0.32
+          },
+          {
+            "date": "25/03/2026",
+            "distance": "1650",
+            "l400_delta": -0.48,
+            "total_delta": -0.13
+          },
+          {
+            "date": "04/03/2026",
+            "distance": "1650",
+            "l400_delta": -1.03,
+            "total_delta": 1.32
+          }
+        ]
+      },
+      "5": {
+        "horse_name": "凱皇寶",
+        "sectional_normalized_l400_delta": 0.138,
+        "sectional_normalized_total_delta": 0.463,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "20/05/2026",
+            "distance": "1650",
+            "l400_delta": 0.84,
+            "total_delta": 0.16
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "1200",
+            "l400_delta": 0.12,
+            "total_delta": 0.66
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.27,
+            "total_delta": 0.45
+          },
+          {
+            "date": "25/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.22,
+            "total_delta": 0.49
+          },
+          {
+            "date": "01/01/2026",
+            "distance": "1400",
+            "l400_delta": -0.05,
+            "total_delta": 0.92
+          },
+          {
+            "date": "08/10/2025",
+            "distance": "1200",
+            "l400_delta": -0.03,
+            "total_delta": 0.21
+          }
+        ]
+      },
+      "6": {
+        "horse_name": "劍飛聲",
+        "sectional_normalized_l400_delta": -0.11,
+        "sectional_normalized_total_delta": 0.397,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "21/06/2026",
+            "distance": "1600",
+            "l400_delta": -0.83,
+            "total_delta": 0.73
+          },
+          {
+            "date": "31/05/2026",
+            "distance": "2000",
+            "l400_delta": 1.04,
+            "total_delta": 0.17
+          },
+          {
+            "date": "26/04/2026",
+            "distance": "1600",
+            "l400_delta": 1.36,
+            "total_delta": 0.92
+          },
+          {
+            "date": "22/03/2026",
+            "distance": "1800",
+            "l400_delta": -1.33,
+            "total_delta": -0.6
+          },
+          {
+            "date": "08/03/2026",
+            "distance": "1600",
+            "l400_delta": -0.12,
+            "total_delta": 0.87
+          },
+          {
+            "date": "22/02/2026",
+            "distance": "1600",
+            "l400_delta": -1.38,
+            "total_delta": 0.05
+          }
+        ]
+      },
+      "7": {
+        "horse_name": "越駿齊歡",
+        "sectional_normalized_l400_delta": 0.115,
+        "sectional_normalized_total_delta": 0.814,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "24/06/2026",
+            "distance": "1650",
+            "l400_delta": 0.38,
+            "total_delta": 1.11
+          },
+          {
+            "date": "20/05/2026",
+            "distance": "1650",
+            "l400_delta": 0.24,
+            "total_delta": 0.87
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "1650",
+            "l400_delta": 0.21,
+            "total_delta": 1.07
+          },
+          {
+            "date": "01/04/2026",
+            "distance": "1200",
+            "l400_delta": 0.38,
+            "total_delta": 0.89
+          },
+          {
+            "date": "11/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.76,
+            "total_delta": 0.04
+          },
+          {
+            "date": "14/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.21,
+            "total_delta": 0.43
+          }
+        ]
+      },
+      "8": {
+        "horse_name": "華麗再贏",
+        "sectional_normalized_l400_delta": -0.555,
+        "sectional_normalized_total_delta": 0.215,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "13/06/2026",
+            "distance": "1400",
+            "l400_delta": -0.88,
+            "total_delta": 0.26
+          },
+          {
+            "date": "31/05/2026",
+            "distance": "1400",
+            "l400_delta": -0.43,
+            "total_delta": -0.85
+          },
+          {
+            "date": "24/05/2026",
+            "distance": "1400",
+            "l400_delta": -0.3,
+            "total_delta": 0.33
+          },
+          {
+            "date": "03/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.15,
+            "total_delta": 1.63
+          },
+          {
+            "date": "12/04/2026",
+            "distance": "1200",
+            "l400_delta": -1.08,
+            "total_delta": 0.14
+          },
+          {
+            "date": "22/03/2026",
+            "distance": "1400",
+            "l400_delta": -0.42,
+            "total_delta": 0.1
+          }
+        ]
+      },
+      "9": {
+        "horse_name": "瑞祺威楓",
+        "sectional_normalized_l400_delta": -0.131,
+        "sectional_normalized_total_delta": 0.914,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "13/06/2026",
+            "distance": "1800",
+            "l400_delta": -0.71,
+            "total_delta": 1.57
+          },
+          {
+            "date": "27/05/2026",
+            "distance": "1650",
+            "l400_delta": 0.34,
+            "total_delta": -0.07
+          },
+          {
+            "date": "17/05/2026",
+            "distance": "1400",
+            "l400_delta": 0.76,
+            "total_delta": 2.39
+          },
+          {
+            "date": "19/04/2026",
+            "distance": "1600",
+            "l400_delta": -1.33,
+            "total_delta": 0.44
+          },
+          {
+            "date": "11/02/2026",
+            "distance": "1650",
+            "l400_delta": 0.35,
+            "total_delta": 0.81
+          },
+          {
+            "date": "07/01/2026",
+            "distance": "1650",
+            "l400_delta": -0.09,
+            "total_delta": -0.3
+          }
+        ]
+      },
+      "10": {
+        "horse_name": "同心",
+        "sectional_normalized_l400_delta": 0.041,
+        "sectional_normalized_total_delta": 1,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "24/06/2026",
+            "distance": "1650",
+            "l400_delta": 0.41,
+            "total_delta": 1.41
+          },
+          {
+            "date": "03/06/2026",
+            "distance": "1650",
+            "l400_delta": 0,
+            "total_delta": 0.47
+          },
+          {
+            "date": "13/05/2026",
+            "distance": "1650",
+            "l400_delta": 0.51,
+            "total_delta": 0.9
+          },
+          {
+            "date": "22/04/2026",
+            "distance": "1650",
+            "l400_delta": -0.58,
+            "total_delta": 1.59
+          },
+          {
+            "date": "01/03/2026",
+            "distance": "1400",
+            "l400_delta": 0.2,
+            "total_delta": 1.17
+          },
+          {
+            "date": "11/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.8,
+            "total_delta": 0.24
+          }
+        ]
+      },
+      "11": {
+        "horse_name": "傲然",
+        "sectional_normalized_l400_delta": 0.302,
+        "sectional_normalized_total_delta": 1.776,
+        "sectional_normalized_samples": 5,
+        "sectional_normalized_series": [
+          {
+            "date": "13/06/2026",
+            "distance": "1400",
+            "l400_delta": 0.48,
+            "total_delta": 2.34
+          },
+          {
+            "date": "17/05/2026",
+            "distance": "1400",
+            "l400_delta": 0.91,
+            "total_delta": 2.78
+          },
+          {
+            "date": "25/03/2026",
+            "distance": "1650",
+            "l400_delta": 0.45,
+            "total_delta": 1.16
+          },
+          {
+            "date": "11/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.32,
+            "total_delta": 1.09
+          },
+          {
+            "date": "11/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.5,
+            "total_delta": 0.72
+          }
+        ]
+      },
+      "12": {
+        "horse_name": "寫我其誰",
+        "sectional_normalized_l400_delta": 0.127,
+        "sectional_normalized_total_delta": 0.899,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "24/06/2026",
+            "distance": "1650",
+            "l400_delta": 0.77,
+            "total_delta": 1.73
+          },
+          {
+            "date": "13/05/2026",
+            "distance": "1650",
+            "l400_delta": 0.42,
+            "total_delta": 0.2
+          },
+          {
+            "date": "08/04/2026",
+            "distance": "1650",
+            "l400_delta": -0.7,
+            "total_delta": 0.16
+          },
+          {
+            "date": "01/03/2026",
+            "distance": "1400",
+            "l400_delta": 0.17,
+            "total_delta": 1.23
+          },
+          {
+            "date": "28/01/2026",
+            "distance": "1200",
+            "l400_delta": -0.76,
+            "total_delta": 0.86
+          },
+          {
+            "date": "27/12/2025",
+            "distance": "1200",
+            "l400_delta": 0.45,
+            "total_delta": 1.16
+          }
+        ]
+      }
+    },
+    "5": {
+      "1": {
+        "horse_name": "葳莉非凡",
+        "sectional_normalized_l400_delta": 0.651,
+        "sectional_normalized_total_delta": 0.266,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "04/07/2026",
+            "distance": "1200",
+            "l400_delta": 2.17,
+            "total_delta": 1.74
+          },
+          {
+            "date": "13/06/2026",
+            "distance": "1200",
+            "l400_delta": 0.74,
+            "total_delta": -0.11
+          },
+          {
+            "date": "20/12/2025",
+            "distance": "1200",
+            "l400_delta": -0.17,
+            "total_delta": -0.02
+          },
+          {
+            "date": "12/11/2025",
+            "distance": "1200",
+            "l400_delta": 0.03,
+            "total_delta": -0.23
+          },
+          {
+            "date": "19/10/2025",
+            "distance": "1200",
+            "l400_delta": 0.41,
+            "total_delta": -0.66
+          },
+          {
+            "date": "13/07/2025",
+            "distance": "1400",
+            "l400_delta": -0.46,
+            "total_delta": -0.09
+          }
+        ]
+      },
+      "2": {
+        "horse_name": "凝聚美麗",
+        "sectional_normalized_l400_delta": -0.189,
+        "sectional_normalized_total_delta": 0.107,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "01/07/2026",
+            "distance": "1000",
+            "l400_delta": -0.51,
+            "total_delta": -0.2
+          },
+          {
+            "date": "10/06/2026",
+            "distance": "1000",
+            "l400_delta": -0.61,
+            "total_delta": -0.24
+          },
+          {
+            "date": "20/05/2026",
+            "distance": "1000",
+            "l400_delta": -0.41,
+            "total_delta": -0.06
+          },
+          {
+            "date": "09/05/2026",
+            "distance": "1000",
+            "l400_delta": 1.57,
+            "total_delta": 1.95
+          },
+          {
+            "date": "08/04/2026",
+            "distance": "1000",
+            "l400_delta": -0.53,
+            "total_delta": -0.19
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1000",
+            "l400_delta": -0.33,
+            "total_delta": -0.47
+          }
+        ]
+      },
+      "3": {
+        "horse_name": "快樂神駒",
+        "sectional_normalized_l400_delta": 0.713,
+        "sectional_normalized_total_delta": 0.567,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "24/06/2026",
+            "distance": "1200",
+            "l400_delta": 0.35,
+            "total_delta": -0.18
+          },
+          {
+            "date": "17/05/2026",
+            "distance": "1000",
+            "l400_delta": 1.29,
+            "total_delta": 1.5
+          },
+          {
+            "date": "06/05/2026",
+            "distance": "1200",
+            "l400_delta": 2.07,
+            "total_delta": 1.58
+          },
+          {
+            "date": "15/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.14,
+            "total_delta": 0.02
+          },
+          {
+            "date": "01/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.24,
+            "total_delta": 0.08
+          },
+          {
+            "date": "18/01/2026",
+            "distance": "1200",
+            "l400_delta": 0.52,
+            "total_delta": 0.14
+          }
+        ]
+      },
+      "4": {
+        "horse_name": "笑必勝",
+        "sectional_normalized_l400_delta": 1.85,
+        "sectional_normalized_total_delta": 2.231,
+        "sectional_normalized_samples": 2,
+        "sectional_normalized_series": [
+          {
+            "date": "09/05/2026",
+            "distance": "1400",
+            "l400_delta": 3.55,
+            "total_delta": 3.38
+          },
+          {
+            "date": "12/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.15,
+            "total_delta": 0.88
+          }
+        ]
+      },
+      "5": {
+        "horse_name": "文采風流",
+        "sectional_normalized_l400_delta": 0.029,
+        "sectional_normalized_total_delta": 0.777,
+        "sectional_normalized_samples": 4,
+        "sectional_normalized_series": [
+          {
+            "date": "21/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.14,
+            "total_delta": 0.61
+          },
+          {
+            "date": "26/04/2026",
+            "distance": "1400",
+            "l400_delta": 0.76,
+            "total_delta": 0.67
+          },
+          {
+            "date": "08/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.41,
+            "total_delta": 1.15
+          },
+          {
+            "date": "01/02/2026",
+            "distance": "1000",
+            "l400_delta": -0.19,
+            "total_delta": 0.76
+          }
+        ]
+      },
+      "6": {
+        "horse_name": "盛勢威楓",
+        "sectional_normalized_l400_delta": 0.159,
+        "sectional_normalized_total_delta": -0.236,
+        "sectional_normalized_samples": 4,
+        "sectional_normalized_series": [
+          {
+            "date": "12/04/2026",
+            "distance": "1400",
+            "l400_delta": 0.87,
+            "total_delta": 0.25
+          },
+          {
+            "date": "29/03/2026",
+            "distance": "1400",
+            "l400_delta": 0.18,
+            "total_delta": -0.96
+          },
+          {
+            "date": "22/02/2026",
+            "distance": "1400",
+            "l400_delta": -0.85,
+            "total_delta": -0.29
+          },
+          {
+            "date": "14/02/2026",
+            "distance": "1200",
+            "l400_delta": 0.16,
+            "total_delta": 0.04
+          }
+        ]
+      },
+      "7": {
+        "horse_name": "喜意",
+        "sectional_normalized_l400_delta": 0.608,
+        "sectional_normalized_total_delta": 0.96,
+        "sectional_normalized_samples": 2,
+        "sectional_normalized_series": [
+          {
+            "date": "03/06/2026",
+            "distance": "1200",
+            "l400_delta": 0.98,
+            "total_delta": 0.9
+          },
+          {
+            "date": "09/05/2026",
+            "distance": "1000",
+            "l400_delta": 0.17,
+            "total_delta": 1.03
+          }
+        ]
+      },
+      "8": {
+        "horse_name": "帶贏來",
+        "sectional_normalized_l400_delta": 0.395,
+        "sectional_normalized_total_delta": 1.098,
+        "sectional_normalized_samples": 4,
+        "sectional_normalized_series": [
+          {
+            "date": "21/06/2026",
+            "distance": "1200",
+            "l400_delta": 1.06,
+            "total_delta": 1.61
+          },
+          {
+            "date": "01/03/2026",
+            "distance": "1200",
+            "l400_delta": 0.11,
+            "total_delta": 1.17
+          },
+          {
+            "date": "01/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.5,
+            "total_delta": 0.78
+          },
+          {
+            "date": "04/01/2026",
+            "distance": "1200",
+            "l400_delta": 0.76,
+            "total_delta": 0.54
+          }
+        ]
+      },
+      "9": {
+        "horse_name": "大才",
+        "sectional_normalized_l400_delta": -0.136,
+        "sectional_normalized_total_delta": 0.481,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.35,
+            "total_delta": -0.33
+          },
+          {
+            "date": "03/06/2026",
+            "distance": "1200",
+            "l400_delta": -1.44,
+            "total_delta": -0.29
+          },
+          {
+            "date": "17/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.38,
+            "total_delta": 2.29
+          },
+          {
+            "date": "26/04/2026",
+            "distance": "1400",
+            "l400_delta": 1.11,
+            "total_delta": 0.46
+          },
+          {
+            "date": "25/03/2026",
+            "distance": "1200",
+            "l400_delta": 0.03,
+            "total_delta": 0.56
+          },
+          {
+            "date": "15/03/2026",
+            "distance": "1200",
+            "l400_delta": 0.08,
+            "total_delta": 0.78
+          }
+        ]
+      },
+      "10": {
+        "horse_name": "威威神駒",
+        "sectional_normalized_l400_delta": -0.254,
+        "sectional_normalized_total_delta": 0.983,
+        "sectional_normalized_samples": 4,
+        "sectional_normalized_series": [
+          {
+            "date": "21/06/2026",
+            "distance": "1400",
+            "l400_delta": -0.45,
+            "total_delta": 1.34
+          },
+          {
+            "date": "31/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.62,
+            "total_delta": 0.48
+          },
+          {
+            "date": "12/04/2026",
+            "distance": "1200",
+            "l400_delta": 0.36,
+            "total_delta": 1.22
+          },
+          {
+            "date": "08/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.15,
+            "total_delta": 0.82
+          }
+        ]
+      },
+      "11": {
+        "horse_name": "久久為軍",
+        "sectional_normalized_l400_delta": 0.158,
+        "sectional_normalized_total_delta": 0.978,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/06/2026",
+            "distance": "1400",
+            "l400_delta": -0.31,
+            "total_delta": 0.7
+          },
+          {
+            "date": "07/06/2026",
+            "distance": "1400",
+            "l400_delta": 0.04,
+            "total_delta": 2
+          },
+          {
+            "date": "09/05/2026",
+            "distance": "1400",
+            "l400_delta": 1.42,
+            "total_delta": 1.13
+          },
+          {
+            "date": "12/04/2026",
+            "distance": "1400",
+            "l400_delta": 1.03,
+            "total_delta": 1.09
+          },
+          {
+            "date": "22/03/2026",
+            "distance": "1400",
+            "l400_delta": -0.71,
+            "total_delta": 0.13
+          },
+          {
+            "date": "22/02/2026",
+            "distance": "1400",
+            "l400_delta": -0.8,
+            "total_delta": 0.24
+          }
+        ]
+      },
+      "12": {
+        "horse_name": "過關勇士",
+        "sectional_normalized_l400_delta": 0.608,
+        "sectional_normalized_total_delta": 0.437,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/05/2026",
+            "distance": "1200",
+            "l400_delta": 2.16,
+            "total_delta": 1.56
+          },
+          {
+            "date": "22/04/2026",
+            "distance": "1200",
+            "l400_delta": 0.17,
+            "total_delta": -0.08
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.17,
+            "total_delta": -0.1
+          },
+          {
+            "date": "01/03/2026",
+            "distance": "1400",
+            "l400_delta": 0.49,
+            "total_delta": 0.27
+          },
+          {
+            "date": "14/02/2026",
+            "distance": "1200",
+            "l400_delta": 0.43,
+            "total_delta": 0.27
+          },
+          {
+            "date": "25/01/2026",
+            "distance": "1200",
+            "l400_delta": -0.41,
+            "total_delta": 0.2
+          }
+        ]
+      }
+    },
+    "6": {
+      "1": {
+        "horse_name": "穿甲戰鷹",
+        "sectional_normalized_l400_delta": -0.676,
+        "sectional_normalized_total_delta": -0.043,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.66,
+            "total_delta": 0.48
+          },
+          {
+            "date": "19/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.17,
+            "total_delta": -0.37
+          },
+          {
+            "date": "29/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.66,
+            "total_delta": 0.06
+          },
+          {
+            "date": "01/03/2026",
+            "distance": "1200",
+            "l400_delta": -1.11,
+            "total_delta": 0.35
+          },
+          {
+            "date": "19/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.99,
+            "total_delta": 0.12
+          },
+          {
+            "date": "08/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.74,
+            "total_delta": -1.5
+          }
+        ]
+      },
+      "2": {
+        "horse_name": "添開心",
+        "sectional_normalized_l400_delta": -0.225,
+        "sectional_normalized_total_delta": 0.449,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "04/07/2026",
+            "distance": "1200",
+            "l400_delta": 0.17,
+            "total_delta": 0.74
+          },
+          {
+            "date": "03/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.57,
+            "total_delta": 0.38
+          },
+          {
+            "date": "13/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.04,
+            "total_delta": 0.72
+          },
+          {
+            "date": "22/04/2026",
+            "distance": "1000",
+            "l400_delta": -0.5,
+            "total_delta": 0.32
+          },
+          {
+            "date": "27/12/2025",
+            "distance": "1000",
+            "l400_delta": 0.09,
+            "total_delta": 0.41
+          },
+          {
+            "date": "17/12/2025",
+            "distance": "1000",
+            "l400_delta": -0.75,
+            "total_delta": -0.29
+          }
+        ]
+      },
+      "3": {
+        "horse_name": "君子",
+        "sectional_normalized_l400_delta": 1.127,
+        "sectional_normalized_total_delta": 1.883,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "13/06/2026",
+            "distance": "1200",
+            "l400_delta": 3.08,
+            "total_delta": 3.93
+          },
+          {
+            "date": "09/05/2026",
+            "distance": "1200",
+            "l400_delta": 0,
+            "total_delta": 1.21
+          },
+          {
+            "date": "29/03/2026",
+            "distance": "1200",
+            "l400_delta": 0.07,
+            "total_delta": 0.78
+          },
+          {
+            "date": "01/03/2026",
+            "distance": "1200",
+            "l400_delta": 0.53,
+            "total_delta": 1.55
+          },
+          {
+            "date": "08/02/2026",
+            "distance": "1400",
+            "l400_delta": 1.21,
+            "total_delta": 1.34
+          },
+          {
+            "date": "18/01/2026",
+            "distance": "1400",
+            "l400_delta": 1.33,
+            "total_delta": 1.45
+          }
+        ]
+      },
+      "4": {
+        "horse_name": "合夥飛馳",
+        "sectional_normalized_l400_delta": 0.239,
+        "sectional_normalized_total_delta": 0.812,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "20/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.91,
+            "total_delta": 1.31
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "1200",
+            "l400_delta": 0.09,
+            "total_delta": 0.62
+          },
+          {
+            "date": "25/03/2026",
+            "distance": "1200",
+            "l400_delta": 0.66,
+            "total_delta": 1.37
+          },
+          {
+            "date": "22/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.37,
+            "total_delta": 0.09
+          },
+          {
+            "date": "28/01/2026",
+            "distance": "1000",
+            "l400_delta": -1.12,
+            "total_delta": -0.25
+          },
+          {
+            "date": "20/12/2025",
+            "distance": "1200",
+            "l400_delta": 0.77,
+            "total_delta": 1.4
+          }
+        ]
+      },
+      "5": {
+        "horse_name": "日馳千里",
+        "sectional_normalized_l400_delta": -0.065,
+        "sectional_normalized_total_delta": 0.19,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "10/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.29,
+            "total_delta": -0.64
+          },
+          {
+            "date": "24/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.59,
+            "total_delta": 0.77
+          },
+          {
+            "date": "19/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.22,
+            "total_delta": -0.3
+          },
+          {
+            "date": "25/03/2026",
+            "distance": "1200",
+            "l400_delta": 1.28,
+            "total_delta": 1.33
+          },
+          {
+            "date": "04/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.61,
+            "total_delta": 0.09
+          },
+          {
+            "date": "11/02/2026",
+            "distance": "1200",
+            "l400_delta": 0.48,
+            "total_delta": 0.29
+          }
+        ]
+      },
+      "6": {
+        "horse_name": "時時開心",
+        "sectional_normalized_l400_delta": 0.203,
+        "sectional_normalized_total_delta": 0.786,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "24/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.32,
+            "total_delta": -0.05
+          },
+          {
+            "date": "17/05/2026",
+            "distance": "1400",
+            "l400_delta": 1.53,
+            "total_delta": 3.48
+          },
+          {
+            "date": "15/04/2026",
+            "distance": "1650",
+            "l400_delta": 0.32,
+            "total_delta": 0.39
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1650",
+            "l400_delta": -1.11,
+            "total_delta": -0.91
+          },
+          {
+            "date": "11/01/2026",
+            "distance": "1600",
+            "l400_delta": 0.41,
+            "total_delta": 0.6
+          },
+          {
+            "date": "07/12/2025",
+            "distance": "1400",
+            "l400_delta": 0.22,
+            "total_delta": 0.72
+          }
+        ]
+      },
+      "7": {
+        "horse_name": "升升雙息",
+        "sectional_normalized_l400_delta": 0.162,
+        "sectional_normalized_total_delta": -0.062,
+        "sectional_normalized_samples": 2,
+        "sectional_normalized_series": [
+          {
+            "date": "01/07/2026",
+            "distance": "1000",
+            "l400_delta": 0.3,
+            "total_delta": 0.25
+          },
+          {
+            "date": "31/05/2026",
+            "distance": "1000",
+            "l400_delta": 0,
+            "total_delta": -0.43
+          }
+        ]
+      },
+      "8": {
+        "horse_name": "小魔怪",
+        "sectional_normalized_l400_delta": -0.093,
+        "sectional_normalized_total_delta": 0.545,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.28,
+            "total_delta": 0.14
+          },
+          {
+            "date": "07/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.02,
+            "total_delta": 0.9
+          },
+          {
+            "date": "17/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.39,
+            "total_delta": 1.21
+          },
+          {
+            "date": "22/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.31,
+            "total_delta": 0.28
+          },
+          {
+            "date": "06/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.44,
+            "total_delta": 0.2
+          },
+          {
+            "date": "19/02/2026",
+            "distance": "1200",
+            "l400_delta": 0.11,
+            "total_delta": 0.47
+          }
+        ]
+      },
+      "9": {
+        "horse_name": "精彩勇將",
+        "sectional_normalized_l400_delta": 0.828,
+        "sectional_normalized_total_delta": 1.257,
+        "sectional_normalized_samples": 5,
+        "sectional_normalized_series": [
+          {
+            "date": "21/06/2026",
+            "distance": "1000",
+            "l400_delta": -0.12,
+            "total_delta": 0.7
+          },
+          {
+            "date": "06/05/2026",
+            "distance": "1200",
+            "l400_delta": 2.59,
+            "total_delta": 3.1
+          },
+          {
+            "date": "19/04/2026",
+            "distance": "1000",
+            "l400_delta": 0.59,
+            "total_delta": 0.72
+          },
+          {
+            "date": "29/03/2026",
+            "distance": "1000",
+            "l400_delta": -0.07,
+            "total_delta": -0.03
+          },
+          {
+            "date": "15/03/2026",
+            "distance": "1200",
+            "l400_delta": 1.16,
+            "total_delta": 1.58
+          }
+        ]
+      },
+      "10": {
+        "horse_name": "神異金剛",
+        "sectional_normalized_l400_delta": -0.286,
+        "sectional_normalized_total_delta": 0.373,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "03/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.28,
+            "total_delta": 0.04
+          },
+          {
+            "date": "13/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.4,
+            "total_delta": 0.56
+          },
+          {
+            "date": "08/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.9,
+            "total_delta": 0.4
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.11,
+            "total_delta": -0.07
+          },
+          {
+            "date": "19/02/2026",
+            "distance": "1200",
+            "l400_delta": 0.09,
+            "total_delta": 1.03
+          },
+          {
+            "date": "07/01/2026",
+            "distance": "1200",
+            "l400_delta": 0.23,
+            "total_delta": 0.56
+          }
+        ]
+      },
+      "11": {
+        "horse_name": "領袖勁力",
+        "sectional_normalized_l400_delta": -0.388,
+        "sectional_normalized_total_delta": 0.242,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "24/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.11,
+            "total_delta": 0.4
+          },
+          {
+            "date": "03/06/2026",
+            "distance": "1200",
+            "l400_delta": -1.09,
+            "total_delta": -0.37
+          },
+          {
+            "date": "13/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.58,
+            "total_delta": 0.14
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "1200",
+            "l400_delta": 0.74,
+            "total_delta": 0.99
+          },
+          {
+            "date": "08/04/2026",
+            "distance": "1000",
+            "l400_delta": -0.86,
+            "total_delta": 0.08
+          },
+          {
+            "date": "22/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.36,
+            "total_delta": 0.38
+          }
+        ]
+      },
+      "12": {
+        "horse_name": "閃電武士",
+        "sectional_normalized_l400_delta": -0.027,
+        "sectional_normalized_total_delta": 0.983,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "07/06/2026",
+            "distance": "1400",
+            "l400_delta": -0.27,
+            "total_delta": 0.93
+          },
+          {
+            "date": "20/05/2026",
+            "distance": "1200",
+            "l400_delta": 1.47,
+            "total_delta": 1.87
+          },
+          {
+            "date": "08/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.45,
+            "total_delta": 0.95
+          },
+          {
+            "date": "22/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.71,
+            "total_delta": 0.35
+          },
+          {
+            "date": "25/01/2026",
+            "distance": "1200",
+            "l400_delta": -0.56,
+            "total_delta": 0.33
+          },
+          {
+            "date": "01/01/2026",
+            "distance": "1200",
+            "l400_delta": -0.09,
+            "total_delta": 1.1
+          }
+        ]
+      }
+    },
+    "7": {
+      "1": {
+        "horse_name": "又龍串鳳",
+        "sectional_normalized_l400_delta": -0.191,
+        "sectional_normalized_total_delta": 0.211,
+        "sectional_normalized_samples": 5,
+        "sectional_normalized_series": [
+          {
+            "date": "21/06/2026",
+            "distance": "2000",
+            "l400_delta": 0.2,
+            "total_delta": 1.76
+          },
+          {
+            "date": "31/05/2026",
+            "distance": "1600",
+            "l400_delta": -0.83,
+            "total_delta": -0.21
+          },
+          {
+            "date": "15/10/2025",
+            "distance": "1800",
+            "l400_delta": 0.02,
+            "total_delta": -0.92
+          },
+          {
+            "date": "13/07/2025",
+            "distance": "1600",
+            "l400_delta": -0.05,
+            "total_delta": -0.4
+          },
+          {
+            "date": "22/06/2025",
+            "distance": "1800",
+            "l400_delta": -0.36,
+            "total_delta": 0.21
+          }
+        ]
+      },
+      "2": {
+        "horse_name": "傲聖",
+        "sectional_normalized_l400_delta": -0.18,
+        "sectional_normalized_total_delta": 1.2,
+        "sectional_normalized_samples": 1,
+        "sectional_normalized_series": [
+          {
+            "date": "13/06/2026",
+            "distance": "1400",
+            "l400_delta": -0.18,
+            "total_delta": 1.2
+          }
+        ]
+      },
+      "3": {
+        "horse_name": "有財有勢",
+        "sectional_normalized_l400_delta": -0.352,
+        "sectional_normalized_total_delta": -0.003,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "10/06/2026",
+            "distance": "1800",
+            "l400_delta": -0.65,
+            "total_delta": -0.47
+          },
+          {
+            "date": "27/05/2026",
+            "distance": "1650",
+            "l400_delta": -0.65,
+            "total_delta": -0.64
+          },
+          {
+            "date": "20/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.29,
+            "total_delta": 0.35
+          },
+          {
+            "date": "04/03/2026",
+            "distance": "1650",
+            "l400_delta": -0.12,
+            "total_delta": 0.93
+          },
+          {
+            "date": "11/02/2026",
+            "distance": "1650",
+            "l400_delta": 0.01,
+            "total_delta": -0.88
+          },
+          {
+            "date": "14/01/2026",
+            "distance": "1650",
+            "l400_delta": -0.9,
+            "total_delta": 1.44
+          }
+        ]
+      },
+      "4": {
+        "horse_name": "傲視同群",
+        "sectional_normalized_l400_delta": 0.308,
+        "sectional_normalized_total_delta": 0.395,
+        "sectional_normalized_samples": 4,
+        "sectional_normalized_series": [
+          {
+            "date": "17/12/2025",
+            "distance": "1650",
+            "l400_delta": -0.35,
+            "total_delta": 0.68
+          },
+          {
+            "date": "08/10/2025",
+            "distance": "1650",
+            "l400_delta": 0.52,
+            "total_delta": -0.92
+          },
+          {
+            "date": "13/07/2025",
+            "distance": "1600",
+            "l400_delta": 1.12,
+            "total_delta": 1.61
+          },
+          {
+            "date": "22/06/2025",
+            "distance": "1600",
+            "l400_delta": 0.13,
+            "total_delta": 0.32
+          }
+        ]
+      },
+      "5": {
+        "horse_name": "我做到",
+        "sectional_normalized_l400_delta": 0.53,
+        "sectional_normalized_total_delta": 0.564,
+        "sectional_normalized_samples": 5,
+        "sectional_normalized_series": [
+          {
+            "date": "27/05/2026",
+            "distance": "1650",
+            "l400_delta": 0.76,
+            "total_delta": 0.93
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "1650",
+            "l400_delta": 0.87,
+            "total_delta": 1.04
+          },
+          {
+            "date": "15/04/2026",
+            "distance": "1650",
+            "l400_delta": 0.57,
+            "total_delta": 0.75
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.32,
+            "total_delta": -0.37
+          },
+          {
+            "date": "28/01/2026",
+            "distance": "1800",
+            "l400_delta": 0.48,
+            "total_delta": -0.07
+          }
+        ]
+      },
+      "6": {
+        "horse_name": "勝兄弟",
+        "sectional_normalized_l400_delta": 1.83,
+        "sectional_normalized_total_delta": 1.879,
+        "sectional_normalized_samples": 2,
+        "sectional_normalized_series": [
+          {
+            "date": "04/07/2026",
+            "distance": "1400",
+            "l400_delta": 1.15,
+            "total_delta": 1.19
+          },
+          {
+            "date": "07/06/2026",
+            "distance": "1400",
+            "l400_delta": 2.63,
+            "total_delta": 2.69
+          }
+        ]
+      },
+      "7": {
+        "horse_name": "喜豐年",
+        "sectional_normalized_l400_delta": -0.228,
+        "sectional_normalized_total_delta": 0.896,
+        "sectional_normalized_samples": 3,
+        "sectional_normalized_series": [
+          {
+            "date": "12/04/2026",
+            "distance": "1600",
+            "l400_delta": -0.52,
+            "total_delta": 0.67
+          },
+          {
+            "date": "04/03/2026",
+            "distance": "1650",
+            "l400_delta": 0.11,
+            "total_delta": 1.44
+          },
+          {
+            "date": "18/01/2026",
+            "distance": "1400",
+            "l400_delta": -0.22,
+            "total_delta": 0.57
+          }
+        ]
+      },
+      "8": {
+        "horse_name": "勁好運",
+        "sectional_normalized_l400_delta": -0.532,
+        "sectional_normalized_total_delta": -0.34,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "10/06/2026",
+            "distance": "1800",
+            "l400_delta": -0.46,
+            "total_delta": -0.6
+          },
+          {
+            "date": "24/05/2026",
+            "distance": "1800",
+            "l400_delta": -0.72,
+            "total_delta": -0.53
+          },
+          {
+            "date": "13/05/2026",
+            "distance": "1650",
+            "l400_delta": -0.33,
+            "total_delta": -0.52
+          },
+          {
+            "date": "08/04/2026",
+            "distance": "1650",
+            "l400_delta": -0.74,
+            "total_delta": -0.14
+          },
+          {
+            "date": "15/03/2026",
+            "distance": "1400",
+            "l400_delta": -0.55,
+            "total_delta": -0.23
+          },
+          {
+            "date": "04/03/2026",
+            "distance": "1650",
+            "l400_delta": -0.35,
+            "total_delta": 0.5
+          }
+        ]
+      },
+      "9": {
+        "horse_name": "大文豪",
+        "sectional_normalized_l400_delta": -0.052,
+        "sectional_normalized_total_delta": 0.53,
+        "sectional_normalized_samples": 5,
+        "sectional_normalized_series": [
+          {
+            "date": "03/06/2026",
+            "distance": "1650",
+            "l400_delta": -0.55,
+            "total_delta": -0.04
+          },
+          {
+            "date": "24/05/2026",
+            "distance": "1400",
+            "l400_delta": -0.63,
+            "total_delta": 0.79
+          },
+          {
+            "date": "26/04/2026",
+            "distance": "1400",
+            "l400_delta": 0.52,
+            "total_delta": 0.14
+          },
+          {
+            "date": "11/01/2026",
+            "distance": "1600",
+            "l400_delta": 0.61,
+            "total_delta": 1.16
+          },
+          {
+            "date": "01/01/2026",
+            "distance": "1400",
+            "l400_delta": 0.27,
+            "total_delta": 1
+          }
+        ]
+      },
+      "10": {
+        "horse_name": "棒棒糖",
+        "sectional_normalized_l400_delta": -0.184,
+        "sectional_normalized_total_delta": 0.026,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "13/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.23,
+            "total_delta": 0.06
+          },
+          {
+            "date": "15/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.56,
+            "total_delta": -0.21
+          },
+          {
+            "date": "11/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.43,
+            "total_delta": -0.1
+          },
+          {
+            "date": "04/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.41,
+            "total_delta": -0.56
+          },
+          {
+            "date": "14/01/2026",
+            "distance": "1650",
+            "l400_delta": 0.39,
+            "total_delta": 0.72
+          },
+          {
+            "date": "27/12/2025",
+            "distance": "1400",
+            "l400_delta": 0.68,
+            "total_delta": 0.6
+          }
+        ]
+      },
+      "11": {
+        "horse_name": "富國兄弟",
+        "sectional_normalized_l400_delta": 0.008,
+        "sectional_normalized_total_delta": 0.017,
+        "sectional_normalized_samples": 5,
+        "sectional_normalized_series": [
+          {
+            "date": "27/06/2026",
+            "distance": "1400",
+            "l400_delta": 0.42,
+            "total_delta": 0
+          },
+          {
+            "date": "07/06/2026",
+            "distance": "1200",
+            "l400_delta": 0.12,
+            "total_delta": -0.24
+          },
+          {
+            "date": "09/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.22,
+            "total_delta": -0.02
+          },
+          {
+            "date": "08/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.56,
+            "total_delta": -0.34
+          },
+          {
+            "date": "25/03/2026",
+            "distance": "1650",
+            "l400_delta": -0.59,
+            "total_delta": 0.94
+          }
+        ]
+      },
+      "12": {
+        "horse_name": "摯友勝",
+        "sectional_normalized_l400_delta": 0.314,
+        "sectional_normalized_total_delta": 1.178,
+        "sectional_normalized_samples": 3,
+        "sectional_normalized_series": [
+          {
+            "date": "31/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.32,
+            "total_delta": -0.14
+          },
+          {
+            "date": "03/05/2026",
+            "distance": "1200",
+            "l400_delta": 1.47,
+            "total_delta": 3.28
+          },
+          {
+            "date": "25/01/2026",
+            "distance": "1200",
+            "l400_delta": -0.17,
+            "total_delta": 0.53
+          }
+        ]
+      }
+    },
+    "8": {
+      "1": {
+        "horse_name": "幸運有您",
+        "sectional_normalized_l400_delta": -0.347,
+        "sectional_normalized_total_delta": -0.796,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "21/06/2026",
+            "distance": "1400",
+            "l400_delta": -0.29,
+            "total_delta": -1.35
+          },
+          {
+            "date": "31/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.51,
+            "total_delta": -0.99
+          },
+          {
+            "date": "09/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.03,
+            "total_delta": -0.08
+          },
+          {
+            "date": "06/04/2026",
+            "distance": "1200",
+            "l400_delta": -1.16,
+            "total_delta": -1.34
+          },
+          {
+            "date": "14/02/2026",
+            "distance": "1200",
+            "l400_delta": 0.62,
+            "total_delta": 0.41
+          },
+          {
+            "date": "25/01/2026",
+            "distance": "1200",
+            "l400_delta": -0.69,
+            "total_delta": -1.01
+          }
+        ]
+      },
+      "2": {
+        "horse_name": "天天同樂",
+        "sectional_normalized_l400_delta": -0.277,
+        "sectional_normalized_total_delta": -0.552,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/06/2026",
+            "distance": "1000",
+            "l400_delta": -0.53,
+            "total_delta": -1.02
+          },
+          {
+            "date": "20/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.4,
+            "total_delta": -0.29
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "1000",
+            "l400_delta": -0.86,
+            "total_delta": -0.39
+          },
+          {
+            "date": "29/03/2026",
+            "distance": "1200",
+            "l400_delta": 0.05,
+            "total_delta": -1.19
+          },
+          {
+            "date": "20/12/2025",
+            "distance": "1200",
+            "l400_delta": -0.31,
+            "total_delta": 0.65
+          },
+          {
+            "date": "07/12/2025",
+            "distance": "1200",
+            "l400_delta": -0.47,
+            "total_delta": -0.79
+          }
+        ]
+      },
+      "3": {
+        "horse_name": "翠紅",
+        "sectional_normalized_l400_delta": -0.694,
+        "sectional_normalized_total_delta": -0.746,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "21/06/2026",
+            "distance": "1400",
+            "l400_delta": -0.84,
+            "total_delta": -1.06
+          },
+          {
+            "date": "31/05/2026",
+            "distance": "1200",
+            "l400_delta": -1.09,
+            "total_delta": -1.05
+          },
+          {
+            "date": "09/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.59,
+            "total_delta": -0.12
+          },
+          {
+            "date": "12/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.55,
+            "total_delta": -0.48
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.72,
+            "total_delta": -1.14
+          },
+          {
+            "date": "01/02/2026",
+            "distance": "1600",
+            "l400_delta": 0.06,
+            "total_delta": -0.38
+          }
+        ]
+      },
+      "4": {
+        "horse_name": "競駿輝煌",
+        "sectional_normalized_l400_delta": -0.241,
+        "sectional_normalized_total_delta": -0.38,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "04/07/2026",
+            "distance": "1200",
+            "l400_delta": -0.13,
+            "total_delta": -0.04
+          },
+          {
+            "date": "07/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.19,
+            "total_delta": -0.49
+          },
+          {
+            "date": "09/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.82,
+            "total_delta": 0.53
+          },
+          {
+            "date": "12/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.89,
+            "total_delta": -0.38
+          },
+          {
+            "date": "29/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.57,
+            "total_delta": -1.61
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1200",
+            "l400_delta": -1.03,
+            "total_delta": -0.97
+          }
+        ]
+      },
+      "5": {
+        "horse_name": "維港智能",
+        "sectional_normalized_l400_delta": 0.305,
+        "sectional_normalized_total_delta": -0.372,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "07/06/2026",
+            "distance": "1200",
+            "l400_delta": 0.63,
+            "total_delta": -0.51
+          },
+          {
+            "date": "20/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.02,
+            "total_delta": -0.91
+          },
+          {
+            "date": "09/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.69,
+            "total_delta": 0.12
+          },
+          {
+            "date": "12/04/2026",
+            "distance": "1200",
+            "l400_delta": 0.02,
+            "total_delta": -0.23
+          },
+          {
+            "date": "29/03/2026",
+            "distance": "1200",
+            "l400_delta": 0.26,
+            "total_delta": -0.22
+          },
+          {
+            "date": "08/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.06,
+            "total_delta": -0.21
+          }
+        ]
+      },
+      "6": {
+        "horse_name": "昇瀧駒",
+        "sectional_normalized_l400_delta": -0.131,
+        "sectional_normalized_total_delta": -0.739,
+        "sectional_normalized_samples": 4,
+        "sectional_normalized_series": [
+          {
+            "date": "27/06/2026",
+            "distance": "1000",
+            "l400_delta": -0.78,
+            "total_delta": -0.83
+          },
+          {
+            "date": "07/12/2025",
+            "distance": "1200",
+            "l400_delta": 0.06,
+            "total_delta": -1.14
+          },
+          {
+            "date": "12/11/2025",
+            "distance": "1650",
+            "l400_delta": 0.5,
+            "total_delta": -0.71
+          },
+          {
+            "date": "28/09/2025",
+            "distance": "1200",
+            "l400_delta": -0.08,
+            "total_delta": -0.07
+          }
+        ]
+      },
+      "7": {
+        "horse_name": "魔術控制",
+        "sectional_normalized_l400_delta": -0.347,
+        "sectional_normalized_total_delta": -0.549,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/06/2026",
+            "distance": "1000",
+            "l400_delta": -0.7,
+            "total_delta": -1.11
+          },
+          {
+            "date": "07/06/2026",
+            "distance": "1200",
+            "l400_delta": 0.18,
+            "total_delta": -0.6
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "1000",
+            "l400_delta": -0.83,
+            "total_delta": -0.08
+          },
+          {
+            "date": "12/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.58,
+            "total_delta": -0.11
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1200",
+            "l400_delta": 0.38,
+            "total_delta": -0.4
+          },
+          {
+            "date": "22/02/2026",
+            "distance": "1000",
+            "l400_delta": -0.31,
+            "total_delta": -0.73
+          }
+        ]
+      },
+      "8": {
+        "horse_name": "勇敢巨星",
+        "sectional_normalized_l400_delta": -0.285,
+        "sectional_normalized_total_delta": 0.017,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/06/2026",
+            "distance": "1000",
+            "l400_delta": -0.02,
+            "total_delta": 0.25
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "1000",
+            "l400_delta": -0.54,
+            "total_delta": 0.45
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.75,
+            "total_delta": -1.01
+          },
+          {
+            "date": "04/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.85,
+            "total_delta": -0.93
+          },
+          {
+            "date": "14/01/2026",
+            "distance": "1200",
+            "l400_delta": -0.03,
+            "total_delta": -0.41
+          },
+          {
+            "date": "07/12/2025",
+            "distance": "1000",
+            "l400_delta": 0.85,
+            "total_delta": 2.15
+          }
+        ]
+      },
+      "9": {
+        "horse_name": "友愛心得",
+        "sectional_normalized_l400_delta": -0.348,
+        "sectional_normalized_total_delta": -0.352,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/06/2026",
+            "distance": "1000",
+            "l400_delta": -1.05,
+            "total_delta": -0.98
+          },
+          {
+            "date": "31/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.88,
+            "total_delta": -1
+          },
+          {
+            "date": "06/05/2026",
+            "distance": "1200",
+            "l400_delta": 1.82,
+            "total_delta": 2.22
+          },
+          {
+            "date": "01/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.25,
+            "total_delta": -0.77
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.5,
+            "total_delta": -0.96
+          },
+          {
+            "date": "04/02/2026",
+            "distance": "1200",
+            "l400_delta": -1.23,
+            "total_delta": -0.59
+          }
+        ]
+      },
+      "10": {
+        "horse_name": "小霸王",
+        "sectional_normalized_l400_delta": -0.763,
+        "sectional_normalized_total_delta": -0.204,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.61,
+            "total_delta": 0.14
+          },
+          {
+            "date": "13/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.67,
+            "total_delta": -0.58
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "1000",
+            "l400_delta": -0.95,
+            "total_delta": 0.52
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.77,
+            "total_delta": -0.95
+          },
+          {
+            "date": "01/03/2026",
+            "distance": "1400",
+            "l400_delta": -0.73,
+            "total_delta": 0.14
+          },
+          {
+            "date": "04/02/2026",
+            "distance": "1200",
+            "l400_delta": -1.01,
+            "total_delta": -0.81
+          }
+        ]
+      },
+      "11": {
+        "horse_name": "興馳千里",
+        "sectional_normalized_l400_delta": 0.209,
+        "sectional_normalized_total_delta": -0.057,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "04/07/2026",
+            "distance": "1200",
+            "l400_delta": 0.2,
+            "total_delta": 0.25
+          },
+          {
+            "date": "13/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.44,
+            "total_delta": -1.27
+          },
+          {
+            "date": "20/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.67,
+            "total_delta": -0.1
+          },
+          {
+            "date": "03/05/2026",
+            "distance": "1200",
+            "l400_delta": 1.38,
+            "total_delta": 2.27
+          },
+          {
+            "date": "12/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.37,
+            "total_delta": -0.59
+          },
+          {
+            "date": "15/03/2026",
+            "distance": "1000",
+            "l400_delta": -0.22,
+            "total_delta": -0.95
+          }
+        ]
+      }
+    },
+    "9": {
+      "1": {
+        "horse_name": "東來欣賞",
+        "sectional_normalized_l400_delta": -0.306,
+        "sectional_normalized_total_delta": -0.288,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "10/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.06,
+            "total_delta": -0.25
+          },
+          {
+            "date": "20/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.11,
+            "total_delta": -0.33
+          },
+          {
+            "date": "29/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.2,
+            "total_delta": 0.09
+          },
+          {
+            "date": "08/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.65,
+            "total_delta": -0.34
+          },
+          {
+            "date": "18/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.39,
+            "total_delta": -0.8
+          },
+          {
+            "date": "04/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.83,
+            "total_delta": -0.23
+          }
+        ]
+      },
+      "2": {
+        "horse_name": "競駿皇者",
+        "sectional_normalized_l400_delta": -0.221,
+        "sectional_normalized_total_delta": 0.276,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "24/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.24,
+            "total_delta": -0.19
+          },
+          {
+            "date": "31/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.3,
+            "total_delta": -0.28
+          },
+          {
+            "date": "03/05/2026",
+            "distance": "1200",
+            "l400_delta": 1.03,
+            "total_delta": 3
+          },
+          {
+            "date": "12/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.47,
+            "total_delta": -0.45
+          },
+          {
+            "date": "22/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.95,
+            "total_delta": -0.44
+          },
+          {
+            "date": "22/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.86,
+            "total_delta": -0.2
+          }
+        ]
+      },
+      "3": {
+        "horse_name": "人和家興",
+        "sectional_normalized_l400_delta": 0.188,
+        "sectional_normalized_total_delta": 0.056,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "04/07/2026",
+            "distance": "1200",
+            "l400_delta": 1.4,
+            "total_delta": 0.69
+          },
+          {
+            "date": "21/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.28,
+            "total_delta": -0.26
+          },
+          {
+            "date": "03/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.05,
+            "total_delta": 0.11
+          },
+          {
+            "date": "13/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.17,
+            "total_delta": 0.06
+          },
+          {
+            "date": "08/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.44,
+            "total_delta": -0.41
+          },
+          {
+            "date": "25/03/2026",
+            "distance": "1000",
+            "l400_delta": -0.5,
+            "total_delta": -0.31
+          }
+        ]
+      },
+      "4": {
+        "horse_name": "傑出雷霆",
+        "sectional_normalized_l400_delta": -0.123,
+        "sectional_normalized_total_delta": 0.262,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.92,
+            "total_delta": -0.45
+          },
+          {
+            "date": "07/06/2026",
+            "distance": "1400",
+            "l400_delta": 1.25,
+            "total_delta": 1.19
+          },
+          {
+            "date": "17/05/2026",
+            "distance": "1200",
+            "l400_delta": 0.49,
+            "total_delta": 1.63
+          },
+          {
+            "date": "26/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.52,
+            "total_delta": -0.3
+          },
+          {
+            "date": "15/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.98,
+            "total_delta": -0.53
+          },
+          {
+            "date": "19/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.4,
+            "total_delta": -0.43
+          }
+        ]
+      },
+      "5": {
+        "horse_name": "國千金",
+        "sectional_normalized_l400_delta": 0.316,
+        "sectional_normalized_total_delta": 0.803,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "27/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.68,
+            "total_delta": -0.41
+          },
+          {
+            "date": "17/05/2026",
+            "distance": "1400",
+            "l400_delta": 2.26,
+            "total_delta": 3.48
+          },
+          {
+            "date": "06/05/2026",
+            "distance": "1200",
+            "l400_delta": 1.69,
+            "total_delta": 1.61
+          },
+          {
+            "date": "22/03/2026",
+            "distance": "1200",
+            "l400_delta": -0.46,
+            "total_delta": -0.15
+          },
+          {
+            "date": "14/02/2026",
+            "distance": "1000",
+            "l400_delta": -1.23,
+            "total_delta": -0.7
+          },
+          {
+            "date": "18/01/2026",
+            "distance": "1000",
+            "l400_delta": -0.51,
+            "total_delta": 0.18
+          }
+        ]
+      },
+      "6": {
+        "horse_name": "丞匡掠影",
+        "sectional_normalized_l400_delta": 0.398,
+        "sectional_normalized_total_delta": 1.007,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "24/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.23,
+            "total_delta": -0.06
+          },
+          {
+            "date": "17/05/2026",
+            "distance": "1400",
+            "l400_delta": 2.61,
+            "total_delta": 3.95
+          },
+          {
+            "date": "26/04/2026",
+            "distance": "1400",
+            "l400_delta": 0.15,
+            "total_delta": -0.51
+          },
+          {
+            "date": "25/03/2026",
+            "distance": "1650",
+            "l400_delta": -0.12,
+            "total_delta": 1.17
+          },
+          {
+            "date": "19/02/2026",
+            "distance": "1200",
+            "l400_delta": -0.84,
+            "total_delta": 0.47
+          },
+          {
+            "date": "01/02/2026",
+            "distance": "1400",
+            "l400_delta": 0.15,
+            "total_delta": 0.65
+          }
+        ]
+      },
+      "7": {
+        "horse_name": "駿毅快車",
+        "sectional_normalized_l400_delta": 0.068,
+        "sectional_normalized_total_delta": 0.074,
+        "sectional_normalized_samples": 2,
+        "sectional_normalized_series": [
+          {
+            "date": "24/06/2026",
+            "distance": "1200",
+            "l400_delta": 0.73,
+            "total_delta": 0.18
+          },
+          {
+            "date": "24/05/2026",
+            "distance": "1200",
+            "l400_delta": -0.71,
+            "total_delta": -0.05
+          }
+        ]
+      },
+      "8": {
+        "horse_name": "龍城精將",
+        "sectional_normalized_l400_delta": 0.361,
+        "sectional_normalized_total_delta": 0.826,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "13/06/2026",
+            "distance": "1600",
+            "l400_delta": 0.97,
+            "total_delta": 2.16
+          },
+          {
+            "date": "29/03/2026",
+            "distance": "1600",
+            "l400_delta": -0.72,
+            "total_delta": 0.36
+          },
+          {
+            "date": "28/01/2026",
+            "distance": "1800",
+            "l400_delta": 0.95,
+            "total_delta": 0.08
+          },
+          {
+            "date": "04/01/2026",
+            "distance": "1600",
+            "l400_delta": 0.28,
+            "total_delta": 0.85
+          },
+          {
+            "date": "15/11/2025",
+            "distance": "1600",
+            "l400_delta": -0.36,
+            "total_delta": 0.48
+          },
+          {
+            "date": "19/10/2025",
+            "distance": "1600",
+            "l400_delta": 1.06,
+            "total_delta": 0.3
+          }
+        ]
+      },
+      "9": {
+        "horse_name": "逍遙騎士",
+        "sectional_normalized_l400_delta": -0.155,
+        "sectional_normalized_total_delta": 0.539,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "21/06/2026",
+            "distance": "1600",
+            "l400_delta": -1,
+            "total_delta": -0.16
+          },
+          {
+            "date": "24/05/2026",
+            "distance": "1600",
+            "l400_delta": -0.8,
+            "total_delta": 0.77
+          },
+          {
+            "date": "03/05/2026",
+            "distance": "1400",
+            "l400_delta": 0.95,
+            "total_delta": 1.75
+          },
+          {
+            "date": "06/04/2026",
+            "distance": "1400",
+            "l400_delta": -0.19,
+            "total_delta": 0.33
+          },
+          {
+            "date": "15/03/2026",
+            "distance": "1400",
+            "l400_delta": 0.61,
+            "total_delta": 0.4
+          },
+          {
+            "date": "08/02/2026",
+            "distance": "1400",
+            "l400_delta": 0.33,
+            "total_delta": 0.15
+          }
+        ]
+      },
+      "10": {
+        "horse_name": "佛亮老撾",
+        "sectional_normalized_l400_delta": -0.106,
+        "sectional_normalized_total_delta": 0.745,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "01/07/2026",
+            "distance": "1400",
+            "l400_delta": 0.43,
+            "total_delta": -0.08
+          },
+          {
+            "date": "13/06/2026",
+            "distance": "1400",
+            "l400_delta": -0.76,
+            "total_delta": 0.73
+          },
+          {
+            "date": "24/05/2026",
+            "distance": "1400",
+            "l400_delta": -0.89,
+            "total_delta": 0.25
+          },
+          {
+            "date": "03/05/2026",
+            "distance": "1400",
+            "l400_delta": 1.97,
+            "total_delta": 4.15
+          },
+          {
+            "date": "08/04/2026",
+            "distance": "1200",
+            "l400_delta": -0.55,
+            "total_delta": 0.16
+          },
+          {
+            "date": "11/03/2026",
+            "distance": "1200",
+            "l400_delta": -1.14,
+            "total_delta": -0.59
+          }
+        ]
+      },
+      "11": {
+        "horse_name": "繼往開來",
+        "sectional_normalized_l400_delta": -0.127,
+        "sectional_normalized_total_delta": 0.061,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "24/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.16,
+            "total_delta": -0.29
+          },
+          {
+            "date": "03/06/2026",
+            "distance": "1200",
+            "l400_delta": -0.69,
+            "total_delta": -0.29
+          },
+          {
+            "date": "29/03/2026",
+            "distance": "1400",
+            "l400_delta": 1.43,
+            "total_delta": 0.69
+          },
+          {
+            "date": "08/03/2026",
+            "distance": "1600",
+            "l400_delta": -0.15,
+            "total_delta": 0.03
+          },
+          {
+            "date": "14/02/2026",
+            "distance": "1600",
+            "l400_delta": -0.88,
+            "total_delta": 0.32
+          },
+          {
+            "date": "18/01/2026",
+            "distance": "1200",
+            "l400_delta": -0.59,
+            "total_delta": 0.24
+          }
+        ]
+      },
+      "12": {
+        "horse_name": "勇冠群英",
+        "sectional_normalized_l400_delta": 0.346,
+        "sectional_normalized_total_delta": 0.621,
+        "sectional_normalized_samples": 6,
+        "sectional_normalized_series": [
+          {
+            "date": "01/07/2026",
+            "distance": "1000",
+            "l400_delta": -0.69,
+            "total_delta": -0.17
+          },
+          {
+            "date": "07/06/2026",
+            "distance": "1000",
+            "l400_delta": 0.14,
+            "total_delta": 0.33
+          },
+          {
+            "date": "09/05/2026",
+            "distance": "1000",
+            "l400_delta": 0.39,
+            "total_delta": 0.73
+          },
+          {
+            "date": "12/04/2026",
+            "distance": "1200",
+            "l400_delta": 1.11,
+            "total_delta": 1.25
+          },
+          {
+            "date": "22/03/2026",
+            "distance": "1400",
+            "l400_delta": 1.54,
+            "total_delta": 1.85
+          },
+          {
+            "date": "19/02/2026",
+            "distance": "1200",
+            "l400_delta": 0.54,
+            "total_delta": 0.47
+          }
+        ]
+      }
+    }
+  }
+}

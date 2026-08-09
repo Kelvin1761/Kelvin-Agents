@@ -29,6 +29,7 @@ from au_archive_calibrator import (  # noqa: E402
     normalize_track_name,
     parse_int,
 )
+from au_metric_contract import ranked_performance  # noqa: E402
 
 AUTO_ORCH = SCRIPT_DIR / "au_auto_orchestrator.py"
 EVAL_TRACKS = {"flemington", "randwick"}
@@ -93,21 +94,23 @@ def evaluate(meetings: list[Path]) -> dict:
             if len(joined) < 4 or sum(1 for j in joined if j["pos"] <= 3) < 3:
                 continue
             ranked = sorted(joined, key=lambda j: (-j["ability"], j["num"]))
-            hits = sum(1 for j in ranked[:3] if j["pos"] <= 3)
+            performance = ranked_performance(ranked, horse_key="num", position_key="pos")
+            hits = int(performance["hits"])
             b["n"] += 1
             b["top3_hits"] += hits
-            b["gold"] += 1 if hits == 3 else 0
-            b["good"] += 1 if hits >= 2 else 0
-            b["pass"] += 1 if hits >= 1 else 0
+            b["gold"] += int(performance["gold"])
+            b["good"] += int(performance["good_positional"])
+            b["pass"] += int(performance["pass"])
             b["miss"] += 1 if hits == 0 else 0
-            b["win_t3"] += 1 if any(j["pos"] == 1 for j in ranked[:3]) else 0
-            # Top-2 picks (model rank 1 & 2) BOTH finishing in actual top-3
-            b["top2_both"] += 1 if all(j["pos"] <= 3 for j in ranked[:2]) else 0
-            b["pick1_placed"] += 1 if ranked[0]["pos"] <= 3 else 0
-            b["pick1_won"] += 1 if ranked[0]["pos"] == 1 else 0
+            b["win_t3"] += int(performance["winner_in_top3"])
+            b["top2_both"] += int(performance["good_positional"])
+            b["pick1_placed"] += int(ranked[0]["pos"] <= 3)
+            b["pick1_won"] += int(performance["champion"])
     n = max(1, b["n"])
-    return {"races": b["n"], "good_rate": b["good"] / n * 100, "top3": b["top3_hits"] / (3 * n) * 100,
-            "win_t3": b["win_t3"] / n * 100, "gold": b["gold"], "good": b["good"], "miss": b["miss"],
+    return {"races": b["n"], "good_rate": b["good"] / n * 100, "pass_rate": b["pass"] / n * 100,
+            "top3": b["top3_hits"] / (3 * n) * 100,
+            "win_t3": b["win_t3"] / n * 100, "gold": b["gold"], "good": b["good"],
+            "pass": b["pass"], "miss": b["miss"],
             "top2_both": b["top2_both"] / n * 100, "top2_both_n": b["top2_both"],
             "pick1_placed": b["pick1_placed"] / n * 100, "pick1_won": b["pick1_won"] / n * 100}
 
@@ -127,13 +130,13 @@ def main() -> int:
     print("\n" + "=" * 56)
     print(f"EVAL{tag}  —  {m['races']} races")
     print("=" * 56)
-    print(f"  Good% (>=2 of top3 picks placed) : {m['good_rate']:.2f}   ({m['good']} races)")
-    print(f"  Top2-both% (#1 & #2 both placed) : {m['top2_both']:.2f}   ({m['top2_both_n']} races)")
+    print(f"  Gold% (actual Top3 in model Top4): {m['gold']/max(1, m['races'])*100:.2f}   ({m['gold']} races)")
+    print(f"  Good% (#1 & #2 both placed)      : {m['good_rate']:.2f}   ({m['good']} races)")
+    print(f"  Pass% (any 2 of model Top3)      : {m['pass_rate']:.2f}   ({m['pass']} races)")
     print(f"  Pick#1 placed%                   : {m['pick1_placed']:.2f}")
     print(f"  Pick#1 won%                      : {m['pick1_won']:.2f}")
     print(f"  Top3%  (precision of 3 picks)    : {m['top3']:.2f}")
     print(f"  Winner-in-top3-picks%            : {m['win_t3']:.2f}")
-    print(f"  Gold (3/3)                       : {m['gold']}")
     print(f"  Miss (0/3)                       : {m['miss']}")
     return 0
 

@@ -24,16 +24,24 @@ from au_archive_calibrator import (  # noqa: E402
     detect_meeting_track,
     load_historical_results,
     normalize_horse_name,
+    parse_float,
     parse_int,
 )
 from au_auto_orchestrator import _build_field_summary  # noqa: E402
 from engine_core import RacingEngine  # noqa: E402
+from matrix_mapper import matrix_score  # noqa: E402
 from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_metric_contract import ranked_performance  # noqa: E402
 
 
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Formline_7D_ML_Test.md"
 SEED = 20260612
 ITERATIONS_PER_FOLD = 1200
+
+
+def score_value(value, default: float = 60.0) -> float:
+    parsed = parse_float(value)
+    return default if parsed is None else parsed
 
 
 def normalize(weights: dict[str, float]) -> dict[str, float]:
@@ -54,7 +62,10 @@ def with_formline_share(share: float) -> dict[str, float]:
 
 def score(row: dict, weights: dict[str, float]) -> float:
     matrix = row.get("matrix_scores") or {}
-    return sum(float(matrix.get(key, 60.0) or 60.0) * weights.get(key, 0.0) for key in MATRIX_KEYS)
+    return sum(
+        matrix_score(matrix, key, 60.0) * weights.get(key, 0.0)
+        for key in MATRIX_KEYS
+    )
 
 
 def ranked(race: list[dict], weights: dict[str, float]) -> list[dict]:
@@ -67,16 +78,17 @@ def metrics(races: list[list[dict]], weights: dict[str, float]) -> dict:
         order = ranked(race, weights)
         top3 = order[:3]
         top5 = order[:5]
-        hits = sum(1 for row in top3 if int(row["actual_pos"]) <= 3)
-        top2_hits = sum(1 for row in order[:2] if int(row["actual_pos"]) <= 3)
+        performance = ranked_performance(order)
+        hits = int(performance["hits"])
         bucket["races"] += 1
         bucket[f"{hits}hit"] += 1
         bucket["top3_places"] += hits
         bucket["top3_slots"] += len(top3)
         bucket["winner_top5"] += 1 if any(int(row["actual_pos"]) == 1 for row in top5) else 0
-        bucket["gold"] += 1 if hits == 3 else 0
-        bucket["good"] += 1 if top2_hits == 2 else 0
-        bucket["pass"] += 1 if hits >= 2 else 0
+        bucket["gold"] += int(performance["gold"])
+        bucket["good"] += int(performance["good_positional"])
+        bucket["pass"] += int(performance["pass"])
+        bucket["top3_all_within_top4"] += int(performance["gold"])
     races_n = bucket["races"] or 1
     slots = bucket["top3_slots"] or 1
     return {
@@ -84,6 +96,7 @@ def metrics(races: list[list[dict]], weights: dict[str, float]) -> dict:
         "gold": bucket["gold"],
         "good": bucket["good"],
         "pass": bucket["pass"],
+        "top3_all_within_top4": bucket["top3_all_within_top4"],
         "winner_top5": bucket["winner_top5"],
         "top3_places": bucket["top3_places"],
         "top3_precision": bucket["top3_places"] / slots,
@@ -113,6 +126,8 @@ def fmt_metrics(item: dict) -> str:
         f"Gold {item['gold']} ({item['gold'] / races * 100:.1f}%) / "
         f"Good {item['good']} ({item['good'] / races * 100:.1f}%) / "
         f"Pass {item['pass']} ({item['pass'] / races * 100:.1f}%) / "
+        f"T3-in-T4 {item['top3_all_within_top4']} "
+        f"({item['top3_all_within_top4'] / races * 100:.1f}%) / "
         f"0H {item['0hit']} / 1H {item['1hit']} / "
         f"Top3 {item['top3_precision'] * 100:.1f}% / WTop5 {item['winner_top5'] / races * 100:.1f}%"
     )
@@ -184,8 +199,17 @@ def recompute_race(logic_path: Path, actual_rows: list[dict]) -> list[dict]:
                 "horse_number": parse_int(horse_num) or 999,
                 "horse_name": horse_name(horse_num, horse),
                 "actual_pos": int(actual["pos"]),
-                "matrix_scores": {key: float((auto.get("matrix_scores") or {}).get(key) or 60.0) for key in MATRIX_KEYS},
-                "formline_score": float((auto.get("feature_scores") or {}).get("formline_score") or 60.0),
+                "matrix_scores": {
+                    key: matrix_score(
+                        auto.get("matrix_scores") or {},
+                        key,
+                        60.0,
+                    )
+                    for key in MATRIX_KEYS
+                },
+                "formline_score": score_value(
+                    (auto.get("feature_scores") or {}).get("formline_score")
+                ),
                 "formline_rows": len(engine._formline_rows()),
             }
         )
@@ -305,7 +329,9 @@ def average_weights(rows: list[dict[str, float]]) -> dict[str, float]:
 def passes_gate(base: dict, cand: dict) -> bool:
     return (
         cand["0hit"] <= base["0hit"]
+        and cand["good"] >= base["good"]
         and cand["pass"] >= base["pass"]
+        and cand["top3_all_within_top4"] >= base["top3_all_within_top4"]
         and cand["winner_top5"] >= base["winner_top5"]
         and cand["top3_places"] >= base["top3_places"]
         and cand["gold"] >= base["gold"] - 2

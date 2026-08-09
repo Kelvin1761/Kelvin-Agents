@@ -321,6 +321,9 @@ CREATE TABLE IF NOT EXISTS feature_snapshots (
     created_at TEXT NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_feature_snapshots_match_quality
+ON feature_snapshots(match_id, data_quality_score);
+
 CREATE TABLE IF NOT EXISTS predictions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     match_id INTEGER NOT NULL,
@@ -480,6 +483,8 @@ CREATE TABLE IF NOT EXISTS prop_tracker (
     subject_player_id INTEGER,
     decimal_odds REAL NOT NULL,
     model_prob REAL,
+    model_prob_raw REAL,
+    temper_strength REAL,
     market_prob_fair REAL,
     blended_prob REAL,
     edge REAL,
@@ -495,6 +500,9 @@ CREATE TABLE IF NOT EXISTS prop_tracker (
     settled_at TEXT,
     UNIQUE(prop_key)
 );
+
+CREATE INDEX IF NOT EXISTS idx_prop_tracker_status_value
+ON prop_tracker(result_status, is_value, stake_units);
 """
 
 
@@ -524,6 +532,14 @@ def _ensure_compat_columns(conn) -> None:
         "side": "ALTER TABLE prop_tracker ADD COLUMN side TEXT NOT NULL DEFAULT 'over'",
         "prop_scope": "ALTER TABLE prop_tracker ADD COLUMN prop_scope TEXT NOT NULL DEFAULT 'match'",
         "subject_player_id": "ALTER TABLE prop_tracker ADD COLUMN subject_player_id INTEGER",
+        # 2026-07-25: model_prob had been silently overwritten with the TEMPERED
+        # probability, so the model-vs-market scorecard was grading a number that
+        # had already been pulled 15% toward 0.5 -- and the temper strength was in
+        # turn chosen from that same scorecard. Circular: the raw model's skill was
+        # never measured. model_prob_raw is the odds-blind model output; model_prob
+        # keeps its historical (tempered) meaning so old rows stay interpretable.
+        "model_prob_raw": "ALTER TABLE prop_tracker ADD COLUMN model_prob_raw REAL",
+        "temper_strength": "ALTER TABLE prop_tracker ADD COLUMN temper_strength REAL",
     }.items():
         if prop_cols and name not in prop_cols:
             conn.execute(ddl)

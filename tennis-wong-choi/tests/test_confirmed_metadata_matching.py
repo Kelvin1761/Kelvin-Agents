@@ -67,3 +67,44 @@ def test_single_token_does_not_false_match_inside_word():
 def test_itf_and_utf_junk_excluded():
     for name in ("ITF Doubles", "ITF China Futures", "Mens UTR Pro Series, Australia", "UTR Singles"):
         assert confirmed_competition_meta(name, "ATP") is None
+
+
+# --- Phase 2 (2026-07-12): Sportsbet competition-name heuristic tier ---------
+
+
+def test_name_heuristic_resolves_low_tier_levels():
+    from tennis_wc.ingestion.confirmed_metadata import sportsbet_name_competition_meta
+
+    assert sportsbet_name_competition_meta("ATP Iasi Challenger", "ATP") == {
+        "tour": "ATP", "level": "CHALLENGER", "surface": None,
+    }
+    assert sportsbet_name_competition_meta("ITF Spain Futures", None)["level"] == "ITF"
+    assert sportsbet_name_competition_meta("ITF Buzau", "UNKNOWN")["level"] == "ITF"
+    assert sportsbet_name_competition_meta("UTR Singles", None)["level"] == "UTR"
+    assert sportsbet_name_competition_meta("WTA Bastad 125K", "WTA") == {
+        "tour": "WTA", "level": "125", "surface": None,
+    }
+    assert sportsbet_name_competition_meta("Davis Cup", None)["level"] == "TEAM_EVENT"
+
+
+def test_name_heuristic_infers_tour_from_gender_words():
+    from tennis_wc.ingestion.confirmed_metadata import sportsbet_name_competition_meta
+
+    assert sportsbet_name_competition_meta("Mens UTR Pro Series, Australia", None)["tour"] == "ATP"
+    assert sportsbet_name_competition_meta("Ladies UTR Pro Series, Australia", None)["tour"] == "WTA"
+
+
+def test_name_heuristic_never_resolves_doubles_or_tour_events():
+    from tennis_wc.ingestion.confirmed_metadata import (
+        is_doubles_competition,
+        sportsbet_name_competition_meta,
+    )
+
+    # Doubles must stay unresolved (they are excluded from the pipeline).
+    assert sportsbet_name_competition_meta("ATP Halle Doubles", "ATP") is None
+    assert sportsbet_name_competition_meta("ITF Doubles", None) is None
+    assert is_doubles_competition("Ladies Wimbledon Doubles")
+    assert not is_doubles_competition("Wimbledon")
+    # Main-tour names carry no circuit marker -> defer to curated/index tiers.
+    assert sportsbet_name_competition_meta("Nordea Open", "WTA") is None
+    assert sportsbet_name_competition_meta("Wimbledon", "ATP") is None

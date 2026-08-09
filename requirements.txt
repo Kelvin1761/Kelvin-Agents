@@ -6,11 +6,21 @@ curl-cffi
 fastapi
 nba_api
 numbers-parser
+numpy
 openpyxl
 pandas
 pdfplumber
 playwright
 pydantic
+python-dotenv
 requests
+scikit-learn
+scipy
 uvicorn
 watchdog
+
+# Why these are here (do not trim without checking the importers):
+#   numpy / scipy / scikit-learn -> AU + HKJC ML gates and weight trainers:
+#     au_ml_residual_gate.py, au_sector_walkforward_gate.py,
+#     train_hkjc_7d_ml_weights.py, train_hkjc_ranking_model.py
+#   python-dotenv -> au_racecourse_weather_prediction/scripts/track_predictor.py

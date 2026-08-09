@@ -30,7 +30,7 @@ python3 .agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.
 現役 orchestrator 會按實際情況自動處理：
 
 1. resolve AU meeting directory
-2. 找現成 results file；如未有而且提供咗 `--results-url`，就跑 Racenet results extractor
+2. 找現成 results file；AU 未有就跑 `sb_results.py` 由 Sportsbet cache 生成（零網絡請求）
 3. 用 shared unified reflector core 做 meeting-level stats、prediction vs result compare、incident analysis
 4. 如未 `--skip-backtest`，再跑 AU archive backtests / shadow diagnostics
 5. 生成 final markdown report，同可選 JSON summary
@@ -39,7 +39,7 @@ python3 .agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.
 
 - AU meeting directory
 - 已存在 results file
-- Racenet results URL
+- ~~Racenet results URL~~ —— 唔再需要，賽果由 cache 生成
 
 ## Typical Outputs
 
@@ -60,7 +60,7 @@ python3 .agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.
 - `.agents/skills/au_racing/au_reflector/scripts/au_review_auto_weighting.py`
 - `.agents/skills/au_racing/au_reflector/scripts/au_shadow_bundle_benchmark.py`
 - `.agents/skills/au_racing/au_reflector/scripts/au_class_normalization_shadow_test.py`
-- `.agents/skills/au_racing/claw_racenet_results.py`
+- `.agents/skills/au_racing/sb_results.py`（AU 賽果，由 Sportsbet cache 生成）
 
 ## Guard Rails
 

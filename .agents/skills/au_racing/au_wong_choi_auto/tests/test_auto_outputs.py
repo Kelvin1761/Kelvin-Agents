@@ -11,7 +11,7 @@ ENGINE_DIR = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "
 sys.path.insert(0, str(ENGINE_DIR))
 
 from engine_core import RacingEngine
-from renderer import render_race_markdown
+from renderer import _zero_weight_dimensions, render_race_markdown
 
 
 def _analyze(horse: dict, race_context: dict) -> dict:
@@ -106,12 +106,33 @@ def _horse(overrides: dict | None = None) -> dict:
 
 
 class AuAutoOutputTests(unittest.TestCase):
+    def test_report_only_form_line_is_not_a_ranking_dimension(self) -> None:
+        self.assertIn("form_line", _zero_weight_dimensions())
+        engine = RacingEngine(_horse(), _race_context(), facts_section=_facts_section())
+        core = engine._core_logic(
+            {},
+            {
+                "stability": 70.0,
+                "pace_perf": 65.0,
+                "race_shape": 60.0,
+                "jockey_trainer": 55.0,
+                "class_weight": 50.0,
+                "track": 45.0,
+                "form_line": 99.0,
+            },
+            [],
+            [],
+        )
+        self.assertIn("狀態與穩定性（70）最強", core)
+        self.assertIn("場地與地況適性（45）最弱", core)
+        self.assertNotIn("賽績線（99）", core)
+
     def test_core_logic_is_data_grounded_with_readout(self) -> None:
         result = _analyze(_horse(), _race_context())
         core = result["core_logic"]
 
-        # New design: concrete 七維 framing + real strengths/concerns, no filler.
-        self.assertIn("七維評分以", core)
+        # Six live ranking dimensions + real strengths/concerns, no filler.
+        self.assertIn("六個排名維度以", core)
         self.assertTrue("優勢在於" in core or "要留意" in core)
         self.assertNotIn("做主軸", core)        # dropped generic opener
         self.assertNotIn("保留型", core)        # dropped filler verdict
@@ -160,7 +181,14 @@ class AuAutoOutputTests(unittest.TestCase):
         neutral = _analyze(neutral_horse, _race_context())
         forgiven = _analyze(forgiven_horse, _race_context())
 
-        self.assertGreater(forgiven["feature_scores"]["consistency_score"], neutral["feature_scores"]["consistency_score"])
+        # 2026-07-10: 寬恕補償退出計分（A/B 移除零影響）→ 分數必須一樣，
+        # 但寬恕背景要以純顯示 note 交代。
+        self.assertEqual(
+            round(forgiven["feature_scores"]["consistency_score"], 2),
+            round(neutral["feature_scores"]["consistency_score"], 2),
+        )
+        display_notes = forgiven.get("stability_detail", {}).get("consistency", {}).get("display_notes", [])
+        self.assertTrue(any("寬恕" in note for note in display_notes))
 
     def test_verified_wet_runner_scores_better_on_heavy(self) -> None:
         verified = _analyze(_horse(), _race_context("Heavy 8"))

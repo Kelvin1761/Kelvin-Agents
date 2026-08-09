@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 
 from scoring import clip_score, score_band
-from matrix_mapper import MATRIX_FORMULAS
+from matrix_mapper import MATRIX_DISPLAY_GAINS, MATRIX_FORMULAS
 
 
 ABILITY_LABEL = "綜合戰力分"
@@ -16,7 +16,12 @@ FEATURE_LABELS = {
     "form_score": "近績分",
     "trial_score": "試閘分",
     "sectional_score": "段速分",
-    "pace_map_score": "形勢分",
+    # 2026-08-05 改名：`pace_map_score` 量嘅**純粹係檔位統計**（例：「檔位 3
+    # （內檔）據 Canterbury 1550m 統計勝率 18.8%（基準 16.7%）」），完全冇「形勢／
+    # 走位」內容 —— 2026-07-11 已經把借用嘅 track_score 歸還「場地適性」，令佢變成
+    # 純檔位。叫「形勢分」而維度又叫「檔位形勢」，讀者會以為係兩個訊號、或者以為
+    # 檔位被計兩次（Kelvin 就係咁問）。一個訊號一個名。
+    "pace_map_score": "檔位分",
     "jockey_score": "騎師分",
     "trainer_score": "練馬師分",
     "jockey_horse_fit_score": "人馬配搭分",
@@ -24,31 +29,29 @@ FEATURE_LABELS = {
     "rating_score": "Rating 分",
     "weight_score": "負磅分",
     "distance_score": "路程分",
-    "track_score": "場地分",
+    "track_score": "同場／地況往績分",
     "formline_score": "賽績線分",
     "consistency_score": "穩定性分",
+    "performance_quality_score": "表現質素分",
     "health_score": "備戰完整度分",
     "confidence_score": "信心分",
-    "pace_figure_score": "段速實速分",
+    "pace_figure_score": "L600 環境分",
 }
 
 MATRIX_LABELS = {
     "stability": "狀態與穩定性",
-    "sectional": "段速與引擎",
+    # 內部 key 為兼容舊 Logic 保留；Sportsbet L600 係 race-level 環境，唔係逐駒 split。
+    "pace_perf": "速度考驗背景",
     "race_shape": "檔位形勢",
     "jockey_trainer": "騎練訊號",
     "class_weight": "級數與負重",
-    "track": "場地適性",
+    "track": "場地與地況適性",
     "form_line": "賽績線",
-    "pace_figure": "段速實速（實測L600）",
 }
 
-# 同一 sub 分喺唔同維度可用唔同名，避免「同一個場地分出現兩次」嘅重覆錯覺。
-# track_score 喺「場地適性」係純場地紀錄（場地分）；喺「檔位形勢」係場地×步速交互
-# 貢獻，所以叫「場地配套分」。兩者用同一數值，係刻意（已驗證：抽走會蝕 box4/贏Top3）。
-MATRIX_COMPONENT_LABELS = {
-    ("race_shape", "track_score"): "場地配套分",
-}
+# 2026-07-11：track_score 已去重，只喺「場地與地況適性」維度出現。「檔位形勢」而家係
+# 純檔位/走位，冇再借用 track_score，所以呢個跨維度別名表清空。
+MATRIX_COMPONENT_LABELS = {}
 
 
 def _component_label(key, name):
@@ -75,21 +78,83 @@ def ensure_verdict(logic_data: dict) -> dict:
             _horse_number_sort_key(item["horse_number"]),
         ),
     )
+    pre_rank_order = [item["horse_number"] for item in ranked]
+    # Confidence tier from the top1-top3 ability spread (710-race archive
+    # calibration, 2026-07-17): in tight races the top-2 catch >=2 placegetters
+    # only 13% of the time while the top-5 catch 72%, so the betting radar must
+    # widen; in clear races the top-2 are genuinely strong (winner inside 51%).
+    top3_gap = (ranked[0]["ability_score"] - ranked[2]["ability_score"]) if len(ranked) >= 3 else 99.0
+    # Separate top1-vs-top2 calibration (710-race review, 2026-07-25): when the
+    # pair is within 0.5 points, #1 wins only 17.8% and #2 is not a superior
+    # replacement.  Treat them as a tie instead of inventing false precision.
+    top2_gap = (ranked[0]["ability_score"] - ranked[1]["ability_score"]) if len(ranked) >= 2 else 99.0
+    top_pick_tied = top2_gap < 0.5
+    if top3_gap < 2.0:
+        confidence_tier, radar_size = "tight", 5
+    elif top3_gap < 5.0:
+        confidence_tier, radar_size = "medium", 4
+    else:
+        confidence_tier, radar_size = "clear", 4
+    watch_limit = max(4, radar_size)
     for idx, item in enumerate(ranked, start=1):
         auto = horses[item["horse_number"]]["python_auto"]
         auto["rank"] = idx
-        auto["model_pick_status"] = "MODEL_TOP_PICK" if idx <= 2 else ("WATCH" if idx <= 4 else "NO_PICK")
+        auto["model_pick_status"] = "MODEL_TOP_PICK" if idx <= 2 else ("WATCH" if idx <= watch_limit else "NO_PICK")
         item["rank"] = idx
         item["model_pick_status"] = auto["model_pick_status"]
     watchlist = _build_rank_4_6_watchlist(ranked, horses)
+    pace_figure_coverage = _pace_figure_coverage(horses)
+    post_rank_order = [item["horse_number"] for item in ranked]
     verdict = {
         "ranking": ranked,
         "top2": ranked[:2],
         "top4": ranked[:4],
         "rank_4_6_watchlist": watchlist,
+        "confidence_tier": confidence_tier,
+        "top1_top2_gap": round(top2_gap, 2),
+        "top_pick_tied": top_pick_tied,
+        "top1_top3_gap": round(top3_gap, 2),
+        "radar_size": radar_size,
+        "radar": ranked[:radar_size],
+        "pace_figure_coverage": pace_figure_coverage,
+        "decision_trace": {
+            "contract": "clean_7d_static",
+            "pre_rank_order": pre_rank_order,
+            "post_rank_order": post_rank_order,
+            "changed": pre_rank_order != post_rank_order,
+            "reason": (
+                "Official ranking equals the clean six-dimension ability score; "
+                "report-only evidence does not rerank horses."
+            ),
+        },
     }
     logic_data["python_auto_verdict"] = verdict
     return verdict
+
+
+def _pace_figure_coverage(horses: dict) -> dict:
+    """Summarise race-level PF provenance without mistaking unknown legacy data for missing."""
+    missing_labels = {"missing_neutral", "no_spread"}
+    known = covered = 0
+    for horse in horses.values():
+        auto = horse.get("python_auto") if isinstance(horse, dict) else None
+        provenance = auto.get("score_provenance") if isinstance(auto, dict) else None
+        if not isinstance(provenance, dict) or "pace_figure_score" not in provenance:
+            continue
+        known += 1
+        if str(provenance.get("pace_figure_score") or "") not in missing_labels:
+            covered += 1
+    pct = (100.0 * covered / known) if known else None
+    enough_evidence = known >= max(1, (len(horses) + 1) // 2)
+    alert = bool(enough_evidence and pct is not None and pct < 90.0)
+    return {
+        "covered": covered,
+        "known": known,
+        "field_size": len(horses),
+        "pct": round(pct, 1) if pct is not None else None,
+        "alert": alert,
+        "status": "low" if alert else ("ok" if pct is not None else "unavailable"),
+    }
 
 
 def render_race_markdown(logic_data: dict) -> str:
@@ -216,6 +281,43 @@ def _going_box_advisory(race):
     ]
 
 
+def _confidence_tier_text(verdict) -> str:
+    tier = verdict.get("confidence_tier") or "medium"
+    gap = verdict.get("top1_top3_gap")
+    radar = verdict.get("radar_size", 4)
+    if verdict.get("top_pick_tied"):
+        top2_gap = verdict.get("top1_top2_gap")
+        return (
+            f"頭兩匹實質並列（差 {top2_gap}）— #1/#2 同級睇待；"
+            f"模型 Top {radar} 作雷達"
+        )
+    labels = {
+        "tight": f"分數擠迫（頭三差 {gap}）— 建議圍捕：模型 Top {radar} 同級睇待",
+        "medium": f"中等分野（頭三差 {gap}）— 常規：Top 2 主選、Top {radar} 雷達",
+        "clear": f"分數清晰（頭三差 {gap}）— Top 2 主選訊號較強",
+    }
+    return labels.get(tier, labels["medium"])
+
+
+def _pace_figure_coverage_text(verdict) -> str:
+    coverage = verdict.get("pace_figure_coverage")
+    if not isinstance(coverage, dict) or coverage.get("pct") is None:
+        return "舊檔未有 provenance，未能量度"
+    label = f"{coverage['pct']:.1f}%（{coverage['covered']}/{coverage['known']}）"
+    if coverage.get("alert"):
+        return f"⚠️ {label}，低過 90% live gate"
+    return f"✅ {label}"
+
+
+def _decision_trace_text(verdict) -> str:
+    trace = verdict.get("decision_trace")
+    if not isinstance(trace, dict):
+        return "未有 trace"
+    if trace.get("changed"):
+        return "⚠️ 排名前後次序有變，請查 decision trace"
+    return "Clean 六維排名次序一致（冇後置 rerank）"
+
+
 def _panorama(race, verdict, horses):
     race_number = race.get("race_number", "")
     distance = race.get("distance", "")
@@ -228,9 +330,12 @@ def _panorama(race, verdict, horses):
         "| 項目 | 內容 |",
         "|:---|:---|",
         f"| 賽事格局 | Race {race_number} / {distance} / {race_class} |",
-        "| **賽事類型** | **`[AU Wong Choi Auto Python 7D]`** |",
+        "| **賽事類型** | **`[AU Wong Choi Auto Python 六維排名]`** |",
         f"| 出馬數 | {len(horses)} |",
         f"| 跑道偏差 | {track_bias} |",
+        f"| 信心分層 | {_confidence_tier_text(verdict)} |",
+        f"| PF 覆蓋 | {_pace_figure_coverage_text(verdict)} |",
+        f"| 排名審計 | {_decision_trace_text(verdict)} |",
         "",
         *_going_box_advisory(race),
         "**🏃 形勢推演**",
@@ -239,13 +344,23 @@ def _panorama(race, verdict, horses):
         "",
         "**📊 全場綜合戰力排名**",
         "",
-        f"| 排名 | 馬號 | 馬名 | {ABILITY_LABEL} | Grade | 定位 |",
-        "|---:|---:|---|---:|---|---|",
+        f"| 排名 | 馬號 | 馬名 | {ABILITY_LABEL} | Grade | 資料 | 定位 |",
+        "|---:|---:|---|---:|---|:---:|---|",
         *[
-            f"| {item['rank']} | {item['horse_number']} | {item['horse_name']} | {item['ability_score']:.1f} | {item['grade']} | {_horse_positioning(horses[str(item['horse_number'])], horses[str(item['horse_number'])].get('python_auto', {}))} |"
+            f"| {item['rank']} | {item['horse_number']} | {item['horse_name']} | {item['ability_score']:.1f} | {item['grade']} | {_coverage_cell(horses[str(item['horse_number'])].get('python_auto', {}))} | {_horse_positioning(horses[str(item['horse_number'])], horses[str(item['horse_number'])].get('python_auto', {}))} |"
             for item in verdict.get("ranking", [])
         ],
+        "",
+        "> 「資料」= 評分建基於幾多真數據（非缺失預設）。**薄** = 分數靠少數真訊號，"
+        "宜留意；例如缺失段速/騎練評分嘅馬，分數可信度較低。",
     ])
+
+
+def _coverage_cell(auto: dict) -> str:
+    cov = auto.get("data_coverage") if isinstance(auto, dict) else None
+    if not isinstance(cov, dict):
+        return "—"
+    return f"{cov.get('confidence', '—')} {cov.get('coverage_pct', 0):.0f}%"
 
 
 _BAND_WORD = {"✅✅": "很強", "✅": "偏強", "➖": "中性", "❌": "偏弱", "❌❌": "很弱"}
@@ -257,24 +372,45 @@ def _band_label(score):
 
 
 def _matrix_composition_line(key, auto):
-    """顯示維度分點計出嚟：sub分 × 權重 ＋ … ＝ 維度分。直接答到『點解係呢個分』。"""
+    """顯示維度分點計出嚟：sub分 × 權重 ＋ … ＝ 原始分 → 統一尺 ＝ 維度分。
+
+    2026-08-01：維度分多咗一步「統一尺」（MATRIX_DISPLAY_GAINS）。呢一步一定要
+    寫出嚟 —— 否則會出現「形勢分 53 ×100% ＝ 32.6」呢種自己打自己嘅算式，比原本
+    嘅問題更差。gain = 1 嘅維度照舊唔顯示呢一步。
+    """
     comps = MATRIX_FORMULAS.get(key)
     if not comps:
         return ""
     fs = auto.get("feature_scores", {})
     parts = [f"{_component_label(key, n)} {clip_score(fs.get(n, 60)):.0f} ×{w*100:.0f}%" for n, w in comps]
+    raw = 60.0 + sum(
+        (clip_score(fs.get(n, 60)) - 60.0) * w for n, w in comps
+    )
+    raw = clip_score(raw)
     total = float(auto.get("matrix_scores", {}).get(key, 60))
-    return " ＋ ".join(parts) + f" ＝ {total:.1f}"
+    line = " ＋ ".join(parts) + f" ＝ {raw:.1f}"
+    gain = MATRIX_DISPLAY_GAINS.get(key, 1.0)
+    if abs(gain - 1.0) > 0.005:
+        line += (f" → 統一尺（60 為中性，偏離 ×{gain:.2f}）＝ {total:.1f}")
+    elif abs(total - raw) > 0.05:
+        line += f" ＝ {total:.1f}"
+    return line
 
 
 def _clean_subscore_note(note):
     """去掉 sub分 note 尾巴重覆嘅自述分數（個分我哋已經喺前面顯示）。
     只剝走最尾一段（要有分隔符 boundary，唔可以跨過逗號食埋真正內容）。
-    兩種格式：『…跑法穩定性 93.0 分。』同『…近績分 54.2』。"""
+    兩種格式：『…跑法穩定性 93.0 分。』同『…近績分 54.2』。
+    事後修正尾巴（「；[環境] …」「；[級數] …」）要保留——但佢哋令自述分數唔再喺
+    結尾（而且嗰個係調整前嘅舊分，同顯示分對唔上），所以先斬開尾巴、清洗頭段、再駁返。"""
     note = str(note or "").strip().rstrip("。 ")
-    note = re.sub(r"[，,、；;。]\s*[^，,、；;。]*?\d+(?:\.\d+)?\s*分。?\s*$", "", note)   # 「…, X 93.0 分」
-    note = re.sub(r"[，,、；;。]\s*[^，,、；;。]*?分\s*\d+(?:\.\d+)?。?\s*$", "", note)    # 「…, 近績分 54.2」
-    return note.strip(" ，,、；;。")
+    # 事後修正尾巴嘅 boundary：舊「；[…]」＋新精簡版「；級數偏弱…」「；場地未明…」
+    m = re.search(r"；\s*(?:\[|級數偏弱|場地未明)", note)
+    head, tail = (note[:m.start()], note[m.start():]) if m else (note, "")
+    head = head.rstrip("。 ")
+    head = re.sub(r"[，,、；;。]\s*[^，,、；;。]*?\d+(?:\.\d+)?\s*分。?\s*$", "", head)   # 「…, X 93.0 分」
+    head = re.sub(r"[，,、；;。]\s*[^，,、；;。]*?分\s*\d+(?:\.\d+)?。?\s*$", "", head)    # 「…, 近績分 54.2」
+    return (head.strip(" ，,、；;。") + tail).strip(" ，,、；;。")
 
 
 def _matrix_subscore_lines(key, auto):
@@ -289,6 +425,229 @@ def _matrix_subscore_lines(key, auto):
         note = _clean_subscore_note(notes.get(name, ""))
         out.append(f"{label} {v:.0f} ← {note}" if note else f"{label} {v:.0f}")
     return out
+
+
+def _stability_detail_lines(auto, name):
+    """近績分／穩定性分嘅完整評分構成（HK 式透明度）：
+    基礎分、每項加減嘅分值同依據、逐仗底分×班次×近期權重，全部攤開。"""
+    sd = auto.get("stability_detail")
+    if not isinstance(sd, dict):
+        return []
+    if name == "form_score":
+        d = sd.get("form") or {}
+        lines = []
+        if d.get("note"):
+            lines.append(str(d["note"]))
+        rows = d.get("rows") or []
+        num_total = 0.0
+        wt_total = 0.0
+        for r in rows:
+            recency = "（最近）" if r.get("idx") == 1 else ""
+            cls = f"（{r['cls']}）" if r.get("cls") else ""
+            contrib = r["base"] * r["mult"] * r["decay"]
+            num_total += contrib
+            wt_total += r["decay"]
+            lines.append(
+                f"第{r['idx']}仗{recency}：第{r['place']}名{cls} → {r['base']}"
+                f" ×班次係數 {r['mult']:.2f} ×近期權重 {r['decay']:.1f} ＝ {contrib:.1f}"
+            )
+        if rows and d.get("avg") is not None:
+            lines.append(f"名次加權平均 ＝ {num_total:.1f} ÷ 權重和 {wt_total:.1f} ＝ {d['avg']:.1f}")
+        for b in d.get("bonus") or []:
+            ev = f" ← {b['evidence']}" if b.get("evidence") else ""
+            lines.append(f"{b['factor']} {float(b['delta']):+.1f}{ev}")
+        if (d.get("bonus")) and d.get("final") is not None:
+            lines.append(f"最終近績分 ＝ {d['final']:.1f}")
+        return lines
+    if name == "consistency_score":
+        d = sd.get("consistency") or {}
+        lines = []
+        if d.get("base") is not None:
+            lines.append(f"{d.get('base_label', '基礎分')} {float(d['base']):.1f}")
+        for a in d.get("adjustments") or []:
+            ev = f" ← {a['evidence']}" if a.get("evidence") else ""
+            lines.append(f"{a['factor']} {float(a['delta']):+.2f}{ev}")
+        for note in d.get("display_notes") or []:
+            lines.append(f"（{note}）")
+        if d.get("final") is not None and (d.get("adjustments") or d.get("display_notes")):
+            lines.append(f"合計（0-100 封頂）＝ {float(d['final']):.1f}")
+        return lines
+    return []
+
+
+def _pace_perf_detail_lines(auto, name):
+    """速度考驗背景三個 sub 分嘅完整組件（人話版，唔用統計行話）。
+    段速分四個組件永遠列晒（冇觸發都寫明點解 0 分）。"""
+    sd = auto.get("pace_perf_detail")
+    if not isinstance(sd, dict):
+        return []
+    if name == "pace_figure_score":
+        d = sd.get("pace") or {}
+        state = d.get("state")
+        if state == "no_pf":
+            return ["無往績賽事 L600 環境數據 → 中性 60 分，此組件唔影響排名"]
+        if state == "no_spread":
+            return ["同場有實測數據嘅馬太少 → 中性 60 分"]
+        if state == "ok":
+            def vs_bench(x):
+                if x is None:
+                    return "無數據"
+                return (f"快過基準 {abs(x):.2f} 秒" if x < 0
+                        else f"慢過基準 {abs(x):.2f} 秒" if x > 0 else "貼住基準")
+            z = float(d.get("z") or 0)
+            if z <= -1.5:
+                rank_word = "屬全場最快嗰批"
+            elif z <= -0.5:
+                rank_word = "快過場內大多數對手"
+            elif z < 0.5:
+                rank_word = "同場內平均差唔多"
+            elif z < 1.5:
+                rank_word = "慢過場內大多數對手"
+            else:
+                rank_word = "屬全場最慢嗰批"
+            return [
+                f"本駒近績所處賽事平均{vs_bench(d.get('value'))}；今場其他馬近績環境平均{vs_bench(d.get('mean'))}",
+                f"環境對比：{rank_word} → {_as_float(d.get('final'), 60):.1f} 分（60 為中性；唔係個體末段）",
+            ]
+        return []
+    if name == "sectional_score":
+        d = sd.get("sectional") or {}
+        # 冇 PI 嘅馬壓縮做一行（唔好逐行印 ＋0，讀落似壞咗）：「有冇數據」本身
+        # 係四度驗證過嘅排名訊號（移除/中性化都蝕），呢度直接講明機制。
+        if not d.get("has_pi"):
+            base = float(d.get("base") or 60.0)
+            return [f"缺 L400 PI 紀錄 → 維持中性 {base:.1f} 分。"
+                    "有 PI 紀錄兼末段升位嘅馬先攞到加分；查唔到唔等於跑得差，所以中性而唔係扣分"]
+        lines = []
+        if d.get("base") is not None:
+            lines.append(f"中性基礎分 {float(d['base']):.1f}（冇證據＝中性，唔係扣分）")
+        for a in d.get("items") or []:
+            delta = float(a["delta"])
+            ev = f" ← {a['evidence']}" if a.get("evidence") else ""
+            val = f"{delta:+.2f}" if delta else "＋0"
+            lines.append(f"{a['factor']} {val}{ev}")
+        if d.get("score") is not None and (d.get("items") or ()):
+            lines.append(f"合計 ＝ {float(d['score']):.1f}")
+        return lines
+    if name == "trial_score":
+        d = sd.get("trial") or {}
+        lines = []
+        if d.get("note"):
+            lines.append(str(d["note"]))
+        if d.get("base") is not None and d.get("adjustments"):
+            lines.append(f"基礎分 {float(d['base']):.1f}")
+        for a in d.get("adjustments") or []:
+            ev = f" ← {a['evidence']}" if a.get("evidence") else ""
+            lines.append(f"{a['factor']} {float(a['delta']):+.1f}{ev}")
+        if d.get("adjustments") and d.get("final") is not None:
+            lines.append(f"合計（0-100 封頂）＝ {float(d['final']):.1f}")
+        return lines
+    return []
+
+
+def _race_shape_detail_lines(auto, name):
+    """檔位形勢 sub 分嘅完整組件（人話）。"""
+    sd = auto.get("race_shape_detail")
+    if not isinstance(sd, dict):
+        return []
+    if name == "pace_map_score":
+        d = sd.get("pace_map") or {}
+        lines = [f"基礎分 {float(d['base']):.1f}"] if d.get("base") is not None else []
+        lines += [str(x) for x in (d.get("lines") or [])]
+        if d.get("final") is not None and (d.get("lines")):
+            lines.append(f"檔位分 ＝ {float(d['final']):.1f}")
+        return lines
+    if name == "track_score":
+        d = sd.get("track") or {}
+        lines = []
+        if d.get("base") is not None:
+            lines.append(f"基礎分 {float(d['base']):.1f}（同「場地與地況適性」維度共用同一場地往績分）")
+        for n in d.get("notes") or []:
+            lines.append(str(n))
+        if d.get("final") is not None and d.get("notes"):
+            lines.append(f"場地往績分 ＝ {float(d['final']):.1f}")
+        return lines
+    return []
+
+
+def _track_dim_detail_lines(auto, name):
+    """場地與地況適性維度 sub 分（track_score）嘅完整組件（人話）。"""
+    if name != "track_score":
+        return []
+    d = (auto.get("race_shape_detail") or {}).get("track") or {}
+    lines = []
+    if d.get("base") is not None:
+        lines.append(f"基礎分 {float(d['base']):.1f}")
+    for n in d.get("notes") or []:
+        lines.append(str(n))
+    if d.get("final") is not None and d.get("notes"):
+        lines.append(f"同場／地況往績分 ＝ {float(d['final']):.1f}")
+    return lines
+
+
+def _class_weight_detail_lines(auto, name):
+    """級數與負重 sub 分嘅完整組件（人話）。"""
+    sd = auto.get("class_weight_detail")
+    if not isinstance(sd, dict):
+        return []
+    if name == "class_score":
+        d = sd.get("class") or {}
+        lines = [f"基礎分 {float(d['base']):.1f}"] if d.get("base") is not None else []
+        for n in d.get("notes") or []:
+            lines.append(str(n))
+        if d.get("final") is not None and d.get("notes"):
+            lines.append(f"級數分 ＝ {float(d['final']):.1f}")
+        return lines
+    if name == "rating_score":
+        d = sd.get("rating") or {}
+        return [str(x) for x in (d.get("lines") or [])]
+    if name == "weight_score":
+        d = sd.get("weight") or {}
+        lines = []
+        if d.get("weight") is not None:
+            lines.append(f"今場負磅 {float(d['weight']):.1f}kg（基礎分 {float(d.get('base', 62)):.0f}）")
+        for n in d.get("notes") or []:
+            lines.append(str(n))
+        if d.get("final") is not None and d.get("notes"):
+            lines.append(f"負磅分 ＝ {float(d['final']):.1f}")
+        return lines
+    return []
+
+
+def _jt_detail_lines(auto, name):
+    """騎練訊號三個 sub 分嘅完整組件（同 stability/pace_perf 一樣嘅透明度）。"""
+    if name == "jockey_score":
+        d = (auto.get("jt_signal_detail") or {}).get("jockey") or {}
+        return [str(x) for x in (d.get("lines") or [])]
+    if name == "trainer_score":
+        d = (auto.get("jt_signal_detail") or {}).get("trainer") or {}
+        lines = []
+        if d.get("base") is not None:
+            label = f"（{d['base_label']}）" if d.get("base_label") else ""
+            lines.append(f"基礎分 {float(d['base']):.1f}{label}")
+        if d.get("ly_line"):
+            lines.append(str(d["ly_line"]))
+        for a in d.get("adjustments") or []:
+            ev = f" ← {a['evidence']}" if a.get("evidence") else ""
+            lines.append(f"{a['factor']} {float(a['delta']):+.1f}{ev}")
+        if d.get("adjustments") and d.get("final") is not None:
+            lines.append(f"合計 ＝ {float(d['final']):.1f}")
+        return lines
+    if name == "jockey_horse_fit_score":
+        d = auto.get("jt_fit_detail") or {}
+        lines = []
+        if d.get("base") is not None:
+            lines.append(f"基礎分 {float(d['base']):.1f}")
+        adjustments = d.get("adjustments") or []
+        for a in adjustments:
+            ev = f" ← {a['evidence']}" if a.get("evidence") else ""
+            lines.append(f"{a['factor']} {float(a['delta']):+.1f}{ev}")
+        if not adjustments:
+            lines.append("實證調整：無觸發（試閘／人馬往績／換騎訊號均未達門檻）")
+        elif d.get("final") is not None:
+            lines.append(f"合計（0-100 封頂）＝ {float(d['final']):.1f}")
+        return lines
+    return []
 
 
 def _matrix_why(key, score, auto):
@@ -325,7 +684,7 @@ def _render_horse_section(horse_num, horse, auto):
     ]
     if grade_summary:
         lines.extend([
-            "#### 🔢 評分總覽（7D 加權計算 · Python Auto 引擎）",
+            "#### 🔢 評分總覽（六維排名加權 · Python Auto 引擎）",
             "",
             grade_summary,
             "",
@@ -343,21 +702,39 @@ def _render_horse_section(horse_num, horse, auto):
         "#### 🧠 核心分析",
         f"- {_render_core_logic(horse, auto)}",
         "",
-        "#### 📊 7D 評分矩陣逐項拆解",
+        "#### 📊 六維排名矩陣＋參考維度逐項拆解",
         "> 每個維度：**評分構成**（點計出個分）→ 每個 sub分嘅來源 → **實證調整** → **判讀** → **數據**。",
     ])
     for key, label in MATRIX_LABELS.items():
         score = float(auto.get("matrix_scores", {}).get(key, 60))
         reason_bundle = auto.get("matrix_reasoning", {}).get(key, {})
         lines.append("")
-        lines.append(f"##### {label}：{score:.1f} 分　{_band_label(score)}")
+        lines.append(f"##### {label}：{score:.1f} 分　{_band_label(score)}"
+                     + ("　（參考·不入排名）" if key in _zero_weight_dimensions() else ""))
         comp = _matrix_composition_line(key, auto)
         if comp:
             lines.append(f"  - **評分構成：** {comp}")
-            for sub in _matrix_subscore_lines(key, auto):
+            comp_names = [n for n, _w in (MATRIX_FORMULAS.get(key) or [])]
+            for name, sub in zip(comp_names, _matrix_subscore_lines(key, auto)):
                 lines.append(f"    - {sub}")
-        if key == "jockey_trainer":
-            lines.extend(_jt_fit_adjustment_lines(auto))
+                if key == "stability":
+                    for dline in _stability_detail_lines(auto, name):
+                        lines.append(f"      - {dline}")
+                elif key == "pace_perf":
+                    for dline in _pace_perf_detail_lines(auto, name):
+                        lines.append(f"      - {dline}")
+                elif key == "jockey_trainer":
+                    for dline in _jt_detail_lines(auto, name):
+                        lines.append(f"      - {dline}")
+                elif key == "race_shape":
+                    for dline in _race_shape_detail_lines(auto, name):
+                        lines.append(f"      - {dline}")
+                elif key == "class_weight":
+                    for dline in _class_weight_detail_lines(auto, name):
+                        lines.append(f"      - {dline}")
+                elif key == "track":
+                    for dline in _track_dim_detail_lines(auto, name):
+                        lines.append(f"      - {dline}")
         reasoning_text = str(reason_bundle.get("text") or "").strip()
         lines.append(f"  - **判讀：** {reasoning_text}" if reasoning_text
                      else f"  - **判讀：** {_matrix_why(key, score, auto)}")
@@ -378,26 +755,6 @@ def _render_horse_section(horse_num, horse, auto):
         *[f"- {_humanize_text(item)}" for item in auto.get("disadvantages", [])],
         "",
     ])
-    return lines
-
-
-def _jt_fit_adjustment_lines(auto):
-    """人馬配搭分完整追溯：基礎分 → 每項實證調整（因子＋原始統計）→ 最終分。"""
-    detail = auto.get("jt_fit_detail")
-    if not isinstance(detail, dict):
-        return []
-    lines = []
-    adjustments = detail.get("adjustments") or []
-    for adj in adjustments:
-        delta = float(adj.get("delta", 0) or 0)
-        evidence = str(adj.get("evidence") or "").strip()
-        tail = f"：{evidence}" if evidence else ""
-        lines.append(f"    - 實證調整（人馬配搭分）{delta:+.1f} ← {adj.get('factor', '')}{tail}")
-    base, final = detail.get("base"), detail.get("final")
-    if isinstance(base, (int, float)) and isinstance(final, (int, float)) and abs(final - base) >= 0.05:
-        lines.append(f"    - 人馬配搭分軌跡: 基礎 {base:.1f} → 調整後 {final:.1f}")
-    if not adjustments:
-        lines.append("    - 實證調整: 無觸發（試閘／人馬往績／場館組合統計均未達加減分門檻）")
     return lines
 
 
@@ -492,7 +849,7 @@ def _render_verdict(verdict, horses, race=None):
     lines.extend([
         "## [第四部分] 分析盲區(緊隨第三部分)",
         "",
-        "- ranking 以 `ability_score`（綜合戰力分）排序；`base_7d_score` 只作 7D 基礎分解釋。",
+        "- ranking 以 `ability_score`（綜合戰力分）排序；`base_7d_score` 係兼容舊檔名，只作六維排名基礎分解釋。",
         "- 單一評分：`綜合戰力分` = `ability_score` = `final_rank_score` = `pure_7d_score`（乾地）或 `pure_7d_score + wet_form_feature`（濕地）；已退役所有 report-only 微調。",
         "- Rank 4-6 danger watchlist 只係提醒候選，不會交換 Top3 或 Top4 排名。",
         "- 初出馬若正式賽績空白，會較依賴試閘、馬房、走位結構與路程投影，信心不會無上限放大。",
@@ -809,7 +1166,7 @@ def _matrix_fact_lines(key: str, horse: dict, auto: dict) -> list[str]:
             ("試閘交代", _trial_anchor(data, facts_section), 180),
             ("走位消耗", _energy_summary(facts_section), 180),
         )
-    if key == "sectional":
+    if key == "pace_perf":
         return _compact_fact_lines(
             ("引擎與路程", _engine_distance_summary(data), 320),
             ("L400", _l400_anchor(horse, data), 80),
@@ -1016,8 +1373,8 @@ def _engine_distance_summary(data: dict) -> str:
 def _horse_positioning(horse: dict, auto: dict) -> str:
     rank = int(auto.get("rank", 99) or 99)
     ability = float(auto.get("ability_score", 0) or 0)
-    race_shape = float(auto.get("matrix_scores", {}).get("race_shape", 60) or 60)
-    stability = float(auto.get("matrix_scores", {}).get("stability", 60) or 60)
+    race_shape = _as_float(auto.get("matrix_scores", {}).get("race_shape"), 60)
+    stability = _as_float(auto.get("matrix_scores", {}).get("stability"), 60)
     if rank <= 2 and ability >= 66:
         return "爭勝"
     if rank <= 4 and stability >= 66:
@@ -1027,24 +1384,155 @@ def _horse_positioning(horse: dict, auto: dict) -> str:
     return "保留"
 
 
-def _data_readout_lines(auto: dict) -> list[str]:
-    """Render the structured 數據判讀 rows as a scannable markdown block (AU)."""
-    rows = auto.get("data_readout") or []
+def _seven_d_summary_lines(auto: dict) -> list[str]:
+    """六維排名矩陣 digest；function name retained for compatibility."""
+    gt = auto.get("grade_transparency") or {}
+    rows = [r for r in (gt.get("rows") or []) if isinstance(r, dict)]
     if not rows:
         return []
-    lines = ["#### 📊 數據判讀", ""]
-    for r in rows:
-        val = f" {r['value']}" if r.get("value") else ""
-        trend = f" — {r['trend']}" if r.get("trend") else ""
-        reason = f"（{r['reason']}）" if r.get("reason") else ""
-        lines.append(f"- {r.get('band', '➖')} **{r['label']}**{val}{trend}{reason}")
+    # 排名用貢獻（weight×score）；最弱用原始分，兩者都撇走 0 權重維度（如賽績線）
+    live = [r for r in rows if float(r.get("weight") or 0) > 0.001]
+    if not live:
+        return []
+    by_contrib = sorted(live, key=lambda r: float(r.get("contribution") or 0), reverse=True)
+    by_score = sorted(live, key=lambda r: _as_float(r.get("score"), 60))
+
+    def cell(r):
+        return f"{r.get('label', '')} {_as_float(r.get('score'), 60):.0f} {r.get('band', '➖')}"
+
+    pillars = "、".join(cell(r) for r in by_contrib[:2])
+    weakest = by_score[0]
+    weak_txt = cell(weakest) if _as_float(weakest.get("score"), 60) < 60 else ""
+
+    # 數據信心：邊啲維度靠中性 fallback（無實測），明講
+    prov = auto.get("score_provenance") or {}
+    gaps = []
+    if str(prov.get("pace_figure_score", "")) in ("missing_neutral", "no_spread"):
+        gaps.append("L600 賽事環境（PF 未覆蓋）")
+    if str(prov.get("rating_score", "")) in ("missing_neutral", "class_proxy"):
+        gaps.append("官方 Rating（處女/未評分）")
+    conf = f"{len(live) - len(gaps)}/{len(live)} 維度有實測數據" + (
+        f"；靠代理/中性：{'、'.join(gaps)}" if gaps else "")
+
+    grade = auto.get("grade", "")
+    ability = float(auto.get("ability_score", 0) or 0)
+    rank = auto.get("rank", "")
+    lines = [
+        "#### 📊 數據判讀",
+        "",
+        f"- 🧭 **六維排名綜合**：綜合戰力分 {ability:.1f}｜Grade {grade}｜排名 {rank}",
+        f"- 🟢 **主要支柱**：{pillars}（佔分最重）",
+    ]
+    if weak_txt:
+        lines.append(f"- 🔴 **最弱環節**：{weak_txt}")
+    lines.append(f"- 📶 **數據信心**：{conf}")
+    lines.append("")
+    return lines
+
+
+def _seven_d_matrix_digest_lines(auto: dict) -> list[str]:
+    """逐維一覽：六個排名維度加 report-only reference dimensions。"""
+    reasoning = auto.get("matrix_reasoning") or {}
+    mscores = auto.get("matrix_scores") or {}
+    if not reasoning:
+        return []
+    out = ["**逐維一覽：**", ""]
+    zero_dims = _zero_weight_dimensions()
+    leaf_owner = _ranking_leaf_owner()
+    for key, label in MATRIX_LABELS.items():
+        rb = reasoning.get(key)
+        if not isinstance(rb, dict):
+            continue
+        score = _as_float(mscores.get(key, rb.get("score", 60)), 60)
+        dim_tag = "　（參考·不入排名）" if key in zero_dims else ""
+        out.append(f"**{label}：{score:.1f} 分　{_band_label(score)}**{dim_tag}")
+        comps = rb.get("components") or []
+        if comps:
+            for c in comps:
+                note = _clean_subscore_note(c.get("note", ""))
+                cl = c.get("label", "")
+                cv = _as_float(c.get("score", 60), 60)
+                # 同一個 leaf 唔印兩次 —— 只喺佢真正入排名嗰個維度下面出。
+                leaf = c.get("key") or c.get("name")
+                if leaf and key in zero_dims and leaf_owner.get(leaf, key) != key:
+                    continue
+                # 權重 = 0 嘅 component 要標明，唔好同真·計分項排到一模一樣。
+                # 「級數分 60、負磅分 60」排喺 Rating 分隔籬，讀者會以為成個維度
+                # 都係死 60 分噪音，其實嗰兩項根本冇入分。
+                in_rank = c.get("in_ranking", True)
+                # ⚠️ 已經完全退出矩陣嘅葉唔喺「逐維一覽」出現。呢一段係
+                # dashboard 嘅資料來源（`parser_au.py` 逐行 parse 佢），所以喺
+                # 呢度剷走就等於 dashboard 唔會再顯示。
+                # 而家屬於呢類：段速分（2026-08-05 退出，AUC 0.525）、
+                # 負磅分（2026-08-01 退出，AUC 0.467）。
+                # 呢一段嘅契約係「解釋個分點嚟」—— 一個唔計分嘅數字放喺度只會
+                # 令人以為佢有影響。深層拆解仍然保留佢哋做參考。
+                leaf_key = c.get("key") or c.get("name")
+                if leaf_key and leaf_key not in _MATRIX_LEAVES:
+                    continue
+                if not in_rank and abs(cv - 60.0) < 0.05:
+                    continue
+                tag = "" if in_rank else "（參考·不入排名）"
+                out.append(f"- {cl} {cv:.0f}{tag}" + (f" ← {note}" if note else ""))
+        else:
+            # 單 leaf 維度（如場地適性）— 用判讀短句
+            txt = str(rb.get("text") or "").strip()
+            if txt:
+                out.append(f"- {txt}")
+        out.append("")
+    return out
+
+
+#: 現時仍然喺矩陣公式入面嘅所有葉。退出咗嘅葉唔應該喺「逐維一覽」出現。
+_MATRIX_LEAVES = {leaf for comps in MATRIX_FORMULAS.values() for leaf, _w in comps}
+
+
+def _zero_weight_dimensions() -> set:
+    """Return report dimensions absent from (or zeroed in) ranking weights。
+
+    ⚠️ 2026-08-05：`form_line` 權重係 0.0000，但佢照樣以「賽績線：60.2 分 ➖ 中性」
+    嘅樣出現，而佢入面有 `form_score`（0.22）—— 於是**近績分同一個數字喺同一匹馬
+    嘅拆解出現兩次**（一次喺「狀態與穩定性」，一次喺「賽績線」），讀者會以為
+    近績被計咗兩次。Kelvin 就係咁發現嘅。
+    """
+    try:
+        from scoring import MATRIX_WEIGHTS
+    except Exception:  # noqa: BLE001 — 攞唔到權重就當全部入排名，唔好靜靜咁隱藏
+        return set()
+    return (
+        set(MATRIX_FORMULAS) - set(MATRIX_WEIGHTS)
+    ) | {k for k, w in MATRIX_WEIGHTS.items() if not w}
+
+
+def _ranking_leaf_owner() -> dict:
+    """leaf → 第一個**有權重**而且包住佢嘅維度。用嚟避免同一個 leaf 印兩次。"""
+    zero = _zero_weight_dimensions()
+    owner = {}
+    for dim, comps in MATRIX_FORMULAS.items():
+        if dim in zero:
+            continue
+        for leaf, _w in comps:
+            owner.setdefault(leaf, dim)
+    return owner
+
+
+def _data_readout_lines(auto: dict) -> list[str]:
+    """Render the structured 數據判讀 block: six ranking dimensions + references。
+    原始數據錨點已移除（2026-07-11，用戶要求）—— 原始事實已散落各維度嘅
+    『數據』錨點，唔需要喺呢度重覆一次。"""
+    summary = _seven_d_summary_lines(auto)
+    digest = _seven_d_matrix_digest_lines(auto)
+    if not summary and not digest:
+        return []
+    lines = list(summary) if summary else ["#### 📊 數據判讀", ""]
+    lines.extend(digest)
     lines.append("")
     return lines
 
 
 def _render_core_logic(horse: dict, auto: dict) -> str:
-    # 核心分析 = 一句七維 framing（最強/最弱維度）+ 一句定位結論。
-    # 跑法／戰術劇本只喺「檔位形勢」7D 維度出一次，呢度唔再覆述，避免廢話。
+    # 核心分析 = 一句六維排名 framing（最強/最弱維度）+ 一句定位結論。
+    # 跑法／戰術劇本只喺「檔位形勢」維度出一次，呢度唔再覆述，避免廢話。
     base = _humanize_text(str(auto.get("core_logic") or "").strip())
     positioning = _horse_positioning(horse, auto)
     risk = _risk_summary(auto)
@@ -1154,4 +1642,3 @@ def _shorten_fact(text: object, limit: int) -> str:
 def _inline_text(value: object) -> str:
     text = str(value or "").strip()
     return " ".join(text.split()) if text else ""
-

@@ -39,6 +39,17 @@ MATRIX_FORMULAS = {
 }
 
 
+def matrix_formula_manifest():
+    """JSON-safe representation shared by run metadata and validation."""
+    return {
+        key: [
+            {"feature": feature, "weight": weight}
+            for feature, weight in components
+        ]
+        for key, components in MATRIX_FORMULAS.items()
+    }
+
+
 def map_features_to_matrix(features):
     scores = map_features_to_matrix_scores(features)
     return {key: score_band(score) for key, score in scores.items()}

@@ -20,8 +20,12 @@
 - [deploy.sh](deploy.sh)
 - [Horse_Racing_Dashboard/deploy.sh](Horse_Racing_Dashboard/deploy.sh)
 - [Horse_Racing_Dashboard/wrangler.toml](Horse_Racing_Dashboard/wrangler.toml)
+- [Horse_Racing_Dashboard/pwa/](Horse_Racing_Dashboard/pwa/) — PWA 靜態資源，見下面 PWA 一節
 - AU / HKJC post-success hook:
   `.agents/skills/shared_racing/post_success_hooks/scripts/cloudflare_deploy_hook.py`
+
+Cloudflare Pages 係 **唯一** deploy path。（舊嘅 Netlify / GitHub-push 流程
+`Horse_Racing_Dashboard/deploy.py` 已移除，唔好再加返。）
 
 目前 orchestrator 成功完成後會 best-effort 自動嘗試 deploy，除非你：
 
@@ -146,6 +150,53 @@ bash deploy.sh
 
 ```bash
 bash deploy.sh --keep-dist
+```
+
+## PWA（iPhone「加入主畫面」）
+
+Dashboard 可以喺 iOS Safari 用 **分享 → 加入主畫面** 裝成一個 standalone app
+（冇 Safari address bar / 工具列），亦可以離線開啟。
+
+安裝網址一定要用固定嘅 production URL：
+
+```
+https://wongchoi-dashboard.pages.dev
+```
+
+唔好用 `start-dashboard.sh` 出嘅 `*.trycloudflare.com` quick tunnel 網址 —— 每次
+重開都會換一條新 URL，而 PWA 會將 `start_url` 鎖死喺 icon 裡面，換 URL 個 icon
+就即刻變死連結。
+
+### 資源放喺邊
+
+`Horse_Racing_Dashboard/pwa/` 入面全部檔案，deploy 時會複製到 dist **根目錄**，
+同 `index.html` 平級（`static_template.html` 用相對路徑引用）：
+
+| 檔案 | 作用 |
+| --- | --- |
+| `manifest.webmanifest` | `display: standalone`、名稱、theme color、icon 清單 |
+| `icon-180.png` | iOS apple-touch-icon（主畫面 icon） |
+| `icon-192.png` / `icon-512.png` | manifest icon（`purpose: any`） |
+| `icon-512-maskable.png` | Android adaptive mask |
+| `sw.js` | service worker（離線支援） |
+
+### Service worker 快取規則
+
+`sw.js` 有意寫得保守，因為 dashboard 顯示真金白銀：
+
+1. **`/api/*` 永遠唔快取** —— bet sync、portfolio、audit、settlement 一定要行網絡，
+   寧願失敗都唔好靜靜咁畀你睇舊數字。
+2. **開頁面（navigation）係 network-first** —— 有網就一定拎最新 deploy 嘅 snapshot，
+   冇網先用上次快取。
+3. Icon / manifest / Google Fonts 係 cache-first。
+4. 其他一律唔攔截。
+
+### 改 icon 設計
+
+Icon 已 commit 落 repo，所以 deploy 機唔需要裝 Pillow。只有改設計時才要跑：
+
+```bash
+python3 Horse_Racing_Dashboard/scripts/generate_pwa_icons.py
 ```
 
 ## How The Auto-Deploy Hook Works

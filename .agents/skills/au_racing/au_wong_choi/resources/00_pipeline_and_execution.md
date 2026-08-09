@@ -12,14 +12,14 @@
 
 ## 預檢與環境防禦 (Pre-Flight Environment Scan - 強制執行)
 **Step E1 — 資源驗證**: 確保已載入 `06_templates_core.md` 及 `01_data_validation.md`。
-**Step E2 — MCP 可用性檢查**: 檢查 SQLite MCP 及 Memory MCP 是否順利連接，不成功則強制警告。Playwright/MCP Browser 不屬必要條件，嚴禁作為 Racenet 數據抽取手段。
+**Step E2 — 數據源可用性檢查**: 確認 Sportsbet cache／extractor 可讀；主流程唔依賴 SQLite MCP、Memory MCP 或 Racenet。
 
 ---
 
 ## 🚀 核心執行管線 (Step-by-Step Pipeline)
 
 ### Step 0.5: 賽前數據管線 (Pre-Race Data Pipeline — 可選)
-- **觸發條件**: 若用戶提供 Racenet URL 或已有 Racecard/Formguide 目錄
+- **觸發條件**: 若用戶提供 Sportsbet URL 或已有 Racecard/Formguide 目錄
 - **執行指令**: `python3 .agents/scripts/run_au_prerace_pipeline.py "<目錄>"`（Windows 或已配置環境可用 `python`）
 - **功能**: 自動串聯 Formguide 提取 → Facts.md 注入 → MC 模擬 → `pipeline_summary.json`
 - **定位**: 此腳本為 Orchestrator **之前**嘅數據準備層，唔取代 `au_orchestrator.py`

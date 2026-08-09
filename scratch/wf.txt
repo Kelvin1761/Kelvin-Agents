@@ -1,0 +1,36 @@
+dataset scratch/au_leaves_v2_off.json  races 713  runners 7547  obj=balanced ('gold', 'good_pos', 'pass1', 'champ', 'winT3', 't3prec', 'mrr', 'ndcg5', 'blowout')
+races 713  首個訓練段 250 場  窗口 92 場  共 5 個窗口  總驗證 460 場
+
+── 訓練 0..250（250 場，246 條過閘）→ 驗證 250..342（92 場）
+   共識 {"stability": 0.3608, "pace_perf": 0.2469, "race_shape": 0.0603, "jockey_trainer": 0.1673, "class_weight": 0.0505, "track": 0.1142}
+                  gold   good_pos       any2      pass1      champ      winT3     t3prec        mrr    blowout     compet      ndcg5
+   delta         +0.00      +3.26      -2.17      +2.17      -1.09      +4.35      +0.00      +0.52      +2.17      -1.09      +1.24
+
+── 訓練 0..342（342 場，172 條過閘）→ 驗證 342..434（92 場）
+   共識 {"stability": 0.3665, "pace_perf": 0.2346, "race_shape": 0.0544, "jockey_trainer": 0.1504, "class_weight": 0.064, "track": 0.1301}
+                  gold   good_pos       any2      pass1      champ      winT3     t3prec        mrr    blowout     compet      ndcg5
+   delta         +1.09      +0.00      -2.17      +0.00      +0.00      +1.09      -0.36      +0.71      -7.61      +1.09      +1.67
+
+── 訓練 0..434（434 場，353 條過閘）→ 驗證 434..526（92 場）
+   共識 {"stability": 0.3446, "pace_perf": 0.2325, "race_shape": 0.0731, "jockey_trainer": 0.1507, "class_weight": 0.0676, "track": 0.1315}
+                  gold   good_pos       any2      pass1      champ      winT3     t3prec        mrr    blowout     compet      ndcg5
+   delta         +1.09      +2.17      -1.09      +2.17      -1.09      +4.35      +0.72      -0.49      +0.00      -5.43      +0.29
+
+── 訓練 0..526（526 場，374 條過閘）→ 驗證 526..618（92 場）
+   共識 {"stability": 0.348, "pace_perf": 0.2253, "race_shape": 0.0963, "jockey_trainer": 0.1528, "class_weight": 0.0645, "track": 0.1131}
+                  gold   good_pos       any2      pass1      champ      winT3     t3prec        mrr    blowout     compet      ndcg5
+   delta         +0.00      -2.17      +1.09      +3.26      +4.35      -2.17      +1.45      +2.15      -4.35      +4.35      +1.04
+
+── 訓練 0..618（618 場，382 條過閘）→ 驗證 618..710（92 場）
+   共識 {"stability": 0.3552, "pace_perf": 0.2277, "race_shape": 0.0851, "jockey_trainer": 0.1613, "class_weight": 0.0665, "track": 0.1042}
+                  gold   good_pos       any2      pass1      champ      winT3     t3prec        mrr    blowout     compet      ndcg5
+   delta         +0.00      +0.00      +1.09      -1.09      +1.09      +2.17      +0.00      +1.19      +0.00      +2.17      +1.50
+
+===== 5 個窗口嘅平均（每個窗口都係未見過嘅未來場次）=====
+                  gold    good_pos        any2       pass1       champ       winT3      t3prec         mrr     blowout      compet       ndcg5
+baseline          4.78       18.70       42.39       87.39       23.04       51.96       44.86       43.52       20.87       57.61       52.71
+candidate         5.22       19.35       41.74       88.70       23.70       53.91       45.22       44.34       18.91       57.83       53.85
+delta            +0.43       +0.65       -0.65       +1.30       +0.65       +1.96       +0.36       +0.82       -1.96       +0.22       +1.15
+
+OBJ 贏嘅窗口：5/5
+跨窗口共識（逐維度中位數）：{"stability": 0.358, "pace_perf": 0.2343, "race_shape": 0.07365, "jockey_trainer": 0.15396, "class_weight": 0.06497, "track": 0.11511, "form_line": 0.0}

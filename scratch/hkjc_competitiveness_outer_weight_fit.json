@@ -1,0 +1,237 @@
+{
+  "method": {
+    "source": "/Users/imac/Antigravity-repo/.agents/skills/hkjc_racing/hkjc_reflector/artifacts/hkjc_ranking_dataset.csv",
+    "outer_weights_only": true,
+    "target": "graded competitive tier",
+    "development_cv": "leave-one-meeting-out",
+    "temporal_holdout_locked": true,
+    "micro_tiebreak": false,
+    "blind_swap": false
+  },
+  "coverage": {
+    "meetings": 13,
+    "races": 130,
+    "development_meetings": [
+      "2026-04-12_ShaTin",
+      "2026-04-15_HappyValley",
+      "2026-04-19_ShaTin",
+      "2026-04-22_HappyValley",
+      "2026-04-26_ShaTin",
+      "2026-04-29_HappyValley",
+      "2026-05-03_ShaTin",
+      "2026-05-06_ShaTin",
+      "2026-05-09_ShaTin"
+    ],
+    "holdout_meetings": [
+      "2026-05-13_HappyValley",
+      "2026-05-17_ShaTin",
+      "2026-05-20_HappyValley",
+      "2026-05-24_ShaTin"
+    ]
+  },
+  "selected_regularization": 0.25,
+  "cv": {
+    "0.25": {
+      "mean_validation_pairwise_loss": 0.554797,
+      "weight_sd": {
+        "sectional": 0.006259,
+        "trainer_signal": 0.008171,
+        "stability": 0.007257,
+        "race_shape": 0.010449,
+        "class_advantage": 0.012179,
+        "horse_health": 0.01538,
+        "form_line": 0.008461
+      }
+    },
+    "0.5": {
+      "mean_validation_pairwise_loss": 0.554859,
+      "weight_sd": {
+        "sectional": 0.003416,
+        "trainer_signal": 0.006155,
+        "stability": 0.005984,
+        "race_shape": 0.008564,
+        "class_advantage": 0.007759,
+        "horse_health": 0.009215,
+        "form_line": 0.005408
+      }
+    },
+    "1.0": {
+      "mean_validation_pairwise_loss": 0.555443,
+      "weight_sd": {
+        "sectional": 0.001675,
+        "trainer_signal": 0.004123,
+        "stability": 0.004563,
+        "race_shape": 0.006325,
+        "class_advantage": 0.004564,
+        "horse_health": 0.005191,
+        "form_line": 0.003158
+      }
+    },
+    "2.0": {
+      "mean_validation_pairwise_loss": 0.556732,
+      "weight_sd": {
+        "sectional": 0.000776,
+        "trainer_signal": 0.002495,
+        "stability": 0.003151,
+        "race_shape": 0.004179,
+        "class_advantage": 0.00253,
+        "horse_health": 0.002793,
+        "form_line": 0.001732
+      }
+    },
+    "4.0": {
+      "mean_validation_pairwise_loss": 0.558347,
+      "weight_sd": {
+        "sectional": 0.000358,
+        "trainer_signal": 0.001393,
+        "stability": 0.001964,
+        "race_shape": 0.002502,
+        "class_advantage": 0.001344,
+        "horse_health": 0.001463,
+        "form_line": 0.000912
+      }
+    }
+  },
+  "current_weights": {
+    "sectional": 0.1849,
+    "trainer_signal": 0.2209,
+    "stability": 0.0919,
+    "race_shape": 0.256,
+    "class_advantage": 0.1335,
+    "horse_health": 0.0378,
+    "form_line": 0.0749
+  },
+  "learned_weights": {
+    "sectional": 0.122919,
+    "trainer_signal": 0.212023,
+    "stability": 0.146461,
+    "race_shape": 0.192341,
+    "class_advantage": 0.18073,
+    "horse_health": 0.065504,
+    "form_line": 0.080021
+  },
+  "results": {
+    "development": {
+      "baseline": {
+        "races": 91,
+        "zero_hit": 18,
+        "one_hit": 46,
+        "two_hit": 27,
+        "top2_total_hits": 100,
+        "top3_capture_at5": 0.630037,
+        "top3_all_within_top5": 0.208791,
+        "competitive_recall_at5": 0.574176,
+        "ndcg_at5": 0.544792,
+        "winner_in_top5": 0.648352,
+        "mrr": 0.464008
+      },
+      "candidate": {
+        "races": 91,
+        "zero_hit": 20,
+        "one_hit": 46,
+        "two_hit": 25,
+        "top2_total_hits": 96,
+        "top3_capture_at5": 0.652015,
+        "top3_all_within_top5": 0.208791,
+        "competitive_recall_at5": 0.602564,
+        "ndcg_at5": 0.5387,
+        "winner_in_top5": 0.648352,
+        "mrr": 0.442182
+      },
+      "delta": {
+        "zero_hit": 2,
+        "one_hit": 0,
+        "two_hit": -2,
+        "top2_total_hits": -4,
+        "top3_capture_at5": 0.021978,
+        "top3_all_within_top5": 0.0,
+        "competitive_recall_at5": 0.028388,
+        "ndcg_at5": -0.006092,
+        "winner_in_top5": 0.0,
+        "mrr": -0.021826
+      }
+    },
+    "temporal_holdout": {
+      "baseline": {
+        "races": 39,
+        "zero_hit": 12,
+        "one_hit": 19,
+        "two_hit": 8,
+        "top2_total_hits": 35,
+        "top3_capture_at5": 0.581197,
+        "top3_all_within_top5": 0.179487,
+        "competitive_recall_at5": 0.514957,
+        "ndcg_at5": 0.501161,
+        "winner_in_top5": 0.641026,
+        "mrr": 0.445127
+      },
+      "candidate": {
+        "races": 39,
+        "zero_hit": 12,
+        "one_hit": 19,
+        "two_hit": 8,
+        "top2_total_hits": 35,
+        "top3_capture_at5": 0.649573,
+        "top3_all_within_top5": 0.307692,
+        "competitive_recall_at5": 0.567094,
+        "ndcg_at5": 0.524562,
+        "winner_in_top5": 0.692308,
+        "mrr": 0.449746
+      },
+      "delta": {
+        "zero_hit": 0,
+        "one_hit": 0,
+        "two_hit": 0,
+        "top2_total_hits": 0,
+        "top3_capture_at5": 0.068376,
+        "top3_all_within_top5": 0.128205,
+        "competitive_recall_at5": 0.052137,
+        "ndcg_at5": 0.023401,
+        "winner_in_top5": 0.051282,
+        "mrr": 0.004619
+      }
+    },
+    "all": {
+      "baseline": {
+        "races": 130,
+        "zero_hit": 30,
+        "one_hit": 65,
+        "two_hit": 35,
+        "top2_total_hits": 135,
+        "top3_capture_at5": 0.615385,
+        "top3_all_within_top5": 0.2,
+        "competitive_recall_at5": 0.55641,
+        "ndcg_at5": 0.531702,
+        "winner_in_top5": 0.646154,
+        "mrr": 0.458344
+      },
+      "candidate": {
+        "races": 130,
+        "zero_hit": 32,
+        "one_hit": 65,
+        "two_hit": 33,
+        "top2_total_hits": 131,
+        "top3_capture_at5": 0.651282,
+        "top3_all_within_top5": 0.238462,
+        "competitive_recall_at5": 0.591923,
+        "ndcg_at5": 0.534459,
+        "winner_in_top5": 0.661538,
+        "mrr": 0.444451
+      },
+      "delta": {
+        "zero_hit": 2,
+        "one_hit": 0,
+        "two_hit": -2,
+        "top2_total_hits": -4,
+        "top3_capture_at5": 0.035897,
+        "top3_all_within_top5": 0.038462,
+        "competitive_recall_at5": 0.035513,
+        "ndcg_at5": 0.002757,
+        "winner_in_top5": 0.015384,
+        "mrr": -0.013893
+      }
+    }
+  },
+  "passes": false,
+  "recommendation": "HOLD"
+}

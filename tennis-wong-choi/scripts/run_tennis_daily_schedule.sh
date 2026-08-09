@@ -1,7 +1,9 @@
 #!/bin/zsh
 set -eu
 
-PROJECT_DIR="/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/tennis-wong-choi"
+# Location-independent: works from the local repo (post 2026-07-14 migration)
+# and from any other checkout — the project dir is wherever this script lives.
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_DIR"
 
 if [ -x ".venv/bin/python" ]; then

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import random
-import re
 import sys
 import argparse
 from collections import Counter
@@ -10,14 +9,16 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR.parents[2] / "shared_racing"))
 
-from au_archive_calibrator import (  # noqa: E402
-    ARCHIVE_ROOT,
-    HISTORICAL_RESULTS_CSV,
-    MATRIX_KEYS,
-    iter_logic_rows,
-    load_historical_results,
+from au_archive_calibrator import ARCHIVE_ROOT, MATRIX_KEYS  # noqa: E402
+from au_cached_walkforward_ml import (  # noqa: E402
+    date_folds,
+    group_races,
+    materialize_dataset,
 )
+from eval_metrics import race_metrics, summarize_races  # noqa: E402
+from matrix_mapper import matrix_score  # noqa: E402
 from scoring import MATRIX_WEIGHTS  # noqa: E402
 
 
@@ -25,11 +26,6 @@ OUTPUT_MD = ARCHIVE_ROOT / "AU_Clean_7D_Weight_Search.md"
 SEED = 20260612
 ITERATIONS_PER_FOLD = 1200
 TOP_KEEP = 20
-
-
-def parse_date(meeting: str) -> str:
-    match = re.search(r"(\d{4}-\d{2}-\d{2})", str(meeting or ""))
-    return match.group(1) if match else ""
 
 
 def normalize(weights: dict[str, float]) -> dict[str, float]:
@@ -40,77 +36,87 @@ def normalize(weights: dict[str, float]) -> dict[str, float]:
 
 def score(row: dict, weights: dict[str, float]) -> float:
     matrix = row.get("matrix_scores") or {}
-    return sum(float(matrix.get(key, 60.0) or 60.0) * weights.get(key, 0.0) for key in MATRIX_KEYS)
+    return sum(
+        matrix_score(matrix, key, 60.0) * weights.get(key, 0.0)
+        for key in MATRIX_KEYS
+    )
 
 
 def load_races() -> list[list[dict]]:
-    historical = load_historical_results(HISTORICAL_RESULTS_CSV)
-    races = []
-    for race_rows in iter_logic_rows(ARCHIVE_ROOT, historical):
-        if sum(1 for row in race_rows if int(row["actual_pos"]) <= 3) < 3:
-            continue
-        rows = []
-        for row in race_rows:
-            item = dict(row)
-            item["date"] = parse_date(item.get("meeting", ""))
-            rows.append(item)
-        if rows and rows[0]["date"]:
-            races.append(rows)
-    return sorted(races, key=lambda race: (race[0]["date"], race[0].get("meeting", ""), int(race[0].get("race") or 0)))
+    races = group_races(materialize_dataset())
+    for race in races:
+        for row in race:
+            row["matrix_scores"] = {
+                key: float(row.get(f"mx_{key}", 60.0))
+                for key in MATRIX_KEYS
+            }
+    return races
 
 
-def date_folds(races: list[list[dict]], folds: int = 5, min_train_ratio: float = 0.50) -> list[tuple[list[list[dict]], list[list[dict]]]]:
+def terminal_date_holdout(
+    races: list[list[dict]],
+    ratio: float = 0.15,
+) -> tuple[list[list[dict]], list[list[dict]]]:
+    """Reserve the latest dates before any candidate search or averaging."""
     dates = sorted({race[0]["date"] for race in races if race[0]["date"]})
-    start = max(1, int(len(dates) * min_train_ratio))
-    valid_dates = dates[start:]
-    fold_size = max(1, (len(valid_dates) + folds - 1) // folds)
-    output = []
-    for idx in range(0, len(valid_dates), fold_size):
-        fold_dates = set(valid_dates[idx: idx + fold_size])
-        first_valid = min(fold_dates)
-        train = [race for race in races if race[0]["date"] < first_valid]
-        valid = [race for race in races if race[0]["date"] in fold_dates]
-        if train and valid:
-            output.append((train, valid))
-    return output
+    if len(dates) < 8:
+        return races, []
+    holdout_count = max(2, int(round(len(dates) * ratio)))
+    holdout_dates = set(dates[-holdout_count:])
+    development = [
+        race for race in races if race[0]["date"] not in holdout_dates
+    ]
+    holdout = [
+        race for race in races if race[0]["date"] in holdout_dates
+    ]
+    return development, holdout
 
 
 def metrics(races: list[list[dict]], weights: dict[str, float]) -> dict:
-    bucket = Counter()
+    eval_rows = []
+    winner_top5 = 0
     for race in races:
         ranked = sorted(race, key=lambda row: (-score(row, weights), int(row["horse_number"])))
-        top3 = ranked[:3]
-        top5 = ranked[:5]
-        hits = sum(1 for row in top3 if int(row["actual_pos"]) <= 3)
-        top2_hits = sum(1 for row in ranked[:2] if int(row["actual_pos"]) <= 3)
-        bucket["races"] += 1
-        bucket[f"{hits}hit"] += 1
-        bucket["top3_places"] += hits
-        bucket["top3_slots"] += len(top3)
-        bucket["winner_top3"] += 1 if any(int(row["actual_pos"]) == 1 for row in top3) else 0
-        bucket["winner_top5"] += 1 if any(int(row["actual_pos"]) == 1 for row in top5) else 0
-        bucket["champion"] += 1 if ranked and int(ranked[0]["actual_pos"]) == 1 else 0
-        bucket["gold"] += 1 if hits == 3 else 0
-        bucket["good"] += 1 if top2_hits == 2 else 0
-        bucket["pass"] += 1 if hits >= 2 else 0
-    races_n = bucket["races"] or 1
-    slots = bucket["top3_slots"] or 1
+        picks = [int(row["horse_number"]) for row in ranked]
+        actual_pos = {
+            int(row["horse_number"]): int(row["actual_pos"])
+            for row in ranked
+        }
+        actual_top3 = [
+            horse_number
+            for horse_number, position in actual_pos.items()
+            if position <= 3
+        ]
+        eval_rows.append(
+            race_metrics(picks, actual_top3, actual_pos=actual_pos)
+        )
+        winner_top5 += int(
+            any(int(row["actual_pos"]) == 1 for row in ranked[:5])
+        )
+    summary = summarize_races(eval_rows)
+    counts = summary["counts"]
+    competitiveness = summary["competitiveness"]
+    races_n = summary["races"] or 1
+    hit_distribution = summary["hit_distribution"]
     return {
-        "races": bucket["races"],
-        "champion": bucket["champion"],
-        "gold": bucket["gold"],
-        "good": bucket["good"],
-        "pass": bucket["pass"],
-        "winner_top3": bucket["winner_top3"],
-        "winner_top5": bucket["winner_top5"],
-        "top3_places": bucket["top3_places"],
-        "top3_precision": bucket["top3_places"] / slots,
-        "0hit": bucket["0hit"],
-        "1hit": bucket["1hit"],
-        "2hit": bucket["2hit"],
-        "3hit": bucket["3hit"],
-        "winner_top3_rate": bucket["winner_top3"] / races_n,
-        "winner_top5_rate": bucket["winner_top5"] / races_n,
+        "races": summary["races"],
+        "champion": counts["champion"],
+        "gold": counts["gold"],
+        "good": counts["good_positional"],
+        "pass": counts["pass"],
+        "top3_all_within_top4": competitiveness["top3_all_within_top4"]["count"],
+        "winner_top3": counts["winner_in_top3"],
+        "winner_top5": winner_top5,
+        "top3_places": sum(int(row["hits"]) for row in eval_rows),
+        "top3_precision": summary["top3_precision"],
+        "0hit": hit_distribution["0hit"],
+        "1hit": hit_distribution["1hit"],
+        "2hit": hit_distribution["2hit"],
+        "3hit": hit_distribution["3hit"],
+        "winner_top3_rate": counts["winner_in_top3"] / races_n,
+        "winner_top5_rate": winner_top5 / races_n,
+        "mrr": summary["mrr"],
+        "order_issue": counts["order_issue"],
     }
 
 
@@ -121,8 +127,11 @@ def objective(item: dict) -> float:
         + (item["good"] / races) * 1.5
         + (item["gold"] / races) * 0.45
         + item["top3_precision"] * 1.8
+        + (item["champion"] / races) * 1.2
+        + item["mrr"] * 1.0
         + item["winner_top5_rate"] * 0.8
         - (item["0hit"] / races) * 2.4
+        - (item["order_issue"] / races) * 0.3
     )
 
 
@@ -141,7 +150,7 @@ def candidate_weights(rng: random.Random, iterations: int) -> list[dict[str, flo
         normalize({key: 1.0 for key in MATRIX_KEYS}),
         normalize({
             "stability": 0.30,
-            "sectional": 0.12,
+            "pace_perf": 0.12,
             "race_shape": 0.22,
             "jockey_trainer": 0.22,
             "class_weight": 0.06,
@@ -150,7 +159,7 @@ def candidate_weights(rng: random.Random, iterations: int) -> list[dict[str, flo
         }),
         normalize({
             "stability": 0.28,
-            "sectional": 0.12,
+            "pace_perf": 0.12,
             "race_shape": 0.24,
             "jockey_trainer": 0.21,
             "class_weight": 0.05,
@@ -191,6 +200,10 @@ def delta(base: dict, cand: dict) -> dict:
         "1hit": cand["1hit"] - base["1hit"],
         "top3_places": cand["top3_places"] - base["top3_places"],
         "winner_top5": cand["winner_top5"] - base["winner_top5"],
+        "champion": cand["champion"] - base["champion"],
+        "winner_top3": cand["winner_top3"] - base["winner_top3"],
+        "order_issue": cand["order_issue"] - base["order_issue"],
+        "mrr_pp": (cand["mrr"] - base["mrr"]) * 100,
         "top3_precision_pp": (cand["top3_precision"] - base["top3_precision"]) * 100,
     }
 
@@ -201,17 +214,23 @@ def fmt_metrics(item: dict) -> str:
         f"Gold {item['gold']} ({item['gold'] / races * 100:.1f}%) / "
         f"Good {item['good']} ({item['good'] / races * 100:.1f}%) / "
         f"Pass {item['pass']} ({item['pass'] / races * 100:.1f}%) / "
+        f"T3-in-T4 {item['top3_all_within_top4']} "
+        f"({item['top3_all_within_top4'] / races * 100:.1f}%) / "
+        f"Champion {item['champion']} ({item['champion'] / races * 100:.1f}%) / "
         f"0H {item['0hit']} / 1H {item['1hit']} / "
-        f"Top3 {item['top3_precision'] * 100:.1f}% / WTop5 {item['winner_top5'] / races * 100:.1f}%"
+        f"Top3 {item['top3_precision'] * 100:.1f}% / "
+        f"MRR {item['mrr']:.3f} / WTop5 {item['winner_top5'] / races * 100:.1f}%"
     )
 
 
 def fmt_delta(item: dict) -> str:
     return (
         f"Gold {item['gold']:+d}, Good {item['good']:+d}, Pass {item['pass']:+d}, "
+        f"Champion {item['champion']:+d}, WTop3 {item['winner_top3']:+d}, "
         f"0H {item['0hit']:+d}, 1H {item['1hit']:+d}, "
         f"Top3Places {item['top3_places']:+d}, WTop5 {item['winner_top5']:+d}, "
-        f"Top3 {item['top3_precision_pp']:+.1f}pp"
+        f"Top3 {item['top3_precision_pp']:+.1f}pp, "
+        f"MRR {item['mrr_pp']:+.1f}pp, Order {item['order_issue']:+d}"
     )
 
 
@@ -228,8 +247,14 @@ def weight_text(weights: dict[str, float]) -> str:
 def passes_gate(base: dict, cand: dict) -> bool:
     return (
         cand["0hit"] <= base["0hit"]
+        and cand["good"] >= base["good"]
         and cand["pass"] >= base["pass"]
+        and cand["top3_all_within_top4"] >= base["top3_all_within_top4"]
         and cand["winner_top5"] >= base["winner_top5"]
+        and cand["winner_top3"] >= base["winner_top3"]
+        and cand["champion"] >= base["champion"]
+        and cand["mrr"] >= base["mrr"]
+        and cand["order_issue"] <= base["order_issue"]
         and cand["top3_places"] >= base["top3_places"]
         and cand["gold"] >= base["gold"] - 2
     )
@@ -244,8 +269,9 @@ def main() -> int:
 
     rng = random.Random(args.seed)
     races = load_races()
-    folds = date_folds(races)
-    if not folds:
+    development_races, terminal_holdout = terminal_date_holdout(races)
+    folds = date_folds(development_races)
+    if not folds or not terminal_holdout:
         raise SystemExit("Not enough dated races for walk-forward folds.")
 
     current = normalize(MATRIX_WEIGHTS)
@@ -255,7 +281,6 @@ def main() -> int:
 
     fold_rows = []
     chosen_weights = []
-    scored_validation = []
     for fold_idx, (train, valid) in enumerate(folds, 1):
         candidates = train_fold(train, rng, args.iterations)
         valid_base = metrics(valid, current)
@@ -278,7 +303,6 @@ def main() -> int:
                 "score": objective(valid_base),
             }
         chosen_weights.append(best["weights"])
-        scored_validation.extend((valid, best["weights"]))
         fold_rows.append({
             "fold": fold_idx,
             "train_races": len(train),
@@ -289,12 +313,19 @@ def main() -> int:
 
     # Re-score each validation fold with its chosen fold-specific weights.
     validation_bucket = Counter()
+    validation_mrr_total = 0.0
     validation_metrics_rows = []
     for row in fold_rows:
         validation_metrics_rows.append(row["valid_metrics"])
     for item in validation_metrics_rows:
+        validation_mrr_total += item["mrr"] * item["races"]
         for key, value in item.items():
-            if key in {"top3_precision", "winner_top3_rate", "winner_top5_rate"}:
+            if key in {
+                "top3_precision",
+                "winner_top3_rate",
+                "winner_top5_rate",
+                "mrr",
+            }:
                 continue
             validation_bucket[key] += value
     slots = validation_bucket["top3_slots"] or (validation_bucket["races"] * 3) or 1
@@ -303,10 +334,16 @@ def main() -> int:
     validation_ml["top3_precision"] = validation_bucket["top3_places"] / slots
     validation_ml["winner_top3_rate"] = validation_bucket["winner_top3"] / races_n
     validation_ml["winner_top5_rate"] = validation_bucket["winner_top5"] / races_n
+    validation_ml["mrr"] = validation_mrr_total / races_n
 
     avg_weights = average_weights(chosen_weights)
     full_avg = metrics(races, avg_weights)
-    gate = passes_gate(validation_base, validation_ml) and passes_gate(full_base, full_avg)
+    holdout_base = metrics(terminal_holdout, current)
+    holdout_candidate = metrics(terminal_holdout, avg_weights)
+    gate = (
+        passes_gate(validation_base, validation_ml)
+        and passes_gate(holdout_base, holdout_candidate)
+    )
 
     lines = [
         "# AU Clean 7D Weight Search",
@@ -318,6 +355,7 @@ def main() -> int:
         "- Uses only the seven AU matrix scores.",
         "- No odds, flucs, market rank, formguide price movement, or post-7D modifier is used.",
         "- Walk-forward by date: train on earlier races, validate on later races.",
+        "- The latest 15% of dates are reserved before search as one untouched terminal holdout.",
         f"- Seed: `{args.seed}`; iterations per fold: `{args.iterations}`.",
         "",
         "## Baseline vs Search",
@@ -325,6 +363,9 @@ def main() -> int:
         f"- Current static 7D validation: {fmt_metrics(validation_base)}",
         f"- Fold-selected validation: {fmt_metrics(validation_ml)}",
         f"- Validation delta: {fmt_delta(delta(validation_base, validation_ml))}",
+        f"- Current static terminal holdout: {fmt_metrics(holdout_base)}",
+        f"- Average searched weights terminal holdout: {fmt_metrics(holdout_candidate)}",
+        f"- Terminal holdout delta: {fmt_delta(delta(holdout_base, holdout_candidate))}",
         f"- Current static 7D full archive: {fmt_metrics(full_base)}",
         f"- Average searched weights full archive: {fmt_metrics(full_avg)}",
         f"- Full archive delta: {fmt_delta(delta(full_base, full_avg))}",
@@ -368,6 +409,9 @@ def main() -> int:
     print(f"Validation: {fmt_metrics(validation_base)}")
     print(f"Search: {fmt_metrics(validation_ml)}")
     print(f"Validation delta: {fmt_delta(delta(validation_base, validation_ml))}")
+    print(f"Terminal holdout: {fmt_metrics(holdout_base)}")
+    print(f"Terminal candidate: {fmt_metrics(holdout_candidate)}")
+    print(f"Terminal delta: {fmt_delta(delta(holdout_base, holdout_candidate))}")
     print(f"Average weights full delta: {fmt_delta(delta(full_base, full_avg))}")
     print(f"Gate: {'PASSED' if gate else 'FAILED'}")
     print(f"Report: {args.output}")

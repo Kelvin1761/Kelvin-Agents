@@ -1,13 +1,69 @@
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[6]
 import sys as _sys; _sys.path.insert(0, str(ROOT))
-from wongchoi_paths import HK_RACING
+from wongchoi_paths import HK_RACING, is_materialized_file
 STATS_ROOT = HK_RACING / "HKJC_Race_Results_Database" / "comprehensive_stats"
+
+
+def _parse_as_of_date(value) -> date | None:
+    text = str(value or "").strip().replace("/", "-")
+    if not text:
+        return None
+    try:
+        return date.fromisoformat(text[:10])
+    except ValueError:
+        return None
+
+
+def temporal_source_is_safe(source, as_of_date=None) -> bool:
+    """Reject current/full-season priors when replaying a historical race.
+
+    Live/current-date scoring may use the latest materialized pre-race files.
+    Historical scoring requires an explicitly injected point-in-time source
+    whose cutoff matches that meeting date.
+    """
+    requested = _parse_as_of_date(as_of_date)
+    if requested is None or requested >= date.today():
+        return True
+    mode = str(getattr(source, "temporal_mode", "") or "")
+    source_date = _parse_as_of_date(getattr(source, "as_of_date", None))
+    return mode == "point_in_time" and source_date == requested
+
+
+class EmptyRatings:
+    temporal_mode = "historical_guard_neutral"
+    as_of_date = None
+
+    @staticmethod
+    def lookup(group: str, raw_name: str):
+        del group, raw_name
+        return None
+
+
+class EmptyTrainerSignalPriors:
+    temporal_mode = "historical_guard_neutral"
+    as_of_date = None
+
+    def __init__(self) -> None:
+        self.combo = {}
+        self.jockey_distance = {}
+        self.trainer_distance = {}
+        self.jockey_change = {}
+
+
+_EMPTY_RATINGS = EmptyRatings()
+_EMPTY_TRAINER_SIGNAL_PRIORS = EmptyTrainerSignalPriors()
+
+
+def empty_trainer_signal_priors() -> EmptyTrainerSignalPriors:
+    """Return the shared neutral object used by the historical-date guard."""
+    return _EMPTY_TRAINER_SIGNAL_PRIORS
 
 GENERAL_PRIOR_FILES = {
     "combo": [
@@ -66,10 +122,69 @@ MASTER_STATS_FILES = {
 }
 
 
+def _is_materialized_file(path: Path) -> bool:
+    """Compatibility alias for the shared cloud-materialization check."""
+    return is_materialized_file(path)
+
+
+def _read_prior_csv(path: Path, required_columns: tuple[str, ...]) -> pd.DataFrame | None:
+    if not _is_materialized_file(path):
+        return None
+    try:
+        frame = pd.read_csv(path, encoding="utf-8-sig")
+    except (OSError, UnicodeError, pd.errors.ParserError):
+        return None
+    if any(column not in frame.columns for column in required_columns):
+        return None
+    return frame
+
+
+_PRIOR_SOURCE_MANIFEST: list[dict] | None = None
+_PRIOR_SOURCE_MANIFEST_KEY: tuple[str, ...] | None = None
+
+
+def prior_source_manifest() -> list[dict]:
+    """Small reproducibility manifest; never forces a cloud download."""
+    global _PRIOR_SOURCE_MANIFEST, _PRIOR_SOURCE_MANIFEST_KEY
+    paths = {path for group in GENERAL_PRIOR_FILES.values() for path in group}
+    paths.update(path for group in MASTER_STATS_FILES.values() for path, _weight in group)
+    cache_key = tuple(sorted(str(path) for path in paths))
+    if _PRIOR_SOURCE_MANIFEST is not None and _PRIOR_SOURCE_MANIFEST_KEY == cache_key:
+        return [dict(row) for row in _PRIOR_SOURCE_MANIFEST]
+    rows = []
+    for path in sorted(paths):
+        try:
+            info = path.stat()
+            materialized = _is_materialized_file(path)
+            size = info.st_size
+            modified_ns = info.st_mtime_ns
+        except OSError:
+            materialized = False
+            size = 0
+            modified_ns = 0
+        try:
+            label = str(path.relative_to(STATS_ROOT))
+        except ValueError:
+            label = path.name
+        rows.append(
+            {
+                "source": label,
+                "materialized": materialized,
+                "size": size,
+                "modified_ns": modified_ns,
+            }
+        )
+    _PRIOR_SOURCE_MANIFEST = rows
+    _PRIOR_SOURCE_MANIFEST_KEY = cache_key
+    return [dict(row) for row in rows]
+
+
 class JockeyTrainerRatings:
     """{name: {score, starts, win_rate, place_rate}}，EB shrink 連續評分。"""
 
     def __init__(self) -> None:
+        self.temporal_mode = "latest_season_snapshot"
+        self.as_of_date = None
         self.jockey = self._build("jockey")
         self.trainer = self._build("trainer")
 
@@ -80,9 +195,9 @@ class JockeyTrainerRatings:
         floor = 0.0 if group == "jockey" else p["trainer_floor"]
         frames = []
         for path, weight_key in MASTER_STATS_FILES[group]:
-            if not path.exists():
+            df_season = _read_prior_csv(path, (col, "Wins", "Starts", "Places"))
+            if df_season is None:
                 continue
-            df_season = pd.read_csv(path, encoding="utf-8-sig")
             season_w = float(p.get(weight_key, 1.0)) if weight_key else 1.0
             for c in ("Wins", "Starts", "Places"):
                 df_season[c] = pd.to_numeric(df_season[c], errors="coerce").fillna(0.0) * season_w
@@ -132,22 +247,27 @@ class JockeyTrainerRatings:
 _JT_RATINGS: JockeyTrainerRatings | None = None
 
 
-def get_jt_ratings() -> JockeyTrainerRatings:
+def get_jt_ratings(as_of_date=None):
     global _JT_RATINGS
     if _JT_RATINGS is None:
         _JT_RATINGS = JockeyTrainerRatings()
+    if not temporal_source_is_safe(_JT_RATINGS, as_of_date):
+        return _EMPTY_RATINGS
     return _JT_RATINGS
 
 
 class TrainerSignalPriors:
     def __init__(self) -> None:
+        self.temporal_mode = "latest_season_snapshot"
+        self.as_of_date = None
         self.combo = self._load_grouped(GENERAL_PRIOR_FILES["combo"], ["Jockey", "Trainer"])
         self.jockey_distance = self._load_grouped(GENERAL_PRIOR_FILES["jockey_distance"], ["Jockey", "Distance"])
         self.trainer_distance = self._load_grouped(GENERAL_PRIOR_FILES["trainer_distance"], ["Trainer", "Distance"])
         self.jockey_change = self._load_jockey_change()
 
     def _load_grouped(self, paths: list[Path], keys: list[str]) -> dict[tuple[str, ...], dict]:
-        frames = [pd.read_csv(path, encoding="utf-8-sig") for path in paths if path.exists()]
+        required = tuple(keys) + ("Wins", "Starts", "Places")
+        frames = [frame for path in paths if (frame := _read_prior_csv(path, required)) is not None]
         if not frames:
             return {}
         df = pd.concat(frames, ignore_index=True)
@@ -170,7 +290,12 @@ class TrainerSignalPriors:
         return records
 
     def _load_jockey_change(self) -> dict[bool, dict]:
-        frames = [pd.read_csv(path, encoding="utf-8-sig") for path in GENERAL_PRIOR_FILES["jockey_change"] if path.exists()]
+        required = ("JockeyChanged", "Wins", "Starts", "Places")
+        frames = [
+            frame
+            for path in GENERAL_PRIOR_FILES["jockey_change"]
+            if (frame := _read_prior_csv(path, required)) is not None
+        ]
         if not frames:
             return {}
         df = pd.concat(frames, ignore_index=True)

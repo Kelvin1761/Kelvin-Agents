@@ -1,0 +1,524 @@
+
+=== 2026-06-13 Eagle Farm Race 1-9 ===
+  jockey   不重複  38 人 → cache 有  22 ( 58%)；按策騎次數覆蓋  58%
+     未有： Nash Rawiller, Ben Thompson, Declan Bates, Jamie Melham, Mark Zahra, Jason Collett, Kerrin McEvoy, Unknown, M Harley, Cejay Graham
+  trainer  不重複  56 人 → cache 有  22 ( 39%)；按策騎次數覆蓋  54%
+     未有： Ciaron Maher, Peter Snowden, Matthew Dunn, Tom Charlton, Michael Freedman, Liam Birchley, Desleigh Forster, Robert Heathcote, Lindsay Gough, Toby Edmonds
+
+=== 2025-10-04 Randwick Race 1-10 ===
+  jockey   不重複  28 人 → cache 有  19 ( 68%)；按策騎次數覆蓋  72%
+     未有： Jason Collett, Nash Rawiller, Dylan Gibbons, Kerrin McEvoy, Ben Thompson, Regan Bayliss, Andrew Mallyon, Louise Day, Brock Ryan
+  trainer  不重複  34 人 → cache 有  20 ( 59%)；按策騎次數覆蓋  76%
+     未有： Ciaron Maher, Michael Freedman, Kerry Parker, Mitchell & Desiree Kearney, Richard & Will Freedman, Peter Snowden, Jarrod Austin, John Steinmetz, Tracey Bartley, Stephen O'Halloran
+
+=== 2026-07-08 Sandown Lakeside Race 1-8 ===
+  jockey   不重複  35 人 → cache 有  19 ( 54%)；按策騎次數覆蓋  60%
+     未有： Daniel Stackhouse, Billy Egan, Beau Mertens, Holly Durnan, Jackson Radley, Jake Noonan, Jamie Mott, Caitlin Hollowood, Sam Kennedy, Jabez Johnstone
+  trainer  不重複  55 人 → cache 有  30 ( 55%)；按策騎次數覆蓋  63%
+     未有： Ciaron Maher, Lyn Tolson & Leonie Proctor, Lee & Shannon Hope, Matthew Brown, Frankie Stockdale, Robbie Griffiths, Lucy Yeomans, Leon & Troy Corstens & Will Larkin, Nikki Burke, Barry Malanczyn
+
+=== 2026-02-28 Flemington Race 1-10 ===
+  jockey   不重複  33 人 → cache 有  20 ( 61%)；按策騎次數覆蓋  69%
+     未有： Jamie Mott, Jamie Melham, Daniel Stackhouse, Jackson Radley, Beau Mertens, Declan Bates, Billy Egan, Patrick Moloney, Rhys McLeod, Logan McNeil
+  trainer  不重複  53 人 → cache 有  28 ( 53%)；按策騎次數覆蓋  60%
+     未有： Ciaron Maher, Robbie Griffiths, Leon & Troy Corstens & Will Larkin, John Sadler, Nick Ryan, John McArdle, Emma-lee & David Browne, Trent Busuttin & Natalie Young, Stephen V Brown, Richard Laming
+
+=== 2026-04-03 Ballarat Race 1-8 ===
+  jockey   不重複  38 人 → cache 有  22 ( 58%)；按策騎次數覆蓋  64%
+     未有： Daniel Stackhouse, Declan Bates, Patrick Moloney, Jamie Mott, Beau Mertens, Dylan Dunn, Will Gordon, Olivia East, E Walsh, Holly Durnan
+  trainer  不重複  61 人 → cache 有  21 ( 34%)；按策騎次數覆蓋  34%
+     未有： Ciaron Maher, Andrew Bobbin, Matt Cumani, John Symons & Sheila Laxon, Melody Cunningham, Robbie Griffiths, Thomas Carberry, Trent Busuttin & Natalie Young, Adam Chambers, Jamie Edwards
+
+=== 2026-06-19 Geelong Race 1-8 ===
+  jockey   不重複  42 人 → cache 有  21 ( 50%)；按策騎次數覆蓋  56%
+     未有： Jamie Mott, Declan Bates, Sam Kennedy, Daniel Stackhouse, Amy Herrmann, Beau Mertens, Ryan Hurdle, Dylan Dean, Will Gordon, Jason Webb
+  trainer  不重複  55 人 → cache 有  18 ( 33%)；按策騎次數覆蓋  45%
+     未有： Ciaron Maher, Aaron Purcell, Jamie Edwards, Shane Nichols & Hayden Black, Leon & Troy Corstens & Will Larkin, Liam Howley, Tetyana Furdetska, Vincent Malady, Tim Fitzsimmons, Anthony Dudley
+
+=== 2025-12-27 Randwick Race 1-10 ===
+  jockey   不重複  27 人 → cache 有  15 ( 56%)；按策騎次數覆蓋  71%
+     未有： Dylan Gibbons, Regan Bayliss, Siena Grima, Brock Ryan, Rebecca Bronett Prag, Lee Magorrian, Jeff Penza, Teaghan Martin, Mitch Stapleford, Christian Reith
+  trainer  不重複  53 人 → cache 有  28 ( 53%)；按策騎次數覆蓋  67%
+     未有： Peter Snowden, Gregory Hickman, Marc & Mitchell Conners, Ciaron Maher, Richard & Will Freedman, Kim Waugh, Peter Kirby, David Atkins, Jason Attard, Kerry Parker
+
+=== 2026-06-20 Randwick Race 1-10 ===
+  jockey   不重複  32 人 → cache 有  18 ( 56%)；按策騎次數覆蓋  64%
+     未有： Kerrin McEvoy, Jason Collett, Dylan Gibbons, Regan Bayliss, Nash Rawiller, Unknown, Siena Grima, Coriah Keatings, Blaike McDougall, Adam Farragher
+  trainer  不重複  66 人 → cache 有  28 ( 42%)；按策騎次數覆蓋  59%
+     未有： Richard & Will Freedman, Ciaron Maher, Tom Charlton, Matthew Dunn, Clarry Conners, Kristen Buchanan, Jason Deamer, Peter Snowden, Fabio Martino, Jim & Greg Lee
+
+=== 2026-02-28 Randwick Race 1-10 ===
+  jockey   不重複  26 人 → cache 有  19 ( 73%)；按策騎次數覆蓋  79%
+     未有： Nash Rawiller, Jason Collett, Dylan Gibbons, Siena Grima, Regan Bayliss, Jenny Duggan, Angela Jones
+  trainer  不重複  53 人 → cache 有  28 ( 53%)；按策騎次數覆蓋  65%
+     未有： Ciaron Maher, Michael Freedman, Kerry Parker, Matthew Dunn, Melissa Dennett, Dean Mirfin, Peter Snowden, Scott Collings, Stephen O'Halloran, Mark Minervini
+
+=== 2026-07-12 Sunshine Coast Race 1-8 ===
+  jockey   不重複  31 人 → cache 有   5 ( 16%)；按策騎次數覆蓋  17%
+     未有： Cejay Graham, Ashley Butler, Jag Guthmann-chester, Corey Sutherland, Aidan Keeley, Steph Tierney, Ron Stewart, Bella Youngberry, Danny Peisley, Kyle Wilson-taylor
+  trainer  不重複  54 人 → cache 有   5 (  9%)；按策騎次數覆蓋   9%
+     未有： Stuart Kendrick, John Johnston, Billy Healey, Robert Heathcote, Liam Birchley, Rob Davidson, David Vandyke, Paul Jenkins, Jack Bruce, Jamie Bayliss
+
+=== 2025-10-02 Newcastle Race 1-8 ===
+  jockey   不重複   0 人 → cache 有   0 (  0%)；按策騎次數覆蓋   0%
+  trainer  不重複   0 人 → cache 有   0 (  0%)；按策騎次數覆蓋   0%
+
+=== 2026-08-01 Rosehill Gardens Race 1-10 ===
+  jockey   不重複  29 人 → cache 有  19 ( 66%)；按策騎次數覆蓋  73%
+     未有： Nash Rawiller, Kerrin McEvoy, Siena Grima, Shannen Llewellyn, Regan Bayliss, Rebecca Bronett Prag, Coriah Keatings, Izzy Neale, Dylan Gibbons, Unknown
+  trainer  不重複  56 人 → cache 有  26 ( 46%)；按策騎次數覆蓋  66%
+     未有： Kristen Buchanan, Richard & Will Freedman, Scott Collings, Kerry Parker, Kim Waugh, Matthew Dunn, Tracey Bartley, Les Bridge, Peter Snowden, Edward Cummings
+
+=== 2026-06-20 Flemington Race 1-9 ===
+  jockey   不重複  34 人 → cache 有  18 ( 53%)；按策騎次數覆蓋  59%
+     未有： Daniel Stackhouse, Jamie Mott, Declan Bates, Jabez Johnstone, Jackson Radley, Billy Egan, Patrick Moloney, Beau Mertens, Unknown, Holly Durnan
+  trainer  不重複  60 人 → cache 有  33 ( 55%)；按策騎次數覆蓋  60%
+     未有： Ciaron Maher, Trent Busuttin & Natalie Young, Nick Ryan, John Symons & Sheila Laxon, Matt Cumani, Michael Trotter, Cindy Alderson, Luke Oliver, Ben Brisbourne, Jarrod Robinson
+
+=== 2026-05-30 Rosehill Gardens Race 1-10 ===
+  jockey   不重複  26 人 → cache 有  13 ( 50%)；按策騎次數覆蓋  65%
+     未有： Regan Bayliss, Siena Grima, Dylan Gibbons, Shannen Llewellyn, Adam Farragher, Andrew Gibbons, Chad Lever, Mikayla Weir, Jeff Penza, Mitch Stapleford
+  trainer  不重複  48 人 → cache 有  19 ( 40%)；按策騎次數覆蓋  56%
+     未有： Ciaron Maher, Peter Snowden, Richard & Will Freedman, Tom Charlton, Scott Singleton, Jeremy Gask, Matthew Dunn, Keith Dryden & Libby Snowden, Terry Robinson, Donna Scott
+
+=== 2026-04-14 Hawkesbury Race 1-7 ===
+  jockey   不重複  36 人 → cache 有  16 ( 44%)；按策騎次數覆蓋  51%
+     未有： Jason Collett, Dylan Gibbons, Deon Le Roux, Unknown, Rory Hutchings, Keagan Latham, Chad Lever, Rebecca Bronett Prag, Nash Rawiller, Adam Farragher
+  trainer  不重複  47 人 → cache 有  17 ( 36%)；按策騎次數覆蓋  41%
+     未有： Kerry Parker, Ciaron Maher, Kim Waugh, Michael Freedman, Blake Ryan, Jason Attard, Amanda Turner, Garry Frazer, Claire Lever, Theresa Bateup
+
+=== 2025-09-06 Randwick Race 1-10 ===
+  jockey   不重複  27 人 → cache 有  18 ( 67%)；按策騎次數覆蓋  74%
+     未有： Jason Collett, Nash Rawiller, Regan Bayliss, Kerrin McEvoy, Dylan Gibbons, Billy Owen, Madeline Owen, Rebecca Bronett Prag, Siena Grima
+  trainer  不重複  45 人 → cache 有  21 ( 47%)；按策騎次數覆蓋  69%
+     未有： Brett Cavanough, Michael Freedman, Kerry Parker, Nick Olive, Peter Snowden, Ciaron Maher, Angela Davies, Kim Waugh, Theresa Bateup, Stephen O'Halloran
+
+=== 2026-05-27 Caulfield Heath Race 1-8 ===
+  jockey   不重複  37 人 → cache 有  23 ( 62%)；按策騎次數覆蓋  70%
+     未有： Jamie Mott, Mark Zahra, Billy Egan, Jake Noonan, Jabez Johnstone, Jackson Radley, Declan Bates, Melea Castle, Dylan Dunn, Lachlan King
+  trainer  不重複  52 人 → cache 有  17 ( 33%)；按策騎次數覆蓋  43%
+     未有： Ciaron Maher, Brendan McCarthy, Lee & Shannon Hope, Nikki Burke, John Sadler, Shea Eden, Nick Ryan, Jess Gleeson, Brooke Verwey-mitchell, Carly Thomas
+
+=== 2025-08-02 Flemington Race 1-9 ===
+  jockey   不重複  35 人 → cache 有  21 ( 60%)；按策騎次數覆蓋  56%
+     未有： Jamie Melham, Blake Shinn, Tom Prebble, Mark Zahra, Jamie Mott, Declan Bates, Daniel Stackhouse, Beau Mertens, Liam Riordan, Sheridan Clarke
+  trainer  不重複  59 人 → cache 有  33 ( 56%)；按策騎次數覆蓋  58%
+     未有： Ciaron Maher, Leon & Troy Corstens & Will Larkin, Nick Ryan, Trent Busuttin & Natalie Young, Matthew Brown, Shane Nichols, Austy Coffey, Jerome Hunter, Peter Smith, Ross McConville
+
+=== 2026-05-27 Canterbury Race 1-6 ===
+  jockey   不重複  24 人 → cache 有  14 ( 58%)；按策騎次數覆蓋  64%
+     未有： Nash Rawiller, Siena Grima, Jason Collett, Keagan Latham, Quayde Krogh, Dylan Gibbons, Kerrin McEvoy, Robyn Freeman, Shaun Guymer, Adam Farragher
+  trainer  不重複  26 人 → cache 有  14 ( 54%)；按策騎次數覆蓋  64%
+     未有： Tom Charlton, Rob Potter, Marc Chevalier, Michael Freedman, Allan McRae, Paul & Martha Cave, Con Karakatsanis, Dale Wagstaff, Denim Wynen, Clare Collett
+
+=== 2026-03-07 Randwick Race 1-10 ===
+  jockey   不重複  22 人 → cache 有  16 ( 73%)；按策騎次數覆蓋  70%
+     未有： Jason Collett, Dylan Gibbons, Nash Rawiller, Regan Bayliss, Christian Reith, Kerrin McEvoy
+  trainer  不重複  35 人 → cache 有  20 ( 57%)；按策騎次數覆蓋  71%
+     未有： Michael Freedman, Ciaron Maher, Richard & Will Freedman, Jason Deamer, Robert Quinn, Peter Snowden, Robert Heathcote, Blake Ryan, Craig Carmody, Clarry Conners
+
+=== AU_Backfill_Results ===
+  jockey   不重複   0 人 → cache 有   0 (  0%)；按策騎次數覆蓋   0%
+  trainer  不重複   0 人 → cache 有   0 (  0%)；按策騎次數覆蓋   0%
+
+=== 2026-06-27 Caulfield Race 1-9 ===
+  jockey   不重複  27 人 → cache 有  15 ( 56%)；按策騎次數覆蓋  55%
+     未有： Jackson Radley, Logan Bates A1. 5, Jabez Johnstone, Jamie Mott, Beau Mertens, Patrick Moloney, Unknown, Fred Kersley, Holly Durnan, Jake Noonan
+  trainer  不重複  61 人 → cache 有  25 ( 41%)；按策騎次數覆蓋  54%
+     未有： Ciaron Maher, Nick Ryan, Robbie Griffiths, John McArdle, Emma-lee & David Browne, Jerome Hunter, Jack Laing, Glen Thompson, Aaron Purcell, Leon & Troy Corstens & Will Larkin
+
+=== 2026-01-24 Randwick Race 1-10 ===
+  jockey   不重複  24 人 → cache 有  16 ( 67%)；按策騎次數覆蓋  69%
+     未有： Dylan Gibbons, Nash Rawiller, Regan Bayliss, Siena Grima, Jack Callan, Jessica Taylor, Ben Looker, Madeline Owen
+  trainer  不重複  54 人 → cache 有  25 ( 46%)；按策騎次數覆蓋  65%
+     未有： Richard & Will Freedman, Ciaron Maher, Michael Freedman, Peter Snowden, Mitchell & Desiree Kearney, Norm Gardner, David Atkins, Craig Carmody, Kerry Parker, Jake Hull
+
+=== 2026-05-23 Doomben Race 1-9 ===
+  jockey   不重複  30 人 → cache 有  13 ( 43%)；按策騎次數覆蓋  55%
+     未有： Ben Thompson, Jason Collett, Cejay Graham, Jamie Melham, Vlad Duric, Mark Zahra, Daniel Stackhouse, Declan Bates, Ashley Butler, Taylor Marshall
+  trainer  不重複  58 人 → cache 有  18 ( 31%)；按策騎次數覆蓋  50%
+     未有： Ciaron Maher, Robert Heathcote, Matthew Dunn, Todd Pollard, Shaun Dwyer, Barry Lockwood & Emma-jane Vincent, Donna Stanbridge, Jay Bellamy, Brent Gray, Lindsay Gough
+
+=== 2026-04-24 Cranbourne Race 1-7 ===
+  jockey   不重複  22 人 → cache 有  11 ( 50%)；按策騎次數覆蓋  62%
+     未有： Beau Mertens, Liana Wood, Jackie Beriman, Jake Noonan, Caitlin Hollowood, Melea Castle, Dylan Dean, Jade Darose, Samantha Noble, Olivia East
+  trainer  不重複  39 人 → cache 有  12 ( 31%)；按策騎次數覆蓋  33%
+     未有： Belinda Dunn, Ian Pankhurst, Doug Harrison, Shea Eden, Adrian McGregor, Rhiannon Schiffer, Ken & Kasey Keys, Rhys Archard, Nathan Dunn, Lyn Tolson & Leonie Proctor
+
+=== 2026-02-14 Flemington Race 1-10 ===
+  jockey   不重複  26 人 → cache 有  20 ( 77%)；按策騎次數覆蓋  76%
+     未有： Jamie Melham, Daniel Stackhouse, Jackson Radley, Beau Mertens, Jamie Mott, Patrick Moloney
+  trainer  不重複  50 人 → cache 有  27 ( 54%)；按策騎次數覆蓋  64%
+     未有： Ciaron Maher, Robbie Griffiths, David Vandyke, Ben Brisbourne, Stephen V Brown, John Sadler, Denis Pagan, Jack Laing, Melissa Page, Jamie Edwards
+
+=== 2025-08-09 Randwick Race 1-10 ===
+  jockey   不重複  30 人 → cache 有  18 ( 60%)；按策騎次數覆蓋  73%
+     未有： Jason Collett, Kerrin McEvoy, Dylan Gibbons, Nash Rawiller, Rebecca Bronett Prag, Siena Grima, Nick Heywood, Luke Rolls, Madeline Owen, James Innes Jnr
+  trainer  不重複  63 人 → cache 有  24 ( 38%)；按策騎次數覆蓋  55%
+     未有： Ciaron Maher, Annabel Neasham, Michael, Wayne & John Hawkes, Jeremy Sylvester, Kristen Buchanan, Peter Snowden, Richard & Will Freedman, Scott Aspery, Tommy Wong, Stephen O'Halloran
+
+=== 2026-04-22 Canterbury Race 1-8 ===
+  jockey   不重複  22 人 → cache 有  15 ( 68%)；按策騎次數覆蓋  74%
+     未有： Jason Collett, Shannen Llewellyn, Siena Grima, Kerrin McEvoy, Rory Hutchings, Dylan Gibbons, Deep Shanker
+  trainer  不重複  34 人 → cache 有  17 ( 50%)；按策騎次數覆蓋  66%
+     未有： Ciaron Maher, Tom Charlton, Michael Freedman, Jason Deamer, Jay Hopkins, Les Bridge, Peter Snowden, Joseph Ible, Stephen O'Halloran, Richard & Will Freedman
+
+=== 2026-05-06 Warwick Farm Race 1-7 ===
+  jockey   不重複  23 人 → cache 有  16 ( 70%)；按策騎次數覆蓋  75%
+     未有： Kerrin McEvoy, Regan Bayliss, Jason Collett, Adrian Layt, Dylan Gibbons, Teaghan Martin, Amy McLucas
+  trainer  不重複  31 人 → cache 有  16 ( 52%)；按策騎次數覆蓋  65%
+     未有： Tom Charlton, Gary Nickson, Michael Freedman, Ciaron Maher, Gregory Hickman, Paul & Martha Cave, Craig Carmody, Garry Kirkup, John & Chris Ledger, Gratz Vella
+
+=== 2026-05-22 Geelong Race 1-8 ===
+  jockey   不重複  33 人 → cache 有  12 ( 36%)；按策騎次數覆蓋  53%
+     未有： Will Gordon, Daniel Stackhouse, Declan Bates, Amy Herrmann, Paul Gatt, Patrick Moloney, John Keating, Ryan Hurdle, Mitchell Aitken, Jabez Johnstone
+  trainer  不重複  61 人 → cache 有  18 ( 30%)；按策騎次數覆蓋  35%
+     未有： William Morrissey, Ciaron Maher, Ben O'Farrell, Ben Brisbourne, Aaron Purcell, Danielle Loos, Patrick Kearney, Vincent Malady, Samantha Jeffreys, Chris Calthorpe
+
+=== 2026-04-25 Flemington Race 1-8 ===
+  jockey   不重複  21 人 → cache 有  14 ( 67%)；按策騎次數覆蓋  65%
+     未有： Declan Bates, Beau Mertens, Jake Noonan, Fred Kersley, Patrick Moloney, Will Gordon, Holly Durnan
+  trainer  不重複  51 人 → cache 有  27 ( 53%)；按策騎次數覆蓋  60%
+     未有： Ciaron Maher, Trent Busuttin & Natalie Young, Jason Warren, Nick Ryan, Matt Cumani, Richard Laming, John McArdle, Andrew Angelone, Andrew Noblet, Patrick Caboche
+
+=== 2026-05-27 Doomben Race 1-8 ===
+  jockey   不重複  30 人 → cache 有   7 ( 23%)；按策騎次數覆蓋  38%
+     未有： Ben Thompson, Cejay Graham, Corey Sutherland, Kyle Wilson-taylor, Georgina Cartwright, Fiona Sandkuhl, Damien Boche, Jake Bayliss, Jag Guthmann-chester, Nozi Tomizawa
+  trainer  不重複  47 人 → cache 有   7 ( 15%)；按策騎次數覆蓋  24%
+     未有： Jim Mason, Lawrie Mayfield-smith, Jack Bruce, Barry Lockwood & Emma-jane Vincent, Matthew Hoysted, Rex Lipp, Laurie Richardson, Chris Anderson, John Johnston, Michael Freedman
+
+=== 2026-06-06 Randwick Race 1-10 ===
+  jockey   不重複  29 人 → cache 有  18 ( 62%)；按策騎次數覆蓋  69%
+     未有： Dylan Gibbons, Nash Rawiller, Siena Grima, Kerrin McEvoy, Unknown, Adam Farragher, Izzy Neale, Madeline Owen, Amy McLucas, Adrian Layt
+  trainer  不重複  57 人 → cache 有  30 ( 53%)；按策騎次數覆蓋  69%
+     未有： Ciaron Maher, Richard & Will Freedman, Tom Charlton, Peter Snowden, Stuart Kendrick, Kerry Parker, Jim & Greg Lee, Karen Owen, Jeremy Gask, David Atkins
+
+=== 2026-04-06 Rosehill Gardens Race 1-8 ===
+  jockey   不重複  32 人 → cache 有  19 ( 59%)；按策騎次數覆蓋  71%
+     未有： Jason Collett, Nash Rawiller, Mitch Stapleford, Siena Grima, Adam Farragher, Dylan Gibbons, Kerrin McEvoy, Regan Bayliss, Amy McLucas, Louise Day
+  trainer  不重複  39 人 → cache 有  19 ( 49%)；按策騎次數覆蓋  60%
+     未有： Ciaron Maher, Peter Snowden, Clarry Conners, Mitchell & Desiree Kearney, Denim Wynen, Marc Chevalier, Jack Pilkington, Theresa Bateup, Stuart Phegan, Tom Charlton
+
+=== 2026-05-30 Caulfield Race 1-9 ===
+  jockey   不重複  28 人 → cache 有  16 ( 57%)；按策騎次數覆蓋  63%
+     未有： Declan Bates, Jamie Mott, Beau Mertens, Jabez Johnstone, Dylan Dunn, Lachlan King, Jake Noonan, Holly Durnan, Patrick Moloney, Jackson Radley
+  trainer  不重複  48 人 → cache 有  25 ( 52%)；按策騎次數覆蓋  58%
+     未有： Ciaron Maher, John Keys, Trent Busuttin & Natalie Young, Aaron Purcell, Michael Trotter, Leon & Troy Corstens & Will Larkin, John Symons & Sheila Laxon, Ben Brisbourne, Jason Warren, Jerome Hunter
+
+=== 2025-11-04 Flemington Race 1-10 ===
+  jockey   不重複  44 人 → cache 有  27 ( 61%)；按策騎次數覆蓋  67%
+     未有： Daniel Stackhouse, Mark Zahra, Jamie Melham, Kerrin McEvoy, Blake Shinn, Beau Mertens, Declan Bates, John Velazquez, Liam Riordan, Billy Egan
+  trainer  不重複  66 人 → cache 有  29 ( 44%)；按策騎次數覆蓋  60%
+     未有： Ciaron Maher, Trent Busuttin & Natalie Young, Michael Hickmott, Leon & Troy Corstens & Will Larkin, Jason Warren, Aaron Purcell, Peter Snowden, Joseph O'Brien, Rhys Archard, Sylvia Thompson
+
+=== 2026-06-06 Eagle Farm Race 1-9 ===
+  jockey   不重複  34 人 → cache 有  14 ( 41%)；按策騎次數覆蓋  56%
+     未有： Jason Collett, Ben Thompson, Jamie Melham, Declan Bates, Mark Zahra, Cejay Graham, Jake Bayliss, Daniel Stackhouse, Regan Bayliss, Jai Williams
+  trainer  不重複  73 人 → cache 有  25 ( 34%)；按策騎次數覆蓋  42%
+     未有： Michael Freedman, Matthew Dunn, Matthew Hoysted, Robert Heathcote, Leon & Troy Corstens & Will Larkin, Adam Campton, Stuart Kendrick, Pat Webster, Toby Edmonds, Liam Birchley
+
+=== 2025-12-31 Flemington Race 1-8 ===
+  jockey   不重複  36 人 → cache 有  18 ( 50%)；按策騎次數覆蓋  64%
+     未有： Jackson Radley, Jamie Melham, Rhys McLeod, Billy Egan, Patrick Moloney, Daniel Stackhouse, Will Gordon, Sam Kennedy, Mitchell Aitken, Sheridan Clarke
+  trainer  不重複  58 人 → cache 有  28 ( 48%)；按策騎次數覆蓋  56%
+     未有： Ciaron Maher, Simon Zahra, Nick Ryan, Ben Brisbourne, Shane Nichols & Hayden Black, Colin Scott, Neil Dyer, Liam Howley, Lucy Yeomans, Lucinda Boyd
+
+=== 2025-09-13 Flemington Race 1-10 ===
+  jockey   不重複  40 人 → cache 有  26 ( 65%)；按策騎次數覆蓋  63%
+     未有： Blake Shinn, Mark Zahra, Jamie Melham, Jamie Mott, Declan Bates, Daniel Stackhouse, Regan Bayliss, Beau Mertens, Jordyn Weatherley, Sheridan Clarke
+  trainer  不重複  53 人 → cache 有  30 ( 57%)；按策騎次數覆蓋  62%
+     未有： Ciaron Maher, Emma-lee & David Browne, Trent Busuttin & Natalie Young, Nick Ryan, Robbie Griffiths, Matthew Brown, Kym Davison, Shea Eden, Leon & Troy Corstens & Will Larkin, Gwenda Johnstone
+
+=== 2026-03-28 Flemington ===
+  jockey   不重複  27 人 → cache 有  18 ( 67%)；按策騎次數覆蓋  62%
+     未有： William Pike, Jamie Melham, Daniel Stackhouse, Jamie Mott, Jackson Radley, Declan Bates, Beau Mertens, Patrick Moloney, Holly Durnan
+  trainer  不重複  47 人 → cache 有  29 ( 62%)；按策騎次數覆蓋  65%
+     未有： Ciaron Maher, Robbie Griffiths, Emma-lee & David Browne, Nick Ryan, John McArdle, Lyn Tolson & Leonie Proctor, Andrew Noblet, Jordan Grob, Simon Zahra, Karlene Tindale
+
+=== 2026-01-10 Flemington Race 1-10 ===
+  jockey   不重複  30 人 → cache 有  17 ( 57%)；按策騎次數覆蓋  62%
+     未有： Jamie Melham, Daniel Stackhouse, Jackson Radley, Beau Mertens, Mark Zahra, Rose Hammond, Shane Foley, Teagan Voorham, Chris Parnham, Brittany Button
+  trainer  不重複  58 人 → cache 有  27 ( 47%)；按策騎次數覆蓋  61%
+     未有： Ciaron Maher, Robbie Griffiths, Dan Meagher, Lloyd Kennewell, Chris Bieg, Melissa Page, Denis Pagan, Rhys Archard, Liam Howley, Belinda Dunn
+
+=== 2026-04-25 Randwick Race 1-8 ===
+  jockey   不重複  24 人 → cache 有  16 ( 67%)；按策騎次數覆蓋  68%
+     未有： Jason Collett, Dylan Gibbons, Siena Grima, Regan Bayliss, Adam Farragher, Jason Lyon, Izzy Neale, Unknown
+  trainer  不重複  44 人 → cache 有  22 ( 50%)；按策騎次數覆蓋  72%
+     未有： Ciaron Maher, Tom Charlton, Michael Freedman, Clarry Conners, Adam Duggan, Marc & Mitchell Conners, Jason Attard, Nick Olive, Marc Chevalier, Joseph Ible
+
+=== 2026-05-30 Eagle Farm Race 1-9 ===
+  jockey   不重複  38 人 → cache 有  20 ( 53%)；按策騎次數覆蓋  57%
+     未有： Mark Zahra, Kerrin McEvoy, Nash Rawiller, Ben E Thompson, Jamie Melham, Cejay Graham, Jason Collett, Corey Sutherland, Kyle Wilson-taylor, M Harley
+  trainer  不重複  58 人 → cache 有  21 ( 36%)；按策騎次數覆蓋  56%
+     未有： Ciaron Maher, Tom Charlton, Robert Heathcote, Peter Snowden, Stirling Osland, Lindsay Gough, Liam Birchley, Corey & Kylie Geran, Trent Busuttin & Natalie Young, Paul Shailer
+
+=== 2026-03-07 Flemington Race 1-10 ===
+  jockey   不重複  30 人 → cache 有  18 ( 60%)；按策騎次數覆蓋  56%
+     未有： Jamie Melham, Hugh Bowman, Jamie Mott, Daniel Stackhouse, Mark Zahra, Jackson Radley, Beau Mertens, Billy Egan, Declan Bates, Patrick Moloney
+  trainer  不重複  42 人 → cache 有  23 ( 55%)；按策騎次數覆蓋  65%
+     未有： Ciaron Maher, Trent Busuttin & Natalie Young, Glen Thompson, Leon & Troy Corstens & Will Larkin, Robbie Griffiths, Lloyd Kennewell, Amy & Ash Yargi, Adam Chambers, Travis Doudle, Tyler Donaldson-aitken
+
+=== 2026-04-08 Sale Race 1-8 ===
+  jockey   不重複   0 人 → cache 有   0 (  0%)；按策騎次數覆蓋   0%
+  trainer  不重複   0 人 → cache 有   0 (  0%)；按策騎次數覆蓋   0%
+
+=== 2026-06-10 Sale Race 1-8 ===
+  jockey   不重複  25 人 → cache 有  12 ( 48%)；按策騎次數覆蓋  56%
+     未有： Jamie Mott, Billy Egan, Daniel Stackhouse, Sam Kennedy, Dylan Dean, Jake Noonan, Ben Kennedy, Adam McCabe, Koby Jennings, Beau Mertens
+  trainer  不重複  46 人 → cache 有  15 ( 33%)；按策騎次數覆蓋  46%
+     未有： Ciaron Maher, Jason Warren, Ken & Kasey Keys, Robbie Griffiths, John McArdle, Scott Cameron, Vincent Hall, Amy & Ash Yargi, David & Coral Feek, Tony Noonan
+
+=== 2026-04-02 Gosford Race 1-7 ===
+  jockey   不重複  27 人 → cache 有  14 ( 52%)；按策騎次數覆蓋  48%
+     未有： Shannen Llewellyn, Dylan Gibbons, Mitch Stapleford, Siena Grima, Jessica Taylor, Jason Collett, Deanne Panya, Claire Ramsbotham, Brock Ryan, Leeshelle Small
+  trainer  不重複  35 人 → cache 有  13 ( 37%)；按策騎次數覆蓋  50%
+     未有： Wayne Seelin, Gregory McFarlane, Paul & Martha Cave, Allan Kehoe, Marc & Mitchell Conners, Peter Snowden, James Ponsonby, Julia Presits, Kim Waugh, Richard & Will Freedman
+
+=== 2026-04-10 Cranbourne Race 1-8 ===
+  jockey   不重複   0 人 → cache 有   0 (  0%)；按策騎次數覆蓋   0%
+  trainer  不重複   0 人 → cache 有   0 (  0%)；按策騎次數覆蓋   0%
+
+=== 2026-05-23 Randwick Race 1-10 ===
+  jockey   不重複  26 人 → cache 有  14 ( 54%)；按策騎次數覆蓋  63%
+     未有： Kerrin McEvoy, Dylan Gibbons, Nash Rawiller, Siena Grima, Regan Bayliss, Adam Farragher, Pierre Boudvillain, Brock Ryan, Luke Rolls, Shaun Guymer
+  trainer  不重複  51 人 → cache 有  24 ( 47%)；按策騎次數覆蓋  68%
+     未有： Ciaron Maher, Tom Charlton, Richard & Will Freedman, Clarry Conners, Michael Freedman, Diane Poidevin Laine, Jason Deamer, Marc & Mitchell Conners, Kerry Parker, Patrick Cleave
+
+=== 2026-05-31 Sandown Lakeside Race 1-8 ===
+  jockey   不重複  33 人 → cache 有  15 ( 45%)；按策騎次數覆蓋  48%
+     未有： Jackson Radley, Jamie Mott, Steven Pateman, Martin Kelly, Jordan Hart, Luca Remondet, Tom Ryan, Dean Parker, Jabez Johnstone, Luke Cartwright A1. 5
+  trainer  不重複  47 人 → cache 有  20 ( 43%)；按策騎次數覆蓋  45%
+     未有： Ciaron Maher, Andrea Leek, Bevan Laming, Rachael Cunningham, Jamie Edwards, Trudy Cottier, Matthew Brown, Patrick F Ryan Jnr, Tony Rosolini, Joanne Mugavin
+
+=== 2025-12-20 Randwick Race 1-10 ===
+  jockey   不重複  30 人 → cache 有  21 ( 70%)；按策騎次數覆蓋  77%
+     未有： Siena Grima, Jason Collett, Kerrin McEvoy, Dylan Gibbons, Regan Bayliss, Jessica Taylor, Pierre Boudvillain, Andrew Gibbons, Louise Day
+  trainer  不重複  47 人 → cache 有  20 ( 43%)；按策騎次數覆蓋  64%
+     未有： Peter Snowden, Ciaron Maher, Dar Lunn, Paul Snowden, Lou Mary, Gregory McFarlane, Jack Pilkington, Paul Murray, Michael Freedman, Mark Cross
+
+=== 2026-07-03 Moe Race 1-8 ===
+  jockey   不重複  29 人 → cache 有  11 ( 38%)；按策騎次數覆蓋  44%
+     未有： Bailey Kinninmont, Jake Noonan, Beau Mertens, Caitlin Hollowood A2, Patrick Moloney, Daniel Stackhouse, Jackie Beriman, Adam McCabe, Dylan Dunn, Billy Egan
+  trainer  不重複  54 人 → cache 有  12 ( 22%)；按策騎次數覆蓋  31%
+     未有： Luke Oliver, Amy McDonald, Jarrod Robinson, Damien Walkley, Trent Busuttin & Natalie Young, Russell Cluning, Paul & Tracey Templeton, Shane Bottomley, Michael Ryan, Denis Pagan
+
+=== 2026-04-04 Randwick Race 1-10 ===
+  jockey   不重複  43 人 → cache 有  29 ( 67%)；按策騎次數覆蓋  70%
+     未有： Zac Purton, Jason Collett, Kerrin McEvoy, Regan Bayliss, Dylan Gibbons, Mark Zahra, Nash Rawiller, Unknown, Blaike McDougall, Nick Heywood
+  trainer  不重複  51 人 → cache 有  28 ( 55%)；按策騎次數覆蓋  67%
+     未有： Ciaron Maher, Tom Charlton, Michael Freedman, Matt Cumani, Donna Scott, Dean Mirfin, Ken & Kasey Keys, Peter Snowden, Luke Pepper, Marc & Mitchell Conners
+
+=== Official_Free_Data ===
+  jockey   不重複   0 人 → cache 有   0 (  0%)；按策騎次數覆蓋   0%
+  trainer  不重複   0 人 → cache 有   0 (  0%)；按策騎次數覆蓋   0%
+
+=== 2026-08-01 Flemington Race 1-9 ===
+  jockey   不重複  34 人 → cache 有  20 ( 59%)；按策騎次數覆蓋  62%
+     未有： Blake Shinn, Jabez Johnstone, Jackson Radley, Daniel Stackhouse, Akira Sugawara, Declan Bates, Beau Mertens, Mark Zahra, Billy Egan, Lucinda Boyd
+  trainer  不重複  57 人 → cache 有  27 ( 47%)；按策騎次數覆蓋  54%
+     未有： Ciaron Maher, Trent Busuttin & Natalie Young, Phillip & Tommy Stokes, Nick Ryan, Shane Nichols & Hayden Black, Patrick Kearney, Robbie Griffiths, Matt Cumani, Eric Musgrove, Nelson Smyth
+
+=== 2026-03-28 Rosehill Gardens Race 1-10 ===
+  jockey   不重複  25 人 → cache 有  18 ( 72%)；按策騎次數覆蓋  71%
+     未有： Kerrin McEvoy, Jason Collett, Dylan Gibbons, Regan Bayliss, Nash Rawiller, Billy Egan, Amy McLucas
+  trainer  不重複  51 人 → cache 有  28 ( 55%)；按策騎次數覆蓋  67%
+     未有： Ciaron Maher, Peter Snowden, Michael Freedman, Sara Ryan, Richard & Will Freedman, Kristen Buchanan, Peter Green, W J Haggas, Jerome Hunter, Stephen O'Halloran
+
+=== 2025-11-04 Randwick Race 1-10 ===
+  jockey   不重複  28 人 → cache 有  19 ( 68%)；按策騎次數覆蓋  68%
+     未有： Nash Rawiller, Jason Collett, Dylan Gibbons, Regan Bayliss, Siena Grima, Jessica Taylor, Deanne Panya, Jake Bayliss, Louise Day
+  trainer  不重複  60 人 → cache 有  26 ( 43%)；按策騎次數覆蓋  54%
+     未有： Ciaron Maher, Matthew Dunn, Scott Collings, Gary Nickson, Richard & Will Freedman, David Hatch, Ross McConville, Cameron Crockett, John Steinmetz, James Ponsonby
+
+=== 2025-11-06 Flemington Race 1-9 ===
+  jockey   不重複  42 人 → cache 有  25 ( 60%)；按策騎次數覆蓋  68%
+     未有： Mark Zahra, Daniel Stackhouse, Jamie Melham, Jamie Mott, Nash Rawiller, Beau Mertens, Kerrin McEvoy, Lachlan King, Liam Riordan, Cory Parish
+  trainer  不重複  73 人 → cache 有  32 ( 44%)；按策騎次數覆蓋  47%
+     未有： Ciaron Maher, Robbie Griffiths, Lloyd Kennewell, Jason Warren, Emma-lee & David Browne, Trent Busuttin & Natalie Young, Andrew Bobbin, Peter Snowden, Gerald Egan, Rhys Archard
+
+=== 2026-04-29 Caulfield Heath Race 1-8 ===
+  jockey   不重複  33 人 → cache 有  21 ( 64%)；按策騎次數覆蓋  62%
+     未有： Jamie Mott, Jamie Melham, Mark Zahra, Beau Mertens, Daniel Stackhouse, Fred Kersley, Jabez Johnstone, Liam Riordan, Jackson Radley, Billy Egan
+  trainer  不重複  47 人 → cache 有  24 ( 51%)；按策騎次數覆蓋  56%
+     未有： Lloyd Kennewell, Ciaron Maher, Trent Busuttin & Natalie Young, Shane Fliedner, Nick Ryan, Leon & Troy Corstens & Will Larkin, Lee & Shannon Hope, Simon Zahra, Tony Romeo, John McArdle
+
+=== 2026-06-27 Rosehill Gardens Race 1-10 ===
+  jockey   不重複  27 人 → cache 有  14 ( 52%)；按策騎次數覆蓋  65%
+     未有： Siena Grima, Kerrin McEvoy, Regan Bayliss, Unknown, Shannen Llewellyn, Coriah Keatings, Jai Williams, Andrew Gibbons, Adam Farragher, Rebecca Bronett Prag
+  trainer  不重複  59 人 → cache 有  25 ( 42%)；按策騎次數覆蓋  64%
+     未有： Tom Charlton, Ciaron Maher, Richard & Will Freedman, Matthew Dunn, Kristen Buchanan, Kerry Parker, Todd Howlett, Sara Ryan, Craig Ritchie, Jason Deamer
+
+=== 2026-06-10 Kensington Race 1-7 ===
+  jockey   不重複  30 人 → cache 有  19 ( 63%)；按策騎次數覆蓋  65%
+     未有： Nash Rawiller, Kerrin McEvoy, Siena Grima, Rebecca Bronett Prag, Shannen Llewellyn, Louis Beuzelin, Adrian Layt, Unknown, Regan Bayliss, Shaun Guymer
+  trainer  不重複  31 人 → cache 有  15 ( 48%)；按策騎次數覆蓋  68%
+     未有： Peter Snowden, John Sharah, Terry Croft, Ciaron Maher, Damien Lane, Marc Chevalier, Jay Hopkins, Michael Freedman, Bruce Cross, Norm Gardner
+
+=== 2025-11-01 Flemington Race 1-9 ===
+  jockey   不重複  27 人 → cache 有  17 ( 63%)；按策騎次數覆蓋  62%
+     未有： Jamie Melham, Jamie Mott, Mark Zahra, Kerrin McEvoy, Blake Shinn, Beau Mertens, Declan Bates, Daniel Stackhouse, Jaden Lloyd, Carleen Hefel
+  trainer  不重複  49 人 → cache 有  30 ( 61%)；按策騎次數覆蓋  64%
+     未有： Ciaron Maher, Peter Snowden, Bevan Laming, Matt Cumani, Andrew Gluyas, John McArdle, Robbie Griffiths, Nick Ryan, Luke Oliver, Ben Brisbourne
+
+=== 2025-12-13 Randwick Race 1-10 ===
+  jockey   不重複  31 人 → cache 有  19 ( 61%)；按策騎次數覆蓋  71%
+     未有： Jason Collett, Dylan Gibbons, Regan Bayliss, Siena Grima, Nash Rawiller, Kerrin McEvoy, Adam Farragher, Mathew Cahill, Shae Wilkes, Jessica Taylor
+  trainer  不重複  58 人 → cache 有  30 ( 52%)；按策騎次數覆蓋  64%
+     未有： Ciaron Maher, Gregory Hickman, Rob Potter, Kerry Parker, Richard & Will Freedman, Peter Snowden, Kim Waugh, Simon Casey, Wayne Wilkes, Terry Robinson
+
+=== 2026-04-17 Cranbourne Race 1-8 ===
+  jockey   不重複  26 人 → cache 有  10 ( 38%)；按策騎次數覆蓋  45%
+     未有： Daniel Stackhouse, Jamie Mott, Jake Noonan, Beau Mertens, Patrick Moloney, Dylan Dean, Adam McCabe, Rhys McLeod, Olivia East, Caitlin Hollowood
+  trainer  不重複  52 人 → cache 有  19 ( 37%)；按策騎次數覆蓋  38%
+     未有： Simone Walker, Trent Busuttin & Natalie Young, Logan McGill, Leon & Troy Corstens & Will Larkin, Shane Nichols & Hayden Black, Cindy Alderson, Rachael Cunningham, Shane Bottomley, Steven Noble, Nigel Blackiston
+
+=== 2026-05-08 Pakenham Race 1-8 ===
+  jockey   不重複  36 人 → cache 有  12 ( 33%)；按策騎次數覆蓋  44%
+     未有： Billy Egan, Unknown, Liana Wood, Patrick Moloney, Jackie Beriman, Jake Noonan, Lachlan King, Melea Castle, Ruby Lamont, Bailey Kinninmont
+  trainer  不重複  69 人 → cache 有  17 ( 25%)；按策騎次數覆蓋  36%
+     未有： Robbie Griffiths, Ciaron Maher, Ben Brisbourne, Ian Pankhurst, Glen Thompson, Jerome Hunter, Brent Stanley, Nick Ryan, Lyn Tolson & Leonie Proctor, Marcus Fahler
+
+=== 2026-06-08 Canterbury Race 1-8 ===
+  jockey   不重複  32 人 → cache 有  20 ( 62%)；按策騎次數覆蓋  70%
+     未有： Siena Grima, Dylan Gibbons, Nash Rawiller, Kerrin McEvoy, Coriah Keatings, Unknown, Brodie Loy, Pierre Boudvillain, Quayde Krogh, Amy McLucas
+  trainer  不重複  41 人 → cache 有  19 ( 46%)；按策騎次數覆蓋  64%
+     未有： Peter Snowden, Richard & Will Freedman, Tom Charlton, Ciaron Maher, Jason Deamer, Michael Freedman, Andrew Bourke, Luke Pepper, Jason Coyle, Michael Travers
+
+=== 2025-10-04 Flemington Race 1-10 ===
+  jockey   不重複  32 人 → cache 有  18 ( 56%)；按策騎次數覆蓋  60%
+     未有： Blake Shinn, Jamie Melham, Daniel Stackhouse, Mark Zahra, Declan Bates, Jamie Mott, Billy Egan, Beau Mertens, Rhys McLeod, Sheridan Clarke
+  trainer  不重複  51 人 → cache 有  24 ( 47%)；按策騎次數覆蓋  56%
+     未有： Ciaron Maher, Nick Ryan, Trent Busuttin & Natalie Young, Emma-lee & David Browne, Andrew Gluyas, Peter Snowden, Robbie Griffiths, Simon Zahra, John McArdle, Michael Freedman
+
+=== 2026-01-03 Randwick Race 1-10 ===
+  jockey   不重複  27 人 → cache 有  17 ( 63%)；按策騎次數覆蓋  66%
+     未有： Siena Grima, Dylan Gibbons, Regan Bayliss, Nash Rawiller, Louise Day, Jack Callan, Madeline Owen, Jenny Duggan, Shae Wilkes, Chelsea Hillier
+  trainer  不重複  51 人 → cache 有  23 ( 45%)；按策騎次數覆蓋  62%
+     未有： Ciaron Maher, Richard & Will Freedman, Michael Travers, Michael Freedman, Luke Pepper, Kerry Parker, Karen Owen, Mark Cross, Paul Snowden, Clint Lundholm
+
+=== 2026-04-11 Randwick Race 1-10 ===
+  jockey   不重複  35 人 → cache 有  25 ( 71%)；按策騎次數覆蓋  72%
+     未有： Jason Collett, Ben Thompson, Kerrin McEvoy, Dylan Gibbons, Jamie Melham, Nash Rawiller, Regan Bayliss, Mitchell Bell, Billy Egan, Declan Bates
+  trainer  不重複  50 人 → cache 有  30 ( 60%)；按策騎次數覆蓋  67%
+     未有： Ciaron Maher, Tom Charlton, Michael Freedman, Damien Lane, W J Haggas, Jason Coyle, Jack Pilkington, Ben Brisbourne, Neil Osborne, Kim Waugh
+
+=== 2026-04-16 Pakenham Race 1-8 ===
+  jockey   不重複  24 人 → cache 有  12 ( 50%)；按策騎次數覆蓋  57%
+     未有： Jamie Mott, Daniel Stackhouse, Beau Mertens, Billy Egan, Liana Wood, Melea Castle, Rhys McLeod, Patrick Moloney, Jackie Beriman, Ruby Lamont
+  trainer  不重複  48 人 → cache 有  17 ( 35%)；按策騎次數覆蓋  41%
+     未有： Ciaron Maher, Emma-lee & David Browne, Lloyd Kennewell, Michael Mehegan, Robbie Griffiths, Nathan Dunn, Luke Oliver, John Leek Jnr, Kelvin Southey, Dean Binaisse
+
+=== 2026-06-27 Eagle Farm Race 1-9 ===
+  jockey   不重複  41 人 → cache 有  13 ( 32%)；按策騎次數覆蓋  43%
+     未有： Nash Rawiller, Dylan Gibbons, Ben E Thompson, Cejay Graham, Unknown, Daniel Stackhouse, Taylor Marshall, Lucy Fiore, M Harley, Emily Lang
+  trainer  不重複  58 人 → cache 有  14 ( 24%)；按策騎次數覆蓋  46%
+     未有： Michael Freedman, Peter Snowden, Matthew Dunn, Robert Heathcote, Lachie Manzelmann, Adam Campton, Corey & Kylie Geran, Ben Waldron, Raymond Williams, Todd Pollard
+
+=== 2025-11-01 Randwick Race 1-10 ===
+  jockey   不重複  33 人 → cache 有  23 ( 70%)；按策騎次數覆蓋  79%
+     未有： Nash Rawiller, Jason Collett, Dylan Gibbons, Regan Bayliss, Kohei Matsuyama, Siena Grima, Pierre Boudvillain, Ben Looker, Mitch Stapleford, Amy McLucas
+  trainer  不重複  59 人 → cache 有  27 ( 46%)；按策騎次數覆蓋  65%
+     未有： Ciaron Maher, Geoffrey Crothers, Kim Waugh, Michael Freedman, Shinsuke Hashiguchi, Cameron Crockett, Jason Deamer, Richard & Will Freedman, Gregory Hickman, Jason Coyle
+
+=== 2026-02-07 Randwick Race 1-10 ===
+  jockey   不重複  28 人 → cache 有  20 ( 71%)；按策騎次數覆蓋  75%
+     未有： Jason Collett, Nash Rawiller, Dylan Gibbons, Regan Bayliss, Jessica Taylor, Shannen Llewellyn, Adam Farragher, Jack Callan
+  trainer  不重複  54 人 → cache 有  22 ( 41%)；按策騎次數覆蓋  59%
+     未有： Ciaron Maher, Michael Freedman, Peter Snowden, Richard & Will Freedman, Blake Ryan, Jason Coyle, Marc & Mitchell Conners, Craig Carmody, James Ponsonby, Jason Deamer
+
+=== 2026-07-03 Ballarat Synthetic Race 1-9 ===
+  jockey   不重複  32 人 → cache 有   6 ( 19%)；按策騎次數覆蓋  29%
+     未有： Ryan Hurdle, Alana Kelly, Will Gordon, Sarah Field, Sarah Robbins, Jade Smith, Christine Puls, Mitchell Aitken, Rose Hammond, Amy Herrmann
+  trainer  不重複  56 人 → cache 有   4 (  7%)；按策騎次數覆蓋   5%
+     未有： Chris Calthorpe, Stephen Lenehan, Jordy Coffey, Rodney Foster, Heath Chalmers, Brent Stanley, Nathan Hobson, Patrick Kearney, Con Kelly, Dane Smith
+
+=== 2026-01-17 Flemington Race 1-10 ===
+  jockey   不重複  26 人 → cache 有  16 ( 62%)；按策騎次數覆蓋  75%
+     未有： Jackson Radley, Jamie Mott, Patrick Moloney, Holly Durnan, Jake Duffy, Robert Whearty, Jake Noonan, Cory Parish, Jason Lyon, Rose Hammond
+  trainer  不重複  54 人 → cache 有  30 ( 56%)；按策騎次數覆蓋  64%
+     未有： Ciaron Maher, Jason Warren, Nick Ryan, Ben Brisbourne, John Sadler, Leon & Troy Corstens & Will Larkin, Trent Busuttin & Natalie Young, Jerome Hunter, Andrew Noblet, Anthony Cosgriff
+
+=== 2026-04-15 Warwick Farm Race 1-8 ===
+  jockey   不重複  27 人 → cache 有  15 ( 56%)；按策騎次數覆蓋  65%
+     未有： Jason Collett, Nash Rawiller, Regan Bayliss, Dylan Gibbons, Siena Grima, Mitch Stapleford, Amy McLucas, Shaun Guymer, Jeff Penza, Shannen Llewellyn
+  trainer  不重複  36 人 → cache 有  15 ( 42%)；按策騎次數覆蓋  64%
+     未有： Amanda Turner, Mark Minervini, Tony Ball, Peter Snowden, Tom Charlton, Richard & Will Freedman, Michael Freedman, Clarry Conners, Robert Quinn, Ciaron Maher
+
+=== 2026-05-24 Ballarat Race 1-8 ===
+  jockey   不重複  29 人 → cache 有  14 ( 48%)；按策騎次數覆蓋  51%
+     未有： Will Gordon, Declan Bates, Jake Noonan, Billy Egan, E Walsh, Mitchell Aitken, Paul Gatt, Fred Kersley, Zac Moore, Sarah Robbins
+  trainer  不重複  44 人 → cache 有  14 ( 32%)；按策騎次數覆蓋  49%
+     未有： Melody Cunningham, Andrew Clarken, Trent Busuttin & Natalie Young, Ciaron Maher, Andrew Noblet, Vincent Malady, Taige Weir, Leslie Robertson, Danielle Loos, Thomas Carberry
+
+=== 2025-09-21 Flemington Race 1-8 ===
+  jockey   不重複  37 人 → cache 有  23 ( 62%)；按策騎次數覆蓋  59%
+     未有： Blake Shinn, Jamie Mott, Billy Egan, Mark Zahra, Declan Bates, Daniel Stackhouse, Beau Mertens, Lucinda Boyd, Liam Riordan, Mitchell Aitken
+  trainer  不重複  48 人 → cache 有  26 ( 54%)；按策騎次數覆蓋  64%
+     未有： Ciaron Maher, Trent Busuttin & Natalie Young, Andrea Leek, Lucinda Boyd, Wendy Kelly, Luke Oliver, Matthew Brown, Rhys Archard, Liam Howley, Shane Fliedner
+
+=== 2026-02-14 Randwick Race 1-10 ===
+  jockey   不重複  29 人 → cache 有  19 ( 66%)；按策騎次數覆蓋  74%
+     未有： Nash Rawiller, Jason Collett, Dylan Gibbons, Regan Bayliss, Jack Callan, Siena Grima, Jenny Duggan, Jeff Penza, Pierre Boudvillain, Shannen Llewellyn
+  trainer  不重複  49 人 → cache 有  26 ( 53%)；按策騎次數覆蓋  68%
+     未有： Michael Freedman, Ciaron Maher, Kim Waugh, Peter Snowden, Clint Lundholm, Matthew Dunn, Luke Pepper, Troy O'Neile, Scott Singleton, Lyle Chandler
+
+=== 2026-05-22 Gold Coast Race 1-8 ===
+  jockey   不重複  36 人 → cache 有  12 ( 33%)；按策騎次數覆蓋  47%
+     未有： Ben Thompson, Cejay Graham, Jag Guthmann-chester, Boris Thornton, Jamie Melham, Leah Martyn, Nozi Tomizawa, Georgina Cartwright, Jaden Lloyd, Brandon Lerena
+  trainer  不重複  50 人 → cache 有   7 ( 14%)；按策騎次數覆蓋  27%
+     未有： Michael Freedman, Chris Anderson, Desleigh Forster, Peter Robl, Allan Chau, Paul Shailer, Scott Morrisey, David Murphy, Tony & Maddysen Sears, Vishan Venkaya
+
+=== 2025-08-23 Randwick Race 1-10 ===
+  jockey   不重複  32 人 → cache 有  22 ( 69%)；按策騎次數覆蓋  77%
+     未有： Jason Collett, Nash Rawiller, Dylan Gibbons, Siena Grima, Kerrin McEvoy, Andrew Mallyon, Madeline Owen, Glenn Cahill, Rebecca Bronett Prag, Regan Bayliss
+  trainer  不重複  56 人 → cache 有  28 ( 50%)；按策騎次數覆蓋  62%
+     未有： Ciaron Maher, Adam Duggan, Kerry Parker, Matthew Dunn, Tony Ball, Jason Deamer, Mitchell Beer, Wayne Seelin, Jason Attard, Robert Quinn
+
+=== 2026-04-01 Warwick Farm Race 1-8 ===
+  jockey   不重複  32 人 → cache 有  19 ( 59%)；按策騎次數覆蓋  70%
+     未有： Jason Collett, Kerrin McEvoy, Nash Rawiller, Regan Bayliss, Jessica Taylor, Rory Hutchings, Adam Farragher, Louise Day, Siena Grima, Shannen Llewellyn
+  trainer  不重複  33 人 → cache 有  18 ( 55%)；按策騎次數覆蓋  71%
+     未有： Ciaron Maher, Richard & Will Freedman, Tom Charlton, Jason Coyle, Peter Snowden, Michael Freedman, Les Bridge, Jarrod Austin, Keith Dryden & Libby Snowden, Ross Lavis
+
+=== 2026-04-06 Sandown Lakeside Race 1-8 ===
+  jockey   不重複  35 人 → cache 有  22 ( 63%)；按策騎次數覆蓋  68%
+     未有： Beau Mertens, Declan Bates, Cory Parish, Blake Shinn, Liam Riordan, Billy Egan, Mitchell Aitken, Holly Durnan, Mark Zahra, Jake Duffy
+  trainer  不重複  45 人 → cache 有  23 ( 51%)；按策騎次數覆蓋  57%
+     未有： Ciaron Maher, Trent Busuttin & Natalie Young, Steve Cunningham, Craig Widdison, Robbie Griffiths, Lee & Shannon Hope, Jason Warren, Matthew Brown, Rhys Archard, Liam Howley
+
+=== 2026-04-18 Randwick ===
+  jockey   不重複  31 人 → cache 有  21 ( 68%)；按策騎次數覆蓋  65%
+     未有： Jason Collett, Dylan Gibbons, Nash Rawiller, Regan Bayliss, Kerrin McEvoy, Siena Grima, Jamie Melham, Pierre Boudvillain, Amy McLucas, Blaike McDougall
+  trainer  不重複  64 人 → cache 有  31 ( 48%)；按策騎次數覆蓋  66%
+     未有： Peter Snowden, Ciaron Maher, Tom Charlton, Richard & Will Freedman, Kerry Parker, Glen Milligan, Todd Howlett, Melanie O'Gorman, Ben Brisbourne, Gary Nickson
+
+=== 2025-12-26 Randwick Race 1-8 ===
+  jockey   不重複  20 人 → cache 有  14 ( 70%)；按策騎次數覆蓋  68%
+     未有： Jason Collett, Siena Grima, Regan Bayliss, Dylan Gibbons, Teaghan Martin, Jack Callan
+  trainer  不重複  34 人 → cache 有  18 ( 53%)；按策騎次數覆蓋  68%
+     未有： Peter Snowden, Ciaron Maher, Edward Cummings, Michael Freedman, Paul Facoory, Geoffrey Crothers, Marc Quinn, Les Bridge, Terry Croft, Simon Foster
+
+=== 2025-10-25 Randwick Race 1-10 ===
+  jockey   不重複  20 人 → cache 有  13 ( 65%)；按策騎次數覆蓋  69%
+     未有： Dylan Gibbons, Kerrin McEvoy, Jason Collett, Clayton Gallagher, Louis Beuzelin, Siena Grima, Nash Rawiller
+  trainer  不重複  37 人 → cache 有  17 ( 46%)；按策騎次數覆蓋  52%
+     未有： Peter Snowden, Nick Olive, Michael Travers, Geoffrey Crothers, Blake Ryan, Edward O'Rourke, Terry Croft, Todd Howlett, Gary Colvin, Joel Wilkes
+
+=== 2026-04-23 Pakenham Race 1-8 ===
+  jockey   不重複  29 人 → cache 有  12 ( 41%)；按策騎次數覆蓋  55%
+     未有： Daniel Stackhouse, Jamie Mott, Jake Noonan, Declan Bates, Rhys McLeod, Caitlin Hollowood, Jackie Beriman, Billy Egan, Adam McCabe, Chelsea Thompson
+  trainer  不重複  40 人 → cache 有  16 ( 40%)；按策騎次數覆蓋  51%
+     未有： Ciaron Maher, Bill Papazaharoudakis, Emma-lee & David Browne, Nathan Dunn, John McArdle, Colin Scott, Mathew Smerdon, Allan & Jason Williams, Nick Ryan, Craig Blackshaw
+
+=== 2026-07-01 Sandown Lakeside Race 1-8 ===
+  jockey   不重複  36 人 → cache 有  22 ( 61%)；按策騎次數覆蓋  59%
+     未有： Jackson Radley, Jabez Johnstone, Jamie Mott, Billy Egan, Sam Kennedy, Daniel Stackhouse, Will Gordon, Beau Mertens, Cory Parish, Caitlin Hollowood
+  trainer  不重複  49 人 → cache 有  20 ( 41%)；按策騎次數覆蓋  46%
+     未有： Ciaron Maher, Trent Busuttin & Natalie Young, Emma-lee & David Browne, Nelson Smyth, Nick Ryan, Ken & Kasey Keys, Aaron Purcell, Lloyd Kennewell, Robbie Griffiths, Jamie Edwards
+
+=== 2025-11-08 Flemington Race 1-9 ===
+  jockey   不重複  27 人 → cache 有  17 ( 63%)；按策騎次數覆蓋  70%
+     未有： Jamie Melham, Declan Bates, Mark Zahra, Jamie Mott, Daniel Stackhouse, Jason Collett, Beau Mertens, Cory Parish, Patrick Moloney, Valentin Le Boeuf
+  trainer  不重複  52 人 → cache 有  29 ( 56%)；按策騎次數覆蓋  67%
+     未有： Ciaron Maher, Peter Snowden, Andrew Forsman, Glen Thompson, Travis Doudle, Liam Birchley, Neil Dyer, Stephen V Brown, Mark Webb, Robbie Griffiths

@@ -1,0 +1,782 @@
+"""AU 每日排程 runner 嘅純函數測試。
+
+呢度只測**判斷**，唔測抽取／評分／發佈（嗰啲已經有自己嘅 suite）。judgement
+出錯嘅代價唔對稱：
+  - 場地狀況 parse 錯 → 用錯 going 評分，靜靜咁錯。
+  - 馬場配錯 → 拉一個馬場嘅場地狀況入另一個馬場。
+  - snapshot 場次數數錯 → 「10 場」同「空馬場」睇落一樣，驗證形同虛設。
+  - 「有冇實質變動」判斷錯 → 每晚無謂重評分，或者退出馬冇人理。
+"""
+from __future__ import annotations
+
+import contextlib
+import json
+import os
+import sys
+import tempfile
+import unittest
+import unittest.mock
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+
+import au_daily_schedule as S  # noqa: E402
+
+
+def setUpModule():
+    """把測試嘅 log 引去 tmp。冇呢個嘅話 `log()` 會寫入生產
+    `logs/au_daily_schedule.log` —— 實測污染過一個正在跑嘅晚更 run。"""
+    global _LOG_TMP
+    _LOG_TMP = tempfile.TemporaryDirectory()
+    os.environ["WC_AU_SCHED_LOG_DIR"] = _LOG_TMP.name
+
+
+def tearDownModule():
+    os.environ.pop("WC_AU_SCHED_LOG_DIR", None)
+    _LOG_TMP.cleanup()
+
+
+class TestGoing(unittest.TestCase):
+    def test_api_and_page_formats(self):
+        self.assertEqual(S.normalise_going("Soft (5)"), "Soft 5")
+        self.assertEqual(S.normalise_going("Good 4"), "Good 4")
+        self.assertEqual(S.normalise_going("heavy10"), "Heavy 10")
+        self.assertEqual(S.normalise_going("Synthetic"), "Synthetic")
+        self.assertEqual(S.normalise_going("Good 25"), "Good")
+        self.assertEqual(S.normalise_going("Good 29°C"), "Good")
+
+    def test_rubbish_is_empty_not_guessed(self):
+        # 認唔到就要回空，唔可以亂猜 —— 落一個錯 going 落去評分，比冇 going 差。
+        self.assertEqual(S.normalise_going(""), "")
+        self.assertEqual(S.normalise_going(None), "")
+        self.assertEqual(S.normalise_going("Unknown"), "")
+        self.assertEqual(S.normalise_going("W"), "")
+
+
+class TestVenueMatch(unittest.TestCase):
+    AU = ["Belmont", "Canterbury", "Cranbourne", "Doomben", "Hobart",
+          "Murray Bridge"]
+
+    def test_exact_and_abbreviated(self):
+        self.assertEqual(S.match_venue("belmont", self.AU), "Belmont")
+        # 索引頁用縮寫，API 出全名。
+        self.assertEqual(S.match_venue("murray_bdge", self.AU), "Murray Bridge")
+
+    def test_abbreviations_on_either_side_still_match(self):
+        # 2026-08-06 實測：索引頁出 `mount_isa`，API 出 `Mt Isa` —— 三步配對全部
+        # 唔中，一個真澳洲場次被當海外剔走，靜靜咁冇分析。
+        self.assertEqual(S.match_venue("mount_isa", ["Mt Isa", "Gosford"]), "Mt Isa")
+        self.assertEqual(S.match_venue("mt_isa", ["Mount Isa"]), "Mount Isa")
+        self.assertEqual(S.match_venue("saint_arnaud", ["St Arnaud"]), "St Arnaud")
+
+    def test_overseas_meetings_are_rejected(self):
+        # 2026-08-05 索引頁 12 個場次，一半係英國／愛爾蘭／南非／加拿大。
+        # 2026-08-06 索引頁嗰批：kempton / newmarket / sligo / vaal / yarmouth
+        for slug in ("lingfield", "pontefract", "roscommon", "kenilworth",
+                     "brighton", "assiniboia_downs", "kempton", "newmarket",
+                     "sligo", "vaal", "yarmouth"):
+            self.assertIsNone(S.match_venue(slug, self.AU), slug)
+
+    def test_ambiguous_prefix_is_not_guessed(self):
+        self.assertIsNone(S.match_venue("rand", ["Randwick", "Randwick Kensington"]))
+
+
+class TestSnapshotShape(unittest.TestCase):
+    def test_counts_races_not_dict_keys(self):
+        # `races[key]` 係 {"meeting":…, "races_by_analyst":…}。當佢係 list 去
+        # len() 嘅話,每個場次都會數到 2。
+        entry = {"meeting": {}, "races_by_analyst": {
+            "Kelvin": [{"race_number": 1}, {"race_number": 2}, {"race_number": 3}]}}
+        self.assertEqual(S.race_numbers_in_snapshot(entry), ["1", "2", "3"])
+
+    def test_empty_and_malformed(self):
+        self.assertEqual(S.race_numbers_in_snapshot(None), [])
+        self.assertEqual(S.race_numbers_in_snapshot([]), [])
+        self.assertEqual(S.race_numbers_in_snapshot({"races_by_analyst": {}}), [])
+
+    def test_signature_ignores_generated_at(self):
+        base = {"meetings": [{"date": "2026-08-05", "venue": "Hobart"}],
+                "races": {"2026-08-05|Hobart": {
+                    "races_by_analyst": {"Kelvin": [{"race_number": 1}]}}}}
+        a = dict(base, meta={"generated_at": "2026-08-05T01:00:00"})
+        b = dict(base, meta={"generated_at": "2026-08-05T09:00:00"})
+        self.assertEqual(S.snapshot_signature(a), S.snapshot_signature(b))
+
+    def test_signature_notices_a_rescore_that_reorders_picks(self):
+        # 2026-08-05 早更：場地 Soft 6→Soft 5、兩隻退出、排名改咗，但場次同場號
+        # 一個都冇變。舊指紋話「冇變」，於是重評分嘅成果發佈唔上去。
+        def snap(picks, going):
+            return {"meetings": [], "races": {"k": {"races_by_analyst": {"Kelvin": [
+                {"race_number": 1, "going": going, "top_picks": picks}]}}}}
+        a = snap([{"rank": 1, "horse_number": 6, "grade": "B"}], "Soft 6")
+        b = snap([{"rank": 1, "horse_number": 3, "grade": "A"}], "Soft 5")
+        self.assertNotEqual(S.snapshot_signature(a), S.snapshot_signature(b))
+        self.assertEqual(S.snapshot_signature(a), S.snapshot_signature(snap(
+            [{"rank": 1, "horse_number": 6, "grade": "B"}], "Soft 6")))
+
+    def test_signature_notices_a_new_race(self):
+        a = {"meetings": [], "races": {"k": {"races_by_analyst": {"K": [{"race_number": 1}]}}}}
+        b = {"meetings": [], "races": {"k": {"races_by_analyst": {
+            "K": [{"race_number": 1}, {"race_number": 2}]}}}}
+        self.assertNotEqual(S.snapshot_signature(a), S.snapshot_signature(b))
+
+
+class TestArchiveKey(unittest.TestCase):
+    def test_folder_name_to_dashboard_key(self):
+        self.assertEqual(
+            S.archive_dashboard_key("2026-08-01 Rosehill Gardens Race 1-10"),
+            "2026-08-01|Rosehill Gardens")
+        self.assertEqual(S.archive_dashboard_key("2026-03-28 Flemington"),
+                         "2026-03-28|Flemington")
+
+
+def _state(going="Good 4", jockeys=None, barriers=None, field=None):
+    jockeys = jockeys if jockeys is not None else {"1": "A Smith", "2": "B Jones"}
+    barriers = barriers if barriers is not None else {"1": "3", "2": "7"}
+    field = field if field is not None else sorted(jockeys)
+    return {"going": going, "jockeys": jockeys, "barriers": barriers,
+            "field": field, "scratched": []}
+
+
+class TestMaterialChange(unittest.TestCase):
+    def test_no_change_means_no_rescore(self):
+        stored = {1: _state()}
+        self.assertEqual(S.diff_race_state(stored, {1: _state()}), {})
+
+    def test_scratching(self):
+        live = {1: _state(jockeys={"1": "A Smith"}, barriers={"1": "3"})}
+        delta = S.diff_race_state({1: _state()}, live)[1]
+        self.assertEqual(delta["scratchings"], ["2"])
+        self.assertEqual(delta["field_size"], [2, 1])
+
+    def test_emergency_gaining_a_start(self):
+        live = {1: _state(jockeys={"1": "A Smith", "2": "B Jones", "3": "C Lee"},
+                          barriers={"1": "3", "2": "7", "3": "9"})}
+        self.assertEqual(S.diff_race_state({1: _state()}, live)[1]["emergencies_in"],
+                         ["3"])
+
+    def test_jockey_and_barrier_swap(self):
+        live = {1: _state(jockeys={"1": "A Smith", "2": "Z Brown"},
+                          barriers={"1": "3", "2": "1"})}
+        delta = S.diff_race_state({1: _state()}, live)[1]
+        self.assertEqual(delta["jockeys"], {"2": ["B Jones", "Z Brown"]})
+        self.assertEqual(delta["barriers"], {"2": ["7", "1"]})
+
+    def test_going_upgrade(self):
+        live = {1: _state(going="Soft 6")}
+        self.assertEqual(S.diff_race_state({1: _state()}, live)[1]["going"],
+                         ["Good 4", "Soft 6"])
+
+    def test_blank_live_going_is_not_a_change(self):
+        # 攞唔到場地狀況 ≠ 場地狀況變咗。空值唔應該觸發重評分。
+        self.assertEqual(S.diff_race_state({1: _state()}, {1: _state(going="")}), {})
+
+    def test_race_missing_from_stored_is_skipped(self):
+        self.assertEqual(S.diff_race_state({}, {9: _state()}), {})
+
+
+class _FakeAcquire:
+    """認得頭 N 版，之後一律拒絕（模擬 sportsbetform 穩定 403）。
+
+    模仿真 `fetch_page` 嘅合約：拒絕嗰下會 trip circuit breaker。
+    """
+
+    def __init__(self, allow: int, cached: set[str] | None = None):
+        self.allow = allow
+        self.cached = cached or set()
+        self.requests: list[str] = []
+
+    def cache_path(self, url):
+        hit = any(url.endswith(f"/{r}/") for r in self.cached)
+
+        class _P:
+            def exists(self_inner):
+                return hit
+        return _P()
+
+    def fetch_page(self, runlog, url, force=False, where=""):
+        if runlog.site_refusing:
+            return None
+        self.requests.append(url)
+        if len(self.requests) <= self.allow:
+            return "<html>"
+        runlog.trip_site_gate(where or url)
+        return None
+
+
+class TestSiteCircuitBreaker(unittest.TestCase):
+    """個站明確拒絕之後就唔應該再敲門 —— 逐場敲落去會延長封鎖。"""
+
+    def _runlog(self):
+        import tempfile
+        from datetime import date as _date
+        tmp = Path(tempfile.mkdtemp()) / "run.json"
+        return S.RunLog("test", _date(2026, 8, 5), tmp)
+
+    @contextlib.contextmanager
+    def _patched(self, fake):
+        import sb_browser_fetch
+        real_fetch, real_cache = S.fetch_page, sb_browser_fetch.cache_path
+        S.fetch_page = fake.fetch_page
+        sb_browser_fetch.cache_path = fake.cache_path
+        try:
+            yield
+        finally:
+            S.fetch_page = real_fetch
+            sb_browser_fetch.cache_path = real_cache
+
+    def test_stops_at_first_stable_refusal(self):
+        runlog = self._runlog()
+        fake = _FakeAcquire(allow=2)
+        with self._patched(fake):
+            ready = S.warm_race_pages(runlog, "446502",
+                                      ["1", "2", "3", "4", "5", "6", "7"], "test")
+        self.assertEqual(ready, ["1", "2"])
+        # 拒絕之後**唔可以**再打 4 個請求。
+        self.assertEqual(len(fake.requests), 3)
+        self.assertTrue(runlog.site_refusing)
+
+    def test_cached_pages_cost_nothing(self):
+        runlog = self._runlog()
+        fake = _FakeAcquire(allow=0, cached={"1", "2", "3"})
+        with self._patched(fake):
+            ready = S.warm_race_pages(runlog, "446502", ["1", "2", "3"], "test")
+        self.assertEqual(ready, ["1", "2", "3"])
+        self.assertEqual(fake.requests, [])
+        self.assertFalse(runlog.site_refusing)
+
+    def test_gate_short_circuits_later_meetings(self):
+        runlog = self._runlog()
+        runlog.trip_site_gate("earlier meeting")
+        fake = _FakeAcquire(allow=99)
+        with self._patched(fake):
+            ready = S.warm_race_pages(runlog, "446511", ["1", "2"], "test")
+        self.assertEqual(ready, [])
+        self.assertEqual(fake.requests, [])
+
+
+class TestBrowserOnlyInvariants(unittest.TestCase):
+    """「只行真瀏覽器」要靠兩個不變式撐住，唔係靠記得。
+
+    2026-08-05 實測 sportsbetform：curl_cffi 403、headless Chrome（連真 Chrome
+    嘅 headless）都 403、只有 headed 真 Chrome 200。所以任何一段 Python 出網都係
+    敲一道明講唔得嘅門 —— 攞唔到嘢，仲會延長封鎖。
+    """
+
+    def test_cache_only_env_blocks_every_python_fetch(self):
+        import tempfile
+        sys.path.insert(0, str(HERE.parents[1]))
+        import claw_sportsbet_form as claw
+        with tempfile.TemporaryDirectory() as tmp:
+            f = claw.SportsbetFormFetcher(delay=0, cache_dir=tmp, verbose=False,
+                                          cache_only=True)
+            # cache miss + cache_only → 直接 None，一個請求都唔會出。
+            self.assertIsNone(f.get("https://www.sportsbetform.com.au/1/2/"))
+            # cache hit 仍然要讀得返。
+            path = f._cache_path("https://www.sportsbetform.com.au/3/4/")
+            path.write_text("<html>cached</html>", encoding="utf-8")
+            self.assertEqual(f.get("https://www.sportsbetform.com.au/3/4/"),
+                             "<html>cached</html>")
+
+    def test_run_cmd_forces_cache_only_on_every_subprocess(self):
+        # 唔可以靠逐個 call site 記得傳 —— 一個漏咗就靜靜咁出網。
+        captured = {}
+        import subprocess as sp
+        real = sp.run
+
+        def fake_run(cmd, **kwargs):
+            captured.update(kwargs.get("env") or {})
+
+            class _R:
+                returncode = 0
+                stdout = ""
+            return _R()
+
+        sp.run = fake_run
+        try:
+            S.run_cmd(["/usr/bin/true"])
+        finally:
+            sp.run = real
+        self.assertEqual(captured.get("WC_SB_CACHE_ONLY"), "1")
+
+
+class TestScratchingsMustRebuildTheField(unittest.TestCase):
+    """退出馬唔可以只靠重評分 —— 一定要重寫 Racecard 再落 Facts/Logic。
+
+    2026-08-05 實測：早更偵測到 Canterbury 7 場共 24 隻退出馬，但只跑
+    `au_auto_orchestrator`（由現有 Logic 重算），於是 R2 #6 Blenheim Girl 退出咗
+    仍然排第二。退出馬係喺 `write_meeting` 寫 `status:Scratched` 嗰層剔走嘅。
+    """
+
+    def test_field_level_fields_are_classified(self):
+        for field in ("scratchings", "emergencies_in", "barriers", "jockeys",
+                      "field_size"):
+            self.assertIn(field, S.FIELD_LEVEL_CHANGES, field)
+        # 只係場地變就唔應該觸發成套重建（貴好多）。
+        self.assertNotIn("going", S.FIELD_LEVEL_CHANGES)
+
+    def test_refresh_rebuilds_on_field_change_and_rescores_on_going_only(self):
+        import inspect
+        src = inspect.getsource(S.refresh_one_meeting)
+        self.assertIn("FIELD_LEVEL_CHANGES", src)
+        self.assertIn("rebuild_meeting_from_cache", src)
+        # 只有 going 變嗰條路仍然行純重評分。
+        self.assertIn("AU_AUTO_ORCH", src)
+
+    def test_rebuild_rewrites_racecard_before_rebuilding_logic(self):
+        import inspect
+        src = inspect.getsource(S.rebuild_meeting_from_cache)
+        claw_at = src.index("CLAW")
+        orch_at = src.index("AU_ORCH")
+        self.assertLess(claw_at, orch_at,
+                        "一定要先重寫 Racecard，再重建 Facts/Logic")
+
+    def test_venue_from_folder(self):
+        self.assertEqual(S.venue_from_folder("2026-08-05 Murray Bridge Race 1-8"),
+                         "Murray Bridge")
+        self.assertEqual(S.venue_from_folder("2026-03-28 Flemington"), "Flemington")
+
+
+class TestResultsRefreshDecision(unittest.TestCase):
+    """「要唔要重抓賽果頁」一定要睇覆蓋率，唔可以睇「賽果檔存唔存在」。
+
+    半份賽果檔（晚更跑嗰陣最後一場仲未跑完）會令舊寫法之後每次都跳過重抓、
+    由同一份舊 cache 重建同一份半份賽果 —— 場次永遠 partial_results、永遠唔會
+    歸檔、永遠留喺 dashboard。
+    """
+
+    def _review_source(self):
+        import inspect
+        return inspect.getsource(S.review_one_meeting)
+
+    def test_does_not_gate_refresh_on_file_existence(self):
+        src = self._review_source()
+        self.assertNotIn("if not results.exists():\n            refresh", src)
+
+    def test_refresh_is_gated_on_coverage(self):
+        src = self._review_source()
+        self.assertIn("len(covered) < len(expected)", src)
+        # 重抓之後一定要再 build 一次，否則覆蓋率永遠唔會更新。
+        after = src.split("len(covered) < len(expected)", 1)[1]
+        self.assertIn("refresh_result_pages", after)
+        self.assertIn("build_results_file", after)
+
+
+class TestBrowserFetchesRenderedDom(unittest.TestCase):
+    """一定要 cache render 後嘅 DOM，唔可以係 raw body。
+
+    賠率由 `OddsAgent.min.js` 填，raw body 永遠冇 —— 所以 2026-08-05 之前每個
+    Formguide 都寫 `Flucs:$- $-`。實測 raw vs rendered 對所有其他 parser 輸出
+    完全一致，所以呢個切換零代價。
+    """
+
+    def test_get_uses_goto_and_waits_for_render(self):
+        import inspect
+        sys.path.insert(0, str(HERE.parents[1]))
+        from sb_browser_fetch import BrowserFetcher
+        src = inspect.getsource(BrowserFetcher.get)
+        self.assertIn("page.goto", src)
+        self.assertIn("render_wait_ms", src)
+        self.assertIn("page.content()", src)
+        # in-page fetch 已經退役 —— 佢攞 raw body，冇賠率。
+        self.assertNotIn("_FETCH_JS", src)
+
+    def test_origin_page_no_longer_required(self):
+        # `goto` 唔受同源限制，所以舊嗰個「同源起始頁」機制冇用咗，
+        # 亦順手省咗每個 run 一個請求。舊 caller 傳 origin_* 唔應該炸。
+        from sb_browser_fetch import BrowserFetcher
+        bf = BrowserFetcher(origin_url="https://example.invalid/",
+                            origin_candidates=["https://example.invalid/x/"])
+        self.assertFalse(hasattr(bf, "origin_candidates"))
+
+
+class TestPartialMeetingResumes(unittest.TestCase):
+    """半份抽取一定要當「未做完」，否則餘下嘅場次永遠冇人補。"""
+
+    def test_full_meeting_is_complete(self):
+        self.assertTrue(S.meeting_is_complete(list(range(1, 10)),
+                                              list(range(1, 10)), 9))
+
+    def test_one_of_nine_is_not_complete(self):
+        # 2026-08-05 Hobart：抽到 1 場就俾個站拒絕。
+        self.assertFalse(S.meeting_is_complete([1], [1], 9))
+
+    def test_pages_without_scores_is_not_complete(self):
+        self.assertFalse(S.meeting_is_complete(list(range(1, 10)), [], 9))
+
+    def test_more_than_expected_still_complete(self):
+        # 索引偶爾少報一場，多過預期唔應該當未做完。
+        self.assertTrue(S.meeting_is_complete([1, 2, 3], [1, 2, 3], 2))
+
+    def test_zero_expected_is_never_complete(self):
+        self.assertFalse(S.meeting_is_complete([], [], 0))
+
+
+class TestFetchPacing(unittest.TestCase):
+    def test_floor_is_enforced(self):
+        import os
+        previous = os.environ.get("WC_AU_FETCH_DELAY")
+        try:
+            os.environ["WC_AU_FETCH_DELAY"] = "1"
+            # 12 秒下限係實測出嚟嘅，唔可以由 env 調到更快。
+            self.assertGreaterEqual(S.fetch_delay(), S.MIN_FETCH_DELAY)
+            os.environ["WC_AU_FETCH_DELAY"] = "40"
+            self.assertEqual(S.fetch_delay(), 40.0)
+            os.environ["WC_AU_FETCH_DELAY"] = "rubbish"
+            self.assertEqual(S.fetch_delay(), S.DEFAULT_FETCH_DELAY)
+        finally:
+            if previous is None:
+                os.environ.pop("WC_AU_FETCH_DELAY", None)
+            else:
+                os.environ["WC_AU_FETCH_DELAY"] = previous
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class TestStaleArchivedPrune(unittest.TestCase):
+    """已歸檔嘅場次一定要離開發佈用嘅 snapshot，唔理係邊個 mode 發佈。
+
+    2026-08-05／08-06：晚更歸檔咗 5 個場次，但合併路徑只會加場次，所以發佈前驗證
+    見到已歸檔場次仲喺 snapshot，正確咁拒絕發佈 —— Cloudflare 停咗兩晚。而早更傳
+    嘅 archived_names 係空，所以早更唔單止修復唔到，仲會把已歸檔場次原封不動再發
+    佈，而佢自己嘅驗證唔會投訴。所以剪走名單要由**本機 folder 喺唔喺 Archive/**
+    推導，唔可以只信「今次 run 歸檔咗乜」。
+    """
+
+    def _run(self, tmp, meetings, archived_venues, passed_drops=()):
+        tmp = Path(tmp)
+        base = tmp / "live-dashboard-data.json"
+        base.write_text(json.dumps({"meetings": meetings}), encoding="utf-8")
+        archive_root = tmp / "Archive"
+        live_root = tmp / "AU_Racing"
+        archive_root.mkdir()
+        live_root.mkdir()
+
+        def fake_find(day, venue):
+            if venue == "HappyValley":
+                return None  # HKJC 場次冇 AU folder
+            root = archive_root if venue in archived_venues else live_root
+            folder = root / f"{day} {venue}"
+            folder.mkdir(exist_ok=True)
+            return folder
+
+        calls = []
+
+        def fake_run_cmd(cmd, **kw):
+            calls.append(cmd)
+            out = Path(cmd[cmd.index("--output-json") + 1])
+            out.write_text(json.dumps({"meetings": []}), encoding="utf-8")
+            return 0, ""
+
+        runlog = S.RunLog("evening", S.date(2026, 8, 5), tmp / "run.json")
+        with contextlib.ExitStack() as stack:
+            for name, value in (("WORK_DIR", tmp), ("ARCHIVE_ROOT", archive_root),
+                                ("find_meeting_dir", fake_find),
+                                ("run_cmd", fake_run_cmd),
+                                # 剪走同補發喺同一步，呢批 case 只驗剪走。
+                                ("live_meeting_dirs", lambda: []),
+                                ("download_live_snapshot", lambda *a, **k: base)):
+                stack.enter_context(unittest.mock.patch.object(S, name, value))
+            _, drops = S.build_snapshot(runlog, [], list(passed_drops))
+        return drops, calls
+
+    def test_archived_meeting_is_dropped_even_when_the_run_archived_nothing(self):
+        meetings = [{"date": "2026-08-05", "venue": "Belmont", "region": "AU"},
+                    {"date": "2026-08-05", "venue": "Cranbourne", "region": "AU"}]
+        with tempfile.TemporaryDirectory() as tmp:
+            drops, calls = self._run(tmp, meetings, {"Belmont"})
+        self.assertEqual(drops, ["2026-08-05|Belmont"])
+        self.assertIn("--drop-meeting", calls[0])
+        self.assertIn("2026-08-05|Belmont", calls[0])
+        self.assertNotIn("2026-08-05|Cranbourne", calls[0])
+
+    def test_hkjc_meeting_is_never_dropped_for_having_no_au_folder(self):
+        meetings = [{"date": "2026-07-15", "venue": "HappyValley", "region": "HK"}]
+        with tempfile.TemporaryDirectory() as tmp:
+            drops, calls = self._run(tmp, meetings, set())
+        self.assertEqual(drops, [])
+        self.assertEqual(calls, [])
+
+    def test_no_duplicate_when_the_run_already_reported_it(self):
+        meetings = [{"date": "2026-08-05", "venue": "Belmont", "region": "AU"}]
+        with tempfile.TemporaryDirectory() as tmp:
+            drops, _ = self._run(tmp, meetings, {"Belmont"},
+                                 passed_drops=["2026-08-05|Belmont"])
+        self.assertEqual(drops, ["2026-08-05|Belmont"])
+
+    def test_active_meeting_is_left_alone(self):
+        meetings = [{"date": "2026-08-06", "venue": "Gosford", "region": "AU"}]
+        with tempfile.TemporaryDirectory() as tmp:
+            drops, calls = self._run(tmp, meetings, set())
+        self.assertEqual(drops, [])
+        self.assertEqual(calls, [])
+
+
+class TestResultsGiveUp(unittest.TestCase):
+    """一個永遠等唔到賽果嘅場次要有終點。
+
+    2026-08-05 Cranbourne 腰斷（同一版索引頁上其他五個場次各有 8 個開跑時間，
+    佢係 8 個橫線）。冇年齡上限嘅話佢會每晚重抽 8 版賽果頁、永遠 pending_results、
+    永遠留喺 dashboard。上限用日數而唔用「索引頁冇開跑時間」——後者實測會假陽性。
+    """
+
+    def _folder(self, day):
+        return Path(f"/tmp/{day} Cranbourne Race 1-8")
+
+    def test_same_day_and_next_day_still_wait(self):
+        # 實測 Sportsbet 當晚就寫入賽果，所以呢兩日一定唔可以放棄。
+        self.assertIsNone(S.results_overdue(self._folder("2026-08-05"),
+                                            S.date(2026, 8, 5)))
+        self.assertIsNone(S.results_overdue(self._folder("2026-08-05"),
+                                            S.date(2026, 8, 6)))
+        self.assertIsNone(S.results_overdue(self._folder("2026-08-05"),
+                                            S.date(2026, 8, 7)))
+
+    def test_gives_up_once_past_the_bound(self):
+        self.assertEqual(S.results_overdue(self._folder("2026-08-05"),
+                                           S.date(2026, 8, 8)), 3)
+        self.assertEqual(S.results_overdue(self._folder("2026-08-05"),
+                                           S.date(2026, 8, 20)), 15)
+
+    def test_future_meeting_is_never_overdue(self):
+        self.assertIsNone(S.results_overdue(self._folder("2026-08-09"),
+                                            S.date(2026, 8, 6)))
+
+    def test_unparseable_folder_name_never_triggers_archiving(self):
+        self.assertIsNone(S.results_overdue(Path("/tmp/not-a-date Cranbourne"),
+                                            S.date(2026, 8, 20)))
+
+
+class TestUnpublishedRecovery(unittest.TestCase):
+    """發佈失敗之後，下一個 run 一定要救得返。
+
+    2026-08-07 晚更把九個 08-08 場次分析齊、剪走、合併、驗證通過，之後 deploy 撞到
+    Cloudflare 25 MiB 上限失敗三次。因為兩個 mode 嘅合併名單都由「dashboard 上有乜」
+    推導，之後每個 run 都見唔到嗰九個場次 —— 08-08 早更直接報 nothing-to-do，
+    賽馬日就咁消失咗兩日。所以要問本機，唔可以問 dashboard。
+    """
+
+    def _tree(self, tmp, names, scored=True):
+        root = Path(tmp) / "AU_Racing"
+        root.mkdir(parents=True)
+        for n in names:
+            d = root / n
+            d.mkdir()
+            if scored:
+                (d / "Race_1_Auto_Analysis.md").write_text("x", encoding="utf-8")
+        return root
+
+    def _run(self, tmp, names, published, today, already=(), scored=True):
+        root = self._tree(tmp, names, scored)
+        payload = {"meetings": [{"date": k.split("|")[0], "venue": k.split("|")[1]}
+                                for k in published]}
+        with unittest.mock.patch.object(
+                S, "live_meeting_dirs", lambda: sorted(root.iterdir())):
+            return S.unpublished_local_meetings(
+                payload, [root / n for n in already], today)
+
+    def test_analysed_but_never_published_is_picked_up(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, ["2026-08-08 Randwick Race 1-10"], [],
+                            S.date(2026, 8, 8))
+        self.assertEqual([f.name for f in got], ["2026-08-08 Randwick Race 1-10"])
+
+    def test_already_published_is_left_to_the_refresh_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, ["2026-08-08 Randwick Race 1-10"],
+                            ["2026-08-08|Randwick"], S.date(2026, 8, 8))
+        self.assertEqual(got, [])
+
+    def test_already_in_this_runs_merge_list_is_not_duplicated(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, ["2026-08-08 Randwick Race 1-10"], [],
+                            S.date(2026, 8, 8),
+                            already=["2026-08-08 Randwick Race 1-10"])
+        self.assertEqual(got, [])
+
+    def test_past_meetings_are_left_to_review_and_archive(self):
+        # 過去嘅場次唔可以由呢度硬塞返上 dashboard —— 佢哋應該被覆盤同歸檔。
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, ["2026-08-05 Cranbourne Race 1-8"], [],
+                            S.date(2026, 8, 8))
+        self.assertEqual(got, [])
+
+    def test_extracted_but_unscored_is_not_treated_as_analysed(self):
+        # 得賽事頁、未評分嘅場次發佈上去會係一個空殼。
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, ["2026-08-09 Gosford Race 1-8"], [],
+                            S.date(2026, 8, 8), scored=False)
+        self.assertEqual(got, [])
+
+    def test_a_folder_whose_name_is_not_a_date_is_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, ["Archive_scratch"], [], S.date(2026, 8, 8))
+        self.assertEqual(got, [])
+
+
+class TestReviewBackfill(unittest.TestCase):
+    """發佈失敗嘅場次亦要收得到賽果。
+
+    覆盤名單本來淨係問 dashboard，理由係「錯過一晚，場次仍然掛喺 dashboard」。
+    2026-08-07 deploy 撞到 Cloudflare 上限失敗，九個 08-08 場次從來冇上過
+    dashboard —— 於是佢哋冇發佈、冇賽果、冇歸檔，三樣一次過靜咗。
+
+    ⚠️ 呢個補漏最大嘅風險係反方向：`AU_Racing` 根目錄同時係 backtest 語料庫，
+    一個掃得太闊嘅規則會把 93 個歷史場次搬入 Archive/，即係由每個 backtest
+    消失。所以下面每一道收窄都要有測試釘住。
+    """
+
+    def _root(self, tmp, spec):
+        root = Path(tmp)
+        for name, (scored, reviewed) in spec.items():
+            d = root / name
+            d.mkdir()
+            if scored:
+                (d / "Race_1_Auto_Analysis.md").write_text("x", encoding="utf-8")
+            if reviewed:
+                (d / f"{name}_Reflector_Report.md").write_text("x", encoding="utf-8")
+        return root
+
+    def _run(self, tmp, spec, review_day):
+        root = self._root(tmp, spec)
+        with unittest.mock.patch.object(
+                S, "live_meeting_dirs", lambda: sorted(root.iterdir())):
+            return [m["key"] for m in S.unreviewed_local_meetings(review_day)]
+
+    def test_picks_up_a_run_meeting_that_never_reached_the_dashboard(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, {"2026-08-08 Randwick Race 1-10": (True, False)},
+                            S.date(2026, 8, 8))
+        self.assertEqual(got, ["2026-08-08|Randwick"])
+
+    def test_old_corpus_meetings_are_never_swept_in(self):
+        # 呢個就係個 docstring 警告嘅災難：搬走語料庫。
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, {"2026-03-28 Flemington Race 1-9": (True, False),
+                                  "2026-06-01 Randwick Race 1-8": (True, False)},
+                            S.date(2026, 8, 8))
+        self.assertEqual(got, [])
+
+    def test_future_meeting_is_not_due_for_review(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, {"2026-08-09 Wagga Race 1-8": (True, False)},
+                            S.date(2026, 8, 8))
+        self.assertEqual(got, [])
+
+    def test_already_reviewed_meeting_is_not_repeated(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, {"2026-08-08 Randwick Race 1-10": (True, True)},
+                            S.date(2026, 8, 8))
+        self.assertEqual(got, [])
+
+    def test_unscored_folder_is_not_a_meeting_we_analysed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, {"2026-08-08 Randwick Race 1-10": (False, False)},
+                            S.date(2026, 8, 8))
+        self.assertEqual(got, [])
+
+    def test_backfill_window_edges(self):
+        spec = {f"2026-08-0{d} X Race 1-8": (True, False) for d in (4, 5, 8)}
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self._run(tmp, spec, S.date(2026, 8, 8))
+        # 08-05 啱啱喺 3 日窗內，08-04 出界。
+        self.assertEqual(got, ["2026-08-05|X", "2026-08-08|X"])
+
+
+class TestFillTodayTarget(unittest.TestCase):
+    """一晚俾個站拒絕，唔可以等於嗰個賽日永久流失。
+
+    2026-08-08 晚更：08-09 六個場次抽到一個，其餘五個 pending_extraction。晚更聽日
+    嘅目標係 08-10，早更淨係覆核已發佈嘅場次 —— 所以嗰五個場次冇任何後續步驟會
+    再碰。log 寫住「下一次排程再試」，但實際上冇人再試。
+    """
+
+    def _target(self, review_day, by_day, target_day=None):
+        seen = {}
+
+        def fake_index(runlog, day):
+            seen["target"] = day
+            raise S.TemporaryFailure("停喺呢度就夠 —— 我哋只驗揀咗邊日")
+
+        runlog = unittest.mock.MagicMock()
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(unittest.mock.patch.object(
+                S, "api_next_events", lambda *a, **k: object()))
+            stack.enter_context(unittest.mock.patch.object(
+                S, "events_by_day", lambda *a, **k: by_day))
+            stack.enter_context(unittest.mock.patch.object(
+                S, "fetch_date_index", fake_index))
+            with self.assertRaises(S.TemporaryFailure):
+                S.step_analyse_next_day(runlog, review_day, target_day=target_day)
+        return seen["target"]
+
+    def test_evening_still_picks_the_next_race_day(self):
+        got = self._target(S.date(2026, 8, 8),
+                           {"2026-08-09": {"Wagga": {}}, "2026-08-10": {"X": {}}})
+        self.assertEqual(got, "2026-08-09")
+
+    def test_explicit_target_wins_even_though_it_is_not_in_the_future(self):
+        # 早更補完當日 —— 呢個賽日永遠唔會喺 `> review_day` 嗰個篩選裡面。
+        got = self._target(S.date(2026, 8, 9),
+                           {"2026-08-09": {"Wagga": {}}, "2026-08-10": {"X": {}}},
+                           target_day="2026-08-09")
+        self.assertEqual(got, "2026-08-09")
+
+    def test_explicit_target_is_used_even_if_the_api_lists_nothing_for_it(self):
+        # API 冇當日資料唔應該令佢靜靜咁跳去第二日。
+        got = self._target(S.date(2026, 8, 9), {"2026-08-10": {"X": {}}},
+                           target_day="2026-08-09")
+        self.assertEqual(got, "2026-08-09")
+
+
+class TestLiveSnapshotCacheBusting(unittest.TestCase):
+    """讀 live snapshot 一定要繞開 CDN cache。
+
+    2026-08-09 實測：deploy 成功之後即刻讀，連續兩次都攞到上一版
+    （`verify_live` 報 stale=True，第三次先追上）。`verify_live` 有 poll 頂得住，
+    但同一個下載 function 亦係**下一份發佈嘅底** —— 攞到舊底就會砌一份少咗場次
+    嘅新 snapshot 出去，而且冇任何嘢會投訴。
+    """
+
+    def _capture(self, tmp):
+        seen = []
+
+        class _Resp:
+            def __enter__(self_inner): return self_inner
+            def __exit__(self_inner, *a): return False
+            def read(self_inner): return b'{"meetings": []}'
+
+        def fake_urlopen(request, timeout=None):
+            seen.append(request)
+            return _Resp()
+
+        runlog = unittest.mock.MagicMock()
+        with unittest.mock.patch.object(S.urllib.request, "urlopen", fake_urlopen):
+            S.download_live_snapshot(runlog, Path(tmp) / "live.json")
+        return seen
+
+    def test_url_carries_a_cache_buster(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            seen = self._capture(tmp)
+        self.assertEqual(len(seen), 1)
+        self.assertIn("?cb=", seen[0].full_url)
+
+    def test_no_cache_headers_are_sent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            seen = self._capture(tmp)
+        headers = {k.lower(): v for k, v in seen[0].headers.items()}
+        self.assertIn("no-cache", headers.get("cache-control", ""))
+        self.assertEqual(headers.get("Pragma".lower()), "no-cache")
+
+    def test_successive_calls_use_different_cache_busters(self):
+        # verify_live 嘅 poll 靠每次一條新 URL 先真係問到新嘢；重用同一條
+        # 等於再攞返同一個 edge cache entry，poll 幾多次都冇用。
+        with tempfile.TemporaryDirectory() as tmp:
+            first = self._capture(tmp)[0].full_url
+            for _ in range(200000):
+                pass
+            second = self._capture(tmp)[0].full_url
+        self.assertNotEqual(first, second)

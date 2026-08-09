@@ -14,6 +14,11 @@ from statistics import mean
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 sys.path.append(str(SCRIPT_DIR))
+sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "shared_racing"))
+
+from eval_metrics import race_metrics, summarize_races  # noqa: E402
+from io_utils import write_csv_atomic, write_json_atomic  # noqa: E402
 
 from au_archive_calibrator import (  # noqa: E402
     ARCHIVE_ROOT,
@@ -34,11 +39,11 @@ CACHE_DIR = Path("/private/tmp/au_wong_choi_ml_cache")
 DATASET_CSV = CACHE_DIR / "au_labelled_horse_rows.csv"
 MANIFEST_JSON = CACHE_DIR / "manifest.json"
 OUTPUT_MD = PROJECT_ROOT / "2026-06-06 AU Cached Walkforward ML.md"
+CACHE_SCHEMA_VERSION = 5
 
 BASE_FEATURES = (
-    "ability_score",
     "mx_stability",
-    "mx_sectional",
+    "mx_pace_perf",
     "mx_race_shape",
     "mx_jockey_trainer",
     "mx_class_weight",
@@ -50,7 +55,7 @@ WET_FEATURES = (
     "wet_flag",
     "wet_track",
     "wet_stability",
-    "wet_sectional",
+    "wet_pace_perf",
     "wet_class_weight",
     "wet_race_shape",
 )
@@ -59,12 +64,12 @@ SOFT_HEAVY_FEATURES = (
     "soft_flag",
     "soft_track",
     "soft_stability",
-    "soft_sectional",
+    "soft_pace_perf",
     "soft_race_shape",
     "heavy_flag",
     "heavy_track",
     "heavy_stability",
-    "heavy_sectional",
+    "heavy_pace_perf",
     "heavy_race_shape",
 )
 
@@ -74,6 +79,15 @@ def as_float(value, default: float = 0.0) -> float:
         return float(value)
     except (TypeError, ValueError):
         return default
+
+
+def optional_float(value) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def is_wet(condition: str) -> bool:
@@ -102,10 +116,14 @@ def meeting_track_from_name(meeting_dir: Path) -> str:
     return name.strip()
 
 
-def iter_scoring_race_rows(historical_results) -> tuple[list[dict], int]:
+def iter_scoring_race_rows(
+    historical_results,
+    archive_root: Path = ARCHIVE_ROOT,
+) -> tuple[list[dict], int, list[dict]]:
     rows: list[dict] = []
     skipped_races = 0
-    meeting_dirs = sorted(path for path in ARCHIVE_ROOT.iterdir() if path.is_dir())
+    alignment_rejections: list[dict] = []
+    meeting_dirs = sorted(path for path in archive_root.iterdir() if path.is_dir())
     for idx, meeting_dir in enumerate(meeting_dirs, 1):
         if idx == 1 or idx % 10 == 0:
             print(f"Scanning scoring CSV cache: {idx}/{len(meeting_dirs)} {meeting_dir.name}", flush=True)
@@ -113,17 +131,33 @@ def iter_scoring_race_rows(historical_results) -> tuple[list[dict], int]:
         meeting_track = meeting_track_from_name(meeting_dir)
         if not meeting_date or not meeting_track:
             continue
+        meeting_scoring_path = meeting_dir / "Meeting_Auto_Scoring.csv"
+        scoring_groups: dict[int, list[dict]] = defaultdict(list)
+        if meeting_scoring_path.exists():
+            for scoring_row in load_scoring_rows(meeting_scoring_path):
+                race_no = parse_int(scoring_row.get("race_number"))
+                if race_no:
+                    scoring_groups[race_no].append(scoring_row)
         for scoring_path in sorted(meeting_dir.glob("Race_*_Auto_Scoring.csv")):
             race_no = parse_int(scoring_path.stem)
-            if not race_no:
-                skipped_races += 1
-                continue
+            if race_no and race_no not in scoring_groups:
+                scoring_groups[race_no].extend(load_scoring_rows(scoring_path))
+        for race_no, scoring_rows in sorted(scoring_groups.items()):
             result_rows = choose_track_rows(historical_results.get((meeting_date, race_no), []), meeting_track)
             if not result_rows:
                 skipped_races += 1
+                alignment_rejections.append(
+                    {
+                        "meeting": meeting_dir.name,
+                        "race": race_no,
+                        "reason": "no_result_rows_for_meeting_track",
+                        "scoring_rows": len(scoring_rows),
+                        "result_rows": 0,
+                        "matched_rows": 0,
+                    }
+                )
                 continue
             race_lookup = {row["horse_slug"]: row for row in result_rows}
-            scoring_rows = load_scoring_rows(scoring_path)
             race_rows = []
             for scoring_row in scoring_rows:
                 result_row = race_lookup.get(normalize_horse_name(scoring_row.get("horse_name", "")))
@@ -135,13 +169,23 @@ def iter_scoring_race_rows(historical_results) -> tuple[list[dict], int]:
                         "meeting": meeting_dir.name,
                         "track": meeting_track,
                         "race": race_no,
-                        "race_class": "",
+                        "race_class": scoring_row.get("race_class", ""),
                         "condition": result_row.get("condition", ""),
                         "condition_bucket": result_row.get("condition", ""),
                         "horse_number": scoring_row["horse_number"],
                         "horse_name": scoring_row["horse_name"],
                         "actual_pos": int(result_row["pos"]),
+                        # Outcome-only labels for retrospective slicing.  These
+                        # must never be admitted to BASE_FEATURES/model inputs.
+                        "result_sp_label": result_row.get("sp"),
+                        "result_barrier_label": result_row.get("barrier"),
                         "ability_score": scoring_row["ability_score"],
+                        "pure_7d_score": (
+                            scoring_row.get("pure_7d_score")
+                            if scoring_row.get("pure_7d_score") is not None
+                            else scoring_row["ability_score"]
+                        ),
+                        "wet_form_feature": scoring_row.get("wet_form_feature", 0.0),
                         "rank_score": scoring_row["rank_score"],
                         "feature_scores": scoring_row.get("feature_scores") or {},
                         "matrix_scores": scoring_row.get("matrix_scores") or {},
@@ -149,21 +193,88 @@ def iter_scoring_race_rows(historical_results) -> tuple[list[dict], int]:
                 )
             if len(race_rows) < 4 or sum(1 for row in race_rows if row["actual_pos"] <= 3) < 3:
                 skipped_races += 1
+                alignment_rejections.append(
+                    {
+                        "meeting": meeting_dir.name,
+                        "race": race_no,
+                        "reason": (
+                            "zero_horse_overlap"
+                            if not race_rows
+                            else "insufficient_horse_or_top3_overlap"
+                        ),
+                        "scoring_rows": len(scoring_rows),
+                        "result_rows": len(result_rows),
+                        "matched_rows": len(race_rows),
+                    }
+                )
                 continue
             rows.extend(race_rows)
-    return rows, skipped_races
+    return rows, skipped_races, alignment_rejections
 
 
-def materialize_dataset(rebuild: bool = False) -> list[dict]:
-    if DATASET_CSV.exists() and not rebuild:
-        return load_dataset(DATASET_CSV)
+def _file_signature(path: Path) -> dict:
+    if not path.exists():
+        return {"exists": False, "bytes": 0, "mtime_ns": None}
+    stat = path.stat()
+    return {
+        "exists": True,
+        "bytes": stat.st_size,
+        "mtime_ns": stat.st_mtime_ns,
+    }
 
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+def _archive_signature(archive_root: Path) -> dict:
+    paths = sorted(archive_root.glob("*/Meeting_Auto_Scoring.csv"))
+    if not paths:
+        paths = sorted(archive_root.glob("*/Race_*_Auto_Scoring.csv"))
+    stats = [path.stat() for path in paths]
+    return {
+        "files": len(stats),
+        "bytes": sum(stat.st_size for stat in stats),
+        "latest_mtime_ns": max((stat.st_mtime_ns for stat in stats), default=None),
+    }
+
+
+def materialize_dataset(
+    rebuild: bool = False,
+    *,
+    archive_root: Path = ARCHIVE_ROOT,
+    historical_results_csv: Path = HISTORICAL_RESULTS_CSV,
+    cache_dir: Path = CACHE_DIR,
+) -> list[dict]:
+    archive_root = archive_root.resolve()
+    historical_results_csv = historical_results_csv.resolve()
+    cache_dir = cache_dir.resolve()
+    dataset_csv = cache_dir / DATASET_CSV.name
+    manifest_json = cache_dir / MANIFEST_JSON.name
+    archive_signature = _archive_signature(archive_root)
+    results_signature = _file_signature(historical_results_csv)
+    manifest = {}
+    if manifest_json.exists():
+        try:
+            manifest = json.loads(manifest_json.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            manifest = {}
+    cache_is_current = (
+        dataset_csv.exists()
+        and manifest.get("cache_schema_version") == CACHE_SCHEMA_VERSION
+        and manifest.get("archive_root") == str(archive_root)
+        and manifest.get("historical_results_csv") == str(historical_results_csv)
+        and manifest.get("archive_signature") == archive_signature
+        and manifest.get("historical_results_signature") == results_signature
+    )
+    if cache_is_current and not rebuild:
+        return load_dataset(dataset_csv)
+
+    cache_dir.mkdir(parents=True, exist_ok=True)
     print("Loading historical results labels...", flush=True)
-    historical_results = load_historical_results(HISTORICAL_RESULTS_CSV)
+    historical_results = load_historical_results(historical_results_csv)
     print(f"Historical race labels loaded: {len(historical_results)} date/race keys", flush=True)
     rows: list[dict] = []
-    source_rows, skipped_races = iter_scoring_race_rows(historical_results)
+    source_rows, skipped_races, alignment_rejections = iter_scoring_race_rows(
+        historical_results,
+        archive_root,
+    )
 
     for race_rows in group_source_races(source_rows):
         field_count = len(race_rows)
@@ -186,9 +297,13 @@ def materialize_dataset(rebuild: bool = False) -> list[dict]:
                 "horse_number": source.get("horse_number", ""),
                 "horse_name": source.get("horse_name", ""),
                 "actual_pos": source.get("actual_pos", ""),
+                "result_sp_label": source.get("result_sp_label"),
+                "result_barrier_label": source.get("result_barrier_label"),
                 "is_top3": 1 if int(source.get("actual_pos") or 99) <= 3 else 0,
                 "is_winner": 1 if int(source.get("actual_pos") or 99) == 1 else 0,
                 "ability_score": source.get("ability_score", 0.0),
+                "pure_7d_score": source.get("pure_7d_score", source.get("ability_score", 0.0)),
+                "wet_form_feature": source.get("wet_form_feature", 0.0),
                 "rank_score": source.get("rank_score", source.get("ability_score", 0.0)),
                 "wet_flag": 1 if wet else 0,
                 "soft_flag": 1 if soft else 0,
@@ -205,20 +320,20 @@ def materialize_dataset(rebuild: bool = False) -> list[dict]:
             rows.append(row)
 
     fieldnames = list(rows[0].keys()) if rows else []
-    with DATASET_CSV.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
+    write_csv_atomic(dataset_csv, rows, fieldnames)
 
     manifest = {
-        "archive_root": str(ARCHIVE_ROOT),
-        "historical_results_csv": str(HISTORICAL_RESULTS_CSV),
-        "historical_results_mtime": HISTORICAL_RESULTS_CSV.stat().st_mtime if HISTORICAL_RESULTS_CSV.exists() else None,
+        "cache_schema_version": CACHE_SCHEMA_VERSION,
+        "archive_root": str(archive_root),
+        "historical_results_csv": str(historical_results_csv),
+        "archive_signature": archive_signature,
+        "historical_results_signature": results_signature,
         "rows": len(rows),
         "races": len({(row["meeting"], row["race"]) for row in rows}),
         "skipped_races": skipped_races,
+        "alignment_rejections": alignment_rejections,
     }
-    MANIFEST_JSON.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_json_atomic(manifest_json, manifest)
     return rows
 
 
@@ -239,6 +354,7 @@ def load_dataset(path: Path) -> list[dict]:
                 "field_count",
                 "horse_number",
                 "actual_pos",
+                "result_barrier_label",
                 "is_top3",
                 "is_winner",
                 "wet_flag",
@@ -248,6 +364,8 @@ def load_dataset(path: Path) -> list[dict]:
                 row[key] = int(as_float(row.get(key), 0))
             for key in (
                 "ability_score",
+                "pure_7d_score",
+                "wet_form_feature",
                 "rank_score",
                 *[f"mx_{m}" for m in MATRIX_KEYS],
                 *[f"wet_{m}" for m in MATRIX_KEYS],
@@ -259,6 +377,7 @@ def load_dataset(path: Path) -> list[dict]:
                     row[key] = as_float(row.get("readiness_score"), 60.0)
                 if key in row:
                     row[key] = as_float(row.get(key), 60.0)
+            row["result_sp_label"] = optional_float(row.get("result_sp_label"))
             rows.append(row)
         return rows
 
@@ -271,35 +390,41 @@ def group_races(rows: list[dict]) -> list[list[dict]]:
     return sorted(races, key=lambda race: (race[0]["date"], race[0]["meeting"], race[0]["race"]))
 
 
-def metrics_for_races(races: list[list[dict]], score_key: str = "_score") -> dict:
-    bucket = Counter()
-    top3_hits = 0
-    top3_slots = 0
+def race_eval_rows(races: list[list[dict]], score_key: str = "_score") -> list[dict]:
+    """Canonical per-race metrics (shared_racing.eval_metrics) for cached rows."""
+    eval_rows = []
     for race in races:
         ranked = sorted(race, key=lambda row: (-as_float(row[score_key]), int(row["horse_number"])))
-        top3 = ranked[:3]
-        hits = sum(1 for row in top3 if row["actual_pos"] <= 3)
-        bucket["races"] += 1
-        bucket[f"{hits}hit"] += 1
-        bucket["top3_hits"] += hits
-        bucket["top3_slots"] += len(top3)
-        bucket["winner_in_top3"] += 1 if any(row["actual_pos"] == 1 for row in top3) else 0
-        bucket["top1_wins"] += 1 if ranked and ranked[0]["actual_pos"] == 1 else 0
-        bucket["gold"] += 1 if hits == 3 else 0
-        bucket["good"] += 1 if hits >= 2 else 0
-        bucket["pass"] += 1 if hits >= 1 else 0
-    races_n = max(1, bucket["races"])
-    slots = max(1, bucket["top3_slots"])
+        picks = [int(row["horse_number"]) for row in ranked]
+        actual_pos = {int(row["horse_number"]): int(row["actual_pos"]) for row in ranked}
+        actual_top3 = [horse for horse, pos in actual_pos.items() if pos <= 3]
+        eval_rows.append(race_metrics(picks, actual_top3, actual_pos=actual_pos))
+    return eval_rows
+
+
+def metrics_for_races(races: list[list[dict]], score_key: str = "_score") -> dict:
+    summary = summarize_races(race_eval_rows(races, score_key))
+    counts = summary["counts"]
+    competitiveness = summary["competitiveness"]
+    races_n = max(1, summary["races"])
     return {
-        "races": bucket["races"],
-        "gold": bucket["gold"],
-        "good": bucket["good"],
-        "pass": bucket["pass"],
-        "miss": bucket["0hit"],
-        "one_hit": bucket["1hit"],
-        "top3_precision": bucket["top3_hits"] / slots,
-        "winner_in_top3": bucket["winner_in_top3"] / races_n,
-        "top1_win": bucket["top1_wins"] / races_n,
+        "races": summary["races"],
+        "gold": counts["gold"],
+        # 舊定義（頭三揀全部上名）。新 `gold` 係捕捉率，見 eval_metrics.race_metrics。
+        "gold_strict": counts["gold_strict"],
+        "good": counts["good_positional"],
+        "pass": counts["pass"],
+        "miss": summary["hit_distribution"]["0hit"],
+        "one_hit": summary["hit_distribution"]["1hit"],
+        "top3_precision": summary["top3_precision"],
+        "winner_in_top3": counts["winner_in_top3"] / races_n,
+        "top1_win": counts["champion"] / races_n,
+        # canonical additions (same ruler as HKJC reports)
+        "good_positional": counts["good_positional"],
+        "top3_all_within_top4": competitiveness["top3_all_within_top4"]["count"],
+        "top3_all_within_top4_rate": competitiveness["top3_all_within_top4"]["rate"],
+        "exclusive_labels": summary["exclusive_labels"],
+        "mrr": summary["mrr"],
     }
 
 
@@ -424,7 +549,9 @@ def fmt_metrics(metrics: dict) -> str:
     return (
         f"{metrics['gold']} Gold / {metrics['good']} Good / {metrics['pass']} Pass / "
         f"{metrics['one_hit']} 1H / {metrics['miss']} Miss / "
-        f"Top3 {metrics['top3_precision'] * 100:.1f}% / W-in-T3 {metrics['winner_in_top3'] * 100:.1f}%"
+        f"T3-in-T4 {metrics['top3_all_within_top4']} / "
+        f"Top3 {metrics['top3_precision'] * 100:.1f}% / "
+        f"W-in-T3 {metrics['winner_in_top3'] * 100:.1f}%"
     )
 
 
@@ -465,6 +592,8 @@ def render_report(
     top_split = sorted(split_wet_weights.items(), key=lambda item: abs(item[1]), reverse=True)[:14]
     gate_passed = (
         wet["top3_precision"] > baseline["top3_precision"]
+        and wet["good_positional"] >= baseline["good_positional"]
+        and wet["top3_all_within_top4"] >= baseline["top3_all_within_top4"]
         and wet["winner_in_top3"] >= baseline["winner_in_top3"]
         and wet["miss"] <= baseline["miss"]
     )
@@ -524,7 +653,7 @@ def render_report(
         "## Recommendation",
         "",
         "- Keep live ranking on `ability_score` only.",
-        "- Treat wet track as a 7D interaction first: dynamic emphasis inside `track`, `stability`, `sectional`, and `race_shape` when condition is Soft/Heavy.",
+        "- Treat wet track as a matrix interaction first: dynamic emphasis inside `track`, `stability`, `pace_perf`, and `race_shape` when condition is Soft/Heavy.",
         "- Split Soft and Heavy in diagnostics and candidate tuning; Heavy should require stronger proof because archive sample size is much smaller.",
         "- Only promote an 8th dimension if the wet-only ablation beats 7D on out-of-sample races and at least the major venue buckets.",
     ])
@@ -535,11 +664,19 @@ def render_report(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build cached AU ML dataset and run date walk-forward diagnostics.")
     parser.add_argument("--rebuild-cache", action="store_true")
+    parser.add_argument("--archive-root", type=Path, default=ARCHIVE_ROOT)
+    parser.add_argument("--results-csv", type=Path, default=HISTORICAL_RESULTS_CSV)
+    parser.add_argument("--cache-dir", type=Path, default=CACHE_DIR)
     parser.add_argument("--output", type=Path, default=OUTPUT_MD)
     parser.add_argument("--seed", type=int, default=20260606)
     args = parser.parse_args()
 
-    rows = materialize_dataset(rebuild=args.rebuild_cache)
+    rows = materialize_dataset(
+        rebuild=args.rebuild_cache,
+        archive_root=args.archive_root,
+        historical_results_csv=args.results_csv,
+        cache_dir=args.cache_dir,
+    )
     races = group_races(rows)
     if not races:
         raise SystemExit("No labelled AU races available for ML.")

@@ -5,8 +5,11 @@ from collections import defaultdict
 
 from tennis_wc.database.db import get_connection
 from tennis_wc.features.elo import elo_probability
+from tennis_wc.ingestion.ingest_sackmann import HISTORY_PROVIDERS
 from tennis_wc.modelling.calibration import elo_k_factor
 from tennis_wc.ingestion.raw_response_store import store_raw_response, utc_now
+
+_PROVIDER_PLACEHOLDERS = ",".join("?" for _ in HISTORY_PROVIDERS)
 
 
 def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float | None = None) -> dict:
@@ -25,12 +28,13 @@ def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float | None = 
         rows = [
             dict(row)
             for row in conn.execute(
-                """
+                f"""
                 SELECT provider_match_id, player_id, opponent_id, match_date, surface
                 FROM player_match_history
-                WHERE source_provider = 'jeff_sackmann' AND won = 1
+                WHERE source_provider IN ({_PROVIDER_PLACEHOLDERS}) AND won = 1
                 ORDER BY match_date, provider_match_id
-                """
+                """,
+                HISTORY_PROVIDERS,
             ).fetchall()
         ]
 
@@ -84,20 +88,20 @@ def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float | None = 
             winner_match_id = row["provider_match_id"]
             loser_match_id = winner_match_id.removesuffix("-winner") + "-loser"
             conn.execute(
-                """
+                f"""
                 UPDATE player_match_history
                 SET opponent_elo = ?
-                WHERE source_provider = 'jeff_sackmann' AND provider_match_id = ?
+                WHERE source_provider IN ({_PROVIDER_PLACEHOLDERS}) AND provider_match_id = ?
                 """,
-                (loser_pre, winner_match_id),
+                (loser_pre, *HISTORY_PROVIDERS, winner_match_id),
             )
             conn.execute(
-                """
+                f"""
                 UPDATE player_match_history
                 SET opponent_elo = ?
-                WHERE source_provider = 'jeff_sackmann' AND provider_match_id = ?
+                WHERE source_provider IN ({_PROVIDER_PLACEHOLDERS}) AND provider_match_id = ?
                 """,
-                (winner_pre, loser_match_id),
+                (winner_pre, *HISTORY_PROVIDERS, loser_match_id),
             )
             matches_by_player[winner_id] += 1
             matches_by_player[loser_id] += 1

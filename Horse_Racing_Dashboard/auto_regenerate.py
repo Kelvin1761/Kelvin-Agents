@@ -18,8 +18,16 @@ from watchdog.events import FileSystemEventHandler
 
 # Paths
 DASHBOARD_DIR = Path(__file__).resolve().parent
-ANTIGRAVITY_ROOT = DASHBOARD_DIR.parent
-GENERATE_SCRIPT = DASHBOARD_DIR / "generate_static.py"
+PROJECT_ROOT = DASHBOARD_DIR.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import AU_RACING, HORSE_RACE_ANALYSIS, au_racing_is_relocated
+
+ANALYSIS_ROOT = HORSE_RACE_ANALYSIS
+# AU moved to local disk (CloudStorage is unreadable from launchd), so it is no
+# longer a child of HORSE_RACE_ANALYSIS and needs watching in its own right.
+WATCH_ROOTS = [ANALYSIS_ROOT] + ([AU_RACING] if au_racing_is_relocated() else [])
+GENERATE_SCRIPT = DASHBOARD_DIR / "build_test_dashboard.py"
 PID_FILE = DASHBOARD_DIR / "logs" / "auto_regenerate.pid"
 
 logging.basicConfig(
@@ -31,19 +39,28 @@ logger = logging.getLogger(__name__)
 
 
 class AnalysisFileHandler(FileSystemEventHandler):
-    """Watches for *Analysis*.txt file changes and triggers regeneration."""
+    """Watch analysis and racecard metadata used by the dashboard build."""
 
     def __init__(self):
         super().__init__()
         self._last_trigger = 0
         self._debounce_seconds = 5  # Wait for file writes to settle
 
-    def _is_analysis_file(self, path: str) -> bool:
+    def _is_dashboard_source(self, path: str) -> bool:
         p = Path(path)
-        return (
-            p.suffix in (".txt", ".md")
-            and "Analysis" in p.name
-            and not p.name.startswith(".")
+        if p.name.startswith("."):
+            return False
+        if p.suffix not in (".txt", ".md", ".json"):
+            return False
+        return any(
+            marker in p.name
+            for marker in (
+                "Analysis",
+                "Racecard",
+                "排位表",
+                "全日出賽馬匹資料",
+                "MC_Results",
+            )
         )
 
     def _debounced_regenerate(self, event_path: str):
@@ -54,16 +71,16 @@ class AnalysisFileHandler(FileSystemEventHandler):
             regenerate()
 
     def on_created(self, event):
-        if not event.is_directory and self._is_analysis_file(event.src_path):
+        if not event.is_directory and self._is_dashboard_source(event.src_path):
             self._debounced_regenerate(event.src_path)
 
     def on_modified(self, event):
-        if not event.is_directory and self._is_analysis_file(event.src_path):
+        if not event.is_directory and self._is_dashboard_source(event.src_path):
             self._debounced_regenerate(event.src_path)
 
 
 def regenerate():
-    """Run generate_static.py to rebuild Open Dashboard.html."""
+    """Rebuild the active-meeting test dashboard from the live snapshot."""
     logger.info("Regenerating static dashboard...")
     try:
         result = subprocess.run(
@@ -71,7 +88,7 @@ def regenerate():
             cwd=str(DASHBOARD_DIR),
             capture_output=True,
             text=True,
-            timeout=60,
+            timeout=90,
         )
         if result.returncode == 0:
             logger.info("Dashboard regenerated successfully")
@@ -103,15 +120,27 @@ def main():
     signal.signal(signal.SIGTERM, cleanup_pid)
     signal.signal(signal.SIGINT, cleanup_pid)
 
-    watch_path = str(ANTIGRAVITY_ROOT)
-    logger.info(f"Watching: {watch_path}")
     logger.info("Will regenerate Open Dashboard.html when analysis files change")
 
     # Generate once on startup to ensure dashboard is current
     regenerate()
 
     observer = Observer()
-    observer.schedule(AnalysisFileHandler(), watch_path, recursive=True)
+    handler = AnalysisFileHandler()
+    watched = []
+    for root in WATCH_ROOTS:
+        try:
+            observer.schedule(handler, str(root), recursive=True)
+            watched.append(str(root))
+        except OSError as exc:
+            # An unmounted/unreadable Drive root must not stop us watching the
+            # local AU root, which is the one that actually changes daily.
+            logger.error(f"Cannot watch {root}: {exc}")
+    if not watched:
+        logger.error("No watchable analysis roots; exiting")
+        cleanup_pid()
+        return
+    logger.info(f"Watching: {', '.join(watched)}")
     observer.daemon = True
     observer.start()
 

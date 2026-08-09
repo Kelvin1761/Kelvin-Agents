@@ -15,8 +15,11 @@
 #### 第二部分：馬匹資料 (Horse Info)
 馬號: 1
 馬名: 浪漫勇士
+英文馬名: ROMANTIC WARRIOR
 賽績: 111111
 烙號: E114
+HKJC馬匹ID: HK_2020_E114
+官方馬匹資料: https://racing.hkjc.com/zh-hk/local/information/horse?horseid=HK_2020_E114
 負磅: 126
 騎師: 麥道朗
 檔位: 5

@@ -1,0 +1,13 @@
+{
+  "name": "wongchoi-dashboard-deploy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pins wrangler for the Cloudflare Pages deploy. Without this pin, deploy.sh runs `npx wrangler` unpinned and every machine silently pulls whatever version is latest that day — which is how a deploy breaks on the Windows box while the Mac keeps working.",
+  "scripts": {
+    "test": "node tests/test_cloudflare_functions.mjs && node tests/test_static_template.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "4.86.0"
+  }
+}

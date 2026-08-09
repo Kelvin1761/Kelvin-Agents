@@ -83,7 +83,7 @@ def failure_tags(delta_map: dict[str, float], winner_rank: int, market_rank: int
     for key in MATRIX_KEYS:
         if delta_map[key] >= 2.0:
             tags.append(f"{MATRIX_LABELS[key]}低估")
-    for key in ("sectional", "race_shape", "jockey_trainer"):
+    for key in ("pace_perf", "race_shape", "jockey_trainer"):
         if delta_map[key] <= -2.0:
             tags.append(f"{MATRIX_LABELS[key]}可能過信")
     if winner_rank <= 6:

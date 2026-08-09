@@ -17,13 +17,30 @@ try:
 except ImportError:  # pragma: no cover - Python < 3.9 fallback
     ZoneInfo = None
 
-
 PROJECT_DIR = Path(__file__).resolve().parents[1]
-ANTIGRAVITY_DIR = PROJECT_DIR.parent
+SRC_DIR = PROJECT_DIR / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+from tennis_wc.pipeline_readiness import analysis_retry_reasons
+
+
+# Engine runs from local disk; analysis/archive folders stay on Google Drive
+# so Kelvin keeps reading reports where he always has. Falls back to the
+# repo parent when the override is unset or the Drive mount is unavailable.
+_OUTPUT_ROOT_OVERRIDE = os.environ.get("TENNIS_ANALYSIS_OUTPUT_ROOT")
+if _OUTPUT_ROOT_OVERRIDE and Path(_OUTPUT_ROOT_OVERRIDE).is_dir():
+    ANTIGRAVITY_DIR = Path(_OUTPUT_ROOT_OVERRIDE)
+else:
+    ANTIGRAVITY_DIR = PROJECT_DIR.parent
 ARCHIVE_DIR = ANTIGRAVITY_DIR / "Archieve Tennis Analysis"
 LOG_DIR = PROJECT_DIR / "data" / "logs"
 PYTHON = PROJECT_DIR / ".venv" / "bin" / "python"
 TIMEZONE = "Australia/Sydney"
+
+
+class TemporaryDataUnavailable(RuntimeError):
+    """The scheduled run needs live data and should be retried later."""
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -32,6 +49,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--skip-analysis", action="store_true", help="Skip tomorrow run-daily.")
     parser.add_argument("--skip-review", action="store_true", help="Skip yesterday review/archive.")
     parser.add_argument("--no-archive", action="store_true", help="Review yesterday but do not move the folder.")
+    parser.add_argument(
+        "--refresh-today",
+        action="store_true",
+        help="Same-day mode: re-run run-daily for TODAY only (no review, no archive). "
+             "The 20:00 job analyses tomorrow against a book Sportsbet has barely "
+             "opened; this is the morning pass that rebuilds the card once the day's "
+             "matches are actually priced.",
+    )
     args = parser.parse_args(argv)
 
     LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -46,9 +71,29 @@ def main(argv: list[str] | None = None) -> int:
         today = date.fromisoformat(args.today) if args.today else local_today()
         yesterday = today - timedelta(days=1)
         tomorrow = today + timedelta(days=1)
+
+        if args.refresh_today:
+            log(f"Starting SAME-DAY refresh for {today} (no review, no archive).")
+            try:
+                ensure_live_network()
+                run_cli("init-db")
+                analyse_next_day(today.isoformat())
+            except subprocess.CalledProcessError as exc:
+                log(f"Command failed with exit code {exc.returncode}: {' '.join(exc.cmd)}")
+                return exc.returncode or 1
+            except TemporaryDataUnavailable as exc:
+                log(f"TEMPORARY DATA FAILURE: {exc}")
+                return 75
+            except Exception as exc:  # noqa: BLE001
+                log(f"Same-day refresh failed: {exc}")
+                return 1
+            log("Same-day refresh complete.")
+            return 0
+
         log(f"Starting scheduled workflow. today={today} review={yesterday} analysis={tomorrow}")
 
         try:
+            ensure_live_network()
             run_cli("init-db")
             if not args.skip_review:
                 review_payload = review_previous_day(yesterday.isoformat())
@@ -56,9 +101,20 @@ def main(argv: list[str] | None = None) -> int:
                     archive_previous_day(yesterday.isoformat(), review_payload)
             if not args.skip_analysis:
                 analyse_next_day(tomorrow.isoformat())
+            # Sunday: emit the weekly validation review into today's folder.
+            # weekday() == 6 is Sunday; guard so a bad review never fails the run.
+            if today.weekday() == 6:
+                try:
+                    run_cli("weekly-review", "--date", today.isoformat())
+                    log("Weekly review written.")
+                except Exception as exc:  # noqa: BLE001
+                    log(f"Weekly review skipped: {exc}")
         except subprocess.CalledProcessError as exc:
             log(f"Command failed with exit code {exc.returncode}: {' '.join(exc.cmd)}")
             return exc.returncode or 1
+        except TemporaryDataUnavailable as exc:
+            log(f"TEMPORARY DATA FAILURE: {exc}")
+            return 75
         except Exception as exc:
             log(f"Workflow failed: {exc}")
             return 1
@@ -71,6 +127,18 @@ def local_today() -> date:
     if ZoneInfo is not None:
         return datetime.now(ZoneInfo(TIMEZONE)).date()
     return datetime.now().date()
+
+
+def ensure_live_network() -> None:
+    """Fail before creating misleading reports when the task has no network."""
+    payload = run_cli_json("network-check")
+    diagnosis = str(payload.get("diagnosis") or "unknown")
+    if diagnosis != "network_ready":
+        raise TemporaryDataUnavailable(
+            f"live network preflight failed ({diagnosis}); rerun the scheduled "
+            "script with host network access"
+        )
+    log("Live network preflight passed.")
 
 
 def review_previous_day(match_date: str) -> dict:
@@ -101,10 +169,22 @@ def analyse_next_day(match_date: str) -> None:
         sources = ", ".join(str(err.get("source", "?")) for err in source_errors)
         log(f"WARNING: 0 matches analysed because data sources failed: {sources}. Details: {compact_json(source_errors)}")
 
-    # Store the generated recommendations for tomorrow so the next review can settle them.
-    clv = run_cli_json("sync-clv-tracker", "--date", match_date)
-    combos = run_cli_json("sync-combo-tracker", "--date", match_date)
-    log(f"Trackers synced. clv={compact_json(clv)} combo={compact_json(combos)}")
+    # run-daily owns tracker sync and post-success dashboard deployment.  Keep
+    # this wrapper scheduling-only so manual and scheduled analysis behave the
+    # same and a scheduled run cannot sync or deploy twice.
+    tracker_sync = payload.get("tracker_sync") or {}
+    deploy = payload.get("cloudflare_deploy") or {}
+    log(
+        "Pipeline-owned post-run steps complete. "
+        f"trackers={compact_json(tracker_sync)} "
+        f"dashboard={compact_json(deploy)}"
+    )
+
+    retry_reasons = analysis_retry_reasons(payload)
+    if retry_reasons:
+        raise TemporaryDataUnavailable(
+            f"analysis for {match_date} is incomplete: {'; '.join(retry_reasons)}"
+        )
 
 
 def archive_previous_day(match_date: str, review_payload: dict) -> None:
@@ -206,11 +286,12 @@ def run_cli(*args: str) -> str:
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        check=True,
+        check=False,
     )
     output = completed.stdout.strip()
     if output:
         log(output)
+    completed.check_returncode()
     return output
 
 

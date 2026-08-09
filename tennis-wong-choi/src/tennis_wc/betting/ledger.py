@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -183,7 +184,7 @@ def sync_clv_tracker_for_date(match_date: str) -> dict:
                     mp.model_status = 'DERIVED_MODEL'
                     AND mp.decision = 'MODEL_REVIEW'
                     AND COALESCE(mp.edge, 0) > 0
-                    AND mp.market_key IN ('total_sets', 'both_players_to_win_a_set_yes_no', 'set_handicap', 'game_handicap', 'to_win_1st_set', 'winner_related')
+                    AND mp.market_key IN ('total_sets', 'both_players_to_win_a_set_yes_no', 'set_handicap', 'game_handicap', 'to_win_1st_set', 'winner_related', 'set_betting')
                 )
               )
             """,
@@ -403,6 +404,61 @@ def settle_bets_for_date(match_date: str, auto_refresh: bool = True) -> dict:
     }
 
 
+def pending_settlement_dates(before_date: str, lookback_days: int = 30) -> list[str]:
+    """Distinct past match dates that still hold PENDING tracker/ledger rows."""
+    from datetime import date, timedelta
+
+    _ensure_tracking_schema()
+    cutoff = (date.fromisoformat(before_date) - timedelta(days=lookback_days)).isoformat()
+    with get_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT DISTINCT match_date FROM (
+                SELECT match_date FROM clv_tracker WHERE result_status = 'PENDING'
+                UNION SELECT match_date FROM combo_tracker WHERE result_status = 'PENDING'
+                UNION SELECT match_date FROM prop_tracker WHERE result_status = 'PENDING'
+                UNION SELECT m.match_date
+                FROM bet_ledger b JOIN matches m ON m.id = b.match_id
+                WHERE b.status = 'PENDING'
+            )
+            WHERE match_date < ? AND match_date >= ?
+            ORDER BY match_date
+            """,
+            (before_date, cutoff),
+        ).fetchall()
+    return [row["match_date"] for row in rows]
+
+
+def settle_pending_backlog(before_date: str, lookback_days: int = 30, max_dates: int = 10) -> dict:
+    """Sweep past dates that still have PENDING rows: fetch results, sync and
+    settle every tracker for each date, then grade props globally.
+
+    run-daily calls this directly so settlement/recording no longer depends on
+    the launchd wrapper being healthy — the 2026-06-19..07-08 tracker gap came
+    from that coupling (scheduler died, so nothing synced or settled).
+    """
+    dates = pending_settlement_dates(before_date, lookback_days)
+    summary: dict = {"dates": {}, "skipped_dates": dates[max_dates:]}
+    for match_date in dates[:max_dates]:
+        try:
+            result = settle_bets_for_date(match_date)
+            summary["dates"][match_date] = {
+                "settled": result.get("settled"),
+                "tracker_settled": (result.get("tracker_settlement") or {}).get("settled"),
+                "combo_settled": (result.get("combo_settlement") or {}).get("settled"),
+            }
+        except Exception as exc:  # noqa: BLE001 - one bad date must not stop the sweep
+            summary["dates"][match_date] = {"error": str(exc)}
+    try:
+        from tennis_wc.props.settlement import settle_props
+
+        with get_connection() as conn:
+            summary["props"] = settle_props(conn)
+    except Exception as exc:  # noqa: BLE001
+        summary["props"] = {"error": str(exc)}
+    return summary
+
+
 def settle_clv_tracker_for_date(match_date: str) -> dict:
     _ensure_tracking_schema()
     now = utc_now()
@@ -465,41 +521,49 @@ def settle_combo_tracker_for_date(match_date: str) -> dict:
     settled = 0
     pending = 0
     unsupported = 0
+    voided = 0
     with get_connection() as conn:
         rows = conn.execute(
             """
-            SELECT c.*, r.winner_player_id, r.score_json, m.player_a_id, m.player_b_id,
-                   pa.name AS player_a_name, pb.name AS player_b_name
-            FROM combo_tracker c
-            JOIN matches m ON m.id = c.match_id
-            JOIN players pa ON pa.id = m.player_a_id
-            JOIN players pb ON pb.id = m.player_b_id
-            LEFT JOIN match_results r ON r.id = (
-                SELECT r2.id
-                FROM match_results r2
-                WHERE r2.match_id = c.match_id
-                ORDER BY
-                    CASE
-                        WHEN json_extract(r2.score_json, '$.player_a_aces') IS NOT NULL
-                         AND json_extract(r2.score_json, '$.player_b_aces') IS NOT NULL THEN 0
-                        ELSE 1
-                    END,
-                    CASE WHEN r2.source_provider = 'tennismylife' THEN 0 ELSE 1 END,
-                    r2.id DESC
-                LIMIT 1
-            )
-            WHERE c.match_date = ?
-              AND c.result_status = 'PENDING'
+            SELECT *
+            FROM combo_tracker
+            WHERE match_date = ? AND result_status = 'PENDING'
             """,
             (match_date,),
         ).fetchall()
         for row in rows:
             legs = _combo_legs(row["legs_json"])
-            if row["winner_player_id"] is None:
+            if not legs:
+                unsupported += 1
+                continue
+            result_rows = [_combo_result_row(conn, leg) for leg in legs]
+            if any(result is None or result.get("winner_player_id") is None for result in result_rows):
                 pending += 1
                 continue
-            leg_results = [_settle_market_leg(_combo_leg_result_row(dict(row), leg)) for leg in legs]
-            if not legs or any(result is None for result in leg_results):
+            leg_rows = [
+                _combo_leg_result_row(result_row, leg)
+                for result_row, leg in zip(result_rows, legs)
+            ]
+            leg_results = [_settle_market_leg(leg_row) for leg_row in leg_rows]
+            retired_prop = any(
+                result is None
+                and _is_retired_score(_score_payload(leg_row.get("score_json")))
+                and str(leg_row.get("market_key") or "") != "match_winner"
+                for result, leg_row in zip(leg_results, leg_rows)
+            )
+            if retired_prop:
+                conn.execute(
+                    """
+                    UPDATE combo_tracker
+                    SET result_status = 'VOID', profit_loss_units = 0,
+                        updated_at = ?, settled_at = ?
+                    WHERE id = ?
+                    """,
+                    (now, now, row["id"]),
+                )
+                voided += 1
+                continue
+            if any(result is None for result in leg_results):
                 unsupported += 1
                 continue
             won = all(bool(result) for result in leg_results)
@@ -515,7 +579,12 @@ def settle_combo_tracker_for_date(match_date: str) -> dict:
                 (status, profit, now, now, row["id"]),
             )
             settled += 1
-    return {"settled": settled, "pending_without_result": pending, "unsupported_market_results": unsupported}
+    return {
+        "settled": settled,
+        "voided": voided,
+        "pending_without_result": pending,
+        "unsupported_market_results": unsupported,
+    }
 
 
 def ledger_summary() -> dict:
@@ -667,8 +736,29 @@ def tier_roi_summary() -> dict:
 
 
 def combo_roi_summary() -> dict:
+    """Return combo performance without laundering legacy settlement errors.
+
+    Rows created before per-leg result resolution are retained for audit, but
+    their ROI is explicitly quarantined.  Only the new PROP_* trial tiers can
+    be used to compare two- versus three-leg structures going forward.
+    """
     _ensure_tracking_schema()
-    return {"combo_tracker": combo_tracker_summary(), "combo_by_tier": tier_roi_summary()["combo_by_tier"]}
+    rows = tier_roi_summary()["combo_by_tier"]
+    reliable = [row | {"settlement_integrity": "PER_LEG_V2"} for row in rows if str(row["tier"]).startswith("PROP_")]
+    legacy = [
+        row | {"settlement_integrity": "LEGACY_UNVERIFIED"}
+        for row in rows
+        if not str(row["tier"]).startswith("PROP_")
+    ]
+    return {
+        "combo_tracker": combo_tracker_summary(),
+        "validated_comparison": reliable,
+        "legacy_unverified": legacy,
+        "warning": (
+            "Legacy combo rows were settled before every cross-match leg was "
+            "resolved against its own result; do not use their ROI."
+        ),
+    }
 
 
 MIN_SETTLEMENT_COVERAGE = 0.80
@@ -1356,6 +1446,9 @@ def _combo_leg_payload(leg: dict) -> dict:
         "odds": leg.get("odds"),
         "edge": leg.get("edge"),
         "confidence": leg.get("confidence"),
+        "confidence_score": leg.get("confidence_score"),
+        "hit_probability": leg.get("hit_probability"),
+        "data_quality": leg.get("data_quality"),
     }
 
 
@@ -1381,6 +1474,47 @@ def _combo_leg_result_row(result_row: dict, leg: dict) -> dict:
     return row
 
 
+def _combo_result_row(conn, leg: dict) -> dict | None:
+    """Resolve each combo leg against its own match.
+
+    Cross-match combos used to keep only ``combo_tracker.match_id`` (the first
+    leg) and grade every later leg against that first match's winner/score.
+    This made combo ROI unusable.  The leg payload already stores match_id, so
+    resolve the preferred result independently for every leg.
+    """
+    try:
+        match_id = int(leg.get("match_id"))
+    except (TypeError, ValueError):
+        return None
+    row = conn.execute(
+        """
+        SELECT r.winner_player_id, r.score_json,
+               m.player_a_id, m.player_b_id,
+               pa.name AS player_a_name, pb.name AS player_b_name
+        FROM matches m
+        JOIN players pa ON pa.id = m.player_a_id
+        JOIN players pb ON pb.id = m.player_b_id
+        LEFT JOIN match_results r ON r.id = (
+            SELECT r2.id
+            FROM match_results r2
+            WHERE r2.match_id = m.id
+            ORDER BY
+                CASE
+                    WHEN json_extract(r2.score_json, '$.player_a_aces') IS NOT NULL
+                     AND json_extract(r2.score_json, '$.player_b_aces') IS NOT NULL THEN 0
+                    ELSE 1
+                END,
+                CASE WHEN r2.source_provider = 'tennismylife' THEN 0 ELSE 1 END,
+                r2.id DESC
+            LIMIT 1
+        )
+        WHERE m.id = ?
+        """,
+        (match_id,),
+    ).fetchone()
+    return dict(row) if row else None
+
+
 def _settle_market_leg(row: dict) -> bool | None:
     market_key = str(row.get("market_key") or "")
     if market_key == "match_winner":
@@ -1402,6 +1536,8 @@ def _settle_market_leg(row: dict) -> bool | None:
         if "no" in selection:
             return not both
         return None
+    if market_key == "set_betting" and str(row.get("market_name") or "").strip().lower() == "set betting":
+        return _settle_set_betting(row, score)
     if _is_to_win_at_least_one_set_market(row):
         return _settle_to_win_at_least_one_set(row, score)
     if market_key in {"to_win_1st_set", "winner_related"} or _is_set_winner_market(row):
@@ -1416,6 +1552,31 @@ def _settle_market_leg(row: dict) -> bool | None:
         return _settle_count_prop(row, score, "aces")
     if "double_fault" in market_key or "double fault" in str(row.get("market_name") or "").lower():
         return _settle_count_prop(row, score, "double_faults")
+    return None
+
+
+_SET_BETTING_SCORE_RE = re.compile(r"\s+2-([01])\s*$")
+
+
+def _settle_set_betting(row: dict, score: dict) -> bool | None:
+    """Full-match Set Betting: '<Player> 2-0' / '<Player> 2-1' (BO3 only)."""
+    selection = str(row.get("selection_name") or "")
+    m = _SET_BETTING_SCORE_RE.search(selection)
+    if not m:
+        return None
+    sets_lost = int(m.group(1))
+    name = selection[: m.start()].strip()
+    try:
+        a_sets = int(score.get("player_a_sets"))
+        b_sets = int(score.get("player_b_sets"))
+    except (TypeError, ValueError):
+        return None
+    if max(a_sets, b_sets) != 2:
+        return None  # BO5 or incomplete score
+    if _same_name(name, str(row.get("player_a_name") or "")):
+        return a_sets == 2 and b_sets == sets_lost
+    if _same_name(name, str(row.get("player_b_name") or "")):
+        return b_sets == 2 and a_sets == sets_lost
     return None
 
 

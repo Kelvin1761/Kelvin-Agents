@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from fastapi import APIRouter, HTTPException
 from services.meeting_detector import discover_meetings, load_meeting_races, get_meeting_summary
 from services.consensus import find_consensus_horses, find_rating_disagreements, get_betting_suggestions
+from services.race_display_metadata import enrich_race_display_metadata
 from models.race import Region
 
 router = APIRouter()
@@ -35,7 +36,9 @@ def _get_races_cached(meeting):
     """Load races with caching — avoids re-parsing on every request."""
     key = (meeting.date, meeting.venue)
     if key not in _races_cache:
-        _races_cache[key] = load_meeting_races(meeting)
+        all_races = load_meeting_races(meeting)
+        enrich_race_display_metadata(meeting, all_races)
+        _races_cache[key] = all_races
     return _races_cache[key]
 
 
@@ -174,6 +177,9 @@ def get_consensus(date: str, venue: str, race_number: int):
                 "is_top2_consensus": True,
                 "jockey": horse.jockey if horse else None,
                 "trainer": horse.trainer if horse else None,
+                "horse_name_en": horse.horse_name_en if horse else None,
+                "horse_code": horse.horse_code if horse else None,
+                "silk_url": horse.silk_url if horse else None,
             })
         
         return {
@@ -195,6 +201,11 @@ def get_consensus(date: str, venue: str, race_number: int):
                     "min_odds_required": 2.0,
                     "kelvin_grade": c["kelvin_grade"],
                     "heison_grade": None,
+                    "jockey": c["jockey"],
+                    "trainer": c["trainer"],
+                    "horse_name_en": c["horse_name_en"],
+                    "horse_code": c["horse_code"],
+                    "silk_url": c["silk_url"],
                 }
                 for c in candidates
             ],
@@ -223,6 +234,21 @@ def get_consensus(date: str, venue: str, race_number: int):
         if horse:
             horse_data["jockey"] = horse.jockey
             horse_data["trainer"] = horse.trainer
+            horse_data["horse_name_en"] = horse.horse_name_en
+            horse_data["horse_code"] = horse.horse_code
+            horse_data["silk_url"] = horse.silk_url
+
+    for suggestion in suggestions:
+        horse = next(
+            (h for h in kelvin_race.horses if h.horse_number == suggestion["horse_number"]),
+            None,
+        )
+        if horse:
+            suggestion["jockey"] = horse.jockey
+            suggestion["trainer"] = horse.trainer
+            suggestion["horse_name_en"] = horse.horse_name_en
+            suggestion["horse_code"] = horse.horse_code
+            suggestion["silk_url"] = horse.silk_url
     
     return {
         "race_number": race_number,

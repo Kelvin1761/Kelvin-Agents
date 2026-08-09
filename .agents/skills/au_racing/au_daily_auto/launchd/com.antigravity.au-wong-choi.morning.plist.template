@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.antigravity.au-wong-choi.morning</string>
+
+  <!-- 10:00 本機 wall clock = 悉尼 10:00（本機時區就係 Australia/Sydney）。
+       同 evening job 共用一把 flock，所以兩個撞埋唔會打對方。 -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>10</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>__SCRIPT_DIR__/run_au_daily_schedule.sh</string>
+    <string>morning</string>
+    <!-- 早更窗口窄（10:00 開工，最早一場大約 11:44 開跑），所以 rounds 少、
+         冷卻短，唔好用晚更嘅 8 × 15 分鐘。 -->
+    <string>--rounds</string>
+    <string>3</string>
+    <string>--round-gap</string>
+    <string>420</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__PROJECT_ROOT__</string>
+
+  <key>StandardOutPath</key>
+  <string>__SCRIPT_DIR__/logs/launchd.morning.stdout.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>__SCRIPT_DIR__/logs/launchd.morning.stderr.log</string>
+
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

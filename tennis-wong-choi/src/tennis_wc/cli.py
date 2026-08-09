@@ -3,13 +3,19 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from datetime import date
+from pathlib import Path
 
 from tennis_wc.database.db import get_connection
 from tennis_wc.database.migrations import init_db
 from tennis_wc.diagnostics import run_network_check
 from tennis_wc.features.data_quality import validate_data_freshness
-from tennis_wc.features.feature_builder import build_feature_snapshots_for_date, build_sportsbet_feature_snapshots_for_date
+from tennis_wc.features.feature_builder import (
+    build_feature_snapshots_for_date,
+    build_sportsbet_feature_snapshots_for_date,
+    odds_coverage_for_date,
+)
 from tennis_wc.ingestion.ingest_matches import ingest_default_history, ingest_upcoming_matches
 from tennis_wc.ingestion.ingest_odds import (
     enrich_sportsbet_event_markets,
@@ -21,7 +27,7 @@ from tennis_wc.ingestion.confirmed_metadata import backfill_confirmed_metadata_f
 from tennis_wc.ingestion.ingest_player_stats import ingest_player_stats
 from tennis_wc.ingestion.ingest_rankings import ingest_rankings
 from tennis_wc.ingestion.raw_response_store import store_raw_response
-from tennis_wc.ingestion.ingest_sackmann import ingest_sackmann_history
+from tennis_wc.ingestion.ingest_sackmann import ingest_sackmann_history, ingest_tml_low_tier_history
 from tennis_wc.ingestion.ingest_tennismylife import ingest_tennismylife_results
 from tennis_wc.ingestion.ingest_tournaments import ingest_tournaments
 from tennis_wc.betting.bet_filter import apply_bet_filter
@@ -32,6 +38,7 @@ from tennis_wc.betting.ledger import (
     record_bet as record_bet_entry,
     review_date as review_date_entry,
     settle_bets_for_date,
+    settle_pending_backlog,
     sync_clv_tracker_for_date,
     sync_combo_tracker_for_date,
     tier_roi_summary,
@@ -50,6 +57,12 @@ from tennis_wc.reports.match_report import render_match_report
 from tennis_wc.reports.market_validation_report import aces_prop_sanity_for_date, market_validation_summary
 from tennis_wc.reports.performance_report import prediction_summary
 from tennis_wc.config import get_settings
+from tennis_wc.pipeline_readiness import analysis_retry_reasons
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+SHARED_HOOK_DIR = REPO_ROOT / ".agents" / "skills" / "shared_racing" / "post_success_hooks" / "scripts"
+sys.path.insert(0, str(SHARED_HOOK_DIR))
+from cloudflare_deploy_hook import run_post_success_cloudflare_deploy
 
 
 def _print_json(payload: object) -> None:
@@ -145,6 +158,14 @@ def fetch_player_stats(args: argparse.Namespace) -> None:
 def bootstrap_sackmann_history(args: argparse.Namespace) -> None:
     tours = args.tours.split(",") if args.tours else None
     _print_json(ingest_sackmann_history(args.start_year, args.end_year, tours))
+
+
+def bootstrap_lowtier_history(args: argparse.Namespace) -> None:
+    _print_json(
+        ingest_tml_low_tier_history(
+            args.start_year, args.end_year, include_quali=not args.no_quali
+        )
+    )
 
 
 def ingest_tennismylife(args: argparse.Namespace) -> None:
@@ -305,6 +326,14 @@ def settle_bets(args: argparse.Namespace) -> None:
     _print_json(settle_bets_for_date(args.date))
 
 
+def settle_backlog(args: argparse.Namespace) -> None:
+    _print_json(
+        settle_pending_backlog(
+            args.date, lookback_days=args.lookback_days, max_dates=args.max_dates
+        )
+    )
+
+
 def sync_clv_tracker(args: argparse.Namespace) -> None:
     _print_json(sync_clv_tracker_for_date(args.date))
 
@@ -325,6 +354,17 @@ def settle_props(args: argparse.Namespace) -> None:
         "scorecard": model_vs_market_scorecard(conn),
         "roi": prop_roi_report(conn),
     })
+
+
+def weekly_review(args: argparse.Namespace) -> None:
+    from tennis_wc.reports.weekly_review import generate_weekly_review, render_weekly_review
+
+    if getattr(args, "print", False):
+        print(render_weekly_review(args.date))
+        return
+    path = generate_weekly_review(args.date)
+    print(render_weekly_review(args.date))
+    print(f"\nwritten: {path}")
 
 
 def tier_roi(_: argparse.Namespace) -> None:
@@ -388,10 +428,65 @@ def _distinct_market_keys_for_date(match_date: str) -> int:
     return int(row[0] or 0)
 
 
+def _sportsbet_odds_rows_for_date(match_date: str) -> int:
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT COUNT(*)
+            FROM odds_snapshots o
+            JOIN matches m ON m.id = o.match_id
+            WHERE m.match_date = ?
+              AND o.source_provider = 'sportsbet'
+            """,
+            (match_date,),
+        ).fetchone()
+    return int(row[0] or 0)
+
+
+def _publish_daily_dashboard(args: argparse.Namespace, payload: dict) -> dict:
+    """Apply the shared completeness gate, then publish a ready daily card."""
+    retry_reasons = analysis_retry_reasons(payload)
+    payload["readiness"] = {
+        "status": "ready" if not retry_reasons else "incomplete",
+        "reasons": retry_reasons,
+    }
+    if retry_reasons:
+        payload["cloudflare_deploy"] = {
+            "attempted": False,
+            "status": "blocked_by_completeness_gate",
+        }
+        print(
+            "⏭️ Cloudflare deploy blocked: analysis completeness gate failed — "
+            + "; ".join(retry_reasons)
+        )
+        return payload
+
+    deployed = run_post_success_cloudflare_deploy(
+        source="Tennis Wong Choi",
+        target_dir=analysis_output_dir(args.date),
+        skip=args.skip_cloudflare_deploy,
+        allow_failure=False,
+    )
+    payload["cloudflare_deploy"] = {
+        "attempted": not args.skip_cloudflare_deploy,
+        "status": "deployed" if deployed else "skipped",
+    }
+    return payload
+
+
 def run_daily(args: argparse.Namespace) -> None:
     provider_healthcheck(args)
     source_errors = []
     clear_pipeline_source_errors(args.date)
+    # Settle any past dates still holding PENDING tracker rows BEFORE today's
+    # report, so the prop scorecard/ROI blocks reflect the freshest sample.
+    # Kept inside run-daily (not only the scheduler wrapper) so a manual run
+    # also records + settles — the 06-19..07-08 tracking gap must not recur.
+    settlement_backlog: dict = {}
+    try:
+        settlement_backlog = settle_pending_backlog(args.date)
+    except Exception as exc:  # noqa: BLE001
+        source_errors.append({"source": "settlement_backlog", "error": str(exc)})
     if args.mvp_snapshot:
         os.environ["DATA_MAX_STALENESS_MINUTES_ODDS"] = str(24 * 60)
         try:
@@ -399,11 +494,19 @@ def run_daily(args: argparse.Namespace) -> None:
         except Exception as exc:
             source_errors.append({"source": "metadata_backfill", "error": str(exc)})
     else:
+        current_year = int(args.date[:4])
         for label, step in (
             ("tournaments", lambda: ingest_tournaments(args.date, args.date)),
             ("rankings_atp", lambda: ingest_rankings("ATP", args.date)),
             ("rankings_wta", lambda: ingest_rankings("WTA", args.date)),
             ("history", lambda: ingest_default_history(args.date)),
+            # TML challenger/quali season files are live-updated: re-pull the
+            # current year daily (upsert dedup) so Challenger players keep a
+            # fresh history, then rebuild Elo so today's ratings include it
+            # (previously Elo only advanced when build-sackmann-elo was run by
+            # hand — ratings were frozen at the last manual build).
+            ("history_lowtier", lambda: ingest_tml_low_tier_history(current_year, current_year)),
+            ("elo_rebuild", lambda: build_sackmann_elo()),
             ("upcoming_matches", lambda: ingest_upcoming_matches(args.date)),
             ("odds", lambda: ingest_odds(args.date)),
             ("event_markets", lambda: enrich_sportsbet_event_markets(args.date)),
@@ -417,8 +520,9 @@ def run_daily(args: argparse.Namespace) -> None:
         # odds. If a day ends up with only match-winner, combos collapse — make it
         # a loud, surfaced warning rather than a silent gap.
         try:
+            odds_rows = _sportsbet_odds_rows_for_date(args.date)
             market_keys = _distinct_market_keys_for_date(args.date)
-            if market_keys <= 1:
+            if odds_rows > 0 and market_keys <= 1:
                 source_errors.append(
                     {
                         "source": "event_markets",
@@ -454,20 +558,34 @@ def run_daily(args: argparse.Namespace) -> None:
             }
         )
     report_path = generate_daily_report(args.date)
-    _print_json(
-        {
-            "date": args.date,
-            "matches_analysed": len(snapshots),
-            "valid_feature_snapshots": len(valid),
-            "invalid_due_to_data_issue": len(snapshots) - len(valid),
-            "predictions": predictions,
-            "analysis_dir": str(analysis_output_dir(args.date)),
-            "report_path": str(report_path),
-            "source_errors": source_errors,
-            "stage": "7",
-            "mode": "mvp_snapshot" if args.mvp_snapshot else "live_full",
+    # Record today's recommendations in the trackers as part of the pipeline
+    # itself. Previously only the scheduler wrapper did this, so manual runs
+    # left no CLV/combo rows behind (nothing to settle or measure later).
+    tracker_sync: dict = {}
+    try:
+        tracker_sync = {
+            "clv": sync_clv_tracker_for_date(args.date),
+            "combo": sync_combo_tracker_for_date(args.date),
         }
-    )
+    except Exception as exc:  # noqa: BLE001
+        source_errors.append({"source": "tracker_sync", "error": str(exc)})
+    payload = {
+        "date": args.date,
+        "matches_analysed": len(snapshots),
+        "valid_feature_snapshots": len(valid),
+        "invalid_due_to_data_issue": len(snapshots) - len(valid),
+        "odds_coverage": odds_coverage_for_date(args.date),
+        "predictions": predictions,
+        "analysis_dir": str(analysis_output_dir(args.date)),
+        "report_path": str(report_path),
+        "source_errors": source_errors,
+        "settlement_backlog": settlement_backlog,
+        "tracker_sync": tracker_sync,
+        "stage": "7",
+        "mode": "mvp_snapshot" if args.mvp_snapshot else "live_full",
+    }
+    _publish_daily_dashboard(args, payload)
+    _print_json(payload)
 
 
 def init_db_command(_: argparse.Namespace) -> None:
@@ -525,6 +643,12 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--end-year", required=True, type=int)
     p.add_argument("--tours", default="ATP,WTA")
     p.set_defaults(func=bootstrap_sackmann_history)
+
+    p = sub.add_parser("bootstrap-lowtier-history")
+    p.add_argument("--start-year", required=True, type=int)
+    p.add_argument("--end-year", required=True, type=int)
+    p.add_argument("--no-quali", action="store_true")
+    p.set_defaults(func=bootstrap_lowtier_history)
 
     p = sub.add_parser("ingest-tennismylife-results")
     p.add_argument("--date")
@@ -585,6 +709,7 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("run-daily")
     p.add_argument("--date", default=date.today().isoformat())
     p.add_argument("--mvp-snapshot", action="store_true", help="Use existing Sportsbet/local snapshots without live source refresh.")
+    p.add_argument("--skip-cloudflare-deploy", action="store_true", help="Do not refresh the Cloudflare dashboard after a successful daily run.")
     p.set_defaults(func=run_daily)
 
     p = sub.add_parser("predict-daily")
@@ -616,6 +741,12 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--date", required=True)
     p.set_defaults(func=settle_bets)
 
+    p = sub.add_parser("settle-backlog")
+    p.add_argument("--date", required=True, help="Settle PENDING rows on dates before this one.")
+    p.add_argument("--lookback-days", type=int, default=30)
+    p.add_argument("--max-dates", type=int, default=10)
+    p.set_defaults(func=settle_backlog)
+
     p = sub.add_parser("sync-clv-tracker")
     p.add_argument("--date", required=True)
     p.set_defaults(func=sync_clv_tracker)
@@ -627,6 +758,11 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("tier-roi").set_defaults(func=tier_roi)
     sub.add_parser("combo-roi").set_defaults(func=combo_roi)
     sub.add_parser("settle-props").set_defaults(func=settle_props)
+
+    p = sub.add_parser("weekly-review")
+    p.add_argument("--date", required=True, help="As-of date; report lands in that date's analysis folder.")
+    p.add_argument("--print", action="store_true", help="Print only, do not write the file.")
+    p.set_defaults(func=weekly_review)
 
     p = sub.add_parser("calibration-report")
     p.add_argument("--min-samples", type=int, default=10)

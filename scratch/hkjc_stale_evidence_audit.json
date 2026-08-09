@@ -1,0 +1,918 @@
+{
+ "generated_for": "2026-07-17 HKJC stale-evidence audit",
+ "archive": "/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/HK_Racing",
+ "monthly": {
+  "2026-04": {
+   "races": 60,
+   "horses": 739,
+   "versions": {
+    "HKJC_AUTO_SCORE_V2": 739
+   },
+   "schema_versions": {
+    "None": 739
+   },
+   "derived_persisted_pct": 0.0,
+   "derived_in_reasoning_pct": 100.0,
+   "default60_pct": {
+    "form_score": 16.5,
+    "speed_score": 100.0,
+    "class_score": 21.2,
+    "jockey_score": 20.0,
+    "trainer_score": 27.7,
+    "draw_score": 0.0,
+    "distance_score": 50.2,
+    "track_going_score": 100.0,
+    "weight_score": 0.0,
+    "consistency_score": 26.0,
+    "risk_score": 2.8,
+    "confidence_score": 0.4
+   },
+   "derived_default60_pct": {
+    "formline_strength_score": 11.5,
+    "margin_trend_score": 100.0,
+    "same_distance_signal_score": null,
+    "trackwork_trend_score": 100.0
+   },
+   "derived_coverage_pct": {
+    "formline_strength_score": 100.0,
+    "margin_trend_score": 100.0,
+    "same_distance_signal_score": 0.0,
+    "trackwork_trend_score": 100.0
+   }
+  },
+  "2026-05": {
+   "races": 91,
+   "horses": 1147,
+   "versions": {
+    "HKJC_AUTO_SCORE_V2": 1147
+   },
+   "schema_versions": {
+    "None": 151,
+    "HKJC_LOGIC_V4_2": 996
+   },
+   "derived_persisted_pct": 0.0,
+   "derived_in_reasoning_pct": 100.0,
+   "default60_pct": {
+    "form_score": 6.5,
+    "speed_score": 16.8,
+    "class_score": 7.4,
+    "jockey_score": 7.6,
+    "trainer_score": 15.0,
+    "draw_score": 0.0,
+    "distance_score": 16.3,
+    "track_going_score": 69.6,
+    "weight_score": 5.5,
+    "consistency_score": 1.9,
+    "risk_score": 0.8,
+    "confidence_score": 0.0
+   },
+   "derived_default60_pct": {
+    "formline_strength_score": 5.3,
+    "margin_trend_score": 46.8,
+    "same_distance_signal_score": null,
+    "trackwork_trend_score": 0.2
+   },
+   "derived_coverage_pct": {
+    "formline_strength_score": 100.0,
+    "margin_trend_score": 100.0,
+    "same_distance_signal_score": 0.0,
+    "trackwork_trend_score": 100.0
+   }
+  },
+  "2026-06": {
+   "races": 71,
+   "horses": 899,
+   "versions": {
+    "HKJC_AUTO_SCORE_V2": 899
+   },
+   "schema_versions": {
+    "HKJC_LOGIC_V4_2": 899
+   },
+   "derived_persisted_pct": 28.8,
+   "derived_in_reasoning_pct": 71.2,
+   "default60_pct": {
+    "form_score": 5.0,
+    "speed_score": 3.7,
+    "class_score": 6.3,
+    "jockey_score": 7.8,
+    "trainer_score": 11.9,
+    "draw_score": 0.0,
+    "distance_score": 16.2,
+    "track_going_score": 90.9,
+    "weight_score": 5.7,
+    "consistency_score": 0.3,
+    "risk_score": 0.3,
+    "confidence_score": 0.0
+   },
+   "derived_default60_pct": {
+    "formline_strength_score": 19.0,
+    "margin_trend_score": 43.8,
+    "same_distance_signal_score": 6.2,
+    "trackwork_trend_score": 0.1
+   },
+   "derived_coverage_pct": {
+    "formline_strength_score": 100.0,
+    "margin_trend_score": 100.0,
+    "same_distance_signal_score": 28.8,
+    "trackwork_trend_score": 100.0
+   }
+  },
+  "2026-07": {
+   "races": 42,
+   "horses": 533,
+   "versions": {
+    "HKJC_AUTO_SCORE_V2": 533
+   },
+   "schema_versions": {
+    "HKJC_LOGIC_V4_2": 533
+   },
+   "derived_persisted_pct": 100.0,
+   "derived_in_reasoning_pct": 0.0,
+   "default60_pct": {
+    "form_score": 5.3,
+    "speed_score": 4.7,
+    "class_score": 5.4,
+    "jockey_score": 7.9,
+    "trainer_score": 10.9,
+    "draw_score": 0.0,
+    "distance_score": 17.3,
+    "track_going_score": 84.8,
+    "weight_score": 4.5,
+    "consistency_score": 0.2,
+    "risk_score": 0.4,
+    "confidence_score": 0.0
+   },
+   "derived_default60_pct": {
+    "formline_strength_score": 4.9,
+    "margin_trend_score": 40.5,
+    "same_distance_signal_score": 11.3,
+    "trackwork_trend_score": 4.7
+   },
+   "derived_coverage_pct": {
+    "formline_strength_score": 100.0,
+    "margin_trend_score": 100.0,
+    "same_distance_signal_score": 100.0,
+    "trackwork_trend_score": 100.0
+   }
+  }
+ },
+ "going_persisted_meetings": 0,
+ "going_examples": [],
+ "meetings": [
+  {
+   "meeting": "2026-04-12_ShaTin",
+   "month": "2026-04",
+   "races": 11,
+   "horses": 134,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "None"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 134,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "speed_score",
+     100.0
+    ],
+    [
+     "track_going_score",
+     100.0
+    ],
+    [
+     "distance_score",
+     69.4
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-04-15_HappyValley",
+   "month": "2026-04",
+   "races": 9,
+   "horses": 106,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "None"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 106,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "speed_score",
+     100.0
+    ],
+    [
+     "track_going_score",
+     100.0
+    ],
+    [
+     "distance_score",
+     86.8
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-04-19_ShaTin",
+   "month": "2026-04",
+   "races": 11,
+   "horses": 143,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "None"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 143,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "speed_score",
+     100.0
+    ],
+    [
+     "track_going_score",
+     100.0
+    ],
+    [
+     "distance_score",
+     67.1
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-04-22_HappyValley",
+   "month": "2026-04",
+   "races": 9,
+   "horses": 108,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "None"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 108,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "speed_score",
+     100.0
+    ],
+    [
+     "track_going_score",
+     100.0
+    ],
+    [
+     "trainer_score",
+     25.0
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-04-26_ShaTin",
+   "month": "2026-04",
+   "races": 11,
+   "horses": 142,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "None"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 142,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "speed_score",
+     100.0
+    ],
+    [
+     "track_going_score",
+     100.0
+    ],
+    [
+     "distance_score",
+     38.0
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-04-29_HappyValley",
+   "month": "2026-04",
+   "races": 9,
+   "horses": 106,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "None"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 106,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "speed_score",
+     100.0
+    ],
+    [
+     "track_going_score",
+     100.0
+    ],
+    [
+     "trainer_score",
+     22.6
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-05-03_ShaTin",
+   "month": "2026-05",
+   "races": 11,
+   "horses": 141,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "None"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 141,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "speed_score",
+     99.3
+    ],
+    [
+     "track_going_score",
+     99.3
+    ],
+    [
+     "trainer_score",
+     24.8
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-05-06_ShaTin",
+   "month": "2026-05",
+   "races": 9,
+   "horses": 112,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 112,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     76.8
+    ],
+    [
+     "trainer_score",
+     22.3
+    ],
+    [
+     "distance_score",
+     16.1
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-05-09_ShaTin",
+   "month": "2026-05",
+   "races": 11,
+   "horses": 142,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2",
+    "None"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 142,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     64.8
+    ],
+    [
+     "trainer_score",
+     19.7
+    ],
+    [
+     "distance_score",
+     16.2
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-05-13_HappyValley",
+   "month": "2026-05",
+   "races": 9,
+   "horses": 101,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 101,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     79.2
+    ],
+    [
+     "trainer_score",
+     16.8
+    ],
+    [
+     "distance_score",
+     13.9
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-05-17_ShaTin",
+   "month": "2026-05",
+   "races": 11,
+   "horses": 146,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 146,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     63.7
+    ],
+    [
+     "trainer_score",
+     19.2
+    ],
+    [
+     "distance_score",
+     15.1
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-05-20_HappyValley",
+   "month": "2026-05",
+   "races": 9,
+   "horses": 108,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 108,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     80.6
+    ],
+    [
+     "trainer_score",
+     21.3
+    ],
+    [
+     "distance_score",
+     16.7
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-05-24_ShaTin",
+   "month": "2026-05",
+   "races": 11,
+   "horses": 146,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 146,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     63.0
+    ],
+    [
+     "distance_score",
+     21.9
+    ],
+    [
+     "class_score",
+     9.6
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-05-27_HappyValley",
+   "month": "2026-05",
+   "races": 9,
+   "horses": 106,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 106,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     80.2
+    ],
+    [
+     "distance_score",
+     14.2
+    ],
+    [
+     "weight_score",
+     7.5
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-05-31_ShaTin",
+   "month": "2026-05",
+   "races": 11,
+   "horses": 145,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 145,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     29.7
+    ],
+    [
+     "form_score",
+     13.1
+    ],
+    [
+     "distance_score",
+     13.1
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-06-03_HappyValley",
+   "month": "2026-06",
+   "races": 9,
+   "horses": 107,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 107,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     100.0
+    ],
+    [
+     "distance_score",
+     15.9
+    ],
+    [
+     "form_score",
+     1.9
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-06-07_ShaTin",
+   "month": "2026-06",
+   "races": 11,
+   "horses": 144,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 144,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     83.3
+    ],
+    [
+     "distance_score",
+     16.0
+    ],
+    [
+     "class_score",
+     11.8
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-06-10_HappyValley",
+   "month": "2026-06",
+   "races": 9,
+   "horses": 108,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 108,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     100.0
+    ],
+    [
+     "distance_score",
+     13.0
+    ],
+    [
+     "weight_score",
+     9.3
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-06-13_ShaTin",
+   "month": "2026-06",
+   "races": 11,
+   "horses": 135,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 135,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     98.5
+    ],
+    [
+     "distance_score",
+     20.0
+    ],
+    [
+     "class_score",
+     7.4
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-06-21_ShaTin",
+   "month": "2026-06",
+   "races": 11,
+   "horses": 146,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2"
+   ],
+   "derived_persisted_horses": 0,
+   "derived_reasoning_horses": 146,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     80.8
+    ],
+    [
+     "distance_score",
+     15.8
+    ],
+    [
+     "weight_score",
+     13.7
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-06-24_HappyValley",
+   "month": "2026-06",
+   "races": 9,
+   "horses": 108,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2"
+   ],
+   "derived_persisted_horses": 108,
+   "derived_reasoning_horses": 0,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     100.0
+    ],
+    [
+     "trainer_score",
+     25.9
+    ],
+    [
+     "jockey_score",
+     15.7
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-06-27_ShaTin",
+   "month": "2026-06",
+   "races": 11,
+   "horses": 151,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2"
+   ],
+   "derived_persisted_horses": 151,
+   "derived_reasoning_horses": 0,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     81.5
+    ],
+    [
+     "trainer_score",
+     41.7
+    ],
+    [
+     "jockey_score",
+     27.8
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-07-01_ShaTin",
+   "month": "2026-07",
+   "races": 11,
+   "horses": 146,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2"
+   ],
+   "derived_persisted_horses": 146,
+   "derived_reasoning_horses": 0,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     74.0
+    ],
+    [
+     "trainer_score",
+     28.1
+    ],
+    [
+     "jockey_score",
+     21.9
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-07-04_ShaTin",
+   "month": "2026-07",
+   "races": 11,
+   "horses": 131,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2"
+   ],
+   "derived_persisted_horses": 131,
+   "derived_reasoning_horses": 0,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     67.2
+    ],
+    [
+     "distance_score",
+     14.5
+    ],
+    [
+     "trainer_score",
+     13.0
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-07-08_HappyValley",
+   "month": "2026-07",
+   "races": 9,
+   "horses": 104,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2"
+   ],
+   "derived_persisted_horses": 104,
+   "derived_reasoning_horses": 0,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     100.0
+    ],
+    [
+     "distance_score",
+     13.5
+    ],
+    [
+     "form_score",
+     1.9
+    ]
+   ]
+  },
+  {
+   "meeting": "2026-07-12_ShaTin",
+   "month": "2026-07",
+   "races": 11,
+   "horses": 152,
+   "versions": [
+    "HKJC_AUTO_SCORE_V2"
+   ],
+   "schema_versions": [
+    "HKJC_LOGIC_V4_2"
+   ],
+   "derived_persisted_horses": 152,
+   "derived_reasoning_horses": 0,
+   "going_keys": [],
+   "default_rate_worst3": [
+    [
+     "track_going_score",
+     100.0
+    ],
+    [
+     "distance_score",
+     21.7
+    ],
+    [
+     "weight_score",
+     5.3
+    ]
+   ]
+  }
+ ]
+}

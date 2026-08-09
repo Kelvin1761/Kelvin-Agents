@@ -244,8 +244,12 @@ def parse_racecard(filepath: str) -> list[dict]:
         if 'Scratched' in horse_block or 'status:Scratched' in horse_block:
             continue
 
-        career_match = re.search(r'Career:\s*(\S+)', block)
-        career = career_match.group(1) if career_match else 'N/A'
+        career_match = re.search(
+            r'Career:\s*([^\n|]+?)(?=\s*\|\s*Win:|$)',
+            block,
+            re.MULTILINE,
+        )
+        career = career_match.group(1).strip() if career_match else 'N/A'
 
         last10_match = re.search(r'Last 10:\s*(\S+)', block)
         last10_raw = last10_match.group(1) if last10_match else 'None'
@@ -311,8 +315,20 @@ def _enrich_stats_from_formguide(fg_text: str, horse: dict):
     header = section[:first_race.start()] if first_race else section[:500]
 
     def _extract(key):
-        m = re.search(rf'{key}:\s*(\S+)', header)
-        return m.group(1) if m else 'N/A'
+        # Sportsbet serialises record values with an internal space, for example
+        # ``Track: 1: 0-0-0``.  The old ``\S+`` stopped at that space and wrote
+        # only ``1:`` into Facts.md.  On the compound Facts line the engine could
+        # then read the following Distance starts as Track wins.  Require the
+        # complete starts:wins-seconds-thirds record and normalise it at this
+        # schema boundary; a partial token is missing evidence, never a record.
+        m = re.search(
+            rf'{re.escape(key)}:\s*'
+            r'(\d+\s*:\s*\d+\s*-\s*\d+\s*-\s*\d+)',
+            header,
+        )
+        if not m:
+            return 'N/A'
+        return re.sub(r'\s+', '', m.group(1))
 
     horse['track_stats'] = _extract('Track')
     horse['dist_stats'] = _extract('Distance')
@@ -327,7 +343,8 @@ def _enrich_stats_from_formguide(fg_text: str, horse: dict):
 # ── Formguide Parsing ─────────────────────────────────────────────────────
 
 def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
-                               decoded_positions: list[int]) -> list[dict]:
+                               decoded_positions: list[int], *,
+                               as_of: str = "") -> list[dict]:
     """Extract up to MAX_REAL_RACES_IN_DOSSIER real race entries (plus trials)
     from Formguide for a single horse.
 
@@ -351,6 +368,7 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
 
     all_entries = []
     non_trial_idx = 0  # Index into decoded_positions (skips trials)
+    point_in_time = as_of or _AS_OF
 
     for rm in race_simple.finditer(section):
         venue = rm.group(1).strip()
@@ -366,6 +384,14 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
             is_trial = is_trial_venue(venue, distance)
         if not is_trial and prize_str == '0':
             is_trial = True
+
+        # A post-race refresh can expose the target race (or a later run) in the
+        # same Formguide. Dossier evidence is strictly pre-race: censor it once
+        # here so every downstream consumer shares the same time boundary.
+        if point_in_time and date >= point_in_time:
+            if not is_trial:
+                non_trial_idx += 1
+            continue
 
         # Get the full block
         block_end_match = race_simple.search(section, rm.end())
@@ -394,6 +420,11 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
         hc_match = re.search(r'HC:(\d+)', header_line)
         race_margin = float(margin_match.group(1)) if margin_match else None
         race_hc = int(hc_match.group(1)) if hc_match else None
+        # 馬群大細（2026-07-31）：crawler 由今日起寫 ` starters:N`。冇咗佢，賽績表
+        # 只有絕對名次，`_form_score` 就會「6 匹跑第 4」同「16 匹跑第 4」一律當 base 60。
+        # 5,066 場有真實馬群大細嘅 run 量到 21.5% base 評錯、11.0% 錯 ≥20 分。
+        starters_match = re.search(r'starters:(\d+)', header_line)
+        race_starters = int(starters_match.group(1)) if starters_match else None
 
         # Extract PuntingForm advanced metrics from PF[...] block
         pf_match = re.search(r'PF\[(.+?)\]', header_line)
@@ -505,6 +536,7 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
             'jockey': jockey, 'weight': weight, 'barrier': race_barrier, 'prize': prize_str,
             'race_time': race_time, 'last_flucs': last_flucs,
             'margin': race_margin, 'hc': race_hc,
+            'starters': race_starters,
             'pos_1200': pos_1200, 'pos_800': pos_800,
             'pos_400': pos_400, 'settled': settled,
             'finish_pos': finish_pos, 'pos_source': pos_source,
@@ -625,8 +657,28 @@ def compute_class_change(current_prize: int, prev_prize: int) -> str:
 
 import subprocess
 
-# Path to claw_profile_scraper.py (resolved relative to this script)
-_CLAW_SCRAPER_PATH = str(_SCRIPT_DIR.parent / 'skills' / 'au_racing' / 'claw_profile_scraper.py')
+# 賽績線查對手後續走勢。以前呢度 shell out 去 `claw_profile_scraper.py`（Racenet），
+# 而 Racenet 全封之後每個名都回 {"error": "HTTP 202"} —— 實測 307/307 條對手行
+# 「查冊失敗」，賽績線全場坐 60。`sb_horse_index.py` 由我哋自己抓過嘅 runner block
+# 砌索引，離線、零請求，輸出格式逐個 key 一樣。Racenet 那條 fallback 已經剷走：
+# 佢唯一嘅作用係喺索引未砌好嗰陣靜靜咁失敗，而唔係話畀我哋知索引未砌好。
+_SB_INDEX_PATH = str(_SCRIPT_DIR.parent / 'skills' / 'au_racing' / 'sb_horse_index.py')
+
+
+# ⚠️ 賽績線嘅時點閘。`compute_form_lines_via_api` 數「對手喺**呢條往績行之後**有冇
+# 再出賽／贏」，而條往績行係過去嘅。如果索引唔設上限，對手**當日**（即係我哋要
+# 預測嗰場）嘅成績會被當成「後續走勢」計入去 —— 同 Sportsbet 表格頁嗰個賽後洩漏
+# 一模一樣，只係由另一道門入。所以由 Racecard 路徑抽返場次日期做上限。
+_AS_OF = ''
+
+
+def _derive_as_of(path) -> str:
+    """由 `.../2026-08-01 Flemington Race 1-9/08-01 Race 5 Racecard.md` 抽 2026-08-01。"""
+    for part in reversed(Path(path).resolve().parts):
+        m = re.match(r'(\d{4}-\d{2}-\d{2})\s', part)
+        if m:
+            return m.group(1)
+    return ''
 
 
 def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
@@ -681,20 +733,19 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
     if not queries:
         return {'table_lines': [], 'rating': '無資料', 'stats': 'N/A'}
     
-    # 2. Fetch profiles via claw_profile_scraper.py
+    # 2. 查對手 —— `sb_horse_index.py`，離線索引
     unique_names = list(set(q['opp_name'] for q in queries))
     profile_data = {}
     scraper_available = True
     
     if unique_names:
-        # Try absolute path first, then fallback to relative
-        scraper_path = _CLAW_SCRAPER_PATH
-        if not Path(scraper_path).exists():
-            # Fallback to relative path from CWD
-            scraper_path = '../.agents/skills/au_racing/claw_profile_scraper.py'
-        
+        scraper_path = _SB_INDEX_PATH
         _python_cmd = "python3" if shutil.which("python3") else "python"
         cmd = [_python_cmd, scraper_path, "--names", ",".join(unique_names)]
+        # `--as-of` 係時點閘，唔係優化。以前佢 conditional 喺「用緊索引」之上，
+        # 而家只有一條路，所以無條件加 —— 冇 as-of 就等於畀對手當日成績漏入去。
+        if _AS_OF:
+            cmd += ["--as-of", _AS_OF]
         try:
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
             if res.stdout.strip():
@@ -703,7 +754,7 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
                 print(f"  [FormLines] scraper exit code {res.returncode}: {res.stderr[:200]}", file=sys.stderr)
                 scraper_available = False
         except FileNotFoundError:
-            print(f"  [FormLines] claw_profile_scraper.py not found at {scraper_path}", file=sys.stderr)
+            print(f"  [FormLines] sb_horse_index.py not found at {scraper_path}", file=sys.stderr)
             scraper_available = False
         except subprocess.TimeoutExpired:
             print(f"  [FormLines] scraper timeout (90s)", file=sys.stderr)
@@ -726,26 +777,38 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
         slug = _to_slug(q['opp_name'])
         opp_data = profile_data.get(slug, {})
         
+        # ⚠️ 索引有兩種記錄，唔可以混住數（2026-08-04）：
+        #   完整記錄  —— 由 runner block 嚟，嗰匹馬每一仗都見到（包括跑第八）
+        #   partial   —— 由**對手名單**嚟，只喺佢入前三嗰陣先見到
+        # partial 令覆蓋由 12.8% 升到 99.9%，但佢對「出賽次數」係有偏差嘅：
+        # 淨計 partial 嘅話 future_places / future_runs 永遠 = 100%，
+        # 於是每隻對手都變「中組」以上。
+        #
+        # 所以：**勝出同上名次數兩種記錄都數**（我哋見到佢全部前三，冇漏），
+        # 但**上名率嘅分母只用完整記錄**。冇完整記錄就唔算率，改為只按勝出分層。
         future_wins = 0
-        future_places = 0  # Top-3 finishes
-        future_runs = 0
+        future_places = 0        # Top-3 finishes（兩種記錄都算）
+        future_runs = 0          # 顯示用：見到嘅將來出賽（含 partial）
+        future_runs_complete = 0 # 上名率分母：只計完整記錄
         future_venues = set()
-        
+
         if 'runs' in opp_data:
-            runs = opp_data['runs']
-            for r in runs:
+            for r in opp_data['runs']:
                 try:
                     r_dt = datetime.strptime(r['date'], '%Y-%m-%d')
-                    if q['date_dt'] and r_dt > q['date_dt']:
-                        future_runs += 1
-                        if r.get('venue'):
-                            future_venues.add(r['venue'])
-                        finish = r.get('finish')
-                        if finish == 1:
-                            future_wins += 1
-                        if finish is not None and 1 <= finish <= 3:
-                            future_places += 1
-                except:
+                    if not (q['date_dt'] and r_dt > q['date_dt']):
+                        continue
+                    future_runs += 1
+                    if not r.get('partial'):
+                        future_runs_complete += 1
+                    if r.get('venue'):
+                        future_venues.add(r['venue'])
+                    finish = r.get('finish')
+                    if finish == 1:
+                        future_wins += 1
+                    if finish is not None and 1 <= finish <= 3:
+                        future_places += 1
+                except Exception:
                     pass
         
         # Infer class from venues (AU-specific heuristic)
@@ -771,21 +834,40 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
         elif future_runs == 0:
             perf_str = "未有出賽"
         else:
-            perf_str = f"出 {future_runs} 次: {future_wins} 勝"
             total_valid += 1
-            place_rate = future_places / future_runs if future_runs > 0 else 0
-            
+            # 只有 partial 記錄嗰陣「出 N 次」係錯嘅講法 —— 我哋只見到佢入前三
+            # 嗰幾次。講真話，唔好講到似完整往績。
+            if future_runs_complete:
+                perf_str = f"出 {future_runs} 次: {future_wins} 勝"
+            else:
+                perf_str = f"見前三 {future_places} 次: {future_wins} 勝"
+
             if future_wins >= 2 or (future_wins >= 1 and class_str == 'Metro'):
                 strength_lbl = "✅✅ 超強組"
                 strong_score += 2
             elif future_wins >= 1:
                 strength_lbl = "✅ 強組"
                 strong_score += 1
-            elif place_rate >= 0.4:
+            elif future_runs_complete:
+                # 有完整記錄先算得上名率
+                place_rate = future_places / future_runs_complete
+                if place_rate >= 0.4:
+                    strength_lbl = "⚠️ 中組"
+                    strong_score += 0.5
+                else:
+                    strength_lbl = "❌ 弱組"
+            elif future_places:
+                # 只有 partial：見到佢入過前三但冇贏。呢個係正面證據，
+                # 但**唔可以**當「上名率高」—— 佢跑輸嗰啲仗我哋見唔到。
                 strength_lbl = "⚠️ 中組"
                 strong_score += 0.5
             else:
-                strength_lbl = "❌ 弱組"
+                # 只有 partial 而且冇見過佢入前三 → 冇證據，唔係「弱」。
+                # 判佢弱就係把「我哋見唔到」當成「佢差」，
+                # 而呢個 repo 已經因為同一個錯誤改過兩個 leaf 嘅零點。
+                perf_str = "未見前三"
+                strength_lbl = "-"
+                total_valid -= 1
         
         # Build table row — show race details only on first opponent row per race
         is_first_opp = (q['race_idx'] != prev_race_idx)
@@ -1746,6 +1828,20 @@ def _format_notes(video, note, stewards):
     raw = '; '.join(note_parts) if note_parts else '-'
     return raw
 
+
+def _history_kind_label(entry: dict) -> str:
+    """Label one historical row without confusing horse HC with race class.
+
+    Racenet's ``HC`` value is the runner's handicap rating for that run.  It is
+    not a BM race grade, and a missing HC does not imply a maiden/set-weights
+    race.  Keep the existing table column position for downstream parsers while
+    making the evidence semantics explicit.
+    """
+    if entry.get("is_trial"):
+        return "試閘"
+    hc = entry.get("hc")
+    return f"HC{hc}" if hc is not None else "正式"
+
 def generate_full_block(horse: dict, today_dist_m: int = 0,
                         max_display: int = 5) -> str:
     """Generate the complete fact anchor + dossier block for one horse.
@@ -1775,18 +1871,24 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
             f" @ {horse['last_venue']} {horse['last_dist']}{trial_tag}"
         )
     else:
-        lines.append("  - 上仗結果: N/A (初出馬)")
+        has_official_form = any(not entry.get('is_trial') for entry in entries)
+        if has_official_form:
+            lines.append("  - 上仗結果: Racecard 未提供（已有正式賽績，唔當初出）")
+        else:
+            lines.append("  - 上仗結果: N/A (初出馬)")
 
     lines.append(f"  - 生涯: {horse['career']}")
     # Career tag classification (V2.2): only zero-start horses are debut.
     career_starts = 0
     career_raw = horse.get('career', 'N/A')
     if career_raw and career_raw != 'N/A':
-        _cm = re.match(r'(\d+):', career_raw)
+        _cm = re.match(r'\s*(\d+)\s*(?::|$)', career_raw)
         if _cm:
             career_starts = int(_cm.group(1))
     if career_starts == 0:
         _ctag = 'DEBUT'
+    elif career_starts <= 5:
+        _ctag = 'EARLY_CAREER'
     else:
         _ctag = 'ESTABLISHED'
     lines.append(f"  - 生涯標記: `{_ctag}` (生涯 {career_starts} 場)")
@@ -1825,20 +1927,27 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
         f"；共 {real_count} 正式 + {trial_count} 試閘，嚴禁修改數值):**"
     )
     # Table header
-    lines.append("| # | 類型 | 日期 | 場地 | 路程 | 場地狀況 | 檔位 | 名次 | 班次 | 跑位軌跡 | PI | 段速 | 早段步速 | L600/RT | 走位跑法 | 走位消耗 | 備註 | 寬恕認定 |")
-    lines.append("|---|------|------|------|------|---------|------|------|------|---------|-----|------|---------|---------|---------|---------|------|----------|")
+    # 獎金（2026-07-31）追加做**最後一欄**：引擎同 renderer 全部用位置索引讀
+    # cols[1..17]，追加 cols[18] 唔會令任何欄位位移，舊 Facts 檔亦照樣 parse。
+    # 用途：`_form_score` 個 class_mult 一直係全場統一常數（entry["class"] 呢個 key
+    # 由來冇存在過），即係近績分完全冇班次調整。賽績表個「班次」欄 85% 係 fallback
+    # "Maiden/SW"，但獎金喺 Formguide 每行都有，85,010 個 run 100% 密度。
+    lines.append("| # | 類型／歷史HC | 日期 | 場地 | 路程 | 場地狀況 | 檔位 | 名次 | 班次 | 跑位軌跡 | PI | 段速 | 早段步速 | L600/RT | 走位跑法 | 走位消耗 | 備註 | 寬恕認定 | 獎金 |")
+    lines.append("|---|------|------|------|------|---------|------|------|------|---------|-----|------|---------|---------|---------|---------|------|----------|------|")
 
     for idx, entry in enumerate(display_entries):
-        if entry['is_trial']:
-            tag = '試閘'
-        elif entry.get('hc'):
-            tag = f"BM{entry['hc']}"
-        else:
-            tag = 'Maiden/SW'
+        tag = _history_kind_label(entry)
 
         cond = entry['condition'] if entry['condition'] != 'None' else '-'
         
         finish_str = str(entry['finish_pos']) if entry['finish_pos'] is not None else '-'
+        # 馬群大細嵌入「名次」格（2026-07-31）：寫成 `4/6` 而唔係加一個新欄位，
+        # 因為 `_record_entries` / renderer 全部用位置索引讀 cols[7..17]，加欄會全部位移。
+        # 所有下游 consumer 都用 `parse_float()` 抓頭一個數字（→ 4）或純顯示，
+        # 所以 `4/6 (-12.0L)` 對舊 code 完全向後兼容，只係多咗馬群資訊。
+        if (not entry['is_trial'] and entry.get('starters')
+                and entry['finish_pos'] is not None):
+            finish_str += f"/{entry['starters']}"
         if not entry['is_trial'] and entry.get('margin') is not None:
             # Show margin in brackets if > 0, otherwise just position
             if entry['margin'] > 0:
@@ -1903,10 +2012,13 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
         else:
             pf_l600_rt_str = '-'
 
+        # 獎金：`prize` 由 crawler 嘅 `$40,000` 抽出，做班次代理（見表頭註釋）
+        prize_str = str(entry.get('prize') or '').strip() or '-'
+
         lines.append(
             f"| {idx+1} | {tag} | {entry['date']} | {venue_short} | "
             f"{entry['distance']} | {cond} | {entry.get('barrier') or '-'} | {finish_str} | {class_ch} | "
-            f"{pos_str} | {pi_str} | {sect_q} | {pf_erp} | {pf_l600_rt_str} | {run_style_text} | {consumption} | {notes} | [需判定] |"
+            f"{pos_str} | {pi_str} | {sect_q} | {pf_erp} | {pf_l600_rt_str} | {run_style_text} | {consumption} | {notes} | [需判定] | {prize_str} |"
         )
 
     # Output is already complete, no omitted string needed here
@@ -2018,6 +2130,12 @@ def main():
     formguide_path = args.formguide
     today_dist_m = args.distance
     max_display = args.max_display
+
+    global _AS_OF
+    _AS_OF = _derive_as_of(racecard_path)
+    if not _AS_OF:
+        print("  [FormLines] ⚠️ 抽唔到場次日期，對手後續走勢冇時點上限",
+              file=sys.stderr)
 
     if not Path(racecard_path).exists():
         print(f"❌ 找不到文件: {racecard_path}")

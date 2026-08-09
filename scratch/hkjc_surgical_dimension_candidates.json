@@ -1,0 +1,259 @@
+{
+  "method": {
+    "fixed_before_development_measurement": true,
+    "grid_search": false,
+    "official_outer_weights_unchanged": true,
+    "race_shape_fixed_neutral_60": true,
+    "held_out_result_files_read": false,
+    "full_race_rerank": true,
+    "micro_tiebreak": false,
+    "blind_swap": false
+  },
+  "official_weights": {
+    "sectional": 0.1849,
+    "trainer_signal": 0.2209,
+    "stability": 0.0919,
+    "race_shape": 0.256,
+    "class_advantage": 0.1335,
+    "horse_health": 0.0378,
+    "form_line": 0.0749
+  },
+  "debut_weights": {
+    "trainer_signal": 0.3,
+    "horse_health": 0.3,
+    "race_shape": 0.2,
+    "stability": 0.15,
+    "class_advantage": 0.05
+  },
+  "candidates": {
+    "surgical_speed_shape_neutral": {
+      "replacements": {
+        "sectional": "dim_speed_engine",
+        "race_shape": 60.0
+      },
+      "hypothesis": "只移除going／draw污染：sectional換純L400 speed，race-shape回中性60。"
+    },
+    "surgical_plus_trainer": {
+      "replacements": {
+        "sectional": "dim_speed_engine",
+        "race_shape": 60.0,
+        "trainer_signal": "dim_trainer_signal"
+      },
+      "hypothesis": "在污染清理上，再換入Step 4通過嘅sample-shrunk trainer。"
+    },
+    "surgical_plus_trainer_stability": {
+      "replacements": {
+        "sectional": "dim_speed_engine",
+        "race_shape": 60.0,
+        "trainer_signal": "dim_trainer_signal",
+        "stability": "dim_stability"
+      },
+      "hypothesis": "再換入9/9 development賽日正向嘅拆重stability。"
+    }
+  },
+  "development_original_baseline": {
+    "races": 88,
+    "distribution": {
+      "0": 21,
+      "1": 40,
+      "2": 27
+    },
+    "total_top2_hits": 94,
+    "winner_top2": 39
+  },
+  "development_pure_scaffold_baseline": {
+    "races": 88,
+    "distribution": {
+      "0": 17,
+      "1": 45,
+      "2": 26
+    },
+    "total_top2_hits": 97,
+    "winner_top2": 41
+  },
+  "development_candidates": {
+    "surgical_speed_shape_neutral": {
+      "races": 88,
+      "distribution": {
+        "0": 15,
+        "1": 62,
+        "2": 11
+      },
+      "total_top2_hits": 84,
+      "winner_top2": 32
+    },
+    "surgical_plus_trainer": {
+      "races": 88,
+      "distribution": {
+        "0": 22,
+        "1": 52,
+        "2": 14
+      },
+      "total_top2_hits": 80,
+      "winner_top2": 30
+    },
+    "surgical_plus_trainer_stability": {
+      "races": 88,
+      "distribution": {
+        "0": 26,
+        "1": 50,
+        "2": 12
+      },
+      "total_top2_hits": 74,
+      "winner_top2": 28
+    }
+  },
+  "comparisons_vs_original": {
+    "surgical_speed_shape_neutral": {
+      "top2_set_changes": 61,
+      "hit_helped": 16,
+      "hit_harmed": 23,
+      "zero_to_positive": 13,
+      "one_to_two": 3,
+      "one_to_zero": 4,
+      "winner_helped": 4,
+      "winner_harmed": 11,
+      "rank3_promotions": 20,
+      "effective_rank3_rescues": 5,
+      "harmful_rank3_promotions": 11,
+      "rank3_rescue_net": -6
+    },
+    "surgical_plus_trainer": {
+      "top2_set_changes": 74,
+      "hit_helped": 15,
+      "hit_harmed": 26,
+      "zero_to_positive": 9,
+      "one_to_two": 6,
+      "one_to_zero": 7,
+      "winner_helped": 5,
+      "winner_harmed": 14,
+      "rank3_promotions": 22,
+      "effective_rank3_rescues": 5,
+      "harmful_rank3_promotions": 7,
+      "rank3_rescue_net": -2
+    },
+    "surgical_plus_trainer_stability": {
+      "top2_set_changes": 75,
+      "hit_helped": 15,
+      "hit_harmed": 33,
+      "zero_to_positive": 11,
+      "one_to_two": 4,
+      "one_to_zero": 14,
+      "winner_helped": 3,
+      "winner_harmed": 14,
+      "rank3_promotions": 18,
+      "effective_rank3_rescues": 2,
+      "harmful_rank3_promotions": 7,
+      "rank3_rescue_net": -5
+    }
+  },
+  "comparisons_vs_pure_scaffold": {
+    "surgical_speed_shape_neutral": {
+      "top2_set_changes": 60,
+      "hit_helped": 13,
+      "hit_harmed": 23,
+      "zero_to_positive": 10,
+      "one_to_two": 3,
+      "one_to_zero": 5,
+      "winner_helped": 4,
+      "winner_harmed": 13,
+      "rank3_promotions": 19,
+      "effective_rank3_rescues": 4,
+      "harmful_rank3_promotions": 11,
+      "rank3_rescue_net": -7
+    },
+    "surgical_plus_trainer": {
+      "top2_set_changes": 74,
+      "hit_helped": 13,
+      "hit_harmed": 27,
+      "zero_to_positive": 7,
+      "one_to_two": 6,
+      "one_to_zero": 9,
+      "winner_helped": 4,
+      "winner_harmed": 15,
+      "rank3_promotions": 20,
+      "effective_rank3_rescues": 4,
+      "harmful_rank3_promotions": 7,
+      "rank3_rescue_net": -3
+    },
+    "surgical_plus_trainer_stability": {
+      "top2_set_changes": 74,
+      "hit_helped": 11,
+      "hit_harmed": 32,
+      "zero_to_positive": 7,
+      "one_to_two": 4,
+      "one_to_zero": 14,
+      "winner_helped": 2,
+      "winner_harmed": 15,
+      "rank3_promotions": 16,
+      "effective_rank3_rescues": 1,
+      "harmful_rank3_promotions": 7,
+      "rank3_rescue_net": -6
+    }
+  },
+  "development_gates": {
+    "surgical_speed_shape_neutral": {
+      "advances_to_step6": false,
+      "path": "FAIL",
+      "common_no_harm": false,
+      "zero_hit_delta": -6,
+      "top2_hit_delta": -10,
+      "winner_top2_delta": -7,
+      "rank3_rescue_net": -6
+    },
+    "surgical_plus_trainer": {
+      "advances_to_step6": false,
+      "path": "FAIL",
+      "common_no_harm": false,
+      "zero_hit_delta": 1,
+      "top2_hit_delta": -14,
+      "winner_top2_delta": -9,
+      "rank3_rescue_net": -2
+    },
+    "surgical_plus_trainer_stability": {
+      "advances_to_step6": false,
+      "path": "FAIL",
+      "common_no_harm": false,
+      "zero_hit_delta": 5,
+      "top2_hit_delta": -20,
+      "winner_top2_delta": -11,
+      "rank3_rescue_net": -5
+    }
+  },
+  "tie_stats": {
+    "pure_scaffold": {
+      "all_races": 245,
+      "all_boundary_ties": 0,
+      "all_boundary_tie_rate": 0.0,
+      "development_races": 88,
+      "development_boundary_ties": 0,
+      "development_boundary_tie_rate": 0.0
+    },
+    "surgical_speed_shape_neutral": {
+      "all_races": 245,
+      "all_boundary_ties": 0,
+      "all_boundary_tie_rate": 0.0,
+      "development_races": 88,
+      "development_boundary_ties": 0,
+      "development_boundary_tie_rate": 0.0
+    },
+    "surgical_plus_trainer": {
+      "all_races": 245,
+      "all_boundary_ties": 0,
+      "all_boundary_tie_rate": 0.0,
+      "development_races": 88,
+      "development_boundary_ties": 0,
+      "development_boundary_tie_rate": 0.0
+    },
+    "surgical_plus_trainer_stability": {
+      "all_races": 245,
+      "all_boundary_ties": 0,
+      "all_boundary_tie_rate": 0.0,
+      "development_races": 88,
+      "development_boundary_ties": 0,
+      "development_boundary_tie_rate": 0.0
+    }
+  },
+  "matrix_load_errors": [],
+  "validation_errors": []
+}
