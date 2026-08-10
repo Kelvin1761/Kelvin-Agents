@@ -2330,7 +2330,10 @@ def push_run_summary(runlog: RunLog, mode: str) -> None:
                 else au_run_summary.evening)(runlog.data)
         if not text:
             return
-        sent = au_notify.push(text)
+        # ⚠️ 兩條都係**賽事內容**（退出馬、場地、排名、新分析上咗線冇），所以額外
+        # 收件人收得到。運維訊息（診斷、體檢、自動補救）維持 primary —— 嗰啲有
+        # 檔案路徑、commit、log 節錄，畀第三者係雜訊亦唔應該外傳。
+        sent = au_notify.push(text, audience="content")
         runlog.step("run-summary", "ok" if sent else "no-outlet", mode=mode,
                     detail="; ".join(sent) or None)
     except Exception as exc:  # noqa: BLE001
