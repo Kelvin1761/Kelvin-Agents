@@ -102,8 +102,11 @@ def meeting_lines(folder: Path) -> tuple[str, dict] | None:
     top2_hit = top2_tot = 0
     both_placed: list[int] = []
     gold_direct: list[int] = []
-    # 頭三選有幾隻入位 —— 呢個分佈係互斥而且加埋等於場數。
-    top3_dist = {3: 0, 2: 0, 1: 0, 0: 0}
+    # ⚠️ 唔用「頭三選入位隻數分佈」。短爪場只派兩位，「三隻」結構上唔可能出現，
+    # 所以把派三位同派兩位嘅賽事混入同一個分佈，睇落似我哋差，其實嗰啲場根本
+    # 冇第三個位。改用逐匹入位率（可比）同全走空場次（人真正在意嗰件事）。
+    top3_hit = top3_tot = 0
+    blank: list[int] = []
     for rno, blk in zip(nums, blocks):
         counts[labels[rno]] = counts.get(labels[rno], 0) + 1
         m3, ma = RE_TOP3.search(blk), RE_ACTUAL.search(blk)
@@ -133,7 +136,11 @@ def meeting_lines(folder: Path) -> tuple[str, dict] | None:
             else {p[0] for p in all3}
         if len(top3_actual) == 3 and top3_actual <= p4:
             gold_direct.append(rno)
-        top3_dist[sum(1 for p in all3 if placed(p[0]))] += 1
+        n_hit = sum(1 for p in all3 if placed(p[0]))
+        top3_hit += n_hit
+        top3_tot += len(all3)
+        if n_hit == 0:
+            blank.append(rno)
         for idx, (num, name) in enumerate(picks, start=1):
             pos = actual.get(num)
             # ⚠️ 入位 = 名次喺派彩範圍內，唔係一律頭三。
@@ -146,30 +153,38 @@ def meeting_lines(folder: Path) -> tuple[str, dict] | None:
                 bits.append(f"贏${win}")
             if po.get(num):
                 bits.append(f"位${po[num]}")
-            tag = f"　⟨{fs}匹·{pays}位⟩" if pays != 3 else ""
-            label = "首選" if idx == 1 else "次選"
-            hits.append(f"R{rno:<2} {label} {name[:20]:20} {POS.get(pos, ''):2}"
-                        + (f" {' · '.join(bits)}" if bits else "") + tag)
+            tag = f" ({fs}匹{pays}位)" if pays != 3 else ""
+            short = {1: "冠", 2: "亞", 3: "季"}.get(pos, "")
+            price = "/".join(b.split("$")[1] for b in bits) if bits else ""
+            # ⚠️ 唔用固定寬度 padding —— 手機上會撐到超出螢幕闊度然後亂 wrap，
+            # 賠率被推落下一行單獨出現（實測 iPhone 截圖）。改成短標籤 + 斜線價。
+            hits.append(f"R{rno} {PICK[idx]}{name[:22]} {short}"
+                        + (f" {price}" if price else "") + tag)
     venue = folder.name[11:].rsplit(" Race", 1)[0]
     pct = 100 * top2_hit / max(top2_tot, 1)
     n = len(labels)
     gold_races = sorted(gold_direct)
     good_races = sorted(both_placed)
+    def _rs(rr):
+        return " ".join("R" + str(x) for x in rr)
+
     head = [
         f"━━ {venue} · {n} 場 ━━",
-        f"捉齊三甲　　{len(gold_races)}/{n}"
-        + (f"　({', '.join('R'+str(r) for r in gold_races)})" if gold_races else ""),
-        f"頭兩選皆入位　{len(good_races)}/{n}"
-        + (f"　({', '.join('R'+str(r) for r in good_races)})" if good_races else ""),
-        f"頭兩選入位率　{top2_hit}/{top2_tot}（{pct:.0f}%）",
-        f"頭三選入位　三隻 {top3_dist[3]} · 兩隻 {top3_dist[2]}"
-        f" · 一隻 {top3_dist[1]} · 零隻 {top3_dist[0]}",
+        f"捉齊三甲 {len(gold_races)}/{n}"
+        + (f" · {_rs(gold_races)}" if gold_races else ""),
+        f"兩選皆入位 {len(good_races)}/{n}"
+        + (f" · {_rs(good_races)}" if good_races else ""),
+        f"入位率 兩選 {top2_hit}/{top2_tot} · 三選 {top3_hit}/{top3_tot}",
+        f"全走空 {len(blank)}" + (f" · {_rs(blank)}" if blank else ""),
     ]
-    body = ["", "入位馬匹"] + hits if hits else ["", "（頭兩選今場一隻都冇入位）"]
+    # ⚠️ 一行圖例代替逐行重複「首選／次選／贏／位」。唔講清楚嘅話 `4.60/1.67`
+    # 睇唔出邊個係贏賠邊個係位賠。
+    body = (["", "入位馬匹"] + hits) if hits else ["", "（今場頭兩選冇入位）"]
     text = "\n".join(head + body)
     return text, {"races": n, "top2_hit": top2_hit, "top2_tot": top2_tot,
                   "gold_races": len(gold_races), "good_races": len(good_races),
-                  **{f"t3_{k}": v for k, v in top3_dist.items()}}
+                  "top3_hit": top3_hit, "top3_tot": top3_tot,
+                  "blank": len(blank)}
 
 
 def build(day: str) -> str | None:
@@ -194,18 +209,21 @@ def build(day: str) -> str | None:
     races = tot.get("races", 0)
     g, gd = tot.get("gold_races", 0), tot.get("good_races", 0)
     hit, tot2 = tot.get("top2_hit", 0), tot.get("top2_tot", 0)
+    hit3, tot3 = tot.get("top3_hit", 0), tot.get("top3_tot", 0)
     head = "\n".join([
-        f"🏇 覆盤 {day} · {len(blocks)} 個馬場 / {races} 場",
+        f"🏇 覆盤 {day}",
+        f"{len(blocks)} 個馬場 · {races} 場",
         "",
-        f"捉齊三甲（頭四選包住前三名）　{g}/{races}（{100*g/max(races,1):.0f}%）",
-        f"頭兩選皆入位　　　　　　　　　{gd}/{races}（{100*gd/max(races,1):.0f}%）",
-        f"頭兩選入位率　　　　　　　　　{hit}/{tot2}（{100*hit/max(tot2,1):.0f}%）",
+        f"捉齊三甲 {g}/{races}（{100*g/max(races,1):.0f}%）",
+        "　頭四選包住實際前三名",
+        f"兩選皆入位 {gd}/{races}（{100*gd/max(races,1):.0f}%）",
+        "　首選次選都跑入派彩位",
+        f"入位率 兩選 {hit}/{tot2}（{100*hit/max(tot2,1):.0f}%）",
+        f"　　　 三選 {hit3}/{tot3}（{100*hit3/max(tot3,1):.0f}%）",
+        f"全走空 {tot.get('blank', 0)}/{races}",
+        "　頭三選一隻都冇入位",
         "",
-        f"頭三選入位隻數（加埋 = {races}）",
-        f"　三隻　{tot.get('t3_3', 0)}",
-        f"　兩隻　{tot.get('t3_2', 0)}",
-        f"　一隻　{tot.get('t3_1', 0)}",
-        f"　零隻　{tot.get('t3_0', 0)}",
+        "入位馬匹讀法：①首選 ②次選 · 名次 · 贏/位賠",
     ])
     return head + "\n\n" + "\n\n".join(blocks)
 

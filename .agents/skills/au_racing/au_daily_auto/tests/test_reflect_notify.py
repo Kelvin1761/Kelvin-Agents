@@ -68,10 +68,10 @@ class ReflectNotifyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             text, c = R.meeting_lines(meeting(tmp))
         # R1: 揀 #2（冠軍）中；#5 冇入前三。R2: 頭揀 #7 跑第二 —— 中。
-        self.assertIn("R1  首選 Magic Merlin", text)
-        self.assertIn("冠軍", text)
+        self.assertIn("R1 ①Magic Merlin", text)
+        self.assertIn("冠", text)
         self.assertNotIn("Maremoto", text)
-        self.assertIn("R2  首選 Nowhere Man", text)
+        self.assertIn("R2 ①Nowhere Man", text)
         self.assertEqual(c["top2_hit"], 2)
         self.assertEqual(c["top2_tot"], 4)
 
@@ -114,10 +114,12 @@ class ReflectNotifyTests(unittest.TestCase):
         self.assertEqual(c["gold_races"], 1)
         self.assertEqual(c["good_races"], 1)
 
-    def test_the_top_three_distribution_sums_to_the_race_count(self):
+    def test_the_top_three_rate_has_a_sane_denominator(self):
         with tempfile.TemporaryDirectory() as tmp:
             _, c = R.meeting_lines(meeting(tmp))
-        self.assertEqual(sum(c[f"t3_{k}"] for k in (3, 2, 1, 0)), c["races"])
+        # 逐匹入位率：分母 = 場數 × 3（每場計頭三選）
+        self.assertEqual(c["top3_tot"], c["races"] * 3)
+        self.assertLessEqual(c["top3_hit"], c["top3_tot"])
 
     def test_both_placed_is_counted_directly_not_from_the_good_label(self):
         """五個評級互斥，Gold 蓋過 Good —— 讀標籤會少報一半。
@@ -140,17 +142,17 @@ class ReflectNotifyTests(unittest.TestCase):
         """
         with tempfile.TemporaryDirectory() as tmp:
             text, c = R.meeting_lines(meeting(tmp))
-        for word in ("三隻", "兩隻", "一隻", "零隻"):
+        for word in ("入位率 兩選", "三選", "全走空"):
             self.assertIn(word, text)
         self.assertIn("捉齊三甲", text)
-        self.assertIn("頭兩選皆入位", text)
+        self.assertIn("兩選皆入位", text)   # 手機版縮短咗「頭」字
 
     def test_sp_and_pre_race_place_odds_are_both_shown(self):
         # 兩個唔同時間點嘅數字：SP 係開跑一刻官方贏馬賠率，位賠係分析嗰陣捕捉。
         with tempfile.TemporaryDirectory() as tmp:
             text, _ = R.meeting_lines(meeting(tmp))
-        self.assertIn("贏$2.50", text)
-        self.assertIn("位$1.3", text)
+        # 賠率而家係 贏/位 斜線寫法，圖例喺全日標題講一次。
+        self.assertIn("2.50/1.3", text)
 
     def test_a_horse_with_no_captured_place_odds_still_appears(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -158,7 +160,7 @@ class ReflectNotifyTests(unittest.TestCase):
             (d / "08-09 Race 1 Formguide.md").unlink()
             text, _ = R.meeting_lines(d)
         self.assertIn("Magic Merlin", text)
-        self.assertIn("贏$2.50", text)
+        self.assertIn("2.50", text)
 
     def test_meeting_without_results_is_skipped_not_half_reported(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -194,7 +196,7 @@ class PlacesPaidTests(unittest.TestCase):
             (d / "Race_1_Auto_Analysis.md").write_text(
                 "| 出馬數 | 6 |", encoding="utf-8")
             text, c = R.meeting_lines(d)
-        self.assertIn("⟨6匹·2位⟩", text)
+        self.assertIn("(6匹2位)", text)
         self.assertNotIn("Strasbelle", text)
 
     def test_a_short_field_race_is_marked_so_the_reader_can_see_why(self):
@@ -203,7 +205,7 @@ class PlacesPaidTests(unittest.TestCase):
             (d / "Race_1_Auto_Analysis.md").write_text(
                 "| 出馬數 | 7 |", encoding="utf-8")
             text, _ = R.meeting_lines(d)
-        self.assertIn("⟨7匹·2位⟩", text)
+        self.assertIn("(7匹2位)", text)
 
     def test_full_field_races_carry_no_marker(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -211,7 +213,7 @@ class PlacesPaidTests(unittest.TestCase):
             (d / "Race_1_Auto_Analysis.md").write_text(
                 "| 出馬數 | 10 |", encoding="utf-8")
             text, _ = R.meeting_lines(d)
-        self.assertNotIn("位⟩", text)
+        self.assertNotIn("匹2位", text)
 
 
 if __name__ == "__main__":
