@@ -117,6 +117,73 @@ def run_in_progress() -> bool:
         handle.close()
 
 
+ATTEMPTED = HERE / "logs" / "autofix_attempted.json"
+
+
+def _attempted() -> set[str]:
+    try:
+        return set(json.loads(ATTEMPTED.read_text(encoding="utf-8")))
+    except (OSError, ValueError):
+        return set()
+
+
+def _mark(name: str) -> None:
+    seen = _attempted()
+    seen.add(name)
+    ATTEMPTED.parent.mkdir(parents=True, exist_ok=True)
+    # 只留最近 40 個 —— 夠防重複，又唔會無限膨脹。
+    ATTEMPTED.write_text(json.dumps(sorted(seen)[-40:]), encoding="utf-8")
+
+
+def last_failed_run() -> tuple[Path, dict] | None:
+    """最近一個 failed／partial 而且未試過自動修嘅 run。"""
+    files = sorted((HERE / "logs").glob("run-*.json"),
+                   key=lambda p: p.stat().st_mtime, reverse=True)[:6]
+    done = _attempted()
+    for f in files:
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if d.get("status") in ("failed", "partial") and f.name not in done:
+            return f, d
+        if d.get("status") == "ok":
+            # 之後有成功嘅 run，之前嗰個失敗已經冇意義。
+            return None
+    return None
+
+
+def autofix_last_failure() -> str | None:
+    """對得上已知模式先修，而且一個 run 只試一次。
+
+    ⚠️ 兩道限制都係刻意：
+      * **只修已知模式** —— 一個估出嚟嘅補救可以令情況變差，仲會遮蓋「呢個係新
+        問題」呢個最重要嘅訊號。對唔上就淨係報告。
+      * **一個 run 只試一次** —— 唔係嘅話，一個修唔到嘅問題會令每次體檢都重跑
+        一次發佈，一日三次，而且每次都 send 一條通知。
+    """
+    import au_diagnose  # noqa: PLC0415
+
+    got = last_failed_run()
+    if not got:
+        return None
+    path, run = got
+    remedy = au_diagnose.remedy_for(run)
+    if not remedy:
+        return None
+    _mark(path.name)
+    if remedy != "republish":
+        return f"⚠️ 認得個模式但唔識執行補救「{remedy}」 —— 要人睇"
+    ok, detail = heal()
+    after = check(date.today().isoformat())
+    good = ok and after.get("state") in ("ok", "in-progress")
+    head = "✅" if good else "❌"
+    return (f"{head} 自動補救（{path.name}）\n"
+            f"對上已知模式 → 重建並重新發佈\n"
+            + ("今日場次已上線：" + "、".join(after.get("live") or [])
+               if good else f"仲未修好：{detail[-200:]}"))
+
+
 def check(day: str) -> dict:
     if run_in_progress():
         return {"state": "in-progress",
@@ -154,6 +221,11 @@ def main() -> int:
             print("通知送唔出:", exc)
 
     if res["state"] == "ok":
+        # 今日場次上晒線唔代表上一個 run 冇死喺第二度（例如剪走失敗、合併空殼）。
+        fixed = autofix_last_failure()
+        if fixed:
+            print(fixed)
+            notify(fixed)
         return 0
     if res["state"] == "in-progress":
         # 唔出聲。跑緊唔係問題，而為咗「有嘢報」而報就係製造雜訊。

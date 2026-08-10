@@ -21,29 +21,46 @@ HERE = Path(__file__).resolve().parent
 LOG = HERE / "logs" / "au_daily_schedule.log"
 BUNDLE = HERE / "logs" / "last_diagnosis.md"
 
-# 已知模式：錯誤特徵 → 成因同已知處理。全部係實際發生過嘅。
+# 已知模式：錯誤特徵 → 成因、已知處理、**可以自動執行嘅補救**。
+#
+# ⚠️ `remedy` 只可以係一個已經寫好同測試過嘅動作。冇安全補救就寫 None ——
+# 為咗「有得自動修」而砌一個未驗證嘅動作出嚟，比冇自動修差好多。
+#
+# 而家只有一個補救：`republish` = 由本機已評分嘅場次重建再發佈（唔出網抽頁）。
+# 佢修得到嘅係**發佈側**嘅失敗（剪走冇生效、合併咗空殼、deploy 掂咗 Drive）——
+# 呢三種嘅共同點係「分析係好嘅，只係冇上到線」，所以重發一次就啱。
+#
+# 抽取側嘅失敗（個站拒絕、瀏覽器死、賽果未出）**冇** remedy：補佢哋要重抽幾百版，
+# 唔應該由一個自動修觸發，而且下一次排程本身就會接住做。
 KNOWN = [
     (r"Pages only supports files up to",
      "snapshot 超過 Cloudflare 25 MiB 上限",
-     "shrink_to_fit 會由已跑完場次讓路；如果單日賽事本身超標就要再縮 payload"),
+     "shrink_to_fit 會由已跑完場次讓路；如果單日賽事本身超標就要再縮 payload",
+     "republish"),
     (r"PermissionError.*CloudStorage",
      "launchd 冇 Google Drive 權限",
-     "deploy 唔應該再掃 Drive（--from-snapshot 已修）；鏡像失敗屬預期"),
+     "deploy 唔應該再掃 Drive（--from-snapshot 已修）；鏡像失敗屬預期",
+     "republish"),
     (r"TargetClosedError|Target crashed|browser has been closed",
      "Chrome 死咗（記憶體壓力，唔係個站封鎖）",
-     "已有重開重試 + 每 25 版主動重開；部機得 8GB 係底層成因"),
+     "已有重開重試 + 每 25 版主動重開；部機得 8GB 係底層成因",
+     None),
     (r"已歸檔但仲喺 dashboard",
      "剪走冇生效，或者合併把已歸檔場次加返",
-     "build_snapshot 會由 Archive 推導剪走名單並拒絕合併已歸檔 folder"),
+     "build_snapshot 會由 Archive 推導剪走名單並拒絕合併已歸檔 folder",
+     "republish"),
     (r"一場都冇（races_by_analyst 空",
      "合併咗一個冇評分／已搬走嘅 folder",
-     "多數係次序問題：合併名單喺歸檔之前影低"),
+     "多數係次序問題：合併名單喺歸檔之前影低",
+     "republish"),
     (r"個站.*拒絕|HTTP 403|只有 \d+ bytes",
      "sportsbetform 真係拒絕（非 200 或者攔截頁）",
-     "circuit breaker 會停手，下一次排程再試"),
+     "circuit breaker 會停手，下一次排程再試",
+     None),
     (r"cache 冇任何賽果",
      "賽果未出，或者場次腰斷",
-     "腰斷偵測睇馬匹往績有冇當日出賽；兩日上限兜底"),
+     "腰斷偵測睇馬匹往績有冇當日出賽；兩日上限兜底",
+     None),
 ]
 
 
@@ -79,7 +96,8 @@ def diagnose(run: dict, history: list[dict]) -> str:
     first = errs[0] if errs else {}
     msg = str(first.get("message") or "")
 
-    matched = [(cause, fix) for pat, cause, fix in KNOWN if re.search(pat, msg)]
+    matched = [(cause, fix, rem) for pat, cause, fix, rem in KNOWN
+               if re.search(pat, msg)]
     same = [r for r in history
             if r is not run and any(msg[:40] in str(e.get("message") or "")
                                     for e in (r.get("errors") or []))]
@@ -98,8 +116,9 @@ def diagnose(run: dict, history: list[dict]) -> str:
                               for e in errs[:4]] + [""]
     if matched:
         out += ["## 已知模式"]
-        for cause, fix in matched:
-            out += [f"- **成因**：{cause}", f"  **已有處理**：{fix}"]
+        for cause, fix, rem in matched:
+            out += [f"- **成因**：{cause}", f"  **已有處理**：{fix}",
+                    f"  **自動補救**：{rem or '冇（要人睇／下次排程接住）'}"]
         out += [""]
     else:
         out += ["## 已知模式", "- 對唔上任何已知模式 —— 呢個係新嘅，要人睇", ""]
@@ -113,6 +132,20 @@ def diagnose(run: dict, history: list[dict]) -> str:
     if ctx:
         out += ["## log 上下文（出錯前後）", "```", ctx[-1800:], "```"]
     return "\n".join(out)
+
+
+def remedy_for(run: dict) -> str | None:
+    """呢個 run 嘅失敗有冇一個可以自動執行嘅補救。冇就回 None。
+
+    ⚠️ 只睇**已知模式**。對唔上嘅錯誤永遠唔會觸發任何動作 —— 一個估出嚟嘅補救
+    可以令情況變差，而且會遮蓋咗「呢個係新問題」呢個最重要嘅訊號。
+    """
+    for e in (run.get("errors") or []):
+        msg = str(e.get("message") or "")
+        for pat, _cause, _fix, rem in KNOWN:
+            if rem and re.search(pat, msg):
+                return rem
+    return None
 
 
 def phone_summary(text: str) -> str:

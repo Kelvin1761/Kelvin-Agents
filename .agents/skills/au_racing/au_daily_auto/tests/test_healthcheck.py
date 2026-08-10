@@ -10,7 +10,9 @@ crash、或者根本冇開，就冇任何嘢會發現。2026-08-05 至 08-10 三
 """
 from __future__ import annotations
 
+import os
 import sys
+import tempfile
 import unittest
 import unittest.mock
 from pathlib import Path
@@ -94,3 +96,77 @@ class HealthcheckTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AutofixTests(unittest.TestCase):
+    """自動補救只可以喺已知模式上動手，而且一個 run 只試一次。
+
+    ⚠️ 兩道限制都係刻意：
+      * 估出嚟嘅補救可以令情況變差，仲會遮蓋「呢個係新問題」呢個最重要嘅訊號；
+      * 冇「一次」限制嘅話，一個修唔到嘅問題會令每次體檢都重跑一次發佈，
+        一日三次，每次 send 一條通知 —— 跟住你就會開始無視啲通知。
+    """
+
+    def _logs(self, tmp, runs):
+        import json as _json
+        logs = Path(tmp) / "logs"
+        logs.mkdir(parents=True)
+        for i, (name, status, err) in enumerate(runs):
+            (logs / name).write_text(_json.dumps({
+                "status": status,
+                "errors": [{"step": "dashboard", "message": err}] if err else [],
+            }), encoding="utf-8")
+            os.utime(logs / name, (1000 + i, 1000 + i))
+        return logs
+
+    def _patch(self, logs):
+        return unittest.mock.patch.multiple(
+            H, HERE=logs.parent, ATTEMPTED=logs / "attempted.json")
+
+    def test_a_known_publish_failure_is_picked_up(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            logs = self._logs(tmp, [
+                ("run-a.json", "failed", "已歸檔但仲喺 dashboard：['x']")])
+            with self._patch(logs):
+                got = H.last_failed_run()
+        self.assertIsNotNone(got)
+
+    def test_a_later_successful_run_cancels_the_chase(self):
+        # 之後有成功嘅 run，之前嗰個失敗已經冇意義 —— 唔好再修一次。
+        with tempfile.TemporaryDirectory() as tmp:
+            logs = self._logs(tmp, [
+                ("run-a.json", "failed", "已歸檔但仲喺 dashboard：['x']"),
+                ("run-b.json", "ok", None)])
+            with self._patch(logs):
+                self.assertIsNone(H.last_failed_run())
+
+    def test_the_same_run_is_never_attempted_twice(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            logs = self._logs(tmp, [
+                ("run-a.json", "failed", "已歸檔但仲喺 dashboard：['x']")])
+            with self._patch(logs):
+                self.assertIsNotNone(H.last_failed_run())
+                H._mark("run-a.json")
+                self.assertIsNone(H.last_failed_run())
+
+    def test_an_unknown_error_triggers_no_action(self):
+        import au_diagnose as D
+        self.assertIsNone(D.remedy_for(
+            {"errors": [{"message": "something nobody has seen before"}]}))
+
+    def test_extraction_side_failures_have_no_remedy(self):
+        # 補呢啲要重抽幾百版 —— 唔應該由自動修觸發，下次排程本身會接住。
+        import au_diagnose as D
+        for msg in ("TargetClosedError: page closed",
+                    "個站喺 X 明確拒絕",
+                    "cache 冇任何賽果"):
+            self.assertIsNone(D.remedy_for({"errors": [{"message": msg}]}), msg)
+
+    def test_publish_side_failures_all_map_to_republish(self):
+        import au_diagnose as D
+        for msg in ("Pages only supports files up to 25 MiB in size",
+                    "PermissionError: ... CloudStorage ... /HK_Racing",
+                    "已歸檔但仲喺 dashboard：['x']",
+                    "2026-08-09|Wagga 一場都冇（races_by_analyst 空)"):
+            self.assertEqual(D.remedy_for({"errors": [{"message": msg}]}),
+                             "republish", msg)
