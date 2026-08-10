@@ -808,6 +808,31 @@ def results_overdue(folder: Path, today: date) -> int | None:
     return age if age > RESULTS_GIVE_UP_DAYS else None
 
 
+def date_has_results_elsewhere(day: str, exclude: Path) -> bool:
+    """同一個賽日，另一個場次有冇收到賽果？
+
+    ⚠️ 呢個就係「賽果傳播正唔正常」嘅證據。一個場次零賽果有兩個解釋 ——
+    成個腰斷，或者賽果仲未傳到 —— 淨睇佢自己分唔到。但**同日另一個場次收到
+    賽果**就排除咗第二個：傳播行緊。2026-08-09 Wagga 七場零賽果、零匹馬有當日
+    出賽紀錄，而同日四個場次全部收齊並歸檔咗 —— 得一個解釋。
+    """
+    for base in (AU_RACING, ARCHIVE_ROOT):
+        try:
+            entries = list(base.glob(f"{day} *"))
+        except OSError:
+            continue
+        for d in entries:
+            if d == exclude or not d.is_dir():
+                continue
+            res = d / "Race_Results_Reflector.md"
+            try:
+                if res.exists() and res.stat().st_size > 200:
+                    return True
+            except OSError:
+                continue
+    return False
+
+
 def archive_meeting(runlog: RunLog, folder: Path, races: list) -> dict:
     """搬入 Archive/。撞名唔覆蓋 —— 留返俾人手決定。"""
     destination = ARCHIVE_ROOT / folder.name
@@ -866,6 +891,17 @@ def review_one_meeting(runlog: RunLog, folder: Path, *,
                         had_before=len(covered), expected=len(expected), **refresh)
             built = build_results_file(runlog, folder, key)
         overdue = results_overdue(folder, today or date.today())
+        if not built.get("ok") and refreshed_this_run and \
+                date_has_results_elsewhere(folder.name[:10], folder):
+            # 新鮮重抽之後一場賽果都冇，而同日其他場次收到咗 —— 傳播正常，
+            # 即係成個場次冇跑過。唔使等兩日上限，第二朝就有答案。
+            runlog.warn(f"{folder.name}：新鮮重抽之後零賽果，而同日其他場次已經"
+                        f"收到賽果 —— 當成個場次腰斷／棄賽，歸檔")
+            runlog.meeting(folder.name, "meeting_abandoned",
+                           expected_races=len(expected))
+            if no_archive:
+                return {"races": expected}
+            return archive_meeting(runlog, folder, expected)
         if not built.get("ok"):
             if overdue is not None:
                 # 等夠日子都冇賽果 —— 當係取消／改期。搬入 Archive/ 令佢離開

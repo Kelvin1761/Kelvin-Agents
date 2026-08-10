@@ -962,3 +962,69 @@ class TestPartialAbandonment(unittest.TestCase):
         src = Path(S.__file__).read_text(encoding="utf-8")
         i = src.index("partial_meeting_abandoned")
         self.assertIn("and found", src[max(0, i - 1400):i])
+
+
+class TestWholeMeetingAbandoned(unittest.TestCase):
+    """零賽果有兩個解釋，要靠同日其他場次先分得開。
+
+    2026-08-09 Wagga：七場新鮮重抽、零匹馬有當日出賽紀錄，而同日 Muswellbrook、
+    Casterton、Kalgoorlie、Sunshine Coast 全部收齊賽果並歸檔咗。傳播正常，
+    所以 Wagga 係冇跑過。淨睇 Wagga 自己就分唔到「腰斷」定「賽果未到」。
+    """
+
+    def _tree(self, tmp, others_with_results):
+        root = Path(tmp) / "AU_Racing"
+        (root / "Archive").mkdir(parents=True)
+        target = root / "2026-08-09 Wagga Race 1-7"
+        target.mkdir()
+        for name, has in others_with_results.items():
+            d = root / "Archive" / name
+            d.mkdir()
+            if has:
+                (d / "Race_Results_Reflector.md").write_text(
+                    "x" * 500, encoding="utf-8")
+        return root, target
+
+    def _ask(self, tmp, others):
+        root, target = self._tree(tmp, others)
+        with contextlib.ExitStack() as st:
+            st.enter_context(unittest.mock.patch.object(S, "AU_RACING", root))
+            st.enter_context(unittest.mock.patch.object(
+                S, "ARCHIVE_ROOT", root / "Archive"))
+            return S.date_has_results_elsewhere("2026-08-09", target)
+
+    def test_another_meeting_with_results_proves_propagation_works(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertTrue(self._ask(tmp, {"2026-08-09 Casterton Race 1-7": True}))
+
+    def test_no_other_meeting_has_results_means_we_keep_waiting(self):
+        # 全日冇一個場次收到賽果 —— 咁就真係可能係傳播未到，唔可以當腰斷。
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertFalse(self._ask(tmp, {"2026-08-09 Casterton Race 1-7": False}))
+
+    def test_the_meeting_itself_does_not_count_as_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, target = self._tree(tmp, {})
+            (target / "Race_Results_Reflector.md").write_text("x"*500, encoding="utf-8")
+            with contextlib.ExitStack() as st:
+                st.enter_context(unittest.mock.patch.object(S, "AU_RACING", root))
+                st.enter_context(unittest.mock.patch.object(
+                    S, "ARCHIVE_ROOT", root / "Archive"))
+                self.assertFalse(S.date_has_results_elsewhere("2026-08-09", target))
+
+    def test_an_empty_results_file_is_not_evidence(self):
+        # 生成咗但入面乜都冇嘅賽果檔唔算收到賽果。
+        with tempfile.TemporaryDirectory() as tmp:
+            root, target = self._tree(tmp, {})
+            d = root / "Archive" / "2026-08-09 Casterton Race 1-7"
+            d.mkdir()
+            (d / "Race_Results_Reflector.md").write_text("# x", encoding="utf-8")
+            with contextlib.ExitStack() as st:
+                st.enter_context(unittest.mock.patch.object(S, "AU_RACING", root))
+                st.enter_context(unittest.mock.patch.object(
+                    S, "ARCHIVE_ROOT", root / "Archive"))
+                self.assertFalse(S.date_has_results_elsewhere("2026-08-09", target))
+
+    def test_a_different_day_is_not_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertFalse(self._ask(tmp, {"2026-08-08 Randwick Race 1-10": True}))
