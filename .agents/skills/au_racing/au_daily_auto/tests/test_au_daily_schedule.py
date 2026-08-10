@@ -928,3 +928,37 @@ class TestReflectionPush(unittest.TestCase):
     def test_folder_names_without_a_date_are_ignored(self):
         pushed, _ = self._push(["Archive_scratch"])
         self.assertEqual(pushed, [])
+
+
+class TestPartialAbandonment(unittest.TestCase):
+    """一次新鮮抽取入面有啲場次出到賽果、有啲冇 —— 冇嗰啲係冇跑，唔係未出。
+
+    2026-08-09 Ballarat Synthetic：八版喺同一分鐘內重抽，R1–R4 嘅馬最近一戰係
+    08-09，R5–R8 係七月。即係跑咗四場之後腰斷。冇呢個判斷，佢會掛喺 dashboard
+    直到兩日上限（08-12）先清走，而我哋其實第一朝就已經知道答案。
+
+    ⚠️ 三道收窄缺一不可，否則「賽果遲咗少少」會被誤判成腰斷而少報幾場。
+    """
+
+    def test_the_three_conditions_are_all_required(self):
+        src = Path(S.__file__).read_text(encoding="utf-8")
+        i = src.index("partial_meeting_abandoned")
+        head = src[max(0, i - 1400):i]
+        # 今次真係重抽過（唔係讀舊 cache）
+        self.assertIn("refreshed_this_run", head)
+        # 同場至少有一場出到賽果（證明傳播正常）
+        self.assertIn("and found", head)
+        # 而且係場次數唔齊嗰陣先講
+        self.assertIn("len(found) < len(expected)", head)
+
+    def test_reading_stale_cache_never_declares_abandonment(self):
+        # 冇重抽就淨係代表 cache 舊，唔代表冇跑過。
+        src = Path(S.__file__).read_text(encoding="utf-8")
+        self.assertIn("refreshed_this_run = False", src)
+        self.assertIn("refreshed_this_run = True", src)
+
+    def test_a_meeting_with_zero_results_is_not_called_abandoned(self):
+        # 一場都冇 = 傳播未到，同「跑咗一半」係兩件事 —— 前者要繼續等。
+        src = Path(S.__file__).read_text(encoding="utf-8")
+        i = src.index("partial_meeting_abandoned")
+        self.assertIn("and found", src[max(0, i - 1400):i])

@@ -858,7 +858,9 @@ def review_one_meeting(runlog: RunLog, folder: Path, *,
         built = build_results_file(runlog, folder, key) if results.exists() \
             else {"ok": False, "races_with_results": []}
         covered = built.get("races_with_results") or []
+        refreshed_this_run = False
         if len(covered) < len(expected):
+            refreshed_this_run = True
             refresh = refresh_result_pages(runlog, key)
             runlog.step("results-refresh", "done", meeting=folder.name,
                         had_before=len(covered), expected=len(expected), **refresh)
@@ -880,7 +882,22 @@ def review_one_meeting(runlog: RunLog, folder: Path, *,
                            expected_races=len(expected))
             return {}
         found = built["races_with_results"]
-        if len(found) < len(expected):
+        if len(found) < len(expected) and refreshed_this_run and found:
+            # ⚠️ 同一次新鮮抽取入面，部分場次有賽果、部分冇 —— 呢個組合本身就係
+            # 證據：有賽果嗰幾場證明咗賽果傳播正常，所以冇賽果嗰幾場係真係冇跑
+            # （腰斷／棄賽），唔係「未出」。2026-08-09 Ballarat Synthetic 實測：
+            # 八版同一分鐘內抽返，R1–R4 嘅馬最近一戰係 08-09，R5–R8 係七月。
+            #
+            # 三道收窄缺一不可：頁面**今次真係重抽過**（唔係讀舊 cache）、同場
+            # **至少有一場出到賽果**（否則只係傳播未到）、而且賽日已經過去。
+            # 冇呢三道就會把「賽果遲咗少少」誤判成腰斷，靜靜咁少報幾場。
+            runlog.warn(f"{folder.name}：新鮮重抽之後仍然得 {len(found)}/"
+                        f"{len(expected)} 場有賽果，而同場其他場次抽到 —— "
+                        f"當餘下嘅係腰斷／棄賽，照覆盤已跑嘅部分")
+            runlog.meeting(folder.name, "partial_meeting_abandoned",
+                           races_with_results=found,
+                           not_run=sorted(set(expected) - set(found)))
+        elif len(found) < len(expected):
             # 唔齊唔歸檔。可能係腰斷／改期／賽果未出，全部要人手睇。
             if overdue is not None:
                 runlog.warn(f"{folder.name}：賽日過咗 {overdue} 日，賽果仍然只有 "
