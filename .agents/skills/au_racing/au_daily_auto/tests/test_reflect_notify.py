@@ -261,3 +261,53 @@ class OddsPairingTests(unittest.TestCase):
             (d / "08-09 Race 1 Formguide.md").unlink()
             text, _ = R.meeting_lines(d)
         self.assertIn("SP2.50", text)
+
+
+class MarketMoveTests(unittest.TestCase):
+    """市場對照：賽前捕捉嘅贏賠 → 開跑 SP。
+
+    ⚠️ 只可以講**負面**訊號。實測 430 匹頭兩選，控制賽前賠率之後「飛起 >10%」
+    喺四個賠率段全部最差（≤$3 67% vs 持平 88%；$3–6 42% vs 67%；$6–12 29% vs
+    53%；>$12 28% vs 43%），而「入水」唔一定好過持平 —— 頭兩段持平反而最好。
+    所以唔可以寫成「市場睇好＝好」。控制價格呢一步係關鍵：唔控制就分唔清
+    「飛起差」同「長賠馬本身入位率低」。
+    """
+
+    def _one(self, tmp, pre_win, sp_val):
+        d = meeting(tmp)
+        (d / "08-09 Race 1 Formguide.md").write_text(
+            f"RACE 1\n[2] Magic Merlin (3)\n"
+            f"SpeedPos:  -               WinOdds:   {pre_win}"
+            f"            PlcOdds:   1.3\n", encoding="utf-8")
+        (d / "Race_Results_Reflector.md").write_text(
+            RESULTS.replace("1st: #2 Magic Merlin SP$2.50",
+                            f"1st: #2 Magic Merlin SP${sp_val}"),
+            encoding="utf-8")
+        return R.meeting_lines(d)[1]
+
+    def test_a_firming_pick_lands_in_the_firm_bucket(self):
+        c = self._one("/tmp", "10.0", "2.50") if False else None
+        with tempfile.TemporaryDirectory() as tmp:
+            c = self._one(tmp, "10.0", "2.50")
+        self.assertEqual(c["mk_firm_0"], 1)
+        self.assertEqual(c["mk_drift_0"], 0)
+
+    def test_a_drifting_pick_lands_in_the_drift_bucket(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            c = self._one(tmp, "2.00", "5.00")
+        self.assertEqual(c["mk_drift_0"], 1)
+        self.assertEqual(c["mk_firm_0"], 0)
+
+    def test_a_small_move_is_flat(self):
+        # ±10% 以內當持平 —— 賠率跳一格唔算市場改變主意。
+        with tempfile.TemporaryDirectory() as tmp:
+            c = self._one(tmp, "2.50", "2.60")
+        self.assertEqual(c["mk_flat_0"], 1)
+
+    def test_a_pick_without_both_prices_is_not_bucketed(self):
+        # 冇賽前捕捉或者冇 SP 就唔可以計移動 —— 唔好當佢持平。
+        with tempfile.TemporaryDirectory() as tmp:
+            d = meeting(tmp)
+            (d / "08-09 Race 1 Formguide.md").unlink()
+            c = R.meeting_lines(d)[1]
+        self.assertEqual(c["mk_firm_0"] + c["mk_flat_0"] + c["mk_drift_0"], 0)

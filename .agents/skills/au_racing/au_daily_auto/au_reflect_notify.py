@@ -104,6 +104,11 @@ def meeting_lines(folder: Path) -> tuple[str, dict] | None:
 
     blocks = re.split(r"^## Race \d+\s*$", body, flags=re.M)[1:]
     nums = [int(n) for n, _ in RE_LABEL.findall(body)]
+    # 市場對照：賽前捕捉嘅贏賠 → 開跑 SP。⚠️ 用嘅係**負面**訊號 —— 實測 430 匹
+    # 頭兩選，控制賽前賠率之後，「飛起 >10%」喺四個賠率段全部係最差嗰組
+    # （≤$3 67% vs 持平 88%；$3–6 42% vs 67%；$6–12 29% vs 53%；>$12 28% vs 43%），
+    # 而「入水」唔一定好過持平。所以唔可以講成「市場睇好＝好」。
+    market = {"firm": [0, 0], "flat": [0, 0], "drift": [0, 0]}
     hits, counts = [], {"Gold": 0, "Good": 0, "Pass": 0, "1 Hit": 0, "Miss": 0}
     top2_hit = top2_tot = 0
     both_placed: list[int] = []
@@ -147,6 +152,19 @@ def meeting_lines(folder: Path) -> tuple[str, dict] | None:
         top3_tot += len(all3)
         if n_hit == 0:
             blank.append(rno)
+        for num, _nm in picks:
+            pre, s = po.get(num), sp.get(rno, {}).get(num)
+            if not pre or not s:
+                continue
+            try:
+                pw, spv = float(pre[0]), float(s)
+            except ValueError:
+                continue
+            move = (spv - pw) / max(pw, 0.01)
+            bucket = "drift" if move > 0.10 else "firm" if move < -0.10 else "flat"
+            market[bucket][0] += 1
+            market[bucket][1] += 1 if placed(num) else 0
+
         for idx, (num, name) in enumerate(picks, start=1):
             pos = actual.get(num)
             # ⚠️ 入位 = 名次喺派彩範圍內，唔係一律頭三。
@@ -202,7 +220,9 @@ def meeting_lines(folder: Path) -> tuple[str, dict] | None:
     return text, {"races": n, "top2_hit": top2_hit, "top2_tot": top2_tot,
                   "gold_races": len(gold_races), "good_races": len(good_races),
                   "top3_hit": top3_hit, "top3_tot": top3_tot,
-                  "blank": len(blank)}
+                  "blank": len(blank),
+                  **{f"mk_{k}_{i}": v[i] for k, v in market.items()
+                     for i in (0, 1)}}
 
 
 def build(day: str) -> str | None:
@@ -240,6 +260,17 @@ def build(day: str) -> str | None:
         f"　　　 三選 {hit3}/{tot3}（{100*hit3/max(tot3,1):.0f}%）",
         f"全走空 {tot.get('blank', 0)}/{races}",
         "　頭三選一隻都冇入位",
+        "",
+        "市場對照（賽前贏賠 → 開跑 SP）",
+    ] + [
+        f"　{lab} {tot.get(f'mk_{k}_0', 0)} 匹 · 入位 "
+        f"{tot.get(f'mk_{k}_1', 0)}/{tot.get(f'mk_{k}_0', 0)}"
+        + (f"（{100*tot.get(f'mk_{k}_1',0)/tot[f'mk_{k}_0']:.0f}%）"
+           if tot.get(f"mk_{k}_0") else "")
+        for k, lab in (("firm", "入水"), ("flat", "持平"), ("drift", "飛起"))
+        if tot.get(f"mk_{k}_0")
+    ] + [
+        "　飛起＝市場離棄，歷史上入位率最低",
         "",
         "讀法 ①首選 ②次選 · 名次",
         "　W/P＝分析時 贏/位賠",
