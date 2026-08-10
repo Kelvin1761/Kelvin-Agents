@@ -111,22 +111,54 @@ def telegram_targets(audience: str = "primary") -> list[str]:
     return out
 
 
+LIMIT = 3800  # Telegram 單條上限 4096，留位畀分條標記
+
+
+def split_blocks(text: str, limit: int = LIMIT) -> list[str]:
+    """太長就喺**馬場邊界**斷開，唔會斷喺一個馬場中間。
+
+    ⚠️ 星期六九個馬場七十幾場大約 5,500 字，超過 Telegram 4096 上限 —— 唔分條
+    嘅話會被截，而被截嗰啲一定係排在後面嘅馬場，即係靜靜咁少報。
+    """
+    if len(text) <= limit:
+        return [text]
+    blocks = text.split("\n\n")
+    parts, cur = [], ""
+    for b in blocks:
+        candidate = (cur + "\n\n" + b) if cur else b
+        if len(candidate) > limit and cur:
+            parts.append(cur)
+            cur = b
+        else:
+            cur = candidate
+    if cur:
+        parts.append(cur)
+    n = len(parts)
+    return [f"{p}\n\n（{i}/{n}）" for i, p in enumerate(parts, 1)]
+
+
 def push(text: str, title: str = "🏇 AU 覆盤",
          audience: str = "primary") -> list[str]:
-    """直接推一段自訂文字（覆盤用），行同一批出口。"""
-    out = []
+    """推一段自訂文字（覆盤／摘要用）。太長會喺馬場邊界分條。"""
     tok = os.environ.get("WC_NOTIFY_TELEGRAM_TOKEN")
-    chats = telegram_targets(audience) if tok else []
-    for chat in chats:
-        err = post(f"https://api.telegram.org/bot{tok}/sendMessage",
-                   json.dumps({"chat_id": chat, "text": text[:3900],
-                               "disable_web_page_preview": True}).encode("utf-8"),
-                   {"Content-Type": "application/json"})
-        out.append(f"telegram(…{str(chat)[-4:]}): {'ok' if err is None else err}")
+    chunks = split_blocks(text)
+    out = []
+    for chat in (telegram_targets(audience) if tok else []):
+        for chunk in chunks:
+            err = post(f"https://api.telegram.org/bot{tok}/sendMessage",
+                       json.dumps({"chat_id": chat, "text": chunk,
+                                   "disable_web_page_preview": True},
+                                  ensure_ascii=False).encode("utf-8"),
+                       {"Content-Type": "application/json"})
+            out.append(f"telegram(…{str(chat)[-4:]}): "
+                       f"{'ok' if err is None else err}")
     topic = os.environ.get("WC_NOTIFY_NTFY_TOPIC")
     if topic:
-        err = post(f"https://ntfy.sh/{topic}", text.encode("utf-8"), {})
-        out.append(f"ntfy: {'ok' if err is None else err}")
+        # ⚠️ 用 `text` 唔用 `chunk` —— 之前 loop 覆寫咗個變數名，ntfy 只會收到
+        # 最後一條，即係長訊息喺 ntfy 嗰邊靜靜咁少咗前面幾段。
+        for chunk in chunks:
+            err = post(f"https://ntfy.sh/{topic}", chunk.encode("utf-8"), {})
+            out.append(f"ntfy: {'ok' if err is None else err}")
     return out
 
 

@@ -22,11 +22,13 @@ REPORT = """# Unified AU Race Reflector Report
 ## Race 1
 - Performance label: **Gold**
 - Model Top 3: #2 Magic Merlin, #5 Maremoto, #6 Strasbelle
+- Model Top 5 shortlist: #2 Magic Merlin, #5 Maremoto, #6 Strasbelle, #4 Linda's Princess, #3 Ocean
 - Actual Top 3: 1. #2 Magic Merlin, 2. #4 Linda's Princess, 3. #6 Strasbelle
 
 ## Race 2
 - Performance label: **1 Hit**
 - Model Top 3: #7 Nowhere Man, #1 Also Ran, #3 Third
+- Model Top 5 shortlist: #7 Nowhere Man, #1 Also Ran, #3 Third, #2 Fourth, #4 Fifth
 - Actual Top 3: 1. #9 Bolter, 2. #7 Nowhere Man, 3. #8 Other
 """
 
@@ -66,9 +68,10 @@ class ReflectNotifyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             text, c = R.meeting_lines(meeting(tmp))
         # R1: 揀 #2（冠軍）中；#5 冇入前三。R2: 頭揀 #7 跑第二 —— 中。
-        self.assertIn("R1 ①Magic Merlin 冠軍", text)
+        self.assertIn("R1  首選 Magic Merlin", text)
+        self.assertIn("冠軍", text)
         self.assertNotIn("Maremoto", text)
-        self.assertIn("R2 ①Nowhere Man 亞軍", text)
+        self.assertIn("R2  首選 Nowhere Man", text)
         self.assertEqual(c["top2_hit"], 2)
         self.assertEqual(c["top2_tot"], 4)
 
@@ -78,14 +81,69 @@ class ReflectNotifyTests(unittest.TestCase):
             text, c = R.meeting_lines(meeting(tmp))
         self.assertNotIn("Strasbelle", text)
 
-    def test_every_label_is_shown_so_the_counts_add_up(self):
-        # 之前漏咗 `1 Hit`，Casterton 七場只顯示到五場 —— 加唔埋嘅數字會令人
-        # 懷疑成份報告。
+    def test_top_four_comes_from_the_shortlist_not_the_top_three_line(self):
+        """「Model Top 3」只有三匹 —— 由佢取「頭四」會靜靜咁少報。
+
+        實測：由 Top 3 嗰行取頭四，捉齊三甲由 11/38 跌到 2/38。頭四一定要由
+        `Model Top 5 shortlist` 取。呢個對數方式（同覆盤報告嘅 Gold 標籤比）
+        係唯一捉得到呢類錯嘅方法。
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            d = meeting(tmp)
+            # R1 實際前三 = #2、#4、#6；頭四選（shortlist）= #2、#5、#6、#4 → 捉齊
+            _, c = R.meeting_lines(d)
+        self.assertEqual(c["gold_races"], 1)
+
+    def test_gold_and_good_can_both_count_the_same_race(self):
+        """Kelvin 明確要兩樣都標，唔好互斥。
+
+        ⚠️ 呢個同覆盤報告嘅 `exclusive_label` 唔同（嗰邊 Gold 蓋過 Good）。
+        兩個數字唔可以並排比較 —— 定義唔同。
+        """
+        report = REPORT.replace(
+            "- Actual Top 3: 1. #2 Magic Merlin, 2. #4 Linda's Princess, 3. #6 Strasbelle",
+            "- Actual Top 3: 1. #2 Magic Merlin, 2. #5 Maremoto, 3. #6 Strasbelle")
+        results = RESULTS.replace("2nd: #4 Linda's Princess (0.67L) SP$71.00",
+                                  "2nd: #5 Maremoto (0.67L) SP$71.00")
+        with tempfile.TemporaryDirectory() as tmp:
+            d = meeting(tmp)
+            next(d.glob("*_Reflector_Report.md")).write_text(report, encoding="utf-8")
+            (d / "Race_Results_Reflector.md").write_text(results, encoding="utf-8")
+            _, c = R.meeting_lines(d)
+        # 同一場：頭三選全部入位 → 捉齊三甲 ✅，頭兩選都入位 ✅
+        self.assertEqual(c["gold_races"], 1)
+        self.assertEqual(c["good_races"], 1)
+
+    def test_the_top_three_distribution_sums_to_the_race_count(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _, c = R.meeting_lines(meeting(tmp))
+        self.assertEqual(sum(c[f"t3_{k}"] for k in (3, 2, 1, 0)), c["races"])
+
+    def test_both_placed_is_counted_directly_not_from_the_good_label(self):
+        """五個評級互斥，Gold 蓋過 Good —— 讀標籤會少報一半。
+
+        2026-08-09 實測：Good 標籤 4/38，但真係兩隻都入位嘅係 8/38。差嗰四場
+        全部係已經標咗 Gold。Kelvin 想睇「兩隻都入位」呢件事本身。
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            d = meeting(tmp)
+            # R1 兩隻揀馬（#2 冠軍、#5 冇入位）—— 唔算兩隻都入位
+            text, c = R.meeting_lines(d)
+        self.assertEqual(c["good_races"], 0)
+        self.assertEqual(c["gold_races"], 1)   # 但捉齊三甲照計
+
+    def test_the_header_shows_the_full_distribution(self):
+        """四個檔位都要出，唔可以只出好嗰啲。
+
+        之前漏咗一個 label，七場嘅馬場顯示成五場 —— 加唔埋嘅數字會令人懷疑
+        成份報告。
+        """
         with tempfile.TemporaryDirectory() as tmp:
             text, c = R.meeting_lines(meeting(tmp))
-        shown = sum(c.get(k, 0) for k in ("Gold", "Good", "Pass", "1 Hit", "Miss"))
-        self.assertEqual(shown, c["races"])
-        self.assertIn("一中 1", text)
+        for word in ("三隻", "兩隻", "一隻", "零隻"):
+            self.assertIn(word, text)
+        self.assertIn("捉齊三甲", text)
+        self.assertIn("頭兩選皆入位", text)
 
     def test_sp_and_pre_race_place_odds_are_both_shown(self):
         # 兩個唔同時間點嘅數字：SP 係開跑一刻官方贏馬賠率，位賠係分析嗰陣捕捉。
