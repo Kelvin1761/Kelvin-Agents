@@ -186,6 +186,15 @@ class RunLog:
             sent = au_notify.send(self.data)
             if sent:
                 log(f"[notify] {'; '.join(sent)}")
+            # ⚠️ 失敗嗰陣多送一條診斷。真正嘅成本唔係修，係「由發現到有足夠資料
+            # 判斷」嗰段 —— 出事時 Kelvin 唔喺電腦前，收到「❌ failed」之後要自己
+            # 開機、搵 log、抄過嚟問。呢條訊息就係要消滅嗰一步。
+            if self.data.get("status") in ("failed", "partial"):
+                import au_diagnose
+
+                text = au_diagnose.diagnose(self.data, au_diagnose.runs())
+                au_diagnose.BUNDLE.write_text(text, encoding="utf-8")
+                au_notify.push("🔎 " + au_diagnose.phone_summary(text))
         except Exception as exc:  # noqa: BLE001
             log(f"[notify] 送唔出（{type(exc).__name__}: {exc}）—— run 結果不受影響")
 

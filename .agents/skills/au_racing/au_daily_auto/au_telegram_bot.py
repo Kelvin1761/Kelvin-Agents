@@ -36,6 +36,7 @@ HELP = ("我識嘅嘢：\n"
         "/perf            最近一個賽日嘅 Gold／Good\n"
         "/week            近七日走勢\n"
         "/health          即刻做一次體檢\n"
+        "/diag            最近一次失敗嘅診斷\n"
         "/help            呢個")
 
 
@@ -214,6 +215,20 @@ def cmd_picks(arg: str = "") -> str:
     return "\n".join(lines)
 
 
+def cmd_diag() -> str:
+    """最近一個失敗／partial run 嘅診斷。手機睇短版，完整版落檔。"""
+    import au_diagnose
+    hist = au_diagnose.runs()
+    if not hist:
+        return "冇 run 記錄"
+    target = next((r for r in hist if r.get("status") in ("failed", "partial")), None)
+    if not target:
+        return "✅ 最近幾個 run 都冇失敗"
+    text = au_diagnose.diagnose(target, hist)
+    au_diagnose.BUNDLE.write_text(text, encoding="utf-8")
+    return au_diagnose.phone_summary(text)
+
+
 def cmd_health() -> str:
     import subprocess
     try:
@@ -263,7 +278,7 @@ def cmd_week() -> str:
 PICKMARK = {1: "①", 2: "②", 3: "③"}
 
 COMMANDS = {"/status": cmd_status, "/today": cmd_today, "/perf": cmd_perf,
-            "/health": cmd_health, "/week": cmd_week,
+            "/health": cmd_health, "/week": cmd_week, "/diag": cmd_diag,
             "/help": lambda: HELP, "/start": lambda: HELP}
 # 收參數嘅指令要另外列 —— 白名單仍然係逐個字對，參數只當文字用嚟配對馬場名，
 # 永遠唔會變成路徑或者指令。
