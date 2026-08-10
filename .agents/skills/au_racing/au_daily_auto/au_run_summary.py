@@ -28,7 +28,8 @@ def morning(run: dict) -> str | None:
     # 捕捉 2026-08-10 先加），報「頭三揀冇郁」等於畀一個假保證。
     tracked = [c for c in changes if "ranking_moved" in c]
     moved = [(c["meeting"], m) for c in tracked for m in (c["ranking_moved"] or [])]
-    if not (scratch or track or moved):
+    drift = run.get("market_drift") or []
+    if not (scratch or track or moved or drift):
         return None
 
     lines = [f"🌅 早更覆核 {run.get('review_day', '')}"]
@@ -59,6 +60,17 @@ def morning(run: dict) -> str | None:
         lines.append("\n🌦 場地狀況")
         for venue, moves in seen.items():
             lines.append(f"· {venue}：" + "、".join(sorted(moves)))
+
+    if drift:
+        # 開跑前最有用嘅一行：歷史上飛起 >25% 嘅揀馬入位率 32%，正常 54%。
+        lines.append("\n⚠️ 市場離棄（歷史入位率 32%，正常 54%）")
+        for x in sorted(drift, key=lambda y: -y["move"])[:8]:
+            mark = "①" if x["rank"] == 1 else "②"
+            lines.append(f"· {_venue(x['meeting'])} R{x['race']} {mark}{x['horse']}"
+                         f"  ${x['was']:g} → ${x['now']:g}"
+                         f"（+{100*x['move']:.0f}%）")
+        if len(drift) > 8:
+            lines.append(f"  （另有 {len(drift)-8} 匹）")
 
     lines.append("\n📊 排名")
     if moved:

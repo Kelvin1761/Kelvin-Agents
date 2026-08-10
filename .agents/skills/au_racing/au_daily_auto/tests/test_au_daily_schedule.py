@@ -1090,3 +1090,44 @@ class TestMergeSkipsArchivedFolders(unittest.TestCase):
         src = Path(S.__file__).read_text(encoding="utf-8")
         body = src[src.index("def run_morning"):src.index("def run_morning") + 2000]
         self.assertLess(body.index("step_review_archive"), body.index("skip_refresh"))
+
+
+class TestMarketDrift(unittest.TestCase):
+    """開跑前嘅飛起警號 —— 整套嘢對落注最直接有用嗰樣。
+
+    實測 430 匹頭兩選：基準入位率 54%，飛起 >25% 嗰 91 匹只有 32%（-23pp），
+    而且控制賽前賠率之後四個賠率段全部一致。2026-08-10 Nowra 實跑一次捉到 3 匹
+    （+38% / +50% / +56%），三匹全部走空。
+
+    ⚠️ 賠率永遠唔入評分。呢個純粹係警號。
+    ⚠️ 一定要喺重建覆寫 Formguide 之前計 —— 分析時嘅賠率只存喺嗰度。
+    """
+
+    def test_the_threshold_matches_what_was_measured(self):
+        # 25% 係量出嚟嘅平衡點（91 匹 / 32%），唔係執個數。
+        self.assertEqual(S.DRIFT_WARN, 0.25)
+
+    def test_formguide_odds_are_read_per_horse_block(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp)
+            (d / "08-10 Race 1 Formguide.md").write_text(
+                "RACE 1\n"
+                "[1] First Horse (3)\n"
+                "SpeedPos:  -               WinOdds:   3.2             PlcOdds:   1.4\n"
+                "[7] Second Horse (5)\n"
+                "SpeedPos:  -               WinOdds:   12.0            PlcOdds:   3.3\n"
+                "[9] No Price (1)\n"
+                "SpeedPos:  -               WinOdds:   -               PlcOdds:   -\n",
+                encoding="utf-8")
+            got = S.market_odds_from_formguide(d, 1)
+        self.assertEqual(got, {1: "3.2", 7: "12.0"})   # 冇價嘅唔收
+
+    def test_drift_is_computed_before_any_rebuild(self):
+        """次序係整個功能嘅前提。
+
+        重建會由新頁面重寫 Formguide，分析時嘅賠率即刻消失，之後比就永遠零差異。
+        """
+        src = Path(S.__file__).read_text(encoding="utf-8")
+        body = src[src.index("def refresh_one_meeting"):]
+        body = body[:body.index("\ndef ")]
+        self.assertLess(body.index("market_drift("), body.index("diff_race_state("))

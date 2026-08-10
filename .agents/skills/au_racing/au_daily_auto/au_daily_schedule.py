@@ -1613,6 +1613,82 @@ def rebuild_meeting_from_cache(runlog: RunLog, folder: Path, key: str,
     return True
 
 
+# 飛起幾多算警號。實測 430 匹頭兩選：基準入位率 54%，飛起 >25% 嗰 91 匹只有
+# 32%（-23pp）。門檻再高訊號更強但樣本更細（>50% 得 40 匹 / 28%），25% 係平衡點。
+DRIFT_WARN = 0.25
+
+
+def market_drift(runlog: RunLog, folder: Path, key: str) -> list[dict]:
+    """頭兩選之中，市場由分析時到而家飛起得好緊要嘅。
+
+    ⚠️ 賠率**永遠唔入評分** —— 呢個純粹係開跑前嘅警號，同 `au_reflect_notify`
+    嗰個事後統計係同一個訊號嘅賽前版本。呢個係整套嘢最直接有用嘅一樣：一隻到
+    早上已經飛起 25% 嘅揀馬，歷史上入位率 32%，係正常 54% 嘅一半。
+
+    ⚠️ 一定要喺**重建覆寫 Formguide 之前**叫。分析時嘅賠率只存喺 Formguide 度，
+    一重建就被新頁面沖走，之後再比就永遠零差異。
+    """
+    from claw_sportsbet_form import BASE, SportsbetFormFetcher, parse_odds_html
+
+    ids = load_mapping()
+    meta = ids.get(key) or {}
+    if not meta.get("races"):
+        return []
+    picks = top_picks_snapshot(folder, depth=2)
+    fetch = SportsbetFormFetcher(delay=0.0, verbose=False)
+    out: list[dict] = []
+    for i, rid in enumerate(meta["races"], start=1):
+        chosen = picks.get(i)
+        if not chosen:
+            continue
+        was = market_odds_from_formguide(folder, i)
+        cache = fetch._cache_path(f"{BASE}/{meta['meetingId']}/{rid}/")
+        if not cache.exists():
+            continue
+        try:
+            now = parse_odds_html(cache.read_text(errors="replace"))
+        except Exception:  # noqa: BLE001
+            continue
+        for rank, num, name in chosen:
+            old = was.get(num)
+            new = (now.get(num) or {}).get("Sportsbet-FixedWin")
+            if not old or not new:
+                continue
+            try:
+                move = (float(new) - float(old)) / max(float(old), 0.01)
+            except (TypeError, ValueError):
+                continue
+            if move > DRIFT_WARN:
+                out.append({"meeting": folder.name, "race": i, "rank": rank,
+                            "horse": name, "was": float(old), "now": float(new),
+                            "move": round(move, 3)})
+    if out:
+        runlog.data.setdefault("market_drift", []).extend(out)
+        runlog.step("market-drift", "flagged", meeting=folder.name,
+                    count=len(out))
+    return out
+
+
+RE_FG_WIN = re.compile(r"WinOdds:\s*([\d.]+|-)")
+
+
+def market_odds_from_formguide(folder: Path, race_no: int) -> dict[int, str]:
+    """{馬號: 分析時嘅贏賠}，由 Formguide 讀（即係我哋落分嗰刻嘅市場價）。"""
+    fg = next(iter(folder.glob(f"*Race {race_no} Formguide.md")), None)
+    if not fg:
+        return {}
+    body = fg.read_text(errors="replace")
+    starts = [(m.start(), int(m.group(1)))
+              for m in re.finditer(r"^\[(\d+)\]\s", body, re.M)]
+    out = {}
+    for i, (pos, num) in enumerate(starts):
+        end = starts[i + 1][0] if i + 1 < len(starts) else len(body)
+        m = RE_FG_WIN.search(body, pos, end)
+        if m and m.group(1) != "-":
+            out[num] = m.group(1)
+    return out
+
+
 def refresh_one_meeting(runlog: RunLog, folder: Path, api: dict) -> bool:
     stored = stored_race_state(folder)
     if not stored:
@@ -1629,6 +1705,9 @@ def refresh_one_meeting(runlog: RunLog, folder: Path, api: dict) -> bool:
             official = normalise_going(slot.get("going"))
             break
     going = official or page_going
+
+    # ⚠️ 喺任何重建之前做 —— 分析時嘅賠率只存喺 Formguide，一重建就沖走。
+    market_drift(runlog, folder, mapping_key_for(folder) or "")
 
     changes = diff_race_state(stored, live)
     for rno, delta in changes.items():
