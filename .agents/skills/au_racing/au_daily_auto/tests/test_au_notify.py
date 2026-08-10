@@ -124,3 +124,42 @@ class SendTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AudienceTests(unittest.TestCase):
+    """額外收件人只收內容，唔收運維訊息。
+
+    Kelvin 想加一個朋友睇賽事分析。但診斷入面有檔案路徑、commit、log 節錄 ——
+    對第三者係雜訊，亦唔應該外傳。所以收件人分兩層，而且預設係最窄嗰層：
+    要明確講 `audience="content"` 先會多發。
+    """
+
+    def setUp(self):
+        for k in ("WC_NOTIFY_TELEGRAM_CHAT", "WC_NOTIFY_TELEGRAM_EXTRA"):
+            os.environ.pop(k, None)
+
+    tearDown = setUp
+
+    def test_default_audience_is_the_owner_only(self):
+        os.environ["WC_NOTIFY_TELEGRAM_CHAT"] = "111"
+        os.environ["WC_NOTIFY_TELEGRAM_EXTRA"] = "222"
+        self.assertEqual(N.telegram_targets(), ["111"])
+
+    def test_content_reaches_the_extra_readers(self):
+        os.environ["WC_NOTIFY_TELEGRAM_CHAT"] = "111"
+        os.environ["WC_NOTIFY_TELEGRAM_EXTRA"] = "222, 333"
+        self.assertEqual(N.telegram_targets("content"), ["111", "222", "333"])
+
+    def test_the_owner_is_never_sent_the_same_message_twice(self):
+        os.environ["WC_NOTIFY_TELEGRAM_CHAT"] = "111"
+        os.environ["WC_NOTIFY_TELEGRAM_EXTRA"] = "111,222"
+        self.assertEqual(N.telegram_targets("content"), ["111", "222"])
+
+    def test_no_extras_configured_changes_nothing(self):
+        os.environ["WC_NOTIFY_TELEGRAM_CHAT"] = "111"
+        self.assertEqual(N.telegram_targets("content"), ["111"])
+
+    def test_semicolons_and_spaces_are_tolerated(self):
+        os.environ["WC_NOTIFY_TELEGRAM_CHAT"] = "111"
+        os.environ["WC_NOTIFY_TELEGRAM_EXTRA"] = " 222 ; 333 "
+        self.assertEqual(N.telegram_targets("content"), ["111", "222", "333"])

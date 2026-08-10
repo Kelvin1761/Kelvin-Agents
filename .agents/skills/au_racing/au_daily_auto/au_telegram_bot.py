@@ -285,6 +285,29 @@ COMMANDS = {"/status": cmd_status, "/today": cmd_today, "/perf": cmd_perf,
 COMMANDS_WITH_ARG = {"/picks": cmd_picks}
 
 
+def _record_unknown(chat: dict, text: str) -> None:
+    """把未授權嘅 chat 記落本機，方便日後決定加唔加做收件人。"""
+    path = LOG_DIR / "unknown_chats.json"
+    try:
+        seen = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        seen = {}
+    cid = str(chat.get("id") or "")
+    if not cid:
+        return
+    entry = seen.setdefault(cid, {"first_seen": None, "messages": 0})
+    entry["messages"] += 1
+    entry["name"] = " ".join(x for x in (chat.get("first_name"),
+                                         chat.get("last_name")) if x) or None
+    entry["username"] = chat.get("username")
+    entry["last_text"] = text[:60]
+    entry["first_seen"] = entry["first_seen"] or datetime.now().isoformat(
+        timespec="seconds")
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(seen, ensure_ascii=False, indent=2),
+                    encoding="utf-8")
+
+
 def load_offset() -> int:
     try:
         return int(json.loads(OFFSET_FILE.read_text(encoding="utf-8"))["offset"])
@@ -311,7 +334,11 @@ def main() -> int:
         msg = u.get("message") or {}
         chat_id = str((msg.get("chat") or {}).get("id") or "")
         if chat_id != str(allowed):
-            # 唔識嘅人：唔覆、唔留手尾。覆一句「你唔准」等於話畀人知隻 bot 存在。
+            # 唔識嘅人：**唔覆**。覆一句「你唔准」等於話畀人知隻 bot 存在。
+            # 但要**記低**：之前係靜靜咁掉咗，於是 Kelvin 根本唔知有邊個試過，
+            # 想加一個朋友做收件人嘅時候亦攞唔返個 chat id（poller 已經 confirm
+            # 咗嗰條 update，queue 清空）。記錄只落本機檔案。
+            _record_unknown(msg.get("chat") or {}, msg.get("text") or "")
             continue
         # ⚠️ 逐個字對白名單。訊息內容永遠唔會變成路徑、參數或者指令。
         parts = (msg.get("text") or "").strip().split()

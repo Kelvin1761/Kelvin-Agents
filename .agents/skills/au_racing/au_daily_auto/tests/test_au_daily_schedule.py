@@ -890,7 +890,8 @@ class TestReflectionPush(unittest.TestCase):
         runlog = unittest.mock.MagicMock()
         pushed = []
         fake_notify = unittest.mock.MagicMock()
-        fake_notify.push = lambda text: (pushed.append(text), ["telegram: ok"])[1]
+        fake_notify.push = lambda text, **kw: (
+            pushed.append((text, kw.get("audience"))), ["telegram: ok"])[1]
         fake_reflect = unittest.mock.MagicMock()
         fake_reflect.build = build
         with unittest.mock.patch.dict(sys.modules, {"au_notify": fake_notify,
@@ -901,12 +902,15 @@ class TestReflectionPush(unittest.TestCase):
     def test_pushes_once_per_race_day_that_was_archived(self):
         pushed, _ = self._push(["2026-08-09 Wagga Race 1-7",
                                 "2026-08-09 Casterton Race 1-7"])
-        self.assertEqual(pushed, ["摘要 2026-08-09"])
+        self.assertEqual([p[0] for p in pushed], ["摘要 2026-08-09"])
+        # 覆盤係內容 —— 額外收件人收得到。
+        self.assertEqual([p[1] for p in pushed], ["content"])
 
     def test_a_backfill_covering_two_days_pushes_both(self):
         pushed, _ = self._push(["2026-08-08 Randwick Race 1-10",
                                 "2026-08-09 Wagga Race 1-7"])
-        self.assertEqual(pushed, ["摘要 2026-08-08", "摘要 2026-08-09"])
+        self.assertEqual([p[0] for p in pushed],
+                         ["摘要 2026-08-08", "摘要 2026-08-09"])
 
     def test_nothing_archived_sends_nothing(self):
         pushed, _ = self._push([])

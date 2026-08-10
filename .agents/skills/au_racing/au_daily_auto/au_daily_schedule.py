@@ -2261,7 +2261,8 @@ def push_reflection(runlog: RunLog, archived: list[str]) -> None:
             text = au_reflect_notify.build(day)
             if not text:
                 continue
-            sent = au_notify.push(text)
+            # 覆盤係內容 —— 額外收件人收得到。
+            sent = au_notify.push(text, audience="content")
             runlog.step("reflect-push", "ok" if sent else "no-outlet", day=day,
                         detail="; ".join(sent) or None)
         except Exception as exc:  # noqa: BLE001

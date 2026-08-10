@@ -94,17 +94,35 @@ def post(url: str, data: bytes, headers: dict) -> str | None:
         return f"{type(exc).__name__}: {exc}"
 
 
-def push(text: str, title: str = "🏇 AU 覆盤") -> list[str]:
+def telegram_targets(audience: str = "primary") -> list[str]:
+    """收件人。⚠️ 分兩層，而且預設係最窄嗰層。
+
+    `primary`  只有 Kelvin —— 運維訊息（診斷、體檢、自動補救）行呢層。入面有
+               檔案路徑、commit、log 節錄，對第三者係雜訊，亦唔應該外傳。
+    `content`  Kelvin 加 `WC_NOTIFY_TELEGRAM_EXTRA` 嗰啲 —— 賽事分析同表現。
+               佢哋**淨係收**，指令權限唔會跟住畀（bot 仍然只回應 primary）。
+    """
+    primary = os.environ.get("WC_NOTIFY_TELEGRAM_CHAT")
+    out = [primary] if primary else []
+    if audience == "content":
+        extra = os.environ.get("WC_NOTIFY_TELEGRAM_EXTRA") or ""
+        out += [c.strip() for c in extra.replace(";", ",").split(",")
+                if c.strip() and c.strip() != primary]
+    return out
+
+
+def push(text: str, title: str = "🏇 AU 覆盤",
+         audience: str = "primary") -> list[str]:
     """直接推一段自訂文字（覆盤用），行同一批出口。"""
     out = []
-    tok, chat = (os.environ.get("WC_NOTIFY_TELEGRAM_TOKEN"),
-                 os.environ.get("WC_NOTIFY_TELEGRAM_CHAT"))
-    if tok and chat:
+    tok = os.environ.get("WC_NOTIFY_TELEGRAM_TOKEN")
+    chats = telegram_targets(audience) if tok else []
+    for chat in chats:
         err = post(f"https://api.telegram.org/bot{tok}/sendMessage",
                    json.dumps({"chat_id": chat, "text": text[:3900],
                                "disable_web_page_preview": True}).encode("utf-8"),
                    {"Content-Type": "application/json"})
-        out.append(f"telegram: {'ok' if err is None else err}")
+        out.append(f"telegram(…{str(chat)[-4:]}): {'ok' if err is None else err}")
     topic = os.environ.get("WC_NOTIFY_NTFY_TOPIC")
     if topic:
         err = post(f"https://ntfy.sh/{topic}", text.encode("utf-8"), {})
