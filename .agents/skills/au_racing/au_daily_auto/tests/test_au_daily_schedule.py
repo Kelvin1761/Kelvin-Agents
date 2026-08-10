@@ -1028,3 +1028,61 @@ class TestWholeMeetingAbandoned(unittest.TestCase):
     def test_a_different_day_is_not_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.assertFalse(self._ask(tmp, {"2026-08-08 Randwick Race 1-10": True}))
+
+
+class TestMergeSkipsArchivedFolders(unittest.TestCase):
+    """合併一個已經歸檔嘅場次無論點都係錯。
+
+    2026-08-10 實測：早更喺覆盤之前影低合併名單，覆盤跟住把兩個腰斷場次歸檔，
+    於是名單指向已經搬走嘅路徑。`generate_static` 照食，出咗兩個「零場次」嘅空殼
+    加返落 snapshot —— 啱啱剪走完又加返，而且係空嘅。驗證攔住咗發佈，但源頭係
+    次序：覆盤要行喺計名單之前，而合併本身亦要擋。
+    """
+
+    def _run(self, tmp, folders):
+        base = Path(tmp) / "live.json"
+        base.write_text(json.dumps({"meetings": []}), encoding="utf-8")
+        archive = Path(tmp) / "Archive"
+        archive.mkdir(exist_ok=True)
+        calls = []
+
+        def fake_run_cmd(cmd, **kw):
+            calls.append(cmd)
+            Path(cmd[cmd.index("--output-json") + 1]).write_text(
+                json.dumps({"meetings": []}), encoding="utf-8")
+            return 0, ""
+
+        runlog = S.RunLog("morning", S.date(2026, 8, 10), Path(tmp) / "run.json")
+        with contextlib.ExitStack() as st:
+            for name, value in (("WORK_DIR", Path(tmp)), ("ARCHIVE_ROOT", archive),
+                                ("run_cmd", fake_run_cmd),
+                                ("live_meeting_dirs", lambda: []),
+                                ("download_live_snapshot", lambda *a, **k: base)):
+                st.enter_context(unittest.mock.patch.object(S, name, value))
+            S.build_snapshot(runlog, folders, [])
+        merged = [c[c.index("--au-meeting-dir") + 1] for c in calls
+                  if "--au-meeting-dir" in c]
+        return merged
+
+    def test_a_folder_that_moved_to_archive_is_not_merged(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            arch = Path(tmp) / "Archive" / "2026-08-09 Wagga Race 1-7"
+            live = Path(tmp) / "2026-08-10 Dubbo Race 1-7"
+            for d in (arch, live):
+                d.mkdir(parents=True, exist_ok=True)
+            merged = self._run(tmp, [arch, live])
+        self.assertEqual([Path(m).name for m in merged], ["2026-08-10 Dubbo Race 1-7"])
+
+    def test_a_folder_that_no_longer_exists_is_not_merged(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            gone = Path(tmp) / "2026-08-09 Gone Race 1-7"
+            live = Path(tmp) / "2026-08-10 Dubbo Race 1-7"
+            live.mkdir(parents=True)
+            merged = self._run(tmp, [gone, live])
+        self.assertEqual([Path(m).name for m in merged], ["2026-08-10 Dubbo Race 1-7"])
+
+    def test_review_runs_before_the_merge_list_is_taken(self):
+        # 次序係源頭 —— 倒轉就會再犯同一個錯。
+        src = Path(S.__file__).read_text(encoding="utf-8")
+        body = src[src.index("def run_morning"):src.index("def run_morning") + 2000]
+        self.assertLess(body.index("step_review_archive"), body.index("skip_refresh"))

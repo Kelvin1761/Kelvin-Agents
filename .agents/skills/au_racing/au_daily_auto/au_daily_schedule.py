@@ -1828,6 +1828,22 @@ def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
                 f"{out.splitlines()[-1] if out else '冇輸出'}")
         current = pruned
         runlog.step("dashboard-prune", "ok", dropped=drop_keys)
+    # ⚠️ 合併之前要重新確認每個 folder 仲喺度。2026-08-10 實測：早更喺覆盤之前
+    # 計好合併名單，覆盤跟住把兩個腰斷場次歸檔，於是名單指向已經搬走嘅路徑 ——
+    # `generate_static` 照食，出咗兩個「零場次」嘅空殼加返落 snapshot，驗證即刻
+    # 攔住咗發佈。合併一個已歸檔嘅場次無論點都係錯，所以喺呢度硬性擋。
+    live_dirs = []
+    for folder in meeting_dirs:
+        if not folder.exists():
+            runlog.warn(f"{folder.name} 喺合併之前已經唔喺度（多數係啱啱歸檔咗）"
+                        f"—— 唔合併")
+            continue
+        if folder.parent == ARCHIVE_ROOT:
+            runlog.warn(f"{folder.name} 已經歸檔 —— 唔合併（剪走先啱）")
+            continue
+        live_dirs.append(folder)
+    meeting_dirs = live_dirs
+
     for i, folder in enumerate(meeting_dirs, 1):
         out_json = WORK_DIR / f"merge-{i:02d}.json"
         cmd = [sys.executable, GENERATE_STATIC,
@@ -2277,6 +2293,20 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
 def run_morning(runlog: RunLog, args, today: date) -> int:
     temporary = False
     updated: list[Path] = []
+
+    # ⚠️ 收拾尋日一定要行喺**計合併名單之前**。倒轉嘅話名單會喺覆盤歸檔之前
+    # 影低，跟住合併一啲已經搬走嘅 folder，把空殼加返上 dashboard。
+    if not args.skip_review:
+        try:
+            done = step_review_archive(runlog, today - timedelta(days=1))
+            if done:
+                push_reflection(runlog, done)
+        except TemporaryFailure as exc:
+            runlog.step("morning-review", "deferred", detail=str(exc))
+        except Exception as exc:  # noqa: BLE001
+            runlog.error("morning-review", f"{type(exc).__name__}: {exc}")
+            temporary = True
+
     if args.skip_refresh:
         # 唔出網。把 dashboard 上嘅場次由本機重新合併一次就算 —— 用嚟把已經改好
         # 但未發佈嘅分析推上去，唔會為咗觸發發佈而重抽幾十版。
@@ -2295,22 +2325,6 @@ def run_morning(runlog: RunLog, args, today: date) -> int:
                                           round_gap=args.round_gap)
         except TemporaryFailure as exc:
             runlog.error("refresh-active", f"暫時性：{exc}")
-            temporary = True
-
-    # 收拾尋日仲未覆盤嘅場次。⚠️ 唔少場次嘅賽果係隔夜先出：晚更 22:00 跑嗰陣，
-    # 尾段賽事仲未跑完（2026-08-09 Ballarat Synthetic 八場只抽到四場、Wagga 一場
-    # 都冇），於是唔齊唔歸檔 —— 完全正確。但早更本來明確唔掂已跑完嘅場次，
-    # 交畀晚更，所以佢哋要等到今晚 22:00 先離開 dashboard，喺個板上留足十二個鐘。
-    # 而家早更順手收拾佢哋：賽果隔夜已經出咗，一收到就覆盤、歸檔、剪走。
-    if not args.skip_review:
-        try:
-            done = step_review_archive(runlog, today - timedelta(days=1))
-            if done:
-                push_reflection(runlog, done)
-        except TemporaryFailure as exc:
-            runlog.step("morning-review", "deferred", detail=str(exc))
-        except Exception as exc:  # noqa: BLE001
-            runlog.error("morning-review", f"{type(exc).__name__}: {exc}")
             temporary = True
 
     # 補完當日賽日。晚更俾個站拒絕之後，呢個係唯一會再試嘅地方。已經齊嘅場次
