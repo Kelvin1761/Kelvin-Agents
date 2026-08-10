@@ -62,8 +62,14 @@ def field_size(folder: Path, race_no: int) -> int | None:
     return int(m.group(1)) if m else None
 
 
-def place_odds(folder: Path, race_no: int) -> dict[int, str]:
-    """{馬號: 賽前位賠}。Formguide 用 `[馬號] 馬名 (檔位)` 做每匹馬嘅起點。"""
+def place_odds(folder: Path, race_no: int) -> dict[int, tuple[str, str]]:
+    """{馬號: (賽前贏賠, 賽前位賠)}，**同一次捕捉**，所以夾得埋。
+
+    ⚠️ 一定要成對回。之前只回位賠，然後同賽果檔嘅 SP 擺埋一齊顯示 —— 兩個唔同
+    時間點。2026-08-10 Dubbo R5 Castlebar Road 由分析時 $20 入水到 SP $4.20，
+    於是顯示成「贏 4.20 / 位 5.25」，位賠高過贏賠，睇落似 data 壞。兩個數字各自
+    都對，錯喺我把佢哋夾埋當成一對。
+    """
     hits = list(folder.glob(f"*Race {race_no} Formguide.md"))
     if not hits:
         return {}
@@ -73,8 +79,8 @@ def place_odds(folder: Path, race_no: int) -> dict[int, str]:
     for i, (pos, num) in enumerate(starts):
         end = starts[i + 1][0] if i + 1 < len(starts) else len(body)
         m = RE_FG_ODDS.search(body, pos, end)
-        if m and m.group(2) != "-":
-            out[num] = m.group(2)
+        if m and m.group(1) != "-" and m.group(2) != "-":
+            out[num] = (m.group(1), m.group(2))
     return out
 
 
@@ -147,15 +153,26 @@ def meeting_lines(folder: Path) -> tuple[str, dict] | None:
             if pos is None or pos > pays:
                 continue
             top2_hit += 1
-            win = sp.get(rno, {}).get(num)
+            win_sp = sp.get(rno, {}).get(num)
+            pre = po.get(num)
             bits = []
-            if win:
-                bits.append(f"贏${win}")
-            if po.get(num):
-                bits.append(f"位${po[num]}")
+            if pre:
+                bits.append(f"W{pre[0]}/P{pre[1]}")
+            # SP 只喺市場真係大幅移動（±25%）先出 —— 否則每行都長，而唔移動嗰陣
+            # SP 同賽前贏賠差唔多，冇資訊量。
+            if win_sp:
+                try:
+                    moved = not pre or abs(float(win_sp) - float(pre[0])) \
+                        / max(float(pre[0]), 0.01) > 0.25
+                except ValueError:
+                    moved = True
+                if moved:
+                    bits.append(f"SP{win_sp}")
+                elif not pre:
+                    bits.append(f"SP{win_sp}")
             tag = f" ({fs}匹{pays}位)" if pays != 3 else ""
             short = {1: "冠", 2: "亞", 3: "季"}.get(pos, "")
-            price = "/".join(b.split("$")[1] for b in bits) if bits else ""
+            price = " ".join(bits)
             # ⚠️ 唔用固定寬度 padding —— 手機上會撐到超出螢幕闊度然後亂 wrap，
             # 賠率被推落下一行單獨出現（實測 iPhone 截圖）。改成短標籤 + 斜線價。
             hits.append(f"R{rno} {PICK[idx]}{name[:22]} {short}"
@@ -170,11 +187,12 @@ def meeting_lines(folder: Path) -> tuple[str, dict] | None:
 
     head = [
         f"━━ {venue} · {n} 場 ━━",
-        f"捉齊三甲 {len(gold_races)}/{n}"
+        f"捉齊三甲 {len(gold_races)}/{n}（{100*len(gold_races)/n:.0f}%）"
         + (f" · {_rs(gold_races)}" if gold_races else ""),
-        f"兩選皆入位 {len(good_races)}/{n}"
+        f"兩選皆入位 {len(good_races)}/{n}（{100*len(good_races)/n:.0f}%）"
         + (f" · {_rs(good_races)}" if good_races else ""),
-        f"入位率 兩選 {top2_hit}/{top2_tot} · 三選 {top3_hit}/{top3_tot}",
+        f"入位率 兩選 {top2_hit}/{top2_tot}（{100*top2_hit/max(top2_tot,1):.0f}%）",
+        f"　　　 三選 {top3_hit}/{top3_tot}（{100*top3_hit/max(top3_tot,1):.0f}%）",
         f"全走空 {len(blank)}" + (f" · {_rs(blank)}" if blank else ""),
     ]
     # ⚠️ 一行圖例代替逐行重複「首選／次選／贏／位」。唔講清楚嘅話 `4.60/1.67`
@@ -223,7 +241,9 @@ def build(day: str) -> str | None:
         f"全走空 {tot.get('blank', 0)}/{races}",
         "　頭三選一隻都冇入位",
         "",
-        "入位馬匹讀法：①首選 ②次選 · 名次 · 贏/位賠",
+        "讀法 ①首選 ②次選 · 名次",
+        "　W/P＝分析時 贏/位賠",
+        "　SP＝開跑贏賠，市場大幅變動才出",
     ])
     return head + "\n\n" + "\n\n".join(blocks)
 

@@ -152,7 +152,7 @@ class ReflectNotifyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             text, _ = R.meeting_lines(meeting(tmp))
         # 賠率而家係 贏/位 斜線寫法，圖例喺全日標題講一次。
-        self.assertIn("2.50/1.3", text)
+        self.assertIn("W2.6/P1.3", text)
 
     def test_a_horse_with_no_captured_place_odds_still_appears(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -160,7 +160,8 @@ class ReflectNotifyTests(unittest.TestCase):
             (d / "08-09 Race 1 Formguide.md").unlink()
             text, _ = R.meeting_lines(d)
         self.assertIn("Magic Merlin", text)
-        self.assertIn("2.50", text)
+        # 冇賽前捕捉 → 只出 SP，唔會夾一個唔同時間點嘅位賠上去。
+        self.assertIn("SP2.50", text)
 
     def test_meeting_without_results_is_skipped_not_half_reported(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -218,3 +219,45 @@ class PlacesPaidTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OddsPairingTests(unittest.TestCase):
+    """W/P 一定要同源。
+
+    2026-08-10 Dubbo R5 Castlebar Road：分析時 $20 贏／$5.25 位，開跑 SP $4.20。
+    舊寫法把 SP 當贏賠、賽前位賠當位賠擺埋一齊，變成「贏 4.20 / 位 5.25」——
+    位賠高過贏賠，睇落似 data 壞。兩個數字各自都對，錯喺夾埋當成一對。
+    """
+
+    def test_win_and_place_come_from_the_same_capture(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = meeting(tmp)
+            (d / "08-09 Race 1 Formguide.md").write_text(
+                "RACE 1\n[2] Magic Merlin (3)\n"
+                "SpeedPos:  -               WinOdds:   20.0            PlcOdds:   5.25\n",
+                encoding="utf-8")
+            text, _ = R.meeting_lines(d)
+        self.assertIn("W20.0/P5.25", text)
+        # SP 2.50 同賽前 20.0 差好遠 → 應該標出嚟
+        self.assertIn("SP2.50", text)
+        # 而唔可以出現「贏 2.50 / 位 5.25」呢種夾錯時間點嘅寫法
+        self.assertNotIn("2.50/5.25", text)
+
+    def test_sp_is_omitted_when_the_market_barely_moved(self):
+        # 唔移動嗰陣 SP 同賽前贏賠差唔多，出佢只係令每行變長。
+        with tempfile.TemporaryDirectory() as tmp:
+            d = meeting(tmp)
+            (d / "08-09 Race 1 Formguide.md").write_text(
+                "RACE 1\n[2] Magic Merlin (3)\n"
+                "SpeedPos:  -               WinOdds:   2.6             PlcOdds:   1.3\n",
+                encoding="utf-8")
+            text, _ = R.meeting_lines(d)
+        self.assertIn("W2.6/P1.3", text)
+        self.assertNotIn("SP2.50", text)
+
+    def test_a_horse_with_no_captured_odds_still_shows_sp(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = meeting(tmp)
+            (d / "08-09 Race 1 Formguide.md").unlink()
+            text, _ = R.meeting_lines(d)
+        self.assertIn("SP2.50", text)
