@@ -163,3 +163,76 @@ class AudienceTests(unittest.TestCase):
         os.environ["WC_NOTIFY_TELEGRAM_CHAT"] = "111"
         os.environ["WC_NOTIFY_TELEGRAM_EXTRA"] = " 222 ; 333 "
         self.assertEqual(N.telegram_targets("content"), ["111", "222", "333"])
+
+
+class RunSummaryTests(unittest.TestCase):
+    """兩條摘要：早更講變咗乜，晚更講做好咗乜、上咗線冇。"""
+
+    def setUp(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+        import au_run_summary
+        self.S = au_run_summary
+
+    def test_a_quiet_morning_says_nothing(self):
+        # 冇變動嗰朝出一條「一切照舊」係雜訊，而雜訊嘅代價係下次真出事嗰條
+        # 會俾人一齊略過。
+        self.assertIsNone(self.S.morning({"scratchings_detected": [],
+                                          "track_changes_detected": [],
+                                          "analysis_changes": []}))
+
+    def test_scratchings_and_going_are_both_reported(self):
+        text = self.S.morning({
+            "review_day": "2026-08-09",
+            "scratchings_detected": [{"meeting": "2026-08-09 Wagga Race 1-7",
+                                      "race": 1, "scratched": ["8", "9"],
+                                      "emergencies_in": []}],
+            "track_changes_detected": [{"meeting": "2026-08-09 Wagga Race 1-7",
+                                        "race": 1, "change": ["Soft 5", "Good 4"]}],
+            "analysis_changes": []})
+        self.assertIn("退出 #8、#9", text)
+        self.assertIn("Soft 5 → Good 4", text)
+
+    def test_not_checked_is_not_reported_as_no_movement(self):
+        # 舊 run 冇 ranking_moved 呢個 key。報「頭三揀冇郁」等於畀假保證。
+        text = self.S.morning({
+            "scratchings_detected": [{"meeting": "2026-08-09 X Race 1-7", "race": 1,
+                                      "scratched": ["1"], "emergencies_in": []}],
+            "track_changes_detected": [],
+            "analysis_changes": [{"meeting": "2026-08-09 X Race 1-7"}]})
+        self.assertIn("未有記錄", text)
+        self.assertNotIn("冇郁", text)
+
+    def test_checked_and_unmoved_says_so(self):
+        text = self.S.morning({
+            "scratchings_detected": [{"meeting": "2026-08-09 X Race 1-7", "race": 1,
+                                      "scratched": ["1"], "emergencies_in": []}],
+            "track_changes_detected": [],
+            "analysis_changes": [{"meeting": "2026-08-09 X Race 1-7",
+                                  "ranking_moved": []}]})
+        self.assertIn("冇郁", text)
+
+    def test_a_ranking_move_shows_before_and_after(self):
+        text = self.S.morning({
+            "scratchings_detected": [], "track_changes_detected": [],
+            "analysis_changes": [{"meeting": "2026-08-09 X Race 1-7",
+                                  "ranking_moved": [{"race": 3,
+                                                     "before": ["1 A", "2 B"],
+                                                     "after": ["2 B", "1 A"]}]}]})
+        self.assertIn("R3", text)
+        self.assertIn("前：1 A / 2 B", text)
+        self.assertIn("後：2 B / 1 A", text)
+
+    def test_evening_distinguishes_verified_from_merely_deployed(self):
+        base = {"races_added": [{"meeting": "2026-08-10 Dubbo Race 1-7",
+                                 "races": [1, 2], "going": "Good 4"}]}
+        ok = self.S.evening({**base, "cloudflare_deployment":
+                             {"ok": True, "verified": {"ok": True}}})
+        self.assertIn("已上線並核實", ok)
+        # 「發佈完成」唔等於「上到線」—— 呢個分別救過我哋一次。
+        unver = self.S.evening({**base, "cloudflare_deployment": {"ok": True}})
+        self.assertIn("核實唔到", unver)
+        failed = self.S.evening({**base, "cloudflare_deployment": {"ok": False}})
+        self.assertIn("未發佈得到", failed)
+
+    def test_evening_says_nothing_when_no_new_analysis(self):
+        self.assertIsNone(self.S.evening({"races_added": []}))

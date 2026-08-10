@@ -1521,6 +1521,44 @@ def venue_from_folder(folder_name: str) -> str:
     return re.sub(r"\s+Race\s+[\d\-]+$", "", folder_name[11:]).strip()
 
 
+RE_RANK_ROW = re.compile(
+    r"^\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|", re.M)
+
+
+def top_picks_snapshot(folder: Path, depth: int = 3) -> dict[int, list[tuple]]:
+    """{場號: [(排名, 馬號, 馬名), …]}，由已生成嘅分析檔讀。
+
+    ⚠️ 呢個係**我哋published咗嘅排名**，所以重評分前後各影一次就答得到
+    「排名有冇郁」。之前冇人記低呢樣：run log 有退出馬、有場地變化，但唔知
+    重評分之後頭幾揀究竟變咗未 —— 而嗰個先係 Kelvin 真正想知嘅嘢。
+    """
+    out: dict[int, list[tuple]] = {}
+    for f in folder.glob("Race_*_Auto_Analysis.md"):
+        m = re.search(r"Race_(\d+)_", f.name)
+        if not m:
+            continue
+        body = f.read_text(errors="replace")
+        i = body.find("全場綜合戰力排名")
+        if i < 0:
+            continue
+        rows = RE_RANK_ROW.findall(body[i:i + 4000])[:depth]
+        out[int(m.group(1))] = [(int(r), int(n), nm.strip()) for r, n, nm in rows]
+    return out
+
+
+def diff_top_picks(before: dict, after: dict) -> list[dict]:
+    """邊幾場嘅頭幾揀真係郁咗。只報有變嗰啲。"""
+    moved = []
+    for rno in sorted(set(before) | set(after)):
+        b = [(n, nm) for _r, n, nm in before.get(rno, [])]
+        a = [(n, nm) for _r, n, nm in after.get(rno, [])]
+        if b and a and b != a:
+            moved.append({"race": rno,
+                          "before": [f"{n} {nm}" for n, nm in b],
+                          "after": [f"{n} {nm}" for n, nm in a]})
+    return moved
+
+
 def rebuild_meeting_from_cache(runlog: RunLog, folder: Path, key: str,
                                going: str) -> bool:
     """由**已重抓嘅** cache 頁重寫 Racecard/Formguide，再重建 Facts/Logic/評分。
@@ -1619,6 +1657,10 @@ def refresh_one_meeting(runlog: RunLog, folder: Path, api: dict) -> bool:
     #     頁**重寫 Racecard**再落 Facts/Logic，因為退出馬係喺 Racecard 寫
     #     `status:Scratched` 嗰層剔走嘅。只重評分會令退出馬照樣入榜。
     #   只係場地狀況變 → `au_auto_orchestrator` 純重評分就夠，快好多。
+    # 重評分之前影低而家published緊嘅頭三揀，之後再影一次 —— 兩者一比就答到
+    # 「排名有冇郁」。冇呢個，run log 講得出退出馬同場地變化，但講唔出最重要嗰句。
+    picks_before = top_picks_snapshot(folder)
+
     field_changed = sorted({field for delta in changes.values()
                             for field in delta if field in FIELD_LEVEL_CHANGES})
     if field_changed:
@@ -1644,9 +1686,13 @@ def refresh_one_meeting(runlog: RunLog, folder: Path, api: dict) -> bool:
     runlog.data["races_updated"].append(
         {"meeting": folder.name, "races": sorted(changes), "going": going or None,
          "rebuilt_field": bool(field_changed)})
+    moved = diff_top_picks(picks_before, top_picks_snapshot(folder))
+    if moved:
+        runlog.step("rescore", "ranking-moved", meeting=folder.name,
+                    races=[m["race"] for m in moved])
     runlog.data["analysis_changes"].append(
         {"meeting": folder.name, "going_applied": going or None,
-         "reason": reason,
+         "reason": reason, "ranking_moved": moved,
          "changes": {str(k): v for k, v in changes.items()}})
     return True
 
@@ -2271,6 +2317,26 @@ def push_reflection(runlog: RunLog, archived: list[str]) -> None:
                         detail=f"{type(exc).__name__}: {exc}")
 
 
+def push_run_summary(runlog: RunLog, mode: str) -> None:
+    """推一條人真係想睇嘅摘要。⚠️ 冇嘢好講就唔發 —— 「一切照舊」係雜訊，
+    而雜訊嘅代價係下次真出事嗰條會俾人一齊略過。發佈嘅結果要喺呢個時候先讀得到，
+    所以叫喺 step_dashboard 之後。"""
+    try:
+        sys.path.insert(0, str(HERE))
+        import au_notify
+        import au_run_summary
+
+        text = (au_run_summary.morning if mode == "morning"
+                else au_run_summary.evening)(runlog.data)
+        if not text:
+            return
+        sent = au_notify.push(text)
+        runlog.step("run-summary", "ok" if sent else "no-outlet", mode=mode,
+                    detail="; ".join(sent) or None)
+    except Exception as exc:  # noqa: BLE001
+        runlog.step("run-summary", "failed", detail=f"{type(exc).__name__}: {exc}")
+
+
 def run_evening(runlog: RunLog, args, review_day: date) -> int:
     archived: list[str] = []
     analysed: list[Path] = []
@@ -2297,6 +2363,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
 
     ok = step_dashboard(runlog, analysed, archived, skip_deploy=args.skip_deploy)
     step_mirror_reports(runlog, analysed)
+    push_run_summary(runlog, "evening")
     return finish_run(runlog, ok, temporary)
 
 
@@ -2358,6 +2425,7 @@ def run_morning(runlog: RunLog, args, today: date) -> int:
 
     ok = step_dashboard(runlog, updated, [], skip_deploy=args.skip_deploy)
     step_mirror_reports(runlog, updated)
+    push_run_summary(runlog, "morning")
     return finish_run(runlog, ok, temporary)
 
 
