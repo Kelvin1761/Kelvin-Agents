@@ -755,6 +755,7 @@ def complete_audit(rows: list[dict], base: dict, runtime_path: Path) -> dict:
     races = {}
     for row in rows:
         races.setdefault(row["race_id"], row)
+    aligned_starters_by_race = Counter(row["race_id"] for row in rows)
     by_venue = Counter(row["venue"] for row in races.values())
     by_distance = Counter(row["distance_bucket"] for row in races.values())
     by_class = Counter(row["race_type"] for row in races.values())
@@ -785,7 +786,13 @@ def complete_audit(rows: list[dict], base: dict, runtime_path: Path) -> dict:
         **base,
         "readiness": readiness,
         "date_range": [dates[0], dates[-1]] if dates else [None, None],
-        "average_field_size": round(mean(row["field_size"] for row in races.values()), 3),
+        # Actual aligned starters and the pre-race analysis field are different
+        # when the result snapshot has removed scratchings. Report both instead
+        # of overstating the number of runners represented by the dataset.
+        "average_field_size": round(mean(aligned_starters_by_race.values()), 3),
+        "average_analysis_field_size": round(
+            mean(row["field_size"] for row in races.values()), 3
+        ),
         "usable_races": len(races) if readiness != "NOT READY" else 0,
         "usable_runners": len(rows) if readiness != "NOT READY" else 0,
         "excluded_races": len(base["excluded_race_details"]),
@@ -856,7 +863,8 @@ def render_readiness(audit: dict) -> str:
         f"- Total races: **{audit['races']}**",
         f"- Total runners: **{audit['runners']}**",
         f"- Date range: **{audit['date_range'][0]} → {audit['date_range'][1]}**",
-        f"- Average field size: **{audit['average_field_size']:.2f}**",
+        f"- Average result-aligned starters per usable race: **{audit['average_field_size']:.2f}**",
+        f"- Average pre-scratch/analysis field size: **{audit['average_analysis_field_size']:.2f}**",
         f"- Usable races: **{audit['usable_races']}**",
         f"- Excluded races: **{audit['excluded_races']}**",
         f"- Usable runners: **{audit['usable_runners']}**",

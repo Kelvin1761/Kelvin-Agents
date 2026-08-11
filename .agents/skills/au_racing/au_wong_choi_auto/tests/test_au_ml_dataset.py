@@ -12,6 +12,7 @@ from au_ml_dataset import (  # noqa: E402
     _facts_runs,
     _feature_quality_findings,
     build_rows,
+    complete_audit,
     feature_contract,
     place_slots,
     validate_feature_contract,
@@ -186,6 +187,28 @@ class AuMlDatasetTests(unittest.TestCase):
                 }
             ],
         )
+
+    def test_readiness_separates_aligned_starters_from_analysis_field(self) -> None:
+        runtime = {
+            "races": [
+                {
+                    "metadata": {
+                        "date": "2026-06-01", "track": "Randwick",
+                        "race_number": 5, "distance": 1400,
+                        "going": "Good 4", "race_class": "Maiden",
+                        "field_size": 8,
+                    },
+                    "rows": [
+                        runtime_row(horse_number=horse, actual_pos=horse)
+                        for horse in range(1, 5)
+                    ],
+                }
+            ]
+        }
+        rows, base = build_rows(runtime)
+        audit = complete_audit(rows, base, Path(__file__))
+        self.assertEqual(audit["average_field_size"], 4.0)
+        self.assertEqual(audit["average_analysis_field_size"], 8.0)
 
     def test_feature_quality_reports_duplicates_constants_and_bad_rates(self) -> None:
         rows = [
