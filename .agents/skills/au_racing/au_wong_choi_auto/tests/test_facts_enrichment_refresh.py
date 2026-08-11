@@ -298,6 +298,65 @@ class FactsSectionRefreshTests(unittest.TestCase):
         self.assertIn("試閘", section)
         self.assertNotIn("OLD PRE-REALIGNMENT BLOB", section)
 
+    def test_stale_facts_scalars_are_replaced_from_matching_horse_block(self) -> None:
+        facts = "\n".join(
+            [
+                "## Race 3",
+                "### 馬匹 #7 Example Star (檔位 4) | 騎師: J Doe | 練馬師: T Smith",
+                "  - Last 10 字串: `24`",
+                "  - 生涯: 2:0-1-0",
+                "  - 同場: 2:0-1-0 | 同程: 1:0-1-0 | 同場同程: 1:0-1-0",
+                "  - 好地: 1:0-0-0 | 軟地: 1:0-1-0 | 重地: 0:0-0-0",
+                "  - 初出: 1:0-0-0 | 二出: 1:0-1-0",
+                "| # | 類型 | 日期 | 場地 | 路程 | 場地狀況 | 檔位 | 名次 | 班次 | 跑位軌跡 | PI | 段速 | 早段步速 | L600/RT | 走位跑法 | 走位消耗 | 備註 | 寬恕認定 |",
+                "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+                "| 1 | Maiden/SW | 2026-05-01 | Randwick | 1400m | Soft 5 | 4 | 2 | ↑升班 | 4-3-2 | 3 | 快 | Moderate | 34.0 | 跟前 | 低 | - | [-] |",
+                "| 2 | 試閘 | 2026-04-01 | Randwick | 1050m | Good 4 | 2 | 1 | Trial | 2-1-1 | - | - | - | - | 跟前 | 低 | - | [-] |",
+                "- **🔧 引擎與距離:**",
+                "  - 引擎: Type A | 信心: 高 | 依據: 正式賽樣本",
+                "  - 跑法: 跟前 / 守中 | 信心: 高 | 依據: 兩仗走位",
+                "  - 距離分佈: 1400m: 1場 (0-1-0) ← 今仗 ✅",
+            ]
+        )
+        logic = {
+            "race_analysis": {"race_number": 3},
+            "horses": {
+                "7": {
+                    "horse_name": "Example Star",
+                    "_data": {
+                        "last10_raw": "999",
+                        "formal_count": 0,
+                        "trial_count": 9,
+                        "trial_top3_count": 0,
+                        "track_stats_line": "0:0-0-0 | 同程: 0:0-0-0 | 同場同程: 0:0-0-0",
+                        "going_stats_line": "0:0-0-0 | 軟地: 0:0-0-0 | 重地: 9:9-0-0",
+                        "running_style_line": "後上 / 後上",
+                        "engine_type_line": "Type C",
+                    },
+                }
+            },
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            facts_path = Path(tmp) / "11-01 Race 3 Facts.md"
+            facts_path.write_text(facts, encoding="utf-8")
+            enriched = enrich_logic_from_facts(logic, facts_path)
+
+        data = enriched["horses"]["7"]["_data"]
+        self.assertEqual(data["last10_raw"], "24")
+        self.assertEqual(data["formal_count"], 1)
+        self.assertEqual(data["trial_count"], 1)
+        self.assertEqual(data["trial_top3_count"], 1)
+        self.assertEqual(
+            data["track_stats_line"],
+            "2:0-1-0 | 同程: 1:0-1-0 | 同場同程: 1:0-1-0",
+        )
+        self.assertEqual(
+            data["going_stats_line"],
+            "1:0-0-0 | 軟地: 1:0-1-0 | 重地: 0:0-0-0",
+        )
+        self.assertEqual(data["running_style_line"], "跟前 / 守中")
+        self.assertEqual(data["engine_type_line"], "Type A")
+
     def test_missing_section_fails_instead_of_scoring_stale_logic(self) -> None:
         logic = {
             "race_analysis": {"race_number": 3},
