@@ -41,7 +41,7 @@ from scoring import (  # noqa: E402
 )
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 OUTCOME_COLUMNS = {
     "actual_pos",
     "label_win",
@@ -584,12 +584,29 @@ def build_rows(runtime: dict) -> tuple[list[dict], dict]:
         if any(pos < 1 for pos in positions):
             integrity["invalid_finishing_position"] += 1
 
+    winner_counts = Counter(
+        row["race_id"] for row in rows if row["label_win"] == 1
+    )
+    excluded_race_details = [
+        {
+            "race_id": race_id,
+            "reason": "multiple_recorded_winners_incompatible_with_single_winner_probability_target",
+            "winner_count": winner_count,
+        }
+        for race_id, winner_count in sorted(winner_counts.items())
+        if winner_count > 1
+    ]
+    excluded_race_ids = {item["race_id"] for item in excluded_race_details}
+    usable_rows = [row for row in rows if row["race_id"] not in excluded_race_ids]
+
     duplicate_races = [key for key, count in race_ids.items() if count > 1]
     duplicate_runners = [key for key, count in runner_ids.items() if count > 1]
     audit = {
         "schema_version": SCHEMA_VERSION,
         "races": len(race_ids),
         "runners": len(rows),
+        "usable_runners": len(usable_rows),
+        "excluded_race_details": excluded_race_details,
         "duplicate_races": duplicate_races,
         "duplicate_runners": duplicate_runners,
         "integrity_counts": dict(integrity),
@@ -597,7 +614,7 @@ def build_rows(runtime: dict) -> tuple[list[dict], dict]:
         "raw_market_like_keys": dict(raw_key_tokens),
         "feature_contract": contract,
     }
-    return rows, audit
+    return usable_rows, audit
 
 
 def _sha256_file(path: Path) -> str:
@@ -733,6 +750,7 @@ def complete_audit(rows: list[dict], base: dict, runtime_path: Path) -> dict:
         "The result-aligned snapshot excludes scratchings and does not preserve target-time scratching history.",
         "Historical body weight and historical place dividends/CLV snapshots are unavailable.",
         "Some Rating Matrix leaves use documented fallback/default values; evidence-state flags are included so ML can distinguish them.",
+        "Races with multiple recorded winners are retained in the integrity totals but excluded whole from single-winner probability modelling; both current exclusions were verified dead heats.",
     ]
     readiness = "NOT READY" if leakage_blockers else "READY WITH LIMITATIONS"
     scorer_sources = (
@@ -746,7 +764,9 @@ def complete_audit(rows: list[dict], base: dict, runtime_path: Path) -> dict:
         "date_range": [dates[0], dates[-1]] if dates else [None, None],
         "average_field_size": round(mean(row["field_size"] for row in races.values()), 3),
         "usable_races": len(races) if readiness != "NOT READY" else 0,
-        "excluded_races": 0 if readiness != "NOT READY" else len(races),
+        "usable_runners": len(rows) if readiness != "NOT READY" else 0,
+        "excluded_races": len(base["excluded_race_details"]),
+        "excluded_runners": base["runners"] - len(rows),
         "races_by_venue": dict(by_venue.most_common()),
         "races_by_distance": dict(by_distance.most_common()),
         "races_by_class": dict(by_class.most_common()),
@@ -816,6 +836,8 @@ def render_readiness(audit: dict) -> str:
         f"- Average field size: **{audit['average_field_size']:.2f}**",
         f"- Usable races: **{audit['usable_races']}**",
         f"- Excluded races: **{audit['excluded_races']}**",
+        f"- Usable runners: **{audit['usable_runners']}**",
+        f"- Excluded runners: **{audit['excluded_runners']}**",
         "",
         "## Champion Freeze",
         "",
@@ -845,6 +867,7 @@ def render_readiness(audit: dict) -> str:
         f"- Target/future run records in Facts: **{len(audit['future_or_target_run_records'])}**",
         f"- Market-like raw keys quarantined from features: `{audit['raw_market_like_keys']}`",
         f"- Other integrity counts: `{audit['integrity_counts']}`",
+        f"- Whole-race exclusions: `{audit['excluded_race_details']}`",
         "- Starting Price exists only as `market_sp_label`; explicit allow-lists prevent it entering model features.",
         "",
         "## Race Coverage",
