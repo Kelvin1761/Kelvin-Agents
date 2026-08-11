@@ -1,5 +1,7 @@
 # Optional workstation extras
-# Install this if you also want local tests or the tennis dashboard.
+# Install this for local tests, the tennis dashboard, or ML research/retraining.
 
 pytest
 streamlit
+joblib
+lightgbm

@@ -66,7 +66,7 @@ Antigravity 目前最重要嘅兩條賽馬主線已經轉咗做 **full Python pi
 2. 如有需要，先用 `hkjc_race_extractor` 抽取全日 race data
 3. 跑 `.agents/scripts/run_prerace_pipeline.py` 生成 `Facts.md`
 4. 逐場建立 / 更新 `Race_X_Logic.json`
-5. 交畀 `hkjc_wong_choi_auto` 做 deterministic scoring、grade、verdict 同輸出
+5. 交畀 `hkjc_wong_choi_auto` 做 deterministic 7D scoring，再用 checksum-pinned 70% Matrix＋30% portable ML 做全場 ranking、verdict 同輸出
 6. 成功後觸發共用 Cloudflare post-success hook
 
 ### Supported inputs
@@ -268,7 +268,7 @@ Deploy wrapper：
 ### Auto engines
 
 - `hkjc_wong_choi_auto`
-  HKJC deterministic engine、renderer、tests、weight review tools
+  HKJC deterministic 7D engine、portable full-field ML ranker、renderer、tests、weight review tools
 - `au_wong_choi_auto`
   AU deterministic engine、logic builder、archive calibrator、ML diagnostics
 

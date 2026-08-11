@@ -251,7 +251,7 @@ def _generate_logic_for_race(
     }
 
 
-def _run_auto(target_dir: Path, validate_engine: bool) -> None:
+def _run_auto(target_dir: Path, validate_engine: bool, matrix_only: bool = False) -> None:
     cmd = [
         PYTHON,
         str(AUTO_DIR / "hkjc_auto_orchestrator.py"),
@@ -259,6 +259,8 @@ def _run_auto(target_dir: Path, validate_engine: bool) -> None:
     ]
     if validate_engine:
         cmd.append("--validate-engine")
+    if matrix_only:
+        cmd.append("--matrix-only")
     _run(cmd, "HKJC Wong Choi Full Python Auto")
 
 
@@ -299,6 +301,7 @@ def main() -> None:
     parser.add_argument("--skip-facts", action="store_true", help="Skip Facts.md generation")
     parser.add_argument("--skip-logic", action="store_true", help="Skip Race_X_Logic.json regeneration")
     parser.add_argument("--validate-engine", action="store_true", help="Run auto engine validation before scoring")
+    parser.add_argument("--matrix-only", action="store_true", help="Emergency rollback to legacy 7D Matrix-only ranking")
     parser.add_argument("--keep-temp", action="store_true", help="Keep temporary files after completion")
     parser.add_argument("--skip-cloudflare-deploy", action="store_true", help="Skip post-success Cloudflare deploy")
     parser.add_argument("--batch-cloudflare-deploy", action="store_true", help="Queue dashboard deploy for a later batch flush")
@@ -314,7 +317,7 @@ def main() -> None:
         print(f"⚙️ Race-level workers: {race_workers}")
         _generate_facts(target_dir, args.skip_facts, race_workers)
         _generate_logic(target_dir, args.skip_logic, race_workers)
-        _run_auto(target_dir, args.validate_engine)
+        _run_auto(target_dir, args.validate_engine, args.matrix_only)
         run_post_success_cloudflare_deploy(
             source="HKJC Wong Choi",
             target_dir=target_dir,

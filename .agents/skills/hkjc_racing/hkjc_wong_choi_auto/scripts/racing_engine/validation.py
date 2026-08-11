@@ -11,6 +11,12 @@ from scoring import (
     SCORING_CONTRACT_VERSION,
     compute_grade,
 )
+from full_rank_ml import (
+    MATRIX_WEIGHT as FULL_RANK_MATRIX_WEIGHT,
+    ML_WEIGHT as FULL_RANK_ML_WEIGHT,
+    MODEL_SHA256 as FULL_RANK_MODEL_SHA256,
+    RANKING_CONTRACT_VERSION,
+)
 
 
 FORBIDDEN_SCRIPT_TERMS = (
@@ -271,10 +277,68 @@ def _validate_verdict(logic_data: dict, scored: list[tuple[str, dict]]) -> list[
         return ["VERDICT-001 missing python_auto_verdict"]
     errors = []
     ranked = verdict.get("ranking", [])
+    ranking_contract = logic_data.get("python_auto_ranking_contract") or {}
+    hybrid_active = ranking_contract.get("mode") == "matrix_ml_hybrid"
+    if hybrid_active:
+        expected_contract = {
+            "version": RANKING_CONTRACT_VERSION,
+            "matrix_weight": FULL_RANK_MATRIX_WEIGHT,
+            "ml_weight": FULL_RANK_ML_WEIGHT,
+            "model_sha256": FULL_RANK_MODEL_SHA256,
+            "market_free": True,
+        }
+        for key, expected in expected_contract.items():
+            if ranking_contract.get(key) != expected:
+                errors.append(
+                    f"VERDICT-005 ranking contract {key} mismatch: "
+                    f"{ranking_contract.get(key)} != {expected}"
+                )
     for item in ranked:
         rank_score = float(item.get("rank_score", item.get("ability_score", -1)))
         ability_score = float(item.get("ability_score", -1))
-        if abs(rank_score - ability_score) > 0.0001:
+        horse_number = str(item.get("horse_number", ""))
+        auto = dict(scored).get(horse_number, {})
+        if hybrid_active:
+            if not 0.0 < rank_score <= 1.0001:
+                errors.append(
+                    f"VERDICT-004 horse {horse_number} hybrid rank_score outside (0, 1.0001]"
+                )
+            if auto.get("ranking_contract_id") != RANKING_CONTRACT_VERSION:
+                errors.append(
+                    f"VERDICT-006 horse {horse_number} ranking contract id mismatch"
+                )
+            components = auto.get("ranking_components") or {}
+            required = {
+                "matrix_base_ability",
+                "matrix_rank",
+                "matrix_rank_percentile",
+                "ml_raw_score",
+                "ml_rank_percentile",
+                "matrix_weight",
+                "ml_weight",
+            }
+            if not required.issubset(components):
+                errors.append(
+                    f"VERDICT-007 horse {horse_number} missing ranking components"
+                )
+            else:
+                expected_rank_score = (
+                    FULL_RANK_MATRIX_WEIGHT * float(components["matrix_rank_percentile"])
+                    + FULL_RANK_ML_WEIGHT * float(components["ml_rank_percentile"])
+                    + 1e-10 * float(components["matrix_base_ability"])
+                )
+                if abs(rank_score - expected_rank_score) > 1e-9:
+                    errors.append(
+                        f"VERDICT-008 horse {horse_number} hybrid rank_score formula mismatch"
+                    )
+                if (
+                    components.get("matrix_weight") != FULL_RANK_MATRIX_WEIGHT
+                    or components.get("ml_weight") != FULL_RANK_ML_WEIGHT
+                ):
+                    errors.append(
+                        f"VERDICT-009 horse {horse_number} hybrid component weights mismatch"
+                    )
+        elif abs(rank_score - ability_score) > 0.0001:
             errors.append(
                 f"VERDICT-004 horse {item.get('horse_number')} rank_score must equal ability_score"
             )

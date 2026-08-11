@@ -8,7 +8,7 @@ Validation fails if output contains:
 - `[FILL]`
 - score outside 0-100
 - ability formula mismatch
-- rank or top4 not sorted by `ability_score` descending (horse number is the deterministic exact-tie key; there is no live micro tie-break or safety swap)
+- rank or top4 not sorted by official `rank_score` descending；hybrid 未啟用時先 fallback `ability_score`（ability 再加馬號只係 deterministic exact-tie key；冇 live micro tie-break 或 safety swap）
 - grade threshold mismatch
 - empty core logic
 - forbidden generic phrases
@@ -18,3 +18,7 @@ Validation fails if output contains:
 - user-facing report with banned English labels or classic tick wording
 
 Validation also scans Auto scripts for forbidden model-provider imports/calls.
+
+Full-rank ML validation additionally fails if model checksum/version/features,
+70/30 weights, per-runner components, or `(0, 1.0001]` rank-score range do not match
+the frozen ranking contract.

@@ -56,6 +56,7 @@ DEFAULT_OUTPUT = Path(__file__).resolve().parents[1] / "artifacts" / "hkjc_full_
 MINIMUM_TRAIN_MEETINGS = 8
 HYBRID_MATRIX_WEIGHTS = (0.70, 0.80, 0.90)
 MODEL_VERSION = "HKJC_MATRIX_ANCHORED_LAMBDARANK_V1"
+USER_APPROVED_PRODUCTION_PROMOTION = True
 
 COMPONENT_FEATURES = [
     "feat_form_score",
@@ -750,6 +751,31 @@ def feature_importance(bundle: dict[str, Any]) -> pd.DataFrame:
     return output.sort_values(["gain", "split"], ascending=False)
 
 
+def portable_rank_model(bundle: dict[str, Any], source_joblib_sha256: str) -> dict[str, Any]:
+    """Export the selected ranker for dependency-free production inference."""
+    preprocessor = bundle["preprocessor"]
+    numeric_pipeline = preprocessor.named_transformers_["num"]
+    imputer = numeric_pipeline.named_steps["impute"]
+    scaler = numeric_pipeline.named_steps["scale"]
+    booster = bundle["ranker"].booster_.dump_model()
+    if len(imputer.indicator_.features_):
+        raise RuntimeError("Portable ranker does not support active missing indicators")
+    if any(tree.get("num_cat", 0) for tree in booster["tree_info"]):
+        raise RuntimeError("Portable ranker does not support categorical tree splits")
+    return {
+        "schema_version": "HKJC_PORTABLE_LGBM_RANKER_V1",
+        "model_version": bundle["version"],
+        "source_joblib_sha256": source_joblib_sha256,
+        "features": list(bundle["numeric_features"]),
+        "imputer_medians": np.asarray(imputer.statistics_, dtype=float).tolist(),
+        "scaler_mean": np.asarray(scaler.mean_, dtype=float).tolist(),
+        "scaler_scale": np.asarray(scaler.scale_, dtype=float).tolist(),
+        "objective": booster.get("objective"),
+        "average_output": bool(booster.get("average_output")),
+        "trees": [tree["tree_structure"] for tree in booster["tree_info"]],
+    }
+
+
 def prediction_export(frame: pd.DataFrame) -> pd.DataFrame:
     """Keep ledgers compact while retaining every ranking audit field."""
     configured = RACE_KEYS + [
@@ -825,12 +851,17 @@ def write_report(
         f"- Matrix / ML ranking share: `{matrix_weight:.0%}` / `{1-matrix_weight:.0%}`",
         f"- Development gate: `{'PASS' if development_gate else 'FAIL'}`",
         f"- External 2026-07-15 gate: `{'PASS' if external_gate else 'FAIL'}`",
-        "- Production Matrix: unchanged",
+        "- Production Matrix ability / Grade: unchanged",
+        f"- Production hybrid ranking promoted by user: `{'YES' if USER_APPROVED_PRODUCTION_PROMOTION else 'NO'}`",
         "",
         "## Outcome",
         "",
     ]
-    if development_gate and external_gate:
+    if USER_APPROVED_PRODUCTION_PROMOTION and development_gate:
+        lines.append(
+            "用戶審視樣本量後批准將 70/30 hybrid 用作正式全場排序：161 場 walk-forward 改善優先於九場 external 入面少捕捉一匹 Top 3 馬；external limitation 仍完整保留，Matrix ability / Grade 不變。"
+        )
+    elif development_gate and external_gate:
         lines.append("個候選同時通過 development 同 external gate，可以考慮下一步做獨立 opt-in shadow；未獲准直接取代 Matrix。")
     elif development_gate:
         lines.append("候選喺 development 有系統改善，但 external 未能確認穩定性；保留 research-only，唔推入 production。")
@@ -956,6 +987,16 @@ def main() -> int:
 
     model_path = output / "models" / "matrix_anchored_lambdarank.joblib"
     joblib.dump(bundle, model_path)
+    model_sha256 = _sha256(model_path)
+    portable_path = output / "models" / "matrix_anchored_lambdarank_portable.json"
+    portable_path.write_text(
+        json.dumps(
+            portable_rank_model(bundle, model_sha256),
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ),
+        encoding="utf-8",
+    )
     manifest = {
         "created_on": date.today().isoformat(),
         "git_head": _git_head(),
@@ -974,10 +1015,21 @@ def main() -> int:
             "matrix_weight": matrix_weight,
             "development_gate": development_gate,
             "external_gate": external_gate,
-            "production_promoted": False,
+            "production_promoted": USER_APPROVED_PRODUCTION_PROMOTION,
+            "promotion_basis": (
+                "user_approved_after_sample_size_review; ranking_only; "
+                "matrix_ability_and_grade_unchanged"
+                if USER_APPROVED_PRODUCTION_PROMOTION
+                else "not_promoted"
+            ),
         },
         "features": {"numeric": numeric, "categorical": categorical},
-        "model": {"path": _manifest_path(model_path), "sha256": _sha256(model_path)},
+        "model": {"path": _manifest_path(model_path), "sha256": model_sha256},
+        "portable_model": {
+            "path": _manifest_path(portable_path),
+            "sha256": _sha256(portable_path),
+            "dependency_free_inference": True,
+        },
         "external_not_used_for_selection": True,
     }
     manifest_payload = json.dumps(manifest, ensure_ascii=False, sort_keys=True).encode("utf-8")

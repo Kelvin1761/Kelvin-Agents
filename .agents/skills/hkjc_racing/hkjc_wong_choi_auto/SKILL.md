@@ -20,6 +20,8 @@ HKJC Wong Choi Auto 係獨立於 classic HKJC Wong Choi 嘅 deterministic scorin
 - `Race_X_Auto_Scoring.csv`
 - folder-level `HKJC_Auto_Scoring.csv`
 
+主線排名由 `HKJC_MATRIX_ANCHORED_LAMBDARANK_V1` 負責：70% 七維 Matrix 全場排名百分位 + 30% ML 全場排名百分位。`ability_score` 同 Grade 仍由七維 Matrix 擁有；ML 只改全場排序、Top 2 / Top 4 同模型首選。`--matrix-only` 係緊急 rollback。
+
 ## Resource Read-Once Protocol
 
 開始前讀一次：
@@ -37,6 +39,7 @@ Auto V1 支援：
 - local `hkjc_draw_stats.json`
 - existing extracted fields such as `_data`, `trackwork`, `last_6_finishes`, `season_stats`, `jockey_combo_block`
 - opt-in `--stability-residual-shadow`：Auto 完成後寫獨立 research CSV/JSON；唔改主排名、Grade、verdict、Top Pick 或投注建議
+- default full-rank ML：checksum-pinned 70/30 Matrix+ML 全場排序；模型缺失、checksum／feature contract 錯誤會 fail closed
 
 Auto V1 不負責：
 
@@ -54,6 +57,7 @@ Auto V1 不負責：
 - Do not use odds, market, fair odds, edge, value, pace prediction, leader count, race collapse, on-pace score, or backmarker score in scoring.
 - Do not write `[FILL]` into Auto fields.
 - Missing structured data = neutral 60 + reason/risk code + provenance.
+- Full-rank ML 只可讀七維 Matrix 絕對分同同場相對分；不可讀 odds、賽果、事故或馬匹身份。
 - User-facing report uses 香港中文 labels: `模型首選`, `觀望`, `綜合戰力分`, `信心分`, `風險分`; `NO_PICK` 狀態在報告內不展示。
 - Internal JSON/CSV headers may keep English keys for machines.
 

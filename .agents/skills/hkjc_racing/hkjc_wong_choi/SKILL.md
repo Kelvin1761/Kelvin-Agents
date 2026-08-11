@@ -15,7 +15,7 @@ version: 5.0.0
 1. HKJC extraction
 2. `Facts.md` generation
 3. `Race_X_Logic.json` generation / refresh
-4. deterministic auto scoring
+4. deterministic 7D auto scoring + checksum-pinned 70% Matrix／30% portable ML 全場排序
 5. `Race_X_Auto_Analysis.md` / `Race_X_Auto_Scoring.csv` / `HKJC_Auto_Scoring.csv`
 
 > 現時主線 **唔需要 LLM 手動填 verdict、matrix、core logic 或 `[FILL]` 欄位**。
@@ -53,6 +53,7 @@ python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <U
 - **嚴禁**再用舊 active-path legacy orchestrator
 - **嚴禁**假設仍要靠 LLM 補分析欄位
 - **嚴禁**手動改 deterministic scoring，除非用戶明確要求 debug / calibration
+- 正式排名預設使用 `HKJC_MATRIX_ANCHORED_LAMBDARANK_V1`；`--matrix-only` 只作緊急 rollback
 
 ## Related Components
 

@@ -36,6 +36,7 @@ from renderer import (
 )
 from scoring import compute_grade
 from validation import validate_engine_scripts, validate_logic_data
+from full_rank_ml import apply_full_rank_ml
 from wongchoi_paths import is_materialized_file
 
 # Optional: horse-profile scraper for multi-season (近三季) readout enrichment.
@@ -849,6 +850,7 @@ class HKJCAutoOrchestrator:
         shadow_profile=None,
         health_profile=MAINLINE_HEALTH_PROFILE,
         stability_residual_shadow=False,
+        matrix_only=False,
     ):
         self.target_path = Path(target_path)
         self.is_meeting = self.target_path.is_dir()
@@ -856,6 +858,7 @@ class HKJCAutoOrchestrator:
         self.shadow_profile = shadow_profile
         self.health_profile = health_profile
         self.stability_residual_shadow = bool(stability_residual_shadow)
+        self.matrix_only = bool(matrix_only)
         self.races = []
         self.log_path = (self.target_path if self.is_meeting else self.target_path.parent) / "racing_run_log.jsonl"
         self.summary_path = (self.target_path if self.is_meeting else self.target_path.parent) / "evaluation_summary.json"
@@ -887,6 +890,7 @@ class HKJCAutoOrchestrator:
             health_profile=self.health_profile,
             race_count=len(self.races),
             is_meeting=self.is_meeting,
+            ranking_mode="matrix_only" if self.matrix_only else "matrix_ml_hybrid",
         )
             
         results = []
@@ -1019,6 +1023,30 @@ class HKJCAutoOrchestrator:
             # h_obj["matrix"] = result["matrix"]
             
         _apply_sip_enhancements(horses)
+
+        if self.matrix_only:
+            logic_data.pop("python_auto_ranking_contract", None)
+        else:
+            try:
+                ranking_contract = apply_full_rank_ml(logic_data)
+            except Exception as exc:
+                print(f"❌ Full-rank ML failed closed for {race_file.name}: {exc}")
+                self._emit_event(
+                    "full_rank_ml_failed",
+                    race_file=race_file.name,
+                    race_number=race_context.get("race_number"),
+                    error=str(exc),
+                )
+                return None
+            self._emit_event(
+                "full_rank_ml_applied",
+                race_file=race_file.name,
+                race_number=race_context.get("race_number"),
+                ranking_version=ranking_contract.get("version"),
+                matrix_weight=ranking_contract.get("matrix_weight"),
+                ml_weight=ranking_contract.get("ml_weight"),
+                model_sha256=ranking_contract.get("model_sha256"),
+            )
 
         ensure_verdict(logic_data)
         self._finalize_shadow_profiles(logic_data)
@@ -1256,6 +1284,11 @@ if __name__ == "__main__":
             "scoring; never changes mainline ranking or recommendations"
         ),
     )
+    parser.add_argument(
+        "--matrix-only",
+        action="store_true",
+        help="Emergency rollback: rank only by 7D Matrix ability and skip full-rank ML",
+    )
     args = parser.parse_args()
     
     orchestrator = HKJCAutoOrchestrator(
@@ -1264,6 +1297,7 @@ if __name__ == "__main__":
         shadow_profile=args.shadow_profile,
         health_profile=args.health_profile,
         stability_residual_shadow=args.stability_residual_shadow,
+        matrix_only=args.matrix_only,
     )
     orchestrator._validate_engine_requested = args.validate_engine
     raise SystemExit(orchestrator.run())

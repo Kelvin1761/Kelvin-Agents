@@ -1,6 +1,6 @@
 {
   "created_on": "2026-08-11",
-  "git_head": "528c469a2007f0edccfe65acc35c87aa345576c4",
+  "git_head": "c3c4c2ec7e7d27f1b07b9461ffbbb239838be946",
   "version": "HKJC_MATRIX_ANCHORED_LAMBDARANK_V1",
   "seed": 20260811,
   "primary": {
@@ -115,7 +115,8 @@
     "matrix_weight": 0.7,
     "development_gate": true,
     "external_gate": false,
-    "production_promoted": false
+    "production_promoted": true,
+    "promotion_basis": "user_approved_after_sample_size_review; ranking_only; matrix_ability_and_grade_unchanged"
   },
   "features": {
     "numeric": [
@@ -140,6 +141,11 @@
     "path": ".agents/skills/hkjc_racing/hkjc_reflector/artifacts/hkjc_full_rank_ml_program/models/matrix_anchored_lambdarank.joblib",
     "sha256": "8c8fc3a89f3df75e303bca26bb36e9fc3f2901cdd123ec90dc6c2ac67e72c9d8"
   },
+  "portable_model": {
+    "path": ".agents/skills/hkjc_racing/hkjc_reflector/artifacts/hkjc_full_rank_ml_program/models/matrix_anchored_lambdarank_portable.json",
+    "sha256": "9397f5c67139a14920f36e13d9442220393a4be5cbe20c20a1484104055446a1",
+    "dependency_free_inference": true
+  },
   "external_not_used_for_selection": true,
-  "manifest_sha256": "46a0760577a17eddc74ce9b684678443f2d6b136ad1bd00055ca75a1a378013c"
+  "manifest_sha256": "a9072fe29c72888ef1fbaf307cf334a22e62bd5637626f93f197f9d6b6f530f4"
 }

@@ -25,6 +25,7 @@ def test_full_rank_artifact_pack_is_complete() -> None:
         "weak_race_pattern_summary.csv",
         "weak_race_review.csv",
         "models/matrix_anchored_lambdarank.joblib",
+        "models/matrix_anchored_lambdarank_portable.json",
     }
     missing = [name for name in required if not (ARTIFACTS / name).exists()]
     assert not missing, f"missing full-rank ML artifacts: {missing}"
@@ -33,7 +34,7 @@ def test_full_rank_artifact_pack_is_complete() -> None:
 def test_manifest_freezes_external_and_production_state() -> None:
     manifest = json.loads((ARTIFACTS / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["external_not_used_for_selection"] is True
-    assert manifest["selection"]["production_promoted"] is False
+    assert manifest["selection"]["production_promoted"] is True
     assert manifest["selection"]["feature_scope"] in {
         "matrix_7d",
         "matrix_plus_components",
@@ -41,6 +42,8 @@ def test_manifest_freezes_external_and_production_state() -> None:
     }
     assert 0.0 < manifest["selection"]["matrix_weight"] <= 1.0
     assert len(manifest["model"]["sha256"]) == 64
+    assert len(manifest["portable_model"]["sha256"]) == 64
+    assert manifest["portable_model"]["dependency_free_inference"] is True
 
 
 def test_scorecard_contains_competitiveness_and_weak_race_metrics() -> None:
@@ -60,5 +63,6 @@ def test_scorecard_contains_competitiveness_and_weak_race_metrics() -> None:
 
 def test_report_records_no_direct_production_promotion() -> None:
     report = (ARTIFACTS / "full_rank_ml_report.md").read_text(encoding="utf-8")
-    assert "Production Matrix: unchanged" in report
+    assert "Production Matrix ability / Grade: unchanged" in report
+    assert "Production hybrid ranking promoted by user: `YES`" in report
     assert "external" in report.lower()

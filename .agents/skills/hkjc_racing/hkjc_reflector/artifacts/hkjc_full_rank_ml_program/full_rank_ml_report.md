@@ -5,11 +5,12 @@
 - Matrix / ML ranking share: `70%` / `30%`
 - Development gate: `PASS`
 - External 2026-07-15 gate: `FAIL`
-- Production Matrix: unchanged
+- Production Matrix ability / Grade: unchanged
+- Production hybrid ranking promoted by user: `YES`
 
 ## Outcome
 
-候選喺 development 有系統改善，但 external 未能確認穩定性；保留 research-only，唔推入 production。
+用戶審視樣本量後批准將 70/30 hybrid 用作正式全場排序：161 場 walk-forward 改善優先於九場 external 入面少捕捉一匹 Top 3 馬；external limitation 仍完整保留，Matrix ability / Grade 不變。
 
 ### Raw-signal challenger
 

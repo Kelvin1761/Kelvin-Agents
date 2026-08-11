@@ -106,21 +106,29 @@ def ensure_verdict(logic_data: dict) -> dict:
                 "horse_name": horse.get("horse_name", ""),
                 "ability_score": float(horse.get("python_auto", {}).get("ability_score", 0)),
                 "grade": horse.get("python_auto", {}).get("grade", ""),
-                "rank_score": float(horse.get("python_auto", {}).get("ability_score", 0)),
+                "rank_score": float(
+                    horse.get("python_auto", {}).get(
+                        "rank_score",
+                        horse.get("python_auto", {}).get("ability_score", 0),
+                    )
+                ),
             }
             for num, horse in horses.items()
             if isinstance(horse.get("python_auto"), dict)
         ],
-        key=lambda item: (-item["ability_score"], _horse_number_sort_key(item["horse_number"])),
+        key=lambda item: (
+            -item["rank_score"],
+            -item["ability_score"],
+            _horse_number_sort_key(item["horse_number"]),
+        ),
     )
-    # We no longer apply artificial tie-breakers or safety swaps.
-    # The ML optimizer reached its 30.63% Good Rate peak by purely sorting the 綜合戰力分 (ability_score).
-    # Any manual overrides here would corrupt the mathematically proven weights.
+    # One full-field ranking rule applies to every runner.  There are no manual
+    # swaps or horse-specific boundary tie-breaks.
     for idx, item in enumerate(ranked, start=1):
         horse = horses[item["horse_number"]]
         auto = horse["python_auto"]
         auto["rank"] = idx
-        auto["rank_score"] = round(float(item.get("rank_score", auto.get("ability_score", 0))), 4)
+        auto["rank_score"] = float(item.get("rank_score", auto.get("ability_score", 0)))
         auto["model_pick_status"] = _pick_status(idx, float(auto.get("ability_score", 0)), auto)
         auto["shadow_flags"] = _shadow_flag_candidates(horse, race_context, auto)
         item["rank"] = idx
@@ -145,17 +153,21 @@ def ensure_verdict(logic_data: dict) -> dict:
         "top1_top3_gap": top1_top3_gap,
         "radar_size": radar_size,
         "radar": ranked[:radar_size],
+        "ranking_contract": logic_data.get("python_auto_ranking_contract", {}),
     }
     logic_data["python_auto_verdict"] = verdict
     return verdict
 
 
 def _confidence_tier(ranked: list) -> tuple:
-    """(tier, top1_top3_gap, radar_size) from the top1-top3 ability spread.
+    """(tier, Matrix top1-top3 gap, radar size), independent of ML reordering.
 
     Advisory betting-radar width only; never feeds scoring or ranking."""
     if len(ranked) >= 3:
-        gap = float(ranked[0]["ability_score"]) - float(ranked[2]["ability_score"])
+        abilities = sorted(
+            (float(item["ability_score"]) for item in ranked), reverse=True
+        )
+        gap = abilities[0] - abilities[2]
     else:
         gap = 99.0
     if gap < 2.0:
@@ -310,7 +322,7 @@ def render_race_markdown(logic_data: dict) -> str:
         if isinstance(auto, dict):
             lines.extend(_render_horse_section(horse_num, horse, auto))
     lines.extend(_render_verdict(verdict, horses, shadow_verdicts))
-    lines.extend(_render_blind_spots())
+    lines.extend(_render_blind_spots(verdict))
     return "\n".join(lines).strip() + "\n"
 
 
@@ -324,6 +336,15 @@ def render_race_csv(logic_data: dict) -> str:
         "jockey",
         "trainer",
         "rank",
+        "rank_score",
+        "ranking_contract_id",
+        "matrix_base_ability",
+        "matrix_rank",
+        "matrix_rank_percentile",
+        "ml_raw_score",
+        "ml_rank_percentile",
+        "ranking_matrix_weight",
+        "ranking_ml_weight",
         "ability_score",
         "grade",
         "model_pick_status",
@@ -365,6 +386,15 @@ def render_race_csv(logic_data: dict) -> str:
             "jockey": horse.get("jockey", ""),
             "trainer": horse.get("trainer", ""),
             "rank": auto.get("rank", ""),
+            "rank_score": auto.get("rank_score", ""),
+            "ranking_contract_id": auto.get("ranking_contract_id", ""),
+            "matrix_base_ability": (auto.get("ranking_components") or {}).get("matrix_base_ability", ""),
+            "matrix_rank": (auto.get("ranking_components") or {}).get("matrix_rank", ""),
+            "matrix_rank_percentile": (auto.get("ranking_components") or {}).get("matrix_rank_percentile", ""),
+            "ml_raw_score": (auto.get("ranking_components") or {}).get("ml_raw_score", ""),
+            "ml_rank_percentile": (auto.get("ranking_components") or {}).get("ml_rank_percentile", ""),
+            "ranking_matrix_weight": (auto.get("ranking_components") or {}).get("matrix_weight", ""),
+            "ranking_ml_weight": (auto.get("ranking_components") or {}).get("ml_weight", ""),
             "ability_score": auto.get("ability_score", ""),
             "grade": auto.get("grade", ""),
             "model_pick_status": auto.get("model_pick_status", ""),
@@ -431,9 +461,10 @@ def _render_panorama(race: dict, verdict: dict, horses: dict, shadow_verdicts: d
         "| 項目 | 內容 |",
         "|:---|:---|",
         f"| 賽事格局 | {race_class} / {distance}m / HKJC |",
-        "| **賽事類型** | **`[HKJC Wong Choi Auto Python 7D]`** |",
+        "| **賽事類型** | **`[HKJC Wong Choi Auto 7D + Full Ranking ML]`** |",
         "| 天氣 / 場地 | 以本地已抽取資料為準；缺資料以中性分處理 |",
-        "| 分析邊界 | 12項分數 + 7D；不使用即場市場資料、主觀補寫或外部模型 |",
+        "| 分析邊界 | 12項分數 + 7D + 本地全場排序模型；不使用即場市場資料或主觀補寫 |",
+        f"| 排名合約 | {_ranking_contract_label(verdict)} |",
         "",
         "**📍 Auto 走位與檔位摘要（不含節奏預測）:**",
         f"- 場次: 第 {race_number} 場",
@@ -559,18 +590,35 @@ def _render_verdict(verdict: dict, horses: dict, shadow_verdicts: dict | None = 
     return lines
 
 
-def _render_blind_spots() -> list[str]:
+def _render_blind_spots(verdict: dict) -> list[str]:
     return [
         "---",
         "#### [第四部分] 分析盲區(緊隨第三部分)",
         "",
         "**1. 資料完整度:** 缺失欄位以中性 60 處理，並透過信心分反映不確定性。",
         "**2. 段速含金量:** 段速由本地已抽取資料與矩陣綜合，未以單一數字直接定勝負。",
-        f"**3. 排名邏輯:** 只按{ABILITY_LABEL}由高至低排序；檔位、健康、騎練、段速等訊號已在 7D 矩陣內反映，不再另設排序 tie-break。Grade 只作閱讀標籤。",
+        f"**3. 排名邏輯:** {_ranking_logic_text(verdict)} Grade 仍只按{ABILITY_LABEL}顯示，唔參與額外 tie-break。",
         "**4. 騎練樣本:** 人馬、騎練或海外騎師資料不足時，不會單靠名氣加分。",
         "**5. 重跑條件:** 任何本地來源更新後，應重新執行 Python Auto pipeline。",
         "",
     ]
+
+
+def _ranking_contract_label(verdict: dict) -> str:
+    contract = verdict.get("ranking_contract") or {}
+    if contract.get("mode") == "matrix_ml_hybrid":
+        return "70% 七維矩陣全場次序 + 30% ML 全場競爭力次序"
+    return f"只按{ABILITY_LABEL}由高至低"
+
+
+def _ranking_logic_text(verdict: dict) -> str:
+    contract = verdict.get("ranking_contract") or {}
+    if contract.get("mode") == "matrix_ml_hybrid":
+        return (
+            "以全場一致規則混合 70% 七維矩陣排名百分位及 30% ML 排名百分位；"
+            "ML 只讀七維絕對分及同場相對分，唔做逐場人手換馬。"
+        )
+    return f"只按{ABILITY_LABEL}由高至低排序；不設人手換馬。"
 
 
 def _matrix_lines(horse: dict, auto: dict) -> list[str]:

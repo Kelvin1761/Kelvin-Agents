@@ -50,6 +50,7 @@ sys.path.insert(0, str(_REPO))
 from engine_core import RacingEngine  # noqa: E402
 from hkjc_auto_orchestrator import _apply_sip_enhancements, _enrich_horse_headers  # noqa: E402
 from renderer import ensure_verdict  # noqa: E402
+from full_rank_ml import apply_full_rank_ml  # noqa: E402
 from wongchoi_paths import is_materialized_file  # noqa: E402
 
 METRICS = ("gold", "good", "min", "single", "champion", "top3_champ")
@@ -142,6 +143,8 @@ def rescore_logic(logic: dict, *, keep_embedded_combo_prior: bool = False):
             continue
         horse["python_auto"] = RacingEngine(horse, race_context).analyze_horse()
     _apply_sip_enhancements(horses)
+    if len(horses) >= 2:
+        apply_full_rank_ml(logic)
     ensure_verdict(logic)
     return logic
 

@@ -224,6 +224,7 @@ python -m playwright install chromium
 
 - HKJC / AU extractor：`playwright`、`beautifulsoup4`、`requests`、`curl-cffi`
 - Facts / scoring / archive tooling：`pandas`、`openpyxl`
+- HKJC 70/30 production 全場排名使用 portable JSON，唔需要 LightGBM runtime；如要重訓／重建研究模型，另裝 `requirements-optional.txt`（macOS 如 LightGBM 提示 OpenMP 缺失，先執行 `brew install libomp`）
 - HKJC PDF / starter data：`pdfplumber`
 - Dashboard backend：`fastapi`、`uvicorn`、`watchdog`
 - HKJC `.numbers` parsing：`numbers-parser`

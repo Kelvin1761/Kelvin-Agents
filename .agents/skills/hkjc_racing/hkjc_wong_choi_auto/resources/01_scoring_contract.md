@@ -2,7 +2,8 @@
 
 ## Official Matrix
 
-Auto uses the existing 7D Wong Choi matrix as the only official ability source:
+Auto uses the existing 7D Wong Choi matrix as the only official 0-100 ability
+and Grade source. Official ordering uses the full-field ranking contract below.
 
 All runners, including debut runners, use the same official outer weights.
 Debut uncertainty and trial/readiness evidence are handled inside the feature
@@ -58,7 +59,26 @@ Derived matrix-only support signals such as `formline_strength_score`, `margin_t
 - `D`: 48-51.99
 - `E`: below 48
 
-Grade is display-only. Ranking and Top 4 use numeric `ability_score`.
+Grade is display-only. Ranking and Top 4 use the full-field `rank_score` below;
+`ability_score` remains the explainable Matrix total.
+
+## Full-field Ranking Contract
+
+- Version: `HKJC_MATRIX_ANCHORED_LAMBDARANK_V1`
+- Ranking score: 70% Matrix within-race rank percentile + 30% LambdaRank within-race rank percentile；只用極微 Matrix ability epsilon 解決完全同分
+- ML inputs: seven absolute Matrix dimensions plus the same seven within-race z-scores
+- `ability_score` and Grade remain unchanged Matrix outputs
+- Official rank, Top 2, Top 4 and `model_pick_status` follow `rank_score`
+- No odds, market, horse identity, post-race result, incident field, manual swap or micro tie-break
+- Model artifact is checksum-pinned and fails closed if missing or incompatible
+- `--matrix-only` restores legacy Matrix-only ordering for emergency rollback
+
+Promotion decision: the 161-race chronological walk-forward reduced 0-hit
+25.47%→24.22%, reduced 1-hit 52.17%→50.31%, raised Winner Top 2
+41.61%→42.86%, kept Winner Top 3 unchanged, and moved ten eventual
+placegetters from model Rank 3 into Top 2. The nine-race 2026-07-15 block lost
+one Top-3-at-5 capture but raised Winner Top 3 from 3/9 to 5/9 and improved
+log-loss; the user approved promotion after reviewing this sample-size trade-off.
 
 ## Stability Residual Research Shadow
 
