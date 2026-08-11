@@ -21,6 +21,12 @@ Shared setup for `AU-ML-001` to `AU-ML-006`:
 - Dataset: 805 races / 8,249 runners, 2025-09-06 to 2026-08-07
 - Development period: 2025-09-06 to 2026-07-01 (594 races)
 - Expanding walk-forward: 5 whole-date periods
+- Walk-forward validation periods:
+  - Fold 1: train through 2026-04-04 (238 races); validate 2026-04-06 to 2026-04-15 (53 races)
+  - Fold 2: train through 2026-04-15 (291 races); validate 2026-04-16 to 2026-04-24 (49 races)
+  - Fold 3: train through 2026-04-24 (340 races); validate 2026-04-25 to 2026-05-23 (74 races)
+  - Fold 4: train through 2026-05-23 (414 races); validate 2026-05-24 to 2026-06-08 (93 races)
+  - Fold 5: train through 2026-06-08 (507 races); validate 2026-06-10 to 2026-07-01 (87 races)
 - Final chronological holdout: 2026-07-03 to 2026-08-07 (211 races / 2,157 runners)
 - Features: point-in-time raw race/form/people/PF/shape inputs plus Matrix leaf scores and evidence-state flags; names, aggregate Matrix score/matrices, odds and outcomes excluded
 

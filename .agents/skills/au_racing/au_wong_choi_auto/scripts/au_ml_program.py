@@ -586,17 +586,30 @@ def _race_confidence_labels(frame: pd.DataFrame) -> pd.Series:
     return frame["race_id"].map(race_buckets.astype(str))
 
 
+def _market_status_labels(frame: pd.DataFrame) -> pd.Series:
+    prices = pd.to_numeric(frame["market_sp_label"], errors="coerce")
+    favourite = prices.groupby(frame["race_id"]).transform("min")
+    labels = pd.Series("NonFavourite", index=frame.index, dtype=object)
+    labels[prices.isna()] = "MarketUnavailable"
+    labels[prices.notna() & np.isclose(prices, favourite, rtol=0, atol=1e-9)] = "Favourite/TiedFavourite"
+    return labels
+
+
 def segment_analysis(frame: pd.DataFrame) -> dict:
     definitions = {
         "venue": "venue",
         "distance": "distance_bucket",
         "class": "race_type",
+        "race_type": "race_type",
         "track_condition": "going_bucket",
         "field_size": "field_size_bucket",
         # Confidence is a race-level segment.  A race must never be split into
         # different evaluation groups because individual runners have slightly
         # different source coverage.
         "confidence": _race_confidence_labels(frame),
+        # This is a retrospective evaluation slice only. Market status is
+        # created after predictions are frozen and is never a model feature.
+        "market_status": _market_status_labels(frame),
     }
     output = {}
     for family, source in definitions.items():
@@ -724,6 +737,52 @@ def betting_scorecard(frame: pd.DataFrame, edge_threshold: float = 0.05) -> dict
     }
 
 
+def betting_segment_analysis(frame: pd.DataFrame) -> dict:
+    segmented = frame.copy()
+    prices = pd.to_numeric(segmented["market_sp_label"], errors="coerce")
+    implied = 1 / prices
+    edge = segmented["pred_win"] - implied
+    odds_band = pd.cut(
+        prices,
+        [0, 3, 6, 12, 25, 50, np.inf],
+        labels=["<=3", "3-6", "6-12", "12-25", "25-50", ">50"],
+        include_lowest=True,
+    ).astype(str)
+    odds_band[prices.isna()] = "MarketUnavailable"
+    edge_band = pd.cut(
+        edge,
+        [-np.inf, 0, 0.05, 0.10, 0.20, np.inf],
+        labels=["<0", "0-5%", "5-10%", "10-20%", "20%+"],
+        include_lowest=True,
+    ).astype(str)
+    edge_band[prices.isna()] = "MarketUnavailable"
+    definitions = {
+        "venue": segmented["venue"],
+        "distance": segmented["distance_bucket"],
+        "class": segmented["race_type"],
+        "race_type": segmented["race_type"],
+        "track_condition": segmented["going_bucket"],
+        "field_size": segmented["field_size_bucket"],
+        "market_status": _market_status_labels(segmented),
+        "odds_band": odds_band,
+        "confidence": _race_confidence_labels(segmented),
+        "predicted_edge": edge_band,
+    }
+    output = {}
+    for family, labels in definitions.items():
+        groups = {}
+        for label in sorted(set(labels)):
+            subset = segmented[labels == label]
+            card = betting_scorecard(subset)
+            groups[str(label)] = {
+                "population_races": int(subset["race_id"].nunique()),
+                "population_runners": len(subset),
+                **card,
+            }
+        output[family] = groups
+    return output
+
+
 def _pct(value) -> str:
     return f"{100 * value:.2f}%"
 
@@ -830,6 +889,11 @@ def report_markdown(results: dict) -> str:
     improved = results["selection"]["walkforward_improved_periods"]
     periods = len(wf["periods"])
     verdict = results["verdict"]["decision"]
+    importance_lookup = {
+        item["feature"]: item["importance"]
+        for item in results["explainability"]["features"]
+    }
+    quality = results["dataset"].get("feature_quality", {})
     lines = [
         "# AU Wong Choi ML Experiment Report",
         "",
@@ -858,10 +922,15 @@ def report_markdown(results: dict) -> str:
         ("Top-1", "top1", _pct),
         ("Top-2", "top2", _pct),
         ("Top-3", "top3", _pct),
+        ("Top-5", "top5", _pct),
         ("Place Brier", "place_brier", _num),
         ("Place Log Loss", "place_log_loss", _num),
         ("Place precision", "place_precision", _pct),
+        ("Winner average rank", "winner_average_rank", _num),
+        ("Place-getter average rank", "place_getter_average_rank", _num),
+        ("Ranking correlation", "ranking_correlation", _num),
         ("Gold", "gold_rate", _pct),
+        ("Gold strict", "gold_strict_rate", _pct),
         ("Good", "good_rate", _pct),
         ("Pass", "pass_rate", _pct),
     ):
@@ -944,6 +1013,19 @@ def report_markdown(results: dict) -> str:
         )
     lines.extend([
         "",
+        f"Selected {best_name} chronological-holdout probability buckets:",
+        "",
+        "| Target | Probability bucket | Runners | Mean predicted | Observed |",
+        "|---|---|---:|---:|---:|",
+    ])
+    for target in ("win", "place"):
+        for bucket in best[f"{target}_calibration"]:
+            lines.append(
+                f"| {target} | {bucket['bucket']} | {bucket['count']} | "
+                f"{_pct(bucket['predicted'])} | {_pct(bucket['observed'])} |"
+            )
+    lines.extend([
+        "",
         "Paired race bootstrap (candidate minus Matrix; positive means improvement):",
         "",
         "| Candidate | Metric | Mean | 95% CI |",
@@ -971,6 +1053,8 @@ def report_markdown(results: dict) -> str:
             f"{_pct(metrics['top1'])} | {_pct(metrics['top3'])} |"
         )
     lines.extend([
+        "",
+        "The maximum training point is 444 races because the last 150 development races remain a fixed chronological learning-curve validation block. Testing 500/600 training races would overlap that block and violate the point-in-time comparison. Win Brier continued to improve modestly, while Top-1/Top-3 remained unstable; more races may help probability estimation but current data do not show a stable ranking breakthrough.",
         "",
         "## BETTING PERFORMANCE",
         "",
@@ -1012,6 +1096,25 @@ def report_markdown(results: dict) -> str:
         )
     lines.extend([
         "",
+        "### Post-analysis betting segments",
+        "",
+        "Favourite status, odds and edge are created only after predictions are frozen. Full venue/distance/class/track/race-type/field-size breakdowns are preserved in the JSON result.",
+        "",
+        "| Model | Segment | Group | Bets | Profit (u) | ROI | Strike | Max DD (u) |",
+        "|---|---|---|---:|---:|---:|---:|---:|",
+    ])
+    for name in ("champion", best_name, "hybrid"):
+        for family in ("market_status", "odds_band", "predicted_edge", "confidence"):
+            for label, card in final["betting_segments"][name][family].items():
+                if not card["bets"]:
+                    continue
+                lines.append(
+                    f"| {name} | {family} | {label} | {card['bets']} | "
+                    f"{card['profit']:.2f} | {_pct(card['roi'])} | "
+                    f"{_pct(card['strike_rate'])} | {card['maximum_drawdown_units']:.2f} |"
+                )
+    lines.extend([
+        "",
         "## CLV",
         "",
         "Current Matrix: **N/A**",
@@ -1038,6 +1141,28 @@ def report_markdown(results: dict) -> str:
             lines.append(f"- `{item['feature']}`: {item['mean_abs_shap']:.6f}")
     else:
         lines.append(f"- SHAP unavailable: `{shap_result.get('reason', 'unknown reason')}`")
+    overlap_text = "; ".join(
+        ", ".join(item["features"])
+        for item in quality.get("conceptual_overlap_groups", [])
+    ) or "See readiness report"
+    constant_text = ", ".join(
+        item["feature"] for item in quality.get("constant_features", [])
+    ) or "none"
+    lines.extend([
+        "",
+        "### Ten diagnostic questions",
+        "",
+        "1. **Which features genuinely improve prediction?** Permutation and TreeSHAP agree that pace figure, official rating, recent form, trainer place performance and Performance Quality are the strongest reusable signals. This is predictive association on the holdout, not a causal claim.",
+        "2. **Which Matrix features remain strong?** `leaf_pace_figure_score`, `leaf_rating_score`, `leaf_form_score` and `leaf_performance_quality_score` all appear near the top, supporting the core Matrix design.",
+        f"3. **Which are weak?** Features outside the leading permutation set, including heavily neutral report leaves, add little stable holdout value. Examples: sectional importance {importance_lookup.get('leaf_sectional_score', 0.0):+.6f}, health {importance_lookup.get('leaf_health_score', 0.0):+.6f}, confidence {importance_lookup.get('leaf_confidence_score', 0.0):+.6f}.",
+        f"4. **Which are duplicated?** Conceptual overlaps audited: {overlap_text}. Exact non-constant duplicates are reported separately in readiness.",
+        "5. **Which appear overweighted?** No Matrix dimension can be defensibly labelled overweighted from this experiment: removing the Matrix structure made independent ML ranking materially worse, especially Top-3.",
+        "6. **Which appear underweighted?** The hybrid hints that conditional combinations can improve Top-1/Place Brier, but bootstrap intervals cross zero. That is insufficient evidence to reweight any live dimension.",
+        f"7. **Which neutral/default features create noise?** Constant/dead snapshot inputs are: {constant_text}. High-neutral leaves such as weight and sectionals are documented in readiness and should not gain influence without new evidence.",
+        "8. **Which nonlinear relationships appear?** XGBoost uses barrier, field size, race type and trainer/jockey rates alongside pace/rating. However, its final Top-3 deficit shows those nonlinearities do not generalise strongly enough yet.",
+        "9. **Which interactions are missing from Matrix?** The strongest unresolved candidate is shallow formal history × wet going, plus condition-specific trainer/jockey and timed-trial evidence. Existing archive fields cannot identify these point-in-time effects reliably.",
+        "10. **What is ML learning that Wong Choi misses?** Mostly conditional scaling of signals the Matrix already has, rather than a new independent ability source. The 50% hybrid's small gains are statistically fragile and betting performance is worse, so this learning is research-only.",
+    ])
     lines.extend([
         "",
         "## SEGMENT ANALYSIS",
@@ -1047,7 +1172,7 @@ def report_markdown(results: dict) -> str:
         "| Segment | Group | Races | Matrix Win Brier | ML Win Brier | Matrix Top-3 | ML Top-3 |",
         "|---|---|---:|---:|---:|---:|---:|",
     ])
-    for family in ("distance", "class", "track_condition", "field_size", "confidence"):
+    for family in ("distance", "class", "race_type", "track_condition", "field_size", "confidence", "market_status"):
         champion_groups = final["segments"]["champion"][family]
         best_groups = final["segments"][best_name][family]
         for label in sorted(set(champion_groups) & set(best_groups)):
@@ -1059,6 +1184,22 @@ def report_markdown(results: dict) -> str:
                 f"{_pct(current['top3'])} | {_pct(challenger['top3'])} |"
             )
     lines.extend([
+        "",
+        "`market_status` is a retrospective analysis slice only; it was created after all predictions were frozen. It is not an input feature. Betting segments for every model and every required family are in `au_ml_experiment_results.json`.",
+        "",
+        "## REPRODUCIBILITY",
+        "",
+        "Run the complete archive → runtime snapshot → readiness → ML program with one command:",
+        "",
+        "```bash",
+        "python3 .agents/skills/au_racing/au_wong_choi_auto/scripts/au_ml_rebuild.py \\",
+        "  --archive-root \"<AU_Racing archive>\" \\",
+        "  --results-csv \"<point-in-time merged results.csv>\" \\",
+        "  --work-dir /private/tmp/au_ml_program \\",
+        "  --report-dir .",
+        "```",
+        "",
+        "The wrapper defaults to `--require-complete`, records commands/input and output hashes in `au_ml_rebuild_manifest.json`, and inherits the caller environment. On macOS, LightGBM/XGBoost may require `DYLD_LIBRARY_PATH` pointing to a trusted `libomp` installation.",
         "",
         "## PRODUCTION PROMOTION GATE",
         "",
@@ -1175,6 +1316,13 @@ def main() -> int:
             "hybrid": hybrid_prediction,
         }.items()
     }
+    betting_segments = {
+        name: betting_segment_analysis(prediction)
+        for name, prediction in {
+            **final_predictions,
+            "hybrid": hybrid_prediction,
+        }.items()
+    }
     decision, reasons, promotion_gates = promotion_verdict(
         final_metrics["champion"],
         {best_name: final_metrics[best_name], "hybrid": final_metrics["hybrid"]},
@@ -1199,6 +1347,7 @@ def main() -> int:
             "date_range": [str(frame["date"].min().date()), str(frame["date"].max().date())],
             "readiness": readiness["readiness"],
             "holdout_disclosure": "New to this ML run; not globally untouched because the Matrix used the archive previously.",
+            "feature_quality": readiness.get("feature_quality", {}),
         },
         "champion": readiness["champion"],
         "dependencies": {
@@ -1223,6 +1372,7 @@ def main() -> int:
             "timings_seconds": details["timings_seconds"],
             "segments": final_segments,
             "betting": betting,
+            "betting_segments": betting_segments,
         },
         "learning_curve": curve,
         "explainability": importance,

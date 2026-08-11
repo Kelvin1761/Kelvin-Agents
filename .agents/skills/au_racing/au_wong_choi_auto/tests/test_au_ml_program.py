@@ -12,6 +12,7 @@ SCRIPTS = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scr
 sys.path.insert(0, str(SCRIPTS))
 
 from au_ml_program import (  # noqa: E402
+    _market_status_labels,
     _promotion_gate,
     _race_normalize,
     _race_confidence_labels,
@@ -69,6 +70,14 @@ class AuMlProgramTests(unittest.TestCase):
             pd.DataFrame({"empty": [np.nan, np.nan], "seen": [1.0, 2.0]})
         )
         self.assertGreaterEqual(transformed.shape[1], 2)
+
+    def test_market_status_is_post_prediction_race_relative(self) -> None:
+        frame = self._frame().iloc[:8].reset_index(drop=True)
+        frame["market_sp_label"] = [3.0, 5.0, 8.0, 3.0, 2.0, 4.0, np.nan, 9.0]
+        labels = _market_status_labels(frame)
+        self.assertEqual(labels.iloc[0], "Favourite/TiedFavourite")
+        self.assertEqual(labels.iloc[3], "Favourite/TiedFavourite")
+        self.assertEqual(labels.iloc[6], "MarketUnavailable")
 
     def test_promotion_gate_requires_all_analysis_and_betting_checks(self) -> None:
         champion = {

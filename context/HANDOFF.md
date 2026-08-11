@@ -26,6 +26,7 @@ Execute the HKJC Wong Choi ML program described in `hkjc-ml-program.md`.
 - Facts-to-Logic refresh alignment fix with regression coverage.
 - Point-in-time historical Performance Quality backfill/recovery and canonical validation.
 - Reproducible ML dataset builder, feature/leakage audit, Logistic/LightGBM/XGBoost pipelines, chronological calibration, five-period walk-forward, learning curve, bootstrap, SHAP/permutation importance, segment analysis, hybrid and separate betting evaluation.
+- One-command archive-to-report rebuild wrapper with input/output hashes and strict completeness by default.
 - Readiness and final experiment reports generated.
 
 ### Findings

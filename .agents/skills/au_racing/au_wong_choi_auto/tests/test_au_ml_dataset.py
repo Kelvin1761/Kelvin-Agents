@@ -10,6 +10,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from au_ml_dataset import (  # noqa: E402
     _facts_runs,
+    _feature_quality_findings,
     build_rows,
     feature_contract,
     place_slots,
@@ -112,6 +113,19 @@ class AuMlDatasetTests(unittest.TestCase):
         }
         _rows, audit = build_rows(runtime)
         self.assertEqual(len(audit["duplicate_runners"]), 1)
+
+    def test_feature_quality_reports_duplicates_constants_and_bad_rates(self) -> None:
+        rows = [
+            {"a": 1.0, "b": 1.0, "constant": 0.0, "bad_rate": 0.5},
+            {"a": 2.0, "b": 2.0, "constant": 0.0, "bad_rate": 1.2},
+        ]
+        quality = _feature_quality_findings(
+            rows,
+            {"numeric": ["a", "b", "constant", "bad_rate"], "categorical": []},
+        )
+        self.assertIn(["a", "b"], quality["exact_duplicate_feature_groups"])
+        self.assertIn("constant", {item["feature"] for item in quality["constant_features"]})
+        self.assertEqual(quality["suspicious_values"]["bad_rate"]["count"], 1)
 
 
 if __name__ == "__main__":

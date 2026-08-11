@@ -24,7 +24,21 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
 
-from scoring import FEATURE_KEYS, MATRIX_WEIGHTS  # noqa: E402
+from matrix_mapper import (  # noqa: E402
+    MATRIX_ADVANTAGE_CUTOFF,
+    MATRIX_DISADVANTAGE_CUTOFF,
+    MATRIX_DISPLAY_GAINS,
+    MATRIX_FORMULAS,
+)
+from scoring import (  # noqa: E402
+    FEATURE_KEYS,
+    GRADE_THRESHOLDS,
+    MATRIX_WEIGHTS,
+    WET_FORM_FEATURE_SCALE,
+    WET_FORM_MAX_ABS,
+    WET_FORM_PRIOR,
+    WET_FORM_SHRINK_A,
+)
 
 
 SCHEMA_VERSION = 1
@@ -52,6 +66,33 @@ FORBIDDEN_FEATURE_TOKENS = (
     "sp_label",
     "fluc",
     "favourite",
+)
+
+CONCEPTUAL_OVERLAP_GROUPS = (
+    {
+        "features": ["rating", "leaf_rating_score"],
+        "risk": "Raw official rating and its engineered 0–100 leaf encode related ability information; regularisation/trees must decide whether both add value.",
+    },
+    {
+        "features": ["recent_finish_mean_3", "recent_finish_mean_5", "recent_finish_best_3", "leaf_form_score"],
+        "risk": "Overlapping recent-form horizons can duplicate the same finishing-position signal.",
+    },
+    {
+        "features": ["recent_place_rate_5", "recent_win_rate_5", "leaf_consistency_score"],
+        "risk": "Rolling outcomes overlap with the engineered consistency leaf.",
+    },
+    {
+        "features": ["pf_l600_delta_avg", "pf_race_time_diff_avg", "leaf_pace_figure_score"],
+        "risk": "Raw PF aggregates and the pace-figure leaf are related; importance must be read jointly.",
+    },
+    {
+        "features": ["jockey_ly_win_rate", "jockey_ly_place_rate", "leaf_jockey_score"],
+        "risk": "Raw jockey rates partly feed the engineered jockey score.",
+    },
+    {
+        "features": ["trainer_ly_win_rate", "trainer_ly_place_rate", "leaf_trainer_score"],
+        "risk": "Raw trainer rates partly feed the engineered trainer score.",
+    },
 )
 
 BASE_NUMERIC_FEATURES = (
@@ -578,6 +619,19 @@ def _git_sha() -> str:
         return "Unknown"
 
 
+def _git_last_touch_sha(paths: tuple[Path, ...]) -> str:
+    """Return the commit that last changed the frozen production scorer."""
+    try:
+        relative = [str(path.relative_to(PROJECT_ROOT)) for path in paths]
+        return subprocess.check_output(
+            ["git", "log", "-1", "--format=%H", "--", *relative],
+            cwd=PROJECT_ROOT,
+            text=True,
+        ).strip() or _git_sha()
+    except (OSError, ValueError, subprocess.CalledProcessError):
+        return _git_sha()
+
+
 def _coverage(rows: list[dict], contract: dict) -> dict:
     report = {}
     for key in contract["numeric"] + contract["categorical"]:
@@ -597,6 +651,64 @@ def _coverage(rows: list[dict], contract: dict) -> dict:
             "max": max(numeric) if numeric else None,
         }
     return report
+
+
+def _feature_quality_findings(rows: list[dict], contract: dict) -> dict:
+    numeric = contract["numeric"]
+    constant = []
+    suspicious = {}
+    fingerprints: dict[tuple, list[str]] = defaultdict(list)
+    for key in numeric:
+        values = [row.get(key) for row in rows]
+        present = [value for value in values if value is not None]
+        unique = {str(value) for value in present}
+        if len(unique) <= 1:
+            constant.append({"feature": key, "value": next(iter(unique), None)})
+        # Exact non-constant duplication is a strong warning; all-missing and
+        # constant evidence-state flags are reported separately as dead inputs.
+        if len(unique) > 1:
+            fingerprints[tuple(values)].append(key)
+
+        bad = []
+        for value in present:
+            parsed = as_float(value)
+            if parsed is None:
+                bad.append(value)
+                continue
+            is_flag = key.endswith(("_observed", "_derived", "_fallback", "_missing"))
+            is_rate = key.endswith(("_rate", "_pct", "_percentile")) or key == "barrier_pct"
+            if is_flag and parsed not in {0.0, 1.0}:
+                bad.append(value)
+            elif is_rate and not 0.0 <= parsed <= 1.0 and key != "source_coverage_pct":
+                bad.append(value)
+            elif key == "source_coverage_pct" and not 0.0 <= parsed <= 100.0:
+                bad.append(value)
+            elif key.startswith("leaf_") and not is_flag and not 0.0 <= parsed <= 100.0:
+                bad.append(value)
+            elif key == "race_distance" and not 600 <= parsed <= 5000:
+                bad.append(value)
+            elif key == "field_size" and not 2 <= parsed <= 30:
+                bad.append(value)
+            elif key == "barrier" and not 0 <= parsed <= 40:
+                bad.append(value)
+            elif key == "weight" and not 40 <= parsed <= 80:
+                bad.append(value)
+            elif key == "rating" and not 0 <= parsed <= 200:
+                bad.append(value)
+        if bad:
+            suspicious[key] = {
+                "count": len(bad),
+                "examples": [str(value) for value in bad[:5]],
+            }
+    exact_duplicates = [
+        features for features in fingerprints.values() if len(features) > 1
+    ]
+    return {
+        "constant_features": constant,
+        "suspicious_values": suspicious,
+        "exact_duplicate_feature_groups": exact_duplicates,
+        "conceptual_overlap_groups": list(CONCEPTUAL_OVERLAP_GROUPS),
+    }
 
 
 def complete_audit(rows: list[dict], base: dict, runtime_path: Path) -> dict:
@@ -623,6 +735,11 @@ def complete_audit(rows: list[dict], base: dict, runtime_path: Path) -> dict:
         "Some Rating Matrix leaves use documented fallback/default values; evidence-state flags are included so ML can distinguish them.",
     ]
     readiness = "NOT READY" if leakage_blockers else "READY WITH LIMITATIONS"
+    scorer_sources = (
+        SCRIPT_DIR / "racing_engine" / "engine_core.py",
+        SCRIPT_DIR / "racing_engine" / "scoring.py",
+        SCRIPT_DIR / "racing_engine" / "matrix_mapper.py",
+    )
     audit = {
         **base,
         "readiness": readiness,
@@ -635,19 +752,46 @@ def complete_audit(rows: list[dict], base: dict, runtime_path: Path) -> dict:
         "races_by_class": dict(by_class.most_common()),
         "races_by_track_condition": dict(by_going.most_common()),
         "feature_coverage": _coverage(rows, base["feature_contract"]),
+        "feature_quality": _feature_quality_findings(rows, base["feature_contract"]),
         "limitations": limitations,
         "champion": {
             "model": "Current AU Wong Choi Rating Matrix",
-            "commit_sha": _git_sha(),
+            "commit_sha": _git_last_touch_sha(scorer_sources),
+            "report_build_sha": _git_sha(),
             "runtime_dataset_sha256": _sha256_file(runtime_path),
             "matrix_weights": MATRIX_WEIGHTS,
+            "feature_definitions": {
+                "leaf_features": list(FEATURE_KEYS),
+                "matrix_formulas": {
+                    key: [list(component) for component in components]
+                    for key, components in MATRIX_FORMULAS.items()
+                },
+                "matrix_display_gains": MATRIX_DISPLAY_GAINS,
+                "ability_formula": "sum(matrix_score * matrix_weight) + wet_form_feature; rank descending; horse number breaks exact ties",
+                "wet_form_overlay": {
+                    "scope": "Soft/Heavy only; zero on Good/Firm/Synthetic",
+                    "scale": WET_FORM_FEATURE_SCALE,
+                    "shrink_a": WET_FORM_SHRINK_A,
+                    "prior": WET_FORM_PRIOR,
+                    "max_abs": WET_FORM_MAX_ABS,
+                },
+            },
+            "thresholds": {
+                "grade": [list(item) for item in GRADE_THRESHOLDS],
+                "matrix_advantage": MATRIX_ADVANTAGE_CUTOFF,
+                "matrix_disadvantage": MATRIX_DISADVANTAGE_CUTOFF,
+                "top_pick_tie_gap": 0.5,
+                "confidence_top1_top3_gap": {"tight_lt": 2.0, "medium_lt": 5.0, "clear_gte": 5.0},
+                "model_top_pick_ranks": [1, 2],
+                "radar_size": {"tight": 5, "medium": 4, "clear": 4},
+            },
+            "betting_rules": {
+                "production": "No automatic odds-based bet/stake rule in the frozen deterministic scorer; it produces rankings and confidence/radar output.",
+                "research_scorecard": "After analysis freeze only: flat 1u Win, predicted edge >=5 percentage points, SP 1.5–50; no Place bet without historical Place dividends.",
+            },
             "source_files": {
                 str(path.relative_to(PROJECT_ROOT)): _sha256_file(path)
-                for path in (
-                    SCRIPT_DIR / "racing_engine" / "engine_core.py",
-                    SCRIPT_DIR / "racing_engine" / "scoring.py",
-                    SCRIPT_DIR / "racing_engine" / "matrix_mapper.py",
-                )
+                for path in scorer_sources
             },
         },
     }
@@ -677,6 +821,7 @@ def render_readiness(audit: dict) -> str:
         "",
         f"- Model: {audit['champion']['model']}",
         f"- Commit SHA: `{audit['champion']['commit_sha']}`",
+        f"- Readiness/report build SHA: `{audit['champion']['report_build_sha']}`",
         f"- Runtime dataset SHA256: `{audit['champion']['runtime_dataset_sha256']}`",
         f"- Matrix weights: `{json.dumps(audit['champion']['matrix_weights'], sort_keys=True)}`",
         "- Frozen scorer source SHA256:",
@@ -684,6 +829,14 @@ def render_readiness(audit: dict) -> str:
             f"  - `{path}`: `{digest}`"
             for path, digest in audit["champion"]["source_files"].items()
         ],
+        f"- Leaf features: `{json.dumps(audit['champion']['feature_definitions']['leaf_features'])}`",
+        f"- Matrix formulas: `{json.dumps(audit['champion']['feature_definitions']['matrix_formulas'], sort_keys=True)}`",
+        f"- Matrix display gains: `{json.dumps(audit['champion']['feature_definitions']['matrix_display_gains'], sort_keys=True)}`",
+        f"- Ability/ranking logic: {audit['champion']['feature_definitions']['ability_formula']}",
+        f"- Wet overlay: `{json.dumps(audit['champion']['feature_definitions']['wet_form_overlay'], sort_keys=True)}`",
+        f"- Thresholds: `{json.dumps(audit['champion']['thresholds'], sort_keys=True)}`",
+        f"- Production betting rule: {audit['champion']['betting_rules']['production']}",
+        f"- Research betting rule: {audit['champion']['betting_rules']['research_scorecard']}",
         "",
         "## Data Integrity And Leakage",
         "",
@@ -713,6 +866,25 @@ def render_readiness(audit: dict) -> str:
             f"{row['neutral_60_pct']:.1f}% | {row['unique']} | {bounds} |"
         )
     lines.extend([
+        "",
+        "## Feature Quality Findings",
+        "",
+        f"- Suspicious range/type findings: `{json.dumps(audit['feature_quality']['suspicious_values'], sort_keys=True)}`",
+        "- Constant/dead features in this historical snapshot:",
+        *[
+            f"  - `{item['feature']}` = `{item['value']}`"
+            for item in audit["feature_quality"]["constant_features"]
+        ],
+        "- Exact duplicate non-constant feature groups:",
+        *(
+            [f"  - `{json.dumps(group)}`" for group in audit["feature_quality"]["exact_duplicate_feature_groups"]]
+            or ["  - None detected."]
+        ),
+        "- Conceptual overlap requiring regularisation/joint interpretation:",
+        *[
+            f"  - `{', '.join(item['features'])}` — {item['risk']}"
+            for item in audit["feature_quality"]["conceptual_overlap_groups"]
+        ],
         "",
         "## Known Limitations",
         "",
