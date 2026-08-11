@@ -149,6 +149,44 @@ class AuMlDatasetTests(unittest.TestCase):
             ],
         )
 
+    def test_placing_boundary_tie_is_excluded_whole(self) -> None:
+        runtime = {
+            "races": [
+                {
+                    "metadata": {
+                        "date": "2026-06-01", "track": "Randwick",
+                        "race_number": 5, "distance": 1400,
+                        "going": "Good 4", "race_class": "Maiden",
+                        "field_size": 8,
+                    },
+                    "rows": [
+                        runtime_row(horse_number=1, actual_pos=1),
+                        runtime_row(horse_number=2, actual_pos=2),
+                        runtime_row(horse_number=3, actual_pos=3),
+                        runtime_row(horse_number=4, actual_pos=3),
+                        *[
+                            runtime_row(horse_number=horse, actual_pos=horse)
+                            for horse in range(5, 9)
+                        ],
+                    ],
+                }
+            ]
+        }
+        rows, audit = build_rows(runtime)
+        self.assertEqual(rows, [])
+        self.assertEqual(audit["integrity_counts"]["placing_boundary_tie"], 1)
+        self.assertEqual(
+            audit["excluded_race_details"],
+            [
+                {
+                    "race_id": "2026-06-01|Randwick|R5",
+                    "reason": "placing_boundary_tie_incompatible_with_fixed_place_probability_mass",
+                    "expected_places": 3,
+                    "recorded_places": 4,
+                }
+            ],
+        )
+
     def test_feature_quality_reports_duplicates_constants_and_bad_rates(self) -> None:
         rows = [
             {"a": 1.0, "b": 1.0, "constant": 0.0, "bad_rate": 0.5},

@@ -587,15 +587,37 @@ def build_rows(runtime: dict) -> tuple[list[dict], dict]:
     winner_counts = Counter(
         row["race_id"] for row in rows if row["label_win"] == 1
     )
-    excluded_race_details = [
-        {
-            "race_id": race_id,
-            "reason": "multiple_recorded_winners_incompatible_with_single_winner_probability_target",
-            "winner_count": winner_count,
-        }
-        for race_id, winner_count in sorted(winner_counts.items())
-        if winner_count > 1
-    ]
+    place_counts = Counter(
+        row["race_id"] for row in rows if row["label_place"] == 1
+    )
+    place_slots_by_race = {
+        row["race_id"]: row["place_slots"] for row in rows
+    }
+    excluded_race_details = []
+    for race_id in sorted(race_ids):
+        winner_count = winner_counts[race_id]
+        place_count = place_counts[race_id]
+        expected_places = place_slots_by_race[race_id]
+        if winner_count > 1:
+            excluded_race_details.append(
+                {
+                    "race_id": race_id,
+                    "reason": "multiple_recorded_winners_incompatible_with_single_winner_probability_target",
+                    "winner_count": winner_count,
+                }
+            )
+        elif place_count > expected_places:
+            integrity["placing_boundary_tie"] += 1
+            excluded_race_details.append(
+                {
+                    "race_id": race_id,
+                    "reason": "placing_boundary_tie_incompatible_with_fixed_place_probability_mass",
+                    "expected_places": expected_places,
+                    "recorded_places": place_count,
+                }
+            )
+        elif place_count < expected_places:
+            integrity["incomplete_place_target"] += 1
     excluded_race_ids = {item["race_id"] for item in excluded_race_details}
     usable_rows = [row for row in rows if row["race_id"] not in excluded_race_ids]
 
@@ -743,6 +765,7 @@ def complete_audit(rows: list[dict], base: dict, runtime_path: Path) -> dict:
         + len(base["duplicate_runners"])
         + base["integrity_counts"].get("race_without_winner", 0)
         + base["integrity_counts"].get("invalid_finishing_position", 0)
+        + base["integrity_counts"].get("incomplete_place_target", 0)
     )
     limitations = [
         "The archive has already been used for prior Rating Matrix optimisation; the final chronological test is new to this ML run but is not globally untouched.",
@@ -750,7 +773,7 @@ def complete_audit(rows: list[dict], base: dict, runtime_path: Path) -> dict:
         "The result-aligned snapshot excludes scratchings and does not preserve target-time scratching history.",
         "Historical body weight and historical place dividends/CLV snapshots are unavailable.",
         "Some Rating Matrix leaves use documented fallback/default values; evidence-state flags are included so ML can distinguish them.",
-        "Races with multiple recorded winners are retained in the integrity totals but excluded whole from single-winner probability modelling; both current exclusions were verified dead heats.",
+        "Races with multiple recorded winners or a placing-boundary tie are retained in the integrity totals but excluded whole from fixed-mass Win/Place probability modelling; all current exclusions were verified dead heats.",
     ]
     readiness = "NOT READY" if leakage_blockers else "READY WITH LIMITATIONS"
     scorer_sources = (
