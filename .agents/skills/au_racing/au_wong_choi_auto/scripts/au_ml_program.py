@@ -17,12 +17,12 @@ import pandas as pd
 from scipy.stats import spearmanr
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
+from sklearn.feature_selection import VarianceThreshold
 from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import brier_score_loss, log_loss
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.feature_selection import VarianceThreshold
 
 try:
     from lightgbm import LGBMClassifier
@@ -1184,11 +1184,11 @@ def report_markdown(results: dict) -> str:
         f"3. **Which are weak?** Features outside the leading permutation set, including heavily neutral report leaves, add little stable holdout value. Examples: sectional importance {importance_lookup.get('leaf_sectional_score', 0.0):+.6f}, health {importance_lookup.get('leaf_health_score', 0.0):+.6f}, confidence {importance_lookup.get('leaf_confidence_score', 0.0):+.6f}.",
         f"4. **Which are duplicated?** Conceptual overlaps audited: {overlap_text}. Exact non-constant duplicates are reported separately in readiness.",
         "5. **Which appear overweighted?** No Matrix dimension can be defensibly labelled overweighted from this experiment: removing the Matrix structure made independent ML ranking materially worse, especially Top-3.",
-        "6. **Which appear underweighted?** The hybrid hints that conditional combinations can improve Top-1/Place Brier, but bootstrap intervals cross zero. That is insufficient evidence to reweight any live dimension.",
+        "6. **Which appear underweighted?** The hybrid hints that conditional combinations can improve Place Brier, but ranking worsened and bootstrap intervals cross zero. That is insufficient evidence to reweight any live dimension.",
         f"7. **Which neutral/default features create noise?** Constant/dead snapshot inputs are: {constant_text}. The pipeline now drops zero-variance columns inside each chronological training fit; high-neutral leaves such as weight and sectionals remain documented and should not gain influence without new evidence.",
         "8. **Which nonlinear relationships appear?** XGBoost uses barrier, field size, race type and trainer/jockey rates alongside pace/rating. However, its final Top-3 deficit shows those nonlinearities do not generalise strongly enough yet.",
         "9. **Which interactions are missing from Matrix?** The strongest unresolved candidate is shallow formal history × wet going, plus condition-specific trainer/jockey and timed-trial evidence. Existing archive fields cannot identify these point-in-time effects reliably.",
-        "10. **What is ML learning that Wong Choi misses?** Mostly conditional scaling of signals the Matrix already has, rather than a new independent ability source. The 50% hybrid's small gains are statistically fragile and betting performance is worse, so this learning is research-only.",
+        "10. **What is ML learning that Wong Choi misses?** Mostly conditional scaling of signals the Matrix already has, rather than a new independent ability source. The 50% hybrid's small Place-probability gains are statistically fragile, ranking and betting performance are worse, so this learning is research-only.",
     ])
     lines.extend([
         "",
@@ -1331,8 +1331,7 @@ def main() -> int:
     final_segments = {
         name: segment_analysis(prediction)
         for name, prediction in {
-            "champion": final_predictions["champion"],
-            best_name: final_predictions[best_name],
+            **final_predictions,
             "hybrid": hybrid_prediction,
         }.items()
     }
