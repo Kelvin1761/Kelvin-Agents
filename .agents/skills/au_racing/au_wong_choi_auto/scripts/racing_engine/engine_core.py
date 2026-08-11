@@ -41,6 +41,7 @@ from scoring import (
     TRACK_MICRO_WEIGHTS,
     PACE_MICRO_WEIGHTS,
     FIT_MICRO_WEIGHTS,
+    SPORTSBET_PQ_RECOVERY_ALPHA,
     clip_score,
     compute_grade,
     parse_float,
@@ -393,7 +394,8 @@ class RacingEngine:
         # leaf inside the stability matrix.  Where that evidence is unavailable,
         # copy the already-context-adjusted consistency score exactly so legacy
         # and thin-data races remain rank-identical.
-        if self.provenance.get("performance_quality_score") == "consistency_fallback":
+        pq_source = self.provenance.get("performance_quality_score")
+        if pq_source == "consistency_fallback":
             feature_scores["performance_quality_score"] = feature_scores.get(
                 "consistency_score",
                 60,
@@ -405,6 +407,24 @@ class RacingEngine:
             detail = getattr(self, "performance_quality_detail", {}) or {}
             detail["final"] = round(feature_scores["performance_quality_score"], 2)
             detail["fallback"] = "consistency_score"
+            self.performance_quality_detail = detail
+        elif pq_source == "sportsbet_complete_form_archive_recovery":
+            observed = feature_scores.get("performance_quality_score", 60)
+            consistency = feature_scores.get("consistency_score", 60)
+            recovered = consistency + SPORTSBET_PQ_RECOVERY_ALPHA * (
+                observed - consistency
+            )
+            feature_scores["performance_quality_score"] = clip_score(recovered)
+            feature_notes["performance_quality_score"] = (
+                feature_notes.get("performance_quality_score", "")
+                + f"；舊檔完整 Sportsbet 往績以 {SPORTSBET_PQ_RECOVERY_ALPHA:.0%} "
+                  "reliability 融合，避免回填證據取代原 captured Facts"
+            )
+            detail = getattr(self, "performance_quality_detail", {}) or {}
+            detail["field_relative_recovered_score"] = round(float(observed), 2)
+            detail["recovery_alpha"] = SPORTSBET_PQ_RECOVERY_ALPHA
+            detail["consistency_anchor"] = round(float(consistency), 2)
+            detail["final"] = round(feature_scores["performance_quality_score"], 2)
             self.performance_quality_detail = detail
         jt_fit = feature_scores.get("jockey_horse_fit_score", 60)
         if jt_fit >= 72 and cs < 58:
@@ -601,7 +621,10 @@ class RacingEngine:
         if name == "performance_quality_score":
             return (
                 "observed"
-                if source == "class_adjusted_margin_field_relative"
+                if source in {
+                    "class_adjusted_margin_field_relative",
+                    "sportsbet_complete_form_archive_recovery",
+                }
                 else "fallback"
             )
         if name == "pace_figure_score":
@@ -4235,6 +4258,32 @@ class RacingEngine:
             self.performance_quality_detail = {"disabled": True, "final": None}
             return 60.0, "表現質素分已停用，稍後沿用跑法穩定性分。", "consistency_fallback"
         raw = parse_float(self.data.get("performance_quality_raw"))
+        recovered_score = parse_float(
+            self.data.get("sportsbet_performance_quality_score")
+        )
+        if raw is None and recovered_score is not None:
+            run_count = int(parse_float(
+                self.data.get("sportsbet_performance_quality_run_count")
+            ) or 0)
+            runs = self.data.get("sportsbet_performance_quality_runs")
+            runs = runs if isinstance(runs, list) else []
+            self.performance_quality_detail = {
+                "raw": parse_float(
+                    self.data.get("sportsbet_performance_quality_raw")
+                ),
+                "run_count": run_count,
+                "runs": runs,
+                "source": "sportsbet_complete_form_archive_recovery",
+                "field_relative_recovered_score": round(recovered_score, 2),
+                "final": round(recovered_score, 2),
+            }
+            if run_count >= 2:
+                return (
+                    clip_score(recovered_score),
+                    f"舊檔由嚴格早於賽事日嘅 Sportsbet 完整往績恢復，"
+                    f"場內標準分 {clip_score(recovered_score):.1f}。",
+                    "sportsbet_complete_form_archive_recovery",
+                )
         summary = self.race_context.get("field_summary") or {}
         count = int(parse_float(summary.get("performance_quality_field_count")) or 0)
         field_mean = parse_float(summary.get("performance_quality_field_mean"))
@@ -5216,27 +5265,33 @@ def enrich_logic_from_facts(
         fresh_pf = pf_by_horse.get(str(horse_num))
         if fresh_pf:
             data["pf_metrics"] = fresh_pf
-        _merge_data_value(data, "last10_raw", section.get("last10_raw"))
-        _merge_data_value(data, "recent_form", section.get("recent_form"))
-        _merge_data_value(data, "career_record_line", section.get("career_line"))
-        _merge_data_value(data, "engine_line", section.get("engine_line"))
-        _merge_data_value(data, "formline_line", section.get("formline_line"))
-        _merge_data_value(data, "consumption_summary", section.get("consumption_summary"))
-        _merge_data_value(data, "sectional_trend_line", section.get("sectional_trend_line"))
-        _merge_data_value(data, "running_style_line", section.get("running_style_line"))
-        _merge_data_value(data, "style_confidence_line", section.get("style_confidence_line"))
-        _merge_data_value(data, "engine_type_line", section.get("engine_type_line"))
-        _merge_data_value(data, "engine_confidence_line", section.get("engine_confidence_line"))
-        _merge_data_value(data, "distance_profile_line", section.get("distance_profile_line"))
-        _merge_data_value(data, "target_distance_line", section.get("target_distance_line"))
-        _merge_data_value(data, "class_move", section.get("class_move"))
-        _merge_data_value(data, "formal_count", section.get("formal_count"))
-        _merge_data_value(data, "trial_count", section.get("trial_count"))
-        _merge_data_value(data, "trial_top3_count", section.get("trial_top3_count"))
-        _merge_data_value(data, "track_record_line", section.get("track_line"))
-        _merge_data_value(data, "track_stats_line", section.get("track_stats_line"))
-        _merge_data_value(data, "going_stats_line", section.get("going_stats_line"))
-        _merge_data_value(data, "stage_stats_line", section.get("stage_stats_line"))
+        # A matched Facts horse block is authoritative, just like the matched
+        # Formguide digest above.  Fill-if-missing left stale non-empty scalars
+        # from an older (and occasionally cross-horse) Logic snapshot while
+        # ``facts_section`` itself was refreshed.  Replace only values the
+        # current Facts block explicitly proves; preserve legacy values when a
+        # field is absent from that historical Facts format.
+        _replace_data_value(data, "last10_raw", section.get("last10_raw"))
+        _replace_data_value(data, "recent_form", section.get("recent_form"))
+        _replace_data_value(data, "career_record_line", section.get("career_line"))
+        _replace_data_value(data, "engine_line", section.get("engine_line"))
+        _replace_data_value(data, "formline_line", section.get("formline_line"))
+        _replace_data_value(data, "consumption_summary", section.get("consumption_summary"))
+        _replace_data_value(data, "sectional_trend_line", section.get("sectional_trend_line"))
+        _replace_data_value(data, "running_style_line", section.get("running_style_line"))
+        _replace_data_value(data, "style_confidence_line", section.get("style_confidence_line"))
+        _replace_data_value(data, "engine_type_line", section.get("engine_type_line"))
+        _replace_data_value(data, "engine_confidence_line", section.get("engine_confidence_line"))
+        _replace_data_value(data, "distance_profile_line", section.get("distance_profile_line"))
+        _replace_data_value(data, "target_distance_line", section.get("target_distance_line"))
+        _replace_data_value(data, "class_move", section.get("class_move"))
+        _replace_data_value(data, "formal_count", section.get("formal_count"))
+        _replace_data_value(data, "trial_count", section.get("trial_count"))
+        _replace_data_value(data, "trial_top3_count", section.get("trial_top3_count"))
+        _replace_data_value(data, "track_record_line", section.get("track_line"))
+        _replace_data_value(data, "track_stats_line", section.get("track_stats_line"))
+        _replace_data_value(data, "going_stats_line", section.get("going_stats_line"))
+        _replace_data_value(data, "stage_stats_line", section.get("stage_stats_line"))
         # The Facts file is the source of truth for the per-horse facts_section.
         # Older Logic files carry a stale pre-realignment blob that the modern
         # feature parsers (賽績線 / 試閘 / L400 / 近況) cannot read, so a
@@ -5249,8 +5304,8 @@ def enrich_logic_from_facts(
             horse["career_tag"] = _extract_career_tag(facts_section)
         else:
             _merge_data_value(data, "facts_section", facts_section)
-        _merge_data_value(data, "last_finish_line", section.get("last_finish_line"))
-        _merge_data_value(data, "warning_line", section.get("warning_line"))
+        _replace_data_value(data, "last_finish_line", section.get("last_finish_line"))
+        _replace_data_value(data, "warning_line", section.get("warning_line"))
         if not str(data.get("current_jockey_history_line") or "").strip():
             current_jockey = _clean_identity(horse.get("jockey"))
             best_jockey = _clean_identity(data.get("best_formal_jockey"))
@@ -5285,6 +5340,13 @@ def _merge_data_value(target, key, value):
     existing = target.get(key)
     if existing in (None, "", "Unknown"):
         target[key] = value
+
+
+def _replace_data_value(target, key, value):
+    """Refresh a scalar only when the current source explicitly provides it."""
+    if value in (None, ""):
+        return
+    target[key] = value
 
 
 def _parse_speed_map(text: str) -> dict:
