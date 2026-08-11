@@ -15,12 +15,21 @@
 
 - Model: Current AU Wong Choi Rating Matrix
 - Commit SHA: `b1865752631720348509307362b7d91ec5c126d9`
+- Readiness/report build SHA: `f679b19789492d6272305a9ba7ae0af81c666b27`
 - Runtime dataset SHA256: `971305b1e4e8805435c91a3181ab67bdc000bc53ed26ddc17d4b0c9f04773aa5`
 - Matrix weights: `{"class_weight": 0.12042, "jockey_trainer": 0.22957, "pace_perf": 0.10559, "race_shape": 0.13485, "stability": 0.3292, "track": 0.08037}`
 - Frozen scorer source SHA256:
   - `.agents/skills/au_racing/au_wong_choi_auto/scripts/racing_engine/engine_core.py`: `74617a16ce317d0ac9bfef1851d711d543722a291ef69da5bd32da18030587c4`
   - `.agents/skills/au_racing/au_wong_choi_auto/scripts/racing_engine/scoring.py`: `32b7e19cd8acaab2d7ec5475385e167d250f10462decc7477db151e29fbfde3b`
   - `.agents/skills/au_racing/au_wong_choi_auto/scripts/racing_engine/matrix_mapper.py`: `188e394975bc3d113ed33be81ff2f2b6345412e39522371971e6347d8d6a7534`
+- Leaf features: `["form_score", "trial_score", "sectional_score", "pace_map_score", "jockey_score", "trainer_score", "jockey_horse_fit_score", "class_score", "rating_score", "weight_score", "distance_score", "track_score", "formline_score", "consistency_score", "performance_quality_score", "health_score", "confidence_score", "pace_figure_score"]`
+- Matrix formulas: `{"class_weight": [["rating_score", 0.7]], "form_line": [["formline_score", 0.78], ["form_score", 0.22]], "jockey_trainer": [["jockey_score", 0.333333], ["trainer_score", 0.285714], ["jockey_horse_fit_score", 0.380952]], "pace_perf": [["pace_figure_score", 0.941744], ["trial_score", 0.058256]], "race_shape": [["pace_map_score", 1.0]], "stability": [["form_score", 0.6], ["performance_quality_score", 0.4]], "track": [["track_score", 1.0]]}`
+- Matrix display gains: `{"class_weight": 2.7489, "form_line": 1.0232, "jockey_trainer": 2.4973, "pace_perf": 0.9909, "race_shape": 4.1142, "stability": 0.975, "track": 1.5193}`
+- Ability/ranking logic: sum(matrix_score * matrix_weight) + wet_form_feature; rank descending; horse number breaks exact ties
+- Wet overlay: `{"max_abs": 5.49, "prior": 0.5, "scale": 13.19, "scope": "Soft/Heavy only; zero on Good/Firm/Synthetic", "shrink_a": 4.0}`
+- Thresholds: `{"confidence_top1_top3_gap": {"clear_gte": 5.0, "medium_lt": 5.0, "tight_lt": 2.0}, "grade": [[96, "S+"], [92, "S"], [88, "S-"], [84, "A+"], [80, "A"], [76, "A-"], [72, "B+"], [68, "B"], [64, "B-"], [60, "C+"], [56, "C"], [52, "C-"], [48, "D"], [0, "E"]], "matrix_advantage": 72.0, "matrix_disadvantage": 48.0, "model_top_pick_ranks": [1, 2], "radar_size": {"clear": 4, "medium": 4, "tight": 5}, "top_pick_tie_gap": 0.5}`
+- Production betting rule: No automatic odds-based bet/stake rule in the frozen deterministic scorer; it produces rankings and confidence/radar output.
+- Research betting rule: After analysis freeze only: flat 1u Win, predicted edge >=5 percentage points, SP 1.5–50; no Place bet without historical Place dividends.
 
 ## Data Integrity And Leakage
 
@@ -189,6 +198,65 @@
 | `trial_count` | 100.0% | 0.0% | 0.0% | 19 | 0…18 |
 | `trial_top3_count` | 100.0% | 0.0% | 0.0% | 15 | 0…14 |
 | `venue` | 100.0% | 0.0% | 0.0% | 31 | — |
+
+## Feature Quality Findings
+
+- Suspicious range/type findings: `{}`
+- Constant/dead features in this historical snapshot:
+  - `leaf_form_score_derived` = `0`
+  - `leaf_form_score_missing` = `0`
+  - `leaf_trial_score_derived` = `0`
+  - `leaf_trial_score_missing` = `0`
+  - `leaf_sectional_score_derived` = `0`
+  - `leaf_sectional_score_fallback` = `0`
+  - `leaf_pace_map_score_observed` = `1`
+  - `leaf_pace_map_score_derived` = `0`
+  - `leaf_pace_map_score_fallback` = `0`
+  - `leaf_pace_map_score_missing` = `0`
+  - `leaf_jockey_score_derived` = `0`
+  - `leaf_jockey_score_missing` = `0`
+  - `leaf_trainer_score_observed` = `1`
+  - `leaf_trainer_score_derived` = `0`
+  - `leaf_trainer_score_fallback` = `0`
+  - `leaf_trainer_score_missing` = `0`
+  - `leaf_jockey_horse_fit_score_observed` = `0`
+  - `leaf_jockey_horse_fit_score_missing` = `0`
+  - `leaf_class_score_observed` = `0`
+  - `leaf_class_score_missing` = `0`
+  - `leaf_rating_score_derived` = `0`
+  - `leaf_rating_score_missing` = `0`
+  - `leaf_weight_score_derived` = `0`
+  - `leaf_weight_score_fallback` = `0`
+  - `leaf_distance_score_observed` = `0`
+  - `leaf_distance_score_missing` = `0`
+  - `leaf_track_score_derived` = `0`
+  - `leaf_track_score_missing` = `0`
+  - `leaf_formline_score_observed` = `0`
+  - `leaf_formline_score_missing` = `0`
+  - `leaf_consistency_score_observed` = `0`
+  - `leaf_consistency_score_missing` = `0`
+  - `leaf_performance_quality_score_derived` = `0`
+  - `leaf_performance_quality_score_missing` = `0`
+  - `leaf_health_score_observed` = `1`
+  - `leaf_health_score_derived` = `0`
+  - `leaf_health_score_fallback` = `0`
+  - `leaf_health_score_missing` = `0`
+  - `leaf_confidence_score_observed` = `0`
+  - `leaf_confidence_score_derived` = `1`
+  - `leaf_confidence_score_fallback` = `0`
+  - `leaf_confidence_score_missing` = `0`
+  - `leaf_pace_figure_score_derived` = `0`
+  - `leaf_pace_figure_score_fallback` = `0`
+- Exact duplicate non-constant feature groups:
+  - `["days_since_last_run_missing", "leaf_form_score_fallback", "leaf_distance_score_fallback", "leaf_consistency_score_fallback"]`
+  - `["leaf_form_score_observed", "leaf_distance_score_derived", "leaf_consistency_score_derived"]`
+- Conceptual overlap requiring regularisation/joint interpretation:
+  - `rating, leaf_rating_score` — Raw official rating and its engineered 0–100 leaf encode related ability information; regularisation/trees must decide whether both add value.
+  - `recent_finish_mean_3, recent_finish_mean_5, recent_finish_best_3, leaf_form_score` — Overlapping recent-form horizons can duplicate the same finishing-position signal.
+  - `recent_place_rate_5, recent_win_rate_5, leaf_consistency_score` — Rolling outcomes overlap with the engineered consistency leaf.
+  - `pf_l600_delta_avg, pf_race_time_diff_avg, leaf_pace_figure_score` — Raw PF aggregates and the pace-figure leaf are related; importance must be read jointly.
+  - `jockey_ly_win_rate, jockey_ly_place_rate, leaf_jockey_score` — Raw jockey rates partly feed the engineered jockey score.
+  - `trainer_ly_win_rate, trainer_ly_place_rate, leaf_trainer_score` — Raw trainer rates partly feed the engineered trainer score.
 
 ## Known Limitations
 

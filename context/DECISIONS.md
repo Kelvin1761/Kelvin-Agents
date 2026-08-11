@@ -16,5 +16,7 @@
 3. Promote the historical Performance Quality transport recovery at 10% reliability because it passed the canonical chronological gate; primary captured evidence always takes precedence.
 4. Do not use slot-specific reranking. Any future improvement must strengthen point-in-time ability evidence and be evaluated across all ranking slots.
 5. Keep odds completely outside Logistic/LightGBM/XGBoost and Matrix+ML analysis. Introduce SP only after analysis-model selection for the separate betting scorecard.
-6. Keep the Rating Matrix in production. XGBoost and the 50% Matrix/XGBoost hybrid failed the full probability/ranking/walk-forward/bootstrap/betting promotion gate.
+6. Keep the Rating Matrix in production. LightGBM and the development-selected 50% Matrix/LightGBM hybrid failed the full probability/ranking/walk-forward/bootstrap/betting promotion gate.
 7. Preserve unsuccessful ML results. The current evidence says added model complexity does not compensate for missing point-in-time information, especially shallow-form wet-track evidence.
+8. Preserve every race whole in retrospective favourite/non-favourite analysis. Label races by whether the winner was a favourite; never evaluate ranking metrics on runner-filtered fragments of a race.
+9. Remove zero-variance inputs inside each chronological training fit only. Do not use final-holdout coverage to select features.

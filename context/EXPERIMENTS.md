@@ -16,7 +16,10 @@
 
 Shared setup for `AU-ML-001` to `AU-ML-006`:
 
-- Research commit: `b2fbee8`
+- Core research commit: `b2fbee8`
+- Audit-completeness supplement: `31f0a267`
+- Whole-race segment / fit-window variance integrity commit: `9df53ff8`
+- Complete all-model segment output commit: `f679b197`
 - Champion baseline: `b186575`
 - Dataset: 805 races / 8,249 runners, 2025-09-06 to 2026-08-07
 - Development period: 2025-09-06 to 2026-07-01 (594 races)
@@ -33,8 +36,8 @@ Shared setup for `AU-ML-001` to `AU-ML-006`:
 | ID | Model / experiment | Fixed hyperparameters | Holdout analysis result | Betting result | Conclusion |
 |---|---|---|---|---|---|
 | AU-ML-001 | Readiness / leakage audit | Explicit allow-list; target-date history blocked | READY WITH LIMITATIONS; 0 duplicate runners, 0 target/future Facts records, 0 market features | N/A | Training permitted with disclosed limitations |
-| AU-ML-002 | Regularised Logistic Win + Place | L2, C=0.35, liblinear, chronological Platt calibration | Top-1 27.96%; Top-3 55.92%; Win Brier 0.085254; Place Brier 0.188506 | ROI -47.69% | Better Top-1 but materially worse probabilities; reject |
+| AU-ML-002 | Regularised Logistic Win + Place | L2, C=0.35, liblinear, chronological Platt calibration, fit-window zero-variance pruning | Top-1 27.96%; Top-3 55.45%; Win Brier 0.085257; Place Brier 0.188572 | ROI -47.50% | Better Top-1 but materially worse probabilities; reject |
 | AU-ML-003 | LightGBM Win + Place | 220 trees, depth 4, 15 leaves, lr 0.025, min child 55, L1 0.6, L2 2.5 | Top-1 18.01%; Top-3 47.87%; Win Brier 0.085081; Place Brier 0.182283 | ROI -63.33% | Reject |
-| AU-ML-004 | XGBoost Win + Place | 240 trees, depth 3, lr 0.025, min child 24, L1 0.6, L2 3.0 | Top-1 21.33%; Top-3 50.24%; Win Brier 0.084657; Place Brier 0.181451 | ROI -52.66% | Best independent challenger, but worse than Matrix; reject promotion |
-| AU-ML-005 | Matrix + XGBoost | Development-selected 50% ML / 50% Matrix | Top-1 24.64%; Top-3 55.92%; Win Brier 0.084001; Place Brier 0.180497 | ROI -46.28% | Some place/Gold gains, but full gate fails; reject promotion |
-| AU-ML-006 | Frozen 5% win-edge betting layer | Flat 1u, SP 1.5–50; odds introduced after analysis freeze | Matrix remains analysis Champion | Matrix ROI -37.72%; XGBoost -52.66%; hybrid -46.28%; Place/CLV N/A | No betting edge demonstrated |
+| AU-ML-004 | XGBoost Win + Place | 240 trees, depth 3, lr 0.025, min child 24, L1 0.6, L2 3.0 | Top-1 22.27%; Top-3 53.55%; Win Brier 0.084406; Place Brier 0.182015 | ROI -55.05% | Better than LightGBM on final ranking but was not development-selected; still worse than Matrix |
+| AU-ML-005 | Matrix + LightGBM | Development-selected 50% ML / 50% Matrix | Top-1 20.85%; Top-3 53.55%; Win Brier 0.084185; Place Brier 0.180769 | ROI -51.95% | Place probability improved slightly, but ranking/bootstrap/betting gates fail; reject promotion |
+| AU-ML-006 | Frozen 5% win-edge betting layer | Flat 1u, SP 1.5–50; odds introduced after analysis freeze | Matrix remains analysis Champion | Matrix ROI -37.72%; LightGBM -63.33%; hybrid -51.95%; Place/CLV N/A | No betting edge demonstrated |

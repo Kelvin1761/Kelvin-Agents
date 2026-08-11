@@ -2,14 +2,13 @@
 
 ## Current task
 
-Execute the HKJC Wong Choi ML program described in `hkjc-ml-program.md`.
+Publish the completed AU Wong Choi ML research through the clean `codex-au-ml-release` branch without promoting ML into production.
 
 ## Immediate next actions
 
-1. Complete dataset-integrity and point-in-time leakage audit.
-2. Fix reproducible data misalignment in the dataset builder and add regression tests.
-3. Resolve the local OpenMP runtime needed by installed LightGBM/XGBoost.
-4. Generate readiness report; proceed automatically only if READY or READY WITH LIMITATIONS.
+1. Commit the final regenerated reports and context.
+2. Push the remaining clean AU-only release commits.
+3. Create and merge one non-draft PR to `main` after explicit PR-creation approval.
 
 ## Guardrails
 
@@ -32,8 +31,9 @@ Execute the HKJC Wong Choi ML program described in `hkjc-ml-program.md`.
 ### Findings
 
 - Historical PQ recovery reduced cold-last errors 32→30 and missed-favourite errors 81→78 while improving terminal Top-5 AUC with positive paired-bootstrap support.
-- On the 211-race final ML holdout, Matrix Top-1/Top-3 were 22.75%/55.92%; XGBoost was 21.33%/50.24%.
-- XGBoost improved against Matrix in only 2/5 development walk-forward periods. The selected 50% hybrid also failed the full promotion gate.
+- On the 211-race final ML holdout, Matrix Top-1/Top-3 were 22.75%/55.92%; development-selected LightGBM was 18.01%/47.87%.
+- LightGBM improved against Matrix in 0/5 development walk-forward periods. The selected 50% Matrix/LightGBM hybrid improved the composite score in 4/5 periods but still failed final probability, ranking, bootstrap and betting gates.
+- Whole-race post-hoc market analysis found Matrix Top-3 of 80.25% when a favourite won versus 40.77% when a non-favourite won. LightGBM was worse in both groups (70.37% / 33.85%).
 - No historical Place dividends or timestamped odds snapshots exist, so Place ROI and CLV remain N/A.
 
 ### Main files
@@ -47,5 +47,5 @@ Execute the HKJC Wong Choi ML program described in `hkjc-ml-program.md`.
 
 ### Verification and next action
 
-- AU Wong Choi test suite: 398 passed before the research commit; rerun after any future feature change.
+- AU Wong Choi test suite: 403 passed after the final whole-race segment and fit-window variance changes.
 - Keep current Matrix. Prioritise new versioned pre-race evidence (trainer/jockey condition splits, timed trials/jump-outs, captured trackwork/gear, carefully gated pedigree priors) instead of additional weight or slot micro-adjustments.
