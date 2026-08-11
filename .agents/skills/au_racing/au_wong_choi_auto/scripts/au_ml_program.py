@@ -22,6 +22,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import brier_score_loss, log_loss
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.feature_selection import VarianceThreshold
 
 try:
     from lightgbm import LGBMClassifier
@@ -225,6 +226,9 @@ def make_pipeline(model_name: str, target: str, contract: dict) -> Pipeline:
                     contract["categorical"],
                 ),
             ),
+            # Fit-window-only pruning removes dead/default flags without using
+            # validation or holdout coverage for feature selection.
+            ("variance", VarianceThreshold(threshold=0.0)),
             ("model", estimator(model_name, target)),
         ]
     )
@@ -595,6 +599,25 @@ def _market_status_labels(frame: pd.DataFrame) -> pd.Series:
     return labels
 
 
+def _race_winner_market_status_labels(frame: pd.DataFrame) -> pd.Series:
+    """Post-hoc market slice that preserves every runner in each race."""
+    by_race = {}
+    for race_id, race in frame.groupby("race_id", sort=False):
+        prices = pd.to_numeric(race["market_sp_label"], errors="coerce")
+        if prices.notna().sum() == 0:
+            by_race[race_id] = "MarketUnavailable"
+            continue
+        favourite = float(prices.min())
+        winners = race[race["label_win"] == 1]
+        winner_prices = pd.to_numeric(winners["market_sp_label"], errors="coerce")
+        favourite_won = any(
+            math.isclose(float(price), favourite, rel_tol=0, abs_tol=1e-9)
+            for price in winner_prices.dropna()
+        )
+        by_race[race_id] = "FavouriteWon" if favourite_won else "NonFavouriteWon"
+    return frame["race_id"].map(by_race)
+
+
 def segment_analysis(frame: pd.DataFrame) -> dict:
     definitions = {
         "venue": "venue",
@@ -609,7 +632,7 @@ def segment_analysis(frame: pd.DataFrame) -> dict:
         "confidence": _race_confidence_labels(frame),
         # This is a retrospective evaluation slice only. Market status is
         # created after predictions are frozen and is never a model feature.
-        "market_status": _market_status_labels(frame),
+        "market_status": _race_winner_market_status_labels(frame),
     }
     output = {}
     for family, source in definitions.items():
@@ -637,6 +660,10 @@ def _shap_importance(fitted: Pipeline, sample: pd.DataFrame, features: list[str]
 
         transformed = fitted.named_steps["preprocess"].transform(sample[features])
         feature_names = fitted.named_steps["preprocess"].get_feature_names_out()
+        variance = fitted.named_steps.get("variance")
+        if variance is not None:
+            transformed = variance.transform(transformed)
+            feature_names = feature_names[variance.get_support()]
         values = shap.TreeExplainer(fitted.named_steps["model"]).shap_values(transformed)
         if isinstance(values, list):
             values = values[-1]
@@ -1158,7 +1185,7 @@ def report_markdown(results: dict) -> str:
         f"4. **Which are duplicated?** Conceptual overlaps audited: {overlap_text}. Exact non-constant duplicates are reported separately in readiness.",
         "5. **Which appear overweighted?** No Matrix dimension can be defensibly labelled overweighted from this experiment: removing the Matrix structure made independent ML ranking materially worse, especially Top-3.",
         "6. **Which appear underweighted?** The hybrid hints that conditional combinations can improve Top-1/Place Brier, but bootstrap intervals cross zero. That is insufficient evidence to reweight any live dimension.",
-        f"7. **Which neutral/default features create noise?** Constant/dead snapshot inputs are: {constant_text}. High-neutral leaves such as weight and sectionals are documented in readiness and should not gain influence without new evidence.",
+        f"7. **Which neutral/default features create noise?** Constant/dead snapshot inputs are: {constant_text}. The pipeline now drops zero-variance columns inside each chronological training fit; high-neutral leaves such as weight and sectionals remain documented and should not gain influence without new evidence.",
         "8. **Which nonlinear relationships appear?** XGBoost uses barrier, field size, race type and trainer/jockey rates alongside pace/rating. However, its final Top-3 deficit shows those nonlinearities do not generalise strongly enough yet.",
         "9. **Which interactions are missing from Matrix?** The strongest unresolved candidate is shallow formal history × wet going, plus condition-specific trainer/jockey and timed-trial evidence. Existing archive fields cannot identify these point-in-time effects reliably.",
         "10. **What is ML learning that Wong Choi misses?** Mostly conditional scaling of signals the Matrix already has, rather than a new independent ability source. The 50% hybrid's small gains are statistically fragile and betting performance is worse, so this learning is research-only.",
@@ -1185,7 +1212,7 @@ def report_markdown(results: dict) -> str:
             )
     lines.extend([
         "",
-        "`market_status` is a retrospective analysis slice only; it was created after all predictions were frozen. It is not an input feature. Betting segments for every model and every required family are in `au_ml_experiment_results.json`.",
+        "`market_status` is a retrospective race-level slice (`FavouriteWon` / `NonFavouriteWon`) created only after predictions were frozen; every race remains whole. It is not an input feature. Betting segments for every model and every required family are in `au_ml_experiment_results.json`.",
         "",
         "## REPRODUCIBILITY",
         "",

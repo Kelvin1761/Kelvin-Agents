@@ -16,7 +16,9 @@ from au_ml_program import (  # noqa: E402
     _promotion_gate,
     _race_normalize,
     _race_confidence_labels,
+    _race_winner_market_status_labels,
     chronological_holdout,
+    make_pipeline,
     make_preprocessor,
     walkforward_splits,
 )
@@ -78,6 +80,33 @@ class AuMlProgramTests(unittest.TestCase):
         self.assertEqual(labels.iloc[0], "Favourite/TiedFavourite")
         self.assertEqual(labels.iloc[3], "Favourite/TiedFavourite")
         self.assertEqual(labels.iloc[6], "MarketUnavailable")
+
+    def test_winner_market_status_keeps_each_race_whole(self) -> None:
+        frame = self._frame().iloc[:8].reset_index(drop=True)
+        frame["market_sp_label"] = [3.0, 5.0, 8.0, 3.0, 2.0, 4.0, 7.0, 9.0]
+        frame["label_win"] = [0, 0, 0, 1, 0, 1, 0, 0]
+        labels = _race_winner_market_status_labels(frame)
+        self.assertEqual(set(labels.iloc[:4]), {"FavouriteWon"})
+        self.assertEqual(set(labels.iloc[4:]), {"NonFavouriteWon"})
+        for indexes in frame.groupby("race_id").groups.values():
+            self.assertEqual(len(set(labels[list(indexes)])), 1)
+
+    def test_pipeline_drops_constant_inputs_inside_fit_window(self) -> None:
+        frame = pd.DataFrame(
+            {
+                "constant": [1.0, 1.0, 1.0, 1.0],
+                "varied": [0.0, 1.0, 2.0, 3.0],
+            }
+        )
+        pipeline = make_pipeline(
+            "logistic",
+            "win",
+            {"numeric": ["constant", "varied"], "categorical": []},
+        )
+        pipeline.fit(frame, [0, 0, 1, 1])
+        support = pipeline.named_steps["variance"].get_support()
+        self.assertEqual(int(support.sum()), 1)
+        self.assertEqual(support.tolist(), [False, True])
 
     def test_promotion_gate_requires_all_analysis_and_betting_checks(self) -> None:
         champion = {
