@@ -1,0 +1,130 @@
+{
+  "created_on": "2026-08-11",
+  "git_head": "39155166df7fdba5162b19aa872e6fe004b7f3c3",
+  "seed": 20260811,
+  "primary": {
+    "path": "scratch/hkjc_ranking_dataset_current.csv",
+    "sha256": "3d7036322c51b2c3d75dda96be63d58fe54bb0159947be26dd08693acb76acb1"
+  },
+  "external": {
+    "path": "scratch/hkjc_ranking_dataset_2026_07_15_current.csv",
+    "sha256": "3073a9afbadb8b63cc1ef4372cd5983f19e2fc49e4d2c13e2ecdd9485a14df78"
+  },
+  "coverage": {
+    "input_rows": 3141,
+    "deduplicated_rows": 3141,
+    "duplicate_runner_keys": 0,
+    "input_races": 253,
+    "valid_races": 250,
+    "invalid_races": [
+      {
+        "date": "2026-06-03",
+        "meeting_name": "2026-06-03_HappyValley",
+        "race_number": 9,
+        "starters": 10,
+        "winners": 1,
+        "top3": 3,
+        "finish_unique": 10,
+        "finish_min": 1,
+        "finish_max": 12,
+        "finish_sum": 59,
+        "finish_missing": 0,
+        "expected_top3": 3,
+        "race_label_valid": false
+      },
+      {
+        "date": "2026-06-07",
+        "meeting_name": "2026-06-07_ShaTin",
+        "race_number": 1,
+        "starters": 10,
+        "winners": 1,
+        "top3": 1,
+        "finish_unique": 10,
+        "finish_min": 1,
+        "finish_max": 12,
+        "finish_sum": 73,
+        "finish_missing": 0,
+        "expected_top3": 3,
+        "race_label_valid": false
+      },
+      {
+        "date": "2026-06-07",
+        "meeting_name": "2026-06-07_ShaTin",
+        "race_number": 8,
+        "starters": 12,
+        "winners": 1,
+        "top3": 3,
+        "finish_unique": 12,
+        "finish_min": 1,
+        "finish_max": 14,
+        "finish_sum": 90,
+        "finish_missing": 0,
+        "expected_top3": 3,
+        "race_label_valid": false
+      }
+    ],
+    "valid_rows": 3109,
+    "meetings": 25,
+    "date_min": "2026-04-12",
+    "date_max": "2026-07-15",
+    "unknown_distance_rows": 10,
+    "unknown_class_rows": 32,
+    "declared_actual_field_mismatch_races": 22,
+    "horse_id_missing_rows": 107
+  },
+  "split": {
+    "development_dates": [
+      "2026-04-12",
+      "2026-04-15",
+      "2026-04-19",
+      "2026-04-22",
+      "2026-04-26",
+      "2026-04-29",
+      "2026-05-03",
+      "2026-05-06",
+      "2026-05-09",
+      "2026-05-13",
+      "2026-05-17",
+      "2026-05-20",
+      "2026-05-24",
+      "2026-05-27",
+      "2026-06-03",
+      "2026-06-07",
+      "2026-06-10",
+      "2026-06-13",
+      "2026-06-21",
+      "2026-06-27",
+      "2026-07-01",
+      "2026-07-04",
+      "2026-07-08",
+      "2026-07-12"
+    ],
+    "external_holdout_dates": [
+      "2026-07-15"
+    ],
+    "walk_forward_min_train_meetings": 8
+  },
+  "leakage_blacklist_prefixes": [
+    "prior_"
+  ],
+  "leakage_blacklist_exact": [
+    "current_live_grade",
+    "current_live_model_pick_status",
+    "current_live_rank",
+    "current_live_rank_score",
+    "dividend",
+    "finish_pos",
+    "is_place",
+    "is_top3",
+    "is_top4",
+    "is_win",
+    "market_rank",
+    "odds",
+    "place_cutoff",
+    "place_odds",
+    "prior_combo_roi",
+    "race_label_valid",
+    "win_odds"
+  ],
+  "manifest_sha256": "d6eff5139ec09e22e2aed27dab1f7c7ba5bd35c4d9514e8094653e0072a4e1a6"
+}

@@ -153,6 +153,25 @@ def _choose_race_class(*values: object) -> str:
     return ""
 
 
+def _choose_distance(*values: object) -> str:
+    """Return the first plausible HKJC distance and reject placeholders."""
+    for value in values:
+        token = _distance_token(value)
+        number = _coerce_int(token)
+        if number is not None and 800 <= number <= 3200:
+            return str(number)
+    return ""
+
+
+def _place_cutoff(field_size: int) -> int:
+    """HKJC Place target: top 3 for 7+, top 2 for 4–6, unavailable below 4."""
+    if field_size >= 7:
+        return 3
+    if field_size >= 4:
+        return 2
+    return 0
+
+
 def _normalize_track(value: object, venue: object = "") -> str:
     text = f"{value or ''} {venue or ''}".strip().upper()
     if any(token in text for token in ("泥", "AWT", "DIRT", "ALL WEATHER")):
@@ -680,18 +699,27 @@ def build_rows(meeting_roots: list[Path], results_roots: list[Path]) -> tuple[pd
 
             logic = json.loads(logic_path.read_text(encoding="utf-8"))
             race_context = dict(logic.get("race_analysis", {}))
+            # Historical replay must always carry its as-of date so the engine
+            # can reject latest/full-season prior tables.
+            race_context.setdefault("race_date", date)
             racecard_snapshot = _load_racecard_snapshot(str(meeting_dir), race_num)
             racecard_info = racecard_snapshot.get("race_info") or {}
             racecard_horses = racecard_snapshot.get("horses") or {}
-            venue = _normalize_venue(race_context.get("venue") or racecard_info.get("venue") or meeting_venue)
+            raw_venue = race_context.get("venue") or racecard_info.get("venue") or meeting_venue
+            venue = _normalize_venue(meeting_venue or raw_venue)
             track = _normalize_track(
                 race_context.get("track")
                 or race_context.get("surface")
                 or racecard_info.get("track"),
-                venue,
+                raw_venue,
             )
             course = _normalize_course(racecard_info.get("course"))
-            distance_token = _distance_token(race_context.get("distance"))
+            if track == "AWT":
+                course = "AWT"
+            distance_token = _choose_distance(
+                race_context.get("distance"),
+                racecard_info.get("distance"),
+            )
             distance_num = _coerce_int(distance_token)
             race_class = _choose_race_class(
                 race_context.get("race_class"),
@@ -700,7 +728,7 @@ def build_rows(meeting_roots: list[Path], results_roots: list[Path]) -> tuple[pd
             race_class_num = _race_class_number(race_class)
             race_class_label = _race_class_label(race_class)
             horses = logic.get("horses") or {}
-            field_size = len(horses)
+            declared_field_size = len(horses)
             if not horses:
                 continue
 
@@ -750,7 +778,8 @@ def build_rows(meeting_roots: list[Path], results_roots: list[Path]) -> tuple[pd
                     "race_class": race_class,
                     "race_class_label": race_class_label,
                     "race_class_num": race_class_num,
-                    "field_size": field_size,
+                    "field_size": 0,
+                    "declared_field_size": declared_field_size,
                     "horse_number": horse_num,
                     "horse_name": str(horse.get("horse_name") or ""),
                     "horse_id": horse_id,
@@ -817,6 +846,28 @@ def build_rows(meeting_roots: list[Path], results_roots: list[Path]) -> tuple[pd
     df = pd.DataFrame(rows)
     if not df.empty:
         df = df.sort_values(["date", "meeting_name", "race_number", "horse_number"]).reset_index(drop=True)
+        race_keys = ["date", "meeting_name", "race_number"]
+        df["field_size"] = df.groupby(race_keys)["horse_number"].transform("count").astype(int)
+        df["place_cutoff"] = df["field_size"].map(_place_cutoff).astype(int)
+        df["is_place"] = (
+            (df["place_cutoff"] > 0) & (df["finish_pos"] <= df["place_cutoff"])
+        ).astype(int)
+        winners = df.groupby(race_keys)["is_win"].transform("sum")
+        top3 = df.groupby(race_keys)["is_top3"].transform("sum")
+        expected_top3 = df["field_size"].clip(upper=3)
+        unique_finishes = df.groupby(race_keys)["finish_pos"].transform("nunique")
+        finish_min = df.groupby(race_keys)["finish_pos"].transform("min")
+        finish_max = df.groupby(race_keys)["finish_pos"].transform("max")
+        finish_sum = df.groupby(race_keys)["finish_pos"].transform("sum")
+        expected_finish_sum = df["field_size"] * (df["field_size"] + 1) / 2
+        df["race_label_valid"] = (
+            (winners == 1)
+            & (top3 == expected_top3)
+            & (unique_finishes == df["field_size"])
+            & (finish_min == 1)
+            & (finish_max == df["field_size"])
+            & (finish_sum == expected_finish_sum)
+        ).astype(int)
     return df, coverage
 
 

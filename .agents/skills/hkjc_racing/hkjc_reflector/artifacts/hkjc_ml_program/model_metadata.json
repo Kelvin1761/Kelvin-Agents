@@ -1,0 +1,42 @@
+{
+  "selected_feature_group": "matrix_7d",
+  "selected_numeric_features": [
+    "matrix_stability",
+    "matrix_sectional",
+    "matrix_race_shape",
+    "matrix_trainer_signal",
+    "matrix_horse_health",
+    "matrix_form_line",
+    "matrix_class_advantage",
+    "rel_matrix_stability",
+    "rel_matrix_sectional",
+    "rel_matrix_race_shape",
+    "rel_matrix_trainer_signal",
+    "rel_matrix_horse_health",
+    "rel_matrix_form_line",
+    "rel_matrix_class_advantage"
+  ],
+  "selected_categorical_features": [],
+  "best_ml_model": "Logistic Regression",
+  "best_overall_model": "Matrix Champion",
+  "hybrid": {
+    "Win": {
+      "alpha_matrix": 0.25,
+      "ml_model": "Logistic Regression"
+    },
+    "Place": {
+      "alpha_matrix": 0.75,
+      "ml_model": "Logistic Regression"
+    }
+  },
+  "package_versions": {
+    "python": "3.9.6",
+    "numpy": "2.0.2",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.6.1",
+    "lightgbm": "4.6.0",
+    "xgboost": "2.1.4"
+  },
+  "random_seed": 20260811,
+  "production_changed": false
+}

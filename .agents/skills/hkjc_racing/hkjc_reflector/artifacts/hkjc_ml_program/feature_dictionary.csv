@@ -1,0 +1,267 @@
+﻿feature,dtype,role,missing_rate,unique_values,point_in_time_note
+meeting,object,metadata/excluded,0.0,25,not supplied to analysis model
+meeting_name,object,metadata/excluded,0.0,25,not supplied to analysis model
+date,object,metadata/excluded,0.0,25,not supplied to analysis model
+race_number,int64,metadata/excluded,0.0,11,not supplied to analysis model
+venue,object,analysis_feature,0.0,2,pre-race only
+track,object,analysis_feature,0.0,2,pre-race only
+course,object,analysis_feature,0.0,6,pre-race only
+distance,object,metadata/excluded,0.0,13,not supplied to analysis model
+distance_num,float64,analysis_feature,0.0032164683177870698,9,pre-race only
+race_class,object,metadata/excluded,0.0,20,not supplied to analysis model
+race_class_label,object,analysis_feature,0.0,10,pre-race only
+race_class_num,float64,metadata/excluded,0.43036346091990996,4,not supplied to analysis model
+field_size,int64,analysis_feature,0.0,9,pre-race only
+horse_number,int64,metadata/excluded,0.0,14,not supplied to analysis model
+horse_name,object,metadata/excluded,0.0,1132,not supplied to analysis model
+horse_id,object,metadata/excluded,0.03441621100032165,1128,not supplied to analysis model
+jockey,object,metadata/excluded,0.0,32,not supplied to analysis model
+trainer,object,metadata/excluded,0.004503055644901898,29,not supplied to analysis model
+finish_pos,int64,target/result,0.0,14,not supplied to analysis model
+is_win,int64,target/result,0.0,2,not supplied to analysis model
+is_top3,int64,target/result,0.0,2,not supplied to analysis model
+is_top4,int64,target/result,0.0,2,not supplied to analysis model
+barrier,int64,metadata/excluded,0.0,14,not supplied to analysis model
+weight,float64,metadata/excluded,0.0,28,not supplied to analysis model
+weight_carried,float64,analysis_feature,0.0,28,pre-race only
+days_since_last,float64,analysis_feature,0.025731746542296558,135,pre-race only
+base_rating,float64,metadata/excluded,1.0,0,not supplied to analysis model
+final_rating,float64,metadata/excluded,1.0,0,not supplied to analysis model
+starts,float64,analysis_feature,0.12158250241235123,68,pre-race only
+wins,float64,analysis_feature,0.12158250241235123,12,pre-race only
+hk_starts,float64,analysis_feature,0.2016725635252493,66,pre-race only
+is_debut,int64,analysis_feature,0.0,2,pre-race only
+is_import,int64,analysis_feature,0.0,1,pre-race only
+is_foreign_runner,int64,analysis_feature,0.0,1,pre-race only
+current_live_recomputed_ability,float64,metadata/excluded,0.0,1413,not supplied to analysis model
+card_age,float64,analysis_feature,0.03441621100032165,8,pre-race only
+card_rating,float64,analysis_feature,0.04889031843036346,111,pre-race only
+card_rating_change,float64,analysis_feature,0.09392087487938244,15,pre-race only
+card_declared_bodyweight,float64,analysis_feature,0.03441621100032165,331,pre-race only
+card_priority_rank,float64,analysis_feature,0.0366677388227726,24,pre-race only
+card_has_claim,int64,metadata/excluded,0.0,2,not supplied to analysis model
+card_claim_lbs,float64,analysis_feature,0.03441621100032165,5,pre-race only
+card_gear_count,float64,analysis_feature,0.0,5,pre-race only
+card_gear_first_time,int64,analysis_feature,0.0,2,pre-race only
+card_gear_tt,int64,metadata/excluded,0.0,2,not supplied to analysis model
+card_gear_cp,int64,metadata/excluded,0.0,2,not supplied to analysis model
+card_gear_blinkers,int64,metadata/excluded,0.0,2,not supplied to analysis model
+last6_runs,int64,analysis_feature,0.0,7,pre-race only
+last6_mean_finish,float64,analysis_feature,0.0694757156642007,136,pre-race only
+last6_best_finish,float64,analysis_feature,0.0694757156642007,14,pre-race only
+last6_worst_finish,float64,analysis_feature,0.0694757156642007,14,pre-race only
+last6_top3_count,int64,analysis_feature,0.0,7,pre-race only
+last6_top5_count,int64,analysis_feature,0.0,7,pre-race only
+current_live_ability,float64,metadata/excluded,0.0,1338,not supplied to analysis model
+current_live_rank,int64,metadata/excluded,0.0,14,not supplied to analysis model
+current_live_rank_score,float64,metadata/excluded,0.0,1338,not supplied to analysis model
+current_live_grade,object,metadata/excluded,0.0,7,not supplied to analysis model
+current_live_model_pick_status,object,metadata/excluded,0.0,3,not supplied to analysis model
+stored_feature_score_count,int64,metadata/excluded,0.0,1,not supplied to analysis model
+stored_matrix_score_count,int64,metadata/excluded,0.0,1,not supplied to analysis model
+season_starts,float64,metadata/excluded,0.06722418784174976,7,not supplied to analysis model
+season_wins,float64,metadata/excluded,0.06722418784174976,6,not supplied to analysis model
+season_seconds,float64,metadata/excluded,0.06722418784174976,6,not supplied to analysis model
+season_thirds,float64,metadata/excluded,0.06722418784174976,8,not supplied to analysis model
+same_distance_starts,float64,analysis_feature,0.06722418784174976,6,pre-race only
+same_distance_wins,float64,analysis_feature,0.06722418784174976,6,pre-race only
+same_distance_seconds,float64,analysis_feature,0.06722418784174976,5,pre-race only
+same_distance_thirds,float64,analysis_feature,0.06722418784174976,8,pre-race only
+same_venue_distance_starts,float64,analysis_feature,0.07623029913155356,5,pre-race only
+same_venue_distance_wins,float64,analysis_feature,0.07623029913155356,6,pre-race only
+same_venue_distance_seconds,float64,analysis_feature,0.07623029913155356,5,pre-race only
+same_venue_distance_thirds,float64,analysis_feature,0.07623029913155356,8,pre-race only
+tw_entries_count,float64,analysis_feature,0.2357671276937922,50,pre-race only
+tw_gallop_count,float64,analysis_feature,0.2357671276937922,8,pre-race only
+tw_flags_count,float64,analysis_feature,0.2357671276937922,5,pre-race only
+tw_confidence_high,int64,metadata/excluded,0.0,1,not supplied to analysis model
+tw_confidence_low,int64,metadata/excluded,0.0,2,not supplied to analysis model
+tw_jockey_present,int64,analysis_feature,0.0,2,pre-race only
+tw_mode_barrier_trial,int64,metadata/excluded,0.0,1,not supplied to analysis model
+raw_formline_higher_win_count,float64,analysis_feature,0.1933097458990029,11,pre-race only
+raw_formline_same_win_count,float64,analysis_feature,0.1933097458990029,8,pre-race only
+raw_formline_lower_win_count,float64,analysis_feature,0.1933097458990029,6,pre-race only
+raw_l400,float64,analysis_feature,0.15020907044065615,456,pre-race only
+raw_finish_time_adj,float64,analysis_feature,0.3827597298166613,96,pre-race only
+raw_total_starts,float64,analysis_feature,0.2801543904792538,68,pre-race only
+raw_total_wins,float64,analysis_feature,0.2801543904792538,10,pre-race only
+raw_last_margin,float64,analysis_feature,0.39916371823737534,38,pre-race only
+raw_last_finish,float64,analysis_feature,0.3110324863300096,15,pre-race only
+raw_weight_trend_span,float64,analysis_feature,0.5590221936313927,62,pre-race only
+flag_best_distance_match,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_best_distance_unproven,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_engine_progressive,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_engine_steady,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_engine_fastslow,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_running_style_front,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_running_style_back,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_draw_good,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_draw_bad,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_position_up,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_position_down,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_finish_competitive,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_finish_slow,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_energy_up,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_energy_down,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_l400_up,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_l400_down,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_trackwork_slowing,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_medical_issue,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_margin_narrowing,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_margin_widening,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_scenario_drop_class,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_scenario_hot_pace,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_hidden_form,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_forgiveness,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_track_bias_positive,int64,metadata/excluded,0.0,2,not supplied to analysis model
+flag_track_bias_negative,int64,metadata/excluded,0.0,2,not supplied to analysis model
+trend_forensic_wave,int64,metadata/excluded,0.0,2,not supplied to analysis model
+prior_combo_starts,float64,excluded_static_prior,0.1566420070762303,76,not supplied to analysis model
+prior_combo_win_rate,float64,excluded_static_prior,0.1566420070762303,97,not supplied to analysis model
+prior_combo_place_rate,float64,excluded_static_prior,0.1566420070762303,125,not supplied to analysis model
+prior_combo_roi,float64,excluded_static_prior,0.1566420070762303,1,not supplied to analysis model
+prior_jockey_cd_starts,float64,excluded_static_prior,0.17143776133805083,85,not supplied to analysis model
+prior_jockey_cd_win_rate,float64,excluded_static_prior,0.17143776133805083,101,not supplied to analysis model
+prior_jockey_cd_place_rate,float64,excluded_static_prior,0.17143776133805083,129,not supplied to analysis model
+prior_jockey_cd_roi,float64,excluded_static_prior,0.17143776133805083,163,not supplied to analysis model
+prior_trainer_cd_starts,float64,excluded_static_prior,0.12158250241235123,89,not supplied to analysis model
+prior_trainer_cd_win_rate,float64,excluded_static_prior,0.12158250241235123,115,not supplied to analysis model
+prior_trainer_cd_place_rate,float64,excluded_static_prior,0.12158250241235123,126,not supplied to analysis model
+prior_trainer_cd_roi,float64,excluded_static_prior,0.12158250241235123,171,not supplied to analysis model
+prior_class_distance_starts,float64,excluded_static_prior,0.401736892891605,16,not supplied to analysis model
+prior_class_distance_win_rate,float64,excluded_static_prior,0.401736892891605,15,not supplied to analysis model
+prior_class_distance_place_rate,float64,excluded_static_prior,0.401736892891605,16,not supplied to analysis model
+prior_class_distance_roi,float64,excluded_static_prior,0.401736892891605,1,not supplied to analysis model
+prior_draw_class_starts,float64,excluded_static_prior,0.40205853972338373,35,not supplied to analysis model
+prior_draw_class_win_rate,float64,excluded_static_prior,0.40205853972338373,43,not supplied to analysis model
+prior_draw_class_place_rate,float64,excluded_static_prior,0.40205853972338373,44,not supplied to analysis model
+prior_draw_class_roi,float64,excluded_static_prior,0.40205853972338373,1,not supplied to analysis model
+prior_weight_class_starts,float64,excluded_static_prior,0.28851720810550013,21,not supplied to analysis model
+prior_weight_class_win_rate,float64,excluded_static_prior,0.28851720810550013,21,not supplied to analysis model
+prior_weight_class_place_rate,float64,excluded_static_prior,0.28851720810550013,21,not supplied to analysis model
+prior_weight_class_roi,float64,excluded_static_prior,0.28851720810550013,1,not supplied to analysis model
+prior_rest_bucket_starts,float64,excluded_static_prior,0.025731746542296558,5,not supplied to analysis model
+prior_rest_bucket_win_rate,float64,excluded_static_prior,0.025731746542296558,5,not supplied to analysis model
+prior_rest_bucket_place_rate,float64,excluded_static_prior,0.025731746542296558,5,not supplied to analysis model
+prior_rest_bucket_roi,float64,excluded_static_prior,0.025731746542296558,1,not supplied to analysis model
+prior_runstyle_cd_starts,float64,excluded_static_prior,0.1839819877774204,35,not supplied to analysis model
+prior_runstyle_cd_win_rate,float64,excluded_static_prior,0.1839819877774204,36,not supplied to analysis model
+prior_runstyle_cd_place_rate,float64,excluded_static_prior,0.1839819877774204,33,not supplied to analysis model
+prior_runstyle_cd_roi,float64,excluded_static_prior,0.1839819877774204,1,not supplied to analysis model
+prior_horse_cd_starts,float64,excluded_static_prior,0.6362174332582824,13,not supplied to analysis model
+prior_horse_cd_win_rate,float64,excluded_static_prior,0.6362174332582824,26,not supplied to analysis model
+prior_horse_cd_place_rate,float64,excluded_static_prior,0.6362174332582824,36,not supplied to analysis model
+prior_horse_cd_roi,float64,excluded_static_prior,0.6362174332582824,189,not supplied to analysis model
+prior_horse_rest_starts,float64,excluded_static_prior,0.5458346735284657,11,not supplied to analysis model
+prior_horse_rest_win_rate,float64,excluded_static_prior,0.5458346735284657,20,not supplied to analysis model
+prior_horse_rest_place_rate,float64,excluded_static_prior,0.5458346735284657,29,not supplied to analysis model
+prior_horse_rest_roi,float64,excluded_static_prior,0.5458346735284657,191,not supplied to analysis model
+prior_horse_style_starts,float64,excluded_static_prior,0.6117722740431006,16,not supplied to analysis model
+prior_horse_style_win_rate,float64,excluded_static_prior,0.6117722740431006,27,not supplied to analysis model
+prior_horse_style_place_rate,float64,excluded_static_prior,0.6117722740431006,41,not supplied to analysis model
+prior_horse_style_roi,float64,excluded_static_prior,0.6117722740431006,1,not supplied to analysis model
+prior_combo_place_edge,float64,excluded_static_prior,0.49244129945320037,588,not supplied to analysis model
+prior_combo_win_edge,float64,excluded_static_prior,0.49244129945320037,499,not supplied to analysis model
+prior_jockey_cd_place_edge,float64,excluded_static_prior,0.47282084271469926,258,not supplied to analysis model
+prior_jockey_cd_win_edge,float64,excluded_static_prior,0.47282084271469926,212,not supplied to analysis model
+prior_trainer_cd_place_edge,float64,excluded_static_prior,0.4342232229012544,256,not supplied to analysis model
+prior_trainer_cd_win_edge,float64,excluded_static_prior,0.4342232229012544,205,not supplied to analysis model
+prior_draw_class_place_edge,float64,excluded_static_prior,0.40205853972338373,58,not supplied to analysis model
+prior_draw_class_win_edge,float64,excluded_static_prior,0.40205853972338373,54,not supplied to analysis model
+prior_weight_class_place_edge,float64,excluded_static_prior,0.44741074300418143,72,not supplied to analysis model
+prior_weight_class_win_edge,float64,excluded_static_prior,0.44741074300418143,67,not supplied to analysis model
+prior_rest_bucket_place_edge,float64,excluded_static_prior,0.42746863943390156,70,not supplied to analysis model
+prior_rest_bucket_win_edge,float64,excluded_static_prior,0.42746863943390156,62,not supplied to analysis model
+prior_runstyle_cd_place_edge,float64,excluded_static_prior,0.5168864586683821,50,not supplied to analysis model
+prior_runstyle_cd_win_edge,float64,excluded_static_prior,0.5168864586683821,51,not supplied to analysis model
+prior_horse_cd_place_edge,float64,excluded_static_prior,0.7558700546799614,150,not supplied to analysis model
+prior_horse_cd_win_edge,float64,excluded_static_prior,0.7558700546799614,121,not supplied to analysis model
+prior_horse_rest_place_edge,float64,excluded_static_prior,0.7127693792216147,174,not supplied to analysis model
+prior_horse_rest_win_edge,float64,excluded_static_prior,0.7127693792216147,119,not supplied to analysis model
+prior_horse_style_place_edge,float64,excluded_static_prior,0.7742039240913478,170,not supplied to analysis model
+prior_horse_style_win_edge,float64,excluded_static_prior,0.7742039240913478,121,not supplied to analysis model
+feat_form_score,float64,metadata/excluded,0.0,695,not supplied to analysis model
+feat_speed_score,float64,metadata/excluded,0.0,480,not supplied to analysis model
+feat_class_score,float64,metadata/excluded,0.0,30,not supplied to analysis model
+feat_jockey_score,float64,metadata/excluded,0.0,58,not supplied to analysis model
+feat_trainer_score,float64,metadata/excluded,0.0,19,not supplied to analysis model
+feat_draw_score,float64,metadata/excluded,0.0,5,not supplied to analysis model
+feat_distance_score,float64,metadata/excluded,0.0,7,not supplied to analysis model
+feat_track_going_score,float64,metadata/excluded,0.0,3,not supplied to analysis model
+feat_weight_score,float64,metadata/excluded,0.0,9,not supplied to analysis model
+feat_consistency_score,float64,metadata/excluded,0.0,1295,not supplied to analysis model
+feat_risk_score,float64,metadata/excluded,0.0,38,not supplied to analysis model
+feat_confidence_score,float64,metadata/excluded,0.0,12,not supplied to analysis model
+feat_formline_strength_score,float64,metadata/excluded,0.0,34,not supplied to analysis model
+feat_margin_trend_score,float64,metadata/excluded,0.0,3,not supplied to analysis model
+feat_same_distance_signal_score,float64,metadata/excluded,0.0,5,not supplied to analysis model
+feat_trackwork_trend_score,float64,metadata/excluded,0.0,322,not supplied to analysis model
+feat_race_shape_context_score,float64,metadata/excluded,0.0,577,not supplied to analysis model
+matrix_stability,float64,analysis_feature,0.0,1996,pre-race only
+matrix_sectional,float64,analysis_feature,0.0,780,pre-race only
+matrix_race_shape,float64,analysis_feature,0.0,577,pre-race only
+matrix_trainer_signal,float64,analysis_feature,0.0,164,pre-race only
+matrix_horse_health,float64,analysis_feature,0.0,175,pre-race only
+matrix_form_line,float64,analysis_feature,0.0,34,pre-race only
+matrix_class_advantage,float64,analysis_feature,0.0,130,pre-race only
+source_split,object,metadata/excluded,0.0,2,not supplied to analysis model
+source_file,object,metadata/excluded,0.0,2,not supplied to analysis model
+venue_raw,object,metadata/excluded,0.0,3,not supplied to analysis model
+declared_field_size,int64,metadata/excluded,0.0,9,not supplied to analysis model
+place_cutoff,int64,metadata/excluded,0.0,2,not supplied to analysis model
+is_place,int64,target/result,0.0,2,not supplied to analysis model
+race_label_valid,int64,metadata/excluded,0.0,1,not supplied to analysis model
+race_key,object,metadata/excluded,0.0,250,not supplied to analysis model
+rel_card_age,float64,analysis_feature,0.0,871,pre-race only
+rel_card_rating,float64,analysis_feature,0.0,2198,pre-race only
+rel_card_rating_change,float64,analysis_feature,0.0,1041,pre-race only
+rel_card_declared_bodyweight,float64,analysis_feature,0.0,2932,pre-race only
+rel_card_priority_rank,float64,analysis_feature,0.0,419,pre-race only
+rel_card_claim_lbs,float64,analysis_feature,0.0,263,pre-race only
+rel_card_gear_count,float64,analysis_feature,0.0,324,pre-race only
+rel_card_gear_first_time,float64,analysis_feature,0.0,78,pre-race only
+rel_weight_carried,float64,analysis_feature,0.0,2288,pre-race only
+rel_days_since_last,float64,analysis_feature,0.0,2042,pre-race only
+rel_starts,float64,analysis_feature,0.0,2212,pre-race only
+rel_wins,float64,analysis_feature,0.0,776,pre-race only
+rel_hk_starts,float64,analysis_feature,0.0,1797,pre-race only
+rel_last6_runs,float64,analysis_feature,0.0,673,pre-race only
+rel_last6_mean_finish,float64,analysis_feature,0.0,2600,pre-race only
+rel_last6_best_finish,float64,analysis_feature,0.0,1357,pre-race only
+rel_last6_worst_finish,float64,analysis_feature,0.0,1615,pre-race only
+rel_last6_top3_count,float64,analysis_feature,0.0,920,pre-race only
+rel_last6_top5_count,float64,analysis_feature,0.0,1222,pre-race only
+rel_same_distance_starts,float64,analysis_feature,0.0,312,pre-race only
+rel_same_distance_wins,float64,analysis_feature,0.0,334,pre-race only
+rel_same_distance_seconds,float64,analysis_feature,0.0,266,pre-race only
+rel_same_distance_thirds,float64,analysis_feature,0.0,1122,pre-race only
+rel_same_venue_distance_starts,float64,analysis_feature,0.0,204,pre-race only
+rel_same_venue_distance_wins,float64,analysis_feature,0.0,225,pre-race only
+rel_same_venue_distance_seconds,float64,analysis_feature,0.0,191,pre-race only
+rel_same_venue_distance_thirds,float64,analysis_feature,0.0,822,pre-race only
+rel_tw_entries_count,float64,analysis_feature,0.0,1869,pre-race only
+rel_tw_gallop_count,float64,analysis_feature,0.0,793,pre-race only
+rel_tw_flags_count,float64,analysis_feature,0.0,404,pre-race only
+rel_tw_jockey_present,float64,analysis_feature,0.0,1,pre-race only
+rel_raw_formline_higher_win_count,float64,analysis_feature,0.0,892,pre-race only
+rel_raw_formline_same_win_count,float64,analysis_feature,0.0,756,pre-race only
+rel_raw_formline_lower_win_count,float64,analysis_feature,0.0,185,pre-race only
+rel_raw_l400,float64,analysis_feature,0.0,2581,pre-race only
+rel_raw_finish_time_adj,float64,analysis_feature,0.0,1620,pre-race only
+rel_raw_total_starts,float64,analysis_feature,0.0,1813,pre-race only
+rel_raw_total_wins,float64,analysis_feature,0.0,653,pre-race only
+rel_raw_last_margin,float64,analysis_feature,0.0,1111,pre-race only
+rel_raw_last_finish,float64,analysis_feature,0.0,1461,pre-race only
+rel_raw_weight_trend_span,float64,analysis_feature,0.0,1222,pre-race only
+rel_is_debut,float64,analysis_feature,0.0,41,pre-race only
+rel_is_import,float64,analysis_feature,0.0,1,pre-race only
+rel_is_foreign_runner,float64,analysis_feature,0.0,1,pre-race only
+rel_field_size,float64,analysis_feature,0.0,1,pre-race only
+rel_distance_num,float64,analysis_feature,0.0,1,pre-race only
+rel_matrix_stability,float64,analysis_feature,0.0,2974,pre-race only
+rel_matrix_sectional,float64,analysis_feature,0.0,2129,pre-race only
+rel_matrix_race_shape,float64,analysis_feature,0.0,2312,pre-race only
+rel_matrix_trainer_signal,float64,analysis_feature,0.0,2668,pre-race only
+rel_matrix_horse_health,float64,analysis_feature,0.0,2373,pre-race only
+rel_matrix_form_line,float64,analysis_feature,0.0,1544,pre-race only
+rel_matrix_class_advantage,float64,analysis_feature,0.0,2321,pre-race only

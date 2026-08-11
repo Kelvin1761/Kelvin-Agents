@@ -1,0 +1,10 @@
+{
+  "Win": {
+    "alpha_matrix": 0.25,
+    "ml_model": "Logistic Regression"
+  },
+  "Place": {
+    "alpha_matrix": 0.75,
+    "ml_model": "Logistic Regression"
+  }
+}
