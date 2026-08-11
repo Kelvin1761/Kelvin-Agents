@@ -60,6 +60,14 @@ Derived matrix-only support signals such as `formline_strength_score`, `margin_t
 
 Grade is display-only. Ranking and Top 4 use numeric `ability_score`.
 
+## Stability Residual Research Shadow
+
+`--stability-residual-shadow` is an explicit opt-in research monitor. It loads
+the checksum-pinned `HKJC_STABILITY_RESIDUAL_SHADOW_V1` artifact only after
+mainline Auto scoring succeeds and writes separate CSV/JSON diagnostics. Its
+probability/rank is not an official ability source and must not alter Matrix
+scores, `ability_score`, Grade, Top 4, verdict, pick status or betting advice.
+
 ## Pick Status
 
 - `MODEL_TOP_PICK`: rank <= 2, ability >= 70, confidence >= 55

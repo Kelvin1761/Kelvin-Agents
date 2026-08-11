@@ -14,12 +14,13 @@ Execute the HKJC Wong Choi ML program described in `hkjc-ml-program.md`.
 6. Requirement-by-requirement completion audit added the exact requested scorecard, experiment report, Champion snapshot, system/integrity audits, expanded feature coverage, ranking metrics, race confidence, course segments, permutation importance and SHAP interactions.
 7. Fixed an evidence-baseline alignment bug: the archived ability score used the previous outer weights. The current-contract Champion is now rebuilt from seven dimensions while the archived score is retained for audit.
 8. Completed individual-dimension ablation and bounded residual ML for trainer signal, race shape and stability. Stability improved six weak development races and promoted seven actual Top-3 Rank-3 runners into Top 2, but failed external capture/NDCG non-regression; no production change.
+9. Froze stability residual V1 as an opt-in shadow runner and Auto CLI flag. Model checksum, target, cap and feature contract fail closed; Logic input remains byte-identical and outputs are separate.
 
 ## Verification
 
-- HKJC reflector unittest suite: 31 passed, including four dimension artifact-contract checks.
+- HKJC reflector unittest suite: 37 passed, including stability-shadow replay/rank-drift checks and five dimension artifact-contract checks.
 - Original main ML artifact-contract pytest suite: 5 passed.
-- HKJC production auto tests: 71 passed.
+- HKJC production auto tests: 72 passed, including opt-in shadow/mainline identity.
 - Serialized research models: all 14 reload successfully (eight main-program plus six dimension residual bundles).
 - Data quality, PIT blacklist, full weak-race detail count, sensitive-path scan and `git diff --check`: passed.
 
@@ -41,3 +42,4 @@ Collect new-season local HKJC races and complete fixed-time Win/Place odds snaps
 - Do not claim CLV, Place ROI, or a globally pristine holdout where the required snapshots/data do not exist.
 - Treat `final_hkjc_scorecard.md` and `hkjc_ml_experiment_report.md` as the primary user-facing research results.
 - Treat `hkjc_dimension_ml_report.md` and `dimension_rank_movements.csv` as the primary individual-dimension evidence; do not turn the stability result into a conditional 1200m/Class-4 rule from this archive.
+- Use `--stability-residual-shadow` only for collective local-meeting monitoring; never manually substitute its Top 2 into the production recommendation.

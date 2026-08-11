@@ -842,6 +842,12 @@ def _write_reports(
     lines.extend(
         [
             "",
+            "Operational decision：`stability` 已接入 checksum-pinned opt-in shadow monitoring；呢個決定唔等於 production promotion，亦唔會改主排名或投注建議。",
+        ]
+    )
+    lines.extend(
+        [
+            "",
             "## Selected residual scorecard",
             "",
         "| Period | 維度 | 0-hit Δ | 0/1-hit severity Δ | Winner@3 Δ | Capture@5 Δ | NDCG@5 Δ | Log loss Δ |",
@@ -938,7 +944,7 @@ def _write_reports(
         "",
         f"同時通過 development 與 external non-regression：{', '.join(passed) if passed else '沒有'}。",
         "",
-        "下一個合理 gate 係將通過者固定（feature list、L2、cap 全凍結）再跑後續本地賽事；唔應因 9 場 external 即時改 Matrix。",
+        "`stability` 已批准以固定 feature list、L2=1.0、cap=0.05 接入 opt-in shadow monitoring；主排名、Grade、verdict、Top Pick及投注建議保持不變。唔應因 9 場 external 或單一成功 swap 即時改 Matrix。",
     ]
     (output / "dimension_promotion_recommendation.md").write_text(
         "\n".join(recommendation) + "\n", encoding="utf-8"

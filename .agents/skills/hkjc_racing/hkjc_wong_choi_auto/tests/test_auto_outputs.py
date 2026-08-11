@@ -498,6 +498,62 @@ class AutoOutputTests(unittest.TestCase):
             },
         )
 
+    def test_stability_residual_shadow_is_opt_in_and_keeps_mainline_identical(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            base_folder = root / "base"
+            shadow_folder = root / "shadow"
+            base_folder.mkdir()
+            shadow_folder.mkdir()
+            payload = json.dumps(_logic(), ensure_ascii=False)
+            (base_folder / "Race_1_Logic.json").write_text(payload, encoding="utf-8")
+            (shadow_folder / "Race_1_Logic.json").write_text(payload, encoding="utf-8")
+
+            base = subprocess.run(
+                [sys.executable, str(SCRIPT), str(base_folder)],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            shadow = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    str(shadow_folder),
+                    "--stability-residual-shadow",
+                ],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+            self.assertEqual(base.returncode, 0, base.stderr + base.stdout)
+            self.assertEqual(shadow.returncode, 0, shadow.stderr + shadow.stdout)
+            base_logic = json.loads(
+                (base_folder / "Race_1_Logic.json").read_text(encoding="utf-8")
+            )
+            shadow_logic = json.loads(
+                (shadow_folder / "Race_1_Logic.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(base_logic, shadow_logic)
+            self.assertFalse(
+                (base_folder / "HKJC_Stability_Residual_Shadow.csv").exists()
+            )
+            self.assertTrue(
+                (shadow_folder / "HKJC_Stability_Residual_Shadow.csv").is_file()
+            )
+            report = json.loads(
+                (shadow_folder / "HKJC_Stability_Residual_Shadow.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertFalse(report["contract"]["mainline_modified"])
+            self.assertEqual(report["contract"]["ranking_authority"], "shadow_only")
+
     def test_chinese_jockey_and_trainer_names_are_scored(self) -> None:
         # 主要來源＝兩季 master stats 連續實績評分（2026-07-08 ML 驗證上線）
         records = {

@@ -18,6 +18,8 @@ Archive 嘅 `current_live_recomputed_ability` 原本沿用上一版外層權重�
 | `race_shape` | 0.05 | FAIL | PASS | reject / diagnostic only |
 | `stability` | 0.05 | PASS | FAIL | reject / diagnostic only |
 
+Operational decision：`stability` 已接入 checksum-pinned opt-in shadow monitoring；呢個決定唔等於 production promotion，亦唔會改主排名或投注建議。
+
 ## Selected residual scorecard
 
 | Period | 維度 | 0-hit Δ | 0/1-hit severity Δ | Winner@3 Δ | Capture@5 Δ | NDCG@5 Δ | Log loss Δ |

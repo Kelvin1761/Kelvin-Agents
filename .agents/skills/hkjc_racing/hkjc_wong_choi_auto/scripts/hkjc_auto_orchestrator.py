@@ -44,6 +44,23 @@ sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
 _PROFILE_SCRAPER = None
 
 
+def _run_stability_residual_shadow(target_path):
+    """Lazy-load the research shadow so default Auto has no ML dependency."""
+    reflector_scripts = (
+        PROJECT_ROOT
+        / ".agents"
+        / "skills"
+        / "hkjc_racing"
+        / "hkjc_reflector"
+        / "scripts"
+    )
+    if str(reflector_scripts) not in sys.path:
+        sys.path.append(str(reflector_scripts))
+    from hkjc_stability_residual_shadow import run_shadow
+
+    return run_shadow(Path(target_path).resolve())
+
+
 def _get_profile_scraper():
     """Lazy-load display enrichment so scoring-only runs have no cache side effect."""
     global _PROFILE_SCRAPER
@@ -831,12 +848,14 @@ class HKJCAutoOrchestrator:
         scoring_profile="mainline",
         shadow_profile=None,
         health_profile=MAINLINE_HEALTH_PROFILE,
+        stability_residual_shadow=False,
     ):
         self.target_path = Path(target_path)
         self.is_meeting = self.target_path.is_dir()
         self.scoring_profile = scoring_profile
         self.shadow_profile = shadow_profile
         self.health_profile = health_profile
+        self.stability_residual_shadow = bool(stability_residual_shadow)
         self.races = []
         self.log_path = (self.target_path if self.is_meeting else self.target_path.parent) / "racing_run_log.jsonl"
         self.summary_path = (self.target_path if self.is_meeting else self.target_path.parent) / "evaluation_summary.json"
@@ -899,6 +918,29 @@ class HKJCAutoOrchestrator:
             for name in failed:
                 print(f"   - {name}")
             return 1
+
+        if self.stability_residual_shadow:
+            try:
+                shadow_csv, shadow_json, shadow_report = _run_stability_residual_shadow(
+                    self.target_path
+                )
+            except Exception as exc:
+                print(f"\n❌ Stability residual shadow failed: {exc}")
+                self._emit_event(
+                    "stability_residual_shadow_failed",
+                    error=str(exc),
+                )
+                return 1
+            print(f"📄 Stability residual shadow CSV: {shadow_csv}")
+            print(f"📄 Stability residual shadow JSON: {shadow_json}")
+            self._emit_event(
+                "stability_residual_shadow_completed",
+                csv_path=str(shadow_csv),
+                json_path=str(shadow_json),
+                model_version=shadow_report.get("model_version"),
+                race_count=len(shadow_report.get("races") or []),
+                mainline_modified=False,
+            )
 
         print("\n✅ HKJC Wong Choi Auto scoring completed.")
         return 0
@@ -1206,6 +1248,14 @@ if __name__ == "__main__":
         choices=SUPPORTED_SHADOW_PROFILES,
         help="Optional shadow profile to compute without changing mainline ranking",
     )
+    parser.add_argument(
+        "--stability-residual-shadow",
+        action="store_true",
+        help=(
+            "Write the frozen stability-residual research CSV/JSON after Auto "
+            "scoring; never changes mainline ranking or recommendations"
+        ),
+    )
     args = parser.parse_args()
     
     orchestrator = HKJCAutoOrchestrator(
@@ -1213,6 +1263,7 @@ if __name__ == "__main__":
         scoring_profile=args.scoring_profile,
         shadow_profile=args.shadow_profile,
         health_profile=args.health_profile,
+        stability_residual_shadow=args.stability_residual_shadow,
     )
     orchestrator._validate_engine_requested = args.validate_engine
     raise SystemExit(orchestrator.run())

@@ -16,3 +16,4 @@
 12. Rebuild the research Champion from the seven stored Matrix dimensions and the current production weights. Preserve archived ability as an audit field; never label a stale exported score as the current contract.
 13. Keep trainer signal, race shape and stability production formulas unchanged. Ablation confirms all three are useful, but none of their bounded residual models passes both development and external gates.
 14. Retain stability residual ML as a research finding only. Its Rank-3→Top-2 corrections match the desired failure mode, but the same model worsened one development race and external NDCG/capture; do not convert segment observations into post-hoc rules.
+15. Operationalize the frozen stability residual only as an explicit opt-in shadow. Pin model checksum, 15-feature contract, L2=1.0 and cap=0.05; write separate artifacts and prohibit any change to mainline rank, Grade, verdict, Top Pick or betting recommendation.

@@ -8,4 +8,4 @@
 
 同時通過 development 與 external non-regression：沒有。
 
-下一個合理 gate 係將通過者固定（feature list、L2、cap 全凍結）再跑後續本地賽事；唔應因 9 場 external 即時改 Matrix。
+`stability` 已批准以固定 feature list、L2=1.0、cap=0.05 接入 opt-in shadow monitoring；主排名、Grade、verdict、Top Pick及投注建議保持不變。唔應因 9 場 external 或單一成功 swap 即時改 Matrix。

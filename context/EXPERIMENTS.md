@@ -104,3 +104,11 @@ Common evidence identity unless stated otherwise:
 - `race_shape`: selected cap 0.05; Winner@3 rose 1.24pp but 0/1-hit severity was unchanged and capture@5 fell 0.21pp. Diagnostic only.
 - `stability`: selected cap 0.05; development Top2 two-hit rose 22.36%→26.09%, Winner@2 rose 41.61%→43.48%, six weak races improved and one worsened. Seven actual Top-3 runners moved Rank 3→2. However 0-hit rose 25.47%→26.09%, and the nine-race external block lost 3.70pp capture@5 / 4.13pp NDCG@5 despite one additional two-hit race.
 - Conclusion: `stability` is the only credible shadow candidate, but it fails the external non-regression gate. No production promotion.
+
+## EXP-HKJC-DIM-002 — Frozen stability residual shadow integration
+
+- Contract: `HKJC_STABILITY_RESIDUAL_SHADOW_V1`; final development fit; 15 stability features; L2=1.0; bounded log-odds delta ±0.05; model checksum pinned.
+- Runtime: standalone reflector runner plus opt-in Auto flag `--stability-residual-shadow`; default Auto never loads the ML dependency.
+- Outputs: separate race/meeting CSV and JSON with mainline/shadow probability, ranks, Rank-3→Top-2 entry/exit and optional post-race hit comparison.
+- Safety: Logic input hash checked before/after; mainline Logic, ranking, Grade, verdict, Top Pick, reports and recommendations are not modified. Result labels are attached only after scoring when an explicit results file is supplied.
+- Conclusion: approved for shadow monitoring only; production promotion remains rejected.

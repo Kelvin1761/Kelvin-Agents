@@ -36,6 +36,7 @@ Auto V1 支援：
 - folder containing `Race_*_Logic.json`
 - local `hkjc_draw_stats.json`
 - existing extracted fields such as `_data`, `trackwork`, `last_6_finishes`, `season_stats`, `jockey_combo_block`
+- opt-in `--stability-residual-shadow`：Auto 完成後寫獨立 research CSV/JSON；唔改主排名、Grade、verdict、Top Pick 或投注建議
 
 Auto V1 不負責：
 

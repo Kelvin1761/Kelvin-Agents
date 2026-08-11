@@ -32,6 +32,7 @@ class HkjcDimensionMlArtifactContractTests(unittest.TestCase):
             "dimension_walk_forward_results.csv",
             "dimension_weak_race_impact.csv",
             "hkjc_dimension_ml_report.md",
+            "stability_residual_shadow_runbook.md",
         }
         missing = sorted(name for name in required if not (ARTIFACTS / name).is_file())
         self.assertFalse(missing)
