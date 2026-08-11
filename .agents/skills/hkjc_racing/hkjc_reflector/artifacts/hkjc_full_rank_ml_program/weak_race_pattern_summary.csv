@@ -1,0 +1,34 @@
+﻿period,segment_dimension,segment_value,weak_races,mean_top2_hit_delta,mean_top5_capture_delta,improved_races,harmed_races
+external_holdout,classification,harmed,1,0.0,-1.0,0,1
+external_holdout,classification,unchanged,7,0.0,0.0,0,0
+walk_forward,classification,harmed,12,-0.08333333333333333,-1.0,0,12
+walk_forward,classification,improved,15,0.5333333333333333,0.4666666666666667,15,0
+walk_forward,classification,unchanged,98,0.0,0.0,0,0
+external_holdout,venue,跑馬地,8,0.0,-0.125,0,1
+walk_forward,venue,沙田,87,0.08045977011494253,-0.011494252873563218,15,8
+walk_forward,venue,跑馬地,38,0.0,-0.10526315789473684,0,4
+external_holdout,course,Unknown,8,0.0,-0.125,0,1
+walk_forward,course,A,33,0.06060606060606061,0.09090909090909091,7,2
+walk_forward,course,AWT,6,0.16666666666666666,-0.16666666666666666,1,1
+walk_forward,course,B,23,0.043478260869565216,-0.043478260869565216,1,1
+walk_forward,course,C,29,0.034482758620689655,-0.1724137931034483,2,5
+walk_forward,course,C+3,34,0.058823529411764705,-0.029411764705882353,4,3
+external_holdout,distance_bucket,mile-ish 1201-1650,3,0.0,0.0,0,0
+external_holdout,distance_bucket,sprint<=1200,4,0.0,-0.25,0,1
+external_holdout,distance_bucket,staying>1650,1,0.0,0.0,0,0
+walk_forward,distance_bucket,mile-ish 1201-1650,48,0.0625,-0.041666666666666664,8,7
+walk_forward,distance_bucket,nan,1,1.0,0.0,1,0
+walk_forward,distance_bucket,sprint<=1200,61,0.04918032786885246,-0.06557377049180328,4,4
+walk_forward,distance_bucket,staying>1650,15,0.0,0.06666666666666667,2,1
+external_holdout,race_class_label,Class 2,1,0.0,0.0,0,0
+external_holdout,race_class_label,Class 3,1,0.0,0.0,0,0
+external_holdout,race_class_label,Class 4,5,0.0,-0.2,0,1
+external_holdout,race_class_label,Class 5,1,0.0,0.0,0,0
+walk_forward,race_class_label,Class 1,1,1.0,0.0,1,0
+walk_forward,race_class_label,Class 2,3,0.0,0.0,0,0
+walk_forward,race_class_label,Class 3,12,0.0,0.0,0,0
+walk_forward,race_class_label,Class 4,97,0.030927835051546393,-0.061855670103092786,9,11
+walk_forward,race_class_label,Class 5,8,0.125,0.0,2,1
+walk_forward,race_class_label,Griffin,1,1.0,0.0,1,0
+walk_forward,race_class_label,Group 3,2,0.0,0.5,1,0
+walk_forward,race_class_label,Unknown,1,1.0,0.0,1,0

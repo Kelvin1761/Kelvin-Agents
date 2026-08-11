@@ -1,0 +1,145 @@
+{
+  "created_on": "2026-08-11",
+  "git_head": "528c469a2007f0edccfe65acc35c87aa345576c4",
+  "version": "HKJC_MATRIX_ANCHORED_LAMBDARANK_V1",
+  "seed": 20260811,
+  "primary": {
+    "path": "scratch/hkjc_ranking_dataset_current.csv",
+    "sha256": "3d7036322c51b2c3d75dda96be63d58fe54bb0159947be26dd08693acb76acb1"
+  },
+  "external": {
+    "path": "scratch/hkjc_ranking_dataset_2026_07_15_current.csv",
+    "sha256": "3073a9afbadb8b63cc1ef4372cd5983f19e2fc49e4d2c13e2ecdd9485a14df78"
+  },
+  "coverage": {
+    "input_rows": 3141,
+    "deduplicated_rows": 3141,
+    "duplicate_runner_keys": 0,
+    "input_races": 253,
+    "valid_races": 250,
+    "invalid_races": [
+      {
+        "date": "2026-06-03",
+        "meeting_name": "2026-06-03_HappyValley",
+        "race_number": 9,
+        "starters": 10,
+        "winners": 1,
+        "top3": 3,
+        "finish_unique": 10,
+        "finish_min": 1,
+        "finish_max": 12,
+        "finish_sum": 59,
+        "finish_missing": 0,
+        "expected_top3": 3,
+        "race_label_valid": false
+      },
+      {
+        "date": "2026-06-07",
+        "meeting_name": "2026-06-07_ShaTin",
+        "race_number": 1,
+        "starters": 10,
+        "winners": 1,
+        "top3": 1,
+        "finish_unique": 10,
+        "finish_min": 1,
+        "finish_max": 12,
+        "finish_sum": 73,
+        "finish_missing": 0,
+        "expected_top3": 3,
+        "race_label_valid": false
+      },
+      {
+        "date": "2026-06-07",
+        "meeting_name": "2026-06-07_ShaTin",
+        "race_number": 8,
+        "starters": 12,
+        "winners": 1,
+        "top3": 3,
+        "finish_unique": 12,
+        "finish_min": 1,
+        "finish_max": 14,
+        "finish_sum": 90,
+        "finish_missing": 0,
+        "expected_top3": 3,
+        "race_label_valid": false
+      }
+    ],
+    "valid_rows": 3109,
+    "meetings": 25,
+    "date_min": "2026-04-12",
+    "date_max": "2026-07-15",
+    "unknown_distance_rows": 10,
+    "unknown_class_rows": 32,
+    "declared_actual_field_mismatch_races": 22,
+    "horse_id_missing_rows": 107,
+    "archived_ability_rebuilt_to_current_contract": true,
+    "archived_ability_rows_rebuilt": 3109,
+    "archived_ability_rows_incomplete": 0,
+    "archived_ability_rows_changed_over_0_01": 3044,
+    "archived_ability_max_abs_delta": 1.1507350000000116
+  },
+  "split": {
+    "development_dates": [
+      "2026-04-12",
+      "2026-04-15",
+      "2026-04-19",
+      "2026-04-22",
+      "2026-04-26",
+      "2026-04-29",
+      "2026-05-03",
+      "2026-05-06",
+      "2026-05-09",
+      "2026-05-13",
+      "2026-05-17",
+      "2026-05-20",
+      "2026-05-24",
+      "2026-05-27",
+      "2026-06-03",
+      "2026-06-07",
+      "2026-06-10",
+      "2026-06-13",
+      "2026-06-21",
+      "2026-06-27",
+      "2026-07-01",
+      "2026-07-04",
+      "2026-07-08",
+      "2026-07-12"
+    ],
+    "external_dates": [
+      "2026-07-15"
+    ],
+    "minimum_train_meetings": 8
+  },
+  "selection": {
+    "feature_scope": "matrix_7d",
+    "matrix_weight": 0.7,
+    "development_gate": true,
+    "external_gate": false,
+    "production_promoted": false
+  },
+  "features": {
+    "numeric": [
+      "matrix_stability",
+      "matrix_sectional",
+      "matrix_race_shape",
+      "matrix_trainer_signal",
+      "matrix_horse_health",
+      "matrix_form_line",
+      "matrix_class_advantage",
+      "rel_matrix_stability",
+      "rel_matrix_sectional",
+      "rel_matrix_race_shape",
+      "rel_matrix_trainer_signal",
+      "rel_matrix_horse_health",
+      "rel_matrix_form_line",
+      "rel_matrix_class_advantage"
+    ],
+    "categorical": []
+  },
+  "model": {
+    "path": ".agents/skills/hkjc_racing/hkjc_reflector/artifacts/hkjc_full_rank_ml_program/models/matrix_anchored_lambdarank.joblib",
+    "sha256": "8c8fc3a89f3df75e303bca26bb36e9fc3f2901cdd123ec90dc6c2ac67e72c9d8"
+  },
+  "external_not_used_for_selection": true,
+  "manifest_sha256": "46a0760577a17eddc74ce9b684678443f2d6b136ad1bd00055ca75a1a378013c"
+}

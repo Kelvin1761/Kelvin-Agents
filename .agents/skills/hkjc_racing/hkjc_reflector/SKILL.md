@@ -65,6 +65,17 @@ python3 .agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_reflector_orchest
 - `.agents/skills/hkjc_racing/hkjc_reflector/scripts/sync_hkjc_results_database.py`
 - `.agents/skills/hkjc_racing/hkjc_race_extractor/scripts/fast_extract_results.py`
 
+## Research-only Full Ranking ML
+
+Matrix-anchored 全場 competitiveness learning-to-rank 入口：
+
+```bash
+PYTHONPATH=/private/tmp/hkjc-pylibs:.agents/skills/hkjc_racing/hkjc_reflector/scripts \
+python3 .agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_full_rank_ml_program.py
+```
+
+呢個 program 只屬 research：七維 Matrix 保留做 ranking anchor，development 用 chronological walk-forward，最後一個 meeting 只作 external validation。輸出放喺 `artifacts/hkjc_full_rank_ml_program/`，唔會自動改 production scorer。
+
 ## Guard Rails
 
 - 優先重用現成 results file，避免不必要 extraction。
