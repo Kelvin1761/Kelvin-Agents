@@ -37,6 +37,7 @@ HELP = ("我識嘅嘢：\n"
         "/week            近七日走勢\n"
         "/health          即刻做一次體檢\n"
         "/diag            最近一次失敗嘅診斷\n"
+        "/retry           補跑抽取（抽唔齊嗰陣用）\n"
         "/help            呢個")
 
 
@@ -229,6 +230,42 @@ def cmd_diag() -> str:
     return au_diagnose.phone_summary(text)
 
 
+def cmd_retry() -> str:
+    """補跑抽取。Kelvin 明確要求（2026-08-11 網絡斷咗令五個場次冇分析）。
+
+    ⚠️ 呢個係唯一一個有副作用嘅指令，所以三道限制：
+      * 只有已授權 chat 叫得到（`main()` 已經擋咗其他人）；
+      * **有 run 跑緊就唔開** —— 兩個 run 同時郁同一批 folder、同一個 Chrome
+        profile、同一個 dashboard，正正係把鎖要防嗰件事；
+      * 唔會重抽已經分析好嘅場次（`skipped_already_analysed` 即刻跳過），
+        所以就算亂叫幾次都唔會浪費網絡配額。
+    唔會自己改 code、唔會發佈任何未驗證嘅嘢 —— 佢行嘅係同排程一樣嗰條路。
+    """
+    import subprocess
+
+    sys.path.insert(0, str(HERE))
+    import au_healthcheck
+
+    if au_healthcheck.run_in_progress():
+        return "⏳ 而家有 run 跑緊 —— 唔開第二個（會同佢爭同一批資料）"
+    runner = HERE / "run_au_daily_schedule.sh"
+    if not runner.exists():
+        return "搵唔到 runner"
+    out = HERE / "logs" / "retry-from-telegram.out"
+    try:
+        # detach：bot 每兩分鐘就會退出，唔可以由佢等成個 run。
+        with out.open("w") as fh:
+            subprocess.Popen(
+                ["/bin/zsh", str(runner), "evening", "--skip-review",
+                 "--rounds", "3", "--round-gap", "420"],
+                stdout=fh, stderr=fh, start_new_session=True)
+    except Exception as exc:  # noqa: BLE001
+        return f"開唔到：{type(exc).__name__}: {exc}"
+    return ("▶️ 已開始補跑抽取（唔會重抽已分析嘅場次）\n"
+            "做完會照樣推「新分析已完成」同發佈結果。\n"
+            "想睇進度打 /status")
+
+
 def cmd_health() -> str:
     import subprocess
     try:
@@ -279,6 +316,7 @@ PICKMARK = {1: "①", 2: "②", 3: "③"}
 
 COMMANDS = {"/status": cmd_status, "/today": cmd_today, "/perf": cmd_perf,
             "/health": cmd_health, "/week": cmd_week, "/diag": cmd_diag,
+            "/retry": cmd_retry,
             "/help": lambda: HELP, "/start": lambda: HELP}
 # 收參數嘅指令要另外列 —— 白名單仍然係逐個字對，參數只當文字用嚟配對馬場名，
 # 永遠唔會變成路徑或者指令。
