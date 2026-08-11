@@ -11,3 +11,5 @@
 7. Keep the Matrix Champion in production. Logistic, LightGBM, XGBoost, probability hybrids, and the Top-2 Place overlay all failed at least one cross-period promotion gate.
 8. Use the published Win/Place probability bands for monitoring, but do not reinterpret them as bet grades.
 9. The next meaningful validation source is a new HK season with genuinely unseen races and fixed-time odds snapshots; further archive-only micro-tuning is not justified.
+10. Separate the immutable Champion freeze commit from the later research-run commit in all manifests and reports.
+11. Report unsupported betting metrics and unavailable going/rail segments as N/A; never infer them from post-race annotations.

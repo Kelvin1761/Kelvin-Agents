@@ -1,0 +1,32 @@
+﻿dimension,value,races,share
+venue,沙田,161,0.644
+venue,跑馬地,89,0.356
+surface,AWT,7,0.028
+surface,Turf,243,0.972
+course/configuration,A,62,0.248
+course/configuration,AWT,7,0.028
+course/configuration,B,47,0.188
+course/configuration,C,58,0.232
+course/configuration,C+3,53,0.212
+course/configuration,Unknown,23,0.092
+class,Class 1,2,0.008
+class,Class 2,7,0.028
+class,Class 3,28,0.112
+class,Class 4,187,0.748
+class,Class 5,15,0.06
+class,Griffin,2,0.008
+class,Group 1,2,0.008
+class,Group 2,1,0.004
+class,Group 3,3,0.012
+class,Unknown,3,0.012
+distance,1000,21,0.084
+distance,1200,101,0.404
+distance,1400,44,0.176
+distance,1600,21,0.084
+distance,1650,33,0.132
+distance,1800,21,0.084
+distance,2000,4,0.016
+distance,2200,2,0.008
+distance,2400,2,0.008
+distance,Missing,1,0.004
+going,Unavailable in aligned archive,0,

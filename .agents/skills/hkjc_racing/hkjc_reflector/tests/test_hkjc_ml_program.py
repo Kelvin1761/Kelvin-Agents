@@ -14,9 +14,13 @@ SCRIPTS = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_reflector" / "scri
 sys.path.insert(0, str(SCRIPTS))
 
 from hkjc_ml_program import (  # noqa: E402
+    add_race_confidence,
     _coherent_win_probabilities,
     assert_leakage_safe,
+    calibration_curve_rows,
     clean_archive,
+    feature_dictionary,
+    metrics,
 )
 
 
@@ -98,6 +102,77 @@ class HkjcMlProgramTests(unittest.TestCase):
         )
         totals = pd.Series(probabilities).groupby(frame["race_key"]).sum()
         np.testing.assert_allclose(totals.to_numpy(), np.ones(2))
+
+    def test_race_confidence_is_probability_gap_and_does_not_change_rank(self) -> None:
+        frame = pd.DataFrame(
+            {
+                "race_key": ["A", "A", "A", "B", "B"],
+                "probability": [0.40, 0.34, 0.26, 0.51, 0.49],
+            }
+        )
+        enriched = add_race_confidence(frame)
+        np.testing.assert_allclose(enriched.loc[:2, "race_confidence_score"], 0.06)
+        np.testing.assert_allclose(enriched.loc[3:, "race_confidence_score"], 0.02)
+        self.assertEqual(enriched.loc[0, "race_confidence_band"], "High ≥5pp")
+        self.assertEqual(enriched.loc[3, "race_confidence_band"], "Medium 2–5pp")
+        self.assertListEqual(
+            enriched.sort_values(["race_key", "probability"], ascending=[True, False]).index.tolist(),
+            frame.sort_values(["race_key", "probability"], ascending=[True, False]).index.tolist(),
+        )
+
+    def test_ranking_metrics_include_average_ranks_and_correlation(self) -> None:
+        frame = pd.DataFrame(
+            {
+                "race_key": ["A"] * 4,
+                "horse_number": [1, 2, 3, 4],
+                "finish_pos": [1, 2, 3, 4],
+                "is_win": [1, 0, 0, 0],
+                "is_top3": [1, 1, 1, 0],
+                "is_place": [1, 1, 1, 0],
+                "place_cutoff": [3] * 4,
+                "probability": [0.4, 0.3, 0.2, 0.1],
+            }
+        )
+        result = metrics(frame, "probability", "Win")
+        self.assertEqual(result["winner_average_rank"], 1.0)
+        self.assertEqual(result["placegetter_average_rank"], 2.0)
+        self.assertAlmostEqual(result["ranking_correlation"], 1.0)
+
+    def test_feature_dictionary_has_readiness_coverage_fields(self) -> None:
+        frame = pd.DataFrame(
+            {
+                "date": ["2026-07-12", "2026-07-15"],
+                "matrix_stability": [60.0, 70.0],
+                "venue": ["沙田", "跑馬地"],
+            }
+        )
+        dictionary = feature_dictionary(
+            frame,
+            {"test": (["matrix_stability"], ["venue"])},
+        )
+        required = {
+            "coverage_rate",
+            "missing_rate",
+            "neutral_default_rate",
+            "unique_values",
+            "suspicious_values",
+            "historical_depth_days",
+        }
+        self.assertTrue(required.issubset(dictionary.columns))
+        stability = dictionary[dictionary["feature"] == "matrix_stability"].iloc[0]
+        self.assertEqual(stability["neutral_default_rate"], 0.5)
+
+    def test_calibration_curve_uses_fixed_bins(self) -> None:
+        frame = pd.DataFrame(
+            {
+                "race_key": ["A", "A", "B"],
+                "probability": [0.05, 0.15, 0.85],
+                "is_win": [0, 1, 1],
+            }
+        )
+        rows = calibration_curve_rows(frame, "Test", "Win", "walk_forward")
+        self.assertEqual(sum(row["runners"] for row in rows), 3)
+        self.assertTrue(all(row["period"] == "walk_forward" for row in rows))
 
 
 if __name__ == "__main__":

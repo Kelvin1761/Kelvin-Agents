@@ -43,3 +43,5 @@ The fixed score bands are probability intervals, not retrospective grades. A use
 | external_holdout | Place | Logistic Regression | B 25–35% | 21 | 0.2947 | 0.3810 | 0.0863 |
 | external_holdout | Place | Logistic Regression | C 15–25% | 33 | 0.2008 | 0.2121 | 0.0114 |
 | external_holdout | Place | Logistic Regression | D <15% | 31 | 0.1003 | 0.1613 | 0.0610 |
+
+A fixed ten-bin reliability curve for every evaluated period/target/model is published in `calibration_curve.csv`; ECE is included in the model scorecard.

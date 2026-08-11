@@ -3,6 +3,9 @@
   "invalid_races_excluded": 3,
   "all_valid_races_one_winner": true,
   "all_finish_positions_unique_within_race": true,
+  "all_finish_positions_contiguous": true,
+  "field_size_matches_actual_runners": true,
+  "place_labels_match_hkjc_cutoff": true,
   "external_strictly_later": true,
   "analysis_features_market_free": true,
   "place_cutoff_values": [

@@ -1,14 +1,89 @@
 # Experiments
 
-## HKJC ML program
+Common evidence identity unless stated otherwise:
 
-| Experiment | Status | Decision |
-|---|---|---|
-| Dataset readiness and PIT leakage audit | Complete | READY WITH LIMITATIONS; 250 valid races |
-| Frozen Matrix probability calibration | Complete | Remains production Champion |
-| Logistic Regression: Win / Place | Complete | Best ML, but external ranking regression; no promotion |
-| LightGBM: Win / Place | Complete | Underperformed Matrix / Logistic |
-| XGBoost: Win / Place | Complete | Clear walk-forward ranking regression |
-| Matrix+ML hybrid | Complete | No cross-period promotion candidate |
-| Top-2 Place overlay | Complete | Lower walk-forward 0-hit, but external Top-5 capture regression |
-| Separate odds/value layer | Complete | N/A: complete timestamped odds/Place prices unavailable |
+- Experiment date: 2026-08-11
+- Champion freeze commit: `39155166df7fdba5162b19aa872e6fe004b7f3c3`
+- Research implementation/results commit: `9ddcd7abd5493c067bce15e2f81a5b8d40d0169a`
+- Dataset: 2026-04-12–2026-07-15; 250 valid races / 3,109 runners
+- Expanding train range: starts 2026-04-12 and ends strictly before each test meeting
+- Walk-forward validation: 2026-05-09–2026-07-12; 161 races / 2,019 runners
+- External block: 2026-07-15; 9 races / 107 runners; ML-unseen here, not globally pristine
+- Betting result: N/A for every model because complete fixed-time Win/Place prices and settlement data are absent
+
+## EXP-HKJC-ML-001 — Dataset readiness and PIT integrity
+
+- Features/model: schema, identity, label, venue/track/course, field-size and leakage rules; no predictive model.
+- Hyperparameters: none.
+- Result: READY WITH LIMITATIONS; three incomplete/non-contiguous result joins excluded; duplicate runner keys 0; one winner and contiguous finish order enforced; Place cutoff matches HKJC field-size rule.
+- Conclusion: proceed with conservative ML; canonical jockey/trainer IDs, going/rail, entity rename registry and event/settlement lifecycle remain unavailable.
+
+## EXP-HKJC-ML-002 — Frozen Matrix Champion
+
+- Features: seven official Matrix dimensions plus one fold-local calibrated probability mapping from frozen `ability_score`.
+- Model/hyperparameters: deterministic Matrix weights; Logistic probability calibrator `C=1.0`, L2, `max_iter=1000`; fitted inside each fold.
+- Win walk-forward: Brier 0.069593; Log Loss 0.256027; Top-1 25.47%; Top-3 53.42%; Top-3 capture@5 62.73%; 0-hit 26.09%.
+- Place walk-forward: Brier 0.168687; Log Loss 0.513628.
+- Conclusion: production Champion benchmark; unchanged.
+
+## EXP-HKJC-ML-003 — Regularised Logistic Regression
+
+- Features: selected `matrix_7d` group: seven absolute Matrix dimensions plus seven within-race relative values.
+- Hyperparameters: `C=0.25`, L2, `lbfgs`, `max_iter=1500`, seed 20260811; fold-local median imputation and standardisation.
+- Win walk-forward: Brier 0.069566; Log Loss 0.254912; Top-1 24.22%; Top-3 52.80%; Top-3 capture@5 62.73%; 0-hit 27.95%.
+- Place walk-forward: Brier 0.164769; Log Loss 0.502814.
+- External Win: Brier 0.078424; Log Loss 0.294133; Top-3 capture@5 51.85%.
+- Conclusion: best independent ML probability model, but ranking/external regression means no promotion.
+
+## EXP-HKJC-ML-004 — LightGBM
+
+- Features: selected `matrix_7d` group.
+- Hyperparameters: 140 trees, learning rate 0.03, depth 3, 7 leaves, min child 35, row/feature subsampling 0.8, L1 0.6, L2 2.5, seed 20260811.
+- Win walk-forward: Brier 0.070017; Log Loss 0.258530; Top-3 51.55%; Top-3 capture@5 61.90%.
+- Place walk-forward: Brier 0.1655; Log Loss 0.5051.
+- Conclusion: nonlinear model underperformed Matrix/Logistic; retain diagnostics only.
+
+## EXP-HKJC-ML-005 — XGBoost
+
+- Features: selected `matrix_7d` group.
+- Hyperparameters: 160 trees, learning rate 0.03, depth 3, min child weight 8, row/feature subsampling 0.8, L1 0.6, L2 3.0, seed 20260811.
+- Win walk-forward: Brier 0.072612; Log Loss 0.273149; Top-3 36.02%; Top-3 capture@5 56.11%.
+- Place walk-forward: Brier 0.1701; Log Loss 0.5178.
+- Conclusion: clear ranking regression; reject.
+
+## EXP-HKJC-ML-006 — Feature groups
+
+- Models: regularised Logistic Regression with the same fixed hyperparameters.
+- Features: `matrix_7d` vs 92 numeric + 4 categorical pre-race facts vs their combination.
+- Result: facts-only Win Log Loss 0.2714 / Top-3 capture@5 58.39%; combined 0.2617 / 61.49%; both worse than `matrix_7d` 0.2549 / 62.73%.
+- Conclusion: wider facts do not justify complexity; select `matrix_7d`.
+
+## EXP-HKJC-ML-007 — Matrix + ML probability hybrid
+
+- Features/models: fold-local Matrix and Logistic probabilities only; no odds.
+- Hyperparameters: fixed convex search Matrix weights 0.25, 0.50, 0.75 selected on walk-forward only.
+- Best Win hybrid: Matrix weight 0.25; walk-forward Brier 0.0695 / Log Loss 0.2547 / Top-3 capture@5 62.11%; external capture@5 55.56%.
+- Best Place hybrid: Matrix weight 0.75; walk-forward Brier 0.1670 / Log Loss 0.5091.
+- Conclusion: no cross-period promotion candidate.
+
+## EXP-HKJC-ML-008 — Top-2 Place rank overlay
+
+- Features/models: Matrix Win rank plus best ML Place rank; diagnostic synthetic rank only.
+- Hyperparameters: Matrix rank weight 0.50–1.00 in 0.05 steps, selected on walk-forward.
+- Result: strongest weight 0.55 reduced walk-forward 0-hit from 26.09% to 23.60%, but external Top-3 capture@5 fell from 62.96% to 59.26%.
+- Conclusion: rejected; no blind swap or micro tie-break.
+
+## EXP-HKJC-ML-009 — Explainability and interactions
+
+- Features/models: Logistic coefficients; LightGBM/XGBoost model importance, SHAP and tree SHAP interactions; race-preserving external permutation.
+- Hyperparameters: 30 permutation repeats per selected feature, seed 20260811; diagnostics use the nine-race external block and never choose the model.
+- Result: relative trainer signal, race shape and stability dominate; stable nonlinear improvement is absent; form line/horse health appear weaker conditionally.
+- Conclusion: monitor relative signals on new data; do not reweight production from this archive.
+
+## EXP-HKJC-ML-010 — Separate betting/value layer
+
+- Features/model: would compare independent probabilities with fixed-time HKJC Win/Place odds after analysis; no odds enter analysis X.
+- Hyperparameters: no edge/stake threshold selected because required inputs are absent.
+- Analysis result: unaffected.
+- Betting result: ROI, turnover, strike rate, average odds/edge, drawdown, losing streak and CLV all N/A.
+- Conclusion: betting question remains unanswerable until timestamped prices, dividends, scratches and settlement rules are captured.

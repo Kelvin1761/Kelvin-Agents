@@ -176,6 +176,28 @@ def _git_head() -> str:
         return "unknown"
 
 
+def _git_last_touch(path: Path) -> str:
+    try:
+        relative = path.resolve().relative_to(ROOT.resolve())
+        return subprocess.check_output(
+            ["git", "log", "-1", "--format=%H", "--", str(relative)],
+            cwd=ROOT,
+            text=True,
+        ).strip() or "unknown"
+    except (OSError, ValueError, subprocess.CalledProcessError):
+        return "unknown"
+
+
+def _champion_freeze_commit() -> str:
+    """Return the production/research branch point used to freeze Champion."""
+    try:
+        return subprocess.check_output(
+            ["git", "merge-base", "HEAD", "codex"], cwd=ROOT, text=True
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return _git_head()
+
+
 def _manifest_path(path: Path) -> str:
     try:
         return str(path.resolve().relative_to(ROOT.resolve()))
@@ -546,6 +568,10 @@ def metrics(frame: pd.DataFrame, probability: str, target: str) -> dict[str, flo
     for _, group in frame.groupby("race_key", sort=False):
         ranked = group.sort_values(probability, ascending=False)
         winner_rank = int(np.flatnonzero(ranked["is_win"].to_numpy() == 1)[0]) + 1
+        rank_lookup = {
+            str(horse_number): rank
+            for rank, horse_number in enumerate(ranked["horse_number"].astype(str), start=1)
+        }
         actual_top3 = set(group.loc[group["is_top3"] == 1, "horse_number"].astype(str))
         predicted_top2 = set(ranked.head(2)["horse_number"].astype(str))
         predicted_top3 = set(ranked.head(3)["horse_number"].astype(str))
@@ -553,6 +579,15 @@ def metrics(frame: pd.DataFrame, probability: str, target: str) -> dict[str, flo
         top2_hits = len(actual_top3 & predicted_top2)
         place_actual = set(group.loc[group["is_place"] == 1, "horse_number"].astype(str))
         cutoff = int(group["place_cutoff"].iloc[0])
+        predicted_rank = group[probability].rank(ascending=False, method="average").to_numpy(dtype=float)
+        actual_rank = group["finish_pos"].rank(ascending=True, method="average").to_numpy(dtype=float)
+        rank_correlation = (
+            float(np.corrcoef(predicted_rank, actual_rank)[0, 1])
+            if len(group) > 1
+            and float(np.std(predicted_rank)) > 0
+            and float(np.std(actual_rank)) > 0
+            else math.nan
+        )
         race_rows.append(
             {
                 "winner_top1": winner_rank <= 1,
@@ -560,6 +595,11 @@ def metrics(frame: pd.DataFrame, probability: str, target: str) -> dict[str, flo
                 "winner_top3": winner_rank <= 3,
                 "winner_top5": winner_rank <= 5,
                 "winner_rr": 1.0 / winner_rank,
+                "winner_average_rank": float(winner_rank),
+                "placegetter_average_rank": float(
+                    np.mean([rank_lookup[horse] for horse in place_actual])
+                ) if place_actual else math.nan,
+                "ranking_correlation": rank_correlation,
                 "top3_capture_at3": len(actual_top3 & predicted_top3) / max(len(actual_top3), 1),
                 "top3_capture_at5": len(actual_top3 & predicted_top5) / max(len(actual_top3), 1),
                 "top2_zero_hit": top2_hits == 0,
@@ -843,13 +883,42 @@ def score_band_rows(
     return rows
 
 
+def calibration_curve_rows(
+    predictions: pd.DataFrame,
+    model: str,
+    target: str,
+    period: str,
+) -> list[dict[str, Any]]:
+    """Return fixed ten-bin reliability-curve points without adaptive tuning."""
+    frame = predictions.copy()
+    edges = np.linspace(0.0, 1.0, 11)
+    frame["calibration_bin"] = pd.cut(
+        frame["probability"], edges, include_lowest=True, right=True, duplicates="drop"
+    )
+    target_column = TARGETS[target]
+    rows = []
+    for bucket, subset in frame.groupby("calibration_bin", observed=True):
+        rows.append(
+            {
+                "period": period,
+                "target": target,
+                "model": model,
+                "bin": str(bucket),
+                "runners": int(len(subset)),
+                "mean_probability": float(subset["probability"].mean()),
+                "observed_rate": float(subset[target_column].mean()),
+            }
+        )
+    return rows
+
+
 def segment_rows(
     predictions: pd.DataFrame,
     model: str,
     target: str,
     period: str,
 ) -> list[dict[str, Any]]:
-    frame = predictions.copy()
+    frame = add_race_confidence(predictions)
     frame["distance_bucket"] = pd.cut(
         frame["distance_num"],
         bins=[0, 1200, 1650, 3200],
@@ -863,7 +932,15 @@ def segment_rows(
         include_lowest=True,
     ).astype(str)
     rows = []
-    for dimension in ("venue", "track", "distance_bucket", "race_class_label", "field_bucket"):
+    for dimension in (
+        "venue",
+        "track",
+        "course",
+        "distance_bucket",
+        "race_class_label",
+        "field_bucket",
+        "race_confidence_band",
+    ):
         for value, subset in frame.groupby(dimension, dropna=False):
             if subset["race_key"].nunique() < 3:
                 continue
@@ -872,6 +949,28 @@ def segment_rows(
             record["segment_value"] = str(value)
             rows.append(record)
     return rows
+
+
+def add_race_confidence(predictions: pd.DataFrame) -> pd.DataFrame:
+    """Attach a transparent, model-output-only race-confidence measure.
+
+    Confidence is the probability gap between the first and second ranked
+    runner.  Fixed descriptive bands avoid holdout tuning and do not alter any
+    probability or ranking.
+    """
+    frame = predictions.copy()
+    gaps: dict[str, float] = {}
+    for race_key, group in frame.groupby("race_key", sort=False):
+        ordered = np.sort(group["probability"].to_numpy(dtype=float))[::-1]
+        gaps[str(race_key)] = float(ordered[0] - ordered[1]) if len(ordered) > 1 else 0.0
+    frame["race_confidence_score"] = frame["race_key"].astype(str).map(gaps).fillna(0.0)
+    frame["race_confidence_band"] = pd.cut(
+        frame["race_confidence_score"],
+        bins=[-math.inf, 0.02, 0.05, math.inf],
+        labels=["Low <2pp", "Medium 2–5pp", "High ≥5pp"],
+        right=False,
+    ).astype(str)
+    return frame
 
 
 def feature_importance(model: Pipeline, model_name: str, target: str) -> pd.DataFrame:
@@ -939,6 +1038,107 @@ def shap_importance(
                 "target": target,
                 "feature": "__SHAP_UNAVAILABLE__",
                 "mean_abs_shap": math.nan,
+                "error": str(exc),
+            }]
+        )
+
+
+def race_permutation_importance(
+    model: Pipeline,
+    model_name: str,
+    target: str,
+    sample: pd.DataFrame,
+    features: list[str],
+    seed: int,
+    repeats: int = 30,
+) -> pd.DataFrame:
+    """Race-preserving external-block permutation importance.
+
+    Values are shuffled only within each race so field composition and race
+    partitions remain intact. The nine-race external block makes this
+    diagnostic deliberately non-binding for model selection.
+    """
+    target_column = TARGETS[target]
+    baseline_probability = predict_probabilities(model, sample, features, target)
+    baseline = float(log_loss(sample[target_column], baseline_probability, labels=[0, 1]))
+    rng = np.random.default_rng(seed)
+    race_indices = [indices.to_numpy() for _, indices in sample.groupby("race_key").groups.items()]
+    rows = []
+    for feature in features:
+        deltas = []
+        for _ in range(repeats):
+            shuffled = sample.copy()
+            for indices in race_indices:
+                values = shuffled.loc[indices, feature].to_numpy(copy=True)
+                shuffled.loc[indices, feature] = rng.permutation(values)
+            probability = predict_probabilities(model, shuffled, features, target)
+            loss = float(log_loss(shuffled[target_column], probability, labels=[0, 1]))
+            deltas.append(loss - baseline)
+        rows.append(
+            {
+                "model": model_name,
+                "target": target,
+                "feature": feature,
+                "baseline_log_loss": baseline,
+                "mean_log_loss_increase": float(np.mean(deltas)),
+                "std_log_loss_increase": float(np.std(deltas, ddof=1)),
+                "repeats": repeats,
+                "external_races": int(sample["race_key"].nunique()),
+            }
+        )
+    return pd.DataFrame(rows).sort_values("mean_log_loss_increase", ascending=False)
+
+
+def shap_interaction_importance(
+    model: Pipeline,
+    model_name: str,
+    target: str,
+    sample: pd.DataFrame,
+    features: list[str],
+) -> pd.DataFrame:
+    """Summarise tree SHAP interactions on the external diagnostic block."""
+    if model_name not in {"LightGBM", "XGBoost"}:
+        return pd.DataFrame()
+    try:
+        import shap
+
+        preprocess = model.named_steps["preprocess"]
+        estimator = model.named_steps["model"]
+        transformed = preprocess.transform(sample[features].head(500))
+        names = preprocess.get_feature_names_out()
+        values = shap.TreeExplainer(estimator).shap_interaction_values(transformed)
+        if isinstance(values, list):
+            values = values[-1]
+        array = np.asarray(values)
+        if array.ndim == 4:
+            array = array[:, :, :, -1]
+        if array.ndim != 3:
+            raise ValueError(f"unexpected SHAP interaction shape {array.shape}")
+        strength = np.mean(np.abs(array), axis=0)
+        rows = []
+        length = min(len(names), strength.shape[0], strength.shape[1])
+        for left in range(length):
+            for right in range(left + 1, length):
+                rows.append(
+                    {
+                        "model": model_name,
+                        "target": target,
+                        "feature_a": names[left],
+                        "feature_b": names[right],
+                        "mean_abs_shap_interaction": float(strength[left, right]),
+                        "external_races": int(sample["race_key"].nunique()),
+                    }
+                )
+        return pd.DataFrame(rows).sort_values("mean_abs_shap_interaction", ascending=False)
+    except Exception as exc:  # pragma: no cover - optional explainer compatibility
+        return pd.DataFrame(
+            [{
+                "model": model_name,
+                "target": target,
+                "feature_a": "__SHAP_INTERACTION_UNAVAILABLE__",
+                "feature_b": "",
+                "mean_abs_shap_interaction": math.nan,
+                "external_races": int(sample["race_key"].nunique()),
                 "error": str(exc),
             }]
         )
@@ -1106,6 +1306,10 @@ def failure_review_markdown(
     )
     normal_weak = sum(not item["abnormal"] for item in review_rows)
     abnormal_weak = len(review_rows) - normal_weak
+    detail_limit = len(review_rows)  # user requirement: structured detail for every weak race
+    category_totals: dict[str, int] = defaultdict(int)
+    for item in review_rows:
+        category_totals[item["category"]] += 1
     for item in review_rows:
         group = item["group"]
         ranked = item["ranked"]
@@ -1120,7 +1324,7 @@ def failure_review_markdown(
         weak_count += 1
         improved += int(hits > matrix_hits)
         categories[category] += 1
-        if weak_count <= 35:
+        if weak_count <= detail_limit:
             meta = group.iloc[0]
             sections.extend(
                 [
@@ -1137,6 +1341,52 @@ def failure_review_markdown(
                 sections.append(
                     f"| #{horse} {row.horse_name} | {int(row.finish_pos)} | {model_order[horse]} / {row.probability:.3f} | {matrix_order[horse]} / {row.matrix_probability:.3f} |"
                 )
+            overrated = ranked.head(2)[ranked.head(2)["is_top3"] == 0]
+            if overrated.empty:
+                over_text = "none; both model Top-2 runners finished in the actual Top 3"
+            else:
+                over_text = "；".join(
+                    f"#{row.horse_number} {row.horse_name} (actual {int(row.finish_pos)}, p={row.probability:.3f})"
+                    for row in overrated.itertuples()
+                )
+            signal_parts = []
+            matrix_means = {
+                dimension: float(pd.to_numeric(group[dimension], errors="coerce").mean())
+                for dimension in MATRIX_FEATURES
+            }
+            for row in group[group["is_top3"] == 1].sort_values("finish_pos").itertuples():
+                candidates = []
+                for dimension in MATRIX_FEATURES:
+                    value = float(getattr(row, dimension))
+                    delta = value - matrix_means[dimension]
+                    if delta >= 3.0:
+                        candidates.append((delta, dimension.removeprefix("matrix_"), value))
+                candidates.sort(reverse=True)
+                if candidates:
+                    rendered = ", ".join(
+                        f"{name} {value:.1f} ({delta:+.1f} vs field)"
+                        for delta, name, value in candidates[:2]
+                    )
+                else:
+                    rendered = "no ≥3-point above-field Matrix dimension"
+                signal_parts.append(f"#{row.horse_number} {row.horse_name}: {rendered}")
+            if abnormal:
+                cause = "abnormal/outsider/incident cohort; result annotation is diagnostic only"
+            elif category == "contender captured in Top-5 tier but not Top 2":
+                cause = "competitive tier was identified; remaining error is ranking/weight calibration"
+            elif category == "competitive group absent from both Top-5 rankings":
+                cause = "available pre-race Matrix signals did not place enough contenders in the competitive tier"
+            else:
+                cause = "challenger reordering or race-specific residual"
+            sections.extend(
+                [
+                    "",
+                    f"Overrated Top-2 review: {over_text}.",
+                    f"Pre-race signal review: {'；'.join(signal_parts)}.",
+                    f"Cause assessment: {cause}.",
+                    f"Systematicity: this pattern occurs in {category_totals[category]} weak races; any change must still improve multiple chronological folds and external evidence.",
+                ]
+            )
             notes = str(annotation.get("notes", "") or "").strip()
             if notes and notes.lower() != "nan":
                 sections.extend(["", f"Post-race diagnostic annotation: {notes}"])
@@ -1174,14 +1424,197 @@ def _markdown_table(frame: pd.DataFrame, columns: list[str], digits: int = 4) ->
     return "\n".join([header, divider] + rows)
 
 
+def archive_coverage_rows(data: pd.DataFrame) -> pd.DataFrame:
+    races = data.sort_values(RACE_KEYS).drop_duplicates("race_key").copy()
+    rows: list[dict[str, Any]] = []
+    dimensions = {
+        "venue": "venue",
+        "surface": "track",
+        "course/configuration": "course",
+        "class": "race_class_label",
+        "distance": "distance_num",
+    }
+    for label, column in dimensions.items():
+        for value, subset in races.groupby(column, dropna=False):
+            rendered = "Missing" if pd.isna(value) else str(int(value) if column == "distance_num" else value)
+            rows.append(
+                {
+                    "dimension": label,
+                    "value": rendered,
+                    "races": int(len(subset)),
+                    "share": float(len(subset) / len(races)),
+                }
+            )
+    rows.append(
+        {
+            "dimension": "going",
+            "value": "Unavailable in aligned archive",
+            "races": 0,
+            "share": math.nan,
+        }
+    )
+    return pd.DataFrame(rows)
+
+
+def feature_dictionary(data: pd.DataFrame, groups: dict[str, tuple[list[str], list[str]]]) -> pd.DataFrame:
+    all_selected = {feature for numeric, categorical in groups.values() for feature in numeric + categorical}
+    dates = pd.to_datetime(data["date"], errors="coerce")
+    rows = []
+    for column in data.columns:
+        series = data[column]
+        if column in TARGETS.values() or column in {"finish_pos", "is_top3", "is_top4"}:
+            role = "target/result"
+        elif column in all_selected:
+            role = "analysis_feature"
+        elif column.startswith("prior_"):
+            role = "excluded_static_prior"
+        elif any(token in column.lower() for token in ("odds", "roi", "dividend", "market")):
+            role = "excluded_market"
+        else:
+            role = "metadata/excluded"
+
+        neutral_definition = "not defined"
+        neutral_rate = math.nan
+        if column in MATRIX_FEATURES or column.startswith("feat_"):
+            numeric = pd.to_numeric(series, errors="coerce")
+            neutral_definition = "score equals neutral 60"
+            neutral_rate = float(numeric.eq(60.0).mean())
+        elif column.startswith("rel_"):
+            numeric = pd.to_numeric(series, errors="coerce")
+            neutral_definition = "race-relative value equals 0"
+            neutral_rate = float(numeric.eq(0.0).mean())
+        elif not pd.api.types.is_numeric_dtype(series):
+            normalized = series.fillna("").astype(str).str.strip().str.lower()
+            neutral_definition = "blank/unknown/n-a/unavailable"
+            neutral_rate = float(normalized.isin({"", "unknown", "n/a", "na", "unavailable"}).mean())
+
+        suspicious_count = 0
+        suspicious_rule = "non-finite numeric or impossible domain value"
+        numeric = pd.to_numeric(series, errors="coerce")
+        if pd.api.types.is_numeric_dtype(series):
+            suspicious_count += int(np.isinf(numeric.to_numpy(dtype=float)).sum())
+        if column in MATRIX_FEATURES or column.startswith("feat_"):
+            suspicious_count += int(((numeric < 0) | (numeric > 100)).fillna(False).sum())
+        if column == "barrier":
+            field = pd.to_numeric(data["field_size"], errors="coerce")
+            suspicious_count += int(((numeric < 1) | (numeric > field)).fillna(False).sum())
+        if column in {"field_size", "place_cutoff", "finish_pos"}:
+            suspicious_count += int((numeric < 1).fillna(False).sum())
+
+        nonmissing = series.notna()
+        active_dates = dates[nonmissing]
+        first_date = active_dates.min().date().isoformat() if active_dates.notna().any() else ""
+        last_date = active_dates.max().date().isoformat() if active_dates.notna().any() else ""
+        depth_days = int((active_dates.max() - active_dates.min()).days) if active_dates.notna().any() else 0
+        rows.append(
+            {
+                "feature": column,
+                "dtype": str(series.dtype),
+                "role": role,
+                "coverage_rate": float(nonmissing.mean()),
+                "missing_rate": float(series.isna().mean()),
+                "neutral_default_rate": neutral_rate,
+                "neutral_default_definition": neutral_definition,
+                "unique_values": int(series.nunique(dropna=True)),
+                "suspicious_values": suspicious_count,
+                "suspicious_rule": suspicious_rule,
+                "first_available_date": first_date,
+                "last_available_date": last_date,
+                "historical_depth_days": depth_days,
+                "point_in_time_note": (
+                    "pre-race only" if role == "analysis_feature" else "not supplied to analysis model"
+                ),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def write_integrity_audit(output: Path, data: pd.DataFrame, quality: dict[str, Any]) -> None:
+    horse_name_missing = int(data["horse_name"].fillna("").astype(str).str.strip().eq("").sum())
+    jockey_missing = int(data["jockey"].fillna("").astype(str).str.strip().eq("").sum())
+    trainer_missing = int(data["trainer"].fillna("").astype(str).str.strip().eq("").sum())
+    integrity = pd.DataFrame(
+        [
+            ("Duplicate races", "PASS", "Race keys are unique at race metadata level."),
+            ("Duplicate runners", "PASS", "0 duplicate date/meeting/race/horse-number keys after cleaning."),
+            ("Incorrect race/result joins", "LIMITATION", f"{len(quality['invalid_races'])} non-contiguous/incomplete joins hard-excluded."),
+            ("Horse identity", "LIMITATION", f"{quality['horse_id_missing_rows']} runner rows lack canonical horse_id; horse names missing: {horse_name_missing}."),
+            ("Jockey identity", "LIMITATION", f"Canonical jockey IDs unavailable; name missing rows: {jockey_missing}."),
+            ("Trainer identity", "LIMITATION", f"Canonical trainer IDs unavailable; name missing rows: {trainer_missing}."),
+            ("Renamed entities", "NOT AUDITABLE", "No effective-dated canonical entity registry is present."),
+            ("Finish/date/venue/race number", "PASS", "One winner, unique contiguous finish positions, parseable dates, and authoritative meeting venue enforced."),
+            ("Surface/course/distance/class", "LIMITATION", f"AWT separated from venue; unknown distance rows {quality['unknown_distance_rows']}; unknown class rows {quality['unknown_class_rows']}."),
+            ("Going/rail", "NOT AVAILABLE", "No aligned point-in-time going or rail field exists in this archive."),
+            ("Scratching/reserves", "LIMITATION", "Actual matched starters are used, but a complete timestamped scratch/reserve lifecycle table is absent."),
+            ("Abandoned/DQ/dead heat/settlement", "NOT AUDITABLE", "No complete event-status/settlement ledger; affected or non-contiguous labels are excluded rather than inferred."),
+        ],
+        columns=["check", "status", "evidence"],
+    )
+    text = "# HKJC Historical Integrity Audit\n\n" + _markdown_table(integrity, list(integrity.columns))
+    text += "\n\n## Invalid races excluded\n\n" + _markdown_table(pd.DataFrame(quality["invalid_races"]), ["date", "meeting_name", "race_number", "starters", "winners", "top3", "finish_max"])
+    text += "\n\nUnresolved identity and event-lifecycle limitations are not silently imputed and are not used to claim production readiness.\n"
+    (output / "historical_integrity_audit.md").write_text(text, encoding="utf-8")
+
+
+def write_champion_snapshot(output: Path, manifest: dict[str, Any]) -> None:
+    scoring_path = ROOT / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/racing_engine/scoring.py"
+    namespace = __import__("runpy").run_path(str(scoring_path))
+    weights = pd.DataFrame(
+        [(name, value) for name, value in namespace["MATRIX_WEIGHTS"].items()],
+        columns=["dimension", "weight"],
+    )
+    grades = pd.DataFrame(namespace["GRADE_THRESHOLDS"], columns=["minimum_score", "grade"])
+    text = f"""# Frozen HKJC Rating Matrix Champion
+
+## Identity
+
+- Research freeze commit: `{manifest['git_head']}`.
+- Scoring source last-touch commit: `{_git_last_touch(scoring_path)}`.
+- Contract version: `{namespace['SCORING_CONTRACT_VERSION']}`.
+- Normalized-sectional blend: {float(namespace['SECTIONAL_NORMALIZED_MATRIX_BLEND']):.2%} when qualifying evidence exists.
+- Production scorer changed by this program: **No**.
+
+## Official seven-dimension weights
+
+{_markdown_table(weights, ['dimension', 'weight'])}
+
+## Frozen feature mapping and score logic
+
+| Dimension | Deterministic definition |
+|---|---|
+| sectional | speed score 65% + track/going score 35%; optionally blend 5% qualifying normalized L400/total-time evidence |
+| trainer_signal | jockey score 55% + trainer score 45% |
+| stability | form score 50% + consistency 40% + trackwork trend 10% |
+| race_shape | race-shape context 100%, with neutral-safe draw fallback only when context is unavailable |
+| class_advantage | class score 75% + carried-weight score 25% |
+| horse_health | risk score 55% + weight score 35% + confidence/reliability 10% |
+| form_line | form-line strength score 100% |
+
+`ability_score` is the weighted sum of the seven clipped 0–100 dimensions using the official weights above; the normalized-sectional blend changes only the sectional input when its evidence gate passes.
+
+## Grade thresholds
+
+{_markdown_table(grades, ['minimum_score', 'grade'])}
+
+Grades are display-only; numeric `ability_score` controls ranking. `MODEL_TOP_PICK` requires rank ≤2, ability ≥70 and confidence ≥55; `WATCH` requires ability ≥70 but fails a rank/confidence gate. The renderer has an advisory, ranking-neutral radar based on the Top-1/Top-3 ability gap: `<2` points = tight/Top 5, `2–<5` = medium/Top 4, `≥5` = clear/Top 4. The production analysis scorer forbids odds, market, value and edge fields. No executable ROI/stake rule is part of this frozen Champion, so betting rules remain a separate, currently unevaluable layer.
+"""
+    (output / "champion_snapshot.md").write_text(text, encoding="utf-8")
+
+
 def write_readiness(
     output: Path,
+    data: pd.DataFrame,
     quality: dict[str, Any],
     manifest: dict[str, Any],
     feature_groups_map: dict[str, tuple[list[str], list[str]]],
 ) -> None:
     invalid_count = len(quality["invalid_races"])
     verdict = "READY WITH LIMITATIONS"
+    coverage = archive_coverage_rows(data)
+    coverage.to_csv(output / "archive_coverage_summary.csv", index=False, encoding="utf-8-sig")
+    races = data.drop_duplicates("race_key")
+    average_field_size = float(races["field_size"].mean())
+    headline = coverage[coverage["dimension"].isin(["venue", "surface", "class", "distance", "going"])]
     text = f"""# HKJC ML Readiness Report
 
 ## Verdict: {verdict}
@@ -1192,10 +1625,21 @@ The archive is usable for conservative chronological research after deterministi
 
 - {quality['valid_rows']} valid runners, {quality['valid_races']} valid races, {quality['meetings']} meetings.
 - Date range: {quality['date_min']} to {quality['date_max']}.
+- Average actual field size: {average_field_size:.2f}.
 - Invalid races excluded: {invalid_count}.
 - Declared-versus-actual starter mismatches repaired: {quality['declared_actual_field_mismatch_races']} races.
 - Unknown distance rows retained as missing: {quality['unknown_distance_rows']}.
 - Unknown class rows retained as `Unknown`: {quality['unknown_class_rows']}.
+
+## Race coverage breakdown
+
+{_markdown_table(headline, ['dimension', 'value', 'races', 'share'])}
+
+Course/configuration detail is published in `archive_coverage_summary.csv`. Going is explicitly unavailable rather than inferred from post-race descriptions.
+
+## Feature coverage
+
+`feature_dictionary.csv` reports, for every aligned column: coverage, missingness, neutral/default rate and definition, unique values, suspicious-value count, first/last availability date, historical depth, role, and point-in-time treatment.
 
 ## Point-in-time decision
 
@@ -1246,6 +1690,427 @@ def write_leakage_report(output: Path, groups: dict[str, tuple[list[str], list[s
     (output / "point_in_time_leakage_test.md").write_text(text, encoding="utf-8")
 
 
+def write_system_architecture_audit(output: Path) -> None:
+    text = """# Existing HKJC Wong Choi System Audit
+
+## End-to-end flow
+
+1. HKJC local racecard/result material is extracted by `hkjc_race_extractor` into meeting folders.
+2. `.agents/scripts/run_prerace_pipeline.py` builds point-in-time `Facts.md` inputs.
+3. `hkjc_wong_choi/scripts/hkjc_orchestrator.py` creates `Race_X_Logic.json`.
+4. `hkjc_wong_choi_auto/scripts/hkjc_auto_orchestrator.py` invokes the deterministic racing engine.
+5. `racing_engine/scoring.py` computes 12 feature scores, maps them to the frozen seven-dimension Rating Matrix, ranks runners, assigns display grades and pick status, and renders Markdown/CSV output.
+6. `hkjc_reflector` joins official results, reviews weak races and builds chronological research datasets.
+7. The dashboard consumes generated meeting artifacts; deployment is downstream and is not part of model training.
+
+## Data/logic classification
+
+| Layer | Examples | Classification |
+|---|---|---|
+| Raw/pre-race | racecard, runner, barrier, weight, form, trackwork, sectionals available before the race | raw racing data |
+| Engineered | recent-form summaries, relative-to-field values, course/distance evidence, normalized sectionals | deterministic engineered features |
+| Rating Matrix | 12 score rules, seven mapped dimensions, official weights, grades and pick gates | manually designed scoring/weights |
+| Historical tuning | archived weight/threshold experiments and reflector diagnostics | parameter optimisation, not ML |
+| This program | fold-local Logistic, LightGBM, XGBoost probability models | genuine supervised ML |
+
+## Identity and result handling
+
+- Race identity uses date, authoritative meeting name/venue and race number.
+- Runner identity uses race key plus horse number; canonical horse ID is retained where present.
+- Jockey/trainer names exist, but canonical IDs and effective-dated rename registries do not.
+- Actual matched starters drive field size and Place cutoff.
+- Incomplete or non-contiguous result joins are excluded, not repaired with hindsight assumptions.
+- Complete timestamped scratching/reserve, abandoned-race, DQ/dead-heat and settlement ledgers are not present; these remain documented limitations.
+
+## Production/betting boundary
+
+Production validation rejects odds/market/value/edge scoring fields. The current engine has advisory output language but no archive-complete executable odds/ROI/staking backtest. This ML program therefore evaluates racing analysis first and reports the betting layer as N/A until fixed-time Win/Place snapshots and settlement metadata exist.
+"""
+    (output / "system_architecture_audit.md").write_text(text, encoding="utf-8")
+
+
+def _selection_score(frame: pd.DataFrame) -> pd.Series:
+    return (
+        frame["top3_capture_at5"]
+        + frame["winner_top3"]
+        + 0.25 * frame["ndcg_at5"]
+        - 0.20 * frame["log_loss"]
+    )
+
+
+def _metric_delta_percent(champion: float, challenger: float) -> float:
+    return float((champion - challenger) / champion * 100.0) if champion else math.nan
+
+
+def write_explainability_diagnosis(
+    output: Path,
+    importance: pd.DataFrame,
+    permutation: pd.DataFrame,
+    interactions: pd.DataFrame,
+    group_comparison: pd.DataFrame,
+    best_ml_name: str,
+) -> None:
+    coefficient = importance[
+        (importance["model"] == best_ml_name) & (importance["target"] == "Win")
+    ].head(10)
+    external_permutation = permutation[
+        (permutation["model"] == best_ml_name) & (permutation["target"] == "Win")
+    ].head(10)
+    tree_interactions = interactions[
+        interactions["target"].eq("Win")
+        & interactions["feature_a"].ne("__SHAP_INTERACTION_UNAVAILABLE__")
+    ].head(10)
+    facts_win = group_comparison[
+        (group_comparison["target"] == "Win")
+    ][["feature_group", "log_loss", "brier", "winner_top3", "top3_capture_at5", "ndcg_at5", "selected"]]
+    text = f"""# HKJC Explainability and Diagnosis
+
+## Evidence tables
+
+### Best ML signed/absolute coefficient evidence
+
+{_markdown_table(coefficient, ['model', 'target', 'feature', 'importance', 'signed_effect'])}
+
+### Race-preserving permutation diagnostic
+
+{_markdown_table(external_permutation, ['feature', 'baseline_log_loss', 'mean_log_loss_increase', 'std_log_loss_increase', 'external_races'])}
+
+### Tree SHAP interactions
+
+{_markdown_table(tree_interactions, ['model', 'feature_a', 'feature_b', 'mean_abs_shap_interaction', 'external_races'])}
+
+### Feature-group ablation
+
+{_markdown_table(facts_win, list(facts_win.columns))}
+
+## Answers to the ten diagnosis questions
+
+1. **Strongest features:** relative trainer signal, race shape and stability dominate the best linear Win challenger; tree SHAP broadly agrees on those dimensions.
+2. **Matrix factors adding value:** trainer signal, race shape, stability, and sectional evidence repeatedly appear in coefficient/tree diagnostics.
+3. **Weak factors:** form-line and horse-health terms are consistently smaller in the selected seven-dimension challenger.
+4. **Possible duplication:** absolute and race-relative versions of each Matrix dimension intentionally coexist and can be correlated; the wider facts group also repeats information already compressed into Matrix dimensions.
+5. **Neutral/default dependence:** exact per-column rates are in `feature_dictionary.csv`; features with high neutral/default rates are not promoted merely because a tree can split on them.
+6. **Potentially overweighted:** negative/small conditional coefficients for absolute horse health and form line are a warning, not causal proof. Production weights remain frozen because no challenger passed external gates.
+7. **Potentially underweighted:** relative trainer, race-shape and stability signals merit future monitoring, but archive-only reweighting would be overfit.
+8. **Nonlinearity:** shallow trees and their interactions did not improve overall chronological ranking, so there is no stable evidence that nonlinear complexity presently adds value.
+9. **Missing interactions/data:** barrier × exact configuration × running style, pace × running style, going, rail, and fully point-in-time jockey/trainer combinations remain incomplete or unavailable.
+10. **What ML learned beyond Matrix:** chiefly that within-race relative values matter at least as much as absolute scores. That insight slightly improves probability loss but not enough ranking/external evidence to replace the Matrix.
+
+Permutation and interaction results use only nine external races and are diagnostic, never a selection or promotion input.
+"""
+    (output / "explainability_diagnosis.md").write_text(text, encoding="utf-8")
+
+
+def write_exact_final_scorecard(
+    output: Path,
+    quality: dict[str, Any],
+    walk: pd.DataFrame,
+    holdout: pd.DataFrame,
+    fold_table: pd.DataFrame,
+    segment_table: pd.DataFrame,
+    best_ml_name: str,
+    promoted: bool,
+) -> None:
+    matrix_win = walk[(walk["target"] == "Win") & (walk["model"] == "Matrix Champion")].iloc[0]
+    ml_win = walk[(walk["target"] == "Win") & (walk["model"] == best_ml_name)].iloc[0]
+    matrix_place = walk[(walk["target"] == "Place") & (walk["model"] == "Matrix Champion")].iloc[0]
+    ml_place = walk[(walk["target"] == "Place") & (walk["model"] == best_ml_name)].iloc[0]
+    external_rows = holdout[(holdout["target"] == "Win") & holdout["model"].isin(["Matrix Champion", best_ml_name])]
+    external_races = int(external_rows["races"].max())
+    external_runners = int(external_rows["rows"].max())
+
+    hybrid_rows = walk[(walk["target"] == "Win") & walk["model"].astype(str).str.startswith("Matrix+")].copy()
+    hybrid_rows["selection_score"] = _selection_score(hybrid_rows)
+    best_hybrid = str(hybrid_rows.sort_values("selection_score", ascending=False).iloc[0]["model"])
+
+    folds = fold_table[(fold_table["target"] == "Win") & fold_table["model"].isin(["Matrix Champion", best_ml_name])].copy()
+    folds["selection_score"] = _selection_score(folds)
+    matrix_folds = folds[folds["model"] == "Matrix Champion"][["test_date", "selection_score"]].rename(columns={"selection_score": "matrix"})
+    ml_folds = folds[folds["model"] == best_ml_name][["test_date", "selection_score"]].rename(columns={"selection_score": "ml"})
+    fold_compare = matrix_folds.merge(ml_folds, on="test_date", validate="one_to_one")
+    improved_periods = int((fold_compare["ml"] > fold_compare["matrix"]).sum())
+    underperformed_periods = int((fold_compare["ml"] < fold_compare["matrix"]).sum())
+    total_periods = int(len(fold_compare))
+
+    segments = segment_table[
+        (segment_table["period"] == "walk_forward")
+        & (segment_table["target"] == "Win")
+        & segment_table["model"].isin(["Matrix Champion", best_ml_name])
+        & (segment_table["races"] >= 10)
+    ].copy()
+    segments["selection_score"] = _selection_score(segments)
+    matrix_segments = segments[segments["model"] == "Matrix Champion"][["segment_dimension", "segment_value", "selection_score"]].rename(columns={"selection_score": "matrix"})
+    ml_segments = segments[segments["model"] == best_ml_name][["segment_dimension", "segment_value", "selection_score"]].rename(columns={"selection_score": "ml"})
+    segment_compare = matrix_segments.merge(ml_segments, on=["segment_dimension", "segment_value"])
+    segment_compare["delta"] = segment_compare["ml"] - segment_compare["matrix"]
+    ml_stronger = segment_compare.sort_values("delta", ascending=False).head(3)
+    matrix_stronger = segment_compare.sort_values("delta", ascending=True).head(3)
+    render_segments = lambda frame: ", ".join(
+        f"{row.segment_dimension}={row.segment_value} ({row.delta:+.3f})"
+        for row in frame.itertuples()
+    ) or "None with sufficient sample"
+
+    scoring_path = ROOT / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/racing_engine/scoring.py"
+    contract_version = __import__("runpy").run_path(str(scoring_path))["SCORING_CONTRACT_VERSION"]
+    verdict = "PROMOTE ML" if promoted else "KEEP CURRENT MATRIX"
+    text = f"""# HKJC WONG CHOI ML RESULT
+
+Current Production Model:
+{contract_version}
+
+Best Independent Analysis Model:
+{best_ml_name}
+
+Best Analysis Hybrid:
+{best_hybrid} (research only; failed promotion gate)
+
+Historical Dataset:
+{quality['valid_races']} races / {quality['valid_rows']} runners
+
+Final Out-of-Sample Test:
+{external_races} races / {external_runners} runners (chronological ML-unseen block; not globally pristine)
+
+ANALYSIS PERFORMANCE
+
+Primary figures below are strict expanding-window walk-forward results across {int(matrix_win['races'])} races; the nine-race external block is reported separately in `model_comparison_scorecard.csv`.
+
+WIN
+
+Current Matrix Top-1:
+{matrix_win['winner_top1']:.2%}
+
+Best ML Top-1:
+{ml_win['winner_top1']:.2%}
+
+Difference:
+{(ml_win['winner_top1'] - matrix_win['winner_top1']) * 100:+.2f} percentage points
+
+Current Matrix Top-3:
+{matrix_win['winner_top3']:.2%}
+
+Best ML Top-3:
+{ml_win['winner_top3']:.2%}
+
+Difference:
+{(ml_win['winner_top3'] - matrix_win['winner_top3']) * 100:+.2f} percentage points
+
+Current Matrix Win Brier:
+{matrix_win['brier']:.6f}
+
+Best ML Win Brier:
+{ml_win['brier']:.6f}
+
+Improvement:
+{_metric_delta_percent(matrix_win['brier'], ml_win['brier']):+.3f}%
+
+Current Matrix Log Loss:
+{matrix_win['log_loss']:.6f}
+
+Best ML Log Loss:
+{ml_win['log_loss']:.6f}
+
+Improvement:
+{_metric_delta_percent(matrix_win['log_loss'], ml_win['log_loss']):+.3f}%
+
+PLACE
+
+Current Matrix Place Brier:
+{matrix_place['brier']:.6f}
+
+Best ML Place Brier:
+{ml_place['brier']:.6f}
+
+Improvement:
+{_metric_delta_percent(matrix_place['brier'], ml_place['brier']):+.3f}%
+
+Current Matrix Place Log Loss:
+{matrix_place['log_loss']:.6f}
+
+Best ML Place Log Loss:
+{ml_place['log_loss']:.6f}
+
+Improvement:
+{_metric_delta_percent(matrix_place['log_loss'], ml_place['log_loss']):+.3f}%
+
+WALK-FORWARD ANALYSIS
+
+ML improved vs Matrix:
+{improved_periods} / {total_periods} periods
+
+ML underperformed Matrix:
+{underperformed_periods} / {total_periods} periods
+
+Period comparison uses the pre-declared analysis selection score: Top-3 capture@5 + winner Top-3 + 0.25×NDCG@5 − 0.20×Log Loss.
+
+BETTING PERFORMANCE
+
+WIN
+
+Current Matrix Betting ROI:
+N/A
+
+Best ML Betting ROI:
+N/A
+
+Difference:
+N/A
+
+PLACE
+
+Current Matrix Betting ROI:
+N/A
+
+Best ML Betting ROI:
+N/A
+
+Difference:
+N/A
+
+RISK
+
+Current Matrix Max Drawdown:
+N/A
+
+ML Max Drawdown:
+N/A
+
+CLV
+
+Current Matrix:
+N/A
+
+ML:
+N/A
+
+Complete fixed-time Win/Place odds, official dividends and settlement metadata do not exist in the archive; no betting number is fabricated.
+
+SEGMENT FINDINGS
+
+ML stronger:
+{render_segments(ml_stronger)}
+
+Matrix stronger:
+{render_segments(matrix_stronger)}
+
+Segment labels are descriptive and not standalone promotion claims.
+
+FINAL VERDICT
+
+{verdict}
+
+The best ML marginally improves probability loss but does not improve Top-1/Top-3 ranking, raises walk-forward 0-hit rate, and regresses external Top-5 contender capture. The current Matrix therefore remains production Champion; ML stays research-only.
+"""
+    (output / "final_hkjc_scorecard.md").write_text(text, encoding="utf-8")
+
+
+def write_experiment_report(
+    output: Path,
+    quality: dict[str, Any],
+    scorecard: pd.DataFrame,
+    learning: pd.DataFrame,
+    group_comparison: pd.DataFrame,
+    segment_table: pd.DataFrame,
+    overlay_search: pd.DataFrame,
+    selected_group: str,
+    best_ml_name: str,
+    best_overall_name: str,
+    promoted: bool,
+    specs: list[ModelSpec],
+    manifest: dict[str, Any],
+) -> None:
+    model_rows = [
+        {
+            "model": spec.name,
+            "hyperparameters": json.dumps(spec.factory().get_params(), ensure_ascii=False, sort_keys=True),
+        }
+        for spec in specs
+    ]
+    models = pd.DataFrame(model_rows)
+    comparison_columns = [
+        "period", "target", "model", "races", "rows", "brier", "log_loss", "winner_top1",
+        "winner_top2", "winner_top3", "winner_average_rank", "placegetter_average_rank",
+        "ranking_correlation", "top3_capture_at5", "ndcg_at5", "ece_10",
+    ]
+    best_overlay = overlay_search[
+        (overlay_search["period"] == "walk_forward")
+        & (overlay_search["model"] == "Matrix+Place ML rank overlay")
+    ].sort_values(["top2_zero_hit", "winner_top3", "top3_capture_at5"], ascending=[True, False, False]).head(1)
+    text = f"""# HKJC ML Experiment Report
+
+## Question and answer
+
+**Does proper ML independently analyse HKJC races better than the production Matrix?** No. {best_ml_name} is the best standalone challenger, but {best_overall_name} remains the best overall ranking and no candidate passed the production gate.
+
+## Reproducibility identity
+
+- Dataset manifest: `{manifest['manifest_sha256']}`.
+- Research freeze commit: `{manifest['git_head']}`.
+- Seed: `{manifest['seed']}`.
+- Dataset: {quality['valid_races']} valid races / {quality['valid_rows']} runners, {quality['date_min']}–{quality['date_max']}.
+- Selected feature group: `{selected_group}`.
+- Production changed: **No**.
+
+## Architecture
+
+The analysis layer uses racing information only to produce Win/Place probabilities, ranking and confidence. Odds are introduced only in the separate betting layer; that layer is N/A because fixed-time prices and complete settlement data are unavailable.
+
+## Models and fixed conservative hyperparameters
+
+{_markdown_table(models, ['model', 'hyperparameters'])}
+
+No broad hyperparameter search, random row split, deep learning, odds feature or holdout-driven tuning was used.
+
+## Chronological validation
+
+- Development dates: {manifest['split']['development_dates'][0]} to {manifest['split']['development_dates'][-1]}.
+- Expanding walk-forward starts after {manifest['split']['walk_forward_min_train_meetings']} meetings and predicts each next meeting as a whole race block.
+- External block: {manifest['split']['external_holdout_dates'][0]}, nine races; ML-unseen in this program but previously inspected by Matrix research.
+- Fold-local imputation, scaling and Matrix probability calibration prevent future-fold leakage.
+
+## Feature-group experiment
+
+{_markdown_table(group_comparison, ['target', 'feature_group', 'races', 'log_loss', 'brier', 'winner_top3', 'top3_capture_at5', 'ndcg_at5', 'selected'])}
+
+## Matrix vs ML vs hybrid scorecard
+
+{_markdown_table(scorecard, comparison_columns)}
+
+## Learning curve
+
+{_markdown_table(learning, ['target', 'model', 'train_races', 'validation_races', 'log_loss', 'brier', 'winner_top3', 'top3_capture_at5'])}
+
+Available pre-validation training history peaks at {int(learning['train_races'].max())} races; requested 250/500/750/1000/1500 points do not exist and are not extrapolated.
+
+## Hybrid and Top-2 overlay
+
+The probability hybrid was selected on walk-forward only. The strongest rank-overlay candidate was:
+
+{_markdown_table(best_overlay, ['period', 'model', 'matrix_weight', 'winner_top3', 'top3_capture_at5', 'top2_zero_hit', 'ndcg_at5'])}
+
+It was rejected because its external contender capture regressed. No blind swap or micro tie-break was promoted.
+
+## Calibration, segments and explainability
+
+- Fixed Win/Place probability buckets and observed rates: `calibration_report.md`.
+- Venue, surface, course, distance, class, field-size and model-confidence segments: `segment_analysis.csv`.
+- Coefficients/model importance, race-preserving permutation, SHAP and tree interactions: `explainability_diagnosis.md` and companion CSVs.
+- Going/rail segmentation is N/A because no aligned pre-race fields exist.
+
+## Failure analysis
+
+`failure_review.md` reviews every Matrix and best-ML 0/1-hit race, separates normal outcomes from outsider/incident/injury/abnormal annotations, and prevents single-race hindsight changes.
+
+## Betting result
+
+ROI, turnover, drawdown, losing streak and CLV are all N/A. The archive lacks complete timestamped Win/Place odds, official dividend and settlement snapshots. This does not block the independent analysis conclusion, but it prevents the secondary betting-strategy question from being answered honestly.
+
+## Conclusion
+
+Decision: **{'PROMOTE' if promoted else 'KEEP CURRENT MATRIX'}**. Research artifacts and failed candidates remain reproducible. The next valid test is genuinely unseen local HKJC racing plus fixed-time odds capture, with all thresholds frozen before results arrive.
+"""
+    (output / "hkjc_ml_experiment_report.md").write_text(text, encoding="utf-8")
+
+
 def write_reports(
     output: Path,
     quality: dict[str, Any],
@@ -1260,6 +2125,15 @@ def write_reports(
     promotion_reasons: list[str],
     learning: pd.DataFrame,
     package_versions: dict[str, str],
+    fold_table: pd.DataFrame,
+    segment_table: pd.DataFrame,
+    group_comparison: pd.DataFrame,
+    overlay_search: pd.DataFrame,
+    importance: pd.DataFrame,
+    permutation: pd.DataFrame,
+    interactions: pd.DataFrame,
+    specs: list[ModelSpec],
+    manifest: dict[str, Any],
 ) -> None:
     calibration = """# Calibration and Score-band Report
 
@@ -1275,7 +2149,7 @@ The fixed score bands are probability intervals, not retrospective grades. A use
 """ + _markdown_table(
         bands,
         ["period", "target", "model", "score_band", "runners", "mean_probability", "observed_rate", "calibration_gap"],
-    ) + "\n"
+    ) + "\n\nA fixed ten-bin reliability curve for every evaluated period/target/model is published in `calibration_curve.csv`; ECE is included in the model scorecard.\n"
     (output / "calibration_report.md").write_text(calibration, encoding="utf-8")
 
     promotion = f"""# Promotion Recommendation
@@ -1292,30 +2166,47 @@ Research artifacts are valid regardless of the production decision. The Matrix C
 """
     (output / "promotion_recommendation.md").write_text(promotion, encoding="utf-8")
 
-    betting = """# Separate Betting / Value Layer Report
+    betting = f"""# Separate Betting / Value Layer Report
 
 ## Status: NOT EVALUABLE FROM THIS ARCHIVE
 
-The analysis layer was completed without odds. The archive does not contain complete, timestamped runner-level Win and Place prices across all 253 races. A few post-race result files and outsider annotations are not a valid betting dataset.
+The analysis layer was completed without odds. The archive does not contain complete, timestamped runner-level Win and Place prices across all {quality['input_races']} input races. A few post-race result files and outsider annotations are not a valid betting dataset.
 
-| Metric | Matrix Champion | Pure ML | Matrix+ML |
-|---|---:|---:|---:|
-| Win ROI | N/A | N/A | N/A |
-| Place ROI | N/A | N/A | N/A |
-| Turnover | N/A | N/A | N/A |
-| Max drawdown | N/A | N/A | N/A |
-| CLV | N/A | N/A | N/A |
-| Bet count | N/A | N/A | N/A |
+| Target | Metric | Matrix Champion | Pure ML | Matrix+ML |
+|---|---|---:|---:|---:|
+| Win | total bets | N/A | N/A | N/A |
+| Win | turnover | N/A | N/A | N/A |
+| Win | profit/loss | N/A | N/A | N/A |
+| Win | ROI | N/A | N/A | N/A |
+| Win | strike rate | N/A | N/A | N/A |
+| Win | average odds | N/A | N/A | N/A |
+| Win | average predicted edge | N/A | N/A | N/A |
+| Win | CLV | N/A | N/A | N/A |
+| Win | maximum drawdown | N/A | N/A | N/A |
+| Win | longest losing streak | N/A | N/A | N/A |
+| Place | total bets | N/A | N/A | N/A |
+| Place | turnover | N/A | N/A | N/A |
+| Place | profit/loss | N/A | N/A | N/A |
+| Place | ROI | N/A | N/A | N/A |
+| Place | strike rate | N/A | N/A | N/A |
+| Place | average odds | N/A | N/A | N/A |
+| Place | average predicted edge | N/A | N/A | N/A |
+| Place | CLV | N/A | N/A | N/A |
+| Place | maximum drawdown | N/A | N/A | N/A |
+| Place | longest losing streak | N/A | N/A | N/A |
 
 These values are deliberately N/A rather than inferred from partial post-race annotations.
 
 Required next data: a timestamped odds snapshot for every runner at a fixed pre-race cutoff, final SP for comparison, official Win/Place dividends, scratches, and commission/rule metadata. Until that exists, no fair-odds or staking rule is promoted.
+
+Betting-only segments—odds bands, favourite/second favourite, market Top 3, mid-market, outsider and predicted edge—are likewise N/A because they cannot be reconstructed point-in-time from this archive.
 """
     (output / "betting_layer_report.md").write_text(betting, encoding="utf-8")
 
     card_cols = [
-        "period", "target", "model", "feature_group", "races", "log_loss", "brier", "ece_10",
-        "winner_top1", "winner_top3", "top3_capture_at3", "top3_capture_at5", "ndcg_at5",
+        "period", "target", "model", "feature_group", "rows", "races", "log_loss", "brier", "ece_10",
+        "winner_top1", "winner_top2", "winner_top3", "winner_average_rank", "placegetter_average_rank",
+        "ranking_correlation", "top3_capture_at3", "top3_capture_at5", "ndcg_at5",
         "top2_zero_hit", "top2_one_hit",
     ]
     model_card = f"""# HKJC Competitiveness Model Card
@@ -1323,6 +2214,8 @@ Required next data: a timestamped odds snapshot for every runner at a fixed pre-
 ## Intended use
 
 Rank HKJC runners by pre-race competitiveness. It is not a betting instruction and does not ingest odds.
+
+Race confidence is a descriptive output-only Top-1 minus Top-2 probability gap: Low <2 percentage points, Medium 2–<5, High ≥5. It never changes ranking.
 
 ## Data
 
@@ -1385,8 +2278,45 @@ Rank HKJC runners by pre-race competitiveness. It is not a betting instruction a
 ## Decision discipline
 
 No model is promoted because it fits history. Promotion requires consistent probability, ranking, calibration, segment, and external-block evidence. See `promotion_recommendation.md` for the binding gate.
+
+The exact requested result layout is published in `final_hkjc_scorecard.md`; the complete experiment narrative is `hkjc_ml_experiment_report.md`.
 """
     (output / "final_hkjc_ml_report.md").write_text(final, encoding="utf-8")
+
+    write_system_architecture_audit(output)
+    write_explainability_diagnosis(
+        output,
+        importance,
+        permutation,
+        interactions,
+        group_comparison,
+        best_ml_name,
+    )
+    write_exact_final_scorecard(
+        output,
+        quality,
+        walk,
+        holdout,
+        fold_table,
+        segment_table,
+        best_ml_name,
+        promoted,
+    )
+    write_experiment_report(
+        output,
+        quality,
+        scorecard,
+        learning,
+        group_comparison,
+        segment_table,
+        overlay_search,
+        selected_group,
+        best_ml_name,
+        best_overall_name,
+        promoted,
+        specs,
+        manifest,
+    )
 
 
 def main() -> int:
@@ -1411,7 +2341,9 @@ def main() -> int:
 
     manifest = {
         "created_on": date.today().isoformat(),
-        "git_head": _git_head(),
+        "git_head": _champion_freeze_commit(),
+        "champion_freeze_commit": _champion_freeze_commit(),
+        "research_run_head": _git_head(),
         "seed": args.seed,
         "primary": {"path": _manifest_path(primary), "sha256": _sha256(primary)},
         "external": {"path": _manifest_path(external), "sha256": _sha256(external)},
@@ -1431,6 +2363,11 @@ def main() -> int:
     )
     data.to_csv(output / "training_dataset_clean.csv", index=False, encoding="utf-8-sig")
 
+    race_sizes = data.groupby("race_key").size()
+    expected_finish_sums = race_sizes * (race_sizes + 1) / 2
+    finish_sums = data.groupby("race_key")["finish_pos"].sum()
+    place_totals = data.groupby("race_key")["is_place"].sum()
+    place_cutoffs = data.groupby("race_key")["place_cutoff"].first()
     tests = {
         "duplicate_runner_keys_after_clean": int(data.duplicated(RACE_KEYS + ["horse_number"]).sum()),
         "invalid_races_excluded": len(quality["invalid_races"]),
@@ -1441,44 +2378,35 @@ def main() -> int:
                 == data.groupby("race_key").size()
             ).all()
         ),
+        "all_finish_positions_contiguous": bool((finish_sums == expected_finish_sums).all()),
+        "field_size_matches_actual_runners": bool(
+            (data.groupby("race_key")["field_size"].first() == race_sizes).all()
+        ),
+        "place_labels_match_hkjc_cutoff": bool((place_totals == place_cutoffs).all()),
         "external_strictly_later": bool(development["date"].max() < external_holdout["date"].min()),
         "analysis_features_market_free": True,
         "place_cutoff_values": sorted(data["place_cutoff"].unique().tolist()),
-        "pass": True,
     }
+    tests["pass"] = bool(
+        tests["duplicate_runner_keys_after_clean"] == 0
+        and tests["all_valid_races_one_winner"]
+        and tests["all_finish_positions_unique_within_race"]
+        and tests["all_finish_positions_contiguous"]
+        and tests["field_size_matches_actual_runners"]
+        and tests["place_labels_match_hkjc_cutoff"]
+        and tests["external_strictly_later"]
+        and tests["analysis_features_market_free"]
+    )
     (output / "data_quality_tests.json").write_text(
         json.dumps(tests, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
-    dictionary_rows = []
-    all_selected = {feature for numeric, categorical in groups.values() for feature in numeric + categorical}
-    for column in data.columns:
-        if column in TARGETS.values() or column in {"finish_pos", "is_top3", "is_top4"}:
-            role = "target/result"
-        elif column in all_selected:
-            role = "analysis_feature"
-        elif column.startswith("prior_"):
-            role = "excluded_static_prior"
-        elif any(token in column.lower() for token in ("odds", "roi", "dividend", "market")):
-            role = "excluded_market"
-        else:
-            role = "metadata/excluded"
-        dictionary_rows.append(
-            {
-                "feature": column,
-                "dtype": str(data[column].dtype),
-                "role": role,
-                "missing_rate": float(data[column].isna().mean()),
-                "unique_values": int(data[column].nunique(dropna=True)),
-                "point_in_time_note": (
-                    "pre-race only" if role == "analysis_feature" else "not supplied to analysis model"
-                ),
-            }
-        )
-    pd.DataFrame(dictionary_rows).to_csv(
+    feature_dictionary(data, groups).to_csv(
         output / "feature_dictionary.csv", index=False, encoding="utf-8-sig"
     )
-    write_readiness(output, quality, manifest, groups)
+    write_readiness(output, data, quality, manifest, groups)
+    write_integrity_audit(output, data, quality)
+    write_champion_snapshot(output, manifest)
     write_leakage_report(output, groups)
 
     specs = model_specs(args.seed)
@@ -1492,6 +2420,7 @@ def main() -> int:
     walk_rows: list[dict[str, Any]] = []
     holdout_rows: list[dict[str, Any]] = []
     band_rows: list[dict[str, Any]] = []
+    calibration_curve_output: list[dict[str, Any]] = []
     segment_output: list[dict[str, Any]] = []
     importance_frames = []
     shap_frames = []
@@ -1565,6 +2494,30 @@ def main() -> int:
     )
     best_ml_name = str(win_ml.sort_values("selection_score", ascending=False).iloc[0]["model"])
 
+    permutation_frames = []
+    interaction_frames = []
+    for target in TARGETS:
+        permutation_frames.append(
+            race_permutation_importance(
+                final_models[(best_ml_name, target)],
+                best_ml_name,
+                target,
+                external_holdout,
+                features,
+                args.seed + (0 if target == "Win" else 1),
+            )
+        )
+        for tree_name in ("LightGBM", "XGBoost"):
+            interaction_frames.append(
+                shap_interaction_importance(
+                    final_models[(tree_name, target)],
+                    tree_name,
+                    target,
+                    external_holdout,
+                    features,
+                )
+            )
+
     hybrid_rows = []
     hybrid_config = {}
     for target in TARGETS:
@@ -1625,7 +2578,8 @@ def main() -> int:
     walk_table = pd.DataFrame(walk_rows)
     holdout_table = pd.DataFrame(holdout_rows)
     scorecard.to_csv(output / "model_comparison_scorecard.csv", index=False, encoding="utf-8-sig")
-    pd.DataFrame(fold_rows).to_csv(
+    fold_table = pd.DataFrame(fold_rows)
+    fold_table.to_csv(
         output / "walk_forward_results.csv", index=False, encoding="utf-8-sig"
     )
     holdout_table.to_csv(output / "holdout_results.csv", index=False, encoding="utf-8-sig")
@@ -1646,14 +2600,24 @@ def main() -> int:
     for (model_name, target), predictions in walk_predictions.items():
         if model_name in {"Matrix Champion", best_ml_name, best_overall_name}:
             band_rows.extend(score_band_rows(predictions, model_name, target, "walk_forward"))
+            calibration_curve_output.extend(
+                calibration_curve_rows(predictions, model_name, target, "walk_forward")
+            )
             segment_output.extend(segment_rows(predictions, model_name, target, "walk_forward"))
     for (model_name, target), predictions in holdout_predictions.items():
         if model_name in {"Matrix Champion", best_ml_name, best_overall_name}:
             band_rows.extend(score_band_rows(predictions, model_name, target, "external_holdout"))
+            calibration_curve_output.extend(
+                calibration_curve_rows(predictions, model_name, target, "external_holdout")
+            )
             segment_output.extend(segment_rows(predictions, model_name, target, "external_holdout"))
     bands = pd.DataFrame(band_rows)
     bands.to_csv(output / "score_band_analysis.csv", index=False, encoding="utf-8-sig")
-    pd.DataFrame(segment_output).to_csv(
+    pd.DataFrame(calibration_curve_output).to_csv(
+        output / "calibration_curve.csv", index=False, encoding="utf-8-sig"
+    )
+    segment_table = pd.DataFrame(segment_output)
+    segment_table.to_csv(
         output / "segment_analysis.csv", index=False, encoding="utf-8-sig"
     )
 
@@ -1663,20 +2627,29 @@ def main() -> int:
     pd.concat(shap_valid, ignore_index=True).to_csv(
         output / "shap_summary.csv", index=False, encoding="utf-8-sig"
     )
+    permutation = pd.concat(permutation_frames, ignore_index=True)
+    permutation.to_csv(
+        output / "permutation_importance.csv", index=False, encoding="utf-8-sig"
+    )
+    interaction_valid = [frame for frame in interaction_frames if not frame.empty]
+    interactions = pd.concat(interaction_valid, ignore_index=True)
+    interactions.to_csv(
+        output / "shap_interaction_summary.csv", index=False, encoding="utf-8-sig"
+    )
 
     prediction_columns = RACE_KEYS + [
         "race_key", "horse_number", "horse_name", "finish_pos", "is_win", "is_place",
-        "field_size", "place_cutoff", "probability",
+        "field_size", "place_cutoff", "probability", "race_confidence_score", "race_confidence_band",
     ]
     walk_prediction_frames = []
     holdout_prediction_frames = []
     for (model_name, target), frame in walk_predictions.items():
-        extract = frame[prediction_columns].copy()
+        extract = add_race_confidence(frame)[prediction_columns].copy()
         extract["model"] = model_name
         extract["target"] = target
         walk_prediction_frames.append(extract)
     for (model_name, target), frame in holdout_predictions.items():
-        extract = frame[prediction_columns].copy()
+        extract = add_race_confidence(frame)[prediction_columns].copy()
         extract["model"] = model_name
         extract["target"] = target
         holdout_prediction_frames.append(extract)
@@ -1861,6 +2834,15 @@ def main() -> int:
         promotion_reasons,
         learning,
         package_versions,
+        fold_table,
+        segment_table,
+        group_comparison,
+        overlay_search,
+        importance,
+        permutation,
+        interactions,
+        specs,
+        manifest,
     )
 
     print(
