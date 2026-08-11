@@ -46,5 +46,5 @@ Execute the HKJC Wong Choi ML program described in `hkjc-ml-program.md`.
 
 ### Verification and next action
 
-- AU Wong Choi test suite: 396 passed before the research commit; rerun after any future feature change.
+- AU Wong Choi test suite: 398 passed before the research commit; rerun after any future feature change.
 - Keep current Matrix. Prioritise new versioned pre-race evidence (trainer/jockey condition splits, timed trials/jump-outs, captured trackwork/gear, carefully gated pedigree priors) instead of additional weight or slot micro-adjustments.
