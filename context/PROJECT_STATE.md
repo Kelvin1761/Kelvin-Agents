@@ -11,7 +11,7 @@
 ## AU Wong Choi ML research
 
 - Status: full point-in-time ML program completed on 2026-08-11; research preserved, no ML promotion.
-- Current AU production Champion: deterministic Rating Matrix at baseline commit `4ae6678`.
+- Current AU production Champion: deterministic Rating Matrix at baseline commit `b186575`.
 - The production/data baseline includes the verified Facts refresh alignment fix and a 10%-reliability historical Sportsbet Performance Quality recovery. ML training did not alter the scorer.
 - Dataset: 805 races / 8,249 runners, 2025-09-06 to 2026-08-07; readiness `READY WITH LIMITATIONS`.
 - Best independent challenger: XGBoost. It did not beat the Matrix on the final chronological test or clear the promotion gates.

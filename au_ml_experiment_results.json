@@ -13,7 +13,7 @@
   },
   "champion": {
     "model": "Current AU Wong Choi Rating Matrix",
-    "commit_sha": "4ae66786d881a694d9786b04acf2d34ea472112a",
+    "commit_sha": "b1865752631720348509307362b7d91ec5c126d9",
     "runtime_dataset_sha256": "971305b1e4e8805435c91a3181ab67bdc000bc53ed26ddc17d4b0c9f04773aa5",
     "matrix_weights": {
       "stability": 0.3292,

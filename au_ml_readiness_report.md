@@ -14,7 +14,7 @@
 ## Champion Freeze
 
 - Model: Current AU Wong Choi Rating Matrix
-- Commit SHA: `4ae66786d881a694d9786b04acf2d34ea472112a`
+- Commit SHA: `b1865752631720348509307362b7d91ec5c126d9`
 - Runtime dataset SHA256: `971305b1e4e8805435c91a3181ab67bdc000bc53ed26ddc17d4b0c9f04773aa5`
 - Matrix weights: `{"class_weight": 0.12042, "jockey_trainer": 0.22957, "pace_perf": 0.10559, "race_shape": 0.13485, "stability": 0.3292, "track": 0.08037}`
 - Frozen scorer source SHA256:

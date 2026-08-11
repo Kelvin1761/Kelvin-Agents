@@ -16,8 +16,8 @@
 
 Shared setup for `AU-ML-001` to `AU-ML-006`:
 
-- Research commit: `42dff18`
-- Champion baseline: `4ae6678`
+- Research commit: `b2fbee8`
+- Champion baseline: `b186575`
 - Dataset: 805 races / 8,249 runners, 2025-09-06 to 2026-08-07
 - Development period: 2025-09-06 to 2026-07-01 (594 races)
 - Expanding walk-forward: 5 whole-date periods
