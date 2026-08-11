@@ -155,6 +155,19 @@ class BrowserFetcher:
                       "browser has been closed", "connection closed",
                       "websocket", "pipe closed")
     _BROWSER_RETRIES = 2
+    # 本機／傳輸層嘅網絡失敗。⚠️ 呢啲**唔係個站拒絕** —— 個站根本冇回應過，
+    # 係我哋出唔到門。2026-08-11 晚更實測：WiFi 中途變咗，Chrome 拋
+    # `net::ERR_NETWORK_CHANGED`，舊 code 當成「個站明確拒絕」trip circuit
+    # breaker，於是六個 08-12 場次得一個抽到，其餘五個全部放棄。同 08-08
+    # `TargetClosedError` 係一模一樣嘅誤判：本機故障扮成遠端封鎖，而兩者嘅
+    # 正確應對相反 —— 真封鎖要收手，網絡斷要等一等再試。
+    _NETWORK_ERRORS = ("err_network_changed", "err_internet_disconnected",
+                       "err_name_not_resolved", "err_connection_reset",
+                       "err_connection_closed", "err_connection_timed_out",
+                       "err_connection_refused", "err_address_unreachable",
+                       "err_proxy_connection_failed", "err_network_io_suspended")
+    _NETWORK_RETRIES = 3
+    _NETWORK_BACKOFF = 20  # 秒；網絡返嚟通常要幾秒到幾十秒
     # 抽夠幾多版就主動重開一次。⚠️ 呢個係預防，唔係反應。2026-08-08 實測：部機
     # 得 8 GB 實體記憶體、swap 7,168 MB 入面用咗 5,721 MB，而 Chrome 一個 crash
     # 報告都冇 —— 即係唔係佢自己炸，係喺記憶體壓力下個 target 俾系統收走。
@@ -168,6 +181,12 @@ class BrowserFetcher:
     def _is_browser_death(cls, exc) -> bool:
         blob = f"{type(exc).__name__} {exc}".lower()
         return any(sig in blob for sig in cls._BROWSER_DEATH)
+
+    @classmethod
+    def _is_network_blip(cls, exc) -> bool:
+        """本機出唔到門，唔係個站唔畀入。"""
+        blob = f"{type(exc).__name__} {exc}".lower()
+        return any(sig in blob for sig in cls._NETWORK_ERRORS)
 
     def _recycle(self) -> None:
         """冚咗個 page/context/playwright，令下次 `_ensure_page` 重開。"""
@@ -231,7 +250,7 @@ class BrowserFetcher:
             self.log(f"♻️ 抽咗 {self._since_launch} 版 —— 主動重開瀏覽器封頂記憶體")
             self._recycle()
 
-        attempt = 0
+        attempt = net_attempt = 0
         while True:
             try:
                 page = self._ensure_page()
@@ -250,6 +269,13 @@ class BrowserFetcher:
             except Exception as exc:  # noqa: BLE001
                 self.requests_made += 1
                 self._last_request = time.time()
+                if self._is_network_blip(exc) and net_attempt < self._NETWORK_RETRIES:
+                    net_attempt += 1
+                    wait = self._NETWORK_BACKOFF * net_attempt
+                    self.log(f"📡 網絡斷咗（{str(exc)[:60]}）—— 等 {wait} 秒再試 "
+                             f"{net_attempt}/{self._NETWORK_RETRIES}：{url}")
+                    time.sleep(wait)
+                    continue
                 if self._is_browser_death(exc) and attempt < self._BROWSER_RETRIES:
                     attempt += 1
                     self.log(f"♻️ 瀏覽器死咗（{type(exc).__name__}）—— 重開再試 "
@@ -258,7 +284,11 @@ class BrowserFetcher:
                     time.sleep(5)
                     continue
                 # 重開之後仲死，或者根本唔係瀏覽器死亡（例如 timeout）。
-                kind = "瀏覽器重開 %d 次之後仲係死" % attempt if attempt else "page.goto 失敗"
+                if self._is_network_blip(exc):
+                    kind = f"網絡試咗 {net_attempt} 次都唔通（本機問題，唔係個站）"
+                else:
+                    kind = ("瀏覽器重開 %d 次之後仲係死" % attempt if attempt
+                            else "page.goto 失敗")
                 self.stop_reason = f"{kind}（{type(exc).__name__}: {exc}）"
                 self.log(f"⛔ {self.stop_reason}")
                 return None

@@ -111,3 +111,38 @@ class ProactiveRecycleTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NetworkBlipTests(unittest.TestCase):
+    """本機網絡斷 ≠ 個站拒絕。
+
+    2026-08-11 晚更：WiFi 中途變咗，Chrome 拋 `net::ERR_NETWORK_CHANGED`。舊 code
+    當成「個站明確拒絕」trip circuit breaker，六個 08-12 場次得一個抽到，其餘五個
+    全部放棄。同 08-08 `TargetClosedError` 一模一樣嘅誤判 —— 本機故障扮成遠端封鎖，
+    而兩者應對相反：真封鎖要收手，網絡斷要等一等再試。
+    """
+
+    def test_chrome_network_errors_are_recognised(self):
+        for msg in ("Page.goto: net::ERR_NETWORK_CHANGED at https://x",
+                    "net::ERR_INTERNET_DISCONNECTED",
+                    "net::ERR_CONNECTION_RESET",
+                    "net::ERR_NAME_NOT_RESOLVED",
+                    "net::ERR_CONNECTION_TIMED_OUT"):
+            self.assertTrue(BrowserFetcher._is_network_blip(_Dead(msg)), msg)
+
+    def test_a_real_refusal_is_not_a_network_blip(self):
+        # 403 同攔截頁要照樣收手 —— 唔可以無限重試一個真封鎖。
+        for msg in ("HTTP 403 Forbidden", "只有 812 bytes（當攔截頁）"):
+            self.assertFalse(BrowserFetcher._is_network_blip(_Dead(msg)), msg)
+
+    def test_browser_death_and_network_blip_are_separate_categories(self):
+        # 兩者應對唔同：一個要重開瀏覽器，一個要等網絡返嚟。
+        dead = _Dead("TargetClosedError: page has been closed")
+        net = _Dead("net::ERR_NETWORK_CHANGED")
+        self.assertTrue(BrowserFetcher._is_browser_death(dead))
+        self.assertFalse(BrowserFetcher._is_network_blip(dead))
+        self.assertTrue(BrowserFetcher._is_network_blip(net))
+
+    def test_backoff_grows_and_is_bounded(self):
+        self.assertGreaterEqual(BrowserFetcher._NETWORK_RETRIES, 2)
+        self.assertGreaterEqual(BrowserFetcher._NETWORK_BACKOFF, 10)

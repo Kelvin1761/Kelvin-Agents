@@ -57,6 +57,11 @@ KNOWN = [
      "sportsbetform 真係拒絕（非 200 或者攔截頁）",
      "circuit breaker 會停手，下一次排程再試",
      None),
+    (r"ERR_NETWORK_CHANGED|ERR_INTERNET_DISCONNECTED|ERR_CONNECTION_"
+     r"|ERR_NAME_NOT_RESOLVED|ERR_ADDRESS_UNREACHABLE",
+     "本機網絡斷咗（WiFi 變／重連），唔係個站拒絕",
+     "網絡錯誤而家會退避重試三次（20/40/60 秒），唔再 trip circuit breaker",
+     None),
     (r"cache 冇任何賽果",
      "賽果未出，或者場次腰斷",
      "腰斷偵測睇馬匹往績有冇當日出賽；兩日上限兜底",
@@ -96,17 +101,29 @@ def diagnose(run: dict, history: list[dict]) -> str:
     first = errs[0] if errs else {}
     msg = str(first.get("message") or "")
 
+    # ⚠️ 唔可以只睇 errors。`partial` 嘅 run errors 係空嘅，真線索喺 warnings ——
+    # 2026-08-11 嗰次 `ERR_NETWORK_CHANGED` 只出現喺 warning，於是診斷報「對唔上
+    # 任何已知模式」，而其實係一個認得出嘅網絡問題。
+    haystack = msg + "\n" + "\n".join(
+        str(w.get("message") or "") for w in (run.get("warnings") or []))
     matched = [(cause, fix, rem) for pat, cause, fix, rem in KNOWN
-               if re.search(pat, msg)]
+               if re.search(pat, haystack)]
     same = [r for r in history
             if r is not run and any(msg[:40] in str(e.get("message") or "")
                                     for e in (r.get("errors") or []))]
 
+    # ⚠️ `partial` 而且 errors 係空嘅時候唔可以講「死喺 X」。2026-08-11 晚更就係
+    # 咁：冇 error、正常做完晒每一步、只係有場次未抽到，而診斷報「死喺 outcome」
+    # —— outcome 只係最後一步嘅名。一句錯嘅「死喺」會令人去查一個冇壞嘅地方。
+    where = (f"- 死喺：`{first.get('step')}`" if errs else
+             ("- 冇 error，只係有工序未做完（見下面「未完成」）"
+              if run.get("status") == "partial" else
+              f"- 最後一步：`{last_step.get('step') or '?'}`"))
     out = [f"# AU 診斷 · {run.get('mode')} · {run.get('started_at', '')[:16]}",
            "",
            f"- 結果：**{run.get('status')}**，用時 "
            f"{round((run.get('duration_seconds') or 0)/60)} 分鐘",
-           f"- 死喺：`{first.get('step') or last_step.get('step') or '?'}`",
+           where,
            f"- 版本：`{ver.get('commit', '?')}` / `{ver.get('branch', '?')}`"
            + ("　⚠️ 引擎有未 commit 改動" if ver.get("engine_dirty") else ""),
            f"- 走到嘅步驟：{' → '.join(s['step'] for s in steps[-6:])}",
@@ -128,7 +145,7 @@ def diagnose(run: dict, history: list[dict]) -> str:
                                                 for r in same[:4]), ""]
     else:
         out += ["## 重複性", "- 最近冇出現過同一個錯", ""]
-    ctx = log_context(msg)
+    ctx = log_context(msg or (haystack.splitlines() or [""])[0])
     if ctx:
         out += ["## log 上下文（出錯前後）", "```", ctx[-1800:], "```"]
     return "\n".join(out)
