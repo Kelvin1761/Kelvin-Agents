@@ -20,3 +20,5 @@
 7. Preserve unsuccessful ML results. The current evidence says added model complexity does not compensate for missing point-in-time information, especially shallow-form wet-track evidence.
 8. Preserve every race whole in retrospective favourite/non-favourite analysis. Label races by whether the winner was a favourite; never evaluate ranking metrics on runner-filtered fragments of a race.
 9. Remove zero-variance inputs inside each chronological training fit only. Do not use final-holdout coverage to select features.
+10. Retain dead heats in archive-integrity totals but exclude the whole affected race from fixed-mass Win/Place probability modelling when there are multiple winners or more recorded placers than the applicable place slots. Never silently force a tied result into a single-winner or fixed-place target.
+11. Report result-aligned starters separately from the pre-scratch analysis field size. The latter remains a valid point-in-time model input but must not be presented as the number of runners represented by settled results.

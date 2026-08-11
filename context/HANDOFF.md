@@ -31,21 +31,25 @@ Publish the completed AU Wong Choi ML research through the clean `codex-au-ml-re
 ### Findings
 
 - Historical PQ recovery reduced cold-last errors 32→30 and missed-favourite errors 81→78 while improving terminal Top-5 AUC with positive paired-bootstrap support.
-- On the 211-race final ML holdout, Matrix Top-1/Top-3 were 22.75%/55.92%; development-selected LightGBM was 18.01%/47.87%.
-- LightGBM improved against Matrix in 0/5 development walk-forward periods. The selected 50% Matrix/LightGBM hybrid improved the composite score in 4/5 periods but still failed final probability, ranking, bootstrap and betting gates.
-- Whole-race post-hoc market analysis found Matrix Top-3 of 80.25% when a favourite won versus 40.77% when a non-favourite won. LightGBM was worse in both groups (70.37% / 33.85%).
+- The aligned archive contains 805 races / 8,249 runners. The fixed-mass modelling dataset contains 802 races / 8,222 runners after excluding two dead heats for first and one placing-boundary dead heat; all usable races now have coherent Win and Place target totals.
+- The readiness report now distinguishes 10.25 result-aligned starters per usable race from the 12.21 average pre-scratch analysis field, preventing the latter from overstating the settled runner sample.
+- On the 210-race final ML holdout, Matrix Top-1/Top-3 were 22.86%/55.71%; development-selected LightGBM was 19.52%/50.95%.
+- LightGBM improved against Matrix in 1/5 development walk-forward periods. The selected 50% Matrix/LightGBM hybrid improved the composite score in 4/5 periods but still failed final probability, ranking, bootstrap and betting gates.
+- Whole-race post-hoc market analysis found Matrix Top-3 of 80.25% when a favourite won versus 40.31% when a non-favourite won. LightGBM was worse in both groups (70.37% / 38.76%).
 - No historical Place dividends or timestamped odds snapshots exist, so Place ROI and CLV remain N/A.
 
-### Main files
+### Files changed
 
-- `au_ml_readiness_report.md`
-- `au_ml_experiment_report.md`
-- `au_ml_experiment_results.json`
-- `.agents/skills/au_racing/au_wong_choi_auto/scripts/au_ml_dataset.py`
-- `.agents/skills/au_racing/au_wong_choi_auto/scripts/au_ml_program.py`
-- `.agents/skills/au_racing/au_wong_choi_auto/resources/19_failure_cause_attribution_20260809.md`
+Unless otherwise stated, `scripts/`, `tests/` and `resources/` below are under `.agents/skills/au_racing/au_wong_choi_auto/`.
+
+- Reports and state: `au_ml_readiness_report.md`, `au_ml_experiment_report.md`, `au_ml_experiment_results.json`, `context/PROJECT_STATE.md`, `context/DECISIONS.md`, `context/EXPERIMENTS.md`, `context/HANDOFF.md`.
+- Root-cause and data recovery: `resources/19_failure_cause_attribution_20260809.md`, `scripts/au_failure_cause_attribution.py`, `scripts/au_backfill_sportsbet_performance_quality.py`.
+- Reproducible ML program: `scripts/au_ml_dataset.py`, `scripts/au_ml_program.py`, `scripts/au_ml_rebuild.py`.
+- Production-alignment fixes: `scripts/racing_engine/engine_core.py`, `scripts/racing_engine/scoring.py`.
+- Tests: `tests/test_au_ml_dataset.py`, `tests/test_au_ml_program.py`, `tests/test_au_ml_rebuild.py`, `tests/test_failure_cause_attribution.py`, `tests/test_sportsbet_pq_backfill.py`, `tests/test_facts_enrichment_refresh.py`, `tests/test_performance_quality.py`.
+- Environment/dependency declarations: `.gitignore`, `requirements-optional.txt`.
 
 ### Verification and next action
 
-- AU Wong Choi test suite: 403 passed after the final whole-race segment and fit-window variance changes.
+- AU Wong Choi test suite: 406 passed after dead-heat target-integrity and field-size-reporting coverage.
 - Keep current Matrix. Prioritise new versioned pre-race evidence (trainer/jockey condition splits, timed trials/jump-outs, captured trackwork/gear, carefully gated pedigree priors) instead of additional weight or slot micro-adjustments.
