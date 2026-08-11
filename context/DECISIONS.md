@@ -13,3 +13,6 @@
 9. The next meaningful validation source is a new HK season with genuinely unseen races and fixed-time odds snapshots; further archive-only micro-tuning is not justified.
 10. Separate the immutable Champion freeze commit from the later research-run commit in all manifests and reports.
 11. Report unsupported betting metrics and unavailable going/rail segments as N/A; never infer them from post-race annotations.
+12. Rebuild the research Champion from the seven stored Matrix dimensions and the current production weights. Preserve archived ability as an audit field; never label a stale exported score as the current contract.
+13. Keep trainer signal, race shape and stability production formulas unchanged. Ablation confirms all three are useful, but none of their bounded residual models passes both development and external gates.
+14. Retain stability residual ML as a research finding only. Its Rank-3→Top-2 corrections match the desired failure mode, but the same model worsened one development race and external NDCG/capture; do not convert segment observations into post-hoc rules.

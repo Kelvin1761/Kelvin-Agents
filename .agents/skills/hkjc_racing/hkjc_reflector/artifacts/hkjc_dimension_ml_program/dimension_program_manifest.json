@@ -1,0 +1,172 @@
+{
+  "created_on": "2026-08-11",
+  "git_head": "3a4ecce8b58f8759027d96f0efe1eeb72624a9f7",
+  "seed": 20260811,
+  "primary": {
+    "path": "scratch/hkjc_ranking_dataset_current.csv",
+    "sha256": "3d7036322c51b2c3d75dda96be63d58fe54bb0159947be26dd08693acb76acb1"
+  },
+  "external": {
+    "path": "scratch/hkjc_ranking_dataset_2026_07_15_current.csv",
+    "sha256": "3073a9afbadb8b63cc1ef4372cd5983f19e2fc49e4d2c13e2ecdd9485a14df78"
+  },
+  "coverage": {
+    "input_rows": 3141,
+    "deduplicated_rows": 3141,
+    "duplicate_runner_keys": 0,
+    "input_races": 253,
+    "valid_races": 250,
+    "invalid_races": [
+      {
+        "date": "2026-06-03",
+        "meeting_name": "2026-06-03_HappyValley",
+        "race_number": 9,
+        "starters": 10,
+        "winners": 1,
+        "top3": 3,
+        "finish_unique": 10,
+        "finish_min": 1,
+        "finish_max": 12,
+        "finish_sum": 59,
+        "finish_missing": 0,
+        "expected_top3": 3,
+        "race_label_valid": false
+      },
+      {
+        "date": "2026-06-07",
+        "meeting_name": "2026-06-07_ShaTin",
+        "race_number": 1,
+        "starters": 10,
+        "winners": 1,
+        "top3": 1,
+        "finish_unique": 10,
+        "finish_min": 1,
+        "finish_max": 12,
+        "finish_sum": 73,
+        "finish_missing": 0,
+        "expected_top3": 3,
+        "race_label_valid": false
+      },
+      {
+        "date": "2026-06-07",
+        "meeting_name": "2026-06-07_ShaTin",
+        "race_number": 8,
+        "starters": 12,
+        "winners": 1,
+        "top3": 3,
+        "finish_unique": 12,
+        "finish_min": 1,
+        "finish_max": 14,
+        "finish_sum": 90,
+        "finish_missing": 0,
+        "expected_top3": 3,
+        "race_label_valid": false
+      }
+    ],
+    "valid_rows": 3109,
+    "meetings": 25,
+    "date_min": "2026-04-12",
+    "date_max": "2026-07-15",
+    "unknown_distance_rows": 10,
+    "unknown_class_rows": 32,
+    "declared_actual_field_mismatch_races": 22,
+    "horse_id_missing_rows": 107,
+    "archived_ability_rebuilt_to_current_contract": true,
+    "archived_ability_rows_rebuilt": 3109,
+    "archived_ability_rows_incomplete": 0,
+    "archived_ability_rows_changed_over_0_01": 3044,
+    "archived_ability_max_abs_delta": 1.1507350000000116
+  },
+  "production_matrix_weights": {
+    "matrix_sectional": 0.1849,
+    "matrix_trainer_signal": 0.2309,
+    "matrix_stability": 0.1019,
+    "matrix_race_shape": 0.226,
+    "matrix_class_advantage": 0.1435,
+    "matrix_horse_health": 0.0378,
+    "matrix_form_line": 0.0749
+  },
+  "dimensions": {
+    "trainer_signal": {
+      "numeric": [
+        "matrix_trainer_signal",
+        "rel_matrix_trainer_signal",
+        "feat_jockey_score",
+        "feat_trainer_score",
+        "tw_jockey_present"
+      ],
+      "categorical": []
+    },
+    "race_shape": {
+      "numeric": [
+        "matrix_race_shape",
+        "rel_matrix_race_shape",
+        "feat_draw_score",
+        "feat_race_shape_context_score",
+        "barrier",
+        "field_size",
+        "distance_num"
+      ],
+      "categorical": [
+        "venue",
+        "course"
+      ]
+    },
+    "stability": {
+      "numeric": [
+        "matrix_stability",
+        "rel_matrix_stability",
+        "feat_form_score",
+        "feat_consistency_score",
+        "feat_trackwork_trend_score",
+        "last6_runs",
+        "last6_mean_finish",
+        "last6_best_finish",
+        "last6_worst_finish",
+        "last6_top3_count",
+        "last6_top5_count",
+        "days_since_last",
+        "tw_entries_count",
+        "tw_gallop_count",
+        "tw_flags_count"
+      ],
+      "categorical": []
+    }
+  },
+  "caps": [
+    0.05,
+    0.1,
+    0.2
+  ],
+  "l2_penalty": 1.0,
+  "minimum_train_meetings": 8,
+  "selected": {
+    "trainer_signal": {
+      "cap": 0.2,
+      "development_gate": false,
+      "external_non_regression": true,
+      "verdict": "reject / diagnostic only"
+    },
+    "race_shape": {
+      "cap": 0.05,
+      "development_gate": false,
+      "external_non_regression": true,
+      "verdict": "reject / diagnostic only"
+    },
+    "stability": {
+      "cap": 0.05,
+      "development_gate": true,
+      "external_non_regression": false,
+      "verdict": "reject / diagnostic only"
+    }
+  },
+  "package_versions": {
+    "python": "3.9.6",
+    "numpy": "2.0.2",
+    "pandas": "2.3.3",
+    "scipy": "1.13.1",
+    "scikit_learn": "1.6.1"
+  },
+  "production_modified": false,
+  "manifest_sha256": "8bd6a3b9a9a0479131ff45dea2b23577d14547c1a085c3a6af414b8b7f78b618"
+}

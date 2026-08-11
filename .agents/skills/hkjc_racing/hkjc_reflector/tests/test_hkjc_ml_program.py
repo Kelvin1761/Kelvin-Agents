@@ -14,6 +14,7 @@ SCRIPTS = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_reflector" / "scri
 sys.path.insert(0, str(SCRIPTS))
 
 from hkjc_ml_program import (  # noqa: E402
+    PRODUCTION_MATRIX_WEIGHTS,
     add_race_confidence,
     _coherent_win_probabilities,
     assert_leakage_safe,
@@ -69,6 +70,29 @@ class HkjcMlProgramTests(unittest.TestCase):
         self.assertEqual(first["track"].unique().tolist(), ["AWT"])
         self.assertEqual(first["race_class_label"].unique().tolist(), ["Class 4"])
         self.assertEqual(quality["declared_actual_field_mismatch_races"], 2)
+
+    def test_clean_archive_rebuilds_current_contract_ability(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            primary = root / "primary.csv"
+            external = root / "external.csv"
+            first = self._race("2026-07-12", "2026-07-12_ShaTin", 1, 6)
+            second = self._race("2026-07-15", "2026-07-15_HappyValley", 1, 7)
+            for frame in (first, second):
+                for index, column in enumerate(PRODUCTION_MATRIX_WEIGHTS, start=1):
+                    frame[column] = 50.0 + index
+                frame["current_live_recomputed_ability"] = 1.0
+            first.to_csv(primary, index=False)
+            second.to_csv(external, index=False)
+            data, quality = clean_archive(primary, external)
+
+        expected = sum(
+            (50.0 + index) * weight
+            for index, weight in enumerate(PRODUCTION_MATRIX_WEIGHTS.values(), start=1)
+        )
+        np.testing.assert_allclose(data["current_live_recomputed_ability"], expected)
+        np.testing.assert_allclose(data["archived_live_recomputed_ability"], 1.0)
+        self.assertTrue(quality["archived_ability_rebuilt_to_current_contract"])
 
     def test_leakage_blacklist_rejects_static_priors_and_odds(self) -> None:
         with self.assertRaises(ValueError):

@@ -71,4 +71,4 @@ Course/configuration detail is published in `archive_coverage_summary.csv`. Goin
 - **facts_compact**: 92 numeric, 4 categorical
 - **matrix_plus_facts**: 106 numeric, 4 categorical
 
-Dataset manifest SHA-256: `ef355a56ce9bcaa29fa1f775e918992974fa8da7e944db8149c22e1818323387`.
+Dataset manifest SHA-256: `276a4ac2de6c6ace808f4b50aa06d80d7a843ed7175c6714953eda69eaf2ba9c`.

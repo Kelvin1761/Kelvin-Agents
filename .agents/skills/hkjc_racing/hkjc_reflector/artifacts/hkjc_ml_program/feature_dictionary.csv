@@ -33,7 +33,7 @@ hk_starts,float64,analysis_feature,0.7983274364747507,0.2016725635252493,,not de
 is_debut,int64,analysis_feature,1.0,0.0,,not defined,2,0,non-finite numeric or impossible domain value,2026-04-12,2026-07-15,94,pre-race only
 is_import,int64,analysis_feature,1.0,0.0,,not defined,1,0,non-finite numeric or impossible domain value,2026-04-12,2026-07-15,94,pre-race only
 is_foreign_runner,int64,analysis_feature,1.0,0.0,,not defined,1,0,non-finite numeric or impossible domain value,2026-04-12,2026-07-15,94,pre-race only
-current_live_recomputed_ability,float64,metadata/excluded,1.0,0.0,,not defined,1413,0,non-finite numeric or impossible domain value,2026-04-12,2026-07-15,94,not supplied to analysis model
+current_live_recomputed_ability,float64,metadata/excluded,1.0,0.0,,not defined,3086,0,non-finite numeric or impossible domain value,2026-04-12,2026-07-15,94,not supplied to analysis model
 card_age,float64,analysis_feature,0.9655837889996783,0.03441621100032165,,not defined,8,0,non-finite numeric or impossible domain value,2026-04-12,2026-07-12,91,pre-race only
 card_rating,float64,analysis_feature,0.9511096815696365,0.04889031843036346,,not defined,111,0,non-finite numeric or impossible domain value,2026-04-12,2026-07-12,91,pre-race only
 card_rating_change,float64,analysis_feature,0.9060791251206176,0.09392087487938244,,not defined,15,0,non-finite numeric or impossible domain value,2026-04-12,2026-07-12,91,pre-race only
@@ -212,6 +212,7 @@ place_cutoff,int64,metadata/excluded,1.0,0.0,,not defined,2,0,non-finite numeric
 is_place,int64,target/result,1.0,0.0,,not defined,2,0,non-finite numeric or impossible domain value,2026-04-12,2026-07-15,94,not supplied to analysis model
 race_label_valid,int64,metadata/excluded,1.0,0.0,,not defined,1,0,non-finite numeric or impossible domain value,2026-04-12,2026-07-15,94,not supplied to analysis model
 race_key,object,metadata/excluded,1.0,0.0,0.0,blank/unknown/n-a/unavailable,250,0,non-finite numeric or impossible domain value,2026-04-12,2026-07-15,94,not supplied to analysis model
+archived_live_recomputed_ability,float64,metadata/excluded,1.0,0.0,,not defined,1413,0,non-finite numeric or impossible domain value,2026-04-12,2026-07-15,94,not supplied to analysis model
 rel_card_age,float64,analysis_feature,1.0,0.0,0.06722418784174976,race-relative value equals 0,871,0,non-finite numeric or impossible domain value,2026-04-12,2026-07-15,94,pre-race only
 rel_card_rating,float64,analysis_feature,1.0,0.0,0.053071727243486654,race-relative value equals 0,2198,0,non-finite numeric or impossible domain value,2026-04-12,2026-07-15,94,pre-race only
 rel_card_rating_change,float64,analysis_feature,1.0,0.0,0.11161145062721133,race-relative value equals 0,1041,0,non-finite numeric or impossible domain value,2026-04-12,2026-07-15,94,pre-race only

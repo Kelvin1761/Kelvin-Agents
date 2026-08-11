@@ -6,7 +6,7 @@
 
 ## Reproducibility identity
 
-- Dataset manifest: `ef355a56ce9bcaa29fa1f775e918992974fa8da7e944db8149c22e1818323387`.
+- Dataset manifest: `276a4ac2de6c6ace808f4b50aa06d80d7a843ed7175c6714953eda69eaf2ba9c`.
 - Research freeze commit: `39155166df7fdba5162b19aa872e6fe004b7f3c3`.
 - Seed: `20260811`.
 - Dataset: 250 valid races / 3109 runners, 2026-04-12–2026-07-15.
@@ -49,26 +49,26 @@ No broad hyperparameter search, random row split, deep learning, odds feature or
 
 | period | target | model | races | rows | brier | log_loss | winner_top1 | winner_top2 | winner_top3 | winner_average_rank | placegetter_average_rank | ranking_correlation | top3_capture_at5 | ndcg_at5 | ece_10 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| walk_forward | Win | Matrix Champion | 161.0000 | 2019.0000 | 0.0696 | 0.2560 | 0.2547 | 0.4037 | 0.5342 | 4.2919 | 4.9627 | 0.3359 | 0.6273 | 0.5279 | 0.0068 |
-| external_holdout | Win | Matrix Champion | 9.0000 | 107.0000 | 0.0769 | 0.2866 | 0.1111 | 0.1111 | 0.4444 | 4.7778 | 5.4815 | 0.2359 | 0.6296 | 0.4886 | 0.0217 |
+| walk_forward | Win | Matrix Champion | 161.0000 | 2019.0000 | 0.0695 | 0.2554 | 0.2484 | 0.4161 | 0.5342 | 4.2050 | 4.8944 | 0.3494 | 0.6294 | 0.5312 | 0.0090 |
+| external_holdout | Win | Matrix Champion | 9.0000 | 107.0000 | 0.0770 | 0.2872 | 0.1111 | 0.1111 | 0.3333 | 4.7778 | 5.4444 | 0.2500 | 0.6296 | 0.4868 | 0.0189 |
 | walk_forward | Win | Logistic Regression | 161.0000 | 2019.0000 | 0.0696 | 0.2549 | 0.2422 | 0.4037 | 0.5280 | 4.2671 | 4.9213 | 0.3508 | 0.6273 | 0.5265 | 0.0050 |
 | external_holdout | Win | Logistic Regression | 9.0000 | 107.0000 | 0.0784 | 0.2941 | 0.1111 | 0.2222 | 0.4444 | 5.1111 | 5.3333 | 0.2870 | 0.5185 | 0.4133 | 0.0210 |
 | walk_forward | Win | LightGBM | 161.0000 | 2019.0000 | 0.0700 | 0.2585 | 0.2236 | 0.3789 | 0.5155 | 4.4410 | 4.9379 | 0.3384 | 0.6190 | 0.5100 | 0.0074 |
 | external_holdout | Win | LightGBM | 9.0000 | 107.0000 | 0.0785 | 0.2913 | 0.1111 | 0.2222 | 0.2222 | 4.6667 | 5.3704 | 0.2855 | 0.5556 | 0.4171 | 0.0325 |
 | walk_forward | Win | XGBoost | 161.0000 | 2019.0000 | 0.0726 | 0.2731 | 0.1677 | 0.2547 | 0.3602 | 5.4720 | 5.6294 | 0.3383 | 0.5611 | 0.4298 | 0.0052 |
 | external_holdout | Win | XGBoost | 9.0000 | 107.0000 | 0.0767 | 0.2866 | 0.2222 | 0.3333 | 0.3333 | 5.0000 | 5.2963 | 0.3367 | 0.5556 | 0.4720 | 0.0030 |
-| walk_forward | Place | Matrix Champion | 161.0000 | 2019.0000 | 0.1687 | 0.5136 | 0.2547 | 0.4037 | 0.5342 | 4.2919 | 4.9627 | 0.3359 | 0.6273 | 0.5279 | 0.0222 |
-| external_holdout | Place | Matrix Champion | 9.0000 | 107.0000 | 0.1876 | 0.5634 | 0.1111 | 0.1111 | 0.4444 | 4.7778 | 5.4815 | 0.2359 | 0.6296 | 0.4886 | 0.0577 |
+| walk_forward | Place | Matrix Champion | 161.0000 | 2019.0000 | 0.1682 | 0.5118 | 0.2484 | 0.4161 | 0.5342 | 4.2050 | 4.8944 | 0.3494 | 0.6294 | 0.5312 | 0.0249 |
+| external_holdout | Place | Matrix Champion | 9.0000 | 107.0000 | 0.1871 | 0.5612 | 0.1111 | 0.1111 | 0.3333 | 4.7778 | 5.4444 | 0.2500 | 0.6296 | 0.4868 | 0.0649 |
 | walk_forward | Place | Logistic Regression | 161.0000 | 2019.0000 | 0.1648 | 0.5028 | 0.2174 | 0.3789 | 0.5155 | 4.2919 | 4.8820 | 0.3679 | 0.6356 | 0.5245 | 0.0088 |
 | external_holdout | Place | Logistic Regression | 9.0000 | 107.0000 | 0.1871 | 0.5608 | 0.1111 | 0.2222 | 0.3333 | 5.1111 | 5.3333 | 0.3108 | 0.5926 | 0.4435 | 0.0382 |
 | walk_forward | Place | LightGBM | 161.0000 | 2019.0000 | 0.1655 | 0.5051 | 0.2422 | 0.3975 | 0.5093 | 4.3789 | 4.9503 | 0.3462 | 0.6211 | 0.5146 | 0.0111 |
 | external_holdout | Place | LightGBM | 9.0000 | 107.0000 | 0.1841 | 0.5528 | 0.1111 | 0.2222 | 0.2222 | 5.2222 | 5.3333 | 0.3262 | 0.5556 | 0.4097 | 0.0766 |
 | walk_forward | Place | XGBoost | 161.0000 | 2019.0000 | 0.1701 | 0.5178 | 0.1863 | 0.3354 | 0.4845 | 4.9379 | 5.3768 | 0.3247 | 0.5673 | 0.4636 | 0.0208 |
 | external_holdout | Place | XGBoost | 9.0000 | 107.0000 | 0.1850 | 0.5564 | 0.1111 | 0.2222 | 0.2222 | 5.6667 | 5.6667 | 0.2742 | 0.5556 | 0.4114 | 0.0496 |
-| walk_forward | Win | Matrix+Logistic Regression α=0.25 | 161.0000 | 2019.0000 | 0.0695 | 0.2547 | 0.2484 | 0.4224 | 0.5280 | 4.2795 | 4.9441 | 0.3451 | 0.6211 | 0.5241 | 0.0018 |
-| external_holdout | Win | Matrix+Logistic Regression α=0.25 | 9.0000 | 107.0000 | 0.0779 | 0.2914 | 0.1111 | 0.2222 | 0.4444 | 5.0000 | 5.2963 | 0.2929 | 0.5556 | 0.4314 | 0.0169 |
-| walk_forward | Place | Matrix+Logistic Regression α=0.75 | 161.0000 | 2019.0000 | 0.1670 | 0.5091 | 0.2422 | 0.4161 | 0.5342 | 4.2422 | 4.9006 | 0.3473 | 0.6294 | 0.5331 | 0.0191 |
-| external_holdout | Place | Matrix+Logistic Regression α=0.75 | 9.0000 | 107.0000 | 0.1864 | 0.5601 | 0.1111 | 0.1111 | 0.3333 | 4.8889 | 5.4074 | 0.2527 | 0.5926 | 0.4513 | 0.0640 |
+| walk_forward | Win | Matrix+Logistic Regression α=0.25 | 161.0000 | 2019.0000 | 0.0695 | 0.2547 | 0.2484 | 0.4286 | 0.5280 | 4.2547 | 4.9234 | 0.3503 | 0.6253 | 0.5275 | 0.0014 |
+| external_holdout | Win | Matrix+Logistic Regression α=0.25 | 9.0000 | 107.0000 | 0.0780 | 0.2917 | 0.1111 | 0.2222 | 0.4444 | 5.0000 | 5.3333 | 0.2897 | 0.5556 | 0.4314 | 0.0170 |
+| walk_forward | Place | Matrix+Logistic Regression α=0.75 | 161.0000 | 2019.0000 | 0.1667 | 0.5079 | 0.2484 | 0.4286 | 0.5404 | 4.1677 | 4.8654 | 0.3574 | 0.6232 | 0.5328 | 0.0203 |
+| external_holdout | Place | Matrix+Logistic Regression α=0.75 | 9.0000 | 107.0000 | 0.1862 | 0.5588 | 0.1111 | 0.1111 | 0.5556 | 4.5556 | 5.2593 | 0.2765 | 0.5926 | 0.4594 | 0.0708 |
 
 ## Learning curve
 
@@ -91,7 +91,7 @@ The probability hybrid was selected on walk-forward only. The strongest rank-ove
 
 | period | model | matrix_weight | winner_top3 | top3_capture_at5 | top2_zero_hit | ndcg_at5 |
 |---|---|---|---|---|---|---|
-| walk_forward | Matrix+Place ML rank overlay | 0.5500 | 0.5466 | 0.6315 | 0.2360 | 0.5326 |
+| walk_forward | Matrix+Place ML rank overlay | 0.5500 | 0.5404 | 0.6273 | 0.2484 | 0.5318 |
 
 It was rejected because its external contender capture regressed. No blind swap or micro tie-break was promoted.
 

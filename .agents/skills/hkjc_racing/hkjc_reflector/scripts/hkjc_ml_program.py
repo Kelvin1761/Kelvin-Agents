@@ -53,6 +53,20 @@ MATRIX_FEATURES = [
     "matrix_class_advantage",
 ]
 
+# Frozen production outer weights.  The archived CSVs retain the ability score
+# that was live when each row was exported, which can lag the current contract.
+# Research comparisons must rebuild the current Champion from the seven stored
+# dimensions instead of silently treating that historical score as current.
+PRODUCTION_MATRIX_WEIGHTS = {
+    "matrix_sectional": 0.1849,
+    "matrix_trainer_signal": 0.2309,
+    "matrix_stability": 0.1019,
+    "matrix_race_shape": 0.2260,
+    "matrix_class_advantage": 0.1435,
+    "matrix_horse_health": 0.0378,
+    "matrix_form_line": 0.0749,
+}
+
 FACT_NUMERIC = [
     "card_age",
     "card_rating",
@@ -336,6 +350,23 @@ def clean_archive(primary: Path, external: Path) -> tuple[pd.DataFrame, dict[str
             valid[column] = np.nan
         valid[column] = pd.to_numeric(valid[column], errors="coerce")
 
+    valid["archived_live_recomputed_ability"] = valid[
+        "current_live_recomputed_ability"
+    ]
+    required_dimensions = list(PRODUCTION_MATRIX_WEIGHTS)
+    matrix_complete = valid[required_dimensions].notna().all(axis=1)
+    rebuilt_ability = sum(
+        valid[column] * weight
+        for column, weight in PRODUCTION_MATRIX_WEIGHTS.items()
+    )
+    valid.loc[matrix_complete, "current_live_recomputed_ability"] = rebuilt_ability[
+        matrix_complete
+    ]
+    archived_delta = (
+        valid["current_live_recomputed_ability"]
+        - valid["archived_live_recomputed_ability"]
+    ).abs()
+
     quality = {
         "input_rows": before_rows,
         "deduplicated_rows": int(len(df)),
@@ -356,6 +387,13 @@ def clean_archive(primary: Path, external: Path) -> tuple[pd.DataFrame, dict[str
             ).sum()
         ),
         "horse_id_missing_rows": int(valid["horse_id"].astype(str).isin(["", "nan", "None"]).sum()),
+        "archived_ability_rebuilt_to_current_contract": bool(matrix_complete.all()),
+        "archived_ability_rows_rebuilt": int(matrix_complete.sum()),
+        "archived_ability_rows_incomplete": int((~matrix_complete).sum()),
+        "archived_ability_rows_changed_over_0_01": int((archived_delta > 0.01).sum()),
+        "archived_ability_max_abs_delta": (
+            float(archived_delta.max()) if archived_delta.notna().any() else None
+        ),
     }
     return valid.reset_index(drop=True), quality
 
@@ -2368,6 +2406,15 @@ def main() -> int:
     finish_sums = data.groupby("race_key")["finish_pos"].sum()
     place_totals = data.groupby("race_key")["is_place"].sum()
     place_cutoffs = data.groupby("race_key")["place_cutoff"].first()
+    current_contract_ability = sum(
+        data[column] * weight
+        for column, weight in PRODUCTION_MATRIX_WEIGHTS.items()
+    )
+    current_contract_max_error = float(
+        (data["current_live_recomputed_ability"] - current_contract_ability)
+        .abs()
+        .max()
+    )
     tests = {
         "duplicate_runner_keys_after_clean": int(data.duplicated(RACE_KEYS + ["horse_number"]).sum()),
         "invalid_races_excluded": len(quality["invalid_races"]),
@@ -2385,6 +2432,10 @@ def main() -> int:
         "place_labels_match_hkjc_cutoff": bool((place_totals == place_cutoffs).all()),
         "external_strictly_later": bool(development["date"].max() < external_holdout["date"].min()),
         "analysis_features_market_free": True,
+        "all_rows_rebuilt_to_current_matrix_contract": bool(
+            quality["archived_ability_rebuilt_to_current_contract"]
+        ),
+        "current_matrix_formula_max_abs_error": current_contract_max_error,
         "place_cutoff_values": sorted(data["place_cutoff"].unique().tolist()),
     }
     tests["pass"] = bool(
@@ -2396,6 +2447,8 @@ def main() -> int:
         and tests["place_labels_match_hkjc_cutoff"]
         and tests["external_strictly_later"]
         and tests["analysis_features_market_free"]
+        and tests["all_rows_rebuilt_to_current_matrix_contract"]
+        and tests["current_matrix_formula_max_abs_error"] <= 1e-9
     )
     (output / "data_quality_tests.json").write_text(
         json.dumps(tests, ensure_ascii=False, indent=2), encoding="utf-8"

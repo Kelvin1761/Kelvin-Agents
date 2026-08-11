@@ -22,8 +22,8 @@ Common evidence identity unless stated otherwise:
 
 - Features: seven official Matrix dimensions plus one fold-local calibrated probability mapping from frozen `ability_score`.
 - Model/hyperparameters: deterministic Matrix weights; Logistic probability calibrator `C=1.0`, L2, `max_iter=1000`; fitted inside each fold.
-- Win walk-forward: Brier 0.069593; Log Loss 0.256027; Top-1 25.47%; Top-3 53.42%; Top-3 capture@5 62.73%; 0-hit 26.09%.
-- Place walk-forward: Brier 0.168687; Log Loss 0.513628.
+- Win walk-forward: Brier 0.069533; Log Loss 0.255374; Top-1 24.84%; Top-3 53.42%; Top-3 capture@5 62.94%; 0-hit 25.47%.
+- Place walk-forward: Brier 0.168201; Log Loss 0.511811.
 - Conclusion: production Champion benchmark; unchanged.
 
 ## EXP-HKJC-ML-003 — Regularised Logistic Regression
@@ -70,7 +70,7 @@ Common evidence identity unless stated otherwise:
 
 - Features/models: Matrix Win rank plus best ML Place rank; diagnostic synthetic rank only.
 - Hyperparameters: Matrix rank weight 0.50–1.00 in 0.05 steps, selected on walk-forward.
-- Result: strongest weight 0.55 reduced walk-forward 0-hit from 26.09% to 23.60%, but external Top-3 capture@5 fell from 62.96% to 59.26%.
+- Result: strongest Place overlay reduced walk-forward 0-hit from 25.47% to 24.84%, but external Top-3 capture@5 fell from 62.96% to 59.26%. A Win-rank overlay reached 22.98% 0-hit but also only 59.26% external capture@5 and reduced walk-forward Winner@3.
 - Conclusion: rejected; no blind swap or micro tie-break.
 
 ## EXP-HKJC-ML-009 — Explainability and interactions
@@ -87,3 +87,20 @@ Common evidence identity unless stated otherwise:
 - Analysis result: unaffected.
 - Betting result: ROI, turnover, strike rate, average odds/edge, drawdown, losing streak and CLV all N/A.
 - Conclusion: betting question remains unanswerable until timestamped prices, dividends, scratches and settlement rules are captured.
+
+## EXP-HKJC-ML-011 — Current-contract ability alignment
+
+- Finding: archived `current_live_recomputed_ability` matched the pre-2026-08-01 outer weights (maximum rounding error 0.005) rather than the contract identified by the evidence pack.
+- Repair: preserve the archived score as `archived_live_recomputed_ability`, then rebuild the research Champion from all seven stored dimensions using the frozen production weights.
+- Scope: 3,109/3,109 rows rebuilt; 3,044 rows changed by more than 0.01; maximum absolute change 1.150735 points.
+- Result: refreshed the complete main evidence pack and serialized Matrix calibrators. Production scoring code was not changed.
+
+## EXP-HKJC-DIM-001 — Individual-dimension ablation and bounded residual ML
+
+- Dimensions: `trainer_signal`, `race_shape`, `stability`; odds, result priors, pace/run-style scores, micro tie-breaks and blind swaps excluded.
+- Method: expanding-window fold-local ablation, standalone diagnostic Logistic model, and Matrix-offset residual Logistic model with L2=1.0 and development-only caps 0.05/0.10/0.20.
+- Ablation: deleting any of the three dimensions worsened development ranking; all three remain structurally useful.
+- `trainer_signal`: selected cap 0.20; development 0/1-hit severity worsened 0.62pp and Winner@3 fell 0.62pp. Reject.
+- `race_shape`: selected cap 0.05; Winner@3 rose 1.24pp but 0/1-hit severity was unchanged and capture@5 fell 0.21pp. Diagnostic only.
+- `stability`: selected cap 0.05; development Top2 two-hit rose 22.36%→26.09%, Winner@2 rose 41.61%→43.48%, six weak races improved and one worsened. Seven actual Top-3 runners moved Rank 3→2. However 0-hit rose 25.47%→26.09%, and the nine-race external block lost 3.70pp capture@5 / 4.13pp NDCG@5 despite one additional two-hit race.
+- Conclusion: `stability` is the only credible shadow candidate, but it fails the external non-regression gate. No production promotion.

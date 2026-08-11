@@ -8,6 +8,8 @@
   "place_labels_match_hkjc_cutoff": true,
   "external_strictly_later": true,
   "analysis_features_market_free": true,
+  "all_rows_rebuilt_to_current_matrix_contract": true,
+  "current_matrix_formula_max_abs_error": 0.0,
   "place_cutoff_values": [
     2,
     3

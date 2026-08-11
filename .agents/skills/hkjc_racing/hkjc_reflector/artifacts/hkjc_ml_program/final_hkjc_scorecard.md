@@ -22,13 +22,13 @@ Primary figures below are strict expanding-window walk-forward results across 16
 WIN
 
 Current Matrix Top-1:
-25.47%
+24.84%
 
 Best ML Top-1:
 24.22%
 
 Difference:
--1.24 percentage points
+-0.62 percentage points
 
 Current Matrix Top-3:
 53.42%
@@ -40,50 +40,50 @@ Difference:
 -0.62 percentage points
 
 Current Matrix Win Brier:
-0.069593
+0.069533
 
 Best ML Win Brier:
 0.069566
 
 Improvement:
-+0.038%
+-0.048%
 
 Current Matrix Log Loss:
-0.256027
+0.255374
 
 Best ML Log Loss:
 0.254912
 
 Improvement:
-+0.436%
++0.181%
 
 PLACE
 
 Current Matrix Place Brier:
-0.168687
+0.168201
 
 Best ML Place Brier:
 0.164769
 
 Improvement:
-+2.322%
++2.041%
 
 Current Matrix Place Log Loss:
-0.513628
+0.511811
 
 Best ML Place Log Loss:
 0.502814
 
 Improvement:
-+2.105%
++1.758%
 
 WALK-FORWARD ANALYSIS
 
 ML improved vs Matrix:
-8 / 16 periods
+7 / 16 periods
 
 ML underperformed Matrix:
-8 / 16 periods
+9 / 16 periods
 
 Period comparison uses the pre-declared analysis selection score: Top-3 capture@5 + winner Top-3 + 0.25×NDCG@5 − 0.20×Log Loss.
 
@@ -132,10 +132,10 @@ Complete fixed-time Win/Place odds, official dividends and settlement metadata d
 SEGMENT FINDINGS
 
 ML stronger:
-race_class_label=Class 5 (+0.094), course=C (+0.049), race_confidence_band=High ≥5pp (+0.046)
+race_class_label=Class 5 (+0.093), race_confidence_band=High ≥5pp (+0.076), course=B (+0.039)
 
 Matrix stronger:
-race_confidence_band=Medium 2–5pp (-0.129), race_class_label=Class 3 (-0.127), race_confidence_band=Low <2pp (-0.087)
+race_confidence_band=Medium 2–5pp (-0.163), race_class_label=Class 3 (-0.089), race_confidence_band=Low <2pp (-0.080)
 
 Segment labels are descriptive and not standalone promotion claims.
 

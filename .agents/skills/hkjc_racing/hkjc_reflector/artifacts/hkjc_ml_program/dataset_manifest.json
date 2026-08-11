@@ -2,7 +2,7 @@
   "created_on": "2026-08-11",
   "git_head": "39155166df7fdba5162b19aa872e6fe004b7f3c3",
   "champion_freeze_commit": "39155166df7fdba5162b19aa872e6fe004b7f3c3",
-  "research_run_head": "9ddcd7abd5493c067bce15e2f81a5b8d40d0169a",
+  "research_run_head": "3a4ecce8b58f8759027d96f0efe1eeb72624a9f7",
   "seed": 20260811,
   "primary": {
     "path": "scratch/hkjc_ranking_dataset_current.csv",
@@ -72,7 +72,12 @@
     "unknown_distance_rows": 10,
     "unknown_class_rows": 32,
     "declared_actual_field_mismatch_races": 22,
-    "horse_id_missing_rows": 107
+    "horse_id_missing_rows": 107,
+    "archived_ability_rebuilt_to_current_contract": true,
+    "archived_ability_rows_rebuilt": 3109,
+    "archived_ability_rows_incomplete": 0,
+    "archived_ability_rows_changed_over_0_01": 3044,
+    "archived_ability_max_abs_delta": 1.1507350000000116
   },
   "split": {
     "development_dates": [
@@ -128,5 +133,5 @@
     "race_label_valid",
     "win_odds"
   ],
-  "manifest_sha256": "ef355a56ce9bcaa29fa1f775e918992974fa8da7e944db8149c22e1818323387"
+  "manifest_sha256": "276a4ac2de6c6ace808f4b50aa06d80d7a843ed7175c6714953eda69eaf2ba9c"
 }
