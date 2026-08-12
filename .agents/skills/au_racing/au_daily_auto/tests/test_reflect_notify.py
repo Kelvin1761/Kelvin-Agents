@@ -311,3 +311,54 @@ class MarketMoveTests(unittest.TestCase):
             (d / "08-09 Race 1 Formguide.md").unlink()
             c = R.meeting_lines(d)[1]
         self.assertEqual(c["mk_firm_0"] + c["mk_flat_0"] + c["mk_drift_0"], 0)
+
+
+class OddsCaptureTimeTests(unittest.TestCase):
+    """賠率要知道係幾時捕捉嘅，唔可以一律叫「分析時」。
+
+    2026-08-12 實測：三個場次嘅 Formguide 分別喺 19:09、19:13、20:53 寫（賽後），
+    而覆盤當時標住「分析時 贏/位賠」。Formguide 每次重建都會被新頁面覆寫,所以
+    嗰度嘅價其實係「最後一次重建時」—— 而早更一偵測到退出馬就會重建,即係大部分
+    日子嗰個所謂「賽前賠率」其實係當朝十點嘅價。
+    """
+
+    def test_history_is_preferred_over_the_formguide(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = meeting(tmp)
+            # Formguide 有一組價（模擬賽後重寫），歷史有更早嘅一組
+            (d / "08-09 Race 1 Formguide.md").write_text(
+                "RACE 1\n[2] Magic Merlin (3)\n"
+                "SpeedPos:  -               WinOdds:   1.5"
+                "             PlcOdds:   1.1\n", encoding="utf-8")
+            (d / "odds_history.json").write_text(json.dumps({
+                "1": {"2026-08-09T22:04:00|analysis": {"2": ["20.0", "5.25"]}}}),
+                encoding="utf-8")
+            text, _ = R.meeting_lines(d)
+        # 用歷史嗰組，唔用 Formguide 嗰組
+        self.assertIn("W20.0/P5.25", text)
+        self.assertNotIn("W1.5", text)
+
+    def test_the_capture_time_is_shown(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            d = meeting(tmp)
+            (d / "odds_history.json").write_text(json.dumps({
+                "1": {"2026-08-09T22:04:00|analysis": {"2": ["20.0", "5.25"]}}}),
+                encoding="utf-8")
+            text, _ = R.meeting_lines(d)
+        self.assertIn("賠率捕捉於 2026-08-09 22:04", text)
+
+    def test_the_earliest_snapshot_wins(self):
+        # 一個場次可以有幾次捕捉（晚更分析、早更重建）—— 要最早嗰個。
+        with tempfile.TemporaryDirectory() as tmp:
+            d = meeting(tmp)
+            (d / "odds_history.json").write_text(json.dumps({"1": {
+                "2026-08-10T10:12:00|morning-rebuild": {"2": ["3.0", "1.4"]},
+                "2026-08-09T22:04:00|analysis": {"2": ["20.0", "5.25"]}}}),
+                encoding="utf-8")
+            text, _ = R.meeting_lines(d)
+        self.assertIn("W20.0/P5.25", text)
+
+    def test_no_history_falls_back_without_claiming_a_time(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            text, _ = R.meeting_lines(meeting(tmp))
+        self.assertNotIn("賠率捕捉於", text)

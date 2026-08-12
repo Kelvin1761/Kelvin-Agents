@@ -13,6 +13,7 @@
 """
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -60,6 +61,27 @@ def field_size(folder: Path, race_no: int) -> int | None:
         return None
     m = RE_FIELD.search(f.read_text(errors="replace"))
     return int(m.group(1)) if m else None
+
+
+ODDS_HISTORY = "odds_history.json"
+
+
+def earliest_odds(folder: Path, race_no: int) -> tuple[str, dict] | None:
+    """最早一次捕捉嘅賠率同佢嘅時間。
+
+    ⚠️ 唔可以直接讀 Formguide。Formguide 每次重建都會被新頁面覆寫，所以嗰度
+    嘅價其實係「最後一次重建時」。2026-08-12 實測：三個場次嘅 Formguide 分別喺
+    19:09、19:13、20:53 寫（賽後），而覆盤當時標住「分析時賠率」。
+    """
+    try:
+        hist = json.loads((folder / ODDS_HISTORY).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    snaps = hist.get(str(race_no)) or {}
+    if not snaps:
+        return None
+    when = sorted(snaps)[0]
+    return when, {int(k): tuple(v) for k, v in snaps[when].items()}
 
 
 def place_odds(folder: Path, race_no: int) -> dict[int, tuple[str, str]]:
@@ -113,6 +135,7 @@ def meeting_lines(folder: Path) -> tuple[str, dict] | None:
     top2_hit = top2_tot = 0
     both_placed: list[int] = []
     gold_direct: list[int] = []
+    captured: set[str] = set()
     # ⚠️ 唔用「頭三選入位隻數分佈」。短爪場只派兩位，「三隻」結構上唔可能出現，
     # 所以把派三位同派兩位嘅賽事混入同一個分佈，睇落似我哋差，其實嗰啲場根本
     # 冇第三個位。改用逐匹入位率（可比）同全走空場次（人真正在意嗰件事）。
@@ -126,7 +149,12 @@ def meeting_lines(folder: Path) -> tuple[str, dict] | None:
         all3 = [(int(n), nm.strip()) for n, nm in RE_HORSE.findall(m3.group(1))][:3]
         picks = all3[:2]
         actual = {int(n): int(p) for p, n, _ in RE_ACT_ONE.findall(ma.group(1))}
-        po = place_odds(folder, rno)
+        # 優先用永不覆寫嘅歷史（真正分析時），冇就退回 Formguide 並唔會扮
+        # 佢係分析時嘅價。
+        snap = earliest_odds(folder, rno)
+        po = snap[1] if snap else place_odds(folder, rno)
+        if snap:
+            captured.add(snap[0].split("|")[0][:16].replace("T", " "))
         fs = field_size(folder, rno)
         pays = places_paid(fs)
         top2_tot += len(picks)
@@ -212,7 +240,9 @@ def meeting_lines(folder: Path) -> tuple[str, dict] | None:
         f"入位率 兩選 {top2_hit}/{top2_tot}（{100*top2_hit/max(top2_tot,1):.0f}%）",
         f"　　　 三選 {top3_hit}/{top3_tot}（{100*top3_hit/max(top3_tot,1):.0f}%）",
         f"全走空 {len(blank)}" + (f" · {_rs(blank)}" if blank else ""),
-    ]
+    ] + ([f"賠率捕捉於 {sorted(captured)[0]}"] if len(captured) == 1
+         else [f"賠率捕捉於 {sorted(captured)[0]}–{sorted(captured)[-1]}"]
+         if captured else [])
     # ⚠️ 一行圖例代替逐行重複「首選／次選／贏／位」。唔講清楚嘅話 `4.60/1.67`
     # 睇唔出邊個係贏賠邊個係位賠。
     body = (["", "入位馬匹"] + hits) if hits else ["", "（今場頭兩選冇入位）"]
@@ -273,7 +303,7 @@ def build(day: str) -> str | None:
         "　飛起＝市場離棄，歷史上入位率最低",
         "",
         "讀法 ①首選 ②次選 · 名次",
-        "　W/P＝分析時 贏/位賠",
+        "　W/P＝我哋捕捉嗰刻嘅 贏/位賠（時間見各馬場）",
         "　SP＝開跑贏賠，市場大幅變動才出",
     ])
     return head + "\n\n" + "\n\n".join(blocks)

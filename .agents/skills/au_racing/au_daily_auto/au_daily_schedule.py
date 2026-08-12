@@ -1317,6 +1317,9 @@ def analyse_one_meeting(runlog: RunLog, day: str, plan: dict) -> tuple:
         runlog.warn(f"{folder.name}: orchestrator rc={rc} 但有 {len(scored)} 場出咗分，"
                     f"當部分成功處理")
     complete = len(scored) >= expected and not partial
+    # ⚠️ 呢個先係真正「分析時」嘅賠率 —— 一定要喺呢刻影，因為之後任何重建都會
+    # 覆寫 Formguide。
+    record_odds_snapshot(folder, "analysis")
     runlog.meeting(folder.name, "analysed" if complete else "analysed_partial",
                    races=scored, expected=expected, going=plan["going"] or None)
     runlog.data["races_added"].append({"meeting": folder.name, "races": scored,
@@ -1711,6 +1714,66 @@ def market_drift(runlog: RunLog, folder: Path, key: str) -> list[dict]:
 RE_FG_WIN = re.compile(r"WinOdds:\s*([\d.]+|-)")
 
 
+ODDS_HISTORY = "odds_history.json"
+
+
+def record_odds_snapshot(folder: Path, label: str) -> int:
+    """把每場嘅贏／位賠追加入 `odds_history.json`，**永不覆寫**。
+
+    ⚠️ 冇呢個檔嘅話，賠率只存喺 Formguide，而 Formguide 每次重建都會被新頁面
+    覆寫。2026-08-12 實測：三個場次嘅 Formguide 分別喺 19:09、19:13、20:53 寫
+    （賽後），所以覆盤標「分析時賠率」其實係「最後一次重建時」。晚更之後早更
+    一偵測到退出馬就會重寫，即係大部分日子嗰個「賽前賠率」其實係當朝 10:00
+    嘅價，唔係前一晚。
+
+    追加式：`{場號: {時間標籤: {馬號: [贏, 位]}}}`。時間標籤帶 ISO 時間同來源，
+    所以之後可以明確講「呢個係 22:04 晚更嗰刻嘅價」。
+    """
+    path = folder / ODDS_HISTORY
+    try:
+        hist = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        hist = {}
+    stamp_label = f"{datetime.now().isoformat(timespec='seconds')}|{label}"
+    added = 0
+    for fg in folder.glob("*Formguide.md"):
+        m = re.search(r"Race (\d+) Formguide", fg.name)
+        if not m:
+            continue
+        rno = m.group(1)
+        body = fg.read_text(errors="replace")
+        starts = [(s.start(), int(s.group(1)))
+                  for s in re.finditer(r"^\[(\d+)\]\s", body, re.M)]
+        prices = {}
+        for i, (pos, num) in enumerate(starts):
+            end = starts[i + 1][0] if i + 1 < len(starts) else len(body)
+            om = re.search(r"WinOdds:\s*([\d.]+|-)\s+PlcOdds:\s*([\d.]+|-)",
+                           body[pos:end])
+            if om and om.group(1) != "-":
+                prices[str(num)] = [om.group(1), om.group(2)]
+        if not prices:
+            continue
+        hist.setdefault(rno, {})[stamp_label] = prices
+        added += 1
+    if added:
+        path.write_text(json.dumps(hist, ensure_ascii=False, indent=1),
+                        encoding="utf-8")
+    return added
+
+
+def earliest_odds(folder: Path, race_no: int) -> tuple[str, dict] | None:
+    """最早一次捕捉嘅賠率 —— 即係真正「分析時」嗰個，同佢嘅時間。"""
+    try:
+        hist = json.loads((folder / ODDS_HISTORY).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    snaps = hist.get(str(race_no)) or {}
+    if not snaps:
+        return None
+    when = sorted(snaps)[0]
+    return when, snaps[when]
+
+
 def market_odds_from_formguide(folder: Path, race_no: int) -> dict[int, str]:
     """{馬號: 分析時嘅贏賠}，由 Formguide 讀（即係我哋落分嗰刻嘅市場價）。"""
     fg = next(iter(folder.glob(f"*Race {race_no} Formguide.md")), None)
@@ -1799,6 +1862,8 @@ def refresh_one_meeting(runlog: RunLog, folder: Path, api: dict) -> bool:
                 f"重新評分失敗（rc={rc}）：{out.splitlines()[-1] if out else '冇輸出'}")
         reason = "going change only"
 
+    # 重建之後再影一次 —— 追加，唔覆寫，所以分析時嗰個價永遠留住。
+    record_odds_snapshot(folder, "morning-rebuild")
     runlog.meeting(folder.name, "rescored", races=sorted(changes),
                    going=going or None, rebuilt=bool(field_changed))
     runlog.data["races_updated"].append(
