@@ -62,6 +62,14 @@ KNOWN = [
      "本機網絡斷咗（WiFi 變／重連），唔係個站拒絕",
      "網絡錯誤而家會退避重試三次（20/40/60 秒），唔再 trip circuit breaker",
      None),
+    (r"對應表冇呢個場次",
+     "meeting ID 對應表缺失（曾經俾自動更新嘅 git checkout 抹走）",
+     "runner 改成並集合併唔再還原；覆核亦會由索引頁重新推導",
+     "republish"),
+    (r"Resource deadlock avoided",
+     "Google Drive 檔案系統鎖住（CloudStorage 同步中）",
+     "鏡像連續失敗 8 次就收手，屬 best-effort，唔影響本機同發佈",
+     None),
     (r"cache 冇任何賽果",
      "賽果未出，或者場次腰斷",
      "腰斷偵測睇馬匹往績有冇當日出賽；兩日上限兜底",
@@ -104,8 +112,14 @@ def diagnose(run: dict, history: list[dict]) -> str:
     # ⚠️ 唔可以只睇 errors。`partial` 嘅 run errors 係空嘅，真線索喺 warnings ——
     # 2026-08-11 嗰次 `ERR_NETWORK_CHANGED` 只出現喺 warning，於是診斷報「對唔上
     # 任何已知模式」，而其實係一個認得出嘅網絡問題。
-    haystack = msg + "\n" + "\n".join(
-        str(w.get("message") or "") for w in (run.get("warnings") or []))
+    # ⚠️ 三次教訓：搜索範圍太窄。第一次只搜 errors（`partial` 嘅 run errors 係
+    # 空嘅）；第二次加咗 warnings，但「對應表冇呢個場次」原來寫喺**場次狀態嘅
+    # detail** 度。真線索會出現喺三個地方任何一個，所以三個都要搜。
+    haystack = "\n".join(
+        [msg]
+        + [str(w.get("message") or "") for w in (run.get("warnings") or [])]
+        + [f"{m.get('status')} {m.get('detail') or ''} {m.get('reason') or ''}"
+           for m in (run.get("meetings_processed") or [])])
     matched = [(cause, fix, rem) for pat, cause, fix, rem in KNOWN
                if re.search(pat, haystack)]
     same = [r for r in history

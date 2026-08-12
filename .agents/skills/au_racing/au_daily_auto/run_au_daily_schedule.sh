@@ -55,16 +55,28 @@ cd "$PROJECT_ROOT" || exit 1
 # session 換咗去 tennis 分支。嗰次啱啱好仍然含住所有 AU 修正 —— 但一條舊分支就
 # 會靜靜咁用舊模型評分，而冇任何嘢會投訴。
 #
-# `sb_archive_meeting_ids.json` 係已追蹤但又會俾 run 寫入，所以 ff 之前先還原佢，
-# 否則 merge 會拒絕。內容係由索引頁推導返嚟嘅，掉咗唔會錯，只係要再derive一次。
+# `sb_archive_meeting_ids.json` 係已追蹤但又會俾 run 寫入，所以 ff 會被拒。
+# ⚠️ 一度用 `git checkout --` 還原佢，並且註解寫「掉咗唔會錯」—— 嗰句係錯嘅。
+# 2026-08-12 實測：咁樣每次 run 開頭都抹走上一次 run 寫入嘅 meeting ID，於是
+# 10:00 覆核五個場次全部報「對應表冇呢個場次」，退出馬同場地變化一個都覆核唔到。
+# 覆盤路徑會由索引頁重新推導，但覆核路徑唔會，佢直接放棄。
+# 而家改成：影一份本機版 → checkout 讓 ff 過 → 做並集合併返去。
 if [ -z "${WC_AU_NO_SELF_UPDATE:-}" ]; then
   git fetch --quiet origin 2>/dev/null || print -r -- "⚠️ git fetch 失敗 —— 用現有版本繼續" >&2
-  git checkout --quiet -- .agents/skills/au_racing/data/sb_archive_meeting_ids.json 2>/dev/null || true
+  MAPPING=".agents/skills/au_racing/data/sb_archive_meeting_ids.json"
+  MAP_BAK="$(mktemp -t wc_mapping)"
+  cp "$MAPPING" "$MAP_BAK" 2>/dev/null || true
+  git checkout --quiet -- "$MAPPING" 2>/dev/null || true
   if git merge --ff-only --quiet origin/main 2>/dev/null; then
     :
   else
     print -r -- "⚠️ fast-forward 唔到 origin/main —— 用現有版本繼續（唔會強制覆蓋）" >&2
   fi
+  # 合併返本機嗰啲新場次 —— 唔可以就咁掉。
+  if [ -s "$MAP_BAK" ]; then
+    /usr/bin/python3 "$SCRIPT_DIR/merge_mapping.py" "$MAPPING" "$MAP_BAK" || true
+  fi
+  rm -f "$MAP_BAK"
   print -r -- "▶ 版本 $(git rev-parse --short HEAD) ($(git rev-parse --abbrev-ref HEAD))"
 fi
 

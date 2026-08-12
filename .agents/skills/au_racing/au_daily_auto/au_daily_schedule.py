@@ -1438,7 +1438,25 @@ def live_race_state(runlog: RunLog, folder: Path) -> tuple[dict[int, dict], str]
     from claw_sportsbet_form import BASE, parse_race, parse_runner_blocks
     key = mapping_key_for(folder)
     if not key:
-        raise TemporaryFailure("對應表冇呢個場次，攞唔到最新頁面")
+        # ⚠️ 攞唔到就由當日索引頁重新推導 —— 覆盤路徑一直有做呢步，覆核冇，於是
+        # 對應表一有缺失就直接放棄。2026-08-12 實測：五個場次因為對應表俾自動更新
+        # 抹走，覆核全部報 `refresh_deferred`，退出馬同場地變化一個都冇覆核到。
+        # 對應表係由索引頁推導出嚟嘅，所以缺失係補得返嘅，唔應該當成死路。
+        day = folder.name[:10]
+        try:
+            index = fetch_date_index(runlog, day)
+        except TemporaryFailure as exc:
+            raise TemporaryFailure(
+                f"對應表冇呢個場次，而索引頁又攞唔到（{exc}）") from exc
+        for slug, meta_i in index.items():
+            if normalise(slug) in normalise(folder.name):
+                ensure_mapping(runlog, folder.name, day, slug,
+                               meta_i["meetingId"], meta_i["races"])
+                key = folder.name
+                runlog.step("mapping-rederived", "ok", meeting=folder.name)
+                break
+        if not key:
+            raise TemporaryFailure("對應表冇呢個場次，索引頁亦搵唔到對應馬場")
     if runlog.site_refusing:
         raise TemporaryFailure("個站今次 run 已經拒絕，唔再敲門攞最新頁面")
     meta = load_mapping()[key]
