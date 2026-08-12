@@ -894,8 +894,14 @@ class TestReflectionPush(unittest.TestCase):
             pushed.append((text, kw.get("audience"))), ["telegram: ok"])[1]
         fake_reflect = unittest.mock.MagicMock()
         fake_reflect.build = build
+        # ⚠️ 覆盤推送而家會連帶出落注結算 —— 唔 mock 就會跑真數據，令呢個測試
+        # 變成測結算而唔係測推送次序。
+        fake_bet = unittest.mock.MagicMock()
+        fake_bet.settle = lambda day: None
+        fake_bet.bet_list = lambda day, which="first": None
         with unittest.mock.patch.dict(sys.modules, {"au_notify": fake_notify,
-                                                    "au_reflect_notify": fake_reflect}):
+                                                    "au_reflect_notify": fake_reflect,
+                                                    "au_betting": fake_bet}):
             S.push_reflection(runlog, archived)
         return pushed, runlog
 

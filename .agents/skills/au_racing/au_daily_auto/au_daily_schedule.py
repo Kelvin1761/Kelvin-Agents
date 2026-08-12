@@ -2546,10 +2546,38 @@ def push_reflection(runlog: RunLog, archived: list[str]) -> None:
             sent = au_notify.push(text, audience="content")
             runlog.step("reflect-push", "ok" if sent else "no-outlet", day=day,
                         detail="; ".join(sent) or None)
+            push_betting(runlog, day, "settle")
         except Exception as exc:  # noqa: BLE001
             # 推送失敗唔可以令 run 失敗 —— 覆盤已經做完，呢個只係報告。
             runlog.step("reflect-push", "failed", day=day,
                         detail=f"{type(exc).__name__}: {exc}")
+
+
+def push_betting(runlog: RunLog, day: str, mode: str) -> None:
+    """落注相關嘅三條訊息。`mode` = list / update / settle。
+
+    ⚠️ 實測 7 日 487 注：贏注 ≥2 ROI −23.3%、位注 ≥1.5 −12.1%，最好嗰個變體
+    （位注 ≥1.5 剔走飛起 >25%）都係 −8.3%。差距係抽水。所以每條訊息都會帶住
+    「實測 ROI 為負」呢句 —— 唔可以出一張落注單而唔講量到嘅結果。
+    """
+    if not getattr(runlog, "notify_enabled", True):
+        return
+    try:
+        sys.path.insert(0, str(HERE))
+        import au_betting
+        import au_notify
+
+        text = ({"list": lambda d: au_betting.bet_list(d, "first"),
+                 "update": lambda d: au_betting.bet_list(d, "last"),
+                 "settle": au_betting.settle}[mode])(day)
+        if not text:
+            return
+        sent = au_notify.push(text)
+        runlog.step("betting-push", "ok" if sent else "no-outlet", mode=mode,
+                    day=day, detail="; ".join(sent) or None)
+    except Exception as exc:  # noqa: BLE001
+        runlog.step("betting-push", "failed", mode=mode,
+                    detail=f"{type(exc).__name__}: {exc}")
 
 
 def push_run_summary(runlog: RunLog, mode: str) -> None:
@@ -2604,6 +2632,9 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
     ok = step_dashboard(runlog, analysed, archived, skip_deploy=args.skip_deploy)
     step_mirror_reports(runlog, analysed)
     push_run_summary(runlog, "evening")
+    days = sorted({r["meeting"][:10] for r in runlog.data["races_added"]})
+    for day in days:
+        push_betting(runlog, day, "list")
     return finish_run(runlog, ok, temporary)
 
 
@@ -2666,6 +2697,8 @@ def run_morning(runlog: RunLog, args, today: date) -> int:
     ok = step_dashboard(runlog, updated, [], skip_deploy=args.skip_deploy)
     step_mirror_reports(runlog, updated)
     push_run_summary(runlog, "morning")
+    if updated:
+        push_betting(runlog, sorted({f.name[:10] for f in updated})[0], "update")
     return finish_run(runlog, ok, temporary)
 
 

@@ -139,6 +139,7 @@ def bet_list(day: str, which: str = "first") -> str | None:
         f"{n_bets} 注 · 平注 · 只落贏",
         f"規則：頭兩選、賠率 ≥{MIN_ODDS:g}；兩隻都合格但都低過 "
         f"{SPREAD_ODDS:g} 就只落首選",
+        "⚠️ 實測 7 日 487 注 ROI 為負（贏注 −23%），建議先紙上追蹤",
     ] + ([f"賠率取自 {sorted(when_all)[0]}"] if when_all else []))
     return head + "\n\n" + "\n\n".join(blocks)
 
