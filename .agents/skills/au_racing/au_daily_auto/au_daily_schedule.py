@@ -869,12 +869,11 @@ def review_one_meeting(runlog: RunLog, folder: Path, *,
             runlog.meeting(folder.name, "pending_results",
                            reason=f"對應表冇 ID，索引頁又攞唔到：{exc}")
             return {}
-        for slug, meta in index.items():
-            if normalise(slug) in normalise(folder.name):
-                key = folder.name
-                ensure_mapping(runlog, key, day, slug, meta["meetingId"],
-                               meta["races"])
-                break
+        slug = index_slug_for(index, folder.name)
+        if slug:
+            key = folder.name
+            ensure_mapping(runlog, key, day, slug, index[slug]["meetingId"],
+                           index[slug]["races"])
         if not key:
             runlog.meeting(folder.name, "pending_results",
                            reason="索引頁搵唔到對應馬場")
@@ -1433,6 +1432,19 @@ def stored_race_state(folder: Path) -> dict[int, dict]:
     return state
 
 
+# ⚠️ 索引頁 slug 同場次夾名唔一定對得上，所以配對一定要用 `match_venue`，
+# 唔可以用「slug 係唔係場次名嘅子串」。2026-08-12 實測：索引頁係
+# `devonport_synthetic` 而場次夾係 `Devonport`，子串比對永遠唔中，於是重新推導
+# 報「索引頁亦搵唔到對應馬場」。`match_venue` 已經處理呢類（Mt Isa / Murray Bdge
+# 都係同一族），六個真 slug 全部配得中而且唔會亂配。
+def index_slug_for(index: dict, folder_name: str) -> str | None:
+    venue = re.sub(r"\s+Race\s+[\d\-]+$", "", folder_name[11:]).strip()
+    for slug in index:
+        if match_venue(slug, [venue]):
+            return slug
+    return None
+
+
 def live_race_state(runlog: RunLog, folder: Path) -> tuple[dict[int, dict], str]:
     """重抓賽事頁 → 每場最新 going / 退出馬 / 騎師 / 檔位 / 馬匹數。"""
     from claw_sportsbet_form import BASE, parse_race, parse_runner_blocks
@@ -1448,15 +1460,18 @@ def live_race_state(runlog: RunLog, folder: Path) -> tuple[dict[int, dict], str]
         except TemporaryFailure as exc:
             raise TemporaryFailure(
                 f"對應表冇呢個場次，而索引頁又攞唔到（{exc}）") from exc
-        for slug, meta_i in index.items():
-            if normalise(slug) in normalise(folder.name):
-                ensure_mapping(runlog, folder.name, day, slug,
-                               meta_i["meetingId"], meta_i["races"])
-                key = folder.name
-                runlog.step("mapping-rederived", "ok", meeting=folder.name)
-                break
-        if not key:
-            raise TemporaryFailure("對應表冇呢個場次，索引頁亦搵唔到對應馬場")
+        slug = index_slug_for(index, folder.name)
+        if slug:
+            meta_i = index[slug]
+            ensure_mapping(runlog, folder.name, day, slug,
+                           meta_i["meetingId"], meta_i["races"])
+            key = folder.name
+            runlog.step("mapping-rederived", "ok", meeting=folder.name,
+                        slug=slug)
+        else:
+            raise TemporaryFailure(
+                f"對應表冇呢個場次，索引頁亦搵唔到對應馬場"
+                f"（索引有：{sorted(index)[:8]}）")
     if runlog.site_refusing:
         raise TemporaryFailure("個站今次 run 已經拒絕，唔再敲門攞最新頁面")
     meta = load_mapping()[key]

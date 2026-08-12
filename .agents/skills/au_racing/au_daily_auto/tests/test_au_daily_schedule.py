@@ -1131,3 +1131,43 @@ class TestMarketDrift(unittest.TestCase):
         body = src[src.index("def refresh_one_meeting"):]
         body = body[:body.index("\ndef ")]
         self.assertLess(body.index("market_drift("), body.index("diff_race_state("))
+
+
+class TestIndexSlugMatching(unittest.TestCase):
+    """索引頁 slug 同場次夾名對唔上係常態，唔係例外。
+
+    2026-08-12：索引頁寫 `devonport_synthetic`，我哋個場次夾叫 `Devonport`。
+    原本嘅檢查係「slug 係唔係場次夾名嘅子串」——`devonportsynthetic` 永遠唔會喺
+    `devonportrace18` 裏面，於是重新推導報「索引頁亦搵唔到對應馬場」，五個場次
+    覆核唔到。`match_venue` 幾日前就係為呢一族寫嘅（Mt Isa、Murray Bdge），
+    只係呢兩處冇用佢。
+    """
+
+    IDX = {"devonport_synthetic": {}, "murray_bdge": {}, "pinjarra_scarpside": {},
+           "eagle_farm": {}, "bendigo": {}, "wagga": {}}
+
+    def test_a_slug_with_an_extra_word_still_matches(self):
+        self.assertEqual(
+            S.index_slug_for(self.IDX, "2026-08-12 Devonport Race 1-8"),
+            "devonport_synthetic")
+
+    def test_an_abbreviated_slug_still_matches(self):
+        self.assertEqual(
+            S.index_slug_for(self.IDX, "2026-08-12 Murray Bridge Race 1-8"),
+            "murray_bdge")
+
+    def test_multi_word_venues_match(self):
+        for folder, slug in (("2026-08-12 Pinjarra Scarpside Race 1-8",
+                              "pinjarra_scarpside"),
+                             ("2026-08-12 Eagle Farm Race 1-8", "eagle_farm")):
+            self.assertEqual(S.index_slug_for(self.IDX, folder), slug)
+
+    def test_an_unrelated_venue_is_not_matched(self):
+        # 亂配比配唔到差好多 —— 會攞錯一個馬場嘅 meeting ID 去抽頁。
+        self.assertIsNone(
+            S.index_slug_for(self.IDX, "2026-08-12 Nowhere Race 1-8"))
+
+    def test_the_race_range_suffix_is_stripped_before_matching(self):
+        self.assertEqual(S.index_slug_for({"bendigo": {}},
+                                          "2026-08-12 Bendigo Race 1-10"),
+                         "bendigo")
