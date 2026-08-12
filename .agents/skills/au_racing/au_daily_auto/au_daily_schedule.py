@@ -1717,6 +1717,53 @@ RE_FG_WIN = re.compile(r"WinOdds:\s*([\d.]+|-)")
 ODDS_HISTORY = "odds_history.json"
 
 
+def record_odds_from_cache(runlog: RunLog, folder: Path, key: str,
+                          label: str) -> int:
+    """由**啱啱抽返嘅 cache 頁**影賠率，唔經 Formguide。
+
+    ⚠️ 早更嗰刻 Formguide 仲未重寫（只有偵測到實質變動才會重建），所以讀 Formguide
+    會攞到前一晚嘅舊價。要影當刻嘅市場價，一定要讀新抽嘅頁面。而且要**無論有冇
+    重建都影** —— Kelvin 想開始用賠率，所以每次覆核都要留一個時間點，唔可以只喺
+    「啱好有退出馬」嘅日子才有。
+    """
+    from claw_sportsbet_form import BASE, SportsbetFormFetcher, parse_odds_html
+
+    meta = (load_mapping().get(key) or {})
+    if not meta.get("races"):
+        return 0
+    fetch = SportsbetFormFetcher(delay=0.0, verbose=False)
+    path = folder / ODDS_HISTORY
+    try:
+        hist = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        hist = {}
+    stamp_label = f"{datetime.now().isoformat(timespec='seconds')}|{label}"
+    added = 0
+    for i, rid in enumerate(meta["races"], start=1):
+        cache = fetch._cache_path(f"{BASE}/{meta['meetingId']}/{rid}/")
+        if not cache.exists():
+            continue
+        try:
+            live = parse_odds_html(cache.read_text(errors="replace"))
+        except Exception:  # noqa: BLE001
+            continue
+        prices = {}
+        for num, mk in live.items():
+            w = mk.get("Sportsbet-FixedWin")
+            pl = mk.get("Sportsbet-FixedPlace")
+            if w:
+                prices[str(num)] = [str(w), str(pl) if pl else "-"]
+        if prices:
+            hist.setdefault(str(i), {})[stamp_label] = prices
+            added += 1
+    if added:
+        path.write_text(json.dumps(hist, ensure_ascii=False, indent=1),
+                        encoding="utf-8")
+        runlog.step("odds-snapshot", "ok", meeting=folder.name, races=added,
+                    label=label)
+    return added
+
+
 def record_odds_snapshot(folder: Path, label: str) -> int:
     """把每場嘅贏／位賠追加入 `odds_history.json`，**永不覆寫**。
 
@@ -1809,7 +1856,10 @@ def refresh_one_meeting(runlog: RunLog, folder: Path, api: dict) -> bool:
     going = official or page_going
 
     # ⚠️ 喺任何重建之前做 —— 分析時嘅賠率只存喺 Formguide，一重建就沖走。
-    market_drift(runlog, folder, mapping_key_for(folder) or "")
+    _key = mapping_key_for(folder) or ""
+    market_drift(runlog, folder, _key)
+    # 每次覆核都影一個賠率時間點，唔理有冇實質變動。
+    record_odds_from_cache(runlog, folder, _key, "morning-refresh")
 
     changes = diff_race_state(stored, live)
     for rno, delta in changes.items():
