@@ -8,8 +8,9 @@
     `MIN_ODDS`–`SPREAD_ODDS` 之間就只落首選。
   * 一隻合格就落一隻，冇合格就唔落。
 
-⚠️ **贏注**。位置彩池冇官方派彩，我哋只有自己捕捉嘅位賠，所以位注 ROI 只可以估，
-唔可以當真數。贏注用賽果檔嘅 SP 結算，係精確嘅。
+⚠️ **位注**（Kelvin 2026-08-12 確認）。門檻同分水都套落**位賠**，唔係贏賠。
+Sportsbet 係固定賠率，所以落注嗰刻嘅位賠就係派彩價 —— 結算精確，唔使官方位置派彩。
+入位嘅定義跟真實派彩：8 匹或以上派三位、5–7 匹派兩位、4 匹或以下淨係贏。
 
 ⚠️ 平注（每注 1 個單位）。呢個係刻意：注碼一變就唔係測「揀馬準唔準」，而係測
 「注碼分配」，兩件事混埋一齊就分唔清邊個帶來收益。
@@ -21,9 +22,10 @@ import re
 import sys
 from pathlib import Path
 
-MIN_ODDS = 2.0      # 低過呢個唔落
-SPREAD_ODDS = 3.0   # 兩隻都落嘅前提：至少一隻高過呢個
+MIN_ODDS = 2.0      # 位賠低過呢個唔落
+SPREAD_ODDS = 3.0   # 兩隻都落嘅前提：至少一隻位賠高過呢個
 STAKE = 1.0
+MODE = "place"      # ⚠️ 位注。改成 "win" 就係贏注 —— 但實測位注好 9pp。
 
 RE_LABEL = re.compile(r"^## Race (\d+)\s*$\n- Performance label", re.M)
 RE_TOP3 = re.compile(r"^- Model Top 3: (.+)$", re.M)
@@ -69,16 +71,22 @@ def odds_at(folder: Path, race_no: int, which: str = "first") -> tuple[str, dict
 
 
 def race_bets(folder: Path, race_no: int, which: str = "first"):
+    """回 (捕捉時間, 頭兩選同其位賠, 應該落嗰啲)。
+
+    ⚠️ 用**位賠**做篩選 —— 門檻 2.0 同分水 3.0 都係位賠。用贏賠篩會揀出完全
+    唔同嘅一批馬（位賠 ≥2 大約等於贏賠 ≥5–6）。
+    """
     when, prices = odds_at(folder, race_no, which)
+    idx = 0 if MODE == "win" else 1
     picks = []
     for num, name in top_two(folder, race_no):
         p = prices.get(num)
         try:
-            win = float(p[0]) if p else None
+            odds = float(p[idx]) if p else None
         except (TypeError, ValueError):
-            win = None
-        if win:
-            picks.append((num, name, win))
+            odds = None
+        if odds:
+            picks.append((num, name, odds))
     return when, picks, decide(picks)
 
 
@@ -133,18 +141,26 @@ def bet_list(day: str, which: str = "first") -> str | None:
         blocks.append("\n".join([head] + body))
     if not n_bets and not blocks:
         return None
-    tag = "早更更新" if which == "last" else "落注單"
+    # ⚠️ 晚更嗰張係**觀察名單**，唔係落注單。Kelvin 2026-08-12 決定當朝落 ——
+    # 前一晚落注等於喺唔知最終出賽名單之下鎖死價格，而退出馬會改變成場賽事嘅
+    # 形勢。所以晚更嗰張要明確講「唔好落」，唔可以睇落似一張可以照抄嘅單。
+    tag = "落注單（當朝定價）" if which == "last" else "觀察名單"
     head = "\n".join([
         f"💰 {tag} {day}",
-        f"{n_bets} 注 · 平注 · 只落贏",
-        f"規則：頭兩選、賠率 ≥{MIN_ODDS:g}；兩隻都合格但都低過 "
-        f"{SPREAD_ODDS:g} 就只落首選",
-        "⚠️ 實測 7 日 487 注 ROI 為負（贏注 −23%），建議先紙上追蹤",
+        f"{n_bets} 注 · 平注 · 只落{'贏' if MODE == 'win' else '位'}",
+        f"規則：頭兩選、{'贏' if MODE == 'win' else '位'}賠 ≥{MIN_ODDS:g}；"
+        f"兩隻都合格但都低過 {SPREAD_ODDS:g} 就只落首選",
+        ("⚠️ 呢張只係觀察 —— 唔好落，等當朝定價"
+         if which == "first" else
+         "⚠️ 實測 ROI 為負，建議先紙上追蹤"),
     ] + ([f"賠率取自 {sorted(when_all)[0]}"] if when_all else []))
     return head + "\n\n" + "\n\n".join(blocks)
 
 
 def settle(day: str) -> str | None:
+    # ⚠️ 用 `last`（當朝）嘅價結算 —— 因為落注時機係當朝。用晚更價結算會報一個
+    # 你實際上冇落到嘅價。
+
     """結算：命中、ROI（全日同逐個馬場）。⚠️ 用賽果檔嘅 SP，所以係精確嘅。"""
     rows, tot_stake, tot_ret = [], 0.0, 0.0
     for folder in _folders(day):
@@ -153,23 +169,29 @@ def settle(day: str) -> str | None:
             continue
         body = res.read_text(errors="replace")
         parts = re.split(r"^## Race (\d+)\s*$", body, flags=re.M)
-        sp, winner = {}, {}
+        sp, finish = {}, {}
         for i in range(1, len(parts), 2):
             rno = int(parts[i])
             found = RE_SP.findall(parts[i + 1])
             sp[rno] = {int(n): float(p) for _pos, n, p in found}
-            first = [(int(pos), int(n)) for pos, n, _p in found if pos == "1"]
-            winner[rno] = first[0][1] if first else None
+            finish[rno] = {int(n): int(pos) for pos, n, _p in found}
         m_stake = m_ret = 0.0
         hits, bets = [], []
-        for r, _w in [(x, None) for x in meeting_bets(folder, "last")[0]]:
+        import au_reflect_notify as _R
+        for r in meeting_bets(folder, "last")[0]:
+            pays = _R.places_paid(_R.field_size(folder, r["race"]))
             for num, name, odds in r["bets"]:
                 m_stake += STAKE
                 bets.append((r["race"], name, odds))
-                if winner.get(r["race"]) == num:
-                    got = sp.get(r["race"], {}).get(num, odds)
+                fin = finish.get(r["race"], {}).get(num)
+                hit = (fin == 1) if MODE == "win" else (fin is not None
+                                                       and fin <= pays)
+                if hit:
+                    # ⚠️ 派彩用**落注嗰刻捕捉嘅位賠**（固定賠率），唔係 SP。
+                    got = sp.get(r["race"], {}).get(num, odds) if MODE == "win" \
+                        else odds
                     m_ret += STAKE * got
-                    hits.append((r["race"], name, got))
+                    hits.append((r["race"], name, got, fin))
         if not m_stake:
             continue
         tot_stake += m_stake
@@ -189,10 +211,11 @@ def settle(day: str) -> str | None:
         out.append(f"━━ {r['venue']} ━━")
         out.append(f"{int(r['stake'])} 注 · 中 {len(r['hits'])} · "
                    f"ROI {roi(r['ret'], r['stake']):+.1f}%")
-        for rno, name, got in r["hits"]:
-            out.append(f"  ✅ R{rno} {name} 贏 @SP{got:g}")
-        miss = [b for b in r["bets"] if b[0] not in {h[0] for h in r["hits"]}
-                or b[1] not in {h[1] for h in r["hits"]}]
+        for rno, name, got, fin in r["hits"]:
+            place = {1: "冠", 2: "亞", 3: "季"}.get(fin, str(fin))
+            out.append(f"  ✅ R{rno} {name} {place} @{got:g}")
+        won = {(h[0], h[1]) for h in r["hits"]}
+        miss = [b for b in r["bets"] if (b[0], b[1]) not in won]
         if miss:
             out.append("  ❌ " + "、".join(f"R{a} {b}" for a, b, _c in miss[:6])
                        + ("…" if len(miss) > 6 else ""))
