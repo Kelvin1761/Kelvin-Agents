@@ -352,9 +352,18 @@ def run_cmd(cmd: list[str], *, cwd: Path | None = None, timeout: int = 3600,
         merged.update(env)
     try:
         done = subprocess.run([str(c) for c in cmd], cwd=str(cwd or PROJECT_ROOT),
-                              env=merged, text=True, stdout=subprocess.PIPE,
+                              env=merged, stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT, timeout=timeout,
-                              check=False)
+                              check=False,
+                              # ⚠️ 一定要 errors="replace"。`text=True` 係嚴格
+                              # UTF-8，而 `stderr=STDOUT` 把兩條 stream 合併 ——
+                              # 兩個寫入者交錯就可以把一個多位元組字元切開，
+                              # 於是出現孤立嘅 0xef。2026-08-13 實測：一個
+                              # UnicodeDecodeError 殺死咗成個晚更 run，而嗰段
+                              # 輸出只係 log 用。subprocess 輸出永遠唔應該有能力
+                              # 令 run 死。亦要明寫 encoding —— launchd 底下
+                              # locale 可能係 POSIX，`text=True` 會退去 ASCII。
+                              encoding="utf-8", errors="replace")
     except subprocess.TimeoutExpired:
         return 124, f"TIMEOUT after {timeout}s"
     out = (done.stdout or "").strip()

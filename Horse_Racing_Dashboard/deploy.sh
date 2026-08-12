@@ -72,12 +72,12 @@ else
 fi
 
 if [ ! -f "$HTML_OUT" ]; then
-    echo "❌ 錯誤：找不到 $HTML_OUT，請確認生成是否成功！"
+    echo "❌ 錯誤：找不到 ${HTML_OUT}，請確認生成是否成功！"
     exit 1
 fi
 
 if [ ! -f "$MANIFEST_OUT" ]; then
-    echo "❌ 錯誤：找不到 $MANIFEST_OUT，請確認 snapshot manifest 是否成功生成！"
+    echo "❌ 錯誤：找不到 ${MANIFEST_OUT}，請確認 snapshot manifest 是否成功生成！"
     exit 1
 fi
 
@@ -150,6 +150,30 @@ fi
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
+# ⚠️ wrangler 一定要釘版本。`npx wrangler` 冇釘就每次去 registry 攞當日最新，
+# 而 2026-08-12 最新嗰個（4.122.0）依賴一個上游冇發佈嘅 miniflare@5.20260811.0-alpha，
+# npm 直接 ETARGET，發佈死咗。package.json 一直寫住呢個 pin 同埋警告呢件事，
+# 但 deploy.sh 冇套落去 —— 個 pin 喺文件度，唔喺執行路徑度。
+# 由 package.json 讀，令兩邊唔會各自漂移。
+WRANGLER_VERSION="$("$PYTHON_BIN" - <<'PYPIN'
+import json, pathlib, sys
+try:
+    d = json.loads(pathlib.Path("package.json").read_text(encoding="utf-8"))
+    v = (d.get("devDependencies") or {}).get("wrangler") or ""
+    print(v.lstrip("^~"))
+except Exception:
+    print("")
+PYPIN
+)"
+if [ -z "$WRANGLER_VERSION" ]; then
+    echo "❌ 錯誤：package.json 讀唔到 devDependencies.wrangler —— 唔會用未釘版本嘅 wrangler 發佈"
+    exit 1
+fi
+# ⚠️ 一定要 export —— 下面 whoami 嗰段內嵌 python 係另一個 process，
+# 讀唔到未 export 嘅 shell 變數，就會變成 `wrangler@` 空版本。
+export WRANGLER_VERSION
+echo "   - Wrangler: 釘 ${WRANGLER_VERSION}（由 package.json 讀）"
+
 if ! command -v npx >/dev/null 2>&1; then
     echo "❌ 錯誤：搵唔到 npx，未能執行 wrangler deploy"
     exit 1
@@ -159,16 +183,22 @@ echo "☁️ 第三步：推送上 Cloudflare Pages..."
 echo "   - Pages Project: $PAGES_PROJECT"
 RESOLVED_ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID:-}"
 if [ -z "$RESOLVED_ACCOUNT_ID" ]; then
-    RESOLVED_ACCOUNT_ID="$("$PYTHON_BIN" -c 'import json, subprocess
+    # ⚠️ 用 heredoc，唔用 -c '...'。原本係單引號包住嘅一行 python，一旦裏面要用
+    # 引號（例如讀 env）就會提早結束個 shell 字串，整段靜靜咁壞掉、回空，
+    # 於是 account ID 變空，wrangler 打 `/accounts//pages/...` 然後 APIError。
+    RESOLVED_ACCOUNT_ID="$("$PYTHON_BIN" <<'PYACC' 2>/dev/null
+import json, os, subprocess
+ver = os.environ.get("WRANGLER_VERSION", "")
+pkg = f"wrangler@{ver}" if ver else "wrangler"
 try:
-    raw = subprocess.check_output(["npx", "wrangler", "whoami", "--json"], text=True)
-    data = json.loads(raw)
-    accounts = data.get("accounts") or []
+    raw = subprocess.check_output(["npx", pkg, "whoami", "--json"], text=True)
+    accounts = json.loads(raw).get("accounts") or []
     if accounts:
         print(accounts[0].get("id", ""))
 except Exception:
     pass
-' 2>/dev/null)"
+PYACC
+)"
 fi
 if [ -n "$RESOLVED_ACCOUNT_ID" ]; then
     echo "   - Account ID: ${RESOLVED_ACCOUNT_ID}"
@@ -200,7 +230,7 @@ echo "   - Commit Hash: $COMMIT_HASH"
 # deploy so wongchoi-dashboard.pages.dev updates.
 (
     cd "$SCRIPT_DIR"
-    env CI=1 CF_PAGES_BRANCH=main CLOUDFLARE_ACCOUNT_ID="$RESOLVED_ACCOUNT_ID" npx wrangler pages deploy "$DIST_DIR" \
+    env CI=1 CF_PAGES_BRANCH=main WRANGLER_VERSION="$WRANGLER_VERSION" CLOUDFLARE_ACCOUNT_ID="$RESOLVED_ACCOUNT_ID" npx "wrangler@${WRANGLER_VERSION}" pages deploy "$DIST_DIR" \
         --project-name "$PAGES_PROJECT" \
         --branch main \
         --commit-hash "$COMMIT_HASH" \
