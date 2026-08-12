@@ -2572,7 +2572,8 @@ def push_betting(runlog: RunLog, day: str, mode: str) -> None:
                  "settle": au_betting.settle}[mode])(day)
         if not text:
             return
-        sent = au_notify.push(text)
+        # 落注相關嘅三張都係內容 —— heison 一齊收。
+        sent = au_notify.push(text, audience="content")
         runlog.step("betting-push", "ok" if sent else "no-outlet", mode=mode,
                     day=day, detail="; ".join(sent) or None)
     except Exception as exc:  # noqa: BLE001
