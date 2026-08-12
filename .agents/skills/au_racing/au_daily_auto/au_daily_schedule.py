@@ -92,8 +92,10 @@ class TemporaryFailure(RuntimeError):
 class RunLog:
     """結構化 run log。每一步都即刻寫落 disk —— 中途炸都仲有記錄。"""
 
-    def __init__(self, mode: str, review_day: date, path: Path):
+    def __init__(self, mode: str, review_day: date, path: Path,
+                 notify: bool = True):
         self.path = path
+        self.notify_enabled = notify
         self.started = time.time()
         # Circuit breaker。一個場次成個抽唔到（穩定 403）之後，餘下嘅場次唔再
         # 出網 —— 個站已經明確講唔得，逐個場次照敲落去等於每場再敲三次門，
@@ -177,8 +179,12 @@ class RunLog:
         self.notify()
 
     def notify(self) -> None:
-        """把結果推去手機。⚠️ 通知失敗唔可以令 run 失敗 —— 嘢已經做完，
+        """把結果推去手機。⚠️ `--no-notify` 之下唔出聲 —— 驗證 run 逐個推一條
+        「partial」出去，係最快令人開始無視通知嘅做法，而下次真出事就會漏。⚠️ 通知失敗唔可以令 run 失敗 —— 嘢已經做完，
         通知只係報告。所以成段包住，最多喺 log 講一句。"""
+        if not getattr(self, "notify_enabled", True):
+            log("[notify] 跳過（--no-notify）")
+            return
         try:
             sys.path.insert(0, str(HERE))
             import au_notify
@@ -2396,6 +2402,8 @@ def finish_run(runlog: RunLog, dashboard_ok: bool, hard_temporary: bool) -> int:
 
 
 def push_reflection(runlog: RunLog, archived: list[str]) -> None:
+    if not getattr(runlog, "notify_enabled", True):
+        return
     """今次 run 有覆盤過嘅賽日，推一段逐個馬場嘅表現去手機。
 
     ⚠️ 只喺**今次真係歸檔過嘢**先推。唔係嘅話每晚都會重推同一份舊摘要，跟住你
@@ -2430,6 +2438,8 @@ def push_reflection(runlog: RunLog, archived: list[str]) -> None:
 
 
 def push_run_summary(runlog: RunLog, mode: str) -> None:
+    if not getattr(runlog, "notify_enabled", True):
+        return
     """推一條人真係想睇嘅摘要。⚠️ 冇嘢好講就唔發 —— 「一切照舊」係雜訊，
     而雜訊嘅代價係下次真出事嗰條會俾人一齊略過。發佈嘅結果要喺呢個時候先讀得到，
     所以叫喺 step_dashboard 之後。"""
@@ -2704,6 +2714,9 @@ def main(argv: list[str] | None = None) -> int:
                              "夠抽一個場次）")
     parser.add_argument("--round-gap", type=int, default=900,
                         help="evening：每輪之間等幾秒（預設 900 = 15 分鐘）")
+    parser.add_argument("--no-notify", action="store_true",
+                        help="唔推任何通知。⚠️ 驗證用 —— 手動開嘅 run 逐個推一條"
+                             "「partial」出去，會令真警報俾人一齊略過")
     parser.add_argument("--json", action="store_true", help="最後印出 run log JSON")
     args = parser.parse_args(argv)
 
@@ -2715,7 +2728,8 @@ def main(argv: list[str] | None = None) -> int:
         if not acquired:
             log("另一個 AU daily run 仲喺度跑，今次唔開工（避免撞車）。")
             return EXIT_OK
-        runlog = RunLog(args.mode, today, log_path)
+        runlog = RunLog(args.mode, today, log_path,
+                        notify=not args.no_notify)
         check_timezone(runlog)
         log(f"=== AU Wong Choi {args.mode} run · day={today} "
             f"· fetch delay={fetch_delay()}s ===")

@@ -1171,3 +1171,47 @@ class TestIndexSlugMatching(unittest.TestCase):
         self.assertEqual(S.index_slug_for({"bendigo": {}},
                                           "2026-08-12 Bendigo Race 1-10"),
                          "bendigo")
+
+
+class TestNoNotify(unittest.TestCase):
+    """驗證 run 唔應該推通知。
+
+    2026-08-12：我為咗驗證修正手動開咗幾個 run，每個都推一條「partial」去 Kelvin
+    電話。我一路提醒雜訊會令人無視通知，然後自己製造雜訊 —— 而下一次真出事嗰條
+    就會俾人一齊略過。
+    """
+
+    def _log(self, tmp, notify):
+        return S.RunLog("morning", S.date(2026, 8, 12), Path(tmp) / "r.json",
+                        notify=notify)
+
+    def test_notify_disabled_sends_nothing(self):
+        sent = []
+        fake = unittest.mock.MagicMock()
+        fake.send = lambda d: sent.append(d) or ["ok"]
+        with tempfile.TemporaryDirectory() as tmp:
+            rl = self._log(tmp, notify=False)
+            with unittest.mock.patch.dict(sys.modules, {"au_notify": fake}):
+                rl.notify()
+        self.assertEqual(sent, [])
+
+    def test_notify_is_on_by_default(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertTrue(self._log(tmp, notify=True).notify_enabled)
+
+    def test_the_summary_and_reflection_respect_it_too(self):
+        # 三條出口全部要守 —— 唔係嘅話 run 狀態靜咗但覆盤照推。
+        pushed = []
+        fake_n = unittest.mock.MagicMock()
+        fake_n.push = lambda *a, **k: pushed.append(a) or ["ok"]
+        fake_r = unittest.mock.MagicMock()
+        fake_r.build = lambda day: "摘要"
+        with tempfile.TemporaryDirectory() as tmp:
+            rl = self._log(tmp, notify=False)
+            with unittest.mock.patch.dict(sys.modules,
+                                          {"au_notify": fake_n,
+                                           "au_reflect_notify": fake_r,
+                                           "au_run_summary": fake_r}):
+                S.push_reflection(rl, ["2026-08-12 X Race 1-7"])
+                S.push_run_summary(rl, "morning")
+        self.assertEqual(pushed, [])
