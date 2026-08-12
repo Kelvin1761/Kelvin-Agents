@@ -54,3 +54,37 @@ class DecideTests(unittest.TestCase):
     def test_flat_stakes(self):
         # 注碼一變就唔係測揀馬，而係測注碼分配。
         self.assertEqual(B.STAKE, 1.0)
+
+
+class WatchBandTests(unittest.TestCase):
+    """差少少就夠門檻嘅要列做「留意」。
+
+    Kelvin 2026-08-12：位賠 1.85–2.0 嘅頭兩選，開跑前有機會浮上 2.0 變成一注，
+    所以晚更同早更兩張都要出。實測 7 日 28 注：入位 60.7%、ROI +15.3% —— 但
+    28 注太細，而且**上下兩個相鄰帶都係負**（1.70–1.85 −24.9%、2.00–2.50 −11.2%），
+    一個夾喺兩個負數之間嘅孤立正數格，多數係雜訊，唔可以當成「呢批要落」。
+    """
+
+    def test_the_band_is_between_watch_low_and_the_bet_threshold(self):
+        got = B.watch([(1, "A", 1.9), (2, "B", 2.1)])
+        self.assertEqual([x[1] for x in got], ["A"])   # 2.1 已經係一注，唔算留意
+
+    def test_below_the_band_is_not_watched(self):
+        self.assertEqual(B.watch([(1, "A", 1.84), (2, "B", 1.5)]), [])
+
+    def test_the_lower_edge_is_inclusive(self):
+        # 1.85 係常見價位，唔可以跌出兩邊。
+        self.assertEqual(len(B.watch([(1, "A", 1.85), (2, "B", 1.0)])), 1)
+
+    def test_the_upper_edge_belongs_to_the_bet_list(self):
+        self.assertEqual(B.watch([(1, "A", 2.0), (2, "B", 1.0)]), [])
+        self.assertEqual(len(B.decide([(1, "A", 2.0), (2, "B", 1.0)])), 1)
+
+    def test_only_the_top_two_are_watched(self):
+        # 第三揀浮上 2.0 都唔會變成一注，所以唔應該出現喺留意名單。
+        self.assertEqual(B.watch([(1, "A", 1.0), (2, "B", 1.0), (3, "C", 1.9)]), [])
+
+    def test_a_race_can_carry_both_a_bet_and_a_watch(self):
+        picks = [(1, "A", 3.5), (2, "B", 1.9)]
+        self.assertEqual(len(B.decide(picks)), 1)
+        self.assertEqual(len(B.watch(picks)), 1)

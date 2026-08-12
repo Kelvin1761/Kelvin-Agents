@@ -26,12 +26,25 @@ MIN_ODDS = 2.0      # 位賠低過呢個唔落
 SPREAD_ODDS = 3.0   # 兩隻都落嘅前提：至少一隻位賠高過呢個
 STAKE = 1.0
 MODE = "place"      # ⚠️ 位注。改成 "win" 就係贏注 —— 但實測位注好 9pp。
+# 差少少就夠門檻嘅，列做「留意」。呢批係最有機會喺開跑前浮上 2.0 變成一注嘅，
+# 所以晚更同早更兩張都要出 —— 唔出嘅話你要自己逐場翻賠率。
+# 邊界同 MIN_ODDS 一樣取包含（1.85 本身算入），免得 1.85 呢個常見價位跌出兩邊。
+WATCH_LOW = 1.85
 
 RE_LABEL = re.compile(r"^## Race (\d+)\s*$\n- Performance label", re.M)
 RE_TOP3 = re.compile(r"^- Model Top 3: (.+)$", re.M)
 RE_HORSE = re.compile(r"#(\d+)\s+([^,#]+?)(?=,|$)")
 RE_SP = re.compile(r"^(\d+)(?:st|nd|rd|th):\s*#(\d+)\s+.*?SP\$([\d.]+)", re.M)
 RE_RANK = re.compile(r"^\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|", re.M)
+
+
+def watch(picks: list[tuple[int, str, float]]) -> list[tuple[int, str, float]]:
+    """差少少就夠門檻 —— `WATCH_LOW` ≤ 賠率 < `MIN_ODDS`。
+
+    ⚠️ 只睇頭兩選，同落注一樣。一隻第三選就算喺呢個區間都唔關事，因為佢無論
+    賠率點都唔會變成一注。
+    """
+    return [p for p in picks[:2] if WATCH_LOW <= p[2] < MIN_ODDS]
 
 
 def decide(picks: list[tuple[int, str, float]]) -> list[tuple[int, str, float]]:
@@ -99,7 +112,8 @@ def meeting_bets(folder: Path, which: str = "first"):
         when, picks, bets = race_bets(folder, rno, which)
         if when:
             when_seen.add(when.split("|")[0][:16].replace("T", " "))
-        out.append({"race": rno, "picks": picks, "bets": bets})
+        out.append({"race": rno, "picks": picks, "bets": bets,
+                    "watch": watch(picks)})
     return out, sorted(when_seen)
 
 
@@ -121,25 +135,33 @@ def _folders(day: str):
 
 def bet_list(day: str, which: str = "first") -> str | None:
     """落注單。`which='last'` = 早更更新版。"""
-    blocks, n_bets, when_all = [], 0, set()
+    blocks, n_bets, n_watch, when_all = [], 0, 0, set()
     for folder in _folders(day):
         rows, whens = meeting_bets(folder, which)
         when_all.update(whens)
         lines = []
         for r in rows:
-            if not r["bets"]:
+            if not (r["bets"] or r["watch"]):
                 continue
             for num, name, odds in r["bets"]:
                 rank = "①" if (r["picks"] and r["picks"][0][0] == num) else "②"
                 lines.append(f"R{r['race']} {rank}{name} @{odds:g}")
                 n_bets += 1
-        skipped = [r["race"] for r in rows if r["picks"] and not r["bets"]]
+            for num, name, odds in r["watch"]:
+                rank = "①" if (r["picks"] and r["picks"][0][0] == num) else "②"
+                n_watch += 1
+                lines.append(f"R{r['race']} 👀{rank}{name} @{odds:g}"
+                             f"（差 {MIN_ODDS - odds:.2f}）")
+        # ⚠️ 有「留意」嘅賽事唔可以又出現喺「唔落」—— 同一場喺兩行出現會令人以為
+        # 系統自己都唔清楚。
+        skipped = [r["race"] for r in rows
+                   if r["picks"] and not r["bets"] and not r["watch"]]
         head = f"━━ {_venue(folder.name)} ━━"
         body = lines or ["（今場冇符合條件）"]
         if skipped:
             body = body + [f"唔落：R{' R'.join(map(str, skipped))}（賠率太短）"]
         blocks.append("\n".join([head] + body))
-    if not n_bets and not blocks:
+    if not n_bets and not n_watch and not blocks:
         return None
     # ⚠️ 晚更嗰張係**觀察名單**，唔係落注單。Kelvin 2026-08-12 決定當朝落 ——
     # 前一晚落注等於喺唔知最終出賽名單之下鎖死價格，而退出馬會改變成場賽事嘅
@@ -147,12 +169,14 @@ def bet_list(day: str, which: str = "first") -> str | None:
     tag = "落注單（當朝定價）" if which == "last" else "觀察名單"
     head = "\n".join([
         f"💰 {tag} {day}",
-        f"{n_bets} 注 · 平注 · 只落{'贏' if MODE == 'win' else '位'}",
+        f"{n_bets} 注 · 平注 · 只落{'贏' if MODE == 'win' else '位'}"
+        + (f" · 👀 {n_watch} 隻差少少" if n_watch else ""),
         f"規則：頭兩選、{'贏' if MODE == 'win' else '位'}賠 ≥{MIN_ODDS:g}；"
         f"兩隻都合格但都低過 {SPREAD_ODDS:g} 就只落首選",
         ("⚠️ 呢張只係觀察 —— 唔好落，等當朝定價"
          if which == "first" else
          "⚠️ 實測 ROI 為負，建議先紙上追蹤"),
+        f"👀 ＝ 位賠 {WATCH_LOW:g}–{MIN_ODDS:g}，浮上 {MIN_ODDS:g} 就變一注",
     ] + ([f"賠率取自 {sorted(when_all)[0]}"] if when_all else []))
     return head + "\n\n" + "\n\n".join(blocks)
 
