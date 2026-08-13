@@ -136,7 +136,12 @@ def _mark(name: str) -> None:
 
 
 def last_failed_run() -> tuple[Path, dict] | None:
-    """最近一個 failed／partial 而且未試過自動修嘅 run。"""
+    """最近一個未正常收尾而且未處理過嘅 run。
+
+    `running` 但共用 flock 已經冇人持有 = process crash／被 kill，唔係仲做緊。
+    `main()` 開頭已經用 `run_in_progress()` 擋住真正在跑嗰個，所以行到呢度可以
+    安全地將最新一個 running log 當成異常。
+    """
     files = sorted((HERE / "logs").glob("run-*.json"),
                    key=lambda p: p.stat().st_mtime, reverse=True)[:6]
     done = _attempted()
@@ -145,7 +150,7 @@ def last_failed_run() -> tuple[Path, dict] | None:
             d = json.loads(f.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        if d.get("status") in ("failed", "partial") and f.name not in done:
+        if d.get("status") in ("failed", "partial", "running") and f.name not in done:
             return f, d
         if d.get("status") == "ok":
             # 之後有成功嘅 run，之前嗰個失敗已經冇意義。
@@ -168,6 +173,13 @@ def autofix_last_failure() -> str | None:
     if not got:
         return None
     path, run = got
+    if run.get("status") == "running":
+        _mark(path.name)
+        started = run.get("started_at") or "時間不明"
+        return (f"❌ AU 排程冇正常收尾（{path.name}）\n"
+                f"開始：{started}\n"
+                "run log 仲係 running，但共用鎖已經釋放 —— process 應該中途死亡，"
+                "請用 /diag 或 /retry 跟進")
     remedy = au_diagnose.remedy_for(run)
     if not remedy:
         return None

@@ -131,6 +131,24 @@ class AutofixTests(unittest.TestCase):
                 got = H.last_failed_run()
         self.assertIsNotNone(got)
 
+    def test_a_running_log_without_a_live_lock_is_picked_up_as_a_crash(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            logs = self._logs(tmp, [("run-a.json", "running", None)])
+            with self._patch(logs):
+                got = H.last_failed_run()
+        self.assertIsNotNone(got)
+
+    def test_a_crashed_running_log_generates_a_phone_warning(self):
+        marked = []
+        run = {"status": "running", "started_at": "2026-08-13T10:00:00+10:00"}
+        with unittest.mock.patch.object(
+                H, "last_failed_run", lambda: (Path("run-crashed.json"), run)), \
+             unittest.mock.patch.object(H, "_mark", lambda name: marked.append(name)):
+            text = H.autofix_last_failure()
+        self.assertIn("冇正常收尾", text)
+        self.assertIn("中途死亡", text)
+        self.assertEqual(marked, ["run-crashed.json"])
+
     def test_a_later_successful_run_cancels_the_chase(self):
         # 之後有成功嘅 run，之前嗰個失敗已經冇意義 —— 唔好再修一次。
         with tempfile.TemporaryDirectory() as tmp:
