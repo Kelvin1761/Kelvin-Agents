@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.antigravity.au-wong-choi.bot</string>
+  <key>StartInterval</key>
+  <integer>120</integer>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>__SCRIPT_DIR__/run_au_auxiliary.sh</string>
+    <string>bot</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>__PROJECT_ROOT__</string>
+  <key>StandardOutPath</key>
+  <string>__SCRIPT_DIR__/logs/bot.out</string>
+  <key>StandardErrorPath</key>
+  <string>__SCRIPT_DIR__/logs/bot.err</string>
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

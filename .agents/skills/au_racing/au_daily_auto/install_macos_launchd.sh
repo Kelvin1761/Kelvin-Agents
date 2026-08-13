@@ -1,5 +1,5 @@
 #!/bin/zsh
-# 安裝／重裝 AU Wong Choi 兩個每日 launchd job。
+# 安裝／重裝 AU Wong Choi 四個 launchd job。
 #
 #   ./install_macos_launchd.sh            # 裝兩個
 #   ./install_macos_launchd.sh --status   # 只睇狀態
@@ -10,7 +10,12 @@ SCRIPT_DIR="${0:A:h}"
 PROJECT_ROOT="${SCRIPT_DIR:h:h:h:h}"
 DEST_DIR="$HOME/Library/LaunchAgents"
 UID_NUM="$(id -u)"
-LABELS=(com.antigravity.au-wong-choi.evening com.antigravity.au-wong-choi.morning)
+LABELS=(
+  com.antigravity.au-wong-choi.evening
+  com.antigravity.au-wong-choi.morning
+  com.antigravity.au-wong-choi.healthcheck
+  com.antigravity.au-wong-choi.bot
+)
 
 action="install"
 [ "${1:-}" = "--status" ] && action="status"
@@ -44,7 +49,9 @@ if [ "$TZ_NAME" != "Australia/Sydney" ]; then
 fi
 
 mkdir -p "$DEST_DIR" "$SCRIPT_DIR/logs"
-chmod +x "$SCRIPT_DIR/run_au_daily_schedule.sh" "$SCRIPT_DIR/au_daily_schedule.py"
+chmod +x "$SCRIPT_DIR/run_au_daily_schedule.sh" "$SCRIPT_DIR/run_au_auxiliary.sh" \
+  "$SCRIPT_DIR/au_daily_schedule.py" "$SCRIPT_DIR/au_healthcheck.py" \
+  "$SCRIPT_DIR/au_telegram_bot.py"
 
 for label in $LABELS; do
   template="$SCRIPT_DIR/launchd/$label.plist.template"
@@ -62,5 +69,7 @@ echo
 echo "排程（本機 = Australia/Sydney）："
 echo "  com.antigravity.au-wong-choi.evening   每日 22:00  覆盤 → 歸檔 → 分析下一賽日 → 發佈"
 echo "  com.antigravity.au-wong-choi.morning   每日 10:00  場地／退出馬覆核 → 需要時重評分 → 發佈"
+echo "  com.antigravity.au-wong-choi.healthcheck 02:30／09:15／11:00  獨立核實＋已知故障補救"
+echo "  com.antigravity.au-wong-choi.bot       每 2 分鐘  Telegram 指令 poller"
 echo
 echo "Log：$SCRIPT_DIR/logs/"

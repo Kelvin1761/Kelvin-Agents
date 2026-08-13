@@ -1,11 +1,13 @@
 # AU Wong Choi — 每日自動排程
 
-兩個 launchd job，本機時區 `Australia/Sydney`：
+四個 launchd job，本機時區 `Australia/Sydney`：
 
 | Job | 時間 | 做乜 |
 |---|---|---|
 | `com.antigravity.au-wong-choi.evening` | **每日 22:00** | 覆盤 + 歸檔 dashboard 上已跑完嘅場次 → 分析下一個澳洲賽日 → 驗證 → 發佈 Cloudflare |
 | `com.antigravity.au-wong-choi.morning` | **每日 10:00** | 覆核 dashboard 上每場嘅場地狀況／退出馬／後備入替／檔位／騎師 → 有實質變動先重評分 → 驗證 → 發佈 |
+| `com.antigravity.au-wong-choi.healthcheck` | **02:30／09:15／11:00** | 獨立核實今日分析同 live dashboard；只對已知發佈故障自動補救 |
+| `com.antigravity.au-wong-choi.bot` | **每 2 分鐘** | 輪詢已授權 Telegram 指令（`/status`、`/health`、`/retry` 等） |
 
 launchd 用**本機 wall clock**，而本機時區就係 `Australia/Sydney`，所以 22:00 / 10:00
 直接等於悉尼時間，DST 亦自動跟。runner 開工會核對，時區唔對就喺 run log 大聲警告，
