@@ -2723,9 +2723,14 @@ def single_run_lock():
     lock_path = Path(AU_RACING) / ".au_daily_schedule.lock"
     try:
         handle = lock_path.open("w")
-    except OSError:
-        LOG_DIR.mkdir(parents=True, exist_ok=True)
-        handle = (LOG_DIR / "au_daily_schedule.lock").open("w")
+    except OSError as exc:
+        # 絕對唔可以退去 checkout 私有鎖。排程 worktree 同主 repo 會各自成功攞
+        # 到自己嗰把鎖，然後同時改同一批 folder、Chrome profile 同 dashboard。
+        # 共用鎖攞唔到時 fail closed，等獨立 healthcheck 報漏跑。
+        log(f"FATAL: 開唔到共用 AU 排程鎖 {lock_path}："
+            f"{type(exc).__name__}: {exc} —— 今次唔開工")
+        yield None
+        return
     try:
         fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
@@ -2888,6 +2893,8 @@ def main(argv: list[str] | None = None) -> int:
     log_path = LOG_DIR / f"run-{args.mode}-{datetime.now().strftime('%Y%m%dT%H%M%S')}.json"
 
     with single_run_lock() as acquired:
+        if acquired is None:
+            return EXIT_FAILED
         if not acquired:
             log("另一個 AU daily run 仲喺度跑，今次唔開工（避免撞車）。")
             return EXIT_OK
