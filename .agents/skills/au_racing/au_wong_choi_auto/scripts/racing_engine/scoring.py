@@ -20,6 +20,15 @@ REPORT_ONLY_FEATURE_KEYS = (
     "formline_score", "consistency_score", "health_score", "confidence_score",
 )
 
+# Legacy archive recovery only.  Old Logic files predate the complete
+# Sportsbet margin/prize/starter transport and therefore copied consistency
+# into Performance Quality.  A strictly pre-race Sportsbet sidecar can recover
+# that evidence, but it is a secondary reconstruction rather than the original
+# captured Facts.  The 10% reliability blend was positive in 4/5 development
+# date folds and the untouched terminal Top-5 AUC (+0.00480, CI wholly > 0),
+# while improving both audited failure cohorts.  Primary/live PQ is untouched.
+SPORTSBET_PQ_RECOVERY_ALPHA = 0.10
+
 # pace_figure = legacy key for field-relative L600-vs-benchmark context. Racenet
 # can contain runner timing; Sportsbet `Sectionals 600m` is race-level and must
 # not be described as an individual split. Neutral 60 where PF

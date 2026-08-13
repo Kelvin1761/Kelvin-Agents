@@ -15,10 +15,14 @@ __pycache__/
 *.egg-info/
 # HKJC 馬匹往績 scrape cache（可重生數據，唔入 git）
 .hkjc_cache/
+**/.ra_cache/
+**/.sportsbet_cache/
+**/.sb_horse_index.json
 build/
 dist/
 venv/
 .venv/
+.venv-*/
 env/
 .env
 
@@ -91,6 +95,8 @@ NBA_ML_Dataset/
 
 # Machine-specific data location for wongchoi_paths.py (set per machine)
 .wongchoi_data_root
+.wongchoi_au_data_root
+.wongchoi_au_mirror_root
 
 # stats rebuild backups
 **/comprehensive_stats/**/*.bak

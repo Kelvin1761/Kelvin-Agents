@@ -163,6 +163,54 @@ class PerformanceQualityTests(unittest.TestCase):
             "fallback",
         )
 
+    def test_archive_recovery_is_blended_without_replacing_primary_contract(self) -> None:
+        horse = {
+            "horse_name": "Recovered",
+            "horse_number": "1",
+            "barrier": 4,
+            "_data": {
+                "sportsbet_performance_quality_score": 80.0,
+                "sportsbet_performance_quality_raw": 2.0,
+                "sportsbet_performance_quality_run_count": 3,
+                "sportsbet_performance_quality_runs": [{"date": "2026-07-01"}],
+            },
+        }
+        auto = RacingEngine(horse, {"field_summary": {"count": 8}}).analyze_horse()
+        consistency = auto["feature_scores"]["consistency_score"]
+        self.assertAlmostEqual(
+            auto["feature_scores"]["performance_quality_score"],
+            consistency + 0.10 * (80.0 - consistency),
+        )
+        self.assertEqual(
+            auto["feature_evidence_state"]["performance_quality_score"],
+            "observed",
+        )
+        self.assertEqual(
+            auto["score_provenance"]["performance_quality_score"],
+            "sportsbet_complete_form_archive_recovery",
+        )
+
+    def test_primary_quality_takes_precedence_over_archive_recovery(self) -> None:
+        horse = {
+            "horse_name": "Primary",
+            "_data": {
+                "performance_quality_raw": 4.0,
+                "performance_quality_run_count": 2,
+                "sportsbet_performance_quality_score": 1.0,
+                "sportsbet_performance_quality_run_count": 4,
+            },
+        }
+        context = {
+            "field_summary": {
+                "performance_quality_field_count": 3,
+                "performance_quality_field_mean": 0.0,
+                "performance_quality_field_stdev": 2.0,
+            }
+        }
+        score, _note, source = RacingEngine(horse, context)._performance_quality_score()
+        self.assertEqual(score, 100.0)
+        self.assertEqual(source, "class_adjusted_margin_field_relative")
+
     def test_disable_flag_is_rank_exact_fallback(self) -> None:
         horse = {
             "horse_name": "Switchable",
