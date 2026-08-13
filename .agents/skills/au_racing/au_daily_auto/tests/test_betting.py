@@ -8,7 +8,9 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -88,3 +90,22 @@ class WatchBandTests(unittest.TestCase):
         picks = [(1, "A", 3.5), (2, "B", 1.9)]
         self.assertEqual(len(B.decide(picks)), 1)
         self.assertEqual(len(B.watch(picks)), 1)
+
+
+class BettingMessageTests(unittest.TestCase):
+    def test_bet_and_watch_lines_both_show_the_horse_number(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "2026-08-13 Dubbo Race 1-1"
+            folder.mkdir()
+            rows = [{"race": 1,
+                     "picks": [(7, "Lucky Horse", 3.5),
+                               (12, "Watch Horse", 1.9)],
+                     "bets": [(7, "Lucky Horse", 3.5)],
+                     "watch": [(12, "Watch Horse", 1.9)]}]
+            with unittest.mock.patch.object(B, "_folders", lambda day: [folder]), \
+                 unittest.mock.patch.object(B, "meeting_bets",
+                                            lambda folder, which: (rows, [])):
+                text = B.bet_list("2026-08-13", "last")
+
+        self.assertIn("R1 ①#7 Lucky Horse @3.5", text)
+        self.assertIn("R1 👀②#12 Watch Horse @1.9", text)

@@ -145,12 +145,12 @@ def bet_list(day: str, which: str = "first") -> str | None:
                 continue
             for num, name, odds in r["bets"]:
                 rank = "①" if (r["picks"] and r["picks"][0][0] == num) else "②"
-                lines.append(f"R{r['race']} {rank}{name} @{odds:g}")
+                lines.append(f"R{r['race']} {rank}#{num} {name} @{odds:g}")
                 n_bets += 1
             for num, name, odds in r["watch"]:
                 rank = "①" if (r["picks"] and r["picks"][0][0] == num) else "②"
                 n_watch += 1
-                lines.append(f"R{r['race']} 👀{rank}{name} @{odds:g}"
+                lines.append(f"R{r['race']} 👀{rank}#{num} {name} @{odds:g}"
                              f"（差 {MIN_ODDS - odds:.2f}）")
         # ⚠️ 有「留意」嘅賽事唔可以又出現喺「唔落」—— 同一場喺兩行出現會令人以為
         # 系統自己都唔清楚。
