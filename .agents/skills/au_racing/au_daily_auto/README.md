@@ -159,6 +159,14 @@ updated={len(d['races_updated'])} errors={len(d['errors'])}\")" "$f"; done
 
 Exit code：`0` 完全成功 · `75` 部分／暫時性失敗（下一次排程會續） · `1` 硬失敗。
 
+### 自動復原界線
+
+獨立 healthcheck 會先比較官方今日場次、live dashboard 同本機評分檔。確認今日有
+賽事但本機完全冇分析時，會自動開一次受共用鎖保護嘅 morning recovery；同一日最多
+一次，完成後仍然要過原本 snapshot 驗證先可以發佈。純發佈故障繼續用 cache-only
+重建補發。未知錯誤、模型／資料矛盾同重複失敗只會 Telegram 報警，唔會自行改 code
+或者無限重試。
+
 ## Run log 內容
 
 每次 run 一個 JSON（步驟完成即刻寫落 disk，中途炸都仲有記錄）：

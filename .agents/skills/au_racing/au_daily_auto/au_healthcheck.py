@@ -87,6 +87,35 @@ def heal() -> tuple[bool, str]:
         return False, f"{type(exc).__name__}: {exc}"
 
 
+def start_analysis_recovery(day: str) -> tuple[bool, str]:
+    """今日完全冇分析時，受控地補開一次正常 morning pipeline。
+
+    呢個唔係「見錯就亂 retry」：caller 已經用 live dashboard、Sportsbet 今日場次
+    同本機評分檔三方確認係 `unanalysed`。同一日只開一次，而且 runner 自己仲有
+    共用 flock、cache、circuit breaker、完整驗證同 Telegram 完場通知。
+    """
+    key = f"auto-analysis-{day}"
+    if key in _attempted():
+        return False, "今日已經自動補跑過一次，唔會無限重試"
+    if run_in_progress():
+        return False, "而家已有 AU run 跑緊"
+    if not RUNNER.exists():
+        return False, f"搵唔到 runner：{RUNNER}"
+
+    out = HERE / "logs" / f"auto-recovery-{day}.out"
+    try:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        _mark(key)  # 開 process 前先記；crash 都唔會變成每次 healthcheck 再開一個。
+        with out.open("w") as fh:
+            subprocess.Popen(
+                [str(RUNNER), "morning", "--today", day,
+                 "--rounds", "3", "--round-gap", "420"],
+                stdout=fh, stderr=fh, start_new_session=True)
+    except Exception as exc:  # noqa: BLE001
+        return False, f"{type(exc).__name__}: {exc}"
+    return True, f"已開始 morning recovery；log：{out.name}"
+
+
 def run_in_progress() -> bool:
     """而家有冇排程 run 跑緊。
 
@@ -246,8 +275,13 @@ def main() -> int:
         notify(f"⚠️ AU 體檢 {day}\n讀唔到 live dashboard —— 未能核實今日賽事有冇上線")
         return 1
     if res["state"] == "unanalysed":
+        started, detail = start_analysis_recovery(day)
+        if started:
+            notify(f"🔄 AU 體檢 {day}\n未分析：{'、'.join(res['missing'])}\n"
+                   "已自動開始一次受保護補跑；完成後會再發分析／部署結果")
+            return 0
         notify(f"❌ AU 體檢 {day}\n未分析：{'、'.join(res['missing'])}\n"
-               f"本機都冇評分檔 —— 體檢補唔到（要重抽），需要人手處理")
+               f"自動補跑冇開：{detail}\n需要人手處理")
         return 1
 
     notify(f"⚠️ AU 體檢 {day}\n分析做咗但冇上 dashboard：{'、'.join(res['publishable'])}\n"
@@ -257,6 +291,13 @@ def main() -> int:
     if after["state"] == "ok":
         notify(f"✅ AU 體檢 {day}\n已補發佈，今日場次全部上線：{'、'.join(after['live'])}")
         return 0
+    if after["state"] == "unanalysed":
+        started, reason = start_analysis_recovery(day)
+        if started:
+            notify(f"🔄 AU 體檢 {day}\n補發佈後仍有未分析場次："
+                   f"{'、'.join(after.get('missing', []))}\n已自動開始一次補跑")
+            return 0
+        detail = f"{detail}\n自動補跑冇開：{reason}"
     notify(f"❌ AU 體檢 {day}\n補發佈失敗，仲係缺：{'、'.join(after.get('missing', []))}\n"
            f"{detail[-200:]}")
     return 1

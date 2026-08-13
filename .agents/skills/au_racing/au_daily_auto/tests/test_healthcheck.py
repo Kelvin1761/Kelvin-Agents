@@ -188,3 +188,41 @@ class AutofixTests(unittest.TestCase):
                     "2026-08-09|Wagga 一場都冇（races_by_analyst 空)"):
             self.assertEqual(D.remedy_for({"errors": [{"message": msg}]}),
                              "republish", msg)
+
+
+class AnalysisRecoveryTests(unittest.TestCase):
+    def test_unanalysed_day_starts_the_normal_morning_pipeline_once(self):
+        started = {}
+
+        class _P:
+            def __init__(self, cmd, **kwargs):
+                started["cmd"] = cmd
+                started["kwargs"] = kwargs
+
+        with tempfile.TemporaryDirectory() as tmp, \
+             unittest.mock.patch.multiple(
+                 H, HERE=Path(tmp), RUNNER=Path(tmp) / "runner",
+                 run_in_progress=lambda: False, _attempted=lambda: set()), \
+             unittest.mock.patch.object(H, "_mark", lambda key: started.setdefault("key", key)), \
+             unittest.mock.patch.object(H.subprocess, "Popen", _P):
+            H.RUNNER.write_text("#!/bin/zsh\n")
+            ok, detail = H.start_analysis_recovery(DAY)
+
+        self.assertTrue(ok, detail)
+        self.assertEqual(started["key"], f"auto-analysis-{DAY}")
+        self.assertEqual(started["cmd"][1:4], ["morning", "--today", DAY])
+        self.assertTrue(started["kwargs"]["start_new_session"])
+
+    def test_same_day_is_never_started_twice(self):
+        key = f"auto-analysis-{DAY}"
+        with unittest.mock.patch.object(H, "_attempted", lambda: {key}):
+            ok, detail = H.start_analysis_recovery(DAY)
+        self.assertFalse(ok)
+        self.assertIn("已經自動補跑過", detail)
+
+    def test_recovery_never_competes_with_a_live_run(self):
+        with unittest.mock.patch.object(H, "_attempted", lambda: set()), \
+             unittest.mock.patch.object(H, "run_in_progress", lambda: True):
+            ok, detail = H.start_analysis_recovery(DAY)
+        self.assertFalse(ok)
+        self.assertIn("已有 AU run", detail)
