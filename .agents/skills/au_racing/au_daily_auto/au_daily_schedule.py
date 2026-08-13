@@ -2752,6 +2752,12 @@ ENGINE_PATHS = (
     "Horse_Racing_Dashboard/generate_static.py",
 )
 
+# 已追蹤但由 live runner 寫入嘅 operational state，唔係模型 code。佢哋 dirty 係
+# 正常狀態；當成引擎漂移會令每一個 run 都發同一個假警報。
+RUNTIME_STATE_PATHS = {
+    ".agents/skills/au_racing/data/sb_archive_meeting_ids.json",
+}
+
 
 def engine_dirty_from_status(porcelain: str) -> list[str]:
     """`git status --porcelain` → 引擎入面相對 commit 改咗嘅已追蹤檔案。
@@ -2765,6 +2771,8 @@ def engine_dirty_from_status(porcelain: str) -> list[str]:
         if line.startswith("??") or len(line) < 4:
             continue
         path = line[3:].strip()
+        if path in RUNTIME_STATE_PATHS:
+            continue
         if any(path.startswith(prefix) for prefix in ENGINE_PATHS):
             out.add(path)
     return sorted(out)

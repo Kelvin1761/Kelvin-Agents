@@ -868,6 +868,11 @@ class TestCodeVersion(unittest.TestCase):
     def test_changes_outside_the_engine_are_ignored(self):
         self.assertEqual(S.engine_dirty_from_status(" M tennis-wong-choi/foo.py"), [])
 
+    def test_live_meeting_id_state_is_not_engine_drift(self):
+        # 呢個 tracked JSON 每個 run 都會更新；佢 dirty 唔代表評分 code 改咗。
+        self.assertEqual(S.engine_dirty_from_status(
+            " M .agents/skills/au_racing/data/sb_archive_meeting_ids.json"), [])
+
     def test_deleted_and_added_engine_files_both_count(self):
         got = S.engine_dirty_from_status(
             "D  .agents/skills/au_racing/sb_browser_fetch.py\n"
