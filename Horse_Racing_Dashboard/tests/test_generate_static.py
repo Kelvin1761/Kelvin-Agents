@@ -112,6 +112,62 @@ class GenerateStaticTests(unittest.TestCase):
         self.assertIn("nba:fresh", html)
         self.assertNotIn("nba:stale", html)
 
+    def test_unavailable_local_tennis_cannot_erase_valid_live_feed(self):
+        cached_tennis = {
+            "analysis_run_id": "tennis:2026-08-13",
+            "validation_status": "valid",
+            "recommendations": [{"id": "tennis:kept"}],
+        }
+        fresh_feed = {
+            "schema_version": 2,
+            "validation_status": "valid",
+            "sports": {
+                "nba": {"analysis_run_id": "nba:2026-08-13", "validation_status": "valid"},
+                "tennis": {
+                    "analysis_run_id": "tennis:unavailable",
+                    "validation_status": "unavailable",
+                    "recommendations": [],
+                },
+            },
+        }
+        data = {
+            "meetings": [], "races": {}, "consensus": {}, "roi": {},
+            "sports_feed": {"schema_version": 2, "sports": {"tennis": cached_tennis}},
+        }
+
+        with patch.object(generate_static, "build_multisport_feed", return_value=fresh_feed):
+            generate_static.generate_html(data)
+
+        kept = data["sports_feed"]["sports"]["tennis"]
+        self.assertEqual(kept["analysis_run_id"], "tennis:2026-08-13")
+        self.assertEqual(kept["recommendations"], [{"id": "tennis:kept"}])
+        self.assertIn("preserved_from_live_snapshot", kept["warnings"][0])
+
+    def test_newer_valid_live_tennis_beats_older_local_database(self):
+        cached = {
+            "schema_version": 2,
+            "sports": {"tennis": {
+                "analysis_run_id": "tennis:2026-08-13",
+                "validation_status": "valid",
+                "recommendations": [{"id": "newer"}],
+            }},
+        }
+        fresh = {
+            "schema_version": 2,
+            "sports": {"tennis": {
+                "analysis_run_id": "tennis:2026-08-12",
+                "validation_status": "valid",
+                "recommendations": [{"id": "older"}],
+            }},
+        }
+
+        merged = generate_static._merge_sports_feed(cached, fresh)
+
+        self.assertEqual(
+            merged["sports"]["tennis"]["analysis_run_id"],
+            "tennis:2026-08-13",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

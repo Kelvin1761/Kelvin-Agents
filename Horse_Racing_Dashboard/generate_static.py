@@ -4,6 +4,7 @@ that works without any server. Just double-click to open.
 """
 import argparse
 import sys, os, json, io, re
+import copy
 import warnings
 from pathlib import Path
 from datetime import datetime
@@ -425,22 +426,67 @@ def collect_all_data(cache_path=DEFAULT_CACHE_PATH):
     return result
 
 
+def _run_date(snapshot):
+    """Comparable date suffix from ``sport:YYYY-MM-DD`` run identifiers."""
+    run_id = str((snapshot or {}).get("analysis_run_id") or "")
+    value = run_id.rsplit(":", 1)[-1]
+    return value if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value) else ""
+
+
+def _merge_sports_feed(cached, fresh):
+    """Never let a checkout without one domain's data erase a valid live feed.
+
+    AU and Tennis publish from different checkouts.  The AU scheduler has no
+    Tennis database, so rebuilding every domain there used to replace a valid
+    live Tennis card with ``tennis:unavailable``.  Fresh valid data remains the
+    authority; an unavailable/blocked or older local view falls back to the
+    already-published domain snapshot.
+    """
+    if not isinstance(cached, dict):
+        return fresh
+    merged = copy.deepcopy(fresh) if isinstance(fresh, dict) else {}
+    merged.setdefault("schema_version", cached.get("schema_version", 2))
+    merged.setdefault("sports", {})
+    cached_sports = cached.get("sports") or {}
+    for sport, old in cached_sports.items():
+        new = merged["sports"].get(sport) or {}
+        old_status = str((old or {}).get("validation_status") or "")
+        new_status = str(new.get("validation_status") or "")
+        old_is_good = old_status in {"valid", "partial"}
+        new_is_good = new_status in {"valid", "partial"}
+        older = old_is_good and new_is_good and _run_date(new) < _run_date(old)
+        if old_is_good and (not new_is_good or older):
+            kept = copy.deepcopy(old)
+            warnings = list(kept.get("warnings") or [])
+            marker = "preserved_from_live_snapshot:local_domain_unavailable_or_older"
+            if marker not in warnings:
+                warnings.append(marker)
+            kept["warnings"] = warnings
+            merged["sports"][sport] = kept
+            print(f"   ⚠️ Preserved valid {sport} feed from live snapshot; "
+                  f"local view was {new_status or 'missing'} / {_run_date(new) or 'undated'}")
+    return merged
+
+
 def generate_html(data):
     """Generate self-contained HTML dashboard."""
     # A base snapshot may already contain yesterday's sports_feed.  It is only
     # a transport/cache for race data, never the authority for NBA/Tennis.
     # Rebuild the feed on every deploy so completed domain analysis appears
     # immediately and stale recommendations cannot survive a snapshot reuse.
+    cached_feed = data.get("sports_feed")
     try:
-        data["sports_feed"] = build_multisport_feed(Path(__file__).resolve().parent.parent)
+        fresh_feed = build_multisport_feed(Path(__file__).resolve().parent.parent)
+        data["sports_feed"] = _merge_sports_feed(cached_feed, fresh_feed)
     except Exception as exc:
         print(f"   ⚠️ Live multi-sport feed not available: {exc}")
-        data["sports_feed"] = {
+        blocked_feed = {
             "schema_version": 2,
             "validation_status": "blocked",
             "validation_errors": [str(exc)],
             "sports": {},
         }
+        data["sports_feed"] = _merge_sports_feed(cached_feed, blocked_feed)
     history_path = Path(__file__).resolve().parent / "data" / "multisport_history.json"
     if "sports_history" not in data:
         try:
