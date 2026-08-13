@@ -253,6 +253,9 @@ def cmd_retry() -> str:
         return "搵唔到 runner"
     out = HERE / "logs" / "retry-from-telegram.out"
     try:
+        # 新 worktree／剛重裝時未必跑過 daily job，logs/ 仍然可以唔存在。
+        # `/retry` 唔應該因為純粹欠一個可安全建立嘅目錄而失敗。
+        out.parent.mkdir(parents=True, exist_ok=True)
         # detach：bot 每兩分鐘就會退出，唔可以由佢等成個 run。
         with out.open("w") as fh:
             subprocess.Popen(
