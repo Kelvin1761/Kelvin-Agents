@@ -78,6 +78,8 @@ def summarise(run: dict) -> tuple[str, str]:
         lines.append("未完成：" + "、".join(pending) + "（下次排程接住做）")
 
     ver = run.get("code_version") or {}
+    if ver.get("update_warning"):
+        lines.append(f"⚠️ 版本更新：{str(ver['update_warning'])[:180]}")
     if ver.get("engine_dirty"):
         lines.append(f"⚠️ 引擎有 {len(ver['engine_dirty'])} 個未 commit 嘅檔")
 

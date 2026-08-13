@@ -62,21 +62,60 @@ cd "$PROJECT_ROOT" || exit 1
 # 覆盤路徑會由索引頁重新推導，但覆核路徑唔會，佢直接放棄。
 # 而家改成：影一份本機版 → checkout 讓 ff 過 → 做並集合併返去。
 if [ -z "${WC_AU_NO_SELF_UPDATE:-}" ]; then
-  git fetch --quiet origin 2>/dev/null || print -r -- "⚠️ git fetch 失敗 —— 用現有版本繼續" >&2
   MAPPING=".agents/skills/au_racing/data/sb_archive_meeting_ids.json"
-  MAP_BAK="$(mktemp -t wc_mapping)"
-  cp "$MAPPING" "$MAP_BAK" 2>/dev/null || true
-  git checkout --quiet -- "$MAPPING" 2>/dev/null || true
-  if git merge --ff-only --quiet origin/main 2>/dev/null; then
-    :
+  MAP_BAK=""
+  WC_AU_CODE_UPDATE_WARNING=""
+  export WC_AU_CODE_UPDATE_WARNING
+
+  # 先判斷 branch 關係，先至掂會由 live run 寫入嘅 mapping。production branch
+  # 分叉時 fast-forward 必定失敗；嗰陣 checkout mapping 只會製造中途 crash
+  # 抹走上一個 run 新增 meeting ID 嘅窗口，完全冇更新收益。
+  if ! git fetch --quiet origin 2>/dev/null; then
+    WC_AU_CODE_UPDATE_WARNING="git fetch 失敗 —— 未能核實 production code 係咪最新，今次用現有版本"
   else
-    print -r -- "⚠️ fast-forward 唔到 origin/main —— 用現有版本繼續（唔會強制覆蓋）" >&2
+    AHEAD=0
+    BEHIND=0
+    COUNTS="$(git rev-list --left-right --count HEAD...origin/main 2>/dev/null || true)"
+    if [ -n "$COUNTS" ]; then
+      read -r AHEAD BEHIND <<< "$COUNTS"
+    fi
+    if [ "$BEHIND" -eq 0 ] 2>/dev/null; then
+      : # 已包含 origin/main；local commits 可以照留。
+    elif [ "$AHEAD" -gt 0 ] 2>/dev/null; then
+      WC_AU_CODE_UPDATE_WARNING="production branch 已分叉（ahead $AHEAD / behind $BEHIND），無法自動 fast-forward；今次用現有版本，要人手合併 origin/main"
+    else
+      MAP_BAK="$(mktemp -t wc_mapping)"
+      cp "$MAPPING" "$MAP_BAK" 2>/dev/null || true
+
+      restore_mapping() {
+        if [ -n "${MAP_BAK:-}" ] && [ -s "$MAP_BAK" ]; then
+          /usr/bin/python3 "$SCRIPT_DIR/merge_mapping.py" "$MAPPING" "$MAP_BAK" \
+            >/dev/null 2>&1 || cp "$MAP_BAK" "$MAPPING"
+          rm -f "$MAP_BAK"
+          MAP_BAK=""
+        fi
+      }
+      trap restore_mapping EXIT HUP INT TERM
+
+      git checkout --quiet -- "$MAPPING" 2>/dev/null || true
+      if git merge --ff-only --quiet origin/main 2>/dev/null; then
+        if [ -s "$MAP_BAK" ] && ! /usr/bin/python3 "$SCRIPT_DIR/merge_mapping.py" "$MAPPING" "$MAP_BAK"; then
+          cp "$MAP_BAK" "$MAPPING"
+          print -r -- "FATAL: 更新 code 後合併 meeting-ID mapping 失敗；已還原本機 mapping，今次唔開工" >&2
+          exit 1
+        fi
+        rm -f "$MAP_BAK"
+        MAP_BAK=""
+      else
+        restore_mapping
+        WC_AU_CODE_UPDATE_WARNING="fast-forward origin/main 失敗 —— 今次用現有版本（工作區可能有其他改動）"
+      fi
+      trap - EXIT HUP INT TERM
+    fi
   fi
-  # 合併返本機嗰啲新場次 —— 唔可以就咁掉。
-  if [ -s "$MAP_BAK" ]; then
-    /usr/bin/python3 "$SCRIPT_DIR/merge_mapping.py" "$MAPPING" "$MAP_BAK" || true
+  if [ -n "$WC_AU_CODE_UPDATE_WARNING" ]; then
+    print -r -- "⚠️ $WC_AU_CODE_UPDATE_WARNING" >&2
   fi
-  rm -f "$MAP_BAK"
   print -r -- "▶ 版本 $(git rev-parse --short HEAD) ($(git rev-parse --abbrev-ref HEAD))"
 fi
 

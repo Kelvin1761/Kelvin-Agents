@@ -2792,7 +2792,8 @@ def code_version() -> dict:
     return {"commit": (git("rev-parse", "--short", "HEAD") or "?"),
             "branch": (git("rev-parse", "--abbrev-ref", "HEAD") or "?"),
             "dirty_files": len(dirty.splitlines()),
-            "engine_dirty": engine_dirty or None}
+            "engine_dirty": engine_dirty or None,
+            "update_warning": os.environ.get("WC_AU_CODE_UPDATE_WARNING") or None}
 
 
 def check_data_root(runlog: RunLog) -> bool:
@@ -2834,6 +2835,10 @@ def check_data_root(runlog: RunLog) -> bool:
             f"引擎有 {len(version['engine_dirty'])} 個未 commit 嘅檔 —— 今次評分"
             f"唔對應任何一個 commit，之後對唔返賬："
             f"{version['engine_dirty'][:6]}")
+    if version["update_warning"]:
+        # wrapper 嘅 stderr 冇人會主動睇；放入 run JSON，完場 Telegram 摘要先會
+        # 真正令 production branch 長期落後呢件事變成可見。
+        runlog.warn(version["update_warning"])
     return True
 
 

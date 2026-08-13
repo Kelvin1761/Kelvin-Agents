@@ -63,6 +63,14 @@ class SummaryTests(unittest.TestCase):
         _, body = N.summarise(run(code_version={"engine_dirty": ["a.py", "b.py"]}))
         self.assertIn("未 commit", body)
 
+    def test_a_stale_production_branch_is_visible_on_the_phone(self):
+        _, body = N.summarise(run(code_version={
+            "engine_dirty": None,
+            "update_warning": "production branch 已分叉（ahead 41 / behind 13）",
+        }))
+        self.assertIn("版本更新", body)
+        self.assertIn("behind 13", body)
+
     def test_counts_races_not_meetings(self):
         _, body = N.summarise(run(races_added=[{"races": [1, 2, 3]},
                                                {"races": [1, 2]}]))
