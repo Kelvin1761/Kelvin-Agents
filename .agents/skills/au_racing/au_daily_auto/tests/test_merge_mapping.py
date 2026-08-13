@@ -66,12 +66,14 @@ class MergeMappingTests(unittest.TestCase):
             M.merge(a, b)
             self.assertIn("keep", json.loads(a.read_text(encoding="utf-8")))
 
-    def test_the_runner_no_longer_reverts_the_file(self):
+    def test_the_runner_checks_branch_relationship_before_touching_the_file(self):
         runner = (Path(M.__file__).parent / "run_au_daily_schedule.sh").read_text()
         self.assertIn("merge_mapping.py", runner)
-        # checkout 仍然需要（令 ff 過得到），但一定要跟住合併返
-        self.assertLess(runner.index("git checkout --quiet --"),
-                        runner.index("merge_mapping.py"))
+        # 分叉時 ff 必定失敗；一定要先判斷，唔可以先 checkout live mapping。
+        self.assertLess(runner.index("git rev-list --left-right --count"),
+                        runner.index("git checkout --quiet --"))
+        # 真係可以 ff 嗰條路亦要有 signal-safe restore。
+        self.assertIn("trap restore_mapping EXIT HUP INT TERM", runner)
 
 
 if __name__ == "__main__":

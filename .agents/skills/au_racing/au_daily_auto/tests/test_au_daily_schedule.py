@@ -1231,6 +1231,7 @@ class TestNoNotify(unittest.TestCase):
 class TestSharedRunLock(unittest.TestCase):
     def test_unopenable_shared_lock_fails_closed(self):
         # 退去 checkout 私有鎖會令 production worktree 同主 repo 同時開工。
-        with unittest.mock.patch.object(S.Path, "open", side_effect=PermissionError("no")):
+        with unittest.mock.patch.object(S.Path, "open", side_effect=PermissionError("no")), \
+             unittest.mock.patch.object(S, "log", lambda message: None):
             with S.single_run_lock() as acquired:
                 self.assertIsNone(acquired)
