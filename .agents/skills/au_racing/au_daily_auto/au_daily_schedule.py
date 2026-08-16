@@ -67,6 +67,9 @@ MEETING_IDS = AU_SKILL / "data" / "sb_archive_meeting_ids.json"
 AU_ORCH = AU_SKILL / "au_wong_choi" / "scripts" / "au_orchestrator.py"
 AU_AUTO_ORCH = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_auto_orchestrator.py"
 REFLECTOR = AU_SKILL / "au_reflector" / "scripts" / "au_reflector_orchestrator.py"
+SB_RESULTS_CSV = AU_SKILL / "sb_results_csv.py"
+RESULTS_INGEST = (AU_SKILL / "au_wong_choi_auto" / "scripts"
+                  / "au_results_ingest.py")
 GENERATE_STATIC = DASHBOARD_DIR / "generate_static.py"
 DEPLOY_SH = DASHBOARD_DIR / "deploy.sh"
 
@@ -985,6 +988,61 @@ def review_one_meeting(runlog: RunLog, folder: Path, *,
         return {"races": expected}
 
     return archive_meeting(runlog, folder, expected)
+
+
+def step_ingest_results(runlog: RunLog, *, from_date: str) -> bool:
+    """Fold newly-reflected results into `AU_Historical_Raw_Race_Results.csv`.
+
+    That CSV is the corpus every backtest, calibration and matrix re-fit joins
+    against. It used to be fed by a Racenet driver; when Racenet was removed the
+    replacement (`sb_results.py`) only wrote the per-meeting
+    `Race_Results_Reflector.md`, and `sb_results_csv.py` — which does build a
+    calibrator-shaped file — was wired only into the forward monitor's work
+    directory. Nothing wrote the corpus, and nothing complained: the CSV silently
+    stopped at 2026-07-08 and every harness quietly evaluated a five-week-old
+    sample until it was noticed on 2026-08-16.
+
+    Two sources, best first. `sb_results_csv.py` reads the Sportsbet cache and
+    carries the WHOLE field (~9.9 runners/race); the reflector fallback is
+    usually truncated at 4th or 6th but reaches meetings the cache id map does
+    not. `au_results_ingest.py` merges both additively and idempotently, so
+    re-running is safe and a failure here only delays ingestion — it never
+    corrupts the corpus.
+    """
+    runlog.step("ingest-results", "start", from_date=from_date)
+    try:
+        WORK_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        runlog.warn(f"Results ingest 工作目錄建立唔到：{exc}")
+        runlog.step("ingest-results", "failed", detail=str(exc))
+        return False
+
+    sb_csv = WORK_DIR / "results-ingest-sportsbet.csv"
+    command = [sys.executable, str(RESULTS_INGEST), "--apply"]
+    rc, out = run_cmd(
+        [sys.executable, str(SB_RESULTS_CSV), "--out", str(sb_csv),
+         "--from-date", from_date], timeout=1800)
+    if rc == 0 and sb_csv.exists():
+        command += ["--sb-csv", str(sb_csv)]
+    else:
+        # Not fatal: the reflector path still covers these meetings, just with
+        # fewer finishers per race.
+        runlog.warn("Sportsbet 全場賽果重建失敗，只用 reflector 補（每場跑手會少啲）")
+
+    rc, out = run_cmd(command, timeout=1800)
+    if rc != 0:
+        detail = out.splitlines()[-1] if out else f"rc={rc}"
+        runlog.warn(f"賽果摺返語料庫失敗：{detail}")
+        runlog.step("ingest-results", "failed", detail=detail)
+        return False
+
+    added = 0
+    for line in (out or "").splitlines():
+        match = re.search(r"new rows to add\s*:\s*(\d+)", line)
+        if match:
+            added = int(match.group(1))
+    runlog.step("ingest-results", "ok", rows_added=added)
+    return True
 
 
 # ── 步驟 2：分析下一個賽日 ─────────────────────────────────────────────────
@@ -2629,6 +2687,9 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
             temporary = True
         if archived:
             push_reflection(runlog, archived)
+    # After the reflectors exist, before anything that reads the corpus.
+    if not args.skip_results_ingest:
+        step_ingest_results(runlog, from_date=args.ingest_from_date)
     if not args.skip_analysis:
         try:
             analysed = step_analyse_next_day(runlog, review_day,
@@ -2876,6 +2937,11 @@ def main(argv: list[str] | None = None) -> int:
                         help="evening：唔做覆盤／歸檔")
     parser.add_argument("--skip-analysis", action="store_true",
                         help="evening：唔分析下一個賽日")
+    parser.add_argument("--skip-results-ingest", action="store_true",
+                        help="evening：唔將新賽果摺返 AU_Historical_Raw_Race_Results.csv")
+    parser.add_argument("--ingest-from-date", default="2026-07-01",
+                        help="賽果摺返時由邊日開始重建 Sportsbet 全場賽果"
+                             "（早過呢個日子嘅場次靠 reflector 補；預設 2026-07-01）")
     parser.add_argument("--no-archive", action="store_true",
                         help="evening：覆盤但唔搬 folder")
     parser.add_argument("--skip-deploy", action="store_true",

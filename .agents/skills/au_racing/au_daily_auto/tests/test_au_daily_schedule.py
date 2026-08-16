@@ -12,6 +12,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+from datetime import date
 import sys
 import tempfile
 import unittest
@@ -1235,3 +1236,54 @@ class TestSharedRunLock(unittest.TestCase):
              unittest.mock.patch.object(S, "log", lambda message: None):
             with S.single_run_lock() as acquired:
                 self.assertIsNone(acquired)
+
+
+class TestResultsIngestStep(unittest.TestCase):
+    """賽果摺返步驟 —— 呢步斷咗過一次，靜咗五個星期冇人知。
+
+    所以測嘅唔係「摺得啱唔啱」（`test_results_ingest.py` 負責），而係排程呢邊
+    嘅контракт：失敗要出得聲、Sportsbet 全場賽果攞唔到要照跑 reflector 補、
+    以及唔可以靜靜咁 pass。
+    """
+
+    def _run(self, results, *, cache_file_written=True):
+        calls = []
+        work = tempfile.TemporaryDirectory()
+        self.addCleanup(work.cleanup)
+
+        def fake_run_cmd(cmd, timeout=None):
+            calls.append([str(c) for c in cmd])
+            # first call is the Sportsbet cache build; it only counts as usable
+            # if it actually produced the file
+            if len(calls) == 1 and cache_file_written and results[0][0] == 0:
+                (Path(work.name) / "results-ingest-sportsbet.csv").write_text("x")
+            return results[len(calls) - 1]
+
+        runlog = S.RunLog("test", date(2026, 8, 16),
+                          Path(_LOG_TMP.name) / "run.json")
+        with unittest.mock.patch.object(S, "run_cmd", fake_run_cmd), \
+                unittest.mock.patch.object(S, "WORK_DIR", Path(work.name)):
+            ok = S.step_ingest_results(runlog, from_date="2026-08-01")
+        steps = [s for s in runlog.data.get("steps", [])
+                 if s.get("step") == "ingest-results"]
+        return ok, calls, steps
+
+    def test_uses_the_full_field_source_when_it_builds(self):
+        ok, calls, steps = self._run([(0, "ok"), (0, "new rows to add : 42\n")])
+        self.assertTrue(ok)
+        self.assertTrue(any("sb_results_csv.py" in c for c in calls[0]))
+        # the ingest must be told to prefer the cache-built full fields
+        self.assertIn("--sb-csv", calls[1])
+        self.assertIn("--apply", calls[1])
+        self.assertEqual(steps[-1].get("rows_added"), 42)
+
+    def test_falls_back_to_reflectors_when_the_cache_build_fails(self):
+        ok, calls, _ = self._run([(1, "boom"), (0, "new rows to add : 3\n")])
+        self.assertTrue(ok, "a cache failure must not abort the fold-back")
+        self.assertNotIn("--sb-csv", calls[1])
+        self.assertIn("--apply", calls[1])
+
+    def test_a_failed_fold_is_reported_not_swallowed(self):
+        ok, _calls, steps = self._run([(0, "ok"), (2, "traceback\n")])
+        self.assertFalse(ok)
+        self.assertEqual(steps[-1].get("status"), "failed")
