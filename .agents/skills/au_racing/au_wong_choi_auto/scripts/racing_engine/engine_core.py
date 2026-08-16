@@ -65,6 +65,29 @@ TRAINER_RATINGS_CACHE: dict[str, dict] | None = None
 DRAW_BIAS_MATRIX_CACHE: dict | None = None
 DRAW_BIAS_MATRIX_PATH = Path(__file__).resolve().parent / "au_draw_bias_matrix.json"
 # Historical PF sectionals live beside the archive, newest cache first.
+# Draw-bias cascade acceptance thresholds. Overridable so the granularity question
+# can be re-tested cheaply; the defaults are the measured optimum.
+#
+# 2026-08-17, asked whether a per-racecourse table is too granular to be reliable.
+# It is not — end-to-end over 721 races, LESS granularity is worse at every level:
+#
+#     threshold        gold  champ  winT3    mrr  ndcg5      pace_map SD
+#     10 / 30 (now)     116  25.24  55.76  46.18  55.60             2.28
+#     40 / 150          109  23.99  54.37  44.96  54.72             1.79
+#     global only       110  23.86  53.95  44.67  54.75             1.20
+#
+# Why thin cells are safe: the empirical-Bayes shrinkage (shrinkage_k = 25) keeps only
+# n/(n+25) of the raw modifier, so an n=10 cell contributes 29% of its apparent edge and
+# an n=20 cell 44%. The granularity supplies the shape; the shrinkage supplies the
+# caution. That makes `shrinkage_k` the parameter worth tuning here, not these gates.
+#
+# ⚠️ A split-half stability test on the same cells reports r = +0.02 and reads like
+# proof the per-track cells are noise. It is not: the median accepted cell holds ~20
+# runners, so halving it leaves n=10 per side, where a win rate carries a +/-18.6pp
+# 95% CI. That test cannot detect stability even when it exists — it was underpowered
+# by construction. Trust the end-to-end A/B above, not the proxy.
+_DRAW_MIN_TRACK_DIST = int(os.environ.get("WC_DRAW_MIN_TRACK_DIST", "10"))
+_DRAW_MIN_TRACK = int(os.environ.get("WC_DRAW_MIN_TRACK", "30"))
 PF_BACKFILL_FILENAMES = ("AU_PF_Historical_Backfill_Cache_2026-07-13.json",)
 _PF_BACKFILL_CACHE: dict | None = None
 
@@ -1263,13 +1286,13 @@ class RacingEngine:
                 trk_data = matrix["tracks"][track]
                 if distance in trk_data.get("distances", {}):
                     d_stats = trk_data["distances"][distance].get(bucket, {})
-                    if d_stats.get("sample_size", 0) >= 10:
+                    if d_stats.get("sample_size", 0) >= _DRAW_MIN_TRACK_DIST:
                         stats = d_stats
                         peer_cells = trk_data["distances"][distance]
                         source_level = f"{track} {distance}m"
                 if not stats:
                     t_stats = trk_data.get("track_general", {}).get(bucket, {})
-                    if t_stats.get("sample_size", 0) >= 30:
+                    if t_stats.get("sample_size", 0) >= _DRAW_MIN_TRACK:
                         stats = t_stats
                         peer_cells = trk_data.get("track_general", {})
                         source_level = f"{track} 總體"
