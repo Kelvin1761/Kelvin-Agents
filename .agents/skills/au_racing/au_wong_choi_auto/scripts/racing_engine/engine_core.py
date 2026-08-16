@@ -237,6 +237,32 @@ def _load_jockey_trainer_combo_stats():
     JOCKEY_TRAINER_COMBO_CACHE = combo_cache
     TRAINER_TRACK_CACHE = trainer_cache
     return combo_cache, trainer_cache
+def _draw_pool_baseline(peer_cells, fallback):
+    """Overall win rate of the cell-set a draw-bias cell was drawn from.
+
+    winners / runners over the sibling buckets. This is what a bucket has to beat
+    to count as a genuinely good draw. Comparing it to `1/today's field size`
+    instead compares two different denominators whenever the level is not
+    field-size bucketed — which is 96.2% of usable cells. Falls back to the
+    caller's value when the pool is empty or degenerate.
+    """
+    if not isinstance(peer_cells, dict):
+        return fallback
+    runners = 0
+    winners = 0.0
+    for cell in peer_cells.values():
+        if not isinstance(cell, dict):
+            continue
+        size = cell.get("sample_size") or 0
+        if size <= 0:
+            continue
+        runners += size
+        winners += (cell.get("win_rate") or 0.0) * size
+    if runners <= 0 or winners <= 0:
+        return fallback
+    return winners / runners
+
+
 def _load_draw_bias_matrix():
     global DRAW_BIAS_MATRIX_CACHE
     if DRAW_BIAS_MATRIX_CACHE is None:
@@ -1230,6 +1256,7 @@ class RacingEngine:
             matrix = _load_draw_bias_matrix()
             stats = None
             source_level = ""
+            peer_cells = None
 
             # Cascading lookup
             if track in matrix.get("tracks", {}):
@@ -1238,16 +1265,33 @@ class RacingEngine:
                     d_stats = trk_data["distances"][distance].get(bucket, {})
                     if d_stats.get("sample_size", 0) >= 10:
                         stats = d_stats
+                        peer_cells = trk_data["distances"][distance]
                         source_level = f"{track} {distance}m"
                 if not stats:
                     t_stats = trk_data.get("track_general", {}).get(bucket, {})
                     if t_stats.get("sample_size", 0) >= 30:
                         stats = t_stats
+                        peer_cells = trk_data.get("track_general", {})
                         source_level = f"{track} 總體"
 
             if not stats:
                 stats = matrix.get("global_general", {}).get(f_cat, {}).get(bucket, {})
+                peer_cells = matrix.get("global_general", {}).get(f_cat, {})
                 source_level = f"全澳 {f_cat} 總體"
+
+            # BASELINE FIX 2026-08-16（用戶提出：「Ballarat 總體統計勝率 10.9%
+            # （基準 14.3%）」睇落唔對路 —— 佢啱）。
+            # 舊做法拿 cell 勝率同 `1/今日馬匹數` 比。但只有 **global** 嗰層按馬匹數
+            # 分桶（field_1_8 / 9_12 / 13_plus）；track 同 track+distance 兩層冇分桶，
+            # 係跨唔同馬匹數 pool 出嚟。實測全部可用 cell 之中 **96.2%** 落喺呢兩層
+            # （track+distance 77.7%、track 總體 18.6%），即係絕大多數情況兩邊分母
+            # 根本唔同。連符號都會反：Ballarat 內檔 10.9% 對 1/7=14.3% → −3.72（罰），
+            # 對 Ballarat 自己個 pool 9.5% → +1.59（賞）。同一個 cell 喺 6 匹場 −6.34、
+            # 14 匹場 +4.13 —— 10.5 分擺動全部由今日馬匹數決定，同檔位好壞無關，
+            # 等於偷偷加咗「細場次一律扣分、大場次一律加分」。
+            # 改為攞同一個 pool 嘅整體勝率（winners/runners）做基準，兩邊分母一致。
+            # global 嗰層本身已經對得上（field_1_8 pool = 14.2% ≈ 1/7），所以幾乎冇變。
+            expected_wr = _draw_pool_baseline(peer_cells, expected_wr)
 
             bucket_zh = {"inside": "內檔", "middle": "中檔", "outside": "外檔", "wide": "大外檔"}.get(bucket, bucket)
             if stats and stats.get("sample_size", 0) > 0:

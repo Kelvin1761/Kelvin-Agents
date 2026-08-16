@@ -34,11 +34,17 @@ class DrawBiasShrinkageTests(unittest.TestCase):
         import json
         from pathlib import Path
 
+        from engine_core import _draw_pool_baseline
+
         matrix = json.loads((ENGINE_DIR / "au_draw_bias_matrix.json").read_text(encoding="utf-8"))
-        cell = matrix["tracks"]["Rosehill Gardens"]["distances"]["1200"]["inside"]
+        peers = matrix["tracks"]["Rosehill Gardens"]["distances"]["1200"]
+        cell = peers["inside"]
         self.assertGreaterEqual(cell["sample_size"], 10)  # cascade accepts this cell
         w = PACE_MICRO_WEIGHTS
-        expected_wr = 1.0 / 11
+        # 2026-08-16: the baseline is the cell's OWN pool, not 1/field_size. The
+        # track and track+distance levels are not field-size bucketed, so
+        # 1/field_size subtracted two different denominators (see _pace_map_score).
+        expected_wr = _draw_pool_baseline(peers, 1.0 / 11)
         raw = (cell["win_rate"] - expected_wr) * 100 * w["modifier_multiplier"]
         n = cell["sample_size"]
         raw *= n / (n + w.get("shrinkage_k", 25.0))

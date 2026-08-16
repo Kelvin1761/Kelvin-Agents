@@ -43,6 +43,9 @@ CACHE_DIR = Path(os.environ.get("WC_RA_CACHE", "")) if os.environ.get("WC_RA_CAC
     else Path(__file__).resolve().parent / ".ra_cache"
 DEFAULT_DELAY = 6.0        # RA 冇封過我哋，但照守保守節奏
 MIN_BYTES = 5000
+# 州曆嘅 URL 唔變但內容日日變 —— 六個鐘之後就要重抓，唔可以食舊 cache。
+# 一日跑一次嘅排程即係每次都會攞新版；同一個 run 入面八個州唔會重複出網。
+CALENDAR_MAX_AGE = 6 * 3600
 
 _MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
@@ -70,12 +73,24 @@ class Fetcher:
     def _path(self, url: str) -> Path:
         return CACHE_DIR / (hashlib.sha1(url.encode()).hexdigest() + ".html")
 
-    def get(self, url: str, force: bool = False) -> str | None:
+    def get(self, url: str, force: bool = False, max_age: float | None = None) -> str | None:
+        """`max_age` 秒之後就當 cache 過期。None = 永遠當新鮮（預設）。
+
+        Acceptances 頁一出就唔會變，永久 cache 啱。**但 Calendar 頁唔係** ——
+        見 `CALENDAR_MAX_AGE`。
+        """
         cp = self._path(url)
         if self.use_cache and not force and cp.exists():
-            if self.verbose:
-                print(f"   （cache）{url}")
-            return cp.read_text(encoding="utf-8")
+            fresh = True
+            if max_age is not None:
+                try:
+                    fresh = (time.time() - cp.stat().st_mtime) < max_age
+                except OSError:
+                    fresh = False
+            if fresh:
+                if self.verbose:
+                    print(f"   （cache）{url}")
+                return cp.read_text(encoding="utf-8")
         wait = self.delay - (time.time() - self._last)
         if wait > 0:
             time.sleep(wait)
@@ -103,12 +118,22 @@ def _tables(html: str):
 
 def meetings_for(day: str, fetcher: Fetcher | None = None,
                  states=STATES) -> list[dict]:
-    """→ [{date, state, venue, key, urls…}]，由州曆發現（唔砌馬場名）。"""
+    """→ [{date, state, venue, key, urls…}]，由州曆發現（唔砌馬場名）。
+
+    ⚠️ **州曆一定要當會變嘅內容**。個 URL（`Calendar.aspx?State=VIC`）成世唔變，
+    但入面嘅賽日窗口日日向前行。舊寫法無條件食 cache，於是每個州第一次抓完
+    就永遠凍結喺嗰日 —— 2026-08-16 實測：NSW（啱啱先重抓過）出 Aug16–23，
+    而 VIC / QLD / WA / SA / TAS / ACT / NT **七個州全部仲停留喺 Aug05**，
+    即係除咗 NSW 之外冇一個場次配得到，rating 靜靜咁全部落 fallback。
+    近三星期 75 個場次有 26 個零 rating，就係咁嚟。
+    Acceptances 頁一出就唔會再改，所以嗰邊照舊永久 cache。
+    """
     f = fetcher or Fetcher()
     stamp = ra_date(day)
     found: dict[str, dict] = {}
     for state in states:
-        html = f.get(f"{BASE}/FreeFields/Calendar.aspx?State={state}")
+        html = f.get(f"{BASE}/FreeFields/Calendar.aspx?State={state}",
+                     max_age=CALENDAR_MAX_AGE)
         if not html:
             continue
         # ⚠️ 引號兩種都要food：NSW 個曆用 `href="…"`，VIC 用 `href='…'`。

@@ -1277,6 +1277,20 @@ def apply_ra_ratings(runlog: RunLog, folder: Path, day: str, venue: str) -> dict
     if not result.get("ok"):
         runlog.warn(f"{folder.name}: RA 冇呢個場次（{result.get('reason')}）—— 照用 fallback")
         return result
+    # A meeting that comes back with ZERO ratings is almost never "every horse is
+    # unrated" — it is the lookup having failed. 2026-08-16: the RA state calendar
+    # was being served from a permanently-cached copy, so seven of eight states
+    # froze on an 11-day-old window and 26 of 75 meetings scored zero. Nothing
+    # complained, because a per-meeting failure looks exactly like a maiden card.
+    # Filled-vs-unrated is all-or-nothing when it breaks, so 0 is the alarm.
+    if not result.get("filled") and result.get("no_official_rating"):
+        runlog.warn(f"{folder.name}: RA 配到場次但**一個讓磅分都補唔到**"
+                    f"（{result['no_official_rating']} 匹全部冇）—— 通常係查冊壞咗，"
+                    f"唔係全場真係未評分，請查 RA 州曆同馬名比對")
+        runlog.step("ra-ratings", "zero-filled", meeting=folder.name,
+                    no_official=result["no_official_rating"],
+                    ra_venue=result["ra_venue"])
+        return result
     runlog.step("ra-ratings", "ok", meeting=folder.name,
                 filled=result["filled"],
                 no_official=result["no_official_rating"],
