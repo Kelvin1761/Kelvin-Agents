@@ -10,8 +10,9 @@ import sys
 import json
 import argparse
 import re
-import csv
+import tempfile
 from collections import Counter
+from datetime import date, datetime
 from pathlib import Path
 
 # Add project root and engine to path
@@ -20,21 +21,39 @@ PROJECT_ROOT = SCRIPT_DIR.parents[4]
 sys.path.append(str(PROJECT_ROOT))
 sys.path.append(str(SCRIPT_DIR / "racing_engine"))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_reflector" / "scripts"))
+sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
 
-from engine_core import RacingEngine
-from hkjc_results_db import get_combo_priors_csv
-from renderer import ensure_verdict, render_meeting_csv, write_race_outputs
+from engine_core import RacingEngine, scoring_run_contract
+from renderer import (
+    ensure_verdict,
+    prepare_race_outputs,
+    render_meeting_csv,
+    write_prepared_race_outputs,
+)
 from scoring import compute_grade
 from validation import validate_engine_scripts, validate_logic_data
+from wongchoi_paths import is_materialized_file
 
 # Optional: horse-profile scraper for multi-season (近三季) readout enrichment.
 # DISPLAY-ONLY — failures degrade gracefully and never affect scoring.
-sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
-try:
-    from scrape_hkjc_horse_profile import scrape_horse_profile
-    _HAS_PROFILE_SCRAPER = True
-except Exception:
-    _HAS_PROFILE_SCRAPER = False
+_PROFILE_SCRAPER = None
+
+
+def _get_profile_scraper():
+    """Lazy-load display enrichment so scoring-only runs have no cache side effect."""
+    global _PROFILE_SCRAPER
+    if os.environ.get("WC_DISABLE_HKJC_PROFILE_ENRICH") == "1":
+        return None
+    if _PROFILE_SCRAPER is False:
+        return None
+    if _PROFILE_SCRAPER is None:
+        try:
+            from scrape_hkjc_horse_profile import scrape_horse_profile
+            _PROFILE_SCRAPER = scrape_horse_profile
+        except Exception:
+            _PROFILE_SCRAPER = False
+            return None
+    return _PROFILE_SCRAPER
 
 # class_grade → readable label (graded races vs 班次)
 _PROFILE_CLASS_LABEL = {
@@ -47,13 +66,62 @@ _PROFILE_CLASS_ORDER = {
 }
 
 
+def _race_file_sort_key(path):
+    match = re.search(r"Race_(\d+)_Logic\.json$", path.name, re.I)
+    return (int(match.group(1)) if match else 10**9, path.name)
+
+
+def _atomic_write_json(path, data):
+    path = Path(path)
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            json.dump(data, handle, ensure_ascii=False, indent=2)
+            tmp_path = Path(handle.name)
+        os.replace(tmp_path, path)
+    finally:
+        if tmp_path and tmp_path.exists():
+            tmp_path.unlink()
+
+
+def _profile_entry_date(value):
+    text = str(value or "").strip()
+    for fmt in ("%d/%m/%y", "%d/%m/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(text, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _meeting_date_for_logic(logic_path, race_context):
+    for value in (
+        race_context.get("race_date"),
+        race_context.get("racedate"),
+        race_context.get("date"),
+    ):
+        text = str(value or "").strip().replace("/", "-")
+        try:
+            return date.fromisoformat(text)
+        except ValueError:
+            pass
+    match = re.search(r"(20\d{2}-\d{2}-\d{2})", str(Path(logic_path).parent))
+    return date.fromisoformat(match.group(1)) if match else None
+
+
 def _profile_season_key(date_str):
     """HK racing season (Sep–Aug) start year from a dd/mm/yy date."""
-    m = re.match(r"(\d{2})/(\d{2})/(\d{2})", str(date_str or ""))
-    if not m:
+    parsed = _profile_entry_date(date_str)
+    if parsed is None:
         return None
-    mm, yy = int(m.group(2)), 2000 + int(m.group(3))
-    return yy if mm >= 9 else yy - 1
+    return parsed.year if parsed.month >= 9 else parsed.year - 1
 
 
 def _style_from_positions(positions, field_size=12):
@@ -74,11 +142,14 @@ def _style_from_positions(positions, field_size=12):
     return "後上"
 
 
-def _enrich_profile_history(horses):
-    """Inject DISPLAY-ONLY multi-season fields from the horse profile page:
-    近三季 per-class average finish, season-start + 近三季 high/low rating, and a
-    近6仗 running-style breakdown. Never raises; never touches scoring inputs."""
-    if not _HAS_PROFILE_SCRAPER:
+def _enrich_profile_history(horses, *, as_of_date=None):
+    """Inject point-in-time, display-only multi-season profile fields.
+
+    Same-day and future entries are excluded before any summary is built.  This
+    matters when an archive is rescored after results have appeared on HKJC.
+    """
+    scrape_horse_profile = _get_profile_scraper()
+    if scrape_horse_profile is None:
         return
     for h_obj in horses.values():
         if not isinstance(h_obj, dict):
@@ -91,6 +162,13 @@ def _enrich_profile_history(horses):
             ents = (scrape_horse_profile(hid) or {}).get("entries") or []
         except Exception:
             continue
+        if as_of_date is not None:
+            ents = [
+                entry
+                for entry in ents
+                if (entry_date := _profile_entry_date(entry.get("date"))) is not None
+                and entry_date < as_of_date
+            ]
         if not ents:
             continue
         data = h_obj.setdefault("_data", {})
@@ -164,10 +242,6 @@ CLASS_RANK_MAP = {
     "C4": 6,
     "C5": 7,
 }
-
-COMBO_PRIORS_PATH = get_combo_priors_csv()
-_COMBO_PRIORS_CACHE = None
-
 
 def _apply_sip_enhancements(horses):
     """
@@ -274,45 +348,40 @@ def _format_followup_bucket_summary(counts):
     return "；".join(parts[:-1]) + "；另有" + parts[-1]
 
 
-def _facts_path_for_logic(logic_path, race_number):
-    if race_number in (None, ""):
-        return None
-    matches = sorted(logic_path.parent.glob(f"*Race {race_number} Facts.md"))
+def _unique_materialized_match(logic_path, pattern, label):
+    matches = [
+        path
+        for path in sorted(logic_path.parent.glob(pattern))
+        if is_materialized_file(path)
+    ]
+    if len(matches) > 1:
+        names = ", ".join(path.name for path in matches)
+        raise ValueError(f"multiple {label} files match {logic_path.name}: {names}")
     return matches[0] if matches else None
 
 
-def _load_combo_priors():
-    global _COMBO_PRIORS_CACHE
-    if _COMBO_PRIORS_CACHE is not None:
-        return _COMBO_PRIORS_CACHE
-    priors = {}
-    if COMBO_PRIORS_PATH.exists():
-        with COMBO_PRIORS_PATH.open(encoding="utf-8-sig", newline="") as handle:
-            reader = csv.DictReader(handle)
-            for row in reader:
-                priors[(row.get("Jockey", ""), row.get("Trainer", ""))] = {
-                    "starts": float(row.get("Starts", 0) or 0),
-                    "wins": float(row.get("Wins", 0) or 0),
-                    "places": float(row.get("Places", 0) or 0),
-                    "win_rate": float(row.get("WinRate", 0) or 0),
-                    "place_rate": float(row.get("PlaceRate", 0) or 0),
-                }
-    _COMBO_PRIORS_CACHE = priors
-    return priors
+def _facts_path_for_logic(logic_path, race_number):
+    if race_number in (None, ""):
+        return None
+    return _unique_materialized_match(
+        logic_path, f"*Race {race_number} Facts.md", "Facts"
+    )
 
 
 def _trackwork_path_for_logic(logic_path, race_number):
     if race_number in (None, ""):
         return None
-    matches = sorted(logic_path.parent.glob(f"*Race {race_number} 晨操.md"))
-    return matches[0] if matches else None
+    return _unique_materialized_match(
+        logic_path, f"*Race {race_number} 晨操.md", "trackwork"
+    )
 
 
 def _racecard_path_for_logic(logic_path, race_number):
     if race_number in (None, ""):
         return None
-    matches = sorted(logic_path.parent.glob(f"*Race {race_number} 排位表.md"))
-    return matches[0] if matches else None
+    return _unique_materialized_match(
+        logic_path, f"*Race {race_number} 排位表.md", "racecard"
+    )
 
 
 _RAIL_RE = re.compile(r'(?:草地|全天候|泥地)\s*[-–]?\s*[「"]?\s*([ABC](?:\s*\+\s*\d)?)\s*[」"]?\s*賽道')
@@ -340,15 +409,51 @@ def _parse_racecard_meta(text):
     if cm and cm.group(1).strip():
         race_class = cm.group(1).strip()
     info = {}
-    for block in re.split(r"(?=馬名:\s*)", text):
+    numbered_blocks = list(
+        re.finditer(r"^馬號:\s*\d+.*?(?=^馬號:\s*\d+|\Z)", text, re.M | re.S)
+    )
+    blocks = (
+        [match.group(0) for match in numbered_blocks]
+        if numbered_blocks
+        else re.split(r"(?=馬名:\s*)", text)
+    )
+    for block in blocks:
         nm = re.search(r"馬名:\s*(.+)", block)
+        number = re.search(r"^馬號:\s*(\d+)", block, re.M)
         rt = re.search(r"^評分:\s*(\d+)", block, re.M)
-        if nm and rt:
+        if nm:
             ch = re.search(r"^評分\+/-:\s*(-?\d+)", block, re.M)
-            info[nm.group(1).strip()] = {
-                "rating": int(rt.group(1)),
+            jockey = re.search(r"^騎師:\s*(.+)", block, re.M)
+            trainer = re.search(r"^練馬師:\s*(.+)", block, re.M)
+            declared_weight = re.search(r"^負磅:\s*(\d+)", block, re.M)
+            barrier = re.search(r"^檔位:\s*(\d+)", block, re.M)
+            horse_id = re.search(r"^HKJC馬匹ID:\s*(HK_\d{4}_[A-HJ-Z]\d{3})", block, re.M | re.I)
+            profile_url = re.search(r"^官方馬匹資料:\s*(\S+)", block, re.M)
+            horse_code = re.search(r"^烙號:\s*([A-HJ-Z]\d{3})", block, re.M | re.I)
+            jockey_text = jockey.group(1).strip() if jockey else ""
+            claim_match = re.search(r"\(\s*(-\d+)\s*\)\s*$", jockey_text)
+            claim = abs(int(claim_match.group(1))) if claim_match else 0
+            effective_weight = (
+                int(declared_weight.group(1)) - claim
+                if declared_weight
+                else None
+            )
+            entry = {
+                "horse_name": nm.group(1).strip(),
+                "jockey": re.sub(r"\s*\(\s*-\d+\s*\)\s*$", "", jockey_text).strip(),
+                "trainer": trainer.group(1).strip() if trainer else None,
+                "weight": effective_weight,
+                "barrier": int(barrier.group(1)) if barrier else None,
+                "jockey_claim": claim,
+                "rating": int(rt.group(1)) if rt else None,
                 "change": int(ch.group(1)) if ch else None,
+                "horse_code": horse_code.group(1).upper() if horse_code else None,
+                "hkjc_horse_id": horse_id.group(1).upper() if horse_id else None,
+                "horse_profile_url": profile_url.group(1).strip() if profile_url else None,
             }
+            info[nm.group(1).strip()] = entry
+            if number:
+                info[number.group(1)] = entry
     return race_class, info
 
 
@@ -475,9 +580,10 @@ def _parse_horse_headers(text):
 def _load_header_anchor_map(logic_path, race_context):
     race_number = race_context.get("race_number")
     anchors = {}
+    # Trackwork is fallback. Facts is the complete pre-race layer and wins.
     for source_path in (
-        _facts_path_for_logic(logic_path, race_number),
         _trackwork_path_for_logic(logic_path, race_number),
+        _facts_path_for_logic(logic_path, race_number),
     ):
         if not source_path or not source_path.exists():
             continue
@@ -490,32 +596,80 @@ def _load_header_anchor_map(logic_path, race_context):
     return anchors
 
 
-def _enrich_horse_headers(horses, anchor_map):
-    priors = _load_combo_priors()
+def _enrich_horse_headers(horses, anchor_map, *, keep_embedded_combo_prior=False):
     for horse_num, horse_obj in horses.items():
         if not isinstance(horse_obj, dict):
             continue
         anchors = anchor_map.get(str(horse_num), {})
-        if not anchors:
-            continue
         for field in ("horse_name", "jockey", "trainer", "weight", "barrier"):
-            current = _clean_anchor_value(horse_obj.get(field))
             fallback = _clean_anchor_value(anchors.get(field))
-            if not current and fallback:
+            if fallback:
                 horse_obj[field] = fallback
         data = horse_obj.setdefault("_data", {})
         if isinstance(data, dict):
-            if not _clean_anchor_value(data.get("jockey_name")) and _clean_anchor_value(horse_obj.get("jockey")):
+            if not keep_embedded_combo_prior:
+                data.pop("jockey_trainer_combo_prior", None)
+            if _clean_anchor_value(horse_obj.get("jockey")):
                 data["jockey_name"] = horse_obj.get("jockey")
-            if not _clean_anchor_value(data.get("trainer_name")) and _clean_anchor_value(horse_obj.get("trainer")):
+            if _clean_anchor_value(horse_obj.get("trainer")):
                 data["trainer_name"] = horse_obj.get("trainer")
-            if not _clean_anchor_value(data.get("weight_carried")) and _clean_anchor_value(horse_obj.get("weight")):
+            if _clean_anchor_value(horse_obj.get("weight")):
                 data["weight_carried"] = horse_obj.get("weight")
-            jockey = _clean_anchor_value(horse_obj.get("jockey"))
-            trainer = _clean_anchor_value(horse_obj.get("trainer"))
-            prior = priors.get((jockey, trainer))
-            if prior and not isinstance(data.get("jockey_trainer_combo_prior"), dict):
-                data["jockey_trainer_combo_prior"] = prior
+
+
+def _align_runner_headers(logic_path, race_context, horses):
+    """Canonicalize runner identity once before any scoring context is derived."""
+    _enrich_horse_headers(
+        horses,
+        _load_header_anchor_map(logic_path, race_context),
+    )
+
+    racecard_path = _racecard_path_for_logic(logic_path, race_context.get("race_number"))
+    if racecard_path and racecard_path.exists():
+        rc_text = racecard_path.read_text(encoding="utf-8")
+        rc_class, rc_info = _parse_racecard_meta(rc_text)
+        if rc_class:
+            race_context["race_class"] = rc_class
+        rail = _parse_rail(rc_text)
+        if rail:
+            race_context["rail"] = rail
+        official_numbers = {key for key in rc_info if str(key).isdigit()}
+        logic_numbers = {str(key) for key in horses}
+        if official_numbers and official_numbers != logic_numbers:
+            raise ValueError(
+                "runner set differs between Logic and racecard: "
+                f"Logic={sorted(logic_numbers, key=_horse_number_sort_key)}, "
+                f"racecard={sorted(official_numbers, key=_horse_number_sort_key)}"
+            )
+        for horse_num, horse_obj in horses.items():
+            if not isinstance(horse_obj, dict):
+                continue
+            info = rc_info.get(str(horse_num)) or rc_info.get(horse_obj.get("horse_name"))
+            if not info:
+                continue
+            for field in ("horse_name", "jockey", "trainer", "weight", "barrier"):
+                if info.get(field) not in (None, ""):
+                    horse_obj[field] = info[field]
+            for field in ("horse_code", "hkjc_horse_id", "horse_profile_url"):
+                if info.get(field):
+                    horse_obj[field] = info[field]
+            if info.get("rating") is not None:
+                data = horse_obj.setdefault("_data", {})
+                data["current_rating"] = info["rating"]
+                if info.get("change") is not None:
+                    data["rating_change"] = info["change"]
+
+    _enrich_horse_headers(horses, {})
+    race_context["field_horse_names"] = [
+        horse.get("horse_name")
+        for horse in horses.values()
+        if isinstance(horse, dict) and horse.get("horse_name")
+    ]
+
+
+def _horse_number_sort_key(value):
+    text = str(value)
+    return (0, int(text)) if text.isdigit() else (1, text)
 
 
 def _load_formline_opponent_summaries(logic_path, race_context, horses):
@@ -551,7 +705,10 @@ class HKJCAutoOrchestrator:
             return 1
         
         if self.is_meeting:
-            logic_files = sorted(list(self.target_path.glob("Race_*_Logic.json")))
+            logic_files = sorted(
+                self.target_path.glob("Race_*_Logic.json"),
+                key=_race_file_sort_key,
+            )
             if not logic_files:
                 print(f"❌ No Race_*_Logic.json files found in {self.target_path}")
                 return 1
@@ -618,6 +775,9 @@ class HKJCAutoOrchestrator:
 
     def score_race(self, race_file):
         print(f"\n📊 Scoring {race_file.name}...")
+        if not is_materialized_file(race_file):
+            print(f"❌ Logic file is not materialized locally: {race_file}")
+            return None
         try:
             with open(race_file, "r", encoding="utf-8") as f:
                 logic_data = json.load(f)
@@ -627,39 +787,12 @@ class HKJCAutoOrchestrator:
 
         race_context = logic_data.get("race_analysis", {})
         horses = logic_data.get("horses", {})
-        # Inject today's runner names so the engine can flag 賽績線 head-to-head
-        # rematches (a past opponent that is also in today's field).
         if isinstance(race_context, dict):
-            race_context["field_horse_names"] = [
-                h.get("horse_name") for h in horses.values()
-                if isinstance(h, dict) and h.get("horse_name")
-            ]
-            # Authoritative class + current ratings from the racecard (排位表.md):
-            # corrects graded-race class (三級賽=Group 3, above Class 1-5) which the
-            # Facts header can default to 'C4', and surfaces each runner's CURRENT
-            # official rating (display-only; not used in scoring).
-            racecard_path = _racecard_path_for_logic(race_file, race_context.get("race_number"))
-            if racecard_path and racecard_path.exists():
-                rc_text = racecard_path.read_text(encoding="utf-8")
-                rc_class, rc_info = _parse_racecard_meta(rc_text)
-                if rc_class:
-                    race_context["race_class"] = rc_class
-                rail = _parse_rail(rc_text)
-                if rail:
-                    race_context["rail"] = rail  # 賽道（A/B/C/C+3）— 顯示用，未入評分
-                for h_obj in horses.values():
-                    if not isinstance(h_obj, dict):
-                        continue
-                    info = rc_info.get(h_obj.get("horse_name"))
-                    if info and info.get("rating") is not None:
-                        data = h_obj.setdefault("_data", {})
-                        data["current_rating"] = info["rating"]
-                        if info.get("change") is not None:
-                            data["rating_change"] = info["change"]
-            # 近三季 profile enrichment (display-only; graceful if offline)
-            _enrich_profile_history(horses)
-        header_anchor_map = _load_header_anchor_map(race_file, race_context)
-        _enrich_horse_headers(horses, header_anchor_map)
+            _align_runner_headers(race_file, race_context, horses)
+            meeting_date = _meeting_date_for_logic(race_file, race_context)
+            if meeting_date is not None:
+                race_context["race_date"] = meeting_date.isoformat()
+            _enrich_profile_history(horses, as_of_date=meeting_date)
         formline_summaries = _load_formline_opponent_summaries(race_file, race_context, horses)
         for h_num, summary in formline_summaries.items():
             horse_obj = horses.get(h_num)
@@ -669,7 +802,6 @@ class HKJCAutoOrchestrator:
             if isinstance(data, dict):
                 data.update(summary)
         
-        horse_results = []
         for h_num, h_obj in horses.items():
             h_name = h_obj.get("horse_name", "Unknown")
             print(f"   - Scoring Horse {h_num}: {h_name}")
@@ -695,31 +827,27 @@ class HKJCAutoOrchestrator:
             # Also update the classic matrix if requested (optional rule)
             # h_obj["matrix"] = result["matrix"]
             
-            horse_results.append((h_num, result["ability_score"]))
-
         _apply_sip_enhancements(horses)
-        horse_results = [(h_num, horses[h_num]["python_auto"]["ability_score"]) for h_num in horses]
-
-        # Rank horses by ability score
-        horse_results.sort(key=lambda x: x[1], reverse=True)
-        for i, (h_num, score) in enumerate(horse_results):
-            horses[h_num]["python_auto"]["rank"] = i + 1
-
+        # ensure_verdict owns the single deterministic ranking path, including
+        # the horse-number exact-tie key.
         ensure_verdict(logic_data)
         self._finalize_shadow_profiles(logic_data)
+        logic_data["python_auto_run_contract"] = scoring_run_contract()
             
-        # Write back to JSON
+        logic_errors = validate_logic_data(logic_data)
+        if logic_errors:
+            print("❌ Logic validation failed:")
+            for error in logic_errors:
+                print(f"   - {error}")
+            return None
+
+        # Build and validate every derived artifact before replacing any
+        # last-known-good file.
         try:
-            with open(race_file, "w", encoding="utf-8") as f:
-                json.dump(logic_data, f, ensure_ascii=False, indent=2)
+            prepared_outputs = prepare_race_outputs(race_file, logic_data)
+            _atomic_write_json(race_file, logic_data)
             print(f"   ✅ Updated {race_file.name}")
-            logic_errors = validate_logic_data(logic_data)
-            if logic_errors:
-                print("❌ Logic validation failed:")
-                for error in logic_errors:
-                    print(f"   - {error}")
-                return None
-            md_path, csv_path = write_race_outputs(race_file, logic_data)
+            md_path, csv_path = write_prepared_race_outputs(prepared_outputs)
             print(f"   📄 Markdown: {md_path.name}")
             print(f"   📄 CSV: {csv_path.name}")
             return logic_data
@@ -736,11 +864,13 @@ class HKJCAutoOrchestrator:
         actual = self._load_meeting_results()
         kpis = {"gold": 0, "good": 0, "min_threshold": 0, "single": 0, "champion": 0}
         shadow_profile_stats = {}
+        evaluated_races = 0
         for logic_data in results:
             race_number = str((logic_data.get("race_analysis") or {}).get("race_number") or "")
             actual_top3 = actual.get(race_number, [])
             if not actual_top3:
                 continue
+            evaluated_races += 1
             ranked = sorted(
                 (
                     (
@@ -797,6 +927,7 @@ class HKJCAutoOrchestrator:
             "scoring_profile": self.scoring_profile,
             "shadow_profile": self.shadow_profile,
             "race_count": len(results),
+            "evaluated_race_count": evaluated_races,
             "kpis": kpis,
         }
         if shadow_profile_stats:

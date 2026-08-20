@@ -27,6 +27,9 @@ ROOT = Path(__file__).resolve().parents[5]
 ENGINE_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi_auto" / "scripts" / "racing_engine"
 sys.path.insert(0, str(ENGINE_DIR))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(ROOT))
+
+from wongchoi_paths import is_materialized_file  # noqa: E402
 
 from engine_core import RacingEngine  # noqa: E402
 from features.draw import DrawScorer  # noqa: E402
@@ -47,6 +50,22 @@ from scoring import FEATURE_KEYS, clip_score, parse_float  # noqa: E402
 os.environ.setdefault("PYTHONUTF8", "1")
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+
+def _read_materialized_csv(path: Path) -> pd.DataFrame | None:
+    if not is_materialized_file(path):
+        return None
+    try:
+        return pd.read_csv(path, encoding="utf-8-sig")
+    except (OSError, UnicodeError, pd.errors.ParserError):
+        return None
+
+
+def _safe_rglob(root: Path, pattern: str):
+    try:
+        yield from root.rglob(pattern)
+    except OSError:
+        return
 
 
 PREVIOUS_MATRIX_WEIGHTS = {
@@ -104,7 +123,7 @@ MODEL_SPECS = {
 
 def load_published_mainline_predictions(meeting_dir: Path) -> dict[int, list[int]]:
     csv_path = meeting_dir / "HKJC_Auto_Scoring.csv"
-    if not csv_path.exists():
+    if not is_materialized_file(csv_path):
         return {}
 
     by_race: dict[int, list[dict]] = defaultdict(list)
@@ -164,9 +183,12 @@ class DebutPriors:
         self.combo = self._load_map(DEBUT_PRIOR_FILES["combo"], ["Jockey", "Trainer"])
 
     def _load_map(self, path: Path, keys: list[str]) -> dict[tuple[str, ...], dict]:
-        if not path.exists():
+        if not is_materialized_file(path):
             return {}
-        df = pd.read_csv(path)
+        try:
+            df = pd.read_csv(path)
+        except (OSError, UnicodeError, pd.errors.ParserError):
+            return {}
         records = {}
         for row in df.to_dict(orient="records"):
             records[tuple(str(row[key]).strip() for key in keys)] = row
@@ -292,7 +314,11 @@ class TrainerSignalPriors:
         self.jockey_change = self._load_jockey_change()
 
     def _load_grouped(self, paths: list[Path], keys: list[str]) -> dict[tuple[str, ...], dict]:
-        frames = [pd.read_csv(path, encoding="utf-8-sig") for path in paths if path.exists()]
+        frames = [
+            frame
+            for path in paths
+            if (frame := _read_materialized_csv(path)) is not None
+        ]
         if not frames:
             return {}
         df = pd.concat(frames, ignore_index=True)
@@ -319,7 +345,11 @@ class TrainerSignalPriors:
         return records
 
     def _load_jockey_change(self) -> dict[bool, dict]:
-        frames = [pd.read_csv(path, encoding="utf-8-sig") for path in GENERAL_PRIOR_FILES["jockey_change"] if path.exists()]
+        frames = [
+            frame
+            for path in GENERAL_PRIOR_FILES["jockey_change"]
+            if (frame := _read_materialized_csv(path)) is not None
+        ]
         if not frames:
             return {}
         df = pd.concat(frames, ignore_index=True)
@@ -450,7 +480,11 @@ class ClassDistanceWeightPriors:
         self.weight_class = self._load_grouped(GENERAL_PRIOR_FILES["weight_class"], ["RaceClass", "WtBucket"])
 
     def _load_grouped(self, paths: list[Path], keys: list[str]) -> dict[tuple[str, ...], dict]:
-        frames = [pd.read_csv(path, encoding="utf-8-sig") for path in paths if path.exists()]
+        frames = [
+            frame
+            for path in paths
+            if (frame := _read_materialized_csv(path)) is not None
+        ]
         if not frames:
             return {}
         df = pd.concat(frames, ignore_index=True)
@@ -521,7 +555,11 @@ class DrawHistoryPriors:
         self.jockey_draw = self._load_grouped(GENERAL_PRIOR_FILES["jockey_draw"], ["Jockey", "Draw"])
 
     def _load_grouped(self, paths: list[Path], keys: list[str]) -> dict[tuple[str, ...], dict]:
-        frames = [pd.read_csv(path, encoding="utf-8-sig") for path in paths if path.exists()]
+        frames = [
+            frame
+            for path in paths
+            if (frame := _read_materialized_csv(path)) is not None
+        ]
         if not frames:
             return {}
         df = pd.concat(frames, ignore_index=True)
@@ -1372,7 +1410,9 @@ def hk_meeting_dirs(roots: list[Path]) -> list[Path]:
     for root in roots:
         if not root.exists():
             continue
-        for path in root.rglob("Race_*_Logic.json"):
+        for path in _safe_rglob(root, "Race_*_Logic.json"):
+            if not is_materialized_file(path):
+                continue
             meeting_dir = path.parent
             name = meeting_dir.name
             if "ShaTin" not in name and "HappyValley" not in name:
@@ -1390,7 +1430,9 @@ def build_results_index(results_roots: list[Path]) -> dict[str, Path]:
         if not root.exists():
             continue
         for pattern in ("full_day_results.json", "*全日賽果.json"):
-            for path in root.rglob(pattern):
+            for path in _safe_rglob(root, pattern):
+                if not is_materialized_file(path):
+                    continue
                 date_dir = path.parent.name
                 if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_dir):
                     index.setdefault(date_dir, path)
@@ -1420,6 +1462,8 @@ def dedup_race_key(date: str | None, venue: str, race_num: int) -> tuple[str | N
 
 
 def load_results(path: Path) -> dict[int, dict[int, int]]:
+    if not is_materialized_file(path):
+        return {}
     data = json.loads(path.read_text(encoding="utf-8"))
     results: dict[int, dict[int, int]] = {}
     for race_key, race_data in data.items():
@@ -1906,7 +1950,11 @@ def summarize_meeting_models(
 
 
 def review_season_trends(csv_paths: list[Path]) -> dict:
-    frames = [pd.read_csv(path) for path in csv_paths if path.exists()]
+    frames = [
+        frame
+        for path in csv_paths
+        if (frame := _read_materialized_csv(path)) is not None
+    ]
     if not frames:
         return {}
     df = pd.concat(frames, ignore_index=True)
@@ -2087,7 +2135,14 @@ def run_review(
         meeting_had_race = False
         meeting_has_published_mainline = False
         meeting_venue = venue_from_meeting_dir(meeting_dir)
-        for logic_path in sorted(meeting_dir.glob("Race_*_Logic.json"), key=race_num_from_path):
+        for logic_path in sorted(
+            (
+                path
+                for path in meeting_dir.glob("Race_*_Logic.json")
+                if is_materialized_file(path)
+            ),
+            key=race_num_from_path,
+        ):
             race_num = race_num_from_path(logic_path)
             actual_pos = actual_results.get(race_num)
             if not actual_pos:

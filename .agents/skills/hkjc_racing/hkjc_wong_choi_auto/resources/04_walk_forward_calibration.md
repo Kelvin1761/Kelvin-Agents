@@ -1,5 +1,26 @@
 # HKJC Auto Walk-Forward Calibration
 
+> 呢份文件保留歷史 calibration trail。正式 production contract 以
+> `01_scoring_contract.md`、`scoring.py` 同 `matrix_mapper.py` 為準；舊實驗
+> 數字唔可以當成現役公式。
+
+## Current Production Contract
+
+現役 standard 7D outer weights：
+
+- `sectional`: 0.1285
+- `trainer_signal`: 0.2362
+- `stability`: 0.0983
+- `race_shape`: 0.2737
+- `class_advantage`: 0.1428
+- `horse_health`: 0.0404
+- `form_line`: 0.0801
+
+現役 Matrix mapping 係：sectional=純 `speed_score`；race_shape=純
+`race_shape_context_score`；trainer=55/45 jockey/trainer；health=61.1/38.9
+risk/weight；form_line=純 formline strength；class=75/25 class/weight。
+初出馬另用 versioned debut outer weights，詳見正式 scoring contract。
+
 ## Scope
 
 Validation for the calibrated Auto 7D weights and matrix mapping after adding HKJC Chinese jockey/trainer name support.
@@ -30,14 +51,14 @@ Total sample: dynamic walk-forward coverage based on all matched meetings curren
 
 ## Decision
 
-### 2026-07-30 Competitiveness Calibration (current mainline)
+### 2026-07-30 Competitiveness Calibration (superseded historical candidate)
 
 The full-archive review rebuilt the live 7D matrices directly from archived
 pre-race Logic files. The matched evaluation layer contains `25` meetings,
 `245` valid races, and `3,054` runners, including the independent 2026-07-15
 Happy Valley meeting.
 
-Current mainline:
+That historical candidate was:
 
 - `race_shape`: 0.2260
 - `trainer_signal`: 0.2309

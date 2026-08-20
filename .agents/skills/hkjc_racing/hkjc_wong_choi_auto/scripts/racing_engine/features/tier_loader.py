@@ -17,5 +17,9 @@ def score_tier(group, raw_name, default_reason):
     name = str(raw_name or "").upper()
     for tier in load_tiers().get(group, []):
         if any(str(item).upper() in name for item in tier.get("names", [])):
-            return float(tier["score"]), str(tier["reason"])
+            score = float(tier["score"])
+            # Be explicit when materialized two-season ratings are unavailable:
+            # this is the audited tier fallback, not a live empirical estimate.
+            reason = f"層級後備實績評分{score:.1f}（{tier['reason']}）"
+            return score, reason
     return 60.0, default_reason

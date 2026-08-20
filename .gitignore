@@ -97,6 +97,8 @@ NBA_ML_Dataset/
 .wongchoi_data_root
 .wongchoi_au_data_root
 .wongchoi_au_mirror_root
+.wongchoi_hk_data_root
+.wongchoi_hk_mirror_root
 
 # stats rebuild backups
 **/comprehensive_stats/**/*.bak
@@ -112,9 +114,11 @@ Wong Choi Tennis Analysis/
 .agents/skills/au_racing/au_daily_auto/logs/
 .agents/skills/au_racing/au_daily_auto/work/
 
-# 呢三個喺排程 checkout 入面係 symlink（指返共用 repo 嘅 cache）。原本嘅
-# pattern 有尾斜線，只配對目錄，配唔到 symlink，於是 `git status` 成日有雜訊、
-# 亦有機會俾一個 `git add` 掃咗入去。
+# HKJC 每日排程：runtime log、lock、notification state 同 candidate gate
+.agents/skills/hkjc_racing/hkjc_daily_auto/logs/
+.agents/skills/hkjc_racing/hkjc_daily_auto/state/
+
+# 排程 checkout 內可能係 symlink，尾斜線 pattern 配唔到 symlink。
 .agents/skills/au_racing/.sportsbet_cache
 .agents/skills/au_racing/.ra_cache
 .agents/skills/au_racing/.sb_horse_index.json
@@ -123,3 +127,8 @@ Wong Choi Tennis Analysis/
 .wongchoi_au_data_root
 .wongchoi_au_mirror_root
 .wongchoi_data_root
+.wongchoi_hk_data_root
+.wongchoi_hk_mirror_root
+
+# Tennis runtime cache / lock artifacts
+tennis-wong-choi/data/runtime/

@@ -16,7 +16,9 @@ version: 5.0.0
 2. `Facts.md` generation
 3. `Race_X_Logic.json` generation / refresh
 4. deterministic auto scoring
-5. `Race_X_Auto_Analysis.md` / `Race_X_Auto_Scoring.csv` / `HKJC_Auto_Scoring.csv`
+5. runner/name/source alignment + data coverage gate
+6. `Race_X_Auto_Analysis.md` / `Race_X_Auto_Scoring.csv` / `HKJC_Auto_Scoring.csv`
+7. health-gated dashboard deploy
 
 > 現時主線 **唔需要 LLM 手動填 verdict、matrix、core logic 或 `[FILL]` 欄位**。
 
@@ -46,6 +48,7 @@ python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <U
 - `Race_X_Auto_Analysis.md`
 - `Race_X_Auto_Scoring.csv`
 - `HKJC_Auto_Scoring.csv`
+- `Data_Health.json` / `Data_Health.md`
 
 ## Guard Rails
 
@@ -60,6 +63,18 @@ python .agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py <U
 - `.agents/scripts/run_prerace_pipeline.py`
 - `hkjc_wong_choi_auto`
 - shared post-success Cloudflare deploy hook
+- `hkjc_daily_auto`（off-season watch、pre-race、post-race reflector、weekly Telegram／PR approval gate）
+
+## Unattended Schedule
+
+安裝 macOS launchd：
+
+```bash
+bash .agents/skills/hkjc_racing/hkjc_daily_auto/install_macos_launchd.sh
+```
+
+候選模型只可自動開 non-draft PR；任何 merge / production promotion 必須等
+用戶明確批准。
 
 ## Archived Legacy Snapshot
 

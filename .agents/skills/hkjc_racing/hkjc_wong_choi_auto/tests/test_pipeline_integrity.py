@@ -19,15 +19,18 @@ AUTO_SCRIPT_DIR = (
 ENGINE_DIR = AUTO_SCRIPT_DIR / "racing_engine"
 MAIN_SCRIPT_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi" / "scripts"
 REFLECTOR_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_reflector" / "scripts"
-for path in (AUTO_SCRIPT_DIR, ENGINE_DIR, MAIN_SCRIPT_DIR, REFLECTOR_DIR):
+SHARED_SCRIPT_DIR = ROOT / ".agents" / "scripts"
+for path in (AUTO_SCRIPT_DIR, ENGINE_DIR, MAIN_SCRIPT_DIR, REFLECTOR_DIR, SHARED_SCRIPT_DIR):
     sys.path.insert(0, str(path))
 
 import create_hkjc_logic_skeleton as skeleton
 import hkjc_auto_orchestrator as auto
 import hkjc_orchestrator as main
+import engine_core
 import live_priors
 import rescore_backtest
 import review_auto_weighting
+import run_prerace_pipeline
 from engine_core import RacingEngine
 from renderer import _shadow_flag_candidates, render_race_csv
 
@@ -57,6 +60,99 @@ def _minimal_logic() -> dict:
 
 
 class PipelineIntegrityTests(unittest.TestCase):
+    def test_stats_rebuild_skips_unmaterialized_cloud_sources(self) -> None:
+        with (
+            mock.patch.object(run_prerace_pipeline, "is_materialized_file", return_value=False),
+            mock.patch.object(run_prerace_pipeline, "run_script") as rebuild,
+        ):
+            result = run_prerace_pipeline.step2c_rebuild_stats()
+        self.assertEqual(result["status"], "SKIPPED_UNMATERIALIZED")
+        rebuild.assert_not_called()
+
+    def test_draw_stats_reject_same_venue_distance_from_wrong_meeting_date(self) -> None:
+        fixture = {
+            "meta": {"meeting": "沙田 31/05/2026"},
+            "races": [{"race": 1, "distance": 1200, "surface": "草地", "draws": []}],
+        }
+        with mock.patch.object(skeleton, "_load_draw_stats_json", return_value=fixture):
+            self.assertIsNone(
+                skeleton._resolve_draw_stats_race(
+                    1, "沙田", 1200, expected_date="2026-09-06"
+                )
+            )
+            self.assertIsNotNone(
+                skeleton._resolve_draw_stats_race(
+                    1, "沙田", 1200, expected_date="2026-05-31"
+                )
+            )
+
+    def test_full_meeting_cli_smoke_from_prepared_facts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            meeting = Path(tmp) / "2026-09-06_ShaTin"
+            meeting.mkdir()
+            facts = (
+                "場地: 沙田 | 跑道: 草地 | 賽道: A | 距離: 1200m | 班次: 第四班\n"
+                "### 馬號 1 — 測試甲 | 騎師: 潘頓 | 練馬師: 蔡約翰 | 負磅: 126 | 檔位: 2\n"
+                "**近六場:** 1-2-3-4-5-6\n**休後復出:** 14\n**統計:** 季內 (1-1-1-3)\n"
+                "生涯：6: 1-1-1\nL400: 22.9 → 穩定\n引擎: 漸進加速\n跑法: 前置\n"
+                "### 馬號 2 — 測試乙 | 騎師: 田泰安 | 練馬師: 羅富全 | 負磅: 122 | 檔位: 6\n"
+                "**近六場:** 3-4-5-6-7-8\n**休後復出:** 21\n**統計:** 季內 (0-1-1-4)\n"
+                "生涯：6: 0-1-1\nL400: 23.4 → 穩定\n引擎: 均速\n跑法: 中置\n"
+            )
+            (meeting / "09-06 Race 1 Facts.md").write_text(facts, encoding="utf-8")
+            racecard = (
+                "班次: 第四班\n"
+                "馬號: 1\n馬名: 測試甲\n負磅: 126\n騎師: 潘頓\n檔位: 2\n"
+                "練馬師: 蔡約翰\n評分: 65\n評分+/-: 1\n"
+                "馬號: 2\n馬名: 測試乙\n負磅: 122\n騎師: 田泰安\n檔位: 6\n"
+                "練馬師: 羅富全\n評分: 61\n評分+/-: 0\n"
+            )
+            (meeting / "09-06 Race 1 排位表.md").write_text(racecard, encoding="utf-8")
+            env = os.environ.copy()
+            env["WC_DISABLE_HKJC_PROFILE_ENRICH"] = "1"
+            env["PYTHONPYCACHEPREFIX"] = str(Path(tmp) / "pycache")
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(MAIN_SCRIPT_DIR / "hkjc_orchestrator.py"),
+                    str(meeting),
+                    "--skip-extract",
+                    "--skip-facts",
+                    "--skip-cloudflare-deploy",
+                    "--validate-engine",
+                ],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+                timeout=120,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stdout)
+            health = json.loads((meeting / "Data_Health.json").read_text(encoding="utf-8"))
+            self.assertTrue(health["deploy_allowed"])
+            self.assertEqual(health["summary"]["horses"], 2)
+            self.assertTrue((meeting / "Race_1_Auto_Analysis.md").exists())
+            self.assertTrue((meeting / "HKJC_Auto_Scoring.csv").exists())
+
+    def test_historical_engine_neutralizes_latest_trainer_priors(self) -> None:
+        logic = _minimal_logic()
+        logic["race_analysis"]["race_date"] = "2026-07-15"
+        latest = live_priors.TrainerSignalPriors.__new__(live_priors.TrainerSignalPriors)
+        latest.temporal_mode = "latest_season_snapshot"
+        latest.as_of_date = None
+        latest.combo = {("潘頓", "蔡約翰"): {"starts": 999, "win_rate": 99, "place_rate": 99}}
+        latest.jockey_distance = {}
+        latest.trainer_distance = {}
+        latest.jockey_change = {}
+        with mock.patch.object(engine_core, "_TRAINER_SIGNAL_PRIORS", latest):
+            priors = RacingEngine(
+                logic["horses"]["1"], logic["race_analysis"]
+            )._trainer_signal_priors()
+        self.assertEqual(priors.temporal_mode, "historical_guard_neutral")
+        self.assertEqual(priors.combo, {})
+
     def test_full_race_builder_strips_retired_llm_scaffold(self) -> None:
         legacy = {
             "horse_name": "測試甲",

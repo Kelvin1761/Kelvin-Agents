@@ -10,12 +10,42 @@ from form import FormScorer
 from jockey import JockeyScorer
 from speed import SpeedScorer
 from trainer import TrainerScorer
-from live_priors import TrainerSignalPriors
-from matrix_mapper import MATRIX_FORMULAS, map_features_to_matrix, map_features_to_matrix_scores
+from live_priors import (
+    TrainerSignalPriors,
+    empty_trainer_signal_priors,
+    prior_source_manifest,
+    temporal_source_is_safe,
+)
+from matrix_mapper import (
+    MATRIX_FORMULAS,
+    map_features_to_matrix,
+    map_features_to_matrix_scores,
+    matrix_formula_manifest,
+)
 import scoring
 from scoring import DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS, MATRIX_WEIGHTS, clip_score, compute_grade, parse_float, parse_record, score_band
 
 _TRAINER_SIGNAL_PRIORS = None
+
+
+def scoring_run_contract():
+    """JSON-safe fingerprint for the exact production scoring contract."""
+    return {
+        "version": scoring.SCORING_CONTRACT_VERSION,
+        "standard_matrix_weights": dict(MATRIX_WEIGHTS),
+        "debut_matrix_weights": dict(DEBUT_MATRIX_WEIGHTS),
+        "matrix_formulas": matrix_formula_manifest(),
+        "dimension_evidence_blends": {},
+        "grade_thresholds": [
+            {"minimum": minimum, "grade": grade}
+            for minimum, grade in scoring.GRADE_THRESHOLDS
+        ],
+        "prior_sources": prior_source_manifest(),
+        "prior_temporal_contract": {
+            "historical": "matching_point_in_time_required",
+            "live_or_future": "latest_materialized_snapshot_allowed",
+        },
+    }
 
 # 班次顯示標籤（新馬賽等）——顯示用，唔影響評分
 _HKJC_CLASS_DISPLAY_LABELS = {
@@ -116,6 +146,7 @@ class RacingEngine:
 
         return {
             "version": "HKJC_AUTO_SCORE_V2",
+            "scoring_contract_id": scoring.SCORING_CONTRACT_VERSION,
             "ability_score": ability_score,
             "grade": grade,
             "matrix": matrix,
@@ -137,7 +168,8 @@ class RacingEngine:
             "derived_feature_scores": {
                 key: round(feature_scores.get(key, 60.0), 2)
                 for key in ("formline_strength_score", "margin_trend_score",
-                            "same_distance_signal_score", "trackwork_trend_score")
+                            "same_distance_signal_score", "trackwork_trend_score",
+                            "race_shape_context_score")
             },
             "score_breakdown": score_breakdown,
             "reason_codes": sorted(set(self.reason_codes)),
@@ -1315,6 +1347,12 @@ class RacingEngine:
         global _TRAINER_SIGNAL_PRIORS
         if _TRAINER_SIGNAL_PRIORS is None:
             _TRAINER_SIGNAL_PRIORS = TrainerSignalPriors()
+        # A latest/full-season snapshot is valid for a live card but leaks
+        # future results when an archived race is replayed. Keep historical
+        # scoring neutral unless the PIT harness injects a matching source.
+        as_of_date = (self.race_context or {}).get("race_date")
+        if not temporal_source_is_safe(_TRAINER_SIGNAL_PRIORS, as_of_date):
+            return empty_trainer_signal_priors()
         return _TRAINER_SIGNAL_PRIORS
 
     def _append_note(self, base_note, extra_note):

@@ -35,7 +35,7 @@ def discover_meetings(root_dir: Optional[str] = None) -> list[Meeting]:
     """Scan one explicit folder, or the configured HKJC and AU analysis homes."""
 
     roots = [Path(root_dir)] if root_dir else [
-        config.HKJC_ANALYSIS_ROOT,
+        *config.HKJC_ANALYSIS_ROOTS,
         config.AU_ANALYSIS_ROOT,
     ]
     roots = [root for root in roots if root.exists()]
@@ -45,10 +45,13 @@ def discover_meetings(root_dir: Optional[str] = None) -> list[Meeting]:
     meetings = []
     hkjc_groups = {}  # (date, venue) -> dict with kelvin_path, heison_path
     
-    for item in sorted(
-        (item for root in roots for item in root.iterdir()),
-        key=lambda item: str(item),
-    ):
+    items = []
+    for root in roots:
+        try:
+            items.extend(root.iterdir())
+        except OSError:
+            continue
+    for item in sorted(items, key=lambda item: str(item)):
         if not item.is_dir() or item.name.startswith('.'):
             continue
         

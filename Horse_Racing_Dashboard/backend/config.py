@@ -18,8 +18,10 @@ if str(PROJECT_ROOT) not in sys.path:
 from wongchoi_paths import (
     AU_RACING,
     HK_RACING,
+    HK_RACING_MIRROR,
     HORSE_RACE_ANALYSIS,
     au_racing_is_relocated,
+    hkjc_racing_is_relocated,
 )
 
 # Kept for code that needs project assets such as skills and ROI summaries.
@@ -28,6 +30,9 @@ ANTIGRAVITY_ROOT = PROJECT_ROOT
 # The only locations scanned for race meetings and watched for report changes.
 ANALYSIS_ROOT = HORSE_RACE_ANALYSIS
 HKJC_ANALYSIS_ROOT = HK_RACING
+HKJC_ANALYSIS_ROOTS = [HK_RACING]
+if HK_RACING_MIRROR is not None and HK_RACING_MIRROR != HK_RACING:
+    HKJC_ANALYSIS_ROOTS.append(HK_RACING_MIRROR)
 AU_ANALYSIS_ROOT = AU_RACING
 
 # AU can live outside HORSE_RACE_ANALYSIS (it moved to local disk so the launchd
@@ -36,6 +41,8 @@ AU_ANALYSIS_ROOT = AU_RACING
 WATCH_ROOTS = [ANALYSIS_ROOT]
 if au_racing_is_relocated():
     WATCH_ROOTS.append(AU_ANALYSIS_ROOT)
+if hkjc_racing_is_relocated():
+    WATCH_ROOTS.append(HKJC_ANALYSIS_ROOT)
 
 # Skills directories
 HKJC_SKILLS = ANTIGRAVITY_ROOT / ".agents" / "skills" / "hkjc_racing"
