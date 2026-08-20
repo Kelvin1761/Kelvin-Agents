@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import copy
+from functools import lru_cache
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
 import sys, re, json, os, argparse, io
@@ -22,12 +24,33 @@ if sys.stdout.encoding != 'utf-8':
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hkjc_schema import HKJC_SCHEMA_VERSION, HKJC_PLATFORM
 
+ROOT = Path(__file__).resolve().parents[5]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from wongchoi_paths import is_materialized_file
+
+
+@lru_cache(maxsize=64)
+def _read_json_cached(path_text, modified_ns, size):
+    """Cache immutable JSON source data by its exact on-disk version."""
+    del modified_ns, size
+    return json.loads(Path(path_text).read_text(encoding="utf-8"))
+
+
+def _cached_file_args(path):
+    info = Path(path).stat()
+    return str(Path(path)), info.st_mtime_ns, info.st_size
+
 
 def extract_race_header(facts_content):
-    """Extract race-level info (venue, distance, class) from Facts.md header."""
+    """Extract race-level venue/surface/course/distance/class from Facts."""
     result = {}
     m = re.search(r'場地:\s*(.+?)\s*\|', facts_content)
     if m: result['venue'] = m.group(1).strip()
+    m = re.search(r'跑道:\s*(.+?)\s*\|', facts_content)
+    if m: result['track'] = m.group(1).strip()
+    m = re.search(r'賽道:\s*(.+?)\s*\|', facts_content)
+    if m: result['course'] = m.group(1).strip()
     m = re.search(r'距離:\s*(.+?)\s*\|', facts_content)
     if m: result['distance'] = m.group(1).strip()
     m = re.search(r'班次:\s*(.+?)(?:\n|$)', facts_content)
@@ -596,8 +619,7 @@ def load_trackwork_for_horse(facts_path, race_num, horse_num, horse_name=None):
             "flags": [],
         }
     try:
-        with open(candidates[0], "r", encoding="utf-8") as f:
-            payload = json.load(f)
+        payload = _read_json_cached(*_cached_file_args(candidates[0]))
         horse_payload = payload.get("horses", {}).get(str(horse_num))
         expected_name = _core_horse_name_tw(horse_name)
         if expected_name and horse_payload:
@@ -635,7 +657,8 @@ def load_trackwork_for_horse(facts_path, race_num, horse_num, horse_name=None):
                 },
                 "flags": [],
             }
-        return horse_payload
+        # Cached source objects must remain immutable between runners/callers.
+        return copy.deepcopy(horse_payload)
     except Exception as exc:
         return {
             "status": "failed",
@@ -1006,6 +1029,15 @@ def _normalize_draw_stats_meeting_venue(value: str) -> str:
     return ''
 
 
+def _normalize_draw_stats_meeting_date(value: str) -> str:
+    text = str(value or '').strip()
+    match = re.search(r'(\d{2})/(\d{2})/(20\d{2})', text)
+    if match:
+        return f"{match.group(3)}-{match.group(2)}-{match.group(1)}"
+    match = re.search(r'(20\d{2})-(\d{2})-(\d{2})', text)
+    return match.group(0) if match else ''
+
+
 def _normalize_expected_draw_venue(value: str) -> str:
     text = str(value or '').strip()
     if '跑馬地' in text:
@@ -1024,7 +1056,13 @@ def _expected_draw_surface(expected_venue: str) -> str:
     return ''
 
 
-def _resolve_draw_stats_race(race_num=0, expected_venue='', expected_distance=0, expected_surface=''):
+def _resolve_draw_stats_race(
+    race_num=0,
+    expected_venue='',
+    expected_distance=0,
+    expected_surface='',
+    expected_date='',
+):
     ds = _load_draw_stats_json()
     if not ds or 'races' not in ds:
         return None
@@ -1032,11 +1070,15 @@ def _resolve_draw_stats_race(race_num=0, expected_venue='', expected_distance=0,
     if not race:
         return None
 
-    meeting_venue = _normalize_draw_stats_meeting_venue(ds.get('meta', {}).get('meeting', ''))
+    meeting_text = ds.get('meta', {}).get('meeting', '')
+    meeting_venue = _normalize_draw_stats_meeting_venue(meeting_text)
+    meeting_date = _normalize_draw_stats_meeting_date(meeting_text)
     venue_norm = _normalize_expected_draw_venue(expected_venue)
     surface_norm = expected_surface or _expected_draw_surface(expected_venue)
 
     if venue_norm and meeting_venue != venue_norm:
+        return None
+    if expected_date and meeting_date != expected_date:
         return None
     if expected_distance:
         try:
@@ -1050,11 +1092,15 @@ def _resolve_draw_stats_race(race_num=0, expected_venue='', expected_distance=0,
     return race
 
 
-def _get_draw_verdict_str(barrier, race_num=0, expected_venue='', expected_distance=0):
+def _get_draw_verdict_str(
+    barrier, race_num=0, expected_venue='', expected_distance=0, expected_date=''
+):
     """Get draw verdict string for skeleton pre-fill from hkjc_draw_stats.json.
     Display order: 上名率(place) → 入Q率(quinella) → 勝率(win) — Top 3 priority.
     """
-    race = _resolve_draw_stats_race(race_num, expected_venue, expected_distance)
+    race = _resolve_draw_stats_race(
+        race_num, expected_venue, expected_distance, expected_date=expected_date
+    )
     if not race:
         return '數據不可用'
     barrier_int = int(barrier) if str(barrier).isdigit() else 0
@@ -1065,11 +1111,15 @@ def _get_draw_verdict_str(barrier, race_num=0, expected_venue='', expected_dista
     return f'檔位{barrier_int}超出統計範圍(最大檔{max_draw})'
 
 
-def _get_full_draw_table(race_num=0, expected_venue='', expected_distance=0):
+def _get_full_draw_table(
+    race_num=0, expected_venue='', expected_distance=0, expected_date=''
+):
     """Get the complete draw stats table for a race, formatted for LLM reasoning.
     Column order: 上名率 → 入Q率 → 勝率 (Top 3 priority).
     """
-    race = _resolve_draw_stats_race(race_num, expected_venue, expected_distance)
+    race = _resolve_draw_stats_race(
+        race_num, expected_venue, expected_distance, expected_date=expected_date
+    )
     if not race:
         return ''
     draws = race.get('draws', [])
@@ -1241,13 +1291,20 @@ def compute_draw_position_fit(position_detail: list, today_barrier: int = 0,
     return ' | '.join(parts)
 
 
-def compute_track_bias_from_draws(race_num: int, expected_venue: str = '', expected_distance: int = 0) -> str:
+def compute_track_bias_from_draws(
+    race_num: int,
+    expected_venue: str = '',
+    expected_distance: int = 0,
+    expected_date: str = '',
+) -> str:
     """Compute track bias (inner vs outer draw advantage) from draw stats.
 
     Compares average place_pct of low draws (1-4) vs high draws (9+).
     Returns a one-line bias indicator.
     """
-    race = _resolve_draw_stats_race(race_num, expected_venue, expected_distance)
+    race = _resolve_draw_stats_race(
+        race_num, expected_venue, expected_distance, expected_date=expected_date
+    )
     if not race:
         return '數據不可用'
     draws = race.get('draws', [])
@@ -1274,7 +1331,14 @@ def compute_track_bias_from_draws(race_num: int, expected_venue: str = '', expec
         bias = '→ 均勻無偏向'
     return f"{inner_str} vs {outer_str} {bias}"
 
-def build_skeleton(data, race_num=0, horse_block='', trackwork=None, facts_path=''):
+def build_skeleton(
+    data,
+    race_num=0,
+    horse_block='',
+    trackwork=None,
+    facts_path='',
+    race_header=None,
+):
     """Build JSON skeleton: real data pre-filled, analysis fields as [FILL].
     V4.2: Data-anchored reasoning with enrichment parsers.
     """
@@ -1308,15 +1372,24 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None, facts_path=
     wins = data.get('wins', 0)
     starts = data.get('starts', 0)
 
-    race_header = extract_race_header(Path(facts_path).read_text(encoding='utf-8')) if facts_path and Path(facts_path).exists() else {}
+    race_header = dict(race_header or {})
+    if not race_header and facts_path and is_materialized_file(Path(facts_path)):
+        race_header = extract_race_header(Path(facts_path).read_text(encoding='utf-8'))
     expected_venue = race_header.get('venue', '')
+    expected_date = str(race_header.get('race_date') or '')
+    if not expected_date and facts_path:
+        date_match = re.search(r'(20\d{2}-\d{2}-\d{2})', str(Path(facts_path).parent))
+        if date_match:
+            expected_date = date_match.group(1)
     expected_distance = 0
     distance_text = race_header.get('distance', '')
     distance_match = re.search(r'(\d+)', distance_text)
     if distance_match:
         expected_distance = int(distance_match.group(1))
 
-    draw_verdict_str = _get_draw_verdict_str(barrier, race_num, expected_venue, expected_distance)
+    draw_verdict_str = _get_draw_verdict_str(
+        barrier, race_num, expected_venue, expected_distance, expected_date
+    )
     nonce = 'SKEL_' + hashlib.md5(f"{name}_{time.time()}".encode('utf-8')).hexdigest()
 
     # ── V4.2 Enrichment ──
@@ -1462,11 +1535,15 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None, facts_path=
         f"[📎 必讀: 03_engine_pace_context.md + 04_engine_corrections.md + 05_forensic_analysis.md (段速法醫 + 醫療事故作廢)]\n"
         f"→ [判讀: FILL]"
     )
-    full_draw_table = _get_full_draw_table(race_num, expected_venue, expected_distance)
+    full_draw_table = _get_full_draw_table(
+        race_num, expected_venue, expected_distance, expected_date
+    )
     barrier_int = int(barrier) if str(barrier).isdigit() else 0
     full_draw_hist = parse_all_draw_history(horse_block) if horse_block else []
     draw_pos_fit = compute_draw_position_fit(position_detail, barrier_int, full_draw_hist)
-    track_bias = compute_track_bias_from_draws(race_num, expected_venue, expected_distance)
+    track_bias = compute_track_bias_from_draws(
+        race_num, expected_venue, expected_distance, expected_date
+    )
     r_race_shape = (
         f"[Resource Check: 05_forensic_analysis.md / 檔位數據 + 今日預計走位 + 近3-5仗走位消耗]\n"
         f"[近3-5仗走位窗口: {position_window_str}]\n"
@@ -1669,47 +1746,148 @@ def build_skeleton(data, race_num=0, horse_block='', trackwork=None, facts_path=
     }
 
 
-def main():
-    parser = argparse.ArgumentParser(description='HKJC V9 Skeleton Generator')
-    parser.add_argument('facts_path', help='Path to Facts.md')
-    parser.add_argument('race_num', type=int, help='Race number')
-    parser.add_argument('horse_num', type=int, help='Horse number to extract')
-    parser.add_argument('--output', help='Output Logic.json path')
-    args = parser.parse_args()
-
-    # Read Facts.md
-    with open(args.facts_path, 'r', encoding='utf-8') as f:
-        facts_content = f.read()
-
-    # Extract horse block
-    block = extract_horse_block(facts_content, args.horse_num)
+def build_horse_skeleton_from_facts(
+    facts_content,
+    facts_path,
+    race_num,
+    horse_num,
+    *,
+    race_header=None,
+):
+    """Build one runner deterministically from an already-read Facts document."""
+    block = extract_horse_block(facts_content, horse_num)
     if not block:
-        print(f'❌ 找不到馬號 {args.horse_num} 的數據', file=sys.stderr)
-        sys.exit(1)
+        raise ValueError(f'找不到馬號 {horse_num} 的數據')
 
-    # Parse all data
     header = parse_horse_header(block)
-    try:
-        validate_parsed_horse_header(header, args.horse_num)
-    except ValueError as exc:
-        print(f'❌ 馬號 {args.horse_num} 標題驗證失敗: {exc}', file=sys.stderr)
-        sys.exit(1)
-        
+    validate_parsed_horse_header(header, horse_num)
     summary = parse_summary(block)
     recent = parse_recent_race(block)
     trends = parse_trends(block)
     horse_data = {**header, **summary, **recent, **trends}
+    trackwork = load_trackwork_for_horse(
+        facts_path, race_num, horse_num, horse_name=horse_data.get('name')
+    )
+    skeleton = build_skeleton(
+        horse_data,
+        race_num=race_num,
+        horse_block=block,
+        trackwork=trackwork,
+        facts_path=facts_path,
+        race_header=race_header or extract_race_header(facts_content),
+    )
+    return skeleton, header, recent
 
-    # Build skeleton
-    trackwork = load_trackwork_for_horse(args.facts_path, args.race_num, args.horse_num,
-                                         horse_name=horse_data.get('name'))
-    skeleton = build_skeleton(horse_data, race_num=args.race_num, horse_block=block, trackwork=trackwork, facts_path=args.facts_path)
 
-    # Determine output path
+def build_full_logic_from_facts(facts_content, facts_path, race_num, horse_nums):
+    """Build a complete, fresh race Logic document from one Facts read."""
+    race_header = extract_race_header(facts_content)
+    logic_data = {
+        'schema_version': HKJC_SCHEMA_VERSION,
+        'platform': HKJC_PLATFORM,
+        'logic_profile': 'AUTO_MINIMAL_V1',
+        'race_analysis': {
+            'race_number': race_num,
+            'race_class': race_header.get('race_class', ''),
+            'distance': race_header.get('distance', ''),
+            'venue': race_header.get('venue', ''),
+            'track': race_header.get('track', ''),
+            'course': race_header.get('course', ''),
+            'speed_map': {},
+        },
+        'horses': {},
+    }
+    summaries = []
+    for horse_num in horse_nums:
+        skeleton, header, recent = build_horse_skeleton_from_facts(
+            facts_content,
+            facts_path,
+            race_num,
+            horse_num,
+            race_header=race_header,
+        )
+        # The full-Python engine owns these outputs.  Keeping stale LLM
+        # scaffolds creates two competing sources of scoring truth.
+        for legacy_key in (
+            'race_forgiveness',
+            'matrix',
+            'interaction_matrix',
+            'base_rating',
+            'fine_tune',
+            'override',
+            'final_rating',
+            'core_logic',
+            'advantages',
+            'disadvantages',
+            'evidence_step_0_14',
+            'underhorse',
+            'debut_trial_signal',
+        ):
+            skeleton.pop(legacy_key, None)
+        logic_data['horses'][str(horse_num)] = skeleton
+        summaries.append((horse_num, header, recent))
+    return logic_data, summaries
+
+
+def main():
+    parser = argparse.ArgumentParser(description='HKJC V9 Skeleton Generator')
+    parser.add_argument('facts_path', help='Path to Facts.md')
+    parser.add_argument('race_num', type=int, help='Race number')
+    parser.add_argument('horse_num', type=int, nargs='?', help='Horse number to extract')
+    parser.add_argument(
+        '--all-horses',
+        action='store_true',
+        help='Build every horse section into one fresh Logic document',
+    )
+    parser.add_argument('--output', help='Output Logic.json path')
+    args = parser.parse_args()
+
+    facts_path = Path(args.facts_path)
+    if not is_materialized_file(facts_path):
+        parser.error(
+            f"Facts file is not materialized locally: {facts_path}. "
+            "Make the meeting folder available offline first."
+        )
+
+    # Read Facts.md once.
+    with open(args.facts_path, 'r', encoding='utf-8') as f:
+        facts_content = f.read()
+
     json_path = args.output or os.path.join(
         os.path.dirname(args.facts_path),
         f'Race_{args.race_num}_Logic.json'
     )
+
+    if args.all_horses:
+        horse_nums = [
+            int(value)
+            for value in re.findall(r'^### 馬號\s+(\d+)\s+—', facts_content, re.MULTILINE)
+        ]
+        if not horse_nums:
+            print('❌ Facts.md 內找不到任何馬匹段落', file=sys.stderr)
+            sys.exit(1)
+        try:
+            logic_data, summaries = build_full_logic_from_facts(
+                facts_content, args.facts_path, args.race_num, horse_nums
+            )
+        except ValueError as exc:
+            print(f'❌ 建立 Race {args.race_num} Logic 失敗: {exc}', file=sys.stderr)
+            sys.exit(1)
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(logic_data, f, ensure_ascii=False, indent=2)
+        print(f'✅ 已一次建立 Race {args.race_num} 完整 JSON（{len(summaries)}匹）')
+        return
+
+    if args.horse_num is None:
+        parser.error('horse_num is required unless --all-horses is used')
+
+    try:
+        skeleton, header, recent = build_horse_skeleton_from_facts(
+            facts_content, args.facts_path, args.race_num, args.horse_num
+        )
+    except ValueError as exc:
+        print(f'❌ 馬號 {args.horse_num} 標題驗證失敗: {exc}', file=sys.stderr)
+        sys.exit(1)
 
     # Load existing JSON or create new
     if os.path.exists(json_path):
@@ -1726,6 +1904,8 @@ def main():
                 'race_class': race_header.get('race_class', ''),
                 'distance': race_header.get('distance', ''),
                 'venue': race_header.get('venue', ''),
+                'track': race_header.get('track', ''),
+                'course': race_header.get('course', ''),
                 'speed_map': {},
             },
             'horses': {},

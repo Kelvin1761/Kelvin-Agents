@@ -14,8 +14,8 @@ Two roots, deliberately separated so code and data can live in different places
 Each machine sets its own DATA_ROOT (macOS -> its Google Drive path, Windows ->
 its Google Drive path), so the engines run unchanged on either OS.
 
-AU_RACING is additionally relocatable on its own (WONGCHOI_AU_DATA_ROOT /
-.wongchoi_au_data_root). 2026-08-05: the AU tree moved to local disk on the Mac
+AU_RACING and HK_RACING are additionally relocatable on their own. 2026-08-05:
+the AU tree moved to local disk on the Mac
 because a launchd-spawned process is a different TCC context from Terminal and
 cannot read CloudStorage — `AU_RACING.iterdir()` raised `PermissionError:
 Operation not permitted` and every scheduled run died in preflight. Tennis solved
@@ -40,9 +40,10 @@ exactly the half of the API launchd is allowed, so it works from the scheduler
 too. It stays best-effort regardless — a mirror failure must never fail a run
 whose analysis already succeeded.
 
-Overriding only AU keeps HK / NBA / tennis on Drive: their files there are mostly
-un-materialized placeholders, so relocating them would mean forcing tens of
-thousands of on-demand downloads for no gain (nothing else runs under launchd).
+HKJC gained its own unattended scheduler in 2026-08.  It therefore uses the
+same local-primary / Drive-mirror pattern when `WONGCHOI_HK_DATA_ROOT` (or
+`.wongchoi_hk_data_root`) is configured.  Existing historical placeholders do
+not have to be downloaded before the next-season forward pipeline can run.
 
 Usage from any script:
     import sys; sys.path.insert(0, str(PROJECT_ROOT))   # PROJECT_ROOT already known
@@ -104,7 +105,9 @@ TENNIS_ANALYSIS: Path = DATA_ROOT / "Wong Choi Tennis Analysis"
 AU_RACING: Path = _resolve_root(
     "WONGCHOI_AU_DATA_ROOT", ".wongchoi_au_data_root", HORSE_RACE_ANALYSIS / "AU_Racing"
 )
-HK_RACING: Path = HORSE_RACE_ANALYSIS / "HK_Racing"
+HK_RACING: Path = _resolve_root(
+    "WONGCHOI_HK_DATA_ROOT", ".wongchoi_hk_data_root", HORSE_RACE_ANALYSIS / "HK_Racing"
+)
 
 # Where to copy AU reports after a run so the Drive folder does not silently go
 # stale once AU_RACING lives on local disk. None = no mirroring configured.
@@ -117,6 +120,12 @@ _au_mirror = _resolve_root(
 )
 AU_RACING_MIRROR: Path | None = None if _au_mirror == _AU_MIRROR_UNSET else _au_mirror
 
+_HK_MIRROR_UNSET = Path("__wongchoi_hk_mirror_unset__")
+_hk_mirror = _resolve_root(
+    "WONGCHOI_HK_MIRROR_ROOT", ".wongchoi_hk_mirror_root", _HK_MIRROR_UNSET
+)
+HK_RACING_MIRROR: Path | None = None if _hk_mirror == _HK_MIRROR_UNSET else _hk_mirror
+
 
 def au_racing_is_relocated() -> bool:
     """True when AU_RACING has been moved out from under HORSE_RACE_ANALYSIS.
@@ -125,6 +134,11 @@ def au_racing_is_relocated() -> bool:
     to watch the AU root as a second location.
     """
     return AU_RACING.parent != HORSE_RACE_ANALYSIS
+
+
+def hkjc_racing_is_relocated() -> bool:
+    """True when HKJC meetings use a local primary outside the shared Drive tree."""
+    return HK_RACING.parent != HORSE_RACE_ANALYSIS
 
 
 # NBA raw ML dataset (name unchanged by the rename, just relocated under DATA_ROOT)
@@ -228,10 +242,14 @@ if __name__ == "__main__":
         note = ""
         if name == "AU_RACING" and au_racing_is_relocated():
             note = "  <- relocated off DATA_ROOT"
+        if name == "HK_RACING" and hkjc_racing_is_relocated():
+            note = "  <- relocated off DATA_ROOT"
         print(f"{name:20}:", p, state + note)
 
     print(f"{'AU_RACING_MIRROR':20}:",
           AU_RACING_MIRROR if AU_RACING_MIRROR is not None else "(not configured)")
+    print(f"{'HK_RACING_MIRROR':20}:",
+          HK_RACING_MIRROR if HK_RACING_MIRROR is not None else "(not configured)")
 
     print()
     issues = check_data_root()

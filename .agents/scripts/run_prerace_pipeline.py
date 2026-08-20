@@ -29,6 +29,11 @@ from subprocess_pool import bounded_workers, run_labeled_commands
 
 
 SCRIPT_DIR = Path(__file__).parent
+PROJECT_ROOT = SCRIPT_DIR.parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+from wongchoi_paths import HK_RACING, is_materialized_file
+
 STANDARD_TIMES_JSON = SCRIPT_DIR / "hkjc_standard_times.json"
 DRAW_STATS_JSON = SCRIPT_DIR / "hkjc_draw_stats.json"
 STD_TIMES_MAX_AGE_DAYS = 30
@@ -94,6 +99,26 @@ def step2c_rebuild_stats() -> dict:
     賽前重建：只會計到上一個已完成賽日（今場結果未有），對今場評分冇 lookahead，
     正正就係我哋要嘅「rating 貼市」。--write 會自動 backup .bak。跑贏就靠佢，
     出錯只警告唔中斷（沿用現有快照）。"""
+    source_root = (
+        HK_RACING / "HKJC_Race_Results_Database" / "comprehensive_stats"
+    )
+    required = (
+        source_root / "24_25" / "race_results_24_25.csv",
+        source_root / "25_26" / "race_results_25_26.csv",
+    )
+    unavailable = [path for path in required if not is_materialized_file(path)]
+    if unavailable:
+        message = (
+            "騎練 stats source 未全部 available offline；今次唔 rebuild，"
+            "評分會用已 materialize snapshot／tier fallback。缺："
+            + ", ".join(path.name for path in unavailable)
+        )
+        print(f"\n⚠️ {message}")
+        return {
+            "script": "build_comprehensive_stats.py",
+            "status": "SKIPPED_UNMATERIALIZED",
+            "reason": message,
+        }
     return run_script("build_comprehensive_stats.py", args=["--write"],
                       label="Step 2c: Rebuild Jockey/Trainer Stats")
 
@@ -165,7 +190,6 @@ def step3_inject_facts(meeting_dir: Path, workers: int = 1) -> list:
     tasks = []
     for fg in formguides:
         # Extract race number from filename
-        import re
         race_match = re.search(r'Race\s*(\d+)', fg.name, re.IGNORECASE)
         race_num = int(race_match.group(1)) if race_match else 0
 

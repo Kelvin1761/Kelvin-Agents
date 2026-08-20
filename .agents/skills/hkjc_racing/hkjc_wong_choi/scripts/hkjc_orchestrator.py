@@ -22,11 +22,13 @@ EXTRACTOR_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_race_extract
 AUTO_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi_auto" / "scripts"
 SHARED_SCRIPTS = ROOT / ".agents" / "scripts"
 SHARED_HOOK_DIR = ROOT / ".agents" / "skills" / "shared_racing" / "post_success_hooks" / "scripts"
+SHARED_RACING_SCRIPTS = ROOT / ".agents" / "skills" / "shared_racing" / "scripts"
 
 sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(SHARED_SCRIPTS))
 sys.path.insert(0, str(SHARED_HOOK_DIR))
+sys.path.insert(0, str(SHARED_RACING_SCRIPTS))
 
 from hkjc_orchestrator_helpers import (
     get_target_dir,
@@ -34,6 +36,7 @@ from hkjc_orchestrator_helpers import (
     trigger_extractor,
 )
 from cloudflare_deploy_hook import run_post_success_cloudflare_deploy
+from racing_data_health import scan_meeting, status_line, write_report
 from subprocess_pool import bounded_workers
 from wongchoi_paths import is_materialized_file
 
@@ -262,6 +265,21 @@ def _run_auto(target_dir: Path, validate_engine: bool) -> None:
     _run(cmd, "HKJC Wong Choi Full Python Auto")
 
 
+def _run_data_health_gate(target_dir: Path) -> dict:
+    """Write the daily audit and hard-stop before deploy on alignment errors."""
+    report = scan_meeting("hkjc", target_dir)
+    write_report(report)
+    print(status_line(report))
+    if not report["deploy_allowed"]:
+        top = "; ".join(
+            f"R{item.get('race', '?')} {item['code']}"
+            for item in report["issues"]
+            if item["severity"] == "error"
+        )
+        raise SystemExit(f"❌ Data health gate blocked HKJC deploy: {top}")
+    return report
+
+
 def _cleanup_temp_artifacts(target_dir: Path | None) -> None:
     removed = 0
     for path in ROOT.glob("_mip_temp_*.html"):
@@ -315,6 +333,7 @@ def main() -> None:
         _generate_facts(target_dir, args.skip_facts, race_workers)
         _generate_logic(target_dir, args.skip_logic, race_workers)
         _run_auto(target_dir, args.validate_engine)
+        _run_data_health_gate(target_dir)
         run_post_success_cloudflare_deploy(
             source="HKJC Wong Choi",
             target_dir=target_dir,

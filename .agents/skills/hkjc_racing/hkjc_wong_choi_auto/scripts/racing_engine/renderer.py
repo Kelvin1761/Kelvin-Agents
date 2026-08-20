@@ -26,6 +26,14 @@ FEATURE_LABELS = {
     "confidence_score": "資料完整度",
 }
 
+DERIVED_SCORE_KEYS = (
+    "formline_strength_score",
+    "margin_trend_score",
+    "same_distance_signal_score",
+    "trackwork_trend_score",
+    "race_shape_context_score",
+)
+
 # 次序＝報告顯示次序（用戶要求：騎練訊號緊跟狀態與穩定性）
 MATRIX_LABELS = {
     "stability": "狀態與穩定性",
@@ -226,6 +234,7 @@ def _shadow_flag_candidates(horse: dict, race_context: dict, auto: dict) -> list
 
     data = horse.get("_data", {}) if isinstance(horse.get("_data"), dict) else {}
     features = auto.get("feature_scores", {}) if isinstance(auto.get("feature_scores"), dict) else {}
+    derived = auto.get("derived_feature_scores", {}) if isinstance(auto.get("derived_feature_scores"), dict) else {}
 
     flags: list[dict] = []
     best_distance = str(data.get("best_distance") or "")
@@ -233,7 +242,7 @@ def _shadow_flag_candidates(horse: dict, race_context: dict, auto: dict) -> list
     trackwork_digest = str(data.get("trackwork_digest") or "")
     trackwork_health = str(data.get("trackwork_health") or "")
     position_pi = str(data.get("position_pi") or "")
-    same_distance = clip_score(features.get("same_distance_signal_score", 60.0))
+    same_distance = clip_score(derived.get("same_distance_signal_score", 60.0))
     risk_score = clip_score(features.get("risk_score", 60.0))
     last_finish = _safe_int(data.get("last_finish"))
 
@@ -245,7 +254,7 @@ def _shadow_flag_candidates(horse: dict, race_context: dict, auto: dict) -> list
     )
     matched_draw = "✅匹配" in draw_fit
     stable_trackwork = "操練放緩" not in trackwork_health and ("加強中" in trackwork_digest or "穩定" in trackwork_digest)
-    positive_trackwork = "加強中" in trackwork_digest or clip_score(features.get("trackwork_trend_score", 60.0)) >= 68.0
+    positive_trackwork = "加強中" in trackwork_digest or clip_score(derived.get("trackwork_trend_score", 60.0)) >= 68.0
 
     if (
         last_finish == 1
@@ -301,16 +310,27 @@ def _safe_int(value: object) -> int | None:
         return None
 
 
-def write_race_outputs(logic_path: Path, logic_data: dict) -> tuple[Path, Path]:
+def prepare_race_outputs(logic_path: Path, logic_data: dict) -> tuple[Path, str, Path, str]:
     stem = logic_path.stem.replace("_Logic", "")
     md_path = logic_path.with_name(f"{stem}_Auto_Analysis.md")
     csv_path = logic_path.with_name(f"{stem}_Auto_Scoring.csv")
-    _atomic_write_text(md_path, render_race_markdown(logic_data))
-    _atomic_write_text(csv_path, render_race_csv(logic_data))
-    errors = validate_report_text(md_path.read_text(encoding="utf-8"))
+    markdown = render_race_markdown(logic_data)
+    scoring_csv = render_race_csv(logic_data)
+    errors = validate_report_text(markdown)
     if errors:
         raise ValueError(f"Auto report validation failed for {md_path}:\n" + "\n".join(errors))
+    return md_path, markdown, csv_path, scoring_csv
+
+
+def write_prepared_race_outputs(prepared: tuple[Path, str, Path, str]) -> tuple[Path, Path]:
+    md_path, markdown, csv_path, scoring_csv = prepared
+    _atomic_write_text(md_path, markdown)
+    _atomic_write_text(csv_path, scoring_csv)
     return md_path, csv_path
+
+
+def write_race_outputs(logic_path: Path, logic_data: dict) -> tuple[Path, Path]:
+    return write_prepared_race_outputs(prepare_race_outputs(logic_path, logic_data))
 
 
 def render_race_markdown(logic_data: dict) -> str:
@@ -349,6 +369,8 @@ def render_race_csv(logic_data: dict) -> str:
         "shadow_consistency_delta",
         "shadow_consistency_reason",
         *FEATURE_LABELS.keys(),
+        *DERIVED_SCORE_KEYS,
+        *(f"matrix_{key}" for key in MATRIX_LABELS),
     ]
     writer = csv.DictWriter(output, fieldnames=fields)
     writer.writeheader()
@@ -373,6 +395,11 @@ def render_race_csv(logic_data: dict) -> str:
             "shadow_consistency_reason": _shadow_profile_value(auto, "consistency_context", "reason"),
         }
         row.update(auto.get("feature_scores", {}))
+        row.update(auto.get("derived_feature_scores", {}))
+        row.update({
+            f"matrix_{key}": value
+            for key, value in (auto.get("matrix_scores") or {}).items()
+        })
         writer.writerow(row)
     return output.getvalue()
 

@@ -21,12 +21,20 @@ DASHBOARD_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = DASHBOARD_DIR.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-from wongchoi_paths import AU_RACING, HORSE_RACE_ANALYSIS, au_racing_is_relocated
+from wongchoi_paths import (
+    AU_RACING,
+    HK_RACING,
+    HORSE_RACE_ANALYSIS,
+    au_racing_is_relocated,
+    hkjc_racing_is_relocated,
+)
 
 ANALYSIS_ROOT = HORSE_RACE_ANALYSIS
 # AU moved to local disk (CloudStorage is unreadable from launchd), so it is no
 # longer a child of HORSE_RACE_ANALYSIS and needs watching in its own right.
 WATCH_ROOTS = [ANALYSIS_ROOT] + ([AU_RACING] if au_racing_is_relocated() else [])
+if hkjc_racing_is_relocated():
+    WATCH_ROOTS.append(HK_RACING)
 GENERATE_SCRIPT = DASHBOARD_DIR / "build_test_dashboard.py"
 PID_FILE = DASHBOARD_DIR / "logs" / "auto_regenerate.pid"
 

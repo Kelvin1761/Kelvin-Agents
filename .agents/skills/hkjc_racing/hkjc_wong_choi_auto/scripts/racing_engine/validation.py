@@ -4,10 +4,10 @@ from pathlib import Path
 
 from matrix_mapper import matrix_formula_manifest
 from scoring import (
+    DEBUT_MATRIX_WEIGHTS,
     FEATURE_KEYS,
     GRADE_THRESHOLDS,
     MATRIX_WEIGHTS,
-    SECTIONAL_NORMALIZED_MATRIX_BLEND,
     SCORING_CONTRACT_VERSION,
     compute_grade,
 )
@@ -62,11 +62,11 @@ def validate_logic_data(logic_data: dict) -> list[str]:
             errors.append("SCHEMA-008 run contract version mismatch")
         if contract.get("standard_matrix_weights") != MATRIX_WEIGHTS:
             errors.append("SCHEMA-006 run contract standard weights mismatch")
+        if contract.get("debut_matrix_weights") != DEBUT_MATRIX_WEIGHTS:
+            errors.append("SCHEMA-007 run contract debut weights mismatch")
         if contract.get("matrix_formulas") != matrix_formula_manifest():
             errors.append("SCHEMA-009 run contract matrix formulas mismatch")
-        expected_blends = {
-            "normalized_sectional_to_sectional": SECTIONAL_NORMALIZED_MATRIX_BLEND,
-        }
+        expected_blends = {}
         if contract.get("dimension_evidence_blends") != expected_blends:
             errors.append("SCHEMA-011 run contract evidence blends mismatch")
         expected_temporal_contract = {
@@ -130,9 +130,12 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
     if not _in_range(ability):
         errors.append(f"SCORE-003 horse {horse_num} ability outside 0-100: {ability}")
     else:
+        reason_codes = auto.get("reason_codes", [])
+        is_debut = any("debut" in str(code).lower() for code in reason_codes)
+        weights = DEBUT_MATRIX_WEIGHTS if is_debut else MATRIX_WEIGHTS
         expected = sum(
             float(matrix_scores.get(key, 60)) * weight
-            for key, weight in MATRIX_WEIGHTS.items()
+            for key, weight in weights.items()
         )
         try:
             expected += sum(
@@ -158,7 +161,11 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
         errors.append(f"SCHEMA-004 horse {horse_num} missing score_provenance")
     if not auto.get("scoring_contract_id"):
         errors.append(f"SCHEMA-012 horse {horse_num} missing scoring_contract_id")
-    errors.extend(_validate_mainline_health_slot(horse_num, auto))
+    # Health-slot profiles are optional in the current matrix. If a future
+    # candidate emits one, validate it strictly; absence is not fabricated as
+    # full evidence.
+    if "health_slot_profile" in auto or "health_slot_detail" in auto:
+        errors.extend(_validate_mainline_health_slot(horse_num, auto))
     readiness_shadow = ((auto.get("shadow_profiles") or {}).get("readiness_health_slot") or {})
     if readiness_shadow:
         errors.extend(_validate_readiness_shadow(horse_num, auto, readiness_shadow))

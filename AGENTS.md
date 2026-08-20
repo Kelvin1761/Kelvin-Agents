@@ -90,6 +90,26 @@ Antigravity 目前最重要嘅兩條賽馬主線已經轉咗做 **full Python pi
 - `Race_X_Auto_Analysis.md`
 - `Race_X_Auto_Scoring.csv`
 - `HKJC_Auto_Scoring.csv`
+- `Data_Health.json`
+- `Data_Health.md`
+
+### Daily automation
+
+HKJC unattended scheduler：
+
+- `.agents/skills/hkjc_racing/hkjc_daily_auto/hkjc_daily_schedule.py`
+
+佢負責休季 racecard watch、賽前 full pipeline、immutable prediction snapshot、
+賽後 unified reflector、每週 Telegram review 同 candidate PR approval gate。
+候選只會建立 non-draft PR，唔會自動 merge。
+
+macOS launchd 用 `.wongchoi_hk_data_root` 指向 local primary，再用
+`.wongchoi_hk_mirror_root` best-effort mirror 去 Google Drive，避免背景程序被
+CloudStorage TCC 阻擋。
+
+macOS 安裝入口：
+
+- `.agents/skills/hkjc_racing/hkjc_daily_auto/install_macos_launchd.sh`
 
 ### Meeting folder naming
 

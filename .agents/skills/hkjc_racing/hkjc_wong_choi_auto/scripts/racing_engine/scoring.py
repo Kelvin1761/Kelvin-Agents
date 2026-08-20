@@ -7,6 +7,12 @@ from abc import ABC, abstractmethod
 import re
 
 
+# Bump whenever a production matrix/formula change is intentionally promoted.
+# Persisted with every scored race so forward results can be attributed to the
+# exact model that made the pre-race prediction.
+SCORING_CONTRACT_VERSION = "HKJC_7D_CONTRACT_2026_08_13_CURRENT_MATRIX"
+
+
 FEATURE_KEYS = (
     "form_score",
     "speed_score",
