@@ -59,17 +59,30 @@ PROJECT_ROOT: Path = Path(__file__).resolve().parent
 
 
 def is_materialized_file(path: Path) -> bool:
-    """True only when a regular file has local bytes, not a cloud placeholder."""
+    """True only when a regular file has local, readable bytes.
+
+    File Provider/TCC can expose a non-zero ``stat`` result (and even allocated
+    blocks) while denying the actual read.  Scheduled pipelines care about the
+    latter, so probe one byte instead of treating metadata as reachability.
+    """
+    target = Path(path)
     try:
-        info = Path(path).stat()
+        info = target.stat()
     except OSError:
         return False
     blocks = getattr(info, "st_blocks", None)
-    return (
+    has_local_bytes = (
         stat_module.S_ISREG(info.st_mode)
         and info.st_size > 0
         and not (blocks == 0 and info.st_size > 0)
     )
+    if not has_local_bytes:
+        return False
+    try:
+        with target.open("rb") as handle:
+            return bool(handle.read(1))
+    except OSError:
+        return False
 
 
 def _resolve_root(env_var: str, cfg_name: str, default: Path) -> Path:

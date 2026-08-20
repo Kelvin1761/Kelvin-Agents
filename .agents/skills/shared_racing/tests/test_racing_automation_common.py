@@ -9,7 +9,7 @@ SHARED_SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SHARED_SCRIPTS))
 
 from racing_data_health import EXPECTED_FEATURES, scan_meeting, status_line, write_report  # noqa: E402
-from racing_telegram import _chunks, send_message  # noqa: E402
+from racing_telegram import _chunks, send_message, telegram_credentials  # noqa: E402
 
 
 def _meeting(tmp_path: Path, *, broken: bool = False) -> Path:
@@ -177,3 +177,11 @@ def test_telegram_dry_run_and_chunking() -> None:
     assert [len(part) for part in parts] == [4096, 904]
     result = send_message("測試", dry_run=True)
     assert result == {"ok": True, "status": "dry_run", "sent_parts": 1, "parts": ["測試"]}
+
+
+def test_telegram_reuses_au_credentials(monkeypatch) -> None:
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
+    monkeypatch.setenv("WC_NOTIFY_TELEGRAM_TOKEN", "au-token")
+    monkeypatch.setenv("WC_NOTIFY_TELEGRAM_CHAT", "12345")
+    assert telegram_credentials() == ("au-token", "12345")

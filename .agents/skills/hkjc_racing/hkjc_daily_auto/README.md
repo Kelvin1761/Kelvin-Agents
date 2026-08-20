@@ -24,12 +24,19 @@ bash .agents/skills/hkjc_racing/hkjc_daily_auto/install_macos_launchd.sh
 
 安裝後時間（Australia/Sydney 主機時間）：
 
-- racecard watch：09:15、18:15
-- pre-race refresh：08:00、11:00
+- racecard watch：00:15、09:15、21:15、23:15
+- pre-race refresh：00:30、08:00、11:00、21:30、23:30
 - post-race：08:30
 - weekly review：星期一 09:00
 
-Telegram 使用 shared `racing_telegram.py` 嘅既有環境設定。首次設定：
+夜間三段時間同時覆蓋「約晚上 9 點」係 Sydney local time，亦覆蓋香港
+21:00 對應 Sydney 23:00／00:00（視乎 daylight saving）。流程唔會硬編碼
+星期三／六，因為新年、復活節、打吡等可能有星期日或公眾假期賽日；每次以
+HKJC official future racecard 為準，只會處理未來兩日內嘅 meeting。
+
+Telegram 會優先重用 AU automation 嘅 `~/.wongchoi_notify.env`：
+`WC_NOTIFY_TELEGRAM_TOKEN` / `WC_NOTIFY_TELEGRAM_CHAT`。因此同一 bot、同一
+chat 可以同時收 AU 同 HKJC 訊息，唔需要複製 token。未有 AU 設定先使用：
 
 ```bash
 cp .agents/.env.example .agents/.env

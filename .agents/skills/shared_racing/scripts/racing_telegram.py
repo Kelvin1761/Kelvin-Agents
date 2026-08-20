@@ -50,8 +50,21 @@ def _chunks(text: str, limit: int = MAX_TELEGRAM_TEXT) -> list[str]:
     return chunks
 
 
-def send_message(message: str, *, dry_run: bool = False, timeout: float = 10.0) -> dict:
+def telegram_credentials() -> tuple[str, str]:
+    """Resolve the shared bot, including AU automation's existing env names."""
     load_env()
+    token = (
+        os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+        or os.environ.get("WC_NOTIFY_TELEGRAM_TOKEN", "").strip()
+    )
+    chat_id = (
+        os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+        or os.environ.get("WC_NOTIFY_TELEGRAM_CHAT", "").strip()
+    )
+    return token, chat_id
+
+
+def send_message(message: str, *, dry_run: bool = False, timeout: float = 10.0) -> dict:
     parts = _chunks(message)
     if not parts:
         return {"ok": False, "status": "empty_message", "sent_parts": 0}
@@ -60,8 +73,7 @@ def send_message(message: str, *, dry_run: bool = False, timeout: float = 10.0) 
     if os.environ.get("WC_TELEGRAM_DISABLE", "").strip().lower() in {"1", "true", "yes"}:
         return {"ok": True, "status": "disabled", "sent_parts": 0}
 
-    token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+    token, chat_id = telegram_credentials()
     if not token or not chat_id or token == "YOUR_BOT_TOKEN":
         return {"ok": False, "status": "not_configured", "sent_parts": 0}
 
