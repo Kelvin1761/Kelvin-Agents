@@ -226,11 +226,14 @@ class TestDimensionScaleAndWeightsStayInLockstep:
                  × 0.8471（2026-08-03 Sportsbet 重配權，SD 4.4085→3.7344）
                  × 1.0329（2026-08-04 `jockey_trainer` 內部重配，ability SD ×1.0329）
                  × 0.9479（2026-08-08 完整 805 場矩陣重配，RMS SD 比例）
+                 × 1.1260（2026-08-22 `race_shape` 退出排名，ability 場內 SD
+                           5.3960→6.0759 —— 剷走一個低散開度維度會令剩低嘅主導，
+                           spread 反而變闊）
         全部都係**量度出嚟**嘅比例，唔係搵返嚟嘅參數。每次動 MATRIX_WEIGHTS
         **或者 MATRIX_FORMULAS 嘅內部權重**都要重新量 SD 再乘上去 ——
         內部權重一樣會改 ability spread，呢個測試 2026-08-04 就係咁捉到我。
         """
-        cumulative = 1.4225 * 0.9315 * 0.8471 * 1.0329 * 0.9479
+        cumulative = 1.4225 * 0.9315 * 0.8471 * 1.0329 * 0.9479 * 1.1260
         assert WET_FORM_FEATURE_SCALE == pytest.approx(12.0 * cumulative, rel=0.01)
         assert WET_FORM_MAX_ABS == pytest.approx(5.0 * cumulative, rel=0.01)
 

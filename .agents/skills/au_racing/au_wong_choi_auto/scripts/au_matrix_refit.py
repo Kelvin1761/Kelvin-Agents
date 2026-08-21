@@ -444,11 +444,19 @@ def main():
     ap.add_argument("--wf-start", type=int, default=250)
     ap.add_argument("--wf-window", type=int, default=92)
     ap.add_argument("--wet-scale", type=float, default=1.0)
+    ap.add_argument("--drop-dim", action="append", default=[],
+                    help="由排名剔走一個維度，再喺剩低嗰啲重新 fit。"
+                         "剷維度唔應該用按比例歸一 —— 嗰個係隨手分，"
+                         "唔係量出嚟嘅最優分配。")
     ap.add_argument("--with-form-line", action="store_true",
                     help="把出廠權重 0 嘅 form_line（賽績線）維度加返入搜索空間")
     args = ap.parse_args()
     if args.with_form_line and "form_line" not in DIMS:
         DIMS = DIMS + ("form_line",)
+    for _dim in args.drop_dim:
+        if _dim in DIMS:
+            DIMS = tuple(d for d in DIMS if d != _dim)
+            print(f"⚠️  由排名剔走維度：{_dim}　→ 剩低 {len(DIMS)} 個：{', '.join(DIMS)}")
     set_objective(args.obj)
     ds = Dataset(Path(args.data))
     print(f"dataset {args.data}  races {len(ds.races)}  runners {ds.n}  obj={args.obj} {OBJ_KEYS}")

@@ -101,9 +101,18 @@ class FailureCauseAttributionTest(unittest.TestCase):
         summary = _control_summary([item])
         self.assertEqual(summary["formal_going_counts"], {"1-2|soft": 1})
         self.assertEqual(summary["ability_corroboration_counts"], {"3": 1})
+        # Was keyed on `race_shape` until 2026-08-22. This tool attributes
+        # RANKING failures, so it only covers dimensions that carry weight —
+        # and `race_shape` left the ranking (EXP-20260821-06). Its key
+        # disappearing is the correct behaviour, so assert on a dimension that
+        # still votes, plus assert the retired one is genuinely absent.
         self.assertEqual(
-            summary["matrix_field_delta_by_formal_band"]["1-2"]["race_shape"],
-            2.0,
+            summary["matrix_field_delta_by_formal_band"]["1-2"]["stability"],
+            1.0,
+        )
+        self.assertNotIn(
+            "race_shape",
+            summary["matrix_field_delta_by_formal_band"]["1-2"],
         )
 
 

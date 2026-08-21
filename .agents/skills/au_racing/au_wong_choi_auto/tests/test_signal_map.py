@@ -111,7 +111,13 @@ class SignalMapTests(unittest.TestCase):
         self.assertNotIn("form_line", MATRIX_WEIGHTS)
 
     def test_matrix_schema_separates_ranking_and_report_only_dimensions(self) -> None:
-        self.assertEqual(set(MATRIX_KEYS) - set(MATRIX_WEIGHTS), {"form_line"})
+        # `race_shape` joined `form_line` as report-only on 2026-08-22
+        # (EXP-20260821-06): its whole leaf, `pace_map_score`, reads a draw-bias
+        # matrix built from the COMPLETE results CSV, so 71.5% of the backtest
+        # corpus scored it against a matrix containing its own result. On the
+        # 403 leakage-free races, removing it improves 6 of 7 metrics.
+        self.assertEqual(set(MATRIX_KEYS) - set(MATRIX_WEIGHTS),
+                         {"form_line", "race_shape"})
         self.assertEqual(tuple(key for key in MATRIX_KEYS if key in MATRIX_WEIGHTS),
                          tuple(MATRIX_WEIGHTS))
 

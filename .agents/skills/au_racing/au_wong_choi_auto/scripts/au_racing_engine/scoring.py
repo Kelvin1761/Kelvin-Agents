@@ -126,7 +126,33 @@ SPORTSBET_PQ_RECOVERY_ALPHA = 0.10
 # Ranking registry contains ranking dimensions only. ``form_line`` remains a
 # useful report matrix in ``matrix_mapper`` but its long-retired 0.000 entry no
 # longer pretends to be a seventh vote in the model.
-MATRIX_WEIGHTS = {"stability":0.32920,"pace_perf":0.10559,"race_shape":0.13485,"jockey_trainer":0.22957,"class_weight":0.12042,"track":0.08037}
+# 2026-08-22 `race_shape` 退出排名（EXP-20260821-06）。同 `form_line` 一樣，
+# 佢留喺 MATRIX_FORMULAS 所以照出報告，但唔再有投票權；renderer 會自動標
+# 「（參考·不入排名）」。
+#
+# 點解：`race_shape` 100% 係 `pace_map_score`，而 `pace_map_score` 靠
+# `au_draw_bias_matrix.json`。嗰個矩陣係一個靜態檔案，由**完整**結果 CSV 建，
+# 最後重建 2026-08-09，而且冇任何排程會重建佢。live 運行冇問題（評分嗰刻未來
+# 賽果未存在），但 `au_dump_engine_leaves` 會用 live 引擎重新評分舊場次 ——
+# 即係 1,413 場語料入面 1,010 場（71.5%）嘅檔位分係用**含住自己結果**嘅矩陣算。
+#
+# 剷走 race_shape、其餘五維按比例歸一，喺兩半語料上符號完全相反：
+#   污染 1,010 場 : gold −0.89  good_pos −1.29  pass −1.29  champ −1.39  ndcg5 −0.48
+#   真乾淨 403 場 : gold +0.74  good_pos +0.99  pass +1.24  champ −0.25  ndcg5 +0.38
+# 真乾淨切片逐 fold（4 個）冇一個指標輸多數：gold 2/1、pass 2/1、ndcg5 3/1。
+#
+# 三條獨立證據指同一方向：
+#   1. `au_draw_walkforward_audit`（逐日重建矩陣，1,411 場）：「有檔位訊號 vs
+#      pace_map 全部 60」嘅 dev 頭 5 位配對 AUC 三個配置全部負（EXP-04）
+#   2. 上面污染／乾淨兩半符號相反 —— 噪音唔會咁齊整跟住語料乾淨度分邊
+#   3. 喺污染語料上 fit 出嚟嘅「重 fit 共識權重」，喺乾淨語料上**差過**簡單
+#      按比例歸一（good_pos 1/3、champ 1/3、mrr 1/3）。如果洩漏結構唔存在，
+#      fit 落去唔會反而變差。
+#
+# ⚠️ 證據基礎只有 403 場 / 約一個月，而且鄉道場次偏多。等乾淨語料儲夠三個月
+# （含 metro）要用同一個 driver 重驗。Rollback：加返 "race_shape":0.13485 並
+# 還原下面兩個 WET_FORM 常數。
+MATRIX_WEIGHTS = {"stability":0.38051,"pace_perf":0.12205,"jockey_trainer":0.26535,"class_weight":0.13919,"track":0.09290}
 
 # ── Wet-form 7D feature (gated to Soft/Heavy races) ──
 # A horse's career wet-going place record IS predictive of box-trifecta on wet
@@ -162,10 +188,16 @@ MATRIX_WEIGHTS = {"stability":0.32920,"pace_perf":0.10559,"race_shape":0.13485,"
 # 0.94790 倍，wet overlay 同步乘 0.94790，保持原本相對影響力。候選用呢個
 # lockstep 比例重驗後頭 5 holdout AUC CI 仍全正。
 # 舊值 13.91 / 5.79。
-WET_FORM_FEATURE_SCALE = 13.19  # 13.91 ×0.94790；points of ability per (shrunk_wet_place_rate − prior)
+WET_FORM_FEATURE_SCALE = 14.852  # 13.19 ×1.1260；見下面 MAX_ABS 嘅註釋
+                                 # points of ability per (shrunk_wet_place_rate − prior)
 WET_FORM_SHRINK_A = 4.0         # pseudo-count for place-rate shrinkage toward prior
 WET_FORM_PRIOR = 0.5            # global career wet place-rate (~0.496 measured)
-WET_FORM_MAX_ABS = 5.49         # 5.79 ×0.94790；clamp the feature to a sane ±range
+WET_FORM_MAX_ABS = 6.1818       # 5.49 ×1.1260；clamp the feature to a sane ±range
+# 2026-08-22：`race_shape` 退出排名之後 ability 場內 SD 由 5.3960 升到 6.0759
+# （race_shape 本身低散開度，一直喺稀釋總分）。濕地 overlay 係按 ability spread
+# 校準嘅，所以要 ×1.1260 才保持相對影響力不變 —— 見
+# `au-dimension-scale-weight-lockstep`：尺同權重要一齊動。實測調埋之後
+# 真乾淨 403 場好過唔調（pass +0.74→+1.24、winT3 +0.50→+0.99、mrr −0.18→+0.02）。
 
 
 def _parse_wet_record(going_stats_line):

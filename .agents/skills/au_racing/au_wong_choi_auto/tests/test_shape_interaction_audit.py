@@ -67,7 +67,13 @@ class ShapeInteractionAuditTests(unittest.TestCase):
             "wet_form_feature": 0.0,
         }
         candidate = recompose_row(row, adjustment=3.0, scale=0.5)
-        self.assertGreater(candidate["score"], row["score"])
+        # `race_shape` left the ranking on 2026-08-22 (EXP-20260821-06), and it
+        # was 100% `pace_map_score` — so nudging pace_map can no longer move a
+        # composite score at all. This assertion is inverted deliberately: it
+        # now pins the fact that this audit measures a REPORT-ONLY signal.
+        # If race_shape is ever given weight back, this flips to assertGreater
+        # and the audit becomes meaningful for ranking again.
+        self.assertEqual(candidate["score"], row["score"])
         self.assertEqual(row["feature_scores"]["pace_map_score"], 60.0)
 
 

@@ -120,3 +120,76 @@ python3 au_matrix_refit.py compare --data "$S/leaves_fixed.json" \
 # 逐 fold + 拆兩半語料（driver 見本檔；用 R.Dataset / ds.evaluate(ab, lo, hi)，
 # 乾淨 PIT 切片 = date >= 2026-08-05，喺 leaves_fixed.json 係 index 802 起）
 ```
+
+---
+
+## 附錄（2026-08-22）：改用正確嘅污染分界線之後 → **KEEP**
+
+上面用 `2026-08-05` 做「乾淨」界線係**錯嘅**。真正界線係 **`2026-08-09`**：
+
+- `au_draw_bias_matrix.json` 係一個**靜態 commit 檔案**，最後重建 2026-08-09，
+  **冇任何排程會重建佢**
+- `au_dump_engine_leaves.py` 用 **live 引擎重新評分**舊場次（`RacingEngine(...)`），
+  即係食現行矩陣
+
+所以 1,413 場之中 **1,010 場（71.5%）**嘅檔位分係用含住自己結果嘅矩陣算，
+只有 **403 場**係真正冇洩漏。
+
+### 剷 race_shape（五維按比例歸一 + 濕地 overlay ×1.1260）
+
+| 切片 | gold | good_pos | pass | champ | winT3 | mrr | ndcg5 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 污染 1,010 場 | −0.89 | −1.29 | −1.29 | −1.39 | −0.20 | −0.95 | −0.48 |
+| **真乾淨 403 場** | **+0.74** | **+0.99** | **+1.24** | −0.25 | **+0.99** | **+0.02** | **+0.38** |
+
+真乾淨切片逐 fold（4 個）：`gold 2/1`、`good_pos 2/1`、`pass 2/1`、`winT3 2/1`、
+`ndcg5 3/1`、`mrr 2/2`、`champ 1/1` —— **冇一個指標輸多數**。
+
+### 三條獨立證據
+
+1. `au_draw_walkforward_audit`（逐日重建矩陣，1,411 場）：「有檔位訊號 vs
+   pace_map 全部 60」嘅 dev 頭 5 位配對 AUC 三個配置全部負（EXP-04）
+2. 污染／乾淨兩半符號完全相反 —— 噪音唔會咁齊整跟住語料乾淨度分邊
+3. **喺污染語料上 fit 出嚟嘅「重 fit 共識權重」，喺乾淨語料上差過簡單按比例歸一**
+   （good_pos 1/3、champ 1/3、mrr 1/3）。如果洩漏結構唔存在，fit 落去唔會反而變差。
+
+### 濕地 overlay 要一齊調
+
+剷走一個低散開度維度會令剩低嘅主導 → ability 場內 SD **5.3960 → 6.0759（×1.1260）**。
+濕地 overlay 係按 ability spread 校準，所以要同步 ×1.1260
+（`WET_FORM_FEATURE_SCALE` 13.19→14.852、`WET_FORM_MAX_ABS` 5.49→6.1818）。
+實測調埋好過唔調：`pass +0.74→+1.24`、`winT3 +0.50→+0.99`、`mrr −0.18→+0.02`。
+`test_neutral_display_scale` 個累積係數守衛已接落去（× 1.1260）。
+
+### 副作用：Grade 標籤會位移
+
+全語料 ability 平均只 +0.34，但散開度加闊，所以 band 分佈變：
+`C+ −3.5pp`、`B+ +1.9pp`、`B +1.1pp`、`A- +0.9pp`、`E +0.9pp`。
+**「B-」前後唔完全同一個意思**，讀報告要習慣返。
+
+考慮過重新校準 `GRADE_THRESHOLDS` 令各級佔比不變，**否決**：算出嚟會令
+`S+/S/S-` 全部壓成 87.3（頂端馬匹數唔夠分），比溫和位移更差；而且會變成
+同一次改動塞兩個假設。
+
+### 唔改嘅嘢
+
+`race_shape` 留喺 `MATRIX_FORMULAS`，所以照出報告，renderer 自動標
+「（參考·不入排名）」—— 同 `form_line` 一樣嘅待遇。報告層零改動。
+
+### 連帶要改嘅 test（三個，全部係佢哋做緊嘢）
+
+- `test_signal_map`：`MATRIX_KEYS − MATRIX_WEIGHTS` 由 `{form_line}` 變
+  `{form_line, race_shape}`
+- `test_neutral_display_scale`：累積係數接 × 1.1260
+- `test_shape_interaction_audit`：調 `pace_map_score` 再也唔會改綜合分 ——
+  assert 反轉，用嚟釘死「呢個 audit 而家量嘅係報告訊號」
+- `test_failure_cause_attribution`：`matrix_field_delta_by_formal_band` 冇
+  `race_shape` key 係正確行為（佢只覆蓋計分維度）
+
+### ⚠️ 證據基礎同重驗條件
+
+403 場、約一個月、鄉道場次偏多。**等乾淨語料儲夠三個月（含 metro）要用同一個
+driver 重驗**，如果反轉就 rollback（加返 `"race_shape":0.13485` 同還原兩個
+WET_FORM 常數）。
+
+**決定**：**KEEP**（由 NEEDS MORE TESTING 改判）
