@@ -15,7 +15,7 @@ import sys
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
-from wongchoi_paths import AU_RACING
+from wongchoi_paths import AU_RACING, au_historical_results_csv
 sys.path.append(str(SCRIPT_DIR / "racing_engine"))
 
 from matrix_mapper import (
@@ -27,7 +27,7 @@ from matrix_mapper import (
 from scoring import MATRIX_WEIGHTS as LIVE_MATRIX_WEIGHTS
 
 ARCHIVE_ROOT = AU_RACING
-HISTORICAL_RESULTS_CSV = ARCHIVE_ROOT / "AU_Historical_Raw_Race_Results.csv"
+HISTORICAL_RESULTS_CSV = au_historical_results_csv(ARCHIVE_ROOT)
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Auto_Archive_Calibration_Report.md"
 OUTPUT_CSV = ARCHIVE_ROOT / "AU_Auto_Section_Diagnostics.csv"
 OUTPUT_CONDITION_CSV = ARCHIVE_ROOT / "AU_Auto_Condition_Diagnostics.csv"

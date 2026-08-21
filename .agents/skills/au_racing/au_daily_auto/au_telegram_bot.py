@@ -27,6 +27,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 LOG_DIR = HERE / "logs"
 OFFSET_FILE = LOG_DIR / "telegram_offset.json"
+RETRY_LOG = LOG_DIR / "retry-from-telegram.out"
 TIMEOUT = 25
 HELP = ("我識嘅嘢：\n"
         "/picks           今日邊幾個馬場\n"
@@ -251,7 +252,7 @@ def cmd_retry() -> str:
     runner = HERE / "run_au_daily_schedule.sh"
     if not runner.exists():
         return "搵唔到 runner"
-    out = HERE / "logs" / "retry-from-telegram.out"
+    out = RETRY_LOG
     try:
         # 新 worktree／剛重裝時未必跑過 daily job，logs/ 仍然可以唔存在。
         # `/retry` 唔應該因為純粹欠一個可安全建立嘅目錄而失敗。
@@ -282,6 +283,9 @@ def cmd_health() -> str:
         return "✅ 體檢正常 —— 今日場次全部上線：" + "、".join(d.get("live") or [])
     if state == "in-progress":
         return "⏳ 而家有排程 run 跑緊，發佈係最後一步 —— 遲啲再查"
+    if state == "degraded":
+        return "⚠️ 體檢：場次已上線但資料品質未過\n- " + \
+            "\n- ".join(d.get("issues") or [])
     return f"⚠️ 體檢：{state}\n缺：" + "、".join(d.get("missing") or [])
 
 

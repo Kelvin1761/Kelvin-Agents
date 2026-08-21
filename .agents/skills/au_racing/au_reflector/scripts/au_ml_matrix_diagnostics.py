@@ -14,7 +14,7 @@ import sys
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
-from wongchoi_paths import AU_RACING
+from wongchoi_paths import AU_RACING, au_historical_results_csv
 AUTO_SCRIPT_DIR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"
 sys.path.append(str(AUTO_SCRIPT_DIR))
 sys.path.append(str(AUTO_SCRIPT_DIR / "racing_engine"))
@@ -25,7 +25,7 @@ from au_metric_contract import ranked_performance  # noqa: E402
 
 
 ARCHIVE_ROOT = AU_RACING
-RESULTS_CSV = ARCHIVE_ROOT / "AU_Historical_Raw_Race_Results.csv"
+RESULTS_CSV = au_historical_results_csv(ARCHIVE_ROOT)
 OUTPUT_MD = ARCHIVE_ROOT / "AU_ML_Matrix_Diagnostics.md"
 
 MATRIX_KEYS = tuple(MATRIX_FORMULAS.keys())

@@ -13,6 +13,7 @@ Kelvin 2026-08-11 明確要求：嗰晚網絡斷咗令五個 08-12 場次冇分�
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 import unittest.mock
 from pathlib import Path
@@ -40,7 +41,9 @@ class RetryGuardTests(unittest.TestCase):
                 started["cmd"] = cmd
                 started["kw"] = kw
 
-        with unittest.mock.patch.object(au_healthcheck, "run_in_progress",
+        with tempfile.TemporaryDirectory() as tmp, \
+             unittest.mock.patch.object(B, "RETRY_LOG", Path(tmp) / "retry.out"), \
+             unittest.mock.patch.object(au_healthcheck, "run_in_progress",
                                         lambda: False), \
              unittest.mock.patch("subprocess.Popen", _P):
             reply = B.cmd_retry()
@@ -58,7 +61,9 @@ class RetryGuardTests(unittest.TestCase):
             def __init__(self, cmd, **kw):
                 started["cmd"] = cmd
 
-        with unittest.mock.patch.object(au_healthcheck, "run_in_progress",
+        with tempfile.TemporaryDirectory() as tmp, \
+             unittest.mock.patch.object(B, "RETRY_LOG", Path(tmp) / "retry.out"), \
+             unittest.mock.patch.object(au_healthcheck, "run_in_progress",
                                         lambda: False), \
              unittest.mock.patch("subprocess.Popen", _P):
             B.cmd_retry()

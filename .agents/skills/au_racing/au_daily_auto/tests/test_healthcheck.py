@@ -29,7 +29,8 @@ VENUES = {"Dubbo", "Kilcoy", "Nowra", "Pakenham Synthetic"}
 def patched(live, expect, scored):
     return unittest.mock.patch.multiple(
         H, live_meetings=lambda: live, au_venues_today=lambda day: expect,
-        local_scored=lambda day: scored, run_in_progress=lambda: False)
+        local_scored=lambda day: scored, run_in_progress=lambda: False,
+        quality_issues=lambda day: [])
 
 
 class InProgressTests(unittest.TestCase):
@@ -92,6 +93,65 @@ class HealthcheckTests(unittest.TestCase):
         # 尋日嘅場次仲喺 dashboard 唔代表今日出咗。
         with patched({"2026-08-09|Dubbo"}, {"Dubbo"}, {"Dubbo": 7}):
             self.assertEqual(H.check(DAY)["state"], "unpublished")
+
+    def test_live_but_incomplete_data_is_degraded_not_green(self):
+        with unittest.mock.patch.multiple(
+                H, live_meetings=lambda: {f"{DAY}|{v}" for v in VENUES},
+                au_venues_today=lambda day: VENUES,
+                local_scored=lambda day: {v: 7 for v in VENUES},
+                run_in_progress=lambda: False,
+                quality_issues=lambda day: ["ingest-results partial"]):
+            result = H.check(DAY)
+        self.assertEqual(result["state"], "degraded")
+        self.assertIn("ingest-results", result["issues"][0])
+
+
+class DataQualityTests(unittest.TestCase):
+    def _meeting(self, root: Path, *, morning: bool = True,
+                 jt: tuple[int, int] = (18, 2), going_refresh: bool = True):
+        import json
+        folder = root / f"{DAY} Dubbo Race 1-1"
+        folder.mkdir(parents=True)
+        for label in ("Racecard", "Formguide", "Facts"):
+            (folder / f"08-10 Race 1 {label}.md").write_text("ok")
+        logic = {"race_analysis": {"going": "Good 4"}}
+        if going_refresh:
+            logic["race_analysis"]["going_refresh"] = {"official_going": "Good 4"}
+        (folder / "Race_1_Logic.json").write_text(json.dumps(logic))
+        (folder / "Race_1_Auto_Analysis.md").write_text("ok")
+        (folder / "Race_1_Auto_Scoring.csv").write_text("ok")
+        label = "2026-08-10T10:05:00|morning-refresh" if morning \
+            else "2026-08-09T22:00:00|analysis"
+        (folder / "odds_history.json").write_text(json.dumps({"1": {label: {}}}))
+        (folder / "Meeting_Summary.md").write_text(
+            f"Jockey/trainer LY tokens filled: {jt[0]}; missing: {jt[1]}\n")
+        return folder
+
+    def test_complete_meeting_passes_quality_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._meeting(Path(tmp))
+            self.assertEqual(H.local_quality_issues(
+                DAY, root=Path(tmp), require_morning=True), [])
+
+    def test_stale_odds_missing_going_and_thin_people_are_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._meeting(Path(tmp), morning=False, jt=(6, 6), going_refresh=False)
+            issues = H.local_quality_issues(DAY, root=Path(tmp), require_morning=True)
+        joined = "\n".join(issues)
+        self.assertIn("morning odds", joined)
+        self.assertIn("going_refresh", joined)
+        self.assertIn("50.0%", joined)
+
+    def test_latest_partial_critical_step_is_reported(self):
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "run-evening-test.json"
+            path.write_text(json.dumps({"steps": [
+                {"step": "ingest-results", "status": "partial",
+                 "detail": "reflector fallback only"}]}))
+            issue = H.latest_step_issue("ingest-results", log_dir=Path(tmp))
+        self.assertIn("partial", issue)
+        self.assertIn("reflector fallback", issue)
 
 
 if __name__ == "__main__":
@@ -188,6 +248,12 @@ class AutofixTests(unittest.TestCase):
                     "2026-08-09|Wagga 一場都冇（races_by_analyst 空)"):
             self.assertEqual(D.remedy_for({"errors": [{"message": msg}]}),
                              "republish", msg)
+
+    def test_diagnose_has_a_real_help_cli(self):
+        import au_diagnose as D
+        with self.assertRaises(SystemExit) as raised:
+            D.main(["--help"])
+        self.assertEqual(raised.exception.code, 0)
 
 
 class AnalysisRecoveryTests(unittest.TestCase):

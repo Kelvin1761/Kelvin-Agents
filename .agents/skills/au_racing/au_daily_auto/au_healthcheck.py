@@ -30,6 +30,8 @@ sys.path.insert(0, str(HERE.parents[3]))
 
 LIVE_URL = "https://wongchoi-dashboard.pages.dev/dashboard-data.json"
 RUNNER = HERE / "run_au_daily_schedule.sh"
+JT_COVERAGE_MIN = float(os.environ.get("WC_AU_HEALTH_JT_MIN", "0.80"))
+MORNING_ODDS_READY_HOUR = int(os.environ.get("WC_AU_MORNING_ODDS_READY_HOUR", "11"))
 
 
 def live_meetings() -> set[str] | None:
@@ -75,6 +77,129 @@ def local_scored(day: str) -> dict[str, int]:
         venue = re.sub(r"\s+Race\s+[\d\-]+$", "", d.name[11:]).strip()
         out[venue] = len(list(d.glob("Race_*_Auto_Analysis.md")))
     return out
+
+
+def _has_nonempty(paths) -> bool:
+    return any(path.exists() and path.is_file() and path.stat().st_size > 0
+               for path in paths)
+
+
+def _require_morning_odds(day: str, now: datetime | None = None) -> bool:
+    """09:15 checks run before the 10:00 refresh; 11:00 checks must enforce it."""
+    now = now or datetime.now().astimezone()
+    today = now.date().isoformat()
+    return day < today or (day == today and now.hour >= MORNING_ODDS_READY_HOUR)
+
+
+def local_quality_issues(day: str, *, root: Path | None = None,
+                         require_morning: bool | None = None) -> list[str]:
+    """Verify real per-race artifacts, provenance and time-appropriate odds freshness."""
+    if root is None:
+        from wongchoi_paths import AU_RACING
+        root = Path(AU_RACING)
+    if require_morning is None:
+        require_morning = _require_morning_odds(day)
+
+    issues: list[str] = []
+    for folder in sorted(root.glob(f"{day} *")):
+        if not folder.is_dir():
+            continue
+        match = re.search(r"\sRace\s+1-(\d+)$", folder.name)
+        if not match:
+            issues.append(f"{folder.name}：folder 名解析唔到預期場數")
+            continue
+        expected = int(match.group(1))
+        odds_path = folder / "odds_history.json"
+        try:
+            odds = json.loads(odds_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            odds = {}
+
+        missing_artifacts: list[str] = []
+        stale_odds: list[int] = []
+        missing_going_audit: list[int] = []
+        for race in range(1, expected + 1):
+            required = {
+                "Racecard": folder.glob(f"* Race {race} Racecard.md"),
+                "Formguide": folder.glob(f"* Race {race} Formguide.md"),
+                "Facts": folder.glob(f"* Race {race} Facts.md"),
+                "Logic": [folder / f"Race_{race}_Logic.json"],
+                "Analysis": [folder / f"Race_{race}_Auto_Analysis.md"],
+                "Scoring": [folder / f"Race_{race}_Auto_Scoring.csv"],
+            }
+            for label, paths in required.items():
+                if not _has_nonempty(paths):
+                    missing_artifacts.append(f"R{race} {label}")
+
+            if require_morning:
+                snapshots = (odds.get(str(race)) or {}) if isinstance(odds, dict) else {}
+                if not any("morning" in key.partition("|")[2].lower()
+                           for key in snapshots):
+                    stale_odds.append(race)
+
+            logic = folder / f"Race_{race}_Logic.json"
+            try:
+                payload = json.loads(logic.read_text(encoding="utf-8"))
+                refresh = (payload.get("race_analysis") or {}).get("going_refresh")
+            except (OSError, ValueError, AttributeError):
+                refresh = None
+            if logic.exists() and not refresh:
+                missing_going_audit.append(race)
+
+        if missing_artifacts:
+            issues.append(f"{folder.name}：輸出唔齊（{', '.join(missing_artifacts[:8])}"
+                          + ("…" if len(missing_artifacts) > 8 else "") + "）")
+        if stale_odds:
+            issues.append(f"{folder.name}：11:00 後仍冇 morning odds "
+                          f"R{','.join(map(str, stale_odds))}")
+        if missing_going_audit:
+            issues.append(f"{folder.name}：going_refresh audit 缺 "
+                          f"R{','.join(map(str, missing_going_audit))}")
+
+        summary = folder / "Meeting_Summary.md"
+        try:
+            text = summary.read_text(encoding="utf-8")
+        except OSError:
+            text = ""
+        coverage = re.search(
+            r"Jockey/trainer LY tokens filled:\s*(\d+);\s*missing:\s*(\d+)", text)
+        if coverage:
+            filled, missing = map(int, coverage.groups())
+            total = filled + missing
+            ratio = filled / total if total else 0.0
+            if ratio < JT_COVERAGE_MIN:
+                issues.append(f"{folder.name}：騎練資料覆蓋 {ratio:.1%} "
+                              f"低過門檻 {JT_COVERAGE_MIN:.0%}")
+    return issues
+
+
+def latest_step_issue(step_name: str, *, log_dir: Path | None = None) -> str | None:
+    """Read the latest completed occurrence of a critical pipeline step."""
+    log_dir = log_dir or (HERE / "logs")
+    files = sorted(log_dir.glob("run-*.json"),
+                   key=lambda path: path.stat().st_mtime, reverse=True)[:20]
+    for path in files:
+        try:
+            run = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        for step in reversed(run.get("steps") or []):
+            if step.get("step") != step_name or step.get("status") == "start":
+                continue
+            if step.get("status") not in ("ok", "deploy-skipped-no-change"):
+                detail = step.get("detail") or step.get("first_error") or step.get("status")
+                return f"{step_name} 最近狀態係 {step.get('status')}：{detail}"
+            return None
+    return f"搵唔到最近 {step_name} 完成記錄"
+
+
+def quality_issues(day: str) -> list[str]:
+    issues = local_quality_issues(day)
+    for step_name in ("ingest-results", "mirror"):
+        issue = latest_step_issue(step_name)
+        if issue:
+            issues.append(issue)
+    return issues
 
 
 def heal() -> tuple[bool, str]:
@@ -240,6 +365,10 @@ def check(day: str) -> dict:
         expect = set(scored)
     missing_live = sorted(v for v in expect if v not in live_today)
     if not missing_live:
+        issues = quality_issues(day)
+        if issues:
+            return {"state": "degraded", "issues": issues,
+                    "live": sorted(live_today), "expected": sorted(expect)}
         return {"state": "ok", "live": sorted(live_today), "expected": sorted(expect)}
     # 本機有冇評分？有 = 純發佈問題（補得到）；冇 = 分析根本未做（補唔到）。
     publishable = [v for v in missing_live if scored.get(v, 0) > 0]
@@ -271,6 +400,10 @@ def main() -> int:
     if res["state"] == "in-progress":
         # 唔出聲。跑緊唔係問題，而為咗「有嘢報」而報就係製造雜訊。
         return 0
+    if res["state"] == "degraded":
+        notify(f"⚠️ AU 體檢 {day}\n場次已上線，但資料品質未過：\n- "
+               + "\n- ".join(res.get("issues") or []))
+        return 1
     if res["state"] == "unknown":
         notify(f"⚠️ AU 體檢 {day}\n讀唔到 live dashboard —— 未能核實今日賽事有冇上線")
         return 1

@@ -15,6 +15,7 @@ import os
 from datetime import date
 import sys
 import tempfile
+import types
 import unittest
 import unittest.mock
 from pathlib import Path
@@ -23,6 +24,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
 import au_daily_schedule as S  # noqa: E402
+from wongchoi_paths import au_historical_results_csv  # noqa: E402
 
 
 def setUpModule():
@@ -1238,6 +1240,144 @@ class TestSharedRunLock(unittest.TestCase):
                 self.assertIsNone(acquired)
 
 
+class TestPeopleWarmup(unittest.TestCase):
+    def _paths(self, root):
+        paths = {}
+
+        def cache_path(url):
+            if url not in paths:
+                paths[url] = root / f"cache-{len(paths)}.html"
+            return paths[url]
+        return paths, cache_path
+
+    def test_missing_people_beat_cached_freshness_even_over_the_cap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            paths, cache_path = self._paths(root)
+            base = "https://example.test"
+            race_url = f"{base}/meeting/race/"
+            cache_path(race_url).write_text(
+                'href="/Jockey/1/" href="/Trainer/2/" href="/Jockey/3/"')
+            cache_path(f"{base}/Jockey/1/").write_text("already cached")
+            fetched = []
+
+            def fetch(_runlog, url, **_kwargs):
+                fetched.append(url)
+                cache_path(url).write_text("fresh")
+                return True
+
+            runlog = S.RunLog("test", date(2026, 8, 21), root / "run.json")
+            modules = {
+                "claw_sportsbet_form": types.SimpleNamespace(BASE=base),
+                "sb_browser_fetch": types.SimpleNamespace(cache_path=cache_path),
+            }
+            with unittest.mock.patch.dict(sys.modules, modules), \
+                    unittest.mock.patch.object(S, "fetch_page", fetch):
+                result = S.warm_people_pages(
+                    runlog, ["race"], "meeting", "test", limit=1, force=True)
+
+        self.assertEqual(result["missing_cache"], 2)
+        self.assertEqual(fetched, [f"{base}/Trainer/2/", f"{base}/Jockey/3/"])
+        self.assertNotIn(f"{base}/Jockey/1/", fetched)
+
+    def test_people_pages_are_not_refetched_across_meetings_in_one_run(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _paths, cache_path = self._paths(root)
+            base = "https://example.test"
+            for meeting in ("m1", "m2"):
+                cache_path(f"{base}/{meeting}/race/").write_text('href="/Jockey/1/"')
+            cache_path(f"{base}/Jockey/1/").write_text("cached")
+            fetched = []
+
+            def fetch(_runlog, url, **_kwargs):
+                fetched.append(url)
+                return True
+
+            runlog = S.RunLog("test", date(2026, 8, 21), root / "run.json")
+            modules = {
+                "claw_sportsbet_form": types.SimpleNamespace(BASE=base),
+                "sb_browser_fetch": types.SimpleNamespace(cache_path=cache_path),
+            }
+            with unittest.mock.patch.dict(sys.modules, modules), \
+                    unittest.mock.patch.object(S, "fetch_page", fetch):
+                S.warm_people_pages(runlog, ["race"], "m1", "m1", force=True)
+                S.warm_people_pages(runlog, ["race"], "m2", "m2", force=True)
+
+        self.assertEqual(fetched, [f"{base}/Jockey/1/"])
+
+
+class TestAtomicMirrorCopy(unittest.TestCase):
+    def test_existing_destination_is_atomically_replaced(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src, dst = root / "source.csv", root / "mirror.csv"
+            src.write_text("new-full-field")
+            dst.write_text("old-placeholder")
+            actual = S.atomic_copy2(src, dst)
+            self.assertEqual(actual, dst)
+            self.assertEqual(dst.read_text(), "new-full-field")
+            self.assertEqual(list(root.glob(".*.wongchoi-tmp-*")), [])
+
+    def test_unreplaceable_placeholder_uses_deterministic_latest_sibling(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src, dst = root / "source.csv", root / "mirror.csv"
+            src.write_text("current")
+            dst.write_text("stale-placeholder")
+            real_replace = os.replace
+
+            def replace(source, target):
+                if Path(target) == dst:
+                    raise PermissionError("FileProvider placeholder")
+                return real_replace(source, target)
+
+            with unittest.mock.patch.object(S.os, "replace", side_effect=replace):
+                actual = S.atomic_copy2(src, dst)
+
+            self.assertEqual(actual, S.mirror_fallback_path(dst))
+            self.assertEqual(dst.read_text(), "stale-placeholder")
+            self.assertEqual(actual.read_text(), "current")
+
+    def test_unreplaceable_latest_fails_instead_of_nesting_fallback_names(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src, dst = root / "source.csv", root / "mirror.latest.csv"
+            src.write_text("current")
+            dst.write_text("locked-latest")
+
+            with unittest.mock.patch.object(
+                    S.os, "replace", side_effect=PermissionError("locked")):
+                with self.assertRaises(PermissionError):
+                    S.atomic_copy2(src, dst)
+
+            self.assertFalse((root / "mirror.latest.latest.csv").exists())
+            self.assertEqual(list(root.glob(".*.wongchoi-tmp-*")), [])
+
+
+class TestHistoricalResultsResolver(unittest.TestCase):
+    def test_newer_nonempty_latest_fallback_wins(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            canonical = root / "AU_Historical_Raw_Race_Results.csv"
+            latest = root / "AU_Historical_Raw_Race_Results.latest.csv"
+            canonical.write_text("old")
+            latest.write_text("new-full-field")
+            os.utime(canonical, (1, 1))
+            os.utime(latest, (2, 2))
+            self.assertEqual(au_historical_results_csv(root), latest)
+
+    def test_zero_byte_latest_never_hides_the_canonical_corpus(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            canonical = root / "AU_Historical_Raw_Race_Results.csv"
+            latest = root / "AU_Historical_Raw_Race_Results.latest.csv"
+            canonical.write_text("full-field")
+            latest.touch()
+            os.utime(latest, (2, 2))
+            self.assertEqual(au_historical_results_csv(root), canonical)
+
+
 class TestResultsIngestStep(unittest.TestCase):
     """賽果摺返步驟 —— 呢步斷咗過一次，靜咗五個星期冇人知。
 
@@ -1278,10 +1418,29 @@ class TestResultsIngestStep(unittest.TestCase):
         self.assertEqual(steps[-1].get("rows_added"), 42)
 
     def test_falls_back_to_reflectors_when_the_cache_build_fails(self):
-        ok, calls, _ = self._run([(1, "boom"), (0, "new rows to add : 3\n")])
-        self.assertTrue(ok, "a cache failure must not abort the fold-back")
+        ok, calls, steps = self._run([(1, "boom"), (0, "new rows to add : 3\n")])
+        self.assertFalse(ok, "fallback writes rows but must mark the run degraded")
         self.assertNotIn("--sb-csv", calls[1])
         self.assertIn("--apply", calls[1])
+        self.assertEqual(steps[-1].get("status"), "partial")
+        self.assertFalse(steps[-1].get("full_field"))
+
+    def test_scheduler_and_full_field_cli_share_the_from_date_contract(self):
+        ok, calls, _ = self._run([(0, "ok"), (0, "new rows to add : 0\n")])
+        self.assertTrue(ok)
+        self.assertIn("--from-date", calls[0])
+        value = calls[0][calls[0].index("--from-date") + 1]
+        self.assertEqual(value, "2026-08-01")
+        self.assertIn("--mapping", calls[0])
+
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("sb_results_csv_contract", S.SB_RESULTS_CSV)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        parsed = module.build_parser().parse_args(
+            ["--out", str(Path(_LOG_TMP.name) / "results.csv"),
+             "--from-date", value])
+        self.assertEqual(parsed.from_date, value)
 
     def test_a_failed_fold_is_reported_not_swallowed(self):
         ok, _calls, steps = self._run([(0, "ok"), (2, "traceback\n")])

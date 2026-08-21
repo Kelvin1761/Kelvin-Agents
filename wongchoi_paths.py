@@ -140,6 +140,30 @@ _hk_mirror = _resolve_root(
 HK_RACING_MIRROR: Path | None = None if _hk_mirror == _HK_MIRROR_UNSET else _hk_mirror
 
 
+def au_historical_results_csv(root: Path | None = None) -> Path:
+    """Resolve the freshest canonical AU results corpus, including mirror fallback.
+
+    Google Drive FileProvider can leave the canonical name as an undeletable,
+    dataless placeholder.  The scheduler then writes the current bytes to the
+    deterministic `.latest.csv` sibling.  Local-primary machines keep using the
+    canonical name; Drive/Windows readers automatically choose the newer file.
+    """
+    base = Path(root or AU_RACING)
+    canonical = base / "AU_Historical_Raw_Race_Results.csv"
+    latest = base / "AU_Historical_Raw_Race_Results.latest.csv"
+    candidates: list[tuple[float, int, Path]] = []
+    for path in (canonical, latest):
+        try:
+            stat = path.stat()
+            if path.is_file() and stat.st_size > 0:
+                candidates.append((stat.st_mtime, stat.st_size, path))
+        except OSError:
+            continue
+    if not candidates:
+        return canonical
+    return max(candidates, key=lambda item: (item[0], item[1]))[2]
+
+
 def au_racing_is_relocated() -> bool:
     """True when AU_RACING has been moved out from under HORSE_RACE_ANALYSIS.
 
@@ -192,7 +216,7 @@ def new_analysis_dir(sport: str, label: str) -> Path:
 # mid-scoring-run, that its Google Drive folder is not actually synced.
 REQUIRED_DATA_FILES = {
     # AU: read by racing_engine/au_draw_bias_calculator.py
-    "AU draw bias (historical)": AU_RACING / "AU_Historical_Raw_Race_Results.csv",
+    "AU draw bias (historical)": au_historical_results_csv(),
     "AU draw bias (backfill)": AU_RACING / "AU_Backfill_Race_Results.csv",
 }
 

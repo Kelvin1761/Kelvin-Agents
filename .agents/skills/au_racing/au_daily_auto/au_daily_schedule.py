@@ -1021,13 +1021,17 @@ def step_ingest_results(runlog: RunLog, *, from_date: str) -> bool:
     command = [sys.executable, str(RESULTS_INGEST), "--apply"]
     rc, out = run_cmd(
         [sys.executable, str(SB_RESULTS_CSV), "--out", str(sb_csv),
-         "--from-date", from_date], timeout=1800)
-    if rc == 0 and sb_csv.exists():
+         "--from-date", from_date, "--mapping", str(MEETING_IDS)], timeout=1800)
+    full_field_ok = rc == 0 and sb_csv.exists() and sb_csv.stat().st_size > 0
+    if full_field_ok:
         command += ["--sb-csv", str(sb_csv)]
     else:
         # Not fatal: the reflector path still covers these meetings, just with
-        # fewer finishers per race.
-        runlog.warn("Sportsbet 全場賽果重建失敗，只用 reflector 補（每場跑手會少啲）")
+        # fewer finishers per race.  It is still a DEGRADED run: callers must
+        # propagate False so launchd/healthcheck cannot report a false green.
+        detail = out.splitlines()[-1] if out else f"rc={rc}"
+        runlog.warn("Sportsbet 全場賽果重建失敗，只用 reflector 補"
+                    f"（每場跑手會少啲）：{detail}")
 
     rc, out = run_cmd(command, timeout=1800)
     if rc != 0:
@@ -1041,8 +1045,10 @@ def step_ingest_results(runlog: RunLog, *, from_date: str) -> bool:
         match = re.search(r"new rows to add\s*:\s*(\d+)", line)
         if match:
             added = int(match.group(1))
-    runlog.step("ingest-results", "ok", rows_added=added)
-    return True
+    runlog.step("ingest-results", "ok" if full_field_ok else "partial",
+                rows_added=added, full_field=full_field_ok,
+                detail=None if full_field_ok else "reflector fallback only")
+    return full_field_ok
 
 
 # ── 步驟 2：分析下一個賽日 ─────────────────────────────────────────────────
@@ -1219,7 +1225,14 @@ def warm_people_pages(runlog: RunLog, race_ids: list[str], meeting_id: str,
         except ValueError:
             limit = 40
 
-    wanted: list[str] = []
+    # One jockey/trainer can appear at several venues.  `force=True` used to
+    # refetch the same page once PER MEETING in the same run, wasting 25 seconds
+    # each time and crowding never-seen rural people out of the 40-page cap.
+    refreshed_this_run = getattr(runlog, "_people_refreshed", set())
+    runlog._people_refreshed = refreshed_this_run
+    missing_cache: list[str] = []
+    refresh_due: list[str] = []
+    seen_here: set[str] = set()
     for race_id in race_ids:
         page = cache_path(f"{BASE}/{meeting_id}/{race_id}/")
         if not page.exists():
@@ -1229,27 +1242,50 @@ def warm_people_pages(runlog: RunLog, race_ids: list[str], meeting_id: str,
             url = f"{BASE}/{kind}/{pid}/"
             # `force`（晚更）連已 cache 嘅都重抽 —— 「去年官方」係滾動 12 個月
             # 紀錄，賽季中段會變，21 日 TTL 之下最多滯後 3 個星期。
-            if url not in wanted and (force or not cache_path(url).exists()):
-                wanted.append(url)
+            if url in seen_here or url in refreshed_this_run:
+                continue
+            seen_here.add(url)
+            if not cache_path(url).exists():
+                missing_cache.append(url)
+            elif force:
+                refresh_due.append(url)
 
-    if not wanted:
+    # Correctness beats freshness: on the overnight path, never-seen pages are
+    # allowed through even when they exceed the refresh cap.  Previously Roma
+    # finished at 42.9% J/T coverage because cached metropolitan people occupied
+    # the first 40 slots while missing rural people were deferred forever after
+    # the meeting was archived.  Morning (`force=False`) keeps its tight cap.
+    if force:
+        refresh_slots = max(0, limit - len(missing_cache))
+        todo = missing_cache + refresh_due[:refresh_slots]
+        dropped = refresh_due[refresh_slots:]
+    else:
+        wanted = missing_cache + refresh_due
+        todo = wanted[:limit]
+        dropped = wanted[limit:]
+
+    wanted_count = len(missing_cache) + len(refresh_due)
+    if not wanted_count:
         return {"needed": 0, "fetched": 0}
-    dropped = wanted[limit:]
-    todo = wanted[:limit]
     if dropped:
-        runlog.warn(f"{label}: 個人頁今次只補 {len(todo)}/{len(wanted)}，"
-                    f"餘下 {len(dropped)} 個下次補（TTL cache 會累積）")
+        runlog.warn(f"{label}: 個人頁今次只補 {len(todo)}/{wanted_count}，"
+                    f"餘下 {len(dropped)} 個 freshness refresh 下次補"
+                    "（未 cache 頁已優先）")
     fetched = 0
     for url in todo:
         if runlog.site_refusing:
             break
         if fetch_page(runlog, url, force=force, where=f"{label} 個人頁"):
             fetched += 1
+            refreshed_this_run.add(url)
         else:
             break
     runlog.step("warm-people", "ok" if fetched == len(todo) else "partial",
-                meeting=label, needed=len(wanted), fetched=fetched)
-    return {"needed": len(wanted), "fetched": fetched}
+                meeting=label, needed=wanted_count, fetched=fetched,
+                missing_cache=len(missing_cache), refresh_due=len(refresh_due),
+                deferred=len(dropped))
+    return {"needed": wanted_count, "fetched": fetched,
+            "missing_cache": len(missing_cache), "deferred": len(dropped)}
 
 
 def apply_ra_ratings(runlog: RunLog, folder: Path, day: str, venue: str) -> dict:
@@ -2482,6 +2518,51 @@ def step_dashboard(runlog: RunLog, meeting_dirs: list[Path],
 MIRROR_FAIL_STREAK = 8
 
 
+def mirror_fallback_path(dst: Path) -> Path:
+    return dst.with_name(f"{dst.stem}.latest{dst.suffix}")
+
+
+def atomic_copy2(src: Path, dst: Path) -> Path:
+    """Copy through a sibling temp file so FileProvider placeholders are replaced.
+
+    Google Drive can expose an existing file as a read-only/dataless placeholder:
+    opening that inode for overwrite fails, while creating and renaming a sibling
+    file is allowed.  A sibling also keeps `os.replace` atomic on the same volume.
+    """
+    tmp = dst.with_name(f".{dst.name}.wongchoi-tmp-{os.getpid()}")
+    try:
+        shutil.copy2(src, tmp)
+        try:
+            os.replace(tmp, dst)
+            return dst
+        except PermissionError:
+            # A stale Google Drive FileProvider inode can deny overwrite,
+            # rename AND unlink even though siblings are writable.  Keep the
+            # current mirror under a deterministic `.latest` name; consumers
+            # resolve the freshest of canonical/latest via wongchoi_paths.
+            # If that deterministic fallback itself becomes immutable, fail
+            # visibly instead of inventing an unread `.latest.latest` chain.
+            if dst.stem.endswith(".latest"):
+                raise
+            fallback = mirror_fallback_path(dst)
+            fallback_tmp = fallback.with_name(
+                f".{fallback.name}.wongchoi-tmp-{os.getpid()}")
+            try:
+                shutil.copy2(src, fallback_tmp)
+                os.replace(fallback_tmp, fallback)
+                return fallback
+            finally:
+                try:
+                    fallback_tmp.unlink()
+                except FileNotFoundError:
+                    pass
+    finally:
+        try:
+            tmp.unlink()
+        except FileNotFoundError:
+            pass
+
+
 def step_mirror_reports(runlog: RunLog, meeting_dirs: list[Path]) -> None:
     """把今次動過嘅場次夾鏡像返 Google Drive（`WONGCHOI_AU_MIRROR_ROOT`）。
 
@@ -2518,6 +2599,7 @@ def step_mirror_reports(runlog: RunLog, meeting_dirs: list[Path]) -> None:
     # 睇極都唔知點解。而家：記低第一個真錯誤，而且連續失敗到一定數量就收手 ——
     # 環境唔畀寫嘅話，試 248 次同試 8 次結果一樣，但後者唔會嘈足一版。
     copied = failed = 0
+    fallbacks: list[str] = []
     first_error: str | None = None
     streak = 0
     for src in [AU_RACING / n for n in MIRRORED_ROOT_FILES] + list(meeting_dirs):
@@ -2528,7 +2610,12 @@ def step_mirror_reports(runlog: RunLog, meeting_dirs: list[Path]) -> None:
                 break
             if not item.is_file() or item.name == ".DS_Store":
                 continue
-            dst = AU_RACING_MIRROR / item.relative_to(AU_RACING)
+            canonical_dst = AU_RACING_MIRROR / item.relative_to(AU_RACING)
+            fallback_dst = mirror_fallback_path(canonical_dst)
+            # Once a FileProvider placeholder has forced the fallback, compare
+            # and update that path on later runs instead of retrying the known-
+            # unwritable inode forever.
+            dst = fallback_dst if fallback_dst.exists() else canonical_dst
             try:
                 st = item.stat()
                 if dst.exists():
@@ -2536,7 +2623,9 @@ def step_mirror_reports(runlog: RunLog, meeting_dirs: list[Path]) -> None:
                     if d.st_size == st.st_size and int(d.st_mtime) >= int(st.st_mtime):
                         continue
                 dst.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(item, dst)
+                actual_dst = atomic_copy2(item, dst)
+                if actual_dst != canonical_dst:
+                    fallbacks.append(str(actual_dst.relative_to(AU_RACING_MIRROR)))
                 copied += 1
                 streak = 0
             except OSError as exc:
@@ -2548,7 +2637,8 @@ def step_mirror_reports(runlog: RunLog, meeting_dirs: list[Path]) -> None:
     gave_up = streak >= MIRROR_FAIL_STREAK
     runlog.step("mirror", "ok" if not failed else "partial",
                 copied=copied, failed=failed, gave_up=gave_up or None,
-                first_error=first_error, root=str(AU_RACING_MIRROR))
+                first_error=first_error, fallbacks=fallbacks or None,
+                root=str(AU_RACING_MIRROR))
     if failed:
         runlog.warn(
             f"鏡像寫唔入（{failed} 個檔"
@@ -2703,7 +2793,11 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
             push_reflection(runlog, archived)
     # After the reflectors exist, before anything that reads the corpus.
     if not args.skip_results_ingest:
-        step_ingest_results(runlog, from_date=args.ingest_from_date)
+        if not step_ingest_results(runlog, from_date=args.ingest_from_date):
+            # Reflector fallback keeps winner/top-three settlement usable, but
+            # the full-field corpus is incomplete.  Mark the run retryable so
+            # launchd, /diag and the independent healthcheck all see it.
+            temporary = True
     if not args.skip_analysis:
         try:
             analysed = step_analyse_next_day(runlog, review_day,

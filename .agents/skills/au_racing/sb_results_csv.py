@@ -21,11 +21,42 @@ from __future__ import annotations
 import argparse
 import csv
 import sys
+from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 FIELDS = ("Date", "Track", "Race", "Horse", "Pos", "Barrier", "SP", "Condition")
+
+
+def iso_date(value: str) -> str:
+    """Argparse validator; keeping the normalised ISO string makes comparisons cheap."""
+    try:
+        return date.fromisoformat(value).isoformat()
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"日期要用 YYYY-MM-DD：{value}") from exc
+
+
+def build_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(description="由 cache 生成歷史賽果 CSV")
+    ap.add_argument("--out", required=True, type=Path)
+    ap.add_argument(
+        "--from-date",
+        type=iso_date,
+        help="只處理呢日或之後嘅 meeting；避免 daily ingest 每晚重掃完整 cache",
+    )
+    ap.add_argument("--mapping", type=Path,
+                    help="自訂 meeting-ID mapping；預設用現役 AU data mapping")
+    return ap
+
+
+def meeting_items(ids: dict, from_date: str | None = None):
+    """Return deterministically ordered meetings, optionally bounded by race date."""
+    items = sorted(ids.items(), key=lambda kv: str(kv[1].get("date") or ""))
+    if from_date:
+        items = [item for item in items
+                 if str(item[1].get("date") or "") >= from_date]
+    return items
 
 
 def rows_for_meeting(meta, fetcher):
@@ -67,17 +98,15 @@ def rows_for_meeting(meta, fetcher):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="由 cache 生成歷史賽果 CSV")
-    ap.add_argument("--out", required=True, type=Path)
-    args = ap.parse_args()
+    args = build_parser().parse_args()
 
     from claw_sportsbet_form import SportsbetFormFetcher
     from sb_backfill_archive import load_meeting_ids
 
     f = SportsbetFormFetcher(delay=0.0, verbose=False)
-    ids = load_meeting_ids()
+    ids = load_meeting_ids(args.mapping) if args.mapping else load_meeting_ids()
     rows, meetings = [], 0
-    for name, meta in sorted(ids.items(), key=lambda kv: kv[1]["date"]):
+    for name, meta in meeting_items(ids, args.from_date):
         got = rows_for_meeting(meta, f)
         if got:
             meetings += 1
@@ -91,7 +120,8 @@ def main():
         w.writeheader()
         w.writerows(rows)
     races = len({(r["Date"], r["Race"], r["Track"]) for r in rows})
-    print(f"✅ {meetings} 場次 / {races} 場 / {len(rows)} 個跑手 → {args.out}")
+    scope = f"（{args.from_date} 起）" if args.from_date else ""
+    print(f"✅ {meetings} 場次 / {races} 場 / {len(rows)} 個跑手{scope} → {args.out}")
     return 0
 
 

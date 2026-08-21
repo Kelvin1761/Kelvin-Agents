@@ -12,6 +12,7 @@ codebase 今個星期已經證明咗，靜默錯誤比大聲失敗難搞好多�
 """
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import sys
@@ -200,20 +201,29 @@ def phone_summary(text: str) -> str:
     return "\n".join(keep)[:1200]
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="診斷最近一次 AU daily run")
+    parser.add_argument("run_json", nargs="?", type=Path,
+                        help="指定 run JSON；預設揀最近 failed/partial run")
+    parser.add_argument("--send", action="store_true", help="將手機短版送去 Telegram")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
     hist = runs()
     if not hist:
         print("冇 run 記錄")
         return 1
     target = next((r for r in hist if r.get("status") in ("failed", "partial")),
                   hist[0])
-    if len(sys.argv) > 1 and sys.argv[1] != "--send":
-        target = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+    if args.run_json:
+        target = json.loads(args.run_json.read_text(encoding="utf-8"))
     text = diagnose(target, hist)
     BUNDLE.write_text(text, encoding="utf-8")
     print(text)
     print(f"\n（完整版寫咗落 {BUNDLE}）")
-    if "--send" in sys.argv:
+    if args.send:
         sys.path.insert(0, str(HERE))
         import au_notify
         print("送出：", au_notify.push("🔎 " + phone_summary(text)) or "冇出口")

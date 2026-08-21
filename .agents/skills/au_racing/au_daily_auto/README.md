@@ -41,15 +41,18 @@ macOS TCC：由 launchd 起嘅 process 同 Terminal 係唔同 context。**手動
 | `iterdir()` | ❌ `PermissionError` errno 1 |
 | 讀檔內容 | ❌ `PermissionError` errno 1 |
 | `stat()` | ✅ |
-| 寫檔＋刪檔 | ✅ |
+| 建立新檔＋刪除一般檔 | ✅ |
+| 覆寫／刪除既有 dataless placeholder | ❌（FileProvider 可拒絕） |
 
 兩個直接後果：
 
 1. **`.is_dir()` / `.exists()` 唔可以當可讀性探測** —— 佢哋係 stat，喺一條同一個
    process 列都列唔到、讀都讀唔到嘅路徑上面照樣返 True。要試就試真嘅操作。
    （`wongchoi_paths.check_data_root()` 同 `step_mirror_reports` 都跟返呢點。）
-2. **鏡像返 Drive 喺 launchd 底下係做得嘅** —— 因為佢只用 stat + 寫，剛好落喺容許
-   嘅一邊。所以 Drive 邊唔會停留喺搬走嗰日。
+2. **鏡像返 Drive 喺 launchd 底下係做得嘅** —— 一般檔用 sibling temp + atomic replace；
+   如果 canonical 名已經係 FileProvider 鎖死嘅 dataless placeholder，就寫入固定
+   `.latest.csv` sibling。所有 AU historical-results consumer 會揀兩者之中較新且非空嗰份，
+   唔會再誤讀 0-byte placeholder。
 
 **點接線。** `run_au_daily_schedule.sh` 明確 export 兩個變數（唔靠 repo 裏面嗰個
 gitignore 嘅 dotfile —— worktree／新 clone 都唔會有）：
@@ -70,6 +73,7 @@ tennis 照留 Drive：佢哋喺 Drive 上面絕大部分係未下載嘅 placehol
 鏡像 step 仍然係 best-effort：寫唔入就 warn 一句照過（`[mirror] skipped-unwritable`），
 唔會拖垮已經做完嘅分析同發佈。實測 2026-08-05 02:13 由 launchd 跑出嚟係
 `[mirror] ok {"copied":0,"failed":0}`（嗰次 run 冇場次更新，所以冇嘢要抄）。
+如用咗 FileProvider fallback，run log `mirror.fallbacks[]` 會記錄實際 `.latest.csv` 路徑。
 
 驗證：
 
@@ -161,11 +165,14 @@ Exit code：`0` 完全成功 · `75` 部分／暫時性失敗（下一次排程�
 
 ### 自動復原界線
 
-獨立 healthcheck 會先比較官方今日場次、live dashboard 同本機評分檔。確認今日有
-賽事但本機完全冇分析時，會自動開一次受共用鎖保護嘅 morning recovery；同一日最多
-一次，完成後仍然要過原本 snapshot 驗證先可以發佈。純發佈故障繼續用 cache-only
-重建補發。未知錯誤、模型／資料矛盾同重複失敗只會 Telegram 報警，唔會自行改 code
-或者無限重試。
+獨立 healthcheck 會先比較官方今日場次、live dashboard 同本機評分檔，並逐個本機 meeting
+檢查預期場數、Racecard／Formguide／Facts／Logic／Analysis／Scoring 非空、going refresh、
+J/T coverage（預設至少 80%），以及 11:00 後 morning odds 是否齊全；亦會檢查最近一次
+`ingest-results` 同 `mirror` step。場次齊但資料 gate 唔過會報 `degraded`，唔再當綠燈。
+確認今日有賽事但本機完全冇分析時，會自動開一次受共用鎖保護嘅 morning recovery；
+同一日最多一次，完成後仍然要過原本 snapshot 驗證先可以發佈。純發佈故障繼續用
+cache-only 重建補發。未知錯誤、模型／資料矛盾同重複失敗只會 Telegram 報警，唔會
+自行改 code 或者無限重試。
 
 ## Run log 內容
 
@@ -320,10 +327,10 @@ python3 .agents/skills/au_racing/sb_browser_fetch.py 2026-08-06
 - **起始頁有後備**：真 Chrome 要落一版同源頁先可以 `fetch()`，落唔到就一版都攞唔到。
   所以收兩個候選（覆盤日索引頁、今日索引頁）逐個試。`/` 根目錄唔可以做後備 ——
   CloudFront 擋 root。
-- **個人頁會分晚累積**：一個場次大約需要 **91** 個騎練個人頁，而
-  `sb_people_stats.refresh` 每次只轉換 40 個入 people cache，所以
-  `WC_AU_PEOPLE_PER_MEETING` 預設 40（對得住嗰個轉換率）。頭幾晚 `(LY:)` 會部分
-  填充，之後靠 TTL cache 收斂。想一晚填滿就調高呢個 env。
+- **缺人資料優先補齊**：`warm_people_pages()` 先抽從未 cache 嘅騎師／練馬師，再做 TTL
+  freshness refresh；同一個 run 跨 meeting 去重，唔會重複抽同一個人。晚更對 missing
+  pages 唔受每場 40 個 refresh cap 限制，確保 rural meeting 唔再長期被 metropolitan
+  cached people 擠走；`WC_AU_PEOPLE_PER_MEETING`（預設 40）只限制已 cache 人物嘅更新量。
 - **單場失敗唔會拖死其他場**：逐個場次 try/except，狀態逐個記。
 - **retry**：live snapshot 3 次、發佈 3 次（遞增退避）、發佈後核實 poll 6 次
   （production alias 有大約一分鐘 edge cache 延遲，一次讀到舊 snapshot 唔算失敗）。

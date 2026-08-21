@@ -6,8 +6,8 @@ import re
 
 PROJECT_ROOT = Path(__file__).resolve().parents[6]
 import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
-from wongchoi_paths import AU_RACING
-CSV_PATH = str(AU_RACING / "AU_Historical_Raw_Race_Results.csv")
+from wongchoi_paths import AU_RACING, au_historical_results_csv
+CSV_PATH = str(au_historical_results_csv(AU_RACING))
 # Racenet results backfill (scratch/au_results_backfill_driver.py) — same schema.
 # Every backfill batch densifies the draw matrix; the engine's n/(n+25)
 # shrinkage then automatically trusts the venue cells more as they grow.
