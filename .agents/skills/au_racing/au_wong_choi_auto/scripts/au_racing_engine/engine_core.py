@@ -547,7 +547,9 @@ class RacingEngine:
         advantages = self._advantages(feature_scores, matrix_scores)
         disadvantages = self._disadvantages(feature_scores, matrix_scores)
         core_logic = self._core_logic(feature_scores, matrix_scores, advantages, disadvantages)
-        grade_transparency = self._au_grade_computation_transparency(matrix_scores, matrix, feature_scores, base_7d_score, ability_score, grade)
+        grade_transparency = self._au_grade_computation_transparency(
+            matrix_scores, matrix, feature_scores, base_7d_score, ability_score, grade,
+            feature_notes=feature_notes)
 
         return {
             "version": "AU_AUTO_SCORE_V3",
@@ -2534,7 +2536,9 @@ class RacingEngine:
             return f"{label} 仍然係主要保留位"
         return f"{label} 暫時只算中性參考"
 
-    def _au_grade_computation_transparency(self, matrix_scores, matrix_bands, feature_scores, base_7d_score, ability_score, grade):
+    def _au_grade_computation_transparency(self, matrix_scores, matrix_bands, feature_scores,
+                                           base_7d_score, ability_score, grade,
+                                           feature_notes=None):
         """Generate the six-dimension ranking walkthrough.
 
         ``base_7d_score`` is retained as a legacy archive field name.  The live
@@ -2566,10 +2570,26 @@ class RacingEngine:
         )
         # 有計但唔直接入六維公式嘅分數 — 一併展示，唔收埋
         ref_bits = []
-        for ref_key, ref_label in (("distance_score", "路程分"), ("health_score", "備戰完整度分"), ("confidence_score", "信心分")):
+        for ref_key, ref_label in (("distance_score", "路程分"), ("confidence_score", "信心分")):
             val = feature_scores.get(ref_key)
             if isinstance(val, (int, float)):
                 ref_bits.append(f"{ref_label} {float(val):.1f}")
+
+        # 備戰完整度分 2026-08-21 實測（300 場）：場內 SD **0.89**，19% 嘅馬恰好 60.0。
+        # 佢自己每項調整只有 ±0.3..±2.0 分，而 band 界線喺 55 / 70 —— 即係呢個數字
+        # 數學上永遠出唔到 ➖ 以外，印出嚟等於冇資訊。但佢個 note（「近績有獸醫/
+        # 健康疑點」「久休 N 日而缺少試閘時間支撐」）係真有料嘅。
+        # 所以：唔再印個無意義嘅數，改為只喺真有訊號觸發時出佢講咗咩。
+        health = feature_scores.get("health_score")
+        if isinstance(health, (int, float)) and abs(float(health) - 60.0) >= 1.0:
+            note = str((feature_notes or {}).get("health_score") or "").strip()
+            # note 形如「近績有獸醫/健康疑點；久休 120 日…。健康/備戰分 56.0。」
+            # 只要最前面嗰段講原因嘅字，唔要尾巴嗰個分數。
+            reason = note.split("。")[0].strip(" ；")
+            skip = ("未見明確健康或備戰扣分訊號", "")
+            if reason and reason not in skip:
+                direction = "⚠️" if float(health) < 60.0 else "＋"
+                ref_bits.append(f"備戰 {direction}{reason}")
         if ref_bits:
             summary += "\n**📎 參考分（不直接入六維公式）：** " + "、".join(ref_bits)
         if self.risk_flags:

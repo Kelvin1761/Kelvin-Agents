@@ -91,14 +91,18 @@ for label, root, stale_days in (("AU", AU_RACING, 3), ("HKJC", HK_RACING, 21)):
           f"語料庫共 {len(meetings)} 個場次")
 
 # Tennis: the DB is written every day, so its mtime IS the liveness signal.
-db = "tennis-wong-choi/tennis_wc.db"
-if os.path.exists(db):
+# Tennis only exists in the main repo — this script also runs from the AU
+# scheduler worktree, where a relative path would wrongly report it missing.
+db = next((c for c in ("tennis-wong-choi/tennis_wc.db",
+                       "/Users/imac/Antigravity-repo/tennis-wong-choi/tennis_wc.db")
+           if os.path.exists(c)), None)
+if db:
     a = age_days(os.path.getmtime(db))
     mark = "✅" if a < 2 else "⚠️ "
     size = os.path.getsize(db) / 1073741824
     print(f"  {mark} Tennis: DB {size:.2f}GB，{a:.1f} 日前寫過")
 else:
-    print("  ❌ Tennis: 搵唔到 tennis_wc.db")
+    print("  ⚠️  Tennis: 呢個 checkout 冇 tennis_wc.db（Tennis 只住喺主 repo）")
 PYEOF
 
 # ── 數據合約 ─────────────────────────────────────────────────────────────
@@ -120,16 +124,19 @@ for L in /Users/imac/wongchoi-scheduler/.agents/skills/au_racing/au_daily_auto/l
          tennis-wong-choi/data/logs; do
   [ -d "$L" ] || continue
   while IFS= read -r f; do
-    n=$(grep -icE "traceback|fatal|Operation not permitted" "$f" 2>/dev/null | head -1)
+    n=$(grep -icE "traceback|fatal|Operation not permitted|unbound variable|❌ \[" "$f" 2>/dev/null | head -1)
     n=${n:-0}
     if [ "$n" -gt 0 ]; then
       warn "$(basename "$f"): $n 行錯誤"
-      grep -iE "traceback|fatal|❌|Operation not permitted" "$f" 2>/dev/null | tail -2 | sed 's/^/        /'
+      grep -iE "traceback|fatal|Operation not permitted|unbound variable|❌ \[" "$f" 2>/dev/null | tail -2 | sed 's/^/        /'
       found=1
     fi
-  done < <(find "$L" -name "*.log" -o -name "*.err" -o -name "*.out" -mtime -3 2>/dev/null)
+    # Skip our own output: last week's report quotes last week's errors, which
+    # would resurface here forever as if they were new.
+  done < <(find "$L" \( -name "*.log" -o -name "*.err" -o -name "*.out" \) \
+             ! -name "health.out" ! -name "health.err" -mtime -3 2>/dev/null)
 done
-[ "$found" = "0" ] && ok "近 3 日嘅日誌冇 traceback / 權限錯誤"
+[ "$found" = "0" ] && ok "近 3 日嘅日誌冇 traceback / 權限錯誤 / 排程階段失敗"
 
 # ── 總結 ─────────────────────────────────────────────────────────────────
 printf '\n\033[1m════════ 總結 ════════\033[0m\n'
