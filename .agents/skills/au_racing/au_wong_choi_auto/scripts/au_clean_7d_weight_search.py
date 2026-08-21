@@ -418,5 +418,46 @@ def main() -> int:
     return 0
 
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 已退役（2026-08-21）。用 `au_matrix_refit.py` 代替。
+#
+# 呢個檔係 coordinate descent / argmax 搜索。實測會 overfit：dev good_pos +3.80
+# 但 holdout 舊 any-one 指標 −5.61。`au_matrix_refit.py` 個 docstring 明文寫住
+# 佢取代咗呢三個檔（本檔、`au_clean_7d_weight_search.py`、
+# `au_weight_improvement_search.py`），並且改為取閘後候選嘅**逐維度中位數（共識）**
+# 而唔係 argmax。
+#
+# 另一個更根本嘅理由：矩陣嘅收益係**五個維度一齊郁**出嚟嘅，所以逐對權重試會讀到
+# 「已經最優」，其實佢讀到嘅係「平」。單獨郁一對過唔到閘 ≠ 呢個方向冇用。
+#
+# 保留呢個檔只為對照歷史結論。要跑就明確 opt in。
+# ─────────────────────────────────────────────────────────────────────────────
+import os as _os
+
+_RETIRED_MSG = """
+❌ {name} 已退役 —— 佢係 argmax／coordinate descent，實測 overfit
+   （dev good_pos +3.80 / holdout −5.61）。
+
+   用 au_matrix_refit.py 代替：
+       python3 au_dump_engine_leaves.py --out /tmp/leaves.json
+       python3 au_matrix_refit.py verify --data /tmp/leaves.json
+       python3 au_matrix_refit.py refit  --data /tmp/leaves.json
+
+   真係要跑舊工具做歷史對照：WC_ALLOW_RETIRED_WEIGHT_SEARCH=1
+"""
+
+
+def _refuse_if_retired():
+    if _os.environ.get("WC_ALLOW_RETIRED_WEIGHT_SEARCH") == "1":
+        print(f"⚠️  {__file__} 已退役，你用 WC_ALLOW_RETIRED_WEIGHT_SEARCH=1 強制跑。"
+              " 結果唔可以當證據。")
+        return
+    import sys as _sys
+    print(_RETIRED_MSG.format(name=Path(__file__).name), file=_sys.stderr)
+    raise SystemExit(2)
+
+
 if __name__ == "__main__":
+    _refuse_if_retired()
     raise SystemExit(main())

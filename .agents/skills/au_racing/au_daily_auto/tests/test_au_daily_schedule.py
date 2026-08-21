@@ -1355,6 +1355,71 @@ class TestAtomicMirrorCopy(unittest.TestCase):
             self.assertEqual(list(root.glob(".*.wongchoi-tmp-*")), [])
 
 
+class TestMirrorSurvivesDeniedStat(unittest.TestCase):
+    """launchd 底下 CloudStorage 拒絕嘅係 `stat()`，唔係寫入。
+
+    舊寫法用 `Path.exists()` 去比較新舊。pathlib 只吞 ENOENT/ENOTDIR/EBADF/ELOOP，
+    EPERM 會照拋 —— 所以成個 copy 喺「比較」嗰步就爆，連寫都未試過，`.latest`
+    fallback 亦永遠行唔到（34 個 run log 冇一個有 `fallbacks`）。
+    """
+
+    def _run(self, tmp, *, deny_write=False):
+        root, mirror = Path(tmp) / "local", Path(tmp) / "drive"
+        (root / "2026-08-21 Sale Race 1-9").mkdir(parents=True)
+        mirror.mkdir()
+        src = root / "AU_Historical_Raw_Race_Results.csv"
+        src.write_text("fresh,rows\n", encoding="utf-8")
+        dst = mirror / "AU_Historical_Raw_Race_Results.csv"
+        dst.write_text("stale\n", encoding="utf-8")
+
+        real_stat = Path.stat
+        real_replace = os.replace
+
+        def stat(self, *a, **k):
+            if str(self).startswith(str(mirror)) and self.name != ".au_mirror_write_probe":
+                raise PermissionError(1, "Operation not permitted", str(self))
+            return real_stat(self, *a, **k)
+
+        def replace(source, target):
+            if deny_write and Path(target) == dst:
+                raise PermissionError("FileProvider placeholder")
+            return real_replace(source, target)
+
+        runlog = unittest.mock.MagicMock()
+        with contextlib.ExitStack() as st:
+            st.enter_context(unittest.mock.patch.object(S, "AU_RACING", root))
+            st.enter_context(unittest.mock.patch.object(S, "AU_RACING_MIRROR", mirror))
+            st.enter_context(unittest.mock.patch.object(
+                S, "MIRRORED_ROOT_FILES", ("AU_Historical_Raw_Race_Results.csv",)))
+            st.enter_context(unittest.mock.patch.object(Path, "stat", stat))
+            st.enter_context(unittest.mock.patch.object(
+                S.os, "replace", side_effect=replace))
+            S.step_mirror_reports(runlog, [])
+
+        step = next(c for c in runlog.step.call_args_list if c.args[0] == "mirror")
+        return step, mirror, dst
+
+    def test_denied_stat_still_writes_the_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            step, _mirror, dst = self._run(tmp)
+            self.assertEqual(step.args[1], "ok")
+            self.assertEqual(step.kwargs["copied"], 1)
+            self.assertEqual(step.kwargs["failed"], 0)
+            self.assertEqual(dst.read_text(), "fresh,rows\n")
+
+    def test_denied_stat_then_denied_write_reaches_the_latest_fallback(self):
+        # 真係寫唔入嗰時，fallback 一定要行得到 —— 之前佢係死 code。
+        with tempfile.TemporaryDirectory() as tmp:
+            step, mirror, dst = self._run(tmp, deny_write=True)
+            fallback = mirror / "AU_Historical_Raw_Race_Results.latest.csv"
+            self.assertEqual(step.kwargs["copied"], 1)
+            self.assertEqual(step.kwargs["failed"], 0)
+            self.assertEqual(step.kwargs["fallbacks"],
+                             ["AU_Historical_Raw_Race_Results.latest.csv"])
+            self.assertEqual(fallback.read_text(), "fresh,rows\n")
+            self.assertEqual(dst.read_text(), "stale\n")
+
+
 class TestHistoricalResultsResolver(unittest.TestCase):
     def test_newer_nonempty_latest_fallback_wins(self):
         with tempfile.TemporaryDirectory() as tmp:

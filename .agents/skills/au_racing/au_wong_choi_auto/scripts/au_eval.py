@@ -65,6 +65,18 @@ from au_racing_engine import matrix_mapper  # noqa: E402
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
 from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
+# 場數指標（Gold / Good位 / Pass）係「入唔入實際前三」嘅二元判斷，**冇按馬群大細
+# 正規化**：8 匹馬入前三係 3/8，14 匹馬係 3/14。2026-08-21 實測（dev 901 場，
+# 時間因素已隔離）Gold 由 ≤8 匹嘅 31.58% 一路跌到 13+ 匹嘅 8.91% —— 3.5 倍。
+#
+# 後果：任何令馬群組成改變嘅嘢（換語料、換窗、加新場次）都會偽裝成模型變化。
+# 同日實測到嘅例子：pooled 數字係 dev Gold 16.13% vs holdout 20.70%（睇落
+# 「holdout 好過 dev」），但 holdout 平均馬群 9.08、dev 10.51；控制到 9-10 匹之後
+# 變成 dev 15.38% vs holdout 13.33% —— **方向相反**。
+#
+# 所以基準報告一定要同時出分層數字。呢個係**附加**輸出，唔改判決規則。
+FIELD_BUCKETS = ((0, 8, "≤8"), (9, 10, "9-10"), (11, 12, "11-12"), (13, 99, "13+"))
+
 TOP_K = 5           # 決定 Gold（頭四揀）／Good位 嘅區域，留一格緩衝
 HOLDOUT = 0.15      # 依時間切，holdout 唔准睇住調
 BOOT = 2000
@@ -225,6 +237,24 @@ def _counts(races, scorer):
     return o
 
 
+def _field_size(race):
+    metadata = race.get("metadata") or {}
+    return int(race.get("field") or metadata.get("field_size") or len(race["rows"]))
+
+
+def _counts_by_field(races, scorer):
+    """場數指標按馬群大細分桶。冇分桶嘅比較會被組成變化冒充成模型變化。"""
+    out = {}
+    for lo, hi, label in FIELD_BUCKETS:
+        subset = [r for r in races if lo <= _field_size(r) <= hi]
+        if not subset:
+            continue
+        counts = _counts(subset, scorer)
+        if counts:
+            out[label] = {"races": len(subset), **counts}
+    return out
+
+
 @dataclass
 class Verdict:
     label: str
@@ -281,6 +311,12 @@ def baseline_report(races, holdout=HOLDOUT, scorer=None):
             "development_races": len(dev_indices),
             "terminal_holdout_races": len(terminal_indices),
             "holdout_fraction_by_whole_date": holdout,
+            # ⚠️ 上面係**日期**佔比。實際**場次**佔比可以差好遠 —— 唔同日期嘅場次
+            # 密度唔同（2026-08-21 實測：15% 日期 = 36.2% 場次）。所有講
+            # 「holdout 15%」嘅文字都要對照呢個數。
+            "holdout_share_of_races": (
+                len(terminal_indices) / len(races) if races else 0.0
+            ),
             "top_k": TOP_K,
             "promotion_rule": (
                 "top-k paired within-race AUC: development delta >= 0 and "
@@ -299,6 +335,22 @@ def baseline_report(races, holdout=HOLDOUT, scorer=None):
             "all": _counts(races, scorer),
             "development": _counts([races[index] for index in dev_indices], scorer),
             "terminal": _counts([races[index] for index in terminal_indices], scorer),
+        },
+        # 分層 —— 見 FIELD_BUCKETS 上面嘅註釋。pooled 數字唔可以單獨信。
+        "metrics_by_field": {
+            "all": _counts_by_field(races, scorer),
+            "development": _counts_by_field([races[i] for i in dev_indices], scorer),
+            "terminal": _counts_by_field([races[i] for i in terminal_indices], scorer),
+        },
+        "field_size": {
+            "development_mean": (
+                sum(_field_size(races[i]) for i in dev_indices) / len(dev_indices)
+                if dev_indices else 0.0
+            ),
+            "terminal_mean": (
+                sum(_field_size(races[i]) for i in terminal_indices) / len(terminal_indices)
+                if terminal_indices else 0.0
+            ),
         },
     }
 
@@ -368,11 +420,39 @@ def main():
             f"dev {auc['all_field_development']:.4f} · "
             f"holdout {auc['all_field_terminal']:.4f}"
         )
+        design = base["design"]
+        print(
+            f"切分：dev {design['development_races']} 場 · "
+            f"holdout {design['terminal_holdout_races']} 場 "
+            f"（尾 {design['holdout_fraction_by_whole_date']:.0%} **日期**，"
+            f"實際佔 {design['holdout_share_of_races']:.1%} 場次）"
+        )
+        fs = base["field_size"]
+        print(
+            f"平均馬群：dev {fs['development_mean']:.2f} · "
+            f"holdout {fs['terminal_mean']:.2f}"
+            + ("   ⚠️ 差距 >0.5，pooled 場數指標唔可比"
+               if abs(fs["development_mean"] - fs["terminal_mean"]) > 0.5 else "")
+        )
         for label, counts in base["metrics"].items():
             print(
                 f"場數指標 {label:<7} "
                 + " · ".join(f"{key} {value:.2f}%" for key, value in counts.items())
             )
+        # 分層 —— pooled 數字會被馬群組成變化冒充成模型變化，所以一定要一齊出
+        print("\n馬群分層（Gold / Good位 / Pass）")
+        for label in ("development", "terminal"):
+            buckets = base["metrics_by_field"].get(label) or {}
+            if not buckets:
+                continue
+            print(f"  {label}")
+            for bucket, counts in buckets.items():
+                print(
+                    f"    馬群 {bucket:<6} {counts['races']:>4} 場   "
+                    f"gold {counts.get('gold', 0):5.2f}% · "
+                    f"good_positional {counts.get('good_positional', 0):5.2f}% · "
+                    f"pass {counts.get('pass', 0):5.2f}%"
+                )
         if args.output_json:
             Path(args.output_json).write_text(
                 json.dumps(report, ensure_ascii=False, indent=2) + "\n",

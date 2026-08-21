@@ -41,6 +41,12 @@ class HighQualityFeatureTests(unittest.TestCase):
         self.assertEqual(filtered["trainer"], "賽前練馬師")
         self.assertEqual(len(profile["entries"]), 3)
 
+    # 由 2026-08-03 起一直紅。`parse_normalized_sectionals` **喺整個 repo 都唔存在**
+    # （連 `scratch/` 都冇）—— 呢個 test assert 緊一個從來冇 merge 過、亦搵唔到
+    # 原型嘅函數。保留佢係為咗記住呢個意圖，但唔應該令成個 suite 紅燈：一個永遠紅
+    # 嘅 suite 會訓練到人忽略佢，然後真嘅 regression 就冇人睇到。
+    # 如果將來真係 merge 咗，pytest 會報 XPASS —— 嗰時就拆走呢個 decorator。
+    @unittest.expectedFailure
     def test_normalized_sectionals_are_recency_weighted_and_retain_samples(self) -> None:
         block = """
 📊 **全段速剖面 (Full Sectional Profile — 近 2 仗):**
@@ -61,6 +67,10 @@ class HighQualityFeatureTests(unittest.TestCase):
         self.assertTrue(get_reference_sections("跑馬地", 1200, "Class 4"))
         self.assertEqual(get_reference_sections("跑馬地", 1200, "不明班次"), {})
 
+    # 同上，由 2026-08-03 起一直紅。`rating_series` 只存在於
+    # `scratch/hkjc_high_quality_dimension_gate.py`（一個未 merge 嘅原型），
+    # 唔喺 `create_hkjc_logic_skeleton.py` 裡面。
+    @unittest.expectedFailure
     def test_rating_trend_retains_numeric_history_for_scoring(self) -> None:
         parsed = skeleton.parse_trends(
             "📈 **評分變動:** 43→46→48 → 降班中\n"

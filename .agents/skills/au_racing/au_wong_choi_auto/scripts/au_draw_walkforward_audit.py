@@ -114,25 +114,55 @@ class RollingDrawStats:
             "place_rate": counter[(bucket, "place")] / n if n else 0.0,
         }
 
-    def modifier(self, track, distance, field_size, barrier):
+    @staticmethod
+    def _pool_baseline(counter, fallback):
+        """Overall win rate of the sibling buckets this cell was drawn from.
+
+        Mirrors `engine_core._draw_pool_baseline` (shipped 2026-08-16). Before
+        that, this harness compared a cell's win rate to `1/today's field size`
+        — two different denominators whenever the level is not field-size
+        bucketed, which is 98.4% of usable cells. Leaving the old form here
+        would mean every A/B run through this harness measured its candidate
+        against a baseline that is not the live model.
+        """
+        runners = 0
+        winners = 0.0
+        for bucket in BUCKETS:
+            n = int(counter[(bucket, "n")])
+            if n <= 0:
+                continue
+            runners += n
+            winners += counter[(bucket, "win")]
+        if runners <= 0 or winners <= 0:
+            return fallback
+        return winners / runners
+
+    def modifier(self, track, distance, field_size, barrier, field_scale=False,
+                 legacy_baseline=False):
         bucket = barrier_bucket(barrier)
         trk = _track(track)
         dist = str(int(distance or 0))
         source = "none"
-        cell = self._cell(self.distance_stats[(trk, dist)], bucket)
+        peers = self.distance_stats[(trk, dist)]
+        cell = self._cell(peers, bucket)
         if cell["n"] >= 10:
             source = "track_distance"
         else:
-            cell = self._cell(self.track_stats[trk], bucket)
+            peers = self.track_stats[trk]
+            cell = self._cell(peers, bucket)
             if cell["n"] >= 30:
                 source = "track"
             else:
-                cell = self._cell(self.global_stats[field_bucket(field_size)], bucket)
+                peers = self.global_stats[field_bucket(field_size)]
+                cell = self._cell(peers, bucket)
                 source = "global" if cell["n"] else "none"
         if not cell["n"]:
             return 0.0, source, cell
 
-        expected = 1.0 / max(1, field_size)
+        # `legacy_baseline` reproduces the pre-2026-08-16 engine so the shipped
+        # baseline fix can itself be judged under leakage-free evaluation.
+        expected = (1.0 / max(1, field_size) if legacy_baseline
+                    else self._pool_baseline(peers, 1.0 / max(1, field_size)))
         weights = PACE_MICRO_WEIGHTS
         raw = (
             (cell["win_rate"] - expected)
@@ -141,6 +171,16 @@ class RollingDrawStats:
         )
         shrink_k = float(weights.get("shrinkage_k", 25.0))
         raw *= cell["n"] / (cell["n"] + shrink_k)
+        if field_scale:
+            # CANDIDATE. Measured on 684 races with field size controlled, the
+            # inside-vs-widest place-rate gap is 1.6pp at 5-8 runners (CIs
+            # overlap — not separable), 7.6pp at 9-11 and 10.7pp at 12-14. But
+            # 98.4% of cells come from levels that are NOT field-size bucketed,
+            # so a 6-runner race and a 14-runner race get the same modifier.
+            # Reference 10 is the corpus mean field size (10.1) — taken from
+            # race composition, not from outcomes, so it is not fitted on the
+            # thing being judged. Clamped so no race is zeroed or doubled.
+            raw *= min(1.5, max(0.4, field_size / 10.0))
         modifier = max(
             float(weights.get("modifier_cap_min", -6.0)),
             min(float(weights.get("modifier_cap_max", 6.0)), raw),
@@ -187,7 +227,7 @@ def score_without_draw(row):
     ) + float(row["wet"] or 0.0)
 
 
-def attach_walkforward_scores(races, result_races):
+def attach_walkforward_scores(races, result_races, field_scale=False, legacy_baseline=False):
     stats = RollingDrawStats()
     source_counts = Counter()
     sample_sizes = []
@@ -212,6 +252,8 @@ def attach_walkforward_scores(races, result_races):
                 else:
                     modifier, source, cell = stats.modifier(
                         track, distance, field_size, barrier,
+                        field_scale=field_scale,
+                        legacy_baseline=legacy_baseline,
                     )
                 row["_walkforward_pace_map_score"] = 60.0 + modifier
                 source_counts[source] += 1
@@ -287,10 +329,16 @@ def main():
         default=Path("/private/tmp/au_draw_walkforward_audit.md"),
     )
     parser.add_argument("--holdout-fraction", type=float, default=0.15)
+    parser.add_argument("--legacy-baseline", action="store_true",
+                        help="對照：用 pre-2026-08-16 嘅 1/field_size 基準")
+    parser.add_argument("--field-scale", action="store_true",
+                        help="CANDIDATE: 按馬匹數縮放檔位修正（field_size/10，夾 0.4–1.5）")
     args = parser.parse_args()
 
     races = load_races(args.dataset_json)
-    coverage = attach_walkforward_scores(races, load_result_races(args.results_csv))
+    coverage = attach_walkforward_scores(
+        races, load_result_races(args.results_csv), field_scale=args.field_scale,
+        legacy_baseline=args.legacy_baseline)
     walkforward = compare(
         races, default_scorer, score_with_walkforward_draw,
         label="point-in-time draw matrix", holdout=args.holdout_fraction,

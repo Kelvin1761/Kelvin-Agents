@@ -81,6 +81,26 @@ if [ ! -f "$MANIFEST_OUT" ]; then
     exit 1
 fi
 
+# ⚠️ PWA 靜態資源（manifest / app icons / service worker）。
+# static_template.html 用相對路徑引用呢三樣（`manifest.webmanifest`、
+# `icon-180.png`、`sw.js`），所以佢哋一定要同 index.html 一齊喺 dist 根目錄。
+# 呢段係 37c8ab8c 加，之後 deploy.sh 被改寫三次就冇咗，冇人發現咗三個星期 ——
+# Cloudflare Pages 對唔存在嘅路徑派 fallback index.html（200 + text/html），
+# 所以三樣嘢**全部睇落 200**，只有 content-type 同 9MB 檔案大細出賣佢：
+#   /sw.js → 拎到 HTML → MIME 錯 → register() reject → 個 .catch 靜靜 console.warn
+#   /icon-180.png → iOS 攞唔到 icon，主畫面圖示變網頁截圖
+#   /manifest.webmanifest → 冇 manifest，PWA 只靠 apple-mobile-web-app-capable meta
+# 因為 fail 得無聲無息，下面個 guard 會**硬性**驗返 dist 有冇呢幾個檔。
+if [ -d "$SCRIPT_DIR/pwa" ]; then
+    # `pwa/.` 而唔係 `pwa/*` —— 空目錄個 glob 唔會展開，`set -e` 就會為咗一個
+    # app icon 而炸掉成個 deploy。
+    cp -R "$SCRIPT_DIR/pwa/." "$DIST_DIR/"
+    PWA_COUNT=$(ls -1 "$SCRIPT_DIR/pwa" | wc -l | tr -d ' ')
+    echo "   📱 PWA assets: pwa/ → dist 根目錄（${PWA_COUNT} 個檔案）"
+else
+    echo "   ⚠️ 未發現 pwa/，Dashboard 裝唔到做 iPhone app"
+fi
+
 # ==========================================
 # 🛡️ 發佈前健康檢查：防止過期 checkout 把舊版 dashboard 推上線
 # 背景：repo 同 .git 住喺 Google Drive，主 checkout 曾經被 stranded 喺舊 commit
@@ -100,6 +120,22 @@ GUARD_FAIL=0
 for marker in "${REQUIRED_HTML_MARKERS[@]}"; do
     if ! grep -q "$marker" "$HTML_OUT"; then
         echo "   ❌ build 缺少必要區塊：$marker"
+        GUARD_FAIL=1
+    fi
+done
+
+# PWA 層：index.html 引用嘅相對路徑必須真係喺 dist 度存在。呢個係硬 fail ——
+# 缺咗唔會有任何 runtime 錯誤浮上水面（見上面 cp 段嘅說明），所以只可以喺呢度捉。
+REQUIRED_PWA_FILES=(
+    "manifest.webmanifest"   # <link rel="manifest">
+    "sw.js"                  # navigator.serviceWorker.register('sw.js')
+    "icon-180.png"           # <link rel="apple-touch-icon"> —— iOS 主畫面圖示
+    "icon-192.png"           # manifest icon
+    "icon-512.png"           # manifest icon / splash
+)
+for pwa_file in "${REQUIRED_PWA_FILES[@]}"; do
+    if [ ! -f "$DIST_DIR/$pwa_file" ]; then
+        echo "   ❌ dist 缺少 PWA 資源：$pwa_file —— iPhone 主畫面 app 會壞"
         GUARD_FAIL=1
     fi
 done
@@ -128,7 +164,7 @@ if [ "$GUARD_FAIL" -ne 0 ]; then
     echo "     WONGCHOI_DATA_ROOT=<Drive 資料路徑> ./Horse_Racing_Dashboard/deploy.sh"
     exit 1
 fi
-echo "   ✅ build 完整：評級矩陣 / 數據判讀 / 匯入投注記錄 齊全"
+echo "   ✅ build 完整：評級矩陣 / 數據判讀 / 匯入投注記錄 / PWA 資源 齊全"
 
 echo "📦 第二步：Cloudflare deploy bundle 已準備完成"
 echo "   - HTML: $(basename "$HTML_OUT")"

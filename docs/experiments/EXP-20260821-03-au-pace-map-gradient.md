@@ -98,7 +98,7 @@
 但**過唔到閘**。所以呢個候選一定要行足 `model-regression-gate`，唔可以因為
 「機制上明顯應該咁」就落。
 
-**決定**：NEEDS MORE TESTING（診斷完成，候選未跑閘）
+**決定**：診斷完成。候選已經跑閘 → **REJECT**（見 [EXP-20260821-04](EXP-20260821-04-au-draw-field-size-scaling.md)）
 **commit**：診斷記錄已 commit；model code 未改
 
 ## 重跑

@@ -193,12 +193,54 @@ def latest_step_issue(step_name: str, *, log_dir: Path | None = None) -> str | N
     return f"搵唔到最近 {step_name} 完成記錄"
 
 
+def latest_step(step_name: str, *, log_dir: Path | None = None) -> dict | None:
+    """最近一次跑完（唔係 `start`）嘅 step 記錄。"""
+    log_dir = log_dir or (HERE / "logs")
+    files = sorted(log_dir.glob("run-*.json"),
+                   key=lambda path: path.stat().st_mtime, reverse=True)[:20]
+    for path in files:
+        try:
+            run = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        for step in reversed(run.get("steps") or []):
+            if step.get("step") == step_name and step.get("status") != "start":
+                return step
+    return None
+
+
+def mirror_issue(*, log_dir: Path | None = None) -> str | None:
+    """Drive 鏡像值唔值得嗌人。
+
+    鏡像係 best-effort：本機係正本，Cloudflare 由本機發，所以鏡像斷咗**唔影響
+    預測同發佈**，只係 Kelvin 同 Windows 機喺 Drive 邊會睇到舊版本。
+
+    所以只有「成步完全冇做到嘢」才報。個別檔寫唔入會自動退去 `.latest` 兄弟檔，
+    consumers 由 `wongchoi_paths` 取最新嗰份 —— 「263 個入咗、1 個用 fallback」
+    報上去只係製造雜訊，而雜訊嘅代價就係下次真出事嗰下冇人再睇。
+    """
+    step = latest_step("mirror", log_dir=log_dir)
+    if step is None:
+        return "搵唔到最近 mirror 完成記錄"
+    status = step.get("status")
+    if status in ("ok", "not-configured"):
+        return None
+    copied, failed = step.get("copied") or 0, step.get("failed") or 0
+    if copied and not step.get("gave_up"):
+        return None  # 大部分入咗，個別檔退咗去 fallback —— best-effort 做到嘢。
+    detail = step.get("first_error") or step.get("reason") or status
+    return (f"Drive 鏡像今次冇更新到任何檔（{status}，失敗 {failed} 個）：{detail}"
+            f" —— Drive 邊停留喺舊版本，預測同發佈唔受影響")
+
+
 def quality_issues(day: str) -> list[str]:
     issues = local_quality_issues(day)
-    for step_name in ("ingest-results", "mirror"):
-        issue = latest_step_issue(step_name)
-        if issue:
-            issues.append(issue)
+    issue = latest_step_issue("ingest-results")
+    if issue:
+        issues.append(issue)
+    issue = mirror_issue()
+    if issue:
+        issues.append(issue)
     return issues
 
 

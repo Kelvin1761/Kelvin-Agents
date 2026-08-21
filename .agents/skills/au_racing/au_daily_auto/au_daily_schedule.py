@@ -2522,6 +2522,25 @@ def mirror_fallback_path(dst: Path) -> Path:
     return dst.with_name(f"{dst.stem}.latest{dst.suffix}")
 
 
+def mirror_stat(path: Path) -> os.stat_result | None:
+    """鏡像目標嘅 stat；「唔准 stat」同「唔存在」一律當「唔知，照 copy」。
+
+    ⚠️ **唔可以用 `Path.exists()`。** pathlib 只吞 ENOENT / ENOTDIR / EBADF /
+    ELOOP，**EPERM 會照拋出嚟**。而 launchd 底下 CloudStorage 拒絕嘅正正就係
+    stat —— 唔係寫。2026-08-12 至 08-21 每一個 run 都喺「比較新舊」嗰步就爆
+    EPERM，當成 copy 失敗，連寫都未試過；所以下面個 `.latest` fallback 由頭到尾
+    係死 code（34 個 run log 冇一個有 `fallbacks`）。
+
+    證據唔止「講得通」：份 log 嘅錯誤訊息只帶**一個**路徑。`os.replace` 失敗會印
+    `'tmp' -> 'dst'` 兩個路徑，`shutil.copy2` 失敗會印 tmp 檔個名 —— 只有單路徑
+    嘅 EPERM 就一定係 stat。
+    """
+    try:
+        return path.stat()
+    except OSError:
+        return None
+
+
 def atomic_copy2(src: Path, dst: Path) -> Path:
     """Copy through a sibling temp file so FileProvider placeholders are replaced.
 
@@ -2569,11 +2588,12 @@ def step_mirror_reports(runlog: RunLog, meeting_dirs: list[Path]) -> None:
     AU_RACING 由 2026-08-05 起住本機硬碟，Drive 唔再係 source of truth。冇呢一步
     Drive 就會靜靜咁停留喺搬走嗰日，而 Kelvin 同 Windows 機都仲會去嗰邊睇。
 
-    launchd 底下**照做得**：實測（三次）launchd 對 CloudStorage 嘅權限係一半一半
-    —— `iterdir()` / 讀內容 `PermissionError`，但 `stat()` 同寫入 OK。呢個 step 只
-    用 stat + 寫，即係剛好落喺容許嘅一邊。
+    launchd 底下 CloudStorage 嘅權限係一半一半，但**唔好假設邊半得**：舊註釋寫住
+    「`stat()` 同寫入 OK、`iterdir()` 唔 OK」，2026-08-21 查證係反過嚟 —— 拒絕嘅
+    係 stat。所以每個 stat 都要當「可能問唔到」處理（睇 `mirror_stat`），唔可以
+    當「問唔到 = 冇呢個檔」，更加唔可以當「問唔到 = copy 失敗」。
 
-    ⚠️ 但仍然係 best-effort：探測用「真試寫一次」，唔可以用 `.is_dir()`（stat 會
+    ⚠️ 仍然係 best-effort：探測用「真試寫一次」，唔可以用 `.is_dir()`（stat 會
     成功，騙人）。寫唔入就 warn 一句照過 —— 分析同發佈已經做完，唔可以因為鏡像
     失敗而拖垮成個 run。
     """
@@ -2583,7 +2603,12 @@ def step_mirror_reports(runlog: RunLog, meeting_dirs: list[Path]) -> None:
 
     probe = AU_RACING_MIRROR / ".au_mirror_write_probe"
     try:
-        AU_RACING_MIRROR.mkdir(parents=True, exist_ok=True)
+        # `mkdir(exist_ok=True)` 唔算探測結果：pathlib 見到 EEXIST 之後會叫
+        # `is_dir()`，即係一個 stat —— 而 stat 正正就係 launchd 底下會俾拒絕嘅
+        # 嗰樣。用佢做判斷就會把「stat 唔到」誤報成「寫唔入」。真憑實據只有下面
+        # 嗰個真實寫入。
+        with contextlib.suppress(OSError):
+            AU_RACING_MIRROR.mkdir(parents=True, exist_ok=True)
         probe.write_text(stamp(), encoding="utf-8")
         probe.unlink()
     except OSError as exc:
@@ -2615,14 +2640,28 @@ def step_mirror_reports(runlog: RunLog, meeting_dirs: list[Path]) -> None:
             # Once a FileProvider placeholder has forced the fallback, compare
             # and update that path on later runs instead of retrying the known-
             # unwritable inode forever.
-            dst = fallback_dst if fallback_dst.exists() else canonical_dst
+            fallback_st = mirror_stat(fallback_dst)
+            use_fallback = fallback_st is not None
+            dst = fallback_dst if use_fallback else canonical_dst
             try:
                 st = item.stat()
-                if dst.exists():
-                    d = dst.stat()
-                    if d.st_size == st.st_size and int(d.st_mtime) >= int(st.st_mtime):
-                        continue
-                dst.parent.mkdir(parents=True, exist_ok=True)
+            except OSError as exc:
+                # 本機正本讀唔到 —— 唔係鏡像問題，但一樣要見得到。
+                failed += 1
+                streak += 1
+                if first_error is None:
+                    first_error = f"source {type(exc).__name__}: {exc}"
+                continue
+            dst_st = fallback_st if use_fallback else mirror_stat(dst)
+            if (dst_st is not None and dst_st.st_size == st.st_size
+                    and int(dst_st.st_mtime) >= int(st.st_mtime)):
+                continue
+            try:
+                # 目錄可能已經存在但唔准 stat／唔准 mkdir。mkdir 失敗唔算數 ——
+                # 照試 copy，真係唔得都會喺下面報，而錯誤會指住個檔，唔會指住個
+                # 目錄（睇錯路徑就係之前追唔到真兇嘅原因）。
+                with contextlib.suppress(OSError):
+                    dst.parent.mkdir(parents=True, exist_ok=True)
                 actual_dst = atomic_copy2(item, dst)
                 if actual_dst != canonical_dst:
                     fallbacks.append(str(actual_dst.relative_to(AU_RACING_MIRROR)))

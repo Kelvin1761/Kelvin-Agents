@@ -12,14 +12,29 @@ Outputs:
     icon-512.png           manifest icon, purpose="any" / splash source
     icon-512-maskable.png  manifest icon, purpose="maskable" (Android adaptive)
 
+Two sources of artwork:
+
+    (default)          render the CJK glyph in GLYPH on the brand gradient
+    --source LOGO.png  use your own image / logo
+
+`--source` picks its fit automatically: an image with real transparency (a logo)
+is centred on the brand gradient at 62% of the canvas, an opaque image (a photo,
+a finished square icon) is cover-cropped full-bleed. Override with
+`--fit contain|cover`.
+
 iOS applies its own rounded-rect mask to apple-touch-icon, so the "any" icons
 are deliberately full-bleed squares with no transparency and no self-drawn
-corner radius. The maskable variant keeps the glyph inside the inner 80% safe
+corner radius. The maskable variant keeps the artwork inside the inner 80% safe
 zone that the maskable spec guarantees will survive any platform mask shape.
+
+⚠️ iOS caches home-screen icons for the life of the installed app. After
+changing the icon and deploying, every user has to DELETE the home-screen icon
+and re-add the site — there is no way to push a new icon to an existing install.
 """
 
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -105,8 +120,104 @@ def build_icon(size: int, *, glyph_ratio: float) -> Image.Image:
     return img
 
 
-def main() -> int:
+def _has_transparency(img: Image.Image) -> bool:
+    """True if the image carries alpha that actually does something.
+
+    A logo exported as RGBA is almost always mostly-transparent; a photo saved
+    as RGBA has a fully opaque alpha channel. Checking the channel minimum tells
+    the two apart, which is what decides contain-vs-cover below.
+    """
+    if img.mode not in ("RGBA", "LA", "P"):
+        return False
+    rgba = img.convert("RGBA")
+    return rgba.getchannel("A").getextrema()[0] < 250
+
+
+def build_icon_from_source(
+    source: Image.Image, size: int, *, fit: str, art_ratio: float
+) -> Image.Image:
+    """Render one icon from a supplied image.
+
+    `fit="cover"` crops the source to a square and fills the whole canvas —
+    right for a photo or an already-finished square icon.
+    `fit="contain"` puts the source on the brand gradient at `art_ratio` of the
+    canvas — right for a logo, and the only option that keeps a maskable icon's
+    artwork inside the safe zone.
+    """
+    if fit == "cover":
+        src = source.convert("RGB")
+        # Scale so the SHORT side reaches `size`, then centre-crop the overflow.
+        scale = size / min(src.size)
+        scaled = src.resize(
+            (max(round(src.width * scale), size), max(round(src.height * scale), size)),
+            Image.LANCZOS,
+        )
+        left = (scaled.width - size) // 2
+        top = (scaled.height - size) // 2
+        canvas = scaled.crop((left, top, left + size, top + size))
+        if art_ratio >= 0.62:
+            return canvas
+        # Maskable: a cover crop would lose the edges to the platform mask, so
+        # inset the same crop onto the gradient instead of trusting the bleed.
+        inner = round(size * art_ratio / 0.62 * 0.8)
+        out = _gradient(size)
+        out.paste(canvas.resize((inner, inner), Image.LANCZOS),
+                  ((size - inner) // 2, (size - inner) // 2))
+        return out
+
+    # contain — composite the artwork onto the brand gradient.
+    src = source.convert("RGBA")
+    target = round(size * art_ratio)
+    scale = target / max(src.size)
+    art = src.resize(
+        (max(round(src.width * scale), 1), max(round(src.height * scale), 1)),
+        Image.LANCZOS,
+    )
+    out = _gradient(size).convert("RGBA")
+    out.alpha_composite(art, ((size - art.width) // 2, (size - art.height) // 2))
+    # Flatten: the "any" icons must have no transparency (iOS renders alpha black).
+    return out.convert("RGB")
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="生成旺財 Dashboard PWA app icons（預設畫 CJK 字，或用 --source 用自訂圖）"
+    )
+    parser.add_argument(
+        "--source",
+        type=Path,
+        help="自訂圖片／logo 路徑（PNG / JPG）。唔傳就照畫 GLYPH 個字。",
+    )
+    parser.add_argument(
+        "--fit",
+        choices=("auto", "contain", "cover"),
+        default="auto",
+        help="contain = logo 置中喺品牌漸變上；cover = 滿版裁切。"
+        "auto（預設）：有透明度就 contain，冇就 cover。",
+    )
+    args = parser.parse_args(argv)
+
+    source = None
+    fit = args.fit
+    if args.source is not None:
+        if not args.source.exists():
+            raise SystemExit(f"❌ 搵唔到來源圖片：{args.source}")
+        source = Image.open(args.source)
+        if fit == "auto":
+            fit = "contain" if _has_transparency(source) else "cover"
+        smallest = min(source.size)
+        if smallest < 512:
+            print(
+                f"⚠️ 來源圖最短邊只有 {smallest}px —— 512 icon 會被放大，會見到糊。"
+                " 建議俾一張 1024×1024 或以上。"
+            )
+        print(f"🖼️ 來源：{args.source.name}  {source.width}×{source.height}  fit={fit}")
+    else:
+        print(f"🖼️ 來源：內建字形「{GLYPH}」")
+
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+    # `ratio` is the artwork's target size as a fraction of the canvas. The
+    # maskable entry is smaller on purpose — see the module docstring.
     targets = (
         ("icon-180.png", 180, 0.62),
         ("icon-192.png", 192, 0.62),
@@ -115,9 +226,14 @@ def main() -> int:
     )
     for name, size, ratio in targets:
         path = OUT_DIR / name
-        build_icon(size, glyph_ratio=ratio).save(path, "PNG", optimize=True)
+        if source is None:
+            img = build_icon(size, glyph_ratio=ratio)
+        else:
+            img = build_icon_from_source(source, size, fit=fit, art_ratio=ratio)
+        img.save(path, "PNG", optimize=True)
         print(f"✅ {name}  {size}×{size}  {path.stat().st_size / 1024:.1f} KB")
     print(f"\n📂 輸出目錄：{OUT_DIR}")
+    print("⚠️ deploy 之後，每個用戶要刪掉主畫面圖示再重新「加入主畫面」先會見到新 icon。")
     return 0
 
 

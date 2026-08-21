@@ -142,6 +142,40 @@ class DataQualityTests(unittest.TestCase):
         self.assertIn("going_refresh", joined)
         self.assertIn("50.0%", joined)
 
+    def _mirror(self, step: dict) -> str | None:
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "run-evening-test.json").write_text(
+                json.dumps({"steps": [dict(step, step="mirror")]}))
+            return H.mirror_issue(log_dir=Path(tmp))
+
+    def test_mirror_that_copied_most_files_is_not_an_alert(self):
+        """鏡像係 best-effort —— 「263 入咗、1 個退去 fallback」報上去只係雜訊。
+
+        而雜訊嘅代價就係下次真出事嗰下冇人再睇。本機係正本，Cloudflare 由本機
+        發，所以個別檔入唔到 Drive 影響唔到預測同發佈。
+        """
+        self.assertIsNone(self._mirror(
+            {"status": "partial", "copied": 263, "failed": 1,
+             "first_error": "PermissionError: [Errno 1] Operation not permitted"}))
+
+    def test_mirror_that_achieved_nothing_is_reported(self):
+        issue = self._mirror(
+            {"status": "partial", "copied": 0, "failed": 8, "gave_up": True,
+             "first_error": "PermissionError: [Errno 1] Operation not permitted"})
+        self.assertIn("Drive 鏡像", issue)
+        self.assertIn("Operation not permitted", issue)
+        self.assertIn("預測同發佈唔受影響", issue)
+
+    def test_mirror_that_gave_up_after_partial_progress_is_reported(self):
+        issue = self._mirror(
+            {"status": "partial", "copied": 12, "failed": 8, "gave_up": True,
+             "first_error": "PermissionError: nope"})
+        self.assertIn("Drive 鏡像", issue)
+
+    def test_unconfigured_mirror_is_not_a_problem(self):
+        self.assertIsNone(self._mirror({"status": "not-configured"}))
+
     def test_latest_partial_critical_step_is_reported(self):
         import json
         with tempfile.TemporaryDirectory() as tmp:
