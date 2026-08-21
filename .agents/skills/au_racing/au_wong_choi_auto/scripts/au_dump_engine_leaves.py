@@ -31,6 +31,16 @@ sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(SCRIPT_DIR))
 
 
+def _corpus_meeting_dirs(root):
+    """Meeting folders under `root` AND under `root/Archive`."""
+    import sys as _s
+    from pathlib import Path as _P
+    shared = _P(__file__).resolve().parents[3] / "shared_racing" / "scripts"
+    if str(shared) not in _s.path:
+        _s.path.insert(0, str(shared))
+    from corpus_paths import meeting_dirs
+    return sorted(meeting_dirs(root))
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
@@ -54,7 +64,13 @@ def main():
     races_out = []
     pf_ok = runners = 0
 
-    for meeting_dir in sorted(p for p in ARCHIVE_ROOT.iterdir() if p.is_dir()):
+    # `ARCHIVE_ROOT.iterdir()` only saw the top level, so every meeting the daily
+    # schedule had already filed into `<root>/Archive/` was invisible here —
+    # measured 2026-08-21: 751 of 1,530 scored races (49.1%), and 16 of the 17
+    # dates that are clean point-in-time. This dumper is the ONLY data source for
+    # au_eval / au_feature_ab / au_matrix_refit, so the whole judging layer was
+    # deciding on the older, post-race-rescored half of the corpus.
+    for meeting_dir in _corpus_meeting_dirs(ARCHIVE_ROOT):
         logic_files = sorted(meeting_dir.glob("Race_*_Logic.json"),
                              key=lambda p: parse_int(p.stem.split("_")[1], 999))
         if not logic_files:

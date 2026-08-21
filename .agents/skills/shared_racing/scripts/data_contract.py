@@ -45,6 +45,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 BASELINE_DIR = Path(__file__).resolve().parent.parent / "resources"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from corpus_paths import logic_files as _corpus_logic_files  # noqa: E402
 
 PLATFORMS = {
     "au": {
@@ -127,7 +129,10 @@ MEETING_DATE = re.compile(r"(\d{4}-\d{2}-\d{2})")
 
 
 def logic_files(root: Path, limit: int | None = None, since: str | None = None) -> list[str]:
-    paths = sorted(glob.glob(str(Path(root) / "*" / "Race_*_Logic.json")), reverse=True)
+    # Must include `<root>/Archive/` — the daily schedule moves finished
+    # meetings there, and 49.1% of scored races (including almost every clean
+    # point-in-time one) live in it.  See corpus_paths for the measurement.
+    paths = _corpus_logic_files(root)
     if since:
         kept = []
         for path in paths:

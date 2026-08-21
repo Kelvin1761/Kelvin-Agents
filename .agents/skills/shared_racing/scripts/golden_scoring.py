@@ -85,7 +85,10 @@ def collect_samples(platform: str) -> list[dict]:
     sys.path.insert(0, str(REPO_ROOT))
     import wongchoi_paths
     root = getattr(wongchoi_paths, PLATFORMS[platform]["data_root_attr"])
-    paths = sorted(glob.glob(str(Path(root) / "*" / "Race_*_Logic.json")), reverse=True)
+    # Include archived meetings — see corpus_paths for why one level is not enough.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from corpus_paths import logic_files as corpus_logic_files
+    paths = corpus_logic_files(root)
 
     rows = []
     for path in paths:

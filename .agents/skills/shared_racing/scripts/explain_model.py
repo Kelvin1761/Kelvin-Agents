@@ -132,7 +132,10 @@ def measure(corpus_root: Path | None, matrix_keys, max_races: int):
     """
     if corpus_root is None:
         return None
-    paths = sorted(glob.glob(str(Path(corpus_root) / "*" / "Race_*_Logic.json")), reverse=True)
+    # Include archived meetings — see corpus_paths for why one level is not enough.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from corpus_paths import logic_files as corpus_logic_files
+    paths = corpus_logic_files(corpus_root)
     if not paths:
         return None
 
