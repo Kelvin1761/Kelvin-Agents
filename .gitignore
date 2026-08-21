@@ -83,6 +83,10 @@ tennis-wong-choi/tennis_wc.db
 failed_meetings.log
 temp_profile.html
 .claude/settings.local.json
+# Claude Code 開嘅 git worktree 住喺 .claude/worktrees（實測 1.2 GB）。
+# .claude/skills 要入 git（project skill），所以呢行一定要有，否則
+# `git add .claude` 會掃埋三個 worktree 落去。
+.claude/worktrees/
 
 # ----------------------------------------------------------------------
 # 9. Consolidated analysis outputs (local-only, kept off GitHub)

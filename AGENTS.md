@@ -71,6 +71,39 @@ import，所以**呢份文件係唯一真源** —— 新規則加喺呢度，�
 `create_hkjc_logic_skeleton.py` 入面兩個由頭到尾都冇 merge 過嘅函數
 （只存在於 `scratch/hkjc_high_quality_dimension_gate.py`）。
 
+### 改模型嘅規矩
+
+呢節係**證據紀律**，同上面「五件唔可以做嘅事」一樣硬。詳細做法喺
+`.claude/skills/` 嘅四個 skill 度（`model-regression-gate`、`leakage-audit`、
+`feature-ablation`、`data-quality-audit`、`experiment-review`）—— 呢度只寫規矩本身。
+
+- **冇跑過評估，唔准講「改善」。** 「code 睇落合理啲」「理論上應該好啲」唔係證據。
+- **改之前先量 baseline。** baseline 同 candidate 要行同一份語料、同一個時間窗。
+  跨 harness 攞數字互相比 = 錯結論。
+- **holdout 唔准用嚟調參，亦唔准改切法。** 換指標／換窗／換 top-K 去救個候選，
+  一律當 REJECT。
+- **防目標洩漏同未來資訊洩漏。** 對每個欄位問：「呢個確切資訊，喺落注嗰刻真係
+  拎得到？」答唔到就 flag，唔准當安全。**統計閘門捉唔到洩漏** —— 一個洩漏特徵
+  試過 5/5 fold 全過、holdout +17.58pp。
+- **賠率／市場價唔准做隱藏 proxy。** 除非個 methodology 明文寫住佢係模型一部分。
+  回測取賠率一定要最早快照（tennis：`MIN(id)`，後面嘅係走地價）。
+- **唔准只針對最近一日／一個場次去調。** 單日結果冇功效。
+- **優先睇 out-of-sample。** dev + 時間 fold 揀，holdout 只做最後確認。
+- **保住可重現性。** 記低命令、dataset 路徑、commit hash。改評分 code 之前
+  先清 bytecode（`./檢查.sh` 第 0 步；手動跑要 `PYTHONDONTWRITEBYTECODE=1`）。
+- **簡單而穩健 > 複雜而邊際。** 一齊改幾樣就要做 ablation，逐樣量邊際貢獻；
+  分唔開嘅就唔留。
+- **多過一個特徵／權重一齊郁，一定要 ablation。** 「合併實驗升咗」講唔出邊樣有用。
+- **有意義嘅實驗要記落 `docs/experiments/`。** 開始新假設之前先 grep 舊記錄。
+- **失敗實驗係有用資訊，要照記，唔准掩飾。** 記「點失敗」，唔係只寫「冇用」。
+- **失敗實驗嘅 model code 唔准自動 commit。** 記錄可以 commit，改動唔可以。
+- **唔准自動 push。** `./保存.sh` 由 Kelvin 叫先跑。
+- **唔准喺冇可退回 baseline 嘅情況下覆蓋一個 known-good 模型。**
+  `golden_scoring` 舊 snapshot 唔准同 code 一次過覆蓋。
+- **模型表現跌，先查數據管線，唔好即刻怪模型。** 呢個 repo 每個貴嘅 bug 都係
+  「欄位仍在、code 仍行、test 全綠，但值靜靜變空／變常數／變過期」。
+- **證據弱就報唔確定，唔准砌一個結論。**
+
 ## Current Status
 
 Antigravity 目前最重要嘅兩條賽馬主線已經轉咗做 **full Python pipeline**：
@@ -107,6 +140,13 @@ Antigravity 目前最重要嘅兩條賽馬主線已經轉咗做 **full Python pi
 
 ### Core folders
 
+- `.claude/skills/`
+  Claude Code project skills —— 證據紀律（`model-regression-gate`、
+  `leakage-audit`、`feature-ablation`、`data-quality-audit`、
+  `experiment-review`）同幾個 vendor 返嚟嘅 upstream skill。
+  vendor 嗰批唔好手改，改咗就同上游脫節。
+- `docs/experiments/`
+  實驗記錄。開始新假設之前先 grep 呢度。
 - `.agents/agents/`
   角色型 agent 定義
 - `.agents/skills/`
