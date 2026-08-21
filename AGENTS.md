@@ -5,6 +5,68 @@
 
 > `GEMINI.md` 已 deprecated。新用戶同現役 workflow 請以 `SETUP.md` 同 `AGENTS.md` 為準。
 
+## 工作守則（Claude Code 同 Codex 一律適用）
+
+呢個 repo 同時俾 Claude Code 同 Codex 用。`CLAUDE.md` 只係 `@AGENTS.md` 嘅
+import，所以**呢份文件係唯一真源** —— 新規則加喺呢度，唔好喺 `CLAUDE.md` 另寫。
+
+### 交嘢之前一定要跑
+
+```bash
+./檢查.sh --quick     # 改完 code 即刻跑
+./檢查.sh             # 交嘢之前跑齊（連單元測試）
+```
+
+紅燈就唔好 commit。每一項都會印咗係咩問題、點解、點修。
+
+### commit 同 push
+
+用 `./保存.sh` —— 佢會先跑檢查，企喺 `main` 會自動開新分支，然後 commit + push
+兼印個 PR 連結。
+
+**多個 agent session 同時開工**：commit 之前先睇 `git status`。只 stage 你自己
+今次改嘅嘢，唔好 `git add -A` 連人哋未 commit 嘅工作一齊掃入去。
+
+### 五件唔可以做嘅事
+
+1. **唔好手寫模型說明。** `Wong Choi 模型說明/` 入面啲檔由
+   `.agents/skills/shared_racing/scripts/explain_model.py` 生成。上一份人手寫嘅
+   過期咗兩個月冇人發現（寫住 7 維，live 係 6 維；叫人對照一個唔存在嘅檔案）。
+   要改內容就改生成器。
+
+2. **改完評分 code，一定要清 bytecode cache 先做 A/B。** macOS 系統 Python 將
+   `.pyc` 放喺 `~/Library/Caches/com.apple.python`（**唔係** `__pycache__`），
+   而且只靠 `(mtime, 檔案大細)` 判斷要唔要重新編譯。權重由 `0.08037` 改做
+   `0.09037` **位元組數一樣**，同一秒內改完再跑 = 靜靜行返舊 bytecode。
+   `./檢查.sh` 第 0 步已經做咗；自己手動跑就要
+   `export PYTHONDONTWRITEBYTECODE=1`。
+   **「A/B 結果同 baseline 一模一樣」唔等於「呢個改動冇效果」。**
+
+3. **唔好將引擎目錄本身放上 `sys.path`。** 引擎而家係 package：
+   `au_racing_engine` / `hkjc_racing_engine`。要 import 就
+   `sys.path.insert(0, str(<...>/scripts))` 然後
+   `from au_racing_engine.scoring import ...`。插住 package 目錄本身會令入面啲
+   module 又變返 top-level，兩邊 `scoring` 就再次撞名。
+
+4. **唔好合併 AU 同 HKJC 嘅模型。** 睇落好似抄嘅，實測 589 個 function 得 5 個
+   逐字一樣。維度數目、合成公式、feature 數量、初出馬處理全部唔同。
+   跨平台工具嘅正確做法係「一個腳本 + `--platform` flag」。
+
+5. **改咗評分邏輯，要順手更新兩樣嘢**：
+   ```bash
+   python3 .agents/skills/shared_racing/scripts/golden_scoring.py --platform au --record
+   python3 .agents/skills/shared_racing/scripts/data_contract.py  --platform au --calibrate
+   ./Wong\ Choi\ 模型說明/更新模型說明.sh
+   ```
+   前提係你已經確認過個變化係你想要嘅 —— golden 會逐匹馬印出邊度變咗。
+
+### 已知失敗（唔係你整爛嘅）
+
+`run_tests.sh` 嘅 `Agent scripts` suite 有兩個 test 由 2026-08-03 起一直紅：
+`test_hkjc_high_quality_features.py` assert 緊
+`create_hkjc_logic_skeleton.py` 入面兩個由頭到尾都冇 merge 過嘅函數
+（只存在於 `scratch/hkjc_high_quality_dimension_gate.py`）。
+
 ## Current Status
 
 Antigravity 目前最重要嘅兩條賽馬主線已經轉咗做 **full Python pipeline**：
