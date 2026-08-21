@@ -26,6 +26,30 @@ from au_target_gap_report import condition_bucket, field_size_bucket  # noqa: E4
 from au_metric_contract import ranked_performance  # noqa: E402
 
 
+def _corpus_meeting_dirs(root):
+    """Meeting folders under `root` AND under `root/Archive`, oldest first.
+
+    `root.iterdir()` used to be enough. It is not: the daily schedule files
+    finished meetings into `<root>/Archive/`, and on 2026-08-21 that hid 751 of
+    1,530 scored AU races (49.1%) — including 16 of the 17 dates that are clean
+    point-in-time. Any number this harness printed before this change was
+    measured on the older, post-race-rescored half of the corpus.
+    """
+    import sys as _sys
+    from pathlib import Path as _Path
+    _shared = _Path(__file__).resolve()
+    for _ in range(6):
+        _shared = _shared.parent
+        _cand = _shared / "shared_racing" / "scripts"
+        if (_cand / "corpus_paths.py").exists():
+            if str(_cand) not in _sys.path:
+                _sys.path.insert(0, str(_cand))
+            break
+    from corpus_paths import meeting_dirs as _meeting_dirs
+    return sorted(_meeting_dirs(root))
+
+
+
 def build_field_summary(horses: dict) -> dict:
     weights = []
     for horse in horses.values():
@@ -65,7 +89,7 @@ def evaluate_archive(use_named_db: bool):
     by_field = defaultdict(new_bucket)
     total = 0
     try:
-        for meeting_dir in sorted(p for p in ARCHIVE_ROOT.iterdir() if p.is_dir()):
+        for meeting_dir in _corpus_meeting_dirs(ARCHIVE_ROOT):
             logic_files = sorted(
                 meeting_dir.glob("Race_*_Logic.json"),
                 key=lambda p: parse_int(p.stem.split("_")[1], 999),

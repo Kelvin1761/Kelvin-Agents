@@ -34,9 +34,28 @@ HK_EXCLUDE_TOKENS = (
 )
 
 
+def _candidate_meeting_dirs(base_dir: pathlib.Path) -> list[pathlib.Path]:
+    """`base_dir` AND `base_dir/Archive` — the daily schedule splits meetings
+    across both, and scanning one level hid 49.1% of the scored AU corpus
+    (751 of 1,530 races, incl. 16 of the 17 clean point-in-time dates).
+    Shared by all six reflector shadow tests, so every number they printed
+    before this change was measured on the older half only."""
+    import sys as _sys
+    _shared = pathlib.Path(__file__).resolve()
+    for _ in range(6):
+        _shared = _shared.parent
+        _cand = _shared / "shared_racing" / "scripts"
+        if (_cand / "corpus_paths.py").exists():
+            if str(_cand) not in _sys.path:
+                _sys.path.insert(0, str(_cand))
+            break
+    from corpus_paths import meeting_dirs
+    return sorted(meeting_dirs(base_dir))
+
+
 def find_au_meetings(base_dir: pathlib.Path) -> list[pathlib.Path]:
     meetings = []
-    for path in sorted(base_dir.iterdir()):
+    for path in _candidate_meeting_dirs(base_dir):
         if not path.is_dir():
             continue
         if any(token in path.name for token in HK_EXCLUDE_TOKENS):

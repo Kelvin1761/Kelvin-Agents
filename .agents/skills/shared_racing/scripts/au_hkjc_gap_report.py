@@ -40,6 +40,30 @@ from au_cached_walkforward_ml import as_float, group_races, materialize_dataset 
 from walk_forward_auto_backtest import clip_score, find_results_json, load_results  # noqa: E402
 
 
+def _corpus_meeting_dirs(root):
+    """Meeting folders under `root` AND under `root/Archive`, oldest first.
+
+    `root.iterdir()` used to be enough. It is not: the daily schedule files
+    finished meetings into `<root>/Archive/`, and on 2026-08-21 that hid 751 of
+    1,530 scored AU races (49.1%) — including 16 of the 17 dates that are clean
+    point-in-time. Any number this harness printed before this change was
+    measured on the older, post-race-rescored half of the corpus.
+    """
+    import sys as _sys
+    from pathlib import Path as _Path
+    _shared = _Path(__file__).resolve()
+    for _ in range(6):
+        _shared = _shared.parent
+        _cand = _shared / "shared_racing" / "scripts"
+        if (_cand / "corpus_paths.py").exists():
+            if str(_cand) not in _sys.path:
+                _sys.path.insert(0, str(_cand))
+            break
+    from corpus_paths import meeting_dirs as _meeting_dirs
+    return sorted(_meeting_dirs(root))
+
+
+
 def load_au_races() -> list[dict]:
     """One record per archived AU race, production ranking = stored ability_score."""
     races = []
@@ -67,7 +91,7 @@ def load_au_races() -> list[dict]:
 
 def hkjc_meeting_dirs() -> list[Path]:
     dirs = []
-    for path in sorted(HK_RACING.iterdir()):
+    for path in _corpus_meeting_dirs(HK_RACING):
         if not path.is_dir():
             continue
         if not re.match(r"^\d{4}-\d{2}-\d{2}_", path.name):

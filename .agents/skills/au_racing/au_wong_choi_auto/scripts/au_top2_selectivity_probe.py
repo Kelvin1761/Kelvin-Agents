@@ -16,6 +16,29 @@ from au_archive_calibrator import (  # noqa: E402
     normalize_track_name, parse_int,
 )
 
+
+def _corpus_meeting_dirs(root):
+    """Meeting folders under `root` AND under `root/Archive`, oldest first.
+
+    `root.iterdir()` used to be enough. It is not: the daily schedule files
+    finished meetings into `<root>/Archive/`, and on 2026-08-21 that hid 751 of
+    1,530 scored AU races (49.1%) — including 16 of the 17 dates that are clean
+    point-in-time. Any number this harness printed before this change was
+    measured on the older, post-race-rescored half of the corpus.
+    """
+    import sys as _sys
+    from pathlib import Path as _Path
+    _shared = _Path(__file__).resolve()
+    for _ in range(6):
+        _shared = _shared.parent
+        _cand = _shared / "shared_racing" / "scripts"
+        if (_cand / "corpus_paths.py").exists():
+            if str(_cand) not in _sys.path:
+                _sys.path.insert(0, str(_cand))
+            break
+    from corpus_paths import meeting_dirs as _meeting_dirs
+    return sorted(_meeting_dirs(root))
+
 EVAL = {"flemington", "randwick"}
 
 
@@ -38,7 +61,7 @@ def af(v, d=0.0):
 def main():
     hist = load_historical_results(HISTORICAL_RESULTS_CSV)
     races = []  # (gap_2_3, gap_1_2, top2_both, pick1_placed)
-    for md in sorted(p for p in ARCHIVE_ROOT.iterdir() if p.is_dir()):
+    for md in _corpus_meeting_dirs(ARCHIVE_ROOT):
         if normalize_track_name(mtrack(md)) not in EVAL:
             continue
         mdate = detect_meeting_date(md)

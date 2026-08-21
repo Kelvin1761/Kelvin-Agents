@@ -29,6 +29,30 @@ from au_archive_calibrator import (  # noqa: E402
 from au_metric_contract import ranked_performance  # noqa: E402
 
 
+def _corpus_meeting_dirs(root):
+    """Meeting folders under `root` AND under `root/Archive`, oldest first.
+
+    `root.iterdir()` used to be enough. It is not: the daily schedule files
+    finished meetings into `<root>/Archive/`, and on 2026-08-21 that hid 751 of
+    1,530 scored AU races (49.1%) — including 16 of the 17 dates that are clean
+    point-in-time. Any number this harness printed before this change was
+    measured on the older, post-race-rescored half of the corpus.
+    """
+    import sys as _sys
+    from pathlib import Path as _Path
+    _shared = _Path(__file__).resolve()
+    for _ in range(6):
+        _shared = _shared.parent
+        _cand = _shared / "shared_racing" / "scripts"
+        if (_cand / "corpus_paths.py").exists():
+            if str(_cand) not in _sys.path:
+                _sys.path.insert(0, str(_cand))
+            break
+    from corpus_paths import meeting_dirs as _meeting_dirs
+    return sorted(_meeting_dirs(root))
+
+
+
 def meeting_track(meeting_dir: Path) -> str:
     name = meeting_dir.name
     if name[:10].count("-") == 2:
@@ -60,7 +84,7 @@ def main() -> int:
     dropped_top3 = 0                  # and that horse finished top-3
     bucket = Counter()
 
-    meeting_dirs = sorted(p for p in ARCHIVE_ROOT.iterdir() if p.is_dir())
+    meeting_dirs = _corpus_meeting_dirs(ARCHIVE_ROOT)
     for idx, md in enumerate(meeting_dirs, 1):
         if idx == 1 or idx % 10 == 0:
             print(f"  {idx}/{len(meeting_dirs)} {md.name}", flush=True)

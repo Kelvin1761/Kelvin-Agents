@@ -25,6 +25,22 @@ from au_racing_engine.matrix_mapper import (
     matrix_score,
 )
 from au_racing_engine.scoring import MATRIX_WEIGHTS as LIVE_MATRIX_WEIGHTS
+def _corpus_meeting_dirs(root):
+    """`root` AND `root/Archive`, oldest first. Scanning one level hid 49.1%
+    of the scored AU corpus (751 of 1,530 races, incl. 16 of the 17 clean
+    point-in-time dates) — see shared_racing/scripts/corpus_paths.py."""
+    import sys as _sys
+    from pathlib import Path as _P
+    _s = _P(__file__).resolve()
+    for _ in range(6):
+        _s = _s.parent
+        _c = _s / "shared_racing" / "scripts"
+        if (_c / "corpus_paths.py").exists():
+            if str(_c) not in _sys.path:
+                _sys.path.insert(0, str(_c))
+            break
+    from corpus_paths import meeting_dirs
+    return sorted(meeting_dirs(root))
 
 ARCHIVE_ROOT = AU_RACING
 HISTORICAL_RESULTS_CSV = au_historical_results_csv(ARCHIVE_ROOT)
@@ -299,10 +315,7 @@ def choose_track_rows(rows, meeting_track: str):
 
 
 def iter_logic_rows(archive_root: Path, historical_results):
-    meeting_dirs = sorted(
-        {path.parent for path in archive_root.rglob("Race_*_Logic.json")},
-        key=lambda path: str(path.relative_to(archive_root)),
-    )
+    meeting_dirs = _corpus_meeting_dirs(archive_root)
     for meeting_dir in meeting_dirs:
         logic_files = sorted(meeting_dir.glob("Race_*_Logic.json"), key=lambda p: parse_int(p.stem.split("_")[1], 999))
         if not logic_files:

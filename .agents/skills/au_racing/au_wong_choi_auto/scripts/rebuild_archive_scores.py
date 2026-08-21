@@ -11,10 +11,34 @@ ARCHIVE_ROOT = AU_RACING
 sys.path.append(str(SCRIPT_DIR))
 from au_auto_orchestrator import process_meeting_dir
 
+
+def _corpus_meeting_dirs(root):
+    """Meeting folders under `root` AND under `root/Archive`, oldest first.
+
+    `root.iterdir()` used to be enough. It is not: the daily schedule files
+    finished meetings into `<root>/Archive/`, and on 2026-08-21 that hid 751 of
+    1,530 scored AU races (49.1%) — including 16 of the 17 dates that are clean
+    point-in-time. Any number this harness printed before this change was
+    measured on the older, post-race-rescored half of the corpus.
+    """
+    import sys as _sys
+    from pathlib import Path as _Path
+    _shared = _Path(__file__).resolve()
+    for _ in range(6):
+        _shared = _shared.parent
+        _cand = _shared / "shared_racing" / "scripts"
+        if (_cand / "corpus_paths.py").exists():
+            if str(_cand) not in _sys.path:
+                _sys.path.insert(0, str(_cand))
+            break
+    from corpus_paths import meeting_dirs as _meeting_dirs
+    return sorted(_meeting_dirs(root))
+
+
 def rebuild_all():
     count = 0
     # Process historical archive
-    for meeting_dir in sorted(ARCHIVE_ROOT.iterdir()):
+    for meeting_dir in _corpus_meeting_dirs(ARCHIVE_ROOT):
         if not meeting_dir.is_dir():
             continue
         logic_files = list(meeting_dir.glob("Race_*_Logic.json"))

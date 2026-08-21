@@ -41,6 +41,30 @@ from au_metric_contract import ranked_performance
 from au_auto_orchestrator import _build_field_summary as build_field_summary
 
 
+def _corpus_meeting_dirs(root):
+    """Meeting folders under `root` AND under `root/Archive`, oldest first.
+
+    `root.iterdir()` used to be enough. It is not: the daily schedule files
+    finished meetings into `<root>/Archive/`, and on 2026-08-21 that hid 751 of
+    1,530 scored AU races (49.1%) — including 16 of the 17 dates that are clean
+    point-in-time. Any number this harness printed before this change was
+    measured on the older, post-race-rescored half of the corpus.
+    """
+    import sys as _sys
+    from pathlib import Path as _Path
+    _shared = _Path(__file__).resolve()
+    for _ in range(6):
+        _shared = _shared.parent
+        _cand = _shared / "shared_racing" / "scripts"
+        if (_cand / "corpus_paths.py").exists():
+            if str(_cand) not in _sys.path:
+                _sys.path.insert(0, str(_cand))
+            break
+    from corpus_paths import meeting_dirs as _meeting_dirs
+    return sorted(_meeting_dirs(root))
+
+
+
 def main():
     historical_results = load_historical_results(HISTORICAL_RESULTS_CSV)
 
@@ -62,7 +86,7 @@ def main():
     type_old = defaultdict(lambda: {"races": 0, "pass_": 0, "gold": 0, "champion": 0, "hits": {0: 0, 1: 0, 2: 0, 3: 0}})
 
     total = 0
-    for meeting_dir in sorted(p for p in ARCHIVE_ROOT.iterdir() if p.is_dir()):
+    for meeting_dir in _corpus_meeting_dirs(ARCHIVE_ROOT):
         logic_files = sorted(meeting_dir.glob("Race_*_Logic.json"),
                              key=lambda p: parse_int(p.stem.split("_")[1], 999))
         if not logic_files:

@@ -24,6 +24,30 @@ from au_racing_engine.scoring import MATRIX_WEIGHTS, clip_score  # noqa: E402
 from au_metric_contract import ranked_performance  # noqa: E402
 
 
+def _corpus_meeting_dirs(root):
+    """Meeting folders under `root` AND under `root/Archive`, oldest first.
+
+    `root.iterdir()` used to be enough. It is not: the daily schedule files
+    finished meetings into `<root>/Archive/`, and on 2026-08-21 that hid 751 of
+    1,530 scored AU races (49.1%) — including 16 of the 17 dates that are clean
+    point-in-time. Any number this harness printed before this change was
+    measured on the older, post-race-rescored half of the corpus.
+    """
+    import sys as _sys
+    from pathlib import Path as _Path
+    _shared = _Path(__file__).resolve()
+    for _ in range(6):
+        _shared = _shared.parent
+        _cand = _shared / "shared_racing" / "scripts"
+        if (_cand / "corpus_paths.py").exists():
+            if str(_cand) not in _sys.path:
+                _sys.path.insert(0, str(_cand))
+            break
+    from corpus_paths import meeting_dirs as _meeting_dirs
+    return sorted(_meeting_dirs(root))
+
+
+
 ARCHIVE_ROOT = AU_RACING
 RESULTS_CSV = au_historical_results_csv(ARCHIVE_ROOT)
 OUTPUT_MD = ARCHIVE_ROOT / "AU_ML_Matrix_Diagnostics.md"
@@ -257,7 +281,7 @@ def load_scoring_rows(scoring_path: Path) -> list[dict]:
 def load_races() -> list[dict]:
     historical_results = load_historical_results()
     races = []
-    for meeting_dir in sorted(path for path in ARCHIVE_ROOT.iterdir() if path.is_dir()):
+    for meeting_dir in _corpus_meeting_dirs(ARCHIVE_ROOT):
         scoring_files = sorted(
             meeting_dir.glob("Race_*_Auto_Scoring.csv"),
             key=lambda path: parse_int(path.stem.split("_")[1], 999),

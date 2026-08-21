@@ -21,6 +21,22 @@ from au_archive_calibrator import detect_meeting_date, detect_meeting_track, par
 from build_au_logic import _load_track_profile  # type: ignore
 from inject_fact_anchors import _aggregate_confidence, _classify_pace_v2, _pace_confidence  # type: ignore
 from au_racing_engine.io_utils import write_json_atomic  # type: ignore
+def _corpus_meeting_dirs(root):
+    """`root` AND `root/Archive`, oldest first. Scanning one level hid 49.1%
+    of the scored AU corpus (751 of 1,530 races, incl. 16 of the 17 clean
+    point-in-time dates) — see shared_racing/scripts/corpus_paths.py."""
+    import sys as _sys
+    from pathlib import Path as _P
+    _s = _P(__file__).resolve()
+    for _ in range(6):
+        _s = _s.parent
+        _c = _s / "shared_racing" / "scripts"
+        if (_c / "corpus_paths.py").exists():
+            if str(_c) not in _sys.path:
+                _sys.path.insert(0, str(_c))
+            break
+    from corpus_paths import meeting_dirs
+    return sorted(meeting_dirs(root))
 
 
 ARCHIVE_ROOT = AU_RACING
@@ -226,7 +242,7 @@ def _rebuild_metadata(logic: dict, meeting_dir: Path, meeting_track: str, meetin
 def main() -> int:
     args = _parse_args()
     archive_root = args.archive_root
-    meetings = sorted(path for path in archive_root.iterdir() if path.is_dir())
+    meetings = _corpus_meeting_dirs(archive_root)
     if args.meeting:
         needle = args.meeting.lower()
         meetings = [path for path in meetings if needle in path.name.lower()]

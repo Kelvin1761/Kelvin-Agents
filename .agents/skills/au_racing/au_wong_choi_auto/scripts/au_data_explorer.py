@@ -16,6 +16,22 @@ sys.path.append(str(SCRIPT_DIR))
 sys.path.append(str(SCRIPT_DIR))
 from au_archive_calibrator import ARCHIVE_ROOT as ARCHIVE_DIR
 from au_racing_engine.io_utils import write_json_atomic
+def _corpus_meeting_dirs(root):
+    """`root` AND `root/Archive`, oldest first. Scanning one level hid 49.1%
+    of the scored AU corpus (751 of 1,530 races, incl. 16 of the 17 clean
+    point-in-time dates) — see shared_racing/scripts/corpus_paths.py."""
+    import sys as _sys
+    from pathlib import Path as _P
+    _s = _P(__file__).resolve()
+    for _ in range(6):
+        _s = _s.parent
+        _c = _s / "shared_racing" / "scripts"
+        if (_c / "corpus_paths.py").exists():
+            if str(_c) not in _sys.path:
+                _sys.path.insert(0, str(_c))
+            break
+    from corpus_paths import meeting_dirs
+    return sorted(meeting_dirs(root))
 
 # Fields that enrich_logic_from_facts() loads into _data
 LOADED_DATA_FIELDS = [
@@ -121,7 +137,7 @@ def scan_archive():
     total_horses = 0
     total_races = 0
 
-    for meeting_dir in sorted(ARCHIVE_DIR.iterdir()):
+    for meeting_dir in _corpus_meeting_dirs(ARCHIVE_DIR):
         if not meeting_dir.is_dir():
             continue
         logic_files = sorted(meeting_dir.glob("Race_*_Logic.json"))
