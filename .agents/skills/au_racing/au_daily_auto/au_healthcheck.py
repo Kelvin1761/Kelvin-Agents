@@ -287,8 +287,7 @@ def mirror_issue(day: str | None = None, *, log_dir: Path | None = None) -> str 
             if not behind:
                 return None
             sample = "、".join(behind[:3]) + ("…" if len(behind) > 3 else "")
-            return (f"Drive 鏡像落後 {len(behind)} 個檔（{sample}）"
-                    f" —— Drive 邊係舊版本，預測同發佈唔受影響")
+            return f"Drive 鏡像落後 {len(behind)} 個檔（{sample}）"
 
     step = latest_step("mirror", log_dir=log_dir)
     if step is None:
@@ -300,19 +299,27 @@ def mirror_issue(day: str | None = None, *, log_dir: Path | None = None) -> str 
     if copied and not step.get("gave_up"):
         return None  # 大部分入咗，個別檔退咗去 fallback —— best-effort 做到嘢。
     detail = step.get("first_error") or step.get("reason") or status
-    return (f"Drive 鏡像今次冇更新到任何檔（{status}，失敗 {failed} 個）：{detail}"
-            f" —— Drive 邊停留喺舊版本，預測同發佈唔受影響")
+    return f"Drive 鏡像今次冇更新到任何檔（{status}，失敗 {failed} 個）：{detail}"
 
 
-def quality_issues(day: str) -> list[str]:
-    issues = local_quality_issues(day)
+def quality_issues(day: str) -> tuple[list[str], list[str]]:
+    """`(阻塞, best-effort)`。
+
+    ⚠️ 兩者一定要分開。之前係同一個 list，所以一個 Drive 鏡像落後會出一句
+    「資料品質未過」—— 個訊息本身就係錯嘅：本機係正本、Cloudflare 由本機發，
+    鏡像落後影響唔到預測同發佈。報得比實際嚴重同報得比實際輕微一樣壞，因為兩樣
+    都會令人開始唔信呢條通知。
+    """
+    blocking = local_quality_issues(day)
     issue = latest_step_issue("ingest-results")
     if issue:
-        issues.append(issue)
+        blocking.append(issue)
+
+    advisories: list[str] = []
     issue = mirror_issue(day)
     if issue:
-        issues.append(issue)
-    return issues
+        advisories.append(issue)
+    return blocking, advisories
 
 
 def heal() -> tuple[bool, str]:
@@ -478,11 +485,16 @@ def check(day: str) -> dict:
         expect = set(scored)
     missing_live = sorted(v for v in expect if v not in live_today)
     if not missing_live:
-        issues = quality_issues(day)
+        issues, advisories = quality_issues(day)
+        base = {"live": sorted(live_today), "expected": sorted(expect),
+                "advisories": advisories}
         if issues:
-            return {"state": "degraded", "issues": issues,
-                    "live": sorted(live_today), "expected": sorted(expect)}
-        return {"state": "ok", "live": sorted(live_today), "expected": sorted(expect)}
+            return {"state": "degraded", "issues": issues, **base}
+        if advisories:
+            # 「best-effort 項目落後」唔係 degraded：發佈同資料都過關。照出通知
+            # 講件事，但退出碼要係 0，唔可以令 ./健康.sh 見到個排程好似壞咗。
+            return {"state": "ok-with-advisories", **base}
+        return {"state": "ok", **base}
     # 本機有冇評分？有 = 純發佈問題（補得到）；冇 = 分析根本未做（補唔到）。
     publishable = [v for v in missing_live if scored.get(v, 0) > 0]
     return {"state": "unpublished" if publishable else "unanalysed",
@@ -503,19 +515,27 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001
             print("通知送唔出:", exc)
 
-    if res["state"] == "ok":
+    def advisory_text() -> str:
+        return ("\nbest-effort 落後（唔影響預測同發佈）：\n- "
+                + "\n- ".join(res.get("advisories") or [])
+                if res.get("advisories") else "")
+
+    if res["state"] in ("ok", "ok-with-advisories"):
         # 今日場次上晒線唔代表上一個 run 冇死喺第二度（例如剪走失敗、合併空殼）。
         fixed = autofix_last_failure()
         if fixed:
             print(fixed)
-            notify(fixed)
+            notify(fixed + advisory_text())
+        elif res.get("advisories"):
+            notify(f"ℹ️ AU 體檢 {day}\n場次已上線、資料品質過關。"
+                   + advisory_text())
         return 0
     if res["state"] == "in-progress":
         # 唔出聲。跑緊唔係問題，而為咗「有嘢報」而報就係製造雜訊。
         return 0
     if res["state"] == "degraded":
         notify(f"⚠️ AU 體檢 {day}\n場次已上線，但資料品質未過：\n- "
-               + "\n- ".join(res.get("issues") or []))
+               + "\n- ".join(res.get("issues") or []) + advisory_text())
         return 1
     if res["state"] == "unknown":
         notify(f"⚠️ AU 體檢 {day}\n讀唔到 live dashboard —— 未能核實今日賽事有冇上線")

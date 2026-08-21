@@ -9,8 +9,8 @@
 - **未能使用**：`evaluation-contract`、`cross-agent-handoff`（兩個 skill 唔存在，
   upstream `github/awesome-copilot` 都冇）。`quality-playbook` 已於 2026-08-21 安裝
   （Apache 2.0；31 檔 836 KB，`SKILL.md` 294 KB ≈75k tokens，觸發成本高）。
-  `docs/model-evaluation-contract.md` **唔存在** —— 下面第 2 節係由 code 反推，
-  逐項標明係「code 寫死」定「我推斷」。
+  `docs/model-evaluation-contract.md` 審計嗰時**唔存在**；已由 code 反推並抽出成
+  正式檔案（見第 2 節），逐項標明係「code 寫死」定「我推斷」。
 
 ---
 
@@ -73,33 +73,16 @@ HKJC：`prerace`、`postrace`、`watch`、`recovery`、`weekly`。加一個 `won
 
 ---
 
-## 2. 評估合約（由 code 反推）
+## 2. 評估合約
 
-`docs/model-evaluation-contract.md` **唔存在**。以下每項標明來源。
+審計嗰時 `docs/model-evaluation-contract.md` **唔存在**，所以呢節本來寫住一份由 code
+反推嘅版本。已經抽出成正式檔案，**呢度唔再重複**（兩份唔同步係呢個 repo 最貴嘅 bug 形態）：
 
-| 項 | 值 | 來源 |
-|---|---|---|
-| 基準命令 | `au_dump_engine_leaves.py --out X` → `au_eval.py --data X` | code |
-| 主指標 | 頭 K=5 位**配對場內 AUC**，holdout 95% 配對 bootstrap 區間唔過 0，dev 點估計唔准負 | `au_eval.py` docstring 寫死 |
-| bootstrap | 2000 次，**按場**重抽（同場配對唔獨立） | `BOOT=2000` |
-| 次要指標 | gold, gold_strict, good_positional, pass, champion, winner_in_top3/5, t3prec, mrr, ndcg5, blowout | `eval_metrics.py` |
-| holdout | 尾 15% **唯一日期**，唔切開同一日 | `date_partitions()` |
-| fold | dev 內部 5 個時間 fold（`au_feature_ab` / `au_matrix_refit`） | code |
-| 訓練期 | **不適用** —— 冇訓練步驟，權重手工擬合 | 推斷 |
-| 隨機種子 | `golden_scoring.SAMPLE_SEED=20260821`；bootstrap `_boot_ci(..., seed=7)` **已固定** | code |
-| 必需數據 | `AU_Racing/**/Race_*_Logic.json` + `AU_Historical_Raw_Race_Results.csv` | code |
-| 排除記錄 | 前三不足 3 匹、冇頭馬嘅場次（`_counts` 直接 `continue`） | code |
-| 樣本 | 1,413 場 / 14,121 匹（2026-08-21 實測） | 實測 |
+→ **[`docs/model-evaluation-contract.md`](../model-evaluation-contract.md)**
 
-### 合約層面嘅缺陷（記錄，冇改）
-
-1. **「85/15」係錯嘅。** `date_partitions` 取 15% 嘅**日期**，但新見到嘅 Archive 數據每日
-   場次密度高好多，實際 holdout = **512 / 1,413 = 36.2% 場次**。所有寫「holdout 15%」
-   嘅 docstring 都已經唔準。
-2. **HKJC 用完全另一套閘門**（`hkjc_no_regression_gate.py`，maximize keys =
-   gold/good/min_threshold/champion/top3_has_champion/mrr/avg_top4_hits），
-   同 AU 嘅 AUC 判決規則**唔通用**。冇任何文件講兩者點對應。
-3. **場數指標唔按馬群大細正規化** —— 見第 6 節，呢個令 dev/holdout 數字唔可比。
+裡面有 AU 判決規則、bootstrap 設定、dev/holdout 切法、必需數據、排除規則、
+AU + HKJC 兩邊 baseline，同五個已知缺陷（「85/15」係錯、regime 切分、
+場數指標唔正規化、08-05 前檔位 A/B 唔可信、HKJC 缺實驗）。
 
 ---
 

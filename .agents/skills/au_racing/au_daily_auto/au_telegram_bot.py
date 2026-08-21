@@ -283,9 +283,15 @@ def cmd_health() -> str:
         return "✅ 體檢正常 —— 今日場次全部上線：" + "、".join(d.get("live") or [])
     if state == "in-progress":
         return "⏳ 而家有排程 run 跑緊，發佈係最後一步 —— 遲啲再查"
+    advisory = ("\nbest-effort 落後（唔影響預測同發佈）：\n- "
+                + "\n- ".join(d.get("advisories") or [])
+                if d.get("advisories") else "")
+    if state == "ok-with-advisories":
+        return ("✅ 體檢正常 —— 今日場次全部上線："
+                + "、".join(d.get("live") or []) + advisory)
     if state == "degraded":
         return "⚠️ 體檢：場次已上線但資料品質未過\n- " + \
-            "\n- ".join(d.get("issues") or [])
+            "\n- ".join(d.get("issues") or []) + advisory
     return f"⚠️ 體檢：{state}\n缺：" + "、".join(d.get("missing") or [])
 
 

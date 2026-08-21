@@ -345,3 +345,67 @@ def test_au_expected_features_match_the_engine() -> None:
         f"EXPECTED_FEATURES['au'] 有 {len(unknown)} 個引擎唔認識嘅 key：{unknown}。"
         " 呢啲 key 會令每匹馬都報 MISSING_FEATURES。"
     )
+
+
+def _annotated_meeting(tmp_path: Path) -> Path:
+    """同 `_meeting()` 一樣，但馬名帶住「(檔位 N)」註解。
+
+    真實 AU Facts / Racecard 就係咁寫（`Family Of League (檔位 11)`），
+    而 Logic 只存純馬名。2026-08-21 之前比較唔剝註解，於是
+    FACTS_NAME_MISMATCH / SOURCE_NAME_MISMATCH 對**每匹馬**都觸發：
+    一個場次 8 場就 77 + 77 個假警報，`deploy_allowed` 恆為 False。
+    """
+    meeting = tmp_path / "2026-08-13 Annotated"
+    meeting.mkdir()
+    (meeting / "Test Race 1 Facts.md").write_text(
+        "### 馬匹 #1 Alpha (檔位 11)\n\n### 馬匹 #2 Beta (檔位 3)\n", encoding="utf-8"
+    )
+    (meeting / "Test Race 1 Racecard.md").write_text(
+        "1. Alpha (11)\n2. Beta (3)\n", encoding="utf-8"
+    )
+    horses = {}
+    for index, name in enumerate(("Alpha", "Beta"), start=1):
+        horses[str(index)] = {
+            "horse_name": name,
+            "python_auto": {
+                "ability_score": 70 - index,
+                "rank": index,
+                "feature_scores": {
+                    key: 60
+                    for key in (
+                        "form_score", "performance_quality_score", "pace_figure_score",
+                        "trial_score", "pace_map_score", "jockey_score", "trainer_score",
+                        "jockey_horse_fit_score", "rating_score", "track_score",
+                    )
+                },
+                "data_coverage": {"coverage_pct": 88.0},
+            },
+        }
+    (meeting / "Race_1_Logic.json").write_text(json.dumps({"horses": horses}), encoding="utf-8")
+    (meeting / "Race_1_Auto_Analysis.md").write_text("ok", encoding="utf-8")
+    with (meeting / "Race_1_Auto_Scoring.csv").open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["horse_number"])
+        writer.writeheader()
+        writer.writerows([{"horse_number": "1"}, {"horse_number": "2"}])
+    return meeting
+
+
+def test_draw_annotation_in_source_names_is_not_a_mismatch(tmp_path: Path) -> None:
+    report = scan_meeting("au", _annotated_meeting(tmp_path))
+    bogus = [
+        issue for issue in report["issues"]
+        if issue["code"] in {"FACTS_NAME_MISMATCH", "SOURCE_NAME_MISMATCH"}
+    ]
+    assert not bogus, f"「(檔位 N)」註解被當成改名：{bogus}"
+    assert report["deploy_allowed"] is True
+
+
+def test_a_real_name_change_is_still_caught(tmp_path: Path) -> None:
+    """剝註解**唔可以**順手把真嘅改名都放過。"""
+    meeting = _annotated_meeting(tmp_path)
+    (meeting / "Test Race 1 Facts.md").write_text(
+        "### 馬匹 #1 Gamma (檔位 11)\n\n### 馬匹 #2 Beta (檔位 3)\n", encoding="utf-8"
+    )
+    report = scan_meeting("au", meeting)
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "FACTS_NAME_MISMATCH" in codes, "Alpha→Gamma 應該報 mismatch"

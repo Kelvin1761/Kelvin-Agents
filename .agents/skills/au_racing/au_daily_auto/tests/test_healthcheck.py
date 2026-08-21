@@ -30,7 +30,7 @@ def patched(live, expect, scored):
     return unittest.mock.patch.multiple(
         H, live_meetings=lambda: live, au_venues_today=lambda day: expect,
         local_scored=lambda day: scored, run_in_progress=lambda: False,
-        quality_issues=lambda day: [])
+        quality_issues=lambda day: ([], []))
 
 
 class InProgressTests(unittest.TestCase):
@@ -100,10 +100,26 @@ class HealthcheckTests(unittest.TestCase):
                 au_venues_today=lambda day: VENUES,
                 local_scored=lambda day: {v: 7 for v in VENUES},
                 run_in_progress=lambda: False,
-                quality_issues=lambda day: ["ingest-results partial"]):
+                quality_issues=lambda day: (["ingest-results partial"], [])):
             result = H.check(DAY)
         self.assertEqual(result["state"], "degraded")
         self.assertIn("ingest-results", result["issues"][0])
+
+    def test_a_best_effort_lag_alone_is_not_degraded(self):
+        """Drive 鏡像落後唔算「資料品質未過」—— 本機係正本，Cloudflare 由本機發。
+
+        混做同一句就係報得比實際嚴重，而報錯輕重同報錯事實一樣會令人唔信通知。
+        """
+        with unittest.mock.patch.multiple(
+                H, live_meetings=lambda: {f"{DAY}|{v}" for v in VENUES},
+                au_venues_today=lambda day: VENUES,
+                local_scored=lambda day: {v: 7 for v in VENUES},
+                run_in_progress=lambda: False,
+                quality_issues=lambda day: ([], ["Drive 鏡像落後 2 個檔"])):
+            result = H.check(DAY)
+        self.assertEqual(result["state"], "ok-with-advisories")
+        self.assertEqual(result["advisories"], ["Drive 鏡像落後 2 個檔"])
+        self.assertNotIn("issues", result)
 
 
 class DataQualityTests(unittest.TestCase):
@@ -233,7 +249,6 @@ class DataQualityTests(unittest.TestCase):
              "first_error": "PermissionError: [Errno 1] Operation not permitted"})
         self.assertIn("Drive 鏡像", issue)
         self.assertIn("Operation not permitted", issue)
-        self.assertIn("預測同發佈唔受影響", issue)
 
     def test_mirror_that_gave_up_after_partial_progress_is_reported(self):
         issue = self._mirror(

@@ -10,6 +10,10 @@ description: 'Enforce measured evidence before any Wong Choi model change is kep
 
 ## 第一件事：定住把尺
 
+**唯一真源係 [`docs/model-evaluation-contract.md`](../../../docs/model-evaluation-contract.md)**
+—— 開工之前讀佢。裡面有 AU 判決規則、bootstrap 設定、dev/holdout 切法、
+AU + HKJC 兩邊 baseline、同五個已知缺陷。下面係摘要。
+
 AU 嘅唯一判決規則寫死喺 `au_eval.py` 個 docstring 度，照跟：
 
 > **頭 K 位（K=5）配對嘅場內 AUC，holdout 上 95% 配對 bootstrap 區間唔過 0。

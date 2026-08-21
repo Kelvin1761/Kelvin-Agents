@@ -128,13 +128,32 @@ def configured_scorer(*, weights=None, wet_scale=1.0, leaf_overrides=None):
     """
     weights = dict(weights or MATRIX_WEIGHTS)
     leaf_overrides = dict(leaf_overrides or {})
-    total = sum(float(weights.get(key, 0.0)) for key in MATRIX_WEIGHTS)
+
+    # ⚠️ 2026-08-22 修：呢兩行本來 iterate **live `MATRIX_WEIGHTS`**，所以任何唔喺
+    # live 權重表嘅維度會被**靜靜丟掉** —— 候選返 +0.0000，個報告寫「呢把尺分唔開」，
+    # 而真相係「你個維度我無視咗」。
+    #
+    # 實測：mapper 出 7 個維度（含 `form_line` 同 `race_shape`），而 live
+    # `MATRIX_WEIGHTS` 得 5 個。後果係
+    #   * `form_line` 權重一直係 0，所以**由來都冇得測**（`au_weight_improvement_search.py`
+    #     個 docstring 明寫「notably the currently zero-weighted form_line dimension」——
+    #     嗰個目標結構上做唔到）
+    #   * `race_shape` 2026-08-22 退出排名之後，就**再也無法 A/B 佢返轉頭**
+    #
+    # 而家 iterate live 權重同候選 key 嘅**聯集**，而唔認識嘅 key 會大聲死。
+    # 候選 key ⊆ live 權重表嘅情況（過去所有用法）行為完全不變。
+    mappable = set(matrix_mapper.MATRIX_FORMULAS)
+    unknown = sorted(key for key in weights if key not in mappable)
+    if unknown:
+        raise ValueError(
+            f"矩陣權重有 mapper 出唔到嘅維度：{unknown}。"
+            f" 可用嘅係 {sorted(mappable)}。"
+        )
+    keys = tuple(dict.fromkeys((*MATRIX_WEIGHTS, *weights)))
+    total = sum(float(weights.get(key, 0.0)) for key in keys)
     if total <= 0:
         raise ValueError("Matrix weights must have a positive total.")
-    normalised = {
-        key: float(weights.get(key, 0.0)) / total
-        for key in MATRIX_WEIGHTS
-    }
+    normalised = {key: float(weights.get(key, 0.0)) / total for key in keys}
 
     def scorer(row):
         features = dict(row["features"])

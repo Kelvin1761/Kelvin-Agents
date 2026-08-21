@@ -31,6 +31,9 @@ verify `ability max|Δ|=0.0108`、`matrix max|Δ|=0.0033`。
 
 ## 判決規則（唔准改）
 
+完整合約：[`docs/model-evaluation-contract.md`](../model-evaluation-contract.md)
+
+
 > 頭 K=5 位配對場內 AUC，**holdout** 95% 配對 bootstrap 區間唔過 0；**dev** 點估計唔准負。
 
 場數指標係次要。理由：±0.3 中性擾動 40 次，三道場數閘全過 **0/40** —— 冇功效。

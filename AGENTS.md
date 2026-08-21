@@ -81,6 +81,10 @@ assert 緊兩個冇 merge 過嘅嘢 —— `rating_series` 只存在於
 `.claude/skills/` 嘅四個 skill 度（`model-regression-gate`、`leakage-audit`、
 `feature-ablation`、`data-quality-audit`、`experiment-review`）—— 呢度只寫規矩本身。
 
+**把尺喺邊**：[`docs/model-evaluation-contract.md`](docs/model-evaluation-contract.md)
+—— AU 判決規則、bootstrap 設定、dev/holdout 切法、兩邊 baseline、同五個已知缺陷。
+**改動嗰份文件 = 改動判決規則**，要當一個獨立改動先論證，唔可以同候選一齊改。
+
 - **冇跑過評估，唔准講「改善」。** 「code 睇落合理啲」「理論上應該好啲」唔係證據。
 - **改之前先量 baseline。** baseline 同 candidate 要行同一份語料、同一個時間窗。
   跨 harness 攞數字互相比 = 錯結論。
@@ -149,8 +153,12 @@ Antigravity 目前最重要嘅兩條賽馬主線已經轉咗做 **full Python pi
   `leakage-audit`、`feature-ablation`、`data-quality-audit`、
   `experiment-review`）同幾個 vendor 返嚟嘅 upstream skill。
   vendor 嗰批唔好手改，改咗就同上游脫節。
+- `docs/model-evaluation-contract.md`
+  **判決規則同 baseline 嘅唯一真源。** 改佢 = 改把尺。
 - `docs/experiments/`
   實驗記錄。開始新假設之前先 grep 呢度。
+- `docs/audits/`、`docs/handoff/`
+  唯讀審計報告，同俾另一個 agent 獨立覆核用嘅交接。
 - `.agents/agents/`
   角色型 agent 定義
 - `.agents/skills/`
