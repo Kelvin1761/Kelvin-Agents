@@ -52,7 +52,7 @@ verify `ability max|Δ|=0.0108`、`matrix max|Δ|=0.0033`。
 | **draw bias 只影響歷史評估** | matrix 喺 `_pace_map_score()`（`engine_core:1245`）用 → 餵 `race_shape`（w .135, gain **4.1142** 最大）。**live 唔受影響**（相對今日全部係過去）。回測就有：`au_draw_bias_matrix.json` mtime 2026-08-09，728 個 per-track cell 中位 sample_size **7**、43.5% < 5，dev 窗全部早過 08-09。**專用工具已存在**：`au_draw_walkforward_audit.py`，我搵唔到跑過嘅記錄 |
 | **dev/holdout 係 regime 切分** | dev 11.0% 乾淨 point-in-time / 平均馬群 10.51；holdout 100% / 9.08 |
 | **場數指標唔按馬群正規化** | dev 內 Gold：≤8 匹 31.58% → 13+ 匹 8.91%。控制馬群（9–10 匹）後 dev 15.38% **>** holdout 13.33% —— 同 pooled 方向相反 |
-| holdout 實際 36.2% 唔係 15% | `date_partitions` 取日期百分比 |
+| holdout 實際 36.2% 唔係 15% | `date_partitions` 取日期百分比（`au_eval.py` 而家會印出嚟） |
 | `form_line` 權重 0 | `MATRIX_FORMULAS` 有佢，`MATRIX_WEIGHTS` 冇 |
 | `rating_score` 係時間窗欄位 | RA 個窗只回溯一星期，歷史值未必係當日真值 |
 

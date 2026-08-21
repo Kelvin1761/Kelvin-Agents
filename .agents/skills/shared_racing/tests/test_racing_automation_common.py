@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 from unittest import mock
 
+import pytest
+
 SHARED_SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SHARED_SCRIPTS))
 
@@ -38,7 +40,20 @@ def _meeting(tmp_path: Path, *, broken: bool = False) -> Path:
             "python_auto": {
                 "ability_score": 70 - index,
                 "rank": ranks[index - 1],
-                "feature_scores": {key: 60 for key in ("speed", "form", "class", "pace", "weight", "draw")},
+                # ⚠️ 一定要用 AU Logic 檔**真正**嘅 key 名。呢行本來寫住
+                # ("speed","form","class","pace","weight","draw") —— 六個假名，
+                # 同 EXPECTED_FEATURES["au"] 嗰六個假名一模一樣，所以 test 綠燈，
+                # 但 scan_meeting 對**真**AU 場次每匹馬都報 MISSING_FEATURES。
+                # 一個自己餵 input 嘅 test 睇唔到常數同現實脫節 —— 所以下面
+                # 加咗 test_au_expected_features_match_the_engine 去捉。
+                "feature_scores": {
+                    key: 60
+                    for key in (
+                        "form_score", "performance_quality_score", "pace_figure_score",
+                        "trial_score", "pace_map_score", "jockey_score", "trainer_score",
+                        "jockey_horse_fit_score", "rating_score", "track_score",
+                    )
+                },
                 "data_coverage": {"coverage_pct": 88.0},
             },
         }
@@ -301,3 +316,32 @@ def test_telegram_document_is_sent_to_primary_only_by_default(
     assert request.call_count == 1
     sent_request = request.call_args.args[0]
     assert sent_request.full_url.endswith("/sendDocument")
+
+
+def test_au_expected_features_match_the_engine() -> None:
+    """`EXPECTED_FEATURES["au"]` 一定要係引擎真正出嘅 feature key。
+
+    呢個 test 存在嘅唯一理由：2026-08-21 之前嗰六個名（speed/form/class/pace/
+    weight/draw）**一個都唔存在**，於是 `scan_meeting("au", …)` 對每匹馬都報
+    MISSING_FEATURES、`deploy_allowed` 永遠 False。冇 test 捉到，因為
+    `_meeting()` fixture 用咗同一批假名。
+
+    所以呢度**唔可以**同 fixture 比 —— 要同引擎比。
+    """
+    import sys as _sys
+    engine_scripts = (
+        Path(__file__).resolve().parents[2]
+        / "au_racing" / "au_wong_choi_auto" / "scripts"
+    )
+    if not engine_scripts.is_dir():
+        pytest.skip("AU 引擎唔喺呢個 checkout 度")
+    _sys.path.insert(0, str(engine_scripts))
+    try:
+        from au_racing_engine.scoring import FEATURE_KEYS
+    except ImportError as exc:                       # pragma: no cover
+        pytest.skip(f"AU 引擎 import 唔到：{exc}")
+    unknown = sorted(set(EXPECTED_FEATURES["au"]) - set(FEATURE_KEYS))
+    assert not unknown, (
+        f"EXPECTED_FEATURES['au'] 有 {len(unknown)} 個引擎唔認識嘅 key：{unknown}。"
+        " 呢啲 key 會令每匹馬都報 MISSING_FEATURES。"
+    )

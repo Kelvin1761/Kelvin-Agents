@@ -7,7 +7,8 @@
 - **用到嘅 skill**：`acquire-codebase-knowledge`、`data-quality-audit`、`leakage-audit`、
   `model-regression-gate`、`experiment-review`、`security-review`（部分）
 - **未能使用**：`evaluation-contract`、`cross-agent-handoff`（兩個 skill 唔存在，
-  upstream `github/awesome-copilot` 都冇）、`quality-playbook`（upstream 有但未安裝）。
+  upstream `github/awesome-copilot` 都冇）。`quality-playbook` 已於 2026-08-21 安裝
+  （Apache 2.0；31 檔 836 KB，`SKILL.md` 294 KB ≈75k tokens，觸發成本高）。
   `docs/model-evaluation-contract.md` **唔存在** —— 下面第 2 節係由 code 反推，
   逐項標明係「code 寫死」定「我推斷」。
 
@@ -141,10 +142,18 @@ python3 au_eval.py --data /tmp/leaves.json --output-json /tmp/baseline_au.json
 **市場基準（舊量度，記憶記錄）**：SP 排序 AUC 0.7393 vs 我哋 0.6530。
 ⚠️ 呢個數字係喺**半份語料**上量嘅，未重驗。
 
-### HKJC
+### HKJC baseline（已補）
 
-`hkjc_no_regression_gate.py` 冇 `--baseline` 模式，設計上係比較兩個候選；
-我冇跑到一個可引用嘅 HKJC baseline 數字。**HKJC baseline 仍然缺。**
+```bash
+python3 .agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_no_regression_gate.py
+```
+
+264 場：**Gold 19（7.20%）· Good 68（25.76%）· Pass 124（46.97%）·
+Champion 73（27.65%）· MRR 0.4656 · Order Issue 101 · Avg Top4 Hits 2.083**。
+Passing candidates: none。
+
+⚠️ **AU 同 HKJC 嘅 Gold 唔可以直接比。** HKJC 個 7.20% 接近 AU 嘅
+`gold_strict` 6.24%，唔係 AU 個 `gold` 17.79%。
 
 ---
 
@@ -153,7 +162,9 @@ python3 au_eval.py --data /tmp/leaves.json --output-json /tmp/baseline_au.json
 | 級別 | 發現 |
 |---|---|
 | ~~CRITICAL~~ **已修** | `Archive/` 令 49.1% 已評分場次對判決層隱形（EXP-01，`corpus_paths.py` 已修） |
-| **HIGH** | AU 主流程**冇接** per-meeting 數據健康掃描 —— `racing_data_health.py` 只有 `hkjc_orchestrator` 會叫 |
+| ~~HIGH~~ **已修** | `racing_data_health.py` **AU 分支由頭到尾係壞嘅**：`EXPECTED_FEATURES["au"]` 六個名一個都唔存在（真名係 `*_score`），加上名字比較冇剝走「(檔位 N)」註解 → **每匹馬**都報 3 個假警報，`deploy_allowed` 恆為 False。所以 AU 冇接嘅真正原因係接落去會 block 100% deploy。已修（207 個假警報清零，HKJC 完全冇變）+ 加咗一個同**引擎**比而唔係同 fixture 比嘅 test。見 EXP-05 |
+| **MEDIUM** | Logic 匹數 vs 賽果匹數：400 場中 90.5% 一致，5.0% 少、4.5% 多。最極端 `2025-09-13 Flemington R4` Logic 9 vs 賽果 18 |
+| **MEDIUM** | `SOURCE_LOGIC_MISMATCH` 嚴重程度分類錯 —— Racecard 列全部報名、Logic 只留出賽，所以 mismatch 正常。**冇改**（改 severity = 改檢查令佢過）；正解係同出賽名單比 |
 | **HIGH** | 語料庫只有 **11.0% 嘅 dev 場次**係乾淨 point-in-time；其餘係賽後重新評分過（最舊遲 349 日） |
 | **MEDIUM** | `au_draw_bias_matrix.json` 係 **2026-08-09 靜態檔**，live 預測用 12 日前嘅偏差表 |
 | **MEDIUM** | J/T 組合表有兩份（引擎讀 `resources/`，aggregator 寫 `AU_Racing/`），冇自動同步 |
@@ -240,12 +251,12 @@ dev 窗（2025-08-02 → 2026-08-07）**全部**早過；holdout（08-08 → 08-
 
 | 風險 | 證據 |
 |---|---|
-| **三個已知會 overfit 嘅權重搜索工具仍然可以跑** | `au_matrix_weight_search.py`、`au_clean_7d_weight_search.py`、`au_weight_improvement_search.py` |
+| ~~三個已知會 overfit 嘅權重搜索工具仍然可以跑~~ **已修** | 三個都加咗拒絕閘（exit 2，指去 `au_matrix_refit.py`），歷史對照要 `WC_ALLOW_RETIRED_WEIGHT_SEARCH=1` |
 | **曾經 29 個檔只掃一層語料** | `corpus_paths.py` 統一（EXP-01）；`066420c1` 補完餘下 18 個，`1c483561` 補健康檢查。盲區現時為零，但新 code 仍可能寫返 `rglob` 或 `*/Race_*` |
 | macOS bytecode 陷阱 | `.pyc` 喺 `~/Library/Caches/com.apple.python`，靠 (mtime, 大細) 判斷；同長度權重改動 = phantom A/B |
 | 靜靜吞錯 | 引擎路徑內 4 處 `except … pass/continue`；全 racing 樹 177 處（多數合理） |
 | ruff 804 個提示 | 486 F541、200 F401、118 F841。`檢查.sh` 只 gate F821/F811/F823/E9 等**真係壞**嘅規則（刻意） |
-| **1 個 test suite 長期紅** | `Agent scripts` —— `test_hkjc_high_quality_features.py` assert 兩個從未 merge 過嘅函數（只存在於 `scratch/`）。由 2026-08-03 起，`AGENTS.md` 已記錄 |
+| ~~1 個 test suite 長期紅~~ **已修** | `Agent scripts` 兩個 test 由 2026-08-03 紅。核實：`rating_series` 只喺 `scratch/`，`parse_normalized_sectionals` **成個 repo 都冇**（`AGENTS.md` 原本只對一半）。改為 `expectedFailure` + 寫明原因。**九個 suite 而家全綠** |
 | 排程 config drift | AU 排程跑 `/Users/imac/wongchoi-scheduler`（`au-production`），同呢個 repo 唔同步 |
 | **並行 agent 寫入** | 今日一個 session 三次 commit + push 咗另一個 session 嘅 working tree。`git status` 隨時變 |
 | AU 主流程冇數據健康閘 | `racing_data_health.py` 只接 HKJC |
@@ -338,11 +349,14 @@ Sportsbet 取代 Racenet、賽果 CSV ingestion 補回（553→688 場）。
 
 ## 10. 優化之前必須修
 
-1. **場數指標分層** —— 唔修，dev/holdout 比較會繼續出反方向結論
-2. **跑 draw walk-forward 審計** —— 唔跑，`race_shape`（最大 gain）嘅過去量度唔可信
-3. **docstring 嘅「holdout 15%」改為實測值** —— 而家係 36.2%
-4. **HKJC baseline** —— 而家冇一個數字可以引用
-5. **AU 主流程接數據健康掃描** —— 而家只有 HKJC 有
+1. ~~場數指標分層~~ **已做** —— `au_eval.py` 而家一定印分層 + 平均馬群警號
+2. ~~docstring 嘅「holdout 15%」~~ **已做** —— 輸出而家印真實 36.2% 場次佔比
+3. ~~HKJC baseline~~ **已補**（見第 3 節）
+4. ~~AU 數據健康掃描~~ **假設錯咗** —— 唔係「冇接」，係 AU 分支壞（已修，見 EXP-05）。
+   接落去之前仲要決定 `SOURCE_LOGIC_MISMATCH` 應該同報名名單定出賽名單比
+5. **仍未做：跑 draw walk-forward 審計** —— 唔跑，`race_shape`（gain 4.1142，最大）
+   嘅過去量度唔可信。工具 `au_draw_walkforward_audit.py` 已存在，
+   ⚠️ 但 2026-08-21 有另一個 session 未 commit 嘅改動喺同一個檔
 
 ## 可以即刻安全實驗嘅
 

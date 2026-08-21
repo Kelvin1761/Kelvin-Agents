@@ -21,8 +21,20 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 from wongchoi_paths import is_materialized_file
 
+# ⚠️ 呢個 set 一定要用 Logic 檔**真正**嘅 key 名。2026-08-21 之前 AU 呢行寫住
+# {"speed","form","class","pace","weight","draw"} —— 六個名一個都唔存在（真名係
+# `form_score` / `pace_map_score` 等），所以 MISSING_FEATURES 對**每匹馬**都會觸發，
+# `deploy_allowed` 永遠 False。冇人發現，因為只有 hkjc_orchestrator 會叫呢個掃描；
+# AU 主流程從來冇接 —— 而接落去就會 block 100% AU deploy。
+#
+# AU 用 `ABILITY_FEATURE_KEYS`（真正入 ability 嘅十個）。唔用全部 18 個：另外 8 個
+# 係顯示／中間量，其中一個缺失唔代表評分壞咗，會製造噪音。
 EXPECTED_FEATURES = {
-    "au": {"speed", "form", "class", "pace", "weight", "draw"},
+    "au": {
+        "form_score", "performance_quality_score", "pace_figure_score",
+        "trial_score", "pace_map_score", "jockey_score", "trainer_score",
+        "jockey_horse_fit_score", "rating_score", "track_score",
+    },
     "hkjc": {
         "form_score",
         "speed_score",
@@ -84,6 +96,17 @@ def _normalize_horse_name(value: Any) -> str:
     return re.sub(r"[^\w\u3400-\u9fff]", "", text, flags=re.UNICODE).casefold()
 
 
+# Facts / Racecard 會喺馬名後面加註解括號 —— AU 係「Family Of League (檔位 11)」
+# 或者「Family Of League (11)」。Logic 只存純馬名，所以逐字比會**每匹都唔夾**，
+# 就係 2026-08-21 見到嘅 FACTS_NAME_MISMATCH / SOURCE_NAME_MISMATCH 全中。
+# 只剝走睇落係註解嘅括號（內含數字或者「檔位」），唔會誤剝真係名字一部分嘅括號。
+_NAME_ANNOTATION = re.compile(r"[（(]\s*(?:檔位\s*)?\d+\s*[)）]\s*$")
+
+
+def _strip_name_annotation(value: str) -> str:
+    return _NAME_ANNOTATION.sub("", str(value or "")).strip()
+
+
 def _facts_runner_names(path: Path | None) -> dict[str, str]:
     if not path or not is_materialized_file(path):
         return {}
@@ -91,7 +114,7 @@ def _facts_runner_names(path: Path | None) -> dict[str, str]:
     pairs = re.findall(r"^###\s+馬號\s+(\d+)\s+—\s*([^|\n]+)", text, re.M)
     if not pairs:
         pairs = re.findall(r"^###\s+(?:馬匹|Horse)\s*#?\s*(\d+)\s+([^|\n]+)", text, re.M | re.I)
-    return {number: name.strip() for number, name in pairs}
+    return {number: _strip_name_annotation(name) for number, name in pairs}
 
 
 def _source_runner_numbers(
@@ -125,10 +148,10 @@ def _source_runner_names(path: Path | None) -> dict[str, str]:
             name_match = re.search(r"^馬名:\s*([^\n]+)", block, re.M)
             number_match = re.search(r"^馬號:\s*(\d+)", block, re.M)
             if name_match and number_match:
-                names[number_match.group(1)] = name_match.group(1).strip()
+                names[number_match.group(1)] = _strip_name_annotation(name_match.group(1))
         return names
     return {
-        number: name.strip()
+        number: _strip_name_annotation(name)
         for number, name in re.findall(r"^\s*\[?(\d{1,2})\]?\s*[.)]\s*([^\n]+)", text, re.M)
     }
 

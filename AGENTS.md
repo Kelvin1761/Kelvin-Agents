@@ -64,12 +64,16 @@ import，所以**呢份文件係唯一真源** —— 新規則加喺呢度，�
    ```
    前提係你已經確認過個變化係你想要嘅 —— golden 會逐匹馬印出邊度變咗。
 
-### 已知失敗（唔係你整爛嘅）
+### 已知失敗
 
-`run_tests.sh` 嘅 `Agent scripts` suite 有兩個 test 由 2026-08-03 起一直紅：
-`test_hkjc_high_quality_features.py` assert 緊
-`create_hkjc_logic_skeleton.py` 入面兩個由頭到尾都冇 merge 過嘅函數
-（只存在於 `scratch/hkjc_high_quality_dimension_gate.py`）。
+**而家冇。** `run_tests.sh` 九個 suite 全綠。
+
+之前 `Agent scripts` 由 2026-08-03 起一直紅：`test_hkjc_high_quality_features.py`
+assert 緊兩個冇 merge 過嘅嘢 —— `rating_series` 只存在於
+`scratch/hkjc_high_quality_dimension_gate.py`，而 `parse_normalized_sectionals`
+**成個 repo 都唔存在**。2026-08-21 改為 `unittest.expectedFailure` 並寫明原因：
+一個永遠紅嘅 suite 會訓練到人忽略佢，然後真嘅 regression 就冇人睇到。
+如果將來真係 merge 咗，pytest 會報 XPASS 提醒你拆走 decorator。
 
 ### 改模型嘅規矩
 

@@ -142,6 +142,74 @@ class DataQualityTests(unittest.TestCase):
         self.assertIn("going_refresh", joined)
         self.assertIn("50.0%", joined)
 
+    def _tree(self, tmp, *, drive_has=True, drive_stale=False, latest=False):
+        root, mirror = Path(tmp) / "local", Path(tmp) / "drive"
+        folder = root / "2026-08-21 Sale Race 1-9"
+        folder.mkdir(parents=True)
+        (folder / "Race_1_Auto_Analysis.md").write_text("x", encoding="utf-8")
+        (root / "AU_Historical_Raw_Race_Results.csv").write_text("a,b\n",
+                                                                encoding="utf-8")
+        (root / "AU_Backfill_Race_Results.csv").write_text("c,d\n", encoding="utf-8")
+        mirror.mkdir()
+        if drive_has:
+            for src in sorted(root.rglob("*")):
+                if not src.is_file():
+                    continue
+                rel = src.relative_to(root)
+                name = rel.name
+                if latest and name == "AU_Historical_Raw_Race_Results.csv":
+                    rel = rel.with_name("AU_Historical_Raw_Race_Results.latest.csv")
+                dst = mirror / rel
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                dst.write_text("stale" if drive_stale else
+                               src.read_text(encoding="utf-8"), encoding="utf-8")
+                if not drive_stale:
+                    os.utime(dst, (src.stat().st_mtime, src.stat().st_mtime))
+        return root, mirror
+
+    def test_a_mirror_that_matches_the_local_copies_is_quiet(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, mirror = self._tree(tmp)
+            self.assertEqual(H.mirror_behind("2026-08-21", root=root, mirror=mirror), [])
+
+    def test_a_latest_fallback_sibling_counts_as_mirrored(self):
+        # 個別檔寫唔入會退去 `.latest`，consumers 由 wongchoi_paths 取最新嗰份。
+        with tempfile.TemporaryDirectory() as tmp:
+            root, mirror = self._tree(tmp, latest=True)
+            self.assertEqual(H.mirror_behind("2026-08-21", root=root, mirror=mirror), [])
+
+    def test_missing_and_stale_mirror_files_are_named(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, mirror = self._tree(tmp, drive_has=False)
+            behind = H.mirror_behind("2026-08-21", root=root, mirror=mirror)
+            self.assertIn("AU_Historical_Raw_Race_Results.csv", behind)
+            self.assertIn("2026-08-21 Sale Race 1-9/Race_1_Auto_Analysis.md", behind)
+
+    def test_an_unreadable_mirror_root_answers_dunno_not_zero(self):
+        # 「stat 唔到」唔等於「追到」—— 答唔到就要退去睇 log，唔可以報綠燈。
+        with tempfile.TemporaryDirectory() as tmp:
+            root, _mirror = self._tree(tmp)
+            self.assertIsNone(H.mirror_behind(
+                "2026-08-21", root=root, mirror=Path(tmp) / "does-not-exist"))
+
+    def test_a_stale_failure_log_is_ignored_once_the_mirror_caught_up(self):
+        """實物追到 = 唔嗌，就算最近一個 run log 仲寫住失敗。
+
+        2026-08-21 就係咁：10:27 嗰 run 因為 TCC 未授權而 `copied:0`，Kelvin 15:02
+        授咗 Full Disk Access，鏡像已經追返 —— 但體檢照嗌足一日。
+        """
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            root, mirror = self._tree(tmp)
+            logs = Path(tmp) / "logs"
+            logs.mkdir()
+            (logs / "run-morning-test.json").write_text(json.dumps({"steps": [
+                {"step": "mirror", "status": "partial", "copied": 0, "failed": 8,
+                 "gave_up": True, "first_error": "PermissionError: nope"}]}))
+            with unittest.mock.patch.object(
+                    H, "mirror_behind", side_effect=lambda *a, **k: []):
+                self.assertIsNone(H.mirror_issue("2026-08-21", log_dir=logs))
+
     def _mirror(self, step: dict) -> str | None:
         import json
         with tempfile.TemporaryDirectory() as tmp:

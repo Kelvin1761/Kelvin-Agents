@@ -20,6 +20,11 @@
 | `review-and-refactor` | code review + refactor |
 | `security-review` | 追數據流嘅安全掃描 |
 | `github-actions-hardening` | `.github/workflows/` 嘅 Actions threat model 審查 |
+| `quality-playbook` | 規格審計 / 三輪 code review / TDD 修補（**Apache 2.0**，作者 Andrew Stellman，唔係 MIT） |
+
+⚠️ **`quality-playbook` 好大**：31 個檔、836 KB，其中 `SKILL.md` 自己 **294 KB
+（≈75k tokens）**。一觸發就會佔大量 context。如果唔常用，剷走成個目錄就得。
+`quality_gate.py`（131 KB）2026-08-21 審過：冇 subprocess、冇 eval、冇網絡、冇刪除。
 
 ## 要更新嗰陣
 

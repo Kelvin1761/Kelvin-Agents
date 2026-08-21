@@ -34,6 +34,7 @@ JT_COVERAGE_MIN = float(os.environ.get("WC_AU_HEALTH_JT_MIN", "0.80"))
 MORNING_ODDS_READY_HOUR = int(os.environ.get("WC_AU_MORNING_ODDS_READY_HOUR", "11"))
 
 
+
 def live_meetings() -> set[str] | None:
     """⚠️ 一定要繞開 CDN cache，否則會攞到舊副本而誤判成「冇發佈」。"""
     url = f"{LIVE_URL}?cb={int(datetime.now().timestamp() * 1000)}"
@@ -209,16 +210,86 @@ def latest_step(step_name: str, *, log_dir: Path | None = None) -> dict | None:
     return None
 
 
-def mirror_issue(*, log_dir: Path | None = None) -> str | None:
+def _mirror_stat(path: Path):
+    """「唔准 stat」同「唔存在」一律當「唔知」。
+
+    ⚠️ 唔可以用 `Path.exists()`：pathlib 只吞 ENOENT/ENOTDIR/EBADF/ELOOP，EPERM
+    會照拋。launchd 底下 CloudStorage 就係會拋 EPERM。
+    """
+    try:
+        return path.stat()
+    except OSError:
+        return None
+
+
+def mirror_behind(day: str, *, root: Path | None = None,
+                  mirror: Path | None = None) -> list[str] | None:
+    """Drive 鏡像實物落後咗邊幾個檔。`None` = 睇唔到鏡像，答唔到。
+
+    **睇實物，唔睇 log** —— 呢個係本檔開頭嗰條紀律，而鏡像檢查之前偏偏犯咗：
+    佢報最近一個 mirror step 嘅狀態，所以一個朝早失敗、下午已經修好嘅 run，
+    會一路嗌到下一個 run 覆蓋咗個 log 為止。2026-08-21 就係咁：10:27 嗰 run
+    因為 TCC 冇授權而 `copied:0`，Kelvin 15:02 授咗 Full Disk Access，鏡像
+    其實已經追返 —— 但體檢繼續照嗌同一句。
+    """
+    if mirror is None:
+        from wongchoi_paths import AU_RACING_MIRROR
+        if AU_RACING_MIRROR is None:
+            return []
+        mirror = Path(AU_RACING_MIRROR)
+    if root is None:
+        from wongchoi_paths import AU_RACING
+        root = Path(AU_RACING)
+
+    if _mirror_stat(mirror) is None:
+        return None
+
+    # 鏡像名單只有一份真源，喺排程模組 —— 抄一份落嚟就一定有一日走樣。
+    from au_daily_schedule import MIRRORED_ROOT_FILES
+
+    sources: list[Path] = [root / name for name in MIRRORED_ROOT_FILES]
+    for folder in sorted(root.glob(f"{day} *")):
+        if folder.is_dir():
+            sources.extend(sorted(folder.rglob("*")))
+
+    behind: list[str] = []
+    for src in sources:
+        src_st = _mirror_stat(src)
+        if src_st is None or not src.is_file() or src.name == ".DS_Store":
+            continue
+        rel = src.relative_to(root)
+        canonical = mirror / rel
+        # 個別檔寫唔入會退去 `.latest` 兄弟檔（睇 au_daily_schedule.atomic_copy2），
+        # consumers 由 wongchoi_paths 取最新嗰份 —— 所以兩個名有一個夠新就算追到。
+        latest = canonical.with_name(f"{canonical.stem}.latest{canonical.suffix}")
+        if any(st is not None and st.st_size == src_st.st_size
+               and int(st.st_mtime) >= int(src_st.st_mtime)
+               for st in (_mirror_stat(canonical), _mirror_stat(latest))):
+            continue
+        behind.append(str(rel))
+    return behind
+
+
+def mirror_issue(day: str | None = None, *, log_dir: Path | None = None) -> str | None:
     """Drive 鏡像值唔值得嗌人。
 
     鏡像係 best-effort：本機係正本，Cloudflare 由本機發，所以鏡像斷咗**唔影響
     預測同發佈**，只係 Kelvin 同 Windows 機喺 Drive 邊會睇到舊版本。
 
-    所以只有「成步完全冇做到嘢」才報。個別檔寫唔入會自動退去 `.latest` 兄弟檔，
-    consumers 由 `wongchoi_paths` 取最新嗰份 —— 「263 個入咗、1 個用 fallback」
-    報上去只係製造雜訊，而雜訊嘅代價就係下次真出事嗰下冇人再睇。
+    先問實物（`mirror_behind`）。睇唔到鏡像嗰陣才退去睇 log，而 log 只有「成步
+    完全冇做到嘢」才算 —— 個別檔退去 `.latest` fallback 係設計之內，「263 個
+    入咗、1 個用 fallback」報上去只係製造雜訊，而雜訊嘅代價就係下次真出事嗰下
+    冇人再睇。
     """
+    if day is not None:
+        behind = mirror_behind(day)
+        if behind is not None:
+            if not behind:
+                return None
+            sample = "、".join(behind[:3]) + ("…" if len(behind) > 3 else "")
+            return (f"Drive 鏡像落後 {len(behind)} 個檔（{sample}）"
+                    f" —— Drive 邊係舊版本，預測同發佈唔受影響")
+
     step = latest_step("mirror", log_dir=log_dir)
     if step is None:
         return "搵唔到最近 mirror 完成記錄"
@@ -238,7 +309,7 @@ def quality_issues(day: str) -> list[str]:
     issue = latest_step_issue("ingest-results")
     if issue:
         issues.append(issue)
-    issue = mirror_issue()
+    issue = mirror_issue(day)
     if issue:
         issues.append(issue)
     return issues

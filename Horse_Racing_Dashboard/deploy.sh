@@ -157,8 +157,9 @@ fi
 
 if [ "$GUARD_FAIL" -ne 0 ]; then
     echo ""
-    echo "🛑 發佈中止：呢個 checkout 產生嘅係舊版 dashboard，唔會推上 Cloudflare。"
-    echo "   成因：多數係喺過期嘅 Google Drive checkout / worktree 度 run deploy.sh。"
+    echo "🛑 發佈中止：build 唔完整，唔會推上 Cloudflare。睇返上面 ❌ 嗰行。"
+    echo "   缺 PWA 資源 → pwa/ 唔齊，跑 scripts/generate_pwa_icons.py 重新生成。"
+    echo "   缺 HTML 區塊 → 多數係喺過期嘅 Google Drive checkout / worktree 度 run deploy.sh。"
     echo "   正確做法：喺 off-Drive clone 度發佈 ——"
     echo "     cd ~/dev/Kelvin-Agents && git checkout main && git pull"
     echo "     WONGCHOI_DATA_ROOT=<Drive 資料路徑> ./Horse_Racing_Dashboard/deploy.sh"
