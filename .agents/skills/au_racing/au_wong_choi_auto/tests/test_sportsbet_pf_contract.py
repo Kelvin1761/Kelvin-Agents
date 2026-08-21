@@ -17,7 +17,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[5]
 AU_RACING = ROOT / ".agents" / "skills" / "au_racing"
 ENGINE = (ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto"
-          / "scripts" / "au_racing_engine")
+          / "scripts")
 sys.path.insert(0, str(AU_RACING))
 sys.path.insert(0, str(ENGINE))
 

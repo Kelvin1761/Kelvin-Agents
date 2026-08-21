@@ -38,7 +38,6 @@ ENGINE_DIR = (
     / "hkjc_racing"
     / "hkjc_wong_choi_auto"
     / "scripts"
-    / "hkjc_racing_engine"
 )
 sys.path.insert(0, str(SHARED_RACING))
 sys.path.insert(0, str(ENGINE_DIR))

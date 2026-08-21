@@ -25,7 +25,6 @@ AUTO_ENGINE_DIR = (
     / "au_racing"
     / "au_wong_choi_auto"
     / "scripts"
-    / "au_racing_engine"
 )
 
 sys.path.insert(0, str(SHARED_SCRIPTS))

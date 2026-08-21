@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[5]
 SHARED = ROOT / ".agents" / "skills" / "shared_racing"
 ENGINE = (
     ROOT / ".agents" / "skills" / "hkjc_racing"
-    / "hkjc_wong_choi_auto" / "scripts" / "hkjc_racing_engine"
+    / "hkjc_wong_choi_auto" / "scripts"
 )
 sys.path.insert(0, str(SHARED))
 sys.path.insert(0, str(ENGINE))
