@@ -54,6 +54,8 @@ CACHE_DIR = Path(os.environ.get("WC_SB_CACHE", "")) if os.environ.get("WC_SB_CAC
 # `sb_people_stats.refresh`）都會靜靜咁去敲一次已經明講唔得嘅門 —— 唔止攞唔到，
 # 仲會延長封鎖。開咗之後 cache miss 直接回 None，由 caller 決定點做。
 CACHE_ONLY = os.environ.get("WC_SB_CACHE_ONLY") == "1"
+# One-shot so a broken L600 benchmark import shouts once, not once per form row.
+_L600_IMPORT_WARNED = False
 
 
 # ── 抓取 ────────────────────────────────────────────────────────────────────
@@ -564,10 +566,29 @@ def _l600_delta(raw_seconds, track, distance_m):
     if raw_seconds is None or not track or not distance_m:
         return None
     try:
+        # ⚠️ 一定要插 `scripts`（package 嘅**父目錄**），唔可以插
+        # `au_racing_engine` 本身 —— 插住 package 目錄會令入面啲 module 變返
+        # top-level，`from au_racing_engine.engine_core import ...` 就會
+        # ModuleNotFoundError，而下面個 `except Exception: return None` 會靜靜
+        # 吞咗，於是每一行往績都冇 PF token，pace_figure_score（排名 12.2% 權重）
+        # 全場中性 60。2026-08-22 六個場次就係咁全空，而 WinningTime 有 54 個 ——
+        # 原始資料齊全，只係基準查唔到。
         sys.path.insert(0, str(Path(__file__).resolve().parent
-                               / "au_wong_choi_auto" / "scripts" / "au_racing_engine"))
+                               / "au_wong_choi_auto" / "scripts"))
         from au_racing_engine.engine_core import _lookup_standard_l600
-    except Exception:  # noqa: BLE001 — 抽取唔應該因為 import 死
+    except Exception as exc:  # noqa: BLE001 — 抽取唔應該因為 import 死
+        # ⚠️ 但**唔可以靜靜死**。2026-08-22：上面條 sys.path 插錯（指住 package
+        # 目錄本身），呢個 except 每次都吞咗 ModuleNotFoundError，於是十個場次
+        # 一個 PF token 都冇寫，`pace_figure_score`（排名 12.2% 權重）全場中性 60。
+        # 抽取報「成功」、WinningTime 54 個齊全、冇任何一行錯 —— 完全靜。
+        # import 失敗係 **code bug**，唔係資料條件，所以要嘈；查唔到基準（下面
+        # `return None`）才係正常資料條件，嗰個照靜。
+        global _L600_IMPORT_WARNED
+        if not _L600_IMPORT_WARNED:
+            _L600_IMPORT_WARNED = True
+            print(f"⚠️  FATAL-ish: 攞唔到 L600 標準表（{type(exc).__name__}: {exc}）"
+                  f" —— 今次抽取每一行往績都唔會有 PF token，pace_figure_score "
+                  f"會全場中性。呢個係 code bug 唔係資料問題。", file=sys.stderr)
         return None
     std = _lookup_standard_l600(track, int(distance_m))
     if not std:
