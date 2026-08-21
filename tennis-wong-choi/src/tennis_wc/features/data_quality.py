@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from tennis_wc.config import get_settings
@@ -40,6 +40,19 @@ def assert_no_llm_generated_stats(feature_snapshot: dict) -> None:
                 raise ValueError(f"Numeric feature missing provenance at {path}")
             if prov.get("source_provider") == "llm":
                 raise ValueError(f"LLM-generated stat detected at {path}")
+
+
+def _match_day(feature_snapshot: dict):
+    context = feature_snapshot.get("match_context") or {}
+    value = context.get("match_date")
+    if isinstance(value, dict):
+        value = value.get("value")
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value)[:10]).replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
 
 
 def validate_data_freshness(feature_snapshot: dict) -> dict:
@@ -104,7 +117,21 @@ def validate_data_freshness(feature_snapshot: dict) -> dict:
         if not point.get("provenance"):
             errors.append("missing odds provenance")
 
+    # Staleness is a live-pricing concern, not a property of history.
+    # Rebuilding a snapshot for a May fixture today made every odds datapoint
+    # "stale" against the wall clock, each one an error, and four errors floor
+    # the score at 0: all 3,622 snapshots rebuilt on 2026-08-09 scored zero,
+    # which gated the derived props off 90% of fixtures and cut the replay from
+    # 1,133 settled bets to 108. The data had not changed; only the clock had.
     now = datetime.now(timezone.utc)
+    match_day = _match_day(feature_snapshot)
+    # "Has this match already been played?", not "is it old?". The first
+    # version of this used a two-day threshold, which still failed every
+    # snapshot rebuilt the morning after its match -- and those are exactly the
+    # fixtures the daily card is built from. On 2026-08-08, 47 of 47 priced
+    # matches scored 0 and every derived family lost its value flag, so the
+    # gate could be open and the card still print nothing.
+    is_backfill = match_day is not None and match_day.date() < now.date()
     for path, point in _walk_datapoints(feature_snapshot):
         prov = point.get("provenance") or {}
         provider = prov.get("source_provider")
@@ -115,8 +142,18 @@ def validate_data_freshness(feature_snapshot: dict) -> dict:
             errors.append(f"missing source timestamp at {path}")
             continue
         age_hours = (now - source_time).total_seconds() / 3600
-        if ".market." in f".{path}." and age_hours * 60 > settings.data_max_staleness_minutes_odds:
-            errors.append(f"stale odds at {path}")
+        if ".market." in f".{path}.":
+            if is_backfill:
+                # For a finished match the question is not "how many minutes
+                # ago" -- it is "were these pre-match odds". That is enforced
+                # where it can actually corrupt a number, in the replay's
+                # earliest-snapshot-per-selection rule; repeating it as an
+                # error here would only stop a legitimate rebuild.
+                if source_time.date() > match_day.date():
+                    warnings.append(f"odds captured after match day at {path}")
+                    warning_penalty += 5
+            elif age_hours * 60 > settings.data_max_staleness_minutes_odds:
+                errors.append(f"stale odds at {path}")
         if "ranking" in path and age_hours > settings.data_max_staleness_hours_rankings:
             warnings.append(f"stale ranking data at {path}")
             warning_penalty += 5

@@ -11,11 +11,11 @@ Decision rules surfaced at the bottom:
   - a derived market graduates at >= 20 settled + ROI >= 0 (CLV is NOT a gate:
     stored closing odds are contaminated with in-play prices -- see
     daily_report._market_upgrade_gate);
-  - player props can enter reversible EARLY_MAIN at 50 scorecard outcomes +
-    three eligible paper bets when the model beats market Brier by 0.005 and
-    eligible-profile ROI is positive; early bets stay capped at 0.5u;
-  - full VALIDATED status still requires 120 scorecard outcomes + 50 eligible
-    paper bets under the same skill and ROI tests.
+  - player props need positive formal-profile ROI plus probability skill or a
+    credible bootstrap, and both the expanding recent window and fixed last-100
+    circuit breaker must hold;
+  - any family whose fixed short window turns negative returns to research,
+    however profitable its lifetime still looks.
 """
 from __future__ import annotations
 
@@ -70,7 +70,9 @@ def _strategy_family_lines(strategy_state: dict) -> list[str]:
             f"{state.get('settled', 0)}｜Brier "
             f"{state.get('model_brier', '—')} vs market "
             f"{state.get('market_brier', '—')}｜ROI "
-            f"{_pct(state.get('roi'), signed=True)}"
+            f"{_pct(state.get('roi'), signed=True)}｜近"
+            f"{state.get('short_term_settled') or 0}注 "
+            f"{_pct(state.get('short_term_roi'), signed=True)}"
         )
     return lines
 
@@ -194,9 +196,9 @@ def render_weekly_review(as_of_date: str) -> str:
         lines += strategy_lines
     else:
         lines.append("- 未有 player-prop family 累積到可評估樣本。")
-    lines.append("- EARLY_MAIN：50 scorecard + 3 eligible paper bets + 模型 Brier 領先至少 0.005 + ROI > 0；上限 0.5u。")
-    lines.append("- VALIDATED：120 scorecard + 50 eligible paper bets，同樣要模型領先及 ROI > 0。")
-    lines.append("- 自動降級：eligible ROI ≤ 0 或模型不再領先市場，立即回到 RESEARCH_ONLY。")
+    lines.append("- EARLY_MAIN：至少 50 scorecard + 3 eligible paper bets + 正 ROI；模型 Brier／bootstrap 證據過關，上限 0.5u。")
+    lines.append("- VALIDATED：至少 120 scorecard + 50 eligible paper bets，近期盈利亦要可信。")
+    lines.append("- 自動降級：eligible ROI、時間近期窗或固定近100注任何一項轉負，立即回到 RESEARCH_ONLY。")
 
     # Derived-market graduation
     lines += ["", "## 🎓 衍生市場畢業進度（≥20 結算 ＋ ROI≥0 先可落）", ""]

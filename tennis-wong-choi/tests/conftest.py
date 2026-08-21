@@ -20,3 +20,22 @@ def configure_test_db(tmp_path, monkeypatch) -> Path:
     # window loaded from the developer's local .env.
     monkeypatch.setenv("HISTORY_BACKFILL_DAYS", "550")
     return db_path
+
+
+def _isolate_scheduler_log() -> None:
+    """Keep the test suite out of the log the live scheduler reads.
+
+    `scripts/tennis_daily_schedule.log` had grown to 866,594 lines and 28MB
+    with pytest's own "Live network preflight passed" and "Notify skipped"
+    entries interleaved through the real run history. Setting this before any
+    test imports the scheduler puts every test line in a temp directory
+    instead, in one place rather than per test.
+    """
+    import tempfile
+
+    os.environ.setdefault(
+        "TENNIS_LOG_DIR", tempfile.mkdtemp(prefix="tennis-test-logs-")
+    )
+
+
+_isolate_scheduler_log()

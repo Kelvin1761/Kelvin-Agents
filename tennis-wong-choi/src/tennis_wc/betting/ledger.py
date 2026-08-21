@@ -213,9 +213,85 @@ def sync_clv_tracker_for_date(match_date: str) -> dict:
                     "updated_at": now,
                 },
             )
+        props = _sync_prop_clv(conn, match_date, now)
+        synced += props["synced"]
         pruned = _prune_pending_tracker_duplicates(conn, match_date)
     updated_clv = update_clv_tracker_for_date(match_date)
-    return {"synced": synced, "clv_updated": updated_clv, "duplicates_pruned": pruned}
+    return {
+        "synced": synced,
+        "props_synced": props["synced"],
+        "props_without_feed_identity": props["without_feed_identity"],
+        "clv_updated": updated_clv,
+        "duplicates_pruned": pruned,
+    }
+
+
+def _sync_prop_clv(conn, match_date: str, now: str) -> dict:
+    """Put the PROP value bets into the CLV tracker.
+
+    They were the one thing missing from it. Measured 2026-08-11, clv_tracker
+    held 420 MARKET_LEG rows and 307 MATCH_PREDICTION rows and zero props --
+    while props are the only family the gate actually stakes. That day's card
+    produced 33 value props and recorded closing-line value for none of them.
+
+    CLV is the only read available before results arrive, so during a go-live
+    period it is the instrument, not a nicety: if the recommendations do not
+    beat the close, the replayed ROI will not survive contact with the book.
+
+    Rows without the bookmaker's own identifiers are counted and skipped rather
+    than guessed at. `market_key` on prop_tracker is ours and synthesised, and
+    inventing a lookup from it is how `winner_related` came to resolve to no
+    family at all; a wrong identifier here would silently fetch some other
+    selection's closing price, which is worse than reporting none.
+    """
+    rows = conn.execute(
+        """
+        SELECT id, match_id, match_date, market_key, selection, side, line,
+               decimal_odds, model_prob_raw, model_prob, edge,
+               feed_market_key, feed_market_name, feed_selection_name, feed_line
+        FROM prop_tracker
+        WHERE match_date = ? AND is_value = 1 AND stake_units > 0
+        """,
+        (match_date,),
+    ).fetchall()
+    synced = 0
+    missing = 0
+    for row in rows:
+        if not (row["feed_market_key"] and row["feed_market_name"]
+                and row["feed_selection_name"]):
+            # All three or none. A partial identity is the dangerous case: the
+            # key alone matched a different market of the same fixture and
+            # produced a +74.66% CLV on a bet that had not moved.
+            missing += 1
+            continue
+        synced += _upsert_tracker(
+            conn,
+            {
+                "recommendation_type": "PROP_RECOMMENDATION",
+                "source_id": int(row["id"]),
+                "match_id": int(row["match_id"]),
+                "match_date": row["match_date"],
+                "selection_name": row["feed_selection_name"],
+                "selection_side": row["side"],
+                # The FEED's key and line, because _tracker_closing_odds looks
+                # the closing price up in market_odds_snapshots by exactly these.
+                "market_key": row["feed_market_key"],
+                # The FEED's market name, because the key alone is ambiguous.
+                "market_name": row["feed_market_name"],
+                "market_line": row["feed_line"],
+                "tier": "PROP",
+                "model_probability": (
+                    row["model_prob_raw"] if row["model_prob_raw"] is not None
+                    else row["model_prob"]
+                ),
+                "edge": row["edge"],
+                "confidence": None,
+                "odds_taken": row["decimal_odds"],
+                "recorded_at": now,
+                "updated_at": now,
+            },
+        )
+    return {"synced": synced, "without_feed_identity": missing}
 
 
 def _prune_pending_tracker_duplicates(conn, match_date: str) -> int:
@@ -319,6 +395,16 @@ def fetch_results_for_date(match_date: str) -> dict:
         tennis_my_life = ingest_tennismylife_results(match_date)
     except Exception as exc:
         tennis_my_life = {"error": str(exc), "results_imported": 0}
+    # ITF / UTR / Challenger: no other wired source publishes them, so without
+    # this every prop on those tiers stays PENDING and never becomes evidence.
+    try:
+        from tennis_wc.ingestion.ingest_tennisexplorer import (
+            ingest_tennisexplorer_results,
+        )
+
+        tennis_explorer = ingest_tennisexplorer_results(match_date)
+    except Exception as exc:
+        tennis_explorer = {"error": str(exc), "imported": 0}
     return {
         "provider": getattr(provider, "provider_name", "unknown"),
         "rows_seen": len(target_rows),
@@ -331,6 +417,7 @@ def fetch_results_for_date(match_date: str) -> dict:
         "error": provider_error,
         "resolver": resolver,
         "tennismylife": tennis_my_life,
+        "tennisexplorer": tennis_explorer,
     }
 
 
@@ -422,11 +509,31 @@ def pending_settlement_dates(before_date: str, lookback_days: int = 30) -> list[
                 WHERE b.status = 'PENDING'
             )
             WHERE match_date < ? AND match_date >= ?
-            ORDER BY match_date
+            ORDER BY match_date DESC
             """,
             (before_date, cutoff),
         ).fetchall()
     return [row["match_date"] for row in rows]
+
+
+# Newest first, and the DESC above is the whole point.
+#
+# `settle_pending_backlog` takes `dates[:max_dates]` with max_dates=10. Ordered
+# oldest-first it spent all ten slots on the oldest dates and reported the
+# newest as `skipped_dates` -- on 2026-08-10 that was 2026-08-07, 08-08 and
+# 08-09, the three days actually worth settling.
+#
+# It could not recover on its own either, because some pending rows can never
+# be graded: ace props need the ATP season files (26% settleability, audit
+# finding), and `player_exact_set_score` had 512 pending of 3,656 with zero
+# value bets among them. Those dates stay in the list forever, so oldest-first
+# meant the sweep was permanently parked on days it could not finish and never
+# reached the days it could.
+#
+# What the 743-pending figure actually was: 7.88% of props older than three
+# days, but only 3.71% of VALUE bets, and 1.82% once the families whose data
+# source does not exist are set aside. The number was close to fine; the
+# ordering behind it was not.
 
 
 def settle_pending_backlog(before_date: str, lookback_days: int = 30, max_dates: int = 10) -> dict:
@@ -465,7 +572,43 @@ def settle_clv_tracker_for_date(match_date: str) -> dict:
     settled = 0
     pending = 0
     unsupported = 0
+    prop_linked_settled = 0
+    prop_linked_voided = 0
     with get_connection() as conn:
+        # Prop settlement has the exact synthetic market scope, subject and
+        # retirement handling.  Copy its authoritative result instead of
+        # trying to re-derive the same bet from the coarser CLV row.
+        prop_rows = conn.execute(
+            """
+            SELECT c.id, p.result_status, p.profit_loss_units
+            FROM clv_tracker c
+            JOIN prop_tracker p
+              ON c.recommendation_type = 'PROP_RECOMMENDATION'
+             AND p.id = c.source_id
+             AND p.match_id = c.match_id
+             AND p.match_date = c.match_date
+            WHERE c.match_date = ?
+              AND c.result_status = 'PENDING'
+              AND p.result_status IN ('WON', 'LOST', 'VOID')
+            """,
+            (match_date,),
+        ).fetchall()
+        for row in prop_rows:
+            status = str(row["result_status"])
+            conn.execute(
+                """
+                UPDATE clv_tracker
+                SET result_status = ?, profit_loss_units = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (status, float(row["profit_loss_units"] or 0.0), now, row["id"]),
+            )
+            if status == "VOID":
+                prop_linked_voided += 1
+            else:
+                prop_linked_settled += 1
+                settled += 1
+
         rows = conn.execute(
             """
             SELECT c.*, r.winner_player_id, r.score_json, m.player_a_id, m.player_b_id,
@@ -512,7 +655,13 @@ def settle_clv_tracker_for_date(match_date: str) -> dict:
                 (status, profit, now, row["id"]),
             )
             settled += 1
-    return {"settled": settled, "pending_without_result": pending, "unsupported_market_results": unsupported}
+    return {
+        "settled": settled,
+        "pending_without_result": pending,
+        "unsupported_market_results": unsupported,
+        "prop_linked_settled": prop_linked_settled,
+        "prop_linked_voided": prop_linked_voided,
+    }
 
 
 def settle_combo_tracker_for_date(match_date: str) -> dict:
@@ -1798,18 +1947,55 @@ def _tracker_closing_odds(conn, row: dict) -> float | None:
             return None
         value = closing["player_a_closing_odds"] if row["selection_side"] == "player_a" else closing["player_b_closing_odds"]
         return float(value) if value is not None else None
+    # The market NAME is part of the identity, not decoration. Sportsbet reuses
+    # `winner_related` across several markets -- the same reason
+    # family_for_market cannot work from the key alone -- so on 2026-08-11 this
+    # lookup matched "Marco Cecchinato" in a DIFFERENT market of the same
+    # fixture and reported +74.66% CLV on a bet whose price had not moved. Eight
+    # snapshots shared that selection name, four of them on the same timestamp.
+    #
+    # PROP rows carry the feed's market_name in `market_name`; the older
+    # MARKET_LEG rows put our own label there, so the extra condition is applied
+    # only where it identifies something.
+    conditions = [
+        "match_id = ?", "market_key = ?",
+        "lower(trim(selection_name)) = lower(trim(?))",
+        "COALESCE(line, -999999) = COALESCE(?, -999999)",
+    ]
+    params = [row["match_id"], row["market_key"], row["selection_name"],
+              row["market_line"]]
+    if row.get("recommendation_type") == "PROP_RECOMMENDATION" and row.get("market_name"):
+        conditions.append("lower(trim(market_name)) = lower(trim(?))")
+        params.append(row["market_name"])
+        # The CLOSE is the last snapshot BEFORE the match started, and until
+        # 2026-08-11 nothing enforced that. 2,919 of 120,004 snapshots (2.4%)
+        # were fetched after the match date and 257 selections swing more than
+        # threefold inside their own history -- 1.19 -> 67.00 is the middle of a
+        # set, not drift. `weekly_review` already disables CLV as a gate for
+        # this reason, and a prop CLV built on the newest snapshot would have
+        # inherited it.
+        #
+        # No start time means no close. Reporting nothing is right where the
+        # alternative is a number that might be an in-running price: the whole
+        # point of CLV during a go-live period is to be believed.
+        start = conn.execute(
+            "SELECT start_time_utc FROM matches WHERE id = ?",
+            (row["match_id"],),
+        ).fetchone()
+        start_time = start["start_time_utc"] if start else None
+        if not start_time:
+            return None
+        conditions.append("fetched_at < ?")
+        params.append(start_time)
     market = conn.execute(
-        """
+        f"""
         SELECT odds
         FROM market_odds_snapshots
-        WHERE match_id = ?
-          AND market_key = ?
-          AND lower(trim(selection_name)) = lower(trim(?))
-          AND COALESCE(line, -999999) = COALESCE(?, -999999)
+        WHERE {" AND ".join(conditions)}
         ORDER BY fetched_at DESC, id DESC
         LIMIT 1
         """,
-        (row["match_id"], row["market_key"], row["selection_name"], row["market_line"]),
+        tuple(params),
     ).fetchone()
     return float(market["odds"]) if market and market["odds"] is not None else None
 
@@ -1926,6 +2112,9 @@ def _resolve_pending_from_provider_rows(match_date: str, rows: list[dict], provi
             continue
         winner_name = match["player_a_name"] if best_direction == "direct" else match["player_b_name"]
         loser_name = match["player_b_name"] if best_direction == "direct" else match["player_a_name"]
+        # Same scoreline parser the ordinary import uses, so a resolved match
+        # can settle games/sets props and not just the match winner.
+        scoreline_json = _result_score_json(best_row, dict(match))
         imported += _insert_resolved_result_from_names(
             dict(match),
             winner_name,
@@ -1937,6 +2126,7 @@ def _resolve_pending_from_provider_rows(match_date: str, rows: list[dict], provi
                 "provider_match_date": best_row.get("match_date"),
                 "provider_match_id": best_row.get("id"),
             },
+            json.loads(scoreline_json) if scoreline_json else None,
         )
     return imported
 
@@ -2005,13 +2195,28 @@ def _pending_result_matches(match_date: str) -> list[dict]:
             JOIN players pa ON pa.id = m.player_a_id
             JOIN players pb ON pb.id = m.player_b_id
             WHERE m.match_date = ?
+              -- A winner-only row must not lock the match out of later
+              -- resolution: the prop settlers need games/sets, so a result
+              -- without a scoreline is unfinished work, not done work.
               AND NOT EXISTS (
-                  SELECT 1 FROM match_results r WHERE r.match_id = m.id
+                  SELECT 1 FROM match_results r
+                  WHERE r.match_id = m.id
+                    AND (
+                        json_extract(r.score_json, '$.player_a_games') IS NOT NULL
+                        OR json_extract(r.score_json, '$.player_a_sets') IS NOT NULL
+                    )
               )
               AND (
                   EXISTS (SELECT 1 FROM clv_tracker c WHERE c.match_id = m.id AND c.result_status = 'PENDING')
                   OR EXISTS (SELECT 1 FROM combo_tracker co WHERE co.match_id = m.id AND co.result_status = 'PENDING')
                   OR EXISTS (SELECT 1 FROM bet_ledger b WHERE b.match_id = m.id AND b.status = 'PENDING')
+                  -- prop_tracker was missing here, so a match carrying only
+                  -- props never became eligible for result resolution at all.
+                  -- Props are priced on Sportsbet fixtures, which the ordinary
+                  -- result import barely covers (38 of 842 matches), and the
+                  -- backlog simply never cleared: 1,972 ITF/UTR props sat at 0%
+                  -- settled while the evidence gate waited for them.
+                  OR EXISTS (SELECT 1 FROM prop_tracker p WHERE p.match_id = m.id AND p.result_status = 'PENDING')
               )
             """,
             (match_date,),
@@ -2025,13 +2230,25 @@ def _insert_resolved_result_from_names(
     loser_name: str | None,
     source_provider: str,
     score_payload: dict,
+    scoreline: dict | None = None,
 ) -> int:
+    """Record a resolved result, with the scoreline when the source carries one.
+
+    A winner alone settles nothing on the prop side: every games/sets/first-set
+    settler in :mod:`tennis_wc.props.settlement` reads ``player_a_games``,
+    ``player_a_sets`` or ``sets`` out of ``score_json``.  The resolver used to
+    write provenance only, so a match it "resolved" still left its props
+    PENDING for ever.  ``scoreline`` must already be oriented to this match's
+    player_a/player_b (``_result_score_json`` does that by name).
+    """
     score, direction = match_pair_score(winner_name, loser_name, match["player_a_name"], match["player_b_name"])
     if score < MIN_RESULT_MATCH_SCORE or direction not in {"direct", "swapped"}:
         return 0
     winner_player_id = match["player_a_id"] if direction == "direct" else match["player_b_id"]
     now = utc_now()
     payload = score_payload | {"resolver_pair_score": round(score, 4)}
+    if scoreline:
+        payload = scoreline | payload
     with get_connection() as conn:
         conn.execute(
             """
@@ -2144,7 +2361,7 @@ def _score_from_espn_raw(raw: dict, match: dict) -> dict | None:
 def _score_summary(sets: list[dict], source: str) -> dict:
     player_a_sets = sum(1 for item in sets if int(item["player_a_games"]) > int(item["player_b_games"]))
     player_b_sets = sum(1 for item in sets if int(item["player_b_games"]) > int(item["player_a_games"]))
-    return {
+    payload = {
         "player_a_sets": player_a_sets,
         "player_b_sets": player_b_sets,
         "total_sets": player_a_sets + player_b_sets,
@@ -2153,6 +2370,15 @@ def _score_summary(sets: list[dict], source: str) -> dict:
         "sets": sets,
         "source": source,
     }
+    # A completed match cannot end level on sets. ESPN reports a retirement or
+    # an abandoned match with both players on one set and no marker, and those
+    # were stored as finished: 9 such results survived at this source after the
+    # TennisMyLife side was fixed. Settlement voids on the flag rather than
+    # grading a scoreline that never happened.
+    if player_a_sets == player_b_sets:
+        payload["retired"] = True
+        payload["incomplete_scoreline"] = True
+    return payload
 
 
 def _espn_competitor_for_name(competitors: list[dict], name: str | None) -> dict | None:

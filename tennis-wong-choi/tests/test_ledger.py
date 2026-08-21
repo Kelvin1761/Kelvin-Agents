@@ -487,3 +487,39 @@ def test_market_validation_blocks_promotion_when_settlement_coverage_is_low(tmp_
     assert row["coverage_rate"] == 0.3
     assert row["status"] == "LOW_SETTLEMENT_COVERAGE"
     assert row["stable_value_candidate"] is False
+
+
+def test_the_settlement_backlog_sweeps_the_newest_dates_first(tmp_path, monkeypatch):
+    """The cap must drop the oldest dates, not the freshest.
+
+    `settle_pending_backlog` takes the first 10 of `pending_settlement_dates`.
+    Ordered oldest-first it spent every slot on the oldest days and listed the
+    newest as `skipped_dates` -- on 2026-08-10 that was 08-07, 08-08 and 08-09,
+    the three worth settling. It could not recover either: ace props need the
+    ATP season files and `player_exact_set_score` had 512 pending with zero
+    value bets among them, so those dates never leave the list and the sweep
+    stayed parked on days it could not finish.
+    """
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.betting import ledger
+
+    init_db()
+    conn = ledger.get_connection()
+    for match_date in ("2026-07-20", "2026-08-07", "2026-08-08", "2026-08-09"):
+        conn.execute(
+            """INSERT INTO prop_tracker
+               (prop_key, match_id, match_date, match_label, market_key, line,
+                selection, decimal_odds, stake_units, is_value, result_status,
+                recorded_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (f"k-{match_date}", 1, match_date, "A vs B", "player_win_a_set_1",
+             0.5, "Yes", 2.0, 1.0, 1, "PENDING", "now", "now"),
+        )
+    conn.commit()
+
+    dates = ledger.pending_settlement_dates("2026-08-11", lookback_days=30)
+    assert dates[0] == "2026-08-09", dates
+    assert dates[-1] == "2026-07-20", dates

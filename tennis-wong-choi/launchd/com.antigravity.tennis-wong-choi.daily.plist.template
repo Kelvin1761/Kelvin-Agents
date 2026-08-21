@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The evening pass: settle and review yesterday, archive it, warm tomorrow's
+  fixtures. The main card still comes from the 09:00 .card pass -- Sportsbet
+  has barely opened tomorrow's book at this hour (12 priced matches against
+  47-56 same-day, measured 2026-08-16, and rescanning at 21:18 moved that to
+  13).
+
+  Since 2026-08-16 it ALSO pushes a clearly-labelled early card. `match_date`
+  is the Sydney calendar date, so matches in the small hours are over before
+  the 09:24 card exists: 35.9% of the matches on a pushed card had already
+  started. This pass already analyses and prices that cohort; it was simply
+  barred from sending. A half-open board that says so beats no card at all.
+-->
 <plist version="1.0">
 <dict>
   <key>Label</key>
@@ -9,15 +22,41 @@
   <array>
     <string>/bin/zsh</string>
     <string>__PROJECT_DIR__/scripts/run_tennis_daily_schedule.sh</string>
+    <string>--source</string>
+    <string>launchd</string>
   </array>
 
   <key>WorkingDirectory</key>
   <string>__PROJECT_DIR__</string>
 
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!--
+      The daily health line, pushed. Enabled 2026-08-11 on Kelvin's go-ahead.
+      Sent on EVERY outcome including a day with no bet: an empty card is a
+      legitimate output, and that is exactly why it hid a broken pipeline for
+      two months once and three dark days again. The BOARD MISSING alarm is
+      separate and always on; this is the heartbeat that makes silence visible.
+      Set here rather than in run_launcher.sh so that it is version controlled.
+    -->
+    <key>TENNIS_NOTIFY_HEALTH</key>
+    <string>1</string>
+    <!-- Yesterday's settled player-prop ROI, calibration and family gate. -->
+    <key>TENNIS_NOTIFY_PERFORMANCE</key>
+    <string>1</string>
+    <!--
+      The early card for tomorrow's overnight matches. Deliberately a separate
+      switch from TENNIS_NOTIFY_BETS on the .card job: either card can be
+      turned off without silencing the other.
+    -->
+    <key>TENNIS_NOTIFY_EARLY_BETS</key>
+    <string>1</string>
+  </dict>
+
   <key>StartCalendarInterval</key>
   <dict>
     <key>Hour</key>
-    <integer>20</integer>
+    <integer>18</integer>
     <key>Minute</key>
     <integer>0</integer>
   </dict>

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The pass that produces the betting card.
+
+  It runs at 09:00 Sydney and not merely because that is earlier. Measured on
+  2026-08-11 from Sportsbet's own listing responses, same call and same target
+  date at different clocks:
+
+      2026-08-07 18:07  asking for 08-08  ->  list[0], 2 bytes, HTTP 200
+      2026-08-08 09:08  asking for 08-08  ->  list[55]
+      2026-08-08 12:08  asking for 08-08  ->  list[45]
+
+  Three things follow. The book is open by 09:00 and is not at 18:00. The
+  coverage is at its highest then -- 55 of the 62 that date finished with,
+  because by 12:08 matches have begun. And `earliest_odds=True`, which the
+  replay prices from, takes each selection's FIRST snapshot, which for almost
+  every date IS this run: the backtested ROI is a 09:00 price, so a card built
+  later is taking prices nothing has ever scored.
+
+  Before this existed the only scheduled job was the 18:00 one, which asks for
+  a book that is not open. The morning pass was run by hand, and when the hand
+  stopped the pipeline went three days dark without a single alarming log line.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.antigravity.tennis-wong-choi.card</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>__LAUNCHER__</string>
+    <string>--source</string>
+    <string>launchd</string>
+    <string>--refresh-today</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__PROJECT_DIR__</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!--
+      The daily health line, pushed. Enabled 2026-08-11 on Kelvin's go-ahead.
+      Sent on EVERY outcome including a day with no bet: an empty card is a
+      legitimate output, and that is exactly why it hid a broken pipeline for
+      two months once and three dark days again. The BOARD MISSING alarm is
+      separate and always on; this is the heartbeat that makes silence visible.
+      Set here rather than in run_launcher.sh so that it is version controlled.
+    -->
+    <key>TENNIS_NOTIFY_HEALTH</key>
+    <string>1</string>
+    <!-- Formal betting card only: primary owner + WC_NOTIFY_TELEGRAM_EXTRA. -->
+    <key>TENNIS_NOTIFY_BETS</key>
+    <string>1</string>
+  </dict>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>9</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>__PROJECT_DIR__/data/logs/launchd.card.stdout.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>__PROJECT_DIR__/data/logs/launchd.card.stderr.log</string>
+
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

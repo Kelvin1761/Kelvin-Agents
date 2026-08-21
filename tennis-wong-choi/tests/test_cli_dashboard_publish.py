@@ -40,9 +40,60 @@ def test_ready_manual_run_uses_pipeline_owned_dashboard_deploy(tmp_path, monkeyp
             "source": "Tennis Wong Choi",
             "target_dir": tmp_path,
             "skip": False,
-            "allow_failure": False,
+            "allow_failure": True,
         }
     ]
+
+
+def test_ready_card_survives_a_failed_post_success_deploy(tmp_path, monkeypatch):
+    """Publishing is downstream of the card and cannot erase a valid card."""
+    from tennis_wc import cli
+
+    calls = []
+    monkeypatch.setattr(cli, "analysis_output_dir", lambda _: tmp_path)
+
+    def failed_deploy(**kwargs):
+        calls.append(kwargs)
+        return False
+
+    monkeypatch.setattr(cli, "run_post_success_cloudflare_deploy", failed_deploy)
+    payload = _ready_payload()
+
+    cli._publish_daily_dashboard(
+        Namespace(date="2026-08-13", skip_cloudflare_deploy=False), payload
+    )
+
+    assert payload["readiness"]["status"] == "ready"
+    assert payload["cloudflare_deploy"] == {
+        "attempted": True,
+        "status": "failed",
+    }
+    assert calls[0]["allow_failure"] is True
+
+
+def test_unexpected_deploy_exception_is_loud_but_non_fatal(
+    tmp_path, monkeypatch, capsys
+):
+    from tennis_wc import cli
+
+    monkeypatch.setattr(cli, "analysis_output_dir", lambda _: tmp_path)
+    monkeypatch.setattr(
+        cli,
+        "run_post_success_cloudflare_deploy",
+        lambda **_: (_ for _ in ()).throw(OSError("Drive denied")),
+    )
+    payload = _ready_payload()
+
+    cli._publish_daily_dashboard(
+        Namespace(date="2026-08-13", skip_cloudflare_deploy=False), payload
+    )
+
+    assert payload["cloudflare_deploy"] == {
+        "attempted": True,
+        "status": "failed",
+        "error": "OSError: Drive denied",
+    }
+    assert "card remains valid" in capsys.readouterr().out
 
 
 def test_incomplete_run_blocks_dashboard_without_calling_deploy(monkeypatch):

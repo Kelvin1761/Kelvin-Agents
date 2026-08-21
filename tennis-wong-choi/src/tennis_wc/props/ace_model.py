@@ -18,6 +18,13 @@ All functions take an open sqlite connection so they are unit-testable.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import math
+
+from tennis_wc.props.registry import (
+    DEFAULT_VALUE_PROFILE,
+    is_value_selection,
+    value_profile,
+)
 
 # --------------------------------------------------------------------------- #
 # Empirical calibration curve: ratio = line / predicted_mean -> P(total >= line)
@@ -74,11 +81,10 @@ _CONCEDE_WEIGHT = 0.30  # opponent's conceded-aces vs raw serve rate
 _MARKET_SHRINK = 0.25   # blend model P toward de-vigged market P (conservative)
 _MARKET_VIG_DIVISOR = 1.06  # approx Sportsbet ace-ladder hold; de-vig each rung
 _ANCHOR_TARGET_PROB = 0.70  # NBA-style: highest line still >= this hit prob
-_MIN_EDGE = 0.04        # min (model - market_fair) to flag a value prop
-_MIN_VALUE_ODDS = 1.30
-_MAX_VALUE_ODDS = 2.25
-_MIN_VALUE_PROBABILITY = 0.55
+# Value limits now live in tennis_wc.props.registry.VALUE_PROFILES so the pricer
+# and the evidence gate read one definition; see is_value_selection there.
 _GLOBAL_ACE_FALLBACK = 5.0  # per-player mean if a side is thin (rarely used)
+PLAYER_ACE_NB_SIZE = 3.0  # fitted pre-2026-08-07; untouched holdout only
 # HARD line cap: only price rungs whose line is within the calibration range of
 # the predicted mean. Beyond ~1.25x the mean the curve is EXTRAPOLATING and the
 # model reports fake "value" on longshots -- the exact model-error trap that sank
@@ -136,6 +142,9 @@ class AceProfile:
     surface_mean: float
     conceded_mean: float | None  # aces this player usually ALLOWS opponents
     serve_estimate: float        # blended overall+surface serve-ace rate
+    service_games_mean: float | None = None
+    ace_rate: float | None = None
+    conceded_ace_rate: float | None = None
 
 
 def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | None,
@@ -144,7 +153,7 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
     surf = (surface or "hard").lower()
     rows = conn.execute(
         """
-        SELECT h.match_date, h.surface, h.ace_count
+        SELECT h.match_date, h.surface, h.ace_count, h.service_games_played
         FROM player_match_history h
         WHERE h.player_id = ? AND h.ace_count IS NOT NULL AND h.match_date < ?
           AND (
@@ -165,10 +174,34 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
     overall = sum(aces) / len(aces) if aces else _GLOBAL_ACE_FALLBACK
     surface_mean = sum(surf_aces) / len(surf_aces) if surf_aces else overall
     serve_est = (1 - _SURFACE_WEIGHT) * overall + _SURFACE_WEIGHT * surface_mean
+    exposed = [r for r in rows if r["service_games_played"] is not None
+               and float(r["service_games_played"]) > 0]
+    service_games_mean = (
+        sum(float(r["service_games_played"]) for r in exposed) / len(exposed)
+        if exposed else None
+    )
+    overall_rate = (
+        sum(float(r["ace_count"]) for r in exposed)
+        / sum(float(r["service_games_played"]) for r in exposed)
+        if exposed else None
+    )
+    surf_exposed = [
+        r for r in exposed if (r["surface"] or "").lower() == surf
+    ]
+    surface_rate = (
+        sum(float(r["ace_count"]) for r in surf_exposed)
+        / sum(float(r["service_games_played"]) for r in surf_exposed)
+        if surf_exposed else overall_rate
+    )
+    ace_rate = (
+        (1 - _SURFACE_WEIGHT) * overall_rate + _SURFACE_WEIGHT * surface_rate
+        if overall_rate is not None and surface_rate is not None else None
+    )
     # aces this player conceded = opponent's aces in the player's recent matches
     conc_rows = conn.execute(
         """
-        SELECT o.ace_count AS opp_aces
+        SELECT o.ace_count AS opp_aces,
+               o.service_games_played AS opp_service_games
         FROM player_match_history p
         JOIN player_match_history o
           ON o.opponent_id = p.player_id AND o.player_id = p.opponent_id
@@ -191,10 +224,24 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
     ).fetchall()
     conc = [float(r["opp_aces"]) for r in conc_rows]
     conceded = sum(conc) / len(conc) if conc else None
+    conc_exposed = [
+        r for r in conc_rows if r["opp_service_games"] is not None
+        and float(r["opp_service_games"]) > 0
+    ]
+    conceded_rate = (
+        sum(float(r["opp_aces"]) for r in conc_exposed)
+        / sum(float(r["opp_service_games"]) for r in conc_exposed)
+        if conc_exposed else None
+    )
     return AceProfile(
         player_id=player_id, n=len(aces), overall_mean=round(overall, 2),
         surface_mean=round(surface_mean, 2), conceded_mean=round(conceded, 2) if conceded is not None else None,
         serve_estimate=round(serve_est, 3),
+        service_games_mean=(round(service_games_mean, 3)
+                            if service_games_mean is not None else None),
+        ace_rate=round(ace_rate, 6) if ace_rate is not None else None,
+        conceded_ace_rate=(round(conceded_rate, 6)
+                           if conceded_rate is not None else None),
     )
 
 
@@ -216,6 +263,43 @@ def predict_player_ace_mean(player: AceProfile, opponent: AceProfile) -> float:
     if opponent.conceded_mean is not None:
         pred = (1 - _CONCEDE_WEIGHT) * pred + _CONCEDE_WEIGHT * opponent.conceded_mean
     return round(pred, 2)
+
+
+def predict_player_ace_exposure_mean(
+    player: AceProfile,
+    opponent: AceProfile,
+    expected_service_games: float,
+) -> float:
+    """Expected aces from opportunity (service games) times ace rate.
+
+    Falls back to the legacy per-match mean when historical service-game
+    exposure is unavailable, so old and thin provider records remain usable.
+    """
+    if player.ace_rate is None or expected_service_games <= 0:
+        return predict_player_ace_mean(player, opponent)
+    rate = player.ace_rate
+    if opponent.conceded_ace_rate is not None:
+        rate = ((1 - _CONCEDE_WEIGHT) * rate
+                + _CONCEDE_WEIGHT * opponent.conceded_ace_rate)
+    return round(rate * expected_service_games, 3)
+
+
+def negative_binomial_over_probability(
+    line: float,
+    mean: float,
+    size: float = PLAYER_ACE_NB_SIZE,
+) -> float:
+    """P(X > line) for a mean/size negative-binomial count model."""
+    if mean <= 0 or size <= 0:
+        return 0.0
+    cutoff = max(0, int(math.floor(line)))
+    success = size / (size + mean)
+    probability = success ** size
+    cdf = probability
+    for count in range(cutoff):
+        probability *= ((count + size) / (count + 1)) * (1 - success)
+        cdf += probability
+    return max(0.001, min(0.999, 1 - cdf))
 
 
 # --------------------------------------------------------------------------- #
@@ -253,7 +337,8 @@ def price_two_way(match_id: int, market_key: str, scope: str, line: float,
                   curve: list[tuple[float, float]], factors: dict | None = None,
                   within_range_ratio: float = _MAX_LINE_RATIO,
                   temper: float = 0.0,
-                  model_weight: float | None = None) -> TwoWayProp | None:
+                  model_weight: float | None = None,
+                  raw_probability_over: float | None = None) -> TwoWayProp | None:
     """Price an Over/Under ace market. Exact two-way de-vig (Over+Under),
     calibrated model P(over), shrink toward market, pick the +EV value side.
     Refuses lines outside the calibration range (fake-edge protection). `temper`
@@ -267,7 +352,11 @@ def price_two_way(match_id: int, market_key: str, scope: str, line: float,
     # to overwrite this, which meant the scorecard graded a probability already
     # pulled toward 0.5, while the temper strength was itself derived from that
     # scorecard. Keeping the two apart breaks that loop.
-    model_over = interp_prob_over(line, predicted_mean, curve)
+    model_over = (
+        max(0.001, min(0.999, float(raw_probability_over)))
+        if raw_probability_over is not None
+        else interp_prob_over(line, predicted_mean, curve)
+    )
     imp_over, imp_under = 1.0 / over_odds, 1.0 / under_odds
     overround = imp_over + imp_under
     fair_over = imp_over / overround
@@ -293,18 +382,18 @@ def price_two_way(match_id: int, market_key: str, scope: str, line: float,
     edge_over = blended_over - fair_over
     edge_under = blended_under - fair_under
     side, s_odds, s_edge, s_ev, s_blend = None, None, 0.0, min(ev_over, ev_under), blended_over
-    # A risk haircut must never CREATE an opinion in the opposite direction.
-    # Tempering toward 50% can otherwise cross the market price and turn a raw
-    # model "over" lean into a fabricated "under" edge (or vice versa).
-    raw_edge_over = model_over - fair_over
-    if (raw_edge_over > 0 and edge_over >= _MIN_EDGE and ev_over > 0
-            and blended_over >= _MIN_VALUE_PROBABILITY
-            and _MIN_VALUE_ODDS <= over_odds <= _MAX_VALUE_ODDS):
-        side, s_odds, s_edge, s_ev, s_blend = "over", over_odds, edge_over, ev_over, blended_over
-    elif (raw_edge_over < 0 and edge_under >= _MIN_EDGE and ev_under > 0
-          and blended_under >= _MIN_VALUE_PROBABILITY
-          and _MIN_VALUE_ODDS <= under_odds <= _MAX_VALUE_ODDS):
-        side, s_odds, s_edge, s_ev, s_blend = "under", under_odds, edge_under, ev_under, blended_under
+    # A risk haircut must never CREATE an opinion in the opposite direction, and
+    # it must not decide the selection either: `is_value_selection` reads the
+    # odds-blind model, while the blended probability below still sets edge, EV
+    # and stake.
+    profile = value_profile(market_key)
+    if is_value_selection(model_over, fair_over, over_odds, profile):
+        side, s_odds, s_blend = "over", over_odds, blended_over
+        s_edge, s_ev = model_over - fair_over, model_over * over_odds - 1.0
+    elif is_value_selection(1.0 - model_over, fair_under, under_odds, profile):
+        side, s_odds, s_blend = "under", under_odds, blended_under
+        model_under = 1.0 - model_over
+        s_edge, s_ev = model_under - fair_under, model_under * under_odds - 1.0
     return TwoWayProp(
         match_id=match_id, market_key=market_key, scope=scope, line=line,
         over_odds=round(over_odds, 3), under_odds=round(under_odds, 3),
@@ -341,9 +430,17 @@ def _devig(implied: float) -> float:
 
 def price_ace_legs(conn, match_id: int, player_a_id: int, player_b_id: int,
                    as_of_date: str, surface: str | None,
-                   offered_lines: dict[float, float]) -> list[PricedAceLeg]:
+                   offered_lines: dict[float, float],
+                   model_weight: float | None = None) -> list[PricedAceLeg]:
     """Price each offered {line: decimal_odds} rung for a match. Returns [] if
-    either player is too thin to model (no fabricated edges on low data)."""
+    either player is too thin to model (no fabricated edges on low data).
+
+    ``model_weight`` is the family's learned reliability, as used everywhere
+    else.  This was the last production path still blending on the fixed
+    ``_MARKET_SHRINK``: the ace ladder kept 75% of the raw model while
+    ``family_reliability`` had fitted 0.33 for player_aces on its settled
+    outcomes -- and player_aces is the one family the gate lets bet.
+    """
     a = player_ace_profile(conn, player_a_id, as_of_date, surface)
     b = player_ace_profile(conn, player_b_id, as_of_date, surface)
     if a.n < _MIN_HISTORY or b.n < _MIN_HISTORY:
@@ -365,16 +462,22 @@ def price_ace_legs(conn, match_id: int, player_a_id: int, player_b_id: int,
             continue
         model_p = interp_prob_over(line, pred_mean)
         market_fair = _devig(1.0 / odds)
-        blended = (1 - _MARKET_SHRINK) * model_p + _MARKET_SHRINK * market_fair
-        edge = blended - market_fair
-        ev = blended * odds - 1.0
+        if model_weight is None:
+            blended = (1 - _MARKET_SHRINK) * model_p + _MARKET_SHRINK * market_fair
+        else:
+            from tennis_wc.props.calibration import blend_with_market
+
+            blended = blend_with_market(model_p, market_fair, model_weight)
+        is_value = is_value_selection(
+            model_p, market_fair, odds, DEFAULT_VALUE_PROFILE
+        )
+        edge = (model_p if is_value else blended) - market_fair
+        ev = (model_p if is_value else blended) * odds - 1.0
         legs.append(PricedAceLeg(
             match_id=match_id, line=line, decimal_odds=round(odds, 3),
             model_prob=round(model_p, 4), market_prob_fair=round(market_fair, 4),
             blended_prob=round(blended, 4), edge=round(edge, 4), ev=round(ev, 4),
-            is_value=(edge >= _MIN_EDGE and ev > 0
-                      and blended >= _MIN_VALUE_PROBABILITY
-                      and _MIN_VALUE_ODDS <= odds <= _MAX_VALUE_ODDS),
+            is_value=is_value,
             predicted_mean=pred_mean,
             factors={
                 "a_serve": a.serve_estimate, "b_serve": b.serve_estimate,

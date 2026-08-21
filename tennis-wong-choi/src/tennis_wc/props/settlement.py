@@ -24,9 +24,71 @@ import re
 from tennis_wc.features.common import utc_now
 
 
+# A match can carry more than one result row (an ordinary import plus a
+# resolver fallback), and the resolvers can only supply a winner when their
+# source has no scoreline.  Newest-wins would let such a winner-only row shadow
+# a complete one and silently un-settle games/sets props, so prefer any row
+# that actually has a scoreline and only then fall back to the newest.
+_BEST_SCORE_ROW_SQL = (
+    "SELECT score_json FROM match_results WHERE match_id = ? "
+    "ORDER BY (json_extract(score_json, '$.player_a_games') IS NOT NULL "
+    "OR json_extract(score_json, '$.player_a_sets') IS NOT NULL) DESC, "
+    "id DESC LIMIT 1"
+)
+
+
+BOOTSTRAP_RESAMPLES = 2000
+# Fixed seed: the gate must not open or close because a resample came out
+# differently between two runs on identical data.
+BOOTSTRAP_SEED = 20260809
+MIN_BOOTSTRAP_SAMPLE = 20
+# Never judge recency on a handful of bets; below this the tail widens.
+RECENT_WINDOW_MIN = 25
+RECENT_WINDOW_SHARE = 0.30
+# A second, fixed-width circuit-breaker.  A percentage-of-history window grows
+# forever and can dilute a current reversal with months of old profit.
+SHORT_TERM_WINDOW = 100
+
+
+def bootstrap_loss_probability(samples: list[tuple[float, float]]) -> float | None:
+    """Resampled probability that a family's true ROI is <= 0.
+
+    Below ``MIN_BOOTSTRAP_SAMPLE`` bets this returns None rather than a number:
+    a bootstrap of eight results reports the confidence of eight results, and
+    dressing that up as a probability is how a lucky streak graduates.
+    """
+    usable = [(pnl, stake) for pnl, stake in samples if stake]
+    if len(usable) < MIN_BOOTSTRAP_SAMPLE:
+        return None
+    import random
+
+    rng = random.Random(BOOTSTRAP_SEED)
+    size = len(usable)
+    losing = 0
+    for _ in range(BOOTSTRAP_RESAMPLES):
+        pnl = staked = 0.0
+        for _ in range(size):
+            sample_pnl, sample_stake = usable[rng.randrange(size)]
+            pnl += sample_pnl
+            staked += sample_stake
+        if not staked or pnl / staked <= 0:
+            losing += 1
+    return round(losing / BOOTSTRAP_RESAMPLES, 4)
+
+
+def running_drawdown(samples: list[tuple[float, float]]) -> float:
+    """Worst peak-to-trough dip of the settled equity curve, in units."""
+    equity = peak = worst = 0.0
+    for pnl, _stake in samples:
+        equity += pnl
+        peak = max(peak, equity)
+        worst = min(worst, equity - peak)
+    return round(worst, 3)
+
+
 def actual_total_aces(conn, match_id: int) -> float | None:
     row = conn.execute(
-        "SELECT score_json FROM match_results WHERE match_id = ? ORDER BY id DESC LIMIT 1",
+        _BEST_SCORE_ROW_SQL,
         (match_id,),
     ).fetchone()
     if row and row["score_json"]:
@@ -54,7 +116,7 @@ def actual_player_aces(conn, match_id: int, player_id: int) -> float | None:
     ).fetchone()
     if meta:
         row = conn.execute(
-            "SELECT score_json FROM match_results WHERE match_id = ? ORDER BY id DESC LIMIT 1",
+            _BEST_SCORE_ROW_SQL,
             (match_id,),
         ).fetchone()
         if row and row["score_json"]:
@@ -131,7 +193,7 @@ def actual_player_first_set_win(conn, match_id: int, player_id: int) -> float | 
         "SELECT player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)
     ).fetchone()
     row = conn.execute(
-        "SELECT score_json FROM match_results WHERE match_id = ? ORDER BY id DESC LIMIT 1",
+        _BEST_SCORE_ROW_SQL,
         (match_id,),
     ).fetchone()
     if not meta or not row or not row["score_json"]:
@@ -155,6 +217,62 @@ def actual_player_first_set_win(conn, match_id: int, player_id: int) -> float | 
     return None
 
 
+def actual_player_first_set_margin(
+    conn, match_id: int, player_id: int
+) -> float | None:
+    """Named player's game margin in the completed first set."""
+    meta = conn.execute(
+        "SELECT player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)
+    ).fetchone()
+    row = conn.execute(_BEST_SCORE_ROW_SQL, (match_id,)).fetchone()
+    if not meta or not row or not row["score_json"]:
+        return None
+    try:
+        sets = json.loads(row["score_json"]).get("sets")
+        if not isinstance(sets, list) or not sets:
+            return None
+        a_games = sets[0].get("player_a_games")
+        b_games = sets[0].get("player_b_games")
+        if a_games is None or b_games is None:
+            return None
+        margin_a = float(a_games) - float(b_games)
+        if player_id == meta["player_a_id"]:
+            return margin_a
+        if player_id == meta["player_b_id"]:
+            return -margin_a
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+    return None
+
+
+def actual_player_first_set_and_match(
+    conn,
+    match_id: int,
+    player_id: int,
+    first_set_won: bool,
+) -> float | None:
+    """Binary first-set result crossed with the completed match winner."""
+    first = actual_player_first_set_win(conn, match_id, player_id)
+    meta = conn.execute(
+        "SELECT player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)
+    ).fetchone()
+    if first is None or not meta or player_id not in {
+        meta["player_a_id"], meta["player_b_id"]
+    }:
+        return None
+    opponent_id = (
+        meta["player_b_id"] if player_id == meta["player_a_id"]
+        else meta["player_a_id"]
+    )
+    player_sets = actual_player_sets(conn, match_id, player_id)
+    opponent_sets = actual_player_sets(conn, match_id, opponent_id)
+    if player_sets is None or opponent_sets is None or player_sets == opponent_sets:
+        return None
+    match_won = player_sets > opponent_sets
+    first_matches = bool(first) is bool(first_set_won)
+    return 1.0 if match_won and first_matches else 0.0
+
+
 def _actual_player_score_value(
     conn, match_id: int, player_id: int, field: str
 ) -> float | None:
@@ -162,7 +280,7 @@ def _actual_player_score_value(
         "SELECT player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)
     ).fetchone()
     row = conn.execute(
-        "SELECT score_json FROM match_results WHERE match_id = ? ORDER BY id DESC LIMIT 1",
+        _BEST_SCORE_ROW_SQL,
         (match_id,),
     ).fetchone()
     if not meta or not row or not row["score_json"]:
@@ -183,7 +301,7 @@ def _actual_player_score_value(
 def actual_total_games(conn, match_id: int) -> float | None:
     """Actual total match games from match_results.score_json (a+b games)."""
     row = conn.execute(
-        "SELECT score_json FROM match_results WHERE match_id = ? ORDER BY id DESC LIMIT 1",
+        _BEST_SCORE_ROW_SQL,
         (match_id,),
     ).fetchone()
     if row and row["score_json"]:
@@ -245,7 +363,11 @@ def record_prop(conn, *, match_id: int, match_date: str, match_label: str,
                 edge: float, ev: float, predicted_mean: float,
                 stake_units: float, is_value: bool,
                 model_prob_raw: float | None = None,
-                temper_strength: float | None = None) -> None:
+                temper_strength: float | None = None,
+                feed_market_key: str | None = None,
+                feed_market_name: str | None = None,
+                feed_selection_name: str | None = None,
+                feed_line: float | None = None) -> None:
     """Upsert a surfaced prop as PENDING (idempotent per match+market+selection).
     All probabilities are OF THIS SIDE.
 
@@ -256,6 +378,12 @@ def record_prop(conn, *, match_id: int, match_date: str, match_label: str,
                        the model itself has any skill.
     temper_strength -- haircut applied to get from raw to model_prob, recorded so
                        any row can be audited after the fact.
+    feed_*          -- the BOOKMAKER's own key, selection name and line for the
+                       market this was priced from. `market_key` above is ours
+                       and synthesised, and no lookup in market_odds_snapshots
+                       can find it, so without these there is no way to read a
+                       prop's CLOSING price -- which is why closing-line value
+                       existed for the match-winner path and for zero props.
     """
     prop_key = f"{match_id}|{market_key}|{selection}"
     now = utc_now()
@@ -267,8 +395,9 @@ def record_prop(conn, *, match_id: int, match_date: str, match_label: str,
             model_prob_raw, temper_strength,
             market_prob_fair, blended_prob, edge, ev, predicted_mean, stake_units,
             is_value, result_status, profit_loss_units, actual_value,
-            recorded_at, updated_at, settled_at
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING', NULL, NULL, ?, ?, NULL)
+            recorded_at, updated_at, settled_at,
+            feed_market_key, feed_market_name, feed_selection_name, feed_line
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING', NULL, NULL, ?, ?, NULL, ?,?,?,?)
         ON CONFLICT(prop_key) DO UPDATE SET
             decimal_odds=excluded.decimal_odds, model_prob=excluded.model_prob,
             model_prob_raw=excluded.model_prob_raw,
@@ -276,14 +405,19 @@ def record_prop(conn, *, match_id: int, match_date: str, match_label: str,
             market_prob_fair=excluded.market_prob_fair, blended_prob=excluded.blended_prob,
             edge=excluded.edge, ev=excluded.ev, predicted_mean=excluded.predicted_mean,
             stake_units=excluded.stake_units, is_value=excluded.is_value,
-            updated_at=excluded.updated_at
+            updated_at=excluded.updated_at,
+            feed_market_key=COALESCE(excluded.feed_market_key, prop_tracker.feed_market_key),
+            feed_market_name=COALESCE(excluded.feed_market_name, prop_tracker.feed_market_name),
+            feed_selection_name=COALESCE(excluded.feed_selection_name, prop_tracker.feed_selection_name),
+            feed_line=COALESCE(excluded.feed_line, prop_tracker.feed_line)
         WHERE prop_tracker.result_status = 'PENDING'
         """,
         (prop_key, match_id, match_date, match_label, market_key, line, selection,
          side, prop_scope, subject_player_id, decimal_odds, model_prob,
          model_prob_raw, temper_strength,
          market_prob_fair, blended_prob, edge, ev, predicted_mean, stake_units,
-         1 if is_value else 0, now, now),
+         1 if is_value else 0, now, now,
+         feed_market_key, feed_market_name, feed_selection_name, feed_line),
     )
 
 
@@ -297,6 +431,15 @@ def _actual_for(conn, p) -> float | None:
         return actual_player_sets(conn, p["match_id"], p["subject_player_id"])
     if scope == "player_first_set":
         return actual_player_first_set_win(
+            conn, p["match_id"], p["subject_player_id"]
+        )
+    if scope == "player_first_set_match":
+        first_set_won = not str(p["market_key"] or "").endswith("_lose_first")
+        return actual_player_first_set_and_match(
+            conn, p["match_id"], p["subject_player_id"], first_set_won
+        )
+    if scope == "player_first_set_game_margin":
+        return actual_player_first_set_margin(
             conn, p["match_id"], p["subject_player_id"]
         )
     if scope == "player_double_faults":
@@ -340,6 +483,14 @@ def _match_void_reason(conn, match_id: int) -> str | None:
             return "retired"
         if score.get("walkover"):
             return "walkover"
+        # A completed match cannot end level on sets. Unparseable score strings
+        # became 0-0 and mid-match retirements became 1-1, and both were stored
+        # as finished results: 9 existed and 22 props had been graded against
+        # them. Checked here rather than in each parser because every provider
+        # can produce the shape and settlement is the one place they all meet.
+        a_sets, b_sets = score.get("player_a_sets"), score.get("player_b_sets")
+        if a_sets is not None and b_sets is not None and int(a_sets) == int(b_sets):
+            return "incomplete_scoreline"
     return None
 
 
@@ -352,6 +503,20 @@ def settle_props(conn) -> dict:
     pending = conn.execute("SELECT * FROM prop_tracker WHERE result_status = 'PENDING'").fetchall()
     graded = 0
     voided = 0
+    # Self-heal rows graded before a void reason was recognised. 22 props had
+    # been settled against a scoreline that cannot have happened; leaving them
+    # WON/LOST keeps fiction in the evidence base that the gate then reads.
+    regraded = 0
+    for row in conn.execute(
+        "SELECT id, match_id FROM prop_tracker WHERE result_status IN ('WON', 'LOST')"
+    ).fetchall():
+        if _match_void_reason(conn, int(row["match_id"])):
+            conn.execute(
+                "UPDATE prop_tracker SET result_status='VOID', actual_value=NULL, "
+                "profit_loss_units=0, settled_at=?, updated_at=? WHERE id=?",
+                (utc_now(), utc_now(), row["id"]),
+            )
+            regraded += 1
     for p in pending:
         void_reason = _match_void_reason(conn, int(p["match_id"]))
         if void_reason:
@@ -378,6 +543,7 @@ def settle_props(conn) -> dict:
     return {
         "graded": graded,
         "voided": voided,
+        "regraded_to_void": regraded,
         "still_pending": len(pending) - graded - voided,
     }
 
@@ -386,12 +552,18 @@ def settle_props(conn) -> dict:
 # Review 1: segmented ROI
 # --------------------------------------------------------------------------- #
 def prop_roi_report(conn, value_only: bool = True,
-                    as_of_date: str | None = None) -> dict:
+                    as_of_date: str | None = None,
+                    since_date: str | None = None) -> dict:
     """Realised ROI over settled BET props, split into decision-useful segments.
 
     Besides market family and side, report odds, confidence, tour, surface and
     source-quality bands.  The fixed bands make it harder to cherry-pick a
     profitable-looking slice after seeing the results.
+
+    ``since_date`` restricts to matches on or after a date.  With ``as_of_date``
+    it carves out a window, which is what an out-of-sample check needs: a
+    coefficient fitted on the earlier period has to be scored on the later one
+    alone, or it is being graded on its own training data.
     """
     where = "result_status IN ('WON','LOST') AND stake_units > 0"
     if value_only:
@@ -400,13 +572,14 @@ def prop_roi_report(conn, value_only: bool = True,
     if as_of_date:
         where += " AND p.match_date < ?"
         params.append(as_of_date)
+    if since_date:
+        where += " AND p.match_date >= ?"
+        params.append(since_date)
+    from tennis_wc.features.snapshot_quality import LATEST_QUALITY_CTE
+
     rows = conn.execute(
         f"""
-        WITH quality AS (
-            SELECT match_id, MIN(data_quality_score) AS data_quality_score
-            FROM feature_snapshots
-            GROUP BY match_id
-        )
+        WITH quality AS ({LATEST_QUALITY_CTE})
         SELECT p.*,
                m.tour,
                COALESCE(
@@ -428,13 +601,66 @@ def prop_roi_report(conn, value_only: bool = True,
     def agg(rs):
         n = len(rs)
         if not n:
-            return {"settled": 0, "wins": 0, "hit_rate": None, "staked": 0.0, "pnl": 0.0, "roi": None}
+            return {"settled": 0, "wins": 0, "hit_rate": None, "staked": 0.0,
+                    "pnl": 0.0, "roi": None, "loss_probability": None,
+                    "max_drawdown_units": 0.0, "recent_settled": 0,
+                    "recent_roi": None, "short_term_settled": 0,
+                    "short_term_roi": None,
+                    "short_term_loss_probability": None}
         wins = sum(1 for r in rs if r["result_status"] == "WON")
         staked = sum((r["stake_units"] or 0.0) for r in rs)
         pnl = sum((r["profit_loss_units"] or 0.0) for r in rs)
+        samples = [((r["profit_loss_units"] or 0.0), (r["stake_units"] or 0.0)) for r in rs]
+        # An edge that decayed still looks profitable in total. The holdout
+        # split showed player_win_a_set at +14.3% over its first 272 bets and
+        # -3.2% over the next 86, and a whole-record bootstrap cannot tell the
+        # two apart -- so the gate would have staked a streak that had already
+        # stopped.
+        #
+        # The window is the last RECENT_WINDOW_SHARE of the family's DATE span,
+        # not its last N bets. Decay happens in time, and a count-based tail
+        # silently reaches further back whenever recent days are quiet: on
+        # player_win_a_set the last-third-of-bets window read +2.85% while the
+        # same family over the last 30% of dates read -3.2%. Matching the gate
+        # to the way the change is validated is the point; picking whichever
+        # window reads better is how a streak gets shipped.
+        ordered = sorted(rs, key=lambda row: (row["match_date"] or "", row["id"]))
+        dates = sorted({row["match_date"] for row in ordered if row["match_date"]})
+        if len(dates) >= 3:
+            cutoff = dates[int(len(dates) * (1 - RECENT_WINDOW_SHARE))]
+            tail = [row for row in ordered if (row["match_date"] or "") >= cutoff]
+            if len(tail) < RECENT_WINDOW_MIN:
+                tail = ordered[max(0, len(ordered) - RECENT_WINDOW_MIN):]
+        else:
+            tail = ordered
+        tail_staked = sum((row["stake_units"] or 0.0) for row in tail)
+        tail_pnl = sum((row["profit_loss_units"] or 0.0) for row in tail)
+        short = ordered[-SHORT_TERM_WINDOW:]
+        short_staked = sum((row["stake_units"] or 0.0) for row in short)
+        short_pnl = sum((row["profit_loss_units"] or 0.0) for row in short)
         return {"settled": n, "wins": wins, "hit_rate": round(wins / n, 4),
                 "staked": round(staked, 2), "pnl": round(pnl, 3),
-                "roi": round(pnl / staked, 4) if staked else None}
+                "roi": round(pnl / staked, 4) if staked else None,
+                # A realised ROI is a point estimate off a small sample; the
+                # gate needs to know how much of that is luck, so carry the
+                # resampled probability that the true ROI is <= 0 and the worst
+                # equity dip alongside it.
+                "loss_probability": bootstrap_loss_probability(samples),
+                "max_drawdown_units": running_drawdown(samples),
+                "recent_settled": len(tail),
+                "recent_roi": (round(tail_pnl / tail_staked, 4)
+                               if tail_staked else None),
+                "recent_loss_probability": bootstrap_loss_probability(
+                    [((row["profit_loss_units"] or 0.0),
+                      (row["stake_units"] or 0.0)) for row in tail]
+                ),
+                "short_term_settled": len(short),
+                "short_term_roi": (round(short_pnl / short_staked, 4)
+                                   if short_staked else None),
+                "short_term_loss_probability": bootstrap_loss_probability(
+                    [((row["profit_loss_units"] or 0.0),
+                      (row["stake_units"] or 0.0)) for row in short]
+                )}
 
     def family(mk: str) -> str:
         from tennis_wc.props.registry import family_for_market
@@ -444,11 +670,11 @@ def prop_roi_report(conn, value_only: bool = True,
         odds = float(value or 0)
         if odds < 1.60:
             return "<1.60"
-        if odds < 1.90:
-            return "1.60-1.89"
-        if odds < 2.20:
-            return "1.90-2.19"
-        return "2.20+"
+        if odds < 2.00:
+            return "1.60-1.99"
+        if odds < 2.25:
+            return "2.00-2.24"
+        return "2.25+"
 
     def probability_band(value) -> str:
         probability = float(value or 0)
@@ -526,13 +752,19 @@ def prop_roi_report(conn, value_only: bool = True,
     for row in rows:
         by_quality.setdefault(quality_band(live_quality(row)), []).append(row)
 
+    # Same predicate the pricer uses, so the evidence window and the selection
+    # window cannot drift apart again.
     formal_profile_rows = [
         row for row in rows
-        if strategy.MIN_LEG_PROBABILITY <= float(row["blended_prob"] or 0) <= 1.0
-        and strategy.MIN_LEG_ODDS <= float(row["decimal_odds"] or 0) <= strategy.MAX_LEG_ODDS
-        and live_quality(row) >= strategy.MIN_DATA_QUALITY
-        and float(row["edge"] or 0) > 0
-        and float(row["ev"] or 0) > 0
+        if strategy.meets_formal_profile(
+            row["market_key"],
+            row["model_prob_raw"] if "model_prob_raw" in row.keys() else None,
+            row["blended_prob"],
+            row["decimal_odds"],
+            live_quality(row),
+            row["edge"],
+            row["ev"],
+        )
     ]
     formal_by_family: dict[str, list] = {}
     for row in formal_profile_rows:
@@ -574,7 +806,8 @@ def prop_roi_report(conn, value_only: bool = True,
 # Review 2: model-vs-market scorecard (needs only outcomes, not bets)
 # --------------------------------------------------------------------------- #
 def model_vs_market_scorecard(conn, use_raw: bool = True,
-                              as_of_date: str | None = None) -> dict:
+                              as_of_date: str | None = None,
+                              since_date: str | None = None) -> dict:
     """On every settled prop, compare the MODEL's probability of the recorded
     side vs the MARKET's de-vigged probability, via Brier + log-loss. Lower is
     better. If the model beats the market, our edge is real; if the market wins,
@@ -590,8 +823,16 @@ def model_vs_market_scorecard(conn, use_raw: bool = True,
     silently mixed in. Pass use_raw=False for the legacy tempered view.
     """
     column = "model_prob_raw" if use_raw else "model_prob"
-    date_clause = " AND p.match_date < ?" if as_of_date else ""
-    params = (as_of_date,) if as_of_date else ()
+    date_parts: list[str] = []
+    params: list[str] = []
+    if as_of_date:
+        date_parts.append(" AND p.match_date < ?")
+        params.append(as_of_date)
+    if since_date:
+        date_parts.append(" AND p.match_date >= ?")
+        params.append(since_date)
+    date_clause = "".join(date_parts)
+    date_params = tuple(params)
     rows = conn.execute(
         f"SELECT p.match_id, p.{column} AS prob, p.market_prob_fair, p.result_status, "
         "p.market_key FROM prop_tracker p JOIN matches m ON m.id=p.match_id "
@@ -599,7 +840,7 @@ def model_vs_market_scorecard(conn, use_raw: bool = True,
         "AND p.market_prob_fair IS NOT NULL AND p.side='over' "
         "AND (p.prop_scope!='player_first_set' "
         "OR p.subject_player_id=m.player_a_id)" + date_clause,
-        params,
+        date_params,
     ).fetchall()
     legacy_only = conn.execute(
         "SELECT COUNT(*) FROM prop_tracker p JOIN matches m ON m.id=p.match_id "
@@ -607,7 +848,7 @@ def model_vs_market_scorecard(conn, use_raw: bool = True,
         "AND p.model_prob_raw IS NULL AND p.model_prob IS NOT NULL "
         "AND p.side='over' AND (p.prop_scope!='player_first_set' "
         "OR p.subject_player_id=m.player_a_id)" + date_clause,
-        params,
+        date_params,
     ).fetchone()[0]
     n = len(rows)
     if not n:
@@ -663,7 +904,7 @@ def model_vs_market_scorecard(conn, use_raw: bool = True,
         family_model, family_market, _ = metrics(sample)
         settled = (
             len({int(row["match_id"]) for row in sample})
-            if family == "player_exact_set_score"
+            if family in {"player_exact_set_score", "player_first_set_match"}
             else len(sample)
         )
         by_family[family] = {

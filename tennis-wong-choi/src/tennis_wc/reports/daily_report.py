@@ -19,6 +19,7 @@ from tennis_wc.features.market import implied_probability
 from tennis_wc.modelling import market_models
 from tennis_wc.modelling import set_distribution
 from tennis_wc.ingestion.sportsbet_fixture_mapping import sportsbet_competition_meta
+from tennis_wc.props.strategy import LIVE_UNIT_VALUE_AUD, live_stake_aud
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
@@ -90,11 +91,24 @@ def latest_predictions_for_date(match_date: str) -> list[dict]:
     return [dict(row) for row in rows]
 
 
+def local_analysis_dir(match_date: str) -> Path:
+    """The canonical destination. Always local disk, never the Drive mount.
+
+    Everything that reads a report back -- the Telegram betting card, the
+    dashboard's multi-sport feed builder -- reads this copy. Drive is a mirror
+    for Kelvin, never the source, because a CloudStorage file is not readable
+    the instant it is written: on 2026-08-16 the write succeeded, the read-back
+    2 seconds later raised EDEADLK, and the feed builder's `is_file()` probe on
+    the same path came back False. The card was never sent and the dashboard
+    published the previous day's tennis feed, from one Drive round-trip.
+    """
+    return PROJECT_ROOT / f"{match_date} Tennis Analysis"
+
+
 def analysis_output_dir(match_date: str) -> Path:
-    # The engine now lives on local disk (repo migrated off Google Drive) but
-    # Kelvin reads reports from the Drive folders. TENNIS_ANALYSIS_OUTPUT_ROOT
-    # points there; fall back to the repo root when it is unset or the Drive
-    # mount is not available (report still generated, just locally).
+    # Where Kelvin READS reports: the Drive folders, when the mount is usable.
+    # This is a mirror target only -- see local_analysis_dir for the canonical
+    # copy that the pipeline itself reads back.
     override = os.environ.get("TENNIS_ANALYSIS_OUTPUT_ROOT")
     if override:
         root = Path(override)
@@ -106,6 +120,29 @@ def analysis_output_dir(match_date: str) -> Path:
     return PROJECT_ROOT / f"{match_date} Tennis Analysis"
 
 
+def mirror_reports_to_drive(match_date: str, source_dir: Path) -> Path | None:
+    """Best-effort copy of the canonical artifacts to the folder Kelvin reads.
+
+    Deliberately swallows OSError: Drive being unmounted, TCC-denied or mid-sync
+    must never fail a run whose real output is already safely on local disk.
+    """
+    mirror = analysis_output_dir(match_date)
+    try:
+        if mirror.resolve() == source_dir.resolve():
+            return None
+    except OSError:
+        return None
+    try:
+        mirror.mkdir(parents=True, exist_ok=True)
+        for name in ("Tennis_Daily_Report.txt", "Tennis_Market_Odds.txt"):
+            source = source_dir / name
+            if source.is_file():
+                (mirror / name).write_bytes(source.read_bytes())
+    except OSError:
+        return None
+    return mirror
+
+
 def generate_daily_report(match_date: str, output_dir: str | Path | None = None) -> Path:
     """Write the ONE betting report (Tennis_Daily_Report.txt) plus the raw-data
     appendix (Tennis_Market_Odds.txt). The old separate banker/combo report is
@@ -114,7 +151,8 @@ def generate_daily_report(match_date: str, output_dir: str | Path | None = None)
     rows = latest_predictions_for_date(match_date)
     source_status = source_status_for_date(match_date)
     unanalysed = unanalysed_sportsbet_rows(match_date)
-    output_dir = Path(output_dir) if output_dir is not None else analysis_output_dir(match_date)
+    explicit_dir = output_dir is not None
+    output_dir = Path(output_dir) if explicit_dir else local_analysis_dir(match_date)
     output_path = output_dir / "Tennis_Daily_Report.txt"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     # Refresh reference-market predictions before rendering so diagnostics and
@@ -126,6 +164,10 @@ def generate_daily_report(match_date: str, output_dir: str | Path | None = None)
         encoding="utf-8",
     )
     export_market_odds_report(match_date, output_dir)
+    # Local disk holds the artifacts the pipeline reads; Drive gets a copy for
+    # Kelvin. A caller that named its own directory (tests) is left alone.
+    if not explicit_dir:
+        mirror_reports_to_drive(match_date, output_dir)
     # Grade any now-settleable ace props (live-validation of the prop engine).
     try:
         from tennis_wc.props.settlement import settle_props
@@ -1390,68 +1432,122 @@ def _reliability_label(score: int | float | None) -> str:
     return "低"
 
 
-def _recommended_picks(prop: dict | None) -> dict:
-    """Assemble evidence-gated prop picks without legacy category fallbacks."""
+def _recommended_picks(prop: dict | None):
+    """Delegate; the decision lives in :mod:`tennis_wc.props.selection`."""
+    from tennis_wc.props import selection as prop_selection
+
+    return prop_selection.recommended_picks(prop)
+
+
+def _start_line(leg: dict) -> str:
+    """The betting window, in Kelvin's own clock.
+
+    Printed on every pick because the card's whole job is to be actionable, and
+    "is this still placeable?" was previously unanswerable from the card alone.
+    Sydney rather than UTC, via zoneinfo rather than a fixed +10, so the line
+    does not quietly go an hour wrong every October.
+    """
+    raw = leg.get("start_time_utc")
+    if not raw:
+        return "- 開賽：時間未公佈（落注前自己喺 Sportsbet 核對）"
+    from datetime import datetime, timezone
+    from zoneinfo import ZoneInfo
+
+    try:
+        start = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return "- 開賽：時間未公佈（落注前自己喺 Sportsbet 核對）"
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=timezone.utc)
+    local = start.astimezone(ZoneInfo("Australia/Sydney"))
+    minutes = leg.get("minutes_to_start")
+    if minutes is None:
+        minutes = (start - datetime.now(timezone.utc)).total_seconds() / 60.0
+    stamp = local.strftime("%m-%d %H:%M")
+    if minutes < 0:
+        return f"- 開賽：{stamp} 悉尼時間（⚠️ 已開賽）"
+    hours, mins = divmod(int(minutes), 60)
+    window = f"{hours} 小時 {mins} 分" if hours else f"{mins} 分"
+    urgent = "⚠️ " if minutes < 60 else ""
+    return f"- 開賽：{stamp} 悉尼時間（{urgent}仲有 {window}）"
+
+
+def _family_queue_lines(strategy_state: dict, roi: dict) -> list[str]:
+    """Which families are closest to being allowed to bet, and what blocks them.
+
+    The gate publishes a yes or no; this shows the queue behind it. Without it
+    "no bet" looks the same whether one family is a hair short or every family
+    is losing, and those call for opposite responses.
+    """
     from tennis_wc.props import strategy
 
-    prop = prop or {}
-    picks: dict = {"validated_singles": [], "validated_2_leg": None}
-    gate = prop.get("strategy") or {}
-    value_legs = [
-        leg for leg in (prop.get("value_legs") or [])
-        if strategy.leg_is_formal_candidate(leg, gate)
-    ]
-    # Do not disguise correlated same-match exposure as two independent
-    # singles. Keep the strongest qualified prop per fixture, max two fixtures.
-    selected_singles: list[dict] = []
-    selected_matches: set[int] = set()
-    for leg in sorted(value_legs, key=lambda v: -v["ev"]):
-        match_id = int(leg["match_id"])
-        if match_id in selected_matches:
+    states = (strategy_state or {}).get("family_states") or {}
+    formal = (roi or {}).get("by_family_formal_profile") or {}
+    rows = []
+    for family, state in states.items():
+        stats = formal.get(family) or {}
+        if not stats.get("settled"):
             continue
-        leg = dict(leg)
-        leg["confidence_score"] = leg.get(
-            "confidence_score"
-        ) or strategy.confidence_score(leg, gate)
-        family_state = (gate.get("family_states") or {}).get(
-            strategy.family_for_market(leg.get("market_key") or "")
-        ) or {}
-        early = family_state.get("tier") == "EARLY_MAIN"
-        leg["strategy_tier"] = "EARLY_MAIN_SINGLE" if early else "VALIDATED_SINGLE"
-        leg["stake_units"] = strategy.formal_stake_units(
-            leg["prob"], leg["odds"], leg["confidence_score"], early=early
-        )
-        selected_singles.append(leg)
-        selected_matches.add(match_id)
-        if len(selected_singles) == 2:
-            break
-    picks["validated_singles"] = selected_singles
-    allowed_ids = {leg["id"] for leg in value_legs}
-    combos = [
-        combo for combo in (prop.get("combos") or [])
-        if len(combo["legs"]) == strategy.MAX_FORMAL_COMBO_LEGS
-        and float(combo["ev"]) >= strategy.MIN_COMBO_EV
-        and all(leg["id"] in allowed_ids for leg in combo["legs"])
-    ]
-    if combos:
-        combo = dict(combos[0])
-        combo_early = any(
-            ((gate.get("family_states") or {}).get(
-                strategy.family_for_market(leg.get("market_key") or "")
-            ) or {}).get("tier") == "EARLY_MAIN"
-            for leg in combo["legs"]
-        )
-        combo["strategy_tier"] = (
-            "EARLY_MAIN_2_LEG" if combo_early else "VALIDATED_2_LEG"
-        )
-        combo["stake_units"] = strategy.formal_stake_units(
-            combo["prob"], combo["odds"],
-            min(float(leg.get("confidence_score") or 0) for leg in combo["legs"]),
-            combo=True,
-            early=combo_early,
-        )
-        picks["validated_2_leg"] = combo
-    return picks
+        blockers = []
+        if state["scorecard_settled"] < strategy.MIN_RAW_SCORECARD:
+            blockers.append(
+                f"記分卡 {state['scorecard_settled']}/{strategy.MIN_RAW_SCORECARD}")
+        if state["settled"] < strategy.MIN_FAMILY_SETTLED:
+            blockers.append(f"注數 {state['settled']}/{strategy.MIN_FAMILY_SETTLED}")
+        if (state.get("roi") or 0) <= 0:
+            blockers.append("ROI 為負")
+        loss = state.get("loss_probability")
+        if (loss is not None and loss > strategy.MAX_LOSS_PROBABILITY
+                and not state.get("model_beats_market")):
+            blockers.append(
+                f"P(蝕) {loss:.0%} > {strategy.MAX_LOSS_PROBABILITY:.0%}")
+        # Show the recent window even when nothing blocks: a family can be
+        # enabled on a whole-record edge that has since gone flat, and the
+        # half-unit cap is the only visible sign of it otherwise.
+        recent_roi = stats.get("recent_roi")
+        if recent_roi is not None:
+            note = f"近期 {stats.get('recent_settled')} 注 {recent_roi:+.1%}"
+            if not state.get("recent_credible") and not blockers:
+                note += "（持平，故只做 0.5u 探針）"
+            blockers = [*blockers, note] if blockers else [f"✅ 已可落注 — {note}"]
+        rows.append((loss if loss is not None else 1.0, family, stats, blockers))
+    if not rows:
+        return []
+    out = ["排隊中嘅 family（按距離落注資格排序）："]
+    for _, family, stats, blockers in sorted(rows)[:6]:
+        roi_text = f"{stats['roi']:+.1%}" if stats.get("roi") is not None else "—"
+        state = "✅ 已可落注" if not blockers else "；".join(blockers)
+        out.append(f"  · {family}：{stats['settled']} 注 ROI {roi_text} — {state}")
+    return out + [""]
+
+
+def _integrity_warnings() -> list[str]:
+    """Surface critical warehouse failures above the recommendation.
+
+    The system's characteristic failure is silence -- nothing errors, the
+    report prints, and the number is wrong. A card built on data that failed a
+    critical check should say so where it cannot be missed, not in a log.
+    """
+    try:
+        from tennis_wc.database.db import get_connection
+        from tennis_wc.validation import checks
+
+        with get_connection() as conn:
+            failures = checks.critical_failures(checks.run_checks(conn))
+    except Exception:
+        return []
+    if not failures:
+        return []
+    lines = ["⚠️ 資料完整性檢查未過（下面嘅建議要打折扣睇）："]
+    lines.extend(f"   · {failure.detail}" for failure in failures[:4])
+    return lines
+
+
+def _closest_blocked_legs(value_legs: list[dict], gate: dict, limit: int = 3):
+    """Delegate; the decision lives in :mod:`tennis_wc.props.selection`."""
+    from tennis_wc.props import selection as prop_selection
+
+    return prop_selection.closest_blocked_legs(value_legs, gate, limit)
 
 
 def _chalk_parlay_stats(pick: list[dict]) -> tuple[float, float, float]:
@@ -1522,12 +1618,13 @@ def _recommended_bets_lines(
             [
                 title,
                 f"- 選擇：{v['desc']}（{v['match_label']}）",
+                _start_line(v),
                 (
                     "- 狀態：EARLY_MAIN_SINGLE（模型已勝市場、早期 paper ROI 為正；未達完整驗證樣本）"
                     if early else
                     "- 狀態：VALIDATED_SINGLE（已通過 family 樣本、模型對市場及 ROI 三重驗證）"
                 ),
-                f"- 賠率：{_fmt(v['odds'])}｜建議注碼：{_fmt(v.get('stake_units'))}u（{'早期主線上限 0.5u' if early else '可信度折扣 tenth-Kelly；上限 2u'}）",
+                f"- 賠率：{_fmt(v['odds'])}｜建議注碼：{_stake_label(v.get('stake_units'), 'BET')}（{'早期主線上限 0.5u / A$0.50 AUD' if early else '可信度折扣 tenth-Kelly；上限 2u'}）",
                 f"- 校準命中概率：{_pct(v['prob'])}",
                 f"- 公式可信度：{label}（{v.get('confidence_score', 0)}/100；資料質素、family 樣本及模型對市場表現{cap_note}）",
                 f"- 信心理據：①{sc_note}②{temper_note}③edge {_pct(v['edge'], signed=True)}／EV {_pct(v['ev'], signed=True)} 係精確去水兼向市場收縮後先計，唔係 raw 模型自吹",
@@ -1551,13 +1648,23 @@ def _recommended_bets_lines(
                     if early_combo else
                     "### 注 2｜✅ VALIDATED_2_LEG（跨場 Player Prop）"
                 ),
-                *[f"- 腳 {j}：{lg['desc']}（{lg.get('match_label') or ''}）" for j, lg in enumerate(legs, start=1)],
+                *[
+                    line
+                    for j, lg in enumerate(legs, start=1)
+                    for line in (
+                        f"- 腳 {j}：{lg['desc']}（{lg.get('match_label') or ''}）",
+                        # The combo is only placeable while BOTH legs are open,
+                        # so each leg carries its own window rather than the
+                        # combo carrying one.
+                        _start_line(lg).replace("- 開賽：", f"- 腳 {j} 開賽："),
+                    )
+                ],
                 (
                     "- 狀態：EARLY_MAIN_2_LEG；早期正趨勢兩腳、唔同場、組合 EV ≥3%；三腳仍留研究區"
                     if early_combo else
                     "- 狀態：VALIDATED_2_LEG；只准兩腳、唔同場、組合 EV ≥3%；三腳仍留喺研究區"
                 ),
-                f"- 合併賠率：{_fmt(round(two_leg['odds'], 2))}｜建議注碼：{_fmt(two_leg.get('stake_units'))}u（{'早期組合上限 0.5u' if early_combo else '組合上限 1u'}）",
+                f"- 合併賠率：{_fmt(round(two_leg['odds'], 2))}｜建議注碼：{_stake_label(two_leg.get('stake_units'), 'BET')}（{'早期組合上限 0.5u / A$0.50 AUD' if early_combo else '組合上限 1u'}）",
                 f"- 信心：低（串命中 {_pct(two_leg['prob'])}——兩腳結構本質係低過單腳命中）",
                 f"- 信心理據：①每條腳獨立通過 edge 關（跨場減少直接相關）②{sc_note}③EV {_pct(two_leg['ev'], signed=True)} 為正但波動較大",
                 "- 點解落：每條腳獨立有 edge，跨場減少直接相關；唔以『總賠率過 2』作入場理由",
@@ -1567,6 +1674,7 @@ def _recommended_bets_lines(
 
     # Conclusion line FIRST (after the header), then the blocks.
     conclusion: list[str]
+    integrity = _integrity_warnings()
     if data_unavailable:
         conclusion = [
             "今日結論：⚠️ 資料未就緒，唔可以判斷今日有冇投注機會。",
@@ -1579,11 +1687,41 @@ def _recommended_bets_lines(
             "今日結論：❌ 今日無清晰好注，建議唔落。",
             "（正式推薦只做已驗證 tennis props；研究訊號只留喺觀察板，唔會升級為正式推薦。）",
         ]
+        # "No qualifying bet" and "there were bets but you were told too late"
+        # call for opposite responses -- the first is the gate working, the
+        # second is a scheduling failure. They must never read the same.
+        too_late = (picks or {}).get("dropped_already_started") or []
+        if too_late:
+            conclusion.append(
+                f"⏰ 另有 {len(too_late)} 條合格候選因為已開賽／太接近開賽而剔走 —— "
+                "呢個係時間問題唔係質素問題，睇下係咪要提早一輪掃描。"
+            )
+        unverifiable = (picks or {}).get("dropped_unverifiable_start") or []
+        if unverifiable:
+            conclusion.append(
+                f"🕒 另有 {len(unverifiable)} 條候選因為無可核實開賽時間而剔走 —— "
+                "無法證明係賽前價，亦無法可信咁計 CLV。"
+            )
         if gate_reason:
             conclusion.append(f"驗證閘：{gate_reason}。")
+        blocked = (picks or {}).get("blocked_by") or []
+        if blocked:
+            conclusion.append(
+                "🔍 閘已開，係今日張飛差少少 —— 最接近嘅幾條同差咩："
+            )
+            for item in blocked:
+                where = f"（{item['match_label']}）" if item.get("match_label") else ""
+                conclusion.append(
+                    f"   · {item['desc']}{where}：{'、'.join(item['reasons'])}"
+                )
     else:
         n = len(blocks)
-        conclusion = [f"今日結論：✅ 有 {n} 組已通過驗證嘅 prop 選擇（固定 1u；先睇風險）。"]
+        conclusion = [
+            f"今日結論：✅ 有 {n} 組已通過驗證嘅 prop 選擇"
+            "（注碼以每注列出嘅建議為準；先睇風險）。"
+        ]
+    if integrity:
+        conclusion = [*integrity, *conclusion]
     lines.extend(conclusion + [""])
     for block in blocks:
         lines.extend(block + [""])
@@ -1819,6 +1957,10 @@ def _reference_prop_board_lines(prop: dict | None) -> list[str]:
             segment.append(_binary_line(f"{binary.scope} win ≥1 set", binary, throwaway))
         for prop in bd.first_set_winner:
             segment.append(_head_to_head_line(prop, throwaway))
+        for prop in bd.first_set_match:
+            segment.extend(_first_set_match_lines(prop, throwaway))
+        for prop in bd.first_set_game_handicap:
+            segment.append(_spread_line("Set 1 Game Handicap", prop, throwaway))
         for prop in bd.game_handicap:
             segment.append(_spread_line("Game Handicap", prop, throwaway))
         for prop in bd.set_handicap:
@@ -1880,7 +2022,7 @@ def _data_status_lines(
         f"- 已分析 {len(rows)} 場｜模型 edge 單 {len(bets)}｜觀察 {len(watchlist)}｜不下注 {len(no_bets)}｜未能分析 {len(unanalysed)}",
         *( _feature_coverage_lines(match_date) if match_date else [] ),
         f"- Sportsbet odds rows：{source_status.get('sportsbet_odds_rows', 0)}（已配對 {source_status.get('sportsbet_linked_rows', 0)}）｜最新抓取：{source_status.get('sportsbet_latest_fetch') or 'N/A'}",
-        "- Bankroll：100u virtual bankroll；1 unit = $1；注碼用 tenth-Kelly，1u 起跳、最大 5u",
+        f"- Bankroll：100u virtual bankroll；1 unit = A${LIVE_UNIT_VALUE_AUD:.2f} AUD；注碼用 tenth-Kelly，1u 起跳、最大 5u",
         _mode_status_line(source_status.get("run_mode")),
         f"- Tennis fixture source：{source_status.get('bsd_fixture_status') or 'N/A'}",
         f"- Fixture 補齊策略：{source_status.get('fixture_note') or 'N/A'}",
@@ -2356,25 +2498,11 @@ def _chalk_combo_lines(rows: list[dict]) -> list[str]:
     return lines
 
 
-def _prop_source_quality(family: str, carrier, fallback) -> float:
-    """Return quality for the data the family model actually consumes."""
-    from tennis_wc.props.strategy import normalise_data_quality
+def _prop_source_quality(family: str, carrier, fallback):
+    """Delegate; the decision lives in :mod:`tennis_wc.props.selection`."""
+    from tennis_wc.props import selection as prop_selection
 
-    factors = getattr(carrier, "factors", {}) or {}
-    if family == "match_total_aces":
-        samples = [factors.get("a_history_n"), factors.get("b_history_n")]
-    elif family == "player_aces":
-        samples = [
-            factors.get("subject_history_n"), factors.get("opponent_history_n")
-        ]
-    elif family == "player_double_faults":
-        samples = [factors.get("history_n")]
-    else:
-        return normalise_data_quality(fallback)
-    valid = [float(value) for value in samples if value is not None]
-    if len(valid) != len(samples) or not valid:
-        return 0.0
-    return min(1.0, min(valid) / 15.0)
+    return prop_selection.prop_source_quality(family, carrier, fallback)
 
 
 def _ace_prop_data(match_date: str) -> dict:
@@ -2403,6 +2531,20 @@ def _ace_prop_data(match_date: str) -> dict:
         return {"error": str(exc), "boards": [], "value_legs": [], "combos": [],
                 "scorecard": None, "roi": None, "ev_note": None, "strategy": None}
     value_legs: list[dict] = []
+    # A pick you cannot place is not a pick. Until 2026-08-16 nothing in the
+    # report or betting layer looked at `start_time_utc` at all, so 35.9% of
+    # the matches on a card had already started when it was pushed -- the
+    # 09:24 card covers a Sydney-dated day whose first nine hours are already
+    # gone. Carry the start time on every leg so selection can drop those and
+    # the card can print the window Kelvin actually has.
+    start_time_by_match = {
+        int(row["id"]): row["start_time_utc"]
+        for row in conn.execute(
+            "SELECT id, start_time_utc FROM matches WHERE match_date = ?",
+            (match_date,),
+        ).fetchall()
+        if row["start_time_utc"]
+    }
     quality_by_match = {
         int(row["match_id"]): float(row["data_quality"])
         for row in conn.execute(
@@ -2411,6 +2553,9 @@ def _ace_prop_data(match_date: str) -> dict:
             FROM feature_snapshots fs
             JOIN matches m ON m.id = fs.match_id
             WHERE m.match_date = ?
+              AND fs.id = (SELECT MAX(x.id) FROM feature_snapshots x
+                           WHERE x.match_id = fs.match_id
+                             AND x.player_id = fs.player_id)
             GROUP BY fs.match_id
             """,
             (match_date,),
@@ -2511,8 +2656,44 @@ def _ace_prop_data(match_date: str) -> dict:
                     "tw": prop,
                 }
             )
+        for prop in bd.first_set_match:
+            for selection in prop.selections:
+                if not selection.first_set_won or not selection.is_value:
+                    continue
+                value_legs.append({
+                    "id": (
+                        f"prop:{prop.match_id}:player_first_set_match:"
+                        f"{selection.player_id}"
+                    ),
+                    "match_id": prop.match_id,
+                    "match_label": bd.match_label,
+                    "desc": (
+                        f"{selection.player_name} Win Set 1 & Match "
+                        f"@ {_fmt(selection.odds)}"
+                    ),
+                    "kind_label": "player_first_set_match",
+                    "family": "player_first_set_match",
+                    "market_key": (
+                        f"player_first_set_match_{selection.player_id}_win_first"
+                    ),
+                    "market_name": "To win 1st set and win match",
+                    "selection_name": selection.player_name,
+                    "selection_side": None,
+                    "line": 0.5,
+                    "side": "over",
+                    "odds": selection.odds,
+                    "prob": selection.blended_prob,
+                    "data_quality": quality_by_match.get(int(prop.match_id), 0.0),
+                    "edge": selection.edge,
+                    "ev": selection.ev,
+                    "tw": selection,
+                })
         for family, market_label, spreads in (
             ("player_game_handicap", "Game Handicap", bd.game_handicap),
+            (
+                "player_first_set_game_handicap", "Set 1 Game Handicap",
+                bd.first_set_game_handicap,
+            ),
             ("player_set_handicap", "Set Handicap", bd.set_handicap),
         ):
             for prop in spreads:
@@ -2586,6 +2767,12 @@ def _ace_prop_data(match_date: str) -> dict:
                         "tw": selection,
                     }
                 )
+    for leg in value_legs:
+        leg["prob_raw"] = _raw_selected_probability(leg)
+        # None where the fixture has no published start time. Only 27-63% of
+        # fixtures carry one, so an absent value must stay usable rather than
+        # being read as "starts at the epoch" and silently dropped.
+        leg["start_time_utc"] = start_time_by_match.get(int(leg["match_id"]))
     try:
         scorecard = model_vs_market_scorecard(conn, as_of_date=match_date)
         roi = prop_roi_report(conn, as_of_date=match_date)
@@ -2600,6 +2787,13 @@ def _ace_prop_data(match_date: str) -> dict:
     return {"error": None, "boards": boards, "value_legs": value_legs,
             "combos": _prop_combos(value_legs), "scorecard": scorecard,
             "roi": roi, "ev_note": ev_note, "strategy": strategy_state}
+
+
+def _raw_selected_probability(leg: dict):
+    """Delegate; the decision lives in :mod:`tennis_wc.props.selection`."""
+    from tennis_wc.props import selection as prop_selection
+
+    return prop_selection.raw_selected_probability(leg)
 
 
 def _prop_combos(value_legs: list[dict]) -> list[dict]:
@@ -2693,7 +2887,7 @@ def _ace_prop_lines(match_date: str) -> list[str]:
     lines = [
         "## 🎾 Player Props 全市場板",
         "",
-        "涵蓋：Player Aces、Double Faults、Player Total Games、Win At Least 1 Set、Set 1 Winner、Game Handicap、Set Handicap、Exact Set Score；有盤先定價。",
+        "涵蓋：Player Aces、Double Faults、Player Total Games、Win At Least 1 Set、Set 1 Winner、Win Set 1 & Match、Set 1 Game Handicap、Game Handicap、Set Handicap、Exact Set Score；有盤先定價。",
         "新 family 一律由 RESEARCH_ONLY 開始，逐 family 累積結算、Brier 同 ROI，過閘先升級。",
         "ℹ️ WTA aces 暫時只定價不下注；Win-a-Set／Player Games 可由正式比分結算。",
         "⚠ ROI 未驗證：每條記入 prop_tracker、賽後自動結算；睇『模型 vs 市場記分卡』知邊個啱（比 ROI 快）。",
@@ -2720,6 +2914,10 @@ def _ace_prop_lines(match_date: str) -> list[str]:
             seg.append(_binary_line(f"{binary.scope} win ≥1 set", binary, val_picks))
         for prop in bd.first_set_winner:
             seg.append(_head_to_head_line(prop, val_picks))
+        for prop in bd.first_set_match:
+            seg.extend(_first_set_match_lines(prop, val_picks))
+        for prop in bd.first_set_game_handicap:
+            seg.append(_spread_line("Set 1 Game Handicap", prop, val_picks))
         for prop in bd.game_handicap:
             seg.append(_spread_line("Game Handicap", prop, val_picks))
         for prop in bd.set_handicap:
@@ -2816,6 +3014,30 @@ def _spread_line(scope_label: str, prop, val_picks: list[str]) -> str:
     return base
 
 
+def _first_set_match_lines(prop, val_picks: list[str]) -> list[str]:
+    lines = ["- Win Set 1 & Match（四結果去水；comeback只作基線）："]
+    for selection in prop.selections:
+        if not selection.first_set_won:
+            continue
+        desc = f"{selection.player_name} Win Set 1 & Match"
+        line = (
+            f"  · {desc} @ {_fmt(selection.odds)}｜模型 "
+            f"{_pct(selection.model_prob)}｜市場fair {_pct(selection.fair_prob)}"
+        )
+        if selection.is_value:
+            line += (
+                f"  🧪 edge {_pct(selection.edge, signed=True)}"
+                f"｜EV {_pct(selection.ev, signed=True)}"
+            )
+            val_picks.append(
+                f"- {desc} @ {_fmt(selection.odds)}（模型 "
+                f"{_pct(selection.blended_prob)} / "
+                f"edge {_pct(selection.edge, signed=True)}）"
+            )
+        lines.append(line)
+    return lines
+
+
 def _exact_set_score_lines(prop, val_picks: list[str]) -> list[str]:
     lines = ["- Exact Set Score（四項去水；概率總和 100%）："]
     for selection in prop.selections:
@@ -2889,6 +3111,7 @@ def _prop_review_lines(sc: dict, roi: dict, strategy_state: dict | None = None) 
     elif strategy_state:
         reasons = "；".join(strategy_state.get("reasons") or [])
         lines.extend([f"策略狀態：🧪 RESEARCH_ONLY（{reasons}）", ""])
+    lines.extend(_family_queue_lines(strategy_state, roi))
     n = sc.get("settled", 0)
     if not n:
         legacy = int(sc.get("legacy_rows_excluded") or 0)
@@ -4833,9 +5056,9 @@ def _stake_label(stake_units: float | None, decision: str | None = None) -> str:
     units = float(stake_units or 0)
     if decision != "BET" or units <= 0:
         return "不下注"
-    # 1 unit == $1 against the virtual bankroll. Show the actual half-Kelly size,
+    # Kelvin fixed 1 unit == A$1 before the first live wager. Show the actual size,
     # not a hardcoded "1 unit" (the old label ignored stake_units entirely).
-    return f"{units:g}u (${units:.2f})"
+    return f"{units:g}u (A${live_stake_aud(units):.2f} AUD)"
 
 
 def _display_label(value: str | None, fallback: str = "未確認（資料不足）") -> str:

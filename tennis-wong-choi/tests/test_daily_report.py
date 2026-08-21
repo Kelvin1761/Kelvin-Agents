@@ -277,8 +277,14 @@ def test_render_daily_report_mobile_first_structure():
     assert "### BET 1｜" not in report
     assert "模型勝率以 Elo 為骨幹，喺 logit 空間加入其他有效因素微調" not in report
     # Bankroll/staking conventions still stated once.
-    assert "1 unit = $1" in report
+    assert "1 unit = A$1.00 AUD" in report
     assert "tenth-Kelly" in report
+
+
+def test_stake_label_uses_kelvins_pre_registered_aud_unit():
+    from tennis_wc.reports.daily_report import _stake_label
+
+    assert _stake_label(0.5, "BET") == "0.5u (A$0.50 AUD)"
 
 
 def test_render_daily_report_honest_when_no_bets(tmp_path, monkeypatch):
@@ -705,3 +711,50 @@ def test_thin_bucket_is_shrunk_not_trusted(tmp_path, monkeypatch):
     haircut = cr.banker_probability_safety_margin(0.72)
     raw_error = 0.72 - (2 / 12)
     assert 0 < haircut < raw_error, "thin bucket must be shrunk toward 0"
+
+
+def test_report_is_written_locally_and_only_mirrored_to_drive(tmp_path, monkeypatch):
+    """The canonical copy must never be the CloudStorage one.
+
+    On 2026-08-16 the report existed only on Drive. The read-back two seconds
+    later raised EDEADLK so the betting card was never sent, and the dashboard's
+    `is_file()` probe on the same path returned False so it published the
+    previous day's tennis feed. Both consumers read local disk now; Drive is a
+    mirror. A regression here is silent -- the run still "succeeds".
+    """
+    from tennis_wc.reports import daily_report
+
+    drive = tmp_path / "drive"
+    drive.mkdir()
+    repo = tmp_path / "repo"
+    monkeypatch.setenv("TENNIS_ANALYSIS_OUTPUT_ROOT", str(drive))
+    monkeypatch.setattr(daily_report, "PROJECT_ROOT", repo)
+
+    local = daily_report.local_analysis_dir("2026-08-16")
+    assert local == repo / "2026-08-16 Tennis Analysis"
+    assert daily_report.analysis_output_dir("2026-08-16") == drive / "2026-08-16 Tennis Analysis"
+
+    local.mkdir(parents=True)
+    (local / "Tennis_Daily_Report.txt").write_text("card", encoding="utf-8")
+    (local / "Tennis_Market_Odds.txt").write_text("odds", encoding="utf-8")
+
+    mirror = daily_report.mirror_reports_to_drive("2026-08-16", local)
+    assert mirror == drive / "2026-08-16 Tennis Analysis"
+    assert (mirror / "Tennis_Daily_Report.txt").read_text(encoding="utf-8") == "card"
+    assert (mirror / "Tennis_Market_Odds.txt").read_text(encoding="utf-8") == "odds"
+
+
+def test_unwritable_drive_mirror_never_fails_the_run(tmp_path, monkeypatch):
+    """Drive unmounted, TCC-denied or mid-sync is not a reason to lose the day."""
+    from tennis_wc.reports import daily_report
+
+    repo = tmp_path / "repo"
+    monkeypatch.setenv("TENNIS_ANALYSIS_OUTPUT_ROOT", "/nonexistent-volume/Antigravity")
+    monkeypatch.setattr(daily_report, "PROJECT_ROOT", repo)
+
+    local = daily_report.local_analysis_dir("2026-08-16")
+    local.mkdir(parents=True)
+    (local / "Tennis_Daily_Report.txt").write_text("card", encoding="utf-8")
+
+    assert daily_report.mirror_reports_to_drive("2026-08-16", local) is None
+    assert (local / "Tennis_Daily_Report.txt").read_text(encoding="utf-8") == "card"

@@ -10,3 +10,15 @@ data/exports/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/exports/.gitkeep
+
+# Backup copies of the database. `*.db` above does NOT catch these -- the
+# timestamped suffix moves the extension into the middle of the name -- which
+# is how a 292MB gzipped backup was committed on 2026-08-11 (6faafc90,
+# 37ab45b8) and became 580MB of this repo's permanent history.
+*.db.bak*
+*.db-wal
+*.db-shm
+
+# Local runtime state: launchd logs and the recovery/live snapshots.
+data/logs/
+data/runtime/

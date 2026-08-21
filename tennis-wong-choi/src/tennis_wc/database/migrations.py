@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS player_match_history (
     hold_rate REAL,
     break_rate REAL,
     ace_count REAL,
+    service_games_played REAL,
     double_fault_count REAL,
     break_points_saved REAL,
     break_points_faced REAL,
@@ -503,6 +504,23 @@ CREATE TABLE IF NOT EXISTS prop_tracker (
 
 CREATE INDEX IF NOT EXISTS idx_prop_tracker_status_value
 ON prop_tracker(result_status, is_value, stake_units);
+
+CREATE TABLE IF NOT EXISTS prop_live_bets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    prop_id INTEGER NOT NULL UNIQUE,
+    odds_taken REAL NOT NULL,
+    stake_units REAL NOT NULL,
+    unit_value_aud REAL NOT NULL,
+    stake_aud REAL NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'AUD',
+    placed_at TEXT NOT NULL,
+    notes TEXT,
+    recorded_at TEXT NOT NULL,
+    FOREIGN KEY(prop_id) REFERENCES prop_tracker(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_prop_live_bets_placed
+ON prop_live_bets(placed_at, prop_id);
 """
 
 
@@ -516,6 +534,9 @@ def _ensure_compat_columns(conn) -> None:
     history_columns = {row["name"] for row in conn.execute("PRAGMA table_info(player_match_history)").fetchall()}
     for name, ddl in {
         "ace_count": "ALTER TABLE player_match_history ADD COLUMN ace_count REAL",
+        "service_games_played": (
+            "ALTER TABLE player_match_history ADD COLUMN service_games_played REAL"
+        ),
         "double_fault_count": "ALTER TABLE player_match_history ADD COLUMN double_fault_count REAL",
         "break_points_saved": "ALTER TABLE player_match_history ADD COLUMN break_points_saved REAL",
         "break_points_faced": "ALTER TABLE player_match_history ADD COLUMN break_points_faced REAL",
@@ -527,6 +548,16 @@ def _ensure_compat_columns(conn) -> None:
     result_columns = {row["name"] for row in conn.execute("PRAGMA table_info(match_results)").fetchall()}
     if "score_json" not in result_columns:
         conn.execute("ALTER TABLE match_results ADD COLUMN score_json TEXT")
+    match_cols = {row["name"] for row in conn.execute("PRAGMA table_info(matches)").fetchall()}
+    if match_cols and "start_time_utc" not in match_cols:
+        # The provider has always sent it -- `start_time_utc` is in both the
+        # listing and the per-event payload -- and we never stored it. Without
+        # it there is no way to say which snapshot is the CLOSE: 2,919 of
+        # 120,004 snapshots (2.4%) were fetched after the match date and 257
+        # selections swing by more than 3x within their own history (1.19 ->
+        # 67.00), which is in-running, not drift. `weekly_review` already
+        # disables CLV as a gate for exactly this reason.
+        conn.execute("ALTER TABLE matches ADD COLUMN start_time_utc TEXT")
     prop_cols = {row["name"] for row in conn.execute("PRAGMA table_info(prop_tracker)").fetchall()}
     for name, ddl in {
         "side": "ALTER TABLE prop_tracker ADD COLUMN side TEXT NOT NULL DEFAULT 'over'",
@@ -540,6 +571,28 @@ def _ensure_compat_columns(conn) -> None:
         # keeps its historical (tempered) meaning so old rows stay interpretable.
         "model_prob_raw": "ALTER TABLE prop_tracker ADD COLUMN model_prob_raw REAL",
         "temper_strength": "ALTER TABLE prop_tracker ADD COLUMN temper_strength REAL",
+        # 2026-08-11: the FEED's own identifiers for the market this prop was
+        # priced from. `market_key` is synthesised (`player_win_a_set_7`,
+        # `first_set_winner_12`) and `selection` is our word for the side
+        # ("Yes", a player name), neither of which can be looked up in
+        # market_odds_snapshots -- so there was no way to find the CLOSING price
+        # of a prop we had bet, and closing-line value existed for the
+        # match-winner and market-leg paths (420 and 307 rows) and for zero
+        # props. Props are the only thing being staked.
+        #
+        # Recorded at pricing time rather than re-derived later, because
+        # re-deriving the feed's key from ours is the same guessing game that
+        # made `winner_related` resolve to no family at all.
+        "feed_market_key": "ALTER TABLE prop_tracker ADD COLUMN feed_market_key TEXT",
+        "feed_selection_name": "ALTER TABLE prop_tracker ADD COLUMN feed_selection_name TEXT",
+        "feed_line": "ALTER TABLE prop_tracker ADD COLUMN feed_line REAL",
+        # The key alone is NOT unique. Sportsbet reuses `winner_related`
+        # across several markets -- which is why family_for_market needs the
+        # name -- so a closing-price lookup on (match_id, key, selection)
+        # matched a different market and produced a +74.66% CLV on a bet
+        # that had not moved. Same defect as every other "several rows per
+        # entity" bug here: the identifier was not identifying.
+        "feed_market_name": "ALTER TABLE prop_tracker ADD COLUMN feed_market_name TEXT",
     }.items():
         if prop_cols and name not in prop_cols:
             conn.execute(ddl)

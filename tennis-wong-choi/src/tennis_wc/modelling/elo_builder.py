@@ -6,17 +6,27 @@ from collections import defaultdict
 from tennis_wc.database.db import get_connection
 from tennis_wc.features.elo import elo_probability
 from tennis_wc.ingestion.ingest_sackmann import HISTORY_PROVIDERS
+from tennis_wc.ingestion.ingest_tennisexplorer_history import (
+    PROVIDER_NAME as TENNISEXPLORER_PROVIDER,
+)
 from tennis_wc.modelling.calibration import elo_k_factor
 from tennis_wc.ingestion.raw_response_store import store_raw_response, utc_now
 
-_PROVIDER_PLACEHOLDERS = ",".join("?" for _ in HISTORY_PROVIDERS)
+# Elo reads more than the Sackmann files. Those publish ATP, ATP quali,
+# Challenger and WTA and no ITF at all, which is why Elo reached 75.9% of tour
+# fixtures and 1.2% of ITF ones while ITF is ~85% of the board we price. The
+# TennisExplorer corpus exists to close exactly that gap.
+ELO_PROVIDERS = (*HISTORY_PROVIDERS, TENNISEXPLORER_PROVIDER)
+
+_PROVIDER_PLACEHOLDERS = ",".join("?" for _ in ELO_PROVIDERS)
 
 
 def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float | None = None) -> dict:
     """
-    Build deterministic Elo ratings from stored Jeff Sackmann match history.
+    Build deterministic Elo ratings from the stored match corpus.
 
-    Uses only local API snapshots already stored in player_match_history. Ratings
+    Reads every provider in ``ELO_PROVIDERS`` from player_match_history --
+    the Sackmann/TennisMyLife files plus the TennisExplorer lower-tier corpus. Ratings
     are written back to players.overall_elo and players.surface_elo_json, and
     opponent pre-match Elo is backfilled into player_match_history.
 
@@ -29,12 +39,13 @@ def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float | None = 
             dict(row)
             for row in conn.execute(
                 f"""
-                SELECT provider_match_id, player_id, opponent_id, match_date, surface
+                SELECT source_provider, provider_match_id, player_id, opponent_id,
+                       match_date, surface
                 FROM player_match_history
                 WHERE source_provider IN ({_PROVIDER_PLACEHOLDERS}) AND won = 1
                 ORDER BY match_date, provider_match_id
                 """,
-                HISTORY_PROVIDERS,
+                ELO_PROVIDERS,
             ).fetchall()
         ]
 
@@ -58,6 +69,15 @@ def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float | None = 
         return float(k_factor) if k_factor is not None else elo_k_factor(played)
 
     with get_connection() as conn:
+        from tennis_wc.history import elo_history
+
+        elo_history.ensure_schema(conn)
+        # The walk is already chronological, so the rating held at the top of
+        # each iteration IS the pre-match rating. Capturing it here is what
+        # makes an as-of lookup possible at all; without it the only rating
+        # anyone can read is the final one, which contains every later result.
+        history_rows: list[tuple] = []
+        opponent_updates: list[tuple[str, str, float]] = []
         for row in rows:
             winner_id = int(row["player_id"])
             loser_id = int(row["opponent_id"])
@@ -65,6 +85,13 @@ def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float | None = 
 
             winner_pre = overall[winner_id]
             loser_pre = overall[loser_id]
+            match_date = row.get("match_date")
+            history_rows.append(
+                (winner_id, match_date, "", winner_pre, matches_by_player[winner_id])
+            )
+            history_rows.append(
+                (loser_id, match_date, "", loser_pre, matches_by_player[loser_id])
+            )
             winner_expected = elo_probability(winner_pre, loser_pre)
             k_winner = k_for(matches_by_player[winner_id])
             k_loser = k_for(matches_by_player[loser_id])
@@ -80,6 +107,14 @@ def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float | None = 
                 surface_expected = elo_probability(winner_surface_pre, loser_surface_pre)
                 ks_winner = k_for(surface_matches[winner_id][surface])
                 ks_loser = k_for(surface_matches[loser_id][surface])
+                history_rows.append(
+                    (winner_id, match_date, surface, winner_surface_pre,
+                     surface_matches[winner_id][surface])
+                )
+                history_rows.append(
+                    (loser_id, match_date, surface, loser_surface_pre,
+                     surface_matches[loser_id][surface])
+                )
                 surface_ratings[winner_id][surface] = winner_surface_pre + ks_winner * (1 - surface_expected)
                 surface_ratings[loser_id][surface] = loser_surface_pre + ks_loser * (0 - (1 - surface_expected))
                 surface_matches[winner_id][surface] += 1
@@ -87,24 +122,47 @@ def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float | None = 
 
             winner_match_id = row["provider_match_id"]
             loser_match_id = winner_match_id.removesuffix("-winner") + "-loser"
-            conn.execute(
-                f"""
-                UPDATE player_match_history
-                SET opponent_elo = ?
-                WHERE source_provider IN ({_PROVIDER_PLACEHOLDERS}) AND provider_match_id = ?
-                """,
-                (loser_pre, *HISTORY_PROVIDERS, winner_match_id),
-            )
-            conn.execute(
-                f"""
-                UPDATE player_match_history
-                SET opponent_elo = ?
-                WHERE source_provider IN ({_PROVIDER_PLACEHOLDERS}) AND provider_match_id = ?
-                """,
-                (winner_pre, *HISTORY_PROVIDERS, loser_match_id),
-            )
+            provider = str(row["source_provider"])
+            opponent_updates.append((provider, winner_match_id, loser_pre))
+            opponent_updates.append((provider, loser_match_id, winner_pre))
             matches_by_player[winner_id] += 1
             matches_by_player[loser_id] += 1
+
+        # The old loop issued two UPDATE statements per historical match. On
+        # the production corpus that meant hundreds of thousands of Python to
+        # SQLite round trips on every daily run, and it matched ids across ALL
+        # providers, so a provider-local id collision could overwrite another
+        # source's Elo. Stage provider-qualified values, then update the corpus
+        # in one set operation.
+        conn.execute(
+            """CREATE TEMP TABLE IF NOT EXISTS _elo_opponent_updates (
+                   source_provider TEXT NOT NULL,
+                   provider_match_id TEXT NOT NULL,
+                   opponent_elo REAL NOT NULL,
+                   PRIMARY KEY (source_provider, provider_match_id)
+               ) WITHOUT ROWID"""
+        )
+        conn.execute("DELETE FROM _elo_opponent_updates")
+        conn.executemany(
+            "INSERT OR REPLACE INTO _elo_opponent_updates "
+            "(source_provider,provider_match_id,opponent_elo) VALUES (?,?,?)",
+            opponent_updates,
+        )
+        conn.execute(
+            """UPDATE player_match_history
+               SET opponent_elo = (
+                   SELECT staged.opponent_elo
+                   FROM _elo_opponent_updates AS staged
+                   WHERE staged.source_provider = player_match_history.source_provider
+                     AND staged.provider_match_id = player_match_history.provider_match_id
+               )
+               WHERE EXISTS (
+                   SELECT 1 FROM _elo_opponent_updates AS staged
+                   WHERE staged.source_provider = player_match_history.source_provider
+                     AND staged.provider_match_id = player_match_history.provider_match_id
+               )"""
+        )
+        conn.execute("DROP TABLE _elo_opponent_updates")
 
         now = utc_now()
         for player_id, rating in overall.items():
@@ -129,8 +187,11 @@ def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float | None = 
                 ),
             )
 
+        history_written = elo_history.record(conn, history_rows)
+
     return {
         "players_rated": len(overall),
+        "elo_history_rows": history_written,
         "winner_rows_processed": len(rows),
         "surfaces": sorted(surfaces_seen),
         "raw_response_id": raw_id,

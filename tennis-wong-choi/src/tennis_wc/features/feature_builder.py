@@ -99,8 +99,21 @@ def _wrap_numeric_tree(value: Any, prov: dict) -> Any:
 
 
 def _player_payload(player_id: int, opponent_id: int, match_context: dict, as_of_date: date) -> dict:
-    with get_connection() as conn:
-        player = conn.execute("SELECT * FROM players WHERE id = ?", (player_id,)).fetchone()
+    # One connection for the whole payload, closed on the way out: the as-of
+    # lookups below run per player per match, so a connection each would be
+    # both slow and a handle leak.
+    conn = get_connection()
+    try:
+        return _build_player_payload(
+            conn, player_id, opponent_id, match_context, as_of_date
+        )
+    finally:
+        conn.close()
+
+
+def _build_player_payload(conn, player_id: int, opponent_id: int,
+                          match_context: dict, as_of_date: date) -> dict:
+    player = conn.execute("SELECT * FROM players WHERE id = ?", (player_id,)).fetchone()
     if player is None:
         raise ValueError(f"Player not found: {player_id}")
 
@@ -121,13 +134,23 @@ def _player_payload(player_id: int, opponent_id: int, match_context: dict, as_of
     h2h = calculate_head_to_head_stats(player_id, opponent_id, surface, as_of_date)
     rest_days = _rest_days(player_id, as_of_date)
 
-    overall_elo = player["overall_elo"]
-    surface_elo = get_surface_elo(player["surface_elo_json"], surface, overall_elo)
+    # As-of, not latest. players.overall_elo is one mutable number rewritten on
+    # every rebuild with the rating computed over the WHOLE record, so reading
+    # it while building a feature for a past match embeds that match's own
+    # result. player_elo_history holds the rating as it stood before each date;
+    # fall back to the mutable column only when no history exists for the
+    # player, and mark the datapoint so the fallback is visible downstream.
+    overall_elo, surface_elo, elo_as_of = _elo_as_of(conn, player_id, as_of_date, surface)
+    if overall_elo is None:
+        overall_elo = player["overall_elo"]
+        surface_elo = get_surface_elo(player["surface_elo_json"], surface, overall_elo)
     elo_prov = _elo_provenance(player_prov, dict(player))
+    if not elo_as_of and overall_elo is not None:
+        elo_prov = {**elo_prov, "warnings": [*elo_prov.get("warnings", []), "elo_not_as_of"]}
     return {
         "id": datapoint(player_id, player_prov),
         "name": player["name"],
-        "current_rank": datapoint(player["current_rank"], player_prov),
+        "current_rank": datapoint(_rank_as_of(conn, player_id, as_of_date, player), player_prov),
         "overall_elo": datapoint(overall_elo, elo_prov),
         "surface_elo": datapoint(surface_elo, elo_prov),
         "serve_return": {
@@ -161,6 +184,46 @@ def _elo_provenance(player_prov: dict, player: dict) -> dict:
         return player_prov
     warnings = sorted(set([*player_prov.get("warnings", []), "rank_seed_elo"]))
     return player_prov | {"warnings": warnings}
+
+
+def _elo_as_of(conn, player_id: int, as_of_date, surface: str | None):
+    """(overall, surface, is_as_of) ratings recorded before ``as_of_date``."""
+    from tennis_wc.history import elo_history
+
+    stamp = as_of_date.isoformat() if hasattr(as_of_date, "isoformat") else str(as_of_date)
+    exists = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='player_elo_history'"
+    ).fetchone()
+    if not exists:
+        return None, None, False
+    overall = elo_history.rating_as_of(conn, player_id, stamp)
+    if overall is None:
+        return None, None, False
+    on_surface = elo_history.rating_as_of(
+        conn, player_id, stamp, surface=(surface or "").strip().lower() or None
+    )
+    return overall, (on_surface if on_surface is not None else overall), True
+
+
+def _rank_as_of(conn, player_id: int, as_of_date, player) -> int | None:
+    """Ranking published before the match, not the player's rank today.
+
+    players.current_rank carries no as-of date at all, so every historical
+    feature built from it used whatever the rank happened to be at build time.
+    rankings_history has been populated all along (103,002 rows).
+    """
+    stamp = as_of_date.isoformat() if hasattr(as_of_date, "isoformat") else str(as_of_date)
+    row = conn.execute(
+        """
+        SELECT rank FROM rankings_history
+        WHERE player_id = ? AND ranking_date < ? AND rank IS NOT NULL
+        ORDER BY ranking_date DESC LIMIT 1
+        """,
+        (player_id, stamp),
+    ).fetchone()
+    if row:
+        return int(row[0])
+    return player["current_rank"]
 
 
 def _rest_days(player_id: int, as_of_date: date) -> int | None:

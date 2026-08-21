@@ -61,7 +61,35 @@ def test_bsd_score_payload_extracts_aces_and_double_faults():
 
 def test_result_lookup_dates_include_adjacent_days():
     from tennis_wc.betting.ledger import _result_lookup_dates
-    from tennis_wc.ingestion.ingest_tennismylife import _expanded_dates
 
     assert _result_lookup_dates("2026-05-11") == ["2026-05-11", "2026-05-10", "2026-05-12"]
-    assert _expanded_dates({"2026-05-11"}) == {"2026-05-10", "2026-05-11", "2026-05-12"}
+
+
+def test_tennismylife_rows_are_matched_on_the_tournament_week():
+    """The CSV keys rows by tournament START date, not by match date.
+
+    A one-day window therefore only ever admitted the opening rounds: of 18
+    pending ace fixtures present in 2026_wta.csv on 2026-08-09, two fell inside
+    it, and the rest -- 2 to 10 days into their event -- were skipped without a
+    word. That is why player_aces still had 65 outcomes after months of runs.
+    """
+    from datetime import date, timedelta
+
+    from tennis_wc.ingestion.ingest_tennismylife import (
+        TOURNAMENT_WINDOW_DAYS,
+        _in_tournament_window,
+    )
+
+    wanted = {"2026-06-17"}
+    # Berlin starts 2026-06-15; a round-of-16 match two days in must be kept.
+    assert _in_tournament_window("2026-06-15", wanted)
+    assert _in_tournament_window("2026-06-17", wanted)
+    # A day either side covers timezone drift between feed and fixture.
+    assert _in_tournament_window("2026-06-18", wanted)
+    # A tournament that finished long before is not a candidate.
+    assert not _in_tournament_window("2026-05-01", wanted)
+    assert not _in_tournament_window("2026-06-19", wanted)
+    boundary = date.fromisoformat("2026-06-17") - timedelta(days=TOURNAMENT_WINDOW_DAYS)
+    assert _in_tournament_window(boundary.isoformat(), wanted)
+    assert not _in_tournament_window((boundary - timedelta(days=1)).isoformat(), wanted)
+    assert not _in_tournament_window(None, wanted)

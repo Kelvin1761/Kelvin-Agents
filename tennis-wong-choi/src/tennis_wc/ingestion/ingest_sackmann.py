@@ -274,19 +274,21 @@ def _insert_history_pair(tour: str, row: dict, raw_id: int, winner_id: int, lose
                 INSERT INTO player_match_history (
                     provider_match_id, player_id, opponent_id, tour, match_date, surface,
                     tournament_external_id, tournament_level, round, format, won,
-                    opponent_elo, hold_rate, break_rate, ace_count, double_fault_count,
+                    opponent_elo, hold_rate, break_rate, ace_count,
+                    service_games_played, double_fault_count,
                     break_points_saved, break_points_faced, break_points_converted,
                     break_points_chances, first_serve_points_won_pct,
                     second_serve_points_won_pct, return_points_won_pct, tiebreak_won,
                     deciding_set_won, lost_first_set, comeback_after_losing_first_set,
                     source_provider, raw_response_id, created_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(source_provider, provider_match_id, player_id) DO UPDATE SET
                     won = excluded.won,
                     hold_rate = excluded.hold_rate,
                     break_rate = excluded.break_rate,
                     ace_count = excluded.ace_count,
+                    service_games_played = excluded.service_games_played,
                     double_fault_count = excluded.double_fault_count,
                     break_points_saved = excluded.break_points_saved,
                     break_points_faced = excluded.break_points_faced,
@@ -313,6 +315,7 @@ def _insert_history_pair(tour: str, row: dict, raw_id: int, winner_id: int, lose
                     payload["hold_rate"],
                     payload["break_rate"],
                     payload["ace_count"],
+                    payload["service_games_played"],
                     payload["double_fault_count"],
                     payload["break_points_saved"],
                     payload["break_points_faced"],
@@ -374,6 +377,7 @@ def _metrics(row: dict, own_prefix: str, opp_prefix: str) -> dict[str, float | N
         "hold_rate": _safe_rate(sv_gms - (bp_faced - bp_saved), sv_gms) if None not in (sv_gms, bp_faced, bp_saved) else None,
         "break_rate": _safe_rate(opp_bp_faced - opp_bp_saved, opp_sv_gms) if None not in (opp_bp_faced, opp_bp_saved, opp_sv_gms) else None,
         "ace_count": aces,
+        "service_games_played": sv_gms,
         "double_fault_count": double_faults,
         "break_points_saved": bp_saved,
         "break_points_faced": bp_faced,

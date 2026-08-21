@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from datetime import date
 from pathlib import Path
 
@@ -308,6 +309,18 @@ def generate_report(args: argparse.Namespace) -> None:
     _print_json({"date": args.date, "report_path": str(output_path), "analysis_dir": str(analysis_output_dir(args.date))})
 
 
+def prune_raw_responses(args: argparse.Namespace) -> None:
+    from tennis_wc.database.maintenance import prune_raw_response_bodies, vacuum
+
+    with get_connection() as conn:
+        result = prune_raw_response_bodies(
+            conn, keep_days=args.keep_days, dry_run=args.dry_run
+        )
+        if args.vacuum and not args.dry_run:
+            result["vacuum"] = vacuum(conn)
+    _print_json(result)
+
+
 def performance_report(_: argparse.Namespace) -> None:
     _print_json({"predictions": prediction_summary(), "ledger": ledger_summary()})
 
@@ -315,6 +328,19 @@ def performance_report(_: argparse.Namespace) -> None:
 def record_bet(args: argparse.Namespace) -> None:
     bet_id = record_bet_entry(args.prediction_id, args.odds, args.stake)
     _print_json({"bet_id": bet_id, "prediction_id": args.prediction_id})
+
+
+def record_live_prop_bet_command(args: argparse.Namespace) -> None:
+    """Record a wager already placed manually; this command cannot place one."""
+    from tennis_wc.props.live_bets import record_live_prop_bet
+
+    _print_json(record_live_prop_bet(
+        prop_id=args.prop_id,
+        odds_taken=args.odds,
+        stake_aud=args.stake_aud,
+        placed_at=args.placed_at,
+        notes=args.notes,
+    ))
 
 
 def fetch_closing_odds(args: argparse.Namespace) -> None:
@@ -340,6 +366,40 @@ def sync_clv_tracker(args: argparse.Namespace) -> None:
 
 def sync_combo_tracker(args: argparse.Namespace) -> None:
     _print_json(sync_combo_tracker_for_date(args.date))
+
+
+def build_lowtier_corpus(args: argparse.Namespace) -> None:
+    """Walk the TennisExplorer scoreboard into player_match_history.
+
+    The Sackmann/TennisMyLife files carry no ITF at all, so without this Elo
+    reaches 1.2% of ITF fixtures while ITF is ~85% of the board we price.
+    """
+    from tennis_wc.ingestion.ingest_tennisexplorer_history import (
+        ingest_tennisexplorer_history,
+    )
+
+    summary = ingest_tennisexplorer_history(args.start, args.end)
+    _print_json(summary)
+
+
+def validate_data(args: argparse.Namespace) -> None:
+    """Report every warehouse check; exit non-zero when a critical one fails."""
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.validation import checks
+
+    conn = get_connection()
+    results = checks.run_checks(conn)
+    payload = {
+        "checks": [
+            {"name": r.name, "passed": r.passed, "severity": r.severity,
+             "detail": r.detail, "count": r.count}
+            for r in results
+        ],
+        "critical_failures": [r.name for r in checks.critical_failures(results)],
+    }
+    _print_json(payload)
+    if payload["critical_failures"] and getattr(args, "strict", False):
+        raise SystemExit(1)
 
 
 def settle_props(args: argparse.Namespace) -> None:
@@ -445,10 +505,23 @@ def _sportsbet_odds_rows_for_date(match_date: str) -> int:
 
 def _publish_daily_dashboard(args: argparse.Namespace, payload: dict) -> dict:
     """Apply the shared completeness gate, then publish a ready daily card."""
-    retry_reasons = analysis_retry_reasons(payload)
+    # Which day this analysis is FOR decides how an empty board reads: on a
+    # next-day warm pass the book simply is not open, on the same day it means
+    # we have lost sight of it. One definition of that, shared with the
+    # scheduler, because the two disagreeing is how the distinction went
+    # missing for three days.
+    from tennis_wc.pipeline_readiness import analysis_readiness, horizon_for
+
+    readiness = analysis_readiness(payload, horizon=horizon_for(args.date))
+    retry_reasons = readiness["reasons"]
     payload["readiness"] = {
-        "status": "ready" if not retry_reasons else "incomplete",
+        # `status` keeps its two-word vocabulary because the report renderer
+        # reads it; `severity` is the new information, carried alongside.
+        "status": "ready" if readiness["publishable"] else "incomplete",
+        "severity": readiness["severity"],
+        "horizon": readiness["horizon"],
         "reasons": retry_reasons,
+        "observed": readiness["observed"],
     }
     if retry_reasons:
         payload["cloudflare_deploy"] = {
@@ -461,15 +534,34 @@ def _publish_daily_dashboard(args: argparse.Namespace, payload: dict) -> dict:
         )
         return payload
 
-    deployed = run_post_success_cloudflare_deploy(
-        source="Tennis Wong Choi",
-        target_dir=analysis_output_dir(args.date),
-        skip=args.skip_cloudflare_deploy,
-        allow_failure=False,
-    )
+    try:
+        deployed = run_post_success_cloudflare_deploy(
+            source="Tennis Wong Choi",
+            target_dir=analysis_output_dir(args.date),
+            skip=args.skip_cloudflare_deploy,
+            # Dashboard publication is downstream of the completed card. On
+            # 2026-08-13 a Google Drive permission error here erased a valid
+            # 65/89-priced scheduled card before HEALTH_JSON could be written.
+            allow_failure=True,
+        )
+    except Exception as exc:  # noqa: BLE001 - deploy is explicitly non-fatal
+        payload["cloudflare_deploy"] = {
+            "attempted": not args.skip_cloudflare_deploy,
+            "status": "failed",
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+        print(
+            "⚠️ Cloudflare deploy failed after a complete analysis; "
+            f"card remains valid: {type(exc).__name__}: {exc}"
+        )
+        return payload
     payload["cloudflare_deploy"] = {
         "attempted": not args.skip_cloudflare_deploy,
-        "status": "deployed" if deployed else "skipped",
+        "status": (
+            "skipped" if args.skip_cloudflare_deploy
+            else "deployed" if deployed
+            else "failed"
+        ),
     }
     return payload
 
@@ -477,6 +569,7 @@ def _publish_daily_dashboard(args: argparse.Namespace, payload: dict) -> dict:
 def run_daily(args: argparse.Namespace) -> None:
     provider_healthcheck(args)
     source_errors = []
+    stage_timings: list[dict] = []
     clear_pipeline_source_errors(args.date)
     # Settle any past dates still holding PENDING tracker rows BEFORE today's
     # report, so the prop scorecard/ROI blocks reflect the freshest sample.
@@ -484,13 +577,21 @@ def run_daily(args: argparse.Namespace) -> None:
     # also records + settles — the 06-19..07-08 tracking gap must not recur.
     settlement_backlog: dict = {}
     try:
-        settlement_backlog = settle_pending_backlog(args.date)
+        settlement_backlog = _run_timed_stage(
+            "settlement_backlog",
+            lambda: settle_pending_backlog(args.date),
+            stage_timings,
+        )
     except Exception as exc:  # noqa: BLE001
         source_errors.append({"source": "settlement_backlog", "error": str(exc)})
     if args.mvp_snapshot:
         os.environ["DATA_MAX_STALENESS_MINUTES_ODDS"] = str(24 * 60)
         try:
-            backfill_confirmed_metadata_for_date(args.date)
+            _run_timed_stage(
+                "metadata_backfill",
+                lambda: backfill_confirmed_metadata_for_date(args.date),
+                stage_timings,
+            )
         except Exception as exc:
             source_errors.append({"source": "metadata_backfill", "error": str(exc)})
     else:
@@ -513,7 +614,7 @@ def run_daily(args: argparse.Namespace) -> None:
             ("metadata_backfill", lambda: backfill_confirmed_metadata_for_date(args.date)),
         ):
             try:
-                step()
+                _run_timed_stage(label, step, stage_timings)
             except Exception as exc:
                 source_errors.append({"source": label, "error": str(exc)})
         # Guard: confirm the per-event enrichment actually captured multi-market
@@ -541,32 +642,52 @@ def run_daily(args: argparse.Namespace) -> None:
         "run_daily_source_errors",
         args.date,
     )
-    snapshots = build_sportsbet_feature_snapshots_for_date(args.date)
+    snapshots = _run_timed_stage(
+        "feature_snapshots",
+        lambda: build_sportsbet_feature_snapshots_for_date(args.date),
+        stage_timings,
+    )
     valid = [snapshot for snapshot in snapshots if snapshot["data_quality"]["is_valid"]]
-    predictions = []
-    for snapshot in snapshots:
-        pricing = price_match_snapshot(snapshot)
-        filter_result = apply_bet_filter(snapshot, pricing)
-        prediction_id = store_prediction(snapshot["match_id"]["value"], snapshot["feature_set_version"], pricing, filter_result)
-        agent_output = run_agent_reviews(snapshot, pricing, filter_result)
-        predictions.append(
-            {
-                "id": prediction_id,
-                "decision": filter_result["decision"],
-                "final_decision": agent_output["final_decision"],
-                "edge": pricing.get("edge"),
-            }
-        )
-    report_path = generate_daily_report(args.date)
+
+    def price_and_review() -> list[dict]:
+        output = []
+        for snapshot in snapshots:
+            pricing = price_match_snapshot(snapshot)
+            filter_result = apply_bet_filter(snapshot, pricing)
+            prediction_id = store_prediction(
+                snapshot["match_id"]["value"], snapshot["feature_set_version"],
+                pricing, filter_result,
+            )
+            agent_output = run_agent_reviews(snapshot, pricing, filter_result)
+            output.append(
+                {
+                    "id": prediction_id,
+                    "decision": filter_result["decision"],
+                    "final_decision": agent_output["final_decision"],
+                    "edge": pricing.get("edge"),
+                }
+            )
+        return output
+
+    predictions = _run_timed_stage(
+        "pricing_and_review", price_and_review, stage_timings
+    )
+    report_path = _run_timed_stage(
+        "daily_report", lambda: generate_daily_report(args.date), stage_timings
+    )
     # Record today's recommendations in the trackers as part of the pipeline
     # itself. Previously only the scheduler wrapper did this, so manual runs
     # left no CLV/combo rows behind (nothing to settle or measure later).
     tracker_sync: dict = {}
     try:
-        tracker_sync = {
-            "clv": sync_clv_tracker_for_date(args.date),
-            "combo": sync_combo_tracker_for_date(args.date),
-        }
+        tracker_sync = _run_timed_stage(
+            "tracker_sync",
+            lambda: {
+                "clv": sync_clv_tracker_for_date(args.date),
+                "combo": sync_combo_tracker_for_date(args.date),
+            },
+            stage_timings,
+        )
     except Exception as exc:  # noqa: BLE001
         source_errors.append({"source": "tracker_sync", "error": str(exc)})
     payload = {
@@ -581,11 +702,33 @@ def run_daily(args: argparse.Namespace) -> None:
         "source_errors": source_errors,
         "settlement_backlog": settlement_backlog,
         "tracker_sync": tracker_sync,
+        "stage_timings": stage_timings,
         "stage": "7",
         "mode": "mvp_snapshot" if args.mvp_snapshot else "live_full",
     }
-    _publish_daily_dashboard(args, payload)
+    _run_timed_stage(
+        "dashboard_publish",
+        lambda: _publish_daily_dashboard(args, payload),
+        stage_timings,
+    )
     _print_json(payload)
+
+
+def _run_timed_stage(label: str, step, timings: list[dict], *, clock=time.perf_counter):
+    """Run one pipeline stage and always append a machine-readable duration."""
+    started = clock()
+    status = "ok"
+    try:
+        return step()
+    except Exception:
+        status = "failed"
+        raise
+    finally:
+        timings.append({
+            "stage": label,
+            "status": status,
+            "seconds": round(max(0.0, clock() - started), 3),
+        })
 
 
 def init_db_command(_: argparse.Namespace) -> None:
@@ -733,6 +876,17 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--stake", required=True, type=float)
     p.set_defaults(func=record_bet)
 
+    p = sub.add_parser(
+        "record-live-prop-bet",
+        help="Record a player-prop wager already placed by hand; never places it.",
+    )
+    p.add_argument("--prop-id", required=True, type=int)
+    p.add_argument("--odds", required=True, type=float)
+    p.add_argument("--stake-aud", required=True, type=float)
+    p.add_argument("--placed-at")
+    p.add_argument("--notes")
+    p.set_defaults(func=record_live_prop_bet_command)
+
     p = sub.add_parser("fetch-closing-odds")
     p.add_argument("--date", required=True)
     p.set_defaults(func=fetch_closing_odds)
@@ -758,6 +912,29 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("tier-roi").set_defaults(func=tier_roi)
     sub.add_parser("combo-roi").set_defaults(func=combo_roi)
     sub.add_parser("settle-props").set_defaults(func=settle_props)
+
+    p = sub.add_parser("build-lowtier-corpus")
+    p.add_argument("--start", required=True, help="First scoreboard date, YYYY-MM-DD.")
+    p.add_argument("--end", help="Last date (default: same as --start).")
+    p.set_defaults(func=build_lowtier_corpus)
+
+    p = sub.add_parser("validate-data")
+    p.add_argument("--strict", action="store_true",
+                   help="Exit non-zero when any critical check fails.")
+    p.set_defaults(func=validate_data)
+
+    p = sub.add_parser(
+        "prune-raw-responses",
+        help="Blank superseded full-replacement API payloads (keeps the rows).",
+    )
+    p.add_argument("--keep-days", type=int, default=7,
+                   help="Never blank a body fetched within this window (default 7).")
+    p.add_argument("--dry-run", action="store_true",
+                   help="Report what would be freed and change nothing.")
+    p.add_argument("--vacuum", action="store_true",
+                   help="Rebuild the file afterwards to return the pages to disk. "
+                        "Needs free space for a second copy of the database.")
+    p.set_defaults(func=prune_raw_responses)
 
     p = sub.add_parser("weekly-review")
     p.add_argument("--date", required=True, help="As-of date; report lands in that date's analysis folder.")

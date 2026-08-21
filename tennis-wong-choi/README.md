@@ -103,6 +103,35 @@ python -m pytest
 
 The default provider is `mock`, so no paid API keys are required.
 
+## Scheduled Telegram Messages
+
+The 09:00 Sydney same-day card sends two separate messages after a successful
+analysis:
+
+- the operational health/completion message goes to
+  `WC_NOTIFY_TELEGRAM_CHAT` only;
+- the formal "what to bet today" card goes to the primary chat and every
+  comma- or semicolon-separated chat in `WC_NOTIFY_TELEGRAM_EXTRA`.
+
+The betting message is built from the final report's `今日落注建議` section.
+It includes only formal `EARLY_MAIN` / `VALIDATED` recommendations and their
+listed odds, stake, calibrated hit probability and confidence. Watchlists,
+research-only rows and match-winner reference rows are never promoted into the
+message. A valid no-bet day sends an explicit no-bet conclusion to both
+recipients. Failed or incomplete analysis sends no betting card.
+
+The launchd card job enables this with `TENNIS_NOTIFY_BETS=1`; guarded recovery
+does the same when it successfully rebuilds a missing card. Run
+`scripts/tennis_daily_schedule.py --notify-self-test` to validate the bot and
+all configured content recipients without sending a message.
+
+The 18:00 review job separately enables `TENNIS_NOTIFY_PERFORMANCE=1`. After
+yesterday's settlement it sends a Hong Kong Chinese performance card with
+daily and cumulative formal paper ROI, every player-prop family's fixed recent
+window, model-vs-market Brier, stale pending count and the current evidence
+gate. Paper recommendations and manually recorded live bets are always shown
+as separate ledgers; when no live bet has been recorded the message says so.
+
 ## Provider Notes
 
 - Tennis stats: `bsd_tennis` adapter targets BSD Tennis API (`https://tennis.bzzoiro.com/api`) because its docs currently list free JSON endpoints for tournaments, players, matches, live scores, predictions, and ATP/WTA rankings.

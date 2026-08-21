@@ -62,7 +62,15 @@ def _candidate_files(files: list[dict], wanted_dates: set[str]) -> list[dict]:
 
 def _is_live_candidate(name: str) -> bool:
     lower = name.lower()
-    return lower in {"ongoing_tourneys.csv", "challenger_ongoing_tourneys.csv"}
+    # wta_ongoing_tourneys.csv was published all along and simply never read,
+    # so in-progress WTA tournaments had no live result feed at all -- the
+    # yearly WTA file only lands once an event is over.  Nothing errored; the
+    # rows just never arrived.
+    return lower in {
+        "ongoing_tourneys.csv",
+        "challenger_ongoing_tourneys.csv",
+        "wta_ongoing_tourneys.csv",
+    }
 
 
 def _is_year_candidate(name: str, year: str) -> bool:
@@ -83,18 +91,21 @@ def _store_rows(rows: list[dict], wanted_dates: set[str]) -> tuple[int, int, int
     unmatched = 0
     seen = 0
     adjacent_seen = 0
-    accepted_csv_dates = _expanded_dates(wanted_dates)
     with get_connection() as conn:
         _ensure_score_column(conn)
+        fixtures = _fixtures_for_dates(conn, wanted_dates)
         for row in rows:
             csv_match_date = _csv_date(row.get("tourney_date"))
-            if csv_match_date not in accepted_csv_dates:
+            if not _in_tournament_window(csv_match_date, wanted_dates):
                 continue
             if csv_match_date in wanted_dates:
                 seen += 1
             else:
                 adjacent_seen += 1
-            match = _match_by_names_for_dates(conn, wanted_dates, row.get("winner_name"), row.get("loser_name"))
+            match = _match_by_names_for_dates(
+                conn, wanted_dates, row.get("winner_name"), row.get("loser_name"),
+                fixtures=fixtures,
+            )
             if not match:
                 unmatched += 1
                 continue
@@ -115,13 +126,32 @@ def _store_rows(rows: list[dict], wanted_dates: set[str]) -> tuple[int, int, int
     return imported, unmatched, seen, adjacent_seen
 
 
-def _expanded_dates(wanted_dates: set[str]) -> set[str]:
-    values = set(wanted_dates)
-    for item in list(wanted_dates):
-        current = date.fromisoformat(item)
-        values.add((current - timedelta(days=1)).isoformat())
-        values.add((current + timedelta(days=1)).isoformat())
-    return values
+# The CSV keys every row by the TOURNAMENT START date, not the date the match
+# was played, so a one-day window only ever admits the opening rounds. Of 18
+# pending ace fixtures found in 2026_wta.csv on 2026-08-09, exactly 2 fell
+# inside the old +/-1 day window; the rest sat 2 to 10 days into their event
+# and were silently skipped, which is why player_aces had 65 outcomes after
+# months of running. Grand slams run 14 days, so allow a fortnight and a bit.
+TOURNAMENT_WINDOW_DAYS = 20
+
+
+def _in_tournament_window(csv_date: str | None, wanted_dates: set[str]) -> bool:
+    """True when a match on one of ``wanted_dates`` could belong to this event."""
+    if not csv_date:
+        return False
+    try:
+        start = date.fromisoformat(csv_date)
+    except ValueError:
+        return False
+    for item in wanted_dates:
+        try:
+            offset = (date.fromisoformat(item) - start).days
+        except ValueError:
+            continue
+        # One day before covers a fixture dated in a timezone ahead of the feed.
+        if -1 <= offset <= TOURNAMENT_WINDOW_DAYS:
+            return True
+    return False
 
 
 def _score_payload(row: dict, match: dict) -> dict:
@@ -147,14 +177,26 @@ def _score_payload(row: dict, match: dict) -> dict:
 
 
 def _score_summary(sets: list[dict]) -> dict:
-    return {
-        "player_a_sets": sum(1 for item in sets if item["player_a_games"] > item["player_b_games"]),
-        "player_b_sets": sum(1 for item in sets if item["player_b_games"] > item["player_a_games"]),
+    a_sets = sum(1 for item in sets if item["player_a_games"] > item["player_b_games"])
+    b_sets = sum(1 for item in sets if item["player_b_games"] > item["player_a_games"])
+    summary = {
+        "player_a_sets": a_sets,
+        "player_b_sets": b_sets,
         "total_sets": len(sets),
         "player_a_games": sum(item["player_a_games"] for item in sets),
         "player_b_games": sum(item["player_b_games"] for item in sets),
         "sets": sets,
     }
+    # A completed match cannot end level on sets. An unparseable score string
+    # produced 0-0, and a walkover or mid-match retirement produced 1-1 or 0-0,
+    # and all of them were stored as finished: 9 such results existed and 22
+    # props had been graded against them -- a prop settled on a scoreline that
+    # never happened is worse than one left pending. Flag them so settlement
+    # voids rather than grades.
+    if a_sets == b_sets:
+        summary["retired"] = True
+        summary["incomplete_scoreline"] = True
+    return summary
 
 
 def _sets(score: str | None, winner_is_player_a: bool) -> list[dict]:
@@ -189,25 +231,52 @@ def _match_by_names(conn, match_date: str, player_name: str | None, opponent_nam
     return _match_by_names_for_dates(conn, {match_date}, player_name, opponent_name)
 
 
-def _match_by_names_for_dates(conn, match_dates: set[str], player_name: str | None, opponent_name: str | None):
-    placeholders = ",".join("?" for _ in match_dates)
-    rows = conn.execute(
-        f"""
+def _fixtures_for_dates(conn, match_dates: set[str]) -> list:
+    """Fixtures on the wanted dates, fetched once per import.
+
+    The tournament window admits far more CSV rows than the old one-day filter,
+    and re-running this query per row made the import quadratic enough to time
+    out on a season backfill.
+    """
+    return _match_by_names_for_dates(conn, match_dates, None, None, fixtures_only=True)
+
+
+def _match_by_names_for_dates(conn, match_dates: set[str], player_name: str | None,
+                              opponent_name: str | None, fixtures_only: bool = False,
+                              fixtures: list | None = None):
+    if fixtures is not None:
+        rows = fixtures
+    else:
+        placeholders = ",".join("?" for _ in match_dates)
+        rows = conn.execute(
+            f"""
         SELECT m.id, m.player_a_id, m.player_b_id, pa.name AS player_a_name, pb.name AS player_b_name
         FROM matches m
         JOIN players pa ON pa.id = m.player_a_id
         JOIN players pb ON pb.id = m.player_b_id
         WHERE m.match_date IN ({placeholders})
         """,
-        tuple(sorted(match_dates)),
-    ).fetchall()
+            tuple(sorted(match_dates)),
+        ).fetchall()
+    if fixtures_only:
+        return rows
     best_row = None
     best_score = 0.0
+    runner_up = 0.0
     for row in rows:
         score, _direction = match_pair_score(player_name, opponent_name, row["player_a_name"], row["player_b_name"])
         if score > best_score:
+            runner_up = best_score
             best_row = row
             best_score = score
+        elif score > runner_up:
+            runner_up = score
+    # The tournament window admits several days of fixtures at once, so a pair
+    # that meets twice inside it would otherwise be resolved by "best score
+    # wins" -- and the loser of that comparison gets settled against the wrong
+    # match. Refuse instead.
+    if best_score - runner_up < 0.02:
+        return None
     return best_row
 
 
