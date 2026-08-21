@@ -27,8 +27,11 @@ description: 'Check incoming and stored data before trusting any model output in
 python3 .agents/skills/shared_racing/scripts/data_contract.py --platform au --check
 python3 .agents/skills/shared_racing/scripts/data_contract.py --platform hkjc --check
 
-# 跨平台場次對齊 + 覆蓋率閘（只讀賽前 artifact，唔會變成洩漏路徑）
-python3 .agents/skills/shared_racing/scripts/racing_data_health.py
+# 逐個場次嘅對齊 + 覆蓋率閘（只讀賽前 artifact，唔會變成洩漏路徑）
+# ⚠️ 佢係 per-meeting scanner，一定要兩個參數，而且要 PYTHONPATH=<repo root>
+PYTHONPATH=. python3 .agents/skills/shared_racing/scripts/racing_data_health.py \
+    --platform au --meeting-dir "<meeting folder>"
+# ⚠️ 目前只有 hkjc_orchestrator 會自動叫佢；AU 主流程冇接 —— AU 要手動跑
 
 # 來源連結 + neutral/fallback 覆蓋
 python3 .agents/skills/au_racing/au_wong_choi_auto/scripts/au_source_coverage_audit.py

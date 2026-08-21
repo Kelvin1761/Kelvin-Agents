@@ -72,15 +72,19 @@ except Exception as exc:
     print(f"  ❌ 讀唔到路徑設定：{exc}"); raise SystemExit
 
 # AU: meetings are near-daily, so a multi-day gap is a real outage.
+sys.path.insert(0, os.path.join(os.getcwd(), ".agents/skills/shared_racing/scripts"))
+from corpus_paths import meeting_dirs   # noqa: E402  (Archive/ holds half the corpus)
+
 for label, root, stale_days in (("AU", AU_RACING, 3), ("HKJC", HK_RACING, 21)):
     try:
-        meetings = sorted(d for d in os.listdir(root) if d[:2] == "20")
+        meetings = [d.name for d in sorted(meeting_dirs(root), key=lambda p: p.name)]
     except OSError as exc:
         print(f"  ❌ {label} 資料根目錄讀唔到：{exc.__class__.__name__}"); continue
     if not meetings:
         print(f"  ❌ {label} 一個場次都冇"); continue
     last = meetings[-1]
-    scored = len(glob.glob(os.path.join(root, last, "Race_*_Logic.json")))
+    last_dir = next((d for d in meeting_dirs(root) if d.name == last), None)
+    scored = len(glob.glob(os.path.join(str(last_dir), "Race_*_Logic.json"))) if last_dir else 0
     try:
         d = datetime.strptime(last[:10], "%Y-%m-%d")
         gap = (datetime.now() - d).days
