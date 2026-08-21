@@ -71,7 +71,7 @@ def get_target_dir(venue: str, formatted_date: str, auto_create: bool = False) -
     return str(new_dir)
 
 
-def detect_total_races_from_url(url: str) -> int:
+def detect_total_races_from_url(url: str) -> int | None:
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=15) as response:
@@ -84,11 +84,8 @@ def detect_total_races_from_url(url: str) -> int:
     except Exception as exc:
         print(f"⚠️ [Auto-Detection] 無法偵測場數: {exc}")
 
-    if "HV" in url.upper():
-        print("⚠️ [Fallback] 跑馬地預設 9 場")
-        return 9
-    print("⚠️ [Fallback] 沙田預設 11 場")
-    return 11
+    print("⏳ [Readiness] 未能由官方 racecard 確認完整場數；唔會用 9/11 場估算。")
+    return None
 
 
 def trigger_extractor(url: str, target_dir: str) -> None:
@@ -98,6 +95,10 @@ def trigger_extractor(url: str, target_dir: str) -> None:
         print(f"❌ [Error] 找不到爬蟲腳本: {script_path}")
         raise SystemExit(1)
     total = detect_total_races_from_url(url)
+    if total is None:
+        # Exit 75 tells the unattended scheduler this is a source-readiness
+        # condition, not a permanent code failure.  The recovery job will retry.
+        raise SystemExit(75)
     race_range = f"1-{total}"
     print(f"📋 [Orchestrator] 提取場次範圍: {race_range}")
     try:
@@ -108,4 +109,4 @@ def trigger_extractor(url: str, target_dir: str) -> None:
         )
     except subprocess.CalledProcessError as exc:
         print(f"❌ [Error] 數據提取腳本執行失敗: {exc}")
-        raise SystemExit(1) from exc
+        raise SystemExit(exc.returncode) from exc

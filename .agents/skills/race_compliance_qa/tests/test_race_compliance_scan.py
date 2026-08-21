@@ -9,7 +9,12 @@ ROOT = Path(__file__).resolve().parents[4]
 SCRIPT_DIR = ROOT / ".agents" / "skills" / "race_compliance_qa" / "scripts"
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from race_compliance_scan import parse_result_json
+from race_compliance_scan import (
+    check_placeholders,
+    parse_analysis_top4,
+    parse_logic_top4,
+    parse_result_json,
+)
 
 
 class RaceComplianceScanTests(unittest.TestCase):
@@ -121,6 +126,96 @@ class RaceComplianceScanTests(unittest.TestCase):
         for payload in ("nope", 42, None, [], {}, {"a": 1}):
             with self.subTest(payload=payload):
                 self.assertEqual(parse_result_json(payload), {})
+
+    def test_hkjc_url_keyed_result_cache_parses(self) -> None:
+        payload = {
+            "https://racing.hkjc.com/results?RaceNo=7": [
+                {"placing": 1, "horse_no": 5, "horse_name": "Winner"},
+                {"placing": 2, "horse_no": 11, "horse_name": "Second"},
+            ]
+        }
+        self.assertEqual(
+            parse_result_json(payload),
+            {7: [(1, 5, "Winner"), (2, 11, "Second")]},
+        )
+
+    def test_current_python_auto_verdict_is_canonical_top4(self) -> None:
+        data = {
+            "race_analysis": {"verdict": {}},
+            "python_auto_verdict": {
+                "top4": [
+                    {"horse_number": "3"},
+                    {"horse_number": "1"},
+                    {"horse_number": "7"},
+                    {"horse_number": "2"},
+                ]
+            },
+        }
+        self.assertEqual(parse_logic_top4(data), ["3", "1", "7", "2"])
+
+    def test_small_field_can_have_fewer_than_four_canonical_picks(self) -> None:
+        from tempfile import TemporaryDirectory
+        import json
+        from race_compliance_scan import check_top4_drift
+
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "Race_1_Logic.json").write_text(
+                json.dumps(
+                    {
+                        "horses": {"1": {}, "2": {}},
+                        "python_auto_verdict": {
+                            "ranking": [
+                                {"horse_number": "1"},
+                                {"horse_number": "2"},
+                            ],
+                            "top4": [
+                                {"horse_number": "1"},
+                                {"horse_number": "2"},
+                            ],
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            self.assertEqual(check_top4_drift(root), [])
+
+    def test_current_hkjc_numbered_top4_markdown_parses(self) -> None:
+        text = """
+**第1選**
+- **馬號及馬名:** [1] Alpha
+**第2選**
+- **馬號及馬名:** [2] Beta
+**第3選**
+- **馬號及馬名:** [8] Gamma
+**第4選**
+- **馬號及馬名:** [9] Delta
+"""
+        self.assertEqual(parse_analysis_top4(text), ["1", "2", "8", "9"])
+
+    def test_legacy_placeholders_do_not_fail_canonical_auto_layer(self) -> None:
+        from tempfile import TemporaryDirectory
+        import json
+
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "Race_1_Logic.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "python_auto_verdict": {"top4": [{"horse_number": "1"}]},
+                        "horses": {
+                            "1": {
+                                "core_logic": "[FILL]",
+                                "base_rating": "[AUTO]",
+                                "python_auto": {"core_logic": "完整 deterministic 判讀"},
+                            }
+                        },
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            self.assertEqual(check_placeholders(path), [])
 
 
 if __name__ == "__main__":

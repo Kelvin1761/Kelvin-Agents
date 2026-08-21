@@ -19,7 +19,10 @@ Arguments:
 """
 import re
 import argparse
+import json
+import tempfile
 import subprocess
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse, parse_qs
 
@@ -41,6 +44,61 @@ TRACKWORK_SCRIPT = os.path.join(SKILL_DIR, 'extract_trackwork.py')
 
 # Force UTF-8 for child subprocess output (prevents garbled Chinese on non-macOS systems)
 SUBPROCESS_ENV = {**os.environ, 'PYTHONIOENCODING': 'utf-8'}
+EXIT_TEMPORARY = 75
+
+
+def _atomic_write_text(path, content):
+    """Replace an extracted artifact only after a complete candidate exists."""
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode='w', encoding='utf-8', dir=os.path.dirname(path),
+            prefix=f'.{os.path.basename(path)}.', suffix='.tmp', delete=False,
+        ) as handle:
+            handle.write(content)
+            temp_path = handle.name
+        os.replace(temp_path, path)
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.unlink(temp_path)
+
+
+def _atomic_write_json(path, payload):
+    _atomic_write_text(path, json.dumps(payload, ensure_ascii=False, indent=2) + '\n')
+
+
+def _content_error(content, label, race_no):
+    encoded_size = len(content.encode('utf-8'))
+    if "Could not find racecard table" in content or "沒有賽績紀錄" in content:
+        return f"{label} R{race_no}: source not published/ready"
+    if encoded_size < 100:
+        return f"{label} R{race_no}: Output suspiciously small ({encoded_size} bytes)"
+    first_line = content.strip().split('\n')[0] if content.strip() else ''
+    if first_line.startswith('Error:'):
+        return f"{label} R{race_no}: {first_line[:100]}"
+    if label in {'Racecard', 'Formguide'} and not re.search(r'^馬號:\s*\d+\b', content, re.M):
+        return f"{label} R{race_no}: no runner rows (source not published/ready)"
+    return None
+
+
+def _keep_valid_candidate(path, content, label, race_no, returncode):
+    """Validate before replace; failed refreshes never destroy last good data."""
+    error = _content_error(content, label, race_no)
+    if returncode == 0 and error is None:
+        _atomic_write_text(path, content)
+        return True, None
+    if returncode != 0 and error is None:
+        error = f"{label} R{race_no}: extractor exit={returncode}"
+    # Remove only an already-invalid artifact left by an older non-atomic run.
+    if os.path.exists(path):
+        try:
+            with open(path, 'r', encoding='utf-8') as handle:
+                existing_error = _content_error(handle.read(), label, race_no)
+            if existing_error:
+                os.unlink(path)
+        except OSError:
+            pass
+    return False, error
 
 
 
@@ -82,12 +140,12 @@ def extract_single_race(race_no, base_url, output_dir, date_prefix):
             capture_output=True, text=True, timeout=60,
             encoding='utf-8', env=SUBPROCESS_ENV
         )
-        with open(rc_file, 'w', encoding='utf-8') as f:
-            f.write(rc_result.stdout)
-        if rc_result.returncode == 0:
-            results['racecard_ok'] = True
-        else:
-            results['errors'].append(f"Racecard R{race_no}: {rc_result.stderr[:200]}")
+        ok, error = _keep_valid_candidate(
+            rc_file, rc_result.stdout or '', 'Racecard', race_no, rc_result.returncode
+        )
+        results['racecard_ok'] = ok
+        if not ok:
+            results['errors'].append(error or f"Racecard R{race_no}: {rc_result.stderr[:200]}")
     except Exception as e:
         results['errors'].append(f"Racecard R{race_no}: {str(e)}")
 
@@ -102,38 +160,15 @@ def extract_single_race(race_no, base_url, output_dir, date_prefix):
         # Filter out the "Extracting form guide" log line
         lines = fg_result.stdout.splitlines(keepends=True)
         filtered = [l for l in lines if "Extracting form guide using Playwright" not in l]
-        with open(fg_file, 'w', encoding='utf-8') as f:
-            f.writelines(filtered)
-        if fg_result.returncode == 0:
-            results['formguide_ok'] = True
-        else:
-            results['errors'].append(f"Formguide R{race_no}: {fg_result.stderr[:200]}")
+        content = ''.join(filtered)
+        ok, error = _keep_valid_candidate(
+            fg_file, content, 'Formguide', race_no, fg_result.returncode
+        )
+        results['formguide_ok'] = ok
+        if not ok:
+            results['errors'].append(error or f"Formguide R{race_no}: {fg_result.stderr[:200]}")
     except Exception as e:
         results['errors'].append(f"Formguide R{race_no}: {str(e)}")
-
-    # Post-extraction content validation
-    for filepath, label, key in [(rc_file, 'Racecard', 'racecard_ok'), (fg_file, 'Formguide', 'formguide_ok')]:
-        if os.path.exists(filepath):
-            size = os.path.getsize(filepath)
-            if size < 100:
-                results['errors'].append(f"{label} R{race_no}: Output file suspiciously small ({size} bytes) — likely extraction failure")
-                results[key] = False
-            else:
-                # Check for error content explicitly
-                try:
-                    with open(filepath, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                    
-                    first_line = content.strip().split('\n')[0] if content.strip() else ''
-                    
-                    if first_line.startswith('Error:'):
-                        results['errors'].append(f"{label} R{race_no}: Output contains error message: {first_line[:100]}")
-                        results[key] = False
-                    elif "Could not find racecard table" in content or "沒有賽績紀錄" in content:
-                        results['errors'].append(f"{label} R{race_no}: Empty or invalid HKJC table detected.")
-                        results[key] = False
-                except Exception:
-                    pass
 
     return results
 
@@ -147,19 +182,10 @@ def extract_starter_pdf(date_yyyymmdd, output_dir, date_prefix):
             capture_output=True, text=True, timeout=90,
             encoding='utf-8', env=SUBPROCESS_ENV
         )
-        with open(pdf_file, 'w', encoding='utf-8') as f:
-            f.write(result.stdout)
-        # Validate PDF output content
-        if result.returncode != 0:
-            return False, result.stderr[:200]
-        file_size = os.path.getsize(pdf_file)
-        if file_size < 100:
-            return False, f"PDF output file too small ({file_size} bytes) — extraction likely failed"
-        # Check if output is just an error message
-        first_line = result.stdout.strip().split('\n')[0] if result.stdout.strip() else ''
-        if first_line.startswith('Error:'):
-            return False, f"PDF script wrote error to stdout: {first_line[:100]}"
-        return True, ""
+        ok, error = _keep_valid_candidate(
+            pdf_file, result.stdout or '', 'Starter PDF', 0, result.returncode
+        )
+        return ok, "" if ok else (error or result.stderr[:200])
     except Exception as e:
         return False, str(e)
 
@@ -237,8 +263,7 @@ def main():
         print(f"   ✅ Starter PDF saved")
     else:
         print(f"   ❌ Starter PDF failed: {pdf_err}")
-        print(f"   🚨 [Fast-Fail] PDF is required for accurate analysis. Aborting batch extraction to conserve resources.")
-        sys.exit(1)
+        print(f"   ⏳ PDF 未 ready；先完成其餘來源探測，整批會標記 WAITING_SOURCE。")
     print()
 
     # Step 2: Extract 晨操 (trackwork) — all races in one shot, fail-soft
@@ -284,6 +309,27 @@ def main():
     else:
         print(f"   ⚠️ 晨操 Trackwork: {tw_ok_count}/{len(races)} races (fallback)")
     print(f"   📁 All files saved to: {output_dir}")
+
+    ready = pdf_ok and total_rc == len(races) and total_fg == len(races)
+    readiness = {
+        "schema_version": 1,
+        "generated_at": datetime.now().astimezone().isoformat(timespec='seconds'),
+        "status": "ready" if ready else "waiting_source",
+        "meeting_date": date_raw,
+        "expected_races": len(races),
+        "starter_pdf_ready": pdf_ok,
+        "racecards_ready": total_rc,
+        "formguides_ready": total_fg,
+        "trackwork_ready": tw_ok_count,
+        "races": all_results,
+        "self_recovery": "automatic_retry" if not ready else "not_needed",
+    }
+    readiness_path = os.path.join(output_dir, "Extraction_Readiness.json")
+    _atomic_write_json(readiness_path, readiness)
+    print(f"   Readiness: {readiness['status']} ({readiness_path})")
+    if not ready:
+        print("⏳ HKJC required source 未齊；保留最後有效檔案，exit 75 等 scheduler 自動重試。")
+        sys.exit(EXIT_TEMPORARY)
 
 
 if __name__ == "__main__":

@@ -27,6 +27,11 @@ TOP4_BLOCK_RE = re.compile(
     r'(?:馬號及馬名|Horse(?:\s+No\.?)?)[：:]*\*?\*?\s*\[?#?(\d+)\]?',
     re.DOTALL,
 )
+TOP4_NUMBERED_BLOCK_RE = re.compile(
+    r'\*\*第([1-4])選\*\*.*?'
+    r'(?:馬號及馬名|Horse(?:\s+No\.?)?)[：:]*\*?\*?\s*\[?#?(\d+)\]?',
+    re.DOTALL,
+)
 PLACEHOLDER_RE = re.compile(r'(\[AUTO\]|PLACEHOLDER|\{\{LLM_FILL\}\}|\[FILL\])')
 ERROR_MARKERS = (
     'Error:',
@@ -74,7 +79,9 @@ def extract_race_no(path: pathlib.Path, text: str = '') -> int | None:
 
 
 def parse_logic_top4(data: dict[str, Any]) -> list[str]:
-    verdict = data.get('race_analysis', {}).get('verdict', {})
+    verdict = data.get('python_auto_verdict')
+    if not isinstance(verdict, dict):
+        verdict = data.get('race_analysis', {}).get('verdict', {})
     top4 = verdict.get('top4', []) if isinstance(verdict, dict) else []
     nums = []
     for item in top4:
@@ -92,14 +99,19 @@ def parse_analysis_top4(text: str) -> list[str]:
     rank_order = {'🥇': 1, '🥈': 2, '🥉': 3, '🏅': 4}
     for match in TOP4_BLOCK_RE.finditer(text):
         picks.append((rank_order.get(match.group(1), len(picks) + 1), match.group(2)))
+    for match in TOP4_NUMBERED_BLOCK_RE.finditer(text):
+        picks.append((int(match.group(1)), match.group(2)))
     picks.sort(key=lambda item: item[0])
-    return [num for _, num in picks]
+    deduped: dict[int, str] = {}
+    for rank, number in picks:
+        deduped.setdefault(rank, number)
+    return [deduped[rank] for rank in sorted(deduped)]
 
 
 # Field aliases across the results-JSON dialects we have to read. The
 # `finish_position` / `competitor_number` spelling is the archive dialect (see
 # parse_result_json) — every real AU Race_Results_*.json uses it.
-_POS_KEYS = ('pos', 'position', 'rank', 'finish_position')
+_POS_KEYS = ('pos', 'position', 'rank', 'finish_position', 'placing')
 _HORSE_NO_KEYS = ('horse_no', 'horse_number', 'num', 'competitor_number')
 _NAME_KEYS = ('horse_name', 'name')
 
@@ -168,6 +180,13 @@ def parse_result_json(data: Any) -> dict[int, list[tuple[int, int, str]]]:
 
     parsed: dict[int, list[tuple[int, int, str]]] = {}
     for key, race_data in iterable:
+        if isinstance(race_data, list):
+            match = re.search(r'(?:RaceNo=|Race[_ -]?)(\d+)', str(key), re.IGNORECASE)
+            race_no = int(match.group(1)) if match else parse_int(key)
+            rows = parse_result_rows(race_data)
+            if race_no is not None and rows:
+                parsed[race_no] = rows
+            continue
         if not isinstance(race_data, dict):
             continue
         race_no = parse_int(race_data.get('race_no', key))
@@ -209,6 +228,25 @@ def check_placeholders(path: pathlib.Path) -> list[Issue]:
     if not (ANALYSIS_RE.search(path.name) or LOGIC_RE.search(path.name)):
         return []
     text = read_text(path)
+    # Current deterministic Logic keeps the legacy scaffold for traceability,
+    # but final scoring/rendering is owned by python_auto + python_auto_verdict.
+    # Scan only that canonical layer when present; otherwise every valid modern
+    # file is falsely rejected for dormant legacy [FILL]/[AUTO] fields.
+    if LOGIC_RE.search(path.name) and path.suffix.lower() == '.json':
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            return []  # LOGIC-001 is emitted by check_top4_drift.
+        if isinstance(data.get('python_auto_verdict'), dict):
+            canonical = {
+                'python_auto_verdict': data['python_auto_verdict'],
+                'horses': {
+                    number: horse.get('python_auto')
+                    for number, horse in (data.get('horses') or {}).items()
+                    if isinstance(horse, dict)
+                },
+            }
+            text = json.dumps(canonical, ensure_ascii=False)
     match = PLACEHOLDER_RE.search(text)
     if not match:
         return []
@@ -250,8 +288,23 @@ def check_top4_drift(root: pathlib.Path) -> list[Issue]:
             continue
         race_no = extract_race_no(path, text)
         logic_top4 = parse_logic_top4(data)
-        if len(logic_top4) < 4:
-            issues.append(Issue('CRITICAL', 'TOP4-002', str(path), f'Logic Top4 has fewer than 4 picks: {logic_top4}', race_no))
+        verdict = data.get('python_auto_verdict')
+        ranking = verdict.get('ranking') if isinstance(verdict, dict) else None
+        horses = data.get('horses')
+        field_size = (
+            len(ranking)
+            if isinstance(ranking, list) and ranking
+            else len(horses) if isinstance(horses, dict) else 4
+        )
+        expected_picks = min(4, field_size)
+        if len(logic_top4) < expected_picks:
+            issues.append(Issue(
+                'CRITICAL',
+                'TOP4-002',
+                str(path),
+                f'Logic Top4 has fewer than {expected_picks} picks: {logic_top4}',
+                race_no,
+            ))
             continue
         if race_no is None or race_no not in analyses:
             continue

@@ -23,6 +23,14 @@ AUTO_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi_auto" /
 SHARED_SCRIPTS = ROOT / ".agents" / "scripts"
 SHARED_HOOK_DIR = ROOT / ".agents" / "skills" / "shared_racing" / "post_success_hooks" / "scripts"
 SHARED_RACING_SCRIPTS = ROOT / ".agents" / "skills" / "shared_racing" / "scripts"
+COMPLIANCE_SCAN = (
+    ROOT
+    / ".agents"
+    / "skills"
+    / "race_compliance_qa"
+    / "scripts"
+    / "race_compliance_scan.py"
+)
 
 sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(ROOT))
@@ -280,6 +288,20 @@ def _run_data_health_gate(target_dir: Path) -> dict:
     return report
 
 
+def _run_compliance_gate(target_dir: Path) -> None:
+    _run(
+        [
+            PYTHON,
+            str(COMPLIANCE_SCAN),
+            "--root",
+            str(target_dir),
+            "--platform",
+            "hkjc",
+        ],
+        "Shared Race Compliance QA",
+    )
+
+
 def _cleanup_temp_artifacts(target_dir: Path | None) -> None:
     removed = 0
     for path in ROOT.glob("_mip_temp_*.html"):
@@ -334,6 +356,7 @@ def main() -> None:
         _generate_logic(target_dir, args.skip_logic, race_workers)
         _run_auto(target_dir, args.validate_engine)
         _run_data_health_gate(target_dir)
+        _run_compliance_gate(target_dir)
         run_post_success_cloudflare_deploy(
             source="HKJC Wong Choi",
             target_dir=target_dir,

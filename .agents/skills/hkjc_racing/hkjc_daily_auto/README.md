@@ -13,8 +13,10 @@ historical/reference review；新季 forward 收集本身唔受呢個限制。
 
 - `watch`：休季期間每日查 HKJC official racecard；未有資料就 dormant，首次見到新賽日用 Telegram 通知。
 - `prerace`：新賽日前兩日開始跑 extractor → Facts → fresh Logic → Auto scoring → data-health gate → dashboard deploy，再保存 immutable prediction snapshot。
+- `recovery`：只喺 pre-race 曾因 racecard／starter PDF／formguide 未齊而標記 pending 時，每 30 分鐘自動補跑；冇 pending 就完全 dormant、唔打 HKJC 網站。
 - `postrace`：賽日翌日抽正式賽果、對齊 snapshot、跑 unified reflector 及更新 forward corpus。
 - `weekly`：星期一發 performance/drift 摘要；只有 `HKJC_Candidate_Gate.json` 明確為 `passed` 先建立 non-draft PR，永遠唔會自動 merge。
+- `monthly`：CLI fallback，只發一次 AU + HKJC review 提醒並按月份去重。正式月報由 Codex monthly automation 自動完成：彙總上一個完整曆月、輸出 Markdown／JSON／PDF，Telegram 傳摘要及 PDF；任何模型或 Matrix 改動仍只可提出候選，等人手批准。
 
 ## Install on macOS
 
@@ -26,6 +28,7 @@ bash .agents/skills/hkjc_racing/hkjc_daily_auto/install_macos_launchd.sh
 
 - racecard watch：00:15、09:15、21:15、23:15
 - pre-race refresh：00:30、08:00、11:00、21:30、23:30
+- pending source self-recovery：每 30 分鐘（只在 pending 狀態先真正重試）
 - post-race：08:30
 - weekly review：星期一 09:00
 
@@ -33,6 +36,11 @@ bash .agents/skills/hkjc_racing/hkjc_daily_auto/install_macos_launchd.sh
 21:00 對應 Sydney 23:00／00:00（視乎 daylight saving）。流程唔會硬編碼
 星期三／六，因為新年、復活節、打吡等可能有星期日或公眾假期賽日；每次以
 HKJC official future racecard 為準，只會處理未來兩日內嘅 meeting。
+
+如果 racecard 已出但 starter PDF 或逐場 formguide 仲未 ready，extractor 會寫
+`Extraction_Readiness.json`、保留上一份有效檔案並以 temporary exit 75 停止；唔會
+生成／部署半套分析。Recovery job 會每 30 分鐘補跑，所有必需來源齊全先繼續
+Facts → Logic → scoring → health gate。相同 snapshot 重跑唔會重複 Telegram 洗版。
 
 Telegram 會優先重用 AU automation 嘅 `~/.wongchoi_notify.env`：
 `WC_NOTIFY_TELEGRAM_TOKEN` / `WC_NOTIFY_TELEGRAM_CHAT`。因此同一 bot、同一
@@ -42,6 +50,10 @@ chat 可以同時收 AU 同 HKJC 訊息，唔需要複製 token。未有 AU 設�
 cp .agents/.env.example .agents/.env
 # 然後填 TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID
 ```
+
+如設定 `WC_NOTIFY_TELEGRAM_EXTRA`（多個 chat ID 可用逗號或分號分隔），HKJC
+分析完成訊息會同時發畀 primary 同額外收件人。錯誤、路徑及 recovery 運維訊息
+仍然只發畀 primary，額外收件人唔會獲得 bot 指令權限。
 
 可用
 `WC_HKJC_ANALYSIS_LEAD_DAYS` 改 pre-race 提前日數；forward 正式起點預設

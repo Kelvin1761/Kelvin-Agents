@@ -42,6 +42,14 @@ PYTHON = sys.executable
 FACTS_INJECTOR = PROJECT_ROOT / ".agents" / "scripts" / "inject_fact_anchors.py"
 AUTO_LOGIC = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "build_au_logic.py"
 AUTO_ORCH = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "au_auto_orchestrator.py"
+COMPLIANCE_SCAN = (
+    PROJECT_ROOT
+    / ".agents"
+    / "skills"
+    / "race_compliance_qa"
+    / "scripts"
+    / "race_compliance_scan.py"
+)
 TEMP_ROOT = PROJECT_ROOT / "_temporary_files"
 TEMP_FILE_PATTERNS = (
     "latest_results.html",
@@ -82,6 +90,7 @@ def main():
                 cleanup_target = meeting_dir.parent
                 official_going = _resolve_official_going(meeting_dir.parent, args.going)
                 _run(_auto_command(meeting_dir, official_going))
+                _run_compliance_gate(meeting_dir.parent)
                 run_post_success_cloudflare_deploy(
                     source="AU Wong Choi",
                     target_dir=meeting_dir.parent,
@@ -106,6 +115,7 @@ def main():
         _ensure_logic(meeting_dir, race_workers)
         official_going = _resolve_official_going(meeting_dir, args.going)
         _run(_auto_command(meeting_dir, official_going))
+        _run_compliance_gate(meeting_dir)
         run_post_success_cloudflare_deploy(
             source="AU Wong Choi",
             target_dir=meeting_dir,
@@ -330,6 +340,20 @@ def _auto_command(target: Path, official_going: str | None) -> list[str]:
     if official_going:
         command.extend(["--going", official_going])
     return command
+
+
+def _run_compliance_gate(meeting_dir: Path) -> None:
+    """Block publish when raw/Logic/rendered/result layers drift."""
+    _run(
+        [
+            PYTHON,
+            str(COMPLIANCE_SCAN),
+            "--root",
+            str(meeting_dir),
+            "--platform",
+            "au",
+        ]
+    )
 
 
 def _distance_for_race(racecard: Path, formguide: Path | None) -> int | None:

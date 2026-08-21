@@ -66,4 +66,16 @@ Telegram 通知分四類：
 3. 每週 performance/drift 摘要及是否需要人手 review
 4. 候選過閘：舊版 vs 新版指標、樣本、風險、PR link、rollback 方法
 
+## 每月自動報告交付
+
+- 每月第一個星期一以「上一個完整曆月」為唯一正式範圍，AU 與 HKJC 分開統計。
+- 先凍結／確認 pre-race snapshot，再對齊賽果；唔可以用賽後資料重建當時 prediction。
+- 自動產生 Markdown、machine-readable JSON 同 PDF；Telegram 摘要及 PDF 傳畀 primary owner 同已設定嘅 content recipients。
+- PDF 傳送失敗時仍要發文字警報，保留本機絕對路徑，並喺 Codex task 回報可下載檔案。
+- 月報可自動跑 bounded Matrix／ML／feature crossover 實驗，同埋修正有證據嘅 data／code bug；所有實驗必須隔離 production、保留 baseline 同可重現結果。
+- 正確性 bug 修復通過 deterministic QA、no-leakage、全測試及無 performance regression 後，可自動準備 non-draft PR。
+- Scoring／Matrix／ML 候選必須再通過獨立 holdout、paired improvement、Top2 保護及無重大 cohort regression，先可自動準備 non-draft PR；細樣本只可 `Observe`。
+- 通過歷史 gate 但未有真正 forward proof 嘅候選，要凍結 fingerprint、參數、建立時間同 `forward_after`；之後每月只用建立後新賽事評估，唔可以再因新結果改同一候選。過閘先升級 `Prepare PR`，否則繼續 `Observe` 或淘汰。
+- 月報可輸出 `Keep / Observe / Prepare PR`，但唔可以自行 merge、部署候選或改 production；全部 PR 等用戶批准。
+
 候選通過後系統自動準備 non-draft PR；訊息用「建議批准／繼續觀察／拒絕」表達。只有用戶批准後先 merge 及 deploy。

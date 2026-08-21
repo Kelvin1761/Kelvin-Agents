@@ -31,10 +31,26 @@ Usage:
 """
 import re
 import json
+import tempfile
 from typing import Optional, Tuple
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Never replace a previously valid Facts file with a partial process write."""
+    temp_path: Optional[Path] = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=path.parent,
+            prefix=f".{path.name}.", suffix=".tmp", delete=False,
+        ) as handle:
+            handle.write(text)
+            temp_path = Path(handle.name)
+        os.replace(temp_path, path)
+    finally:
+        if temp_path and temp_path.exists():
+            temp_path.unlink()
 
 
 def _profile_entry_datetime(entry: dict) -> Optional[datetime]:
@@ -2436,7 +2452,7 @@ def main():
     output_text = '\n'.join(output_lines)
     
     if output_path:
-        Path(output_path).write_text(output_text, encoding='utf-8')
+        _atomic_write_text(Path(output_path), output_text)
         print(f"✅ 已寫入 → {output_path}", file=sys.stderr)
     else:
         print(output_text)

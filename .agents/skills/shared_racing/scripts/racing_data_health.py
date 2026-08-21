@@ -163,6 +163,29 @@ def scan_meeting(platform: str, meeting_dir: Path) -> dict:
     meeting_dir = meeting_dir.resolve()
     issues: list[dict] = []
     race_reports: list[dict] = []
+    expected_races: int | None = None
+    readiness_path = meeting_dir / "Extraction_Readiness.json"
+    if platform == "hkjc" and is_materialized_file(readiness_path):
+        try:
+            readiness = json.loads(readiness_path.read_text(encoding="utf-8"))
+            expected_races = int(readiness.get("expected_races") or 0) or None
+            if readiness.get("status") != "ready":
+                issues.append({
+                    "severity": "error",
+                    "code": "SOURCE_NOT_READY",
+                    "message": (
+                        f"racecards={readiness.get('racecards_ready', 0)}/"
+                        f"{expected_races or '?'}; formguides="
+                        f"{readiness.get('formguides_ready', 0)}/{expected_races or '?'}; "
+                        f"starter_pdf={readiness.get('starter_pdf_ready', False)}"
+                    ),
+                })
+        except (OSError, UnicodeError, ValueError, TypeError, json.JSONDecodeError) as exc:
+            issues.append({
+                "severity": "error",
+                "code": "INVALID_EXTRACTION_READINESS",
+                "message": str(exc),
+            })
     logic_paths = sorted(
         (
             path
@@ -173,6 +196,12 @@ def scan_meeting(platform: str, meeting_dir: Path) -> dict:
     )
     if not logic_paths:
         issues.append({"severity": "error", "code": "NO_LOGIC", "message": "冇 Race_X_Logic.json"})
+    elif expected_races is not None and len(logic_paths) != expected_races:
+        issues.append({
+            "severity": "error",
+            "code": "INCOMPLETE_RACE_SET",
+            "message": f"Logic races={len(logic_paths)} expected={expected_races}",
+        })
 
     seen_races: set[int] = set()
     coverage_values: list[float] = []
@@ -346,6 +375,7 @@ def scan_meeting(platform: str, meeting_dir: Path) -> dict:
         "platform": platform,
         "meeting_dir": str(meeting_dir),
         "meeting": meeting_dir.name,
+        "expected_races": expected_races,
         "status": status,
         "deploy_allowed": errors == 0,
         "summary": {

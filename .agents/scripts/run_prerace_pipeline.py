@@ -316,6 +316,9 @@ def main():
     if summary['stats']['failed'] > 0:
         print(f"   ⚠️ {summary['stats']['failed']} race(s) failed!")
     print(f"   Summary: {meeting_dir / 'pipeline_summary.json'}")
+    if summary['stats']['total_races'] == 0 or summary['stats']['failed'] > 0:
+        print("❌ Facts injection incomplete；停止 Logic/scoring，等下一次完整重跑。")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

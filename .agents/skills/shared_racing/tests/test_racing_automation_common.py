@@ -4,12 +4,21 @@ import csv
 import json
 import sys
 from pathlib import Path
+from unittest import mock
 
 SHARED_SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SHARED_SCRIPTS))
 
+import racing_telegram  # noqa: E402
 from racing_data_health import EXPECTED_FEATURES, scan_meeting, status_line, write_report  # noqa: E402
-from racing_telegram import _chunks, send_message, telegram_credentials  # noqa: E402
+from racing_telegram import (  # noqa: E402
+    _chunks,
+    _multipart_document,
+    send_document,
+    send_message,
+    telegram_credentials,
+    telegram_targets,
+)
 
 
 def _meeting(tmp_path: Path, *, broken: bool = False) -> Path:
@@ -172,6 +181,27 @@ def test_hkjc_health_blocks_racecard_name_drift(tmp_path: Path) -> None:
     assert any(issue["code"] == "SOURCE_NAME_MISMATCH" for issue in report["issues"])
 
 
+def test_hkjc_health_blocks_incomplete_extraction_manifest(tmp_path: Path) -> None:
+    meeting = _meeting(tmp_path)
+    (meeting / "Extraction_Readiness.json").write_text(
+        json.dumps(
+            {
+                "status": "waiting_source",
+                "expected_races": 2,
+                "racecards_ready": 2,
+                "formguides_ready": 1,
+                "starter_pdf_ready": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    report = scan_meeting("hkjc", meeting)
+    assert report["deploy_allowed"] is False
+    codes = {issue["code"] for issue in report["issues"]}
+    assert "SOURCE_NOT_READY" in codes
+    assert "INCOMPLETE_RACE_SET" in codes
+
+
 def test_telegram_dry_run_and_chunking() -> None:
     parts = _chunks("a" * 5000)
     assert [len(part) for part in parts] == [4096, 904]
@@ -185,3 +215,89 @@ def test_telegram_reuses_au_credentials(monkeypatch) -> None:
     monkeypatch.setenv("WC_NOTIFY_TELEGRAM_TOKEN", "au-token")
     monkeypatch.setenv("WC_NOTIFY_TELEGRAM_CHAT", "12345")
     assert telegram_credentials() == ("au-token", "12345")
+
+
+def test_load_env_reads_explicit_file_without_overwriting(monkeypatch, tmp_path: Path) -> None:
+    env_file = tmp_path / "notify.env"
+    env_file.write_text(
+        "export WC_NOTIFY_TELEGRAM_TOKEN=file-token\n"
+        "export WC_NOTIFY_TELEGRAM_CHAT=999\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("WC_NOTIFY_TELEGRAM_TOKEN", "existing-token")
+    monkeypatch.delenv("WC_NOTIFY_TELEGRAM_CHAT", raising=False)
+    racing_telegram.load_env(env_file)
+    assert racing_telegram.os.environ["WC_NOTIFY_TELEGRAM_TOKEN"] == "existing-token"
+    assert racing_telegram.os.environ["WC_NOTIFY_TELEGRAM_CHAT"] == "999"
+
+
+def test_telegram_content_includes_extra_targets_without_duplicates(monkeypatch) -> None:
+    monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
+    monkeypatch.setenv("WC_NOTIFY_TELEGRAM_CHAT", "111")
+    monkeypatch.setenv("WC_NOTIFY_TELEGRAM_EXTRA", "111, 222;333")
+    assert telegram_targets() == ["111"]
+    assert telegram_targets("content") == ["111", "222", "333"]
+
+
+def test_telegram_content_is_sent_to_primary_and_extra(monkeypatch) -> None:
+    monkeypatch.setenv("WC_NOTIFY_TELEGRAM_TOKEN", "test-token")
+    monkeypatch.setenv("WC_NOTIFY_TELEGRAM_CHAT", "111")
+    monkeypatch.setenv("WC_NOTIFY_TELEGRAM_EXTRA", "222")
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
+    response = mock.MagicMock()
+    response.__enter__.return_value.read.return_value = b'{"ok": true}'
+    with mock.patch.object(
+        racing_telegram.urllib.request, "urlopen", return_value=response
+    ) as request:
+        result = send_message("analysis done", audience="content")
+    assert result["ok"] is True
+    assert result["sent_targets"] == 2
+    assert request.call_count == 2
+
+
+def test_telegram_document_dry_run_and_missing_file(tmp_path: Path) -> None:
+    missing = send_document(tmp_path / "missing.pdf", dry_run=True)
+    assert missing["ok"] is False
+    assert missing["status"] == "missing_document"
+
+    report = tmp_path / "monthly.pdf"
+    report.write_bytes(b"%PDF-1.4 fixture")
+    result = send_document(report, caption="月報", dry_run=True)
+    assert result["ok"] is True
+    assert result["status"] == "dry_run"
+    assert result["document"] == str(report)
+
+
+def test_telegram_document_builds_multipart_utf8(tmp_path: Path) -> None:
+    report = tmp_path / "月報.pdf"
+    report.write_bytes(b"%PDF-1.4 fixture")
+    payload, content_type = _multipart_document("123", report, "八月月報")
+    assert content_type.startswith("multipart/form-data; boundary=")
+    assert b'name="chat_id"' in payload
+    assert b"123" in payload
+    assert "月報.pdf".encode("utf-8") in payload
+    assert "八月月報".encode("utf-8") in payload
+    assert b"%PDF-1.4 fixture" in payload
+
+
+def test_telegram_document_is_sent_to_primary_only_by_default(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("WC_NOTIFY_TELEGRAM_TOKEN", "test-token")
+    monkeypatch.setenv("WC_NOTIFY_TELEGRAM_CHAT", "111")
+    monkeypatch.setenv("WC_NOTIFY_TELEGRAM_EXTRA", "222")
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
+    report = tmp_path / "monthly.pdf"
+    report.write_bytes(b"%PDF-1.4 fixture")
+    response = mock.MagicMock()
+    response.__enter__.return_value.read.return_value = b'{"ok": true}'
+    with mock.patch.object(
+        racing_telegram.urllib.request, "urlopen", return_value=response
+    ) as request:
+        result = send_document(report, caption="monthly")
+    assert result == {"ok": True, "status": "sent", "sent_targets": 1}
+    assert request.call_count == 1
+    sent_request = request.call_args.args[0]
+    assert sent_request.full_url.endswith("/sendDocument")

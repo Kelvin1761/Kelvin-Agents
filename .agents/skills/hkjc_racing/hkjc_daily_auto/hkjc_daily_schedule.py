@@ -8,6 +8,7 @@ for launchd/cron:
 * ``watch``: dormant off-season poll for the next materialized racecard.
 * ``prerace``: run extraction -> Facts -> Logic -> scoring -> data-health -> deploy.
 * ``postrace``: extract results and run the unified reflector once results exist.
+* ``recovery``: retry only meetings whose required sources were temporarily unavailable.
 * ``weekly``: send the current performance/review state and create a non-draft
   PR only when an external candidate gate explicitly says ``passed``.
 """
@@ -25,7 +26,7 @@ import subprocess
 import sys
 import tempfile
 import urllib.request
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable
 
@@ -243,13 +244,15 @@ def run_cmd(cmd: list[str], *, timeout: int = 7200) -> tuple[int, str]:
     return completed.returncode, output
 
 
-def notify(message: str) -> None:
+def notify(message: str, *, audience: str = "primary") -> bool:
     try:
-        result = send_message(message)
+        result = send_message(message, audience=audience)
         if not result.get("ok"):
             log(f"Telegram warning: {result}")
+        return bool(result.get("ok"))
     except Exception as exc:  # noqa: BLE001
         log(f"Telegram warning: {type(exc).__name__}: {exc}")
+        return False
 
 
 def mirror_meeting(meeting_dir: Path) -> dict:
@@ -414,10 +417,30 @@ def run_prerace(state: dict, state_path: Path, *, meeting: dict | None = None) -
         ]
     )
     if code != 0:
-        notify(
-            f"❌ HKJC automation 失敗｜{meeting['date']} {meeting['venue']}\n"
-            f"exit={code}\n{output[-1200:]}"
+        key = f"{meeting['date']}|{meeting['venue']}"
+        record = state["meetings"].setdefault(key, {})
+        streak = int(record.get("failure_streak") or 0) + 1
+        temporary = code in (EXIT_TEMPORARY, 124)
+        record.update(
+            {
+                "meeting_dir": str(meeting_dir),
+                "last_prerace_attempt": stamp(),
+                "last_prerace_exit": code,
+                "failure_streak": streak,
+                "recovery_pending": temporary,
+                "last_failure_excerpt": output[-1200:],
+            }
         )
+        save_state(state_path, state)
+        # First failure is actionable; later retries stay quiet except for
+        # periodic reminders so an unpublished formguide cannot flood Telegram.
+        if not temporary or streak == 1 or streak % 6 == 0:
+            status = "資料未齊，會每30分鐘自動重試" if temporary else "需要人工檢查"
+            notify(
+                f"{'⏳' if temporary else '❌'} HKJC automation 未完成｜"
+                f"{meeting['date']} {meeting['venue']}\n"
+                f"exit={code}｜第{streak}次｜{status}\n{output[-1200:]}"
+            )
         return EXIT_TEMPORARY if code in (75, 124) else EXIT_FAILED
     try:
         snapshot = create_prediction_snapshot(meeting_dir)
@@ -427,22 +450,78 @@ def run_prerace(state: dict, state_path: Path, *, meeting: dict | None = None) -
     mirror = mirror_meeting(meeting_dir)
 
     key = f"{meeting['date']}|{meeting['venue']}"
-    state["meetings"].setdefault(key, {}).update(
+    record = state["meetings"].setdefault(key, {})
+    previous_snapshot = record.get("latest_snapshot")
+    recovered = bool(record.get("failure_streak"))
+    record.update(
         {
             "meeting_dir": str(meeting_dir),
             "last_prerace_success": stamp(),
             "latest_snapshot": str(snapshot),
             "last_mirror": mirror,
+            "last_prerace_exit": 0,
+            "failure_streak": 0,
+            "recovery_pending": False,
+            "last_failure_excerpt": "",
         }
     )
     save_state(state_path, state)
-    notify(
-        f"✅ HKJC analysis 完成｜{meeting['date']} {meeting['venue']}\n"
-        f"{health_status(meeting_dir)}\n"
-        f"Prediction snapshot：{snapshot.name}\nDashboard 已按 health gate 結果處理。"
-        f"\nDrive mirror：{mirror['status']}（{mirror['copied']} files）"
-    )
+    if previous_snapshot != str(snapshot) or recovered:
+        notify(
+            f"✅ HKJC analysis {'自動恢復並' if recovered else ''}完成｜"
+            f"{meeting['date']} {meeting['venue']}\n"
+            f"{health_status(meeting_dir)}\n"
+            f"Prediction snapshot：{snapshot.name}\nDashboard 已按 health gate 結果處理。"
+            f"\nDrive mirror：{mirror['status']}（{mirror['copied']} files）",
+            audience="content",
+        )
+    else:
+        log(f"HKJC unchanged rerun: reuse snapshot {snapshot.name}; Telegram skipped")
     return EXIT_OK
+
+
+def _meeting_from_state_key(key: str) -> dict | None:
+    try:
+        date_text, venue = key.split("|", 1)
+        date.fromisoformat(date_text)
+    except (ValueError, TypeError):
+        return None
+    if venue not in {"ShaTin", "HappyValley"}:
+        return None
+    course = "ST" if venue == "ShaTin" else "HV"
+    return {
+        "date": date_text,
+        "venue": venue,
+        "course": course,
+        "url": (
+            "https://racing.hkjc.com/zh-hk/local/information/racecard"
+            f"?racedate={date_text.replace('-', '/')}&Racecourse={course}&RaceNo=1"
+        ),
+    }
+
+
+def run_recovery(state: dict, state_path: Path) -> int:
+    """Retry only a due meeting previously classified as temporary/incomplete."""
+    today = now_local().date()
+    pending: list[tuple[str, dict]] = []
+    changed = False
+    for key, record in state.get("meetings", {}).items():
+        if not isinstance(record, dict) or not record.get("recovery_pending"):
+            continue
+        meeting = _meeting_from_state_key(key)
+        if meeting is None or date.fromisoformat(meeting["date"]) < today:
+            record["recovery_pending"] = False
+            changed = True
+            continue
+        pending.append((key, meeting))
+    if changed:
+        save_state(state_path, state)
+    if not pending:
+        log("HKJC recovery dormant: no pending temporary failure")
+        return EXIT_OK
+    key, meeting = sorted(pending, key=lambda item: item[0])[0]
+    log(f"HKJC self-recovery retry: {key}")
+    return run_prerace(state, state_path, meeting=meeting)
 
 
 def pending_postrace_meetings(*, today: date | None = None) -> list[Path]:
@@ -642,9 +721,60 @@ def run_weekly(state: dict, state_path: Path, candidate_gate: Path) -> int:
     return EXIT_OK
 
 
+def previous_calendar_month(today: date) -> tuple[date, date]:
+    first_this_month = today.replace(day=1)
+    last_previous_month = first_this_month - timedelta(days=1)
+    return last_previous_month.replace(day=1), last_previous_month
+
+
+def monthly_review_prompt(period_start: date, period_end: date) -> str:
+    return (
+        "請用約15分鐘，為 AU Wong Choi 同 HKJC Wong Choi 做月度整體 review，"
+        f"評估期間只限 {period_start.isoformat()} 至 {period_end.isoformat()}。\n"
+        "先凍結正式 pre-race prediction snapshots，再對齊官方賽果；嚴禁用賽後資料"
+        "重建當時預測。請：\n"
+        "1. 分開列 AU/HKJC 場數、有效樣本、Gold/Good/Pass、Top1 win/place、"
+        "Top2 place coverage、Top4 coverage，同上月及既有 reference baseline 比較；"
+        "沿用現有 canonical metric 定義，唔好重新解釋。\n"
+        "2. 分析高賠率 Top2 包尾、熱門馬排模型底部但勝出/上名，按場地、途程、"
+        "going、班次、檔位、步速、分差及 data coverage 分 cohort。\n"
+        "3. 檢查每個 Matrix 維度、維度 crossover、draw score、資料缺失/neutral fallback，"
+        "指出係真訊號、資料問題定細樣本。\n"
+        "4. 檢查 racecard/formguide/results/horse identity/track-turf-distance alignment、"
+        "placeholder、Top4 drift、排程漏跑、自動修復、Telegram、mirror 同 deploy。\n"
+        "5. 只提出有 forward/holdout 證據、無 cohort regression 嘅 Matrix/ML candidate；"
+        "唔好為 micro-adjustment 犧牲 Top2，亦唔好自動改 model。\n"
+        "最後輸出：今月結論、可信度、要保持嘅地方、最多3個優先改善項、"
+        "所需實驗、rollback gate，以及 Keep / Observe / Prepare PR 建議；任何 PR 都等我批准。"
+    )
+
+
+def run_monthly_review_reminder(state: dict, state_path: Path) -> int:
+    period_start, period_end = previous_calendar_month(now_local().date())
+    period_key = f"{period_start.isoformat()}|{period_end.isoformat()}"
+    if state.get("last_monthly_review_reminder") == period_key:
+        log(f"Wong Choi monthly review reminder already sent: {period_key}")
+        return EXIT_OK
+    message = (
+        "🗓️ AU + HKJC Wong Choi 月度 review（約15分鐘）\n"
+        f"期間：{period_start.isoformat()} 至 {period_end.isoformat()}\n\n"
+        "請將以下 prompt 貼返入 Codex：\n\n"
+        + monthly_review_prompt(period_start, period_end)
+    )
+    if not notify(message):
+        return EXIT_FAILED
+    state["last_monthly_review_reminder"] = period_key
+    save_state(state_path, state)
+    return EXIT_OK
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="HKJC Wong Choi daily automation")
-    parser.add_argument("--mode", choices=("watch", "prerace", "postrace", "weekly"), required=True)
+    parser.add_argument(
+        "--mode",
+        choices=("watch", "prerace", "recovery", "postrace", "weekly", "monthly"),
+        required=True,
+    )
     parser.add_argument("--state-file", type=Path, default=DEFAULT_STATE)
     parser.add_argument("--candidate-gate", type=Path, default=DEFAULT_CANDIDATE_GATE)
     parser.add_argument("--meeting-url", help="Optional explicit HKJC racecard URL")
@@ -684,8 +814,12 @@ def main(argv: list[str] | None = None) -> int:
                 return run_watch(state, args.state_file, meeting=meeting)
             if args.mode == "prerace":
                 return run_prerace(state, args.state_file, meeting=meeting)
+            if args.mode == "recovery":
+                return run_recovery(state, args.state_file)
             if args.mode == "postrace":
                 return run_postrace(state, args.state_file)
+            if args.mode == "monthly":
+                return run_monthly_review_reminder(state, args.state_file)
             return run_weekly(state, args.state_file, args.candidate_gate)
         except Exception as exc:  # noqa: BLE001
             log(f"HKJC {args.mode} failed: {type(exc).__name__}: {exc}")

@@ -138,3 +138,98 @@ def test_log_is_redirectable_for_tests(tmp_path: Path) -> None:
     with mock.patch.dict(os.environ, {"WC_HKJC_SCHED_LOG_DIR": str(tmp_path)}):
         schedule.log("fixture")
     assert "fixture" in (tmp_path / "hkjc_daily_schedule.log").read_text()
+
+
+def test_notify_forwards_content_audience() -> None:
+    with mock.patch.object(
+        schedule, "send_message", return_value={"ok": True, "status": "sent"}
+    ) as sender:
+        assert schedule.notify("analysis done", audience="content") is True
+    sender.assert_called_once_with("analysis done", audience="content")
+
+
+def test_previous_calendar_month_handles_year_boundary() -> None:
+    assert schedule.previous_calendar_month(date(2027, 1, 10)) == (
+        date(2026, 12, 1),
+        date(2026, 12, 31),
+    )
+
+
+def test_monthly_review_reminder_sends_prompt_once(tmp_path: Path) -> None:
+    state_path = tmp_path / "state.json"
+    state = schedule.load_state(state_path)
+    with (
+        mock.patch.dict(os.environ, {"WC_HKJC_SCHED_LOG_DIR": str(tmp_path)}),
+        mock.patch.object(
+            schedule,
+            "now_local",
+            return_value=datetime(2026, 9, 7, 9, 0, tzinfo=timezone.utc),
+        ),
+        mock.patch.object(schedule, "notify", return_value=True) as notify,
+    ):
+        assert schedule.run_monthly_review_reminder(state, state_path) == 0
+        assert schedule.run_monthly_review_reminder(state, state_path) == 0
+    notify.assert_called_once()
+    message = notify.call_args.args[0]
+    assert "2026-08-01 至 2026-08-31" in message
+    assert "AU Wong Choi 同 HKJC Wong Choi" in message
+    assert "約15分鐘" in message
+    assert state["last_monthly_review_reminder"] == "2026-08-01|2026-08-31"
+
+
+def test_temporary_prerace_failure_arms_self_recovery(tmp_path: Path) -> None:
+    state_path = tmp_path / "state.json"
+    state = schedule.load_state(state_path)
+    meeting = {
+        "date": "2026-09-06",
+        "venue": "ShaTin",
+        "course": "ST",
+        "url": "fixture",
+    }
+    with (
+        mock.patch.object(schedule, "HK_RACING", tmp_path),
+        mock.patch.object(
+            schedule,
+            "now_local",
+            return_value=datetime(2026, 9, 5, 23, 30, tzinfo=timezone.utc),
+        ),
+        mock.patch.object(schedule, "run_cmd", return_value=(75, "formguide not ready")),
+        mock.patch.object(schedule, "notify") as notify,
+    ):
+        assert schedule.run_prerace(state, state_path, meeting=meeting) == 75
+
+    record = state["meetings"]["2026-09-06|ShaTin"]
+    assert record["recovery_pending"] is True
+    assert record["failure_streak"] == 1
+    assert "formguide not ready" in record["last_failure_excerpt"]
+    notify.assert_called_once()
+
+
+def test_recovery_is_dormant_without_pending_state(tmp_path: Path) -> None:
+    state_path = tmp_path / "state.json"
+    state = schedule.load_state(state_path)
+    with (
+        mock.patch.dict(os.environ, {"WC_HKJC_SCHED_LOG_DIR": str(tmp_path)}),
+        mock.patch.object(schedule, "run_prerace") as prerace,
+    ):
+        assert schedule.run_recovery(state, state_path) == 0
+    prerace.assert_not_called()
+
+
+def test_recovery_retries_pending_meeting(tmp_path: Path) -> None:
+    state_path = tmp_path / "state.json"
+    state = schedule.load_state(state_path)
+    state["meetings"]["2026-09-06|ShaTin"] = {"recovery_pending": True}
+    with (
+        mock.patch.dict(os.environ, {"WC_HKJC_SCHED_LOG_DIR": str(tmp_path)}),
+        mock.patch.object(
+            schedule,
+            "now_local",
+            return_value=datetime(2026, 9, 5, 23, 30, tzinfo=timezone.utc),
+        ),
+        mock.patch.object(schedule, "run_prerace", return_value=0) as prerace,
+    ):
+        assert schedule.run_recovery(state, state_path) == 0
+    assert prerace.call_args.kwargs["meeting"]["url"].endswith(
+        "racedate=2026/09/06&Racecourse=ST&RaceNo=1"
+    )
